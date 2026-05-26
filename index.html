@@ -678,6 +678,104 @@
     background: linear-gradient(180deg, rgba(173,198,255,0.08) 0%, var(--surface-container-low) 60%);
   }
 
+  /* Phase cards (홈 4단계) */
+  .phase-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.875rem;
+    margin: 1rem 0 2.5rem;
+  }
+  .phase-card {
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 1.25rem 1.25rem 1rem;
+    cursor: pointer;
+    transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .phase-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--primary);
+    opacity: 0.35;
+    transition: opacity 0.15s ease;
+  }
+  .phase-card:hover {
+    border-color: var(--primary);
+    background: var(--surface-container-low);
+    transform: translateY(-2px);
+  }
+  .phase-card:hover::before { opacity: 1; }
+  .phase-card-tool::before { background: var(--secondary); opacity: 0.45; }
+  .phase-card-tool:hover { border-color: var(--secondary); }
+  .phase-card-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .phase-card-step {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+  }
+  .phase-card-tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--primary);
+    background: rgba(173, 198, 255, 0.1);
+    padding: 1px 8px;
+    border-radius: var(--radius-default);
+    border: 1px solid rgba(173, 198, 255, 0.18);
+    letter-spacing: 0.04em;
+    font-weight: 500;
+  }
+  .phase-card-tool .phase-card-tag {
+    color: var(--secondary);
+    background: rgba(76, 215, 246, 0.1);
+    border-color: rgba(76, 215, 246, 0.2);
+  }
+  .phase-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.005em;
+    margin-top: 0.25rem;
+  }
+  .phase-card-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 19px;
+  }
+  .phase-card-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .phase-card-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .phase-card-cta {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--primary);
+    margin-top: 0.25rem;
+    font-weight: 500;
+  }
+  .phase-card-tool .phase-card-cta { color: var(--secondary); }
+
   /* Footer */
   .page-footer {
     margin-top: 3rem;
@@ -841,6 +939,35 @@
     background: var(--border-subtle);
     margin: 0.5rem 0.75rem;
   }
+  .phase-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem 0.4rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--border-subtle);
+    margin-left: 0.25rem;
+    margin-right: 0.25rem;
+  }
+  .phase-label:first-child { border-top: none; margin-top: 0; }
+  .phase-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--primary);
+    background: rgba(173, 198, 255, 0.08);
+    padding: 1px 6px;
+    border-radius: var(--radius-default);
+    border: 1px solid rgba(173, 198, 255, 0.15);
+    letter-spacing: 0.04em;
+    font-weight: 500;
+  }
+  .phase-sub {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
 
   /* Responsive */
   @media (max-width: 1100px) {
@@ -948,6 +1075,50 @@ const IA = [
   },
 ];
 
+/* ========== Marketing Phases (사용자 여정 기준) ========== */
+const PHASES = [
+  {
+    id: "p1",
+    label: "초기",
+    sub: "MMP & 트래킹 셋업",
+    desc: "MMP 인프라, 이벤트 택소노미, 매체 포스트백, iOS 프라이버시 대응까지. 본격 운영 전 반드시 갖춰야 할 토대.",
+    groups: ["01"],
+    cta: "1-1",
+  },
+  {
+    id: "p2",
+    label: "중기",
+    sub: "캠페인 운영 & 소재",
+    desc: "UAC·Meta·ASA·리타겟팅 실전 셋업과 ASO·매체별 소재 규격·3초 훅까지. 운영 일과의 표준 절차.",
+    groups: ["02", "03"],
+    cta: "2-1",
+  },
+  {
+    id: "p3",
+    label: "후기",
+    sub: "분석 & 최적화",
+    desc: "KPI 벤치마크, 코호트·LTV, 카니발리제이션 보정, 광고 프로드 탐지. 데이터로 검증하고 다시 묶는 단계.",
+    groups: ["04"],
+    cta: "4-1",
+  },
+  {
+    id: "p4",
+    label: "도구",
+    sub: "데이터 분석 자동화",
+    desc: "CSV를 업로드하면 컬럼 매핑, KPI 자동 계산, 코호트 토글로 즉시 분석. 도구는 계속 추가됩니다.",
+    groups: ["05"],
+    cta: "5-1",
+  },
+];
+
+function findPhaseByGroup(groupId) {
+  return PHASES.find(p => p.groups.includes(groupId));
+}
+function isFirstGroupOfPhase(groupId) {
+  const phase = findPhaseByGroup(groupId);
+  return phase && phase.groups[0] === groupId;
+}
+
 /* ========== CSV Standard Fields ========== */
 const STANDARD_FIELDS = {
   date:          { label: "날짜",         aliases: ["dt", "날짜", "event_date", "day"],          type: "date",    required: true,  group: "디멘션" },
@@ -1047,33 +1218,45 @@ function dataTable(headers, rows, opts = {}) {
 
 /* ========== Sidebar Renderer ========== */
 /* 최초 1회만 렌더된다. 페이지 이동 시에는 updateNavActive()만 호출.
-   그룹 펼침/접힘 상태와 다른 그룹의 상태는 사용자 액션 외에는 변하지 않는다. */
+   그룹 펼침/접힘 상태는 사용자 액션이나 페이지 진입 외에는 변하지 않는다.
+   기본적으로 모든 그룹은 닫힌 상태로 시작하며, 활성 페이지가 속한 그룹만 자동으로 열린다. */
 function renderNav(activeId) {
   const nav = $("#nav");
   if (nav.dataset.rendered === "1") {
     updateNavActive(activeId);
     return;
   }
-  nav.innerHTML = IA.map(group => `
-    ${group.id === "05" ? '<div class="nav-divider"></div>' : ""}
-    <div class="nav-group" data-group="${group.id}">
-      <div class="nav-group-header" data-toggle="${group.id}">
-        <span class="nav-group-title">
-          <span class="nav-group-index">${group.id}</span>
-          <span>${escapeHtml(group.title)}</span>
-        </span>
-        <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+  nav.innerHTML = IA.map(group => {
+    const phase = findPhaseByGroup(group.id);
+    const showPhaseLabel = isFirstGroupOfPhase(group.id);
+    const hasActive = group.items.some(it => it.id === activeId);
+    // 활성 그룹만 펼침, 나머지는 collapsed
+    const collapsedClass = hasActive ? "" : "collapsed";
+    return `
+      ${showPhaseLabel ? `
+        <div class="phase-label" data-phase="${phase.id}">
+          <span class="phase-tag">${escapeHtml(phase.label)}</span>
+          <span class="phase-sub">${escapeHtml(phase.sub)}</span>
+        </div>` : ""}
+      <div class="nav-group ${collapsedClass}" data-group="${group.id}">
+        <div class="nav-group-header" data-toggle="${group.id}">
+          <span class="nav-group-title">
+            <span class="nav-group-index">${group.id}</span>
+            <span>${escapeHtml(group.title)}</span>
+          </span>
+          <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div class="nav-items">
+          ${group.items.map(it => `
+            <div class="nav-item ${it.id === activeId ? "active" : ""}" data-route="${it.id}">
+              <span class="ix tnum">${it.id}</span>
+              <span>${escapeHtml(it.title)}</span>
+            </div>
+          `).join("")}
+        </div>
       </div>
-      <div class="nav-items">
-        ${group.items.map(it => `
-          <div class="nav-item ${it.id === activeId ? "active" : ""}" data-route="${it.id}">
-            <span class="ix tnum">${it.id}</span>
-            <span>${escapeHtml(it.title)}</span>
-          </div>
-        `).join("")}
-      </div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 
   $$('.nav-item').forEach(el => {
     el.addEventListener("click", () => navigate(el.dataset.route));
@@ -1091,19 +1274,25 @@ function updateNavActive(activeId) {
   $$('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.route === activeId);
   });
+  // 활성 페이지가 속한 그룹은 자동으로 펼침. 다른 그룹은 사용자 토글 상태 유지.
+  if (activeId) {
+    const item = $(`.nav-item[data-route="${activeId}"]`);
+    if (item) {
+      const group = item.closest(".nav-group");
+      if (group) group.classList.remove("collapsed");
+    }
+  }
 }
 
 /* ========== Page renderers ========== */
 function pageHome() {
-  const guideGroups = IA.filter(g => g.id !== "05");
-  const analyticsGroup = IA.find(g => g.id === "05");
-  const totalGuides = guideGroups.reduce((a, g) => a + g.items.length, 0);
-  const totalTools   = analyticsGroup ? analyticsGroup.items.length : 0;
+  const totalGuides = IA.filter(g => g.id !== "05").reduce((a, g) => a + g.items.length, 0);
+  const totalTools = (IA.find(g => g.id === "05")?.items.length) || 0;
 
   return `
     <div class="page-eyebrow">Performance Marketing Library</div>
     <h1 class="page-title">앱 퍼포먼스 마케팅, 운영의 표준화.</h1>
-    <p class="page-deck">실무 가이드 라이브러리와 데이터 분석 도구를 한 곳에서. 신규 캠페인을 선제적으로 준비하거나, 보유 데이터를 업로드해 다각도로 분석할 수 있습니다.</p>
+    <p class="page-deck">마케팅 사이클의 단계에 맞춰 필요한 가이드와 도구만 골라 보세요. 초기 셋업부터 캠페인 운영, 데이터 분석, 자동화 도구까지 4단계로 정리되어 있습니다.</p>
 
     <div class="meta-row">
       <span class="chip"><span class="dot"></span><span class="tnum">${totalGuides}</span>개 가이드</span>
@@ -1111,60 +1300,55 @@ function pageHome() {
       <span class="chip ok"><span class="dot"></span>iOS 18 SKAN 4.0 대응</span>
     </div>
 
-    <h2 class="section-title" style="margin-top:2rem;">어떻게 시작할까요?</h2>
-    <div class="grid-cards" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
-      <div class="card workflow-card" data-route="1-1">
-        <div class="card-eyebrow">01 · 라이브러리</div>
-        <div class="card-title" style="font-size:18px;">선제적으로 준비하기</div>
-        <div class="card-desc">
-          MMP 인프라 셋업부터 UAC·Meta·ASA 캠페인 운영, ASO·소재 기획, KPI·코호트·프로드 분석까지 — 시니어 퍼포먼스 마케터의 표준 작업 절차를 그대로 참고하세요.
-        </div>
-        <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:12px; color:var(--primary);">
-          1-1부터 시작하기 →
-        </div>
-      </div>
-      <div class="card workflow-card" data-route="5-1">
-        <div class="card-eyebrow">05 · 분석 도구</div>
-        <div class="card-title" style="font-size:18px;">데이터로 분석하기</div>
-        <div class="card-desc">
-          캠페인 CSV를 업로드하면 컬럼을 자동 매핑하고, KPI를 자동 계산합니다. 코호트(D0/D7/D14) 토글로 다각도 검증이 가능하며, 분석 도구는 계속 추가됩니다.
-        </div>
-        <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:12px; color:var(--primary);">
-          CSV 업로드 →
-        </div>
-      </div>
+    <h2 class="section-title" style="margin-top:2rem;">지금 어떤 단계에 있나요?</h2>
+    <div class="phase-grid">
+      ${PHASES.map((p, idx) => {
+        const linkedGroups = IA.filter(g => p.groups.includes(g.id));
+        const itemCount = linkedGroups.reduce((a, g) => a + g.items.length, 0);
+        const isTool = p.id === "p4";
+        return `
+          <div class="phase-card ${isTool ? 'phase-card-tool' : ''}" data-route="${p.cta}">
+            <div class="phase-card-head">
+              <span class="phase-card-step">STEP ${idx + 1}</span>
+              <span class="phase-card-tag">${escapeHtml(p.label)}</span>
+            </div>
+            <div class="phase-card-title">${escapeHtml(p.sub)}</div>
+            <div class="phase-card-desc">${escapeHtml(p.desc)}</div>
+            <div class="phase-card-foot">
+              <span class="phase-card-meta">${linkedGroups.map(g => `${g.id} · ${escapeHtml(g.title)}`).join(" / ")}</span>
+              <span class="phase-card-meta tnum">${itemCount}개 항목</span>
+            </div>
+            <div class="phase-card-cta">시작하기 →</div>
+          </div>
+        `;
+      }).join("")}
     </div>
 
-    ${guideGroups.map(g => `
-      <h2 class="section-title" style="margin-top:2.5rem;">
-        <span class="ix">${g.id}</span>${escapeHtml(g.title)}
-      </h2>
-      <p style="margin:-0.5rem 0 0.75rem; color:var(--text-secondary); font-size:13px;">${escapeHtml(g.subtitle)}</p>
-      <div class="grid-cards">
-        ${g.items.map(it => `
-          <div class="card" data-route="${it.id}">
-            <div class="card-eyebrow">${it.id}</div>
-            <div class="card-title">${escapeHtml(it.title)}</div>
-            <div class="card-desc">${escapeHtml(it.desc)}</div>
+    ${PHASES.map(p => {
+      const linkedGroups = IA.filter(g => p.groups.includes(g.id));
+      return `
+        <h2 class="section-title" style="margin-top:2.5rem;">
+          <span class="ix">${escapeHtml(p.label)}</span>${escapeHtml(p.sub)}
+        </h2>
+        <p style="margin:-0.5rem 0 0.75rem; color:var(--text-secondary); font-size:13px;">${escapeHtml(p.desc)}</p>
+        ${linkedGroups.map(g => `
+          <div style="margin-bottom:1rem;">
+            <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">
+              ${g.id} · ${escapeHtml(g.title)}
+            </div>
+            <div class="grid-cards">
+              ${g.items.map(it => `
+                <div class="card" data-route="${it.id}">
+                  <div class="card-eyebrow">${it.id}</div>
+                  <div class="card-title">${escapeHtml(it.title)}</div>
+                  <div class="card-desc">${escapeHtml(it.desc)}</div>
+                </div>
+              `).join("")}
+            </div>
           </div>
         `).join("")}
-      </div>
-    `).join("")}
-
-    ${analyticsGroup ? `
-      <h2 class="section-title" style="margin-top:2.5rem;">
-        <span class="ix">${analyticsGroup.id}</span>${escapeHtml(analyticsGroup.title)}
-      </h2>
-      <p style="margin:-0.5rem 0 0.75rem; color:var(--text-secondary); font-size:13px;">${escapeHtml(analyticsGroup.subtitle)}</p>
-      <div class="grid-cards">
-        ${analyticsGroup.items.map(it => `
-          <div class="card" data-route="${it.id}">
-            <div class="card-eyebrow">${it.id}</div>
-            <div class="card-title">${escapeHtml(it.title)}</div>
-            <div class="card-desc">${escapeHtml(it.desc)}</div>
-          </div>
-        `).join("")}
-      </div>` : ""}
+      `;
+    }).join("")}
   `;
 }
 
@@ -2785,6 +2969,7 @@ function page_4_3() {
     toc: [
       { id: "s-def", title: "카니발리제이션 정의" },
       { id: "s-geox", title: "GeoX 실험" },
+      { id: "s-holdout", title: "Holdout 실험" },
       { id: "s-adj", title: "결과 보정" },
       { id: "s-trouble", title: "트러블슈팅" },
     ],
@@ -2827,17 +3012,90 @@ function page_4_3() {
 }`)}
       </section>
 
+      <section class="block" id="s-holdout">
+        <h2 class="section-title"><span class="ix">§3</span>Holdout (Audience / User Holdout)</h2>
+        <p>GeoX가 지역 단위로 광고를 끄는 방식이라면, Holdout은 <strong>사용자 단위</strong>로 특정 비율을 광고 노출에서 제외하는 방식이다. 단일 지역 운영(예: 한국만)에서 GeoX가 불가능할 때 차선책. Meta·Google·TikTok 모두 캠페인 단위 holdout 기능을 제공한다.</p>
+
+        <h3 class="sub-title">3.1 매체별 Holdout 옵션</h3>
+        ${dataTable(
+          [
+            { label: "매체", type: "string" },
+            { label: "기능명", type: "string" },
+            { label: "Holdout 비율", type: "string" },
+            { label: "분석 단위", type: "string" },
+          ],
+          [
+            ["Meta",      "Conversion Lift / Brand Lift",   "10% / 20% / 30% 선택", "사용자 단위 (FB ID)"],
+            ["Google",    "Conversion Lift Study",           "10% / 50% 선택",        "Google 계정 단위"],
+            ["TikTok",    "Lift Studies",                    "10%~50% 자율",          "Advertising ID 단위"],
+            ["AppLovin",  "Incrementality Test",             "캠페인 단위 OFF",       "Geo + 디바이스 ID"],
+          ]
+        )}
+
+        <h3 class="sub-title">3.2 실험 설계 — Power & Duration</h3>
+        <p>holdout 그룹이 너무 작으면 통계적 유의성 확보 어려움. 일반적으로:</p>
+        <ul>
+          <li><strong>최소 holdout 크기</strong>: 일 install 1,000건 기준 holdout 비율 30% 이상 권장</li>
+          <li><strong>실험 기간</strong>: 최소 4주 (week-of-day 효과 제거) — D14 매출까지 관찰</li>
+          <li><strong>유의수준</strong>: α = 0.05, power = 0.80, MDE(Minimum Detectable Effect) = 5%</li>
+          <li>매체별 자동 power 계산 도구 활용 (Meta Conversion Lift, Google Lift Study)</li>
+        </ul>
+        ${codeBlock("json", "Holdout 실험 설계 예시 (Meta Conversion Lift)", `{
+  "study_name": "meta_aap_holdout_2026_q2",
+  "objective": "incremental_purchase",
+  "test_groups": [
+    { "name": "test",    "split": 0.70, "exposure": "ads_on"  },
+    { "name": "control", "split": 0.30, "exposure": "ads_off" }
+  ],
+  "duration_days": 28,
+  "primary_metric":   "d7_revenue_per_user",
+  "secondary_metric": "purchase_count",
+  "minimum_detectable_lift": 0.05,
+  "alpha": 0.05,
+  "expected_p_value_threshold": 0.05
+}`)}
+
+        <h3 class="sub-title">3.3 GeoX vs Holdout 선택 가이드</h3>
+        ${dataTable(
+          [
+            { label: "조건", type: "string" },
+            { label: "권장 방식", type: "string" },
+            { label: "이유", type: "string" },
+          ],
+          [
+            ["단일 국가/지역 운영",                            "Holdout",        "GeoX는 지역 분할 불가"],
+            ["다국가 운영 + 매체 인지도 캠페인",                "GeoX",           "사용자 단위로 누수 위험"],
+            ["일 install 5000+ 대규모 캠페인",                  "Holdout",        "사용자 단위 통계 검정력 충분"],
+            ["일 install 1000 미만 소규모",                     "GeoX 또는 Causal Impact", "Holdout 검정력 부족"],
+            ["TV·옥외 등 오프라인 매체 영향 큰 브랜드",          "GeoX",           "오프라인 노출이 user-level에 섞임"],
+            ["매체별 incremental 비교가 목적",                   "Holdout",        "매체별 동시 실험 가능"],
+          ]
+        )}
+      </section>
+
       <section class="block" id="s-adj">
-        <h2 class="section-title"><span class="ix">§3</span>결과 보정 (Attribution Adjustment)</h2>
+        <h2 class="section-title"><span class="ix">§4</span>결과 보정 (Attribution Adjustment)</h2>
         <ul>
           <li>iROAS / ROAS 비율을 매체별로 산출 (Lift Factor)</li>
           <li>모든 매체 ROAS에 Lift Factor 곱해서 비교 (단순 ROAS는 매체 간 직접 비교 부적합)</li>
           <li>업계 평균 Lift Factor: Meta UA ≈ 0.7~0.8, Google UAC ≈ 0.6~0.75, ASA Brand ≈ 0.3~0.5 (브랜드는 카니발 비중 높음)</li>
+          <li>Lift Factor는 6개월에 1회 재측정 — 매체 트래픽 품질·시장 상황 변화 반영</li>
         </ul>
+        ${codeBlock("json", "매체별 Lift Factor 적용 예시", `{
+  "as_of": "2026-05-01",
+  "media_lift_factors": {
+    "Meta_UA":     { "apparent_roas": 1.85, "lift": 0.75, "iroas": 1.39 },
+    "Google_UAC":  { "apparent_roas": 2.10, "lift": 0.68, "iroas": 1.43 },
+    "TikTok":      { "apparent_roas": 1.60, "lift": 0.82, "iroas": 1.31 },
+    "ASA_Brand":   { "apparent_roas": 4.20, "lift": 0.35, "iroas": 1.47 },
+    "ASA_Generic": { "apparent_roas": 1.95, "lift": 0.78, "iroas": 1.52 }
+  },
+  "decision": "ASA_Generic 최우선 확대, ASA_Brand는 현재 비중 유지"
+}`)}
       </section>
 
       <section class="block" id="s-trouble">
-        <h2 class="section-title"><span class="ix">§4</span>트러블슈팅</h2>
+        <h2 class="section-title"><span class="ix">§5</span>트러블슈팅</h2>
         <div class="callout danger">
           <div class="ico">!</div>
           <div class="body">
@@ -2850,6 +3108,20 @@ function page_4_3() {
           <div class="body">
             <strong>실험 결과가 노이즈 수준</strong>
             <p>매주 install 5000+ 또는 매출 $50,000+ 이상의 규모가 안 되면 통계적 유의성 확보 어려움. 작은 캠페인은 GeoX 대신 Causal Impact (시계열 모델) 사용.</p>
+          </div>
+        </div>
+        <div class="callout warn">
+          <div class="ico">!</div>
+          <div class="body">
+            <strong>Holdout 그룹에서도 매출이 발생하는 게 정상</strong>
+            <p>오해 금물 — 광고를 끈다고 매출이 0이 되는 게 아니다. organic·재방문·다른 매체 영향으로 baseline 매출은 유지된다. <code class="inline">incremental = test_매출 − control_매출</code>의 차이가 진짜 효과.</p>
+          </div>
+        </div>
+        <div class="callout info">
+          <div class="ico">i</div>
+          <div class="body">
+            <strong>Lift 결과를 입찰에 어떻게 반영하나</strong>
+            <p>iROAS 기준으로 매체별 예산 재분배. Lift Factor가 낮은 매체(예: ASA Brand 0.35)는 절대 끄지 말고 비중만 조정 — 브랜드 키워드는 경쟁사 침투 차단 역할도 하므로 ROI 외 가치가 있다.</p>
           </div>
         </div>
       </section>
@@ -3398,7 +3670,7 @@ function bindSortableTables() {
 }
 
 function bindCardLinks() {
-  $$('.card[data-route]').forEach(c => {
+  $$('.card[data-route], .phase-card[data-route]').forEach(c => {
     c.addEventListener("click", () => navigate(c.dataset.route));
   });
 }
@@ -3407,6 +3679,20 @@ function bindTocScrollspy() {
   const links = $$(".toc a");
   if (!links.length) return;
   const sections = links.map(a => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+
+  // 클릭 시 부드러운 스크롤 (URL hash는 바꾸지 않음 → 라우터 부작용 없음)
+  links.forEach(a => {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      const id = a.getAttribute("href").slice(1);
+      const target = document.getElementById(id);
+      if (target) {
+        const top = target.getBoundingClientRect().top + window.scrollY - 70;
+        window.scrollTo({ top, behavior: "smooth" });
+      }
+    });
+  });
+
   const onScroll = () => {
     const y = window.scrollY + 120;
     let activeIdx = 0;
@@ -3524,9 +3810,15 @@ function bindSearch() {
   });
 }
 
+// 페이지 ID 형식("1-1", "5-2" 등)만 라우팅 대상으로 인정. anchor hash(#s-*) 등은 무시.
+function isValidRouteId(s) {
+  return s === "home" || /^\d+-\d+$/.test(s || "");
+}
+
 /* ========== Init ========== */
 function init() {
-  const hash = (location.hash || "").replace(/^#/, "");
+  const hashRaw = (location.hash || "").replace(/^#/, "");
+  const hash = isValidRouteId(hashRaw) ? hashRaw : "home";
   renderNav(hash || null);
   bindSearch();
   bindBrandClick();
@@ -3534,7 +3826,8 @@ function init() {
 
   // 브라우저 뒤로가기 / 앞으로가기 대응
   window.addEventListener("popstate", (e) => {
-    const route = e.state?.route || (location.hash || "").replace(/^#/, "") || "home";
+    const raw = e.state?.route || (location.hash || "").replace(/^#/, "") || "home";
+    const route = isValidRouteId(raw) ? raw : "home";
     navigate_silent(route);
   });
 
