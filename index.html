@@ -1076,8 +1076,8 @@ const IA = [
   },
   {
     id: "05",
-    title: "CSV Analyzer",
-    subtitle: "데이터 업로드 및 분석",
+    title: "Ops Dashboard",
+    subtitle: "운영 데이터 대시보드 & 분석",
     items: [
       { id: "5-1", title: "CSV 업로드 및 컬럼 매핑", desc: "파일 업로드 후 표준 필드에 컬럼 연결" },
       { id: "5-2", title: "분석 대시보드", desc: "KPI 자동 계산 및 코호트(D0/D7/D14) 토글" },
@@ -1113,9 +1113,9 @@ const PHASES = [
   },
   {
     id: "p4",
-    label: "도구",
-    sub: "데이터 분석 자동화",
-    desc: "CSV를 업로드하면 컬럼 매핑, KPI 자동 계산, 코호트 토글로 즉시 분석. 도구는 계속 추가됩니다.",
+    label: "운영",
+    sub: "운영 데이터 대시보드 & 분석",
+    desc: "실제 운영한 캠페인 데이터를 업로드해 대시보드로 시각화하고, KPI 계산·코호트 분석·이상 탐지 등 필요한 분석 도구를 그대로 적용. 분석 모듈은 계속 추가됩니다.",
     groups: ["05"],
     cta: "5-1",
   },
@@ -1590,11 +1590,11 @@ class App : Application() {
 
       <aside class="toc">
         <div class="toc-title">목차</div>
-        <a href="#s-prereq">Prerequisites</a>
-        <a href="#s-sdk">Implementation Steps</a>
-        <a href="#s-qa">QA Scenarios</a>
-        <a href="#s-troubleshoot">Troubleshooting</a>
-        <a href="#s-handoff">Handoff Checklist</a>
+        <a href="#s-prereq">사전 요구사항</a>
+        <a href="#s-sdk">구현 단계</a>
+        <a href="#s-qa">QA 시나리오</a>
+        <a href="#s-troubleshoot">트러블슈팅</a>
+        <a href="#s-handoff">인수인계 체크리스트</a>
       </aside>
     </div>
   `;
@@ -1786,12 +1786,12 @@ function page_1_2() {
 
       <aside class="toc">
         <div class="toc-title">목차</div>
-        <a href="#s-principles">Naming Principles</a>
-        <a href="#s-master">Master Event List</a>
-        <a href="#s-params">Parameter Spec</a>
-        <a href="#s-payload">Reference Payload</a>
-        <a href="#s-versioning">Versioning</a>
-        <a href="#s-pitfalls">Troubleshooting</a>
+        <a href="#s-principles">명명 원칙</a>
+        <a href="#s-master">이벤트 마스터 목록</a>
+        <a href="#s-params">표준 파라미터 스펙</a>
+        <a href="#s-payload">참조 페이로드</a>
+        <a href="#s-versioning">버전 관리 및 거버넌스</a>
+        <a href="#s-pitfalls">트러블슈팅</a>
       </aside>
     </div>
   `;
