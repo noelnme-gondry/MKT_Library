@@ -46,6 +46,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
   /* ========== Design Tokens (Obsidian Flux) ========== */
   :root {
@@ -987,34 +988,170 @@
     background: var(--border-subtle);
     margin: 0.5rem 0.75rem;
   }
-  .phase-label {
+  /* Phase 단위 토글 섹션 */
+  .phase-section {
+    border-top: 1px solid var(--border-subtle);
+    margin: 0 0.25rem;
+    padding: 0.25rem 0;
+  }
+  .phase-section:first-child { border-top: none; }
+  .phase-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.625rem 0.5rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    border-radius: var(--radius-lg);
+    transition: background 0.1s ease;
+  }
+  .phase-header:hover { background: var(--surface-container-low); }
+  .phase-header-left {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem 0.75rem 0.4rem;
-    margin-top: 0.5rem;
-    border-top: 1px solid var(--border-subtle);
-    margin-left: 0.25rem;
-    margin-right: 0.25rem;
   }
-  .phase-label:first-child { border-top: none; margin-top: 0; }
+  .phase-header .phase-chev {
+    color: var(--text-muted);
+    transition: transform 0.15s ease;
+  }
+  .phase-section.collapsed .phase-chev { transform: rotate(-90deg); }
+  .phase-section.collapsed .phase-body { display: none; }
+  .phase-body { padding: 0.25rem 0 0.5rem; }
   .phase-tag {
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 11px;
     color: var(--primary);
-    background: rgba(173, 198, 255, 0.08);
-    padding: 1px 6px;
+    background: rgba(173, 198, 255, 0.1);
+    padding: 2px 8px;
     border-radius: var(--radius-default);
-    border: 1px solid rgba(173, 198, 255, 0.15);
+    border: 1px solid rgba(173, 198, 255, 0.2);
     letter-spacing: 0.04em;
-    font-weight: 500;
+    font-weight: 600;
   }
   .phase-sub {
     font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text-muted);
+    font-size: 11px;
+    color: var(--text-secondary);
     letter-spacing: 0.04em;
     text-transform: uppercase;
+  }
+
+  /* ========== Chart 컨테이너 ========== */
+  .chart-grid {
+    display: grid;
+    gap: 0.875rem;
+    margin: 0.75rem 0 1.25rem;
+  }
+  .chart-grid.cols-2 { grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); }
+  .chart-card {
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 1rem 1rem 0.75rem;
+    overflow: hidden;
+  }
+  .chart-card .chart-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.125rem;
+    letter-spacing: -0.005em;
+  }
+  .chart-card .chart-sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+    margin-bottom: 0.625rem;
+  }
+  .chart-canvas-wrap {
+    position: relative;
+    height: 260px;
+  }
+  .chart-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: var(--font-mono);
+  }
+
+  /* ========== Budget Allocator ========== */
+  .alloc-card {
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  .alloc-controls {
+    display: grid;
+    grid-template-columns: 1fr 200px 120px;
+    gap: 0.75rem;
+    align-items: end;
+    margin-bottom: 0.75rem;
+  }
+  .alloc-controls label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.25rem;
+    display: block;
+  }
+  .alloc-controls input,
+  .alloc-controls select {
+    width: 100%;
+    background: var(--surface-container);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    padding: 0.5rem 0.625rem;
+    border-radius: var(--radius-lg);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+  }
+  .alloc-controls input:focus,
+  .alloc-controls select:focus { border-color: var(--primary); }
+  .alloc-bar {
+    display: flex;
+    height: 12px;
+    background: var(--surface-container);
+    border-radius: var(--radius-default);
+    overflow: hidden;
+    margin: 0.5rem 0;
+  }
+  .alloc-bar-seg {
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+  .alloc-bar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .alloc-bar-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .alloc-bar-legend .sw {
+    width: 9px; height: 9px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+  @media (max-width: 720px) {
+    .alloc-controls { grid-template-columns: 1fr; }
   }
 
   /* ========== Context Alert Banner ========== */
@@ -1569,7 +1706,8 @@ const IA = [
     subtitle: "운영 데이터 대시보드 & 분석",
     items: [
       { id: "5-1", title: "CSV 업로드 및 컬럼 매핑", desc: "파일 업로드 후 표준 필드에 컬럼 연결" },
-      { id: "5-2", title: "분석 대시보드", desc: "KPI 자동 계산 및 코호트(D0/D7/D14) 토글" },
+      { id: "5-2", title: "데이터 시각화 대시보드", desc: "KPI 자동 계산 + 시계열·채널·퍼널·코호트 차트" },
+      { id: "5-3", title: "Budget Allocator", desc: "한계효용 기반 채널별 예산 최적 배분" },
     ],
   },
 ];
@@ -1717,43 +1855,57 @@ function dataTable(headers, rows, opts = {}) {
 
 /* ========== Sidebar Renderer ========== */
 /* 최초 1회만 렌더된다. 페이지 이동 시에는 updateNavActive()만 호출.
-   그룹 펼침/접힘 상태는 사용자 액션이나 페이지 진입 외에는 변하지 않는다.
-   기본적으로 모든 그룹은 닫힌 상태로 시작하며, 활성 페이지가 속한 그룹만 자동으로 열린다. */
+   그룹·Phase 펼침/접힘 상태는 사용자 액션이나 페이지 진입 외에는 변하지 않는다.
+   기본 동작:
+     - 모든 Phase는 collapsed 상태로 시작
+     - 활성 페이지가 속한 Phase와 그 그룹만 자동으로 열림 */
 function renderNav(activeId) {
   const nav = $("#nav");
   if (nav.dataset.rendered === "1") {
     updateNavActive(activeId);
     return;
   }
-  nav.innerHTML = IA.map(group => {
-    const phase = findPhaseByGroup(group.id);
-    const showPhaseLabel = isFirstGroupOfPhase(group.id);
-    const hasActive = group.items.some(it => it.id === activeId);
-    // 활성 그룹만 펼침, 나머지는 collapsed
-    const collapsedClass = hasActive ? "" : "collapsed";
+  nav.innerHTML = PHASES.map(phase => {
+    const phaseGroups = IA.filter(g => phase.groups.includes(g.id));
+    const phaseHasActive = phaseGroups.some(g => g.items.some(it => it.id === activeId));
+    const phaseCollapsed = phaseHasActive ? "" : "collapsed";
+
+    const groupsHtml = phaseGroups.map(group => {
+      const hasActive = group.items.some(it => it.id === activeId);
+      const collapsedClass = hasActive ? "" : "collapsed";
+      return `
+        <div class="nav-group ${collapsedClass}" data-group="${group.id}">
+          <div class="nav-group-header" data-toggle="${group.id}">
+            <span class="nav-group-title">
+              <span class="nav-group-index">${group.id}</span>
+              <span>${escapeHtml(group.title)}</span>
+            </span>
+            <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div class="nav-items">
+            ${group.items.map(it => `
+              <div class="nav-item ${it.id === activeId ? "active" : ""}" data-route="${it.id}">
+                <span class="ix tnum">${it.id}</span>
+                <span>${escapeHtml(it.title)}</span>
+              </div>
+            `).join("")}
+          </div>
+        </div>`;
+    }).join("");
+
     return `
-      ${showPhaseLabel ? `
-        <div class="phase-label" data-phase="${phase.id}">
-          <span class="phase-tag">${escapeHtml(phase.label)}</span>
-          <span class="phase-sub">${escapeHtml(phase.sub)}</span>
-        </div>` : ""}
-      <div class="nav-group ${collapsedClass}" data-group="${group.id}">
-        <div class="nav-group-header" data-toggle="${group.id}">
-          <span class="nav-group-title">
-            <span class="nav-group-index">${group.id}</span>
-            <span>${escapeHtml(group.title)}</span>
+      <section class="phase-section ${phaseCollapsed}" data-phase="${phase.id}">
+        <button class="phase-header" type="button" data-toggle-phase="${phase.id}" aria-expanded="${!phaseCollapsed}">
+          <span class="phase-header-left">
+            <span class="phase-tag">${escapeHtml(phase.label)}</span>
+            <span class="phase-sub">${escapeHtml(phase.sub)}</span>
           </span>
-          <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          <svg class="phase-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+        <div class="phase-body">
+          ${groupsHtml}
         </div>
-        <div class="nav-items">
-          ${group.items.map(it => `
-            <div class="nav-item ${it.id === activeId ? "active" : ""}" data-route="${it.id}">
-              <span class="ix tnum">${it.id}</span>
-              <span>${escapeHtml(it.title)}</span>
-            </div>
-          `).join("")}
-        </div>
-      </div>
+      </section>
     `;
   }).join("");
 
@@ -1765,6 +1917,13 @@ function renderNav(activeId) {
       el.parentElement.classList.toggle("collapsed");
     });
   });
+  $$('.phase-header').forEach(el => {
+    el.addEventListener("click", () => {
+      const sec = el.closest('.phase-section');
+      sec.classList.toggle('collapsed');
+      el.setAttribute('aria-expanded', String(!sec.classList.contains('collapsed')));
+    });
+  });
 
   nav.dataset.rendered = "1";
 }
@@ -1773,12 +1932,18 @@ function updateNavActive(activeId) {
   $$('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.route === activeId);
   });
-  // 활성 페이지가 속한 그룹은 자동으로 펼침. 다른 그룹은 사용자 토글 상태 유지.
+  // 활성 페이지가 속한 그룹/Phase는 자동으로 펼침. 다른 항목은 사용자 토글 상태 유지.
   if (activeId) {
     const item = $(`.nav-item[data-route="${activeId}"]`);
     if (item) {
       const group = item.closest(".nav-group");
       if (group) group.classList.remove("collapsed");
+      const phase = item.closest(".phase-section");
+      if (phase) {
+        phase.classList.remove("collapsed");
+        const header = phase.querySelector(".phase-header");
+        if (header) header.setAttribute('aria-expanded', 'true');
+      }
     }
   }
 }
@@ -3839,6 +4004,85 @@ function page_4_4() {
 }
 PAGE_RENDERERS["4-4"] = page_4_4;
 
+/* ========== Chart.js 공통 테마 (Obsidian Flux 적용) ========== */
+const CHART_THEME = {
+  text: "#9CA3AF",
+  textPrimary: "#F9FAFB",
+  muted: "#6B7280",
+  grid: "rgba(255,255,255,0.06)",
+  border: "rgba(255,255,255,0.08)",
+  primary: "#adc6ff",
+  primaryContainer: "#4d8eff",
+  secondary: "#4cd7f6",
+  series: ["#adc6ff", "#4cd7f6", "#f7b955", "#5ad19a", "#c792ea", "#ff8a8a", "#7fcfff", "#ffcb6b"],
+  surface: "#0d0e0f",
+};
+
+function chartCommonOpts() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      legend: {
+        labels: {
+          color: CHART_THEME.text,
+          font: { family: "Inter", size: 11 },
+          usePointStyle: true,
+          padding: 14,
+        },
+      },
+      tooltip: {
+        backgroundColor: "#1f2021",
+        titleColor: CHART_THEME.textPrimary,
+        bodyColor: CHART_THEME.text,
+        borderColor: CHART_THEME.border,
+        borderWidth: 1,
+        padding: 10,
+        titleFont: { family: "JetBrains Mono", size: 11 },
+        bodyFont: { family: "JetBrains Mono", size: 11 },
+        boxPadding: 4,
+      },
+    },
+    scales: {
+      x: {
+        ticks: { color: CHART_THEME.muted, font: { family: "JetBrains Mono", size: 10 } },
+        grid: { color: CHART_THEME.grid, drawBorder: false },
+      },
+      y: {
+        ticks: { color: CHART_THEME.muted, font: { family: "JetBrains Mono", size: 10 } },
+        grid: { color: CHART_THEME.grid, drawBorder: false },
+        beginAtZero: true,
+      },
+    },
+  };
+}
+
+// 차트 인스턴스 추적 (페이지 재렌더 시 destroy 필요)
+const CHART_INSTANCES = {};
+function destroyAllCharts() {
+  for (const k of Object.keys(CHART_INSTANCES)) {
+    try { CHART_INSTANCES[k]?.destroy(); } catch {}
+    delete CHART_INSTANCES[k];
+  }
+}
+
+/* CSV mapped data → 시각화용 aggregation 헬퍼 */
+function aggregateByKey(rows, keyField, sumFields) {
+  const map = new Map();
+  for (const r of rows) {
+    const k = String(r[keyField] ?? "unknown");
+    if (!map.has(k)) map.set(k, sumFields.reduce((a, f) => (a[f] = 0, a), {}));
+    const bucket = map.get(k);
+    for (const f of sumFields) bucket[f] += Number(r[f]) || 0;
+  }
+  return [...map.entries()].map(([k, v]) => ({ key: k, ...v }));
+}
+
+function sortDateKeys(arr, key = "key") {
+  return arr.sort((a, b) => String(a[key]).localeCompare(String(b[key])));
+}
+
 /* ========== Toast 시스템 ========== */
 function showToast({ title, body, variant, duration = 4200 }) {
   const container = document.getElementById("toast-container");
@@ -3919,7 +4163,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-1", "5-2"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-1", "5-2", "5-3"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -4427,7 +4671,7 @@ function page_5_2() {
   // === Gated Insights (Freemium 잠금 영역) ===
   const gatedSection = `
     <section class="block" id="s-gated" style="position:relative;">
-      <h2 class="section-title"><span class="ix">§3</span>고급 인사이트</h2>
+      <h2 class="section-title"><span class="ix">§4</span>고급 인사이트</h2>
       <p style="color:var(--text-secondary);">
         업로드 데이터를 기반으로 한 12개월 LTV 예측 / 매체별 카니발 보정 / 광고 프로드 의심 트래픽 탐지 결과. 잠금 해제 시 PDF 리포트로도 발송됩니다.
       </p>
@@ -4512,16 +4756,17 @@ function page_5_2() {
   `;
 
   return pageShell(meta, {
-    deck: `${CSV_STATE.fileName} · ${k.rowCount.toLocaleString()}행 분석 결과. 코호트 토글로 D0/D7/D14 시점의 매출·결제·잔존율을 전환할 수 있습니다.`,
+    deck: `${CSV_STATE.fileName} · ${k.rowCount.toLocaleString()}행 시각화. 시계열·채널 비중·CPI 분포·퍼널·코호트 5종 차트와 KPI 카드를 한 화면에서 확인합니다.`,
     chips: `
       <span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>
       <span class="chip ok"><span class="dot"></span>${k.rowCount.toLocaleString()}행</span>
       <span class="chip"><span class="dot"></span>코호트 · D${k.cohort}</span>
       ${authStatusChip()}`,
-    summary: `매핑된 데이터 기준 KPI 자동 계산 결과. 현재 코호트는 <strong>D${k.cohort}</strong>이며, 매출·결제·잔존율 카드가 이 시점 기준으로 표시됩니다.`,
+    summary: `매핑된 데이터 기준 KPI 자동 계산 + 5종 차트 시각화. 현재 코호트는 <strong>D${k.cohort}</strong>이며, 매출·결제·잔존율 카드가 이 시점 기준으로 표시됩니다.`,
     toc: [
       { id: "s-cohort", title: "코호트 선택" },
       { id: "s-kpi", title: "KPI 요약 (무료)" },
+      { id: "s-charts", title: "차트 시각화" },
       { id: "s-gated", title: "고급 인사이트 (잠금)" },
       { id: "s-data", title: "원본 데이터" },
     ],
@@ -4553,10 +4798,42 @@ function page_5_2() {
         </div>
       </section>
 
+      <section class="block" id="s-charts">
+        <h2 class="section-title"><span class="ix">§3</span>차트 시각화</h2>
+        <p style="color:var(--text-secondary);font-size:13px;">업로드된 데이터를 기반으로 시계열·채널 비중·CPI 비교·퍼널·코호트 매출 5종 차트가 렌더링됩니다.</p>
+        <div class="chart-grid cols-2">
+          <div class="chart-card">
+            <div class="chart-title">일별 비용·설치 추이</div>
+            <div class="chart-sub">시계열 라인 · 좌축 비용 / 우축 설치</div>
+            <div class="chart-canvas-wrap"><canvas id="chart-timeseries"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">채널별 비용 비중</div>
+            <div class="chart-sub">도넛 · 합산 cost 기준</div>
+            <div class="chart-canvas-wrap"><canvas id="chart-channel-donut"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">채널별 CPI 비교</div>
+            <div class="chart-sub">가로 막대 · cost / installs</div>
+            <div class="chart-canvas-wrap"><canvas id="chart-cpi-bar"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">전환 퍼널</div>
+            <div class="chart-sub">노출 → 클릭 → 설치 → 결제(D7) 단계별 절대값</div>
+            <div class="chart-canvas-wrap"><canvas id="chart-funnel"></canvas></div>
+          </div>
+          <div class="chart-card" style="grid-column: 1 / -1;">
+            <div class="chart-title">채널별 코호트 매출 증가 (D0 → D7 → D14)</div>
+            <div class="chart-sub">라인 · 채널별 누적 ARPU 증가 곡선</div>
+            <div class="chart-canvas-wrap" style="height:300px;"><canvas id="chart-cohort"></canvas></div>
+          </div>
+        </div>
+      </section>
+
       ${gatedSection}
 
       <section class="block" id="s-data">
-        <h2 class="section-title"><span class="ix">§4</span>원본 데이터 (전체 ${k.rowCount.toLocaleString()}행)</h2>
+        <h2 class="section-title"><span class="ix">§5</span>원본 데이터 (전체 ${k.rowCount.toLocaleString()}행)</h2>
         ${(() => {
           const headers = CSV_STATE.headers.map(h => ({ label: h, type: "string" }));
           const rows = CSV_STATE.raw.map(r => CSV_STATE.headers.map(h => String(r[h] ?? "")));
@@ -4567,6 +4844,130 @@ function page_5_2() {
   });
 }
 PAGE_RENDERERS["5-2"] = page_5_2;
+
+/* ---------- 5-3. Budget Allocator ---------- */
+function page_5_3() {
+  const meta = findMeta("5-3");
+  const hasData = CSV_STATE.raw.length > 0;
+  const missing = hasData ? checkRequiredFields() : ["all"];
+  const ready = hasData && missing.length === 0;
+
+  if (!ready) {
+    return pageShell(meta, {
+      deck: "한계효용 기반 채널별 예산 최적 배분 도구. 사용하려면 먼저 5-1에서 CSV를 업로드하고 필수 컬럼 매핑을 완료하세요.",
+      chips: `<span class="chip warning"><span class="dot"></span>데이터 미준비</span>${authStatusChip()}`,
+      summary: "Campaign Allocator 알고리즘(가중회귀 추세선 + 한계효용 그리디 + CPR Cap)을 라이브러리에 통합한 도구. 본 페이지에서는 효율 기반 추천 비중을 즉시 계산하고, 풀 한계효용 그리디는 별도 Streamlit 도구로 제공됩니다.",
+      body: `
+        <div class="callout warn">
+          <div class="ico">!</div>
+          <div class="body">
+            <strong>CSV 데이터와 필수 컬럼 매핑이 먼저 필요합니다</strong>
+            <p>5-1로 이동해 channel / cost / installs (또는 pu_d7) 컬럼을 매핑하면 자동으로 본 페이지에서 추천 비중이 계산됩니다.</p>
+          </div>
+        </div>
+      `,
+      toc: [],
+    });
+  }
+
+  return pageShell(meta, {
+    deck: "채널별 가중평균 CPR 기반 효율 추천 비중. 총 예산을 입력하면 자동으로 채널별 배분 금액이 계산됩니다.",
+    chips: `
+      <span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>
+      <span class="chip ok"><span class="dot"></span>알고리즘 · 효율 기반 (모드 A)</span>
+      <span class="chip"><span class="dot"></span>참조 · Campaign Allocator (Streamlit)</span>
+      ${authStatusChip()}`,
+    summary: `채널별 <code>Efficiency = 1 / CPR</code> 을 정규화한 추천 비중. <strong>모드 A</strong>로 표기되며, 한계효용 그리디(모드 B) 및 추세선 적합(Linear/Log/Poly2/Power)은 추후 통합 예정입니다.`,
+    toc: [
+      { id: "s-controls", title: "예산 설정" },
+      { id: "s-bar", title: "배분 비중" },
+      { id: "s-table", title: "채널별 상세" },
+      { id: "s-algo", title: "알고리즘 노트" },
+    ],
+    body: `
+      <section class="block" id="s-controls">
+        <h2 class="section-title"><span class="ix">§1</span>예산 설정</h2>
+        <div class="alloc-card">
+          <div class="alloc-controls">
+            <div>
+              <label>총 예산 (선택)</label>
+              <input id="alloc-budget" type="number" inputmode="numeric" placeholder="예: 10000000" />
+            </div>
+            <div>
+              <label>성과 지표</label>
+              <select id="alloc-metric">
+                <option value="installs">설치수 (CPI 기준)</option>
+                <option value="pu_d7">결제수 D7 (CPA 기준)</option>
+              </select>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button class="btn primary" id="alloc-recompute">재계산</button>
+            </div>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--text-muted);">
+            예산을 입력하지 않아도 추천 비중은 표시됩니다. 입력 시 채널별 배분 금액이 즉시 계산됩니다.
+          </p>
+        </div>
+      </section>
+
+      <section class="block" id="s-bar">
+        <h2 class="section-title"><span class="ix">§2</span>추천 배분 비중</h2>
+        <div class="alloc-bar" id="alloc-bar"></div>
+        <div class="alloc-bar-legend" id="alloc-bar-legend"></div>
+      </section>
+
+      <section class="block" id="s-table">
+        <h2 class="section-title"><span class="ix">§3</span>채널별 상세</h2>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>채널</th>
+                <th>합산 비용</th>
+                <th>성과(전환)</th>
+                <th>CPR</th>
+                <th>추천 비중 / 배분액</th>
+              </tr>
+            </thead>
+            <tbody id="alloc-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="block" id="s-algo">
+        <h2 class="section-title"><span class="ix">§4</span>알고리즘 노트</h2>
+        <p>본 페이지는 Campaign Allocator(Streamlit)의 <strong>모드 A · 효율 기반 추천 비중</strong>을 JS로 포팅한 것입니다. 핵심 식:</p>
+        ${codeBlock("bash", "Efficiency-based Allocation (Mode A)", `# 1) 채널별 합산
+channel_cost    = Σ cost
+channel_results = Σ conversions   # installs or pu_d7
+
+# 2) 채널별 CPR (Cost Per Result)
+CPR = channel_cost / channel_results
+
+# 3) Efficiency = 역수, 정규화
+efficiency = 1 / CPR
+weight     = efficiency_i / Σ efficiency
+
+# 4) 배분
+allocation = total_budget × weight`)}
+        <p style="margin-top:1rem;">
+          <strong>한계효용 그리디 (모드 B)</strong>는 채널별로 Linear/Log/Poly2/Power 추세선을 적합하고,
+          작은 step(0.2%) 단위로 Δresults가 최대인 채널에 예산을 투입하는 방식. CPR Cap, 최신 데이터 가중치 옵션 포함.
+          현재는 별도 Streamlit 도구(Campaign Allocator)로 제공되며, 추후 본 라이브러리에 통합 예정.
+        </p>
+        <div class="callout info" style="margin-top:1rem;">
+          <div class="ico">i</div>
+          <div class="body">
+            <strong>주의</strong>
+            <p>본 추천은 과거 데이터 기준입니다. 신규 채널 진입, 시장 변화, 매체 알고리즘 업데이트 시 재계산 필요. 또한 모드 A는 데이터가 부족하거나 노이즈가 큰 채널에서도 안전한 1차 권고를 제공하지만, 정확한 한계효용 평가는 모드 B를 권장합니다.</p>
+          </div>
+        </div>
+      </section>
+    `,
+  });
+}
+PAGE_RENDERERS["5-3"] = page_5_3;
 
 /* ---------- Fallback (drafts only) ---------- */
 function pageDummy(meta) {
@@ -4841,6 +5242,256 @@ function bindCSVPageHandlers() {
   document.querySelectorAll('[data-action="open-lead-modal"]').forEach(btn => {
     btn.addEventListener("click", () => openLeadModal(btn.dataset.context));
   });
+
+  // ----- 5-2: 차트 5종 렌더링 -----
+  if (document.getElementById("chart-timeseries")) renderVizCharts();
+
+  // ----- 5-3: Budget Allocator 핸들러 -----
+  if (document.getElementById("alloc-recompute")) bindBudgetAllocatorHandlers();
+}
+
+/* ========== 5-2: 시각화 차트 5종 ========== */
+function renderVizCharts() {
+  destroyAllCharts();
+  if (typeof Chart === "undefined") return;
+  const rows = getMappedRows();
+  if (!rows.length) return;
+
+  // === 1) 일별 시계열 ===
+  const tsCanvas = document.getElementById("chart-timeseries");
+  if (tsCanvas) {
+    const daily = sortDateKeys(aggregateByKey(rows.map(r => ({ ...r, _d: r.date })).filter(r => r._d),
+      "_d", ["cost", "installs"]).map(d => ({ key: d._d || d.key, cost: d.cost, installs: d.installs })));
+    // 위 한줄은 가독성을 위해 풀어쓰면:
+    const dailyAgg = aggregateByKey(rows.filter(r => r.date), "date", ["cost", "installs"]);
+    dailyAgg.sort((a, b) => String(a.key).localeCompare(String(b.key)));
+
+    CHART_INSTANCES.ts = new Chart(tsCanvas.getContext("2d"), {
+      type: "line",
+      data: {
+        labels: dailyAgg.map(d => d.key),
+        datasets: [
+          { label: "비용", data: dailyAgg.map(d => d.cost), yAxisID: "y",
+            borderColor: CHART_THEME.primary, backgroundColor: "rgba(173,198,255,0.1)",
+            tension: 0.3, fill: true, pointRadius: 0, borderWidth: 2 },
+          { label: "설치수", data: dailyAgg.map(d => d.installs), yAxisID: "y1",
+            borderColor: CHART_THEME.secondary, backgroundColor: "rgba(76,215,246,0.05)",
+            tension: 0.3, fill: false, pointRadius: 0, borderWidth: 2 },
+        ],
+      },
+      options: {
+        ...chartCommonOpts(),
+        scales: {
+          x: { ...chartCommonOpts().scales.x },
+          y:  { ...chartCommonOpts().scales.y, position: "left",  title: { display: true, text: "비용",   color: CHART_THEME.muted, font: { size: 10 } } },
+          y1: { ...chartCommonOpts().scales.y, position: "right", title: { display: true, text: "설치수", color: CHART_THEME.muted, font: { size: 10 } }, grid: { display: false } },
+        },
+      },
+    });
+  }
+
+  // === 2) 채널별 비용 비중 도넛 ===
+  const donutCanvas = document.getElementById("chart-channel-donut");
+  if (donutCanvas) {
+    const byChannel = aggregateByKey(rows.filter(r => r.channel), "channel", ["cost"]);
+    byChannel.sort((a, b) => b.cost - a.cost);
+    CHART_INSTANCES.donut = new Chart(donutCanvas.getContext("2d"), {
+      type: "doughnut",
+      data: {
+        labels: byChannel.map(c => c.key),
+        datasets: [{
+          data: byChannel.map(c => c.cost),
+          backgroundColor: byChannel.map((_, i) => CHART_THEME.series[i % CHART_THEME.series.length]),
+          borderColor: CHART_THEME.surface,
+          borderWidth: 2,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: "62%",
+        plugins: {
+          legend: { position: "right", labels: { color: CHART_THEME.text, font: { family: "Inter", size: 11 }, usePointStyle: true, padding: 12 } },
+          tooltip: chartCommonOpts().plugins.tooltip,
+        },
+      },
+    });
+  }
+
+  // === 3) 채널별 CPI 가로 막대 ===
+  const cpiCanvas = document.getElementById("chart-cpi-bar");
+  if (cpiCanvas) {
+    const byCh = aggregateByKey(rows.filter(r => r.channel), "channel", ["cost", "installs"]);
+    const data = byCh.map(c => ({ key: c.key, cpi: c.installs ? c.cost / c.installs : 0 }))
+                      .filter(d => d.cpi > 0)
+                      .sort((a, b) => a.cpi - b.cpi);
+    CHART_INSTANCES.cpi = new Chart(cpiCanvas.getContext("2d"), {
+      type: "bar",
+      data: {
+        labels: data.map(d => d.key),
+        datasets: [{
+          label: "CPI",
+          data: data.map(d => d.cpi),
+          backgroundColor: data.map((_, i) => CHART_THEME.series[i % CHART_THEME.series.length] + "cc"),
+          borderRadius: 4,
+          barThickness: 18,
+        }],
+      },
+      options: {
+        ...chartCommonOpts(),
+        indexAxis: "y",
+        plugins: { ...chartCommonOpts().plugins, legend: { display: false } },
+      },
+    });
+  }
+
+  // === 4) 퍼널 (절대값 막대) ===
+  const funnelCanvas = document.getElementById("chart-funnel");
+  if (funnelCanvas) {
+    const totals = ["impressions", "clicks", "installs", "pu_d7"].reduce((acc, f) => {
+      acc[f] = rows.reduce((a, r) => a + (Number(r[f]) || 0), 0);
+      return acc;
+    }, {});
+    CHART_INSTANCES.funnel = new Chart(funnelCanvas.getContext("2d"), {
+      type: "bar",
+      data: {
+        labels: ["노출", "클릭", "설치", "결제 (D7)"],
+        datasets: [{
+          label: "건수",
+          data: [totals.impressions, totals.clicks, totals.installs, totals.pu_d7],
+          backgroundColor: ["#adc6ff", "#4cd7f6", "#5ad19a", "#f7b955"],
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        ...chartCommonOpts(),
+        plugins: { ...chartCommonOpts().plugins, legend: { display: false } },
+      },
+    });
+  }
+
+  // === 5) 채널별 코호트 매출 증가 (D0 / D7 / D14) ===
+  const cohortCanvas = document.getElementById("chart-cohort");
+  if (cohortCanvas) {
+    const byCh = aggregateByKey(rows.filter(r => r.channel), "channel",
+      ["installs", "revenue_d0", "revenue_d7", "revenue_d14"]);
+    byCh.sort((a, b) => (b.revenue_d7 || 0) - (a.revenue_d7 || 0));
+    const top = byCh.slice(0, 6); // 상위 6개 채널만
+    const datasets = top.map((c, i) => ({
+      label: c.key,
+      data: [
+        c.installs ? c.revenue_d0  / c.installs : 0,
+        c.installs ? c.revenue_d7  / c.installs : 0,
+        c.installs ? c.revenue_d14 / c.installs : 0,
+      ],
+      borderColor: CHART_THEME.series[i % CHART_THEME.series.length],
+      backgroundColor: CHART_THEME.series[i % CHART_THEME.series.length] + "20",
+      tension: 0.25,
+      borderWidth: 2,
+      pointRadius: 4,
+      pointBackgroundColor: CHART_THEME.series[i % CHART_THEME.series.length],
+    }));
+    CHART_INSTANCES.cohort = new Chart(cohortCanvas.getContext("2d"), {
+      type: "line",
+      data: { labels: ["D0", "D7", "D14"], datasets },
+      options: {
+        ...chartCommonOpts(),
+        plugins: {
+          ...chartCommonOpts().plugins,
+          legend: { ...chartCommonOpts().plugins.legend, position: "bottom" },
+        },
+      },
+    });
+  }
+}
+
+/* ========== 5-3: Budget Allocator ==========
+   Campaign Allocator (Streamlit) 의 모드 A "효율 기반 추천 비중" 알고리즘을 JS로 포팅.
+   - 채널별 가중평균 CPR(=CPA 또는 CPI) 계산
+   - Efficiency = 1 / CPR
+   - Efficiency 정규화 → 추천 예산 비중(%)
+   - 사용자가 총 예산을 입력하면 비중에 따라 금액 배분
+
+   추후 개발 과제 (코드 주석으로만):
+   - 모드 B (한계효용 그리디): Linear/Log/Poly2/Power 추세선 적합 후
+     Δresults 최대인 그룹에 step 단위로 예산 투입.
+     scipy.optimize 없이도 numeric.js 또는 손코딩으로 구현 가능.
+   - CPR Cap (상한 설정 시 외삽 위험 그룹 차단)
+   - 최신 데이터 가중치 (Exponential, 반감기 30일)
+*/
+function calculateAllocation(rows, channelField, costField, resultsField) {
+  if (!channelField || !costField || !resultsField) return [];
+  // 채널별 합산
+  const map = new Map();
+  for (const r of rows) {
+    const ch = String(r[channelField] ?? "").trim();
+    if (!ch) continue;
+    const cost = Number(r[costField]) || 0;
+    const res = Number(r[resultsField]) || 0;
+    if (!map.has(ch)) map.set(ch, { channel: ch, cost: 0, results: 0 });
+    const b = map.get(ch);
+    b.cost += cost;
+    b.results += res;
+  }
+  // CPR + Efficiency
+  const items = [...map.values()].map(b => ({
+    ...b,
+    cpr: b.results > 0 ? b.cost / b.results : null,
+    efficiency: b.results > 0 ? b.results / b.cost : 0,
+  })).filter(i => i.cost > 0 && i.cpr != null);
+
+  const effSum = items.reduce((a, i) => a + i.efficiency, 0);
+  if (effSum <= 0) return [];
+  return items.map(i => ({ ...i, weight: i.efficiency / effSum }))
+              .sort((a, b) => b.weight - a.weight);
+}
+
+function bindBudgetAllocatorHandlers() {
+  const refresh = () => {
+    const budgetInput = document.getElementById("alloc-budget");
+    const metricSelect = document.getElementById("alloc-metric");
+    const budget = parseFloat(budgetInput.value) || 0;
+    const metric = metricSelect.value;  // installs / pu_d7
+
+    const rows = getMappedRows();
+    const alloc = calculateAllocation(rows, "channel", "cost", metric);
+    const tbody = document.getElementById("alloc-tbody");
+    const barWrap = document.getElementById("alloc-bar");
+    const legendWrap = document.getElementById("alloc-bar-legend");
+    if (!tbody || !barWrap) return;
+
+    if (!alloc.length) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">사용 가능한 데이터가 없습니다. CSV 매핑에 channel / cost / ${metric === "installs" ? "installs" : "pu_d7"} 컬럼이 필요합니다.</td></tr>`;
+      barWrap.innerHTML = "";
+      legendWrap.innerHTML = "";
+      return;
+    }
+
+    tbody.innerHTML = alloc.map((it, i) => `
+      <tr>
+        <td>${escapeHtml(it.channel)}</td>
+        <td class="tnum">${formatNumber(it.cost, { decimals: 0 })}</td>
+        <td class="tnum">${formatNumber(it.results, { decimals: 0 })}</td>
+        <td class="tnum">${formatNumber(it.cpr, { decimals: 2 })}</td>
+        <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong> · ${budget > 0 ? formatNumber(budget * it.weight, { decimals: 0 }) : "—"}</td>
+      </tr>
+    `).join("");
+
+    barWrap.innerHTML = alloc.map((it, i) => `
+      <div class="alloc-bar-seg" style="width:${(it.weight * 100).toFixed(2)}%;background:${CHART_THEME.series[i % CHART_THEME.series.length]};" title="${escapeHtml(it.channel)} ${(it.weight*100).toFixed(1)}%"></div>
+    `).join("");
+
+    legendWrap.innerHTML = alloc.map((it, i) => `
+      <span><span class="sw" style="background:${CHART_THEME.series[i % CHART_THEME.series.length]};"></span>${escapeHtml(it.channel)} <span class="tnum">${(it.weight*100).toFixed(1)}%</span></span>
+    `).join("");
+  };
+
+  const recomputeBtn = document.getElementById("alloc-recompute");
+  if (recomputeBtn) recomputeBtn.addEventListener("click", refresh);
+  const budgetInput = document.getElementById("alloc-budget");
+  if (budgetInput) budgetInput.addEventListener("input", refresh);
+  const metricSelect = document.getElementById("alloc-metric");
+  if (metricSelect) metricSelect.addEventListener("change", refresh);
+
+  refresh();
 }
 
 function handleCSVFile(file) {
