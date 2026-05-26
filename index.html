@@ -3,7 +3,44 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>DevHub · App Performance Marketing Library</title>
+<meta name="theme-color" content="#121315" />
+
+<!-- ===== Primary SEO ===== -->
+<title>Performance Marketing Library · 앱 퍼포먼스 마케팅 SOP & Ops Dashboard</title>
+<meta name="description" content="Adjust MMP 셋업, SKAN 4.0 스키마 설계, 매체 포스트백 연동, UAC/Meta AAP/ASA 캠페인 운영, 카니발리제이션 측정, 광고 프로드 탐지까지. 시니어 퍼포먼스 마케터의 표준 작업 절차를 그대로 사용할 수 있는 실무 라이브러리와 CSV 기반 KPI 분석 도구." />
+<meta name="keywords" content="앱 퍼포먼스 마케팅, MMP, Adjust, SKAN 4.0 스키마, Adjust 딥링크, 디퍼드 딥링크, 카니발리제이션 측정, iROAS, GeoX, Holdout, UAC, Meta AAP, Apple Search Ads, 코호트 LTV, 광고 프로드 탐지, CTIT, 마케팅 SOP, Performance Marketing" />
+<meta name="author" content="Performance Marketing Library" />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://mkt-library.up.railway.app/" />
+
+<!-- ===== Open Graph ===== -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Performance Marketing Library" />
+<meta property="og:title" content="앱 퍼포먼스 마케팅, 운영의 표준화" />
+<meta property="og:description" content="Adjust 셋업부터 SKAN 4.0 CV 매핑, UAC/Meta AAP 캠페인 운영, 카니발리제이션 보정까지. 실무 SOP와 CSV 기반 KPI 분석을 한 곳에서." />
+<meta property="og:image" content="https://mkt-library.up.railway.app/og-card.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:locale" content="ko_KR" />
+
+<!-- ===== Twitter Card ===== -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Performance Marketing Library" />
+<meta name="twitter:description" content="앱 퍼포먼스 마케팅 SOP 라이브러리 + 실시간 CSV KPI 분석" />
+<meta name="twitter:image" content="https://mkt-library.up.railway.app/og-card.png" />
+
+<!-- ===== Structured Data (JSON-LD) ===== -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "앱 퍼포먼스 마케팅 운영의 표준화",
+  "description": "Adjust MMP, SKAN 4.0, UAC/AAP, 카니발리제이션 측정, 광고 프로드 탐지 등 시니어 퍼포먼스 마케터 SOP",
+  "keywords": "SKAN 4.0 스키마, Adjust 딥링크, 카니발리제이션 측정, GeoX, Holdout",
+  "inLanguage": "ko-KR",
+  "audience": { "@type": "Audience", "audienceType": "Performance Marketers, Growth Engineers" }
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -980,6 +1017,345 @@
     text-transform: uppercase;
   }
 
+  /* ========== Context Alert Banner ========== */
+  .alert-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: linear-gradient(90deg, rgba(247, 185, 85, 0.08) 0%, rgba(247, 185, 85, 0.02) 100%);
+    border: 1px solid rgba(247, 185, 85, 0.25);
+    border-left: 3px solid #f7b955;
+    border-radius: var(--radius-xl);
+    padding: 0.875rem 1rem;
+    margin: 0 0 1.25rem;
+  }
+  .alert-banner .alert-icon {
+    font-size: 18px;
+    color: #f7b955;
+    flex-shrink: 0;
+  }
+  .alert-banner .alert-body { flex: 1; font-size: 13px; color: var(--text-primary); line-height: 19px; }
+  .alert-banner .alert-body strong { color: #f7b955; }
+  .alert-banner .alert-cta {
+    background: rgba(247, 185, 85, 0.12);
+    border: 1px solid rgba(247, 185, 85, 0.3);
+    color: #f7b955;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.12s ease;
+  }
+  .alert-banner .alert-cta:hover { background: rgba(247, 185, 85, 0.2); }
+
+  /* ========== Share Bar ========== */
+  .share-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    background: var(--surface-container-lowest);
+    margin: 0 0 1.25rem;
+  }
+  .share-bar .share-text {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-primary);
+    letter-spacing: -0.005em;
+  }
+  .share-bar .share-text .share-metric {
+    color: var(--primary);
+    font-weight: 600;
+  }
+  .share-actions { display: inline-flex; gap: 0.4rem; }
+  .share-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--surface-container);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: border-color 0.1s ease, background 0.1s ease;
+  }
+  .share-btn:hover { border-color: var(--border-stronger); background: var(--surface-container-high); }
+  .share-btn.copied { color: var(--secondary); border-color: var(--secondary); }
+
+  /* ========== Gated Insights (Freemium 블러 영역) ========== */
+  .gated-section {
+    position: relative;
+    margin: 2rem 0 1.5rem;
+  }
+  .gated-content {
+    filter: blur(6px);
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.85;
+  }
+  .gated-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.875rem;
+    background: linear-gradient(180deg, rgba(18,19,21,0.15) 0%, rgba(18,19,21,0.7) 50%, rgba(18,19,21,0.92) 100%);
+    border-radius: var(--radius-xl);
+    padding: 2rem 1.5rem;
+    text-align: center;
+    pointer-events: auto;
+  }
+  .gated-lock {
+    width: 48px; height: 48px;
+    border-radius: var(--radius-xl);
+    background: rgba(173, 198, 255, 0.1);
+    border: 1px solid rgba(173, 198, 255, 0.25);
+    display: grid; place-items: center;
+    color: var(--primary);
+  }
+  .gated-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.005em;
+  }
+  .gated-deck {
+    font-size: 13px;
+    color: var(--text-secondary);
+    max-width: 480px;
+    line-height: 19px;
+  }
+  .gated-cta {
+    background: var(--primary);
+    color: var(--surface-base);
+    border: none;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: background 0.12s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .gated-cta:hover { background: #c2d4ff; }
+  .gated-cta .arrow { transition: transform 0.15s ease; }
+  .gated-cta:hover .arrow { transform: translateX(2px); }
+  .gated-mini-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    max-width: 480px;
+  }
+  .gated-mini-list span {
+    background: var(--surface-container);
+    border: 1px solid var(--border-subtle);
+    padding: 0.2rem 0.55rem;
+    border-radius: var(--radius-default);
+  }
+
+  /* 블러 영역 내 placeholder 컴포넌트 */
+  .gated-chart-placeholder {
+    height: 220px;
+    background: linear-gradient(180deg, var(--surface-container-low) 0%, var(--surface-container-lowest) 100%);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 1rem;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+  .gated-chart-placeholder svg { width: 100%; height: 100%; }
+
+  /* ========== Modal Overlay (Lead Capture) ========== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(8, 9, 10, 0.78);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    animation: fadeIn 0.15s ease;
+  }
+  .modal-overlay[hidden] { display: none; }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .modal-card {
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 1.5rem 1.5rem 1.25rem;
+    max-width: 440px;
+    width: 100%;
+    position: relative;
+    animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes slideUp {
+    from { transform: translateY(12px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .modal-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    width: 28px; height: 28px;
+    border-radius: var(--radius-default);
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+  .modal-close:hover { background: var(--surface-container); color: var(--text-primary); }
+  .modal-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--primary);
+    background: rgba(173, 198, 255, 0.08);
+    border: 1px solid rgba(173, 198, 255, 0.15);
+    padding: 2px 8px;
+    border-radius: var(--radius-default);
+    display: inline-block;
+    margin-bottom: 0.75rem;
+  }
+  .modal-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+    margin: 0 0 0.5rem;
+  }
+  .modal-deck {
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--text-secondary);
+    margin: 0 0 1rem;
+  }
+  .modal-benefits {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: var(--surface-container-low);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+  }
+  .modal-benefit {
+    font-size: 12.5px;
+    color: var(--text-primary);
+    padding-left: 1.25rem;
+    position: relative;
+    line-height: 19px;
+  }
+  .modal-benefit::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: var(--secondary);
+    font-weight: 600;
+  }
+  .google-signin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    width: 100%;
+    background: #fff;
+    color: #1f1f1f;
+    border: 1px solid var(--border-stronger);
+    border-radius: var(--radius-lg);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 0.625rem 1rem;
+    cursor: pointer;
+    transition: background 0.12s ease;
+  }
+  .google-signin:hover { background: #f3f4f6; }
+  .google-signin:disabled { opacity: 0.6; cursor: not-allowed; }
+  .modal-fineprint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin: 0.75rem 0 0;
+    line-height: 16px;
+    text-align: center;
+  }
+
+  /* ========== Toast ========== */
+  .toast-container {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+  }
+  .toast {
+    background: var(--surface-container-high);
+    border: 1px solid var(--border-stronger);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem 1rem;
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 18px;
+    max-width: 380px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.32);
+    animation: toastIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: auto;
+    border-left: 3px solid var(--secondary);
+  }
+  .toast.success { border-left-color: #5ad19a; }
+  .toast.error { border-left-color: #ff8a8a; }
+  .toast.fade-out { animation: toastOut 0.25s forwards ease-in; }
+  @keyframes toastIn {
+    from { transform: translateX(24px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+  @keyframes toastOut {
+    from { transform: translateX(0);    opacity: 1; }
+    to   { transform: translateX(24px); opacity: 0; }
+  }
+  .toast .toast-title {
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+    color: var(--text-primary);
+  }
+  .toast .toast-body {
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    line-height: 17px;
+  }
+
   /* ========== Auth Gate ========== */
   .auth-card {
     background: var(--surface-container-lowest);
@@ -1095,16 +1471,50 @@
 
   <!-- ===================== MAIN ===================== -->
   <main class="main">
-    <header class="topbar">
-      <div class="breadcrumb" id="breadcrumb">
+    <header class="topbar" role="banner">
+      <nav class="breadcrumb" id="breadcrumb" aria-label="페이지 경로">
         <span class="crumb-link" data-nav="home">Library</span>
         <span class="sep">/</span>
         <span class="current">Overview</span>
-      </div>
+      </nav>
     </header>
 
-    <div class="content" id="content"></div>
+    <article class="content" id="content" aria-live="polite"></article>
   </main>
+</div>
+
+<!-- ===== Toast 컨테이너 (전역) ===== -->
+<div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+<!-- ===== Lead Capture Modal (Firebase Auth UI 목업) ===== -->
+<div id="lead-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="lead-modal-title" hidden>
+  <div class="modal-card">
+    <button class="modal-close" id="lead-modal-close" aria-label="닫기">×</button>
+    <div class="modal-eyebrow">전체 인사이트 잠금 해제</div>
+    <h2 class="modal-title" id="lead-modal-title">맞춤형 퍼포먼스 분석 리포트</h2>
+    <p class="modal-deck">
+      LTV 예측·카니발리제이션 보정·프로드 탐지 등 고급 분석 모듈을 사용하려면 본인 계정으로 로그인하세요.
+      분석 결과는 클라우드에 자동 백업되며, 영업일 기준 1일 내 맞춤형 셋업 컨설팅을 이메일로 안내드립니다.
+    </p>
+    <div class="modal-benefits">
+      <div class="modal-benefit">생존 곡선 기반 12개월 LTV 예측</div>
+      <div class="modal-benefit">매체별 카니발리제이션 비율 + iROAS 보정</div>
+      <div class="modal-benefit">CTIT 이상 패턴 기반 광고 프로드 탐지</div>
+    </div>
+    <button class="google-signin" id="google-signin-btn">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+        <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
+      <span>Google 계정으로 로그인</span>
+    </button>
+    <p class="modal-fineprint">
+      로그인 시 서비스 이용약관 및 개인정보 처리방침에 동의하는 것으로 간주됩니다.
+      <br />※ 추후 PG사 연동 후 1회성 분석 키 결제 옵션도 제공될 예정입니다.
+    </p>
+  </div>
 </div>
 
 <script>
@@ -1493,9 +1903,11 @@ func application(_ application: UIApplication,
     config?.logLevel = ADJLogLevelInfo
     config?.needsCost = true                 // ROAS 계산용 비용 데이터
     config?.linkMeMetadata = true            // LinkMe 클립보드 매칭 활성화
-    // ATT 응답 대기 최대 시간(초). 너무 길면 App Store 심사 가이드라인 5.1.1 위반 사유.
-    // 업계 표준: 30초 이내 권장. 비동기 이벤트 완료 시 수동 트리거 권장.
-    config?.attConsentWaitingInterval = 30
+    // attConsentWaitingInterval: Adjust가 ATT 응답을 기다리는 최대 시간(초).
+    // 응답이 늦어도 첫 install/session 이벤트를 발화시키는 fallback 타이머이며,
+    // ATT 프롬프트 자체의 표시 시간과는 무관 (App Store 가이드라인과 별개 영역).
+    // 120초 = ATT 응답 확보율 최대화 우선 운영.
+    config?.attConsentWaitingInterval = 120
 
     // SKAN 4.0 ConversionValue 업데이트 위임
     config?.delegate = SKANDelegateHandler.shared
@@ -1629,7 +2041,7 @@ class App : Application() {
             <div class="ico">!</div>
             <div class="body">
               <strong>iOS에서 attribution이 organic으로만 잡힌다</strong>
-              <p>1) ATT 프롬프트가 SDK 초기화 이후에 호출되었는지 확인. 2) <code class="inline">attConsentWaitingInterval</code>를 30~60초로 명시. 3) LinkMe 도메인이 매체별 클릭 URL에 일치하는지 확인.</p>
+              <p>1) ATT 프롬프트가 SDK 초기화 이후에 호출되었는지 확인. 2) <code class="inline">attConsentWaitingInterval</code>이 너무 짧으면 사용자가 응답하기 전 install이 noIDFA로 굳어버림 — 120초로 설정해 응답 윈도우 확보. 3) LinkMe 도메인이 매체별 클릭 URL에 일치하는지 확인.</p>
             </div>
           </div>
 
@@ -3427,6 +3839,74 @@ function page_4_4() {
 }
 PAGE_RENDERERS["4-4"] = page_4_4;
 
+/* ========== Toast 시스템 ========== */
+function showToast({ title, body, variant, duration = 4200 }) {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+  const el = document.createElement("div");
+  el.className = `toast ${variant || ""}`;
+  el.innerHTML = `
+    ${title ? `<div class="toast-title">${escapeHtml(title)}</div>` : ""}
+    ${body ? `<div class="toast-body">${escapeHtml(body)}</div>` : ""}
+  `;
+  container.appendChild(el);
+  setTimeout(() => {
+    el.classList.add("fade-out");
+    setTimeout(() => el.remove(), 250);
+  }, duration);
+}
+
+/* ========== Lead Capture Modal (Firebase Auth UI 목업) ==========
+   추후 개발 과제:
+   - PG사 연동 (Toss Payments / PortOne): 사업자 등록 완료 시,
+     Google 로그인 버튼 옆 결제 옵션 추가 → 결제 완료 webhook 수신 시
+     Firestore에 1회성 분석 키 자동 발급. 발급된 키는 이메일로 전달. */
+function openLeadModal(context) {
+  const modal = document.getElementById("lead-modal");
+  if (!modal) return;
+  modal.hidden = false;
+  modal.dataset.context = context || "general";
+  document.body.style.overflow = "hidden";
+}
+function closeLeadModal() {
+  const modal = document.getElementById("lead-modal");
+  if (!modal) return;
+  modal.hidden = true;
+  document.body.style.overflow = "";
+}
+function handleMockGoogleLogin() {
+  const btn = document.getElementById("google-signin-btn");
+  if (!btn) return;
+  // 1) 로그인 중 상태 표시
+  btn.disabled = true;
+  const orig = btn.innerHTML;
+  btn.innerHTML = `<span>인증 중…</span>`;
+
+  // 2) Firebase Auth 인터랙션 모방 (실제 Firebase 연동 시 이 자리에
+  //    signInWithPopup(auth, GoogleAuthProvider) 호출 후 onAuthStateChanged 처리)
+  setTimeout(() => {
+    btn.innerHTML = orig;
+    btn.disabled = false;
+    closeLeadModal();
+    showToast({
+      variant: "success",
+      title: "분석 리포트가 클라우드에 백업되었습니다",
+      body: "영업일 기준 1일 내 이메일로 맞춤형 컨설팅을 제안해 드립니다.",
+      duration: 6000,
+    });
+  }, 1000);
+}
+
+function bindLeadModalHandlers() {
+  const overlay = document.getElementById("lead-modal");
+  const closeBtn = document.getElementById("lead-modal-close");
+  const googleBtn = document.getElementById("google-signin-btn");
+  if (closeBtn) closeBtn.addEventListener("click", closeLeadModal);
+  if (googleBtn) googleBtn.addEventListener("click", handleMockGoogleLogin);
+  if (overlay) overlay.addEventListener("click", e => { if (e.target === overlay) closeLeadModal(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeLeadModal(); });
+}
+
 /* ========== Ops Dashboard 접근 제어 (Supabase 기반) ==========
    keys are hashed with SHA-256 client-side, sent to validate_access_key RPC.
    세션은 LocalStorage에 보관 (expires_at, key_label, hash).
@@ -3894,6 +4374,143 @@ function page_5_2() {
       <button data-cohort="14" class="${k.cohort === 14 ? "active" : ""}">D14</button>
     </div>`;
 
+  // === Share Bar (클립보드 복사) ===
+  const d7Kpi = (() => {
+    const r = CSV_STATE.raw;
+    const cost = r.reduce((a, x) => {
+      const inv = Object.entries(CSV_STATE.mapping).find(([_, v]) => v === "cost")?.[0];
+      return a + (inv ? Number(String(x[inv]).replace(/[^\d.\-]/g, "")) || 0 : 0);
+    }, 0);
+    const rev = r.reduce((a, x) => {
+      const inv = Object.entries(CSV_STATE.mapping).find(([_, v]) => v === "revenue_d7")?.[0];
+      return a + (inv ? Number(String(x[inv]).replace(/[^\d.\-]/g, "")) || 0 : 0);
+    }, 0);
+    return cost ? rev / cost : null;
+  })();
+  const d7Display = formatPercent(d7Kpi);
+  const shareBar = `
+    <div class="share-bar">
+      <div class="share-text">
+        내 앱의 <strong>D7 ROAS</strong>는 <span class="share-metric tnum">${d7Display}</span> 입니다
+      </div>
+      <div class="share-actions">
+        <button class="share-btn" id="share-copy-btn" data-d7="${d7Display}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          공유 텍스트 복사
+        </button>
+      </div>
+    </div>
+  `;
+
+  // === Context Alert (D7 ROAS < 15% 시 동적 노출) ===
+  // 비율 표기 정규화: raw 데이터가 0~1이면 비율, 1 초과면 %로 가정
+  const d7RoasNormalized = (() => {
+    if (k.roas == null) return null;
+    return k.roas > 1 ? k.roas : k.roas * 100;
+  })();
+  const alertHtml = (k.cohort === 7 && d7RoasNormalized != null && d7RoasNormalized < 15) ? `
+    <aside class="alert-banner" role="alert">
+      <div class="alert-icon">⚠</div>
+      <div class="alert-body">
+        <strong>D7 ROAS가 권장 벤치마크(15%) 미달입니다.</strong>
+        현재 ${d7RoasNormalized.toFixed(2)}% — UAC/AAP 캠페인의 입찰 단계·에셋 다양성·매체별 카니발 비중 진단이 필요합니다.
+      </div>
+      <button class="alert-cta" data-action="open-lead-modal" data-context="alert-d7-roas">
+        최적화 진단받기 →
+      </button>
+    </aside>
+  ` : "";
+
+  // === Gated Insights (Freemium 잠금 영역) ===
+  const gatedSection = `
+    <section class="block" id="s-gated" style="position:relative;">
+      <h2 class="section-title"><span class="ix">§3</span>고급 인사이트</h2>
+      <p style="color:var(--text-secondary);">
+        업로드 데이터를 기반으로 한 12개월 LTV 예측 / 매체별 카니발 보정 / 광고 프로드 의심 트래픽 탐지 결과. 잠금 해제 시 PDF 리포트로도 발송됩니다.
+      </p>
+
+      <div class="gated-section">
+        <!-- 1) 생존 곡선 LTV 예측 차트 (블러) -->
+        <div class="gated-content">
+          <article class="gated-chart-placeholder">
+            <svg viewBox="0 0 600 200" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="ltvGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#adc6ff" stop-opacity="0.45"/>
+                  <stop offset="100%" stop-color="#adc6ff" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d="M 0 180 Q 80 120, 160 100 T 320 70 T 480 50 T 600 38 L 600 200 L 0 200 Z" fill="url(#ltvGrad)"/>
+              <path d="M 0 180 Q 80 120, 160 100 T 320 70 T 480 50 T 600 38" stroke="#adc6ff" stroke-width="2" fill="none"/>
+              <path d="M 0 185 Q 80 150, 160 140 T 320 130 T 480 125 T 600 122" stroke="#4cd7f6" stroke-width="2" stroke-dasharray="4 3" fill="none"/>
+              <text x="20" y="30" fill="#9CA3AF" font-family="JetBrains Mono" font-size="11">생존 곡선 기반 12개월 누적 ARPU 예측 (점선 = 신뢰구간 95%)</text>
+            </svg>
+          </article>
+
+          <!-- 2) 매체별 카니발리제이션 표 (블러) -->
+          <div class="table-wrap" style="margin-bottom:1rem;">
+            <table class="data">
+              <thead><tr>
+                <th>매체</th><th>Apparent ROAS</th><th>Lift Factor</th><th>iROAS</th><th>카니발 비율</th>
+              </tr></thead>
+              <tbody>
+                <tr><td>Meta UA</td><td class="tnum">1.85x</td><td class="tnum">0.75</td><td class="tnum">1.39x</td><td class="tnum">25%</td></tr>
+                <tr><td>Google UAC</td><td class="tnum">2.10x</td><td class="tnum">0.68</td><td class="tnum">1.43x</td><td class="tnum">32%</td></tr>
+                <tr><td>TikTok</td><td class="tnum">1.60x</td><td class="tnum">0.82</td><td class="tnum">1.31x</td><td class="tnum">18%</td></tr>
+                <tr><td>ASA Brand</td><td class="tnum">4.20x</td><td class="tnum">0.35</td><td class="tnum">1.47x</td><td class="tnum">65%</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 3) 광고 프로드 의심 트래픽 (블러) -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="label">CTIT 이상 (10초 미만)</div>
+              <div class="value tnum">3.8%</div>
+              <div class="delta down">Click Injection 의심</div>
+            </div>
+            <div class="kpi-card">
+              <div class="label">D1 잔존 0% 트래픽</div>
+              <div class="value tnum">7.2%</div>
+              <div class="delta down">Incentivized 의심</div>
+            </div>
+            <div class="kpi-card">
+              <div class="label">신규 디바이스 ID 비율</div>
+              <div class="value tnum">91%</div>
+              <div class="delta down">Device Farm 의심</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lock Overlay -->
+        <div class="gated-overlay">
+          <div class="gated-lock">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <div class="gated-title">고급 인사이트 잠금</div>
+          <p class="gated-deck">
+            업로드된 데이터를 기반으로 한 LTV 예측, 카니발리제이션 보정, 광고 프로드 탐지 결과는 인증된 사용자에게만 제공됩니다.
+          </p>
+          <div class="gated-mini-list">
+            <span>생존 곡선 LTV 12개월 예측</span>
+            <span>매체별 iROAS 보정</span>
+            <span>CTIT 기반 프로드 탐지</span>
+          </div>
+          <button class="gated-cta" data-action="open-lead-modal" data-context="gated-insights">
+            전체 예측 리포트 확인 및 맞춤형 셋업 상담하기
+            <span class="arrow">→</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  `;
+
   return pageShell(meta, {
     deck: `${CSV_STATE.fileName} · ${k.rowCount.toLocaleString()}행 분석 결과. 코호트 토글로 D0/D7/D14 시점의 매출·결제·잔존율을 전환할 수 있습니다.`,
     chips: `
@@ -3904,10 +4521,14 @@ function page_5_2() {
     summary: `매핑된 데이터 기준 KPI 자동 계산 결과. 현재 코호트는 <strong>D${k.cohort}</strong>이며, 매출·결제·잔존율 카드가 이 시점 기준으로 표시됩니다.`,
     toc: [
       { id: "s-cohort", title: "코호트 선택" },
-      { id: "s-kpi", title: "KPI 요약" },
+      { id: "s-kpi", title: "KPI 요약 (무료)" },
+      { id: "s-gated", title: "고급 인사이트 (잠금)" },
       { id: "s-data", title: "원본 데이터" },
     ],
     body: `
+      ${shareBar}
+      ${alertHtml}
+
       <section class="block" id="s-cohort">
         <h2 class="section-title"><span class="ix">§1</span>코호트 시점</h2>
         ${cohortToggle}
@@ -3915,7 +4536,7 @@ function page_5_2() {
       </section>
 
       <section class="block" id="s-kpi">
-        <h2 class="section-title"><span class="ix">§2</span>KPI 요약</h2>
+        <h2 class="section-title"><span class="ix">§2</span>KPI 요약 <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);background:rgba(90,209,154,0.08);border:1px solid rgba(90,209,154,0.2);padding:2px 8px;border-radius:2px;margin-left:0.5rem;letter-spacing:0.04em;">FREE</span></h2>
         <div class="kpi-grid">
           <div class="kpi-card"><div class="label">총 비용</div><div class="value tnum">${formatNumber(k.cost, { decimals: 0 })}</div><div class="delta">합산 cost</div></div>
           <div class="kpi-card"><div class="label">총 설치 수</div><div class="value tnum">${formatNumber(k.installs, { decimals: 0 })}</div><div class="delta">합산 installs</div></div>
@@ -3932,8 +4553,10 @@ function page_5_2() {
         </div>
       </section>
 
+      ${gatedSection}
+
       <section class="block" id="s-data">
-        <h2 class="section-title"><span class="ix">§3</span>원본 데이터 (전체 ${k.rowCount.toLocaleString()}행)</h2>
+        <h2 class="section-title"><span class="ix">§4</span>원본 데이터 (전체 ${k.rowCount.toLocaleString()}행)</h2>
         ${(() => {
           const headers = CSV_STATE.headers.map(h => ({ label: h, type: "string" }));
           const rows = CSV_STATE.raw.map(r => CSV_STATE.headers.map(h => String(r[h] ?? "")));
@@ -4189,6 +4812,35 @@ function bindCSVPageHandlers() {
       });
     });
   }
+
+  // ----- 5-2: Share 텍스트 복사 -----
+  const shareBtn = document.getElementById("share-copy-btn");
+  if (shareBtn) {
+    shareBtn.addEventListener("click", async () => {
+      const d7 = shareBtn.dataset.d7 || "—";
+      const text = `내 앱의 D7 ROAS는 ${d7}입니다. (분석 도구: Performance Marketing Library)`;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      shareBtn.classList.add("copied");
+      const orig = shareBtn.innerHTML;
+      shareBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> 복사됨`;
+      setTimeout(() => {
+        shareBtn.classList.remove("copied");
+        shareBtn.innerHTML = orig;
+      }, 1600);
+    });
+  }
+
+  // ----- 5-2: Lead Capture 트리거 버튼 (Gated CTA + Alert CTA 공통) -----
+  document.querySelectorAll('[data-action="open-lead-modal"]').forEach(btn => {
+    btn.addEventListener("click", () => openLeadModal(btn.dataset.context));
+  });
 }
 
 function handleCSVFile(file) {
@@ -4249,6 +4901,7 @@ async function init() {
   renderNav(hash || null);
   bindSearch();
   bindBrandClick();
+  bindLeadModalHandlers();  // Lead Capture 모달 (전역)
   navigate(hash || "home");
 
   // 브라우저 뒤로가기 / 앞으로가기 대응
