@@ -1,0 +1,11 @@
+{
+  "name": "mkt-library",
+  "version": "1.0.0",
+  "description": "DevHub · App Performance Marketing Library",
+  "scripts": {
+    "start": "serve . -l $PORT"
+  },
+  "dependencies": {
+    "serve": "^14.2.3"
+  }
+}
