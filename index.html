@@ -508,10 +508,20 @@
   .table-wrap {
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-xl);
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
     margin: 0.75rem 0 1.25rem;
     background: var(--surface-container-lowest);
+    -webkit-overflow-scrolling: touch;
   }
+  .table-wrap table.data { min-width: 100%; }
+  .table-wrap table.data thead th,
+  .table-wrap table.data tbody td { white-space: nowrap; }
+  .table-wrap table.data tbody td:nth-child(n+3) { white-space: normal; }
+  /* 스크롤 가능을 시각적으로 암시 */
+  .table-wrap { scrollbar-color: var(--surface-container-high) transparent; }
+  .table-wrap::-webkit-scrollbar { height: 8px; }
+  .table-wrap::-webkit-scrollbar-thumb { background: var(--surface-container-high); border-radius: 8px; }
   table.data {
     width: 100%;
     border-collapse: collapse;
@@ -1404,15 +1414,19 @@ func application(_ application: UIApplication,
     config?.logLevel = ADJLogLevelInfo
     config?.needsCost = true                 // ROAS 계산용 비용 데이터
     config?.linkMeMetadata = true            // LinkMe 클립보드 매칭 활성화
-    config?.attConsentWaitingInterval = 60   // ATT 응답까지 최대 60초 대기 후 강제 발화
+    // ATT 응답 대기 최대 시간(초). 너무 길면 App Store 심사 가이드라인 5.1.1 위반 사유.
+    // 업계 표준: 30초 이내 권장. 비동기 이벤트 완료 시 수동 트리거 권장.
+    config?.attConsentWaitingInterval = 30
 
     // SKAN 4.0 ConversionValue 업데이트 위임
     config?.delegate = SKANDelegateHandler.shared
 
     Adjust.appDidLaunch(config)
 
-    // ATT 프롬프트는 최초 활성 후 비동기로 호출 (사용자 컨텍스트 확보 후)
-    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+    // ATT 프롬프트는 사용자가 앱의 가치를 인지한 시점에 호출 (온보딩 완료 후 등).
+    // 첫 실행 즉시 호출하면 거부율↑, 또한 너무 빠른 호출은 사용자 컨텍스트 부재로 reject 사유.
+    // 1-4 가이드의 ATT 디자인 패턴 참고.
+    OnboardingState.shared.onCompleted = {
         ATTrackingManager.requestTrackingAuthorization { _ in
             Adjust.requestTrackingAuthorization { status in
                 // status: 0 Not Determined / 3 Authorized
@@ -2206,12 +2220,12 @@ PAGE_RENDERERS["2-1"] = page_2_1;
 function page_2_2() {
   const meta = findMeta("2-2");
   return pageShell(meta, {
-    deck: "Meta AAP는 OS 분리 운영이 강제 사항이며, iOS는 SKAN 채널에 별도 캠페인을 운영해야 한다. 1-day click 어트리뷰션이 기본값이 되었으므로 ROAS 평가도 1d_click 기준으로 통일.",
+    deck: "Meta AAP는 OS 분리 운영이 강제 사항이며, iOS는 SKAN 채널에 별도 캠페인을 운영해야 한다. Meta 기본 어트리뷰션은 7d click + 1d view이며, iOS 14.5+ 트래픽 평가는 1d click으로 축소 운영해 다른 매체와 비교 가능하도록 정렬한다.",
     chips: `
       <span class="chip"><span class="dot"></span>채널 · Meta Ads</span>
-      <span class="chip ok"><span class="dot"></span>어트리뷰션 · 1d click</span>
+      <span class="chip ok"><span class="dot"></span>기본 · 7d click + 1d view</span>
       <span class="chip warning"><span class="dot"></span>OS 분리 필수</span>`,
-    summary: "AAP(Advantage+ App Campaigns)는 Meta의 자동화 캠페인. 광고 그룹 단위 디테일 제어가 제한되고 캠페인 단위 최적화가 강제된다. iOS는 AEM(Aggregated Event Measurement) 8개 이벤트 우선순위, Android는 일반 인앱 이벤트 전체 송신이 기본.",
+    summary: "AAP(Advantage+ App Campaigns)는 Meta의 자동화 캠페인. 광고 그룹 단위 디테일 제어가 제한되고 캠페인 단위 최적화가 강제된다. Meta 기본 어트리뷰션은 7-day click + 1-day view이며, MMP·타 매체와 동일 기준 비교를 위해 보고 시 1d_click으로 축소 운영하는 것이 표준 관행. iOS는 AEM(Aggregated Event Measurement) 8개 이벤트 우선순위, Android는 일반 인앱 이벤트 전체 송신이 기본.",
     toc: [
       { id: "s-structure", title: "캠페인 구조" },
       { id: "s-setup", title: "AAP 설정 단계" },
@@ -2269,7 +2283,8 @@ function page_2_2() {
       <section class="block" id="s-bid">
         <h2 class="section-title"><span class="ix">§3</span>어트리뷰션 및 입찰</h2>
         <ul>
-          <li><strong>어트리뷰션 윈도우</strong>: 1-day click + 1-day view가 기본값. 7d click은 옵션이지만 iOS 14.5+에서는 거의 무의미.</li>
+          <li><strong>어트리뷰션 윈도우 (Meta 기본값)</strong>: <code class="inline">7-day click + 1-day view</code>. iOS 14.5+ ATT 거부 트래픽은 자동으로 SKAN postback 윈도우(0~2일)로 제한됨.</li>
+          <li><strong>운영 권장 (멀티 매체 비교용)</strong>: 보고 시 <code class="inline">1-day click</code>으로 축소 후 평가하면 Google/TikTok 등과 동일 기준으로 비교 가능. Meta는 기본 7d_click에 대비 1d_click이 약 30~40% 낮게 보고됨.</li>
           <li><strong>입찰 전략</strong>: Highest Volume(자동) → Cost Cap → Bid Cap 순서로 단계 격상. 첫 7일은 Highest Volume으로 학습 가속.</li>
           <li><strong>VBO(Value Optimization)</strong>: 매출 기반 입찰. 일 50+ purchase 안정화 후 활성화.</li>
         </ul>
