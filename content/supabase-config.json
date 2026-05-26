@@ -1,0 +1,5 @@
+{
+  "url": "",
+  "anonKey": "",
+  "_comment": "supabase/SETUP.md 가이드 §3을 따라 Project URL과 anon public key를 채워주세요. 비어있으면 Ops Dashboard 접근 시 안내 화면이 표시됩니다."
+}

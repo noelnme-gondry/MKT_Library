@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
   /* ========== Design Tokens (Obsidian Flux) ========== */
   :root {
@@ -978,6 +979,84 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
   }
+
+  /* ========== Auth Gate ========== */
+  .auth-card {
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 1.5rem 1.5rem 1.25rem;
+    max-width: 480px;
+    margin: 1.5rem 0 2rem;
+  }
+  .auth-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.5rem;
+  }
+  .auth-input-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+  }
+  .auth-input-row input {
+    flex: 1;
+    background: var(--surface-container);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    padding: 0.55rem 0.75rem;
+    outline: none;
+    letter-spacing: 0.04em;
+  }
+  .auth-input-row input:focus { border-color: var(--primary); }
+  .auth-input-row button { padding: 0.55rem 1.1rem; }
+  .auth-msg {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    min-height: 18px;
+    margin-bottom: 0.5rem;
+  }
+  .auth-msg.ok  { color: #5ad19a; }
+  .auth-msg.err { color: #ff8a8a; }
+  .auth-help {
+    font-size: 12px;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 0.625rem;
+    line-height: 18px;
+  }
+  .auth-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: rgba(90, 209, 154, 0.06);
+    border: 1px solid rgba(90, 209, 154, 0.25);
+    padding: 0.25rem 0.55rem 0.25rem 0.55rem;
+    border-radius: var(--radius-default);
+  }
+  .auth-chip .dot.ok { width: 6px; height: 6px; border-radius: 50%; background: #5ad19a; }
+  .auth-signout {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    margin-left: 0.4rem;
+    padding: 0 0.25rem;
+    border-left: 1px solid rgba(90, 209, 154, 0.2);
+  }
+  .auth-signout:hover { color: var(--text-primary); }
 
   /* Responsive */
   @media (max-width: 1100px) {
@@ -3348,6 +3427,194 @@ function page_4_4() {
 }
 PAGE_RENDERERS["4-4"] = page_4_4;
 
+/* ========== Ops Dashboard 접근 제어 (Supabase 기반) ==========
+   keys are hashed with SHA-256 client-side, sent to validate_access_key RPC.
+   세션은 LocalStorage에 보관 (expires_at, key_label, hash).
+   만료 시 자동 무효화. */
+
+const AUTH_STATE = {
+  client: null,        // Supabase client (initializeAuth에서 생성)
+  config: null,        // { url, anonKey }
+  configError: null,   // 설정 파일 누락/오류 메시지
+  session: null,       // { keyLabel, expiresAt(ISO), hash }
+};
+
+const AUTH_PROTECTED_PAGES = new Set(["5-1", "5-2"]);
+const AUTH_STORAGE_KEY = "mkt_library_auth_session";
+
+async function sha256Hex(str) {
+  const buf = new TextEncoder().encode(str);
+  const hash = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function initializeAuth() {
+  // 설정 파일 로드
+  try {
+    const res = await fetch("./content/supabase-config.json", { cache: "no-cache" });
+    if (!res.ok) throw new Error(`config load failed: ${res.status}`);
+    AUTH_STATE.config = await res.json();
+    if (!AUTH_STATE.config.url || !AUTH_STATE.config.anonKey) {
+      AUTH_STATE.configError = "Supabase 설정이 비어 있습니다. supabase/SETUP.md 참고.";
+      return;
+    }
+  } catch (e) {
+    AUTH_STATE.configError = "supabase-config.json 로드 실패: " + e.message;
+    return;
+  }
+  // Supabase 클라이언트 초기화
+  if (window.supabase && window.supabase.createClient) {
+    AUTH_STATE.client = window.supabase.createClient(AUTH_STATE.config.url, AUTH_STATE.config.anonKey);
+  } else {
+    AUTH_STATE.configError = "Supabase SDK가 로드되지 않았습니다. 네트워크 확인.";
+    return;
+  }
+  // 저장된 세션 복구
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s.expiresAt && new Date(s.expiresAt) > new Date()) {
+        AUTH_STATE.session = s;
+      } else {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+    }
+  } catch { /* corrupt session, ignore */ }
+}
+
+function isAuthValid() {
+  const s = AUTH_STATE.session;
+  if (!s) return false;
+  return new Date(s.expiresAt) > new Date();
+}
+
+async function tryAuthenticate(plainKey) {
+  if (!AUTH_STATE.client) {
+    return { ok: false, error: AUTH_STATE.configError || "Supabase 클라이언트가 초기화되지 않았습니다." };
+  }
+  if (!plainKey || plainKey.length < 8) {
+    return { ok: false, error: "키 형식이 올바르지 않습니다." };
+  }
+  const hash = await sha256Hex(plainKey.trim());
+  const { data, error } = await AUTH_STATE.client.rpc("validate_access_key", { input_hash: hash });
+  if (error) {
+    return { ok: false, error: "검증 실패: " + error.message };
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || !row.valid) {
+    if (row && row.expires_at && new Date(row.expires_at) <= new Date()) {
+      return { ok: false, error: "키가 만료되었습니다 (라벨: " + (row.key_label || "?") + ")." };
+    }
+    return { ok: false, error: "유효하지 않은 키입니다." };
+  }
+  const session = {
+    keyLabel: row.key_label,
+    expiresAt: row.expires_at,
+    hash,
+  };
+  AUTH_STATE.session = session;
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  return { ok: true, session };
+}
+
+function signOut() {
+  AUTH_STATE.session = null;
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+}
+
+function formatExpiry(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+}
+
+function pageAuthGate(targetId) {
+  const meta = findMeta(targetId);
+  const groupBlurb = meta ? `${meta.id}. ${escapeHtml(meta.title)}` : "Ops Dashboard";
+  const configIssue = AUTH_STATE.configError;
+  return `
+    <div class="page-eyebrow">접근 제한</div>
+    <h1 class="page-title">Ops Dashboard 접근 키 필요</h1>
+    <p class="page-deck">${groupBlurb} 페이지는 발급된 접근 키 보유자만 사용할 수 있습니다. 관리자에게 키를 받아 입력해 주세요.</p>
+
+    ${configIssue ? `
+      <div class="callout danger" style="margin-bottom:1.5rem;">
+        <div class="ico">!</div>
+        <div class="body">
+          <strong>Supabase 설정 미완료</strong>
+          <p>${escapeHtml(configIssue)}</p>
+        </div>
+      </div>` : ""}
+
+    <div class="auth-card">
+      <div class="auth-label">접근 키</div>
+      <div class="auth-input-row">
+        <input id="auth-key-input" type="password" placeholder="발급받은 키를 입력하세요" autocomplete="off" spellcheck="false" />
+        <button class="btn primary" id="auth-submit">확인</button>
+      </div>
+      <div class="auth-msg" id="auth-msg"></div>
+      <div class="auth-help">
+        키는 SHA-256 해시 후 검증되며, 평문은 서버에 전송되지 않습니다. 세션은 키 만료 시각까지 유효합니다.
+      </div>
+    </div>
+  `;
+}
+
+function bindAuthGateHandlers(targetId) {
+  const input = document.getElementById("auth-key-input");
+  const submit = document.getElementById("auth-submit");
+  const msg = document.getElementById("auth-msg");
+  if (!input || !submit) return;
+
+  const run = async () => {
+    msg.textContent = "검증 중…";
+    msg.className = "auth-msg";
+    submit.disabled = true;
+    const result = await tryAuthenticate(input.value);
+    submit.disabled = false;
+    if (result.ok) {
+      msg.textContent = `인증 성공 · ${result.session.keyLabel} · ${formatExpiry(result.session.expiresAt)} 까지 유효`;
+      msg.className = "auth-msg ok";
+      setTimeout(() => navigate(targetId), 500);
+    } else {
+      msg.textContent = result.error;
+      msg.className = "auth-msg err";
+    }
+  };
+
+  submit.addEventListener("click", run);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") run(); });
+  setTimeout(() => input.focus(), 50);
+}
+
+function authStatusChip() {
+  if (!isAuthValid()) return "";
+  const s = AUTH_STATE.session;
+  return `
+    <div class="auth-chip">
+      <span class="dot ok"></span>
+      <span>${escapeHtml(s.keyLabel)} · ${formatExpiry(s.expiresAt)}까지</span>
+      <button class="auth-signout" id="auth-signout">로그아웃</button>
+    </div>
+  `;
+}
+
+function bindAuthStatusHandlers() {
+  const btn = document.getElementById("auth-signout");
+  if (btn) btn.addEventListener("click", () => {
+    if (confirm("로그아웃 후 Ops Dashboard 접근이 차단됩니다. 계속할까요?")) {
+      signOut();
+      navigate("home");
+    }
+  });
+}
+
 /* ========== CSV Analyzer Logic ========== */
 
 // 자동 매핑: CSV 헤더를 STANDARD_FIELDS의 별칭과 매칭
@@ -3511,7 +3778,8 @@ function page_5_1() {
     deck: "CSV 파일을 업로드하고, 파일의 컬럼을 표준 필드에 매핑하세요. 별칭이 등록된 컬럼은 자동 매핑되며, 자동 매칭되지 않은 컬럼은 드롭다운으로 수동 연결할 수 있습니다.",
     chips: `
       <span class="chip"><span class="dot"></span>도구 · CSV Analyzer</span>
-      <span class="chip ok"><span class="dot"></span>클라이언트 사이드 처리 (서버 전송 없음)</span>`,
+      <span class="chip ok"><span class="dot"></span>클라이언트 사이드 처리 (서버 전송 없음)</span>
+      ${authStatusChip()}`,
     summary: "업로드된 CSV는 브라우저 메모리에서만 처리되며, 외부로 전송되지 않습니다. 필수 컬럼(<code class='inline'>날짜</code>, <code class='inline'>채널</code>, <code class='inline'>비용</code>, <code class='inline'>설치수</code>) 매핑이 완료되면 5-2 대시보드에서 KPI가 자동 계산됩니다.",
     toc: [
       { id: "s-upload", title: "파일 업로드" },
@@ -3631,7 +3899,8 @@ function page_5_2() {
     chips: `
       <span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>
       <span class="chip ok"><span class="dot"></span>${k.rowCount.toLocaleString()}행</span>
-      <span class="chip"><span class="dot"></span>코호트 · D${k.cohort}</span>`,
+      <span class="chip"><span class="dot"></span>코호트 · D${k.cohort}</span>
+      ${authStatusChip()}`,
     summary: `매핑된 데이터 기준 KPI 자동 계산 결과. 현재 코호트는 <strong>D${k.cohort}</strong>이며, 매출·결제·잔존율 카드가 이 시점 기준으로 표시됩니다.`,
     toc: [
       { id: "s-cohort", title: "코호트 선택" },
@@ -3730,6 +3999,18 @@ async function navigate(id) {
   const content = $("#content");
   let html = "";
 
+  // Ops Dashboard 페이지(5-1, 5-2) 접근 제어
+  if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid()) {
+    content.innerHTML = pageAuthGate(id);
+    setBreadcrumb(id);
+    renderNav(id);
+    bindAuthGateHandlers(id);
+    const newHash = "#" + id;
+    if (location.hash !== newHash) history.pushState({ route: id }, "", newHash);
+    window.scrollTo({ top: 0, behavior: "instant" });
+    return;
+  }
+
   if (!id || id === "home") {
     html = pageHome();
   } else if (DATA_BASED_PAGES.has(id)) {
@@ -3757,6 +4038,7 @@ async function navigate(id) {
   bindCardLinks();
   bindTocScrollspy();
   bindCSVPageHandlers();
+  bindAuthStatusHandlers();
   const newHash = id && id !== "home" ? "#" + id : "#";
   const curHash = location.hash || "#";
   if (newHash !== curHash) {
@@ -3960,9 +4242,10 @@ function isValidRouteId(s) {
 }
 
 /* ========== Init ========== */
-function init() {
+async function init() {
   const hashRaw = (location.hash || "").replace(/^#/, "");
   const hash = isValidRouteId(hashRaw) ? hashRaw : "home";
+  await initializeAuth();   // Supabase 클라이언트 + 저장된 세션 복구
   renderNav(hash || null);
   bindSearch();
   bindBrandClick();
@@ -3979,6 +4262,16 @@ function init() {
     // pushState 없이 콘텐츠만 교체 (이미 history에 있는 항목)
     const content = $("#content");
     let html = "";
+
+    if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid()) {
+      content.innerHTML = pageAuthGate(id);
+      setBreadcrumb(id);
+      renderNav(id);
+      bindAuthGateHandlers(id);
+      window.scrollTo({ top: 0, behavior: "instant" });
+      return;
+    }
+
     if (!id || id === "home") html = pageHome();
     else if (DATA_BASED_PAGES.has(id)) {
       html = await renderPageFromData(id);
@@ -3994,6 +4287,7 @@ function init() {
     bindCardLinks();
     bindTocScrollspy();
     bindCSVPageHandlers();
+  bindAuthStatusHandlers();
     window.scrollTo({ top: 0, behavior: "instant" });
   }
 }
