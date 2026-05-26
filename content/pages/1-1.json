@@ -1,0 +1,161 @@
+{
+  "$schema": "../schema.md",
+  "id": "1-1",
+  "deck": "MMP(Adjust) SDK 초기화 스펙, 딥링크 라우팅 로직, 그리고 릴리즈 전 QA 시나리오를 단일 문서로 통합한 개발 협업 표준. 본 문서가 그대로 PRD가 되도록 작성됨.",
+  "chips": [
+    { "label": "담당 · Growth Eng." },
+    { "label": "상태 · 운영 중", "variant": "ok" },
+    { "label": "Adjust SDK ≥ v5.0.0" },
+    { "label": "iOS 14.5+ 필수", "variant": "warning" }
+  ],
+  "summary": "본 문서는 신규 앱 또는 리뉴얼 앱의 어트리뷰션 기반 마련을 위해 개발팀이 구현해야 할 <strong>최소 필수 스펙</strong>을 정의한다. Adjust SDK v5 초기화 → 디퍼드 딥링크 라우팅 → 릴리즈 QA 체크리스트의 3단 게이트를 통과한 빌드만 LIVE 캠페인에 진입한다. 잘못 셋업된 SDK 한 줄이 전 캠페인 데이터를 무효화시키므로, 모든 항목은 <strong>코드 리뷰 + QA Lead 더블 사인오프</strong>를 강제한다.",
+  "toc": [
+    { "id": "s-prereq", "title": "사전 요구사항" },
+    { "id": "s-sdk", "title": "구현 단계" },
+    { "id": "s-qa", "title": "QA 시나리오" },
+    { "id": "s-troubleshoot", "title": "트러블슈팅" },
+    { "id": "s-handoff", "title": "인수인계 체크리스트" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-prereq",
+      "ix": "§1",
+      "title": "사전 요구사항",
+      "content": [
+        {
+          "type": "list",
+          "items": [
+            "<strong>Adjust 대시보드 권한</strong>: App Token (iOS/Android 분리), Environment(sandbox/production), Default Tracker 발급 완료",
+            "<strong>Bundle ID / Package Name</strong> 사전 등록. Android는 <code>applicationId</code> 기준, iOS는 App Store Connect의 <code>Bundle Identifier</code> 기준",
+            "<strong>StoreKit 2 + ATTrackingManager</strong> 의존성 및 iOS 14.5+ 지원",
+            "<strong>App Links / Universal Links</strong> 도메인 검증 파일 호스팅 (<code>.well-known/apple-app-site-association</code>, <code>.well-known/assetlinks.json</code>)"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-sdk",
+      "ix": "§2",
+      "title": "구현 단계",
+      "content": [
+        { "type": "subheading", "title": "2.1 iOS · Adjust SDK 초기화 (Swift, AppDelegate)" },
+        { "type": "paragraph", "html": "초기화는 <strong>반드시 ATT 프롬프트 응답 후</strong> 진행한다. 프롬프트 이전 초기화 시 IDFA가 영구적으로 0으로 고정되어 attribution이 SKAdNetwork 단일 채널로 강제 다운그레이드된다." },
+        {
+          "type": "code",
+          "lang": "swift",
+          "label": "iOS · AppDelegate.swift",
+          "code": "import Adjust\nimport AdjustSdk\nimport AppTrackingTransparency\n\nfunc application(_ application: UIApplication,\n                 didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {\n\n    let appToken = \"abc1234xyz9\"  // Production token\n    let environment = ADJEnvironmentProduction\n\n    let config = ADJConfig(appToken: appToken,\n                           environment: environment,\n                           allowSuppressLogLevel: false)\n    config?.logLevel = ADJLogLevelInfo\n    config?.needsCost = true                 // ROAS 계산용 비용 데이터\n    config?.linkMeMetadata = true            // LinkMe 클립보드 매칭 활성화\n    // ATT 응답 대기 최대 시간(초). 너무 길면 App Store 심사 가이드라인 5.1.1 위반 사유.\n    // 업계 표준: 30초 이내 권장. 비동기 이벤트 완료 시 수동 트리거 권장.\n    config?.attConsentWaitingInterval = 30\n\n    // SKAN 4.0 ConversionValue 업데이트 위임\n    config?.delegate = SKANDelegateHandler.shared\n\n    Adjust.appDidLaunch(config)\n\n    // ATT 프롬프트는 사용자가 앱의 가치를 인지한 시점에 호출 (온보딩 완료 후 등).\n    OnboardingState.shared.onCompleted = {\n        ATTrackingManager.requestTrackingAuthorization { _ in\n            Adjust.requestTrackingAuthorization { status in\n                // status: 0 Not Determined / 3 Authorized\n                print(\"[ATT] status=\\(status)\")\n            }\n        }\n    }\n    return true\n}"
+        },
+        { "type": "subheading", "title": "2.2 Android · Adjust SDK 초기화 (Kotlin, Application 클래스)" },
+        { "type": "paragraph", "html": "Application 서브클래스에서 <strong>최상위 onCreate</strong>에 위치시켜야 한다. 외부 라이브러리(Firebase 등)보다 늦게 초기화될 경우, 첫 세션의 install referrer가 누락된다." },
+        {
+          "type": "code",
+          "lang": "kotlin",
+          "label": "Android · App.kt",
+          "code": "import android.app.Application\nimport com.adjust.sdk.Adjust\nimport com.adjust.sdk.AdjustConfig\nimport com.adjust.sdk.LogLevel\n\nclass App : Application() {\n    override fun onCreate() {\n        super.onCreate()\n\n        val appToken = \"abc1234xyz9\"\n        val environment = AdjustConfig.ENVIRONMENT_PRODUCTION\n\n        val config = AdjustConfig(this, appToken, environment).apply {\n            setLogLevel(LogLevel.INFO)\n            setNeedsCost(true)\n            setPreinstallTrackingEnabled(true)        // 사전탑재 트래킹\n            setSendInBackground(true)                 // 백그라운드 전송\n            setEventBufferingEnabled(false)           // 실시간 캠페인 운영 시 false\n            setOnAttributionChangedListener { attr ->\n                // network_name / campaign_name / adgroup_name / creative_name\n                AppAnalytics.bindAttribution(attr)\n            }\n            setOnDeeplinkResponseListener { uri ->\n                DeeplinkRouter.handle(uri)            // 디퍼드 딥링크 라우팅\n                true\n            }\n        }\n\n        Adjust.onCreate(config)\n        registerActivityLifecycleCallbacks(AdjustLifecycleCallbacks())\n    }\n}"
+        },
+        { "type": "subheading", "title": "2.3 딥링크 라우팅 로직 (디퍼드 포함)" },
+        { "type": "paragraph", "html": "3가지 진입점을 단일 라우터로 통합한다: <strong>(a)</strong> Universal Link / App Link 진입, <strong>(b)</strong> 커스텀 URI 스킴, <strong>(c)</strong> Adjust 디퍼드 딥링크(미설치 상태에서 스토어 경유 후 첫 실행 시 발화). 라우터는 항상 <code>scheme://host/path?params</code> 표준형으로 정규화한 뒤 분기한다." },
+        {
+          "type": "code",
+          "lang": "kotlin",
+          "label": "Android · DeeplinkRouter.kt",
+          "code": "object DeeplinkRouter {\n    fun handle(uri: Uri): Boolean {\n        val path = uri.pathSegments.firstOrNull() ?: return openHome()\n        return when (path) {\n            \"product\" -> openProduct(uri.lastPathSegment ?: return openHome())\n            \"promo\"   -> openPromo(uri.getQueryParameter(\"code\"))\n            \"invite\"  -> openReferral(uri.getQueryParameter(\"ref\"))\n            else      -> openHome()\n        }.also {\n            Analytics.track(\"deeplink_opened\", mapOf(\n                \"deeplink_path\"   to uri.path.orEmpty(),\n                \"deeplink_source\" to (uri.getQueryParameter(\"utm_source\") ?: \"direct\"),\n                \"is_deferred\"     to (DeferredFlag.consume())\n            ))\n        }\n    }\n}"
+        },
+        { "type": "subheading", "title": "2.4 표준 URL 스키마" },
+        { "type": "paragraph", "html": "매체 트래커 URL은 <strong>Adjust Custom URL</strong>에 아래 스키마를 강제한다. 모든 매크로는 매체별 placeholder를 사용하며, 임의 추가는 불가하다." },
+        {
+          "type": "code",
+          "lang": "http",
+          "label": "Adjust Click URL Template",
+          "code": "https://app.adjust.com/{tracker_token}\n  ?campaign={campaign_name}\n  &adgroup={adgroup_name}\n  &creative={creative_name}\n  &idfa={idfa}            // iOS 14.5+ 에서는 자동 0 처리\n  &gps_adid={gps_adid}    // Google Play Services ADID\n  &cost_type=cpc\n  &cost_amount={cost}\n  &cost_currency=USD\n  &deeplink=myapp%3A%2F%2Fproduct%2F{product_id}\n  &fallback=https%3A%2F%2Fwww.example.com%2Fproduct%2F{product_id}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-qa",
+      "ix": "§3",
+      "title": "QA 시나리오 (릴리즈 게이트)",
+      "content": [
+        { "type": "paragraph", "html": "아래 12개 시나리오를 모두 PASS해야 LIVE 빌드로 승인된다. 실패 1건 = 빌드 반려." },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "ID" },
+            { "label": "Scenario" },
+            { "label": "Expected" },
+            { "label": "Severity" },
+            { "label": "Tool" }
+          ],
+          "rows": [
+            ["QA-01", "신규 설치 → 첫 세션 발화", "install + session_start 1회씩 발화", { "pill": "tier-1", "text": "Blocker" }, "Adjust Testing Console"],
+            ["QA-02", "ATT 프롬프트 Authorized 케이스", "IDFA 비공백, attribution sandbox에 도달", { "pill": "tier-1", "text": "Blocker" }, "Charles Proxy"],
+            ["QA-03", "ATT Denied 케이스", "IDFA=00000... 0, SKAN 단일 채널 정상 동작", { "pill": "tier-1", "text": "Blocker" }, "Console"],
+            ["QA-04", "Universal Link 콜드 스타트", "DeeplinkRouter.handle 1회 호출", { "pill": "tier-2", "text": "Major" }, "Safari → 앱 전환"],
+            ["QA-05", "디퍼드 딥링크 (미설치 → 설치)", "최초 실행 시 onDeeplinkResponse 발화", { "pill": "tier-1", "text": "Blocker" }, "Test Console + Test Device"],
+            ["QA-06", "커스텀 URI 스킴 (외부 브라우저)", "Router 분기 정확", { "pill": "tier-2", "text": "Major" }, "adb shell am start"],
+            ["QA-07", "백그라운드 ↔ 포그라운드 전환", "session 중복 발화 없음", { "pill": "tier-2", "text": "Major" }, "Adjust Logs"],
+            ["QA-08", "비행기 모드 → 온라인 복귀", "이벤트 큐잉 후 1회만 전송", { "pill": "tier-2", "text": "Major" }, "Charles"],
+            ["QA-09", "SKAN postback (Apple Test Mode)", "coarse value [low|medium|high] 매핑 정상", { "pill": "tier-1", "text": "Blocker" }, "xcrun simctl + Apple Console"],
+            ["QA-10", "Cost data 수신 (UAC/AAP)", "Adjust 대시보드에 cost_amount 노출", { "pill": "tier-3", "text": "Minor" }, "Adjust > Cost Data"],
+            ["QA-11", "in_app_purchase 매출 이벤트", "revenue + currency 정확", { "pill": "tier-1", "text": "Blocker" }, "StoreKit Test"],
+            ["QA-12", "Uninstall + Reinstall", "reattribution 분류 정상", { "pill": "tier-2", "text": "Major" }, "Adjust > Reattribution"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-troubleshoot",
+      "ix": "§4",
+      "title": "트러블슈팅 / 함정",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "danger",
+          "title": "install 이벤트가 중복 발화된다",
+          "html": "Adjust.appDidLaunch가 Application과 AppDelegate 양쪽에서 호출되는 경우. Application 클래스에서 단 1회만 호출되도록 통일하고, ActivityLifecycleCallbacks는 register는 하되 SDK 초기화는 분리한다."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "iOS에서 attribution이 organic으로만 잡힌다",
+          "html": "1) ATT 프롬프트가 SDK 초기화 이후에 호출되었는지 확인. 2) <code>attConsentWaitingInterval</code>을 30초 내로 명시. 3) LinkMe 도메인이 매체별 클릭 URL에 일치하는지 확인."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "디퍼드 딥링크가 첫 실행에 발화되지 않는다",
+          "html": "Android: Play Install Referrer API 의존성 누락 가능성. <code>com.android.installreferrer:installreferrer:2.2</code> 추가. iOS: Universal Links의 <code>apple-app-site-association</code>이 HTTPS, Content-Type=application/json으로 서빙되는지 검증."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Sandbox에서 production 토큰을 잘못 사용 중",
+          "html": "환경 분리는 <code>BuildConfig.DEBUG</code> 또는 <code>#if DEBUG</code>로 빌드 타임에 분기. Sandbox 토큰을 Production에 사용하면 raw event는 Adjust에 도달하지만 attribution은 발생하지 않음."
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-handoff",
+      "ix": "§5",
+      "title": "인수인계 체크리스트",
+      "content": [
+        { "type": "paragraph", "html": "QA Lead → Growth PM 인수인계 전 확인:" },
+        {
+          "type": "list",
+          "items": [
+            "Adjust 대시보드 raw export 1일치 다운로드, 디버그 트래픽 분리 검증",
+            "SKAN postback 수신 endpoint 등록 (<code>skadnetwork.adjust.com</code>) 및 partner re-direct ON",
+            "Firebase / Amplitude 등 2nd-party 분석 툴과 user_id 키 정합성 확인",
+            "Adjust → BigQuery / S3 export 파이프라인 sync 확인"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1797,6 +1797,117 @@ function page_1_2() {
   `;
 }
 
+/* ========== 데이터 기반 페이지 렌더링 엔진 ==========
+   content/pages/{id}.json 형식의 데이터를 비동기로 로드해 HTML로 변환한다.
+   스키마 정의: /content/schema.md 참조. */
+
+const PAGE_DATA_CACHE = {};
+// 이 Set에 등록된 페이지 ID는 JSON 데이터 기반으로 렌더.
+// 등록되지 않은 페이지는 기존 PAGE_RENDERERS 함수를 사용 (점진 마이그레이션).
+const DATA_BASED_PAGES = new Set([
+  "1-1",
+]);
+
+async function loadPageData(id) {
+  if (PAGE_DATA_CACHE[id]) return PAGE_DATA_CACHE[id];
+  try {
+    const res = await fetch(`./content/pages/${id}.json`, { cache: "no-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    PAGE_DATA_CACHE[id] = data;
+    return data;
+  } catch (e) {
+    console.warn(`[content] ${id}.json 로드 실패:`, e.message);
+    return null;
+  }
+}
+
+function renderChips(chips = []) {
+  return chips.map(c => {
+    const variant = c.variant ? ` ${c.variant}` : "";
+    return `<span class="chip${variant}"><span class="dot"></span>${c.label || ""}</span>`;
+  }).join("");
+}
+
+function renderBlock(block) {
+  if (!block || !block.type) return "";
+  switch (block.type) {
+    case "paragraph":
+      return `<p>${block.html != null ? block.html : escapeHtml(block.text || "")}</p>`;
+
+    case "subheading":
+      return `<h3 class="sub-title">${escapeHtml(block.title || "")}</h3>`;
+
+    case "list": {
+      const tag = block.ordered ? "ol" : "ul";
+      const items = (block.items || []).map(i => `<li>${i}</li>`).join("");
+      return `<${tag}>${items}</${tag}>`;
+    }
+
+    case "code":
+      return codeBlock(block.lang || "bash", block.label || "", block.code || "");
+
+    case "table": {
+      const headers = (block.headers || []).map(h => ({ label: h.label, type: h.type || "string" }));
+      const rows = (block.rows || []).map(row =>
+        row.map(cell => {
+          if (cell && typeof cell === "object") {
+            if (cell.pill) return { html: `<span class="pill ${cell.pill}">${escapeHtml(cell.text || "")}</span>` };
+            if (cell.html != null) return { html: cell.html };
+          }
+          return cell;
+        })
+      );
+      return dataTable(headers, rows);
+    }
+
+    case "callout": {
+      const variant = block.variant || "info";
+      const iconChar = variant === "info" ? "i" : "!";
+      return `
+        <div class="callout ${variant}">
+          <div class="ico">${iconChar}</div>
+          <div class="body">
+            ${block.title ? `<strong>${escapeHtml(block.title)}</strong>` : ""}
+            ${block.html != null ? `<p>${block.html}</p>` : ""}
+          </div>
+        </div>`;
+    }
+
+    default:
+      return "";
+  }
+}
+
+function renderSections(sections = []) {
+  return sections.map(s => {
+    if (s.type !== "section") return "";
+    return `
+      <section class="block" id="${escapeHtml(s.id || "")}">
+        <h2 class="section-title">
+          ${s.ix ? `<span class="ix">${escapeHtml(s.ix)}</span>` : ""}
+          ${escapeHtml(s.title || "")}
+        </h2>
+        ${(s.content || []).map(renderBlock).join("")}
+      </section>
+    `;
+  }).join("");
+}
+
+async function renderPageFromData(id) {
+  const data = await loadPageData(id);
+  if (!data) return null;
+  const meta = findMeta(id);
+  if (!meta) return null;
+  return pageShell(meta, {
+    deck: data.deck || meta.desc,
+    chips: renderChips(data.chips),
+    summary: data.summary || "",
+    toc: data.toc || [],
+    body: renderSections(data.body || []),
+  });
+}
+
 /* ---------- Common page wrapper ---------- */
 function pageShell(meta, opts) {
   const group = IA.find(g => g.items.some(it => it.id === meta.id));
@@ -3608,11 +3719,29 @@ function setBreadcrumb(id) {
   });
 }
 
-function navigate(id) {
+function renderLoadingPlaceholder() {
+  return `
+    <div class="page-eyebrow">로딩 중…</div>
+    <div style="margin-top:1rem;color:var(--text-muted);font-size:13px;font-family:var(--font-mono);">콘텐츠를 불러오는 중입니다.</div>
+  `;
+}
+
+async function navigate(id) {
   const content = $("#content");
   let html = "";
+
   if (!id || id === "home") {
     html = pageHome();
+  } else if (DATA_BASED_PAGES.has(id)) {
+    // 비동기 데이터 로드 (캐시 hit 시 즉시 반환)
+    if (!PAGE_DATA_CACHE[id]) {
+      content.innerHTML = `<div class="content-loading">${renderLoadingPlaceholder()}</div>`;
+    }
+    html = await renderPageFromData(id);
+    if (!html) {
+      // 데이터 로드 실패 시 함수 fallback
+      html = PAGE_RENDERERS[id] ? PAGE_RENDERERS[id]() : pageDummy(findMeta(id) || { id, title: id });
+    }
   } else if (PAGE_RENDERERS[id]) {
     html = PAGE_RENDERERS[id]();
   } else {
@@ -3846,11 +3975,15 @@ function init() {
     navigate_silent(route);
   });
 
-  function navigate_silent(id) {
+  async function navigate_silent(id) {
     // pushState 없이 콘텐츠만 교체 (이미 history에 있는 항목)
     const content = $("#content");
     let html = "";
     if (!id || id === "home") html = pageHome();
+    else if (DATA_BASED_PAGES.has(id)) {
+      html = await renderPageFromData(id);
+      if (!html) html = PAGE_RENDERERS[id] ? PAGE_RENDERERS[id]() : pageDummy(findMeta(id) || { id, title: id });
+    }
     else if (PAGE_RENDERERS[id]) html = PAGE_RENDERERS[id]();
     else { const meta = findMeta(id); html = meta ? pageDummy(meta) : pageHome(); }
     content.innerHTML = html;
