@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DevHub · App Performance Marketing Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  /* ========== Design Tokens (Obsidian Flux) ========== */
+  :root {
+    --background: #121315;
+    --surface-base: #08090A;
+    --surface-raised: #111827;
+    --surface-overlay: #1F2937;
+    --surface-container-lowest: #0d0e0f;
+    --surface-container-low: #1b1c1d;
+    --surface-container: #1f2021;
+    --surface-container-high: #292a2b;
+    --surface-container-highest: #343536;
+    --primary: #adc6ff;
+    --primary-container: #4d8eff;
+    --secondary: #4cd7f6;
+    --text-primary: #F9FAFB;
+    --text-secondary: #9CA3AF;
+    --text-muted: #6B7280;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-stronger: rgba(255, 255, 255, 0.14);
+
+    --radius-default: 0.125rem;
+    --radius-lg: 0.25rem;
+    --radius-xl: 0.5rem;
+    --radius-full: 0.75rem;
+
+    --sidebar-width: 280px;
+    --container-max: 1280px;
+    --gutter: 1.5rem;
+    --section-gap: 2rem;
+
+    --font-sans: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 20px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv02","cv03","cv04","cv11";
+  }
+
+  /* numeric ui */
+  table, .tnum, .metric, .num, code, pre { font-variant-numeric: tabular-nums; }
+
+  /* ========== Layout ========== */
+  .app {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) 1fr;
+    min-height: 100vh;
+  }
+
+  /* ----- Sidebar ----- */
+  .sidebar {
+    background: var(--surface-container-lowest);
+    border-right: 1px solid var(--border-subtle);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 1.25rem 0.75rem;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.25rem 0.5rem 1rem 0.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 0.75rem;
+  }
+  .brand-mark {
+    width: 28px; height: 28px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+    display: grid; place-items: center;
+    color: var(--surface-base);
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+  }
+  .brand-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.005em;
+  }
+  .brand-sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .sidebar-search {
+    margin: 0 0.25rem 1rem;
+    position: relative;
+  }
+  .sidebar-search input {
+    width: 100%;
+    background: var(--surface-container-low);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 0.5rem 0.75rem 0.5rem 2rem;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: var(--font-sans);
+    outline: none;
+    transition: border-color 0.12s ease, background 0.12s ease;
+  }
+  .sidebar-search input::placeholder { color: var(--text-muted); }
+  .sidebar-search input:focus {
+    border-color: var(--primary);
+    background: var(--surface-container);
+  }
+  .sidebar-search svg {
+    position: absolute;
+    left: 0.625rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+  }
+  .sidebar-search kbd {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    background: var(--surface-container);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-default);
+    padding: 1px 5px;
+  }
+
+  .nav-group { margin-bottom: 0.5rem; }
+  .nav-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.625rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    user-select: none;
+    border-radius: var(--radius-lg);
+  }
+  .nav-group-header:hover { color: var(--text-secondary); background: var(--surface-container-low); }
+  .nav-group-header .chev { transition: transform 0.15s ease; }
+  .nav-group.collapsed .chev { transform: rotate(-90deg); }
+  .nav-group.collapsed .nav-items { display: none; }
+  .nav-group-title { display: flex; align-items: center; gap: 0.5rem; }
+  .nav-group-index {
+    font-family: var(--font-mono);
+    color: var(--primary);
+    font-size: 11px;
+  }
+  .nav-items { display: flex; flex-direction: column; gap: 1px; padding: 2px 0 6px; }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.625rem 0.4rem 1.5rem;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 18px;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    border-left: 1px solid var(--border-subtle);
+    margin-left: 0.85rem;
+    transition: background 0.1s ease, color 0.1s ease;
+  }
+  .nav-item:hover {
+    background: var(--surface-container-low);
+    color: var(--text-primary);
+  }
+  .nav-item.active {
+    color: var(--primary);
+    background: rgba(173, 198, 255, 0.06);
+    border-left-color: var(--primary);
+  }
+  .nav-item .ix {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    min-width: 22px;
+  }
+  .nav-item.active .ix { color: var(--primary); }
+
+  /* ----- Main ----- */
+  .main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(18,19,21,0.85);
+    backdrop-filter: saturate(160%) blur(8px);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 0.625rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .breadcrumb {
+    display: flex; align-items: center; gap: 0.375rem;
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .breadcrumb .sep { color: var(--text-muted); flex-shrink: 0; }
+  .breadcrumb .current {
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+  }
+  .breadcrumb .crumb-link {
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.15rem 0.35rem;
+    border-radius: var(--radius-default);
+    border: 1px solid transparent;
+    white-space: nowrap;
+    transition: color 0.1s ease, background 0.1s ease, border-color 0.1s ease;
+  }
+  .breadcrumb .crumb-link:hover {
+    color: var(--primary);
+    background: rgba(173, 198, 255, 0.08);
+    border-color: rgba(173, 198, 255, 0.15);
+  }
+
+  .topbar-actions { display: flex; align-items: center; gap: 0.5rem; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-container-low);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.1s ease, border-color 0.1s ease;
+    font-family: var(--font-sans);
+  }
+  .btn:hover { background: var(--surface-container); border-color: var(--border-stronger); }
+  .btn.primary {
+    background: var(--primary);
+    color: var(--surface-base);
+    border-color: var(--primary);
+  }
+  .btn.primary:hover { background: #c2d4ff; }
+  .btn.ghost { background: transparent; }
+  .btn .kbd {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    background: var(--surface-container);
+    padding: 1px 4px;
+    border-radius: var(--radius-default);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .content {
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: 2rem 2.5rem 4rem;
+    width: 100%;
+  }
+
+  /* Page header */
+  .page-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--primary);
+    background: rgba(173, 198, 255, 0.08);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-default);
+  }
+  .page-title {
+    font-size: 36px;
+    line-height: 44px;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    margin: 0.75rem 0 0.5rem;
+    color: var(--text-primary);
+  }
+  .page-deck {
+    font-size: 16px;
+    line-height: 24px;
+    color: var(--text-secondary);
+    max-width: 68ch;
+    margin: 0 0 1.5rem;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--surface-container-low);
+    border: 1px solid var(--border-subtle);
+    padding: 0.25rem 0.55rem;
+    border-radius: var(--radius-default);
+  }
+  .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--secondary); }
+  .chip.warning .dot { background: #f7b955; }
+  .chip.ok .dot { background: #5ad19a; }
+
+  /* TOC / 2-column layout */
+  .with-toc {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 3rem;
+    align-items: start;
+  }
+  .toc {
+    position: sticky;
+    top: 80px;
+    font-size: 12px;
+  }
+  .toc-title {
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .toc a {
+    display: block;
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 0.3rem 0.5rem;
+    border-left: 1px solid var(--border-subtle);
+    border-radius: 0;
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .toc a:hover { color: var(--text-primary); border-left-color: var(--border-stronger); }
+  .toc a.active { color: var(--primary); border-left-color: var(--primary); }
+
+  /* Sections */
+  section.block {
+    margin-bottom: var(--section-gap);
+    padding-top: 0.5rem;
+    scroll-margin-top: 80px;
+  }
+  h2.section-title {
+    font-size: 24px;
+    line-height: 32px;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+    margin: 0 0 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+    color: var(--text-primary);
+  }
+  h2.section-title .ix {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--primary);
+    background: rgba(173, 198, 255, 0.08);
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-default);
+    font-weight: 500;
+  }
+  h3.sub-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 1.5rem 0 0.5rem;
+  }
+  p { color: var(--text-secondary); margin: 0 0 0.75rem; font-size: 14px; line-height: 22px; }
+  p strong, li strong { color: var(--text-primary); font-weight: 600; }
+  ul, ol { color: var(--text-secondary); padding-left: 1.25rem; margin: 0.5rem 0 1rem; }
+  li { margin: 0.25rem 0; line-height: 22px; }
+  code.inline {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--primary);
+    background: rgba(173, 198, 255, 0.08);
+    padding: 1px 6px;
+    border-radius: var(--radius-default);
+    border: 1px solid var(--border-subtle);
+  }
+
+  /* Summary callout */
+  .summary {
+    border: 1px solid var(--border-subtle);
+    background: linear-gradient(180deg, rgba(173,198,255,0.04) 0%, rgba(173,198,255,0) 100%);
+    border-radius: var(--radius-xl);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .summary-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--primary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .summary p { color: var(--text-primary); margin: 0; line-height: 22px; }
+
+  /* Code block */
+  .code-block {
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    margin: 0.75rem 0 1.25rem;
+  }
+  .code-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.75rem;
+    background: var(--surface-container-low);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .code-lang {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+  }
+  .code-lang .lang-dot { width: 8px; height: 8px; border-radius: 2px; background: var(--secondary); }
+  .code-lang.swift .lang-dot { background: #fa7343; }
+  .code-lang.kotlin .lang-dot { background: #7f52ff; }
+  .code-lang.json .lang-dot { background: #f7b955; }
+  .code-lang.bash .lang-dot { background: #5ad19a; }
+  .code-lang.http .lang-dot { background: #adc6ff; }
+  .copy-btn {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border-subtle);
+    padding: 0.2rem 0.55rem;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    border-radius: var(--radius-default);
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    transition: color 0.1s ease, border-color 0.1s ease;
+  }
+  .copy-btn:hover { color: var(--text-primary); border-color: var(--border-stronger); }
+  .copy-btn.copied { color: var(--secondary); border-color: var(--secondary); }
+  pre {
+    margin: 0;
+    padding: 1rem 1.25rem;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: #e6e8ec;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  pre .k { color: #c792ea; }
+  pre .s { color: #c3e88d; }
+  pre .n { color: #f78c6c; }
+  pre .c { color: #6B7280; font-style: italic; }
+  pre .t { color: #82aaff; }
+  pre .p { color: var(--text-muted); }
+  pre .a { color: #ffcb6b; }
+
+  /* Tables */
+  .table-wrap {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    margin: 0.75rem 0 1.25rem;
+    background: var(--surface-container-lowest);
+  }
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  table.data thead th {
+    background: var(--surface-container-low);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+    text-align: left;
+    padding: 0.625rem 0.875rem;
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  table.data thead th .sort-icon {
+    display: inline-block;
+    margin-left: 0.25rem;
+    color: var(--text-muted);
+    font-size: 10px;
+  }
+  table.data thead th.sorted-asc .sort-icon,
+  table.data thead th.sorted-desc .sort-icon { color: var(--primary); }
+  table.data tbody td {
+    padding: 0.625rem 0.875rem;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: top;
+    line-height: 20px;
+  }
+  table.data tbody tr:last-child td { border-bottom: none; }
+  table.data tbody tr:hover td { background: var(--surface-container-low); }
+  table.data td.muted { color: var(--text-secondary); }
+  table.data td code, table.data td .mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--primary);
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: var(--radius-default);
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-container);
+    color: var(--text-secondary);
+  }
+  .pill.tier-1 { color: var(--primary); border-color: rgba(173,198,255,0.3); background: rgba(173,198,255,0.06); }
+  .pill.tier-2 { color: var(--secondary); border-color: rgba(76,215,246,0.3); background: rgba(76,215,246,0.06); }
+  .pill.tier-3 { color: #f7b955; border-color: rgba(247,185,85,0.3); background: rgba(247,185,85,0.06); }
+
+  /* KPI grid */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin: 0.75rem 0 1.5rem;
+  }
+  .kpi-card {
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 1rem;
+  }
+  .kpi-card .label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+  }
+  .kpi-card .value {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+  }
+  .kpi-card .delta { font-family: var(--font-mono); font-size: 12px; color: var(--secondary); }
+  .kpi-card .delta.down { color: #ff8a8a; }
+
+  /* Pitfall / Callout */
+  .callout {
+    display: flex;
+    gap: 0.875rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    background: var(--surface-container-lowest);
+    margin: 0.75rem 0 1rem;
+  }
+  .callout.warn { border-left: 2px solid #f7b955; }
+  .callout.danger { border-left: 2px solid #ff8a8a; }
+  .callout.info { border-left: 2px solid var(--primary); }
+  .callout .ico {
+    flex-shrink: 0;
+    width: 22px; height: 22px;
+    border-radius: var(--radius-default);
+    display: grid; place-items: center;
+    background: var(--surface-container);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .callout.warn .ico { color: #f7b955; }
+  .callout.danger .ico { color: #ff8a8a; }
+  .callout.info .ico { color: var(--primary); }
+  .callout .body { flex: 1; }
+  .callout .body strong { color: var(--text-primary); }
+  .callout p { margin: 0.15rem 0; font-size: 13px; line-height: 20px; }
+
+  /* Dashboard cards (landing) */
+  .grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 0.875rem;
+    margin: 1rem 0 2rem;
+  }
+  .card {
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 1rem;
+    cursor: pointer;
+    transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+  }
+  .card:hover { border-color: var(--border-stronger); background: var(--surface-container-low); transform: translateY(-1px); }
+  .card .card-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--primary);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .card .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.4rem;
+    letter-spacing: -0.005em;
+  }
+  .card .card-desc { font-size: 13px; color: var(--text-secondary); line-height: 19px; margin-bottom: 0.75rem; }
+  .card .card-meta {
+    display: flex; gap: 0.5rem; flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* Footer */
+  .page-footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-subtle);
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface-container-high); border-radius: 8px; border: 2px solid var(--background); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--surface-container-highest); }
+
+  /* Responsive */
+  @media (max-width: 1100px) {
+    .with-toc { grid-template-columns: 1fr; }
+    .toc { display: none; }
+  }
+  @media (max-width: 880px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .content { padding: 1.25rem 1rem 3rem; }
+    .page-title { font-size: 28px; line-height: 36px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">DH</div>
+      <div>
+        <div class="brand-name">DevHub Library</div>
+        <div class="brand-sub">v2.4 · app perf</div>
+      </div>
+    </div>
+
+    <div class="sidebar-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input id="searchInput" type="text" placeholder="Search guides, params, codes…" />
+      <kbd>⌘K</kbd>
+    </div>
+
+    <nav id="nav"></nav>
+  </aside>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="main">
+    <header class="topbar">
+      <div class="breadcrumb" id="breadcrumb">
+        <span>Library</span>
+        <span class="sep">/</span>
+        <span class="current">Overview</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn ghost" title="Documentation status">
+          <span style="width:6px;height:6px;border-radius:50%;background:#5ad19a;display:inline-block;"></span>
+          Synced · 12 min ago
+        </button>
+        <button class="btn">Share</button>
+        <button class="btn primary">Edit guide</button>
+      </div>
+    </header>
+
+    <div class="content" id="content"></div>
+  </main>
+</div>
+
+<script>
+/* ========== Information Architecture ========== */
+const IA = [
+  {
+    id: "01",
+    title: "Foundation",
+    subtitle: "앱 트래킹 인프라 및 계정 셋업",
+    items: [
+      { id: "1-1", title: "개발자 협업 가이드 및 테크니컬 PRD", desc: "MMP SDK 초기화 스펙, 딥링크 라우팅 로직, QA 시나리오" },
+      { id: "1-2", title: "인앱 이벤트 택소노미 설계서", desc: "비즈니스 핵심 퍼널 및 파라미터 규격" },
+      { id: "1-3", title: "매체별 포스트백 연동 매뉴얼", desc: "Adjust-매체 간 파트너 연동" },
+      { id: "1-4", title: "iOS 프라이버시 대응 (ATT & SKAN)", desc: "프롬프트 최적화 및 Conversion Value 스키마" },
+    ],
+  },
+  {
+    id: "02",
+    title: "Execution",
+    subtitle: "앱 설치 및 인게이지먼트 캠페인 세팅",
+    items: [
+      { id: "2-1", title: "Google App Campaigns (UAC) 가이드", desc: "tCPI, tCPA 캠페인 및 에셋 그룹 구조" },
+      { id: "2-2", title: "Meta Advantage+ App (AAP) 최적화", desc: "OS별 분리 및 머신러닝 최적화" },
+      { id: "2-3", title: "Apple Search Ads (ASA) 운영 매뉴얼", desc: "Search Match 및 키워드 그룹핑" },
+      { id: "2-4", title: "앱 리타겟팅 및 Re-engagement", desc: "디퍼드 딥링크 활용 및 오디언스 세분화" },
+    ],
+  },
+  {
+    id: "03",
+    title: "Creative & Copy",
+    subtitle: "앱 스토어 및 소재 기획",
+    items: [
+      { id: "3-1", title: "앱 스토어 최적화 (ASO) 베이직", desc: "메타데이터 및 스크린샷 A/B 테스트" },
+      { id: "3-2", title: "매체별 앱 설치 유도 소재 규격", desc: "플레이어블, 숏폼 영상 안전 영역" },
+      { id: "3-3", title: "초기 3초 훅(Hook) 설계 프레임워크", desc: "핵심 UI/UX 강조 패턴" },
+    ],
+  },
+  {
+    id: "04",
+    title: "Analysis & Optimization",
+    subtitle: "MMP 기반 데이터 분석",
+    items: [
+      { id: "4-1", title: "앱 마케팅 핵심 지표(KPI) 분석", desc: "CPI, CPA, ARPU, ROAS 벤치마크" },
+      { id: "4-2", title: "코호트 기반 리텐션 가이드", desc: "D+N 잔존율 및 LTV 검증" },
+      { id: "4-3", title: "오가닉 vs 페이드 카니발리제이션 분석", desc: "기여 모델 보정" },
+      { id: "4-4", title: "모바일 광고 프로드 탐지", desc: "클릭 스팸, SDK 스푸핑 방어" },
+    ],
+  },
+];
+
+/* ========== Utilities ========== */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* Tiny syntax highlight for known languages */
+function hl(code, lang) {
+  let s = escapeHtml(code);
+  if (lang === "swift" || lang === "kotlin") {
+    s = s.replace(/(\/\/[^\n]*)/g, '<span class="c">$1</span>');
+    s = s.replace(/\b(import|let|var|val|fun|func|class|object|return|if|else|for|while|self|this|true|false|nil|null|companion|override|private|public|internal|suspend)\b/g, '<span class="k">$1</span>');
+    s = s.replace(/(&quot;[^&]*?&quot;)/g, '<span class="s">$1</span>');
+    s = s.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="n">$1</span>');
+  } else if (lang === "json") {
+    s = s.replace(/(&quot;[^&]*?&quot;)(\s*:)/g, '<span class="a">$1</span>$2');
+    s = s.replace(/:\s*(&quot;[^&]*?&quot;)/g, ': <span class="s">$1</span>');
+    s = s.replace(/\b(true|false|null)\b/g, '<span class="k">$1</span>');
+    s = s.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="n">$1</span>');
+  } else if (lang === "bash") {
+    s = s.replace(/(^|\n)(\s*)(#[^\n]*)/g, '$1$2<span class="c">$3</span>');
+    s = s.replace(/\b(curl|export|echo|cd|grep|adjust|adb|xcrun)\b/g, '<span class="k">$1</span>');
+    s = s.replace(/(--?[a-zA-Z][\w-]*)/g, '<span class="t">$1</span>');
+  } else if (lang === "http") {
+    s = s.replace(/\b(GET|POST|PUT|PATCH|DELETE)\b/g, '<span class="k">$1</span>');
+    s = s.replace(/(\{[^}]+\})/g, '<span class="t">$1</span>');
+  }
+  return s;
+}
+
+function codeBlock(lang, label, code) {
+  const id = "cb_" + Math.random().toString(36).slice(2, 9);
+  return `
+    <div class="code-block">
+      <div class="code-block-header">
+        <div class="code-lang ${lang}"><span class="lang-dot"></span>${label || lang.toUpperCase()}</div>
+        <button class="copy-btn" data-copy-target="${id}">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          Copy
+        </button>
+      </div>
+      <pre id="${id}"><code>${hl(code, lang)}</code></pre>
+    </div>`;
+}
+
+function dataTable(headers, rows, opts = {}) {
+  const id = "tb_" + Math.random().toString(36).slice(2, 9);
+  const head = headers.map((h, i) =>
+    `<th data-col="${i}" data-type="${h.type || "string"}">${escapeHtml(h.label)}<span class="sort-icon">↕</span></th>`
+  ).join("");
+  const body = rows.map(r =>
+    "<tr>" + r.map(cell => {
+      if (cell && typeof cell === "object" && "html" in cell) return `<td class="${cell.cls||''}">${cell.html}</td>`;
+      return `<td>${escapeHtml(String(cell))}</td>`;
+    }).join("") + "</tr>"
+  ).join("");
+  return `
+    <div class="table-wrap">
+      <table class="data" id="${id}" data-sortable="1">
+        <thead><tr>${head}</tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
+}
+
+/* ========== Sidebar Renderer ========== */
+function renderNav(activeId) {
+  const nav = $("#nav");
+  nav.innerHTML = IA.map(group => `
+    <div class="nav-group" data-group="${group.id}">
+      <div class="nav-group-header" data-toggle="${group.id}">
+        <span class="nav-group-title">
+          <span class="nav-group-index">${group.id}</span>
+          <span>${escapeHtml(group.title)}</span>
+        </span>
+        <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+      <div class="nav-items">
+        ${group.items.map(it => `
+          <div class="nav-item ${it.id === activeId ? "active" : ""}" data-route="${it.id}">
+            <span class="ix tnum">${it.id}</span>
+            <span>${escapeHtml(it.title)}</span>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `).join("");
+
+  $$('.nav-item').forEach(el => {
+    el.addEventListener("click", () => navigate(el.dataset.route));
+  });
+  $$('.nav-group-header').forEach(el => {
+    el.addEventListener("click", () => {
+      el.parentElement.classList.toggle("collapsed");
+    });
+  });
+}
+
+/* ========== Page renderers ========== */
+function pageHome() {
+  const cards = IA.flatMap(g => g.items.map(it => ({ ...it, group: g.title, gid: g.id })));
+  return `
+    <div class="page-eyebrow">DevHub · Marketing Library</div>
+    <h1 class="page-title">App Performance Marketing, Operationalized.</h1>
+    <p class="page-deck">Adjust/MMP 인프라 셋업부터 UAC·AAP·ASA 캠페인 운영, 코호트 LTV 검증까지. 시니어 퍼포먼스 마케터가 실무에서 그대로 복붙할 수 있는 표준 작업 절차(SOP) 라이브러리.</p>
+
+    <div class="meta-row">
+      <span class="chip"><span class="dot"></span>14 Guides</span>
+      <span class="chip ok"><span class="dot"></span>4 Categories</span>
+      <span class="chip"><span class="dot"></span>Last sync · 2026-05-25</span>
+      <span class="chip warning"><span class="dot"></span>iOS 18 SKAN 4.0 ready</span>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="label">Avg. CPI (KR · iOS)</div><div class="value tnum">$3.42</div><div class="delta">▲ 4.1% wow</div></div>
+      <div class="kpi-card"><div class="label">D7 Retention</div><div class="value tnum">21.6%</div><div class="delta down">▼ 0.8pp</div></div>
+      <div class="kpi-card"><div class="label">Tracked Events</div><div class="value tnum">137</div><div class="delta">▲ 12 added</div></div>
+      <div class="kpi-card"><div class="label">Postback Coverage</div><div class="value tnum">94%</div><div class="delta">▲ 2 partners</div></div>
+    </div>
+
+    <h2 class="section-title">All Guides</h2>
+    <div class="grid-cards">
+      ${cards.map(c => `
+        <div class="card" data-route="${c.id}">
+          <div class="card-eyebrow">${c.gid} · ${escapeHtml(c.group)}</div>
+          <div class="card-title">${c.id}. ${escapeHtml(c.title)}</div>
+          <div class="card-desc">${escapeHtml(c.desc)}</div>
+          <div class="card-meta">
+            <span>SOP</span>
+            <span>·</span>
+            <span>Updated 5d ago</span>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+/* ---------- 1-1 (Full quality) ---------- */
+function page_1_1() {
+  return `
+    <div class="page-eyebrow">01 Foundation · 1-1</div>
+    <h1 class="page-title">개발자 협업 가이드 및 테크니컬 PRD</h1>
+    <p class="page-deck">MMP(Adjust) SDK 초기화 스펙, 딥링크 라우팅 로직, 그리고 릴리즈 전 QA 시나리오를 단일 문서로 통합한 개발 협업 표준. 본 문서가 그대로 PRD가 되도록 작성됨.</p>
+
+    <div class="meta-row">
+      <span class="chip"><span class="dot"></span>Owner · Growth Eng.</span>
+      <span class="chip ok"><span class="dot"></span>Status · Production</span>
+      <span class="chip"><span class="dot"></span>Adjust SDK ≥ v5.0.0</span>
+      <span class="chip warning"><span class="dot"></span>iOS 14.5+ Required</span>
+    </div>
+
+    <div class="with-toc">
+      <div>
+        <div class="summary">
+          <div class="summary-label">Executive Summary</div>
+          <p>본 문서는 신규 앱 또는 리뉴얼 앱의 어트리뷰션 기반 마련을 위해 개발팀이 구현해야 할 <strong>최소 필수 스펙</strong>을 정의한다. Adjust SDK v5 초기화 → 디퍼드 딥링크 라우팅 → 릴리즈 QA 체크리스트의 3단 게이트를 통과한 빌드만 LIVE 캠페인에 진입한다. 잘못 셋업된 SDK 한 줄이 전 캠페인 데이터를 무효화시키므로, 모든 항목은 <strong>코드 리뷰 + QA Lead 더블 사인오프</strong>를 강제한다.</p>
+        </div>
+
+        <section class="block" id="s-prereq">
+          <h2 class="section-title"><span class="ix">§1</span>Prerequisites</h2>
+          <ul>
+            <li><strong>Adjust 대시보드 권한</strong>: App Token (iOS/Android 분리), Environment(sandbox/production), Default Tracker 발급 완료</li>
+            <li><strong>Bundle ID / Package Name</strong> 사전 등록. Android는 <code class="inline">applicationId</code> 기준, iOS는 App Store Connect의 <code class="inline">Bundle Identifier</code> 기준</li>
+            <li><strong>StoreKit 2 + ATTrackingManager</strong> 의존성 및 iOS 14.5+ 지원</li>
+            <li><strong>App Links / Universal Links</strong> 도메인 검증 파일 호스팅 (<code class="inline">.well-known/apple-app-site-association</code>, <code class="inline">.well-known/assetlinks.json</code>)</li>
+          </ul>
+        </section>
+
+        <section class="block" id="s-sdk">
+          <h2 class="section-title"><span class="ix">§2</span>Implementation Steps</h2>
+
+          <h3 class="sub-title">2.1 iOS · Adjust SDK 초기화 (Swift, AppDelegate)</h3>
+          <p>초기화는 <strong>반드시 ATT 프롬프트 응답 후</strong> 진행한다. 프롬프트 이전 초기화 시 IDFA가 영구적으로 0으로 고정되어 attribution이 SKAdNetwork 단일 채널로 강제 다운그레이드된다.</p>
+          ${codeBlock("swift", "iOS · AppDelegate.swift", `import Adjust
+import AdjustSdk
+import AppTrackingTransparency
+
+func application(_ application: UIApplication,
+                 didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+
+    let appToken = "abc1234xyz9"  // Production token
+    let environment = ADJEnvironmentProduction
+
+    let config = ADJConfig(appToken: appToken,
+                           environment: environment,
+                           allowSuppressLogLevel: false)
+    config?.logLevel = ADJLogLevelInfo
+    config?.needsCost = true                 // ROAS 계산용 비용 데이터
+    config?.linkMeMetadata = true            // LinkMe 클립보드 매칭 활성화
+    config?.attConsentWaitingInterval = 60   // ATT 응답까지 최대 60초 대기 후 강제 발화
+
+    // SKAN 4.0 ConversionValue 업데이트 위임
+    config?.delegate = SKANDelegateHandler.shared
+
+    Adjust.appDidLaunch(config)
+
+    // ATT 프롬프트는 최초 활성 후 비동기로 호출 (사용자 컨텍스트 확보 후)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        ATTrackingManager.requestTrackingAuthorization { _ in
+            Adjust.requestTrackingAuthorization { status in
+                // status: 0 Not Determined / 3 Authorized
+                print("[ATT] status=\\(status)")
+            }
+        }
+    }
+    return true
+}`)}
+
+          <h3 class="sub-title">2.2 Android · Adjust SDK 초기화 (Kotlin, Application 클래스)</h3>
+          <p>Application 서브클래스에서 <strong>최상위 onCreate</strong>에 위치시켜야 한다. 외부 라이브러리(Firebase 등)보다 늦게 초기화될 경우, 첫 세션의 install referrer가 누락된다.</p>
+          ${codeBlock("kotlin", "Android · App.kt", `import android.app.Application
+import com.adjust.sdk.Adjust
+import com.adjust.sdk.AdjustConfig
+import com.adjust.sdk.LogLevel
+
+class App : Application() {
+    override fun onCreate() {
+        super.onCreate()
+
+        val appToken = "abc1234xyz9"
+        val environment = AdjustConfig.ENVIRONMENT_PRODUCTION
+
+        val config = AdjustConfig(this, appToken, environment).apply {
+            setLogLevel(LogLevel.INFO)
+            setNeedsCost(true)
+            setPreinstallTrackingEnabled(true)        // 사전탑재 트래킹
+            setSendInBackground(true)                 // 백그라운드 전송
+            setEventBufferingEnabled(false)           // 실시간 캠페인 운영 시 false
+            setOnAttributionChangedListener { attr ->
+                // network_name / campaign_name / adgroup_name / creative_name
+                AppAnalytics.bindAttribution(attr)
+            }
+            setOnDeeplinkResponseListener { uri ->
+                DeeplinkRouter.handle(uri)            // 디퍼드 딥링크 라우팅
+                true
+            }
+        }
+
+        Adjust.onCreate(config)
+        registerActivityLifecycleCallbacks(AdjustLifecycleCallbacks())
+    }
+}`)}
+
+          <h3 class="sub-title">2.3 딥링크 라우팅 로직 (디퍼드 포함)</h3>
+          <p>3가지 진입점을 단일 라우터로 통합한다: <strong>(a)</strong> Universal Link / App Link 진입, <strong>(b)</strong> 커스텀 URI 스킴, <strong>(c)</strong> Adjust 디퍼드 딥링크(미설치 상태에서 스토어 경유 후 첫 실행 시 발화). 라우터는 항상 <code class="inline">scheme://host/path?params</code> 표준형으로 정규화한 뒤 분기한다.</p>
+          ${codeBlock("kotlin", "Android · DeeplinkRouter.kt", `object DeeplinkRouter {
+    fun handle(uri: Uri): Boolean {
+        val path = uri.pathSegments.firstOrNull() ?: return openHome()
+        return when (path) {
+            "product" -> openProduct(uri.lastPathSegment ?: return openHome())
+            "promo"   -> openPromo(uri.getQueryParameter("code"))
+            "invite"  -> openReferral(uri.getQueryParameter("ref"))
+            else      -> openHome()
+        }.also {
+            Analytics.track("deeplink_opened", mapOf(
+                "deeplink_path"   to uri.path.orEmpty(),
+                "deeplink_source" to (uri.getQueryParameter("utm_source") ?: "direct"),
+                "is_deferred"     to (DeferredFlag.consume())
+            ))
+        }
+    }
+}`)}
+
+          <h3 class="sub-title">2.4 표준 URL 스키마</h3>
+          <p>매체 트래커 URL은 <strong>Adjust Custom URL</strong>에 아래 스키마를 강제한다. 모든 매크로는 매체별 placeholder를 사용하며, 임의 추가는 불가하다.</p>
+          ${codeBlock("http", "Adjust Click URL Template", `https://app.adjust.com/{tracker_token}
+  ?campaign={campaign_name}
+  &adgroup={adgroup_name}
+  &creative={creative_name}
+  &idfa={idfa}            // iOS 14.5+ 에서는 자동 0 처리
+  &gps_adid={gps_adid}    // Google Play Services ADID
+  &cost_type=cpc
+  &cost_amount={cost}
+  &cost_currency=USD
+  &deeplink=myapp%3A%2F%2Fproduct%2F{product_id}
+  &fallback=https%3A%2F%2Fwww.example.com%2Fproduct%2F{product_id}`)}
+        </section>
+
+        <section class="block" id="s-qa">
+          <h2 class="section-title"><span class="ix">§3</span>QA Scenarios (Release Gate)</h2>
+          <p>아래 12개 시나리오를 모두 PASS해야 LIVE 빌드로 승인된다. 실패 1건 = 빌드 반려.</p>
+          ${dataTable(
+            [
+              { label: "ID", type: "string" },
+              { label: "Scenario", type: "string" },
+              { label: "Expected", type: "string" },
+              { label: "Severity", type: "string" },
+              { label: "Tool", type: "string" },
+            ],
+            [
+              ["QA-01", "신규 설치 → 첫 세션 발화", "install + session_start 1회씩 발화", { html: '<span class="pill tier-1">Blocker</span>' }, "Adjust Testing Console"],
+              ["QA-02", "ATT 프롬프트 Authorized 케이스", "IDFA 비공백, attribution sandbox에 도달", { html: '<span class="pill tier-1">Blocker</span>' }, "Charles Proxy"],
+              ["QA-03", "ATT Denied 케이스", "IDFA=00000... 0, SKAN 단일 채널 정상 동작", { html: '<span class="pill tier-1">Blocker</span>' }, "Console"],
+              ["QA-04", "Universal Link 콜드 스타트", "DeeplinkRouter.handle 1회 호출", { html: '<span class="pill tier-2">Major</span>' }, "Safari → 앱 전환"],
+              ["QA-05", "디퍼드 딥링크 (미설치 → 설치)", "최초 실행 시 onDeeplinkResponse 발화", { html: '<span class="pill tier-1">Blocker</span>' }, "Test Console + Test Device"],
+              ["QA-06", "커스텀 URI 스킴 (외부 브라우저)", "Router 분기 정확", { html: '<span class="pill tier-2">Major</span>' }, "adb shell am start"],
+              ["QA-07", "백그라운드 ↔ 포그라운드 전환", "session 중복 발화 없음", { html: '<span class="pill tier-2">Major</span>' }, "Adjust Logs"],
+              ["QA-08", "비행기 모드 → 온라인 복귀", "이벤트 큐잉 후 1회만 전송", { html: '<span class="pill tier-2">Major</span>' }, "Charles"],
+              ["QA-09", "SKAN postback (Apple Test Mode)", "coarse value [low|medium|high] 매핑 정상", { html: '<span class="pill tier-1">Blocker</span>' }, "xcrun simctl + Apple Console"],
+              ["QA-10", "Cost data 수신 (UAC/AAP)", "Adjust 대시보드에 cost_amount 노출", { html: '<span class="pill tier-3">Minor</span>' }, "Adjust > Cost Data"],
+              ["QA-11", "in_app_purchase 매출 이벤트", "revenue + currency 정확", { html: '<span class="pill tier-1">Blocker</span>' }, "StoreKit Test"],
+              ["QA-12", "Uninstall + Reinstall", "reattribution 분류 정상", { html: '<span class="pill tier-2">Major</span>' }, "Adjust > Reattribution"],
+            ]
+          )}
+        </section>
+
+        <section class="block" id="s-troubleshoot">
+          <h2 class="section-title"><span class="ix">§4</span>Troubleshooting / Pitfalls</h2>
+
+          <div class="callout danger">
+            <div class="ico">!</div>
+            <div class="body">
+              <strong>install 이벤트가 중복 발화된다</strong>
+              <p>Adjust.appDidLaunch가 Application과 AppDelegate 양쪽에서 호출되는 경우. Application 클래스에서 단 1회만 호출되도록 통일하고, ActivityLifecycleCallbacks는 register는 하되 SDK 초기화는 분리한다.</p>
+            </div>
+          </div>
+
+          <div class="callout warn">
+            <div class="ico">!</div>
+            <div class="body">
+              <strong>iOS에서 attribution이 organic으로만 잡힌다</strong>
+              <p>1) ATT 프롬프트가 SDK 초기화 이후에 호출되었는지 확인. 2) <code class="inline">attConsentWaitingInterval</code>를 30~60초로 명시. 3) LinkMe 도메인이 매체별 클릭 URL에 일치하는지 확인.</p>
+            </div>
+          </div>
+
+          <div class="callout warn">
+            <div class="ico">!</div>
+            <div class="body">
+              <strong>디퍼드 딥링크가 첫 실행에 발화되지 않는다</strong>
+              <p>Android: Play Install Referrer API 의존성 누락 가능성. <code class="inline">com.android.installreferrer:installreferrer:2.2</code> 추가. iOS: Universal Links의 <code class="inline">apple-app-site-association</code>가 HTTPS, Content-Type=application/json으로 서빙되는지 검증.</p>
+            </div>
+          </div>
+
+          <div class="callout info">
+            <div class="ico">i</div>
+            <div class="body">
+              <strong>Sandbox에서 production 토큰을 잘못 사용 중</strong>
+              <p>환경 분리는 <code class="inline">BuildConfig.DEBUG</code> 또는 <code class="inline">#if DEBUG</code>로 빌드 타임에 분기. Sandbox 토큰을 Production에 사용하면 raw event는 Adjust에 도달하지만 attribution은 발생하지 않음.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="block" id="s-handoff">
+          <h2 class="section-title"><span class="ix">§5</span>Handoff Checklist</h2>
+          <p>QA Lead → Growth PM 인수인계 전 확인:</p>
+          <ul>
+            <li>Adjust 대시보드 raw export 1일치 다운로드, 디버그 트래픽 분리 검증</li>
+            <li>SKAN postback 수신 endpoint 등록 (<code class="inline">skadnetwork.adjust.com</code>) 및 partner re-direct ON</li>
+            <li>Firebase / Amplitude 등 2nd-party 분석 툴과 user_id 키 정합성 확인</li>
+            <li>Adjust → BigQuery / S3 export 파이프라인 sync 확인</li>
+          </ul>
+        </section>
+
+        <div class="page-footer">
+          <span>1-1. Developer Collaboration & Technical PRD</span>
+          <span>Updated · 2026-05-22</span>
+        </div>
+      </div>
+
+      <aside class="toc">
+        <div class="toc-title">On this page</div>
+        <a href="#s-prereq">Prerequisites</a>
+        <a href="#s-sdk">Implementation Steps</a>
+        <a href="#s-qa">QA Scenarios</a>
+        <a href="#s-troubleshoot">Troubleshooting</a>
+        <a href="#s-handoff">Handoff Checklist</a>
+      </aside>
+    </div>
+  `;
+}
+
+/* ---------- 1-2 (Full quality) ---------- */
+function page_1_2() {
+  const taxonomyRows = [
+    ["session_start", "Lifecycle", "앱 포그라운드 진입", "platform, app_version, network_type", { html: '<span class="pill tier-1">Tier-1</span>' }, "auto"],
+    ["sign_up", "Acquisition", "회원가입 완료", "method(email|kakao|apple), user_grade", { html: '<span class="pill tier-1">Tier-1</span>' }, "manual"],
+    ["login", "Lifecycle", "기존 사용자 로그인", "method, days_since_last_login", { html: '<span class="pill tier-2">Tier-2</span>' }, "manual"],
+    ["onboarding_complete", "Activation", "온보딩 마지막 스텝 종료", "duration_sec, skipped(bool)", { html: '<span class="pill tier-1">Tier-1</span>' }, "manual"],
+    ["product_view", "Funnel", "상품 상세 조회", "product_id, category, price, currency", { html: '<span class="pill tier-2">Tier-2</span>' }, "manual"],
+    ["add_to_cart", "Funnel", "장바구니 추가", "product_id, quantity, price", { html: '<span class="pill tier-1">Tier-1</span>' }, "manual"],
+    ["begin_checkout", "Funnel", "결제 화면 진입", "cart_value, item_count", { html: '<span class="pill tier-1">Tier-1</span>' }, "manual"],
+    ["purchase", "Revenue", "결제 완료 (트랜잭션)", "transaction_id, revenue, currency, payment_method", { html: '<span class="pill tier-1">Tier-1</span>' }, "manual"],
+    ["subscribe", "Revenue", "구독 시작 (Trial 포함)", "plan_id, trial(bool), revenue", { html: '<span class="pill tier-1">Tier-1</span>' }, "manual"],
+    ["refund", "Revenue", "환불 처리", "transaction_id, refund_amount", { html: '<span class="pill tier-2">Tier-2</span>' }, "server"],
+    ["share", "Engagement", "외부 공유 액션", "channel(km|fb|link), content_type", { html: '<span class="pill tier-3">Tier-3</span>' }, "manual"],
+    ["push_open", "Re-engagement", "푸시 알림 진입", "campaign_id, segment", { html: '<span class="pill tier-2">Tier-2</span>' }, "manual"],
+  ];
+
+  return `
+    <div class="page-eyebrow">01 Foundation · 1-2</div>
+    <h1 class="page-title">인앱 이벤트 택소노미 설계서</h1>
+    <p class="page-deck">비즈니스 핵심 퍼널을 단일 진실 원천(SSOT)으로 정의하는 이벤트 스펙. 매체 최적화 시그널, 코호트 분석, LTV 검증의 기반이 되며, <strong>이름·파라미터·발화 시점</strong> 3요소가 모두 표준화된다.</p>
+
+    <div class="meta-row">
+      <span class="chip"><span class="dot"></span>Owner · Growth + Product</span>
+      <span class="chip ok"><span class="dot"></span>Status · v2.4 LIVE</span>
+      <span class="chip"><span class="dot"></span>Naming · snake_case</span>
+      <span class="chip warning"><span class="dot"></span>12 Tier-1 Events</span>
+    </div>
+
+    <div class="with-toc">
+      <div>
+        <div class="summary">
+          <div class="summary-label">Executive Summary</div>
+          <p>본 택소노미는 <strong>퍼널 7단(Install → Activate → Convert → Retain → Refer → Monetize → Reactivate)</strong>을 12개의 Tier-1 이벤트로 압축한다. 모든 이벤트는 <code class="inline">snake_case</code> 명명, 영문 소문자, 동사+명사 또는 명사+상태 구조를 강제한다. Tier-1은 매체 최적화 시그널(UAC/AAP/ASA tCPA) 및 SKAN Conversion Value 매핑의 입력값으로 사용되며, 임의 변경 시 캠페인 러닝 데이터를 폐기하고 재학습이 필요하다.</p>
+        </div>
+
+        <section class="block" id="s-principles">
+          <h2 class="section-title"><span class="ix">§1</span>Naming Principles</h2>
+          <ul>
+            <li><strong>snake_case 강제</strong>: <code class="inline">addToCart</code>(X) → <code class="inline">add_to_cart</code>(O). Camel/Pascal/Kebab 혼용 금지</li>
+            <li><strong>동사+명사 또는 명사+상태</strong>: <code class="inline">view_product</code> 대신 <code class="inline">product_view</code> (GA4 표준 정합)</li>
+            <li><strong>예약 이벤트명 회피</strong>: <code class="inline">session_start</code>, <code class="inline">first_open</code>, <code class="inline">in_app_purchase</code> 등 Adjust/Firebase 예약어는 자체 정의 불가. Adjust의 <code class="inline">in_app_purchase</code>는 자동 매핑되도록 <code class="inline">purchase</code> 이벤트로 매출 송신</li>
+            <li><strong>최대 길이 40자</strong>, 파라미터 키 25자, 값 100자 이내</li>
+            <li><strong>PII 절대 금지</strong>: email, phone, name, address, device_token 직접 송신 금지. 필요한 경우 hash(SHA-256) + salt 후 전송</li>
+            <li><strong>currency는 ISO 4217</strong> 3자리 (KRW, USD, JPY). revenue는 단일 통화로 정규화하지 말고 currency 파라미터를 항상 동반</li>
+          </ul>
+        </section>
+
+        <section class="block" id="s-master">
+          <h2 class="section-title"><span class="ix">§2</span>Master Event List</h2>
+          <p>컬럼 헤더를 클릭하면 정렬됩니다. Tier-1은 매체 최적화 신호로 사용되는 핵심 이벤트입니다.</p>
+          ${dataTable(
+            [
+              { label: "Event Name", type: "string" },
+              { label: "Funnel Stage", type: "string" },
+              { label: "Trigger", type: "string" },
+              { label: "Required Params", type: "string" },
+              { label: "Tier", type: "string" },
+              { label: "Source", type: "string" },
+            ],
+            taxonomyRows
+          )}
+        </section>
+
+        <section class="block" id="s-params">
+          <h2 class="section-title"><span class="ix">§3</span>Standard Parameter Spec</h2>
+          ${dataTable(
+            [
+              { label: "Parameter", type: "string" },
+              { label: "Type", type: "string" },
+              { label: "Example", type: "string" },
+              { label: "Required", type: "string" },
+              { label: "Description", type: "string" },
+            ],
+            [
+              ["transaction_id", "string", "tx_20260525_a91b3", "Yes (purchase)", "결제 트랜잭션 유니크 식별자. 중복 송신 차단 키"],
+              ["revenue", "decimal(10,2)", "29900.00", "Yes (purchase)", "VAT 포함 매출. 음수는 환불 시에만 허용"],
+              ["currency", "string(3)", "KRW", "Yes (purchase)", "ISO 4217 통화 코드"],
+              ["product_id", "string", "sku_88421", "Yes (commerce)", "내부 SKU. 카탈로그 매칭 키"],
+              ["category", "string", "outerwear", "No", "L1 카테고리. 슬래시 구분으로 L2까지 표기 가능"],
+              ["quantity", "integer", "2", "Yes (cart)", "수량. 1 이상 정수"],
+              ["price", "decimal(10,2)", "14950.00", "Yes (cart)", "단가. revenue = price × quantity"],
+              ["payment_method", "string", "card_visa", "Yes (purchase)", "card_* / kakaopay / naverpay / applepay / googlepay"],
+              ["user_grade", "string", "vip", "No", "guest / new / regular / vip 4단계"],
+              ["screen", "string", "home_main", "No", "발화 시점 화면명. 스크린명은 별도 사전 관리"],
+            ]
+          )}
+        </section>
+
+        <section class="block" id="s-payload">
+          <h2 class="section-title"><span class="ix">§4</span>Reference Payload</h2>
+          <p>모든 클라이언트 SDK는 아래 JSON 구조로 직렬화한 후 Adjust SDK의 <code class="inline">ADJEvent / AdjustEvent</code>에 매핑한다. 서버 사이드 송신 시 동일 페이로드를 S2S endpoint로 전달한다.</p>
+          ${codeBlock("json", "Event Payload · purchase", `{
+  "event_token": "p4q7zx",
+  "event_name": "purchase",
+  "timestamp_ms": 1779360000000,
+  "user": {
+    "user_id_hashed": "sha256:8a7d...e1c2",
+    "user_grade": "regular",
+    "is_logged_in": true
+  },
+  "params": {
+    "transaction_id": "tx_20260525_a91b3",
+    "revenue": 29900.00,
+    "currency": "KRW",
+    "payment_method": "kakaopay",
+    "item_count": 2,
+    "products": [
+      { "product_id": "sku_88421", "category": "outerwear", "price": 14950.00, "quantity": 2 }
+    ],
+    "screen": "checkout_complete"
+  },
+  "context": {
+    "platform": "android",
+    "app_version": "4.12.0",
+    "network_type": "wifi",
+    "ab_variant": "ckt_v3_B"
+  }
+}`)}
+
+          <h3 class="sub-title">4.1 Adjust 매핑 (Kotlin)</h3>
+          ${codeBlock("kotlin", "TaxonomyMapper.kt", `fun trackPurchase(tx: Transaction) {
+    val event = AdjustEvent("p4q7zx").apply {
+        setRevenue(tx.revenue, tx.currency)
+        setOrderId(tx.id)                      // dedup key
+        addCallbackParameter("payment_method", tx.method)
+        addCallbackParameter("item_count", tx.items.size.toString())
+        addPartnerParameter("ab_variant", tx.abVariant)
+    }
+    Adjust.trackEvent(event)
+}`)}
+        </section>
+
+        <section class="block" id="s-versioning">
+          <h2 class="section-title"><span class="ix">§5</span>Versioning & Governance</h2>
+          <ul>
+            <li><strong>v{major}.{minor}</strong> 형식. Tier-1 이벤트 추가/삭제는 major, 파라미터 추가는 minor</li>
+            <li><strong>Deprecation 정책</strong>: 60일 dual-write 기간 유지 후 구 이벤트 송신 중단. 매체 최적화 모델은 신 이벤트로 재학습 필요</li>
+            <li><strong>변경 요청</strong>은 Notion DB의 Taxonomy Change Request 템플릿으로만 접수. Growth Lead + Data Eng + iOS/Android Lead 3자 승인</li>
+          </ul>
+        </section>
+
+        <section class="block" id="s-pitfalls">
+          <h2 class="section-title"><span class="ix">§6</span>Troubleshooting / Pitfalls</h2>
+
+          <div class="callout danger">
+            <div class="ico">!</div>
+            <div class="body">
+              <strong>revenue가 매체 대시보드에서 항상 0으로 보고된다</strong>
+              <p>1) <code class="inline">setRevenue</code> 호출 전에 currency가 누락. 2) Adjust 대시보드에서 해당 event_token이 <strong>Revenue Event</strong>로 체크되지 않음. 3) 클라이언트 통화와 매체 reporting currency 불일치 시 FX 변환 누락. 매체별 reporting currency를 단일 KRW 또는 USD로 통일 권장.</p>
+            </div>
+          </div>
+
+          <div class="callout warn">
+            <div class="ico">!</div>
+            <div class="body">
+              <strong>중복 purchase 이벤트로 ROAS가 부풀려진다</strong>
+              <p>StoreKit/Play Billing의 결제 콜백이 retry되며 동일 트랜잭션을 다회 송신하는 패턴. <code class="inline">transaction_id</code>를 Adjust <code class="inline">orderId</code>에 강제 매핑하고 SDK 레벨 dedup에 위임. 또한 서버 검증(Receipt Validation) 완료 후에만 클라이언트가 이벤트를 발화하도록 시점을 강제.</p>
+            </div>
+          </div>
+
+          <div class="callout warn">
+            <div class="ico">!</div>
+            <div class="body">
+              <strong>UAC tCPA 캠페인이 학습 단계에서 빠져나가지 못한다</strong>
+              <p>Tier-1 이벤트 발화량이 주당 30건 미만이면 머신러닝이 수렴하지 않음. 발화량이 부족하면 conversion 정의를 <code class="inline">purchase</code> → <code class="inline">add_to_cart</code> 또는 <code class="inline">begin_checkout</code> 등 상위 퍼널 이벤트로 일시 변경하여 학습량 확보 후 재전환.</p>
+            </div>
+          </div>
+
+          <div class="callout info">
+            <div class="ico">i</div>
+            <div class="body">
+              <strong>PII가 파라미터에 포함되었다</strong>
+              <p>이메일/전화번호가 product_id에 섞이거나, search_keyword에 자유 입력값이 들어가는 케이스. 출시 전 Adjust raw export에서 정규식(<code class="inline">@</code>, 010, +) 필터로 1차 스캔. 적발 시 즉시 해당 파라미터를 hash 처리 또는 제거하고 매체사 데이터 삭제 요청 절차 가동.</p>
+            </div>
+          </div>
+        </section>
+
+        <div class="page-footer">
+          <span>1-2. In-App Event Taxonomy v2.4</span>
+          <span>Updated · 2026-05-20</span>
+        </div>
+      </div>
+
+      <aside class="toc">
+        <div class="toc-title">On this page</div>
+        <a href="#s-principles">Naming Principles</a>
+        <a href="#s-master">Master Event List</a>
+        <a href="#s-params">Parameter Spec</a>
+        <a href="#s-payload">Reference Payload</a>
+        <a href="#s-versioning">Versioning</a>
+        <a href="#s-pitfalls">Troubleshooting</a>
+      </aside>
+    </div>
+  `;
+}
+
+/* ---------- Dummy template for the other pages ---------- */
+function pageDummy(meta) {
+  const [groupId] = meta.id.split("-");
+  const group = IA.find(g => g.id === "0" + groupId) || IA.find(g => g.id === groupId);
+  const groupTitle = group ? group.title : "";
+  return `
+    <div class="page-eyebrow">${group ? group.id : ""} ${groupTitle} · ${meta.id}</div>
+    <h1 class="page-title">${escapeHtml(meta.title)}</h1>
+    <p class="page-deck">${escapeHtml(meta.desc)}</p>
+
+    <div class="meta-row">
+      <span class="chip"><span class="dot"></span>Status · Draft</span>
+      <span class="chip warning"><span class="dot"></span>Content pending</span>
+      <span class="chip"><span class="dot"></span>Owner · TBD</span>
+    </div>
+
+    <div class="with-toc">
+      <div>
+        <div class="summary">
+          <div class="summary-label">Executive Summary</div>
+          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+        </div>
+
+        <section class="block" id="s-overview">
+          <h2 class="section-title"><span class="ix">§1</span>Overview</h2>
+          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus imperdiet, nulla et dictum interdum, nisi lorem egestas vitae scelerisque enim ligula venenatis dolor. Maecenas nisl est, ultrices nec congue eget, auctor vitae massa.</p>
+          <p>Fusce luctus vestibulum augue ut aliquet. Mauris ante ligula, facilisis sed ornare eu, lobortis in odio. Praesent convallis urna a lacus interdum ut hendrerit risus congue.</p>
+          <ul>
+            <li>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</li>
+            <li>Phasellus imperdiet, nulla et dictum interdum.</li>
+            <li>Nisi lorem egestas vitae scelerisque enim ligula venenatis dolor.</li>
+          </ul>
+        </section>
+
+        <section class="block" id="s-impl">
+          <h2 class="section-title"><span class="ix">§2</span>Implementation Steps</h2>
+          ${dataTable(
+            [
+              { label: "Step", type: "string" },
+              { label: "Action", type: "string" },
+              { label: "Owner", type: "string" },
+              { label: "ETA", type: "string" },
+            ],
+            [
+              ["01", "Lorem ipsum dolor sit amet", "Growth", "Day 1"],
+              ["02", "Consectetur adipiscing elit", "Eng.", "Day 2"],
+              ["03", "Sed do eiusmod tempor incididunt", "QA", "Day 3"],
+              ["04", "Ut labore et dolore magna aliqua", "Growth", "Day 5"],
+            ]
+          )}
+          ${codeBlock("bash", "example.sh", `# Lorem ipsum dolor sit amet
+curl -X POST https://api.example.com/v1/setup \\
+  --header "Authorization: Bearer \${TOKEN}" \\
+  --data '{ "lorem": "ipsum", "dolor": "sit-amet" }'`)}
+        </section>
+
+        <section class="block" id="s-trouble">
+          <h2 class="section-title"><span class="ix">§3</span>Troubleshooting / QA</h2>
+          <div class="callout info">
+            <div class="ico">i</div>
+            <div class="body">
+              <strong>Lorem ipsum dolor</strong>
+              <p>Consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+            </div>
+          </div>
+          <div class="callout warn">
+            <div class="ico">!</div>
+            <div class="body">
+              <strong>Ut enim ad minim veniam</strong>
+              <p>Quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+            </div>
+          </div>
+        </section>
+
+        <div class="page-footer">
+          <span>${meta.id}. ${escapeHtml(meta.title)}</span>
+          <span>Draft · Lorem ipsum</span>
+        </div>
+      </div>
+
+      <aside class="toc">
+        <div class="toc-title">On this page</div>
+        <a href="#s-overview">Overview</a>
+        <a href="#s-impl">Implementation</a>
+        <a href="#s-trouble">Troubleshooting</a>
+      </aside>
+    </div>
+  `;
+}
+
+/* ========== Router ========== */
+function findMeta(id) {
+  for (const g of IA) {
+    const it = g.items.find(x => x.id === id);
+    if (it) return { ...it, group: g };
+  }
+  return null;
+}
+
+function setBreadcrumb(id) {
+  const bc = $("#breadcrumb");
+  if (!id || id === "home") {
+    bc.innerHTML = `
+      <span class="crumb-link" data-nav="home">Library</span>
+      <span class="sep">/</span>
+      <span class="current">Overview</span>`;
+  } else {
+    const meta = findMeta(id);
+    if (!meta) return;
+    bc.innerHTML = `
+      <span class="crumb-link" data-nav="home">Library</span>
+      <span class="sep">/</span>
+      <span class="crumb-link" data-nav="home" title="${escapeHtml(meta.group.title)}">${meta.group.id} · ${escapeHtml(meta.group.title)}</span>
+      <span class="sep">/</span>
+      <span class="current">${meta.id} · ${escapeHtml(meta.title)}</span>`;
+  }
+  // bind click events
+  bc.querySelectorAll('.crumb-link[data-nav]').forEach(el => {
+    el.addEventListener("click", () => navigate(el.dataset.nav));
+  });
+}
+
+function navigate(id) {
+  const content = $("#content");
+  let html = "";
+  if (!id || id === "home") {
+    html = pageHome();
+  } else if (id === "1-1") {
+    html = page_1_1();
+  } else if (id === "1-2") {
+    html = page_1_2();
+  } else {
+    const meta = findMeta(id);
+    if (!meta) { html = pageHome(); id = "home"; }
+    else html = pageDummy(meta);
+  }
+  content.innerHTML = html;
+  setBreadcrumb(id);
+  renderNav(id);
+  bindCopyButtons();
+  bindSortableTables();
+  bindCardLinks();
+  bindTocScrollspy();
+  const newHash = id && id !== "home" ? "#" + id : "#";
+  const curHash = location.hash || "#";
+  if (newHash !== curHash) {
+    history.pushState({ route: id }, "", newHash);
+  }
+  window.scrollTo({ top: 0, behavior: "instant" });
+}
+
+/* ========== Behaviors ========== */
+function bindCopyButtons() {
+  $$('.copy-btn').forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const targetId = btn.dataset.copyTarget;
+      const el = document.getElementById(targetId);
+      if (!el) return;
+      const text = el.innerText;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      btn.classList.add("copied");
+      const prev = btn.innerHTML;
+      btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied`;
+      setTimeout(() => { btn.classList.remove("copied"); btn.innerHTML = prev; }, 1400);
+    });
+  });
+}
+
+function bindSortableTables() {
+  $$('table[data-sortable="1"]').forEach(tbl => {
+    const thead = tbl.querySelector("thead");
+    const tbody = tbl.querySelector("tbody");
+    thead.querySelectorAll("th").forEach((th, colIdx) => {
+      th.addEventListener("click", () => {
+        const type = th.dataset.type || "string";
+        const wasAsc = th.classList.contains("sorted-asc");
+        thead.querySelectorAll("th").forEach(o => o.classList.remove("sorted-asc", "sorted-desc"));
+        const direction = wasAsc ? -1 : 1;
+        th.classList.add(wasAsc ? "sorted-desc" : "sorted-asc");
+        const rows = Array.from(tbody.querySelectorAll("tr"));
+        rows.sort((a, b) => {
+          const av = a.children[colIdx]?.innerText.trim() || "";
+          const bv = b.children[colIdx]?.innerText.trim() || "";
+          if (type === "number") return (parseFloat(av) - parseFloat(bv)) * direction;
+          return av.localeCompare(bv, undefined, { numeric: true, sensitivity: "base" }) * direction;
+        });
+        rows.forEach(r => tbody.appendChild(r));
+      });
+    });
+  });
+}
+
+function bindCardLinks() {
+  $$('.card[data-route]').forEach(c => {
+    c.addEventListener("click", () => navigate(c.dataset.route));
+  });
+}
+
+function bindTocScrollspy() {
+  const links = $$(".toc a");
+  if (!links.length) return;
+  const sections = links.map(a => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+  const onScroll = () => {
+    const y = window.scrollY + 120;
+    let activeIdx = 0;
+    sections.forEach((s, i) => { if (s.offsetTop <= y) activeIdx = i; });
+    links.forEach((a, i) => a.classList.toggle("active", i === activeIdx));
+  };
+  window.removeEventListener("scroll", window.__tocSpy || (() => {}));
+  window.__tocSpy = onScroll;
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+}
+
+/* ========== Sidebar search filter ========== */
+function bindSearch() {
+  const input = $("#searchInput");
+  input.addEventListener("input", () => {
+    const q = input.value.trim().toLowerCase();
+    $$('.nav-item').forEach(el => {
+      const t = el.innerText.toLowerCase();
+      el.style.display = !q || t.includes(q) ? "" : "none";
+    });
+  });
+  document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      input.focus();
+    }
+  });
+}
+
+/* ========== Init ========== */
+function init() {
+  const hash = (location.hash || "").replace(/^#/, "");
+  renderNav(hash || null);
+  bindSearch();
+  navigate(hash || "home");
+
+  // 브라우저 뒤로가기 / 앞으로가기 대응
+  window.addEventListener("popstate", (e) => {
+    const route = e.state?.route || (location.hash || "").replace(/^#/, "") || "home";
+    navigate_silent(route);
+  });
+
+  function navigate_silent(id) {
+    // pushState 없이 콘텐츠만 교체 (이미 history에 있는 항목)
+    const content = $("#content");
+    let html = "";
+    if (!id || id === "home") html = pageHome();
+    else if (id === "1-1") html = page_1_1();
+    else if (id === "1-2") html = page_1_2();
+    else { const meta = findMeta(id); html = meta ? pageDummy(meta) : pageHome(); }
+    content.innerHTML = html;
+    setBreadcrumb(id === "" ? "home" : id);
+    renderNav(id === "" ? null : id);
+    bindCopyButtons();
+    bindSortableTables();
+    bindCardLinks();
+    bindTocScrollspy();
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
+}
+
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
