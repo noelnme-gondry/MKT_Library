@@ -668,6 +668,15 @@
     font-size: 11px;
     color: var(--text-muted);
   }
+  .card.workflow-card {
+    padding: 1.25rem;
+    border-color: rgba(173, 198, 255, 0.18);
+    background: linear-gradient(180deg, rgba(173,198,255,0.04) 0%, var(--surface-container-lowest) 60%);
+  }
+  .card.workflow-card:hover {
+    border-color: var(--primary);
+    background: linear-gradient(180deg, rgba(173,198,255,0.08) 0%, var(--surface-container-low) 60%);
+  }
 
   /* Footer */
   .page-footer {
@@ -851,11 +860,11 @@
 <div class="app">
   <!-- ===================== SIDEBAR ===================== -->
   <aside class="sidebar" id="sidebar">
-    <div class="brand">
-      <div class="brand-mark">DH</div>
+    <div class="brand" id="brand" style="cursor:pointer;">
+      <div class="brand-mark">PM</div>
       <div>
-        <div class="brand-name">DevHub 라이브러리</div>
-        <div class="brand-sub">v2.4 · 앱 퍼포먼스</div>
+        <div class="brand-name">Performance Marketing</div>
+        <div class="brand-sub">Library · App Growth</div>
       </div>
     </div>
 
@@ -872,17 +881,9 @@
   <main class="main">
     <header class="topbar">
       <div class="breadcrumb" id="breadcrumb">
-        <span class="crumb-link" data-nav="home">라이브러리</span>
+        <span class="crumb-link" data-nav="home">Library</span>
         <span class="sep">/</span>
-        <span class="current">개요</span>
-      </div>
-      <div class="topbar-actions">
-        <button class="btn ghost" title="문서 동기화 상태">
-          <span style="width:6px;height:6px;border-radius:50%;background:#5ad19a;display:inline-block;"></span>
-          동기화됨 · 12분 전
-        </button>
-        <button class="btn">공유</button>
-        <button class="btn primary">가이드 편집</button>
+        <span class="current">Overview</span>
       </div>
     </header>
 
@@ -1045,8 +1046,14 @@ function dataTable(headers, rows, opts = {}) {
 }
 
 /* ========== Sidebar Renderer ========== */
+/* 최초 1회만 렌더된다. 페이지 이동 시에는 updateNavActive()만 호출.
+   그룹 펼침/접힘 상태와 다른 그룹의 상태는 사용자 액션 외에는 변하지 않는다. */
 function renderNav(activeId) {
   const nav = $("#nav");
+  if (nav.dataset.rendered === "1") {
+    updateNavActive(activeId);
+    return;
+  }
   nav.innerHTML = IA.map(group => `
     ${group.id === "05" ? '<div class="nav-divider"></div>' : ""}
     <div class="nav-group" data-group="${group.id}">
@@ -1076,70 +1083,88 @@ function renderNav(activeId) {
       el.parentElement.classList.toggle("collapsed");
     });
   });
+
+  nav.dataset.rendered = "1";
+}
+
+function updateNavActive(activeId) {
+  $$('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.route === activeId);
+  });
 }
 
 /* ========== Page renderers ========== */
 function pageHome() {
-  const cards = IA.flatMap(g => g.items.map(it => ({ ...it, group: g.title, gid: g.id })));
-  const totalGuides = cards.length;
+  const guideGroups = IA.filter(g => g.id !== "05");
+  const analyticsGroup = IA.find(g => g.id === "05");
+  const totalGuides = guideGroups.reduce((a, g) => a + g.items.length, 0);
+  const totalTools   = analyticsGroup ? analyticsGroup.items.length : 0;
+
   return `
-    <div class="page-eyebrow">DevHub · 마케팅 라이브러리</div>
+    <div class="page-eyebrow">Performance Marketing Library</div>
     <h1 class="page-title">앱 퍼포먼스 마케팅, 운영의 표준화.</h1>
-    <p class="page-deck">Adjust/MMP 인프라 셋업부터 UAC·AAP·ASA 캠페인 운영, 코호트 LTV 검증까지. 시니어 퍼포먼스 마케터가 실무에서 그대로 복붙할 수 있는 표준 작업 절차(SOP) 라이브러리. CSV를 업로드해 KPI를 즉시 계산해볼 수도 있습니다.</p>
+    <p class="page-deck">실무 가이드 라이브러리와 데이터 분석 도구를 한 곳에서. 신규 캠페인을 선제적으로 준비하거나, 보유 데이터를 업로드해 다각도로 분석할 수 있습니다.</p>
 
     <div class="meta-row">
       <span class="chip"><span class="dot"></span><span class="tnum">${totalGuides}</span>개 가이드</span>
-      <span class="chip ok"><span class="dot"></span>5개 카테고리</span>
-      <span class="chip"><span class="dot"></span>최근 동기화 · 2026-05-25</span>
-      <span class="chip warning"><span class="dot"></span>iOS 18 SKAN 4.0 대응 완료</span>
+      <span class="chip"><span class="dot"></span><span class="tnum">${totalTools}</span>개 분석 도구</span>
+      <span class="chip ok"><span class="dot"></span>iOS 18 SKAN 4.0 대응</span>
     </div>
 
-    <div class="kpi-grid">
-      <div class="kpi-card">
-        <div class="label">샘플 평균 CPI · iOS KR</div>
-        <div class="value tnum">$3.42</div>
-        <div class="delta">▲ 4.1% wow · 데모 수치</div>
-      </div>
-      <div class="kpi-card">
-        <div class="label">샘플 D7 잔존율</div>
-        <div class="value tnum">21.6%</div>
-        <div class="delta down">▼ 0.8pp · 데모 수치</div>
-      </div>
-      <div class="kpi-card">
-        <div class="label">트래킹 이벤트 수</div>
-        <div class="value tnum">137</div>
-        <div class="delta">▲ 12 추가 · 데모 수치</div>
-      </div>
-      <div class="kpi-card">
-        <div class="label">포스트백 커버리지</div>
-        <div class="value tnum">94%</div>
-        <div class="delta">▲ 2개 매체 추가 · 데모 수치</div>
-      </div>
-    </div>
-
-    <div class="callout info" style="margin-bottom:1.5rem;">
-      <div class="ico">i</div>
-      <div class="body">
-        <strong>위 KPI 카드는 데모용 더미 데이터입니다.</strong>
-        <p>실제 데이터로 분석하려면 좌측 사이드바의 <code class="inline">05 · CSV Analyzer</code> → <code class="inline">5-1. CSV 업로드 및 컬럼 매핑</code>에서 파일을 업로드하세요.</p>
-      </div>
-    </div>
-
-    <h2 class="section-title">전체 가이드</h2>
-    <div class="grid-cards">
-      ${cards.map(c => `
-        <div class="card" data-route="${c.id}">
-          <div class="card-eyebrow">${c.gid} · ${escapeHtml(c.group)}</div>
-          <div class="card-title">${c.id}. ${escapeHtml(c.title)}</div>
-          <div class="card-desc">${escapeHtml(c.desc)}</div>
-          <div class="card-meta">
-            <span>표준 절차</span>
-            <span>·</span>
-            <span>5일 전 업데이트</span>
-          </div>
+    <h2 class="section-title" style="margin-top:2rem;">어떻게 시작할까요?</h2>
+    <div class="grid-cards" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+      <div class="card workflow-card" data-route="1-1">
+        <div class="card-eyebrow">01 · 라이브러리</div>
+        <div class="card-title" style="font-size:18px;">선제적으로 준비하기</div>
+        <div class="card-desc">
+          MMP 인프라 셋업부터 UAC·Meta·ASA 캠페인 운영, ASO·소재 기획, KPI·코호트·프로드 분석까지 — 시니어 퍼포먼스 마케터의 표준 작업 절차를 그대로 참고하세요.
         </div>
-      `).join("")}
+        <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:12px; color:var(--primary);">
+          1-1부터 시작하기 →
+        </div>
+      </div>
+      <div class="card workflow-card" data-route="5-1">
+        <div class="card-eyebrow">05 · 분석 도구</div>
+        <div class="card-title" style="font-size:18px;">데이터로 분석하기</div>
+        <div class="card-desc">
+          캠페인 CSV를 업로드하면 컬럼을 자동 매핑하고, KPI를 자동 계산합니다. 코호트(D0/D7/D14) 토글로 다각도 검증이 가능하며, 분석 도구는 계속 추가됩니다.
+        </div>
+        <div style="margin-top:0.75rem; font-family:var(--font-mono); font-size:12px; color:var(--primary);">
+          CSV 업로드 →
+        </div>
+      </div>
     </div>
+
+    ${guideGroups.map(g => `
+      <h2 class="section-title" style="margin-top:2.5rem;">
+        <span class="ix">${g.id}</span>${escapeHtml(g.title)}
+      </h2>
+      <p style="margin:-0.5rem 0 0.75rem; color:var(--text-secondary); font-size:13px;">${escapeHtml(g.subtitle)}</p>
+      <div class="grid-cards">
+        ${g.items.map(it => `
+          <div class="card" data-route="${it.id}">
+            <div class="card-eyebrow">${it.id}</div>
+            <div class="card-title">${escapeHtml(it.title)}</div>
+            <div class="card-desc">${escapeHtml(it.desc)}</div>
+          </div>
+        `).join("")}
+      </div>
+    `).join("")}
+
+    ${analyticsGroup ? `
+      <h2 class="section-title" style="margin-top:2.5rem;">
+        <span class="ix">${analyticsGroup.id}</span>${escapeHtml(analyticsGroup.title)}
+      </h2>
+      <p style="margin:-0.5rem 0 0.75rem; color:var(--text-secondary); font-size:13px;">${escapeHtml(analyticsGroup.subtitle)}</p>
+      <div class="grid-cards">
+        ${analyticsGroup.items.map(it => `
+          <div class="card" data-route="${it.id}">
+            <div class="card-eyebrow">${it.id}</div>
+            <div class="card-title">${escapeHtml(it.title)}</div>
+            <div class="card-desc">${escapeHtml(it.desc)}</div>
+          </div>
+        `).join("")}
+      </div>` : ""}
   `;
 }
 
@@ -3289,6 +3314,7 @@ function setBreadcrumb(id) {
       <span class="sep">/</span>
       <span class="current">${meta.id} · ${escapeHtml(meta.title)}</span>`;
   }
+  ;
   // bind click events
   bc.querySelectorAll('.crumb-link[data-nav]').forEach(el => {
     el.addEventListener("click", () => navigate(el.dataset.nav));
@@ -3475,6 +3501,11 @@ function handleCSVFile(file) {
   });
 }
 
+function bindBrandClick() {
+  const b = document.getElementById("brand");
+  if (b) b.addEventListener("click", () => navigate("home"));
+}
+
 /* ========== Sidebar search filter ========== */
 function bindSearch() {
   const input = $("#searchInput");
@@ -3498,6 +3529,7 @@ function init() {
   const hash = (location.hash || "").replace(/^#/, "");
   renderNav(hash || null);
   bindSearch();
+  bindBrandClick();
   navigate(hash || "home");
 
   // 브라우저 뒤로가기 / 앞으로가기 대응
