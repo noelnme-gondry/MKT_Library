@@ -1182,6 +1182,44 @@
     color: var(--surface-base);
     font-weight: 600;
   }
+  .ab-pillgroup {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-right: 0.75rem;
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.4rem;
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    flex-wrap: wrap;
+  }
+  .ab-pillgroup-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0 0.4rem;
+  }
+  .ab-pill {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 0.35rem 0.625rem;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+  }
+  .ab-pill:hover { color: var(--text-primary); }
+  .ab-pill.active {
+    background: rgba(173, 198, 255, 0.1);
+    color: var(--primary);
+    border-color: rgba(173, 198, 255, 0.25);
+    font-weight: 600;
+  }
   .ab-form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -5229,17 +5267,73 @@ const STATS = (() => {
     };
   }
 
-  return { normalCDF, normalInverse, sampleSizePerArm, twoPropZTest, bayesianAB };
+  /* ========== 연속 데이터 (CPR, ARPPU, Revenue per user) ==========
+     마케팅 A/B 테스트는 보통 n >> 30 이므로 Welch's t-test를 z-근사로 처리.
+     n < 30일 경우 경고 표시. */
+
+  // 연속 데이터 sample size: n = 2 × (z_α/2 + z_β)² × σ² / δ²
+  function sampleSizeContinuous({ baselineMean, mdeRelative, sigma, alpha = 0.05, power = 0.8, twoSided = true }) {
+    const delta = baselineMean * mdeRelative;
+    if (delta === 0 || sigma <= 0) return { n: NaN, delta, sigma };
+    const zA = twoSided ? normalInverse(1 - alpha / 2) : normalInverse(1 - alpha);
+    const zB = normalInverse(power);
+    const num = 2 * Math.pow(zA + zB, 2) * sigma * sigma;
+    const den = delta * delta;
+    return { n: Math.ceil(num / den), delta, sigma, zA, zB };
+  }
+
+  // 연속 데이터 분석 (Welch z-test 근사)
+  function continuousTest(nA, meanA, sdA, nB, meanB, sdB) {
+    const seA2 = (sdA * sdA) / nA;
+    const seB2 = (sdB * sdB) / nB;
+    const se = Math.sqrt(seA2 + seB2);
+    const z = se > 0 ? (meanB - meanA) / se : 0;
+    const pValue = 2 * (1 - normalCDF(Math.abs(z)));
+    const liftAbs = meanB - meanA;
+    const liftRel = meanA > 0 ? (meanB - meanA) / meanA : 0;
+    // Welch-Satterthwaite df (참고용; z-근사 사용으로 직접 활용 안 함)
+    const df = (seA2 + seB2) ** 2 /
+               ((seA2 * seA2) / (nA - 1) + (seB2 * seB2) / (nB - 1));
+    const ciLow95  = liftAbs - 1.96 * se;
+    const ciHigh95 = liftAbs + 1.96 * se;
+    return { meanA, meanB, sdA, sdB, liftAbs, liftRel, z, pValue, ciLow95, ciHigh95, df };
+  }
+
+  // 예산 계산
+  function budgetForTest({ nPerArm, cprA, cprB }) {
+    const cprBuse = (cprB != null && !isNaN(cprB)) ? cprB : cprA;
+    const costA = nPerArm * cprA;
+    const costB = nPerArm * cprBuse;
+    return { costA, costB, total: costA + costB, cprA, cprB: cprBuse };
+  }
+
+  return {
+    normalCDF, normalInverse,
+    sampleSizePerArm, twoPropZTest, bayesianAB,
+    sampleSizeContinuous, continuousTest, budgetForTest,
+  };
 })();
+
+/* 통화 기호 및 포맷 */
+const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
+function fmtCurrency(value) {
+  if (value == null || isNaN(value)) return "—";
+  const sym = CURRENCY_SYMBOLS[AB_STATE.currency] || "₩";
+  return `${sym}${Math.round(value).toLocaleString("ko-KR")}`;
+}
 
 /* ---------- 5-4. A/B Test Calculator ---------- */
 const AB_STATE = {
-  mode: "plan",  // plan | analyze | threshold
+  mode: "plan",          // plan | analyze | threshold
+  testType: "binary",    // binary (CVR) | continuous (CPR/ARPPU/Revenue per user)
+  currency: "KRW",       // KRW (₩) | USD ($)
 };
 
 function page_5_4() {
   const meta = findMeta("5-4");
   const mode = AB_STATE.mode;
+  const tt = AB_STATE.testType;
+  const cur = AB_STATE.currency;
 
   const tabs = `
     <div class="ab-tabs">
@@ -5249,14 +5343,30 @@ function page_5_4() {
     </div>
   `;
 
+  const testTypeToggle = (mode === "plan" || mode === "analyze" || mode === "threshold") ? `
+    <div class="ab-pillgroup">
+      <span class="ab-pillgroup-label">테스트 유형</span>
+      <button class="ab-pill ${tt === "binary" ? "active" : ""}"     data-testtype="binary">Binary · CVR (전환율)</button>
+      <button class="ab-pill ${tt === "continuous" ? "active" : ""}" data-testtype="continuous">Continuous · CPR / ARPPU / Revenue</button>
+    </div>
+  ` : "";
+
+  const currencyToggle = (mode === "plan") ? `
+    <div class="ab-pillgroup">
+      <span class="ab-pillgroup-label">통화</span>
+      <button class="ab-pill ${cur === "KRW" ? "active" : ""}" data-currency="KRW">₩ KRW</button>
+      <button class="ab-pill ${cur === "USD" ? "active" : ""}" data-currency="USD">$ USD</button>
+    </div>
+  ` : "";
+
   return pageShell(meta, {
-    deck: "마케팅 캠페인 A/B 테스트의 통계적 유의성 확보를 위한 모수 계산 + 결과 분석 도구. Frequentist (p-value)와 Bayesian (winning probability) 두 방식 동시 제공.",
+    deck: "마케팅 캠페인 A/B 테스트의 모수 계산 + 결과 분석 도구. CVR(전환율) + 연속 데이터(CPR/ARPPU/Revenue) 모두 지원. Frequentist (p-value)와 Bayesian (P(B>A)) 두 방식 동시 제공 + 예산 계산기 포함.",
     chips: `
       <span class="chip"><span class="dot"></span>도구 · A/B Test Calculator</span>
-      <span class="chip ok"><span class="dot"></span>Frequentist + Bayesian</span>
+      <span class="chip ok"><span class="dot"></span>Binary + Continuous</span>
       <span class="chip"><span class="dot"></span>참조 · Campaign Test Parameter Checker (Next.js)</span>
       ${authStatusChip()}`,
-    summary: "통계 라이브러리(z-test, Φ⁻¹ Acklam, Beta-Binomial Monte Carlo)를 클라이언트에서 직접 실행. 3가지 모드: (1) 테스트 시작 전 모수 계산, (2) 결과 분석 (Frequentist+Bayesian 동시), (3) 모수별 추천 신뢰수준 가이드.",
+    summary: "통계 라이브러리(z-test, Welch z-근사, Φ⁻¹ Acklam, Beta-Binomial Monte Carlo)를 클라이언트에서 직접 실행. 테스트 유형 토글로 Binary(전환율) ↔ Continuous(평균값) 전환. Plan 모드에는 예상 CPR 입력 시 필요 예산 자동 계산 포함.",
     toc: [
       { id: "s-mode", title: "모드 선택" },
       { id: "s-body", title: "계산기" },
@@ -5266,6 +5376,8 @@ function page_5_4() {
       <section class="block" id="s-mode">
         <h2 class="section-title"><span class="ix">§1</span>모드 선택</h2>
         ${tabs}
+        ${testTypeToggle}
+        ${currencyToggle}
       </section>
 
       <section class="block" id="s-body">
@@ -5277,9 +5389,12 @@ function page_5_4() {
       <section class="block" id="s-notes">
         <h2 class="section-title"><span class="ix">§4</span>통계 노트</h2>
         <ul>
-          <li><strong>Frequentist z-test</strong>: <code class="inline">z = (p̂_B - p̂_A) / √(p̄(1-p̄)(1/n_A + 1/n_B))</code>. p-value &lt; α 시 귀무가설 기각.</li>
-          <li><strong>Sample Size</strong>: <code class="inline">n = 2 × (z_α/2 + z_β)² × p̄(1-p̄) / δ²</code>. δ = baseline × MDE (relative).</li>
-          <li><strong>Bayesian</strong>: 사전 Beta(1,1) (uniform). 사후 Beta(1+x, 1+n-x). Monte Carlo로 P(B&gt;A) 추정. 기본 10,000 sim.</li>
+          <li><strong>Binary (CVR) · z-test</strong>: <code class="inline">z = (p̂_B - p̂_A) / √(p̄(1-p̄)(1/n_A + 1/n_B))</code>. p-value &lt; α 시 귀무가설 기각.</li>
+          <li><strong>Binary · Sample Size</strong>: <code class="inline">n = 2 × (z_α/2 + z_β)² × p̄(1-p̄) / δ²</code></li>
+          <li><strong>Continuous · Welch z-근사</strong>: <code class="inline">z = (μ̂_B - μ̂_A) / √(s_A²/n_A + s_B²/n_B)</code>. n &gt; 30 per arm일 때 정확. 그 이하는 t-분포 필요.</li>
+          <li><strong>Continuous · Sample Size</strong>: <code class="inline">n = 2 × (z_α/2 + z_β)² × σ² / δ²</code>. σ는 과거 데이터의 표준편차.</li>
+          <li><strong>Bayesian</strong>: Binary 전용. 사전 Beta(1,1). 사후 Beta(1+x, 1+n-x). Monte Carlo 10,000 sim.</li>
+          <li><strong>예산 계산</strong>: <code class="inline">Total Budget = n_per_arm × (CPR_A + CPR_B)</code>. CPR은 Cost Per Result (전환당 비용).</li>
           <li><strong>주의</strong>: 멀티 변형(A/B/C/...) 테스트 시 Bonferroni 보정(<code class="inline">α/k</code>) 필요. 본 도구는 2-arm 기준.</li>
         </ul>
       </section>
@@ -5289,20 +5404,48 @@ function page_5_4() {
 PAGE_RENDERERS["5-4"] = page_5_4;
 
 function renderModePlan() {
+  const tt = AB_STATE.testType;
+  const sym = CURRENCY_SYMBOLS[AB_STATE.currency] || "₩";
+
+  const binaryInputs = `
+    <div class="ab-field">
+      <label>현재 전환율 (%) · baseline</label>
+      <input id="ab-plan-baseline" type="number" step="0.01" min="0.01" max="99.99" value="5" />
+      <span class="ab-field-hint">예: 5% = 5</span>
+    </div>
+    <div class="ab-field">
+      <label>탐지할 최소 lift (%) · MDE (relative)</label>
+      <input id="ab-plan-mde" type="number" step="0.1" min="0.1" max="500" value="10" />
+      <span class="ab-field-hint">예: baseline 대비 10% 상승 = 10</span>
+    </div>
+  `;
+  const continuousInputs = `
+    <div class="ab-field">
+      <label>현재 평균값 (μ) · baseline mean</label>
+      <input id="ab-plan-mean" type="number" step="0.01" min="0" value="3500" />
+      <span class="ab-field-hint">예: ARPPU ${sym}3,500 / 평균 CPR ${sym}2,800</span>
+    </div>
+    <div class="ab-field">
+      <label>탐지할 최소 lift (%) · MDE (relative)</label>
+      <input id="ab-plan-mde-c" type="number" step="0.1" min="0.1" max="500" value="10" />
+      <span class="ab-field-hint">μ 대비 10% 변동 = 10</span>
+    </div>
+    <div class="ab-field">
+      <label>표준편차 (σ) · 과거 데이터</label>
+      <input id="ab-plan-sigma" type="number" step="0.01" min="0.01" value="1200" />
+      <span class="ab-field-hint">σ가 클수록 더 많은 샘플 필요</span>
+    </div>
+  `;
+
   return `
     <h2 class="section-title"><span class="ix">§2</span>① 테스트 시작 전 모수 계산</h2>
-    <p style="color:var(--text-secondary);">현재 전환율과 탐지하고 싶은 최소 lift(MDE)를 입력하면, 그룹당 필요한 샘플 사이즈가 계산됩니다.</p>
+    <p style="color:var(--text-secondary);">
+      ${tt === "binary"
+        ? "현재 전환율과 탐지하고 싶은 최소 lift(MDE)를 입력하면, 그룹당 필요한 샘플 사이즈가 계산됩니다."
+        : "현재 평균값(μ), MDE, 과거 표준편차(σ)를 입력하면 연속 데이터(CPR, ARPPU, Revenue per user) 테스트에 필요한 샘플 사이즈가 계산됩니다."}
+    </p>
     <div class="ab-form-grid">
-      <div class="ab-field">
-        <label>현재 전환율 (%) · baseline</label>
-        <input id="ab-plan-baseline" type="number" step="0.01" min="0.01" max="99.99" value="5" />
-        <span class="ab-field-hint">예: 5% = 5</span>
-      </div>
-      <div class="ab-field">
-        <label>탐지할 최소 lift (%) · MDE (relative)</label>
-        <input id="ab-plan-mde" type="number" step="0.1" min="0.1" max="500" value="10" />
-        <span class="ab-field-hint">예: baseline 대비 10% 상승 = 10</span>
-      </div>
+      ${tt === "binary" ? binaryInputs : continuousInputs}
       <div class="ab-field">
         <label>유의수준 α</label>
         <select id="ab-plan-alpha">
@@ -5320,73 +5463,174 @@ function renderModePlan() {
         </select>
       </div>
     </div>
+
     <button class="btn primary" id="ab-plan-calc">계산</button>
     <div class="ab-result" id="ab-plan-result"></div>
+
+    <h3 class="sub-title" style="margin-top:1.5rem;">예산 계산기</h3>
+    <p style="color:var(--text-secondary);font-size:13px;">
+      예상 CPR(Cost Per Result)을 입력하면, 위에서 계산한 샘플 사이즈를 기준으로 필요한 총 예산이 자동 계산됩니다. CPR_B를 비워두면 A와 동일하다고 가정합니다.
+    </p>
+    <div class="ab-form-grid">
+      <div class="ab-field">
+        <label>예상 CPR · Arm A (${sym})</label>
+        <input id="ab-plan-cpr-a" type="number" step="1" min="0" value="2500" />
+        <span class="ab-field-hint">전환 1건당 비용</span>
+      </div>
+      <div class="ab-field">
+        <label>예상 CPR · Arm B (${sym}, 선택)</label>
+        <input id="ab-plan-cpr-b" type="number" step="1" min="0" placeholder="비우면 A와 동일" />
+        <span class="ab-field-hint">CPR이 다른 변형 운영 시</span>
+      </div>
+    </div>
+    <div class="ab-result" id="ab-plan-budget-result"></div>
   `;
 }
 
 function renderModeAnalyze() {
+  const tt = AB_STATE.testType;
+
+  if (tt === "binary") {
+    return `
+      <h2 class="section-title"><span class="ix">§2</span>② Binary (CVR) 결과 분석</h2>
+      <p style="color:var(--text-secondary);">각 그룹의 노출 수와 전환 수를 입력하면 Frequentist(z-test)와 Bayesian(Monte Carlo) 결과를 동시에 보여줍니다.</p>
+      <div class="ab-form-grid ab-form-grid-2col">
+        <div>
+          <div class="ab-arm-title">Arm A · Control</div>
+          <div class="ab-field">
+            <label>노출 수 (n_A)</label>
+            <input id="ab-an-na" type="number" min="1" value="10000" />
+          </div>
+          <div class="ab-field">
+            <label>전환 수 (x_A)</label>
+            <input id="ab-an-xa" type="number" min="0" value="500" />
+          </div>
+        </div>
+        <div>
+          <div class="ab-arm-title">Arm B · Variant</div>
+          <div class="ab-field">
+            <label>노출 수 (n_B)</label>
+            <input id="ab-an-nb" type="number" min="1" value="10000" />
+          </div>
+          <div class="ab-field">
+            <label>전환 수 (x_B)</label>
+            <input id="ab-an-xb" type="number" min="0" value="560" />
+          </div>
+        </div>
+      </div>
+      <button class="btn primary" id="ab-an-calc">분석</button>
+      <div class="ab-result" id="ab-an-result"></div>
+    `;
+  }
+
+  // Continuous
   return `
-    <h2 class="section-title"><span class="ix">§2</span>② 진행 중인 테스트 결과 분석</h2>
-    <p style="color:var(--text-secondary);">각 그룹의 노출 수와 전환 수를 입력하면 Frequentist(z-test)와 Bayesian(Monte Carlo) 결과를 동시에 보여줍니다.</p>
+    <h2 class="section-title"><span class="ix">§2</span>② Continuous (CPR/ARPPU/Revenue) 결과 분석</h2>
+    <p style="color:var(--text-secondary);">각 그룹의 표본 수(n), 평균(mean), 표준편차(sd)를 입력하면 Welch z-근사 기반으로 평균 차이의 유의성을 검정합니다. n &lt; 30 per arm일 경우 t-분포가 필요하지만, 마케팅 A/B 테스트는 보통 그 이상이라 z-근사로 충분합니다.</p>
     <div class="ab-form-grid ab-form-grid-2col">
       <div>
         <div class="ab-arm-title">Arm A · Control</div>
         <div class="ab-field">
-          <label>노출 수 (n_A)</label>
-          <input id="ab-an-na" type="number" min="1" value="10000" />
+          <label>표본 수 (n_A)</label>
+          <input id="ab-anc-na" type="number" min="1" value="2000" />
         </div>
         <div class="ab-field">
-          <label>전환 수 (x_A)</label>
-          <input id="ab-an-xa" type="number" min="0" value="500" />
+          <label>평균 (μ_A)</label>
+          <input id="ab-anc-ma" type="number" step="0.01" value="3500" />
+        </div>
+        <div class="ab-field">
+          <label>표준편차 (s_A)</label>
+          <input id="ab-anc-sa" type="number" step="0.01" min="0" value="1200" />
         </div>
       </div>
       <div>
         <div class="ab-arm-title">Arm B · Variant</div>
         <div class="ab-field">
-          <label>노출 수 (n_B)</label>
-          <input id="ab-an-nb" type="number" min="1" value="10000" />
+          <label>표본 수 (n_B)</label>
+          <input id="ab-anc-nb" type="number" min="1" value="2000" />
         </div>
         <div class="ab-field">
-          <label>전환 수 (x_B)</label>
-          <input id="ab-an-xb" type="number" min="0" value="560" />
+          <label>평균 (μ_B)</label>
+          <input id="ab-anc-mb" type="number" step="0.01" value="3850" />
+        </div>
+        <div class="ab-field">
+          <label>표준편차 (s_B)</label>
+          <input id="ab-anc-sb" type="number" step="0.01" min="0" value="1250" />
         </div>
       </div>
     </div>
-    <button class="btn primary" id="ab-an-calc">분석</button>
-    <div class="ab-result" id="ab-an-result"></div>
+    <button class="btn primary" id="ab-anc-calc">분석</button>
+    <div class="ab-result" id="ab-anc-result"></div>
   `;
 }
 
 function renderModeThreshold() {
-  // 베이스라인 × MDE 매트릭스 (alpha=0.05, power=0.80 기준)
-  const baselines = [0.01, 0.02, 0.05, 0.10, 0.20];
-  const mdes = [0.05, 0.10, 0.15, 0.20, 0.30];
-  const cells = baselines.map(b =>
-    mdes.map(m => STATS.sampleSizePerArm({ baseline: b, mdeRelative: m }).n)
-  );
+  const tt = AB_STATE.testType;
+
+  let tableHtml = "";
+  let intro = "";
+
+  if (tt === "binary") {
+    const baselines = [0.01, 0.02, 0.05, 0.10, 0.20];
+    const mdes = [0.05, 0.10, 0.15, 0.20, 0.30];
+    const cells = baselines.map(b => mdes.map(m => STATS.sampleSizePerArm({ baseline: b, mdeRelative: m }).n));
+    intro = `α = 0.05, Power = 0.80 기준 그룹당 필요 샘플 사이즈 매트릭스 (Binary · CVR).`;
+    tableHtml = `
+      <div class="table-wrap" style="margin-bottom:1.5rem;">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Baseline CVR ↓ \\ MDE →</th>
+              ${mdes.map(m => `<th>${(m * 100).toFixed(0)}%</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${baselines.map((b, i) => `
+              <tr>
+                <td><strong>${(b * 100).toFixed(0)}%</strong></td>
+                ${cells[i].map(n => `<td class="tnum">${n.toLocaleString()}</td>`).join("")}
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>`;
+  } else {
+    // Continuous: 변동계수 CV(σ/μ) × MDE 매트릭스 — baseline mean에 독립적
+    const cvs   = [0.10, 0.20, 0.30, 0.50, 0.80, 1.00];   // σ/μ ratio
+    const mdes  = [0.05, 0.10, 0.15, 0.20, 0.30];
+    // baseline mean=1로 두고 sigma=cv로 두면 같은 결과
+    const cells = cvs.map(cv => mdes.map(m =>
+      STATS.sampleSizeContinuous({ baselineMean: 1, mdeRelative: m, sigma: cv }).n
+    ));
+    intro = `α = 0.05, Power = 0.80 기준 그룹당 필요 샘플 사이즈 매트릭스 (Continuous · CPR / ARPPU / Revenue). <strong>변동계수 CV = σ / μ</strong> 사용 — baseline 값에 무관하게 적용 가능합니다.`;
+    tableHtml = `
+      <div class="table-wrap" style="margin-bottom:1.5rem;">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>CV (σ/μ) ↓ \\ MDE →</th>
+              ${mdes.map(m => `<th>${(m * 100).toFixed(0)}%</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${cvs.map((cv, i) => `
+              <tr>
+                <td><strong>${cv.toFixed(2)}</strong></td>
+                ${cells[i].map(n => `<td class="tnum">${n.toLocaleString()}</td>`).join("")}
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:1rem;">
+        예시: ARPPU 평균 ${CURRENCY_SYMBOLS[AB_STATE.currency]}3,500, σ ${CURRENCY_SYMBOLS[AB_STATE.currency]}1,200 → CV ≈ 0.34 → MDE 10% 탐지에 그룹당 약 ${STATS.sampleSizeContinuous({baselineMean: 1, mdeRelative: 0.10, sigma: 0.34}).n.toLocaleString()}명 필요.
+      </p>`;
+  }
 
   return `
     <h2 class="section-title"><span class="ix">§2</span>③ 모수 크기별 추천 신뢰수준 가이드</h2>
-    <p style="color:var(--text-secondary);">α = 0.05, Power = 0.80 기준 그룹당 필요 샘플 사이즈 매트릭스. 일평균 트래픽으로 나누면 테스트 기간 산정 가능.</p>
-    <div class="table-wrap" style="margin-bottom:1.5rem;">
-      <table class="data">
-        <thead>
-          <tr>
-            <th>Baseline ↓ \\ MDE →</th>
-            ${mdes.map(m => `<th>${(m * 100).toFixed(0)}%</th>`).join("")}
-          </tr>
-        </thead>
-        <tbody>
-          ${baselines.map((b, i) => `
-            <tr>
-              <td><strong>${(b * 100).toFixed(0)}%</strong></td>
-              ${cells[i].map(n => `<td class="tnum">${n.toLocaleString()}</td>`).join("")}
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    </div>
+    <p style="color:var(--text-secondary);">${intro} 일평균 트래픽으로 나누면 테스트 기간 산정 가능.</p>
+    ${tableHtml}
 
     <h3 class="sub-title">권장 사항</h3>
     <ul>
@@ -5395,34 +5639,51 @@ function renderModeThreshold() {
       <li><strong>매우 큰 샘플 (100,000+)</strong> → 작은 차이도 유의하게 잡힘. <strong>실질적 의미(practical significance)</strong>를 별도 판단 — lift &lt; 1%는 통계는 유의해도 비즈니스적으로 무의미할 수 있음</li>
       <li><strong>멀티 변형 테스트 (A/B/C/D...)</strong> → Bonferroni 보정 강제: α를 변형 수로 나눠 사용</li>
       <li><strong>조기 종료 (peeking) 금지</strong> → 사전 계산된 샘플 수에 도달하기 전 결과를 보고 멈추면 1종 오류율 폭증. Bayesian 방식은 peeking 비교적 안전</li>
+      ${tt === "continuous" ? `<li><strong>연속 데이터 σ 추정</strong> → 과거 동일 지표(CPR, ARPPU)의 표준편차를 사용. 데이터가 없으면 1주일 파일럿으로 추정. 음수 불가, 0이면 의미 없음.</li>` : ""}
     </ul>
   `;
 }
 
 function bindABCalculatorHandlers() {
-  // Tab switching
+  // Tab / Toggle switching
   document.querySelectorAll(".ab-tab").forEach(btn => {
     btn.addEventListener("click", () => {
       AB_STATE.mode = btn.dataset.mode;
       navigate("5-4");
     });
   });
+  document.querySelectorAll(".ab-pill[data-testtype]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      AB_STATE.testType = btn.dataset.testtype;
+      navigate("5-4");
+    });
+  });
+  document.querySelectorAll(".ab-pill[data-currency]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      AB_STATE.currency = btn.dataset.currency;
+      navigate("5-4");
+    });
+  });
 
-  // Mode 1: Plan
+  // === Mode 1: Plan (Binary) ===
   const planBtn = document.getElementById("ab-plan-calc");
-  if (planBtn) {
-    const run = () => {
+  if (planBtn && AB_STATE.testType === "binary") {
+    let lastN = null;
+    const runSampleSize = () => {
       const baseline = parseFloat(document.getElementById("ab-plan-baseline").value) / 100;
       const mde = parseFloat(document.getElementById("ab-plan-mde").value) / 100;
       const alpha = parseFloat(document.getElementById("ab-plan-alpha").value);
       const power = parseFloat(document.getElementById("ab-plan-power").value);
       const result = STATS.sampleSizePerArm({ baseline, mdeRelative: mde, alpha, power });
-      const totalN = result.n * 2;
       const out = document.getElementById("ab-plan-result");
       if (isNaN(result.n) || !isFinite(result.n)) {
-        out.innerHTML = `<div class="callout warn"><div class="ico">!</div><div class="body"><strong>입력값 확인 필요</strong><p>baseline × (1 + MDE) 가 1을 초과하거나 음수입니다. 값을 조정해 주세요.</p></div></div>`;
+        out.innerHTML = `<div class="callout warn"><div class="ico">!</div><div class="body"><strong>입력값 확인 필요</strong><p>baseline × (1 + MDE) 가 1을 초과하거나 음수입니다.</p></div></div>`;
+        lastN = null;
+        runBudget();
         return;
       }
+      const totalN = result.n * 2;
+      lastN = result.n;
       out.innerHTML = `
         <div class="ab-stats-grid">
           <div class="ab-stat"><div class="ab-stat-label">그룹당 필요 샘플</div><div class="ab-stat-value tnum">${result.n.toLocaleString()}</div></div>
@@ -5434,12 +5695,96 @@ function bindABCalculatorHandlers() {
           일평균 트래픽이 5,000명이면 약 <strong>${Math.ceil(totalN / 5000)}일</strong>, 10,000명이면 약 <strong>${Math.ceil(totalN / 10000)}일</strong>의 운영이 필요합니다.
         </p>
       `;
+      runBudget();
     };
-    planBtn.addEventListener("click", run);
-    run();
+    const runBudget = () => {
+      const out = document.getElementById("ab-plan-budget-result");
+      if (!out) return;
+      if (lastN == null) { out.innerHTML = ""; return; }
+      const cprA = parseFloat(document.getElementById("ab-plan-cpr-a").value);
+      const cprBraw = document.getElementById("ab-plan-cpr-b").value.trim();
+      const cprB = cprBraw === "" ? null : parseFloat(cprBraw);
+      if (isNaN(cprA) || cprA < 0) { out.innerHTML = `<div class="ab-field-hint" style="color:var(--text-muted);">CPR A 입력 시 예산이 계산됩니다.</div>`; return; }
+      const budget = STATS.budgetForTest({ nPerArm: lastN, cprA, cprB });
+      out.innerHTML = `
+        <div class="ab-stats-grid">
+          <div class="ab-stat"><div class="ab-stat-label">Arm A 예산</div><div class="ab-stat-value tnum">${fmtCurrency(budget.costA)}</div></div>
+          <div class="ab-stat"><div class="ab-stat-label">Arm B 예산</div><div class="ab-stat-value tnum">${fmtCurrency(budget.costB)}</div></div>
+          <div class="ab-stat" style="grid-column: 1 / -1;"><div class="ab-stat-label">총 필요 예산</div><div class="ab-stat-value tnum">${fmtCurrency(budget.total)}</div></div>
+        </div>
+        <p style="margin-top:0.5rem;font-size:12px;color:var(--text-muted);font-family:var(--font-mono);">
+          CPR A = ${fmtCurrency(budget.cprA)} · CPR B = ${fmtCurrency(budget.cprB)} · n_per_arm = ${lastN.toLocaleString()}
+        </p>
+      `;
+    };
+    planBtn.addEventListener("click", runSampleSize);
+    document.getElementById("ab-plan-cpr-a").addEventListener("input", runBudget);
+    document.getElementById("ab-plan-cpr-b").addEventListener("input", runBudget);
+    runSampleSize();
   }
 
-  // Mode 2: Analyze
+  // === Mode 1: Plan (Continuous) ===
+  if (planBtn && AB_STATE.testType === "continuous") {
+    let lastN = null;
+    const runSampleSize = () => {
+      const mean  = parseFloat(document.getElementById("ab-plan-mean").value);
+      const mde   = parseFloat(document.getElementById("ab-plan-mde-c").value) / 100;
+      const sigma = parseFloat(document.getElementById("ab-plan-sigma").value);
+      const alpha = parseFloat(document.getElementById("ab-plan-alpha").value);
+      const power = parseFloat(document.getElementById("ab-plan-power").value);
+      const result = STATS.sampleSizeContinuous({ baselineMean: mean, mdeRelative: mde, sigma, alpha, power });
+      const out = document.getElementById("ab-plan-result");
+      if (isNaN(result.n) || !isFinite(result.n)) {
+        out.innerHTML = `<div class="callout warn"><div class="ico">!</div><div class="body"><strong>입력값 확인 필요</strong><p>mean·MDE·σ가 모두 양수여야 합니다.</p></div></div>`;
+        lastN = null;
+        runBudget();
+        return;
+      }
+      const totalN = result.n * 2;
+      lastN = result.n;
+      const cv = sigma / mean;
+      out.innerHTML = `
+        <div class="ab-stats-grid">
+          <div class="ab-stat"><div class="ab-stat-label">그룹당 필요 샘플</div><div class="ab-stat-value tnum">${result.n.toLocaleString()}</div></div>
+          <div class="ab-stat"><div class="ab-stat-label">2그룹 합산</div><div class="ab-stat-value tnum">${totalN.toLocaleString()}</div></div>
+          <div class="ab-stat"><div class="ab-stat-label">기대 평균 A → B</div><div class="ab-stat-value tnum">${fmtCurrency(mean)} → ${fmtCurrency(mean * (1+mde))}</div></div>
+          <div class="ab-stat"><div class="ab-stat-label">변동계수 (CV = σ/μ)</div><div class="ab-stat-value tnum">${cv.toFixed(3)}</div></div>
+          <div class="ab-stat"><div class="ab-stat-label">절대 효과 (δ)</div><div class="ab-stat-value tnum">${fmtCurrency(result.delta)}</div></div>
+          <div class="ab-stat"><div class="ab-stat-label">z_α/2 + z_β</div><div class="ab-stat-value tnum">${result.zA.toFixed(3)} + ${result.zB.toFixed(3)}</div></div>
+        </div>
+        <p style="margin-top:0.75rem;font-size:13px;color:var(--text-secondary);">
+          일평균 트래픽이 5,000명이면 약 <strong>${Math.ceil(totalN / 5000)}일</strong>, 10,000명이면 약 <strong>${Math.ceil(totalN / 10000)}일</strong>의 운영이 필요합니다.
+        </p>
+      `;
+      runBudget();
+    };
+    const runBudget = () => {
+      const out = document.getElementById("ab-plan-budget-result");
+      if (!out) return;
+      if (lastN == null) { out.innerHTML = ""; return; }
+      const cprA = parseFloat(document.getElementById("ab-plan-cpr-a").value);
+      const cprBraw = document.getElementById("ab-plan-cpr-b").value.trim();
+      const cprB = cprBraw === "" ? null : parseFloat(cprBraw);
+      if (isNaN(cprA) || cprA < 0) { out.innerHTML = `<div class="ab-field-hint" style="color:var(--text-muted);">CPR A 입력 시 예산이 계산됩니다.</div>`; return; }
+      const budget = STATS.budgetForTest({ nPerArm: lastN, cprA, cprB });
+      out.innerHTML = `
+        <div class="ab-stats-grid">
+          <div class="ab-stat"><div class="ab-stat-label">Arm A 예산</div><div class="ab-stat-value tnum">${fmtCurrency(budget.costA)}</div></div>
+          <div class="ab-stat"><div class="ab-stat-label">Arm B 예산</div><div class="ab-stat-value tnum">${fmtCurrency(budget.costB)}</div></div>
+          <div class="ab-stat" style="grid-column: 1 / -1;"><div class="ab-stat-label">총 필요 예산</div><div class="ab-stat-value tnum">${fmtCurrency(budget.total)}</div></div>
+        </div>
+        <p style="margin-top:0.5rem;font-size:12px;color:var(--text-muted);font-family:var(--font-mono);">
+          CPR A = ${fmtCurrency(budget.cprA)} · CPR B = ${fmtCurrency(budget.cprB)} · n_per_arm = ${lastN.toLocaleString()}
+        </p>
+      `;
+    };
+    planBtn.addEventListener("click", runSampleSize);
+    document.getElementById("ab-plan-cpr-a").addEventListener("input", runBudget);
+    document.getElementById("ab-plan-cpr-b").addEventListener("input", runBudget);
+    runSampleSize();
+  }
+
+  // === Mode 2: Analyze (Binary) ===
   const anBtn = document.getElementById("ab-an-calc");
   if (anBtn) {
     const run = () => {
@@ -5488,6 +5833,50 @@ function bindABCalculatorHandlers() {
       `;
     };
     anBtn.addEventListener("click", run);
+    run();
+  }
+
+  // === Mode 2: Analyze (Continuous) ===
+  const ancBtn = document.getElementById("ab-anc-calc");
+  if (ancBtn) {
+    const run = () => {
+      const nA = parseInt(document.getElementById("ab-anc-na").value, 10);
+      const mA = parseFloat(document.getElementById("ab-anc-ma").value);
+      const sA = parseFloat(document.getElementById("ab-anc-sa").value);
+      const nB = parseInt(document.getElementById("ab-anc-nb").value, 10);
+      const mB = parseFloat(document.getElementById("ab-anc-mb").value);
+      const sB = parseFloat(document.getElementById("ab-anc-sb").value);
+      const out = document.getElementById("ab-anc-result");
+      if (!nA || !nB || isNaN(mA) || isNaN(mB) || sA < 0 || sB < 0) {
+        out.innerHTML = `<div class="callout warn"><div class="ico">!</div><div class="body"><strong>입력값 확인 필요</strong><p>n ≥ 1, mean / sd는 숫자, sd ≥ 0 이어야 합니다.</p></div></div>`;
+        return;
+      }
+      const r = STATS.continuousTest(nA, mA, sA, nB, mB, sB);
+      const smallSample = (nA < 30 || nB < 30);
+      const pvBadge = r.pValue < 0.01 ? '<span class="pill tier-1">p &lt; 0.01</span>' :
+                      r.pValue < 0.05 ? '<span class="pill tier-2">p &lt; 0.05</span>' :
+                      '<span class="pill tier-3">p ≥ 0.05 (비유의)</span>';
+
+      out.innerHTML = `
+        ${smallSample ? `<div class="callout warn" style="margin-bottom:0.75rem;"><div class="ico">!</div><div class="body"><strong>샘플 크기가 작습니다 (n &lt; 30)</strong><p>z-근사 신뢰성 낮음. 표본을 더 모으거나 t-분포 기반 검정을 권장합니다.</p></div></div>` : ""}
+        <div class="ab-result-split">
+          <div class="ab-result-block" style="grid-column: 1 / -1;">
+            <div class="ab-result-block-title">Welch z-근사 · 평균 비교</div>
+            <div class="ab-stats-grid">
+              <div class="ab-stat"><div class="ab-stat-label">평균 A / B</div><div class="ab-stat-value tnum">${fmtCurrency(r.meanA)} / ${fmtCurrency(r.meanB)}</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">표준편차 A / B</div><div class="ab-stat-value tnum">${fmtCurrency(r.sdA)} / ${fmtCurrency(r.sdB)}</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">절대 차이 (B - A)</div><div class="ab-stat-value tnum ${r.liftAbs >= 0 ? '' : 'down'}">${fmtCurrency(r.liftAbs)}</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">상대 Lift</div><div class="ab-stat-value tnum ${r.liftRel >= 0 ? '' : 'down'}">${(r.liftRel*100).toFixed(2)}%</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">z-score</div><div class="ab-stat-value tnum">${r.z.toFixed(3)}</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">p-value</div><div class="ab-stat-value tnum">${r.pValue.toFixed(4)} ${pvBadge}</div></div>
+              <div class="ab-stat" style="grid-column: 1 / -1;"><div class="ab-stat-label">평균차 95% CI</div><div class="ab-stat-value tnum">[ ${fmtCurrency(r.ciLow95)} , ${fmtCurrency(r.ciHigh95)} ]</div></div>
+              <div class="ab-stat" style="grid-column: 1 / -1;"><div class="ab-stat-label">Welch-Satterthwaite df (참고)</div><div class="ab-stat-value tnum">${r.df.toFixed(1)}</div></div>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+    ancBtn.addEventListener("click", run);
     run();
   }
 }
