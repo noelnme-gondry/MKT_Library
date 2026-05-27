@@ -1154,6 +1154,136 @@
     .alloc-controls { grid-template-columns: 1fr; }
   }
 
+  /* ========== A/B Test Calculator ========== */
+  .ab-tabs {
+    display: inline-flex;
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 3px;
+    gap: 2px;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .ab-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 0.5rem 0.875rem;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: background 0.1s ease, color 0.1s ease;
+  }
+  .ab-tab:hover { color: var(--text-primary); }
+  .ab-tab.active {
+    background: var(--primary);
+    color: var(--surface-base);
+    font-weight: 600;
+  }
+  .ab-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.875rem;
+    margin: 1rem 0;
+  }
+  .ab-form-grid-2col {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+  .ab-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .ab-field label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .ab-field input, .ab-field select {
+    background: var(--surface-container);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    padding: 0.5rem 0.625rem;
+    border-radius: var(--radius-lg);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+  }
+  .ab-field input:focus, .ab-field select:focus { border-color: var(--primary); }
+  .ab-field-hint {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 0.125rem;
+  }
+  .ab-arm-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--primary);
+    background: rgba(173, 198, 255, 0.08);
+    padding: 0.4rem 0.625rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(173, 198, 255, 0.18);
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+  .ab-result {
+    margin-top: 1rem;
+  }
+  .ab-result-split {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 0.875rem;
+  }
+  .ab-result-block {
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 1rem;
+  }
+  .ab-result-block-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .ab-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  .ab-stat {
+    padding: 0.5rem 0.625rem;
+    background: var(--surface-container-low);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle);
+  }
+  .ab-stat-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.25rem;
+  }
+  .ab-stat-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.005em;
+  }
+  .ab-stat-value.down { color: #ff8a8a; }
+
   /* ========== Context Alert Banner ========== */
   .alert-banner {
     display: flex;
@@ -1708,6 +1838,7 @@ const IA = [
       { id: "5-1", title: "CSV 업로드 및 컬럼 매핑", desc: "파일 업로드 후 표준 필드에 컬럼 연결" },
       { id: "5-2", title: "데이터 시각화 대시보드", desc: "KPI 자동 계산 + 시계열·채널·퍼널·코호트 차트" },
       { id: "5-3", title: "Budget Allocator", desc: "한계효용 기반 채널별 예산 최적 배분" },
+      { id: "5-4", title: "A/B Test Calculator", desc: "Sample Size 계산 + Frequentist/Bayesian 결과 분석" },
     ],
   },
 ];
@@ -4163,7 +4294,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-1", "5-2", "5-3"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-1", "5-2", "5-3", "5-4"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -4969,6 +5100,398 @@ allocation = total_budget × weight`)}
 }
 PAGE_RENDERERS["5-3"] = page_5_3;
 
+/* ========== 통계 라이브러리 (5-4 A/B Test Calculator) ==========
+   원본: Campaign Test Parameter Checker (Next.js + TypeScript)
+   - Frequentist: Two-proportion z-test, Wilson CI
+   - Bayesian: Beta-Binomial Monte Carlo
+   - Sample Size: Frequentist closed-form
+
+   Acklam approximation for normal inverse CDF (Φ⁻¹)
+   Abramowitz & Stegun erf for normal CDF (Φ) */
+
+const STATS = (() => {
+  // Φ(x) = 0.5 * (1 + erf(x / √2))
+  function erf(x) {
+    const sign = x >= 0 ? 1 : -1;
+    x = Math.abs(x);
+    const a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    const t = 1 / (1 + p * x);
+    const y = 1 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t * Math.exp(-x*x);
+    return sign * y;
+  }
+  function normalCDF(x) { return 0.5 * (1 + erf(x / Math.SQRT2)); }
+
+  // Φ⁻¹ (Acklam algorithm)
+  function normalInverse(p) {
+    if (p <= 0 || p >= 1) return NaN;
+    const a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
+                1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+    const b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
+                6.680131188771972e+01, -1.328068155288572e+01];
+    const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
+               -2.549732539343734e+00,  4.374664141464968e+00,  2.938163982698783e+00];
+    const d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
+    const pLow = 0.02425, pHigh = 1 - pLow;
+    let q, r;
+    if (p < pLow) { q = Math.sqrt(-2 * Math.log(p));
+      return (((((c[0]*q + c[1])*q + c[2])*q + c[3])*q + c[4])*q + c[5]) /
+             ((((d[0]*q + d[1])*q + d[2])*q + d[3])*q + 1);
+    }
+    if (p <= pHigh) { q = p - 0.5; r = q * q;
+      return (((((a[0]*r + a[1])*r + a[2])*r + a[3])*r + a[4])*r + a[5])*q /
+             (((((b[0]*r + b[1])*r + b[2])*r + b[3])*r + b[4])*r + 1);
+    }
+    q = Math.sqrt(-2 * Math.log(1 - p));
+    return -(((((c[0]*q + c[1])*q + c[2])*q + c[3])*q + c[4])*q + c[5]) /
+            ((((d[0]*q + d[1])*q + d[2])*q + d[3])*q + 1);
+  }
+
+  // Frequentist sample size per arm (relative MDE).
+  // n = 2 * (z_α/2 + z_β)² × p̄ × (1-p̄) / δ²
+  function sampleSizePerArm({ baseline, mdeRelative, alpha = 0.05, power = 0.8, twoSided = true }) {
+    const p1 = baseline;
+    const p2 = baseline * (1 + mdeRelative);
+    if (p2 <= 0 || p2 >= 1) return { n: NaN, p1, p2 };
+    const pBar = (p1 + p2) / 2;
+    const zA = twoSided ? normalInverse(1 - alpha / 2) : normalInverse(1 - alpha);
+    const zB = normalInverse(power);
+    const num = 2 * Math.pow(zA + zB, 2) * pBar * (1 - pBar);
+    const den = Math.pow(p2 - p1, 2);
+    return { n: Math.ceil(num / den), p1, p2, zA, zB };
+  }
+
+  // Two-proportion z-test
+  function twoPropZTest(nA, xA, nB, xB) {
+    const pA = xA / nA, pB = xB / nB;
+    const pPool = (xA + xB) / (nA + nB);
+    const se = Math.sqrt(pPool * (1 - pPool) * (1 / nA + 1 / nB));
+    const z = se > 0 ? (pB - pA) / se : 0;
+    const pValue = 2 * (1 - normalCDF(Math.abs(z)));
+    const liftAbs = pB - pA;
+    const liftRel = pA > 0 ? (pB - pA) / pA : 0;
+    // Wilson CI for difference (independent groups, normal approx)
+    const seDiff = Math.sqrt(pA * (1 - pA) / nA + pB * (1 - pB) / nB);
+    const ciLow95  = liftAbs - 1.96 * seDiff;
+    const ciHigh95 = liftAbs + 1.96 * seDiff;
+    return { pA, pB, liftAbs, liftRel, z, pValue, ciLow95, ciHigh95 };
+  }
+
+  // Bayesian Beta-Binomial: P(B > A) via Monte Carlo
+  // Beta(α, β) sampling via Gamma sampling (Marsaglia & Tsang)
+  function randGamma(shape) {
+    if (shape < 1) {
+      const u = Math.random();
+      return randGamma(shape + 1) * Math.pow(u, 1 / shape);
+    }
+    const d = shape - 1 / 3;
+    const c = 1 / Math.sqrt(9 * d);
+    while (true) {
+      let x, v;
+      do { x = randNormal(); v = 1 + c * x; } while (v <= 0);
+      v = v * v * v;
+      const u = Math.random();
+      if (u < 1 - 0.0331 * x * x * x * x) return d * v;
+      if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v;
+    }
+  }
+  function randNormal() {
+    // Box-Muller
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+  function randBeta(alpha, beta) {
+    const x = randGamma(alpha);
+    const y = randGamma(beta);
+    return x / (x + y);
+  }
+  function bayesianAB({ nA, xA, nB, xB, sims = 10000, priorAlpha = 1, priorBeta = 1 }) {
+    const aA = priorAlpha + xA, bA = priorBeta + (nA - xA);
+    const aB = priorAlpha + xB, bB = priorBeta + (nB - xB);
+    let winB = 0, sumLift = 0;
+    const samplesA = [], samplesB = [];
+    for (let i = 0; i < sims; i++) {
+      const pA = randBeta(aA, bA);
+      const pB = randBeta(aB, bB);
+      if (pB > pA) winB++;
+      sumLift += pA > 0 ? (pB - pA) / pA : 0;
+      samplesA.push(pA);
+      samplesB.push(pB);
+    }
+    samplesA.sort((a, b) => a - b);
+    samplesB.sort((a, b) => a - b);
+    return {
+      probBWins: winB / sims,
+      expectedLift: sumLift / sims,
+      ciA: [samplesA[Math.floor(sims * 0.025)], samplesA[Math.floor(sims * 0.975)]],
+      ciB: [samplesB[Math.floor(sims * 0.025)], samplesB[Math.floor(sims * 0.975)]],
+    };
+  }
+
+  return { normalCDF, normalInverse, sampleSizePerArm, twoPropZTest, bayesianAB };
+})();
+
+/* ---------- 5-4. A/B Test Calculator ---------- */
+const AB_STATE = {
+  mode: "plan",  // plan | analyze | threshold
+};
+
+function page_5_4() {
+  const meta = findMeta("5-4");
+  const mode = AB_STATE.mode;
+
+  const tabs = `
+    <div class="ab-tabs">
+      <button class="ab-tab ${mode === "plan" ? "active" : ""}"      data-mode="plan">① 모수 계산 (Plan)</button>
+      <button class="ab-tab ${mode === "analyze" ? "active" : ""}"   data-mode="analyze">② 결과 분석 (Analyze)</button>
+      <button class="ab-tab ${mode === "threshold" ? "active" : ""}" data-mode="threshold">③ 신뢰수준 가이드</button>
+    </div>
+  `;
+
+  return pageShell(meta, {
+    deck: "마케팅 캠페인 A/B 테스트의 통계적 유의성 확보를 위한 모수 계산 + 결과 분석 도구. Frequentist (p-value)와 Bayesian (winning probability) 두 방식 동시 제공.",
+    chips: `
+      <span class="chip"><span class="dot"></span>도구 · A/B Test Calculator</span>
+      <span class="chip ok"><span class="dot"></span>Frequentist + Bayesian</span>
+      <span class="chip"><span class="dot"></span>참조 · Campaign Test Parameter Checker (Next.js)</span>
+      ${authStatusChip()}`,
+    summary: "통계 라이브러리(z-test, Φ⁻¹ Acklam, Beta-Binomial Monte Carlo)를 클라이언트에서 직접 실행. 3가지 모드: (1) 테스트 시작 전 모수 계산, (2) 결과 분석 (Frequentist+Bayesian 동시), (3) 모수별 추천 신뢰수준 가이드.",
+    toc: [
+      { id: "s-mode", title: "모드 선택" },
+      { id: "s-body", title: "계산기" },
+      { id: "s-notes", title: "통계 노트" },
+    ],
+    body: `
+      <section class="block" id="s-mode">
+        <h2 class="section-title"><span class="ix">§1</span>모드 선택</h2>
+        ${tabs}
+      </section>
+
+      <section class="block" id="s-body">
+        ${mode === "plan"      ? renderModePlan()      : ""}
+        ${mode === "analyze"   ? renderModeAnalyze()   : ""}
+        ${mode === "threshold" ? renderModeThreshold() : ""}
+      </section>
+
+      <section class="block" id="s-notes">
+        <h2 class="section-title"><span class="ix">§4</span>통계 노트</h2>
+        <ul>
+          <li><strong>Frequentist z-test</strong>: <code class="inline">z = (p̂_B - p̂_A) / √(p̄(1-p̄)(1/n_A + 1/n_B))</code>. p-value &lt; α 시 귀무가설 기각.</li>
+          <li><strong>Sample Size</strong>: <code class="inline">n = 2 × (z_α/2 + z_β)² × p̄(1-p̄) / δ²</code>. δ = baseline × MDE (relative).</li>
+          <li><strong>Bayesian</strong>: 사전 Beta(1,1) (uniform). 사후 Beta(1+x, 1+n-x). Monte Carlo로 P(B&gt;A) 추정. 기본 10,000 sim.</li>
+          <li><strong>주의</strong>: 멀티 변형(A/B/C/...) 테스트 시 Bonferroni 보정(<code class="inline">α/k</code>) 필요. 본 도구는 2-arm 기준.</li>
+        </ul>
+      </section>
+    `,
+  });
+}
+PAGE_RENDERERS["5-4"] = page_5_4;
+
+function renderModePlan() {
+  return `
+    <h2 class="section-title"><span class="ix">§2</span>① 테스트 시작 전 모수 계산</h2>
+    <p style="color:var(--text-secondary);">현재 전환율과 탐지하고 싶은 최소 lift(MDE)를 입력하면, 그룹당 필요한 샘플 사이즈가 계산됩니다.</p>
+    <div class="ab-form-grid">
+      <div class="ab-field">
+        <label>현재 전환율 (%) · baseline</label>
+        <input id="ab-plan-baseline" type="number" step="0.01" min="0.01" max="99.99" value="5" />
+        <span class="ab-field-hint">예: 5% = 5</span>
+      </div>
+      <div class="ab-field">
+        <label>탐지할 최소 lift (%) · MDE (relative)</label>
+        <input id="ab-plan-mde" type="number" step="0.1" min="0.1" max="500" value="10" />
+        <span class="ab-field-hint">예: baseline 대비 10% 상승 = 10</span>
+      </div>
+      <div class="ab-field">
+        <label>유의수준 α</label>
+        <select id="ab-plan-alpha">
+          <option value="0.10">0.10 (90% 신뢰)</option>
+          <option value="0.05" selected>0.05 (95% 신뢰)</option>
+          <option value="0.01">0.01 (99% 신뢰)</option>
+        </select>
+      </div>
+      <div class="ab-field">
+        <label>검정력 (Power)</label>
+        <select id="ab-plan-power">
+          <option value="0.70">0.70</option>
+          <option value="0.80" selected>0.80</option>
+          <option value="0.90">0.90</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn primary" id="ab-plan-calc">계산</button>
+    <div class="ab-result" id="ab-plan-result"></div>
+  `;
+}
+
+function renderModeAnalyze() {
+  return `
+    <h2 class="section-title"><span class="ix">§2</span>② 진행 중인 테스트 결과 분석</h2>
+    <p style="color:var(--text-secondary);">각 그룹의 노출 수와 전환 수를 입력하면 Frequentist(z-test)와 Bayesian(Monte Carlo) 결과를 동시에 보여줍니다.</p>
+    <div class="ab-form-grid ab-form-grid-2col">
+      <div>
+        <div class="ab-arm-title">Arm A · Control</div>
+        <div class="ab-field">
+          <label>노출 수 (n_A)</label>
+          <input id="ab-an-na" type="number" min="1" value="10000" />
+        </div>
+        <div class="ab-field">
+          <label>전환 수 (x_A)</label>
+          <input id="ab-an-xa" type="number" min="0" value="500" />
+        </div>
+      </div>
+      <div>
+        <div class="ab-arm-title">Arm B · Variant</div>
+        <div class="ab-field">
+          <label>노출 수 (n_B)</label>
+          <input id="ab-an-nb" type="number" min="1" value="10000" />
+        </div>
+        <div class="ab-field">
+          <label>전환 수 (x_B)</label>
+          <input id="ab-an-xb" type="number" min="0" value="560" />
+        </div>
+      </div>
+    </div>
+    <button class="btn primary" id="ab-an-calc">분석</button>
+    <div class="ab-result" id="ab-an-result"></div>
+  `;
+}
+
+function renderModeThreshold() {
+  // 베이스라인 × MDE 매트릭스 (alpha=0.05, power=0.80 기준)
+  const baselines = [0.01, 0.02, 0.05, 0.10, 0.20];
+  const mdes = [0.05, 0.10, 0.15, 0.20, 0.30];
+  const cells = baselines.map(b =>
+    mdes.map(m => STATS.sampleSizePerArm({ baseline: b, mdeRelative: m }).n)
+  );
+
+  return `
+    <h2 class="section-title"><span class="ix">§2</span>③ 모수 크기별 추천 신뢰수준 가이드</h2>
+    <p style="color:var(--text-secondary);">α = 0.05, Power = 0.80 기준 그룹당 필요 샘플 사이즈 매트릭스. 일평균 트래픽으로 나누면 테스트 기간 산정 가능.</p>
+    <div class="table-wrap" style="margin-bottom:1.5rem;">
+      <table class="data">
+        <thead>
+          <tr>
+            <th>Baseline ↓ \\ MDE →</th>
+            ${mdes.map(m => `<th>${(m * 100).toFixed(0)}%</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${baselines.map((b, i) => `
+            <tr>
+              <td><strong>${(b * 100).toFixed(0)}%</strong></td>
+              ${cells[i].map(n => `<td class="tnum">${n.toLocaleString()}</td>`).join("")}
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub-title">권장 사항</h3>
+    <ul>
+      <li><strong>샘플 부족 (그룹당 1,000 미만)</strong> → 통계 검정 신뢰성 낮음. 일평균 트래픽 점검 후 MDE 상향 또는 테스트 기간 연장</li>
+      <li><strong>샘플 충분 (10,000+)</strong> → α=0.05, Power=0.80이 표준. 더 엄격한 결정이 필요하면 α=0.01</li>
+      <li><strong>매우 큰 샘플 (100,000+)</strong> → 작은 차이도 유의하게 잡힘. <strong>실질적 의미(practical significance)</strong>를 별도 판단 — lift &lt; 1%는 통계는 유의해도 비즈니스적으로 무의미할 수 있음</li>
+      <li><strong>멀티 변형 테스트 (A/B/C/D...)</strong> → Bonferroni 보정 강제: α를 변형 수로 나눠 사용</li>
+      <li><strong>조기 종료 (peeking) 금지</strong> → 사전 계산된 샘플 수에 도달하기 전 결과를 보고 멈추면 1종 오류율 폭증. Bayesian 방식은 peeking 비교적 안전</li>
+    </ul>
+  `;
+}
+
+function bindABCalculatorHandlers() {
+  // Tab switching
+  document.querySelectorAll(".ab-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      AB_STATE.mode = btn.dataset.mode;
+      navigate("5-4");
+    });
+  });
+
+  // Mode 1: Plan
+  const planBtn = document.getElementById("ab-plan-calc");
+  if (planBtn) {
+    const run = () => {
+      const baseline = parseFloat(document.getElementById("ab-plan-baseline").value) / 100;
+      const mde = parseFloat(document.getElementById("ab-plan-mde").value) / 100;
+      const alpha = parseFloat(document.getElementById("ab-plan-alpha").value);
+      const power = parseFloat(document.getElementById("ab-plan-power").value);
+      const result = STATS.sampleSizePerArm({ baseline, mdeRelative: mde, alpha, power });
+      const totalN = result.n * 2;
+      const out = document.getElementById("ab-plan-result");
+      if (isNaN(result.n) || !isFinite(result.n)) {
+        out.innerHTML = `<div class="callout warn"><div class="ico">!</div><div class="body"><strong>입력값 확인 필요</strong><p>baseline × (1 + MDE) 가 1을 초과하거나 음수입니다. 값을 조정해 주세요.</p></div></div>`;
+        return;
+      }
+      out.innerHTML = `
+        <div class="ab-stats-grid">
+          <div class="ab-stat"><div class="ab-stat-label">그룹당 필요 샘플</div><div class="ab-stat-value tnum">${result.n.toLocaleString()}</div></div>
+          <div class="ab-stat"><div class="ab-stat-label">2그룹 합산</div><div class="ab-stat-value tnum">${totalN.toLocaleString()}</div></div>
+          <div class="ab-stat"><div class="ab-stat-label">기대 전환율 A → B</div><div class="ab-stat-value tnum">${(result.p1*100).toFixed(2)}% → ${(result.p2*100).toFixed(2)}%</div></div>
+          <div class="ab-stat"><div class="ab-stat-label">z_α/2 + z_β</div><div class="ab-stat-value tnum">${result.zA.toFixed(3)} + ${result.zB.toFixed(3)}</div></div>
+        </div>
+        <p style="margin-top:0.75rem;font-size:13px;color:var(--text-secondary);">
+          일평균 트래픽이 5,000명이면 약 <strong>${Math.ceil(totalN / 5000)}일</strong>, 10,000명이면 약 <strong>${Math.ceil(totalN / 10000)}일</strong>의 운영이 필요합니다.
+        </p>
+      `;
+    };
+    planBtn.addEventListener("click", run);
+    run();
+  }
+
+  // Mode 2: Analyze
+  const anBtn = document.getElementById("ab-an-calc");
+  if (anBtn) {
+    const run = () => {
+      const nA = parseInt(document.getElementById("ab-an-na").value, 10);
+      const xA = parseInt(document.getElementById("ab-an-xa").value, 10);
+      const nB = parseInt(document.getElementById("ab-an-nb").value, 10);
+      const xB = parseInt(document.getElementById("ab-an-xb").value, 10);
+      const out = document.getElementById("ab-an-result");
+      if (!nA || !nB || xA > nA || xB > nB || xA < 0 || xB < 0) {
+        out.innerHTML = `<div class="callout warn"><div class="ico">!</div><div class="body"><strong>입력값 확인 필요</strong><p>각 그룹의 노출 수는 1 이상, 전환 수는 0 ~ 노출 수 범위여야 합니다.</p></div></div>`;
+        return;
+      }
+      const freq = STATS.twoPropZTest(nA, xA, nB, xB);
+      const bayes = STATS.bayesianAB({ nA, xA, nB, xB, sims: 10000 });
+      const winner = bayes.probBWins >= 0.95 ? "B 우세 (강한 증거)" :
+                     bayes.probBWins >= 0.80 ? "B 우세 (보통 증거)" :
+                     bayes.probBWins >= 0.50 ? "약한 B 우세" :
+                     bayes.probBWins >= 0.20 ? "약한 A 우세" : "A 우세 (강한 증거)";
+      const pvBadge = freq.pValue < 0.01 ? '<span class="pill tier-1">p &lt; 0.01</span>' :
+                      freq.pValue < 0.05 ? '<span class="pill tier-2">p &lt; 0.05</span>' :
+                      '<span class="pill tier-3">p ≥ 0.05 (비유의)</span>';
+
+      out.innerHTML = `
+        <div class="ab-result-split">
+          <div class="ab-result-block">
+            <div class="ab-result-block-title">Frequentist · z-test</div>
+            <div class="ab-stats-grid">
+              <div class="ab-stat"><div class="ab-stat-label">전환율 A / B</div><div class="ab-stat-value tnum">${(freq.pA*100).toFixed(2)}% / ${(freq.pB*100).toFixed(2)}%</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">상대 Lift</div><div class="ab-stat-value tnum ${freq.liftRel >= 0 ? '' : 'down'}">${(freq.liftRel*100).toFixed(2)}%</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">z-score</div><div class="ab-stat-value tnum">${freq.z.toFixed(3)}</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">p-value</div><div class="ab-stat-value tnum">${freq.pValue.toFixed(4)} ${pvBadge}</div></div>
+              <div class="ab-stat" style="grid-column: 1 / -1;"><div class="ab-stat-label">절대 차이 95% CI</div><div class="ab-stat-value tnum">[ ${(freq.ciLow95*100).toFixed(2)}% , ${(freq.ciHigh95*100).toFixed(2)}% ]</div></div>
+            </div>
+          </div>
+          <div class="ab-result-block">
+            <div class="ab-result-block-title">Bayesian · Beta-Binomial</div>
+            <div class="ab-stats-grid">
+              <div class="ab-stat"><div class="ab-stat-label">P(B &gt; A)</div><div class="ab-stat-value tnum">${(bayes.probBWins*100).toFixed(2)}%</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">기대 Lift</div><div class="ab-stat-value tnum">${(bayes.expectedLift*100).toFixed(2)}%</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">A 95% CI</div><div class="ab-stat-value tnum">[ ${(bayes.ciA[0]*100).toFixed(2)} , ${(bayes.ciA[1]*100).toFixed(2)} ]</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">B 95% CI</div><div class="ab-stat-value tnum">[ ${(bayes.ciB[0]*100).toFixed(2)} , ${(bayes.ciB[1]*100).toFixed(2)} ]</div></div>
+              <div class="ab-stat" style="grid-column: 1 / -1;"><div class="ab-stat-label">의사결정 권고</div><div class="ab-stat-value">${winner}</div></div>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+    anBtn.addEventListener("click", run);
+    run();
+  }
+}
+
 /* ---------- Fallback (drafts only) ---------- */
 function pageDummy(meta) {
   return pageShell(meta, {
@@ -5248,6 +5771,9 @@ function bindCSVPageHandlers() {
 
   // ----- 5-3: Budget Allocator 핸들러 -----
   if (document.getElementById("alloc-recompute")) bindBudgetAllocatorHandlers();
+
+  // ----- 5-4: A/B Test Calculator 핸들러 -----
+  if (document.querySelector(".ab-tab")) bindABCalculatorHandlers();
 }
 
 /* ========== 5-2: 시각화 차트 5종 ========== */
