@@ -1376,6 +1376,34 @@
     margin: 0.4rem 0;
   }
 
+  /* 구간별 marginal CPA 표 */
+  .alloc-marginal-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .alloc-marginal-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.005em;
+  }
+  .alloc-marginal-title .alloc-marginal-sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-left: 0.25rem;
+  }
+  .alloc-marginal-deck {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0 0 0.625rem;
+    line-height: 17px;
+  }
+  .alloc-marginal-section tr.muted td { color: var(--text-muted); }
+
   /* ========== A/B Test Calculator ========== */
   .ab-tabs {
     display: inline-flex;
@@ -2161,6 +2189,7 @@ const STANDARD_FIELDS = {
   impressions:   { label: "노출수",       aliases: ["imp", "impression", "노출"],                type: "number",  required: false, group: "단일 지표" },
   clicks:        { label: "클릭수",       aliases: ["click", "클릭"],                            type: "number",  required: false, group: "단일 지표" },
   installs:      { label: "설치수",       aliases: ["install", "설치", "inst"],                  type: "number",  required: true,  group: "단일 지표" },
+  actions:       { label: "액션 수",      aliases: ["action", "actions", "conversions", "events", "전환", "액션"], type: "number", required: false, group: "단일 지표" },
   revenue_d0:    { label: "매출 D0",      aliases: ["rev_d0", "revenue0", "매출_d0"],            type: "number",  required: false, group: "코호트 D0", cohort: 0 },
   pu_d0:         { label: "결제건수 D0",  aliases: ["pu_cnt_d0", "purchase_d0", "결제_d0"],      type: "number",  required: false, group: "코호트 D0", cohort: 0 },
   ret_d0:        { label: "잔존율 D0",    aliases: ["retention_d0", "잔존_d0"],                  type: "percent", required: false, group: "코호트 D0", cohort: 0 },
@@ -5293,8 +5322,16 @@ function page_5_3() {
               <label>성과 지표</label>
               <select id="alloc-metric">
                 <option value="installs">설치수 (CPI 기준)</option>
+                <option value="actions">액션 수 (CPA 기준)</option>
                 <option value="pu_d7">결제수 D7 (CPA 기준)</option>
               </select>
+            </div>
+            <div>
+              <label>통화</label>
+              <div class="ab-pillgroup" style="margin:0;padding:3px 4px;">
+                <button class="ab-pill" data-alloccurrency="KRW">₩ KRW</button>
+                <button class="ab-pill" data-alloccurrency="USD">$ USD</button>
+              </div>
             </div>
             <div>
               <label>&nbsp;</label>
@@ -5827,12 +5864,12 @@ const ALLOC_MATH = (() => {
     return { x, y };
   }
 
-  function getAxisLabels(mode) {
+  function getAxisLabels(mode, metricLabel = "CPA") {
     switch (mode) {
-      case "log":    return { x: "log10(Cost)", y: "log10(CPR)" };
-      case "minmax": return { x: "Cost · 정규화 (0~1)", y: "CPR · 정규화 (0~1)" };
-      case "robust": return { x: "Cost · Robust z", y: "CPR · Robust z" };
-      default:       return { x: "Cost", y: "CPR (Cost / Results)" };
+      case "log":    return { x: "log10(Cost)", y: `log10(${metricLabel})` };
+      case "minmax": return { x: "Cost · 정규화 (0~1)", y: `${metricLabel} · 정규화 (0~1)` };
+      case "robust": return { x: "Cost · Robust z", y: `${metricLabel} · Robust z` };
+      default:       return { x: "Cost", y: `${metricLabel} (Cost / Action)` };
     }
   }
 
@@ -5885,10 +5922,30 @@ function simulateChannel({ model, currentCost, targetCost, channelRows, metric }
 
 /* 통화 기호 및 포맷 */
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
-function fmtCurrency(value) {
+/* 통화 표시 헬퍼.
+   opts.metric=true → CPA/CPI/ARPU 같은 결과 지표 (USD 소수점 1자리, KRW 정수)
+   opts 없음        → cost/revenue 절대값 (둘 다 정수) */
+function fmtCurrency(value, opts = {}) {
   if (value == null || isNaN(value)) return "—";
   const sym = CURRENCY_SYMBOLS[AB_STATE.currency] || "₩";
-  return `${sym}${Math.round(value).toLocaleString("ko-KR")}`;
+  const isUSD = AB_STATE.currency === "USD";
+  const decimals = (isUSD && opts.metric) ? 1 : 0;
+  return `${sym}${Number(value).toLocaleString("ko-KR", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })}`;
+}
+
+/* 성과 지표(metric) → 라벨 헬퍼.
+   metric은 'installs' / 'actions' / 'pu_d7'. 설치수면 CPI, 그 외는 CPA. */
+function getCostMetricLabel(metric) {
+  return metric === "installs" ? "CPI" : "CPA";
+}
+function getMetricUnitLabel(metric) {
+  if (metric === "installs") return "설치";
+  if (metric === "actions")  return "액션";
+  if (metric === "pu_d7")    return "결제";
+  return "결과";
 }
 
 /* ---------- 5-4. A/B Test Calculator ---------- */
@@ -7120,6 +7177,23 @@ function bindStaticAllocatorControls() {
   container.dataset.bound = "1";
 }
 
+/* alloc-card에 추가한 통화 토글 (alloc-controls 영역) */
+function bindAllocCurrencyToggle() {
+  const card = document.querySelector(".alloc-card");
+  if (!card || card.dataset.curBound === "1") return;
+  card.querySelectorAll(".ab-pill[data-alloccurrency]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      AB_STATE.currency = btn.dataset.alloccurrency;
+      queueAllocatorRender();
+    });
+  });
+  card.dataset.curBound = "1";
+}
+function updateAllocCurrencyState() {
+  document.querySelectorAll(".ab-pill[data-alloccurrency]").forEach(btn =>
+    btn.classList.toggle("active", btn.dataset.alloccurrency === AB_STATE.currency));
+}
+
 /* 활성 상태(active 클래스)만 갱신 — DOM/이벤트 재바인딩 X */
 function updateAllocatorPillStates() {
   document.querySelectorAll(".ab-pill[data-trendtype]").forEach(btn =>
@@ -7140,6 +7214,7 @@ function updateAllocatorPillStates() {
     const disabled = ALLOC_STATE.outlierMethod === "none";
     strengthGroup.classList.toggle("disabled", disabled);
   }
+  updateAllocCurrencyState();
 }
 
 /* ========== 추세선 segment 분리 ==========
@@ -7386,9 +7461,10 @@ function renderAllocatorScatter() {
     }
   });
 
-  const axisLabels = ALLOC_MATH.getAxisLabels(normMode);
+  const metricLabel = getCostMetricLabel(metric);
+  const axisLabels = ALLOC_MATH.getAxisLabels(normMode, metricLabel);
   const tooltipFmt = normMode === "raw"
-    ? (ctx) => `(${ctx.parsed.x.toFixed(0)}, CPR=${ctx.parsed.y.toFixed(2)})`
+    ? (ctx) => `(${ctx.parsed.x.toFixed(0)}, ${metricLabel}=${ctx.parsed.y.toFixed(2)})`
     : (ctx) => `(${ctx.parsed.x.toFixed(3)}, ${ctx.parsed.y.toFixed(3)})`;
 
   // 기존 chart instance가 있으면 data만 갈아끼우고 update("none")으로 즉시 갱신.
@@ -7497,6 +7573,7 @@ function renderAllocatorScatter() {
   // 정적 pillgroup 핸들러는 bindStaticAllocatorControls()에서 1회만 부착됨.
   // 여기서는 active 클래스만 갱신.
   bindStaticAllocatorControls();
+  bindAllocCurrencyToggle();
   updateAllocatorPillStates();
 }
 
@@ -7601,6 +7678,8 @@ function renderSimulationCard(channels, channelModels, metric) {
     currentCost, targetCost,
     channelRows, metric,
   });
+  const metricLabel = getCostMetricLabel(metric);
+  const unitLabel = getMetricUnitLabel(metric);
 
   container.innerHTML = `
     <div class="alloc-sim-card">
@@ -7630,7 +7709,9 @@ function renderSimulationCard(channels, channelModels, metric) {
         </div>
       </div>
 
-      ${renderSimResults(sim, currentCost, targetCost, meta, !!sim.rev)}
+      ${renderSimResults(sim, currentCost, targetCost, meta, !!sim.rev, metricLabel, unitLabel)}
+
+      ${renderMarginalIntervals(meta, metricLabel, unitLabel)}
     </div>
   `;
 
@@ -7642,7 +7723,7 @@ function renderSimulationCard(channels, channelModels, metric) {
     ALLOC_STATE.sim.targetCost = t;
     const newSim = simulateChannel({ model: meta.model, currentCost: c, targetCost: t, channelRows, metric });
     const wrap = document.getElementById("alloc-sim-results");
-    if (wrap) wrap.outerHTML = renderSimResults(newSim, c, t, meta, !!newSim.rev);
+    if (wrap) wrap.outerHTML = renderSimResults(newSim, c, t, meta, !!newSim.rev, metricLabel, unitLabel);
   };
   const cInp = document.getElementById("sim-current");
   const tInp = document.getElementById("sim-target");
@@ -7650,10 +7731,98 @@ function renderSimulationCard(channels, channelModels, metric) {
   if (tInp) tInp.addEventListener("input", refresh);
 }
 
-function renderSimResults(sim, currentCost, targetCost, meta, hasRevenue) {
+/* ========== 구간별 marginal CPA 계산 + 표 렌더 ==========
+   관측 cost 범위 (xMin ~ xMax)를 10등분해 각 구간의 평균 한계 비용을 계산.
+   marginalCPA = ΔCost / ΔResults — 각 구간 시작점과 끝점의 추세선 예측 차이. */
+function calcMarginalIntervals(model, xMin, xMax, steps = 10) {
+  if (!model || !isFinite(xMax) || xMax <= 0) return [];
+  const start = Math.max(0, xMin > 0 ? xMin * 0.5 : 0);  // 0부터 시작
+  const end = xMax;
+  const stepSize = (end - start) / steps;
+  const intervals = [];
+
+  let prev = null;
+  for (let i = 0; i <= steps; i++) {
+    const cost = start + i * stepSize;
+    if (cost <= 0) {
+      prev = { cost: 0, cpr: null, results: 0 };
+      continue;
+    }
+    const cpr = model.predict(cost);
+    if (!isFinite(cpr) || cpr <= 0) {
+      if (prev) {
+        intervals.push({ from: prev.cost, to: cost, marginalCPA: null, invalid: true });
+        prev = { cost, cpr: null, results: prev.results };
+      }
+      continue;
+    }
+    const results = cost / cpr;
+    if (prev != null) {
+      const dCost = cost - prev.cost;
+      const dRes = results - prev.results;
+      intervals.push({
+        from: prev.cost,
+        to: cost,
+        dCost,
+        dRes,
+        marginalCPA: dRes > 1e-6 ? dCost / dRes : null,
+      });
+    }
+    prev = { cost, cpr, results };
+  }
+  return intervals;
+}
+
+function renderMarginalIntervals(meta, metricLabel, unitLabel) {
+  if (!meta || !meta.model) return "";
+  const intervals = calcMarginalIntervals(meta.model, meta.xMin, meta.xMax, 10);
+  if (!intervals.length) return "";
+
+  const rows = intervals.map((iv, idx) => {
+    const cls = iv.invalid ? "muted" : "";
+    return `
+      <tr class="${cls}">
+        <td class="tnum">${idx + 1}</td>
+        <td class="tnum">${fmtCurrency(iv.from)} ~ ${fmtCurrency(iv.to)}</td>
+        <td class="tnum">${iv.dCost != null ? "▲ " + fmtCurrency(iv.dCost) : "—"}</td>
+        <td class="tnum">${iv.dRes != null && isFinite(iv.dRes) ? "▲ " + Math.round(iv.dRes).toLocaleString() + "건" : "—"}</td>
+        <td class="tnum"><strong>${iv.marginalCPA != null ? fmtCurrency(iv.marginalCPA, {metric:true}) : "—"}</strong></td>
+      </tr>
+    `;
+  }).join("");
+
+  return `
+    <div class="alloc-marginal-section">
+      <div class="alloc-marginal-title">
+        구간별 marginal ${metricLabel} <span class="alloc-marginal-sub">(관측 범위 ${fmtCurrency(meta.xMin)} ~ ${fmtCurrency(meta.xMax)} · 10등분)</span>
+      </div>
+      <p class="alloc-marginal-deck">
+        각 구간 끝점에서의 예측 ${metricLabel}와 ${unitLabel}수를 추세선에서 뽑은 뒤,
+        <code class="inline">marginal ${metricLabel} = Δ Cost / Δ ${unitLabel}</code>으로 계산합니다.
+        한계효용 체감 채널이면 구간이 커질수록 marginal ${metricLabel}이 증가합니다.
+      </p>
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>구간 Cost</th>
+              <th>Δ Cost</th>
+              <th>Δ ${unitLabel}수</th>
+              <th>marginal ${metricLabel}</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderSimResults(sim, currentCost, targetCost, meta, hasRevenue, metricLabel = "CPA", unitLabel = "결과") {
   if (!sim || sim.invalid) {
     const reason = sim?.invalid === "out_of_range"
-      ? "추세선이 음수 CPR을 예측하는 영역입니다. Cost 범위를 조정하거나 추세선 모드(Log/Power)를 변경해 보세요."
+      ? `추세선이 음수 ${metricLabel}을 예측하는 영역입니다. Cost 범위를 조정하거나 추세선 모드(Log/Power)를 변경해 보세요.`
       : "추세선 모델이 없습니다.";
     return `
       <div id="alloc-sim-results" class="alloc-sim-results">
@@ -7669,32 +7838,31 @@ function renderSimResults(sim, currentCost, targetCost, meta, hasRevenue) {
   const direction = dCost > 0 ? "증액" : dCost < 0 ? "감액" : "유지";
   const arrow = dCost > 0 ? "▲" : dCost < 0 ? "▼" : "—";
 
-  // 외삽 경고 (관측 범위 밖)
   const isExtrapolation = currentCost < meta.xMin || currentCost > meta.xMax ||
                           targetCost  < meta.xMin || targetCost  > meta.xMax;
 
   const cprBlock = `
     <div class="alloc-sim-block">
-      <div class="alloc-sim-block-title">예측 CPR · Results</div>
+      <div class="alloc-sim-block-title">예측 ${metricLabel} · ${unitLabel}수</div>
       <div class="alloc-sim-row"><span>현재 Cost</span><strong class="tnum">${fmtCurrency(currentCost)}</strong></div>
-      <div class="alloc-sim-row"><span>현재 예측 CPR</span><strong class="tnum">${fmtCurrency(sim.cprC)}</strong></div>
-      <div class="alloc-sim-row"><span>현재 예측 Results</span><strong class="tnum">${Math.round(sim.resC).toLocaleString()}</strong></div>
+      <div class="alloc-sim-row"><span>현재 예측 ${metricLabel}</span><strong class="tnum">${fmtCurrency(sim.cprC, {metric:true})}</strong></div>
+      <div class="alloc-sim-row"><span>현재 예측 ${unitLabel}수</span><strong class="tnum">${Math.round(sim.resC).toLocaleString()}</strong></div>
       <div class="alloc-sim-sep"></div>
       <div class="alloc-sim-row"><span>목표 Cost</span><strong class="tnum">${fmtCurrency(targetCost)}</strong></div>
-      <div class="alloc-sim-row"><span>목표 예측 CPR</span><strong class="tnum">${fmtCurrency(sim.cprT)}</strong></div>
-      <div class="alloc-sim-row"><span>목표 예측 Results</span><strong class="tnum">${Math.round(sim.resT).toLocaleString()}</strong></div>
+      <div class="alloc-sim-row"><span>목표 예측 ${metricLabel}</span><strong class="tnum">${fmtCurrency(sim.cprT, {metric:true})}</strong></div>
+      <div class="alloc-sim-row"><span>목표 예측 ${unitLabel}수</span><strong class="tnum">${Math.round(sim.resT).toLocaleString()}</strong></div>
       <div class="alloc-sim-sep"></div>
       <div class="alloc-sim-row highlight">
         <span>Δ Cost (${direction})</span>
         <strong class="tnum ${dCost >= 0 ? '' : 'down'}">${arrow} ${fmtCurrency(Math.abs(dCost))}</strong>
       </div>
       <div class="alloc-sim-row highlight">
-        <span>Δ Results</span>
+        <span>Δ ${unitLabel}수</span>
         <strong class="tnum ${dRes >= 0 ? '' : 'down'}">${arrow} ${Math.abs(Math.round(dRes)).toLocaleString()}건</strong>
       </div>
       <div class="alloc-sim-row highlight strong">
-        <span>이 구간의 marginal CPR</span>
-        <strong class="tnum">${sim.marginalCPR != null ? fmtCurrency(sim.marginalCPR) : "—"}</strong>
+        <span>이 구간의 marginal ${metricLabel}</span>
+        <strong class="tnum">${sim.marginalCPR != null ? fmtCurrency(sim.marginalCPR, {metric:true}) : "—"}</strong>
       </div>
     </div>
   `;
@@ -7702,7 +7870,7 @@ function renderSimResults(sim, currentCost, targetCost, meta, hasRevenue) {
   const revBlock = sim.rev ? `
     <div class="alloc-sim-block">
       <div class="alloc-sim-block-title">예측 Revenue · ROAS</div>
-      <div class="alloc-sim-row"><span>평균 Revenue / Result</span><strong class="tnum">${fmtCurrency(sim.rev.avgRevPerResult)}</strong></div>
+      <div class="alloc-sim-row"><span>평균 Revenue / ${unitLabel}</span><strong class="tnum">${fmtCurrency(sim.rev.avgRevPerResult, {metric:true})}</strong></div>
       <div class="alloc-sim-sep"></div>
       <div class="alloc-sim-row"><span>현재 예측 Revenue</span><strong class="tnum">${fmtCurrency(sim.rev.revC)}</strong></div>
       <div class="alloc-sim-row"><span>현재 ROAS</span><strong class="tnum">${(sim.rev.roasC*100).toFixed(2)}%</strong></div>
