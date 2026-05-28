@@ -6937,6 +6937,127 @@ function calculateAllocation(rows, channelField, costField, resultsField) {
               .sort((a, b) => b.weight - a.weight);
 }
 
+/* ========== Budget Allocator · 디바운스 렌더 큐 ==========
+   토글 빠른 연속 클릭 시 마지막 1회만 실행 (80ms). UI block 방지. */
+let _allocRenderTimer = null;
+function queueAllocatorRender(delay = 80) {
+  if (_allocRenderTimer) clearTimeout(_allocRenderTimer);
+  _allocRenderTimer = setTimeout(() => {
+    requestAnimationFrame(() => {
+      renderAllocatorScatter();
+      _allocRenderTimer = null;
+    });
+  }, delay);
+}
+
+/* 정적 pillgroup 리스너 (페이지당 1회). 이전에 renderAllocatorScatter 안에서
+   매번 새로 부착되던 게 누수 원인이었음. */
+function bindStaticAllocatorControls() {
+  const container = document.querySelector(".alloc-scatter-controls");
+  if (!container || container.dataset.bound === "1") return;
+
+  container.querySelectorAll(".ab-pill[data-trendtype]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      ALLOC_STATE.trendType = btn.dataset.trendtype;
+      queueAllocatorRender();
+    });
+  });
+  container.querySelectorAll(".ab-pill[data-weightmode]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      ALLOC_STATE.weightMode = btn.dataset.weightmode;
+      queueAllocatorRender();
+    });
+  });
+  container.querySelectorAll(".ab-pill[data-pointtoggle]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      ALLOC_STATE.hidePoints = btn.dataset.pointtoggle === "hide";
+      queueAllocatorRender();
+    });
+  });
+  container.querySelectorAll(".ab-pill[data-outlier]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      ALLOC_STATE.outlierMethod = btn.dataset.outlier;
+      queueAllocatorRender();
+    });
+  });
+  container.querySelectorAll(".ab-pill[data-normalize]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      ALLOC_STATE.normalizeMode = btn.dataset.normalize;
+      queueAllocatorRender();
+    });
+  });
+
+  container.dataset.bound = "1";
+}
+
+/* 활성 상태(active 클래스)만 갱신 — DOM/이벤트 재바인딩 X */
+function updateAllocatorPillStates() {
+  document.querySelectorAll(".ab-pill[data-trendtype]").forEach(btn =>
+    btn.classList.toggle("active", btn.dataset.trendtype === ALLOC_STATE.trendType));
+  document.querySelectorAll(".ab-pill[data-weightmode]").forEach(btn =>
+    btn.classList.toggle("active", btn.dataset.weightmode === ALLOC_STATE.weightMode));
+  document.querySelectorAll(".ab-pill[data-pointtoggle]").forEach(btn =>
+    btn.classList.toggle("active", (btn.dataset.pointtoggle === "hide") === ALLOC_STATE.hidePoints));
+  document.querySelectorAll(".ab-pill[data-outlier]").forEach(btn =>
+    btn.classList.toggle("active", btn.dataset.outlier === ALLOC_STATE.outlierMethod));
+  document.querySelectorAll(".ab-pill[data-normalize]").forEach(btn =>
+    btn.classList.toggle("active", btn.dataset.normalize === ALLOC_STATE.normalizeMode));
+}
+
+/* ========== 추세선 segment 분리 ==========
+   관측 데이터 범위 내 = 실선 (confident),
+   외삽 영역 = 점선,
+   Poly2 vertex 이후 데이터가 매우 부족하면 그 영역도 점선 (가짜 종모양 방지).
+   각 segment는 별도 Chart.js dataset으로 그려짐. */
+function getTrendSegments(model, fitData, fitMin, fitMax, STEPS = 60) {
+  const xs = fitData.map(p => p[0]).slice().sort((a, b) => a - b);
+  const xMin = xs[0], xMax = xs[xs.length - 1];
+
+  // Poly2 vertex 검사 (a≠0 시 vertex = -b/(2a))
+  let suspect = null;
+  if (model.type === "Poly2" && model.params.a !== 0) {
+    const { a, b } = model.params;
+    const vx = -b / (2 * a);
+    if (vx >= xMin && vx <= xMax) {
+      const afterCount = xs.filter(x => x > vx).length;
+      const beforeCount = xs.filter(x => x < vx).length;
+      const total = xs.length;
+      // vertex 한쪽에 데이터가 20% 미만이면 그 방향은 의심
+      if (afterCount / total < 0.2) suspect = { x: vx, side: "after" };
+      else if (beforeCount / total < 0.2) suspect = { x: vx, side: "before" };
+    }
+  }
+
+  // 각 점에 confident 라벨링
+  const pts = [];
+  for (let s = 0; s <= STEPS; s++) {
+    const x = fitMin + (fitMax - fitMin) * (s / STEPS);
+    const y = model.predict(x);
+    if (!isFinite(y)) continue;
+    let confident = x >= xMin && x <= xMax;
+    if (confident && suspect) {
+      if (suspect.side === "after"  && x > suspect.x) confident = false;
+      if (suspect.side === "before" && x < suspect.x) confident = false;
+    }
+    pts.push({ x, y, confident });
+  }
+
+  // 연속된 같은-confidence 점들을 segment로 묶음 (경계는 양쪽 segment에 동시 포함 → 끊김 없음)
+  const segments = [];
+  let cur = null;
+  for (const p of pts) {
+    if (!cur || cur.confident !== p.confident) {
+      if (cur) { cur.points.push({ x: p.x, y: p.y }); segments.push(cur); }
+      cur = { confident: p.confident, points: [{ x: p.x, y: p.y }] };
+    } else {
+      cur.points.push({ x: p.x, y: p.y });
+    }
+  }
+  if (cur && cur.points.length > 0) segments.push(cur);
+
+  return { segments, suspect, xMin, xMax };
+}
+
 /* ========== Budget Allocator · Cost vs CPR 산점도 & 추세선 ========== */
 function renderAllocatorScatter() {
   if (CHART_INSTANCES["alloc-scatter"]) {
@@ -7092,37 +7213,58 @@ function renderAllocatorScatter() {
     else if (tt === "poly2") model = ALLOC_MATH.fitPoly2(trainData, weights);
     else if (tt === "power") model = ALLOC_MATH.fitPower(trainData, weights);
 
+    // 데이터 부족 채널은 추세선 skip 또는 전체 점선
+    if (pts.length < 5) {
+      // n < 5: 추세선 안 그림 + 진단에 표시
+      outlierStats[outlierStats.length - 1].lowData = true;
+      channelModels.set(ch, { model: null, xMin, xMax, pts, color, r2: null, descending: false, lowData: true });
+      return;
+    }
+    const sparseData = pts.length < 10;  // n < 10: 신뢰도 낮음 → 전체 점선
+
     if (model) {
       const r2 = model.r2 != null ? model.r2 : ALLOC_MATH.calcR2(trainData, model, weights);
-      // 추세선 점 50개 생성 → raw 공간 → 정규화 좌표 변환
+      const descending = ALLOC_MATH.isDescending(model, xMin, xMax);
+
+      // 추세선을 segment별로 분리 (실선/점선)
       const margin = (xMax - xMin) * 0.05;
       const fitMin = Math.max(0.0001, xMin - margin);
       const fitMax = xMax + margin;
-      const STEPS = 50;
-      const trendPts = [];
-      for (let s = 0; s <= STEPS; s++) {
-        const x = fitMin + (fitMax - fitMin) * (s / STEPS);
-        const y = model.predict(x);
-        if (!isFinite(y)) continue;
-        const n = norm(x, y);
-        if (n != null) trendPts.push(n);
-      }
-      const descending = ALLOC_MATH.isDescending(model, xMin, xMax);
-      datasets.push({
-        label: `${truncateLabel(ch)} · ${model.type} (R²=${r2 != null ? r2.toFixed(2) : "—"})`,
-        data: trendPts,
-        backgroundColor: color,
-        borderColor: color,
-        borderWidth: 2,
-        borderDash: descending ? [6, 4] : [],
-        pointRadius: 0,
-        type: "line",
-        fill: false,
-        tension: 0,
-        showLine: true,
+      const { segments, suspect } = getTrendSegments(model, trainData, fitMin, fitMax, 60);
+
+      // 정규화 후 dataset 푸시
+      const baseLabel = `${truncateLabel(ch)} · ${model.type} (R²=${r2 != null ? r2.toFixed(2) : "—"})`;
+      let firstSegmentLabeled = false;
+      segments.forEach(seg => {
+        const data = seg.points.map(p => norm(p.x, p.y)).filter(v => v != null);
+        if (data.length < 2) return;
+        // 점선 조건: 외삽 segment OR sparseData OR descending
+        const isDashed = !seg.confident || sparseData || descending;
+        // legend는 첫 번째 confident segment에만 (또는 sparse면 첫 segment에)
+        const showLabel = !firstSegmentLabeled && (seg.confident || sparseData);
+        if (showLabel) firstSegmentLabeled = true;
+        datasets.push({
+          label: showLabel
+            ? (sparseData ? `${baseLabel} · n=${pts.length} 데이터 부족` : baseLabel)
+            : "",
+          data,
+          backgroundColor: color,
+          borderColor: sparseData ? color + "88" : color,
+          borderWidth: 2,
+          borderDash: isDashed ? [5, 4] : [],
+          pointRadius: 0,
+          type: "line",
+          fill: false,
+          tension: 0,
+          showLine: true,
+        });
       });
-      trendInfo.push({ channel: ch, model: model.type, r2, descending, xMin, xMax, color });
-      channelModels.set(ch, { model, xMin, xMax, pts, color, r2, descending });
+
+      trendInfo.push({
+        channel: ch, model: model.type, r2, descending,
+        xMin, xMax, color, sparseData, suspect,
+      });
+      channelModels.set(ch, { model, xMin, xMax, pts, color, r2, descending, suspect, sparseData });
     }
   });
 
@@ -7146,6 +7288,8 @@ function renderAllocatorScatter() {
             usePointStyle: true,
             padding: 8,
             boxWidth: 8,
+            // 빈 라벨(외삽 segment 등) 제외
+            filter: (item) => item.text && item.text.trim().length > 0,
           },
         },
         tooltip: {
@@ -7187,12 +7331,14 @@ function renderAllocatorScatter() {
   // === 시뮬레이션 카드 (채널 1개 선택 시에만) ===
   renderSimulationCard(channels, channelModels, metric);
 
-  // 채널 chip 클릭 핸들러
+  // 채널 chip 클릭 핸들러 (debounced)
   document.querySelectorAll(".alloc-chip[data-channel]").forEach(btn => {
     btn.addEventListener("click", () => {
       const ch = btn.dataset.channel;
       if (ALLOC_STATE.selectedChannels.has(ch)) ALLOC_STATE.selectedChannels.delete(ch);
       else ALLOC_STATE.selectedChannels.add(ch);
+      // chip active 상태 즉시 시각 피드백 (full render 기다리지 않고)
+      btn.classList.toggle("active");
       // 채널 1개로 줄어들면 시뮬레이션 모드용 default 값 자동 세팅
       if (ALLOC_STATE.selectedChannels.size === 1) {
         const onlyCh = [...ALLOC_STATE.selectedChannels][0];
@@ -7200,7 +7346,7 @@ function renderAllocatorScatter() {
           ALLOC_STATE.sim = { channel: onlyCh, currentCost: null, targetCost: null };
         }
       }
-      renderAllocatorScatter();
+      queueAllocatorRender();
     });
   });
   const top6Btn = document.getElementById("alloc-filter-top6");
@@ -7208,57 +7354,21 @@ function renderAllocatorScatter() {
   const noneBtn = document.getElementById("alloc-filter-none");
   if (top6Btn) top6Btn.addEventListener("click", () => {
     ALLOC_STATE.selectedChannels = new Set(allChannels.slice(0, 6));
-    renderAllocatorScatter();
+    queueAllocatorRender();
   });
   if (allBtn) allBtn.addEventListener("click", () => {
     ALLOC_STATE.selectedChannels = new Set(allChannels);
-    renderAllocatorScatter();
+    queueAllocatorRender();
   });
   if (noneBtn) noneBtn.addEventListener("click", () => {
     ALLOC_STATE.selectedChannels = new Set();
-    renderAllocatorScatter();
+    queueAllocatorRender();
   });
 
-  // 추세선 모드 pill
-  document.querySelectorAll(".ab-pill[data-trendtype]").forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.trendtype === ALLOC_STATE.trendType);
-    btn.addEventListener("click", () => {
-      ALLOC_STATE.trendType = btn.dataset.trendtype;
-      renderAllocatorScatter();
-    });
-  });
-  // 가중치 모드 pill
-  document.querySelectorAll(".ab-pill[data-weightmode]").forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.weightmode === ALLOC_STATE.weightMode);
-    btn.addEventListener("click", () => {
-      ALLOC_STATE.weightMode = btn.dataset.weightmode;
-      renderAllocatorScatter();
-    });
-  });
-  // 점 표시 토글
-  document.querySelectorAll(".ab-pill[data-pointtoggle]").forEach(btn => {
-    btn.classList.toggle("active", (btn.dataset.pointtoggle === "hide") === ALLOC_STATE.hidePoints);
-    btn.addEventListener("click", () => {
-      ALLOC_STATE.hidePoints = btn.dataset.pointtoggle === "hide";
-      renderAllocatorScatter();
-    });
-  });
-  // Outlier 제거 방법 토글
-  document.querySelectorAll(".ab-pill[data-outlier]").forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.outlier === ALLOC_STATE.outlierMethod);
-    btn.addEventListener("click", () => {
-      ALLOC_STATE.outlierMethod = btn.dataset.outlier;
-      renderAllocatorScatter();
-    });
-  });
-  // 정규화 모드 토글
-  document.querySelectorAll(".ab-pill[data-normalize]").forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.normalize === ALLOC_STATE.normalizeMode);
-    btn.addEventListener("click", () => {
-      ALLOC_STATE.normalizeMode = btn.dataset.normalize;
-      renderAllocatorScatter();
-    });
-  });
+  // 정적 pillgroup 핸들러는 bindStaticAllocatorControls()에서 1회만 부착됨.
+  // 여기서는 active 클래스만 갱신.
+  bindStaticAllocatorControls();
+  updateAllocatorPillStates();
 }
 
 /* ========== Outlier 진단 패널 ========== */
@@ -7523,6 +7633,8 @@ function renderTrendSummary(trendInfo) {
 
   // R² 표 + 우하향 채널 경고
   const descending = trendInfo.filter(t => t.descending);
+  const suspects = trendInfo.filter(t => t.suspect);
+  const sparseChannels = trendInfo.filter(t => t.sparseData);
   const r2Rows = trendInfo
     .sort((a, b) => (b.r2 ?? -1) - (a.r2 ?? -1))
     .map(t => {
@@ -7530,15 +7642,18 @@ function renderTrendSummary(trendInfo) {
                      t.r2 >= 0.5 ? `<span class="pill tier-1">${t.r2.toFixed(2)}</span>` :
                      t.r2 >= 0.2 ? `<span class="pill tier-2">${t.r2.toFixed(2)}</span>` :
                                    `<span class="pill tier-3">${t.r2.toFixed(2)}</span>`;
-      const trendBadge = t.descending
+      const badges = [];
+      badges.push(t.descending
         ? `<span class="pill" style="border-color:rgba(255,138,138,0.4);color:#ff8a8a;background:rgba(255,138,138,0.08);">우하향 ⚠</span>`
-        : `<span class="pill" style="border-color:rgba(90,209,154,0.3);color:#5ad19a;background:rgba(90,209,154,0.06);">우상향</span>`;
+        : `<span class="pill" style="border-color:rgba(90,209,154,0.3);color:#5ad19a;background:rgba(90,209,154,0.06);">우상향</span>`);
+      if (t.sparseData) badges.push(`<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);">데이터 부족</span>`);
+      if (t.suspect) badges.push(`<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);">vertex 의심</span>`);
       return `
         <tr>
           <td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${t.color};margin-right:0.4rem;"></span>${escapeHtml(truncateLabel(t.channel, 40))}</td>
           <td>${t.model}</td>
           <td class="tnum">${r2Cell}</td>
-          <td>${trendBadge}</td>
+          <td>${badges.join(" ")}</td>
         </tr>`;
     }).join("");
 
@@ -7561,11 +7676,39 @@ function renderTrendSummary(trendInfo) {
         </div>
       </div>` : ""}
 
+    ${suspects.length > 0 ? `
+      <div class="callout warn" style="margin-top:1rem;">
+        <div class="ico">!</div>
+        <div class="body">
+          <strong>Poly2 추세선의 종/U자 꼬리 의심 (${suspects.length}개 채널)</strong>
+          <p>
+            ${suspects.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 28))}</code>`).join(", ")}
+          </p>
+          <p>
+            관측 데이터의 한쪽에 점이 거의 없는데 곡선이 강제로 휘는 경우입니다.
+            해당 영역은 <strong>점선</strong>으로 표시되며, 그 구간에서의 추세선 예측은 통계적 근거가 약합니다.
+            추세선 모드를 <code class="inline">Log</code> 또는 <code class="inline">Power</code>로 바꾸거나 데이터를 더 수집한 후 재분석을 권장합니다.
+          </p>
+        </div>
+      </div>` : ""}
+
+    ${sparseChannels.length > 0 ? `
+      <div class="callout warn" style="margin-top:1rem;">
+        <div class="ico">!</div>
+        <div class="body">
+          <strong>데이터 부족 채널 (${sparseChannels.length}개)</strong>
+          <p>
+            점 수가 10개 미만인 채널은 추세선이 <strong>전체 점선</strong>으로 표시됩니다.
+            5개 미만이면 추세선 자체를 그리지 않습니다.
+          </p>
+        </div>
+      </div>` : ""}
+
     <div class="alloc-trend-table">
       <div class="alloc-trend-table-title">채널별 추세선 R² · 방향</div>
       <div class="table-wrap" style="margin:0.5rem 0 0;">
         <table class="data">
-          <thead><tr><th>채널</th><th>모델</th><th>R²</th><th>방향</th></tr></thead>
+          <thead><tr><th>채널</th><th>모델</th><th>R²</th><th>방향 · 신뢰도</th></tr></thead>
           <tbody>${r2Rows}</tbody>
         </table>
       </div>
