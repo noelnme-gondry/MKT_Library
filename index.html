@@ -2237,13 +2237,13 @@ function isFirstGroupOfPhase(groupId) {
 const STANDARD_FIELDS = {
   date:          { label: "날짜",         aliases: ["dt", "날짜", "event_date", "day"],          type: "date",    required: true,  group: "디멘션" },
   platform:      { label: "플랫폼(OS)",   aliases: ["os", "platform_name", "플랫폼"],            type: "enum",    required: false, group: "디멘션" },
-  channel:       { label: "채널/매체",    aliases: ["network", "source", "media", "매체"],       type: "string",  required: true,  group: "디멘션" },
-  campaign_name: { label: "캠페인명",     aliases: ["campaign", "캠페인", "캠페인명"],           type: "string",  required: false, group: "디멘션" },
+  channel:       { label: "채널/매체",    aliases: ["network", "source", "media", "매체"],       type: "string",  required: false, group: "디멘션", oneOfGroup: "grouping" },
+  campaign_name: { label: "캠페인명",     aliases: ["campaign", "캠페인", "캠페인명"],           type: "string",  required: false, group: "디멘션", oneOfGroup: "grouping" },
   cost:          { label: "비용",         aliases: ["spend", "비용", "광고비"],                  type: "number",  required: true,  group: "단일 지표" },
   impressions:   { label: "노출수",       aliases: ["imp", "impression", "노출"],                type: "number",  required: false, group: "단일 지표" },
   clicks:        { label: "클릭수",       aliases: ["click", "클릭"],                            type: "number",  required: false, group: "단일 지표" },
-  installs:      { label: "설치수",       aliases: ["install", "설치", "inst"],                  type: "number",  required: true,  group: "단일 지표" },
-  actions:       { label: "액션 수",      aliases: ["action", "actions", "conversions", "events", "전환", "액션"], type: "number", required: false, group: "단일 지표" },
+  installs:      { label: "설치수",       aliases: ["install", "설치", "inst"],                  type: "number",  required: false, group: "단일 지표", oneOfGroup: "outcome" },
+  actions:       { label: "액션 수",      aliases: ["action", "actions", "conversions", "events", "전환", "액션"], type: "number", required: false, group: "단일 지표", oneOfGroup: "outcome" },
   revenue_d0:    { label: "매출 D0",      aliases: ["rev_d0", "revenue0", "매출_d0"],            type: "number",  required: false, group: "코호트 D0", cohort: 0 },
   pu_d0:         { label: "결제건수 D0",  aliases: ["pu_cnt_d0", "purchase_d0", "결제_d0"],      type: "number",  required: false, group: "코호트 D0", cohort: 0 },
   ret_d0:        { label: "잔존율 D0",    aliases: ["retention_d0", "잔존_d0"],                  type: "percent", required: false, group: "코호트 D0", cohort: 0 },
@@ -4837,13 +4837,46 @@ function autoMapHeaders(csvHeaders) {
 }
 
 // 필수 필드 누락 검사
+//   - required: true 필드는 무조건 매핑되어야 함 (date, cost)
+//   - oneOfGroup이 같은 필드들은 그 중 최소 1개만 매핑되면 OK
+//     · grouping: channel / campaign_name (둘 중 하나)
+//     · outcome:  installs / actions       (둘 중 하나)
 function checkRequiredFields() {
-  const mappedFields = new Set(Object.values(CSV_STATE.mapping).filter(v => v !== "__ignore__"));
+  const mapped = new Set(Object.values(CSV_STATE.mapping).filter(v => v !== "__ignore__"));
   const missing = [];
+
+  // 1) 무조건 필수
   for (const [key, def] of Object.entries(STANDARD_FIELDS)) {
-    if (def.required && !mappedFields.has(key)) missing.push(key);
+    if (def.required && !mapped.has(key)) missing.push(STANDARD_FIELDS[key].label);
+  }
+
+  // 2) oneOfGroup: 그룹별로 1개 이상 매핑 필요
+  const groups = {};
+  for (const [key, def] of Object.entries(STANDARD_FIELDS)) {
+    if (!def.oneOfGroup) continue;
+    if (!groups[def.oneOfGroup]) groups[def.oneOfGroup] = [];
+    groups[def.oneOfGroup].push(key);
+  }
+  const GROUP_LABELS = {
+    grouping: "채널/매체 또는 캠페인명 중 하나",
+    outcome:  "설치수 또는 액션 수 중 하나",
+  };
+  for (const [gname, keys] of Object.entries(groups)) {
+    if (!keys.some(k => mapped.has(k))) {
+      missing.push(GROUP_LABELS[gname] || keys.join(" / "));
+    }
   }
   return missing;
+}
+
+// 매핑 상태 점검 — 어떤 metric이 사용 가능한지 (둘 다 있으면 사용자가 선택)
+function getAvailableMetrics() {
+  const mapped = new Set(Object.values(CSV_STATE.mapping).filter(v => v !== "__ignore__"));
+  return {
+    installs: mapped.has("installs"),
+    actions:  mapped.has("actions"),
+    pu_d7:    mapped.has("pu_d7"),
+  };
 }
 
 // 매핑된 데이터를 표준 필드 키 기반으로 변환
@@ -5375,9 +5408,19 @@ function page_5_3() {
             <div>
               <label>성과 지표</label>
               <select id="alloc-metric">
-                <option value="installs">설치수 (CPI 기준)</option>
-                <option value="actions">액션 수 (CPA 기준)</option>
-                <option value="pu_d7">결제수 D7 (CPA 기준)</option>
+                ${(() => {
+                  const av = getAvailableMetrics();
+                  // 첫 번째 매핑된 metric을 default selected로
+                  const firstAvailable = ["installs", "actions", "pu_d7"].find(k => av[k]) || "installs";
+                  const opt = (val, label) => {
+                    const enabled = av[val];
+                    const selected = val === firstAvailable ? "selected" : "";
+                    return `<option value="${val}" ${!enabled ? "disabled" : ""} ${selected}>${label}${!enabled ? " · 매핑 없음" : ""}</option>`;
+                  };
+                  return opt("installs", "설치수 (CPI 기준)") +
+                         opt("actions",  "액션 수 (CPA 기준)") +
+                         opt("pu_d7",    "결제수 D7 (CPA 기준)");
+                })()}
               </select>
             </div>
             <div>
@@ -6071,13 +6114,26 @@ function clearAllocCache() {
   for (const k of Object.keys(ALLOC_CACHE)) ALLOC_CACHE[k] = null;
 }
 
-/* 채널별 raw points (cost > 0, results > 0 자동 필터). 의존성: rows, metric. */
+/* row → 그룹 키 (채널 + 캠페인명).
+   - 둘 다 있으면 "채널 · 캠페인" 으로 세분화
+   - 둘 중 하나만 있으면 그 값 그대로
+   - 둘 다 없으면 null (건너뜀) */
+function getRowGroupKey(row) {
+  const ch = String(row.channel ?? "").trim();
+  const cp = String(row.campaign_name ?? "").trim();
+  if (ch && cp) return `${ch} · ${cp}`;
+  if (ch) return ch;
+  if (cp) return cp;
+  return null;
+}
+
+/* 그룹별 raw points (cost > 0, results > 0 자동 필터). 의존성: rows, metric. */
 function getCachedByChannel(rows, metric) {
   const key = `${rows.length}|${metric}`;
   if (ALLOC_CACHE.byChannelKey === key && ALLOC_CACHE.byChannel) return ALLOC_CACHE.byChannel;
   const m = new Map();
   for (const r of rows) {
-    const ch = String(r.channel ?? "").trim();
+    const ch = getRowGroupKey(r);
     if (!ch) continue;
     const cost = Number(r.cost) || 0;
     const res  = Number(r[metric]) || 0;
@@ -6087,10 +6143,10 @@ function getCachedByChannel(rows, metric) {
   }
   ALLOC_CACHE.byChannel    = m;
   ALLOC_CACHE.byChannelKey = key;
-  // 의존 cache 무효화
   ALLOC_CACHE.outliers = null; ALLOC_CACHE.outliersKey = null;
   ALLOC_CACHE.weights  = null; ALLOC_CACHE.weightsKey  = null;
   ALLOC_CACHE.models   = null; ALLOC_CACHE.modelsKey   = null;
+  ALLOC_CACHE.allFits  = null; ALLOC_CACHE.allFitsKey  = null;
   return m;
 }
 
@@ -7205,12 +7261,12 @@ function renderVizCharts() {
    - CPR Cap (상한 설정 시 외삽 위험 그룹 차단)
    - 최신 데이터 가중치 (Exponential, 반감기 30일)
 */
-function calculateAllocation(rows, channelField, costField, resultsField) {
-  if (!channelField || !costField || !resultsField) return [];
-  // 채널별 합산
+function calculateAllocation(rows, _channelField, costField, resultsField) {
+  if (!costField || !resultsField) return [];
+  // 채널/캠페인 그룹 키 (getRowGroupKey 사용)
   const map = new Map();
   for (const r of rows) {
-    const ch = String(r[channelField] ?? "").trim();
+    const ch = getRowGroupKey(r);
     if (!ch) continue;
     const cost = Number(r[costField]) || 0;
     const res = Number(r[resultsField]) || 0;
@@ -7805,7 +7861,7 @@ function renderSimulationCard(channels, channelModels, metric) {
     : Math.round(avgCost * 1.2);
 
   const rows = getMappedRows();
-  const channelRows = rows.filter(r => String(r.channel ?? "").trim() === ch);
+  const channelRows = rows.filter(r => getRowGroupKey(r) === ch);
   const sim = simulateChannel({
     model: meta.model,
     currentCost, targetCost,
