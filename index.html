@@ -1154,6 +1154,80 @@
     .alloc-controls { grid-template-columns: 1fr; }
   }
 
+  /* Scatter 산점도 컨트롤 + 채널 필터 chip */
+  .alloc-scatter-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.5rem 0 0.75rem;
+  }
+  .alloc-channel-filter {
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .alloc-filter-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.625rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .alloc-filter-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-right: auto;
+  }
+  .alloc-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .alloc-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--surface-container);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: background 0.1s ease, border-color 0.1s ease, color 0.1s ease;
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .alloc-chip:hover { color: var(--text-primary); border-color: var(--border-stronger); }
+  .alloc-chip.active {
+    background: rgba(173, 198, 255, 0.06);
+    border-color: var(--chip-color, var(--primary));
+    color: var(--text-primary);
+  }
+  .alloc-chip-dot {
+    width: 9px; height: 9px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .alloc-trend-table-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 1rem;
+  }
+
   /* ========== A/B Test Calculator ========== */
   .ab-tabs {
     display: inline-flex;
@@ -5049,6 +5123,7 @@ function page_5_3() {
     summary: `채널별 <code>Efficiency = 1 / CPR</code> 을 정규화한 추천 비중. <strong>모드 A</strong>로 표기되며, 한계효용 그리디(모드 B) 및 추세선 적합(Linear/Log/Poly2/Power)은 추후 통합 예정입니다.`,
     toc: [
       { id: "s-controls", title: "예산 설정" },
+      { id: "s-scatter", title: "Cost vs CPR 산점도" },
       { id: "s-bar", title: "배분 비중" },
       { id: "s-table", title: "채널별 상세" },
       { id: "s-algo", title: "알고리즘 노트" },
@@ -5080,14 +5155,39 @@ function page_5_3() {
         </div>
       </section>
 
+      <section class="block" id="s-scatter">
+        <h2 class="section-title"><span class="ix">§2</span>Cost vs CPR 산점도 & 추세선</h2>
+        <p style="color:var(--text-secondary);font-size:13px;">
+          각 row를 (Cost, CPR) 점으로 시각화하고, 채널별로 추세선을 적합합니다.
+          <strong>최근 ${ALLOC_STATE.recentDays}일</strong> 데이터는 ▲ 마커 + 진한 색으로 강조됩니다.
+        </p>
+        <div class="alloc-scatter-controls">
+          <div class="ab-pillgroup">
+            <span class="ab-pillgroup-label">추세선</span>
+            <button class="ab-pill" data-trendtype="auto">Auto (Best R²)</button>
+            <button class="ab-pill" data-trendtype="linear">Linear</button>
+            <button class="ab-pill" data-trendtype="log">Log</button>
+            <button class="ab-pill" data-trendtype="poly2">Poly2</button>
+            <button class="ab-pill" data-trendtype="power">Power</button>
+          </div>
+        </div>
+        <div id="alloc-channel-filter" class="alloc-channel-filter"></div>
+        <div class="chart-card" style="margin-top:0.875rem;">
+          <div class="chart-canvas-wrap" style="height:380px;">
+            <canvas id="chart-alloc-scatter"></canvas>
+          </div>
+        </div>
+        <div id="alloc-trend-summary"></div>
+      </section>
+
       <section class="block" id="s-bar">
-        <h2 class="section-title"><span class="ix">§2</span>추천 배분 비중</h2>
+        <h2 class="section-title"><span class="ix">§3</span>추천 배분 비중</h2>
         <div class="alloc-bar" id="alloc-bar"></div>
         <div class="alloc-bar-legend" id="alloc-bar-legend"></div>
       </section>
 
       <section class="block" id="s-table">
-        <h2 class="section-title"><span class="ix">§3</span>채널별 상세</h2>
+        <h2 class="section-title"><span class="ix">§4</span>채널별 상세</h2>
         <div class="table-wrap">
           <table class="data">
             <thead>
@@ -5105,7 +5205,7 @@ function page_5_3() {
       </section>
 
       <section class="block" id="s-algo">
-        <h2 class="section-title"><span class="ix">§4</span>알고리즘 노트</h2>
+        <h2 class="section-title"><span class="ix">§5</span>알고리즘 노트</h2>
         <p>본 페이지는 Campaign Allocator(Streamlit)의 <strong>모드 A · 효율 기반 추천 비중</strong>을 JS로 포팅한 것입니다. 핵심 식:</p>
         ${codeBlock("bash", "Efficiency-based Allocation (Mode A)", `# 1) 채널별 합산
 channel_cost    = Σ cost
@@ -5314,6 +5414,101 @@ const STATS = (() => {
   };
 })();
 
+/* ========== Budget Allocator: 추세선 적합 라이브러리 ==========
+   Campaign Allocator (Streamlit) 의 모드 B 핵심 알고리즘.
+   - Linear:  y = a·x + b               (OLS)
+   - Log:     y = a·ln(x) + b           (x를 ln(x)로 변환 후 OLS)
+   - Poly2:   y = a·x² + b·x + c        (3차 정규방정식)
+   - Power:   y = a·x^b                 (log-log OLS, 수확체감 표현)
+   - Best R²: 위 4개를 모두 fit해 R²가 가장 높은 모델 자동 선택 */
+const ALLOC_MATH = (() => {
+  function fitLinear(pts) {
+    if (pts.length < 2) return null;
+    const n = pts.length;
+    let sx=0, sy=0, sxx=0, sxy=0;
+    for (const [x, y] of pts) { sx+=x; sy+=y; sxx+=x*x; sxy+=x*y; }
+    const denom = n*sxx - sx*sx;
+    if (denom === 0) return null;
+    const a = (n*sxy - sx*sy) / denom;
+    const b = (sy - a*sx) / n;
+    return { type: "Linear", predict: x => a*x + b, params: { a, b } };
+  }
+  function fitLog(pts) {
+    const valid = pts.filter(([x]) => x > 0);
+    if (valid.length < 2) return null;
+    const tr = valid.map(([x, y]) => [Math.log(x), y]);
+    const lin = fitLinear(tr);
+    if (!lin) return null;
+    const { a, b } = lin.params;
+    return { type: "Log", predict: x => x > 0 ? a*Math.log(x) + b : NaN, params: { a, b } };
+  }
+  function fitPower(pts) {
+    const valid = pts.filter(([x, y]) => x > 0 && y > 0);
+    if (valid.length < 2) return null;
+    const tr = valid.map(([x, y]) => [Math.log(x), Math.log(y)]);
+    const lin = fitLinear(tr);
+    if (!lin) return null;
+    const { a: slope, b: intercept } = lin.params;
+    const A = Math.exp(intercept);
+    return { type: "Power", predict: x => x > 0 ? A * Math.pow(x, slope) : NaN, params: { a: A, b: slope } };
+  }
+  function fitPoly2(pts) {
+    const n = pts.length;
+    if (n < 3) return null;
+    let s0=n, s1=0, s2=0, s3=0, s4=0, sy=0, sxy=0, sx2y=0;
+    for (const [x, y] of pts) {
+      s1 += x; s2 += x*x; s3 += x*x*x; s4 += x*x*x*x;
+      sy += y; sxy += x*y; sx2y += x*x*y;
+    }
+    const M = [[s4, s3, s2], [s3, s2, s1], [s2, s1, s0]];
+    const v = [sx2y, sxy, sy];
+    const det3 = (m) =>
+      m[0][0]*(m[1][1]*m[2][2] - m[1][2]*m[2][1]) -
+      m[0][1]*(m[1][0]*m[2][2] - m[1][2]*m[2][0]) +
+      m[0][2]*(m[1][0]*m[2][1] - m[1][1]*m[2][0]);
+    const D = det3(M);
+    if (D === 0) return null;
+    const repl = (m, col, vec) => m.map((row, i) => row.map((cell, j) => j === col ? vec[i] : cell));
+    const a = det3(repl(M, 0, v)) / D;
+    const b = det3(repl(M, 1, v)) / D;
+    const c = det3(repl(M, 2, v)) / D;
+    return { type: "Poly2", predict: x => a*x*x + b*x + c, params: { a, b, c } };
+  }
+  function calcR2(pts, model) {
+    if (!model || pts.length < 2) return null;
+    const ys = pts.map(([_, y]) => y);
+    const yMean = ys.reduce((s, v) => s+v, 0) / ys.length;
+    let ssRes = 0, ssTot = 0;
+    for (const [x, y] of pts) {
+      const yhat = model.predict(x);
+      if (!isFinite(yhat)) continue;
+      ssRes += (y - yhat) ** 2;
+      ssTot += (y - yMean) ** 2;
+    }
+    return ssTot === 0 ? 0 : 1 - ssRes / ssTot;
+  }
+  function fitBest(pts) {
+    const fitters = [["Linear", fitLinear], ["Log", fitLog], ["Poly2", fitPoly2], ["Power", fitPower]];
+    let best = null, bestR2 = -Infinity;
+    for (const [_, fn] of fitters) {
+      const m = fn(pts);
+      if (!m) continue;
+      const r2 = calcR2(pts, m);
+      if (r2 != null && r2 > bestR2) { best = { ...m, r2 }; bestR2 = r2; }
+    }
+    return best;
+  }
+  // 추세선이 우하향(Cost↑ → CPR↓)인지 판단.
+  // 우하향 = 더 쓸수록 더 효율적 → 한계효용 그리디 사용 시 외삽 위험.
+  function isDescending(model, xMin, xMax) {
+    if (!model) return false;
+    const yLow = model.predict(xMin);
+    const yHigh = model.predict(xMax);
+    return isFinite(yLow) && isFinite(yHigh) && yHigh < yLow;
+  }
+  return { fitLinear, fitLog, fitPoly2, fitPower, fitBest, calcR2, isDescending };
+})();
+
 /* 통화 기호 및 포맷 */
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 function fmtCurrency(value) {
@@ -5327,6 +5522,13 @@ const AB_STATE = {
   mode: "plan",          // plan | analyze | threshold
   testType: "binary",    // binary (CVR) | continuous (CPR/ARPPU/Revenue per user)
   currency: "KRW",       // KRW (₩) | USD ($)
+};
+
+const ALLOC_STATE = {
+  trendType: "auto",       // linear | log | poly2 | power | auto
+  selectedChannels: null,  // null = 자동 상위 6, Set = 선택된 채널들
+  recentDays: 14,          // 최근 강조 기간 (일)
+  showRecent: true,
 };
 
 function page_5_4() {
@@ -6359,6 +6561,315 @@ function calculateAllocation(rows, channelField, costField, resultsField) {
               .sort((a, b) => b.weight - a.weight);
 }
 
+/* ========== Budget Allocator · Cost vs CPR 산점도 & 추세선 ========== */
+function renderAllocatorScatter() {
+  if (CHART_INSTANCES["alloc-scatter"]) {
+    try { CHART_INSTANCES["alloc-scatter"].destroy(); } catch {}
+    delete CHART_INSTANCES["alloc-scatter"];
+  }
+  if (typeof Chart === "undefined") return;
+
+  const canvas = document.getElementById("chart-alloc-scatter");
+  if (!canvas) return;
+
+  const metricSelect = document.getElementById("alloc-metric");
+  const metric = metricSelect ? metricSelect.value : "installs";
+  const rows = getMappedRows();
+
+  // 채널별 점 그룹화
+  const byChannel = new Map();
+  for (const r of rows) {
+    const ch = String(r.channel ?? "").trim();
+    if (!ch) continue;
+    const cost = Number(r.cost) || 0;
+    const res = Number(r[metric]) || 0;
+    if (cost <= 0 || res <= 0) continue;
+    const cpr = cost / res;
+    if (!byChannel.has(ch)) byChannel.set(ch, []);
+    byChannel.get(ch).push({ x: cost, y: cpr, date: r.date });
+  }
+
+  // 비용 합계로 채널 정렬 (큰 순서)
+  let allChannels = [...byChannel.keys()].sort((a, b) =>
+    byChannel.get(b).reduce((s, p) => s + p.x, 0) -
+    byChannel.get(a).reduce((s, p) => s + p.x, 0)
+  );
+
+  // 선택 초기값: 상위 6채널
+  if (ALLOC_STATE.selectedChannels == null) {
+    ALLOC_STATE.selectedChannels = new Set(allChannels.slice(0, 6));
+  }
+  const channels = allChannels.filter(c => ALLOC_STATE.selectedChannels.has(c));
+
+  // 채널 필터 UI 렌더 (chip 토글)
+  const filterEl = document.getElementById("alloc-channel-filter");
+  if (filterEl) {
+    filterEl.innerHTML = `
+      <div class="alloc-filter-header">
+        <span class="alloc-filter-label">채널 선택 (상위 비용순 · ${allChannels.length}개)</span>
+        <button class="ab-pill" id="alloc-filter-top6">상위 6개</button>
+        <button class="ab-pill" id="alloc-filter-all">전체</button>
+        <button class="ab-pill" id="alloc-filter-none">모두 해제</button>
+      </div>
+      <div class="alloc-filter-chips">
+        ${allChannels.map((ch, i) => {
+          const active = ALLOC_STATE.selectedChannels.has(ch);
+          const color = CHART_THEME.series[i % CHART_THEME.series.length];
+          const truncated = ch.length > 36 ? ch.slice(0, 33) + "…" : ch;
+          return `
+            <button class="alloc-chip ${active ? 'active' : ''}" data-channel="${escapeHtml(ch)}"
+                    title="${escapeHtml(ch)}" style="--chip-color: ${color};">
+              <span class="alloc-chip-dot" style="background:${color};"></span>${escapeHtml(truncated)}
+            </button>`;
+        }).join("")}
+      </div>
+    `;
+  }
+
+  // 최근 강조 임계선
+  const recentMs = ALLOC_STATE.recentDays * 86400 * 1000;
+  const allDates = rows.map(r => r.date ? Date.parse(r.date) : NaN).filter(d => !isNaN(d));
+  const maxDate = allDates.length ? Math.max(...allDates) : null;
+  const recentThreshold = maxDate ? (maxDate - recentMs) : null;
+
+  // Datasets 구성
+  const datasets = [];
+  const trendInfo = [];  // 채널별 추세선 정보 (R², 우하향 여부)
+
+  channels.forEach((ch, i) => {
+    const color = CHART_THEME.series[i % CHART_THEME.series.length];
+    const pts = byChannel.get(ch);
+    if (!pts || pts.length < 2) return;
+    const xs = pts.map(p => p.x);
+    const xMin = Math.min(...xs);
+    const xMax = Math.max(...xs);
+
+    // Recent / Older 분리
+    const recentPts = recentThreshold
+      ? pts.filter(p => p.date && Date.parse(p.date) >= recentThreshold)
+      : [];
+    const olderPts = recentThreshold
+      ? pts.filter(p => !p.date || Date.parse(p.date) < recentThreshold)
+      : pts;
+
+    // Older 점 (반투명, 동그라미)
+    if (olderPts.length > 0) {
+      datasets.push({
+        label: `${truncateLabel(ch)} (Older)`,
+        data: olderPts.map(p => ({ x: p.x, y: p.y })),
+        backgroundColor: color + "60",
+        borderColor: color + "60",
+        pointRadius: 3,
+        pointStyle: "circle",
+        showLine: false,
+      });
+    }
+    // Recent 점 (진한 색, 삼각형)
+    if (recentPts.length > 0) {
+      datasets.push({
+        label: `${truncateLabel(ch)} (Recent)`,
+        data: recentPts.map(p => ({ x: p.x, y: p.y })),
+        backgroundColor: color,
+        borderColor: "#0d0e0f",
+        borderWidth: 1.5,
+        pointRadius: 6,
+        pointStyle: "triangle",
+        showLine: false,
+      });
+    }
+
+    // 추세선 적합
+    const trainData = pts.map(p => [p.x, p.y]);
+    let model = null;
+    const tt = ALLOC_STATE.trendType;
+    if (tt === "auto") model = ALLOC_MATH.fitBest(trainData);
+    else if (tt === "linear") model = ALLOC_MATH.fitLinear(trainData);
+    else if (tt === "log") model = ALLOC_MATH.fitLog(trainData);
+    else if (tt === "poly2") model = ALLOC_MATH.fitPoly2(trainData);
+    else if (tt === "power") model = ALLOC_MATH.fitPower(trainData);
+
+    if (model) {
+      const r2 = model.r2 != null ? model.r2 : ALLOC_MATH.calcR2(trainData, model);
+      // 추세선 점 50개 생성 (x 범위 약간 확장)
+      const margin = (xMax - xMin) * 0.05;
+      const fitMin = Math.max(0.0001, xMin - margin);
+      const fitMax = xMax + margin;
+      const trendPts = [];
+      const STEPS = 50;
+      for (let s = 0; s <= STEPS; s++) {
+        const x = fitMin + (fitMax - fitMin) * (s / STEPS);
+        const y = model.predict(x);
+        if (isFinite(y)) trendPts.push({ x, y });
+      }
+      const descending = ALLOC_MATH.isDescending(model, xMin, xMax);
+      datasets.push({
+        label: `${truncateLabel(ch)} · ${model.type} (R²=${r2 != null ? r2.toFixed(2) : "—"})`,
+        data: trendPts,
+        backgroundColor: color,
+        borderColor: color,
+        borderWidth: 2,
+        borderDash: descending ? [6, 4] : [],
+        pointRadius: 0,
+        type: "line",
+        fill: false,
+        tension: 0,
+        showLine: true,
+      });
+      trendInfo.push({ channel: ch, model: model.type, r2, descending, xMin, xMax, color });
+    }
+  });
+
+  CHART_INSTANCES["alloc-scatter"] = new Chart(canvas.getContext("2d"), {
+    type: "scatter",
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "right",
+          labels: {
+            color: CHART_THEME.text,
+            font: { family: "Inter", size: 10 },
+            usePointStyle: true,
+            padding: 8,
+            boxWidth: 8,
+          },
+        },
+        tooltip: {
+          backgroundColor: "#1f2021",
+          titleColor: CHART_THEME.textPrimary,
+          bodyColor: CHART_THEME.text,
+          borderColor: CHART_THEME.border,
+          borderWidth: 1,
+          padding: 10,
+          titleFont: { family: "JetBrains Mono", size: 11 },
+          bodyFont: { family: "JetBrains Mono", size: 11 },
+          callbacks: {
+            label: (ctx) => `(${ctx.parsed.x.toFixed(0)}, CPR=${ctx.parsed.y.toFixed(2)})`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          type: "linear",
+          ticks: { color: CHART_THEME.muted, font: { family: "JetBrains Mono", size: 10 } },
+          grid: { color: CHART_THEME.grid },
+          title: { display: true, text: "Cost", color: CHART_THEME.muted, font: { size: 10 } },
+        },
+        y: {
+          type: "linear",
+          ticks: { color: CHART_THEME.muted, font: { family: "JetBrains Mono", size: 10 } },
+          grid: { color: CHART_THEME.grid },
+          title: { display: true, text: "CPR (Cost / Results)", color: CHART_THEME.muted, font: { size: 10 } },
+          beginAtZero: false,
+        },
+      },
+    },
+  });
+
+  // 추세선 요약 + 우하향 경고
+  renderTrendSummary(trendInfo);
+
+  // 채널 chip 클릭 핸들러
+  document.querySelectorAll(".alloc-chip[data-channel]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const ch = btn.dataset.channel;
+      if (ALLOC_STATE.selectedChannels.has(ch)) ALLOC_STATE.selectedChannels.delete(ch);
+      else ALLOC_STATE.selectedChannels.add(ch);
+      renderAllocatorScatter();
+    });
+  });
+  const top6Btn = document.getElementById("alloc-filter-top6");
+  const allBtn = document.getElementById("alloc-filter-all");
+  const noneBtn = document.getElementById("alloc-filter-none");
+  if (top6Btn) top6Btn.addEventListener("click", () => {
+    ALLOC_STATE.selectedChannels = new Set(allChannels.slice(0, 6));
+    renderAllocatorScatter();
+  });
+  if (allBtn) allBtn.addEventListener("click", () => {
+    ALLOC_STATE.selectedChannels = new Set(allChannels);
+    renderAllocatorScatter();
+  });
+  if (noneBtn) noneBtn.addEventListener("click", () => {
+    ALLOC_STATE.selectedChannels = new Set();
+    renderAllocatorScatter();
+  });
+
+  // 추세선 모드 pill
+  document.querySelectorAll(".ab-pill[data-trendtype]").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.trendtype === ALLOC_STATE.trendType);
+    btn.addEventListener("click", () => {
+      ALLOC_STATE.trendType = btn.dataset.trendtype;
+      renderAllocatorScatter();
+    });
+  });
+}
+
+function truncateLabel(s, max = 36) {
+  return s.length > max ? s.slice(0, max - 1) + "…" : s;
+}
+
+function renderTrendSummary(trendInfo) {
+  const wrap = document.getElementById("alloc-trend-summary");
+  if (!wrap) return;
+  if (trendInfo.length === 0) {
+    wrap.innerHTML = "";
+    return;
+  }
+
+  // R² 표 + 우하향 채널 경고
+  const descending = trendInfo.filter(t => t.descending);
+  const r2Rows = trendInfo
+    .sort((a, b) => (b.r2 ?? -1) - (a.r2 ?? -1))
+    .map(t => {
+      const r2Cell = t.r2 == null ? "—" :
+                     t.r2 >= 0.5 ? `<span class="pill tier-1">${t.r2.toFixed(2)}</span>` :
+                     t.r2 >= 0.2 ? `<span class="pill tier-2">${t.r2.toFixed(2)}</span>` :
+                                   `<span class="pill tier-3">${t.r2.toFixed(2)}</span>`;
+      const trendBadge = t.descending
+        ? `<span class="pill" style="border-color:rgba(255,138,138,0.4);color:#ff8a8a;background:rgba(255,138,138,0.08);">우하향 ⚠</span>`
+        : `<span class="pill" style="border-color:rgba(90,209,154,0.3);color:#5ad19a;background:rgba(90,209,154,0.06);">우상향</span>`;
+      return `
+        <tr>
+          <td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${t.color};margin-right:0.4rem;"></span>${escapeHtml(truncateLabel(t.channel, 40))}</td>
+          <td>${t.model}</td>
+          <td class="tnum">${r2Cell}</td>
+          <td>${trendBadge}</td>
+        </tr>`;
+    }).join("");
+
+  wrap.innerHTML = `
+    ${descending.length > 0 ? `
+      <div class="callout danger" style="margin-top:1rem;">
+        <div class="ico">!</div>
+        <div class="body">
+          <strong>우하향 추세선 ${descending.length}개 채널 감지</strong>
+          <p>
+            ${descending.map(d => `<code class="inline">${escapeHtml(truncateLabel(d.channel, 28))}</code>`).join(", ")}
+          </p>
+          <p>
+            우하향 추세선(Cost↑ → CPR↓)은 일반적인 한계효용 체감 패턴과 반대입니다. 가능한 원인:
+            <strong>(1) 짧은 학습 기간으로 인한 데이터 부족</strong>,
+            <strong>(2) 채널 진입 초기 효율 상승 구간</strong>,
+            <strong>(3) 노이즈가 큰 운영 케이스</strong>.
+            한계효용 그리디(모드 B)를 사용하면 외삽 시 음수 CPR을 예측해 해당 채널에만 예산이 몰리는 위험이 있으니, 모드 A(가중평균 CPR) 사용 또는 CPR Cap 적용을 권장합니다.
+          </p>
+        </div>
+      </div>` : ""}
+
+    <div class="alloc-trend-table">
+      <div class="alloc-trend-table-title">채널별 추세선 R² · 방향</div>
+      <div class="table-wrap" style="margin:0.5rem 0 0;">
+        <table class="data">
+          <thead><tr><th>채널</th><th>모델</th><th>R²</th><th>방향</th></tr></thead>
+          <tbody>${r2Rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
 function bindBudgetAllocatorHandlers() {
   const refresh = () => {
     const budgetInput = document.getElementById("alloc-budget");
@@ -6400,13 +6911,14 @@ function bindBudgetAllocatorHandlers() {
   };
 
   const recomputeBtn = document.getElementById("alloc-recompute");
-  if (recomputeBtn) recomputeBtn.addEventListener("click", refresh);
+  if (recomputeBtn) recomputeBtn.addEventListener("click", () => { refresh(); renderAllocatorScatter(); });
   const budgetInput = document.getElementById("alloc-budget");
   if (budgetInput) budgetInput.addEventListener("input", refresh);
   const metricSelect = document.getElementById("alloc-metric");
-  if (metricSelect) metricSelect.addEventListener("change", refresh);
+  if (metricSelect) metricSelect.addEventListener("change", () => { refresh(); renderAllocatorScatter(); });
 
   refresh();
+  renderAllocatorScatter();
 }
 
 function handleCSVFile(file) {
