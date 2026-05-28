@@ -1228,6 +1228,109 @@
     margin-top: 1rem;
   }
 
+  /* 시뮬레이션 카드 */
+  .alloc-sim-hint {
+    padding: 0.875rem 1rem;
+    background: var(--surface-container-lowest);
+    border: 1px dashed var(--border-subtle);
+    border-radius: var(--radius-xl);
+    text-align: center;
+  }
+  .alloc-sim-card {
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 1rem 1.25rem 1.25rem;
+  }
+  .alloc-sim-header {
+    margin-bottom: 0.875rem;
+    padding-bottom: 0.875rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .alloc-sim-tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--radius-default);
+    border: 1px solid var(--border-subtle);
+    letter-spacing: 0.04em;
+    margin-bottom: 0.5rem;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .alloc-sim-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.005em;
+  }
+  .alloc-sim-sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+  }
+  .alloc-sim-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  @media (max-width: 720px) {
+    .alloc-sim-form { grid-template-columns: 1fr; }
+  }
+  .alloc-sim-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 0.875rem;
+  }
+  .alloc-sim-block {
+    background: var(--surface-container-low);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 0.875rem 1rem;
+  }
+  .alloc-sim-block-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .alloc-sim-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0.3rem 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .alloc-sim-row.highlight {
+    color: var(--text-primary);
+  }
+  .alloc-sim-row.highlight.strong {
+    background: rgba(173, 198, 255, 0.06);
+    border-radius: var(--radius-default);
+    padding: 0.4rem 0.5rem;
+    margin: 0.25rem -0.25rem;
+  }
+  .alloc-sim-row strong {
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+  .alloc-sim-row strong.down { color: #ff8a8a; }
+  .alloc-sim-sep {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 0.4rem 0;
+  }
+
   /* ========== A/B Test Calculator ========== */
   .ab-tabs {
     display: inline-flex;
@@ -5170,6 +5273,17 @@ function page_5_3() {
             <button class="ab-pill" data-trendtype="poly2">Poly2</button>
             <button class="ab-pill" data-trendtype="power">Power</button>
           </div>
+          <div class="ab-pillgroup">
+            <span class="ab-pillgroup-label">최근 가중치</span>
+            <button class="ab-pill" data-weightmode="none">없음 (균등)</button>
+            <button class="ab-pill" data-weightmode="linear">선형 (최오래 0.2)</button>
+            <button class="ab-pill" data-weightmode="exponential">지수 (반감기 30일)</button>
+          </div>
+          <div class="ab-pillgroup">
+            <span class="ab-pillgroup-label">표시</span>
+            <button class="ab-pill" data-pointtoggle="show">점 + 추세선</button>
+            <button class="ab-pill" data-pointtoggle="hide">추세선만</button>
+          </div>
         </div>
         <div id="alloc-channel-filter" class="alloc-channel-filter"></div>
         <div class="chart-card" style="margin-top:0.875rem;">
@@ -5178,6 +5292,7 @@ function page_5_3() {
           </div>
         </div>
         <div id="alloc-trend-summary"></div>
+        <div id="alloc-sim-container" style="margin-top:1rem;"></div>
       </section>
 
       <section class="block" id="s-bar">
@@ -5422,43 +5537,61 @@ const STATS = (() => {
    - Power:   y = a·x^b                 (log-log OLS, 수확체감 표현)
    - Best R²: 위 4개를 모두 fit해 R²가 가장 높은 모델 자동 선택 */
 const ALLOC_MATH = (() => {
-  function fitLinear(pts) {
+  /* WLS (Weighted Least Squares) 지원. weights는 옵션, 없으면 모두 1로 처리.
+     Log/Power는 변수 변환 후 같은 가중치를 그대로 적용. Poly2는 가중 정규방정식. */
+  function _ones(n) { return new Array(n).fill(1); }
+
+  function fitLinear(pts, weights) {
     if (pts.length < 2) return null;
     const n = pts.length;
-    let sx=0, sy=0, sxx=0, sxy=0;
-    for (const [x, y] of pts) { sx+=x; sy+=y; sxx+=x*x; sxy+=x*y; }
-    const denom = n*sxx - sx*sx;
+    const w = (weights && weights.length === n) ? weights : _ones(n);
+    let W=0, swx=0, swy=0, swxx=0, swxy=0;
+    for (let i = 0; i < n; i++) {
+      const [x, y] = pts[i], wi = w[i];
+      W += wi; swx += wi*x; swy += wi*y; swxx += wi*x*x; swxy += wi*x*y;
+    }
+    const denom = W*swxx - swx*swx;
     if (denom === 0) return null;
-    const a = (n*sxy - sx*sy) / denom;
-    const b = (sy - a*sx) / n;
+    const a = (W*swxy - swx*swy) / denom;
+    const b = (swy - a*swx) / W;
     return { type: "Linear", predict: x => a*x + b, params: { a, b } };
   }
-  function fitLog(pts) {
-    const valid = pts.filter(([x]) => x > 0);
-    if (valid.length < 2) return null;
-    const tr = valid.map(([x, y]) => [Math.log(x), y]);
-    const lin = fitLinear(tr);
+
+  function fitLog(pts, weights) {
+    // 유효 인덱스만 추출 (x>0), 가중치도 같은 인덱스로 추림
+    const idx = [];
+    for (let i = 0; i < pts.length; i++) if (pts[i][0] > 0) idx.push(i);
+    if (idx.length < 2) return null;
+    const tr = idx.map(i => [Math.log(pts[i][0]), pts[i][1]]);
+    const wTr = weights ? idx.map(i => weights[i]) : null;
+    const lin = fitLinear(tr, wTr);
     if (!lin) return null;
     const { a, b } = lin.params;
     return { type: "Log", predict: x => x > 0 ? a*Math.log(x) + b : NaN, params: { a, b } };
   }
-  function fitPower(pts) {
-    const valid = pts.filter(([x, y]) => x > 0 && y > 0);
-    if (valid.length < 2) return null;
-    const tr = valid.map(([x, y]) => [Math.log(x), Math.log(y)]);
-    const lin = fitLinear(tr);
+
+  function fitPower(pts, weights) {
+    const idx = [];
+    for (let i = 0; i < pts.length; i++) if (pts[i][0] > 0 && pts[i][1] > 0) idx.push(i);
+    if (idx.length < 2) return null;
+    const tr = idx.map(i => [Math.log(pts[i][0]), Math.log(pts[i][1])]);
+    const wTr = weights ? idx.map(i => weights[i]) : null;
+    const lin = fitLinear(tr, wTr);
     if (!lin) return null;
     const { a: slope, b: intercept } = lin.params;
     const A = Math.exp(intercept);
     return { type: "Power", predict: x => x > 0 ? A * Math.pow(x, slope) : NaN, params: { a: A, b: slope } };
   }
-  function fitPoly2(pts) {
+
+  function fitPoly2(pts, weights) {
     const n = pts.length;
     if (n < 3) return null;
-    let s0=n, s1=0, s2=0, s3=0, s4=0, sy=0, sxy=0, sx2y=0;
-    for (const [x, y] of pts) {
-      s1 += x; s2 += x*x; s3 += x*x*x; s4 += x*x*x*x;
-      sy += y; sxy += x*y; sx2y += x*x*y;
+    const w = (weights && weights.length === n) ? weights : _ones(n);
+    let s0=0, s1=0, s2=0, s3=0, s4=0, sy=0, sxy=0, sx2y=0;
+    for (let i = 0; i < n; i++) {
+      const [x, y] = pts[i], wi = w[i];
+      s0 += wi; s1 += wi*x; s2 += wi*x*x; s3 += wi*x*x*x; s4 += wi*x*x*x*x;
+      sy += wi*y; sxy += wi*x*y; sx2y += wi*x*x*y;
     }
     const M = [[s4, s3, s2], [s3, s2, s1], [s2, s1, s0]];
     const v = [sx2y, sxy, sy];
@@ -5474,40 +5607,108 @@ const ALLOC_MATH = (() => {
     const c = det3(repl(M, 2, v)) / D;
     return { type: "Poly2", predict: x => a*x*x + b*x + c, params: { a, b, c } };
   }
-  function calcR2(pts, model) {
+
+  function calcR2(pts, model, weights) {
     if (!model || pts.length < 2) return null;
-    const ys = pts.map(([_, y]) => y);
-    const yMean = ys.reduce((s, v) => s+v, 0) / ys.length;
+    const w = (weights && weights.length === pts.length) ? weights : _ones(pts.length);
+    let W = 0, swy = 0;
+    for (let i = 0; i < pts.length; i++) { W += w[i]; swy += w[i] * pts[i][1]; }
+    if (W === 0) return null;
+    const yMean = swy / W;
     let ssRes = 0, ssTot = 0;
-    for (const [x, y] of pts) {
+    for (let i = 0; i < pts.length; i++) {
+      const [x, y] = pts[i];
       const yhat = model.predict(x);
       if (!isFinite(yhat)) continue;
-      ssRes += (y - yhat) ** 2;
-      ssTot += (y - yMean) ** 2;
+      ssRes += w[i] * (y - yhat) ** 2;
+      ssTot += w[i] * (y - yMean) ** 2;
     }
     return ssTot === 0 ? 0 : 1 - ssRes / ssTot;
   }
-  function fitBest(pts) {
+
+  function fitBest(pts, weights) {
     const fitters = [["Linear", fitLinear], ["Log", fitLog], ["Poly2", fitPoly2], ["Power", fitPower]];
     let best = null, bestR2 = -Infinity;
     for (const [_, fn] of fitters) {
-      const m = fn(pts);
+      const m = fn(pts, weights);
       if (!m) continue;
-      const r2 = calcR2(pts, m);
+      const r2 = calcR2(pts, m, weights);
       if (r2 != null && r2 > bestR2) { best = { ...m, r2 }; bestR2 = r2; }
     }
     return best;
   }
-  // 추세선이 우하향(Cost↑ → CPR↓)인지 판단.
-  // 우하향 = 더 쓸수록 더 효율적 → 한계효용 그리디 사용 시 외삽 위험.
+
   function isDescending(model, xMin, xMax) {
     if (!model) return false;
     const yLow = model.predict(xMin);
     const yHigh = model.predict(xMax);
     return isFinite(yLow) && isFinite(yHigh) && yHigh < yLow;
   }
-  return { fitLinear, fitLog, fitPoly2, fitPower, fitBest, calcR2, isDescending };
+
+  /* 최근 데이터 가중치 계산
+     - none:        모두 1
+     - linear:      최신 1.0 → 최오래 0.2 (선형 감쇠)
+     - exponential: w = 0.5 ^ (age / halfLife) (반감기 기준 지수 감쇠) */
+  function calcDateWeights(dates, mode, maxDate, halfLifeDays = 30) {
+    if (mode === "none" || !maxDate) return dates.map(() => 1);
+    const ages = dates.map(d => {
+      if (!d) return 0;
+      const t = Date.parse(d);
+      return isNaN(t) ? 0 : Math.max(0, (maxDate - t) / 86400000);
+    });
+    const maxAge = Math.max(...ages, 1);
+    if (mode === "linear") {
+      return ages.map(a => 0.2 + 0.8 * (1 - a / maxAge));
+    }
+    if (mode === "exponential") {
+      return ages.map(a => Math.pow(0.5, a / Math.max(halfLifeDays, 1)));
+    }
+    return dates.map(() => 1);
+  }
+
+  return { fitLinear, fitLog, fitPoly2, fitPower, fitBest, calcR2, isDescending, calcDateWeights };
 })();
+
+/* ========== Budget Allocator · 채널 시뮬레이션 ==========
+   추세선에 현재/목표 Cost를 넣어 예측 CPR/Results/Revenue/ROAS와
+   해당 구간의 marginal CPR / marginal ROAS를 계산. */
+function simulateChannel({ model, currentCost, targetCost, channelRows, metric }) {
+  if (!model) return { invalid: "model_missing" };
+  const cprC = model.predict(currentCost);
+  const cprT = model.predict(targetCost);
+  if (!isFinite(cprC) || !isFinite(cprT) || cprC <= 0 || cprT <= 0) {
+    return { invalid: "out_of_range", cprC, cprT };
+  }
+  const resC = currentCost / cprC;
+  const resT = targetCost / cprT;
+  const dCost = targetCost - currentCost;
+  const dRes = resT - resC;
+  const marginalCPR = dRes !== 0 ? dCost / dRes : null;
+
+  // Revenue 정보가 있을 경우 — 채널의 평균 (revenue_d7 / results) 사용
+  let rev = null;
+  if (channelRows && channelRows.length) {
+    let totalRev = 0, totalResults = 0;
+    for (const r of channelRows) {
+      const v = Number(r.revenue_d7);
+      if (isFinite(v)) totalRev += v;
+      const m = Number(r[metric]);
+      if (isFinite(m)) totalResults += m;
+    }
+    if (totalResults > 0 && totalRev > 0) {
+      const avgRevPerResult = totalRev / totalResults;
+      const revC = resC * avgRevPerResult;
+      const revT = resT * avgRevPerResult;
+      const dRev = revT - revC;
+      const roasC = currentCost > 0 ? revC / currentCost : 0;
+      const roasT = targetCost > 0 ? revT / targetCost : 0;
+      const marginalROAS = dCost !== 0 ? dRev / dCost : null;
+      rev = { avgRevPerResult, revC, revT, dRev, roasC, roasT, marginalROAS };
+    }
+  }
+
+  return { cprC, cprT, resC, resT, dCost, dRes, marginalCPR, rev };
+}
 
 /* 통화 기호 및 포맷 */
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
@@ -5526,9 +5727,17 @@ const AB_STATE = {
 
 const ALLOC_STATE = {
   trendType: "auto",       // linear | log | poly2 | power | auto
+  weightMode: "none",      // none | linear | exponential (최근 데이터 가중)
+  halfLifeDays: 30,        // exponential 모드 반감기
   selectedChannels: null,  // null = 자동 상위 6, Set = 선택된 채널들
   recentDays: 14,          // 최근 강조 기간 (일)
   showRecent: true,
+  hidePoints: false,       // 점 숨김 (추세선만 표시)
+  sim: {                   // 시뮬레이션 상태 (채널 1개 선택 시)
+    channel: null,
+    currentCost: null,
+    targetCost: null,
+  },
 };
 
 function page_5_4() {
@@ -6634,7 +6843,8 @@ function renderAllocatorScatter() {
 
   // Datasets 구성
   const datasets = [];
-  const trendInfo = [];  // 채널별 추세선 정보 (R², 우하향 여부)
+  const trendInfo = [];                 // 채널별 추세선 정보 (R², 우하향 여부)
+  const channelModels = new Map();      // 시뮬레이션을 위한 model 보관
 
   channels.forEach((ch, i) => {
     const color = CHART_THEME.series[i % CHART_THEME.series.length];
@@ -6652,44 +6862,49 @@ function renderAllocatorScatter() {
       ? pts.filter(p => !p.date || Date.parse(p.date) < recentThreshold)
       : pts;
 
-    // Older 점 (반투명, 동그라미)
-    if (olderPts.length > 0) {
-      datasets.push({
-        label: `${truncateLabel(ch)} (Older)`,
-        data: olderPts.map(p => ({ x: p.x, y: p.y })),
-        backgroundColor: color + "60",
-        borderColor: color + "60",
-        pointRadius: 3,
-        pointStyle: "circle",
-        showLine: false,
-      });
-    }
-    // Recent 점 (진한 색, 삼각형)
-    if (recentPts.length > 0) {
-      datasets.push({
-        label: `${truncateLabel(ch)} (Recent)`,
-        data: recentPts.map(p => ({ x: p.x, y: p.y })),
-        backgroundColor: color,
-        borderColor: "#0d0e0f",
-        borderWidth: 1.5,
-        pointRadius: 6,
-        pointStyle: "triangle",
-        showLine: false,
-      });
+    // 점 표시 (hidePoints 시 생략)
+    if (!ALLOC_STATE.hidePoints) {
+      if (olderPts.length > 0) {
+        datasets.push({
+          label: `${truncateLabel(ch)} (Older)`,
+          data: olderPts.map(p => ({ x: p.x, y: p.y })),
+          backgroundColor: color + "60",
+          borderColor: color + "60",
+          pointRadius: 3,
+          pointStyle: "circle",
+          showLine: false,
+        });
+      }
+      if (recentPts.length > 0) {
+        datasets.push({
+          label: `${truncateLabel(ch)} (Recent)`,
+          data: recentPts.map(p => ({ x: p.x, y: p.y })),
+          backgroundColor: color,
+          borderColor: "#0d0e0f",
+          borderWidth: 1.5,
+          pointRadius: 6,
+          pointStyle: "triangle",
+          showLine: false,
+        });
+      }
     }
 
-    // 추세선 적합
+    // 추세선 적합 — 가중치 적용
     const trainData = pts.map(p => [p.x, p.y]);
+    const trainDates = pts.map(p => p.date);
+    const weights = ALLOC_MATH.calcDateWeights(
+      trainDates, ALLOC_STATE.weightMode, maxDate, ALLOC_STATE.halfLifeDays
+    );
     let model = null;
     const tt = ALLOC_STATE.trendType;
-    if (tt === "auto") model = ALLOC_MATH.fitBest(trainData);
-    else if (tt === "linear") model = ALLOC_MATH.fitLinear(trainData);
-    else if (tt === "log") model = ALLOC_MATH.fitLog(trainData);
-    else if (tt === "poly2") model = ALLOC_MATH.fitPoly2(trainData);
-    else if (tt === "power") model = ALLOC_MATH.fitPower(trainData);
+    if (tt === "auto") model = ALLOC_MATH.fitBest(trainData, weights);
+    else if (tt === "linear") model = ALLOC_MATH.fitLinear(trainData, weights);
+    else if (tt === "log") model = ALLOC_MATH.fitLog(trainData, weights);
+    else if (tt === "poly2") model = ALLOC_MATH.fitPoly2(trainData, weights);
+    else if (tt === "power") model = ALLOC_MATH.fitPower(trainData, weights);
 
     if (model) {
-      const r2 = model.r2 != null ? model.r2 : ALLOC_MATH.calcR2(trainData, model);
+      const r2 = model.r2 != null ? model.r2 : ALLOC_MATH.calcR2(trainData, model, weights);
       // 추세선 점 50개 생성 (x 범위 약간 확장)
       const margin = (xMax - xMin) * 0.05;
       const fitMin = Math.max(0.0001, xMin - margin);
@@ -6716,6 +6931,7 @@ function renderAllocatorScatter() {
         showLine: true,
       });
       trendInfo.push({ channel: ch, model: model.type, r2, descending, xMin, xMax, color });
+      channelModels.set(ch, { model, xMin, xMax, pts, color, r2, descending });
     }
   });
 
@@ -6771,12 +6987,22 @@ function renderAllocatorScatter() {
   // 추세선 요약 + 우하향 경고
   renderTrendSummary(trendInfo);
 
+  // === 시뮬레이션 카드 (채널 1개 선택 시에만) ===
+  renderSimulationCard(channels, channelModels, metric);
+
   // 채널 chip 클릭 핸들러
   document.querySelectorAll(".alloc-chip[data-channel]").forEach(btn => {
     btn.addEventListener("click", () => {
       const ch = btn.dataset.channel;
       if (ALLOC_STATE.selectedChannels.has(ch)) ALLOC_STATE.selectedChannels.delete(ch);
       else ALLOC_STATE.selectedChannels.add(ch);
+      // 채널 1개로 줄어들면 시뮬레이션 모드용 default 값 자동 세팅
+      if (ALLOC_STATE.selectedChannels.size === 1) {
+        const onlyCh = [...ALLOC_STATE.selectedChannels][0];
+        if (ALLOC_STATE.sim.channel !== onlyCh) {
+          ALLOC_STATE.sim = { channel: onlyCh, currentCost: null, targetCost: null };
+        }
+      }
       renderAllocatorScatter();
     });
   });
@@ -6804,6 +7030,218 @@ function renderAllocatorScatter() {
       renderAllocatorScatter();
     });
   });
+  // 가중치 모드 pill
+  document.querySelectorAll(".ab-pill[data-weightmode]").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.weightmode === ALLOC_STATE.weightMode);
+    btn.addEventListener("click", () => {
+      ALLOC_STATE.weightMode = btn.dataset.weightmode;
+      renderAllocatorScatter();
+    });
+  });
+  // 점 표시 토글
+  document.querySelectorAll(".ab-pill[data-pointtoggle]").forEach(btn => {
+    btn.classList.toggle("active", (btn.dataset.pointtoggle === "hide") === ALLOC_STATE.hidePoints);
+    btn.addEventListener("click", () => {
+      ALLOC_STATE.hidePoints = btn.dataset.pointtoggle === "hide";
+      renderAllocatorScatter();
+    });
+  });
+}
+
+/* ========== 시뮬레이션 카드 렌더 ==========
+   채널 1개만 선택됐을 때 표시. 추세선에 현재/목표 Cost 넣어 변화 시뮬레이션. */
+function renderSimulationCard(channels, channelModels, metric) {
+  const container = document.getElementById("alloc-sim-container");
+  if (!container) return;
+
+  if (channels.length !== 1) {
+    container.innerHTML = `
+      <div class="alloc-sim-hint">
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);">
+          💡 채널을 <strong>1개만</strong> 선택하면 추세선 기반 예산 시뮬레이터가 활성화됩니다 (현재 ${channels.length}개 선택됨).
+        </span>
+      </div>`;
+    return;
+  }
+
+  const ch = channels[0];
+  const meta = channelModels.get(ch);
+  if (!meta) {
+    container.innerHTML = `
+      <div class="callout warn">
+        <div class="ico">!</div>
+        <div class="body"><strong>${escapeHtml(ch)}</strong><p>추세선 적합 실패. 데이터 부족 가능성.</p></div>
+      </div>`;
+    return;
+  }
+
+  // default 값 세팅 (state에 없으면 평균 cost / 평균 +20%)
+  const avgCost = meta.pts.reduce((s, p) => s + p.x, 0) / meta.pts.length;
+  if (ALLOC_STATE.sim.channel !== ch) {
+    ALLOC_STATE.sim = { channel: ch, currentCost: null, targetCost: null };
+  }
+  const currentCost = ALLOC_STATE.sim.currentCost != null
+    ? ALLOC_STATE.sim.currentCost
+    : Math.round(avgCost);
+  const targetCost = ALLOC_STATE.sim.targetCost != null
+    ? ALLOC_STATE.sim.targetCost
+    : Math.round(avgCost * 1.2);
+
+  const rows = getMappedRows();
+  const channelRows = rows.filter(r => String(r.channel ?? "").trim() === ch);
+  const sim = simulateChannel({
+    model: meta.model,
+    currentCost, targetCost,
+    channelRows, metric,
+  });
+
+  container.innerHTML = `
+    <div class="alloc-sim-card">
+      <div class="alloc-sim-header">
+        <div>
+          <div class="alloc-sim-tag" style="background:${meta.color}22;border-color:${meta.color}55;color:${meta.color};">
+            ${escapeHtml(truncateLabel(ch, 60))}
+          </div>
+          <div class="alloc-sim-title">예산 변경 시뮬레이션</div>
+          <div class="alloc-sim-sub">
+            추세선 ${meta.model.type} · R²=${meta.r2 != null ? meta.r2.toFixed(2) : "—"} ·
+            관측 Cost 범위 ${fmtCurrency(meta.xMin)} ~ ${fmtCurrency(meta.xMax)}
+          </div>
+        </div>
+      </div>
+
+      <div class="alloc-sim-form">
+        <div class="ab-field">
+          <label>현재 Cost</label>
+          <input id="sim-current" type="number" step="100" min="0" value="${currentCost}" />
+          <span class="ab-field-hint">평균 관측치: ${fmtCurrency(avgCost)}</span>
+        </div>
+        <div class="ab-field">
+          <label>목표 Cost</label>
+          <input id="sim-target" type="number" step="100" min="0" value="${targetCost}" />
+          <span class="ab-field-hint">+/- 자유롭게 설정</span>
+        </div>
+      </div>
+
+      ${renderSimResults(sim, currentCost, targetCost, meta, !!sim.rev)}
+    </div>
+  `;
+
+  const refresh = () => {
+    const c = parseFloat(document.getElementById("sim-current").value);
+    const t = parseFloat(document.getElementById("sim-target").value);
+    if (isNaN(c) || isNaN(t) || c < 0 || t < 0) return;
+    ALLOC_STATE.sim.currentCost = c;
+    ALLOC_STATE.sim.targetCost = t;
+    const newSim = simulateChannel({ model: meta.model, currentCost: c, targetCost: t, channelRows, metric });
+    const wrap = document.getElementById("alloc-sim-results");
+    if (wrap) wrap.outerHTML = renderSimResults(newSim, c, t, meta, !!newSim.rev);
+  };
+  const cInp = document.getElementById("sim-current");
+  const tInp = document.getElementById("sim-target");
+  if (cInp) cInp.addEventListener("input", refresh);
+  if (tInp) tInp.addEventListener("input", refresh);
+}
+
+function renderSimResults(sim, currentCost, targetCost, meta, hasRevenue) {
+  if (!sim || sim.invalid) {
+    const reason = sim?.invalid === "out_of_range"
+      ? "추세선이 음수 CPR을 예측하는 영역입니다. Cost 범위를 조정하거나 추세선 모드(Log/Power)를 변경해 보세요."
+      : "추세선 모델이 없습니다.";
+    return `
+      <div id="alloc-sim-results" class="alloc-sim-results">
+        <div class="callout warn">
+          <div class="ico">!</div>
+          <div class="body"><strong>시뮬레이션 불가</strong><p>${reason}</p></div>
+        </div>
+      </div>`;
+  }
+
+  const dCost = sim.dCost;
+  const dRes = sim.dRes;
+  const direction = dCost > 0 ? "증액" : dCost < 0 ? "감액" : "유지";
+  const arrow = dCost > 0 ? "▲" : dCost < 0 ? "▼" : "—";
+
+  // 외삽 경고 (관측 범위 밖)
+  const isExtrapolation = currentCost < meta.xMin || currentCost > meta.xMax ||
+                          targetCost  < meta.xMin || targetCost  > meta.xMax;
+
+  const cprBlock = `
+    <div class="alloc-sim-block">
+      <div class="alloc-sim-block-title">예측 CPR · Results</div>
+      <div class="alloc-sim-row"><span>현재 Cost</span><strong class="tnum">${fmtCurrency(currentCost)}</strong></div>
+      <div class="alloc-sim-row"><span>현재 예측 CPR</span><strong class="tnum">${fmtCurrency(sim.cprC)}</strong></div>
+      <div class="alloc-sim-row"><span>현재 예측 Results</span><strong class="tnum">${Math.round(sim.resC).toLocaleString()}</strong></div>
+      <div class="alloc-sim-sep"></div>
+      <div class="alloc-sim-row"><span>목표 Cost</span><strong class="tnum">${fmtCurrency(targetCost)}</strong></div>
+      <div class="alloc-sim-row"><span>목표 예측 CPR</span><strong class="tnum">${fmtCurrency(sim.cprT)}</strong></div>
+      <div class="alloc-sim-row"><span>목표 예측 Results</span><strong class="tnum">${Math.round(sim.resT).toLocaleString()}</strong></div>
+      <div class="alloc-sim-sep"></div>
+      <div class="alloc-sim-row highlight">
+        <span>Δ Cost (${direction})</span>
+        <strong class="tnum ${dCost >= 0 ? '' : 'down'}">${arrow} ${fmtCurrency(Math.abs(dCost))}</strong>
+      </div>
+      <div class="alloc-sim-row highlight">
+        <span>Δ Results</span>
+        <strong class="tnum ${dRes >= 0 ? '' : 'down'}">${arrow} ${Math.abs(Math.round(dRes)).toLocaleString()}건</strong>
+      </div>
+      <div class="alloc-sim-row highlight strong">
+        <span>이 구간의 marginal CPR</span>
+        <strong class="tnum">${sim.marginalCPR != null ? fmtCurrency(sim.marginalCPR) : "—"}</strong>
+      </div>
+    </div>
+  `;
+
+  const revBlock = sim.rev ? `
+    <div class="alloc-sim-block">
+      <div class="alloc-sim-block-title">예측 Revenue · ROAS</div>
+      <div class="alloc-sim-row"><span>평균 Revenue / Result</span><strong class="tnum">${fmtCurrency(sim.rev.avgRevPerResult)}</strong></div>
+      <div class="alloc-sim-sep"></div>
+      <div class="alloc-sim-row"><span>현재 예측 Revenue</span><strong class="tnum">${fmtCurrency(sim.rev.revC)}</strong></div>
+      <div class="alloc-sim-row"><span>현재 ROAS</span><strong class="tnum">${(sim.rev.roasC*100).toFixed(2)}%</strong></div>
+      <div class="alloc-sim-sep"></div>
+      <div class="alloc-sim-row"><span>목표 예측 Revenue</span><strong class="tnum">${fmtCurrency(sim.rev.revT)}</strong></div>
+      <div class="alloc-sim-row"><span>목표 ROAS</span><strong class="tnum">${(sim.rev.roasT*100).toFixed(2)}%</strong></div>
+      <div class="alloc-sim-sep"></div>
+      <div class="alloc-sim-row highlight">
+        <span>Δ Revenue</span>
+        <strong class="tnum ${sim.rev.dRev >= 0 ? '' : 'down'}">${sim.rev.dRev >= 0 ? '▲' : '▼'} ${fmtCurrency(Math.abs(sim.rev.dRev))}</strong>
+      </div>
+      <div class="alloc-sim-row highlight">
+        <span>ROAS 변화</span>
+        <strong class="tnum">${(sim.rev.roasC*100).toFixed(2)}% → ${(sim.rev.roasT*100).toFixed(2)}%</strong>
+      </div>
+      <div class="alloc-sim-row highlight strong">
+        <span>이 구간의 marginal ROAS</span>
+        <strong class="tnum">${sim.rev.marginalROAS != null ? (sim.rev.marginalROAS*100).toFixed(2)+"%" : "—"}</strong>
+      </div>
+    </div>
+  ` : `
+    <div class="alloc-sim-block">
+      <div class="alloc-sim-block-title">예측 Revenue · ROAS</div>
+      <p style="font-size:12px;color:var(--text-muted);margin:0.5rem 0 0;">
+        Revenue 데이터(매핑된 <code class="inline">revenue_d7</code>)가 있어야 ROAS 시뮬레이션이 활성화됩니다.
+        5-1에서 revenue 컬럼을 매핑하면 자동 표시됩니다.
+      </p>
+    </div>
+  `;
+
+  const extraWarn = isExtrapolation ? `
+    <div class="callout warn" style="margin-top:0.75rem;">
+      <div class="ico">!</div>
+      <div class="body">
+        <strong>외삽 영역 사용 중</strong>
+        <p>입력하신 Cost가 관측 범위(${fmtCurrency(meta.xMin)} ~ ${fmtCurrency(meta.xMax)})를 벗어났습니다. 추세선 예측의 신뢰도가 낮아질 수 있어요.</p>
+      </div>
+    </div>
+  ` : "";
+
+  return `
+    <div id="alloc-sim-results" class="alloc-sim-results">
+      <div class="alloc-sim-grid">${cprBlock}${revBlock}</div>
+      ${extraWarn}
+    </div>
+  `;
 }
 
 function truncateLabel(s, max = 36) {
