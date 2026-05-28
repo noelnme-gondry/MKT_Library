@@ -1442,6 +1442,10 @@
     border-color: rgba(173, 198, 255, 0.25);
     font-weight: 600;
   }
+  .ab-pillgroup.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
   .ab-form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -5327,8 +5331,14 @@ function page_5_3() {
           <div class="ab-pillgroup">
             <span class="ab-pillgroup-label">이상치 제거</span>
             <button class="ab-pill" data-outlier="none">없음</button>
-            <button class="ab-pill" data-outlier="iqr">IQR 1.5×</button>
-            <button class="ab-pill" data-outlier="modz">Modified Z (3.5)</button>
+            <button class="ab-pill" data-outlier="iqr">IQR</button>
+            <button class="ab-pill" data-outlier="modz">Modified Z</button>
+          </div>
+          <div class="ab-pillgroup" id="outlier-strength-group">
+            <span class="ab-pillgroup-label">강도</span>
+            <button class="ab-pill" data-strength="standard">표준</button>
+            <button class="ab-pill" data-strength="strong">강함</button>
+            <button class="ab-pill" data-strength="very_strong">매우 강함</button>
           </div>
           <div class="ab-pillgroup">
             <span class="ab-pillgroup-label">정규화</span>
@@ -5893,8 +5903,7 @@ const ALLOC_STATE = {
   weightMode: "none",      // none | linear | exponential (최근 데이터 가중)
   halfLifeDays: 30,        // exponential 모드 반감기
   outlierMethod: "iqr",    // none | iqr | modz  (CPR(y축) 기준 채널별 적용)
-  iqrMult: 1.5,            // IQR multiplier
-  modzThreshold: 3.5,      // Modified Z-score threshold
+  outlierStrength: "standard", // standard | strong | very_strong
   normalizeMode: "raw",    // raw | log | minmax | robust (차트 표시용)
   selectedChannels: null,  // null = 자동 상위 6, Set = 선택된 채널들
   recentDays: 14,          // 최근 강조 기간 (일)
@@ -5906,6 +5915,120 @@ const ALLOC_STATE = {
     targetCost: null,
   },
 };
+
+/* 이상치 제거 강도 → numeric 임계값 매핑 (낮을수록 더 공격적으로 제거) */
+const OUTLIER_STRENGTH = {
+  iqr:  { standard: 1.5, strong: 1.0, very_strong: 0.5 },
+  modz: { standard: 3.5, strong: 2.5, very_strong: 2.0 },
+};
+function getOutlierOpts(method, strength) {
+  if (method === "iqr")  return { iqrMult:        OUTLIER_STRENGTH.iqr[strength]  ?? 1.5 };
+  if (method === "modz") return { modzThreshold:  OUTLIER_STRENGTH.modz[strength] ?? 3.5 };
+  return {};
+}
+
+/* ========== Budget Allocator 메모이제이션 캐시 ==========
+   조건이 같으면 model 재계산 skip → 토글 변경 시 즉시 응답.
+   CSV 새로 업로드 시 clearAllocCache()로 전체 무효화. */
+const ALLOC_CACHE = {
+  byChannel:    null,
+  byChannelKey: null,
+  outliers:     null,
+  outliersKey:  null,
+  weights:      null,
+  weightsKey:   null,
+  models:       null,
+  modelsKey:    null,
+};
+function clearAllocCache() {
+  for (const k of Object.keys(ALLOC_CACHE)) ALLOC_CACHE[k] = null;
+}
+
+/* 채널별 raw points (cost > 0, results > 0 자동 필터). 의존성: rows, metric. */
+function getCachedByChannel(rows, metric) {
+  const key = `${rows.length}|${metric}`;
+  if (ALLOC_CACHE.byChannelKey === key && ALLOC_CACHE.byChannel) return ALLOC_CACHE.byChannel;
+  const m = new Map();
+  for (const r of rows) {
+    const ch = String(r.channel ?? "").trim();
+    if (!ch) continue;
+    const cost = Number(r.cost) || 0;
+    const res  = Number(r[metric]) || 0;
+    if (cost <= 0 || res <= 0) continue;
+    if (!m.has(ch)) m.set(ch, []);
+    m.get(ch).push({ x: cost, y: cost / res, date: r.date });
+  }
+  ALLOC_CACHE.byChannel    = m;
+  ALLOC_CACHE.byChannelKey = key;
+  // 의존 cache 무효화
+  ALLOC_CACHE.outliers = null; ALLOC_CACHE.outliersKey = null;
+  ALLOC_CACHE.weights  = null; ALLOC_CACHE.weightsKey  = null;
+  ALLOC_CACHE.models   = null; ALLOC_CACHE.modelsKey   = null;
+  return m;
+}
+
+/* 채널별 outlier 결과. 의존성: byChannelKey + method + strength */
+function getCachedOutliers(byChannel) {
+  const method = ALLOC_STATE.outlierMethod;
+  const strength = ALLOC_STATE.outlierStrength;
+  const key = `${ALLOC_CACHE.byChannelKey}|${method}|${strength}`;
+  if (ALLOC_CACHE.outliersKey === key && ALLOC_CACHE.outliers) return ALLOC_CACHE.outliers;
+  const opts = getOutlierOpts(method, strength);
+  const m = new Map();
+  for (const [ch, pts] of byChannel) {
+    m.set(ch, ALLOC_MATH.removeOutliers(pts, method, opts));
+  }
+  ALLOC_CACHE.outliers    = m;
+  ALLOC_CACHE.outliersKey = key;
+  ALLOC_CACHE.models = null; ALLOC_CACHE.modelsKey = null;
+  return m;
+}
+
+/* 채널별 weights. 의존성: outliersKey + weightMode + halfLifeDays + maxDate */
+function getCachedWeights(outlierMap, maxDate) {
+  const wm = ALLOC_STATE.weightMode;
+  const hl = ALLOC_STATE.halfLifeDays;
+  const key = `${ALLOC_CACHE.outliersKey}|${wm}|${hl}|${maxDate}`;
+  if (ALLOC_CACHE.weightsKey === key && ALLOC_CACHE.weights) return ALLOC_CACHE.weights;
+  const m = new Map();
+  for (const [ch, outRes] of outlierMap) {
+    const dates = (outRes.kept || []).map(p => p.date);
+    m.set(ch, ALLOC_MATH.calcDateWeights(dates, wm, maxDate, hl));
+  }
+  ALLOC_CACHE.weights    = m;
+  ALLOC_CACHE.weightsKey = key;
+  ALLOC_CACHE.models = null; ALLOC_CACHE.modelsKey = null;
+  return m;
+}
+
+/* 채널별 fitted model. 의존성: weightsKey + trendType */
+function getCachedModels(outlierMap, weightsMap) {
+  const tt = ALLOC_STATE.trendType;
+  const key = `${ALLOC_CACHE.weightsKey}|${tt}`;
+  if (ALLOC_CACHE.modelsKey === key && ALLOC_CACHE.models) return ALLOC_CACHE.models;
+  const m = new Map();
+  for (const [ch, outRes] of outlierMap) {
+    const pts = outRes.kept || [];
+    if (pts.length < 2) { m.set(ch, null); continue; }
+    const trainData = pts.map(p => [p.x, p.y]);
+    const weights = weightsMap.get(ch);
+    let model = null;
+    if (tt === "auto")        model = ALLOC_MATH.fitBest(trainData, weights);
+    else if (tt === "linear") model = ALLOC_MATH.fitLinear(trainData, weights);
+    else if (tt === "log")    model = ALLOC_MATH.fitLog(trainData, weights);
+    else if (tt === "poly2")  model = ALLOC_MATH.fitPoly2(trainData, weights);
+    else if (tt === "power")  model = ALLOC_MATH.fitPower(trainData, weights);
+    if (!model) { m.set(ch, null); continue; }
+    const r2 = model.r2 != null ? model.r2 : ALLOC_MATH.calcR2(trainData, model, weights);
+    const xs = pts.map(p => p.x);
+    const xMin = Math.min(...xs), xMax = Math.max(...xs);
+    const descending = ALLOC_MATH.isDescending(model, xMin, xMax);
+    m.set(ch, { model, r2, descending, xMin, xMax, pts, trainData });
+  }
+  ALLOC_CACHE.models    = m;
+  ALLOC_CACHE.modelsKey = key;
+  return m;
+}
 
 function page_5_4() {
   const meta = findMeta("5-4");
@@ -6980,6 +7103,13 @@ function bindStaticAllocatorControls() {
       queueAllocatorRender();
     });
   });
+  container.querySelectorAll(".ab-pill[data-strength]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (ALLOC_STATE.outlierMethod === "none") return;
+      ALLOC_STATE.outlierStrength = btn.dataset.strength;
+      queueAllocatorRender();
+    });
+  });
   container.querySelectorAll(".ab-pill[data-normalize]").forEach(btn => {
     btn.addEventListener("click", () => {
       ALLOC_STATE.normalizeMode = btn.dataset.normalize;
@@ -7000,8 +7130,16 @@ function updateAllocatorPillStates() {
     btn.classList.toggle("active", (btn.dataset.pointtoggle === "hide") === ALLOC_STATE.hidePoints));
   document.querySelectorAll(".ab-pill[data-outlier]").forEach(btn =>
     btn.classList.toggle("active", btn.dataset.outlier === ALLOC_STATE.outlierMethod));
+  document.querySelectorAll(".ab-pill[data-strength]").forEach(btn =>
+    btn.classList.toggle("active", btn.dataset.strength === ALLOC_STATE.outlierStrength));
   document.querySelectorAll(".ab-pill[data-normalize]").forEach(btn =>
     btn.classList.toggle("active", btn.dataset.normalize === ALLOC_STATE.normalizeMode));
+  // outlier=none이면 강도 그룹 비활성화
+  const strengthGroup = document.getElementById("outlier-strength-group");
+  if (strengthGroup) {
+    const disabled = ALLOC_STATE.outlierMethod === "none";
+    strengthGroup.classList.toggle("disabled", disabled);
+  }
 }
 
 /* ========== 추세선 segment 분리 ==========
@@ -7060,12 +7198,7 @@ function getTrendSegments(model, fitData, fitMin, fitMax, STEPS = 60) {
 
 /* ========== Budget Allocator · Cost vs CPR 산점도 & 추세선 ========== */
 function renderAllocatorScatter() {
-  if (CHART_INSTANCES["alloc-scatter"]) {
-    try { CHART_INSTANCES["alloc-scatter"].destroy(); } catch {}
-    delete CHART_INSTANCES["alloc-scatter"];
-  }
   if (typeof Chart === "undefined") return;
-
   const canvas = document.getElementById("chart-alloc-scatter");
   if (!canvas) return;
 
@@ -7073,18 +7206,8 @@ function renderAllocatorScatter() {
   const metric = metricSelect ? metricSelect.value : "installs";
   const rows = getMappedRows();
 
-  // 채널별 점 그룹화
-  const byChannel = new Map();
-  for (const r of rows) {
-    const ch = String(r.channel ?? "").trim();
-    if (!ch) continue;
-    const cost = Number(r.cost) || 0;
-    const res = Number(r[metric]) || 0;
-    if (cost <= 0 || res <= 0) continue;
-    const cpr = cost / res;
-    if (!byChannel.has(ch)) byChannel.set(ch, []);
-    byChannel.get(ch).push({ x: cost, y: cpr, date: r.date });
-  }
+  // 채널별 raw points → 메모이제이션
+  const byChannel = getCachedByChannel(rows, metric);
 
   // 비용 합계로 채널 정렬 (큰 순서)
   let allChannels = [...byChannel.keys()].sort((a, b) =>
@@ -7129,37 +7252,47 @@ function renderAllocatorScatter() {
   const maxDate = allDates.length ? Math.max(...allDates) : null;
   const recentThreshold = maxDate ? (maxDate - recentMs) : null;
 
-  // Datasets 구성
+  // === 모든 채널의 outlier / weights / model을 캐시 기반으로 사전 계산 ===
+  // 토글 변경 시 동일 조건이면 lookup만, 변경된 부분만 재계산
+  const outliersMap = getCachedOutliers(byChannel);
+  const weightsMap  = getCachedWeights(outliersMap, maxDate);
+  const modelsMap   = getCachedModels(outliersMap, weightsMap);
+
+  // 색상 매핑 (allChannels 인덱스 기준 일관성)
+  const colorByChannel = new Map();
+  allChannels.forEach((ch, i) => colorByChannel.set(ch, CHART_THEME.series[i % CHART_THEME.series.length]));
+
+  // 전체 진단 통계 (모든 채널 기준, selected 무관)
+  const outlierStats = [];
+  let totalOriginal = 0, totalRemoved = 0;
+  for (const [ch, outRes] of outliersMap) {
+    const orig = byChannel.get(ch).length;
+    totalOriginal += orig;
+    totalRemoved += outRes.removed.length;
+    const lowData = (outRes.kept.length < 5);
+    outlierStats.push({ channel: ch, original: orig, removed: outRes.removed.length, color: colorByChannel.get(ch), lowData });
+  }
+
+  // Datasets 구성 (선택된 채널만)
   const datasets = [];
   const trendInfo = [];
   const channelModels = new Map();
   const normMode = ALLOC_STATE.normalizeMode;
-  const outlierStats = []; // 채널별 제거 개수 진단용
-  let totalOriginal = 0, totalRemoved = 0;
 
-  channels.forEach((ch, i) => {
-    const color = CHART_THEME.series[i % CHART_THEME.series.length];
-    const rawPts = byChannel.get(ch);
-    if (!rawPts || rawPts.length < 2) return;
-    totalOriginal += rawPts.length;
-
-    // === 1) Outlier 제거 (채널별 CPR 분포 기준) ===
-    const outResult = ALLOC_MATH.removeOutliers(rawPts, ALLOC_STATE.outlierMethod, {
-      iqrMult: ALLOC_STATE.iqrMult, modzThreshold: ALLOC_STATE.modzThreshold,
-    });
-    const pts = outResult.kept;
-    totalRemoved += outResult.removed.length;
-    outlierStats.push({ channel: ch, original: rawPts.length, removed: outResult.removed.length, color });
+  channels.forEach((ch) => {
+    const color = colorByChannel.get(ch);
+    const outRes = outliersMap.get(ch);
+    if (!outRes) return;
+    const pts = outRes.kept;
     if (pts.length < 2) return;
 
-    // === 2) 정규화 컨텍스트 (채널별) ===
+    // 정규화 컨텍스트 (cache 안 함, 가벼움)
     const normCtx = ALLOC_MATH.calcNormContext(pts, normMode);
-
     const xs = pts.map(p => p.x);
     const xMin = Math.min(...xs);
     const xMax = Math.max(...xs);
 
-    // === 3) Recent / Older 분리 ===
+    // Recent / Older 분리
     const recentPts = recentThreshold
       ? pts.filter(p => p.date && Date.parse(p.date) >= recentThreshold)
       : [];
@@ -7167,10 +7300,8 @@ function renderAllocatorScatter() {
       ? pts.filter(p => !p.date || Date.parse(p.date) < recentThreshold)
       : pts;
 
-    // 정규화 적용 헬퍼
     const norm = (x, y) => ALLOC_MATH.normalizeXY(x, y, normMode, normCtx);
 
-    // === 4) 점 표시 ===
     if (!ALLOC_STATE.hidePoints) {
       if (olderPts.length > 0) {
         const data = olderPts.map(p => norm(p.x, p.y)).filter(v => v != null);
@@ -7199,32 +7330,19 @@ function renderAllocatorScatter() {
       }
     }
 
-    // === 5) 추세선 적합 (raw 정제된 데이터 사용) ===
-    const trainData = pts.map(p => [p.x, p.y]);
-    const trainDates = pts.map(p => p.date);
-    const weights = ALLOC_MATH.calcDateWeights(
-      trainDates, ALLOC_STATE.weightMode, maxDate, ALLOC_STATE.halfLifeDays
-    );
-    let model = null;
-    const tt = ALLOC_STATE.trendType;
-    if (tt === "auto") model = ALLOC_MATH.fitBest(trainData, weights);
-    else if (tt === "linear") model = ALLOC_MATH.fitLinear(trainData, weights);
-    else if (tt === "log") model = ALLOC_MATH.fitLog(trainData, weights);
-    else if (tt === "poly2") model = ALLOC_MATH.fitPoly2(trainData, weights);
-    else if (tt === "power") model = ALLOC_MATH.fitPower(trainData, weights);
-
-    // 데이터 부족 채널은 추세선 skip 또는 전체 점선
-    if (pts.length < 5) {
-      // n < 5: 추세선 안 그림 + 진단에 표시
-      outlierStats[outlierStats.length - 1].lowData = true;
+    // 모델 lookup (cache hit)
+    const modelData = modelsMap.get(ch);
+    if (pts.length < 5 || !modelData) {
       channelModels.set(ch, { model: null, xMin, xMax, pts, color, r2: null, descending: false, lowData: true });
       return;
     }
-    const sparseData = pts.length < 10;  // n < 10: 신뢰도 낮음 → 전체 점선
+    const sparseData = pts.length < 10;
+    const model = modelData.model;
 
     if (model) {
-      const r2 = model.r2 != null ? model.r2 : ALLOC_MATH.calcR2(trainData, model, weights);
-      const descending = ALLOC_MATH.isDescending(model, xMin, xMax);
+      const r2 = modelData.r2;
+      const descending = modelData.descending;
+      const trainData = modelData.trainData;
 
       // 추세선을 segment별로 분리 (실선/점선)
       const margin = (xMax - xMin) * 0.05;
@@ -7273,54 +7391,65 @@ function renderAllocatorScatter() {
     ? (ctx) => `(${ctx.parsed.x.toFixed(0)}, CPR=${ctx.parsed.y.toFixed(2)})`
     : (ctx) => `(${ctx.parsed.x.toFixed(3)}, ${ctx.parsed.y.toFixed(3)})`;
 
-  CHART_INSTANCES["alloc-scatter"] = new Chart(canvas.getContext("2d"), {
-    type: "scatter",
-    data: { datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: "right",
-          labels: {
-            color: CHART_THEME.text,
-            font: { family: "Inter", size: 10 },
-            usePointStyle: true,
-            padding: 8,
-            boxWidth: 8,
-            // 빈 라벨(외삽 segment 등) 제외
-            filter: (item) => item.text && item.text.trim().length > 0,
+  // 기존 chart instance가 있으면 data만 갈아끼우고 update("none")으로 즉시 갱신.
+  // 없으면 신규 생성. destroy/recreate 비용 제거.
+  const existing = CHART_INSTANCES["alloc-scatter"];
+  if (existing) {
+    existing.data.datasets = datasets;
+    existing.options.scales.x.title.text = axisLabels.x;
+    existing.options.scales.y.title.text = axisLabels.y;
+    existing.options.plugins.tooltip.callbacks.label = tooltipFmt;
+    existing.update("none");  // animation 없이 즉시
+  } else {
+    CHART_INSTANCES["alloc-scatter"] = new Chart(canvas.getContext("2d"), {
+      type: "scatter",
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,         // 모든 렌더에 animation 비활성 (성능)
+        plugins: {
+          legend: {
+            position: "right",
+            labels: {
+              color: CHART_THEME.text,
+              font: { family: "Inter", size: 10 },
+              usePointStyle: true,
+              padding: 8,
+              boxWidth: 8,
+              filter: (item) => item.text && item.text.trim().length > 0,
+            },
+          },
+          tooltip: {
+            backgroundColor: "#1f2021",
+            titleColor: CHART_THEME.textPrimary,
+            bodyColor: CHART_THEME.text,
+            borderColor: CHART_THEME.border,
+            borderWidth: 1,
+            padding: 10,
+            titleFont: { family: "JetBrains Mono", size: 11 },
+            bodyFont: { family: "JetBrains Mono", size: 11 },
+            callbacks: { label: tooltipFmt },
           },
         },
-        tooltip: {
-          backgroundColor: "#1f2021",
-          titleColor: CHART_THEME.textPrimary,
-          bodyColor: CHART_THEME.text,
-          borderColor: CHART_THEME.border,
-          borderWidth: 1,
-          padding: 10,
-          titleFont: { family: "JetBrains Mono", size: 11 },
-          bodyFont: { family: "JetBrains Mono", size: 11 },
-          callbacks: { label: tooltipFmt },
+        scales: {
+          x: {
+            type: "linear",
+            ticks: { color: CHART_THEME.muted, font: { family: "JetBrains Mono", size: 10 } },
+            grid: { color: CHART_THEME.grid },
+            title: { display: true, text: axisLabels.x, color: CHART_THEME.muted, font: { size: 10 } },
+          },
+          y: {
+            type: "linear",
+            ticks: { color: CHART_THEME.muted, font: { family: "JetBrains Mono", size: 10 } },
+            grid: { color: CHART_THEME.grid },
+            title: { display: true, text: axisLabels.y, color: CHART_THEME.muted, font: { size: 10 } },
+            beginAtZero: false,
+          },
         },
       },
-      scales: {
-        x: {
-          type: "linear",
-          ticks: { color: CHART_THEME.muted, font: { family: "JetBrains Mono", size: 10 } },
-          grid: { color: CHART_THEME.grid },
-          title: { display: true, text: axisLabels.x, color: CHART_THEME.muted, font: { size: 10 } },
-        },
-        y: {
-          type: "linear",
-          ticks: { color: CHART_THEME.muted, font: { family: "JetBrains Mono", size: 10 } },
-          grid: { color: CHART_THEME.grid },
-          title: { display: true, text: axisLabels.y, color: CHART_THEME.muted, font: { size: 10 } },
-          beginAtZero: false,
-        },
-      },
-    },
-  });
+    });
+  }
 
   // === Outlier 진단 패널 ===
   renderOutlierSummary(outlierStats, totalOriginal, totalRemoved);
@@ -7403,7 +7532,10 @@ function renderOutlierSummary(outlierStats, totalOriginal, totalRemoved) {
       </span>`;
     }).join("");
 
-  const methodLabel = ALLOC_STATE.outlierMethod === "iqr" ? "IQR 1.5×" : "Modified Z-score 3.5";
+  const strengthLabel = { standard: "표준", strong: "강함", very_strong: "매우 강함" }[ALLOC_STATE.outlierStrength] || ALLOC_STATE.outlierStrength;
+  const opts = getOutlierOpts(ALLOC_STATE.outlierMethod, ALLOC_STATE.outlierStrength);
+  const numericLabel = ALLOC_STATE.outlierMethod === "iqr" ? `IQR ${opts.iqrMult}×` : `Modified Z ${opts.modzThreshold}`;
+  const methodLabel = `${numericLabel} · ${strengthLabel}`;
 
   wrap.innerHTML = `
     <div class="alloc-outlier-bar">
@@ -7777,6 +7909,8 @@ function handleCSVFile(file) {
     skipEmptyLines: true,
     transformHeader: h => String(h).trim(),
     complete: (results) => {
+      // 새 CSV 업로드 → Allocator 캐시 전체 무효화
+      clearAllocCache();
       CSV_STATE.fileName = file.name;
       CSV_STATE.raw = results.data;
       CSV_STATE.headers = results.meta.fields || [];
