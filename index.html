@@ -1404,6 +1404,34 @@
   }
   .alloc-marginal-section tr.muted td { color: var(--text-muted); }
 
+  /* 추세선 R² 비교 표 (시뮬레이션 카드 안) */
+  .alloc-trend-r2-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .alloc-trend-r2-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.005em;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .alloc-trend-r2-sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-secondary);
+  }
+  .alloc-trend-r2-sub strong {
+    color: #5ad19a;
+  }
+  .alloc-trend-r2-section tr.muted td { color: var(--text-muted); }
+
   /* ========== A/B Test Calculator ========== */
   .ab-tabs {
     display: inline-flex;
@@ -5751,6 +5779,20 @@ const ALLOC_MATH = (() => {
     return isFinite(yLow) && isFinite(yHigh) && yHigh < yLow;
   }
 
+  /* Poly2 종모양(∩) / U자형(∪) 감지.
+     - bell (a<0): vertex 이전 우상향 → vertex 이후 우하향 (데이터 비율 무관 외삽 위험)
+     - u    (a>0): vertex 이전 우하향 → vertex 이후 우상향 (반대 방향 위험)
+     vertex가 데이터 범위 내에 있으면 그 후/전 영역이 비정상 신호. */
+  function detectPoly2Shape(model) {
+    if (!model || model.type !== "Poly2" || model.params.a === 0) return null;
+    const { a, b } = model.params;
+    return {
+      vertex: -b / (2 * a),
+      shape: a < 0 ? "bell" : "u",
+      a,
+    };
+  }
+
   /* 최근 데이터 가중치 계산
      - none:        모두 1
      - linear:      최신 1.0 → 최오래 0.2 (선형 감쇠)
@@ -5875,7 +5917,7 @@ const ALLOC_MATH = (() => {
 
   return {
     fitLinear, fitLog, fitPoly2, fitPower, fitBest, calcR2, isDescending, calcDateWeights,
-    removeOutliers, calcNormContext, normalizeXY, getAxisLabels,
+    removeOutliers, calcNormContext, normalizeXY, getAxisLabels, detectPoly2Shape,
   };
 })();
 
@@ -5994,6 +6036,8 @@ const ALLOC_CACHE = {
   outliersKey:  null,
   weights:      null,
   weightsKey:   null,
+  allFits:      null,  // 채널별 4개 모드 모두 fit (R² 비교용)
+  allFitsKey:   null,
   models:       null,
   modelsKey:    null,
 };
@@ -6058,29 +6102,74 @@ function getCachedWeights(outlierMap, maxDate) {
   return m;
 }
 
-/* 채널별 fitted model. 의존성: weightsKey + trendType */
-function getCachedModels(outlierMap, weightsMap) {
-  const tt = ALLOC_STATE.trendType;
-  const key = `${ALLOC_CACHE.weightsKey}|${tt}`;
-  if (ALLOC_CACHE.modelsKey === key && ALLOC_CACHE.models) return ALLOC_CACHE.models;
+/* 채널별 4개 모드 모두 fit (R² 비교용).
+   의존성: weightsKey만 (trendType 무관). 매 토글 시 cache hit으로 즉시 lookup. */
+function getCachedAllFits(outlierMap, weightsMap) {
+  const key = `${ALLOC_CACHE.weightsKey}`;
+  if (ALLOC_CACHE.allFitsKey === key && ALLOC_CACHE.allFits) return ALLOC_CACHE.allFits;
   const m = new Map();
   for (const [ch, outRes] of outlierMap) {
     const pts = outRes.kept || [];
     if (pts.length < 2) { m.set(ch, null); continue; }
     const trainData = pts.map(p => [p.x, p.y]);
     const weights = weightsMap.get(ch);
-    let model = null;
-    if (tt === "auto")        model = ALLOC_MATH.fitBest(trainData, weights);
-    else if (tt === "linear") model = ALLOC_MATH.fitLinear(trainData, weights);
-    else if (tt === "log")    model = ALLOC_MATH.fitLog(trainData, weights);
-    else if (tt === "poly2")  model = ALLOC_MATH.fitPoly2(trainData, weights);
-    else if (tt === "power")  model = ALLOC_MATH.fitPower(trainData, weights);
-    if (!model) { m.set(ch, null); continue; }
-    const r2 = model.r2 != null ? model.r2 : ALLOC_MATH.calcR2(trainData, model, weights);
+    const fits = {};
+    const tryAdd = (name, model) => {
+      if (!model) return;
+      const r2 = ALLOC_MATH.calcR2(trainData, model, weights);
+      fits[name] = { model, r2 };
+    };
+    tryAdd("Linear", ALLOC_MATH.fitLinear(trainData, weights));
+    tryAdd("Log",    ALLOC_MATH.fitLog(trainData, weights));
+    tryAdd("Poly2",  ALLOC_MATH.fitPoly2(trainData, weights));
+    tryAdd("Power",  ALLOC_MATH.fitPower(trainData, weights));
+    m.set(ch, fits);
+  }
+  ALLOC_CACHE.allFits    = m;
+  ALLOC_CACHE.allFitsKey = key;
+  ALLOC_CACHE.models = null; ALLOC_CACHE.modelsKey = null;
+  return m;
+}
+
+/* 활성 model lookup (allFits 활용). 의존성: allFitsKey + trendType */
+function getCachedModels(outlierMap, weightsMap) {
+  const tt = ALLOC_STATE.trendType;
+  const allFits = getCachedAllFits(outlierMap, weightsMap);
+  const key = `${ALLOC_CACHE.allFitsKey}|${tt}`;
+  if (ALLOC_CACHE.modelsKey === key && ALLOC_CACHE.models) return ALLOC_CACHE.models;
+  const m = new Map();
+  const ttMap = { linear: "Linear", log: "Log", poly2: "Poly2", power: "Power" };
+  for (const [ch, outRes] of outlierMap) {
+    const pts = outRes.kept || [];
+    if (pts.length < 2) { m.set(ch, null); continue; }
+    const fits = allFits.get(ch);
+    if (!fits || Object.keys(fits).length === 0) { m.set(ch, null); continue; }
+
+    let chosen = null;
+    if (tt === "auto") {
+      // Best R² 자동 선택
+      let bestR2 = -Infinity;
+      for (const [name, { model, r2 }] of Object.entries(fits)) {
+        if (r2 != null && r2 > bestR2) { chosen = { model, r2, type: model.type }; bestR2 = r2; }
+      }
+    } else {
+      const fit = fits[ttMap[tt]];
+      if (fit) chosen = { model: fit.model, r2: fit.r2, type: fit.model.type };
+    }
+    if (!chosen) { m.set(ch, null); continue; }
+
+    const trainData = pts.map(p => [p.x, p.y]);
     const xs = pts.map(p => p.x);
     const xMin = Math.min(...xs), xMax = Math.max(...xs);
-    const descending = ALLOC_MATH.isDescending(model, xMin, xMax);
-    m.set(ch, { model, r2, descending, xMin, xMax, pts, trainData });
+    const descending = ALLOC_MATH.isDescending(chosen.model, xMin, xMax);
+    const poly2Shape = ALLOC_MATH.detectPoly2Shape(chosen.model);
+    m.set(ch, {
+      model: chosen.model,
+      r2: chosen.r2,
+      descending, poly2Shape,
+      xMin, xMax, pts, trainData,
+      allFits: fits,
+    });
   }
   ALLOC_CACHE.models    = m;
   ALLOC_CACHE.modelsKey = key;
@@ -7226,18 +7315,30 @@ function getTrendSegments(model, fitData, fitMin, fitMax, STEPS = 60) {
   const xs = fitData.map(p => p[0]).slice().sort((a, b) => a - b);
   const xMin = xs[0], xMax = xs[xs.length - 1];
 
-  // Poly2 vertex 검사 (a≠0 시 vertex = -b/(2a))
+  // Poly2 종모양(∩) / U자형(∪) 자동 감지
+  // - bell (a<0): vertex 이후가 우하향 → 항상 점선 (외삽 위험)
+  // - u    (a>0): vertex 이전이 우하향 → 항상 점선
+  // - 데이터 비율과 무관하게 추세선 형태 자체가 위험 신호 → vertex 위치만 데이터 범위 내에 있으면 적용
   let suspect = null;
   if (model.type === "Poly2" && model.params.a !== 0) {
     const { a, b } = model.params;
     const vx = -b / (2 * a);
-    if (vx >= xMin && vx <= xMax) {
+    const inRange = vx >= xMin && vx <= xMax;
+    if (inRange) {
+      if (a < 0) {
+        // 종모양: vertex 이후 점선
+        suspect = { x: vx, side: "after", shape: "bell" };
+      } else {
+        // U자형: vertex 이전 점선
+        suspect = { x: vx, side: "before", shape: "u" };
+      }
+    } else {
+      // vertex가 범위 밖일 때도 한쪽 데이터 < 20%면 의심
       const afterCount = xs.filter(x => x > vx).length;
       const beforeCount = xs.filter(x => x < vx).length;
       const total = xs.length;
-      // vertex 한쪽에 데이터가 20% 미만이면 그 방향은 의심
-      if (afterCount / total < 0.2) suspect = { x: vx, side: "after" };
-      else if (beforeCount / total < 0.2) suspect = { x: vx, side: "before" };
+      if (afterCount / total < 0.2) suspect = { x: vx, side: "after", shape: a < 0 ? "bell" : "u" };
+      else if (beforeCount / total < 0.2) suspect = { x: vx, side: "before", shape: a < 0 ? "bell" : "u" };
     }
   }
 
@@ -7456,8 +7557,14 @@ function renderAllocatorScatter() {
       trendInfo.push({
         channel: ch, model: model.type, r2, descending,
         xMin, xMax, color, sparseData, suspect,
+        poly2Shape: modelData.poly2Shape,
+        allFits: modelData.allFits,
       });
-      channelModels.set(ch, { model, xMin, xMax, pts, color, r2, descending, suspect, sparseData });
+      channelModels.set(ch, {
+        model, xMin, xMax, pts, color, r2, descending, suspect, sparseData,
+        poly2Shape: modelData.poly2Shape,
+        allFits: modelData.allFits,
+      });
     }
   });
 
@@ -7711,6 +7818,8 @@ function renderSimulationCard(channels, channelModels, metric) {
 
       ${renderSimResults(sim, currentCost, targetCost, meta, !!sim.rev, metricLabel, unitLabel)}
 
+      ${renderTrendComparison(meta)}
+
       ${renderMarginalIntervals(meta, metricLabel, unitLabel)}
     </div>
   `;
@@ -7729,6 +7838,67 @@ function renderSimulationCard(channels, channelModels, metric) {
   const tInp = document.getElementById("sim-target");
   if (cInp) cInp.addEventListener("input", refresh);
   if (tInp) tInp.addEventListener("input", refresh);
+}
+
+/* 추세선 4종 R² 비교 + 안전 추천.
+   Poly2가 종모양/U자형이면 후순위, 안전한 fit 중 R² 최댓값 추천. */
+function recommendSafeFit(allFits) {
+  if (!allFits) return null;
+  const candidates = [];
+  for (const [name, fit] of Object.entries(allFits)) {
+    if (!fit || fit.r2 == null) continue;
+    let warning = null;
+    if (name === "Poly2") {
+      const shape = ALLOC_MATH.detectPoly2Shape(fit.model);
+      if (shape) warning = shape.shape === "bell" ? "bell" : "u";
+    }
+    candidates.push({ name, r2: fit.r2, model: fit.model, warning });
+  }
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => b.r2 - a.r2);
+  const safe = candidates.filter(c => !c.warning);
+  return safe[0] || candidates[0];
+}
+
+function renderTrendComparison(meta) {
+  if (!meta || !meta.allFits) return "";
+  const fits = meta.allFits;
+  const rec = recommendSafeFit(fits);
+  const recName = rec?.name;
+
+  const rows = ["Linear", "Log", "Poly2", "Power"].map(name => {
+    const fit = fits[name];
+    if (!fit) return `<tr class="muted"><td>${name}</td><td class="tnum">—</td><td>—</td></tr>`;
+    const r2 = fit.r2;
+    let badge = "";
+    if (name === "Poly2") {
+      const shape = ALLOC_MATH.detectPoly2Shape(fit.model);
+      if (shape?.shape === "bell") badge = `<span class="pill" style="border-color:rgba(255,138,138,0.4);color:#ff8a8a;background:rgba(255,138,138,0.08);">⚠ 종모양</span>`;
+      else if (shape?.shape === "u") badge = `<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);">⚠ U자형</span>`;
+    }
+    const isRec = name === recName;
+    if (isRec) badge += ` <span class="pill" style="border-color:rgba(90,209,154,0.4);color:#5ad19a;background:rgba(90,209,154,0.08);">★ 추천</span>`;
+    const r2Cell = r2 == null ? "—" :
+                   r2 >= 0.5 ? `<span class="pill tier-1">${r2.toFixed(2)}</span>` :
+                   r2 >= 0.2 ? `<span class="pill tier-2">${r2.toFixed(2)}</span>` :
+                              `<span class="pill tier-3">${r2.toFixed(2)}</span>`;
+    return `<tr><td>${name}</td><td class="tnum">${r2Cell}</td><td>${badge || "—"}</td></tr>`;
+  }).join("");
+
+  return `
+    <div class="alloc-trend-r2-section">
+      <div class="alloc-trend-r2-title">
+        이 채널의 추세선 4종 R² 비교
+        ${rec ? `<span class="alloc-trend-r2-sub">★ <strong>${rec.name}</strong> 추천 (R²=${rec.r2.toFixed(2)}${rec.warning ? "" : ", 안전한 fit 중 최댓값"})</span>` : ""}
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>추세선 모드</th><th>R²</th><th>비고</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
 }
 
 /* ========== 구간별 marginal CPA 계산 + 표 렌더 ==========
@@ -7933,7 +8103,9 @@ function renderTrendSummary(trendInfo) {
 
   // R² 표 + 우하향 채널 경고
   const descending = trendInfo.filter(t => t.descending);
-  const suspects = trendInfo.filter(t => t.suspect);
+  const suspects = trendInfo.filter(t => t.suspect && !t.poly2Shape);
+  const bellShapes = trendInfo.filter(t => t.poly2Shape?.shape === "bell");
+  const uShapes = trendInfo.filter(t => t.poly2Shape?.shape === "u");
   const sparseChannels = trendInfo.filter(t => t.sparseData);
   const r2Rows = trendInfo
     .sort((a, b) => (b.r2 ?? -1) - (a.r2 ?? -1))
@@ -7976,18 +8148,55 @@ function renderTrendSummary(trendInfo) {
         </div>
       </div>` : ""}
 
+    ${bellShapes.length > 0 ? `
+      <div class="callout danger" style="margin-top:1rem;">
+        <div class="ico">!</div>
+        <div class="body">
+          <strong>Poly2 종모양(∩) 추세선 — 위험 (${bellShapes.length}개 채널)</strong>
+          <p>
+            ${bellShapes.map(s => {
+              const v = s.poly2Shape.vertex;
+              const recBest = recommendSafeFit(s.allFits);
+              const rec = recBest ? ` · 권장 모드: <code class="inline">${recBest.name}</code> (R²=${recBest.r2.toFixed(2)})` : "";
+              return `<code class="inline">${escapeHtml(truncateLabel(s.channel, 26))}</code> vertex≈${fmtCurrency(v)}${rec}`;
+            }).join("<br>")}
+          </p>
+          <p>
+            vertex 이후 <strong>CPR(또는 CPA)이 감소</strong>하는 영역이 그려졌습니다 — "더 쓸수록 더 효율적이 됨"이라는 비정상 신호.
+            한계효용 그리디(모드 B)를 적용하면 <strong>해당 채널에 무한 예산을 투입</strong>해야 한다고 잘못 추론될 위험.
+            대응:
+            (1) 추세선 모드를 <code class="inline">Log</code>나 <code class="inline">Power</code>로 변경 (위에 권장 모드 표시),
+            (2) 모드 A (가중평균) 사용,
+            (3) vertex 이후 영역(<strong>${fmtCurrency(bellShapes[0]?.poly2Shape.vertex)} 초과</strong>)에서는 예산 캡 적용.
+            해당 영역은 차트에서 <strong>점선</strong>으로 표시됩니다.
+          </p>
+        </div>
+      </div>` : ""}
+
+    ${uShapes.length > 0 ? `
+      <div class="callout warn" style="margin-top:1rem;">
+        <div class="ico">!</div>
+        <div class="body">
+          <strong>Poly2 U자형(∪) 추세선 — 주의 (${uShapes.length}개 채널)</strong>
+          <p>
+            ${uShapes.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 26))}</code> vertex≈${fmtCurrency(s.poly2Shape.vertex)}`).join(", ")}
+          </p>
+          <p>
+            vertex 이전이 우하향(낮은 cost일수록 CPR↑)이라 마찬가지로 외삽 위험. vertex 이전 영역은 점선 처리됨.
+          </p>
+        </div>
+      </div>` : ""}
+
     ${suspects.length > 0 ? `
       <div class="callout warn" style="margin-top:1rem;">
         <div class="ico">!</div>
         <div class="body">
-          <strong>Poly2 추세선의 종/U자 꼬리 의심 (${suspects.length}개 채널)</strong>
+          <strong>Poly2 추세선의 꼬리 의심 (${suspects.length}개 채널)</strong>
           <p>
             ${suspects.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 28))}</code>`).join(", ")}
           </p>
           <p>
-            관측 데이터의 한쪽에 점이 거의 없는데 곡선이 강제로 휘는 경우입니다.
-            해당 영역은 <strong>점선</strong>으로 표시되며, 그 구간에서의 추세선 예측은 통계적 근거가 약합니다.
-            추세선 모드를 <code class="inline">Log</code> 또는 <code class="inline">Power</code>로 바꾸거나 데이터를 더 수집한 후 재분석을 권장합니다.
+            관측 데이터의 한쪽에 점이 거의 없는데 곡선이 강제로 휘는 경우. 해당 영역은 점선으로 표시되며, 추세선 예측의 통계적 근거가 약합니다.
           </p>
         </div>
       </div>` : ""}
