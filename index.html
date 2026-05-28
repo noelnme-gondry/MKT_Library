@@ -1291,6 +1291,32 @@
     margin-bottom: 0.875rem;
     padding-bottom: 0.875rem;
     border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .alloc-sim-header-left { flex: 1; min-width: 0; }
+  .alloc-csv-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--surface-container);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    padding: 0.45rem 0.75rem;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: border-color 0.1s ease, background 0.1s ease, color 0.1s ease;
+    flex-shrink: 0;
+  }
+  .alloc-csv-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(173, 198, 255, 0.06);
   }
   .alloc-sim-tag {
     display: inline-block;
@@ -7791,7 +7817,7 @@ function renderSimulationCard(channels, channelModels, metric) {
   container.innerHTML = `
     <div class="alloc-sim-card">
       <div class="alloc-sim-header">
-        <div>
+        <div class="alloc-sim-header-left">
           <div class="alloc-sim-tag" style="background:${meta.color}22;border-color:${meta.color}55;color:${meta.color};">
             ${escapeHtml(truncateLabel(ch, 60))}
           </div>
@@ -7801,6 +7827,14 @@ function renderSimulationCard(channels, channelModels, metric) {
             관측 Cost 범위 ${fmtCurrency(meta.xMin)} ~ ${fmtCurrency(meta.xMax)}
           </div>
         </div>
+        <button class="alloc-csv-btn" id="alloc-csv-download" title="채널 데이터 + 추세선 식을 CSV로 다운로드">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          CSV 다운로드
+        </button>
       </div>
 
       <div class="alloc-sim-form">
@@ -7838,6 +7872,9 @@ function renderSimulationCard(channels, channelModels, metric) {
   const tInp = document.getElementById("sim-target");
   if (cInp) cInp.addEventListener("input", refresh);
   if (tInp) tInp.addEventListener("input", refresh);
+
+  const csvBtn = document.getElementById("alloc-csv-download");
+  if (csvBtn) csvBtn.addEventListener("click", () => downloadChannelCSV(meta, metric));
 }
 
 /* 추세선 4종 R² 비교 + 안전 추천.
@@ -7858,6 +7895,170 @@ function recommendSafeFit(allFits) {
   candidates.sort((a, b) => b.r2 - a.r2);
   const safe = candidates.filter(c => !c.warning);
   return safe[0] || candidates[0];
+}
+
+/* ========== 채널 데이터 + 추세선 식 CSV 다운로드 ==========
+   채널 1개 선택 시 시뮬레이션 카드에서 다운로드 가능.
+   - 메타: 채널명, 추세선 모드, R², 계수
+   - 공식: 일반 표기 + Excel/Sheets 호환 (English/Korean 로케일 둘 다)
+   - 관측 데이터: date, cost, CPR (Recent/Older 표시)
+   - 예측 곡선: 관측 cost 범위 21개 점의 predict 값 */
+
+function getModelFormula(model, metricLabel = "CPR") {
+  const t = model.type;
+  const round = (n) => Number(n.toFixed(6));
+  if (t === "Linear") {
+    const { a, b } = model.params;
+    return {
+      text: `${metricLabel} = ${round(a)} × Cost + ${round(b)}`,
+      excelEN: `=${round(a)}*A2+${round(b)}`,
+      excelKR: `=${round(a)}*A2+${round(b)}`,  // Linear는 인자 구분자 없어서 동일
+      params: { a, b },
+    };
+  }
+  if (t === "Log") {
+    const { a, b } = model.params;
+    return {
+      text: `${metricLabel} = ${round(a)} × LN(Cost) + ${round(b)}`,
+      excelEN: `=${round(a)}*LN(A2)+${round(b)}`,
+      excelKR: `=${round(a)}*LN(A2)+${round(b)}`,
+      params: { a, b },
+    };
+  }
+  if (t === "Poly2") {
+    const { a, b, c } = model.params;
+    return {
+      text: `${metricLabel} = ${round(a)} × Cost^2 + ${round(b)} × Cost + ${round(c)}`,
+      excelEN: `=${round(a)}*A2^2+${round(b)}*A2+${round(c)}`,
+      excelKR: `=${round(a)}*A2^2+${round(b)}*A2+${round(c)}`,
+      params: { a, b, c },
+    };
+  }
+  if (t === "Power") {
+    const { a, b } = model.params;
+    return {
+      text: `${metricLabel} = ${round(a)} × Cost^${round(b)}`,
+      excelEN: `=${round(a)}*POWER(A2,${round(b)})`,
+      excelKR: `=${round(a)}*POWER(A2;${round(b)})`,
+      params: { a, b },
+    };
+  }
+  return null;
+}
+
+function csvCell(s) {
+  if (s == null) return "";
+  const str = String(s);
+  return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+function sanitizeFilename(s) {
+  return String(s).replace(/[\/\\?%*:|"<>]/g, "_").replace(/\s+/g, "_").slice(0, 80) || "channel";
+}
+
+function downloadChannelCSV(meta, metric) {
+  if (!meta || !meta.model) return;
+  const channel = ALLOC_STATE.sim.channel || "channel";
+  const metricLabel = getCostMetricLabel(metric);
+  const unitLabel = getMetricUnitLabel(metric);
+  const formula = getModelFormula(meta.model, metricLabel);
+  if (!formula) return;
+
+  const recentMs = ALLOC_STATE.recentDays * 86400 * 1000;
+  const rows = getMappedRows();
+  const dates = rows.map(r => r.date ? Date.parse(r.date) : NaN).filter(d => !isNaN(d));
+  const maxDate = dates.length ? Math.max(...dates) : null;
+  const recentThreshold = maxDate ? (maxDate - recentMs) : null;
+
+  const lines = [];
+
+  // --- Metadata block ---
+  lines.push("# Performance Marketing Library · Budget Allocator Export");
+  lines.push(`# Generated,${new Date().toISOString()}`);
+  lines.push(`# Channel,${csvCell(channel)}`);
+  lines.push(`# Trend Type,${meta.model.type}`);
+  lines.push(`# R-squared,${(meta.r2 ?? 0).toFixed(4)}`);
+  lines.push(`# Cost Metric,${metricLabel}`);
+  lines.push(`# Unit,${unitLabel}`);
+  lines.push(`# Observed Cost Range,${meta.xMin.toFixed(2)} ~ ${meta.xMax.toFixed(2)}`);
+  lines.push(`# Data Points (after outlier removal),${meta.pts.length}`);
+  lines.push("#");
+
+  // --- Equation block ---
+  lines.push("# Equation (Human Readable)");
+  lines.push(`# ,${csvCell(formula.text)}`);
+  lines.push("#");
+  lines.push("# Coefficients");
+  for (const [k, v] of Object.entries(formula.params)) {
+    lines.push(`# ${k},${v}`);
+  }
+  lines.push("#");
+  lines.push("# Excel / Google Sheets Formula (put cost in A2 starting from row 2)");
+  lines.push(`# English locale,${csvCell(formula.excelEN)}`);
+  if (formula.excelEN !== formula.excelKR) {
+    lines.push(`# Korean locale (Excel),${csvCell(formula.excelKR)}`);
+  }
+  lines.push("#");
+  lines.push("# How to use:");
+  lines.push("# 1. Open this CSV in Excel or Google Sheets");
+  lines.push("# 2. In a new column next to 'cost', paste the formula above (replace A2 with the actual cost cell)");
+  lines.push(`# 3. The formula will output predicted ${metricLabel} for that cost`);
+  lines.push("#");
+  lines.push("");
+
+  // --- Observed data ---
+  lines.push("section,date,cost,cpr,is_recent");
+  for (const p of meta.pts) {
+    const isRecent = recentThreshold && p.date && Date.parse(p.date) >= recentThreshold;
+    lines.push([
+      "observed",
+      csvCell(p.date || ""),
+      p.x.toFixed(2),
+      p.y.toFixed(4),
+      isRecent ? "TRUE" : "FALSE",
+    ].join(","));
+  }
+
+  // --- Predicted curve sample ---
+  lines.push("");
+  lines.push("section,cost,predicted_cpr,note");
+  const STEPS = 20;
+  const margin = (meta.xMax - meta.xMin) * 0.05;
+  const fitMin = Math.max(0.0001, meta.xMin - margin);
+  const fitMax = meta.xMax + margin;
+  for (let i = 0; i <= STEPS; i++) {
+    const cost = fitMin + (fitMax - fitMin) * (i / STEPS);
+    const cpr = meta.model.predict(cost);
+    const inRange = cost >= meta.xMin && cost <= meta.xMax;
+    const valid = isFinite(cpr) && cpr > 0;
+    lines.push([
+      "predicted",
+      cost.toFixed(2),
+      valid ? cpr.toFixed(4) : "",
+      valid ? (inRange ? "in_observed_range" : "extrapolation") : "out_of_range",
+    ].join(","));
+  }
+
+  const csv = lines.join("\n");
+  // UTF-8 BOM for Excel Korean compatibility
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${sanitizeFilename(channel)}_${meta.model.type.toLowerCase()}_trendline.csv`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 0);
+
+  showToast({
+    variant: "success",
+    title: "CSV 다운로드 완료",
+    body: `${truncateLabel(channel, 30)} · ${meta.model.type} 추세선 데이터 + Excel 공식 포함`,
+    duration: 4000,
+  });
 }
 
 function renderTrendComparison(meta) {
