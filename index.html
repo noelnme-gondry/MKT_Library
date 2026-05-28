@@ -1458,6 +1458,115 @@
   }
   .alloc-trend-r2-section tr.muted td { color: var(--text-muted); }
 
+  /* 적용 컨텍스트 라벨 (글로벌 vs 단일 채널) */
+  .alloc-scope-label {
+    margin: 0 0 0.5rem;
+    font-size: 12px;
+  }
+  .alloc-scope-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-container-lowest);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.35;
+  }
+  .alloc-scope-pill.single {
+    border-color: rgba(76, 215, 246, 0.3);
+    background: rgba(76, 215, 246, 0.06);
+    color: var(--text-primary);
+  }
+  .alloc-scope-pill.global {
+    border-color: rgba(173, 198, 255, 0.2);
+    background: rgba(173, 198, 255, 0.04);
+  }
+  .alloc-scope-pill strong { color: var(--text-primary); }
+
+  /* chip ★ 마크 */
+  .alloc-chip-star {
+    color: #5ad19a;
+    font-size: 11px;
+    margin-left: 0.25rem;
+    font-weight: 600;
+  }
+  .alloc-chip.overridden {
+    border-color: rgba(90, 209, 154, 0.35);
+    background: rgba(90, 209, 154, 0.04);
+  }
+  .alloc-chip.overridden.active {
+    background: rgba(90, 209, 154, 0.08);
+    border-color: rgba(90, 209, 154, 0.55);
+  }
+
+  /* 채널 셋업 패널 (시뮬레이션 카드 상단) */
+  .alloc-channel-setup {
+    background: var(--surface-container-low);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem 0.875rem;
+    margin-bottom: 0.875rem;
+  }
+  .alloc-channel-setup-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+  }
+  .alloc-channel-setup-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .alloc-reset-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 138, 138, 0.3);
+    color: #ff8a8a;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius-default);
+    cursor: pointer;
+    transition: background 0.1s ease;
+  }
+  .alloc-reset-btn:hover { background: rgba(255, 138, 138, 0.08); }
+  .alloc-channel-setup-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+  }
+  .setup-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--surface-container);
+    border: 1px solid var(--border-subtle);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-default);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  .setup-tag.overridden {
+    border-color: rgba(90, 209, 154, 0.35);
+    background: rgba(90, 209, 154, 0.06);
+  }
+  .setup-tag-key { color: var(--text-muted); }
+  .setup-tag-val { color: var(--text-primary); font-weight: 600; }
+  .alloc-channel-setup-hint {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
   /* ========== A/B Test Calculator ========== */
   .ab-tabs {
     display: inline-flex;
@@ -5447,6 +5556,7 @@ function page_5_3() {
           각 row를 (Cost, CPR) 점으로 시각화하고, 채널별로 추세선을 적합합니다.
           <strong>최근 ${ALLOC_STATE.recentDays}일</strong> 데이터는 ▲ 마커 + 진한 색으로 강조됩니다.
         </p>
+        <div id="alloc-scope-label" class="alloc-scope-label"></div>
         <div class="alloc-scatter-controls">
           <div class="ab-pillgroup">
             <span class="ab-pillgroup-label">추세선</span>
@@ -6082,7 +6192,58 @@ const ALLOC_STATE = {
     currentCost: null,
     targetCost: null,
   },
+  /* 채널별 개별 셋업 (메모리만, CSV 재업로드 시 리셋)
+     단일 채널 선택 시 토글 변경하면 그 채널의 perChannel entry에 저장됨.
+     다중 채널 보기 시 글로벌 토글 변경은 미설정 채널만 영향.
+     구조: { [channelKey]: { trendType?, weightMode?, outlierMethod?, outlierStrength? } } */
+  perChannel: {},
 };
+
+/* 채널별 effective 값 lookup. perChannel에 있으면 그 값, 없으면 글로벌 default. */
+function getEffSetting(channel, field) {
+  return ALLOC_STATE.perChannel[channel]?.[field] ?? ALLOC_STATE[field];
+}
+function isSingleChannelMode() {
+  return ALLOC_STATE.selectedChannels?.size === 1;
+}
+function getSelectedSingleChannel() {
+  return isSingleChannelMode() ? [...ALLOC_STATE.selectedChannels][0] : null;
+}
+function hasChannelOverride(channel) {
+  const s = ALLOC_STATE.perChannel[channel];
+  return !!(s && Object.keys(s).length > 0);
+}
+
+/* 토글 핸들러용 헬퍼.
+   - 단일 채널 모드 → 그 채널의 perChannel[field] 변경
+   - 다중 채널 모드 → 글로벌 ALLOC_STATE[field] 변경 (개별 설정 채널은 자동 유지) */
+function setTogglePerContext(field, value) {
+  const single = getSelectedSingleChannel();
+  if (single) {
+    if (!ALLOC_STATE.perChannel[single]) ALLOC_STATE.perChannel[single] = {};
+    ALLOC_STATE.perChannel[single][field] = value;
+  } else {
+    ALLOC_STATE[field] = value;
+  }
+}
+
+/* perChannel 일부 또는 전체 리셋 */
+function resetChannelOverride(channel) {
+  delete ALLOC_STATE.perChannel[channel];
+}
+function resetAllChannelOverrides() {
+  ALLOC_STATE.perChannel = {};
+}
+
+/* perChannel 상태를 cache 키에 포함시키기 위한 해시 */
+function perChannelHash(field) {
+  const entries = [];
+  for (const [ch, s] of Object.entries(ALLOC_STATE.perChannel)) {
+    if (s[field] != null) entries.push(`${ch}:${s[field]}`);
+  }
+  entries.sort();
+  return entries.join("|");
+}
 
 /* 이상치 제거 강도 → numeric 임계값 매핑 (낮을수록 더 공격적으로 제거) */
 const OUTLIER_STRENGTH = {
@@ -6150,37 +6311,43 @@ function getCachedByChannel(rows, metric) {
   return m;
 }
 
-/* 채널별 outlier 결과. 의존성: byChannelKey + method + strength */
+/* 채널별 outlier 결과. 의존성: byChannelKey + 글로벌 method/strength + perChannel 해시 */
 function getCachedOutliers(byChannel) {
-  const method = ALLOC_STATE.outlierMethod;
-  const strength = ALLOC_STATE.outlierStrength;
-  const key = `${ALLOC_CACHE.byChannelKey}|${method}|${strength}`;
+  const pcHash = `${perChannelHash("outlierMethod")}|${perChannelHash("outlierStrength")}`;
+  const key = `${ALLOC_CACHE.byChannelKey}|${ALLOC_STATE.outlierMethod}|${ALLOC_STATE.outlierStrength}|${pcHash}`;
   if (ALLOC_CACHE.outliersKey === key && ALLOC_CACHE.outliers) return ALLOC_CACHE.outliers;
-  const opts = getOutlierOpts(method, strength);
   const m = new Map();
   for (const [ch, pts] of byChannel) {
-    m.set(ch, ALLOC_MATH.removeOutliers(pts, method, opts));
+    const effMethod = getEffSetting(ch, "outlierMethod");
+    const effStrength = getEffSetting(ch, "outlierStrength");
+    const opts = getOutlierOpts(effMethod, effStrength);
+    m.set(ch, ALLOC_MATH.removeOutliers(pts, effMethod, opts));
   }
   ALLOC_CACHE.outliers    = m;
   ALLOC_CACHE.outliersKey = key;
-  ALLOC_CACHE.models = null; ALLOC_CACHE.modelsKey = null;
+  ALLOC_CACHE.weights = null; ALLOC_CACHE.weightsKey = null;
+  ALLOC_CACHE.allFits = null; ALLOC_CACHE.allFitsKey = null;
+  ALLOC_CACHE.models = null;  ALLOC_CACHE.modelsKey = null;
   return m;
 }
 
-/* 채널별 weights. 의존성: outliersKey + weightMode + halfLifeDays + maxDate */
+/* 채널별 weights. 의존성: outliersKey + 글로벌 weightMode + halfLife + maxDate + perChannel 해시 */
 function getCachedWeights(outlierMap, maxDate) {
   const wm = ALLOC_STATE.weightMode;
   const hl = ALLOC_STATE.halfLifeDays;
-  const key = `${ALLOC_CACHE.outliersKey}|${wm}|${hl}|${maxDate}`;
+  const pcHash = perChannelHash("weightMode");
+  const key = `${ALLOC_CACHE.outliersKey}|${wm}|${hl}|${maxDate}|${pcHash}`;
   if (ALLOC_CACHE.weightsKey === key && ALLOC_CACHE.weights) return ALLOC_CACHE.weights;
   const m = new Map();
   for (const [ch, outRes] of outlierMap) {
+    const effWm = getEffSetting(ch, "weightMode");
     const dates = (outRes.kept || []).map(p => p.date);
-    m.set(ch, ALLOC_MATH.calcDateWeights(dates, wm, maxDate, hl));
+    m.set(ch, ALLOC_MATH.calcDateWeights(dates, effWm, maxDate, hl));
   }
   ALLOC_CACHE.weights    = m;
   ALLOC_CACHE.weightsKey = key;
-  ALLOC_CACHE.models = null; ALLOC_CACHE.modelsKey = null;
+  ALLOC_CACHE.allFits = null; ALLOC_CACHE.allFitsKey = null;
+  ALLOC_CACHE.models = null;  ALLOC_CACHE.modelsKey = null;
   return m;
 }
 
@@ -6213,11 +6380,12 @@ function getCachedAllFits(outlierMap, weightsMap) {
   return m;
 }
 
-/* 활성 model lookup (allFits 활용). 의존성: allFitsKey + trendType */
+/* 활성 model lookup (allFits 활용). 의존성: allFitsKey + 글로벌 trendType + perChannel 해시 */
 function getCachedModels(outlierMap, weightsMap) {
   const tt = ALLOC_STATE.trendType;
   const allFits = getCachedAllFits(outlierMap, weightsMap);
-  const key = `${ALLOC_CACHE.allFitsKey}|${tt}`;
+  const pcHash = perChannelHash("trendType");
+  const key = `${ALLOC_CACHE.allFitsKey}|${tt}|${pcHash}`;
   if (ALLOC_CACHE.modelsKey === key && ALLOC_CACHE.models) return ALLOC_CACHE.models;
   const m = new Map();
   const ttMap = { linear: "Linear", log: "Log", poly2: "Poly2", power: "Power" };
@@ -6227,15 +6395,15 @@ function getCachedModels(outlierMap, weightsMap) {
     const fits = allFits.get(ch);
     if (!fits || Object.keys(fits).length === 0) { m.set(ch, null); continue; }
 
+    const effTrend = getEffSetting(ch, "trendType");
     let chosen = null;
-    if (tt === "auto") {
-      // Best R² 자동 선택
+    if (effTrend === "auto") {
       let bestR2 = -Infinity;
       for (const [name, { model, r2 }] of Object.entries(fits)) {
         if (r2 != null && r2 > bestR2) { chosen = { model, r2, type: model.type }; bestR2 = r2; }
       }
     } else {
-      const fit = fits[ttMap[tt]];
+      const fit = fits[ttMap[effTrend]];
       if (fit) chosen = { model: fit.model, r2: fit.r2, type: fit.model.type };
     }
     if (!chosen) { m.set(ch, null); continue; }
@@ -7309,32 +7477,35 @@ function bindStaticAllocatorControls() {
 
   container.querySelectorAll(".ab-pill[data-trendtype]").forEach(btn => {
     btn.addEventListener("click", () => {
-      ALLOC_STATE.trendType = btn.dataset.trendtype;
+      setTogglePerContext("trendType", btn.dataset.trendtype);
       queueAllocatorRender();
     });
   });
   container.querySelectorAll(".ab-pill[data-weightmode]").forEach(btn => {
     btn.addEventListener("click", () => {
-      ALLOC_STATE.weightMode = btn.dataset.weightmode;
+      setTogglePerContext("weightMode", btn.dataset.weightmode);
       queueAllocatorRender();
     });
   });
   container.querySelectorAll(".ab-pill[data-pointtoggle]").forEach(btn => {
     btn.addEventListener("click", () => {
+      // hidePoints는 글로벌 표시 옵션 (개별 채널 의미 없음)
       ALLOC_STATE.hidePoints = btn.dataset.pointtoggle === "hide";
       queueAllocatorRender();
     });
   });
   container.querySelectorAll(".ab-pill[data-outlier]").forEach(btn => {
     btn.addEventListener("click", () => {
-      ALLOC_STATE.outlierMethod = btn.dataset.outlier;
+      setTogglePerContext("outlierMethod", btn.dataset.outlier);
       queueAllocatorRender();
     });
   });
   container.querySelectorAll(".ab-pill[data-strength]").forEach(btn => {
     btn.addEventListener("click", () => {
-      if (ALLOC_STATE.outlierMethod === "none") return;
-      ALLOC_STATE.outlierStrength = btn.dataset.strength;
+      const single = getSelectedSingleChannel();
+      const curMethod = single ? getEffSetting(single, "outlierMethod") : ALLOC_STATE.outlierMethod;
+      if (curMethod === "none") return;
+      setTogglePerContext("outlierStrength", btn.dataset.strength);
       queueAllocatorRender();
     });
   });
@@ -7367,24 +7538,43 @@ function updateAllocCurrencyState() {
 
 /* 활성 상태(active 클래스)만 갱신 — DOM/이벤트 재바인딩 X */
 function updateAllocatorPillStates() {
+  // 단일 채널 모드면 그 채널의 effective 값으로 표시, 아니면 글로벌
+  const single = getSelectedSingleChannel();
+  const trendType = single ? getEffSetting(single, "trendType") : ALLOC_STATE.trendType;
+  const weightMode = single ? getEffSetting(single, "weightMode") : ALLOC_STATE.weightMode;
+  const outlierMethod = single ? getEffSetting(single, "outlierMethod") : ALLOC_STATE.outlierMethod;
+  const outlierStrength = single ? getEffSetting(single, "outlierStrength") : ALLOC_STATE.outlierStrength;
+
   document.querySelectorAll(".ab-pill[data-trendtype]").forEach(btn =>
-    btn.classList.toggle("active", btn.dataset.trendtype === ALLOC_STATE.trendType));
+    btn.classList.toggle("active", btn.dataset.trendtype === trendType));
   document.querySelectorAll(".ab-pill[data-weightmode]").forEach(btn =>
-    btn.classList.toggle("active", btn.dataset.weightmode === ALLOC_STATE.weightMode));
+    btn.classList.toggle("active", btn.dataset.weightmode === weightMode));
   document.querySelectorAll(".ab-pill[data-pointtoggle]").forEach(btn =>
     btn.classList.toggle("active", (btn.dataset.pointtoggle === "hide") === ALLOC_STATE.hidePoints));
   document.querySelectorAll(".ab-pill[data-outlier]").forEach(btn =>
-    btn.classList.toggle("active", btn.dataset.outlier === ALLOC_STATE.outlierMethod));
+    btn.classList.toggle("active", btn.dataset.outlier === outlierMethod));
   document.querySelectorAll(".ab-pill[data-strength]").forEach(btn =>
-    btn.classList.toggle("active", btn.dataset.strength === ALLOC_STATE.outlierStrength));
+    btn.classList.toggle("active", btn.dataset.strength === outlierStrength));
   document.querySelectorAll(".ab-pill[data-normalize]").forEach(btn =>
     btn.classList.toggle("active", btn.dataset.normalize === ALLOC_STATE.normalizeMode));
-  // outlier=none이면 강도 그룹 비활성화
+
   const strengthGroup = document.getElementById("outlier-strength-group");
   if (strengthGroup) {
-    const disabled = ALLOC_STATE.outlierMethod === "none";
-    strengthGroup.classList.toggle("disabled", disabled);
+    strengthGroup.classList.toggle("disabled", outlierMethod === "none");
   }
+
+  // 컨트롤 영역에 현재 적용 컨텍스트 라벨 표시
+  const scope = document.getElementById("alloc-scope-label");
+  if (scope) {
+    if (single) {
+      const has = hasChannelOverride(single);
+      scope.innerHTML = `<span class="alloc-scope-pill single">🎯 단일 채널 셋업 — <strong>${escapeHtml(truncateLabel(single, 28))}</strong>${has ? ' · <span style="color:#5ad19a;">★ 개별 설정 적용 중</span>' : ' <span style="color:var(--text-muted);">· 아직 글로벌 사용</span>'}</span>`;
+    } else {
+      const overrideCount = Object.keys(ALLOC_STATE.perChannel).filter(c => hasChannelOverride(c)).length;
+      scope.innerHTML = `<span class="alloc-scope-pill global">🌐 글로벌 모드 — 토글은 <strong>미설정 채널</strong>에만 적용${overrideCount > 0 ? ` · <span style="color:#5ad19a;">★ 개별 설정 ${overrideCount}개 채널 보호</span>` : ""}</span>`;
+    }
+  }
+
   updateAllocCurrencyState();
 }
 
@@ -7494,10 +7684,12 @@ function renderAllocatorScatter() {
           const active = ALLOC_STATE.selectedChannels.has(ch);
           const color = CHART_THEME.series[i % CHART_THEME.series.length];
           const truncated = ch.length > 36 ? ch.slice(0, 33) + "…" : ch;
+          const overridden = hasChannelOverride(ch);
+          const star = overridden ? '<span class="alloc-chip-star" title="개별 셋업 적용 중">★</span>' : "";
           return `
-            <button class="alloc-chip ${active ? 'active' : ''}" data-channel="${escapeHtml(ch)}"
-                    title="${escapeHtml(ch)}" style="--chip-color: ${color};">
-              <span class="alloc-chip-dot" style="background:${color};"></span>${escapeHtml(truncated)}
+            <button class="alloc-chip ${active ? 'active' : ''}${overridden ? ' overridden' : ''}" data-channel="${escapeHtml(ch)}"
+                    title="${escapeHtml(ch)}${overridden ? " · 개별 셋업 적용 중" : ""}" style="--chip-color: ${color};">
+              <span class="alloc-chip-dot" style="background:${color};"></span>${escapeHtml(truncated)}${star}
             </button>`;
         }).join("")}
       </div>
@@ -7875,7 +8067,7 @@ function renderSimulationCard(channels, channelModels, metric) {
       <div class="alloc-sim-header">
         <div class="alloc-sim-header-left">
           <div class="alloc-sim-tag" style="background:${meta.color}22;border-color:${meta.color}55;color:${meta.color};">
-            ${escapeHtml(truncateLabel(ch, 60))}
+            ${escapeHtml(truncateLabel(ch, 60))}${hasChannelOverride(ch) ? ' <span class="alloc-chip-star">★</span>' : ''}
           </div>
           <div class="alloc-sim-title">예산 변경 시뮬레이션</div>
           <div class="alloc-sim-sub">
@@ -7892,6 +8084,8 @@ function renderSimulationCard(channels, channelModels, metric) {
           CSV 다운로드
         </button>
       </div>
+
+      ${renderChannelSetupPanel(ch)}
 
       <div class="alloc-sim-form">
         <div class="ab-field">
@@ -7931,6 +8125,62 @@ function renderSimulationCard(channels, channelModels, metric) {
 
   const csvBtn = document.getElementById("alloc-csv-download");
   if (csvBtn) csvBtn.addEventListener("click", () => downloadChannelCSV(meta, metric));
+
+  const resetBtn = document.getElementById("alloc-reset-channel");
+  if (resetBtn) resetBtn.addEventListener("click", () => {
+    resetChannelOverride(ch);
+    queueAllocatorRender();
+    showToast({
+      variant: "success",
+      title: "이 채널 셋업 리셋됨",
+      body: `${truncateLabel(ch, 30)} → 글로벌 설정 사용`,
+      duration: 3000,
+    });
+  });
+}
+
+/* 채널 셋업 상태 패널 (단일 채널 선택 시) — 현재 적용 중인 설정 + 리셋 */
+function renderChannelSetupPanel(channel) {
+  if (!channel) return "";
+  const has = hasChannelOverride(channel);
+  const eff = {
+    trendType: getEffSetting(channel, "trendType"),
+    weightMode: getEffSetting(channel, "weightMode"),
+    outlierMethod: getEffSetting(channel, "outlierMethod"),
+    outlierStrength: getEffSetting(channel, "outlierStrength"),
+  };
+  const overrideFields = ALLOC_STATE.perChannel[channel] || {};
+
+  const trendLabel = { auto: "Auto(Best R²)", linear: "Linear", log: "Log", poly2: "Poly2", power: "Power" }[eff.trendType] || eff.trendType;
+  const weightLabel = { none: "없음", linear: "선형", exponential: "지수" }[eff.weightMode] || eff.weightMode;
+  const outlierLabel = eff.outlierMethod === "none" ? "없음" :
+    `${eff.outlierMethod === "iqr" ? "IQR" : "ModZ"} · ${({ standard: "표준", strong: "강함", very_strong: "매우 강함" }[eff.outlierStrength])}`;
+
+  const tag = (k, label, isOverridden) =>
+    `<span class="setup-tag ${isOverridden ? 'overridden' : ''}">
+       <span class="setup-tag-key">${k}</span>
+       <span class="setup-tag-val">${escapeHtml(label)}</span>
+       ${isOverridden ? '<span class="alloc-chip-star">★</span>' : ''}
+     </span>`;
+
+  return `
+    <div class="alloc-channel-setup">
+      <div class="alloc-channel-setup-head">
+        <span class="alloc-channel-setup-title">${has ? '★ 이 채널 개별 셋업' : '글로벌 설정 사용 중'}</span>
+        ${has ? `<button class="alloc-reset-btn" id="alloc-reset-channel" title="이 채널을 글로벌 설정으로 되돌리기">글로벌로 리셋</button>` : ""}
+      </div>
+      <div class="alloc-channel-setup-tags">
+        ${tag("추세선", trendLabel, "trendType" in overrideFields)}
+        ${tag("가중치", weightLabel, "weightMode" in overrideFields)}
+        ${tag("이상치", outlierLabel, "outlierMethod" in overrideFields || "outlierStrength" in overrideFields)}
+      </div>
+      <div class="alloc-channel-setup-hint">
+        ${has
+          ? '이 채널은 글로벌 토글에 영향받지 않습니다. 다중 채널 보기로 돌아가도 이 설정이 유지됩니다.'
+          : '아래 토글을 변경하면 이 채널 전용 셋업으로 저장됩니다 (다른 채널은 영향 X).'}
+      </div>
+    </div>
+  `;
 }
 
 /* 추세선 4종 R² 비교 + 안전 추천.
@@ -8543,8 +8793,9 @@ function handleCSVFile(file) {
     skipEmptyLines: true,
     transformHeader: h => String(h).trim(),
     complete: (results) => {
-      // 새 CSV 업로드 → Allocator 캐시 전체 무효화
+      // 새 CSV 업로드 → Allocator 캐시 전체 무효화 + 채널별 셋업 리셋
       clearAllocCache();
+      resetAllChannelOverrides();
       CSV_STATE.fileName = file.name;
       CSV_STATE.raw = results.data;
       CSV_STATE.headers = results.meta.fields || [];
