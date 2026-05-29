@@ -1534,6 +1534,59 @@
     border-top: 2px solid #f7b955;
   }
 
+  /* §4 채널 셀 — 이전 관측 합산 + 경고 */
+  .alloc-ch-name {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 500;
+  }
+  .alloc-ch-history {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+  }
+  .alloc-ch-history span { white-space: nowrap; }
+  .alloc-ch-warn {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: #f7b955;
+    background: rgba(247, 185, 85, 0.06);
+    border: 1px solid rgba(247, 185, 85, 0.2);
+    padding: 0.2rem 0.45rem;
+    border-radius: var(--radius-default);
+    margin-top: 0.4rem;
+    display: inline-block;
+  }
+  .alloc-cost-delta,
+  .alloc-delta-hint {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+  }
+  .alloc-row-zero td { color: var(--text-muted); }
+  .alloc-row-zero .alloc-cost-input { color: var(--text-secondary); }
+
+  /* 자물쇠 클릭으로 잠금 해제 */
+  .alloc-lock-toggle {
+    background: transparent;
+    border: 1px solid rgba(247, 185, 85, 0.4);
+    color: #f7b955;
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--radius-default);
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.12s ease;
+  }
+  .alloc-lock-toggle:hover {
+    background: rgba(247, 185, 85, 0.12);
+  }
+
   /* chips 안 통화 토글 */
   .chip-currency {
     display: inline-flex;
@@ -5727,15 +5780,20 @@ function page_5_3() {
 
         <section class="block" id="s-table">
           <h2 class="section-title"><span class="ix">§4</span>채널별 상세</h2>
+          <p style="color:var(--text-secondary);font-size:13px;margin:0 0 0.5rem;">
+            각 행은 채널의 <strong>이전 관측 합산</strong>과 <strong>제안된 분배 후 예상값</strong>을 함께 표시합니다.
+            배분 Cost 셀에 직접 입력하면 그 채널이 잠기고(🔒), 나머지에 자동 재분배됩니다.
+            🔒 또는 ↺ 클릭 시 잠금 해제.
+          </p>
           <div class="table-wrap">
             <table class="data">
               <thead>
                 <tr>
-                  <th>채널</th>
-                  <th>배분 Cost</th>
-                  <th>예상 성과</th>
-                  <th>평균 CPR</th>
-                  <th>비중 · 배분액</th>
+                  <th>채널 · 이전 관측 합산</th>
+                  <th>배분 Cost (편집 가능)</th>
+                  <th>예상 결과</th>
+                  <th>예상 평균 CPR</th>
+                  <th>비중</th>
                 </tr>
               </thead>
               <tbody id="alloc-tbody"></tbody>
@@ -7583,18 +7641,19 @@ function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, ov
     if (!meta || !meta.model) continue;
     if (selectedChannels && selectedChannels.size > 0 && !selectedChannels.has(ch)) continue;
 
+    const shape = ALLOC_MATH.detectPoly2Shape(meta.model);
     if (overrides[ch] != null && overrides[ch] >= 0) {
       const cost = Number(overrides[ch]);
       const cpr = meta.model.predict(cost);
       const results = (isFinite(cpr) && cpr > 0 && cost > 0) ? cost / cpr : 0;
       lockedChannels.push({
-        channel: ch, model: meta.model, xMin: meta.xMin, xMax: meta.xMax,
+        channel: ch, model: meta.model, xMin: meta.xMin, xMax: meta.xMax, poly2Shape: shape,
         cost, results, locked: true,
       });
       fixedCostSum += cost;
     } else {
       greedyChannels.push({
-        channel: ch, model: meta.model, xMin: meta.xMin, xMax: meta.xMax,
+        channel: ch, model: meta.model, xMin: meta.xMin, xMax: meta.xMax, poly2Shape: shape,
         cost: 0, results: 0, locked: false,
       });
     }
@@ -7615,6 +7674,13 @@ function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, ov
         let bestMarginal = 0;
         for (const ch of greedyChannels) {
           const newCost = ch.cost + step;
+          // 1) 관측 cost 상한 초과 차단 (외삽 영역 사용 안 함)
+          if (newCost > ch.xMax) continue;
+          // 2) Poly2 종모양: vertex 이후 영역 차단 (CPR 감소 = 외삽 위험)
+          if (ch.poly2Shape && ch.poly2Shape.shape === "bell" && newCost > ch.poly2Shape.vertex) continue;
+          // 3) Poly2 U자형: vertex 이전 영역 차단
+          if (ch.poly2Shape && ch.poly2Shape.shape === "u" && newCost < ch.poly2Shape.vertex) continue;
+
           const cpr = ch.model.predict(newCost);
           if (!isFinite(cpr) || cpr <= 0) continue;
           const newResults = newCost / cpr;
@@ -7637,8 +7703,8 @@ function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, ov
 
   const allChannels = [...lockedChannels, ...greedyChannels];
   const totalAllocated = allChannels.reduce((a, ch) => a + ch.cost, 0);
+  // cost=0 채널도 결과에 포함 (사용자가 수동으로 강제 분배 가능하도록 표에 노출)
   const items = allChannels
-    .filter(ch => ch.cost > 0)
     .map(ch => ({
       channel: ch.channel,
       cost: ch.cost,
@@ -7646,8 +7712,11 @@ function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, ov
       cpr: ch.results > 0 ? ch.cost / ch.results : null,
       weight: totalAllocated > 0 ? ch.cost / totalAllocated : 0,
       locked: ch.locked,
+      xMin: ch.xMin,
+      xMax: ch.xMax,
+      poly2Shape: ch.poly2Shape,
     }))
-    .sort((a, b) => b.weight - a.weight);
+    .sort((a, b) => b.cost - a.cost);  // cost=0 채널은 자연스럽게 표 하단
 
   return { items, unallocated: Math.max(0, remaining), overspent, totalAllocated, lockedTotal };
 }
@@ -9037,27 +9106,81 @@ function refreshAllocationResults() {
   renderAllocItems(items, dailyBudget, tbody, barWrap, legendWrap, "mode-b", { unallocated, overspent, totalAllocated, lockedTotal });
 }
 
-function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, extra) {
-  tbody.innerHTML = items.map((it, i) => `
-    <tr>
-      <td>${escapeHtml(it.channel)}${it.locked ? ' <span class="alloc-lock-mark" title="수동 입력">🔒</span>' : ''}</td>
-      <td>
-        <div class="alloc-cost-cell">
-          <input type="number" class="alloc-cost-input ${it.locked ? 'locked' : ''}"
-                 data-channel="${escapeHtml(it.channel)}"
-                 value="${Math.round(it.cost)}" step="100" min="0" />
-          ${it.locked
-            ? `<button class="alloc-cost-reset" data-channel="${escapeHtml(it.channel)}" title="자동 분배로 되돌리기">↺</button>`
-            : ''}
-        </div>
-      </td>
-      <td class="tnum">${formatNumber(it.results, { decimals: 0 })}</td>
-      <td class="tnum">${fmtCurrency(it.cpr, { metric: true })}</td>
-      <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong></td>
-    </tr>
-  `).join("");
+/* 채널의 관측 기간 합산 데이터 (cost / results / revenue / 평균 지표). */
+function calcChannelHistorySummary(channel, metric) {
+  const rows = getMappedRows();
+  const chRows = rows.filter(r => getRowGroupKey(r) === channel);
+  if (!chRows.length) return null;
+  let totalCost = 0, totalResults = 0, totalRevenue = 0;
+  for (const r of chRows) {
+    totalCost    += Number(r.cost)        || 0;
+    totalResults += Number(r[metric])     || 0;
+    totalRevenue += Number(r.revenue_d7)  || 0;
+  }
+  return {
+    rowCount: chRows.length,
+    totalCost,
+    totalResults,
+    totalRevenue,
+    avgCPR:  totalResults > 0 ? totalCost / totalResults : null,
+    avgROAS: (totalCost > 0 && totalRevenue > 0) ? totalRevenue / totalCost : null,
+  };
+}
 
-  // editable input 핸들러 바인딩
+function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, extra) {
+  const metric = ALLOC_STATE.metric || "installs";
+  const unitLabel = getMetricUnitLabel(metric);
+
+  tbody.innerHTML = items.map((it, i) => {
+    const hist = calcChannelHistorySummary(it.channel, metric);
+    const isZero = it.cost === 0;
+    const reasonNoAlloc = isZero && !it.locked
+      ? (it.xMax ? `한계효용 ≤ 0 (관측 범위 ${fmtCurrency(it.xMin)}~${fmtCurrency(it.xMax)} 내 더 효율적인 채널 없음)` : "추세선 부족")
+      : null;
+
+    return `
+      <tr ${isZero ? 'class="alloc-row-zero"' : ''}>
+        <td>
+          <div class="alloc-ch-name">
+            ${escapeHtml(it.channel)}
+            ${it.locked ? `<button class="alloc-lock-toggle" data-channel="${escapeHtml(it.channel)}" title="잠금 해제 (자동 분배로 되돌리기)">🔒</button>` : ''}
+          </div>
+          ${hist ? `
+            <div class="alloc-ch-history">
+              <span>이전 ${hist.rowCount}일 합산</span>
+              <span>· Cost ${fmtCurrency(hist.totalCost)}</span>
+              <span>· ${unitLabel} ${formatNumber(hist.totalResults, {decimals:0})}</span>
+              ${hist.totalRevenue > 0 ? `<span>· Revenue ${fmtCurrency(hist.totalRevenue)}</span>` : ''}
+              <span>· 평균 ${getCostMetricLabel(metric)} ${fmtCurrency(hist.avgCPR, {metric:true})}</span>
+              ${hist.avgROAS != null ? `<span>· 평균 ROAS ${(hist.avgROAS*100).toFixed(1)}%</span>` : ''}
+            </div>` : ''}
+          ${reasonNoAlloc ? `<div class="alloc-ch-warn">${escapeHtml(reasonNoAlloc)} — 강제 분배하려면 우측에 직접 입력</div>` : ''}
+        </td>
+        <td>
+          <div class="alloc-cost-cell">
+            <input type="number" class="alloc-cost-input ${it.locked ? 'locked' : ''}"
+                   data-channel="${escapeHtml(it.channel)}"
+                   value="${Math.round(it.cost)}" step="100" min="0" />
+            ${it.locked
+              ? `<button class="alloc-cost-reset" data-channel="${escapeHtml(it.channel)}" title="자동 분배로 되돌리기">↺</button>`
+              : ''}
+          </div>
+          ${hist && hist.totalCost > 0 && !isZero ? `<div class="alloc-cost-delta">이전 ${fmtCurrency(hist.totalCost)} → ${it.cost > hist.totalCost ? '▲' : it.cost < hist.totalCost ? '▼' : '='} ${fmtCurrency(it.cost)}</div>` : ''}
+        </td>
+        <td class="tnum">
+          ${isZero ? '<span style="color:var(--text-muted);">—</span>' : formatNumber(it.results, { decimals: 0 })}
+          ${hist && hist.totalResults > 0 && !isZero ? `<div class="alloc-delta-hint">이전 ${formatNumber(hist.totalResults, {decimals:0})}</div>` : ''}
+        </td>
+        <td class="tnum">
+          ${isZero ? '<span style="color:var(--text-muted);">—</span>' : fmtCurrency(it.cpr, { metric: true })}
+          ${hist && hist.avgCPR != null && !isZero ? `<div class="alloc-delta-hint">이전 ${fmtCurrency(hist.avgCPR, {metric:true})}</div>` : ''}
+        </td>
+        <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong></td>
+      </tr>
+    `;
+  }).join("");
+
+  // editable input + 자물쇠 클릭 = 해제 핸들러
   tbody.querySelectorAll(".alloc-cost-input").forEach(input => {
     input.addEventListener("change", () => {
       const ch = input.dataset.channel;
@@ -9069,10 +9192,10 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
       }
       refreshAllocationResults();
     });
-    // Enter로 즉시 적용
     input.addEventListener("keydown", e => { if (e.key === "Enter") input.blur(); });
   });
-  tbody.querySelectorAll(".alloc-cost-reset").forEach(btn => {
+  // 자물쇠 OR 되돌리기 버튼 둘 다 잠금 해제
+  tbody.querySelectorAll(".alloc-cost-reset, .alloc-lock-toggle").forEach(btn => {
     btn.addEventListener("click", () => {
       delete ALLOC_STATE.allocOverrides[btn.dataset.channel];
       refreshAllocationResults();
