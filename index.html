@@ -1430,6 +1430,7 @@
     line-height: 17px;
   }
   .alloc-marginal-section tr.muted td { color: var(--text-muted); }
+  .alloc-marginal-section tr.clamped td { background: rgba(255, 193, 7, 0.06); }
 
   /* 추세선 R² 비교 표 (시뮬레이션 카드 안) */
   .alloc-trend-r2-section {
@@ -7776,6 +7777,9 @@ function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, ov
       greedyChannels.push({
         channel: ch, model: meta.model, xMin: meta.xMin, xMax: meta.xMax, poly2Shape: shape,
         cost: 0, results: 0, locked: false,
+        // 옵션 A · 단조 비감소 marginal CPR 강제용
+        // = 채널별 "지금까지 본 최소 marginal results". 이후 step은 이 이상으로 못 늘어남.
+        minMarginalSoFar: Infinity,
       });
     }
   }
@@ -7793,6 +7797,7 @@ function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, ov
       while (remaining >= step && iter < maxIters) {
         let bestCh = null;
         let bestMarginal = 0;
+        let bestRawMarginal = 0;
         for (const ch of greedyChannels) {
           const newCost = ch.cost + step;
           // 1) 관측 cost 상한 초과 차단 (외삽 영역 사용 안 함)
@@ -7805,10 +7810,15 @@ function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, ov
           const cpr = ch.model.predict(newCost);
           if (!isFinite(cpr) || cpr <= 0) continue;
           const newResults = newCost / cpr;
-          const marginalResults = newResults - ch.results;
-          if (marginalResults <= 0) continue;
+          const rawMarginal = newResults - ch.results;
+          if (rawMarginal <= 0) continue;
+          // 옵션 A · 단조 비감소 marginal CPR 강제
+          // = marginal results는 한 번 줄어들면 다시 늘어날 수 없다 (diminishing returns 락)
+          // → Log/Power 곡선이 끝에서 marginal이 다시 좋아지는 인공물(artifact) 차단
+          const marginalResults = Math.min(rawMarginal, ch.minMarginalSoFar);
           if (marginalResults > bestMarginal) {
             bestMarginal = marginalResults;
+            bestRawMarginal = rawMarginal;
             bestCh = ch;
           }
         }
@@ -7816,6 +7826,8 @@ function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, ov
         bestCh.cost += step;
         const cpr = bestCh.model.predict(bestCh.cost);
         bestCh.results = bestCh.cost / cpr;
+        // 단조 보정 기준 갱신: 다음 step부터 이 값을 상한으로 사용
+        bestCh.minMarginalSoFar = Math.min(bestCh.minMarginalSoFar, bestRawMarginal);
         remaining -= step;
         iter++;
       }
@@ -8902,22 +8914,57 @@ function buildChannelSheetAOA(channel, meta, metric) {
   }
 
   // --- Predicted curve sample ---
+  // 옵션 A · 단조 비감소 marginal CPR 보정 적용
   aoa.push([]);
-  aoa.push(["section", "cost", "predicted_cpr", "note"]);
+  aoa.push(["section", "cost", "predicted_cpr", "note", "marginal_cpr_raw", "marginal_cpr_monotonic", "clamped"]);
   const STEPS = 20;
   const margin = (meta.xMax - meta.xMin) * 0.05;
   const fitMin = Math.max(0.0001, meta.xMin - margin);
   const fitMax = meta.xMax + margin;
+
+  // 1) 먼저 모든 (cost, cpr, results) 샘플
+  const pred = [];
   for (let i = 0; i <= STEPS; i++) {
     const cost = fitMin + (fitMax - fitMin) * (i / STEPS);
     const cpr = meta.model.predict(cost);
-    const inRange = cost >= meta.xMin && cost <= meta.xMax;
     const valid = isFinite(cpr) && cpr > 0;
+    const inRange = cost >= meta.xMin && cost <= meta.xMax;
+    const note = valid ? (inRange ? "in_observed_range" : "extrapolation") : "out_of_range";
+    const results = valid ? cost / cpr : null;
+    pred.push({ cost, cpr, results, valid, note });
+  }
+
+  // 2) 인접 점 간 finite-difference marginal CPR + running max 단조 보정
+  let runningMax = -Infinity;
+  for (let i = 0; i < pred.length; i++) {
+    const p = pred[i];
+    let rawMarg = null;
+    if (i === 0) {
+      rawMarg = p.valid ? p.cpr : null;  // 첫 점은 평균 CPR로 시드
+    } else {
+      const prev = pred[i - 1];
+      if (p.valid && prev.valid && p.results > prev.results) {
+        rawMarg = (p.cost - prev.cost) / (p.results - prev.results);
+      }
+    }
+    let monoMarg = rawMarg;
+    let clamped = false;
+    if (rawMarg != null) {
+      if (rawMarg < runningMax) {
+        monoMarg = runningMax;
+        clamped = true;
+      } else {
+        runningMax = rawMarg;
+      }
+    }
     aoa.push([
       "predicted",
-      Number(cost.toFixed(2)),
-      valid ? Number(cpr.toFixed(4)) : "",
-      valid ? (inRange ? "in_observed_range" : "extrapolation") : "out_of_range",
+      Number(p.cost.toFixed(2)),
+      p.valid ? Number(p.cpr.toFixed(4)) : "",
+      p.note,
+      rawMarg != null ? Number(rawMarg.toFixed(4)) : "",
+      monoMarg != null ? Number(monoMarg.toFixed(4)) : "",
+      clamped ? "TRUE" : "FALSE",
     ]);
   }
 
@@ -9022,7 +9069,11 @@ function renderTrendComparison(meta) {
 
 /* ========== 구간별 marginal CPA 계산 + 표 렌더 ==========
    관측 cost 범위 (xMin ~ xMax)를 10등분해 각 구간의 평균 한계 비용을 계산.
-   marginalCPA = ΔCost / ΔResults — 각 구간 시작점과 끝점의 추세선 예측 차이. */
+   marginalCPA = ΔCost / ΔResults — 각 구간 시작점과 끝점의 추세선 예측 차이.
+
+   옵션 A · 단조 비감소 보정:
+   각 구간의 marginalCPA가 직전 구간 max 이상이 되도록 강제 (running max).
+   → Log/Power 곡선이 끝에서 marginal이 다시 좋아지는 수학적 인공물 차단. */
 function calcMarginalIntervals(model, xMin, xMax, steps = 10) {
   if (!model || !isFinite(xMax) || xMax <= 0) return [];
   const start = Math.max(0, xMin > 0 ? xMin * 0.5 : 0);  // 0부터 시작
@@ -9059,6 +9110,20 @@ function calcMarginalIntervals(model, xMin, xMax, steps = 10) {
     }
     prev = { cost, cpr, results };
   }
+
+  // === 옵션 A · 단조 비감소 (running max) 보정 ===
+  let runningMax = -Infinity;
+  for (const iv of intervals) {
+    if (iv.marginalCPA == null) continue;
+    iv.marginalCPA_raw = iv.marginalCPA;
+    if (iv.marginalCPA < runningMax) {
+      iv.marginalCPA = runningMax;
+      iv.clamped = true;
+    } else {
+      runningMax = iv.marginalCPA;
+      iv.clamped = false;
+    }
+  }
   return intervals;
 }
 
@@ -9067,15 +9132,21 @@ function renderMarginalIntervals(meta, metricLabel, unitLabel) {
   const intervals = calcMarginalIntervals(meta.model, meta.xMin, meta.xMax, 10);
   if (!intervals.length) return "";
 
+  const clampedCount = intervals.filter(iv => iv.clamped).length;
   const rows = intervals.map((iv, idx) => {
-    const cls = iv.invalid ? "muted" : "";
+    const cls = iv.invalid ? "muted" : (iv.clamped ? "clamped" : "");
+    const marginalCell = iv.marginalCPA != null
+      ? (iv.clamped
+          ? `<strong>${fmtCurrency(iv.marginalCPA, {metric:true})}</strong> <span style="color:var(--text-muted);font-size:11px;" title="원본 ${fmtCurrency(iv.marginalCPA_raw, {metric:true})} · 단조 보정으로 직전 max로 클램프됨">⚓</span>`
+          : `<strong>${fmtCurrency(iv.marginalCPA, {metric:true})}</strong>`)
+      : "—";
     return `
       <tr class="${cls}">
         <td class="tnum">${idx + 1}</td>
         <td class="tnum">${fmtCurrency(iv.from)} ~ ${fmtCurrency(iv.to)}</td>
         <td class="tnum">${iv.dCost != null ? "▲ " + fmtCurrency(iv.dCost) : "—"}</td>
         <td class="tnum">${iv.dRes != null && isFinite(iv.dRes) ? "▲ " + Math.round(iv.dRes).toLocaleString() + "건" : "—"}</td>
-        <td class="tnum"><strong>${iv.marginalCPA != null ? fmtCurrency(iv.marginalCPA, {metric:true}) : "—"}</strong></td>
+        <td class="tnum">${marginalCell}</td>
       </tr>
     `;
   }).join("");
@@ -9083,12 +9154,13 @@ function renderMarginalIntervals(meta, metricLabel, unitLabel) {
   return `
     <div class="alloc-marginal-section">
       <div class="alloc-marginal-title">
-        구간별 marginal ${metricLabel} <span class="alloc-marginal-sub">(관측 범위 ${fmtCurrency(meta.xMin)} ~ ${fmtCurrency(meta.xMax)} · 10등분)</span>
+        구간별 marginal ${metricLabel} <span class="alloc-marginal-sub">(관측 범위 ${fmtCurrency(meta.xMin)} ~ ${fmtCurrency(meta.xMax)} · 10등분 · 단조 비감소 보정)</span>
       </div>
       <p class="alloc-marginal-deck">
         각 구간 끝점에서의 예측 ${metricLabel}와 ${unitLabel}수를 추세선에서 뽑은 뒤,
         <code class="inline">marginal ${metricLabel} = Δ Cost / Δ ${unitLabel}</code>으로 계산합니다.
         한계효용 체감 채널이면 구간이 커질수록 marginal ${metricLabel}이 증가합니다.
+        ${clampedCount > 0 ? `<br><span style="color:var(--warning);">⚓ ${clampedCount}개 구간이 단조 비감소 규칙으로 클램프됨</span> — Log/Power 곡선이 끝에서 marginal이 다시 떨어지는 수학적 인공물을 차단했습니다. 마우스 오버 시 원본 값 확인 가능.` : ""}
       </p>
       <div class="table-wrap">
         <table class="data">
