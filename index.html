@@ -7093,6 +7093,10 @@ async function navigate(id) {
     if (!meta) { html = pageHome(); id = "home"; }
     else html = pageDummy(meta);
   }
+  // 페이지 본문 교체 전에 이전 차트 인스턴스 모두 정리.
+  // (innerHTML로 canvas DOM이 사라지면 chart instance는 detached 상태가 되어
+  //  이후 update()를 호출해도 화면에 안 그려지는 버그 방지)
+  destroyAllCharts();
   content.innerHTML = html;
   setBreadcrumb(id);
   renderNav(id);
@@ -7882,9 +7886,14 @@ function renderAllocatorScatter() {
     ? (ctx) => `(${ctx.parsed.x.toFixed(0)}, ${metricLabel}=${ctx.parsed.y.toFixed(2)})`
     : (ctx) => `(${ctx.parsed.x.toFixed(3)}, ${ctx.parsed.y.toFixed(3)})`;
 
-  // 기존 chart instance가 있으면 data만 갈아끼우고 update("none")으로 즉시 갱신.
-  // 없으면 신규 생성. destroy/recreate 비용 제거.
-  const existing = CHART_INSTANCES["alloc-scatter"];
+  // 기존 chart instance가 있어도 canvas가 새 DOM이면 (navigate로 페이지 재렌더 등)
+  // 이전 canvas는 사라졌으므로 reuse 불가. destroy + 신규 생성.
+  let existing = CHART_INSTANCES["alloc-scatter"];
+  if (existing && existing.canvas !== canvas) {
+    try { existing.destroy(); } catch {}
+    delete CHART_INSTANCES["alloc-scatter"];
+    existing = null;
+  }
   if (existing) {
     existing.data.datasets = datasets;
     existing.options.scales.x.title.text = axisLabels.x;
@@ -8959,6 +8968,7 @@ async function init() {
     }
     else if (PAGE_RENDERERS[id]) html = PAGE_RENDERERS[id]();
     else { const meta = findMeta(id); html = meta ? pageDummy(meta) : pageHome(); }
+    destroyAllCharts();  // 이전 chart instance 정리 (canvas DOM 교체 전)
     content.innerHTML = html;
     setBreadcrumb(id === "" ? "home" : id);
     renderNav(id === "" ? null : id);
