@@ -5626,39 +5626,39 @@ function page_5_3() {
         </div>
       </section>
 
-      ${(ALLOC_STATE.budget || 0) > 0 ? `
-      <section class="block" id="s-bar">
-        <h2 class="section-title"><span class="ix">§3</span>추천 배분 비중</h2>
-        <div class="alloc-bar" id="alloc-bar"></div>
-        <div class="alloc-bar-legend" id="alloc-bar-legend"></div>
-      </section>
+      <div id="alloc-budget-required" style="display:${(ALLOC_STATE.budget || 0) > 0 ? '' : 'none'};">
+        <section class="block" id="s-bar">
+          <h2 class="section-title"><span class="ix">§3</span>추천 배분 비중 <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);font-weight:400;margin-left:0.5rem;">한계효용 그리디 (모드 B)</span></h2>
+          <div class="alloc-bar" id="alloc-bar"></div>
+          <div class="alloc-bar-legend" id="alloc-bar-legend"></div>
+        </section>
 
-      <section class="block" id="s-table">
-        <h2 class="section-title"><span class="ix">§4</span>채널별 상세</h2>
-        <div class="table-wrap">
-          <table class="data">
-            <thead>
-              <tr>
-                <th>채널</th>
-                <th>합산 비용</th>
-                <th>성과(전환)</th>
-                <th>CPR</th>
-                <th>추천 비중 / 배분액</th>
-              </tr>
-            </thead>
-            <tbody id="alloc-tbody"></tbody>
-          </table>
-        </div>
-      </section>
-      ` : `
-      <div class="callout info" style="margin: 1.25rem 0;">
+        <section class="block" id="s-table">
+          <h2 class="section-title"><span class="ix">§4</span>채널별 상세</h2>
+          <div class="table-wrap">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>채널</th>
+                  <th>배분 Cost</th>
+                  <th>예상 성과</th>
+                  <th>평균 CPR</th>
+                  <th>비중 · 배분액</th>
+                </tr>
+              </thead>
+              <tbody id="alloc-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div id="alloc-budget-empty" class="callout info" style="margin: 1.25rem 0; display:${(ALLOC_STATE.budget || 0) > 0 ? 'none' : ''};">
         <div class="ico">i</div>
         <div class="body">
           <strong>예산을 입력하면 분배 결과가 표시됩니다</strong>
-          <p>§2에서 총 예산을 입력하세요. 산점도(§1)에서 선택한 채널/캠페인에 대한 추천 배분 비중과 채널별 상세가 즉시 계산됩니다.</p>
+          <p>§2에서 총 예산을 입력하세요. 산점도(§1)에서 선택한 채널/캠페인에 대한 한계효용 그리디 분배가 자동으로 계산됩니다.</p>
         </div>
       </div>
-      `}
 
       <section class="block" id="s-algo">
         <h2 class="section-title"><span class="ix">§5</span>알고리즘 노트</h2>
@@ -7463,6 +7463,77 @@ function renderVizCharts() {
    - CPR Cap (상한 설정 시 외삽 위험 그룹 차단)
    - 최신 데이터 가중치 (Exponential, 반감기 30일)
 */
+/* ========== 모드 B · 한계효용 그리디 (Marginal Greedy) ==========
+   Campaign Allocator 원본 README의 모드 B 알고리즘.
+   채널별 추세선 model을 활용해 작은 step씩 예산을 쪼개고, 매 step마다
+   Δresults (한계 결과 증가량)가 최대인 채널에 투입.
+   - 추세선이 음수 CPR을 예측하면 그 채널은 skip (한계효용 종료)
+   - 모든 채널에서 Δresults ≤ 0이면 종료, 잔여 금액 unallocated로 반환
+   - selectedChannels Set이면 그 채널만 분배 대상 (산점도 선택 기준) */
+function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, stepRatio = 0.002 }) {
+  if (!modelsMap || totalBudget <= 0) return { items: [], unallocated: totalBudget || 0 };
+
+  const channels = [];
+  for (const [ch, meta] of modelsMap) {
+    if (!meta || !meta.model) continue;
+    if (selectedChannels && selectedChannels.size > 0 && !selectedChannels.has(ch)) continue;
+    channels.push({
+      channel: ch,
+      model: meta.model,
+      xMin: meta.xMin,
+      xMax: meta.xMax,
+      cost: 0,
+      results: 0,
+    });
+  }
+  if (channels.length === 0) return { items: [], unallocated: totalBudget };
+
+  const step = totalBudget * stepRatio;
+  if (step <= 0) return { items: [], unallocated: totalBudget };
+  let remaining = totalBudget;
+  const maxIters = Math.ceil(1 / stepRatio) + 10;
+  let iter = 0;
+
+  while (remaining >= step && iter < maxIters) {
+    let bestCh = null;
+    let bestMarginal = 0;
+
+    for (const ch of channels) {
+      const newCost = ch.cost + step;
+      const cpr = ch.model.predict(newCost);
+      if (!isFinite(cpr) || cpr <= 0) continue;  // 음수/0 CPR = 한계효용 종료
+      const newResults = newCost / cpr;
+      const marginalResults = newResults - ch.results;
+      if (marginalResults <= 0) continue;
+      if (marginalResults > bestMarginal) {
+        bestMarginal = marginalResults;
+        bestCh = ch;
+      }
+    }
+    if (!bestCh) break;
+
+    bestCh.cost += step;
+    const cpr = bestCh.model.predict(bestCh.cost);
+    bestCh.results = bestCh.cost / cpr;
+    remaining -= step;
+    iter++;
+  }
+
+  const totalAllocated = channels.reduce((a, ch) => a + ch.cost, 0);
+  const items = channels
+    .filter(ch => ch.cost > 0)
+    .map(ch => ({
+      channel: ch.channel,
+      cost: ch.cost,
+      results: ch.results,
+      cpr: ch.results > 0 ? ch.cost / ch.results : null,
+      weight: totalAllocated > 0 ? ch.cost / totalAllocated : 0,
+    }))
+    .sort((a, b) => b.weight - a.weight);
+
+  return { items, unallocated: Math.max(0, remaining), totalAllocated };
+}
+
 function calculateAllocation(rows, _channelField, costField, resultsField, allowedChannels) {
   if (!costField || !resultsField) return [];
   // 채널/캠페인 그룹 키 (getRowGroupKey 사용)
@@ -8789,83 +8860,120 @@ function renderTrendSummary(trendInfo) {
 
 function refreshAllocationResults() {
   const budget = ALLOC_STATE.budget || 0;
-  const metric = ALLOC_STATE.metric || "installs";
   const tbody = document.getElementById("alloc-tbody");
   const barWrap = document.getElementById("alloc-bar");
   const legendWrap = document.getElementById("alloc-bar-legend");
-  // §3/§4가 budget 미입력 시 DOM에 없음 — 그땐 skip
+  // §3/§4 DOM이 없으면 (budget 미입력 등) skip
   if (!tbody || !barWrap) return;
 
-  // 산점도에서 선택된 채널만 분배 대상
-  const selected = ALLOC_STATE.selectedChannels && ALLOC_STATE.selectedChannels.size > 0
-    ? ALLOC_STATE.selectedChannels
-    : null;
-  const rows = getMappedRows();
-  const alloc = calculateAllocation(rows, "channel", "cost", metric, selected);
-
-  if (!alloc.length) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">선택한 채널의 데이터가 없거나 매핑이 부족합니다. 산점도에서 채널을 선택했는지 확인하세요.</td></tr>`;
+  if (budget <= 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">총 예산을 입력해 주세요.</td></tr>`;
     barWrap.innerHTML = "";
     legendWrap.innerHTML = "";
     return;
   }
 
-  tbody.innerHTML = alloc.map((it, i) => `
+  const selected = ALLOC_STATE.selectedChannels && ALLOC_STATE.selectedChannels.size > 0
+    ? ALLOC_STATE.selectedChannels
+    : null;
+  const modelsMap = ALLOC_CACHE.models;
+
+  // model 캐시가 비어있으면 (산점도 미렌더) mode A로 fallback
+  if (!modelsMap || modelsMap.size === 0) {
+    const metric = ALLOC_STATE.metric || "installs";
+    const rows = getMappedRows();
+    const alloc = calculateAllocation(rows, "channel", "cost", metric, selected);
+    if (!alloc.length) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">선택된 채널의 데이터가 없습니다.</td></tr>`;
+      barWrap.innerHTML = ""; legendWrap.innerHTML = "";
+      return;
+    }
+    renderAllocItems(alloc, budget, tbody, barWrap, legendWrap, "mode-a", null);
+    return;
+  }
+
+  // 모드 B (한계효용 그리디) — 추세선 model 기반 최적 분배
+  const { items, unallocated, totalAllocated } = calculateAllocationModeB({
+    modelsMap, totalBudget: budget, selectedChannels: selected,
+  });
+
+  if (!items.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">분배 대상 채널이 없거나 추세선이 한계효용 0을 예측합니다. 산점도에서 채널을 선택했는지 확인하세요.</td></tr>`;
+    barWrap.innerHTML = ""; legendWrap.innerHTML = "";
+    return;
+  }
+
+  renderAllocItems(items, budget, tbody, barWrap, legendWrap, "mode-b", { unallocated, totalAllocated });
+}
+
+function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, extra) {
+  tbody.innerHTML = items.map((it, i) => `
     <tr>
       <td>${escapeHtml(it.channel)}</td>
       <td class="tnum">${fmtCurrency(it.cost)}</td>
       <td class="tnum">${formatNumber(it.results, { decimals: 0 })}</td>
       <td class="tnum">${fmtCurrency(it.cpr, { metric: true })}</td>
-      <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong> · ${budget > 0 ? fmtCurrency(budget * it.weight) : "—"}</td>
+      <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong> · ${fmtCurrency(modeLabel === "mode-a" ? budget * it.weight : it.cost)}</td>
     </tr>
   `).join("");
 
-  barWrap.innerHTML = alloc.map((it, i) => `
+  barWrap.innerHTML = items.map((it, i) => `
     <div class="alloc-bar-seg" style="width:${(it.weight * 100).toFixed(2)}%;background:${CHART_THEME.series[i % CHART_THEME.series.length]};" title="${escapeHtml(it.channel)} ${(it.weight*100).toFixed(1)}%"></div>
-  `).join("");
+  `).join("") + (extra && extra.unallocated > 0
+    ? `<div class="alloc-bar-seg" style="width:${(extra.unallocated / budget * 100).toFixed(2)}%;background:#444;border-left:1px dashed #888;" title="미배분 ${fmtCurrency(extra.unallocated)}"></div>`
+    : "");
 
-  legendWrap.innerHTML = alloc.map((it, i) => `
+  legendWrap.innerHTML = items.map((it, i) => `
     <span><span class="sw" style="background:${CHART_THEME.series[i % CHART_THEME.series.length]};"></span>${escapeHtml(it.channel)} <span class="tnum">${(it.weight*100).toFixed(1)}%</span></span>
-  `).join("");
+  `).join("") + (extra && extra.unallocated > 0
+    ? ` <span style="color:var(--text-muted);">· 미배분 ${fmtCurrency(extra.unallocated)} (한계효용 ≤ 0)</span>`
+    : "");
 }
 
 function bindBudgetAllocatorHandlers() {
-  // 통화 토글 (chips에 위치, navigate로 페이지 전체 재렌더)
+  // 통화 토글 (chips에 위치)
+  // 페이지 재렌더 시 스크롤 위치 보존 — input 포커스 잃지만 통화는 자주 안 누르니 OK
   document.querySelectorAll(".chip-currency button[data-alloccurrency]").forEach(btn => {
     btn.addEventListener("click", () => {
+      const scrollY = window.scrollY;
       AB_STATE.currency = btn.dataset.alloccurrency;
-      navigate("5-3");  // 페이지 전체 재렌더 → 모든 통화 표시 갱신
+      navigate("5-3");
+      // navigate 안의 scrollTo(0)을 덮어쓰기
+      requestAnimationFrame(() => window.scrollTo(0, scrollY));
     });
   });
 
   const refresh = refreshAllocationResults;
 
-  // budget input — ALLOC_STATE 저장 + 빈/양수 전환 시 페이지 재렌더 (§3/§4 DOM 자체 토글)
+  // budget input — display 토글 + debounce refresh (페이지 점프 방지)
   const budgetInput = document.getElementById("alloc-budget");
   if (budgetInput) {
-    let prevHasBudget = (ALLOC_STATE.budget || 0) > 0;
+    let _budgetTimer = null;
     budgetInput.addEventListener("input", () => {
       const newBudget = parseFloat(budgetInput.value) || null;
       ALLOC_STATE.budget = newBudget;
-      const newHasBudget = (newBudget || 0) > 0;
-      if (newHasBudget !== prevHasBudget) {
-        // 0 ↔ 양수 전환 — §3/§4 DOM 자체가 있어야/없어야 함 → 페이지 재렌더
-        prevHasBudget = newHasBudget;
-        navigate("5-3");
-      } else if (newHasBudget) {
-        // 같은 상태(양수→양수) 변경 — 부분 갱신만
-        refresh();
-      }
+      const hasBudget = (newBudget || 0) > 0;
+      // §3/§4 visibility 토글 (DOM 그대로, display만)
+      const reqEl = document.getElementById("alloc-budget-required");
+      const emptyEl = document.getElementById("alloc-budget-empty");
+      if (reqEl) reqEl.style.display = hasBudget ? "" : "none";
+      if (emptyEl) emptyEl.style.display = hasBudget ? "none" : "";
+      // 100ms debounce 후 재계산 (타이핑 중 매 키마다 안 계산)
+      if (_budgetTimer) clearTimeout(_budgetTimer);
+      _budgetTimer = setTimeout(() => {
+        refreshAllocationResults();
+        _budgetTimer = null;
+      }, 100);
     });
   }
 
-  // metric select — ALLOC_STATE 저장 + cache 무효 + 페이지 재렌더
+  // metric select — cache 무효 + 산점도 재계산 + 분배 결과 갱신 (페이지 재렌더 없이)
   const metricSelect = document.getElementById("alloc-metric");
   if (metricSelect) {
     metricSelect.addEventListener("change", () => {
       ALLOC_STATE.metric = metricSelect.value;
-      clearAllocCache();  // metric 변경 시 byChannel 키 변경
-      navigate("5-3");
+      clearAllocCache();
+      renderAllocatorScatter();  // 그 안에서 refreshAllocationResults도 호출됨
     });
   }
 
