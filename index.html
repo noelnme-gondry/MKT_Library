@@ -1587,6 +1587,117 @@
     background: rgba(247, 185, 85, 0.12);
   }
 
+  /* 분배 모드 토글 (§3 부제 옆) */
+  .alloc-mode-toggle {
+    display: inline-flex;
+    margin-left: 0.625rem;
+    padding: 2px;
+    gap: 2px;
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-default);
+    vertical-align: middle;
+  }
+  .alloc-mode-toggle button {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    padding: 0.25rem 0.55rem;
+    border-radius: var(--radius-default);
+    cursor: pointer;
+    transition: background 0.1s ease, color 0.1s ease;
+    letter-spacing: 0.02em;
+  }
+  .alloc-mode-toggle button:hover { color: var(--text-primary); }
+  .alloc-mode-toggle button.active {
+    background: var(--primary);
+    color: var(--surface-base);
+    font-weight: 600;
+  }
+
+  /* §4 아래 총 합계 비교 카드 */
+  .alloc-total-card {
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-xl);
+    padding: 1rem 1.25rem 1.25rem;
+    margin: 1rem 0 0.5rem;
+  }
+  .alloc-total-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.875rem;
+    letter-spacing: -0.005em;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .alloc-total-sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+  .alloc-total-grid {
+    display: grid;
+    grid-template-columns: 1fr 24px 1fr;
+    gap: 0.875rem;
+    align-items: stretch;
+  }
+  .alloc-total-arrow {
+    display: grid;
+    place-items: center;
+    color: var(--primary);
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .alloc-total-block {
+    background: var(--surface-container-low);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem 0.875rem;
+  }
+  .alloc-total-block-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .alloc-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0.25rem 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .alloc-total-row.highlight {
+    color: var(--text-primary);
+  }
+  .alloc-total-row strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .alloc-total-row strong .down { color: #ff8a8a; }
+  .alloc-total-sep {
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 0.4rem 0;
+  }
+  @media (max-width: 720px) {
+    .alloc-total-grid { grid-template-columns: 1fr; }
+    .alloc-total-arrow { transform: rotate(90deg); padding: 0.25rem 0; }
+  }
+
   /* chips 안 통화 토글 */
   .chip-currency {
     display: inline-flex;
@@ -5773,10 +5884,18 @@ function page_5_3() {
 
       <div id="alloc-budget-required" style="display:${(ALLOC_STATE.budget || 0) > 0 ? '' : 'none'};">
         <section class="block" id="s-bar">
-          <h2 class="section-title"><span class="ix">§3</span>추천 배분 비중 <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);font-weight:400;margin-left:0.5rem;">한계효용 그리디 (모드 B)</span></h2>
+          <h2 class="section-title">
+            <span class="ix">§3</span>추천 배분 비중
+            <span class="alloc-mode-toggle">
+              <button type="button" data-allocmode="b" class="${ALLOC_STATE.allocMode === 'b' ? 'active' : ''}" title="한계효용 그리디 — 추세선 기반 step별 marginal results 최대 채널에 투입 (외삽 차단)">한계효용 그리디</button>
+              <button type="button" data-allocmode="c" class="${ALLOC_STATE.allocMode === 'c' ? 'active' : ''}" title="절대 CPR 가중 — 1/평균CPR 비례 정적 분배">절대 CPR 가중</button>
+            </span>
+          </h2>
           <div class="alloc-bar" id="alloc-bar"></div>
           <div class="alloc-bar-legend" id="alloc-bar-legend"></div>
         </section>
+
+        <div id="alloc-total-card"></div>
 
         <section class="block" id="s-table">
           <h2 class="section-title"><span class="ix">§4</span>채널별 상세</h2>
@@ -6363,6 +6482,7 @@ const ALLOC_STATE = {
   normalizeMode: "raw",    // raw | log | minmax | robust (차트 표시용)
   budget: null,            // 총 예산 (사용자 입력 raw 값)
   budgetPeriod: "daily",   // daily | monthly (월예산이면 ÷30으로 일예산 환산)
+  allocMode: "b",          // b: 한계효용 그리디 | c: 절대 CPR 가중 (1/avgCPR 비례)
   allocOverrides: {},      // { channel: fixedCost } — 사용자가 수동 입력한 채널별 배분액 (고정)
   metric: null,            // 성과 지표 (installs | actions | pu_d7)
   selectedChannels: null,  // null = 자동 상위 6, Set = 선택된 채널들
@@ -9090,20 +9210,199 @@ function refreshAllocationResults() {
     return;
   }
 
-  const { items, unallocated, overspent, totalAllocated, lockedTotal } = calculateAllocationModeB({
-    modelsMap,
-    totalBudget: dailyBudget,
-    selectedChannels: selected,
-    overrides: ALLOC_STATE.allocOverrides,
-  });
+  const metric = ALLOC_STATE.metric || "installs";
+  const mode = ALLOC_STATE.allocMode || "b";
+  const result = mode === "c"
+    ? calculateAllocationModeC({
+        modelsMap, totalBudget: dailyBudget, selectedChannels: selected,
+        overrides: ALLOC_STATE.allocOverrides, metric,
+      })
+    : calculateAllocationModeB({
+        modelsMap, totalBudget: dailyBudget, selectedChannels: selected,
+        overrides: ALLOC_STATE.allocOverrides,
+      });
+
+  const { items, unallocated, overspent, totalAllocated, lockedTotal } = result;
 
   if (!items.length) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">분배 대상 채널이 없거나 추세선이 한계효용 0을 예측합니다. 산점도에서 채널을 선택했는지 확인하세요.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">분배 대상 채널이 없습니다. 산점도에서 채널을 선택했는지 확인하세요.</td></tr>`;
     barWrap.innerHTML = ""; legendWrap.innerHTML = "";
+    renderAllocationTotalCard(null);
     return;
   }
 
-  renderAllocItems(items, dailyBudget, tbody, barWrap, legendWrap, "mode-b", { unallocated, overspent, totalAllocated, lockedTotal });
+  renderAllocItems(items, dailyBudget, tbody, barWrap, legendWrap, mode === "c" ? "mode-c" : "mode-b", { unallocated, overspent, totalAllocated, lockedTotal });
+  renderAllocationTotalCard({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
+}
+
+/* 총 합계 카드 — 이전 N일 합산 vs 분배 후 예상 비교 */
+function renderAllocationTotalCard(payload) {
+  const wrap = document.getElementById("alloc-total-card");
+  if (!wrap) return;
+  if (!payload) { wrap.innerHTML = ""; return; }
+
+  const { items, metric, dailyBudget, totalAllocated, unallocated, mode } = payload;
+  const metricLabel = getCostMetricLabel(metric);
+  const unitLabel = getMetricUnitLabel(metric);
+
+  // 이전 N일 합산
+  const prev = items.reduce((acc, it) => {
+    const hist = calcChannelHistorySummary(it.channel, metric);
+    if (hist) {
+      acc.cost += hist.totalCost;
+      acc.results += hist.totalResults;
+      acc.revenue += hist.totalRevenue;
+      acc.rowCount = Math.max(acc.rowCount, hist.rowCount);
+    }
+    return acc;
+  }, { cost: 0, results: 0, revenue: 0, rowCount: 0 });
+
+  // 예상 분배 합산
+  const next = items.reduce((acc, it) => {
+    acc.cost += it.cost;
+    acc.results += it.results;
+    return acc;
+  }, { cost: 0, results: 0 });
+
+  const prevAvgCPR = prev.results > 0 ? prev.cost / prev.results : null;
+  const prevROAS = (prev.cost > 0 && prev.revenue > 0) ? prev.revenue / prev.cost : null;
+  const nextAvgCPR = next.results > 0 ? next.cost / next.results : null;
+  // 예상 revenue/ROAS: 채널별 평균 revenue/result 가정해서 추정
+  let nextRevenue = 0;
+  for (const it of items) {
+    const hist = calcChannelHistorySummary(it.channel, metric);
+    if (hist && hist.totalResults > 0 && hist.totalRevenue > 0) {
+      const revPerResult = hist.totalRevenue / hist.totalResults;
+      nextRevenue += it.results * revPerResult;
+    }
+  }
+  const nextROAS = (next.cost > 0 && nextRevenue > 0) ? nextRevenue / next.cost : null;
+
+  // 일/월 환산 (사용자 입력값 기준)
+  const periodLabel = ALLOC_STATE.budgetPeriod === "monthly" ? "월 (÷30 환산)" : "일";
+
+  const dCost = next.cost - (prev.cost / Math.max(1, prev.rowCount));  // 일 단위 비교
+  const arrow = (v) => v > 0 ? "▲" : v < 0 ? "▼" : "—";
+  const colorClass = (v) => v > 0 ? "" : v < 0 ? "down" : "";
+
+  // 일 단위 이전 (rowCount일 평균)
+  const prevPerDay = prev.rowCount > 0 ? {
+    cost: prev.cost / prev.rowCount,
+    results: prev.results / prev.rowCount,
+    revenue: prev.revenue / prev.rowCount,
+  } : null;
+
+  wrap.innerHTML = `
+    <div class="alloc-total-card">
+      <div class="alloc-total-title">
+        총 합계 비교 <span class="alloc-total-sub">알고리즘: ${mode === "c" ? "절대 CPR 가중" : "한계효용 그리디"} · 분배 기준: ${periodLabel}예산</span>
+      </div>
+      <div class="alloc-total-grid">
+
+        <div class="alloc-total-block">
+          <div class="alloc-total-block-title">이전 관측 합산 (${prev.rowCount}일)</div>
+          <div class="alloc-total-row"><span>Cost (합산)</span><strong class="tnum">${fmtCurrency(prev.cost)}</strong></div>
+          <div class="alloc-total-row"><span>Cost (일평균)</span><strong class="tnum">${prevPerDay ? fmtCurrency(prevPerDay.cost) : "—"}</strong></div>
+          <div class="alloc-total-row"><span>${unitLabel}수 (합산)</span><strong class="tnum">${formatNumber(prev.results, {decimals:0})}</strong></div>
+          ${prev.revenue > 0 ? `<div class="alloc-total-row"><span>Revenue (합산)</span><strong class="tnum">${fmtCurrency(prev.revenue)}</strong></div>` : ""}
+          <div class="alloc-total-sep"></div>
+          <div class="alloc-total-row highlight"><span>평균 ${metricLabel}</span><strong class="tnum">${fmtCurrency(prevAvgCPR, {metric:true})}</strong></div>
+          ${prevROAS != null ? `<div class="alloc-total-row highlight"><span>평균 ROAS</span><strong class="tnum">${(prevROAS*100).toFixed(1)}%</strong></div>` : ""}
+        </div>
+
+        <div class="alloc-total-arrow">→</div>
+
+        <div class="alloc-total-block">
+          <div class="alloc-total-block-title">분배 후 예상 (일 단위)</div>
+          <div class="alloc-total-row"><span>총 배분 Cost</span><strong class="tnum">${fmtCurrency(next.cost)}${unallocated > 0 ? ` <span style="color:var(--text-muted);font-size:11px;">+미배분 ${fmtCurrency(unallocated)}</span>` : ""}</strong></div>
+          <div class="alloc-total-row"><span>예상 ${unitLabel}수</span><strong class="tnum">${formatNumber(next.results, {decimals:0})}</strong></div>
+          ${nextRevenue > 0 ? `<div class="alloc-total-row"><span>예상 Revenue</span><strong class="tnum">${fmtCurrency(nextRevenue)}</strong></div>` : ""}
+          <div class="alloc-total-sep"></div>
+          <div class="alloc-total-row highlight"><span>예상 평균 ${metricLabel}</span><strong class="tnum">${fmtCurrency(nextAvgCPR, {metric:true})}${prevAvgCPR != null && nextAvgCPR != null ? ` <span class="${colorClass(nextAvgCPR - prevAvgCPR)}" style="font-size:11px;">${arrow(nextAvgCPR - prevAvgCPR)} ${Math.abs(((nextAvgCPR - prevAvgCPR)/prevAvgCPR)*100).toFixed(1)}%</span>` : ""}</strong></div>
+          ${nextROAS != null ? `<div class="alloc-total-row highlight"><span>예상 ROAS</span><strong class="tnum">${(nextROAS*100).toFixed(1)}%${prevROAS != null ? ` <span class="${colorClass(nextROAS - prevROAS)}" style="font-size:11px;">${arrow(nextROAS - prevROAS)} ${Math.abs(((nextROAS - prevROAS)/prevROAS)*100).toFixed(1)}%</span>` : ""}</strong></div>` : ""}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ========== 모드 C · 절대 CPR 가중 분배 ==========
+   각 채널의 관측 기간 평균 CPR 기준으로 1/avgCPR 가중치 분배.
+   외삽 위험 없음(추세선 모델 사용 안 함, 평균값 기준).
+   사용자 직관: "CPR이 낮은 채널에 비례적으로 더 분배" */
+function calculateAllocationModeC({ modelsMap, totalBudget, selectedChannels, overrides = {}, metric }) {
+  if (!modelsMap || totalBudget <= 0) return { items: [], unallocated: totalBudget || 0, overspent: false, totalAllocated: 0 };
+
+  const lockedChannels = [];
+  const greedyChannels = [];
+  let fixedSum = 0;
+
+  for (const [ch, meta] of modelsMap) {
+    if (!meta) continue;
+    if (selectedChannels && selectedChannels.size > 0 && !selectedChannels.has(ch)) continue;
+
+    if (overrides[ch] != null && overrides[ch] >= 0) {
+      const cost = Number(overrides[ch]);
+      const cpr = meta.model ? meta.model.predict(cost) : null;
+      const results = (isFinite(cpr) && cpr > 0 && cost > 0) ? cost / cpr : 0;
+      lockedChannels.push({
+        channel: ch, cost, results, locked: true,
+        xMin: meta.xMin, xMax: meta.xMax, poly2Shape: ALLOC_MATH.detectPoly2Shape(meta.model),
+        model: meta.model, avgCPR: null,
+      });
+      fixedSum += cost;
+      continue;
+    }
+
+    // 관측 기간 평균 CPR
+    const history = calcChannelHistorySummary(ch, metric);
+    const avgCPR = history && history.avgCPR != null && history.avgCPR > 0 ? history.avgCPR : null;
+    greedyChannels.push({
+      channel: ch, cost: 0, results: 0, locked: false,
+      xMin: meta.xMin, xMax: meta.xMax, poly2Shape: ALLOC_MATH.detectPoly2Shape(meta.model),
+      model: meta.model, avgCPR,
+    });
+  }
+
+  const lockedTotal = fixedSum;
+  const overspent = fixedSum > totalBudget;
+  let remaining = Math.max(0, totalBudget - fixedSum);
+
+  // 1/avgCPR 가중 분배 (평균 CPR이 없는 채널은 제외)
+  const validForWeight = greedyChannels.filter(c => c.avgCPR != null && c.avgCPR > 0);
+  if (validForWeight.length > 0 && remaining > 0) {
+    const totalEfficiency = validForWeight.reduce((s, c) => s + 1 / c.avgCPR, 0);
+    if (totalEfficiency > 0) {
+      for (const c of validForWeight) {
+        const weight = (1 / c.avgCPR) / totalEfficiency;
+        c.cost = remaining * weight;
+        // 예상 결과: 추세선 model 있으면 그걸로, 없으면 avgCPR로
+        if (c.model) {
+          const cpr = c.model.predict(c.cost);
+          c.results = (isFinite(cpr) && cpr > 0) ? c.cost / cpr : c.cost / c.avgCPR;
+        } else {
+          c.results = c.cost / c.avgCPR;
+        }
+      }
+      remaining = 0;
+    }
+  }
+
+  const allChannels = [...lockedChannels, ...greedyChannels];
+  const totalAllocated = allChannels.reduce((a, c) => a + c.cost, 0);
+  const items = allChannels.map(c => ({
+    channel: c.channel,
+    cost: c.cost,
+    results: c.results,
+    cpr: c.results > 0 ? c.cost / c.results : null,
+    weight: totalAllocated > 0 ? c.cost / totalAllocated : 0,
+    locked: c.locked,
+    xMin: c.xMin,
+    xMax: c.xMax,
+    poly2Shape: c.poly2Shape,
+  })).sort((a, b) => b.cost - a.cost);
+
+  return { items, unallocated: Math.max(0, remaining), overspent, totalAllocated, lockedTotal };
 }
 
 /* 채널의 관측 기간 합산 데이터 (cost / results / revenue / 평균 지표). */
@@ -9233,6 +9532,16 @@ function bindBudgetAllocatorHandlers() {
   });
 
   const refresh = refreshAllocationResults;
+
+  // 분배 모드 토글 (한계효용 그리디 / 절대 CPR 가중)
+  document.querySelectorAll(".alloc-mode-toggle button[data-allocmode]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      ALLOC_STATE.allocMode = btn.dataset.allocmode;
+      document.querySelectorAll(".alloc-mode-toggle button").forEach(b =>
+        b.classList.toggle("active", b.dataset.allocmode === ALLOC_STATE.allocMode));
+      refreshAllocationResults();
+    });
+  });
 
   // 일/월 예산 토글
   document.querySelectorAll(".budget-period-toggle button[data-period]").forEach(btn => {
