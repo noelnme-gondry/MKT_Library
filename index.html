@@ -47,6 +47,7 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   /* ========== Design Tokens (Obsidian Flux) ========== */
   :root {
@@ -8094,13 +8095,13 @@ function renderAllocatorScatter() {
         <button class="ab-pill" id="alloc-filter-top6">상위 6개</button>
         <button class="ab-pill" id="alloc-filter-all">전체</button>
         <button class="ab-pill" id="alloc-filter-none">모두 해제</button>
-        <button class="ab-pill alloc-csv-btn" id="alloc-csv-download-all" title="선택된 모든 채널의 추세선 CSV를 일괄 다운로드">
+        <button class="ab-pill alloc-csv-btn" id="alloc-csv-download-all" title="선택된 모든 채널을 단일 XLSX 파일로 다운로드 (채널마다 별도 탭)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          선택 채널 CSV 다운로드 (<span id="alloc-csv-count">${channels.length}</span>)
+          선택 채널 XLSX 다운로드 (<span id="alloc-csv-count">${channels.length}</span>탭)
         </button>
       </div>
       <div class="alloc-filter-chips">
@@ -8392,7 +8393,7 @@ function renderAllocatorScatter() {
     queueAllocatorRender();
   });
 
-  // === 선택된 모든 채널 CSV 일괄 다운로드 ===
+  // === 선택된 모든 채널 XLSX 다운로드 (채널 = 탭) ===
   const csvAllBtn = document.getElementById("alloc-csv-download-all");
   if (csvAllBtn) csvAllBtn.addEventListener("click", () => {
     const selected = channels.filter(ch => channelModels.has(ch));
@@ -8400,16 +8401,15 @@ function renderAllocatorScatter() {
       showToast({ variant: "warn", title: "다운로드할 채널이 없습니다", body: "추세선 적합이 가능한 채널을 1개 이상 선택하세요." });
       return;
     }
-    selected.forEach((ch, idx) => {
-      const m = channelModels.get(ch);
-      if (!m) return;
-      // 브라우저 다중 다운로드 차단 회피용 짧은 stagger
-      setTimeout(() => downloadChannelCSV(ch, metric, m), idx * 250);
-    });
+    if (typeof XLSX === "undefined") {
+      showToast({ variant: "warn", title: "XLSX 라이브러리 로드 실패", body: "네트워크를 확인하거나 새로고침 후 다시 시도해 주세요." });
+      return;
+    }
+    downloadChannelsWorkbook(selected, metric, channelModels);
     showToast({
       variant: "success",
-      title: `${selected.length}개 채널 CSV 다운로드 시작`,
-      body: "브라우저가 일괄 다운로드를 처음 차단하면 한 번 허용해 주세요.",
+      title: `${selected.length}개 채널 XLSX 다운로드`,
+      body: "각 채널이 별도 탭으로 구성된 단일 파일로 저장됩니다.",
     });
   });
 
@@ -8839,6 +8839,144 @@ function downloadChannelCSV(metaOrChannel, metricMaybe, metaMaybe) {
     body: `${truncateLabel(channel, 30)} · ${meta.model.type} 추세선 데이터 + Excel 공식 포함`,
     duration: 4000,
   });
+}
+
+/* 채널 1개 데이터를 2D AOA (Array of Arrays)로 변환 — XLSX 시트용 */
+function buildChannelSheetAOA(channel, meta, metric) {
+  const metricLabel = getCostMetricLabel(metric);
+  const unitLabel = getMetricUnitLabel(metric);
+  const formula = getModelFormula(meta.model, metricLabel);
+  if (!formula) return null;
+
+  const recentMs = ALLOC_STATE.recentDays * 86400 * 1000;
+  const rows = getMappedRows();
+  const dates = rows.map(r => r.date ? Date.parse(r.date) : NaN).filter(d => !isNaN(d));
+  const maxDate = dates.length ? Math.max(...dates) : null;
+  const recentThreshold = maxDate ? (maxDate - recentMs) : null;
+
+  const aoa = [];
+
+  // --- Metadata block ---
+  aoa.push(["Performance Marketing Library · Trendline Export"]);
+  aoa.push(["Generated", new Date().toISOString()]);
+  aoa.push(["Channel", channel]);
+  aoa.push(["Trend Type", meta.model.type]);
+  aoa.push(["R-squared", Number((meta.r2 ?? 0).toFixed(4))]);
+  aoa.push(["Cost Metric", metricLabel]);
+  aoa.push(["Unit", unitLabel]);
+  aoa.push(["Observed Cost Range", `${meta.xMin.toFixed(2)} ~ ${meta.xMax.toFixed(2)}`]);
+  aoa.push(["Data Points (after outlier removal)", meta.pts.length]);
+  aoa.push([]);
+
+  // --- Equation block ---
+  aoa.push(["Equation (Human Readable)", formula.text]);
+  aoa.push([]);
+  aoa.push(["Coefficients"]);
+  for (const [k, v] of Object.entries(formula.params)) {
+    aoa.push([k, v]);
+  }
+  aoa.push([]);
+  aoa.push(["Excel / Google Sheets Formula (put cost in A column starting row 2)"]);
+  aoa.push(["English locale", formula.excelEN]);
+  if (formula.excelEN !== formula.excelKR) {
+    aoa.push(["Korean locale (Excel)", formula.excelKR]);
+  }
+  aoa.push([]);
+  aoa.push(["How to use:"]);
+  aoa.push(["1. Put your test cost values in column A starting from row 2 of the 'Observed' or 'Predicted' table below (or a new sheet)"]);
+  aoa.push(["2. In an adjacent cell, paste the formula above (replace A2 with the actual cost cell reference)"]);
+  aoa.push([`3. The formula will output predicted ${metricLabel} for that cost`]);
+  aoa.push([]);
+
+  // --- Observed data ---
+  aoa.push(["section", "date", "cost", "cpr", "is_recent"]);
+  for (const p of meta.pts) {
+    const isRecent = recentThreshold && p.date && Date.parse(p.date) >= recentThreshold;
+    aoa.push([
+      "observed",
+      p.date || "",
+      Number(p.x.toFixed(2)),
+      Number(p.y.toFixed(4)),
+      isRecent ? "TRUE" : "FALSE",
+    ]);
+  }
+
+  // --- Predicted curve sample ---
+  aoa.push([]);
+  aoa.push(["section", "cost", "predicted_cpr", "note"]);
+  const STEPS = 20;
+  const margin = (meta.xMax - meta.xMin) * 0.05;
+  const fitMin = Math.max(0.0001, meta.xMin - margin);
+  const fitMax = meta.xMax + margin;
+  for (let i = 0; i <= STEPS; i++) {
+    const cost = fitMin + (fitMax - fitMin) * (i / STEPS);
+    const cpr = meta.model.predict(cost);
+    const inRange = cost >= meta.xMin && cost <= meta.xMax;
+    const valid = isFinite(cpr) && cpr > 0;
+    aoa.push([
+      "predicted",
+      Number(cost.toFixed(2)),
+      valid ? Number(cpr.toFixed(4)) : "",
+      valid ? (inRange ? "in_observed_range" : "extrapolation") : "out_of_range",
+    ]);
+  }
+
+  return aoa;
+}
+
+/* Excel 시트 이름 sanitize: 31자 제한, 금지 문자 (\ / ? * [ ] :) 제거, 중복 시 suffix */
+function sanitizeSheetName(name, usedNames) {
+  let s = String(name).replace(/[\\\/\?\*\[\]\:]/g, "_").slice(0, 31).trim() || "Sheet";
+  if (!usedNames.has(s)) { usedNames.add(s); return s; }
+  let i = 2;
+  while (usedNames.has(`${s.slice(0, 28)}_${i}`)) i++;
+  const final = `${s.slice(0, 28)}_${i}`;
+  usedNames.add(final);
+  return final;
+}
+
+/* 선택된 채널을 단일 XLSX로 다운로드. 채널 = 별도 탭. */
+function downloadChannelsWorkbook(selectedChannels, metric, channelModels) {
+  if (typeof XLSX === "undefined") return;
+  const wb = XLSX.utils.book_new();
+  const used = new Set();
+
+  // 요약 시트 (목차)
+  const summary = [
+    ["Performance Marketing Library · Channel Trendlines"],
+    ["Generated", new Date().toISOString()],
+    ["Cost Metric", getCostMetricLabel(metric)],
+    ["Channels", selectedChannels.length],
+    [],
+    ["#", "Channel", "Trend Type", "R²", "Cost Range (Min ~ Max)", "Data Points"],
+  ];
+  selectedChannels.forEach((ch, i) => {
+    const m = channelModels.get(ch);
+    if (!m) return;
+    summary.push([
+      i + 1, ch, m.model.type,
+      Number((m.r2 ?? 0).toFixed(4)),
+      `${m.xMin.toFixed(2)} ~ ${m.xMax.toFixed(2)}`,
+      m.pts.length,
+    ]);
+  });
+  const summaryWS = XLSX.utils.aoa_to_sheet(summary);
+  summaryWS["!cols"] = [{wch:4},{wch:28},{wch:10},{wch:8},{wch:24},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, summaryWS, sanitizeSheetName("_Summary", used));
+
+  // 채널별 시트
+  for (const ch of selectedChannels) {
+    const m = channelModels.get(ch);
+    if (!m) continue;
+    const aoa = buildChannelSheetAOA(ch, m, metric);
+    if (!aoa) continue;
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{wch:14},{wch:14},{wch:14},{wch:14},{wch:18}];
+    XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(ch, used));
+  }
+
+  const ts = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `channel_trendlines_${ts}.xlsx`);
 }
 
 function renderTrendComparison(meta) {
