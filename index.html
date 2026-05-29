@@ -1458,6 +1458,82 @@
   }
   .alloc-trend-r2-section tr.muted td { color: var(--text-muted); }
 
+  /* 일/월 예산 토글 */
+  .budget-period-toggle {
+    display: inline-flex;
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-default);
+    padding: 2px;
+    gap: 2px;
+    margin-left: 0.4rem;
+  }
+  .budget-period-toggle button {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius-default);
+    cursor: pointer;
+    transition: background 0.1s ease, color 0.1s ease;
+  }
+  .budget-period-toggle button:hover { color: var(--text-primary); }
+  .budget-period-toggle button.active {
+    background: var(--primary);
+    color: var(--surface-base);
+    font-weight: 600;
+  }
+
+  /* §4 채널별 상세 — editable 배분 Cost 셀 */
+  .alloc-cost-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .alloc-cost-input {
+    width: 110px;
+    background: var(--surface-container);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    padding: 0.25rem 0.4rem;
+    border-radius: var(--radius-default);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-align: right;
+    outline: none;
+  }
+  .alloc-cost-input:focus {
+    border-color: var(--primary);
+  }
+  .alloc-cost-input.locked {
+    border-color: rgba(247, 185, 85, 0.5);
+    background: rgba(247, 185, 85, 0.05);
+    color: #f7b955;
+  }
+  .alloc-cost-reset {
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    padding: 0.15rem 0.35rem;
+    border-radius: var(--radius-default);
+    cursor: pointer;
+    font-size: 11px;
+    line-height: 1;
+  }
+  .alloc-cost-reset:hover {
+    color: var(--text-primary);
+    border-color: var(--border-stronger);
+  }
+  .alloc-lock-mark {
+    font-size: 11px;
+    margin-left: 0.25rem;
+  }
+  .alloc-bar-seg.locked {
+    border-top: 2px solid #f7b955;
+  }
+
   /* chips 안 통화 토글 */
   .chip-currency {
     display: inline-flex;
@@ -5588,8 +5664,24 @@ function page_5_3() {
         <div class="alloc-card">
           <div class="alloc-controls" style="grid-template-columns: 1fr 200px 120px;">
             <div>
-              <label>총 예산</label>
-              <input id="alloc-budget" type="number" inputmode="numeric" placeholder="예: 10000000" value="${ALLOC_STATE.budget != null ? ALLOC_STATE.budget : ''}" />
+              <label style="display:flex;align-items:center;gap:0.5rem;">
+                <span>총 예산</span>
+                <span class="budget-period-toggle">
+                  <button type="button" data-period="daily"   class="${ALLOC_STATE.budgetPeriod === 'daily'   ? 'active' : ''}">일예산</button>
+                  <button type="button" data-period="monthly" class="${ALLOC_STATE.budgetPeriod === 'monthly' ? 'active' : ''}">월예산</button>
+                </span>
+              </label>
+              <input id="alloc-budget" type="number" inputmode="numeric" placeholder="${ALLOC_STATE.budgetPeriod === 'monthly' ? '예: 30000000 (월)' : '예: 1000000 (일)'}" value="${ALLOC_STATE.budget != null ? ALLOC_STATE.budget : ''}" />
+              <span class="ab-field-hint" id="alloc-budget-hint">
+                ${(() => {
+                  const raw = ALLOC_STATE.budget || 0;
+                  if (raw <= 0) return "추세선이 일 단위 데이터로 fit되어 있어 모든 계산은 일예산 기준입니다.";
+                  if (ALLOC_STATE.budgetPeriod === "monthly") {
+                    return `월 ${fmtCurrency(raw)} → 일 ${fmtCurrency(raw / 30)} (÷ 30)으로 환산해 분배`;
+                  }
+                  return `일 ${fmtCurrency(raw)} 기준 분배`;
+                })()}
+              </span>
             </div>
             <div>
               <label>성과 지표</label>
@@ -6211,7 +6303,9 @@ const ALLOC_STATE = {
   outlierMethod: "iqr",    // none | iqr | modz  (CPR(y축) 기준 채널별 적용)
   outlierStrength: "standard", // standard | strong | very_strong
   normalizeMode: "raw",    // raw | log | minmax | robust (차트 표시용)
-  budget: null,            // 총 예산 (예산 설정 § 입력값. 메모리 영속)
+  budget: null,            // 총 예산 (사용자 입력 raw 값)
+  budgetPeriod: "daily",   // daily | monthly (월예산이면 ÷30으로 일예산 환산)
+  allocOverrides: {},      // { channel: fixedCost } — 사용자가 수동 입력한 채널별 배분액 (고정)
   metric: null,            // 성과 지표 (installs | actions | pu_d7)
   selectedChannels: null,  // null = 자동 상위 6, Set = 선택된 채널들
   recentDays: 14,          // 최근 강조 기간 (일)
@@ -6263,6 +6357,13 @@ function resetChannelOverride(channel) {
 }
 function resetAllChannelOverrides() {
   ALLOC_STATE.perChannel = {};
+}
+
+/* 일예산 환산. 추세선은 일별(dt) 데이터로 fit되어 있으므로
+   분배 계산은 항상 일예산 기준. 월예산 입력 시 ÷ 30. */
+function getEffectiveDailyBudget() {
+  const raw = ALLOC_STATE.budget || 0;
+  return ALLOC_STATE.budgetPeriod === "monthly" ? raw / 30 : raw;
 }
 
 /* perChannel 상태를 cache 키에 포함시키기 위한 해시 */
@@ -7470,57 +7571,73 @@ function renderVizCharts() {
    - 추세선이 음수 CPR을 예측하면 그 채널은 skip (한계효용 종료)
    - 모든 채널에서 Δresults ≤ 0이면 종료, 잔여 금액 unallocated로 반환
    - selectedChannels Set이면 그 채널만 분배 대상 (산점도 선택 기준) */
-function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, stepRatio = 0.002 }) {
-  if (!modelsMap || totalBudget <= 0) return { items: [], unallocated: totalBudget || 0 };
+function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, overrides = {}, stepRatio = 0.002 }) {
+  if (!modelsMap || totalBudget <= 0) return { items: [], unallocated: totalBudget || 0, overspent: false, totalAllocated: 0 };
 
-  const channels = [];
+  // 1) 채널을 locked(수동 입력)와 greedy(자동 분배 대상)으로 분리
+  const lockedChannels = [];
+  const greedyChannels = [];
+  let fixedCostSum = 0;
+
   for (const [ch, meta] of modelsMap) {
     if (!meta || !meta.model) continue;
     if (selectedChannels && selectedChannels.size > 0 && !selectedChannels.has(ch)) continue;
-    channels.push({
-      channel: ch,
-      model: meta.model,
-      xMin: meta.xMin,
-      xMax: meta.xMax,
-      cost: 0,
-      results: 0,
-    });
+
+    if (overrides[ch] != null && overrides[ch] >= 0) {
+      const cost = Number(overrides[ch]);
+      const cpr = meta.model.predict(cost);
+      const results = (isFinite(cpr) && cpr > 0 && cost > 0) ? cost / cpr : 0;
+      lockedChannels.push({
+        channel: ch, model: meta.model, xMin: meta.xMin, xMax: meta.xMax,
+        cost, results, locked: true,
+      });
+      fixedCostSum += cost;
+    } else {
+      greedyChannels.push({
+        channel: ch, model: meta.model, xMin: meta.xMin, xMax: meta.xMax,
+        cost: 0, results: 0, locked: false,
+      });
+    }
   }
-  if (channels.length === 0) return { items: [], unallocated: totalBudget };
 
-  const step = totalBudget * stepRatio;
-  if (step <= 0) return { items: [], unallocated: totalBudget };
-  let remaining = totalBudget;
-  const maxIters = Math.ceil(1 / stepRatio) + 10;
-  let iter = 0;
+  const lockedTotal = fixedCostSum;
+  const overspent = fixedCostSum > totalBudget;
+  let remaining = Math.max(0, totalBudget - fixedCostSum);
 
-  while (remaining >= step && iter < maxIters) {
-    let bestCh = null;
-    let bestMarginal = 0;
-
-    for (const ch of channels) {
-      const newCost = ch.cost + step;
-      const cpr = ch.model.predict(newCost);
-      if (!isFinite(cpr) || cpr <= 0) continue;  // 음수/0 CPR = 한계효용 종료
-      const newResults = newCost / cpr;
-      const marginalResults = newResults - ch.results;
-      if (marginalResults <= 0) continue;
-      if (marginalResults > bestMarginal) {
-        bestMarginal = marginalResults;
-        bestCh = ch;
+  // 2) 남은 예산이 있으면 greedy 채널에 한계효용 그리디
+  if (greedyChannels.length > 0 && remaining > 0) {
+    const step = remaining * stepRatio;
+    if (step > 0) {
+      const maxIters = Math.ceil(1 / stepRatio) + 10;
+      let iter = 0;
+      while (remaining >= step && iter < maxIters) {
+        let bestCh = null;
+        let bestMarginal = 0;
+        for (const ch of greedyChannels) {
+          const newCost = ch.cost + step;
+          const cpr = ch.model.predict(newCost);
+          if (!isFinite(cpr) || cpr <= 0) continue;
+          const newResults = newCost / cpr;
+          const marginalResults = newResults - ch.results;
+          if (marginalResults <= 0) continue;
+          if (marginalResults > bestMarginal) {
+            bestMarginal = marginalResults;
+            bestCh = ch;
+          }
+        }
+        if (!bestCh) break;
+        bestCh.cost += step;
+        const cpr = bestCh.model.predict(bestCh.cost);
+        bestCh.results = bestCh.cost / cpr;
+        remaining -= step;
+        iter++;
       }
     }
-    if (!bestCh) break;
-
-    bestCh.cost += step;
-    const cpr = bestCh.model.predict(bestCh.cost);
-    bestCh.results = bestCh.cost / cpr;
-    remaining -= step;
-    iter++;
   }
 
-  const totalAllocated = channels.reduce((a, ch) => a + ch.cost, 0);
-  const items = channels
+  const allChannels = [...lockedChannels, ...greedyChannels];
+  const totalAllocated = allChannels.reduce((a, ch) => a + ch.cost, 0);
+  const items = allChannels
     .filter(ch => ch.cost > 0)
     .map(ch => ({
       channel: ch.channel,
@@ -7528,10 +7645,11 @@ function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, st
       results: ch.results,
       cpr: ch.results > 0 ? ch.cost / ch.results : null,
       weight: totalAllocated > 0 ? ch.cost / totalAllocated : 0,
+      locked: ch.locked,
     }))
     .sort((a, b) => b.weight - a.weight);
 
-  return { items, unallocated: Math.max(0, remaining), totalAllocated };
+  return { items, unallocated: Math.max(0, remaining), overspent, totalAllocated, lockedTotal };
 }
 
 function calculateAllocation(rows, _channelField, costField, resultsField, allowedChannels) {
@@ -8859,17 +8977,29 @@ function renderTrendSummary(trendInfo) {
 }
 
 function refreshAllocationResults() {
-  const budget = ALLOC_STATE.budget || 0;
+  // 일예산 환산 (월예산이면 ÷ 30)
+  const dailyBudget = getEffectiveDailyBudget();
   const tbody = document.getElementById("alloc-tbody");
   const barWrap = document.getElementById("alloc-bar");
   const legendWrap = document.getElementById("alloc-bar-legend");
-  // §3/§4 DOM이 없으면 (budget 미입력 등) skip
   if (!tbody || !barWrap) return;
 
-  if (budget <= 0) {
+  // hint 텍스트 동적 갱신
+  const hintEl = document.getElementById("alloc-budget-hint");
+  if (hintEl) {
+    const raw = ALLOC_STATE.budget || 0;
+    if (raw <= 0) {
+      hintEl.textContent = "추세선이 일 단위 데이터로 fit되어 있어 모든 계산은 일예산 기준입니다.";
+    } else if (ALLOC_STATE.budgetPeriod === "monthly") {
+      hintEl.innerHTML = `월 <strong>${fmtCurrency(raw)}</strong> → 일 <strong>${fmtCurrency(raw / 30)}</strong> (÷ 30) 기준 분배`;
+    } else {
+      hintEl.innerHTML = `일 <strong>${fmtCurrency(raw)}</strong> 기준 분배`;
+    }
+  }
+
+  if (dailyBudget <= 0) {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">총 예산을 입력해 주세요.</td></tr>`;
-    barWrap.innerHTML = "";
-    legendWrap.innerHTML = "";
+    barWrap.innerHTML = ""; legendWrap.innerHTML = "";
     return;
   }
 
@@ -8878,7 +9008,6 @@ function refreshAllocationResults() {
     : null;
   const modelsMap = ALLOC_CACHE.models;
 
-  // model 캐시가 비어있으면 (산점도 미렌더) mode A로 fallback
   if (!modelsMap || modelsMap.size === 0) {
     const metric = ALLOC_STATE.metric || "installs";
     const rows = getMappedRows();
@@ -8888,13 +9017,15 @@ function refreshAllocationResults() {
       barWrap.innerHTML = ""; legendWrap.innerHTML = "";
       return;
     }
-    renderAllocItems(alloc, budget, tbody, barWrap, legendWrap, "mode-a", null);
+    renderAllocItems(alloc, dailyBudget, tbody, barWrap, legendWrap, "mode-a", null);
     return;
   }
 
-  // 모드 B (한계효용 그리디) — 추세선 model 기반 최적 분배
-  const { items, unallocated, totalAllocated } = calculateAllocationModeB({
-    modelsMap, totalBudget: budget, selectedChannels: selected,
+  const { items, unallocated, overspent, totalAllocated, lockedTotal } = calculateAllocationModeB({
+    modelsMap,
+    totalBudget: dailyBudget,
+    selectedChannels: selected,
+    overrides: ALLOC_STATE.allocOverrides,
   });
 
   if (!items.length) {
@@ -8903,30 +9034,65 @@ function refreshAllocationResults() {
     return;
   }
 
-  renderAllocItems(items, budget, tbody, barWrap, legendWrap, "mode-b", { unallocated, totalAllocated });
+  renderAllocItems(items, dailyBudget, tbody, barWrap, legendWrap, "mode-b", { unallocated, overspent, totalAllocated, lockedTotal });
 }
 
 function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, extra) {
   tbody.innerHTML = items.map((it, i) => `
     <tr>
-      <td>${escapeHtml(it.channel)}</td>
-      <td class="tnum">${fmtCurrency(it.cost)}</td>
+      <td>${escapeHtml(it.channel)}${it.locked ? ' <span class="alloc-lock-mark" title="수동 입력">🔒</span>' : ''}</td>
+      <td>
+        <div class="alloc-cost-cell">
+          <input type="number" class="alloc-cost-input ${it.locked ? 'locked' : ''}"
+                 data-channel="${escapeHtml(it.channel)}"
+                 value="${Math.round(it.cost)}" step="100" min="0" />
+          ${it.locked
+            ? `<button class="alloc-cost-reset" data-channel="${escapeHtml(it.channel)}" title="자동 분배로 되돌리기">↺</button>`
+            : ''}
+        </div>
+      </td>
       <td class="tnum">${formatNumber(it.results, { decimals: 0 })}</td>
       <td class="tnum">${fmtCurrency(it.cpr, { metric: true })}</td>
-      <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong> · ${fmtCurrency(modeLabel === "mode-a" ? budget * it.weight : it.cost)}</td>
+      <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong></td>
     </tr>
   `).join("");
 
+  // editable input 핸들러 바인딩
+  tbody.querySelectorAll(".alloc-cost-input").forEach(input => {
+    input.addEventListener("change", () => {
+      const ch = input.dataset.channel;
+      const v = parseFloat(input.value);
+      if (isNaN(v) || v < 0) {
+        delete ALLOC_STATE.allocOverrides[ch];
+      } else {
+        ALLOC_STATE.allocOverrides[ch] = v;
+      }
+      refreshAllocationResults();
+    });
+    // Enter로 즉시 적용
+    input.addEventListener("keydown", e => { if (e.key === "Enter") input.blur(); });
+  });
+  tbody.querySelectorAll(".alloc-cost-reset").forEach(btn => {
+    btn.addEventListener("click", () => {
+      delete ALLOC_STATE.allocOverrides[btn.dataset.channel];
+      refreshAllocationResults();
+    });
+  });
+
   barWrap.innerHTML = items.map((it, i) => `
-    <div class="alloc-bar-seg" style="width:${(it.weight * 100).toFixed(2)}%;background:${CHART_THEME.series[i % CHART_THEME.series.length]};" title="${escapeHtml(it.channel)} ${(it.weight*100).toFixed(1)}%"></div>
+    <div class="alloc-bar-seg ${it.locked ? 'locked' : ''}" style="width:${(it.weight * 100).toFixed(2)}%;background:${CHART_THEME.series[i % CHART_THEME.series.length]};" title="${escapeHtml(it.channel)} ${(it.weight*100).toFixed(1)}%${it.locked ? ' · 수동 입력' : ''}"></div>
   `).join("") + (extra && extra.unallocated > 0
     ? `<div class="alloc-bar-seg" style="width:${(extra.unallocated / budget * 100).toFixed(2)}%;background:#444;border-left:1px dashed #888;" title="미배분 ${fmtCurrency(extra.unallocated)}"></div>`
     : "");
 
   legendWrap.innerHTML = items.map((it, i) => `
-    <span><span class="sw" style="background:${CHART_THEME.series[i % CHART_THEME.series.length]};"></span>${escapeHtml(it.channel)} <span class="tnum">${(it.weight*100).toFixed(1)}%</span></span>
-  `).join("") + (extra && extra.unallocated > 0
+    <span><span class="sw" style="background:${CHART_THEME.series[i % CHART_THEME.series.length]};"></span>${escapeHtml(it.channel)}${it.locked ? ' 🔒' : ''} <span class="tnum">${(it.weight*100).toFixed(1)}%</span></span>
+  `).join("")
+  + (extra && extra.unallocated > 0
     ? ` <span style="color:var(--text-muted);">· 미배분 ${fmtCurrency(extra.unallocated)} (한계효용 ≤ 0)</span>`
+    : "")
+  + (extra && extra.overspent
+    ? ` <span style="color:#ff8a8a;">· ⚠ 수동 입력 합계 ${fmtCurrency(extra.lockedTotal)}이 예산 ${fmtCurrency(budget)}을 초과</span>`
     : "");
 }
 
@@ -8944,6 +9110,19 @@ function bindBudgetAllocatorHandlers() {
   });
 
   const refresh = refreshAllocationResults;
+
+  // 일/월 예산 토글
+  document.querySelectorAll(".budget-period-toggle button[data-period]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      ALLOC_STATE.budgetPeriod = btn.dataset.period;
+      document.querySelectorAll(".budget-period-toggle button").forEach(b =>
+        b.classList.toggle("active", b.dataset.period === ALLOC_STATE.budgetPeriod));
+      // placeholder도 갱신
+      const inp = document.getElementById("alloc-budget");
+      if (inp) inp.placeholder = ALLOC_STATE.budgetPeriod === 'monthly' ? '예: 30000000 (월)' : '예: 1000000 (일)';
+      refreshAllocationResults();
+    });
+  });
 
   // budget input — display 토글 + debounce refresh (페이지 점프 방지)
   const budgetInput = document.getElementById("alloc-budget");
@@ -8967,13 +9146,14 @@ function bindBudgetAllocatorHandlers() {
     });
   }
 
-  // metric select — cache 무효 + 산점도 재계산 + 분배 결과 갱신 (페이지 재렌더 없이)
+  // metric select — cache 무효 + 수동 배분 리셋 + 산점도 재계산
   const metricSelect = document.getElementById("alloc-metric");
   if (metricSelect) {
     metricSelect.addEventListener("change", () => {
       ALLOC_STATE.metric = metricSelect.value;
+      ALLOC_STATE.allocOverrides = {};  // metric 바뀌면 채널별 모델도 다르므로 override 무효화
       clearAllocCache();
-      renderAllocatorScatter();  // 그 안에서 refreshAllocationResults도 호출됨
+      renderAllocatorScatter();
     });
   }
 
@@ -8994,9 +9174,10 @@ function handleCSVFile(file) {
     skipEmptyLines: true,
     transformHeader: h => String(h).trim(),
     complete: (results) => {
-      // 새 CSV 업로드 → Allocator 캐시 전체 무효화 + 채널별 셋업 리셋
+      // 새 CSV 업로드 → Allocator 캐시 + 채널별 셋업 + 수동 배분 리셋
       clearAllocCache();
       resetAllChannelOverrides();
+      ALLOC_STATE.allocOverrides = {};
       CSV_STATE.fileName = file.name;
       CSV_STATE.raw = results.data;
       CSV_STATE.headers = results.meta.fields || [];
