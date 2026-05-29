@@ -1458,6 +1458,22 @@
   }
   .alloc-trend-r2-section tr.muted td { color: var(--text-muted); }
 
+  /* chips 안 통화 토글 */
+  .chip-currency {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface-container-lowest);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-default);
+    padding: 2px;
+    gap: 2px;
+  }
+  .chip-currency button {
+    padding: 0.25rem 0.55rem;
+    font-size: 11px;
+    border-radius: var(--radius-default);
+  }
+
   /* 적용 컨텍스트 라벨 (글로벌 vs 단일 채널) */
   .alloc-scope-label {
     margin: 0 0 0.5rem;
@@ -5495,63 +5511,22 @@ function page_5_3() {
     chips: `
       <span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>
       <span class="chip ok"><span class="dot"></span>알고리즘 · 효율 기반 (모드 A)</span>
-      <span class="chip"><span class="dot"></span>참조 · Campaign Allocator (Streamlit)</span>
-      ${authStatusChip()}`,
-    summary: `채널별 <code>Efficiency = 1 / CPR</code> 을 정규화한 추천 비중. <strong>모드 A</strong>로 표기되며, 한계효용 그리디(모드 B) 및 추세선 적합(Linear/Log/Poly2/Power)은 추후 통합 예정입니다.`,
+      ${authStatusChip()}
+      <span class="chip-currency">
+        <button class="ab-pill ${AB_STATE.currency === 'KRW' ? 'active' : ''}" data-alloccurrency="KRW">₩ KRW</button>
+        <button class="ab-pill ${AB_STATE.currency === 'USD' ? 'active' : ''}" data-alloccurrency="USD">$ USD</button>
+      </span>`,
+    summary: `채널별 <code>Efficiency = 1 / CPR</code> 을 정규화한 추천 비중. <strong>산점도에서 선택한 채널/캠페인만</strong> 예산 배분 대상이 되며, 선택을 바꾸면 배분도 즉시 재계산됩니다.`,
     toc: [
-      { id: "s-controls", title: "예산 설정" },
       { id: "s-scatter", title: "Cost vs CPR 산점도" },
+      { id: "s-controls", title: "예산 설정" },
       { id: "s-bar", title: "배분 비중" },
       { id: "s-table", title: "채널별 상세" },
       { id: "s-algo", title: "알고리즘 노트" },
     ],
     body: `
-      <section class="block" id="s-controls">
-        <h2 class="section-title"><span class="ix">§1</span>예산 설정</h2>
-        <div class="alloc-card">
-          <div class="alloc-controls">
-            <div>
-              <label>총 예산 (선택)</label>
-              <input id="alloc-budget" type="number" inputmode="numeric" placeholder="예: 10000000" />
-            </div>
-            <div>
-              <label>성과 지표</label>
-              <select id="alloc-metric">
-                ${(() => {
-                  const av = getAvailableMetrics();
-                  // 첫 번째 매핑된 metric을 default selected로
-                  const firstAvailable = ["installs", "actions", "pu_d7"].find(k => av[k]) || "installs";
-                  const opt = (val, label) => {
-                    const enabled = av[val];
-                    const selected = val === firstAvailable ? "selected" : "";
-                    return `<option value="${val}" ${!enabled ? "disabled" : ""} ${selected}>${label}${!enabled ? " · 매핑 없음" : ""}</option>`;
-                  };
-                  return opt("installs", "설치수 (CPI 기준)") +
-                         opt("actions",  "액션 수 (CPA 기준)") +
-                         opt("pu_d7",    "결제수 D7 (CPA 기준)");
-                })()}
-              </select>
-            </div>
-            <div>
-              <label>통화</label>
-              <div class="ab-pillgroup" style="margin:0;padding:3px 4px;">
-                <button class="ab-pill" data-alloccurrency="KRW">₩ KRW</button>
-                <button class="ab-pill" data-alloccurrency="USD">$ USD</button>
-              </div>
-            </div>
-            <div>
-              <label>&nbsp;</label>
-              <button class="btn primary" id="alloc-recompute">재계산</button>
-            </div>
-          </div>
-          <p style="margin:0;font-size:12px;color:var(--text-muted);">
-            예산을 입력하지 않아도 추천 비중은 표시됩니다. 입력 시 채널별 배분 금액이 즉시 계산됩니다.
-          </p>
-        </div>
-      </section>
-
       <section class="block" id="s-scatter">
-        <h2 class="section-title"><span class="ix">§2</span>Cost vs CPR 산점도 & 추세선</h2>
+        <h2 class="section-title"><span class="ix">§1</span>Cost vs CPR 산점도 & 추세선</h2>
         <p style="color:var(--text-secondary);font-size:13px;">
           각 row를 (Cost, CPR) 점으로 시각화하고, 채널별로 추세선을 적합합니다.
           <strong>최근 ${ALLOC_STATE.recentDays}일</strong> 데이터는 ▲ 마커 + 진한 색으로 강조됩니다.
@@ -5608,6 +5583,50 @@ function page_5_3() {
         <div id="alloc-sim-container" style="margin-top:1rem;"></div>
       </section>
 
+      <section class="block" id="s-controls">
+        <h2 class="section-title"><span class="ix">§2</span>예산 설정</h2>
+        <div class="alloc-card">
+          <div class="alloc-controls" style="grid-template-columns: 1fr 200px 120px;">
+            <div>
+              <label>총 예산</label>
+              <input id="alloc-budget" type="number" inputmode="numeric" placeholder="예: 10000000" value="${ALLOC_STATE.budget != null ? ALLOC_STATE.budget : ''}" />
+            </div>
+            <div>
+              <label>성과 지표</label>
+              <select id="alloc-metric">
+                ${(() => {
+                  const av = getAvailableMetrics();
+                  const firstAvailable = ["installs", "actions", "pu_d7"].find(k => av[k]) || "installs";
+                  if (!ALLOC_STATE.metric || !av[ALLOC_STATE.metric]) ALLOC_STATE.metric = firstAvailable;
+                  const opt = (val, label) => {
+                    const enabled = av[val];
+                    const sel = val === ALLOC_STATE.metric ? "selected" : "";
+                    return `<option value="${val}" ${!enabled ? "disabled" : ""} ${sel}>${label}${!enabled ? " · 매핑 없음" : ""}</option>`;
+                  };
+                  return opt("installs", "설치수 (CPI 기준)") +
+                         opt("actions",  "액션 수 (CPA 기준)") +
+                         opt("pu_d7",    "결제수 D7 (CPA 기준)");
+                })()}
+              </select>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button class="btn primary" id="alloc-recompute">재계산</button>
+            </div>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--text-secondary);">
+            ${(() => {
+              const sel = ALLOC_STATE.selectedChannels;
+              const cnt = sel ? sel.size : 0;
+              return cnt > 0
+                ? `산점도에서 선택한 <strong>${cnt}개 채널/캠페인</strong>에 대해 예산을 배분합니다. 선택을 바꾸면 즉시 재계산됩니다.`
+                : `산점도에서 분배할 채널/캠페인을 먼저 선택하세요.`;
+            })()}
+          </p>
+        </div>
+      </section>
+
+      ${(ALLOC_STATE.budget || 0) > 0 ? `
       <section class="block" id="s-bar">
         <h2 class="section-title"><span class="ix">§3</span>추천 배분 비중</h2>
         <div class="alloc-bar" id="alloc-bar"></div>
@@ -5631,6 +5650,15 @@ function page_5_3() {
           </table>
         </div>
       </section>
+      ` : `
+      <div class="callout info" style="margin: 1.25rem 0;">
+        <div class="ico">i</div>
+        <div class="body">
+          <strong>예산을 입력하면 분배 결과가 표시됩니다</strong>
+          <p>§2에서 총 예산을 입력하세요. 산점도(§1)에서 선택한 채널/캠페인에 대한 추천 배분 비중과 채널별 상세가 즉시 계산됩니다.</p>
+        </div>
+      </div>
+      `}
 
       <section class="block" id="s-algo">
         <h2 class="section-title"><span class="ix">§5</span>알고리즘 노트</h2>
@@ -6183,6 +6211,8 @@ const ALLOC_STATE = {
   outlierMethod: "iqr",    // none | iqr | modz  (CPR(y축) 기준 채널별 적용)
   outlierStrength: "standard", // standard | strong | very_strong
   normalizeMode: "raw",    // raw | log | minmax | robust (차트 표시용)
+  budget: null,            // 총 예산 (예산 설정 § 입력값. 메모리 영속)
+  metric: null,            // 성과 지표 (installs | actions | pu_d7)
   selectedChannels: null,  // null = 자동 상위 6, Set = 선택된 채널들
   recentDays: 14,          // 최근 강조 기간 (일)
   showRecent: true,
@@ -7429,13 +7459,15 @@ function renderVizCharts() {
    - CPR Cap (상한 설정 시 외삽 위험 그룹 차단)
    - 최신 데이터 가중치 (Exponential, 반감기 30일)
 */
-function calculateAllocation(rows, _channelField, costField, resultsField) {
+function calculateAllocation(rows, _channelField, costField, resultsField, allowedChannels) {
   if (!costField || !resultsField) return [];
   // 채널/캠페인 그룹 키 (getRowGroupKey 사용)
+  // allowedChannels: Set이면 그 채널만 포함. null/undefined면 전체.
   const map = new Map();
   for (const r of rows) {
     const ch = getRowGroupKey(r);
     if (!ch) continue;
+    if (allowedChannels && !allowedChannels.has(ch)) continue;
     const cost = Number(r[costField]) || 0;
     const res = Number(r[resultsField]) || 0;
     if (!map.has(ch)) map.set(ch, { channel: ch, cost: 0, results: 0 });
@@ -7650,8 +7682,10 @@ function renderAllocatorScatter() {
   const canvas = document.getElementById("chart-alloc-scatter");
   if (!canvas) return;
 
+  // metric은 ALLOC_STATE에서 (예산 설정의 select가 아직 렌더 안 됐어도 작동)
   const metricSelect = document.getElementById("alloc-metric");
-  const metric = metricSelect ? metricSelect.value : "installs";
+  const metric = ALLOC_STATE.metric || (metricSelect ? metricSelect.value : null) || "installs";
+  if (!ALLOC_STATE.metric) ALLOC_STATE.metric = metric;
   const rows = getMappedRows();
 
   // 채널별 raw points → 메모이제이션
@@ -7916,6 +7950,18 @@ function renderAllocatorScatter() {
 
   // === 시뮬레이션 카드 (채널 1개 선택 시에만) ===
   renderSimulationCard(channels, channelModels, metric);
+
+  // === 산점도 채널 선택 변경 시 §3/§4 분배 결과도 같이 갱신 ===
+  refreshAllocationResults();
+
+  // 예산 설정 §2의 안내 문구 ("N개 채널 선택됨") 동적 업데이트
+  const cnt = ALLOC_STATE.selectedChannels ? ALLOC_STATE.selectedChannels.size : 0;
+  const hintEl = document.querySelector("#s-controls .alloc-card p");
+  if (hintEl) {
+    hintEl.innerHTML = cnt > 0
+      ? `산점도에서 선택한 <strong>${cnt}개 채널/캠페인</strong>에 대해 예산을 배분합니다. 선택을 바꾸면 즉시 재계산됩니다.`
+      : `산점도에서 분배할 채널/캠페인을 먼저 선택하세요.`;
+  }
 
   // 채널 chip 클릭 핸들러 (debounced)
   document.querySelectorAll(".alloc-chip[data-channel]").forEach(btn => {
@@ -8732,52 +8778,90 @@ function renderTrendSummary(trendInfo) {
   `;
 }
 
+function refreshAllocationResults() {
+  const budget = ALLOC_STATE.budget || 0;
+  const metric = ALLOC_STATE.metric || "installs";
+  const tbody = document.getElementById("alloc-tbody");
+  const barWrap = document.getElementById("alloc-bar");
+  const legendWrap = document.getElementById("alloc-bar-legend");
+  // §3/§4가 budget 미입력 시 DOM에 없음 — 그땐 skip
+  if (!tbody || !barWrap) return;
+
+  // 산점도에서 선택된 채널만 분배 대상
+  const selected = ALLOC_STATE.selectedChannels && ALLOC_STATE.selectedChannels.size > 0
+    ? ALLOC_STATE.selectedChannels
+    : null;
+  const rows = getMappedRows();
+  const alloc = calculateAllocation(rows, "channel", "cost", metric, selected);
+
+  if (!alloc.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">선택한 채널의 데이터가 없거나 매핑이 부족합니다. 산점도에서 채널을 선택했는지 확인하세요.</td></tr>`;
+    barWrap.innerHTML = "";
+    legendWrap.innerHTML = "";
+    return;
+  }
+
+  tbody.innerHTML = alloc.map((it, i) => `
+    <tr>
+      <td>${escapeHtml(it.channel)}</td>
+      <td class="tnum">${fmtCurrency(it.cost)}</td>
+      <td class="tnum">${formatNumber(it.results, { decimals: 0 })}</td>
+      <td class="tnum">${fmtCurrency(it.cpr, { metric: true })}</td>
+      <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong> · ${budget > 0 ? fmtCurrency(budget * it.weight) : "—"}</td>
+    </tr>
+  `).join("");
+
+  barWrap.innerHTML = alloc.map((it, i) => `
+    <div class="alloc-bar-seg" style="width:${(it.weight * 100).toFixed(2)}%;background:${CHART_THEME.series[i % CHART_THEME.series.length]};" title="${escapeHtml(it.channel)} ${(it.weight*100).toFixed(1)}%"></div>
+  `).join("");
+
+  legendWrap.innerHTML = alloc.map((it, i) => `
+    <span><span class="sw" style="background:${CHART_THEME.series[i % CHART_THEME.series.length]};"></span>${escapeHtml(it.channel)} <span class="tnum">${(it.weight*100).toFixed(1)}%</span></span>
+  `).join("");
+}
+
 function bindBudgetAllocatorHandlers() {
-  const refresh = () => {
-    const budgetInput = document.getElementById("alloc-budget");
-    const metricSelect = document.getElementById("alloc-metric");
-    const budget = parseFloat(budgetInput.value) || 0;
-    const metric = metricSelect.value;  // installs / pu_d7
+  // 통화 토글 (chips에 위치, navigate로 페이지 전체 재렌더)
+  document.querySelectorAll(".chip-currency button[data-alloccurrency]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      AB_STATE.currency = btn.dataset.alloccurrency;
+      navigate("5-3");  // 페이지 전체 재렌더 → 모든 통화 표시 갱신
+    });
+  });
 
-    const rows = getMappedRows();
-    const alloc = calculateAllocation(rows, "channel", "cost", metric);
-    const tbody = document.getElementById("alloc-tbody");
-    const barWrap = document.getElementById("alloc-bar");
-    const legendWrap = document.getElementById("alloc-bar-legend");
-    if (!tbody || !barWrap) return;
+  const refresh = refreshAllocationResults;
 
-    if (!alloc.length) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">사용 가능한 데이터가 없습니다. CSV 매핑에 channel / cost / ${metric === "installs" ? "installs" : "pu_d7"} 컬럼이 필요합니다.</td></tr>`;
-      barWrap.innerHTML = "";
-      legendWrap.innerHTML = "";
-      return;
-    }
+  // budget input — ALLOC_STATE 저장 + 빈/양수 전환 시 페이지 재렌더 (§3/§4 DOM 자체 토글)
+  const budgetInput = document.getElementById("alloc-budget");
+  if (budgetInput) {
+    let prevHasBudget = (ALLOC_STATE.budget || 0) > 0;
+    budgetInput.addEventListener("input", () => {
+      const newBudget = parseFloat(budgetInput.value) || null;
+      ALLOC_STATE.budget = newBudget;
+      const newHasBudget = (newBudget || 0) > 0;
+      if (newHasBudget !== prevHasBudget) {
+        // 0 ↔ 양수 전환 — §3/§4 DOM 자체가 있어야/없어야 함 → 페이지 재렌더
+        prevHasBudget = newHasBudget;
+        navigate("5-3");
+      } else if (newHasBudget) {
+        // 같은 상태(양수→양수) 변경 — 부분 갱신만
+        refresh();
+      }
+    });
+  }
 
-    tbody.innerHTML = alloc.map((it, i) => `
-      <tr>
-        <td>${escapeHtml(it.channel)}</td>
-        <td class="tnum">${formatNumber(it.cost, { decimals: 0 })}</td>
-        <td class="tnum">${formatNumber(it.results, { decimals: 0 })}</td>
-        <td class="tnum">${formatNumber(it.cpr, { decimals: 2 })}</td>
-        <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong> · ${budget > 0 ? formatNumber(budget * it.weight, { decimals: 0 }) : "—"}</td>
-      </tr>
-    `).join("");
-
-    barWrap.innerHTML = alloc.map((it, i) => `
-      <div class="alloc-bar-seg" style="width:${(it.weight * 100).toFixed(2)}%;background:${CHART_THEME.series[i % CHART_THEME.series.length]};" title="${escapeHtml(it.channel)} ${(it.weight*100).toFixed(1)}%"></div>
-    `).join("");
-
-    legendWrap.innerHTML = alloc.map((it, i) => `
-      <span><span class="sw" style="background:${CHART_THEME.series[i % CHART_THEME.series.length]};"></span>${escapeHtml(it.channel)} <span class="tnum">${(it.weight*100).toFixed(1)}%</span></span>
-    `).join("");
-  };
+  // metric select — ALLOC_STATE 저장 + cache 무효 + 페이지 재렌더
+  const metricSelect = document.getElementById("alloc-metric");
+  if (metricSelect) {
+    metricSelect.addEventListener("change", () => {
+      ALLOC_STATE.metric = metricSelect.value;
+      clearAllocCache();  // metric 변경 시 byChannel 키 변경
+      navigate("5-3");
+    });
+  }
 
   const recomputeBtn = document.getElementById("alloc-recompute");
   if (recomputeBtn) recomputeBtn.addEventListener("click", () => { refresh(); renderAllocatorScatter(); });
-  const budgetInput = document.getElementById("alloc-budget");
-  if (budgetInput) budgetInput.addEventListener("input", refresh);
-  const metricSelect = document.getElementById("alloc-metric");
-  if (metricSelect) metricSelect.addEventListener("change", () => { refresh(); renderAllocatorScatter(); });
 
   refresh();
   renderAllocatorScatter();
