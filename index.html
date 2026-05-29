@@ -1291,6 +1291,32 @@
     margin-bottom: 0.875rem;
     padding-bottom: 0.875rem;
     border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .alloc-sim-header-left { flex: 1; min-width: 0; }
+  .alloc-csv-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--surface-container);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    padding: 0.45rem 0.75rem;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: border-color 0.1s ease, background 0.1s ease, color 0.1s ease;
+    flex-shrink: 0;
+  }
+  .alloc-csv-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(173, 198, 255, 0.06);
   }
   .alloc-sim-tag {
     display: inline-block;
@@ -1431,6 +1457,115 @@
     color: #5ad19a;
   }
   .alloc-trend-r2-section tr.muted td { color: var(--text-muted); }
+
+  /* 적용 컨텍스트 라벨 (글로벌 vs 단일 채널) */
+  .alloc-scope-label {
+    margin: 0 0 0.5rem;
+    font-size: 12px;
+  }
+  .alloc-scope-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-container-lowest);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.35;
+  }
+  .alloc-scope-pill.single {
+    border-color: rgba(76, 215, 246, 0.3);
+    background: rgba(76, 215, 246, 0.06);
+    color: var(--text-primary);
+  }
+  .alloc-scope-pill.global {
+    border-color: rgba(173, 198, 255, 0.2);
+    background: rgba(173, 198, 255, 0.04);
+  }
+  .alloc-scope-pill strong { color: var(--text-primary); }
+
+  /* chip ★ 마크 */
+  .alloc-chip-star {
+    color: #5ad19a;
+    font-size: 11px;
+    margin-left: 0.25rem;
+    font-weight: 600;
+  }
+  .alloc-chip.overridden {
+    border-color: rgba(90, 209, 154, 0.35);
+    background: rgba(90, 209, 154, 0.04);
+  }
+  .alloc-chip.overridden.active {
+    background: rgba(90, 209, 154, 0.08);
+    border-color: rgba(90, 209, 154, 0.55);
+  }
+
+  /* 채널 셋업 패널 (시뮬레이션 카드 상단) */
+  .alloc-channel-setup {
+    background: var(--surface-container-low);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem 0.875rem;
+    margin-bottom: 0.875rem;
+  }
+  .alloc-channel-setup-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+  }
+  .alloc-channel-setup-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .alloc-reset-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 138, 138, 0.3);
+    color: #ff8a8a;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius-default);
+    cursor: pointer;
+    transition: background 0.1s ease;
+  }
+  .alloc-reset-btn:hover { background: rgba(255, 138, 138, 0.08); }
+  .alloc-channel-setup-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+  }
+  .setup-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--surface-container);
+    border: 1px solid var(--border-subtle);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-default);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  .setup-tag.overridden {
+    border-color: rgba(90, 209, 154, 0.35);
+    background: rgba(90, 209, 154, 0.06);
+  }
+  .setup-tag-key { color: var(--text-muted); }
+  .setup-tag-val { color: var(--text-primary); font-weight: 600; }
+  .alloc-channel-setup-hint {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
 
   /* ========== A/B Test Calculator ========== */
   .ab-tabs {
@@ -2211,13 +2346,13 @@ function isFirstGroupOfPhase(groupId) {
 const STANDARD_FIELDS = {
   date:          { label: "날짜",         aliases: ["dt", "날짜", "event_date", "day"],          type: "date",    required: true,  group: "디멘션" },
   platform:      { label: "플랫폼(OS)",   aliases: ["os", "platform_name", "플랫폼"],            type: "enum",    required: false, group: "디멘션" },
-  channel:       { label: "채널/매체",    aliases: ["network", "source", "media", "매체"],       type: "string",  required: true,  group: "디멘션" },
-  campaign_name: { label: "캠페인명",     aliases: ["campaign", "캠페인", "캠페인명"],           type: "string",  required: false, group: "디멘션" },
+  channel:       { label: "채널/매체",    aliases: ["network", "source", "media", "매체"],       type: "string",  required: false, group: "디멘션", oneOfGroup: "grouping" },
+  campaign_name: { label: "캠페인명",     aliases: ["campaign", "캠페인", "캠페인명"],           type: "string",  required: false, group: "디멘션", oneOfGroup: "grouping" },
   cost:          { label: "비용",         aliases: ["spend", "비용", "광고비"],                  type: "number",  required: true,  group: "단일 지표" },
   impressions:   { label: "노출수",       aliases: ["imp", "impression", "노출"],                type: "number",  required: false, group: "단일 지표" },
   clicks:        { label: "클릭수",       aliases: ["click", "클릭"],                            type: "number",  required: false, group: "단일 지표" },
-  installs:      { label: "설치수",       aliases: ["install", "설치", "inst"],                  type: "number",  required: true,  group: "단일 지표" },
-  actions:       { label: "액션 수",      aliases: ["action", "actions", "conversions", "events", "전환", "액션"], type: "number", required: false, group: "단일 지표" },
+  installs:      { label: "설치수",       aliases: ["install", "설치", "inst"],                  type: "number",  required: false, group: "단일 지표", oneOfGroup: "outcome" },
+  actions:       { label: "액션 수",      aliases: ["action", "actions", "conversions", "events", "전환", "액션"], type: "number", required: false, group: "단일 지표", oneOfGroup: "outcome" },
   revenue_d0:    { label: "매출 D0",      aliases: ["rev_d0", "revenue0", "매출_d0"],            type: "number",  required: false, group: "코호트 D0", cohort: 0 },
   pu_d0:         { label: "결제건수 D0",  aliases: ["pu_cnt_d0", "purchase_d0", "결제_d0"],      type: "number",  required: false, group: "코호트 D0", cohort: 0 },
   ret_d0:        { label: "잔존율 D0",    aliases: ["retention_d0", "잔존_d0"],                  type: "percent", required: false, group: "코호트 D0", cohort: 0 },
@@ -4811,13 +4946,46 @@ function autoMapHeaders(csvHeaders) {
 }
 
 // 필수 필드 누락 검사
+//   - required: true 필드는 무조건 매핑되어야 함 (date, cost)
+//   - oneOfGroup이 같은 필드들은 그 중 최소 1개만 매핑되면 OK
+//     · grouping: channel / campaign_name (둘 중 하나)
+//     · outcome:  installs / actions       (둘 중 하나)
 function checkRequiredFields() {
-  const mappedFields = new Set(Object.values(CSV_STATE.mapping).filter(v => v !== "__ignore__"));
+  const mapped = new Set(Object.values(CSV_STATE.mapping).filter(v => v !== "__ignore__"));
   const missing = [];
+
+  // 1) 무조건 필수
   for (const [key, def] of Object.entries(STANDARD_FIELDS)) {
-    if (def.required && !mappedFields.has(key)) missing.push(key);
+    if (def.required && !mapped.has(key)) missing.push(STANDARD_FIELDS[key].label);
+  }
+
+  // 2) oneOfGroup: 그룹별로 1개 이상 매핑 필요
+  const groups = {};
+  for (const [key, def] of Object.entries(STANDARD_FIELDS)) {
+    if (!def.oneOfGroup) continue;
+    if (!groups[def.oneOfGroup]) groups[def.oneOfGroup] = [];
+    groups[def.oneOfGroup].push(key);
+  }
+  const GROUP_LABELS = {
+    grouping: "채널/매체 또는 캠페인명 중 하나",
+    outcome:  "설치수 또는 액션 수 중 하나",
+  };
+  for (const [gname, keys] of Object.entries(groups)) {
+    if (!keys.some(k => mapped.has(k))) {
+      missing.push(GROUP_LABELS[gname] || keys.join(" / "));
+    }
   }
   return missing;
+}
+
+// 매핑 상태 점검 — 어떤 metric이 사용 가능한지 (둘 다 있으면 사용자가 선택)
+function getAvailableMetrics() {
+  const mapped = new Set(Object.values(CSV_STATE.mapping).filter(v => v !== "__ignore__"));
+  return {
+    installs: mapped.has("installs"),
+    actions:  mapped.has("actions"),
+    pu_d7:    mapped.has("pu_d7"),
+  };
 }
 
 // 매핑된 데이터를 표준 필드 키 기반으로 변환
@@ -5349,9 +5517,19 @@ function page_5_3() {
             <div>
               <label>성과 지표</label>
               <select id="alloc-metric">
-                <option value="installs">설치수 (CPI 기준)</option>
-                <option value="actions">액션 수 (CPA 기준)</option>
-                <option value="pu_d7">결제수 D7 (CPA 기준)</option>
+                ${(() => {
+                  const av = getAvailableMetrics();
+                  // 첫 번째 매핑된 metric을 default selected로
+                  const firstAvailable = ["installs", "actions", "pu_d7"].find(k => av[k]) || "installs";
+                  const opt = (val, label) => {
+                    const enabled = av[val];
+                    const selected = val === firstAvailable ? "selected" : "";
+                    return `<option value="${val}" ${!enabled ? "disabled" : ""} ${selected}>${label}${!enabled ? " · 매핑 없음" : ""}</option>`;
+                  };
+                  return opt("installs", "설치수 (CPI 기준)") +
+                         opt("actions",  "액션 수 (CPA 기준)") +
+                         opt("pu_d7",    "결제수 D7 (CPA 기준)");
+                })()}
               </select>
             </div>
             <div>
@@ -5378,6 +5556,7 @@ function page_5_3() {
           각 row를 (Cost, CPR) 점으로 시각화하고, 채널별로 추세선을 적합합니다.
           <strong>최근 ${ALLOC_STATE.recentDays}일</strong> 데이터는 ▲ 마커 + 진한 색으로 강조됩니다.
         </p>
+        <div id="alloc-scope-label" class="alloc-scope-label"></div>
         <div class="alloc-scatter-controls">
           <div class="ab-pillgroup">
             <span class="ab-pillgroup-label">추세선</span>
@@ -6013,7 +6192,58 @@ const ALLOC_STATE = {
     currentCost: null,
     targetCost: null,
   },
+  /* 채널별 개별 셋업 (메모리만, CSV 재업로드 시 리셋)
+     단일 채널 선택 시 토글 변경하면 그 채널의 perChannel entry에 저장됨.
+     다중 채널 보기 시 글로벌 토글 변경은 미설정 채널만 영향.
+     구조: { [channelKey]: { trendType?, weightMode?, outlierMethod?, outlierStrength? } } */
+  perChannel: {},
 };
+
+/* 채널별 effective 값 lookup. perChannel에 있으면 그 값, 없으면 글로벌 default. */
+function getEffSetting(channel, field) {
+  return ALLOC_STATE.perChannel[channel]?.[field] ?? ALLOC_STATE[field];
+}
+function isSingleChannelMode() {
+  return ALLOC_STATE.selectedChannels?.size === 1;
+}
+function getSelectedSingleChannel() {
+  return isSingleChannelMode() ? [...ALLOC_STATE.selectedChannels][0] : null;
+}
+function hasChannelOverride(channel) {
+  const s = ALLOC_STATE.perChannel[channel];
+  return !!(s && Object.keys(s).length > 0);
+}
+
+/* 토글 핸들러용 헬퍼.
+   - 단일 채널 모드 → 그 채널의 perChannel[field] 변경
+   - 다중 채널 모드 → 글로벌 ALLOC_STATE[field] 변경 (개별 설정 채널은 자동 유지) */
+function setTogglePerContext(field, value) {
+  const single = getSelectedSingleChannel();
+  if (single) {
+    if (!ALLOC_STATE.perChannel[single]) ALLOC_STATE.perChannel[single] = {};
+    ALLOC_STATE.perChannel[single][field] = value;
+  } else {
+    ALLOC_STATE[field] = value;
+  }
+}
+
+/* perChannel 일부 또는 전체 리셋 */
+function resetChannelOverride(channel) {
+  delete ALLOC_STATE.perChannel[channel];
+}
+function resetAllChannelOverrides() {
+  ALLOC_STATE.perChannel = {};
+}
+
+/* perChannel 상태를 cache 키에 포함시키기 위한 해시 */
+function perChannelHash(field) {
+  const entries = [];
+  for (const [ch, s] of Object.entries(ALLOC_STATE.perChannel)) {
+    if (s[field] != null) entries.push(`${ch}:${s[field]}`);
+  }
+  entries.sort();
+  return entries.join("|");
+}
 
 /* 이상치 제거 강도 → numeric 임계값 매핑 (낮을수록 더 공격적으로 제거) */
 const OUTLIER_STRENGTH = {
@@ -6045,13 +6275,26 @@ function clearAllocCache() {
   for (const k of Object.keys(ALLOC_CACHE)) ALLOC_CACHE[k] = null;
 }
 
-/* 채널별 raw points (cost > 0, results > 0 자동 필터). 의존성: rows, metric. */
+/* row → 그룹 키 (채널 + 캠페인명).
+   - 둘 다 있으면 "채널 · 캠페인" 으로 세분화
+   - 둘 중 하나만 있으면 그 값 그대로
+   - 둘 다 없으면 null (건너뜀) */
+function getRowGroupKey(row) {
+  const ch = String(row.channel ?? "").trim();
+  const cp = String(row.campaign_name ?? "").trim();
+  if (ch && cp) return `${ch} · ${cp}`;
+  if (ch) return ch;
+  if (cp) return cp;
+  return null;
+}
+
+/* 그룹별 raw points (cost > 0, results > 0 자동 필터). 의존성: rows, metric. */
 function getCachedByChannel(rows, metric) {
   const key = `${rows.length}|${metric}`;
   if (ALLOC_CACHE.byChannelKey === key && ALLOC_CACHE.byChannel) return ALLOC_CACHE.byChannel;
   const m = new Map();
   for (const r of rows) {
-    const ch = String(r.channel ?? "").trim();
+    const ch = getRowGroupKey(r);
     if (!ch) continue;
     const cost = Number(r.cost) || 0;
     const res  = Number(r[metric]) || 0;
@@ -6061,44 +6304,50 @@ function getCachedByChannel(rows, metric) {
   }
   ALLOC_CACHE.byChannel    = m;
   ALLOC_CACHE.byChannelKey = key;
-  // 의존 cache 무효화
   ALLOC_CACHE.outliers = null; ALLOC_CACHE.outliersKey = null;
   ALLOC_CACHE.weights  = null; ALLOC_CACHE.weightsKey  = null;
   ALLOC_CACHE.models   = null; ALLOC_CACHE.modelsKey   = null;
+  ALLOC_CACHE.allFits  = null; ALLOC_CACHE.allFitsKey  = null;
   return m;
 }
 
-/* 채널별 outlier 결과. 의존성: byChannelKey + method + strength */
+/* 채널별 outlier 결과. 의존성: byChannelKey + 글로벌 method/strength + perChannel 해시 */
 function getCachedOutliers(byChannel) {
-  const method = ALLOC_STATE.outlierMethod;
-  const strength = ALLOC_STATE.outlierStrength;
-  const key = `${ALLOC_CACHE.byChannelKey}|${method}|${strength}`;
+  const pcHash = `${perChannelHash("outlierMethod")}|${perChannelHash("outlierStrength")}`;
+  const key = `${ALLOC_CACHE.byChannelKey}|${ALLOC_STATE.outlierMethod}|${ALLOC_STATE.outlierStrength}|${pcHash}`;
   if (ALLOC_CACHE.outliersKey === key && ALLOC_CACHE.outliers) return ALLOC_CACHE.outliers;
-  const opts = getOutlierOpts(method, strength);
   const m = new Map();
   for (const [ch, pts] of byChannel) {
-    m.set(ch, ALLOC_MATH.removeOutliers(pts, method, opts));
+    const effMethod = getEffSetting(ch, "outlierMethod");
+    const effStrength = getEffSetting(ch, "outlierStrength");
+    const opts = getOutlierOpts(effMethod, effStrength);
+    m.set(ch, ALLOC_MATH.removeOutliers(pts, effMethod, opts));
   }
   ALLOC_CACHE.outliers    = m;
   ALLOC_CACHE.outliersKey = key;
-  ALLOC_CACHE.models = null; ALLOC_CACHE.modelsKey = null;
+  ALLOC_CACHE.weights = null; ALLOC_CACHE.weightsKey = null;
+  ALLOC_CACHE.allFits = null; ALLOC_CACHE.allFitsKey = null;
+  ALLOC_CACHE.models = null;  ALLOC_CACHE.modelsKey = null;
   return m;
 }
 
-/* 채널별 weights. 의존성: outliersKey + weightMode + halfLifeDays + maxDate */
+/* 채널별 weights. 의존성: outliersKey + 글로벌 weightMode + halfLife + maxDate + perChannel 해시 */
 function getCachedWeights(outlierMap, maxDate) {
   const wm = ALLOC_STATE.weightMode;
   const hl = ALLOC_STATE.halfLifeDays;
-  const key = `${ALLOC_CACHE.outliersKey}|${wm}|${hl}|${maxDate}`;
+  const pcHash = perChannelHash("weightMode");
+  const key = `${ALLOC_CACHE.outliersKey}|${wm}|${hl}|${maxDate}|${pcHash}`;
   if (ALLOC_CACHE.weightsKey === key && ALLOC_CACHE.weights) return ALLOC_CACHE.weights;
   const m = new Map();
   for (const [ch, outRes] of outlierMap) {
+    const effWm = getEffSetting(ch, "weightMode");
     const dates = (outRes.kept || []).map(p => p.date);
-    m.set(ch, ALLOC_MATH.calcDateWeights(dates, wm, maxDate, hl));
+    m.set(ch, ALLOC_MATH.calcDateWeights(dates, effWm, maxDate, hl));
   }
   ALLOC_CACHE.weights    = m;
   ALLOC_CACHE.weightsKey = key;
-  ALLOC_CACHE.models = null; ALLOC_CACHE.modelsKey = null;
+  ALLOC_CACHE.allFits = null; ALLOC_CACHE.allFitsKey = null;
+  ALLOC_CACHE.models = null;  ALLOC_CACHE.modelsKey = null;
   return m;
 }
 
@@ -6131,11 +6380,12 @@ function getCachedAllFits(outlierMap, weightsMap) {
   return m;
 }
 
-/* 활성 model lookup (allFits 활용). 의존성: allFitsKey + trendType */
+/* 활성 model lookup (allFits 활용). 의존성: allFitsKey + 글로벌 trendType + perChannel 해시 */
 function getCachedModels(outlierMap, weightsMap) {
   const tt = ALLOC_STATE.trendType;
   const allFits = getCachedAllFits(outlierMap, weightsMap);
-  const key = `${ALLOC_CACHE.allFitsKey}|${tt}`;
+  const pcHash = perChannelHash("trendType");
+  const key = `${ALLOC_CACHE.allFitsKey}|${tt}|${pcHash}`;
   if (ALLOC_CACHE.modelsKey === key && ALLOC_CACHE.models) return ALLOC_CACHE.models;
   const m = new Map();
   const ttMap = { linear: "Linear", log: "Log", poly2: "Poly2", power: "Power" };
@@ -6145,15 +6395,15 @@ function getCachedModels(outlierMap, weightsMap) {
     const fits = allFits.get(ch);
     if (!fits || Object.keys(fits).length === 0) { m.set(ch, null); continue; }
 
+    const effTrend = getEffSetting(ch, "trendType");
     let chosen = null;
-    if (tt === "auto") {
-      // Best R² 자동 선택
+    if (effTrend === "auto") {
       let bestR2 = -Infinity;
       for (const [name, { model, r2 }] of Object.entries(fits)) {
         if (r2 != null && r2 > bestR2) { chosen = { model, r2, type: model.type }; bestR2 = r2; }
       }
     } else {
-      const fit = fits[ttMap[tt]];
+      const fit = fits[ttMap[effTrend]];
       if (fit) chosen = { model: fit.model, r2: fit.r2, type: fit.model.type };
     }
     if (!chosen) { m.set(ch, null); continue; }
@@ -7179,12 +7429,12 @@ function renderVizCharts() {
    - CPR Cap (상한 설정 시 외삽 위험 그룹 차단)
    - 최신 데이터 가중치 (Exponential, 반감기 30일)
 */
-function calculateAllocation(rows, channelField, costField, resultsField) {
-  if (!channelField || !costField || !resultsField) return [];
-  // 채널별 합산
+function calculateAllocation(rows, _channelField, costField, resultsField) {
+  if (!costField || !resultsField) return [];
+  // 채널/캠페인 그룹 키 (getRowGroupKey 사용)
   const map = new Map();
   for (const r of rows) {
-    const ch = String(r[channelField] ?? "").trim();
+    const ch = getRowGroupKey(r);
     if (!ch) continue;
     const cost = Number(r[costField]) || 0;
     const res = Number(r[resultsField]) || 0;
@@ -7227,32 +7477,35 @@ function bindStaticAllocatorControls() {
 
   container.querySelectorAll(".ab-pill[data-trendtype]").forEach(btn => {
     btn.addEventListener("click", () => {
-      ALLOC_STATE.trendType = btn.dataset.trendtype;
+      setTogglePerContext("trendType", btn.dataset.trendtype);
       queueAllocatorRender();
     });
   });
   container.querySelectorAll(".ab-pill[data-weightmode]").forEach(btn => {
     btn.addEventListener("click", () => {
-      ALLOC_STATE.weightMode = btn.dataset.weightmode;
+      setTogglePerContext("weightMode", btn.dataset.weightmode);
       queueAllocatorRender();
     });
   });
   container.querySelectorAll(".ab-pill[data-pointtoggle]").forEach(btn => {
     btn.addEventListener("click", () => {
+      // hidePoints는 글로벌 표시 옵션 (개별 채널 의미 없음)
       ALLOC_STATE.hidePoints = btn.dataset.pointtoggle === "hide";
       queueAllocatorRender();
     });
   });
   container.querySelectorAll(".ab-pill[data-outlier]").forEach(btn => {
     btn.addEventListener("click", () => {
-      ALLOC_STATE.outlierMethod = btn.dataset.outlier;
+      setTogglePerContext("outlierMethod", btn.dataset.outlier);
       queueAllocatorRender();
     });
   });
   container.querySelectorAll(".ab-pill[data-strength]").forEach(btn => {
     btn.addEventListener("click", () => {
-      if (ALLOC_STATE.outlierMethod === "none") return;
-      ALLOC_STATE.outlierStrength = btn.dataset.strength;
+      const single = getSelectedSingleChannel();
+      const curMethod = single ? getEffSetting(single, "outlierMethod") : ALLOC_STATE.outlierMethod;
+      if (curMethod === "none") return;
+      setTogglePerContext("outlierStrength", btn.dataset.strength);
       queueAllocatorRender();
     });
   });
@@ -7285,24 +7538,43 @@ function updateAllocCurrencyState() {
 
 /* 활성 상태(active 클래스)만 갱신 — DOM/이벤트 재바인딩 X */
 function updateAllocatorPillStates() {
+  // 단일 채널 모드면 그 채널의 effective 값으로 표시, 아니면 글로벌
+  const single = getSelectedSingleChannel();
+  const trendType = single ? getEffSetting(single, "trendType") : ALLOC_STATE.trendType;
+  const weightMode = single ? getEffSetting(single, "weightMode") : ALLOC_STATE.weightMode;
+  const outlierMethod = single ? getEffSetting(single, "outlierMethod") : ALLOC_STATE.outlierMethod;
+  const outlierStrength = single ? getEffSetting(single, "outlierStrength") : ALLOC_STATE.outlierStrength;
+
   document.querySelectorAll(".ab-pill[data-trendtype]").forEach(btn =>
-    btn.classList.toggle("active", btn.dataset.trendtype === ALLOC_STATE.trendType));
+    btn.classList.toggle("active", btn.dataset.trendtype === trendType));
   document.querySelectorAll(".ab-pill[data-weightmode]").forEach(btn =>
-    btn.classList.toggle("active", btn.dataset.weightmode === ALLOC_STATE.weightMode));
+    btn.classList.toggle("active", btn.dataset.weightmode === weightMode));
   document.querySelectorAll(".ab-pill[data-pointtoggle]").forEach(btn =>
     btn.classList.toggle("active", (btn.dataset.pointtoggle === "hide") === ALLOC_STATE.hidePoints));
   document.querySelectorAll(".ab-pill[data-outlier]").forEach(btn =>
-    btn.classList.toggle("active", btn.dataset.outlier === ALLOC_STATE.outlierMethod));
+    btn.classList.toggle("active", btn.dataset.outlier === outlierMethod));
   document.querySelectorAll(".ab-pill[data-strength]").forEach(btn =>
-    btn.classList.toggle("active", btn.dataset.strength === ALLOC_STATE.outlierStrength));
+    btn.classList.toggle("active", btn.dataset.strength === outlierStrength));
   document.querySelectorAll(".ab-pill[data-normalize]").forEach(btn =>
     btn.classList.toggle("active", btn.dataset.normalize === ALLOC_STATE.normalizeMode));
-  // outlier=none이면 강도 그룹 비활성화
+
   const strengthGroup = document.getElementById("outlier-strength-group");
   if (strengthGroup) {
-    const disabled = ALLOC_STATE.outlierMethod === "none";
-    strengthGroup.classList.toggle("disabled", disabled);
+    strengthGroup.classList.toggle("disabled", outlierMethod === "none");
   }
+
+  // 컨트롤 영역에 현재 적용 컨텍스트 라벨 표시
+  const scope = document.getElementById("alloc-scope-label");
+  if (scope) {
+    if (single) {
+      const has = hasChannelOverride(single);
+      scope.innerHTML = `<span class="alloc-scope-pill single">🎯 단일 채널 셋업 — <strong>${escapeHtml(truncateLabel(single, 28))}</strong>${has ? ' · <span style="color:#5ad19a;">★ 개별 설정 적용 중</span>' : ' <span style="color:var(--text-muted);">· 아직 글로벌 사용</span>'}</span>`;
+    } else {
+      const overrideCount = Object.keys(ALLOC_STATE.perChannel).filter(c => hasChannelOverride(c)).length;
+      scope.innerHTML = `<span class="alloc-scope-pill global">🌐 글로벌 모드 — 토글은 <strong>미설정 채널</strong>에만 적용${overrideCount > 0 ? ` · <span style="color:#5ad19a;">★ 개별 설정 ${overrideCount}개 채널 보호</span>` : ""}</span>`;
+    }
+  }
+
   updateAllocCurrencyState();
 }
 
@@ -7412,10 +7684,12 @@ function renderAllocatorScatter() {
           const active = ALLOC_STATE.selectedChannels.has(ch);
           const color = CHART_THEME.series[i % CHART_THEME.series.length];
           const truncated = ch.length > 36 ? ch.slice(0, 33) + "…" : ch;
+          const overridden = hasChannelOverride(ch);
+          const star = overridden ? '<span class="alloc-chip-star" title="개별 셋업 적용 중">★</span>' : "";
           return `
-            <button class="alloc-chip ${active ? 'active' : ''}" data-channel="${escapeHtml(ch)}"
-                    title="${escapeHtml(ch)}" style="--chip-color: ${color};">
-              <span class="alloc-chip-dot" style="background:${color};"></span>${escapeHtml(truncated)}
+            <button class="alloc-chip ${active ? 'active' : ''}${overridden ? ' overridden' : ''}" data-channel="${escapeHtml(ch)}"
+                    title="${escapeHtml(ch)}${overridden ? " · 개별 셋업 적용 중" : ""}" style="--chip-color: ${color};">
+              <span class="alloc-chip-dot" style="background:${color};"></span>${escapeHtml(truncated)}${star}
             </button>`;
         }).join("")}
       </div>
@@ -7779,7 +8053,7 @@ function renderSimulationCard(channels, channelModels, metric) {
     : Math.round(avgCost * 1.2);
 
   const rows = getMappedRows();
-  const channelRows = rows.filter(r => String(r.channel ?? "").trim() === ch);
+  const channelRows = rows.filter(r => getRowGroupKey(r) === ch);
   const sim = simulateChannel({
     model: meta.model,
     currentCost, targetCost,
@@ -7791,9 +8065,9 @@ function renderSimulationCard(channels, channelModels, metric) {
   container.innerHTML = `
     <div class="alloc-sim-card">
       <div class="alloc-sim-header">
-        <div>
+        <div class="alloc-sim-header-left">
           <div class="alloc-sim-tag" style="background:${meta.color}22;border-color:${meta.color}55;color:${meta.color};">
-            ${escapeHtml(truncateLabel(ch, 60))}
+            ${escapeHtml(truncateLabel(ch, 60))}${hasChannelOverride(ch) ? ' <span class="alloc-chip-star">★</span>' : ''}
           </div>
           <div class="alloc-sim-title">예산 변경 시뮬레이션</div>
           <div class="alloc-sim-sub">
@@ -7801,7 +8075,17 @@ function renderSimulationCard(channels, channelModels, metric) {
             관측 Cost 범위 ${fmtCurrency(meta.xMin)} ~ ${fmtCurrency(meta.xMax)}
           </div>
         </div>
+        <button class="alloc-csv-btn" id="alloc-csv-download" title="채널 데이터 + 추세선 식을 CSV로 다운로드">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          CSV 다운로드
+        </button>
       </div>
+
+      ${renderChannelSetupPanel(ch)}
 
       <div class="alloc-sim-form">
         <div class="ab-field">
@@ -7838,6 +8122,65 @@ function renderSimulationCard(channels, channelModels, metric) {
   const tInp = document.getElementById("sim-target");
   if (cInp) cInp.addEventListener("input", refresh);
   if (tInp) tInp.addEventListener("input", refresh);
+
+  const csvBtn = document.getElementById("alloc-csv-download");
+  if (csvBtn) csvBtn.addEventListener("click", () => downloadChannelCSV(meta, metric));
+
+  const resetBtn = document.getElementById("alloc-reset-channel");
+  if (resetBtn) resetBtn.addEventListener("click", () => {
+    resetChannelOverride(ch);
+    queueAllocatorRender();
+    showToast({
+      variant: "success",
+      title: "이 채널 셋업 리셋됨",
+      body: `${truncateLabel(ch, 30)} → 글로벌 설정 사용`,
+      duration: 3000,
+    });
+  });
+}
+
+/* 채널 셋업 상태 패널 (단일 채널 선택 시) — 현재 적용 중인 설정 + 리셋 */
+function renderChannelSetupPanel(channel) {
+  if (!channel) return "";
+  const has = hasChannelOverride(channel);
+  const eff = {
+    trendType: getEffSetting(channel, "trendType"),
+    weightMode: getEffSetting(channel, "weightMode"),
+    outlierMethod: getEffSetting(channel, "outlierMethod"),
+    outlierStrength: getEffSetting(channel, "outlierStrength"),
+  };
+  const overrideFields = ALLOC_STATE.perChannel[channel] || {};
+
+  const trendLabel = { auto: "Auto(Best R²)", linear: "Linear", log: "Log", poly2: "Poly2", power: "Power" }[eff.trendType] || eff.trendType;
+  const weightLabel = { none: "없음", linear: "선형", exponential: "지수" }[eff.weightMode] || eff.weightMode;
+  const outlierLabel = eff.outlierMethod === "none" ? "없음" :
+    `${eff.outlierMethod === "iqr" ? "IQR" : "ModZ"} · ${({ standard: "표준", strong: "강함", very_strong: "매우 강함" }[eff.outlierStrength])}`;
+
+  const tag = (k, label, isOverridden) =>
+    `<span class="setup-tag ${isOverridden ? 'overridden' : ''}">
+       <span class="setup-tag-key">${k}</span>
+       <span class="setup-tag-val">${escapeHtml(label)}</span>
+       ${isOverridden ? '<span class="alloc-chip-star">★</span>' : ''}
+     </span>`;
+
+  return `
+    <div class="alloc-channel-setup">
+      <div class="alloc-channel-setup-head">
+        <span class="alloc-channel-setup-title">${has ? '★ 이 채널 개별 셋업' : '글로벌 설정 사용 중'}</span>
+        ${has ? `<button class="alloc-reset-btn" id="alloc-reset-channel" title="이 채널을 글로벌 설정으로 되돌리기">글로벌로 리셋</button>` : ""}
+      </div>
+      <div class="alloc-channel-setup-tags">
+        ${tag("추세선", trendLabel, "trendType" in overrideFields)}
+        ${tag("가중치", weightLabel, "weightMode" in overrideFields)}
+        ${tag("이상치", outlierLabel, "outlierMethod" in overrideFields || "outlierStrength" in overrideFields)}
+      </div>
+      <div class="alloc-channel-setup-hint">
+        ${has
+          ? '이 채널은 글로벌 토글에 영향받지 않습니다. 다중 채널 보기로 돌아가도 이 설정이 유지됩니다.'
+          : '아래 토글을 변경하면 이 채널 전용 셋업으로 저장됩니다 (다른 채널은 영향 X).'}
+      </div>
+    </div>
+  `;
 }
 
 /* 추세선 4종 R² 비교 + 안전 추천.
@@ -7858,6 +8201,170 @@ function recommendSafeFit(allFits) {
   candidates.sort((a, b) => b.r2 - a.r2);
   const safe = candidates.filter(c => !c.warning);
   return safe[0] || candidates[0];
+}
+
+/* ========== 채널 데이터 + 추세선 식 CSV 다운로드 ==========
+   채널 1개 선택 시 시뮬레이션 카드에서 다운로드 가능.
+   - 메타: 채널명, 추세선 모드, R², 계수
+   - 공식: 일반 표기 + Excel/Sheets 호환 (English/Korean 로케일 둘 다)
+   - 관측 데이터: date, cost, CPR (Recent/Older 표시)
+   - 예측 곡선: 관측 cost 범위 21개 점의 predict 값 */
+
+function getModelFormula(model, metricLabel = "CPR") {
+  const t = model.type;
+  const round = (n) => Number(n.toFixed(6));
+  if (t === "Linear") {
+    const { a, b } = model.params;
+    return {
+      text: `${metricLabel} = ${round(a)} × Cost + ${round(b)}`,
+      excelEN: `=${round(a)}*A2+${round(b)}`,
+      excelKR: `=${round(a)}*A2+${round(b)}`,  // Linear는 인자 구분자 없어서 동일
+      params: { a, b },
+    };
+  }
+  if (t === "Log") {
+    const { a, b } = model.params;
+    return {
+      text: `${metricLabel} = ${round(a)} × LN(Cost) + ${round(b)}`,
+      excelEN: `=${round(a)}*LN(A2)+${round(b)}`,
+      excelKR: `=${round(a)}*LN(A2)+${round(b)}`,
+      params: { a, b },
+    };
+  }
+  if (t === "Poly2") {
+    const { a, b, c } = model.params;
+    return {
+      text: `${metricLabel} = ${round(a)} × Cost^2 + ${round(b)} × Cost + ${round(c)}`,
+      excelEN: `=${round(a)}*A2^2+${round(b)}*A2+${round(c)}`,
+      excelKR: `=${round(a)}*A2^2+${round(b)}*A2+${round(c)}`,
+      params: { a, b, c },
+    };
+  }
+  if (t === "Power") {
+    const { a, b } = model.params;
+    return {
+      text: `${metricLabel} = ${round(a)} × Cost^${round(b)}`,
+      excelEN: `=${round(a)}*POWER(A2,${round(b)})`,
+      excelKR: `=${round(a)}*POWER(A2;${round(b)})`,
+      params: { a, b },
+    };
+  }
+  return null;
+}
+
+function csvCell(s) {
+  if (s == null) return "";
+  const str = String(s);
+  return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+function sanitizeFilename(s) {
+  return String(s).replace(/[\/\\?%*:|"<>]/g, "_").replace(/\s+/g, "_").slice(0, 80) || "channel";
+}
+
+function downloadChannelCSV(meta, metric) {
+  if (!meta || !meta.model) return;
+  const channel = ALLOC_STATE.sim.channel || "channel";
+  const metricLabel = getCostMetricLabel(metric);
+  const unitLabel = getMetricUnitLabel(metric);
+  const formula = getModelFormula(meta.model, metricLabel);
+  if (!formula) return;
+
+  const recentMs = ALLOC_STATE.recentDays * 86400 * 1000;
+  const rows = getMappedRows();
+  const dates = rows.map(r => r.date ? Date.parse(r.date) : NaN).filter(d => !isNaN(d));
+  const maxDate = dates.length ? Math.max(...dates) : null;
+  const recentThreshold = maxDate ? (maxDate - recentMs) : null;
+
+  const lines = [];
+
+  // --- Metadata block ---
+  lines.push("# Performance Marketing Library · Budget Allocator Export");
+  lines.push(`# Generated,${new Date().toISOString()}`);
+  lines.push(`# Channel,${csvCell(channel)}`);
+  lines.push(`# Trend Type,${meta.model.type}`);
+  lines.push(`# R-squared,${(meta.r2 ?? 0).toFixed(4)}`);
+  lines.push(`# Cost Metric,${metricLabel}`);
+  lines.push(`# Unit,${unitLabel}`);
+  lines.push(`# Observed Cost Range,${meta.xMin.toFixed(2)} ~ ${meta.xMax.toFixed(2)}`);
+  lines.push(`# Data Points (after outlier removal),${meta.pts.length}`);
+  lines.push("#");
+
+  // --- Equation block ---
+  lines.push("# Equation (Human Readable)");
+  lines.push(`# ,${csvCell(formula.text)}`);
+  lines.push("#");
+  lines.push("# Coefficients");
+  for (const [k, v] of Object.entries(formula.params)) {
+    lines.push(`# ${k},${v}`);
+  }
+  lines.push("#");
+  lines.push("# Excel / Google Sheets Formula (put cost in A2 starting from row 2)");
+  lines.push(`# English locale,${csvCell(formula.excelEN)}`);
+  if (formula.excelEN !== formula.excelKR) {
+    lines.push(`# Korean locale (Excel),${csvCell(formula.excelKR)}`);
+  }
+  lines.push("#");
+  lines.push("# How to use:");
+  lines.push("# 1. Open this CSV in Excel or Google Sheets");
+  lines.push("# 2. In a new column next to 'cost', paste the formula above (replace A2 with the actual cost cell)");
+  lines.push(`# 3. The formula will output predicted ${metricLabel} for that cost`);
+  lines.push("#");
+  lines.push("");
+
+  // --- Observed data ---
+  lines.push("section,date,cost,cpr,is_recent");
+  for (const p of meta.pts) {
+    const isRecent = recentThreshold && p.date && Date.parse(p.date) >= recentThreshold;
+    lines.push([
+      "observed",
+      csvCell(p.date || ""),
+      p.x.toFixed(2),
+      p.y.toFixed(4),
+      isRecent ? "TRUE" : "FALSE",
+    ].join(","));
+  }
+
+  // --- Predicted curve sample ---
+  lines.push("");
+  lines.push("section,cost,predicted_cpr,note");
+  const STEPS = 20;
+  const margin = (meta.xMax - meta.xMin) * 0.05;
+  const fitMin = Math.max(0.0001, meta.xMin - margin);
+  const fitMax = meta.xMax + margin;
+  for (let i = 0; i <= STEPS; i++) {
+    const cost = fitMin + (fitMax - fitMin) * (i / STEPS);
+    const cpr = meta.model.predict(cost);
+    const inRange = cost >= meta.xMin && cost <= meta.xMax;
+    const valid = isFinite(cpr) && cpr > 0;
+    lines.push([
+      "predicted",
+      cost.toFixed(2),
+      valid ? cpr.toFixed(4) : "",
+      valid ? (inRange ? "in_observed_range" : "extrapolation") : "out_of_range",
+    ].join(","));
+  }
+
+  const csv = lines.join("\n");
+  // UTF-8 BOM for Excel Korean compatibility
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${sanitizeFilename(channel)}_${meta.model.type.toLowerCase()}_trendline.csv`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 0);
+
+  showToast({
+    variant: "success",
+    title: "CSV 다운로드 완료",
+    body: `${truncateLabel(channel, 30)} · ${meta.model.type} 추세선 데이터 + Excel 공식 포함`,
+    duration: 4000,
+  });
 }
 
 function renderTrendComparison(meta) {
@@ -8286,8 +8793,9 @@ function handleCSVFile(file) {
     skipEmptyLines: true,
     transformHeader: h => String(h).trim(),
     complete: (results) => {
-      // 새 CSV 업로드 → Allocator 캐시 전체 무효화
+      // 새 CSV 업로드 → Allocator 캐시 전체 무효화 + 채널별 셋업 리셋
       clearAllocCache();
+      resetAllChannelOverrides();
       CSV_STATE.fileName = file.name;
       CSV_STATE.raw = results.data;
       CSV_STATE.headers = results.meta.fields || [];
