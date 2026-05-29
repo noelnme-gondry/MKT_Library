@@ -8094,6 +8094,14 @@ function renderAllocatorScatter() {
         <button class="ab-pill" id="alloc-filter-top6">상위 6개</button>
         <button class="ab-pill" id="alloc-filter-all">전체</button>
         <button class="ab-pill" id="alloc-filter-none">모두 해제</button>
+        <button class="ab-pill alloc-csv-btn" id="alloc-csv-download-all" title="선택된 모든 채널의 추세선 CSV를 일괄 다운로드">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          선택 채널 CSV 다운로드 (<span id="alloc-csv-count">${channels.length}</span>)
+        </button>
       </div>
       <div class="alloc-filter-chips">
         ${allChannels.map((ch, i) => {
@@ -8382,6 +8390,27 @@ function renderAllocatorScatter() {
   if (noneBtn) noneBtn.addEventListener("click", () => {
     ALLOC_STATE.selectedChannels = new Set();
     queueAllocatorRender();
+  });
+
+  // === 선택된 모든 채널 CSV 일괄 다운로드 ===
+  const csvAllBtn = document.getElementById("alloc-csv-download-all");
+  if (csvAllBtn) csvAllBtn.addEventListener("click", () => {
+    const selected = channels.filter(ch => channelModels.has(ch));
+    if (!selected.length) {
+      showToast({ variant: "warn", title: "다운로드할 채널이 없습니다", body: "추세선 적합이 가능한 채널을 1개 이상 선택하세요." });
+      return;
+    }
+    selected.forEach((ch, idx) => {
+      const m = channelModels.get(ch);
+      if (!m) return;
+      // 브라우저 다중 다운로드 차단 회피용 짧은 stagger
+      setTimeout(() => downloadChannelCSV(ch, metric, m), idx * 250);
+    });
+    showToast({
+      variant: "success",
+      title: `${selected.length}개 채널 CSV 다운로드 시작`,
+      body: "브라우저가 일괄 다운로드를 처음 차단하면 한 번 허용해 주세요.",
+    });
   });
 
   // 정적 pillgroup 핸들러는 bindStaticAllocatorControls()에서 1회만 부착됨.
@@ -8695,9 +8724,21 @@ function sanitizeFilename(s) {
   return String(s).replace(/[\/\\?%*:|"<>]/g, "_").replace(/\s+/g, "_").slice(0, 80) || "channel";
 }
 
-function downloadChannelCSV(meta, metric) {
+function downloadChannelCSV(metaOrChannel, metricMaybe, metaMaybe) {
+  // 호출 형태 호환:
+  //   (meta, metric)          ← 기존 (단일 채널 시뮬레이션 카드)
+  //   (channel, metric, meta) ← 신규 (다중 다운로드)
+  let channel, meta, metric;
+  if (typeof metaOrChannel === "string") {
+    channel = metaOrChannel;
+    metric  = metricMaybe;
+    meta    = metaMaybe;
+  } else {
+    meta    = metaOrChannel;
+    metric  = metricMaybe;
+    channel = ALLOC_STATE.sim.channel || "channel";
+  }
   if (!meta || !meta.model) return;
-  const channel = ALLOC_STATE.sim.channel || "channel";
   const metricLabel = getCostMetricLabel(metric);
   const unitLabel = getMetricUnitLabel(metric);
   const formula = getModelFormula(meta.model, metricLabel);
