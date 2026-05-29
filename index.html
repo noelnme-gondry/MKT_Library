@@ -5073,7 +5073,7 @@ function page_5_1() {
   const reqBanner = hasFile ? (required.length ? `
     <div class="required-banner">
       <strong>⚠ 필수 컬럼 매핑이 누락되었습니다</strong>
-      <p style="margin:0.25rem 0 0;">아래 컬럼을 매핑해 주세요: ${required.map(k => `<code class="inline">${STANDARD_FIELDS[k].label}</code>`).join(", ")}</p>
+      <p style="margin:0.25rem 0 0;">아래 컬럼을 매핑해 주세요: ${required.map(k => `<code class="inline">${(STANDARD_FIELDS[k]?.label || k)}</code>`).join(", ")}</p>
     </div>` : `
     <div class="required-banner ok">
       <strong>✓ 필수 컬럼 매핑이 모두 완료되었습니다.</strong>
@@ -5216,13 +5216,13 @@ function page_5_2() {
     return pageShell(meta, {
       deck: "필수 컬럼 매핑이 완료되지 않았습니다.",
       chips: `<span class="chip warning"><span class="dot"></span>매핑 미완료</span>`,
-      summary: "다음 컬럼을 5-1에서 매핑하세요: " + missing.map(k => STANDARD_FIELDS[k].label).join(", "),
+      summary: "다음 컬럼을 5-1에서 매핑하세요: " + missing.map(k => (STANDARD_FIELDS[k]?.label || k)).join(", "),
       body: `
         <div class="callout warn">
           <div class="ico">!</div>
           <div class="body">
             <strong>필수 필드 누락</strong>
-            <p>매핑 필요: ${missing.map(k => `<code class="inline">${STANDARD_FIELDS[k].label}</code>`).join(", ")}</p>
+            <p>매핑 필요: ${missing.map(k => `<code class="inline">${(STANDARD_FIELDS[k]?.label || k)}</code>`).join(", ")}</p>
           </div>
         </div>
       `,
