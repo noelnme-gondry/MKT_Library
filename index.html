@@ -9245,17 +9245,20 @@ function renderAllocationTotalCard(payload) {
   const metricLabel = getCostMetricLabel(metric);
   const unitLabel = getMetricUnitLabel(metric);
 
-  // 이전 N일 합산
+  // 최근 N일 합산 (기본 14일)
+  const recentDays = ALLOC_STATE.recentDays || 14;
   const prev = items.reduce((acc, it) => {
-    const hist = calcChannelHistorySummary(it.channel, metric);
+    const hist = calcChannelHistorySummary(it.channel, metric, { recentDays });
     if (hist) {
-      acc.cost += hist.totalCost;
-      acc.results += hist.totalResults;
-      acc.revenue += hist.totalRevenue;
+      acc.cost     += hist.totalCost;
+      acc.results  += hist.totalResults;
+      acc.installs += hist.totalInstalls;
+      acc.actions  += hist.totalActions;
+      acc.revenue  += hist.totalRevenue;
       acc.rowCount = Math.max(acc.rowCount, hist.rowCount);
     }
     return acc;
-  }, { cost: 0, results: 0, revenue: 0, rowCount: 0 });
+  }, { cost: 0, results: 0, installs: 0, actions: 0, revenue: 0, rowCount: 0 });
 
   // 예상 분배 합산
   const next = items.reduce((acc, it) => {
@@ -9267,10 +9270,10 @@ function renderAllocationTotalCard(payload) {
   const prevAvgCPR = prev.results > 0 ? prev.cost / prev.results : null;
   const prevROAS = (prev.cost > 0 && prev.revenue > 0) ? prev.revenue / prev.cost : null;
   const nextAvgCPR = next.results > 0 ? next.cost / next.results : null;
-  // 예상 revenue/ROAS: 채널별 평균 revenue/result 가정해서 추정
+  // 예상 revenue/ROAS: 채널별 평균 revenue/result 가정해서 추정 (최근 N일 기준)
   let nextRevenue = 0;
   for (const it of items) {
-    const hist = calcChannelHistorySummary(it.channel, metric);
+    const hist = calcChannelHistorySummary(it.channel, metric, { recentDays });
     if (hist && hist.totalResults > 0 && hist.totalRevenue > 0) {
       const revPerResult = hist.totalRevenue / hist.totalResults;
       nextRevenue += it.results * revPerResult;
@@ -9295,18 +9298,20 @@ function renderAllocationTotalCard(payload) {
   wrap.innerHTML = `
     <div class="alloc-total-card">
       <div class="alloc-total-title">
-        총 합계 비교 <span class="alloc-total-sub">알고리즘: ${mode === "c" ? "절대 CPR 가중" : "한계효용 그리디"} · 분배 기준: ${periodLabel}예산</span>
+        총 합계 비교 <span class="alloc-total-sub">알고리즘: ${mode === "c" ? "절대 CPR 가중" : "한계효용 그리디"} · 분배 기준: ${periodLabel}예산 · 비교 기준: 최근 ${recentDays}일</span>
       </div>
       <div class="alloc-total-grid">
 
         <div class="alloc-total-block">
-          <div class="alloc-total-block-title">이전 관측 합산 (${prev.rowCount}일)</div>
-          <div class="alloc-total-row"><span>Cost (합산)</span><strong class="tnum">${fmtCurrency(prev.cost)}</strong></div>
-          <div class="alloc-total-row"><span>Cost (일평균)</span><strong class="tnum">${prevPerDay ? fmtCurrency(prevPerDay.cost) : "—"}</strong></div>
-          <div class="alloc-total-row"><span>${unitLabel}수 (합산)</span><strong class="tnum">${formatNumber(prev.results, {decimals:0})}</strong></div>
-          ${prev.revenue > 0 ? `<div class="alloc-total-row"><span>Revenue (합산)</span><strong class="tnum">${fmtCurrency(prev.revenue)}</strong></div>` : ""}
+          <div class="alloc-total-block-title">최근 ${recentDays}일 실제 (${prev.rowCount}일)</div>
+          <div class="alloc-total-row"><span>비용 (합산)</span><strong class="tnum">${fmtCurrency(prev.cost)}</strong></div>
+          <div class="alloc-total-row"><span>비용 (일평균)</span><strong class="tnum">${prevPerDay ? fmtCurrency(prevPerDay.cost) : "—"}</strong></div>
+          ${prev.installs > 0 ? `<div class="alloc-total-row"><span>설치 (합산)</span><strong class="tnum">${formatNumber(prev.installs, {decimals:0})}</strong></div>` : ""}
+          ${prev.actions > 0  ? `<div class="alloc-total-row"><span>액션 (합산)</span><strong class="tnum">${formatNumber(prev.actions,  {decimals:0})}</strong></div>` : ""}
+          ${prev.revenue > 0  ? `<div class="alloc-total-row"><span>매출 (합산)</span><strong class="tnum">${fmtCurrency(prev.revenue)}</strong></div>` : ""}
           <div class="alloc-total-sep"></div>
-          <div class="alloc-total-row highlight"><span>평균 ${metricLabel}</span><strong class="tnum">${fmtCurrency(prevAvgCPR, {metric:true})}</strong></div>
+          ${prev.installs > 0 && prev.cost > 0 ? `<div class="alloc-total-row highlight"><span>평균 CPI</span><strong class="tnum">${fmtCurrency(prev.cost / prev.installs, {metric:true})}</strong></div>` : ""}
+          ${prev.actions > 0  && prev.cost > 0 ? `<div class="alloc-total-row highlight"><span>평균 CPA</span><strong class="tnum">${fmtCurrency(prev.cost / prev.actions,  {metric:true})}</strong></div>` : ""}
           ${prevROAS != null ? `<div class="alloc-total-row highlight"><span>평균 ROAS</span><strong class="tnum">${(prevROAS*100).toFixed(1)}%</strong></div>` : ""}
         </div>
 
@@ -9316,7 +9321,7 @@ function renderAllocationTotalCard(payload) {
           <div class="alloc-total-block-title">분배 후 예상 (일 단위)</div>
           <div class="alloc-total-row"><span>총 배분 Cost</span><strong class="tnum">${fmtCurrency(next.cost)}${unallocated > 0 ? ` <span style="color:var(--text-muted);font-size:11px;">+미배분 ${fmtCurrency(unallocated)}</span>` : ""}</strong></div>
           <div class="alloc-total-row"><span>예상 ${unitLabel}수</span><strong class="tnum">${formatNumber(next.results, {decimals:0})}</strong></div>
-          ${nextRevenue > 0 ? `<div class="alloc-total-row"><span>예상 Revenue</span><strong class="tnum">${fmtCurrency(nextRevenue)}</strong></div>` : ""}
+          ${nextRevenue > 0 ? `<div class="alloc-total-row"><span>예상 매출</span><strong class="tnum">${fmtCurrency(nextRevenue)}</strong></div>` : ""}
           <div class="alloc-total-sep"></div>
           <div class="alloc-total-row highlight"><span>예상 평균 ${metricLabel}</span><strong class="tnum">${fmtCurrency(nextAvgCPR, {metric:true})}${prevAvgCPR != null && nextAvgCPR != null ? ` <span class="${colorClass(nextAvgCPR - prevAvgCPR)}" style="font-size:11px;">${arrow(nextAvgCPR - prevAvgCPR)} ${Math.abs(((nextAvgCPR - prevAvgCPR)/prevAvgCPR)*100).toFixed(1)}%</span>` : ""}</strong></div>
           ${nextROAS != null ? `<div class="alloc-total-row highlight"><span>예상 ROAS</span><strong class="tnum">${(nextROAS*100).toFixed(1)}%${prevROAS != null ? ` <span class="${colorClass(nextROAS - prevROAS)}" style="font-size:11px;">${arrow(nextROAS - prevROAS)} ${Math.abs(((nextROAS - prevROAS)/prevROAS)*100).toFixed(1)}%</span>` : ""}</strong></div>` : ""}
@@ -9405,23 +9410,46 @@ function calculateAllocationModeC({ modelsMap, totalBudget, selectedChannels, ov
   return { items, unallocated: Math.max(0, remaining), overspent, totalAllocated, lockedTotal };
 }
 
-/* 채널의 관측 기간 합산 데이터 (cost / results / revenue / 평균 지표). */
-function calcChannelHistorySummary(channel, metric) {
-  const rows = getMappedRows();
-  const chRows = rows.filter(r => getRowGroupKey(r) === channel);
+/* 채널의 합산 데이터.
+   opts.recentDays = N 이면 전체 데이터 중 최근 N일만 필터링.
+   모든 metric (installs/actions/revenue_d7)을 동시에 계산해 한 번에 반환. */
+function calcChannelHistorySummary(channel, metric, opts = {}) {
+  const allRows = getMappedRows();
+  let chRows = allRows.filter(r => getRowGroupKey(r) === channel);
   if (!chRows.length) return null;
-  let totalCost = 0, totalResults = 0, totalRevenue = 0;
-  for (const r of chRows) {
-    totalCost    += Number(r.cost)        || 0;
-    totalResults += Number(r[metric])     || 0;
-    totalRevenue += Number(r.revenue_d7)  || 0;
+
+  // 최근 N일 필터 (있으면)
+  if (opts.recentDays && opts.recentDays > 0) {
+    const datesAll = allRows.map(r => r.date ? Date.parse(r.date) : NaN).filter(d => !isNaN(d));
+    if (datesAll.length) {
+      const maxDate = Math.max(...datesAll);
+      const threshold = maxDate - opts.recentDays * 86400 * 1000;
+      chRows = chRows.filter(r => r.date && Date.parse(r.date) >= threshold);
+    }
   }
+  if (!chRows.length) return null;
+
+  let totalCost = 0, totalInstalls = 0, totalActions = 0, totalRevenue = 0, totalPu = 0;
+  for (const r of chRows) {
+    totalCost     += Number(r.cost)        || 0;
+    totalInstalls += Number(r.installs)    || 0;
+    totalActions  += Number(r.actions)     || 0;
+    totalRevenue  += Number(r.revenue_d7)  || 0;
+    totalPu       += Number(r.pu_d7)       || 0;
+  }
+  const totalResults = Number(chRows.reduce((s, r) => s + (Number(r[metric]) || 0), 0));
+
   return {
     rowCount: chRows.length,
     totalCost,
     totalResults,
+    totalInstalls,
+    totalActions,
     totalRevenue,
+    totalPu,
     avgCPR:  totalResults > 0 ? totalCost / totalResults : null,
+    avgCPI:  totalInstalls > 0 ? totalCost / totalInstalls : null,
+    avgCPA:  totalActions > 0 ? totalCost / totalActions : null,
     avgROAS: (totalCost > 0 && totalRevenue > 0) ? totalRevenue / totalCost : null,
   };
 }
@@ -9429,13 +9457,28 @@ function calcChannelHistorySummary(channel, metric) {
 function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, extra) {
   const metric = ALLOC_STATE.metric || "installs";
   const unitLabel = getMetricUnitLabel(metric);
+  const recentDays = ALLOC_STATE.recentDays || 14;
 
   tbody.innerHTML = items.map((it, i) => {
-    const hist = calcChannelHistorySummary(it.channel, metric);
+    const hist = calcChannelHistorySummary(it.channel, metric, { recentDays });
     const isZero = it.cost === 0;
     const reasonNoAlloc = isZero && !it.locked
       ? (it.xMax ? `한계효용 ≤ 0 (관측 범위 ${fmtCurrency(it.xMin)}~${fmtCurrency(it.xMax)} 내 더 효율적인 채널 없음)` : "추세선 부족")
       : null;
+
+    // 풍부한 데이터 표시: 비용, 설치, 액션, 매출, 평균 CPI/CPA/ROAS
+    const histLine = hist ? `
+      <div class="alloc-ch-history">
+        <span class="alloc-hist-label">최근 ${recentDays}일 (${hist.rowCount}일)</span>
+        <span>· 비용 ${fmtCurrency(hist.totalCost)}</span>
+        ${hist.totalInstalls > 0 ? `<span>· 설치 ${formatNumber(hist.totalInstalls, {decimals:0})}</span>` : ''}
+        ${hist.totalActions > 0  ? `<span>· 액션 ${formatNumber(hist.totalActions,  {decimals:0})}</span>` : ''}
+        ${hist.totalRevenue > 0  ? `<span>· 매출 ${fmtCurrency(hist.totalRevenue)}</span>` : ''}
+        ${hist.avgCPI != null ? `<span>· CPI ${fmtCurrency(hist.avgCPI, {metric:true})}</span>` : ''}
+        ${hist.avgCPA != null ? `<span>· CPA ${fmtCurrency(hist.avgCPA, {metric:true})}</span>` : ''}
+        ${hist.avgROAS != null ? `<span>· ROAS ${(hist.avgROAS*100).toFixed(1)}%</span>` : ''}
+      </div>
+    ` : '<div class="alloc-ch-history" style="color:var(--text-muted);">최근 ' + recentDays + '일 데이터 없음</div>';
 
     return `
       <tr ${isZero ? 'class="alloc-row-zero"' : ''}>
@@ -9444,15 +9487,7 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
             ${escapeHtml(it.channel)}
             ${it.locked ? `<button class="alloc-lock-toggle" data-channel="${escapeHtml(it.channel)}" title="잠금 해제 (자동 분배로 되돌리기)">🔒</button>` : ''}
           </div>
-          ${hist ? `
-            <div class="alloc-ch-history">
-              <span>이전 ${hist.rowCount}일 합산</span>
-              <span>· Cost ${fmtCurrency(hist.totalCost)}</span>
-              <span>· ${unitLabel} ${formatNumber(hist.totalResults, {decimals:0})}</span>
-              ${hist.totalRevenue > 0 ? `<span>· Revenue ${fmtCurrency(hist.totalRevenue)}</span>` : ''}
-              <span>· 평균 ${getCostMetricLabel(metric)} ${fmtCurrency(hist.avgCPR, {metric:true})}</span>
-              ${hist.avgROAS != null ? `<span>· 평균 ROAS ${(hist.avgROAS*100).toFixed(1)}%</span>` : ''}
-            </div>` : ''}
+          ${histLine}
           ${reasonNoAlloc ? `<div class="alloc-ch-warn">${escapeHtml(reasonNoAlloc)} — 강제 분배하려면 우측에 직접 입력</div>` : ''}
         </td>
         <td>
@@ -9464,15 +9499,15 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
               ? `<button class="alloc-cost-reset" data-channel="${escapeHtml(it.channel)}" title="자동 분배로 되돌리기">↺</button>`
               : ''}
           </div>
-          ${hist && hist.totalCost > 0 && !isZero ? `<div class="alloc-cost-delta">이전 ${fmtCurrency(hist.totalCost)} → ${it.cost > hist.totalCost ? '▲' : it.cost < hist.totalCost ? '▼' : '='} ${fmtCurrency(it.cost)}</div>` : ''}
+          ${hist && hist.totalCost > 0 && !isZero ? `<div class="alloc-cost-delta">최근 ${recentDays}일 ${fmtCurrency(hist.totalCost)} → ${it.cost > hist.totalCost ? '▲' : it.cost < hist.totalCost ? '▼' : '='} ${fmtCurrency(it.cost)} (일)</div>` : ''}
         </td>
         <td class="tnum">
           ${isZero ? '<span style="color:var(--text-muted);">—</span>' : formatNumber(it.results, { decimals: 0 })}
-          ${hist && hist.totalResults > 0 && !isZero ? `<div class="alloc-delta-hint">이전 ${formatNumber(hist.totalResults, {decimals:0})}</div>` : ''}
+          ${hist && hist.totalResults > 0 && !isZero ? `<div class="alloc-delta-hint">최근 ${recentDays}일 ${formatNumber(hist.totalResults, {decimals:0})}</div>` : ''}
         </td>
         <td class="tnum">
           ${isZero ? '<span style="color:var(--text-muted);">—</span>' : fmtCurrency(it.cpr, { metric: true })}
-          ${hist && hist.avgCPR != null && !isZero ? `<div class="alloc-delta-hint">이전 ${fmtCurrency(hist.avgCPR, {metric:true})}</div>` : ''}
+          ${hist && hist.avgCPR != null && !isZero ? `<div class="alloc-delta-hint">최근 ${recentDays}일 ${fmtCurrency(hist.avgCPR, {metric:true})}</div>` : ''}
         </td>
         <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong></td>
       </tr>
