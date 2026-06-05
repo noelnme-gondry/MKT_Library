@@ -11571,6 +11571,39 @@ const TOOL_REQUIRED_FIELDS = {
   "5-5": ["date", "paid_regs", "organic_regs"],
 };
 
+/* 도구별 옵션 필드 — 매핑하면 추가 기능 활성화. */
+const TOOL_OPTIONAL_FIELDS = {
+  "5-2": [
+    { key: "channel",        unlocks: "채널별 비중·시계열 분석" },
+    { key: "campaign_name",  unlocks: "캠페인 단위 분석" },
+    { key: "platform",       unlocks: "OS 분포 시각화" },
+    { key: "impressions",    unlocks: "CTR/CPM 계산" },
+    { key: "clicks",         unlocks: "CTR/CVR/CPC 계산" },
+    { key: "actions",        unlocks: "CPA·전환수 분석 (installs와 별도)" },
+    { key: "revenue_d7",     unlocks: "ROAS D7 계산" },
+    { key: "pu_d7",          unlocks: "결제건수 D7 코호트" },
+    { key: "ret_d7",         unlocks: "리텐션 D7 코호트" },
+    { key: "revenue_d0",     unlocks: "D0 매출/ROAS" },
+    { key: "revenue_d14",    unlocks: "D14 매출/ROAS" },
+  ],
+  "5-3": [
+    { key: "platform",       unlocks: "OS별 채널 분리 분석" },
+    { key: "revenue_d7",     unlocks: "ROAS 시뮬레이션 + 분배 후 예상 매출 계산" },
+    { key: "pu_d7",          unlocks: "결제건수 기준 분배 (대안 metric)" },
+    { key: "impressions",    unlocks: "노출 기반 시뮬레이션" },
+    { key: "clicks",         unlocks: "클릭 기반 시뮬레이션" },
+  ],
+  "5-5": [
+    { key: "total_regs",     unlocks: "Identity 일치 검증 (Total = Paid + Organic)" },
+    { key: "paid_react",     unlocks: "재활성화(React) 잠식 분석" },
+    { key: "organic_react",  unlocks: "재활성화(React) 잠식 분석" },
+    { key: "total_react",    unlocks: "React Identity 검증" },
+    { key: "platform",       unlocks: "OS 플랫폼 토글 (전체 / Android / iOS)" },
+    { key: "cost",           unlocks: "Tab D Efficiency (월별 CAC, 증분 효율)" },
+    { key: "channel",        unlocks: "채널별 sanity check (현재는 일별 aggregation)" },
+  ],
+};
+
 const TOOL_CSV_SNAPSHOTS = {};  // toolId → { fileName, raw, headers, mapping, selectedCohort }
 let ACTIVE_CSV_TOOL = null;
 
@@ -11686,10 +11719,86 @@ function renderInlineCsvUpload(toolId) {
       <p style="margin:0.25rem 0 0;">아래 도구를 사용할 수 있습니다.</p>
     </div>`) : "";
 
+  // === 필드 가이드 테이블 ===
+  const mapped = new Set(Object.values(CSV_STATE.mapping || {}).filter(v => v !== "__ignore__"));
+  const reqRows = [];
+  // 필수 행
+  for (const r of reqs) {
+    if (typeof r === "string") {
+      const def = STANDARD_FIELDS[r];
+      reqRows.push({
+        key: r,
+        label: def?.label || r,
+        type: def?.type || "string",
+        badge: "필수",
+        badgeCls: "danger",
+        aliases: (def?.aliases || []).slice(0, 4).join(", "),
+        unlocks: "",
+        mapped: mapped.has(r),
+      });
+    } else if (r.oneOf) {
+      r.oneOf.forEach((k, i) => {
+        const def = STANDARD_FIELDS[k];
+        reqRows.push({
+          key: k,
+          label: def?.label || k,
+          type: def?.type || "string",
+          badge: i === 0 ? `필수 (이 중 1개)` : "또는",
+          badgeCls: "danger",
+          aliases: (def?.aliases || []).slice(0, 4).join(", "),
+          unlocks: "",
+          mapped: mapped.has(k),
+        });
+      });
+    }
+  }
+  // 옵션 행
+  for (const o of (TOOL_OPTIONAL_FIELDS[toolId] || [])) {
+    const def = STANDARD_FIELDS[o.key];
+    if (!def) continue;
+    reqRows.push({
+      key: o.key,
+      label: def.label,
+      type: def.type,
+      badge: "옵션",
+      badgeCls: "",
+      aliases: (def.aliases || []).slice(0, 4).join(", "),
+      unlocks: o.unlocks,
+      mapped: mapped.has(o.key),
+    });
+  }
+
+  const guideTable = `
+    <div class="table-wrap" style="margin-top:8px;">
+      <table class="data" style="font-size:12px;">
+        <thead>
+          <tr>
+            <th>구분</th>
+            <th>표준 필드</th>
+            <th>타입</th>
+            <th>매핑 상태</th>
+            <th>활성화되는 기능 / 별칭 예시</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${reqRows.map(r => `
+            <tr>
+              <td><span class="chip ${r.badgeCls}" style="font-size:11px;padding:2px 8px;"><span class="dot"></span>${r.badge}</span></td>
+              <td><strong>${escapeHtml(r.label)}</strong> <code class="inline" style="font-size:10px;color:var(--text-muted);">${r.key}</code></td>
+              <td class="tnum">${r.type}</td>
+              <td>${r.mapped ? '<span class="chip ok" style="font-size:11px;padding:2px 8px;"><span class="dot"></span>매핑됨</span>' : '<span style="color:var(--text-muted);">—</span>'}</td>
+              <td style="color:var(--text-muted);font-size:11px;">${r.unlocks ? `<span style="color:var(--text-primary);">${escapeHtml(r.unlocks)}</span><br>` : ''}별칭: ${escapeHtml(r.aliases || "—")}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+
   return `
     <section class="block">
       <h2 class="section-title"><span class="ix">§0</span>${escapeHtml(meta?.title || toolId)} · 데이터 준비</h2>
-      <p class="muted">이 도구는 다음 컬럼을 필요로 합니다: <strong>${reqLabels.join(" · ")}</strong>. CSV는 이 도구 전용으로 저장되며, 다른 도구의 데이터와 독립됩니다.</p>
+      <p class="muted">CSV는 이 도구 전용으로 저장되며, 다른 도구의 데이터와 독립됩니다. <strong>필수 컬럼만 매핑되면 도구가 즉시 활성화</strong>되고, 옵션 컬럼을 추가로 매핑하면 그에 맞는 분석 기능이 켜집니다.</p>
       <div class="dropzone" data-tool-dropzone="${toolId}">
         <div class="dropzone-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
@@ -11700,9 +11809,15 @@ function renderInlineCsvUpload(toolId) {
       </div>
       ${fileBlock}
       ${reqBanner}
+
+      <details ${!hasFile || missing.length ? 'open' : ''} style="margin-top:16px;">
+        <summary style="cursor:pointer;color:var(--text-primary);font-weight:600;font-size:13px;">필요한 컬럼 가이드 (필수 + 옵션)</summary>
+        ${guideTable}
+      </details>
+
       ${hasFile ? `
         <details ${missing.length ? 'open' : ''} style="margin-top:12px;">
-          <summary style="cursor:pointer;color:var(--text-muted);font-size:13px;">컬럼 매핑 (자동 + 수동)</summary>
+          <summary style="cursor:pointer;color:var(--text-primary);font-weight:600;font-size:13px;">CSV 컬럼 → 표준 필드 매핑 (자동 + 수동)</summary>
           <div class="mapping-grid" style="margin-top:8px;">
             <div class="mapping-header">CSV 컬럼</div>
             <div></div>
