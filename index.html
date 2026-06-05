@@ -1917,6 +1917,28 @@
     font-size: 11px;
     padding: 4px 10px;
   }
+  /* 사용자 조절 가능한 차트 컨테이너: 우하단 핸들 드래그 + 전역 토글로 조절 */
+  .chart-container {
+    position: relative;
+    width: 100%;
+    height: var(--chart-h, 320px);
+    min-height: 160px;
+    max-height: 1200px;
+    resize: vertical;
+    overflow: hidden;
+    /* 우하단 핸들 영역 살짝 보이게 */
+    border-bottom: 1px solid transparent;
+  }
+  .chart-container::-webkit-resizer {
+    background: linear-gradient(135deg, transparent 50%, var(--text-muted, #888) 50%, var(--text-muted, #888) 60%, transparent 60%);
+    opacity: 0.5;
+  }
+  .chart-container:hover::-webkit-resizer { opacity: 1; }
+  /* 글로벌 차트 사이즈 클래스 (Cannibalization 페이지 wrapper에 적용) */
+  .cann-size-s  { --chart-h: 220px; }
+  .cann-size-m  { --chart-h: 320px; }
+  .cann-size-l  { --chart-h: 460px; }
+  .cann-size-xl { --chart-h: 620px; }
   .ab-form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -7071,6 +7093,7 @@ const DETREND_STATE = {
   seriesType: "regs",             // 'regs' | 'react' (Tab C용)
   currentTab: "B",                // 'B' | 'C'
   explorerSeries: "organic_regs", // Tab B 시리즈 선택
+  chartSize: "m",                 // 's' | 'm' | 'l' | 'xl' — 전역 차트 크기
 };
 
 const DETREND_CACHE = {
@@ -7257,6 +7280,14 @@ function page_5_5() {
       <button class="ab-pill ${DETREND_STATE.weekdayOn ? 'active' : ''}" data-weekday="on">ON</button>
       <button class="ab-pill ${!DETREND_STATE.weekdayOn ? 'active' : ''}" data-weekday="off">OFF</button>
     </div>
+    <div class="ab-pillgroup">
+      <span class="ab-pillgroup-label">차트 크기</span>
+      <button class="ab-pill ${DETREND_STATE.chartSize === 's' ? 'active' : ''}"  data-chartsize="s"  title="220px">S</button>
+      <button class="ab-pill ${DETREND_STATE.chartSize === 'm' ? 'active' : ''}"  data-chartsize="m"  title="320px (기본)">M</button>
+      <button class="ab-pill ${DETREND_STATE.chartSize === 'l' ? 'active' : ''}"  data-chartsize="l"  title="460px">L</button>
+      <button class="ab-pill ${DETREND_STATE.chartSize === 'xl' ? 'active' : ''}" data-chartsize="xl" title="620px">XL</button>
+      <span class="ab-pillgroup-label" style="margin-left:8px;color:var(--text-muted);font-size:11px;">또는 각 차트 우하단 모서리 드래그</span>
+    </div>
   `;
 
   const tabs = `
@@ -7299,7 +7330,7 @@ function page_5_5() {
       </section>
 
       <section class="block" id="s-body">
-        <div id="cann-body-host">${
+        <div id="cann-body-host" class="cann-size-${DETREND_STATE.chartSize}">${
           DETREND_STATE.currentTab === 'A' ? renderTabA() :
           DETREND_STATE.currentTab === 'B' ? renderTabB() :
           DETREND_STATE.currentTab === 'C' ? renderTabC() :
@@ -7447,7 +7478,7 @@ function renderTabB() {
         <button class="ab-pill" data-pngdownload="cann-chart-weekday" data-pngname="step3_weekday" title="이 차트를 PNG로 다운로드">⬇ PNG</button>
       </div>
       <p class="muted">요일별 평균 잔차. ON 시 다음 단계에서 이 만큼 추가로 뺍니다.</p>
-      <div class="chart-container" style="height:200px;"><canvas id="cann-chart-weekday"></canvas></div>
+      <div class="chart-container"><canvas id="cann-chart-weekday"></canvas></div>
     </div>
 
     <div class="alloc-card" style="margin-bottom:12px;">
@@ -7563,7 +7594,7 @@ function renderTabC() {
         <button class="ab-pill" data-pngdownload="cann-ccf" data-pngname="tabC_ccf" title="이 차트를 PNG로 다운로드">⬇ PNG</button>
       </div>
       <p class="muted">L &gt; 0 → paid가 organic을 L일 선행. 0 부근이 가장 크면 동시점 효과.</p>
-      <div class="chart-container" style="height:220px;"><canvas id="cann-ccf"></canvas></div>
+      <div class="chart-container"><canvas id="cann-ccf"></canvas></div>
     </div>
 
     <div style="text-align:right;">
@@ -7760,6 +7791,29 @@ function bindCannibalHandlers() {
     btn.addEventListener("click", () => {
       DETREND_STATE.weekdayOn = btn.dataset.weekday === "on";
       navigate("5-5");
+    });
+  });
+
+  // 전역 차트 사이즈 토글 — 페이지 재렌더 없이 클래스만 교체 + Chart.js resize 트리거
+  document.querySelectorAll("[data-chartsize]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const size = btn.dataset.chartsize;
+      DETREND_STATE.chartSize = size;
+      const host = document.getElementById("cann-body-host");
+      if (host) {
+        host.classList.remove("cann-size-s", "cann-size-m", "cann-size-l", "cann-size-xl");
+        host.classList.add(`cann-size-${size}`);
+      }
+      // pill active 클래스 갱신
+      document.querySelectorAll("[data-chartsize]").forEach(b => {
+        b.classList.toggle("active", b.dataset.chartsize === size);
+      });
+      // 모든 Chart.js 인스턴스에 resize 신호
+      Object.values(CHART_INSTANCES).forEach(c => {
+        if (c && typeof c.resize === "function") {
+          try { c.resize(); } catch(e) {}
+        }
+      });
     });
   });
 
@@ -8091,7 +8145,7 @@ function renderTabD() {
         <button class="ab-pill" data-pngdownload="cann-eff-chart" data-pngname="tabD_efficiency" title="PNG 다운로드">⬇ PNG</button>
       </div>
       <p class="muted">월별 Cost(bar) + CAC(line, 보조축) + 일평균 Total Regs(line).</p>
-      <div class="chart-container" style="height:320px;"><canvas id="cann-eff-chart"></canvas></div>
+      <div class="chart-container"><canvas id="cann-eff-chart"></canvas></div>
     </div>
 
     <div class="alloc-card" style="margin-bottom:12px;">
