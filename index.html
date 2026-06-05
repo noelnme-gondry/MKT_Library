@@ -1905,6 +1905,18 @@
   }
   .ab-stat-value.neg { color: var(--danger, #f87171); }
   .ab-stat-value.pos { color: var(--success, #22c55e); }
+  .cann-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .cann-card-header .ab-pill {
+    flex-shrink: 0;
+    font-size: 11px;
+    padding: 4px 10px;
+  }
   .ab-form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -7311,36 +7323,52 @@ function renderTabB() {
     </div>
 
     <div class="alloc-card" style="margin-bottom:12px;">
-      <div class="alloc-card-title">Step 0 — Raw</div>
+      <div class="cann-card-header">
+        <div class="alloc-card-title">Step 0 — Raw</div>
+        <button class="ab-pill" data-pngdownload="cann-chart-raw" data-pngname="step0_raw" title="이 차트를 PNG로 다운로드">⬇ PNG</button>
+      </div>
       <p class="muted">원본 시계열 (일별 합산).</p>
       <div class="chart-container"><canvas id="cann-chart-raw"></canvas></div>
     </div>
 
     <div class="alloc-card" style="margin-bottom:12px;">
-      <div class="alloc-card-title">Step 1 — Trend fit</div>
+      <div class="cann-card-header">
+        <div class="alloc-card-title">Step 1 — Trend fit</div>
+        <button class="ab-pill" data-pngdownload="cann-chart-fit" data-pngname="step1_trendfit" title="이 차트를 PNG로 다운로드">⬇ PNG</button>
+      </div>
       <p class="muted">Raw 위에 ${mode === 'linear' ? 'OLS 선형 추세선' : mode === 'ma28' ? '28일 중심 이동평균' : 'STL trend (365d MA)'}을 overlay.</p>
       <div class="chart-container"><canvas id="cann-chart-fit"></canvas></div>
     </div>
 
     <div class="alloc-card" style="margin-bottom:12px;">
-      <div class="alloc-card-title">Step 2 — Detrended (− trend)</div>
+      <div class="cann-card-header">
+        <div class="alloc-card-title">Step 2 — Detrended (− trend)</div>
+        <button class="ab-pill" data-pngdownload="cann-chart-resid1" data-pngname="step2_resid1" title="이 차트를 PNG로 다운로드">⬇ PNG</button>
+      </div>
       <p class="muted"><code class="inline">resid1 = value − trendFit</code>. 0 기준선 위/아래로 변동.</p>
       <div class="chart-container"><canvas id="cann-chart-resid1"></canvas></div>
     </div>
 
     <div class="alloc-card" style="margin-bottom:12px;">
-      <div class="alloc-card-title">Step 3 — Weekday effect</div>
+      <div class="cann-card-header">
+        <div class="alloc-card-title">Step 3 — Weekday effect</div>
+        <button class="ab-pill" data-pngdownload="cann-chart-weekday" data-pngname="step3_weekday" title="이 차트를 PNG로 다운로드">⬇ PNG</button>
+      </div>
       <p class="muted">요일별 평균 잔차. ON 시 다음 단계에서 이 만큼 추가로 뺍니다.</p>
       <div class="chart-container" style="height:200px;"><canvas id="cann-chart-weekday"></canvas></div>
     </div>
 
     <div class="alloc-card" style="margin-bottom:12px;">
-      <div class="alloc-card-title">Step 4 — Final residual</div>
+      <div class="cann-card-header">
+        <div class="alloc-card-title">Step 4 — Final residual</div>
+        <button class="ab-pill" data-pngdownload="cann-chart-final" data-pngname="step4_final" title="이 차트를 PNG로 다운로드">⬇ PNG</button>
+      </div>
       <p class="muted">${DETREND_STATE.weekdayOn ? '<code class="inline">detrended = resid1 − weekdayMean[weekday]</code>' : '요일 OFF — Step 2와 동일'}.</p>
       <div class="chart-container"><canvas id="cann-chart-final"></canvas></div>
     </div>
 
-    <div style="text-align:right;">
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="ab-pill" id="cann-export-allpng" title="Step 0~4 모든 차트를 zip 없이 순차 PNG 다운로드">⬇ 전체 PNG 다운로드 (5장)</button>
       <button class="ab-pill" id="cann-export-decomp" title="단계별 모든 값을 CSV로 다운로드">⬇ Decomposition CSV 다운로드</button>
     </div>
   `;
@@ -7420,19 +7448,28 @@ function renderTabC() {
     </div>
 
     <div class="alloc-card" style="margin-bottom:12px;">
-      <div class="alloc-card-title">Raw scatter — x: Paid · y: Organic · 색=날짜(viridis)</div>
+      <div class="cann-card-header">
+        <div class="alloc-card-title">Raw scatter — x: Paid · y: Organic · 색=날짜(viridis)</div>
+        <button class="ab-pill" data-pngdownload="cann-scatter-raw" data-pngname="tabC_raw_scatter" title="이 차트를 PNG로 다운로드">⬇ PNG</button>
+      </div>
       <p class="muted">색이 좌상→우하로 깔끔히 흐르면 음의 상관은 시간추세 착시 가능성.</p>
       <div class="chart-container"><canvas id="cann-scatter-raw"></canvas></div>
     </div>
 
     <div class="alloc-card" style="margin-bottom:12px;">
-      <div class="alloc-card-title">Detrended scatter — x: Paid resid · y: Organic resid</div>
+      <div class="cann-card-header">
+        <div class="alloc-card-title">Detrended scatter — x: Paid resid · y: Organic resid</div>
+        <button class="ab-pill" data-pngdownload="cann-scatter-det" data-pngname="tabC_detrended_scatter" title="이 차트를 PNG로 다운로드">⬇ PNG</button>
+      </div>
       <p class="muted">추세·요일 제거 후 잔차의 산점도. 회귀선의 기울기가 detrended r 부호와 일치.</p>
       <div class="chart-container"><canvas id="cann-scatter-det"></canvas></div>
     </div>
 
     <div class="alloc-card" style="margin-bottom:12px;">
-      <div class="alloc-card-title">Lead/Lag 교차상관 (CCF)</div>
+      <div class="cann-card-header">
+        <div class="alloc-card-title">Lead/Lag 교차상관 (CCF)</div>
+        <button class="ab-pill" data-pngdownload="cann-ccf" data-pngname="tabC_ccf" title="이 차트를 PNG로 다운로드">⬇ PNG</button>
+      </div>
       <p class="muted">L &gt; 0 → paid가 organic을 L일 선행. 0 부근이 가장 크면 동시점 효과.</p>
       <div class="chart-container" style="height:220px;"><canvas id="cann-ccf"></canvas></div>
     </div>
@@ -7662,6 +7699,65 @@ function bindCannibalHandlers() {
   if (expDecomp) expDecomp.addEventListener("click", exportDecompositionCSV);
   const expScatter = document.getElementById("cann-export-scatter");
   if (expScatter) expScatter.addEventListener("click", exportScatterCSV);
+
+  // 차트 PNG 개별 다운로드
+  document.querySelectorAll("[data-pngdownload]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const canvasId = btn.dataset.pngdownload;
+      const nameSuffix = btn.dataset.pngname || canvasId;
+      downloadChartAsPNG(canvasId, nameSuffix);
+    });
+  });
+
+  // Tab B 전체 PNG 일괄 다운로드
+  const allPngBtn = document.getElementById("cann-export-allpng");
+  if (allPngBtn) allPngBtn.addEventListener("click", () => {
+    const charts = [
+      ["cann-chart-raw",     "step0_raw"],
+      ["cann-chart-fit",     "step1_trendfit"],
+      ["cann-chart-resid1",  "step2_resid1"],
+      ["cann-chart-weekday", "step3_weekday"],
+      ["cann-chart-final",   "step4_final"],
+    ];
+    charts.forEach(([id, name], i) => {
+      setTimeout(() => downloadChartAsPNG(id, name), i * 250);
+    });
+    showToast({
+      variant: "success",
+      title: "5장 PNG 일괄 다운로드 시작",
+      body: "브라우저가 일괄 다운로드를 처음 차단하면 한 번 허용해 주세요.",
+    });
+  });
+}
+
+/* Chart.js 캔버스를 PNG로 다운로드. 다크 배경 합성 후 export. */
+function downloadChartAsPNG(canvasId, nameSuffix) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) {
+    showToast({ variant: "warn", title: "차트를 찾을 수 없음", body: canvasId });
+    return;
+  }
+  // 합성 캔버스에 배경 + 차트 그리기 (Chart.js는 기본 transparent)
+  const tmp = document.createElement("canvas");
+  tmp.width = canvas.width;
+  tmp.height = canvas.height;
+  const ctx = tmp.getContext("2d");
+  // 다크 배경 (사이트 테마와 동일하게)
+  const bg = getCssVar("--bg-1") || getCssVar("--bg-elev-1") || "#0f0f1e";
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, tmp.width, tmp.height);
+  ctx.drawImage(canvas, 0, 0);
+
+  const url = tmp.toDataURL("image/png");
+  const a = document.createElement("a");
+  const series = DETREND_STATE.explorerSeries;
+  const mode = DETREND_STATE.trendMode;
+  const ts = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `cann_${nameSuffix}_${series}_${mode}_${ts}.png`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => document.body.removeChild(a), 0);
 }
 
 function exportDecompositionCSV() {
