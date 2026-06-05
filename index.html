@@ -2646,8 +2646,10 @@ const STANDARD_FIELDS = {
   // === Cannibalization Analyzer 전용 (5-5) ===
   paid_regs:     { label: "유료 가입",     aliases: ["paid regs", "paid signups", "paid_signups", "유료가입", "유료_가입"],                  type: "number", required: false, group: "Cannibalization" },
   organic_regs:  { label: "오가닉 가입",   aliases: ["organic regs", "organic signups", "organic_signups", "오가닉가입", "유기적가입"],     type: "number", required: false, group: "Cannibalization" },
+  total_regs:    { label: "총 가입",       aliases: ["total regs", "total signups", "total_signups", "총가입", "전체 가입"],                type: "number", required: false, group: "Cannibalization" },
   paid_react:    { label: "유료 재활성화", aliases: ["paid react", "paid reactivation", "paid_reactivation", "paid_reactivations", "유료재활성화"], type: "number", required: false, group: "Cannibalization" },
   organic_react: { label: "오가닉 재활성화", aliases: ["organic react", "organic reactivation", "organic_reactivation", "organic_reactivations", "오가닉재활성화"], type: "number", required: false, group: "Cannibalization" },
+  total_react:   { label: "총 재활성화",   aliases: ["total react", "total reactivation", "total_reactivation", "총재활성화"],              type: "number", required: false, group: "Cannibalization" },
 };
 
 /* ========== CSV Global State ========== */
@@ -7007,6 +7009,9 @@ const DETREND_CACHE = {
   bySeries: new Map(),
   dates: [],
   rangeDays: 0,
+  // Tab A/D용 — 일별 raw 합산 (cost / total 포함)
+  daily: [],
+  validation: null, // { totalRows, dateRange, gaps, identityMismatch }
 };
 
 /* CSV 매핑이 변경되면 캐시 키도 변하도록 */
@@ -7037,15 +7042,25 @@ function buildDetrendCache() {
     if (!r.date) continue;
     const k = r.date;
     if (!dailyMap.has(k)) {
-      dailyMap.set(k, { date: k, paid_regs:0, organic_regs:0, paid_react:0, organic_react:0 });
+      dailyMap.set(k, {
+        date: k,
+        paid_regs:0, organic_regs:0, total_regs:0,
+        paid_react:0, organic_react:0, total_react:0,
+        cost:0,
+      });
     }
     const b = dailyMap.get(k);
     b.paid_regs     += Number(r.paid_regs)     || 0;
     b.organic_regs  += Number(r.organic_regs)  || 0;
+    b.total_regs    += Number(r.total_regs)    || 0;
     b.paid_react    += Number(r.paid_react)    || 0;
     b.organic_react += Number(r.organic_react) || 0;
+    b.total_react   += Number(r.total_react)   || 0;
+    b.cost          += Number(r.cost)          || 0;
   }
   const daily = [...dailyMap.values()].sort((a, b) => a.date.localeCompare(b.date));
+  DETREND_CACHE.daily = daily;
+  DETREND_CACHE.validation = validateDetrendData(daily);
   if (daily.length < 14) return DETREND_CACHE;
 
   const dates = daily.map(d => d.date);
@@ -7177,8 +7192,10 @@ function page_5_5() {
 
   const tabs = `
     <div class="ab-tabs">
+      <button class="ab-tab ${DETREND_STATE.currentTab === 'A' ? 'active' : ''}" data-canntab="A">A. Overview</button>
       <button class="ab-tab ${DETREND_STATE.currentTab === 'B' ? 'active' : ''}" data-canntab="B">B. Decomposition Explorer</button>
       <button class="ab-tab ${DETREND_STATE.currentTab === 'C' ? 'active' : ''}" data-canntab="C">C. Cannibalization</button>
+      <button class="ab-tab ${DETREND_STATE.currentTab === 'D' ? 'active' : ''}" data-canntab="D">D. Efficiency</button>
     </div>
   `;
 
@@ -7213,7 +7230,13 @@ function page_5_5() {
       </section>
 
       <section class="block" id="s-body">
-        <div id="cann-body-host">${DETREND_STATE.currentTab === 'B' ? renderTabB() : renderTabC()}</div>
+        <div id="cann-body-host">${
+          DETREND_STATE.currentTab === 'A' ? renderTabA() :
+          DETREND_STATE.currentTab === 'B' ? renderTabB() :
+          DETREND_STATE.currentTab === 'C' ? renderTabC() :
+          DETREND_STATE.currentTab === 'D' ? renderTabD() :
+          renderTabB()
+        }</div>
       </section>
 
       <section class="block" id="s-limit">
@@ -7482,8 +7505,10 @@ function renderTabC() {
 
 /* ----- 차트 렌더 (Tab B / Tab C 진입 시 호출) ----- */
 function renderCannibalCharts() {
-  if (DETREND_STATE.currentTab === 'B') renderTabBCharts();
-  else renderTabCCharts();
+  if (DETREND_STATE.currentTab === 'A') renderTabACharts();
+  else if (DETREND_STATE.currentTab === 'B') renderTabBCharts();
+  else if (DETREND_STATE.currentTab === 'C') renderTabCCharts();
+  else if (DETREND_STATE.currentTab === 'D') renderTabDCharts();
 }
 
 function renderTabBCharts() {
@@ -7699,6 +7724,8 @@ function bindCannibalHandlers() {
   if (expDecomp) expDecomp.addEventListener("click", exportDecompositionCSV);
   const expScatter = document.getElementById("cann-export-scatter");
   if (expScatter) expScatter.addEventListener("click", exportScatterCSV);
+  const expEff = document.getElementById("cann-export-efficiency");
+  if (expEff) expEff.addEventListener("click", exportEfficiencyCSV);
 
   // 차트 PNG 개별 다운로드
   document.querySelectorAll("[data-pngdownload]").forEach(btn => {
@@ -7832,6 +7859,333 @@ function exportScatterCSV() {
   const a = document.createElement("a");
   a.href = url;
   a.download = `cannibalization_scatter_${st}_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+}
+
+/* ============================================================
+ * Tab A (Overview) + Tab D (Efficiency) + 데이터 검증
+ * ============================================================ */
+
+/* 데이터 검증: 날짜 gap, identity 불일치, 행 수 */
+function validateDetrendData(daily) {
+  if (!daily.length) return { totalRows: 0, dateRange: null, gaps: [], identityMismatch: 0 };
+  // 날짜 gap
+  const gaps = [];
+  for (let i = 1; i < daily.length; i++) {
+    const prev = Date.parse(daily[i-1].date);
+    const cur  = Date.parse(daily[i].date);
+    if (isFinite(prev) && isFinite(cur)) {
+      const dDays = Math.round((cur - prev) / 86400000);
+      if (dDays > 1) gaps.push({ from: daily[i-1].date, to: daily[i].date, missingDays: dDays - 1 });
+    }
+  }
+  // Identity 체크 (total_regs가 매핑됐을 때만)
+  let identityMismatch = 0;
+  const hasTotalRegs = daily.some(d => d.total_regs > 0);
+  if (hasTotalRegs) {
+    for (const d of daily) {
+      const sum = d.paid_regs + d.organic_regs;
+      if (Math.abs(sum - d.total_regs) > Math.max(1, d.total_regs * 0.01)) {
+        identityMismatch++;
+      }
+    }
+  }
+  return {
+    totalRows: daily.length,
+    dateRange: { from: daily[0].date, to: daily[daily.length-1].date },
+    gaps, identityMismatch,
+    hasTotalRegs,
+  };
+}
+
+/* ----- Tab A: Overview ----- */
+function renderTabA() {
+  const daily = DETREND_CACHE.daily;
+  const v = DETREND_CACHE.validation;
+  if (!daily.length) {
+    return `<div class="callout warn"><div class="ico">!</div><div class="body"><strong>데이터 없음</strong></div></div>`;
+  }
+
+  const st = DETREND_STATE.seriesType;
+  const typeToggle = `
+    <div class="ab-pillgroup" style="margin-bottom:12px;">
+      <span class="ab-pillgroup-label">시리즈 유형</span>
+      <button class="ab-pill ${st === 'regs' ? 'active' : ''}" data-cannstype="regs">Regs (가입)</button>
+      <button class="ab-pill ${st === 'react' ? 'active' : ''} ${!DETREND_CACHE.bySeries.get('paid_react') ? 'disabled' : ''}"
+              data-cannstype="react" ${!DETREND_CACHE.bySeries.get('paid_react') ? 'disabled' : ''}>React (재활성화)</button>
+    </div>
+  `;
+
+  // 검증 배지
+  const badges = `
+    <div class="ab-stat-row" style="margin-bottom:16px;">
+      <div class="ab-stat">
+        <div class="ab-stat-label">데이터 일수</div>
+        <div class="ab-stat-value tnum">${v.totalRows.toLocaleString()}</div>
+      </div>
+      <div class="ab-stat">
+        <div class="ab-stat-label">기간</div>
+        <div class="ab-stat-value tnum" style="font-size:14px;">${v.dateRange?.from || "—"} ~ ${v.dateRange?.to || "—"}</div>
+      </div>
+      <div class="ab-stat">
+        <div class="ab-stat-label">날짜 gap</div>
+        <div class="ab-stat-value tnum ${v.gaps.length > 0 ? 'neg' : 'pos'}">${v.gaps.length}건</div>
+        ${v.gaps.length > 0 ? `<div class="ab-stat-hint">${v.gaps.slice(0,3).map(g => `${g.from}→${g.to} (${g.missingDays}일)`).join(", ")}${v.gaps.length > 3 ? '…' : ''}</div>` : ''}
+      </div>
+      <div class="ab-stat">
+        <div class="ab-stat-label">Identity 일치</div>
+        <div class="ab-stat-value tnum ${!v.hasTotalRegs ? '' : v.identityMismatch === 0 ? 'pos' : 'neg'}">
+          ${!v.hasTotalRegs ? '—' : v.identityMismatch === 0 ? '✓ OK' : `${v.identityMismatch}일 불일치`}
+        </div>
+        <div class="ab-stat-hint">${!v.hasTotalRegs ? "Total Regs 미매핑" : "Total = Paid + Organic 검사"}</div>
+      </div>
+    </div>
+  `;
+
+  return `
+    ${typeToggle}
+
+    <div class="alloc-card" style="margin-bottom:16px;">
+      <div class="alloc-card-title">데이터 검증</div>
+      ${badges}
+    </div>
+
+    <div class="alloc-card" style="margin-bottom:12px;">
+      <div class="cann-card-header">
+        <div class="alloc-card-title">시계열 — Total · Paid · Organic ${st === 'regs' ? 'Regs' : 'React'}</div>
+        <button class="ab-pill" data-pngdownload="cann-overview-ts" data-pngname="tabA_timeseries" title="PNG 다운로드">⬇ PNG</button>
+      </div>
+      <p class="muted">일별 ${st === 'regs' ? '가입' : '재활성화'} 추이. Total이 매핑됐다면 Paid+Organic과 일치하는지 시각적으로 확인 가능.</p>
+      <div class="chart-container"><canvas id="cann-overview-ts"></canvas></div>
+    </div>
+
+    <div class="alloc-card" style="margin-bottom:12px;">
+      <div class="cann-card-header">
+        <div class="alloc-card-title">월별 Mix 비중 (Paid % vs Organic %)</div>
+        <button class="ab-pill" data-pngdownload="cann-overview-mix" data-pngname="tabA_mix" title="PNG 다운로드">⬇ PNG</button>
+      </div>
+      <p class="muted">월별로 합산한 paid · organic 비중. organic 비중이 시간이 갈수록 떨어지면 추세적 substitution의 정황.</p>
+      <div class="chart-container"><canvas id="cann-overview-mix"></canvas></div>
+    </div>
+  `;
+}
+
+/* ----- Tab D: Efficiency ----- */
+function renderTabD() {
+  const daily = DETREND_CACHE.daily;
+  if (!daily.length) {
+    return `<div class="callout warn"><div class="ico">!</div><div class="body"><strong>데이터 없음</strong></div></div>`;
+  }
+  const hasCost = daily.some(d => d.cost > 0);
+  if (!hasCost) {
+    return `
+      <div class="callout warn">
+        <div class="ico">!</div>
+        <div class="body">
+          <strong>Cost 컬럼 미매핑</strong>
+          <p>Tab D (Efficiency)는 비용 데이터가 필요합니다. 5-1에서 Cost 컬럼을 매핑해 주세요.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  // 월별 집계
+  const monthly = buildMonthlyEfficiency(daily);
+
+  // 증분 효율 테이블 (월 단위)
+  const incTable = monthly.map((m, i) => {
+    const prev = monthly[i-1];
+    const dCost = prev ? m.cost - prev.cost : null;
+    const dRegs = prev ? m.total_regs - prev.total_regs : null;
+    const incremental = (dCost != null && dRegs > 0) ? dCost / dRegs : null;
+    return { ...m, dCost, dRegs, incremental };
+  });
+
+  const tableRows = incTable.map(r => `
+    <tr>
+      <td class="tnum">${r.month}</td>
+      <td class="tnum">${fmtCurrency(r.cost)}</td>
+      <td class="tnum">${r.total_regs.toLocaleString()}</td>
+      <td class="tnum">${r.cac != null ? fmtCurrency(r.cac, {metric:true}) : "—"}</td>
+      <td class="tnum">${r.costPerReg != null ? fmtCurrency(r.costPerReg, {metric:true}) : "—"}</td>
+      <td class="tnum ${r.dCost > 0 ? '' : r.dCost < 0 ? 'pos' : ''}">${r.dCost != null ? (r.dCost > 0 ? '▲' : '▼') + ' ' + fmtCurrency(Math.abs(r.dCost)) : "—"}</td>
+      <td class="tnum">${r.dRegs != null ? (r.dRegs > 0 ? '▲' : '▼') + ' ' + Math.abs(r.dRegs).toLocaleString() : "—"}</td>
+      <td class="tnum"><strong>${r.incremental != null ? fmtCurrency(r.incremental, {metric:true}) : "—"}</strong></td>
+    </tr>
+  `).join("");
+
+  return `
+    <div class="alloc-card" style="margin-bottom:12px;">
+      <div class="cann-card-header">
+        <div class="alloc-card-title">월별 Cost · CAC · 일평균 Total Regs</div>
+        <button class="ab-pill" data-pngdownload="cann-eff-chart" data-pngname="tabD_efficiency" title="PNG 다운로드">⬇ PNG</button>
+      </div>
+      <p class="muted">월별 Cost(bar) + CAC(line, 보조축) + 일평균 Total Regs(line).</p>
+      <div class="chart-container" style="height:320px;"><canvas id="cann-eff-chart"></canvas></div>
+    </div>
+
+    <div class="alloc-card" style="margin-bottom:12px;">
+      <div class="alloc-card-title">증분 효율 — <code class="inline">ΔCost / ΔTotalRegs</code></div>
+      <p class="muted">전월 대비 비용 증가분이 추가 가입 1명을 데려오는 데 얼마인지. 마이너스가 나오면 '돈은 늘렸는데 가입은 줄었다' = 효율 악화.</p>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr>
+            <th>월</th><th>Cost</th><th>Total Regs</th><th>CAC</th><th>Cost/Reg</th>
+            <th>ΔCost</th><th>ΔTotalRegs</th><th>증분 효율</th>
+          </tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+      <div style="text-align:right;margin-top:8px;">
+        <button class="ab-pill" id="cann-export-efficiency" title="월별 효율 CSV">⬇ Efficiency CSV 다운로드</button>
+      </div>
+    </div>
+  `;
+}
+
+function buildMonthlyEfficiency(daily) {
+  const map = new Map();
+  for (const d of daily) {
+    const month = d.date.slice(0, 7); // YYYY-MM
+    if (!map.has(month)) map.set(month, { month, cost:0, total_regs:0, paid_regs:0, days:0 });
+    const b = map.get(month);
+    b.cost += d.cost;
+    // total_regs가 있으면 사용, 없으면 paid+organic
+    b.total_regs += d.total_regs > 0 ? d.total_regs : (d.paid_regs + d.organic_regs);
+    b.paid_regs += d.paid_regs;
+    b.days++;
+  }
+  return [...map.values()].sort((a,b) => a.month.localeCompare(b.month)).map(b => ({
+    ...b,
+    cac: b.paid_regs > 0 ? b.cost / b.paid_regs : null,
+    costPerReg: b.total_regs > 0 ? b.cost / b.total_regs : null,
+    dailyAvgRegs: b.days > 0 ? b.total_regs / b.days : 0,
+  }));
+}
+
+/* Tab A / D 차트 렌더 */
+function renderTabACharts() {
+  const daily = DETREND_CACHE.daily;
+  if (!daily.length) return;
+  const st = DETREND_STATE.seriesType;
+  const dates = daily.map(d => d.date);
+
+  destroyChartIfExists("cann-overview-ts");
+  destroyChartIfExists("cann-overview-mix");
+
+  // 시계열
+  const paidKey = st === 'regs' ? 'paid_regs' : 'paid_react';
+  const orgKey  = st === 'regs' ? 'organic_regs' : 'organic_react';
+  const totKey  = st === 'regs' ? 'total_regs' : 'total_react';
+  const hasTotal = daily.some(d => d[totKey] > 0);
+
+  const ctxTs = document.getElementById("cann-overview-ts");
+  if (ctxTs) {
+    const datasets = [
+      { label: "Paid", data: daily.map(d => d[paidKey]), borderColor: CHART_THEME.series[0], borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+      { label: "Organic", data: daily.map(d => d[orgKey]), borderColor: CHART_THEME.series[1], borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+    ];
+    if (hasTotal) {
+      datasets.unshift({ label: "Total", data: daily.map(d => d[totKey]), borderColor: CHART_THEME.series[2], borderWidth: 1.5, pointRadius: 0, tension: 0.2, borderDash:[3,3] });
+    }
+    CHART_INSTANCES["cann-overview-ts"] = new Chart(ctxTs, {
+      type: "line",
+      data: { labels: dates, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { color: getCssVar('--text-muted'), font: { size: 11 } } } },
+        scales: {
+          x: { ticks: { color: getCssVar('--text-muted'), maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, grid: { color: getCssVar('--border') } },
+          y: { ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } },
+        },
+      },
+    });
+  }
+
+  // Mix area chart (월별)
+  const monthly = buildMonthlyEfficiency(daily);
+  const ctxMix = document.getElementById("cann-overview-mix");
+  if (ctxMix) {
+    const labels = monthly.map(m => m.month);
+    const totals = monthly.map(m => Math.max(1, m.paid_regs + (m.total_regs - m.paid_regs)));
+    const paidPct = monthly.map((m, i) => (m.paid_regs / totals[i]) * 100);
+    const orgPct = monthly.map((m, i) => 100 - paidPct[i]);
+    CHART_INSTANCES["cann-overview-mix"] = new Chart(ctxMix, {
+      type: "line",
+      data: { labels, datasets: [
+        { label: "Paid %", data: paidPct, borderColor: CHART_THEME.series[0], backgroundColor: CHART_THEME.series[0]+"55", fill: true, tension: 0.3, pointRadius: 2 },
+        { label: "Organic %", data: orgPct, borderColor: CHART_THEME.series[1], backgroundColor: CHART_THEME.series[1]+"55", fill: true, tension: 0.3, pointRadius: 2 },
+      ]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { color: getCssVar('--text-muted'), font: { size: 11 } } } },
+        scales: {
+          x: { ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } },
+          y: { stacked: true, min: 0, max: 100, ticks: { color: getCssVar('--text-muted'), callback: v => v + "%" }, grid: { color: getCssVar('--border') } },
+        },
+      },
+    });
+  }
+}
+
+function renderTabDCharts() {
+  const daily = DETREND_CACHE.daily;
+  const monthly = buildMonthlyEfficiency(daily);
+  if (!monthly.length) return;
+  destroyChartIfExists("cann-eff-chart");
+  const ctx = document.getElementById("cann-eff-chart");
+  if (!ctx) return;
+  const labels = monthly.map(m => m.month);
+  CHART_INSTANCES["cann-eff-chart"] = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets: [
+      { type: "bar", label: "Cost", data: monthly.map(m => m.cost), backgroundColor: CHART_THEME.series[0]+"AA", yAxisID: "yCost" },
+      { type: "line", label: "CAC (Cost / Paid Reg)", data: monthly.map(m => m.cac), borderColor: CHART_THEME.series[3], borderWidth: 2, pointRadius: 3, yAxisID: "yCAC" },
+      { type: "line", label: "일평균 Total Regs", data: monthly.map(m => m.dailyAvgRegs), borderColor: CHART_THEME.series[2], borderWidth: 2, pointRadius: 3, borderDash: [4,4], yAxisID: "yRegs" },
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: getCssVar('--text-muted'), font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } },
+        yCost: { position: "left", ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') }, title: { display: true, text: "Cost", color: getCssVar('--text-muted') } },
+        yCAC:  { position: "right", ticks: { color: getCssVar('--text-muted') }, grid: { display: false }, title: { display: true, text: "CAC", color: getCssVar('--text-muted') } },
+        yRegs: { display: false },
+      },
+    },
+  });
+}
+
+function exportEfficiencyCSV() {
+  const monthly = buildMonthlyEfficiency(DETREND_CACHE.daily);
+  if (!monthly.length) return;
+  const lines = [
+    "# Cannibalization Analyzer · Efficiency Export",
+    `# Generated,${new Date().toISOString()}`,
+    "",
+    "month,cost,paid_regs,total_regs,cac,cost_per_reg,daily_avg_regs,delta_cost,delta_regs,incremental_cost_per_reg"
+  ];
+  for (let i = 0; i < monthly.length; i++) {
+    const m = monthly[i];
+    const prev = monthly[i-1];
+    const dCost = prev ? m.cost - prev.cost : "";
+    const dRegs = prev ? m.total_regs - prev.total_regs : "";
+    const inc = (prev && dRegs > 0) ? (m.cost - prev.cost) / dRegs : "";
+    lines.push([m.month, m.cost.toFixed(2), m.paid_regs, m.total_regs,
+                m.cac != null ? m.cac.toFixed(4) : "",
+                m.costPerReg != null ? m.costPerReg.toFixed(4) : "",
+                m.dailyAvgRegs.toFixed(2),
+                dCost === "" ? "" : Number(dCost).toFixed(2),
+                dRegs === "" ? "" : dRegs,
+                inc === "" ? "" : Number(inc).toFixed(4)
+               ].join(","));
+  }
+  const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `cannibalization_efficiency_${new Date().toISOString().slice(0,10)}.csv`;
   document.body.appendChild(a); a.click();
   setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
 }
