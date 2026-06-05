@@ -6874,18 +6874,24 @@ const CANNIBAL_STATS = {
     const n = values.length;
     const trend = this.centeredMA(values, period);
     const r1 = values.map((v, i) => Number.isFinite(trend[i]) ? v - trend[i] : NaN);
-    const buckets = Array.from({ length: 366 }, () => ({ sum: 0, n: 0 }));
+    // 윤년 안전: dayOfYear는 1..366 반환 → 길이 367 (인덱스 0..366)
+    const buckets = Array.from({ length: 367 }, () => ({ sum: 0, n: 0 }));
     for (let i = 0; i < n; i++) {
       if (!Number.isFinite(r1[i])) continue;
       const doy = dayOfYear(dates[i]);
+      if (doy < 0 || doy >= buckets.length) continue;  // safety
       buckets[doy].sum += r1[i];
       buckets[doy].n++;
     }
     const rawSeason = buckets.map(b => b.n > 0 ? b.sum / b.n : 0);
-    // 평균 0으로 정규화
-    const m = rawSeason.reduce((a, b) => a + b, 0) / 366;
+    // 평균 0 정규화 (실제 데이터가 있는 bucket만 평균에 포함)
+    const filled = buckets.filter(b => b.n > 0).length;
+    const m = filled > 0 ? rawSeason.reduce((a, b) => a + b, 0) / filled : 0;
     const normSeason = rawSeason.map(s => s - m);
-    const seasonal = dates.map(d => normSeason[dayOfYear(d)]);
+    const seasonal = dates.map(d => {
+      const doy = dayOfYear(d);
+      return (doy >= 0 && doy < normSeason.length) ? normSeason[doy] : 0;
+    });
     const residual = values.map((v, i) =>
       Number.isFinite(trend[i]) ? v - trend[i] - seasonal[i] : NaN
     );
