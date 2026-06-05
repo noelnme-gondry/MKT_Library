@@ -6997,6 +6997,8 @@ function detrendCacheKey() {
 }
 
 function buildDetrendCache() {
+  // 디버깅: window에 노출
+  if (typeof window !== "undefined") window.__DETREND = DETREND_CACHE;
   const key = detrendCacheKey();
   if (DETREND_CACHE.key === key) return DETREND_CACHE;
 
@@ -7224,13 +7226,47 @@ function renderTabB() {
     ["organic_react", "Organic React"],
   ].filter(([k]) => DETREND_CACHE.bySeries.get(k));
 
+  // 진단: 첫 번째로 사용 가능한 시리즈로 fallback
+  if (!cache && seriesOpts.length > 0) {
+    DETREND_STATE.explorerSeries = seriesOpts[0][0];
+    return renderTabB();
+  }
+
+  // 현재 모드 variant가 null이면 사용 가능한 다른 모드로 자동 fallback
+  if (cache && !cache[mode]) {
+    const tryOrder = ["linear", "ma28", "stl"];
+    const fallback = tryOrder.find(m => cache[m]);
+    if (fallback) {
+      DETREND_STATE.trendMode = fallback;
+      return renderTabB();
+    }
+  }
+
   if (!cache || !cache[mode]) {
+    // 디버그 정보
+    const debugInfo = {
+      explorerSeries: DETREND_STATE.explorerSeries,
+      mode,
+      cacheKeys: [...DETREND_CACHE.bySeries.keys()],
+      currentCacheValue: cache,
+      currentCacheTypeof: typeof cache,
+      currentCacheModeValue: cache?.[mode],
+      cacheBuiltFor: seriesOpts.map(([k]) => {
+        const c = DETREND_CACHE.bySeries.get(k);
+        return c ? { series: k, hasLinear: !!c.linear, hasMA28: !!c.ma28, hasSTL: !!c.stl } : { series: k, status: "null" };
+      }),
+      rangeDays: DETREND_CACHE.rangeDays,
+    };
     return `
       <div class="callout warn">
         <div class="ico">!</div>
         <div class="body">
           <strong>선택한 추세 모드에서 분해 결과를 계산할 수 없습니다.</strong>
           <p>다른 추세 모드를 시도하거나, 시리즈를 변경해 보세요.</p>
+          <details style="margin-top:8px;">
+            <summary style="cursor:pointer;color:var(--text-muted);font-size:11px;">디버그 정보</summary>
+            <pre style="font-size:10px;background:var(--bg-2);padding:8px;border-radius:6px;margin-top:6px;overflow:auto;">${escapeHtml(JSON.stringify(debugInfo, null, 2))}</pre>
+          </details>
         </div>
       </div>
     `;
