@@ -7584,12 +7584,145 @@ function renderTabC() {
         <div class="alloc-card-title">Lead/Lag 교차상관 (CCF)</div>
         <button class="ab-pill" data-pngdownload="cann-ccf" data-pngname="tabC_ccf" title="이 차트를 PNG로 다운로드">⬇ PNG</button>
       </div>
-      <p class="muted">L &gt; 0 → paid가 organic을 L일 선행. 0 부근이 가장 크면 동시점 효과.</p>
+      <p class="muted">L &gt; 0 → paid가 organic을 L일 선행. 0 부근이 가장 크면 동시점 효과. 차트의 점선이 <strong>95% 신뢰구간(CI)</strong>이며, 막대가 이 선을 넘어야 통계적으로 의미 있음.</p>
       <div class="chart-container"><canvas id="cann-ccf"></canvas></div>
+      ${renderCCFInterpretationPanel(detP, detO)}
     </div>
 
     <div style="text-align:right;">
       <button class="ab-pill" id="cann-export-scatter" title="raw + detrended 시리즈 CSV 다운로드">⬇ 잔차 CSV 다운로드</button>
+    </div>
+  `;
+}
+
+/* CCF 해석 가이드 패널 — 통계 기준 + 현재 lag의 유의성 자동 표시 */
+function renderCCFInterpretationPanel(detP, detO) {
+  // 유효 샘플 수 (NaN 제외)
+  let n = 0;
+  for (let i = 0; i < detP.length; i++) {
+    if (Number.isFinite(detP[i]) && Number.isFinite(detO[i])) n++;
+  }
+  const ci95 = n > 1 ? 1.96 / Math.sqrt(n) : 1;
+  const ci99 = n > 1 ? 2.576 / Math.sqrt(n) : 1;
+
+  const ccf = CANNIBAL_STATS.crossCorrelation(detP, detO, 10);
+  // 유의한 lag 추출
+  const sig95 = ccf.filter(c => Number.isFinite(c.r) && Math.abs(c.r) > ci95);
+  const sig99 = sig95.filter(c => Math.abs(c.r) > ci99);
+  const strongest = ccf.reduce((a, c) =>
+    (Number.isFinite(c.r) && (!a || Math.abs(c.r) > Math.abs(a.r))) ? c : a, null);
+
+  const lagTag = (L) => L === 0 ? "L=0 (동시점)" : L > 0 ? `L=+${L} (paid가 organic을 ${L}일 선행)` : `L=${L} (organic이 paid를 ${-L}일 선행)`;
+
+  // 자동 종합 해석
+  const headlineHtml = (() => {
+    if (!strongest || Math.abs(strongest.r) <= ci95) {
+      return `<strong style="color:var(--text-muted);">📊 모든 lag에서 유의한 신호 없음</strong> · 통계 기준 (|r| > ${ci95.toFixed(3)}) 미달 → paid·organic이 detrend 기준 거의 독립적.`;
+    }
+    const r0 = ccf.find(c => c.lag === 0)?.r;
+    const zeroSig = Number.isFinite(r0) && Math.abs(r0) > ci95;
+    if (zeroSig && r0 < 0) return `<strong style="color:var(--danger);">⚠ 동시점 음의 상관 (r=${r0.toFixed(3)})</strong> · 같은 날 paid↑이면 organic↓ — 잠식 의심.`;
+    if (zeroSig && r0 > 0) return `<strong style="color:#22c55e;">📈 동시점 양의 상관 (r=${r0.toFixed(3)})</strong> · paid·organic 동반 상승 — 공통 수요/이벤트 패턴 가능성 (잠식 X).`;
+    if (strongest.r > 0) return `<strong style="color:#22c55e;">📈 ${lagTag(strongest.lag)}에서 양의 상관 (r=${strongest.r.toFixed(3)})</strong> · 동반 움직임 패턴.`;
+    return `<strong style="color:var(--danger);">⚠ ${lagTag(strongest.lag)}에서 음의 상관 (r=${strongest.r.toFixed(3)})</strong> · ${strongest.lag > 0 ? '지연 잠식 가능성' : 'organic 후행 패턴'}.`;
+  })();
+
+  const sigRowsHtml = ccf.map(c => {
+    if (!Number.isFinite(c.r)) return null;
+    const abs = Math.abs(c.r);
+    let level = "—", levelCls = "";
+    if (abs > ci99) { level = "99% 유의"; levelCls = "danger"; }
+    else if (abs > ci95) { level = "95% 유의"; levelCls = "warn"; }
+    if (level === "—") return null;
+    return `<tr>
+      <td class="tnum">${c.lag > 0 ? "+" : ""}${c.lag}</td>
+      <td class="tnum"><strong style="color:${c.r < 0 ? '#f87171' : '#22c55e'};">${c.r.toFixed(3)}</strong></td>
+      <td><span class="chip ${levelCls}" style="font-size:11px;padding:2px 8px;"><span class="dot"></span>${level}</span></td>
+      <td style="color:var(--text-muted);font-size:11px;">${lagTag(c.lag)}</td>
+    </tr>`;
+  }).filter(Boolean).join("");
+
+  return `
+    <div class="callout" style="margin-top:12px;">
+      <div class="ico">i</div>
+      <div class="body">
+        <p style="margin:0 0 8px;">${headlineHtml}</p>
+        <div class="ab-stat-row" style="margin:8px 0 12px;">
+          <div class="ab-stat">
+            <div class="ab-stat-label">유효 샘플 수 (n)</div>
+            <div class="ab-stat-value tnum">${n.toLocaleString()}</div>
+          </div>
+          <div class="ab-stat">
+            <div class="ab-stat-label">95% 신뢰구간 (|r| 임계)</div>
+            <div class="ab-stat-value tnum">±${ci95.toFixed(3)}</div>
+            <div class="ab-stat-hint">1.96 / √n</div>
+          </div>
+          <div class="ab-stat">
+            <div class="ab-stat-label">99% 신뢰구간</div>
+            <div class="ab-stat-value tnum">±${ci99.toFixed(3)}</div>
+            <div class="ab-stat-hint">2.576 / √n</div>
+          </div>
+          <div class="ab-stat">
+            <div class="ab-stat-label">유의한 lag 개수</div>
+            <div class="ab-stat-value tnum ${sig95.length > 0 ? 'neg' : 'pos'}">${sig95.length} / 21</div>
+            <div class="ab-stat-hint">(99% 유의: ${sig99.length}개)</div>
+          </div>
+        </div>
+
+        ${sigRowsHtml ? `
+          <details open style="margin-top:8px;">
+            <summary style="cursor:pointer;font-weight:600;font-size:13px;">유의한 lag 목록 (|r| &gt; ±${ci95.toFixed(3)})</summary>
+            <div class="table-wrap" style="margin-top:6px;">
+              <table class="data" style="font-size:12px;">
+                <thead><tr><th>Lag</th><th>r</th><th>유의 수준</th><th>의미</th></tr></thead>
+                <tbody>${sigRowsHtml}</tbody>
+              </table>
+            </div>
+          </details>` : `<p class="muted" style="margin:6px 0;">유의한 lag 없음.</p>`}
+
+        <details style="margin-top:10px;">
+          <summary style="cursor:pointer;font-weight:600;font-size:13px;">📚 r 값 해석 가이드 (Cohen's 기준)</summary>
+          <div class="table-wrap" style="margin-top:6px;">
+            <table class="data" style="font-size:12px;">
+              <thead><tr><th>|r| 범위</th><th>상관 강도</th><th>분산 설명력 (r²)</th><th>의사결정에 미치는 영향</th></tr></thead>
+              <tbody>
+                <tr><td class="tnum">|r| &lt; ${ci95.toFixed(3)}</td><td>통계적 의미 없음</td><td class="tnum">—</td><td>노이즈 가능. 무시 권장.</td></tr>
+                <tr><td class="tnum">${ci95.toFixed(3)} ~ 0.1</td><td>매우 약함</td><td class="tnum">~1%</td><td>통계적으로 유의하지만 실무 효과 미미.</td></tr>
+                <tr><td class="tnum">0.1 ~ 0.3</td><td>약함 (Cohen small)</td><td class="tnum">1~9%</td><td>주목할 만함. 단독 결정 근거로는 부족.</td></tr>
+                <tr><td class="tnum">0.3 ~ 0.5</td><td>중간 (Cohen medium)</td><td class="tnum">9~25%</td><td>분명한 신호. 운영 의사결정 검토.</td></tr>
+                <tr><td class="tnum">0.5 ~ 0.7</td><td>강함 (Cohen large)</td><td class="tnum">25~49%</td><td>강한 인과 가능성. 실험으로 검증 권장.</td></tr>
+                <tr><td class="tnum">|r| &gt; 0.7</td><td>매우 강함</td><td class="tnum">&gt;49%</td><td>거의 결정적 신호. 즉시 대응 검토.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="muted" style="font-size:11px;margin-top:6px;">※ 임계값 ±${ci95.toFixed(3)}는 현재 n=${n.toLocaleString()} 기준. n이 클수록 임계값은 작아져 작은 r도 통계적으로 유의해지지만, 실무 의미는 분산 설명력(r²)으로 별도 판단해야 합니다.</p>
+        </details>
+
+        <details style="margin-top:10px;">
+          <summary style="cursor:pointer;font-weight:600;font-size:13px;">⏱ Lag (L) 해석 가이드</summary>
+          <div class="table-wrap" style="margin-top:6px;">
+            <table class="data" style="font-size:12px;">
+              <thead><tr><th>L 부호</th><th>방향</th><th>해석</th></tr></thead>
+              <tbody>
+                <tr><td class="tnum"><strong>L = 0</strong></td><td>동시점</td><td>같은 날 paid·organic이 함께 움직임. <strong>음수면 잠식 의심, 양수면 동반 수요.</strong></td></tr>
+                <tr><td class="tnum"><strong>L &gt; 0</strong></td><td>paid → organic 선행</td><td>오늘 paid 변화가 L일 뒤 organic에 영향. 음수 → 지연 잠식. 양수 → paid가 organic 유도.</td></tr>
+                <tr><td class="tnum"><strong>L &lt; 0</strong></td><td>organic → paid 선행</td><td>오늘 organic 변화가 |L|일 뒤 paid에 영향. 운영적 반응 패턴 (organic ↓ → paid 보충) 가능성.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="muted" style="font-size:11px;margin-top:6px;">
+            <strong>유의한 lag 범위 가이드</strong>: 일반적으로 <strong>|L| ≤ 7일</strong> 범위에서 유의한 신호가 실무적 의미 큼.
+            그 이상은 다른 외부 요인(시즌, 캠페인 사이클)이 끼어들 가능성이 높음.
+            CCF에서 <strong>좌우 대칭 lobe</strong>가 나오면 공통 외부 driver 신호 (예: 시즌, 이벤트).
+            <strong>한쪽으로 치우친 패턴</strong>이 나오면 인과 방향 후보.
+          </p>
+        </details>
+
+        <p class="muted" style="font-size:11px;margin-top:10px;">
+          <strong>⚠ 주의</strong>: CCF는 상관일 뿐 인과가 아닙니다. 큰 결정 전엔 <strong>geo holdout / A/B 실험</strong>으로 검증하세요.
+          또한 n이 매우 크면(수천 일) 작은 r도 통계적으로 유의해지므로, 실무 의미는 <strong>r²</strong> 분산 설명력으로 판단해야 합니다.
+        </p>
+      </div>
     </div>
   `;
 }
@@ -7737,15 +7870,38 @@ function renderTabCCharts() {
     const labels = ccf.map(c => c.lag);
     const vals = ccf.map(c => Number.isFinite(c.r) ? c.r : 0);
     const colors = vals.map(v => v < 0 ? '#f87171' : '#22c55e');
+    // 95% 신뢰구간 임계값
+    let nValid = 0;
+    for (let i = 0; i < detP.length; i++) {
+      if (Number.isFinite(detP[i]) && Number.isFinite(detO[i])) nValid++;
+    }
+    const ci95 = nValid > 1 ? 1.96 / Math.sqrt(nValid) : 0;
+
+    // y축 범위를 데이터에 맞게 동적 설정 (-1~+1은 너무 넓어서 신호 안 보임)
+    const maxAbs = Math.max(0.2, Math.max(...vals.map(Math.abs)) * 1.3, ci95 * 1.5);
+    const yLim = Math.min(1, maxAbs);
+
     CHART_INSTANCES["cann-ccf"] = new Chart(ctxCCF, {
       type: "bar",
-      data: { labels, datasets: [{ label: "CCF r", data: vals, backgroundColor: colors }] },
+      data: { labels, datasets: [
+        { label: "CCF r", data: vals, backgroundColor: colors, order: 2 },
+        // 95% CI 점선 (양/음 한 쌍)
+        { label: "+95% CI", type: "line", data: labels.map(() => ci95), borderColor: "#fbbf24", borderWidth: 1.5, borderDash: [6,4], pointRadius: 0, fill: false, order: 1 },
+        { label: "-95% CI", type: "line", data: labels.map(() => -ci95), borderColor: "#fbbf24", borderWidth: 1.5, borderDash: [6,4], pointRadius: 0, fill: false, order: 1 },
+      ]},
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: true, labels: { color: getCssVar('--text-muted'), font: { size: 11 }, filter: item => item.text !== "-95% CI" } },
+          tooltip: { callbacks: { label: ctx => {
+            const r = ctx.parsed.y;
+            const sig = Math.abs(r) > ci95 ? " (95% 유의)" : "";
+            return `r = ${r.toFixed(3)}${sig}`;
+          } } },
+        },
         scales: {
           x: { title: { display: true, text: "Lag (paid ⤵ N일 후 organic)", color: getCssVar('--text-muted') }, ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } },
-          y: { ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') }, min: -1, max: 1 },
+          y: { ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') }, min: -yLim, max: yLim },
         },
       },
     });
