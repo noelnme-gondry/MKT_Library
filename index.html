@@ -9279,6 +9279,8 @@ const CREATIVE_STATE = {
   decomposeMetric: "ctr",    // 'ctr' | 'cvr' | 'ipm'
   fatigueMetric:   "ctr",
   matrixAxes:      "default", // 'default' | 'angle_vs_hook' 등 사용자 지정 가능
+  selectedCell:    null,      // {row, col} — Concept Matrix 클릭 시 metric 표 필터
+  fatigueShowAll:  false,     // true면 fatigue 발견 안 된 소재도 chart에 포함
 };
 
 function page_5_6() {
@@ -9356,10 +9358,23 @@ function renderCreativeMetricsTable(metrics) {
   if (!metrics || !metrics.length) return "";
   const fmt = (v, d=4) => v == null || !isFinite(v) ? "—" : v.toFixed(d);
   const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v * 100).toFixed(2) + "%";
-  const sorted = [...metrics].sort((a,b) => (b.impressions||0) - (a.impressions||0)).slice(0, 50);
+  // Concept Matrix 클릭으로 선택된 셀이 있으면 필터
+  const sel = CREATIVE_STATE.selectedCell;
+  const rowAttr = CREATIVE_CONFIG.matrix.rows;
+  const colAttr = CREATIVE_CONFIG.matrix.cols;
+  const filtered = sel
+    ? metrics.filter(m => m[rowAttr] === sel.row && m[colAttr] === sel.col)
+    : metrics;
+  const sorted = [...filtered].sort((a,b) => (b.impressions||0) - (a.impressions||0)).slice(0, 50);
+  const filterBanner = sel
+    ? `<div class="callout" style="margin-bottom:8px;"><div class="ico">i</div><div class="body">
+        <strong>Concept Matrix 필터 적용 중:</strong> ${escapeHtml(rowAttr)}=<code class="inline">${escapeHtml(sel.row)}</code> × ${escapeHtml(colAttr)}=<code class="inline">${escapeHtml(sel.col)}</code> (${filtered.length}개 소재)
+        <button class="ab-pill" id="creative-clear-cell" style="margin-left:8px;">필터 해제</button>
+      </div></div>` : "";
   return `
     <section class="block" id="s-metrics">
-      <h2 class="section-title"><span class="ix">§2</span>소재별 지표 (상위 50, impressions 순)</h2>
+      <h2 class="section-title"><span class="ix">§2</span>소재별 지표 ${sel ? `(필터됨)` : `(상위 50, impressions 순)`}</h2>
+      ${filterBanner}
       <div class="table-wrap">
         <table class="data" style="font-size:11.5px;">
           <thead><tr>
@@ -9435,6 +9450,15 @@ function renderCreativeDecompose(decompose) {
       <p class="muted">impressions-weighted Linear Probability Model. campaign_id는 within-transformation 흡수. BH 다중검정 보정. ⚠ 관찰 분해라 delivery selection bias 포함 — 인과 후보로만.</p>
       ${metricToggle}
       <p style="font-size:12px;color:var(--text-muted);">n=${cur.diag?.n || 0} · R²=${fmt(cur.diag?.R2)} · 제거된 변수: ${(cur.dropped || []).length ? cur.dropped.join(", ") : "없음"}</p>
+      ${(cur.effects || []).length ? `
+        <div class="alloc-card" style="margin:12px 0;">
+          <div class="cann-card-header">
+            <div class="alloc-card-title">Forest plot — β 효과 + 95% CI</div>
+            <button class="ab-pill" data-pngdownload="creative-forest-${CREATIVE_STATE.decomposeMetric}" data-pngname="creative_forest_${CREATIVE_STATE.decomposeMetric}" title="PNG 다운로드">⬇ PNG</button>
+          </div>
+          <p class="muted">막대 = 효과 크기(β), 점선 = 95% CI. 0 기준선 안 걸치고 BH-adj p&lt;0.05면 유의.</p>
+          <div class="chart-container" style="--chart-h: ${Math.max(280, Math.min(800, (cur.effects || []).length * 26 + 80))}px;"><canvas id="creative-forest-${CREATIVE_STATE.decomposeMetric}"></canvas></div>
+        </div>` : ""}
       ${effRows ? `<div class="table-wrap">
         <table class="data" style="font-size:11.5px;">
           <thead><tr>
@@ -9450,6 +9474,8 @@ function renderCreativeFatigue(fatigue, metrics) {
   const fatigued = fatigue.filter(f => f.fatigued);
   const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v*100).toFixed(1) + "%";
 
+  // Decay 차트: drop % 상위 5개 소재의 일별 rolling CTR
+  const top5 = fatigued.sort((a,b) => b.dropPct - a.dropPct).slice(0, 5);
   return `
     <section class="block" id="s-fatigue">
       <h2 class="section-title"><span class="ix">§4</span>Fatigue 검출</h2>
@@ -9458,6 +9484,15 @@ function renderCreativeFatigue(fatigue, metrics) {
         <div class="ab-stat"><div class="ab-stat-label">분석 소재 수</div><div class="ab-stat-value tnum">${fatigue.length}</div></div>
         <div class="ab-stat"><div class="ab-stat-label">Fatigue 감지</div><div class="ab-stat-value tnum ${fatigued.length>0?'neg':'pos'}">${fatigued.length}</div></div>
       </div>
+      ${top5.length ? `
+        <div class="alloc-card" style="margin-bottom:12px;">
+          <div class="cann-card-header">
+            <div class="alloc-card-title">Decay 라인 — Drop % 상위 ${top5.length}개</div>
+            <button class="ab-pill" data-pngdownload="creative-fatigue-decay" data-pngname="creative_fatigue_decay" title="PNG 다운로드">⬇ PNG</button>
+          </div>
+          <p class="muted">7일 rolling CTR. ▲ peak 시점, ▼ 최저점.</p>
+          <div class="chart-container"><canvas id="creative-fatigue-decay"></canvas></div>
+        </div>` : ""}
       ${fatigued.length ? `<div class="table-wrap">
         <table class="data" style="font-size:11.5px;">
           <thead><tr><th>Creative ID</th><th>Peak Date</th><th>Peak CTR</th><th>현재 CTR</th><th>Drop %</th><th>운영 기간</th></tr></thead>
@@ -9496,15 +9531,22 @@ function renderCreativeMatrix(matrix) {
     <th style="background:var(--bg-2);"><strong>${escapeHtml(CREATIVE_CONFIG.matrix.rows)}</strong> ↓ \\ <strong>${escapeHtml(CREATIVE_CONFIG.matrix.cols)}</strong> →</th>
     ${matrix.cols.map(c => `<th style="background:var(--bg-2);">${escapeHtml(c)}</th>`).join("")}
   </tr>`;
+  const sel = CREATIVE_STATE.selectedCell;
   const bodyRows = matrix.grid.map((row, i) => `<tr>
     <th style="background:var(--bg-2);text-align:left;">${escapeHtml(matrix.rows[i])}</th>
-    ${row.map(cell => `<td style="background:${statusColor[cell.status]};padding:8px;font-size:11px;line-height:1.5;">
-      <div style="font-size:10px;color:var(--text-muted);">${statusLabel[cell.status]}${cell.n ? ` · n=${cell.n}` : ""}</div>
-      ${cell.status !== 'empty' ? `
-        <div class="tnum">CTR ${fmtPct(cell.ctr)}</div>
-        <div class="tnum" style="color:var(--text-muted);">CVR ${fmtPct(cell.cvr)}</div>
-      ` : `<div style="color:var(--text-muted);">—</div>`}
-    </td>`).join("")}
+    ${row.map(cell => {
+      const isSelected = sel && sel.row === cell.row && sel.col === cell.col;
+      const clickable = cell.status !== "empty";
+      return `<td
+        ${clickable ? `data-matrix-cell-row="${escapeHtml(cell.row)}" data-matrix-cell-col="${escapeHtml(cell.col)}"` : ""}
+        style="background:${statusColor[cell.status]};padding:8px;font-size:11px;line-height:1.5;${clickable ? 'cursor:pointer;' : ''}${isSelected ? 'outline:2px solid var(--primary,#adc6ff);outline-offset:-2px;' : ''}">
+        <div style="font-size:10px;color:var(--text-muted);">${statusLabel[cell.status]}${cell.n ? ` · n=${cell.n}` : ""}${isSelected ? ' ★ 선택됨' : ''}</div>
+        ${cell.status !== 'empty' ? `
+          <div class="tnum">CTR ${fmtPct(cell.ctr)}</div>
+          <div class="tnum" style="color:var(--text-muted);">CVR ${fmtPct(cell.cvr)}</div>
+        ` : `<div style="color:var(--text-muted);">—</div>`}
+      </td>`;
+    }).join("")}
   </tr>`).join("");
 
   return `
@@ -9549,7 +9591,7 @@ function renderCreativeNextTest(nextTest) {
     </section>`;
 }
 
-/* 5-6 핸들러 (인라인 CSV + decompose metric 토글 + 지표 CSV export) */
+/* 5-6 핸들러 (인라인 CSV + decompose metric 토글 + matrix 클릭 + 지표 CSV export) */
 function bindCreativeHandlers() {
   bindInlineCsvHandlers();
   document.querySelectorAll("[data-decompose-metric]").forEach(btn => {
@@ -9558,8 +9600,165 @@ function bindCreativeHandlers() {
       navigate("5-6");
     });
   });
+  // Concept Matrix 셀 클릭 → metric 표 필터
+  document.querySelectorAll("[data-matrix-cell-row]").forEach(td => {
+    td.addEventListener("click", () => {
+      const row = td.dataset.matrixCellRow;
+      const col = td.dataset.matrixCellCol;
+      const cur = CREATIVE_STATE.selectedCell;
+      if (cur && cur.row === row && cur.col === col) {
+        CREATIVE_STATE.selectedCell = null;  // 토글 off
+      } else {
+        CREATIVE_STATE.selectedCell = { row, col };
+      }
+      navigate("5-6");
+      setTimeout(() => {
+        const target = document.getElementById("s-metrics");
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    });
+  });
+  // 필터 해제
+  const clearBtn = document.getElementById("creative-clear-cell");
+  if (clearBtn) clearBtn.addEventListener("click", () => {
+    CREATIVE_STATE.selectedCell = null;
+    navigate("5-6");
+  });
+  // PNG 다운로드 (기존 helper 재사용)
+  document.querySelectorAll("#s-decompose [data-pngdownload], #s-fatigue [data-pngdownload]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const canvasId = btn.dataset.pngdownload;
+      const nameSuffix = btn.dataset.pngname || canvasId;
+      downloadChartAsPNG(canvasId, nameSuffix);
+    });
+  });
   const expBtn = document.getElementById("creative-export-metrics");
   if (expBtn) expBtn.addEventListener("click", exportCreativeMetricsCSV);
+
+  // 차트 렌더 (Chart.js 준비 후)
+  renderCreativeCharts();
+}
+
+function renderCreativeCharts() {
+  if (typeof Chart === "undefined") return;
+  renderForestPlot();
+  renderFatigueDecayChart();
+}
+
+/* Forest plot: 가로 floating bar (CI) + 점(coef) */
+function renderForestPlot() {
+  const cur = CREATIVE_CACHE.decompose?.[CREATIVE_STATE.decomposeMetric];
+  if (!cur || !cur.effects || !cur.effects.length) return;
+  const canvasId = `creative-forest-${CREATIVE_STATE.decomposeMetric}`;
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  destroyChartIfExists(canvasId);
+
+  // pAdj 순 정렬 (유의 우선)
+  const eff = [...cur.effects].sort((a, b) => a.pAdj - b.pAdj);
+  const labels = eff.map(e => `${e.factor} = ${String(e.level).slice(0, 16)}`);
+  // floating bar: data = [ciLow, ciHigh] · color: 유의이고 양수→초록, 유의이고 음수→빨강, else 회색
+  const barData = eff.map(e => [e.ciLow * 100, e.ciHigh * 100]);  // %p 단위
+  const barColors = eff.map(e => {
+    if (e.pAdj < 0.05) return e.coef > 0 ? "#22c55eAA" : "#f87171AA";
+    return "rgba(150,150,150,0.4)";
+  });
+  // 점(coef) 시리즈
+  const pointData = eff.map((e, i) => ({ x: e.coef * 100, y: i }));
+
+  CHART_INSTANCES[canvasId] = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        { type: "bar", label: "95% CI", data: barData, backgroundColor: barColors, borderWidth: 0, barThickness: 16 },
+        { type: "scatter", label: "β (효과)", data: pointData, backgroundColor: "#ffffff", borderColor: "#000", pointRadius: 4, pointHoverRadius: 6 },
+      ],
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: getCssVar("--text-muted"), font: { size: 11 } } },
+        tooltip: { callbacks: { label: (c) => {
+          const e = eff[c.dataIndex];
+          if (!e) return "";
+          return `β=${(e.coef*100).toFixed(2)}%p · CI=[${(e.ciLow*100).toFixed(2)}, ${(e.ciHigh*100).toFixed(2)}] · BH-p=${e.pAdj.toFixed(4)} · n=${e.n}`;
+        }}}
+      },
+      scales: {
+        x: {
+          title: { display: true, text: `${CREATIVE_STATE.decomposeMetric.toUpperCase()} 효과 (%p, 0 = 기준 level)`, color: getCssVar("--text-muted") },
+          ticks: { color: getCssVar("--text-muted"), callback: v => v.toFixed(2) + "%p" },
+          grid: { color: getCssVar("--border") },
+        },
+        y: {
+          ticks: { color: getCssVar("--text-muted"), font: { size: 10 } },
+          grid: { color: getCssVar("--border") },
+        },
+      },
+    },
+  });
+}
+
+/* Fatigue decay: 상위 5개 fatigued 소재의 일별 rolling CTR */
+function renderFatigueDecayChart() {
+  const fatigueList = CREATIVE_CACHE.fatigue || [];
+  const fatigued = fatigueList.filter(f => f.fatigued).sort((a, b) => b.dropPct - a.dropPct).slice(0, 5);
+  if (!fatigued.length) return;
+  const ctx = document.getElementById("creative-fatigue-decay");
+  if (!ctx) return;
+  destroyChartIfExists("creative-fatigue-decay");
+
+  // 각 fatigued creative_id의 일별 시리즈 만들기
+  const allRows = getMappedRows();
+  const byId = new Map();
+  for (const r of allRows) {
+    if (!r.creative_id || !r.date) continue;
+    if (!byId.has(r.creative_id)) byId.set(r.creative_id, []);
+    byId.get(r.creative_id).push(r);
+  }
+
+  const W = CREATIVE_CONFIG.fatigue.decayWindow;
+  const palette = ["#adc6ff", "#22c55e", "#f87171", "#fbbf24", "#a78bfa"];
+  const datasets = [];
+  const allDateSet = new Set();
+
+  fatigued.forEach((f, idx) => {
+    const series = (byId.get(f.creative_id) || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+    const vals = series.map(r => CREATIVE_STATS.safeDiv(r.clicks, r.impressions));
+    const rolling = vals.map((_, i) => {
+      const start = Math.max(0, i - W + 1);
+      const slice = vals.slice(start, i + 1).filter(v => v != null && isFinite(v));
+      return slice.length ? slice.reduce((a, b) => a + b, 0) / slice.length * 100 : null; // %로
+    });
+    series.forEach(s => allDateSet.add(s.date));
+    const color = palette[idx % palette.length];
+    datasets.push({
+      label: `${String(f.creative_id).slice(0, 16)}`,
+      data: series.map((s, i) => ({ x: s.date, y: rolling[i] })),
+      borderColor: color, backgroundColor: color + "30",
+      borderWidth: 1.8, pointRadius: 1.5, tension: 0.25,
+    });
+  });
+
+  const labels = [...allDateSet].sort();
+  CHART_INSTANCES["creative-fatigue-decay"] = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      parsing: false,
+      plugins: {
+        legend: { labels: { color: getCssVar("--text-muted"), font: { size: 11 } } },
+        tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y != null ? c.parsed.y.toFixed(2) + "%" : "—"}` } },
+      },
+      scales: {
+        x: { type: "category", ticks: { color: getCssVar("--text-muted"), maxRotation: 0, autoSkip: true, maxTicksLimit: 12 }, grid: { color: getCssVar("--border") } },
+        y: { title: { display: true, text: "7d Rolling CTR (%)", color: getCssVar("--text-muted") }, ticks: { color: getCssVar("--text-muted") }, grid: { color: getCssVar("--border") } },
+      },
+    },
+  });
 }
 
 function exportCreativeMetricsCSV() {
