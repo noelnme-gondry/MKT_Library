@@ -303,6 +303,13 @@ PR 머지 후엔 반드시:
 3. `renderXChart()` 에서 `destroyChartIfExists("X")` 후 `new Chart(...)`
 4. 인스턴스를 `CHART_INSTANCES["X"]` 에 저장
 
+### 12.5 Forest plot (CI floating bar + coef scatter)
+Chart.js 네이티브 forest 없음 → 가로 bar + scatter 2개 dataset 조합으로 구현 (PR #29):
+- `type:"bar", indexAxis:"y"` + `data:[ciLow, ciHigh]` 형태 floating bar
+- `type:"scatter"`로 coef 점 overlay (포인트는 흰색, border 검정으로 강조)
+- pAdj 기반 색상 코드 (유의 양수 초록 / 유의 음수 빨강 / 기타 회색)
+- 차트 높이는 effects 개수에 비례 (`--chart-h: ${n * 26 + 80}px`)
+
 ### 12.4 사용자 토글 클릭 → 즉시 반영
 1. 데이터 변형은 캐시에 사전 계산
 2. 토글 핸들러는 캐시 lookup + `chart.update("none")` 또는 className swap
