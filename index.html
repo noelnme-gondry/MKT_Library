@@ -2703,6 +2703,7 @@ const IA = [
     items: [
       { id: "5-2", title: "데이터 시각화 대시보드", desc: "KPI 자동 계산 + 시계열·채널·퍼널·코호트 차트" },
       { id: "5-3", title: "Budget Allocator", desc: "한계효용 기반 채널별 예산 최적 배분 (CPI/CPA/ROAS)" },
+      { id: "5-9", title: "LTV:CAC · Payback", desc: "채널별 CAC 대비 LTV 배수 + 회수기간 + 손익분기 ROAS" },
     ],
   },
   {
@@ -5234,7 +5235,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -11066,6 +11067,242 @@ if (typeof window !== "undefined") {
   window.QUALITY_CONFIG = QUALITY_CONFIG;
 }
 
+/* ============================================================
+ * LTV:CAC · Payback (5-9) — 효율 그룹, 일별 캠페인 CSV 재사용
+ * 채널/캠페인별 CAC, D0/D7/D14 ROAS, LTV:CAC 배수, 회수기간(외삽), 손익분기 ROAS
+ * ============================================================ */
+const LTVCAC_CONFIG = {
+  version: "1.0.0",
+  healthyRatio: 3.0,     // LTV:CAC ≥ 3 = 건강
+  warnRatio: 1.0,        // < 1 = 적자
+  paybackTargetDays: 90, // 회수 목표 (일)
+};
+const LTVCAC_STATE = { unitField: "channel", ltvHorizon: 14 };
+
+const LTVCAC_MATH = {
+  safeDiv(n, d) { n = Number(n)||0; d = Number(d)||0; return d > 0 ? n/d : null; },
+  // D0/D7/D14 누적매출/유저 3점으로 power 외삽 → 임의 day의 누적 ARPU 예측
+  // y = a * x^b (x=day+1 로 보정해 D0 포함). 2점 이상이면 적합, 1점이면 평탄.
+  fitCumArpu(points) {
+    // points: [{day, arpu}] (누적 ARPU)
+    const valid = points.filter(p => p.arpu != null && isFinite(p.arpu) && p.arpu > 0);
+    if (valid.length < 2) {
+      const flat = valid[0]?.arpu ?? null;
+      return flat != null ? { predict: () => flat, kind: "flat" } : null;
+    }
+    // x = day + 1 (D0 → x=1)
+    const xs = valid.map(p => Math.log(p.day + 1));
+    const ys = valid.map(p => Math.log(p.arpu));
+    const n = xs.length;
+    const mx = xs.reduce((a,b)=>a+b,0)/n, my = ys.reduce((a,b)=>a+b,0)/n;
+    let num=0, den=0;
+    for (let i=0;i<n;i++){ num+=(xs[i]-mx)*(ys[i]-my); den+=(xs[i]-mx)**2; }
+    if (den === 0) { const f = valid[valid.length-1].arpu; return { predict: ()=>f, kind:"flat" }; }
+    const b = num/den, a = Math.exp(my - b*mx);
+    return { predict: (day) => a * Math.pow(day + 1, b), a, b, kind: "power" };
+  },
+  // CAC를 회수하는 day 탐색 (누적 ARPU(day) ≥ CAC 되는 최소 day). 없으면 null(외삽 한계).
+  paybackDay(fit, cac, maxDay = 720) {
+    if (!fit || cac == null || cac <= 0) return null;
+    for (let d = 0; d <= maxDay; d++) {
+      if (fit.predict(d) >= cac) return d;
+    }
+    return null; // maxDay 내 미회수
+  },
+};
+
+const LTVCAC_CACHE = { key: null, rows: null, snapshotHash: null };
+function ltvcacCacheKey() {
+  const m = CSV_STATE.mapping || {};
+  const sig = ["date","cost","installs","actions","revenue_d0","revenue_d7","revenue_d14","channel","campaign_name","country","platform"]
+    .map(k => `${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
+  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|u:${LTVCAC_STATE.unitField}|cfg:${LTVCAC_CONFIG.version}`;
+}
+
+function buildLtvCacCache() {
+  if (typeof window !== "undefined") window.__LTVCAC = LTVCAC_CACHE;
+  const key = ltvcacCacheKey();
+  if (LTVCAC_CACHE.key === key) return LTVCAC_CACHE;
+  const rows = getMappedRows();
+  const unitField = LTVCAC_STATE.unitField;
+  const denomField = (new Set(Object.values(CSV_STATE.mapping||{}))).has("installs") ? "installs" : "actions";
+
+  const map = new Map();
+  for (const r of rows) {
+    const key2 = String(r[unitField] ?? "").trim() || "(미지정)";
+    if (!map.has(key2)) map.set(key2, { unit:key2, cost:0, denom:0, rev0:0, rev7:0, rev14:0, has0:false, has7:false, has14:false });
+    const b = map.get(key2);
+    b.cost  += Number(r.cost) || 0;
+    b.denom += Number(r[denomField]) || 0;
+    if (r.revenue_d0  != null && r.revenue_d0  !== "") { b.rev0  += Number(r.revenue_d0)  || 0; b.has0=true; }
+    if (r.revenue_d7  != null && r.revenue_d7  !== "") { b.rev7  += Number(r.revenue_d7)  || 0; b.has7=true; }
+    if (r.revenue_d14 != null && r.revenue_d14 !== "") { b.rev14 += Number(r.revenue_d14) || 0; b.has14=true; }
+  }
+
+  const out = [];
+  for (const b of map.values()) {
+    const cac = LTVCAC_MATH.safeDiv(b.cost, b.denom);  // 비용 / 유저
+    const arpu0  = b.has0  ? LTVCAC_MATH.safeDiv(b.rev0,  b.denom) : null;
+    const arpu7  = b.has7  ? LTVCAC_MATH.safeDiv(b.rev7,  b.denom) : null;
+    const arpu14 = b.has14 ? LTVCAC_MATH.safeDiv(b.rev14, b.denom) : null;
+    const pts = [];
+    if (arpu0  != null) pts.push({ day:0,  arpu:arpu0 });
+    if (arpu7  != null) pts.push({ day:7,  arpu:arpu7 });
+    if (arpu14 != null) pts.push({ day:14, arpu:arpu14 });
+    const fit = LTVCAC_MATH.fitCumArpu(pts);
+    const horizon = LTVCAC_STATE.ltvHorizon;
+    const ltvAtHorizon = fit ? fit.predict(horizon) : (arpu14 ?? arpu7 ?? arpu0);
+    const ratio = (cac != null && ltvAtHorizon != null && cac > 0) ? ltvAtHorizon / cac : null;
+    const payback = LTVCAC_MATH.paybackDay(fit, cac);
+    // ROAS@horizon (누적매출/비용)
+    const roasH = (cac != null && ltvAtHorizon != null && cac > 0) ? ltvAtHorizon / cac : null; // == ratio (ARPU/CAC = revenue/cost)
+    out.push({
+      unit: b.unit, cost: b.cost, users: b.denom, cac,
+      arpu0, arpu7, arpu14, ltvAtHorizon, ratio, payback,
+      roas0: LTVCAC_MATH.safeDiv(b.rev0, b.cost),
+      roas7: LTVCAC_MATH.safeDiv(b.rev7, b.cost),
+      roas14: LTVCAC_MATH.safeDiv(b.rev14, b.cost),
+      fitKind: fit?.kind || "none",
+    });
+  }
+  out.sort((a,b) => (b.cost||0) - (a.cost||0));
+  LTVCAC_CACHE.key = key;
+  LTVCAC_CACHE.rows = out;
+  LTVCAC_CACHE.denomField = denomField;
+  LTVCAC_CACHE.snapshotHash = creativeHashStr(key + rows.length);
+  return LTVCAC_CACHE;
+}
+
+function page_5_9() {
+  const meta = findMeta("5-9");
+  const missing = checkRequiredForTool("5-9");
+  if (missing.length > 0 || !CSV_STATE.headers.length) {
+    return pageShell(meta, {
+      deck: "채널/캠페인별 CAC 대비 LTV 배수와 회수기간(payback)을 계산합니다. 효율 그룹의 일별 캠페인 CSV(비용·설치·D0/D7/D14 매출)를 그대로 사용합니다.",
+      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+      summary: "CAC = 비용/유저, 누적 ARPU(D0·D7·D14)를 power 외삽해 임의 horizon의 LTV를 추정. LTV:CAC ≥ 3 건강, < 1 적자. 회수기간 = 누적 ARPU가 CAC에 도달하는 day.",
+      toc: [{ id: "s-prep", title: "데이터 준비" }],
+      body: renderInlineCsvUpload("5-9"),
+    });
+  }
+  buildLtvCacCache();
+  const c = LTVCAC_CACHE;
+  return pageShell(meta, {
+    deck: "채널/캠페인별 CAC · LTV · LTV:CAC 배수 · 회수기간 · 손익분기. 효율 그룹 CSV 공유 (5-2/5-3과 동일 업로드).",
+    chips: `
+      <span class="chip"><span class="dot"></span>도구 · LTV:CAC · Payback</span>
+      <span class="chip ok"><span class="dot"></span>${c.rows.length}개 ${LTVCAC_STATE.unitField === 'channel' ? '채널' : LTVCAC_STATE.unitField === 'campaign_name' ? '캠페인' : '단위'}</span>
+      <span class="chip"><span class="dot"></span>분모 ${c.denomField} · snapshot ${c.snapshotHash}</span>
+      ${authStatusChip()}`,
+    summary: "누적 ARPU(D0/D7/D14) power 외삽으로 LTV를 추정하고 CAC와 비교. ⚠ 외삽은 관측(D14) 밖이라 신뢰구간 좁게 해석. 회수 안 되는 채널은 horizon 내 미회수로 표기.",
+    toc: [
+      { id: "s-prep", title: "데이터 준비" },
+      { id: "s-ctl", title: "분석 단위" },
+      { id: "s-table", title: "LTV:CAC 표" },
+    ],
+    body: `
+      <section class="block" id="s-prep">${renderInlineCsvUpload("5-9")}</section>
+      <section class="block" id="s-ctl">
+        <h2 class="section-title"><span class="ix">§1</span>분석 단위 · LTV Horizon</h2>
+        <div class="ab-pillgroup">
+          <span class="ab-pillgroup-label">단위</span>
+          ${[["channel","채널"],["campaign_name","캠페인"],["country","국가"],["platform","OS"]].map(([k,l]) => {
+            const avail = (new Set(Object.values(CSV_STATE.mapping||{}))).has(k);
+            return `<button class="ab-pill ${LTVCAC_STATE.unitField===k?'active':''} ${!avail?'disabled':''}" ${avail?`data-ltvcac-unit="${k}"`:'disabled'}>${l}${!avail?' 🔒':''}</button>`;
+          }).join("")}
+        </div>
+        <div class="ab-pillgroup">
+          <span class="ab-pillgroup-label">LTV Horizon</span>
+          ${[7,14,30,90,180].map(d => `<button class="ab-pill ${LTVCAC_STATE.ltvHorizon===d?'active':''}" data-ltvcac-horizon="${d}">D${d}</button>`).join("")}
+        </div>
+      </section>
+      ${renderLtvCacTable(c)}
+    `,
+  });
+}
+PAGE_RENDERERS["5-9"] = page_5_9;
+
+function renderLtvCacTable(c) {
+  const rows = c.rows || [];
+  if (!rows.length) return "";
+  const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v*100).toFixed(0) + "%";
+  const fmtX   = (v) => v == null || !isFinite(v) ? "—" : v.toFixed(2) + "×";
+  const fmtPb  = (v) => v == null ? "<span style='color:#f87171;'>미회수</span>" : `${v}일`;
+  const ratioCls = (r) => r == null ? "" : r >= LTVCAC_CONFIG.healthyRatio ? "pos" : r < LTVCAC_CONFIG.warnRatio ? "neg" : "";
+  const h = LTVCAC_STATE.ltvHorizon;
+  return `
+    <section class="block" id="s-table">
+      <h2 class="section-title"><span class="ix">§2</span>LTV:CAC · 회수기간 (LTV horizon = D${h})</h2>
+      <p class="muted">초록 = LTV:CAC ≥ ${LTVCAC_CONFIG.healthyRatio}× (건강) · 빨강 = &lt; ${LTVCAC_CONFIG.warnRatio}× (적자). payback = 누적 ARPU가 CAC에 도달하는 day (power 외삽).</p>
+      <div class="table-wrap">
+        <table class="data" style="font-size:11.5px;">
+          <thead><tr>
+            <th>단위</th><th>비용</th><th>유저</th><th>CAC</th>
+            <th>ROAS D7</th><th>ROAS D14</th><th>LTV(D${h})/user</th><th>LTV:CAC</th><th>Payback</th><th>외삽</th>
+          </tr></thead>
+          <tbody>
+            ${rows.slice(0,60).map(r => `
+              <tr>
+                <td><strong>${escapeHtml(String(r.unit).slice(0,28))}</strong></td>
+                <td class="tnum">${fmtCurrency(r.cost)}</td>
+                <td class="tnum">${(r.users||0).toLocaleString()}</td>
+                <td class="tnum">${r.cac!=null?fmtCurrency(r.cac):"—"}</td>
+                <td class="tnum">${fmtPct(r.roas7)}</td>
+                <td class="tnum">${fmtPct(r.roas14)}</td>
+                <td class="tnum">${r.ltvAtHorizon!=null?fmtCurrency(r.ltvAtHorizon):"—"}</td>
+                <td class="tnum ${ratioCls(r.ratio)}"><strong>${fmtX(r.ratio)}</strong></td>
+                <td class="tnum">${fmtPb(r.payback)}</td>
+                <td class="tnum" style="color:var(--text-muted);font-size:10px;">${r.fitKind}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+      <div class="callout" style="margin-top:10px;"><div class="ico">i</div><div class="body">
+        <p style="margin:0;font-size:12px;">LTV:CAC는 <strong>유닛 이코노믹스 건강도</strong>의 핵심 지표입니다. 3× 이상이면 공격적 확장 여지, 1× 미만이면 해당 단위는 적자이므로 입찰/예산 축소 또는 LTV 개선이 필요합니다. 회수기간이 목표(${LTVCAC_CONFIG.paybackTargetDays}일)보다 길면 현금흐름 부담을 검토하세요.</p>
+      </div></div>
+    </section>`;
+}
+
+function bindLtvCacHandlers() {
+  bindInlineCsvHandlers();
+  document.querySelectorAll("[data-ltvcac-unit]").forEach(b => b.addEventListener("click", () => {
+    if (b.classList.contains("disabled")) return;
+    LTVCAC_STATE.unitField = b.dataset.ltvcacUnit; LTVCAC_CACHE.key=null; navigate("5-9");
+  }));
+  document.querySelectorAll("[data-ltvcac-horizon]").forEach(b => b.addEventListener("click", () => {
+    LTVCAC_STATE.ltvHorizon = Number(b.dataset.ltvcacHorizon); LTVCAC_CACHE.key=null; navigate("5-9");
+  }));
+}
+
+function runLtvCacTests(verbose = true) {
+  const results = [];
+  // T1: power fit 정확 (arpu = 1*(day+1)^0.5 → D0=1, D7≈2.83, D14≈3.87)
+  const fit = LTVCAC_MATH.fitCumArpu([{day:0,arpu:1},{day:7,arpu:Math.sqrt(8)},{day:14,arpu:Math.sqrt(15)}]);
+  const pred30 = fit ? fit.predict(30) : null;  // sqrt(31)=5.567
+  results.push({ test:"T1 · cumARPU power fit", expected:"~5.57 @D30", actual:pred30?pred30.toFixed(3):"null", pass: pred30 && Math.abs(pred30 - Math.sqrt(31)) < 1e-6 ? "✓":"✗" });
+  // T2: payback — CAC=3, fit sqrt(day+1) → 도달 day where sqrt(d+1)>=3 → d+1>=9 → d=8
+  const pb = LTVCAC_MATH.paybackDay(fit, 3);
+  results.push({ test:"T2 · payback day (CAC=3)", expected:"8", actual:String(pb), pass: pb===8 ? "✓":"✗" });
+  // T3: 미회수 → null
+  const pb2 = LTVCAC_MATH.paybackDay(fit, 9999);
+  results.push({ test:"T3 · 미회수 → null", expected:"null", actual:String(pb2), pass: pb2===null ? "✓":"✗" });
+  // T4: safeDiv 분모0 → null
+  results.push({ test:"T4 · safeDiv 0", expected:"null", actual:String(LTVCAC_MATH.safeDiv(5,0)), pass: LTVCAC_MATH.safeDiv(5,0)===null?"✓":"✗" });
+  // T5: 결정론
+  const a=LTVCAC_MATH.fitCumArpu([{day:0,arpu:2},{day:7,arpu:4}]).predict(30);
+  const b=LTVCAC_MATH.fitCumArpu([{day:0,arpu:2},{day:7,arpu:4}]).predict(30);
+  results.push({ test:"T5 · 결정론", expected:"identical", actual:a===b?"identical":`${a} vs ${b}`, pass:a===b?"✓":"✗" });
+  if (verbose) {
+    console.log("%c=== LTV:CAC · Golden Tests ===","color:#adc6ff;font-weight:bold;");
+    console.table(results);
+    const p=results.filter(r=>r.pass==="✓").length;
+    console.log(`%c${p}/${results.length} 통과`,`color:${p===results.length?'#22c55e':'#f87171'};font-weight:bold;`);
+  }
+  return results;
+}
+if (typeof window !== "undefined") { window.runLtvCacTests = runLtvCacTests; window.LTVCAC_MATH = LTVCAC_MATH; }
+
 function renderModePlan() {
   const tt = AB_STATE.testType;
   const sym = CURRENCY_SYMBOLS[AB_STATE.currency] || "₩";
@@ -11831,6 +12068,11 @@ function bindCSVPageHandlers() {
   // ----- 5-8: Quality Analyzer 핸들러 -----
   if (document.querySelector("[data-quality-curve], [data-quality-segment]") || document.getElementById("s-retention")) {
     bindQualityHandlers();
+  }
+
+  // ----- 5-9: LTV:CAC 핸들러 -----
+  if (document.querySelector("[data-ltvcac-unit], [data-ltvcac-horizon]")) {
+    bindLtvCacHandlers();
   }
 
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
@@ -14414,6 +14656,7 @@ const TOOL_REQUIRED_FIELDS = {
   "5-6": ["creative_id", "date", "channel", "impressions", "clicks", "installs", "spend"],
   "5-7": ["experiment_id", "arm_id", "is_control", "metric_tier", "metric_name", "numerator", "denominator"],
   "5-8": ["cohort_date", "day_offset", "cohort_size", { oneOf: ["retained_users", "cohort_revenue"] }],
+  "5-9": ["date", "cost", { oneOf: ["installs", "actions"] }, { oneOf: ["revenue_d0", "revenue_d7", "revenue_d14"] }],
 };
 
 /* 도구별 옵션 필드 — 매핑하면 추가 기능 활성화. */
@@ -14474,6 +14717,16 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "platform",       unlocks: "OS별 코호트 비교 분리" },
     { key: "retained_users", unlocks: "리텐션 곡선 분석" },
     { key: "cohort_revenue", unlocks: "LTV 곡선 + 외삽 분석" },
+  ],
+  "5-9": [
+    { key: "channel",       unlocks: "채널별 LTV:CAC 분리" },
+    { key: "campaign_name", unlocks: "캠페인별 LTV:CAC" },
+    { key: "country",       unlocks: "국가별 분리" },
+    { key: "platform",      unlocks: "OS별 분리" },
+    { key: "revenue_d0",    unlocks: "D0 매출 (회수곡선 시작점)" },
+    { key: "revenue_d7",    unlocks: "D7 매출 (회수곡선)" },
+    { key: "revenue_d14",   unlocks: "D14 매출 (회수곡선·외삽)" },
+    { key: "actions",       unlocks: "CAC를 액션 기준으로 (installs 대신)" },
   ],
 };
 
