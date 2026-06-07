@@ -2706,6 +2706,7 @@ const IA = [
       { id: "5-9", title: "LTV:CAC · Payback", desc: "채널별 CAC 대비 LTV 배수 + 회수기간 + 손익분기 ROAS" },
       { id: "5-10", title: "Pacing & Forecast", desc: "MTD 소진 vs 목표 + 월말 착지 예측 + 페이스 경고" },
       { id: "5-11", title: "Funnel 진단", desc: "노출→클릭→설치→액션→매출 단계별 CVR·이탈 진단" },
+      { id: "5-12", title: "Segment Explorer", desc: "국가×채널×플랫폼 효율 매트릭스 + 드릴다운" },
     ],
   },
   {
@@ -5237,7 +5238,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-10", "5-11"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-10", "5-11", "5-12"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -11578,6 +11579,140 @@ function runFunnelTests(verbose=true){
 }
 if(typeof window!=="undefined"){ window.runFunnelTests=runFunnelTests; }
 
+/* ============================================================
+ * Segment Explorer (5-12) — 효율 그룹
+ * 행 축 × 열 축 효율 매트릭스 (CPI/CPA/ROAS/CTR/CVR) + 단위 집계
+ * ============================================================ */
+const SEGMENT_STATE = { rowAxis: "country", colAxis: "channel", metric: "cpi" };
+const SEGMENT_CACHE = { key:null, grid:null, rows:null, cols:null };
+function segmentCacheKey(){
+  const m=CSV_STATE.mapping||{};
+  const sig=["channel","country","platform","campaign_name","cost","impressions","clicks","installs","actions","revenue_d7"].map(k=>`${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
+  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|r:${SEGMENT_STATE.rowAxis}|c:${SEGMENT_STATE.colAxis}|m:${SEGMENT_STATE.metric}`;
+}
+const SEGMENT_METRICS = {
+  cpi:  { label:"CPI",  fmt:(c)=> c.installs>0 ? fmtCurrency(c.cost/c.installs,{metric:true}) : "—", better:"low" },
+  cpa:  { label:"CPA",  fmt:(c)=> c.actions>0  ? fmtCurrency(c.cost/c.actions, {metric:true}) : "—", better:"low" },
+  roas: { label:"ROAS", fmt:(c)=> c.cost>0 && c.rev>0 ? (c.rev/c.cost*100).toFixed(0)+"%" : "—", better:"high" },
+  ctr:  { label:"CTR",  fmt:(c)=> c.impr>0 ? (c.clk/c.impr*100).toFixed(2)+"%" : "—", better:"high" },
+  cvr:  { label:"CVR",  fmt:(c)=> c.clk>0 ? (c.installs/c.clk*100).toFixed(2)+"%" : "—", better:"high" },
+  cost: { label:"Cost", fmt:(c)=> fmtCurrency(c.cost), better:"none" },
+};
+function segmentMetricValue(c, metric){
+  switch(metric){
+    case "cpi":  return c.installs>0 ? c.cost/c.installs : null;
+    case "cpa":  return c.actions>0  ? c.cost/c.actions  : null;
+    case "roas": return c.cost>0 ? c.rev/c.cost : null;
+    case "ctr":  return c.impr>0 ? c.clk/c.impr : null;
+    case "cvr":  return c.clk>0 ? c.installs/c.clk : null;
+    case "cost": return c.cost;
+    default: return null;
+  }
+}
+function buildSegmentCache(){
+  if(typeof window!=="undefined")window.__SEGMENT=SEGMENT_CACHE;
+  const key=segmentCacheKey(); if(SEGMENT_CACHE.key===key)return SEGMENT_CACHE;
+  const rows=getMappedRows();
+  const ra=SEGMENT_STATE.rowAxis, ca=SEGMENT_STATE.colAxis;
+  const cells=new Map(); const rowSet=new Set(), colSet=new Set();
+  for(const r of rows){
+    const rk=String(r[ra]??"").trim()||"(미지정)";
+    const ck=String(r[ca]??"").trim()||"(미지정)";
+    rowSet.add(rk); colSet.add(ck);
+    const key2=`${rk}|||${ck}`;
+    if(!cells.has(key2)) cells.set(key2,{cost:0,impr:0,clk:0,installs:0,actions:0,rev:0});
+    const b=cells.get(key2);
+    b.cost+=Number(r.cost)||0; b.impr+=Number(r.impressions)||0; b.clk+=Number(r.clicks)||0;
+    b.installs+=Number(r.installs)||0; b.actions+=Number(r.actions)||0; b.rev+=Number(r.revenue_d7)||0;
+  }
+  const rowsArr=[...rowSet].sort(), colsArr=[...colSet].sort();
+  const grid=rowsArr.map(rk=>colsArr.map(ck=>cells.get(`${rk}|||${ck}`)||null));
+  SEGMENT_CACHE.key=key; SEGMENT_CACHE.grid=grid; SEGMENT_CACHE.rows=rowsArr; SEGMENT_CACHE.cols=colsArr;
+  return SEGMENT_CACHE;
+}
+function page_5_12(){
+  const meta=findMeta("5-12");
+  const missing=checkRequiredForTool("5-12");
+  if(missing.length>0||!CSV_STATE.headers.length){
+    return pageShell(meta,{
+      deck:"국가×채널×플랫폼 등 두 축의 효율 매트릭스로 어느 조합이 좋고 나쁜지 한눈에. 효율 그룹 CSV 공유.",
+      chips:`<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+      summary:"행·열 축을 골라 CPI/CPA/ROAS/CTR/CVR을 셀에 집계. 색 농도로 상대 효율을 표현해 베스트/워스트 조합을 빠르게 식별.",
+      toc:[{id:"s-prep",title:"데이터 준비"}],
+      body:renderInlineCsvUpload("5-12"),
+    });
+  }
+  buildSegmentCache();
+  return pageShell(meta,{
+    deck:"두 축 효율 매트릭스 (heatmap). 행·열·지표를 토글해 베스트/워스트 세그먼트 조합 식별. 효율 그룹 CSV 공유.",
+    chips:`<span class="chip"><span class="dot"></span>도구 · Segment Explorer</span><span class="chip ok"><span class="dot"></span>${SEGMENT_CACHE.rows.length}×${SEGMENT_CACHE.cols.length}</span>${authStatusChip()}`,
+    summary:"셀 색은 해당 지표의 상대 위치(좋을수록 진한 초록 / 나쁠수록 빨강). CPI/CPA는 낮을수록, ROAS/CTR/CVR은 높을수록 긍정.",
+    toc:[{id:"s-prep",title:"데이터 준비"},{id:"s-matrix",title:"매트릭스"}],
+    body:`
+      <section class="block" id="s-prep">${renderInlineCsvUpload("5-12")}</section>
+      <section class="block" id="s-matrix">
+        <h2 class="section-title"><span class="ix">§1</span>세그먼트 효율 매트릭스</h2>
+        ${(() => {
+          const av=new Set(Object.values(CSV_STATE.mapping||{}));
+          const axisBtns=(role,cur)=>[["country","국가"],["channel","채널"],["platform","OS"],["campaign_name","캠페인"]].map(([k,l])=>{
+            const ok=av.has(k);
+            return `<button class="ab-pill ${cur===k?'active':''} ${!ok?'disabled':''}" ${ok?`data-seg-${role}="${k}"`:'disabled'}>${l}${!ok?' 🔒':''}</button>`;
+          }).join("");
+          const metBtns=Object.entries(SEGMENT_METRICS).map(([k,v])=>`<button class="ab-pill ${SEGMENT_STATE.metric===k?'active':''}" data-seg-metric="${k}">${v.label}</button>`).join("");
+          return `
+            <div class="ab-pillgroup"><span class="ab-pillgroup-label">행 축</span>${axisBtns("row",SEGMENT_STATE.rowAxis)}</div>
+            <div class="ab-pillgroup"><span class="ab-pillgroup-label">열 축</span>${axisBtns("col",SEGMENT_STATE.colAxis)}</div>
+            <div class="ab-pillgroup"><span class="ab-pillgroup-label">지표</span>${metBtns}</div>`;
+        })()}
+        ${renderSegmentMatrix()}
+      </section>
+    `,
+  });
+}
+PAGE_RENDERERS["5-12"]=page_5_12;
+function renderSegmentMatrix(){
+  const c=SEGMENT_CACHE; const met=SEGMENT_METRICS[SEGMENT_STATE.metric];
+  if(!c.grid||!c.rows.length)return "<p class='muted'>데이터 없음</p>";
+  // 색 스케일: 유효값 모아 min/max → better 방향에 따라 초록/빨강
+  const vals=[];
+  c.grid.forEach(row=>row.forEach(cell=>{ if(cell){const v=segmentMetricValue(cell,SEGMENT_STATE.metric); if(v!=null&&isFinite(v))vals.push(v);} }));
+  const vmin=Math.min(...vals), vmax=Math.max(...vals), span=(vmax-vmin)||1;
+  const cellBg=(v)=>{
+    if(v==null||!isFinite(v)||met.better==="none")return "transparent";
+    let t=(v-vmin)/span;                 // 0..1
+    if(met.better==="low") t=1-t;        // 낮을수록 좋음 → 반전
+    // t=1(좋음) 초록, t=0(나쁨) 빨강
+    const g=Math.round(34+(t)*(180-34)), r=Math.round(248-(t)*(248-60));
+    return `rgba(${r},${g},90,0.18)`;
+  };
+  const header=`<tr><th style="background:var(--bg-2);">${escapeHtml(SEGMENT_STATE.rowAxis)} ↓ \\ ${escapeHtml(SEGMENT_STATE.colAxis)} →</th>${c.cols.map(ck=>`<th style="background:var(--bg-2);">${escapeHtml(String(ck).slice(0,16))}</th>`).join("")}</tr>`;
+  const body=c.grid.map((row,i)=>`<tr><th style="background:var(--bg-2);text-align:left;">${escapeHtml(String(c.rows[i]).slice(0,20))}</th>${row.map(cell=>{
+    if(!cell)return `<td style="color:var(--text-muted);">—</td>`;
+    const v=segmentMetricValue(cell,SEGMENT_STATE.metric);
+    return `<td class="tnum" style="background:${cellBg(v)};">${met.fmt(cell)}<div style="font-size:9px;color:var(--text-muted);">${fmtCurrency(cell.cost)}</div></td>`;
+  }).join("")}</tr>`).join("");
+  return `<div class="table-wrap"><table class="data" style="font-size:11px;">${header}${body}</table></div>
+    <p class="muted" style="margin-top:8px;font-size:11px;">셀 하단 작은 숫자는 해당 조합의 비용(규모). 진한 초록=상대적으로 우수, 빨강=열위. ${met.better==='none'?'(Cost는 규모 지표라 색 없음)':''}</p>`;
+}
+function bindSegmentHandlers(){
+  bindInlineCsvHandlers();
+  document.querySelectorAll("[data-seg-row]").forEach(b=>b.addEventListener("click",()=>{ if(b.classList.contains("disabled"))return; SEGMENT_STATE.rowAxis=b.dataset.segRow; SEGMENT_CACHE.key=null; navigate("5-12"); }));
+  document.querySelectorAll("[data-seg-col]").forEach(b=>b.addEventListener("click",()=>{ if(b.classList.contains("disabled"))return; SEGMENT_STATE.colAxis=b.dataset.segCol; SEGMENT_CACHE.key=null; navigate("5-12"); }));
+  document.querySelectorAll("[data-seg-metric]").forEach(b=>b.addEventListener("click",()=>{ SEGMENT_STATE.metric=b.dataset.segMetric; SEGMENT_CACHE.key=null; navigate("5-12"); }));
+}
+function runSegmentTests(verbose=true){
+  const results=[];
+  const cell={cost:1000,impr:100000,clk:2000,installs:500,actions:100,rev:3000};
+  results.push({test:"T1 · CPI=2", expected:"2", actual:String(segmentMetricValue(cell,"cpi")), pass:segmentMetricValue(cell,"cpi")===2?"✓":"✗"});
+  results.push({test:"T2 · CPA=10", expected:"10", actual:String(segmentMetricValue(cell,"cpa")), pass:segmentMetricValue(cell,"cpa")===10?"✓":"✗"});
+  results.push({test:"T3 · ROAS=3", expected:"3", actual:String(segmentMetricValue(cell,"roas")), pass:segmentMetricValue(cell,"roas")===3?"✓":"✗"});
+  results.push({test:"T4 · CVR=0.25", expected:"0.25", actual:String(segmentMetricValue(cell,"cvr")), pass:segmentMetricValue(cell,"cvr")===0.25?"✓":"✗"});
+  results.push({test:"T5 · 분모0 CPI null", expected:"null", actual:String(segmentMetricValue({cost:10,installs:0},"cpi")), pass:segmentMetricValue({cost:10,installs:0},"cpi")===null?"✓":"✗"});
+  if(verbose){console.log("%c=== Segment · Golden ===","color:#adc6ff;font-weight:bold;");console.table(results);}
+  return results;
+}
+if(typeof window!=="undefined"){ window.runSegmentTests=runSegmentTests; }
+
 function renderModePlan() {
   const tt = AB_STATE.testType;
   const sym = CURRENCY_SYMBOLS[AB_STATE.currency] || "₩";
@@ -12358,6 +12493,11 @@ function bindCSVPageHandlers() {
   // ----- 5-11: Funnel 핸들러 -----
   if (document.querySelector("[data-funnel-unit]")) {
     bindFunnelHandlers();
+  }
+
+  // ----- 5-12: Segment Explorer 핸들러 -----
+  if (document.querySelector("[data-seg-row], [data-seg-col], [data-seg-metric]")) {
+    bindSegmentHandlers();
   }
 
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
@@ -14944,6 +15084,7 @@ const TOOL_REQUIRED_FIELDS = {
   "5-9": ["date", "cost", { oneOf: ["installs", "actions"] }, { oneOf: ["revenue_d0", "revenue_d7", "revenue_d14"] }],
   "5-10": ["date", "cost"],
   "5-11": ["date", "impressions", "clicks", { oneOf: ["installs", "actions"] }],
+  "5-12": ["cost", { oneOf: ["channel", "country", "platform", "campaign_name"] }, { oneOf: ["installs", "actions"] }],
 };
 
 /* 도구별 옵션 필드 — 매핑하면 추가 기능 활성화. */
@@ -15027,6 +15168,16 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "platform",      unlocks: "OS별 퍼널" },
     { key: "revenue_d7",    unlocks: "매출 단계까지 퍼널 확장" },
     { key: "actions",       unlocks: "액션 단계 (installs 다음)" },
+  ],
+  "5-12": [
+    { key: "channel",       unlocks: "채널 축" },
+    { key: "country",       unlocks: "국가 축" },
+    { key: "platform",      unlocks: "OS 축" },
+    { key: "campaign_name", unlocks: "캠페인 드릴다운" },
+    { key: "impressions",   unlocks: "CTR/CPM 지표" },
+    { key: "clicks",        unlocks: "CTR/CVR 지표" },
+    { key: "revenue_d7",    unlocks: "ROAS 지표" },
+    { key: "actions",       unlocks: "CPA 지표" },
   ],
 };
 
