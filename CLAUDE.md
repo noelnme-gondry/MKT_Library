@@ -314,6 +314,18 @@ PR 머지 후엔 반드시:
 3. `renderXChart()` 에서 `destroyChartIfExists("X")` 후 `new Chart(...)`
 4. 인스턴스를 `CHART_INSTANCES["X"]` 에 저장
 
+### 12.6 도구 그룹 공유 CSV (하나 업로드 → 연속 처리)
+`TOOL_GROUP` 맵으로 같은 데이터 grain 도구를 묶고, `loadCsvFromTool`이 본인 스냅샷 없으면
+같은 그룹 형제의 CSV를 자동 이어받음(매핑은 본인 슬롯 복사로 독립 유지). 효율 그룹
+(5-2/5-3/5-9~5-12)은 일별 캠페인 CSV 1개로 전부 동작. 신규 효율 도구는 `TOOL_GROUP`에
+`"efficiency"`로 등록 + `TOOL_REQUIRED_FIELDS`/`OPTIONAL`만 정의하면 자동 공유.
+
+### 12.7 squash-merge + 장수 feat 브랜치 충돌 처리 (반복 패턴)
+main이 squash-merge라 feat 브랜치(누적)와 매 PR마다 index.html 충돌 발생. feat는 항상
+main의 superset이므로 `git merge origin/main --no-edit` → `git checkout --ours index.html`
+→ `grep -c "^<<<<<<<"`(0 확인) → syntax+골든 재실행 → `commit --no-edit` → push → 재 merge.
+골든 테스트가 superset 무결성을 보증하므로 --ours가 안전.
+
 ### 12.5 Forest plot (CI floating bar + coef scatter)
 Chart.js 네이티브 forest 없음 → 가로 bar + scatter 2개 dataset 조합으로 구현 (PR #29):
 - `type:"bar", indexAxis:"y"` + `data:[ciLow, ciHigh]` 형태 floating bar
