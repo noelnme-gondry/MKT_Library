@@ -2698,19 +2698,50 @@ const IA = [
   },
   {
     id: "05",
-    title: "Ops Dashboard",
-    subtitle: "운영 데이터 대시보드 & 분석",
+    title: "효율 & 예산 분석",
+    subtitle: "일별 캠페인 CSV 1개 → 효율·배분 분석 연속 처리",
     items: [
       { id: "5-2", title: "데이터 시각화 대시보드", desc: "KPI 자동 계산 + 시계열·채널·퍼널·코호트 차트" },
-      { id: "5-3", title: "Budget Allocator", desc: "한계효용 기반 채널별 예산 최적 배분" },
-      { id: "5-4", title: "A/B Test Calculator", desc: "Sample Size 계산 + Frequentist/Bayesian 결과 분석" },
-      { id: "5-5", title: "Cannibalization Analyzer", desc: "추세·요일 제거 후 잔차 상관으로 paid↔organic 잠식 검정" },
+      { id: "5-3", title: "Budget Allocator", desc: "한계효용 기반 채널별 예산 최적 배분 (CPI/CPA/ROAS)" },
+    ],
+  },
+  {
+    id: "06",
+    title: "크리에이티브 분석",
+    subtitle: "소재 성과 daily CSV",
+    items: [
       { id: "5-6", title: "Creative Analyzer", desc: "소재 성과 분해 + Fatigue + Concept Matrix + Next-test 후보" },
+    ],
+  },
+  {
+    id: "07",
+    title: "실험 & 측정",
+    subtitle: "실험 설계·판독 + 증분 측정",
+    items: [
+      { id: "5-4", title: "A/B Test Calculator", desc: "Sample Size 계산 + Frequentist/Bayesian 결과 분석" },
       { id: "5-7", title: "Test Readout", desc: "실험 결과 2단 게이트 (Frequentist + Bayesian dual) → arm별 verdict" },
+    ],
+  },
+  {
+    id: "08",
+    title: "잠식 분석",
+    subtitle: "Paid ↔ Organic 동시점 잠식 검정",
+    items: [
+      { id: "5-5", title: "Cannibalization Analyzer", desc: "추세·요일 제거 후 잔차 상관으로 paid↔organic 잠식 검정" },
+    ],
+  },
+  {
+    id: "09",
+    title: "코호트 & 품질",
+    subtitle: "코호트 리텐션·LTV",
+    items: [
       { id: "5-8", title: "Quality Analyzer", desc: "코호트 리텐션 곡선 + LTV 외삽 + 코호트 간 비교" },
     ],
   },
 ];
+
+/* Ops Dashboard(운영) 그룹 id 집합 — 가이드/도구 카운트 구분용 */
+const OPS_GROUP_IDS = new Set(["05", "06", "07", "08", "09"]);
 
 /* ========== Marketing Phases (사용자 여정 기준) ========== */
 const PHASES = [
@@ -2743,7 +2774,7 @@ const PHASES = [
     label: "운영",
     sub: "운영 데이터 대시보드 & 분석",
     desc: "실제 운영한 캠페인 데이터를 업로드해 대시보드로 시각화하고, KPI 계산·코호트 분석·이상 탐지 등 필요한 분석 도구를 그대로 적용. 분석 모듈은 계속 추가됩니다.",
-    groups: ["05"],
+    groups: ["05", "06", "07", "08", "09"],
     cta: "5-2",
   },
 ];
@@ -2990,8 +3021,8 @@ function updateNavActive(activeId) {
 
 /* ========== Page renderers ========== */
 function pageHome() {
-  const totalGuides = IA.filter(g => g.id !== "05").reduce((a, g) => a + g.items.length, 0);
-  const totalTools = (IA.find(g => g.id === "05")?.items.length) || 0;
+  const totalGuides = IA.filter(g => !OPS_GROUP_IDS.has(g.id)).reduce((a, g) => a + g.items.length, 0);
+  const totalTools = IA.filter(g => OPS_GROUP_IDS.has(g.id)).reduce((a, g) => a + g.items.length, 0);
 
   return `
     <div class="page-eyebrow">Performance Marketing Library</div>
@@ -14449,6 +14480,18 @@ const TOOL_OPTIONAL_FIELDS = {
 const TOOL_CSV_SNAPSHOTS = {};  // toolId → { fileName, raw, headers, mapping, selectedCohort }
 let ACTIVE_CSV_TOOL = null;
 
+/* 같은 데이터 grain을 쓰는 도구 그룹 — 한 번 업로드하면 그룹 내 다른 도구가 자동으로 그 CSV를 이어받음.
+   (효율/예산은 동일한 일별 캠페인 CSV; 실험은 동일 experiment CSV 등) */
+const TOOL_GROUP = {
+  "5-2": "efficiency", "5-3": "efficiency",
+  "5-9": "efficiency", "5-10": "efficiency", "5-11": "efficiency",
+  "5-12": "efficiency", "5-13": "efficiency", "5-14": "efficiency",
+  "5-6": "creative",
+  "5-4": "experiment", "5-7": "experiment", "5-15": "experiment",
+  "5-5": "cannibalization",
+  "5-8": "cohort", "5-16": "cohort",
+};
+
 function saveCsvToTool(toolId) {
   if (!toolId) return;
   TOOL_CSV_SNAPSHOTS[toolId] = {
@@ -14460,10 +14503,32 @@ function saveCsvToTool(toolId) {
   };
 }
 
+/* 그룹 내 형제 도구 중 CSV가 있는 첫 스냅샷 반환 (group-fallback) */
+function findGroupCsvSnapshot(toolId) {
+  const grp = TOOL_GROUP[toolId];
+  if (!grp) return null;
+  for (const [tid, snap] of Object.entries(TOOL_CSV_SNAPSHOTS)) {
+    if (TOOL_GROUP[tid] === grp && snap && (snap.raw || []).length) return snap;
+  }
+  return null;
+}
+
 function loadCsvFromTool(toolId) {
   if (!toolId) return;
   ACTIVE_CSV_TOOL = toolId;
-  const snap = TOOL_CSV_SNAPSHOTS[toolId];
+  // 본인 스냅샷 우선, 없으면 같은 그룹 형제의 CSV를 이어받음 (하나 업로드 → 연속 처리)
+  let snap = TOOL_CSV_SNAPSHOTS[toolId];
+  if (!snap || !(snap.raw || []).length) {
+    const sibling = findGroupCsvSnapshot(toolId);
+    if (sibling) {
+      snap = sibling;
+      // 본인 슬롯에도 복사해 매핑 변경이 독립적으로 유지되게
+      TOOL_CSV_SNAPSHOTS[toolId] = {
+        fileName: sibling.fileName, raw: sibling.raw, headers: sibling.headers,
+        mapping: { ...sibling.mapping }, selectedCohort: sibling.selectedCohort,
+      };
+    }
+  }
   CSV_STATE.fileName = snap?.fileName || null;
   CSV_STATE.raw = snap?.raw || [];
   CSV_STATE.headers = snap?.headers || [];
