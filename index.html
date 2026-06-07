@@ -1905,6 +1905,83 @@
   }
   .ab-stat-value.neg { color: var(--danger, #f87171); }
   .ab-stat-value.pos { color: var(--success, #22c55e); }
+  /* 5-3 분석 단위 + 필터 패널 — 가시성 강조 */
+  .alloc-filter-panel {
+    background: linear-gradient(135deg, rgba(173, 198, 255, 0.10), rgba(173, 198, 255, 0.04));
+    border: 2px solid var(--primary, #adc6ff);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin: 1rem 0 1.5rem;
+    box-shadow: 0 0 0 4px rgba(173, 198, 255, 0.08);
+  }
+  .alloc-filter-panel-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary, #adc6ff);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.02em;
+  }
+  .alloc-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  .alloc-filter-row:last-child { margin-bottom: 0; }
+  .alloc-filter-group { display: flex; flex-direction: column; gap: 6px; min-width: 180px; }
+  .alloc-filter-group-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .alloc-filter-select {
+    background: var(--bg-1, #0f0f1e);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: var(--text-primary);
+    font-size: 13px;
+    min-width: 200px;
+  }
+  .alloc-filter-select:focus { outline: 2px solid var(--primary, #adc6ff); outline-offset: -1px; }
+  .alloc-filter-apply {
+    background: var(--primary, #adc6ff);
+    color: #0f0f1e;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 20px;
+  }
+  .alloc-filter-apply:hover { filter: brightness(1.1); }
+  .alloc-filter-summary {
+    background: var(--bg-2, #1a1a2e);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+  .alloc-unit-chip {
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: var(--bg-1, #0f0f1e);
+    border: 1.5px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .alloc-unit-chip.active {
+    background: var(--primary, #adc6ff);
+    color: #0f0f1e;
+    border-color: var(--primary, #adc6ff);
+  }
+  .alloc-unit-chip:hover:not(.active) { border-color: var(--primary, #adc6ff); color: var(--text-primary); }
   .cann-card-header {
     display: flex;
     justify-content: space-between;
@@ -2597,6 +2674,7 @@ const IA = [
       { id: "5-4", title: "A/B Test Calculator", desc: "Sample Size 계산 + Frequentist/Bayesian 결과 분석" },
       { id: "5-5", title: "Cannibalization Analyzer", desc: "추세·요일 제거 후 잔차 상관으로 paid↔organic 잠식 검정" },
       { id: "5-6", title: "Creative Analyzer", desc: "소재 성과 분해 + Fatigue + Concept Matrix + Next-test 후보" },
+      { id: "5-7", title: "Test Readout", desc: "실험 결과 2단 게이트 (Frequentist + Bayesian dual) → arm별 verdict" },
     ],
   },
 ];
@@ -2651,6 +2729,7 @@ const STANDARD_FIELDS = {
   platform:      { label: "플랫폼(OS)",   aliases: ["os", "platform_name", "플랫폼"],            type: "enum",    required: false, group: "디멘션" },
   channel:       { label: "채널/매체",    aliases: ["network", "source", "media", "매체"],       type: "string",  required: false, group: "디멘션", oneOfGroup: "grouping" },
   campaign_name: { label: "캠페인명",     aliases: ["campaign", "캠페인", "캠페인명"],           type: "string",  required: false, group: "디멘션", oneOfGroup: "grouping" },
+  country:       { label: "국가",         aliases: ["country", "mkt_country", "국가", "country_code", "마켓"], type: "string", required: false, group: "디멘션" },
   cost:          { label: "비용",         aliases: ["spend", "비용", "광고비"],                  type: "number",  required: true,  group: "단일 지표" },
   impressions:   { label: "노출수",       aliases: ["imp", "impression", "노출"],                type: "number",  required: false, group: "단일 지표" },
   clicks:        { label: "클릭수",       aliases: ["click", "클릭"],                            type: "number",  required: false, group: "단일 지표" },
@@ -2686,6 +2765,17 @@ const STANDARD_FIELDS = {
   has_text_overlay:   { label: "텍스트 오버레이",  aliases: ["text overlay", "has text", "오버레이"], type: "string", required: false, group: "Creative" },
   cta_style:          { label: "CTA 스타일",      aliases: ["cta", "cta style", "cta스타일"], type: "string", required: false, group: "Creative" },
   duration_bucket:    { label: "영상 길이대",     aliases: ["duration", "length", "길이대", "영상길이"], type: "string", required: false, group: "Creative" },
+  // === Test Readout 전용 (5-7) ===
+  experiment_id:  { label: "실험ID",       aliases: ["exp_id", "test_id", "실험id", "테스트id"], type: "string", required: false, group: "Test Readout" },
+  arm_id:         { label: "암ID",         aliases: ["arm", "group_id", "variant_id", "암id", "그룹id"], type: "string", required: false, group: "Test Readout" },
+  arm_label:      { label: "암 라벨",      aliases: ["arm label", "variant", "암라벨", "그룹명"], type: "string", required: false, group: "Test Readout" },
+  is_control:     { label: "대조군 여부",   aliases: ["control", "is control", "대조군여부", "대조군"], type: "string", required: false, group: "Test Readout" },
+  metric_tier:    { label: "지표 단계",    aliases: ["tier", "stage", "metric stage", "지표단계", "단계"], type: "string", required: false, group: "Test Readout" },
+  metric_name:    { label: "지표명",       aliases: ["metric", "metric name", "지표"], type: "string", required: false, group: "Test Readout" },
+  numerator:      { label: "분자",         aliases: ["num", "numerator", "성공수"], type: "number", required: false, group: "Test Readout" },
+  denominator:    { label: "분모",         aliases: ["den", "denominator", "전체수", "노출수"], type: "number", required: false, group: "Test Readout" },
+  start_date:     { label: "시작일",       aliases: ["start", "start date", "시작일자"], type: "date",   required: false, group: "Test Readout" },
+  end_date:       { label: "종료일",       aliases: ["end", "end date", "종료일자"], type: "date",   required: false, group: "Test Readout" },
 };
 
 /* ========== CSV Global State ========== */
@@ -5074,7 +5164,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -5779,6 +5869,32 @@ function page_5_3() {
     });
   }
 
+  // CSV는 준비됐지만 분석 필터가 아직 적용 안 됨 → 분석 단위 + 국가/채널 선택 UI만 표시
+  if (!ALLOC_FILTER_STATE.applied) {
+    return pageShell(meta, {
+      deck: "분석 단위와 국가/채널 필터를 선택하고 '적용'을 누르세요. 적용 후에 산점도·추세선·예산 분배가 계산됩니다.",
+      chips: `
+        <span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>
+        <span class="chip warn"><span class="dot"></span>분석 단위 선택 대기</span>
+        ${authStatusChip()}`,
+      summary: "캠페인 수가 많을 때 한 번에 분석하면 산점도가 복잡해집니다. 먼저 단위(국가/채널/캠페인)와 필터를 선택해 분석 범위를 좁히세요.",
+      toc: [
+        { id: "s-prep", title: "데이터 준비" },
+        { id: "s-filter", title: "분석 단위 선택" },
+      ],
+      body: `
+        <section class="block" id="s-prep">${renderInlineCsvUpload("5-3")}</section>
+        <section class="block" id="s-filter">
+          <h2 class="section-title"><span class="ix">§1</span>분석 단위 선택</h2>
+          ${renderAllocFilterPanel(false)}
+        </section>
+      `,
+    });
+  }
+
+  // 필터 요약 + 변경 버튼
+  const filterSummary = renderAllocFilterSummary();
+
   return pageShell(meta, {
     deck: "채널별 가중평균 CPR 기반 효율 추천 비중. 총 예산을 입력하면 자동으로 채널별 배분 금액이 계산됩니다.",
     chips: `
@@ -5798,6 +5914,7 @@ function page_5_3() {
       { id: "s-algo", title: "알고리즘 노트" },
     ],
     body: `
+      ${filterSummary}
       <section class="block" id="s-scatter">
         <h2 class="section-title"><span class="ix">§1</span>Cost vs CPR 산점도 & 추세선</h2>
         <p style="color:var(--text-secondary);font-size:13px;">
@@ -6534,6 +6651,78 @@ const ALLOC_STATE = {
   perChannel: {},
 };
 
+/* ===== 5-3 분석 단위 + 국가/채널/플랫폼 필터 ===== */
+const ALLOC_FILTER_STATE = {
+  unit: "channel",           // 'country' | 'channel' | 'campaign'
+  selectedCountries: null,   // null = 전체, Set = 명시 선택
+  selectedChannelsFilter: null, // null = 전체, Set = 명시 선택
+  platform: "all",           // 'all' | 'android' | 'ios'
+  applied: false,            // 적용 버튼 누른 후 true → 분석 표시
+};
+
+/* CSV가 새로 업로드되면 필터 reset (저장된 country/channel이 stale 가능성) */
+function resetAllocFilter() {
+  ALLOC_FILTER_STATE.selectedCountries = null;
+  ALLOC_FILTER_STATE.selectedChannelsFilter = null;
+  ALLOC_FILTER_STATE.platform = "all";
+  ALLOC_FILTER_STATE.applied = false;
+}
+
+/* 활성 도구가 5-3이고 ALLOC_FILTER_STATE.applied=true일 때 사용하는 row 필터 */
+function getMappedRowsForAlloc() {
+  let rows = getMappedRows();
+  const f = ALLOC_FILTER_STATE;
+  if (f.selectedCountries && f.selectedCountries.size > 0) {
+    rows = rows.filter(r => f.selectedCountries.has(String(r.country || "").trim()));
+  }
+  if (f.selectedChannelsFilter && f.selectedChannelsFilter.size > 0) {
+    rows = rows.filter(r => f.selectedChannelsFilter.has(String(r.channel || "").trim()));
+  }
+  if (f.platform !== "all") {
+    rows = rows.filter(r => {
+      const p = String(r.platform || "").toLowerCase();
+      if (f.platform === "android") return p.includes("android");
+      if (f.platform === "ios") return p.includes("ios") || p === "iphone";
+      return true;
+    });
+  }
+  return rows;
+}
+
+/* 매핑된 row에서 분석 단위 옵션 자동 감지 */
+function detectAllocFilterOptions() {
+  const rows = getMappedRows();
+  const countries = new Set();
+  const channels = new Set();      // (필터 적용 후) 선택 가능한 채널
+  const channelByCountry = new Map(); // country → Set(channel)
+  const platforms = new Set();
+  let hasCountry = false, hasChannel = false, hasCampaign = false, hasPlatform = false;
+  for (const r of rows) {
+    const ctry = String(r.country || "").trim();
+    const ch   = String(r.channel || "").trim();
+    const cmp  = String(r.campaign_name || "").trim();
+    const pl   = String(r.platform || "").trim().toLowerCase();
+    if (ctry) { countries.add(ctry); hasCountry = true; }
+    if (ch)   { channels.add(ch); hasChannel = true; }
+    if (cmp)  hasCampaign = true;
+    if (pl) {
+      hasPlatform = true;
+      if (pl.includes("android")) platforms.add("android");
+      else if (pl.includes("ios") || pl === "iphone") platforms.add("ios");
+    }
+    if (ctry && ch) {
+      if (!channelByCountry.has(ctry)) channelByCountry.set(ctry, new Set());
+      channelByCountry.get(ctry).add(ch);
+    }
+  }
+  return {
+    hasCountry, hasChannel, hasCampaign, hasPlatform,
+    countries: [...countries].sort(),
+    channels: [...channels].sort(),
+    channelByCountry, platforms,
+  };
+}
+
 /* 채널별 effective 값 lookup. perChannel에 있으면 그 값, 없으면 글로벌 default. */
 function getEffSetting(channel, field) {
   return ALLOC_STATE.perChannel[channel]?.[field] ?? ALLOC_STATE[field];
@@ -6622,11 +6811,26 @@ function clearAllocCache() {
    - 둘 중 하나만 있으면 그 값 그대로
    - 둘 다 없으면 null (건너뜀) */
 function getRowGroupKey(row) {
-  const ch = String(row.channel ?? "").trim();
-  const cp = String(row.campaign_name ?? "").trim();
-  if (ch && cp) return `${ch} · ${cp}`;
-  if (ch) return ch;
-  if (cp) return cp;
+  // ALLOC_FILTER_STATE.unit 기준으로 grouping key 산출
+  const country  = String(row.country ?? "").trim();
+  const channel  = String(row.channel ?? "").trim();
+  const campaign = String(row.campaign_name ?? "").trim();
+  const unit = (typeof ALLOC_FILTER_STATE !== "undefined") ? ALLOC_FILTER_STATE.unit : "channel";
+
+  if (unit === "country") {
+    return country || channel || campaign || null;
+  }
+  if (unit === "campaign") {
+    // 국가 + 채널 + 캠페인 (가장 세분화)
+    const parts = [country, channel, campaign].filter(Boolean);
+    return parts.length ? parts.join(" · ") : null;
+  }
+  // 'channel' 기본: 국가 + 채널 (country 없으면 channel만)
+  if (country && channel) return `${country} · ${channel}`;
+  if (channel && campaign) return `${channel} · ${campaign}`;
+  if (channel) return channel;
+  if (country) return country;
+  if (campaign) return campaign;
   return null;
 }
 
@@ -9115,35 +9319,42 @@ const CREATIVE_STATS = {
   },
 
   // Bayesian: Beta posterior + P(B>A) via fixed-grid integration (Monte Carlo 금지)
+  // log-space로 PDF 계산 → 큰 α, β (수천 이상)에서도 underflow 없음
   betaProbGreater(xA, nA, xB, nB, gridN = CREATIVE_CONFIG.bayes.gridN) {
     const a1 = CREATIVE_CONFIG.bayes.priorA + xA;
     const b1 = CREATIVE_CONFIG.bayes.priorB + nA - xA;
     const a2 = CREATIVE_CONFIG.bayes.priorA + xB;
     const b2 = CREATIVE_CONFIG.bayes.priorB + nB - xB;
-    // P(B > A) = ∫₀¹ P(B > A | A=a) · pdf_A(a) da
-    // = ∫₀¹ [1 - cdf_B(a)] · pdf_A(a) da
-    // 둘 다 grid 적분
-    const step = 1 / gridN;
-    let sum = 0;
-    // 사전 정규화 상수는 grid 누적합으로 처리
-    let normA = 0, normB = 0;
-    const pdfA = new Array(gridN), pdfB = new Array(gridN);
+    // log-PDF: (α-1)*ln(x) + (β-1)*ln(1-x). 정규화 상수는 grid sum으로.
+    const logPdfA = new Array(gridN), logPdfB = new Array(gridN);
+    let maxA = -Infinity, maxB = -Infinity;
     for (let i = 0; i < gridN; i++) {
       const x = (i + 0.5) / gridN;
-      pdfA[i] = Math.pow(x, a1 - 1) * Math.pow(1 - x, b1 - 1);
-      pdfB[i] = Math.pow(x, a2 - 1) * Math.pow(1 - x, b2 - 1);
+      const lnx = Math.log(x), ln1mx = Math.log(1 - x);
+      logPdfA[i] = (a1 - 1) * lnx + (b1 - 1) * ln1mx;
+      logPdfB[i] = (a2 - 1) * lnx + (b2 - 1) * ln1mx;
+      if (logPdfA[i] > maxA) maxA = logPdfA[i];
+      if (logPdfB[i] > maxB) maxB = logPdfB[i];
+    }
+    // max 빼서 exp underflow 방지
+    const pdfA = new Array(gridN), pdfB = new Array(gridN);
+    let normA = 0, normB = 0;
+    for (let i = 0; i < gridN; i++) {
+      pdfA[i] = Math.exp(logPdfA[i] - maxA);
+      pdfB[i] = Math.exp(logPdfB[i] - maxB);
       normA += pdfA[i];
       normB += pdfB[i];
     }
     if (normA <= 0 || normB <= 0) return 0.5;
-    // cdfB[i] = sum_{j<=i} pdfB[j] / normB
+    // cdf_B[i] = sum_{j<=i} pdfB[j] / normB
     let cumB = 0;
     const cdfB = new Array(gridN);
     for (let i = 0; i < gridN; i++) {
       cumB += pdfB[i] / normB;
       cdfB[i] = cumB;
     }
-    // P(B > A) = sum_i (1 - cdfB[i]) * pdfA[i] / normA
+    // P(B > A) = ∫ [1 - cdf_B(a)] · pdf_A(a) da
+    let sum = 0;
     for (let i = 0; i < gridN; i++) {
       sum += (1 - cdfB[i]) * pdfA[i] / normA;
     }
@@ -9883,6 +10094,458 @@ if (typeof window !== "undefined") {
   window.CREATIVE_STATS = CREATIVE_STATS;
   window.CREATIVE_MATH = CREATIVE_MATH;
   window.CREATIVE_CONFIG = CREATIVE_CONFIG;
+}
+
+/* ============================================================
+ * Test Readout (5-7) — 실험 결과 2단 게이트 (frequentist + Bayesian dual)
+ * grain: experiment_id × arm_id × metric_name
+ * ============================================================ */
+
+const READOUT_CONFIG = {
+  version: "1.0.0",
+  alpha: 0.05,
+  promoteProb: 0.95,
+  killProb: 0.05,
+  // bayes는 CREATIVE_CONFIG.bayes 재사용 (priorA/priorB/gridN)
+};
+
+const READOUT_CACHE = {
+  key: null,
+  experiments: null, // [{experiment_id, arms:[{arm_id, isControl, label, metrics:[...]}], verdicts:{arm_id → verdict}}]
+  validation: null,
+  snapshotHash: null,
+};
+
+const READOUT_STATE = {
+  selectedExperiment: null, // experiment_id (null = 첫 번째)
+};
+
+/* is_control 다양한 표기 해석 */
+function parseControl(v) {
+  if (v == null) return false;
+  const s = String(v).trim().toLowerCase();
+  return s === "true" || s === "1" || s === "control" || s === "yes" || s === "y" || s === "t";
+}
+
+/* metric_tier 정규화 */
+function normalizeTier(v) {
+  const s = String(v || "").trim().toLowerCase();
+  if (s.includes("upper") || s === "1" || s === "stage1" || s === "first") return "upper_funnel";
+  if (s.includes("down") || s.includes("quality") || s === "2" || s === "stage2") return "downstream_quality";
+  return "upper_funnel"; // default
+}
+
+function readoutCacheKey() {
+  const m = CSV_STATE.mapping || {};
+  const sig = ["experiment_id","arm_id","arm_label","is_control","metric_tier","metric_name","numerator","denominator"]
+    .map(k => `${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
+  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|cfg:${READOUT_CONFIG.version}`;
+}
+
+function buildReadoutCache() {
+  if (typeof window !== "undefined") window.__READOUT = READOUT_CACHE;
+  const key = readoutCacheKey();
+  if (READOUT_CACHE.key === key) return READOUT_CACHE;
+
+  const rows = getMappedRows();
+  const validation = { errors: [], droppedRows: 0 };
+
+  // 1) row 정제 + grain 중복 검출
+  const seen = new Set();
+  const clean = [];
+  for (const r of rows) {
+    if (!r.experiment_id || !r.arm_id || !r.metric_name) { validation.droppedRows++; continue; }
+    const num = Number(r.numerator);
+    const den = Number(r.denominator);
+    if (!isFinite(num) || !isFinite(den) || den <= 0 || num < 0 || num > den) {
+      validation.errors.push(`잘못된 분자/분모: ${r.experiment_id}|${r.arm_id}|${r.metric_name} (${num}/${den})`);
+      validation.droppedRows++;
+      continue;
+    }
+    const k = `${r.experiment_id}|${r.arm_id}|${r.metric_name}`;
+    if (seen.has(k)) { validation.errors.push(`grain 중복: ${k}`); validation.droppedRows++; continue; }
+    seen.add(k);
+    clean.push({
+      experiment_id: r.experiment_id,
+      arm_id: r.arm_id,
+      arm_label: r.arm_label || r.arm_id,
+      isControl: parseControl(r.is_control),
+      tier: normalizeTier(r.metric_tier),
+      metric_name: r.metric_name,
+      num, den,
+      start_date: r.start_date || null,
+      end_date: r.end_date || null,
+    });
+  }
+
+  // 2) 실험별 그룹화
+  const expMap = new Map();
+  for (const r of clean) {
+    if (!expMap.has(r.experiment_id)) expMap.set(r.experiment_id, { experiment_id: r.experiment_id, arms: new Map(), start: r.start_date, end: r.end_date });
+    const e = expMap.get(r.experiment_id);
+    if (!e.arms.has(r.arm_id)) {
+      e.arms.set(r.arm_id, { arm_id: r.arm_id, arm_label: r.arm_label, isControl: r.isControl, metrics: [] });
+    }
+    e.arms.get(r.arm_id).metrics.push({ tier: r.tier, metric_name: r.metric_name, num: r.num, den: r.den });
+  }
+
+  // 3) 실험별 verdict 계산
+  const experiments = [];
+  for (const [expId, exp] of expMap) {
+    const arms = [...exp.arms.values()];
+    const controls = arms.filter(a => a.isControl);
+    const variants = arms.filter(a => !a.isControl);
+    if (controls.length !== 1) {
+      validation.errors.push(`${expId}: 대조군이 ${controls.length}개 (정확히 1개 필요)`);
+    }
+    const control = controls[0] || null;
+    const verdicts = {};
+    const armResults = [];
+
+    for (const arm of variants) {
+      const armResult = { arm_id: arm.arm_id, arm_label: arm.arm_label, metrics: [], stage1Pass: false, finalVerdict: "inconclusive" };
+      if (!control) { verdicts[arm.arm_id] = "no_control"; armResults.push(armResult); continue; }
+
+      // Stage 1: upper_funnel metrics
+      const upperMetrics = arm.metrics.filter(m => m.tier === "upper_funnel");
+      let stage1AnyPromote = false, stage1AnyKill = false;
+      for (const m of upperMetrics) {
+        const cm = control.metrics.find(x => x.metric_name === m.metric_name && x.tier === "upper_funnel");
+        if (!cm) {
+          armResult.metrics.push({ ...m, error: "대조군에 동일 metric 없음" });
+          continue;
+        }
+        const freq = CREATIVE_STATS.twoPropZ(cm.num, cm.den, m.num, m.den);
+        const probBgtA = CREATIVE_STATS.betaProbGreater(cm.num, cm.den, m.num, m.den);
+        const metricResult = {
+          tier: "upper_funnel", metric_name: m.metric_name,
+          control: { num: cm.num, den: cm.den, rate: cm.num / cm.den },
+          variant: { num: m.num,  den: m.den,  rate: m.num / m.den },
+          freq, probBgtA,
+          verdict: computeMetricVerdict(freq, probBgtA),
+        };
+        armResult.metrics.push(metricResult);
+        if (metricResult.verdict === "promote") stage1AnyPromote = true;
+        if (metricResult.verdict === "kill") stage1AnyKill = true;
+      }
+      armResult.stage1Pass = stage1AnyPromote && !stage1AnyKill;
+
+      // Stage 2: downstream_quality (only if Stage 1 passed)
+      let stage2AnyPromote = false, stage2AnyKill = false;
+      if (armResult.stage1Pass) {
+        const downMetrics = arm.metrics.filter(m => m.tier === "downstream_quality");
+        for (const m of downMetrics) {
+          const cm = control.metrics.find(x => x.metric_name === m.metric_name && x.tier === "downstream_quality");
+          if (!cm) {
+            armResult.metrics.push({ ...m, error: "대조군에 동일 metric 없음" });
+            continue;
+          }
+          const freq = CREATIVE_STATS.twoPropZ(cm.num, cm.den, m.num, m.den);
+          const probBgtA = CREATIVE_STATS.betaProbGreater(cm.num, cm.den, m.num, m.den);
+          const metricResult = {
+            tier: "downstream_quality", metric_name: m.metric_name,
+            control: { num: cm.num, den: cm.den, rate: cm.num / cm.den },
+            variant: { num: m.num,  den: m.den,  rate: m.num / m.den },
+            freq, probBgtA,
+            verdict: computeMetricVerdict(freq, probBgtA),
+          };
+          armResult.metrics.push(metricResult);
+          if (metricResult.verdict === "promote") stage2AnyPromote = true;
+          if (metricResult.verdict === "kill") stage2AnyKill = true;
+        }
+      }
+
+      // Final arm verdict
+      if (stage1AnyKill || stage2AnyKill) armResult.finalVerdict = "kill";
+      else if (armResult.stage1Pass && (stage2AnyPromote || arm.metrics.every(m => m.tier !== "downstream_quality"))) armResult.finalVerdict = "promote";
+      else armResult.finalVerdict = "inconclusive";
+
+      verdicts[arm.arm_id] = armResult.finalVerdict;
+      armResults.push(armResult);
+    }
+
+    experiments.push({
+      experiment_id: expId, control, variants, arms: armResults,
+      start: exp.start, end: exp.end,
+    });
+  }
+
+  READOUT_CACHE.key = key;
+  READOUT_CACHE.experiments = experiments;
+  READOUT_CACHE.validation = validation;
+  READOUT_CACHE.snapshotHash = creativeHashStr(key + clean.length);
+
+  // 디폴트 실험 선택
+  if (!READOUT_STATE.selectedExperiment && experiments.length) {
+    READOUT_STATE.selectedExperiment = experiments[0].experiment_id;
+  }
+  return READOUT_CACHE;
+}
+
+/* metric 1개에 대한 dual method verdict 결정 */
+function computeMetricVerdict(freq, probBgtA) {
+  const alpha = READOUT_CONFIG.alpha;
+  const promoteP = READOUT_CONFIG.promoteProb;
+  const killP = READOUT_CONFIG.killProb;
+  const freqSig = freq.p < alpha;
+  const freqPositive = freq.diff > 0;
+
+  // Bayesian: probBgtA = P(variant > control)
+  const bayesPromote = probBgtA >= promoteP;
+  const bayesKill = probBgtA <= killP;
+
+  if (freqSig && freqPositive && bayesPromote) return "promote";
+  if (freqSig && !freqPositive && bayesKill) return "kill";
+  if ((freqSig && freqPositive) !== bayesPromote) return "inconclusive"; // 두 방법 불일치
+  if ((freqSig && !freqPositive) !== bayesKill) return "inconclusive";
+  return "inconclusive";
+}
+
+/* page_5_7 */
+function page_5_7() {
+  const meta = findMeta("5-7");
+  const missing = checkRequiredForTool("5-7");
+  if (missing.length > 0 || !CSV_STATE.headers.length) {
+    return pageShell(meta, {
+      deck: "실험 결과 CSV(experiment_id × arm_id × metric_name grain)를 업로드하면 frequentist + Bayesian dual method로 2단 게이트 verdict 자동 산출.",
+      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+      summary: "Stage 1: upper_funnel 지표 → Stage 2: downstream_quality 지표 (Stage 1 통과 시만). 두 방법 일치할 때만 promote / kill, 불일치하면 inconclusive로 결정론 룰 적용.",
+      toc: [{ id: "s-prep", title: "데이터 준비" }],
+      body: renderInlineCsvUpload("5-7"),
+    });
+  }
+
+  buildReadoutCache();
+  const c = READOUT_CACHE;
+  const cur = c.experiments.find(e => e.experiment_id === READOUT_STATE.selectedExperiment) || c.experiments[0];
+
+  return pageShell(meta, {
+    deck: "Stage 1(upper_funnel) + Stage 2(downstream_quality) 2단 게이트. 두 방법 일치(promote/kill) vs 불일치(inconclusive) 결정론 룰. priorA=priorB=1, gridN=2000 고정 grid 적분.",
+    chips: `
+      <span class="chip"><span class="dot"></span>도구 · Test Readout</span>
+      <span class="chip ok"><span class="dot"></span>실험 ${c.experiments.length}개</span>
+      <span class="chip"><span class="dot"></span>config ${READOUT_CONFIG.version} · snapshot ${c.snapshotHash}</span>
+      ${authStatusChip()}`,
+    summary: "α=0.05, Bayesian promote ≥ 0.95 / kill ≤ 0.05. arm별 verdict: promote = 두 방법 모두 양의 유의 / kill = 두 방법 모두 음의 유의 / inconclusive = 그 외.",
+    toc: [
+      { id: "s-prep", title: "데이터 준비" },
+      { id: "s-validation", title: "검증" },
+      { id: "s-experiments", title: "실험 목록" },
+      { id: "s-detail", title: "상세 결과" },
+    ],
+    body: `
+      <section class="block" id="s-prep">${renderInlineCsvUpload("5-7")}</section>
+      ${renderReadoutValidation(c.validation)}
+      ${renderReadoutExperimentList(c.experiments)}
+      ${renderReadoutDetail(cur)}
+    `,
+  });
+}
+PAGE_RENDERERS["5-7"] = page_5_7;
+
+function renderReadoutValidation(v) {
+  if (!v || (v.errors.length === 0 && v.droppedRows === 0)) return `
+    <section class="block" id="s-validation">
+      <h2 class="section-title"><span class="ix">§1</span>검증</h2>
+      <div class="callout ok"><div class="ico">✓</div><div class="body"><strong>모든 row 통과</strong></div></div>
+    </section>`;
+  return `
+    <section class="block" id="s-validation">
+      <h2 class="section-title"><span class="ix">§1</span>검증</h2>
+      <div class="callout warn">
+        <div class="ico">!</div>
+        <div class="body">
+          <strong>${v.droppedRows}개 row 제외 / ${v.errors.length}개 이슈</strong>
+          ${v.errors.length ? `<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:12px;">상세</summary>
+            <ul style="margin:6px 0 0 18px;font-size:11px;color:var(--text-muted);">${v.errors.slice(0,20).map(e=>`<li>${escapeHtml(e)}</li>`).join("")}${v.errors.length>20?`<li>... +${v.errors.length-20}개</li>`:""}</ul></details>` : ""}
+        </div>
+      </div>
+    </section>`;
+}
+
+function renderReadoutExperimentList(experiments) {
+  if (!experiments || !experiments.length) return "";
+  const fmt = (v) => v == null || !isFinite(v) ? "—" : v.toFixed(4);
+  const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v*100).toFixed(2) + "%";
+  const verdictBadge = (v) => {
+    if (v === "promote") return `<span class="chip ok" style="font-size:11px;padding:2px 8px;"><span class="dot"></span>✓ promote</span>`;
+    if (v === "kill") return `<span class="chip danger" style="font-size:11px;padding:2px 8px;"><span class="dot"></span>✗ kill</span>`;
+    return `<span class="chip warn" style="font-size:11px;padding:2px 8px;"><span class="dot"></span>− inconclusive</span>`;
+  };
+  return `
+    <section class="block" id="s-experiments">
+      <h2 class="section-title"><span class="ix">§2</span>실험 목록</h2>
+      <p class="muted">행 클릭 → 상세로 이동. 실험별 variant arm 개수 / 통과 / 종합 verdict 요약.</p>
+      <div class="table-wrap">
+        <table class="data" style="font-size:11.5px;">
+          <thead><tr>
+            <th>Experiment</th><th>기간</th><th>대조군</th><th>Variant 수</th><th>Promote</th><th>Kill</th><th>Inconclusive</th><th>액션</th>
+          </tr></thead>
+          <tbody>
+            ${experiments.map(e => {
+              const arms = e.arms || [];
+              const promote = arms.filter(a => a.finalVerdict === "promote").length;
+              const kill = arms.filter(a => a.finalVerdict === "kill").length;
+              const inc = arms.filter(a => a.finalVerdict === "inconclusive").length;
+              const isCur = e.experiment_id === READOUT_STATE.selectedExperiment;
+              return `<tr style="${isCur ? 'background:rgba(173,198,255,0.10);' : ''}">
+                <td><strong>${escapeHtml(e.experiment_id)}</strong></td>
+                <td class="tnum" style="font-size:11px;">${e.start || "—"} ~ ${e.end || "—"}</td>
+                <td>${e.control ? escapeHtml(e.control.arm_label) : '<span style="color:var(--danger);">없음</span>'}</td>
+                <td class="tnum">${arms.length}</td>
+                <td class="tnum" style="color:#22c55e;"><strong>${promote}</strong></td>
+                <td class="tnum" style="color:#f87171;"><strong>${kill}</strong></td>
+                <td class="tnum">${inc}</td>
+                <td><button class="ab-pill ${isCur ? 'active' : ''}" data-readout-select="${escapeHtml(e.experiment_id)}">${isCur ? '선택됨' : '상세'}</button></td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+function renderReadoutDetail(exp) {
+  if (!exp) return "";
+  const fmt = (v) => v == null || !isFinite(v) ? "—" : v.toFixed(4);
+  const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v*100).toFixed(2) + "%";
+  const fmtDiff = (v) => v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "") + (v*100).toFixed(2) + "%p";
+
+  const verdictBadge = (v) => {
+    if (v === "promote")   return `<span class="chip ok" style="font-size:13px;padding:4px 12px;"><span class="dot"></span>✓ promote</span>`;
+    if (v === "kill")      return `<span class="chip danger" style="font-size:13px;padding:4px 12px;"><span class="dot"></span>✗ kill</span>`;
+    return `<span class="chip warn" style="font-size:13px;padding:4px 12px;"><span class="dot"></span>− inconclusive</span>`;
+  };
+
+  const armCards = (exp.arms || []).map(arm => {
+    const stage1 = arm.metrics.filter(m => m.tier === "upper_funnel");
+    const stage2 = arm.metrics.filter(m => m.tier === "downstream_quality");
+
+    const renderMetricRow = (m) => {
+      if (m.error) return `<tr><td colspan="6" style="color:var(--text-muted);">${escapeHtml(m.metric_name)} — ${escapeHtml(m.error)}</td></tr>`;
+      const bayesPass = m.probBgtA >= READOUT_CONFIG.promoteProb;
+      const bayesKill = m.probBgtA <= READOUT_CONFIG.killProb;
+      const freqSig = m.freq.p < READOUT_CONFIG.alpha;
+      return `<tr>
+        <td>${escapeHtml(m.metric_name)}</td>
+        <td class="tnum">${fmtPct(m.control.rate)} <span style="color:var(--text-muted);font-size:10px;">(${m.control.num}/${m.control.den})</span></td>
+        <td class="tnum">${fmtPct(m.variant.rate)} <span style="color:var(--text-muted);font-size:10px;">(${m.variant.num}/${m.variant.den})</span></td>
+        <td class="tnum"><strong style="color:${m.freq.diff >= 0 ? '#22c55e' : '#f87171'};">${fmtDiff(m.freq.diff)}</strong></td>
+        <td class="tnum">p = ${fmt(m.freq.p)} ${freqSig ? '<span style="color:#22c55e;">★</span>' : ''}</td>
+        <td class="tnum">P(B&gt;A) = ${fmt(m.probBgtA)} ${bayesPass ? '<span style="color:#22c55e;">✓</span>' : bayesKill ? '<span style="color:#f87171;">✗</span>' : ''}</td>
+        <td>${verdictBadge(m.verdict)}</td>
+      </tr>`;
+    };
+
+    return `
+      <div class="alloc-card" style="margin-bottom:14px;border-left:3px solid ${arm.finalVerdict === 'promote' ? '#22c55e' : arm.finalVerdict === 'kill' ? '#f87171' : '#fbbf24'};">
+        <div class="cann-card-header">
+          <div class="alloc-card-title">${escapeHtml(arm.arm_label || arm.arm_id)} (vs ${escapeHtml(exp.control?.arm_label || exp.control?.arm_id || '대조군')})</div>
+          ${verdictBadge(arm.finalVerdict)}
+        </div>
+        <p class="muted">Stage 1 통과: ${arm.stage1Pass ? '<span style="color:#22c55e;">✓</span>' : '<span style="color:var(--text-muted);">−</span>'}</p>
+
+        <div style="margin-top:10px;">
+          <strong style="font-size:12px;">Stage 1 — Upper funnel</strong>
+          ${stage1.length ? `<div class="table-wrap"><table class="data" style="font-size:11px;">
+            <thead><tr><th>Metric</th><th>Control</th><th>Variant</th><th>Δ</th><th>Frequentist</th><th>Bayesian</th><th>Verdict</th></tr></thead>
+            <tbody>${stage1.map(renderMetricRow).join("")}</tbody>
+          </table></div>` : `<p class="muted">Stage 1 metric 없음.</p>`}
+        </div>
+
+        <div style="margin-top:10px;">
+          <strong style="font-size:12px;">Stage 2 — Downstream quality ${!arm.stage1Pass ? '<span style="color:var(--text-muted);font-weight:normal;">(Stage 1 미통과로 건너뜀)</span>' : ''}</strong>
+          ${stage2.length && arm.stage1Pass ? `<div class="table-wrap"><table class="data" style="font-size:11px;">
+            <thead><tr><th>Metric</th><th>Control</th><th>Variant</th><th>Δ</th><th>Frequentist</th><th>Bayesian</th><th>Verdict</th></tr></thead>
+            <tbody>${stage2.map(renderMetricRow).join("")}</tbody>
+          </table></div>` : stage2.length === 0 && arm.stage1Pass ? `<p class="muted">Stage 2 metric 없음.</p>` : ''}
+        </div>
+      </div>`;
+  }).join("");
+
+  return `
+    <section class="block" id="s-detail">
+      <h2 class="section-title"><span class="ix">§3</span>상세 — ${escapeHtml(exp.experiment_id)}</h2>
+      <p class="muted">α=${READOUT_CONFIG.alpha} · promote P(B&gt;A) ≥ ${READOUT_CONFIG.promoteProb} · kill P(B&gt;A) ≤ ${READOUT_CONFIG.killProb}. 두 방법 일치할 때만 verdict 확정.</p>
+      ${exp.control ? `<p style="font-size:12px;color:var(--text-muted);">대조군: <strong>${escapeHtml(exp.control.arm_label || exp.control.arm_id)}</strong> · variant ${exp.arms.length}개</p>` : '<div class="callout danger"><div class="ico">!</div><div class="body"><strong>대조군 없음</strong> — is_control 컬럼에서 정확히 1개 arm이 control이어야 합니다.</div></div>'}
+      ${armCards}
+    </section>`;
+}
+
+function bindReadoutHandlers() {
+  bindInlineCsvHandlers();
+  document.querySelectorAll("[data-readout-select]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      READOUT_STATE.selectedExperiment = btn.dataset.readoutSelect;
+      navigate("5-7");
+      setTimeout(() => {
+        const t = document.getElementById("s-detail");
+        if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    });
+  });
+}
+
+function runReadoutTests(verbose = true) {
+  const results = [];
+
+  // T1: 명확한 positive (variant 압승) → promote
+  const vPos = computeMetricVerdict(
+    CREATIVE_STATS.twoPropZ(100, 10000, 250, 10000),
+    CREATIVE_STATS.betaProbGreater(100, 10000, 250, 10000)
+  );
+  results.push({ test: "T1 · 압도적 positive → promote", expected: "promote", actual: vPos, pass: vPos === "promote" ? "✓" : "✗" });
+
+  // T2: 명확한 negative (variant 압패) → kill
+  const vNeg = computeMetricVerdict(
+    CREATIVE_STATS.twoPropZ(250, 10000, 100, 10000),
+    CREATIVE_STATS.betaProbGreater(250, 10000, 100, 10000)
+  );
+  results.push({ test: "T2 · 압도적 negative → kill", expected: "kill", actual: vNeg, pass: vNeg === "kill" ? "✓" : "✗" });
+
+  // T3: 작은 차이 → inconclusive
+  const vSmall = computeMetricVerdict(
+    CREATIVE_STATS.twoPropZ(500, 10000, 510, 10000),
+    CREATIVE_STATS.betaProbGreater(500, 10000, 510, 10000)
+  );
+  results.push({ test: "T3 · 작은 차이 → inconclusive", expected: "inconclusive", actual: vSmall, pass: vSmall === "inconclusive" ? "✓" : "✗" });
+
+  // T4: 결정론 — 같은 입력 두 번
+  const v1 = computeMetricVerdict(
+    CREATIVE_STATS.twoPropZ(100, 1000, 150, 1000),
+    CREATIVE_STATS.betaProbGreater(100, 1000, 150, 1000)
+  );
+  const v2 = computeMetricVerdict(
+    CREATIVE_STATS.twoPropZ(100, 1000, 150, 1000),
+    CREATIVE_STATS.betaProbGreater(100, 1000, 150, 1000)
+  );
+  results.push({ test: "T4 · 결정론 (byte-identical)", expected: "identical", actual: v1 === v2 ? "identical" : `${v1} vs ${v2}`, pass: v1 === v2 ? "✓" : "✗" });
+
+  // T5: parseControl 다양한 입력
+  const ctlTests = [
+    [parseControl("true"), true],
+    [parseControl("1"), true],
+    [parseControl("control"), true],
+    [parseControl("false"), false],
+    [parseControl("variant"), false],
+    [parseControl(""), false],
+    [parseControl(null), false],
+  ];
+  const allPass = ctlTests.every(([actual, expected]) => actual === expected);
+  results.push({ test: "T5 · parseControl 다양한 표기", expected: "모두 일치", actual: allPass ? "OK" : "FAIL", pass: allPass ? "✓" : "✗" });
+
+  if (verbose) {
+    console.log("%c=== Test Readout · Golden Tests ===", "color: #adc6ff; font-weight: bold;");
+    console.table(results);
+    const pass = results.filter(r => r.pass === "✓").length;
+    console.log(`%c${pass}/${results.length} 통과`, `color: ${pass === results.length ? '#22c55e' : '#f87171'}; font-weight: bold;`);
+  }
+  return results;
+}
+
+if (typeof window !== "undefined") {
+  window.runReadoutTests = runReadoutTests;
+  window.READOUT_CONFIG = READOUT_CONFIG;
 }
 
 function renderModePlan() {
@@ -10653,7 +11316,7 @@ function bindCSVPageHandlers() {
   if (document.getElementById("chart-timeseries")) renderVizCharts();
 
   // ----- 5-3: Budget Allocator 핸들러 -----
-  if (document.getElementById("alloc-recompute")) bindBudgetAllocatorHandlers();
+  if (document.getElementById("alloc-recompute") || document.getElementById("alloc-filter-apply") || document.getElementById("alloc-filter-reopen")) bindBudgetAllocatorHandlers();
 
   // ----- 5-4: A/B Test Calculator 핸들러 -----
   if (document.querySelector(".ab-tab")) bindABCalculatorHandlers();
@@ -10667,6 +11330,11 @@ function bindCSVPageHandlers() {
   // ----- 5-6: Creative Analyzer 핸들러 -----
   if (document.querySelector("[data-decompose-metric], #creative-export-metrics") || document.getElementById("s-decompose")) {
     bindCreativeHandlers();
+  }
+
+  // ----- 5-7: Test Readout 핸들러 -----
+  if (document.querySelector("[data-readout-select]") || document.getElementById("s-experiments")) {
+    bindReadoutHandlers();
   }
 
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
@@ -11179,7 +11847,8 @@ function renderAllocatorScatter() {
   const metricSelect = document.getElementById("alloc-metric");
   const metric = ALLOC_STATE.metric || (metricSelect ? metricSelect.value : null) || "installs";
   if (!ALLOC_STATE.metric) ALLOC_STATE.metric = metric;
-  const rows = getMappedRows();
+  // 분석 단위 + 국가/채널/플랫폼 필터 적용된 row 사용 (ALLOC_FILTER_STATE.applied=true일 때 의미)
+  const rows = getMappedRowsForAlloc();
 
   // 채널별 raw points → 메모이제이션
   const byChannel = getCachedByChannel(rows, metric);
@@ -12548,7 +13217,7 @@ function refreshAllocationResults() {
 
   if (!modelsMap || modelsMap.size === 0) {
     const metric = ALLOC_STATE.metric || "installs";
-    const rows = getMappedRows();
+    const rows = getMappedRowsForAlloc();
     const alloc = calculateAllocation(rows, "channel", "cost", metric, selected);
     if (!alloc.length) {
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">선택된 채널의 데이터가 없습니다.</td></tr>`;
@@ -12902,7 +13571,162 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
     : "");
 }
 
+/* 5-3 분석 단위 + 필터 패널 렌더 */
+function renderAllocFilterPanel(compact) {
+  const opt = detectAllocFilterOptions();
+  const f = ALLOC_FILTER_STATE;
+
+  // 선택된 country 기반으로 channel 옵션 cascading
+  let availableChannels = opt.channels;
+  if (f.selectedCountries && f.selectedCountries.size > 0) {
+    const set = new Set();
+    for (const c of f.selectedCountries) {
+      const chs = opt.channelByCountry.get(c);
+      if (chs) chs.forEach(x => set.add(x));
+    }
+    availableChannels = [...set].sort();
+  }
+
+  const unitOpts = [
+    { v: "country",  label: "국가별 (Country)",     desc: "국가 grain. 채널·캠페인은 상세에서 breakdown" },
+    { v: "channel",  label: "채널별 (Country × Channel)", desc: "국가 + 채널 grain. 일반적 분석 단위" },
+    { v: "campaign", label: "캠페인별 (Country × Channel × Campaign)", desc: "가장 세분화. 캠페인 수 많을 때 국가 필터 필수" },
+  ];
+
+  const optionsHtml = (values, sel) =>
+    values.map(v => `<option value="${escapeHtml(v)}" ${sel && sel.has(v) ? 'selected' : ''}>${escapeHtml(v)}</option>`).join("");
+
+  return `
+    <div class="alloc-filter-panel">
+      <div class="alloc-filter-panel-title">📊 분석 단위 + 국가/채널/플랫폼 필터</div>
+      <p class="muted" style="margin-bottom:14px;font-size:12px;">선택 후 <strong>적용</strong>을 눌러야 분석이 시작됩니다. CSV 재업로드 또는 단위 변경 시 필터가 리셋됩니다.</p>
+
+      <div class="alloc-filter-row">
+        ${unitOpts.map(o => `
+          <div class="alloc-unit-chip ${f.unit === o.v ? 'active' : ''}" data-alloc-unit="${o.v}" title="${escapeHtml(o.desc)}">
+            ${escapeHtml(o.label)}
+          </div>
+        `).join("")}
+      </div>
+
+      <div class="alloc-filter-row">
+        ${opt.hasCountry ? `
+          <div class="alloc-filter-group">
+            <span class="alloc-filter-group-label">국가 (다중 선택, 미선택 = 전체)</span>
+            <select class="alloc-filter-select" id="alloc-filter-country" multiple size="${Math.min(6, opt.countries.length)}">
+              ${optionsHtml(opt.countries, f.selectedCountries)}
+            </select>
+            <span style="font-size:10px;color:var(--text-muted);">Cmd/Ctrl 클릭으로 다중 선택</span>
+          </div>` : `
+          <div class="alloc-filter-group">
+            <span class="alloc-filter-group-label">국가</span>
+            <div style="padding:8px 10px;color:var(--text-muted);font-size:12px;">매핑 없음 (country 컬럼 미연결)</div>
+          </div>`}
+
+        ${opt.hasChannel ? `
+          <div class="alloc-filter-group">
+            <span class="alloc-filter-group-label">채널 (다중 선택, 미선택 = 전체)</span>
+            <select class="alloc-filter-select" id="alloc-filter-channel" multiple size="${Math.min(6, availableChannels.length)}">
+              ${optionsHtml(availableChannels, f.selectedChannelsFilter)}
+            </select>
+            <span style="font-size:10px;color:var(--text-muted);">국가 선택 시 그 국가에 있는 채널만 표시</span>
+          </div>` : ""}
+
+        ${opt.hasPlatform ? `
+          <div class="alloc-filter-group">
+            <span class="alloc-filter-group-label">OS 플랫폼</span>
+            <div style="display:flex;gap:6px;">
+              ${["all","android","ios"].map(p => {
+                const enabled = p === "all" || opt.platforms.has(p);
+                return `<button class="ab-pill ${f.platform === p ? 'active' : ''} ${!enabled ? 'disabled' : ''}" data-alloc-platform="${p}" ${!enabled ? 'disabled' : ''}>${p === "all" ? "전체" : p === "android" ? "Android" : "iOS"}</button>`;
+              }).join("")}
+            </div>
+          </div>` : ""}
+      </div>
+
+      <div class="alloc-filter-row">
+        <button class="alloc-filter-apply" id="alloc-filter-apply">✓ 적용하고 분석 시작</button>
+        ${compact ? `<button class="ab-pill" id="alloc-filter-cancel" style="margin-top:20px;">취소</button>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+/* 적용된 필터 요약 (분석 페이지 상단에 표시 + 변경 버튼) */
+function renderAllocFilterSummary() {
+  const f = ALLOC_FILTER_STATE;
+  const unitLabel = { country: "국가별", channel: "국가 × 채널별", campaign: "국가 × 채널 × 캠페인별" }[f.unit] || f.unit;
+  const ctryText = (f.selectedCountries && f.selectedCountries.size > 0) ? [...f.selectedCountries].join(", ") : "전체";
+  const chText  = (f.selectedChannelsFilter && f.selectedChannelsFilter.size > 0) ? [...f.selectedChannelsFilter].join(", ") : "전체";
+  const plText  = f.platform === "all" ? "전체 OS" : f.platform === "android" ? "Android" : "iOS";
+  return `
+    <div class="alloc-filter-summary">
+      <strong style="color:var(--primary,#adc6ff);">📊 ${unitLabel}</strong>
+      <span>· 국가: <strong>${escapeHtml(ctryText)}</strong></span>
+      <span>· 채널: <strong>${escapeHtml(chText)}</strong></span>
+      <span>· OS: <strong>${escapeHtml(plText)}</strong></span>
+      <button class="ab-pill" id="alloc-filter-reopen" style="margin-left:auto;">⚙ 필터 변경</button>
+    </div>
+  `;
+}
+
 function bindBudgetAllocatorHandlers() {
+  // 분석 단위 칩
+  document.querySelectorAll("[data-alloc-unit]").forEach(el => {
+    el.addEventListener("click", () => {
+      ALLOC_FILTER_STATE.unit = el.dataset.allocUnit;
+      navigate("5-3");
+    });
+  });
+  // OS 플랫폼
+  document.querySelectorAll("[data-alloc-platform]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (btn.disabled || btn.classList.contains("disabled")) return;
+      ALLOC_FILTER_STATE.platform = btn.dataset.allocPlatform;
+      navigate("5-3");
+    });
+  });
+  // 국가 multi-select → cascading 채널 옵션 재렌더
+  const ctrySel = document.getElementById("alloc-filter-country");
+  if (ctrySel) ctrySel.addEventListener("change", () => {
+    const selected = [...ctrySel.selectedOptions].map(o => o.value);
+    ALLOC_FILTER_STATE.selectedCountries = selected.length ? new Set(selected) : null;
+    // 채널 선택은 country 변경 시 reset (cascading)
+    ALLOC_FILTER_STATE.selectedChannelsFilter = null;
+    navigate("5-3");
+  });
+  // 채널 multi-select
+  const chSel = document.getElementById("alloc-filter-channel");
+  if (chSel) chSel.addEventListener("change", () => {
+    const selected = [...chSel.selectedOptions].map(o => o.value);
+    ALLOC_FILTER_STATE.selectedChannelsFilter = selected.length ? new Set(selected) : null;
+  });
+  // 적용
+  const applyBtn = document.getElementById("alloc-filter-apply");
+  if (applyBtn) applyBtn.addEventListener("click", () => {
+    // 채널 select 현재 값 다시 읽기 (change 안 거치고 적용 누른 경우)
+    if (chSel) {
+      const selected = [...chSel.selectedOptions].map(o => o.value);
+      ALLOC_FILTER_STATE.selectedChannelsFilter = selected.length ? new Set(selected) : null;
+    }
+    ALLOC_FILTER_STATE.applied = true;
+    // 분석 모델 캐시 invalidate (단위 바뀌면 grouping key가 달라짐)
+    if (typeof clearAllocCache === "function") clearAllocCache();
+    navigate("5-3");
+  });
+  // 필터 변경 (요약 → 패널)
+  const reopenBtn = document.getElementById("alloc-filter-reopen");
+  if (reopenBtn) reopenBtn.addEventListener("click", () => {
+    ALLOC_FILTER_STATE.applied = false;
+    if (typeof clearAllocCache === "function") clearAllocCache();
+    navigate("5-3");
+  });
+  const cancelBtn = document.getElementById("alloc-filter-cancel");
+  if (cancelBtn) cancelBtn.addEventListener("click", () => {
+    ALLOC_FILTER_STATE.applied = true;
+    navigate("5-3");
+  });
+
   // 통화 토글 (chips에 위치)
   // 페이지 재렌더 시 스크롤 위치 보존 — input 포커스 잃지만 통화는 자주 안 누르니 OK
   document.querySelectorAll(".chip-currency button[data-alloccurrency]").forEach(btn => {
@@ -12992,6 +13816,7 @@ const TOOL_REQUIRED_FIELDS = {
   "5-3": ["date", "cost", { oneOf: ["channel", "campaign_name"] }, { oneOf: ["installs", "actions"] }],
   "5-5": ["date", "paid_regs", "organic_regs"],
   "5-6": ["creative_id", "date", "channel", "impressions", "clicks", "installs", "spend"],
+  "5-7": ["experiment_id", "arm_id", "is_control", "metric_tier", "metric_name", "numerator", "denominator"],
 };
 
 /* 도구별 옵션 필드 — 매핑하면 추가 기능 활성화. */
@@ -13010,7 +13835,8 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "revenue_d14",    unlocks: "D14 매출/ROAS" },
   ],
   "5-3": [
-    { key: "platform",       unlocks: "OS별 채널 분리 분석" },
+    { key: "country",        unlocks: "분석 단위 선택 (국가/채널/캠페인) + 국가 필터" },
+    { key: "platform",       unlocks: "OS 토글 (전체 / Android / iOS)" },
     { key: "revenue_d7",     unlocks: "ROAS 시뮬레이션 + 분배 후 예상 매출 계산" },
     { key: "pu_d7",          unlocks: "결제건수 기준 분배 (대안 metric)" },
     { key: "impressions",    unlocks: "노출 기반 시뮬레이션" },
@@ -13039,6 +13865,11 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "duration_bucket",  unlocks: "Decompose: 길이대별 효과" },
     { key: "actions",          unlocks: "CPA decompose (installs 대신 액션 기준)" },
     { key: "revenue_d7",       unlocks: "ROAS metric (분해 대상에 추가)" },
+  ],
+  "5-7": [
+    { key: "arm_label",  unlocks: "암 라벨 표시 (UI 가독성)" },
+    { key: "start_date", unlocks: "실험 기간 표시" },
+    { key: "end_date",   unlocks: "실험 기간 표시" },
   ],
 };
 
@@ -13324,11 +14155,12 @@ function handleCSVFile(file, toolId) {
     skipEmptyLines: true,
     transformHeader: h => String(h).trim(),
     complete: (results) => {
-      // 도구별 캐시 무효화 (5-3은 별도 알고리즘 캐시)
+      // 도구별 캐시 무효화 (5-3은 별도 알고리즘 캐시 + 필터 reset)
       if (targetTool === "5-3") {
         clearAllocCache();
         resetAllChannelOverrides();
         ALLOC_STATE.allocOverrides = {};
+        resetAllocFilter();
       }
       CSV_STATE.fileName = file.name;
       CSV_STATE.raw = results.data;
