@@ -63,6 +63,7 @@ HTML/CSS/JS (Vanilla)
 | 5-4 | A/B Test Calculator | 수동 입력 | 운영 |
 | 5-5 | Cannibalization Analyzer | CSV (도구 전용) | 운영 |
 | 5-6 | Creative Analyzer | CSV 소재 daily (도구 전용) | 운영 |
+| 5-7 | Test Readout | CSV 실험 결과 (도구 전용) | 운영 |
 
 ### 4.3 도구별 독립 CSV 상태 (중요 패턴)
 
@@ -207,6 +208,7 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 - **Chart.js 캐릭터** transparent → PNG export 시 다크 배경 명시 합성 필요
 - **localStorage 영속 금지** (요청 시에만). 새로고침 리셋이 기본.
 - **MA centered 경계**: 앞뒤 `half` 만큼 NaN. LOESS는 경계도 채움.
+- **Beta PDF underflow** (PR #30): `Beta(α=101, β=9901)` 같은 큰 파라미터에서 `Math.pow(x, α-1) * Math.pow(1-x, β-1)` 가 underflow → 0. **log-space로 계산** (`(α-1)*ln(x) + (β-1)*ln(1-x)` → max 빼고 exp) 후 정규화. T1/T2 골든 테스트로 검증.
 
 ---
 
