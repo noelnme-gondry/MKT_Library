@@ -12295,11 +12295,32 @@ function renderAllocatorScatter() {
   // 채널별 raw points → 메모이제이션
   const byChannel = getCachedByChannel(rows, metric);
 
-  // 비용 합계로 채널 정렬 (큰 순서)
-  let allChannels = [...byChannel.keys()].sort((a, b) =>
-    byChannel.get(b).reduce((s, p) => s + p.x, 0) -
-    byChannel.get(a).reduce((s, p) => s + p.x, 0)
-  );
+  // 채널 정렬: 최근 SELECT_RECENT_DAYS(20)일 Cost 합산 큰 순서.
+  // (전체 기간 합산으로 정렬하면 과거에 큰돈 쓴 채널이 상위를 점유해
+  //  최근 신규/활성 캠페인이 상위 6에서 밀려 안 보이는 문제 → 최근 윈도우 기준 정렬)
+  const SELECT_RECENT_DAYS = 20;
+  const allDatesForSort = [];
+  for (const pts of byChannel.values()) {
+    for (const p of pts) { const t = p.date ? Date.parse(p.date) : NaN; if (!isNaN(t)) allDatesForSort.push(t); }
+  }
+  const maxDateForSort = allDatesForSort.length ? Math.max(...allDatesForSort) : null;
+  const recentThresholdForSort = maxDateForSort != null ? (maxDateForSort - SELECT_RECENT_DAYS * 86400 * 1000) : null;
+  const recentCost = (ch) => {
+    const pts = byChannel.get(ch) || [];
+    if (recentThresholdForSort == null) return pts.reduce((s, p) => s + p.x, 0);
+    let sum = 0;
+    for (const p of pts) {
+      const t = p.date ? Date.parse(p.date) : NaN;
+      if (!isNaN(t) && t >= recentThresholdForSort) sum += p.x;
+    }
+    return sum;
+  };
+  // 최근 윈도우 Cost로 1차 정렬, 동률(최근 0)이면 전체 Cost로 2차 정렬 (최근 활동 없는 채널도 안정적 순서)
+  const totalCost = (ch) => (byChannel.get(ch) || []).reduce((s, p) => s + p.x, 0);
+  let allChannels = [...byChannel.keys()].sort((a, b) => {
+    const d = recentCost(b) - recentCost(a);
+    return d !== 0 ? d : totalCost(b) - totalCost(a);
+  });
 
   // 선택 초기값: 상위 6채널
   if (ALLOC_STATE.selectedChannels == null) {
@@ -12312,7 +12333,7 @@ function renderAllocatorScatter() {
   if (filterEl) {
     filterEl.innerHTML = `
       <div class="alloc-filter-header">
-        <span class="alloc-filter-label">채널 선택 (상위 비용순 · ${allChannels.length}개)</span>
+        <span class="alloc-filter-label">채널 선택 (최근 20일 Cost순 · ${allChannels.length}개)</span>
         <button class="ab-pill" id="alloc-filter-top6">상위 6개</button>
         <button class="ab-pill" id="alloc-filter-all">전체</button>
         <button class="ab-pill" id="alloc-filter-none">모두 해제</button>
