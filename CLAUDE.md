@@ -62,6 +62,7 @@ HTML/CSS/JS (Vanilla)
 | 5-3 | Budget Allocator | CSV (도구 전용) | 운영 |
 | 5-4 | A/B Test Calculator | 수동 입력 | 운영 |
 | 5-5 | Cannibalization Analyzer | CSV (도구 전용) | 운영 |
+| 5-6 | Creative Analyzer | CSV 소재 daily (도구 전용) | 운영 |
 
 ### 4.3 도구별 독립 CSV 상태 (중요 패턴)
 
@@ -219,6 +220,8 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 4. **자동 종합 해석**: 사용자가 통계 지식 없이도 결론 읽을 수 있게 한 줄 요약 (색상 코드: 빨강 잠식 / 초록 동반 / 회색 무유의)
 5. **단조 비감소 보정**: 한계효용 계산 시 running max로 artifact 차단
 6. **Cohen's r 기준 가이드**: |r|<CI 노이즈 / 0.1~0.3 약함 / 0.3~0.5 중간 / 0.5~0.7 강함 / >0.7 매우 강함
+7. **결정론 (Determinism) 필수** (PR #28 검증): `Math.random` 절대 사용 금지. Bayesian posterior 비교는 Monte Carlo 대신 **고정 grid 수치적분** (`betaProbGreater`). 같은 입력 → byte-identical 출력 보장. 골든 테스트 T6 패턴으로 검증.
+8. **WLS impressions-weighted LPM** + FWL within-transformation (campaign_id 흡수) + VIF 기반 collinearity 제거 + BH 다중검정 보정 — 직접 구현 단순·안정. logistic IRLS는 v1 보류.
 
 ---
 
