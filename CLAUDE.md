@@ -213,6 +213,7 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 - **공유 CSS 클래스 + 전역 핸들러 + redirect = cross-page 점프 버그** (PR #33): 구 페이지(5-1)의 `.map-select → navigate("5-1")` 전역 핸들러가, 동일 `.map-select` 클래스를 쓰는 신규 매핑 select에도 바인딩됨. 5-1은 `navigate` 내부에서 5-5로 redirect되므로, 5-3에서 매핑만 바꿔도 Cannibalization(5-5)로 튐. **교훈**: 페이지 제거 시 그 페이지의 전역 `querySelectorAll(".shared-class")` 핸들러도 같이 제거. 신규 핸들러는 페이지 전용 `data-*` 속성으로 스코프 한정. 또 `handleCSVFile` 류의 fallback에 특정 페이지 ID 하드코딩 금지 (footgun).
 - **dropzone 숨김 시 핸들러 unbound** (PR #33): bind 디스패치가 `[data-tool-dropzone]` 존재로만 게이트하면, CSV 로드 후 dropzone이 숨겨질 때 매핑 select가 unbound. 디스패치 조건은 그 핸들러가 다루는 **모든** 셀렉터(`[data-tool-csv]` 등)를 OR로 포함해야 함.
 - **페이지 제거 = renderer + 등록 같이 제거** (PR #34): 페이지를 IA·navigate redirect로 비활성화해도 `page_5_N()` 함수 본문과 `PAGE_RENDERERS["5-N"]=...` 등록이 남으면, 그 안의 중복 id(`csv-dropzone` 등)·공유 클래스가 cross-page 핸들러 버그의 불씨로 남는다(PR #33 재발 위험). 비활성 시 redirect만 남기고 죽은 renderer 함수+등록을 통째로 삭제할 것.
+- **navigate 재렌더 시 스크롤 top 리셋** (PR #35): `navigate()`가 항상 `scrollTo(top:0)` 하면, 필터/토글/매핑 등 같은 페이지 in-place 재렌더마다 화면이 맨 위로 튐. **중앙 해결**: navigate 진입 시 `prevScrollY`+`prevHash` 캡처 → 끝에서 `newHash === prevHash`(같은 페이지)면 `scrollTo(prevScrollY)`, 다른 페이지면 top. 핸들러마다 rAF로 개별 보존하지 말고 navigate 한 곳에서 처리.
 
 ---
 
