@@ -2675,6 +2675,7 @@ const IA = [
       { id: "5-5", title: "Cannibalization Analyzer", desc: "추세·요일 제거 후 잔차 상관으로 paid↔organic 잠식 검정" },
       { id: "5-6", title: "Creative Analyzer", desc: "소재 성과 분해 + Fatigue + Concept Matrix + Next-test 후보" },
       { id: "5-7", title: "Test Readout", desc: "실험 결과 2단 게이트 (Frequentist + Bayesian dual) → arm별 verdict" },
+      { id: "5-8", title: "Quality Analyzer", desc: "코호트 리텐션 곡선 + LTV 외삽 + 코호트 간 비교" },
     ],
   },
 ];
@@ -2776,6 +2777,12 @@ const STANDARD_FIELDS = {
   denominator:    { label: "분모",         aliases: ["den", "denominator", "전체수", "노출수"], type: "number", required: false, group: "Test Readout" },
   start_date:     { label: "시작일",       aliases: ["start", "start date", "시작일자"], type: "date",   required: false, group: "Test Readout" },
   end_date:       { label: "종료일",       aliases: ["end", "end date", "종료일자"], type: "date",   required: false, group: "Test Readout" },
+  // === Quality Analyzer 전용 (5-8) — 코호트 리텐션/LTV ===
+  cohort_date:    { label: "코호트 일자",   aliases: ["cohort", "cohort_date", "install_date", "설치일", "코호트일자"], type: "date", required: false, group: "Quality" },
+  day_offset:     { label: "Day Offset",    aliases: ["day", "d_offset", "day_n", "days_since_install"], type: "number", required: false, group: "Quality" },
+  cohort_size:    { label: "코호트 크기",   aliases: ["cohort_size", "n_users", "users", "n_installs", "초기사용자수"], type: "number", required: false, group: "Quality" },
+  retained_users: { label: "잔존 사용자수", aliases: ["retained", "retained_users", "active_users", "잔존수"], type: "number", required: false, group: "Quality" },
+  cohort_revenue: { label: "코호트 매출",   aliases: ["cohort_revenue", "cumulative_revenue", "revenue", "rev"], type: "number", required: false, group: "Quality" },
 };
 
 /* ========== CSV Global State ========== */
@@ -5164,7 +5171,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -6653,6 +6660,7 @@ const ALLOC_STATE = {
 
 /* ===== 5-3 분석 단위 + 국가/채널/플랫폼 필터 ===== */
 const ALLOC_FILTER_STATE = {
+  objective: null,           // 'install' (CPI↓) | 'action' (CPA↓) | 'roas' (ROAS↑) — 필수 선택
   unit: "channel",           // 'country' | 'channel' | 'campaign'
   selectedCountries: null,   // null = 전체, Set = 명시 선택
   selectedChannelsFilter: null, // null = 전체, Set = 명시 선택
@@ -6660,8 +6668,20 @@ const ALLOC_FILTER_STATE = {
   applied: false,            // 적용 버튼 누른 후 true → 분석 표시
 };
 
+/* objective → 내부 metric 매핑 + 라벨/방향 */
+const ALLOC_OBJECTIVES = {
+  install: { metric: "installs",   label: "Install · CPI 최적화", short: "CPI",  direction: "down", arrow: "↓", desc: "낮을수록 긍정 (싸게 설치 1개)" },
+  action:  { metric: "actions",    label: "Action · CPA 최적화", short: "CPA",  direction: "down", arrow: "↓", desc: "낮을수록 긍정 (싸게 액션 1개)" },
+  roas:    { metric: "revenue_d7", label: "Revenue · ROAS 최적화", short: "ROAS", direction: "up",   arrow: "↑", desc: "높을수록 긍정 (Revenue/Cost)" },
+};
+
+function getObjectiveCfg() {
+  return ALLOC_OBJECTIVES[ALLOC_FILTER_STATE.objective] || null;
+}
+
 /* CSV가 새로 업로드되면 필터 reset (저장된 country/channel이 stale 가능성) */
 function resetAllocFilter() {
+  ALLOC_FILTER_STATE.objective = null;
   ALLOC_FILTER_STATE.selectedCountries = null;
   ALLOC_FILTER_STATE.selectedChannelsFilter = null;
   ALLOC_FILTER_STATE.platform = "all";
@@ -10548,6 +10568,551 @@ if (typeof window !== "undefined") {
   window.READOUT_CONFIG = READOUT_CONFIG;
 }
 
+/* ============================================================
+ * Quality Analyzer (5-8) — 코호트 리텐션 곡선 + LTV 외삽
+ * grain: cohort_date × day_offset (선택적으로 channel/country/platform 분기)
+ * ============================================================ */
+
+const QUALITY_CONFIG = {
+  version: "1.0.0",
+  ltvHorizons: [30, 90, 180, 365],
+  curveModels: ["power", "exponential"],  // y = a*x^b, y = a*exp(-bx)
+  minCohortSize: 100,
+};
+
+const QUALITY_CACHE = {
+  key: null,
+  cohorts: null,       // [{cohort_date, size, points:[{day, retained, retentionRate, revenue, arpu, cumRev}]}]
+  retentionCurve: null,// 전체 평균 리텐션 [{day, mean, n}]
+  ltv: null,           // {observed:[{day, cumARPU}], extrapolated:{day:value}, fit:{model, params, R2}}
+  segmentCompare: null,// 옵션: channel/country/platform별 분리
+  validation: null,
+  snapshotHash: null,
+};
+
+const QUALITY_STATE = {
+  segmentBy: "none",   // 'none' | 'channel' | 'country' | 'platform'
+  ltvHorizon: 90,
+  curveModel: "power",
+};
+
+function qualityCacheKey() {
+  const m = CSV_STATE.mapping || {};
+  const sig = ["cohort_date","day_offset","cohort_size","retained_users","cohort_revenue","channel","country","platform"]
+    .map(k => `${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
+  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|seg:${QUALITY_STATE.segmentBy}|cfg:${QUALITY_CONFIG.version}`;
+}
+
+/* 순수 함수: power curve fit y = a*x^b (loglog 변환 후 linear). NaN 안전. */
+function fitPowerCurve(xs, ys) {
+  const pairs = xs.map((x, i) => ({ x, y: ys[i] })).filter(p => p.x > 0 && p.y > 0 && isFinite(p.x) && isFinite(p.y));
+  if (pairs.length < 3) return null;
+  const lnX = pairs.map(p => Math.log(p.x));
+  const lnY = pairs.map(p => Math.log(p.y));
+  const n = pairs.length;
+  const meanX = lnX.reduce((s,v)=>s+v,0)/n;
+  const meanY = lnY.reduce((s,v)=>s+v,0)/n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) { num += (lnX[i]-meanX)*(lnY[i]-meanY); den += (lnX[i]-meanX)**2; }
+  if (den === 0) return null;
+  const b = num/den;
+  const lnA = meanY - b*meanX;
+  const a = Math.exp(lnA);
+  // R² on log-log
+  let ssRes = 0, ssTot = 0;
+  for (let i = 0; i < n; i++) {
+    const yHat = lnA + b*lnX[i];
+    ssRes += (lnY[i] - yHat)**2;
+    ssTot += (lnY[i] - meanY)**2;
+  }
+  const R2 = ssTot > 0 ? 1 - ssRes/ssTot : 0;
+  return { type: "power", a, b, R2, predict: x => a * Math.pow(x, b) };
+}
+
+/* 순수 함수: exponential decay fit y = a*exp(-bx). 양수 y만. */
+function fitExpCurve(xs, ys) {
+  const pairs = xs.map((x, i) => ({ x, y: ys[i] })).filter(p => isFinite(p.x) && p.y > 0 && isFinite(p.y));
+  if (pairs.length < 3) return null;
+  const lnY = pairs.map(p => Math.log(p.y));
+  const xx = pairs.map(p => p.x);
+  const n = pairs.length;
+  const meanX = xx.reduce((s,v)=>s+v,0)/n;
+  const meanY = lnY.reduce((s,v)=>s+v,0)/n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) { num += (xx[i]-meanX)*(lnY[i]-meanY); den += (xx[i]-meanX)**2; }
+  if (den === 0) return null;
+  const slope = num/den;
+  const lnA = meanY - slope*meanX;
+  const a = Math.exp(lnA);
+  const b = -slope;
+  let ssRes = 0, ssTot = 0;
+  for (let i = 0; i < n; i++) {
+    const yHat = lnA + slope*xx[i];
+    ssRes += (lnY[i] - yHat)**2;
+    ssTot += (lnY[i] - meanY)**2;
+  }
+  const R2 = ssTot > 0 ? 1 - ssRes/ssTot : 0;
+  return { type: "exponential", a, b, R2, predict: x => a * Math.exp(-b*x) };
+}
+
+function buildQualityCache() {
+  if (typeof window !== "undefined") window.__QUALITY = QUALITY_CACHE;
+  const key = qualityCacheKey();
+  if (QUALITY_CACHE.key === key) return QUALITY_CACHE;
+
+  const rows = getMappedRows();
+  const validation = { errors: [], droppedRows: 0 };
+
+  // grain 정제
+  const clean = [];
+  for (const r of rows) {
+    if (!r.cohort_date || r.day_offset == null || r.day_offset === "") { validation.droppedRows++; continue; }
+    const day = Number(r.day_offset);
+    const size = Number(r.cohort_size);
+    const ret = r.retained_users != null && r.retained_users !== "" ? Number(r.retained_users) : null;
+    const rev = r.cohort_revenue != null && r.cohort_revenue !== "" ? Number(r.cohort_revenue) : null;
+    if (!isFinite(day) || day < 0) { validation.errors.push(`잘못된 day_offset: ${r.cohort_date} ${r.day_offset}`); validation.droppedRows++; continue; }
+    if (!isFinite(size) || size <= 0) { validation.errors.push(`잘못된 cohort_size: ${r.cohort_date} (${size})`); validation.droppedRows++; continue; }
+    if (ret != null && ret > size) { validation.errors.push(`retained > size: ${r.cohort_date} day ${day} (${ret}/${size})`); }
+    clean.push({
+      cohort_date: r.cohort_date,
+      day, size, retained: ret, revenue: rev,
+      channel: r.channel, country: r.country, platform: r.platform,
+    });
+  }
+
+  // 코호트 단위 그룹화
+  const cohortMap = new Map();
+  for (const c of clean) {
+    if (!cohortMap.has(c.cohort_date)) cohortMap.set(c.cohort_date, { cohort_date: c.cohort_date, size: c.size, points: [], channel: c.channel, country: c.country, platform: c.platform });
+    cohortMap.get(c.cohort_date).points.push({
+      day: c.day,
+      retained: c.retained,
+      retentionRate: c.retained != null ? c.retained / c.size : null,
+      revenue: c.revenue,
+      arpu: c.revenue != null ? c.revenue / c.size : null,
+    });
+  }
+  const cohorts = [...cohortMap.values()].sort((a,b)=>a.cohort_date.localeCompare(b.cohort_date));
+  for (const co of cohorts) co.points.sort((a,b)=>a.day-b.day);
+
+  // 전체 평균 리텐션 곡선 (day별 가중평균)
+  const dayMap = new Map();
+  for (const co of cohorts) {
+    for (const p of co.points) {
+      if (p.retentionRate == null) continue;
+      if (!dayMap.has(p.day)) dayMap.set(p.day, { day: p.day, retSum: 0, sizeSum: 0, arpuSum: 0, arpuW: 0 });
+      const d = dayMap.get(p.day);
+      d.retSum += p.retentionRate * co.size;
+      d.sizeSum += co.size;
+      if (p.arpu != null) { d.arpuSum += p.arpu * co.size; d.arpuW += co.size; }
+    }
+  }
+  const retentionCurve = [...dayMap.values()].sort((a,b)=>a.day-b.day).map(d => ({
+    day: d.day,
+    mean: d.sizeSum > 0 ? d.retSum / d.sizeSum : null,
+    arpuMean: d.arpuW > 0 ? d.arpuSum / d.arpuW : null,
+    n: d.sizeSum,
+  }));
+
+  // LTV: cumulative ARPU curve fit + 외삽
+  const validArpu = retentionCurve.filter(d => d.arpuMean != null);
+  let ltv = null;
+  if (validArpu.length >= 3) {
+    // cumulative ARPU = ARPU at day D 이미 누적이라면 그대로, 아니면 누적
+    // 일반적으로 cohort_revenue가 누적이므로 그대로 사용
+    const days = validArpu.map(d => d.day);
+    const arpu = validArpu.map(d => d.arpuMean);
+    const power = fitPowerCurve(days, arpu);
+    const exp   = fitExpCurve(days, arpu);
+    const fit = QUALITY_STATE.curveModel === "exponential" ? exp : power;
+    const extrap = {};
+    if (fit) {
+      for (const h of QUALITY_CONFIG.ltvHorizons) {
+        extrap[h] = fit.predict(h);
+      }
+    }
+    ltv = { observed: validArpu.map(d=>({day:d.day, arpu:d.arpuMean})), fit, extrap };
+  }
+
+  // 세그먼트 비교 (옵션)
+  let segmentCompare = null;
+  const seg = QUALITY_STATE.segmentBy;
+  if (seg !== "none") {
+    const segMap = new Map();
+    for (const co of cohorts) {
+      const segKey = co[seg] || "unknown";
+      if (!segMap.has(segKey)) segMap.set(segKey, []);
+      segMap.get(segKey).push(co);
+    }
+    segmentCompare = [];
+    for (const [segName, segCohorts] of segMap) {
+      const dm = new Map();
+      let totalSize = 0;
+      for (const co of segCohorts) {
+        totalSize += co.size;
+        for (const p of co.points) {
+          if (p.retentionRate == null) continue;
+          if (!dm.has(p.day)) dm.set(p.day, { day:p.day, retSum:0, sizeSum:0 });
+          const d = dm.get(p.day);
+          d.retSum += p.retentionRate * co.size;
+          d.sizeSum += co.size;
+        }
+      }
+      const curve = [...dm.values()].sort((a,b)=>a.day-b.day).map(d => ({ day:d.day, mean: d.sizeSum>0 ? d.retSum/d.sizeSum : null }));
+      segmentCompare.push({ segment: segName, totalSize, cohortCount: segCohorts.length, curve });
+    }
+    segmentCompare.sort((a,b) => b.totalSize - a.totalSize);
+  }
+
+  QUALITY_CACHE.key = key;
+  QUALITY_CACHE.cohorts = cohorts;
+  QUALITY_CACHE.retentionCurve = retentionCurve;
+  QUALITY_CACHE.ltv = ltv;
+  QUALITY_CACHE.segmentCompare = segmentCompare;
+  QUALITY_CACHE.validation = validation;
+  QUALITY_CACHE.snapshotHash = creativeHashStr(key + clean.length);
+  return QUALITY_CACHE;
+}
+
+function page_5_8() {
+  const meta = findMeta("5-8");
+  const missing = checkRequiredForTool("5-8");
+  if (missing.length > 0 || !CSV_STATE.headers.length) {
+    return pageShell(meta, {
+      deck: "코호트 리텐션 곡선 + LTV 외삽 분석. cohort_date × day_offset grain의 wide CSV가 필요합니다.",
+      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+      summary: "각 코호트의 일별 잔존 사용자 수 + 누적 매출을 기반으로 리텐션 곡선 + ARPU/LTV 외삽 (Power / Exponential fit). 채널/국가/OS별 코호트 비교 가능.",
+      toc: [{ id: "s-prep", title: "데이터 준비" }],
+      body: renderInlineCsvUpload("5-8"),
+    });
+  }
+  buildQualityCache();
+  const c = QUALITY_CACHE;
+  return pageShell(meta, {
+    deck: "각 코호트의 일별 잔존 + 누적 매출 → 리텐션 곡선 + LTV 외삽 (Power/Exponential). 세그먼트별 비교 옵션.",
+    chips: `
+      <span class="chip"><span class="dot"></span>도구 · Quality Analyzer</span>
+      <span class="chip ok"><span class="dot"></span>코호트 ${c.cohorts.length}개</span>
+      <span class="chip"><span class="dot"></span>config ${QUALITY_CONFIG.version} · snapshot ${c.snapshotHash}</span>
+      ${authStatusChip()}`,
+    summary: "리텐션은 day별 코호트 가중평균. LTV는 누적 ARPU를 곡선 적합 후 horizon별 외삽. ⚠ 외삽은 관측 범위 밖이므로 신뢰구간 좁게 해석하고 실측으로 보정.",
+    toc: [
+      { id: "s-prep", title: "데이터 준비" },
+      { id: "s-validation", title: "검증" },
+      { id: "s-retention", title: "리텐션 곡선" },
+      { id: "s-ltv", title: "LTV 외삽" },
+      { id: "s-segment", title: "세그먼트 비교" },
+      { id: "s-cohorts", title: "코호트 목록" },
+    ],
+    body: `
+      <section class="block" id="s-prep">${renderInlineCsvUpload("5-8")}</section>
+      ${renderQualityValidation(c.validation)}
+      ${renderQualityRetention(c.retentionCurve)}
+      ${renderQualityLTV(c.ltv)}
+      ${renderQualitySegment(c.segmentCompare)}
+      ${renderQualityCohorts(c.cohorts)}
+    `,
+  });
+}
+PAGE_RENDERERS["5-8"] = page_5_8;
+
+function renderQualityValidation(v) {
+  if (!v || (v.errors.length === 0 && v.droppedRows === 0)) return `
+    <section class="block" id="s-validation">
+      <h2 class="section-title"><span class="ix">§1</span>검증</h2>
+      <div class="callout ok"><div class="ico">✓</div><div class="body"><strong>모든 row 통과</strong></div></div>
+    </section>`;
+  return `
+    <section class="block" id="s-validation">
+      <h2 class="section-title"><span class="ix">§1</span>검증</h2>
+      <div class="callout warn">
+        <div class="ico">!</div>
+        <div class="body">
+          <strong>${v.droppedRows}개 row 제외 / ${v.errors.length}개 이슈</strong>
+          ${v.errors.length ? `<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:12px;">상세</summary>
+            <ul style="margin:6px 0 0 18px;font-size:11px;color:var(--text-muted);">${v.errors.slice(0,20).map(e=>`<li>${escapeHtml(e)}</li>`).join("")}${v.errors.length>20?`<li>... +${v.errors.length-20}개</li>`:""}</ul></details>` : ""}
+        </div>
+      </div>
+    </section>`;
+}
+
+function renderQualityRetention(curve) {
+  if (!curve || !curve.length) return `<section class="block" id="s-retention">
+    <h2 class="section-title"><span class="ix">§2</span>리텐션 곡선</h2>
+    <div class="callout warn"><div class="ico">!</div><div class="body"><strong>리텐션 데이터 부족</strong><p>retained_users 컬럼이 매핑되어야 합니다.</p></div></div>
+  </section>`;
+  const fmtPct = (v) => v == null ? "—" : (v*100).toFixed(1) + "%";
+  return `
+    <section class="block" id="s-retention">
+      <h2 class="section-title"><span class="ix">§2</span>리텐션 곡선 (가중 평균)</h2>
+      <p class="muted">day별로 모든 코호트의 잔존율을 코호트 크기로 가중평균.</p>
+      <div class="alloc-card" style="margin-bottom:12px;">
+        <div class="cann-card-header">
+          <div class="alloc-card-title">전체 평균 리텐션</div>
+          <button class="ab-pill" data-pngdownload="quality-retention" data-pngname="quality_retention" title="PNG">⬇ PNG</button>
+        </div>
+        <div class="chart-container"><canvas id="quality-retention"></canvas></div>
+      </div>
+      <div class="table-wrap">
+        <table class="data" style="font-size:11.5px;">
+          <thead><tr><th>Day</th><th>리텐션</th><th>n (가중)</th></tr></thead>
+          <tbody>${curve.slice(0, 30).map(d => `<tr><td class="tnum">D${d.day}</td><td class="tnum"><strong>${fmtPct(d.mean)}</strong></td><td class="tnum">${(d.n||0).toLocaleString()}</td></tr>`).join("")}</tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+function renderQualityLTV(ltv) {
+  if (!ltv) return `<section class="block" id="s-ltv">
+    <h2 class="section-title"><span class="ix">§3</span>LTV 외삽</h2>
+    <div class="callout warn"><div class="ico">!</div><div class="body"><strong>LTV 데이터 부족</strong><p>cohort_revenue 컬럼이 매핑되어야 합니다.</p></div></div>
+  </section>`;
+  const fmt = (v) => v == null || !isFinite(v) ? "—" : v.toFixed(2);
+  const modelToggle = `
+    <div class="ab-pillgroup" style="margin-bottom:8px;">
+      <span class="ab-pillgroup-label">곡선 모델</span>
+      ${QUALITY_CONFIG.curveModels.map(m => `<button class="ab-pill ${QUALITY_STATE.curveModel===m?'active':''}" data-quality-curve="${m}">${m === 'power' ? 'Power (y=a·x^b)' : 'Exponential (y=a·e^(-bx))'}</button>`).join("")}
+    </div>`;
+  const horizonTable = ltv.fit ? `
+    <div class="ab-stat-row" style="margin-bottom:12px;">
+      ${QUALITY_CONFIG.ltvHorizons.map(h => `
+        <div class="ab-stat">
+          <div class="ab-stat-label">D${h} 예측 ARPU</div>
+          <div class="ab-stat-value tnum">${fmt(ltv.extrap[h])}</div>
+          <div class="ab-stat-hint">${h <= Math.max(...ltv.observed.map(o=>o.day)) ? '실측 범위 내' : '외삽'}</div>
+        </div>
+      `).join("")}
+    </div>` : "";
+  return `
+    <section class="block" id="s-ltv">
+      <h2 class="section-title"><span class="ix">§3</span>LTV 외삽 (누적 ARPU)</h2>
+      <p class="muted">관측 누적 ARPU에 곡선 적합 후 horizon별 외삽. ⚠ 외삽은 관측 범위 밖이라 신뢰구간 좁게 해석.</p>
+      ${modelToggle}
+      ${ltv.fit ? `<p style="font-size:12px;color:var(--text-muted);">Fit: <strong>${ltv.fit.type}</strong> · a=${fmt(ltv.fit.a)} · b=${fmt(ltv.fit.b)} · R²=${fmt(ltv.fit.R2)}</p>` : ""}
+      ${horizonTable}
+      <div class="alloc-card">
+        <div class="cann-card-header">
+          <div class="alloc-card-title">관측 ARPU + 외삽 곡선</div>
+          <button class="ab-pill" data-pngdownload="quality-ltv" data-pngname="quality_ltv" title="PNG">⬇ PNG</button>
+        </div>
+        <div class="chart-container"><canvas id="quality-ltv"></canvas></div>
+      </div>
+    </section>`;
+}
+
+function renderQualitySegment(seg) {
+  const segToggle = `
+    <div class="ab-pillgroup" style="margin-bottom:12px;">
+      <span class="ab-pillgroup-label">세그먼트 분리</span>
+      ${["none","channel","country","platform"].map(s => `<button class="ab-pill ${QUALITY_STATE.segmentBy===s?'active':''}" data-quality-segment="${s}">${s==='none'?'없음':s}</button>`).join("")}
+    </div>`;
+  if (!seg || !seg.length) return `
+    <section class="block" id="s-segment">
+      <h2 class="section-title"><span class="ix">§4</span>세그먼트 비교</h2>
+      ${segToggle}
+      <p class="muted">세그먼트 선택 시 해당 차원별로 리텐션 곡선 분리.</p>
+    </section>`;
+  const fmtPct = (v) => v == null ? "—" : (v*100).toFixed(1) + "%";
+  return `
+    <section class="block" id="s-segment">
+      <h2 class="section-title"><span class="ix">§4</span>세그먼트 비교 — ${escapeHtml(QUALITY_STATE.segmentBy)}별</h2>
+      ${segToggle}
+      <div class="alloc-card" style="margin-bottom:12px;">
+        <div class="cann-card-header">
+          <div class="alloc-card-title">세그먼트별 리텐션 곡선</div>
+          <button class="ab-pill" data-pngdownload="quality-segment" data-pngname="quality_segment" title="PNG">⬇ PNG</button>
+        </div>
+        <div class="chart-container"><canvas id="quality-segment"></canvas></div>
+      </div>
+      <div class="table-wrap">
+        <table class="data" style="font-size:11.5px;">
+          <thead><tr><th>세그먼트</th><th>코호트 수</th><th>총 사용자</th><th>D1</th><th>D7</th><th>D30</th></tr></thead>
+          <tbody>${seg.map(s => {
+            const at = d => s.curve.find(c => c.day === d)?.mean;
+            return `<tr>
+              <td><strong>${escapeHtml(String(s.segment))}</strong></td>
+              <td class="tnum">${s.cohortCount}</td>
+              <td class="tnum">${s.totalSize.toLocaleString()}</td>
+              <td class="tnum">${fmtPct(at(1))}</td>
+              <td class="tnum">${fmtPct(at(7))}</td>
+              <td class="tnum">${fmtPct(at(30))}</td>
+            </tr>`;
+          }).join("")}</tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+function renderQualityCohorts(cohorts) {
+  if (!cohorts || !cohorts.length) return "";
+  const fmtPct = (v) => v == null ? "—" : (v*100).toFixed(1) + "%";
+  const top = cohorts.slice(0, 30);
+  return `
+    <section class="block" id="s-cohorts">
+      <h2 class="section-title"><span class="ix">§5</span>코호트 목록 (최근 ${top.length}개)</h2>
+      <div class="table-wrap">
+        <table class="data" style="font-size:11px;">
+          <thead><tr><th>Cohort Date</th><th>크기</th><th>D1</th><th>D7</th><th>D30</th><th>D90</th><th>관측일수</th></tr></thead>
+          <tbody>${top.map(co => {
+            const at = d => co.points.find(p => p.day === d)?.retentionRate;
+            return `<tr>
+              <td class="tnum" style="font-size:11px;">${escapeHtml(co.cohort_date)}</td>
+              <td class="tnum">${co.size.toLocaleString()}</td>
+              <td class="tnum">${fmtPct(at(1))}</td>
+              <td class="tnum">${fmtPct(at(7))}</td>
+              <td class="tnum">${fmtPct(at(30))}</td>
+              <td class="tnum">${fmtPct(at(90))}</td>
+              <td class="tnum">${co.points.length}</td>
+            </tr>`;
+          }).join("")}</tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+function renderQualityCharts() {
+  if (typeof Chart === "undefined") return;
+  const c = QUALITY_CACHE;
+
+  // Retention curve
+  const rCtx = document.getElementById("quality-retention");
+  if (rCtx && c.retentionCurve?.length) {
+    destroyChartIfExists("quality-retention");
+    CHART_INSTANCES["quality-retention"] = new Chart(rCtx, {
+      type: "line",
+      data: {
+        labels: c.retentionCurve.map(d => `D${d.day}`),
+        datasets: [{ label: "Retention", data: c.retentionCurve.map(d => d.mean != null ? d.mean * 100 : null), borderColor: "#adc6ff", backgroundColor: "#adc6ff30", fill: true, tension: 0.3, pointRadius: 3 }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } },
+          y: { title: { display: true, text: "Retention (%)", color: getCssVar('--text-muted') }, ticks: { color: getCssVar('--text-muted'), callback: v => v.toFixed(0) + "%" }, grid: { color: getCssVar('--border') } },
+        },
+      },
+    });
+  }
+
+  // LTV chart
+  const lCtx = document.getElementById("quality-ltv");
+  if (lCtx && c.ltv?.fit) {
+    destroyChartIfExists("quality-ltv");
+    const fit = c.ltv.fit;
+    const obsDays = c.ltv.observed.map(o => o.day);
+    const maxObs = Math.max(...obsDays);
+    const maxHorizon = Math.max(...QUALITY_CONFIG.ltvHorizons);
+    const allDays = [];
+    for (let d = 0; d <= maxHorizon; d += Math.max(1, Math.floor(maxHorizon/60))) allDays.push(d);
+    CHART_INSTANCES["quality-ltv"] = new Chart(lCtx, {
+      type: "line",
+      data: {
+        datasets: [
+          { label: "관측 ARPU", data: c.ltv.observed.map(o => ({x:o.day, y:o.arpu})), borderColor: "#22c55e", backgroundColor: "#22c55eAA", pointRadius: 4, showLine: false },
+          { label: `Fit (${fit.type})`, data: allDays.map(d => ({x:d, y: fit.predict(d)})), borderColor: "#adc6ff", borderWidth: 2, borderDash: [4,4], pointRadius: 0, fill: false },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: getCssVar('--text-muted'), font: { size: 11 } } } },
+        scales: {
+          x: { type: "linear", title: { display: true, text: "Day", color: getCssVar('--text-muted') }, ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } },
+          y: { title: { display: true, text: "Cumulative ARPU", color: getCssVar('--text-muted') }, ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } },
+        },
+      },
+    });
+  }
+
+  // Segment chart
+  const sCtx = document.getElementById("quality-segment");
+  if (sCtx && c.segmentCompare?.length) {
+    destroyChartIfExists("quality-segment");
+    const palette = ["#adc6ff", "#22c55e", "#f87171", "#fbbf24", "#a78bfa", "#fb7185"];
+    // 공통 day axis
+    const allDays = new Set();
+    c.segmentCompare.forEach(s => s.curve.forEach(p => allDays.add(p.day)));
+    const days = [...allDays].sort((a,b)=>a-b);
+    const datasets = c.segmentCompare.slice(0, 6).map((s, i) => ({
+      label: `${s.segment} (n=${s.totalSize.toLocaleString()})`,
+      data: days.map(d => {
+        const p = s.curve.find(x => x.day === d);
+        return p?.mean != null ? p.mean * 100 : null;
+      }),
+      borderColor: palette[i % palette.length],
+      backgroundColor: palette[i % palette.length] + "30",
+      borderWidth: 1.8, pointRadius: 2, tension: 0.3, spanGaps: true,
+    }));
+    CHART_INSTANCES["quality-segment"] = new Chart(sCtx, {
+      type: "line",
+      data: { labels: days.map(d => `D${d}`), datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: getCssVar('--text-muted'), font: { size: 11 } } } },
+        scales: {
+          x: { ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } },
+          y: { title: { display: true, text: "Retention (%)", color: getCssVar('--text-muted') }, ticks: { color: getCssVar('--text-muted'), callback: v => v.toFixed(0) + "%" }, grid: { color: getCssVar('--border') } },
+        },
+      },
+    });
+  }
+}
+
+function bindQualityHandlers() {
+  bindInlineCsvHandlers();
+  document.querySelectorAll("[data-quality-curve]").forEach(btn => {
+    btn.addEventListener("click", () => { QUALITY_STATE.curveModel = btn.dataset.qualityCurve; QUALITY_CACHE.key = null; navigate("5-8"); });
+  });
+  document.querySelectorAll("[data-quality-segment]").forEach(btn => {
+    btn.addEventListener("click", () => { QUALITY_STATE.segmentBy = btn.dataset.qualitySegment; QUALITY_CACHE.key = null; navigate("5-8"); });
+  });
+  document.querySelectorAll("#s-retention [data-pngdownload], #s-ltv [data-pngdownload], #s-segment [data-pngdownload]").forEach(btn => {
+    btn.addEventListener("click", () => downloadChartAsPNG(btn.dataset.pngdownload, btn.dataset.pngname));
+  });
+  renderQualityCharts();
+}
+
+/* Golden tests */
+function runQualityTests(verbose = true) {
+  const results = [];
+
+  // T1: power fit on y = 2*x^0.5
+  const xs = [1,2,4,9,16,25];
+  const ys = xs.map(x => 2 * Math.pow(x, 0.5));
+  const pwr = fitPowerCurve(xs, ys);
+  const errA = pwr ? Math.abs(pwr.a - 2) : 1;
+  const errB = pwr ? Math.abs(pwr.b - 0.5) : 1;
+  results.push({ test: "T1 · Power fit (y=2·x^0.5)", expected: "a=2, b=0.5", actual: pwr ? `a=${pwr.a.toFixed(4)}, b=${pwr.b.toFixed(4)}` : "null", pass: errA < 1e-9 && errB < 1e-9 ? "✓" : "✗" });
+
+  // T2: exp fit on y = 3*exp(-0.1*x)
+  const xs2 = [0,5,10,20,30];
+  const ys2 = xs2.map(x => 3 * Math.exp(-0.1 * x));
+  const ex = fitExpCurve(xs2, ys2);
+  const errA2 = ex ? Math.abs(ex.a - 3) : 1;
+  const errB2 = ex ? Math.abs(ex.b - 0.1) : 1;
+  results.push({ test: "T2 · Exp fit (y=3·exp(-0.1x))", expected: "a=3, b=0.1", actual: ex ? `a=${ex.a.toFixed(4)}, b=${ex.b.toFixed(4)}` : "null", pass: errA2 < 1e-9 && errB2 < 1e-9 ? "✓" : "✗" });
+
+  // T3: 외삽 결정론
+  const pwr1 = fitPowerCurve([1,2,4], [1,1.4142,2]);
+  const pwr2 = fitPowerCurve([1,2,4], [1,1.4142,2]);
+  const same = pwr1 && pwr2 && pwr1.a === pwr2.a && pwr1.b === pwr2.b;
+  results.push({ test: "T3 · Power fit 결정론", expected: "identical", actual: same ? "identical" : "differ", pass: same ? "✓" : "✗" });
+
+  if (verbose) {
+    console.log("%c=== Quality Analyzer · Golden Tests ===", "color: #adc6ff; font-weight: bold;");
+    console.table(results);
+    const pass = results.filter(r => r.pass === "✓").length;
+    console.log(`%c${pass}/${results.length} 통과`, `color: ${pass === results.length ? '#22c55e' : '#f87171'}; font-weight: bold;`);
+  }
+  return results;
+}
+
+if (typeof window !== "undefined") {
+  window.runQualityTests = runQualityTests;
+  window.QUALITY_CONFIG = QUALITY_CONFIG;
+}
+
 function renderModePlan() {
   const tt = AB_STATE.testType;
   const sym = CURRENCY_SYMBOLS[AB_STATE.currency] || "₩";
@@ -11335,6 +11900,11 @@ function bindCSVPageHandlers() {
   // ----- 5-7: Test Readout 핸들러 -----
   if (document.querySelector("[data-readout-select]") || document.getElementById("s-experiments")) {
     bindReadoutHandlers();
+  }
+
+  // ----- 5-8: Quality Analyzer 핸들러 -----
+  if (document.querySelector("[data-quality-curve], [data-quality-segment]") || document.getElementById("s-retention")) {
+    bindQualityHandlers();
   }
 
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
@@ -13596,17 +14166,54 @@ function renderAllocFilterPanel(compact) {
   const optionsHtml = (values, sel) =>
     values.map(v => `<option value="${escapeHtml(v)}" ${sel && sel.has(v) ? 'selected' : ''}>${escapeHtml(v)}</option>`).join("");
 
+  // 최적화 목표 옵션 (사용 가능 여부는 매핑된 컬럼으로 자동 결정)
+  const mapped = new Set(Object.values(CSV_STATE.mapping || {}).filter(v => v !== "__ignore__"));
+  const objAvailable = {
+    install: mapped.has("installs"),
+    action:  mapped.has("actions"),
+    roas:    mapped.has("revenue_d7"),
+  };
+
   return `
     <div class="alloc-filter-panel">
-      <div class="alloc-filter-panel-title">📊 분석 단위 + 국가/채널/플랫폼 필터</div>
-      <p class="muted" style="margin-bottom:14px;font-size:12px;">선택 후 <strong>적용</strong>을 눌러야 분석이 시작됩니다. CSV 재업로드 또는 단위 변경 시 필터가 리셋됩니다.</p>
+      <div class="alloc-filter-panel-title">🎯 최적화 목표 + 분석 단위 + 필터</div>
+      <p class="muted" style="margin-bottom:14px;font-size:12px;">최적화 목표를 먼저 선택하고, 분석 단위와 필터를 정한 뒤 <strong>적용</strong>을 누르세요.</p>
 
       <div class="alloc-filter-row">
-        ${unitOpts.map(o => `
-          <div class="alloc-unit-chip ${f.unit === o.v ? 'active' : ''}" data-alloc-unit="${o.v}" title="${escapeHtml(o.desc)}">
-            ${escapeHtml(o.label)}
+        <div class="alloc-filter-group" style="min-width: 100%;">
+          <span class="alloc-filter-group-label">1️⃣ 최적화 목표 (필수)</span>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+            ${Object.entries(ALLOC_OBJECTIVES).map(([k, o]) => {
+              const ok = objAvailable[k];
+              return `<div class="alloc-unit-chip ${f.objective === k ? 'active' : ''} ${!ok ? 'disabled' : ''}"
+                ${ok ? `data-alloc-objective="${k}"` : ''}
+                title="${escapeHtml(ok ? o.desc : `필요 컬럼 매핑 안 됨 (${o.metric})`)}">
+                <div style="font-size:13px;font-weight:700;">${escapeHtml(o.short)} ${o.arrow}</div>
+                <div style="font-size:10px;font-weight:400;opacity:0.85;margin-top:2px;">${escapeHtml(o.label)}</div>
+                ${!ok ? '<div style="font-size:9px;color:var(--danger);margin-top:2px;">🔒 컬럼 미매핑</div>' : ''}
+              </div>`;
+            }).join("")}
           </div>
-        `).join("")}
+        </div>
+      </div>
+
+      <div class="alloc-filter-row">
+        <div class="alloc-filter-group" style="min-width: 100%;">
+          <span class="alloc-filter-group-label">2️⃣ 분석 단위</span>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+            ${unitOpts.map(o => `
+              <div class="alloc-unit-chip ${f.unit === o.v ? 'active' : ''}" data-alloc-unit="${o.v}" title="${escapeHtml(o.desc)}">
+                ${escapeHtml(o.label)}
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      </div>
+
+      <div class="alloc-filter-row">
+        <div class="alloc-filter-group" style="min-width:100%;margin-bottom:-4px;">
+          <span class="alloc-filter-group-label">3️⃣ 국가 · 채널 · OS 필터</span>
+        </div>
       </div>
 
       <div class="alloc-filter-row">
@@ -13645,7 +14252,9 @@ function renderAllocFilterPanel(compact) {
       </div>
 
       <div class="alloc-filter-row">
-        <button class="alloc-filter-apply" id="alloc-filter-apply">✓ 적용하고 분석 시작</button>
+        <button class="alloc-filter-apply" id="alloc-filter-apply" ${!f.objective ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''}>
+          ${f.objective ? '✓ 적용하고 분석 시작' : '⚠ 최적화 목표를 먼저 선택하세요'}
+        </button>
         ${compact ? `<button class="ab-pill" id="alloc-filter-cancel" style="margin-top:20px;">취소</button>` : ""}
       </div>
     </div>
@@ -13655,13 +14264,15 @@ function renderAllocFilterPanel(compact) {
 /* 적용된 필터 요약 (분석 페이지 상단에 표시 + 변경 버튼) */
 function renderAllocFilterSummary() {
   const f = ALLOC_FILTER_STATE;
+  const obj = getObjectiveCfg();
   const unitLabel = { country: "국가별", channel: "국가 × 채널별", campaign: "국가 × 채널 × 캠페인별" }[f.unit] || f.unit;
   const ctryText = (f.selectedCountries && f.selectedCountries.size > 0) ? [...f.selectedCountries].join(", ") : "전체";
   const chText  = (f.selectedChannelsFilter && f.selectedChannelsFilter.size > 0) ? [...f.selectedChannelsFilter].join(", ") : "전체";
   const plText  = f.platform === "all" ? "전체 OS" : f.platform === "android" ? "Android" : "iOS";
   return `
     <div class="alloc-filter-summary">
-      <strong style="color:var(--primary,#adc6ff);">📊 ${unitLabel}</strong>
+      ${obj ? `<strong style="color:var(--primary,#adc6ff);">🎯 ${escapeHtml(obj.short)} ${obj.arrow}</strong>` : ''}
+      <span>· <strong>${unitLabel}</strong></span>
       <span>· 국가: <strong>${escapeHtml(ctryText)}</strong></span>
       <span>· 채널: <strong>${escapeHtml(chText)}</strong></span>
       <span>· OS: <strong>${escapeHtml(plText)}</strong></span>
@@ -13671,6 +14282,14 @@ function renderAllocFilterSummary() {
 }
 
 function bindBudgetAllocatorHandlers() {
+  // 최적화 목표 칩
+  document.querySelectorAll("[data-alloc-objective]").forEach(el => {
+    el.addEventListener("click", () => {
+      if (el.classList.contains("disabled")) return;
+      ALLOC_FILTER_STATE.objective = el.dataset.allocObjective;
+      navigate("5-3");
+    });
+  });
   // 분석 단위 칩
   document.querySelectorAll("[data-alloc-unit]").forEach(el => {
     el.addEventListener("click", () => {
@@ -13704,13 +14323,19 @@ function bindBudgetAllocatorHandlers() {
   // 적용
   const applyBtn = document.getElementById("alloc-filter-apply");
   if (applyBtn) applyBtn.addEventListener("click", () => {
+    if (!ALLOC_FILTER_STATE.objective) {
+      alert("최적화 목표(Install / Action / ROAS)를 먼저 선택해 주세요.");
+      return;
+    }
     // 채널 select 현재 값 다시 읽기 (change 안 거치고 적용 누른 경우)
     if (chSel) {
       const selected = [...chSel.selectedOptions].map(o => o.value);
       ALLOC_FILTER_STATE.selectedChannelsFilter = selected.length ? new Set(selected) : null;
     }
+    // objective → ALLOC_STATE.metric 자동 설정 (revenue_d7 metric은 1/ROAS = CPR로 처리됨, minimize CPR = maximize ROAS)
+    const obj = getObjectiveCfg();
+    if (obj) ALLOC_STATE.metric = obj.metric;
     ALLOC_FILTER_STATE.applied = true;
-    // 분석 모델 캐시 invalidate (단위 바뀌면 grouping key가 달라짐)
     if (typeof clearAllocCache === "function") clearAllocCache();
     navigate("5-3");
   });
@@ -13817,6 +14442,7 @@ const TOOL_REQUIRED_FIELDS = {
   "5-5": ["date", "paid_regs", "organic_regs"],
   "5-6": ["creative_id", "date", "channel", "impressions", "clicks", "installs", "spend"],
   "5-7": ["experiment_id", "arm_id", "is_control", "metric_tier", "metric_name", "numerator", "denominator"],
+  "5-8": ["cohort_date", "day_offset", "cohort_size", { oneOf: ["retained_users", "cohort_revenue"] }],
 };
 
 /* 도구별 옵션 필드 — 매핑하면 추가 기능 활성화. */
@@ -13870,6 +14496,13 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "arm_label",  unlocks: "암 라벨 표시 (UI 가독성)" },
     { key: "start_date", unlocks: "실험 기간 표시" },
     { key: "end_date",   unlocks: "실험 기간 표시" },
+  ],
+  "5-8": [
+    { key: "channel",        unlocks: "채널별 코호트 비교 분리" },
+    { key: "country",        unlocks: "국가별 코호트 비교 분리" },
+    { key: "platform",       unlocks: "OS별 코호트 비교 분리" },
+    { key: "retained_users", unlocks: "리텐션 곡선 분석" },
+    { key: "cohort_revenue", unlocks: "LTV 곡선 + 외삽 분석" },
   ],
 };
 
