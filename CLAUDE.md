@@ -64,6 +64,7 @@ HTML/CSS/JS (Vanilla)
 | 5-5 | Cannibalization Analyzer | CSV (도구 전용) | 운영 |
 | 5-6 | Creative Analyzer | CSV 소재 daily (도구 전용) | 운영 |
 | 5-7 | Test Readout | CSV 실험 결과 (도구 전용) | 운영 |
+| 5-8 | Quality Analyzer | CSV 코호트 daily (도구 전용) | 운영 |
 
 ### 4.3 도구별 독립 CSV 상태 (중요 패턴)
 
@@ -236,6 +237,7 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 - **검증 가능성** 중시 (참고값 재현 테스트, console 디버그 노출)
 - **분석 결과 해석** 도움 요청 → 차트만 보고 끝나지 않음. 항상 의사결정에 어떻게 쓸지까지 정리.
 - **메타-도구 사고** → 단순 기능 요청 외에도 "하네스/에이전트 자체를 어떻게 진화시킬지" 명시적으로 요구. 자가 업데이트 같은 self-referential 규칙을 명시적으로 선호 (PR #26~27 검증).
+- **목표 우선 사고** → 분석 도구에 들어가기 전 "무엇을 최적화할지(CPI/CPA/ROAS)"를 먼저 명시적으로 선택받는 흐름 선호. 도구가 "전부 다 분석" 보다 "선택한 목표만 정밀 분석"하는 게 의사결정 부담 ↓ (PR #31 검증).
 
 ---
 
