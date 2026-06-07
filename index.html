@@ -11541,6 +11541,10 @@ function renderLoadingPlaceholder() {
 async function navigate(id) {
   const content = $("#content");
   let html = "";
+  // 같은 페이지 재렌더(토글/필터/매핑 변경 등)일 때 스크롤 위치 보존용.
+  // navigate 진입 시점의 현재 hash와 scrollY를 캡처해 둔다.
+  const prevScrollY = window.scrollY;
+  const prevHashForScroll = location.hash || "#";
 
   // 5-1은 제거됨 → 5-5(가장 자주 쓰이는 분석기)로 자동 redirect
   if (id === "5-1") { id = "5-5"; }
@@ -11599,7 +11603,15 @@ async function navigate(id) {
   if (newHash !== curHash) {
     history.pushState({ route: id }, "", newHash);
   }
-  window.scrollTo({ top: 0, behavior: "instant" });
+  // 같은 페이지를 다시 그리는 경우(필터/토글/매핑 변경 등 in-place 재렌더)엔
+  // 스크롤을 맨 위로 올리지 않고 사용자가 보던 위치를 유지한다.
+  // 다른 페이지로 진입할 때만 top으로 리셋.
+  const isSamePageRerender = newHash === prevHashForScroll;
+  if (isSamePageRerender) {
+    window.scrollTo({ top: prevScrollY, behavior: "instant" });
+  } else {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }
 }
 
 /* ========== Behaviors ========== */
