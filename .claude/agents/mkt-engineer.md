@@ -62,6 +62,7 @@ tools:
 - PapaParse는 dynamicTyping 없이 사용 → `parseFloat` 처리
 - Chart.js 캔버스 transparent → PNG export 시 다크 배경 합성
 - centered MA 경계 NaN → LOESS 사용 또는 boundary handling
+- 페이지 비활성 시 redirect만 남기지 말고 죽은 `page_5_N()` + `PAGE_RENDERERS` 등록 통째 삭제 (잔존 중복 id·공유 클래스가 cross-page 핸들러 버그 불씨, PR #33/#34)
 
 # 도구 추가 패턴
 
