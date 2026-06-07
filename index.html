@@ -2596,6 +2596,7 @@ const IA = [
       { id: "5-3", title: "Budget Allocator", desc: "한계효용 기반 채널별 예산 최적 배분" },
       { id: "5-4", title: "A/B Test Calculator", desc: "Sample Size 계산 + Frequentist/Bayesian 결과 분석" },
       { id: "5-5", title: "Cannibalization Analyzer", desc: "추세·요일 제거 후 잔차 상관으로 paid↔organic 잠식 검정" },
+      { id: "5-6", title: "Creative Analyzer", desc: "소재 성과 분해 + Fatigue + Concept Matrix + Next-test 후보" },
     ],
   },
 ];
@@ -2671,6 +2672,20 @@ const STANDARD_FIELDS = {
   paid_react:    { label: "유료 재활성화", aliases: ["paid react", "paid reactivation", "paid_reactivation", "paid_reactivations", "유료재활성화"], type: "number", required: false, group: "Cannibalization" },
   organic_react: { label: "오가닉 재활성화", aliases: ["organic react", "organic reactivation", "organic_reactivation", "organic_reactivations", "오가닉재활성화"], type: "number", required: false, group: "Cannibalization" },
   total_react:   { label: "총 재활성화",   aliases: ["total react", "total reactivation", "total_reactivation", "총재활성화"],              type: "number", required: false, group: "Cannibalization" },
+  // === Creative Analyzer 전용 (5-6) ===
+  creative_id:        { label: "소재ID",        aliases: ["creative", "creative id", "크리에이티브id", "소재"], type: "string", required: false, group: "Creative" },
+  campaign_id:        { label: "캠페인ID",       aliases: ["campaign id", "캠페인id", "ad_set", "adset"], type: "string", required: false, group: "Creative" },
+  spend:              { label: "비용(Creative)",  aliases: ["광고비", "spend", "creative spend"], type: "number", required: false, group: "Creative" },
+  audience_segment:   { label: "오디언스 세그먼트", aliases: ["audience", "타겟", "오디언스", "segment"], type: "string", required: false, group: "Creative" },
+  video_3s_views:     { label: "3초 조회수",      aliases: ["3sec views", "3초조회", "video 3s", "3s views"], type: "number", required: false, group: "Creative" },
+  video_completions:  { label: "영상 완료수",     aliases: ["video completions", "완료수", "video complete"], type: "number", required: false, group: "Creative" },
+  hook_type:          { label: "Hook 유형",       aliases: ["hook", "hook type", "훅", "훅유형"], type: "string", required: false, group: "Creative" },
+  message_angle:      { label: "메시지 앵글",     aliases: ["message", "angle", "앵글", "메시지앵글"], type: "string", required: false, group: "Creative" },
+  first_3s:           { label: "첫 3초 컨셉",     aliases: ["first 3s", "오프닝", "intro"], type: "string", required: false, group: "Creative" },
+  format:             { label: "포맷",            aliases: ["creative format", "포맷", "ad format"], type: "string", required: false, group: "Creative" },
+  has_text_overlay:   { label: "텍스트 오버레이",  aliases: ["text overlay", "has text", "오버레이"], type: "string", required: false, group: "Creative" },
+  cta_style:          { label: "CTA 스타일",      aliases: ["cta", "cta style", "cta스타일"], type: "string", required: false, group: "Creative" },
+  duration_bucket:    { label: "영상 길이대",     aliases: ["duration", "length", "길이대", "영상길이"], type: "string", required: false, group: "Creative" },
 };
 
 /* ========== CSV Global State ========== */
@@ -5059,7 +5074,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -8624,6 +8639,1053 @@ if (typeof window !== "undefined") {
   window.CANNIBAL_STATS = CANNIBAL_STATS;
 }
 
+/* ============================================================
+ * Creative Analyzer (5-6)
+ * — 소재 성과 daily CSV (creative_id × date × channel × campaign_id grain)
+ *   → 파생지표 / WLS 분해 / Fatigue 검출 / Concept Matrix / Next-test 후보
+ * — 모든 통계는 직접 구현 (외부 라이브러리 X) + 결정론 (Math.random 금지)
+ * ============================================================ */
+
+const CREATIVE_CONFIG = {
+  version: "1.0.0",
+  seed: 42,
+  decimalPlaces: 4,
+  minImpressions: 1000,
+  minNCell: 5,
+  decompose: {
+    metrics: ["ctr", "cvr"],
+    controls: ["channel", "iso_week"],  // campaign_id는 demean으로 흡수
+    method: "wls",
+    vifThreshold: 5.0,
+    vifDropPriority: ["duration_bucket", "has_text_overlay"],
+    alpha: 0.05,
+    multipleTesting: "bh",
+  },
+  fatigue: { decayWindow: 7, dropPct: 0.20 },
+  matrix: { rows: "message_angle", cols: "format" },
+  test:    { exploreRatio: 0.3, batchSize: 6, power: 0.8, alpha: 0.05 },
+  bayes:   { priorA: 1, priorB: 1, gridN: 2000, promoteProb: 0.95, killProb: 0.05 },
+};
+
+/* ----- CREATIVE_MATH: 순수 선형대수 (외부 라이브러리 X) ----- */
+const CREATIVE_MATH = {
+  transpose(M) {
+    const r = M.length, c = M[0]?.length || 0;
+    const out = Array.from({ length: c }, () => new Array(r));
+    for (let i = 0; i < r; i++) for (let j = 0; j < c; j++) out[j][i] = M[i][j];
+    return out;
+  },
+  matmul(A, B) {
+    const ar = A.length, ac = A[0]?.length || 0, bc = B[0]?.length || 0;
+    const out = Array.from({ length: ar }, () => new Array(bc).fill(0));
+    for (let i = 0; i < ar; i++) for (let k = 0; k < ac; k++) {
+      const aik = A[i][k];
+      for (let j = 0; j < bc; j++) out[i][j] += aik * B[k][j];
+    }
+    return out;
+  },
+  // Gauss-Jordan 역행렬 (PD가 아닌 일반 케이스 대응). singular면 null.
+  inverse(M) {
+    const n = M.length;
+    const a = M.map(r => r.slice());
+    const I = Array.from({ length: n }, (_, i) => {
+      const row = new Array(n).fill(0); row[i] = 1; return row;
+    });
+    for (let i = 0; i < n; i++) {
+      // pivot 선택 (column에서 절댓값 최대)
+      let piv = i, max = Math.abs(a[i][i]);
+      for (let r = i + 1; r < n; r++) {
+        if (Math.abs(a[r][i]) > max) { max = Math.abs(a[r][i]); piv = r; }
+      }
+      if (max < 1e-12) return null;  // singular
+      if (piv !== i) { [a[i], a[piv]] = [a[piv], a[i]]; [I[i], I[piv]] = [I[piv], I[i]]; }
+      const div = a[i][i];
+      for (let j = 0; j < n; j++) { a[i][j] /= div; I[i][j] /= div; }
+      for (let r = 0; r < n; r++) {
+        if (r === i) continue;
+        const f = a[r][i];
+        if (f === 0) continue;
+        for (let j = 0; j < n; j++) { a[r][j] -= f * a[i][j]; I[r][j] -= f * I[i][j]; }
+      }
+    }
+    return I;
+  },
+  // FWL within-transformation: 그룹 평균을 X와 y에서 차감
+  demean(rows, groupKey) {
+    if (!groupKey) return rows;
+    const groups = new Map();
+    for (const r of rows) {
+      const g = r[groupKey] ?? "_";
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g).push(r);
+    }
+    return rows; // 호출자가 직접 numeric 컬럼에 적용; 헬퍼는 demeanColumn으로
+  },
+  demeanColumn(values, groupKeys) {
+    // values, groupKeys 같은 길이 배열
+    const sum = new Map(), cnt = new Map();
+    for (let i = 0; i < values.length; i++) {
+      const g = groupKeys[i];
+      sum.set(g, (sum.get(g) || 0) + values[i]);
+      cnt.set(g, (cnt.get(g) || 0) + 1);
+    }
+    const mean = new Map();
+    for (const [g, s] of sum) mean.set(g, s / cnt.get(g));
+    return values.map((v, i) => v - mean.get(groupKeys[i]));
+  },
+  // WLS: β = (XᵀWX)⁻¹ XᵀWy. weights는 양의 실수 배열.
+  // 반환: { beta:[], se:[], sigma2, R2 } 또는 null (singular)
+  wlsSolve(X, y, w) {
+    const n = X.length, p = X[0]?.length || 0;
+    if (n < p + 1) return null;
+    // Xᵀ W X
+    const XtWX = Array.from({ length: p }, () => new Array(p).fill(0));
+    const XtWy = new Array(p).fill(0);
+    for (let i = 0; i < n; i++) {
+      const wi = w[i];
+      for (let j = 0; j < p; j++) {
+        XtWy[j] += X[i][j] * wi * y[i];
+        for (let k = 0; k < p; k++) XtWX[j][k] += X[i][j] * wi * X[i][k];
+      }
+    }
+    const inv = this.inverse(XtWX);
+    if (!inv) return null;
+    const beta = new Array(p).fill(0);
+    for (let j = 0; j < p; j++) for (let k = 0; k < p; k++) beta[j] += inv[j][k] * XtWy[k];
+    // residual sum of squares (weighted)
+    let rss = 0, tss = 0;
+    const wMean = y.reduce((a, yi, i) => a + w[i] * yi, 0) / w.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < n; i++) {
+      let yhat = 0;
+      for (let j = 0; j < p; j++) yhat += X[i][j] * beta[j];
+      const e = y[i] - yhat;
+      rss += w[i] * e * e;
+      tss += w[i] * (y[i] - wMean) ** 2;
+    }
+    const dof = Math.max(1, n - p);
+    const sigma2 = rss / dof;
+    const se = new Array(p);
+    for (let j = 0; j < p; j++) se[j] = Math.sqrt(Math.max(0, sigma2 * inv[j][j]));
+    const R2 = tss > 0 ? 1 - rss / tss : 0;
+    return { beta, se, sigma2, R2, n, p };
+  },
+  // VIF: 각 컬럼의 1/(1-R²_j). 큰 값 = collinearity 위험.
+  // X[i][j]: design matrix. intercept는 보통 1열로 들어가 있고 VIF 계산에서 제외 가능.
+  vif(X) {
+    const n = X.length, p = X[0]?.length || 0;
+    const vifs = new Array(p).fill(0);
+    for (let j = 0; j < p; j++) {
+      // X_j를 다른 컬럼들로 회귀해 R²
+      const yj = X.map(r => r[j]);
+      const Xj = X.map(r => r.filter((_, k) => k !== j));
+      if (Xj[0].length === 0) { vifs[j] = 1; continue; }
+      const w = new Array(n).fill(1);
+      const fit = this.wlsSolve(Xj, yj, w);
+      const r2 = fit ? fit.R2 : 0;
+      vifs[j] = 1 / Math.max(0.001, 1 - r2);
+    }
+    return vifs;
+  },
+};
+
+/* ----- CREATIVE_STATS: 의사결정 통계 ----- */
+const CREATIVE_STATS = {
+  // 분모 0 → null. round 전 풀정밀.
+  safeDiv(num, den) {
+    const n = Number(num) || 0;
+    const d = Number(den) || 0;
+    return d > 0 ? n / d : null;
+  },
+
+  // 소재별 파생지표
+  deriveMetrics(rows) {
+    // creative_id 단위로 합산
+    const map = new Map();
+    for (const r of rows) {
+      if (!r.creative_id) continue;
+      const id = r.creative_id;
+      if (!map.has(id)) {
+        map.set(id, {
+          creative_id: id, channel: r.channel, campaign_id: r.campaign_id || null,
+          impressions:0, clicks:0, installs:0, actions:0, spend:0,
+          video_3s_views: null, video_completions: null,
+          revenue_d7: null,
+          // attribute 컬럼은 첫 row 기준 (denormalized 가정)
+          hook_type: r.hook_type, message_angle: r.message_angle, first_3s: r.first_3s,
+          format: r.format, has_text_overlay: r.has_text_overlay, cta_style: r.cta_style,
+          duration_bucket: r.duration_bucket, audience_segment: r.audience_segment,
+          dates: new Set(),
+        });
+      }
+      const b = map.get(id);
+      b.impressions += Number(r.impressions) || 0;
+      b.clicks      += Number(r.clicks)      || 0;
+      b.installs    += Number(r.installs)    || 0;
+      b.actions     += Number(r.actions)     || 0;
+      b.spend       += Number(r.spend || r.cost) || 0;
+      if (r.video_3s_views != null && r.video_3s_views !== "") {
+        b.video_3s_views = (b.video_3s_views || 0) + (Number(r.video_3s_views) || 0);
+      }
+      if (r.video_completions != null && r.video_completions !== "") {
+        b.video_completions = (b.video_completions || 0) + (Number(r.video_completions) || 0);
+      }
+      if (r.revenue_d7 != null && r.revenue_d7 !== "") {
+        b.revenue_d7 = (b.revenue_d7 || 0) + (Number(r.revenue_d7) || 0);
+      }
+      if (r.date) b.dates.add(r.date);
+    }
+    return [...map.values()].map(b => ({
+      ...b,
+      days: b.dates.size,
+      ctr:        this.safeDiv(b.clicks, b.impressions),
+      cvr:        this.safeDiv(b.installs, b.clicks),
+      ipm:        this.safeDiv(b.installs * 1000, b.impressions),
+      cpi:        this.safeDiv(b.spend, b.installs),
+      cpa:        this.safeDiv(b.spend, b.actions),
+      hook_rate:  this.safeDiv(b.video_3s_views, b.impressions),
+      completion: this.safeDiv(b.video_completions, b.video_3s_views ?? b.impressions),
+      roas:       this.safeDiv(b.revenue_d7, b.spend),
+      dates: undefined,
+    }));
+  },
+
+  // ISO week (YYYY-Www) — 결정론
+  isoWeek(dateStr) {
+    const d = new Date(dateStr);
+    const target = new Date(d.valueOf());
+    const dayNr = (d.getUTCDay() + 6) % 7;
+    target.setUTCDate(target.getUTCDate() - dayNr + 3);
+    const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
+    const diff = target - firstThursday;
+    const week = 1 + Math.round(diff / (7 * 86400000));
+    return `${target.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+  },
+
+  // WLS 기반 LPM decompose
+  // metric='ctr' 또는 'cvr'. attribute는 controls + active attrs로 더미 인코딩.
+  // campaign_id는 demean으로 흡수. weight = impressions.
+  decompose(rows, opts) {
+    const metric = opts.metric;
+    const activeAttrs = opts.attributes; // ['hook_type','format', ...] 사용자 토글
+    const controls = ["channel", "iso_week"];
+    const cfg = CREATIVE_CONFIG.decompose;
+
+    // valid rows: impressions ≥ min, attribute 모두 non-null
+    const valid = rows.filter(r => {
+      if ((Number(r.impressions) || 0) < CREATIVE_CONFIG.minImpressions) return false;
+      const ratio = metric === "ctr" ? this.safeDiv(r.clicks, r.impressions)
+                  : metric === "cvr" ? this.safeDiv(r.installs, r.clicks)
+                  : metric === "ipm" ? this.safeDiv(r.installs * 1000, r.impressions)
+                  : null;
+      if (ratio == null || !isFinite(ratio)) return false;
+      for (const a of activeAttrs) {
+        if (r[a] == null || r[a] === "") return false;
+      }
+      return true;
+    });
+
+    if (valid.length < 30) return { effects: [], dropped: ["데이터 부족 (<30 row)"], diag: { n: valid.length } };
+
+    // 디자인 행렬: 1 (intercept) + 각 attribute의 더미 (첫 level 제외) + channel/iso_week 더미
+    const rowsWithExtras = valid.map(r => ({
+      ...r,
+      iso_week: this.isoWeek(r.date),
+      _metricVal: metric === "ctr" ? r.clicks / r.impressions
+                : metric === "cvr" ? r.installs / r.clicks
+                : r.installs * 1000 / r.impressions,
+      _w: Number(r.impressions) || 0,
+    }));
+
+    // attribute별 levels 추출 + reference level
+    const factorCols = [];  // [{factor, level, isRef}]
+    const allFactors = [...activeAttrs, ...controls];
+    const factorLevels = {};
+    for (const f of allFactors) {
+      const lvSet = new Set(rowsWithExtras.map(r => r[f]).filter(v => v != null && v !== ""));
+      const levels = [...lvSet].sort();
+      factorLevels[f] = levels;
+      // reference = 가장 흔한 level (n 최대)
+      const counts = {};
+      for (const r of rowsWithExtras) counts[r[f]] = (counts[r[f]] || 0) + 1;
+      const ref = levels.reduce((a, b) => counts[a] >= counts[b] ? a : b, levels[0]);
+      for (const lv of levels) {
+        if (lv === ref) continue;
+        factorCols.push({ factor: f, level: lv, ref });
+      }
+    }
+
+    // X 행렬: [1, ...factorCols dummies]
+    const X = rowsWithExtras.map(r => {
+      const row = [1];
+      for (const fc of factorCols) row.push(r[fc.factor] === fc.level ? 1 : 0);
+      return row;
+    });
+    let y = rowsWithExtras.map(r => r._metricVal);
+    let w = rowsWithExtras.map(r => r._w);
+
+    // campaign_id within-transformation (FWL)
+    if (rowsWithExtras[0].campaign_id) {
+      const camp = rowsWithExtras.map(r => r.campaign_id || "_");
+      // y와 X 각 컬럼을 campaign 평균 차감
+      y = CREATIVE_MATH.demeanColumn(y, camp);
+      for (let j = 0; j < X[0].length; j++) {
+        const colVals = X.map(r => r[j]);
+        const dem = CREATIVE_MATH.demeanColumn(colVals, camp);
+        for (let i = 0; i < X.length; i++) X[i][j] = dem[i];
+      }
+    }
+
+    // VIF 체크 + 제거
+    const dropped = [];
+    let curX = X, curCols = factorCols.slice();
+    let safety = 0;
+    while (safety++ < 10) {
+      // intercept 제외 VIF
+      const subX = curX.map(r => r.slice(1));
+      if (subX[0].length === 0) break;
+      const vifs = CREATIVE_MATH.vif(subX);
+      const maxVif = Math.max(...vifs);
+      if (maxVif < cfg.vifThreshold) break;
+      // 제거 우선순위: vifDropPriority의 factor부터, 그 안에서 max VIF
+      let dropIdx = -1, dropPri = -1;
+      for (let j = 0; j < vifs.length; j++) {
+        if (vifs[j] < cfg.vifThreshold) continue;
+        const pri = cfg.vifDropPriority.indexOf(curCols[j].factor);
+        const priorityScore = pri >= 0 ? (1000 - pri) : 0;
+        if (priorityScore > dropPri || (priorityScore === dropPri && vifs[j] > vifs[dropIdx])) {
+          dropIdx = j; dropPri = priorityScore;
+        }
+      }
+      if (dropIdx === -1) break;
+      const dc = curCols[dropIdx];
+      dropped.push(`${dc.factor}=${dc.level} (VIF=${vifs[dropIdx].toFixed(2)})`);
+      curX = curX.map(r => r.filter((_, k) => k !== (dropIdx + 1)));  // +1 for intercept
+      curCols = curCols.filter((_, k) => k !== dropIdx);
+    }
+
+    // WLS fit
+    const fit = CREATIVE_MATH.wlsSolve(curX, y, w);
+    if (!fit) return { effects: [], dropped, diag: { error: "행렬 특이값 — control 매핑 부족" } };
+
+    // p-values (z-test 근사, large n)
+    const effects = [];
+    const pvals = [];
+    for (let j = 1; j < fit.beta.length; j++) {  // 0은 intercept
+      const z = fit.se[j] > 0 ? fit.beta[j] / fit.se[j] : 0;
+      const p = 2 * (1 - this.stdNormalCdf(Math.abs(z)));
+      pvals.push(p);
+      effects.push({
+        factor: curCols[j - 1].factor,
+        level: curCols[j - 1].level,
+        ref: curCols[j - 1].ref,
+        coef: fit.beta[j],
+        se: fit.se[j],
+        z,
+        p,
+        ciLow: fit.beta[j] - 1.96 * fit.se[j],
+        ciHigh: fit.beta[j] + 1.96 * fit.se[j],
+        n: rowsWithExtras.filter(r => r[curCols[j - 1].factor] === curCols[j - 1].level).length,
+      });
+    }
+    // BH 보정
+    const pAdj = this.bhAdjust(pvals);
+    effects.forEach((e, i) => e.pAdj = pAdj[i]);
+
+    return { effects, dropped, diag: { n: rowsWithExtras.length, R2: fit.R2, factorLevels } };
+  },
+
+  // 표준 정규 CDF (Hastings 근사)
+  stdNormalCdf(z) {
+    if (z < 0) return 1 - this.stdNormalCdf(-z);
+    const t = 1 / (1 + 0.2316419 * z);
+    const d = 0.3989422804014327 * Math.exp(-z * z / 2);
+    const cdf = 1 - d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+    return Math.min(1, Math.max(0, cdf));
+  },
+
+  // BH (Benjamini-Hochberg) 보정
+  bhAdjust(pvals) {
+    const n = pvals.length;
+    if (n === 0) return [];
+    const sorted = pvals.map((p, i) => ({ p, i })).sort((a, b) => a.p - b.p);
+    const out = new Array(n);
+    let prev = 1;
+    for (let k = n - 1; k >= 0; k--) {
+      const adj = Math.min(prev, sorted[k].p * n / (k + 1));
+      out[sorted[k].i] = adj;
+      prev = adj;
+    }
+    return out;
+  },
+
+  // Fatigue: 소재별 일자순 metric 시리즈에서 peak 대비 dropPct 이상 하락 + 후속 회복 없으면 flag
+  fatigueDetect(rows, metric = "ctr") {
+    const byId = new Map();
+    for (const r of rows) {
+      if (!r.creative_id || !r.date) continue;
+      if (!byId.has(r.creative_id)) byId.set(r.creative_id, []);
+      byId.get(r.creative_id).push(r);
+    }
+    const out = [];
+    for (const [id, series] of byId) {
+      series.sort((a, b) => a.date.localeCompare(b.date));
+      // 일별 metric 계산 (decayWindow rolling avg)
+      const W = CREATIVE_CONFIG.fatigue.decayWindow;
+      const vals = series.map(r =>
+        metric === "ctr" ? this.safeDiv(r.clicks, r.impressions)
+        : metric === "cvr" ? this.safeDiv(r.installs, r.clicks)
+        : this.safeDiv(r.installs * 1000, r.impressions)
+      );
+      // Rolling mean
+      const rolling = vals.map((_, i) => {
+        const start = Math.max(0, i - W + 1);
+        const slice = vals.slice(start, i + 1).filter(v => v != null && isFinite(v));
+        return slice.length ? slice.reduce((a, b) => a + b, 0) / slice.length : null;
+      });
+      const validRolling = rolling.map((v, i) => ({ v, i })).filter(x => x.v != null);
+      if (validRolling.length < 3) { out.push({ creative_id: id, fatigued: false, reason: "데이터 부족" }); continue; }
+      // peak
+      const peak = validRolling.reduce((a, b) => b.v > a.v ? b : a);
+      const after = validRolling.filter(x => x.i > peak.i);
+      const minAfter = after.length ? after.reduce((a, b) => b.v < a.v ? b : a) : peak;
+      const dropPct = peak.v > 0 ? (peak.v - minAfter.v) / peak.v : 0;
+      const fatigued = dropPct >= CREATIVE_CONFIG.fatigue.dropPct && after.length >= W;
+      out.push({
+        creative_id: id,
+        fatigued,
+        peakDate: series[peak.i].date,
+        peakValue: peak.v,
+        currentValue: rolling[rolling.length - 1],
+        dropPct,
+        lifespanDays: series.length,
+      });
+    }
+    return out;
+  },
+
+  // Concept Matrix: rows × cols 셀 집계
+  conceptMatrix(metrics, axesCfg) {
+    const { rows: rowAttr, cols: colAttr } = axesCfg;
+    const cells = new Map();   // "row|col" → {metrics aggregate, n}
+    const rowSet = new Set(), colSet = new Set();
+    for (const m of metrics) {
+      const rk = m[rowAttr];
+      const ck = m[colAttr];
+      if (!rk || !ck) continue;
+      rowSet.add(rk); colSet.add(ck);
+      const key = `${rk}|${ck}`;
+      if (!cells.has(key)) cells.set(key, { row: rk, col: ck, impressions:0, clicks:0, installs:0, spend:0, n:0 });
+      const c = cells.get(key);
+      c.impressions += m.impressions; c.clicks += m.clicks; c.installs += m.installs; c.spend += m.spend; c.n++;
+    }
+    const rowsArr = [...rowSet].sort(), colsArr = [...colSet].sort();
+    const grid = rowsArr.map(r => colsArr.map(c => {
+      const cell = cells.get(`${r}|${c}`);
+      if (!cell) return { row: r, col: c, status: "empty", n: 0 };
+      const ctr = this.safeDiv(cell.clicks, cell.impressions);
+      const cvr = this.safeDiv(cell.installs, cell.clicks);
+      const cpi = this.safeDiv(cell.spend, cell.installs);
+      let status = "validated";
+      if (cell.n < CREATIVE_CONFIG.minNCell) status = "insufficient";
+      else if (cell.impressions < CREATIVE_CONFIG.minImpressions * 3) status = "promising";
+      return { ...cell, ctr, cvr, cpi, status };
+    }));
+    return { rows: rowsArr, cols: colsArr, grid };
+  },
+
+  // Two-proportion z-test sample size
+  sampleSize({ p0, mde, power = 0.8, alpha = 0.05 }) {
+    const zA = 1.96, zB = 0.8416;  // 0.05 two-sided, 0.8 power 근사
+    const p1 = p0 + mde;
+    const pBar = (p0 + p1) / 2;
+    const num = 2 * pBar * (1 - pBar) * (zA + zB) ** 2;
+    const den = (p1 - p0) ** 2;
+    if (den <= 0) return null;
+    return Math.ceil(num / den);
+  },
+
+  // Two-prop z test
+  twoPropZ(xA, nA, xB, nB) {
+    const pA = xA / nA, pB = xB / nB;
+    const pBar = (xA + xB) / (nA + nB);
+    const se = Math.sqrt(pBar * (1 - pBar) * (1/nA + 1/nB));
+    const z = se > 0 ? (pB - pA) / se : 0;
+    const p = 2 * (1 - this.stdNormalCdf(Math.abs(z)));
+    return { z, p, pA, pB, diff: pB - pA };
+  },
+
+  // Bayesian: Beta posterior + P(B>A) via fixed-grid integration (Monte Carlo 금지)
+  betaProbGreater(xA, nA, xB, nB, gridN = CREATIVE_CONFIG.bayes.gridN) {
+    const a1 = CREATIVE_CONFIG.bayes.priorA + xA;
+    const b1 = CREATIVE_CONFIG.bayes.priorB + nA - xA;
+    const a2 = CREATIVE_CONFIG.bayes.priorA + xB;
+    const b2 = CREATIVE_CONFIG.bayes.priorB + nB - xB;
+    // P(B > A) = ∫₀¹ P(B > A | A=a) · pdf_A(a) da
+    // = ∫₀¹ [1 - cdf_B(a)] · pdf_A(a) da
+    // 둘 다 grid 적분
+    const step = 1 / gridN;
+    let sum = 0;
+    // 사전 정규화 상수는 grid 누적합으로 처리
+    let normA = 0, normB = 0;
+    const pdfA = new Array(gridN), pdfB = new Array(gridN);
+    for (let i = 0; i < gridN; i++) {
+      const x = (i + 0.5) / gridN;
+      pdfA[i] = Math.pow(x, a1 - 1) * Math.pow(1 - x, b1 - 1);
+      pdfB[i] = Math.pow(x, a2 - 1) * Math.pow(1 - x, b2 - 1);
+      normA += pdfA[i];
+      normB += pdfB[i];
+    }
+    if (normA <= 0 || normB <= 0) return 0.5;
+    // cdfB[i] = sum_{j<=i} pdfB[j] / normB
+    let cumB = 0;
+    const cdfB = new Array(gridN);
+    for (let i = 0; i < gridN; i++) {
+      cumB += pdfB[i] / normB;
+      cdfB[i] = cumB;
+    }
+    // P(B > A) = sum_i (1 - cdfB[i]) * pdfA[i] / normA
+    for (let i = 0; i < gridN; i++) {
+      sum += (1 - cdfB[i]) * pdfA[i] / normA;
+    }
+    return Math.min(1, Math.max(0, sum));
+  },
+};
+
+/* ----- CREATIVE_CACHE ----- */
+const CREATIVE_CACHE = {
+  key: null, metrics: null, decompose: null, fatigue: null,
+  matrix: null, nextTest: null, validation: null, snapshotHash: null,
+};
+
+function creativeCacheKey() {
+  const m = CSV_STATE.mapping || {};
+  const sig = ["creative_id","date","channel","campaign_id","impressions","clicks","installs","spend",
+               "hook_type","message_angle","format","first_3s","cta_style","duration_bucket"]
+    .map(k => `${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
+  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|cfg:${CREATIVE_CONFIG.version}`;
+}
+
+// 결정론 hash (FNV-1a 32-bit) — snapshotHash 생성용
+function creativeHashStr(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = (h * 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
+
+function buildCreativeCache() {
+  if (typeof window !== "undefined") window.__CREATIVE = CREATIVE_CACHE;
+  const key = creativeCacheKey();
+  if (CREATIVE_CACHE.key === key) return CREATIVE_CACHE;
+
+  const rows = getMappedRows();
+  const validation = { errors: [], droppedRows: 0 };
+
+  // 기본 검증: required 필드 row별 체크 + 음수 / impressions < clicks 검출
+  const cleanRows = [];
+  for (const r of rows) {
+    if (!r.creative_id || !r.date) { validation.droppedRows++; continue; }
+    const imp = Number(r.impressions) || 0;
+    const clk = Number(r.clicks) || 0;
+    if (imp < 0 || clk < 0) { validation.errors.push(`음수 값: creative_id=${r.creative_id} date=${r.date}`); validation.droppedRows++; continue; }
+    if (clk > imp) validation.errors.push(`clicks > impressions: ${r.creative_id} ${r.date} (${clk}/${imp})`);
+    cleanRows.push(r);
+  }
+
+  const metrics = CREATIVE_STATS.deriveMetrics(cleanRows);
+
+  // 사용 가능한 attribute 자동 감지
+  const activeAttrs = ["hook_type", "message_angle", "first_3s", "format", "has_text_overlay", "cta_style", "duration_bucket"]
+    .filter(a => cleanRows.some(r => r[a] != null && r[a] !== ""));
+
+  // Decompose (CTR, CVR 기본; 데이터 있을 때만)
+  const decompose = {};
+  if (activeAttrs.length > 0 && cleanRows.length >= 30) {
+    for (const m of CREATIVE_CONFIG.decompose.metrics) {
+      decompose[m] = CREATIVE_STATS.decompose(cleanRows, { metric: m, attributes: activeAttrs });
+    }
+  }
+
+  // Fatigue
+  const fatigue = CREATIVE_STATS.fatigueDetect(cleanRows, "ctr");
+
+  // Concept Matrix (기본 axes message_angle × format)
+  const axesCfg = CREATIVE_CONFIG.matrix;
+  const hasRow = metrics.some(m => m[axesCfg.rows]);
+  const hasCol = metrics.some(m => m[axesCfg.cols]);
+  const matrix = (hasRow && hasCol) ? CREATIVE_STATS.conceptMatrix(metrics, axesCfg) : null;
+
+  // Next-test 후보 (matrix 기반)
+  const nextTest = matrix ? generateNextTestHypotheses(matrix, decompose) : null;
+
+  CREATIVE_CACHE.key = key;
+  CREATIVE_CACHE.metrics = metrics;
+  CREATIVE_CACHE.decompose = decompose;
+  CREATIVE_CACHE.fatigue = fatigue;
+  CREATIVE_CACHE.matrix = matrix;
+  CREATIVE_CACHE.nextTest = nextTest;
+  CREATIVE_CACHE.validation = validation;
+  CREATIVE_CACHE.snapshotHash = creativeHashStr(key + cleanRows.length);
+  return CREATIVE_CACHE;
+}
+
+function generateNextTestHypotheses(matrix, decompose) {
+  const hyps = [];
+  // 빈 셀(empty)을 explore 후보로
+  for (const row of matrix.grid) {
+    for (const cell of row) {
+      if (cell.status === "empty") {
+        hyps.push({
+          type: "explore",
+          cell: `${cell.row} × ${cell.col}`,
+          arms: 2,
+          rationale: "관측 데이터 없음 — 신규 컨셉 탐색",
+          sampleSize: CREATIVE_STATS.sampleSize({ p0: 0.02, mde: 0.005 }) || 5000,
+          gates: ["impressions ≥ minImpressions × 3", "stage 1 CTR p < 0.05"],
+        });
+      } else if (cell.status === "promising" && cell.ctr) {
+        hyps.push({
+          type: "exploit",
+          cell: `${cell.row} × ${cell.col}`,
+          arms: 2,
+          rationale: `n=${cell.n}, 추가 변형으로 효과 확정 필요`,
+          sampleSize: CREATIVE_STATS.sampleSize({ p0: cell.ctr || 0.02, mde: (cell.ctr || 0.02) * 0.2 }) || 5000,
+          gates: ["BH-adjusted p < 0.05", "P(B>A) ≥ 0.95"],
+        });
+      }
+    }
+  }
+  // Decompose에서 유의한 음의 효과 → kill 후보
+  for (const [m, res] of Object.entries(decompose || {})) {
+    for (const e of (res.effects || [])) {
+      if (e.pAdj < 0.05 && e.coef < 0) {
+        hyps.push({
+          type: "kill",
+          cell: `${e.factor}=${e.level}`,
+          arms: 0,
+          rationale: `${m} 음의 효과 (β=${e.coef.toFixed(4)}, p=${e.pAdj.toFixed(4)})`,
+          gates: ["다음 라운드에서 해당 attribute 제외"],
+        });
+      }
+    }
+  }
+  return hyps.slice(0, CREATIVE_CONFIG.test.batchSize);
+}
+
+/* ----- page_5_6 ----- */
+const CREATIVE_STATE = {
+  decomposeMetric: "ctr",    // 'ctr' | 'cvr' | 'ipm'
+  fatigueMetric:   "ctr",
+  matrixAxes:      "default", // 'default' | 'angle_vs_hook' 등 사용자 지정 가능
+};
+
+function page_5_6() {
+  const meta = findMeta("5-6");
+  const missing = checkRequiredForTool("5-6");
+  if (missing.length > 0 || !CSV_STATE.headers.length) {
+    return pageShell(meta, {
+      deck: "소재 성과 daily CSV를 업로드하면 파생지표 + WLS 분해 + Fatigue + Concept Matrix + 다음 테스트 후보를 자동 생성.",
+      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+      summary: "creative_id × date × channel × campaign_id grain의 wide CSV가 필요합니다. attribute 컬럼(hook_type/message_angle/format 등)이 매핑되면 decompose + matrix가 활성화됩니다.",
+      toc: [{ id: "s-prep", title: "데이터 준비" }],
+      body: renderInlineCsvUpload("5-6"),
+    });
+  }
+
+  buildCreativeCache();
+  const c = CREATIVE_CACHE;
+
+  return pageShell(meta, {
+    deck: "소재별 파생지표 → attribute별 WLS 분해 → Fatigue 검출 → Concept Matrix → 다음 테스트 후보. 모든 통계는 단일 캐시에서 lookup.",
+    chips: `
+      <span class="chip"><span class="dot"></span>도구 · Creative Analyzer</span>
+      <span class="chip ok"><span class="dot"></span>소재 ${c.metrics.length}개</span>
+      <span class="chip"><span class="dot"></span>config ${CREATIVE_CONFIG.version} · snapshot ${c.snapshotHash}</span>
+      ${authStatusChip()}`,
+    summary: "WLS impressions-weighted LPM으로 attribute별 효과를 분해. campaign_id는 within-transformation으로 흡수. BH 다중검정 보정. ⚠ 관찰 분해 = delivery selection bias 포함 → 인과 후보로만 해석, 확정은 5-7 실험 readout에서.",
+    toc: [
+      { id: "s-prep", title: "데이터 준비" },
+      { id: "s-validation", title: "검증" },
+      { id: "s-metrics", title: "소재별 지표" },
+      { id: "s-decompose", title: "WLS 분해" },
+      { id: "s-fatigue", title: "Fatigue 검출" },
+      { id: "s-matrix", title: "Concept Matrix" },
+      { id: "s-next", title: "다음 테스트" },
+    ],
+    body: `
+      <section class="block" id="s-prep">
+        ${renderInlineCsvUpload("5-6")}
+      </section>
+
+      ${renderCreativeValidation(c.validation)}
+      ${renderCreativeMetricsTable(c.metrics)}
+      ${renderCreativeDecompose(c.decompose)}
+      ${renderCreativeFatigue(c.fatigue, c.metrics)}
+      ${renderCreativeMatrix(c.matrix)}
+      ${renderCreativeNextTest(c.nextTest)}
+    `,
+  });
+}
+PAGE_RENDERERS["5-6"] = page_5_6;
+
+function renderCreativeValidation(v) {
+  if (!v) return "";
+  const hasIssues = v.errors.length > 0 || v.droppedRows > 0;
+  if (!hasIssues) return `
+    <section class="block" id="s-validation">
+      <h2 class="section-title"><span class="ix">§1</span>검증</h2>
+      <div class="callout ok"><div class="ico">✓</div><div class="body"><strong>모든 row 통과</strong><p>음수·grain 위반 없음.</p></div></div>
+    </section>`;
+  return `
+    <section class="block" id="s-validation">
+      <h2 class="section-title"><span class="ix">§1</span>검증</h2>
+      <div class="callout warn">
+        <div class="ico">!</div>
+        <div class="body">
+          <strong>${v.droppedRows}개 row 제외 / ${v.errors.length}개 이슈</strong>
+          ${v.errors.length ? `<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:12px;">상세</summary>
+            <ul style="margin:6px 0 0 18px;font-size:11px;color:var(--text-muted);">${v.errors.slice(0,20).map(e=>`<li>${escapeHtml(e)}</li>`).join("")}${v.errors.length>20?`<li>... +${v.errors.length-20}개</li>`:""}</ul></details>` : ""}
+        </div>
+      </div>
+    </section>`;
+}
+
+function renderCreativeMetricsTable(metrics) {
+  if (!metrics || !metrics.length) return "";
+  const fmt = (v, d=4) => v == null || !isFinite(v) ? "—" : v.toFixed(d);
+  const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v * 100).toFixed(2) + "%";
+  const sorted = [...metrics].sort((a,b) => (b.impressions||0) - (a.impressions||0)).slice(0, 50);
+  return `
+    <section class="block" id="s-metrics">
+      <h2 class="section-title"><span class="ix">§2</span>소재별 지표 (상위 50, impressions 순)</h2>
+      <div class="table-wrap">
+        <table class="data" style="font-size:11.5px;">
+          <thead><tr>
+            <th>Creative ID</th><th>Channel</th><th>Days</th>
+            <th>Impr</th><th>Clicks</th><th>Inst</th><th>Spend</th>
+            <th>CTR</th><th>CVR</th><th>IPM</th><th>CPI</th>
+            <th>Hook %</th><th>Comp %</th>
+          </tr></thead>
+          <tbody>
+            ${sorted.map(m => `
+              <tr>
+                <td><code class="inline" style="font-size:10px;">${escapeHtml(String(m.creative_id).slice(0,24))}</code></td>
+                <td>${escapeHtml(String(m.channel || ""))}</td>
+                <td class="tnum">${m.days}</td>
+                <td class="tnum">${(m.impressions||0).toLocaleString()}</td>
+                <td class="tnum">${(m.clicks||0).toLocaleString()}</td>
+                <td class="tnum">${(m.installs||0).toLocaleString()}</td>
+                <td class="tnum">${fmt(m.spend, 0)}</td>
+                <td class="tnum">${fmtPct(m.ctr)}</td>
+                <td class="tnum">${fmtPct(m.cvr)}</td>
+                <td class="tnum">${fmt(m.ipm, 2)}</td>
+                <td class="tnum">${fmt(m.cpi, 0)}</td>
+                <td class="tnum">${fmtPct(m.hook_rate)}</td>
+                <td class="tnum">${fmtPct(m.completion)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+      <div style="text-align:right;margin-top:8px;">
+        <button class="ab-pill" id="creative-export-metrics">⬇ 지표 CSV 다운로드</button>
+      </div>
+    </section>`;
+}
+
+function renderCreativeDecompose(decompose) {
+  if (!decompose || !Object.keys(decompose).length) {
+    return `
+      <section class="block" id="s-decompose">
+        <h2 class="section-title"><span class="ix">§3</span>WLS 분해</h2>
+        <div class="callout warn"><div class="ico">!</div><div class="body"><strong>분해 불가</strong><p>attribute 컬럼(hook_type/format 등) 매핑 또는 row 수(≥30) 부족.</p></div></div>
+      </section>`;
+  }
+  const cur = decompose[CREATIVE_STATE.decomposeMetric] || decompose.ctr;
+  const fmt = (v) => v == null || !isFinite(v) ? "—" : v.toFixed(4);
+  const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "") + (v * 100).toFixed(2) + "%p";
+
+  const metricToggle = `
+    <div class="ab-pillgroup" style="margin-bottom:8px;">
+      <span class="ab-pillgroup-label">분해 metric</span>
+      ${["ctr","cvr"].map(m => decompose[m] ? `<button class="ab-pill ${CREATIVE_STATE.decomposeMetric===m?'active':''}" data-decompose-metric="${m}">${m.toUpperCase()}</button>` : "").join("")}
+    </div>
+  `;
+
+  const effRows = (cur.effects || []).sort((a,b) => a.pAdj - b.pAdj).map(e => {
+    const sig = e.pAdj < 0.05 ? "유의" : e.pAdj < 0.1 ? "경계" : "—";
+    const sigCls = e.pAdj < 0.05 ? (e.coef > 0 ? "ok" : "danger") : "";
+    return `<tr>
+      <td>${escapeHtml(e.factor)}</td>
+      <td><strong>${escapeHtml(e.level)}</strong> <span style="color:var(--text-muted);font-size:10px;">vs ${escapeHtml(e.ref)}</span></td>
+      <td class="tnum"><strong style="color:${e.coef >= 0 ? '#22c55e' : '#f87171'};">${fmtPct(e.coef)}</strong></td>
+      <td class="tnum" style="font-size:11px;color:var(--text-muted);">[${fmtPct(e.ciLow)}, ${fmtPct(e.ciHigh)}]</td>
+      <td class="tnum">${fmt(e.p)}</td>
+      <td class="tnum"><strong>${fmt(e.pAdj)}</strong></td>
+      <td class="tnum">${e.n}</td>
+      <td><span class="chip ${sigCls}" style="font-size:11px;padding:2px 8px;"><span class="dot"></span>${sig}</span></td>
+    </tr>`;
+  }).join("");
+
+  return `
+    <section class="block" id="s-decompose">
+      <h2 class="section-title"><span class="ix">§3</span>WLS 분해 — attribute별 효과</h2>
+      <p class="muted">impressions-weighted Linear Probability Model. campaign_id는 within-transformation 흡수. BH 다중검정 보정. ⚠ 관찰 분해라 delivery selection bias 포함 — 인과 후보로만.</p>
+      ${metricToggle}
+      <p style="font-size:12px;color:var(--text-muted);">n=${cur.diag?.n || 0} · R²=${fmt(cur.diag?.R2)} · 제거된 변수: ${(cur.dropped || []).length ? cur.dropped.join(", ") : "없음"}</p>
+      ${effRows ? `<div class="table-wrap">
+        <table class="data" style="font-size:11.5px;">
+          <thead><tr>
+            <th>Factor</th><th>Level</th><th>효과 (β)</th><th>95% CI</th><th>p</th><th>BH-adj p</th><th>n</th><th>유의</th>
+          </tr></thead>
+          <tbody>${effRows}</tbody>
+        </table></div>` : `<p class="muted">유의한 효과 없음.</p>`}
+    </section>`;
+}
+
+function renderCreativeFatigue(fatigue, metrics) {
+  if (!fatigue || !fatigue.length) return "";
+  const fatigued = fatigue.filter(f => f.fatigued);
+  const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v*100).toFixed(1) + "%";
+
+  return `
+    <section class="block" id="s-fatigue">
+      <h2 class="section-title"><span class="ix">§4</span>Fatigue 검출</h2>
+      <p class="muted">7일 rolling CTR이 peak 대비 ${(CREATIVE_CONFIG.fatigue.dropPct*100).toFixed(0)}% 이상 하락하고 회복 없으면 flag.</p>
+      <div class="ab-stat-row" style="margin:8px 0 12px;">
+        <div class="ab-stat"><div class="ab-stat-label">분석 소재 수</div><div class="ab-stat-value tnum">${fatigue.length}</div></div>
+        <div class="ab-stat"><div class="ab-stat-label">Fatigue 감지</div><div class="ab-stat-value tnum ${fatigued.length>0?'neg':'pos'}">${fatigued.length}</div></div>
+      </div>
+      ${fatigued.length ? `<div class="table-wrap">
+        <table class="data" style="font-size:11.5px;">
+          <thead><tr><th>Creative ID</th><th>Peak Date</th><th>Peak CTR</th><th>현재 CTR</th><th>Drop %</th><th>운영 기간</th></tr></thead>
+          <tbody>${fatigued.sort((a,b)=>b.dropPct-a.dropPct).slice(0,30).map(f => `
+            <tr>
+              <td><code class="inline" style="font-size:10px;">${escapeHtml(String(f.creative_id).slice(0,24))}</code></td>
+              <td class="tnum" style="font-size:11px;">${escapeHtml(f.peakDate || "")}</td>
+              <td class="tnum">${fmtPct(f.peakValue)}</td>
+              <td class="tnum">${fmtPct(f.currentValue)}</td>
+              <td class="tnum"><strong style="color:#f87171;">−${(f.dropPct*100).toFixed(1)}%</strong></td>
+              <td class="tnum">${f.lifespanDays}일</td>
+            </tr>
+          `).join("")}</tbody>
+        </table></div>` : `<p class="muted">감지된 fatigue 소재 없음. (양호)</p>`}
+    </section>`;
+}
+
+function renderCreativeMatrix(matrix) {
+  if (!matrix || !matrix.grid.length) {
+    return `<section class="block" id="s-matrix">
+      <h2 class="section-title"><span class="ix">§5</span>Concept Matrix</h2>
+      <div class="callout warn"><div class="ico">!</div><div class="body"><strong>매트릭스 생성 불가</strong><p>${CREATIVE_CONFIG.matrix.rows} / ${CREATIVE_CONFIG.matrix.cols} 컬럼 매핑 필요.</p></div></div>
+    </section>`;
+  }
+  const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v*100).toFixed(2) + "%";
+  // status → 색상
+  const statusColor = {
+    validated:    "rgba(34,197,94,0.20)",
+    promising:    "rgba(251,191,36,0.20)",
+    insufficient: "rgba(248,113,113,0.12)",
+    empty:        "rgba(255,255,255,0.03)",
+  };
+  const statusLabel = { validated:"검증", promising:"유망", insufficient:"부족", empty:"미관측" };
+
+  const headerRow = `<tr>
+    <th style="background:var(--bg-2);"><strong>${escapeHtml(CREATIVE_CONFIG.matrix.rows)}</strong> ↓ \\ <strong>${escapeHtml(CREATIVE_CONFIG.matrix.cols)}</strong> →</th>
+    ${matrix.cols.map(c => `<th style="background:var(--bg-2);">${escapeHtml(c)}</th>`).join("")}
+  </tr>`;
+  const bodyRows = matrix.grid.map((row, i) => `<tr>
+    <th style="background:var(--bg-2);text-align:left;">${escapeHtml(matrix.rows[i])}</th>
+    ${row.map(cell => `<td style="background:${statusColor[cell.status]};padding:8px;font-size:11px;line-height:1.5;">
+      <div style="font-size:10px;color:var(--text-muted);">${statusLabel[cell.status]}${cell.n ? ` · n=${cell.n}` : ""}</div>
+      ${cell.status !== 'empty' ? `
+        <div class="tnum">CTR ${fmtPct(cell.ctr)}</div>
+        <div class="tnum" style="color:var(--text-muted);">CVR ${fmtPct(cell.cvr)}</div>
+      ` : `<div style="color:var(--text-muted);">—</div>`}
+    </td>`).join("")}
+  </tr>`).join("");
+
+  return `
+    <section class="block" id="s-matrix">
+      <h2 class="section-title"><span class="ix">§5</span>Concept Matrix — ${escapeHtml(CREATIVE_CONFIG.matrix.rows)} × ${escapeHtml(CREATIVE_CONFIG.matrix.cols)}</h2>
+      <p class="muted">셀 상태: <span style="background:${statusColor.validated};padding:2px 8px;border-radius:4px;">검증</span> ·
+        <span style="background:${statusColor.promising};padding:2px 8px;border-radius:4px;">유망</span> ·
+        <span style="background:${statusColor.insufficient};padding:2px 8px;border-radius:4px;">데이터 부족</span> ·
+        <span style="background:${statusColor.empty};padding:2px 8px;border-radius:4px;">미관측 (탐색 후보)</span>
+      </p>
+      <div class="table-wrap"><table class="data" style="font-size:11px;">${headerRow}${bodyRows}</table></div>
+    </section>`;
+}
+
+function renderCreativeNextTest(nextTest) {
+  if (!nextTest || !nextTest.length) return `<section class="block" id="s-next">
+    <h2 class="section-title"><span class="ix">§6</span>다음 테스트 후보</h2>
+    <p class="muted">제안할 가설 없음 (모든 셀 검증됨 또는 데이터 부족).</p>
+  </section>`;
+  const typeIcon = { explore:"🔍", exploit:"🎯", kill:"❌" };
+  const typeLabel = { explore:"탐색", exploit:"최적화", kill:"제거" };
+  return `
+    <section class="block" id="s-next">
+      <h2 class="section-title"><span class="ix">§6</span>다음 테스트 후보</h2>
+      <p class="muted">Concept Matrix 빈 셀(탐색) + 유망 셀(최적화) + WLS 음의 효과(제거)에서 자동 생성. exploreRatio=${(CREATIVE_CONFIG.test.exploreRatio*100).toFixed(0)}%, batchSize=${CREATIVE_CONFIG.test.batchSize}.</p>
+      <div class="table-wrap">
+        <table class="data" style="font-size:11.5px;">
+          <thead><tr><th>유형</th><th>대상</th><th>arms</th><th>근거</th><th>샘플사이즈</th><th>게이트</th></tr></thead>
+          <tbody>
+            ${nextTest.map(h => `<tr>
+              <td><span class="chip ${h.type==='kill'?'danger':h.type==='exploit'?'ok':'warn'}" style="font-size:11px;padding:2px 8px;"><span class="dot"></span>${typeIcon[h.type]} ${typeLabel[h.type]}</span></td>
+              <td><strong>${escapeHtml(h.cell)}</strong></td>
+              <td class="tnum">${h.arms}</td>
+              <td style="font-size:11px;color:var(--text-muted);">${escapeHtml(h.rationale)}</td>
+              <td class="tnum">${h.sampleSize ? h.sampleSize.toLocaleString() : "—"}</td>
+              <td style="font-size:10.5px;color:var(--text-muted);">${(h.gates || []).map(g => `<div>· ${escapeHtml(g)}</div>`).join("")}</td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+      <p class="muted" style="font-size:11px;margin-top:8px;">⚠ 본 분석은 관찰 데이터 분해. 가설은 5-7 Test Readout(실험)으로 확정 필요.</p>
+    </section>`;
+}
+
+/* 5-6 핸들러 (인라인 CSV + decompose metric 토글 + 지표 CSV export) */
+function bindCreativeHandlers() {
+  bindInlineCsvHandlers();
+  document.querySelectorAll("[data-decompose-metric]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      CREATIVE_STATE.decomposeMetric = btn.dataset.decomposeMetric;
+      navigate("5-6");
+    });
+  });
+  const expBtn = document.getElementById("creative-export-metrics");
+  if (expBtn) expBtn.addEventListener("click", exportCreativeMetricsCSV);
+}
+
+function exportCreativeMetricsCSV() {
+  const metrics = CREATIVE_CACHE.metrics || [];
+  if (!metrics.length) return;
+  const lines = [
+    `# Creative Analyzer · Metrics Export`,
+    `# Generated,${new Date().toISOString()}`,
+    `# Snapshot,${CREATIVE_CACHE.snapshotHash}`,
+    `# Config version,${CREATIVE_CONFIG.version}`,
+    "",
+    "creative_id,channel,campaign_id,days,impressions,clicks,installs,actions,spend,ctr,cvr,ipm,cpi,cpa,hook_rate,completion,roas,hook_type,message_angle,first_3s,format,has_text_overlay,cta_style,duration_bucket"
+  ];
+  for (const m of metrics) {
+    lines.push([
+      m.creative_id, m.channel || "", m.campaign_id || "", m.days,
+      m.impressions, m.clicks, m.installs, m.actions, m.spend,
+      m.ctr != null ? m.ctr.toFixed(6) : "",
+      m.cvr != null ? m.cvr.toFixed(6) : "",
+      m.ipm != null ? m.ipm.toFixed(4) : "",
+      m.cpi != null ? m.cpi.toFixed(2) : "",
+      m.cpa != null ? m.cpa.toFixed(2) : "",
+      m.hook_rate != null ? m.hook_rate.toFixed(6) : "",
+      m.completion != null ? m.completion.toFixed(6) : "",
+      m.roas != null ? m.roas.toFixed(4) : "",
+      m.hook_type || "", m.message_angle || "", m.first_3s || "",
+      m.format || "", m.has_text_overlay || "", m.cta_style || "", m.duration_bucket || "",
+    ].map(v => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g,'""')}"` : v).join(","));
+  }
+  const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `creative_metrics_${CREATIVE_CACHE.snapshotHash}_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+}
+
+/* ----- 5-6 골든 테스트 ----- */
+function runCreativeTests(verbose = true) {
+  const results = [];
+
+  // T1: WLS 항등식 — 정확히 선형 데이터 (y = 2 + 3*x)
+  const X1 = [[1,1],[1,2],[1,3],[1,4],[1,5]];
+  const y1 = [5, 8, 11, 14, 17];
+  const w1 = [1,1,1,1,1];
+  const fit1 = CREATIVE_MATH.wlsSolve(X1, y1, w1);
+  const errSlope = fit1 ? Math.abs(fit1.beta[1] - 3) : 1;
+  const errInt = fit1 ? Math.abs(fit1.beta[0] - 2) : 1;
+  results.push({
+    test: "T1 · WLS 정확도 (y = 2 + 3x)",
+    expected: "intercept=2, slope=3",
+    actual: fit1 ? `intercept=${fit1.beta[0].toFixed(4)}, slope=${fit1.beta[1].toFixed(4)}` : "null",
+    pass: errSlope < 1e-9 && errInt < 1e-9 ? "✓" : "✗",
+  });
+
+  // T2: BH 보정 항등식 — 단조 비감소
+  const pvals = [0.01, 0.04, 0.03, 0.005, 0.5];
+  const bh = CREATIVE_STATS.bhAdjust(pvals);
+  const sortedAdj = pvals.map((p,i) => ({p, adj: bh[i]})).sort((a,b)=>a.p-b.p).map(x => x.adj);
+  let monotone = true;
+  for (let i = 1; i < sortedAdj.length; i++) if (sortedAdj[i] < sortedAdj[i-1] - 1e-9) monotone = false;
+  results.push({
+    test: "T2 · BH adjustment 단조 비감소",
+    expected: "p_adj 정렬 시 비감소",
+    actual: monotone ? "OK" : "violation",
+    pass: monotone ? "✓" : "✗",
+  });
+
+  // T3: Pearson Bayesian P(B>A) 한쪽 극단
+  const probBig = CREATIVE_STATS.betaProbGreater(10, 1000, 100, 1000, 500);
+  results.push({
+    test: "T3 · Bayes P(B>A) 강한 차이 (B 압승)",
+    expected: "≈ 1.0",
+    actual: probBig.toFixed(4),
+    pass: probBig > 0.999 ? "✓" : "✗",
+  });
+
+  // T4: deriveMetrics — 분모 0 → null
+  const m4 = CREATIVE_STATS.deriveMetrics([
+    { creative_id: "A", impressions: 0, clicks: 5, installs: 0, spend: 100 },
+    { creative_id: "A", impressions: 0, clicks: 5, installs: 0, spend: 100 },
+  ]);
+  results.push({
+    test: "T4 · safeDiv 분모 0 → null",
+    expected: "ctr=null, cpi=null",
+    actual: `ctr=${m4[0].ctr}, cpi=${m4[0].cpi}`,
+    pass: m4[0].ctr === null && m4[0].cpi === null ? "✓" : "✗",
+  });
+
+  // T5: VIF — 동일 컬럼 2개 → 매우 큰 VIF
+  const Xvif = [[1,1],[2,2],[3,3],[4,4]];
+  const vifs = CREATIVE_MATH.vif(Xvif);
+  results.push({
+    test: "T5 · VIF 완전 collinear → ∞",
+    expected: "max VIF > 100",
+    actual: `max=${Math.max(...vifs).toFixed(2)}`,
+    pass: Math.max(...vifs) > 100 ? "✓" : "✗",
+  });
+
+  // T6: 결정론 — 같은 입력 두 번 → 동일 결과
+  const r1 = CREATIVE_STATS.betaProbGreater(50, 100, 60, 100, 500);
+  const r2 = CREATIVE_STATS.betaProbGreater(50, 100, 60, 100, 500);
+  results.push({
+    test: "T6 · Bayesian 결정론 (Math.random 없음)",
+    expected: "byte-identical",
+    actual: r1 === r2 ? "identical" : `${r1} vs ${r2}`,
+    pass: r1 === r2 ? "✓" : "✗",
+  });
+
+  if (verbose) {
+    console.log("%c=== Creative Analyzer · Golden Tests ===", "color: #adc6ff; font-weight: bold;");
+    console.table(results);
+    const pass = results.filter(r => r.pass === "✓").length;
+    console.log(`%c${pass}/${results.length} 통과`, `color: ${pass === results.length ? '#22c55e' : '#f87171'}; font-weight: bold;`);
+  }
+  return results;
+}
+
+if (typeof window !== "undefined") {
+  window.runCreativeTests = runCreativeTests;
+  window.CREATIVE_STATS = CREATIVE_STATS;
+  window.CREATIVE_MATH = CREATIVE_MATH;
+  window.CREATIVE_CONFIG = CREATIVE_CONFIG;
+}
+
 function renderModePlan() {
   const tt = AB_STATE.testType;
   const sym = CURRENCY_SYMBOLS[AB_STATE.currency] || "₩";
@@ -9401,6 +10463,11 @@ function bindCSVPageHandlers() {
   if (document.getElementById("cann-body-host")) {
     bindCannibalHandlers();
     renderCannibalCharts();
+  }
+
+  // ----- 5-6: Creative Analyzer 핸들러 -----
+  if (document.querySelector("[data-decompose-metric], #creative-export-metrics") || document.getElementById("s-decompose")) {
+    bindCreativeHandlers();
   }
 
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
@@ -11725,6 +12792,7 @@ const TOOL_REQUIRED_FIELDS = {
   "5-2": ["date", { oneOf: ["installs", "actions", "cost"] }],
   "5-3": ["date", "cost", { oneOf: ["channel", "campaign_name"] }, { oneOf: ["installs", "actions"] }],
   "5-5": ["date", "paid_regs", "organic_regs"],
+  "5-6": ["creative_id", "date", "channel", "impressions", "clicks", "installs", "spend"],
 };
 
 /* 도구별 옵션 필드 — 매핑하면 추가 기능 활성화. */
@@ -11757,6 +12825,21 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "platform",       unlocks: "OS 플랫폼 토글 (전체 / Android / iOS)" },
     { key: "cost",           unlocks: "Tab D Efficiency (월별 CAC, 증분 효율)" },
     { key: "channel",        unlocks: "채널별 sanity check (현재는 일별 aggregation)" },
+  ],
+  "5-6": [
+    { key: "campaign_id",      unlocks: "캠페인 fixed effect (decompose 안정성 ↑)" },
+    { key: "audience_segment", unlocks: "Audience control + decompose 차원" },
+    { key: "video_3s_views",   unlocks: "Hook rate · 3초 retention 분해" },
+    { key: "video_completions",unlocks: "Completion rate · 영상 끝까지 보는 비율" },
+    { key: "hook_type",        unlocks: "Decompose: Hook 유형별 효과" },
+    { key: "message_angle",    unlocks: "Decompose: 메시지 앵글별 효과 (Concept Matrix 행 기본)" },
+    { key: "first_3s",         unlocks: "Decompose: 오프닝 컨셉별 효과" },
+    { key: "format",           unlocks: "Decompose + Concept Matrix 열 기본" },
+    { key: "has_text_overlay", unlocks: "Decompose: 텍스트 오버레이 유무 효과" },
+    { key: "cta_style",        unlocks: "Decompose: CTA 스타일별 효과" },
+    { key: "duration_bucket",  unlocks: "Decompose: 길이대별 효과" },
+    { key: "actions",          unlocks: "CPA decompose (installs 대신 액션 기준)" },
+    { key: "revenue_d7",       unlocks: "ROAS metric (분해 대상에 추가)" },
   ],
 };
 
