@@ -5435,9 +5435,10 @@ function checkRequiredFields() {
 function getAvailableMetrics() {
   const mapped = new Set(Object.values(CSV_STATE.mapping).filter(v => v !== "__ignore__"));
   return {
-    installs: mapped.has("installs"),
-    actions:  mapped.has("actions"),
-    pu_d7:    mapped.has("pu_d7"),
+    installs:   mapped.has("installs"),
+    actions:    mapped.has("actions"),
+    pu_d7:      mapped.has("pu_d7"),
+    revenue_d7: mapped.has("revenue_d7"),   // ROAS 목표용 — 없으면 objective 적용 시 metric reset 방지 안 됨
   };
 }
 
@@ -5906,16 +5907,17 @@ function page_5_3() {
               <select id="alloc-metric">
                 ${(() => {
                   const av = getAvailableMetrics();
-                  const firstAvailable = ["installs", "actions", "pu_d7"].find(k => av[k]) || "installs";
+                  const firstAvailable = ["installs", "actions", "pu_d7", "revenue_d7"].find(k => av[k]) || "installs";
                   if (!ALLOC_STATE.metric || !av[ALLOC_STATE.metric]) ALLOC_STATE.metric = firstAvailable;
                   const opt = (val, label) => {
                     const enabled = av[val];
                     const sel = val === ALLOC_STATE.metric ? "selected" : "";
                     return `<option value="${val}" ${!enabled ? "disabled" : ""} ${sel}>${label}${!enabled ? " · 매핑 없음" : ""}</option>`;
                   };
-                  return opt("installs", "설치수 (CPI 기준)") +
-                         opt("actions",  "액션 수 (CPA 기준)") +
-                         opt("pu_d7",    "결제수 D7 (CPA 기준)");
+                  return opt("installs",   "설치수 (CPI 기준)") +
+                         opt("actions",    "액션 수 (CPA 기준)") +
+                         opt("pu_d7",      "결제수 D7 (CPA 기준)") +
+                         opt("revenue_d7", "매출 D7 (ROAS 기준)");
                 })()}
               </select>
             </div>
@@ -6436,12 +6438,14 @@ const ALLOC_MATH = (() => {
     return { x, y };
   }
 
-  function getAxisLabels(mode, metricLabel = "CPA") {
+  function getAxisLabels(mode, metricLabel = "CPA", isRoas = false) {
+    // ROAS 뷰는 항상 raw 스케일 + 높을수록 긍정 (y = Revenue / Cost)
+    if (isRoas) return { x: "Cost", y: `${metricLabel} (Revenue / Cost, 높을수록 긍정)` };
     switch (mode) {
       case "log":    return { x: "log10(Cost)", y: `log10(${metricLabel})` };
       case "minmax": return { x: "Cost · 정규화 (0~1)", y: `${metricLabel} · 정규화 (0~1)` };
       case "robust": return { x: "Cost · Robust z", y: `${metricLabel} · Robust z` };
-      default:       return { x: "Cost", y: `${metricLabel} (Cost / Action)` };
+      default:       return { x: "Cost", y: `${metricLabel} (Cost / 결과, 낮을수록 긍정)` };
     }
   }
 
@@ -6511,13 +6515,34 @@ function fmtCurrency(value, opts = {}) {
 /* 성과 지표(metric) → 라벨 헬퍼.
    metric은 'installs' / 'actions' / 'pu_d7'. 설치수면 CPI, 그 외는 CPA. */
 function getCostMetricLabel(metric) {
-  return metric === "installs" ? "CPI" : "CPA";
+  if (metric === "installs")    return "CPI";
+  if (metric === "actions")     return "CPA";
+  if (metric === "pu_d7")       return "CPA";   // D7 결제 1건당 비용 = CPA류
+  if (metric === "revenue_d7")  return "ROAS";
+  return "CPR";
 }
 function getMetricUnitLabel(metric) {
-  if (metric === "installs") return "설치";
-  if (metric === "actions")  return "액션";
-  if (metric === "pu_d7")    return "결제";
+  if (metric === "installs")    return "설치";
+  if (metric === "actions")     return "액션";
+  if (metric === "pu_d7")       return "결제";
+  if (metric === "revenue_d7")  return "매출";
   return "결과";
+}
+/* ROAS 여부 (revenue 기준 목표면 높을수록 긍정 = 표시값 1/CPR) */
+function isRoasMetric(metric) { return metric === "revenue_d7"; }
+/* 내부 CPR(cost/result) 값을 '표시용 metric 값'으로 변환.
+   ROAS면 1/CPR(=revenue/cost, 배수), 아니면 CPR 그대로. */
+function displayMetricValue(cprValue, metric) {
+  if (cprValue == null || !isFinite(cprValue)) return null;
+  if (isRoasMetric(metric)) return cprValue > 0 ? 1 / cprValue : null;
+  return cprValue;
+}
+/* 표시용 포맷: ROAS면 퍼센트(%) , CPI/CPA면 통화. cprValue는 내부 CPR 값. */
+function fmtCostMetric(cprValue, metric) {
+  const v = displayMetricValue(cprValue, metric);
+  if (v == null || !isFinite(v)) return "—";
+  if (isRoasMetric(metric)) return (v * 100).toFixed(1) + "%";
+  return fmtCurrency(v, { metric: true });
 }
 
 /* ---------- 5-4. A/B Test Calculator ---------- */
@@ -12289,6 +12314,9 @@ function renderAllocatorScatter() {
   const metricSelect = document.getElementById("alloc-metric");
   const metric = ALLOC_STATE.metric || (metricSelect ? metricSelect.value : null) || "installs";
   if (!ALLOC_STATE.metric) ALLOC_STATE.metric = metric;
+  // ROAS 목표면 차트는 y = Revenue/Cost(=1/CPR, 높을수록 긍정)로 표시-반전.
+  // 단, 내부 모델/배분 계산은 CPR(cost/result) 공간 그대로 유지 (배분 수치 byte-identical).
+  const isRoas = isRoasMetric(metric);
   // 분석 단위 + 국가/채널/플랫폼 필터 적용된 row 사용 (ALLOC_FILTER_STATE.applied=true일 때 의미)
   const rows = getMappedRowsForAlloc();
 
@@ -12418,10 +12446,16 @@ function renderAllocatorScatter() {
       : pts;
 
     const norm = (x, y) => ALLOC_MATH.normalizeXY(x, y, normMode, normCtx);
+    // 표시용 좌표: ROAS면 raw 공간에서 y=1/CPR(=Revenue/Cost), 아니면 기존 normalize.
+    // (ROAS는 비율이라 정규화 무의미 → raw로 표시)
+    const dispPt = (x, y) => {
+      if (isRoas) { return (y > 0) ? { x, y: 1 / y } : null; }
+      return norm(x, y);
+    };
 
     if (!ALLOC_STATE.hidePoints) {
       if (olderPts.length > 0) {
-        const data = olderPts.map(p => norm(p.x, p.y)).filter(v => v != null);
+        const data = olderPts.map(p => dispPt(p.x, p.y)).filter(v => v != null);
         datasets.push({
           label: `${truncateLabel(ch)} (Older)`,
           data,
@@ -12433,7 +12467,7 @@ function renderAllocatorScatter() {
         });
       }
       if (recentPts.length > 0) {
-        const data = recentPts.map(p => norm(p.x, p.y)).filter(v => v != null);
+        const data = recentPts.map(p => dispPt(p.x, p.y)).filter(v => v != null);
         datasets.push({
           label: `${truncateLabel(ch)} (Recent)`,
           data,
@@ -12471,10 +12505,11 @@ function renderAllocatorScatter() {
       const baseLabel = `${truncateLabel(ch)} · ${model.type} (R²=${r2 != null ? r2.toFixed(2) : "—"})`;
       let firstSegmentLabeled = false;
       segments.forEach(seg => {
-        const data = seg.points.map(p => norm(p.x, p.y)).filter(v => v != null);
+        const data = seg.points.map(p => dispPt(p.x, p.y)).filter(v => v != null);
         if (data.length < 2) return;
         // 점선 조건: 외삽 segment OR sparseData OR descending
-        const isDashed = !seg.confident || sparseData || descending;
+        // ROAS 뷰에선 'CPR 하락(=ROAS 상승)'이 정상이므로 descending을 점선 사유에서 제외
+        const isDashed = !seg.confident || sparseData || (descending && !isRoas);
         // legend는 첫 번째 confident segment에만 (또는 sparse면 첫 segment에)
         const showLabel = !firstSegmentLabeled && (seg.confident || sparseData);
         if (showLabel) firstSegmentLabeled = true;
@@ -12510,10 +12545,12 @@ function renderAllocatorScatter() {
   });
 
   const metricLabel = getCostMetricLabel(metric);
-  const axisLabels = ALLOC_MATH.getAxisLabels(normMode, metricLabel);
-  const tooltipFmt = normMode === "raw"
-    ? (ctx) => `(${ctx.parsed.x.toFixed(0)}, ${metricLabel}=${ctx.parsed.y.toFixed(2)})`
-    : (ctx) => `(${ctx.parsed.x.toFixed(3)}, ${ctx.parsed.y.toFixed(3)})`;
+  const axisLabels = ALLOC_MATH.getAxisLabels(normMode, metricLabel, isRoas);
+  const tooltipFmt = isRoas
+    ? (ctx) => `(${ctx.parsed.x.toFixed(0)}, ${metricLabel}=${(ctx.parsed.y * 100).toFixed(0)}%)`
+    : normMode === "raw"
+      ? (ctx) => `(${ctx.parsed.x.toFixed(0)}, ${metricLabel}=${ctx.parsed.y.toFixed(2)})`
+      : (ctx) => `(${ctx.parsed.x.toFixed(3)}, ${ctx.parsed.y.toFixed(3)})`;
 
   // 기존 chart instance가 있어도 canvas가 새 DOM이면 (navigate로 페이지 재렌더 등)
   // 이전 canvas는 사라졌으므로 reuse 불가. destroy + 신규 생성.
@@ -13367,8 +13404,8 @@ function renderMarginalIntervals(meta, metricLabel, unitLabel) {
     const cls = iv.invalid ? "muted" : (iv.clamped ? "clamped" : "");
     const marginalCell = iv.marginalCPA != null
       ? (iv.clamped
-          ? `<strong>${fmtCurrency(iv.marginalCPA, {metric:true})}</strong> <span style="color:var(--text-muted);font-size:11px;" title="원본 ${fmtCurrency(iv.marginalCPA_raw, {metric:true})} · 단조 보정으로 직전 max로 클램프됨">⚓</span>`
-          : `<strong>${fmtCurrency(iv.marginalCPA, {metric:true})}</strong>`)
+          ? `<strong>${fmtCostMetric(iv.marginalCPA, ALLOC_STATE.metric)}</strong> <span style="color:var(--text-muted);font-size:11px;" title="원본 ${fmtCostMetric(iv.marginalCPA_raw, ALLOC_STATE.metric)} · 단조 보정으로 직전 max로 클램프됨">⚓</span>`
+          : `<strong>${fmtCostMetric(iv.marginalCPA, ALLOC_STATE.metric)}</strong>`)
       : "—";
     return `
       <tr class="${cls}">
@@ -13436,11 +13473,11 @@ function renderSimResults(sim, currentCost, targetCost, meta, hasRevenue, metric
     <div class="alloc-sim-block">
       <div class="alloc-sim-block-title">예측 ${metricLabel} · ${unitLabel}수</div>
       <div class="alloc-sim-row"><span>현재 Cost</span><strong class="tnum">${fmtCurrency(currentCost)}</strong></div>
-      <div class="alloc-sim-row"><span>현재 예측 ${metricLabel}</span><strong class="tnum">${fmtCurrency(sim.cprC, {metric:true})}</strong></div>
+      <div class="alloc-sim-row"><span>현재 예측 ${metricLabel}</span><strong class="tnum">${fmtCostMetric(sim.cprC, ALLOC_STATE.metric)}</strong></div>
       <div class="alloc-sim-row"><span>현재 예측 ${unitLabel}수</span><strong class="tnum">${Math.round(sim.resC).toLocaleString()}</strong></div>
       <div class="alloc-sim-sep"></div>
       <div class="alloc-sim-row"><span>목표 Cost</span><strong class="tnum">${fmtCurrency(targetCost)}</strong></div>
-      <div class="alloc-sim-row"><span>목표 예측 ${metricLabel}</span><strong class="tnum">${fmtCurrency(sim.cprT, {metric:true})}</strong></div>
+      <div class="alloc-sim-row"><span>목표 예측 ${metricLabel}</span><strong class="tnum">${fmtCostMetric(sim.cprT, ALLOC_STATE.metric)}</strong></div>
       <div class="alloc-sim-row"><span>목표 예측 ${unitLabel}수</span><strong class="tnum">${Math.round(sim.resT).toLocaleString()}</strong></div>
       <div class="alloc-sim-sep"></div>
       <div class="alloc-sim-row highlight">
@@ -13453,7 +13490,7 @@ function renderSimResults(sim, currentCost, targetCost, meta, hasRevenue, metric
       </div>
       <div class="alloc-sim-row highlight strong">
         <span>이 구간의 marginal ${metricLabel}</span>
-        <strong class="tnum">${sim.marginalCPR != null ? fmtCurrency(sim.marginalCPR, {metric:true}) : "—"}</strong>
+        <strong class="tnum">${sim.marginalCPR != null ? fmtCostMetric(sim.marginalCPR, ALLOC_STATE.metric) : "—"}</strong>
       </div>
     </div>
   `;
@@ -13804,7 +13841,17 @@ function renderAllocationTotalCard(payload) {
           <div class="alloc-total-row"><span>예상 ${unitLabel}수</span><strong class="tnum">${formatNumber(next.results, {decimals:0})}</strong></div>
           ${nextRevenue > 0 ? `<div class="alloc-total-row"><span>예상 매출</span><strong class="tnum">${fmtCurrency(nextRevenue)}</strong></div>` : ""}
           <div class="alloc-total-sep"></div>
-          <div class="alloc-total-row highlight"><span>예상 평균 ${metricLabel}</span><strong class="tnum">${fmtCurrency(nextAvgCPR, {metric:true})}${prevAvgCPR != null && nextAvgCPR != null ? ` <span class="${colorClass(nextAvgCPR - prevAvgCPR)}" style="font-size:11px;">${arrow(nextAvgCPR - prevAvgCPR)} ${Math.abs(((nextAvgCPR - prevAvgCPR)/prevAvgCPR)*100).toFixed(1)}%</span>` : ""}</strong></div>
+          <div class="alloc-total-row highlight"><span>예상 평균 ${metricLabel}</span><strong class="tnum">${fmtCostMetric(nextAvgCPR, metric)}${(() => {
+            // 개선 방향: CPI/CPA는 낮을수록, ROAS는 높을수록 긍정. 표시값(display-space) 기준으로 화살표/색/% 계산.
+            const dPrev = displayMetricValue(prevAvgCPR, metric);
+            const dNext = displayMetricValue(nextAvgCPR, metric);
+            if (dPrev == null || dNext == null || dPrev === 0) return "";
+            const d = dNext - dPrev;
+            const good = isRoasMetric(metric) ? d > 0 : d < 0;
+            const ar = d > 0 ? "▲" : d < 0 ? "▼" : "—";
+            const pct = Math.abs(d / dPrev) * 100;
+            return ` <span class="${good ? "down" : ""}" style="font-size:11px;">${ar} ${pct.toFixed(1)}%</span>`;
+          })()}</strong></div>
           ${nextROAS != null ? `<div class="alloc-total-row highlight"><span>예상 ROAS</span><strong class="tnum">${(nextROAS*100).toFixed(1)}%${prevROAS != null ? ` <span class="${colorClass(nextROAS - prevROAS)}" style="font-size:11px;">${arrow(nextROAS - prevROAS)} ${Math.abs(((nextROAS - prevROAS)/prevROAS)*100).toFixed(1)}%</span>` : ""}</strong></div>` : ""}
         </div>
       </div>
@@ -13987,8 +14034,8 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
           ${hist && hist.totalResults > 0 && !isZero ? `<div class="alloc-delta-hint">최근 ${recentDays}일 ${formatNumber(hist.totalResults, {decimals:0})}</div>` : ''}
         </td>
         <td class="tnum">
-          ${isZero ? '<span style="color:var(--text-muted);">—</span>' : fmtCurrency(it.cpr, { metric: true })}
-          ${hist && hist.avgCPR != null && !isZero ? `<div class="alloc-delta-hint">최근 ${recentDays}일 ${fmtCurrency(hist.avgCPR, {metric:true})}</div>` : ''}
+          ${isZero ? '<span style="color:var(--text-muted);">—</span>' : fmtCostMetric(it.cpr, metric)}
+          ${hist && hist.avgCPR != null && !isZero ? `<div class="alloc-delta-hint">최근 ${recentDays}일 ${fmtCostMetric(hist.avgCPR, metric)}</div>` : ''}
         </td>
         <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong></td>
       </tr>

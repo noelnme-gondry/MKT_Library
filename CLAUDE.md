@@ -214,6 +214,8 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 - **dropzone 숨김 시 핸들러 unbound** (PR #33): bind 디스패치가 `[data-tool-dropzone]` 존재로만 게이트하면, CSV 로드 후 dropzone이 숨겨질 때 매핑 select가 unbound. 디스패치 조건은 그 핸들러가 다루는 **모든** 셀렉터(`[data-tool-csv]` 등)를 OR로 포함해야 함.
 - **페이지 제거 = renderer + 등록 같이 제거** (PR #34): 페이지를 IA·navigate redirect로 비활성화해도 `page_5_N()` 함수 본문과 `PAGE_RENDERERS["5-N"]=...` 등록이 남으면, 그 안의 중복 id(`csv-dropzone` 등)·공유 클래스가 cross-page 핸들러 버그의 불씨로 남는다(PR #33 재발 위험). 비활성 시 redirect만 남기고 죽은 renderer 함수+등록을 통째로 삭제할 것.
 - **navigate 재렌더 시 스크롤 top 리셋** (PR #35): `navigate()`가 항상 `scrollTo(top:0)` 하면, 필터/토글/매핑 등 같은 페이지 in-place 재렌더마다 화면이 맨 위로 튐. **중앙 해결**: navigate 진입 시 `prevScrollY`+`prevHash` 캡처 → 끝에서 `newHash === prevHash`(같은 페이지)면 `scrollTo(prevScrollY)`, 다른 페이지면 top. 핸들러마다 rAF로 개별 보존하지 말고 navigate 한 곳에서 처리.
+- **objective metric이 getAvailableMetrics에서 누락 → 조용히 reset** (PR #37): 5-3 ROAS 목표가 `metric=revenue_d7`를 세팅해도, §2 성과지표 select 렌더의 `if(!av[metric]) metric=firstAvailable` 가드가 `getAvailableMetrics()`에 revenue_d7 키가 없어 metric을 installs로 되돌림 → 라벨이 CPI로 표시. **교훈**: objective↔metric 매핑 추가 시 `getAvailableMetrics()` + dropdown option + firstAvailable 목록 3곳을 같이 갱신. availability 맵에 빠진 metric은 select 가드가 silently override.
+- **ROAS 뷰 = display-invert (y=1/CPR), 배분은 CPR 공간 유지** (PR #37): 파이프라인 전체가 `y=cost/result`(CPR, 낮을수록 긍정) 기반. ROAS(높을수록 긍정)는 파이프라인을 뒤집지 말고 **표시층에서만** 반전: 차트 점/추세선 y=1/CPR(raw, 정규화 bypass), 축/툴팁 라벨, 표 값은 `fmtCostMetric(cpr, metric)`(ROAS면 1/CPR을 %로). 배분 greedy/weight는 CPR 그대로 → 수치 byte-identical. delta 화살표/색은 display-space에서 isRoas면 d>0이 긍정.
 
 ---
 
