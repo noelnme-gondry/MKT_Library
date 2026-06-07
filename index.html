@@ -11823,51 +11823,12 @@ function bindTocScrollspy() {
 
 /* ========== CSV Page Handlers ========== */
 function bindCSVPageHandlers() {
-  // ----- 5-1: 드롭존 / 파일 입력 / 매핑 변경 / 초기화 -----
-  const dropzone = document.getElementById("csv-dropzone");
-  const fileInput = document.getElementById("csv-file");
-
-  if (dropzone && fileInput) {
-    dropzone.addEventListener("click", () => fileInput.click());
-    dropzone.addEventListener("dragover", e => { e.preventDefault(); dropzone.classList.add("dragover"); });
-    dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
-    dropzone.addEventListener("drop", e => {
-      e.preventDefault();
-      dropzone.classList.remove("dragover");
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) handleCSVFile(e.dataTransfer.files[0]);
-    });
-    fileInput.addEventListener("change", e => {
-      if (e.target.files && e.target.files[0]) handleCSVFile(e.target.files[0]);
-    });
-  }
-
-  // 매핑 드롭다운 변경
-  document.querySelectorAll(".map-select").forEach(sel => {
-    sel.addEventListener("change", () => {
-      const csvHeader = sel.dataset.csvHeader;
-      CSV_STATE.mapping[csvHeader] = sel.value;
-      // 페이지 재렌더 (배너/상태 갱신)
-      navigate("5-1");
-    });
-  });
-
-  // 초기화 버튼
-  const resetBtn = document.getElementById("csv-reset");
-  if (resetBtn) {
-    resetBtn.addEventListener("click", () => {
-      CSV_STATE.fileName = null;
-      CSV_STATE.raw = [];
-      CSV_STATE.headers = [];
-      CSV_STATE.mapping = {};
-      navigate("5-1");
-    });
-  }
-
-  // 대시보드로 이동
-  const goBtn = document.getElementById("csv-go-dashboard");
-  if (goBtn) {
-    goBtn.addEventListener("click", () => navigate("5-2"));
-  }
+  // ----- (제거됨) 구 5-1 페이지 핸들러 -----
+  // 5-1 CSV 업로드 페이지는 도구별 인라인 업로드(renderInlineCsvUpload + bindInlineCsvHandlers)로
+  // 대체되어 제거됨. 과거 이 자리에 있던 ".map-select → navigate('5-1')" 핸들러가
+  // 신규 매핑 select(동일한 .map-select 클래스 보유)에도 바인딩되어, 5-3 등에서 매핑 변경 시
+  // navigate('5-1') → (5-1→5-5 redirect) → Cannibalization(5-5)로 튀는 버그를 유발했음.
+  // 신규 매핑 select는 data-tool-csv 기반 bindInlineCsvHandlers가 전담한다.
 
   // ----- 5-2: 코호트 토글 -----
   const toggle = document.getElementById("cohort-toggle");
@@ -11940,7 +11901,9 @@ function bindCSVPageHandlers() {
   }
 
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
-  if (document.querySelector("[data-tool-dropzone]")) {
+  // dropzone(업로드 전) OR 매핑 select/리셋 버튼(업로드 후) 중 하나라도 있으면 바인딩.
+  // (CSV 로드 후엔 dropzone이 숨겨지므로 dropzone만 체크하면 매핑 select가 unbound 됨)
+  if (document.querySelector("[data-tool-dropzone], [data-tool-csv], [data-tool-csv-input], [data-tool-csv-reset]")) {
     bindInlineCsvHandlers();
   }
 }
@@ -14857,8 +14820,10 @@ function handleCSVFile(file, toolId) {
     alert("CSV 파일만 업로드할 수 있습니다.");
     return;
   }
-  // toolId가 명시되지 않으면 현재 활성 도구로 가정
-  const targetTool = toolId || ACTIVE_CSV_TOOL || "5-5";
+  // toolId가 명시되지 않으면 현재 활성 도구 → 현재 hash → (최후) 5-2 순으로 fallback.
+  // 과거 하드코딩 "5-5"는 다른 도구 업로드가 toolId를 잃으면 Cannibalization으로 잘못 라우팅되는 footgun이었음.
+  const hashTool = (location.hash || "").replace(/^#/, "");
+  const targetTool = toolId || ACTIVE_CSV_TOOL || (TOOL_REQUIRED_FIELDS[hashTool] ? hashTool : "5-2");
   Papa.parse(file, {
     header: true,
     skipEmptyLines: true,
