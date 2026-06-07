@@ -2704,6 +2704,8 @@ const IA = [
       { id: "5-2", title: "데이터 시각화 대시보드", desc: "KPI 자동 계산 + 시계열·채널·퍼널·코호트 차트" },
       { id: "5-3", title: "Budget Allocator", desc: "한계효용 기반 채널별 예산 최적 배분 (CPI/CPA/ROAS)" },
       { id: "5-9", title: "LTV:CAC · Payback", desc: "채널별 CAC 대비 LTV 배수 + 회수기간 + 손익분기 ROAS" },
+      { id: "5-10", title: "Pacing & Forecast", desc: "MTD 소진 vs 목표 + 월말 착지 예측 + 페이스 경고" },
+      { id: "5-11", title: "Funnel 진단", desc: "노출→클릭→설치→액션→매출 단계별 CVR·이탈 진단" },
     ],
   },
   {
@@ -5235,7 +5237,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-10", "5-11"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -11303,6 +11305,279 @@ function runLtvCacTests(verbose = true) {
 }
 if (typeof window !== "undefined") { window.runLtvCacTests = runLtvCacTests; window.LTVCAC_MATH = LTVCAC_MATH; }
 
+/* ============================================================
+ * Pacing & Forecast (5-10) — 효율 그룹
+ * MTD 소진 vs 목표, 월말 착지 예측(run-rate), 페이스 경고
+ * ============================================================ */
+const PACING_STATE = { metric: "cost", monthlyTarget: 0 };
+const PACING_MATH = {
+  // 일별 시리즈 → {mtd, daysElapsed, daysInMonth, runRate, projected}
+  // dates: 'YYYY-MM-DD' 정렬됨. 최신 월 기준.
+  pace(daily) {
+    if (!daily.length) return null;
+    const last = daily[daily.length - 1].date;
+    const ym = last.slice(0, 7);
+    const monthRows = daily.filter(d => d.date.slice(0,7) === ym);
+    const mtd = monthRows.reduce((s,d)=>s+d.value, 0);
+    const lastDay = Number(last.slice(8,10));
+    const y = Number(ym.slice(0,4)), mo = Number(ym.slice(5,7));
+    const daysInMonth = new Date(y, mo, 0).getDate();  // mo는 1-based → day0 of next = last day
+    const daysElapsed = lastDay;
+    const runRate = daysElapsed > 0 ? mtd / daysElapsed : 0;
+    const projected = runRate * daysInMonth;
+    return { ym, mtd, daysElapsed, daysInMonth, runRate, projected };
+  },
+};
+const PACING_CACHE = { key:null, daily:null, pace:null };
+function pacingCacheKey() {
+  const m = CSV_STATE.mapping || {};
+  const sig = ["date","cost","installs","actions","revenue_d7"].map(k=>`${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
+  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|met:${PACING_STATE.metric}`;
+}
+function buildPacingCache() {
+  if (typeof window!=="undefined") window.__PACING = PACING_CACHE;
+  const key = pacingCacheKey();
+  if (PACING_CACHE.key === key) return PACING_CACHE;
+  const rows = getMappedRows();
+  const metric = PACING_STATE.metric;
+  const dm = new Map();
+  for (const r of rows) {
+    if (!r.date) continue;
+    dm.set(r.date, (dm.get(r.date)||0) + (Number(r[metric])||0));
+  }
+  const daily = [...dm.entries()].map(([date,value])=>({date,value})).sort((a,b)=>a.date.localeCompare(b.date));
+  PACING_CACHE.key = key;
+  PACING_CACHE.daily = daily;
+  PACING_CACHE.pace = PACING_MATH.pace(daily);
+  return PACING_CACHE;
+}
+function page_5_10() {
+  const meta = findMeta("5-10");
+  const missing = checkRequiredForTool("5-10");
+  if (missing.length > 0 || !CSV_STATE.headers.length) {
+    return pageShell(meta, {
+      deck: "이번 달 예산/성과 소진 속도(run-rate)로 월말 착지를 예측하고 목표 대비 페이스를 경고합니다. 효율 그룹 CSV 공유.",
+      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+      summary: "MTD 합산 ÷ 경과일 × 월 총일수 = 착지 예측. 목표를 입력하면 페이스(목표 대비 %)와 일일 권장 소진액을 계산.",
+      toc: [{ id:"s-prep", title:"데이터 준비" }],
+      body: renderInlineCsvUpload("5-10"),
+    });
+  }
+  buildPacingCache();
+  const c = PACING_CACHE, p = c.pace;
+  const metricLabel = { cost:"비용", installs:"설치", actions:"액션", revenue_d7:"매출 D7" }[PACING_STATE.metric] || PACING_STATE.metric;
+  const target = PACING_STATE.monthlyTarget || 0;
+  const isCost = PACING_STATE.metric === "cost";
+  const fmtV = (v) => isCost ? fmtCurrency(v) : Math.round(v).toLocaleString();
+  let pacePct = null, recDaily = null, statusTone="info", statusMsg="";
+  if (p && target > 0) {
+    pacePct = p.projected / target * 100;
+    const remainingDays = p.daysInMonth - p.daysElapsed;
+    recDaily = remainingDays > 0 ? (target - p.mtd) / remainingDays : 0;
+    if (isCost) {
+      if (pacePct > 110) { statusTone="danger"; statusMsg=`예산 ${(pacePct-100).toFixed(0)}% 초과 착지 예상 — 일일 소진 축소 필요`; }
+      else if (pacePct < 90) { statusTone="warn"; statusMsg=`예산 ${(100-pacePct).toFixed(0)}% 미달 착지 예상 — 소진 가속 여지`; }
+      else { statusTone="ok"; statusMsg="목표 페이스 정상 (±10% 이내)"; }
+    } else {
+      if (pacePct >= 100) { statusTone="ok"; statusMsg=`목표 ${(pacePct-100).toFixed(0)}% 초과 달성 예상`; }
+      else { statusTone="warn"; statusMsg=`목표 ${(100-pacePct).toFixed(0)}% 미달 예상 — 가속 필요`; }
+    }
+  }
+  return pageShell(meta, {
+    deck: "MTD 소진 vs 목표, run-rate 기반 월말 착지 예측, 페이스 경고. 효율 그룹 CSV 공유.",
+    chips: `<span class="chip"><span class="dot"></span>도구 · Pacing & Forecast</span>${p?`<span class="chip ok"><span class="dot"></span>${p.ym} · D${p.daysElapsed}/${p.daysInMonth}</span>`:""}${authStatusChip()}`,
+    summary: "당월 누적(MTD) ÷ 경과일 × 월 총일수로 착지 예측. 목표 입력 시 페이스(예측/목표)와 잔여일 일일 권장액 제공.",
+    toc: [{ id:"s-prep", title:"데이터 준비" }, { id:"s-pace", title:"페이싱" }],
+    body: `
+      <section class="block" id="s-prep">${renderInlineCsvUpload("5-10")}</section>
+      <section class="block" id="s-pace">
+        <h2 class="section-title"><span class="ix">§1</span>페이싱 · 착지 예측</h2>
+        <div class="ab-pillgroup">
+          <span class="ab-pillgroup-label">지표</span>
+          ${[["cost","비용"],["installs","설치"],["actions","액션"],["revenue_d7","매출"]].map(([k,l])=>{
+            const av=(new Set(Object.values(CSV_STATE.mapping||{}))).has(k);
+            return `<button class="ab-pill ${PACING_STATE.metric===k?'active':''} ${!av?'disabled':''}" ${av?`data-pacing-metric="${k}"`:'disabled'}>${l}${!av?' 🔒':''}</button>`;
+          }).join("")}
+        </div>
+        <div class="ab-field" style="max-width:280px;margin:10px 0;">
+          <label>${metricLabel} 월 목표 (선택)</label>
+          <input id="pacing-target" type="number" min="0" step="${isCost?'10000':'100'}" value="${target||''}" placeholder="목표 입력 시 페이스 계산" />
+        </div>
+        ${p ? `
+          <div class="ab-stat-row" style="margin:8px 0 12px;">
+            <div class="ab-stat"><div class="ab-stat-label">MTD (${p.ym})</div><div class="ab-stat-value tnum">${fmtV(p.mtd)}</div><div class="ab-stat-hint">D${p.daysElapsed} 경과</div></div>
+            <div class="ab-stat"><div class="ab-stat-label">일 run-rate</div><div class="ab-stat-value tnum">${fmtV(p.runRate)}</div></div>
+            <div class="ab-stat"><div class="ab-stat-label">월말 착지 예측</div><div class="ab-stat-value tnum">${fmtV(p.projected)}</div><div class="ab-stat-hint">run-rate × ${p.daysInMonth}일</div></div>
+            ${target>0?`<div class="ab-stat"><div class="ab-stat-label">목표 대비 페이스</div><div class="ab-stat-value tnum ${pacePct>110&&isCost?'neg':pacePct<90?'':'pos'}">${pacePct.toFixed(0)}%</div></div>`:""}
+            ${target>0&&recDaily!=null?`<div class="ab-stat"><div class="ab-stat-label">잔여일 일일 권장</div><div class="ab-stat-value tnum">${fmtV(Math.max(0,recDaily))}</div></div>`:""}
+          </div>
+          ${target>0?`<div class="callout ${statusTone}"><div class="ico">${statusTone==='ok'?'✓':statusTone==='danger'?'!':'i'}</div><div class="body"><strong>${escapeHtml(statusMsg)}</strong></div></div>`:`<p class="muted">월 목표를 입력하면 페이스·권장 소진액·경고가 표시됩니다.</p>`}
+          <div class="alloc-card" style="margin-top:12px;">
+            <div class="cann-card-header"><div class="alloc-card-title">당월 일별 ${metricLabel} 추이</div><button class="ab-pill" data-pngdownload="pacing-chart" data-pngname="pacing">⬇ PNG</button></div>
+            <div class="chart-container"><canvas id="pacing-chart"></canvas></div>
+          </div>
+        ` : `<p class="muted">날짜·지표 데이터가 부족합니다.</p>`}
+      </section>
+    `,
+  });
+}
+PAGE_RENDERERS["5-10"] = page_5_10;
+function renderPacingChart() {
+  if (typeof Chart==="undefined") return;
+  const c = PACING_CACHE; if (!c.pace) return;
+  const ctx = document.getElementById("pacing-chart"); if (!ctx) return;
+  destroyChartIfExists("pacing-chart");
+  const ym = c.pace.ym;
+  const mr = c.daily.filter(d=>d.date.slice(0,7)===ym);
+  let cum=0; const cumData = mr.map(d=>({x:d.date, y:(cum+=d.value)}));
+  const target = PACING_STATE.monthlyTarget||0;
+  const ds = [{ label:"누적", data:cumData.map(p=>p.y), borderColor:"#adc6ff", backgroundColor:"#adc6ff30", fill:true, tension:0.2, pointRadius:2 }];
+  if (target>0) ds.push({ label:"목표(선형)", data:mr.map((_,i)=>target*(i+1)/c.pace.daysInMonth), borderColor:"#fbbf24", borderDash:[5,4], borderWidth:1.5, pointRadius:0 });
+  CHART_INSTANCES["pacing-chart"] = new Chart(ctx, { type:"line", data:{ labels:mr.map(d=>d.date.slice(5)), datasets:ds },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:getCssVar('--text-muted'),font:{size:11}}}},
+      scales:{ x:{ticks:{color:getCssVar('--text-muted'),maxTicksLimit:12},grid:{color:getCssVar('--border')}}, y:{ticks:{color:getCssVar('--text-muted')},grid:{color:getCssVar('--border')}} } } });
+}
+function bindPacingHandlers() {
+  bindInlineCsvHandlers();
+  document.querySelectorAll("[data-pacing-metric]").forEach(b=>b.addEventListener("click",()=>{ if(b.classList.contains("disabled"))return; PACING_STATE.metric=b.dataset.pacingMetric; PACING_CACHE.key=null; navigate("5-10"); }));
+  const t = document.getElementById("pacing-target");
+  if (t) t.addEventListener("change", () => { PACING_STATE.monthlyTarget = Number(t.value)||0; navigate("5-10"); });
+  document.querySelectorAll("#s-pace [data-pngdownload]").forEach(b=>b.addEventListener("click",()=>downloadChartAsPNG(b.dataset.pngdownload,b.dataset.pngname)));
+  renderPacingChart();
+}
+function runPacingTests(verbose=true){
+  const results=[];
+  // 10일 경과, 매일 100 → MTD 1000, runRate 100, 31일 월(2026-01) projected 3100
+  const daily=[]; for(let d=1;d<=10;d++) daily.push({date:`2026-01-${String(d).padStart(2,'0')}`, value:100});
+  const p=PACING_MATH.pace(daily);
+  results.push({test:"T1 · MTD 합산", expected:"1000", actual:String(p.mtd), pass:p.mtd===1000?"✓":"✗"});
+  results.push({test:"T2 · daysInMonth(1월)=31", expected:"31", actual:String(p.daysInMonth), pass:p.daysInMonth===31?"✓":"✗"});
+  results.push({test:"T3 · 착지 예측 3100", expected:"3100", actual:String(p.projected), pass:p.projected===3100?"✓":"✗"});
+  // 2월(윤년 2024) → 29일
+  const f=PACING_MATH.pace([{date:"2024-02-05",value:50}]);
+  results.push({test:"T4 · 2024-02 윤년 29일", expected:"29", actual:String(f.daysInMonth), pass:f.daysInMonth===29?"✓":"✗"});
+  if(verbose){console.log("%c=== Pacing · Golden ===","color:#adc6ff;font-weight:bold;");console.table(results);const pa=results.filter(r=>r.pass==="✓").length;console.log(`${pa}/${results.length}`);}
+  return results;
+}
+if (typeof window!=="undefined"){ window.runPacingTests=runPacingTests; window.PACING_MATH=PACING_MATH; }
+
+/* ============================================================
+ * Funnel 진단 (5-11) — 효율 그룹
+ * 노출→클릭→설치→(액션)→(매출) 단계별 CVR·이탈
+ * ============================================================ */
+const FUNNEL_STATE = { unitField: "_all" };
+const FUNNEL_CACHE = { key:null, stages:null, rows:null };
+function funnelCacheKey(){
+  const m=CSV_STATE.mapping||{};
+  const sig=["impressions","clicks","installs","actions","revenue_d7","channel","country","platform"].map(k=>`${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
+  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|u:${FUNNEL_STATE.unitField}`;
+}
+function buildFunnelCache(){
+  if(typeof window!=="undefined")window.__FUNNEL=FUNNEL_CACHE;
+  const key=funnelCacheKey(); if(FUNNEL_CACHE.key===key)return FUNNEL_CACHE;
+  const rows=getMappedRows();
+  const mapped=new Set(Object.values(CSV_STATE.mapping||{}));
+  const unit=FUNNEL_STATE.unitField;
+  const agg=new Map();
+  for(const r of rows){
+    const k = unit==="_all" ? "전체" : (String(r[unit]??"").trim()||"(미지정)");
+    if(!agg.has(k)) agg.set(k,{unit:k,impr:0,clk:0,inst:0,act:0,rev:0});
+    const b=agg.get(k);
+    b.impr+=Number(r.impressions)||0; b.clk+=Number(r.clicks)||0;
+    b.inst+=Number(r.installs)||0; b.act+=Number(r.actions)||0; b.rev+=Number(r.revenue_d7)||0;
+  }
+  const stageDefs=[
+    {key:"impr",label:"노출",on:mapped.has("impressions")},
+    {key:"clk", label:"클릭",on:mapped.has("clicks")},
+    {key:"inst",label:"설치",on:mapped.has("installs")},
+    {key:"act", label:"액션",on:mapped.has("actions")},
+  ].filter(s=>s.on);
+  const rowsOut=[...agg.values()].sort((a,b)=>b.impr-a.impr).map(b=>{
+    const steps=[];
+    for(let i=0;i<stageDefs.length;i++){
+      const cur=b[stageDefs[i].key];
+      const prev=i>0?b[stageDefs[i-1].key]:null;
+      steps.push({ label:stageDefs[i].label, count:cur, cvr: prev!=null&&prev>0?cur/prev:null, drop: prev!=null&&prev>0?(prev-cur)/prev:null });
+    }
+    return { unit:b.unit, steps };
+  });
+  FUNNEL_CACHE.key=key; FUNNEL_CACHE.stages=stageDefs; FUNNEL_CACHE.rows=rowsOut;
+  return FUNNEL_CACHE;
+}
+function page_5_11(){
+  const meta=findMeta("5-11");
+  const missing=checkRequiredForTool("5-11");
+  if(missing.length>0||!CSV_STATE.headers.length){
+    return pageShell(meta,{
+      deck:"노출→클릭→설치→액션 단계별 전환율(CVR)과 이탈을 진단합니다. 효율 그룹 CSV 공유.",
+      chips:`<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+      summary:"각 단계 CVR = 현재/직전 단계. 이탈이 큰 단계가 병목. 채널/국가/OS별로 분리해 어디서 새는지 식별.",
+      toc:[{id:"s-prep",title:"데이터 준비"}],
+      body:renderInlineCsvUpload("5-11"),
+    });
+  }
+  buildFunnelCache();
+  const c=FUNNEL_CACHE;
+  return pageShell(meta,{
+    deck:"단계별 CVR·이탈 진단. CTR(클릭/노출)·CVR(설치/클릭)·액션전환(액션/설치)을 한눈에. 효율 그룹 CSV 공유.",
+    chips:`<span class="chip"><span class="dot"></span>도구 · Funnel 진단</span><span class="chip ok"><span class="dot"></span>${c.stages.length}단계</span>${authStatusChip()}`,
+    summary:"각 행은 직전 단계 대비 전환율. 이탈률이 가장 큰 단계가 우선 개선 대상입니다.",
+    toc:[{id:"s-prep",title:"데이터 준비"},{id:"s-funnel",title:"퍼널"}],
+    body:`
+      <section class="block" id="s-prep">${renderInlineCsvUpload("5-11")}</section>
+      <section class="block" id="s-funnel">
+        <h2 class="section-title"><span class="ix">§1</span>퍼널 단계별 전환·이탈</h2>
+        <div class="ab-pillgroup">
+          <span class="ab-pillgroup-label">분리 단위</span>
+          ${[["_all","전체"],["channel","채널"],["country","국가"],["platform","OS"]].map(([k,l])=>{
+            const av = k==="_all" || (new Set(Object.values(CSV_STATE.mapping||{}))).has(k);
+            return `<button class="ab-pill ${FUNNEL_STATE.unitField===k?'active':''} ${!av?'disabled':''}" ${av?`data-funnel-unit="${k}"`:'disabled'}>${l}${!av?' 🔒':''}</button>`;
+          }).join("")}
+        </div>
+        ${renderFunnelTable(c)}
+      </section>
+    `,
+  });
+}
+PAGE_RENDERERS["5-11"]=page_5_11;
+function renderFunnelTable(c){
+  const rows=c.rows||[]; if(!rows.length)return "<p class='muted'>데이터 없음</p>";
+  const stages=c.stages;
+  const fmtPct=(v)=>v==null?"—":(v*100).toFixed(2)+"%";
+  return `
+    <div class="table-wrap"><table class="data" style="font-size:11.5px;">
+      <thead><tr><th>단위</th>${stages.map(s=>`<th>${s.label}</th>`).join("")}${stages.slice(1).map(s=>`<th>→${s.label} CVR</th>`).join("")}</tr></thead>
+      <tbody>
+        ${rows.slice(0,40).map(r=>`
+          <tr>
+            <td><strong>${escapeHtml(String(r.unit).slice(0,24))}</strong></td>
+            ${r.steps.map(s=>`<td class="tnum">${(s.count||0).toLocaleString()}</td>`).join("")}
+            ${r.steps.slice(1).map(s=>{
+              const worst = s.drop!=null && s.drop>0.7;
+              return `<td class="tnum ${worst?'neg':''}">${fmtPct(s.cvr)}${s.drop!=null?` <span style="color:var(--text-muted);font-size:10px;">(이탈 ${(s.drop*100).toFixed(0)}%)</span>`:''}</td>`;
+            }).join("")}
+          </tr>
+        `).join("")}
+      </tbody>
+    </table></div>
+    <div class="callout" style="margin-top:10px;"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">이탈률(빨강 = 70%↑)이 가장 큰 단계가 병목입니다. 노출→클릭 이탈이 크면 소재/타게팅, 클릭→설치 이탈이 크면 스토어 페이지(ASO)/랜딩, 설치→액션 이탈이 크면 온보딩/UX를 점검하세요.</p></div></div>`;
+}
+function bindFunnelHandlers(){
+  bindInlineCsvHandlers();
+  document.querySelectorAll("[data-funnel-unit]").forEach(b=>b.addEventListener("click",()=>{ if(b.classList.contains("disabled"))return; FUNNEL_STATE.unitField=b.dataset.funnelUnit; FUNNEL_CACHE.key=null; navigate("5-11"); }));
+}
+function runFunnelTests(verbose=true){
+  const results=[];
+  // CVR 계산: impr 1000, clk 100, inst 20 → CTR 10%, CVR 20%
+  const cvr=(cur,prev)=>prev>0?cur/prev:null;
+  results.push({test:"T1 · CTR 10%", expected:"0.1", actual:String(cvr(100,1000)), pass:cvr(100,1000)===0.1?"✓":"✗"});
+  results.push({test:"T2 · 설치CVR 20%", expected:"0.2", actual:String(cvr(20,100)), pass:cvr(20,100)===0.2?"✓":"✗"});
+  results.push({test:"T3 · 분모0 → null", expected:"null", actual:String(cvr(5,0)), pass:cvr(5,0)===null?"✓":"✗"});
+  if(verbose){console.log("%c=== Funnel · Golden ===","color:#adc6ff;font-weight:bold;");console.table(results);}
+  return results;
+}
+if(typeof window!=="undefined"){ window.runFunnelTests=runFunnelTests; }
+
 function renderModePlan() {
   const tt = AB_STATE.testType;
   const sym = CURRENCY_SYMBOLS[AB_STATE.currency] || "₩";
@@ -12073,6 +12348,16 @@ function bindCSVPageHandlers() {
   // ----- 5-9: LTV:CAC 핸들러 -----
   if (document.querySelector("[data-ltvcac-unit], [data-ltvcac-horizon]")) {
     bindLtvCacHandlers();
+  }
+
+  // ----- 5-10: Pacing 핸들러 -----
+  if (document.querySelector("[data-pacing-metric], #pacing-target")) {
+    bindPacingHandlers();
+  }
+
+  // ----- 5-11: Funnel 핸들러 -----
+  if (document.querySelector("[data-funnel-unit]")) {
+    bindFunnelHandlers();
   }
 
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
@@ -14657,6 +14942,8 @@ const TOOL_REQUIRED_FIELDS = {
   "5-7": ["experiment_id", "arm_id", "is_control", "metric_tier", "metric_name", "numerator", "denominator"],
   "5-8": ["cohort_date", "day_offset", "cohort_size", { oneOf: ["retained_users", "cohort_revenue"] }],
   "5-9": ["date", "cost", { oneOf: ["installs", "actions"] }, { oneOf: ["revenue_d0", "revenue_d7", "revenue_d14"] }],
+  "5-10": ["date", "cost"],
+  "5-11": ["date", "impressions", "clicks", { oneOf: ["installs", "actions"] }],
 };
 
 /* 도구별 옵션 필드 — 매핑하면 추가 기능 활성화. */
@@ -14727,6 +15014,19 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "revenue_d7",    unlocks: "D7 매출 (회수곡선)" },
     { key: "revenue_d14",   unlocks: "D14 매출 (회수곡선·외삽)" },
     { key: "actions",       unlocks: "CAC를 액션 기준으로 (installs 대신)" },
+  ],
+  "5-10": [
+    { key: "channel",       unlocks: "채널별 페이싱 분리" },
+    { key: "installs",      unlocks: "설치 페이싱·착지 예측" },
+    { key: "actions",       unlocks: "액션 페이싱" },
+    { key: "revenue_d7",    unlocks: "매출 페이싱" },
+  ],
+  "5-11": [
+    { key: "channel",       unlocks: "채널별 퍼널 분리" },
+    { key: "country",       unlocks: "국가별 퍼널" },
+    { key: "platform",      unlocks: "OS별 퍼널" },
+    { key: "revenue_d7",    unlocks: "매출 단계까지 퍼널 확장" },
+    { key: "actions",       unlocks: "액션 단계 (installs 다음)" },
   ],
 };
 
