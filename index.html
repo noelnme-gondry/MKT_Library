@@ -1982,6 +1982,38 @@
     border-color: var(--primary, #adc6ff);
   }
   .alloc-unit-chip:hover:not(.active) { border-color: var(--primary, #adc6ff); color: var(--text-primary); }
+  /* CSV 로드 상태 + 매핑 prominent block */
+  .csv-loaded-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.30);
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+  }
+  .csv-loaded-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .csv-loaded-info strong { font-size: 13px; font-weight: 600; }
+  .csv-loaded-stats { font-size: 11px; color: var(--text-muted); }
+  .csv-change-btn { font-size: 11px; padding: 4px 12px; }
+  .csv-mapping-block {
+    background: rgba(173, 198, 255, 0.04);
+    border: 1.5px solid rgba(173, 198, 255, 0.25);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-top: 12px;
+  }
+  .csv-mapping-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
   .cann-card-header {
     display: flex;
     justify-content: space-between;
@@ -14697,6 +14729,59 @@ function renderInlineCsvUpload(toolId) {
     </div>
   `;
 
+  // 매핑된 옵션 필드 개수 (매핑 표 헤더에 표시)
+  const mappedOptCount = (TOOL_OPTIONAL_FIELDS[toolId] || []).filter(o => mapped.has(o.key)).length;
+  const totalOptCount = (TOOL_OPTIONAL_FIELDS[toolId] || []).length;
+
+  // === hasFile일 때: 매핑 섹션을 prominent하게, dropzone 숨김 ===
+  if (hasFile) {
+    return `
+      <section class="block">
+        <h2 class="section-title"><span class="ix">§0</span>${escapeHtml(meta?.title || toolId)} · 데이터 준비</h2>
+
+        <!-- 1) Compact file-state bar (dropzone 대체) -->
+        <div class="csv-loaded-bar">
+          <div class="csv-loaded-info">
+            <span class="dot" style="background:#22c55e;"></span>
+            <strong>${escapeHtml(CSV_STATE.fileName)}</strong>
+            <span class="csv-loaded-stats tnum">${CSV_STATE.raw.length.toLocaleString()}행 · ${CSV_STATE.headers.length}컬럼</span>
+          </div>
+          <button class="ab-pill csv-change-btn" data-tool-csv-reset="${toolId}" title="이 도구의 CSV를 제거하고 다른 파일 업로드">⟳ CSV 변경</button>
+        </div>
+
+        <!-- 2) 매핑 상태 배너 -->
+        ${reqBanner}
+
+        <!-- 3) ★ 표준 필드 매핑 — prominent block (not collapsed) -->
+        <div class="csv-mapping-block">
+          <div class="csv-mapping-header">
+            <div>
+              <strong style="font-size:14px;color:var(--primary,#adc6ff);">📋 CSV 컬럼 → 표준 필드 매핑</strong>
+              <span style="font-size:11px;color:var(--text-muted);margin-left:8px;">
+                전체 ${CSV_STATE.headers.length}컬럼 · 옵션 매핑 <strong style="color:var(--text-primary);">${mappedOptCount}/${totalOptCount}</strong>
+              </span>
+            </div>
+            <span style="font-size:11px;color:var(--text-muted);">자동 + 수동. 드롭다운으로 변경 시 즉시 반영.</span>
+          </div>
+          <div class="mapping-grid">
+            <div class="mapping-header">CSV 컬럼</div>
+            <div></div>
+            <div class="mapping-header">표준 필드</div>
+            <div class="mapping-header" style="text-align:right;">상태</div>
+            ${mappingRows}
+          </div>
+        </div>
+
+        <!-- 4) 필요한 컬럼 가이드 — 항상 collapsed (참고용) -->
+        <details style="margin-top:12px;">
+          <summary style="cursor:pointer;color:var(--text-muted);font-weight:500;font-size:12px;">▸ 참고: 이 도구가 사용할 수 있는 표준 필드 가이드</summary>
+          ${guideTable}
+        </details>
+      </section>
+    `;
+  }
+
+  // === !hasFile일 때: dropzone 중심 ===
   return `
     <section class="block">
       <h2 class="section-title"><span class="ix">§0</span>${escapeHtml(meta?.title || toolId)} · 데이터 준비</h2>
@@ -14709,25 +14794,11 @@ function renderInlineCsvUpload(toolId) {
         <div class="dropzone-sub">UTF-8 인코딩, 첫 행이 헤더인 .csv 파일.</div>
         <input type="file" accept=".csv,text/csv" class="file-input" data-tool-csv-input="${toolId}" />
       </div>
-      ${fileBlock}
-      ${reqBanner}
 
-      <details ${!hasFile || missing.length ? 'open' : ''} style="margin-top:16px;">
-        <summary style="cursor:pointer;color:var(--text-primary);font-weight:600;font-size:13px;">필요한 컬럼 가이드 (필수 + 옵션)</summary>
+      <details style="margin-top:16px;">
+        <summary style="cursor:pointer;color:var(--text-muted);font-weight:500;font-size:12px;">▸ 이 도구가 필요로 하는 컬럼 가이드 (업로드 전 미리보기)</summary>
         ${guideTable}
       </details>
-
-      ${hasFile ? `
-        <details ${missing.length ? 'open' : ''} style="margin-top:12px;">
-          <summary style="cursor:pointer;color:var(--text-primary);font-weight:600;font-size:13px;">CSV 컬럼 → 표준 필드 매핑 (자동 + 수동)</summary>
-          <div class="mapping-grid" style="margin-top:8px;">
-            <div class="mapping-header">CSV 컬럼</div>
-            <div></div>
-            <div class="mapping-header">표준 필드</div>
-            <div class="mapping-header" style="text-align:right;">상태</div>
-            ${mappingRows}
-          </div>
-        </details>` : ''}
     </section>
   `;
 }
@@ -14754,14 +14825,19 @@ function bindInlineCsvHandlers() {
       if (f) handleCSVFile(f, inp.dataset.toolCsvInput);
     });
   });
-  // 매핑 select change
+  // 매핑 select change — scroll 위치 보존 (full re-render 후에도 사용자 시야 유지)
   document.querySelectorAll("[data-tool-csv]").forEach(sel => {
     sel.addEventListener("change", () => {
       const toolId = sel.dataset.toolCsv;
       const csvHdr = sel.dataset.csvHeader;
+      const scrollY = window.scrollY;
       CSV_STATE.mapping[csvHdr] = sel.value;
       saveCsvToTool(toolId);
+      // 5-3 알고리즘 캐시 무효화 (matched objective availability 재계산 위해)
+      if (toolId === "5-3" && typeof clearAllocCache === "function") clearAllocCache();
       navigate(toolId);
+      // navigate 안의 scrollTo(0)을 덮어쓰기 — 사용자가 보던 위치 유지
+      requestAnimationFrame(() => window.scrollTo(0, scrollY));
     });
   });
   // CSV 변경(=리셋) 버튼
