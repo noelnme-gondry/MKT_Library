@@ -5863,6 +5863,7 @@ function page_5_3() {
       { id: "s-scatter", title: "Cost vs CPR 산점도" },
       { id: "s-controls", title: "예산 설정" },
       { id: "s-bar", title: "배분 비중" },
+      { id: "s-scenario", title: "What-if 시나리오" },
       { id: "s-table", title: "채널별 상세" },
       { id: "s-algo", title: "알고리즘 노트" },
     ],
@@ -6001,8 +6002,21 @@ function page_5_3() {
 
         <div id="alloc-total-card"></div>
 
+        <section class="block" id="s-scenario">
+          <h2 class="section-title"><span class="ix">§4</span>What-if 시나리오 (예산별 예상 성과)</h2>
+          <p style="color:var(--text-secondary);font-size:13px;margin:0 0 0.5rem;">
+            현재 예산을 기준으로 0.5×~2× 구간에서 동일 알고리즘으로 재배분했을 때의 <strong>예상 총 성과·효율</strong>을 비교합니다.
+            한계효용 체감(diminishing returns)이 곡선으로 드러나 <strong>증액/감액 의사결정</strong>에 사용합니다.
+          </p>
+          <div class="alloc-card" style="margin-bottom:10px;">
+            <div class="cann-card-header"><div class="alloc-card-title">예산 → 예상 결과수 곡선</div><button class="ab-pill" data-pngdownload="alloc-scenario-chart" data-pngname="budget_scenario">⬇ PNG</button></div>
+            <div class="chart-container" style="--chart-h:280px;"><canvas id="alloc-scenario-chart"></canvas></div>
+          </div>
+          <div id="alloc-scenario-table"></div>
+        </section>
+
         <section class="block" id="s-table">
-          <h2 class="section-title"><span class="ix">§4</span>채널별 상세</h2>
+          <h2 class="section-title"><span class="ix">§5</span>채널별 상세</h2>
           <p style="color:var(--text-secondary);font-size:13px;margin:0 0 0.5rem;">
             각 행은 채널의 <strong>이전 관측 합산</strong>과 <strong>제안된 분배 후 예상값</strong>을 함께 표시합니다.
             배분 Cost 셀에 직접 입력하면 그 채널이 잠기고(🔒), 나머지에 자동 재분배됩니다.
@@ -6034,7 +6048,7 @@ function page_5_3() {
       </div>
 
       <section class="block" id="s-algo">
-        <h2 class="section-title"><span class="ix">§5</span>알고리즘 노트</h2>
+        <h2 class="section-title"><span class="ix">§6</span>알고리즘 노트</h2>
         <p>본 페이지는 Campaign Allocator(Streamlit)의 <strong>모드 A · 효율 기반 추천 비중</strong>을 JS로 포팅한 것입니다. 핵심 식:</p>
         ${codeBlock("bash", "Efficiency-based Allocation (Mode A)", `# 1) 채널별 합산
 channel_cost    = Σ cost
@@ -14560,6 +14574,88 @@ function refreshAllocationResults() {
 
   renderAllocItems(items, dailyBudget, tbody, barWrap, legendWrap, mode === "c" ? "mode-c" : "mode-b", { unallocated, overspent, totalAllocated, lockedTotal });
   renderAllocationTotalCard({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
+  renderAllocScenario({ modelsMap, selected, metric, mode, dailyBudget });
+}
+
+/* What-if 시나리오: 현재 예산의 0.5×~2× 구간을 동일 알고리즘으로 재배분해 예상 성과 비교.
+   결과는 lookup 수준 (모델 재적합 없음) — 캐시된 modelsMap을 다른 budget으로 greedy 재실행. */
+function renderAllocScenario({ modelsMap, selected, metric, mode, dailyBudget }) {
+  const host = document.getElementById("alloc-scenario-table");
+  if (!host || !modelsMap || dailyBudget <= 0) { if (host) host.innerHTML = ""; return; }
+  const isRoas = isRoasMetric(metric);
+  const mults = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+  const runAt = (budget) => {
+    const r = mode === "c"
+      ? calculateAllocationModeC({ modelsMap, totalBudget: budget, selectedChannels: selected, overrides: ALLOC_STATE.allocOverrides, metric })
+      : calculateAllocationModeB({ modelsMap, totalBudget: budget, selectedChannels: selected, overrides: ALLOC_STATE.allocOverrides });
+    const totResults = r.items.reduce((s, it) => s + (it.results || 0), 0);
+    const totCost = r.totalAllocated || r.items.reduce((s, it) => s + (it.cost || 0), 0);
+    const avgCpr = totResults > 0 ? totCost / totResults : null; // 내부 CPR
+    return { budget, totResults, totCost, avgCpr };
+  };
+  const scenarios = mults.map(m => ({ m, ...runAt(dailyBudget * m) }));
+  const base = scenarios.find(s => s.m === 1.0);
+
+  const fmtR = (v) => Math.round(v).toLocaleString();
+  const unitLabel = getMetricUnitLabel(metric);
+  const rows = scenarios.map(s => {
+    const dResults = base ? s.totResults - base.totResults : 0;
+    const dCost = base ? s.totCost - base.totCost : 0;
+    // 한계효율: 추가 비용 1단위당 추가 결과 (vs 현재). ROAS면 추가 매출/추가 비용 = 증분 ROAS
+    const marginal = dCost !== 0 ? dResults / dCost : null;
+    const isBase = s.m === 1.0;
+    return `<tr style="${isBase ? 'background:rgba(173,198,255,0.10);' : ''}">
+      <td class="tnum">${s.m}× ${isBase ? '<span style="color:var(--primary,#adc6ff);font-size:10px;">현재</span>' : ''}</td>
+      <td class="tnum">${fmtCurrency(s.budget)}</td>
+      <td class="tnum"><strong>${fmtR(s.totResults)}</strong> ${escapeHtml(unitLabel)}</td>
+      <td class="tnum">${fmtCostMetric(s.avgCpr, metric)}</td>
+      <td class="tnum">${isBase ? '—' : (dResults>=0?'+':'')+fmtR(dResults)}</td>
+      <td class="tnum">${isBase ? '—' : (dCost>=0?'+':'')+fmtCurrency(dCost)}</td>
+      <td class="tnum">${isBase || marginal==null ? '—' : (isRoas ? marginal.toFixed(2)+'×' : fmtCurrency(1/marginal,{metric:true}))}</td>
+    </tr>`;
+  }).join("");
+
+  host.innerHTML = `
+    <div class="table-wrap"><table class="data" style="font-size:11.5px;">
+      <thead><tr>
+        <th>시나리오</th><th>예산(일)</th><th>예상 ${escapeHtml(unitLabel)}수</th><th>예상 평균 ${getCostMetricLabel(metric)}</th>
+        <th>Δ${escapeHtml(unitLabel)} vs 현재</th><th>ΔCost</th><th>증분 ${isRoas ? 'ROAS' : getCostMetricLabel(metric)}</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <p class="muted" style="font-size:11px;margin-top:6px;">증분 ${isRoas?'ROAS':getCostMetricLabel(metric)} = 현재 대비 <strong>추가 비용 1단위가 만드는 추가 ${escapeHtml(unitLabel)}</strong>의 효율. 증액할수록 악화되면(=한계효용 체감) 그 지점이 증액 한계입니다.</p>
+  `;
+  renderAllocScenarioChart(scenarios, metric);
+}
+
+function renderAllocScenarioChart(scenarios, metric) {
+  if (typeof Chart === "undefined") return;
+  const ctx = document.getElementById("alloc-scenario-chart");
+  if (!ctx) return;
+  destroyChartIfExists("alloc-scenario-chart");
+  const unitLabel = getMetricUnitLabel(metric);
+  CHART_INSTANCES["alloc-scenario-chart"] = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: scenarios.map(s => `${s.m}×`),
+      datasets: [{
+        label: `예상 ${unitLabel}수`,
+        data: scenarios.map(s => Math.round(s.totResults)),
+        borderColor: "#adc6ff", backgroundColor: "#adc6ff30", fill: true, tension: 0.3,
+        pointRadius: scenarios.map(s => s.m === 1.0 ? 6 : 3),
+        pointBackgroundColor: scenarios.map(s => s.m === 1.0 ? "#fbbf24" : "#adc6ff"),
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: (c) => `예산 ${fmtCurrency(scenarios[c.dataIndex].budget)} → ${Math.round(scenarios[c.dataIndex].totResults).toLocaleString()} ${unitLabel}` } } },
+      scales: {
+        x: { title: { display: true, text: "예산 배수 (현재 대비)", color: getCssVar('--text-muted') }, ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } },
+        y: { title: { display: true, text: `예상 ${unitLabel}수`, color: getCssVar('--text-muted') }, ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } },
+      },
+    },
+  });
 }
 
 /* 총 합계 카드 — 이전 N일 합산 vs 분배 후 예상 비교 */
@@ -15112,6 +15208,10 @@ function bindBudgetAllocatorHandlers() {
       requestAnimationFrame(() => window.scrollTo(0, scrollY));
     });
   });
+
+  // What-if 시나리오 차트 PNG 다운로드
+  document.querySelectorAll("#s-scenario [data-pngdownload]").forEach(b =>
+    b.addEventListener("click", () => downloadChartAsPNG(b.dataset.pngdownload, b.dataset.pngname)));
 
   const refresh = refreshAllocationResults;
 
