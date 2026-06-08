@@ -9525,6 +9525,7 @@ function page_5_6() {
     toc: [
       { id: "s-prep", title: "데이터 준비" },
       { id: "s-validation", title: "검증" },
+      { id: "s-velocity", title: "Win-rate · Velocity" },
       { id: "s-metrics", title: "소재별 지표" },
       { id: "s-decompose", title: "WLS 분해" },
       { id: "s-fatigue", title: "Fatigue 검출" },
@@ -9537,6 +9538,7 @@ function page_5_6() {
       </section>
 
       ${renderCreativeValidation(c.validation)}
+      ${renderCreativeVelocity(c)}
       ${renderCreativeMetricsTable(c.metrics)}
       ${renderCreativeDecompose(c.decompose)}
       ${renderCreativeFatigue(c.fatigue, c.metrics)}
@@ -9803,6 +9805,71 @@ function renderCreativeNextTest(nextTest) {
         </table>
       </div>
       <p class="muted" style="font-size:11px;margin-top:8px;">⚠ 본 분석은 관찰 데이터 분해. 가설은 5-7 Test Readout(실험)으로 확정 필요.</p>
+    </section>`;
+}
+
+/* Win-rate · Velocity · 라이프사이클 섹션 (기존 캐시 재사용, cache 무수정) */
+function renderCreativeVelocity(c) {
+  const metrics = c.metrics || [];
+  const fatigue = c.fatigue || [];
+  if (!metrics.length) return "";
+  const minImp = CREATIVE_CONFIG.minImpressions;
+  const median = (arr) => {
+    const v = arr.filter(x => x != null && isFinite(x)).sort((a, b) => a - b);
+    if (!v.length) return null;
+    const m = Math.floor(v.length / 2);
+    return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+  };
+  // 충분 노출 소재만 win-rate 대상
+  const elig = metrics.filter(m => (m.impressions || 0) >= minImp);
+  const medCtr = median(elig.map(m => m.ctr));
+  const medCvr = median(elig.map(m => m.cvr));
+  const ctrWinners = elig.filter(m => m.ctr != null && medCtr != null && m.ctr > medCtr);
+  const cvrWinners = elig.filter(m => m.cvr != null && medCvr != null && m.cvr > medCvr);
+  const totalSpend = metrics.reduce((s, m) => s + (m.spend || 0), 0);
+  const winnerSpend = ctrWinners.reduce((s, m) => s + (m.spend || 0), 0);
+
+  // 라이프사이클 (fatigue 기반)
+  const withLife = fatigue.filter(f => f.lifespanDays != null);
+  const avgLife = withLife.length ? withLife.reduce((s, f) => s + f.lifespanDays, 0) / withLife.length : null;
+  const fatiguedN = fatigue.filter(f => f.fatigued).length;
+
+  // Velocity: creative_id별 첫 등장일 → ISO주별 신규 소재 수
+  const rows = getMappedRows();
+  const firstDate = new Map();
+  for (const r of rows) {
+    if (!r.creative_id || !r.date) continue;
+    const cur = firstDate.get(r.creative_id);
+    if (!cur || r.date < cur) firstDate.set(r.creative_id, r.date);
+  }
+  const weekCount = new Map();
+  for (const d of firstDate.values()) {
+    const wk = CREATIVE_STATS.isoWeek(d);
+    weekCount.set(wk, (weekCount.get(wk) || 0) + 1);
+  }
+  const weeks = [...weekCount.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const avgPerWeek = weeks.length ? [...weekCount.values()].reduce((a, b) => a + b, 0) / weeks.length : 0;
+
+  const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v * 100).toFixed(2) + "%";
+  const pctOf = (n, d) => d > 0 ? (n / d * 100).toFixed(0) + "%" : "—";
+
+  return `
+    <section class="block" id="s-velocity">
+      <h2 class="section-title"><span class="ix">§2.5</span>Win-rate · Velocity · 라이프사이클</h2>
+      <p class="muted">소재 운영의 건강도: 얼마나 이기고(win-rate), 얼마나 빨리 갈아끼우고(velocity), 얼마나 오래 사는가(lifespan).</p>
+      <div class="ab-stat-row" style="margin:8px 0 12px;">
+        <div class="ab-stat"><div class="ab-stat-label">CTR Win-rate</div><div class="ab-stat-value tnum">${pctOf(ctrWinners.length, elig.length)}</div><div class="ab-stat-hint">중앙값 초과 ${ctrWinners.length}/${elig.length} (≥${minImp.toLocaleString()} impr)</div></div>
+        <div class="ab-stat"><div class="ab-stat-label">CVR Win-rate</div><div class="ab-stat-value tnum">${pctOf(cvrWinners.length, elig.length)}</div><div class="ab-stat-hint">중앙값 ${fmtPct(medCvr)} 초과</div></div>
+        <div class="ab-stat"><div class="ab-stat-label">승자 소재 비용 점유</div><div class="ab-stat-value tnum">${pctOf(winnerSpend, totalSpend)}</div><div class="ab-stat-hint">CTR 승자에 쓴 비용 비중</div></div>
+        <div class="ab-stat"><div class="ab-stat-label">주당 신규 소재</div><div class="ab-stat-value tnum">${avgPerWeek.toFixed(1)}</div><div class="ab-stat-hint">${weeks.length}주 평균</div></div>
+        <div class="ab-stat"><div class="ab-stat-label">평균 수명</div><div class="ab-stat-value tnum">${avgLife != null ? avgLife.toFixed(0) + "일" : "—"}</div></div>
+        <div class="ab-stat"><div class="ab-stat-label">Fatigue 소재</div><div class="ab-stat-value tnum ${fatiguedN > 0 ? 'neg' : 'pos'}">${pctOf(fatiguedN, fatigue.length)}</div><div class="ab-stat-hint">${fatiguedN}/${fatigue.length}</div></div>
+      </div>
+      <div class="callout"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">
+        <strong>Win-rate</strong>가 50%를 크게 밑돌면 소재 기획 적중률이 낮은 것 — 컨셉 다양화(5-6 §6 Next-test) 필요.
+        <strong>주당 신규 소재</strong>가 너무 적으면 fatigue를 못 따라잡습니다 (벤치마크: 활성 소재의 20~30% / 주).
+        <strong>승자 비용 점유</strong>가 낮으면 좋은 소재에 예산이 안 실리고 있다는 신호입니다.
+      </p></div></div>
     </section>`;
 }
 
