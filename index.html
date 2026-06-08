@@ -2740,6 +2740,7 @@ const IA = [
     items: [
       { id: "5-4", title: "A/B Test Calculator", desc: "Sample Size 계산 + Frequentist/Bayesian 결과 분석" },
       { id: "5-7", title: "Test Readout", desc: "실험 결과 2단 게이트 (Frequentist + Bayesian dual) → arm별 verdict" },
+      { id: "5-15", title: "Incrementality (Holdout)", desc: "test vs control 증분 전환·lift·iROAS + 유의성" },
     ],
   },
   {
@@ -2860,6 +2861,8 @@ const STANDARD_FIELDS = {
   denominator:    { label: "분모",         aliases: ["den", "denominator", "전체수", "노출수"], type: "number", required: false, group: "Test Readout" },
   start_date:     { label: "시작일",       aliases: ["start", "start date", "시작일자"], type: "date",   required: false, group: "Test Readout" },
   end_date:       { label: "종료일",       aliases: ["end", "end date", "종료일자"], type: "date",   required: false, group: "Test Readout" },
+  // === Incrementality / Holdout 전용 (5-15) ===
+  holdout_group:  { label: "Holdout 그룹",  aliases: ["holdout", "holdout_group", "group_type", "test_control", "노출그룹", "홀드아웃"], type: "string", required: false, group: "Incrementality" },
   // === Quality Analyzer 전용 (5-8) — 코호트 리텐션/LTV ===
   cohort_date:    { label: "코호트 일자",   aliases: ["cohort", "cohort_date", "install_date", "설치일", "코호트일자"], type: "date", required: false, group: "Quality" },
   day_offset:     { label: "Day Offset",    aliases: ["day", "d_offset", "day_n", "days_since_install"], type: "number", required: false, group: "Quality" },
@@ -5254,7 +5257,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-10", "5-11", "5-12", "5-13", "5-14", "5-16"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-10", "5-11", "5-12", "5-13", "5-14", "5-16", "5-15"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -10623,6 +10626,134 @@ if (typeof window !== "undefined") {
 }
 
 /* ============================================================
+ * Incrementality / Holdout readout (5-15) — 실험 그룹
+ * test(노출) vs control(holdout) → 증분 전환·lift·iROAS + 유의성
+ * ============================================================ */
+const INCR_MATH = {
+  // test/control 집계 → 증분 지표
+  // test:{num,den,spend,rev}, control:{num,den}
+  compute(test, control) {
+    const tRate = test.den > 0 ? test.num / test.den : null;
+    const cRate = control.den > 0 ? control.num / control.den : null;
+    if (tRate == null || cRate == null) return null;
+    // 반사실(counterfactual): 광고 없었으면 test 그룹도 control 전환율
+    const expected = test.den * cRate;
+    const incrementalConv = test.num - expected;           // 증분 전환
+    const liftAbs = tRate - cRate;
+    const liftRel = cRate > 0 ? (tRate - cRate) / cRate : null;
+    // 증분 매출: test 전환당 매출 가정 → 증분 전환 × (rev/conv)
+    const revPerConv = (test.rev != null && test.num > 0) ? test.rev / test.num : null;
+    const incrementalRev = (revPerConv != null) ? incrementalConv * revPerConv : null;
+    const iroas = (incrementalRev != null && test.spend > 0) ? incrementalRev / test.spend : null;
+    const cpia = (test.spend > 0 && incrementalConv > 0) ? test.spend / incrementalConv : null; // 증분 전환당 비용
+    return { tRate, cRate, expected, incrementalConv, liftAbs, liftRel, incrementalRev, iroas, cpia };
+  },
+};
+function parseHoldoutGroup(v) {
+  const s = String(v || "").trim().toLowerCase();
+  if (s.includes("control") || s.includes("holdout") || s.includes("hold") || s === "0" || s.includes("off") || s.includes("대조") || s.includes("홀드")) return "control";
+  if (s.includes("test") || s.includes("exposed") || s.includes("treat") || s === "1" || s.includes("on") || s.includes("노출")) return "test";
+  return null;
+}
+function buildIncrementality() {
+  const rows = getMappedRows();
+  const hasExp = (new Set(Object.values(CSV_STATE.mapping||{}))).has("experiment_id");
+  const exps = new Map();
+  const validation = { errors: [], dropped: 0 };
+  for (const r of rows) {
+    const grp = parseHoldoutGroup(r.holdout_group);
+    if (!grp) { validation.dropped++; continue; }
+    const num = Number(r.numerator), den = Number(r.denominator);
+    if (!isFinite(num) || !isFinite(den) || den <= 0 || num < 0) { validation.errors.push(`잘못된 분자/분모: ${r.holdout_group}`); validation.dropped++; continue; }
+    const eid = hasExp ? (r.experiment_id || "(미지정)") : "전체";
+    if (!exps.has(eid)) exps.set(eid, { eid, test:{num:0,den:0,spend:0,rev:0}, control:{num:0,den:0,spend:0,rev:0} });
+    const e = exps.get(eid)[grp];
+    e.num += num; e.den += den;
+    e.spend += Number(r.spend)||0;
+    if (r.revenue_d7 != null && r.revenue_d7 !== "") e.rev += Number(r.revenue_d7)||0;
+  }
+  const out = [];
+  for (const e of exps.values()) {
+    const res = INCR_MATH.compute(e.test, e.control);
+    let sig = null;
+    if (e.test.den > 0 && e.control.den > 0) {
+      sig = CREATIVE_STATS.twoPropZ(e.control.num, e.control.den, e.test.num, e.test.den);
+    }
+    out.push({ ...e, res, sig });
+  }
+  return { experiments: out, validation };
+}
+function page_5_15() {
+  const meta = findMeta("5-15");
+  const missing = checkRequiredForTool("5-15");
+  if (missing.length>0 || !CSV_STATE.headers.length) {
+    return pageShell(meta, {
+      deck: "Holdout 실험 결과 — test(노출) vs control(holdout) 그룹의 증분 전환·lift·iROAS를 계산합니다. 어트리뷰션이 아닌 진짜 증분 측정.",
+      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+      summary: "필수 컬럼: holdout_group(test/control), numerator(전환수), denominator(그룹 사용자수). 옵션: experiment_id, spend(증분 비용), revenue_d7(iROAS). 반사실 = control 전환율로 test를 환산해 증분 산출.",
+      toc: [{ id:"s-prep", title:"데이터 준비" }],
+      body: renderInlineCsvUpload("5-15"),
+    });
+  }
+  const { experiments, validation } = buildIncrementality();
+  const fmtPct = (v)=> v==null||!isFinite(v) ? "—" : (v*100).toFixed(2)+"%";
+  const fmtX = (v)=> v==null||!isFinite(v) ? "—" : v.toFixed(2)+"×";
+  return pageShell(meta, {
+    deck: "Holdout 증분 측정: 증분 전환 = test 전환 − (test 인원 × control 전환율). iROAS = 증분 매출 / 비용.",
+    chips: `<span class="chip"><span class="dot"></span>도구 · Incrementality</span><span class="chip ok"><span class="dot"></span>실험 ${experiments.length}개</span>${authStatusChip()}`,
+    summary: "어트리뷰션 숫자는 과대계상되기 쉬움. holdout(control)과 비교한 증분만이 진짜 기여입니다. lift 유의성은 two-proportion z-test로 검정.",
+    toc: [{ id:"s-prep", title:"데이터 준비" }, { id:"s-incr", title:"증분 결과" }],
+    body: `
+      <section class="block" id="s-prep">${renderInlineCsvUpload("5-15")}</section>
+      ${validation.dropped>0||validation.errors.length ? `<section class="block"><div class="callout warn"><div class="ico">!</div><div class="body"><strong>${validation.dropped}개 row 제외</strong> — holdout_group이 test/control로 인식 안 되거나 분자/분모 오류. (test/control/holdout/노출/대조 등 인식)</div></div></section>` : ""}
+      <section class="block" id="s-incr">
+        <h2 class="section-title"><span class="ix">§1</span>증분 결과 (test vs control)</h2>
+        ${experiments.length ? experiments.map(e => {
+          const r = e.res;
+          if (!r) return `<div class="callout warn"><div class="ico">!</div><div class="body"><strong>${escapeHtml(e.eid)}</strong>: test/control 양쪽 데이터 필요</div></div>`;
+          const sigTxt = e.sig ? (e.sig.p < 0.05 ? `<span style="color:#22c55e;">유의 (p=${e.sig.p.toFixed(4)})</span>` : `<span style="color:var(--text-muted);">무유의 (p=${e.sig.p.toFixed(3)})</span>`) : "—";
+          const liftPositive = r.liftRel != null && r.liftRel > 0;
+          return `
+            <div class="alloc-card" style="margin-bottom:14px;border-left:3px solid ${liftPositive && e.sig && e.sig.p<0.05 ? '#22c55e' : '#fbbf24'};">
+              <div class="alloc-card-title">${escapeHtml(e.eid)}</div>
+              <div class="ab-stat-row" style="margin:8px 0;">
+                <div class="ab-stat"><div class="ab-stat-label">Control 전환율</div><div class="ab-stat-value tnum">${fmtPct(r.cRate)}</div><div class="ab-stat-hint">${e.control.num.toLocaleString()}/${e.control.den.toLocaleString()}</div></div>
+                <div class="ab-stat"><div class="ab-stat-label">Test 전환율</div><div class="ab-stat-value tnum">${fmtPct(r.tRate)}</div><div class="ab-stat-hint">${e.test.num.toLocaleString()}/${e.test.den.toLocaleString()}</div></div>
+                <div class="ab-stat"><div class="ab-stat-label">상대 Lift</div><div class="ab-stat-value tnum ${liftPositive?'pos':'neg'}">${r.liftRel!=null?(r.liftRel>0?'+':'')+(r.liftRel*100).toFixed(1)+'%':'—'}</div></div>
+                <div class="ab-stat"><div class="ab-stat-label">증분 전환</div><div class="ab-stat-value tnum">${Math.round(r.incrementalConv).toLocaleString()}</div><div class="ab-stat-hint">test − 반사실</div></div>
+                ${r.cpia!=null?`<div class="ab-stat"><div class="ab-stat-label">증분 전환당 비용</div><div class="ab-stat-value tnum">${fmtCurrency(r.cpia)}</div></div>`:""}
+                ${r.iroas!=null?`<div class="ab-stat"><div class="ab-stat-label">iROAS</div><div class="ab-stat-value tnum ${r.iroas>=1?'pos':'neg'}">${fmtX(r.iroas)}</div><div class="ab-stat-hint">증분매출/비용</div></div>`:""}
+                <div class="ab-stat"><div class="ab-stat-label">유의성</div><div class="ab-stat-value" style="font-size:13px;">${sigTxt}</div></div>
+              </div>
+            </div>`;
+        }).join("") : `<p class="muted">test/control 그룹 데이터가 없습니다.</p>`}
+        <div class="callout" style="margin-top:8px;"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">
+          <strong>증분 전환</strong> = test 전환 − (test 인원 × control 전환율). 어트리뷰션이 "광고 클릭 후 전환"을 다 카운트하는 것과 달리, holdout은 <strong>광고가 없었어도 일어났을 전환(control)</strong>을 빼서 진짜 기여만 봅니다. iROAS &lt; 1이면 증분 기준 적자, lift가 통계적으로 유의해야 신뢰 가능합니다.
+        </p></div></div>
+      </section>
+    `,
+  });
+}
+PAGE_RENDERERS["5-15"] = page_5_15;
+function bindIncrHandlers() { bindInlineCsvHandlers(); }
+function runIncrTests(verbose=true){
+  const results=[];
+  // control 1000명 5% (50), test 1000명 8% (80) → 반사실 50, 증분 30, lift +60%
+  const r = INCR_MATH.compute({num:80,den:1000,spend:0,rev:0},{num:50,den:1000});
+  results.push({test:"T1 · 증분 전환 30", expected:"30", actual:String(Math.round(r.incrementalConv)), pass:Math.round(r.incrementalConv)===30?"✓":"✗"});
+  results.push({test:"T2 · 상대 lift +60%", expected:"0.6", actual:r.liftRel.toFixed(2), pass:Math.abs(r.liftRel-0.6)<1e-9?"✓":"✗"});
+  // iROAS: spend 300, rev 800 (test), revPerConv=10 → incrementalRev=300 → iroas=1.0
+  const r2 = INCR_MATH.compute({num:80,den:1000,spend:300,rev:800},{num:50,den:1000});
+  results.push({test:"T3 · iROAS=1.0", expected:"1", actual:r2.iroas.toFixed(2), pass:Math.abs(r2.iroas-1)<1e-9?"✓":"✗"});
+  // parseHoldoutGroup
+  const pg = ['test','control','holdout','노출','대조군','exposed'].map(parseHoldoutGroup);
+  results.push({test:"T4 · 그룹 파싱", expected:"test,control,control,test,control,test", actual:pg.join(","), pass:pg.join(",")==="test,control,control,test,control,test"?"✓":"✗"});
+  if(verbose){console.log("%c=== Incrementality · Golden ===","color:#adc6ff;font-weight:bold;");console.table(results);}
+  return results;
+}
+if(typeof window!=="undefined"){ window.runIncrTests=runIncrTests; window.INCR_MATH=INCR_MATH; }
+
+/* ============================================================
  * Quality Analyzer (5-8) — 코호트 리텐션 곡선 + LTV 외삽
  * grain: cohort_date × day_offset (선택적으로 channel/country/platform 분기)
  * ============================================================ */
@@ -13063,6 +13194,11 @@ function bindCSVPageHandlers() {
   // ----- 5-16: ROAS Maturation 핸들러 -----
   if (document.querySelector("[data-mat-unit]")) {
     bindMaturationHandlers();
+  }
+
+  // ----- 5-15: Incrementality 핸들러 -----
+  if (document.getElementById("s-incr")) {
+    bindIncrHandlers();
   }
 
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
@@ -15754,6 +15890,7 @@ const TOOL_REQUIRED_FIELDS = {
   "5-13": ["date", "cost", { oneOf: ["installs", "actions"] }],
   "5-14": ["date", { oneOf: ["cost", "installs", "actions", "clicks", "impressions"] }],
   "5-16": ["cost", { oneOf: ["revenue_d0", "revenue_d7", "revenue_d14"] }],
+  "5-15": ["holdout_group", "numerator", "denominator"],
 };
 
 /* 도구별 옵션 필드 — 매핑하면 추가 기능 활성화. */
@@ -15869,6 +16006,12 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "revenue_d0",  unlocks: "D0 ROAS (성숙곡선 시작점)" },
     { key: "revenue_d7",  unlocks: "D7 ROAS" },
     { key: "revenue_d14", unlocks: "D14 ROAS (외삽 정확도 ↑)" },
+  ],
+  "5-15": [
+    { key: "experiment_id", unlocks: "실험별 분리 readout" },
+    { key: "spend",         unlocks: "iROAS (증분 매출 / 비용)" },
+    { key: "revenue_d7",    unlocks: "증분 매출·iROAS" },
+    { key: "arm_label",     unlocks: "그룹 라벨 표시" },
   ],
 };
 
