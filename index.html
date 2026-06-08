@@ -2722,6 +2722,7 @@ const IA = [
       { id: "5-12", title: "Segment Explorer", desc: "국가×채널×플랫폼 효율 매트릭스 + 드릴다운" },
       { id: "5-13", title: "Executive Scorecard", desc: "핵심 KPI 단일 뷰 + WoW 변화 + 목표 대비" },
       { id: "5-14", title: "Anomaly 탐지", desc: "지표 급등·급락 자동 감지 (어제 뭐가 바뀌었나)" },
+      { id: "5-16", title: "ROAS Maturation", desc: "조기 ROAS(D0/D7/D14)로 성숙 ROAS(D90/D180) 예측" },
     ],
   },
   {
@@ -5253,7 +5254,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-10", "5-11", "5-12", "5-13", "5-14"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-10", "5-11", "5-12", "5-13", "5-14", "5-16"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -12055,6 +12056,130 @@ function runScorecardAnomalyTests(verbose=true){
 }
 if(typeof window!=="undefined"){ window.runScorecardAnomalyTests=runScorecardAnomalyTests; window.ANOMALY_MATH=ANOMALY_MATH; }
 
+/* ============================================================
+ * ROAS Maturation (5-16) — 효율 그룹
+ * 조기 ROAS(D0/D7/D14)로 성숙 ROAS(D30/D90/D180) 예측 (누적 ROAS power 외삽)
+ * ============================================================ */
+const MATURATION_STATE = { unitField: "_all" };
+const MATURATION_MATH = {
+  // 누적 ROAS 점들 [{day, roas}] → power fit y=a*(day+1)^b → 임의 day 예측
+  fit(points) {
+    const v = points.filter(p => p.roas != null && isFinite(p.roas) && p.roas > 0);
+    if (v.length < 2) { const f = v[0]?.roas ?? null; return f != null ? { predict: () => f, kind:"flat" } : null; }
+    const xs = v.map(p => Math.log(p.day + 1)), ys = v.map(p => Math.log(p.roas));
+    const n = xs.length, mx = xs.reduce((a,b)=>a+b,0)/n, my = ys.reduce((a,b)=>a+b,0)/n;
+    let num=0, den=0; for (let i=0;i<n;i++){ num+=(xs[i]-mx)*(ys[i]-my); den+=(xs[i]-mx)**2; }
+    if (den===0) { const f=v[v.length-1].roas; return { predict:()=>f, kind:"flat" }; }
+    const b=num/den, a=Math.exp(my-b*mx);
+    return { predict:(d)=>a*Math.pow(d+1,b), a, b, kind:"power" };
+  },
+};
+function buildMaturationRows() {
+  const rows = getMappedRows();
+  const unit = MATURATION_STATE.unitField;
+  const map = new Map();
+  for (const r of rows) {
+    const k = unit==="_all" ? "전체" : (String(r[unit]??"").trim()||"(미지정)");
+    if (!map.has(k)) map.set(k, { unit:k, cost:0, r0:0, r7:0, r14:0, h0:false, h7:false, h14:false });
+    const b = map.get(k);
+    b.cost += Number(r.cost)||0;
+    if (r.revenue_d0!=null&&r.revenue_d0!=="") { b.r0+=Number(r.revenue_d0)||0; b.h0=true; }
+    if (r.revenue_d7!=null&&r.revenue_d7!=="") { b.r7+=Number(r.revenue_d7)||0; b.h7=true; }
+    if (r.revenue_d14!=null&&r.revenue_d14!=="") { b.r14+=Number(r.revenue_d14)||0; b.h14=true; }
+  }
+  return [...map.values()].map(b => {
+    const roas = (rev) => b.cost>0 ? rev/b.cost : null;
+    const pts = [];
+    if (b.h0)  pts.push({ day:0,  roas: roas(b.r0) });
+    if (b.h7)  pts.push({ day:7,  roas: roas(b.r7) });
+    if (b.h14) pts.push({ day:14, roas: roas(b.r14) });
+    const fit = MATURATION_MATH.fit(pts);
+    const roas7 = b.h7 ? roas(b.r7) : null;
+    const pred = (d) => fit ? fit.predict(d) : null;
+    return {
+      unit:b.unit, cost:b.cost,
+      roas0: b.h0?roas(b.r0):null, roas7, roas14: b.h14?roas(b.r14):null,
+      roas30: pred(30), roas90: pred(90), roas180: pred(180),
+      maturation90: (roas7!=null && pred(90)!=null && roas7>0) ? pred(90)/roas7 : null,
+      fitKind: fit?.kind||"none",
+    };
+  }).sort((a,b)=>b.cost-a.cost);
+}
+function page_5_16() {
+  const meta = findMeta("5-16");
+  const missing = checkRequiredForTool("5-16");
+  if (missing.length>0 || !CSV_STATE.headers.length) {
+    return pageShell(meta, {
+      deck: "조기 ROAS(D0/D7/D14)로 성숙 ROAS(D30/D90/D180)를 예측합니다. 효율 그룹 CSV 공유.",
+      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+      summary: "누적 ROAS를 power 외삽해 성숙 시점 ROAS를 추정. 조기 ROAS만 보고 끄는 판단의 오류(아직 덜 성숙)를 방지. ⚠ 외삽은 D14 밖이라 보수적으로 해석.",
+      toc: [{ id:"s-prep", title:"데이터 준비" }],
+      body: renderInlineCsvUpload("5-16"),
+    });
+  }
+  const rows = buildMaturationRows();
+  return pageShell(meta, {
+    deck: "조기→성숙 ROAS 예측. D7 ROAS × 성숙배수 = 예상 D90 ROAS. 효율 그룹 CSV 공유.",
+    chips: `<span class="chip"><span class="dot"></span>도구 · ROAS Maturation</span><span class="chip ok"><span class="dot"></span>${rows.length}개 단위</span>${authStatusChip()}`,
+    summary: "누적 ROAS(D0/D7/D14) power 외삽으로 D30/D90/D180 예측. 성숙배수 = D90/D7. ⚠ 외삽 신뢰구간 좁게, 실측으로 보정.",
+    toc: [{ id:"s-prep", title:"데이터 준비" }, { id:"s-mat", title:"성숙 예측" }],
+    body: `
+      <section class="block" id="s-prep">${renderInlineCsvUpload("5-16")}</section>
+      <section class="block" id="s-mat">
+        <h2 class="section-title"><span class="ix">§1</span>ROAS 성숙 예측</h2>
+        <div class="ab-pillgroup">
+          <span class="ab-pillgroup-label">단위</span>
+          ${[["_all","전체"],["channel","채널"],["campaign_name","캠페인"]].map(([k,l])=>{
+            const av = k==="_all" || (new Set(Object.values(CSV_STATE.mapping||{}))).has(k);
+            return `<button class="ab-pill ${MATURATION_STATE.unitField===k?'active':''} ${!av?'disabled':''}" ${av?`data-mat-unit="${k}"`:'disabled'}>${l}${!av?' 🔒':''}</button>`;
+          }).join("")}
+        </div>
+        <div class="table-wrap" style="margin-top:10px;"><table class="data" style="font-size:11.5px;">
+          <thead><tr><th>단위</th><th>비용</th><th>ROAS D0</th><th>D7</th><th>D14</th><th>예측 D30</th><th>예측 D90</th><th>예측 D180</th><th>성숙배수(D90/D7)</th><th>외삽</th></tr></thead>
+          <tbody>
+            ${rows.slice(0,60).map(r=>{
+              const pct = (v)=> v==null||!isFinite(v) ? "—" : (v*100).toFixed(0)+"%";
+              return `<tr>
+                <td><strong>${escapeHtml(String(r.unit).slice(0,24))}</strong></td>
+                <td class="tnum">${fmtCurrency(r.cost)}</td>
+                <td class="tnum">${pct(r.roas0)}</td>
+                <td class="tnum">${pct(r.roas7)}</td>
+                <td class="tnum">${pct(r.roas14)}</td>
+                <td class="tnum">${pct(r.roas30)}</td>
+                <td class="tnum"><strong>${pct(r.roas90)}</strong></td>
+                <td class="tnum">${pct(r.roas180)}</td>
+                <td class="tnum">${r.maturation90!=null?r.maturation90.toFixed(2)+"×":"—"}</td>
+                <td class="tnum" style="color:var(--text-muted);font-size:10px;">${r.fitKind}</td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table></div>
+        <div class="callout" style="margin-top:10px;"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">조기 ROAS가 낮아 보여도 <strong>성숙배수</strong>가 크면(예: 2×+) D90엔 손익분기를 넘길 수 있습니다. 조기 D7만 보고 끄지 말고 성숙 예측을 함께 보세요. ⚠ D14 이후는 외삽이므로 실측 누적되면 재확인.</p></div></div>
+      </section>
+    `,
+  });
+}
+PAGE_RENDERERS["5-16"] = page_5_16;
+function bindMaturationHandlers() {
+  bindInlineCsvHandlers();
+  document.querySelectorAll("[data-mat-unit]").forEach(b=>b.addEventListener("click",()=>{ if(b.classList.contains("disabled"))return; MATURATION_STATE.unitField=b.dataset.matUnit; navigate("5-16"); }));
+}
+function runMaturationTests(verbose=true){
+  const results=[];
+  // roas = 0.1*(day+1)^0.5: D0=0.1, D7≈0.283, D14≈0.387 → fit a=0.1,b=0.5 → D90 pred 0.1*sqrt(91)=0.954
+  const fit=MATURATION_MATH.fit([{day:0,roas:0.1},{day:7,roas:0.1*Math.sqrt(8)},{day:14,roas:0.1*Math.sqrt(15)}]);
+  const p90=fit.predict(90);
+  results.push({test:"T1 · power fit D90", expected:"~0.954", actual:p90.toFixed(4), pass: Math.abs(p90-0.1*Math.sqrt(91))<1e-6?"✓":"✗"});
+  // 1점 → flat
+  const f1=MATURATION_MATH.fit([{day:7,roas:0.3}]);
+  results.push({test:"T2 · 1점 flat", expected:"0.3", actual:String(f1.predict(90)), pass:f1.predict(90)===0.3?"✓":"✗"});
+  // 0점 → null
+  results.push({test:"T3 · 0점 null", expected:"null", actual:String(MATURATION_MATH.fit([])), pass:MATURATION_MATH.fit([])===null?"✓":"✗"});
+  if(verbose){console.log("%c=== Maturation · Golden ===","color:#adc6ff;font-weight:bold;");console.table(results);}
+  return results;
+}
+if(typeof window!=="undefined"){ window.runMaturationTests=runMaturationTests; window.MATURATION_MATH=MATURATION_MATH; }
+
 /* 붙여넣은 텍스트에서 숫자 추출 → {n, mean, stdev(표본 표준편차), cv}
    천단위 콤마 처리: 줄바꿈/탭이 있으면(컬럼 붙여넣기) 콤마=천단위 → 제거,
    한 줄이면(CSV) 콤마=구분자. ₩/$ 등 통화기호·공백 제거. */
@@ -12933,6 +13058,11 @@ function bindCSVPageHandlers() {
   // ----- 5-14: Anomaly 탐지 핸들러 -----
   if (document.querySelector("[data-anom-metric]")) {
     bindAnomalyHandlers();
+  }
+
+  // ----- 5-16: ROAS Maturation 핸들러 -----
+  if (document.querySelector("[data-mat-unit]")) {
+    bindMaturationHandlers();
   }
 
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
@@ -15623,6 +15753,7 @@ const TOOL_REQUIRED_FIELDS = {
   "5-12": ["cost", { oneOf: ["channel", "country", "platform", "campaign_name"] }, { oneOf: ["installs", "actions"] }],
   "5-13": ["date", "cost", { oneOf: ["installs", "actions"] }],
   "5-14": ["date", { oneOf: ["cost", "installs", "actions", "clicks", "impressions"] }],
+  "5-16": ["cost", { oneOf: ["revenue_d0", "revenue_d7", "revenue_d14"] }],
 };
 
 /* 도구별 옵션 필드 — 매핑하면 추가 기능 활성화. */
@@ -15732,6 +15863,13 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "impressions", unlocks: "노출·CPM 이상 감지" },
     { key: "revenue_d7",  unlocks: "매출·ROAS 이상 감지" },
   ],
+  "5-16": [
+    { key: "channel",     unlocks: "채널별 ROAS 성숙 분리" },
+    { key: "campaign_name", unlocks: "캠페인별 성숙" },
+    { key: "revenue_d0",  unlocks: "D0 ROAS (성숙곡선 시작점)" },
+    { key: "revenue_d7",  unlocks: "D7 ROAS" },
+    { key: "revenue_d14", unlocks: "D14 ROAS (외삽 정확도 ↑)" },
+  ],
 };
 
 const TOOL_CSV_SNAPSHOTS = {};  // toolId → { fileName, raw, headers, mapping, selectedCohort }
@@ -15746,7 +15884,8 @@ const TOOL_GROUP = {
   "5-6": "creative",
   "5-4": "experiment", "5-7": "experiment", "5-15": "experiment",
   "5-5": "cannibalization",
-  "5-8": "cohort", "5-16": "cohort",
+  "5-8": "cohort",
+  "5-16": "efficiency",  // ROAS maturation: 일별 캠페인 revenue_d 컬럼 사용
 };
 
 function saveCsvToTool(toolId) {
