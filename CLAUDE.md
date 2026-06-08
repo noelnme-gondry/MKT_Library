@@ -216,6 +216,7 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 - **navigate 재렌더 시 스크롤 top 리셋** (PR #35): `navigate()`가 항상 `scrollTo(top:0)` 하면, 필터/토글/매핑 등 같은 페이지 in-place 재렌더마다 화면이 맨 위로 튐. **중앙 해결**: navigate 진입 시 `prevScrollY`+`prevHash` 캡처 → 끝에서 `newHash === prevHash`(같은 페이지)면 `scrollTo(prevScrollY)`, 다른 페이지면 top. 핸들러마다 rAF로 개별 보존하지 말고 navigate 한 곳에서 처리.
 - **objective metric이 getAvailableMetrics에서 누락 → 조용히 reset** (PR #37): 5-3 ROAS 목표가 `metric=revenue_d7`를 세팅해도, §2 성과지표 select 렌더의 `if(!av[metric]) metric=firstAvailable` 가드가 `getAvailableMetrics()`에 revenue_d7 키가 없어 metric을 installs로 되돌림 → 라벨이 CPI로 표시. **교훈**: objective↔metric 매핑 추가 시 `getAvailableMetrics()` + dropdown option + firstAvailable 목록 3곳을 같이 갱신. availability 맵에 빠진 metric은 select 가드가 silently override.
 - **ROAS 뷰 = display-invert (y=1/CPR), 배분은 CPR 공간 유지** (PR #37): 파이프라인 전체가 `y=cost/result`(CPR, 낮을수록 긍정) 기반. ROAS(높을수록 긍정)는 파이프라인을 뒤집지 말고 **표시층에서만** 반전: 차트 점/추세선 y=1/CPR(raw, 정규화 bypass), 축/툴팁 라벨, 표 값은 `fmtCostMetric(cpr, metric)`(ROAS면 1/CPR을 %로). 배분 greedy/weight는 CPR 그대로 → 수치 byte-identical. delta 화살표/색은 display-space에서 isRoas면 d>0이 긍정.
+- **ROAS는 CSV/XLSX export도 같이 반전** (PR #43): display-invert(PR #37)는 화면만 고쳤음. export(`downloadChannelCSV`/`buildChannelSheetAOA`/`getModelFormula`)는 CPR 모델을 라벨만 ROAS로 바꿔 내보내 `predicted_cpr` 컬럼·CPR 값이 그대로 나옴 → 사용자 혼란. export도 ROAS면 컬럼명 `predicted_roas`/`roas`, 값 `1/CPR`, Excel 공식 `=1/(CPR식)`, marginal_cpr 컬럼은 ROAS 시트에서 생략. **교훈**: 표시 반전 작업 시 화면+export를 한 세트로 본다.
 
 ---
 
