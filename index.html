@@ -13649,46 +13649,46 @@ function recommendSafeFit(allFits) {
    - 관측 데이터: date, cost, CPR (Recent/Older 표시)
    - 예측 곡선: 관측 cost 범위 21개 점의 predict 값 */
 
-function getModelFormula(model, metricLabel = "CPR") {
+function getModelFormula(model, metricLabel = "CPR", isRoas = false) {
+  // 모델은 항상 CPR(cost/result) 공간에서 적합됨. ROAS = 1 / CPR.
+  // isRoas면 Excel 공식/수식 텍스트를 1/(CPR식)으로 감싸 ROAS를 직접 출력.
   const t = model.type;
   const round = (n) => Number(n.toFixed(6));
+  let innerEN, innerKR, innerText, params;
   if (t === "Linear") {
     const { a, b } = model.params;
-    return {
-      text: `${metricLabel} = ${round(a)} × Cost + ${round(b)}`,
-      excelEN: `=${round(a)}*A2+${round(b)}`,
-      excelKR: `=${round(a)}*A2+${round(b)}`,  // Linear는 인자 구분자 없어서 동일
-      params: { a, b },
-    };
-  }
-  if (t === "Log") {
+    innerEN = `${round(a)}*A2+${round(b)}`; innerKR = innerEN;
+    innerText = `${round(a)} × Cost + ${round(b)}`; params = { a, b };
+  } else if (t === "Log") {
     const { a, b } = model.params;
-    return {
-      text: `${metricLabel} = ${round(a)} × LN(Cost) + ${round(b)}`,
-      excelEN: `=${round(a)}*LN(A2)+${round(b)}`,
-      excelKR: `=${round(a)}*LN(A2)+${round(b)}`,
-      params: { a, b },
-    };
-  }
-  if (t === "Poly2") {
+    innerEN = `${round(a)}*LN(A2)+${round(b)}`; innerKR = innerEN;
+    innerText = `${round(a)} × LN(Cost) + ${round(b)}`; params = { a, b };
+  } else if (t === "Poly2") {
     const { a, b, c } = model.params;
-    return {
-      text: `${metricLabel} = ${round(a)} × Cost^2 + ${round(b)} × Cost + ${round(c)}`,
-      excelEN: `=${round(a)}*A2^2+${round(b)}*A2+${round(c)}`,
-      excelKR: `=${round(a)}*A2^2+${round(b)}*A2+${round(c)}`,
-      params: { a, b, c },
-    };
-  }
-  if (t === "Power") {
+    innerEN = `${round(a)}*A2^2+${round(b)}*A2+${round(c)}`; innerKR = innerEN;
+    innerText = `${round(a)} × Cost^2 + ${round(b)} × Cost + ${round(c)}`; params = { a, b, c };
+  } else if (t === "Power") {
     const { a, b } = model.params;
+    innerEN = `${round(a)}*POWER(A2,${round(b)})`;
+    innerKR = `${round(a)}*POWER(A2;${round(b)})`;
+    innerText = `${round(a)} × Cost^${round(b)}`; params = { a, b };
+  } else {
+    return null;
+  }
+  if (isRoas) {
     return {
-      text: `${metricLabel} = ${round(a)} × Cost^${round(b)}`,
-      excelEN: `=${round(a)}*POWER(A2,${round(b)})`,
-      excelKR: `=${round(a)}*POWER(A2;${round(b)})`,
-      params: { a, b },
+      text: `${metricLabel} = 1 / ( ${innerText} )   [내부 모델: CPR = ${innerText}]`,
+      excelEN: `=1/(${innerEN})`,
+      excelKR: `=1/(${innerKR})`,
+      params, isRoas: true, cprText: `CPR = ${innerText}`,
     };
   }
-  return null;
+  return {
+    text: `${metricLabel} = ${innerText}`,
+    excelEN: `=${innerEN}`,
+    excelKR: `=${innerKR}`,
+    params, isRoas: false,
+  };
 }
 
 function csvCell(s) {
@@ -13718,7 +13718,11 @@ function downloadChannelCSV(metaOrChannel, metricMaybe, metaMaybe) {
   if (!meta || !meta.model) return;
   const metricLabel = getCostMetricLabel(metric);
   const unitLabel = getMetricUnitLabel(metric);
-  const formula = getModelFormula(meta.model, metricLabel);
+  const isRoas = isRoasMetric(metric);
+  const valCol = isRoas ? "predicted_roas" : "predicted_cpr";
+  const obsCol = isRoas ? "roas" : "cpr";
+  const dispVal = (cpr) => isRoas ? (cpr > 0 ? 1 / cpr : null) : cpr;  // ROAS = 1/CPR
+  const formula = getModelFormula(meta.model, metricLabel, isRoas);
   if (!formula) return;
 
   const recentMs = ALLOC_STATE.recentDays * 86400 * 1000;
@@ -13764,21 +13768,22 @@ function downloadChannelCSV(metaOrChannel, metricMaybe, metaMaybe) {
   lines.push("");
 
   // --- Observed data ---
-  lines.push("section,date,cost,cpr,is_recent");
+  lines.push(`section,date,cost,${obsCol},is_recent`);
   for (const p of meta.pts) {
     const isRecent = recentThreshold && p.date && Date.parse(p.date) >= recentThreshold;
+    const ov = dispVal(p.y);
     lines.push([
       "observed",
       csvCell(p.date || ""),
       p.x.toFixed(2),
-      p.y.toFixed(4),
+      ov != null ? ov.toFixed(4) : "",
       isRecent ? "TRUE" : "FALSE",
     ].join(","));
   }
 
   // --- Predicted curve sample ---
   lines.push("");
-  lines.push("section,cost,predicted_cpr,note");
+  lines.push(`section,cost,${valCol},note`);
   const STEPS = 20;
   const margin = (meta.xMax - meta.xMin) * 0.05;
   const fitMin = Math.max(0.0001, meta.xMin - margin);
@@ -13788,10 +13793,11 @@ function downloadChannelCSV(metaOrChannel, metricMaybe, metaMaybe) {
     const cpr = meta.model.predict(cost);
     const inRange = cost >= meta.xMin && cost <= meta.xMax;
     const valid = isFinite(cpr) && cpr > 0;
+    const out = valid ? dispVal(cpr) : null;
     lines.push([
       "predicted",
       cost.toFixed(2),
-      valid ? cpr.toFixed(4) : "",
+      out != null ? out.toFixed(4) : "",
       valid ? (inRange ? "in_observed_range" : "extrapolation") : "out_of_range",
     ].join(","));
   }
@@ -13822,7 +13828,9 @@ function downloadChannelCSV(metaOrChannel, metricMaybe, metaMaybe) {
 function buildChannelSheetAOA(channel, meta, metric) {
   const metricLabel = getCostMetricLabel(metric);
   const unitLabel = getMetricUnitLabel(metric);
-  const formula = getModelFormula(meta.model, metricLabel);
+  const isRoas = isRoasMetric(metric);
+  const dispVal = (cpr) => isRoas ? (cpr > 0 ? 1 / cpr : null) : cpr;  // ROAS = 1/CPR
+  const formula = getModelFormula(meta.model, metricLabel, isRoas);
   if (!formula) return null;
 
   const recentMs = ALLOC_STATE.recentDays * 86400 * 1000;
@@ -13866,28 +13874,43 @@ function buildChannelSheetAOA(channel, meta, metric) {
   aoa.push([]);
 
   // --- Observed data ---
-  aoa.push(["section", "date", "cost", "cpr", "is_recent"]);
+  aoa.push(["section", "date", "cost", isRoas ? "roas" : "cpr", "is_recent"]);
   for (const p of meta.pts) {
     const isRecent = recentThreshold && p.date && Date.parse(p.date) >= recentThreshold;
+    const ov = dispVal(p.y);
     aoa.push([
       "observed",
       p.date || "",
       Number(p.x.toFixed(2)),
-      Number(p.y.toFixed(4)),
+      ov != null ? Number(ov.toFixed(4)) : "",
       isRecent ? "TRUE" : "FALSE",
     ]);
   }
 
   // --- Predicted curve sample ---
-  // 옵션 A · 단조 비감소 marginal CPR 보정 적용
   aoa.push([]);
-  aoa.push(["section", "cost", "predicted_cpr", "note", "marginal_cpr_raw", "marginal_cpr_monotonic", "clamped"]);
   const STEPS = 20;
   const margin = (meta.xMax - meta.xMin) * 0.05;
   const fitMin = Math.max(0.0001, meta.xMin - margin);
   const fitMax = meta.xMax + margin;
 
-  // 1) 먼저 모든 (cost, cpr, results) 샘플
+  if (isRoas) {
+    // ROAS: 표시값 = 1/CPR. marginal은 CPR 공간 지표라 ROAS 시트에선 생략 (오해 방지).
+    aoa.push(["section", "cost", "predicted_roas", "note"]);
+    for (let i = 0; i <= STEPS; i++) {
+      const cost = fitMin + (fitMax - fitMin) * (i / STEPS);
+      const cpr = meta.model.predict(cost);
+      const valid = isFinite(cpr) && cpr > 0;
+      const inRange = cost >= meta.xMin && cost <= meta.xMax;
+      const note = valid ? (inRange ? "in_observed_range" : "extrapolation") : "out_of_range";
+      const roas = valid ? 1 / cpr : null;
+      aoa.push(["predicted", Number(cost.toFixed(2)), roas != null ? Number(roas.toFixed(4)) : "", note]);
+    }
+    return aoa;
+  }
+
+  // 비-ROAS(CPI/CPA): 단조 비감소 marginal CPR 보정 포함
+  aoa.push(["section", "cost", "predicted_cpr", "note", "marginal_cpr_raw", "marginal_cpr_monotonic", "clamped"]);
   const pred = [];
   for (let i = 0; i <= STEPS; i++) {
     const cost = fitMin + (fitMax - fitMin) * (i / STEPS);
@@ -13898,29 +13921,22 @@ function buildChannelSheetAOA(channel, meta, metric) {
     const results = valid ? cost / cpr : null;
     pred.push({ cost, cpr, results, valid, note });
   }
-
-  // 2) 인접 점 간 finite-difference marginal CPR + running max 단조 보정
   let runningMax = -Infinity;
   for (let i = 0; i < pred.length; i++) {
     const p = pred[i];
     let rawMarg = null;
     if (i === 0) {
-      rawMarg = p.valid ? p.cpr : null;  // 첫 점은 평균 CPR로 시드
+      rawMarg = p.valid ? p.cpr : null;
     } else {
       const prev = pred[i - 1];
       if (p.valid && prev.valid && p.results > prev.results) {
         rawMarg = (p.cost - prev.cost) / (p.results - prev.results);
       }
     }
-    let monoMarg = rawMarg;
-    let clamped = false;
+    let monoMarg = rawMarg, clamped = false;
     if (rawMarg != null) {
-      if (rawMarg < runningMax) {
-        monoMarg = runningMax;
-        clamped = true;
-      } else {
-        runningMax = rawMarg;
-      }
+      if (rawMarg < runningMax) { monoMarg = runningMax; clamped = true; }
+      else { runningMax = rawMarg; }
     }
     aoa.push([
       "predicted",
@@ -13932,7 +13948,6 @@ function buildChannelSheetAOA(channel, meta, metric) {
       clamped ? "TRUE" : "FALSE",
     ]);
   }
-
   return aoa;
 }
 
