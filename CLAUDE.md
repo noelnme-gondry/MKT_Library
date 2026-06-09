@@ -363,6 +363,12 @@ TOC/사이드바/헤더에 보이는 번호를 바꿀 때 **내부 id(`5-2` 등)
 ### 12.13 방법론 도구 vs 범용 회귀 분리 원칙 (PR #67)
 5-18처럼 **의미 기반 방법론 도구**(특정 채널=Google임을 알아야 audit·cannibalization·Shapley 동작)는 순수 role/dep/indep 가변매핑으로 바꾸면 방법론이 사라짐 → 범용 회귀는 **별도 도구(5-19)로 분리**하고 방법론 도구는 구조 유지. 방법론 도구에 **세그먼트(platform) 차원**을 더할 땐 행 필터 방식(매핑된 platform 값으로 subset 후 전체 파이프라인 재적합)이 비파괴적 — "All"·미매핑은 기존과 byte 동일해야(골든으로 보증).
 
+### 12.14 분석 게이트 — 매핑 후 "분석하기" 명시 실행 (PR #70)
+매핑만으로 자동 결과를 뱉으면 "매핑 바꿔도 되는지 신뢰 안 감". `TOOL_ANALYZED[id]=toolAnalyzeSig(매핑 시그)` + `isToolAnalyzed` 게이트로, 페이지 prereq 조건에 `|| !isToolAnalyzed(id)` 추가 → 매핑 완료해도 결과 숨김, `renderInlineCsvUpload`의 "▶ 분석하기" 클릭(`data-tool-analyze`→markToolAnalyzed+navigate) 후에만 결과. 매핑 변경=시그 달라짐=자동 숨김+재분석 요구. sig는 **매핑만**(타깃/플랫폼 토글은 탐색이라 제외). 게이트는 렌더층 전용 — `buildXxxCache`는 영향 없어 골든·로컬검증 그대로.
+
+### 12.15 다중공선 흡수: 캠페인 유지 기본 + 방향 선택 (PR #71)
+두 변수가 거의 동일하게 움직이면(corr≥0.9·VIF↑) 회귀가 식별 불가 → 하나를 흡수(드롭). **하드코딩 금지·자동 감지**(`mmmDetectCollinear` 채널 ln↔step 더미). 기본 흡수 대상 = **step(캠페인 채널 유지)**, `MMM_METH_STATE.absorbChoice`로 뒤집기. `cfg.absorbed` Set을 파이프라인 전체가 사용(채널·step 모두 스킵). ⚖ 노티스로 "X↔Y corr 0.98 — Y 흡수·X 유지" 표시 + 토글. 비즈니스 중요도에 따라 사용자가 무엇을 살릴지 결정.
+
 ---
 
 ## 13. 참고 파일
