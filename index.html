@@ -2944,6 +2944,7 @@ const STANDARD_FIELDS = {
   d_chuseokonly:{ label: "ChuseokOnly 더미", aliases: ["ChuseokOnly", "chuseok_only"], type: "number", required: false, group: "MMM" },
   d_postchuwk: { label: "PostChuWk 더미", aliases: ["PostChuWk", "post_chu_wk"], type: "number", required: false, group: "MMM" },
   d_otherhol:  { label: "OtherHol 더미", aliases: ["OtherHol", "other_hol", "기타공휴일"], type: "number", required: false, group: "MMM" },
+  mmm_platform:{ label: "플랫폼(iOS/AOS)", aliases: ["platform", "os", "플랫폼", "platform_name"], type: "string", required: false, group: "MMM" },
 };
 
 /* ========== CSV Global State ========== */
@@ -12574,7 +12575,12 @@ if (typeof window !== "undefined") {
 /* ============================================================
  * 5-18 페이지 (MMM 방법론 도구) — 데이터 계약·config·결과 패널·차트·verdict·export
  * ============================================================ */
-const MMM_METH_STATE = { target: "Regs", config: null, notes: {} };  // notes: {`${target}|${week}`: 사용자 메모}
+const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {} };  // notes: {`${target}|${week}`: 사용자 메모}
+function mmmPlatforms() {
+  const inv = {}; for (const [h, k] of Object.entries(CSV_STATE.mapping || {})) if (k !== "__ignore__") inv[k] = h;
+  if (!inv.mmm_platform) return [];
+  return [...new Set((CSV_STATE.raw || []).map(r => String(r[inv.mmm_platform])).filter(v => v && v !== "null" && v !== "undefined"))];
+}
 function mmmActiveConfig() {
   if (!MMM_METH_STATE.config) MMM_METH_STATE.config = JSON.parse(JSON.stringify({
     seasonalityPeriods: MMM_METH_CONFIG.seasonalityPeriods, adstockGrid: MMM_METH_CONFIG.adstockGrid,
@@ -12587,7 +12593,11 @@ function mmmActiveConfig() {
 }
 function mmmGetPanel() {
   const inv = {}; for (const [h, k] of Object.entries(CSV_STATE.mapping || {})) if (k !== "__ignore__") inv[k] = h;
-  const raw = CSV_STATE.raw || [];
+  let raw = CSV_STATE.raw || [];
+  // (c) platform 차원: 선택된 플랫폼으로 행 필터 (매핑 없으면 전체)
+  if (inv.mmm_platform && MMM_METH_STATE.platform && MMM_METH_STATE.platform !== "All") {
+    raw = raw.filter(r => String(r[inv.mmm_platform]) === MMM_METH_STATE.platform);
+  }
   const num = (h, allowNaN) => raw.map(r => { const v = r[h]; if (v == null || String(v).trim() === "") return allowNaN ? NaN : 0; const n = parseFloat(String(v).replace(/[^0-9.\-]/g, "")); return isNaN(n) ? (allowNaN ? NaN : 0) : n; });
   const week = inv.week ? num(inv.week, false) : raw.map((_, i) => i + 1);
   const panel = { week, ch: {}, dummy: {}, targets: {} };
@@ -12608,7 +12618,7 @@ const MMM_METH_CACHE = { key: null };
 function mmmMethCacheKey() {
   const m = CSV_STATE.mapping || {};
   const sig = Object.entries(m).filter(([, v]) => v !== "__ignore__").map(([h, v]) => `${v}:${h}`).sort().join("|");
-  return `${CSV_STATE.fileName}|${(CSV_STATE.raw || []).length}|${sig}|${JSON.stringify(MMM_METH_STATE.config)}`;
+  return `${CSV_STATE.fileName}|${(CSV_STATE.raw || []).length}|${sig}|${JSON.stringify(MMM_METH_STATE.config)}|pf:${MMM_METH_STATE.platform}`;
 }
 function buildMmmMethCache() {
   if (typeof window !== "undefined") window.__MMMM = MMM_METH_CACHE;
@@ -12637,6 +12647,8 @@ function buildMmmMethCache() {
   } catch (e) { C.error = e.message; }
   Object.assign(MMM_METH_CACHE, C);
   if (!targets.includes(MMM_METH_STATE.target)) MMM_METH_STATE.target = targets[0] || "Regs";
+  const plats = mmmPlatforms();
+  if (MMM_METH_STATE.platform !== "All" && !plats.includes(MMM_METH_STATE.platform)) MMM_METH_STATE.platform = "All";
   return MMM_METH_CACHE;
 }
 
@@ -12837,8 +12849,12 @@ function renderMmmAudit(c) {
 }
 function renderMmmTargetSelector(c) {
   const btns = c.targets.map(t => `<button class="ab-pill ${MMM_METH_STATE.target === t ? 'active' : ''}" data-mmm-target="${t}">${t === "Regs" ? "가입 (Reg)" : "재활성 (React)"}</button>`).join("");
-  return `<section class="block" id="s-trend"><h2 class="section-title"><span class="ix">§3~5</span>타깃별 분석 (각 타깃 별도 — 합성지표 스펙이 구성요소에 맞는 건 아님)</h2>
-    <div class="ab-pillgroup"><span class="ab-pillgroup-label">타깃</span>${btns}</div></section>`;
+  const plats = mmmPlatforms();
+  const platRow = plats.length ? `<div class="ab-pillgroup"><span class="ab-pillgroup-label">플랫폼</span>${["All", ...plats].map(p => `<button class="ab-pill ${MMM_METH_STATE.platform === p ? 'active' : ''}" data-mmm-platform="${escapeHtml(p)}">${p === "All" ? "전체" : escapeHtml(p)}</button>`).join("")}</div>` : "";
+  return `<section class="block" id="s-trend"><h2 class="section-title"><span class="ix">§3~5</span>세그먼트별 분석 (각 타깃·플랫폼 별도 적합 — 합성지표 스펙이 구성요소에 맞는 건 아님)</h2>
+    ${platRow}
+    <div class="ab-pillgroup"><span class="ab-pillgroup-label">타깃</span>${btns}</div>
+    ${plats.length ? `<p class="muted" style="font-size:11px;margin-top:4px;">플랫폼 × 타깃 = 4그룹(iOS/AOS × 가입/재활성). 선택한 플랫폼 행만 필터해 방법론 전체를 다시 돌립니다. "전체"는 풀링(플랫폼 더미 없음).</p>` : ""}</section>`;
 }
 function renderMmmTrend(c) {
   const T = c.byTarget[MMM_METH_STATE.target]; if (!T) return "";
@@ -13020,6 +13036,7 @@ function bindMmmMethHandlers() {
   const c = MMM_METH_CACHE; if (!c.key || c.error) return;
   renderMmmCharts(c);
   document.querySelectorAll("[data-mmm-target]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.target = b.dataset.mmmTarget; navigate("5-18"); }));
+  document.querySelectorAll("[data-mmm-platform]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.platform = b.dataset.mmmPlatform; navigate("5-18"); }));
   const apply = document.querySelector("[data-mmm-cfg-apply]");
   if (apply) apply.addEventListener("click", () => {
     const cfg = mmmActiveConfig(); const get = (k) => document.querySelector(`[data-mmm-cfg="${k}"]`)?.value;
@@ -13043,8 +13060,9 @@ function _mmmDownload(name, content, type) {
 }
 function exportMmmMethJson() {
   const c = MMM_METH_CACHE;
-  const payload = { _meta: { tool: "MMM 방법론 (5-18)", version: MMM_METH_CONFIG.version, generated: new Date().toISOString(), caveat: "described(association)·가설·기술용. 어떤 계수도 측정된 인과/증분 효과가 아님. cannibalization·incrementality는 holdout 전용." }, config: c.cfg && { lunarWeeks: c.cfg.lunarWeeks, steps: c.cfg.steps, seasonalityPeriods: c.cfg.seasonalityPeriods, foldIntoRegime: c.cfg.foldIntoRegime }, validate: c.validate, macro: c.macro, audit: c.audit, byTarget: c.byTarget };
-  _mmmDownload(`mmm_methodology_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(payload, (k, v) => k === "stl" ? undefined : v, 2), "application/json");
+  const pf = MMM_METH_STATE.platform || "All";
+  const payload = { _meta: { tool: "MMM 방법론 (5-18)", version: MMM_METH_CONFIG.version, platform: pf, generated: new Date().toISOString(), caveat: "described(association)·가설·기술용. 어떤 계수도 측정된 인과/증분 효과가 아님. cannibalization·incrementality는 holdout 전용." }, config: c.cfg && { lunarWeeks: c.cfg.lunarWeeks, steps: c.cfg.steps, seasonalityPeriods: c.cfg.seasonalityPeriods, foldIntoRegime: c.cfg.foldIntoRegime }, validate: c.validate, macro: c.macro, audit: c.audit, byTarget: c.byTarget };
+  _mmmDownload(`mmm_methodology_${pf}_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(payload, (k, v) => k === "stl" ? undefined : v, 2), "application/json");
 }
 function exportMmmMethMd() {
   const c = MMM_METH_CACHE; const L = ["# MMM 방법론 — verdict\n", "> described(연관)·가설·기술용. 인과/증분은 holdout 전용.\n"];
@@ -18653,6 +18671,7 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "attr_change_step",  unlocks: "어트리뷰션 변경 STEP" },
   ],
   "5-18": [
+    { key: "mmm_platform",   unlocks: "플랫폼(iOS/AOS) 차원 — 상단 셀렉트로 세그먼트별 분석" },
     { key: "mmm_react",      unlocks: "React 타깃 모델 (Reg와 별도 — 카니발 핵심)" },
     { key: "ch_google_cbua", unlocks: "Google CBUA 채널 (line_off와 공선 → 레짐 흡수)" },
     { key: "ch_meta",        unlocks: "Meta 채널" },
