@@ -11809,6 +11809,8 @@ const MMM_METH_CONFIG = {
   foldIntoRegime: ["google_cbua"],       // 구조변화와 공선 → 레짐 흡수, 단독해석 금지
   combinedGoogle: ["google_roi", "google_cbua"], // G_Total (sheet/precedence/detrend)
   vifThreshold: 10,
+  sparseMinWeeks: 20,          // 비-0 주가 이 미만이면 "데이터 부족" (계수 신뢰 불가)
+  excludeSparse: false,        // ON 시 데이터 부족 채널을 모델에서 제외 (식별 정리; 기본 off=충실)
   hacAutoLag: (n) => Math.floor(4 * Math.pow(n / 100, 2 / 9)),
 };
 // 채널 키(semantic) → 5-18 매핑 필드
@@ -11840,6 +11842,23 @@ function mmmLnMedia(raw, lam) {
 function _mean(a) { return a.reduce((x, y) => x + y, 0) / a.length; }
 function _pstd(a) { const m = _mean(a); return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / a.length); }
 // panel: {week:[], ch:{key:[]}, dummy:{key:[]}, targets:{name:[]}}
+// 채널별 비-0 주 수 + 희소 여부
+function mmmChannelCoverage(panel, cfg) {
+  const out = {};
+  for (const ch of MMM_CHANNELS) {
+    if (!panel.ch[ch.key]) continue;
+    const arr = panel.ch[ch.key];
+    const nonzero = arr.filter(v => v > 0 && isFinite(v)).length;
+    const trailingZero = arr.length > 8 && arr.slice(-8).every(v => !v);
+    out[ch.key] = { label: ch.label, nonzero, total: arr.length, coverage: nonzero / arr.length, trailingZero, sparse: nonzero < (cfg.sparseMinWeeks || 20) };
+  }
+  return out;
+}
+function mmmSparseChannels(panel, cfg) {
+  const cov = mmmChannelCoverage(panel, cfg), s = new Set();
+  for (const k in cov) if (cov[k].sparse) s.add(k);
+  return s;
+}
 function mmmBuildFeatures(panel, cfg, lam, withTrend = true) {
   const t = panel.week, n = t.length, cols = [], names = [];
   const push = (nm, arr) => { names.push(nm); cols.push(arr); };
@@ -11848,8 +11867,9 @@ function mmmBuildFeatures(panel, cfg, lam, withTrend = true) {
   push("lny", t.map(tt => seol.has(tt) ? 1 : 0)); push("chuseok", t.map(tt => chu.has(tt) ? 1 : 0));
   for (const [nm, fw] of Object.entries(cfg.steps)) push(nm, t.map(tt => tt >= fw ? 1 : 0));
   const folded = new Set(cfg.foldIntoRegime || []);
+  const sparse = cfg.excludeSparse ? mmmSparseChannels(panel, cfg) : new Set();
   for (const ch of MMM_CHANNELS) {
-    if (folded.has(ch.key)) continue;
+    if (folded.has(ch.key) || sparse.has(ch.key)) continue;
     if (!panel.ch[ch.key]) continue;
     push("ln_" + ch.key, mmmLnMedia(panel.ch[ch.key], lam));
   }
@@ -12103,19 +12123,32 @@ function mmmChannelEffects(panel, cfg, targetName, lam) {
   const faLog = fitAR1(_designConst(X), panel.targets[targetName].map(v => Math.log(v))); // 탄력성(log-log)
   const faRaw = fitAR1(_designConst(X), panel.targets[targetName]);                       // 주당 인원(semi-log)
   const folded = new Set(cfg.foldIntoRegime || []);
+  const cov = mmmChannelCoverage(panel, cfg);
   const out = [];
   for (const ch of MMM_CHANNELS) {
     if (folded.has(ch.key) || !panel.ch[ch.key]) continue;
-    const j = names.indexOf("ln_" + ch.key); if (j < 0) continue;
+    const cv = cov[ch.key] || { sparse: false, trailingZero: false, nonzero: 0, total: 0 };
+    const j = names.indexOf("ln_" + ch.key);
+    if (j < 0) {  // 모델에서 제외됨(sparse exclude 등) — 데이터부족으로 표기
+      out.push({ key: ch.key, label: ch.label, elas: 0, ci: [0, 0], p: 1, weeklyPer1k: null, meanSpend: 0, sig: false, nonzero: cv.nonzero, total: cv.total, sparse: true, trailingZero: cv.trailingZero, verdict: "sparse" });
+      continue;
+    }
     const elas = faLog.beta[j + 1], ci = faLog.ci95[j + 1], p = faLog.pval[j + 1], bRaw = faRaw.beta[j + 1];
     const active = panel.ch[ch.key].filter(v => v > 0 && isFinite(v));
     const recentMean = active.length ? active.slice(-12).reduce((a, b) => a + b, 0) / Math.min(12, active.length) : 0;
     const weeklyPer1k = recentMean > 0 ? bRaw / (1 + recentMean) * 1000 : null;
     const sig = ci[0] > 0 || ci[1] < 0;
+    // 데이터 부족·낮은 커버리지·최근끊김 채널의 음수는 노이즈로 — "잠식 의심"은 데이터 충분+유의한 음수만
+    const lowCov = cv.coverage < 0.5;
+    let verdict;
+    if (cv.sparse) verdict = "sparse";
+    else if (!sig) verdict = "noise";
+    else if (elas > 0) verdict = "incremental";
+    else verdict = (cv.trailingZero || lowCov) ? "noise" : "suppress";
     out.push({
       key: ch.key, label: ch.label, elas: +elas.toFixed(4), ci: [+ci[0].toFixed(4), +ci[1].toFixed(4)], p: +p.toFixed(4),
       weeklyPer1k: weeklyPer1k == null ? null : +weeklyPer1k.toFixed(1), meanSpend: Math.round(recentMean), sig,
-      verdict: !sig ? "noise" : elas > 0 ? "incremental" : "suppress",
+      nonzero: cv.nonzero, total: cv.total, sparse: cv.sparse, trailingZero: cv.trailingZero, verdict,
     });
   }
   return out;
@@ -12239,6 +12272,7 @@ function mmmActiveConfig() {
     cvMinTrain: MMM_METH_CONFIG.cvMinTrain, defaultLam: MMM_METH_CONFIG.defaultLam,
     lunarWeeks: MMM_METH_CONFIG.lunarWeeks, steps: MMM_METH_CONFIG.steps,
     foldIntoRegime: MMM_METH_CONFIG.foldIntoRegime, combinedGoogle: MMM_METH_CONFIG.combinedGoogle, vifThreshold: MMM_METH_CONFIG.vifThreshold,
+    sparseMinWeeks: MMM_METH_CONFIG.sparseMinWeeks, excludeSparse: MMM_METH_CONFIG.excludeSparse,
   }));
   return { ...MMM_METH_STATE.config, hacAutoLag: MMM_METH_CONFIG.hacAutoLag };
 }
@@ -12349,20 +12383,24 @@ function renderMmmSummary(c) {
     const meanY = Math.round(c.panel.targets[t].reduce((a, b) => a + b, 0) / c.panel.targets[t].length);
     const tConf = mmmTrendConf(T.trend), cConf = mmmCannibConf(T.cannib);
     // 채널별 효과 표
+    const sparseList = (T.effects || []).filter(e => e.sparse);
     const effRows = (T.effects || []).map(e => {
       const pct10 = (e.elas * 10);
       const wk = e.weeklyPer1k;
-      const badge = e.verdict === "incremental" ? '<span style="color:#22c55e;font-weight:600;">증분 ✓</span>'
+      const badge = e.verdict === "sparse" ? `<span style="color:var(--text-muted);font-weight:600;" title="비-0 ${e.nonzero}/${e.total}주">데이터 부족 ⊘</span>`
+        : e.verdict === "incremental" ? '<span style="color:#22c55e;font-weight:600;">증분 ✓</span>'
         : e.verdict === "suppress" ? '<span style="color:#f87171;font-weight:600;">잠식 의심 ⚠</span>'
         : '<span style="color:var(--text-muted);">불확실</span>';
-      return `<tr>
-        <td><strong>${escapeHtml(e.label)}</strong></td>
-        <td class="tnum ${pct10 >= 0 ? 'pos' : 'neg'}">${pct10 >= 0 ? '+' : ''}${pct10.toFixed(1)}%</td>
-        <td class="tnum">${wk == null ? '—' : (wk >= 0 ? '+' : '') + Math.round(wk) + '명'}</td>
+      const sp = e.verdict === "sparse";
+      return `<tr style="${sp ? 'opacity:0.55;' : ''}">
+        <td><strong>${escapeHtml(e.label)}</strong>${e.trailingZero && !sp ? ' <span style="font-size:9px;color:#fbbf24;">최근끊김</span>' : ''}</td>
+        <td class="tnum ${sp ? '' : pct10 >= 0 ? 'pos' : 'neg'}">${sp ? '—' : (pct10 >= 0 ? '+' : '') + pct10.toFixed(1) + '%'}</td>
+        <td class="tnum">${sp || wk == null ? '—' : (wk >= 0 ? '+' : '') + Math.round(wk) + '명'}</td>
         <td>${badge}</td>
-        <td title="p=${e.p}" style="color:#adc6ff;letter-spacing:1px;">${mmmConfDots(mmmPtoConf(e.p))}</td>
+        <td title="p=${e.p}" style="color:#adc6ff;letter-spacing:1px;">${sp ? '<span style="color:var(--text-muted);">—</span>' : mmmConfDots(mmmPtoConf(e.p))}</td>
       </tr>`;
     }).join("");
+    const sparseNote = sparseList.length ? `<div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:6px;padding:7px 10px;font-size:11px;color:var(--text-1);margin-top:6px;">⚠ <strong>${sparseList.map(e => `${escapeHtml(e.label)}(${e.nonzero}/${e.total}주)`).join(", ")}</strong> 는 데이터가 너무 적어(비-0 ${c.cfg.sparseMinWeeks}주 미만) 계수가 노이즈입니다 — <strong>예산 결정 근거로 쓰지 마세요.</strong> 음수로 나와도 "잠식"이 아니라 데이터 부족 탓일 확률이 높습니다. Config에서 "데이터 부족 채널 제외"로 모델을 정리할 수 있습니다.</div>` : "";
     return `
       <div style="background:linear-gradient(135deg,rgba(122,162,247,0.10),rgba(122,162,247,0.02));border:1px solid rgba(122,162,247,0.28);border-left:4px solid #7aa2f7;border-radius:12px;padding:16px 18px;margin-bottom:14px;">
         <div style="font-size:15px;font-weight:700;color:var(--text-1);margin-bottom:2px;">${_MMM_TARGET_KO[t] || t}</div>
@@ -12384,6 +12422,7 @@ function renderMmmSummary(c) {
             <thead><tr><th>채널</th><th>지출 +10% 시</th><th>+$1,000/주당</th><th>판정</th><th>신뢰도</th></tr></thead>
             <tbody>${effRows || '<tr><td colspan="5">채널 없음</td></tr>'}</tbody>
           </table></div>
+          ${sparseNote}
           <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">"+$1,000/주당 N명" = 현재 지출 수준에서 그 채널에 주당 1,000달러를 더 쓰면 늘어나는 ${_MMM_TARGET_KO[t].split(" ")[0]} 인원(수확체감 반영). 음수·"불확실"은 통계적으로 0과 구분되지 않음(노이즈).</div>
         </div>
       </div>`;
@@ -12410,8 +12449,9 @@ function renderMmmConfig(c) {
       <label>추석 주(쉼표): <input data-mmm-cfg="chuseok" value="${cfg.lunarWeeks.chuseok.join(",")}" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:3px 6px;"></label>
       <label>post_step from_week: <input data-mmm-cfg="post_step" value="${cfg.steps.post_step}" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:3px 6px;"></label>
       <label>line_off from_week: <input data-mmm-cfg="line_off" value="${cfg.steps.line_off}" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:3px 6px;"></label>
+      <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" data-mmm-cfg-check="excludeSparse" ${cfg.excludeSparse ? "checked" : ""}> 데이터 부족 채널 제외 (비-0 ${cfg.sparseMinWeeks}주 미만, 권장)</label>
     </div>
-    <p class="muted" style="font-size:11px;margin-top:6px;">fold_into_regime=${cfg.foldIntoRegime.join(",")} (구조변화 공선 → 흡수·단독해석 금지) · seasonality=${cfg.seasonalityPeriods.join("/")}w · adstock grid CV로 λ 선택 · HAC+AR(1) 추론.</p>
+    <p class="muted" style="font-size:11px;margin-top:6px;">fold_into_regime=${cfg.foldIntoRegime.join(",")} (구조변화 공선 → 흡수·단독해석 금지) · seasonality=${cfg.seasonalityPeriods.join("/")}w · adstock grid CV로 λ 선택 · HAC+AR(1) 추론. "데이터 부족 채널 제외" ON 시 표본이 적어 노이즈만 만드는 채널(예: TikTok 6주)을 모델에서 빼 다른 채널 계수의 식별을 정리합니다.</p>
     <button class="ab-pill" data-mmm-cfg-apply style="margin-top:6px;">config 적용 (재계산)</button>
   </details></section>`;
 }
@@ -12500,6 +12540,9 @@ function renderMmmMmm(c) {
   const pairs = mm.collinear_pairs.map(pr => `${escapeHtml(pr.a)}~${escapeHtml(pr.b)} (${pr.corr})`).join(", ") || "없음";
   const sat = mm.saturation;
   const satS = sat ? Object.entries(sat.marginal_kpi_per_1k).map(([lv, v]) => `${lv}당 +$1k → ${v}명`).join(" · ") : "—";
+  // VIF 5~10 군집 경고 (Gemini 지적): 10 미만이라도 다수 묶이면 개별 기여(Shapley 포함) 왜곡
+  const midVif = mm.vif.filter(v => !v.var.startsWith("sin") && !v.var.startsWith("cos") && v.vif > 5 && v.vif <= c.cfg.vifThreshold);
+  const vifWarn = midVif.length >= 2 ? `<div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:6px;padding:7px 10px;font-size:11px;color:var(--text-1);margin:6px 0;">⚠ VIF가 5~10인 변수가 ${midVif.length}개(${midVif.map(v => escapeHtml(v.var)).join(", ")}) — "심각(10+)"은 아니지만 변수들이 서로 닮아 <strong>개별 채널의 순수 기여(탄력성·Shapley)가 왜곡될 수 있습니다.</strong> 특히 trend↔Google 지출 공선이 흔합니다.</div>` : "";
   return `<section class="block" id="s-mmm">
     <h3 class="section-title" style="font-size:15px;"><span class="ix">§5</span>MMM — ${MMM_METH_STATE.target} (adstock CV · 탄력성 · Shapley · 수확체감)</h3>
     ${mmmExplain('여기서 "효과 크기"를 잽니다. <strong>adstock(λ)</strong>=광고 효과가 다음 주까지 이어지는 잔향(λ=0.4면 이번 주 효과의 40%가 다음 주로). <strong>saturation(수확체감)</strong>=많이 쓸수록 1달러당 효과가 줄어드는 현상. λ는 과적합을 막으려 "한 번도 안 본 미래 주"를 맞히는 OOS 오차(CV)가 가장 작은 값으로 자동 선택합니다. <strong>탄력성</strong>=지출 1%↑ 시 결과 몇 %↑(예: 0.27이면 지출 10%↑→ +2.7%); <strong>95% CI가 0을 넘지 않으면</strong> 통계적으로 유의. <strong>VIF&gt;10</strong>이면 변수끼리 너무 닮아 그 계수는 따로 못 믿습니다. <strong>Shapley</strong>=결과의 주별 변동을 각 드라이버(브랜드·계절·추세·채널…)가 공정하게 몇 % 설명하는지.')}
@@ -12511,6 +12554,7 @@ function renderMmmMmm(c) {
       <div><p style="font-size:12px;margin:0 0 4px;color:var(--text-1);">VIF (>${c.cfg.vifThreshold} = 식별 실패)</p>
         <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>변수</th><th>VIF</th></tr></thead><tbody>${vifR}</tbody></table></div></div>
     </div>
+    ${vifWarn}
     <p style="font-size:12px;margin:10px 0 4px;color:var(--text-1);">Shapley R² 분해 (설명분산의 공정 배분 — 준로그 수준-점유 분해 금지) · total R²=${f(mm.shapley.total, 3)}</p>
     <div class="chart-container" style="height:${mm.shapley.rows.length * 26 + 50}px;margin-bottom:8px;"><canvas id="mmm-shapley-chart"></canvas></div>
     <p class="muted" style="font-size:12px;">수확체감 (Google ROI, b·ln(1+spend)): ${satS}. ln_coef=${sat ? sat.ln_coef : "—"}.</p>
@@ -12634,6 +12678,7 @@ function bindMmmMethHandlers() {
     const parseList = (s) => String(s || "").split(",").map(x => parseInt(x.trim(), 10)).filter(n => !isNaN(n));
     MMM_METH_STATE.config.lunarWeeks = { seollal: parseList(get("seollal")), chuseok: parseList(get("chuseok")) };
     MMM_METH_STATE.config.steps = { post_step: parseInt(get("post_step"), 10) || cfg.steps.post_step, line_off: parseInt(get("line_off"), 10) || cfg.steps.line_off };
+    MMM_METH_STATE.config.excludeSparse = !!document.querySelector('[data-mmm-cfg-check="excludeSparse"]')?.checked;
     navigate("5-18");
   });
   const ej = document.getElementById("mmm-export-json"); if (ej) ej.addEventListener("click", exportMmmMethJson);
