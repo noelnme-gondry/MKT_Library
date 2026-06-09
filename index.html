@@ -10754,6 +10754,238 @@ function runIncrTests(verbose=true){
 if(typeof window!=="undefined"){ window.runIncrTests=runIncrTests; window.INCR_MATH=INCR_MATH; }
 
 /* ============================================================
+ * Marketing-Response Regression (5-17) — defensible MMM-style
+ * ⚠ 가설 생성·기술용. 인과/증분/cannibalization 판정은 holdout 전용.
+ * 통계 엔진(MMR_MATH/MMR_STATS) — 외부 라이브러리 0개, 결정론.
+ *   adstock→saturation, Fourier, OLS + Newey-West HAC, VIF, DW, Breusch-Godfrey,
+ *   prewhitened CCF, rolling-origin OOS grid search.
+ * (PR 1 = 엔진 + 골든. 데이터 계약·페이지는 후속 PR.)
+ * ============================================================ */
+
+/* lgamma (Lanczos) — chi2 CDF용 */
+function _lgamma(z) {
+  const g = 7;
+  const c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  if (z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - _lgamma(1 - z);
+  z -= 1;
+  let x = c[0];
+  for (let i = 1; i < g + 2; i++) x += c[i] / (z + i);
+  const t = z + g + 0.5;
+  return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+}
+/* 정규화 하부 불완전 감마 P(a,x) — 급수 + 연분수 */
+function _gammaP(a, x) {
+  if (x <= 0) return 0;
+  if (x < a + 1) {
+    let ap = a, sum = 1 / a, del = 1 / a;
+    for (let n = 0; n < 300; n++) { ap++; del *= x / ap; sum += del; if (Math.abs(del) < Math.abs(sum) * 1e-14) break; }
+    return sum * Math.exp(-x + a * Math.log(x) - _lgamma(a));
+  } else {
+    // Lentz 연분수로 Q(a,x), P=1-Q
+    let b = x + 1 - a, c = 1e300, d = 1 / b, h = d;
+    for (let i = 1; i < 300; i++) {
+      const an = -i * (i - a);
+      b += 2; d = an * d + b; if (Math.abs(d) < 1e-300) d = 1e-300;
+      c = b + an / c; if (Math.abs(c) < 1e-300) c = 1e-300;
+      d = 1 / d; const del = d * c; h *= del; if (Math.abs(del - 1) < 1e-14) break;
+    }
+    const Q = Math.exp(-x + a * Math.log(x) - _lgamma(a)) * h;
+    return 1 - Q;
+  }
+}
+function chi2Cdf(x, k) { return x <= 0 ? 0 : _gammaP(k / 2, x / 2); }
+
+const MMR_MATH = {
+  // 기하 adstock: a_t = x_t + θ·a_{t-1}
+  adstock(x, theta) {
+    const out = new Array(x.length);
+    for (let t = 0; t < x.length; t++) out[t] = (Number(x[t]) || 0) + (t > 0 ? theta * out[t - 1] : 0);
+    return out;
+  },
+  // Hill 포화: x^n / (x^n + K^n) ∈ [0,1). half=반포화점 K, slope=n. (adstocked 값에 적용)
+  hill(x, half, slope) {
+    half = half > 0 ? half : 1; slope = slope > 0 ? slope : 1;
+    return x.map(v => { v = Math.max(0, v); const xn = Math.pow(v, slope); const kn = Math.pow(half, slope); return (xn + kn) > 0 ? xn / (xn + kn) : 0; });
+  },
+  logSat(x) { return x.map(v => Math.log1p(Math.max(0, v))); },
+  // Fourier 특성: period(주) 기준 K쌍의 [sin,cos]. t = 0..n-1
+  fourier(n, period, K) {
+    const cols = [];
+    for (let k = 1; k <= K; k++) {
+      const s = [], c = [];
+      for (let t = 0; t < n; t++) { const a = 2 * Math.PI * k * t / period; s.push(Math.sin(a)); c.push(Math.cos(a)); }
+      cols.push({ name: `sin${k}_${period}w`, col: s });
+      cols.push({ name: `cos${k}_${period}w`, col: c });
+    }
+    return cols;
+  },
+  zscore(x) {
+    const m = x.reduce((a, b) => a + b, 0) / x.length;
+    const sd = Math.sqrt(x.reduce((a, v) => a + (v - m) ** 2, 0) / Math.max(1, x.length - 1)) || 1;
+    return { z: x.map(v => (v - m) / sd), mean: m, sd };
+  },
+};
+
+const MMR_STATS = {
+  // OLS (정규방정식). X: n×p (intercept 포함), y: n. 반환 {beta, resid, fitted, XtXinv, n, p, r2, adjR2}
+  ols(X, y) {
+    const n = X.length, p = X[0].length;
+    if (n <= p) return null;
+    const Xt = CREATIVE_MATH.transpose(X);
+    const XtX = CREATIVE_MATH.matmul(Xt, X);
+    const XtXinv = CREATIVE_MATH.inverse(XtX);
+    if (!XtXinv) return null;
+    const ycol = y.map(v => [v]);
+    const Xty = CREATIVE_MATH.matmul(Xt, ycol);
+    const betaCol = CREATIVE_MATH.matmul(XtXinv, Xty);
+    const beta = betaCol.map(r => r[0]);
+    const fitted = X.map(row => row.reduce((s, v, j) => s + v * beta[j], 0));
+    const resid = y.map((v, i) => v - fitted[i]);
+    const ybar = y.reduce((a, b) => a + b, 0) / n;
+    const ssRes = resid.reduce((a, e) => a + e * e, 0);
+    const ssTot = y.reduce((a, v) => a + (v - ybar) ** 2, 0);
+    const r2 = ssTot > 0 ? 1 - ssRes / ssTot : 0;
+    const adjR2 = 1 - (1 - r2) * (n - 1) / Math.max(1, n - p);
+    return { beta, resid, fitted, XtXinv, n, p, r2, adjR2, ssRes };
+  },
+  // Newey-West HAC 표준오차 (Bartlett kernel). L 미지정 시 NW rule.
+  neweyWest(X, y, L) {
+    const fit = this.ols(X, y);
+    if (!fit) return null;
+    const { beta, resid, XtXinv, n, p } = fit;
+    if (L == null) L = Math.max(1, Math.floor(4 * Math.pow(n / 100, 2 / 9)));
+    // meat = Σ e_t² x_t x_t' + Σ_{l=1}^L w_l Σ_{t>l} e_t e_{t-l}(x_t x_{t-l}' + x_{t-l} x_t')
+    const meat = Array.from({ length: p }, () => new Array(p).fill(0));
+    const addOuter = (xa, xb, scale) => { for (let i = 0; i < p; i++) for (let j = 0; j < p; j++) meat[i][j] += scale * xa[i] * xb[j]; };
+    for (let t = 0; t < n; t++) addOuter(X[t], X[t], resid[t] * resid[t]);
+    for (let l = 1; l <= L; l++) {
+      const w = 1 - l / (L + 1);
+      for (let t = l; t < n; t++) {
+        const ee = w * resid[t] * resid[t - l];
+        addOuter(X[t], X[t - l], ee);
+        addOuter(X[t - l], X[t], ee);
+      }
+    }
+    // cov = XtXinv · meat · XtXinv
+    const tmp = CREATIVE_MATH.matmul(XtXinv, meat);
+    const cov = CREATIVE_MATH.matmul(tmp, XtXinv);
+    const se = beta.map((_, j) => Math.sqrt(Math.max(0, cov[j][j])));
+    const tstat = beta.map((b, j) => se[j] > 0 ? b / se[j] : 0);
+    const pval = tstat.map(t => 2 * (1 - CREATIVE_STATS.stdNormalCdf(Math.abs(t))));
+    const ci95 = beta.map((b, j) => [b - 1.96 * se[j], b + 1.96 * se[j]]);
+    return { beta, se, tstat, pval, ci95, resid, r2: fit.r2, adjR2: fit.adjR2, n, p, L };
+  },
+  durbinWatson(resid) {
+    let num = 0, den = 0;
+    for (let t = 1; t < resid.length; t++) num += (resid[t] - resid[t - 1]) ** 2;
+    for (let t = 0; t < resid.length; t++) den += resid[t] * resid[t];
+    return den > 0 ? num / den : null;
+  },
+  // Breusch-Godfrey LM 검정 (lag p). resid를 [X, lagged resid]에 회귀 → n·R² ~ chi2(p)
+  breuschGodfrey(resid, X, p) {
+    const n = resid.length;
+    const aug = [];
+    const yb = [];
+    for (let t = 0; t < n; t++) {
+      const row = X[t].slice();
+      for (let l = 1; l <= p; l++) row.push(t - l >= 0 ? resid[t - l] : 0);
+      aug.push(row); yb.push(resid[t]);
+    }
+    const fit = this.ols(aug, yb);
+    if (!fit) return null;
+    const LM = n * fit.r2;
+    const pValue = 1 - chi2Cdf(LM, p);
+    return { LM, df: p, pValue };
+  },
+  // detrend+deseasonalize 잔차 (prewhitening): y ~ [1, t, fourier(52w,2)]
+  prewhitenResiduals(y, period = 52, K = 2) {
+    const n = y.length;
+    const X = [];
+    const f = MMR_MATH.fourier(n, period, K);
+    for (let t = 0; t < n; t++) { const row = [1, t]; for (const fc of f) row.push(fc.col[t]); X.push(row); }
+    const fit = this.ols(X, y);
+    return fit ? fit.resid : y.slice();
+  },
+  rmse(actual, pred) {
+    let s = 0, c = 0;
+    for (let i = 0; i < actual.length; i++) if (isFinite(actual[i]) && isFinite(pred[i])) { s += (actual[i] - pred[i]) ** 2; c++; }
+    return c > 0 ? Math.sqrt(s / c) : null;
+  },
+  mape(actual, pred) {
+    let s = 0, c = 0;
+    for (let i = 0; i < actual.length; i++) if (actual[i] !== 0 && isFinite(actual[i]) && isFinite(pred[i])) { s += Math.abs((actual[i] - pred[i]) / actual[i]); c++; }
+    return c > 0 ? s / c * 100 : null;
+  },
+  // rolling-origin OOS: 최소 minTrain부터 1-step씩 확장, 각 fold에서 다음 점 예측 RMSE
+  rollingOriginRMSE(X, y, minTrain) {
+    minTrain = minTrain || Math.max(X[0].length + 2, Math.floor(y.length * 0.6));
+    const preds = [], acts = [];
+    for (let cut = minTrain; cut < y.length; cut++) {
+      const fit = this.ols(X.slice(0, cut), y.slice(0, cut));
+      if (!fit) continue;
+      const yhat = X[cut].reduce((s, v, j) => s + v * fit.beta[j], 0);
+      preds.push(yhat); acts.push(y[cut]);
+    }
+    return { rmse: this.rmse(acts, preds), mape: this.mape(acts, preds), folds: preds.length };
+  },
+};
+
+/* 결정론 LCG (테스트용; 런타임 모델엔 미사용) */
+function _mmrLcg(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 - 0.5; }; }
+
+function runMmrCoreTests(verbose = true) {
+  const R = [];
+  const approx = (a, b, tol) => Math.abs(a - b) <= tol;
+  // T1 adstock θ=0.5
+  const a1 = MMR_MATH.adstock([1, 0, 0, 0], 0.5);
+  R.push({ test: "T1 · adstock θ=0.5", expected: "1,0.5,0.25,0.125", actual: a1.map(v => v.toFixed(3)).join(","), pass: approx(a1[1], 0.5, 1e-9) && approx(a1[3], 0.125, 1e-9) ? "✓" : "✗" });
+  // T2 adstock θ=0 = identity
+  const a0 = MMR_MATH.adstock([3, 7, 2], 0);
+  R.push({ test: "T2 · adstock θ=0 identity", expected: "3,7,2", actual: a0.join(","), pass: a0.join(",") === "3,7,2" ? "✓" : "✗" });
+  // T3 OLS β 복원: y = 2 + 3*x1 - 1*x2
+  const X3 = [], y3 = [];
+  for (let i = 0; i < 30; i++) { const x1 = i, x2 = (i * 7) % 11; X3.push([1, x1, x2]); y3.push(2 + 3 * x1 - 1 * x2); }
+  const f3 = MMR_STATS.ols(X3, y3);
+  R.push({ test: "T3 · OLS β 복원 (2,3,-1)", expected: "2,3,-1", actual: f3.beta.map(b => b.toFixed(3)).join(","), pass: approx(f3.beta[0], 2, 1e-6) && approx(f3.beta[1], 3, 1e-6) && approx(f3.beta[2], -1, 1e-6) && approx(f3.r2, 1, 1e-9) ? "✓" : "✗" });
+  // T4 HAC: AR(1) 양의 자기상관에서 HAC SE > iid OLS SE (방향 sanity)
+  const rng = _mmrLcg(42); const X4 = [], y4 = []; let e = 0;
+  for (let i = 0; i < 120; i++) { e = 0.7 * e + rng(); const x = i; X4.push([1, x]); y4.push(1 + 0.5 * x + e * 5); }
+  const nw = MMR_STATS.neweyWest(X4, y4);
+  const iid = MMR_STATS.ols(X4, y4); const sigma2 = iid.ssRes / (iid.n - iid.p); const iidSeSlope = Math.sqrt(sigma2 * iid.XtXinv[1][1]);
+  R.push({ test: "T4 · HAC SE > iid SE (양의 자기상관)", expected: "HAC>iid", actual: `HAC=${nw.se[1].toExponential(2)} iid=${iidSeSlope.toExponential(2)}`, pass: nw.se[1] > iidSeSlope ? "✓" : "✗" });
+  // T5 DW: 양의 자기상관 → DW<1.5
+  const dwAr = MMR_STATS.durbinWatson(nw.resid);
+  R.push({ test: "T5 · DW < 1.5 (양의 자기상관)", expected: "<1.5", actual: dwAr.toFixed(3), pass: dwAr < 1.5 ? "✓" : "✗" });
+  // T6 chi2Cdf 임계값: chi2(0.95, df=1) ≈ 3.841
+  R.push({ test: "T6 · chi2Cdf(3.841,1)≈0.95", expected: "~0.95", actual: chi2Cdf(3.841, 1).toFixed(4), pass: approx(chi2Cdf(3.841, 1), 0.95, 5e-4) ? "✓" : "✗" });
+  // T7 Hill: 단조 증가 + 포화(<1)
+  const h = MMR_MATH.hill([0, 1, 10, 100, 1000], 50, 2);
+  R.push({ test: "T7 · Hill 단조·포화", expected: "증가 & <1", actual: h.map(v => v.toFixed(3)).join(","), pass: h[0] < h[2] && h[2] < h[4] && h[4] < 1 ? "✓" : "✗" });
+  // T8 Fourier: t=0 → sin=0, cos=1
+  const fr = MMR_MATH.fourier(10, 52, 1);
+  R.push({ test: "T8 · Fourier t=0 (sin0,cos1)", expected: "0,1", actual: `${fr[0].col[0].toFixed(3)},${fr[1].col[0].toFixed(3)}`, pass: approx(fr[0].col[0], 0, 1e-9) && approx(fr[1].col[0], 1, 1e-9) ? "✓" : "✗" });
+  // T9 Breusch-Godfrey: 자기상관 잔차에서 유의 (p<0.05)
+  const bg = MMR_STATS.breuschGodfrey(nw.resid, X4, 1);
+  R.push({ test: "T9 · BG 자기상관 검출 (p<0.05)", expected: "p<0.05", actual: bg ? `LM=${bg.LM.toFixed(2)} p=${bg.pValue.toFixed(4)}` : "null", pass: bg && bg.pValue < 0.05 ? "✓" : "✗" });
+  // T10 결정론
+  const d1 = MMR_STATS.neweyWest(X4, y4).se[1], d2 = MMR_STATS.neweyWest(X4, y4).se[1];
+  R.push({ test: "T10 · 결정론", expected: "identical", actual: d1 === d2 ? "identical" : "differ", pass: d1 === d2 ? "✓" : "✗" });
+  // T11 OOS rolling-origin: 완전 선형 데이터 → RMSE≈0
+  const oos = MMR_STATS.rollingOriginRMSE(X3, y3, 10);
+  R.push({ test: "T11 · OOS RMSE≈0 (완전 선형)", expected: "~0", actual: oos.rmse != null ? oos.rmse.toExponential(2) : "null", pass: oos.rmse != null && oos.rmse < 1e-6 ? "✓" : "✗" });
+  if (verbose) {
+    console.log("%c=== Marketing-Response Regression Core · Golden ===", "color:#adc6ff;font-weight:bold;");
+    console.table(R);
+    const pass = R.filter(x => x.pass === "✓").length;
+    console.log(`%c${pass}/${R.length} 통과`, `color:${pass === R.length ? '#22c55e' : '#f87171'};font-weight:bold;`);
+  }
+  return R;
+}
+if (typeof window !== "undefined") { window.runMmrCoreTests = runMmrCoreTests; window.MMR_MATH = MMR_MATH; window.MMR_STATS = MMR_STATS; window.chi2Cdf = chi2Cdf; }
+
+/* ============================================================
  * Quality Analyzer (5-8) — 코호트 리텐션 곡선 + LTV 외삽
  * grain: cohort_date × day_offset (선택적으로 channel/country/platform 분기)
  * ============================================================ */
