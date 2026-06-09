@@ -11814,6 +11814,201 @@ const MMM_METH_CONFIG = {
   hacAutoLag: (n) => Math.floor(4 * Math.pow(n / 100, 2 / 9)),
 };
 // 채널 키(semantic) → 5-18 매핑 필드
+
+/* ====== MMM 통계 용어집 (4단: 이유/진행/해석/유의성) — 워크플로 생성·검수 ====== */
+const MMM_GLOSSARY = {
+  "trend_overview": {
+    "term": "추세 존재 검정 (전체)",
+    "reason": "오가닉(광고 없이 자연히 들어오는) 가입·재활성이 진짜로 꺾이는 추세인지, 아니면 그냥 주별로 출렁이는 잡음인지를 먼저 가린다. 여기서 '진짜 하락이다'가 나와야 비로소 '광고가 그걸 잠식했나'를 따질 의미가 생기기 때문이다.",
+    "how": "하나의 검정만 믿지 않고 4가지를 교차로 본다 — STL(직선이라고 미리 가정하지 않고 곡선으로 추세를 분리), Mann-Kendall(꾸준히 오르내리는 방향이 있나), ADF·KPSS(진짜 추세냐 술취한 걸음 같은 랜덤워크냐). 특히 마지막엔 광고 지출과 계절성을 다 빼낸 잔차(설명되고 남은 부분)에 대해 다시 본다.",
+    "interpret": "다수 검정이 'no trend(추세 없음)'로 모이면 줄어드는 것처럼 보여도 근본 하락은 없다는 뜻. 반대로 잔차에서까지 하락이 남으면 광고 탓이 아니라 시장·제품 같은 외생적 하락일 가능성이 크다.",
+    "significance": "검정들의 p값(우연일 확률)이 0.05보다 작고 여러 검정이 같은 방향으로 모일 때 '믿을 만하다'고 본다. 검정 하나만 튀는 건 신뢰하지 않고, 합의된 신호만 의사결정에 쓴다.",
+    "example": "Tinder KR 오가닉 가입이 최근 줄어 보일 때, 'Google ROI 광고를 줄여서 그런가?'를 따지기 전에 먼저 '오가닉 자체가 진짜 꺾였나'를 4중 검정으로 확인한다.",
+    "caveat": "검정 하나가 '하락'이라고 해서 끝이 아니다. 단일 검정은 자기상관·계절성에 잘 속으므로, 반드시 여러 검정의 합의를 봐야 한다."
+  },
+  "stl": {
+    "term": "STL 분해 (계절·추세·잔차 분리)",
+    "reason": "마케팅 데이터에는 추세(장기 방향)·계절성(주기적 반복)·잡음이 뒤섞여 있다. '오가닉이 줄었다'는 인상이 사실 매주 반복되는 계절 패턴 때문은 아닌지, 잡음을 걷어내고 순수한 장기 방향만 보려고 쓴다.",
+    "how": "직선이라고 미리 정하지 않고, 데이터를 따라 휘는 부드러운 곡선(LOESS, 국소 가중 회귀)으로 추세를 뽑는다. 그 다음 같은 시기끼리 묶어 계절 패턴을 추정하고, 추세·계절을 빼고 남은 게 잔차(설명 안 된 나머지)다. 이걸 몇 번 반복해 안정시킨다.",
+    "interpret": "분해된 '추세' 곡선이 꾸준히 우하향이면 계절·잡음을 걷어낸 진짜 장기 하락. 추세는 평평한데 원자료만 출렁였다면 그건 계절성·잡음이었던 것.",
+    "significance": "STL은 p값을 직접 주지 않는다 — '얼마나 변했나'를 곡선으로 보여줄 뿐, '믿을 만한가'의 최종 판정은 Mann-Kendall·ADF·KPSS 같은 엄밀 검정에 맡긴다.",
+    "example": "Tinder KR 재활성이 주말마다 튀는 계절 패턴을 STL로 걷어내면, 남은 추세 곡선만으로 '재활성 기반이 실제로 식고 있는지'를 본다.",
+    "caveat": "데이터가 3주기(약 3년치 주간)보다 짧으면 계절 추정이 흔들린다. 그래서 STL의 변화율(%)은 짧은 시계열에선 참고용 보조 지표일 뿐 단독 근거로 쓰지 않는다."
+  },
+  "mann_kendall": {
+    "term": "Mann-Kendall (단조 증감 추세 검정)",
+    "reason": "값이 직선으로 떨어지지 않아도 '전반적으로 계속 오르거나 계속 내리는 방향'이 있는지 보려는 검정. 곡선이든 들쭉날쭉하든 방향성만 잡아낸다.",
+    "how": "모든 두 시점 쌍을 비교해 '뒤가 더 큼/작음'을 +1/-1로 세어 합산한다(순위 기반이라 이상치에 강함). 그 합이 우연으로 보기엔 너무 한쪽으로 치우쳤는지를 검정한다. 변형이 4가지다 — raw(원자료 그대로), Hamed-Rao(이웃 주끼리 닮는 자기상관을 보정해 과신 방지), seasonal(같은 시기끼리만 비교해 계절성 제거), deseason(계절성분을 먼저 빼고 검정).",
+    "interpret": "'increasing/decreasing'이면 꾸준한 상승/하락 방향, 'no trend'면 방향성 없는 출렁임. 4가지 변형이 같은 결론으로 모일수록 신뢰가 높다.",
+    "significance": "p값이 0.05 미만이면 '우연한 출렁임으로 보기 어렵다 = 진짜 방향이 있다'. 특히 자기상관 보정(Hamed-Rao) 후에도 0.05 미만이어야 과신이 아닌 진짜 추세다.",
+    "example": "Tinder KR 오가닉 가입에 raw MK는 '하락'이라 해도, 자기상관 보정(Hamed-Rao) MK에서 'no trend'로 바뀌면 그 하락은 이웃 주끼리 닮아 생긴 착시였던 것.",
+    "caveat": "raw MK는 이웃 주가 서로 닮는 성질(자기상관) 때문에 추세를 실제보다 쉽게 '있다'고 본다. 그래서 raw 단독으로 판단하지 말고 Hamed-Rao 보정본을 함께 봐야 한다."
+  },
+  "adf_kpss": {
+    "term": "ADF·KPSS (추세 vs 랜덤워크 구분)",
+    "reason": "내려가는 것처럼 보이는 선이 '진짜 일정한 추세'인지, 아니면 '술취한 걸음(랜덤워크 — 방향 없이 비틀대다 우연히 한쪽으로 흘러간 것)'인지 가른다. 둘은 보기엔 비슷해도 의사결정이 완전히 다르다.",
+    "how": "두 검정을 일부러 반대 질문으로 던져 교차검증한다. ADF는 '랜덤워크다(추세 없음)'를 기본 가정으로 두고 그걸 깰 수 있나 보고, KPSS는 반대로 '추세-정상이다(안정적 추세)'를 기본 가정으로 두고 그게 깨지나 본다. 둘 다 시간(t) 항을 포함한 버전(ct)으로 본다.",
+    "interpret": "ADF가 '랜덤워크 기각'(p<0.05) + KPSS가 '안정 추세 유지'(p≥0.05)로 같은 방향을 가리키면 = 신뢰할 만한 일관된 신호. 둘이 엇갈리면 데이터가 애매하다는 뜻이라 단정하지 않는다.",
+    "significance": "ADF는 p<0.05일 때, KPSS는 p≥0.05일 때 '안정적 추세' 쪽 증거. 두 검정이 서로 반대 가정을 쓰므로 둘이 일치할 때만 결론을 믿는다.",
+    "example": "Tinder KR 오가닉 가입의 하락선이 ADF·KPSS에서 '랜덤워크'로 나오면, 그건 추세가 아니라 비틀대다 우연히 내려간 것 — 광고 탓으로 몰 근거가 안 된다.",
+    "caveat": "ADF와 KPSS는 검정 방향이 정반대다. 둘 다 'p<0.05니까 유의'라고 같은 잣대로 읽으면 정반대로 해석하는 실수가 난다 — KPSS는 p가 클 때가 '안정'이다."
+  },
+  "resid_mk": {
+    "term": "매체+계절 통제 후 잔차 MK (광고 빼도 추세 남나)",
+    "reason": "이 표에서 가장 중요한 한 줄. '오가닉 하락이 광고를 줄여서인가, 아니면 광고와 무관한 외생적(시장·제품) 하락인가'에 직접 답한다.",
+    "how": "먼저 회귀로 매체 지출 효과와 계절성을 데이터에서 빼낸다. 그렇게 설명되고 남은 잔차(나머지)에만 다시 Mann-Kendall을 돌려, 광고·계절을 다 걷어낸 뒤에도 방향성이 남는지 본다.",
+    "interpret": "잔차 MK가 'no trend'면 = 광고를 다 빼고 봐도 오가닉 자체엔 추세가 없다 → 하락은 착시. 반대로 잔차에도 하락이 남으면 = 광고로 설명 안 되는 외생적 하락이 실재한다.",
+    "significance": "잔차 MK의 p값이 0.05 미만일 때만 '광고와 무관하게 남은 진짜 추세'로 인정한다. p가 크면 광고·계절을 빼고 나니 추세가 사라진 것이다.",
+    "example": "Tinder KR에서 Google ROI·CBUA·Meta 지출 효과와 주간 계절성을 다 뺀 잔차에 추세가 없으면, '광고를 줄여 오가닉이 죽었다'는 주장은 데이터로 지지되지 않는다.",
+    "caveat": "잔차에 추세가 남아도 그건 '광고가 원인이다'의 증거가 아니라 '광고로 설명 안 된다'까지만 말한다. 잠식·증분의 인과 판정은 회귀가 아니라 holdout 실험(5-15) 전용이다."
+  },
+  "cannib_overview": {
+    "term": "카니발리제이션 삼각검증 (cannibalization triangulation, 광고가 자연유입을 갉아먹는지 3중 교차검증)",
+    "reason": "광고로 늘어난 가입/재활성이 진짜 순수 증가인지, 아니면 광고를 안 했어도 알아서 들어왔을 자연유입(오가닉)을 광고가 가로챈 것(잠식)인지 가려내기 위함입니다. 의사결정 질문은 '이 광고비, 새 유저를 데려오나 아니면 공짜로 올 유저를 비싸게 다시 사는 건가'입니다.",
+    "how": "서로 독립된 3가지 신호를 각각 본 뒤 다수결로 종합합니다 — ① 시간 선행성(광고를 키기 전부터 이미 떨어지고 있었나), ② 허위상관/탈추세(시간 흐름만 빼면 광고와 오가닉의 음의 관계가 사라지나), ③ 순증분 탄력성(광고비를 늘렸을 때 전체 결과가 순으로 느나). 코드는 이 3표 중 2표 이상이 '오가닉' 쪽이면 결론을 뒤집습니다.",
+    "interpret": "'ORGANIC (media는 방어, 원인 아님)'이 나오면 오가닉 하락은 광고 탓이 아니라 외부 시장 요인이고 광고는 오히려 그 하락을 막아주고 있다는 뜻입니다. 'INCONCLUSIVE — geo holdout 필요'면 잠식 가능성을 배제 못 했으니 일부 지역 광고를 꺼보는 실험이 필요합니다.",
+    "significance": "한 검정만 믿지 않고 3개 중 2개 이상이 같은 방향을 가리킬 때만 결론을 냅니다. 검정마다 약점이 다르므로 서로의 오류를 상쇄해 한 지표의 우연한 결과에 휘둘리지 않게 하는 안전장치입니다.",
+    "example": "Tinder KR 오가닉 가입이 줄어드는데 Google ROI·Meta 지출을 늘린 시기 — 광고가 오가닉을 잠식한 건지, 시장이 식는 걸 광고가 떠받친 건지 이 3중 검증으로 판단합니다.",
+    "caveat": "이건 가설을 만드는 기술적 진단이지 인과 증거가 아닙니다. 진짜 증분/잠식의 최종 판정은 holdout 실험(5-15)에서만 가능합니다."
+  },
+  "precedence": {
+    "term": "시간 선행성 (precedence, 원인은 결과보다 먼저 와야 한다)",
+    "reason": "광고가 오가닉을 떨어뜨린 범인이라면 하락은 광고를 본격적으로 키운 '뒤에' 시작돼야 합니다. 만약 광고를 키기도 전부터 이미 떨어지고 있었다면 광고는 범인일 수 없습니다 — 결과가 원인보다 먼저 올 순 없으니까요.",
+    "how": "데이터 초반 26주 구간만 떼어, 그 기간 가입/재활성 지표가 주당 얼마나 변했는지 직선 기울기로 잽니다. 같은 구간 평균 광고비도 함께 봐서 '광고는 아직 적은데 지표는 이미 내려가는 중'인지 확인합니다.",
+    "interpret": "초반 구간 변화율이 -1%보다 더 떨어졌으면(declining_pre_ramp=참) '광고 키기 전부터 하락' → 광고는 원인이 아니라는 한 표를 던집니다. 거의 평평하거나 오르고 있었으면 이 표는 던지지 않습니다.",
+    "significance": "여기서는 p값보다 방향과 크기를 봅니다: 광고 본격화 이전 구간에서 지표가 뚜렷이(약 1% 초과) 이미 내려가고 있었는지가 핵심 기준입니다. 그게 사실이면 시간 순서상 광고 잠식설은 성립하기 어렵습니다.",
+    "example": "Tinder KR 재활성(React)이 2024년 초 광고비가 거의 안 들어가던 시점부터 이미 주당 줄고 있었다면, 이후 Meta·TikTok 지출 증가가 그 하락의 원인이라 보기 어렵습니다.",
+    "caveat": "초반 26주에 다른 큰 사건(앱 개편, 시즌성 등)이 겹쳐 있으면 이 기울기가 왜곡될 수 있어 단독 근거로 쓰면 안 됩니다."
+  },
+  "spurious_detrend": {
+    "term": "허위상관 / 탈추세 검정 (spurious correlation, 시간이 진짜 범인인지 가려내기)",
+    "reason": "광고비는 시간이 갈수록 늘고 오가닉은 시간이 갈수록 주는 경우, 둘은 강한 음의 관계로 보이지만 실제로는 서로 영향이 없고 '시간'이라는 공통 배경 때문에 우연히 반대로 움직인 것일 수 있습니다(허위상관). 이걸 진짜 잠식과 구분하려는 겁니다.",
+    "how": "먼저 광고비(로그)와 지표의 원시 상관을 잰 뒤, 양쪽에서 '시간에 따른 직선 추세'를 빼낸 잔차끼리 다시 상관을 잽니다. 추세를 걷어낸 뒤에도 음의 관계가 남는지 봅니다.",
+    "interpret": "원시 상관은 음수였는데 추세 제거 후 0 이상으로 바뀌면(negative_collapses=참) '시간이 범인 → spurious, 잠식 아님'으로 읽고 오가닉 쪽 한 표를 던집니다. 추세를 빼도 음의 관계가 그대로 살아남으면 '진짜 동시점 잠식 의심 → 조사 필요'입니다.",
+    "significance": "핵심은 음의 상관이 추세 제거 후 '무너지느냐(사라지느냐)'입니다. 무너지면 그 음의 관계는 둘의 실제 관계가 아니라 공통된 시간 흐름이 만든 착시였다는 신호입니다.",
+    "example": "Tinder KR에서 Google 지출↑·오가닉 가입↓이 강한 음의 상관으로 보여도, 시간 추세를 빼니 관계가 0 근처로 사라지면 둘 다 그냥 같은 기간에 각자 따로 움직였을 뿐 광고가 가입을 빼앗은 게 아닙니다.",
+    "caveat": "잔차 상관이 0이라고 '잠식 전혀 없음'을 증명하는 건 아닙니다 — 이 데이터·이 방법으로는 신호가 안 보인다는 의미일 뿐입니다."
+  },
+  "net_incrementality": {
+    "term": "순증분 탄력성 양수 (net incrementality elasticity > 0, 광고비를 늘리면 전체 결과가 순으로 느는가)",
+    "reason": "가장 직접적인 질문에 답합니다: '광고비를 더 쓰면 (오가닉을 좀 잠식하더라도) 결국 전체 가입/재활성이 늘긴 느는가?' 잠식이 아무리 있어도 전체 파이가 커지면 그 광고는 돈값을 한 겁니다.",
+    "how": "'탄력성'은 광고비를 1% 늘렸을 때 전체 결과가 몇 % 변하는지를 한 숫자로 요약한 것입니다. 이게 '순(net)'인 이유는 광고로 늘어난 유입에서 잠식된 오가닉을 이미 빼고 남은 알짜만 보기 때문입니다. 이 숫자의 부호(+/−)를 봅니다.",
+    "interpret": "양수(coef>0)면 '광고비↑ → 전체 결과도 순증가' = 강한 잠식과는 모순되므로 오가닉(광고가 도움) 쪽 한 표. 0 이하면 '돈을 더 써도 전체가 안 늘거나 줄어듦' = 잠식이 알짜 증가를 거의 다 까먹고 있다는 신호이고, 이때 잠식 가능성에 표를 줍니다.",
+    "significance": "부호와 함께 그 추정의 신뢰구간(CI)이 0을 포함하는지를 봅니다 — CI가 0을 넘나들면 '양수인지 음수인지 확신 못 함'이라 약한 증거로만 취급합니다. 양수가 0에서 충분히 떨어져 있을수록 '광고가 순증분을 만든다'는 결론이 단단해집니다.",
+    "example": "Tinder KR에서 Meta 지출을 늘렸을 때 (잠식분 제외하고도) 전체 React가 늘면 순증분 탄력성 양수 → 그 광고는 오가닉을 빼앗는 게 아니라 새 활성 유저를 순으로 더해주는 것입니다.",
+    "caveat": "양수여도 '얼마나 효율적인가(돈값)'는 별개 질문입니다 — 순증가가 있다는 것과 그 증가가 비용 대비 충분하다는 것은 다릅니다."
+  },
+  "hac": {
+    "term": "HAC 보정 (자기상관에 강한 표준오차) vs OLS",
+    "reason": "마케팅 데이터는 이번 주 성과가 지난주의 영향을 받습니다(자기상관: 시간상 가까운 데이터끼리 닮는 성질). 그냥 OLS(보통 회귀, 모든 주를 서로 독립이라고 가정)로 효과의 신뢰도를 계산하면, 사실상 비슷한 정보를 가진 데이터를 '서로 다른 새 정보'로 중복 계산해 신뢰도를 실제보다 부풀립니다. HAC 보정(자기상관·분산불균일에 강한 표준오차 — 영어 머리글자일 뿐 뜻은 '데이터끼리 닮아도 신뢰도를 안 부풀리게 고친 오차 계산법')은 '이 채널 효과가 진짜냐, 아니면 자기상관 때문에 그렇게 보이는 거냐'에 답하기 위한 안전장치입니다.",
+    "how": "비유하면, 같은 사람한테 5번 물어본 답을 '서로 다른 5명의 의견'으로 세면 안 되는 것과 같습니다. HAC는 이웃한 주끼리 얼마나 닮았는지를 측정해 그만큼 '실제로 새로운 정보의 양'을 깎아내고, 그 깎인 정보량으로 효과의 오차(불확실성)를 다시 계산합니다. 효과의 크기(계수) 자체는 그대로 두고, '얼마나 믿을 만한가'라는 신뢰도 부분만 더 보수적으로 고쳐줍니다.",
+    "interpret": "OLS에서는 '효과 있음'으로 나왔는데 HAC 보정 후 효과가 사라지면(불확실해지면), 그 채널의 성과는 원래 과장돼 있었던 것입니다. 반대로 HAC 후에도 효과가 남으면, 자기상관이라는 착시를 걷어내고도 진짜로 남는 효과라 더 신뢰할 수 있습니다.",
+    "significance": "HAC 보정을 거친 뒤의 p값이 0.05보다 작을 때만 그 채널을 '통계적으로 유의한 성과'로 인정합니다. 자기상관이 있는 데이터에선 OLS 기준 유의성을 그대로 믿지 않습니다 — 우리 주간 데이터처럼 이웃 주가 같은 방향으로 닮아 움직이는(양의 자기상관) 경우, 보정 전 OLS 숫자는 신뢰도를 실제보다 후하게(낙관적으로) 보여주기 때문입니다.",
+    "example": "Google ROI 채널이 OLS에선 '가입 증가에 유의한 기여'로 보였지만, 주간 데이터의 자기상관을 HAC로 통제하니 효과가 흐릿해졌다면, 그 기여는 과대평가였을 가능성이 큽니다.",
+    "caveat": "HAC는 효과의 '크기(계수)'를 바꾸지 않고 '신뢰도(오차)'만 손봅니다. 계수 숫자가 그대로라고 보정이 안 됐다고 오해하지 마세요. 또 우리 데이터의 흔한 경우(양의 자기상관)에선 보정 후 신뢰도가 낮아지지만, 자기상관 방향에 따라선 거의 안 변하기도 합니다 — 보정 후 p값을 그대로 읽으면 됩니다."
+  },
+  "pvalue": {
+    "term": "p-value (우연일 확률)",
+    "reason": "어떤 채널의 효과가 진짜인지, 아니면 데이터가 우연히 그렇게 나온 것뿐인지 구분하기 위해 봅니다. '이 효과를 믿고 예산을 움직여도 되나'라는 의사결정에 직접 답하는 숫자입니다.",
+    "how": "'사실은 아무 효과도 없다'고 일부러 가정한 뒤, 그 가정이 맞는데도 지금 본 것만큼 큰 결과가 우연히 나올 확률을 계산합니다. 이 확률이 p값입니다 — 작을수록 '우연만으로는 설명하기 어렵다'는 뜻입니다.",
+    "interpret": "p값이 작으면(예: 0.01) 우연일 가능성이 낮아 효과가 진짜일 가능성이 큽니다. 크면(예: 0.4) 그냥 노이즈(잡음, 의미 없는 변동)일 수 있어 효과가 있다고 말하기 어렵습니다.",
+    "significance": "관례상 p<0.05면 '통계적으로 유의하다'고 봅니다. 이는 '효과가 없는데 우연히 이런 결과가 나올 확률이 5% 미만'이라는 뜻으로, 그 정도면 우연으로 치부하지 않고 효과를 인정하겠다는 기준선입니다.",
+    "example": "Meta의 가입 기여 계수가 p=0.03으로 나오면, '효과가 없다면 이런 결과가 우연히 나올 확률이 3%뿐'이라 Meta 효과를 유의하다고 판단합니다.",
+    "caveat": "p값은 '효과가 클 확률'이 아니라 '우연일 확률'입니다. p가 작아도 효과 크기 자체가 미미할 수 있으니, 항상 효과의 크기(계수)와 같이 봐야 합니다."
+  },
+  "ci95": {
+    "term": "95% 신뢰구간 (효과가 들어갈 범위)",
+    "reason": "효과를 '딱 한 숫자'가 아니라 '있을 법한 범위'로 보여줘서, 추정이 얼마나 단단한지 가늠하기 위해 봅니다. '이 효과를 어느 정도 폭으로 신뢰할 수 있나'에 답합니다.",
+    "how": "이런 식으로 데이터를 모아 똑같은 방법으로 구간을 100번 만든다면 그중 약 95번은 진짜 효과 값을 품도록 위·아래 경계를 잡은 것이 95% 신뢰구간입니다('이 한 구간 안에 진짜 값이 있을 확률이 95%'라는 뜻은 아니고, '이렇게 만든 구간들이 95% 비율로 진짜 값을 담는다'는 뜻). 데이터가 많고 깨끗할수록 이 범위(폭)는 좁아집니다.",
+    "interpret": "구간이 좁으면 효과 추정이 정밀한 것이고, 넓으면 '대략 이 정도지만 확실치 않다'는 뜻입니다. 특히 구간이 0을 포함하면(예: -0.2 ~ +0.5), 효과가 양수일 수도 음수일 수도 있다는 말이라 '효과가 있다'고 단정할 수 없습니다.",
+    "significance": "95% 신뢰구간이 0을 넘지 않을 때(전체가 0보다 크거나, 전체가 0보다 작을 때)만 효과가 유의하다고 봅니다. 이는 p<0.05와 같은 판정으로, 범위 안에 '효과 없음(0)'이 끼어 있지 않다는 의미입니다.",
+    "example": "TikTok의 가입 기여 95% 신뢰구간이 +0.1 ~ +0.6이면 전 구간이 0보다 커서 '기여가 있다'로 읽지만, -0.3 ~ +0.4면 0을 품고 있어 효과가 불확실합니다.",
+    "caveat": "구간이 0을 포함한다고 '효과가 0이다'라는 뜻은 아닙니다 — '0인지 아닌지 아직 단정 못 한다(데이터가 부족하다)'에 가깝습니다."
+  },
+  "r2": {
+    "term": "R²·조정 R² (모델 설명력)",
+    "reason": "우리가 만든 회귀 모델이 가입/재활성의 오르내림을 얼마나 잘 따라가는지, 즉 '이 모델 말을 어느 정도 믿어도 되나'를 가늠하기 위해 봅니다.",
+    "how": "실제 가입 수치의 변동 중에서 모델이 설명해낸 비율을 0~1(또는 0~100%)로 나타낸 것이 R²입니다. 조정 R²(adjusted R²)는 변수를 무작정 늘려 점수만 높이는 꼼수를 막으려고, 쓸모없는 변수를 넣으면 점수를 깎는 정직한 버전입니다.",
+    "interpret": "R²가 0.8이면 가입 변동의 80%를 모델이 설명한다는 뜻이고, 0.2면 대부분(80%)을 설명 못 한다는 뜻입니다. 변수를 추가했는데 조정 R²가 안 오르거나 내려가면, 그 변수는 도움이 안 되니 빼는 게 낫습니다.",
+    "significance": "R²에는 'p<0.05' 같은 딱 떨어지는 합격선이 없습니다 — 마케팅 주간 데이터에선 0.6~0.8이면 양호한 편입니다. 다만 R²가 높다고 인과(원인-결과)가 증명되는 건 아니고, '잘 들어맞는다(설명·예측이 괜찮다)'는 의미일 뿐입니다.",
+    "example": "Brand·Meta·TikTok 등을 넣은 모델의 조정 R²가 0.75면, Tinder KR 주간 가입 변동의 약 75%를 이 채널 조합으로 설명할 수 있다는 뜻입니다.",
+    "caveat": "R²가 높아도 그게 '이 채널들이 가입의 원인'이라는 증거는 아닙니다. 설명력과 인과는 별개이며, 인과·증분 판정은 holdout(일부를 일부러 빼고 비교하는 실험) 전용입니다."
+  },
+  "elasticity": {
+    "term": "탄력성 (elasticity — log-log 회귀 계수)",
+    "reason": "이 채널에 돈을 더 넣으면 결과(가입/재활성)가 얼마나 민감하게 반응하는지를 한 숫자로 알고 싶을 때 봅니다 — '여기 예산을 늘릴 가치가 있나?'라는 의사결정에 답합니다.",
+    "how": "지출과 결과를 각각 퍼센트 변화(로그)로 바꿔 직선을 맞춥니다(log-log 회귀). 그 직선의 기울기가 탄력성이라, 절대 금액이 아니라 '몇 % 늘리면 몇 % 늘더라'라는 비율로 읽힙니다.",
+    "interpret": "예를 들어 탄력성이 0.3이면 '지출 1%↑ → 결과 약 0.3%↑'(즉 지출 10%↑면 결과 약 3%↑). 1보다 작으면 늘린 비율보다 결과가 덜 늘어 효율이 떨어지는 구간, 0에 가까우면 돈을 더 넣어도 거의 안 움직이는 채널입니다.",
+    "significance": "그 계수의 95% 신뢰구간(참값이 있을 만한 범위)이 0을 넘지 않을 때만 '진짜 효과 있음'으로 봅니다. 구간이 0을 걸치면(예: -0.1~0.4) 효과가 0일 수도 있다는 뜻이라 단정하면 안 됩니다.",
+    "example": "Tinder KR에서 Meta 가입 탄력성이 0.27이면 Meta 예산 10%↑ 시 가입 약 +2.7% 기대 — 단 95% CI가 0 위에 있어야 신뢰.",
+    "caveat": "이 숫자는 '연관(가설)'이지 인과가 아닙니다 — 진짜 증분/잠식 판정은 holdout(5-15)에서만. 또 탄력성은 비율이라 '사람 수'가 아니므로 예산 결정엔 weekly_users로 환산해 봐야 합니다."
+  },
+  "weekly_users": {
+    "term": "주당 추가 인원 (+$1,000당 늘어나는 사람 수)",
+    "reason": "탄력성은 '%'라 임원·마케터가 바로 와닿지 않습니다. '이 채널에 주마다 1,000달러를 더 쓰면 가입자가 몇 명 더 늘까?'라는, 예산 회의에서 실제로 묻는 질문에 사람 수로 답하려고 봅니다.",
+    "how": "탄력성(%↔% 기울기)을 지금 이 채널의 실제 지출액·결과 인원에 대입해 '추가 1,000달러 → 추가 N명'으로 환산합니다. 이때 수확체감(많이 쓸수록 1달러당 효과가 줄어드는 성질)을 반영해, 이미 많이 쓰는 채널일수록 N이 작게 나옵니다.",
+    "interpret": "예: '+$1,000당 +12명'이면 주 예산을 1,000달러 늘릴 때 가입 약 12명 증가 기대. 이 숫자를 채널끼리 나란히 놓고 큰 쪽부터 돈을 옮기면 같은 예산으로 더 많은 사람을 얻습니다.",
+    "significance": "바탕이 되는 탄력성의 95% 신뢰구간이 0을 넘어야 이 인원 추정도 믿을 만합니다. CI가 0을 걸치는 채널의 '+N명'은 0명일 수도 있다는 뜻이라 그 채널엔 증액 결정을 미루는 게 안전합니다.",
+    "example": "Tinder KR에서 TikTok이 +$1,000당 +18명, Brand가 +6명이면 같은 1,000달러는 TikTok에 넣는 게 가입 3배 — 단 TikTok 지출이 커질수록 이 18명은 점점 줄어듭니다(수확체감).",
+    "caveat": "'다음 1,000달러'의 효과지 '이미 쓴 돈 전체'의 평균이 아닙니다 — 지금보다 크게 늘리면 수확체감으로 실제 인원은 추정보다 적게 나올 수 있습니다."
+  },
+  "adstock": {
+    "term": "광고 잔향 (adstock λ — 효과가 다음 주로 이어지는 정도)",
+    "reason": "광고는 본 주에만 효과가 끝나지 않고 다음 주 가입까지 영향을 남깁니다. 이 '잔향'을 무시하면 채널 효과를 잘못 잴 수 있어, 효과가 며칠/몇 주 끌리는지를 먼저 정하려고 봅니다.",
+    "how": "이번 주 지출에 지난주 효과의 일부를 더해 '쌓인 광고 압력'을 만듭니다(λ=0.4면 지난주 효과의 40%가 이번 주로 carry-over). λ 값은 여러 후보를 두고, 모델이 '한 번도 안 본 미래 주'를 맞히는 오차(rolling-origin OOS, 과거로만 학습해 바로 다음 주를 예측하는 검증)가 가장 작은 값으로 자동 선택합니다.",
+    "interpret": "λ가 0에 가까우면 그 채널은 효과가 그 주에 끝나는 즉발형(예: 전환 캠페인), 0.6처럼 크면 효과가 여러 주 끌리는 브랜드형입니다. 큰 λ 채널은 끄거나 줄여도 한동안 효과가 남아 보입니다.",
+    "significance": "'in-sample(이미 본 데이터에 잘 맞음)'으로 고르면 과적합(데이터를 외워버려 미래엔 빗나감)되니, 반드시 미래 주를 맞히는 OOS 오차가 최소인 λ만 신뢰합니다. OOS 곡선(validation curve)에 뚜렷한 최저점이 있어야 그 λ가 의미 있습니다.",
+    "example": "Tinder KR에서 Brand 채널 λ=0.6이면 이번 주 브랜드 광고 효과의 60%가 다음 주 가입까지 이어진다는 뜻 — 즉발형 Google ROI는 λ≈0으로 잡힙니다.",
+    "caveat": "λ가 크게 잡힌다고 그 채널이 '더 좋다'는 뜻은 아닙니다 — 효과가 오래 끌린다는 모양일 뿐, 효율은 탄력성·weekly_users로 따로 봐야 합니다."
+  },
+  "saturation": {
+    "term": "수확체감 (saturation — 많이 쓸수록 1달러당 효과 감소)",
+    "reason": "어떤 채널이든 돈을 무한히 넣는다고 결과가 똑같은 속도로 늘지 않습니다. '이 채널은 어디까지 더 써도 남는 장사인가, 이미 한계에 왔나'를 판단하려고 봅니다.",
+    "how": "쌓인 광고 압력(adstock)을 휘어진 곡선에 통과시켜 '쓸수록 완만해지는' 모양을 만듭니다. 처음엔 가파르게 오르다 점점 눕는 log 곡선이나, 초반 천천히→중간 급상승→후반 포화되는 S자(Hill) 곡선 중 미래를 더 잘 맞히는 쪽을 자동 선택합니다.",
+    "interpret": "곡선이 이미 평평해진 구간에 있는 채널은 돈을 더 넣어도 추가 가입이 거의 안 늘어 증액 효율이 낮습니다(여기서 weekly_users가 작게 나옵니다). 아직 가파른 구간이면 증액 여지가 큽니다.",
+    "significance": "log vs Hill 선택도 adstock과 마찬가지로 미래 주를 맞히는 OOS 오차가 작은 쪽으로 정합니다. 데이터가 짧으면 두 곡선 차이를 신뢰하기 어려우니 '대략 체감이 있다' 정도로만 읽는 게 안전합니다.",
+    "example": "Tinder KR에서 Google ROI가 이미 포화 구간이면 +$1,000을 넣어도 가입이 거의 안 늘어, 그 돈은 아직 가파른 TikTok으로 옮기는 게 이득입니다.",
+    "caveat": "'포화됐다'가 '이 채널을 빼라'는 뜻은 아닙니다 — 이미 들어온 효과는 유지되며, 다만 '다음 1달러'의 추가 효과가 작다는 의미일 뿐입니다."
+  },
+  "vif": {
+    "term": "VIF·다중공선성 (변수끼리 닮으면 개별 기여를 못 가른다)",
+    "reason": "여러 채널의 지출이 늘 같이 움직이면(예: Google과 Brand를 항상 동시에 올렸으면), 회귀가 '어느 채널 덕분인지'를 채널별로 따로 떼어낼 수 없습니다. VIF(분산팽창지수, 변수가 서로 얼마나 겹치는지를 숫자로 잰 값)는 '이 결과를 채널별로 믿고 나눠도 되는지'를 점검합니다.",
+    "how": "각 변수에 대해 '나머지 변수들로 이 변수를 얼마나 잘 예측할 수 있나'를 봅니다. 다른 변수들로 거의 다 설명되면(서로 닮았으면) VIF가 커집니다. 수식으로는 1÷(1−그 변수가 나머지로 설명되는 비율)이라, 겹침이 클수록 값이 치솟습니다.",
+    "interpret": "VIF가 1~2면 독립적이라 채널별 숫자를 그대로 읽어도 됩니다. 5~10이면 주의(두 채널의 기여가 섞여 있을 수 있음), 10을 넘으면 심각해서 그 변수의 개별 계수는 사실상 믿지 마세요. 도구는 이 경우 변수 하나를 자동으로 빼서 식을 안정화합니다.",
+    "significance": "VIF에는 p값이 없습니다. 임계선(이 도구는 5 또는 10)을 넘었는지로 판단하며, '유의하다/아니다'가 아니라 '이 계수를 채널 단위로 분리해 신뢰할 수 있느냐'의 신호입니다. 넘으면 그 숫자 자체보다 묶음(예: Google 전체)으로 보세요.",
+    "example": "Tinder KR에서 Google ROI와 Brand 예산을 항상 같이 늘렸다면 둘의 VIF가 동반 상승 → '둘 중 어느 쪽이 가입을 끌어올렸나'를 따로 말할 수 없고, 'Google 계열 전체 효과'로만 읽어야 합니다.",
+    "caveat": "VIF가 높다고 모델이 틀린 게 아닙니다. 전체 예측력(R²)은 멀쩡할 수 있고, 단지 '채널별로 쪼갠 개별 숫자'만 못 믿는 것입니다."
+  },
+  "shapley": {
+    "term": "Shapley R² (각 드라이버가 결과 변동을 몇 % 공정하게 설명하나)",
+    "reason": "'가입(또는 재활성)이 오르내린 것 중 몇 %가 Google 덕분, 몇 %가 계절성 덕분인가'를 마케터가 바로 읽을 수 있게, 설명력을 드라이버별로 공정하게 나눠줍니다. 예산 배분 회의에서 '무엇이 결과를 움직이는가'에 답하는 지표입니다.",
+    "how": "드라이버를 모델에 넣는 순서를 바꾸면 누가 공을 가져가는지가 달라집니다. Shapley는 가능한 모든 투입 순서를 다 따져 평균을 내, 순서 운에 휘둘리지 않게 각 드라이버 몫을 정합니다. 그래서 모든 몫을 더하면 정확히 전체 설명력(R²)이 됩니다.",
+    "interpret": "각 드라이버 옆 퍼센트는 '설명된 변동 중 이 드라이버 차지'입니다. Google 35%·계절성 40%면, 결과가 흔들린 것의 상당 부분은 광고가 아니라 시즌 영향이라는 뜻 — 광고 성과를 과대평가하지 않게 해줍니다.",
+    "significance": "Shapley 몫에는 별도 p값이 없습니다. 신뢰 판단은 같은 모델의 채널 계수 유의성(아래 신뢰도 ●)과 함께 보세요. 몫이 커도 그 채널 계수가 노이즈로 판정되면 '설명은 많이 하지만 인과 근거는 약함'입니다.",
+    "example": "Tinder KR 가입에서 Shapley가 계절성 40%·Google ROI 25%·Meta 15%로 나오면, 가입 등락의 절반 가까이는 시즌(설/추석 등) 영향이고 매체는 그 위에 얹힌 몫이라고 임원에게 설명할 수 있습니다.",
+    "caveat": "'이 채널 지출이 전체 광고비의 N%니까 기여도 N%'식으로 지출 비중을 그대로 기여도로 보는 단순 점유율 분해는 금지입니다. 로그 변환·수확체감 때문에 지출이 2배라고 효과가 2배가 아니라서, 지출 비중과 실제 설명력은 다릅니다 — 반드시 Shapley로만 나눠야 공정합니다."
+  },
+  "confidence_dots": {
+    "term": "신뢰도 ●●●●○ (이 결론을 얼마나 믿어도 되는지 5점 시각 표시)",
+    "reason": "통계 용어(p값·CI)를 몰라도 '이 숫자 믿어도 되나?'를 한눈에 보게 만든 표시입니다. 채워진 동그라미가 많을수록 그 결론을 의사결정에 써도 안전하다는 뜻입니다.",
+    "how": "채널 효과는 그 계수의 p값(우연일 확률)으로 점수를 매깁니다 — p<0.001이면 ●●●●●, <0.01이면 ●●●●○, <0.05면 ●●●○○, <0.1이면 ●●○○○, 그 이상이면 ●○○○○. 추세·잠식 결론은 여러 독립 검정(STL·Mann-Kendall·ADF·KPSS 등)이 몇 개나 같은 쪽으로 일치했는지로 점수를 올립니다.",
+    "interpret": "●●●●●~●●●●○면 매우 높음 — 그대로 결정 근거로 쓰세요. ●●●○○는 보통 — 참고하되 다른 근거와 같이. ●●○○○ 이하는 약함 — '아직 모른다'에 가깝고 단독 근거로 쓰면 안 됩니다.",
+    "significance": "동그라미 3개(●●●○○)가 통상 기준선인 p<0.05(우연일 확률 5% 미만)에 대응합니다. 즉 3개 이상이어야 '통계적으로 믿을 만하다'의 최소선을 넘습니다. 추세·잠식은 여러 검정이 동시에 합의할수록 점이 차오릅니다.",
+    "example": "Google ROI 효과가 ●●●●○면 '가입을 끌어올린다'를 예산 회의에서 자신 있게 말해도 되고, TikTok이 ●○○○○면 '효과 있다/없다'를 아직 단정하지 말라는 신호입니다.",
+    "caveat": "점이 많다고 '인과(광고를 켜서 늘었다)'가 증명된 건 아닙니다. 어디까지나 '이 통계적 연관이 우연이 아닐 가능성'이며, 인과·증분 확정은 holdout(5-15) 실험 전용입니다."
+  },
+  "sparsity": {
+    "term": "데이터 희소성 (지출이 거의 없던 채널의 계수는 노이즈)",
+    "reason": "어떤 채널이 전체 기간 중 극히 일부 주에만 돈을 썼다면(예: TikTok 127주 중 6주), 그 채널 효과는 6개 점으로 선을 그은 셈이라 거의 추측입니다. 이 신호는 '이 숫자를 의사결정 근거로 써도 되는가'를 걸러줍니다.",
+    "how": "도구는 채널별로 '지출이 0이 아니었던 주 수 / 전체 주 수'(예: 6/127)를 세어 표시합니다. 또 단 한 주만 1인 특수 더미(예: 일회성 이벤트)는 그 한 점에 모델이 완벽히 들어맞아(잔차≈0) 가짜로 강력해 보이므로 자동으로 해석에서 제외하고 흐리게 표시합니다.",
+    "interpret": "비-0 주 비율이 낮은 채널(대략 한 자릿수 주)은 계수·신뢰도 점이 좋아 보여도 무시하세요 — 표본이 너무 적어 '운 좋은 우연'일 가능성이 큽니다. '단일관측·해석제외' 라벨이 붙은 행도 마찬가지로 건너뛰면 됩니다.",
+    "significance": "여기선 p값보다 표본 수가 먼저입니다. 활성 주가 너무 적으면 p값이나 CI가 좋게 나와도 통계적으로 의미를 부여하지 마세요. 충분한 활성 주(최소 두 자릿수)가 쌓인 채널만 신뢰도 판정을 적용합니다.",
+    "example": "TikTok이 127주 중 6주만 집행됐는데 계수가 크게 나와도, 그 6주의 가입 호조가 시즌·다른 채널 영향일 수 있어 'TikTok을 늘리자'의 근거로 삼으면 안 됩니다 — 먼저 충분히 더 집행해 데이터를 쌓아야 합니다.",
+    "caveat": "희소 채널의 계수가 흥미롭게 보여도 '효과 없음'이 아니라 '아직 판단 불가'입니다. 버리지 말고, 결론을 미루고 집행량을 늘려 데이터를 모으는 게 정답입니다."
+  }
+};
+if (typeof window !== "undefined") window.MMM_GLOSSARY = MMM_GLOSSARY;
+
 const MMM_CHANNELS = [
   { key: "google_roi", field: "ch_google_roi", label: "Google ROI" },
   { key: "google_cbua", field: "ch_google_cbua", label: "Google CBUA" },
@@ -12377,6 +12572,44 @@ function mmmExplain(html) {
 }
 const _MMM_TARGET_KO = { Regs: "가입 (Registration)", React: "재활성 (Reactivation)" };
 
+/* === 통계 용어 4단 설명 툴팁/모달 (글래스모피즘, 클릭) === */
+function mmmInfoIcon(key) {
+  if (typeof MMM_GLOSSARY === "undefined" || !MMM_GLOSSARY[key]) return "";
+  return `<span class="mmm-info" data-mmm-info="${key}" title="자세한 설명 보기" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid rgba(122,162,247,0.55);color:#adc6ff;font-size:10px;font-style:normal;font-weight:700;line-height:1;margin-left:5px;vertical-align:middle;user-select:none;">i</span>`;
+}
+function mmmCloseInfo() { const m = document.getElementById("mmm-info-modal"); if (m) m.remove(); }
+function mmmOpenInfo(key) {
+  const g = (typeof MMM_GLOSSARY !== "undefined") && MMM_GLOSSARY[key]; if (!g) return;
+  mmmCloseInfo();
+  const sec = (label, color, html) => `<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:700;color:${color};letter-spacing:0.02em;margin-bottom:3px;">${label}</div><div style="font-size:13px;line-height:1.75;color:var(--text-1);">${html}</div></div>`;
+  const wrap = document.createElement("div");
+  wrap.id = "mmm-info-modal";
+  wrap.setAttribute("style", "position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);");
+  wrap.innerHTML = `<div data-mmm-info-card style="max-width:580px;max-height:84vh;overflow-y:auto;background:rgba(22,24,33,0.9);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(122,162,247,0.35);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,0.55);padding:22px 24px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;">
+        <h3 style="margin:0;font-size:16px;color:var(--text-1);line-height:1.45;">${escapeHtml(g.term)}</h3>
+        <button data-mmm-info-close style="flex-shrink:0;background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1;padding:0 2px;">×</button>
+      </div>
+      ${sec("① 왜 보는가 — 이유", "#7aa2f7", g.reason)}
+      ${sec("② 어떻게 계산하나 — 진행 방법", "#7dcfff", g.how)}
+      ${sec("③ 결과를 어떻게 읽나 — 해석 방법", "#9ece6a", g.interpret)}
+      ${sec("④ 언제 믿어도 되나 — 통계적 유의성", "#e0af68", g.significance)}
+      ${g.example ? `<div style="background:rgba(122,162,247,0.08);border-radius:8px;padding:10px 12px;margin-top:4px;"><div style="font-size:11px;font-weight:700;color:#adc6ff;margin-bottom:3px;">💡 이 데이터에선</div><div style="font-size:12.5px;line-height:1.65;color:var(--text-1);">${g.example}</div></div>` : ""}
+      ${g.caveat ? `<div style="background:rgba(251,191,36,0.08);border-radius:8px;padding:10px 12px;margin-top:8px;"><div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:3px;">⚠ 흔한 오해</div><div style="font-size:12.5px;line-height:1.65;color:var(--text-1);">${g.caveat}</div></div>` : ""}
+    </div>`;
+  document.body.appendChild(wrap);
+}
+function bindMmmInfoOnce() {
+  if (window.__mmmInfoBound) return; window.__mmmInfoBound = true;
+  document.addEventListener("click", (e) => {
+    const icon = e.target.closest && e.target.closest("[data-mmm-info]");
+    if (icon) { e.stopPropagation(); mmmOpenInfo(icon.dataset.mmmInfo); return; }
+    const modal = document.getElementById("mmm-info-modal");
+    if (modal && (e.target === modal || (e.target.closest && e.target.closest("[data-mmm-info-close]")))) mmmCloseInfo();
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") mmmCloseInfo(); });
+}
+
 function renderMmmSummary(c) {
   const targetCard = (t) => {
     const T = c.byTarget[t]; if (!T) return "";
@@ -12407,19 +12640,19 @@ function renderMmmSummary(c) {
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">주평균 약 ${meanY.toLocaleString()}명 · 분석 기간 ${c.panel.week.length}주</div>
 
         <div style="margin-bottom:10px;">
-          <div style="font-size:13px;color:var(--text-1);line-height:1.65;"><span style="color:#7aa2f7;font-weight:700;">①  추세</span> — ${mmmTrendPlain(T.trend, _MMM_TARGET_KO[t].split(" ")[0])}</div>
+          <div style="font-size:13px;color:var(--text-1);line-height:1.65;"><span style="color:#7aa2f7;font-weight:700;">①  추세</span>${mmmInfoIcon("trend_overview")} — ${mmmTrendPlain(T.trend, _MMM_TARGET_KO[t].split(" ")[0])}</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">통계적 신뢰도 <span style="color:#adc6ff;letter-spacing:1px;">${mmmConfDots(tConf)}</span></div>
         </div>
 
         <div style="margin-bottom:10px;">
-          <div style="font-size:13px;color:var(--text-1);line-height:1.65;"><span style="color:#7aa2f7;font-weight:700;">②  카니발(잠식) 여부</span> — ${mmmCannibPlain(T.cannib, _MMM_TARGET_KO[t].split(" ")[0])}</div>
+          <div style="font-size:13px;color:var(--text-1);line-height:1.65;"><span style="color:#7aa2f7;font-weight:700;">②  카니발(잠식) 여부</span>${mmmInfoIcon("cannib_overview")} — ${mmmCannibPlain(T.cannib, _MMM_TARGET_KO[t].split(" ")[0])}</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">통계적 신뢰도 <span style="color:#adc6ff;letter-spacing:1px;">${mmmConfDots(cConf)}</span></div>
         </div>
 
         <div>
           <div style="font-size:13px;color:var(--text-1);font-weight:600;margin-bottom:4px;"><span style="color:#7aa2f7;">③  채널별 효과</span> — 지출을 늘리면 ${_MMM_TARGET_KO[t].split(" ")[0]}이(가) 얼마나?</div>
           <div class="table-wrap"><table class="data" style="font-size:11.5px;">
-            <thead><tr><th>채널</th><th>지출 +10% 시</th><th>+$1,000/주당</th><th>판정</th><th>신뢰도</th></tr></thead>
+            <thead><tr><th>채널</th><th>지출 +10% 시${mmmInfoIcon("elasticity")}</th><th>+$1,000/주당${mmmInfoIcon("weekly_users")}</th><th>판정${mmmInfoIcon("net_incrementality")}</th><th>신뢰도${mmmInfoIcon("confidence_dots")}</th></tr></thead>
             <tbody>${effRows || '<tr><td colspan="5">채널 없음</td></tr>'}</tbody>
           </table></div>
           ${sparseNote}
@@ -12480,7 +12713,7 @@ function renderMmmAudit(c) {
     <h2 class="section-title"><span class="ix">§2</span>시트 "winner" 모델 audit</h2>
     <p class="muted">시트 스펙 재현 → OLS vs HAC p값(주간 자기상관). target=RR · n=${a.n} · R²=${f(a.r2, 4)} adjR²=${f(a.adj_r2, 4)} · HAC maxlags=${a.hac_maxlags}.</p>
     ${mmmExplain('기존 엑셀/스프레드시트 모델이 통계적으로 믿을 만한지 검증하는 단계입니다. 핵심은 <strong>OLS p값 vs HAC p값</strong> 비교: p값은 작을수록 "우연이 아니다(신호 있음)"인데, 주간 데이터는 이웃한 주끼리 닮아서(자기상관) OLS가 p값을 <strong>실제보다 작게(과신)</strong> 보고합니다. HAC p값이 OLS보다 크면 = 원래 모델이 유의성을 과대평가했다는 신호. 또 <strong>브랜드를 넣으면 R²가 오히려 올라가므로</strong>("회귀변수를 더하면 R²는 절대 안 떨어짐") "브랜드 빼자"는 시트 논리는 통계적으로 틀린 판단입니다. R²=설명력(0~1, 1에 가까울수록 잘 설명).')}
-    <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>변수</th><th>coef</th><th>OLS p</th><th>HAC p</th></tr></thead><tbody>${coefR}</tbody></table></div>
+    <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>변수</th><th>coef</th><th>OLS p</th><th>HAC p${mmmInfoIcon("hac")}</th></tr></thead><tbody>${coefR}</tbody></table></div>
     <p style="font-size:12px;margin:10px 0 2px;color:var(--text-1);">브랜드 추가 시 R²가 내려가는가? (회귀변수 추가는 R²를 못 낮춤 → "브랜드 빼는" 시트 논리 반박)</p>
     <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>target</th><th>R²(no brand)</th><th>R²(+brand)</th><th>brand p</th></tr></thead><tbody>${brandR}</tbody></table></div>
     <p style="font-size:12px;margin:10px 0 2px;color:var(--text-1);">같은 스펙, target별 Google(ln_G) 계수 불안정 (공선 tell)</p>
@@ -12503,15 +12736,15 @@ function renderMmmTrend(c) {
     ${mmmExplain('<strong>p값 &lt; 0.05 = 우연으로 보기 어려움 = 추세 신호 있음</strong>, p값이 크면(예: 0.5) 신호 없음. 검정을 여러 개 쓰는 이유는 추세가 진짜인지 각도를 바꿔 확인하기 위해서입니다 — STL(직선 가정 없이 곡선으로), Mann-Kendall(꾸준히 오르내리는지), ADF/KPSS(진짜 추세 vs 술취한 걸음 같은 랜덤워크). 표에서 가장 중요한 건 맨 아래 <strong>"매체+계절 제거 후 잔차 MK"</strong> — 이게 "no trend"면 광고를 다 빼고 봐도 오가닉 자체엔 추세가 없다는 뜻입니다. (STL Δ%는 짧은 데이터에서 흔들려서 참고용)')}
     <div class="chart-container" style="height:240px;margin:8px 0;"><canvas id="mmm-stl-chart"></canvas></div>
     <div class="table-wrap"><table class="data" style="font-size:11.5px;"><tbody>
-      <tr><td>STL 데이터기반 추세 Δ%</td><td class="tnum ${tr.stl_pct < 0 ? 'neg' : 'pos'}">${tr.stl_pct}% <span style="color:var(--text-muted);font-size:10px;">(짧은 시계열 보조지표)</span></td></tr>
-      <tr><td>Mann-Kendall (raw)</td><td>${f(tr.mk_raw)}</td></tr>
+      <tr><td>STL 데이터기반 추세 Δ%${mmmInfoIcon("stl")}</td><td class="tnum ${tr.stl_pct < 0 ? 'neg' : 'pos'}">${tr.stl_pct}% <span style="color:var(--text-muted);font-size:10px;">(짧은 시계열 보조지표)</span></td></tr>
+      <tr><td>Mann-Kendall (raw)${mmmInfoIcon("mann_kendall")}</td><td>${f(tr.mk_raw)}</td></tr>
       <tr><td>MK (Hamed-Rao, 자기상관 보정)</td><td>${f(tr.mk_ac_robust)}</td></tr>
       <tr><td>MK (seasonal)</td><td>${f(tr.mk_seasonal)}</td></tr>
       <tr><td>MK (deseasonalised)</td><td>${f(tr.mk_deseason)}</td></tr>
-      <tr><td>ADF (ct) p</td><td class="tnum">${tr.adf_ct_p}</td></tr>
+      <tr><td>ADF (ct) p${mmmInfoIcon("adf_kpss")}</td><td class="tnum">${tr.adf_ct_p}</td></tr>
       <tr><td>KPSS (ct) p</td><td class="tnum">${tr.kpss_ct_p}</td></tr>
       <tr><td>1차차분 drift /주</td><td class="tnum">${tr.diff_drift_per_wk[0]} (p=${tr.diff_drift_per_wk[1]})</td></tr>
-      <tr><td>media+계절+holiday 통제 후 잔차 MK</td><td>${f(tr.resid_after_media_mk)}</td></tr>
+      <tr><td>media+계절+holiday 통제 후 잔차 MK${mmmInfoIcon("resid_mk")}</td><td>${f(tr.resid_after_media_mk)}</td></tr>
     </tbody></table></div>
     <p class="muted" style="font-size:11px;margin-top:6px;">t를 회귀에 넣고 그 계수를 "추세"라 부르면 순환논증(t가 매끈한 변동·지출램프 흡수). 존재는 위 가정-없는 검정으로 판정. 잔차 MK가 "no trend"면 media 제거 후 organic 추세 없음.</p>
   </section>`;
@@ -12525,9 +12758,9 @@ function renderMmmCannib(c) {
     <div class="callout" style="border-left:3px solid ${vColor};"><div class="body"><strong>판정 (${cn.organic_votes}/3 오가닉):</strong> ${escapeHtml(cn.verdict)}</div></div>
     ${mmmExplain('<strong>카니발 = 광고가 오가닉을 빼앗아 가는 것, 오가닉 = 광고와 무관한 외생적 변화.</strong> 단순 상관으론 둘을 구분 못 합니다(지출도 시간 따라 늘어서 "지출↑ 오가닉↓"가 카니발이든 우연이든 똑같이 들어맞음). 그래서 서로 <strong>독립적인 3가지 질문</strong>으로 삼각검증합니다 — ① 광고를 본격적으로 쓰기 <em>전부터</em> 이미 줄고 있었나?(원인은 결과보다 먼저 와야 함) ② 시간 추세를 빼면 음의 상관이 사라지나?(사라지면 진짜 범인은 시간=오가닉) ③ 순(net) 효과가 +인가?(+면 강한 카니발과 모순). <strong>2개 이상이 "오가닉"을 가리키면 광고는 잠식범이 아니라 방어 역할</strong>로 판정합니다.')}
     <div class="ab-stat-row">
-      <div class="ab-stat"><div class="ab-stat-label">① 시간 선행성 (초기 ${p.window_weeks}주)</div><div class="ab-stat-value" style="font-size:13px;">${p.declining_pre_ramp ? '<span style="color:#fbbf24;">램프 전 이미 하락</span>' : '<span style="color:#22c55e;">하락 없음</span>'}</div><div class="ab-stat-hint">slope ${p.kpi_slope_per_wk}/주 · 변화 ${p.kpi_change_over_window_pct}% · 평균 spend $${p.avg_spend}</div></div>
-      <div class="ab-stat"><div class="ab-stat-label">② 허위상관 (탈추세)</div><div class="ab-stat-value" style="font-size:13px;">${d.negative_collapses ? '<span style="color:#22c55e;">음상관 소멸/반전</span>' : escapeHtml(d.reading.slice(0, 20))}</div><div class="ab-stat-hint">raw ${d.raw} → detrend ${d.detrended} · 1차차분 ${d.first_diff}</div></div>
-      <div class="ab-stat"><div class="ab-stat-label">③ 순증분 (net 탄력성)</div><div class="ab-stat-value tnum ${ni.net_elasticity > 0 ? 'pos' : 'neg'}">${ni.net_elasticity}</div><div class="ab-stat-hint">p=${ni.p} · ${ni.net_elasticity > 0 ? '양수 → 강한 카니발과 불일치' : '≤0 → 카니발 가능'}</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">① 시간 선행성 (초기 ${p.window_weeks}주)${mmmInfoIcon("precedence")}</div><div class="ab-stat-value" style="font-size:13px;">${p.declining_pre_ramp ? '<span style="color:#fbbf24;">램프 전 이미 하락</span>' : '<span style="color:#22c55e;">하락 없음</span>'}</div><div class="ab-stat-hint">slope ${p.kpi_slope_per_wk}/주 · 변화 ${p.kpi_change_over_window_pct}% · 평균 spend $${p.avg_spend}</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">② 허위상관 (탈추세)${mmmInfoIcon("spurious_detrend")}</div><div class="ab-stat-value" style="font-size:13px;">${d.negative_collapses ? '<span style="color:#22c55e;">음상관 소멸/반전</span>' : escapeHtml(d.reading.slice(0, 20))}</div><div class="ab-stat-hint">raw ${d.raw} → detrend ${d.detrended} · 1차차분 ${d.first_diff}</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">③ 순증분 (net 탄력성)${mmmInfoIcon("net_incrementality")}</div><div class="ab-stat-value tnum ${ni.net_elasticity > 0 ? 'pos' : 'neg'}">${ni.net_elasticity}</div><div class="ab-stat-hint">p=${ni.p} · ${ni.net_elasticity > 0 ? '양수 → 강한 카니발과 불일치' : '≤0 → 카니발 가능'}</div></div>
     </div>
     <p class="muted" style="font-size:11px;margin-top:6px;">관측 회귀는 spend↔시간 공선 때문에 카니발/오가닉을 구분 못 함 → 3개 독립 검정 삼각검증. 2/3+ 오가닉이면 "media는 방어, 원인 아님". ⚠ 결정적 증거는 geo holdout / organic-split (5-15).</p>
   </section>`;
@@ -12546,18 +12779,18 @@ function renderMmmMmm(c) {
   return `<section class="block" id="s-mmm">
     <h3 class="section-title" style="font-size:15px;"><span class="ix">§5</span>MMM — ${MMM_METH_STATE.target} (adstock CV · 탄력성 · Shapley · 수확체감)</h3>
     ${mmmExplain('여기서 "효과 크기"를 잽니다. <strong>adstock(λ)</strong>=광고 효과가 다음 주까지 이어지는 잔향(λ=0.4면 이번 주 효과의 40%가 다음 주로). <strong>saturation(수확체감)</strong>=많이 쓸수록 1달러당 효과가 줄어드는 현상. λ는 과적합을 막으려 "한 번도 안 본 미래 주"를 맞히는 OOS 오차(CV)가 가장 작은 값으로 자동 선택합니다. <strong>탄력성</strong>=지출 1%↑ 시 결과 몇 %↑(예: 0.27이면 지출 10%↑→ +2.7%); <strong>95% CI가 0을 넘지 않으면</strong> 통계적으로 유의. <strong>VIF&gt;10</strong>이면 변수끼리 너무 닮아 그 계수는 따로 못 믿습니다. <strong>Shapley</strong>=결과의 주별 변동을 각 드라이버(브랜드·계절·추세·채널…)가 공정하게 몇 % 설명하는지.')}
-    <div class="alloc-card" style="margin-bottom:8px;"><p style="font-size:12px;color:var(--text-muted);margin:0;">adstock λ는 rolling-origin OOS CV로 선택 (in-sample 아님) → <strong>best λ=${mm.best_lambda}</strong>. 공선쌍(|r|≥0.85): ${pairs}</p></div>
+    <div class="alloc-card" style="margin-bottom:8px;"><p style="font-size:12px;color:var(--text-muted);margin:0;">adstock λ는 rolling-origin OOS CV로 선택 (in-sample 아님)${mmmInfoIcon("adstock")} → <strong>best λ=${mm.best_lambda}</strong>. 공선쌍(|r|≥0.85): ${pairs}</p></div>
     <div class="chart-container" style="height:200px;margin-bottom:10px;"><canvas id="mmm-cv-chart"></canvas></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <div><p style="font-size:12px;margin:0 0 4px;color:var(--text-1);">탄력성 (log-log, AR1) — %ΔY/%Δspend</p>
-        <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>변수</th><th>coef</th><th>95% CI</th><th>p</th><th>유의</th></tr></thead><tbody>${elR}</tbody></table></div></div>
-      <div><p style="font-size:12px;margin:0 0 4px;color:var(--text-1);">VIF (>${c.cfg.vifThreshold} = 식별 실패)</p>
+      <div><p style="font-size:12px;margin:0 0 4px;color:var(--text-1);">탄력성 (log-log, AR1) — %ΔY/%Δspend${mmmInfoIcon("elasticity")}</p>
+        <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>변수</th><th>coef</th><th>95% CI${mmmInfoIcon("ci95")}</th><th>p${mmmInfoIcon("pvalue")}</th><th>유의</th></tr></thead><tbody>${elR}</tbody></table></div></div>
+      <div><p style="font-size:12px;margin:0 0 4px;color:var(--text-1);">VIF (>${c.cfg.vifThreshold} = 식별 실패)${mmmInfoIcon("vif")}</p>
         <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>변수</th><th>VIF</th></tr></thead><tbody>${vifR}</tbody></table></div></div>
     </div>
     ${vifWarn}
-    <p style="font-size:12px;margin:10px 0 4px;color:var(--text-1);">Shapley R² 분해 (설명분산의 공정 배분 — 준로그 수준-점유 분해 금지) · total R²=${f(mm.shapley.total, 3)}</p>
+    <p style="font-size:12px;margin:10px 0 4px;color:var(--text-1);">Shapley R² 분해 (설명분산의 공정 배분 — 준로그 수준-점유 분해 금지)${mmmInfoIcon("shapley")} · total R²=${f(mm.shapley.total, 3)}${mmmInfoIcon("r2")}</p>
     <div class="chart-container" style="height:${mm.shapley.rows.length * 26 + 50}px;margin-bottom:8px;"><canvas id="mmm-shapley-chart"></canvas></div>
-    <p class="muted" style="font-size:12px;">수확체감 (Google ROI, b·ln(1+spend)): ${satS}. ln_coef=${sat ? sat.ln_coef : "—"}.</p>
+    <p class="muted" style="font-size:12px;">수확체감 (Google ROI, b·ln(1+spend))${mmmInfoIcon("saturation")}: ${satS}. ln_coef=${sat ? sat.ln_coef : "—"}.</p>
   </section>`;
 }
 function renderMmmDecomp(c) {
@@ -12669,6 +12902,7 @@ function renderMmmCharts(c) {
 }
 function bindMmmMethHandlers() {
   bindInlineCsvHandlers();
+  bindMmmInfoOnce();
   const c = MMM_METH_CACHE; if (!c.key || c.error) return;
   renderMmmCharts(c);
   document.querySelectorAll("[data-mmm-target]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.target = b.dataset.mmmTarget; navigate("5-18"); }));
