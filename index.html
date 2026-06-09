@@ -11397,6 +11397,356 @@ function runMmrPipelineTests(verbose=true){
 if(typeof window!=="undefined"){ window.runMmrPipelineTests=runMmrPipelineTests; window.buildMmrCache=buildMmrCache; }
 
 /* ============================================================
+ * 5-18 MMM 방법론 엔진 (tinder-mmm 파이프라인 충실 이식)
+ * ⚠ 가설 생성·기술용. 인과/증분은 holdout 전용. (CLAUDE.md §황금규칙)
+ * 외부 라이브러리 0개 · 결정론(난수 미사용). statsmodels/pymannkendall 알고리즘 이식.
+ *   MMM_STATS: OLS(+AIC) · Mann-Kendall(original/Hamed-Rao/seasonal) · ADF(ct) · KPSS(ct)
+ *              · Ljung-Box · AR(1) Cochrane-Orcutt · 정확 Shapley R² · 주간 STL · Student-t
+ * ============================================================ */
+
+/* --- 고정밀 정규/Student-t (scipy 매칭용) --- */
+function _mmmErf(x){
+  const s=x<0?-1:1; x=Math.abs(x);
+  const t=1/(1+0.3275911*x);
+  const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);
+  return s*y;
+}
+function mmmNormCdf(z){ return 0.5*(1+_mmmErf(z/Math.SQRT2)); }
+const _Z975=1.959963984540054;
+function _betacf(a,b,x){
+  const MAXIT=200, EPS=3e-14, FPMIN=1e-300;
+  let qab=a+b, qap=a+1, qam=a-1, c=1, d=1-qab*x/qap;
+  if(Math.abs(d)<FPMIN) d=FPMIN; d=1/d; let h=d;
+  for(let m=1;m<=MAXIT;m++){
+    const m2=2*m;
+    let aa=m*(b-m)*x/((qam+m2)*(a+m2));
+    d=1+aa*d; if(Math.abs(d)<FPMIN)d=FPMIN; c=1+aa/c; if(Math.abs(c)<FPMIN)c=FPMIN; d=1/d; h*=d*c;
+    aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+    d=1+aa*d; if(Math.abs(d)<FPMIN)d=FPMIN; c=1+aa/c; if(Math.abs(c)<FPMIN)c=FPMIN; d=1/d;
+    const del=d*c; h*=del; if(Math.abs(del-1)<EPS) break;
+  }
+  return h;
+}
+function _betai(a,b,x){
+  if(x<=0)return 0; if(x>=1)return 1;
+  const bt=Math.exp(_lgamma(a+b)-_lgamma(a)-_lgamma(b)+a*Math.log(x)+b*Math.log(1-x));
+  return x<(a+1)/(a+b+2) ? bt*_betacf(a,b,x)/a : 1-bt*_betacf(b,a,1-x)/b;
+}
+// 양측 p (Student-t): P(|T|>|t|)
+function studentTp(t,df){ if(!isFinite(t))return 0; return _betai(df/2,0.5,df/(df+t*t)); }
+// t 임계값 (양측 conf): studentT.ppf(1-(1-conf)/2). 이분법.
+function studentTcrit(conf,df){
+  const target=1-conf; // 양측 p
+  let lo=0,hi=100;
+  for(let it=0;it<80;it++){ const mid=(lo+hi)/2; (studentTp(mid,df)>target)?(lo=mid):(hi=mid); }
+  return (lo+hi)/2;
+}
+
+/* --- OLS (+ se, t, AIC: statsmodels 호환) --- */
+function mmmOls(X,y){
+  const n=X.length, k=X[0].length;
+  if(n<=k) return null;
+  const Xt=CREATIVE_MATH.transpose(X);
+  const XtX=CREATIVE_MATH.matmul(Xt,X);
+  const XtXinv=CREATIVE_MATH.inverse(XtX);
+  if(!XtXinv) return null;
+  const Xty=CREATIVE_MATH.matmul(Xt,y.map(v=>[v]));
+  const beta=CREATIVE_MATH.matmul(XtXinv,Xty).map(r=>r[0]);
+  const fitted=X.map(row=>row.reduce((s,v,j)=>s+v*beta[j],0));
+  const resid=y.map((v,i)=>v-fitted[i]);
+  const ssr=resid.reduce((a,e)=>a+e*e,0);
+  const ybar=y.reduce((a,b)=>a+b,0)/n;
+  const sst=y.reduce((a,v)=>a+(v-ybar)**2,0);
+  const r2=sst>0?1-ssr/sst:0, adjR2=1-(1-r2)*(n-1)/Math.max(1,n-k);
+  const sigma2=ssr/(n-k);
+  const se=beta.map((_,j)=>Math.sqrt(Math.max(0,sigma2*XtXinv[j][j])));
+  const tvalues=beta.map((b,j)=>se[j]>0?b/se[j]:0);
+  const llf=-0.5*n*(Math.log(2*Math.PI)+1+Math.log(ssr/n));
+  const aic=-2*llf+2*k;
+  return {beta,resid,fitted,ssr,n,k,r2,adjR2,sigma2,se,tvalues,XtXinv,llf,aic};
+}
+
+/* ============ Mann-Kendall (pymannkendall 이식) ============ */
+function _mkScore(x){ let s=0,n=x.length; for(let k=0;k<n-1;k++) for(let j=k+1;j<n;j++) s+=Math.sign(x[j]-x[k]); return s; }
+function _mkVarS(x){
+  const n=x.length; const counts=new Map();
+  for(const v of x) counts.set(v,(counts.get(v)||0)+1);
+  let tie=0; for(const t of counts.values()) if(t>1) tie+=t*(t-1)*(2*t+5);
+  return (n*(n-1)*(2*n+5)-tie)/18;
+}
+function _mkZ(s,varS){ if(varS<=0)return 0; if(s>0)return (s-1)/Math.sqrt(varS); if(s<0)return (s+1)/Math.sqrt(varS); return 0; }
+function _mkVerdict(z,alpha=0.05){
+  const p=2*(1-mmmNormCdf(Math.abs(z)));
+  const crit = alpha===0.05?_Z975:(1-mmmNormCdf(0)); // alpha=0.05 고정
+  const h=Math.abs(z)>crit;
+  const trend = (z<0&&h)?"decreasing":(z>0&&h)?"increasing":"no trend";
+  return {p,h,trend};
+}
+function _theilSen(x){
+  const n=x.length, sl=[];
+  for(let i=0;i<n-1;i++) for(let j=i+1;j<n;j++) sl.push((x[j]-x[i])/(j-i));
+  sl.sort((a,b)=>a-b); const m=Math.floor(sl.length/2);
+  return sl.length%2?sl[m]:(sl[m-1]+sl[m])/2;
+}
+function _rankAvg(x){
+  const n=x.length, idx=x.map((v,i)=>[v,i]).sort((a,b)=>a[0]-b[0]);
+  const ranks=new Array(n);
+  let i=0;
+  while(i<n){ let j=i; while(j<n-1 && idx[j+1][0]===idx[i][0]) j++; const r=(i+j)/2+1; for(let k=i;k<=j;k++) ranks[idx[k][1]]=r; i=j+1; }
+  return ranks;
+}
+function _mmmAcf(x,nlags){
+  const n=x.length, m=x.reduce((a,b)=>a+b,0)/n, y=x.map(v=>v-m);
+  let c0=0; for(let t=0;t<n;t++) c0+=y[t]*y[t];
+  const out=[1];
+  for(let k=1;k<=nlags;k++){ let s=0; for(let t=k;t<n;t++) s+=y[t]*y[t-k]; out.push(c0>0?s/c0:0); }
+  return out;
+}
+function mkOriginal(x){
+  const s=_mkScore(x), varS=_mkVarS(x), z=_mkZ(s,varS), v=_mkVerdict(z);
+  return {trend:v.trend,h:v.h,p:v.p,z,tau:s/(0.5*x.length*(x.length-1)),s,varS,slope:_theilSen(x)};
+}
+function mkHamedRao(x,alpha=0.05,lag=null){
+  const n=x.length, s=_mkScore(x); let varS=_mkVarS(x);
+  const L = lag==null? n : lag+1;
+  const slope=_theilSen(x);
+  const xdet=x.map((v,i)=>v-(i+1)*slope);
+  const I=_rankAvg(xdet);
+  const acf=_mmmAcf(I,L-1);
+  const interval=_Z975/Math.sqrt(n); // alpha=0.05
+  let sni=0;
+  for(let i=1;i<L;i++){ if(!(acf[i]<=interval && acf[i]>=-interval)) sni+=(n-i)*(n-i-1)*(n-i-2)*acf[i]; }
+  const nns=1+(2/(n*(n-1)*(n-2)))*sni;
+  varS*=nns;
+  const z=_mkZ(s,varS), v=_mkVerdict(z,alpha);
+  return {trend:v.trend,h:v.h,p:v.p,z,tau:s/(0.5*n*(n-1)),s,varS,slope};
+}
+function mkSeasonal(x,period){
+  // pad NaN to multiple of period, column = same season; sum S,var over columns
+  let s=0,varS=0;
+  for(let col=0;col<period;col++){
+    const series=[]; for(let i=col;i<x.length;i+=period) series.push(x[i]);
+    if(series.length<2) continue;
+    s+=_mkScore(series); varS+=_mkVarS(series);
+  }
+  const z=_mkZ(s,varS), v=_mkVerdict(z);
+  return {trend:v.trend,h:v.h,p:v.p,z,s,varS};
+}
+
+/* ============ ADF (regression='ct', autolag AIC) — MacKinnon(1994) ct, N=1 이식 ============ */
+function _mackinnonpCT(stat){
+  const TAU_MAX=0.7, TAU_MIN=-16.18, TAU_STAR=-2.89;
+  const SMALL=[3.2512,1.6047,0.049588], LARGE=[2.5261,0.61654,-0.37956,-0.060285];
+  if(stat>TAU_MAX) return 1.0; if(stat<TAU_MIN) return 0.0;
+  const coef = stat<=TAU_STAR?SMALL:LARGE;
+  let val=0; for(let i=0;i<coef.length;i++) val+=coef[i]*Math.pow(stat,i);
+  return mmmNormCdf(val);
+}
+function adfCT(x){
+  const n0=x.length;
+  let maxlag=Math.ceil(12*Math.pow(n0/100,0.25));
+  maxlag=Math.min(Math.floor(n0/2)-2-1, maxlag); if(maxlag<0) maxlag=0;
+  const xdiff=[]; for(let i=1;i<n0;i++) xdiff.push(x[i]-x[i-1]);
+  const nd=xdiff.length, nobs=nd-maxlag;
+  if(nobs<5) return {stat:NaN,p:NaN,usedlag:0,nobs};
+  const xdshort=[],level=[],dlags=[]; for(let k=1;k<=maxlag;k++) dlags.push([]);
+  for(let r=0;r<nobs;r++){
+    xdshort.push(xdiff[maxlag+r]);
+    level.push(x[n0-nobs-1+r]);
+    for(let k=1;k<=maxlag;k++) dlags[k-1].push(xdiff[maxlag+r-k]);
+  }
+  const design=(j)=>{ const X=[]; for(let r=0;r<nobs;r++){ const row=[1,r+1,level[r]]; for(let k=0;k<j;k++) row.push(dlags[k][r]); X.push(row); } return X; };
+  let best={aic:Infinity,j:0};
+  for(let j=0;j<=maxlag;j++){ const f=mmmOls(design(j),xdshort); if(f&&f.aic<best.aic) best={aic:f.aic,j}; }
+  const f=mmmOls(design(best.j),xdshort);
+  const stat=f.tvalues[2];
+  return {stat,p:_mackinnonpCT(stat),usedlag:best.j,nobs};
+}
+
+/* ============ KPSS (regression='ct', nlags=auto Hobijn) 이식 ============ */
+function _kpssAutolag(e,n){
+  const covlags=Math.floor(Math.pow(n,2/9));
+  let s0=0; for(let i=0;i<n;i++) s0+=e[i]*e[i]; s0/=n;
+  let s1=0;
+  for(let i=1;i<=covlags;i++){ let prod=0; for(let t=i;t<n;t++) prod+=e[t]*e[t-i]; prod/=(n/2); s0+=prod; s1+=i*prod; }
+  const shat=s1/s0, pwr=1/3;
+  return Math.floor(1.1447*Math.pow(shat*shat,pwr)*Math.pow(n,pwr));
+}
+function kpssCT(x){
+  const n=x.length;
+  const X=x.map((_,i)=>[1,i+1]);
+  const f=mmmOls(X,x), e=f.resid;
+  const crit=[0.119,0.146,0.176,0.216], pv=[0.10,0.05,0.025,0.01];
+  let nlags=_kpssAutolag(e,n); nlags=Math.min(nlags,n-1);
+  let cs=0,eta=0; for(let i=0;i<n;i++){ cs+=e[i]; eta+=cs*cs; } eta/=n*n;
+  let sh=0; for(let i=0;i<n;i++) sh+=e[i]*e[i];
+  for(let i=1;i<=nlags;i++){ let prod=0; for(let t=i;t<n;t++) prod+=e[t]*e[t-i]; sh+=2*prod*(1-i/(nlags+1)); }
+  sh/=n;
+  const stat=eta/sh;
+  // np.interp(stat, crit(asc), pv(desc)) — 범위 밖 클램프
+  let p;
+  if(stat<=crit[0]) p=pv[0]; else if(stat>=crit[crit.length-1]) p=pv[pv.length-1];
+  else { for(let i=1;i<crit.length;i++){ if(stat<=crit[i]){ const f2=(stat-crit[i-1])/(crit[i]-crit[i-1]); p=pv[i-1]+f2*(pv[i]-pv[i-1]); break; } } }
+  return {stat,p,nlags};
+}
+
+/* ============ Ljung-Box ============ */
+function ljungBox(resid,lags){
+  const n=resid.length, acf=_mmmAcf(resid,lags);
+  let Q=0; for(let k=1;k<=lags;k++) Q+=acf[k]*acf[k]/(n-k);
+  Q*=n*(n+2);
+  return {Q,df:lags,p:1-chi2Cdf(Q,lags)};
+}
+
+/* ============ AR(1) Cochrane-Orcutt (GLSAR rho=1 iterative_fit 이식) ============ */
+function _yuleWalker1(e){ // adjusted, demean
+  const n=e.length, m=e.reduce((a,b)=>a+b,0)/n, y=e.map(v=>v-m);
+  let r0=0; for(let t=0;t<n;t++) r0+=y[t]*y[t]; r0/=n;
+  let r1=0; for(let t=0;t<n-1;t++) r1+=y[t]*y[t+1]; r1/=(n-1);
+  return r0>0?r1/r0:0;
+}
+function fitAR1(X,y,maxiter=10){
+  let f=mmmOls(X,y); if(!f) return null;
+  let rho=_yuleWalker1(f.resid), beta=f.beta;
+  let last=null;
+  for(let it=0;it<maxiter;it++){
+    const n=X.length, k=X[0].length;
+    const Xw=[],yw=[];
+    for(let t=1;t<n;t++){ yw.push(y[t]-rho*y[t-1]); Xw.push(X[t].map((v,j)=>v-rho*X[t-1][j])); }
+    const fw=mmmOls(Xw,yw); if(!fw) break;
+    last=fw; beta=fw.beta;
+    // 원공간 잔차로 rho 재추정
+    const resid=y.map((v,i)=>v-X[i].reduce((s,xv,j)=>s+xv*beta[j],0));
+    const newRho=_yuleWalker1(resid);
+    if(Math.abs(newRho-rho)<1e-6){ rho=newRho; break; }
+    rho=newRho;
+  }
+  if(!last) return null;
+  const df=last.n-last.k, tcrit=studentTcrit(0.95,df);
+  return {
+    beta:last.beta, se:last.se, rho, df,
+    tvalues:last.tvalues,
+    pval:last.tvalues.map(t=>studentTp(t,df)),
+    ci95:last.beta.map((b,j)=>[b-tcrit*last.se[j], b+tcrit*last.se[j]]),
+    resid:last.resid,
+  };
+}
+
+/* ============ 정확 Shapley R² (LMG, subset-memoized; MC 대체) ============ */
+function shapleyR2Exact(y, groups, X){
+  // groups: [{name, cols:[colIdx...]}], X: design (no intercept)
+  const G=groups.length;
+  const memo=new Map();
+  const r2OfMask=(mask)=>{
+    if(memo.has(mask)) return memo.get(mask);
+    const cols=[]; for(let g=0;g<G;g++) if(mask&(1<<g)) cols.push(...groups[g].cols);
+    let r2;
+    if(!cols.length) r2=0;
+    else { const D=X.map(row=>[1,...cols.map(c=>row[c])]); const f=mmmOls(D,y); r2=f?f.r2:0; }
+    memo.set(mask,r2); return r2;
+  };
+  // factorial 가중
+  const fact=[1]; for(let i=1;i<=G;i++) fact.push(fact[i-1]*i);
+  const shares=new Array(G).fill(0);
+  for(let g=0;g<G;g++){
+    const others=[...Array(G).keys()].filter(i=>i!==g);
+    const M=others.length;
+    for(let sub=0;sub<(1<<M);sub++){
+      let mask=0,sz=0; for(let b=0;b<M;b++) if(sub&(1<<b)){ mask|=(1<<others[b]); sz++; }
+      const w=fact[sz]*fact[G-sz-1]/fact[G];
+      shares[g]+=w*(r2OfMask(mask|(1<<g))-r2OfMask(mask));
+    }
+  }
+  const total=r2OfMask((1<<G)-1);
+  const sum=shares.reduce((a,b)=>a+b,0);
+  const rows=groups.map((gr,g)=>({driver:gr.name, r2_share:shares[g], pct:sum>0?shares[g]/sum*100:0}))
+    .sort((a,b)=>b.r2_share-a.r2_share);
+  return {rows, total};
+}
+
+/* ============ 주간 STL (반복 이너루프: deseason→trend loess→detrend→cycle-subseries seasonal)
+ * ⚠ 짧은 시계열(<3 주기)에서 seasonal 추정은 본질적으로 불안정 — STL stl_pct는 보조 지표.
+ *   추세 존재 1차 판정은 MK 배터리·ADF·KPSS(엄밀 검정)로. ============ */
+function stlWeekly(values, period=52, iters=2){
+  const n=values.length, ts=Array.from({length:n},(_,i)=>i);
+  const trendBw=Math.min(0.95,Math.max(0.15,(1.5*period)/n));
+  let trend=new Array(n).fill(0), seasonal=new Array(n).fill(0);
+  for(let it=0;it<iters;it++){
+    const detr=values.map((v,i)=>Number.isFinite(trend[i])?v-trend[i]:v);
+    const seas=new Array(n).fill(0);
+    for(let ph=0;ph<period;ph++){
+      const idx=[],ys=[]; for(let i=ph;i<n;i+=period){ if(Number.isFinite(detr[i])){ idx.push(i); ys.push(detr[i]); } }
+      if(!idx.length) continue;
+      if(idx.length<4){ const m=ys.reduce((a,b)=>a+b,0)/ys.length; for(const i of idx) seas[i]=m; }
+      else { const sm=CANNIBAL_STATS.loess(idx,ys,{bandwidth:0.75}); for(let j=0;j<idx.length;j++) seas[idx[j]]=Number.isFinite(sm[j])?sm[j]:ys[j]; }
+    }
+    const fin=seas.filter(Number.isFinite), sm0=fin.reduce((a,b)=>a+b,0)/Math.max(1,fin.length);
+    for(let i=0;i<n;i++) seasonal[i]=(seas[i]||0)-sm0;
+    const deseason=values.map((v,i)=>v-seasonal[i]);
+    trend=CANNIBAL_STATS.loess(ts,deseason,{bandwidth:trendBw});
+  }
+  const residual=values.map((v,i)=>Number.isFinite(trend[i])?v-trend[i]-seasonal[i]:NaN);
+  return {trend,seasonal,residual};
+}
+
+const MMM_STATS={ mmmOls, mkOriginal, mkHamedRao, mkSeasonal, adfCT, kpssCT, ljungBox, fitAR1, shapleyR2Exact, stlWeekly,
+  normCdf:mmmNormCdf, studentTp, studentTcrit, theilSen:_theilSen };
+
+function runMmmStatTests(verbose=true){
+  const R=[]; const approx=(a,b,t)=>Math.abs(a-b)<=t;
+  const rng=_mmrLcg(123);
+  // T1 OLS β 복원 + AIC 유한
+  const Xo=[],yo=[]; for(let i=0;i<40;i++){ const x1=i,x2=(i*3)%7; Xo.push([1,x1,x2]); yo.push(5+2*x1-0.5*x2); }
+  const fo=mmmOls(Xo,yo);
+  R.push({test:"T1 · OLS β(5,2,-0.5)+AIC", actual:fo.beta.map(b=>b.toFixed(2)).join(","), pass:approx(fo.beta[0],5,1e-6)&&approx(fo.beta[1],2,1e-6)&&isFinite(fo.aic)?"✓":"✗"});
+  // T2 MK 단조증가 → increasing p<0.05
+  const inc=Array.from({length:60},(_,i)=>i+rng()*2);
+  const mk=mkOriginal(inc);
+  R.push({test:"T2 · MK 단조증가→increasing", actual:`${mk.trend} p=${mk.p.toFixed(3)}`, pass:mk.trend==="increasing"&&mk.p<0.05?"✓":"✗"});
+  // T3 MK 백색잡음 → no trend
+  const wn=Array.from({length:80},()=>rng());
+  const mk2=mkOriginal(wn);
+  R.push({test:"T3 · MK 백색잡음→no trend", actual:`${mk2.trend} p=${mk2.p.toFixed(3)}`, pass:mk2.trend==="no trend"?"✓":"✗"});
+  // T4 Hamed-Rao(lag=3): 양의 자기상관에서 var↑ (original 대비). 전용 rng·n=200으로 안정.
+  const rngAr=_mmrLcg(2024); let e=0; const ar=[]; for(let i=0;i<200;i++){ e=0.7*e+rngAr(); ar.push(i*0.05+e); }
+  const hr=mkHamedRao(ar,0.05,3), or=mkOriginal(ar);
+  R.push({test:"T4 · Hamed-Rao(lag3) var>original", actual:`${hr.varS.toFixed(0)}>${or.varS.toFixed(0)}`, pass:hr.varS>or.varS?"✓":"✗"});
+  // T5 ADF: 정상(백색잡음) → reject (p<0.05); 랜덤워크 → fail (p>0.1)
+  const rw=[0]; for(let i=1;i<120;i++) rw.push(rw[i-1]+rng());
+  const adfRW=adfCT(rw), adfWN=adfCT(Array.from({length:120},()=>rng()));
+  R.push({test:"T5 · ADF 정상 reject/RW fail", actual:`WN p=${adfWN.p.toFixed(3)} RW p=${adfRW.p.toFixed(3)}`, pass:adfWN.p<0.05&&adfRW.p>0.1?"✓":"✗"});
+  // T6 KPSS: 정상 → p high (>0.05); 랜덤워크 → p low (<0.05)
+  const kpWN=kpssCT(Array.from({length:120},()=>rng())), kpRW=kpssCT(rw);
+  R.push({test:"T6 · KPSS 정상 high/RW low", actual:`WN p=${kpWN.p.toFixed(3)} RW p=${kpRW.p.toFixed(3)}`, pass:kpWN.p>0.05&&kpRW.p<0.05?"✓":"✗"});
+  // T7 Ljung-Box: 백색잡음 p>0.05, AR(1) p<0.05
+  const lbWN=ljungBox(Array.from({length:120},()=>rng()),10), lbAR=ljungBox(ar,10);
+  R.push({test:"T7 · LB 백색 high/AR low", actual:`WN p=${lbWN.p.toFixed(3)} AR p=${lbAR.p.toFixed(3)}`, pass:lbWN.p>0.05&&lbAR.p<0.05?"✓":"✗"});
+  // T8 AR(1) fit: rho 회복 (~0.7), β slope 양수 (T4의 n=200 AR 시리즈 재사용)
+  const Xa=ar.map((_,i)=>[1,i]); const fa=fitAR1(Xa,ar);
+  R.push({test:"T8 · AR(1) rho≈0.7·slope>0", actual:`rho=${fa.rho.toFixed(2)} b1=${fa.beta[1].toFixed(3)}`, pass:approx(fa.rho,0.7,0.2)&&fa.beta[1]>0?"✓":"✗"});
+  // T9 Shapley: 직교 2그룹 → 합=전체R², 각 share≈개별R²
+  const g1=Array.from({length:100},(_,i)=>Math.sin(i)); const g2=Array.from({length:100},(_,i)=>((i*13)%17)-8);
+  const ys2=g1.map((v,i)=>3*v+1.5*g2[i]+rng()*0.1);
+  const Xs=g1.map((v,i)=>[v,g2[i]]);
+  const sh=shapleyR2Exact(ys2,[{name:"A",cols:[0]},{name:"B",cols:[1]}],Xs);
+  const sumSh=sh.rows.reduce((a,r)=>a+r.r2_share,0);
+  R.push({test:"T9 · Shapley 합=전체R²", actual:`Σ=${sumSh.toFixed(3)} tot=${sh.total.toFixed(3)}`, pass:approx(sumSh,sh.total,1e-6)?"✓":"✗"});
+  // T10 Student-t: p(t=1.96, df=∞근사 1e6)≈0.05
+  R.push({test:"T10 · studentTp(1.96,1e6)≈0.05", actual:studentTp(1.96,1e6).toFixed(4), pass:approx(studentTp(1.96,1e6),0.05,2e-3)?"✓":"✗"});
+  // T11 결정론
+  const d1=adfCT(rw).stat, d2=adfCT(rw).stat;
+  R.push({test:"T11 · 결정론", actual:d1===d2?"identical":"differ", pass:d1===d2?"✓":"✗"});
+  // T12 STL: 추세 시리즈 trend 단조 상승 회복
+  const stlY=Array.from({length:104},(_,i)=>100+i*0.5+10*Math.sin(2*Math.PI*i/52)+rng()*2);
+  const stl=stlWeekly(stlY,52);
+  R.push({test:"T12 · STL trend 상승", actual:`Δ=${(stl.trend[103]-stl.trend[0]).toFixed(1)}`, pass:(stl.trend[103]-stl.trend[0])>20?"✓":"✗"});
+  if(verbose){ console.log("%c=== MMM Methodology Stats · Golden ===","color:#adc6ff;font-weight:bold;"); console.table(R);
+    const pass=R.filter(x=>x.pass==="✓").length; console.log(`%c${pass}/${R.length} 통과`,`color:${pass===R.length?'#22c55e':'#f87171'};font-weight:bold;`); }
+  return R;
+}
+if(typeof window!=="undefined"){ window.runMmmStatTests=runMmmStatTests; window.MMM_STATS=MMM_STATS; }
+
+/* ============================================================
  * Quality Analyzer (5-8) — 코호트 리텐션 곡선 + LTV 외삽
  * grain: cohort_date × day_offset (선택적으로 channel/country/platform 분기)
  * ============================================================ */
