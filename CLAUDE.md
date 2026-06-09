@@ -218,6 +218,7 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 - **ROAS 뷰 = display-invert (y=1/CPR), 배분은 CPR 공간 유지** (PR #37): 파이프라인 전체가 `y=cost/result`(CPR, 낮을수록 긍정) 기반. ROAS(높을수록 긍정)는 파이프라인을 뒤집지 말고 **표시층에서만** 반전: 차트 점/추세선 y=1/CPR(raw, 정규화 bypass), 축/툴팁 라벨, 표 값은 `fmtCostMetric(cpr, metric)`(ROAS면 1/CPR을 %로). 배분 greedy/weight는 CPR 그대로 → 수치 byte-identical. delta 화살표/색은 display-space에서 isRoas면 d>0이 긍정.
 - **ROAS는 CSV/XLSX export도 같이 반전** (PR #43): display-invert(PR #37)는 화면만 고쳤음. export(`downloadChannelCSV`/`buildChannelSheetAOA`/`getModelFormula`)는 CPR 모델을 라벨만 ROAS로 바꿔 내보내 `predicted_cpr` 컬럼·CPR 값이 그대로 나옴 → 사용자 혼란. export도 ROAS면 컬럼명 `predicted_roas`/`roas`, 값 `1/CPR`, Excel 공식 `=1/(CPR식)`, marginal_cpr 컬럼은 ROAS 시트에서 생략. **교훈**: 표시 반전 작업 시 화면+export를 한 세트로 본다.
 - **회귀/MMM 도구는 "기술용·인과 아님" 캐비엇을 UI+JSON+README 3곳에 강제** (PR #51~53, 5-17 MMR): association만 — cannibalization/incrementality 판정은 holdout(5-15) 전용. 코드로 강제한 가드레일: ① spec은 in-sample fit 금지·rolling-origin OOS 그리드서치로 θ·saturation 선택, ② bare p값/별표 금지·Newey-West HAC SE+95%CI 우선, ③ 영구 변화는 STEP 더미(단일주 더미=잔차≈0 자동 탐지·해석 제외), ④ Google ROI+CBUA 합산 금지·채널 분리, ⑤ raw CCF 금지·prewhiten(detrend+deseason) 후. chi2 CDF는 Lanczos lgamma+정규화 불완전감마(급수+연분수) 자체 구현. 클라이언트 도구라 채널 공통 θ 그리드(5^채널 폭발 회피)로 단순화 + README 명시.
+- **희소·저커버리지 채널의 음수 탄력성은 "잠식"이 아니라 "노이즈"** (PR #62, Gemini 피드백): 비-0 주가 적은 채널(예: TikTok 6/127주)이나 커버리지<50%·최근 끊긴 채널(예: Meta 52/127+말미 0)은 회귀계수가 노이즈라 음수가 나와도 "잠식 의심"으로 표시하면 오판. 코드 가드: `mmmChannelCoverage`로 sparse/lowCov/trailingZero 판정 → 유의 음수라도 데이터 부실하면 "노이즈"로 강등, sparse는 "데이터 부족 ⊘"·예산결정 금지 경고, config 토글로 모델에서 제외(식별 정리). VIF 5~10 다수 군집도 "개별 기여 왜곡 가능" 경고(10+만 심각으로 보지 말 것).
 - **외부 Python 통계 파이프라인을 클라이언트 JS로 충실 이식하는 법** (PR #54~56, 5-18 MMM 방법론): statsmodels/scipy/pymannkendall 의존 분석을 vanilla JS로 옮길 때 ① 로컬 venv에서 원 라이브러리 **소스·상수표를 직접 추출**(MacKinnon ADF p값표, KPSS 임계값·Hobijn nlags, pymannkendall Hamed-Rao 분산보정)해 추측 없이 이식 ② Monte Carlo는 **결정론 대체**(Shapley는 1500 perm MC 대신 subset-memoized 정확 LMG — 더 정확) ③ 검정 통계(OLS/HAC/AR1 Cochrane-Orcutt/MK/ADF/KPSS/Ljung-Box/Student-t incomplete-beta)는 `MMM_STATS`에 순수함수로 ④ **민감 실데이터는 커밋 금지**하고 로컬 검증 스크립트(`/tmp`)로 원 파이프라인 수치 재현 대조(AR1 elasticity 4자리·VIF·verdict 완전 일치) ⑤ rolling-origin CV는 학습창 0분산 열 드롭으로 statsmodels pinv 동작 재현 ⑥ STL은 짧은 시계열(<3주기)에서 본질적 불안정 → 보조지표로만, 1차 판정은 MK/ADF/KPSS.
 
 ---
@@ -349,6 +350,12 @@ TOC/사이드바/헤더에 보이는 번호를 바꿀 때 **내부 id(`5-2` 등)
 
 ### 12.9 필드 가이드 표 중복 제거 (필수 oneOf ↔ 옵션) (PR #58)
 `renderInlineCsvUpload`의 가이드 표는 필수(oneOf 포함)와 `TOOL_OPTIONAL_FIELDS`를 둘 다 렌더 → 같은 키가 양쪽에 있으면 행이 2번 나옴(5-17/5-18 채널·타깃). render에서 `reqKeys` Set으로 옵션 중복 skip + 옵션 설명(`unlocks`)은 `optByKey`로 필수행에 병합해 설명 손실 없이 1행으로.
+
+### 12.10 통계 도구 비전문가용 3종 세트 (PR #59·#61·#63, 5-18) — 외부 공개시 필수
+대중 대상 통계/분석 도구는 결과만 던지지 말고 ① **결과해석 §0 헤드라인**(채널별 잠식/증분·주당 인원·신뢰도 dots) ② **주별 드라이버 분해 + 실제vs모델(fitted) 차트 + 튀는 구간 자동 진단**(잔차 2σ↑ 주를 baseline·계절 / 채널 스파크 / 모델 밖으로 분류 + 메모 입력) ③ **4단 클릭 툴팁/모달**(`MMM_GLOSSARY` + `mmmInfoIcon`/`mmmOpenInfo`, 글래스모피즘 vanilla; 각 통계 [이유/진행/해석/유의성]+예시+오해). 용어집 콘텐츠는 워크플로 병렬 작성+적대 검수로 일관성·평어 확보(전문용어 즉시 괄호 풀이 강제).
+
+### 12.11 주별 기여 분해 (centered, semi-log-valid) (PR #61)
+`contribution_jt = β_j·(X_jt − mean(X_j))`, `Σ + baseline(ȳ) = OLS fitted`(intercept OLS 항등식). 사용자 단위(명)로 "각 드라이버가 매주 baseline을 ±몇 명 흔드나" 표시. **준로그 수준-점유 분해(ln(1)=0 외삽)는 금지** — 평균-편차 분해만. 튀는 구간 분류는 `|residual| > |max driver contrib|`면 "모델 밖", 아니면 지배 드라이버가 baseline계열이면 "계절·기저", 채널이면 "채널 스파크".
 
 ---
 
