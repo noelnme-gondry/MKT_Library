@@ -21,6 +21,9 @@
    진행 방식 미정 — 샘플 1페이지 먼저 vs 전권 위임 일괄. (마지막 AskUserQuestion이 권한 에러로 미응답)
 2. ~~**MMM (Marketing Mix Modeling)** → B의 Tinder 회귀 스펙 구현.~~ ✅ **완료 (PR #51~53, 5-17 도구).**
    엔진(MMR_MATH/MMR_STATS, 골든 11) + 파이프라인/페이지(위생게이트·OOS 그리드서치·HAC·진단·ITS·cannibalization·results JSON, 골든 5) + 데이터계약 SQL·README(`docs/mmr-*`). §8 가드레일 전부 코드 강제.
+3. ~~**MMM 방법론 (tinder-mmm Python 파이프라인 이식)** → chat.md/chatreadme.md/zip.~~ ✅ **완료 (PR #54~56, 5-18 도구).**
+   2단계 포크(추세 존재 검정→카니발 vs 오가닉) + 시트 audit + Shapley + 수확체감. `MMM_STATS`(OLS+AIC·MK 3종·ADF·KPSS·Ljung-Box·AR1 Cochrane-Orcutt·정확 Shapley·STL·Student-t, statsmodels/pymannkendall 이식, 골든 12) + 파이프라인(골든 8) + 5-18 페이지(config·STL/CV/Shapley 차트·verdict·JSON/MD export).
+   로컬 검증(weekly.csv, **미커밋**): Python 수치 소수점까지 재현(AR1 elasticity 4자리·VIF·audit·trend/cannib verdict·λ 완전 일치). STL stl_pct만 짧은시계열 fragile(보조지표). **내일 사용자와 함께 실행·sharpen 예정.** 원 Python 프로젝트는 `tinder-mmm-methodology/`(gitignore, 로컬 전용).
 
 ---
 
