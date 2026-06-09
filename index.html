@@ -5653,7 +5653,7 @@ function page_5_2() {
 
   // 도구 전용 CSV가 매핑되지 않았으면 인라인 업로드 UI만
   const missing = checkRequiredForTool("5-2");
-  if (missing.length > 0 || !CSV_STATE.headers.length) {
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-2")) {
     return pageShell(meta, {
       deck: "운영 데이터 시계열·채널·코호트 시각화 + KPI 자동 계산. 이 도구 전용 CSV를 업로드하세요.",
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -5904,7 +5904,7 @@ function page_5_3() {
 
   // 도구 전용 CSV 미준비 → 인라인 업로드 UI만
   const missing = checkRequiredForTool("5-3");
-  if (missing.length > 0 || !CSV_STATE.headers.length) {
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-3")) {
     return pageShell(meta, {
       deck: "한계효용 기반 채널별 예산 최적 배분. 이 도구 전용 CSV를 업로드하세요.",
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -7537,7 +7537,7 @@ function page_5_5() {
 
   // 도구 전용 CSV가 매핑되지 않았으면 인라인 업로드 UI만 보여주고 끝
   const missing = checkRequiredForTool("5-5");
-  if (missing.length > 0 || !CSV_STATE.headers.length) {
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-5")) {
     return pageShell(meta, {
       deck: "추세·요일 효과를 제거한 잔차로 paid↔organic 동시점 잠식을 검정합니다. 이 도구 전용 CSV를 업로드하면 분석이 시작됩니다.",
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -9593,7 +9593,7 @@ const CREATIVE_STATE = {
 function page_5_6() {
   const meta = findMeta("5-6");
   const missing = checkRequiredForTool("5-6");
-  if (missing.length > 0 || !CSV_STATE.headers.length) {
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-6")) {
     return pageShell(meta, {
       deck: "소재 성과 daily CSV를 업로드하면 파생지표 + WLS 분해 + Fatigue + Concept Matrix + 다음 테스트 후보를 자동 생성.",
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -10468,7 +10468,7 @@ function computeMetricVerdict(freq, probBgtA) {
 function page_5_7() {
   const meta = findMeta("5-7");
   const missing = checkRequiredForTool("5-7");
-  if (missing.length > 0 || !CSV_STATE.headers.length) {
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-7")) {
     return pageShell(meta, {
       deck: "실험 결과 CSV(experiment_id × arm_id × metric_name grain)를 업로드하면 frequentist + Bayesian dual method로 2단 게이트 verdict 자동 산출.",
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -10772,7 +10772,7 @@ function buildIncrementality() {
 function page_5_15() {
   const meta = findMeta("5-15");
   const missing = checkRequiredForTool("5-15");
-  if (missing.length>0 || !CSV_STATE.headers.length) {
+  if (missing.length>0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-15")) {
     return pageShell(meta, {
       deck: "Holdout 실험 결과 — test(노출) vs control(holdout) 그룹의 증분 전환·lift·iROAS를 계산합니다. 어트리뷰션이 아닌 진짜 증분 측정.",
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -11268,7 +11268,7 @@ function buildMmrCache(){
 function page_5_17(){
   const meta=findMeta("5-17");
   const missing=checkRequiredForTool("5-17");
-  if(missing.length>0 || !CSV_STATE.headers.length){
+  if(missing.length>0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-17")) {
     return pageShell(meta,{
       deck:"주간 per-platform 마케팅 반응 회귀 (defensible MMM-style). ⚠ 가설 생성·기술용 — 인과/증분/cannibalization 판정은 holdout 전용.",
       chips:`<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -12671,7 +12671,7 @@ function buildMmmMethCache() {
 function page_5_18() {
   const meta = findMeta("5-18");
   const missing = checkRequiredForTool("5-18");
-  if (missing.length > 0 || !(CSV_STATE.headers || []).length) {
+  if (missing.length > 0 || !(CSV_STATE.headers || []).length || !isToolAnalyzed("5-18")) {
     return pageShell(meta, {
       deck: "주간 가입·재활성 MMM 방법론 (tinder-mmm 이식). 2단계 포크: 추세 존재 검정 → 카니발 vs 오가닉. ⚠ 가설·기술용 — 인과/증분은 holdout 전용.",
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -12689,10 +12689,10 @@ function page_5_18() {
     deck: "추세 존재 검정 → 카니발 vs 오가닉 삼각검증 + 시트 audit + adstock·Shapley·수확체감. 모든 결론은 관측 회귀 = 연관(가설). 인과는 geo holdout / organic-split.",
     chips: `<span class="chip"><span class="dot"></span>도구 · MMM 방법론</span><span class="chip warning"><span class="dot"></span>가설·기술용 · holdout 아님</span>${authStatusChip()}`,
     summary: "⚠ 어떤 계수도 측정된 인과/증분 효과가 아닙니다. 추세는 가정하지 않고 검정(STL·MK·ADF·KPSS), 추론은 HAC+AR(1), 귀인은 Shapley R²(준로그 수준-점유 분해 금지). cannibalization 결정은 holdout(5-15) 전용.",
-    toc: [{ id: "s-summary", title: "§0 한눈에 보기" }, { id: "s-prep", title: "데이터" }, { id: "s-macro", title: "§1 위생·매크로" }, { id: "s-audit", title: "§2 시트 audit" }, { id: "s-trend", title: "§3 추세 존재" }, { id: "s-cannib", title: "§4 카니발 vs 오가닉" }, { id: "s-mmm", title: "§5 MMM" }, { id: "s-decomp", title: "§5.5 실제vs모델·분해" }, { id: "s-verdict", title: "§6 종합·export" }],
+    toc: [{ id: "s-prep", title: "데이터·매핑" }, { id: "s-summary", title: "§0 한눈에 보기" }, { id: "s-macro", title: "§1 위생·매크로" }, { id: "s-audit", title: "§2 시트 audit" }, { id: "s-trend", title: "§3 추세 존재" }, { id: "s-cannib", title: "§4 카니발 vs 오가닉" }, { id: "s-mmm", title: "§5 MMM" }, { id: "s-decomp", title: "§5.5 실제vs모델·분해" }, { id: "s-verdict", title: "§6 종합·export" }],
     body: `
-      ${renderMmmSummary(c)}
       <section class="block" id="s-prep">${renderInlineCsvUpload("5-18")}</section>
+      ${renderMmmSummary(c)}
       ${renderMmmConfig(c)}
       ${renderMmmMacro(c)}
       ${renderMmmAudit(c)}
@@ -13605,7 +13605,7 @@ function buildQualityCache() {
 function page_5_8() {
   const meta = findMeta("5-8");
   const missing = checkRequiredForTool("5-8");
-  if (missing.length > 0 || !CSV_STATE.headers.length) {
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-8")) {
     return pageShell(meta, {
       deck: "코호트 리텐션 곡선 + LTV 외삽 분석. cohort_date × day_offset grain의 wide CSV가 필요합니다.",
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -14049,7 +14049,7 @@ function buildLtvCacCache() {
 function page_5_9() {
   const meta = findMeta("5-9");
   const missing = checkRequiredForTool("5-9");
-  if (missing.length > 0 || !CSV_STATE.headers.length) {
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-9")) {
     return pageShell(meta, {
       deck: "채널/캠페인별 CAC 대비 LTV 배수와 회수기간(payback)을 계산합니다. 효율 그룹의 일별 캠페인 CSV(비용·설치·D0/D7/D14 매출)를 그대로 사용합니다.",
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -14225,7 +14225,7 @@ function buildPacingCache() {
 function page_5_10() {
   const meta = findMeta("5-10");
   const missing = checkRequiredForTool("5-10");
-  if (missing.length > 0 || !CSV_STATE.headers.length) {
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-10")) {
     return pageShell(meta, {
       deck: "이번 달 예산/성과 소진 속도(run-rate)로 월말 착지를 예측하고 목표 대비 페이스를 경고합니다. 효율 그룹 CSV 공유.",
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -14378,7 +14378,7 @@ function buildFunnelCache(){
 function page_5_11(){
   const meta=findMeta("5-11");
   const missing=checkRequiredForTool("5-11");
-  if(missing.length>0||!CSV_STATE.headers.length){
+  if(missing.length>0||!CSV_STATE.headers.length || !isToolAnalyzed("5-11")) {
     return pageShell(meta,{
       deck:"노출→클릭→설치→액션 단계별 전환율(CVR)과 이탈을 진단합니다. 효율 그룹 CSV 공유.",
       chips:`<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -14503,7 +14503,7 @@ function buildSegmentCache(){
 function page_5_12(){
   const meta=findMeta("5-12");
   const missing=checkRequiredForTool("5-12");
-  if(missing.length>0||!CSV_STATE.headers.length){
+  if(missing.length>0||!CSV_STATE.headers.length || !isToolAnalyzed("5-12")) {
     return pageShell(meta,{
       deck:"국가×채널×플랫폼 등 두 축의 효율 매트릭스로 어느 조합이 좋고 나쁜지 한눈에. 효율 그룹 CSV 공유.",
       chips:`<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -14606,7 +14606,7 @@ const SCORECARD_STATE = { windowDays: 7 };
 function page_5_13() {
   const meta = findMeta("5-13");
   const missing = checkRequiredForTool("5-13");
-  if (missing.length > 0 || !CSV_STATE.headers.length) {
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-13")) {
     return pageShell(meta, {
       deck: "핵심 KPI를 최근 N일 vs 직전 N일(WoW)로 한 화면에 요약합니다. 효율 그룹 CSV 공유.",
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -14696,7 +14696,7 @@ const ANOMALY_MATH = {
 function page_5_14() {
   const meta = findMeta("5-14");
   const missing = checkRequiredForTool("5-14");
-  if (missing.length > 0 || !CSV_STATE.headers.length) {
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-14")) {
     return pageShell(meta, {
       deck: "지표의 급등·급락을 trailing z-score로 자동 감지합니다 ('어제 뭐가 바뀌었나'). 효율 그룹 CSV 공유.",
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -14881,7 +14881,7 @@ function buildMaturationRows() {
 function page_5_16() {
   const meta = findMeta("5-16");
   const missing = checkRequiredForTool("5-16");
-  if (missing.length>0 || !CSV_STATE.headers.length) {
+  if (missing.length>0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-16")) {
     return pageShell(meta, {
       deck: "조기 ROAS(D0/D7/D14)로 성숙 ROAS(D30/D90/D180)를 예측합니다. 효율 그룹 CSV 공유.",
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
@@ -15861,7 +15861,7 @@ function bindCSVPageHandlers() {
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
   // dropzone(업로드 전) OR 매핑 select/리셋 버튼(업로드 후) 중 하나라도 있으면 바인딩.
   // (CSV 로드 후엔 dropzone이 숨겨지므로 dropzone만 체크하면 매핑 select가 unbound 됨)
-  if (document.querySelector("[data-tool-dropzone], [data-tool-csv], [data-tool-csv-input], [data-tool-csv-reset]")) {
+  if (document.querySelector("[data-tool-dropzone], [data-tool-csv], [data-tool-csv-input], [data-tool-csv-reset], [data-tool-analyze]")) {
     bindInlineCsvHandlers();
   }
 }
@@ -18790,6 +18790,19 @@ function checkRequiredForTool(toolId) {
 }
 
 /* ============================================================
+ * 분석 게이트 — 매핑 후 "분석하기"를 눌러야 결과 표시 (매핑 변경 시 신뢰 확보)
+ * sig = 컬럼 매핑 기준(타깃/플랫폼 토글 같은 탐색 필터는 제외 — 분석 후 자유 전환)
+ * ============================================================ */
+const TOOL_ANALYZED = {};
+function toolAnalyzeSig(toolId) {
+  const m = CSV_STATE.mapping || {};
+  const sig = Object.entries(m).filter(([, v]) => v !== "__ignore__").map(([h, v]) => `${v}:${h}`).sort().join("|");
+  return `${toolId}|${CSV_STATE.fileName}|${(CSV_STATE.raw || []).length}|${sig}`;
+}
+function isToolAnalyzed(toolId) { return TOOL_ANALYZED[toolId] === toolAnalyzeSig(toolId); }
+function markToolAnalyzed(toolId) { TOOL_ANALYZED[toolId] = toolAnalyzeSig(toolId); }
+
+/* ============================================================
  * 도구 내장형 CSV 업로드 + 매핑 UI (compact)
  * ============================================================ */
 function renderInlineCsvUpload(toolId) {
@@ -18983,6 +18996,18 @@ function renderInlineCsvUpload(toolId) {
           <summary style="cursor:pointer;color:var(--text-muted);font-weight:500;font-size:12px;">▸ 참고: 이 도구가 사용할 수 있는 표준 필드 가이드</summary>
           ${guideTable}
         </details>
+
+        <!-- 5) 분석 게이트 — 매핑 완료 후 명시적 실행 -->
+        ${missing.length === 0 ? (isToolAnalyzed(toolId) ? `
+          <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span style="color:#22c55e;font-size:12px;font-weight:600;">✓ 분석 완료</span>
+            <span style="color:var(--text-muted);font-size:11px;">매핑을 바꾸면 결과가 숨겨지고 다시 "분석하기"를 눌러야 합니다.</span>
+            <button class="ab-pill" data-tool-analyze="${toolId}" style="margin-left:auto;">↻ 다시 분석</button>
+          </div>` : `
+          <div style="margin-top:14px;background:linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03));border:1px solid rgba(122,162,247,0.3);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+            <div style="font-size:12.5px;color:var(--text-1);">✅ 필수 컬럼 매핑 완료. <strong>매핑이 맞는지 확인한 뒤 분석을 실행하세요.</strong> <span style="color:var(--text-muted);">(매핑만으로 자동 분석하지 않습니다.)</span></div>
+            <button class="ab-pill" data-tool-analyze="${toolId}" style="background:#7aa2f7;color:#0b0d12;font-weight:700;border-color:#7aa2f7;font-size:13px;padding:8px 18px;">▶ 분석하기</button>
+          </div>`) : ""}
       </section>
     `;
   }
@@ -19011,6 +19036,10 @@ function renderInlineCsvUpload(toolId) {
 
 /* 인라인 업로드 핸들러 부착 (페이지 진입 후 1회 호출) */
 function bindInlineCsvHandlers() {
+  // 분석하기 게이트 — 매핑 확정 후 명시적 실행
+  document.querySelectorAll("[data-tool-analyze]").forEach(btn => btn.addEventListener("click", () => {
+    const tid = btn.dataset.toolAnalyze; markToolAnalyzed(tid); navigate(tid);
+  }));
   // Dropzone 클릭 시 input 트리거
   document.querySelectorAll("[data-tool-dropzone]").forEach(dz => {
     const input = dz.querySelector(".file-input");
