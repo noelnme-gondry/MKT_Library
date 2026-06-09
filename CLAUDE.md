@@ -439,3 +439,15 @@ Chart.js 네이티브 forest 없음 → 가로 bar + scatter 2개 dataset 조합
 본 § 15 자체도 시간이 지나며 개선될 수 있음. 사용자가 "self-update 흐름이 어색하다" 등
 피드백 주면 본 § 15 도 수정 대상. **단, § 15 자체를 통째로 삭제하지 말 것** —
 self-update 메커니즘이 사라지면 하네스가 정체됨.
+
+---
+
+## 16. 진행 중 백로그 (다음 세션 인계)
+
+상세는 `docs/backlog.md` 참조 (CLAUDE.md 비대화 방지로 분리 보관).
+
+- **남은 UI 작업**: ① SOP 콘텐츠 보강(1-2~4-4 인라인, 정확성 검수 기반·진행방식 미정) ② MMM.
+- **MMM = Tinder KR Reg/React Marketing-Response Regression** 스펙(`docs/backlog.md` § B)이 정식 요구사항.
+  착수 전 범위 확정 필요: 분석 파이프라인 실행 환경 + 결과 JSON을 본 대시보드(5-N)가 소비하는 연결 형태.
+- 핵심 제약: 회귀는 **가설 생성·기술용**이며 인과/증분/cannibalization 판정은 **holdout 전용**. 계수를 인과로 제시 금지.
+- 이미 완료(머지): 운영 그룹 재구조화 + 5-9~5-16 신규 도구 9종 + 5-3 시나리오·5-6 velocity. 골든 47/47.
