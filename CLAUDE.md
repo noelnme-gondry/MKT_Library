@@ -218,6 +218,7 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 - **ROAS 뷰 = display-invert (y=1/CPR), 배분은 CPR 공간 유지** (PR #37): 파이프라인 전체가 `y=cost/result`(CPR, 낮을수록 긍정) 기반. ROAS(높을수록 긍정)는 파이프라인을 뒤집지 말고 **표시층에서만** 반전: 차트 점/추세선 y=1/CPR(raw, 정규화 bypass), 축/툴팁 라벨, 표 값은 `fmtCostMetric(cpr, metric)`(ROAS면 1/CPR을 %로). 배분 greedy/weight는 CPR 그대로 → 수치 byte-identical. delta 화살표/색은 display-space에서 isRoas면 d>0이 긍정.
 - **ROAS는 CSV/XLSX export도 같이 반전** (PR #43): display-invert(PR #37)는 화면만 고쳤음. export(`downloadChannelCSV`/`buildChannelSheetAOA`/`getModelFormula`)는 CPR 모델을 라벨만 ROAS로 바꿔 내보내 `predicted_cpr` 컬럼·CPR 값이 그대로 나옴 → 사용자 혼란. export도 ROAS면 컬럼명 `predicted_roas`/`roas`, 값 `1/CPR`, Excel 공식 `=1/(CPR식)`, marginal_cpr 컬럼은 ROAS 시트에서 생략. **교훈**: 표시 반전 작업 시 화면+export를 한 세트로 본다.
 - **회귀/MMM 도구는 "기술용·인과 아님" 캐비엇을 UI+JSON+README 3곳에 강제** (PR #51~53, 5-17 MMR): association만 — cannibalization/incrementality 판정은 holdout(5-15) 전용. 코드로 강제한 가드레일: ① spec은 in-sample fit 금지·rolling-origin OOS 그리드서치로 θ·saturation 선택, ② bare p값/별표 금지·Newey-West HAC SE+95%CI 우선, ③ 영구 변화는 STEP 더미(단일주 더미=잔차≈0 자동 탐지·해석 제외), ④ Google ROI+CBUA 합산 금지·채널 분리, ⑤ raw CCF 금지·prewhiten(detrend+deseason) 후. chi2 CDF는 Lanczos lgamma+정규화 불완전감마(급수+연분수) 자체 구현. 클라이언트 도구라 채널 공통 θ 그리드(5^채널 폭발 회피)로 단순화 + README 명시.
+- **외부 Python 통계 파이프라인을 클라이언트 JS로 충실 이식하는 법** (PR #54~56, 5-18 MMM 방법론): statsmodels/scipy/pymannkendall 의존 분석을 vanilla JS로 옮길 때 ① 로컬 venv에서 원 라이브러리 **소스·상수표를 직접 추출**(MacKinnon ADF p값표, KPSS 임계값·Hobijn nlags, pymannkendall Hamed-Rao 분산보정)해 추측 없이 이식 ② Monte Carlo는 **결정론 대체**(Shapley는 1500 perm MC 대신 subset-memoized 정확 LMG — 더 정확) ③ 검정 통계(OLS/HAC/AR1 Cochrane-Orcutt/MK/ADF/KPSS/Ljung-Box/Student-t incomplete-beta)는 `MMM_STATS`에 순수함수로 ④ **민감 실데이터는 커밋 금지**하고 로컬 검증 스크립트(`/tmp`)로 원 파이프라인 수치 재현 대조(AR1 elasticity 4자리·VIF·verdict 완전 일치) ⑤ rolling-origin CV는 학습창 0분산 열 드롭으로 statsmodels pinv 동작 재현 ⑥ STL은 짧은 시계열(<3주기)에서 본질적 불안정 → 보조지표로만, 1차 판정은 MK/ADF/KPSS.
 
 ---
 
@@ -292,6 +293,7 @@ PR 머지 후엔 반드시:
 - ❌ "임시" 라며 영구로 남는 코드 (디버그 panel은 의도적으로 유지된 것)
 - ❌ 사용자 요청 외 페이지/기능 임의 추가
 - ❌ 한국어 응답을 영어로 바꾸기
+- ❌ **`git add -A`/`git add .` 로 무차별 스테이징** (PR #54 사고): 워킹트리에 사용자가 드롭한 민감 데이터(예: `weekly.csv`)·Python venv 8천여 파일이 통째로 커밋·push됨 (§2 위반). 항상 `git status`로 확인 후 **변경한 파일만 명시적으로 `git add index.html CLAUDE.md docs/...`**. 외부 데이터/대용량 폴더는 먼저 `.gitignore`에 추가. main 히스토리에 들어간 민감 파일은 force-push 금지(§11)라 즉시 purge 불가 — 처음부터 안 올리는 게 유일한 방어.
 
 ---
 

@@ -3,3 +3,12 @@ Thumbs.db
 *.swp
 *.swo
 node_modules/
+
+# MMM 방법론 로컬 작업물 — 민감 데이터/대용량. 절대 커밋 금지 (CLAUDE.md §2)
+tinder-mmm-methodology/
+chat.md
+chatreadme.md
+*.zip
+**/.venv/
+__pycache__/
+*.pyc
