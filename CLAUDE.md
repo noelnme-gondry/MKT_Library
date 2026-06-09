@@ -357,6 +357,12 @@ TOC/사이드바/헤더에 보이는 번호를 바꿀 때 **내부 id(`5-2` 등)
 ### 12.11 주별 기여 분해 (centered, semi-log-valid) (PR #61)
 `contribution_jt = β_j·(X_jt − mean(X_j))`, `Σ + baseline(ȳ) = OLS fitted`(intercept OLS 항등식). 사용자 단위(명)로 "각 드라이버가 매주 baseline을 ±몇 명 흔드나" 표시. **준로그 수준-점유 분해(ln(1)=0 외삽)는 금지** — 평균-편차 분해만. 튀는 구간 분류는 `|residual| > |max driver contrib|`면 "모델 밖", 아니면 지배 드라이버가 baseline계열이면 "계절·기저", 채널이면 "채널 스파크".
 
+### 12.12 공통 회귀 엔진 + Regression Lab (PR #65·66, 5-19)
+범용 OLS는 `REG_STATS`(IIFE: ols/r2of/tSF, ridge fallback)·`REG_TRANSFORMS`(none/log1p/zscore/minmax/adstock_log) 공유 엔진으로. **헬퍼는 반드시 IIFE에 격리** — `_mean`·`mean` 등 기존 전역과 충돌(중복선언=SyntaxError). 5-19는 STANDARD_FIELDS가 아닌 **자체 가변 매핑**(role/type/transform per 컬럼 + 자동추정). 자동추정 시 **0/1 binary는 날짜명 오인("is_holiday"의 day) 방지 위해 independent 우선 판정**. 샘플 데이터는 seededNoise(Math.random 금지). 추출 CSV = 행별 actual·fitted·resid·contrib(β·x). 로그/adstock 사용 시 level-share 외삽 무효 경고.
+
+### 12.13 방법론 도구 vs 범용 회귀 분리 원칙 (PR #67)
+5-18처럼 **의미 기반 방법론 도구**(특정 채널=Google임을 알아야 audit·cannibalization·Shapley 동작)는 순수 role/dep/indep 가변매핑으로 바꾸면 방법론이 사라짐 → 범용 회귀는 **별도 도구(5-19)로 분리**하고 방법론 도구는 구조 유지. 방법론 도구에 **세그먼트(platform) 차원**을 더할 땐 행 필터 방식(매핑된 platform 값으로 subset 후 전체 파이프라인 재적합)이 비파괴적 — "All"·미매핑은 기존과 byte 동일해야(골든으로 보증).
+
 ---
 
 ## 13. 참고 파일
