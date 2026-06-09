@@ -2591,6 +2591,16 @@
     .content { padding: 1.25rem 1rem 3rem; }
     .page-title { font-size: 28px; line-height: 36px; }
   }
+  /* MMM 신뢰도 호버 툴팁 (수학값 의미 설명) */
+  .mmm-tip { position: relative; cursor: help; }
+  .mmm-tip::after {
+    content: attr(data-tip); position: absolute; left: 50%; bottom: 150%; transform: translateX(-50%);
+    background: rgba(22,24,33,0.97); border: 1px solid rgba(122,162,247,0.4); border-radius: 8px;
+    padding: 8px 11px; font-size: 11.5px; font-weight: 400; line-height: 1.55; color: var(--text-1);
+    width: max-content; max-width: 260px; white-space: normal; text-align: left; z-index: 9998;
+    opacity: 0; pointer-events: none; transition: opacity .12s; box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+  }
+  .mmm-tip:hover::after { opacity: 1; }
 </style>
 </head>
 <body>
@@ -12466,6 +12476,12 @@ function mmmChannelEffects(panel, cfg, targetName, lam) {
 
 /* === 해석/신뢰도 헬퍼 === */
 function mmmConfDots(level) { const n = Math.max(0, Math.min(5, Math.round(level))); return "●".repeat(n) + "○".repeat(5 - n); }
+// ? 호버 툴팁 (수학값 의미)
+function mmmTip(text) { return `<span class="mmm-tip" data-tip="${escapeHtml(text)}" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid rgba(122,162,247,0.5);color:#adc6ff;font-size:9px;font-weight:700;margin-left:4px;vertical-align:middle;">?</span>`; }
+// dots + 실제 수학값 + ? 설명 (신뢰도 셀)
+function mmmConfInline(level, valueText, tip) {
+  return `<span style="color:#adc6ff;letter-spacing:1px;">${mmmConfDots(level)}</span> <span style="color:var(--text-muted);font-size:11px;font-family:var(--font-mono,monospace);">${valueText}</span>${tip ? mmmTip(tip) : ""}`;
+}
 function mmmPtoConf(p) { return p < 0.001 ? 5 : p < 0.01 ? 4 : p < 0.05 ? 3 : p < 0.1 ? 2 : 1; }
 function mmmTrendConf(trend) {
   const labels = [trend.mk_raw[0], trend.mk_ac_robust[0], trend.mk_seasonal[0], trend.mk_deseason[0]];
@@ -12756,7 +12772,7 @@ function renderMmmSummary(c) {
         <td class="tnum ${sp ? '' : pct10 >= 0 ? 'pos' : 'neg'}">${sp ? '—' : (pct10 >= 0 ? '+' : '') + pct10.toFixed(1) + '%'}</td>
         <td class="tnum">${sp || wk == null ? '—' : (wk >= 0 ? '+' : '') + Math.round(wk) + '명'}</td>
         <td>${badge}</td>
-        <td title="p=${e.p}" style="color:#adc6ff;letter-spacing:1px;">${sp ? '<span style="color:var(--text-muted);">—</span>' : mmmConfDots(mmmPtoConf(e.p))}</td>
+        <td>${sp ? '<span style="color:var(--text-muted);">데이터 부족</span>' : mmmConfInline(mmmPtoConf(e.p), `p=${e.p}`, `p값(우연일 확률) = ${e.p}. p<0.05면 "우연으로 보기 어려움 = 통계적으로 유의". 작을수록 신뢰도(●)↑: <0.001=●●●●●, <0.01=●●●●○, <0.05=●●●○○, <0.1=●●○○○, 그 이상=●○○○○.`)}</td>
       </tr>`;
     }).join("");
     const sparseNote = sparseList.length ? `<div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:6px;padding:7px 10px;font-size:11px;color:var(--text-1);margin-top:6px;">⚠ <strong>${sparseList.map(e => `${escapeHtml(e.label)}(${e.nonzero}/${e.total}주)`).join(", ")}</strong> 는 데이터가 너무 적어(비-0 ${c.cfg.sparseMinWeeks}주 미만) 계수가 노이즈입니다 — <strong>예산 결정 근거로 쓰지 마세요.</strong> 음수로 나와도 "잠식"이 아니라 데이터 부족 탓일 확률이 높습니다. Config에서 "데이터 부족 채널 제외"로 모델을 정리할 수 있습니다.</div>` : "";
@@ -12767,12 +12783,12 @@ function renderMmmSummary(c) {
 
         <div style="margin-bottom:10px;">
           <div style="font-size:13px;color:var(--text-1);line-height:1.65;"><span style="color:#7aa2f7;font-weight:700;">①  추세</span>${mmmInfoIcon("trend_overview")} — ${mmmTrendPlain(T.trend, _MMM_TARGET_KO[t].split(" ")[0])}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">통계적 신뢰도 <span style="color:#adc6ff;letter-spacing:1px;">${mmmConfDots(tConf)}</span></div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">통계적 신뢰도 ${mmmConfInline(tConf, `ADF p=${T.trend.adf_ct_p} · KPSS p=${T.trend.kpss_ct_p} · MK(보정) p=${T.trend.mk_ac_robust[1]}`, `추세 존재의 수학적 근거. ADF p<0.05 + KPSS p≥0.05면 "추세-정상(진짜 추세)". Mann-Kendall(자기상관 보정) p<0.05면 방향성 있음. 여러 검정이 같은 결론으로 모일수록 신뢰도(●)↑.`)}</div>
         </div>
 
         <div style="margin-bottom:10px;">
           <div style="font-size:13px;color:var(--text-1);line-height:1.65;"><span style="color:#7aa2f7;font-weight:700;">②  카니발(잠식) 여부</span>${mmmInfoIcon("cannib_overview")} — ${mmmCannibPlain(T.cannib, _MMM_TARGET_KO[t].split(" ")[0])}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">통계적 신뢰도 <span style="color:#adc6ff;letter-spacing:1px;">${mmmConfDots(cConf)}</span></div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">통계적 신뢰도 ${mmmConfInline(cConf, `3개 검정 중 ${T.cannib.organic_votes}개 오가닉 지지`, `독립적인 3개 검정(시간선행성·허위상관·순증분) 중 같은 방향을 가리키는 개수. 2개 이상이면 결론, 3개 전부면 신뢰도 최고(●●●●●). 합의가 약하면(1개) 낮음.`)}</div>
         </div>
 
         <div>
