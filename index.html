@@ -2765,6 +2765,7 @@ const IA = [
     subtitle: "주간 per-platform · 가설 생성용 (인과 아님)",
     items: [
       { id: "5-17", title: "Marketing-Response Regression", desc: "adstock→saturation + ITS + HAC + cannibalization 가설 검정 (holdout 아님)" },
+      { id: "5-18", title: "MMM 방법론 (추세·카니발 진단)", desc: "2단계 포크: 추세 존재 검정 → 카니발 vs 오가닉 + 시트 audit + Shapley + 수확체감 (가설용·holdout 아님)" },
     ],
   },
 ];
@@ -2897,6 +2898,20 @@ const STANDARD_FIELDS = {
   post_chuseok_step:{ label: "추석후 STEP", aliases: ["post_chuseok_step"], type: "number", required: false, group: "MMR" },
   line_signoff_step:{ label: "LINE signoff STEP", aliases: ["line_signoff_step", "line_step"], type: "number", required: false, group: "MMR" },
   attr_change_step: { label: "어트리뷰션 변경 STEP", aliases: ["attr_change_step", "skan_step", "att_step", "mmp_step"], type: "number", required: false, group: "MMR" },
+  // === MMM 방법론 (5-18) — 주간 패널 (week index 기반) ===
+  week:        { label: "주 인덱스(t)", aliases: ["t", "week", "week_index", "주", "주인덱스"], type: "number", required: false, group: "MMM" },
+  mmm_reg:     { label: "가입(Reg)",   aliases: ["Regs", "reg", "registrations", "가입"], type: "number", required: false, group: "MMM" },
+  mmm_react:   { label: "재활성(React)", aliases: ["React", "reactivation", "재활성"], type: "number", required: false, group: "MMM" },
+  ch_google_roi:  { label: "Spend Google ROI",  aliases: ["G_ROI", "google_roi", "g_roi"], type: "number", required: false, group: "MMM" },
+  ch_google_cbua: { label: "Spend Google CBUA", aliases: ["G_CBUA", "google_cbua", "g_cbua"], type: "number", required: false, group: "MMM" },
+  ch_meta:     { label: "Spend Meta",   aliases: ["Meta", "meta", "facebook"], type: "number", required: false, group: "MMM" },
+  ch_tiktok:   { label: "Spend TikTok", aliases: ["TT", "tiktok", "tt"], type: "number", required: false, group: "MMM" },
+  ch_brand:    { label: "Spend Brand",  aliases: ["Brand", "brand", "브랜드"], type: "number", required: false, group: "MMM" },
+  d_prelny:    { label: "PreLNY 더미",  aliases: ["PreLNY", "pre_lny"], type: "number", required: false, group: "MMM" },
+  d_seollal:   { label: "Seollal 더미", aliases: ["Seollal", "seollal", "설날"], type: "number", required: false, group: "MMM" },
+  d_chuseokonly:{ label: "ChuseokOnly 더미", aliases: ["ChuseokOnly", "chuseok_only"], type: "number", required: false, group: "MMM" },
+  d_postchuwk: { label: "PostChuWk 더미", aliases: ["PostChuWk", "post_chu_wk"], type: "number", required: false, group: "MMM" },
+  d_otherhol:  { label: "OtherHol 더미", aliases: ["OtherHol", "other_hol", "기타공휴일"], type: "number", required: false, group: "MMM" },
 };
 
 /* ========== CSV Global State ========== */
@@ -5285,7 +5300,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-10", "5-11", "5-12", "5-13", "5-14", "5-16", "5-15", "5-17"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-10", "5-11", "5-12", "5-13", "5-14", "5-16", "5-15", "5-17", "5-18"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -12101,6 +12116,303 @@ if (typeof window !== "undefined") {
 }
 
 /* ============================================================
+ * 5-18 페이지 (MMM 방법론 도구) — 데이터 계약·config·결과 패널·차트·verdict·export
+ * ============================================================ */
+const MMM_METH_STATE = { target: "Regs", config: null };
+function mmmActiveConfig() {
+  if (!MMM_METH_STATE.config) MMM_METH_STATE.config = JSON.parse(JSON.stringify({
+    seasonalityPeriods: MMM_METH_CONFIG.seasonalityPeriods, adstockGrid: MMM_METH_CONFIG.adstockGrid,
+    cvMinTrain: MMM_METH_CONFIG.cvMinTrain, defaultLam: MMM_METH_CONFIG.defaultLam,
+    lunarWeeks: MMM_METH_CONFIG.lunarWeeks, steps: MMM_METH_CONFIG.steps,
+    foldIntoRegime: MMM_METH_CONFIG.foldIntoRegime, combinedGoogle: MMM_METH_CONFIG.combinedGoogle, vifThreshold: MMM_METH_CONFIG.vifThreshold,
+  }));
+  return { ...MMM_METH_STATE.config, hacAutoLag: MMM_METH_CONFIG.hacAutoLag };
+}
+function mmmGetPanel() {
+  const inv = {}; for (const [h, k] of Object.entries(CSV_STATE.mapping || {})) if (k !== "__ignore__") inv[k] = h;
+  const raw = CSV_STATE.raw || [];
+  const num = (h, allowNaN) => raw.map(r => { const v = r[h]; if (v == null || String(v).trim() === "") return allowNaN ? NaN : 0; const n = parseFloat(String(v).replace(/[^0-9.\-]/g, "")); return isNaN(n) ? (allowNaN ? NaN : 0) : n; });
+  const week = inv.week ? num(inv.week, false) : raw.map((_, i) => i + 1);
+  const panel = { week, ch: {}, dummy: {}, targets: {} };
+  for (const ch of MMM_CHANNELS) if (inv[ch.field]) panel.ch[ch.key] = num(inv[ch.field], true);   // NaN→impute
+  for (const d of MMM_DUMMIES) if (inv[d.field]) panel.dummy[d.key] = num(inv[d.field], false);
+  if (inv.mmm_reg) panel.targets.Regs = num(inv.mmm_reg, false);
+  if (inv.mmm_react) panel.targets.React = num(inv.mmm_react, false);
+  const order = week.map((_, i) => i).sort((a, b) => week[a] - week[b]);
+  const re = arr => order.map(i => arr[i]);
+  panel.week = re(panel.week);
+  for (const k in panel.ch) panel.ch[k] = re(panel.ch[k]);
+  for (const k in panel.dummy) panel.dummy[k] = re(panel.dummy[k]);
+  for (const k in panel.targets) panel.targets[k] = re(panel.targets[k]);
+  if (panel.targets.Regs && panel.targets.React) panel.targets.RR = panel.week.map((_, i) => panel.targets.Regs[i] + panel.targets.React[i]);
+  return panel;
+}
+const MMM_METH_CACHE = { key: null };
+function mmmMethCacheKey() {
+  const m = CSV_STATE.mapping || {};
+  const sig = Object.entries(m).filter(([, v]) => v !== "__ignore__").map(([h, v]) => `${v}:${h}`).sort().join("|");
+  return `${CSV_STATE.fileName}|${(CSV_STATE.raw || []).length}|${sig}|${JSON.stringify(MMM_METH_STATE.config)}`;
+}
+function buildMmmMethCache() {
+  if (typeof window !== "undefined") window.__MMMM = MMM_METH_CACHE;
+  const key = mmmMethCacheKey();
+  if (MMM_METH_CACHE.key === key) return MMM_METH_CACHE;
+  const cfg = mmmActiveConfig();
+  const panel = mmmGetPanel();
+  const dates = panel.week.map(w => new Date(Date.UTC(2024, 0, 1) + (w - 1) * 7 * 86400000));
+  const targets = Object.keys(panel.targets).filter(t => t === "Regs" || t === "React");
+  const C = { key, cfg, panel, targets };
+  try {
+    C.validate = mmmValidate(panel);
+    C.macro = mmmMacroFacts(panel, cfg, dates);
+    C.audit = mmmAudit(panel, cfg);
+    C.byTarget = {};
+    for (const t of targets) {
+      const trend = mmmTrendExistence(panel, cfg, t);
+      const netE = mmmElasticities(panel, cfg, t, cfg.defaultLam).find(r => r.var === "ln_google_roi") || { coef: NaN, p: NaN };
+      const cannib = mmmCannibalization(panel, cfg, t, netE);
+      const mmm = mmmRunMmm(panel, cfg, t);
+      C.byTarget[t] = { trend, cannib, mmm };
+    }
+    C.error = null;
+  } catch (e) { C.error = e.message; }
+  Object.assign(MMM_METH_CACHE, C);
+  if (!targets.includes(MMM_METH_STATE.target)) MMM_METH_STATE.target = targets[0] || "Regs";
+  return MMM_METH_CACHE;
+}
+
+function page_5_18() {
+  const meta = findMeta("5-18");
+  const missing = checkRequiredForTool("5-18");
+  if (missing.length > 0 || !(CSV_STATE.headers || []).length) {
+    return pageShell(meta, {
+      deck: "주간 가입·재활성 MMM 방법론 (tinder-mmm 이식). 2단계 포크: 추세 존재 검정 → 카니발 vs 오가닉. ⚠ 가설·기술용 — 인과/증분은 holdout 전용.",
+      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+      summary: "필수: week(t) + (가입 또는 재활성) + 채널 spend 1개 이상. 채널/더미는 옵션. 추세는 가정하지 않고 STL·Mann-Kendall·ADF·KPSS로 검정, 추론은 HAC+AR(1), 귀인은 Shapley R².",
+      toc: [{ id: "s-prep", title: "데이터 준비" }],
+      body: renderInlineCsvUpload("5-18"),
+    });
+  }
+  const c = buildMmmMethCache();
+  if (c.error) {
+    return pageShell(meta, { deck: "MMM 방법론", chips: authStatusChip(), summary: "", toc: [{ id: "s-prep", title: "준비" }],
+      body: `<section class="block">${renderInlineCsvUpload("5-18")}</section><section class="block"><div class="callout warn"><div class="ico">!</div><div class="body"><strong>계산 오류</strong><p>${escapeHtml(c.error)}</p><p class="muted">컬럼 매핑(week·타깃·채널)을 확인하세요.</p></div></div></section>` });
+  }
+  return pageShell(meta, {
+    deck: "추세 존재 검정 → 카니발 vs 오가닉 삼각검증 + 시트 audit + adstock·Shapley·수확체감. 모든 결론은 관측 회귀 = 연관(가설). 인과는 geo holdout / organic-split.",
+    chips: `<span class="chip"><span class="dot"></span>도구 · MMM 방법론</span><span class="chip warning"><span class="dot"></span>가설·기술용 · holdout 아님</span>${authStatusChip()}`,
+    summary: "⚠ 어떤 계수도 측정된 인과/증분 효과가 아닙니다. 추세는 가정하지 않고 검정(STL·MK·ADF·KPSS), 추론은 HAC+AR(1), 귀인은 Shapley R²(준로그 수준-점유 분해 금지). cannibalization 결정은 holdout(5-15) 전용.",
+    toc: [{ id: "s-prep", title: "데이터" }, { id: "s-macro", title: "§1 위생·매크로" }, { id: "s-audit", title: "§2 시트 audit" }, { id: "s-trend", title: "§3 추세 존재" }, { id: "s-cannib", title: "§4 카니발 vs 오가닉" }, { id: "s-mmm", title: "§5 MMM" }, { id: "s-verdict", title: "§6 종합·export" }],
+    body: `
+      <section class="block" id="s-prep">${renderInlineCsvUpload("5-18")}</section>
+      ${renderMmmConfig(c)}
+      ${renderMmmMacro(c)}
+      ${renderMmmAudit(c)}
+      ${renderMmmTargetSelector(c)}
+      ${renderMmmTrend(c)}
+      ${renderMmmCannib(c)}
+      ${renderMmmMmm(c)}
+      ${renderMmmVerdict(c)}
+    `,
+  });
+}
+PAGE_RENDERERS["5-18"] = page_5_18;
+
+function renderMmmConfig(c) {
+  const cfg = c.cfg;
+  return `<section class="block"><details><summary style="cursor:pointer;font-weight:600;color:var(--text-1);">⚙ Config (코드 불변 — 여기서만 변경)</summary>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;">
+      <label>설날 주(쉼표): <input data-mmm-cfg="seollal" value="${cfg.lunarWeeks.seollal.join(",")}" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:3px 6px;"></label>
+      <label>추석 주(쉼표): <input data-mmm-cfg="chuseok" value="${cfg.lunarWeeks.chuseok.join(",")}" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:3px 6px;"></label>
+      <label>post_step from_week: <input data-mmm-cfg="post_step" value="${cfg.steps.post_step}" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:3px 6px;"></label>
+      <label>line_off from_week: <input data-mmm-cfg="line_off" value="${cfg.steps.line_off}" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:3px 6px;"></label>
+    </div>
+    <p class="muted" style="font-size:11px;margin-top:6px;">fold_into_regime=${cfg.foldIntoRegime.join(",")} (구조변화 공선 → 흡수·단독해석 금지) · seasonality=${cfg.seasonalityPeriods.join("/")}w · adstock grid CV로 λ 선택 · HAC+AR(1) 추론.</p>
+    <button class="ab-pill" data-mmm-cfg-apply style="margin-top:6px;">config 적용 (재계산)</button>
+  </details></section>`;
+}
+function renderMmmMacro(c) {
+  const v = c.validate, M = c.macro;
+  const warn = [...(v.issues || []).map(x => `<span style="color:#f87171;">${escapeHtml(x)}</span>`), ...(v.warnings || []).map(x => escapeHtml(x))];
+  const macroRows = Object.entries(M).map(([k, val]) => `<tr><td>${escapeHtml(k)}</td><td class="tnum ${val < 0 ? 'neg' : ''}">${val}</td></tr>`).join("");
+  const nz = Object.entries(v).filter(([k]) => k.startsWith("nonzero::")).map(([k, val]) => `${k.replace("nonzero::", "")} ${val}`).join(" · ");
+  return `<section class="block" id="s-macro">
+    <h2 class="section-title"><span class="ix">§1</span>데이터 위생 + 매크로 사실 (모델 독립)</h2>
+    <p class="muted">스키마/연속성/결측을 모델링 전 검증. 매크로 = spend YoY vs KPI YoY (가장 강한 model-free 헤드라인).</p>
+    <div class="ab-stat-row"><div class="ab-stat"><div class="ab-stat-label">주 수(n)</div><div class="ab-stat-value tnum">${v.n_weeks}</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">스키마 이슈</div><div class="ab-stat-value">${(v.issues || []).length ? '<span style="color:#f87171;">' + v.issues.length + '</span>' : '<span style="color:#22c55e;">OK</span>'}</div></div></div>
+    <div class="table-wrap" style="margin-top:8px;max-width:420px;"><table class="data" style="font-size:11.5px;"><thead><tr><th>매크로 사실</th><th>값</th></tr></thead><tbody>${macroRows || '<tr><td colspan=2>—</td></tr>'}</tbody></table></div>
+    <p class="muted" style="font-size:11px;margin-top:6px;">채널 비-0 주: ${escapeHtml(nz)}</p>
+    ${warn.length ? `<p class="muted" style="font-size:11px;">⚠ ${warn.join(" · ")}</p>` : ""}
+  </section>`;
+}
+function renderMmmAudit(c) {
+  const a = c.audit, f = (v, d = 2) => v == null || !isFinite(v) ? "—" : (+v).toFixed(d);
+  const coefR = a.coefficients.map(r => `<tr><td>${escapeHtml(r.var)}</td><td class="tnum">${f(r.coef)}</td><td class="tnum" style="color:var(--text-muted);">${f(r.ols_p, 4)}</td><td class="tnum">${f(r.hac_p, 4)}</td></tr>`).join("");
+  const brandR = a.brand_test.map(r => `<tr><td>${r.target}</td><td class="tnum">${f(r.R2_no_brand, 4)}</td><td class="tnum pos">${f(r.R2_with_brand, 4)}</td><td class="tnum">${f(r.brand_p, 4)}</td></tr>`).join("");
+  const swingR = a.channel_swing.map(r => `<tr><td>${r.target}</td><td class="tnum">${f(r.ln_G_coef)}</td><td class="tnum">${f(r.hac_p, 4)}</td><td class="tnum neg">${f(r.trend_coef)}</td></tr>`).join("");
+  return `<section class="block" id="s-audit">
+    <h2 class="section-title"><span class="ix">§2</span>시트 "winner" 모델 audit</h2>
+    <p class="muted">시트 스펙 재현 → OLS vs HAC p값(주간 자기상관). target=RR · n=${a.n} · R²=${f(a.r2, 4)} adjR²=${f(a.adj_r2, 4)} · HAC maxlags=${a.hac_maxlags}.</p>
+    <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>변수</th><th>coef</th><th>OLS p</th><th>HAC p</th></tr></thead><tbody>${coefR}</tbody></table></div>
+    <p style="font-size:12px;margin:10px 0 2px;color:var(--text-1);">브랜드 추가 시 R²가 내려가는가? (회귀변수 추가는 R²를 못 낮춤 → "브랜드 빼는" 시트 논리 반박)</p>
+    <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>target</th><th>R²(no brand)</th><th>R²(+brand)</th><th>brand p</th></tr></thead><tbody>${brandR}</tbody></table></div>
+    <p style="font-size:12px;margin:10px 0 2px;color:var(--text-1);">같은 스펙, target별 Google(ln_G) 계수 불안정 (공선 tell)</p>
+    <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>target</th><th>ln_G coef</th><th>HAC p</th><th>trend coef</th></tr></thead><tbody>${swingR}</tbody></table></div>
+    <p class="muted" style="font-size:11px;margin-top:6px;">RR mean=${a.composite.mean_RR} = 구성요소 합 ${a.composite.components_mean_sum} (RR 정의 확인). ⚠ spend↔trend 공선 + 상쇄 계수 → 시트 계수는 식별 불안정.</p>
+  </section>`;
+}
+function renderMmmTargetSelector(c) {
+  const btns = c.targets.map(t => `<button class="ab-pill ${MMM_METH_STATE.target === t ? 'active' : ''}" data-mmm-target="${t}">${t === "Regs" ? "가입 (Reg)" : "재활성 (React)"}</button>`).join("");
+  return `<section class="block" id="s-trend"><h2 class="section-title"><span class="ix">§3~5</span>타깃별 분석 (각 타깃 별도 — 합성지표 스펙이 구성요소에 맞는 건 아님)</h2>
+    <div class="ab-pillgroup"><span class="ab-pillgroup-label">타깃</span>${btns}</div></section>`;
+}
+function renderMmmTrend(c) {
+  const T = c.byTarget[MMM_METH_STATE.target]; if (!T) return "";
+  const tr = T.trend, f = (a) => `${a[0]} <span style="color:var(--text-muted);">(p=${a[1]})</span>`;
+  const vColor = tr.verdict.includes("NO robust") ? "#22c55e" : tr.verdict.includes("EXISTS") ? "#f87171" : "#fbbf24";
+  return `<section class="block">
+    <h3 class="section-title" style="font-size:15px;"><span class="ix">§3</span>추세 존재 검정 — ${MMM_METH_STATE.target} (가정 말고 검정)</h3>
+    <div class="callout" style="border-left:3px solid ${vColor};"><div class="body"><strong>판정:</strong> ${escapeHtml(tr.verdict)}</div></div>
+    <div class="chart-container" style="height:240px;margin:8px 0;"><canvas id="mmm-stl-chart"></canvas></div>
+    <div class="table-wrap"><table class="data" style="font-size:11.5px;"><tbody>
+      <tr><td>STL 데이터기반 추세 Δ%</td><td class="tnum ${tr.stl_pct < 0 ? 'neg' : 'pos'}">${tr.stl_pct}% <span style="color:var(--text-muted);font-size:10px;">(짧은 시계열 보조지표)</span></td></tr>
+      <tr><td>Mann-Kendall (raw)</td><td>${f(tr.mk_raw)}</td></tr>
+      <tr><td>MK (Hamed-Rao, 자기상관 보정)</td><td>${f(tr.mk_ac_robust)}</td></tr>
+      <tr><td>MK (seasonal)</td><td>${f(tr.mk_seasonal)}</td></tr>
+      <tr><td>MK (deseasonalised)</td><td>${f(tr.mk_deseason)}</td></tr>
+      <tr><td>ADF (ct) p</td><td class="tnum">${tr.adf_ct_p}</td></tr>
+      <tr><td>KPSS (ct) p</td><td class="tnum">${tr.kpss_ct_p}</td></tr>
+      <tr><td>1차차분 drift /주</td><td class="tnum">${tr.diff_drift_per_wk[0]} (p=${tr.diff_drift_per_wk[1]})</td></tr>
+      <tr><td>media+계절+holiday 통제 후 잔차 MK</td><td>${f(tr.resid_after_media_mk)}</td></tr>
+    </tbody></table></div>
+    <p class="muted" style="font-size:11px;margin-top:6px;">t를 회귀에 넣고 그 계수를 "추세"라 부르면 순환논증(t가 매끈한 변동·지출램프 흡수). 존재는 위 가정-없는 검정으로 판정. 잔차 MK가 "no trend"면 media 제거 후 organic 추세 없음.</p>
+  </section>`;
+}
+function renderMmmCannib(c) {
+  const T = c.byTarget[MMM_METH_STATE.target]; if (!T) return "";
+  const cn = T.cannib, p = cn.precedence, d = cn.detrend_corr, ni = cn.net_incrementality;
+  const vColor = cn.verdict.includes("ORGANIC") ? "#22c55e" : "#fbbf24";
+  return `<section class="block" id="s-cannib">
+    <h3 class="section-title" style="font-size:15px;"><span class="ix">§4</span>카니발 vs 오가닉 — ${MMM_METH_STATE.target} (삼각검증)</h3>
+    <div class="callout" style="border-left:3px solid ${vColor};"><div class="body"><strong>판정 (${cn.organic_votes}/3 오가닉):</strong> ${escapeHtml(cn.verdict)}</div></div>
+    <div class="ab-stat-row">
+      <div class="ab-stat"><div class="ab-stat-label">① 시간 선행성 (초기 ${p.window_weeks}주)</div><div class="ab-stat-value" style="font-size:13px;">${p.declining_pre_ramp ? '<span style="color:#fbbf24;">램프 전 이미 하락</span>' : '<span style="color:#22c55e;">하락 없음</span>'}</div><div class="ab-stat-hint">slope ${p.kpi_slope_per_wk}/주 · 변화 ${p.kpi_change_over_window_pct}% · 평균 spend $${p.avg_spend}</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">② 허위상관 (탈추세)</div><div class="ab-stat-value" style="font-size:13px;">${d.negative_collapses ? '<span style="color:#22c55e;">음상관 소멸/반전</span>' : escapeHtml(d.reading.slice(0, 20))}</div><div class="ab-stat-hint">raw ${d.raw} → detrend ${d.detrended} · 1차차분 ${d.first_diff}</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">③ 순증분 (net 탄력성)</div><div class="ab-stat-value tnum ${ni.net_elasticity > 0 ? 'pos' : 'neg'}">${ni.net_elasticity}</div><div class="ab-stat-hint">p=${ni.p} · ${ni.net_elasticity > 0 ? '양수 → 강한 카니발과 불일치' : '≤0 → 카니발 가능'}</div></div>
+    </div>
+    <p class="muted" style="font-size:11px;margin-top:6px;">관측 회귀는 spend↔시간 공선 때문에 카니발/오가닉을 구분 못 함 → 3개 독립 검정 삼각검증. 2/3+ 오가닉이면 "media는 방어, 원인 아님". ⚠ 결정적 증거는 geo holdout / organic-split (5-15).</p>
+  </section>`;
+}
+function renderMmmMmm(c) {
+  const T = c.byTarget[MMM_METH_STATE.target]; if (!T) return "";
+  const mm = T.mmm, f = (v, d = 4) => v == null || !isFinite(v) ? "—" : (+v).toFixed(d);
+  const vifR = mm.vif.filter(v => !v.var.startsWith("sin") && !v.var.startsWith("cos")).map(v => `<tr><td>${escapeHtml(v.var)}</td><td class="tnum ${v.vif > c.cfg.vifThreshold ? 'neg' : ''}">${f(v.vif, 2)}${v.vif > c.cfg.vifThreshold ? ' ⚠' : ''}</td></tr>`).join("");
+  const elR = mm.elasticities.map(e => { const sig = e.ci_lo > 0 || e.ci_hi < 0; return `<tr><td>${escapeHtml(e.var)}</td><td class="tnum">${f(e.coef)}</td><td class="tnum" style="font-size:11px;">[${f(e.ci_lo)}, ${f(e.ci_hi)}]</td><td class="tnum">${f(e.p, 4)}</td><td>${sig ? '<span class="chip ok" style="font-size:10px;padding:1px 6px;"><span class="dot"></span>CI≠0</span>' : '—'}</td></tr>`; }).join("");
+  const pairs = mm.collinear_pairs.map(pr => `${escapeHtml(pr.a)}~${escapeHtml(pr.b)} (${pr.corr})`).join(", ") || "없음";
+  const sat = mm.saturation;
+  const satS = sat ? Object.entries(sat.marginal_kpi_per_1k).map(([lv, v]) => `${lv}당 +$1k → ${v}명`).join(" · ") : "—";
+  return `<section class="block" id="s-mmm">
+    <h3 class="section-title" style="font-size:15px;"><span class="ix">§5</span>MMM — ${MMM_METH_STATE.target} (adstock CV · 탄력성 · Shapley · 수확체감)</h3>
+    <div class="alloc-card" style="margin-bottom:8px;"><p style="font-size:12px;color:var(--text-muted);margin:0;">adstock λ는 rolling-origin OOS CV로 선택 (in-sample 아님) → <strong>best λ=${mm.best_lambda}</strong>. 공선쌍(|r|≥0.85): ${pairs}</p></div>
+    <div class="chart-container" style="height:200px;margin-bottom:10px;"><canvas id="mmm-cv-chart"></canvas></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div><p style="font-size:12px;margin:0 0 4px;color:var(--text-1);">탄력성 (log-log, AR1) — %ΔY/%Δspend</p>
+        <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>변수</th><th>coef</th><th>95% CI</th><th>p</th><th>유의</th></tr></thead><tbody>${elR}</tbody></table></div></div>
+      <div><p style="font-size:12px;margin:0 0 4px;color:var(--text-1);">VIF (>${c.cfg.vifThreshold} = 식별 실패)</p>
+        <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>변수</th><th>VIF</th></tr></thead><tbody>${vifR}</tbody></table></div></div>
+    </div>
+    <p style="font-size:12px;margin:10px 0 4px;color:var(--text-1);">Shapley R² 분해 (설명분산의 공정 배분 — 준로그 수준-점유 분해 금지) · total R²=${f(mm.shapley.total, 3)}</p>
+    <div class="chart-container" style="height:${mm.shapley.rows.length * 26 + 50}px;margin-bottom:8px;"><canvas id="mmm-shapley-chart"></canvas></div>
+    <p class="muted" style="font-size:12px;">수확체감 (Google ROI, b·ln(1+spend)): ${satS}. ln_coef=${sat ? sat.ln_coef : "—"}.</p>
+  </section>`;
+}
+function renderMmmVerdict(c) {
+  const lines = [];
+  for (const t of c.targets) {
+    const T = c.byTarget[t];
+    lines.push(`<li><strong>${t}:</strong> 추세=${escapeHtml(T.trend.verdict)} · 카니발=${escapeHtml(T.cannib.verdict)} · best λ=${T.mmm.best_lambda} · 최상위 드라이버(Shapley)=${escapeHtml(T.mmm.shapley.rows[0]?.driver || "—")} (${(T.mmm.shapley.rows[0]?.pct || 0).toFixed(0)}%)</li>`);
+  }
+  return `<section class="block" id="s-verdict">
+    <h2 class="section-title"><span class="ix">§6</span>종합 verdict + export</h2>
+    <ul style="font-size:13px;line-height:1.7;">${lines.join("")}</ul>
+    <p class="muted" style="font-size:11px;">described(연관) vs 검정할 가설 vs holdout 필요 구분. 어떤 계수도 검증된 인과/증분 추정이 아님 — 결정적 검증은 geo holdout / organic-split.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="ab-pill" id="mmm-export-json">⬇ Results JSON</button><button class="ab-pill" id="mmm-export-md">⬇ verdict.md</button></div>
+  </section>`;
+}
+
+function renderMmmCharts(c) {
+  if (typeof Chart === "undefined") return;
+  const T = c.byTarget[MMM_METH_STATE.target]; if (!T) return;
+  const muted = getCssVar('--text-muted'), border = getCssVar('--border'), bg1 = getCssVar('--bg-1');
+  const noLegendOpts = (title) => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: muted, font: { size: 10 } } }, title: { display: !!title, text: title, color: muted } }, scales: { x: { ticks: { color: muted, maxTicksLimit: 12 }, grid: { color: border } }, y: { ticks: { color: muted }, grid: { color: border } } } });
+  // STL trend
+  const stl = T.trend.stl, y = c.panel.targets[MMM_METH_STATE.target];
+  if (stl && document.getElementById("mmm-stl-chart")) {
+    destroyChartIfExists("mmm-stl-chart");
+    CHART_INSTANCES["mmm-stl-chart"] = new Chart(document.getElementById("mmm-stl-chart"), {
+      type: "line", data: { labels: c.panel.week, datasets: [
+        { label: "actual", data: y, borderColor: muted, borderWidth: 1, pointRadius: 0, tension: 0.2 },
+        { label: "STL 추세 (데이터기반)", data: stl.trend, borderColor: "#f87171", borderWidth: 2.5, pointRadius: 0, tension: 0.3 },
+      ] }, options: noLegendOpts("추세 존재 (STL, 선형가정 없음)"),
+    });
+  }
+  // adstock CV
+  if (document.getElementById("mmm-cv-chart")) {
+    const grid = Object.keys(T.mmm.cv_rmse), rmse = grid.map(k => T.mmm.cv_rmse[k]);
+    destroyChartIfExists("mmm-cv-chart");
+    CHART_INSTANCES["mmm-cv-chart"] = new Chart(document.getElementById("mmm-cv-chart"), {
+      type: "line", data: { labels: grid, datasets: [{ label: "rolling-origin OOS RMSE", data: rmse, borderColor: "#adc6ff", backgroundColor: "#adc6ff33", borderWidth: 2, pointRadius: 3, pointBackgroundColor: grid.map(k => +k === T.mmm.best_lambda ? "#22c55e" : "#adc6ff"), tension: 0.2 }] },
+      options: { ...noLegendOpts(`adstock λ CV (best=${T.mmm.best_lambda})`), scales: { x: { title: { display: true, text: "adstock λ", color: muted }, ticks: { color: muted }, grid: { color: border } }, y: { title: { display: true, text: "OOS RMSE", color: muted }, ticks: { color: muted }, grid: { color: border } } } },
+    });
+  }
+  // Shapley bar
+  if (document.getElementById("mmm-shapley-chart")) {
+    const rows = T.mmm.shapley.rows;
+    destroyChartIfExists("mmm-shapley-chart");
+    CHART_INSTANCES["mmm-shapley-chart"] = new Chart(document.getElementById("mmm-shapley-chart"), {
+      type: "bar", data: { labels: rows.map(r => r.driver), datasets: [{ label: "R² share", data: rows.map(r => r.r2_share), backgroundColor: "#7aa2f7" }] },
+      options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `R² ${ctx.parsed.x.toFixed(4)} (${rows[ctx.dataIndex].pct.toFixed(1)}%)` } } }, scales: { x: { ticks: { color: muted }, grid: { color: border } }, y: { ticks: { color: muted }, grid: { color: border } } } },
+    });
+  }
+}
+function bindMmmMethHandlers() {
+  bindInlineCsvHandlers();
+  const c = MMM_METH_CACHE; if (!c.key || c.error) return;
+  renderMmmCharts(c);
+  document.querySelectorAll("[data-mmm-target]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.target = b.dataset.mmmTarget; navigate("5-18"); }));
+  const apply = document.querySelector("[data-mmm-cfg-apply]");
+  if (apply) apply.addEventListener("click", () => {
+    const cfg = mmmActiveConfig(); const get = (k) => document.querySelector(`[data-mmm-cfg="${k}"]`)?.value;
+    const parseList = (s) => String(s || "").split(",").map(x => parseInt(x.trim(), 10)).filter(n => !isNaN(n));
+    MMM_METH_STATE.config.lunarWeeks = { seollal: parseList(get("seollal")), chuseok: parseList(get("chuseok")) };
+    MMM_METH_STATE.config.steps = { post_step: parseInt(get("post_step"), 10) || cfg.steps.post_step, line_off: parseInt(get("line_off"), 10) || cfg.steps.line_off };
+    navigate("5-18");
+  });
+  const ej = document.getElementById("mmm-export-json"); if (ej) ej.addEventListener("click", exportMmmMethJson);
+  const em = document.getElementById("mmm-export-md"); if (em) em.addEventListener("click", exportMmmMethMd);
+}
+function _mmmDownload(name, content, type) {
+  const blob = new Blob([content], { type }); const url = URL.createObjectURL(blob); const a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+}
+function exportMmmMethJson() {
+  const c = MMM_METH_CACHE;
+  const payload = { _meta: { tool: "MMM 방법론 (5-18)", version: MMM_METH_CONFIG.version, generated: new Date().toISOString(), caveat: "described(association)·가설·기술용. 어떤 계수도 측정된 인과/증분 효과가 아님. cannibalization·incrementality는 holdout 전용." }, config: c.cfg && { lunarWeeks: c.cfg.lunarWeeks, steps: c.cfg.steps, seasonalityPeriods: c.cfg.seasonalityPeriods, foldIntoRegime: c.cfg.foldIntoRegime }, validate: c.validate, macro: c.macro, audit: c.audit, byTarget: c.byTarget };
+  _mmmDownload(`mmm_methodology_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(payload, (k, v) => k === "stl" ? undefined : v, 2), "application/json");
+}
+function exportMmmMethMd() {
+  const c = MMM_METH_CACHE; const L = ["# MMM 방법론 — verdict\n", "> described(연관)·가설·기술용. 인과/증분은 holdout 전용.\n"];
+  L.push("## 매크로 사실\n"); for (const [k, v] of Object.entries(c.macro)) L.push(`- **${k}**: ${v}`);
+  L.push("\n## 시트 audit\n", `- target=RR n=${c.audit.n} R²=${c.audit.r2} adjR²=${c.audit.adj_r2}`, "- brand 추가 시 R² 변화: " + c.audit.brand_test.map(b => `${b.target} ${b.R2_no_brand}→${b.R2_with_brand}`).join(" · "));
+  for (const t of c.targets) { const T = c.byTarget[t];
+    L.push(`\n## ${t}\n`, `- 추세: ${T.trend.verdict}`, `- 카니발: ${T.cannib.verdict} (${T.cannib.organic_votes}/3 오가닉)`, `- best adstock λ: ${T.mmm.best_lambda}`, `- 탄력성: ${T.mmm.elasticities.map(e => `${e.var}=${e.coef}`).join(", ")}`, `- Shapley 최상위: ${T.mmm.shapley.rows[0]?.driver} (${(T.mmm.shapley.rows[0]?.pct || 0).toFixed(1)}%)`); }
+  L.push("\n---\n어떤 계수도 검증된 인과/증분 추정이 아님. 결정적 검증은 geo holdout / organic-split.");
+  _mmmDownload(`mmm_verdict_${new Date().toISOString().slice(0, 10)}.md`, L.join("\n"), "text/markdown");
+}
+
+
+/* ============================================================
  * Quality Analyzer (5-8) — 코호트 리텐션 곡선 + LTV 외삽
  * grain: cohort_date × day_offset (선택적으로 channel/country/platform 분기)
  * ============================================================ */
@@ -14551,6 +14863,11 @@ function bindCSVPageHandlers() {
   // ----- 5-17: Marketing-Response Regression 핸들러 -----
   if (document.getElementById("s-model") && document.querySelector("[data-mmr-pf], [data-mmr-oc], #mmr-export-json")) {
     bindMmrHandlers();
+  }
+
+  // ----- 5-18: MMM 방법론 핸들러 -----
+  if (document.getElementById("s-macro") && document.querySelector("[data-mmm-target], [data-mmm-cfg-apply], #mmm-export-json")) {
+    bindMmmMethHandlers();
   }
 
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
@@ -17244,6 +17561,7 @@ const TOOL_REQUIRED_FIELDS = {
   "5-16": ["cost", { oneOf: ["revenue_d0", "revenue_d7", "revenue_d14"] }],
   "5-15": ["holdout_group", "numerator", "denominator"],
   "5-17": ["iso_week_start", { oneOf: ["org_reg", "org_react"] }, { oneOf: ["spend_g_roi", "spend_g_cbua", "spend_meta", "spend_tt", "spend_brand"] }],
+  "5-18": ["week", { oneOf: ["mmm_reg", "mmm_react"] }, { oneOf: ["ch_google_roi", "ch_google_cbua", "ch_meta", "ch_tiktok", "ch_brand"] }],
 };
 
 /* 도구별 옵션 필드 — 매핑하면 추가 기능 활성화. */
@@ -17380,6 +17698,18 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "line_signoff_step", unlocks: "LINE signoff STEP" },
     { key: "attr_change_step",  unlocks: "어트리뷰션 변경 STEP" },
   ],
+  "5-18": [
+    { key: "mmm_react",      unlocks: "React 타깃 모델 (Reg와 별도 — 카니발 핵심)" },
+    { key: "ch_google_cbua", unlocks: "Google CBUA 채널 (line_off와 공선 → 레짐 흡수)" },
+    { key: "ch_meta",        unlocks: "Meta 채널" },
+    { key: "ch_tiktok",      unlocks: "TikTok 채널" },
+    { key: "ch_brand",       unlocks: "Brand 채널 (강한 드라이버 — 포함 권장)" },
+    { key: "d_prelny",       unlocks: "설날 전주 더미" },
+    { key: "d_seollal",      unlocks: "설날 더미 (시트 audit)" },
+    { key: "d_chuseokonly",  unlocks: "추석 더미" },
+    { key: "d_postchuwk",    unlocks: "추석 후주 더미" },
+    { key: "d_otherhol",     unlocks: "기타 공휴일 더미" },
+  ],
 };
 
 const TOOL_CSV_SNAPSHOTS = {};  // toolId → { fileName, raw, headers, mapping, selectedCohort }
@@ -17397,6 +17727,7 @@ const TOOL_GROUP = {
   "5-8": "cohort",
   "5-16": "efficiency",  // ROAS maturation: 일별 캠페인 revenue_d 컬럼 사용
   "5-17": "mmr",         // 주간 per-platform — 독립 grain
+  "5-18": "mmm_meth",    // 주간 패널(week index) — 독립 grain
 };
 
 function saveCsvToTool(toolId) {
