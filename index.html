@@ -12142,6 +12142,43 @@ function mmmCannibPlain(cn, target) {
   if (cn.verdict.includes("ORGANIC")) return `Google 광고는 오가닉 ${target}을(를) <strong style="color:#22c55e;">잠식하지 않습니다</strong>. 서로 독립적인 3개 검정 중 <strong>${cn.organic_votes}개</strong>가 "오가닉(외생적 하락)" 쪽을 지지합니다. 즉 광고를 켠다고 오가닉을 갉아먹는 게 아니라, 외생적 하락을 <strong>방어·보완</strong>하는 역할에 가깝습니다.`;
   return `Google 광고의 오가닉 잠식 <strong style="color:#fbbf24;">가능성을 배제할 수 없습니다</strong> (3개 검정 중 ${cn.organic_votes}개만 오가닉 지지). 확정하려면 holdout 실험(5-15)이 필요합니다.`;
 }
+
+/* === 주별 드라이버 분해 (centered, semi-log-valid) + Actual vs Fitted + 튀는 구간 ===
+ * contribution_jt = β_j·(X_jt − mean(X_j)); Σ + baseline(ȳ) = OLS fitted. 사용자 단위(명). */
+function mmmWeeklyDecomp(panel, cfg, targetName, lam) {
+  const { X, names } = mmmBuildFeatures(panel, cfg, lam, true);
+  const y = panel.targets[targetName];
+  const fit = mmmOls(_designConst(X), y); if (!fit) return null;
+  const ybar = _mean(y);
+  const colMean = names.map((_, j) => _mean(X.map(r => r[j])));
+  const groups = mmmShapleyGroups(names);
+  const weeks = [];
+  for (let t = 0; t < X.length; t++) {
+    const contrib = {};
+    for (const g of groups) { let c = 0; for (const j of g.cols) c += fit.beta[j + 1] * (X[t][j] - colMean[j]); contrib[g.name] = c; }
+    const fitted = ybar + Object.values(contrib).reduce((a, b) => a + b, 0);
+    weeks.push({ week: panel.week[t], actual: y[t], baseline: ybar, fitted: +fitted.toFixed(1), residual: +(y[t] - fitted).toFixed(1), contrib });
+  }
+  // 잔차 표준편차로 "튀는 주" 탐지 (|resid| > 2σ) + 지배 드라이버 분류
+  const resids = weeks.map(w => w.residual);
+  const rMean = _mean(resids), rStd = Math.sqrt(_mean(resids.map(r => (r - rMean) ** 2))) || 1;
+  const groupNames = groups.map(g => g.name);
+  const spikes = weeks.map((w, i) => {
+    const dev = w.actual - w.baseline;                       // baseline 대비 총 편차
+    let domG = null, domV = 0;
+    for (const g of groupNames) { if (Math.abs(w.contrib[g]) > Math.abs(domV)) { domV = w.contrib[g]; domG = g; } }
+    const unexplained = Math.abs(w.residual) > Math.abs(domV);
+    const cls = unexplained ? "unexplained" : (domG === "Trend" || domG === "Seasonality" || domG === "Holidays" || domG === "Regime(steps)") ? "baseline" : "channel";
+    const z = Math.abs(w.residual - rMean) / rStd;
+    return { i, week: w.week, actual: Math.round(w.actual), dev: Math.round(dev), residual: Math.round(w.residual), domDriver: domG, domVal: Math.round(domV), cls, z: +z.toFixed(2) };
+  }).filter(s => s.z >= 2).sort((a, b) => Math.abs(b.residual) - Math.abs(a.residual)).slice(0, 8);
+  // 드라이버별 평균 |기여| (사용자 단위)
+  const driverStats = groupNames.map(g => ({ name: g, avgAbs: +_mean(weeks.map(w => Math.abs(w.contrib[g]))).toFixed(1) })).sort((a, b) => b.avgAbs - a.avgAbs);
+  const rmse = Math.sqrt(_mean(weeks.map(w => w.residual ** 2)));
+  const mape = _mean(weeks.map(w => w.actual ? Math.abs(w.residual / w.actual) : 0)) * 100;
+  return { weeks, groupNames, baseline: +ybar.toFixed(1), spikes, driverStats, rmse: +rmse.toFixed(1), mape: +mape.toFixed(1), rStd: +rStd.toFixed(1) };
+}
+
 /* 합성 데이터 파이프라인 골든 (결정론; 실데이터 미커밋) */
 function runMmmMethTests(verbose = true) {
   const R = []; const rng = _mmrLcg(77);
@@ -12189,13 +12226,13 @@ function runMmmMethTests(verbose = true) {
   return R;
 }
 if (typeof window !== "undefined") {
-  Object.assign(window, { MMM_METH_CONFIG, mmmBuildFeatures, mmmSheetDesign, mmmMacroFacts, mmmValidate, mmmAudit, mmmTrendExistence, mmmCannibalization, mmmRunMmm, mmmElasticities, mmmSelectAdstock, runMmmMethTests });
+  Object.assign(window, { MMM_METH_CONFIG, mmmBuildFeatures, mmmSheetDesign, mmmMacroFacts, mmmValidate, mmmAudit, mmmTrendExistence, mmmCannibalization, mmmRunMmm, mmmElasticities, mmmSelectAdstock, mmmChannelEffects, mmmWeeklyDecomp, runMmmMethTests });
 }
 
 /* ============================================================
  * 5-18 페이지 (MMM 방법론 도구) — 데이터 계약·config·결과 패널·차트·verdict·export
  * ============================================================ */
-const MMM_METH_STATE = { target: "Regs", config: null };
+const MMM_METH_STATE = { target: "Regs", config: null, notes: {} };  // notes: {`${target}|${week}`: 사용자 메모}
 function mmmActiveConfig() {
   if (!MMM_METH_STATE.config) MMM_METH_STATE.config = JSON.parse(JSON.stringify({
     seasonalityPeriods: MMM_METH_CONFIG.seasonalityPeriods, adstockGrid: MMM_METH_CONFIG.adstockGrid,
@@ -12250,7 +12287,8 @@ function buildMmmMethCache() {
       const cannib = mmmCannibalization(panel, cfg, t, netE);
       const mmm = mmmRunMmm(panel, cfg, t);
       const effects = mmmChannelEffects(panel, cfg, t, mmm.best_lambda);
-      C.byTarget[t] = { trend, cannib, mmm, effects };
+      const decomp = mmmWeeklyDecomp(panel, cfg, t, mmm.best_lambda);
+      C.byTarget[t] = { trend, cannib, mmm, effects, decomp };
     }
     C.error = null;
   } catch (e) { C.error = e.message; }
@@ -12280,7 +12318,7 @@ function page_5_18() {
     deck: "추세 존재 검정 → 카니발 vs 오가닉 삼각검증 + 시트 audit + adstock·Shapley·수확체감. 모든 결론은 관측 회귀 = 연관(가설). 인과는 geo holdout / organic-split.",
     chips: `<span class="chip"><span class="dot"></span>도구 · MMM 방법론</span><span class="chip warning"><span class="dot"></span>가설·기술용 · holdout 아님</span>${authStatusChip()}`,
     summary: "⚠ 어떤 계수도 측정된 인과/증분 효과가 아닙니다. 추세는 가정하지 않고 검정(STL·MK·ADF·KPSS), 추론은 HAC+AR(1), 귀인은 Shapley R²(준로그 수준-점유 분해 금지). cannibalization 결정은 holdout(5-15) 전용.",
-    toc: [{ id: "s-summary", title: "§0 한눈에 보기" }, { id: "s-prep", title: "데이터" }, { id: "s-macro", title: "§1 위생·매크로" }, { id: "s-audit", title: "§2 시트 audit" }, { id: "s-trend", title: "§3 추세 존재" }, { id: "s-cannib", title: "§4 카니발 vs 오가닉" }, { id: "s-mmm", title: "§5 MMM" }, { id: "s-verdict", title: "§6 종합·export" }],
+    toc: [{ id: "s-summary", title: "§0 한눈에 보기" }, { id: "s-prep", title: "데이터" }, { id: "s-macro", title: "§1 위생·매크로" }, { id: "s-audit", title: "§2 시트 audit" }, { id: "s-trend", title: "§3 추세 존재" }, { id: "s-cannib", title: "§4 카니발 vs 오가닉" }, { id: "s-mmm", title: "§5 MMM" }, { id: "s-decomp", title: "§5.5 실제vs모델·분해" }, { id: "s-verdict", title: "§6 종합·export" }],
     body: `
       ${renderMmmSummary(c)}
       <section class="block" id="s-prep">${renderInlineCsvUpload("5-18")}</section>
@@ -12291,6 +12329,7 @@ function page_5_18() {
       ${renderMmmTrend(c)}
       ${renderMmmCannib(c)}
       ${renderMmmMmm(c)}
+      ${renderMmmDecomp(c)}
       ${renderMmmVerdict(c)}
     `,
   });
@@ -12477,6 +12516,42 @@ function renderMmmMmm(c) {
     <p class="muted" style="font-size:12px;">수확체감 (Google ROI, b·ln(1+spend)): ${satS}. ln_coef=${sat ? sat.ln_coef : "—"}.</p>
   </section>`;
 }
+function renderMmmDecomp(c) {
+  const t = MMM_METH_STATE.target, T = c.byTarget[t]; if (!T || !T.decomp) return "";
+  const d = T.decomp, tgtKo = (_MMM_TARGET_KO[t] || t).split(" ")[0];
+  const driverRows = d.driverStats.map(s => `<tr><td>${escapeHtml(s.name)}</td><td class="tnum">±${s.avgAbs.toLocaleString()}명/주</td></tr>`).join("");
+  const clsBadge = (cls) => cls === "channel" ? '<span style="color:#7aa2f7;font-weight:600;">채널 스파크</span>' : cls === "baseline" ? '<span style="color:#22c55e;font-weight:600;">baseline·계절 변동</span>' : '<span style="color:#fbbf24;font-weight:600;">모델 밖(원인 입력 권장)</span>';
+  const weekDate = (w) => new Date(Date.UTC(2024, 0, 1) + (w - 1) * 7 * 86400000).toISOString().slice(0, 10);
+  const spikeRows = d.spikes.map(s => {
+    const noteKey = `${t}|${s.week}`, note = (MMM_METH_STATE.notes || {})[noteKey] || "";
+    const driverTxt = s.cls === "unexplained" ? `잔차 ${s.residual >= 0 ? '+' : ''}${s.residual.toLocaleString()}명` : `${escapeHtml(s.domDriver)} ${s.domVal >= 0 ? '+' : ''}${s.domVal.toLocaleString()}명`;
+    return `<tr>
+      <td class="tnum">W${s.week}<br><span style="font-size:9px;color:var(--text-muted);">${weekDate(s.week)}</span></td>
+      <td class="tnum ${s.dev >= 0 ? 'pos' : 'neg'}">${s.dev >= 0 ? '+' : ''}${s.dev.toLocaleString()}명</td>
+      <td>${clsBadge(s.cls)}<br><span style="font-size:10px;color:var(--text-muted);">주 원인: ${driverTxt}</span></td>
+      <td><input data-mmm-note="${noteKey}" value="${escapeHtml(note)}" placeholder="이 주에 무슨 일? (예: 앱스토어 피처드, 경쟁사 이슈)" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-size:11px;"></td>
+    </tr>`;
+  }).join("");
+  return `<section class="block" id="s-decomp">
+    <h3 class="section-title" style="font-size:15px;"><span class="ix">§5.5</span>실제 vs 모델(MMM) + 주별 드라이버 분해 — ${t}</h3>
+    ${mmmExplain('실제 ' + tgtKo + ' 수(검정 회색선)와 모델이 설명한 값(파란선)을 겹쳐 봅니다. 둘이 가까울수록 모델이 현실을 잘 잡은 것. 아래 막대는 <strong>매주 ' + tgtKo + '이(가) 평균(baseline)에서 얼마나 벗어났고, 그 변동을 어떤 요인이 만들었는지</strong>를 사람 수로 쪼갠 것입니다(브랜드·계절·추세·각 채널…). 양(+)막대=그 요인이 그 주에 ' + tgtKo + '을 끌어올림, 음(−)=끌어내림.')}
+    <div class="ab-stat-row" style="margin-bottom:6px;">
+      <div class="ab-stat"><div class="ab-stat-label">모델 평균오차 (RMSE)</div><div class="ab-stat-value tnum">±${d.rmse.toLocaleString()}명</div><div class="ab-stat-hint">주당 실제와 모델 차이</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">평균 오차율 (MAPE)</div><div class="ab-stat-value tnum">${d.mape}%</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">baseline (주평균)</div><div class="ab-stat-value tnum">${Math.round(d.baseline).toLocaleString()}명</div></div>
+    </div>
+    <div class="chart-container" style="height:240px;margin-bottom:8px;"><canvas id="mmm-fit-chart"></canvas></div>
+    <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:12px;align-items:start;">
+      <div class="chart-container" style="height:260px;"><canvas id="mmm-decomp-chart"></canvas></div>
+      <div><p style="font-size:12px;margin:0 0 4px;color:var(--text-1);">드라이버별 주당 평균 기여 (변동 폭)</p>
+        <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>드라이버</th><th>주당 ±평균</th></tr></thead><tbody>${driverRows}</tbody></table></div>
+        <p class="muted" style="font-size:10.5px;margin-top:4px;">"±N명/주" = 그 요인이 주마다 baseline을 위아래로 평균 몇 명 흔드는지. 클수록 그 주의 등락을 좌우하는 핵심 변수.</p></div>
+    </div>
+    <h4 style="font-size:13px;color:var(--text-1);margin:14px 0 4px;">🔎 튀는 구간 (평소와 다르게 크게 벗어난 주 · 잔차 2σ↑)</h4>
+    ${spikeRows ? `<div class="table-wrap"><table class="data" style="font-size:11.5px;"><thead><tr><th>주</th><th>baseline 대비</th><th>자동 진단</th><th>메모 (원인 기록)</th></tr></thead><tbody>${spikeRows}</tbody></table></div>
+    <p class="muted" style="font-size:11px;margin-top:6px;">자동 진단: <span style="color:#22c55e;">baseline·계절 변동</span>=그 주 등락이 추세/계절/공휴일 등 기저 요인 때문(광고 무관, 곧 평소로 회귀) · <span style="color:#7aa2f7;">채널 스파크</span>=특정 광고 채널이 그 주를 끌어올림(그 채널로 더 인입할 여지) · <span style="color:#fbbf24;">모델 밖</span>=어떤 변수로도 설명 안 됨(앱스토어 피처드·PR·경쟁사 이슈 등 외부 사건 — 메모로 기록해두면 다음 분석 때 더미로 통제 가능).</p>` : '<p class="muted">2σ 이상 튀는 구간 없음 — 모델이 전반적으로 잘 설명.</p>'}
+  </section>`;
+}
 function renderMmmVerdict(c) {
   const lines = [];
   for (const t of c.targets) {
@@ -12525,6 +12600,28 @@ function renderMmmCharts(c) {
       options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `R² ${ctx.parsed.x.toFixed(4)} (${rows[ctx.dataIndex].pct.toFixed(1)}%)` } } }, scales: { x: { ticks: { color: muted }, grid: { color: border } }, y: { ticks: { color: muted }, grid: { color: border } } } },
     });
   }
+  // Actual vs Fitted + 스택 분해
+  const D = T.decomp;
+  if (D && document.getElementById("mmm-fit-chart")) {
+    destroyChartIfExists("mmm-fit-chart");
+    CHART_INSTANCES["mmm-fit-chart"] = new Chart(document.getElementById("mmm-fit-chart"), {
+      type: "line", data: { labels: D.weeks.map(w => "W" + w.week), datasets: [
+        { label: "실제 (Actual)", data: D.weeks.map(w => w.actual), borderColor: muted, borderWidth: 1.2, pointRadius: 0, tension: 0.2 },
+        { label: "모델 (MMM fitted)", data: D.weeks.map(w => w.fitted), borderColor: "#7aa2f7", borderWidth: 2.2, pointRadius: 0, tension: 0.2 },
+        { label: "baseline (주평균)", data: D.weeks.map(() => D.baseline), borderColor: "#555", borderWidth: 1, borderDash: [4, 4], pointRadius: 0 },
+      ] }, options: { ...noLegendOpts("실제 vs 모델(MMM)"), plugins: { legend: { display: true, labels: { color: muted, font: { size: 10 } } }, title: { display: true, text: "실제 vs 모델(MMM)", color: muted } } },
+    });
+  }
+  if (D && document.getElementById("mmm-decomp-chart")) {
+    const palette = ["#7aa2f7", "#22c55e", "#fbbf24", "#f87171", "#bb9af7", "#7dcfff", "#e0af68", "#9ece6a"];
+    const ds = D.groupNames.map((g, i) => ({ label: g, data: D.weeks.map(w => +w.contrib[g].toFixed(1)), backgroundColor: palette[i % palette.length], stack: "s", borderWidth: 0 }));
+    ds.push({ type: "line", label: "실제−baseline", data: D.weeks.map(w => +(w.actual - w.baseline).toFixed(1)), borderColor: "#fff", borderWidth: 1.4, pointRadius: 0, tension: 0.15 });
+    destroyChartIfExists("mmm-decomp-chart");
+    CHART_INSTANCES["mmm-decomp-chart"] = new Chart(document.getElementById("mmm-decomp-chart"), {
+      data: { labels: D.weeks.map(w => "W" + w.week), datasets: ds },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: muted, font: { size: 9 }, boxWidth: 10 } }, title: { display: true, text: "주별 드라이버 분해 (baseline 대비, 명)", color: muted } }, scales: { x: { stacked: true, ticks: { color: muted, maxTicksLimit: 12 }, grid: { color: border } }, y: { stacked: true, ticks: { color: muted }, grid: { color: border } } } },
+    });
+  }
 }
 function bindMmmMethHandlers() {
   bindInlineCsvHandlers();
@@ -12541,6 +12638,11 @@ function bindMmmMethHandlers() {
   });
   const ej = document.getElementById("mmm-export-json"); if (ej) ej.addEventListener("click", exportMmmMethJson);
   const em = document.getElementById("mmm-export-md"); if (em) em.addEventListener("click", exportMmmMethMd);
+  // 튀는 구간 메모 (세션 상태에 저장; 재렌더 없이 input 값 유지)
+  document.querySelectorAll("[data-mmm-note]").forEach(inp => inp.addEventListener("change", () => {
+    if (!MMM_METH_STATE.notes) MMM_METH_STATE.notes = {};
+    MMM_METH_STATE.notes[inp.dataset.mmmNote] = inp.value;
+  }));
 }
 function _mmmDownload(name, content, type) {
   const blob = new Blob([content], { type }); const url = URL.createObjectURL(blob); const a = document.createElement("a");
