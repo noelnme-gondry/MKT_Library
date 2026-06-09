@@ -19,8 +19,8 @@
 1. **SOP 콘텐츠 보강 (사용자 우선순위 #1)** — 1-2 ~ 4-4(13개)는 `index.html` 내 `page_X_Y()` 인라인 콘텐츠(~1650줄), 1-1만 `content/pages/1-1.json`.
    전면 재작성이 아니라 **정확성 검수 기반 보강** (예: 1-4에 AdAttributionKit 등 2026 최신 추가).
    진행 방식 미정 — 샘플 1페이지 먼저 vs 전권 위임 일괄. (마지막 AskUserQuestion이 권한 에러로 미응답)
-2. **MMM (Marketing Mix Modeling) — 사용자 우선순위/강조 항목.** "데이터 전부 자세히" 요청.
-   → **아래 B의 Tinder 회귀 스펙이 사실상 이 MMM의 정식 요구사항**이다. MMM 작업 = B 스펙 구현으로 본다.
+2. ~~**MMM (Marketing Mix Modeling)** → B의 Tinder 회귀 스펙 구현.~~ ✅ **완료 (PR #51~53, 5-17 도구).**
+   엔진(MMR_MATH/MMR_STATS, 골든 11) + 파이프라인/페이지(위생게이트·OOS 그리드서치·HAC·진단·ITS·cannibalization·results JSON, 골든 5) + 데이터계약 SQL·README(`docs/mmr-*`). §8 가드레일 전부 코드 강제.
 
 ---
 
