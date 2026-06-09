@@ -11747,6 +11747,360 @@ function runMmmStatTests(verbose=true){
 if(typeof window!=="undefined"){ window.runMmmStatTests=runMmmStatTests; window.MMM_STATS=MMM_STATS; }
 
 /* ============================================================
+ * 5-18 MMM 방법론 파이프라인 (tinder-mmm 이식) — 2단계 포크
+ *   STEP1 추세 존재 검정 → STEP2 카니발 vs 오가닉 (삼각검증) + 시트 audit + MMM
+ * config로만 데이터 변경 (코드 불변). 황금규칙: 추세 가정X·검정O / 수준-점유 분해 금지 /
+ *   HAC+AR1 / 공선=식별실패 / 변수선택은 식별논리 / 인과는 holdout.
+ * ============================================================ */
+const MMM_METH_CONFIG = {
+  version: "1.0.0",
+  seasonalityPeriods: [52.18, 13.04],   // annual + quarterly (각 sin+cos pair)
+  adstockGrid: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
+  cvMinTrain: 40,
+  defaultLam: 0.6,                       // cannibalization net elasticity용
+  lunarWeeks: { seollal: [5, 6, 56, 57, 111, 112], chuseok: [38, 39, 92, 93] },
+  steps: { post_step: 42, line_off: 55 },// 영구 step (week>=from_week)
+  foldIntoRegime: ["google_cbua"],       // 구조변화와 공선 → 레짐 흡수, 단독해석 금지
+  combinedGoogle: ["google_roi", "google_cbua"], // G_Total (sheet/precedence/detrend)
+  vifThreshold: 10,
+  hacAutoLag: (n) => Math.floor(4 * Math.pow(n / 100, 2 / 9)),
+};
+// 채널 키(semantic) → 5-18 매핑 필드
+const MMM_CHANNELS = [
+  { key: "google_roi", field: "ch_google_roi", label: "Google ROI" },
+  { key: "google_cbua", field: "ch_google_cbua", label: "Google CBUA" },
+  { key: "meta", field: "ch_meta", label: "Meta" },
+  { key: "tiktok", field: "ch_tiktok", label: "TikTok" },
+  { key: "brand", field: "ch_brand", label: "Brand" },
+];
+const MMM_DUMMIES = [
+  { key: "PreLNY", field: "d_prelny" }, { key: "Seollal", field: "d_seollal" },
+  { key: "ChuseokOnly", field: "d_chuseokonly" }, { key: "PostChuWk", field: "d_postchuwk" },
+  { key: "OtherHol", field: "d_otherhol" },
+];
+
+/* --- feature 엔지니어링 (build_features 이식) --- */
+function mmmAdstock(x, lam) { const o = []; for (let i = 0; i < x.length; i++) o.push((isNaN(x[i]) ? 0 : x[i]) + (i > 0 ? lam * o[i - 1] : 0)); return o; }
+function mmmLnMedia(raw, lam) {
+  const missing = raw.map(v => isNaN(v) || v == null);
+  const series = mmmAdstock(raw.map((v, i) => missing[i] ? 0 : v), lam).map(v => Math.log1p(v));
+  const active = raw.map((v, i) => (!missing[i] && v > 0) ? i : -1).filter(i => i >= 0);
+  if (missing.some(x => x) && active.length > 6) {
+    const last8 = active.slice(-8).map(i => series[i]); const fill = last8.reduce((a, b) => a + b, 0) / last8.length;
+    return series.map((v, i) => missing[i] ? fill : v);
+  }
+  return series;
+}
+function _mean(a) { return a.reduce((x, y) => x + y, 0) / a.length; }
+function _pstd(a) { const m = _mean(a); return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / a.length); }
+// panel: {week:[], ch:{key:[]}, dummy:{key:[]}, targets:{name:[]}}
+function mmmBuildFeatures(panel, cfg, lam, withTrend = true) {
+  const t = panel.week, n = t.length, cols = [], names = [];
+  const push = (nm, arr) => { names.push(nm); cols.push(arr); };
+  cfg.seasonalityPeriods.forEach((P, i) => { push(`sin_${i}`, t.map(tt => Math.sin(2 * Math.PI * tt / P))); push(`cos_${i}`, t.map(tt => Math.cos(2 * Math.PI * tt / P))); });
+  const seol = new Set(cfg.lunarWeeks.seollal), chu = new Set(cfg.lunarWeeks.chuseok);
+  push("lny", t.map(tt => seol.has(tt) ? 1 : 0)); push("chuseok", t.map(tt => chu.has(tt) ? 1 : 0));
+  for (const [nm, fw] of Object.entries(cfg.steps)) push(nm, t.map(tt => tt >= fw ? 1 : 0));
+  const folded = new Set(cfg.foldIntoRegime || []);
+  for (const ch of MMM_CHANNELS) {
+    if (folded.has(ch.key)) continue;
+    if (!panel.ch[ch.key]) continue;
+    push("ln_" + ch.key, mmmLnMedia(panel.ch[ch.key], lam));
+  }
+  if (withTrend) { const tm = _mean(t), ts = _pstd(t) || 1; push("trend", t.map(tt => (tt - tm) / ts)); }
+  const X = []; for (let i = 0; i < n; i++) X.push(cols.map(c => c[i]));
+  return { X, names };
+}
+// sheet_design 재현 (reduced Fourier·G_Total·원본 더미)
+function mmmSheetDesign(panel, cfg, withBrand = false) {
+  const t = panel.week, n = t.length, cols = [], names = [];
+  const push = (nm, arr) => { names.push(nm); cols.push(arr); };
+  // ln_G = log1p(G_Total) no adstock
+  const gtot = t.map((_, i) => cfg.combinedGoogle.reduce((s, k) => s + (panel.ch[k] ? (panel.ch[k][i] || 0) : 0), 0));
+  push("ln_G", gtot.map(v => Math.log1p(v)));
+  push("sin13", t.map(tt => Math.sin(2 * Math.PI * tt / 13.0)));
+  push("cos52", t.map(tt => Math.cos(2 * Math.PI * tt / 52.0)));
+  // dummies: PreLNY, Seollal, ChuseokOnly, PostChuWk, LineOff(step), OtherHol
+  const dmap = { PreLNY: "PreLNY", Seollal: "Seollal", ChuseokOnly: "ChuseokOnly", PostChuWk: "PostChuWk", OtherHol: "OtherHol" };
+  const dummyVals = (k) => { const d = MMM_DUMMIES.find(d => d.key === k); return d && panel.dummy[k] ? panel.dummy[k] : t.map(() => 0); };
+  push("PreLNY", dummyVals("PreLNY")); push("Seollal", dummyVals("Seollal")); push("ChuseokOnly", dummyVals("ChuseokOnly")); push("PostChuWk", dummyVals("PostChuWk"));
+  push("LineOff", t.map(tt => tt >= cfg.steps.line_off ? 1 : 0));
+  push("OtherHol", dummyVals("OtherHol"));
+  push("t", t.slice());
+  if (withBrand && panel.ch.brand) {
+    // brand: 0→NaN ffill/bfill then log1p
+    const b = panel.ch.brand.slice(); let last = null;
+    for (let i = 0; i < b.length; i++) { if (b[i] === 0 || isNaN(b[i])) b[i] = last; else last = b[i]; }
+    last = null; for (let i = b.length - 1; i >= 0; i--) { if (b[i] == null) b[i] = last; else last = b[i]; }
+    push("ln_Brand", b.map(v => Math.log1p(v || 0)));
+  }
+  const X = []; for (let i = 0; i < n; i++) X.push(cols.map(c => c[i]));
+  return { X, names };
+}
+function _designConst(X) { return X.map(r => [1, ...r]); }
+function mmmFitHac(X, y, cfg) { return MMR_STATS.neweyWest(_designConst(X), y, cfg.hacAutoLag(y.length)); }
+// 0분산(전부-상수, 예: 미매핑 더미) 열 드롭 후 이름 기반 계수 맵 반환 (singular 방어, statsmodels pinv 유사)
+function _nonConstCols(X, names) {
+  const keep = [];
+  for (let j = 0; j < names.length; j++) { const col = X.map(r => r[j]); let mn = col[0], mx = col[0]; for (const v of col) { if (v < mn) mn = v; if (v > mx) mx = v; } if (mx - mn > 1e-12) keep.push(j); }
+  return keep;
+}
+function mmmFitNamed(X, names, y, cfg, hac) {
+  const keep = _nonConstCols(X, names);
+  const Xk = X.map(r => keep.map(j => r[j])), nk = keep.map(j => names[j]);
+  const f = hac ? mmmFitHac(Xk, y, cfg) : mmmOls(_designConst(Xk), y);
+  const map = {};
+  names.forEach(nm => { map[nm] = { coef: 0, p: 1, dropped: !nk.includes(nm) }; });
+  if (f) nk.forEach((nm, i) => { const j = i + 1; map[nm] = { coef: f.beta[j], p: hac ? f.pval[j] : studentTp(f.tvalues[j], f.n - f.k), dropped: false }; });
+  return { map, fit: f, r2: f ? f.r2 : 0, adjR2: f ? f.adjR2 : 0, n: f ? f.n : y.length };
+}
+
+/* --- macro facts / validate --- */
+function mmmMacroFacts(panel, cfg, dates) {
+  // dates: array of {year} aligned to weeks. YoY 2024 vs 2025
+  const out = {};
+  const years = dates.map(d => d.getUTCFullYear());
+  const has24 = years.includes(2024), has25 = years.includes(2025);
+  if (!has24 || !has25) return out;
+  const sumWhere = (arr, yr) => arr.reduce((s, v, i) => years[i] === yr ? s + (v || 0) : s, 0);
+  const gtot = panel.week.map((_, i) => cfg.combinedGoogle.reduce((s, k) => s + (panel.ch[k] ? (panel.ch[k][i] || 0) : 0), 0));
+  const a = sumWhere(gtot, 2024), b = sumWhere(gtot, 2025);
+  if (a > 0) out["google_spend_yoy_%"] = +((b / a - 1) * 100).toFixed(1);
+  for (const [nm, arr] of Object.entries(panel.targets)) {
+    const ya = sumWhere(arr, 2024), yb = sumWhere(arr, 2025);
+    if (ya > 0) out[`${nm}_yoy_%`] = +((yb / ya - 1) * 100).toFixed(1);
+  }
+  return out;
+}
+function mmmValidate(panel) {
+  const rep = { n_weeks: panel.week.length, issues: [], warnings: [] };
+  for (let i = 1; i < panel.week.length; i++) if (panel.week[i] - panel.week[i - 1] !== 1) rep.issues.push(`주 인덱스 비연속 @${i}`);
+  for (const [nm, arr] of Object.entries(panel.targets)) if (arr.some(v => v <= 0 || isNaN(v))) rep.warnings.push(`target '${nm}' 비양수/결측 존재`);
+  for (const ch of MMM_CHANNELS) {
+    if (!panel.ch[ch.key]) continue;
+    const arr = panel.ch[ch.key], nz = arr.filter(v => v > 0).length, nMiss = arr.filter(v => isNaN(v) || v == null).length;
+    rep[`nonzero::${ch.key}`] = `${nz}/${arr.length}`;
+    if (nMiss) rep.warnings.push(`channel '${ch.key}': ${nMiss} 결측(NaN) — features에서 대치`);
+    if (nz === 0) rep.warnings.push(`channel '${ch.key}' 전부 0 → 식별 불가`);
+    if (arr.length > 6 && arr.slice(-6).every(v => v === 0) && nz > 6) rep.warnings.push(`channel '${ch.key}': 마지막 6주 0 — 결측-vs-진짜0 확인`);
+  }
+  return rep;
+}
+
+/* --- audit --- */
+function mmmAudit(panel, cfg) {
+  const RR = panel.targets.RR || panel.week.map((_, i) => Object.values(panel.targets).reduce((s, a) => s + a[i], 0));
+  const sd = mmmSheetDesign(panel, cfg, false);
+  const olsN = mmmFitNamed(sd.X, sd.names, RR, cfg, false);
+  const hacN = mmmFitNamed(sd.X, sd.names, RR, cfg, true);
+  const coefRows = ["ln_G", "t", "LineOff", "Seollal", "sin13", "cos52"].filter(v => sd.names.includes(v)).map(v => ({
+    var: v, coef: +olsN.map[v].coef.toFixed(2), ols_p: +olsN.map[v].p.toFixed(4), hac_p: +hacN.map[v].p.toFixed(4),
+  }));
+  const brandRows = [];
+  for (const [nm, y] of [["Regs", panel.targets.Regs], ["React", panel.targets.React], ["RR", RR]]) {
+    if (!y) continue;
+    const sd0 = mmmSheetDesign(panel, cfg, false), r0 = mmmFitNamed(sd0.X, sd0.names, y, cfg, false);
+    const sdB = mmmSheetDesign(panel, cfg, true), r1 = mmmFitNamed(sdB.X, sdB.names, y, cfg, false);
+    brandRows.push({ target: nm, R2_no_brand: +r0.r2.toFixed(4), R2_with_brand: +r1.r2.toFixed(4), adjR2_no_brand: +r0.adjR2.toFixed(4), adjR2_with_brand: +r1.adjR2.toFixed(4), brand_p: r1.map.ln_Brand ? +r1.map.ln_Brand.p.toFixed(4) : null });
+  }
+  const swingRows = [];
+  for (const [nm, y] of [["Regs", panel.targets.Regs], ["React", panel.targets.React], ["RR", RR]]) {
+    if (!y) continue;
+    const sdc = mmmSheetDesign(panel, cfg, false), m = mmmFitNamed(sdc.X, sdc.names, y, cfg, true);
+    swingRows.push({ target: nm, ln_G_coef: +m.map.ln_G.coef.toFixed(2), hac_p: +m.map.ln_G.p.toFixed(4), trend_coef: +m.map.t.coef.toFixed(2) });
+  }
+  return {
+    target: "RR", n: olsN.n, r2: +olsN.r2.toFixed(4), adj_r2: +olsN.adjR2.toFixed(4), hac_maxlags: cfg.hacAutoLag(RR.length),
+    coefficients: coefRows, brand_test: brandRows, channel_swing: swingRows,
+    composite: { mean_RR: Math.round(_mean(RR)), components_mean_sum: Math.round(_mean(panel.week.map((_, i) => (panel.targets.Regs ? panel.targets.Regs[i] : 0) + (panel.targets.React ? panel.targets.React[i] : 0)))) },
+  };
+}
+
+/* --- trend existence (per target) --- */
+function mmmTrendExistence(panel, cfg, targetName) {
+  const y = panel.targets[targetName];
+  const stl = stlWeekly(y, 52);
+  const deseason = y.map((v, i) => v - stl.seasonal[i]);
+  const mkRaw = mkOriginal(y), mkAc = mkHamedRao(y), mkSeas = mkSeasonal(y, 52), mkDes = mkHamedRao(deseason);
+  const adf = adfCT(y), kp = kpssCT(y);
+  // diff drift (HAC maxlags=6, intercept only)
+  const dy = []; for (let i = 1; i < y.length; i++) dy.push(y[i] - y[i - 1]);
+  const dd = MMR_STATS.neweyWest(dy.map(() => [1]), dy, 6);
+  // resid after media+season+holidays (no trend term), MK
+  const { X } = mmmBuildFeatures(panel, cfg, 0.6, false);
+  const fit = mmmOls(_designConst(X), y);
+  const residMk = mkHamedRao(fit.resid);
+  const stlPct = +((stl.trend[y.length - 1] - stl.trend[0]) / _mean(y) * 100).toFixed(1);
+  const assumptionFreeNo = mkAc.trend === "no trend" && mkDes.trend === "no trend";
+  const organic = residMk.trend !== "no trend";
+  const ts = adf.p < 0.05 && kp.p >= 0.05;
+  let verdict;
+  if (assumptionFreeNo) verdict = "NO robust trend — fitted t-coefficient는 artifact";
+  else if (organic && ts) verdict = "trend EXISTS (trend-stationary, not spurious); media 제거 후에도 organic 잔존";
+  else verdict = "mixed — trend는 있으나 작음/부분적으로 media-confounded";
+  return {
+    target: targetName, stl_pct: stlPct,
+    mk_raw: [mkRaw.trend, +mkRaw.p.toFixed(4)], mk_ac_robust: [mkAc.trend, +mkAc.p.toFixed(4)],
+    mk_seasonal: [mkSeas.trend, +mkSeas.p.toFixed(4)], mk_deseason: [mkDes.trend, +mkDes.p.toFixed(4)],
+    adf_ct_p: +adf.p.toFixed(4), kpss_ct_p: +kp.p.toFixed(4),
+    diff_drift_per_wk: [+dd.beta[0].toFixed(1), +dd.pval[0].toFixed(4)],
+    resid_after_media_mk: [residMk.trend, +residMk.p.toFixed(4)],
+    verdict, stl,
+  };
+}
+
+/* --- cannibalization (precedence / detrend_corr / net_incrementality / verdict) --- */
+function mmmCannibalization(panel, cfg, targetName, netElasticity) {
+  const y = panel.targets[targetName], t = panel.week, n = t.length;
+  const gtot = t.map((_, i) => cfg.combinedGoogle.reduce((s, k) => s + (panel.ch[k] ? (panel.ch[k][i] || 0) : 0), 0));
+  // precedence (early 26 weeks)
+  const ew = 26; const eIdx = t.map((tt, i) => tt <= ew ? i : -1).filter(i => i >= 0);
+  const ex = eIdx.map(i => t[i]), ey = eIdx.map(i => y[i]);
+  const lf = CANNIBAL_STATS.linearFit(ey); // slope vs index — but need vs week. use polyfit
+  // slope of y on week (early)
+  const exM = _mean(ex), eyM = _mean(ey); let num = 0, den = 0;
+  for (let i = 0; i < ex.length; i++) { num += (ex[i] - exM) * (ey[i] - eyM); den += (ex[i] - exM) ** 2; }
+  const slope = den > 0 ? num / den : 0;
+  const pct = slope * ew / eyM * 100;
+  const precedence = { window_weeks: ew, avg_spend: Math.round(_mean(eIdx.map(i => gtot[i]))), kpi_slope_per_wk: +slope.toFixed(1), kpi_change_over_window_pct: +pct.toFixed(1), declining_pre_ramp: pct < -1 };
+  // detrend corr
+  const lnG = gtot.map(v => Math.log1p(v));
+  const raw = CANNIBAL_STATS.pearson(lnG, y);
+  const tr = t.map((tt, i) => i); // index as t
+  const gFit = mmmOls(tr.map(i => [1, i]), lnG), yFit = mmmOls(tr.map(i => [1, i]), y);
+  const det = CANNIBAL_STATS.pearson(gFit.resid, yFit.resid);
+  const dlnG = [], dy = []; for (let i = 1; i < n; i++) { dlnG.push(lnG[i] - lnG[i - 1]); dy.push(y[i] - y[i - 1]); }
+  const fd = CANNIBAL_STATS.pearson(dlnG, dy);
+  const flips = raw < 0 && det >= 0;
+  const detrend = { raw: +raw.toFixed(3), detrended: +det.toFixed(3), first_diff: +fd.toFixed(3), negative_collapses: flips,
+    reading: flips ? "spurious (organic), not cannibalization" : raw >= 0 ? "애초에 음의 연관 없음" : "negative survives detrend — cannibalization 조사" };
+  const net = { net_elasticity: +netElasticity.coef.toFixed(4), p: +netElasticity.p.toFixed(4), reading: netElasticity.coef > 0 ? "net positive — 강한 cannibalization과 불일치" : "net <= 0 — cannibalization 가능" };
+  const votes = [precedence.declining_pre_ramp, (detrend.negative_collapses || detrend.raw >= 0), net.net_elasticity > 0].filter(Boolean).length;
+  const verdict = votes >= 2 ? "ORGANIC (exogenous) — media는 방어, 원인 아님" : "INCONCLUSIVE / cannibalization 가능 — geo holdout 필요";
+  return { precedence, detrend_corr: detrend, net_incrementality: net, organic_votes: votes, verdict };
+}
+
+/* --- MMM (select_adstock CV / vif / elasticities AR1 / shapley / saturation) --- */
+// 학습창에서 상수(0분산)인 열을 드롭 → statsmodels pinv 동작 재현 (rank-deficient fold도 계산)
+function _cvPredict(XtrFull, ytr, xrowFull) {
+  const k = XtrFull[0].length, keep = [0];
+  for (let j = 1; j < k; j++) { const col = XtrFull.map(r => r[j]); let mn = col[0], mx = col[0]; for (const v of col) { if (v < mn) mn = v; if (v > mx) mx = v; } if (mx - mn > 1e-12) keep.push(j); }
+  const Xtr = XtrFull.map(r => keep.map(j => r[j]));
+  const f = mmmOls(Xtr, ytr); if (!f) return null;
+  return keep.reduce((s, j, i) => s + xrowFull[j] * f.beta[i], 0);
+}
+function mmmSelectAdstock(panel, cfg, targetName) {
+  const y = panel.targets[targetName], n = y.length, grid = cfg.adstockGrid, minTrain = cfg.cvMinTrain;
+  const results = {};
+  for (const lam of grid) {
+    const { X } = mmmBuildFeatures(panel, cfg, lam);
+    const errs = [];
+    for (let cut = minTrain; cut < n - 1; cut++) {
+      const pred = _cvPredict(_designConst(X.slice(0, cut)), y.slice(0, cut), [1, ...X[cut]]);
+      if (pred == null) continue;
+      errs.push((y[cut] - pred) ** 2);
+    }
+    results[lam] = errs.length ? +Math.sqrt(_mean(errs)).toFixed(1) : NaN;
+  }
+  let best = grid.filter(l => !isNaN(results[l])).reduce((a, l) => results[l] < results[a] ? l : a, grid[0]);
+  return { cv_rmse: results, best_lambda: best };
+}
+function mmmShapleyGroups(names) {
+  const def = [["Trend", ["trend"]], ["Seasonality", ["sin_0", "cos_0", "sin_1", "cos_1"]], ["Holidays", ["lny", "chuseok"]],
+    ["Regime(steps)", Object.keys(MMM_METH_CONFIG.steps)], ["Google ROI", ["ln_google_roi"]], ["Brand", ["ln_brand"]], ["Meta", ["ln_meta"]], ["TikTok", ["ln_tiktok"]]];
+  return def.map(([nm, cs]) => ({ name: nm, cols: cs.map(c => names.indexOf(c)).filter(i => i >= 0) })).filter(g => g.cols.length);
+}
+function mmmRunMmm(panel, cfg, targetName) {
+  const ad = mmmSelectAdstock(panel, cfg, targetName);
+  const lam = ad.best_lambda;
+  const { X, names } = mmmBuildFeatures(panel, cfg, lam);
+  const y = panel.targets[targetName];
+  // VIF (design + const, skip const)
+  const vifs = CREATIVE_MATH.vif(_designConst(X));
+  const vifByName = names.map((nm, i) => ({ var: nm, vif: +vifs[i + 1].toFixed(3) })).sort((a, b) => b.vif - a.vif);
+  // collinear pairs (|corr|>=0.85)
+  const pairs = [];
+  for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) {
+    const r = CANNIBAL_STATS.pearson(X.map(row => row[i]), X.map(row => row[j]));
+    if (Math.abs(r) >= 0.85) pairs.push({ a: names[i], b: names[j], corr: +r.toFixed(3) });
+  }
+  pairs.sort((a, b) => Math.abs(b.corr) - Math.abs(a.corr));
+  // elasticities (AR1, log y)
+  const elas = mmmElasticities(panel, cfg, targetName, lam);
+  // shapley
+  const groups = mmmShapleyGroups(names);
+  const sh = shapleyR2Exact(y, groups, X);
+  // saturation (google_roi)
+  const sat = mmmSaturation(panel, cfg, targetName, "google_roi", lam);
+  return { best_lambda: lam, cv_rmse: ad.cv_rmse, vif: vifByName, collinear_pairs: pairs, elasticities: elas, shapley: sh, saturation: sat };
+}
+function mmmElasticities(panel, cfg, targetName, lam) {
+  const { X, names } = mmmBuildFeatures(panel, cfg, lam, true);
+  const y = panel.targets[targetName].map(v => Math.log(v));
+  const fa = fitAR1(_designConst(X), y);
+  const keep = names.map((nm, i) => ({ nm, i })).filter(o => o.nm.startsWith("ln_") || o.nm === "trend");
+  return keep.map(({ nm, i }) => { const j = i + 1; return { var: nm, coef: +fa.beta[j].toFixed(4), ci_lo: +fa.ci95[j][0].toFixed(4), ci_hi: +fa.ci95[j][1].toFixed(4), p: +fa.pval[j].toFixed(4) }; });
+}
+function mmmSaturation(panel, cfg, targetName, channelKey, lam, levels = [10000, 35000, 60000]) {
+  const { X, names } = mmmBuildFeatures(panel, cfg, lam, true);
+  const col = "ln_" + channelKey, j = names.indexOf(col);
+  if (j < 0) return null;
+  const fa = fitAR1(_designConst(X), panel.targets[targetName]);
+  const b = fa.beta[j + 1];
+  const marg = {}; for (const lv of levels) marg[`$${lv / 1000}k`] = +(b / (1 + lv) * 1000).toFixed(1);
+  return { channel: channelKey, ln_coef: +b.toFixed(1), marginal_kpi_per_1k: marg };
+}
+/* 합성 데이터 파이프라인 골든 (결정론; 실데이터 미커밋) */
+function runMmmMethTests(verbose = true) {
+  const R = []; const rng = _mmrLcg(77);
+  const n = 104;
+  const week = Array.from({ length: n }, (_, i) => i + 1);
+  const spend = week.map(t => 5000 + t * 80 + (t > 50 ? 4000 : 0));
+  const meta = week.map(t => t > 30 ? 2000 : 0);
+  const ad = (x, l) => { const o = []; for (let i = 0; i < x.length; i++) o.push(x[i] + (i > 0 ? l * o[i - 1] : 0)); return o; };
+  const sat = ad(spend, 0.3).map(v => Math.log1p(v));
+  const target = week.map((t, i) => 8000 + 600 * sat[i] - 5 * t + 400 * Math.sin(2 * Math.PI * t / 52.18) + rng() * 80);
+  const seolW = new Set([5, 6, 56, 57]), chuW = new Set([38, 39, 92, 93]);
+  const dummy = {
+    PreLNY: week.map(t => (t === 4 || t === 55) ? 1 : 0), Seollal: week.map(t => seolW.has(t) ? 1 : 0),
+    ChuseokOnly: week.map(t => chuW.has(t) ? 1 : 0), PostChuWk: week.map(t => (t === 40 || t === 94) ? 1 : 0),
+    OtherHol: week.map(t => (t === 1 || t === 53) ? 1 : 0),
+  };
+  const panel = { week, ch: { google_roi: spend, meta }, dummy, targets: { Regs: target } };
+  const cfg = MMM_METH_CONFIG;
+  // T1 validate 통과
+  const v = mmmValidate(panel);
+  R.push({ test: "T1 · validate issues=0", actual: String(v.issues.length), pass: v.issues.length === 0 ? "✓" : "✗" });
+  // T2 select_adstock best in grid
+  const sa = mmmSelectAdstock(panel, cfg, "Regs");
+  R.push({ test: "T2 · adstock best∈grid", actual: String(sa.best_lambda), pass: cfg.adstockGrid.includes(sa.best_lambda) ? "✓" : "✗" });
+  // T3 spend 채널 elasticity 양수
+  const mm = mmmRunMmm(panel, cfg, "Regs");
+  const g = mm.elasticities.find(e => e.var === "ln_google_roi");
+  R.push({ test: "T3 · google_roi elasticity>0", actual: g ? g.coef.toFixed(3) : "—", pass: g && g.coef > 0 ? "✓" : "✗" });
+  // T4 Shapley 합=전체R²
+  const sumSh = mm.shapley.rows.reduce((a, r) => a + r.r2_share, 0);
+  R.push({ test: "T4 · Shapley Σ=total", actual: `${sumSh.toFixed(3)}=${mm.shapley.total.toFixed(3)}`, pass: Math.abs(sumSh - mm.shapley.total) < 1e-6 ? "✓" : "✗" });
+  // T5 trend existence verdict 문자열
+  const tr = mmmTrendExistence(panel, cfg, "Regs");
+  R.push({ test: "T5 · trend verdict 생성", actual: tr.verdict.slice(0, 12), pass: typeof tr.verdict === "string" && tr.adf_ct_p != null ? "✓" : "✗" });
+  // T6 cannibalization verdict (net>0 → organic 표 1표 이상)
+  const cn = mmmCannibalization(panel, cfg, "Regs", { coef: g.coef, p: g.p });
+  R.push({ test: "T6 · cannib verdict 생성", actual: cn.verdict.slice(0, 10), pass: cn.verdict.includes("ORGANIC") || cn.verdict.includes("INCONCLUSIVE") ? "✓" : "✗" });
+  // T7 audit r2
+  const au = mmmAudit(panel, cfg);
+  R.push({ test: "T7 · audit r2 유효", actual: String(au.r2), pass: au.r2 > 0 && au.r2 < 1 ? "✓" : "✗" });
+  // T8 결정론
+  const d1 = mmmRunMmm(panel, cfg, "Regs").elasticities[0].coef, d2 = mmmRunMmm(panel, cfg, "Regs").elasticities[0].coef;
+  R.push({ test: "T8 · 결정론", actual: d1 === d2 ? "identical" : "differ", pass: d1 === d2 ? "✓" : "✗" });
+  if (verbose) { console.log("%c=== MMM Methodology Pipeline · Golden ===", "color:#adc6ff;font-weight:bold;"); console.table(R); const p = R.filter(x => x.pass === "✓").length; console.log(`%c${p}/${R.length} 통과`, `color:${p === R.length ? '#22c55e' : '#f87171'};font-weight:bold;`); }
+  return R;
+}
+if (typeof window !== "undefined") {
+  Object.assign(window, { MMM_METH_CONFIG, mmmBuildFeatures, mmmSheetDesign, mmmMacroFacts, mmmValidate, mmmAudit, mmmTrendExistence, mmmCannibalization, mmmRunMmm, mmmElasticities, mmmSelectAdstock, runMmmMethTests });
+}
+
+/* ============================================================
  * Quality Analyzer (5-8) — 코호트 리텐션 곡선 + LTV 외삽
  * grain: cohort_date × day_offset (선택적으로 channel/country/platform 분기)
  * ============================================================ */
