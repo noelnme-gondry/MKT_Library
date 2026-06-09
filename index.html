@@ -2817,6 +2817,37 @@ function isFirstGroupOfPhase(groupId) {
   return phase && phase.groups[0] === groupId;
 }
 
+/* ===== 표시용 계층 번호 (display-only; 라우팅 id는 그대로) =====
+ * 초기→1-x, 중기→2-x(서브그룹 평탄화), 후기→3-x, 운영→4-{그룹}-{항목}.
+ * 내부 id(5-2 등)는 hash/route로 그대로 사용 — URL·북마크 안정. */
+function displayItemNumber(itemId) {
+  for (let pi = 0; pi < PHASES.length; pi++) {
+    const phase = PHASES[pi], phaseNum = pi + 1;
+    if (phase.id === "p4") {
+      for (let gi = 0; gi < phase.groups.length; gi++) {
+        const grp = IA.find(g => g.id === phase.groups[gi]); if (!grp) continue;
+        const ii = grp.items.findIndex(it => it.id === itemId);
+        if (ii >= 0) return `${phaseNum}-${gi + 1}-${ii + 1}`;
+      }
+    } else {
+      let pos = 0;
+      for (const gid of phase.groups) {
+        const grp = IA.find(g => g.id === gid); if (!grp) continue;
+        for (const it of grp.items) { pos++; if (it.id === itemId) return `${phaseNum}-${pos}`; }
+      }
+    }
+  }
+  return itemId;
+}
+function displayGroupNumber(groupId) {
+  for (let pi = 0; pi < PHASES.length; pi++) {
+    const phase = PHASES[pi], phaseNum = pi + 1;
+    const gi = phase.groups.indexOf(groupId);
+    if (gi >= 0) return phase.id === "p4" ? `${phaseNum}-${gi + 1}` : `${phaseNum}`;
+  }
+  return groupId;
+}
+
 /* ========== CSV Standard Fields ========== */
 const STANDARD_FIELDS = {
   date:          { label: "날짜",         aliases: ["dt", "날짜", "event_date", "day"],          type: "date",    required: true,  group: "디멘션" },
@@ -3014,7 +3045,7 @@ function renderNav(activeId) {
         <div class="nav-group ${collapsedClass}" data-group="${group.id}">
           <div class="nav-group-header" data-toggle="${group.id}">
             <span class="nav-group-title">
-              <span class="nav-group-index">${group.id}</span>
+              <span class="nav-group-index">${displayGroupNumber(group.id)}</span>
               <span>${escapeHtml(group.title)}</span>
             </span>
             <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -3022,7 +3053,7 @@ function renderNav(activeId) {
           <div class="nav-items">
             ${group.items.map(it => `
               <div class="nav-item ${it.id === activeId ? "active" : ""}" data-route="${it.id}">
-                <span class="ix tnum">${it.id}</span>
+                <span class="ix tnum">${displayItemNumber(it.id)}</span>
                 <span>${escapeHtml(it.title)}</span>
               </div>
             `).join("")}
@@ -3116,7 +3147,7 @@ function pageHome() {
             <div class="phase-card-title">${escapeHtml(p.sub)}</div>
             <div class="phase-card-desc">${escapeHtml(p.desc)}</div>
             <div class="phase-card-foot">
-              <span class="phase-card-meta">${linkedGroups.map(g => `${g.id} · ${escapeHtml(g.title)}`).join(" / ")}</span>
+              <span class="phase-card-meta">${linkedGroups.map(g => `${displayGroupNumber(g.id)} · ${escapeHtml(g.title)}`).join(" / ")}</span>
               <span class="phase-card-meta tnum">${itemCount}개 항목</span>
             </div>
             <div class="phase-card-cta">시작하기 →</div>
@@ -3135,12 +3166,12 @@ function pageHome() {
         ${linkedGroups.map(g => `
           <div style="margin-bottom:1rem;">
             <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">
-              ${g.id} · ${escapeHtml(g.title)}
+              ${displayGroupNumber(g.id)} · ${escapeHtml(g.title)}
             </div>
             <div class="grid-cards">
               ${g.items.map(it => `
                 <div class="card" data-route="${it.id}">
-                  <div class="card-eyebrow">${it.id}</div>
+                  <div class="card-eyebrow">${displayItemNumber(it.id)}</div>
                   <div class="card-title">${escapeHtml(it.title)}</div>
                   <div class="card-desc">${escapeHtml(it.desc)}</div>
                 </div>
@@ -3156,7 +3187,7 @@ function pageHome() {
 /* ---------- 1-1 (Full quality) ---------- */
 function page_1_1() {
   return `
-    <div class="page-eyebrow">01 Foundation · 1-1</div>
+    <div class="page-eyebrow">1 Foundation · 1-1</div>
     <h1 class="page-title">개발자 협업 가이드 및 테크니컬 PRD</h1>
     <p class="page-deck">MMP(Adjust) SDK 초기화 스펙, 딥링크 라우팅 로직, 그리고 릴리즈 전 QA 시나리오를 단일 문서로 통합한 개발 협업 표준. 본 문서가 그대로 PRD가 되도록 작성됨.</p>
 
@@ -3411,7 +3442,7 @@ function page_1_2() {
   ];
 
   return `
-    <div class="page-eyebrow">01 Foundation · 1-2</div>
+    <div class="page-eyebrow">1 Foundation · 1-2</div>
     <h1 class="page-title">인앱 이벤트 택소노미 설계서</h1>
     <p class="page-deck">비즈니스 핵심 퍼널을 단일 진실 원천(SSOT)으로 정의하는 이벤트 스펙. 매체 최적화 시그널, 코호트 분석, LTV 검증의 기반이 되며, <strong>이름·파라미터·발화 시점</strong> 3요소가 모두 표준화된다.</p>
 
@@ -3705,7 +3736,7 @@ async function renderPageFromData(id) {
 function pageShell(meta, opts) {
   const group = IA.find(g => g.items.some(it => it.id === meta.id));
   return `
-    <div class="page-eyebrow">${group.id} ${escapeHtml(group.title)} · ${meta.id}</div>
+    <div class="page-eyebrow">${displayGroupNumber(group.id)} ${escapeHtml(group.title)} · ${displayItemNumber(meta.id)}</div>
     <h1 class="page-title">${escapeHtml(meta.title)}</h1>
     <p class="page-deck">${opts.deck || escapeHtml(meta.desc)}</p>
     <div class="meta-row">${opts.chips || ""}</div>
@@ -3714,7 +3745,7 @@ function pageShell(meta, opts) {
         ${opts.summary ? `<div class="summary"><div class="summary-label">핵심 요약</div><p>${opts.summary}</p></div>` : ""}
         ${opts.body}
         <div class="page-footer">
-          <span>${meta.id}. ${escapeHtml(meta.title)}</span>
+          <span>${displayItemNumber(meta.id)}. ${escapeHtml(meta.title)}</span>
           <span>최종 업데이트 · 2026-05-22</span>
         </div>
       </div>
@@ -12065,6 +12096,52 @@ function mmmSaturation(panel, cfg, targetName, channelKey, lam, levels = [10000,
   const marg = {}; for (const lv of levels) marg[`$${lv / 1000}k`] = +(b / (1 + lv) * 1000).toFixed(1);
   return { channel: channelKey, ln_coef: +b.toFixed(1), marginal_kpi_per_1k: marg };
 }
+
+/* 채널별 "쉬운 효과" — 탄력성(%) + 현 지출구간 +$1k당 추가 인원/주 + 통계 유의/신뢰도 */
+function mmmChannelEffects(panel, cfg, targetName, lam) {
+  const { X, names } = mmmBuildFeatures(panel, cfg, lam, true);
+  const faLog = fitAR1(_designConst(X), panel.targets[targetName].map(v => Math.log(v))); // 탄력성(log-log)
+  const faRaw = fitAR1(_designConst(X), panel.targets[targetName]);                       // 주당 인원(semi-log)
+  const folded = new Set(cfg.foldIntoRegime || []);
+  const out = [];
+  for (const ch of MMM_CHANNELS) {
+    if (folded.has(ch.key) || !panel.ch[ch.key]) continue;
+    const j = names.indexOf("ln_" + ch.key); if (j < 0) continue;
+    const elas = faLog.beta[j + 1], ci = faLog.ci95[j + 1], p = faLog.pval[j + 1], bRaw = faRaw.beta[j + 1];
+    const active = panel.ch[ch.key].filter(v => v > 0 && isFinite(v));
+    const recentMean = active.length ? active.slice(-12).reduce((a, b) => a + b, 0) / Math.min(12, active.length) : 0;
+    const weeklyPer1k = recentMean > 0 ? bRaw / (1 + recentMean) * 1000 : null;
+    const sig = ci[0] > 0 || ci[1] < 0;
+    out.push({
+      key: ch.key, label: ch.label, elas: +elas.toFixed(4), ci: [+ci[0].toFixed(4), +ci[1].toFixed(4)], p: +p.toFixed(4),
+      weeklyPer1k: weeklyPer1k == null ? null : +weeklyPer1k.toFixed(1), meanSpend: Math.round(recentMean), sig,
+      verdict: !sig ? "noise" : elas > 0 ? "incremental" : "suppress",
+    });
+  }
+  return out;
+}
+
+/* === 해석/신뢰도 헬퍼 === */
+function mmmConfDots(level) { const n = Math.max(0, Math.min(5, Math.round(level))); return "●".repeat(n) + "○".repeat(5 - n); }
+function mmmPtoConf(p) { return p < 0.001 ? 5 : p < 0.01 ? 4 : p < 0.05 ? 3 : p < 0.1 ? 2 : 1; }
+function mmmTrendConf(trend) {
+  const labels = [trend.mk_raw[0], trend.mk_ac_robust[0], trend.mk_seasonal[0], trend.mk_deseason[0]];
+  const noTrend = labels.filter(l => l === "no trend").length;
+  const agree = Math.max(noTrend, 4 - noTrend);   // 다수 일치 개수
+  const ts = (trend.adf_ct_p < 0.05 && trend.kpss_ct_p >= 0.05) || (trend.adf_ct_p >= 0.05 && trend.kpss_ct_p < 0.05);
+  return Math.min(5, agree + (ts ? 1 : 0));
+}
+function mmmCannibConf(cn) { const v = cn.organic_votes; return v >= 3 ? 5 : v === 2 ? 4 : v === 1 ? 2 : 1; }
+function mmmTrendPlain(trend, target) {
+  const v = trend.verdict;
+  if (v.includes("NO robust")) return `<strong>하락 추세 없음.</strong> ${target}이(가) 줄어드는 것처럼 보여도, 추세를 가정하지 않는 검정(STL·Mann-Kendall·ADF·KPSS)에서는 의미 있는 하락 신호가 없습니다. 회귀에 시간(t)을 넣으면 거의 항상 음수가 나오는 <em>착시</em>일 뿐입니다.`;
+  if (v.includes("EXISTS")) return `<strong>완만한 하락 추세가 실재합니다.</strong> 매체 지출을 모두 제거한 뒤에도 하락이 남아 있어, 광고가 아니라 외생적(시장·제품) 요인일 가능성이 큽니다.`;
+  return `<strong>약한 하락 신호.</strong> 하락이 일부 보이지만 매체 지출과 시간이 얽혀 있어 단정하기 어렵습니다. holdout으로 확인을 권장합니다.`;
+}
+function mmmCannibPlain(cn, target) {
+  if (cn.verdict.includes("ORGANIC")) return `Google 광고는 오가닉 ${target}을(를) <strong style="color:#22c55e;">잠식하지 않습니다</strong>. 서로 독립적인 3개 검정 중 <strong>${cn.organic_votes}개</strong>가 "오가닉(외생적 하락)" 쪽을 지지합니다. 즉 광고를 켠다고 오가닉을 갉아먹는 게 아니라, 외생적 하락을 <strong>방어·보완</strong>하는 역할에 가깝습니다.`;
+  return `Google 광고의 오가닉 잠식 <strong style="color:#fbbf24;">가능성을 배제할 수 없습니다</strong> (3개 검정 중 ${cn.organic_votes}개만 오가닉 지지). 확정하려면 holdout 실험(5-15)이 필요합니다.`;
+}
 /* 합성 데이터 파이프라인 골든 (결정론; 실데이터 미커밋) */
 function runMmmMethTests(verbose = true) {
   const R = []; const rng = _mmrLcg(77);
@@ -12172,7 +12249,8 @@ function buildMmmMethCache() {
       const netE = mmmElasticities(panel, cfg, t, cfg.defaultLam).find(r => r.var === "ln_google_roi") || { coef: NaN, p: NaN };
       const cannib = mmmCannibalization(panel, cfg, t, netE);
       const mmm = mmmRunMmm(panel, cfg, t);
-      C.byTarget[t] = { trend, cannib, mmm };
+      const effects = mmmChannelEffects(panel, cfg, t, mmm.best_lambda);
+      C.byTarget[t] = { trend, cannib, mmm, effects };
     }
     C.error = null;
   } catch (e) { C.error = e.message; }
@@ -12202,8 +12280,9 @@ function page_5_18() {
     deck: "추세 존재 검정 → 카니발 vs 오가닉 삼각검증 + 시트 audit + adstock·Shapley·수확체감. 모든 결론은 관측 회귀 = 연관(가설). 인과는 geo holdout / organic-split.",
     chips: `<span class="chip"><span class="dot"></span>도구 · MMM 방법론</span><span class="chip warning"><span class="dot"></span>가설·기술용 · holdout 아님</span>${authStatusChip()}`,
     summary: "⚠ 어떤 계수도 측정된 인과/증분 효과가 아닙니다. 추세는 가정하지 않고 검정(STL·MK·ADF·KPSS), 추론은 HAC+AR(1), 귀인은 Shapley R²(준로그 수준-점유 분해 금지). cannibalization 결정은 holdout(5-15) 전용.",
-    toc: [{ id: "s-prep", title: "데이터" }, { id: "s-macro", title: "§1 위생·매크로" }, { id: "s-audit", title: "§2 시트 audit" }, { id: "s-trend", title: "§3 추세 존재" }, { id: "s-cannib", title: "§4 카니발 vs 오가닉" }, { id: "s-mmm", title: "§5 MMM" }, { id: "s-verdict", title: "§6 종합·export" }],
+    toc: [{ id: "s-summary", title: "§0 한눈에 보기" }, { id: "s-prep", title: "데이터" }, { id: "s-macro", title: "§1 위생·매크로" }, { id: "s-audit", title: "§2 시트 audit" }, { id: "s-trend", title: "§3 추세 존재" }, { id: "s-cannib", title: "§4 카니발 vs 오가닉" }, { id: "s-mmm", title: "§5 MMM" }, { id: "s-verdict", title: "§6 종합·export" }],
     body: `
+      ${renderMmmSummary(c)}
       <section class="block" id="s-prep">${renderInlineCsvUpload("5-18")}</section>
       ${renderMmmConfig(c)}
       ${renderMmmMacro(c)}
@@ -12217,6 +12296,72 @@ function page_5_18() {
   });
 }
 PAGE_RENDERERS["5-18"] = page_5_18;
+
+// 인라인 "쉬운 해석" 콜아웃 — 모든 섹션 공통
+function mmmExplain(html) {
+  return `<div style="display:flex;gap:8px;align-items:flex-start;background:rgba(122,162,247,0.07);border:1px solid rgba(122,162,247,0.22);border-radius:8px;padding:9px 12px;margin:8px 0;font-size:12px;line-height:1.6;color:var(--text-1);">
+    <span style="flex-shrink:0;font-size:14px;">💡</span><div><strong style="color:#adc6ff;">쉽게 말하면</strong> · ${html}</div></div>`;
+}
+const _MMM_TARGET_KO = { Regs: "가입 (Registration)", React: "재활성 (Reactivation)" };
+
+function renderMmmSummary(c) {
+  const targetCard = (t) => {
+    const T = c.byTarget[t]; if (!T) return "";
+    const meanY = Math.round(c.panel.targets[t].reduce((a, b) => a + b, 0) / c.panel.targets[t].length);
+    const tConf = mmmTrendConf(T.trend), cConf = mmmCannibConf(T.cannib);
+    // 채널별 효과 표
+    const effRows = (T.effects || []).map(e => {
+      const pct10 = (e.elas * 10);
+      const wk = e.weeklyPer1k;
+      const badge = e.verdict === "incremental" ? '<span style="color:#22c55e;font-weight:600;">증분 ✓</span>'
+        : e.verdict === "suppress" ? '<span style="color:#f87171;font-weight:600;">잠식 의심 ⚠</span>'
+        : '<span style="color:var(--text-muted);">불확실</span>';
+      return `<tr>
+        <td><strong>${escapeHtml(e.label)}</strong></td>
+        <td class="tnum ${pct10 >= 0 ? 'pos' : 'neg'}">${pct10 >= 0 ? '+' : ''}${pct10.toFixed(1)}%</td>
+        <td class="tnum">${wk == null ? '—' : (wk >= 0 ? '+' : '') + Math.round(wk) + '명'}</td>
+        <td>${badge}</td>
+        <td title="p=${e.p}" style="color:#adc6ff;letter-spacing:1px;">${mmmConfDots(mmmPtoConf(e.p))}</td>
+      </tr>`;
+    }).join("");
+    return `
+      <div style="background:linear-gradient(135deg,rgba(122,162,247,0.10),rgba(122,162,247,0.02));border:1px solid rgba(122,162,247,0.28);border-left:4px solid #7aa2f7;border-radius:12px;padding:16px 18px;margin-bottom:14px;">
+        <div style="font-size:15px;font-weight:700;color:var(--text-1);margin-bottom:2px;">${_MMM_TARGET_KO[t] || t}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">주평균 약 ${meanY.toLocaleString()}명 · 분석 기간 ${c.panel.week.length}주</div>
+
+        <div style="margin-bottom:10px;">
+          <div style="font-size:13px;color:var(--text-1);line-height:1.65;"><span style="color:#7aa2f7;font-weight:700;">①  추세</span> — ${mmmTrendPlain(T.trend, _MMM_TARGET_KO[t].split(" ")[0])}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">통계적 신뢰도 <span style="color:#adc6ff;letter-spacing:1px;">${mmmConfDots(tConf)}</span></div>
+        </div>
+
+        <div style="margin-bottom:10px;">
+          <div style="font-size:13px;color:var(--text-1);line-height:1.65;"><span style="color:#7aa2f7;font-weight:700;">②  카니발(잠식) 여부</span> — ${mmmCannibPlain(T.cannib, _MMM_TARGET_KO[t].split(" ")[0])}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">통계적 신뢰도 <span style="color:#adc6ff;letter-spacing:1px;">${mmmConfDots(cConf)}</span></div>
+        </div>
+
+        <div>
+          <div style="font-size:13px;color:var(--text-1);font-weight:600;margin-bottom:4px;"><span style="color:#7aa2f7;">③  채널별 효과</span> — 지출을 늘리면 ${_MMM_TARGET_KO[t].split(" ")[0]}이(가) 얼마나?</div>
+          <div class="table-wrap"><table class="data" style="font-size:11.5px;">
+            <thead><tr><th>채널</th><th>지출 +10% 시</th><th>+$1,000/주당</th><th>판정</th><th>신뢰도</th></tr></thead>
+            <tbody>${effRows || '<tr><td colspan="5">채널 없음</td></tr>'}</tbody>
+          </table></div>
+          <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">"+$1,000/주당 N명" = 현재 지출 수준에서 그 채널에 주당 1,000달러를 더 쓰면 늘어나는 ${_MMM_TARGET_KO[t].split(" ")[0]} 인원(수확체감 반영). 음수·"불확실"은 통계적으로 0과 구분되지 않음(노이즈).</div>
+        </div>
+      </div>`;
+  };
+  return `
+    <section class="block" id="s-summary" style="background:var(--bg-1);border:1px solid rgba(122,162,247,0.3);border-radius:14px;padding:18px 20px;box-shadow:0 0 0 1px rgba(122,162,247,0.05);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+        <span style="font-size:20px;">📊</span>
+        <h2 style="margin:0;font-size:18px;color:var(--text-1);">한눈에 보기 — 이 분석이 말하는 것</h2>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:4px 0 14px;">통계 용어를 몰라도 읽을 수 있게 핵심 결론만 정리했습니다. 각 숫자가 어떻게 나왔는지는 아래 §1~§6에서 단계별로 설명합니다. <strong style="color:#fbbf24;">신뢰도 ●●●●● = 매우 높음 / ●●●○○ = 보통 / ●○○○○ = 약함.</strong></p>
+      ${c.targets.map(targetCard).join("")}
+      <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:10px 13px;font-size:12px;line-height:1.6;color:var(--text-1);">
+        ⚠ <strong>이 결과는 "연관(association)"이지 "인과(causation)"의 증명이 아닙니다.</strong> 회귀는 "광고와 결과가 같이 움직였다"까지만 말합니다. "광고가 결과를 만들었다"를 확정하려면 일부 지역/유저를 광고에서 빼보는 <strong>holdout 실험(5-15 Incrementality)</strong>이 필요합니다. 이 도구는 <strong>무엇을 holdout으로 검증할지 좁혀주는</strong> 가설 생성기입니다.
+      </div>
+    </section>`;
+}
 
 function renderMmmConfig(c) {
   const cfg = c.cfg;
@@ -12239,6 +12384,7 @@ function renderMmmMacro(c) {
   return `<section class="block" id="s-macro">
     <h2 class="section-title"><span class="ix">§1</span>데이터 위생 + 매크로 사실 (모델 독립)</h2>
     <p class="muted">스키마/연속성/결측을 모델링 전 검증. 매크로 = spend YoY vs KPI YoY (가장 강한 model-free 헤드라인).</p>
+    ${mmmExplain('매크로는 <strong>모델 없이 보는 가장 단순한 사실</strong>입니다. 예를 들어 "Google 지출 +139%인데 가입 -1.5%"라면 단순히는 "돈을 더 썼는데 결과는 제자리"로 보이죠. 하지만 이게 <strong>광고 탓인지, 시장·계절 탓인지는 단순 비교로 알 수 없어서</strong> §2부터 통계로 하나씩 가려냅니다. 위의 위생 검증(주 연속성·결측·전부-0 채널)은 잘못된 데이터로 엉뚱한 결론이 나오는 걸 막는 안전장치입니다.')}
     <div class="ab-stat-row"><div class="ab-stat"><div class="ab-stat-label">주 수(n)</div><div class="ab-stat-value tnum">${v.n_weeks}</div></div>
       <div class="ab-stat"><div class="ab-stat-label">스키마 이슈</div><div class="ab-stat-value">${(v.issues || []).length ? '<span style="color:#f87171;">' + v.issues.length + '</span>' : '<span style="color:#22c55e;">OK</span>'}</div></div></div>
     <div class="table-wrap" style="margin-top:8px;max-width:420px;"><table class="data" style="font-size:11.5px;"><thead><tr><th>매크로 사실</th><th>값</th></tr></thead><tbody>${macroRows || '<tr><td colspan=2>—</td></tr>'}</tbody></table></div>
@@ -12254,6 +12400,7 @@ function renderMmmAudit(c) {
   return `<section class="block" id="s-audit">
     <h2 class="section-title"><span class="ix">§2</span>시트 "winner" 모델 audit</h2>
     <p class="muted">시트 스펙 재현 → OLS vs HAC p값(주간 자기상관). target=RR · n=${a.n} · R²=${f(a.r2, 4)} adjR²=${f(a.adj_r2, 4)} · HAC maxlags=${a.hac_maxlags}.</p>
+    ${mmmExplain('기존 엑셀/스프레드시트 모델이 통계적으로 믿을 만한지 검증하는 단계입니다. 핵심은 <strong>OLS p값 vs HAC p값</strong> 비교: p값은 작을수록 "우연이 아니다(신호 있음)"인데, 주간 데이터는 이웃한 주끼리 닮아서(자기상관) OLS가 p값을 <strong>실제보다 작게(과신)</strong> 보고합니다. HAC p값이 OLS보다 크면 = 원래 모델이 유의성을 과대평가했다는 신호. 또 <strong>브랜드를 넣으면 R²가 오히려 올라가므로</strong>("회귀변수를 더하면 R²는 절대 안 떨어짐") "브랜드 빼자"는 시트 논리는 통계적으로 틀린 판단입니다. R²=설명력(0~1, 1에 가까울수록 잘 설명).')}
     <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>변수</th><th>coef</th><th>OLS p</th><th>HAC p</th></tr></thead><tbody>${coefR}</tbody></table></div>
     <p style="font-size:12px;margin:10px 0 2px;color:var(--text-1);">브랜드 추가 시 R²가 내려가는가? (회귀변수 추가는 R²를 못 낮춤 → "브랜드 빼는" 시트 논리 반박)</p>
     <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>target</th><th>R²(no brand)</th><th>R²(+brand)</th><th>brand p</th></tr></thead><tbody>${brandR}</tbody></table></div>
@@ -12274,6 +12421,7 @@ function renderMmmTrend(c) {
   return `<section class="block">
     <h3 class="section-title" style="font-size:15px;"><span class="ix">§3</span>추세 존재 검정 — ${MMM_METH_STATE.target} (가정 말고 검정)</h3>
     <div class="callout" style="border-left:3px solid ${vColor};"><div class="body"><strong>판정:</strong> ${escapeHtml(tr.verdict)}</div></div>
+    ${mmmExplain('<strong>p값 &lt; 0.05 = 우연으로 보기 어려움 = 추세 신호 있음</strong>, p값이 크면(예: 0.5) 신호 없음. 검정을 여러 개 쓰는 이유는 추세가 진짜인지 각도를 바꿔 확인하기 위해서입니다 — STL(직선 가정 없이 곡선으로), Mann-Kendall(꾸준히 오르내리는지), ADF/KPSS(진짜 추세 vs 술취한 걸음 같은 랜덤워크). 표에서 가장 중요한 건 맨 아래 <strong>"매체+계절 제거 후 잔차 MK"</strong> — 이게 "no trend"면 광고를 다 빼고 봐도 오가닉 자체엔 추세가 없다는 뜻입니다. (STL Δ%는 짧은 데이터에서 흔들려서 참고용)')}
     <div class="chart-container" style="height:240px;margin:8px 0;"><canvas id="mmm-stl-chart"></canvas></div>
     <div class="table-wrap"><table class="data" style="font-size:11.5px;"><tbody>
       <tr><td>STL 데이터기반 추세 Δ%</td><td class="tnum ${tr.stl_pct < 0 ? 'neg' : 'pos'}">${tr.stl_pct}% <span style="color:var(--text-muted);font-size:10px;">(짧은 시계열 보조지표)</span></td></tr>
@@ -12296,6 +12444,7 @@ function renderMmmCannib(c) {
   return `<section class="block" id="s-cannib">
     <h3 class="section-title" style="font-size:15px;"><span class="ix">§4</span>카니발 vs 오가닉 — ${MMM_METH_STATE.target} (삼각검증)</h3>
     <div class="callout" style="border-left:3px solid ${vColor};"><div class="body"><strong>판정 (${cn.organic_votes}/3 오가닉):</strong> ${escapeHtml(cn.verdict)}</div></div>
+    ${mmmExplain('<strong>카니발 = 광고가 오가닉을 빼앗아 가는 것, 오가닉 = 광고와 무관한 외생적 변화.</strong> 단순 상관으론 둘을 구분 못 합니다(지출도 시간 따라 늘어서 "지출↑ 오가닉↓"가 카니발이든 우연이든 똑같이 들어맞음). 그래서 서로 <strong>독립적인 3가지 질문</strong>으로 삼각검증합니다 — ① 광고를 본격적으로 쓰기 <em>전부터</em> 이미 줄고 있었나?(원인은 결과보다 먼저 와야 함) ② 시간 추세를 빼면 음의 상관이 사라지나?(사라지면 진짜 범인은 시간=오가닉) ③ 순(net) 효과가 +인가?(+면 강한 카니발과 모순). <strong>2개 이상이 "오가닉"을 가리키면 광고는 잠식범이 아니라 방어 역할</strong>로 판정합니다.')}
     <div class="ab-stat-row">
       <div class="ab-stat"><div class="ab-stat-label">① 시간 선행성 (초기 ${p.window_weeks}주)</div><div class="ab-stat-value" style="font-size:13px;">${p.declining_pre_ramp ? '<span style="color:#fbbf24;">램프 전 이미 하락</span>' : '<span style="color:#22c55e;">하락 없음</span>'}</div><div class="ab-stat-hint">slope ${p.kpi_slope_per_wk}/주 · 변화 ${p.kpi_change_over_window_pct}% · 평균 spend $${p.avg_spend}</div></div>
       <div class="ab-stat"><div class="ab-stat-label">② 허위상관 (탈추세)</div><div class="ab-stat-value" style="font-size:13px;">${d.negative_collapses ? '<span style="color:#22c55e;">음상관 소멸/반전</span>' : escapeHtml(d.reading.slice(0, 20))}</div><div class="ab-stat-hint">raw ${d.raw} → detrend ${d.detrended} · 1차차분 ${d.first_diff}</div></div>
@@ -12314,6 +12463,7 @@ function renderMmmMmm(c) {
   const satS = sat ? Object.entries(sat.marginal_kpi_per_1k).map(([lv, v]) => `${lv}당 +$1k → ${v}명`).join(" · ") : "—";
   return `<section class="block" id="s-mmm">
     <h3 class="section-title" style="font-size:15px;"><span class="ix">§5</span>MMM — ${MMM_METH_STATE.target} (adstock CV · 탄력성 · Shapley · 수확체감)</h3>
+    ${mmmExplain('여기서 "효과 크기"를 잽니다. <strong>adstock(λ)</strong>=광고 효과가 다음 주까지 이어지는 잔향(λ=0.4면 이번 주 효과의 40%가 다음 주로). <strong>saturation(수확체감)</strong>=많이 쓸수록 1달러당 효과가 줄어드는 현상. λ는 과적합을 막으려 "한 번도 안 본 미래 주"를 맞히는 OOS 오차(CV)가 가장 작은 값으로 자동 선택합니다. <strong>탄력성</strong>=지출 1%↑ 시 결과 몇 %↑(예: 0.27이면 지출 10%↑→ +2.7%); <strong>95% CI가 0을 넘지 않으면</strong> 통계적으로 유의. <strong>VIF&gt;10</strong>이면 변수끼리 너무 닮아 그 계수는 따로 못 믿습니다. <strong>Shapley</strong>=결과의 주별 변동을 각 드라이버(브랜드·계절·추세·채널…)가 공정하게 몇 % 설명하는지.')}
     <div class="alloc-card" style="margin-bottom:8px;"><p style="font-size:12px;color:var(--text-muted);margin:0;">adstock λ는 rolling-origin OOS CV로 선택 (in-sample 아님) → <strong>best λ=${mm.best_lambda}</strong>. 공선쌍(|r|≥0.85): ${pairs}</p></div>
     <div class="chart-container" style="height:200px;margin-bottom:10px;"><canvas id="mmm-cv-chart"></canvas></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -17867,10 +18017,14 @@ function renderInlineCsvUpload(toolId) {
   // === 필드 가이드 테이블 ===
   const mapped = new Set(Object.values(CSV_STATE.mapping || {}).filter(v => v !== "__ignore__"));
   const reqRows = [];
+  const reqKeys = new Set();             // 필수(oneOf 포함)로 이미 표시된 키 — 옵션 중복 방지
+  const optByKey = {};                   // 옵션 설명을 필수행에 병합 (필수↔옵션 중복 시 설명 보존)
+  for (const o of (TOOL_OPTIONAL_FIELDS[toolId] || [])) optByKey[o.key] = o.unlocks;
   // 필수 행
   for (const r of reqs) {
     if (typeof r === "string") {
       const def = STANDARD_FIELDS[r];
+      reqKeys.add(r);
       reqRows.push({
         key: r,
         label: def?.label || r,
@@ -17878,12 +18032,13 @@ function renderInlineCsvUpload(toolId) {
         badge: "필수",
         badgeCls: "danger",
         aliases: (def?.aliases || []).slice(0, 4).join(", "),
-        unlocks: "",
+        unlocks: optByKey[r] || "",
         mapped: mapped.has(r),
       });
     } else if (r.oneOf) {
       r.oneOf.forEach((k, i) => {
         const def = STANDARD_FIELDS[k];
+        reqKeys.add(k);
         reqRows.push({
           key: k,
           label: def?.label || k,
@@ -17891,14 +18046,15 @@ function renderInlineCsvUpload(toolId) {
           badge: i === 0 ? `필수 (이 중 1개)` : "또는",
           badgeCls: "danger",
           aliases: (def?.aliases || []).slice(0, 4).join(", "),
-          unlocks: "",
+          unlocks: optByKey[k] || "",
           mapped: mapped.has(k),
         });
       });
     }
   }
-  // 옵션 행
+  // 옵션 행 — 이미 필수(oneOf)로 표시된 키는 건너뜀 (중복 제거)
   for (const o of (TOOL_OPTIONAL_FIELDS[toolId] || [])) {
+    if (reqKeys.has(o.key)) continue;
     const def = STANDARD_FIELDS[o.key];
     if (!def) continue;
     reqRows.push({

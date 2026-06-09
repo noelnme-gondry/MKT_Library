@@ -249,6 +249,7 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 - **메타-도구 사고** → 단순 기능 요청 외에도 "하네스/에이전트 자체를 어떻게 진화시킬지" 명시적으로 요구. 자가 업데이트 같은 self-referential 규칙을 명시적으로 선호 (PR #26~27 검증).
 - **목표 우선 사고** → 분석 도구에 들어가기 전 "무엇을 최적화할지(CPI/CPA/ROAS)"를 먼저 명시적으로 선택받는 흐름 선호. 도구가 "전부 다 분석" 보다 "선택한 목표만 정밀 분석"하는 게 의사결정 부담 ↓ (PR #31 검증).
 - **통계 입력 보조 선호** (PR #44): 마케터가 σ(표준편차) 같은 통계 입력을 직접 못 구하는 경우, 도구가 **붙여넣기→자동계산**(시트 컬럼 복붙 → 표본 stdev) + **프리셋 추정**(CV 1~3 → σ=CV×μ) 같은 입력 보조를 제공해야 함. 천단위 콤마: 줄바꿈/탭 있으면 콤마=천단위(제거), 한 줄이면 콤마=구분자.
+- **결론-우선 + 평어 해석 (외부·대중 공개 도구)** (PR #59): 통계 도구가 외부/비전문가 대상이면 ① 분석 직후 **§0 "한눈에 보기" 히어로 카드**(accent gradient·맨 위)를 만들어 결론을 먼저 보여줌 — 어떤 채널이 잠식/증분인지, **주당 몇 명**(탄력성→semi-log 한계효과 `b/(1+현지출)*1000`로 환산), 통계 신뢰도(**●●●●○ dots** = p값/검정합의 매핑). ② 모든 섹션에 `💡 쉽게 말하면` 인라인 콜아웃으로 p값·HAC·VIF·Shapley·adstock 등을 평어로 1~2줄 설명. ③ "연관≠인과, 확정은 holdout" 캐비엇은 §0에도 눈에 띄게. 통계 지식 0인 사람도 결론만 읽고 의사결정하게.
 
 ---
 
@@ -342,6 +343,12 @@ Chart.js 네이티브 forest 없음 → 가로 bar + scatter 2개 dataset 조합
 1. 데이터 변형은 캐시에 사전 계산
 2. 토글 핸들러는 캐시 lookup + `chart.update("none")` 또는 className swap
 3. 페이지 full re-render 피하기 (스크롤·포커스 손실)
+
+### 12.8 표시 번호 ↔ 라우팅 id 분리 (display-only relabel) (PR #58)
+TOC/사이드바/헤더에 보이는 번호를 바꿀 때 **내부 id(`5-2` 등)는 절대 건드리지 말 것** — hash·`PAGE_RENDERERS`·`navigate`·`AUTH`·`TOOL_*` 수백 곳이 의존하고 북마크·공유링크도 깨짐. 대신 `displayItemNumber(id)`/`displayGroupNumber(id)` 순수함수로 PHASES+IA 위치에서 표시 번호를 계산(초기1-x·중기2-x 평탄화·후기3-x·운영4-{그룹}-{항목})하고, 렌더 3곳(renderNav 항목·그룹index, pageShell eyebrow·footer, pageHome 카드)에 적용. `data-route`는 그대로 id. 하드코딩 eyebrow(page_1_1/1_2)도 같이 갱신.
+
+### 12.9 필드 가이드 표 중복 제거 (필수 oneOf ↔ 옵션) (PR #58)
+`renderInlineCsvUpload`의 가이드 표는 필수(oneOf 포함)와 `TOOL_OPTIONAL_FIELDS`를 둘 다 렌더 → 같은 키가 양쪽에 있으면 행이 2번 나옴(5-17/5-18 채널·타깃). render에서 `reqKeys` Set으로 옵션 중복 skip + 옵션 설명(`unlocks`)은 `optByKey`로 필수행에 병합해 설명 손실 없이 1행으로.
 
 ---
 
