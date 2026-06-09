@@ -2766,6 +2766,7 @@ const IA = [
     items: [
       { id: "5-17", title: "Marketing-Response Regression", desc: "adstock→saturation + ITS + HAC + cannibalization 가설 검정 (holdout 아님)" },
       { id: "5-18", title: "MMM 방법론 (추세·카니발 진단)", desc: "2단계 포크: 추세 존재 검정 → 카니발 vs 오가닉 + 시트 audit + Shapley + 수확체감 (가설용·holdout 아님)" },
+      { id: "5-19", title: "Regression Lab", desc: "임의 CSV OLS 회귀 — 컬럼 매핑(역할·타입·변환)·계수표(SE·t·p·CI·VIF)·실제vs예측·기여도 추출 (범용)" },
     ],
   },
 ];
@@ -5331,7 +5332,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-10", "5-11", "5-12", "5-13", "5-14", "5-16", "5-15", "5-17", "5-18"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-10", "5-11", "5-12", "5-13", "5-14", "5-16", "5-15", "5-17", "5-18", "5-19"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -13055,6 +13056,310 @@ function exportMmmMethMd() {
   _mmmDownload(`mmm_verdict_${new Date().toISOString().slice(0, 10)}.md`, L.join("\n"), "text/markdown");
 }
 
+/* ============================================================
+ * 5-19 Regression Lab — 임의 wide CSV OLS (REG_STATS/REG_TRANSFORMS 공유)
+ * 가변 컬럼 매핑(role/type/transform) + 그룹필터 + 계수표 + 실제vs예측 + 기여도 추출
+ * ============================================================ */
+const REG_LAB_STATE = { fileName: null, rows: [], headers: [], map: {}, lambda: 0.6, groupKeep: null, groupCol: null, fit: null };
+const REG_CACHE = { key: null };
+const _REG_ROLES = ["ignore", "dependent", "independent", "group", "label"];
+const _REG_TYPES = ["continuous", "binary", "label"];
+const _REG_TFS = ["none", "log1p", "zscore", "minmax", "adstock_log"];
+
+// 자동 매핑 추정 (PRD 부록 B)
+function regLabGuess(col, rows) {
+  const name = String(col).toLowerCase();
+  const vals = rows.map(r => r[col]).filter(v => v != null && v !== "");
+  const nums = vals.filter(v => typeof v === "number");
+  const isNum = nums.length >= vals.length * 0.8 && vals.length > 0;
+  const uniq = [...new Set(nums)];
+  const isBin = isNum && uniq.every(v => v === 0 || v === 1) && uniq.length <= 2;
+  let role = "ignore", type = isBin ? "binary" : (isNum ? "continuous" : "label"), tf = "none";
+  // 0/1 플래그는 회귀변수일 확률이 높음 → 날짜명 오인("is_holiday"의 day) 방지 위해 우선 처리
+  if (isBin) { role = "independent"; tf = "none"; }
+  else if (/date|day|week|월|일자|주차/.test(name)) { role = "label"; type = "label"; }
+  else if (/platform|os|채널|channel|group|구분|reg|react/.test(name) && !isNum) role = "group";
+  else if (/regs?$|react|conv|install|signup|purchase|pur|revenue|매출|등록|재활성/.test(name) && isNum) role = "dependent";
+  else if (isNum && /cost|spend|비용|지출|budget|imp|click/.test(name)) { role = "independent"; tf = "adstock_log"; }
+  else if (isNum) { role = "independent"; tf = "none"; }
+  return { role, type, tf };
+}
+function regLabLoad(rows, headers) {
+  const valid = rows.filter(r => headers.some(f => r[f] != null && r[f] !== ""));
+  REG_LAB_STATE.fileName = REG_LAB_STATE.fileName || "uploaded.csv";
+  REG_LAB_STATE.rows = valid; REG_LAB_STATE.headers = headers;
+  REG_LAB_STATE.map = {}; headers.forEach(c => REG_LAB_STATE.map[c] = regLabGuess(c, valid));
+  REG_LAB_STATE.groupKeep = null; REG_LAB_STATE.groupCol = null; REG_LAB_STATE.fit = null;
+  REG_CACHE.key = null;
+}
+function regLabMakeSample() {
+  const fields = ["week", "platform", "cost_google", "cost_meta", "cost_tiktok", "is_holiday", "regs"];
+  const rows = [], rng = seededNoise(20250610);
+  for (const plat of ["iOS", "Android"]) {
+    for (let w = 0; w < 60; w++) {
+      const g = Math.max(0, 12000 + 3000 * Math.sin(w / 6) + rng() * 4000);
+      const me = Math.max(0, 8000 + 2500 * Math.cos(w / 5) + rng() * 3000);
+      const tt = Math.max(0, w > 20 ? 5000 + 1500 * Math.sin(w / 4) + rng() * 2000 : 0);
+      const hol = (w % 13 === 0) ? 1 : 0;
+      const base = plat === "iOS" ? 900 : 1400, trend = -3 * w;
+      const regs = Math.round(base + trend + 120 * Math.log1p(g) + 90 * Math.log1p(me) + 60 * Math.log1p(tt) + 180 * hol + rng() * 120);
+      rows.push({ week: `2025-W${String(w + 1).padStart(2, "0")}`, platform: plat, cost_google: Math.round(g), cost_meta: Math.round(me), cost_tiktok: Math.round(tt), is_holiday: hol, regs });
+    }
+  }
+  return { rows, fields };
+}
+function regLabGroupColOf() { return REG_LAB_STATE.headers.find(c => REG_LAB_STATE.map[c]?.role === "group") || null; }
+function regLabReadMapping() {
+  const m = { dep: null, indep: [], group: null, label: null, types: {}, tf: {} };
+  for (const c of REG_LAB_STATE.headers) {
+    const def = REG_LAB_STATE.map[c] || {}; m.types[c] = def.type; m.tf[c] = def.tf;
+    if (def.role === "dependent") m.dep = m.dep || c;
+    else if (def.role === "independent") m.indep.push(c);
+    else if (def.role === "group") m.group = m.group || c;
+    else if (def.role === "label") m.label = m.label || c;
+  }
+  return m;
+}
+function regLabSignature() {
+  return JSON.stringify({ f: REG_LAB_STATE.fileName, n: REG_LAB_STATE.rows.length, map: REG_LAB_STATE.map, lam: REG_LAB_STATE.lambda, keep: REG_LAB_STATE.groupKeep ? [...REG_LAB_STATE.groupKeep].sort() : null });
+}
+function regLabRun() {
+  const m = regLabReadMapping(), lam = REG_LAB_STATE.lambda;
+  if (!m.dep) throw new Error("종속변수(dependent)를 하나 지정하세요.");
+  if (!m.indep.length) throw new Error("독립변수(independent)를 1개 이상 지정하세요.");
+  let rows = REG_LAB_STATE.rows.slice();
+  if (m.group) {
+    const keep = REG_LAB_STATE.groupKeep || new Set([...new Set(rows.map(r => String(r[m.group])))]);
+    rows = rows.filter(r => keep.has(String(r[m.group])));
+    if (!rows.length) throw new Error("선택된 그룹에 데이터가 없습니다.");
+  }
+  const used = [m.dep, ...m.indep];
+  rows = rows.filter(r => used.every(c => r[c] != null && r[c] !== "" && !isNaN(Number(r[c]))));
+  const n = rows.length, k = m.indep.length + 1;
+  if (n <= k) throw new Error(`표본(${n})이 변수 수(${k})보다 작거나 같아 적합 불가.`);
+  // binary는 transform 강제 none
+  const tfOf = (c) => m.types[c] === "binary" ? "none" : (m.tf[c] || "none");
+  const rawY = rows.map(r => Number(r[m.dep]));
+  const y = REG_TRANSFORMS[tfOf(m.dep)](rawY, lam);
+  const Xcols = m.indep.map(c => REG_TRANSFORMS[tfOf(c)](rows.map(r => Number(r[c])), lam));
+  const X = rows.map((_, i) => [1, ...Xcols.map(col => col[i])]);
+  const fit = REG_STATS.ols(X, y);
+  const vif = m.indep.map((_, j) => {
+    if (m.indep.length < 2) return 1;
+    const Xj = rows.map((_, i) => [1, ...Xcols.filter((_, jj) => jj !== j).map(col => col[i])]);
+    const r2 = REG_STATS.r2of(Xj, Xcols[j]);
+    return isFinite(r2) && r2 < 1 ? 1 / (1 - r2) : Infinity;
+  });
+  const labels = m.label ? rows.map(r => r[m.label]) : rows.map((_, i) => i + 1);
+  REG_LAB_STATE.fit = { m, lam, rows, labels, Xcols, rawY, y, fit, vif, n, k, terms: ["(Intercept)", ...m.indep], tfOf: m.indep.map(c => tfOf(c)), depTf: tfOf(m.dep) };
+  REG_CACHE.key = regLabSignature();
+}
+
+function page_5_19() {
+  const meta = findMeta("5-19");
+  const S = REG_LAB_STATE;
+  const hasData = S.rows.length > 0;
+  const F = S.fit;
+  const dataSec = `<section class="block" id="s-data">
+    <h2 class="section-title"><span class="ix">§1</span>데이터</h2>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+      <label class="ab-pill" style="cursor:pointer;">CSV 업로드<input type="file" id="reg-file" accept=".csv,.tsv,.txt" style="display:none;"></label>
+      <button class="ab-pill" id="reg-sample">샘플 데이터 넣기</button>
+      <span class="muted" style="font-size:12px;">${hasData ? `${escapeHtml(S.fileName)} · ${S.rows.length}행 · ${S.headers.length}컬럼` : "wide CSV (1행=1관측). 컬럼 자유."}</span>
+    </div>
+  </section>`;
+  if (!hasData) {
+    return pageShell(meta, {
+      deck: "임의 CSV를 올려 OLS 회귀를 돌립니다. 컬럼을 종속/독립/그룹/라벨로 매핑하고 변환(log·adstock·표준화)을 고르면, 계수표·실제vs예측·행별 기여도까지 추출됩니다. 손코딩 REG_STATS 엔진·결정론.",
+      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+      summary: "범용 회귀 도구입니다. 마케팅 데이터(주차×플랫폼 비용→가입)뿐 아니라 어떤 wide 테이블이든 적합. 로그/adstock 사용 시 'level-share 외삽 무효' 경고를 띄웁니다.",
+      toc: [{ id: "s-data", title: "데이터" }], body: dataSec,
+    });
+  }
+  return pageShell(meta, {
+    deck: "컬럼 매핑 → OLS 적합 → 계수표(SE·t·p·95%CI·VIF) → 실제vs예측 → 행별 기여도(β·x) 추출. 결정론 REG_STATS 엔진.",
+    chips: `<span class="chip"><span class="dot"></span>도구 · Regression Lab</span>${authStatusChip()}`,
+    summary: "각 컬럼의 역할·타입·변환을 정하고 실행하세요. binary(0/1)는 변환이 자동으로 '없음'이 됩니다. group 지정 시 분석/추출 범위를 pill로 토글할 수 있습니다.",
+    toc: [{ id: "s-data", title: "데이터" }, { id: "s-map", title: "§2 매핑" }, ...(F ? [{ id: "s-fit", title: "§3 적합도" }, { id: "s-coef", title: "§4 계수" }, { id: "s-chart", title: "§5 실제vs예측" }, { id: "s-out", title: "§6 추출·설명" }] : [])],
+    body: dataSec + renderRegMap() + (F ? renderRegResults() : ""),
+  });
+}
+PAGE_RENDERERS["5-19"] = page_5_19;
+
+function renderRegMap() {
+  const S = REG_LAB_STATE;
+  const sel = (col, field, opts, fmt) => `<select data-reg-map="${escapeHtml(col)}" data-reg-field="${field}" style="font-size:12px;padding:3px 6px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;">` +
+    opts.map(o => `<option value="${o}" ${S.map[col]?.[field === "tf" ? "tf" : field] === o ? "selected" : ""}>${fmt ? fmt(o) : o}</option>`).join("") + `</select>`;
+  const rows = S.headers.map(c => {
+    const prev = S.rows.slice(0, 3).map(r => r[c]).join(", ");
+    return `<tr>
+      <td><strong>${escapeHtml(c)}</strong></td>
+      <td>${sel(c, "role", _REG_ROLES)}</td>
+      <td>${sel(c, "type", _REG_TYPES)}</td>
+      <td>${sel(c, "tf", _REG_TFS, o => TRANSFORM_LABELS[o])}</td>
+      <td class="muted" style="font-size:11px;">${escapeHtml(prev)}…</td>
+    </tr>`;
+  }).join("");
+  return `<section class="block" id="s-map">
+    <h2 class="section-title"><span class="ix">§2</span>컬럼 매핑 (가변 컬럼)</h2>
+    <p class="muted" style="font-size:12px;margin-top:-4px;">컬럼별 역할(종속/독립/그룹/라벨/제외)·타입·변환 지정. binary는 변환 자동 '없음'. 변환은 적합 직전 적용.</p>
+    <div class="table-wrap"><table class="data" style="font-size:12px;"><thead><tr><th>컬럼</th><th>역할</th><th>타입</th><th>변환</th><th>미리보기</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;">
+      <label style="font-size:12px;color:var(--text-muted);">Adstock λ (adstock+log용)<br><input type="number" id="reg-lambda" value="${S.lambda}" step="0.05" min="0" max="0.95" style="width:90px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:4px 7px;margin-top:3px;"></label>
+      <div id="reg-groupwrap" style="flex:1 1 100%;${regLabGroupColOf() ? "" : "display:none;"}">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:5px;">그룹 필터 — 분석/추출 포함 그룹 (탭하여 토글)</div>
+        <div class="ab-pillgroup" id="reg-grouppills"></div>
+      </div>
+    </div>
+    <div style="margin-top:14px;"><button class="ab-pill" id="reg-run" style="background:#7aa2f7;color:#0b0d12;font-weight:600;border-color:#7aa2f7;">회귀 적합 실행</button> <span id="reg-err" style="color:#f87171;font-size:12px;"></span></div>
+  </section>`;
+}
+function renderRegResults() {
+  const R = REG_LAB_STATE.fit; if (!R) return "";
+  const { fit, vif, terms, m, n } = R, f = (v, d = 4) => v == null || !isFinite(v) ? (v === Infinity ? "∞" : "—") : (+v).toFixed(d);
+  const fmtP = p => p < 1e-4 ? "<0.0001" : p.toFixed(4);
+  const stats = [["R²", fit.R2.toFixed(4)], ["Adj R²", fit.adjR2.toFixed(4)], ["n", n], ["k(params)", R.k], ["df", fit.df], ["σ", Math.sqrt(fit.sigma2).toFixed(2)], ["F p", fmtP(fit.Fp)]]
+    .map(([k, v]) => `<div class="ab-stat"><div class="ab-stat-label">${k}</div><div class="ab-stat-value tnum">${v}</div></div>`).join("");
+  const hasLog = Object.entries(m.tf).some(([c, t]) => (t === "log1p" || t === "adstock_log") && (c === m.dep || m.indep.includes(c)));
+  const logNote = hasLog ? `<div class="callout warn" style="margin:8px 0;"><div class="ico">!</div><div class="body" style="font-size:12px;"><strong>로그/adstock 변환 사용 중.</strong> 변환된 항의 계수는 탄력성/반로그 스케일이라 "지출 0으로 되돌린 기여" 같은 level-share 외삽은 무효(범위 밖 극단 외삽)입니다. 추출 contribution은 β·x(변환스케일) 적합 분해이며, 인과 기여는 탄력성·포화곡선으로 별도 검토하세요.</div></div>` : "";
+  const coefRows = terms.map((t, j) => {
+    const p = fit.pval[j], sig = p < 0.05, v = j === 0 ? "" : vif[j - 1];
+    const vifCls = v === "" ? "" : (v > 10 ? "neg" : (v > 5 ? "" : ""));
+    const vifStyle = v === "" ? "" : (v > 10 ? "color:#f87171;font-weight:600;" : (v > 5 ? "color:#fbbf24;" : ""));
+    const tf = j === 0 ? "" : TRANSFORM_LABELS[(m.types[m.indep[j - 1]] === "binary" ? "none" : m.tf[m.indep[j - 1]])];
+    return `<tr>
+      <td>${escapeHtml(t)}</td><td class="tnum">${f(fit.beta[j])}</td><td class="tnum" style="color:var(--text-muted);">${f(fit.se[j])}</td>
+      <td class="tnum">${fit.tval[j].toFixed(2)}</td>
+      <td class="tnum">${sig ? `<span style="color:#22c55e;font-weight:600;">${fmtP(p)}</span>` : `<span style="color:var(--text-muted);">${fmtP(p)}</span>`}</td>
+      <td class="tnum" style="font-size:11px;">[${f(fit.ci[j][0], 3)}, ${f(fit.ci[j][1], 3)}]</td>
+      <td class="tnum" style="${vifStyle}">${v === "" ? "" : (isFinite(v) ? v.toFixed(2) : "∞")}</td>
+      <td class="muted" style="font-size:11px;">${tf}</td></tr>`;
+  }).join("");
+  return `
+    <section class="block" id="s-fit"><h2 class="section-title"><span class="ix">§3</span>적합도</h2><div class="ab-stat-row">${stats}</div>${logNote}</section>
+    <section class="block" id="s-coef"><h2 class="section-title"><span class="ix">§4</span>계수 (coefficients)</h2>
+      <div class="table-wrap"><table class="data" style="font-size:11.5px;"><thead><tr><th>term</th><th>coef</th><th>std err</th><th>t</th><th>p</th><th>95% CI</th><th>VIF</th><th>변환</th></tr></thead><tbody>${coefRows}</tbody></table></div>
+      <p class="muted" style="font-size:11px;margin-top:6px;">VIF&gt;5 주의(주황)·&gt;10 심각(빨강). p는 양측(df=n−k). 변환된 변수 계수는 변환 스케일 기준.</p></section>
+    <section class="block" id="s-chart"><h2 class="section-title"><span class="ix">§5</span>실제 vs 예측</h2><div class="chart-container" style="height:280px;"><canvas id="reg-fit-chart"></canvas></div></section>
+    <section class="block" id="s-out"><h2 class="section-title"><span class="ix">§6</span>추출 & 설명</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"><button class="ab-pill" id="reg-dl-data">⬇ 예측·기여도 데이터셋 CSV</button><button class="ab-pill" id="reg-dl-coef">⬇ 계수표 CSV</button></div>
+      <pre style="white-space:pre-wrap;font-family:var(--font-mono,monospace);font-size:12px;line-height:1.65;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:14px;margin:0;color:var(--text-1);">${escapeHtml(regLabSummary())}</pre></section>`;
+}
+function regLabSummary() {
+  const R = REG_LAB_STATE.fit; const { fit, m, terms, vif, n } = R;
+  const sigs = terms.map((t, j) => ({ t, p: fit.pval[j], b: fit.beta[j], j })).filter(x => x.j > 0 && x.p < 0.05);
+  const yScale = m.tf[m.dep] === "none" ? "원 스케일" : `${TRANSFORM_LABELS[m.tf[m.dep]]} 변환`;
+  const vifHi = m.indep.map((c, j) => ({ c, v: vif[j] })).filter(x => x.v > 5);
+  const L = [];
+  L.push(`■ 모델: ${m.dep} (${yScale}) ~ ${m.indep.join(" + ")}`);
+  if (m.group) L.push(`■ 그룹 필터: ${m.group} ∈ {${[...(REG_LAB_STATE.groupKeep || [])].join(", ") || "전체"}}`);
+  L.push(`■ 표본 n=${n}, 파라미터 k=${R.k}, df=${fit.df}`);
+  L.push(`■ 적합도: R²=${fit.R2.toFixed(3)}, Adj R²=${fit.adjR2.toFixed(3)}, 모델 F p=${fit.Fp < 1e-4 ? "<0.0001" : fit.Fp.toFixed(4)}`);
+  L.push(``);
+  L.push(`■ 유의한 변수 (p<.05): ${sigs.length ? sigs.map(x => `${x.t}(β=${x.b.toFixed(3)})`).join(", ") : "없음"}`);
+  L.push(`■ 해석: 다른 변수 고정 시, 각 독립변수 1단위(변환스케일) 변화당 ${m.dep}가 β만큼 변동.`);
+  if (vifHi.length) L.push(`■ ⚠ 다중공선성 주의: ${vifHi.map(x => `${x.c}(VIF ${isFinite(x.v) ? x.v.toFixed(1) : "∞"})`).join(", ")} — 계수·SE 신뢰도 저하. 변수 통합/직교화 검토.`);
+  L.push(``);
+  L.push(`■ 추출 데이터셋: 행별 actual·fitted·residual·항별 contribution(β·x). 그래프 그대로 재현 가능.`);
+  return L.join("\n");
+}
+function regLabRenderGroupPills() {
+  const wrap = document.getElementById("reg-groupwrap"), host = document.getElementById("reg-grouppills");
+  if (!wrap || !host) return;
+  const gcol = regLabGroupColOf();
+  if (!gcol) { wrap.style.display = "none"; return; }
+  wrap.style.display = "";
+  const vals = [...new Set(REG_LAB_STATE.rows.map(r => String(r[gcol])))].filter(v => v !== "null" && v !== "");
+  if (REG_LAB_STATE.groupCol !== gcol || !REG_LAB_STATE.groupKeep) { REG_LAB_STATE.groupCol = gcol; REG_LAB_STATE.groupKeep = new Set(vals); }
+  const keep = REG_LAB_STATE.groupKeep;
+  host.innerHTML = vals.map(v => `<button class="ab-pill ${keep.has(v) ? "active" : ""}" data-reg-pill="${escapeHtml(v)}">${escapeHtml(v)}</button>`).join("");
+  host.querySelectorAll("[data-reg-pill]").forEach(b => b.addEventListener("click", () => {
+    const v = b.dataset.regPill; if (keep.has(v)) keep.delete(v); else keep.add(v); b.classList.toggle("active");
+  }));
+}
+function regLabCharts() {
+  const R = REG_LAB_STATE.fit; if (!R || typeof Chart === "undefined" || !document.getElementById("reg-fit-chart")) return;
+  const muted = getCssVar("--text-muted"), border = getCssVar("--border");
+  destroyChartIfExists("reg-fit-chart");
+  CHART_INSTANCES["reg-fit-chart"] = new Chart(document.getElementById("reg-fit-chart"), {
+    type: "line", data: { labels: R.labels, datasets: [
+      { label: "실제 (actual)", data: R.y, borderColor: muted, borderWidth: 1.4, pointRadius: 0, tension: 0.15 },
+      { label: "예측 (fitted)", data: R.fit.yhat, borderColor: "#7aa2f7", borderWidth: 1.8, borderDash: [5, 3], pointRadius: 0, tension: 0.15 },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { labels: { color: muted, font: { size: 11 } } } }, scales: { x: { ticks: { color: muted, maxTicksLimit: 12 }, grid: { color: border } }, y: { ticks: { color: muted }, grid: { color: border } } } },
+  });
+}
+function bindRegLabHandlers() {
+  const fileEl = document.getElementById("reg-file");
+  if (fileEl) fileEl.addEventListener("change", e => {
+    const file = e.target.files[0]; if (!file) return;
+    REG_LAB_STATE.fileName = file.name;
+    Papa.parse(file, { header: true, dynamicTyping: true, skipEmptyLines: true, complete: r => { regLabLoad(r.data, r.meta.fields); navigate("5-19"); } });
+  });
+  const sampleEl = document.getElementById("reg-sample");
+  if (sampleEl) sampleEl.addEventListener("click", () => { REG_LAB_STATE.fileName = "sample_panel.csv"; const s = regLabMakeSample(); regLabLoad(s.rows, s.fields); navigate("5-19"); });
+  document.querySelectorAll("[data-reg-map]").forEach(selEl => selEl.addEventListener("change", () => {
+    const col = selEl.dataset.regMap, field = selEl.dataset.regField;
+    if (!REG_LAB_STATE.map[col]) REG_LAB_STATE.map[col] = {};
+    REG_LAB_STATE.map[col][field] = selEl.value;
+    if (field === "type" && selEl.value === "binary") { REG_LAB_STATE.map[col].tf = "none"; const tfSel = document.querySelector(`[data-reg-map="${col}"][data-reg-field="tf"]`); if (tfSel) tfSel.value = "none"; }
+    if (field === "role") regLabRenderGroupPills();
+  }));
+  const lamEl = document.getElementById("reg-lambda");
+  if (lamEl) lamEl.addEventListener("change", () => { REG_LAB_STATE.lambda = parseFloat(lamEl.value) || 0; });
+  regLabRenderGroupPills();
+  const runEl = document.getElementById("reg-run");
+  if (runEl) runEl.addEventListener("click", () => { const err = document.getElementById("reg-err"); if (err) err.textContent = ""; try { regLabRun(); navigate("5-19"); } catch (e) { if (err) err.textContent = "⚠ " + e.message; } });
+  regLabCharts();
+  const dlData = document.getElementById("reg-dl-data"); if (dlData) dlData.addEventListener("click", regLabExportData);
+  const dlCoef = document.getElementById("reg-dl-coef"); if (dlCoef) dlCoef.addEventListener("click", regLabExportCoef);
+}
+function regLabExportData() {
+  const R = REG_LAB_STATE.fit; if (!R) return; const { fit, m, Xcols } = R;
+  const head = ["label", (m.group ? m.group : null), `${m.dep}__actual`, "fitted", "residual", "contrib_Intercept", ...m.indep.map(c => `contrib_${c}`)].filter(Boolean);
+  const lines = [head.join(",")];
+  R.rows.forEach((row, i) => {
+    const contribs = [fit.beta[0], ...m.indep.map((c, j) => fit.beta[j + 1] * Xcols[j][i])];
+    const rec = [R.labels[i], (m.group ? row[m.group] : null), R.y[i], fit.yhat[i].toFixed(6), fit.resid[i].toFixed(6), ...contribs.map(v => v.toFixed(6))].filter(v => v !== null);
+    lines.push(rec.join(","));
+  });
+  _mmmDownload("regression_dataset.csv", lines.join("\n"), "text/csv");
+}
+function regLabExportCoef() {
+  const R = REG_LAB_STATE.fit; if (!R) return; const { fit, terms, vif, m } = R;
+  const lines = ["term,coef,std_err,t,p_value,ci_low,ci_high,vif,transform"];
+  terms.forEach((t, j) => {
+    const v = j === 0 ? "" : (isFinite(vif[j - 1]) ? vif[j - 1].toFixed(4) : "Inf");
+    const tf = j === 0 ? "" : (m.types[m.indep[j - 1]] === "binary" ? "none" : m.tf[m.indep[j - 1]]);
+    lines.push([t, fit.beta[j].toFixed(6), fit.se[j].toFixed(6), fit.tval[j].toFixed(4), fit.pval[j].toExponential(4), fit.ci[j][0].toFixed(6), fit.ci[j][1].toFixed(6), v, tf].join(","));
+  });
+  _mmmDownload("regression_coefficients.csv", lines.join("\n"), "text/csv");
+}
+function runRegLabTests(verbose = true) {
+  const R = []; const approx = (a, b, t) => Math.abs(a - b) <= t;
+  const s = regLabMakeSample();
+  R.push({ test: "T1 · 샘플 결정론(2회 동일)", actual: "", pass: JSON.stringify(s) === JSON.stringify(regLabMakeSample()) ? "✓" : "✗" });
+  // 샘플로 적합: regs ~ cost들(log)+holiday → R² 높고 holiday 계수 양수
+  regLabLoad(s.rows, s.fields);
+  const m = regLabReadMapping();
+  REG_LAB_STATE.groupKeep = null;
+  // guess가 regs=dep, cost*=indep(adstock_log), is_holiday=indep(none), platform=group, week=label 으로 잡았는지
+  R.push({ test: "T2 · 자동매핑(dep=regs·group=platform)", actual: `dep=${m.dep} group=${m.group} indep=${m.indep.length}`, pass: m.dep === "regs" && m.group === "platform" && m.indep.length >= 3 ? "✓" : "✗" });
+  try { regLabRun(); const F = REG_LAB_STATE.fit; const ok = isFinite(F.fit.R2) && F.fit.R2 > 0 && F.fit.R2 < 1 && F.fit.beta.length === F.k && F.terms.length === F.k; R.push({ test: "T3 · 샘플 적합 산출(R² 유효)", actual: `R²=${F.fit.R2.toFixed(3)} k=${F.k}`, pass: ok ? "✓" : "✗" }); } catch (e) { R.push({ test: "T3 · 샘플 적합", actual: "ERR " + e.message, pass: "✗" }); }
+  // 그룹필터: iOS만 → n=60
+  REG_LAB_STATE.groupKeep = new Set(["iOS"]); regLabRun();
+  R.push({ test: "T4 · 그룹필터 iOS만 n=60", actual: String(REG_LAB_STATE.fit.n), pass: REG_LAB_STATE.fit.n === 60 ? "✓" : "✗" });
+  // λ 변경 → adstock_log 계수 변함 + 결정론
+  REG_LAB_STATE.groupKeep = null; REG_LAB_STATE.lambda = 0.6; regLabRun(); const b6 = REG_LAB_STATE.fit.fit.beta[1];
+  REG_LAB_STATE.lambda = 0.3; regLabRun(); const b3 = REG_LAB_STATE.fit.fit.beta[1];
+  REG_LAB_STATE.lambda = 0.6; regLabRun(); const b6b = REG_LAB_STATE.fit.fit.beta[1];
+  R.push({ test: "T5 · λ 변경시 계수변화+결정론", actual: `λ.6=${b6.toFixed(3)} λ.3=${b3.toFixed(3)}`, pass: Math.abs(b6 - b3) > 1e-6 && b6 === b6b ? "✓" : "✗" });
+  REG_LAB_STATE.rows = []; REG_LAB_STATE.fit = null;  // 상태 정리
+  if (verbose) { console.log("%c=== Regression Lab · Golden ===", "color:#adc6ff;font-weight:bold;"); console.table(R); const p = R.filter(x => x.pass === "✓").length; console.log(`%c${p}/${R.length} 통과`, `color:${p === R.length ? '#22c55e' : '#f87171'};font-weight:bold;`); }
+  return R;
+}
+if (typeof window !== "undefined") { window.runRegLabTests = runRegLabTests; window.REG_LAB_STATE = REG_LAB_STATE; }
+
 
 /* ============================================================
  * Quality Analyzer (5-8) — 코호트 리텐션 곡선 + LTV 외삽
@@ -15512,6 +15817,11 @@ function bindCSVPageHandlers() {
   // ----- 5-18: MMM 방법론 핸들러 -----
   if (document.getElementById("s-macro") && document.querySelector("[data-mmm-target], [data-mmm-cfg-apply], #mmm-export-json")) {
     bindMmmMethHandlers();
+  }
+
+  // ----- 5-19: Regression Lab 핸들러 -----
+  if (document.getElementById("reg-file") || document.getElementById("s-map") && document.getElementById("reg-run")) {
+    bindRegLabHandlers();
   }
 
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
