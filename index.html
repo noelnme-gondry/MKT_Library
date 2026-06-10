@@ -11776,6 +11776,11 @@ const MMM_CHANNELS = [
   { key: "tiktok", field: "ch_tiktok", label: "TikTok" },
   { key: "brand", field: "ch_brand", label: "Brand" },
 ];
+// 활성 채널 리스트 (동적): 패널에 channels가 있으면 그것, 없으면(골든 합성패널) 고정 키로 유추
+function _mmmChans(panel) {
+  if (panel.channels) return panel.channels;
+  return MMM_CHANNELS.filter(ch => panel.ch[ch.key]).map(ch => ({ key: ch.key, label: ch.label, kind: ch.key === "brand" ? "brand" : "perf" }));
+}
 const MMM_DUMMIES = [
   { key: "PreLNY", field: "d_prelny" }, { key: "Seollal", field: "d_seollal" },
   { key: "ChuseokOnly", field: "d_chuseokonly" }, { key: "PostChuWk", field: "d_postchuwk" },
@@ -11800,7 +11805,7 @@ function _pstd(a) { const m = _mean(a); return Math.sqrt(a.reduce((s, v) => s + 
 // 채널별 비-0 주 수 + 희소 여부
 function mmmChannelCoverage(panel, cfg) {
   const out = {};
-  for (const ch of MMM_CHANNELS) {
+  for (const ch of _mmmChans(panel)) {
     if (!panel.ch[ch.key]) continue;
     const arr = panel.ch[ch.key];
     const nonzero = arr.filter(v => v > 0 && isFinite(v)).length;
@@ -11817,11 +11822,11 @@ function mmmSparseChannels(panel, cfg) {
 // 채널↔step 다중공선 자동 감지 (|corr|≥0.9). 기본 흡수 대상 = step(캠페인 채널 유지). 사용자가 뒤집기 가능.
 function mmmDetectCollinear(panel, cfg) {
   const pairs = [];
-  const chSeries = {}; for (const ch of MMM_CHANNELS) if (panel.ch[ch.key]) chSeries[ch.key] = mmmLnMedia(panel.ch[ch.key], cfg.defaultLam);
+  const chSeries = {}; for (const ch of _mmmChans(panel)) if (panel.ch[ch.key]) chSeries[ch.key] = mmmLnMedia(panel.ch[ch.key], cfg.defaultLam);
   const stepSeries = {}; for (const [nm, fw] of Object.entries(cfg.steps)) stepSeries[nm] = panel.week.map(tt => tt >= fw ? 1 : 0);
   for (const ck of Object.keys(chSeries)) for (const sk of Object.keys(stepSeries)) {
     const r = CANNIBAL_STATS.pearson(chSeries[ck], stepSeries[sk]);
-    if (Math.abs(r) >= 0.9) pairs.push({ channel: ck, step: sk, corr: +r.toFixed(3), channelLabel: (MMM_CHANNELS.find(c => c.key === ck) || {}).label || ck });
+    if (Math.abs(r) >= 0.9) pairs.push({ channel: ck, step: sk, corr: +r.toFixed(3), channelLabel: (_mmmChans(panel).find(c => c.key === ck) || {}).label || ck });
   }
   return pairs;
 }
@@ -11850,7 +11855,7 @@ function mmmBuildFeatures(panel, cfg, lam, withTrend = true) {
   const absorbed = cfg.absorbed || new Set(cfg.foldIntoRegime || []);
   for (const [nm, fw] of Object.entries(cfg.steps)) { if (absorbed.has(nm)) continue; push(nm, t.map(tt => tt >= fw ? 1 : 0)); }
   const sparse = cfg.excludeSparse ? mmmSparseChannels(panel, cfg) : new Set();
-  for (const ch of MMM_CHANNELS) {
+  for (const ch of _mmmChans(panel)) {
     if (absorbed.has(ch.key) || sparse.has(ch.key)) continue;
     if (!panel.ch[ch.key]) continue;
     push("ln_" + ch.key, mmmLnMedia(panel.ch[ch.key], lam));
@@ -11864,7 +11869,7 @@ function mmmSheetDesign(panel, cfg, withBrand = false) {
   const t = panel.week, n = t.length, cols = [], names = [];
   const push = (nm, arr) => { names.push(nm); cols.push(arr); };
   // ln_total = log1p(전체 유료 합산, 브랜드 제외) — "naive lumped" 베이스라인 (시트가 지출을 하나로 뭉친 것을 일반화)
-  const lumpKeys = MMM_CHANNELS.filter(ch => ch.key !== "brand" && panel.ch[ch.key]).map(ch => ch.key);
+  const lumpKeys = _mmmChans(panel).filter(ch => ch.kind !== "brand" && panel.ch[ch.key]).map(ch => ch.key);
   const gtot = t.map((_, i) => lumpKeys.reduce((s, k) => s + (panel.ch[k][i] || 0), 0));
   push("ln_total", gtot.map(v => Math.log1p(v)));
   push("sin13", t.map(tt => Math.sin(2 * Math.PI * tt / 13.0)));
@@ -11914,10 +11919,10 @@ function mmmMacroFacts(panel, cfg, dates) {
   const sumWhere = (arr, yr) => arr.reduce((s, v, i) => years[i] === yr ? s + (v || 0) : s, 0);
   const yoy = (arr) => { const a = sumWhere(arr, 2024), b = sumWhere(arr, 2025); return a > 0 ? +((b / a - 1) * 100).toFixed(1) : null; };
   // 전체 유료 합산 + 채널별 spend YoY (구글만 합치지 않음)
-  const chKeys = MMM_CHANNELS.filter(ch => panel.ch[ch.key]).map(ch => ch.key);
+  const chKeys = _mmmChans(panel).filter(ch => panel.ch[ch.key]).map(ch => ch.key);
   const totalPaid = panel.week.map((_, i) => chKeys.reduce((s, k) => s + (panel.ch[k][i] || 0), 0));
   const tp = yoy(totalPaid); if (tp != null) out["전체유료 spend YoY %"] = tp;
-  for (const ch of MMM_CHANNELS) {
+  for (const ch of _mmmChans(panel)) {
     if (!panel.ch[ch.key]) continue;
     const v = yoy(panel.ch[ch.key]); if (v != null) out[`${ch.label} spend YoY %`] = v;
   }
@@ -11930,7 +11935,7 @@ function mmmValidate(panel) {
   const rep = { n_weeks: panel.week.length, issues: [], warnings: [] };
   for (let i = 1; i < panel.week.length; i++) if (panel.week[i] - panel.week[i - 1] !== 1) rep.issues.push(`주 인덱스 비연속 @${i}`);
   for (const [nm, arr] of Object.entries(panel.targets)) if (arr.some(v => v <= 0 || isNaN(v))) rep.warnings.push(`target '${nm}' 비양수/결측 존재`);
-  for (const ch of MMM_CHANNELS) {
+  for (const ch of _mmmChans(panel)) {
     if (!panel.ch[ch.key]) continue;
     const arr = panel.ch[ch.key], nz = arr.filter(v => v > 0).length, nMiss = arr.filter(v => isNaN(v) || v == null).length;
     rep[`nonzero::${ch.key}`] = `${nz}/${arr.length}`;
@@ -12009,7 +12014,7 @@ function mmmCannibalization(panel, cfg, targetName, netElasticity, channelKey) {
   // 선택 채널의 spend (합산 안 함 — 채널별 개별). channelKey 없으면 전체 합산(레거시).
   const gtot = channelKey
     ? (panel.ch[channelKey] ? panel.ch[channelKey].map(v => v || 0) : t.map(() => 0))
-    : t.map((_, i) => MMM_CHANNELS.filter(c => panel.ch[c.key]).reduce((s, c) => s + (panel.ch[c.key][i] || 0), 0));
+    : t.map((_, i) => _mmmChans(panel).filter(c => panel.ch[c.key]).reduce((s, c) => s + (panel.ch[c.key][i] || 0), 0));
   // precedence (early 26 weeks)
   const ew = 26; const eIdx = t.map((tt, i) => tt <= ew ? i : -1).filter(i => i >= 0);
   const ex = eIdx.map(i => t[i]), ey = eIdx.map(i => y[i]);
@@ -12034,7 +12039,8 @@ function mmmCannibalization(panel, cfg, targetName, netElasticity, channelKey) {
   const net = { net_elasticity: +netElasticity.coef.toFixed(4), p: +netElasticity.p.toFixed(4), reading: netElasticity.coef > 0 ? "net positive — 강한 cannibalization과 불일치" : "net <= 0 — cannibalization 가능" };
   const votes = [precedence.declining_pre_ramp, (detrend.negative_collapses || detrend.raw >= 0), net.net_elasticity > 0].filter(Boolean).length;
   const verdict = votes >= 2 ? "ORGANIC (exogenous) — media는 방어, 원인 아님" : "INCONCLUSIVE / cannibalization 가능 — geo holdout 필요";
-  return { precedence, detrend_corr: detrend, net_incrementality: net, organic_votes: votes, verdict, channel: channelKey || "__total__" };
+  const chLabel = channelKey ? ((_mmmChans(panel).find(c => c.key === channelKey) || {}).label || channelKey) : "전체 유료";
+  return { precedence, detrend_corr: detrend, net_incrementality: net, organic_votes: votes, verdict, channel: channelKey || "__total__", channelLabel: chLabel };
 }
 
 /* --- MMM (select_adstock CV / vif / elasticities AR1 / shapley / saturation) --- */
@@ -12062,9 +12068,10 @@ function mmmSelectAdstock(panel, cfg, targetName) {
   let best = grid.filter(l => !isNaN(results[l])).reduce((a, l) => results[l] < results[a] ? l : a, grid[0]);
   return { cv_rmse: results, best_lambda: best };
 }
-function mmmShapleyGroups(names) {
+function mmmShapleyGroups(names, channels) {
   const def = [["Trend", ["trend"]], ["Seasonality", ["sin_0", "cos_0", "sin_1", "cos_1"]], ["Holidays", ["lny", "chuseok"]],
-    ["Regime(steps)", Object.keys(MMM_METH_CONFIG.steps)], ["Google ROI", ["ln_google_roi"]], ["Brand", ["ln_brand"]], ["Meta", ["ln_meta"]], ["TikTok", ["ln_tiktok"]]];
+    ["Regime(steps)", Object.keys(MMM_METH_CONFIG.steps)]];
+  for (const ch of (channels || [])) def.push([ch.label, ["ln_" + ch.key]]);   // 채널별 그룹 (동적)
   return def.map(([nm, cs]) => ({ name: nm, cols: cs.map(c => names.indexOf(c)).filter(i => i >= 0) })).filter(g => g.cols.length);
 }
 function mmmRunMmm(panel, cfg, targetName) {
@@ -12085,7 +12092,7 @@ function mmmRunMmm(panel, cfg, targetName) {
   // elasticities (AR1, log y)
   const elas = mmmElasticities(panel, cfg, targetName, lam);
   // shapley
-  const groups = mmmShapleyGroups(names);
+  const groups = mmmShapleyGroups(names, _mmmChans(panel));
   const sh = shapleyR2Exact(y, groups, X);
   // saturation (google_roi)
   const sat = mmmSaturation(panel, cfg, targetName, "google_roi", lam);
@@ -12116,7 +12123,7 @@ function mmmChannelEffects(panel, cfg, targetName, lam) {
   const folded = cfg.absorbed || new Set(cfg.foldIntoRegime || []);
   const cov = mmmChannelCoverage(panel, cfg);
   const out = [];
-  for (const ch of MMM_CHANNELS) {
+  for (const ch of _mmmChans(panel)) {
     if (folded.has(ch.key) || !panel.ch[ch.key]) continue;
     const cv = cov[ch.key] || { sparse: false, trailingZero: false, nonzero: 0, total: 0 };
     const j = names.indexOf("ln_" + ch.key);
@@ -12169,7 +12176,7 @@ function mmmTrendPlain(trend, target) {
   return `<strong>약한 하락 신호.</strong> 하락이 일부 보이지만 매체 지출과 시간이 얽혀 있어 단정하기 어렵습니다. holdout으로 확인을 권장합니다.`;
 }
 function mmmCannibPlain(cn, target) {
-  const chl = (MMM_CHANNELS.find(c => c.key === cn.channel) || {}).label || "주 채널";
+  const chl = cn.channelLabel || cn.channel || "주 채널";
   if (cn.verdict.includes("ORGANIC")) return `<strong>${escapeHtml(chl)}</strong> 광고는 오가닉 ${target}을(를) <strong style="color:#22c55e;">잠식하지 않습니다</strong>. 서로 독립적인 3개 검정 중 <strong>${cn.organic_votes}개</strong>가 "오가닉(외생적 하락)" 쪽을 지지합니다. 즉 광고를 켠다고 오가닉을 갉아먹는 게 아니라, 외생적 하락을 <strong>방어·보완</strong>하는 역할에 가깝습니다. <span style="color:var(--text-muted);">(채널별 결과는 §4에서 전환)</span>`;
   return `<strong>${escapeHtml(chl)}</strong>의 오가닉 잠식 <strong style="color:#fbbf24;">가능성을 배제할 수 없습니다</strong> (3개 검정 중 ${cn.organic_votes}개만 오가닉 지지). 확정하려면 holdout 실험(5-15)이 필요합니다. <span style="color:var(--text-muted);">(채널별 결과는 §4)</span>`;
 }
@@ -12182,7 +12189,7 @@ function mmmWeeklyDecomp(panel, cfg, targetName, lam) {
   const fit = mmmOls(_designConst(X), y); if (!fit) return null;
   const ybar = _mean(y);
   const colMean = names.map((_, j) => _mean(X.map(r => r[j])));
-  const groups = mmmShapleyGroups(names);
+  const groups = mmmShapleyGroups(names, _mmmChans(panel));
   const weeks = [];
   for (let t = 0; t < X.length; t++) {
     const contrib = {};
@@ -12300,6 +12307,7 @@ function mmmGetPanel() {
   for (const k in panel.dummy) panel.dummy[k] = re(panel.dummy[k]);
   for (const k in panel.targets) panel.targets[k] = re(panel.targets[k]);
   if (panel.targets.Regs && panel.targets.React) panel.targets.RR = panel.week.map((_, i) => panel.targets.Regs[i] + panel.targets.React[i]);
+  panel.channels = MMM_CHANNELS.filter(ch => panel.ch[ch.key]).map(ch => ({ key: ch.key, label: ch.label, kind: ch.key === "brand" ? "brand" : "perf" }));
   return panel;
 }
 const MMM_METH_CACHE = { key: null };
@@ -12330,7 +12338,7 @@ function buildMmmMethCache() {
       // 채널별 카니발 (합산 안 함 — 채널마다 개별 삼각검증)
       const elasD = mmmElasticities(panel, cfg, t, cfg.defaultLam);
       const cannibByChannel = {}; const cannChannels = [];
-      for (const ch of MMM_CHANNELS) {
+      for (const ch of _mmmChans(panel)) {
         if (!panel.ch[ch.key] || (cfg.absorbed && cfg.absorbed.has(ch.key))) continue;
         const netE = elasD.find(r => r.var === "ln_" + ch.key) || { coef: NaN, p: NaN };
         cannibByChannel[ch.key] = mmmCannibalization(panel, cfg, t, netE, ch.key);
@@ -12627,7 +12635,7 @@ function renderMmmCannib(c) {
   const cn = (T.cannibByChannel && T.cannibByChannel[selCh]) || T.cannib;
   const p = cn.precedence, d = cn.detrend_corr, ni = cn.net_incrementality;
   const vColor = cn.verdict.includes("ORGANIC") ? "#22c55e" : "#fbbf24";
-  const chLabel = (k) => (MMM_CHANNELS.find(c => c.key === k) || {}).label || k;
+  const chLabel = (k) => (_mmmChans(c.panel).find(cc => cc.key === k) || {}).label || k;
   const chPills = chans.length > 1 ? `<div class="ab-pillgroup" style="margin-bottom:8px;"><span class="ab-pillgroup-label">채널</span>${chans.map(k => `<button class="ab-pill ${k === selCh ? 'active' : ''}" data-mmm-cannibch="${escapeHtml(k)}">${escapeHtml(chLabel(k))}</button>`).join("")}</div>` : "";
   return `<section class="block" id="s-cannib">
     <h3 class="section-title" style="font-size:15px;"><span class="ix">§4</span>카니발 vs 오가닉 — ${MMM_METH_STATE.target} · <span style="color:#7aa2f7;">${escapeHtml(chLabel(selCh))}</span> (삼각검증)</h3>
