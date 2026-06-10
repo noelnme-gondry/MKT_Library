@@ -12406,7 +12406,8 @@ if (typeof window !== "undefined") {
 /* ============================================================
  * 5-18 페이지 (MMM 방법론 도구) — 데이터 계약·config·결과 패널·차트·verdict·export
  * ============================================================ */
-const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi", colMap: null };  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상. colMap: {[header]:{role,kind}} 드래그앤드롭 역할 매핑(임의 N채널)
+const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi", colMap: null, decompBaseline: "mean" };  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상. colMap: {[header]:{role,kind}} 드래그앤드롭 역할 매핑. decompBaseline: "mean"(주평균) | "nonmedia"(추세·계절·휴일·레짐 포함)
+const MMM_NONMEDIA_GROUPS = ["Trend", "Seasonality", "Holidays", "Regime(steps)"];   // 비매체 드라이버 (baseline 포함 토글 대상)
 const _MMM_ROLES = ["ignore", "week", "reg", "react", "channel", "dummy", "platform"];
 // CSV 헤더 → MMM 역할 자동 추정 (드래그앤드롭 초기값). 0/1 binary는 더미로 우선 처리(날짜명 오인 방지)
 function mmmGuessRole(col, rows) {
@@ -13068,21 +13069,23 @@ function renderMmmMmm(c) {
       const sbc = mm.saturationByChannel || {};
       const keys = Object.keys(sbc);
       if (!keys.length) return `<p class="muted" style="font-size:12px;">수확체감${mmmInfoIcon("saturation")}: ${satS}. ln_coef=${sat ? sat.ln_coef : "—"}.</p>`;
+      const tgtN = (_MMM_TARGET_KO[MMM_METH_STATE.target] || "").split(" ")[0];
       const satRows = keys.map(k => {
         const s = sbc[k], m = s.marginal_kpi_per_1k, neg = s.ln_coef < 0;
-        const curMarg = s.recentMean > 0 ? +(s.ln_coef / (1 + s.recentMean) * 1000).toFixed(1) : null;
+        const curMarg = s.recentMean > 0 ? +(s.ln_coef / (1 + s.recentMean) * 1000).toFixed(1) : null;   // 한계(+$1k)
+        const curTotal = s.recentMean > 0 ? Math.round(s.ln_coef * Math.log1p(s.recentMean)) : null;      // 누적($0 대비)
         const cell = (v) => v == null ? "—" : `${v >= 0 ? "+" : ""}${v}명`;
         return `<tr style="${neg ? "opacity:0.55;" : ""}">
           <td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${mmmDriverColor(s.label, c.byTarget[MMM_METH_STATE.target].decomp ? c.byTarget[MMM_METH_STATE.target].decomp.groupNames : [])};margin-right:6px;vertical-align:middle;"></span><strong>${escapeHtml(s.label)}</strong>${neg ? ' <span style="font-size:9px;color:#fbbf24;">음수=노이즈</span>' : ''}</td>
+          <td class="tnum" style="color:#22c55e;">${curTotal == null ? "—" : (curTotal >= 0 ? "+" : "") + curTotal.toLocaleString() + "명"}<br><span style="font-size:9px;color:var(--text-muted);">@$${(s.recentMean/1000).toFixed(1)}k</span></td>
           <td class="tnum">${cell(m["$10k"])}</td><td class="tnum">${cell(m["$35k"])}</td><td class="tnum">${cell(m["$60k"])}</td>
-          <td class="tnum" style="color:#adc6ff;">${curMarg == null ? "—" : cell(curMarg) + `<br><span style="font-size:9px;color:var(--text-muted);">@$${(s.recentMean/1000).toFixed(1)}k</span>`}</td>
         </tr>`;
       }).join("");
-      return `<p style="font-size:12px;margin:10px 0 4px;color:var(--text-1);">수확체감 — 채널별 한계효과 (지출 늘릴 때 +$1,000당 추가 ${(_MMM_TARGET_KO[MMM_METH_STATE.target]||"").split(" ")[0]} 명, 클수록 곡선이 가파름·작을수록 포화)${mmmInfoIcon("saturation")}</p>
+      return `<p style="font-size:12px;margin:10px 0 4px;color:var(--text-1);">수확체감 — 채널별 응답곡선${mmmInfoIcon("saturation")}</p>
         <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:10px;align-items:start;">
           <div class="chart-container" style="height:240px;"><canvas id="mmm-sat-chart"></canvas></div>
-          <div><div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>채널</th><th>$10k당</th><th>$35k당</th><th>$60k당</th><th>현 지출</th></tr></thead><tbody>${satRows}</tbody></table></div>
-          <p class="muted" style="font-size:10.5px;margin-top:4px;">"$Xk당 +N명" = 그 지출 수준에서 1,000달러를 더 쓰면 늘어나는 인원. 지출이 커질수록 N이 줄어드는 게 수확체감. <strong>음수 채널은 노이즈</strong>(잠식 아님 — 데이터 부실 가능). §0의 "현재 1점"과 달리 여기는 곡선 전체. 색은 §5.5 분해와 일치.</p></div>
+          <div><div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>채널</th><th>현 지출<br>누적기여</th><th>한계<br>$10k당</th><th>$35k당</th><th>$60k당</th></tr></thead><tbody>${satRows}</tbody></table></div>
+          <p class="muted" style="font-size:10.5px;margin-top:4px;"><strong>현 지출 누적기여</strong>(초록·차트 ◆) = $0 대비 지금 쓰는 돈으로 이 채널이 만든 총 ${tgtN} 인원(=b·ln(1+지출)). <strong>한계 +$1k당</strong> = 거기서 1,000달러 더 쓸 때 추가 인원(지출↑일수록 작아짐=수확체감). <strong>음수 채널은 노이즈</strong>(회귀계수가 음 — 데이터 부실·공선 탓, 실제 잠식 아님 → 예산 결정 금지). ⚠ 절대 효율(CPR)은 채널 비용 대비로 따로 봐야 함.</p></div>
         </div>`;
     })()}
   </section>`;
@@ -13115,8 +13118,11 @@ function renderMmmDecomp(c) {
     </div>
     <div class="chart-container" style="height:240px;margin-bottom:8px;"><canvas id="mmm-fit-chart"></canvas></div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:2px 0 6px;">
-      <p style="font-size:12px;margin:0;color:var(--text-1);"><strong>baseline 위에 드라이버 기여를 쌓아 올린 예측 구성</strong> — 맨 위 경계 = 모델 예측(predict), 흰 선 = 실제. 색 띠 두께 = 그 드라이버의 개별 기여. <strong>마우스를 올리면 각 드라이버의 ±명(개별 기여)과 "baseline + 기여합 = 예측"</strong>이 표시됩니다(띠 위치는 누적이라 값이 아니라 두께를 보세요). 채널 기여는 <strong>log(수확체감)</strong> 공간이라 지출을 2배로 늘려도 기여가 2배가 되진 않습니다(체감) — adstock(이월)·saturation이 이미 반영된 값입니다.</p>
-      <button class="ab-pill" data-mmm-decomp-csv="1" title="주별·드라이버별 기여(명) + baseline·예측·실제 + 채널별 지출 → CPR 등 계산용">⬇ 주별 기여·지출 CSV</button>
+      <p style="font-size:12px;margin:0;color:var(--text-1);max-width:62%;"><strong>baseline 위에 드라이버 기여를 쌓아 올린 예측 구성</strong> — 맨 위 경계 = 모델 예측(predict), 흰 선 = 실제. 색 띠 두께 = 그 드라이버의 개별 기여. <strong>마우스를 올리면 각 드라이버의 ±명(개별 기여)과 "baseline + 기여합 = 예측"</strong>이 표시됩니다. 채널 기여는 <strong>log(수확체감)</strong> 공간이라 지출 2배여도 기여가 2배는 아닙니다(adstock·saturation 반영). <strong>지출이 0·적은 주에 음(−) 기여</strong>가 보이는 건 기여가 그 채널의 <strong>평균 지출 주 대비 상대값</strong>이기 때문 — 평균보다 적게 쓴 주라 "상대적으로 덜 기여"란 뜻이지 광고가 가입을 뺏은 게 아닙니다(baseline에 평균 매체 수준이 이미 포함).</p>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+        <div class="ab-pillgroup" style="margin:0;"><span class="ab-pillgroup-label" style="font-size:10px;">baseline</span><button class="ab-pill ${MMM_METH_STATE.decompBaseline === "mean" ? "active" : ""}" data-mmm-decompbase="mean">주평균만</button><button class="ab-pill ${MMM_METH_STATE.decompBaseline === "nonmedia" ? "active" : ""}" data-mmm-decompbase="nonmedia" title="추세·계절·휴일·레짐을 baseline에 포함 → 매체 채널 효과만 위로 쌓아 봄">비매체 포함(매체만 보기)</button></div>
+        <button class="ab-pill" data-mmm-decomp-csv="1" title="주별·드라이버별 기여(명) + baseline·예측·실제 + 채널별 지출 → CPR 등 계산용">⬇ 주별 기여·지출 CSV</button>
+      </div>
     </div>
     <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:12px;align-items:start;">
       <div class="chart-container" style="height:300px;"><canvas id="mmm-decomp-chart"></canvas></div>
@@ -13182,15 +13188,27 @@ function renderMmmCharts(c) {
     const sbc = T.mmm.saturationByChannel, keys = Object.keys(sbc);
     const groupNames = (T.decomp && T.decomp.groupNames) || [];
     const maxSpend = Math.max(1, ...keys.map(k => sbc[k].recentMean || 0)) * 1.8;
-    const grid = Array.from({ length: 31 }, (_, i) => Math.round(maxSpend * i / 30));
-    const ds = keys.map(k => {
+    const grid = Array.from({ length: 41 }, (_, i) => Math.round(maxSpend * i / 40));
+    // 누적 응답곡선: y = b·ln(1+x) = $0 대비 지출 x까지 썼을 때 이 채널의 총 기여(명). x=0→0, 발산 없음(한계 hyperbola와 달리).
+    const ds = [];
+    keys.forEach(k => {
       const s = sbc[k], neg = s.ln_coef < 0, col = mmmDriverColor(s.label, groupNames);
-      return { label: s.label + (neg ? " (노이즈)" : ""), data: grid.map(x => +(s.ln_coef / (1 + x) * 1000).toFixed(1)), borderColor: col, backgroundColor: col + "22", borderWidth: 2, borderDash: neg ? [5, 4] : [], pointRadius: 0, tension: 0.2 };
+      ds.push({ label: s.label + (neg ? " (노이즈)" : ""), data: grid.map(x => ({ x, y: +(s.ln_coef * Math.log1p(x)).toFixed(1) })), borderColor: col, backgroundColor: col + "22", borderWidth: 2, borderDash: neg ? [5, 4] : [], pointRadius: 0, tension: 0.15 });
+      // 현 지출 위치 마커 (그 지점까지 쓰면 얻는 총 인원)
+      if (s.recentMean > 0) ds.push({ label: s.label + " 현지출", data: [{ x: s.recentMean, y: +(s.ln_coef * Math.log1p(s.recentMean)).toFixed(1) }], borderColor: col, backgroundColor: col, pointRadius: 5, pointStyle: "rectRot", showLine: false });
     });
     destroyChartIfExists("mmm-sat-chart");
     CHART_INSTANCES["mmm-sat-chart"] = new Chart(document.getElementById("mmm-sat-chart"), {
-      type: "line", data: { labels: grid.map(x => "$" + Math.round(x / 1000) + "k"), datasets: ds },
-      options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { labels: { color: muted, font: { size: 9 }, boxWidth: 10 } }, title: { display: true, text: "수확체감 곡선 — 지출 수준별 +$1k당 추가 인원", color: muted } }, scales: { x: { title: { display: true, text: "주당 지출", color: muted }, ticks: { color: muted, maxTicksLimit: 8 }, grid: { color: border } }, y: { title: { display: true, text: "+$1k당 명", color: muted }, ticks: { color: muted }, grid: { color: border } } } },
+      type: "line", data: { datasets: ds },
+      options: {
+        responsive: true, maintainAspectRatio: false, interaction: { mode: "nearest", intersect: false },
+        plugins: {
+          legend: { labels: { color: muted, font: { size: 9 }, boxWidth: 10, filter: (it) => !it.text.endsWith("현지출") } },
+          title: { display: true, text: "지출 수준별 누적 기여 — $0 대비 그만큼 쓰면 얻는 총 인원(◆=현 지출)", color: muted },
+          tooltip: { callbacks: { title: (it) => "$" + Math.round((it[0]?.parsed.x || 0) / 1000) + "k 지출", label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y >= 0 ? "+" : ""}${Math.round(ctx.parsed.y).toLocaleString()}명` } },
+        },
+        scales: { x: { type: "linear", title: { display: true, text: "주당 지출($)", color: muted }, ticks: { color: muted, maxTicksLimit: 8, callback: (v) => "$" + Math.round(v / 1000) + "k" }, grid: { color: border } }, y: { title: { display: true, text: "누적 기여(명, $0 대비)", color: muted }, ticks: { color: muted }, grid: { color: border } } },
+      },
     });
   }
   // Actual vs Fitted + 스택 분해
@@ -13209,11 +13227,15 @@ function renderMmmCharts(c) {
     // baseline 바닥에서 드라이버를 차례로 누적 → 각 띠는 fill:'-1'로 직전 누적선까지 채움 → 맨 위 = 예측(fitted).
     // (centered 기여라 음수면 띠가 아래로 내려감 = 그 주 그 드라이버가 예측을 끌어내림. 누적 top은 항상 fitted.)
     const labels = D.weeks.map(w => "W" + w.week);
-    const datasets = [{ label: "baseline (주평균)", data: D.weeks.map(() => +D.baseline.toFixed(1)), borderColor: "#666", borderWidth: 1, borderDash: [4, 4], pointRadius: 0, fill: false, tension: 0 }];
-    let cum = D.weeks.map(() => D.baseline);
-    D.groupNames.forEach((g, i) => {
+    const foldNonMedia = MMM_METH_STATE.decompBaseline === "nonmedia";
+    // baseline: 주평균만 / 비매체 포함(주평균 + 추세·계절·휴일·레짐 기여) → 매체 채널만 위에 쌓아 봄
+    const baseSeries = D.weeks.map((w) => D.baseline + (foldNonMedia ? MMM_NONMEDIA_GROUPS.reduce((a, g) => a + (D.groupNames.includes(g) ? w.contrib[g] : 0), 0) : 0));
+    const drawGroups = foldNonMedia ? D.groupNames.filter(g => !MMM_NONMEDIA_GROUPS.includes(g)) : D.groupNames;
+    const datasets = [{ label: foldNonMedia ? "baseline + 비매체(추세·계절·휴일·레짐)" : "baseline (주평균)", data: baseSeries.map(v => +v.toFixed(1)), borderColor: "#888", borderWidth: 1.4, borderDash: [4, 4], pointRadius: 0, fill: false, tension: 0.1 }];
+    let cum = baseSeries.slice();
+    drawGroups.forEach((g) => {
       cum = cum.map((v, ti) => v + D.weeks[ti].contrib[g]);
-      const col = MMM_DECOMP_PALETTE[i % MMM_DECOMP_PALETTE.length];
+      const col = mmmDriverColor(g, D.groupNames);
       // 띠 위치는 누적값, 툴팁엔 개별 기여(_indiv) 표시 — 누적값을 개별 기여로 오인하는 혼동 제거
       datasets.push({ label: g, data: cum.map(v => +v.toFixed(1)), _indiv: D.weeks.map(w => w.contrib[g]), borderColor: col, backgroundColor: col + "66", borderWidth: 1, pointRadius: 0, fill: "-1", tension: 0.15 });
     });
@@ -13250,6 +13272,7 @@ function bindMmmMethHandlers() {
   document.querySelectorAll("[data-mmm-platform]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.platform = b.dataset.mmmPlatform; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-absorb]").forEach(b => b.addEventListener("click", () => { if (!MMM_METH_STATE.absorbChoice) MMM_METH_STATE.absorbChoice = {}; MMM_METH_STATE.absorbChoice[b.dataset.mmmAbsorb] = b.dataset.side; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-cannibch]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.cannibChannel = b.dataset.mmmCannibch; navigate("5-18"); }));
+  document.querySelectorAll("[data-mmm-decompbase]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.decompBaseline = b.dataset.mmmDecompbase; navigate("5-18"); }));
   const apply = document.querySelector("[data-mmm-cfg-apply]");
   if (apply) apply.addEventListener("click", () => {
     const cfg = mmmActiveConfig(); const get = (k) => document.querySelector(`[data-mmm-cfg="${k}"]`)?.value;
