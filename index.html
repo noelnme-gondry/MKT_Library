@@ -2591,16 +2591,14 @@
     .content { padding: 1.25rem 1rem 3rem; }
     .page-title { font-size: 28px; line-height: 36px; }
   }
-  /* MMM 신뢰도 호버 툴팁 (수학값 의미 설명) */
-  .mmm-tip { position: relative; cursor: help; }
-  .mmm-tip::after {
-    content: attr(data-tip); position: absolute; left: 50%; bottom: 150%; transform: translateX(-50%);
-    background: rgba(22,24,33,0.97); border: 1px solid rgba(122,162,247,0.4); border-radius: 8px;
-    padding: 8px 11px; font-size: 11.5px; font-weight: 400; line-height: 1.55; color: var(--text-1);
-    width: max-content; max-width: 260px; white-space: normal; text-align: left; z-index: 9998;
-    opacity: 0; pointer-events: none; transition: opacity .12s; box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+  /* MMM 신뢰도 호버 툴팁 — body에 붙는 floating tip(JS)으로 표/overflow 클리핑 회피 */
+  .mmm-tip { cursor: help; }
+  #mmm-hover-tip {
+    position: fixed; z-index: 10000; max-width: 280px; background: rgba(22,24,33,0.97);
+    border: 1px solid rgba(122,162,247,0.4); border-radius: 8px; padding: 8px 11px;
+    font-size: 11.5px; line-height: 1.55; color: var(--text-1); white-space: normal;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45); pointer-events: none;
   }
-  .mmm-tip:hover::after { opacity: 1; }
 </style>
 </head>
 <body>
@@ -12228,9 +12226,10 @@ function mmmBuildFeatures(panel, cfg, lam, withTrend = true) {
 function mmmSheetDesign(panel, cfg, withBrand = false) {
   const t = panel.week, n = t.length, cols = [], names = [];
   const push = (nm, arr) => { names.push(nm); cols.push(arr); };
-  // ln_G = log1p(G_Total) no adstock
-  const gtot = t.map((_, i) => cfg.combinedGoogle.reduce((s, k) => s + (panel.ch[k] ? (panel.ch[k][i] || 0) : 0), 0));
-  push("ln_G", gtot.map(v => Math.log1p(v)));
+  // ln_total = log1p(전체 유료 합산, 브랜드 제외) — "naive lumped" 베이스라인 (시트가 지출을 하나로 뭉친 것을 일반화)
+  const lumpKeys = MMM_CHANNELS.filter(ch => ch.key !== "brand" && panel.ch[ch.key]).map(ch => ch.key);
+  const gtot = t.map((_, i) => lumpKeys.reduce((s, k) => s + (panel.ch[k][i] || 0), 0));
+  push("ln_total", gtot.map(v => Math.log1p(v)));
   push("sin13", t.map(tt => Math.sin(2 * Math.PI * tt / 13.0)));
   push("cos52", t.map(tt => Math.cos(2 * Math.PI * tt / 52.0)));
   // dummies: PreLNY, Seollal, ChuseokOnly, PostChuWk, LineOff(step), OtherHol
@@ -12276,12 +12275,17 @@ function mmmMacroFacts(panel, cfg, dates) {
   const has24 = years.includes(2024), has25 = years.includes(2025);
   if (!has24 || !has25) return out;
   const sumWhere = (arr, yr) => arr.reduce((s, v, i) => years[i] === yr ? s + (v || 0) : s, 0);
-  const gtot = panel.week.map((_, i) => cfg.combinedGoogle.reduce((s, k) => s + (panel.ch[k] ? (panel.ch[k][i] || 0) : 0), 0));
-  const a = sumWhere(gtot, 2024), b = sumWhere(gtot, 2025);
-  if (a > 0) out["google_spend_yoy_%"] = +((b / a - 1) * 100).toFixed(1);
+  const yoy = (arr) => { const a = sumWhere(arr, 2024), b = sumWhere(arr, 2025); return a > 0 ? +((b / a - 1) * 100).toFixed(1) : null; };
+  // 전체 유료 합산 + 채널별 spend YoY (구글만 합치지 않음)
+  const chKeys = MMM_CHANNELS.filter(ch => panel.ch[ch.key]).map(ch => ch.key);
+  const totalPaid = panel.week.map((_, i) => chKeys.reduce((s, k) => s + (panel.ch[k][i] || 0), 0));
+  const tp = yoy(totalPaid); if (tp != null) out["전체유료 spend YoY %"] = tp;
+  for (const ch of MMM_CHANNELS) {
+    if (!panel.ch[ch.key]) continue;
+    const v = yoy(panel.ch[ch.key]); if (v != null) out[`${ch.label} spend YoY %`] = v;
+  }
   for (const [nm, arr] of Object.entries(panel.targets)) {
-    const ya = sumWhere(arr, 2024), yb = sumWhere(arr, 2025);
-    if (ya > 0) out[`${nm}_yoy_%`] = +((yb / ya - 1) * 100).toFixed(1);
+    const v = yoy(arr); if (v != null) out[`${nm} YoY %`] = v;
   }
   return out;
 }
@@ -12306,7 +12310,7 @@ function mmmAudit(panel, cfg) {
   const sd = mmmSheetDesign(panel, cfg, false);
   const olsN = mmmFitNamed(sd.X, sd.names, RR, cfg, false);
   const hacN = mmmFitNamed(sd.X, sd.names, RR, cfg, true);
-  const coefRows = ["ln_G", "t", "LineOff", "Seollal", "sin13", "cos52"].filter(v => sd.names.includes(v)).map(v => ({
+  const coefRows = ["ln_total", "t", "LineOff", "Seollal", "sin13", "cos52"].filter(v => sd.names.includes(v)).map(v => ({
     var: v, coef: +olsN.map[v].coef.toFixed(2), ols_p: +olsN.map[v].p.toFixed(4), hac_p: +hacN.map[v].p.toFixed(4),
   }));
   const brandRows = [];
@@ -12320,7 +12324,7 @@ function mmmAudit(panel, cfg) {
   for (const [nm, y] of [["Regs", panel.targets.Regs], ["React", panel.targets.React], ["RR", RR]]) {
     if (!y) continue;
     const sdc = mmmSheetDesign(panel, cfg, false), m = mmmFitNamed(sdc.X, sdc.names, y, cfg, true);
-    swingRows.push({ target: nm, ln_G_coef: +m.map.ln_G.coef.toFixed(2), hac_p: +m.map.ln_G.p.toFixed(4), trend_coef: +m.map.t.coef.toFixed(2) });
+    swingRows.push({ target: nm, ln_G_coef: +m.map.ln_total.coef.toFixed(2), hac_p: +m.map.ln_total.p.toFixed(4), trend_coef: +m.map.t.coef.toFixed(2) });
   }
   return {
     target: "RR", n: olsN.n, r2: +olsN.r2.toFixed(4), adj_r2: +olsN.adjR2.toFixed(4), hac_maxlags: cfg.hacAutoLag(RR.length),
@@ -12504,7 +12508,7 @@ function mmmChannelEffects(panel, cfg, targetName, lam) {
 /* === 해석/신뢰도 헬퍼 === */
 function mmmConfDots(level) { const n = Math.max(0, Math.min(5, Math.round(level))); return "●".repeat(n) + "○".repeat(5 - n); }
 // ? 호버 툴팁 (수학값 의미)
-function mmmTip(text) { return `<span class="mmm-tip" data-tip="${escapeHtml(text)}" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid rgba(122,162,247,0.5);color:#adc6ff;font-size:9px;font-weight:700;margin-left:4px;vertical-align:middle;">?</span>`; }
+function mmmTip(text) { return `<span class="mmm-tip" data-mmm-tiptext="${escapeHtml(text)}" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid rgba(122,162,247,0.5);color:#adc6ff;font-size:9px;font-weight:700;margin-left:4px;vertical-align:middle;">?</span>`; }
 // dots + 실제 수학값 + ? 설명 (신뢰도 셀)
 function mmmConfInline(level, valueText, tip) {
   return `<span style="color:#adc6ff;letter-spacing:1px;">${mmmConfDots(level)}</span> <span style="color:var(--text-muted);font-size:11px;font-family:var(--font-mono,monospace);">${valueText}</span>${tip ? mmmTip(tip) : ""}`;
@@ -12781,6 +12785,20 @@ function bindMmmInfoOnce() {
     if (modal && (e.target === modal || (e.target.closest && e.target.closest("[data-mmm-info-close]")))) mmmCloseInfo();
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") mmmCloseInfo(); });
+  // 호버 툴팁(수학값 의미) — body에 붙여 표/overflow 클리핑 회피
+  const hideTip = () => { const t = document.getElementById("mmm-hover-tip"); if (t) t.remove(); };
+  document.addEventListener("mouseover", (e) => {
+    const el = e.target.closest && e.target.closest("[data-mmm-tiptext]"); if (!el) return;
+    hideTip();
+    const tip = document.createElement("div"); tip.id = "mmm-hover-tip";
+    tip.textContent = el.getAttribute("data-mmm-tiptext"); document.body.appendChild(tip);
+    const r = el.getBoundingClientRect();
+    tip.style.left = Math.min(window.innerWidth - tip.offsetWidth - 8, Math.max(8, r.left + r.width / 2 - tip.offsetWidth / 2)) + "px";
+    let top = r.top - tip.offsetHeight - 8; if (top < 8) top = r.bottom + 8;   // 위 공간 없으면 아래로
+    tip.style.top = top + "px";
+  });
+  document.addEventListener("mouseout", (e) => { if (e.target.closest && e.target.closest("[data-mmm-tiptext]")) hideTip(); });
+  document.addEventListener("scroll", hideTip, true);
 }
 
 function renderMmmSummary(c) {
@@ -12854,11 +12872,11 @@ function renderMmmAbsorbNotice(c) {
     const otherSide = nt.side === "step" ? "channel" : "step";
     const otherLabel = otherSide === "step" ? nt.step : nt.channelLabel;
     const droppedLabel = nt.side === "step" ? nt.step : nt.channelLabel;
-    return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border);">
-      <div style="flex:1 1 320px;font-size:12px;color:var(--text-1);line-height:1.55;">
+    return `<div style="padding:8px 0;border-top:1px solid var(--border);">
+      <div style="font-size:12px;color:var(--text-1);line-height:1.6;margin-bottom:6px;">
         <strong>${escapeHtml(nt.channelLabel)}</strong> ↔ <strong>${escapeHtml(nt.step)}</strong> 가 거의 똑같이 움직입니다(상관 ${nt.corr}). 둘을 <strong>따로 식별할 수 없어</strong> <span style="color:#f87171;">${escapeHtml(droppedLabel)} 제거(흡수)</span> · <span style="color:#22c55e;">${escapeHtml(nt.kept)} 유지</span>.
       </div>
-      <button class="ab-pill" data-mmm-absorb="${escapeHtml(nt.key)}" data-side="${otherSide}" style="font-size:11px;">대신 ${escapeHtml(otherLabel)} 제거</button>
+      <button class="ab-pill" data-mmm-absorb="${escapeHtml(nt.key)}" data-side="${otherSide}" style="font-size:11px;">↔ 대신 ${escapeHtml(otherLabel)} 제거</button>
     </div>`;
   }).join("");
   return `<section class="block" style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.28);border-radius:10px;">
@@ -12903,15 +12921,17 @@ function renderMmmAudit(c) {
   const brandR = a.brand_test.map(r => `<tr><td>${r.target}</td><td class="tnum">${f(r.R2_no_brand, 4)}</td><td class="tnum pos">${f(r.R2_with_brand, 4)}</td><td class="tnum">${f(r.brand_p, 4)}</td></tr>`).join("");
   const swingR = a.channel_swing.map(r => `<tr><td>${r.target}</td><td class="tnum">${f(r.ln_G_coef)}</td><td class="tnum">${f(r.hac_p, 4)}</td><td class="tnum neg">${f(r.trend_coef)}</td></tr>`).join("");
   return `<section class="block" id="s-audit">
-    <h2 class="section-title"><span class="ix">§2</span>시트 "winner" 모델 audit</h2>
-    <p class="muted">시트 스펙 재현 → OLS vs HAC p값(주간 자기상관). target=RR · n=${a.n} · R²=${f(a.r2, 4)} adjR²=${f(a.adj_r2, 4)} · HAC maxlags=${a.hac_maxlags}.</p>
-    ${mmmExplain('기존 엑셀/스프레드시트 모델이 통계적으로 믿을 만한지 검증하는 단계입니다. 핵심은 <strong>OLS p값 vs HAC p값</strong> 비교: p값은 작을수록 "우연이 아니다(신호 있음)"인데, 주간 데이터는 이웃한 주끼리 닮아서(자기상관) OLS가 p값을 <strong>실제보다 작게(과신)</strong> 보고합니다. HAC p값이 OLS보다 크면 = 원래 모델이 유의성을 과대평가했다는 신호. 또 <strong>브랜드를 넣으면 R²가 오히려 올라가므로</strong>("회귀변수를 더하면 R²는 절대 안 떨어짐") "브랜드 빼자"는 시트 논리는 통계적으로 틀린 판단입니다. R²=설명력(0~1, 1에 가까울수록 잘 설명).')}
+    <h2 class="section-title"><span class="ix">§2</span>"단순 모델" audit — 흔한 함정 점검</h2>
+    <p class="muted">모든 유료 지출을 <strong>하나로 뭉친 단순(naive) 모델</strong>(ln_총지출 = 전 채널 합산, 브랜드 제외 + 계절·더미·추세)을 재현해, 그 모델이 통계적으로 믿을 만한지 점검. target=RR · n=${a.n} · R²=${f(a.r2, 4)} adjR²=${f(a.adj_r2, 4)} · HAC maxlags=${a.hac_maxlags}.</p>
+    ${mmmExplain('단순 모델이 빠지기 쉬운 3가지 함정을 점검합니다. <strong>① OLS p vs HAC p</strong> — 둘 다 "우연일 확률"이지만, 주간 데이터는 이웃 주끼리 닮아(자기상관) OLS가 p를 <strong>실제보다 작게(과신)</strong> 봅니다. HAC는 그걸 보정한 보수적 p. <span style="color:#22c55e;">둘 다 0.05 미만이면 → 자기상관을 걷어내도 진짜 유의(안심).</span> <span style="color:#f87171;">OLS는 &lt;0.05인데 HAC가 ≥0.05면 → 그 효과는 과장(가짜 유의).</span> <strong>② 브랜드</strong>를 넣으면 R²가 오히려 오르므로("변수 추가하면 R²는 절대 안 떨어짐") "브랜드 빼자"는 판단은 틀림. <strong>③ 계수 불안정</strong> — 아래 설명.')}
     <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>변수</th><th>coef</th><th>OLS p</th><th>HAC p${mmmInfoIcon("hac")}</th></tr></thead><tbody>${coefR}</tbody></table></div>
-    <p style="font-size:12px;margin:10px 0 2px;color:var(--text-1);">브랜드 추가 시 R²가 내려가는가? (회귀변수 추가는 R²를 못 낮춤 → "브랜드 빼는" 시트 논리 반박)</p>
-    <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>target</th><th>R²(no brand)</th><th>R²(+brand)</th><th>brand p</th></tr></thead><tbody>${brandR}</tbody></table></div>
-    <p style="font-size:12px;margin:10px 0 2px;color:var(--text-1);">같은 스펙, target별 Google(ln_G) 계수 불안정 (공선 tell)</p>
-    <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>target</th><th>ln_G coef</th><th>HAC p</th><th>trend coef</th></tr></thead><tbody>${swingR}</tbody></table></div>
-    <p class="muted" style="font-size:11px;margin-top:6px;">RR mean=${a.composite.mean_RR} = 구성요소 합 ${a.composite.components_mean_sum} (RR 정의 확인). ⚠ spend↔trend 공선 + 상쇄 계수 → 시트 계수는 식별 불안정.</p>
+    <p class="muted" style="font-size:10.5px;margin:4px 0 0;">ln_총지출 = 전 채널 합산(브랜드 제외) · t = 시간추세 · sin13/cos52 = 단순 계절항 · LineOff/Seollal = 더미. 여기서 ln_총지출·t가 둘 다 "유의"하게 나오는 건 둘이 공선이라 서로 상쇄된 결과일 수 있어, 단일 모델 계수를 그대로 믿으면 안 됩니다(→ §5는 채널 분리·adstock로 제대로).</p>
+    <p style="font-size:12px;margin:12px 0 2px;color:var(--text-1);">① 브랜드 추가 시 R²가 내려가는가? <span style="color:var(--text-muted);font-size:11px;">(회귀변수 추가는 R²를 못 낮춤 → "브랜드 빼자" 논리 반박)</span></p>
+    <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>target</th><th>R²(브랜드 X)</th><th>R²(브랜드 O)</th><th>brand p</th></tr></thead><tbody>${brandR}</tbody></table></div>
+    <p style="font-size:12px;margin:12px 0 2px;color:var(--text-1);">② 같은 스펙인데 target만 바꿔도 "총지출 계수"가 출렁인다 = 공선 신호</p>
+    ${mmmExplain('동일한 모델로 가입·재활성·RR만 바꿔 돌렸을 때 <strong>총지출 계수(ln_총지출 coef)가 크게 달라지면</strong>, 그 계수가 데이터의 진짜 효과가 아니라 지출↔시간추세 공선 때문에 불안정하게 흔들린다는 뜻입니다("공선 tell"). 단순 합산 모델의 계수를 의사결정에 쓰면 위험 — 채널을 분리하고 adstock·HAC를 쓰는 §5가 제대로 된 추정입니다.')}
+    <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>target</th><th>총지출 coef</th><th>HAC p</th><th>trend coef</th></tr></thead><tbody>${swingR}</tbody></table></div>
+    <p class="muted" style="font-size:11px;margin-top:6px;">RR mean=${a.composite.mean_RR} = 구성요소 합 ${a.composite.components_mean_sum} (RR 정의 확인). ⚠ spend↔trend 공선 + 상쇄 계수 → 단순 모델 계수는 식별 불안정 → §5(채널분리·adstock·HAC)에서 제대로.</p>
   </section>`;
 }
 function renderMmmTargetSelector(c) {
@@ -13101,7 +13121,7 @@ function bindMmmMethHandlers() {
   bindInlineCsvHandlers();
   bindMmmInfoOnce();
   const c = MMM_METH_CACHE; if (!c.key || c.error) return;
-  renderMmmCharts(c);
+  // 이벤트 핸들러를 차트보다 먼저 바인딩 (차트 오류가 버튼 바인딩을 막지 않게)
   document.querySelectorAll("[data-mmm-target]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.target = b.dataset.mmmTarget; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-platform]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.platform = b.dataset.mmmPlatform; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-absorb]").forEach(b => b.addEventListener("click", () => { if (!MMM_METH_STATE.absorbChoice) MMM_METH_STATE.absorbChoice = {}; MMM_METH_STATE.absorbChoice[b.dataset.mmmAbsorb] = b.dataset.side; navigate("5-18"); }));
@@ -13121,6 +13141,8 @@ function bindMmmMethHandlers() {
     if (!MMM_METH_STATE.notes) MMM_METH_STATE.notes = {};
     MMM_METH_STATE.notes[inp.dataset.mmmNote] = inp.value;
   }));
+  // 차트는 마지막에 + try/catch (오류가 위 핸들러 바인딩을 막지 않게)
+  try { renderMmmCharts(c); } catch (e) { console.warn("MMM charts render skipped:", e.message); }
 }
 function _mmmDownload(name, content, type) {
   const blob = new Blob([content], { type }); const url = URL.createObjectURL(blob); const a = document.createElement("a");
