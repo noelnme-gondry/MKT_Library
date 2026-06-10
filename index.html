@@ -11573,6 +11573,26 @@ const MMM_METH_CONFIG = {
   excludeSparse: false,        // ON 시 데이터 부족 채널을 모델에서 제외 (식별 정리; 기본 off=충실)
   hacAutoLag: (n) => Math.floor(4 * Math.pow(n / 100, 2 / 9)),
 };
+// 카니발 삼각검증 — 보수적 판정(TIGHT VERDICT) 임계값. 결정론: 하드 규칙으로 적용, 채널/지표별 튜닝 가능.
+// 대원칙: 입증책임 비대칭(모호하면 INCONCLUSIVE) · non-sig ≠ 무효과(FOR로 안 셈) · 관측은 적색신호 거르는 도구.
+const MMM_CANNIB_RULES = {
+  lowSpendPct: 0.25,        // ① 저지출 구간 = 채널 spend ≤ p25
+  precMinN: 6,              // ① 저지출 구간 최소 표본
+  precDeclinePct: 10,       // ① FOR: 누적 하락 ≥ 10%
+  precSlopeP: 0.05,         // ① slope 유의 임계 (FOR=유의 하락 / AGAINST=유의 상승)
+  detrendFor: -0.10,        // ② FOR: detrended r ≥ -0.10 AND 1차차분 r ≥ -0.10
+  detrendAgainst: -0.20,    // ② AGAINST: detrended r ≤ -0.20 OR 1차차분 r ≤ -0.20
+  netP: 0.05,               // ③ 유의 임계
+  netMaterial: 0.05,        // ③ FOR(대안): 95%CI 하한 > -material 이면 의미있는 카니발 배제
+  gateVif: 5,               // 게이트: VIF ≥ 5
+  gateSpendTimeCorr: 0.7,   // 게이트: |corr(ln_spend, t)| ≥ 0.7
+  gateCiMult: 3,            // 게이트: ③ CI폭 ≥ 3×|점추정|
+  gateMinN: 30,             // 게이트: n < 30
+  brandBarFor: 3,           // 브랜드 가로채기 채널: FOR=3 AND AGAINST=0 일 때만 잠정 OK
+  otherBarFor: 2,           // 그 외(prospecting): FOR≥2 AND AGAINST=0
+  brandInterceptRe: /brand|branded|asa\b|apple.?search|search.?ads|브랜드|검색/i,
+};
+function mmmIsBrandIntercept(label, kind) { return kind === "brand" || MMM_CANNIB_RULES.brandInterceptRe.test(String(label || "")); }
 // 채널 키(semantic) → 5-18 매핑 필드
 
 /* ====== MMM 통계 용어집 (4단: 이유/진행/해석/유의성) — 워크플로 생성·검수 ====== */
@@ -11625,27 +11645,27 @@ const MMM_GLOSSARY = {
   "cannib_overview": {
     "term": "카니발리제이션 삼각검증 (cannibalization triangulation, 광고가 자연유입을 갉아먹는지 3중 교차검증)",
     "reason": "광고로 늘어난 가입/재활성이 진짜 순수 증가인지, 아니면 광고를 안 했어도 알아서 들어왔을 자연유입(오가닉)을 광고가 가로챈 것(잠식)인지 가려내기 위함입니다. 의사결정 질문은 '이 광고비, 새 유저를 데려오나 아니면 공짜로 올 유저를 비싸게 다시 사는 건가'입니다.",
-    "how": "서로 독립된 3가지 신호를 각각 본 뒤 다수결로 종합합니다 — ① 시간 선행성(광고를 키기 전부터 이미 떨어지고 있었나), ② 허위상관/탈추세(시간 흐름만 빼면 광고와 오가닉의 음의 관계가 사라지나), ③ 순증분 탄력성(광고비를 늘렸을 때 전체 결과가 순으로 느나). 코드는 이 3표 중 2표 이상이 '오가닉' 쪽이면 결론을 뒤집습니다.",
-    "interpret": "'ORGANIC (media는 방어, 원인 아님)'이 나오면 오가닉 하락은 광고 탓이 아니라 외부 시장 요인이고 광고는 오히려 그 하락을 막아주고 있다는 뜻입니다. 'INCONCLUSIVE — geo holdout 필요'면 잠식 가능성을 배제 못 했으니 일부 지역 광고를 꺼보는 실험이 필요합니다.",
-    "significance": "한 검정만 믿지 않고 3개 중 2개 이상이 같은 방향을 가리킬 때만 결론을 냅니다. 검정마다 약점이 다르므로 서로의 오류를 상쇄해 한 지표의 우연한 결과에 휘둘리지 않게 하는 안전장치입니다.",
-    "example": "Tinder KR 오가닉 가입이 줄어드는데 Google ROI·Meta 지출을 늘린 시기 — 광고가 오가닉을 잠식한 건지, 시장이 식는 걸 광고가 떠받친 건지 이 3중 검증으로 판단합니다.",
+    "how": "서로 독립된 3가지 신호를 각각 FOR(오가닉)·AGAINST(카니발)·ABSTAIN(판단보류)로 투표합니다 — ① 시간 선행성(저지출 구간에 이미 떨어지고 있었나), ② 허위상관/탈추세(시간만 빼면 음의 관계가 사라지나), ③ 순증분 탄력성(광고비↑ 시 전체가 순으로 느나). 입증책임은 비대칭입니다: '방어/OK'는 FOR가 기준 이상(프로스펙팅 2·브랜드 3) AND AGAINST 0 AND 검정력 통과일 때만, AGAINST가 하나라도 있으면 LEAN CANNIBAL, 모호하면 기본값 INCONCLUSIVE.",
+    "interpret": "'관측상 적색신호 없음(잠정 OK)'은 잠식 신호가 안 보인다는 뜻이지 '카니발 없음'의 증명이 아닙니다(확정은 holdout). 'LEAN CANNIBAL'은 한 검정 이상이 카니발을 가리켜 holdout이 1순위. 'INCONCLUSIVE'는 증거 부족(검정력 부족 포함)이라 판단 보류.",
+    "significance": "관측 회귀는 적색신호를 거르는 도구이지 혐의를 벗기는 도구가 아닙니다. spend와 시간이 공선이면(VIF·corr 게이트) '순효과≈0'은 효과 없음이 아니라 증거 없음이라, 그 경우 절대 '방어'로 단정하지 않고 INCONCLUSIVE로 제한합니다. non-significant(p>.05)는 무효과 증거가 아니므로 FOR로 세지 않습니다.",
+    "example": "Tinder KR에서 Google 지출이 시간과 강하게 공선(corr 0.76·VIF↑)이면, 과거엔 'ORGANIC'으로 후하게 나왔지만 보수적 규칙에선 검정력 게이트가 작동해 INCONCLUSIVE — 일부 지역 광고를 꺼보는 holdout이 필요합니다.",
     "caveat": "이건 가설을 만드는 기술적 진단이지 인과 증거가 아닙니다. 진짜 증분/잠식의 최종 판정은 holdout 실험(5-15)에서만 가능합니다."
   },
   "precedence": {
     "term": "시간 선행성 (precedence, 원인은 결과보다 먼저 와야 한다)",
     "reason": "광고가 오가닉을 떨어뜨린 범인이라면 하락은 광고를 본격적으로 키운 '뒤에' 시작돼야 합니다. 만약 광고를 키기도 전부터 이미 떨어지고 있었다면 광고는 범인일 수 없습니다 — 결과가 원인보다 먼저 올 순 없으니까요.",
-    "how": "데이터 초반 26주 구간만 떼어, 그 기간 가입/재활성 지표가 주당 얼마나 변했는지 직선 기울기로 잽니다. 같은 구간 평균 광고비도 함께 봐서 '광고는 아직 적은데 지표는 이미 내려가는 중'인지 확인합니다.",
-    "interpret": "초반 구간 변화율이 -1%보다 더 떨어졌으면(declining_pre_ramp=참) '광고 키기 전부터 하락' → 광고는 원인이 아니라는 한 표를 던집니다. 거의 평평하거나 오르고 있었으면 이 표는 던지지 않습니다.",
-    "significance": "여기서는 p값보다 방향과 크기를 봅니다: 광고 본격화 이전 구간에서 지표가 뚜렷이(약 1% 초과) 이미 내려가고 있었는지가 핵심 기준입니다. 그게 사실이면 시간 순서상 광고 잠식설은 성립하기 어렵습니다.",
-    "example": "Tinder KR 재활성(React)이 2024년 초 광고비가 거의 안 들어가던 시점부터 이미 주당 줄고 있었다면, 이후 Meta·TikTok 지출 증가가 그 하락의 원인이라 보기 어렵습니다.",
-    "caveat": "초반 26주에 다른 큰 사건(앱 개편, 시즌성 등)이 겹쳐 있으면 이 기울기가 왜곡될 수 있어 단독 근거로 쓰면 안 됩니다."
+    "how": "그 채널의 지출이 하위 25%(저지출 ≤ p25)인 주들만 모아 — 즉 '광고를 본격적으로 켜기 전' 구간 — 가입/재활성을 주차에 회귀해 기울기와 그 유의성(p)을 잽니다. 달력상 초반이 아니라 '지출이 적었던 시기'를 보는 게 핵심입니다.",
+    "interpret": "FOR(오가닉): 저지출 구간에 기울기<0이고 유의(p<.05)하며 누적 ≥10% 하락 → 광고 前부터 죽고 있었음=외생. AGAINST(카니발): 저지출 구간에 유의하게 상승 → 알리바이 없음, 카니발과 양립. ABSTAIN: 평탄/유의하지 않음/표본 부족.",
+    "significance": "방향만이 아니라 유의성(p)과 크기(≥10%)를 함께 봅니다. 애매하면 FOR가 아니라 ABSTAIN — 약한 하락을 '광고 무죄'로 과신하지 않기 위한 보수적 기준입니다.",
+    "example": "Tinder KR 재활성(React)이 지출이 거의 없던 주들부터 이미 유의하게 주당 줄고 있었다면 FOR, 오히려 늘고 있었다면 AGAINST, 평탄하면 ABSTAIN.",
+    "caveat": "저지출 구간에 다른 큰 사건(앱 개편·시즌성)이 겹치면 기울기가 왜곡될 수 있어 단독 근거로 쓰면 안 됩니다."
   },
   "spurious_detrend": {
     "term": "허위상관 / 탈추세 검정 (spurious correlation, 시간이 진짜 범인인지 가려내기)",
     "reason": "광고비는 시간이 갈수록 늘고 오가닉은 시간이 갈수록 주는 경우, 둘은 강한 음의 관계로 보이지만 실제로는 서로 영향이 없고 '시간'이라는 공통 배경 때문에 우연히 반대로 움직인 것일 수 있습니다(허위상관). 이걸 진짜 잠식과 구분하려는 겁니다.",
     "how": "먼저 광고비(로그)와 지표의 원시 상관을 잰 뒤, 양쪽에서 '시간에 따른 직선 추세'를 빼낸 잔차끼리 다시 상관을 잽니다. 추세를 걷어낸 뒤에도 음의 관계가 남는지 봅니다.",
-    "interpret": "원시 상관은 음수였는데 추세 제거 후 0 이상으로 바뀌면(negative_collapses=참) '시간이 범인 → spurious, 잠식 아님'으로 읽고 오가닉 쪽 한 표를 던집니다. 추세를 빼도 음의 관계가 그대로 살아남으면 '진짜 동시점 잠식 의심 → 조사 필요'입니다.",
-    "significance": "핵심은 음의 상관이 추세 제거 후 '무너지느냐(사라지느냐)'입니다. 무너지면 그 음의 관계는 둘의 실제 관계가 아니라 공통된 시간 흐름이 만든 착시였다는 신호입니다.",
+    "interpret": "FOR(오가닉): 탈추세 r ≥ -0.10 AND 1차차분 r ≥ -0.10 → 음상관이 사실상 소멸=시간 착시. AGAINST(카니발): 탈추세 r ≤ -0.20 OR 1차차분 r ≤ -0.20 → 추세 제거 후에도 음수 생존=잠식 신호. 그 사이(-0.20~-0.10)는 ABSTAIN.",
+    "significance": "핵심은 음의 상관이 추세 제거 후 '무너지느냐'입니다. 무너지면 시간이 만든 착시, 살아남으면 동시점 잠식 의심. 경계 사이는 단정하지 않고 ABSTAIN — 애매하면 FOR로 세지 않습니다.",
     "example": "Tinder KR에서 Google 지출↑·오가닉 가입↓이 강한 음의 상관으로 보여도, 시간 추세를 빼니 관계가 0 근처로 사라지면 둘 다 그냥 같은 기간에 각자 따로 움직였을 뿐 광고가 가입을 빼앗은 게 아닙니다.",
     "caveat": "잔차 상관이 0이라고 '잠식 전혀 없음'을 증명하는 건 아닙니다 — 이 데이터·이 방법으로는 신호가 안 보인다는 의미일 뿐입니다."
   },
@@ -11653,8 +11673,8 @@ const MMM_GLOSSARY = {
     "term": "순증분 탄력성 양수 (net incrementality elasticity > 0, 광고비를 늘리면 전체 결과가 순으로 느는가)",
     "reason": "가장 직접적인 질문에 답합니다: '광고비를 더 쓰면 (오가닉을 좀 잠식하더라도) 결국 전체 가입/재활성이 늘긴 느는가?' 잠식이 아무리 있어도 전체 파이가 커지면 그 광고는 돈값을 한 겁니다.",
     "how": "'탄력성'은 광고비를 1% 늘렸을 때 전체 결과가 몇 % 변하는지를 한 숫자로 요약한 것입니다. 이게 '순(net)'인 이유는 광고로 늘어난 유입에서 잠식된 오가닉을 이미 빼고 남은 알짜만 보기 때문입니다. 이 숫자의 부호(+/−)를 봅니다.",
-    "interpret": "양수(coef>0)면 '광고비↑ → 전체 결과도 순증가' = 강한 잠식과는 모순되므로 오가닉(광고가 도움) 쪽 한 표. 0 이하면 '돈을 더 써도 전체가 안 늘거나 줄어듦' = 잠식이 알짜 증가를 거의 다 까먹고 있다는 신호이고, 이때 잠식 가능성에 표를 줍니다.",
-    "significance": "부호와 함께 그 추정의 신뢰구간(CI)이 0을 포함하는지를 봅니다 — CI가 0을 넘나들면 '양수인지 음수인지 확신 못 함'이라 약한 증거로만 취급합니다. 양수가 0에서 충분히 떨어져 있을수록 '광고가 순증분을 만든다'는 결론이 단단해집니다.",
+    "interpret": "FOR(오가닉): 점추정 ≥ 0 AND 유의(p<.05), 또는 95%CI 하한이 -material(예: -0.05)보다 위라 '의미 있는 카니발'을 배제 가능. AGAINST(카니발): 점추정 < 0 AND 유의(p<.05). ABSTAIN: p≥.05이거나 CI가 0을 크게 가로지름(검정력 부족). ⚠ 예: coef 0.0027, p=0.6668 → ABSTAIN(FOR 아님).",
+    "significance": "부호만으로 결론 내지 않습니다. non-significant(p>.05)는 무효과 증거가 아니라 검정력 부족이므로 FOR로 세지 않습니다. 또 spend↔시간 공선(VIF≥5·corr≥0.7)·CI 불안정(폭≥3×점추정)·표본부족(n<30)이면 검정력 게이트가 작동해 ③은 자동 ABSTAIN, 판정은 '방어/OK'가 될 수 없습니다(상한 INCONCLUSIVE).",
     "example": "Tinder KR에서 Meta 지출을 늘렸을 때 (잠식분 제외하고도) 전체 React가 늘면 순증분 탄력성 양수 → 그 광고는 오가닉을 빼앗는 게 아니라 새 활성 유저를 순으로 더해주는 것입니다.",
     "caveat": "양수여도 '얼마나 효율적인가(돈값)'는 별개 질문입니다 — 순증가가 있다는 것과 그 증가가 비용 대비 충분하다는 것은 다릅니다."
   },
@@ -12024,39 +12044,96 @@ function mmmTrendExistence(panel, cfg, targetName) {
   };
 }
 
-/* --- cannibalization (precedence / detrend_corr / net_incrementality / verdict) --- */
+/* --- cannibalization 보수적 삼각검증 (TIGHT VERDICT, 3-STATE FOR/AGAINST/ABSTAIN) ---
+ * 대원칙: ① 입증책임 비대칭 → 모호하면 INCONCLUSIVE ② 관측은 적색신호 거르는 도구(혐의 벗기는 도구 아님)
+ * ③ non-sig ≠ 무효과(FOR로 안 셈). 임계값은 MMM_CANNIB_RULES(결정론 하드 규칙). */
 function mmmCannibalization(panel, cfg, targetName, netElasticity, channelKey) {
+  const R = MMM_CANNIB_RULES;
   const y = panel.targets[targetName], t = panel.week, n = t.length;
+  const chMeta = channelKey ? (_mmmChans(panel).find(c => c.key === channelKey) || {}) : {};
+  const chLabel = channelKey ? (chMeta.label || channelKey) : "전체 유료";
+  const isBrand = channelKey ? mmmIsBrandIntercept(chLabel, chMeta.kind) : false;
   // 선택 채널의 spend (합산 안 함 — 채널별 개별). channelKey 없으면 전체 합산(레거시).
-  const gtot = channelKey
+  const spend = channelKey
     ? (panel.ch[channelKey] ? panel.ch[channelKey].map(v => v || 0) : t.map(() => 0))
     : t.map((_, i) => _mmmChans(panel).filter(c => panel.ch[c.key]).reduce((s, c) => s + (panel.ch[c.key][i] || 0), 0));
-  // precedence (early 26 weeks)
-  const ew = 26; const eIdx = t.map((tt, i) => tt <= ew ? i : -1).filter(i => i >= 0);
-  const ex = eIdx.map(i => t[i]), ey = eIdx.map(i => y[i]);
-  const lf = CANNIBAL_STATS.linearFit(ey); // slope vs index — but need vs week. use polyfit
-  // slope of y on week (early)
-  const exM = _mean(ex), eyM = _mean(ey); let num = 0, den = 0;
-  for (let i = 0; i < ex.length; i++) { num += (ex[i] - exM) * (ey[i] - eyM); den += (ex[i] - exM) ** 2; }
-  const slope = den > 0 ? num / den : 0;
-  const pct = slope * ew / eyM * 100;
-  const precedence = { window_weeks: ew, avg_spend: Math.round(_mean(eIdx.map(i => gtot[i]))), kpi_slope_per_wk: +slope.toFixed(1), kpi_change_over_window_pct: +pct.toFixed(1), declining_pre_ramp: pct < -1 };
-  // detrend corr
-  const lnG = gtot.map(v => Math.log1p(v));
+
+  // ── ① 시간 선행성: 저지출 구간(spend ≤ p25)에서 오가닉 추세 (광고 본격화 前부터 죽었나) ──
+  const sortedSp = spend.slice().sort((a, b) => a - b);
+  const p25 = sortedSp.length ? sortedSp[Math.floor((sortedSp.length - 1) * R.lowSpendPct)] : 0;
+  const lowIdx = spend.map((s, i) => s <= p25 ? i : -1).filter(i => i >= 0);
+  let slope = 0, slopeP = 1, changePct = 0; const lowN = lowIdx.length;
+  if (lowN >= R.precMinN) {
+    const lx = lowIdx.map(i => t[i]), ly = lowIdx.map(i => y[i]);
+    const fit = mmmOls(lx.map(w => [1, w]), ly);
+    if (fit) { slope = fit.beta[1]; slopeP = studentTp(fit.tvalues[1], fit.n - fit.k); const span = Math.max(...lx) - Math.min(...lx), lyM = _mean(ly) || 1; changePct = slope * span / lyM * 100; }
+  }
+  let precVote;
+  if (lowN < R.precMinN) precVote = "ABSTAIN";
+  else if (slope < 0 && slopeP < R.precSlopeP && changePct <= -R.precDeclinePct) precVote = "FOR";
+  else if (slope > 0 && slopeP < R.precSlopeP) precVote = "AGAINST";
+  else precVote = "ABSTAIN";
+  const precedence = { window: "low-spend(≤p25)", low_n: lowN, p25: Math.round(p25), avg_spend: Math.round(_mean(lowIdx.map(i => spend[i])) || 0), kpi_slope_per_wk: +slope.toFixed(1), slope_p: +slopeP.toFixed(4), kpi_change_over_window_pct: +changePct.toFixed(1), vote: precVote,
+    declining_pre_ramp: precVote === "FOR" };
+
+  // ── ② 탈추세·차분 상관 (시간 착시 vs 진짜 음상관) ──
+  const lnG = spend.map(v => Math.log1p(v));
   const raw = CANNIBAL_STATS.pearson(lnG, y);
-  const tr = t.map((tt, i) => i); // index as t
+  const tr = t.map((_, i) => i);
   const gFit = mmmOls(tr.map(i => [1, i]), lnG), yFit = mmmOls(tr.map(i => [1, i]), y);
-  const det = CANNIBAL_STATS.pearson(gFit.resid, yFit.resid);
+  const det = (gFit && yFit) ? CANNIBAL_STATS.pearson(gFit.resid, yFit.resid) : 0;
   const dlnG = [], dy = []; for (let i = 1; i < n; i++) { dlnG.push(lnG[i] - lnG[i - 1]); dy.push(y[i] - y[i - 1]); }
   const fd = CANNIBAL_STATS.pearson(dlnG, dy);
-  const flips = raw < 0 && det >= 0;
-  const detrend = { raw: +raw.toFixed(3), detrended: +det.toFixed(3), first_diff: +fd.toFixed(3), negative_collapses: flips,
-    reading: flips ? "spurious (organic), not cannibalization" : raw >= 0 ? "애초에 음의 연관 없음" : "negative survives detrend — cannibalization 조사" };
-  const net = { net_elasticity: +netElasticity.coef.toFixed(4), p: +netElasticity.p.toFixed(4), reading: netElasticity.coef > 0 ? "net positive — 강한 cannibalization과 불일치" : "net <= 0 — cannibalization 가능" };
-  const votes = [precedence.declining_pre_ramp, (detrend.negative_collapses || detrend.raw >= 0), net.net_elasticity > 0].filter(Boolean).length;
-  const verdict = votes >= 2 ? "ORGANIC (exogenous) — media는 방어, 원인 아님" : "INCONCLUSIVE / cannibalization 가능 — geo holdout 필요";
-  const chLabel = channelKey ? ((_mmmChans(panel).find(c => c.key === channelKey) || {}).label || channelKey) : "전체 유료";
-  return { precedence, detrend_corr: detrend, net_incrementality: net, organic_votes: votes, verdict, channel: channelKey || "__total__", channelLabel: chLabel };
+  let detVote;
+  if (det >= R.detrendFor && fd >= R.detrendFor) detVote = "FOR";
+  else if (det <= R.detrendAgainst || fd <= R.detrendAgainst) detVote = "AGAINST";
+  else detVote = "ABSTAIN";
+  const detrend = { raw: +raw.toFixed(3), detrended: +det.toFixed(3), first_diff: +fd.toFixed(3), vote: detVote, negative_collapses: detVote === "FOR" && raw < 0 };
+
+  // ── 역인과(페이싱) 점검: 오가닉 약할 때 방어적으로 예산↑면 ②의 음상관은 오가닉→광고(내생) ──
+  const spendTimeCorr = CANNIBAL_STATS.pearson(lnG, tr);
+  const reverseRisk = raw < -0.1 && spendTimeCorr > 0.3;
+
+  // ── ③ 순증분 탄력성 (NET) ──
+  const coef = netElasticity.coef, p = netElasticity.p, ciLo = netElasticity.ci_lo, ciHi = netElasticity.ci_hi;
+  const hasCi = isFinite(ciLo) && isFinite(ciHi);
+  let netVote;
+  if (!isFinite(coef) || !isFinite(p)) netVote = "ABSTAIN";
+  else if (coef >= 0 && p < R.netP) netVote = "FOR";
+  else if (hasCi && ciLo > -R.netMaterial) netVote = "FOR";   // 의미있는 카니발 배제
+  else if (coef < 0 && p < R.netP) netVote = "AGAINST";
+  else netVote = "ABSTAIN";
+
+  // ── 검정력 게이트 (CLEAR 차단): 하나라도 걸리면 ③ 자동 ABSTAIN + 판정 상한 INCONCLUSIVE ──
+  const gateReasons = [];
+  if (Math.abs(spendTimeCorr) >= R.gateSpendTimeCorr) gateReasons.push(`spend↔시간 공선 |r|=${Math.abs(spendTimeCorr).toFixed(2)} ≥ ${R.gateSpendTimeCorr}`);
+  const vif = netElasticity.vif; if (isFinite(vif) && vif >= R.gateVif) gateReasons.push(`VIF=${(+vif).toFixed(1)} ≥ ${R.gateVif}`);
+  if (hasCi && isFinite(coef) && Math.abs(coef) > 1e-9 && (ciHi - ciLo) >= R.gateCiMult * Math.abs(coef)) gateReasons.push(`③ CI폭 ${(ciHi - ciLo).toFixed(3)} ≥ ${R.gateCiMult}×|점추정|`);
+  if (n < R.gateMinN) gateReasons.push(`n=${n} < ${R.gateMinN}`);
+  const powerGateBlocked = gateReasons.length > 0;
+  if (powerGateBlocked) netVote = "ABSTAIN";
+  const net = { net_elasticity: +(isFinite(coef) ? coef : NaN).toFixed(4), p: +(isFinite(p) ? p : NaN).toFixed(4), ci_lo: hasCi ? +ciLo.toFixed(4) : null, ci_hi: hasCi ? +ciHi.toFixed(4) : null, vote: netVote };
+
+  // ── 투표 집계 + 채널 prior bar ──
+  const votes = { FOR: 0, AGAINST: 0, ABSTAIN: 0 };
+  [precVote, detVote, netVote].forEach(v => votes[v]++);
+  const forBar = isBrand ? R.brandBarFor : R.otherBarFor;
+
+  // ── 최종 판정 (입증책임 비대칭) ──
+  let verdict, verdictClass;
+  if (votes.AGAINST >= 1) { verdictClass = "cannibal"; verdict = "LEAN CANNIBAL — 카니발 우려, holdout 1순위"; }
+  else if (!powerGateBlocked && votes.FOR >= forBar && votes.AGAINST === 0) { verdictClass = "ok"; verdict = "관측상 적색신호 없음 (잠정 OK) — 방어 가능성 높음, 단 결정적 확인은 geo holdout"; }
+  else { verdictClass = "inconclusive"; verdict = "INCONCLUSIVE — 증거 부족, holdout 필요"; }
+
+  return {
+    precedence, detrend_corr: detrend, net_incrementality: net,
+    votes, vote_summary: `FOR ${votes.FOR} · AGAINST ${votes.AGAINST} · ABSTAIN ${votes.ABSTAIN}`,
+    power_gate: { blocked: powerGateBlocked, reasons: gateReasons }, spend_time_corr: +spendTimeCorr.toFixed(3),
+    is_brand_intercept: isBrand, for_bar: forBar, reverse_causality_risk: reverseRisk,
+    verdict, verdict_class: verdictClass,
+    organic_votes: votes.FOR,   // 하위호환(레거시 소비처)
+    channel: channelKey || "__total__", channelLabel: chLabel,
+  };
 }
 
 /* --- MMM (select_adstock CV / vif / elasticities AR1 / shapley / saturation) --- */
@@ -12201,7 +12278,12 @@ function mmmTrendConf(trend) {
   const ts = (trend.adf_ct_p < 0.05 && trend.kpss_ct_p >= 0.05) || (trend.adf_ct_p >= 0.05 && trend.kpss_ct_p < 0.05);
   return Math.min(5, agree + (ts ? 1 : 0));
 }
-function mmmCannibConf(cn) { const v = cn.organic_votes; return v >= 3 ? 5 : v === 2 ? 4 : v === 1 ? 2 : 1; }
+function mmmCannibConf(cn) {
+  if (cn.power_gate && cn.power_gate.blocked) return 1;   // 검정력 부족 → 신뢰도 낮음
+  const v = cn.votes || { FOR: cn.organic_votes || 0, AGAINST: 0 };
+  const decisive = Math.max(v.FOR || 0, v.AGAINST || 0);   // 한 방향 합의 강도
+  return decisive >= 3 ? 5 : decisive === 2 ? 4 : decisive === 1 ? 3 : 2;
+}
 function mmmTrendPlain(trend, target) {
   const v = trend.verdict;
   if (v.includes("NO robust")) return `<strong>하락 추세 없음.</strong> ${target}이(가) 줄어드는 것처럼 보여도, 추세를 가정하지 않는 검정(STL·Mann-Kendall·ADF·KPSS)에서는 의미 있는 하락 신호가 없습니다. 회귀에 시간(t)을 넣으면 거의 항상 음수가 나오는 <em>착시</em>일 뿐입니다.`;
@@ -12210,8 +12292,11 @@ function mmmTrendPlain(trend, target) {
 }
 function mmmCannibPlain(cn, target) {
   const chl = cn.channelLabel || cn.channel || "주 채널";
-  if (cn.verdict.includes("ORGANIC")) return `<strong>${escapeHtml(chl)}</strong> 광고는 오가닉 ${target}을(를) <strong style="color:#22c55e;">잠식하지 않습니다</strong>. 서로 독립적인 3개 검정 중 <strong>${cn.organic_votes}개</strong>가 "오가닉(외생적 하락)" 쪽을 지지합니다. 즉 광고를 켠다고 오가닉을 갉아먹는 게 아니라, 외생적 하락을 <strong>방어·보완</strong>하는 역할에 가깝습니다. <span style="color:var(--text-muted);">(채널별 결과는 §4에서 전환)</span>`;
-  return `<strong>${escapeHtml(chl)}</strong>의 오가닉 잠식 <strong style="color:#fbbf24;">가능성을 배제할 수 없습니다</strong> (3개 검정 중 ${cn.organic_votes}개만 오가닉 지지). 확정하려면 holdout 실험(5-15)이 필요합니다. <span style="color:var(--text-muted);">(채널별 결과는 §4)</span>`;
+  const vs = cn.vote_summary || `FOR ${cn.organic_votes || 0}`;
+  const gate = (cn.power_gate && cn.power_gate.blocked) ? ` <span style="color:#fbbf24;">⚠ 검정력 부족(${escapeHtml((cn.power_gate.reasons || [])[0] || "")})으로 "방어"로 단정 불가</span>` : "";
+  if (cn.verdict_class === "cannibal") return `<strong>${escapeHtml(chl)}</strong> 광고가 오가닉 ${target}을(를) <strong style="color:#f87171;">잠식할 우려가 있습니다</strong> (${vs}). 한 개 이상의 검정이 "카니발" 쪽을 가리킵니다 — <strong>holdout 실험(5-15)이 1순위</strong>입니다.${gate} <span style="color:var(--text-muted);">(채널별 결과는 §4에서 전환)</span>`;
+  if (cn.verdict_class === "ok") return `<strong>${escapeHtml(chl)}</strong>는 <strong style="color:#22c55e;">관측상 적색신호가 없습니다</strong> (${vs}, 반대 0). 독립 검정들이 일관되게 "오가닉(외생적 하락)·방어" 쪽을 지지해 잠식 가능성은 낮아 보입니다. <strong>단 "카니발 없음"을 단정할 수는 없고</strong>, 결정적 확인은 geo holdout(5-15)입니다.${gate} <span style="color:var(--text-muted);">(채널별 결과는 §4)</span>`;
+  return `<strong>${escapeHtml(chl)}</strong>는 <strong style="color:#fbbf24;">증거가 불충분(INCONCLUSIVE)</strong>합니다 (${vs}). 잠식인지 방어인지 관측만으로 가를 수 없어, 기본값은 "판단 보류"입니다 — holdout 실험(5-15)이 필요합니다.${gate} <span style="color:var(--text-muted);">(채널별 결과는 §4)</span>`;
 }
 
 /* === 주별 드라이버 분해 (centered, semi-log-valid) + Actual vs Fitted + 튀는 구간 ===
@@ -12284,9 +12369,22 @@ function runMmmMethTests(verbose = true) {
   // T5 trend existence verdict 문자열
   const tr = mmmTrendExistence(panel, cfg, "Regs");
   R.push({ test: "T5 · trend verdict 생성", actual: tr.verdict.slice(0, 12), pass: typeof tr.verdict === "string" && tr.adf_ct_p != null ? "✓" : "✗" });
-  // T6 cannibalization verdict (net>0 → organic 표 1표 이상)
-  const cn = mmmCannibalization(panel, cfg, "Regs", { coef: g.coef, p: g.p });
-  R.push({ test: "T6 · cannib verdict 생성", actual: cn.verdict.slice(0, 10), pass: cn.verdict.includes("ORGANIC") || cn.verdict.includes("INCONCLUSIVE") ? "✓" : "✗" });
+  // T6 cannibalization 3-state verdict (보수적 — verdict_class ∈ {ok, cannibal, inconclusive}, votes 합=3)
+  const cn = mmmCannibalization(panel, cfg, "Regs", { coef: g.coef, ci_lo: g.ci_lo, ci_hi: g.ci_hi, p: g.p });
+  const vt = cn.votes, vsum = (vt.FOR + vt.AGAINST + vt.ABSTAIN);
+  R.push({ test: "T6 · cannib 3-state verdict", actual: `${cn.verdict_class}·${cn.vote_summary}`, pass: ["ok", "cannibal", "inconclusive"].includes(cn.verdict_class) && vsum === 3 ? "✓" : "✗" });
+  // T6b · 검정력 게이트: 인위적 공선(spend=t) → ③ ABSTAIN & 판정 OK 불가
+  const colPanel = { week: panel.week, ch: { x: panel.week.map(w => 1000 + w * 50) }, dummy: {}, targets: { Regs: panel.targets.Regs }, channels: [{ key: "x", label: "x", kind: "perf" }] };
+  const cnGate = mmmCannibalization(colPanel, cfg, "Regs", { coef: -0.01, ci_lo: -0.5, ci_hi: 0.48, p: 0.9, vif: 9 }, "x");
+  R.push({ test: "T6b · 검정력 게이트 OK 차단", actual: `${cnGate.verdict_class}·gate=${cnGate.power_gate.blocked}`, pass: cnGate.power_gate.blocked && cnGate.verdict_class !== "ok" && cnGate.net_incrementality.vote === "ABSTAIN" ? "✓" : "✗" });
+  // 진동 spend 패널(시간과 비공선 → 검정력 게이트 통과) — net 투표 로직 자체를 검증
+  const oscPanel = { week: panel.week, ch: { x: panel.week.map(w => 5000 + 2000 * Math.sin(w / 3)) }, dummy: {}, targets: { Regs: panel.targets.Regs }, channels: [{ key: "x", label: "x", kind: "perf" }] };
+  // T6c · 유의한 음의 순효과 → AGAINST → LEAN CANNIBAL
+  const cnNeg = mmmCannibalization(oscPanel, cfg, "Regs", { coef: -0.3, ci_lo: -0.5, ci_hi: -0.1, p: 0.001 }, "x");
+  R.push({ test: "T6c · 유의 음순효과→cannibal", actual: `net=${cnNeg.net_incrementality.vote}·${cnNeg.verdict_class}`, pass: cnNeg.net_incrementality.vote === "AGAINST" && cnNeg.verdict_class === "cannibal" ? "✓" : "✗" });
+  // T6d · non-sig near-zero(p>.05)는 FOR로 세지 않음 (이전 룰의 구멍) → ABSTAIN
+  const cnNS = mmmCannibalization(oscPanel, cfg, "Regs", { coef: 0.0027, ci_lo: -0.4, ci_hi: 0.41, p: 0.6668 }, "x");
+  R.push({ test: "T6d · non-sig는 FOR 아님(ABSTAIN)", actual: `net=${cnNS.net_incrementality.vote}`, pass: cnNS.net_incrementality.vote === "ABSTAIN" ? "✓" : "✗" });
   // T7 audit r2
   const au = mmmAudit(panel, cfg);
   R.push({ test: "T7 · audit r2 유효", actual: String(au.r2), pass: au.r2 > 0 && au.r2 < 1 ? "✓" : "✗" });
@@ -12507,18 +12605,20 @@ function buildMmmMethCache() {
     C.byTarget = {};
     for (const t of targets) {
       const trend = mmmTrendExistence(panel, cfg, t);
-      // 채널별 카니발 (합산 안 함 — 채널마다 개별 삼각검증)
+      const mmm = mmmRunMmm(panel, cfg, t);
+      const vifMap = {}; (mmm.vif || []).forEach(v => { vifMap[v.var] = v.vif; });   // 검정력 게이트용 VIF
+      // 채널별 카니발 (합산 안 함 — 채널마다 개별 삼각검증, 보수적 3-state)
       const elasD = mmmElasticities(panel, cfg, t, cfg.defaultLam);
       const cannibByChannel = {}; const cannChannels = [];
       for (const ch of _mmmChans(panel)) {
         if (!panel.ch[ch.key] || (cfg.absorbed && cfg.absorbed.has(ch.key))) continue;
         const netE = elasD.find(r => r.var === "ln_" + ch.key) || { coef: NaN, p: NaN };
+        netE.vif = vifMap["ln_" + ch.key];
         cannibByChannel[ch.key] = mmmCannibalization(panel, cfg, t, netE, ch.key);
         cannChannels.push(ch.key);
       }
       const defCh = cannChannels.includes("google_roi") ? "google_roi" : cannChannels[0];
       const cannib = defCh ? cannibByChannel[defCh] : mmmCannibalization(panel, cfg, t, { coef: NaN, p: NaN }, null);
-      const mmm = mmmRunMmm(panel, cfg, t);
       const effects = mmmChannelEffects(panel, cfg, t, mmm.best_lambda);
       const decomp = mmmWeeklyDecomp(panel, cfg, t, mmm.best_lambda);
       C.byTarget[t] = { trend, cannib, cannibByChannel, cannChannels, defCh, mmm, effects, decomp };
@@ -12745,7 +12845,7 @@ function renderMmmSummary(c) {
 
         <div style="margin-bottom:10px;">
           <div style="font-size:13px;color:var(--text-1);line-height:1.65;"><span style="color:#7aa2f7;font-weight:700;">②  카니발(잠식) 여부</span>${mmmInfoIcon("cannib_overview")} — ${mmmCannibPlain(T.cannib, _MMM_TARGET_KO[t].split(" ")[0])}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">통계적 신뢰도 ${mmmConfInline(cConf, `3개 검정 중 ${T.cannib.organic_votes}개 오가닉 지지`, `독립적인 3개 검정(시간선행성·허위상관·순증분) 중 같은 방향을 가리키는 개수. 2개 이상이면 결론, 3개 전부면 신뢰도 최고(●●●●●). 합의가 약하면(1개) 낮음.`)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">통계적 신뢰도 ${mmmConfInline(cConf, `${T.cannib.vote_summary || ""}${T.cannib.power_gate && T.cannib.power_gate.blocked ? " · 검정력↓" : ""}`, `3개 독립 검정의 투표(FOR 오가닉 / AGAINST 카니발 / ABSTAIN 보류). 한 방향 합의가 강할수록 신뢰도(●)↑. 검정력 게이트(공선·표본부족)에 걸리면 "방어"로 단정 불가 → 신뢰도 최저.`)}</div>
         </div>
 
         <div>
@@ -12886,23 +12986,31 @@ function renderMmmCannib(c) {
   let selCh = MMM_METH_STATE.cannibChannel; if (!chans.includes(selCh)) selCh = T.defCh;
   const cn = (T.cannibByChannel && T.cannibByChannel[selCh]) || T.cannib;
   const p = cn.precedence, d = cn.detrend_corr, ni = cn.net_incrementality;
-  const vColor = cn.verdict.includes("ORGANIC") ? "#22c55e" : "#fbbf24";
+  const vcol = cn.verdict_class === "ok" ? "#22c55e" : cn.verdict_class === "cannibal" ? "#f87171" : "#fbbf24";
   const chLabel = (k) => (_mmmChans(c.panel).find(cc => cc.key === k) || {}).label || k;
   const chPills = chans.length > 1 ? `<div class="ab-pillgroup" style="margin-bottom:8px;"><span class="ab-pillgroup-label">채널</span>${chans.map(k => `<button class="ab-pill ${k === selCh ? 'active' : ''}" data-mmm-cannibch="${escapeHtml(k)}">${escapeHtml(chLabel(k))}</button>`).join("")}</div>` : "";
+  // FOR/AGAINST/ABSTAIN 배지
+  const voteBadge = (v) => v === "FOR" ? '<span style="color:#22c55e;font-weight:700;">FOR (오가닉)</span>' : v === "AGAINST" ? '<span style="color:#f87171;font-weight:700;">AGAINST (카니발)</span>' : '<span style="color:var(--text-muted);font-weight:700;">ABSTAIN (판단보류)</span>';
+  const gate = cn.power_gate || { blocked: false, reasons: [] };
+  const gateBox = gate.blocked ? `<div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.35);border-radius:8px;padding:9px 12px;font-size:11.5px;color:var(--text-1);margin:8px 0;">🚧 <strong>검정력 게이트 작동</strong> — ${gate.reasons.map(r => escapeHtml(r)).join(" · ")}. 이 상태에서 "순효과≈0"은 <strong>효과 없음이 아니라 증거 없음</strong>이라, ③은 자동 ABSTAIN이고 판정은 <strong>"방어/OK"가 될 수 없습니다</strong>(상한 INCONCLUSIVE).</div>` : "";
+  const revBox = cn.reverse_causality_risk ? `<div style="background:rgba(122,162,247,0.08);border-radius:8px;padding:8px 11px;font-size:11px;color:var(--text-1);margin:6px 0;">↩ <strong>역인과 점검:</strong> 지출이 시간따라 늘고(↑) 오가닉과 음의 상관 — 오가닉이 약할 때 방어적으로 예산을 올린 <strong>페이싱</strong>이면 ②의 음상관은 광고→오가닉이 아니라 <strong>오가닉→광고(예산 반응)</strong>일 수 있습니다(내생). 이 경우 holdout이 더 필수.</div>` : "";
+  const barTxt = `${cn.is_brand_intercept ? "브랜드 가로채기형" : "프로스펙팅"} 채널 → 잠정 OK 기준 <strong>FOR ≥ ${cn.for_bar} AND AGAINST = 0</strong>`;
   return `<section class="block" id="s-cannib">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-      <h3 class="section-title" style="font-size:15px;margin:0;"><span class="ix">§4</span>카니발 vs 오가닉 — ${MMM_METH_STATE.target} · <span style="color:#7aa2f7;">${escapeHtml(chLabel(selCh))}</span> (삼각검증)</h3>
-      <button class="ab-pill" data-mmm-cannib-csv="1" title="모든 채널 × 삼각검증(시간선행성·허위상관·순증분) + 탄력성·커버리지 1행씩 → CSV">⬇ 채널별 카니발 CSV</button>
+      <h3 class="section-title" style="font-size:15px;margin:0;"><span class="ix">§4</span>카니발 vs 오가닉 — ${MMM_METH_STATE.target} · <span style="color:#7aa2f7;">${escapeHtml(chLabel(selCh))}</span> (보수적 삼각검증)</h3>
+      <button class="ab-pill" data-mmm-cannib-csv="1" title="모든 채널 × 3-state 투표(FOR/AGAINST/ABSTAIN) + 게이트·탄력성·커버리지 1행씩 → CSV">⬇ 채널별 카니발 CSV</button>
     </div>
     ${chPills}
-    <div class="callout" style="border-left:3px solid ${vColor};"><div class="body"><strong>판정 (${cn.organic_votes}/3 오가닉):</strong> ${escapeHtml(cn.verdict)} <span style="color:var(--text-muted);font-size:11px;">— ${escapeHtml(chLabel(selCh))} 채널 기준 (다른 채널은 위 pill로 전환)</span></div></div>
-    ${mmmExplain('<strong>카니발 = 광고가 오가닉을 빼앗아 가는 것, 오가닉 = 광고와 무관한 외생적 변화.</strong> 단순 상관으론 둘을 구분 못 합니다(지출도 시간 따라 늘어서 "지출↑ 오가닉↓"가 카니발이든 우연이든 똑같이 들어맞음). 그래서 서로 <strong>독립적인 3가지 질문</strong>으로 삼각검증합니다 — ① 광고를 본격적으로 쓰기 <em>전부터</em> 이미 줄고 있었나?(원인은 결과보다 먼저 와야 함) ② 시간 추세를 빼면 음의 상관이 사라지나?(사라지면 진짜 범인은 시간=오가닉) ③ 순(net) 효과가 +인가?(+면 강한 카니발과 모순). <strong>2개 이상이 "오가닉"을 가리키면 광고는 잠식범이 아니라 방어 역할</strong>로 판정합니다.')}
+    <div class="callout" style="border-left:3px solid ${vcol};"><div class="body"><strong>판정:</strong> ${escapeHtml(cn.verdict)}<br><span style="font-size:12px;color:var(--text-muted);">투표 <strong>${cn.vote_summary}</strong> · ${barTxt} · ${escapeHtml(chLabel(selCh))} 채널 기준 (다른 채널은 위 pill로 전환)</span></div></div>
+    ${mmmExplain('<strong>카니발 = 광고가 오가닉을 빼앗아 가는 것, 오가닉 = 광고와 무관한 외생적 변화.</strong> 단순 상관으론 둘을 구분 못 합니다. 그래서 독립적인 3가지 질문을 <strong>FOR(오가닉)·AGAINST(카니발)·ABSTAIN(판단보류)</strong>로 투표합니다 — ① 저지출 구간(광고 본격화 前)에 오가닉이 <em>유의하게</em> 줄고 있었나? ② 시간 추세를 빼도 음상관이 남나? ③ 순(net) 효과가 유의한 +인가? <strong>입증책임은 비대칭</strong>입니다: "방어/OK"는 <strong>강하고 일관된 증거(FOR가 기준 이상 AND AGAINST 0 AND 검정력 통과)</strong>가 있을 때만, 모호하면 기본값은 <strong>INCONCLUSIVE</strong>. AGAINST가 하나라도 있으면 <strong>LEAN CANNIBAL</strong>. <strong>관측은 적색신호를 거를 뿐, 무죄를 증명하지 않습니다</strong> — 확정은 holdout(5-15).')}
+    ${gateBox}
     <div class="ab-stat-row">
-      <div class="ab-stat"><div class="ab-stat-label">① 시간 선행성 (초기 ${p.window_weeks}주)${mmmInfoIcon("precedence")}</div><div class="ab-stat-value" style="font-size:13px;">${p.declining_pre_ramp ? '<span style="color:#fbbf24;">램프 전 이미 하락</span>' : '<span style="color:#22c55e;">하락 없음</span>'}</div><div class="ab-stat-hint">slope ${p.kpi_slope_per_wk}/주 · 변화 ${p.kpi_change_over_window_pct}% · 평균 spend $${p.avg_spend}</div></div>
-      <div class="ab-stat"><div class="ab-stat-label">② 허위상관 (탈추세)${mmmInfoIcon("spurious_detrend")}</div><div class="ab-stat-value" style="font-size:13px;">${d.negative_collapses ? '<span style="color:#22c55e;">음상관 소멸/반전</span>' : escapeHtml(d.reading.slice(0, 20))}</div><div class="ab-stat-hint">raw ${d.raw} → detrend ${d.detrended} · 1차차분 ${d.first_diff}</div></div>
-      <div class="ab-stat"><div class="ab-stat-label">③ 순증분 (net 탄력성)${mmmInfoIcon("net_incrementality")}</div><div class="ab-stat-value tnum ${ni.net_elasticity > 0 ? 'pos' : 'neg'}">${ni.net_elasticity}</div><div class="ab-stat-hint">p=${ni.p} · ${ni.net_elasticity > 0 ? '양수 → 강한 카니발과 불일치' : '≤0 → 카니발 가능'}</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">① 시간 선행성 (저지출 ≤p25, n=${p.low_n})${mmmInfoIcon("precedence")}</div><div class="ab-stat-value" style="font-size:13px;">${voteBadge(p.vote)}</div><div class="ab-stat-hint">slope ${p.kpi_slope_per_wk}/주 (p=${p.slope_p}) · 누적 ${p.kpi_change_over_window_pct}% · spend≤$${p.p25}</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">② 허위상관 (탈추세·차분)${mmmInfoIcon("spurious_detrend")}</div><div class="ab-stat-value" style="font-size:13px;">${voteBadge(d.vote)}</div><div class="ab-stat-hint">raw ${d.raw} → detrend ${d.detrended} · 1차차분 ${d.first_diff}</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">③ 순증분 (net 탄력성)${mmmInfoIcon("net_incrementality")}</div><div class="ab-stat-value" style="font-size:13px;">${voteBadge(ni.vote)}</div><div class="ab-stat-hint">${isFinite(ni.net_elasticity) ? ni.net_elasticity : "—"} · p=${isFinite(ni.p) ? ni.p : "—"}${ni.ci_lo != null ? ` · CI[${ni.ci_lo}, ${ni.ci_hi}]` : ""}${gate.blocked ? " · 게이트로 ABSTAIN" : ""}</div></div>
     </div>
-    <p class="muted" style="font-size:11px;margin-top:6px;">관측 회귀는 spend↔시간 공선 때문에 카니발/오가닉을 구분 못 함 → 3개 독립 검정 삼각검증. 2/3+ 오가닉이면 "media는 방어, 원인 아님". ⚠ 결정적 증거는 geo holdout / organic-split (5-15).</p>
+    ${revBox}
+    <p class="muted" style="font-size:11px;margin-top:6px;">non-significant ≠ 무효과(p>.05 near-zero는 FOR로 세지 않음). 부호만이 아니라 <strong>유의성·CI·검정력</strong>을 함께 봅니다. ⚠ 어떤 경우든 결정적 증거는 <strong>geo holdout / organic-split (5-15)</strong>.</p>
   </section>`;
 }
 function renderMmmMmm(c) {
@@ -13157,22 +13265,24 @@ function downloadMmmCannibCsv() {
   const chans = T.cannChannels || [];
   const effByKey = {}; (T.effects || []).forEach(e => { effByKey[e.key] = e; });
   const q = (s) => { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-  const header = ["channel", "channel_label", "verdict", "organic_votes",
-    "precedence_window_wk", "precedence_slope_per_wk", "precedence_change_pct", "precedence_avg_spend", "precedence_declining_pre_ramp",
-    "detrend_raw", "detrend_detrended", "detrend_first_diff", "detrend_negative_collapses",
-    "net_elasticity", "net_p",
+  const header = ["channel", "channel_label", "is_brand_intercept", "verdict", "verdict_class",
+    "vote_FOR", "vote_AGAINST", "vote_ABSTAIN", "for_bar", "power_gate_blocked", "power_gate_reasons", "reverse_causality_risk", "spend_time_corr",
+    "prec_vote", "prec_low_n", "prec_p25", "prec_slope_per_wk", "prec_slope_p", "prec_change_pct",
+    "detrend_vote", "detrend_raw", "detrend_detrended", "detrend_first_diff",
+    "net_vote", "net_elasticity", "net_p", "net_ci_lo", "net_ci_hi",
     "elasticity", "ci_lo", "ci_hi", "p", "significant", "effect_verdict",
     "per10pct_pct", "weekly_per_1k", "mean_spend", "coverage_nonzero", "coverage_total", "coverage_ratio", "sparse", "trailing_zero"];
   const lines = [header.map(q).join(",")];
   for (const k of chans) {
     const cn = T.cannibByChannel[k]; if (!cn) continue;
-    const e = effByKey[k] || {}; const pr = cn.precedence, dt = cn.detrend_corr, ni = cn.net_incrementality;
+    const e = effByKey[k] || {}; const pr = cn.precedence, dt = cn.detrend_corr, ni = cn.net_incrementality, vt = cn.votes || {}, pg = cn.power_gate || {};
     const per10 = (e.elas != null) ? +(e.elas * 10).toFixed(2) : "";
     const cov = (e.total) ? +(e.nonzero / e.total).toFixed(3) : "";
-    const row = [k, cn.channelLabel, cn.verdict, cn.organic_votes,
-      pr.window_weeks, pr.kpi_slope_per_wk, pr.kpi_change_over_window_pct, pr.avg_spend, pr.declining_pre_ramp,
-      dt.raw, dt.detrended, dt.first_diff, dt.negative_collapses,
-      ni.net_elasticity, ni.p,
+    const row = [k, cn.channelLabel, cn.is_brand_intercept, cn.verdict, cn.verdict_class,
+      vt.FOR, vt.AGAINST, vt.ABSTAIN, cn.for_bar, pg.blocked, (pg.reasons || []).join(" | "), cn.reverse_causality_risk, cn.spend_time_corr,
+      pr.vote, pr.low_n, pr.p25, pr.kpi_slope_per_wk, pr.slope_p, pr.kpi_change_over_window_pct,
+      dt.vote, dt.raw, dt.detrended, dt.first_diff,
+      ni.vote, ni.net_elasticity, ni.p, (ni.ci_lo != null ? ni.ci_lo : ""), (ni.ci_hi != null ? ni.ci_hi : ""),
       (e.elas != null ? e.elas : ""), (e.ci ? e.ci[0] : ""), (e.ci ? e.ci[1] : ""), (e.p != null ? e.p : ""), (e.sig != null ? e.sig : ""), (e.verdict || ""),
       per10, (e.weeklyPer1k == null ? "" : e.weeklyPer1k), (e.meanSpend != null ? e.meanSpend : ""),
       (e.nonzero != null ? e.nonzero : ""), (e.total != null ? e.total : ""), cov, (e.sparse != null ? e.sparse : ""), (e.trailingZero != null ? e.trailingZero : "")];
@@ -13185,7 +13295,7 @@ function exportMmmMethMd() {
   L.push("## 매크로 사실\n"); for (const [k, v] of Object.entries(c.macro)) L.push(`- **${k}**: ${v}`);
   L.push("\n## 시트 audit\n", `- target=RR n=${c.audit.n} R²=${c.audit.r2} adjR²=${c.audit.adj_r2}`, "- brand 추가 시 R² 변화: " + c.audit.brand_test.map(b => `${b.target} ${b.R2_no_brand}→${b.R2_with_brand}`).join(" · "));
   for (const t of c.targets) { const T = c.byTarget[t];
-    L.push(`\n## ${t}\n`, `- 추세: ${T.trend.verdict}`, `- 카니발: ${T.cannib.verdict} (${T.cannib.organic_votes}/3 오가닉)`, `- best adstock λ: ${T.mmm.best_lambda}`, `- 탄력성: ${T.mmm.elasticities.map(e => `${e.var}=${e.coef}`).join(", ")}`, `- Shapley 최상위: ${T.mmm.shapley.rows[0]?.driver} (${(T.mmm.shapley.rows[0]?.pct || 0).toFixed(1)}%)`); }
+    L.push(`\n## ${t}\n`, `- 추세: ${T.trend.verdict}`, `- 카니발: ${T.cannib.verdict} (${T.cannib.vote_summary || ""}${T.cannib.power_gate && T.cannib.power_gate.blocked ? " · 검정력 게이트 차단" : ""})`, `- best adstock λ: ${T.mmm.best_lambda}`, `- 탄력성: ${T.mmm.elasticities.map(e => `${e.var}=${e.coef}`).join(", ")}`, `- Shapley 최상위: ${T.mmm.shapley.rows[0]?.driver} (${(T.mmm.shapley.rows[0]?.pct || 0).toFixed(1)}%)`); }
   L.push("\n---\n어떤 계수도 검증된 인과/증분 추정이 아님. 결정적 검증은 geo holdout / organic-split.");
   _mmmDownload(`mmm_verdict_${new Date().toISOString().slice(0, 10)}.md`, L.join("\n"), "text/markdown");
 }

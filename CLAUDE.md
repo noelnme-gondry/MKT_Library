@@ -238,6 +238,7 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 6. **Cohen's r 기준 가이드**: |r|<CI 노이즈 / 0.1~0.3 약함 / 0.3~0.5 중간 / 0.5~0.7 강함 / >0.7 매우 강함
 7. **결정론 (Determinism) 필수** (PR #28 검증): `Math.random` 절대 사용 금지. Bayesian posterior 비교는 Monte Carlo 대신 **고정 grid 수치적분** (`betaProbGreater`). 같은 입력 → byte-identical 출력 보장. 골든 테스트 T6 패턴으로 검증.
 8. **WLS impressions-weighted LPM** + FWL within-transformation (campaign_id 흡수) + VIF 기반 collinearity 제거 + BH 다중검정 보정 — 직접 구현 단순·안정. logistic IRLS는 v1 보류.
+9. **입증책임 비대칭 + non-sig≠무효과** (카니발 §4, PR #87): 관측 검정으로 "효과 없음/방어 OK"를 단정하려면 강하고 일관된 증거를 요구하고, 모호하면 기본값은 보수적(INCONCLUSIVE). p>.05 near-zero를 "효과 없음" 표로 세지 말 것(검정력 부족). 식별 불가(spend∥time 공선)면 "추정≈0"은 *증거 없음*이지 *효과 없음*이 아니므로 검정력 게이트로 긍정 판정을 차단. 임계값은 config로 분리해 결정론 유지(§9 구현 메모).
 
 ---
 
@@ -376,6 +377,9 @@ TOC/사이드바/헤더에 보이는 번호를 바꿀 때 **내부 id(`5-2` 등)
 - **카니발 합산 금지**: `mmmCannibalization(…, channelKey)`로 채널마다 개별 삼각검증(precedence·detrend는 그 채널 spend, net은 그 채널 탄력성). `cannibByChannel` 전부 계산 + §4 채널 pill 셀렉터. "ROI는 안 떨어지는데 CBUA부터 떨어지나"를 채널별로.
 - **페이지 전역 필터는 목차로**: `pageShell(opts.tocFilters)` 공용 슬롯(.toc-filters) — 타깃·플랫폼 같은 전역 컨트롤을 우측 목차 상단 고정 패널로. 채널 같은 분석-지점 필터는 본문 유지. 핸들러는 document 위임이라 위치 무관.
 - **드래그앤드롭 매핑**(5-19): 컬럼 칩 → 종속Y/독립/그룹/라벨 drop zone(HTML5 DnD: dragstart setData / zone dragover·drop으로 role 설정, Y는 1개 강제, ✕ 미지정). 독립 칩에 type·transform·**perf/brand** kind. 적합 로직은 role/type/transform 모델 그대로 — DnD는 role 설정 UI일 뿐. **DnD 포인터 인터랙션은 headless 검증 불가 → 브라우저 확인 필요**.
+
+### 12.20 카니발 보수적 판정 — 3-STATE + 검정력 게이트 + 채널 prior (PR #86~87, 5-18 §4)
+관측 삼각검증은 **혐의를 벗기는 도구가 아니라 적색신호를 거르는 도구**다(입증책임 비대칭). 2-state "2/3 다수결"의 구멍(p>.05 near-zero를 organic 표로 셈)을 닫고 **3-STATE 투표(FOR 오가닉 / AGAINST 카니발 / ABSTAIN 보류)**로. 임계값은 `MMM_CANNIB_RULES` config(결정론 하드 규칙, LLM은 서술만). ① 시간선행성=**저지출 구간(spend≤p25)** slope 유의+누적≥10%(달력 초반 아님). ② 탈추세/차분: det&fd≥-0.10→FOR, det|fd≤-0.20→AGAINST, 사이 ABSTAIN. ③ NET: coef≥0&p<.05→FOR / ci_lo>-material→FOR(의미있는 카니발 배제) / coef<0&p<.05→AGAINST / 그 외 **ABSTAIN(non-sig≠무효과)**. **검정력 게이트**(VIF≥5 OR |corr(log-spend,t)|≥0.7 OR ③CI폭≥3×|점추정| OR n<30) 걸리면 ③ 자동 ABSTAIN + 판정 상한 INCONCLUSIVE(절대 OK 불가) — spend∥time이면 관측이 구조적으로 못 가름. **채널 prior**: 브랜드 가로채기(`mmmIsBrandIntercept`=kind brand 또는 이름 정규식 brand/asa/apple_search)는 bar=3(FOR=3 AND AGAINST=0), prospecting은 bar=2. 판정: AGAINST≥1→LEAN CANNIBAL / (FOR≥bar AND AGAINST=0 AND 게이트통과)→잠정 OK("카니발 없음" 단정 금지, "방어 가능성 높음·확정은 holdout") / else INCONCLUSIVE(기본값). 역인과(reverse_causality_risk: raw<-0.1&corr(spend,t)>0.3) 플래그로 "방어적 페이싱이면 음상관은 오가닉→광고(내생)" 경고. 골든 T6b(게이트 OK차단)·T6c(유의음→cannibal)·T6d(non-sig→ABSTAIN). 판정/투표/게이트는 채널·지표별 튜닝 가능(config). **검증=적대 워크플로 3렌즈 conforms**(결정표·게이트·prior 시나리오 실측 대조). 단일플랫폼 byte-동일(verdict만 보수화).
 
 ### 12.19 채널별 수확체감 곡선 + 분석 결과 CSV 다운로드 (PR #85, 5-18)
 - **saturation은 채널별로**: `mmmRunMmm`이 단일 `saturation`(골든 호환 유지)에 더해 `saturationByChannel`(brand·sparse·absorbed·미포함 제외, 각 {ln_coef, marginal_kpi_per_1k, label, recentMean}) 반환. §5에 **수확체감 곡선 차트**(`mmm-sat-chart`: x=지출, y=`b/(1+x)*1000` +$1k당 명, 음수=dashed 회색=노이즈, 색은 `MMM_DECOMP_PALETTE`/`mmmDriverColor`로 분해와 일치) + 채널별 표($10k/$35k/$60k/현지출). **음수 한계효과=노이즈(잠식 아님)** 캐비엇 필수(§7 PR#62). §0 weeklyPer1k(현 1점)와 중복 아님(여긴 곡선 전체).
