@@ -13115,7 +13115,7 @@ function renderMmmDecomp(c) {
     </div>
     <div class="chart-container" style="height:240px;margin-bottom:8px;"><canvas id="mmm-fit-chart"></canvas></div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:2px 0 6px;">
-      <p style="font-size:12px;margin:0;color:var(--text-1);"><strong>baseline 위에 드라이버 기여를 쌓아 올린 예측 구성</strong> — 맨 위 경계 = 모델 예측(predict), 흰 선 = 실제. 각 색 띠 = 그 드라이버가 그 주에 차지한 ${tgtKo} 명수.</p>
+      <p style="font-size:12px;margin:0;color:var(--text-1);"><strong>baseline 위에 드라이버 기여를 쌓아 올린 예측 구성</strong> — 맨 위 경계 = 모델 예측(predict), 흰 선 = 실제. 색 띠 두께 = 그 드라이버의 개별 기여. <strong>마우스를 올리면 각 드라이버의 ±명(개별 기여)과 "baseline + 기여합 = 예측"</strong>이 표시됩니다(띠 위치는 누적이라 값이 아니라 두께를 보세요). 채널 기여는 <strong>log(수확체감)</strong> 공간이라 지출을 2배로 늘려도 기여가 2배가 되진 않습니다(체감) — adstock(이월)·saturation이 이미 반영된 값입니다.</p>
       <button class="ab-pill" data-mmm-decomp-csv="1" title="주별·드라이버별 기여(명) + baseline·예측·실제 + 채널별 지출 → CPR 등 계산용">⬇ 주별 기여·지출 CSV</button>
     </div>
     <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:12px;align-items:start;">
@@ -13214,14 +13214,30 @@ function renderMmmCharts(c) {
     D.groupNames.forEach((g, i) => {
       cum = cum.map((v, ti) => v + D.weeks[ti].contrib[g]);
       const col = MMM_DECOMP_PALETTE[i % MMM_DECOMP_PALETTE.length];
-      datasets.push({ label: g, data: cum.map(v => +v.toFixed(1)), borderColor: col, backgroundColor: col + "66", borderWidth: 1, pointRadius: 0, fill: "-1", tension: 0.15 });
+      // 띠 위치는 누적값, 툴팁엔 개별 기여(_indiv) 표시 — 누적값을 개별 기여로 오인하는 혼동 제거
+      datasets.push({ label: g, data: cum.map(v => +v.toFixed(1)), _indiv: D.weeks.map(w => w.contrib[g]), borderColor: col, backgroundColor: col + "66", borderWidth: 1, pointRadius: 0, fill: "-1", tension: 0.15 });
     });
     datasets.push({ label: "예측 (predict)", data: D.weeks.map(w => +w.fitted.toFixed(1)), borderColor: "#7aa2f7", borderWidth: 2, pointRadius: 0, fill: false, tension: 0.15 });
     datasets.push({ label: "실제 (Actual)", data: D.weeks.map(w => Math.round(w.actual)), borderColor: "#fff", borderWidth: 1.4, pointRadius: 0, fill: false, tension: 0.15 });
     destroyChartIfExists("mmm-decomp-chart");
     CHART_INSTANCES["mmm-decomp-chart"] = new Chart(document.getElementById("mmm-decomp-chart"), {
       type: "line", data: { labels, datasets },
-      options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { labels: { color: muted, font: { size: 9 }, boxWidth: 10 } }, title: { display: true, text: "baseline + 드라이버 누적 = 예측 (명)", color: muted } }, scales: { x: { ticks: { color: muted, maxTicksLimit: 12 }, grid: { color: border } }, y: { ticks: { color: muted }, grid: { color: border } } } },
+      options: {
+        responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { labels: { color: muted, font: { size: 9 }, boxWidth: 10 } },
+          title: { display: true, text: "baseline + 드라이버 기여 = 예측 (명) · 띠=누적위치, 툴팁=개별 기여", color: muted },
+          tooltip: {
+            itemSort: (a, b) => a.datasetIndex - b.datasetIndex,
+            callbacks: {
+              // 드라이버 띠는 개별 기여(±), baseline·예측·실제는 값 그대로
+              label: (ctx) => { const ds = ctx.dataset; if (ds._indiv) { const v = ds._indiv[ctx.dataIndex]; return `${ds.label}: ${v >= 0 ? "+" : ""}${Math.round(v).toLocaleString()}명`; } return `${ds.label}: ${Math.round(ctx.parsed.y).toLocaleString()}명`; },
+              footer: (items) => { if (!items.length) return ""; const w = D.weeks[items[0].dataIndex]; const sum = D.groupNames.reduce((a, g) => a + w.contrib[g], 0); return `baseline ${Math.round(w.baseline).toLocaleString()} ${sum >= 0 ? "+" : "−"} 기여합 ${Math.abs(Math.round(sum)).toLocaleString()} = 예측 ${Math.round(w.fitted).toLocaleString()} (실제 ${Math.round(w.actual).toLocaleString()})`; },
+            },
+          },
+        },
+        scales: { x: { ticks: { color: muted, maxTicksLimit: 12 }, grid: { color: border } }, y: { ticks: { color: muted }, grid: { color: border } } },
+      },
     });
   }
 }
