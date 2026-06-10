@@ -13073,6 +13073,7 @@ function renderMmmTrend(c) {
     <div class="callout" style="border-left:3px solid ${vColor};"><div class="body"><strong>판정:</strong> ${escapeHtml(tr.verdict)}</div></div>
     ${mmmExplain('<strong>p값 &lt; 0.05 = 우연으로 보기 어려움 = 추세 신호 있음</strong>, p값이 크면(예: 0.5) 신호 없음. 검정을 여러 개 쓰는 이유는 추세가 진짜인지 각도를 바꿔 확인하기 위해서입니다 — STL(직선 가정 없이 곡선으로), Mann-Kendall(꾸준히 오르내리는지), ADF/KPSS(진짜 추세 vs 술취한 걸음 같은 랜덤워크). 표에서 가장 중요한 건 맨 아래 <strong>"매체+계절 제거 후 잔차 MK"</strong> — 이게 "no trend"면 광고를 다 빼고 봐도 오가닉 자체엔 추세가 없다는 뜻입니다. (STL Δ%는 짧은 데이터에서 흔들려서 참고용)')}
     <div class="chart-container" style="height:240px;margin:8px 0;"><canvas id="mmm-stl-chart"></canvas></div>
+    <p class="muted" style="font-size:10.5px;margin:-2px 0 6px;">추세선 비교 — <span style="color:#f87171;">STL</span>(곡선, 비선형·데이터기반) · <span style="color:#fbbf24;">Theil-Sen</span>(만-켄달의 짝꿍 기울기, 이상치에 강한 직선) · <span style="color:#7aa2f7;">OLS</span>(단순 선형, 회귀에 t 넣었을 때의 직선). 세 선이 비슷하면 추세가 robust, 갈리면 형태에 민감(예: 출시 초 급등). 만-켄달 표 값은 기울기 크기가 아니라 <strong>오르내림 방향 판정</strong>이라, "no trend"면 Theil-Sen 기울기가 ±0 근처로 거의 평평합니다. <strong>ADF·KPSS·1차차분 drift는 "추세선"이 아니라 정상성/유의성 <em>검정</em>이라 선이 없고 아래 표 값으로만 봅니다.</strong> (범례 클릭으로 선 토글)</p>
     <div class="table-wrap"><table class="data" style="font-size:11.5px;"><tbody>
       <tr><td>STL 데이터기반 추세 Δ%${mmmInfoIcon("stl")}</td><td class="tnum ${tr.stl_pct < 0 ? 'neg' : 'pos'}">${tr.stl_pct}% <span style="color:var(--text-muted);font-size:10px;">(짧은 시계열 보조지표)</span></td></tr>
       <tr><td>Mann-Kendall (raw)${mmmInfoIcon("mann_kendall")}</td><td>${f(tr.mk_raw)}</td></tr>
@@ -13252,15 +13253,25 @@ function renderMmmCharts(c) {
   const T = c.byTarget[MMM_METH_STATE.target]; if (!T) return;
   const muted = getCssVar('--text-muted'), border = getCssVar('--border'), bg1 = getCssVar('--bg-1');
   const noLegendOpts = (title) => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: muted, font: { size: 10 } } }, title: { display: !!title, text: title, color: muted } }, scales: { x: { ticks: { color: muted, maxTicksLimit: 12 }, grid: { color: border } }, y: { ticks: { color: muted }, grid: { color: border } } } });
-  // STL trend
+  // STL trend + 다른 검정의 추세선 겹치기 (Theil-Sen=MK 짝꿍, OLS 선형). ADF/KPSS는 정상성 검정이라 선 없음.
   const stl = T.trend.stl, y = c.panel.targets[MMM_METH_STATE.target];
   if (stl && document.getElementById("mmm-stl-chart")) {
+    const nN = y.length;
+    // Theil-Sen (만-켄달 짝꿍): median 기울기 + median 절편
+    const tsSlope = _theilSen(y);
+    const tsB = [...y.map((v, i) => v - tsSlope * i)].sort((a, b) => a - b)[Math.floor(nN / 2)];
+    const tsLine = y.map((_, i) => +(tsB + tsSlope * i).toFixed(1));
+    // OLS 선형추세
+    const olsFit = mmmOls(y.map((_, i) => [1, i]), y);
+    const olsLine = olsFit ? y.map((_, i) => +(olsFit.beta[0] + olsFit.beta[1] * i).toFixed(1)) : null;
     destroyChartIfExists("mmm-stl-chart");
     CHART_INSTANCES["mmm-stl-chart"] = new Chart(document.getElementById("mmm-stl-chart"), {
       type: "line", data: { labels: c.panel.week, datasets: [
         { label: "actual", data: y, borderColor: muted, borderWidth: 1, pointRadius: 0, tension: 0.2 },
-        { label: "STL 추세 (데이터기반)", data: stl.trend, borderColor: "#f87171", borderWidth: 2.5, pointRadius: 0, tension: 0.3 },
-      ] }, options: noLegendOpts("추세 존재 (STL, 선형가정 없음)"),
+        { label: "STL 추세 (비선형·데이터기반)", data: stl.trend, borderColor: "#f87171", borderWidth: 2.5, pointRadius: 0, tension: 0.3 },
+        { label: "Theil-Sen (만-켄달 기울기)", data: tsLine, borderColor: "#fbbf24", borderWidth: 2, borderDash: [6, 3], pointRadius: 0 },
+        ...(olsLine ? [{ label: "OLS 선형추세", data: olsLine, borderColor: "#7aa2f7", borderWidth: 1.5, borderDash: [2, 3], pointRadius: 0 }] : []),
+      ] }, options: { ...noLegendOpts("추세 존재 — STL(곡선)·Theil-Sen(MK)·OLS선형 비교"), plugins: { legend: { display: true, labels: { color: muted, font: { size: 9 }, boxWidth: 12 } }, title: { display: true, text: "추세 존재 — STL(곡선)·Theil-Sen(MK)·OLS선형 비교", color: muted } } },
     });
   }
   // adstock CV
