@@ -11691,7 +11691,7 @@ const MMM_GLOSSARY = {
     "term": "변화점 탐지 (change point detection, 추세가 꺾인 시점을 데이터가 찾기)",
     "reason": "'42주에 캠페인이 바뀌었다' 같은 구조변화 시점을 사람이 가정해서 더미(step)로 넣으면, 그 가정이 틀리면 분석 전체가 흔들립니다. 대신 데이터가 직접 '오가닉 성장률이 통계적으로 달라진 주'를 찾게 하면, 그 시점이 광고비 변곡과 겹치는지로 선행성(누가 먼저 움직였나) 단서를 얻습니다.",
     "how": "시계열을 1차차분(Δ=이번주−저번주)해 '주당 성장률'로 바꾼 뒤, 이 성장률의 평균·분산이 바뀌는 지점을 찾습니다. 후보 분할마다 각 구간을 정규분포로 적합한 비용(–2logL)을 더하고, 변화점을 늘릴 때마다 BIC 페널티(ln N에 비례)를 물려 '진짜 꺾임'만 남깁니다 — 잡음으로 인한 과탐지를 억제. 최적분할(optimal partitioning)로 정확해를 구하며 결정론적입니다.",
-    "interpret": "표의 '직전→직후 성장률'이 +에서 −로 바뀌면 상승→하락 반전, 둘 다 음수면 하락 가속/감속. 그 주가 광고비 변곡(±2주)과 겹치면 '동기화'로 표시. 핵심은 선후: 오가닉 하락이 광고비 증액보다 먼저면 광고가 하락을 만든 게 아닐 가능성(FOR 방향), 광고비 증액이 먼저면 잠식과 시점상 양립.",
+    "interpret": "각 변화점 카드에 '그때 무슨 일'을 함께 보여줍니다 — 전후 ±4주에서 ① 타깃 평균이 얼마나(±%) ② 어느 채널 지출이 가장 크게 변했는지 ③ 동시 이벤트(휴일·시즌) ④ 1주 이상치(spike)인지 지속 추세전환(shift)인지. <strong>◆ spike</strong>는 한 주만 튄 이상치(robust median±MAD로 자동 분류)라 추세 해석에서 제외해도 됩니다. <strong>▲ shift</strong>가 진짜 추세 전환. 핵심은 선후: 오가닉 하락이 광고비 증액보다 먼저면 광고가 하락을 만든 게 아닐 가능성(FOR 방향), 광고비 증액이 먼저면 잠식과 시점상 양립.",
     "significance": "BIC 페널티가 변화점 개수를 자동 조절하므로, 통계적으로 충분히 큰 꺾임만 잡힙니다(작은 흔들림은 무시). 짧은 시계열·완만한 추세면 '변화점 없음'이 정상입니다.",
     "example": "Tinder KR에서 오가닉 가입이 38주부터 꺾이기 시작했는데 Google 증액은 45주였다면, 하락이 광고보다 먼저라 '광고가 잠식했다'고 보기 어렵습니다(이미 떨어지던 걸 광고로 방어한 그림).",
     "caveat": "시점이 겹친다고 인과가 아닙니다 — 같은 시기 시장요인(시즌·경쟁·제품변경)이 둘 다 움직였을 수 있습니다. 타이밍은 가설을 좁히는 단서일 뿐, 확정은 holdout(5-15)."
@@ -12115,7 +12115,7 @@ function mmmChangePoints(series, opts) {
   opts = opts || {};
   const minSeg = opts.minSeg || 4, mult = opts.penaltyMult != null ? opts.penaltyMult : 2;
   const N0 = (series || []).length;
-  if (N0 < 2 * minSeg + 2) return { points: [], segments: [], dy: [] };
+  if (N0 < 2 * minSeg + 2) return { points: [], pointTypes: [], segments: [], outliers: [], dy: [] };
   const z = []; for (let i = 1; i < N0; i++) z.push(series[i] - series[i - 1]);   // Δ(성장률)
   const m = z.length;
   const ps = [0], ps2 = [0];
@@ -12139,13 +12139,61 @@ function mmmChangePoints(series, opts) {
   const bounds = []; let t = m; while (t > 0) { bounds.push(t); t = prev[t]; } bounds.push(0); bounds.reverse();
   // z-경계 인덱스 s ↔ series 인덱스 s (그 지점에서 성장률 regime 전환)
   const cps = bounds.slice(1, -1);
-  // 세그먼트별 평균 성장률(/주) — 해석용
+  // 세그먼트별 평균 성장률(/주, Δ) + 평균 레벨(원 series) — 해석용
   const segments = [];
   for (let i = 0; i < bounds.length - 1; i++) {
     const s = bounds[i], e = bounds[i + 1], len = e - s;
-    segments.push({ startIdx: s, endIdx: e, meanGrowth: +((ps[e] - ps[s]) / len).toFixed(2) });
+    const segVals = series.slice(s, Math.min(e + 1, N0));
+    const meanLevel = segVals.reduce((a, b) => a + b, 0) / (segVals.length || 1);
+    segments.push({ startIdx: s, endIdx: e, meanGrowth: +((ps[e] - ps[s]) / len).toFixed(2), meanLevel: +meanLevel.toFixed(1) });
   }
-  return { points: cps, segments, dy: z };
+  // robust 이상치 탐지 (rolling median window 7 + 전역 MAD) — 1주 spike 분류용
+  const half = 3;
+  const med = [...series].sort((a, b) => a - b)[Math.floor(N0 / 2)];
+  const madArr = series.map(v => Math.abs(v - med)).sort((a, b) => a - b);
+  const mad = (madArr[Math.floor(N0 / 2)] || 0) * 1.4826 + 1e-9;
+  const outliers = [];
+  for (let i = 0; i < N0; i++) {
+    const w = series.slice(Math.max(0, i - half), Math.min(N0, i + half + 1)).sort((a, b) => a - b);
+    const mwin = w[Math.floor(w.length / 2)];
+    const zsc = Math.abs(series[i] - mwin) / mad;
+    if (zsc > 3) outliers.push({ idx: i, z: +zsc.toFixed(1) });
+  }
+  const outIdx = new Set(outliers.map(o => o.idx));
+  // 변화점 분류: 인근(±2주)에 이상치 주가 있으면 spike(일시), 아니면 shift(추세전환)
+  const pointTypes = cps.map(s => {
+    for (let d = -2; d <= 2; d++) if (outIdx.has(s + d)) return "spike";
+    return "shift";
+  });
+  return { points: cps, pointTypes, segments, outliers, dy: z };
+}
+/* --- 변화점 드라이버: 각 변화점 전후 ±W주 비교 (그때 뭐가 어떻게 튀었나) ---
+ * 타깃 평균 변화 + 채널별 지출 변화(큰 순) + 동시 이벤트(더미) + 이상치 여부 → "그 시점에 무슨 일". */
+function mmmChangePointDrivers(panel, target, cp, opts) {
+  opts = opts || {}; const W = opts.window || 4;
+  const y = panel.targets[target] || [], wk = panel.week || [], N = y.length;
+  const chans = _mmmChans(panel).filter(ch => panel.ch[ch.key]);
+  const outIdx = new Set((cp.outliers || []).map(o => o.idx));
+  const mean = a => a.length ? a.reduce((s, v) => s + (isFinite(v) ? v : 0), 0) / a.length : NaN;
+  return (cp.points || []).map((idx, k) => {
+    const lo = Math.max(0, idx - W), hi = Math.min(N, idx + W);
+    const tb = mean(y.slice(lo, idx)), ta = mean(y.slice(idx, hi));
+    const channels = chans.map(ch => {
+      const sp = panel.ch[ch.key] || [];
+      const sb = mean(sp.slice(lo, idx)), sa = mean(sp.slice(idx, hi));
+      const pct = sb > 0 ? (sa - sb) / sb * 100 : (sa > 0 ? 100 : 0);
+      return { key: ch.key, label: ch.label, before: sb, after: sa, delta: sa - sb, pct };
+    }).sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+    const events = [];
+    const dums = panel.dummy || {};
+    for (const dn in dums) { let act = 0; for (let i = lo; i < hi; i++) if (dums[dn][i]) act++; if (act > 0) events.push(dn); }
+    return {
+      idx, week: wk[idx], type: cp.pointTypes[k], isOutlier: outIdx.has(idx),
+      targetBefore: +tb.toFixed(1), targetAfter: +ta.toFixed(1), targetDelta: +(ta - tb).toFixed(1),
+      targetPct: tb > 0 ? +((ta - tb) / tb * 100).toFixed(1) : 0,
+      channels, events,
+    };
+  });
 }
 /* --- cannibalization 보수적 삼각검증 (TIGHT VERDICT, 3-STATE FOR/AGAINST/ABSTAIN) ---
  * 대원칙: ① 입증책임 비대칭 → 모호하면 INCONCLUSIVE ② 관측은 적색신호 거르는 도구(혐의 벗기는 도구 아님)
@@ -12567,17 +12615,25 @@ function runMmmMethTests(verbose = true) {
     && gG.spend_to_organic.coefSum > 0 && gG.spend_to_organic.p < 0.05
     && JSON.stringify(gG) === JSON.stringify(gG2);
   R.push({ test: "T6e · granger null가드·시차탐지·결정론", actual: `null=${gNull === null}·s→o lag${gG ? gG.spend_to_organic.lag : "—"} p=${gG ? gG.spend_to_organic.p : "—"}`, pass: gOk ? "✓" : "✗" });
-  // T6f · 변화점 탐지: null가드(짧음) + 명확한 추세반전 탐지(상승→하락 peak) + 결정론
+  // T6f · 변화점 탐지: null가드(짧음) + 추세반전(shift) 탐지 + 결정론
   const cpShort = mmmChangePoints([1, 2, 3, 4, 5]);   // n<2*minSeg+2 → 빈 결과
   const up = Array.from({ length: 26 }, (_, i) => 100 + 10 * i);
   const down = Array.from({ length: 26 }, (_, i) => 350 - 10 * (i + 1));
-  const vshape = up.concat(down);   // 26주 상승 후 26주 하락 → peak 부근에 변화점 1개
+  const vshape = up.concat(down);   // 26주 상승 후 26주 하락 → peak 부근 변화점, type=shift
   const cpV = mmmChangePoints(vshape, { minSeg: 4, penaltyMult: 2 });
   const cpV2 = mmmChangePoints(vshape, { minSeg: 4, penaltyMult: 2 });
-  const nearPeak = cpV.points.some(idx => Math.abs(idx - 26) <= 3);
+  const nearPeak = cpV.points.some((idx, i) => Math.abs(idx - 26) <= 3 && cpV.pointTypes[i] === "shift");
   const cpOk = cpShort.points.length === 0 && cpV.points.length >= 1 && nearPeak
     && JSON.stringify(cpV) === JSON.stringify(cpV2);
-  R.push({ test: "T6f · changepoint null가드·반전탐지·결정론", actual: `short=${cpShort.points.length}·peak@${cpV.points.join(",")}`, pass: cpOk ? "✓" : "✗" });
+  R.push({ test: "T6f · changepoint null가드·반전(shift)탐지·결정론", actual: `short=${cpShort.points.length}·peak@${cpV.points.join(",")}·${cpV.pointTypes.join(",")}`, pass: cpOk ? "✓" : "✗" });
+  // T6g · spike 분류: 평탄 시계열 + 1주 이상치 → 인근 변화점 type=spike + 드라이버 카드 생성
+  const flat = Array.from({ length: 40 }, (_, i) => 1000 + (i % 2 === 0 ? 5 : -5));   // 평탄(노이즈 약간)
+  flat[20] = 5000;   // 1주 spike
+  const cpSp = mmmChangePoints(flat, { minSeg: 4, penaltyMult: 2 });
+  const hasSpike = cpSp.pointTypes.includes("spike") && cpSp.outliers.some(o => o.idx === 20);
+  const drvSp = mmmChangePointDrivers({ week: flat.map((_, i) => i + 1), targets: { Regs: flat }, ch: {}, dummy: {} }, "Regs", cpSp);
+  const drvOk = drvSp.length === cpSp.points.length && drvSp.every(d => d.targetBefore != null && Array.isArray(d.channels));
+  R.push({ test: "T6g · spike 분류 + 드라이버 카드", actual: `spike=${hasSpike}·drivers=${drvSp.length}·outlier@${cpSp.outliers.map(o => o.idx).join(",")}`, pass: hasSpike && drvOk ? "✓" : "✗" });
   // T7 audit r2
   const au = mmmAudit(panel, cfg);
   R.push({ test: "T7 · audit r2 유효", actual: String(au.r2), pass: au.r2 > 0 && au.r2 < 1 ? "✓" : "✗" });
@@ -12588,7 +12644,7 @@ function runMmmMethTests(verbose = true) {
   return R;
 }
 if (typeof window !== "undefined") {
-  Object.assign(window, { MMM_METH_CONFIG, mmmBuildFeatures, mmmSheetDesign, mmmMacroFacts, mmmValidate, mmmAudit, mmmTrendExistence, mmmCannibalization, mmmGranger, mmmChangePoints, mmmRunMmm, mmmElasticities, mmmSelectAdstock, mmmChannelEffects, mmmWeeklyDecomp, runMmmMethTests });
+  Object.assign(window, { MMM_METH_CONFIG, mmmBuildFeatures, mmmSheetDesign, mmmMacroFacts, mmmValidate, mmmAudit, mmmTrendExistence, mmmCannibalization, mmmGranger, mmmChangePoints, mmmChangePointDrivers, mmmRunMmm, mmmElasticities, mmmSelectAdstock, mmmChannelEffects, mmmWeeklyDecomp, runMmmMethTests });
 }
 
 /* ============================================================
@@ -12845,7 +12901,8 @@ function buildMmmMethCache() {
       const cpTarget = mmmChangePoints(panel.targets[t]);
       const cpSpend = {};
       for (const k of cannChannels) cpSpend[k] = mmmChangePoints(panel.ch[k]);
-      const changePoints = { target: cpTarget, spend: cpSpend };
+      const cpDrivers = mmmChangePointDrivers(panel, t, cpTarget);   // 변화점별 전후 비교(그때 뭐가 튀었나)
+      const changePoints = { target: cpTarget, spend: cpSpend, drivers: cpDrivers };
       C.byTarget[t] = { trend, cannib, cannibByChannel, cannChannels, defCh, mmm, effects, decomp, changePoints };
     }
     C.error = null;
@@ -13216,22 +13273,52 @@ function renderMmmTrend(c) {
     <p class="muted" style="font-size:11px;margin-top:6px;">t를 회귀에 넣고 그 계수를 "추세"라 부르면 순환논증(t가 매끈한 변동·지출램프 흡수). 존재는 위 가정-없는 검정으로 판정. 잔차 MK가 "no trend"면 media 제거 후 organic 추세 없음.</p>
     ${(() => {
       const cp = T.changePoints; if (!cp || !cp.target) return "";
-      const wk = c.panel.week, segs = cp.target.segments, pts = cp.target.points;
+      const wk = c.panel.week, segs = cp.target.segments, pts = cp.target.points, drv = cp.drivers || [];
       const wkLabel = (idx) => (wk[idx] != null ? `${wk[idx]}주` : `#${idx}`);
-      if (!pts.length) return `<div style="margin-top:10px;">${mmmExplain('📐 <strong>변화점 탐지(Change Point Detection)</strong>: 오가닉 추세가 꺾인 뚜렷한 지점이 자동 탐지되지 않았습니다(추세가 완만하거나 데이터가 짧음). 이 검정은 구조변화 시점을 <strong>사람이 가정하지 않고 데이터가 직접 찾습니다</strong>(Δ성장률의 평균·분산 변화 + BIC 페널티).')}</div>`;
+      if (!pts.length) return `<div style="margin-top:12px;"><div style="font-size:12px;font-weight:600;color:#adc6ff;">📐 변화점 탐지 — 추세가 "언제" 꺾였나${mmmInfoIcon("changepoint")}</div>${mmmExplain('오가닉 추세가 꺾인 뚜렷한 지점이 자동 탐지되지 않았습니다(추세가 완만하거나 데이터가 짧음). 이 검정은 구조변화 시점을 <strong>사람이 가정하지 않고 데이터가 직접 찾습니다</strong>(Δ성장률의 평균·분산 변화 + BIC 페널티).')}</div>`;
+      const fN = (v) => isFinite(v) ? Math.round(v).toLocaleString() : "—";
+      const fP = (v) => (v > 0 ? "+" : "") + (isFinite(v) ? v.toFixed(0) : "0") + "%";
+      const pctCol = (v, invert) => { const good = invert ? v < 0 : v > 0; return Math.abs(v) < 1 ? "var(--text-muted)" : (good ? "#22c55e" : "#f87171"); };
       const defSp = cp.spend && T.defCh && cp.spend[T.defCh] ? cp.spend[T.defCh] : null;
       const spPts = defSp ? defSp.points : [];
       const nearSpend = (idx) => spPts.find(s => Math.abs(s - idx) <= 2);
-      const rows = pts.map((idx, i) => {
-        const before = segs[i].meanGrowth, after = segs[i + 1].meanGrowth;
-        const flip = before >= 0 && after < 0, accel = after > before;
-        const tag = flip ? '<span style="color:#f87171;font-weight:700;">상승→하락 반전</span>' : (after < before ? '<span style="color:#fbbf24;font-weight:700;">감속</span>' : '<span style="color:#22c55e;font-weight:700;">가속</span>');
+      // 변화점별 드라이버 카드
+      const cards = pts.map((idx, i) => {
+        const d = drv[i] || {}, before = segs[i].meanGrowth, after = segs[i + 1] ? segs[i + 1].meanGrowth : before;
+        const isSpike = cp.pointTypes[i] === "spike" || d.isOutlier;
+        const flip = before >= 0 && after < 0;
+        const typeTag = isSpike ? '<span style="color:#c4b5fd;font-weight:700;">◆ 1주 이상치(spike)</span>'
+          : flip ? '<span style="color:#f87171;font-weight:700;">▲ 상승→하락 반전</span>'
+          : (after < before ? '<span style="color:#fbbf24;font-weight:700;">▲ 감속</span>' : '<span style="color:#22c55e;font-weight:700;">▲ 가속</span>');
+        const topCh = (d.channels || [])[0];
+        // 채널 미니바 (상위 3, |%| 큰 순)
+        const chRows = (d.channels || []).slice(0, 3).map(ch => `<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:2px 0;"><span style="color:var(--text-1);">${escapeHtml(ch.label)}</span><span style="color:var(--text-muted);">${fN(ch.before)} → ${fN(ch.after)} <strong style="color:${pctCol(ch.pct)};">${fP(ch.pct)}</strong></span></div>`).join("");
+        const eventChips = (d.events || []).length ? `<div style="margin-top:4px;">${d.events.map(e => `<span class="chip" style="font-size:9.5px;padding:1px 6px;background:rgba(251,191,36,0.12);color:#fbbf24;margin-right:4px;">📅 ${escapeHtml(e)}</span>`).join("")}</div>` : "";
+        // 해석 한 줄 (규칙 기반)
+        let interp;
+        if (isSpike) {
+          interp = `📍 그 주만 일시적으로 타깃 <strong>${fP(d.targetPct)}</strong> 튐 — <strong>추세 변화가 아니라 1주 이상치</strong>입니다(이벤트·집계오류·외부충격 가능). 추세 해석에서 제외하고 봐도 됩니다.`;
+        } else if (topCh && Math.abs(topCh.pct) >= 20) {
+          const sameDir = (topCh.delta > 0) === (d.targetDelta > 0);
+          interp = `<strong>${escapeHtml(topCh.label)}</strong> 지출 <strong style="color:${pctCol(topCh.pct)};">${fP(topCh.pct)}</strong> 변동과 같은 시점에 타깃 <strong style="color:${pctCol(d.targetPct)};">${fP(d.targetPct)}</strong> — ${sameDir ? "지출↔타깃 <strong>동반</strong>(증액이 도왔거나 공통요인)" : "지출↔타깃 <strong>역방향</strong>(증액 시점에 오가닉↓ → 잠식과 시점상 양립, 단 인과 아님)"}.`;
+        } else {
+          interp = `채널 지출 변화는 작은데(최대 ${topCh ? fP(topCh.pct) : "—"}) 타깃이 <strong style="color:${pctCol(d.targetPct)};">${fP(d.targetPct)}</strong> 움직임 — 지출 외 <strong>외부요인</strong>(시즌·이벤트·제품변경·오가닉 자체) 가능성.`;
+        }
         const sp = nearSpend(idx);
-        const spTag = sp != null ? `<span style="color:#adc6ff;">≈ 광고비 변곡(${wkLabel(sp)})와 동기화</span>` : '<span style="color:var(--text-muted);">광고비 변곡 없음</span>';
-        return `<tr><td class="tnum">${wkLabel(idx)}</td><td class="tnum ${after < 0 ? 'neg' : 'pos'}">${before} → ${after}</td><td>${tag}</td><td style="font-size:10.5px;">${spTag}</td></tr>`;
+        const accent = isSpike ? "#c4b5fd" : (flip ? "#f87171" : "#adc6ff");
+        return `<div style="border:1px solid var(--border);border-left:3px solid ${accent};border-radius:8px;padding:10px 12px;margin:8px 0;background:var(--bg-2);">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;">
+            <div style="font-size:13px;font-weight:700;color:var(--text-1);">${wkLabel(idx)} · ${typeTag}</div>
+            <div style="font-size:11px;color:var(--text-muted);">타깃 ${fN(d.targetBefore)} → ${fN(d.targetAfter)} <strong style="color:${pctCol(d.targetPct)};">${fP(d.targetPct)}</strong> · 성장률 ${before}→${after}/주</div>
+          </div>
+          <div style="margin-top:6px;font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">전후 ±4주 채널 지출 변화 (큰 순)</div>
+          <div style="margin-top:2px;">${chRows || '<span style="font-size:11px;color:var(--text-muted);">채널 없음</span>'}</div>
+          ${eventChips}
+          <p style="font-size:11px;color:var(--text-1);margin:7px 0 0;line-height:1.5;">${interp}${sp != null ? ` <span style="color:#adc6ff;">· ${escapeHtml(T.defCh)} 지출도 ${wkLabel(sp)}에 변곡(동기화).</span>` : ""}</p>
+        </div>`;
       }).join("");
-      // 선행성 보조: 오가닉 첫 하락 반전 vs defCh 첫 증액 시점 선후
-      const tgtDownIdx = pts.find((idx, i) => segs[i].meanGrowth >= 0 && segs[i + 1].meanGrowth < 0);
+      // 선행성 보조: 오가닉 첫 하락 반전(spike 제외) vs defCh 첫 증액 시점 선후
+      const tgtDownIdx = pts.find((idx, i) => cp.pointTypes[i] !== "spike" && segs[i].meanGrowth >= 0 && segs[i + 1] && segs[i + 1].meanGrowth < 0);
       const spSegs = defSp ? defSp.segments : [];
       const spUpIdx = spPts.find((idx, i) => spSegs[i + 1] && spSegs[i].meanGrowth < spSegs[i + 1].meanGrowth);
       let precNote = "";
@@ -13243,11 +13330,11 @@ function renderMmmTrend(c) {
           : `⚪ 오가닉 하락과 ${escapeHtml(T.defCh)} 증액 시점이 거의 같음(${wkLabel(tgtDownIdx)}) — 선후 판별 어려움, holdout 필요.`;
       }
       return `<div style="margin-top:12px;">
-        <div style="font-size:12px;font-weight:600;color:#adc6ff;">📐 변화점 탐지 — 추세가 "언제" 꺾였나 (데이터가 찾음)${mmmInfoIcon("changepoint")}</div>
-        ${mmmExplain('Δ성장률(이번주−저번주)의 평균이 통계적으로 바뀐 지점을 자동으로 찾습니다 — 사람이 "42주에 캠페인 바뀜" 같은 가정을 안 넣어도 데이터가 직접 구조변화 시점을 집어줍니다. 차트의 <span style="color:#adc6ff;">세로 점선</span>이 그 지점. 그 시점이 광고비 변곡과 겹치는지(동기화) 보면 선행성 단서가 됩니다.')}
-        <div class="table-wrap" style="margin-top:6px;"><table class="data" style="font-size:11.5px;"><thead><tr><th>변화 시점</th><th>직전→직후 성장률/주</th><th>유형</th><th>광고비 변곡</th></tr></thead><tbody>${rows}</tbody></table></div>
-        ${precNote ? `<p style="font-size:11px;color:var(--text-1);margin:6px 0 0;">${precNote}</p>` : ""}
-        <p class="muted" style="font-size:10px;margin-top:4px;">변화점=Δ성장률 regime 전환(BIC 페널티로 과탐지 억제). 동기화는 ±2주 이내. <strong>타이밍 선후는 단서일 뿐 인과 아님</strong> — 확정은 holdout(5-15).</p>
+        <div style="font-size:12px;font-weight:600;color:#adc6ff;">📐 변화점 탐지 — 추세가 "언제" 꺾였고 "그때 뭐가 튀었나" (데이터가 찾음)${mmmInfoIcon("changepoint")}</div>
+        ${mmmExplain('Δ성장률(이번주−저번주)의 평균이 통계적으로 바뀐 지점을 자동으로 찾습니다 — 사람이 "42주에 캠페인 바뀜" 같은 가정을 안 넣어도 데이터가 집어줍니다. 차트의 <span style="color:#adc6ff;">세로 점선(▲추세전환 · <span style="color:#c4b5fd;">◆1주 이상치</span>)</span>이 그 지점. 각 카드에 <strong>그 시점에 어느 채널 지출이 얼마나 변했고 타깃이 어떻게 움직였는지</strong>를 같이 보여줍니다.')}
+        ${cards}
+        ${precNote ? `<p style="font-size:11px;color:var(--text-1);margin:8px 0 0;padding:8px 11px;background:rgba(122,162,247,0.07);border-radius:6px;">${precNote}</p>` : ""}
+        <p class="muted" style="font-size:10px;margin-top:6px;">변화점=Δ성장률 regime 전환(BIC 페널티로 과탐지 억제). <span style="color:#c4b5fd;">◆ spike</span>=robust 이상치(rolling median±MAD)로 분류된 1주 튐(추세 아님). 전후 비교는 ±4주 평균. <strong>지출↔타깃 동기화는 단서일 뿐 인과 아님</strong> — 확정은 holdout(5-15).</p>
       </div>`;
     })()}
   </section>`;
@@ -13455,20 +13542,21 @@ function renderMmmCharts(c) {
     // OLS 선형추세
     const olsFit = mmmOls(y.map((_, i) => [1, i]), y);
     const olsLine = olsFit ? y.map((_, i) => +(olsFit.beta[0] + olsFit.beta[1] * i).toFixed(1)) : null;
-    // 변화점 세로 점선 (데이터가 찾은 추세 꺾임 지점) — 인라인 플러그인(annotation 라이브러리 없이 캔버스 직접 그림)
-    const cpIdx = (T.changePoints && T.changePoints.target) ? T.changePoints.target.points : [];
-    const cpWeeks = cpIdx.map(i => c.panel.week[i]).filter(w => w != null);
+    // 변화점 세로 점선 (▲추세전환 / ◆1주 이상치 구분) — 인라인 플러그인(annotation 라이브러리 없이 캔버스 직접)
+    const cpT = (T.changePoints && T.changePoints.target) ? T.changePoints.target : { points: [], pointTypes: [] };
+    const cpMarks = cpT.points.map((i, k) => ({ w: c.panel.week[i], spike: cpT.pointTypes[k] === "spike" })).filter(m => m.w != null);
     const cpPlugin = {
       id: "cpLines",
       afterDatasetsDraw(chart) {
-        if (!cpWeeks.length) return;
+        if (!cpMarks.length) return;
         const xs = chart.scales.x, area = chart.chartArea, ctx2 = chart.ctx;
-        ctx2.save(); ctx2.strokeStyle = "rgba(173,198,255,0.65)"; ctx2.lineWidth = 1.5; ctx2.setLineDash([4, 4]);
-        ctx2.fillStyle = "rgba(173,198,255,0.9)"; ctx2.font = "9px sans-serif";
-        cpWeeks.forEach(w => {
-          const px = xs.getPixelForValue(w); if (px == null || isNaN(px)) return;
+        ctx2.save(); ctx2.lineWidth = 1.5; ctx2.font = "9px sans-serif";
+        cpMarks.forEach(m => {
+          const px = xs.getPixelForValue(m.w); if (px == null || isNaN(px)) return;
+          const col = m.spike ? "196,181,253" : "173,198,255";
+          ctx2.strokeStyle = `rgba(${col},0.6)`; ctx2.setLineDash(m.spike ? [2, 3] : [4, 4]);
           ctx2.beginPath(); ctx2.moveTo(px, area.top); ctx2.lineTo(px, area.bottom); ctx2.stroke();
-          ctx2.fillText("▲" + w, px + 2, area.top + 9);
+          ctx2.fillStyle = `rgba(${col},0.95)`; ctx2.fillText((m.spike ? "◆" : "▲") + m.w, px + 2, area.top + 9);
         });
         ctx2.restore();
       },
