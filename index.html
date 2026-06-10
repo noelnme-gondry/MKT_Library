@@ -12367,9 +12367,12 @@ function mmmTrendExistence(panel, cfg, targetName) {
 }
 
 /* --- cannibalization (precedence / detrend_corr / net_incrementality / verdict) --- */
-function mmmCannibalization(panel, cfg, targetName, netElasticity) {
+function mmmCannibalization(panel, cfg, targetName, netElasticity, channelKey) {
   const y = panel.targets[targetName], t = panel.week, n = t.length;
-  const gtot = t.map((_, i) => cfg.combinedGoogle.reduce((s, k) => s + (panel.ch[k] ? (panel.ch[k][i] || 0) : 0), 0));
+  // 선택 채널의 spend (합산 안 함 — 채널별 개별). channelKey 없으면 전체 합산(레거시).
+  const gtot = channelKey
+    ? (panel.ch[channelKey] ? panel.ch[channelKey].map(v => v || 0) : t.map(() => 0))
+    : t.map((_, i) => MMM_CHANNELS.filter(c => panel.ch[c.key]).reduce((s, c) => s + (panel.ch[c.key][i] || 0), 0));
   // precedence (early 26 weeks)
   const ew = 26; const eIdx = t.map((tt, i) => tt <= ew ? i : -1).filter(i => i >= 0);
   const ex = eIdx.map(i => t[i]), ey = eIdx.map(i => y[i]);
@@ -12394,7 +12397,7 @@ function mmmCannibalization(panel, cfg, targetName, netElasticity) {
   const net = { net_elasticity: +netElasticity.coef.toFixed(4), p: +netElasticity.p.toFixed(4), reading: netElasticity.coef > 0 ? "net positive — 강한 cannibalization과 불일치" : "net <= 0 — cannibalization 가능" };
   const votes = [precedence.declining_pre_ramp, (detrend.negative_collapses || detrend.raw >= 0), net.net_elasticity > 0].filter(Boolean).length;
   const verdict = votes >= 2 ? "ORGANIC (exogenous) — media는 방어, 원인 아님" : "INCONCLUSIVE / cannibalization 가능 — geo holdout 필요";
-  return { precedence, detrend_corr: detrend, net_incrementality: net, organic_votes: votes, verdict };
+  return { precedence, detrend_corr: detrend, net_incrementality: net, organic_votes: votes, verdict, channel: channelKey || "__total__" };
 }
 
 /* --- MMM (select_adstock CV / vif / elasticities AR1 / shapley / saturation) --- */
@@ -12529,8 +12532,9 @@ function mmmTrendPlain(trend, target) {
   return `<strong>약한 하락 신호.</strong> 하락이 일부 보이지만 매체 지출과 시간이 얽혀 있어 단정하기 어렵습니다. holdout으로 확인을 권장합니다.`;
 }
 function mmmCannibPlain(cn, target) {
-  if (cn.verdict.includes("ORGANIC")) return `Google 광고는 오가닉 ${target}을(를) <strong style="color:#22c55e;">잠식하지 않습니다</strong>. 서로 독립적인 3개 검정 중 <strong>${cn.organic_votes}개</strong>가 "오가닉(외생적 하락)" 쪽을 지지합니다. 즉 광고를 켠다고 오가닉을 갉아먹는 게 아니라, 외생적 하락을 <strong>방어·보완</strong>하는 역할에 가깝습니다.`;
-  return `Google 광고의 오가닉 잠식 <strong style="color:#fbbf24;">가능성을 배제할 수 없습니다</strong> (3개 검정 중 ${cn.organic_votes}개만 오가닉 지지). 확정하려면 holdout 실험(5-15)이 필요합니다.`;
+  const chl = (MMM_CHANNELS.find(c => c.key === cn.channel) || {}).label || "주 채널";
+  if (cn.verdict.includes("ORGANIC")) return `<strong>${escapeHtml(chl)}</strong> 광고는 오가닉 ${target}을(를) <strong style="color:#22c55e;">잠식하지 않습니다</strong>. 서로 독립적인 3개 검정 중 <strong>${cn.organic_votes}개</strong>가 "오가닉(외생적 하락)" 쪽을 지지합니다. 즉 광고를 켠다고 오가닉을 갉아먹는 게 아니라, 외생적 하락을 <strong>방어·보완</strong>하는 역할에 가깝습니다. <span style="color:var(--text-muted);">(채널별 결과는 §4에서 전환)</span>`;
+  return `<strong>${escapeHtml(chl)}</strong>의 오가닉 잠식 <strong style="color:#fbbf24;">가능성을 배제할 수 없습니다</strong> (3개 검정 중 ${cn.organic_votes}개만 오가닉 지지). 확정하려면 holdout 실험(5-15)이 필요합니다. <span style="color:var(--text-muted);">(채널별 결과는 §4)</span>`;
 }
 
 /* === 주별 드라이버 분해 (centered, semi-log-valid) + Actual vs Fitted + 튀는 구간 ===
@@ -12622,7 +12626,7 @@ if (typeof window !== "undefined") {
 /* ============================================================
  * 5-18 페이지 (MMM 방법론 도구) — 데이터 계약·config·결과 패널·차트·verdict·export
  * ============================================================ */
-const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {} };  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상
+const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi" };  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상
 function mmmPlatforms() {
   const inv = {}; for (const [h, k] of Object.entries(CSV_STATE.mapping || {})) if (k !== "__ignore__") inv[k] = h;
   if (!inv.mmm_platform) return [];
@@ -12686,12 +12690,21 @@ function buildMmmMethCache() {
     C.byTarget = {};
     for (const t of targets) {
       const trend = mmmTrendExistence(panel, cfg, t);
-      const netE = mmmElasticities(panel, cfg, t, cfg.defaultLam).find(r => r.var === "ln_google_roi") || { coef: NaN, p: NaN };
-      const cannib = mmmCannibalization(panel, cfg, t, netE);
+      // 채널별 카니발 (합산 안 함 — 채널마다 개별 삼각검증)
+      const elasD = mmmElasticities(panel, cfg, t, cfg.defaultLam);
+      const cannibByChannel = {}; const cannChannels = [];
+      for (const ch of MMM_CHANNELS) {
+        if (!panel.ch[ch.key] || (cfg.absorbed && cfg.absorbed.has(ch.key))) continue;
+        const netE = elasD.find(r => r.var === "ln_" + ch.key) || { coef: NaN, p: NaN };
+        cannibByChannel[ch.key] = mmmCannibalization(panel, cfg, t, netE, ch.key);
+        cannChannels.push(ch.key);
+      }
+      const defCh = cannChannels.includes("google_roi") ? "google_roi" : cannChannels[0];
+      const cannib = defCh ? cannibByChannel[defCh] : mmmCannibalization(panel, cfg, t, { coef: NaN, p: NaN }, null);
       const mmm = mmmRunMmm(panel, cfg, t);
       const effects = mmmChannelEffects(panel, cfg, t, mmm.best_lambda);
       const decomp = mmmWeeklyDecomp(panel, cfg, t, mmm.best_lambda);
-      C.byTarget[t] = { trend, cannib, mmm, effects, decomp };
+      C.byTarget[t] = { trend, cannib, cannibByChannel, cannChannels, defCh, mmm, effects, decomp };
     }
     C.error = null;
   } catch (e) { C.error = e.message; }
@@ -12968,11 +12981,17 @@ function renderMmmTrend(c) {
 }
 function renderMmmCannib(c) {
   const T = c.byTarget[MMM_METH_STATE.target]; if (!T) return "";
-  const cn = T.cannib, p = cn.precedence, d = cn.detrend_corr, ni = cn.net_incrementality;
+  const chans = T.cannChannels || [];
+  let selCh = MMM_METH_STATE.cannibChannel; if (!chans.includes(selCh)) selCh = T.defCh;
+  const cn = (T.cannibByChannel && T.cannibByChannel[selCh]) || T.cannib;
+  const p = cn.precedence, d = cn.detrend_corr, ni = cn.net_incrementality;
   const vColor = cn.verdict.includes("ORGANIC") ? "#22c55e" : "#fbbf24";
+  const chLabel = (k) => (MMM_CHANNELS.find(c => c.key === k) || {}).label || k;
+  const chPills = chans.length > 1 ? `<div class="ab-pillgroup" style="margin-bottom:8px;"><span class="ab-pillgroup-label">채널</span>${chans.map(k => `<button class="ab-pill ${k === selCh ? 'active' : ''}" data-mmm-cannibch="${escapeHtml(k)}">${escapeHtml(chLabel(k))}</button>`).join("")}</div>` : "";
   return `<section class="block" id="s-cannib">
-    <h3 class="section-title" style="font-size:15px;"><span class="ix">§4</span>카니발 vs 오가닉 — ${MMM_METH_STATE.target} (삼각검증)</h3>
-    <div class="callout" style="border-left:3px solid ${vColor};"><div class="body"><strong>판정 (${cn.organic_votes}/3 오가닉):</strong> ${escapeHtml(cn.verdict)}</div></div>
+    <h3 class="section-title" style="font-size:15px;"><span class="ix">§4</span>카니발 vs 오가닉 — ${MMM_METH_STATE.target} · <span style="color:#7aa2f7;">${escapeHtml(chLabel(selCh))}</span> (삼각검증)</h3>
+    ${chPills}
+    <div class="callout" style="border-left:3px solid ${vColor};"><div class="body"><strong>판정 (${cn.organic_votes}/3 오가닉):</strong> ${escapeHtml(cn.verdict)} <span style="color:var(--text-muted);font-size:11px;">— ${escapeHtml(chLabel(selCh))} 채널 기준 (다른 채널은 위 pill로 전환)</span></div></div>
     ${mmmExplain('<strong>카니발 = 광고가 오가닉을 빼앗아 가는 것, 오가닉 = 광고와 무관한 외생적 변화.</strong> 단순 상관으론 둘을 구분 못 합니다(지출도 시간 따라 늘어서 "지출↑ 오가닉↓"가 카니발이든 우연이든 똑같이 들어맞음). 그래서 서로 <strong>독립적인 3가지 질문</strong>으로 삼각검증합니다 — ① 광고를 본격적으로 쓰기 <em>전부터</em> 이미 줄고 있었나?(원인은 결과보다 먼저 와야 함) ② 시간 추세를 빼면 음의 상관이 사라지나?(사라지면 진짜 범인은 시간=오가닉) ③ 순(net) 효과가 +인가?(+면 강한 카니발과 모순). <strong>2개 이상이 "오가닉"을 가리키면 광고는 잠식범이 아니라 방어 역할</strong>로 판정합니다.')}
     <div class="ab-stat-row">
       <div class="ab-stat"><div class="ab-stat-label">① 시간 선행성 (초기 ${p.window_weeks}주)${mmmInfoIcon("precedence")}</div><div class="ab-stat-value" style="font-size:13px;">${p.declining_pre_ramp ? '<span style="color:#fbbf24;">램프 전 이미 하락</span>' : '<span style="color:#22c55e;">하락 없음</span>'}</div><div class="ab-stat-hint">slope ${p.kpi_slope_per_wk}/주 · 변화 ${p.kpi_change_over_window_pct}% · 평균 spend $${p.avg_spend}</div></div>
@@ -13125,6 +13144,7 @@ function bindMmmMethHandlers() {
   document.querySelectorAll("[data-mmm-target]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.target = b.dataset.mmmTarget; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-platform]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.platform = b.dataset.mmmPlatform; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-absorb]").forEach(b => b.addEventListener("click", () => { if (!MMM_METH_STATE.absorbChoice) MMM_METH_STATE.absorbChoice = {}; MMM_METH_STATE.absorbChoice[b.dataset.mmmAbsorb] = b.dataset.side; navigate("5-18"); }));
+  document.querySelectorAll("[data-mmm-cannibch]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.cannibChannel = b.dataset.mmmCannibch; navigate("5-18"); }));
   const apply = document.querySelector("[data-mmm-cfg-apply]");
   if (apply) apply.addEventListener("click", () => {
     const cfg = mmmActiveConfig(); const get = (k) => document.querySelector(`[data-mmm-cfg="${k}"]`)?.value;
