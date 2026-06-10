@@ -11645,7 +11645,7 @@ const MMM_GLOSSARY = {
   "cannib_overview": {
     "term": "카니발리제이션 삼각검증 (cannibalization triangulation, 광고가 자연유입을 갉아먹는지 3중 교차검증)",
     "reason": "광고로 늘어난 가입/재활성이 진짜 순수 증가인지, 아니면 광고를 안 했어도 알아서 들어왔을 자연유입(오가닉)을 광고가 가로챈 것(잠식)인지 가려내기 위함입니다. 의사결정 질문은 '이 광고비, 새 유저를 데려오나 아니면 공짜로 올 유저를 비싸게 다시 사는 건가'입니다.",
-    "how": "서로 독립된 3가지 신호를 각각 FOR(오가닉)·AGAINST(카니발)·ABSTAIN(판단보류)로 투표합니다 — ① 시간 선행성(저지출 구간에 이미 떨어지고 있었나), ② 허위상관/탈추세(시간만 빼면 음의 관계가 사라지나), ③ 순증분 탄력성(광고비↑ 시 전체가 순으로 느나). 입증책임은 비대칭입니다: '방어/OK'는 FOR가 기준 이상(프로스펙팅 2·브랜드 3) AND AGAINST 0 AND 검정력 통과일 때만, AGAINST가 하나라도 있으면 LEAN CANNIBAL, 모호하면 기본값 INCONCLUSIVE. ①~③은 모두 '같은 주(동시점)' 신호라, ④ 그랜저 인과(차분 VAR)로 '광고비 과거값→오가닉 미래 변화'의 시차·방향까지 봅니다 — 시차 잠식이 유의하면 판정을 LEAN CANNIBAL로 격상하고, 오가닉→광고비 방향이 유의하면 '페이싱(역인과)'으로 경고합니다.",
+    "how": "서로 독립된 3가지 신호를 각각 FOR(오가닉)·AGAINST(카니발)·ABSTAIN(판단보류)로 투표합니다 — ① 시간 선행성(저지출 구간에 이미 떨어지고 있었나), ② 허위상관/탈추세(시간만 빼면 음의 관계가 사라지나), ③ 순증분 탄력성(광고비↑ 시 전체가 순으로 느나). 입증책임은 비대칭입니다: '방어/OK'는 FOR가 기준 이상(프로스펙팅 2·브랜드 3) AND AGAINST 0 AND 검정력 통과일 때만, AGAINST가 하나라도 있으면 LEAN CANNIBAL, 모호하면 기본값 INCONCLUSIVE. ①~③은 모두 '같은 주(동시점)' 신호라, ④ 그랜저 인과(prewhiten 레벨 VAR)로 '광고비 과거값→오가닉 미래 변화'의 시차·방향까지 봅니다 — 시차 잠식이 유의하면 판정을 LEAN CANNIBAL로 격상하고, 오가닉→광고비 방향이 유의하면 '페이싱(역인과)'으로 경고합니다.",
     "interpret": "'관측상 적색신호 없음(잠정 OK)'은 잠식 신호가 안 보인다는 뜻이지 '카니발 없음'의 증명이 아닙니다(확정은 holdout). 'LEAN CANNIBAL'은 한 검정 이상이 카니발을 가리켜 holdout이 1순위. 'INCONCLUSIVE'는 증거 부족(검정력 부족 포함)이라 판단 보류.",
     "significance": "관측 회귀는 적색신호를 거르는 도구이지 혐의를 벗기는 도구가 아닙니다. spend와 시간이 공선이면(VIF·corr 게이트) '순효과≈0'은 효과 없음이 아니라 증거 없음이라, 그 경우 절대 '방어'로 단정하지 않고 INCONCLUSIVE로 제한합니다. non-significant(p>.05)는 무효과 증거가 아니므로 FOR로 세지 않습니다.",
     "example": "Tinder KR에서 Google 지출이 시간과 강하게 공선(corr 0.76·VIF↑)이면, 과거엔 'ORGANIC'으로 후하게 나왔지만 보수적 규칙에선 검정력 게이트가 작동해 INCONCLUSIVE — 일부 지역 광고를 꺼보는 holdout이 필요합니다.",
@@ -11681,10 +11681,10 @@ const MMM_GLOSSARY = {
   "granger": {
     "term": "그랜저 인과 (Granger causality, 시차·방향 검정)",
     "reason": "①~③은 모두 '같은 주(동시점)' 상관이라 '광고가 시차를 두고 오가닉을 갉아먹는지', '방향이 광고→오가닉인지 오가닉→광고인지'를 못 봅니다. 그랜저는 시계열의 선후 관계로 그걸 보완합니다 — '오가닉 자체의 추세·관성을 먼저 통제한 뒤에도, 광고비의 과거 변화가 오가닉의 현재 변화를 추가로 설명하나?'",
-    "how": "두 계열을 1차차분(Δ)해 추세를 없앤 뒤 VAR(벡터자기회귀)을 적합합니다. Δ오가닉을 자기 과거값(ΔY 시차)만으로 설명한 모형 vs 거기에 Δ광고비 과거값(ΔX 시차)까지 넣은 모형을 비교해, 광고비 시차항이 유의하게 설명력을 높이는지 F-검정합니다(lag는 AIC로 자동 선택). 반대 방향(Δ광고비 ~ Δ오가닉 과거)도 같이 검정합니다.",
+    "how": "두 계열에서 공통 추세·계절을 먼저 제거(prewhiten — 추세선·연주기에 회귀한 잔차)한 뒤 VAR(벡터자기회귀)을 적합합니다. 차분(Δ) 대신 prewhiten을 쓰는 이유: 차분은 광고의 누적효과(adstock)까지 깎아내려 검정력을 떨어뜨리는데, prewhiten은 허위회귀의 원인인 공통추세만 빼고 누적신호는 남깁니다. 오가닉을 자기 과거값(시차)만으로 설명한 모형 vs 거기에 광고비 과거값(시차)까지 넣은 모형을 비교해, 광고비 시차항이 유의하게 설명력을 높이는지 F-검정합니다(lag는 AIC로 자동 선택). 반대 방향(광고비 ~ 오가닉 과거)도 같이 검정합니다.",
     "interpret": "광고비→오가닉이 유의(p<.05)하고 시차계수합<0이면 '시차 잠식 신호'(동시점이 놓친 것 — 판정을 LEAN CANNIBAL로 격상). 계수합>0이면 '시차 증분'. 반대로 오가닉→광고비가 유의하면 '페이싱(역인과)': 오가닉이 약할 때 예산을 올린 것이라 관측 음상관은 내생 — 광고가 잠식한 게 아닐 수 있음.",
-    "significance": "오가닉의 자체 하향 추세를 모형이 먼저 흡수한 상태에서도 광고비 과거값이 추가로 설명하는지가 핵심. 차분으로 공통 추세(허위회귀)를 제거해 ②보다 한 단계 엄격합니다.",
-    "example": "Δ광고비(2~4주 전)가 ΔReact의 현재 하락을 유의하게 설명하면 '시차 잠식 의심'. 반대로 ΔReact 하락이 Δ광고비 증가를 설명하면 '오가닉 약화→방어적 증액(페이싱)'.",
+    "significance": "오가닉의 자체 하향 추세를 모형이 먼저 흡수한 상태에서도 광고비 과거값이 추가로 설명하는지가 핵심. prewhiten으로 공통 추세·계절(허위회귀)을 제거해 ②보다 한 단계 엄격하되, 차분과 달리 광고 누적효과는 남겨 검정력을 지킵니다.",
+    "example": "광고비(2~4주 전)가 현재 React 하락을 유의하게 설명하면 '시차 잠식 의심'. 반대로 React 하락이 광고비 증가를 설명하면 '오가닉 약화→방어적 증액(페이싱)'.",
     "caveat": "그랜저 '인과'는 예측 선행성이지 진짜 인과의 증명이 아닙니다 — 빠진 공통 요인·잘못된 lag·비정상성에 약합니다. 여전히 관측이라, 확정은 geo holdout(5-15)."
   },
   "changepoint": {
@@ -12078,14 +12078,36 @@ function mmmTrendExistence(panel, cfg, targetName) {
   };
 }
 
-/* --- 그랜저 인과 (차분 VAR, 양방향) — 시차 신호로 동시점 검정 보완 ---
- * 차분(Δy, Δln x)으로 추세 제거 → AIC로 lag 선택 → F-검정.
- * spend→organic: Δx 과거값이 Δy를 (Δy 자체 lag 통제 후) 추가 설명? 계수합<0이면 시차 잠식 방향.
- * organic→spend: Δy가 Δx를 Granger-인과 → 페이싱(역인과). 둘 다 관측이라 인과 확정은 holdout. */
-function mmmGranger(y, x, maxLagCap) {
+/* --- 시계열 prewhiten: 추세(+계절) 제거한 레벨 잔차 ---
+ * 차분과 달리 adstock 누적 신호를 죽이지 않으면서 공통추세(허위회귀)만 제거.
+ * N≥60이면 주간 계절항(sin/cos 52.18) 포함. REG_STATS.ols 잔차. */
+function _mmmPrewhiten(series, withSeason) {
+  const X = series.map((_, i) => {
+    const row = [1, i];
+    if (withSeason) { const a = 2 * Math.PI * i / 52.18; row.push(Math.sin(a), Math.cos(a)); }
+    return row;
+  });
+  const fit = REG_STATS.ols(X, series);
+  return fit ? fit.resid.slice() : series.slice();
+}
+/* --- 그랜저 인과 (양방향) — 시차 신호로 동시점 검정 보완 ---
+ * method="prewhiten"(기본): 추세·계절 제거한 레벨 잔차에서 VAR — 차분이 adstock 누적을
+ *   과하게 죽이던 검정력 문제 개선. method="diff": 기존 1차차분(비교/호환용).
+ * spend→organic: x 과거값이 y를 (y 자체 lag 통제 후) 추가 설명? 계수합<0이면 시차 잠식 방향.
+ * organic→spend: y가 x를 Granger-인과 → 페이싱(역인과). 둘 다 관측이라 인과 확정은 holdout. */
+function mmmGranger(y, x, maxLagCap, opts) {
+  opts = opts || {}; const method = opts.method || "prewhiten";
   const N = y.length; if (N < 24) return null;
-  const dy = [], dx = [];
-  for (let i = 1; i < N; i++) { dy.push(y[i] - y[i - 1]); dx.push(Math.log1p(x[i] > 0 ? x[i] : 0) - Math.log1p(x[i - 1] > 0 ? x[i - 1] : 0)); }
+  const lx = x.map(v => Math.log1p(v > 0 ? v : 0));
+  let uy, ux;
+  if (method === "diff") {
+    uy = []; ux = [];
+    for (let i = 1; i < N; i++) { uy.push(y[i] - y[i - 1]); ux.push(lx[i] - lx[i - 1]); }
+  } else {
+    const ws = N >= 60;   // prewhiten: 추세(+계절) 제거 레벨 잔차 — 차분보다 신호 보존
+    uy = _mmmPrewhiten(y, ws); ux = _mmmPrewhiten(lx, ws);
+  }
+  const dy = uy, dx = ux;
   const M = dy.length, maxLag = Math.max(1, Math.min(maxLagCap || 6, Math.floor(M / 12)));
   const fit = (tgt, causes, p) => {
     const rows = [], yv = [];
@@ -12600,21 +12622,19 @@ function runMmmMethTests(verbose = true) {
   // T6d · non-sig near-zero(p>.05)는 FOR로 세지 않음 (이전 룰의 구멍) → ABSTAIN
   const cnNS = mmmCannibalization(oscPanel, cfg, "Regs", { coef: 0.0027, ci_lo: -0.4, ci_hi: 0.41, p: 0.6668 }, "x");
   R.push({ test: "T6d · non-sig는 FOR 아님(ABSTAIN)", actual: `net=${cnNS.net_incrementality.vote}`, pass: cnNS.net_incrementality.vote === "ABSTAIN" ? "✓" : "✗" });
-  // T6e · 그랜저 인과: null 가드(n<24) + 구조 + 시차 선행 탐지 + 결정론
+  // T6e · 그랜저 인과(prewhiten 기본): null 가드(n<24) + 구조 + 시차 선행 탐지 + 결정론
   const gNull = mmmGranger(target.slice(0, 20), spend.slice(0, 20), 6);
-  // 깨끗한 시차-2 선행 관계: Δ오가닉 = 9000·Δln(spend)[t-2] (양의 시차 증분 → coefSum>0, p작음)
+  // 깨끗한 시차-2 레벨 선행: 오가닉 = 5000·ln(spend)[t-2] (양의 시차 증분 → coefSum>0, p작음)
   const gx = week.map(w => 6000 + 2500 * Math.sin(w / 4));
   const lgx = gx.map(v => Math.log1p(v));
-  const dxx = lgx.map((v, i) => i > 0 ? (v - lgx[i - 1]) : 0);
-  let gacc = 20000; const gy = [];
-  for (let i = 0; i < n; i++) { gacc += (i >= 2 ? 9000 * dxx[i - 2] : 0); gy.push(gacc); }
-  const gG = mmmGranger(gy, gx, 6);
+  const gy = lgx.map((_, i) => 20000 + 5000 * lgx[Math.max(0, i - 2)] + 0.5 * rng());
+  const gG = mmmGranger(gy, gx, 6);   // prewhiten 기본
   const gG2 = mmmGranger(gy, gx, 6);
   const gOk = gNull === null
     && gG && gG.spend_to_organic && gG.organic_to_spend
     && gG.spend_to_organic.coefSum > 0 && gG.spend_to_organic.p < 0.05
     && JSON.stringify(gG) === JSON.stringify(gG2);
-  R.push({ test: "T6e · granger null가드·시차탐지·결정론", actual: `null=${gNull === null}·s→o lag${gG ? gG.spend_to_organic.lag : "—"} p=${gG ? gG.spend_to_organic.p : "—"}`, pass: gOk ? "✓" : "✗" });
+  R.push({ test: "T6e · granger(prewhiten) null가드·시차탐지·결정론", actual: `null=${gNull === null}·s→o lag${gG ? gG.spend_to_organic.lag : "—"} p=${gG ? gG.spend_to_organic.p : "—"} coef${gG ? gG.spend_to_organic.coefSum : "—"}`, pass: gOk ? "✓" : "✗" });
   // T6f · 변화점 탐지: null가드(짧음) + 추세반전(shift) 탐지 + 결정론
   const cpShort = mmmChangePoints([1, 2, 3, 4, 5]);   // n<2*minSeg+2 → 빈 결과
   const up = Array.from({ length: 26 }, (_, i) => 100 + 10 * i);
@@ -13392,7 +13412,7 @@ function renderMmmCannib(c) {
           <div class="ab-stat"><div class="ab-stat-label">광고비 → 오가닉 (시차 잠식?)</div><div class="ab-stat-value" style="font-size:13px;">${soBadge}</div><div class="ab-stat-hint">lag ${so.lag} · F=${so.F} · p=${so.p} · Δ계수합 ${so.coefSum}</div></div>
           <div class="ab-stat"><div class="ab-stat-label">오가닉 → 광고비 (페이싱?)</div><div class="ab-stat-value" style="font-size:13px;">${osBadge}</div><div class="ab-stat-hint">lag ${os.lag} · F=${os.F} · p=${os.p}</div></div>
         </div>
-        <p style="font-size:10.5px;color:var(--text-1);margin:4px 0 0;">${interp}${pacingNote} <span style="color:var(--text-muted);">그랜저=예측 선행성이지 인과 확정 아님(차분 VAR·AIC lag). 확정은 holdout.</span></p>
+        <p style="font-size:10.5px;color:var(--text-1);margin:4px 0 0;">${interp}${pacingNote} <span style="color:var(--text-muted);">그랜저=예측 선행성이지 인과 확정 아님(prewhiten 레벨 VAR·AIC lag). 확정은 holdout.</span></p>
       </div>`;
     })()}
     ${revBox}
