@@ -11882,7 +11882,11 @@ function mmmBuildFeatures(panel, cfg, lam, withTrend = true) {
   }
   if (withTrend) { const tm = _mean(t), ts = _pstd(t) || 1; push("trend", t.map(tt => (tt - tm) / ts)); }
   const X = []; for (let i = 0; i < n; i++) X.push(cols.map(c => c[i]));
-  return { X, names };
+  // 랭크 결손 열 드롭(상수=전부-0 채널[예: ASA-Android] · 완전공선) → 다운스트림 mmmOls/fitAR1 특이행렬 방지.
+  // 절편 포함 Gram-Schmidt 기준. Tinder/골든은 redundant 없어 전 열 유지 → byte-동일.
+  const keep = _nonRedundantCols(X, names);
+  if (keep.length === names.length) return { X, names };
+  return { X: X.map(r => keep.map(j => r[j])), names: keep.map(j => names[j]), dropped: names.filter((_, j) => !keep.includes(j)) };
 }
 // sheet_design 재현 (reduced Fourier·G_Total·원본 더미)
 function mmmSheetDesign(panel, cfg, withBrand = false) {
@@ -12024,7 +12028,7 @@ function mmmTrendExistence(panel, cfg, targetName) {
   // resid after media+season+holidays (no trend term), MK
   const { X } = mmmBuildFeatures(panel, cfg, 0.6, false);
   const fit = mmmOls(_designConst(X), y);
-  const residMk = mkHamedRao(fit.resid);
+  const residMk = fit ? mkHamedRao(fit.resid) : mkHamedRao(y);   // 특이행렬 방어(이론상 mmmBuildFeatures 랭크감소로 안 걸림)
   const stlPct = +((stl.trend[y.length - 1] - stl.trend[0]) / _mean(y) * 100).toFixed(1);
   const assumptionFreeNo = mkAc.trend === "no trend" && mkDes.trend === "no trend";
   const organic = residMk.trend !== "no trend";
@@ -12210,6 +12214,7 @@ function _mmmLogFitAR1(Xc, yRaw) {
 function mmmElasticities(panel, cfg, targetName, lam) {
   const { X, names } = mmmBuildFeatures(panel, cfg, lam, true);
   const fa = _mmmLogFitAR1(_designConst(X), panel.targets[targetName]).fa;
+  if (!fa) return [];   // 특이행렬(드롭 후 상수열 등) 방어
   const keep = names.map((nm, i) => ({ nm, i })).filter(o => o.nm.startsWith("ln_") || o.nm === "trend");
   return keep.map(({ nm, i }) => { const j = i + 1; return { var: nm, coef: +fa.beta[j].toFixed(4), ci_lo: +fa.ci95[j][0].toFixed(4), ci_hi: +fa.ci95[j][1].toFixed(4), p: +fa.pval[j].toFixed(4) }; });
 }
@@ -12236,7 +12241,7 @@ function mmmChannelEffects(panel, cfg, targetName, lam) {
     if (folded.has(ch.key) || !panel.ch[ch.key]) continue;
     const cv = cov[ch.key] || { sparse: false, trailingZero: false, nonzero: 0, total: 0 };
     const j = names.indexOf("ln_" + ch.key);
-    if (j < 0) {  // 모델에서 제외됨(sparse exclude 등) — 데이터부족으로 표기
+    if (j < 0 || !faLog || !faRaw) {  // 모델 제외(sparse·랭크드롭) 또는 적합 실패 — 데이터부족 표기
       out.push({ key: ch.key, label: ch.label, elas: 0, ci: [0, 0], p: 1, weeklyPer1k: null, meanSpend: 0, sig: false, nonzero: cv.nonzero, total: cv.total, sparse: true, trailingZero: cv.trailingZero, verdict: "sparse" });
       continue;
     }
@@ -12423,6 +12428,28 @@ function mmmGuessRole(col, rows) {
   return { role, kind };
 }
 // colMap 초기화/유지: 헤더 그대로면 사용자 편집 보존, 바뀌면 전부 미지정으로 (자동 매핑 안 함 — 사용자가 직접 드래그)
+// 부분 자동 매핑: reg/react/채널 spend만 강한 키워드로 자동 배치(+플랫폼·perf/brand 태그).
+// week(t↔Week 모호)·더미·플랫폼·파생컬럼(LN/sin/cos/Description)은 트레이에 남겨 사용자가 직접.
+function mmmAutoMapPartial(heads, rows) {
+  const derived = /^\s*(ln|log|sin|cos)\s*[\(_]|^\s*(ln|log|sin|cos)\b|description/i;  // 변환·파생 컬럼 → 자동 안 함
+  const out = {};
+  for (const h of heads) {
+    const name = String(h).toLowerCase(); const kind = /brand|브랜드/.test(name) ? "brand" : "perf";
+    let role = "ignore";
+    const vals = rows.map(r => r[h]).filter(v => v != null && String(v).trim() !== "");
+    const nums = vals.map(v => parseFloat(String(v).replace(/[^0-9.\-]/g, ""))).filter(v => !isNaN(v));
+    const isNum = nums.length >= vals.length * 0.7 && vals.length > 0;
+    const uniq = [...new Set(nums)]; const isBin = isNum && uniq.every(v => v === 0 || v === 1) && uniq.length <= 2;
+    if (!derived.test(name) && isNum && !isBin) {
+      if (/reg|가입|등록|signup|sign_up|install/.test(name)) role = "reg";
+      else if (/react|재활성|reactiv|resurrect|win.?back|winback/.test(name)) role = "react";
+      else if (/spend|cost|비용|지출|budget|brand/.test(name)) role = "channel";
+    }
+    out[h] = { role, kind };
+    if (["reg", "react", "channel"].includes(role)) out[h].plat = mmmGuessPlat(h);
+  }
+  return out;
+}
 function mmmColMapInit(force) {
   const heads = CSV_STATE.headers || [];
   if (!heads.length) { MMM_METH_STATE.colMap = null; return; }
@@ -12431,8 +12458,7 @@ function mmmColMapInit(force) {
     const cur = Object.keys(cm);
     if (heads.length === cur.length && heads.every(h => cur.includes(h))) return;  // 동일 스키마 → 사용자 편집 보존
   }
-  const next = {}; heads.forEach(h => next[h] = { role: "ignore", kind: /brand|브랜드/.test(String(h).toLowerCase()) ? "brand" : "perf" });
-  MMM_METH_STATE.colMap = next;  // 전부 미지정(컬럼 트레이) — 헤더 순서 그대로
+  MMM_METH_STATE.colMap = mmmAutoMapPartial(heads, CSV_STATE.raw || []);  // reg/react/채널만 자동, 나머지는 트레이
 }
 // 선택적: 이름 기반 자동 추정으로 채우기 (🪄 버튼)
 function mmmColMapAutoGuess() {
@@ -12670,8 +12696,8 @@ function renderMmmDataPrep() {
     <h2 class="section-title"><span class="ix">§0</span>MMM 방법론 · 데이터·매핑</h2>
     <div class="csv-loaded-bar"><div class="csv-loaded-info"><span class="dot" style="background:#22c55e;"></span><strong>${escapeHtml(CSV_STATE.fileName)}</strong><span class="csv-loaded-stats tnum">${CSV_STATE.raw.length.toLocaleString()}행 · ${CSV_STATE.headers.length}컬럼</span></div><button class="ab-pill csv-change-btn" data-tool-csv-reset="5-18" title="이 도구의 CSV를 제거하고 다른 파일 업로드">⟳ CSV 변경</button></div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-      <p class="muted" style="font-size:12px;margin:0;">컬럼 칩을 역할로 <strong>직접 드래그</strong>. <strong>주차는 1개</strong>, <strong>가입·재활성·채널·더미는 여러 개</strong>. 플랫폼이 컬럼으로 나뉘면(예: <code class="inline">..._android_spend</code>) 가입·재활성·채널 칩의 <strong>플랫폼 셀렉터(공통/Android/iOS)</strong>로 태그 → 상단 플랫폼 셀렉터로 전환하며 각각 분석됩니다.</p>
-      <button class="ab-pill" data-mmm-autoguess="1" title="컬럼 이름으로 역할+플랫폼을 추정해 자동 배치 (수정 가능)">🪄 이름으로 자동 추정</button>
+      <p class="muted" style="font-size:12px;margin:0;"><strong>가입·재활성·채널 spend는 이름으로 자동 배치</strong>됩니다(+플랫폼·perf/brand 태그). <strong>주차(t)·더미·플랫폼 컬럼은 직접 드래그</strong>하세요(파생컬럼 LN/sin/cos 등은 트레이에 남김). 칩을 끌어 언제든 수정 가능. 플랫폼이 컬럼으로 나뉘면 칩의 셀렉터로 태그 → 상단 셀렉터로 전환하며 각각 분석.</p>
+      <button class="ab-pill" data-mmm-autoguess="1" title="주차·더미·플랫폼까지 포함해 전부 이름으로 추정 (수정 가능)">🪄 전부 자동 추정</button>
     </div>
     <div class="reg-zone" data-mmm-zone="ignore" style="border-style:solid;"><div class="reg-zone-label">📦 컬럼 (미지정 — 드래그해서 배치)</div><div class="reg-chips">${tray.map(c => chip(c, false, false)).join("") || `<span style="color:var(--text-muted);font-size:11px;">모두 배치됨</span>`}</div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;">
