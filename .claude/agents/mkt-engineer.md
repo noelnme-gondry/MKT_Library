@@ -76,6 +76,8 @@ tools:
 
 방법론 도구 임의 N채널화(5-18, PR #80·81): ① 고정 `MMM_CHANNELS`→`_mmmChans(panel)` 동적화(UI 무변·결과 byte-동일=무위험) ② `MMM_METH_STATE.colMap`(header→{role,kind}) 드래그앤드롭, `mmmGetPanel`은 colMap active면 그 경로·아니면 STANDARD_FIELDS fallback(골든 보존). 하드코딩 채널 키(`saturation "google_roi"`)는 panel 첫 perf 채널로. 검증=colMap 패널 vs 수동 패널 byte-동일(동적 absorb 경로로).
 
+구조변화 step 일반화(5-18, PR #86): `cfg.steps`(42/55)는 Tinder 전용 주차임계값 가정→임의데이터 phantom 공선. 세 소비처를 `_mmmStepSeries(panel,cfg)`로 통일(panel.steps 있으면 그것·없으면 cfg.steps). colMap `step` 역할 추가(panel.steps, sheet LineOff 대체) + Config `disableSteps`(cfg.steps={}) + 흡수 노티스 캐비엇(default step일 때만). Tinder는 panel.steps 빈값→cfg.steps fallback이라 골든·validate byte-동일. `cfg.steps.x` 접근은 `??`/`!=null` 가드.
+
 # 통계 도구 표준 (5-5 등)
 
 - 순수 함수 객체에 분리 (`CANNIBAL_STATS`, `ALLOC_MATH`)
