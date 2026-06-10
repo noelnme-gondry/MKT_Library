@@ -374,6 +374,9 @@ TOC/사이드바/헤더에 보이는 번호를 바꿀 때 **내부 id(`5-2` 등)
 - **페이지 전역 필터는 목차로**: `pageShell(opts.tocFilters)` 공용 슬롯(.toc-filters) — 타깃·플랫폼 같은 전역 컨트롤을 우측 목차 상단 고정 패널로. 채널 같은 분석-지점 필터는 본문 유지. 핸들러는 document 위임이라 위치 무관.
 - **드래그앤드롭 매핑**(5-19): 컬럼 칩 → 종속Y/독립/그룹/라벨 drop zone(HTML5 DnD: dragstart setData / zone dragover·drop으로 role 설정, Y는 1개 강제, ✕ 미지정). 독립 칩에 type·transform·**perf/brand** kind. 적합 로직은 role/type/transform 모델 그대로 — DnD는 role 설정 UI일 뿐. **DnD 포인터 인터랙션은 headless 검증 불가 → 브라우저 확인 필요**.
 
+### 12.17 방법론 도구를 임의 N채널로 일반화 (2단계: 동적 채널 → 콜맵 DnD) (PR #80·81, 5-18)
+의미기반 도구(§12.13)를 고정 채널(`MMM_CHANNELS`)에서 임의 채널로 풀 때 **2단계로 안전하게**: ① **동적화** — 파이프라인 `MMM_CHANNELS`→`_mmmChans(panel)`(panel.channels=[{key,label,kind}]), Shapley 그룹·sheet lump(`kind!=="brand"`)·brand 합산을 panel 기반으로. UI 무변·결과 byte-동일(골든+validate_pipe로 보증) → 무위험 커밋. ② **콜맵 DnD** — `MMM_METH_STATE.colMap`(header→{role,kind}; role=week/reg/react/channel/dummy/platform)로 드래그앤드롭 매핑. `mmmGetPanel`은 colMap active면 그 경로, 아니면 STANDARD_FIELDS **fallback**(골든·로컬검증은 STANDARD라 그대로). 채널 key는 `_mmmSanKey(header)`(label=원본). 게이트·`checkRequiredForTool`은 해당 도구만 colMap special-case. **하드코딩 채널 키 의존 제거**: `mmmSaturation(…,"google_roi")`→panel 첫 perf 채널, `foldIntoRegime`/`combinedGoogle`은 fallback/vestigial이라 무해(라이브는 `mmmResolveAbsorb` 동적 흡수=키 무관). 검증: colMap 패널 = 수동 패널 **byte-동일**(동적 absorb 경로로 비교 — raw cfg는 foldIntoRegime fallback 타서 artifact 불일치).
+
 ---
 
 ## 13. 참고 파일
