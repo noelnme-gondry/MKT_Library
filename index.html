@@ -13106,7 +13106,10 @@ function renderMmmCannib(c) {
   return `<section class="block" id="s-cannib">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
       <h3 class="section-title" style="font-size:15px;margin:0;"><span class="ix">§4</span>카니발 vs 오가닉 — ${MMM_METH_STATE.target} · <span style="color:#7aa2f7;">${escapeHtml(chLabel(selCh))}</span> (보수적 삼각검증)</h3>
-      <button class="ab-pill" data-mmm-cannib-csv="1" title="모든 채널 × 3-state 투표(FOR/AGAINST/ABSTAIN) + 게이트·탄력성·커버리지 1행씩 → CSV">⬇ 채널별 카니발 CSV</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="ab-pill" data-mmm-cannib-series="1" title="주별 원자료: 타깃·채널별 ln(1+지출)·탈추세 잔차·1차차분 → 엑셀에서 CORREL로 raw/detrend/차분 상관 직접 재현">⬇ 검정 원자료 CSV</button>
+        <button class="ab-pill" data-mmm-cannib-csv="1" title="모든 채널 × 3-state 투표(FOR/AGAINST/ABSTAIN) + 게이트·탄력성·커버리지 1행씩 → CSV">⬇ 채널별 카니발 CSV</button>
+      </div>
     </div>
     ${chPills}
     <div class="callout" style="border-left:3px solid ${vcol};"><div class="body"><strong>판정:</strong> ${escapeHtml(cn.verdict)}<br><span style="font-size:12px;color:var(--text-muted);">투표 <strong>${cn.vote_summary}</strong> · ${barTxt} · ${escapeHtml(chLabel(selCh))} 채널 기준 (다른 채널은 위 pill로 전환)</span></div></div>
@@ -13400,6 +13403,7 @@ function bindMmmMethHandlers() {
   const em = document.getElementById("mmm-export-md"); if (em) em.addEventListener("click", exportMmmMethMd);
   document.querySelectorAll("[data-mmm-decomp-csv]").forEach(b => b.addEventListener("click", downloadMmmDecompCsv));
   document.querySelectorAll("[data-mmm-cannib-csv]").forEach(b => b.addEventListener("click", downloadMmmCannibCsv));
+  document.querySelectorAll("[data-mmm-cannib-series]").forEach(b => b.addEventListener("click", downloadMmmCannibSeriesCsv));
   // 튀는 구간 메모 (세션 상태에 저장; 재렌더 없이 input 값 유지)
   document.querySelectorAll("[data-mmm-note]").forEach(inp => inp.addEventListener("change", () => {
     if (!MMM_METH_STATE.notes) MMM_METH_STATE.notes = {};
@@ -13468,6 +13472,34 @@ function downloadMmmCannibCsv() {
     lines.push(row.map(q).join(","));
   }
   _mmmDownload(`mmm_cannib_${t}_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
+}
+// §4 검정 원자료 — 주별 타깃·채널별 ln(1+지출)·탈추세 잔차·1차차분. 엑셀 CORREL로 raw/detrend/차분 상관 직접 재현.
+// (§4 검정과 동일 계산: lnG=log1p(지출), 탈추세=인덱스 0..n-1에 OLS 회귀 잔차, 차분=Δ. → 화면 값과 정확히 일치)
+function downloadMmmCannibSeriesCsv() {
+  const c = MMM_METH_CACHE; const t = MMM_METH_STATE.target, T = c.byTarget && c.byTarget[t];
+  if (!T || !c.panel || !c.panel.targets[t]) { alert("데이터가 없습니다. 먼저 분석을 실행하세요."); return; }
+  const panel = c.panel, y = panel.targets[t], week = panel.week, n = week.length;
+  const tr = week.map((_, i) => [1, i]);
+  const yFit = mmmOls(tr, y); const yResid = yFit ? yFit.resid : y.map(() => null);
+  const chans = _mmmChans(panel).filter(ch => panel.ch[ch.key]);
+  const series = chans.map(ch => {
+    const lnG = panel.ch[ch.key].map(v => Math.log1p(v > 0 ? v : 0));
+    const gFit = mmmOls(tr, lnG);
+    return { ch, spend: panel.ch[ch.key], lnG, resid: gFit ? gFit.resid : lnG.map(() => null) };
+  });
+  const weekDate = (w) => new Date(Date.UTC(2024, 0, 1) + (w - 1) * 7 * 86400000).toISOString().slice(0, 10);
+  const q = (s) => { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const tgt = t;
+  const header = ["week", "date", tgt, tgt + "_detrend", tgt + "_diff"];
+  chans.forEach((ch, i) => header.push("spend_" + ch.label, "ln_" + ch.label, "ln_" + ch.label + "_detrend", "ln_" + ch.label + "_diff"));
+  const num = (v, d) => (v == null || !isFinite(v)) ? "" : (+v).toFixed(d);
+  const lines = [header.map(q).join(",")];
+  for (let i = 0; i < n; i++) {
+    const row = [week[i], weekDate(week[i]), Math.round(y[i]), num(yResid[i], 4), i > 0 ? (y[i] - y[i - 1]).toFixed(1) : ""];
+    series.forEach(s => row.push(isFinite(s.spend[i]) ? Math.round(s.spend[i]) : "", num(s.lnG[i], 5), num(s.resid[i], 5), i > 0 ? (s.lnG[i] - s.lnG[i - 1]).toFixed(5) : ""));
+    lines.push(row.map(q).join(","));
+  }
+  _mmmDownload(`mmm_cannib_series_${t}_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
 }
 function exportMmmMethMd() {
   const c = MMM_METH_CACHE; const L = ["# MMM 방법론 — verdict\n", "> described(연관)·가설·기술용. 인과/증분은 holdout 전용.\n"];
