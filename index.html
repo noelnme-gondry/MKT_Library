@@ -13112,6 +13112,11 @@ function renderMmmCannib(c) {
       </div>
     </div>
     ${chPills}
+    ${(() => {
+      const tgt = MMM_METH_STATE.target, yArr = c.panel.targets[tgt] || [], spArr = c.panel.ch[selCh] || [];
+      const sum = a => Math.round(a.reduce((s, v) => s + (isFinite(v) ? v : 0), 0));
+      return `<div style="font-size:10.5px;color:var(--text-muted);margin:-2px 0 8px;padding:6px 9px;background:var(--bg-2);border-radius:6px;">📄 <strong>분석 데이터 지문</strong>: <code class="inline">${escapeHtml(CSV_STATE.fileName || "-")}</code> · ${c.panel.week.length}주 · 플랫폼 ${escapeHtml(_mmmPlatLabel(MMM_METH_STATE.platform))} · Σ${tgt}=<strong>${sum(yArr).toLocaleString()}</strong> · Σ${escapeHtml(chLabel(selCh))}=<strong>${sum(spArr).toLocaleString()}</strong> <span style="opacity:0.75;">— CSV의 같은 열 합과 일치하면 동일 데이터(다르면 화면이 옛 스냅샷이니 새로고침·재분석)</span></div>`;
+    })()}
     <div class="callout" style="border-left:3px solid ${vcol};"><div class="body"><strong>판정:</strong> ${escapeHtml(cn.verdict)}<br><span style="font-size:12px;color:var(--text-muted);">투표 <strong>${cn.vote_summary}</strong> · ${barTxt} · ${escapeHtml(chLabel(selCh))} 채널 기준 (다른 채널은 위 pill로 전환)</span></div></div>
     ${mmmExplain('<strong>카니발 = 광고가 오가닉을 빼앗아 가는 것, 오가닉 = 광고와 무관한 외생적 변화.</strong> 단순 상관으론 둘을 구분 못 합니다. 그래서 독립적인 3가지 질문을 <strong>FOR(오가닉)·AGAINST(카니발)·ABSTAIN(판단보류)</strong>로 투표합니다 — ① 저지출 구간(광고 본격화 前)에 오가닉이 <em>유의하게</em> 줄고 있었나? ② 시간 추세를 빼도 음상관이 남나? ③ 순(net) 효과가 유의한 +인가? <strong>입증책임은 비대칭</strong>입니다: "방어/OK"는 <strong>강하고 일관된 증거(FOR가 기준 이상 AND AGAINST 0 AND 검정력 통과)</strong>가 있을 때만, 모호하면 기본값은 <strong>INCONCLUSIVE</strong>. AGAINST가 하나라도 있으면 <strong>LEAN CANNIBAL</strong>. <strong>관측은 적색신호를 거를 뿐, 무죄를 증명하지 않습니다</strong> — 확정은 holdout(5-15).')}
     ${gateBox}
