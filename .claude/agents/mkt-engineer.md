@@ -78,6 +78,8 @@ tools:
 
 구조변화 step 일반화(5-18, PR #86): `cfg.steps`(42/55)는 Tinder 전용 주차임계값 가정→임의데이터 phantom 공선. 세 소비처를 `_mmmStepSeries(panel,cfg)`로 통일(panel.steps 있으면 그것·없으면 cfg.steps). colMap `step` 역할 추가(panel.steps, sheet LineOff 대체) + Config `disableSteps`(cfg.steps={}) + 흡수 노티스 캐비엇(default step일 때만). Tinder는 panel.steps 빈값→cfg.steps fallback이라 골든·validate byte-동일. `cfg.steps.x` 접근은 `??`/`!=null` 가드.
 
+그랜저 인과 ④(5-18 §4, PR #98): 동시점 삼각검증(①~③)이 "거의 전부 INCONCLUSIVE→holdout"으로만 끝나는 불만 보완. `mmmGranger(y,x,cap)`=차분 VAR+F검정(AIC lag, `REG_STATS.ols` RSS+`ibeta`), 양방향(spend→organic 시차잠식 / organic→spend 페이싱). spend→organic 유의&계수합<0이면 판정 **LEAN CANNIBAL 격상**(순수 추가→골든·validate byte-동일). 그랜저=예측 선행성이지 인과 확정 아님→캐비엇 필수, 확정은 holdout. n<24 null. 골든 T6e. CSV granger 9컬럼.
+
 # 통계 도구 표준 (5-5 등)
 
 - 순수 함수 객체에 분리 (`CANNIBAL_STATS`, `ALLOC_MATH`)
