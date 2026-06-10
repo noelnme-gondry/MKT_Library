@@ -2599,6 +2599,16 @@
     font-size: 11.5px; line-height: 1.55; color: var(--text-1); white-space: normal;
     box-shadow: 0 8px 24px rgba(0,0,0,0.45); pointer-events: none;
   }
+  /* Regression Lab 드래그앤드롭 매핑 */
+  .reg-zone { min-height: 56px; border: 1.5px dashed var(--border); border-radius: 10px; padding: 9px 11px; background: var(--bg-2); transition: border-color .12s, background .12s; }
+  .reg-zone.over { border-color: #7aa2f7; background: rgba(122,162,247,0.08); }
+  .reg-zone-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; }
+  .reg-chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
+  .reg-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--bg-1); border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; cursor: grab; font-size: 12px; }
+  .reg-chip:active { cursor: grabbing; }
+  .reg-chip.dep { border-color: rgba(122,162,247,0.5); }
+  .reg-chip select { font-size: 10.5px; padding: 1px 3px; background: var(--bg-2); color: var(--text-1); border: 1px solid var(--border); border-radius: 4px; }
+  .reg-chip .x { cursor: pointer; color: var(--text-muted); font-weight: 700; padding: 0 2px; }
   /* 목차 상단 고정 필터 패널 (페이지 전역 컨트롤) */
   .toc-filters { background: rgba(122,162,247,0.06); border: 1px solid rgba(122,162,247,0.22); border-radius: 10px; padding: 10px 11px; margin-bottom: 14px; }
   .toc-filters .toc-filter-label { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin: 0 0 5px; }
@@ -13222,7 +13232,8 @@ function regLabGuess(col, rows) {
   else if (/regs?$|react|conv|install|signup|purchase|pur|revenue|매출|등록|재활성/.test(name) && isNum) role = "dependent";
   else if (isNum && /cost|spend|비용|지출|budget|imp|click/.test(name)) { role = "independent"; tf = "adstock_log"; }
   else if (isNum) { role = "independent"; tf = "none"; }
-  return { role, type, tf };
+  const kind = /brand|브랜드/.test(name) ? "brand" : "perf";  // 지출 채널 perf/brand 구분 태그
+  return { role, type, tf, kind };
 }
 function regLabLoad(rows, headers) {
   const valid = rows.filter(r => headers.some(f => r[f] != null && r[f] !== ""));
@@ -13328,24 +13339,29 @@ PAGE_RENDERERS["5-19"] = page_5_19;
 
 function renderRegMap() {
   const S = REG_LAB_STATE;
-  const sel = (col, field, opts, fmt) => `<select data-reg-map="${escapeHtml(col)}" data-reg-field="${field}" style="font-size:12px;padding:3px 6px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;">` +
-    opts.map(o => `<option value="${o}" ${S.map[col]?.[field === "tf" ? "tf" : field] === o ? "selected" : ""}>${fmt ? fmt(o) : o}</option>`).join("") + `</select>`;
-  const rows = S.headers.map(c => {
-    const prev = S.rows.slice(0, 3).map(r => r[c]).join(", ");
-    return `<tr>
-      <td><strong>${escapeHtml(c)}</strong></td>
-      <td>${sel(c, "role", _REG_ROLES)}</td>
-      <td>${sel(c, "type", _REG_TYPES)}</td>
-      <td>${sel(c, "tf", _REG_TFS, o => TRANSFORM_LABELS[o])}</td>
-      <td class="muted" style="font-size:11px;">${escapeHtml(prev)}…</td>
-    </tr>`;
-  }).join("");
+  const miniSel = (col, field, opts, fmt) => `<select data-reg-map="${escapeHtml(col)}" data-reg-field="${field}">` +
+    opts.map(o => `<option value="${o}" ${S.map[col]?.[field] === o ? "selected" : ""}>${fmt ? fmt(o) : o}</option>`).join("") + `</select>`;
+  const chip = (col, withControls) => {
+    const def = S.map[col] || {};
+    const isCost = def.role === "independent" && def.type !== "binary";
+    const controls = withControls ? `${miniSel(col, "type", _REG_TYPES)}${def.type === "binary" ? "" : miniSel(col, "tf", _REG_TFS, o => TRANSFORM_LABELS[o])}${isCost ? miniSel(col, "kind", ["perf", "brand"], o => o === "perf" ? "perf spend" : "brand spend") : ""}` : "";
+    return `<span class="reg-chip ${def.role === "dependent" ? "dep" : ""}" draggable="true" data-reg-chip="${escapeHtml(col)}"><strong>${escapeHtml(col)}</strong>${controls}<span class="x" data-reg-unassign="${escapeHtml(col)}" title="제외로">✕</span></span>`;
+  };
+  const inRole = (role) => S.headers.filter(c => (S.map[c]?.role || "ignore") === role);
+  const zone = (role, label, withControls) => `<div class="reg-zone" data-reg-zone="${role}"><div class="reg-zone-label">${label}</div><div class="reg-chips">${inRole(role).map(c => chip(c, withControls)).join("") || `<span style="color:var(--text-muted);font-size:11px;">여기로 드래그</span>`}</div></div>`;
+  const tray = S.headers.filter(c => (S.map[c]?.role || "ignore") === "ignore");
   return `<section class="block" id="s-map">
-    <h2 class="section-title"><span class="ix">§2</span>컬럼 매핑 (가변 컬럼)</h2>
-    <p class="muted" style="font-size:12px;margin-top:-4px;">컬럼별 역할(종속/독립/그룹/라벨/제외)·타입·변환 지정. binary는 변환 자동 '없음'. 변환은 적합 직전 적용.</p>
-    <div class="table-wrap"><table class="data" style="font-size:12px;"><thead><tr><th>컬럼</th><th>역할</th><th>타입</th><th>변환</th><th>미리보기</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <h2 class="section-title"><span class="ix">§2</span>컬럼 매핑 (드래그앤드롭)</h2>
+    <p class="muted" style="font-size:12px;margin-top:-4px;">아래 컬럼 칩을 <strong>종속(Y)·독립·그룹·라벨 영역으로 드래그</strong>하세요. 독립변수 칩에서 타입·변환·(지출이면)perf/brand를 고릅니다. binary는 변환 자동 '없음'.</p>
+    <div class="reg-zone" data-reg-zone="ignore" style="border-style:solid;"><div class="reg-zone-label">📦 컬럼 (미지정 — 드래그해서 배치)</div><div class="reg-chips" id="reg-tray">${tray.map(c => chip(c, false)).join("") || `<span style="color:var(--text-muted);font-size:11px;">모두 배치됨</span>`}</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+      ${zone("dependent", "🎯 종속변수 (Y) — 1개", true)}
+      ${zone("group", "🔀 그룹 (세그먼트 필터·선택)", false)}
+    </div>
+    <div style="margin-top:10px;">${zone("independent", "📈 독립변수 (여러 개)", true)}</div>
+    <div style="margin-top:10px;">${zone("label", "🏷 라벨 (x축·선택)", false)}</div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;">
-      <label style="font-size:12px;color:var(--text-muted);">Adstock λ (adstock+log용)<br><input type="number" id="reg-lambda" value="${S.lambda}" step="0.05" min="0" max="0.95" style="width:90px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:4px 7px;margin-top:3px;"></label>
+      <label style="font-size:12px;color:var(--text-muted);">Adstock λ<br><input type="number" id="reg-lambda" value="${S.lambda}" step="0.05" min="0" max="0.95" style="width:90px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:4px 7px;margin-top:3px;"></label>
       <div id="reg-groupwrap" style="flex:1 1 100%;${regLabGroupColOf() ? "" : "display:none;"}">
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:5px;">그룹 필터 — 분석/추출 포함 그룹 (탭하여 토글)</div>
         <div class="ab-pillgroup" id="reg-grouppills"></div>
@@ -13442,9 +13458,23 @@ function bindRegLabHandlers() {
     const col = selEl.dataset.regMap, field = selEl.dataset.regField;
     if (!REG_LAB_STATE.map[col]) REG_LAB_STATE.map[col] = {};
     REG_LAB_STATE.map[col][field] = selEl.value;
-    if (field === "type" && selEl.value === "binary") { REG_LAB_STATE.map[col].tf = "none"; const tfSel = document.querySelector(`[data-reg-map="${col}"][data-reg-field="tf"]`); if (tfSel) tfSel.value = "none"; }
-    if (field === "role") regLabRenderGroupPills();
+    if (field === "type") { if (selEl.value === "binary") REG_LAB_STATE.map[col].tf = "none"; navigate("5-19"); }  // 타입 변경 → 칩 컨트롤 갱신
   }));
+  // 드래그앤드롭 — 칩을 zone으로 이동(=role 설정)
+  document.querySelectorAll("[data-reg-chip]").forEach(ch => ch.addEventListener("dragstart", e => { e.dataTransfer.setData("text/plain", ch.dataset.regChip); e.dataTransfer.effectAllowed = "move"; }));
+  document.querySelectorAll("[data-reg-zone]").forEach(z => {
+    z.addEventListener("dragover", e => { e.preventDefault(); z.classList.add("over"); });
+    z.addEventListener("dragleave", () => z.classList.remove("over"));
+    z.addEventListener("drop", e => {
+      e.preventDefault(); z.classList.remove("over");
+      const col = e.dataTransfer.getData("text/plain"); if (!col || !REG_LAB_STATE.map[col]) return;
+      const role = z.dataset.regZone;
+      if (role === "dependent") REG_LAB_STATE.headers.forEach(c => { if (REG_LAB_STATE.map[c]?.role === "dependent") REG_LAB_STATE.map[c].role = "ignore"; });  // Y는 1개
+      REG_LAB_STATE.map[col].role = role;
+      navigate("5-19");
+    });
+  });
+  document.querySelectorAll("[data-reg-unassign]").forEach(x => x.addEventListener("click", e => { e.stopPropagation(); const col = x.dataset.regUnassign; if (REG_LAB_STATE.map[col]) REG_LAB_STATE.map[col].role = "ignore"; navigate("5-19"); }));
   const lamEl = document.getElementById("reg-lambda");
   if (lamEl) lamEl.addEventListener("change", () => { REG_LAB_STATE.lambda = parseFloat(lamEl.value) || 0; });
   regLabRenderGroupPills();
