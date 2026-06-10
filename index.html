@@ -11874,19 +11874,20 @@ function mmmSheetDesign(panel, cfg, withBrand = false) {
   push("ln_total", gtot.map(v => Math.log1p(v)));
   push("sin13", t.map(tt => Math.sin(2 * Math.PI * tt / 13.0)));
   push("cos52", t.map(tt => Math.cos(2 * Math.PI * tt / 52.0)));
-  // dummies: PreLNY, Seollal, ChuseokOnly, PostChuWk, LineOff(step), OtherHol
-  const dmap = { PreLNY: "PreLNY", Seollal: "Seollal", ChuseokOnly: "ChuseokOnly", PostChuWk: "PostChuWk", OtherHol: "OtherHol" };
-  const dummyVals = (k) => { const d = MMM_DUMMIES.find(d => d.key === k); return d && panel.dummy[k] ? panel.dummy[k] : t.map(() => 0); };
-  push("PreLNY", dummyVals("PreLNY")); push("Seollal", dummyVals("Seollal")); push("ChuseokOnly", dummyVals("ChuseokOnly")); push("PostChuWk", dummyVals("PostChuWk"));
+  // dummies: 매핑된 모든 더미 (Tinder=PreLNY/Seollal/ChuseokOnly/PostChuWk/OtherHol) + LineOff(step). OLS는 순서 무관 → audit 계수 byte-동일.
+  for (const k in panel.dummy) push(k, panel.dummy[k]);
   push("LineOff", t.map(tt => tt >= cfg.steps.line_off ? 1 : 0));
-  push("OtherHol", dummyVals("OtherHol"));
   push("t", t.slice());
-  if (withBrand && panel.ch.brand) {
-    // brand: 0→NaN ffill/bfill then log1p
-    const b = panel.ch.brand.slice(); let last = null;
-    for (let i = 0; i < b.length; i++) { if (b[i] === 0 || isNaN(b[i])) b[i] = last; else last = b[i]; }
-    last = null; for (let i = b.length - 1; i >= 0; i--) { if (b[i] == null) b[i] = last; else last = b[i]; }
-    push("ln_Brand", b.map(v => Math.log1p(v || 0)));
+  if (withBrand) {
+    // brand-kind 채널 합산 → 0→NaN ffill/bfill → log1p (Tinder: brand 1개 → 기존과 동일)
+    const brandKeys = _mmmChans(panel).filter(c => c.kind === "brand" && panel.ch[c.key]).map(c => c.key);
+    if (brandKeys.length) {
+      const b = t.map((_, i) => brandKeys.reduce((s, k) => s + (panel.ch[k][i] || 0), 0));
+      let last = null;
+      for (let i = 0; i < b.length; i++) { if (b[i] === 0 || isNaN(b[i])) b[i] = last; else last = b[i]; }
+      last = null; for (let i = b.length - 1; i >= 0; i--) { if (b[i] == null) b[i] = last; else last = b[i]; }
+      push("ln_Brand", b.map(v => Math.log1p(v || 0)));
+    }
   }
   const X = []; for (let i = 0; i < n; i++) X.push(cols.map(c => c[i]));
   return { X, names };
@@ -12094,8 +12095,9 @@ function mmmRunMmm(panel, cfg, targetName) {
   // shapley
   const groups = mmmShapleyGroups(names, _mmmChans(panel));
   const sh = shapleyR2Exact(y, groups, X);
-  // saturation (google_roi)
-  const sat = mmmSaturation(panel, cfg, targetName, "google_roi", lam);
+  // saturation: 모델에 포함된 첫 perf 채널 (Tinder=google_roi, 임의 데이터=첫 perf)
+  const satCh = _mmmChans(panel).find(c => c.kind !== "brand" && names.includes("ln_" + c.key));
+  const sat = satCh ? mmmSaturation(panel, cfg, targetName, satCh.key, lam) : null;
   return { best_lambda: lam, cv_rmse: ad.cv_rmse, vif: vifByName, collinear_pairs: pairs, elasticities: elas, shapley: sh, saturation: sat };
 }
 function mmmElasticities(panel, cfg, targetName, lam) {
@@ -12270,11 +12272,84 @@ if (typeof window !== "undefined") {
 /* ============================================================
  * 5-18 페이지 (MMM 방법론 도구) — 데이터 계약·config·결과 패널·차트·verdict·export
  * ============================================================ */
-const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi" };  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상
+const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi", colMap: null };  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상. colMap: {[header]:{role,kind}} 드래그앤드롭 역할 매핑(임의 N채널)
+const _MMM_ROLES = ["ignore", "week", "reg", "react", "channel", "dummy", "platform"];
+// CSV 헤더 → MMM 역할 자동 추정 (드래그앤드롭 초기값). 0/1 binary는 더미로 우선 처리(날짜명 오인 방지)
+function mmmGuessRole(col, rows) {
+  const name = String(col).toLowerCase();
+  const vals = rows.map(r => r[col]).filter(v => v != null && String(v).trim() !== "");
+  const nums = vals.map(v => parseFloat(String(v).replace(/[^0-9.\-]/g, ""))).filter(v => !isNaN(v));
+  const isNum = nums.length >= vals.length * 0.7 && vals.length > 0;
+  const uniq = [...new Set(nums)];
+  const isBin = isNum && uniq.every(v => v === 0 || v === 1) && uniq.length <= 2;
+  const kind = /brand|브랜드/.test(name) ? "brand" : "perf";
+  let role = "ignore";
+  if (/^(week|t|wk)$/.test(name) || /week|주차|날짜|일자|date/.test(name)) role = "week";
+  else if (isBin) role = "dummy";
+  else if (isNum && /reg|가입|등록|signup|sign_up|install/.test(name)) role = "reg";
+  else if (isNum && /react|재활성|reactiv|resurrect|win.?back|winback/.test(name)) role = "react";
+  else if (isNum && /cost|spend|비용|지출|budget|imp|click|ch_|채널|brand/.test(name)) role = "channel";
+  else if (!isNum && /platform|os|플랫폼|기기|device|segment|세그/.test(name)) role = "platform";
+  else if (isNum) role = "channel";
+  return { role, kind };
+}
+// colMap 초기화/유지: 헤더가 그대로면 사용자 편집 보존, 바뀌면 자동추정으로 재구성
+function mmmColMapInit(force) {
+  const heads = CSV_STATE.headers || [];
+  if (!heads.length) { MMM_METH_STATE.colMap = null; return; }
+  const cm = MMM_METH_STATE.colMap;
+  if (!force && cm && Object.keys(cm).length) {
+    const cur = Object.keys(cm);
+    if (heads.length === cur.length && heads.every(h => cur.includes(h))) return;  // 동일 스키마 → 유지
+  }
+  const rows = CSV_STATE.raw || [];
+  const next = {}; heads.forEach(h => next[h] = mmmGuessRole(h, rows));
+  // week/reg/react/platform은 각 1개만 (중복 추정 시 후순위는 ignore)
+  const once = { week: false, reg: false, react: false, platform: false };
+  heads.forEach(h => { const r = next[h].role; if (r in once) { if (once[r]) next[h].role = "ignore"; once[r] = true; } });
+  MMM_METH_STATE.colMap = next;
+}
+function mmmColMapActive() {
+  const cm = MMM_METH_STATE.colMap;
+  if (!cm || !(CSV_STATE.headers || []).length) return null;
+  return Object.values(cm).some(v => v && v.role && v.role !== "ignore") ? cm : null;
+}
+function _mmmSanKey(name, used) {
+  let b = "c_" + String(name).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  if (b === "c_") b = "c";
+  let k = b, i = 2; while (used.has(k)) { k = b + i; i++; }
+  used.add(k); return k;
+}
+// colMap → 역할별 컬럼 분해 (채널/더미는 sanitized key 부여, label=원본 헤더)
+function mmmColMapRoles(cm) {
+  const heads = CSV_STATE.headers || [];
+  const out = { week: null, reg: null, react: null, platform: null, channels: [], dummies: [] };
+  const used = new Set();
+  for (const h of heads) {
+    const def = cm[h] || {}; const r = def.role;
+    if (r === "week" && !out.week) out.week = h;
+    else if (r === "reg" && !out.reg) out.reg = h;
+    else if (r === "react" && !out.react) out.react = h;
+    else if (r === "platform" && !out.platform) out.platform = h;
+    else if (r === "channel") out.channels.push({ header: h, key: _mmmSanKey(h, used), label: h, kind: def.kind === "brand" ? "brand" : "perf" });
+    else if (r === "dummy") out.dummies.push({ header: h, key: _mmmSanKey(h, used), label: h });
+  }
+  return out;
+}
+function mmmColMapMissing() {
+  const cm = mmmColMapActive(); if (!cm) return ["채널·타깃 매핑"];
+  const r = mmmColMapRoles(cm); const miss = [];
+  if (!r.reg && !r.react) miss.push("가입 또는 재활성(타깃) 1개");
+  if (!r.channels.length) miss.push("채널 spend 1개 이상");
+  return miss;
+}
 function mmmPlatforms() {
-  const inv = {}; for (const [h, k] of Object.entries(CSV_STATE.mapping || {})) if (k !== "__ignore__") inv[k] = h;
-  if (!inv.mmm_platform) return [];
-  return [...new Set((CSV_STATE.raw || []).map(r => String(r[inv.mmm_platform])).filter(v => v && v !== "null" && v !== "undefined"))];
+  const cm = mmmColMapActive();
+  let pcol = null;
+  if (cm) pcol = mmmColMapRoles(cm).platform;
+  else { const inv = {}; for (const [h, k] of Object.entries(CSV_STATE.mapping || {})) if (k !== "__ignore__") inv[k] = h; pcol = inv.mmm_platform; }
+  if (!pcol) return [];
+  return [...new Set((CSV_STATE.raw || []).map(r => String(r[pcol])).filter(v => v && v !== "null" && v !== "undefined"))];
 }
 function mmmActiveConfig() {
   if (!MMM_METH_STATE.config) MMM_METH_STATE.config = JSON.parse(JSON.stringify({
@@ -12286,7 +12361,32 @@ function mmmActiveConfig() {
   }));
   return { ...MMM_METH_STATE.config, hacAutoLag: MMM_METH_CONFIG.hacAutoLag };
 }
+function mmmGetPanelFromColMap(cm) {
+  const r = mmmColMapRoles(cm);
+  let raw = CSV_STATE.raw || [];
+  if (r.platform && MMM_METH_STATE.platform && MMM_METH_STATE.platform !== "All") {
+    raw = raw.filter(row => String(row[r.platform]) === MMM_METH_STATE.platform);
+  }
+  const num = (h, allowNaN) => raw.map(row => { const v = row[h]; if (v == null || String(v).trim() === "") return allowNaN ? NaN : 0; const n = parseFloat(String(v).replace(/[^0-9.\-]/g, "")); return isNaN(n) ? (allowNaN ? NaN : 0) : n; });
+  const week = r.week ? num(r.week, false) : raw.map((_, i) => i + 1);
+  const panel = { week, ch: {}, dummy: {}, targets: {} };
+  for (const ch of r.channels) panel.ch[ch.key] = num(ch.header, true);   // NaN→impute
+  for (const d of r.dummies) panel.dummy[d.key] = num(d.header, false);
+  if (r.reg) panel.targets.Regs = num(r.reg, false);
+  if (r.react) panel.targets.React = num(r.react, false);
+  const order = week.map((_, i) => i).sort((a, b) => week[a] - week[b]);
+  const re = arr => order.map(i => arr[i]);
+  panel.week = re(panel.week);
+  for (const k in panel.ch) panel.ch[k] = re(panel.ch[k]);
+  for (const k in panel.dummy) panel.dummy[k] = re(panel.dummy[k]);
+  for (const k in panel.targets) panel.targets[k] = re(panel.targets[k]);
+  if (panel.targets.Regs && panel.targets.React) panel.targets.RR = panel.week.map((_, i) => panel.targets.Regs[i] + panel.targets.React[i]);
+  panel.channels = r.channels.map(ch => ({ key: ch.key, label: ch.label, kind: ch.kind }));
+  return panel;
+}
 function mmmGetPanel() {
+  const cm = mmmColMapActive();
+  if (cm) return mmmGetPanelFromColMap(cm);
   const inv = {}; for (const [h, k] of Object.entries(CSV_STATE.mapping || {})) if (k !== "__ignore__") inv[k] = h;
   let raw = CSV_STATE.raw || [];
   // (c) platform 차원: 선택된 플랫폼으로 행 필터 (매핑 없으면 전체)
@@ -12312,8 +12412,9 @@ function mmmGetPanel() {
 }
 const MMM_METH_CACHE = { key: null };
 function mmmMethCacheKey() {
+  const cm = mmmColMapActive();
   const m = CSV_STATE.mapping || {};
-  const sig = Object.entries(m).filter(([, v]) => v !== "__ignore__").map(([h, v]) => `${v}:${h}`).sort().join("|");
+  const sig = cm ? "cm:" + JSON.stringify(cm) : Object.entries(m).filter(([, v]) => v !== "__ignore__").map(([h, v]) => `${v}:${h}`).sort().join("|");
   return `${CSV_STATE.fileName}|${(CSV_STATE.raw || []).length}|${sig}|${JSON.stringify(MMM_METH_STATE.config)}|pf:${MMM_METH_STATE.platform}|ab:${JSON.stringify(MMM_METH_STATE.absorbChoice)}`;
 }
 function buildMmmMethCache() {
@@ -12355,13 +12456,82 @@ function buildMmmMethCache() {
   } catch (e) { C.error = e.message; }
   Object.assign(MMM_METH_CACHE, C);
   if (!targets.includes(MMM_METH_STATE.target)) MMM_METH_STATE.target = targets[0] || "Regs";
+  const curT = MMM_METH_CACHE.byTarget && MMM_METH_CACHE.byTarget[MMM_METH_STATE.target];
+  if (curT && curT.cannChannels && curT.cannChannels.length && !curT.cannChannels.includes(MMM_METH_STATE.cannibChannel)) MMM_METH_STATE.cannibChannel = curT.defCh;  // 채널 집합 바뀌면(임의 매핑) 첫 채널로
   const plats = mmmPlatforms();
   if (MMM_METH_STATE.platform !== "All" && !plats.includes(MMM_METH_STATE.platform)) MMM_METH_STATE.platform = "All";
   return MMM_METH_CACHE;
 }
 
+// 5-18 데이터·역할 매핑 (드래그앤드롭, 임의 N채널). 업로드는 공유 CSV 인프라(CSV_STATE) 사용.
+function renderMmmDataPrep() {
+  const hasFile = (CSV_STATE.headers || []).length > 0;
+  if (!hasFile) {
+    return `<section class="block" id="s-prep" data-mmm-prep>
+      <h2 class="section-title"><span class="ix">§0</span>MMM 방법론 · 데이터 준비</h2>
+      <p class="muted">주간 패널 CSV(행=주차). 업로드 후 컬럼을 <strong>주차·가입·재활성·채널(perf/brand)·더미·플랫폼</strong> 역할로 드래그합니다. 채널 수 제한 없음. 데이터는 브라우저 메모리에만 — 서버 전송 없음.</p>
+      <div class="dropzone" data-tool-dropzone="5-18">
+        <div class="dropzone-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></div>
+        <div class="dropzone-title">CSV 파일을 드래그하거나 클릭해서 업로드</div>
+        <div class="dropzone-sub">UTF-8, 첫 행이 헤더인 .csv. 주차·가입(또는 재활성)·채널 spend 1개 이상 필요.</div>
+        <input type="file" accept=".csv,text/csv" class="file-input" data-tool-csv-input="5-18" />
+      </div>
+    </section>`;
+  }
+  mmmColMapInit(false);
+  const cm = MMM_METH_STATE.colMap || {};
+  const chip = (col, withKind) => {
+    const def = cm[col] || {};
+    const kindSel = withKind ? `<select data-mmm-kind="${escapeHtml(col)}">${["perf", "brand"].map(o => `<option value="${o}" ${def.kind === o ? "selected" : ""}>${o === "perf" ? "perf spend" : "brand spend"}</option>`).join("")}</select>` : "";
+    return `<span class="reg-chip" draggable="true" data-mmm-chip="${escapeHtml(col)}"><strong>${escapeHtml(col)}</strong>${kindSel}<span class="x" data-mmm-unassign="${escapeHtml(col)}" title="제외로">✕</span></span>`;
+  };
+  const inRole = (role) => (CSV_STATE.headers || []).filter(h => (cm[h]?.role || "ignore") === role);
+  const zone = (role, label, withKind) => `<div class="reg-zone" data-mmm-zone="${role}"><div class="reg-zone-label">${label}</div><div class="reg-chips">${inRole(role).map(c => chip(c, withKind)).join("") || `<span style="color:var(--text-muted);font-size:11px;">여기로 드래그</span>`}</div></div>`;
+  const tray = (CSV_STATE.headers || []).filter(h => (cm[h]?.role || "ignore") === "ignore");
+  const miss = mmmColMapMissing();
+  const analyzed = isToolAnalyzed("5-18");
+  const gate = miss.length ? `<div class="required-banner"><strong>⚠ 필수 역할이 비어 있습니다</strong><p style="margin:.25rem 0 0;">${miss.map(m => `<code class="inline">${escapeHtml(m)}</code>`).join(", ")}</p></div>`
+    : (analyzed ? `<div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="color:#22c55e;font-size:12px;font-weight:600;">✓ 분석 완료</span><span style="color:var(--text-muted);font-size:11px;">매핑을 바꾸면 결과가 숨겨지고 다시 "분석하기"를 눌러야 합니다.</span><button class="ab-pill" data-tool-analyze="5-18" style="margin-left:auto;">↻ 다시 분석</button></div>`
+      : `<div style="margin-top:12px;background:linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03));border:1px solid rgba(122,162,247,0.3);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;"><div style="font-size:12.5px;color:var(--text-1);">✅ 필수 역할 매핑 완료. <strong>매핑이 맞는지 확인한 뒤 분석을 실행하세요.</strong> <span style="color:var(--text-muted);">(매핑만으로 자동 분석하지 않습니다.)</span></div><button class="ab-pill" data-tool-analyze="5-18" style="background:#7aa2f7;color:#0b0d12;font-weight:700;border-color:#7aa2f7;font-size:13px;padding:8px 18px;">▶ 분석하기</button></div>`);
+  return `<section class="block" id="s-prep" data-mmm-prep>
+    <h2 class="section-title"><span class="ix">§0</span>MMM 방법론 · 데이터·매핑</h2>
+    <div class="csv-loaded-bar"><div class="csv-loaded-info"><span class="dot" style="background:#22c55e;"></span><strong>${escapeHtml(CSV_STATE.fileName)}</strong><span class="csv-loaded-stats tnum">${CSV_STATE.raw.length.toLocaleString()}행 · ${CSV_STATE.headers.length}컬럼</span></div><button class="ab-pill csv-change-btn" data-tool-csv-reset="5-18" title="이 도구의 CSV를 제거하고 다른 파일 업로드">⟳ CSV 변경</button></div>
+    <p class="muted" style="font-size:12px;">컬럼 칩을 역할로 드래그하세요. <strong>주차·가입·재활성·플랫폼은 각 1개</strong>, <strong>채널·더미는 여러 개</strong>. 채널 칩에서 perf/brand 구분을 고릅니다(brand는 audit·합산에서 분리).</p>
+    <div class="reg-zone" data-mmm-zone="ignore" style="border-style:solid;"><div class="reg-zone-label">📦 컬럼 (미지정 — 드래그해서 배치)</div><div class="reg-chips">${tray.map(c => chip(c, false)).join("") || `<span style="color:var(--text-muted);font-size:11px;">모두 배치됨</span>`}</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;">
+      ${zone("week", "🗓 주차(t) · 1개 (없으면 행순서)", false)}
+      ${zone("reg", "🎯 가입 Regs", false)}
+      ${zone("react", "🎯 재활성 React", false)}
+    </div>
+    <div style="margin-top:10px;">${zone("channel", "📈 채널 spend (여러 개 · 칩에서 perf/brand)", true)}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+      ${zone("dummy", "🔢 더미/이벤트 (0·1, 여러 개)", false)}
+      ${zone("platform", "🔀 플랫폼 (세그먼트 필터·선택)", false)}
+    </div>
+    ${gate}
+  </section>`;
+}
+function bindMmmDataPrepHandlers() {
+  const cm = MMM_METH_STATE.colMap; if (!cm) return;
+  document.querySelectorAll("[data-mmm-chip]").forEach(ch => ch.addEventListener("dragstart", e => { e.dataTransfer.setData("text/plain", ch.dataset.mmmChip); e.dataTransfer.effectAllowed = "move"; }));
+  document.querySelectorAll("[data-mmm-zone]").forEach(z => {
+    z.addEventListener("dragover", e => { e.preventDefault(); z.classList.add("over"); });
+    z.addEventListener("dragleave", () => z.classList.remove("over"));
+    z.addEventListener("drop", e => {
+      e.preventDefault(); z.classList.remove("over");
+      const col = e.dataTransfer.getData("text/plain"); if (!col || !cm[col]) return;
+      const role = z.dataset.mmmZone;
+      if (["week", "reg", "react", "platform"].includes(role)) (CSV_STATE.headers || []).forEach(h => { if (cm[h] && cm[h].role === role) cm[h].role = "ignore"; });  // 단일 역할
+      cm[col].role = role;
+      navigate("5-18");
+    });
+  });
+  document.querySelectorAll("[data-mmm-unassign]").forEach(x => x.addEventListener("click", e => { e.stopPropagation(); const col = x.dataset.mmmUnassign; if (cm[col]) cm[col].role = "ignore"; navigate("5-18"); }));
+  document.querySelectorAll("[data-mmm-kind]").forEach(sel => sel.addEventListener("change", () => { const col = sel.dataset.mmmKind; if (cm[col]) cm[col].kind = sel.value; navigate("5-18"); }));
+}
 function page_5_18() {
   const meta = findMeta("5-18");
+  if ((CSV_STATE.headers || []).length) mmmColMapInit(false);  // 드래그앤드롭 colMap 초기화/유지
   const missing = checkRequiredForTool("5-18");
   if (missing.length > 0 || !(CSV_STATE.headers || []).length || !isToolAnalyzed("5-18")) {
     return pageShell(meta, {
@@ -12369,13 +12539,13 @@ function page_5_18() {
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
       summary: "필수: week(t) + (가입 또는 재활성) + 채널 spend 1개 이상. 채널/더미는 옵션. 추세는 가정하지 않고 STL·Mann-Kendall·ADF·KPSS로 검정, 추론은 HAC+AR(1), 귀인은 Shapley R².",
       toc: [{ id: "s-prep", title: "데이터 준비" }],
-      body: renderInlineCsvUpload("5-18"),
+      body: renderMmmDataPrep(),
     });
   }
   const c = buildMmmMethCache();
   if (c.error) {
     return pageShell(meta, { deck: "MMM 방법론", chips: authStatusChip(), summary: "", toc: [{ id: "s-prep", title: "준비" }],
-      body: `<section class="block">${renderInlineCsvUpload("5-18")}</section><section class="block"><div class="callout warn"><div class="ico">!</div><div class="body"><strong>계산 오류</strong><p>${escapeHtml(c.error)}</p><p class="muted">컬럼 매핑(week·타깃·채널)을 확인하세요.</p></div></div></section>` });
+      body: `${renderMmmDataPrep()}<section class="block"><div class="callout warn"><div class="ico">!</div><div class="body"><strong>계산 오류</strong><p>${escapeHtml(c.error)}</p><p class="muted">컬럼 매핑(week·타깃·채널)을 확인하세요.</p></div></div></section>` });
   }
   return pageShell(meta, {
     deck: "추세 존재 검정 → 카니발 vs 오가닉 삼각검증 + 시트 audit + adstock·Shapley·수확체감. 모든 결론은 관측 회귀 = 연관(가설). 인과는 geo holdout / organic-split.",
@@ -12384,7 +12554,7 @@ function page_5_18() {
     toc: [{ id: "s-prep", title: "데이터·매핑" }, { id: "s-summary", title: "§0 한눈에 보기" }, { id: "s-macro", title: "§1 위생·매크로" }, { id: "s-audit", title: "§2 시트 audit" }, { id: "s-trend", title: "§3 추세 존재" }, { id: "s-cannib", title: "§4 카니발 vs 오가닉" }, { id: "s-mmm", title: "§5 MMM" }, { id: "s-decomp", title: "§5.5 실제vs모델·분해" }, { id: "s-verdict", title: "§6 종합·export" }],
     tocFilters: renderMmmFilters(c),
     body: `
-      <section class="block" id="s-prep">${renderInlineCsvUpload("5-18")}</section>
+      ${renderMmmDataPrep()}
       ${renderMmmSummary(c)}
       ${renderMmmAbsorbNotice(c)}
       ${renderMmmConfig(c)}
@@ -15772,7 +15942,11 @@ function bindCSVPageHandlers() {
   }
 
 
-  // ----- 5-18: MMM 방법론 핸들러 -----
+  // ----- 5-18: 데이터·역할 드래그앤드롭 매핑 (prep 상태·분석 상태 모두) -----
+  if (document.querySelector("[data-mmm-prep]")) {
+    bindMmmDataPrepHandlers();
+  }
+  // ----- 5-18: MMM 방법론 핸들러 (분석 결과 표시 시) -----
   if (document.getElementById("s-macro") && document.querySelector("[data-mmm-target], [data-mmm-cfg-apply], #mmm-export-json")) {
     bindMmmMethHandlers();
   }
@@ -18688,6 +18862,7 @@ function resetCsvForTool(toolId) {
 
 /* 특정 도구의 required fields 평가. 누락된 표준필드 키 배열 반환. */
 function checkRequiredForTool(toolId) {
+  if (toolId === "5-18" && mmmColMapActive()) return mmmColMapMissing();  // 5-18은 드래그앤드롭 colMap 기준
   const reqs = TOOL_REQUIRED_FIELDS[toolId];
   if (!reqs) return [];
   const mapped = new Set(Object.values(CSV_STATE.mapping || {}).filter(v => v !== "__ignore__"));
@@ -18708,8 +18883,9 @@ function checkRequiredForTool(toolId) {
  * ============================================================ */
 const TOOL_ANALYZED = {};
 function toolAnalyzeSig(toolId) {
+  const cm = toolId === "5-18" ? mmmColMapActive() : null;
   const m = CSV_STATE.mapping || {};
-  const sig = Object.entries(m).filter(([, v]) => v !== "__ignore__").map(([h, v]) => `${v}:${h}`).sort().join("|");
+  const sig = cm ? "cm:" + JSON.stringify(cm) : Object.entries(m).filter(([, v]) => v !== "__ignore__").map(([h, v]) => `${v}:${h}`).sort().join("|");
   return `${toolId}|${CSV_STATE.fileName}|${(CSV_STATE.raw || []).length}|${sig}`;
 }
 function isToolAnalyzed(toolId) { return TOOL_ANALYZED[toolId] === toolAnalyzeSig(toolId); }

@@ -74,6 +74,8 @@ tools:
 5. `PAGE_RENDERERS["5-N"] = page_5_N` 등록
 6. 핸들러는 navigate 후 자동 호출되는 binder에 hook
 
+방법론 도구 임의 N채널화(5-18, PR #80·81): ① 고정 `MMM_CHANNELS`→`_mmmChans(panel)` 동적화(UI 무변·결과 byte-동일=무위험) ② `MMM_METH_STATE.colMap`(header→{role,kind}) 드래그앤드롭, `mmmGetPanel`은 colMap active면 그 경로·아니면 STANDARD_FIELDS fallback(골든 보존). 하드코딩 채널 키(`saturation "google_roi"`)는 panel 첫 perf 채널로. 검증=colMap 패널 vs 수동 패널 byte-동일(동적 absorb 경로로).
+
 # 통계 도구 표준 (5-5 등)
 
 - 순수 함수 객체에 분리 (`CANNIBAL_STATS`, `ALLOC_MATH`)
