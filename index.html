@@ -12316,42 +12316,93 @@ function mmmCannibPlain(cn, target) {
   return `<strong>${escapeHtml(chl)}</strong>는 <strong style="color:#fbbf24;">증거가 불충분(INCONCLUSIVE)</strong>합니다 (${vs}). 잠식인지 방어인지 관측만으로 가를 수 없어, 기본값은 "판단 보류"입니다 — holdout 실험(5-15)이 필요합니다.${gate} <span style="color:var(--text-muted);">(채널별 결과는 §4)</span>`;
 }
 
-/* === 주별 드라이버 분해 (centered, semi-log-valid) + Actual vs Fitted + 튀는 구간 ===
- * contribution_jt = β_j·(X_jt − mean(X_j)); baseline(ȳ) + Σ기여 = OLS fitted(intercept 항등식). 사용자 단위(명).
- * 채널이 추세와 공선이면 절대(level·$0/floor) 분해는 과대귀속(예: Google +8825 of 3365, baseline −7138)으로 깨짐
- * → 평균-편차(centered)만 신뢰 가능. baseline = ȳ(항상 양수). 절대 채널 인원은 holdout(5-15) 전용. */
-function mmmWeeklyDecomp(panel, cfg, targetName, lam) {
+// 표준화 ridge — 공선 채널의 과대귀속 계수를 수축해 baseline 양수화. auto-λ = β0≥0 & 모든 채널 평균기여 ≤ ȳ 최소 λ.
+function mmmRidgeFit(X, y, names) {
+  const n = X.length, k = names.length; if (!n || !k) return null;
+  const mean = a => a.reduce((s, x) => s + x, 0) / n;
+  const colM = names.map((_, j) => mean(X.map(r => r[j])));
+  const colS = names.map((_, j) => { const m = colM[j]; return Math.sqrt(mean(X.map(r => (r[j] - m) ** 2))) || 1; });
+  const Z = X.map(r => r.map((v, j) => (v - colM[j]) / colS[j]));
+  const ybar = mean(y), yc = y.map(v => v - ybar);
+  const ZtZ0 = names.map((_, a) => names.map((__, b) => Z.reduce((s, r) => s + r[a] * r[b], 0)));
+  const Zty = names.map((_, a) => Z.reduce((s, r, i) => s + r[a] * yc[i], 0));
+  const solve = (lambda) => {
+    const A = ZtZ0.map((r, i) => { const row = r.slice(); row[i] += lambda; return [...row, Zty[i]]; });
+    for (let c = 0; c < k; c++) { let p = c; for (let r = c + 1; r < k; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r; [A[c], A[p]] = [A[p], A[c]]; const d = A[c][c] || 1e-9; for (let j = c; j <= k; j++) A[c][j] /= d; for (let r = 0; r < k; r++) { if (r === c) continue; const f = A[r][c]; for (let j = c; j <= k; j++) A[r][j] -= f * A[c][j]; } }
+    const beta = A.map((r, j) => r[k] / colS[j]); const b0 = ybar - beta.reduce((s, b, j) => s + b * colM[j], 0);
+    return { beta, b0 };
+  };
+  const grid = [0.5, 1, 2, 5, 10, 20, 35, 50, 75, 100, 150, 200, 300, 500, 800, 1200];
+  let chosen = null;
+  for (const L of grid) { const r = solve(L); const maxCh = Math.max(0, ...names.map((nm, j) => nm.startsWith("ln_") ? r.beta[j] * colM[j] : 0)); if (r.b0 >= 0 && maxCh <= ybar) { chosen = { ...r, lambda: L }; break; } }
+  if (!chosen) { const L = grid[grid.length - 1]; chosen = { ...solve(L), lambda: L }; }
+  const fitted = X.map(r => chosen.b0 + r.reduce((s, v, j) => s + v * chosen.beta[j], 0));
+  return { beta: chosen.beta, b0: chosen.b0, lambda: chosen.lambda, fitted };
+}
+// 공선(|corr(ln_media)|≥0.9) 채널을 합산해 하나로 — 채널 간 과대귀속(roi+/cbua− 상쇄) 완화
+function mmmMergedPanel(panel, cfg) {
+  const chans = _mmmChans(panel).filter(c => panel.ch[c.key]);
+  if (chans.length < 2) return panel;
+  const ln = {}; chans.forEach(c => ln[c.key] = mmmLnMedia(panel.ch[c.key], cfg.defaultLam));
+  const parent = {}; chans.forEach(c => parent[c.key] = c.key);
+  const find = x => parent[x] === x ? x : (parent[x] = find(parent[x]));
+  for (let i = 0; i < chans.length; i++) for (let j = i + 1; j < chans.length; j++) { const r = CANNIBAL_STATS.pearson(ln[chans[i].key], ln[chans[j].key]); if (Math.abs(r) >= 0.9) parent[find(chans[i].key)] = find(chans[j].key); }
+  const groups = {}; chans.forEach(c => { const g = find(c.key); (groups[g] = groups[g] || []).push(c); });
+  const newCh = {}, newChannels = [];
+  for (const members of Object.values(groups)) {
+    if (members.length === 1) { const c = members[0]; newCh[c.key] = panel.ch[c.key]; newChannels.push({ key: c.key, label: c.label, kind: c.kind }); }
+    else { const key = "m_" + members.map(m => m.key).join("_"); const label = members.map(m => m.label).join("+"); const kind = members.some(m => m.kind !== "brand") ? "perf" : "brand"; newCh[key] = panel.week.map((_, i) => members.reduce((s, m) => s + (panel.ch[m.key][i] || 0), 0)); newChannels.push({ key, label, kind }); }
+  }
+  return { ...panel, ch: newCh, channels: newChannels };
+}
+/* === 주별 드라이버 분해 — 3 모델: ols(centered) / merge(공선 채널 합산·centered) / ridge(정규화·LEVEL) ===
+ * ols·merge: contrib = β·(X−mean), baseline=ȳ(양수, 상대 기여). 절대 분해가 공선으로 깨지는 것 회피.
+ * ridge: 정규화로 과대귀속 수축 → contrib = β·X(LEVEL, $0 대비), baseline=β0(≥0). "그 주 지출이 만든 유저" 절대값.
+ * baseline + Σ기여 = (모델)fitted 항등식. 절대 인과 증분은 holdout(5-15) 전용. */
+function mmmWeeklyDecomp(panel, cfg, targetName, lam, model) {
+  model = model || "ols";
+  if (model === "merge") panel = mmmMergedPanel(panel, cfg);
   const { X, names } = mmmBuildFeatures(panel, cfg, lam, true);
   const y = panel.targets[targetName];
-  const fit = mmmOls(_designConst(X), y); if (!fit) return null;
-  const ybar = _mean(y);
-  const colMean = names.map((_, j) => _mean(X.map(r => r[j])));
   const groups = mmmShapleyGroups(names, _mmmChans(panel));
+  const groupNames = groups.map(g => g.name);
+  const ybar = _mean(y);
+  let baseline, contribOf, fittedOf, level = false, lambda = null;
+  if (model === "ridge") {
+    const rf = mmmRidgeFit(X, y, names); if (!rf) return null;
+    baseline = rf.b0; level = true; lambda = rf.lambda;
+    contribOf = (t, g) => { let c = 0; for (const j of g.cols) c += rf.beta[j] * X[t][j]; return c; };   // LEVEL β·X
+    fittedOf = (t) => rf.fitted[t];
+  } else {
+    const fit = mmmOls(_designConst(X), y); if (!fit) return null;
+    const colMean = names.map((_, j) => _mean(X.map(r => r[j])));
+    baseline = ybar;
+    contribOf = (t, g) => { let c = 0; for (const j of g.cols) c += fit.beta[j + 1] * (X[t][j] - colMean[j]); return c; };   // centered
+    fittedOf = (t) => fit.beta[0] + X[t].reduce((s, v, j) => s + v * fit.beta[j + 1], 0);
+  }
   const weeks = [];
   for (let t = 0; t < X.length; t++) {
-    const contrib = {};
-    for (const g of groups) { let c = 0; for (const j of g.cols) c += fit.beta[j + 1] * (X[t][j] - colMean[j]); contrib[g.name] = c; }
-    const fitted = ybar + Object.values(contrib).reduce((a, b) => a + b, 0);
-    weeks.push({ week: panel.week[t], actual: y[t], baseline: +ybar.toFixed(1), fitted: +fitted.toFixed(1), residual: +(y[t] - fitted).toFixed(1), contrib });
+    const contrib = {}; for (const g of groups) contrib[g.name] = contribOf(t, g);
+    const fitted = fittedOf(t);
+    weeks.push({ week: panel.week[t], actual: y[t], baseline: +baseline.toFixed(1), fitted: +fitted.toFixed(1), residual: +(y[t] - fitted).toFixed(1), contrib });
   }
-  const groupNames = groups.map(g => g.name);
-  // 잔차 2σ "튀는 주" + 지배 드라이버(centered 기여라 그대로 편차)
+  const meanContrib = {}; groupNames.forEach(g => meanContrib[g] = _mean(weeks.map(w => w.contrib[g])));
   const resids = weeks.map(w => w.residual);
   const rMean = _mean(resids), rStd = Math.sqrt(_mean(resids.map(r => (r - rMean) ** 2))) || 1;
   const spikes = weeks.map((w, i) => {
     const dev = w.actual - ybar;
     let domG = null, domV = 0;
-    for (const g of groupNames) { if (Math.abs(w.contrib[g]) > Math.abs(domV)) { domV = w.contrib[g]; domG = g; } }
+    for (const g of groupNames) { const d = w.contrib[g] - meanContrib[g]; if (Math.abs(d) > Math.abs(domV)) { domV = d; domG = g; } }   // 평균 대비 편차
     const unexplained = Math.abs(w.residual) > Math.abs(domV);
     const cls = unexplained ? "unexplained" : MMM_NONMEDIA_GROUPS.includes(domG) ? "baseline" : "channel";
     const z = Math.abs(w.residual - rMean) / rStd;
     return { i, week: w.week, actual: Math.round(w.actual), dev: Math.round(dev), residual: Math.round(w.residual), domDriver: domG, domVal: Math.round(domV), cls, z: +z.toFixed(2) };
   }).filter(s => s.z >= 2).sort((a, b) => Math.abs(b.residual) - Math.abs(a.residual)).slice(0, 8);
-  // 드라이버별 변동폭(±, 평균 절대 기여) — centered라 평균≈0, 영향력은 변동으로
-  const driverStats = groupNames.map(g => ({ name: g, swing: +_mean(weeks.map(w => Math.abs(w.contrib[g]))).toFixed(1), media: !MMM_NONMEDIA_GROUPS.includes(g) })).sort((a, b) => b.swing - a.swing);
+  // level: avg=평균 level 기여(채널 절대), swing=평균 대비 변동. centered: avg≈0이라 swing이 핵심.
+  const driverStats = groupNames.map(g => ({ name: g, avg: +_mean(weeks.map(w => w.contrib[g])).toFixed(1), swing: +_mean(weeks.map(w => Math.abs(w.contrib[g] - meanContrib[g]))).toFixed(1), media: !MMM_NONMEDIA_GROUPS.includes(g) })).sort((a, b) => (level ? (Math.abs(b.avg) + b.swing) - (Math.abs(a.avg) + a.swing) : b.swing - a.swing));
   const rmse = Math.sqrt(_mean(weeks.map(w => w.residual ** 2)));
   const mape = _mean(weeks.map(w => w.actual ? Math.abs(w.residual / w.actual) : 0)) * 100;
-  return { weeks, groupNames, baseline: +ybar.toFixed(1), ybar: +ybar.toFixed(1), spikes, driverStats, rmse: +rmse.toFixed(1), mape: +mape.toFixed(1), rStd: +rStd.toFixed(1) };
+  return { weeks, groupNames, baseline: +baseline.toFixed(1), ybar: +ybar.toFixed(1), level, model, lambda, spikes, driverStats, rmse: +rmse.toFixed(1), mape: +mape.toFixed(1), rStd: +rStd.toFixed(1) };
 }
 
 /* 합성 데이터 파이프라인 골든 (결정론; 실데이터 미커밋) */
@@ -12420,7 +12471,7 @@ if (typeof window !== "undefined") {
 /* ============================================================
  * 5-18 페이지 (MMM 방법론 도구) — 데이터 계약·config·결과 패널·차트·verdict·export
  * ============================================================ */
-const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi", colMap: null, decompBaseline: "nonmedia" };  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상. colMap: {[header]:{role,kind}} 드래그앤드롭 역할 매핑. decompBaseline: "mean"(주평균) | "nonmedia"(추세·계절·휴일·레짐 포함)
+const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi", colMap: null, decompBaseline: "nonmedia", decompModel: "ols" };  // decompModel: ols(centered) | merge(공선합산·centered) | ridge(정규화·LEVEL)  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상. colMap: {[header]:{role,kind}} 드래그앤드롭 역할 매핑. decompBaseline: "mean"(주평균) | "nonmedia"(추세·계절·휴일·레짐 포함)
 const MMM_NONMEDIA_GROUPS = ["Trend", "Seasonality", "Holidays", "Regime(steps)"];   // 비매체 드라이버 (baseline 포함 토글 대상)
 const _MMM_ROLES = ["ignore", "week", "reg", "react", "channel", "dummy", "step", "platform"];
 // CSV 헤더 → MMM 역할 자동 추정 (드래그앤드롭 초기값). 0/1 binary는 더미로 우선 처리(날짜명 오인 방지)
@@ -13120,10 +13171,22 @@ function renderMmmMmm(c) {
 }
 const MMM_DECOMP_PALETTE = ["#7aa2f7", "#22c55e", "#fbbf24", "#f87171", "#bb9af7", "#7dcfff", "#e0af68", "#9ece6a", "#ff9e64", "#2ac3de"];
 function mmmDriverColor(name, groupNames) { const i = groupNames.indexOf(name); return MMM_DECOMP_PALETTE[(i < 0 ? 0 : i) % MMM_DECOMP_PALETTE.length]; }
+// 활성 모델(ols/merge/ridge)·타깃의 분해 (가벼운 메모 — 모델 토글은 분해만 재계산, 무거운 파이프라인 캐시 유지)
+const _MMM_DECOMP_MEMO = { key: null, d: null };
+function mmmGetDecomp(c) {
+  const t = MMM_METH_STATE.target, model = MMM_METH_STATE.decompModel || "ols";
+  const T = c.byTarget && c.byTarget[t]; if (!T || !T.mmm) return null;
+  const key = `${c.key}|${t}|${model}`;
+  if (_MMM_DECOMP_MEMO.key === key) return _MMM_DECOMP_MEMO.d;
+  const d = mmmWeeklyDecomp(c.panel, c.cfg, t, T.mmm.best_lambda, model);
+  _MMM_DECOMP_MEMO.key = key; _MMM_DECOMP_MEMO.d = d; return d;
+}
 function renderMmmDecomp(c) {
-  const t = MMM_METH_STATE.target, T = c.byTarget[t]; if (!T || !T.decomp) return "";
-  const d = T.decomp, tgtKo = (_MMM_TARGET_KO[t] || t).split(" ")[0];
-  const driverRows = d.driverStats.map(s => `<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${mmmDriverColor(s.name, d.groupNames)};margin-right:6px;vertical-align:middle;"></span>${escapeHtml(s.name)}</td><td class="tnum">±${s.swing.toLocaleString()}명/주</td></tr>`).join("");
+  const t = MMM_METH_STATE.target, T = c.byTarget[t]; if (!T || !T.mmm) return "";
+  const d = mmmGetDecomp(c); if (!d) return "";
+  const tgtKo = (_MMM_TARGET_KO[t] || t).split(" ")[0];
+  const lv = d.level;   // ridge=level(절대 기여), ols/merge=centered(±변동)
+  const driverRows = d.driverStats.map(s => `<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${mmmDriverColor(s.name, d.groupNames)};margin-right:6px;vertical-align:middle;"></span>${escapeHtml(s.name)}${lv && !s.media ? ' <span style="font-size:9px;color:var(--text-muted);">모듈레이터</span>' : ''}</td><td class="tnum ${lv ? (s.media ? (s.avg >= 0 ? 'pos' : 'neg') : '') : ''}">${lv ? (s.media ? (s.avg >= 0 ? '+' : '') + Math.round(s.avg).toLocaleString() + '명' : '~0') : '±' + s.swing.toLocaleString() + '명/주'}</td></tr>`).join("");
   const clsBadge = (cls) => cls === "channel" ? '<span style="color:#7aa2f7;font-weight:600;">채널 스파크</span>' : cls === "baseline" ? '<span style="color:#22c55e;font-weight:600;">baseline·계절 변동</span>' : '<span style="color:#fbbf24;font-weight:600;">모델 밖(원인 입력 권장)</span>';
   const weekDate = (w) => new Date(Date.UTC(2024, 0, 1) + (w - 1) * 7 * 86400000).toISOString().slice(0, 10);
   const spikeRows = d.spikes.map(s => {
@@ -13142,21 +13205,28 @@ function renderMmmDecomp(c) {
     <div class="ab-stat-row" style="margin-bottom:6px;">
       <div class="ab-stat"><div class="ab-stat-label">모델 평균오차 (RMSE)</div><div class="ab-stat-value tnum">±${d.rmse.toLocaleString()}명</div><div class="ab-stat-hint">주당 실제와 모델 차이</div></div>
       <div class="ab-stat"><div class="ab-stat-label">평균 오차율 (MAPE)</div><div class="ab-stat-value tnum">${d.mape}%</div></div>
-      <div class="ab-stat"><div class="ab-stat-label">baseline (주평균)</div><div class="ab-stat-value tnum">${Math.round(d.baseline).toLocaleString()}명</div><div class="ab-stat-hint">각 드라이버는 이 평균을 ± 흔듦</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">baseline ${lv ? "(제로-매체, ridge)" : "(주평균)"}</div><div class="ab-stat-value tnum">${Math.round(d.baseline).toLocaleString()}명</div><div class="ab-stat-hint">${lv ? "매체 0일 때 기저 (채널은 절대 기여)" : "각 드라이버는 이 평균을 ± 흔듦"}</div></div>
     </div>
     <div class="chart-container" style="height:240px;margin-bottom:8px;"><canvas id="mmm-fit-chart"></canvas></div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:2px 0 6px;">
-      <p style="font-size:12px;margin:0;color:var(--text-1);max-width:62%;"><strong>baseline(주평균) 위에 각 드라이버가 그 주에 ± 얼마나 기여했는지</strong> — 맨 위 경계 = 모델 예측(predict), 흰 선 = 실제. 색 띠 = 그 주 그 드라이버의 기여(평균 대비 ±). <strong>마우스 올리면 개별 기여(명)와 "baseline + 기여합 = 예측"</strong> 표시. ⚠ <strong>"채널이 만든 절대 유저 수"는 보여줄 수 없습니다</strong>: 이 데이터는 Google 지출이 추세와 강하게 공선이라, 절대(level/$0 기준) 분해를 하면 모델이 Google에 과대귀속(예: Google +8,825 of 3,365, baseline −7,138)하는 식으로 깨집니다. 그래서 신뢰 가능한 <strong>평균 대비 편차</strong>만 표시합니다. 절대 채널 인원·"끄면 몇 명 잃나"는 <strong>holdout 실험(5-15)</strong> 전용.</p>
+      <p style="font-size:12px;margin:0;color:var(--text-1);max-width:60%;">${
+        d.model === "ridge"
+          ? `<strong>릿지(정규화) — 절대 기여</strong>: 색 띠 = 그 주 지출이 만든 예상 ${tgtKo}($0 대비, 지출↑=큼). 공선으로 인한 과대귀속을 정규화(λ=${d.lambda})로 수축해 <strong>baseline 양수·채널 합리화</strong>. 맨 위 = 모델 예측, 흰 선 = 실제. ⚠ 정규화는 계수를 보수적으로 줄인 추정이라 절대값은 근사 — 확정은 holdout(5-15).`
+          : d.model === "merge"
+            ? `<strong>채널 합치기 — 상대 기여</strong>: 공선 채널(예: Google ROI+CBUA)을 합산해 서로 상쇄/과대귀속을 줄인 뒤, baseline(주평균) 대비 ± 변동으로 표시. 맨 위 = 예측, 흰 선 = 실제. (합치기만으론 추세-공선이 남아 절대값은 부정확 → 절대는 릿지/holdout.)`
+            : `<strong>기본 — 상대 기여</strong>: baseline(주평균) 위에 각 드라이버가 그 주에 ± 얼마 기여했는지. 맨 위 = 예측, 흰 선 = 실제. <strong>마우스 올리면 개별 기여와 "baseline+기여합=예측"</strong>. ⚠ 절대 "채널이 만든 유저"는 Google↔추세 공선으로 과대귀속(Google +8,825 of 3,365·baseline −7,138)이라 표시 안 함 — <strong>릿지/채널합치기 토글</strong>로 보정하거나 holdout(5-15).`
+      }</p>
       <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
-        <div class="ab-pillgroup" style="margin:0;"><span class="ab-pillgroup-label" style="font-size:10px;">baseline</span><button class="ab-pill ${MMM_METH_STATE.decompBaseline === "mean" ? "active" : ""}" data-mmm-decompbase="mean">주평균만</button><button class="ab-pill ${MMM_METH_STATE.decompBaseline === "nonmedia" ? "active" : ""}" data-mmm-decompbase="nonmedia" title="추세·계절·휴일·레짐을 baseline에 포함 → 매체 채널 효과만 위로 쌓아 봄">비매체 포함(매체만 보기)</button></div>
+        <div class="ab-pillgroup" style="margin:0;"><span class="ab-pillgroup-label" style="font-size:10px;">모델</span><button class="ab-pill ${MMM_METH_STATE.decompModel === "ols" ? "active" : ""}" data-mmm-decompmodel="ols">기본</button><button class="ab-pill ${MMM_METH_STATE.decompModel === "merge" ? "active" : ""}" data-mmm-decompmodel="merge" title="공선 채널 합산(상대 기여)">채널 합치기</button><button class="ab-pill ${MMM_METH_STATE.decompModel === "ridge" ? "active" : ""}" data-mmm-decompmodel="ridge" title="정규화로 절대 기여 추정 (baseline 양수)">릿지(절대)</button></div>
+        <div class="ab-pillgroup" style="margin:0;"><span class="ab-pillgroup-label" style="font-size:10px;">baseline</span><button class="ab-pill ${MMM_METH_STATE.decompBaseline === "mean" ? "active" : ""}" data-mmm-decompbase="mean">기저만</button><button class="ab-pill ${MMM_METH_STATE.decompBaseline === "nonmedia" ? "active" : ""}" data-mmm-decompbase="nonmedia" title="추세·계절·휴일·레짐을 baseline에 포함 → 매체 채널 효과만 위로 쌓아 봄">비매체 포함</button></div>
         <button class="ab-pill" data-mmm-decomp-csv="1" title="주별·드라이버별 기여(명) + baseline·예측·실제 + 채널별 지출 → CPR 등 계산용">⬇ 주별 기여·지출 CSV</button>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:12px;align-items:start;">
       <div class="chart-container" style="height:300px;"><canvas id="mmm-decomp-chart"></canvas></div>
-      <div><p style="font-size:12px;margin:0 0 4px;color:var(--text-1);">드라이버별 주당 변동 폭 (±)</p>
-        <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>드라이버</th><th>주당 ±변동</th></tr></thead><tbody>${driverRows}</tbody></table></div>
-        <p class="muted" style="font-size:10.5px;margin-top:4px;">"±N명/주" = 그 요인이 매주 baseline(주평균)을 위아래로 흔드는 평균 폭. 클수록 그 주의 등락을 좌우하는 핵심 변수. 색은 위 차트 띠와 일치.</p></div>
+      <div><p style="font-size:12px;margin:0 0 4px;color:var(--text-1);">${lv ? "드라이버별 주당 평균 기여" : "드라이버별 주당 변동 폭 (±)"}</p>
+        <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>드라이버</th><th>${lv ? "평균 기여" : "주당 ±변동"}</th></tr></thead><tbody>${driverRows}</tbody></table></div>
+        <p class="muted" style="font-size:10.5px;margin-top:4px;">${lv ? `<strong>평균 기여</strong> = 채널이 주당 평균 만든 ${tgtKo}(절대, $0 대비). 비매체(추세·계절…)는 평균± 모듈레이터라 ~0.` : `"±N명/주" = 그 요인이 매주 baseline(주평균)을 위아래로 흔드는 평균 폭. 클수록 그 주의 등락을 좌우.`} 색은 위 차트 띠와 일치.</p></div>
     </div>
     <h4 style="font-size:13px;color:var(--text-1);margin:14px 0 4px;">🔎 튀는 구간 (평소와 다르게 크게 벗어난 주 · 잔차 2σ↑)</h4>
     ${spikeRows ? `<div class="table-wrap"><table class="data" style="font-size:11.5px;"><thead><tr><th>주</th><th>baseline 대비</th><th>자동 진단</th><th>메모 (원인 기록)</th></tr></thead><tbody>${spikeRows}</tbody></table></div>
@@ -13241,8 +13311,8 @@ function renderMmmCharts(c) {
       },
     });
   }
-  // Actual vs Fitted + 스택 분해
-  const D = T.decomp;
+  // Actual vs Fitted + 스택 분해 (활성 모델: ols/merge/ridge)
+  const D = mmmGetDecomp(c) || T.decomp;
   if (D && document.getElementById("mmm-fit-chart")) {
     destroyChartIfExists("mmm-fit-chart");
     CHART_INSTANCES["mmm-fit-chart"] = new Chart(document.getElementById("mmm-fit-chart"), {
@@ -13303,6 +13373,7 @@ function bindMmmMethHandlers() {
   document.querySelectorAll("[data-mmm-absorb]").forEach(b => b.addEventListener("click", () => { if (!MMM_METH_STATE.absorbChoice) MMM_METH_STATE.absorbChoice = {}; MMM_METH_STATE.absorbChoice[b.dataset.mmmAbsorb] = b.dataset.side; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-cannibch]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.cannibChannel = b.dataset.mmmCannibch; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-decompbase]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.decompBaseline = b.dataset.mmmDecompbase; navigate("5-18"); }));
+  document.querySelectorAll("[data-mmm-decompmodel]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.decompModel = b.dataset.mmmDecompmodel; navigate("5-18"); }));
   const apply = document.querySelector("[data-mmm-cfg-apply]");
   if (apply) apply.addEventListener("click", () => {
     const cfg = mmmActiveConfig(); const get = (k) => document.querySelector(`[data-mmm-cfg="${k}"]`)?.value;
@@ -13339,8 +13410,8 @@ function exportMmmMethJson() {
 // 주별 드라이버 분해 CSV — week·date·actual·baseline·predict·residual + 드라이버별 기여(명) + 채널별 지출. CPR 등 계산용.
 function downloadMmmDecompCsv() {
   const c = MMM_METH_CACHE; const t = MMM_METH_STATE.target, T = c.byTarget && c.byTarget[t];
-  if (!T || !T.decomp) { alert("분해 데이터가 없습니다. 먼저 분석을 실행하세요."); return; }
-  const d = T.decomp;
+  if (!T || !T.mmm) { alert("분해 데이터가 없습니다. 먼저 분석을 실행하세요."); return; }
+  const d = mmmGetDecomp(c) || T.decomp; if (!d) { alert("분해 데이터가 없습니다."); return; }
   const chans = _mmmChans(c.panel).filter(ch => c.panel.ch[ch.key]);
   const weekDate = (w) => new Date(Date.UTC(2024, 0, 1) + (w - 1) * 7 * 86400000).toISOString().slice(0, 10);
   const q = (s) => { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };

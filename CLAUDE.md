@@ -360,8 +360,13 @@ TOC/사이드바/헤더에 보이는 번호를 바꿀 때 **내부 id(`5-2` 등)
 ### 12.10 통계 도구 비전문가용 3종 세트 (PR #59·#61·#63, 5-18) — 외부 공개시 필수
 대중 대상 통계/분석 도구는 결과만 던지지 말고 ① **결과해석 §0 헤드라인**(채널별 잠식/증분·주당 인원·신뢰도 dots) ② **주별 드라이버 분해 + 실제vs모델(fitted) 차트 + 튀는 구간 자동 진단**(잔차 2σ↑ 주를 baseline·계절 / 채널 스파크 / 모델 밖으로 분류 + 메모 입력) ③ **4단 클릭 툴팁/모달**(`MMM_GLOSSARY` + `mmmInfoIcon`/`mmmOpenInfo`, 글래스모피즘 vanilla; 각 통계 [이유/진행/해석/유의성]+예시+오해). 용어집 콘텐츠는 워크플로 병렬 작성+적대 검수로 일관성·평어 확보(전문용어 즉시 괄호 풀이 강제).
 
-### 12.11 주별 기여 분해 — centered만 신뢰 가능 (절대 level 불가) (PR #61, #91→#93 회귀)
-**핵심 교훈(PR #93)**: 사용자가 "각 주 지출이 만든 절대 유저"(level)를 원했고 floor-기준 level(PR #91)까지 시도했으나, **채널이 추세와 강하게 공선이면 어떤 절대 분해도 깨진다** — Tinder/유저데이터에서 모델이 Google에 과대귀속(β0=−7138 음수 baseline, Google level +8825·누적 +25,904 of 전체 3,365). $0든 floor(최저 관측이 ≈0이면)든 `ln(1)≈0` 외삽이 폭발. → **결국 centered(`β·(X−mean)`, baseline=ȳ 양수)만 무모순**. `baseline(ȳ) + Σ기여 = OLS fitted`(항등식). 표=변동±(centered라 평균≈0이므로 swing만 의미). **절대 채널 인원·"끄면 몇 명 잃나"는 관측 회귀로 불가 → holdout(5-15) 전용**(UI에 명시). 스샷3같은 "큰 baseline + 채널 밴드"는 채널이 과대귀속 안 하는 모델에서만 — 공선 데이터엔 그렇게 안 나옴(거짓 인상 금지). baseline 토글(§12.18) 기본=비매체 포함(ȳ+추세·계절 = 큰 declining 기저). saturation도 **한계(+$1k) 곡선을 관측 지출 범위에서만** (절대 누적 b·ln(1+x)은 $0 외삽 폭발이라 금지).
+### 12.11 주별 기여 분해 — 3 모델 토글(기본·채널합치기·릿지) (PR #61, #91~#94)
+**문제(PR #93)**: 채널이 추세와 공선이면 절대(level/$0/floor) 분해가 과대귀속으로 깨짐(β0=−7138, Google level +8825·누적 +25,904 of 3,365). centered만 무모순이나 사용자는 절대 기여를 원함. **해결(PR #94)**: `MMM_METH_STATE.decompModel` 3-way 토글, `mmmWeeklyDecomp(panel,cfg,t,lam,model)`:
+- **ols**(기본): centered `β·(X−mean)`, baseline=ȳ(양수). 상대 기여(±변동). 안전 기본값.
+- **merge**(채널합치기): `mmmMergedPanel`이 |corr(ln_media)|≥0.9 채널을 union-find로 합산(roi+cbua 등) → centered. 채널 간 상쇄/과대귀속 완화. **채널↔추세 공선은 못 고침**(합치기 단독으론 baseline 여전 — 그래서 centered 유지). 공선쌍 없으면 ols와 동일.
+- **ridge**(릿지·절대): `mmmRidgeFit` 표준화 ridge로 과대귀속 계수 수축, **auto-λ=β0≥0 & 모든 채널 평균기여≤ȳ 최소 λ**(Tinder λ=50: baseline −7138→+304, Google +8825→+2242). LEVEL `β·X`($0 대비 절대 기여, baseline=β0≥0). 사용자가 원한 "그 주 지출이 만든 유저"를 비-absurd하게. ⚠ ridge는 biased 추정(근사) — 확정은 holdout.
+- 활성 모델 분해는 `mmmGetDecomp(c)`(가벼운 메모, key=`cacheKey|target|model`)로 — 모델 토글은 분해만 재계산(무거운 파이프라인 캐시 유지). render·CSV 모두 이걸 사용. `decompModel`은 게이트 sig 제외(탐색). 표/캡션은 `d.level`로 분기(level=평균기여 signed, centered=±변동). 항등식 `baseline+Σ기여=(모델)fitted` 항상.
+saturation도 **한계(+$1k) 곡선을 관측 지출 범위([floor,max])에서만**(절대 누적 b·ln(1+x)은 $0 외삽 폭발 25,904라 금지). baseline 토글(§12.18) 기본=비매체 포함.
 
 ### 12.12 공통 회귀 엔진 + Regression Lab (PR #65·66, 5-19)
 범용 OLS는 `REG_STATS`(IIFE: ols/r2of/tSF, ridge fallback)·`REG_TRANSFORMS`(none/log1p/zscore/minmax/adstock_log) 공유 엔진으로. **헬퍼는 반드시 IIFE에 격리** — `_mean`·`mean` 등 기존 전역과 충돌(중복선언=SyntaxError). 5-19는 STANDARD_FIELDS가 아닌 **자체 가변 매핑**(role/type/transform per 컬럼 + 자동추정). 자동추정 시 **0/1 binary는 날짜명 오인("is_holiday"의 day) 방지 위해 independent 우선 판정**. 샘플 데이터는 seededNoise(Math.random 금지). 추출 CSV = 행별 actual·fitted·resid·contrib(β·x). 로그/adstock 사용 시 level-share 외삽 무효 경고.
