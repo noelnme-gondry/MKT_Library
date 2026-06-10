@@ -13305,7 +13305,7 @@ function renderMmmTrend(c) {
       // 변화점별 드라이버 카드
       const cards = pts.map((idx, i) => {
         const d = drv[i] || {}, before = segs[i].meanGrowth, after = segs[i + 1] ? segs[i + 1].meanGrowth : before;
-        const isSpike = cp.pointTypes[i] === "spike" || d.isOutlier;
+        const isSpike = cp.target.pointTypes[i] === "spike" || d.isOutlier;
         const flip = before >= 0 && after < 0;
         const typeTag = isSpike ? '<span style="color:#c4b5fd;font-weight:700;">◆ 1주 이상치(spike)</span>'
           : flip ? '<span style="color:#f87171;font-weight:700;">▲ 상승→하락 반전</span>'
@@ -13338,7 +13338,7 @@ function renderMmmTrend(c) {
         </div>`;
       }).join("");
       // 선행성 보조: 오가닉 첫 하락 반전(spike 제외) vs defCh 첫 증액 시점 선후
-      const tgtDownIdx = pts.find((idx, i) => cp.pointTypes[i] !== "spike" && segs[i].meanGrowth >= 0 && segs[i + 1] && segs[i + 1].meanGrowth < 0);
+      const tgtDownIdx = pts.find((idx, i) => cp.target.pointTypes[i] !== "spike" && segs[i].meanGrowth >= 0 && segs[i + 1] && segs[i + 1].meanGrowth < 0);
       const spSegs = defSp ? defSp.segments : [];
       const spUpIdx = spPts.find((idx, i) => spSegs[i + 1] && spSegs[i].meanGrowth < spSegs[i + 1].meanGrowth);
       let precNote = "";
