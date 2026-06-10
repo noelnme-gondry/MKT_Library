@@ -12301,18 +12301,23 @@ function mmmGuessRole(col, rows) {
   else if (isNum) role = "channel";
   return { role, kind };
 }
-// colMap 초기화/유지: 헤더가 그대로면 사용자 편집 보존, 바뀌면 자동추정으로 재구성
+// colMap 초기화/유지: 헤더 그대로면 사용자 편집 보존, 바뀌면 전부 미지정으로 (자동 매핑 안 함 — 사용자가 직접 드래그)
 function mmmColMapInit(force) {
   const heads = CSV_STATE.headers || [];
   if (!heads.length) { MMM_METH_STATE.colMap = null; return; }
   const cm = MMM_METH_STATE.colMap;
   if (!force && cm && Object.keys(cm).length) {
     const cur = Object.keys(cm);
-    if (heads.length === cur.length && heads.every(h => cur.includes(h))) return;  // 동일 스키마 → 유지
+    if (heads.length === cur.length && heads.every(h => cur.includes(h))) return;  // 동일 스키마 → 사용자 편집 보존
   }
-  const rows = CSV_STATE.raw || [];
+  const next = {}; heads.forEach(h => next[h] = { role: "ignore", kind: /brand|브랜드/.test(String(h).toLowerCase()) ? "brand" : "perf" });
+  MMM_METH_STATE.colMap = next;  // 전부 미지정(컬럼 트레이) — 헤더 순서 그대로
+}
+// 선택적: 이름 기반 자동 추정으로 채우기 (🪄 버튼)
+function mmmColMapAutoGuess() {
+  const heads = CSV_STATE.headers || [], rows = CSV_STATE.raw || [];
+  if (!heads.length) return;
   const next = {}; heads.forEach(h => next[h] = mmmGuessRole(h, rows));
-  // week/reg/react/platform은 각 1개만 (중복 추정 시 후순위는 ignore)
   const once = { week: false, reg: false, react: false, platform: false };
   heads.forEach(h => { const r = next[h].role; if (r in once) { if (once[r]) next[h].role = "ignore"; once[r] = true; } });
   MMM_METH_STATE.colMap = next;
@@ -12320,7 +12325,7 @@ function mmmColMapInit(force) {
 function mmmColMapActive() {
   const cm = MMM_METH_STATE.colMap;
   if (!cm || !(CSV_STATE.headers || []).length) return null;
-  return Object.values(cm).some(v => v && v.role && v.role !== "ignore") ? cm : null;
+  return cm;  // 5-18은 항상 colMap 경로 (미지정만 있어도 — required 검사가 missing 처리)
 }
 function _mmmSanKey(name, used) {
   let b = "c_" + String(name).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
@@ -12504,7 +12509,10 @@ function renderMmmDataPrep() {
   return `<section class="block" id="s-prep" data-mmm-prep>
     <h2 class="section-title"><span class="ix">§0</span>MMM 방법론 · 데이터·매핑</h2>
     <div class="csv-loaded-bar"><div class="csv-loaded-info"><span class="dot" style="background:#22c55e;"></span><strong>${escapeHtml(CSV_STATE.fileName)}</strong><span class="csv-loaded-stats tnum">${CSV_STATE.raw.length.toLocaleString()}행 · ${CSV_STATE.headers.length}컬럼</span></div><button class="ab-pill csv-change-btn" data-tool-csv-reset="5-18" title="이 도구의 CSV를 제거하고 다른 파일 업로드">⟳ CSV 변경</button></div>
-    <p class="muted" style="font-size:12px;">컬럼 칩을 역할로 드래그하세요. <strong>주차·가입·재활성·플랫폼은 각 1개</strong>, <strong>채널·더미는 여러 개</strong>. 채널 칩에서 perf/brand 구분을 고릅니다(brand는 audit·합산에서 분리).</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+      <p class="muted" style="font-size:12px;margin:0;">아래 컬럼 칩을 역할 영역으로 <strong>직접 드래그</strong>하세요. <strong>주차·가입·재활성·플랫폼은 각 1개</strong>, <strong>채널·더미는 여러 개</strong>. 채널 칩에서 perf/brand 구분.</p>
+      <button class="ab-pill" data-mmm-autoguess="1" title="컬럼 이름으로 역할을 추정해 자동 배치 (수정 가능)">🪄 이름으로 자동 추정</button>
+    </div>
     <div class="reg-zone" data-mmm-zone="ignore" style="border-style:solid;"><div class="reg-zone-label">📦 컬럼 (미지정 — 드래그해서 배치)</div><div class="reg-chips">${tray.map(c => chip(c, false)).join("") || `<span style="color:var(--text-muted);font-size:11px;">모두 배치됨</span>`}</div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;">
       ${zone("week", "🗓 주차(t) · 1개 (없으면 행순서)", false)}
@@ -12536,6 +12544,7 @@ function bindMmmDataPrepHandlers() {
   });
   document.querySelectorAll("[data-mmm-unassign]").forEach(x => x.addEventListener("click", e => { e.stopPropagation(); const col = x.dataset.mmmUnassign; if (cm[col]) cm[col].role = "ignore"; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-kind]").forEach(sel => sel.addEventListener("change", () => { const col = sel.dataset.mmmKind; if (cm[col]) cm[col].kind = sel.value; navigate("5-18"); }));
+  document.querySelectorAll("[data-mmm-autoguess]").forEach(b => b.addEventListener("click", () => { mmmColMapAutoGuess(); navigate("5-18"); }));
 }
 function page_5_18() {
   const meta = findMeta("5-18");
