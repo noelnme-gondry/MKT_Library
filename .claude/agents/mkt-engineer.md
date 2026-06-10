@@ -80,6 +80,8 @@ tools:
 
 그랜저 인과 ④(5-18 §4, PR #98): 동시점 삼각검증(①~③)이 "거의 전부 INCONCLUSIVE→holdout"으로만 끝나는 불만 보완. `mmmGranger(y,x,cap)`=차분 VAR+F검정(AIC lag, `REG_STATS.ols` RSS+`ibeta`), 양방향(spend→organic 시차잠식 / organic→spend 페이싱). spend→organic 유의&계수합<0이면 판정 **LEAN CANNIBAL 격상**(순수 추가→골든·validate byte-동일). 그랜저=예측 선행성이지 인과 확정 아님→캐비엇 필수, 확정은 holdout. n<24 null. 골든 T6e. CSV granger 9컬럼.
 
+변화점 탐지(5-18 §3, PR #99): 구조변화 step을 사람이 가정 말고 데이터가 찾게. `mmmChangePoints(series,{minSeg,penaltyMult})`=Δ(성장률) 평균·분산 변화점을 O(n²) 최적분할(Gaussian −2logL + BIC 페널티 mult·ln N)로 탐지. `byTarget[t].changePoints={target,spend}` 순수 추가→byte-동일. §3 표+STL 차트 인라인 플러그인(`afterDatasetsDraw` 캔버스 직접 ▲세로점선, annotation 라이브러리 없이). 선행성 보조: 오가닉 반전 vs 지출 증액 선후. 골든 T6f. 캐비엇: 시점겹침≠인과. 캔버스 그리기는 브라우저 확인 필요.
+
 # 통계 도구 표준 (5-5 등)
 
 - 순수 함수 객체에 분리 (`CANNIBAL_STATS`, `ALLOC_MATH`)
