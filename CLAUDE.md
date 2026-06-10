@@ -369,6 +369,11 @@ TOC/사이드바/헤더에 보이는 번호를 바꿀 때 **내부 id(`5-2` 등)
 ### 12.15 다중공선 흡수: 캠페인 유지 기본 + 방향 선택 (PR #71)
 두 변수가 거의 동일하게 움직이면(corr≥0.9·VIF↑) 회귀가 식별 불가 → 하나를 흡수(드롭). **하드코딩 금지·자동 감지**(`mmmDetectCollinear` 채널 ln↔step 더미). 기본 흡수 대상 = **step(캠페인 채널 유지)**, `MMM_METH_STATE.absorbChoice`로 뒤집기. `cfg.absorbed` Set을 파이프라인 전체가 사용(채널·step 모두 스킵). ⚖ 노티스로 "X↔Y corr 0.98 — Y 흡수·X 유지" 표시 + 토글. 비즈니스 중요도에 따라 사용자가 무엇을 살릴지 결정.
 
+### 12.16 카니발 채널 개별화 · 목차 필터 · 드래그앤드롭 매핑 (PR #75·76·77)
+- **카니발 합산 금지**: `mmmCannibalization(…, channelKey)`로 채널마다 개별 삼각검증(precedence·detrend는 그 채널 spend, net은 그 채널 탄력성). `cannibByChannel` 전부 계산 + §4 채널 pill 셀렉터. "ROI는 안 떨어지는데 CBUA부터 떨어지나"를 채널별로.
+- **페이지 전역 필터는 목차로**: `pageShell(opts.tocFilters)` 공용 슬롯(.toc-filters) — 타깃·플랫폼 같은 전역 컨트롤을 우측 목차 상단 고정 패널로. 채널 같은 분석-지점 필터는 본문 유지. 핸들러는 document 위임이라 위치 무관.
+- **드래그앤드롭 매핑**(5-19): 컬럼 칩 → 종속Y/독립/그룹/라벨 drop zone(HTML5 DnD: dragstart setData / zone dragover·drop으로 role 설정, Y는 1개 강제, ✕ 미지정). 독립 칩에 type·transform·**perf/brand** kind. 적합 로직은 role/type/transform 모델 그대로 — DnD는 role 설정 UI일 뿐. **DnD 포인터 인터랙션은 headless 검증 불가 → 브라우저 확인 필요**.
+
 ---
 
 ## 13. 참고 파일
