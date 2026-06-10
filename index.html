@@ -2599,6 +2599,13 @@
     font-size: 11.5px; line-height: 1.55; color: var(--text-1); white-space: normal;
     box-shadow: 0 8px 24px rgba(0,0,0,0.45); pointer-events: none;
   }
+  /* 목차 상단 고정 필터 패널 (페이지 전역 컨트롤) */
+  .toc-filters { background: rgba(122,162,247,0.06); border: 1px solid rgba(122,162,247,0.22); border-radius: 10px; padding: 10px 11px; margin-bottom: 14px; }
+  .toc-filters .toc-filter-label { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin: 0 0 5px; }
+  .toc-filters .toc-filter-group + .toc-filter-group { margin-top: 9px; }
+  .toc-filters .tf-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+  .toc-filters .tf-pill { font-size: 11px; padding: 3px 9px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg-2); color: var(--text-1); cursor: pointer; }
+  .toc-filters .tf-pill.active { background: #7aa2f7; color: #0b0d12; border-color: #7aa2f7; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -3760,6 +3767,7 @@ function pageShell(meta, opts) {
         </div>
       </div>
       <aside class="toc">
+        ${opts.tocFilters ? `<div class="toc-filters">${opts.tocFilters}</div>` : ""}
         <div class="toc-title">목차</div>
         ${(opts.toc || []).map(t => `<a href="#${t.id}">${escapeHtml(t.title)}</a>`).join("")}
       </aside>
@@ -12737,6 +12745,7 @@ function page_5_18() {
     chips: `<span class="chip"><span class="dot"></span>도구 · MMM 방법론</span><span class="chip warning"><span class="dot"></span>가설·기술용 · holdout 아님</span>${authStatusChip()}`,
     summary: "⚠ 어떤 계수도 측정된 인과/증분 효과가 아닙니다. 추세는 가정하지 않고 검정(STL·MK·ADF·KPSS), 추론은 HAC+AR(1), 귀인은 Shapley R²(준로그 수준-점유 분해 금지). cannibalization 결정은 holdout(5-15) 전용.",
     toc: [{ id: "s-prep", title: "데이터·매핑" }, { id: "s-summary", title: "§0 한눈에 보기" }, { id: "s-macro", title: "§1 위생·매크로" }, { id: "s-audit", title: "§2 시트 audit" }, { id: "s-trend", title: "§3 추세 존재" }, { id: "s-cannib", title: "§4 카니발 vs 오가닉" }, { id: "s-mmm", title: "§5 MMM" }, { id: "s-decomp", title: "§5.5 실제vs모델·분해" }, { id: "s-verdict", title: "§6 종합·export" }],
+    tocFilters: renderMmmFilters(c),
     body: `
       <section class="block" id="s-prep">${renderInlineCsvUpload("5-18")}</section>
       ${renderMmmSummary(c)}
@@ -12947,14 +12956,17 @@ function renderMmmAudit(c) {
     <p class="muted" style="font-size:11px;margin-top:6px;">RR mean=${a.composite.mean_RR} = 구성요소 합 ${a.composite.components_mean_sum} (RR 정의 확인). ⚠ spend↔trend 공선 + 상쇄 계수 → 단순 모델 계수는 식별 불안정 → §5(채널분리·adstock·HAC)에서 제대로.</p>
   </section>`;
 }
-function renderMmmTargetSelector(c) {
-  const btns = c.targets.map(t => `<button class="ab-pill ${MMM_METH_STATE.target === t ? 'active' : ''}" data-mmm-target="${t}">${t === "Regs" ? "가입 (Reg)" : "재활성 (React)"}</button>`).join("");
+// 목차 고정 필터 패널 — 타깃(Reg/React) + 플랫폼(All/iOS/AOS) 페이지 전역 컨트롤
+function renderMmmFilters(c) {
+  const tBtns = c.targets.map(t => `<button class="tf-pill ${MMM_METH_STATE.target === t ? 'active' : ''}" data-mmm-target="${t}">${t === "Regs" ? "가입" : "재활성"}</button>`).join("");
   const plats = mmmPlatforms();
-  const platRow = plats.length ? `<div class="ab-pillgroup"><span class="ab-pillgroup-label">플랫폼</span>${["All", ...plats].map(p => `<button class="ab-pill ${MMM_METH_STATE.platform === p ? 'active' : ''}" data-mmm-platform="${escapeHtml(p)}">${p === "All" ? "전체" : escapeHtml(p)}</button>`).join("")}</div>` : "";
-  return `<section class="block" id="s-trend"><h2 class="section-title"><span class="ix">§3~5</span>세그먼트별 분석 (각 타깃·플랫폼 별도 적합 — 합성지표 스펙이 구성요소에 맞는 건 아님)</h2>
-    ${platRow}
-    <div class="ab-pillgroup"><span class="ab-pillgroup-label">타깃</span>${btns}</div>
-    ${plats.length ? `<p class="muted" style="font-size:11px;margin-top:4px;">플랫폼 × 타깃 = 4그룹(iOS/AOS × 가입/재활성). 선택한 플랫폼 행만 필터해 방법론 전체를 다시 돌립니다. "전체"는 풀링(플랫폼 더미 없음).</p>` : ""}</section>`;
+  const pRow = plats.length ? `<div class="toc-filter-group"><div class="toc-filter-label">플랫폼</div><div class="tf-pills">${["All", ...plats].map(p => `<button class="tf-pill ${MMM_METH_STATE.platform === p ? 'active' : ''}" data-mmm-platform="${escapeHtml(p)}">${p === "All" ? "전체" : escapeHtml(p)}</button>`).join("")}</div></div>` : "";
+  return `<div class="toc-filter-group"><div class="toc-filter-label">타깃</div><div class="tf-pills">${tBtns}</div></div>${pRow}`;
+}
+function renderMmmTargetSelector(c) {
+  const plats = mmmPlatforms();
+  return `<section class="block" id="s-trend"><h2 class="section-title"><span class="ix">§3~5</span>세그먼트별 분석 — ${MMM_METH_STATE.target === "Regs" ? "가입" : "재활성"}${plats.length && MMM_METH_STATE.platform !== "All" ? " · " + escapeHtml(MMM_METH_STATE.platform) : ""}</h2>
+    <p class="muted" style="font-size:11.5px;margin-top:-2px;">타깃·플랫폼은 <strong>우측 목차 상단 필터</strong>에서 전환합니다. 각 타깃·플랫폼은 별도 적합(합성지표 스펙이 구성요소에 맞는 건 아님).${plats.length ? ' 플랫폼 × 타깃 = 4그룹, "전체"는 풀링.' : ""}</p></section>`;
 }
 function renderMmmTrend(c) {
   const T = c.byTarget[MMM_METH_STATE.target]; if (!T) return "";
