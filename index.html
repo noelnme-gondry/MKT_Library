@@ -11900,8 +11900,23 @@ function _nonConstCols(X, names) {
   for (let j = 0; j < names.length; j++) { const col = X.map(r => r[j]); let mn = col[0], mx = col[0]; for (const v of col) { if (v < mn) mn = v; if (v > mx) mx = v; } if (mx - mn > 1e-12) keep.push(j); }
   return keep;
 }
+// 상수 + 선형종속(완전 다중공선) 열 드롭 → 랭크 결손 방어 (statsmodels pinv 동치).
+// 절편 포함 점진적 Gram-Schmidt: 새 열의 잔차 노름이 원 노름 대비 1e-8 미만이면 그 열을 드롭(먼저 들어온 열 유지).
+// 겹치는 더미(LNY=PreLNY|Seollal)·하드코딩 step과 동일한 컬럼 등이 mmmOls를 특이행렬→null로 만드는 것을 방지.
+function _nonRedundantCols(X, names) {
+  const n = X.length; if (!n) return [];
+  const keep = [], basis = [];
+  const ones = new Array(n).fill(1 / Math.sqrt(n)); basis.push(ones);   // 절편(상수열은 이것과 공선 → 자동 드롭)
+  for (let j = 0; j < names.length; j++) {
+    const v = X.map(r => r[j]); const norm0 = Math.sqrt(v.reduce((s, x) => s + x * x, 0)) || 1;
+    for (const b of basis) { let d = 0; for (let i = 0; i < n; i++) d += v[i] * b[i]; for (let i = 0; i < n; i++) v[i] -= d * b[i]; }
+    const norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0));
+    if (norm / norm0 > 1e-8) { for (let i = 0; i < n; i++) v[i] /= norm; basis.push(v); keep.push(j); }
+  }
+  return keep;
+}
 function mmmFitNamed(X, names, y, cfg, hac) {
-  const keep = _nonConstCols(X, names);
+  const keep = _nonRedundantCols(X, names);
   const Xk = X.map(r => keep.map(j => r[j])), nk = keep.map(j => names[j]);
   const f = hac ? mmmFitHac(Xk, y, cfg) : mmmOls(_designConst(Xk), y);
   const map = {};
@@ -12095,10 +12110,18 @@ function mmmRunMmm(panel, cfg, targetName) {
   // shapley
   const groups = mmmShapleyGroups(names, _mmmChans(panel));
   const sh = shapleyR2Exact(y, groups, X);
-  // saturation: 모델에 포함된 첫 perf 채널 (Tinder=google_roi, 임의 데이터=첫 perf)
+  // saturation: 모델에 포함된 첫 perf 채널 (Tinder=google_roi, 임의 데이터=첫 perf) — sat은 골든 호환 유지
   const satCh = _mmmChans(panel).find(c => c.kind !== "brand" && names.includes("ln_" + c.key));
   const sat = satCh ? mmmSaturation(panel, cfg, targetName, satCh.key, lam) : null;
-  return { best_lambda: lam, cv_rmse: ad.cv_rmse, vif: vifByName, collinear_pairs: pairs, elasticities: elas, shapley: sh, saturation: sat };
+  // 채널별 saturation (수확체감 곡선용) — brand·sparse·absorbed·미포함 채널 제외
+  const sparseSet = cfg.excludeSparse ? mmmSparseChannels(panel, cfg) : new Set();
+  const satByChannel = {};
+  for (const ch of _mmmChans(panel)) {
+    if (ch.kind === "brand" || !panel.ch[ch.key] || (cfg.absorbed && cfg.absorbed.has(ch.key)) || sparseSet.has(ch.key) || !names.includes("ln_" + ch.key)) continue;
+    const s = mmmSaturation(panel, cfg, targetName, ch.key, lam);
+    if (s) { s.label = ch.label; s.recentMean = (() => { const a = panel.ch[ch.key].filter(v => v > 0 && isFinite(v)); return a.length ? Math.round(a.slice(-12).reduce((x, y2) => x + y2, 0) / Math.min(12, a.length)) : 0; })(); satByChannel[ch.key] = s; }
+  }
+  return { best_lambda: lam, cv_rmse: ad.cv_rmse, vif: vifByName, collinear_pairs: pairs, elasticities: elas, shapley: sh, saturation: sat, saturationByChannel: satByChannel };
 }
 // log-log AR(1) 적합: 타깃 ≤0·비유한 주차는 제외 (log(0)=-Inf가 전체 적합을 NaN으로 오염하는 것 방지).
 // 타깃이 전부 양수면 모든 행 유지 → 기존(Tinder/골든)과 byte-동일. dropped=제외된 주 수.
@@ -12867,7 +12890,10 @@ function renderMmmCannib(c) {
   const chLabel = (k) => (_mmmChans(c.panel).find(cc => cc.key === k) || {}).label || k;
   const chPills = chans.length > 1 ? `<div class="ab-pillgroup" style="margin-bottom:8px;"><span class="ab-pillgroup-label">채널</span>${chans.map(k => `<button class="ab-pill ${k === selCh ? 'active' : ''}" data-mmm-cannibch="${escapeHtml(k)}">${escapeHtml(chLabel(k))}</button>`).join("")}</div>` : "";
   return `<section class="block" id="s-cannib">
-    <h3 class="section-title" style="font-size:15px;"><span class="ix">§4</span>카니발 vs 오가닉 — ${MMM_METH_STATE.target} · <span style="color:#7aa2f7;">${escapeHtml(chLabel(selCh))}</span> (삼각검증)</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+      <h3 class="section-title" style="font-size:15px;margin:0;"><span class="ix">§4</span>카니발 vs 오가닉 — ${MMM_METH_STATE.target} · <span style="color:#7aa2f7;">${escapeHtml(chLabel(selCh))}</span> (삼각검증)</h3>
+      <button class="ab-pill" data-mmm-cannib-csv="1" title="모든 채널 × 삼각검증(시간선행성·허위상관·순증분) + 탄력성·커버리지 1행씩 → CSV">⬇ 채널별 카니발 CSV</button>
+    </div>
     ${chPills}
     <div class="callout" style="border-left:3px solid ${vColor};"><div class="body"><strong>판정 (${cn.organic_votes}/3 오가닉):</strong> ${escapeHtml(cn.verdict)} <span style="color:var(--text-muted);font-size:11px;">— ${escapeHtml(chLabel(selCh))} 채널 기준 (다른 채널은 위 pill로 전환)</span></div></div>
     ${mmmExplain('<strong>카니발 = 광고가 오가닉을 빼앗아 가는 것, 오가닉 = 광고와 무관한 외생적 변화.</strong> 단순 상관으론 둘을 구분 못 합니다(지출도 시간 따라 늘어서 "지출↑ 오가닉↓"가 카니발이든 우연이든 똑같이 들어맞음). 그래서 서로 <strong>독립적인 3가지 질문</strong>으로 삼각검증합니다 — ① 광고를 본격적으로 쓰기 <em>전부터</em> 이미 줄고 있었나?(원인은 결과보다 먼저 와야 함) ② 시간 추세를 빼면 음의 상관이 사라지나?(사라지면 진짜 범인은 시간=오가닉) ③ 순(net) 효과가 +인가?(+면 강한 카니발과 모순). <strong>2개 이상이 "오가닉"을 가리키면 광고는 잠식범이 아니라 방어 역할</strong>로 판정합니다.')}
@@ -12904,7 +12930,27 @@ function renderMmmMmm(c) {
     ${vifWarn}
     <p style="font-size:12px;margin:10px 0 4px;color:var(--text-1);">Shapley R² 분해 (설명분산의 공정 배분 — 준로그 수준-점유 분해 금지)${mmmInfoIcon("shapley")} · total R²=${f(mm.shapley.total, 3)}${mmmInfoIcon("r2")}</p>
     <div class="chart-container" style="height:${mm.shapley.rows.length * 26 + 50}px;margin-bottom:8px;"><canvas id="mmm-shapley-chart"></canvas></div>
-    <p class="muted" style="font-size:12px;">수확체감 (Google ROI, b·ln(1+spend))${mmmInfoIcon("saturation")}: ${satS}. ln_coef=${sat ? sat.ln_coef : "—"}.</p>
+    ${(() => {
+      const sbc = mm.saturationByChannel || {};
+      const keys = Object.keys(sbc);
+      if (!keys.length) return `<p class="muted" style="font-size:12px;">수확체감${mmmInfoIcon("saturation")}: ${satS}. ln_coef=${sat ? sat.ln_coef : "—"}.</p>`;
+      const satRows = keys.map(k => {
+        const s = sbc[k], m = s.marginal_kpi_per_1k, neg = s.ln_coef < 0;
+        const curMarg = s.recentMean > 0 ? +(s.ln_coef / (1 + s.recentMean) * 1000).toFixed(1) : null;
+        const cell = (v) => v == null ? "—" : `${v >= 0 ? "+" : ""}${v}명`;
+        return `<tr style="${neg ? "opacity:0.55;" : ""}">
+          <td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${mmmDriverColor(s.label, c.byTarget[MMM_METH_STATE.target].decomp ? c.byTarget[MMM_METH_STATE.target].decomp.groupNames : [])};margin-right:6px;vertical-align:middle;"></span><strong>${escapeHtml(s.label)}</strong>${neg ? ' <span style="font-size:9px;color:#fbbf24;">음수=노이즈</span>' : ''}</td>
+          <td class="tnum">${cell(m["$10k"])}</td><td class="tnum">${cell(m["$35k"])}</td><td class="tnum">${cell(m["$60k"])}</td>
+          <td class="tnum" style="color:#adc6ff;">${curMarg == null ? "—" : cell(curMarg) + `<br><span style="font-size:9px;color:var(--text-muted);">@$${(s.recentMean/1000).toFixed(1)}k</span>`}</td>
+        </tr>`;
+      }).join("");
+      return `<p style="font-size:12px;margin:10px 0 4px;color:var(--text-1);">수확체감 — 채널별 한계효과 (지출 늘릴 때 +$1,000당 추가 ${(_MMM_TARGET_KO[MMM_METH_STATE.target]||"").split(" ")[0]} 명, 클수록 곡선이 가파름·작을수록 포화)${mmmInfoIcon("saturation")}</p>
+        <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:10px;align-items:start;">
+          <div class="chart-container" style="height:240px;"><canvas id="mmm-sat-chart"></canvas></div>
+          <div><div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>채널</th><th>$10k당</th><th>$35k당</th><th>$60k당</th><th>현 지출</th></tr></thead><tbody>${satRows}</tbody></table></div>
+          <p class="muted" style="font-size:10.5px;margin-top:4px;">"$Xk당 +N명" = 그 지출 수준에서 1,000달러를 더 쓰면 늘어나는 인원. 지출이 커질수록 N이 줄어드는 게 수확체감. <strong>음수 채널은 노이즈</strong>(잠식 아님 — 데이터 부실 가능). §0의 "현재 1점"과 달리 여기는 곡선 전체. 색은 §5.5 분해와 일치.</p></div>
+        </div>`;
+    })()}
   </section>`;
 }
 const MMM_DECOMP_PALETTE = ["#7aa2f7", "#22c55e", "#fbbf24", "#f87171", "#bb9af7", "#7dcfff", "#e0af68", "#9ece6a", "#ff9e64", "#2ac3de"];
@@ -12927,7 +12973,7 @@ function renderMmmDecomp(c) {
   }).join("");
   return `<section class="block" id="s-decomp">
     <h3 class="section-title" style="font-size:15px;"><span class="ix">§5.5</span>실제 vs 모델(MMM) + 주별 드라이버 분해 — ${t}</h3>
-    ${mmmExplain('실제 ' + tgtKo + ' 수(검정 회색선)와 모델이 설명한 값(파란선)을 겹쳐 봅니다. 둘이 가까울수록 모델이 현실을 잘 잡은 것. 아래 막대는 <strong>매주 ' + tgtKo + '이(가) 평균(baseline)에서 얼마나 벗어났고, 그 변동을 어떤 요인이 만들었는지</strong>를 사람 수로 쪼갠 것입니다(브랜드·계절·추세·각 채널…). 양(+)막대=그 요인이 그 주에 ' + tgtKo + '을 끌어올림, 음(−)=끌어내림.')}
+    ${mmmExplain('실제 ' + tgtKo + ' 수(검정 회색선)와 모델이 설명한 값(파란선)을 겹쳐 봅니다. 둘이 가까울수록 모델이 현실을 잘 잡은 것. 아래 막대는 <strong>매주 ' + tgtKo + '이(가) 평균(baseline)에서 얼마나 벗어났고, 그 변동을 어떤 요인이 만들었는지</strong>를 사람 수로 쪼갠 것입니다(브랜드·계절·추세·각 채널…). 양(+)막대=그 요인이 그 주에 ' + tgtKo + '을 끌어올림, 음(−)=끌어내림. <strong>채널 기여에는 adstock(이월효과 λ=best)과 saturation(수확체감·log)이 이미 반영</strong>되어 있습니다 — 즉 기여 = β·(log1p(adstock(지출)) − 평균).')}
     <div class="ab-stat-row" style="margin-bottom:6px;">
       <div class="ab-stat"><div class="ab-stat-label">모델 평균오차 (RMSE)</div><div class="ab-stat-value tnum">±${d.rmse.toLocaleString()}명</div><div class="ab-stat-hint">주당 실제와 모델 차이</div></div>
       <div class="ab-stat"><div class="ab-stat-label">평균 오차율 (MAPE)</div><div class="ab-stat-value tnum">${d.mape}%</div></div>
@@ -12997,6 +13043,22 @@ function renderMmmCharts(c) {
       options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `R² ${ctx.parsed.x.toFixed(4)} (${rows[ctx.dataIndex].pct.toFixed(1)}%)` } } }, scales: { x: { ticks: { color: muted }, grid: { color: border } }, y: { ticks: { color: muted }, grid: { color: border } } } },
     });
   }
+  // Saturation 곡선 (채널별 한계효과 b/(1+x)·1000 vs 지출 x) — 수확체감 시각화
+  if (document.getElementById("mmm-sat-chart") && T.mmm.saturationByChannel) {
+    const sbc = T.mmm.saturationByChannel, keys = Object.keys(sbc);
+    const groupNames = (T.decomp && T.decomp.groupNames) || [];
+    const maxSpend = Math.max(1, ...keys.map(k => sbc[k].recentMean || 0)) * 1.8;
+    const grid = Array.from({ length: 31 }, (_, i) => Math.round(maxSpend * i / 30));
+    const ds = keys.map(k => {
+      const s = sbc[k], neg = s.ln_coef < 0, col = mmmDriverColor(s.label, groupNames);
+      return { label: s.label + (neg ? " (노이즈)" : ""), data: grid.map(x => +(s.ln_coef / (1 + x) * 1000).toFixed(1)), borderColor: col, backgroundColor: col + "22", borderWidth: 2, borderDash: neg ? [5, 4] : [], pointRadius: 0, tension: 0.2 };
+    });
+    destroyChartIfExists("mmm-sat-chart");
+    CHART_INSTANCES["mmm-sat-chart"] = new Chart(document.getElementById("mmm-sat-chart"), {
+      type: "line", data: { labels: grid.map(x => "$" + Math.round(x / 1000) + "k"), datasets: ds },
+      options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { labels: { color: muted, font: { size: 9 }, boxWidth: 10 } }, title: { display: true, text: "수확체감 곡선 — 지출 수준별 +$1k당 추가 인원", color: muted } }, scales: { x: { title: { display: true, text: "주당 지출", color: muted }, ticks: { color: muted, maxTicksLimit: 8 }, grid: { color: border } }, y: { title: { display: true, text: "+$1k당 명", color: muted }, ticks: { color: muted }, grid: { color: border } } } },
+    });
+  }
   // Actual vs Fitted + 스택 분해
   const D = T.decomp;
   if (D && document.getElementById("mmm-fit-chart")) {
@@ -13050,6 +13112,7 @@ function bindMmmMethHandlers() {
   const ej = document.getElementById("mmm-export-json"); if (ej) ej.addEventListener("click", exportMmmMethJson);
   const em = document.getElementById("mmm-export-md"); if (em) em.addEventListener("click", exportMmmMethMd);
   document.querySelectorAll("[data-mmm-decomp-csv]").forEach(b => b.addEventListener("click", downloadMmmDecompCsv));
+  document.querySelectorAll("[data-mmm-cannib-csv]").forEach(b => b.addEventListener("click", downloadMmmCannibCsv));
   // 튀는 구간 메모 (세션 상태에 저장; 재렌더 없이 input 값 유지)
   document.querySelectorAll("[data-mmm-note]").forEach(inp => inp.addEventListener("change", () => {
     if (!MMM_METH_STATE.notes) MMM_METH_STATE.notes = {};
@@ -13080,12 +13143,42 @@ function downloadMmmDecompCsv() {
     ...d.groupNames.map(g => "contrib_" + g), ...chans.map(ch => "spend_" + ch.label)];
   const lines = [header.map(q).join(",")];
   d.weeks.forEach((w, ti) => {
-    const row = [w.week, weekDate(w.week), Math.round(w.actual), Math.round(w.baseline), Math.round(w.fitted), Math.round(w.residual),
+    const row = [w.week, weekDate(w.week), Math.round(w.actual), w.baseline.toFixed(1), w.fitted.toFixed(1), w.residual.toFixed(1),
       ...d.groupNames.map(g => (w.contrib[g]).toFixed(1)),
       ...chans.map(ch => { const v = c.panel.ch[ch.key][ti]; return isFinite(v) ? Math.round(v) : ""; })];
     lines.push(row.map(q).join(","));
   });
-  _mmmDownload(`mmm_decomp_${t}_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\n"), "text/csv;charset=utf-8");
+  _mmmDownload(`mmm_decomp_${t}_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
+}
+// 채널별 카니발 vs 오가닉 삼각검증 + 탄력성·커버리지 CSV (모든 채널 1행씩)
+function downloadMmmCannibCsv() {
+  const c = MMM_METH_CACHE; const t = MMM_METH_STATE.target, T = c.byTarget && c.byTarget[t];
+  if (!T || !T.cannibByChannel) { alert("카니발 데이터가 없습니다. 먼저 분석을 실행하세요."); return; }
+  const chans = T.cannChannels || [];
+  const effByKey = {}; (T.effects || []).forEach(e => { effByKey[e.key] = e; });
+  const q = (s) => { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const header = ["channel", "channel_label", "verdict", "organic_votes",
+    "precedence_window_wk", "precedence_slope_per_wk", "precedence_change_pct", "precedence_avg_spend", "precedence_declining_pre_ramp",
+    "detrend_raw", "detrend_detrended", "detrend_first_diff", "detrend_negative_collapses",
+    "net_elasticity", "net_p",
+    "elasticity", "ci_lo", "ci_hi", "p", "significant", "effect_verdict",
+    "per10pct_pct", "weekly_per_1k", "mean_spend", "coverage_nonzero", "coverage_total", "coverage_ratio", "sparse", "trailing_zero"];
+  const lines = [header.map(q).join(",")];
+  for (const k of chans) {
+    const cn = T.cannibByChannel[k]; if (!cn) continue;
+    const e = effByKey[k] || {}; const pr = cn.precedence, dt = cn.detrend_corr, ni = cn.net_incrementality;
+    const per10 = (e.elas != null) ? +(e.elas * 10).toFixed(2) : "";
+    const cov = (e.total) ? +(e.nonzero / e.total).toFixed(3) : "";
+    const row = [k, cn.channelLabel, cn.verdict, cn.organic_votes,
+      pr.window_weeks, pr.kpi_slope_per_wk, pr.kpi_change_over_window_pct, pr.avg_spend, pr.declining_pre_ramp,
+      dt.raw, dt.detrended, dt.first_diff, dt.negative_collapses,
+      ni.net_elasticity, ni.p,
+      (e.elas != null ? e.elas : ""), (e.ci ? e.ci[0] : ""), (e.ci ? e.ci[1] : ""), (e.p != null ? e.p : ""), (e.sig != null ? e.sig : ""), (e.verdict || ""),
+      per10, (e.weeklyPer1k == null ? "" : e.weeklyPer1k), (e.meanSpend != null ? e.meanSpend : ""),
+      (e.nonzero != null ? e.nonzero : ""), (e.total != null ? e.total : ""), cov, (e.sparse != null ? e.sparse : ""), (e.trailingZero != null ? e.trailingZero : "")];
+    lines.push(row.map(q).join(","));
+  }
+  _mmmDownload(`mmm_cannib_${t}_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
 }
 function exportMmmMethMd() {
   const c = MMM_METH_CACHE; const L = ["# MMM 방법론 — verdict\n", "> described(연관)·가설·기술용. 인과/증분은 holdout 전용.\n"];
