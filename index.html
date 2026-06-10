@@ -11839,11 +11839,19 @@ function mmmSparseChannels(panel, cfg) {
   for (const k in cov) if (cov[k].sparse) s.add(k);
   return s;
 }
+// 구조변화 step 더미 series 맵. colMap에 step 역할 컬럼이 매핑돼 있으면(panel.steps) 그 컬럼들을,
+// 아니면 cfg.steps 주차임계값(week>=from_week, Tinder 기본 가정)을 쓴다. Config에서 cfg.steps={}로 비우면 비활성.
+// Tinder weekly.csv 경로는 panel.steps가 비어 cfg.steps로 떨어짐 → 골든·validate_pipe·validate_colmap byte-동일.
+function _mmmStepSeries(panel, cfg) {
+  if (panel.steps && Object.keys(panel.steps).length) return panel.steps;   // 사용자 매핑 step 컬럼 (week-threshold 가정 대체)
+  const s = {}; for (const [nm, fw] of Object.entries(cfg.steps || {})) s[nm] = panel.week.map(tt => tt >= fw ? 1 : 0);
+  return s;
+}
 // 채널↔step 다중공선 자동 감지 (|corr|≥0.9). 기본 흡수 대상 = step(캠페인 채널 유지). 사용자가 뒤집기 가능.
 function mmmDetectCollinear(panel, cfg) {
   const pairs = [];
   const chSeries = {}; for (const ch of _mmmChans(panel)) if (panel.ch[ch.key]) chSeries[ch.key] = mmmLnMedia(panel.ch[ch.key], cfg.defaultLam);
-  const stepSeries = {}; for (const [nm, fw] of Object.entries(cfg.steps)) stepSeries[nm] = panel.week.map(tt => tt >= fw ? 1 : 0);
+  const stepSeries = _mmmStepSeries(panel, cfg);
   for (const ck of Object.keys(chSeries)) for (const sk of Object.keys(stepSeries)) {
     const r = CANNIBAL_STATS.pearson(chSeries[ck], stepSeries[sk]);
     if (Math.abs(r) >= 0.9) pairs.push({ channel: ck, step: sk, corr: +r.toFixed(3), channelLabel: (_mmmChans(panel).find(c => c.key === ck) || {}).label || ck });
@@ -11873,7 +11881,8 @@ function mmmBuildFeatures(panel, cfg, lam, withTrend = true) {
   push("lny", t.map(tt => seol.has(tt) ? 1 : 0)); push("chuseok", t.map(tt => chu.has(tt) ? 1 : 0));
   // 흡수(공선) 집합: cfg.absorbed = 다중공선으로 제거할 컬럼 키(채널 key 또는 step 이름). 기본은 step 흡수(캠페인 유지).
   const absorbed = cfg.absorbed || new Set(cfg.foldIntoRegime || []);
-  for (const [nm, fw] of Object.entries(cfg.steps)) { if (absorbed.has(nm)) continue; push(nm, t.map(tt => tt >= fw ? 1 : 0)); }
+  const steps = _mmmStepSeries(panel, cfg);
+  for (const [nm, arr] of Object.entries(steps)) { if (absorbed.has(nm)) continue; push(nm, arr); }
   const sparse = cfg.excludeSparse ? mmmSparseChannels(panel, cfg) : new Set();
   for (const ch of _mmmChans(panel)) {
     if (absorbed.has(ch.key) || sparse.has(ch.key)) continue;
@@ -11900,7 +11909,10 @@ function mmmSheetDesign(panel, cfg, withBrand = false) {
   push("cos52", t.map(tt => Math.cos(2 * Math.PI * tt / 52.0)));
   // dummies: 매핑된 모든 더미 (Tinder=PreLNY/Seollal/ChuseokOnly/PostChuWk/OtherHol) + LineOff(step). OLS는 순서 무관 → audit 계수 byte-동일.
   for (const k in panel.dummy) push(k, panel.dummy[k]);
-  push("LineOff", t.map(tt => tt >= cfg.steps.line_off ? 1 : 0));
+  // 구조변화 step: 사용자 매핑 step 컬럼(panel.steps)이 있으면 그것, 아니면 cfg.steps.line_off 주차임계값(Tinder LineOff).
+  // Config에서 cfg.steps={}로 비우면(또는 임의데이터에서 미정의) audit 설계행렬에서도 제외 → 둘 다 없으면 step 없음.
+  if (panel.steps && Object.keys(panel.steps).length) { for (const [nm, arr] of Object.entries(panel.steps)) push(nm, arr); }
+  else if (cfg.steps && cfg.steps.line_off != null) push("LineOff", t.map(tt => tt >= cfg.steps.line_off ? 1 : 0));
   push("t", t.slice());
   if (withBrand) {
     // brand-kind 채널 합산 → 0→NaN ffill/bfill → log1p (Tinder: brand 1개 → 기존과 동일)
@@ -12408,7 +12420,7 @@ if (typeof window !== "undefined") {
  * ============================================================ */
 const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi", colMap: null, decompBaseline: "mean" };  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상. colMap: {[header]:{role,kind}} 드래그앤드롭 역할 매핑. decompBaseline: "mean"(주평균) | "nonmedia"(추세·계절·휴일·레짐 포함)
 const MMM_NONMEDIA_GROUPS = ["Trend", "Seasonality", "Holidays", "Regime(steps)"];   // 비매체 드라이버 (baseline 포함 토글 대상)
-const _MMM_ROLES = ["ignore", "week", "reg", "react", "channel", "dummy", "platform"];
+const _MMM_ROLES = ["ignore", "week", "reg", "react", "channel", "dummy", "step", "platform"];
 // CSV 헤더 → MMM 역할 자동 추정 (드래그앤드롭 초기값). 0/1 binary는 더미로 우선 처리(날짜명 오인 방지)
 function mmmGuessRole(col, rows) {
   const name = String(col).toLowerCase();
@@ -12420,6 +12432,7 @@ function mmmGuessRole(col, rows) {
   const kind = /brand|브랜드/.test(name) ? "brand" : "perf";
   let role = "ignore";
   if (/^(week|t|wk)$/.test(name) || /week|주차|날짜|일자|date/.test(name)) role = "week";
+  else if (isBin && /step|구조변화|regime|레짐|shutdown|중단|종료|launch|런칭/.test(name)) role = "step";  // 영구 구조변화 0/1
   else if (isBin) role = "dummy";
   else if (isNum && /reg|가입|등록|signup|sign_up|install/.test(name)) role = "reg";
   else if (isNum && /react|재활성|reactiv|resurrect|win.?back|winback/.test(name)) role = "react";
@@ -12496,7 +12509,7 @@ function _mmmPlatLabel(p) { return p === "android" ? "Android" : p === "ios" ? "
 // colMap → 역할별 컬럼 분해. reg/react/week는 배열(플랫폼별 여러 개 가능), 채널/더미는 sanitized key+plat 태그.
 function mmmColMapRoles(cm) {
   const heads = CSV_STATE.headers || [];
-  const out = { week: [], reg: [], react: [], platform: null, channels: [], dummies: [] };
+  const out = { week: [], reg: [], react: [], platform: null, channels: [], dummies: [], steps: [] };
   const used = new Set();
   for (const h of heads) {
     const def = cm[h] || {}; const r = def.role, plat = def.plat || "common";
@@ -12506,6 +12519,7 @@ function mmmColMapRoles(cm) {
     else if (r === "platform" && !out.platform) out.platform = h;
     else if (r === "channel") out.channels.push({ header: h, key: _mmmSanKey(h, used), label: h, kind: def.kind === "brand" ? "brand" : "perf", plat });
     else if (r === "dummy") out.dummies.push({ header: h, key: _mmmSanKey(h, used), label: h, plat });
+    else if (r === "step") out.steps.push({ header: h, key: _mmmSanKey(h, used), label: h, plat });
   }
   return out;
 }
@@ -12561,10 +12575,11 @@ function mmmGetPanelFromColMap(cm) {
   const num = (h, allowNaN) => raw.map(row => { const v = row[h]; if (v == null || String(v).trim() === "") return allowNaN ? NaN : 0; const n = parseFloat(String(v).replace(/[^0-9.\-]/g, "")); return isNaN(n) ? (allowNaN ? NaN : 0) : n; });
   const weekC = pick(r.week);
   const week = weekC ? num(weekC.header, false) : raw.map((_, i) => i + 1);
-  const panel = { week, ch: {}, dummy: {}, targets: {} };
+  const panel = { week, ch: {}, dummy: {}, steps: {}, targets: {} };
   const chans = r.channels.filter(inPlat);
   for (const ch of chans) panel.ch[ch.key] = num(ch.header, true);   // NaN→impute
   for (const d of r.dummies) panel.dummy[d.key] = num(d.header, false);  // 더미는 플랫폼 공유
+  for (const s of r.steps) panel.steps[s.key] = num(s.header, false);  // 구조변화 step (0/1, 플랫폼 공유). 있으면 cfg.steps 주차가정 대체
   const regC = pick(r.reg), reactC = pick(r.react);
   if (regC) panel.targets.Regs = num(regC.header, false);
   if (reactC) panel.targets.React = num(reactC.header, false);
@@ -12573,9 +12588,11 @@ function mmmGetPanelFromColMap(cm) {
   panel.week = re(panel.week);
   for (const k in panel.ch) panel.ch[k] = re(panel.ch[k]);
   for (const k in panel.dummy) panel.dummy[k] = re(panel.dummy[k]);
+  for (const k in panel.steps) panel.steps[k] = re(panel.steps[k]);
   for (const k in panel.targets) panel.targets[k] = re(panel.targets[k]);
   if (panel.targets.Regs && panel.targets.React) panel.targets.RR = panel.week.map((_, i) => panel.targets.Regs[i] + panel.targets.React[i]);
   panel.channels = chans.map(ch => ({ key: ch.key, label: ch.label, kind: ch.kind }));
+  panel.stepDefs = r.steps.map(s => ({ key: s.key, label: s.label }));   // 노티스 캐비엇용: 사용자 매핑 step 여부 판별
   return panel;
 }
 function mmmGetPanel() {
@@ -12709,8 +12726,9 @@ function renderMmmDataPrep() {
     <div style="margin-top:10px;">${zone("channel", "📈 채널 spend (여러 개 · 칩에서 perf/brand · 플랫폼)", true, true)}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
       ${zone("dummy", "🔢 더미/이벤트 (0·1, 여러 개 · 플랫폼 공유)", false, false)}
-      ${zone("platform", "🔀 플랫폼 단일 컬럼 (있을 때만 · 행 필터)", false, false)}
+      ${zone("step", "📐 구조변화 step (0·1 영구전환, 선택 · 미지정 시 도구 기본 week 가정)", false, false)}
     </div>
+    <div style="margin-top:10px;">${zone("platform", "🔀 플랫폼 단일 컬럼 (있을 때만 · 행 필터)", false, false)}</div>
     ${gate}
   </section>`;
 }
@@ -12915,9 +12933,17 @@ function renderMmmAbsorbNotice(c) {
       <button class="ab-pill" data-mmm-absorb="${escapeHtml(nt.key)}" data-side="${otherSide}" style="font-size:11px;">↔ 대신 ${escapeHtml(otherLabel)} 제거</button>
     </div>`;
   }).join("");
+  // 캐비엇: step이 사용자 매핑 컬럼이 아니라 도구 기본 주차임계값(week≥from_week) 가정일 때 안내.
+  const usingUserSteps = !!(c.panel && c.panel.steps && Object.keys(c.panel.steps).length);
+  const cfgSteps = (c.cfg && c.cfg.steps) || {};
+  const defaultStepNotice = !usingUserSteps && ns.some(nt => nt.step in cfgSteps);
+  const caveat = defaultStepNotice
+    ? `<p class="muted" style="font-size:11px;margin:0 0 8px;color:#fbbf24;">💡 <strong>${escapeHtml(Object.keys(cfgSteps).join("/"))}</strong>은(는) 업로드한 컬럼이 아니라 <strong>도구 기본 구조변화 가정</strong>입니다(week≥${escapeHtml(Object.values(cfgSteps).join("/"))}). 임의 데이터에선 이 주차가 무의미할 수 있어요 — ⚙ Config에서 주차를 바꾸거나 <strong>"구조변화 step 사용 안 함"</strong>으로 끄고, 실제 구조변화가 컬럼으로 있으면 매핑의 <strong>📐 step</strong> 역할로 지정하세요.</p>`
+    : "";
   return `<section class="block" style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.28);border-radius:10px;padding:14px 16px;">
     <div style="font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:4px;">⚖ 다중공선 흡수 (식별 불가 변수 처리)</div>
     <p class="muted" style="font-size:11.5px;margin:0 0 4px;">두 변수가 거의 동일하게 움직이면 회귀가 "누구 효과인지" 구분 못 합니다(식별 실패). 기본은 <strong>캠페인(채널)을 유지하고 STEP을 흡수</strong>하지만, 비즈니스적으로 STEP(예: Line 종료)이 더 중요하면 버튼으로 흡수 대상을 바꾸세요.</p>
+    ${caveat}
     ${rows}
   </section>`;
 }
@@ -12927,11 +12953,12 @@ function renderMmmConfig(c) {
     <div style="font-size:12px;color:var(--text-muted);margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;">
       <label>설날 주(쉼표): <input data-mmm-cfg="seollal" value="${cfg.lunarWeeks.seollal.join(",")}" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:3px 6px;"></label>
       <label>추석 주(쉼표): <input data-mmm-cfg="chuseok" value="${cfg.lunarWeeks.chuseok.join(",")}" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:3px 6px;"></label>
-      <label>post_step from_week: <input data-mmm-cfg="post_step" value="${cfg.steps.post_step}" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:3px 6px;"></label>
-      <label>line_off from_week: <input data-mmm-cfg="line_off" value="${cfg.steps.line_off}" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:3px 6px;"></label>
+      <label>post_step from_week: <input data-mmm-cfg="post_step" value="${cfg.steps.post_step ?? 42}" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:3px 6px;"></label>
+      <label>line_off from_week: <input data-mmm-cfg="line_off" value="${cfg.steps.line_off ?? 55}" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:3px 6px;"></label>
       <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" data-mmm-cfg-check="excludeSparse" ${cfg.excludeSparse ? "checked" : ""}> 데이터 부족 채널 제외 (비-0 ${cfg.sparseMinWeeks}주 미만, 권장)</label>
+      <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" data-mmm-cfg-check="disableSteps" ${Object.keys(cfg.steps || {}).length === 0 ? "checked" : ""}> 구조변화 step 사용 안 함 (week 가정 비활성 · 임의 데이터 권장)</label>
     </div>
-    <p class="muted" style="font-size:11px;margin-top:6px;">다중공선 흡수는 자동 감지(위 ⚖ 노티스에서 흡수 대상 변경 가능 — 기본 캠페인 유지) · seasonality=${cfg.seasonalityPeriods.join("/")}w · adstock grid CV로 λ 선택 · HAC+AR(1) 추론. "데이터 부족 채널 제외" ON 시 표본이 적어 노이즈만 만드는 채널(예: TikTok 6주)을 모델에서 빼 다른 채널 계수의 식별을 정리합니다.</p>
+    <p class="muted" style="font-size:11px;margin-top:6px;">다중공선 흡수는 자동 감지(위 ⚖ 노티스에서 흡수 대상 변경 가능 — 기본 캠페인 유지) · seasonality=${cfg.seasonalityPeriods.join("/")}w · adstock grid CV로 λ 선택 · HAC+AR(1) 추론. "데이터 부족 채널 제외" ON 시 표본이 적어 노이즈만 만드는 채널(예: TikTok 6주)을 모델에서 빼 다른 채널 계수의 식별을 정리합니다. <strong>post_step/line_off는 Tinder 전용 주차임계값 가정</strong>(업로드 컬럼 아님) — 임의 데이터에선 "구조변화 step 사용 안 함"으로 끄거나, 실제 구조변화 컬럼이 있으면 매핑의 📐 step 역할로 지정하세요.</p>
     <button class="ab-pill" data-mmm-cfg-apply style="margin-top:6px;">config 적용 (재계산)</button>
   </details></section>`;
 }
@@ -13278,7 +13305,9 @@ function bindMmmMethHandlers() {
     const cfg = mmmActiveConfig(); const get = (k) => document.querySelector(`[data-mmm-cfg="${k}"]`)?.value;
     const parseList = (s) => String(s || "").split(",").map(x => parseInt(x.trim(), 10)).filter(n => !isNaN(n));
     MMM_METH_STATE.config.lunarWeeks = { seollal: parseList(get("seollal")), chuseok: parseList(get("chuseok")) };
-    MMM_METH_STATE.config.steps = { post_step: parseInt(get("post_step"), 10) || cfg.steps.post_step, line_off: parseInt(get("line_off"), 10) || cfg.steps.line_off };
+    // 구조변화 step: "사용 안 함" 체크 시 빈 {} (week 가정 비활성 → 흡수·audit·feature 전부 제외). 아니면 주차임계값 유지.
+    const disableSteps = !!document.querySelector('[data-mmm-cfg-check="disableSteps"]')?.checked;
+    MMM_METH_STATE.config.steps = disableSteps ? {} : { post_step: parseInt(get("post_step"), 10) || cfg.steps.post_step || 42, line_off: parseInt(get("line_off"), 10) || cfg.steps.line_off || 55 };
     MMM_METH_STATE.config.excludeSparse = !!document.querySelector('[data-mmm-cfg-check="excludeSparse"]')?.checked;
     navigate("5-18");
   });
