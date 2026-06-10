@@ -11645,7 +11645,7 @@ const MMM_GLOSSARY = {
   "cannib_overview": {
     "term": "카니발리제이션 삼각검증 (cannibalization triangulation, 광고가 자연유입을 갉아먹는지 3중 교차검증)",
     "reason": "광고로 늘어난 가입/재활성이 진짜 순수 증가인지, 아니면 광고를 안 했어도 알아서 들어왔을 자연유입(오가닉)을 광고가 가로챈 것(잠식)인지 가려내기 위함입니다. 의사결정 질문은 '이 광고비, 새 유저를 데려오나 아니면 공짜로 올 유저를 비싸게 다시 사는 건가'입니다.",
-    "how": "서로 독립된 3가지 신호를 각각 FOR(오가닉)·AGAINST(카니발)·ABSTAIN(판단보류)로 투표합니다 — ① 시간 선행성(저지출 구간에 이미 떨어지고 있었나), ② 허위상관/탈추세(시간만 빼면 음의 관계가 사라지나), ③ 순증분 탄력성(광고비↑ 시 전체가 순으로 느나). 입증책임은 비대칭입니다: '방어/OK'는 FOR가 기준 이상(프로스펙팅 2·브랜드 3) AND AGAINST 0 AND 검정력 통과일 때만, AGAINST가 하나라도 있으면 LEAN CANNIBAL, 모호하면 기본값 INCONCLUSIVE.",
+    "how": "서로 독립된 3가지 신호를 각각 FOR(오가닉)·AGAINST(카니발)·ABSTAIN(판단보류)로 투표합니다 — ① 시간 선행성(저지출 구간에 이미 떨어지고 있었나), ② 허위상관/탈추세(시간만 빼면 음의 관계가 사라지나), ③ 순증분 탄력성(광고비↑ 시 전체가 순으로 느나). 입증책임은 비대칭입니다: '방어/OK'는 FOR가 기준 이상(프로스펙팅 2·브랜드 3) AND AGAINST 0 AND 검정력 통과일 때만, AGAINST가 하나라도 있으면 LEAN CANNIBAL, 모호하면 기본값 INCONCLUSIVE. ①~③은 모두 '같은 주(동시점)' 신호라, ④ 그랜저 인과(차분 VAR)로 '광고비 과거값→오가닉 미래 변화'의 시차·방향까지 봅니다 — 시차 잠식이 유의하면 판정을 LEAN CANNIBAL로 격상하고, 오가닉→광고비 방향이 유의하면 '페이싱(역인과)'으로 경고합니다.",
     "interpret": "'관측상 적색신호 없음(잠정 OK)'은 잠식 신호가 안 보인다는 뜻이지 '카니발 없음'의 증명이 아닙니다(확정은 holdout). 'LEAN CANNIBAL'은 한 검정 이상이 카니발을 가리켜 holdout이 1순위. 'INCONCLUSIVE'는 증거 부족(검정력 부족 포함)이라 판단 보류.",
     "significance": "관측 회귀는 적색신호를 거르는 도구이지 혐의를 벗기는 도구가 아닙니다. spend와 시간이 공선이면(VIF·corr 게이트) '순효과≈0'은 효과 없음이 아니라 증거 없음이라, 그 경우 절대 '방어'로 단정하지 않고 INCONCLUSIVE로 제한합니다. non-significant(p>.05)는 무효과 증거가 아니므로 FOR로 세지 않습니다.",
     "example": "Tinder KR에서 Google 지출이 시간과 강하게 공선(corr 0.76·VIF↑)이면, 과거엔 'ORGANIC'으로 후하게 나왔지만 보수적 규칙에선 검정력 게이트가 작동해 INCONCLUSIVE — 일부 지역 광고를 꺼보는 holdout이 필요합니다.",
@@ -11677,6 +11677,15 @@ const MMM_GLOSSARY = {
     "significance": "부호만으로 결론 내지 않습니다. non-significant(p>.05)는 무효과 증거가 아니라 검정력 부족이므로 FOR로 세지 않습니다. 또 spend↔시간 공선(VIF≥5·corr≥0.7)·CI 불안정(폭≥3×점추정)·표본부족(n<30)이면 검정력 게이트가 작동해 ③은 자동 ABSTAIN, 판정은 '방어/OK'가 될 수 없습니다(상한 INCONCLUSIVE).",
     "example": "Tinder KR에서 Meta 지출을 늘렸을 때 (잠식분 제외하고도) 전체 React가 늘면 순증분 탄력성 양수 → 그 광고는 오가닉을 빼앗는 게 아니라 새 활성 유저를 순으로 더해주는 것입니다.",
     "caveat": "양수여도 '얼마나 효율적인가(돈값)'는 별개 질문입니다 — 순증가가 있다는 것과 그 증가가 비용 대비 충분하다는 것은 다릅니다."
+  },
+  "granger": {
+    "term": "그랜저 인과 (Granger causality, 시차·방향 검정)",
+    "reason": "①~③은 모두 '같은 주(동시점)' 상관이라 '광고가 시차를 두고 오가닉을 갉아먹는지', '방향이 광고→오가닉인지 오가닉→광고인지'를 못 봅니다. 그랜저는 시계열의 선후 관계로 그걸 보완합니다 — '오가닉 자체의 추세·관성을 먼저 통제한 뒤에도, 광고비의 과거 변화가 오가닉의 현재 변화를 추가로 설명하나?'",
+    "how": "두 계열을 1차차분(Δ)해 추세를 없앤 뒤 VAR(벡터자기회귀)을 적합합니다. Δ오가닉을 자기 과거값(ΔY 시차)만으로 설명한 모형 vs 거기에 Δ광고비 과거값(ΔX 시차)까지 넣은 모형을 비교해, 광고비 시차항이 유의하게 설명력을 높이는지 F-검정합니다(lag는 AIC로 자동 선택). 반대 방향(Δ광고비 ~ Δ오가닉 과거)도 같이 검정합니다.",
+    "interpret": "광고비→오가닉이 유의(p<.05)하고 시차계수합<0이면 '시차 잠식 신호'(동시점이 놓친 것 — 판정을 LEAN CANNIBAL로 격상). 계수합>0이면 '시차 증분'. 반대로 오가닉→광고비가 유의하면 '페이싱(역인과)': 오가닉이 약할 때 예산을 올린 것이라 관측 음상관은 내생 — 광고가 잠식한 게 아닐 수 있음.",
+    "significance": "오가닉의 자체 하향 추세를 모형이 먼저 흡수한 상태에서도 광고비 과거값이 추가로 설명하는지가 핵심. 차분으로 공통 추세(허위회귀)를 제거해 ②보다 한 단계 엄격합니다.",
+    "example": "Δ광고비(2~4주 전)가 ΔReact의 현재 하락을 유의하게 설명하면 '시차 잠식 의심'. 반대로 ΔReact 하락이 Δ광고비 증가를 설명하면 '오가닉 약화→방어적 증액(페이싱)'.",
+    "caveat": "그랜저 '인과'는 예측 선행성이지 진짜 인과의 증명이 아닙니다 — 빠진 공통 요인·잘못된 lag·비정상성에 약합니다. 여전히 관측이라, 확정은 geo holdout(5-15)."
   },
   "hac": {
     "term": "HAC 보정 (자기상관에 강한 표준오차) vs OLS",
@@ -12060,9 +12069,37 @@ function mmmTrendExistence(panel, cfg, targetName) {
   };
 }
 
+/* --- 그랜저 인과 (차분 VAR, 양방향) — 시차 신호로 동시점 검정 보완 ---
+ * 차분(Δy, Δln x)으로 추세 제거 → AIC로 lag 선택 → F-검정.
+ * spend→organic: Δx 과거값이 Δy를 (Δy 자체 lag 통제 후) 추가 설명? 계수합<0이면 시차 잠식 방향.
+ * organic→spend: Δy가 Δx를 Granger-인과 → 페이싱(역인과). 둘 다 관측이라 인과 확정은 holdout. */
+function mmmGranger(y, x, maxLagCap) {
+  const N = y.length; if (N < 24) return null;
+  const dy = [], dx = [];
+  for (let i = 1; i < N; i++) { dy.push(y[i] - y[i - 1]); dx.push(Math.log1p(x[i] > 0 ? x[i] : 0) - Math.log1p(x[i - 1] > 0 ? x[i - 1] : 0)); }
+  const M = dy.length, maxLag = Math.max(1, Math.min(maxLagCap || 6, Math.floor(M / 12)));
+  const fit = (tgt, causes, p) => {
+    const rows = [], yv = [];
+    for (let t = p; t < M; t++) { const row = [1]; for (const s of causes) for (let l = 1; l <= p; l++) row.push(s[t - l]); rows.push(row); yv.push(tgt[t]); }
+    try { return REG_STATS.ols(rows, yv); } catch (e) { return null; }
+  };
+  const test = (tgt, cause) => {   // does cause Granger-cause tgt?
+    let best = null;
+    for (let p = 1; p <= maxLag; p++) { const fu = fit(tgt, [tgt, cause], p); if (!fu) continue; const aic = fu.n * Math.log(fu.RSS / fu.n + 1e-12) + 2 * fu.k; if (!best || aic < best.aic) best = { p, aic, fu }; }
+    if (!best) return { lag: 0, F: 0, p: 1, coefSum: 0 };
+    const p = best.p, fu = best.fu, fr = fit(tgt, [tgt], p);
+    if (!fr) return { lag: p, F: 0, p: 1, coefSum: 0 };
+    const q = p, dfd = fu.n - fu.k;
+    const F = (dfd > 0 && fu.RSS > 0) ? ((fr.RSS - fu.RSS) / q) / (fu.RSS / dfd) : 0;
+    const pval = (F > 0 && dfd > 0) ? REG_STATS.ibeta(dfd / 2, q / 2, dfd / (dfd + q * F)) : 1;
+    const coefSum = fu.beta.slice(1 + p).reduce((a, b) => a + b, 0);   // cause lag 계수합
+    return { lag: p, F: +F.toFixed(2), p: +pval.toFixed(4), coefSum: +coefSum.toFixed(4) };
+  };
+  return { spend_to_organic: test(dy, dx), organic_to_spend: test(dx, dy) };
+}
 /* --- cannibalization 보수적 삼각검증 (TIGHT VERDICT, 3-STATE FOR/AGAINST/ABSTAIN) ---
  * 대원칙: ① 입증책임 비대칭 → 모호하면 INCONCLUSIVE ② 관측은 적색신호 거르는 도구(혐의 벗기는 도구 아님)
- * ③ non-sig ≠ 무효과(FOR로 안 셈). 임계값은 MMM_CANNIB_RULES(결정론 하드 규칙). */
+ * ③ non-sig ≠ 무효과(FOR로 안 셈). 임계값은 MMM_CANNIB_RULES(결정론 하드 규칙). ④ 그랜저(시차) 보완. */
 function mmmCannibalization(panel, cfg, targetName, netElasticity, channelKey) {
   const R = MMM_CANNIB_RULES;
   const y = panel.targets[targetName], t = panel.week, n = t.length;
@@ -12130,6 +12167,13 @@ function mmmCannibalization(panel, cfg, targetName, netElasticity, channelKey) {
   if (powerGateBlocked) netVote = "ABSTAIN";
   const net = { net_elasticity: +(isFinite(coef) ? coef : NaN).toFixed(4), p: +(isFinite(p) ? p : NaN).toFixed(4), ci_lo: hasCi ? +ciLo.toFixed(4) : null, ci_hi: hasCi ? +ciHi.toFixed(4) : null, vote: netVote };
 
+  // ── ④ 그랜저 인과 (시차·방향) — 동시점 검정이 못 보는 lagged 신호 ──
+  const gr = mmmGranger(y, spend, 6);
+  const grP = R.netP;
+  const grangerCannibal = gr && gr.spend_to_organic.p < grP && gr.spend_to_organic.coefSum < 0;   // 광고비→오가닉 시차 하락
+  const grangerHelp = gr && gr.spend_to_organic.p < grP && gr.spend_to_organic.coefSum > 0;        // 광고비→오가닉 시차 상승
+  const pacing = gr && gr.organic_to_spend.p < grP;                                                 // 오가닉→광고비 (페이싱·역인과)
+
   // ── 투표 집계 + 채널 prior bar ──
   const votes = { FOR: 0, AGAINST: 0, ABSTAIN: 0 };
   [precVote, detVote, netVote].forEach(v => votes[v]++);
@@ -12140,12 +12184,15 @@ function mmmCannibalization(panel, cfg, targetName, netElasticity, channelKey) {
   if (votes.AGAINST >= 1) { verdictClass = "cannibal"; verdict = "LEAN CANNIBAL — 카니발 우려, holdout 1순위"; }
   else if (!powerGateBlocked && votes.FOR >= forBar && votes.AGAINST === 0) { verdictClass = "ok"; verdict = "관측상 적색신호 없음 (잠정 OK) — 방어 가능성 높음, 단 결정적 확인은 geo holdout"; }
   else { verdictClass = "inconclusive"; verdict = "INCONCLUSIVE — 증거 부족, holdout 필요"; }
+  // 그랜저 시차 잠식이 유의하면 비-카니발 판정을 LEAN CANNIBAL로 격상 (동시점이 놓친 신호 — 보수적으로 우려만 ↑)
+  if (grangerCannibal && verdictClass !== "cannibal") { verdictClass = "cannibal"; verdict = `LEAN CANNIBAL — 그랜저 시차 인과(광고비→오가닉↓, lag ${gr.spend_to_organic.lag}), holdout 1순위`; }
 
   return {
     precedence, detrend_corr: detrend, net_incrementality: net,
     votes, vote_summary: `FOR ${votes.FOR} · AGAINST ${votes.AGAINST} · ABSTAIN ${votes.ABSTAIN}`,
     power_gate: { blocked: powerGateBlocked, reasons: gateReasons }, spend_time_corr: +spendTimeCorr.toFixed(3),
     is_brand_intercept: isBrand, for_bar: forBar, reverse_causality_risk: reverseRisk,
+    granger: gr, granger_cannibal: !!grangerCannibal, granger_help: !!grangerHelp, pacing: !!pacing,
     verdict, verdict_class: verdictClass,
     organic_votes: votes.FOR,   // 하위호환(레거시 소비처)
     channel: channelKey || "__total__", channelLabel: chLabel,
@@ -12455,6 +12502,21 @@ function runMmmMethTests(verbose = true) {
   // T6d · non-sig near-zero(p>.05)는 FOR로 세지 않음 (이전 룰의 구멍) → ABSTAIN
   const cnNS = mmmCannibalization(oscPanel, cfg, "Regs", { coef: 0.0027, ci_lo: -0.4, ci_hi: 0.41, p: 0.6668 }, "x");
   R.push({ test: "T6d · non-sig는 FOR 아님(ABSTAIN)", actual: `net=${cnNS.net_incrementality.vote}`, pass: cnNS.net_incrementality.vote === "ABSTAIN" ? "✓" : "✗" });
+  // T6e · 그랜저 인과: null 가드(n<24) + 구조 + 시차 선행 탐지 + 결정론
+  const gNull = mmmGranger(target.slice(0, 20), spend.slice(0, 20), 6);
+  // 깨끗한 시차-2 선행 관계: Δ오가닉 = 9000·Δln(spend)[t-2] (양의 시차 증분 → coefSum>0, p작음)
+  const gx = week.map(w => 6000 + 2500 * Math.sin(w / 4));
+  const lgx = gx.map(v => Math.log1p(v));
+  const dxx = lgx.map((v, i) => i > 0 ? (v - lgx[i - 1]) : 0);
+  let gacc = 20000; const gy = [];
+  for (let i = 0; i < n; i++) { gacc += (i >= 2 ? 9000 * dxx[i - 2] : 0); gy.push(gacc); }
+  const gG = mmmGranger(gy, gx, 6);
+  const gG2 = mmmGranger(gy, gx, 6);
+  const gOk = gNull === null
+    && gG && gG.spend_to_organic && gG.organic_to_spend
+    && gG.spend_to_organic.coefSum > 0 && gG.spend_to_organic.p < 0.05
+    && JSON.stringify(gG) === JSON.stringify(gG2);
+  R.push({ test: "T6e · granger null가드·시차탐지·결정론", actual: `null=${gNull === null}·s→o lag${gG ? gG.spend_to_organic.lag : "—"} p=${gG ? gG.spend_to_organic.p : "—"}`, pass: gOk ? "✓" : "✗" });
   // T7 audit r2
   const au = mmmAudit(panel, cfg);
   R.push({ test: "T7 · audit r2 유효", actual: String(au.r2), pass: au.r2 > 0 && au.r2 < 1 ? "✓" : "✗" });
@@ -12465,7 +12527,7 @@ function runMmmMethTests(verbose = true) {
   return R;
 }
 if (typeof window !== "undefined") {
-  Object.assign(window, { MMM_METH_CONFIG, mmmBuildFeatures, mmmSheetDesign, mmmMacroFacts, mmmValidate, mmmAudit, mmmTrendExistence, mmmCannibalization, mmmRunMmm, mmmElasticities, mmmSelectAdstock, mmmChannelEffects, mmmWeeklyDecomp, runMmmMethTests });
+  Object.assign(window, { MMM_METH_CONFIG, mmmBuildFeatures, mmmSheetDesign, mmmMacroFacts, mmmValidate, mmmAudit, mmmTrendExistence, mmmCannibalization, mmmGranger, mmmRunMmm, mmmElasticities, mmmSelectAdstock, mmmChannelEffects, mmmWeeklyDecomp, runMmmMethTests });
 }
 
 /* ============================================================
@@ -13125,8 +13187,27 @@ function renderMmmCannib(c) {
       <div class="ab-stat"><div class="ab-stat-label">② 허위상관 (탈추세·차분)${mmmInfoIcon("spurious_detrend")}</div><div class="ab-stat-value" style="font-size:13px;">${voteBadge(d.vote)}</div><div class="ab-stat-hint">raw ${d.raw} → detrend ${d.detrended} · 1차차분 ${d.first_diff}</div></div>
       <div class="ab-stat"><div class="ab-stat-label">③ 순증분 (net 탄력성)${mmmInfoIcon("net_incrementality")}</div><div class="ab-stat-value" style="font-size:13px;">${voteBadge(ni.vote)}</div><div class="ab-stat-hint">${isFinite(ni.net_elasticity) ? ni.net_elasticity : "—"} · p=${isFinite(ni.p) ? ni.p : "—"}${ni.ci_lo != null ? ` · CI[${ni.ci_lo}, ${ni.ci_hi}]` : ""}${gate.blocked ? " · 게이트로 ABSTAIN" : ""}</div></div>
     </div>
+    ${(() => {
+      const g = cn.granger;
+      if (!g) return `<p class="muted" style="font-size:10.5px;margin-top:6px;">④ 그랜저 인과: 데이터 부족(차분 후 표본<24)으로 시차 검정 생략.</p>`;
+      const so = g.spend_to_organic, os = g.organic_to_spend;
+      const soBadge = cn.granger_cannibal ? '<span style="color:#f87171;font-weight:700;">시차 잠식 신호</span>' : cn.granger_help ? '<span style="color:#22c55e;font-weight:700;">시차 증분 신호</span>' : '<span style="color:var(--text-muted);">신호 없음</span>';
+      const osBadge = cn.pacing ? '<span style="color:#fbbf24;font-weight:700;">페이싱 감지</span>' : '<span style="color:var(--text-muted);">없음</span>';
+      const interp = cn.granger_cannibal ? '🔴 광고비 과거값이 (오가닉 자체 추세를 통제한 뒤에도) 오가닉 미래 <strong>하락</strong>을 추가 설명 → 시차 잠식 의심. 동시점 검정이 놓치는 신호라 판정을 LEAN CANNIBAL로 올렸습니다.'
+        : cn.granger_help ? '🟢 광고비 과거값이 오가닉 미래 <strong>상승</strong>을 추가 설명 → 시차 증분(광고가 시차 두고 도움) 신호.'
+        : '광고비→오가닉 시차 인과 신호 없음.';
+      const pacingNote = cn.pacing ? ' <strong style="color:#fbbf24;">↩ 페이싱(역인과)</strong>: 오가닉이 광고비를 Granger-인과 → 오가닉 약할 때 예산↑. 관측 음상관은 <strong>내생</strong>이니 잠식으로 단정 금지(holdout 필수).' : '';
+      return `<div style="background:rgba(122,162,247,0.06);border:1px solid rgba(122,162,247,0.2);border-radius:8px;padding:9px 12px;margin:8px 0;">
+        <div style="font-size:12px;font-weight:600;color:#adc6ff;">④ 그랜저 인과 — 시차·방향 (동시점 ①~③ 보완)${mmmInfoIcon("granger")}</div>
+        <div class="ab-stat-row" style="margin-top:6px;">
+          <div class="ab-stat"><div class="ab-stat-label">광고비 → 오가닉 (시차 잠식?)</div><div class="ab-stat-value" style="font-size:13px;">${soBadge}</div><div class="ab-stat-hint">lag ${so.lag} · F=${so.F} · p=${so.p} · Δ계수합 ${so.coefSum}</div></div>
+          <div class="ab-stat"><div class="ab-stat-label">오가닉 → 광고비 (페이싱?)</div><div class="ab-stat-value" style="font-size:13px;">${osBadge}</div><div class="ab-stat-hint">lag ${os.lag} · F=${os.F} · p=${os.p}</div></div>
+        </div>
+        <p style="font-size:10.5px;color:var(--text-1);margin:4px 0 0;">${interp}${pacingNote} <span style="color:var(--text-muted);">그랜저=예측 선행성이지 인과 확정 아님(차분 VAR·AIC lag). 확정은 holdout.</span></p>
+      </div>`;
+    })()}
     ${revBox}
-    <p class="muted" style="font-size:11px;margin-top:6px;">non-significant ≠ 무효과(p>.05 near-zero는 FOR로 세지 않음). 부호만이 아니라 <strong>유의성·CI·검정력</strong>을 함께 봅니다. ⚠ 어떤 경우든 결정적 증거는 <strong>geo holdout / organic-split (5-15)</strong>.</p>
+    <p class="muted" style="font-size:11px;margin-top:6px;">non-significant ≠ 무효과(p>.05 near-zero는 FOR로 세지 않음). 부호만이 아니라 <strong>유의성·CI·검정력</strong>을 함께 봅니다. ①~③은 동시점, ④ 그랜저는 시차. ⚠ 어떤 경우든 결정적 증거는 <strong>geo holdout / organic-split (5-15)</strong>.</p>
   </section>`;
 }
 function renderMmmMmm(c) {
@@ -13459,11 +13540,14 @@ function downloadMmmCannibCsv() {
     "detrend_vote", "detrend_raw", "detrend_detrended", "detrend_first_diff",
     "net_vote", "net_elasticity", "net_p", "net_ci_lo", "net_ci_hi",
     "elasticity", "ci_lo", "ci_hi", "p", "significant", "effect_verdict",
-    "per10pct_pct", "weekly_per_1k", "mean_spend", "coverage_nonzero", "coverage_total", "coverage_ratio", "sparse", "trailing_zero"];
+    "per10pct_pct", "weekly_per_1k", "mean_spend", "coverage_nonzero", "coverage_total", "coverage_ratio", "sparse", "trailing_zero",
+    "granger_cannibal", "granger_help", "pacing",
+    "granger_s2o_lag", "granger_s2o_F", "granger_s2o_p", "granger_s2o_coefsum",
+    "granger_o2s_lag", "granger_o2s_F", "granger_o2s_p", "granger_o2s_coefsum"];
   const lines = [header.map(q).join(",")];
   for (const k of chans) {
     const cn = T.cannibByChannel[k]; if (!cn) continue;
-    const e = effByKey[k] || {}; const pr = cn.precedence, dt = cn.detrend_corr, ni = cn.net_incrementality, vt = cn.votes || {}, pg = cn.power_gate || {};
+    const e = effByKey[k] || {}; const pr = cn.precedence, dt = cn.detrend_corr, ni = cn.net_incrementality, vt = cn.votes || {}, pg = cn.power_gate || {}, g = cn.granger;
     const per10 = (e.elas != null) ? +(e.elas * 10).toFixed(2) : "";
     const cov = (e.total) ? +(e.nonzero / e.total).toFixed(3) : "";
     const row = [k, cn.channelLabel, cn.is_brand_intercept, cn.verdict, cn.verdict_class,
@@ -13473,7 +13557,10 @@ function downloadMmmCannibCsv() {
       ni.vote, ni.net_elasticity, ni.p, (ni.ci_lo != null ? ni.ci_lo : ""), (ni.ci_hi != null ? ni.ci_hi : ""),
       (e.elas != null ? e.elas : ""), (e.ci ? e.ci[0] : ""), (e.ci ? e.ci[1] : ""), (e.p != null ? e.p : ""), (e.sig != null ? e.sig : ""), (e.verdict || ""),
       per10, (e.weeklyPer1k == null ? "" : e.weeklyPer1k), (e.meanSpend != null ? e.meanSpend : ""),
-      (e.nonzero != null ? e.nonzero : ""), (e.total != null ? e.total : ""), cov, (e.sparse != null ? e.sparse : ""), (e.trailingZero != null ? e.trailingZero : "")];
+      (e.nonzero != null ? e.nonzero : ""), (e.total != null ? e.total : ""), cov, (e.sparse != null ? e.sparse : ""), (e.trailingZero != null ? e.trailingZero : ""),
+      cn.granger_cannibal, cn.granger_help, cn.pacing,
+      (g && g.spend_to_organic ? g.spend_to_organic.lag : ""), (g && g.spend_to_organic ? g.spend_to_organic.F : ""), (g && g.spend_to_organic ? g.spend_to_organic.p : ""), (g && g.spend_to_organic ? g.spend_to_organic.coefSum : ""),
+      (g && g.organic_to_spend ? g.organic_to_spend.lag : ""), (g && g.organic_to_spend ? g.organic_to_spend.F : ""), (g && g.organic_to_spend ? g.organic_to_spend.p : ""), (g && g.organic_to_spend ? g.organic_to_spend.coefSum : "")];
     lines.push(row.map(q).join(","));
   }
   _mmmDownload(`mmm_cannib_${t}_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
