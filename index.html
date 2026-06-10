@@ -12317,8 +12317,9 @@ function mmmColMapInit(force) {
 function mmmColMapAutoGuess() {
   const heads = CSV_STATE.headers || [], rows = CSV_STATE.raw || [];
   if (!heads.length) return;
-  const next = {}; heads.forEach(h => next[h] = mmmGuessRole(h, rows));
-  const once = { week: false, reg: false, react: false, platform: false };
+  const next = {}; heads.forEach(h => { next[h] = mmmGuessRole(h, rows); next[h].plat = mmmGuessPlat(h); });
+  // week/platform만 1개 (reg/react는 플랫폼별 여러 개 허용)
+  const once = { week: false, platform: false };
   heads.forEach(h => { const r = next[h].role; if (r in once) { if (once[r]) next[h].role = "ignore"; once[r] = true; } });
   MMM_METH_STATE.colMap = next;
 }
@@ -12333,36 +12334,60 @@ function _mmmSanKey(name, used) {
   let k = b, i = 2; while (used.has(k)) { k = b + i; i++; }
   used.add(k); return k;
 }
-// colMap → 역할별 컬럼 분해 (채널/더미는 sanitized key 부여, label=원본 헤더)
+// 헤더 이름에서 플랫폼 태그 추정 (android/ios/common). 플랫폼 단일 컬럼이 없는 wide 데이터용.
+function mmmGuessPlat(name) {
+  const s = String(name).toLowerCase();
+  const hasA = /(android|aos|google_?play|playstore)/.test(s);
+  const hasI = /\bios\b/.test(s) || /_ios(_|\b)/.test(s) || /(iphone|ipad)/.test(s);
+  if (hasA && hasI) return s.lastIndexOf("android") > s.lastIndexOf("ios") ? "android" : "ios";
+  if (hasA) return "android";
+  if (hasI) return "ios";
+  return "common";
+}
+function _mmmPlatLabel(p) { return p === "android" ? "Android" : p === "ios" ? "iOS" : p === "common" ? "공통" : p; }
+// colMap → 역할별 컬럼 분해. reg/react/week는 배열(플랫폼별 여러 개 가능), 채널/더미는 sanitized key+plat 태그.
 function mmmColMapRoles(cm) {
   const heads = CSV_STATE.headers || [];
-  const out = { week: null, reg: null, react: null, platform: null, channels: [], dummies: [] };
+  const out = { week: [], reg: [], react: [], platform: null, channels: [], dummies: [] };
   const used = new Set();
   for (const h of heads) {
-    const def = cm[h] || {}; const r = def.role;
-    if (r === "week" && !out.week) out.week = h;
-    else if (r === "reg" && !out.reg) out.reg = h;
-    else if (r === "react" && !out.react) out.react = h;
+    const def = cm[h] || {}; const r = def.role, plat = def.plat || "common";
+    if (r === "week") out.week.push({ header: h, plat });
+    else if (r === "reg") out.reg.push({ header: h, plat });
+    else if (r === "react") out.react.push({ header: h, plat });
     else if (r === "platform" && !out.platform) out.platform = h;
-    else if (r === "channel") out.channels.push({ header: h, key: _mmmSanKey(h, used), label: h, kind: def.kind === "brand" ? "brand" : "perf" });
-    else if (r === "dummy") out.dummies.push({ header: h, key: _mmmSanKey(h, used), label: h });
+    else if (r === "channel") out.channels.push({ header: h, key: _mmmSanKey(h, used), label: h, kind: def.kind === "brand" ? "brand" : "perf", plat });
+    else if (r === "dummy") out.dummies.push({ header: h, key: _mmmSanKey(h, used), label: h, plat });
   }
   return out;
+}
+// 컬럼 태그 모드: 플랫폼 단일 컬럼 없이 컬럼 이름 태그(android/ios)로 플랫폼 구분
+function mmmColMapPlatforms(cm) {
+  const r = mmmColMapRoles(cm); const set = new Set();
+  [...r.reg, ...r.react, ...r.channels].forEach(x => { if (x.plat && x.plat !== "common") set.add(x.plat); });
+  return [...set];
+}
+function mmmIsTagMode() {
+  const cm = mmmColMapActive(); if (!cm) return false;
+  return !mmmColMapRoles(cm).platform && mmmColMapPlatforms(cm).length > 0;
 }
 function mmmColMapMissing() {
   const cm = mmmColMapActive(); if (!cm) return ["채널·타깃 매핑"];
   const r = mmmColMapRoles(cm); const miss = [];
-  if (!r.reg && !r.react) miss.push("가입 또는 재활성(타깃) 1개");
+  if (!r.reg.length && !r.react.length) miss.push("가입 또는 재활성(타깃) 1개");
   if (!r.channels.length) miss.push("채널 spend 1개 이상");
   return miss;
 }
 function mmmPlatforms() {
   const cm = mmmColMapActive();
-  let pcol = null;
-  if (cm) pcol = mmmColMapRoles(cm).platform;
-  else { const inv = {}; for (const [h, k] of Object.entries(CSV_STATE.mapping || {})) if (k !== "__ignore__") inv[k] = h; pcol = inv.mmm_platform; }
-  if (!pcol) return [];
-  return [...new Set((CSV_STATE.raw || []).map(r => String(r[pcol])).filter(v => v && v !== "null" && v !== "undefined"))];
+  if (cm) {
+    const r = mmmColMapRoles(cm);
+    if (r.platform) return [...new Set((CSV_STATE.raw || []).map(row => String(row[r.platform])).filter(v => v && v !== "null" && v !== "undefined"))];  // 행 필터(단일 컬럼)
+    return mmmColMapPlatforms(cm);  // 컬럼 태그 모드
+  }
+  const inv = {}; for (const [h, k] of Object.entries(CSV_STATE.mapping || {})) if (k !== "__ignore__") inv[k] = h;
+  if (!inv.mmm_platform) return [];
+  return [...new Set((CSV_STATE.raw || []).map(r => String(r[inv.mmm_platform])).filter(v => v && v !== "null" && v !== "undefined"))];
 }
 function mmmActiveConfig() {
   if (!MMM_METH_STATE.config) MMM_METH_STATE.config = JSON.parse(JSON.stringify({
@@ -12376,17 +12401,25 @@ function mmmActiveConfig() {
 }
 function mmmGetPanelFromColMap(cm) {
   const r = mmmColMapRoles(cm);
+  const tags = mmmColMapPlatforms(cm);
+  const tagMode = tags.length > 0 && !r.platform;
+  let P = MMM_METH_STATE.platform || "All";
+  if (tagMode && (P === "All" || !tags.includes(P))) P = tags[0];   // 태그 모드: 항상 특정 플랫폼
+  // 활성 플랫폼에 맞는 컬럼 선택 (정확히 일치 > 공통 > 첫째)
+  const pick = (list) => (tagMode ? (list.find(x => x.plat === P) || list.find(x => x.plat === "common") || list[0]) : list[0]) || null;
+  const inPlat = (x) => !tagMode || x.plat === P || x.plat === "common";
   let raw = CSV_STATE.raw || [];
-  if (r.platform && MMM_METH_STATE.platform && MMM_METH_STATE.platform !== "All") {
-    raw = raw.filter(row => String(row[r.platform]) === MMM_METH_STATE.platform);
-  }
+  if (r.platform && P !== "All") raw = raw.filter(row => String(row[r.platform]) === P);  // 행 필터(단일 컬럼) 모드
   const num = (h, allowNaN) => raw.map(row => { const v = row[h]; if (v == null || String(v).trim() === "") return allowNaN ? NaN : 0; const n = parseFloat(String(v).replace(/[^0-9.\-]/g, "")); return isNaN(n) ? (allowNaN ? NaN : 0) : n; });
-  const week = r.week ? num(r.week, false) : raw.map((_, i) => i + 1);
+  const weekC = pick(r.week);
+  const week = weekC ? num(weekC.header, false) : raw.map((_, i) => i + 1);
   const panel = { week, ch: {}, dummy: {}, targets: {} };
-  for (const ch of r.channels) panel.ch[ch.key] = num(ch.header, true);   // NaN→impute
-  for (const d of r.dummies) panel.dummy[d.key] = num(d.header, false);
-  if (r.reg) panel.targets.Regs = num(r.reg, false);
-  if (r.react) panel.targets.React = num(r.react, false);
+  const chans = r.channels.filter(inPlat);
+  for (const ch of chans) panel.ch[ch.key] = num(ch.header, true);   // NaN→impute
+  for (const d of r.dummies) panel.dummy[d.key] = num(d.header, false);  // 더미는 플랫폼 공유
+  const regC = pick(r.reg), reactC = pick(r.react);
+  if (regC) panel.targets.Regs = num(regC.header, false);
+  if (reactC) panel.targets.React = num(reactC.header, false);
   const order = week.map((_, i) => i).sort((a, b) => week[a] - week[b]);
   const re = arr => order.map(i => arr[i]);
   panel.week = re(panel.week);
@@ -12394,7 +12427,7 @@ function mmmGetPanelFromColMap(cm) {
   for (const k in panel.dummy) panel.dummy[k] = re(panel.dummy[k]);
   for (const k in panel.targets) panel.targets[k] = re(panel.targets[k]);
   if (panel.targets.Regs && panel.targets.React) panel.targets.RR = panel.week.map((_, i) => panel.targets.Regs[i] + panel.targets.React[i]);
-  panel.channels = r.channels.map(ch => ({ key: ch.key, label: ch.label, kind: ch.kind }));
+  panel.channels = chans.map(ch => ({ key: ch.key, label: ch.label, kind: ch.kind }));
   return panel;
 }
 function mmmGetPanel() {
@@ -12432,6 +12465,8 @@ function mmmMethCacheKey() {
 }
 function buildMmmMethCache() {
   if (typeof window !== "undefined") window.__MMMM = MMM_METH_CACHE;
+  // 컬럼 태그 모드면 활성 플랫폼을 유효 태그로 정규화 (캐시키·패널 일관 — "전체"는 스케일 혼합이라 미사용)
+  if (mmmIsTagMode()) { const tags = mmmPlatforms(); if (!tags.includes(MMM_METH_STATE.platform)) MMM_METH_STATE.platform = tags[0]; }
   const key = mmmMethCacheKey();
   if (MMM_METH_CACHE.key === key) return MMM_METH_CACHE;
   const cfg = mmmActiveConfig();
@@ -12472,7 +12507,8 @@ function buildMmmMethCache() {
   const curT = MMM_METH_CACHE.byTarget && MMM_METH_CACHE.byTarget[MMM_METH_STATE.target];
   if (curT && curT.cannChannels && curT.cannChannels.length && !curT.cannChannels.includes(MMM_METH_STATE.cannibChannel)) MMM_METH_STATE.cannibChannel = curT.defCh;  // 채널 집합 바뀌면(임의 매핑) 첫 채널로
   const plats = mmmPlatforms();
-  if (MMM_METH_STATE.platform !== "All" && !plats.includes(MMM_METH_STATE.platform)) MMM_METH_STATE.platform = "All";
+  if (mmmIsTagMode()) { if (!plats.includes(MMM_METH_STATE.platform)) MMM_METH_STATE.platform = plats[0] || "All"; }   // 태그 모드: "전체" 없음
+  else if (MMM_METH_STATE.platform !== "All" && !plats.includes(MMM_METH_STATE.platform)) MMM_METH_STATE.platform = "All";
   return MMM_METH_CACHE;
 }
 
@@ -12493,13 +12529,14 @@ function renderMmmDataPrep() {
   }
   mmmColMapInit(false);
   const cm = MMM_METH_STATE.colMap || {};
-  const chip = (col, withKind) => {
+  const chip = (col, withKind, withPlat) => {
     const def = cm[col] || {};
     const kindSel = withKind ? `<select data-mmm-kind="${escapeHtml(col)}">${["perf", "brand"].map(o => `<option value="${o}" ${def.kind === o ? "selected" : ""}>${o === "perf" ? "perf spend" : "brand spend"}</option>`).join("")}</select>` : "";
-    return `<span class="reg-chip" draggable="true" data-mmm-chip="${escapeHtml(col)}"><strong>${escapeHtml(col)}</strong>${kindSel}<span class="x" data-mmm-unassign="${escapeHtml(col)}" title="제외로">✕</span></span>`;
+    const platSel = withPlat ? `<select data-mmm-plat="${escapeHtml(col)}" title="플랫폼 (이름에서 자동 추정·수정 가능)">${[["common", "공통"], ["android", "Android"], ["ios", "iOS"]].map(([v, l]) => `<option value="${v}" ${(def.plat || "common") === v ? "selected" : ""}>${l}</option>`).join("")}</select>` : "";
+    return `<span class="reg-chip" draggable="true" data-mmm-chip="${escapeHtml(col)}"><strong>${escapeHtml(col)}</strong>${kindSel}${platSel}<span class="x" data-mmm-unassign="${escapeHtml(col)}" title="제외로">✕</span></span>`;
   };
   const inRole = (role) => (CSV_STATE.headers || []).filter(h => (cm[h]?.role || "ignore") === role);
-  const zone = (role, label, withKind) => `<div class="reg-zone" data-mmm-zone="${role}"><div class="reg-zone-label">${label}</div><div class="reg-chips">${inRole(role).map(c => chip(c, withKind)).join("") || `<span style="color:var(--text-muted);font-size:11px;">여기로 드래그</span>`}</div></div>`;
+  const zone = (role, label, withKind, withPlat) => `<div class="reg-zone" data-mmm-zone="${role}"><div class="reg-zone-label">${label}</div><div class="reg-chips">${inRole(role).map(c => chip(c, withKind, withPlat)).join("") || `<span style="color:var(--text-muted);font-size:11px;">여기로 드래그</span>`}</div></div>`;
   const tray = (CSV_STATE.headers || []).filter(h => (cm[h]?.role || "ignore") === "ignore");
   const miss = mmmColMapMissing();
   const analyzed = isToolAnalyzed("5-18");
@@ -12510,19 +12547,19 @@ function renderMmmDataPrep() {
     <h2 class="section-title"><span class="ix">§0</span>MMM 방법론 · 데이터·매핑</h2>
     <div class="csv-loaded-bar"><div class="csv-loaded-info"><span class="dot" style="background:#22c55e;"></span><strong>${escapeHtml(CSV_STATE.fileName)}</strong><span class="csv-loaded-stats tnum">${CSV_STATE.raw.length.toLocaleString()}행 · ${CSV_STATE.headers.length}컬럼</span></div><button class="ab-pill csv-change-btn" data-tool-csv-reset="5-18" title="이 도구의 CSV를 제거하고 다른 파일 업로드">⟳ CSV 변경</button></div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-      <p class="muted" style="font-size:12px;margin:0;">아래 컬럼 칩을 역할 영역으로 <strong>직접 드래그</strong>하세요. <strong>주차·가입·재활성·플랫폼은 각 1개</strong>, <strong>채널·더미는 여러 개</strong>. 채널 칩에서 perf/brand 구분.</p>
-      <button class="ab-pill" data-mmm-autoguess="1" title="컬럼 이름으로 역할을 추정해 자동 배치 (수정 가능)">🪄 이름으로 자동 추정</button>
+      <p class="muted" style="font-size:12px;margin:0;">컬럼 칩을 역할로 <strong>직접 드래그</strong>. <strong>주차는 1개</strong>, <strong>가입·재활성·채널·더미는 여러 개</strong>. 플랫폼이 컬럼으로 나뉘면(예: <code class="inline">..._android_spend</code>) 가입·재활성·채널 칩의 <strong>플랫폼 셀렉터(공통/Android/iOS)</strong>로 태그 → 상단 플랫폼 셀렉터로 전환하며 각각 분석됩니다.</p>
+      <button class="ab-pill" data-mmm-autoguess="1" title="컬럼 이름으로 역할+플랫폼을 추정해 자동 배치 (수정 가능)">🪄 이름으로 자동 추정</button>
     </div>
-    <div class="reg-zone" data-mmm-zone="ignore" style="border-style:solid;"><div class="reg-zone-label">📦 컬럼 (미지정 — 드래그해서 배치)</div><div class="reg-chips">${tray.map(c => chip(c, false)).join("") || `<span style="color:var(--text-muted);font-size:11px;">모두 배치됨</span>`}</div></div>
+    <div class="reg-zone" data-mmm-zone="ignore" style="border-style:solid;"><div class="reg-zone-label">📦 컬럼 (미지정 — 드래그해서 배치)</div><div class="reg-chips">${tray.map(c => chip(c, false, false)).join("") || `<span style="color:var(--text-muted);font-size:11px;">모두 배치됨</span>`}</div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;">
-      ${zone("week", "🗓 주차(t) · 1개 (없으면 행순서)", false)}
-      ${zone("reg", "🎯 가입 Regs", false)}
-      ${zone("react", "🎯 재활성 React", false)}
+      ${zone("week", "🗓 주차(t) · 1개 (없으면 행순서)", false, false)}
+      ${zone("reg", "🎯 가입 Regs (플랫폼별 여러 개)", false, true)}
+      ${zone("react", "🎯 재활성 React (플랫폼별 여러 개)", false, true)}
     </div>
-    <div style="margin-top:10px;">${zone("channel", "📈 채널 spend (여러 개 · 칩에서 perf/brand)", true)}</div>
+    <div style="margin-top:10px;">${zone("channel", "📈 채널 spend (여러 개 · 칩에서 perf/brand · 플랫폼)", true, true)}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-      ${zone("dummy", "🔢 더미/이벤트 (0·1, 여러 개)", false)}
-      ${zone("platform", "🔀 플랫폼 (세그먼트 필터·선택)", false)}
+      ${zone("dummy", "🔢 더미/이벤트 (0·1, 여러 개 · 플랫폼 공유)", false, false)}
+      ${zone("platform", "🔀 플랫폼 단일 컬럼 (있을 때만 · 행 필터)", false, false)}
     </div>
     ${gate}
   </section>`;
@@ -12537,13 +12574,15 @@ function bindMmmDataPrepHandlers() {
       e.preventDefault(); z.classList.remove("over");
       const col = e.dataTransfer.getData("text/plain"); if (!col || !cm[col]) return;
       const role = z.dataset.mmmZone;
-      if (["week", "reg", "react", "platform"].includes(role)) (CSV_STATE.headers || []).forEach(h => { if (cm[h] && cm[h].role === role) cm[h].role = "ignore"; });  // 단일 역할
+      if (["week", "platform"].includes(role)) (CSV_STATE.headers || []).forEach(h => { if (cm[h] && cm[h].role === role) cm[h].role = "ignore"; });  // week·platform만 단일 (reg/react/channel은 플랫폼별 여러 개)
       cm[col].role = role;
+      if (["reg", "react", "channel"].includes(role) && !cm[col].plat) cm[col].plat = mmmGuessPlat(col);  // 플랫폼 자동 추정(이름)
       navigate("5-18");
     });
   });
   document.querySelectorAll("[data-mmm-unassign]").forEach(x => x.addEventListener("click", e => { e.stopPropagation(); const col = x.dataset.mmmUnassign; if (cm[col]) cm[col].role = "ignore"; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-kind]").forEach(sel => sel.addEventListener("change", () => { const col = sel.dataset.mmmKind; if (cm[col]) cm[col].kind = sel.value; navigate("5-18"); }));
+  document.querySelectorAll("[data-mmm-plat]").forEach(sel => sel.addEventListener("change", () => { const col = sel.dataset.mmmPlat; if (cm[col]) cm[col].plat = sel.value; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-autoguess]").forEach(b => b.addEventListener("click", () => { mmmColMapAutoGuess(); navigate("5-18"); }));
 }
 function page_5_18() {
@@ -12785,7 +12824,9 @@ function renderMmmAudit(c) {
 function renderMmmFilters(c) {
   const tBtns = c.targets.map(t => `<button class="tf-pill ${MMM_METH_STATE.target === t ? 'active' : ''}" data-mmm-target="${t}">${t === "Regs" ? "가입" : "재활성"}</button>`).join("");
   const plats = mmmPlatforms();
-  const pRow = plats.length ? `<div class="toc-filter-group"><div class="toc-filter-label">플랫폼</div><div class="tf-pills">${["All", ...plats].map(p => `<button class="tf-pill ${MMM_METH_STATE.platform === p ? 'active' : ''}" data-mmm-platform="${escapeHtml(p)}">${p === "All" ? "전체" : escapeHtml(p)}</button>`).join("")}</div></div>` : "";
+  const tag = mmmIsTagMode();
+  const opts = tag ? plats : ["All", ...plats];   // 태그 모드는 "전체" 없음(플랫폼별 스케일이 달라 혼합 불가)
+  const pRow = plats.length ? `<div class="toc-filter-group"><div class="toc-filter-label">플랫폼${tag ? " (컬럼 태그)" : ""}</div><div class="tf-pills">${opts.map(p => `<button class="tf-pill ${MMM_METH_STATE.platform === p ? 'active' : ''}" data-mmm-platform="${escapeHtml(p)}">${p === "All" ? "전체" : _mmmPlatLabel(p)}</button>`).join("")}</div></div>` : "";
   return `<div class="toc-filter-group"><div class="toc-filter-label">타깃</div><div class="tf-pills">${tBtns}</div></div>${pRow}`;
 }
 function renderMmmTargetSelector(c) {
