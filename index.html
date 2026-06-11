@@ -69,6 +69,8 @@
     --text-primary: #F9FAFB;
     --text-secondary: #9CA3AF;
     --text-muted: #6B7280;
+    /* MMM(5-18 등)에서 쓰는 시맨틱 토큰 — 정의 누락 시 div는 상속으로 보이나 button은 기본 검정색이 됨(가독성 버그). 명시 정의. */
+    --text-1: #F9FAFB; --text-2: #9CA3AF; --bg-1: #141517; --bg-2: #1b1c1d; --border: rgba(255, 255, 255, 0.10);
     --border-subtle: rgba(255, 255, 255, 0.08);
     --border-stronger: rgba(255, 255, 255, 0.14);
 
@@ -13320,10 +13322,10 @@ function renderMmmAudit(c) {
 // 2-stage 탭: ① 진단(추세·카니발) / ② MMM(기여·예측). 같은 데이터·매핑·캐시 공유, 표시만 분리.
 function renderMmmStageTabs(c) {
   const st = MMM_METH_STATE.stage;
-  const tab = (id, no, title, desc) => `<button class="mmm-stage-tab ${st === id ? 'active' : ''}" data-mmm-stage="${id}" style="flex:1;text-align:left;background:${st === id ? 'linear-gradient(135deg,rgba(122,162,247,0.16),rgba(122,162,247,0.04))' : 'var(--bg-2)'};border:1px solid ${st === id ? 'rgba(122,162,247,0.5)' : 'var(--border)'};border-radius:12px;padding:12px 15px;cursor:pointer;transition:all .15s;">
-    <div style="font-size:12px;font-weight:700;color:${st === id ? '#adc6ff' : 'var(--text-muted)'};">${no}</div>
+  const tab = (id, no, title, desc) => `<button class="mmm-stage-tab ${st === id ? 'active' : ''}" data-mmm-stage="${id}" style="flex:1;text-align:left;color:var(--text-1);background:${st === id ? 'linear-gradient(135deg,rgba(122,162,247,0.16),rgba(122,162,247,0.04))' : 'var(--bg-2)'};border:1px solid ${st === id ? 'rgba(122,162,247,0.55)' : 'var(--border)'};border-radius:12px;padding:12px 15px;cursor:pointer;transition:all .15s;">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.04em;color:${st === id ? '#adc6ff' : 'var(--text-2)'};">${no}</div>
     <div style="font-size:14.5px;font-weight:700;color:var(--text-1);margin-top:1px;">${title}</div>
-    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.4;">${desc}</div>
+    <div style="font-size:11px;color:var(--text-2);margin-top:2px;line-height:1.4;">${desc}</div>
   </button>`;
   return `<section class="block" style="padding:0;border:none;background:none;">
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -16887,7 +16889,9 @@ function bindCSVPageHandlers() {
     bindMmmDataPrepHandlers();
   }
   // ----- 5-18: MMM 방법론 핸들러 (분석 결과 표시 시) -----
-  if (document.getElementById("s-macro") && document.querySelector("[data-mmm-target], [data-mmm-cfg-apply], #mmm-export-json")) {
+  // 게이트는 양 stage에 항상 있는 [data-mmm-stage](탭)로 — s-macro(진단 stage 전용)에 묶으면
+  // MMM stage에서 핸들러가 안 붙어 탭 전환이 죽음(PR #104 회귀). 부재 셀렉터 바인딩은 no-op이라 안전.
+  if (document.querySelector("[data-mmm-stage], [data-mmm-target], [data-mmm-cfg-apply], #mmm-export-json")) {
     bindMmmMethHandlers();
   }
 
