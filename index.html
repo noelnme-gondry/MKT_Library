@@ -13622,7 +13622,10 @@ function renderMmmTrend(c) {
   const tr = T.trend, f = (a) => `${a[0]} <span style="color:var(--text-muted);">(p=${a[1]})</span>`;
   const vColor = tr.verdict.includes("NO robust") ? "#22c55e" : tr.verdict.includes("EXISTS") ? "#f87171" : "#fbbf24";
   return `<section class="block">
-    <h3 class="section-title" style="font-size:15px;"><span class="ix">§3</span>추세 존재 검정 — ${MMM_METH_STATE.target} (가정 말고 검정)</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+      <h3 class="section-title" style="font-size:15px;margin:0;"><span class="ix">§3</span>추세 존재 검정 — ${MMM_METH_STATE.target} (가정 말고 검정)</h3>
+      <button class="ab-pill" data-mmm-trend-csv="1" title="추세 차트 주별 숫자: actual·STL·Theil-Sen·OLS 추세선 + 변화점 + 검정 p값 → CSV">⬇ 추세 차트 CSV</button>
+    </div>
     <div class="callout" style="border-left:3px solid ${vColor};"><div class="body"><strong>판정:</strong> ${escapeHtml(tr.verdict)}</div></div>
     ${mmmExplain('<strong>p값 &lt; 0.05 = 우연으로 보기 어려움 = 추세 신호 있음</strong>, p값이 크면(예: 0.5) 신호 없음. 검정을 여러 개 쓰는 이유는 추세가 진짜인지 각도를 바꿔 확인하기 위해서입니다 — STL(직선 가정 없이 곡선으로), Mann-Kendall(꾸준히 오르내리는지), ADF/KPSS(진짜 추세 vs 술취한 걸음 같은 랜덤워크). 표에서 가장 중요한 건 맨 아래 <strong>"매체+계절 제거 후 잔차 MK"</strong> — 이게 "no trend"면 광고를 다 빼고 봐도 오가닉 자체엔 추세가 없다는 뜻입니다. (STL Δ%는 짧은 데이터에서 흔들려서 참고용)')}
     <div class="chart-container" style="height:240px;margin:8px 0;"><canvas id="mmm-stl-chart"></canvas></div>
@@ -14260,6 +14263,7 @@ function bindMmmMethHandlers() {
   document.querySelectorAll("[data-mmm-cannib-csv]").forEach(b => b.addEventListener("click", downloadMmmCannibCsv));
   document.querySelectorAll("[data-mmm-cannib-series]").forEach(b => b.addEventListener("click", downloadMmmCannibSeriesCsv));
   document.querySelectorAll("[data-mmm-cannib-all]").forEach(b => b.addEventListener("click", downloadMmmCannibAllCsv));
+  document.querySelectorAll("[data-mmm-trend-csv]").forEach(b => b.addEventListener("click", downloadMmmTrendCsv));
   // 튀는 구간 메모 (세션 상태에 저장; 재렌더 없이 input 값 유지)
   document.querySelectorAll("[data-mmm-note]").forEach(inp => inp.addEventListener("change", () => {
     if (!MMM_METH_STATE.notes) MMM_METH_STATE.notes = {};
@@ -14408,6 +14412,38 @@ function downloadMmmCannibSeriesCsv() {
     lines.push(row.map(q).join(","));
   }
   _mmmDownload(`mmm_cannib_series_${t}_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
+}
+// §3 추세 차트 숫자 — 주별 actual·STL 추세·Theil-Sen·OLS 추세선 + 변화점 + 검정 p값(상단 메타).
+function downloadMmmTrendCsv() {
+  const c = MMM_METH_CACHE, t = MMM_METH_STATE.target, T = c.byTarget && c.byTarget[t];
+  if (!T || !c.panel || !c.panel.targets[t]) { alert("추세 데이터가 없습니다. 먼저 분석을 실행하세요."); return; }
+  const y = c.panel.targets[t], week = c.panel.week, n = y.length, tr = T.trend;
+  const stl = (tr.stl && tr.stl.trend) ? tr.stl.trend : y.map(() => null);
+  const tsSlope = _theilSen(y);
+  const tsB = [...y.map((v, i) => v - tsSlope * i)].sort((a, b) => a - b)[Math.floor(n / 2)];
+  const tsLine = y.map((_, i) => tsB + tsSlope * i);
+  const olsFit = mmmOls(y.map((_, i) => [1, i]), y);
+  const olsLine = olsFit ? y.map((_, i) => olsFit.beta[0] + olsFit.beta[1] * i) : y.map(() => null);
+  const cp = (T.changePoints && T.changePoints.target) || { points: [], pointTypes: [] };
+  const cpMap = {}; cp.points.forEach((idx, k) => { cpMap[idx] = cp.pointTypes[k] || "shift"; });
+  const weekDate = (w) => new Date(Date.UTC(2024, 0, 1) + (w - 1) * 7 * 86400000).toISOString().slice(0, 10);
+  const q = (s) => { s = String(s == null ? "" : s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const num = (v, d = 1) => (v == null || !isFinite(v)) ? "" : (+v).toFixed(d);
+  // 상단 메타(검정 요약) — key/value
+  const meta = [
+    ["# target", t], ["# verdict", tr.verdict],
+    ["# STL_pct", tr.stl_pct], ["# MK_raw_p", tr.mk_raw[1]], ["# MK_acRobust_p", tr.mk_ac_robust[1]],
+    ["# MK_seasonal_p", tr.mk_seasonal[1]], ["# MK_deseason_p", tr.mk_deseason[1]],
+    ["# ADF_ct_p", tr.adf_ct_p], ["# KPSS_ct_p", tr.kpss_ct_p], ["# diff_drift_per_wk", tr.diff_drift_per_wk[0]], ["# diff_drift_p", tr.diff_drift_per_wk[1]],
+    ["# resid_after_media_MK", tr.resid_after_media_mk[0] + " p=" + tr.resid_after_media_mk[1]],
+  ];
+  const lines = meta.map(kv => kv.map(q).join(","));
+  lines.push("");   // 빈 줄로 메타/표 구분
+  lines.push(["week", "date", "actual", "stl_trend", "theil_sen", "ols_trend", "changepoint"].join(","));
+  for (let i = 0; i < n; i++) {
+    lines.push([week[i], weekDate(week[i]), Math.round(y[i]), num(stl[i]), num(tsLine[i]), num(olsLine[i]), cpMap[i] || ""].map(q).join(","));
+  }
+  _mmmDownload(`mmm_trend_${t}_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
 }
 function exportMmmMethMd() {
   const c = MMM_METH_CACHE; const L = ["# MMM 방법론 — verdict\n", "> described(연관)·가설·기술용. 인과/증분은 holdout 전용.\n"];
