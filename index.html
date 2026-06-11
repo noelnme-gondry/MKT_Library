@@ -13111,6 +13111,7 @@ function mmmGetPanelFromColMap(cm) {
   const num = (h, allowNaN) => raw.map(row => { const v = row[h]; if (v == null || String(v).trim() === "") return allowNaN ? NaN : 0; const n = parseFloat(String(v).replace(/[^0-9.\-]/g, "")); return isNaN(n) ? (allowNaN ? NaN : 0) : n; });
   const weekC = pick(r.week);
   const week = weekC ? num(weekC.header, false) : raw.map((_, i) => i + 1);
+  const weekLabelRaw = weekC ? raw.map(row => row[weekC.header]) : null;   // 원본 Week 값(문자열·날짜 보존) — CSV 표시용
   const panel = { week, ch: {}, dummy: {}, steps: {}, targets: {} };
   const chans = r.channels.filter(inPlat);
   for (const ch of chans) panel.ch[ch.key] = num(ch.header, true);   // NaN→impute
@@ -13122,6 +13123,7 @@ function mmmGetPanelFromColMap(cm) {
   const order = week.map((_, i) => i).sort((a, b) => week[a] - week[b]);
   const re = arr => order.map(i => arr[i]);
   panel.week = re(panel.week);
+  if (weekLabelRaw) panel.weekLabel = re(weekLabelRaw);
   for (const k in panel.ch) panel.ch[k] = re(panel.ch[k]);
   for (const k in panel.dummy) panel.dummy[k] = re(panel.dummy[k]);
   for (const k in panel.steps) panel.steps[k] = re(panel.steps[k]);
@@ -13149,6 +13151,7 @@ function _mmmTrimToActive(panel) {
   if (lo > hi) return panel;                      // 전부 0 — 자르지 않음
   const sl = (a) => a.slice(lo, hi + 1);
   panel.week = sl(panel.week);
+  if (panel.weekLabel) panel.weekLabel = sl(panel.weekLabel);
   for (const k in panel.ch) panel.ch[k] = sl(panel.ch[k]);
   for (const k in (panel.dummy || {})) panel.dummy[k] = sl(panel.dummy[k]);
   for (const k in (panel.steps || {})) panel.steps[k] = sl(panel.steps[k]);
@@ -13167,6 +13170,7 @@ function mmmGetPanel() {
   }
   const num = (h, allowNaN) => raw.map(r => { const v = r[h]; if (v == null || String(v).trim() === "") return allowNaN ? NaN : 0; const n = parseFloat(String(v).replace(/[^0-9.\-]/g, "")); return isNaN(n) ? (allowNaN ? NaN : 0) : n; });
   const week = inv.week ? num(inv.week, false) : raw.map((_, i) => i + 1);
+  const weekLabelRaw = inv.week ? raw.map(r => r[inv.week]) : null;   // 원본 Week 값 보존 — CSV 표시용
   const panel = { week, ch: {}, dummy: {}, targets: {} };
   for (const ch of MMM_CHANNELS) if (inv[ch.field]) panel.ch[ch.key] = num(inv[ch.field], true);   // NaN→impute
   for (const d of MMM_DUMMIES) if (inv[d.field]) panel.dummy[d.key] = num(inv[d.field], false);
@@ -13175,6 +13179,7 @@ function mmmGetPanel() {
   const order = week.map((_, i) => i).sort((a, b) => week[a] - week[b]);
   const re = arr => order.map(i => arr[i]);
   panel.week = re(panel.week);
+  if (weekLabelRaw) panel.weekLabel = re(weekLabelRaw);
   for (const k in panel.ch) panel.ch[k] = re(panel.ch[k]);
   for (const k in panel.dummy) panel.dummy[k] = re(panel.dummy[k]);
   for (const k in panel.targets) panel.targets[k] = re(panel.targets[k]);
@@ -14017,12 +14022,13 @@ function renderMmmDecomp(c) {
   const lv = d.level;   // ridge=level(절대 기여), ols/merge=centered(±변동)
   const driverRows = d.driverStats.map(s => `<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${mmmDriverColor(s.name, d.groupNames)};margin-right:6px;vertical-align:middle;"></span>${escapeHtml(s.name)}${lv && !s.media ? ' <span style="font-size:9px;color:var(--text-muted);">모듈레이터</span>' : ''}</td><td class="tnum ${lv ? (s.media ? (s.avg >= 0 ? 'pos' : 'neg') : '') : ''}">${lv ? (s.media ? (s.avg >= 0 ? '+' : '') + Math.round(s.avg).toLocaleString() + '명' : '~0') : '±' + s.swing.toLocaleString() + '명/주'}</td></tr>`).join("");
   const clsBadge = (cls) => cls === "channel" ? '<span style="color:#7aa2f7;font-weight:600;">채널 스파크</span>' : cls === "baseline" ? '<span style="color:#22c55e;font-weight:600;">baseline·계절 변동</span>' : '<span style="color:#fbbf24;font-weight:600;">모델 밖(원인 입력 권장)</span>';
-  const weekDate = (w) => new Date(Date.UTC(2024, 0, 1) + (w - 1) * 7 * 86400000).toISOString().slice(0, 10);
+  const wlbl = (s) => (c.panel.weekLabel && s.i != null) ? c.panel.weekLabel[s.i] : null;   // 원본 Week 라벨(있으면)
   const spikeRows = d.spikes.map(s => {
     const noteKey = `${t}|${s.week}`, note = (MMM_METH_STATE.notes || {})[noteKey] || "";
     const driverTxt = s.cls === "unexplained" ? `잔차 ${s.residual >= 0 ? '+' : ''}${s.residual.toLocaleString()}명` : `${escapeHtml(s.domDriver)} ${s.domVal >= 0 ? '+' : ''}${s.domVal.toLocaleString()}명`;
+    const lbl = wlbl(s);
     return `<tr>
-      <td class="tnum">W${s.week}<br><span style="font-size:9px;color:var(--text-muted);">${weekDate(s.week)}</span></td>
+      <td class="tnum">t${s.i != null ? s.i + 1 : s.week}${lbl != null ? `<br><span style="font-size:9px;color:var(--text-muted);">${escapeHtml(String(lbl))}</span>` : ""}</td>
       <td class="tnum ${s.dev >= 0 ? 'pos' : 'neg'}">${s.dev >= 0 ? '+' : ''}${s.dev.toLocaleString()}명</td>
       <td>${clsBadge(s.cls)}<br><span style="font-size:10px;color:var(--text-muted);">주 원인: ${driverTxt}</span></td>
       <td><input data-mmm-note="${noteKey}" value="${escapeHtml(note)}" placeholder="이 주에 무슨 일? (예: 앱스토어 피처드, 경쟁사 이슈)" style="width:100%;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-size:11px;"></td>
@@ -14333,13 +14339,13 @@ function downloadMmmDecompCsv() {
   if (!T || !T.mmm) { alert("분해 데이터가 없습니다. 먼저 분석을 실행하세요."); return; }
   const d = mmmGetDecomp(c) || T.decomp; if (!d) { alert("분해 데이터가 없습니다."); return; }
   const chans = _mmmChans(c.panel).filter(ch => c.panel.ch[ch.key]);
-  const weekDate = (w) => new Date(Date.UTC(2024, 0, 1) + (w - 1) * 7 * 86400000).toISOString().slice(0, 10);
+  const wl = (ti) => c.panel.weekLabel ? c.panel.weekLabel[ti] : (c.panel.week ? c.panel.week[ti] : ti + 1);   // 원본 Week 라벨
   const q = (s) => { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-  const header = ["week", "date", "actual", "baseline", "predict_fitted", "residual",
+  const header = ["t", "week", "actual", "baseline", "predict_fitted", "residual",
     ...d.groupNames.map(g => "contrib_" + g), ...chans.map(ch => "spend_" + ch.label)];
   const lines = [header.map(q).join(",")];
   d.weeks.forEach((w, ti) => {
-    const row = [w.week, weekDate(w.week), Math.round(w.actual), w.baseline.toFixed(1), w.fitted.toFixed(1), w.residual.toFixed(1),
+    const row = [ti + 1, wl(ti), Math.round(w.actual), w.baseline.toFixed(1), w.fitted.toFixed(1), w.residual.toFixed(1),
       ...d.groupNames.map(g => (w.contrib[g]).toFixed(1)),
       ...chans.map(ch => { const v = c.panel.ch[ch.key][ti]; return isFinite(v) ? Math.round(v) : ""; })];
     lines.push(row.map(q).join(","));
@@ -14444,15 +14450,15 @@ function downloadMmmCannibSeriesCsv() {
     const gFit = mmmOls(tr, lnG);
     return { ch, spend: panel.ch[ch.key], lnG, resid: gFit ? gFit.resid : lnG.map(() => null) };
   });
-  const weekDate = (w) => new Date(Date.UTC(2024, 0, 1) + (w - 1) * 7 * 86400000).toISOString().slice(0, 10);
+  const wl = (i) => panel.weekLabel ? panel.weekLabel[i] : week[i];   // 원본 Week 라벨(없으면 정렬된 week 값)
   const q = (s) => { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
   const tgt = t;
-  const header = ["week", "date", tgt, tgt + "_detrend", tgt + "_diff"];
+  const header = ["t", "week", tgt, tgt + "_detrend", tgt + "_diff"];
   chans.forEach((ch, i) => header.push("spend_" + ch.label, "ln_" + ch.label, "ln_" + ch.label + "_detrend", "ln_" + ch.label + "_diff"));
   const num = (v, d) => (v == null || !isFinite(v)) ? "" : (+v).toFixed(d);
   const lines = [header.map(q).join(",")];
   for (let i = 0; i < n; i++) {
-    const row = [week[i], weekDate(week[i]), Math.round(y[i]), num(yResid[i], 4), i > 0 ? (y[i] - y[i - 1]).toFixed(1) : ""];
+    const row = [i + 1, wl(i), Math.round(y[i]), num(yResid[i], 4), i > 0 ? (y[i] - y[i - 1]).toFixed(1) : ""];
     series.forEach(s => row.push(isFinite(s.spend[i]) ? Math.round(s.spend[i]) : "", num(s.lnG[i], 5), num(s.resid[i], 5), i > 0 ? (s.lnG[i] - s.lnG[i - 1]).toFixed(5) : ""));
     lines.push(row.map(q).join(","));
   }
@@ -14471,7 +14477,7 @@ function downloadMmmTrendCsv() {
   const olsLine = olsFit ? y.map((_, i) => olsFit.beta[0] + olsFit.beta[1] * i) : y.map(() => null);
   const cp = (T.changePoints && T.changePoints.target) || { points: [], pointTypes: [] };
   const cpMap = {}; cp.points.forEach((idx, k) => { cpMap[idx] = cp.pointTypes[k] || "shift"; });
-  const weekDate = (w) => new Date(Date.UTC(2024, 0, 1) + (w - 1) * 7 * 86400000).toISOString().slice(0, 10);
+  const wl = (i) => c.panel.weekLabel ? c.panel.weekLabel[i] : week[i];   // 원본 Week 라벨
   const q = (s) => { s = String(s == null ? "" : s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
   const num = (v, d = 1) => (v == null || !isFinite(v)) ? "" : (+v).toFixed(d);
   // 상단 메타(검정 요약) — key/value
@@ -14484,9 +14490,9 @@ function downloadMmmTrendCsv() {
   ];
   const lines = meta.map(kv => kv.map(q).join(","));
   lines.push("");   // 빈 줄로 메타/표 구분
-  lines.push(["week", "date", "actual", "stl_trend", "theil_sen", "ols_trend", "changepoint"].join(","));
+  lines.push(["t", "week", "actual", "stl_trend", "theil_sen", "ols_trend", "changepoint"].join(","));
   for (let i = 0; i < n; i++) {
-    lines.push([week[i], weekDate(week[i]), Math.round(y[i]), num(stl[i]), num(tsLine[i]), num(olsLine[i]), cpMap[i] || ""].map(q).join(","));
+    lines.push([i + 1, wl(i), Math.round(y[i]), num(stl[i]), num(tsLine[i]), num(olsLine[i]), cpMap[i] || ""].map(q).join(","));
   }
   _mmmDownload(`mmm_trend_${t}_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
 }
@@ -14498,12 +14504,12 @@ function downloadMmmSpendTargetCsv() {
   const yA = panel.targets[t], yD = mmmDeseasonHoliday(panel, t);
   const chans = _mmmChans(panel).filter(ch => panel.ch[ch.key]);
   const total = week.map((_, i) => chans.reduce((s, ch) => s + ((panel.ch[ch.key][i] > 0) ? panel.ch[ch.key][i] : 0), 0));
-  const weekDate = (w) => new Date(Date.UTC(2024, 0, 1) + (w - 1) * 7 * 86400000).toISOString().slice(0, 10);
+  const wl = (i) => panel.weekLabel ? panel.weekLabel[i] : week[i];   // 원본 Week 라벨
   const q = (s) => { s = String(s == null ? "" : s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-  const header = ["week", "date", t + "_actual", t + "_deseason", "total_media_spend", ...chans.map(ch => "spend_" + ch.label)];
+  const header = ["t", "week", t + "_actual", t + "_deseason", "total_media_spend", ...chans.map(ch => "spend_" + ch.label)];
   const lines = [header.map(q).join(",")];
   for (let i = 0; i < n; i++) {
-    const row = [week[i], weekDate(week[i]), Math.round(yA[i]), (yD[i] == null ? "" : yD[i]), Math.round(total[i])];
+    const row = [i + 1, wl(i), Math.round(yA[i]), (yD[i] == null ? "" : yD[i]), Math.round(total[i])];
     chans.forEach(ch => row.push(isFinite(panel.ch[ch.key][i]) ? Math.round(panel.ch[ch.key][i]) : ""));
     lines.push(row.map(q).join(","));
   }
