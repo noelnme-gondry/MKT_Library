@@ -11595,6 +11595,93 @@ const MMM_CANNIB_RULES = {
   brandInterceptRe: /brand|branded|asa\b|apple.?search|search.?ads|브랜드|검색/i,
 };
 function mmmIsBrandIntercept(label, kind) { return kind === "brand" || MMM_CANNIB_RULES.brandInterceptRe.test(String(label || "")); }
+
+/* ====== §4.5 카니발 랭킹 — 적격 게이트 + CEI(카니발 근거지수) 순수함수 모듈 ======
+ * 기존 §4 per-channel 검정(precedence/detrend/net/granger/게이트)을 재사용해 크로스채널 우선순위를 매김.
+ * 부호 규약: 음수 = 카니발 방향. relu(-z)이라 "유의하게 음(카니발)일 때만" 점수 상승(양=증분은 무죄 아님·0 기여).
+ * 결정론: 숨은 상태 없음, 동일 입력 → 동일 출력. */
+const RANK_CFG = {
+  MIN_ACTIVE: 12,     // 적격: 비-0 지출 주 수 최소 (detrend+diff 후 잔차 df 확보)
+  MIN_DF: 8,          // 적격: 탈추세 회귀 후 잔차 자유도 최소 (nActive - 2)
+  MIN_SPEND_CV: 0.10, // 적격: 지출 변동(sd/mean) 최소 — 거의 상수면 계수 식별 불가
+  ALPHA: 0.05,        // 유의수준 (강)
+  P_WEAK: 0.10,       // '중' 근거 컷
+  W: { detrend: 1, diff: 1, net: 1 },   // CEI 가중치 (기본 동일·노출). net 공선 취약이라 기본 동일 권장.
+};
+const CANNIBAL_RANK = (() => {
+  const mean = a => a.length ? a.reduce((s, v) => s + (isFinite(v) ? v : 0), 0) / a.length : 0;
+  const std = a => { const m = mean(a), n = a.length; return n ? Math.sqrt(a.reduce((s, v) => s + (isFinite(v) ? (v - m) ** 2 : 0), 0) / n) : 0; };
+  // 지출 변동계수 (전체 주 기준 sd/mean)
+  function spendCV(spend) { const m = mean(spend); return m > 0 ? std(spend) / m : 0; }
+  // Pearson r → Fisher-z 검정통계량 (음수=카니발). |r|≥1·n<4면 0.
+  function zFromR(r, n) { if (!isFinite(r) || Math.abs(r) >= 1 || n < 4) return 0; return Math.atanh(r) * Math.sqrt(n - 3); }
+  // 표준정규 양측 p (Abramowitz-Stegun erfc 근사) — 결정론
+  function twoSidedP(z) { const x = Math.abs(z) / Math.SQRT2; const t = 1 / (1 + 0.3275911 * x); const erf = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x); return Math.max(0, Math.min(1, 1 - erf)); }
+  const relu = x => Math.max(0, x);
+  // 적격 판정
+  function eligibility(spend, nActive, cfg) {
+    const cv = spendCV(spend), df = nActive - 2, reasons = [];
+    if (nActive < cfg.MIN_ACTIVE) reasons.push(`집행주 ${nActive} < ${cfg.MIN_ACTIVE}`);
+    if (cv < cfg.MIN_SPEND_CV) reasons.push(`지출 변동 CV ${cv.toFixed(2)} < ${cfg.MIN_SPEND_CV}`);
+    if (df < cfg.MIN_DF) reasons.push(`자유도 ${df} < ${cfg.MIN_DF}`);
+    return { eligible: reasons.length === 0, spendCV: +cv.toFixed(3), dfResid: df, reasons };
+  }
+  return { spendCV, zFromR, twoSidedP, relu, eligibility, RANK_CFG };
+})();
+// 채널별 카니발 랭킹 행 빌드 — 기존 cannibByChannel(검정 결과)+coverage 재사용, CEI/적격/배지/권고 산출.
+// "스킵 없음": 데이터 부족(Tier2)이라도 잠식 방향 신호 있으면 Tier2 상단에 surface(놓치지 않기).
+function mmmBuildCannibRank(panel, cannibByChannel, cov, chans) {
+  const cfg = RANK_CFG, n = panel.week.length, zA = 1.96, zW = 1.645;
+  const totalSpend = chans.reduce((s, k) => s + (panel.ch[k] || []).reduce((a, v) => a + (v > 0 ? v : 0), 0), 0) || 1;
+  const rows = chans.map(k => {
+    const cn = cannibByChannel[k]; if (!cn) return null;
+    const spend = panel.ch[k] || [], cv = cov[k] || { nonzero: 0 };
+    const nActive = cv.nonzero;
+    const el = CANNIBAL_RANK.eligibility(spend, nActive, cfg);
+    const gated = !!(cn.power_gate && cn.power_gate.blocked);
+    const rDet = cn.detrend_corr.detrended, rDiff = cn.detrend_corr.first_diff;
+    const z2 = CANNIBAL_RANK.zFromR(rDet, n), z2d = CANNIBAL_RANK.zFromR(rDiff, n - 1);
+    const ni = cn.net_incrementality; let z3 = 0, netSe = null;
+    if (!gated && ni.ci_lo != null && ni.ci_hi != null && isFinite(ni.net_elasticity)) {
+      netSe = (ni.ci_hi - ni.ci_lo) / (2 * zA);
+      if (netSe > 0) z3 = ni.net_elasticity / netSe;
+    }
+    const relu = CANNIBAL_RANK.relu;
+    const cei = +(cfg.W.detrend * relu(-z2) + cfg.W.diff * relu(-z2d) + cfg.W.net * relu(-z3)).toFixed(3);
+    const detP = +CANNIBAL_RANK.twoSidedP(z2).toFixed(4);
+    const anyAgainst = cn.precedence.vote === "AGAINST" || cn.detrend_corr.vote === "AGAINST" || ni.vote === "AGAINST" || cn.granger_cannibal;
+    const cannibSignal = (z2 < -zA) || (z2d < -zA) || anyAgainst;   // 유의 음 방향 또는 AGAINST/시차잠식
+    // 근거강도 배지
+    let badge;
+    if (!el.eligible) badge = "판단불가";
+    else if (z2 < -zA && !gated && !(z3 > zA)) badge = "강";
+    else if (anyAgainst || (rDet < 0 && detP < cfg.P_WEAK)) badge = "중";
+    else badge = "약";
+    const spendShare = +((spend.reduce((a, v) => a + (v > 0 ? v : 0), 0)) / totalSpend).toFixed(4);
+    return {
+      key: k, label: (_mmmChans(panel).find(c => c.key === k) || {}).label || k,
+      eligible: el.eligible, nActive, total: n, spendCV: el.spendCV, dfResid: el.dfResid, reasons: el.reasons,
+      gated, z2: +z2.toFixed(2), z2d: +z2d.toFixed(2), z3: +z3.toFixed(2), cei, detP,
+      rDet, rDiff, netElast: ni.net_elasticity, netP: ni.p, netCiLo: ni.ci_lo, netCiHi: ni.ci_hi, netSe: netSe == null ? null : +netSe.toFixed(4),
+      cannibSignal, badge, verdict_class: cn.verdict_class, spendShare, brand: cn.is_brand_intercept,
+    };
+  }).filter(Boolean);
+  // 정렬: 적격 우선 → CEI desc → spendShare desc → 이름. Tier2: 잠식신호 우선 → nActive desc.
+  rows.sort((a, b) => {
+    if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
+    if (a.eligible) { if (b.cei !== a.cei) return b.cei - a.cei; if (b.spendShare !== a.spendShare) return b.spendShare - a.spendShare; return a.key < b.key ? -1 : 1; }
+    if (a.cannibSignal !== b.cannibSignal) return a.cannibSignal ? -1 : 1;   // Tier2 no-skip: 신호 있는 쪽 위로
+    if (b.nActive !== a.nActive) return b.nActive - a.nActive; return a.key < b.key ? -1 : 1;
+  });
+  rows.forEach((r, i) => { r.rank = i + 1; });
+  return rows;
+}
+function mmmCannibAction(r) {
+  if (!r.eligible) return r.cannibSignal ? "⚠ 데이터 부족하지만 잠식 방향 신호 — 데이터 축적·holdout 고려" : "모니터 — 집행 확대/데이터 축적 후 재검";
+  if (r.badge === "강") return "holdout 우선순위 높음";
+  if (r.badge === "중") return "holdout 후보 (우선순위 중)";
+  return "관측상 이상 無 — deprioritize (증액 검토 가능)";
+}
 // 채널 키(semantic) → 5-18 매핑 필드
 
 /* ====== MMM 통계 용어집 (4단: 이유/진행/해석/유의성) — 워크플로 생성·검수 ====== */
@@ -12958,9 +13045,8 @@ function buildMmmMethCache() {
       // 공선(power_gate)은 채널을 통째로 빼지 않고 net(③)만 보류·판정 상한을 INCONCLUSIVE로 캡함(mmmCannibalization 내부).
       // → sparse만 "데이터 부족"으로 제외, 공선 채널은 A/B/D로 평가돼 잠식/못가린다 버킷에 들어감(과보수 완화).
       const cov = mmmChannelCoverage(panel, cfg);
-      const isIdentified = (k) => {   // = 데이터 충분(평가 가능). 공선이어도 평가는 함.
-        const cv = cov[k];
-        return !!(cv && !cv.sparse && cv.coverage >= 0.5 && !cv.trailingZero);
+      const isIdentified = (k) => {   // = 적격(평가 가능, spec 기준: 집행주·지출변동CV·df). 공선이어도 평가는 함.
+        return CANNIBAL_RANK.eligibility(panel.ch[k] || [], (cov[k] || { nonzero: 0 }).nonzero, RANK_CFG).eligible;
       };
       const identifiedChannels = cannChannels.filter(isIdentified);
       // 대표채널: 데이터 충분 채널 중 비-0 최다, 동률이면 VIF 최저(공선 적은 쪽 우선). 없으면 least-bad 폴백.
@@ -12971,6 +13057,7 @@ function buildMmmMethCache() {
       const defCh = identifiedChannels.length ? pickRep(identifiedChannels) : (cannChannels.length ? pickRep(cannChannels) : null);
       const cannib = defCh ? cannibByChannel[defCh] : mmmCannibalization(panel, cfg, t, { coef: NaN, p: NaN }, null);
       const globalCannib = mmmGlobalCannib(cannibByChannel, identifiedChannels);   // 전역 worst-case (§0·§6)
+      const cannibRank = mmmBuildCannibRank(panel, cannibByChannel, cov, cannChannels);   // §4.5 랭킹(CEI·적격·근거강도)
       const effects = mmmChannelEffects(panel, cfg, t, mmm.best_lambda);
       const decomp = mmmWeeklyDecomp(panel, cfg, t, mmm.best_lambda);
       // 변화점 탐지 (추세가 언제 꺾였나) — 오가닉 타깃 + 채널별 지출, 타이밍 선후로 선행성 보조
@@ -12979,7 +13066,7 @@ function buildMmmMethCache() {
       for (const k of cannChannels) cpSpend[k] = mmmChangePoints(panel.ch[k]);
       const cpDrivers = mmmChangePointDrivers(panel, t, cpTarget);   // 변화점별 전후 비교(그때 뭐가 튀었나)
       const changePoints = { target: cpTarget, spend: cpSpend, drivers: cpDrivers };
-      C.byTarget[t] = { trend, cannib, cannibByChannel, cannChannels, defCh, identifiedChannels, globalCannib, mmm, effects, decomp, changePoints };
+      C.byTarget[t] = { trend, cannib, cannibByChannel, cannChannels, defCh, identifiedChannels, globalCannib, cannibRank, mmm, effects, decomp, changePoints };
     }
     C.error = null;
   } catch (e) { C.error = e.message; }
@@ -13478,17 +13565,13 @@ function renderMmmTrend(c) {
 // 카니발 프로세스 결과 — verdict 버킷(있다/없다/못가린다/데이터부족) + 전 채널 × 검정 결과 표.
 // "어느 채널이 프로세스를 다 뚫고 어떤 결과로 나왔나 + 오가닉을 떨구는 데 뭐가 영향 주나"를 한눈에.
 function renderMmmCannibOverview(c, T, selCh) {
-  const chans = T.cannChannels || [];
   const chLabel = (k) => (_mmmChans(c.panel).find(cc => cc.key === k) || {}).label || k;
-  const idSet = new Set(T.identifiedChannels || []);
-  const effByKey = {}; (T.effects || []).forEach(e => { effByKey[e.key] = e; });
+  const rk = T.cannibRank || [];
+  const num = (v, dd = 3) => (v == null || !isFinite(v)) ? "—" : (+v).toFixed(dd);
+  // --- 버킷 (빠른 스캔) — 적격은 verdict, 부적격은 데이터부족(신호 있으면 ⚠) ---
   const buckets = { cannibal: [], inconclusive: [], ok: [], unidentified: [] };
-  for (const k of chans) {
-    const cn = T.cannibByChannel[k]; if (!cn) continue;
-    if (!idSet.has(k)) buckets.unidentified.push(k);
-    else (buckets[cn.verdict_class] || buckets.inconclusive).push(k);
-  }
-  const chip = (k, col) => `<button class="ab-pill ${k === selCh ? 'active' : ''}" data-mmm-cannibch="${escapeHtml(k)}" style="font-size:11px;border-color:${col}66;${k === selCh ? `background:${col}22;` : ''}">${escapeHtml(chLabel(k))}</button>`;
+  for (const r of rk) { if (!r.eligible) buckets.unidentified.push(r.key); else (buckets[r.verdict_class] || buckets.inconclusive).push(r.key); }
+  const chip = (k, col) => `<button class="ab-pill ${k === selCh ? 'active' : ''}" data-mmm-cannibch="${escapeHtml(k)}" style="font-size:11px;border-color:${col}66;${k === selCh ? `background:${col}22;` : ''}">${escapeHtml(chLabel(k))}${(rk.find(x => x.key === k) || {}).cannibSignal && !(rk.find(x => x.key === k) || {}).eligible ? ' ⚠' : ''}</button>`;
   const bucketCard = (keys, col, bg, title, desc) => `<div style="flex:1;min-width:175px;background:${bg};border:1px solid ${col}44;border-radius:10px;padding:11px 13px;">
     <div style="font-size:12.5px;font-weight:700;color:${col};">${title} <span style="color:var(--text-muted);font-weight:400;">· ${keys.length}</span></div>
     <div style="font-size:10px;color:var(--text-muted);margin:2px 0 8px;line-height:1.35;">${desc}</div>
@@ -13496,74 +13579,81 @@ function renderMmmCannibOverview(c, T, selCh) {
   </div>`;
   const bucketsHtml = `<div style="display:flex;gap:9px;flex-wrap:wrap;margin:6px 0 14px;">
     ${bucketCard(buckets.cannibal, "#f87171", "rgba(248,113,113,0.07)", "🔴 잠식 의심 (있다)", "오가닉을 떨구는 데 영향 — 검정 ≥1개가 카니발을 가리킴. holdout 1순위.")}
-    ${bucketCard(buckets.inconclusive, "#fbbf24", "rgba(251,191,36,0.07)", "🟠 못 가린다", "신호 혼재 또는 공선으로 net 불가 — 잠식인지 방어인지 관측 보류(공선은 채널 제외 아님, net만 보류).")}
+    ${bucketCard(buckets.inconclusive, "#fbbf24", "rgba(251,191,36,0.07)", "🟠 못 가린다", "신호 혼재 또는 공선으로 net 불가 — 잠식인지 방어인지 관측 보류(공선은 채널 제외 아님).")}
     ${bucketCard(buckets.ok, "#22c55e", "rgba(34,197,94,0.07)", "🟢 적색신호 없음 (잠정)", "검정력 충분 + 다수 FOR — 방어 가능성↑(무죄 증명 아님).")}
-    ${bucketCard(buckets.unidentified, "#9CA3AF", "rgba(156,163,175,0.07)", "⊘ 데이터 부족", "비-0 부족·저커버리지·최근끊김 — 데이터 자체가 부족해 평가 제외(공선과 무관).")}
+    ${bucketCard(buckets.unidentified, "#9CA3AF", "rgba(156,163,175,0.07)", "⊘ 데이터 부족", "집행주·지출변동 부족 — 평가 보류. ⚠ 표시는 데이터 부족하지만 잠식 방향 신호 있음(스킵 안 함).")}
   </div>`;
-  // 프로세스 결과 표 (전 채널 × STEP0·A·B·C·D·최종)
-  const vCell = (v) => v === "AGAINST" ? '<span style="color:#f87171;font-weight:700;">잠식</span>' : v === "FOR" ? '<span style="color:#22c55e;font-weight:700;">오가닉</span>' : '<span style="color:var(--text-muted);">보류</span>';
-  const gated = (cn) => cn.power_gate && cn.power_gate.blocked;
-  const finalCell = (k, cn) => idSet.has(k)
-    ? (cn.verdict_class === "cannibal" ? '<span style="color:#f87171;font-weight:700;">있다</span>' : cn.verdict_class === "ok" ? '<span style="color:#22c55e;font-weight:700;">없다(잠정)</span>' : '<span style="color:#fbbf24;font-weight:700;">못 가린다</span>') + (gated(cn) ? ' <span style="font-size:9px;color:#adc6ff;" title="' + escapeHtml((cn.power_gate.reasons || []).join(" · ")) + '">🔗공선</span>' : '')
-    : '<span style="color:var(--text-muted);">데이터 부족</span>';
-  const grangerCell = (cn) => cn.granger_cannibal ? '<span style="color:#f87171;font-weight:700;">시차잠식</span>' : cn.granger_help ? '<span style="color:#22c55e;font-weight:700;">시차증분</span>' : cn.pacing ? '<span style="color:#fbbf24;font-weight:700;">페이싱</span>' : '<span style="color:var(--text-muted);">—</span>';
-  const step0Cell = (k) => idSet.has(k) ? '<span style="color:#22c55e;font-weight:700;">✓ 통과</span>' : '<span style="color:var(--text-muted);">⊘ 데이터 부족</span>';
-  const rows = chans.map(k => {
-    const cn = T.cannibByChannel[k]; if (!cn) return "";
-    const sel = k === selCh;
-    return `<tr data-mmm-cannibch="${escapeHtml(k)}" style="cursor:pointer;${sel ? 'background:rgba(122,162,247,0.12);' : ''}">
-      <td><strong>${escapeHtml(chLabel(k))}</strong>${sel ? ' <span style="font-size:9px;color:#adc6ff;">▶선택</span>' : ''}</td>
-      <td>${step0Cell(k)}</td>
-      <td>${vCell(cn.detrend_corr.vote)}</td>
-      <td>${vCell(cn.precedence.vote)}</td>
-      <td>${vCell(cn.net_incrementality.vote)}</td>
-      <td>${grangerCell(cn)}</td>
-      <td>${finalCell(k, cn)}</td>
+  // --- §4.5 랭킹 표 (프로세스+점수 일원화) ---
+  const badgeChip = (b) => b === "강" ? '<span style="color:#f87171;font-weight:700;">강</span>' : b === "중" ? '<span style="color:#fbbf24;font-weight:700;">중</span>' : b === "약" ? '<span style="color:#22c55e;font-weight:700;">약</span>' : '<span style="color:var(--text-muted);">판단불가</span>';
+  const verdictChip = (r) => r.eligible
+    ? (r.verdict_class === "cannibal" ? '<span style="color:#f87171;font-weight:700;">있다</span>' : r.verdict_class === "ok" ? '<span style="color:#22c55e;font-weight:700;">없다(잠정)</span>' : '<span style="color:#fbbf24;font-weight:700;">못 가린다</span>')
+    : (r.cannibSignal ? '<span style="color:#fbbf24;font-weight:600;">⚠ 데이터부족·신호</span>' : '<span style="color:var(--text-muted);">데이터 부족</span>');
+  const abcd = (r) => { const cn = T.cannibByChannel[r.key] || {}; const v = (vote, lab) => { const col = vote === "AGAINST" ? "#f87171" : vote === "FOR" ? "#22c55e" : "var(--text-muted)"; return `<span style="color:${col};" title="${lab} ${vote || '—'}">${lab}</span>`; }; const dCol = cn.granger_cannibal ? "#f87171" : cn.granger_help ? "#22c55e" : cn.pacing ? "#fbbf24" : "var(--text-muted)"; return `<span style="font-family:var(--font-mono,monospace);letter-spacing:3px;font-weight:700;">${v((cn.detrend_corr || {}).vote, "A")}${v((cn.precedence || {}).vote, "B")}${v((cn.net_incrementality || {}).vote, "C")}<span style="color:${dCol};" title="D 그랜저">D</span></span>`; };
+  const maxCei = Math.max(0.0001, ...rk.filter(r => r.eligible).map(r => r.cei), 0);
+  const ceiBar = (cei) => { const w = Math.round(Math.min(1, cei / maxCei) * 100); return `<div style="display:flex;align-items:center;gap:6px;"><div style="width:42px;height:6px;background:var(--bg-2);border-radius:3px;overflow:hidden;"><div style="width:${w}%;height:100%;background:${cei > 0 ? '#f87171' : 'var(--text-muted)'};"></div></div><span class="tnum" style="font-size:10px;">${num(cei, 2)}</span></div>`; };
+  const rowHtml = (r) => {
+    const cn = T.cannibByChannel[r.key] || {}, sel = r.key === selCh;
+    const detCol = r.rDet <= -0.20 ? "#f87171" : r.rDet <= -0.10 ? "#fbbf24" : "var(--text-1)";
+    const netTxt = r.gated ? '<span style="color:#adc6ff;" title="공선/검정력으로 net 식별불가">🔗공선</span>' : (r.netCiLo != null ? `${num(r.netElast)} <span style="color:var(--text-muted);font-size:9.5px;">[${num(r.netCiLo)},${num(r.netCiHi)}]</span>` : "—");
+    const powerTxt = r.eligible ? (r.gated ? `<span style="color:#fbbf24;" title="${escapeHtml((cn.power_gate && cn.power_gate.reasons || []).join(' · '))}">🔗공선</span>` : '<span style="color:#22c55e;">통과</span>') : `<span style="color:var(--text-muted);" title="${escapeHtml(r.reasons.join(' · '))}">${escapeHtml(r.reasons[0] || '부족')}</span>`;
+    return `<tr data-mmm-cannibch="${escapeHtml(r.key)}" style="cursor:pointer;${sel ? 'background:rgba(122,162,247,0.12);' : ''}${r.eligible ? '' : 'opacity:0.72;'}">
+      <td class="tnum">${r.eligible ? r.rank : '—'}</td>
+      <td><strong>${escapeHtml(r.label)}</strong>${sel ? ' <span style="font-size:9px;color:#adc6ff;">▶</span>' : ''}</td>
+      <td>${verdictChip(r)}</td>
+      <td>${badgeChip(r.badge)}</td>
+      <td>${r.eligible ? ceiBar(r.cei) : '<span style="color:var(--text-muted);font-size:10px;">—</span>'}</td>
+      <td style="font-size:11px;">${abcd(r)}</td>
+      <td class="tnum" style="color:${detCol};">${num(r.rDet)} <span style="color:var(--text-muted);font-size:9.5px;">p=${num(r.detP)}</span></td>
+      <td class="tnum" style="font-size:10.5px;">${netTxt}</td>
+      <td style="font-size:9.5px;">${powerTxt}</td>
+      <td style="font-size:10px;">${escapeHtml(mmmCannibAction(r))}</td>
     </tr>`;
-  }).join("");
-  // 점수(숫자) 표 — "왜 그 판정인지" 실제 수치. 프로세스 표 바로 밑에서 같은 채널 순서로.
-  const num = (v, dd = 3) => (v == null || !isFinite(v)) ? "—" : (+v).toFixed(dd);
-  const scoreRows = chans.map(k => {
-    const cn = T.cannibByChannel[k]; if (!cn) return "";
-    const p = cn.precedence, d = cn.detrend_corr, ni = cn.net_incrementality, g = cn.granger && cn.granger.spend_to_organic;
-    const sel = k === selCh;
-    return `<tr data-mmm-cannibch="${escapeHtml(k)}" style="cursor:pointer;${sel ? 'background:rgba(122,162,247,0.12);' : ''}">
-      <td><strong>${escapeHtml(chLabel(k))}</strong></td>
-      <td class="tnum">${num(p.kpi_slope_per_wk, 1)}/주 · p=${num(p.slope_p)}<br><span style="color:var(--text-muted);font-size:9.5px;">누적 ${p.kpi_change_over_window_pct}% · n=${p.low_n} · ≤$${p.p25}</span></td>
-      <td class="tnum">${num(d.raw)} → <strong>${num(d.detrended)}</strong><br><span style="color:var(--text-muted);font-size:9.5px;">차분 ${num(d.first_diff)}</span></td>
-      <td class="tnum">${num(ni.net_elasticity)} · p=${num(ni.p)}<br><span style="color:var(--text-muted);font-size:9.5px;">${ni.ci_lo != null ? `CI[${num(ni.ci_lo)}, ${num(ni.ci_hi)}]` : "—"}</span></td>
-      <td class="tnum">${g ? `lag${g.lag} · F=${g.F}<br><span style="color:var(--text-muted);font-size:9.5px;">p=${g.p} · Σ=${g.coefSum}</span>` : "—"}</td>
-      <td style="font-size:9.5px;color:${gated(cn) ? '#fbbf24' : 'var(--text-muted)'};">${gated(cn) ? escapeHtml((cn.power_gate.reasons || []).join(" · ")) : "통과"}</td>
-    </tr>`;
-  }).join("");
-  const R = MMM_CANNIB_RULES;
-  const thrRef = `<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:11.5px;color:#adc6ff;font-weight:600;">📏 어떤 숫자 범위여야 유의미한가 — 판정 기준표 (펼치기)</summary>
-    <div class="table-wrap" style="margin-top:6px;"><table class="data" style="font-size:10.5px;">
-      <thead><tr><th>검정</th><th style="color:#22c55e;">오가닉(FOR)</th><th style="color:#f87171;">잠식(AGAINST)</th><th>보류(ABSTAIN)</th></tr></thead>
+  };
+  const elig = rk.filter(r => r.eligible), tier2 = rk.filter(r => !r.eligible);
+  const banner = elig.length === 0
+    ? `<div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.35);border-radius:8px;padding:9px 12px;font-size:11.5px;color:var(--text-1);margin:6px 0;">⚠ 이 타깃·플랫폼에서 <strong>측정 가능한(적격) 채널이 없습니다</strong>. 타깃/플랫폼을 바꾸거나 데이터 축적이 필요합니다. (아래 데이터 부족 블록에서 어느 조건에 걸렸는지 확인)</div>`
+    : (elig.every(r => r.cei === 0) ? `<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:9px 12px;font-size:11.5px;color:var(--text-1);margin:6px 0;">✓ 적격 채널 중 <strong>카니발 의심 신호(CEI&gt;0)가 없습니다</strong> — 관측상 holdout 우선순위로 올릴 채널 없음(무죄 증명은 아님).</div>` : "");
+  const headRow = `<tr><th>순위</th><th>채널</th><th>판정</th><th>근거강도${mmmInfoIcon("cannib_overview")}</th><th>CEI</th><th>검정 ABCD</th><th>탈추세 r·p${mmmInfoIcon("spurious_detrend")}</th><th>net [CI]${mmmInfoIcon("net_incrementality")}</th><th>검정력/적격</th><th>권고</th></tr>`;
+  const rankTable = `<div style="font-size:12.5px;color:var(--text-1);font-weight:700;margin-bottom:2px;">§4.5 카니발 의심 랭킹 — CEI 높을수록 우선 검토 <span style="font-weight:400;font-size:10.5px;color:var(--text-muted);">(행 클릭 → 아래 채널 상세)</span></div>
+    <p class="muted" style="font-size:10.5px;margin:0 0 6px;">CEI(카니발 근거지수) = 탈추세·차분·net이 <strong>유의하게 음(잠식)</strong>일 때만 가산(relu) → 높을수록 의심 큼. 적격 통과 채널만 순위, 데이터 부족은 하단(⚠=부족하지만 잠식 방향 신호).</p>
+    ${banner}
+    <div class="table-wrap"><table class="data" style="font-size:11px;"><thead>${headRow}</thead><tbody>
+      ${elig.map(rowHtml).join("")}
+      ${tier2.length ? `<tr><td colspan="10" style="background:rgba(156,163,175,0.08);color:var(--text-muted);font-size:10px;font-weight:600;padding:5px 8px;">⊘ 데이터 부족 (판단 불가 · ⚠는 신호 있어 놓치지 않음)</td></tr>${tier2.map(rowHtml).join("")}` : ""}
+    </tbody></table></div>`;
+  return `${bucketsHtml}${rankTable}${renderMmmModelNumber(c, T, selCh)}`;
+}
+// Model Number 패널 — 선택 채널의 각 지표가 "어떤 범위면 좋고/나쁜지 + 이 채널 값 + 평어".
+function renderMmmModelNumber(c, T, selCh) {
+  const rk = T.cannibRank || [], r = rk.find(x => x.key === selCh) || rk[0];
+  if (!r) return "";
+  const cn = T.cannibByChannel[r.key] || {}, R = MMM_CANNIB_RULES, RC = RANK_CFG;
+  const num = (v, d = 3) => (v == null || !isFinite(v)) ? "—" : (+v).toFixed(d);
+  const ni = cn.net_incrementality || {}, p = cn.precedence || {}, g = cn.granger && cn.granger.spend_to_organic;
+  const detRead = r.rDet <= R.detrendAgainst ? `<span style="color:#f87171;font-weight:600;">잠식 방향</span>` : r.rDet <= R.detrendFor ? `<span style="color:#fbbf24;font-weight:600;">경계</span>` : `<span style="color:#22c55e;font-weight:600;">무해</span>`;
+  const netRead = r.gated ? `<span style="color:#adc6ff;">공선으로 측정 불가</span>` : (ni.ci_lo == null ? "—" : (ni.ci_lo <= 0 && ni.ci_hi >= 0) ? `<span style="color:var(--text-muted);">노이즈 — 0과 구분 안 됨</span>` : (ni.net_elasticity > 0 ? `<span style="color:#22c55e;font-weight:600;">증분(좋음)</span>` : `<span style="color:#f87171;font-weight:600;">잠식</span>`));
+  const precRead = (p.slope_p != null && p.slope_p < R.precSlopeP && p.kpi_change_over_window_pct <= -R.precDeclinePct)
+    ? `<span style="color:#f87171;">저지출 유의 하락 → 시점상 잠식 양립</span>` : (p.slope_p != null && p.slope_p < R.precSlopeP)
+    ? `<span style="color:#22c55e;">저지출에 이미 하락 = 광고 전부터 떨어짐 → 무죄(오가닉)</span>` : `<span style="color:var(--text-muted);">저지출 변화 비유의 → 단서 약함</span>`;
+  const grRead = !g ? "—" : (cn.granger_cannibal ? `<span style="color:#f87171;font-weight:600;">시차 잠식</span>` : cn.granger_help ? `<span style="color:#22c55e;">시차 증분</span>` : `<span style="color:var(--text-muted);">신호 없음</span>`);
+  const gateRead = r.gated ? `<span style="color:#fbbf24;">공선·검정력↓ (net 보류)</span>` : `<span style="color:#22c55e;">통과</span>`;
+  const eligRead = r.eligible ? `<span style="color:#22c55e;">적격</span>` : `<span style="color:#f87171;">데이터 부족</span>`;
+  const row = (metric, badRange, goodRange, value, reading) => `<tr><td><strong>${metric}</strong></td><td style="color:#f87171;font-size:10.5px;">${badRange}</td><td style="color:#22c55e;font-size:10.5px;">${goodRange}</td><td class="tnum">${value}</td><td style="font-size:11px;">${reading}</td></tr>`;
+  return `<details style="margin-top:14px;" open><summary style="cursor:pointer;font-size:12.5px;color:#adc6ff;font-weight:700;">📐 Model Number — 어떤 숫자가 나와야 하나 (선택: <span style="color:#7aa2f7;">${escapeHtml(r.label)}</span>)</summary>
+    <p class="muted" style="font-size:10.5px;margin:5px 0 6px;">각 지표가 어느 범위면 잠식(나쁨)/무해(좋음)인지 + <strong>이 채널의 실제 값과 평어 해석</strong>. 채널은 위 표/칩에서 전환.</p>
+    <div class="table-wrap"><table class="data" style="font-size:11px;">
+      <thead><tr><th>지표</th><th style="color:#f87171;">잠식 범위(나쁨)</th><th style="color:#22c55e;">무해/증분(좋음)</th><th>이 채널 값</th><th>해석</th></tr></thead>
       <tbody>
-        <tr><td><strong>A 탈추세·차분</strong></td><td>탈추세 r & 차분 r ≥ ${R.detrendFor}</td><td>탈추세 r 또는 차분 r ≤ ${R.detrendAgainst}</td><td>그 사이</td></tr>
-        <tr><td><strong>B 저지출 선행성</strong></td><td>저지출(≤p${R.lowSpendPct * 100}) slope 무하락 또는 비유의(p≥${R.precSlopeP})</td><td>저지출 slope 유의 하락(p&lt;${R.precSlopeP}) & 누적 ≤ −${R.precDeclinePct}%</td><td>게이트 시</td></tr>
-        <tr><td><strong>C net 탄력성</strong></td><td>coef ≥ 0 & p&lt;${R.netP} (또는 95%CI 하한 &gt; −${R.netMaterial})</td><td>coef &lt; 0 & p&lt;${R.netP}</td><td>CI가 0을 걸침 / 게이트</td></tr>
-        <tr><td><strong>D 그랜저(시차)</strong></td><td>양방향 비유의 또는 Σ계수 &gt; 0</td><td>spend→organic p&lt;${R.netP} & Σ계수 &lt; 0</td><td>organic→spend 유의 = 페이싱</td></tr>
-        <tr><td><strong>🔗 검정력 게이트</strong><br><span style="color:var(--text-muted);">걸리면 C 보류 · 판정 OK 불가</span></td><td colspan="3">VIF ≥ ${R.gateVif} · |corr(지출,시간)| ≥ ${R.gateSpendTimeCorr} · net CI폭 ≥ ${R.gateCiMult}×|coef| · n &lt; ${R.gateMinN} — <strong>하나라도</strong> 해당하면 공선/검정력 부족(채널은 제외 안 하고 못 가린다로 캡)</td></tr>
-        <tr><td><strong>최종 판정</strong></td><td>FOR ≥ ${R.otherBarFor}(브랜드 ${R.brandBarFor}) & AGAINST 0 & 게이트통과 → 없다(잠정)</td><td>AGAINST ≥ 1 → 있다</td><td>그 외 → 못 가린다(기본값)</td></tr>
+        ${row("탈추세 partial r", `≤ ${R.detrendAgainst}`, `≥ ${R.detrendFor}`, `${num(r.rDet)} (p=${num(r.detP)})`, detRead)}
+        ${row("net 탄력성", `&lt; 0 & 유의`, `&gt; 0 & 유의 (CI 0 미포함)`, r.gated ? "공선" : `${num(ni.net_elasticity)}${ni.ci_lo != null ? ` [${num(ni.ci_lo)},${num(ni.ci_hi)}]` : ""}`, netRead)}
+        ${row("저지출 선행성 ⚠", `광고 본격화 後 꺾임`, `광고 前부터 하락(무죄)`, p.kpi_slope_per_wk != null ? `${num(p.kpi_slope_per_wk, 1)}/주 p=${num(p.slope_p)}` : "—", precRead)}
+        ${row("그랜저 시차", `Σ&lt;0 & p&lt;${R.netP}`, `Σ&gt;0 또는 비유의`, g ? `Σ=${num(g.coefSum)} p=${num(g.p)}` : "—", grRead)}
+        ${row("검정력 게이트", `VIF≥${R.gateVif} · corr≥${R.gateSpendTimeCorr}`, `미만`, r.gated ? "걸림" : "통과", gateRead)}
+        ${row("데이터 적격", `집행&lt;${RC.MIN_ACTIVE} · CV&lt;${RC.MIN_SPEND_CV}`, `이상`, `집행 ${r.nActive}/${r.total} · CV ${num(r.spendCV, 2)} · df ${r.dfResid}`, eligRead)}
       </tbody>
     </table></div>
-    <p class="muted" style="font-size:10px;margin-top:4px;">관측 검정은 적색신호를 거를 뿐 무죄를 증명하지 않습니다 — "없다"는 잠정이고 확정은 holdout(5-15). 임계값은 Config 가능(결정론 하드 규칙).</p>
+    <p class="muted" style="font-size:10px;margin-top:5px;">⚠ <strong>저지출 선행성은 부호 해석이 반대</strong>입니다: 광고 본격화 <em>전(저지출 구간)</em>에 이미 유의하게 떨어지고 있었으면 "광고가 빼앗은 게 아니라 원래 떨어짐 = 무죄(오가닉)"입니다. 그래서 유의한 하락 숫자가 오히려 FOR(무해)로 잡힙니다. · 관측은 무죄를 증명하지 않음 — 확정은 holdout(5-15).</p>
   </details>`;
-  return `${bucketsHtml}
-    <div style="font-size:11.5px;color:var(--text-1);font-weight:600;margin-bottom:4px;">프로세스 결과 표 — 각 채널이 검정 4개를 어떻게 통과했나 <span style="font-weight:400;color:var(--text-muted);">(행 클릭 → 아래 상세 드릴다운)</span></div>
-    <div class="table-wrap"><table class="data" style="font-size:11px;">
-      <thead><tr><th>채널</th><th>STEP0 식별${mmmInfoIcon("cannib_overview")}</th><th>A 탈추세${mmmInfoIcon("spurious_detrend")}</th><th>B 선행성${mmmInfoIcon("precedence")}</th><th>C net${mmmInfoIcon("net_incrementality")}</th><th>D 그랜저${mmmInfoIcon("granger")}</th><th>최종</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="7">채널 없음</td></tr>'}</tbody>
-    </table></div>
-    <p class="muted" style="font-size:10px;margin:4px 0 0;">A·B·C = <span style="color:#22c55e;">오가닉</span>(FOR)/<span style="color:#f87171;">잠식</span>(AGAINST)/보류(ABSTAIN) 투표 · D 그랜저는 시차·방향. STEP0는 <strong>데이터 충분성</strong>(✓통과/⊘부족)만 — <strong>공선(🔗)은 채널을 빼지 않고</strong> net만 보류·판정을 "못 가린다"로 캡합니다(과보수 완화).</p>
-    <div style="font-size:11.5px;color:var(--text-1);font-weight:600;margin:14px 0 4px;">점수 표 — 그래서 그 판정이 어떤 숫자에서 나왔나 <span style="font-weight:400;color:var(--text-muted);">(위 표와 같은 채널 순서)</span></div>
-    <div class="table-wrap"><table class="data" style="font-size:10.5px;">
-      <thead><tr><th>채널</th><th>B 선행성 (slope/주·p)</th><th>A 탈추세 (raw→det·차분)</th><th>C net (coef·p·CI)</th><th>D 그랜저 (lag·F·p·Σ)</th><th>게이트</th></tr></thead>
-      <tbody>${scoreRows || '<tr><td colspan="6">채널 없음</td></tr>'}</tbody>
-    </table></div>
-    ${thrRef}`;
 }
 function renderMmmCannib(c) {
   const T = c.byTarget[MMM_METH_STATE.target]; if (!T) return "";
