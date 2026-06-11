@@ -11789,9 +11789,9 @@ const MMM_GLOSSARY = {
   "confidence_dots": {
     "term": "신뢰도 ●●●●○ (이 결론을 얼마나 믿어도 되는지 5점 시각 표시)",
     "reason": "통계 용어(p값·CI)를 몰라도 '이 숫자 믿어도 되나?'를 한눈에 보게 만든 표시입니다. 채워진 동그라미가 많을수록 그 결론을 의사결정에 써도 안전하다는 뜻입니다.",
-    "how": "채널 효과는 그 계수의 p값(우연일 확률)으로 점수를 매깁니다 — p<0.001이면 ●●●●●, <0.01이면 ●●●●○, <0.05면 ●●●○○, <0.1이면 ●●○○○, 그 이상이면 ●○○○○. 추세·잠식 결론은 여러 독립 검정(STL·Mann-Kendall·ADF·KPSS 등)이 몇 개나 같은 쪽으로 일치했는지로 점수를 올립니다.",
-    "interpret": "●●●●●~●●●●○면 매우 높음 — 그대로 결정 근거로 쓰세요. ●●●○○는 보통 — 참고하되 다른 근거와 같이. ●●○○○ 이하는 약함 — '아직 모른다'에 가깝고 단독 근거로 쓰면 안 됩니다.",
-    "significance": "동그라미 3개(●●●○○)가 통상 기준선인 p<0.05(우연일 확률 5% 미만)에 대응합니다. 즉 3개 이상이어야 '통계적으로 믿을 만하다'의 최소선을 넘습니다. 추세·잠식은 여러 검정이 동시에 합의할수록 점이 차오릅니다.",
+    "how": "채널 효과는 그 계수의 p값(우연일 확률)으로 점수를 매깁니다 — p<0.001이면 ●●●●●, <0.01이면 ●●●●○, <0.05면 ●●●○○, <0.1이면 ●●○○○, 그 이상이면 ●○○○○. <strong>추세</strong>는 raw가 아니라 매체·계절을 통제한 잔차(organic) MK·자기상관보정 MK·탈계절 MK가 한 방향으로 합의하는지로 매깁니다 — raw만 추세이고 잔차는 'no trend'면(광고에 가려진 착시) 점이 낮아집니다. <strong>잠식</strong>은 '식별 가능한 채널(비-0 충분·커버리지≥50%·공선/검정력 통과)'들의 worst-case로 매기되, 관측은 '잠식 없음'을 증명하지 못하므로 OK라도 상한이 ●●●○○이고, 식별 채널이 하나도 없으면(전부 sparse·공선) ●○○○○입니다.",
+    "interpret": "●●●●●~●●●●○면 매우 높음 — 그대로 결정 근거로 쓰세요. ●●●○○는 보통 — 참고하되 다른 근거와 같이. ●●○○○ 이하는 약함 — '아직 모른다'에 가깝고 단독 근거로 쓰면 안 됩니다. <strong>잠식 결론은 관측만으론 OK여도 ●●●○○를 못 넘습니다</strong>(무죄 증명 불가).",
+    "significance": "동그라미 3개(●●●○○)가 통상 기준선인 p<0.05(우연일 확률 5% 미만)에 대응합니다. 즉 3개 이상이어야 '통계적으로 믿을 만하다'의 최소선을 넘습니다. 점은 <strong>식별성</strong>과 묶여 있어, 데이터가 적거나(sparse) 변수끼리 닮으면(공선) 계수·투표가 좋아 보여도 점이 차오르지 않습니다.",
     "example": "Google ROI 효과가 ●●●●○면 '가입을 끌어올린다'를 예산 회의에서 자신 있게 말해도 되고, TikTok이 ●○○○○면 '효과 있다/없다'를 아직 단정하지 말라는 신호입니다.",
     "caveat": "점이 많다고 '인과(광고를 켜서 늘었다)'가 증명된 건 아닙니다. 어디까지나 '이 통계적 연관이 우연이 아닐 가능성'이며, 인과·증분 확정은 holdout(5-15) 실험 전용입니다."
   },
@@ -11816,8 +11816,13 @@ const MMM_CHANNELS = [
 ];
 // 활성 채널 리스트 (동적): 패널에 channels가 있으면 그것, 없으면(골든 합성패널) 고정 키로 유추
 function _mmmChans(panel) {
-  if (panel.channels) return panel.channels;
-  return MMM_CHANNELS.filter(ch => panel.ch[ch.key]).map(ch => ({ key: ch.key, label: ch.label, kind: ch.key === "brand" ? "brand" : "perf" }));
+  const raw = panel.channels
+    ? panel.channels
+    : MMM_CHANNELS.filter(ch => panel.ch[ch.key]).map(ch => ({ key: ch.key, label: ch.label, kind: ch.key === "brand" ? "brand" : "perf" }));
+  // 키 중복 제거 (colMap 태그모드에서 같은 채널이 두 번 들어오면 표·effects가 중복 렌더되는 버그 방지)
+  const seen = new Set(), out = [];
+  for (const ch of raw) { if (seen.has(ch.key)) continue; seen.add(ch.key); out.push(ch); }
+  return out;
 }
 const MMM_DUMMIES = [
   { key: "PreLNY", field: "d_prelny" }, { key: "Seollal", field: "d_seollal" },
@@ -12455,18 +12460,45 @@ function mmmConfInline(level, valueText, tip) {
   return `<span style="color:#adc6ff;letter-spacing:1px;">${mmmConfDots(level)}</span> <span style="color:var(--text-muted);font-size:11px;font-family:var(--font-mono,monospace);">${valueText}</span>${tip ? mmmTip(tip) : ""}`;
 }
 function mmmPtoConf(p) { return p < 0.001 ? 5 : p < 0.01 ? 4 : p < 0.05 ? 3 : p < 0.1 ? 2 : 1; }
+// 추세 신뢰도: raw가 아니라 organic(매체통제 잔차)·자기상관보정·탈계절 MK가 얼마나 한 방향으로 합의하나로.
+// raw만 trend이고 잔차/조직 검정은 no-trend면 media-confounded → 신뢰도↓ (●●●●● 방지).
 function mmmTrendConf(trend) {
-  const labels = [trend.mk_raw[0], trend.mk_ac_robust[0], trend.mk_seasonal[0], trend.mk_deseason[0]];
-  const noTrend = labels.filter(l => l === "no trend").length;
-  const agree = Math.max(noTrend, 4 - noTrend);   // 다수 일치 개수
-  const ts = (trend.adf_ct_p < 0.05 && trend.kpss_ct_p >= 0.05) || (trend.adf_ct_p >= 0.05 && trend.kpss_ct_p < 0.05);
-  return Math.min(5, agree + (ts ? 1 : 0));
+  const sig = [trend.mk_ac_robust, trend.mk_deseason, trend.resid_after_media_mk].filter(Boolean);
+  const isT = (l) => l && l[0] !== "no trend";
+  const nT = sig.filter(isT).length, nNo = sig.length - nT;
+  const agree = Math.max(nT, nNo);   // 0..3 — 잔차 포함 세 검정의 한 방향 합의
+  const tsClean = (trend.adf_ct_p < 0.05 && trend.kpss_ct_p >= 0.05);   // 추세-정상 명확
+  if (sig.length < 3) return 2;
+  if (agree === 3) return tsClean ? 5 : 4;   // 만장일치(+정상성)
+  if (agree === 2) return 3;                  // 2:1 (일부 검정 갈림)
+  return 2;                                    // 1.5:1.5 등 — media-confound 가능, 보통 이하
 }
-function mmmCannibConf(cn) {
-  if (cn.power_gate && cn.power_gate.blocked) return 1;   // 검정력 부족 → 신뢰도 낮음
-  const v = cn.votes || { FOR: cn.organic_votes || 0, AGAINST: 0 };
-  const decisive = Math.max(v.FOR || 0, v.AGAINST || 0);   // 한 방향 합의 강도
-  return decisive >= 3 ? 5 : decisive === 2 ? 4 : decisive === 1 ? 3 : 2;
+// 카니발 신뢰도: 식별 가능한 채널의 worst-case 전역 verdict 기준. 관측은 "방어"를 증명 못하므로 OK 상한 3,
+// 관측상 잠식 신호도 holdout 미확정이라 상한 4. 식별 채널 없으면(전부 sparse·공선) 1.
+function mmmCannibConf(g) {
+  if (!g || g.noIdentified) return 1;
+  if (g.verdict_class === "inconclusive") return 2;
+  if (g.verdict_class === "ok") return Math.min(3, 1 + (g.n_identified || 1));   // OK는 관측상 최대 ●●●○○
+  if (g.verdict_class === "cannibal") return (g.decisive || 0) >= 2 ? 4 : 3;     // 관측 잠식 신호 상한 ●●●●○
+  return 2;
+}
+// 전역 카니발 verdict = 식별 가능한 채널들의 worst-case (cannibal > inconclusive > ok). 식별 채널 0이면 inconclusive.
+function mmmGlobalCannib(cannibByChannel, identifiedKeys) {
+  if (!identifiedKeys || !identifiedKeys.length) {
+    return { verdict_class: "inconclusive", noIdentified: true, n_identified: 0, identified: [], cannibChannels: [], inconclusiveChannels: [], decisive: 0 };
+  }
+  const items = identifiedKeys.map(k => cannibByChannel[k]).filter(Boolean);
+  const has = (cls) => items.some(x => x.verdict_class === cls);
+  const verdict_class = has("cannibal") ? "cannibal" : has("inconclusive") ? "inconclusive" : "ok";
+  const cannibItems = items.filter(x => x.verdict_class === "cannibal");
+  const decisive = cannibItems.reduce((m, x) => Math.max(m, ((x.votes || {}).AGAINST || 0)), 0);
+  return {
+    verdict_class, noIdentified: false, n_identified: identifiedKeys.length, identified: identifiedKeys,
+    cannibChannels: cannibItems.map(x => x.channelLabel || x.channel),
+    inconclusiveChannels: items.filter(x => x.verdict_class === "inconclusive").map(x => x.channelLabel || x.channel),
+    okChannels: items.filter(x => x.verdict_class === "ok").map(x => x.channelLabel || x.channel),
+    decisive,
+  };
 }
 function mmmTrendPlain(trend, target) {
   const v = trend.verdict;
@@ -12480,7 +12512,14 @@ function mmmCannibPlain(cn, target) {
   const gate = (cn.power_gate && cn.power_gate.blocked) ? ` <span style="color:#fbbf24;">⚠ 검정력 부족(${escapeHtml((cn.power_gate.reasons || [])[0] || "")})으로 "방어"로 단정 불가</span>` : "";
   if (cn.verdict_class === "cannibal") return `<strong>${escapeHtml(chl)}</strong> 광고가 오가닉 ${target}을(를) <strong style="color:#f87171;">잠식할 우려가 있습니다</strong> (${vs}). 한 개 이상의 검정이 "카니발" 쪽을 가리킵니다 — <strong>holdout 실험(5-15)이 1순위</strong>입니다.${gate} <span style="color:var(--text-muted);">(채널별 결과는 §4에서 전환)</span>`;
   if (cn.verdict_class === "ok") return `<strong>${escapeHtml(chl)}</strong>는 <strong style="color:#22c55e;">관측상 적색신호가 없습니다</strong> (${vs}, 반대 0). 독립 검정들이 일관되게 "오가닉(외생적 하락)·방어" 쪽을 지지해 잠식 가능성은 낮아 보입니다. <strong>단 "카니발 없음"을 단정할 수는 없고</strong>, 결정적 확인은 geo holdout(5-15)입니다.${gate} <span style="color:var(--text-muted);">(채널별 결과는 §4)</span>`;
-  return `<strong>${escapeHtml(chl)}</strong>는 <strong style="color:#fbbf24;">증거가 불충분(INCONCLUSIVE)</strong>합니다 (${vs}). 잠식인지 방어인지 관측만으로 가를 수 없어, 기본값은 "판단 보류"입니다 — holdout 실험(5-15)이 필요합니다.${gate} <span style="color:var(--text-muted);">(채널별 결과는 §4)</span>`;
+  return `<strong>${escapeHtml(chl)}</strong>는 <strong style="color:#fbbf24;">증거가 불충분(INCONCLUSIVE·판단보류)</strong>합니다 (${vs}). 잠식인지 방어인지 관측만으로 가를 수 없어, 기본값은 "판단 보류"입니다 — holdout 실험(5-15)이 필요합니다.${gate} <span style="color:var(--text-muted);">(채널별 결과는 §4)</span>`;
+}
+// 전역(worst-case) 카니발 평어 — 식별 가능한 채널들을 종합. sparse·공선 채널의 vacuous OK를 헤드라인으로 승격하지 않음.
+function mmmGlobalCannibPlain(g, target) {
+  if (!g || g.noIdentified) return `현재 매핑에서 <strong style="color:#fbbf24;">식별 가능한 채널이 없습니다</strong> — 모든 채널이 데이터 부족(sparse)·저커버리지·공선/검정력 부족이라 관측만으로 잠식 여부를 가릴 수 없습니다. ${target} 잠식 판정은 <strong>holdout 실험(5-15)</strong>이 필요합니다. <span style="color:var(--text-muted);">(채널별 검정은 §4)</span>`;
+  if (g.verdict_class === "cannibal") return `식별 채널 <strong>${g.cannibChannels.map(escapeHtml).join(", ")}</strong>에서 오가닉 ${target} <strong style="color:#f87171;">잠식 우려</strong>가 잡힙니다. 한 채널이라도 적색신호면 전역도 보수적으로 "잠식 우려"입니다 — <strong>holdout(5-15) 1순위</strong>. <span style="color:var(--text-muted);">(채널별 §4)</span>`;
+  if (g.verdict_class === "inconclusive") return `식별 가능한 채널(${g.n_identified}개) 중 적어도 하나가 <strong style="color:#fbbf24;">판단 보류(INCONCLUSIVE)</strong>라, 전역도 "방어/OK"로 단정하지 않습니다${g.inconclusiveChannels.length ? ` (${g.inconclusiveChannels.map(escapeHtml).join(", ")})` : ""}. 잠식인지 방어인지 관측만으론 못 가릅니다 — holdout(5-15) 필요. <span style="color:var(--text-muted);">(채널별 §4)</span>`;
+  return `식별 가능한 채널(${g.n_identified}개: ${g.okChannels.map(escapeHtml).join(", ")}) 모두에서 <strong style="color:#22c55e;">관측상 적색신호가 없습니다</strong>. 다만 관측은 "잠식 없음"을 증명하지 못합니다 — 방어 가능성이 높다는 정황일 뿐, 확정은 geo holdout(5-15)입니다. <span style="color:var(--text-muted);">(채널별 §4)</span>`;
 }
 
 // 표준화 ridge — 공선 채널의 과대귀속 계수를 수축해 baseline 양수화. auto-λ = β0≥0 & 모든 채널 평균기여 ≤ ȳ 최소 λ.
@@ -12913,8 +12952,22 @@ function buildMmmMethCache() {
         cannibByChannel[ch.key] = mmmCannibalization(panel, cfg, t, netE, ch.key);
         cannChannels.push(ch.key);
       }
-      const defCh = cannChannels.includes("google_roi") ? "google_roi" : cannChannels[0];
+      // 식별성 단일 게이트(전역): 비-0 충분 AND 커버리지≥0.5 AND 최근끊김 아님 AND 검정력 게이트 통과(VIF·공선·표본).
+      // sparse·공선 채널의 vacuous OK가 대표/전역 결론으로 승격되는 것을 차단(비판 A·D).
+      const cov = mmmChannelCoverage(panel, cfg);
+      const isIdentified = (k) => {
+        const cv = cov[k], cn = cannibByChannel[k];
+        return !!(cv && !cv.sparse && cv.coverage >= 0.5 && !cv.trailingZero && cn && !(cn.power_gate && cn.power_gate.blocked));
+      };
+      const identifiedChannels = cannChannels.filter(isIdentified);
+      // 대표채널: 식별 채널 중 비-0 최다, 동률이면 VIF 최저. 식별 채널 없으면 least-bad(비-0 최다)로 폴백.
+      const pickRep = (list) => list.slice().sort((a, b) => {
+        const na = (cov[a] || {}).nonzero || 0, nb = (cov[b] || {}).nonzero || 0; if (nb !== na) return nb - na;
+        return (vifMap["ln_" + a] || 0) - (vifMap["ln_" + b] || 0);
+      })[0];
+      const defCh = identifiedChannels.length ? pickRep(identifiedChannels) : (cannChannels.length ? pickRep(cannChannels) : null);
       const cannib = defCh ? cannibByChannel[defCh] : mmmCannibalization(panel, cfg, t, { coef: NaN, p: NaN }, null);
+      const globalCannib = mmmGlobalCannib(cannibByChannel, identifiedChannels);   // 전역 worst-case (§0·§6)
       const effects = mmmChannelEffects(panel, cfg, t, mmm.best_lambda);
       const decomp = mmmWeeklyDecomp(panel, cfg, t, mmm.best_lambda);
       // 변화점 탐지 (추세가 언제 꺾였나) — 오가닉 타깃 + 채널별 지출, 타이밍 선후로 선행성 보조
@@ -12923,7 +12976,7 @@ function buildMmmMethCache() {
       for (const k of cannChannels) cpSpend[k] = mmmChangePoints(panel.ch[k]);
       const cpDrivers = mmmChangePointDrivers(panel, t, cpTarget);   // 변화점별 전후 비교(그때 뭐가 튀었나)
       const changePoints = { target: cpTarget, spend: cpSpend, drivers: cpDrivers };
-      C.byTarget[t] = { trend, cannib, cannibByChannel, cannChannels, defCh, mmm, effects, decomp, changePoints };
+      C.byTarget[t] = { trend, cannib, cannibByChannel, cannChannels, defCh, identifiedChannels, globalCannib, mmm, effects, decomp, changePoints };
     }
     C.error = null;
   } catch (e) { C.error = e.message; }
@@ -13116,7 +13169,7 @@ function renderMmmSummary(c) {
   const targetCard = (t) => {
     const T = c.byTarget[t]; if (!T) return "";
     const meanY = Math.round(c.panel.targets[t].reduce((a, b) => a + b, 0) / c.panel.targets[t].length);
-    const tConf = mmmTrendConf(T.trend), cConf = mmmCannibConf(T.cannib);
+    const tConf = mmmTrendConf(T.trend), cConf = mmmCannibConf(T.globalCannib);
     // 채널별 효과 표
     const sparseList = (T.effects || []).filter(e => e.sparse);
     const effRows = (T.effects || []).map(e => {
@@ -13147,8 +13200,8 @@ function renderMmmSummary(c) {
         </div>
 
         <div style="margin-bottom:10px;">
-          <div style="font-size:13px;color:var(--text-1);line-height:1.65;"><span style="color:#7aa2f7;font-weight:700;">②  카니발(잠식) 여부</span>${mmmInfoIcon("cannib_overview")} — ${mmmCannibPlain(T.cannib, _MMM_TARGET_KO[t].split(" ")[0])}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">통계적 신뢰도 ${mmmConfInline(cConf, `${T.cannib.vote_summary || ""}${T.cannib.power_gate && T.cannib.power_gate.blocked ? " · 검정력↓" : ""}`, `3개 독립 검정의 투표(FOR 오가닉 / AGAINST 카니발 / ABSTAIN 보류). 한 방향 합의가 강할수록 신뢰도(●)↑. 검정력 게이트(공선·표본부족)에 걸리면 "방어"로 단정 불가 → 신뢰도 최저.`)}</div>
+          <div style="font-size:13px;color:var(--text-1);line-height:1.65;"><span style="color:#7aa2f7;font-weight:700;">②  카니발(잠식) 여부</span>${mmmInfoIcon("cannib_overview")} — ${mmmGlobalCannibPlain(T.globalCannib, _MMM_TARGET_KO[t].split(" ")[0])}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">통계적 신뢰도 ${mmmConfInline(cConf, T.globalCannib.noIdentified ? "식별 채널 0개" : `식별 채널 ${T.globalCannib.n_identified}개 worst-case`, `식별 가능한 채널(비-0 충분·커버리지≥50%·공선/검정력 통과)들의 worst-case 종합입니다. 관측은 "잠식 없음"을 증명하지 못하므로 OK라도 신뢰도 상한은 ●●●○○, 식별 채널이 없으면(전부 sparse·공선) ●○○○○. 대표채널은 가장 잘 식별된 채널입니다.`)}</div>
         </div>
 
         <div>
@@ -13534,14 +13587,18 @@ function renderMmmDecomp(c) {
 }
 function renderMmmVerdict(c) {
   const lines = [];
+  const gLabel = { cannibal: "잠식 우려(LEAN CANNIBAL)", inconclusive: "판단보류(INCONCLUSIVE)", ok: "관측상 적색신호 없음(잠정)" };
   for (const t of c.targets) {
     const T = c.byTarget[t];
-    lines.push(`<li><strong>${t}:</strong> 추세=${escapeHtml(T.trend.verdict)} · 카니발=${escapeHtml(T.cannib.verdict)} · best λ=${T.mmm.best_lambda} · 최상위 드라이버(Shapley)=${escapeHtml(T.mmm.shapley.rows[0]?.driver || "—")} (${(T.mmm.shapley.rows[0]?.pct || 0).toFixed(0)}%)</li>`);
+    const g = T.globalCannib || { verdict_class: T.cannib.verdict_class, noIdentified: false, n_identified: 0 };
+    const gTxt = g.noIdentified ? "판단보류 — 식별 채널 0개(전부 sparse·공선)" : gLabel[g.verdict_class] || g.verdict_class;
+    const repTxt = T.defCh ? ` · 대표채널=${escapeHtml((T.cannibByChannel[T.defCh] || {}).channelLabel || T.defCh)}` : "";
+    lines.push(`<li><strong>${t}:</strong> 추세=${escapeHtml(T.trend.verdict)} · 카니발(전역 worst-case)=${escapeHtml(gTxt)}${repTxt} · best λ=${T.mmm.best_lambda} · 최상위 드라이버(Shapley)=${escapeHtml(T.mmm.shapley.rows[0]?.driver || "—")} (${(T.mmm.shapley.rows[0]?.pct || 0).toFixed(0)}%)</li>`);
   }
   return `<section class="block" id="s-verdict">
     <h2 class="section-title"><span class="ix">§6</span>종합 verdict + export</h2>
     <ul style="font-size:13px;line-height:1.7;">${lines.join("")}</ul>
-    <p class="muted" style="font-size:11px;">described(연관) vs 검정할 가설 vs holdout 필요 구분. 어떤 계수도 검증된 인과/증분 추정이 아님 — 결정적 검증은 geo holdout / organic-split.</p>
+    <p class="muted" style="font-size:11px;">전역 카니발 verdict는 <strong>식별 가능한 채널들의 worst-case</strong>입니다 — 식별 채널 중 하나라도 잠식 우려/판단보류면 전역도 "방어/OK"가 되지 않습니다(§4의 보수적 입증책임을 종합 단계까지 유지). described(연관) vs 검정할 가설 vs holdout 필요 구분. 어떤 계수도 검증된 인과/증분 추정이 아님 — 결정적 검증은 geo holdout / organic-split.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="ab-pill" id="mmm-export-json">⬇ Results JSON</button><button class="ab-pill" id="mmm-export-md">⬇ verdict.md</button></div>
   </section>`;
 }
