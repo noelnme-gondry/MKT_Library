@@ -11647,10 +11647,18 @@ function mmmBuildCannibRank(panel, cannibByChannel, cov, chans) {
       if (netSe > 0) z3 = ni.net_elasticity / netSe;
     }
     const relu = CANNIBAL_RANK.relu;
-    const cei = +(cfg.W.detrend * relu(-z2) + cfg.W.diff * relu(-z2d) + cfg.W.net * relu(-z3)).toFixed(3);
+    // CEI = 유의(p<.10, |z|≥1.645) 방향만 가산 — 노이즈(비유의 음, 예: r=-0.125 p=0.16)는 0. 빨간 1위 ↔ deprioritize 모순 방지.
+    const contrib = (z) => relu(-z - zW);
+    const cei = +(cfg.W.detrend * contrib(z2) + cfg.W.diff * contrib(z2d) + cfg.W.net * contrib(z3)).toFixed(3);
     const detP = +CANNIBAL_RANK.twoSidedP(z2).toFixed(4);
     const anyAgainst = cn.precedence.vote === "AGAINST" || cn.detrend_corr.vote === "AGAINST" || ni.vote === "AGAINST" || cn.granger_cannibal;
     const cannibSignal = (z2 < -zA) || (z2d < -zA) || anyAgainst;   // 유의 음 방향 또는 AGAINST/시차잠식
+    // 검정 방향 카운트 (A 탈추세·B 선행성·C net + D 그랜저)
+    const votes3 = [cn.detrend_corr.vote, cn.precedence.vote, ni.vote];
+    const forCount = votes3.filter(v => v === "FOR").length;
+    const againstCount = votes3.filter(v => v === "AGAINST").length + (cn.granger_cannibal ? 1 : 0);
+    const abstainCount = votes3.filter(v => v === "ABSTAIN" || !v).length + (!cn.granger_cannibal && !cn.granger_help ? 1 : 0);
+    const leanNeg = rDet <= MMM_CANNIB_RULES.detrendFor;   // 탈추세가 음으로 기울었나(유의 여부 무관)
     // 근거강도 배지
     let badge;
     if (!el.eligible) badge = "판단불가";
@@ -11664,6 +11672,7 @@ function mmmBuildCannibRank(panel, cannibByChannel, cov, chans) {
       gated, z2: +z2.toFixed(2), z2d: +z2d.toFixed(2), z3: +z3.toFixed(2), cei, detP,
       rDet, rDiff, netElast: ni.net_elasticity, netP: ni.p, netCiLo: ni.ci_lo, netCiHi: ni.ci_hi, netSe: netSe == null ? null : +netSe.toFixed(4),
       cannibSignal, badge, verdict_class: cn.verdict_class, spendShare, brand: cn.is_brand_intercept,
+      forCount, againstCount, abstainCount, leanNeg,
     };
   }).filter(Boolean);
   // 정렬: 적격 우선 → CEI desc → spendShare desc → 이름. Tier2: 잠식신호 우선 → nActive desc.
@@ -11680,7 +11689,10 @@ function mmmCannibAction(r) {
   if (!r.eligible) return r.cannibSignal ? "⚠ 데이터 부족하지만 잠식 방향 신호 — 데이터 축적·holdout 고려" : "모니터 — 집행 확대/데이터 축적 후 재검";
   if (r.badge === "강") return "holdout 우선순위 높음";
   if (r.badge === "중") return "holdout 후보 (우선순위 중)";
-  return "관측상 이상 無 — deprioritize (증액 검토 가능)";
+  // 약: 게이트(공선)·방향으로 분기. 공선은 '안전'이 아니라 '못 봄' → deprioritize 금지.
+  if (r.gated) return "공선으로 관측 식별 불가 — '안전' 단정 말고 holdout으로 확인";
+  if (r.leanNeg) return "약한 음의 기미·검정력 부족 — 모니터 / holdout 고려";
+  return "관측상 이상 無 (비공선·탈추세 무해) — deprioritize 가능";
 }
 // 채널 키(semantic) → 5-18 매핑 필드
 
@@ -13584,11 +13596,18 @@ function renderMmmCannibOverview(c, T, selCh) {
     ${bucketCard(buckets.unidentified, "#9CA3AF", "rgba(156,163,175,0.07)", "⊘ 데이터 부족", "집행주·지출변동 부족 — 평가 보류. ⚠ 표시는 데이터 부족하지만 잠식 방향 신호 있음(스킵 안 함).")}
   </div>`;
   // --- §4.5 랭킹 표 (프로세스+점수 일원화) ---
-  const badgeChip = (b) => b === "강" ? '<span style="color:#f87171;font-weight:700;">강</span>' : b === "중" ? '<span style="color:#fbbf24;font-weight:700;">중</span>' : b === "약" ? '<span style="color:#22c55e;font-weight:700;">약</span>' : '<span style="color:var(--text-muted);">판단불가</span>';
+  const badgeChip = (r) => { const b = r.badge; if (b === "강") return '<span style="color:#f87171;font-weight:700;">강</span>'; if (b === "중") return '<span style="color:#fbbf24;font-weight:700;">중</span>'; if (b === "판단불가") return '<span style="color:var(--text-muted);">판단불가</span>'; return r.leanNeg ? '<span style="color:#fbbf24;font-weight:600;" title="유의하진 않지만 탈추세가 음으로 기욺">약·음기미</span>' : '<span style="color:#22c55e;font-weight:700;">약(무해)</span>'; };
   const verdictChip = (r) => r.eligible
     ? (r.verdict_class === "cannibal" ? '<span style="color:#f87171;font-weight:700;">있다</span>' : r.verdict_class === "ok" ? '<span style="color:#22c55e;font-weight:700;">없다(잠정)</span>' : '<span style="color:#fbbf24;font-weight:700;">못 가린다</span>')
     : (r.cannibSignal ? '<span style="color:#fbbf24;font-weight:600;">⚠ 데이터부족·신호</span>' : '<span style="color:var(--text-muted);">데이터 부족</span>');
-  const abcd = (r) => { const cn = T.cannibByChannel[r.key] || {}; const v = (vote, lab) => { const col = vote === "AGAINST" ? "#f87171" : vote === "FOR" ? "#22c55e" : "var(--text-muted)"; return `<span style="color:${col};" title="${lab} ${vote || '—'}">${lab}</span>`; }; const dCol = cn.granger_cannibal ? "#f87171" : cn.granger_help ? "#22c55e" : cn.pacing ? "#fbbf24" : "var(--text-muted)"; return `<span style="font-family:var(--font-mono,monospace);letter-spacing:3px;font-weight:700;">${v((cn.detrend_corr || {}).vote, "A")}${v((cn.precedence || {}).vote, "B")}${v((cn.net_incrementality || {}).vote, "C")}<span style="color:${dCol};" title="D 그랜저">D</span></span>`; };
+  // 검정 요약: 잠식 N · 무해 M · 보류 K (A 탈추세·B 선행성·C net + D 그랜저). 0개 통과 vs 2개 통과를 한눈에.
+  const testSummary = (r) => {
+    const parts = [];
+    if (r.againstCount) parts.push(`<span style="color:#f87171;font-weight:700;" title="카니발 방향 검정 수">잠식 ${r.againstCount}</span>`);
+    if (r.forCount) parts.push(`<span style="color:#22c55e;font-weight:700;" title="오가닉/무해 방향 검정 수">무해 ${r.forCount}</span>`);
+    if (r.abstainCount) parts.push(`<span style="color:var(--text-muted);" title="판단보류(게이트·노이즈)">보류 ${r.abstainCount}</span>`);
+    return `<span style="font-size:10.5px;">${parts.join(" · ") || "—"}</span>`;
+  };
   const maxCei = Math.max(0.0001, ...rk.filter(r => r.eligible).map(r => r.cei), 0);
   const ceiBar = (cei) => { const w = Math.round(Math.min(1, cei / maxCei) * 100); return `<div style="display:flex;align-items:center;gap:6px;"><div style="width:42px;height:6px;background:var(--bg-2);border-radius:3px;overflow:hidden;"><div style="width:${w}%;height:100%;background:${cei > 0 ? '#f87171' : 'var(--text-muted)'};"></div></div><span class="tnum" style="font-size:10px;">${num(cei, 2)}</span></div>`; };
   const rowHtml = (r) => {
@@ -13600,9 +13619,9 @@ function renderMmmCannibOverview(c, T, selCh) {
       <td class="tnum">${r.eligible ? r.rank : '—'}</td>
       <td><strong>${escapeHtml(r.label)}</strong>${sel ? ' <span style="font-size:9px;color:#adc6ff;">▶</span>' : ''}</td>
       <td>${verdictChip(r)}</td>
-      <td>${badgeChip(r.badge)}</td>
+      <td>${badgeChip(r)}</td>
       <td>${r.eligible ? ceiBar(r.cei) : '<span style="color:var(--text-muted);font-size:10px;">—</span>'}</td>
-      <td style="font-size:11px;">${abcd(r)}</td>
+      <td>${testSummary(r)}</td>
       <td class="tnum" style="color:${detCol};">${num(r.rDet)} <span style="color:var(--text-muted);font-size:9.5px;">p=${num(r.detP)}</span></td>
       <td class="tnum" style="font-size:10.5px;">${netTxt}</td>
       <td style="font-size:9.5px;">${powerTxt}</td>
@@ -13613,7 +13632,7 @@ function renderMmmCannibOverview(c, T, selCh) {
   const banner = elig.length === 0
     ? `<div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.35);border-radius:8px;padding:9px 12px;font-size:11.5px;color:var(--text-1);margin:6px 0;">⚠ 이 타깃·플랫폼에서 <strong>측정 가능한(적격) 채널이 없습니다</strong>. 타깃/플랫폼을 바꾸거나 데이터 축적이 필요합니다. (아래 데이터 부족 블록에서 어느 조건에 걸렸는지 확인)</div>`
     : (elig.every(r => r.cei === 0) ? `<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:9px 12px;font-size:11.5px;color:var(--text-1);margin:6px 0;">✓ 적격 채널 중 <strong>카니발 의심 신호(CEI&gt;0)가 없습니다</strong> — 관측상 holdout 우선순위로 올릴 채널 없음(무죄 증명은 아님).</div>` : "");
-  const headRow = `<tr><th>순위</th><th>채널</th><th>판정</th><th>근거강도${mmmInfoIcon("cannib_overview")}</th><th>CEI</th><th>검정 ABCD</th><th>탈추세 r·p${mmmInfoIcon("spurious_detrend")}</th><th>net [CI]${mmmInfoIcon("net_incrementality")}</th><th>검정력/적격</th><th>권고</th></tr>`;
+  const headRow = `<tr><th>순위</th><th>채널</th><th>판정</th><th>근거강도${mmmInfoIcon("cannib_overview")}</th><th>CEI</th><th>검정 요약</th><th>탈추세 r·p${mmmInfoIcon("spurious_detrend")}</th><th>net [CI]${mmmInfoIcon("net_incrementality")}</th><th>검정력/적격</th><th>권고</th></tr>`;
   const rankTable = `<div style="font-size:12.5px;color:var(--text-1);font-weight:700;margin-bottom:2px;">§4.5 카니발 의심 랭킹 — CEI 높을수록 우선 검토 <span style="font-weight:400;font-size:10.5px;color:var(--text-muted);">(행 클릭 → 아래 채널 상세)</span></div>
     <p class="muted" style="font-size:10.5px;margin:0 0 6px;">CEI(카니발 근거지수) = 탈추세·차분·net이 <strong>유의하게 음(잠식)</strong>일 때만 가산(relu) → 높을수록 의심 큼. 적격 통과 채널만 순위, 데이터 부족은 하단(⚠=부족하지만 잠식 방향 신호).</p>
     ${banner}
