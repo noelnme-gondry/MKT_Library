@@ -12709,7 +12709,7 @@ if (typeof window !== "undefined") {
 /* ============================================================
  * 5-18 페이지 (MMM 방법론 도구) — 데이터 계약·config·결과 패널·차트·verdict·export
  * ============================================================ */
-const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi", colMap: null, decompBaseline: "nonmedia", decompModel: "ols" };  // decompModel: ols(centered) | merge(공선합산·centered) | ridge(정규화·LEVEL)  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상. colMap: {[header]:{role,kind}} 드래그앤드롭 역할 매핑. decompBaseline: "mean"(주평균) | "nonmedia"(추세·계절·휴일·레짐 포함)
+const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi", colMap: null, decompBaseline: "nonmedia", decompModel: "ols", stage: "diagnose" };  // stage: diagnose(①추세·카니발 진단) | mmm(②기여·예측)  // decompModel: ols(centered) | merge(공선합산·centered) | ridge(정규화·LEVEL)  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상. colMap: {[header]:{role,kind}} 드래그앤드롭 역할 매핑. decompBaseline: "mean"(주평균) | "nonmedia"(추세·계절·휴일·레짐 포함)
 const MMM_NONMEDIA_GROUPS = ["Trend", "Seasonality", "Holidays", "Regime(steps)"];   // 비매체 드라이버 (baseline 포함 토글 대상)
 const _MMM_ROLES = ["ignore", "week", "reg", "react", "channel", "dummy", "step", "platform"];
 // CSV 헤더 → MMM 역할 자동 추정 (드래그앤드롭 초기값). 0/1 binary는 더미로 우선 처리(날짜명 오인 방지)
@@ -13086,21 +13086,29 @@ function page_5_18() {
     deck: "추세 존재 검정 → 카니발 vs 오가닉 삼각검증 + 시트 audit + adstock·Shapley·수확체감. 모든 결론은 관측 회귀 = 연관(가설). 인과는 geo holdout / organic-split.",
     chips: `<span class="chip"><span class="dot"></span>도구 · MMM 방법론</span><span class="chip warning"><span class="dot"></span>가설·기술용 · holdout 아님</span>${authStatusChip()}`,
     summary: "⚠ 어떤 계수도 측정된 인과/증분 효과가 아닙니다. 추세는 가정하지 않고 검정(STL·MK·ADF·KPSS), 추론은 HAC+AR(1), 귀인은 Shapley R²(준로그 수준-점유 분해 금지). cannibalization 결정은 holdout(5-15) 전용.",
-    toc: [{ id: "s-prep", title: "데이터·매핑" }, { id: "s-summary", title: "§0 한눈에 보기" }, { id: "s-macro", title: "§1 위생·매크로" }, { id: "s-audit", title: "§2 시트 audit" }, { id: "s-trend", title: "§3 추세 존재" }, { id: "s-cannib", title: "§4 카니발 vs 오가닉" }, { id: "s-mmm", title: "§5 MMM" }, { id: "s-decomp", title: "§5.5 실제vs모델·분해" }, { id: "s-verdict", title: "§6 종합·export" }],
+    toc: MMM_METH_STATE.stage === "mmm"
+      ? [{ id: "s-prep", title: "데이터·매핑" }, { id: "s-stage2-intro", title: "② MMM 안내" }, { id: "s-mmm", title: "§5 채널 효과·수확체감" }, { id: "s-decomp", title: "§5.5 기여 분해·예측" }, { id: "s-verdict", title: "§6 종합·export" }]
+      : [{ id: "s-prep", title: "데이터·매핑" }, { id: "s-stage1-intro", title: "① 진단 안내" }, { id: "s-summary", title: "한눈에 보기" }, { id: "s-macro", title: "위생·매크로" }, { id: "s-audit", title: "단순모델 audit" }, { id: "s-trend", title: "추세·변화점" }, { id: "s-cannib", title: "카니발 vs 오가닉" }],
     tocFilters: renderMmmFilters(c),
     body: `
       ${renderMmmDataPrep()}
-      ${renderMmmSummary(c)}
-      ${renderMmmAbsorbNotice(c)}
-      ${renderMmmConfig(c)}
-      ${renderMmmMacro(c)}
-      ${renderMmmAudit(c)}
+      ${renderMmmStageTabs(c)}
       ${renderMmmTargetSelector(c)}
-      ${renderMmmTrend(c)}
-      ${renderMmmCannib(c)}
-      ${renderMmmMmm(c)}
-      ${renderMmmDecomp(c)}
-      ${renderMmmVerdict(c)}
+      ${MMM_METH_STATE.stage === "mmm" ? `
+        ${renderMmmStage2Intro(c)}
+        ${renderMmmAbsorbNotice(c)}
+        ${renderMmmConfig(c)}
+        ${renderMmmMmm(c)}
+        ${renderMmmDecomp(c)}
+        ${renderMmmVerdict(c)}
+      ` : `
+        ${renderMmmStage1Intro(c)}
+        ${renderMmmSummary(c)}
+        ${renderMmmMacro(c)}
+        ${renderMmmAudit(c)}
+        ${renderMmmTrend(c)}
+        ${renderMmmCannib(c)}
+      `}
     `,
   });
 }
@@ -13309,6 +13317,52 @@ function renderMmmAudit(c) {
   </section>`;
 }
 // 목차 고정 필터 패널 — 타깃(Reg/React) + 플랫폼(All/iOS/AOS) 페이지 전역 컨트롤
+// 2-stage 탭: ① 진단(추세·카니발) / ② MMM(기여·예측). 같은 데이터·매핑·캐시 공유, 표시만 분리.
+function renderMmmStageTabs(c) {
+  const st = MMM_METH_STATE.stage;
+  const tab = (id, no, title, desc) => `<button class="mmm-stage-tab ${st === id ? 'active' : ''}" data-mmm-stage="${id}" style="flex:1;text-align:left;background:${st === id ? 'linear-gradient(135deg,rgba(122,162,247,0.16),rgba(122,162,247,0.04))' : 'var(--bg-2)'};border:1px solid ${st === id ? 'rgba(122,162,247,0.5)' : 'var(--border)'};border-radius:12px;padding:12px 15px;cursor:pointer;transition:all .15s;">
+    <div style="font-size:12px;font-weight:700;color:${st === id ? '#adc6ff' : 'var(--text-muted)'};">${no}</div>
+    <div style="font-size:14.5px;font-weight:700;color:var(--text-1);margin-top:1px;">${title}</div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.4;">${desc}</div>
+  </button>`;
+  return `<section class="block" style="padding:0;border:none;background:none;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      ${tab("diagnose", "STAGE ①", "진단 — 잠식·추세", "어느 채널이 오가닉을 잠식하나 / 추세 하락에 뭐가 영향 주나. 제거법 + 시차(lead/lag).")}
+      ${tab("mmm", "STAGE ②", "MMM — 기여·예측", "각 채널·이벤트가 매주 얼마 기여하나(decomp) + 얼마 더 쓰면 되나. adstock·수확체감.")}
+    </div>
+  </section>`;
+}
+// Stage 1 안내: 진단 철학(제거법) + lead/lag가 여기 있는 이유
+function renderMmmStage1Intro(c) {
+  return `<section class="block" id="s-stage1-intro" style="border-left:3px solid #7aa2f7;">
+    <h2 class="section-title" style="font-size:15px;"><span class="ix">①</span>진단 — 잠식이 있나 · 추세에 뭐가 영향 주나</h2>
+    <p style="font-size:12.5px;color:var(--text-1);line-height:1.6;">카니발(잠식)은 <strong>직접 관측되지 않습니다</strong>. 그래서 <strong>제거법</strong>으로 봅니다 — "광고비↑인데 오가닉↓"를 만들 수 있는 <em>무죄 가설</em>(공통추세·외생적 하락·역인과)을 검정으로 하나씩 죽이고, <strong>무엇이 남는지 + 애초에 볼 힘이 있었는지(식별성)</strong>로 판정합니다.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+      <div style="flex:1;min-width:200px;background:var(--bg-2);border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--text-1);"><strong style="color:#adc6ff;">① 식별 게이트</strong> — 비-0 충분·spend↔time 비공선이어야 "말할 자격". 못 넘으면 INCONCLUSIVE.</div>
+      <div style="flex:1;min-width:200px;background:var(--bg-2);border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--text-1);"><strong style="color:#adc6ff;">② 방향 검정 4개</strong> — 탈추세·저지출 선행성·net 탄력성·<strong>그랜저(lead/lag)</strong>. 각각 무죄 가설 하나를 제거.</div>
+      <div style="flex:1;min-width:200px;background:var(--bg-2);border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--text-1);"><strong style="color:#adc6ff;">③ 비대칭 판정</strong> — "있다"는 1개 신호로 충분, "없다"는 검정력+다수 합의 필요.</div>
+    </div>
+    <div style="margin-top:10px;background:rgba(122,162,247,0.06);border:1px solid rgba(122,162,247,0.2);border-radius:8px;padding:9px 12px;font-size:11.5px;color:var(--text-1);">
+      🕐 <strong>Lead/Lag(선행·시차, 그랜저)가 진단에 있는 이유</strong>: "누가 먼저 움직였나"가 잠식 방향의 핵심입니다. <strong>광고비↑ → 몇 주 뒤 오가닉↓</strong>면 시차 잠식 의심, 반대로 <strong>오가닉↓ 먼저 → 광고비가 따라↑</strong>면 pacing(역인과)이라 음상관이 잠식이 아닙니다. (adstock·수확체감은 "얼마 기여/얼마 더 쓰나" 질문이라 ② MMM으로.)
+    </div>
+  </section>`;
+}
+// Stage 2 안내: Adstock·Saturation이 뭐고 왜 여기 쓰이나 (사용자 요청 — 평어 설명)
+function renderMmmStage2Intro(c) {
+  return `<section class="block" id="s-stage2-intro" style="border-left:3px solid #7aa2f7;">
+    <h2 class="section-title" style="font-size:15px;"><span class="ix">②</span>MMM — 각 채널이 얼마 기여하고 얼마 더 쓰면 되나</h2>
+    <p style="font-size:12.5px;color:var(--text-1);line-height:1.6;">①에서 "잠식 여부"를 가렸다면, ②는 <strong>각 채널·이벤트가 매주 결과를 얼마나 만들었는지(기여 분해)</strong>와 <strong>예상 증감</strong>을 봅니다. 이때 광고의 두 가지 성질을 반영합니다:</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+      <div style="flex:1;min-width:220px;background:var(--bg-2);border-radius:8px;padding:11px 13px;font-size:12px;color:var(--text-1);line-height:1.55;">
+        <strong style="color:#adc6ff;">📡 Adstock (광고 잔효·carryover)</strong><br>이번 주 지출이 그 주만이 아니라 <strong>다음 몇 주까지 효과가 이어집니다</strong>(광고 기억). 예: λ=0.5면 이번 주 효과의 절반이 다음 주로 넘어감. → "이번 주에 쓴 돈의 진짜 효과"를 누적으로 보려고 적합 전에 spend를 변환합니다. <span style="color:var(--text-muted);">CV로 최적 λ를 자동 선택.</span>
+      </div>
+      <div style="flex:1;min-width:220px;background:var(--bg-2);border-radius:8px;padding:11px 13px;font-size:12px;color:var(--text-1);line-height:1.55;">
+        <strong style="color:#adc6ff;">📉 Saturation (수확체감·포화)</strong><br>지출을 늘릴수록 <strong>추가 1달러당 효과가 줄어듭니다</strong>(곡선이 눕는다). 예: 주 1천만원 땐 +$1k당 50명, 5천만원 땐 +$1k당 8명. → <strong>"지금 얼마 더 써도 되나(예산 배분)"</strong>를 판단하는 근거. 이미 많이 쓴 채널은 증액 효율이 낮습니다.
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--text-muted);margin-top:9px;">⚠ 여기 계수·기여·곡선은 모두 <strong>관측 회귀 = 연관(가설)</strong>입니다. 인과·증분 확정은 holdout(5-15) 전용 — "이 채널을 끄면 정말 그만큼 줄어드는가"는 실험으로만.</p>
+  </section>`;
+}
 function renderMmmFilters(c) {
   const tBtns = c.targets.map(t => `<button class="tf-pill ${MMM_METH_STATE.target === t ? 'active' : ''}" data-mmm-target="${t}">${t === "Regs" ? "가입" : "재활성"}</button>`).join("");
   const plats = mmmPlatforms();
@@ -13319,7 +13373,7 @@ function renderMmmFilters(c) {
 }
 function renderMmmTargetSelector(c) {
   const plats = mmmPlatforms();
-  return `<section class="block" id="s-trend"><h2 class="section-title"><span class="ix">§3~5</span>세그먼트별 분석 — ${MMM_METH_STATE.target === "Regs" ? "가입" : "재활성"}${plats.length && MMM_METH_STATE.platform !== "All" ? " · " + escapeHtml(MMM_METH_STATE.platform) : ""}</h2>
+  return `<section class="block" id="s-target"><h2 class="section-title"><span class="ix">◎</span>분석 대상 — ${MMM_METH_STATE.target === "Regs" ? "가입(Regs)" : "재활성(React)"}${plats.length && MMM_METH_STATE.platform !== "All" ? " · " + escapeHtml(MMM_METH_STATE.platform) : ""}</h2>
     <p class="muted" style="font-size:11.5px;margin-top:-2px;">타깃·플랫폼은 <strong>우측 목차 상단 필터</strong>에서 전환합니다. 각 타깃·플랫폼은 별도 적합(합성지표 스펙이 구성요소에 맞는 건 아님).${plats.length ? ' 플랫폼 × 타깃 = 4그룹, "전체"는 풀링.' : ""}</p></section>`;
 }
 function renderMmmTrend(c) {
@@ -13753,6 +13807,7 @@ function bindMmmMethHandlers() {
   bindMmmInfoOnce();
   const c = MMM_METH_CACHE; if (!c.key || c.error) return;
   // 이벤트 핸들러를 차트보다 먼저 바인딩 (차트 오류가 버튼 바인딩을 막지 않게)
+  document.querySelectorAll("[data-mmm-stage]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.stage = b.dataset.mmmStage; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-target]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.target = b.dataset.mmmTarget; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-platform]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.platform = b.dataset.mmmPlatform; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-absorb]").forEach(b => b.addEventListener("click", () => { if (!MMM_METH_STATE.absorbChoice) MMM_METH_STATE.absorbChoice = {}; MMM_METH_STATE.absorbChoice[b.dataset.mmmAbsorb] = b.dataset.side; navigate("5-18"); }));
