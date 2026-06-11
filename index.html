@@ -13657,13 +13657,13 @@ function renderMmmModelNumber(c, T, selCh) {
   if (!r) return "";
   const cn = T.cannibByChannel[r.key] || {}, R = MMM_CANNIB_RULES, RC = RANK_CFG;
   const num = (v, d = 3) => (v == null || !isFinite(v)) ? "—" : (+v).toFixed(d);
-  const ni = cn.net_incrementality || {}, p = cn.precedence || {}, g = cn.granger && cn.granger.spend_to_organic;
-  const detRead = r.rDet <= R.detrendAgainst ? `<span style="color:#f87171;font-weight:600;">잠식 방향</span>` : r.rDet <= R.detrendFor ? `<span style="color:#fbbf24;font-weight:600;">경계</span>` : `<span style="color:#22c55e;font-weight:600;">무해</span>`;
-  const netRead = r.gated ? `<span style="color:#adc6ff;">공선으로 측정 불가</span>` : (ni.ci_lo == null ? "—" : (ni.ci_lo <= 0 && ni.ci_hi >= 0) ? `<span style="color:var(--text-muted);">노이즈 — 0과 구분 안 됨</span>` : (ni.net_elasticity > 0 ? `<span style="color:#22c55e;font-weight:600;">증분(좋음)</span>` : `<span style="color:#f87171;font-weight:600;">잠식</span>`));
-  const precRead = (p.slope_p != null && p.slope_p < R.precSlopeP && p.kpi_change_over_window_pct <= -R.precDeclinePct)
-    ? `<span style="color:#f87171;">저지출 유의 하락 → 시점상 잠식 양립</span>` : (p.slope_p != null && p.slope_p < R.precSlopeP)
-    ? `<span style="color:#22c55e;">저지출에 이미 하락 = 광고 전부터 떨어짐 → 무죄(오가닉)</span>` : `<span style="color:var(--text-muted);">저지출 변화 비유의 → 단서 약함</span>`;
-  const grRead = !g ? "—" : (cn.granger_cannibal ? `<span style="color:#f87171;font-weight:600;">시차 잠식</span>` : cn.granger_help ? `<span style="color:#22c55e;">시차 증분</span>` : `<span style="color:var(--text-muted);">신호 없음</span>`);
+  const ni = cn.net_incrementality || {}, p = cn.precedence || {}, d = cn.detrend_corr || {}, g = cn.granger && cn.granger.spend_to_organic;
+  // 해석은 실제 vote에서 파생 — 위 "검정 요약" 카운트와 100% 일치(숫자에서 재계산하면 어긋남, PR #111 버그).
+  const vread = (v, forTxt, againstTxt, abstainTxt) => v === "AGAINST" ? `<span style="color:#f87171;font-weight:600;">${againstTxt}</span>` : v === "FOR" ? `<span style="color:#22c55e;font-weight:600;">${forTxt}</span>` : `<span style="color:var(--text-muted);">${abstainTxt}</span>`;
+  const detRead = vread((d || {}).vote, "무해 (음상관 아님)", "잠식 (탈추세 후에도 음상관 유지)", r.leanNeg ? "경계 (음으로 기욺·비유의)" : "보류 (0 부근)");
+  const netRead = r.gated ? `<span style="color:#adc6ff;">공선으로 측정 불가 (net 보류)</span>` : vread(ni.vote, "증분 (+, 좋음)", "잠식 (−, 유의)", "노이즈 (CI가 0 포함)");
+  const precRead = vread(p.vote, "광고 前부터 이미 하락 = 무죄(오가닉)", "광고 前엔 오히려 상승 → 이후 꺾임이 광고 시점과 일치 = 잠식 양립", "저지출 구간 변화 비유의 → 단서 약함");
+  const grRead = !g ? "—" : (cn.granger_cannibal ? `<span style="color:#f87171;font-weight:600;">시차 잠식</span>` : cn.granger_help ? `<span style="color:#22c55e;">시차 증분</span>` : cn.pacing ? `<span style="color:#fbbf24;">페이싱(역인과)</span>` : `<span style="color:var(--text-muted);">신호 없음</span>`);
   const gateRead = r.gated ? `<span style="color:#fbbf24;">공선·검정력↓ (net 보류)</span>` : `<span style="color:#22c55e;">통과</span>`;
   const eligRead = r.eligible ? `<span style="color:#22c55e;">적격</span>` : `<span style="color:#f87171;">데이터 부족</span>`;
   const row = (metric, badRange, goodRange, value, reading) => `<tr><td><strong>${metric}</strong></td><td style="color:#f87171;font-size:10.5px;">${badRange}</td><td style="color:#22c55e;font-size:10.5px;">${goodRange}</td><td class="tnum">${value}</td><td style="font-size:11px;">${reading}</td></tr>`;
@@ -13674,13 +13674,13 @@ function renderMmmModelNumber(c, T, selCh) {
       <tbody>
         ${row("탈추세 partial r", `≤ ${R.detrendAgainst}`, `≥ ${R.detrendFor}`, `${num(r.rDet)} (p=${num(r.detP)})`, detRead)}
         ${row("net 탄력성", `&lt; 0 & 유의`, `&gt; 0 & 유의 (CI 0 미포함)`, r.gated ? "공선" : `${num(ni.net_elasticity)}${ni.ci_lo != null ? ` [${num(ni.ci_lo)},${num(ni.ci_hi)}]` : ""}`, netRead)}
-        ${row("저지출 선행성 ⚠", `광고 본격화 後 꺾임`, `광고 前부터 하락(무죄)`, p.kpi_slope_per_wk != null ? `${num(p.kpi_slope_per_wk, 1)}/주 p=${num(p.slope_p)}` : "—", precRead)}
+        ${row("저지출 선행성 ⚠", `광고 前 유의 상승(slope&gt;0)`, `광고 前 유의 하락(slope&lt;0·무죄)`, p.kpi_slope_per_wk != null ? `${num(p.kpi_slope_per_wk, 1)}/주 p=${num(p.slope_p)}` : "—", precRead)}
         ${row("그랜저 시차", `Σ&lt;0 & p&lt;${R.netP}`, `Σ&gt;0 또는 비유의`, g ? `Σ=${num(g.coefSum)} p=${num(g.p)}` : "—", grRead)}
         ${row("검정력 게이트", `VIF≥${R.gateVif} · corr≥${R.gateSpendTimeCorr}`, `미만`, r.gated ? "걸림" : "통과", gateRead)}
         ${row("데이터 적격", `집행&lt;${RC.MIN_ACTIVE} · CV&lt;${RC.MIN_SPEND_CV}`, `이상`, `집행 ${r.nActive}/${r.total} · CV ${num(r.spendCV, 2)} · df ${r.dfResid}`, eligRead)}
       </tbody>
     </table></div>
-    <p class="muted" style="font-size:10px;margin-top:5px;">⚠ <strong>저지출 선행성은 부호 해석이 반대</strong>입니다: 광고 본격화 <em>전(저지출 구간)</em>에 이미 유의하게 떨어지고 있었으면 "광고가 빼앗은 게 아니라 원래 떨어짐 = 무죄(오가닉)"입니다. 그래서 유의한 하락 숫자가 오히려 FOR(무해)로 잡힙니다. · 관측은 무죄를 증명하지 않음 — 확정은 holdout(5-15).</p>
+    <p class="muted" style="font-size:10px;margin-top:5px;">⚠ <strong>저지출 선행성은 부호 해석이 반대</strong>입니다: 광고 본격화 <em>전(저지출 구간)</em>에 이미 <strong>유의 하락(slope&lt;0)</strong>이면 "광고가 빼앗은 게 아니라 원래 떨어짐 = 무죄(오가닉, FOR)". 반대로 광고 전엔 <strong>유의 상승(slope&gt;0)</strong>이었는데 이후 꺾였으면 "그 꺾임이 광고 시점과 일치 = 잠식 양립(AGAINST)". 위 '해석'은 <strong>실제 검정 투표</strong>라 검정 요약 카운트와 정확히 일치합니다. · 관측은 무죄를 증명하지 않음 — 확정은 holdout(5-15).</p>
   </details>`;
 }
 function renderMmmCannib(c) {
