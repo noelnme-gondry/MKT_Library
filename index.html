@@ -13089,8 +13089,8 @@ function page_5_18() {
     chips: `<span class="chip"><span class="dot"></span>도구 · MMM 방법론</span><span class="chip warning"><span class="dot"></span>가설·기술용 · holdout 아님</span>${authStatusChip()}`,
     summary: "⚠ 어떤 계수도 측정된 인과/증분 효과가 아닙니다. 추세는 가정하지 않고 검정(STL·MK·ADF·KPSS), 추론은 HAC+AR(1), 귀인은 Shapley R²(준로그 수준-점유 분해 금지). cannibalization 결정은 holdout(5-15) 전용.",
     toc: MMM_METH_STATE.stage === "mmm"
-      ? [{ id: "s-prep", title: "데이터·매핑" }, { id: "s-stage2-intro", title: "② MMM 안내" }, { id: "s-mmm", title: "§5 채널 효과·수확체감" }, { id: "s-decomp", title: "§5.5 기여 분해·예측" }, { id: "s-verdict", title: "§6 종합·export" }]
-      : [{ id: "s-prep", title: "데이터·매핑" }, { id: "s-stage1-intro", title: "① 진단 안내" }, { id: "s-summary", title: "한눈에 보기" }, { id: "s-macro", title: "위생·매크로" }, { id: "s-audit", title: "단순모델 audit" }, { id: "s-trend", title: "추세·변화점" }, { id: "s-cannib", title: "카니발 vs 오가닉" }],
+      ? [{ id: "s-prep", title: "데이터·매핑" }, { id: "s-stage2-intro", title: "② MMM 안내" }, { id: "s-effects", title: "채널별 효과" }, { id: "s-mmm", title: "§5 수확체감·계수" }, { id: "s-decomp", title: "§5.5 기여 분해·예측" }, { id: "s-verdict", title: "§6 종합·export" }]
+      : [{ id: "s-prep", title: "데이터·매핑" }, { id: "s-stage1-intro", title: "① 진단 안내" }, { id: "s-cannib", title: "카니발 — 프로세스·판정" }, { id: "s-trend", title: "추세·변화점" }, { id: "s-macro", title: "위생·매크로" }, { id: "s-audit", title: "단순모델 audit" }, { id: "s-summary", title: "진단 결론 요약" }],
     tocFilters: renderMmmFilters(c),
     body: `
       ${renderMmmDataPrep()}
@@ -13098,6 +13098,7 @@ function page_5_18() {
       ${renderMmmTargetSelector(c)}
       ${MMM_METH_STATE.stage === "mmm" ? `
         ${renderMmmStage2Intro(c)}
+        ${renderMmmEffectsCard(c)}
         ${renderMmmAbsorbNotice(c)}
         ${renderMmmConfig(c)}
         ${renderMmmMmm(c)}
@@ -13105,11 +13106,11 @@ function page_5_18() {
         ${renderMmmVerdict(c)}
       ` : `
         ${renderMmmStage1Intro(c)}
-        ${renderMmmSummary(c)}
+        ${renderMmmCannib(c)}
+        ${renderMmmTrend(c)}
         ${renderMmmMacro(c)}
         ${renderMmmAudit(c)}
-        ${renderMmmTrend(c)}
-        ${renderMmmCannib(c)}
+        ${renderMmmSummary(c)}
       `}
     `,
   });
@@ -13175,54 +13176,23 @@ function bindMmmInfoOnce() {
   document.addEventListener("scroll", hideTip, true);
 }
 
+// §0 한눈에 보기 — ①추세 ②카니발 결론만(③ 채널효과는 MMM stage로 이관). Stage 1에선 맨 아래에 배치.
 function renderMmmSummary(c) {
   const targetCard = (t) => {
     const T = c.byTarget[t]; if (!T) return "";
     const meanY = Math.round(c.panel.targets[t].reduce((a, b) => a + b, 0) / c.panel.targets[t].length);
     const tConf = mmmTrendConf(T.trend), cConf = mmmCannibConf(T.globalCannib);
-    // 채널별 효과 표
-    const sparseList = (T.effects || []).filter(e => e.sparse);
-    const effRows = (T.effects || []).map(e => {
-      const pct10 = (e.elas * 10);
-      const wk = e.weeklyPer1k;
-      const badge = e.verdict === "sparse" ? `<span style="color:var(--text-muted);font-weight:600;" title="비-0 ${e.nonzero}/${e.total}주">데이터 부족 ⊘</span>`
-        : e.verdict === "incremental" ? '<span style="color:#22c55e;font-weight:600;">증분 ✓</span>'
-        : e.verdict === "suppress" ? '<span style="color:#f87171;font-weight:600;">잠식 의심 ⚠</span>'
-        : '<span style="color:var(--text-muted);">불확실</span>';
-      const sp = e.verdict === "sparse";
-      return `<tr style="${sp ? 'opacity:0.55;' : ''}">
-        <td><strong>${escapeHtml(e.label)}</strong>${e.trailingZero && !sp ? ' <span style="font-size:9px;color:#fbbf24;">최근끊김</span>' : ''}</td>
-        <td class="tnum ${sp ? '' : pct10 >= 0 ? 'pos' : 'neg'}">${sp ? '—' : (pct10 >= 0 ? '+' : '') + pct10.toFixed(1) + '%'}</td>
-        <td class="tnum">${sp || wk == null ? '—' : (wk >= 0 ? '+' : '') + Math.round(wk) + '명'}</td>
-        <td>${badge}</td>
-        <td>${sp ? '<span style="color:var(--text-muted);">데이터 부족</span>' : mmmConfInline(mmmPtoConf(e.p), `p=${e.p}`, `p값(우연일 확률) = ${e.p}. p<0.05면 "우연으로 보기 어려움 = 통계적으로 유의". 작을수록 신뢰도(●)↑: <0.001=●●●●●, <0.01=●●●●○, <0.05=●●●○○, <0.1=●●○○○, 그 이상=●○○○○.`)}</td>
-      </tr>`;
-    }).join("");
-    const sparseNote = sparseList.length ? `<div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:6px;padding:7px 10px;font-size:11px;color:var(--text-1);margin-top:6px;">⚠ <strong>${sparseList.map(e => `${escapeHtml(e.label)}(${e.nonzero}/${e.total}주)`).join(", ")}</strong> 는 데이터가 너무 적어(비-0 ${c.cfg.sparseMinWeeks}주 미만) 계수가 노이즈입니다 — <strong>예산 결정 근거로 쓰지 마세요.</strong> 음수로 나와도 "잠식"이 아니라 데이터 부족 탓일 확률이 높습니다. Config에서 "데이터 부족 채널 제외"로 모델을 정리할 수 있습니다.</div>` : "";
     return `
       <div style="background:linear-gradient(135deg,rgba(122,162,247,0.10),rgba(122,162,247,0.02));border:1px solid rgba(122,162,247,0.28);border-left:4px solid #7aa2f7;border-radius:12px;padding:16px 18px;margin-bottom:14px;">
         <div style="font-size:15px;font-weight:700;color:var(--text-1);margin-bottom:2px;">${_MMM_TARGET_KO[t] || t}</div>
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">주평균 약 ${meanY.toLocaleString()}명 · 분석 기간 ${c.panel.week.length}주</div>
-
         <div style="margin-bottom:10px;">
           <div style="font-size:13px;color:var(--text-1);line-height:1.65;"><span style="color:#7aa2f7;font-weight:700;">①  추세</span>${mmmInfoIcon("trend_overview")} — ${mmmTrendPlain(T.trend, _MMM_TARGET_KO[t].split(" ")[0])}</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">통계적 신뢰도 ${mmmConfInline(tConf, `ADF p=${T.trend.adf_ct_p} · KPSS p=${T.trend.kpss_ct_p} · MK(보정) p=${T.trend.mk_ac_robust[1]}`, `추세 존재의 수학적 근거. ADF p<0.05 + KPSS p≥0.05면 "추세-정상(진짜 추세)". Mann-Kendall(자기상관 보정) p<0.05면 방향성 있음. 여러 검정이 같은 결론으로 모일수록 신뢰도(●)↑.`)}</div>
         </div>
-
-        <div style="margin-bottom:10px;">
+        <div>
           <div style="font-size:13px;color:var(--text-1);line-height:1.65;"><span style="color:#7aa2f7;font-weight:700;">②  카니발(잠식) 여부</span>${mmmInfoIcon("cannib_overview")} — ${mmmGlobalCannibPlain(T.globalCannib, _MMM_TARGET_KO[t].split(" ")[0])}</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">통계적 신뢰도 ${mmmConfInline(cConf, T.globalCannib.noIdentified ? "식별 채널 0개" : `식별 채널 ${T.globalCannib.n_identified}개 worst-case`, `식별 가능한 채널(비-0 충분·커버리지≥50%·공선/검정력 통과)들의 worst-case 종합입니다. 관측은 "잠식 없음"을 증명하지 못하므로 OK라도 신뢰도 상한은 ●●●○○, 식별 채널이 없으면(전부 sparse·공선) ●○○○○. 대표채널은 가장 잘 식별된 채널입니다.`)}</div>
-        </div>
-
-        <div>
-          <div style="font-size:13px;color:var(--text-1);font-weight:600;margin-bottom:4px;"><span style="color:#7aa2f7;">③  채널별 효과</span> — 지출을 늘리면 ${_MMM_TARGET_KO[t].split(" ")[0]}이(가) 얼마나?</div>
-          <div class="table-wrap"><table class="data" style="font-size:11.5px;">
-            <thead><tr><th>채널</th><th>지출 +10% 시${mmmInfoIcon("elasticity")}</th><th>+$1,000/주당${mmmInfoIcon("weekly_users")}</th><th>판정${mmmInfoIcon("net_incrementality")}</th><th>신뢰도${mmmInfoIcon("confidence_dots")}</th></tr></thead>
-            <tbody>${effRows || '<tr><td colspan="5">채널 없음</td></tr>'}</tbody>
-          </table></div>
-          ${sparseNote}
-          ${(T.effects && T.effects.logDropped) ? `<div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">ⓘ 탄력성(%)·신뢰도는 <strong>${_MMM_TARGET_KO[t].split(" ")[0]}이(가) 0인 ${T.effects.logDropped}개 주를 제외</strong>하고 계산했습니다 (log 변환은 0을 다룰 수 없음). "+$1,000/주당" 인원은 전체 주를 사용합니다.</div>` : ""}
-          <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">"+$1,000/주당 N명" = 현재 지출 수준에서 그 채널에 주당 1,000달러를 더 쓰면 늘어나는 ${_MMM_TARGET_KO[t].split(" ")[0]} 인원(수확체감 반영). 음수·"불확실"은 통계적으로 0과 구분되지 않음(노이즈).</div>
         </div>
       </div>`;
   };
@@ -13230,14 +13200,50 @@ function renderMmmSummary(c) {
     <section class="block" id="s-summary" style="background:var(--bg-1);border:1px solid rgba(122,162,247,0.3);border-radius:14px;padding:18px 20px;box-shadow:0 0 0 1px rgba(122,162,247,0.05);">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
         <span style="font-size:20px;">📊</span>
-        <h2 style="margin:0;font-size:18px;color:var(--text-1);">한눈에 보기 — 이 분석이 말하는 것</h2>
+        <h2 style="margin:0;font-size:18px;color:var(--text-1);">한눈에 보기 — 진단 결론 요약</h2>
       </div>
-      <p style="font-size:12px;color:var(--text-muted);margin:4px 0 14px;">통계 용어를 몰라도 읽을 수 있게 핵심 결론만 정리했습니다. 각 숫자가 어떻게 나왔는지는 아래 §1~§6에서 단계별로 설명합니다. <strong style="color:#fbbf24;">신뢰도 ●●●●● = 매우 높음 / ●●●○○ = 보통 / ●○○○○ = 약함.</strong></p>
+      <p style="font-size:12px;color:var(--text-muted);margin:4px 0 14px;">위 진단(추세·카니발 프로세스)의 결론만 한 줄로 정리했습니다. <strong style="color:#fbbf24;">신뢰도 ●●●●● = 매우 높음 / ●●●○○ = 보통 / ●○○○○ = 약함.</strong> 채널별 효과·예상 증감은 <strong>② MMM 탭</strong>에서.</p>
       ${c.targets.map(targetCard).join("")}
       <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:10px 13px;font-size:12px;line-height:1.6;color:var(--text-1);">
         ⚠ <strong>이 결과는 "연관(association)"이지 "인과(causation)"의 증명이 아닙니다.</strong> 회귀는 "광고와 결과가 같이 움직였다"까지만 말합니다. "광고가 결과를 만들었다"를 확정하려면 일부 지역/유저를 광고에서 빼보는 <strong>holdout 실험(5-15 Incrementality)</strong>이 필요합니다. 이 도구는 <strong>무엇을 holdout으로 검증할지 좁혀주는</strong> 가설 생성기입니다.
       </div>
     </section>`;
+}
+// ③ 채널별 효과(지출+10%·+$1k·수확체감) — MMM 성격이라 ② MMM stage로 이관.
+function renderMmmEffectsCard(c) {
+  const targetCard = (t) => {
+    const T = c.byTarget[t]; if (!T) return "";
+    const sparseList = (T.effects || []).filter(e => e.sparse);
+    const effRows = (T.effects || []).map(e => {
+      const pct10 = (e.elas * 10), wk = e.weeklyPer1k, sp = e.verdict === "sparse";
+      const badge = sp ? `<span style="color:var(--text-muted);font-weight:600;" title="비-0 ${e.nonzero}/${e.total}주">데이터 부족 ⊘</span>`
+        : e.verdict === "incremental" ? '<span style="color:#22c55e;font-weight:600;">증분 ✓</span>'
+        : e.verdict === "suppress" ? '<span style="color:#f87171;font-weight:600;">잠식 의심 ⚠</span>'
+        : '<span style="color:var(--text-muted);">불확실</span>';
+      return `<tr style="${sp ? 'opacity:0.55;' : ''}">
+        <td><strong>${escapeHtml(e.label)}</strong>${e.trailingZero && !sp ? ' <span style="font-size:9px;color:#fbbf24;">최근끊김</span>' : ''}</td>
+        <td class="tnum ${sp ? '' : pct10 >= 0 ? 'pos' : 'neg'}">${sp ? '—' : (pct10 >= 0 ? '+' : '') + pct10.toFixed(1) + '%'}</td>
+        <td class="tnum">${sp || wk == null ? '—' : (wk >= 0 ? '+' : '') + Math.round(wk) + '명'}</td>
+        <td>${badge}</td>
+        <td>${sp ? '<span style="color:var(--text-muted);">데이터 부족</span>' : mmmConfInline(mmmPtoConf(e.p), `p=${e.p}`, `p값(우연일 확률) = ${e.p}. p<0.05면 "우연으로 보기 어려움 = 통계적으로 유의". 작을수록 신뢰도(●)↑.`)}</td>
+      </tr>`;
+    }).join("");
+    const sparseNote = sparseList.length ? `<div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:6px;padding:7px 10px;font-size:11px;color:var(--text-1);margin-top:6px;">⚠ <strong>${sparseList.map(e => `${escapeHtml(e.label)}(${e.nonzero}/${e.total}주)`).join(", ")}</strong> 는 데이터가 너무 적어(비-0 ${c.cfg.sparseMinWeeks}주 미만) 계수가 노이즈입니다 — <strong>예산 결정 근거로 쓰지 마세요.</strong> Config에서 "데이터 부족 채널 제외"로 정리 가능.</div>` : "";
+    return `<div style="margin-bottom:14px;">
+      <div style="font-size:14px;font-weight:700;color:var(--text-1);margin-bottom:6px;">${_MMM_TARGET_KO[t] || t} — 채널별 효과</div>
+      <div class="table-wrap"><table class="data" style="font-size:11.5px;">
+        <thead><tr><th>채널</th><th>지출 +10% 시${mmmInfoIcon("elasticity")}</th><th>+$1,000/주당${mmmInfoIcon("weekly_users")}</th><th>판정${mmmInfoIcon("net_incrementality")}</th><th>신뢰도${mmmInfoIcon("confidence_dots")}</th></tr></thead>
+        <tbody>${effRows || '<tr><td colspan="5">채널 없음</td></tr>'}</tbody>
+      </table></div>
+      ${sparseNote}
+      ${(T.effects && T.effects.logDropped) ? `<div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">ⓘ 탄력성(%)·신뢰도는 ${_MMM_TARGET_KO[t].split(" ")[0]}이(가) 0인 ${T.effects.logDropped}개 주 제외하고 계산(log는 0 불가).</div>` : ""}
+    </div>`;
+  };
+  return `<section class="block" id="s-effects">
+    <h2 class="section-title" style="font-size:15px;"><span class="ix">§5.0</span>채널별 효과 — 지출을 늘리면 얼마나? ${mmmInfoIcon("weekly_users")}</h2>
+    <p class="muted" style="font-size:11.5px;margin-top:-2px;">"+$1,000/주당 N명" = 현재 지출 수준에서 주당 1,000달러를 더 쓰면 늘어나는 인원(<strong>수확체감 반영</strong>). 음수·"불확실"은 통계적으로 0과 구분되지 않음(노이즈). 자세한 계수·수확체감 곡선은 아래 §5.</p>
+    ${c.targets.map(targetCard).join("")}
+  </section>`;
 }
 
 function renderMmmAbsorbNotice(c) {
@@ -13468,6 +13474,59 @@ function renderMmmTrend(c) {
     })()}
   </section>`;
 }
+// 카니발 프로세스 결과 — verdict 버킷(있다/없다/못가린다/데이터부족) + 전 채널 × 검정 결과 표.
+// "어느 채널이 프로세스를 다 뚫고 어떤 결과로 나왔나 + 오가닉을 떨구는 데 뭐가 영향 주나"를 한눈에.
+function renderMmmCannibOverview(c, T, selCh) {
+  const chans = T.cannChannels || [];
+  const chLabel = (k) => (_mmmChans(c.panel).find(cc => cc.key === k) || {}).label || k;
+  const idSet = new Set(T.identifiedChannels || []);
+  const effByKey = {}; (T.effects || []).forEach(e => { effByKey[e.key] = e; });
+  const buckets = { cannibal: [], inconclusive: [], ok: [], unidentified: [] };
+  for (const k of chans) {
+    const cn = T.cannibByChannel[k]; if (!cn) continue;
+    if (!idSet.has(k)) buckets.unidentified.push(k);
+    else (buckets[cn.verdict_class] || buckets.inconclusive).push(k);
+  }
+  const chip = (k, col) => `<button class="ab-pill ${k === selCh ? 'active' : ''}" data-mmm-cannibch="${escapeHtml(k)}" style="font-size:11px;border-color:${col}66;${k === selCh ? `background:${col}22;` : ''}">${escapeHtml(chLabel(k))}</button>`;
+  const bucketCard = (keys, col, bg, title, desc) => `<div style="flex:1;min-width:175px;background:${bg};border:1px solid ${col}44;border-radius:10px;padding:11px 13px;">
+    <div style="font-size:12.5px;font-weight:700;color:${col};">${title} <span style="color:var(--text-muted);font-weight:400;">· ${keys.length}</span></div>
+    <div style="font-size:10px;color:var(--text-muted);margin:2px 0 8px;line-height:1.35;">${desc}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;">${keys.length ? keys.map(k => chip(k, col)).join("") : '<span style="font-size:11px;color:var(--text-muted);">없음</span>'}</div>
+  </div>`;
+  const bucketsHtml = `<div style="display:flex;gap:9px;flex-wrap:wrap;margin:6px 0 14px;">
+    ${bucketCard(buckets.cannibal, "#f87171", "rgba(248,113,113,0.07)", "🔴 잠식 의심 (있다)", "오가닉을 떨구는 데 영향 — 검정 ≥1개가 카니발을 가리킴. holdout 1순위.")}
+    ${bucketCard(buckets.inconclusive, "#fbbf24", "rgba(251,191,36,0.07)", "🟠 못 가린다", "식별은 됐으나 신호 혼재 — 잠식인지 방어인지 관측으론 보류.")}
+    ${bucketCard(buckets.ok, "#22c55e", "rgba(34,197,94,0.07)", "🟢 적색신호 없음 (잠정)", "검정력 충분 + 다수 FOR — 방어 가능성↑(무죄 증명 아님).")}
+    ${bucketCard(buckets.unidentified, "#9CA3AF", "rgba(156,163,175,0.07)", "⊘ 데이터 부족·식별불가", "비-0 부족·공선·검정력 부족 — 애초에 볼 힘이 없어 판정 제외.")}
+  </div>`;
+  // 프로세스 결과 표 (전 채널 × STEP0·A·B·C·D·최종)
+  const vCell = (v) => v === "AGAINST" ? '<span style="color:#f87171;font-weight:700;">잠식</span>' : v === "FOR" ? '<span style="color:#22c55e;font-weight:700;">오가닉</span>' : '<span style="color:var(--text-muted);">보류</span>';
+  const finalCell = (k, cn) => idSet.has(k)
+    ? (cn.verdict_class === "cannibal" ? '<span style="color:#f87171;font-weight:700;">있다</span>' : cn.verdict_class === "ok" ? '<span style="color:#22c55e;font-weight:700;">없다(잠정)</span>' : '<span style="color:#fbbf24;font-weight:700;">못 가린다</span>')
+    : '<span style="color:var(--text-muted);">데이터 부족</span>';
+  const grangerCell = (cn) => cn.granger_cannibal ? '<span style="color:#f87171;font-weight:700;">시차잠식</span>' : cn.granger_help ? '<span style="color:#22c55e;font-weight:700;">시차증분</span>' : cn.pacing ? '<span style="color:#fbbf24;font-weight:700;">페이싱</span>' : '<span style="color:var(--text-muted);">—</span>';
+  const step0Cell = (k, cn) => idSet.has(k) ? '<span style="color:#22c55e;font-weight:700;">✓ 통과</span>' : (cn.power_gate && cn.power_gate.blocked ? '<span style="color:#fbbf24;" title="' + escapeHtml((cn.power_gate.reasons || []).join(" · ")) + '">🚧 차단</span>' : '<span style="color:var(--text-muted);">⊘ 부족</span>');
+  const rows = chans.map(k => {
+    const cn = T.cannibByChannel[k]; if (!cn) return "";
+    const sel = k === selCh;
+    return `<tr data-mmm-cannibch="${escapeHtml(k)}" style="cursor:pointer;${sel ? 'background:rgba(122,162,247,0.12);' : ''}">
+      <td><strong>${escapeHtml(chLabel(k))}</strong>${sel ? ' <span style="font-size:9px;color:#adc6ff;">▶선택</span>' : ''}</td>
+      <td>${step0Cell(k, cn)}</td>
+      <td>${vCell(cn.detrend_corr.vote)}</td>
+      <td>${vCell(cn.precedence.vote)}</td>
+      <td>${vCell(cn.net_incrementality.vote)}</td>
+      <td>${grangerCell(cn)}</td>
+      <td>${finalCell(k, cn)}</td>
+    </tr>`;
+  }).join("");
+  return `${bucketsHtml}
+    <div style="font-size:11.5px;color:var(--text-1);font-weight:600;margin-bottom:4px;">프로세스 결과 표 — 각 채널이 검정 4개를 어떻게 통과했나 <span style="font-weight:400;color:var(--text-muted);">(행 클릭 → 아래 상세 드릴다운)</span></div>
+    <div class="table-wrap"><table class="data" style="font-size:11px;">
+      <thead><tr><th>채널</th><th>STEP0 식별${mmmInfoIcon("cannib_overview")}</th><th>A 탈추세${mmmInfoIcon("spurious_detrend")}</th><th>B 선행성${mmmInfoIcon("precedence")}</th><th>C net${mmmInfoIcon("net_incrementality")}</th><th>D 그랜저${mmmInfoIcon("granger")}</th><th>최종</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="7">채널 없음</td></tr>'}</tbody>
+    </table></div>
+    <p class="muted" style="font-size:10px;margin:4px 0 0;">A·B·C = <span style="color:#22c55e;">오가닉</span>(FOR)/<span style="color:#f87171;">잠식</span>(AGAINST)/보류(ABSTAIN) 투표 · D 그랜저는 시차·방향. STEP0 차단(🚧)·부족(⊘)이면 그 채널은 "데이터 부족"으로 판정 제외(아래 식별성 게이트 참고).</p>`;
+}
 function renderMmmCannib(c) {
   const T = c.byTarget[MMM_METH_STATE.target]; if (!T) return "";
   const chans = T.cannChannels || [];
@@ -13485,11 +13544,16 @@ function renderMmmCannib(c) {
   const barTxt = `${cn.is_brand_intercept ? "브랜드 가로채기형" : "프로스펙팅"} 채널 → 잠정 OK 기준 <strong>FOR ≥ ${cn.for_bar} AND AGAINST = 0</strong>`;
   return `<section class="block" id="s-cannib">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-      <h3 class="section-title" style="font-size:15px;margin:0;"><span class="ix">§4</span>카니발 vs 오가닉 — ${MMM_METH_STATE.target} · <span style="color:#7aa2f7;">${escapeHtml(chLabel(selCh))}</span> (보수적 삼각검증)</h3>
+      <h3 class="section-title" style="font-size:15px;margin:0;"><span class="ix">§4</span>카니발 vs 오가닉 — ${MMM_METH_STATE.target}${MMM_METH_STATE.platform !== "All" ? " · " + escapeHtml(_mmmPlatLabel(MMM_METH_STATE.platform)) : ""} (보수적 삼각검증)</h3>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
         <button class="ab-pill" data-mmm-cannib-series="1" title="주별 원자료: 타깃·채널별 ln(1+지출)·탈추세 잔차·1차차분 → 엑셀에서 CORREL로 raw/detrend/차분 상관 직접 재현">⬇ 검정 원자료 CSV</button>
         <button class="ab-pill" data-mmm-cannib-csv="1" title="모든 채널 × 3-state 투표(FOR/AGAINST/ABSTAIN) + 게이트·탄력성·커버리지 1행씩 → CSV">⬇ 채널별 카니발 CSV</button>
       </div>
+    </div>
+    ${renderMmmCannibOverview(c, T, selCh)}
+    <div style="border-top:1px solid var(--border);margin:16px 0 10px;padding-top:12px;">
+      <div style="font-size:13px;font-weight:700;color:var(--text-1);">🔬 채널 상세 — 왜 이 판정인지 (<span style="color:#7aa2f7;">${escapeHtml(chLabel(selCh))}</span>)</div>
+      <div style="font-size:11px;color:var(--text-muted);margin:2px 0 8px;">위 표의 행을 클릭하거나 아래 칩으로 채널을 바꿔 그 채널의 STEP0 게이트 → 검정 4개 → 조합 과정을 펼쳐 봅니다.</div>
     </div>
     ${chPills}
     ${(() => {
