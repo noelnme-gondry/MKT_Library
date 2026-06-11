@@ -11688,6 +11688,7 @@ function mmmBuildCannibRank(panel, target, cannibByChannel, cov, chans) {
       gated, z2: +z2.toFixed(2), z2d: +z2d.toFixed(2), z3: +z3.toFixed(2), cei, detP,
       rDet, rDiff, netElast: ni.net_elasticity, netP: ni.p, netCiLo: ni.ci_lo, netCiHi: ni.ci_hi, netSe: netSe == null ? null : +netSe.toFixed(4),
       cannibSignal, badge, verdict_class: cn.verdict_class, spendShare, brand: cn.is_brand_intercept,
+      flighted: !!cn.flighted, flightTrans: cn.flight_transitions, flightZeroFrac: cn.flight_zero_frac,
       forCount, againstCount, abstainCount, leanNeg,
     };
   }).filter(Boolean);
@@ -11704,6 +11705,7 @@ function mmmBuildCannibRank(panel, target, cannibByChannel, cov, chans) {
 }
 function mmmCannibAction(r) {
   if (!r.eligible) return r.cannibSignal ? "⚠ 데이터 부족하지만 잠식 방향 신호 — 데이터 축적·holdout 고려" : "모니터 — 집행 확대/데이터 축적 후 재검";
+  if (r.flighted) return "⚡ 산발 집행(on/off) — 시차·선행성 검정 신뢰도↓. 매칭 on/off 비교 또는 holdout으로만 확인";
   if (r.badge === "강") return "holdout 우선순위 높음";
   if (r.badge === "중") return "holdout 후보 (우선순위 중)";
   // 약: 게이트(공선)·방향으로 분기. 공선은 '안전'이 아니라 '못 봄' → deprioritize 금지.
@@ -12439,6 +12441,12 @@ function mmmCannibalization(panel, cfg, targetName, netElasticity, channelKey) {
   const sortedSp = spend.slice().sort((a, b) => a - b);
   const p25 = sortedSp.length ? sortedSp[Math.floor((sortedSp.length - 1) * R.lowSpendPct)] : 0;
   const lowIdx = spend.map((s, i) => s <= p25 ? i : -1).filter(i => i >= 0);
+  // 집행 연속성: on/off 전환 수 + 무집행 비율. 산발(flighted)이면 저지출창(=0지출)이 시점 혼재 → 선행성 confounded.
+  const _onoff = spend.map(v => v > 0 ? 1 : 0);
+  let flightTrans = 0; for (let i = 1; i < n; i++) if (_onoff[i] !== _onoff[i - 1]) flightTrans++;
+  const zeroFrac = +(1 - _onoff.reduce((a, b) => a + b, 0) / n).toFixed(2);
+  const flighted = flightTrans >= 4 && zeroFrac >= 0.2;   // ≥2 분리 플라이트 + 무집행 ≥20%
+  const lowDegenerate = p25 <= 0;   // 저지출창이 0지출 주들(초반 블록이 아니라 흩어지면 시점 혼재)
   let slope = 0, slopeP = 1, changePct = 0; const lowN = lowIdx.length;
   if (lowN >= R.precMinN) {
     const lx = lowIdx.map(i => t[i]), ly = lowIdx.map(i => y[i]);
@@ -12447,11 +12455,12 @@ function mmmCannibalization(panel, cfg, targetName, netElasticity, channelKey) {
   }
   let precVote;
   if (lowN < R.precMinN) precVote = "ABSTAIN";
+  else if (flighted && lowDegenerate) precVote = "ABSTAIN";   // 산발 집행·저지출창=0지출 시점혼재 → 선행성 신뢰 불가(degenerate P25)
   else if (slope < 0 && slopeP < R.precSlopeP && changePct <= -R.precDeclinePct) precVote = "FOR";
   else if (slope > 0 && slopeP < R.precSlopeP) precVote = "AGAINST";
   else precVote = "ABSTAIN";
   const precedence = { window: "low-spend(≤p25)", low_n: lowN, p25: Math.round(p25), avg_spend: Math.round(_mean(lowIdx.map(i => spend[i])) || 0), kpi_slope_per_wk: +slope.toFixed(1), slope_p: +slopeP.toFixed(4), kpi_change_over_window_pct: +changePct.toFixed(1), vote: precVote,
-    declining_pre_ramp: precVote === "FOR" };
+    declining_pre_ramp: precVote === "FOR", flighted, low_degenerate: lowDegenerate };
 
   // ── ② 탈추세·차분 상관 (시간 착시 vs 진짜 음상관) ──
   const lnG = spend.map(v => Math.log1p(v));
@@ -12509,12 +12518,14 @@ function mmmCannibalization(panel, cfg, targetName, netElasticity, channelKey) {
   else if (!powerGateBlocked && votes.FOR >= forBar && votes.AGAINST === 0) { verdictClass = "ok"; verdict = "관측상 적색신호 없음 (잠정 OK) — 방어 가능성 높음, 단 결정적 확인은 geo holdout"; }
   else { verdictClass = "inconclusive"; verdict = "INCONCLUSIVE — 증거 부족, holdout 필요"; }
   // 그랜저 시차 잠식이 유의하면 비-카니발 판정을 LEAN CANNIBAL로 격상 (동시점이 놓친 신호 — 보수적으로 우려만 ↑)
-  if (grangerCannibal && verdictClass !== "cannibal") { verdictClass = "cannibal"; verdict = `LEAN CANNIBAL — 그랜저 시차 인과(광고비→오가닉↓, lag ${gr.spend_to_organic.lag}), holdout 1순위`; }
+  // 단, 산발(flighted) 집행이면 그랜저 단독으로 격상 금지(on/off 버스트가 시차 신호를 왜곡 — 매칭 on/off/holdout 필요).
+  if (grangerCannibal && verdictClass !== "cannibal" && !flighted) { verdictClass = "cannibal"; verdict = `LEAN CANNIBAL — 그랜저 시차 인과(광고비→오가닉↓, lag ${gr.spend_to_organic.lag}), holdout 1순위`; }
 
   return {
     precedence, detrend_corr: detrend, net_incrementality: net,
     votes, vote_summary: `FOR ${votes.FOR} · AGAINST ${votes.AGAINST} · ABSTAIN ${votes.ABSTAIN}`,
     power_gate: { blocked: powerGateBlocked, reasons: gateReasons }, spend_time_corr: +spendTimeCorr.toFixed(3),
+    flighted, flight_transitions: flightTrans, flight_zero_frac: zeroFrac,
     is_brand_intercept: isBrand, for_bar: forBar, reverse_causality_risk: reverseRisk,
     granger: gr, granger_cannibal: !!grangerCannibal, granger_help: !!grangerHelp, pacing: !!pacing,
     verdict, verdict_class: verdictClass,
@@ -12909,6 +12920,12 @@ function runMmmMethTests(verbose = true) {
   const flatter = sd(adj) < sd(seasY) * 0.6;                       // 흔들림 평탄화
   const dsOk = adj.length === n && baseKept && flatter && JSON.stringify(adj) === JSON.stringify(adj2);
   R.push({ test: "T6i · 계절·휴일 제거(대칭·base보존·분산↓·결정론)", actual: `sd ${sd(seasY).toFixed(0)}→${sd(adj).toFixed(0)}·baseΔ${(mean(adj) - mean(seasY)).toFixed(2)}`, pass: dsOk ? "✓" : "✗" });
+  // T6j · 산발 집행(flighted): on/off 버스트 + 그랜저 잠식 신호여도 선행성 ABSTAIN·그랜저 단독 격상 금지
+  const flightSp = week.map((_, i) => ((i % 20) < 6) ? 8000 + rng() * 400 : 0);   // 20주마다 6주 집행(산발·무집행 70%)
+  const flightPanel = { week, ch: { fl: flightSp }, dummy: {}, targets: { Regs: panel.targets.Regs }, channels: [{ key: "fl", label: "fl", kind: "perf" }] };
+  const cnFl = mmmCannibalization(flightPanel, cfg, "Regs", { coef: -0.2, ci_lo: -0.4, ci_hi: 0.02, p: 0.2 }, "fl");
+  const flOk = cnFl.flighted === true && cnFl.precedence.vote === "ABSTAIN" && cnFl.flight_transitions >= 4;
+  R.push({ test: "T6j · 산발집행→선행성 ABSTAIN·flighted 플래그", actual: `flighted=${cnFl.flighted}·prec=${cnFl.precedence.vote}·trans=${cnFl.flight_transitions}`, pass: flOk ? "✓" : "✗" });
   // T7 audit r2
   const au = mmmAudit(panel, cfg);
   R.push({ test: "T7 · audit r2 유효", actual: String(au.r2), pass: au.r2 > 0 && au.r2 < 1 ? "✓" : "✗" });
@@ -13733,7 +13750,7 @@ function renderMmmCannibOverview(c, T, selCh) {
     const powerTxt = r.eligible ? (r.gated ? `<span style="color:#fbbf24;" title="${escapeHtml((cn.power_gate && cn.power_gate.reasons || []).join(' · '))}">🔗공선</span>` : '<span style="color:#22c55e;">통과</span>') : `<span style="color:var(--text-muted);" title="${escapeHtml(r.reasons.join(' · '))}">${escapeHtml(r.reasons[0] || '부족')}</span>`;
     return `<tr data-mmm-cannibch="${escapeHtml(r.key)}" style="cursor:pointer;${sel ? 'background:rgba(122,162,247,0.12);' : ''}${r.eligible ? '' : 'opacity:0.72;'}">
       <td class="tnum">${r.eligible ? r.rank : '—'}</td>
-      <td><strong>${escapeHtml(r.label)}</strong>${sel ? ' <span style="font-size:9px;color:#adc6ff;">▶</span>' : ''}</td>
+      <td><strong>${escapeHtml(r.label)}</strong>${r.flighted ? ` <span style="font-size:9px;color:#fbbf24;" title="산발 집행: on/off ${r.flightTrans}회·무집행 ${Math.round((r.flightZeroFrac || 0) * 100)}% — 시차·선행성 신뢰도↓">⚡산발</span>` : ''}${sel ? ' <span style="font-size:9px;color:#adc6ff;">▶</span>' : ''}</td>
       <td>${verdictChip(r)}</td>
       <td>${badgeChip(r)}</td>
       <td>${r.eligible ? ceiBar(r.cei) : '<span style="color:var(--text-muted);font-size:10px;">—</span>'}</td>
@@ -13808,6 +13825,7 @@ function renderMmmModelNumber(c, T, selCh) {
         ${row("그랜저 시차", `Σ&lt;0 & p&lt;${R.netP}`, `Σ&gt;0 또는 비유의`, g ? `Σ=${num(g.coefSum)} p=${num(g.p)}` : "—", grRead)}
         ${row("검정력 게이트", `VIF≥${R.gateVif} · corr≥${R.gateSpendTimeCorr}`, `미만`, r.gated ? "걸림" : "통과", gateRead)}
         ${row("데이터 적격", `집행&lt;${RC.MIN_ACTIVE} · CV&lt;${RC.MIN_SPEND_CV}`, `이상`, `집행 ${r.nActive}/${r.total} · CV ${num(r.spendCV, 2)} · df ${r.dfResid}`, eligRead)}
+        ${row("집행 연속성 ⚡", `산발 on/off (시점 혼재)`, `연속 집행`, cn.flighted ? `on/off ${cn.flight_transitions}회·무집행 ${Math.round((cn.flight_zero_frac || 0) * 100)}%` : "연속", cn.flighted ? `<span style="color:#fbbf24;">산발 집행 — 시차·선행성 검정 신뢰도↓(매칭 on/off·holdout 필요)</span>` : `<span style="color:#22c55e;">연속</span>`)}
       </tbody>
     </table></div>
     <p class="muted" style="font-size:10px;margin-top:5px;">⚠ <strong>저지출 선행성은 부호 해석이 반대</strong>입니다: 광고 본격화 <em>전(저지출 구간)</em>에 이미 <strong>유의 하락(slope&lt;0)</strong>이면 "광고가 빼앗은 게 아니라 원래 떨어짐 = 무죄(오가닉, FOR)". 반대로 광고 전엔 <strong>유의 상승(slope&gt;0)</strong>이었는데 이후 꺾였으면 "그 꺾임이 광고 시점과 일치 = 잠식 양립(AGAINST)". 위 '해석'은 <strong>실제 검정 투표</strong>라 검정 요약 카운트와 정확히 일치합니다. · 관측은 무죄를 증명하지 않음 — 확정은 holdout(5-15).</p>
