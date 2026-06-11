@@ -13117,6 +13117,31 @@ function mmmGetPanelFromColMap(cm) {
   if (panel.targets.Regs && panel.targets.React) panel.targets.RR = panel.week.map((_, i) => panel.targets.Regs[i] + panel.targets.React[i]);
   panel.channels = chans.map(ch => ({ key: ch.key, label: ch.label, kind: ch.kind }));
   panel.stepDefs = r.steps.map(s => ({ key: s.key, label: s.label }));   // 노티스 캐비엇용: 사용자 매핑 step 여부 판별
+  return _mmmTrimToActive(panel);
+}
+// 앞·뒤의 "데이터 없음" 주 제거 — 타깃·채널이 전부 0인 leading/trailing 주는 데이터가 없는 것(예: iOS가 늦게 시작).
+// 그 0주들을 분석에 넣으면 가짜 상승 추세·변화점이 생김 → 데이터가 실재하는 범위로만 자른다. 중간 0주는 유지.
+function _mmmTrimToActive(panel) {
+  const n = (panel.week || []).length; if (n < 4) return panel;
+  const tKeys = Object.keys(panel.targets || {}).filter(k => k !== "RR");
+  const cKeys = Object.keys(panel.ch || {});
+  const active = (i) => {
+    let s = 0;
+    for (const k of tKeys) s += Math.abs(panel.targets[k][i] || 0);
+    for (const k of cKeys) s += Math.abs(panel.ch[k][i] || 0);
+    return s > 0;
+  };
+  let lo = 0; while (lo < n && !active(lo)) lo++;
+  let hi = n - 1; while (hi > lo && !active(hi)) hi--;
+  if (lo === 0 && hi === n - 1) return panel;   // 자를 것 없음
+  if (lo > hi) return panel;                      // 전부 0 — 자르지 않음
+  const sl = (a) => a.slice(lo, hi + 1);
+  panel.week = sl(panel.week);
+  for (const k in panel.ch) panel.ch[k] = sl(panel.ch[k]);
+  for (const k in (panel.dummy || {})) panel.dummy[k] = sl(panel.dummy[k]);
+  for (const k in (panel.steps || {})) panel.steps[k] = sl(panel.steps[k]);
+  for (const k in panel.targets) panel.targets[k] = sl(panel.targets[k]);
+  panel.trimmed = { droppedHead: lo, droppedTail: n - 1 - hi, origN: n, usedN: hi - lo + 1 };
   return panel;
 }
 function mmmGetPanel() {
@@ -13143,7 +13168,7 @@ function mmmGetPanel() {
   for (const k in panel.targets) panel.targets[k] = re(panel.targets[k]);
   if (panel.targets.Regs && panel.targets.React) panel.targets.RR = panel.week.map((_, i) => panel.targets.Regs[i] + panel.targets.React[i]);
   panel.channels = MMM_CHANNELS.filter(ch => panel.ch[ch.key]).map(ch => ({ key: ch.key, label: ch.label, kind: ch.key === "brand" ? "brand" : "perf" }));
-  return panel;
+  return _mmmTrimToActive(panel);
 }
 const MMM_METH_CACHE = { key: null };
 function mmmMethCacheKey() {
@@ -13794,7 +13819,10 @@ function renderMmmCannibOverview(c, T, selCh) {
   const totToggle = `<div class="ab-pillgroup" style="margin:0 0 4px;"><span class="ab-pillgroup-label">지출</span><button class="ab-pill ${!totOn ? 'active' : ''}" data-mmm-spendtotal="0">선택 채널</button><button class="ab-pill ${totOn ? 'active' : ''}" data-mmm-spendtotal="1">전체 매체(Total)</button></div>`;
   const spendLabel = totOn ? "전체 매체 지출(합)" : escapeHtml(chLabel(selCh)) + " 지출";
   const spendChart = `<div style="margin-top:14px;">
-    <div style="font-size:12px;font-weight:600;color:var(--text-1);margin-bottom:2px;">📈 ${spendLabel} vs ${tgtKo} ${adjOn ? "(계절·휴일 보정)" : "(주별 실측)"}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+      <div style="font-size:12px;font-weight:600;color:var(--text-1);margin-bottom:2px;">📈 ${spendLabel} vs ${tgtKo} ${adjOn ? "(계절·휴일 보정)" : "(주별 실측)"}</div>
+      <button class="ab-pill" data-mmm-spendtarget-csv="1" title="주별: 타깃(실측·계절휴일보정) + 전체매체 + 전 채널 개별 지출 → CSV">⬇ 지출·타깃 CSV (전 채널)</button>
+    </div>
     <p class="muted" style="font-size:10px;margin:0 0 4px;">왼쪽축 = ${tgtKo} · 오른쪽축 = ${totOn ? "<strong>전 채널 지출 합</strong> — 타깃 트렌드가 개별 채널이 아니라 마케팅 전체 때문인지 확인" : "선택 채널 지출"}. ${adjOn ? "<strong>계절·휴일 효과를 뺀 타깃</strong>(추세·레벨 유지·base 불변) — 흔들림만 평탄." : "오가닉 포함 <strong>실측</strong>."} 같이 오르내리면 동반, 지출↑인데 타깃↓면 잠식 의심.</p>
     <div style="display:flex;flex-wrap:wrap;align-items:center;">${adjToggle}${totToggle}</div>
     <div class="chart-container" style="height:240px;"><canvas id="mmm-cannib-spend-chart"></canvas></div>
@@ -14264,6 +14292,7 @@ function bindMmmMethHandlers() {
   document.querySelectorAll("[data-mmm-cannib-series]").forEach(b => b.addEventListener("click", downloadMmmCannibSeriesCsv));
   document.querySelectorAll("[data-mmm-cannib-all]").forEach(b => b.addEventListener("click", downloadMmmCannibAllCsv));
   document.querySelectorAll("[data-mmm-trend-csv]").forEach(b => b.addEventListener("click", downloadMmmTrendCsv));
+  document.querySelectorAll("[data-mmm-spendtarget-csv]").forEach(b => b.addEventListener("click", downloadMmmSpendTargetCsv));
   // 튀는 구간 메모 (세션 상태에 저장; 재렌더 없이 input 값 유지)
   document.querySelectorAll("[data-mmm-note]").forEach(inp => inp.addEventListener("change", () => {
     if (!MMM_METH_STATE.notes) MMM_METH_STATE.notes = {};
@@ -14444,6 +14473,25 @@ function downloadMmmTrendCsv() {
     lines.push([week[i], weekDate(week[i]), Math.round(y[i]), num(stl[i]), num(tsLine[i]), num(olsLine[i]), cpMap[i] || ""].map(q).join(","));
   }
   _mmmDownload(`mmm_trend_${t}_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
+}
+// §4 지출 vs 타깃 차트 숫자 — 주별 타깃(실측·계절휴일보정) + 전체매체 합 + 전 채널 개별 지출.
+function downloadMmmSpendTargetCsv() {
+  const c = MMM_METH_CACHE, t = MMM_METH_STATE.target, T = c.byTarget && c.byTarget[t];
+  if (!T || !c.panel || !c.panel.targets[t]) { alert("데이터가 없습니다. 먼저 분석을 실행하세요."); return; }
+  const panel = c.panel, week = panel.week, n = week.length;
+  const yA = panel.targets[t], yD = mmmDeseasonHoliday(panel, t);
+  const chans = _mmmChans(panel).filter(ch => panel.ch[ch.key]);
+  const total = week.map((_, i) => chans.reduce((s, ch) => s + ((panel.ch[ch.key][i] > 0) ? panel.ch[ch.key][i] : 0), 0));
+  const weekDate = (w) => new Date(Date.UTC(2024, 0, 1) + (w - 1) * 7 * 86400000).toISOString().slice(0, 10);
+  const q = (s) => { s = String(s == null ? "" : s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const header = ["week", "date", t + "_actual", t + "_deseason", "total_media_spend", ...chans.map(ch => "spend_" + ch.label)];
+  const lines = [header.map(q).join(",")];
+  for (let i = 0; i < n; i++) {
+    const row = [week[i], weekDate(week[i]), Math.round(yA[i]), (yD[i] == null ? "" : yD[i]), Math.round(total[i])];
+    chans.forEach(ch => row.push(isFinite(panel.ch[ch.key][i]) ? Math.round(panel.ch[ch.key][i]) : ""));
+    lines.push(row.map(q).join(","));
+  }
+  _mmmDownload(`mmm_spend_target_${t}_${_mmmPlatLabel(MMM_METH_STATE.platform)}_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
 }
 function exportMmmMethMd() {
   const c = MMM_METH_CACHE; const L = ["# MMM 방법론 — verdict\n", "> described(연관)·가설·기술용. 인과/증분은 holdout 전용.\n"];
