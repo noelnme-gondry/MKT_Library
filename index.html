@@ -11628,11 +11628,27 @@ const CANNIBAL_RANK = (() => {
   }
   return { spendCV, zFromR, twoSidedP, relu, eligibility, RANK_CFG };
 })();
+// 사용자 조정 가능한 유효 RANK_CFG (MMM_METH_STATE.rankCfg 오버라이드 머지). 변경 시 캐시키 달라져 재계산.
+function mmmRankCfg() {
+  const o = MMM_METH_STATE.rankCfg || {};
+  return { ...RANK_CFG, ...o, W: { ...RANK_CFG.W, ...(o.W || {}) } };
+}
 // 채널별 카니발 랭킹 행 빌드 — 기존 cannibByChannel(검정 결과)+coverage 재사용, CEI/적격/배지/권고 산출.
 // "스킵 없음": 데이터 부족(Tier2)이라도 잠식 방향 신호 있으면 Tier2 상단에 surface(놓치지 않기).
-function mmmBuildCannibRank(panel, cannibByChannel, cov, chans) {
-  const cfg = RANK_CFG, n = panel.week.length, zA = 1.96, zW = 1.645;
+function mmmBuildCannibRank(panel, target, cannibByChannel, cov, chans) {
+  const cfg = mmmRankCfg(), n = panel.week.length, zA = 1.96, zW = 1.645;
   const totalSpend = chans.reduce((s, k) => s + (panel.ch[k] || []).reduce((a, v) => a + (v > 0 ? v : 0), 0), 0) || 1;
+  // 타깃 12주 holdout coarse MDE(% of target) — sigmaResid는 탈추세 잔차 std(매칭 가정 의존, coarse screen)
+  let mde12 = null;
+  const yT = panel.targets[target] || [];
+  if (yT.length > 3) {
+    const meanY = yT.reduce((a, v) => a + (isFinite(v) ? v : 0), 0) / yT.length;
+    const trFit = mmmOls(yT.map((_, i) => [1, i]), yT);
+    const resid = trFit ? trFit.resid : yT.map(v => v - meanY);
+    const rm = resid.reduce((a, v) => a + v, 0) / resid.length;
+    const sigmaResid = Math.sqrt(resid.reduce((a, v) => a + (v - rm) ** 2, 0) / resid.length);
+    if (meanY > 0) mde12 = +(Math.sqrt((1.96 + 0.84) ** 2 * 2 * sigmaResid ** 2 / 12) / meanY * 100).toFixed(1);
+  }
   const rows = chans.map(k => {
     const cn = cannibByChannel[k]; if (!cn) return null;
     const spend = panel.ch[k] || [], cv = cov[k] || { nonzero: 0 };
@@ -11683,6 +11699,7 @@ function mmmBuildCannibRank(panel, cannibByChannel, cov, chans) {
     if (b.nActive !== a.nActive) return b.nActive - a.nActive; return a.key < b.key ? -1 : 1;
   });
   rows.forEach((r, i) => { r.rank = i + 1; });
+  rows.mde12 = mde12;
   return rows;
 }
 function mmmCannibAction(r) {
@@ -12819,7 +12836,7 @@ if (typeof window !== "undefined") {
 /* ============================================================
  * 5-18 페이지 (MMM 방법론 도구) — 데이터 계약·config·결과 패널·차트·verdict·export
  * ============================================================ */
-const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi", colMap: null, decompBaseline: "nonmedia", decompModel: "ols", stage: "diagnose" };  // stage: diagnose(①추세·카니발 진단) | mmm(②기여·예측)  // decompModel: ols(centered) | merge(공선합산·centered) | ridge(정규화·LEVEL)  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상. colMap: {[header]:{role,kind}} 드래그앤드롭 역할 매핑. decompBaseline: "mean"(주평균) | "nonmedia"(추세·계절·휴일·레짐 포함)
+const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi", colMap: null, decompBaseline: "nonmedia", decompModel: "ols", stage: "diagnose", rankCfg: null };  // stage: diagnose(①추세·카니발 진단) | mmm(②기여·예측)  // decompModel: ols(centered) | merge(공선합산·centered) | ridge(정규화·LEVEL)  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상. colMap: {[header]:{role,kind}} 드래그앤드롭 역할 매핑. decompBaseline: "mean"(주평균) | "nonmedia"(추세·계절·휴일·레짐 포함)
 const MMM_NONMEDIA_GROUPS = ["Trend", "Seasonality", "Holidays", "Regime(steps)"];   // 비매체 드라이버 (baseline 포함 토글 대상)
 const _MMM_ROLES = ["ignore", "week", "reg", "react", "channel", "dummy", "step", "platform"];
 // CSV 헤더 → MMM 역할 자동 추정 (드래그앤드롭 초기값). 0/1 binary는 더미로 우선 처리(날짜명 오인 방지)
@@ -13027,7 +13044,7 @@ function mmmMethCacheKey() {
   const cm = mmmColMapActive();
   const m = CSV_STATE.mapping || {};
   const sig = cm ? "cm:" + JSON.stringify(cm) : Object.entries(m).filter(([, v]) => v !== "__ignore__").map(([h, v]) => `${v}:${h}`).sort().join("|");
-  return `${CSV_STATE.fileName}|${(CSV_STATE.raw || []).length}|${sig}|${JSON.stringify(MMM_METH_STATE.config)}|pf:${MMM_METH_STATE.platform}|ab:${JSON.stringify(MMM_METH_STATE.absorbChoice)}`;
+  return `${CSV_STATE.fileName}|${(CSV_STATE.raw || []).length}|${sig}|${JSON.stringify(MMM_METH_STATE.config)}|pf:${MMM_METH_STATE.platform}|ab:${JSON.stringify(MMM_METH_STATE.absorbChoice)}|rk:${JSON.stringify(MMM_METH_STATE.rankCfg || null)}`;
 }
 function buildMmmMethCache() {
   if (typeof window !== "undefined") window.__MMMM = MMM_METH_CACHE;
@@ -13066,8 +13083,9 @@ function buildMmmMethCache() {
       // 공선(power_gate)은 채널을 통째로 빼지 않고 net(③)만 보류·판정 상한을 INCONCLUSIVE로 캡함(mmmCannibalization 내부).
       // → sparse만 "데이터 부족"으로 제외, 공선 채널은 A/B/D로 평가돼 잠식/못가린다 버킷에 들어감(과보수 완화).
       const cov = mmmChannelCoverage(panel, cfg);
+      const _rcfg = mmmRankCfg();
       const isIdentified = (k) => {   // = 적격(평가 가능, spec 기준: 집행주·지출변동CV·df). 공선이어도 평가는 함.
-        return CANNIBAL_RANK.eligibility(panel.ch[k] || [], (cov[k] || { nonzero: 0 }).nonzero, RANK_CFG).eligible;
+        return CANNIBAL_RANK.eligibility(panel.ch[k] || [], (cov[k] || { nonzero: 0 }).nonzero, _rcfg).eligible;
       };
       const identifiedChannels = cannChannels.filter(isIdentified);
       // 대표채널: 데이터 충분 채널 중 비-0 최다, 동률이면 VIF 최저(공선 적은 쪽 우선). 없으면 least-bad 폴백.
@@ -13078,7 +13096,7 @@ function buildMmmMethCache() {
       const defCh = identifiedChannels.length ? pickRep(identifiedChannels) : (cannChannels.length ? pickRep(cannChannels) : null);
       const cannib = defCh ? cannibByChannel[defCh] : mmmCannibalization(panel, cfg, t, { coef: NaN, p: NaN }, null);
       const globalCannib = mmmGlobalCannib(cannibByChannel, identifiedChannels);   // 전역 worst-case (§0·§6)
-      const cannibRank = mmmBuildCannibRank(panel, cannibByChannel, cov, cannChannels);   // §4.5 랭킹(CEI·적격·근거강도)
+      const cannibRank = mmmBuildCannibRank(panel, t, cannibByChannel, cov, cannChannels);   // §4.5 랭킹(CEI·적격·근거강도·MDE12)
       const effects = mmmChannelEffects(panel, cfg, t, mmm.best_lambda);
       const decomp = mmmWeeklyDecomp(panel, cfg, t, mmm.best_lambda);
       // 변화점 탐지 (추세가 언제 꺾였나) — 오가닉 타깃 + 채널별 지출, 타이밍 선후로 선행성 보조
@@ -13642,13 +13660,25 @@ function renderMmmCannibOverview(c, T, selCh) {
     ? `<div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.35);border-radius:8px;padding:9px 12px;font-size:11.5px;color:var(--text-1);margin:6px 0;">⚠ 이 타깃·플랫폼에서 <strong>측정 가능한(적격) 채널이 없습니다</strong>. 타깃/플랫폼을 바꾸거나 데이터 축적이 필요합니다. (아래 데이터 부족 블록에서 어느 조건에 걸렸는지 확인)</div>`
     : (elig.every(r => r.cei === 0) ? `<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:9px 12px;font-size:11.5px;color:var(--text-1);margin:6px 0;">✓ 적격 채널 중 <strong>카니발 의심 신호(CEI&gt;0)가 없습니다</strong> — 관측상 holdout 우선순위로 올릴 채널 없음(무죄 증명은 아님).</div>` : "");
   const headRow = `<tr><th>순위</th><th>채널</th><th>판정</th><th>근거강도${mmmInfoIcon("cannib_overview")}</th><th>CEI</th><th>검정 요약</th><th>탈추세 r·p${mmmInfoIcon("spurious_detrend")}</th><th>net [CI]${mmmInfoIcon("net_incrementality")}</th><th>검정력/적격</th><th>권고</th></tr>`;
+  // 랭킹 파라미터 라이브 조정 (변경 시 캐시키 달라져 재계산·재정렬)
+  const rc = mmmRankCfg();
+  const numIn = (key, val, step, min, max, w) => `<input type="number" data-mmm-rankcfg="${key}" value="${val}" step="${step}" min="${min}" max="${max}" style="width:${w}px;background:var(--bg-1);border:1px solid var(--border);color:var(--text-1);border-radius:4px;padding:1px 4px;font-size:11px;">`;
+  const ctrl = `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--text-muted);margin:0 0 8px;padding:8px 11px;background:var(--bg-2);border-radius:8px;">
+    <span style="font-weight:700;color:var(--text-1);">⚙ 랭킹 파라미터</span>
+    <span>적격: 집행주≥ ${numIn("MIN_ACTIVE", rc.MIN_ACTIVE, 1, 4, 80, 46)} · 지출변동 CV≥ ${numIn("MIN_SPEND_CV", rc.MIN_SPEND_CV, 0.05, 0, 3, 52)} · df≥ ${numIn("MIN_DF", rc.MIN_DF, 1, 1, 40, 42)}</span>
+    <span>CEI 가중: 탈추세 ${numIn("W.detrend", rc.W.detrend, 0.5, 0, 5, 42)} · 차분 ${numIn("W.diff", rc.W.diff, 0.5, 0, 5, 42)} · net ${numIn("W.net", rc.W.net, 0.5, 0, 5, 42)}</span>
+    <button class="ab-pill" data-mmm-rankcfg-reset="1" style="font-size:10px;padding:2px 8px;">기본값 복원</button>
+  </div>`;
+  const mdeNote = rk.mde12 != null ? `<p class="muted" style="font-size:10px;margin:5px 0 0;">📐 이 타깃 <strong>12주 holdout 최소검출효과(coarse) ≈ ${rk.mde12}%</strong> — 이보다 작은 효과는 12주 holdout으로 못 잡습니다(매칭 가정 의존·대략치, borderline 채널 자동 기각 금지·참고용).</p>` : "";
   const rankTable = `<div style="font-size:12.5px;color:var(--text-1);font-weight:700;margin-bottom:2px;">§4.5 카니발 의심 랭킹 — CEI 높을수록 우선 검토 <span style="font-weight:400;font-size:10.5px;color:var(--text-muted);">(행 클릭 → 아래 채널 상세)</span></div>
     <p class="muted" style="font-size:10.5px;margin:0 0 6px;">CEI(카니발 근거지수) = 탈추세·차분·net이 <strong>유의하게 음(잠식)</strong>일 때만 가산(relu) → 높을수록 의심 큼. 적격 통과 채널만 순위, 데이터 부족은 하단(⚠=부족하지만 잠식 방향 신호).</p>
+    ${ctrl}
     ${banner}
     <div class="table-wrap"><table class="data" style="font-size:11px;"><thead>${headRow}</thead><tbody>
       ${elig.map(rowHtml).join("")}
       ${tier2.length ? `<tr><td colspan="10" style="background:rgba(156,163,175,0.08);color:var(--text-muted);font-size:10px;font-weight:600;padding:5px 8px;">⊘ 데이터 부족 (판단 불가 · ⚠는 신호 있어 놓치지 않음)</td></tr>${tier2.map(rowHtml).join("")}` : ""}
-    </tbody></table></div>`;
+    </tbody></table></div>
+    ${mdeNote}`;
   const tgtKo = MMM_METH_STATE.target === "Regs" ? "가입(Regs)" : "재활성(React)";
   const spendChart = `<div style="margin-top:14px;">
     <div style="font-size:12px;font-weight:600;color:var(--text-1);margin-bottom:2px;">📈 선택 채널 지출 vs ${tgtKo} (주별 실측) — <span style="color:#7aa2f7;">${escapeHtml(chLabel(selCh))}</span></div>
@@ -14063,6 +14093,14 @@ function bindMmmMethHandlers() {
   document.querySelectorAll("[data-mmm-platform]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.platform = b.dataset.mmmPlatform; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-absorb]").forEach(b => b.addEventListener("click", () => { if (!MMM_METH_STATE.absorbChoice) MMM_METH_STATE.absorbChoice = {}; MMM_METH_STATE.absorbChoice[b.dataset.mmmAbsorb] = b.dataset.side; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-cannibch]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.cannibChannel = b.dataset.mmmCannibch; navigate("5-18"); }));
+  document.querySelectorAll("[data-mmm-rankcfg]").forEach(inp => inp.addEventListener("change", () => {
+    const key = inp.dataset.mmmRankcfg, v = parseFloat(inp.value); if (!isFinite(v)) return;
+    if (!MMM_METH_STATE.rankCfg) MMM_METH_STATE.rankCfg = {};
+    if (key.indexOf("W.") === 0) { if (!MMM_METH_STATE.rankCfg.W) MMM_METH_STATE.rankCfg.W = {}; MMM_METH_STATE.rankCfg.W[key.slice(2)] = v; }
+    else MMM_METH_STATE.rankCfg[key] = v;
+    navigate("5-18");
+  }));
+  const _rcr = document.querySelector("[data-mmm-rankcfg-reset]"); if (_rcr) _rcr.addEventListener("click", () => { MMM_METH_STATE.rankCfg = null; navigate("5-18"); });
   document.querySelectorAll("[data-mmm-decompbase]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.decompBaseline = b.dataset.mmmDecompbase; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-decompmodel]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.decompModel = b.dataset.mmmDecompmodel; navigate("5-18"); }));
   const apply = document.querySelector("[data-mmm-cfg-apply]");
