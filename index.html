@@ -11713,6 +11713,16 @@ function mmmCannibAction(r) {
   if (r.leanNeg) return "약한 음의 기미·검정력 부족 — 모니터 / holdout 고려";
   return "관측상 이상 無 (비공선·탈추세 무해) — deprioritize 가능";
 }
+// 권고 짧은 라벨(표 셀 — 행 높이↓, 전체 문구는 title 툴팁)
+function mmmCannibActionShort(r) {
+  if (!r.eligible) return r.cannibSignal ? "⚠ 데이터·holdout" : "모니터·데이터축적";
+  if (r.flighted) return "⚡ holdout 확인";
+  if (r.badge === "강") return "holdout 1순위";
+  if (r.badge === "중") return "holdout 후보";
+  if (r.gated) return "🔗 holdout 확인";
+  if (r.leanNeg) return "모니터/holdout";
+  return "deprioritize 가능";
+}
 // 5단계 판정 그라데이션 — "못 가린다"를 초록쪽(거의 없음)/빨강쪽(신호 조금)으로 쪼갬.
 // L1 데이터없음 / L2 적색신호없음 / L3 적색신호없음에 가까움 / L4 못가리지만 신호조금 / L5 카니발
 function mmmCannibLevel(r) {
@@ -13607,9 +13617,8 @@ function renderMmmStageTabs(c) {
 function renderMmmStage1Intro(c) {
   const descTip = '카니발(잠식)은 직접 관측되지 않습니다. 그래서 제거법으로 봅니다 — "광고비↑인데 오가닉↓"를 만들 수 있는 무죄 가설(공통추세·외생적 하락·역인과)을 검정으로 하나씩 죽이고, 무엇이 남는지 + 애초에 볼 힘이 있었는지(식별성)로 판정합니다.';
   return `<section class="block" id="s-stage1-intro" style="border-left:3px solid #7aa2f7;padding-left:16px;">
-    <h2 class="section-title" style="font-size:15px;margin-bottom:2px;"><span class="ix">①</span>진단 — 잠식이 있나 · 추세에 뭐가 영향 주나${mmmTip(descTip)}</h2>
-    <p style="font-size:11.5px;color:var(--text-muted);margin:2px 0 0;">제거법으로 잠식을 판정 — 제목 옆 <strong>?</strong>에 마우스를 올리면 한 줄 설명, 검정 로직 전체는 아래 <strong>로직 확인</strong>을 펼치세요.</p>
-    <details style="margin-top:8px;">
+    <h2 class="section-title" style="font-size:15px;margin-bottom:4px;"><span class="ix">①</span>진단 — 잠식이 있나 · 추세에 뭐가 영향 주나${mmmTip(descTip)}</h2>
+    <details style="margin-top:4px;">
       <summary style="cursor:pointer;font-size:12px;font-weight:600;color:#adc6ff;">🔎 로직 확인 — 식별 게이트 · 방향 검정 4개 · 비대칭 판정 · lead/lag</summary>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
         <div style="flex:1;min-width:200px;background:var(--bg-2);border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--text-1);"><strong style="color:#adc6ff;">① 식별 게이트</strong> — 비-0 충분·spend↔time 비공선이어야 "말할 자격". 못 넘으면 INCONCLUSIVE.</div>
@@ -13657,13 +13666,12 @@ function renderMmmTrend(c) {
   const vColor = tr.verdict.includes("NO robust") ? "#22c55e" : tr.verdict.includes("EXISTS") ? "#f87171" : "#fbbf24";
   return `<section class="block">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-      <h3 class="section-title" style="font-size:15px;margin:0;"><span class="ix">§3</span>추세 존재 검정 — ${MMM_METH_STATE.target} (가정 말고 검정)</h3>
+      <h3 class="section-title" style="font-size:15px;margin:0;"><span class="ix">§3</span>추세 존재 검정 — ${MMM_METH_STATE.target} (가정 말고 검정)${mmmTip('p값 < 0.05 = 우연으로 보기 어려움 = 추세 신호 있음, p값이 크면 신호 없음. 여러 검정(STL·Mann-Kendall·ADF/KPSS)으로 각도를 바꿔 확인합니다. 가장 중요한 건 맨 아래 "매체+계절 제거 후 잔차 MK" — 이게 no trend면 광고를 다 빼고 봐도 오가닉 자체엔 추세가 없다는 뜻. (STL Δ%는 짧은 데이터에서 흔들려 참고용)')}</h3>
       <button class="ab-pill" data-mmm-trend-csv="1" title="추세 차트 주별 숫자: actual·STL·Theil-Sen·OLS 추세선 + 변화점 + 검정 p값 → CSV">⬇ 추세 차트 CSV</button>
     </div>
     <div class="callout" style="border-left:3px solid ${vColor};"><div class="body"><strong>판정:</strong> ${escapeHtml(tr.verdict)}</div></div>
-    ${mmmExplain('<strong>p값 &lt; 0.05 = 우연으로 보기 어려움 = 추세 신호 있음</strong>, p값이 크면(예: 0.5) 신호 없음. 검정을 여러 개 쓰는 이유는 추세가 진짜인지 각도를 바꿔 확인하기 위해서입니다 — STL(직선 가정 없이 곡선으로), Mann-Kendall(꾸준히 오르내리는지), ADF/KPSS(진짜 추세 vs 술취한 걸음 같은 랜덤워크). 표에서 가장 중요한 건 맨 아래 <strong>"매체+계절 제거 후 잔차 MK"</strong> — 이게 "no trend"면 광고를 다 빼고 봐도 오가닉 자체엔 추세가 없다는 뜻입니다. (STL Δ%는 짧은 데이터에서 흔들려서 참고용)')}
     <div class="chart-container" style="height:240px;margin:8px 0;"><canvas id="mmm-stl-chart"></canvas></div>
-    <p class="muted" style="font-size:10.5px;margin:-2px 0 6px;">추세선 비교 — <span style="color:#f87171;">STL</span>(곡선, 비선형·데이터기반) · <span style="color:#fbbf24;">Theil-Sen</span>(만-켄달의 짝꿍 기울기, 이상치에 강한 직선) · <span style="color:#7aa2f7;">OLS</span>(단순 선형, 회귀에 t 넣었을 때의 직선). 세 선이 비슷하면 추세가 robust, 갈리면 형태에 민감(예: 출시 초 급등). 만-켄달 표 값은 기울기 크기가 아니라 <strong>오르내림 방향 판정</strong>이라, "no trend"면 Theil-Sen 기울기가 ±0 근처로 거의 평평합니다. <strong>ADF·KPSS·1차차분 drift는 "추세선"이 아니라 정상성/유의성 <em>검정</em>이라 선이 없고 아래 표 값으로만 봅니다.</strong> (범례 클릭으로 선 토글)</p>
+    <details style="margin:-2px 0 6px;"><summary style="cursor:pointer;font-size:10.5px;color:var(--text-muted);">ℹ️ 추세선 읽는 법 (STL·Theil-Sen·OLS)</summary><p class="muted" style="font-size:10.5px;margin:4px 0 0;line-height:1.6;"><span style="color:#f87171;">STL</span>(곡선·데이터기반) · <span style="color:#fbbf24;">Theil-Sen</span>(만-켄달 짝꿍 기울기, 이상치 강건) · <span style="color:#7aa2f7;">OLS</span>(단순 선형). 세 선이 비슷하면 robust, 갈리면 형태에 민감. MK 표 값은 기울기 크기가 아니라 방향 판정. ADF·KPSS·1차차분 drift는 추세선이 아니라 정상성/유의성 검정이라 선 없이 아래 표 값으로만 봅니다. (범례 클릭으로 선 토글)</p></details>
     <div class="table-wrap"><table class="data" style="font-size:11.5px;"><tbody>
       <tr><td>STL 데이터기반 추세 Δ%${mmmInfoIcon("stl")}</td><td class="tnum ${tr.stl_pct < 0 ? 'neg' : 'pos'}">${tr.stl_pct}% <span style="color:var(--text-muted);font-size:10px;">(짧은 시계열 보조지표)</span></td></tr>
       <tr><td>Mann-Kendall (raw)${mmmInfoIcon("mann_kendall")}</td><td>${f(tr.mk_raw)}</td></tr>
@@ -13754,7 +13762,7 @@ function renderMmmCannibOverview(c, T, selCh) {
   const levOf = {}; rk.forEach(r => { levOf[r.key] = mmmCannibLevel(r); });
   const byLv = { 5: [], 4: [], 3: [], 2: [], 1: [] };
   rk.forEach(r => byLv[levOf[r.key].lv].push(r.key));
-  const chip = (k, col) => `<button class="ab-pill ${k === selCh ? 'active' : ''}" data-mmm-cannibch="${escapeHtml(k)}" style="font-size:11px;border-color:${col}66;${k === selCh ? `background:${col}22;` : ''}">${escapeHtml(chLabel(k))}${(rk.find(x => x.key === k) || {}).cannibSignal && !(rk.find(x => x.key === k) || {}).eligible ? ' ⚠' : ''}</button>`;
+  const chip = (k, col) => `<button class="ab-pill ${k === selCh ? 'active' : ''}" data-mmm-cannibch="${escapeHtml(k)}" style="font-size:10.5px;border-color:${col}66;${k === selCh ? `background:${col}22;` : ''}max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left;line-height:1.25;">${escapeHtml(chLabel(k))}${(rk.find(x => x.key === k) || {}).cannibSignal && !(rk.find(x => x.key === k) || {}).eligible ? ' ⚠' : ''}</button>`;
   const bucketCard = (keys, col, bg, title, desc) => `<div style="flex:1;min-width:155px;background:${bg};border:1px solid ${col}44;border-radius:10px;padding:11px 13px;">
     <div style="font-size:12px;font-weight:700;color:${col};">${title} <span style="color:var(--text-muted);font-weight:400;">· ${keys.length}</span></div>
     <div style="font-size:9.5px;color:var(--text-muted);margin:2px 0 8px;line-height:1.35;">${desc}</div>
@@ -13795,7 +13803,7 @@ function renderMmmCannibOverview(c, T, selCh) {
       <td class="tnum" style="color:${detCol};">${num(r.rDet)} <span style="color:var(--text-muted);font-size:9.5px;">p=${num(r.detP)}</span></td>
       <td class="tnum" style="font-size:10.5px;">${netTxt}</td>
       <td style="font-size:9.5px;">${powerTxt}</td>
-      <td style="font-size:10px;">${escapeHtml(mmmCannibAction(r))}</td>
+      <td style="font-size:10px;white-space:nowrap;" title="${escapeHtml(mmmCannibAction(r))}">${escapeHtml(mmmCannibActionShort(r))}</td>
     </tr>`;
   };
   const elig = rk.filter(r => r.eligible), tier2 = rk.filter(r => !r.eligible);
@@ -13827,13 +13835,13 @@ function renderMmmCannibOverview(c, T, selCh) {
   const adjToggle = `<div class="ab-pillgroup" style="margin:0 8px 4px 0;"><span class="ab-pillgroup-label">타깃</span><button class="ab-pill ${!adjOn ? 'active' : ''}" data-mmm-spendadj="0">실측</button><button class="ab-pill ${adjOn ? 'active' : ''}" data-mmm-spendadj="1">계절·휴일 제거</button></div>`;
   const totToggle = `<div class="ab-pillgroup" style="margin:0 0 4px;"><span class="ab-pillgroup-label">지출</span><button class="ab-pill ${!totOn ? 'active' : ''}" data-mmm-spendtotal="0">선택 채널</button><button class="ab-pill ${totOn ? 'active' : ''}" data-mmm-spendtotal="1">전체 매체(Total)</button></div>`;
   const spendLabel = totOn ? "전체 매체 지출(합)" : escapeHtml(chLabel(selCh)) + " 지출";
+  const spendTip = `왼쪽축 = ${tgtKo} · 오른쪽축 = ${totOn ? "전 채널 지출 합(타깃 트렌드가 마케팅 전체 때문인지 확인)" : "선택 채널 지출"}. ${adjOn ? "계절·휴일 효과를 뺀 타깃(추세·레벨 유지·base 불변, 흔들림만 평탄)." : "오가닉 포함 실측."} 같이 오르내리면 동반, 지출↑인데 타깃↓면 잠식 의심.`;
   const spendChart = `<div style="margin-top:14px;">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-      <div style="font-size:12px;font-weight:600;color:var(--text-1);margin-bottom:2px;">📈 ${spendLabel} vs ${tgtKo} ${adjOn ? "(계절·휴일 보정)" : "(주별 실측)"}</div>
+      <div style="font-size:12px;font-weight:600;color:var(--text-1);">📈 ${spendLabel} vs ${tgtKo} ${adjOn ? "(계절·휴일 보정)" : "(주별 실측)"}${mmmTip(spendTip)}</div>
       <button class="ab-pill" data-mmm-spendtarget-csv="1" title="주별: 타깃(실측·계절휴일보정) + 전체매체 + 전 채널 개별 지출 → CSV">⬇ 지출·타깃 CSV (전 채널)</button>
     </div>
-    <p class="muted" style="font-size:10px;margin:0 0 4px;">왼쪽축 = ${tgtKo} · 오른쪽축 = ${totOn ? "<strong>전 채널 지출 합</strong> — 타깃 트렌드가 개별 채널이 아니라 마케팅 전체 때문인지 확인" : "선택 채널 지출"}. ${adjOn ? "<strong>계절·휴일 효과를 뺀 타깃</strong>(추세·레벨 유지·base 불변) — 흔들림만 평탄." : "오가닉 포함 <strong>실측</strong>."} 같이 오르내리면 동반, 지출↑인데 타깃↓면 잠식 의심.</p>
-    <div style="display:flex;flex-wrap:wrap;align-items:center;">${adjToggle}${totToggle}</div>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;margin-top:4px;">${adjToggle}${totToggle}</div>
     <div class="chart-container" style="height:240px;"><canvas id="mmm-cannib-spend-chart"></canvas></div>
   </div>`;
   return `${bucketsHtml}${rankTable}${spendChart}${renderMmmModelNumber(c, T, selCh)}`;
@@ -13854,7 +13862,7 @@ function renderMmmModelNumber(c, T, selCh) {
   const gateRead = r.gated ? `<span style="color:#fbbf24;">공선·검정력↓ (net 보류)</span>` : `<span style="color:#22c55e;">통과</span>`;
   const eligRead = r.eligible ? `<span style="color:#22c55e;">적격</span>` : `<span style="color:#f87171;">데이터 부족</span>`;
   const row = (metric, badRange, goodRange, value, reading) => `<tr><td><strong>${metric}</strong></td><td style="color:#f87171;font-size:10.5px;">${badRange}</td><td style="color:#22c55e;font-size:10.5px;">${goodRange}</td><td class="tnum">${value}</td><td style="font-size:11px;">${reading}</td></tr>`;
-  return `<details style="margin-top:14px;" open><summary style="cursor:pointer;font-size:12.5px;color:#adc6ff;font-weight:700;">📐 Model Number — 어떤 숫자가 나와야 하나 (선택: <span style="color:#7aa2f7;">${escapeHtml(r.label)}</span>)</summary>
+  return `<details style="margin-top:14px;"><summary style="cursor:pointer;font-size:12.5px;color:#adc6ff;font-weight:700;">📐 Model Number — 어떤 숫자가 나와야 하나 (선택: <span style="color:#7aa2f7;">${escapeHtml(r.label)}</span>)</summary>
     <p class="muted" style="font-size:10.5px;margin:5px 0 6px;">각 지표가 어느 범위면 잠식(나쁨)/무해(좋음)인지 + <strong>이 채널의 실제 값과 평어 해석</strong>. 채널은 위 표/칩에서 전환.</p>
     <div class="table-wrap"><table class="data" style="font-size:11px;">
       <thead><tr><th>지표</th><th style="color:#f87171;">잠식 범위(나쁨)</th><th style="color:#22c55e;">무해/증분(좋음)</th><th>이 채널 값</th><th>해석</th></tr></thead>
@@ -13935,11 +13943,10 @@ function renderMmmCannib(c) {
     })()}
     ${revBox}
     <div style="margin-top:10px;">
-      <div style="font-size:12px;font-weight:600;color:#adc6ff;">⑤ 임펄스 응답(IRF) — 지출 1SD 충격이 ${MMM_METH_STATE.target === "Regs" ? "가입" : "재활성"}에 몇 주에 걸쳐 얼마나${mmmInfoIcon("irf")}</div>
-      <p class="muted" style="font-size:10px;margin:2px 0 4px;">그랜저가 "시차 신호가 유의한가?"라면 IRF는 "<strong>그 효과가 얼마나 크고 며칠 가나</strong>"를 곡선으로. 음(−)으로 내려가면 시차 잠식, 양(+)이면 시차 증분. <span style="color:var(--text-muted);">prewhiten 레벨 VAR·관측 — 확정은 holdout.</span></p>
-      <div class="chart-container" style="height:200px;"><canvas id="mmm-cannib-irf-chart"></canvas></div>
+      <div style="font-size:12px;font-weight:600;color:#adc6ff;">⑤ 임펄스 응답(IRF) — 지출 1SD 충격이 ${MMM_METH_STATE.target === "Regs" ? "가입" : "재활성"}에 몇 주에 걸쳐 얼마나${mmmTip('그랜저가 "시차 신호가 유의한가?"라면 IRF는 "그 효과가 얼마나 크고 며칠 가나"를 곡선으로. 음(−)으로 내려가면 시차 잠식, 양(+)이면 시차 증분. prewhiten 레벨 VAR·관측 — 확정은 holdout.')}</div>
+      <div class="chart-container" style="height:200px;margin-top:4px;"><canvas id="mmm-cannib-irf-chart"></canvas></div>
     </div>
-    <p class="muted" style="font-size:11px;margin-top:6px;">non-significant ≠ 무효과(p>.05 near-zero는 FOR로 세지 않음). 부호만이 아니라 <strong>유의성·CI·검정력</strong>을 함께 봅니다. ①~③은 동시점, ④ 그랜저는 시차 유의성, ⑤ IRF는 시차 효과 크기·지속. ⚠ 어떤 경우든 결정적 증거는 <strong>geo holdout / organic-split (5-15)</strong>.</p>
+    <details style="margin-top:6px;"><summary style="cursor:pointer;font-size:10.5px;color:var(--text-muted);">ℹ️ 검정 해석 노트</summary><p class="muted" style="font-size:10.5px;margin:4px 0 0;line-height:1.6;">non-significant ≠ 무효과(p>.05 near-zero는 FOR로 세지 않음). 부호만이 아니라 <strong>유의성·CI·검정력</strong>을 함께 봅니다. ①~③은 동시점, ④ 그랜저는 시차 유의성, ⑤ IRF는 시차 효과 크기·지속. ⚠ 어떤 경우든 결정적 증거는 <strong>geo holdout / organic-split (5-15)</strong>.</p></details>
   </section>`;
 }
 function renderMmmMmm(c) {
