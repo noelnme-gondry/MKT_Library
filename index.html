@@ -12269,9 +12269,10 @@ function mmmGranger(y, x, maxLagCap, opts) {
   };
   return { spend_to_organic: test(dy, dx), organic_to_spend: test(dx, dy) };
 }
-/* --- 타깃에서 계절·휴일 효과만 제거(보정) — 추세·레벨·구조변화 step은 유지 ---
- * 타깃 ~ [1, t, sin/cos52.18, 더미, step] OLS 후, 계절(sin/cos)+휴일더미 기여만 빼서 반환.
- * "채널 effect 제외한 나머지(계절·휴일)" 제거 → 채널 vs 타깃 관계가 캘린더 스파이크에 안 가림. 결정론. */
+/* --- 타깃에서 계절·휴일 "부양분(+)"만 제거(비대칭 보정) — 추세·레벨·구조변화 step 유지 ---
+ * 타깃 ~ [1, t, sin/cos52.18, 더미, step] OLS 후, 계절(sin/cos)+휴일더미 기여가
+ * 양(+)이면 빼고(피크 깎기), 음(−)이면 그대로(베이스 안 올림 — 일어나지 않은 RR을 만들지 않음).
+ * adjusted = actual − max(0, 계절·휴일 기여). 결정론. */
 function mmmDeseasonHoliday(panel, target) {
   const y = panel.targets[target] || []; const n = y.length; if (n < 8) return y.slice();
   const dums = panel.dummy || {}, steps = panel.steps || {};
@@ -12286,12 +12287,16 @@ function mmmDeseasonHoliday(panel, target) {
   let fit; try { fit = REG_STATS.ols(X, y); } catch (e) { return y.slice(); }
   if (!fit) return y.slice();
   const b = fit.beta;   // [int, t, sin, cos, ...dummies, ...steps]
-  return y.map((v, i) => {
+  const sh = y.map((_, i) => {
     const a = 2 * Math.PI * i / 52.18;
-    let seasonHol = b[2] * Math.sin(a) + b[3] * Math.cos(a);
-    dumKeys.forEach((k, j) => { seasonHol += b[4 + j] * ((dums[k] || [])[i] || 0); });
-    return +(v - seasonHol).toFixed(1);   // 계절+휴일만 제거(추세·레벨·step 유지)
+    let s = b[2] * Math.sin(a) + b[3] * Math.cos(a);
+    dumKeys.forEach((k, j) => { s += b[4 + j] * ((dums[k] || [])[i] || 0); });
+    return s;
   });
+  // 양방향 평탄화 + base(평균) 보존: 계절·휴일 기여의 "평균 대비 편차"만 제거.
+  // +기여(평균↑)면 빼서 내리고, −기여(평균↓)면 더해서 올림. 전체 레벨(Base)은 불변.
+  const meanSh = sh.reduce((s, v) => s + v, 0) / sh.length;
+  return y.map((v, i) => +(v - (sh[i] - meanSh)).toFixed(1));
 }
 /* --- 임펄스 응답(IRF) — 지출 1SD 충격이 오가닉에 몇 주에 걸쳐 얼마나 퍼지나 ---
  * prewhiten(추세·계절 제거) 레벨에서 2변수 VAR(p) 적합(AIC lag) → spend 충격을 주고 organic 반응을 H주 추적.
@@ -12898,9 +12903,12 @@ function runMmmMethTests(verbose = true) {
   const seasPanel = { week, targets: { Regs: seasY }, dummy: { Spike: week.map((_, i) => (i === 5 || i === 57) ? 1 : 0) }, steps: {} };
   const adj = mmmDeseasonHoliday(seasPanel, "Regs");
   const adj2 = mmmDeseasonHoliday(seasPanel, "Regs");
-  const sd = (a) => { const m = a.reduce((s, v) => s + v, 0) / a.length; return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / a.length); };
-  const dsOk = adj.length === n && sd(adj) < sd(seasY) * 0.6 && JSON.stringify(adj) === JSON.stringify(adj2);
-  R.push({ test: "T6i · 계절·휴일 제거(분산↓·결정론)", actual: `sd ${sd(seasY).toFixed(0)}→${sd(adj).toFixed(0)}`, pass: dsOk ? "✓" : "✗" });
+  const mean = (a) => a.reduce((s, v) => s + v, 0) / a.length;
+  const sd = (a) => { const m = mean(a); return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / a.length); };
+  const baseKept = Math.abs(mean(adj) - mean(seasY)) < 0.5;       // 대칭+base 보존: 평균(Base) 불변
+  const flatter = sd(adj) < sd(seasY) * 0.6;                       // 흔들림 평탄화
+  const dsOk = adj.length === n && baseKept && flatter && JSON.stringify(adj) === JSON.stringify(adj2);
+  R.push({ test: "T6i · 계절·휴일 제거(대칭·base보존·분산↓·결정론)", actual: `sd ${sd(seasY).toFixed(0)}→${sd(adj).toFixed(0)}·baseΔ${(mean(adj) - mean(seasY)).toFixed(2)}`, pass: dsOk ? "✓" : "✗" });
   // T7 audit r2
   const au = mmmAudit(panel, cfg);
   R.push({ test: "T7 · audit r2 유효", actual: String(au.r2), pass: au.r2 > 0 && au.r2 < 1 ? "✓" : "✗" });
@@ -12917,7 +12925,7 @@ if (typeof window !== "undefined") {
 /* ============================================================
  * 5-18 페이지 (MMM 방법론 도구) — 데이터 계약·config·결과 패널·차트·verdict·export
  * ============================================================ */
-const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi", colMap: null, decompBaseline: "nonmedia", decompModel: "ols", stage: "diagnose", rankCfg: null, spendChartAdj: false };  // stage: diagnose(①추세·카니발 진단) | mmm(②기여·예측)  // decompModel: ols(centered) | merge(공선합산·centered) | ridge(정규화·LEVEL)  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상. colMap: {[header]:{role,kind}} 드래그앤드롭 역할 매핑. decompBaseline: "mean"(주평균) | "nonmedia"(추세·계절·휴일·레짐 포함)
+const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi", colMap: null, decompBaseline: "nonmedia", decompModel: "ols", stage: "diagnose", rankCfg: null, spendChartAdj: false, spendChartTotal: false };  // stage: diagnose(①추세·카니발 진단) | mmm(②기여·예측)  // decompModel: ols(centered) | merge(공선합산·centered) | ridge(정규화·LEVEL)  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상. colMap: {[header]:{role,kind}} 드래그앤드롭 역할 매핑. decompBaseline: "mean"(주평균) | "nonmedia"(추세·계절·휴일·레짐 포함)
 const MMM_NONMEDIA_GROUPS = ["Trend", "Seasonality", "Holidays", "Regime(steps)"];   // 비매체 드라이버 (baseline 포함 토글 대상)
 const _MMM_ROLES = ["ignore", "week", "reg", "react", "channel", "dummy", "step", "platform"];
 // CSV 헤더 → MMM 역할 자동 추정 (드래그앤드롭 초기값). 0/1 binary는 더미로 우선 처리(날짜명 오인 방지)
@@ -13761,12 +13769,14 @@ function renderMmmCannibOverview(c, T, selCh) {
     </tbody></table></div>
     ${mdeNote}`;
   const tgtKo = MMM_METH_STATE.target === "Regs" ? "가입(Regs)" : "재활성(React)";
-  const adjOn = !!MMM_METH_STATE.spendChartAdj;
-  const adjToggle = `<div class="ab-pillgroup" style="margin:0 0 4px;"><span class="ab-pillgroup-label">타깃 표시</span><button class="ab-pill ${!adjOn ? 'active' : ''}" data-mmm-spendadj="0">실측(actual)</button><button class="ab-pill ${adjOn ? 'active' : ''}" data-mmm-spendadj="1">계절·휴일 제거</button></div>`;
+  const adjOn = !!MMM_METH_STATE.spendChartAdj, totOn = !!MMM_METH_STATE.spendChartTotal;
+  const adjToggle = `<div class="ab-pillgroup" style="margin:0 8px 4px 0;"><span class="ab-pillgroup-label">타깃</span><button class="ab-pill ${!adjOn ? 'active' : ''}" data-mmm-spendadj="0">실측</button><button class="ab-pill ${adjOn ? 'active' : ''}" data-mmm-spendadj="1">계절·휴일 제거</button></div>`;
+  const totToggle = `<div class="ab-pillgroup" style="margin:0 0 4px;"><span class="ab-pillgroup-label">지출</span><button class="ab-pill ${!totOn ? 'active' : ''}" data-mmm-spendtotal="0">선택 채널</button><button class="ab-pill ${totOn ? 'active' : ''}" data-mmm-spendtotal="1">전체 매체(Total)</button></div>`;
+  const spendLabel = totOn ? "전체 매체 지출(합)" : escapeHtml(chLabel(selCh)) + " 지출";
   const spendChart = `<div style="margin-top:14px;">
-    <div style="font-size:12px;font-weight:600;color:var(--text-1);margin-bottom:2px;">📈 선택 채널 지출 vs ${tgtKo} ${adjOn ? "(계절·휴일 보정)" : "(주별 실측)"} — <span style="color:#7aa2f7;">${escapeHtml(chLabel(selCh))}</span></div>
-    <p class="muted" style="font-size:10px;margin:0 0 4px;">왼쪽축 = ${tgtKo} · 오른쪽축 = 그 채널 지출. ${adjOn ? "<strong>계절(연주기)·휴일 더미 효과를 뺀 타깃</strong>(추세·레벨·구조변화는 유지) — 캘린더 스파이크 제거 후 채널 관계를 봅니다." : "오가닉 포함 <strong>실측</strong>."} 같이 오르내리면 동반, 지출↑인데 타깃↓면 잠식 의심(공통추세 착시는 위 탈추세·그랜저로 검정). 채널은 위 표/칩에서 전환.</p>
-    ${adjToggle}
+    <div style="font-size:12px;font-weight:600;color:var(--text-1);margin-bottom:2px;">📈 ${spendLabel} vs ${tgtKo} ${adjOn ? "(계절·휴일 보정)" : "(주별 실측)"}</div>
+    <p class="muted" style="font-size:10px;margin:0 0 4px;">왼쪽축 = ${tgtKo} · 오른쪽축 = ${totOn ? "<strong>전 채널 지출 합</strong> — 타깃 트렌드가 개별 채널이 아니라 마케팅 전체 때문인지 확인" : "선택 채널 지출"}. ${adjOn ? "<strong>계절·휴일 효과를 뺀 타깃</strong>(추세·레벨 유지·base 불변) — 흔들림만 평탄." : "오가닉 포함 <strong>실측</strong>."} 같이 오르내리면 동반, 지출↑인데 타깃↓면 잠식 의심.</p>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;">${adjToggle}${totToggle}</div>
     <div class="chart-container" style="height:240px;"><canvas id="mmm-cannib-spend-chart"></canvas></div>
   </div>`;
   return `${bucketsHtml}${rankTable}${spendChart}${renderMmmModelNumber(c, T, selCh)}`;
@@ -14014,16 +14024,18 @@ function renderMmmCharts(c) {
   if (document.getElementById("mmm-cannib-spend-chart")) {
     const chans = T.cannChannels || [];
     const selCh = chans.includes(MMM_METH_STATE.cannibChannel) ? MMM_METH_STATE.cannibChannel : T.defCh;
-    const adjOn = !!MMM_METH_STATE.spendChartAdj;
+    const adjOn = !!MMM_METH_STATE.spendChartAdj, totOn = !!MMM_METH_STATE.spendChartTotal;
     const tgtY = adjOn ? mmmDeseasonHoliday(c.panel, MMM_METH_STATE.target) : (c.panel.targets[MMM_METH_STATE.target] || []);
-    const spY = (selCh && c.panel.ch[selCh]) || [];
-    const chL = (_mmmChans(c.panel).find(cc => cc.key === selCh) || {}).label || selCh || "채널";
+    const spY = totOn
+      ? c.panel.week.map((_, i) => chans.reduce((s, k) => s + (((c.panel.ch[k] || [])[i]) > 0 ? c.panel.ch[k][i] : 0), 0))
+      : ((selCh && c.panel.ch[selCh]) || []);
+    const chL = totOn ? "전체 매체 지출" : ((_mmmChans(c.panel).find(cc => cc.key === selCh) || {}).label || selCh || "채널") + " 지출";
     const tgtKo = (MMM_METH_STATE.target === "Regs" ? "가입" : "재활성") + (adjOn ? "(보정)" : "");
     destroyChartIfExists("mmm-cannib-spend-chart");
     CHART_INSTANCES["mmm-cannib-spend-chart"] = new Chart(document.getElementById("mmm-cannib-spend-chart"), {
       data: { labels: c.panel.week, datasets: [
         { type: "line", label: tgtKo + " (실측)", data: tgtY, borderColor: "#e6e9ef", borderWidth: 1.6, pointRadius: 0, yAxisID: "y", tension: 0.2, order: 1 },
-        { type: "line", label: chL + " 지출", data: spY, borderColor: "#7aa2f7", backgroundColor: "rgba(122,162,247,0.12)", borderWidth: 1.5, pointRadius: 0, yAxisID: "y1", fill: true, tension: 0.2, order: 2 },
+        { type: "line", label: chL, data: spY, borderColor: "#7aa2f7", backgroundColor: "rgba(122,162,247,0.12)", borderWidth: 1.5, pointRadius: 0, yAxisID: "y1", fill: true, tension: 0.2, order: 2 },
       ] },
       options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
         plugins: { legend: { display: true, labels: { color: muted, font: { size: 10 }, boxWidth: 12 } } },
@@ -14210,6 +14222,7 @@ function bindMmmMethHandlers() {
   }));
   const _rcr = document.querySelector("[data-mmm-rankcfg-reset]"); if (_rcr) _rcr.addEventListener("click", () => { MMM_METH_STATE.rankCfg = null; navigate("5-18"); });
   document.querySelectorAll("[data-mmm-spendadj]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.spendChartAdj = b.dataset.mmmSpendadj === "1"; navigate("5-18"); }));
+  document.querySelectorAll("[data-mmm-spendtotal]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.spendChartTotal = b.dataset.mmmSpendtotal === "1"; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-decompbase]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.decompBaseline = b.dataset.mmmDecompbase; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-decompmodel]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.decompModel = b.dataset.mmmDecompmodel; navigate("5-18"); }));
   const apply = document.querySelector("[data-mmm-cfg-apply]");
