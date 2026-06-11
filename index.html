@@ -12954,15 +12954,16 @@ function buildMmmMethCache() {
         cannibByChannel[ch.key] = mmmCannibalization(panel, cfg, t, netE, ch.key);
         cannChannels.push(ch.key);
       }
-      // 식별성 단일 게이트(전역): 비-0 충분 AND 커버리지≥0.5 AND 최근끊김 아님 AND 검정력 게이트 통과(VIF·공선·표본).
-      // sparse·공선 채널의 vacuous OK가 대표/전역 결론으로 승격되는 것을 차단(비판 A·D).
+      // 데이터 충분성 게이트: 비-0 충분 AND 커버리지≥0.5 AND 최근끊김 아님. (공선/검정력은 여기서 제외 안 함!)
+      // 공선(power_gate)은 채널을 통째로 빼지 않고 net(③)만 보류·판정 상한을 INCONCLUSIVE로 캡함(mmmCannibalization 내부).
+      // → sparse만 "데이터 부족"으로 제외, 공선 채널은 A/B/D로 평가돼 잠식/못가린다 버킷에 들어감(과보수 완화).
       const cov = mmmChannelCoverage(panel, cfg);
-      const isIdentified = (k) => {
-        const cv = cov[k], cn = cannibByChannel[k];
-        return !!(cv && !cv.sparse && cv.coverage >= 0.5 && !cv.trailingZero && cn && !(cn.power_gate && cn.power_gate.blocked));
+      const isIdentified = (k) => {   // = 데이터 충분(평가 가능). 공선이어도 평가는 함.
+        const cv = cov[k];
+        return !!(cv && !cv.sparse && cv.coverage >= 0.5 && !cv.trailingZero);
       };
       const identifiedChannels = cannChannels.filter(isIdentified);
-      // 대표채널: 식별 채널 중 비-0 최다, 동률이면 VIF 최저. 식별 채널 없으면 least-bad(비-0 최다)로 폴백.
+      // 대표채널: 데이터 충분 채널 중 비-0 최다, 동률이면 VIF 최저(공선 적은 쪽 우선). 없으면 least-bad 폴백.
       const pickRep = (list) => list.slice().sort((a, b) => {
         const na = (cov[a] || {}).nonzero || 0, nb = (cov[b] || {}).nonzero || 0; if (nb !== na) return nb - na;
         return (vifMap["ln_" + a] || 0) - (vifMap["ln_" + b] || 0);
@@ -13495,23 +13496,24 @@ function renderMmmCannibOverview(c, T, selCh) {
   </div>`;
   const bucketsHtml = `<div style="display:flex;gap:9px;flex-wrap:wrap;margin:6px 0 14px;">
     ${bucketCard(buckets.cannibal, "#f87171", "rgba(248,113,113,0.07)", "🔴 잠식 의심 (있다)", "오가닉을 떨구는 데 영향 — 검정 ≥1개가 카니발을 가리킴. holdout 1순위.")}
-    ${bucketCard(buckets.inconclusive, "#fbbf24", "rgba(251,191,36,0.07)", "🟠 못 가린다", "식별은 됐으나 신호 혼재 — 잠식인지 방어인지 관측으론 보류.")}
+    ${bucketCard(buckets.inconclusive, "#fbbf24", "rgba(251,191,36,0.07)", "🟠 못 가린다", "신호 혼재 또는 공선으로 net 불가 — 잠식인지 방어인지 관측 보류(공선은 채널 제외 아님, net만 보류).")}
     ${bucketCard(buckets.ok, "#22c55e", "rgba(34,197,94,0.07)", "🟢 적색신호 없음 (잠정)", "검정력 충분 + 다수 FOR — 방어 가능성↑(무죄 증명 아님).")}
-    ${bucketCard(buckets.unidentified, "#9CA3AF", "rgba(156,163,175,0.07)", "⊘ 데이터 부족·식별불가", "비-0 부족·공선·검정력 부족 — 애초에 볼 힘이 없어 판정 제외.")}
+    ${bucketCard(buckets.unidentified, "#9CA3AF", "rgba(156,163,175,0.07)", "⊘ 데이터 부족", "비-0 부족·저커버리지·최근끊김 — 데이터 자체가 부족해 평가 제외(공선과 무관).")}
   </div>`;
   // 프로세스 결과 표 (전 채널 × STEP0·A·B·C·D·최종)
   const vCell = (v) => v === "AGAINST" ? '<span style="color:#f87171;font-weight:700;">잠식</span>' : v === "FOR" ? '<span style="color:#22c55e;font-weight:700;">오가닉</span>' : '<span style="color:var(--text-muted);">보류</span>';
+  const gated = (cn) => cn.power_gate && cn.power_gate.blocked;
   const finalCell = (k, cn) => idSet.has(k)
-    ? (cn.verdict_class === "cannibal" ? '<span style="color:#f87171;font-weight:700;">있다</span>' : cn.verdict_class === "ok" ? '<span style="color:#22c55e;font-weight:700;">없다(잠정)</span>' : '<span style="color:#fbbf24;font-weight:700;">못 가린다</span>')
+    ? (cn.verdict_class === "cannibal" ? '<span style="color:#f87171;font-weight:700;">있다</span>' : cn.verdict_class === "ok" ? '<span style="color:#22c55e;font-weight:700;">없다(잠정)</span>' : '<span style="color:#fbbf24;font-weight:700;">못 가린다</span>') + (gated(cn) ? ' <span style="font-size:9px;color:#adc6ff;" title="' + escapeHtml((cn.power_gate.reasons || []).join(" · ")) + '">🔗공선</span>' : '')
     : '<span style="color:var(--text-muted);">데이터 부족</span>';
   const grangerCell = (cn) => cn.granger_cannibal ? '<span style="color:#f87171;font-weight:700;">시차잠식</span>' : cn.granger_help ? '<span style="color:#22c55e;font-weight:700;">시차증분</span>' : cn.pacing ? '<span style="color:#fbbf24;font-weight:700;">페이싱</span>' : '<span style="color:var(--text-muted);">—</span>';
-  const step0Cell = (k, cn) => idSet.has(k) ? '<span style="color:#22c55e;font-weight:700;">✓ 통과</span>' : (cn.power_gate && cn.power_gate.blocked ? '<span style="color:#fbbf24;" title="' + escapeHtml((cn.power_gate.reasons || []).join(" · ")) + '">🚧 차단</span>' : '<span style="color:var(--text-muted);">⊘ 부족</span>');
+  const step0Cell = (k) => idSet.has(k) ? '<span style="color:#22c55e;font-weight:700;">✓ 통과</span>' : '<span style="color:var(--text-muted);">⊘ 데이터 부족</span>';
   const rows = chans.map(k => {
     const cn = T.cannibByChannel[k]; if (!cn) return "";
     const sel = k === selCh;
     return `<tr data-mmm-cannibch="${escapeHtml(k)}" style="cursor:pointer;${sel ? 'background:rgba(122,162,247,0.12);' : ''}">
       <td><strong>${escapeHtml(chLabel(k))}</strong>${sel ? ' <span style="font-size:9px;color:#adc6ff;">▶선택</span>' : ''}</td>
-      <td>${step0Cell(k, cn)}</td>
+      <td>${step0Cell(k)}</td>
       <td>${vCell(cn.detrend_corr.vote)}</td>
       <td>${vCell(cn.precedence.vote)}</td>
       <td>${vCell(cn.net_incrementality.vote)}</td>
@@ -13519,13 +13521,49 @@ function renderMmmCannibOverview(c, T, selCh) {
       <td>${finalCell(k, cn)}</td>
     </tr>`;
   }).join("");
+  // 점수(숫자) 표 — "왜 그 판정인지" 실제 수치. 프로세스 표 바로 밑에서 같은 채널 순서로.
+  const num = (v, dd = 3) => (v == null || !isFinite(v)) ? "—" : (+v).toFixed(dd);
+  const scoreRows = chans.map(k => {
+    const cn = T.cannibByChannel[k]; if (!cn) return "";
+    const p = cn.precedence, d = cn.detrend_corr, ni = cn.net_incrementality, g = cn.granger && cn.granger.spend_to_organic;
+    const sel = k === selCh;
+    return `<tr data-mmm-cannibch="${escapeHtml(k)}" style="cursor:pointer;${sel ? 'background:rgba(122,162,247,0.12);' : ''}">
+      <td><strong>${escapeHtml(chLabel(k))}</strong></td>
+      <td class="tnum">${num(p.kpi_slope_per_wk, 1)}/주 · p=${num(p.slope_p)}<br><span style="color:var(--text-muted);font-size:9.5px;">누적 ${p.kpi_change_over_window_pct}% · n=${p.low_n} · ≤$${p.p25}</span></td>
+      <td class="tnum">${num(d.raw)} → <strong>${num(d.detrended)}</strong><br><span style="color:var(--text-muted);font-size:9.5px;">차분 ${num(d.first_diff)}</span></td>
+      <td class="tnum">${num(ni.net_elasticity)} · p=${num(ni.p)}<br><span style="color:var(--text-muted);font-size:9.5px;">${ni.ci_lo != null ? `CI[${num(ni.ci_lo)}, ${num(ni.ci_hi)}]` : "—"}</span></td>
+      <td class="tnum">${g ? `lag${g.lag} · F=${g.F}<br><span style="color:var(--text-muted);font-size:9.5px;">p=${g.p} · Σ=${g.coefSum}</span>` : "—"}</td>
+      <td style="font-size:9.5px;color:${gated(cn) ? '#fbbf24' : 'var(--text-muted)'};">${gated(cn) ? escapeHtml((cn.power_gate.reasons || []).join(" · ")) : "통과"}</td>
+    </tr>`;
+  }).join("");
+  const R = MMM_CANNIB_RULES;
+  const thrRef = `<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:11.5px;color:#adc6ff;font-weight:600;">📏 어떤 숫자 범위여야 유의미한가 — 판정 기준표 (펼치기)</summary>
+    <div class="table-wrap" style="margin-top:6px;"><table class="data" style="font-size:10.5px;">
+      <thead><tr><th>검정</th><th style="color:#22c55e;">오가닉(FOR)</th><th style="color:#f87171;">잠식(AGAINST)</th><th>보류(ABSTAIN)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>A 탈추세·차분</strong></td><td>탈추세 r & 차분 r ≥ ${R.detrendFor}</td><td>탈추세 r 또는 차분 r ≤ ${R.detrendAgainst}</td><td>그 사이</td></tr>
+        <tr><td><strong>B 저지출 선행성</strong></td><td>저지출(≤p${R.lowSpendPct * 100}) slope 무하락 또는 비유의(p≥${R.precSlopeP})</td><td>저지출 slope 유의 하락(p&lt;${R.precSlopeP}) & 누적 ≤ −${R.precDeclinePct}%</td><td>게이트 시</td></tr>
+        <tr><td><strong>C net 탄력성</strong></td><td>coef ≥ 0 & p&lt;${R.netP} (또는 95%CI 하한 &gt; −${R.netMaterial})</td><td>coef &lt; 0 & p&lt;${R.netP}</td><td>CI가 0을 걸침 / 게이트</td></tr>
+        <tr><td><strong>D 그랜저(시차)</strong></td><td>양방향 비유의 또는 Σ계수 &gt; 0</td><td>spend→organic p&lt;${R.netP} & Σ계수 &lt; 0</td><td>organic→spend 유의 = 페이싱</td></tr>
+        <tr><td><strong>🔗 검정력 게이트</strong><br><span style="color:var(--text-muted);">걸리면 C 보류 · 판정 OK 불가</span></td><td colspan="3">VIF ≥ ${R.gateVif} · |corr(지출,시간)| ≥ ${R.gateSpendTimeCorr} · net CI폭 ≥ ${R.gateCiMult}×|coef| · n &lt; ${R.gateMinN} — <strong>하나라도</strong> 해당하면 공선/검정력 부족(채널은 제외 안 하고 못 가린다로 캡)</td></tr>
+        <tr><td><strong>최종 판정</strong></td><td>FOR ≥ ${R.otherBarFor}(브랜드 ${R.brandBarFor}) & AGAINST 0 & 게이트통과 → 없다(잠정)</td><td>AGAINST ≥ 1 → 있다</td><td>그 외 → 못 가린다(기본값)</td></tr>
+      </tbody>
+    </table></div>
+    <p class="muted" style="font-size:10px;margin-top:4px;">관측 검정은 적색신호를 거를 뿐 무죄를 증명하지 않습니다 — "없다"는 잠정이고 확정은 holdout(5-15). 임계값은 Config 가능(결정론 하드 규칙).</p>
+  </details>`;
   return `${bucketsHtml}
     <div style="font-size:11.5px;color:var(--text-1);font-weight:600;margin-bottom:4px;">프로세스 결과 표 — 각 채널이 검정 4개를 어떻게 통과했나 <span style="font-weight:400;color:var(--text-muted);">(행 클릭 → 아래 상세 드릴다운)</span></div>
     <div class="table-wrap"><table class="data" style="font-size:11px;">
       <thead><tr><th>채널</th><th>STEP0 식별${mmmInfoIcon("cannib_overview")}</th><th>A 탈추세${mmmInfoIcon("spurious_detrend")}</th><th>B 선행성${mmmInfoIcon("precedence")}</th><th>C net${mmmInfoIcon("net_incrementality")}</th><th>D 그랜저${mmmInfoIcon("granger")}</th><th>최종</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="7">채널 없음</td></tr>'}</tbody>
     </table></div>
-    <p class="muted" style="font-size:10px;margin:4px 0 0;">A·B·C = <span style="color:#22c55e;">오가닉</span>(FOR)/<span style="color:#f87171;">잠식</span>(AGAINST)/보류(ABSTAIN) 투표 · D 그랜저는 시차·방향. STEP0 차단(🚧)·부족(⊘)이면 그 채널은 "데이터 부족"으로 판정 제외(아래 식별성 게이트 참고).</p>`;
+    <p class="muted" style="font-size:10px;margin:4px 0 0;">A·B·C = <span style="color:#22c55e;">오가닉</span>(FOR)/<span style="color:#f87171;">잠식</span>(AGAINST)/보류(ABSTAIN) 투표 · D 그랜저는 시차·방향. STEP0는 <strong>데이터 충분성</strong>(✓통과/⊘부족)만 — <strong>공선(🔗)은 채널을 빼지 않고</strong> net만 보류·판정을 "못 가린다"로 캡합니다(과보수 완화).</p>
+    <div style="font-size:11.5px;color:var(--text-1);font-weight:600;margin:14px 0 4px;">점수 표 — 그래서 그 판정이 어떤 숫자에서 나왔나 <span style="font-weight:400;color:var(--text-muted);">(위 표와 같은 채널 순서)</span></div>
+    <div class="table-wrap"><table class="data" style="font-size:10.5px;">
+      <thead><tr><th>채널</th><th>B 선행성 (slope/주·p)</th><th>A 탈추세 (raw→det·차분)</th><th>C net (coef·p·CI)</th><th>D 그랜저 (lag·F·p·Σ)</th><th>게이트</th></tr></thead>
+      <tbody>${scoreRows || '<tr><td colspan="6">채널 없음</td></tr>'}</tbody>
+    </table></div>
+    ${thrRef}`;
 }
 function renderMmmCannib(c) {
   const T = c.byTarget[MMM_METH_STATE.target]; if (!T) return "";
