@@ -13739,7 +13739,8 @@ function renderMmmCannib(c) {
       <h3 class="section-title" style="font-size:15px;margin:0;"><span class="ix">§4</span>카니발 vs 오가닉 — ${MMM_METH_STATE.target}${MMM_METH_STATE.platform !== "All" ? " · " + escapeHtml(_mmmPlatLabel(MMM_METH_STATE.platform)) : ""} (보수적 삼각검증)</h3>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
         <button class="ab-pill" data-mmm-cannib-series="1" title="주별 원자료: 타깃·채널별 ln(1+지출)·탈추세 잔차·1차차분 → 엑셀에서 CORREL로 raw/detrend/차분 상관 직접 재현">⬇ 검정 원자료 CSV</button>
-        <button class="ab-pill" data-mmm-cannib-csv="1" title="모든 채널 × 3-state 투표(FOR/AGAINST/ABSTAIN) + 게이트·탄력성·커버리지 1행씩 → CSV">⬇ 채널별 카니발 CSV</button>
+        <button class="ab-pill" data-mmm-cannib-csv="1" title="모든 채널 × 3-state 투표(FOR/AGAINST/ABSTAIN) + 게이트·탄력성·커버리지 1행씩 → CSV (현재 플랫폼)">⬇ 채널별 카니발 CSV</button>
+        <button class="ab-pill" data-mmm-cannib-all="1" title="전 플랫폼 × 전 타깃 × 전 채널 — 랭킹·CEI·적격·검정 전부 1파일 (플랫폼 순회 재계산)">⬇ 전체(플랫폼×채널) CSV</button>
       </div>
     </div>
     ${renderMmmCannibOverview(c, T, selCh)}
@@ -14119,6 +14120,7 @@ function bindMmmMethHandlers() {
   document.querySelectorAll("[data-mmm-decomp-csv]").forEach(b => b.addEventListener("click", downloadMmmDecompCsv));
   document.querySelectorAll("[data-mmm-cannib-csv]").forEach(b => b.addEventListener("click", downloadMmmCannibCsv));
   document.querySelectorAll("[data-mmm-cannib-series]").forEach(b => b.addEventListener("click", downloadMmmCannibSeriesCsv));
+  document.querySelectorAll("[data-mmm-cannib-all]").forEach(b => b.addEventListener("click", downloadMmmCannibAllCsv));
   // 튀는 구간 메모 (세션 상태에 저장; 재렌더 없이 input 값 유지)
   document.querySelectorAll("[data-mmm-note]").forEach(inp => inp.addEventListener("change", () => {
     if (!MMM_METH_STATE.notes) MMM_METH_STATE.notes = {};
@@ -14193,6 +14195,52 @@ function downloadMmmCannibCsv() {
     lines.push(row.map(q).join(","));
   }
   _mmmDownload(`mmm_cannib_${t}_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
+}
+// 전 플랫폼 × 전 타깃 × 전 채널 통합 — 플랫폼을 순회하며 캐시 재계산(키에 pf 포함→캐시됨), 랭킹+검정 전부 1파일.
+function downloadMmmCannibAllCsv() {
+  const saved = MMM_METH_STATE.platform;
+  const plats = mmmPlatforms();
+  const platList = plats.length ? (mmmIsTagMode() ? plats.slice() : ["All", ...plats]) : ["All"];
+  const q = (s) => { s = String(s == null ? "" : s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const header = ["platform", "target", "rank", "level", "eligible", "elig_reasons", "cei", "badge", "n_active", "spend_cv", "df_resid", "mde12_pct",
+    "channel", "channel_label", "is_brand_intercept", "verdict", "verdict_class", "vote_FOR", "vote_AGAINST", "vote_ABSTAIN", "for_bar",
+    "power_gate_blocked", "power_gate_reasons", "spend_time_corr",
+    "prec_vote", "prec_low_n", "prec_slope_per_wk", "prec_slope_p", "prec_change_pct",
+    "detrend_vote", "detrend_raw", "detrend_detrended", "detrend_first_diff",
+    "net_vote", "net_elasticity", "net_p", "net_ci_lo", "net_ci_hi",
+    "elasticity", "p", "weekly_per_1k", "mean_spend", "coverage_ratio",
+    "granger_cannibal", "granger_help", "pacing", "granger_s2o_p", "granger_s2o_coefsum"];
+  const lines = [header.map(q).join(",")];
+  try {
+    for (const pf of platList) {
+      MMM_METH_STATE.platform = pf;
+      const c = buildMmmMethCache();
+      if (c.error || !c.byTarget) continue;
+      for (const t of Object.keys(c.byTarget)) {
+        const T = c.byTarget[t];
+        const effByKey = {}; (T.effects || []).forEach(e => { effByKey[e.key] = e; });
+        const rankByKey = {}; (T.cannibRank || []).forEach(r => { rankByKey[r.key] = r; });
+        const mde = (T.cannibRank || []).mde12;
+        for (const k of (T.cannChannels || [])) {
+          const cn = T.cannibByChannel[k]; if (!cn) continue;
+          const rr = rankByKey[k] || {}, e = effByKey[k] || {}, pr = cn.precedence, dt = cn.detrend_corr, ni = cn.net_incrementality, vt = cn.votes || {}, pg = cn.power_gate || {}, g = cn.granger;
+          const lvl = rr.eligible != null ? mmmCannibLevel(rr) : { label: "데이터없음" };
+          const cov = (e.total) ? +(e.nonzero / e.total).toFixed(3) : "";
+          lines.push([
+            _mmmPlatLabel(pf), t, (rr.eligible ? rr.rank : ""), lvl.label, rr.eligible, (rr.reasons || []).join(" | "), rr.cei, rr.badge, rr.nActive, rr.spendCV, rr.dfResid, mde,
+            k, cn.channelLabel, cn.is_brand_intercept, cn.verdict, cn.verdict_class, vt.FOR, vt.AGAINST, vt.ABSTAIN, cn.for_bar,
+            pg.blocked, (pg.reasons || []).join(" | "), cn.spend_time_corr,
+            pr.vote, pr.low_n, pr.kpi_slope_per_wk, pr.slope_p, pr.kpi_change_over_window_pct,
+            dt.vote, dt.raw, dt.detrended, dt.first_diff,
+            ni.vote, ni.net_elasticity, ni.p, (ni.ci_lo != null ? ni.ci_lo : ""), (ni.ci_hi != null ? ni.ci_hi : ""),
+            (e.elas != null ? e.elas : ""), (e.p != null ? e.p : ""), (e.weeklyPer1k == null ? "" : e.weeklyPer1k), (e.meanSpend != null ? e.meanSpend : ""), cov,
+            cn.granger_cannibal, cn.granger_help, cn.pacing, (g && g.spend_to_organic ? g.spend_to_organic.p : ""), (g && g.spend_to_organic ? g.spend_to_organic.coefSum : ""),
+          ].map(q).join(","));
+        }
+      }
+    }
+  } finally { MMM_METH_STATE.platform = saved; buildMmmMethCache(); }
+  _mmmDownload(`mmm_cannib_ALL_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
 }
 // §4 검정 원자료 — 주별 타깃·채널별 ln(1+지출)·탈추세 잔차·1차차분. 엑셀 CORREL로 raw/detrend/차분 상관 직접 재현.
 // (§4 검정과 동일 계산: lnG=log1p(지출), 탈추세=인덱스 0..n-1에 OLS 회귀 잔차, 차분=Δ. → 화면 값과 정확히 일치)
