@@ -13649,7 +13649,13 @@ function renderMmmCannibOverview(c, T, selCh) {
       ${elig.map(rowHtml).join("")}
       ${tier2.length ? `<tr><td colspan="10" style="background:rgba(156,163,175,0.08);color:var(--text-muted);font-size:10px;font-weight:600;padding:5px 8px;">⊘ 데이터 부족 (판단 불가 · ⚠는 신호 있어 놓치지 않음)</td></tr>${tier2.map(rowHtml).join("")}` : ""}
     </tbody></table></div>`;
-  return `${bucketsHtml}${rankTable}${renderMmmModelNumber(c, T, selCh)}`;
+  const tgtKo = MMM_METH_STATE.target === "Regs" ? "가입(Regs)" : "재활성(React)";
+  const spendChart = `<div style="margin-top:14px;">
+    <div style="font-size:12px;font-weight:600;color:var(--text-1);margin-bottom:2px;">📈 선택 채널 지출 vs ${tgtKo} (주별 실측) — <span style="color:#7aa2f7;">${escapeHtml(chLabel(selCh))}</span></div>
+    <p class="muted" style="font-size:10px;margin:0 0 4px;">왼쪽축 = ${tgtKo}(오가닉 포함 실측) · 오른쪽축 = 그 채널 지출. 같이 오르내리면 동반, 지출↑인데 타깃↓면 잠식 의심(단 공통추세 착시 주의 — 그래서 위 탈추세·그랜저로 검정). 채널은 위 표/칩에서 전환.</p>
+    <div class="chart-container" style="height:240px;"><canvas id="mmm-cannib-spend-chart"></canvas></div>
+  </div>`;
+  return `${bucketsHtml}${rankTable}${spendChart}${renderMmmModelNumber(c, T, selCh)}`;
 }
 // Model Number 패널 — 선택 채널의 각 지표가 "어떤 범위면 좋고/나쁜지 + 이 채널 값 + 평어".
 function renderMmmModelNumber(c, T, selCh) {
@@ -13884,6 +13890,29 @@ function renderMmmCharts(c) {
   const T = c.byTarget[MMM_METH_STATE.target]; if (!T) return;
   const muted = getCssVar('--text-muted'), border = getCssVar('--border'), bg1 = getCssVar('--bg-1');
   const noLegendOpts = (title) => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: muted, font: { size: 10 } } }, title: { display: !!title, text: title, color: muted } }, scales: { x: { ticks: { color: muted, maxTicksLimit: 12 }, grid: { color: border } }, y: { ticks: { color: muted }, grid: { color: border } } } });
+  // 선택 채널 지출 vs 타깃(RR) — 이중축 (§4.5 랭킹표와 Model Number 사이). 클릭한 채널의 관계를 눈으로.
+  if (document.getElementById("mmm-cannib-spend-chart")) {
+    const chans = T.cannChannels || [];
+    const selCh = chans.includes(MMM_METH_STATE.cannibChannel) ? MMM_METH_STATE.cannibChannel : T.defCh;
+    const tgtY = c.panel.targets[MMM_METH_STATE.target] || [];
+    const spY = (selCh && c.panel.ch[selCh]) || [];
+    const chL = (_mmmChans(c.panel).find(cc => cc.key === selCh) || {}).label || selCh || "채널";
+    const tgtKo = MMM_METH_STATE.target === "Regs" ? "가입" : "재활성";
+    destroyChartIfExists("mmm-cannib-spend-chart");
+    CHART_INSTANCES["mmm-cannib-spend-chart"] = new Chart(document.getElementById("mmm-cannib-spend-chart"), {
+      data: { labels: c.panel.week, datasets: [
+        { type: "line", label: tgtKo + " (실측)", data: tgtY, borderColor: "#e6e9ef", borderWidth: 1.6, pointRadius: 0, yAxisID: "y", tension: 0.2, order: 1 },
+        { type: "line", label: chL + " 지출", data: spY, borderColor: "#7aa2f7", backgroundColor: "rgba(122,162,247,0.12)", borderWidth: 1.5, pointRadius: 0, yAxisID: "y1", fill: true, tension: 0.2, order: 2 },
+      ] },
+      options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: true, labels: { color: muted, font: { size: 10 }, boxWidth: 12 } } },
+        scales: {
+          x: { ticks: { color: muted, maxTicksLimit: 12 }, grid: { color: border } },
+          y: { position: "left", title: { display: true, text: tgtKo, color: "#e6e9ef" }, ticks: { color: muted }, grid: { color: border } },
+          y1: { position: "right", title: { display: true, text: "지출", color: "#7aa2f7" }, ticks: { color: "#7aa2f7" }, grid: { drawOnChartArea: false } },
+        } },
+    });
+  }
   // STL trend + 다른 검정의 추세선 겹치기 (Theil-Sen=MK 짝꿍, OLS 선형). ADF/KPSS는 정상성 검정이라 선 없음.
   const stl = T.trend.stl, y = c.panel.targets[MMM_METH_STATE.target];
   if (stl && document.getElementById("mmm-stl-chart")) {
