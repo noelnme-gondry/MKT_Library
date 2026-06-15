@@ -82,6 +82,8 @@ tools:
 
 변화점 탐지(5-18 §3, PR #99): 구조변화 step을 사람이 가정 말고 데이터가 찾게. `mmmChangePoints(series,{minSeg,penaltyMult})`=Δ(성장률) 평균·분산 변화점을 O(n²) 최적분할(Gaussian −2logL + BIC 페널티 mult·ln N)로 탐지. `byTarget[t].changePoints={target,spend}` 순수 추가→byte-동일. §3 표+STL 차트 인라인 플러그인(`afterDatasetsDraw` 캔버스 직접 ▲세로점선, annotation 라이브러리 없이). 선행성 보조: 오가닉 반전 vs 지출 증액 선후. 골든 T6f. 캐비엇: 시점겹침≠인과. 캔버스 그리기는 브라우저 확인 필요.
 
+5-18 3옵션+Trend Forecast(PR #124~126): ① 독립 Regression Forecast(5-17) 제거→`navigate` redirect+죽은 renderer 통째 삭제(§7), 표시번호 자동 당김. ② `MMM_METH_STATE.stage` 기본 `null`(옵션 카드)→diagnose/mmm/forecast 3분기, `MMM_STAGE_DEFS` 일원화. ③ colMap `date` 역할 + `_mmmParseDate`/`_mmmGranularity`(일/주/월)/`panel.dates·dateLabel` → 차트 x축 `xlab=dateLabel??t`(변화점 마커는 `getPixelForValue(label,index)`로 문자라벨 안전). date는 표시·예측·단위환산 전용(분석은 행순서 t·byte-동일). ④ `mmmForecast`=관측+미래 **결합패널**에 동일 `mmmBuildFeatures`→관측 적합(`mmmOls`/`mmmRidgeFit`)→미래행 예측. **OLS fitted는 컬럼 재척도/센터링 불변**이라 결합패널 빌드해도 과거 적합=기존 decomp와 일치. adstock 자연이월·계절/추세 연장·미래더미0·step영구. CI OLS=ŷ±t√(σ²(1+lev))·ridge±1.96σ. 모델=decompModel 재사용. 예산=채널별(기본 최근평균)×rowDays/unitDays(per-row), horizon=행수. 검증 주입식 harness(`code+inject`로 내부 const 접근): validate_date 11·validate_forecast 23. **render-throw는 골든이 못 잡음→/tmp repro 필수**(Chart 스텁+plugins.afterDatasetsDraw 실행).
+
 # 통계 도구 표준 (5-5 등)
 
 - 순수 함수 객체에 분리 (`CANNIBAL_STATS`, `ALLOC_MATH`)
