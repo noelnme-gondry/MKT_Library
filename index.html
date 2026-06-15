@@ -2791,8 +2791,7 @@ const IA = [
     title: "마케팅 반응 회귀 (MMM)",
     subtitle: "주간 per-platform · 가설 생성용 (인과 아님)",
     items: [
-      { id: "5-17", title: "Regression Forecast", desc: "회귀계수 기반 미래 예측 + 95% 예측구간 밴드 (extrapolation 폭 따라 밴드 확장)" },
-      { id: "5-18", title: "MMM 방법론 (추세·카니발 진단)", desc: "2단계 포크: 추세 존재 검정 → 카니발 vs 오가닉 + 시트 audit + Shapley + 수확체감 (가설용·holdout 아님)" },
+      { id: "5-18", title: "MMM 방법론 (추세·카니발 진단·예측)", desc: "3옵션: 카니발 분석 · MMM 기여 분해 · Trend Forecast(예산 시나리오 예측) (가설용·holdout 아님)" },
       { id: "5-19", title: "Regression Lab", desc: "임의 CSV OLS 회귀 — 컬럼 매핑(역할·타입·변환)·계수표(SE·t·p·CI·VIF)·실제vs예측·기여도 추출 (범용)" },
     ],
   },
@@ -2937,7 +2936,7 @@ const STANDARD_FIELDS = {
   cohort_size:    { label: "코호트 크기",   aliases: ["cohort_size", "n_users", "users", "n_installs", "초기사용자수"], type: "number", required: false, group: "Quality" },
   retained_users: { label: "잔존 사용자수", aliases: ["retained", "retained_users", "active_users", "잔존수"], type: "number", required: false, group: "Quality" },
   cohort_revenue: { label: "코호트 매출",   aliases: ["cohort_revenue", "cumulative_revenue", "revenue", "rev"], type: "number", required: false, group: "Quality" },
-  // === Marketing-Response Regression / MMM 전용 (5-17) — 주간 per-platform ===
+  // === Marketing-Response Regression / MMM 전용 (5-18) — 주간 per-platform ===
   iso_week_start: { label: "ISO 주 시작일", aliases: ["iso_week_start", "week", "week_start", "주시작", "주"], type: "date", required: false, group: "MMR" },
   org_reg:        { label: "Organic 가입",  aliases: ["org_reg", "organic_reg", "organic_registration", "오가닉가입"], type: "number", required: false, group: "MMR" },
   paid_reg_w:     { label: "Paid 가입(주)", aliases: ["paid_reg", "paid_registration", "유료가입주"], type: "number", required: false, group: "MMR" },
@@ -5361,7 +5360,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-10", "5-11", "5-12", "5-13", "5-14", "5-16", "5-15", "5-17", "5-18", "5-19"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-10", "5-11", "5-12", "5-13", "5-14", "5-16", "5-15", "5-18", "5-19"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -10858,7 +10857,7 @@ function runIncrTests(verbose=true){
 if(typeof window!=="undefined"){ window.runIncrTests=runIncrTests; window.INCR_MATH=INCR_MATH; }
 
 /* ============================================================
- * Marketing-Response Regression (5-17) — defensible MMM-style
+ * Marketing-Response Regression 엔진 (5-18/5-19 공유) — defensible MMM-style
  * ⚠ 가설 생성·기술용. 인과/증분/cannibalization 판정은 holdout 전용.
  * 통계 엔진(MMR_MATH/MMR_STATS) — 외부 라이브러리 0개, 결정론.
  *   adstock→saturation, Fourier, OLS + Newey-West HAC, VIF, DW, Breusch-Godfrey,
@@ -14850,172 +14849,6 @@ function runRegLabTests(verbose = true) {
 if (typeof window !== "undefined") { window.runRegLabTests = runRegLabTests; window.REG_LAB_STATE = REG_LAB_STATE; }
 
 /* ============================================================
- * 5-17 Regression Forecast — 회귀계수 기반 미래 예측 + 95% 예측구간 밴드
- * (구 Marketing-Response Regression 대체. 엔진 REG_STATS/MMR_STATS.ols 공유)
- * 미래 독립변수 = 인덱스 선형 외삽 → ŷ ± t·√(σ²(1+leverage)) 밴드(외삽 폭↑ → 밴드↑)
- * ============================================================ */
-const REG_FC_STATE = { fileName: null, rows: [], headers: [], map: {}, lambda: 0.6, horizon: 12, fit: null };
-function regFcLoad(rows, headers) {
-  const valid = rows.filter(r => headers.some(f => r[f] != null && r[f] !== ""));
-  REG_FC_STATE.rows = valid; REG_FC_STATE.headers = headers; REG_FC_STATE.map = {};
-  headers.forEach(c => { const g = regLabGuess(c, valid); if (g.role === "group") g.role = "ignore"; REG_FC_STATE.map[c] = g; });
-  REG_FC_STATE.fit = null;
-}
-function regFcReadMapping() {
-  const m = { dep: null, indep: [], label: null, tf: {}, types: {} };
-  for (const c of REG_FC_STATE.headers) {
-    const d = REG_FC_STATE.map[c] || {}; m.tf[c] = d.tf; m.types[c] = d.type;
-    if (d.role === "dependent") m.dep = m.dep || c;
-    else if (d.role === "independent") m.indep.push(c);
-    else if (d.role === "label") m.label = m.label || c;
-  }
-  return m;
-}
-function _linfitIdx(arr) { const n = arr.length, xs = arr.map((_, i) => i); const mx = xs.reduce((a, b) => a + b, 0) / n, my = arr.reduce((a, b) => a + b, 0) / n; let num = 0, den = 0; for (let i = 0; i < n; i++) { num += (xs[i] - mx) * (arr[i] - my); den += (xs[i] - mx) ** 2; } const slope = den ? num / den : 0; return { slope, intercept: my - slope * mx }; }
-function regFcRun() {
-  const m = regFcReadMapping(), lam = REG_FC_STATE.lambda, H = Math.max(1, Math.min(104, REG_FC_STATE.horizon | 0));
-  if (!m.dep) throw new Error("종속변수(dependent)를 하나 지정하세요.");
-  if (!m.indep.length) throw new Error("독립변수(independent)를 1개 이상 지정하세요.");
-  const tfOf = (c) => m.types[c] === "binary" ? "none" : (m.tf[c] || "none");
-  let rows = REG_FC_STATE.rows.filter(r => [m.dep, ...m.indep].every(c => r[c] != null && r[c] !== "" && !isNaN(Number(r[c]))));
-  const n = rows.length, k = m.indep.length + 1;
-  if (n <= k) throw new Error(`표본(${n})이 변수 수(${k})보다 작거나 같아 적합 불가.`);
-  const yHist = REG_TRANSFORMS[tfOf(m.dep)](rows.map(r => Number(r[m.dep])), lam);
-  // 독립변수: raw history + 인덱스 선형 외삽(미래 H) → 전 구간 transform
-  const fullT = m.indep.map(c => {
-    const raw = rows.map(r => Number(r[c])); const lf = _linfitIdx(raw);
-    const future = Array.from({ length: H }, (_, j) => lf.intercept + lf.slope * (n + j));
-    return REG_TRANSFORMS[tfOf(c)]([...raw, ...future], lam);
-  });
-  const total = n + H;
-  const Xall = Array.from({ length: total }, (_, i) => [1, ...fullT.map(col => col[i])]);
-  const Xhist = Xall.slice(0, n);
-  const fit = MMR_STATS.ols(Xhist, yHist); if (!fit) throw new Error("적합 실패(공선성?).");
-  const beta = fit.beta, XtXinv = fit.XtXinv, p = fit.p;
-  const sigma2 = fit.ssRes / Math.max(1, n - p), tcrit = studentTcrit(0.95, Math.max(1, n - p));
-  const leverage = (x) => { let s = 0; for (let a = 0; a < x.length; a++) for (let b = 0; b < x.length; b++) s += x[a] * XtXinv[a][b] * x[b]; return s; };
-  const labels = m.label ? rows.map(r => String(r[m.label])) : rows.map((_, i) => String(i + 1));
-  const lastLab = labels[labels.length - 1];
-  const fcLabels = Array.from({ length: H }, (_, j) => `+${j + 1}`);
-  const allLabels = [...labels, ...fcLabels];
-  const yhat = [], lower = [], upper = [], actual = [];
-  for (let i = 0; i < total; i++) {
-    const x = Xall[i], yh = x.reduce((s, v, j) => s + v * beta[j], 0);
-    const se = Math.sqrt(Math.max(0, sigma2 * (1 + leverage(x))));
-    yhat.push(yh); lower.push(yh - tcrit * se); upper.push(yh + tcrit * se);
-    actual.push(i < n ? yHist[i] : null);
-  }
-  REG_FC_STATE.fit = { m, lam, H, n, k, rows, labels: allLabels, splitAt: n, yhat, lower, upper, actual, fit, sigma2, tcrit, depScale: tfOf(m.dep), terms: ["(Intercept)", ...m.indep] };
-}
-function page_5_17() {
-  const meta = findMeta("5-17"); const S = REG_FC_STATE; const hasData = S.rows.length > 0; const F = S.fit;
-  const dataSec = `<section class="block" id="s-data"><h2 class="section-title"><span class="ix">§1</span>데이터</h2>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-      <label class="ab-pill" style="cursor:pointer;">CSV 업로드<input type="file" id="regfc-file" accept=".csv,.tsv,.txt" style="display:none;"></label>
-      <button class="ab-pill" id="regfc-sample">샘플 데이터 넣기</button>
-      <span class="muted" style="font-size:12px;">${hasData ? `${escapeHtml(S.fileName || "data.csv")} · ${S.rows.length}행 · ${S.headers.length}컬럼` : "wide CSV (1행=1관측, 시간순 정렬 권장)."}</span>
-    </div></section>`;
-  if (!hasData) return pageShell(meta, {
-    deck: "회귀로 적합한 뒤, 독립변수를 미래로 외삽해 종속변수를 예측하고 95% 예측구간 밴드를 그립니다. 외삽이 멀어질수록(범위 밖) 밴드가 넓어집니다. 결정론 REG_STATS 엔진.",
-    chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
-    summary: "예측 = 회귀계수 × (외삽된 미래 독립변수). 밴드 = ŷ ± t·√(σ²(1+leverage)) — 데이터 범위에서 멀수록 불확실성↑. ⚠ 미래 독립변수는 과거 추세 선형 외삽 가정(시나리오는 별도).",
-    toc: [{ id: "s-data", title: "데이터" }], body: dataSec,
-  });
-  return pageShell(meta, {
-    deck: "컬럼 매핑 → OLS 적합 → 미래 H주 예측 + 95% 예측밴드. 외삽 폭이 클수록 밴드가 벌어집니다.",
-    chips: `<span class="chip"><span class="dot"></span>도구 · Regression Forecast</span>${authStatusChip()}`,
-    summary: "종속·독립 매핑 후 '예측 실행'. 미래 독립변수는 과거 인덱스 추세로 선형 외삽합니다(가정). 밴드는 모델 불확실성(예측구간)이며 외삽 가정의 불확실성은 포함하지 않습니다.",
-    toc: [{ id: "s-data", title: "데이터" }, { id: "s-map", title: "§2 매핑·예측" }, ...(F ? [{ id: "s-fc", title: "§3 예측 밴드" }, { id: "s-fctab", title: "§4 표·export" }] : [])],
-    body: dataSec + renderRegFcMap() + (F ? renderRegFcResults() : ""),
-  });
-}
-PAGE_RENDERERS["5-17"] = page_5_17;
-function renderRegFcMap() {
-  const S = REG_FC_STATE;
-  const sel = (col, field, opts, fmt) => `<select data-regfc-map="${escapeHtml(col)}" data-regfc-field="${field}" style="font-size:12px;padding:3px 6px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;">` +
-    opts.map(o => `<option value="${o}" ${S.map[col]?.[field] === o ? "selected" : ""}>${fmt ? fmt(o) : o}</option>`).join("") + `</select>`;
-  const rows = S.headers.map(c => `<tr><td><strong>${escapeHtml(c)}</strong></td><td>${sel(c, "role", ["ignore", "dependent", "independent", "label"])}</td><td>${sel(c, "type", ["continuous", "binary", "label"])}</td><td>${sel(c, "tf", ["none", "log1p", "zscore", "minmax", "adstock_log"], o => TRANSFORM_LABELS[o])}</td><td class="muted" style="font-size:11px;">${escapeHtml(S.rows.slice(0, 3).map(r => r[c]).join(", "))}…</td></tr>`).join("");
-  return `<section class="block" id="s-map"><h2 class="section-title"><span class="ix">§2</span>컬럼 매핑 · 예측</h2>
-    <div class="table-wrap"><table class="data" style="font-size:12px;"><thead><tr><th>컬럼</th><th>역할</th><th>타입</th><th>변환</th><th>미리보기</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;">
-      <label style="font-size:12px;color:var(--text-muted);">Adstock λ<br><input type="number" id="regfc-lambda" value="${S.lambda}" step="0.05" min="0" max="0.95" style="width:80px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:4px 7px;margin-top:3px;"></label>
-      <label style="font-size:12px;color:var(--text-muted);">예측 기간(미래 주/행)<br><input type="number" id="regfc-horizon" value="${S.horizon}" step="1" min="1" max="104" style="width:90px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:4px 7px;margin-top:3px;"></label>
-      <button class="ab-pill" id="regfc-run" style="background:#7aa2f7;color:#0b0d12;font-weight:700;border-color:#7aa2f7;">▶ 예측 실행</button>
-      <span id="regfc-err" style="color:#f87171;font-size:12px;"></span>
-    </div></section>`;
-}
-function renderRegFcResults() {
-  const R = REG_FC_STATE.fit; if (!R) return ""; const f = (v, d = 2) => v == null || !isFinite(v) ? "—" : (+v).toFixed(d);
-  const note = R.depScale !== "none" ? `<p class="muted" style="font-size:11px;">⚠ 종속변수가 ${TRANSFORM_LABELS[R.depScale]} 변환 스케일이라 예측·밴드도 그 스케일입니다.</p>` : "";
-  const tabRows = R.labels.map((lab, i) => i < R.splitAt ? "" : `<tr><td>${escapeHtml(lab)}</td><td class="tnum">${f(R.yhat[i], 1)}</td><td class="tnum" style="color:var(--text-muted);">${f(R.lower[i], 1)}</td><td class="tnum" style="color:var(--text-muted);">${f(R.upper[i], 1)}</td></tr>`).join("");
-  return `<section class="block" id="s-fc"><h2 class="section-title"><span class="ix">§3</span>예측 밴드 (실제 + 적합 + 미래 ${R.H}주)</h2>
-    ${mmmExplain('회색=실제, 파란선=모델 예측(과거는 적합·미래는 forecast), 음영=95% 예측구간. <strong>미래로 갈수록 음영이 벌어지는 건</strong> 데이터 범위 밖으로 외삽할수록 불확실성이 커지기 때문입니다(leverage↑). σ=${f(Math.sqrt(R.sigma2),1)} · n=${R.n}.')}
-    <div class="chart-container" style="height:300px;"><canvas id="regfc-chart"></canvas></div>${note}</section>
-    <section class="block" id="s-fctab"><h2 class="section-title"><span class="ix">§4</span>예측값 표 · export</h2>
-    <div style="margin-bottom:10px;"><button class="ab-pill" id="regfc-dl">⬇ 예측 CSV (period·ŷ·lower·upper)</button></div>
-    <div class="table-wrap"><table class="data" style="font-size:11.5px;"><thead><tr><th>미래</th><th>예측 ŷ</th><th>하한(95%)</th><th>상한(95%)</th></tr></thead><tbody>${tabRows}</tbody></table></div></section>`;
-}
-function regFcCharts() {
-  const R = REG_FC_STATE.fit; if (!R || typeof Chart === "undefined" || !document.getElementById("regfc-chart")) return;
-  const muted = getCssVar("--text-muted"), border = getCssVar("--border");
-  destroyChartIfExists("regfc-chart");
-  CHART_INSTANCES["regfc-chart"] = new Chart(document.getElementById("regfc-chart"), {
-    type: "line", data: { labels: R.labels, datasets: [
-      { label: "상한 95%", data: R.upper, borderColor: "transparent", backgroundColor: "rgba(122,162,247,0.13)", pointRadius: 0, fill: "+1" },
-      { label: "하한 95%", data: R.lower, borderColor: "transparent", backgroundColor: "rgba(122,162,247,0.13)", pointRadius: 0, fill: false },
-      { label: "예측 ŷ", data: R.yhat, borderColor: "#7aa2f7", borderWidth: 2, pointRadius: 0, tension: 0.15, segment: { borderDash: ctx => ctx.p0DataIndex >= R.splitAt - 1 ? [5, 3] : undefined } },
-      { label: "실제", data: R.actual, borderColor: muted, borderWidth: 1.4, pointRadius: 0, tension: 0.15 },
-    ] },
-    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { labels: { color: muted, font: { size: 10 }, filter: it => !it.text.includes("하한") } } }, scales: { x: { ticks: { color: muted, maxTicksLimit: 14 }, grid: { color: border } }, y: { ticks: { color: muted }, grid: { color: border } } } },
-  });
-}
-function bindRegFcHandlers() {
-  const fileEl = document.getElementById("regfc-file");
-  if (fileEl) fileEl.addEventListener("change", e => { const file = e.target.files[0]; if (!file) return; REG_FC_STATE.fileName = file.name; Papa.parse(file, { header: true, dynamicTyping: true, skipEmptyLines: true, complete: r => { regFcLoad(r.data, r.meta.fields); navigate("5-17"); } }); });
-  const sampleEl = document.getElementById("regfc-sample");
-  if (sampleEl) sampleEl.addEventListener("click", () => { REG_FC_STATE.fileName = "sample_panel.csv"; const s = regLabMakeSample(); regFcLoad(s.rows, s.fields); navigate("5-17"); });
-  document.querySelectorAll("[data-regfc-map]").forEach(selEl => selEl.addEventListener("change", () => {
-    const col = selEl.dataset.regfcMap, field = selEl.dataset.regfcField; if (!REG_FC_STATE.map[col]) REG_FC_STATE.map[col] = {};
-    REG_FC_STATE.map[col][field] = selEl.value;
-    if (field === "type" && selEl.value === "binary") { REG_FC_STATE.map[col].tf = "none"; const tfSel = document.querySelector(`[data-regfc-map="${col}"][data-regfc-field="tf"]`); if (tfSel) tfSel.value = "none"; }
-  }));
-  const lamEl = document.getElementById("regfc-lambda"); if (lamEl) lamEl.addEventListener("change", () => { REG_FC_STATE.lambda = parseFloat(lamEl.value) || 0; });
-  const horEl = document.getElementById("regfc-horizon"); if (horEl) horEl.addEventListener("change", () => { REG_FC_STATE.horizon = parseInt(horEl.value, 10) || 12; });
-  const runEl = document.getElementById("regfc-run"); if (runEl) runEl.addEventListener("click", () => { const er = document.getElementById("regfc-err"); if (er) er.textContent = ""; try { regFcRun(); navigate("5-17"); } catch (e) { if (er) er.textContent = "⚠ " + e.message; } });
-  try { regFcCharts(); } catch (e) { console.warn("regfc chart:", e.message); }
-  const dl = document.getElementById("regfc-dl"); if (dl) dl.addEventListener("click", () => {
-    const R = REG_FC_STATE.fit; if (!R) return; const lines = ["period,yhat,lower,upper"];
-    R.labels.forEach((lab, i) => { if (i >= R.splitAt) lines.push([lab, R.yhat[i].toFixed(4), R.lower[i].toFixed(4), R.upper[i].toFixed(4)].join(",")); });
-    _mmmDownload("regression_forecast.csv", lines.join("\n"), "text/csv");
-  });
-}
-function runRegFcTests(verbose = true) {
-  const R = [];
-  // T1: 샘플 적합 — 길이/실제-null 분리
-  const s = regLabMakeSample(); regFcLoad(s.rows, s.fields); REG_FC_STATE.horizon = 8;
-  let ok = false, bandValid = false;
-  try {
-    regFcRun(); const F = REG_FC_STATE.fit;
-    ok = F.yhat.length === F.n + 8 && F.actual.slice(0, F.n).every(v => v != null) && F.actual.slice(F.n).every(v => v == null);
-    bandValid = F.yhat.every((y, i) => F.lower[i] <= y + 1e-6 && y <= F.upper[i] + 1e-6) && F.upper.every((u, i) => u - F.lower[i] >= 0);
-  } catch (e) { }
-  R.push({ test: "T1 · 예측 길이·실제-null 분리", actual: String(ok), pass: ok ? "✓" : "✗" });
-  R.push({ test: "T2 · 밴드 유효(하한≤ŷ≤상한)", actual: String(bandValid), pass: bandValid ? "✓" : "✗" });
-  // T3: 추세형 X + 노이즈 → 외삽 시 밴드 확장 (leverage↑)
-  const rng = _mmrLcg(5), rows = []; for (let i = 0; i < 40; i++) rows.push({ idx: i, x: i + rng() * 0.5, y: 2 + 3 * i + rng() * 2 });
-  regFcLoad(rows, ["idx", "x", "y"]);
-  REG_FC_STATE.map = { idx: { role: "label", type: "label", tf: "none" }, x: { role: "independent", type: "continuous", tf: "none" }, y: { role: "dependent", type: "continuous", tf: "none" } };
-  REG_FC_STATE.horizon = 10;
-  let widen = false; try { regFcRun(); const F = REG_FC_STATE.fit; widen = (F.upper[F.n + 9] - F.lower[F.n + 9]) > (F.upper[F.n] - F.lower[F.n]); } catch (e) { }
-  R.push({ test: "T3 · 추세형 X 외삽 시 밴드 확장", actual: String(widen), pass: widen ? "✓" : "✗" });
-  REG_FC_STATE.rows = []; REG_FC_STATE.fit = null; REG_FC_STATE.map = {};
-  if (verbose) { console.log("%c=== Regression Forecast · Golden ===", "color:#adc6ff;font-weight:bold;"); console.table(R); }
-  return R;
-}
-if (typeof window !== "undefined") { window.runRegFcTests = runRegFcTests; window.REG_FC_STATE = REG_FC_STATE; }
-
-
-/* ============================================================
  * Quality Analyzer (5-8) — 코호트 리텐션 곡선 + LTV 외삽
  * grain: cohort_date × day_offset (선택적으로 channel/country/platform 분기)
  * ============================================================ */
@@ -17194,6 +17027,8 @@ async function navigate(id) {
 
   // 5-1은 제거됨 → 5-5(가장 자주 쓰이는 분석기)로 자동 redirect
   if (id === "5-1") { id = "5-5"; }
+  // 5-17(구 Regression Forecast)은 5-18 MMM의 Trend Forecast로 통합 → redirect (북마크 보존)
+  if (id === "5-17") { id = "5-18"; }
 
   // Ops Dashboard 페이지 접근 제어
   if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid()) {
@@ -17478,11 +17313,6 @@ function bindCSVPageHandlers() {
   // ----- 5-19: Regression Lab 핸들러 -----
   if (document.getElementById("reg-file") || document.getElementById("s-map") && document.getElementById("reg-run")) {
     bindRegLabHandlers();
-  }
-
-  // ----- 5-17: Regression Forecast 핸들러 -----
-  if (document.getElementById("regfc-file") || document.getElementById("regfc-run")) {
-    bindRegFcHandlers();
   }
 
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
