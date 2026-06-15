@@ -12838,7 +12838,7 @@ function mmmWeeklyDecomp(panel, cfg, targetName, lam, model) {
  * futureSpend: {chKey:[H개 per-row 지출]}. 미제공 채널은 최근 8행 평균(per-row)으로 채움.
  * CI: ols = ŷ ± t·√(σ²(1+leverage))  (XtXinv 활용, 외삽 폭↑ → 밴드↑) · ridge = ±1.96·σ (ridge=biased 근사).
  * ⚠ 휴일 더미는 미래=0, step은 영구 유지. 인과 아님 — 시나리오 가설용. */
-function mmmForecast(panel, cfg, target, lam, model, futureSpend, horizon) {
+function mmmForecast(panel, cfg, target, lam, model, futureSpend, horizon, stepOff) {
   model = model || "ols";
   const y = panel.targets[target]; if (!y || !y.length) return null;
   const n = y.length, H = Math.max(1, Math.min(260, horizon | 0));
@@ -12851,8 +12851,17 @@ function mmmForecast(panel, cfg, target, lam, model, futureSpend, horizon) {
   chans.forEach(ch => { const fs = (futureSpend && futureSpend[ch.key]) || null; futSpendByKey[ch.key] = Array.from({ length: H }, (_, j) => (fs && isFinite(fs[j])) ? fs[j] : recentMean[ch.key]); });
   const combined = { week: [...panel.week, ...futWeek], ch: {}, dummy: {}, steps: {}, targets: {} };
   chans.forEach(ch => combined.ch[ch.key] = [...panel.ch[ch.key], ...futSpendByKey[ch.key]]);
-  for (const k in (panel.dummy || {})) combined.dummy[k] = [...panel.dummy[k], ...Array(H).fill(0)];          // 미래 더미=0 (캐비엇)
-  for (const k in (panel.steps || {})) { const arr = panel.steps[k]; const last = arr[arr.length - 1] || 0; combined.steps[k] = [...arr, ...Array(H).fill(last)]; }  // step 영구 유지
+  for (const k in (panel.dummy || {})) combined.dummy[k] = [...panel.dummy[k], ...Array(H).fill(0)];          // 미래 더미(휴일 포함)=0 — 미래 휴일 미반영(캐비엇)
+  // step(이벤트/구조변화): 관측 시리즈를 _mmmStepSeries로 그대로(=비-forecast 파이프라인과 동일) materialize 후
+  // 미래는 stepOff[key] 제어 — undefined/빈값=지속(마지막 값), 숫자 N=N기간 켜둔 뒤 0(끔). N=0=즉시 끔.
+  const obsSteps = _mmmStepSeries(panel, cfg);
+  const stepKeys = Object.keys(obsSteps);
+  stepKeys.forEach(k => {
+    const obs = obsSteps[k], lastV = obs[obs.length - 1] || 0;
+    const offN = stepOff ? stepOff[k] : null;
+    const fut = Array.from({ length: H }, (_, j) => (offN != null && isFinite(offN)) ? (j < offN ? lastV : 0) : lastV);
+    combined.steps[k] = [...obs, ...fut];
+  });
   combined.targets[target] = [...y, ...Array(H).fill(NaN)];
   combined.channels = panel.channels;
   const cpanel = (model === "merge") ? mmmMergedPanel(combined, cfg) : combined;
@@ -12889,6 +12898,8 @@ function mmmForecast(panel, cfg, target, lam, model, futureSpend, horizon) {
     futWeek, futDates, gran,
     chans: chans.map(ch => ({ key: ch.key, label: ch.label })),
     futSpendByKey, recentMean, histSpendByKey: Object.fromEntries(chans.map(ch => [ch.key, panel.ch[ch.key]])),
+    steps: stepKeys.map(k => ({ key: k, label: (panel.stepDefs && (panel.stepDefs.find(s => s.key === k) || {}).label) || k, lastOn: (obsSteps[k][obsSteps[k].length - 1] || 0) > 0.5 })),
+    stepOff: { ...(stepOff || {}) },
   };
 }
 // 활성 상태(target·모델·예산·horizon·단위)로 forecast 계산 — 가벼운 메모(무거운 파이프라인 캐시는 유지)
@@ -12905,9 +12916,10 @@ function mmmGetForecast(c) {
   const chans = _mmmChans(c.panel).filter(ch => c.panel.ch[ch.key]);
   const futureSpend = {};
   chans.forEach(ch => { const b = budget[ch.key]; if (b != null && isFinite(b)) futureSpend[ch.key] = Array(horizon).fill(b * rowDays / unitDays); });  // 미입력 채널은 mmmForecast가 최근평균으로
-  const key = `${c.key}|${t}|${model}|${lam}|h${horizon}|u${unit}|rd${rowDays}|${JSON.stringify(budget)}`;
+  const stepOff = MMM_METH_STATE.fcStepOff || {};
+  const key = `${c.key}|${t}|${model}|${lam}|h${horizon}|u${unit}|rd${rowDays}|${JSON.stringify(budget)}|so${JSON.stringify(stepOff)}`;
   if (MMM_FC_MEMO.key === key) return MMM_FC_MEMO.fc;
-  const fc = mmmForecast(c.panel, c.cfg, t, lam, model, futureSpend, horizon);
+  const fc = mmmForecast(c.panel, c.cfg, t, lam, model, futureSpend, horizon, stepOff);
   if (fc) { fc.unit = unit; fc.unitDays = unitDays; fc.rowDays = rowDays; fc.budgetInput = { ...budget }; fc.granLabel = gran ? gran.label : `${MMM_METH_STATE.fcRowUnit || "weekly"}(수동)`; }
   MMM_FC_MEMO.key = key; MMM_FC_MEMO.fc = fc; return fc;
 }
@@ -13033,7 +13045,7 @@ if (typeof window !== "undefined") {
 /* ============================================================
  * 5-18 페이지 (MMM 방법론 도구) — 데이터 계약·config·결과 패널·차트·verdict·export
  * ============================================================ */
-const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi", colMap: null, decompBaseline: "nonmedia", decompModel: "ols", stage: null, rankCfg: null, spendChartAdj: false, spendChartTotal: false, fcHorizon: 13, fcUnit: null, fcRowUnit: "weekly", fcBudget: {} };  // stage: null(옵션 선택) | diagnose(카니발 분석) | mmm(MMM 기여 분해) | forecast(Trend Forecast)  // decompModel: ols(centered) | merge(공선합산·centered) | ridge(정규화·LEVEL)  // fcHorizon: 미래 예측 행 수 · fcUnit: 예산 입력 단위(daily/weekly/monthly, null=데이터 주기) · fcRowUnit: 날짜 미매핑 시 데이터 주기 · fcBudget: {chKey: 단위당 예산}  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상. colMap: {[header]:{role,kind}} 드래그앤드롭 역할 매핑. decompBaseline: "mean"(주평균) | "nonmedia"(추세·계절·휴일·레짐 포함)
+const MMM_METH_STATE = { target: "Regs", platform: "All", config: null, notes: {}, absorbChoice: {}, cannibChannel: "google_roi", colMap: null, decompBaseline: "nonmedia", decompModel: "ols", stage: null, rankCfg: null, spendChartAdj: false, spendChartTotal: false, fcHorizon: 13, fcUnit: null, fcRowUnit: "weekly", fcBudget: {}, fcStepOff: {} };  // stage: null(옵션 선택) | diagnose(카니발 분석) | mmm(MMM 기여 분해) | forecast(Trend Forecast)  // decompModel: ols(centered) | merge(공선합산·centered) | ridge(정규화·LEVEL)  // fcHorizon: 미래 예측 행 수 · fcUnit: 예산 입력 단위(daily/weekly/monthly, null=데이터 주기) · fcRowUnit: 날짜 미매핑 시 데이터 주기 · fcBudget: {chKey: 단위당 예산}  // absorbChoice: {`ch__step`: "step"|"channel"} 흡수 대상. colMap: {[header]:{role,kind}} 드래그앤드롭 역할 매핑. decompBaseline: "mean"(주평균) | "nonmedia"(추세·계절·휴일·레짐 포함)
 const MMM_NONMEDIA_GROUPS = ["Trend", "Seasonality", "Holidays", "Regime(steps)"];   // 비매체 드라이버 (baseline 포함 토글 대상)
 const _MMM_ROLES = ["ignore", "week", "date", "reg", "react", "channel", "dummy", "step", "platform"];
 // 날짜 문자열/엑셀 serial → Date(UTC). 실패 시 null. (analysis는 행순서 t로 하되, 표시·예측·단위환산에 사용)
@@ -13785,7 +13797,7 @@ function renderMmmStage3Intro(c) {
       <div style="flex:1;min-width:200px;background:var(--bg-2);border-radius:8px;padding:11px 13px;font-size:12px;color:var(--text-1);line-height:1.55;"><strong style="color:#adc6ff;">② 예산 → 예측</strong><br>채널별 <strong>일/주/월 평균 예산</strong>을 넣으면 데이터 주기에 맞춰 환산해 미래 지출로 쓰고, adstock·계절·추세를 연장해 예측 + 95% 밴드.</div>
       <div style="flex:1;min-width:200px;background:var(--bg-2);border-radius:8px;padding:11px 13px;font-size:12px;color:var(--text-1);line-height:1.55;"><strong style="color:#adc6ff;">③ 전체 다운로드</strong><br>독립변수 계수·계산식·과거 실측/적합·미래 예산/예측을 한 CSV로. 스프레드시트에서 직접 재현.</div>
     </div>
-    <p style="font-size:11px;color:var(--text-muted);margin-top:9px;">⚠ 예측은 <strong>관측 회귀의 외삽(가설)</strong>입니다. 밴드는 모델 불확실성(예측구간)이며 "예산 가정 자체"의 불확실성은 포함하지 않습니다. 미래 휴일 더미=0, 구조변화 step은 영구 유지로 가정. 인과·증분 확정은 holdout(5-15).</p>
+    <p style="font-size:11px;color:var(--text-muted);margin-top:9px;">⚠ 예측은 <strong>관측 회귀의 외삽(가설)</strong>입니다. 밴드는 모델 불확실성(예측구간)이며 "예산 가정 자체"의 불확실성은 포함하지 않습니다. 이벤트/구조변화 step은 아래에서 <strong>지속/종료 시점을 선택</strong>하고, <strong>휴일은 미래 예측에 반영되지 않습니다</strong>(미래=0). 인과·증분 확정은 holdout(5-15).</p>
   </section>`;
 }
 // Stage 1 안내: 진단 철학(제거법) + lead/lag가 여기 있는 이유
@@ -13848,6 +13860,14 @@ function renderMmmForecast(c) {
   const histAvg = fc.actual.slice(-recentN).reduce((s, v) => s + v, 0) / recentN;
   const delta = histAvg > 0 ? (futAvg / histAvg - 1) * 100 : 0;
   const tabRows = fc.futLabels.map((lab, i) => `<tr><td>${escapeHtml(String(lab))}</td><td class="tnum">${fmt(fc.predFut[i])}</td><td class="tnum" style="color:var(--text-muted);">${fmt(fc.lo[i])}</td><td class="tnum" style="color:var(--text-muted);">${fmt(fc.hi[i])}</td>${fc.chans.map(ch => `<td class="tnum" style="color:var(--text-muted);">${fmt(fc.futSpendByKey[ch.key][i])}</td>`).join("")}</tr>`).join("");
+  // 이벤트/구조변화(step) 미래 처리: 비우면 지속, 숫자 N이면 N기간 켜둔 뒤 끔
+  const stepCtl = (fc.steps && fc.steps.length)
+    ? `<h3 style="font-size:13px;margin:16px 0 6px;">이벤트 · 구조변화(step) 미래 처리 <span style="font-size:11px;color:var(--text-muted);font-weight:400;">— 비우면 <strong>지속</strong>, 숫자 N이면 N${perName} 켜둔 뒤 끔(0=즉시 끔)</span></h3>
+      <div class="table-wrap" style="max-width:540px;"><table class="data" style="font-size:12px;"><thead><tr><th>이벤트(step)</th><th>현재(관측 끝)</th><th>켜둘 미래 ${perName}</th></tr></thead><tbody>
+      ${fc.steps.map(s => { const cur = (MMM_METH_STATE.fcStepOff || {})[s.key]; return `<tr><td>${escapeHtml(s.label)}</td><td style="color:${s.lastOn ? '#22c55e' : 'var(--text-muted)'};font-size:11px;">${s.lastOn ? '켜짐(ON)' : '꺼짐(OFF)'}</td><td><input type="number" min="0" data-mmm-fc-stepoff="${escapeHtml(s.key)}" value="${cur != null && isFinite(cur) ? cur : ''}" placeholder="지속" style="width:110px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:4px 7px;text-align:right;"></td></tr>`; }).join("")}
+      </tbody></table></div>
+      <p class="muted" style="font-size:11px;margin-top:4px;">예: "이 캠페인을 12${perName} 더 유지 후 종료" → <code class="inline">12</code>. 영구 구조변화(되돌아가지 않음)는 비워두세요(지속). ⚠ <strong>휴일은 미래 예측에 반영되지 않습니다</strong>(미래=0) — 도구 기본 휴일은 관측 주차 기준이라 미래 주엔 적용 안 됨.</p>`
+    : `<p class="muted" style="font-size:11px;margin-top:8px;">⚠ 매핑된 이벤트(step)가 없습니다(매핑의 📐 step 역할로 지정). <strong>휴일은 미래 예측에 반영되지 않습니다</strong>(미래=0).</p>`;
   return `<section class="block" id="s-forecast">
     <h2 class="section-title"><span class="ix">§7</span>${tKo} 예측 — 과거 적합 + 미래 예산 시나리오</h2>
     ${mmmExplain(`<strong>${modelLabel}</strong> 모델로 과거를 적합(R²=${fc.r2})하고, 아래 채널별 예산을 미래로 연장해 ${tKo}를 예측합니다. 회색=실측·파란선=모델/예측·음영=95% 밴드. 미래로 갈수록 밴드가 벌어지는 건 외삽 불확실성(σ=${fmt(fc.sigma)}). 모델을 바꾸면 과거 적합과 예측이 같이 바뀝니다.`)}
@@ -13862,6 +13882,7 @@ function renderMmmForecast(c) {
     <h3 style="font-size:13px;margin:16px 0 6px;">채널별 미래 예산 (${unitName} 평균) <span style="font-size:11px;color:var(--text-muted);font-weight:400;">— 기본값 = 최근 평균. 수정하면 그 시나리오로 즉시 재예측.</span></h3>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;"><button class="ab-pill" data-mmm-fc-reset="1">↺ 최근 평균으로 초기화</button><button class="ab-pill" data-mmm-forecast-csv="1" style="background:#7aa2f7;color:#0b0d12;font-weight:700;border-color:#7aa2f7;">⬇ 전체 예측 CSV (계수·계산식·실측·예측)</button></div>
     <div class="table-wrap" style="max-width:540px;"><table class="data" style="font-size:12px;"><thead><tr><th>채널</th><th>최근평균(${unitName})</th><th>미래 예산(${unitName})</th></tr></thead><tbody>${budgetRows}</tbody></table></div>
+    ${stepCtl}
     <h3 style="font-size:13px;margin:16px 0 6px;">미래 예측값 (${fc.horizon} ${perName})</h3>
     <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>${fc.gran ? "날짜" : "미래"}</th><th>예측 ${tKo}</th><th>하한(95%)</th><th>상한(95%)</th>${fc.chans.map(ch => `<th>${escapeHtml(ch.label)} 지출</th>`).join("")}</tr></thead><tbody>${tabRows}</tbody></table></div>
   </section>`;
@@ -14583,6 +14604,7 @@ function bindMmmMethHandlers() {
   document.querySelectorAll("[data-mmm-fc-rowunit]").forEach(s => s.addEventListener("change", () => { MMM_METH_STATE.fcRowUnit = s.value; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-fc-horizon]").forEach(inp => inp.addEventListener("change", () => { const v = parseInt(inp.value, 10); MMM_METH_STATE.fcHorizon = (isFinite(v) && v > 0) ? Math.min(104, v) : 13; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-fc-budget]").forEach(inp => inp.addEventListener("change", () => { if (!MMM_METH_STATE.fcBudget) MMM_METH_STATE.fcBudget = {}; const v = parseFloat(String(inp.value).replace(/[^0-9.\-]/g, "")); MMM_METH_STATE.fcBudget[inp.dataset.mmmFcBudget] = (isFinite(v) && v >= 0) ? v : null; navigate("5-18"); }));
+  document.querySelectorAll("[data-mmm-fc-stepoff]").forEach(inp => inp.addEventListener("change", () => { if (!MMM_METH_STATE.fcStepOff) MMM_METH_STATE.fcStepOff = {}; const raw = String(inp.value).trim(); const v = parseInt(raw, 10); if (raw === "" || !isFinite(v) || v < 0) delete MMM_METH_STATE.fcStepOff[inp.dataset.mmmFcStepoff]; else MMM_METH_STATE.fcStepOff[inp.dataset.mmmFcStepoff] = v; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-fc-reset]").forEach(b => b.addEventListener("click", () => { MMM_METH_STATE.fcBudget = {}; navigate("5-18"); }));
   document.querySelectorAll("[data-mmm-forecast-csv]").forEach(b => b.addEventListener("click", downloadMmmForecastCsv));
   // 튀는 구간 메모 (세션 상태에 저장; 재렌더 없이 input 값 유지)
