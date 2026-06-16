@@ -2551,6 +2551,35 @@
   }
   .paywall-dm:hover { filter: brightness(1.08); }
   .paywall-dm-note { font-size: 11.5px; color: var(--text-secondary); margin-top: 8px; }
+  /* ===== ⌘K 명령 팔레트 ===== */
+  .cmdk-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(8, 10, 16, 0.62); backdrop-filter: blur(3px);
+    display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh;
+  }
+  .cmdk-overlay[hidden] { display: none; }
+  .cmdk-panel {
+    width: min(620px, 92vw); max-height: 70vh; display: flex; flex-direction: column;
+    background: var(--surface-container-lowest, var(--bg-2)); border: 1px solid rgba(122,162,247,0.32);
+    border-radius: 16px; box-shadow: 0 30px 80px rgba(0,0,0,0.55); overflow: hidden;
+  }
+  .cmdk-inputwrap { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+  .cmdk-inputwrap input { flex: 1; background: none; border: none; outline: none; color: var(--text-1); font-size: 15px; }
+  .cmdk-inputwrap kbd, .cmdk-foot kbd {
+    font-family: var(--font-mono); font-size: 10px; background: var(--bg-3, rgba(255,255,255,0.07));
+    border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; color: var(--text-muted);
+  }
+  .cmdk-results { overflow-y: auto; padding: 6px; }
+  .cmdk-item { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 9px; cursor: pointer; }
+  .cmdk-item.sel, .cmdk-item:hover { background: linear-gradient(135deg, rgba(122,162,247,0.16), rgba(122,162,247,0.05)); }
+  .cmdk-item .cmdk-ico { font-size: 15px; width: 20px; text-align: center; }
+  .cmdk-item .cmdk-l { flex: 1; }
+  .cmdk-item .cmdk-l b { font-size: 13.5px; color: var(--text-1); font-weight: 600; display: block; }
+  .cmdk-item .cmdk-l small { font-size: 11px; color: var(--text-muted); }
+  .cmdk-item .cmdk-tier { font-size: 9px; font-weight: 700; }
+  .cmdk-empty { padding: 22px; text-align: center; color: var(--text-muted); font-size: 13px; }
+  .cmdk-foot { display: flex; gap: 16px; padding: 9px 16px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); }
+  .cmdk-foot span { display: inline-flex; align-items: center; gap: 5px; }
   .auth-label {
     font-family: var(--font-mono);
     font-size: 11px;
@@ -2696,6 +2725,19 @@
 
 <!-- ===== Toast 컨테이너 (전역) ===== -->
 <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+<!-- ===== ⌘K 명령 팔레트 (전역) ===== -->
+<div id="cmdk" class="cmdk-overlay" hidden>
+  <div class="cmdk-panel" role="dialog" aria-modal="true" aria-label="명령 팔레트">
+    <div class="cmdk-inputwrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input id="cmdk-input" type="text" placeholder="도구·가이드 이동 또는 명령 실행…" autocomplete="off" spellcheck="false" />
+      <kbd>esc</kbd>
+    </div>
+    <div id="cmdk-results" class="cmdk-results"></div>
+    <div class="cmdk-foot"><span><kbd>↑</kbd><kbd>↓</kbd> 이동</span><span><kbd>↵</kbd> 실행</span><span><kbd>esc</kbd> 닫기</span></div>
+  </div>
+</div>
 
 <!-- ===== Lead Capture Modal (Firebase Auth UI 목업) ===== -->
 <div id="lead-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="lead-modal-title" hidden>
@@ -21051,19 +21093,110 @@ function bindBrandClick() {
 /* ========== Sidebar search filter ========== */
 function bindSearch() {
   const input = $("#searchInput");
-  input.addEventListener("input", () => {
+  if (input) input.addEventListener("input", () => {
     const q = input.value.trim().toLowerCase();
     $$('.nav-item').forEach(el => {
       const t = el.innerText.toLowerCase();
       el.style.display = !q || t.includes(q) ? "" : "none";
     });
   });
+  // ⌘K는 전역 명령 팔레트로 (사이드바가 숨겨진 랜딩에서도 동작)
+}
+
+/* ========== ⌘K 명령 팔레트 (전역) ========== */
+const CMDK_STATE = { open: false, sel: 0, filtered: [] };
+
+function buildCmdkCommands() {
+  const cmds = [{ route: "home", label: "홈 — 처음으로", sub: "Overview", icon: "🏠" }];
+  IA.forEach(g => {
+    g.items.forEach(it => {
+      const isTool = OPS_GROUP_IDS.has(g.id);
+      const tier = isTool ? (TOOL_TIER[it.id] || "pro") : null;
+      cmds.push({
+        route: it.id,
+        label: it.title,
+        sub: `${displayItemNumber(it.id)} · ${g.title}`,
+        icon: isTool ? (tier === "free" ? "📊" : "🔒") : "📘",
+        tier,
+      });
+    });
+  });
+  if (isAuthValid()) cmds.push({ action: "signout", label: "로그아웃 (Pro 세션 종료)", sub: "Account", icon: "↩" });
+  return cmds;
+}
+
+function renderCmdkResults(q) {
+  const all = buildCmdkCommands();
+  const query = (q || "").trim().toLowerCase();
+  const filtered = !query ? all : all.filter(c => (c.label + " " + c.sub).toLowerCase().includes(query));
+  CMDK_STATE.filtered = filtered;
+  if (CMDK_STATE.sel >= filtered.length) CMDK_STATE.sel = Math.max(0, filtered.length - 1);
+  const box = document.getElementById("cmdk-results");
+  if (!box) return;
+  if (!filtered.length) { box.innerHTML = `<div class="cmdk-empty">결과 없음</div>`; return; }
+  box.innerHTML = filtered.map((c, i) => {
+    const tier = c.tier === "free" ? `<span class="cmdk-tier" style="color:#5ad19a;">FREE</span>`
+      : c.tier === "pro" ? `<span class="cmdk-tier" style="color:#adc6ff;">🔒 Pro</span>` : "";
+    return `<div class="cmdk-item ${i === CMDK_STATE.sel ? "sel" : ""}" data-cmdk-idx="${i}">
+      <span class="cmdk-ico">${c.icon}</span>
+      <span class="cmdk-l"><b>${escapeHtml(c.label)}</b><small>${escapeHtml(c.sub)}</small></span>
+      ${tier}
+    </div>`;
+  }).join("");
+  const selEl = box.querySelector(".cmdk-item.sel");
+  if (selEl && selEl.scrollIntoView) selEl.scrollIntoView({ block: "nearest" });
+}
+
+function openCmdk() {
+  const ov = document.getElementById("cmdk");
+  if (!ov) return;
+  CMDK_STATE.open = true; CMDK_STATE.sel = 0;
+  ov.hidden = false;
+  const input = document.getElementById("cmdk-input");
+  if (input) { input.value = ""; }
+  renderCmdkResults("");
+  setTimeout(() => { if (input) input.focus(); }, 20);
+}
+
+function closeCmdk() {
+  const ov = document.getElementById("cmdk");
+  if (ov) ov.hidden = true;
+  CMDK_STATE.open = false;
+}
+
+function runCmdkSelected() {
+  const c = CMDK_STATE.filtered[CMDK_STATE.sel];
+  if (!c) return;
+  closeCmdk();
+  if (c.action === "signout") { signOut(); navigate("home"); return; }
+  if (c.route) navigate(c.route);
+}
+
+function bindCmdk() {
+  // 전역 ⌘K / Ctrl+K → 팔레트 토글
   document.addEventListener("keydown", (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
       e.preventDefault();
-      input.focus();
+      CMDK_STATE.open ? closeCmdk() : openCmdk();
+      return;
     }
+    if (!CMDK_STATE.open) return;
+    if (e.key === "Escape") { e.preventDefault(); closeCmdk(); }
+    else if (e.key === "ArrowDown") { e.preventDefault(); CMDK_STATE.sel = Math.min(CMDK_STATE.filtered.length - 1, CMDK_STATE.sel + 1); renderCmdkResults(document.getElementById("cmdk-input").value); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); CMDK_STATE.sel = Math.max(0, CMDK_STATE.sel - 1); renderCmdkResults(document.getElementById("cmdk-input").value); }
+    else if (e.key === "Enter") { e.preventDefault(); runCmdkSelected(); }
   });
+  const input = document.getElementById("cmdk-input");
+  if (input) input.addEventListener("input", () => { CMDK_STATE.sel = 0; renderCmdkResults(input.value); });
+  const box = document.getElementById("cmdk-results");
+  if (box) box.addEventListener("click", (e) => {
+    const item = e.target.closest("[data-cmdk-idx]");
+    if (!item) return;
+    CMDK_STATE.sel = parseInt(item.dataset.cmdkIdx, 10) || 0;
+    runCmdkSelected();
+  });
+  const ov = document.getElementById("cmdk");
+  if (ov) ov.addEventListener("click", (e) => { if (e.target === ov) closeCmdk(); });
 }
 
 // 페이지 ID 형식("1-1", "5-2" 등)만 라우팅 대상으로 인정. anchor hash(#s-*) 등은 무시.
@@ -21079,6 +21212,7 @@ async function init() {
   renderNav(hash || null);
   bindSearch();
   bindBrandClick();
+  bindCmdk();               // ⌘K 명령 팔레트 (전역)
   bindLeadModalHandlers();  // Lead Capture 모달 (전역)
   navigate(hash || "home");
 
