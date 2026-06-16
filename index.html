@@ -2746,10 +2746,8 @@ const IA = [
     subtitle: "일별 캠페인 CSV 1개 → 효율·배분 분석 연속 처리",
     items: [
       { id: "5-2", title: "운영 모니터링", desc: "시각화·스코어카드·페이싱·이상탐지 통합 — 한 CSV로 현황 감시" },
-      { id: "5-3", title: "Budget Allocator", desc: "한계효용 기반 채널별 예산 최적 배분 (CPI/CPA/ROAS)" },
+      { id: "5-3", title: "효율·배분 탐색", desc: "예산 배분(한계효용) + 퍼널 진단 + 세그먼트 매트릭스 통합" },
       { id: "5-9", title: "LTV:CAC · Payback", desc: "채널별 CAC 대비 LTV 배수 + 회수기간 + 손익분기 ROAS" },
-      { id: "5-11", title: "Funnel 진단", desc: "노출→클릭→설치→액션→매출 단계별 CVR·이탈 진단" },
-      { id: "5-12", title: "Segment Explorer", desc: "국가×채널×플랫폼 효율 매트릭스 + 드릴다운" },
       { id: "5-16", title: "ROAS Maturation", desc: "조기 ROAS(D0/D7/D14)로 성숙 ROAS(D90/D180) 예측" },
     ],
   },
@@ -5336,7 +5334,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-11", "5-12", "5-16", "5-15", "5-18", "5-19"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-16", "5-15", "5-18", "5-19"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -5904,67 +5902,21 @@ function page_5_2() {
 PAGE_RENDERERS["5-2"] = page_5_2;
 
 /* ---------- 5-3. Budget Allocator ---------- */
-function page_5_3() {
-  const meta = findMeta("5-3");
-
-  // 도구 전용 CSV 미준비 → 인라인 업로드 UI만
-  const missing = checkRequiredForTool("5-3");
-  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-3")) {
-    return pageShell(meta, {
-      deck: "한계효용 기반 채널별 예산 최적 배분. 이 도구 전용 CSV를 업로드하세요.",
-      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
-      summary: "채널·캠페인별 추세선 적합 + 한계효용 그리디로 예산을 자동 분배합니다. Channel(또는 캠페인), Cost, 설치/액션 컬럼이 필요합니다.",
-      toc: [{ id: "s-prep", title: "데이터 준비" }],
-      body: renderInlineCsvUpload("5-3"),
-    });
-  }
-
-  // CSV는 준비됐지만 분석 필터가 아직 적용 안 됨 → 분석 단위 + 국가/채널 선택 UI만 표시
+// ===== 효율·배분 탐색 (5-3) — 배분/퍼널/세그먼트 통합 host. monAllocBody = 배분 탭 본문 =====
+function monAllocBody() {
+  // CSV는 준비됐지만 분석 필터가 아직 적용 안 됨 → 분석 단위 + 국가/채널 선택 UI만
   if (!ALLOC_FILTER_STATE.applied) {
-    return pageShell(meta, {
-      deck: "분석 단위와 국가/채널 필터를 선택하고 '적용'을 누르세요. 적용 후에 산점도·추세선·예산 분배가 계산됩니다.",
-      chips: `
-        <span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>
-        <span class="chip warn"><span class="dot"></span>분석 단위 선택 대기</span>
-        ${authStatusChip()}`,
-      summary: "캠페인 수가 많을 때 한 번에 분석하면 산점도가 복잡해집니다. 먼저 단위(국가/채널/캠페인)와 필터를 선택해 분석 범위를 좁히세요.",
-      toc: [
-        { id: "s-prep", title: "데이터 준비" },
-        { id: "s-filter", title: "분석 단위 선택" },
-      ],
-      body: `
-        <section class="block" id="s-prep">${renderInlineCsvUpload("5-3")}</section>
-        <section class="block" id="s-filter">
-          <h2 class="section-title"><span class="ix">§1</span>분석 단위 선택</h2>
-          ${renderAllocFilterPanel(false)}
-        </section>
-      `,
-    });
+    return `
+      <section class="block" id="s-filter">
+        <h2 class="section-title"><span class="ix">§1</span>분석 단위 선택</h2>
+        <p class="muted" style="font-size:12px;">캠페인 수가 많을 때 한 번에 분석하면 산점도가 복잡합니다. 단위(국가/채널/캠페인)·국가/채널 필터를 선택하고 '적용'을 누르면 산점도·추세선·예산 분배가 계산됩니다.</p>
+        ${renderAllocFilterPanel(false)}
+      </section>`;
   }
-
-  // 필터 요약 + 변경 버튼
   const filterSummary = renderAllocFilterSummary();
-
-  return pageShell(meta, {
-    deck: "채널별 가중평균 CPR 기반 효율 추천 비중. 총 예산을 입력하면 자동으로 채널별 배분 금액이 계산됩니다.",
-    chips: `
-      <span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>
-      <span class="chip ok"><span class="dot"></span>알고리즘 · 효율 기반 (모드 A)</span>
-      ${authStatusChip()}
-      <span class="chip-currency">
-        <button class="ab-pill ${AB_STATE.currency === 'KRW' ? 'active' : ''}" data-alloccurrency="KRW">₩ KRW</button>
-        <button class="ab-pill ${AB_STATE.currency === 'USD' ? 'active' : ''}" data-alloccurrency="USD">$ USD</button>
-      </span>`,
-    summary: `채널별 <code>Efficiency = 1 / CPR</code> 을 정규화한 추천 비중. <strong>산점도에서 선택한 채널/캠페인만</strong> 예산 배분 대상이 되며, 선택을 바꾸면 배분도 즉시 재계산됩니다.`,
-    toc: [
-      { id: "s-scatter", title: "Cost vs CPR 산점도" },
-      { id: "s-controls", title: "예산 설정" },
-      { id: "s-bar", title: "배분 비중" },
-      { id: "s-scenario", title: "What-if 시나리오" },
-      { id: "s-table", title: "채널별 상세" },
-      { id: "s-algo", title: "알고리즘 노트" },
-    ],
-    body: `
+  const currencyToggle = `<div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:6px;"><button class="ab-pill ${AB_STATE.currency === 'KRW' ? 'active' : ''}" data-alloccurrency="KRW">₩ KRW</button><button class="ab-pill ${AB_STATE.currency === 'USD' ? 'active' : ''}" data-alloccurrency="USD">$ USD</button></div>`;
+  return `
+      ${currencyToggle}
       ${filterSummary}
       <section class="block" id="s-scatter">
         <h2 class="section-title"><span class="ix">§1</span>Cost vs CPR 산점도 & 추세선</h2>
@@ -6173,7 +6125,42 @@ allocation = total_budget × weight`)}
           </div>
         </div>
       </section>
-    `,
+    `;
+}
+// ===== 효율·배분 탐색 host (예산 배분 / 퍼널 / 세그먼트 탭) =====
+const ALLOC_TAB_STATE = { tab: "alloc" };
+const ALLOC_TABS = [
+  { id: "alloc", icon: "💰", label: "예산 배분", desc: "한계효용·CPR 추세 기반 채널 배분" },
+  { id: "funnel", icon: "🪜", label: "퍼널 진단", desc: "노출→클릭→설치→액션 단계 CVR·이탈" },
+  { id: "segment", icon: "🗺", label: "세그먼트", desc: "국가×채널×플랫폼 효율 매트릭스" },
+];
+function renderAllocTabs() {
+  const t = ALLOC_TAB_STATE.tab || "alloc";
+  return `<section class="block" style="padding:0;border:none;background:none;margin:4px 0 2px;"><div style="display:flex;gap:10px;flex-wrap:wrap;">${ALLOC_TABS.map(d => `<button class="mmm-stage-tab ${t === d.id ? "active" : ""}" data-alloc-tab="${d.id}" style="flex:1;min-width:150px;text-align:left;color:var(--text-1);background:${t === d.id ? "linear-gradient(135deg,rgba(122,162,247,0.16),rgba(122,162,247,0.04))" : "var(--bg-2)"};border:1px solid ${t === d.id ? "rgba(122,162,247,0.55)" : "var(--border)"};border-radius:12px;padding:11px 14px;cursor:pointer;"><div style="font-size:14px;font-weight:700;">${d.icon} ${d.label}</div><div style="font-size:10.5px;color:var(--text-2);margin-top:2px;line-height:1.35;">${d.desc}</div></button>`).join("")}</div></section>`;
+}
+function page_5_3() {
+  const meta = findMeta("5-3");
+  const missing = checkRequiredForTool("5-3");
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-3")) {
+    return pageShell(meta, {
+      deck: "효율 그룹 CSV 한 번 업로드로 예산 배분·퍼널·세그먼트를 탭으로 분석합니다. 이 도구 전용 CSV를 업로드하세요.",
+      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+      summary: "필수: 날짜·비용·(채널 또는 캠페인)·(설치 또는 액션). 매핑·분석 후 3개 탭이 열립니다.",
+      toc: [{ id: "s-prep", title: "데이터 준비" }],
+      body: renderInlineCsvUpload("5-3"),
+    });
+  }
+  const tab = ALLOC_TAB_STATE.tab || "alloc";
+  const body = tab === "funnel" ? monFunnelBody() : tab === "segment" ? monSegmentBody() : monAllocBody();
+  const toc = tab === "funnel" ? [{ id: "s-funnel", title: "퍼널" }]
+    : tab === "segment" ? [{ id: "s-matrix", title: "세그먼트" }]
+    : (ALLOC_FILTER_STATE.applied ? [{ id: "s-scatter", title: "산점도" }, { id: "s-controls", title: "예산" }, { id: "s-bar", title: "배분" }, { id: "s-scenario", title: "시나리오" }, { id: "s-table", title: "상세" }, { id: "s-algo", title: "알고리즘" }] : [{ id: "s-filter", title: "분석 단위" }]);
+  return pageShell(meta, {
+    deck: "효율·배분 탐색 — 예산 배분·퍼널·세그먼트를 한 도구에서. 효율 그룹 CSV 공유.",
+    chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>${authStatusChip()}`,
+    summary: "한 번의 업로드로 예산 배분(한계효용)·퍼널 진단·세그먼트 매트릭스를 탭으로 전환합니다.",
+    toc,
+    body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경)</summary><div style="margin-top:10px;">${renderInlineCsvUpload("5-3")}</div></details>${renderAllocTabs()}${body}`,
   });
 }
 PAGE_RENDERERS["5-3"] = page_5_3;
@@ -16172,27 +16159,10 @@ function buildFunnelCache(){
   FUNNEL_CACHE.key=key; FUNNEL_CACHE.stages=stageDefs; FUNNEL_CACHE.rows=rowsOut;
   return FUNNEL_CACHE;
 }
-function page_5_11(){
-  const meta=findMeta("5-11");
-  const missing=checkRequiredForTool("5-11");
-  if(missing.length>0||!CSV_STATE.headers.length || !isToolAnalyzed("5-11")) {
-    return pageShell(meta,{
-      deck:"노출→클릭→설치→액션 단계별 전환율(CVR)과 이탈을 진단합니다. 효율 그룹 CSV 공유.",
-      chips:`<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
-      summary:"각 단계 CVR = 현재/직전 단계. 이탈이 큰 단계가 병목. 채널/국가/OS별로 분리해 어디서 새는지 식별.",
-      toc:[{id:"s-prep",title:"데이터 준비"}],
-      body:renderInlineCsvUpload("5-11"),
-    });
-  }
+function monFunnelBody(){
   buildFunnelCache();
   const c=FUNNEL_CACHE;
-  return pageShell(meta,{
-    deck:"단계별 CVR·이탈 진단. CTR(클릭/노출)·CVR(설치/클릭)·액션전환(액션/설치)을 한눈에. 효율 그룹 CSV 공유.",
-    chips:`<span class="chip"><span class="dot"></span>도구 · Funnel 진단</span><span class="chip ok"><span class="dot"></span>${c.stages.length}단계</span>${authStatusChip()}`,
-    summary:"각 행은 직전 단계 대비 전환율. 이탈률이 가장 큰 단계가 우선 개선 대상입니다.",
-    toc:[{id:"s-prep",title:"데이터 준비"},{id:"s-funnel",title:"퍼널"}],
-    body:`
-      <section class="block" id="s-prep">${renderInlineCsvUpload("5-11")}</section>
+  return `
       <section class="block" id="s-funnel">
         <h2 class="section-title"><span class="ix">§1</span>퍼널 단계별 전환·이탈</h2>
         <div class="ab-pillgroup">
@@ -16204,10 +16174,8 @@ function page_5_11(){
         </div>
         ${renderFunnelTable(c)}
       </section>
-    `,
-  });
+    `;
 }
-PAGE_RENDERERS["5-11"]=page_5_11;
 function renderFunnelTable(c){
   const rows=c.rows||[]; if(!rows.length)return "<p class='muted'>데이터 없음</p>";
   const stages=c.stages;
@@ -16297,26 +16265,9 @@ function buildSegmentCache(){
   SEGMENT_CACHE.key=key; SEGMENT_CACHE.grid=grid; SEGMENT_CACHE.rows=rowsArr; SEGMENT_CACHE.cols=colsArr;
   return SEGMENT_CACHE;
 }
-function page_5_12(){
-  const meta=findMeta("5-12");
-  const missing=checkRequiredForTool("5-12");
-  if(missing.length>0||!CSV_STATE.headers.length || !isToolAnalyzed("5-12")) {
-    return pageShell(meta,{
-      deck:"국가×채널×플랫폼 등 두 축의 효율 매트릭스로 어느 조합이 좋고 나쁜지 한눈에. 효율 그룹 CSV 공유.",
-      chips:`<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
-      summary:"행·열 축을 골라 CPI/CPA/ROAS/CTR/CVR을 셀에 집계. 색 농도로 상대 효율을 표현해 베스트/워스트 조합을 빠르게 식별.",
-      toc:[{id:"s-prep",title:"데이터 준비"}],
-      body:renderInlineCsvUpload("5-12"),
-    });
-  }
+function monSegmentBody(){
   buildSegmentCache();
-  return pageShell(meta,{
-    deck:"두 축 효율 매트릭스 (heatmap). 행·열·지표를 토글해 베스트/워스트 세그먼트 조합 식별. 효율 그룹 CSV 공유.",
-    chips:`<span class="chip"><span class="dot"></span>도구 · Segment Explorer</span><span class="chip ok"><span class="dot"></span>${SEGMENT_CACHE.rows.length}×${SEGMENT_CACHE.cols.length}</span>${authStatusChip()}`,
-    summary:"셀 색은 해당 지표의 상대 위치(좋을수록 진한 초록 / 나쁠수록 빨강). CPI/CPA는 낮을수록, ROAS/CTR/CVR은 높을수록 긍정.",
-    toc:[{id:"s-prep",title:"데이터 준비"},{id:"s-matrix",title:"매트릭스"}],
-    body:`
-      <section class="block" id="s-prep">${renderInlineCsvUpload("5-12")}</section>
+  return `
       <section class="block" id="s-matrix">
         <h2 class="section-title"><span class="ix">§1</span>세그먼트 효율 매트릭스</h2>
         ${(() => {
@@ -16333,10 +16284,8 @@ function page_5_12(){
         })()}
         ${renderSegmentMatrix()}
       </section>
-    `,
-  });
+    `;
 }
-PAGE_RENDERERS["5-12"]=page_5_12;
 function renderSegmentMatrix(){
   const c=SEGMENT_CACHE; const met=SEGMENT_METRICS[SEGMENT_STATE.metric];
   if(!c.grid||!c.rows.length)return "<p class='muted'>데이터 없음</p>";
@@ -17337,6 +17286,8 @@ async function navigate(id) {
   if (id === "5-17") { id = "5-18"; }
   // 5-10 페이싱·5-13 스코어카드·5-14 이상탐지는 5-2 운영 모니터링 탭으로 통합 → redirect (북마크 보존)
   if (id === "5-10" || id === "5-13" || id === "5-14") { id = "5-2"; }
+  // 5-11 퍼널·5-12 세그먼트는 5-3 효율·배분 탐색 탭으로 통합 → redirect
+  if (id === "5-11" || id === "5-12") { id = "5-3"; }
 
   // Ops Dashboard 페이지 접근 제어
   if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid()) {
@@ -17546,6 +17497,8 @@ function bindCSVPageHandlers() {
   if (document.getElementById("chart-timeseries")) renderVizCharts();
 
   // ----- 5-3: Budget Allocator 핸들러 -----
+  // ----- 5-3: 효율·배분 탭 전환 (예산 배분/퍼널/세그먼트) -----
+  document.querySelectorAll("[data-alloc-tab]").forEach(b => b.addEventListener("click", () => { ALLOC_TAB_STATE.tab = b.dataset.allocTab; navigate("5-3"); }));
   if (document.getElementById("alloc-recompute") || document.getElementById("alloc-filter-apply") || document.getElementById("alloc-filter-reopen")) bindBudgetAllocatorHandlers();
 
   // ----- 5-4: A/B Test Calculator 핸들러 -----
