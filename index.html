@@ -2741,14 +2741,11 @@ const IA = [
     title: "효율 & 예산 분석",
     subtitle: "일별 캠페인 CSV 1개 → 효율·배분 분석 연속 처리",
     items: [
-      { id: "5-2", title: "데이터 시각화 대시보드", desc: "KPI 자동 계산 + 시계열·채널·퍼널·코호트 차트" },
+      { id: "5-2", title: "운영 모니터링", desc: "시각화·스코어카드·페이싱·이상탐지 통합 — 한 CSV로 현황 감시" },
       { id: "5-3", title: "Budget Allocator", desc: "한계효용 기반 채널별 예산 최적 배분 (CPI/CPA/ROAS)" },
       { id: "5-9", title: "LTV:CAC · Payback", desc: "채널별 CAC 대비 LTV 배수 + 회수기간 + 손익분기 ROAS" },
-      { id: "5-10", title: "Pacing & Forecast", desc: "MTD 소진 vs 목표 + 월말 착지 예측 + 페이스 경고" },
       { id: "5-11", title: "Funnel 진단", desc: "노출→클릭→설치→액션→매출 단계별 CVR·이탈 진단" },
       { id: "5-12", title: "Segment Explorer", desc: "국가×채널×플랫폼 효율 매트릭스 + 드릴다운" },
-      { id: "5-13", title: "Executive Scorecard", desc: "핵심 KPI 단일 뷰 + WoW 변화 + 목표 대비" },
-      { id: "5-14", title: "Anomaly 탐지", desc: "지표 급등·급락 자동 감지 (어제 뭐가 바뀌었나)" },
       { id: "5-16", title: "ROAS Maturation", desc: "조기 ROAS(D0/D7/D14)로 성숙 ROAS(D90/D180) 예측" },
     ],
   },
@@ -5360,7 +5357,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-10", "5-11", "5-12", "5-13", "5-14", "5-16", "5-15", "5-18", "5-19"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-5", "5-6", "5-7", "5-8", "5-9", "5-11", "5-12", "5-16", "5-15", "5-18", "5-19"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -5665,21 +5662,10 @@ function formatPercent(n, decimals = 2) {
 }
 
 /* ---------- 5-2. 분석 대시보드 ---------- */
-function page_5_2() {
-  const meta = findMeta("5-2");
-
-  // 도구 전용 CSV가 매핑되지 않았으면 인라인 업로드 UI만
-  const missing = checkRequiredForTool("5-2");
-  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-2")) {
-    return pageShell(meta, {
-      deck: "운영 데이터 시계열·채널·코호트 시각화 + KPI 자동 계산. 이 도구 전용 CSV를 업로드하세요.",
-      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
-      summary: "필수 컬럼만 매핑되면 KPI/시계열/채널·캠페인 분포/코호트 차트가 자동으로 계산됩니다.",
-      toc: [{ id: "s-prep", title: "데이터 준비" }],
-      body: renderInlineCsvUpload("5-2"),
-    });
-  }
-
+// ===== 운영 모니터링 (5-2) — 시각화/스코어카드/페이싱/이상탐지 통합 =====
+// monVizBody/monPacingBody/monScorecardBody/monAnomalyBody = 각 탭 본문(업로드 게이트 없는 분석 섹션).
+// page_5_2가 게이트 + 탭바 + 활성 탭 디스패치를 담당. (구 5-10/5-13/5-14 흡수, redirect 보존)
+function monVizBody() {
   const k = calculateKPIs();
   const cohortToggle = `
     <div class="cohort-toggle" id="cohort-toggle" style="margin-bottom:1rem;">
@@ -5825,22 +5811,7 @@ function page_5_2() {
     </section>
   `;
 
-  return pageShell(meta, {
-    deck: `${CSV_STATE.fileName} · ${k.rowCount.toLocaleString()}행 시각화. 시계열·채널 비중·CPI 분포·퍼널·코호트 5종 차트와 KPI 카드를 한 화면에서 확인합니다.`,
-    chips: `
-      <span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>
-      <span class="chip ok"><span class="dot"></span>${k.rowCount.toLocaleString()}행</span>
-      <span class="chip"><span class="dot"></span>코호트 · D${k.cohort}</span>
-      ${authStatusChip()}`,
-    summary: `매핑된 데이터 기준 KPI 자동 계산 + 5종 차트 시각화. 현재 코호트는 <strong>D${k.cohort}</strong>이며, 매출·결제·잔존율 카드가 이 시점 기준으로 표시됩니다.`,
-    toc: [
-      { id: "s-cohort", title: "코호트 선택" },
-      { id: "s-kpi", title: "KPI 요약 (무료)" },
-      { id: "s-charts", title: "차트 시각화" },
-      { id: "s-gated", title: "고급 인사이트 (잠금)" },
-      { id: "s-data", title: "원본 데이터" },
-    ],
-    body: `
+  return `
       ${shareBar}
       ${alertHtml}
 
@@ -5900,8 +5871,6 @@ function page_5_2() {
         </div>
       </section>
 
-      ${gatedSection}
-
       <section class="block" id="s-data">
         <h2 class="section-title"><span class="ix">§5</span>원본 데이터 (전체 ${k.rowCount.toLocaleString()}행)</h2>
         ${(() => {
@@ -5910,7 +5879,47 @@ function page_5_2() {
           return dataTable(headers, rows);
         })()}
       </section>
-    `
+    `;
+}
+const MON_STATE = { tab: "viz" };
+const MON_TABS = [
+  { id: "viz", icon: "📊", label: "시각화", desc: "시계열·채널·CPI·퍼널·코호트 5종 + KPI" },
+  { id: "scorecard", icon: "🧮", label: "스코어카드", desc: "핵심 KPI + 직전 대비(WoW)" },
+  { id: "pacing", icon: "📈", label: "페이싱", desc: "월말 착지 예측·페이스 경고" },
+  { id: "anomaly", icon: "🚨", label: "이상탐지", desc: "급등·급락 z-score 감지" },
+];
+function renderMonTabs() {
+  const t = MON_STATE.tab || "viz";
+  return `<section class="block" style="padding:0;border:none;background:none;margin:4px 0 2px;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">${MON_TABS.map(d => `<button class="mmm-stage-tab ${t === d.id ? "active" : ""}" data-mon-tab="${d.id}" style="flex:1;min-width:150px;text-align:left;color:var(--text-1);background:${t === d.id ? "linear-gradient(135deg,rgba(122,162,247,0.16),rgba(122,162,247,0.04))" : "var(--bg-2)"};border:1px solid ${t === d.id ? "rgba(122,162,247,0.55)" : "var(--border)"};border-radius:12px;padding:11px 14px;cursor:pointer;transition:all .15s;">
+      <div style="font-size:14px;font-weight:700;">${d.icon} ${d.label}</div>
+      <div style="font-size:10.5px;color:var(--text-2);margin-top:2px;line-height:1.35;">${d.desc}</div>
+    </button>`).join("")}</div></section>`;
+}
+function page_5_2() {
+  const meta = findMeta("5-2");
+  const missing = checkRequiredForTool("5-2");
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-2")) {
+    return pageShell(meta, {
+      deck: "운영 데이터를 한 번 업로드하면 시각화·스코어카드·페이싱·이상탐지를 탭으로 전환하며 봅니다. 이 도구 전용 CSV를 업로드하세요.",
+      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+      summary: "필수 컬럼(날짜 + 비용/설치/액션 중 1개)만 매핑되면 KPI·차트·페이싱·이상탐지가 자동 계산됩니다.",
+      toc: [{ id: "s-prep", title: "데이터 준비" }],
+      body: renderInlineCsvUpload("5-2"),
+    });
+  }
+  const tab = MON_STATE.tab || "viz";
+  const body = tab === "pacing" ? monPacingBody() : tab === "scorecard" ? monScorecardBody() : tab === "anomaly" ? monAnomalyBody() : monVizBody();
+  const toc = tab === "pacing" ? [{ id: "s-pace", title: "페이싱" }]
+    : tab === "scorecard" ? [{ id: "s-score", title: "스코어카드" }]
+    : tab === "anomaly" ? [{ id: "s-anom", title: "이상 감지" }]
+    : [{ id: "s-cohort", title: "코호트" }, { id: "s-kpi", title: "KPI 요약" }, { id: "s-charts", title: "차트" }, { id: "s-data", title: "원본 데이터" }];
+  return pageShell(meta, {
+    deck: "운영 모니터링 — 시각화·스코어카드·페이싱·이상탐지를 한 도구에서. 효율 그룹 CSV 공유.",
+    chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span><span class="chip ok"><span class="dot"></span>${CSV_STATE.raw.length.toLocaleString()}행</span>${authStatusChip()}`,
+    summary: "한 번의 업로드로 KPI·시계열·WoW·월말 착지·이상치를 탭으로 전환하며 모니터링합니다.",
+    toc,
+    body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경)</summary><div style="margin-top:10px;">${renderInlineCsvUpload("5-2")}</div></details>${renderMonTabs()}${body}`,
   });
 }
 PAGE_RENDERERS["5-2"] = page_5_2;
@@ -16050,18 +16059,7 @@ function buildPacingCache() {
   PACING_CACHE.pace = PACING_MATH.pace(daily);
   return PACING_CACHE;
 }
-function page_5_10() {
-  const meta = findMeta("5-10");
-  const missing = checkRequiredForTool("5-10");
-  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-10")) {
-    return pageShell(meta, {
-      deck: "이번 달 예산/성과 소진 속도(run-rate)로 월말 착지를 예측하고 목표 대비 페이스를 경고합니다. 효율 그룹 CSV 공유.",
-      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
-      summary: "MTD 합산 ÷ 경과일 × 월 총일수 = 착지 예측. 목표를 입력하면 페이스(목표 대비 %)와 일일 권장 소진액을 계산.",
-      toc: [{ id:"s-prep", title:"데이터 준비" }],
-      body: renderInlineCsvUpload("5-10"),
-    });
-  }
+function monPacingBody() {
   buildPacingCache();
   const c = PACING_CACHE, p = c.pace;
   const metricLabel = { cost:"비용", installs:"설치", actions:"액션", revenue_d7:"매출 D7" }[PACING_STATE.metric] || PACING_STATE.metric;
@@ -16082,13 +16080,7 @@ function page_5_10() {
       else { statusTone="warn"; statusMsg=`목표 ${(100-pacePct).toFixed(0)}% 미달 예상 — 가속 필요`; }
     }
   }
-  return pageShell(meta, {
-    deck: "MTD 소진 vs 목표, run-rate 기반 월말 착지 예측, 페이스 경고. 효율 그룹 CSV 공유.",
-    chips: `<span class="chip"><span class="dot"></span>도구 · Pacing & Forecast</span>${p?`<span class="chip ok"><span class="dot"></span>${p.ym} · D${p.daysElapsed}/${p.daysInMonth}</span>`:""}${authStatusChip()}`,
-    summary: "당월 누적(MTD) ÷ 경과일 × 월 총일수로 착지 예측. 목표 입력 시 페이스(예측/목표)와 잔여일 일일 권장액 제공.",
-    toc: [{ id:"s-prep", title:"데이터 준비" }, { id:"s-pace", title:"페이싱" }],
-    body: `
-      <section class="block" id="s-prep">${renderInlineCsvUpload("5-10")}</section>
+  return `
       <section class="block" id="s-pace">
         <h2 class="section-title"><span class="ix">§1</span>페이싱 · 착지 예측</h2>
         <div class="ab-pillgroup">
@@ -16117,10 +16109,8 @@ function page_5_10() {
           </div>
         ` : `<p class="muted">날짜·지표 데이터가 부족합니다.</p>`}
       </section>
-    `,
-  });
+    `;
 }
-PAGE_RENDERERS["5-10"] = page_5_10;
 function renderPacingChart() {
   if (typeof Chart==="undefined") return;
   const c = PACING_CACHE; if (!c.pace) return;
@@ -16431,18 +16421,7 @@ function buildDailyAgg() {
 
 /* ---- 5-13 Executive Scorecard ---- */
 const SCORECARD_STATE = { windowDays: 7 };
-function page_5_13() {
-  const meta = findMeta("5-13");
-  const missing = checkRequiredForTool("5-13");
-  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-13")) {
-    return pageShell(meta, {
-      deck: "핵심 KPI를 최근 N일 vs 직전 N일(WoW)로 한 화면에 요약합니다. 효율 그룹 CSV 공유.",
-      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
-      summary: "최근 기간 집계 KPI(비용·설치·CPI·CVR·ROAS 등)와 직전 동일 기간 대비 변화율을 한눈에. 경영/주간 보고용.",
-      toc: [{ id:"s-prep", title:"데이터 준비" }],
-      body: renderInlineCsvUpload("5-13"),
-    });
-  }
+function monScorecardBody() {
   const daily = buildDailyAgg();
   const W = SCORECARD_STATE.windowDays;
   const recent = daily.slice(-W), prev = daily.slice(-2*W, -W);
@@ -16466,13 +16445,7 @@ function page_5_13() {
     mapped.has("revenue_d7") && { k:"roas", label:"ROAS", val:r.roas, prev:p.roas, fmt:(v)=>v!=null?(v*100).toFixed(0)+"%":"—", better:"high" },
   ].filter(Boolean);
   const dateRange = recent.length ? `${recent[0].date} ~ ${recent[recent.length-1].date}` : "—";
-  return pageShell(meta, {
-    deck: `최근 ${W}일 핵심 KPI + 직전 ${W}일 대비(WoW) 변화. 효율 그룹 CSV 공유.`,
-    chips: `<span class="chip"><span class="dot"></span>도구 · Executive Scorecard</span><span class="chip ok"><span class="dot"></span>${dateRange}</span>${authStatusChip()}`,
-    summary: "최근 기간 집계와 직전 동일 기간 변화율을 카드로 요약. 색: 긍정 방향이면 초록(↑/↓는 지표 성격에 따라).",
-    toc: [{ id:"s-prep", title:"데이터 준비" }, { id:"s-score", title:"스코어카드" }],
-    body: `
-      <section class="block" id="s-prep">${renderInlineCsvUpload("5-13")}</section>
+  return `
       <section class="block" id="s-score">
         <h2 class="section-title"><span class="ix">§1</span>핵심 KPI (최근 ${W}일)</h2>
         <div class="ab-pillgroup">
@@ -16494,10 +16467,8 @@ function page_5_13() {
         </div>
         <p class="muted" style="font-size:11px;margin-top:8px;">WoW = 최근 ${W}일 vs 직전 ${W}일. 색은 지표 성격 반영(CPI/CPA↓·설치/ROAS↑ = 초록). 비용은 중립(규모).</p>
       </section>
-    `,
-  });
+    `;
 }
-PAGE_RENDERERS["5-13"] = page_5_13;
 function bindScorecardHandlers() {
   bindInlineCsvHandlers();
   document.querySelectorAll("[data-score-window]").forEach(b=>b.addEventListener("click",()=>{ SCORECARD_STATE.windowDays=Number(b.dataset.scoreWindow); navigate("5-13"); }));
@@ -16521,18 +16492,7 @@ const ANOMALY_MATH = {
     return out;
   },
 };
-function page_5_14() {
-  const meta = findMeta("5-14");
-  const missing = checkRequiredForTool("5-14");
-  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-14")) {
-    return pageShell(meta, {
-      deck: "지표의 급등·급락을 trailing z-score로 자동 감지합니다 ('어제 뭐가 바뀌었나'). 효율 그룹 CSV 공유.",
-      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
-      summary: "각 날짜를 직전 N일 평균·표준편차와 비교해 |z|≥임계면 이상으로 flag. 트래킹 끊김·CPI 급등·전환 급락 조기 포착.",
-      toc: [{ id:"s-prep", title:"데이터 준비" }],
-      body: renderInlineCsvUpload("5-14"),
-    });
-  }
+function monAnomalyBody() {
   const daily = buildDailyAgg();
   const metric = ANOMALY_STATE.metric, win = ANOMALY_STATE.window, z = ANOMALY_STATE.z;
   // 파생 지표 시리즈
@@ -16564,13 +16524,7 @@ function page_5_14() {
       return false;
     });
   const fmtV = (v)=> v==null?"—":(["cvr","ctr","roas"].includes(metric)?(v*100).toFixed(2)+"%":(["cost","cpi"].includes(metric)?fmtCurrency(v):Math.round(v).toLocaleString()));
-  return pageShell(meta, {
-    deck: "지표별 trailing z-score 이상 감지. 급등·급락 날짜를 자동 표기. 효율 그룹 CSV 공유.",
-    chips: `<span class="chip"><span class="dot"></span>도구 · Anomaly 탐지</span><span class="chip ${anomalies.length?'warning':'ok'}"><span class="dot"></span>이상 ${anomalies.length}건</span>${authStatusChip()}`,
-    summary: `각 날짜를 직전 ${win}일 평균·σ와 비교, |z|≥${z}면 이상. 트래킹 끊김(0으로 급락)·CPI 급등·전환 급락 조기 포착.`,
-    toc: [{ id:"s-prep", title:"데이터 준비" }, { id:"s-anom", title:"이상 감지" }],
-    body: `
-      <section class="block" id="s-prep">${renderInlineCsvUpload("5-14")}</section>
+  return `
       <section class="block" id="s-anom">
         <h2 class="section-title"><span class="ix">§1</span>이상 감지</h2>
         <div class="ab-pillgroup">
@@ -16599,10 +16553,8 @@ function page_5_14() {
             </tr>`).join("")}</tbody>
           </table></div>` : `<div class="callout ok"><div class="ico">✓</div><div class="body"><strong>이상 없음</strong><p>현재 지표·민감도 기준 |z|≥${z} 이상치가 감지되지 않았습니다.</p></div></div>`}
       </section>
-    `,
-  });
+    `;
 }
-PAGE_RENDERERS["5-14"] = page_5_14;
 function renderAnomalyChart(daily, vals, flags) {
   if (typeof Chart==="undefined") return;
   const ctx = document.getElementById("anomaly-chart"); if (!ctx) return;
@@ -17404,6 +17356,8 @@ async function navigate(id) {
   if (id === "5-1") { id = "5-5"; }
   // 5-17(구 Regression Forecast)은 5-18 MMM의 Trend Forecast로 통합 → redirect (북마크 보존)
   if (id === "5-17") { id = "5-18"; }
+  // 5-10 페이싱·5-13 스코어카드·5-14 이상탐지는 5-2 운영 모니터링 탭으로 통합 → redirect (북마크 보존)
+  if (id === "5-10" || id === "5-13" || id === "5-14") { id = "5-2"; }
 
   // Ops Dashboard 페이지 접근 제어
   if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid()) {
@@ -17562,6 +17516,9 @@ function bindCSVPageHandlers() {
   // 신규 매핑 select(동일한 .map-select 클래스 보유)에도 바인딩되어, 5-3 등에서 매핑 변경 시
   // navigate('5-1') → (5-1→5-5 redirect) → Cannibalization(5-5)로 튀는 버그를 유발했음.
   // 신규 매핑 select는 data-tool-csv 기반 bindInlineCsvHandlers가 전담한다.
+
+  // ----- 5-2: 운영 모니터링 탭 전환 (시각화/스코어카드/페이싱/이상탐지) -----
+  document.querySelectorAll("[data-mon-tab]").forEach(b => b.addEventListener("click", () => { MON_STATE.tab = b.dataset.monTab; navigate("5-2"); }));
 
   // ----- 5-2: 코호트 토글 -----
   const toggle = document.getElementById("cohort-toggle");
