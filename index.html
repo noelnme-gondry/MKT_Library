@@ -2763,9 +2763,7 @@ const IA = [
     title: "실험 & 측정",
     subtitle: "실험 설계·판독 + 증분 측정",
     items: [
-      { id: "5-4", title: "A/B Test Calculator", desc: "Sample Size 계산 + Frequentist/Bayesian 결과 분석" },
-      { id: "5-7", title: "Test Readout", desc: "실험 결과 2단 게이트 (Frequentist + Bayesian dual) → arm별 verdict" },
-      { id: "5-15", title: "Incrementality (Holdout)", desc: "test vs control 증분 전환·lift·iROAS + 유의성" },
+      { id: "5-4", title: "실험 분석", desc: "3탭: 실험 설계(A/B 표본·예산) · 결과 판독(arm×지표 비교 매트릭스) · 홀드아웃 증분(lift·iROAS)" },
     ],
   },
   {
@@ -5316,7 +5314,7 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-6", "5-7", "5-9", "5-15", "5-18"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-6", "5-9", "5-18"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -7042,8 +7040,24 @@ function getCachedModels(outlierMap, weightsMap) {
   return m;
 }
 
-function page_5_4() {
-  const meta = findMeta("5-4");
+/* ============================================================
+ * 실험 분석 (5-4 host) — 설계 / 결과(Readout) / 홀드아웃 증분 3탭
+ * 5-7(Test Readout)·5-15(Incrementality)를 탭으로 흡수. (PR-4)
+ * design 탭 = 수동 A/B 계산기(무CSV) / readout·holdout = 각자 CSV grain.
+ * ============================================================ */
+const EXP_TAB_STATE = { tab: "design" };
+const EXP_TABS = [
+  { id: "design",  icon: "🎯", label: "실험 설계",          desc: "A/B 표본 크기·예산 계산 + 결과 분석 (수동 입력)" },
+  { id: "readout", icon: "📋", label: "실험 결과 (Readout)", desc: "arm×지표 2단 게이트 · 다지표 비교표 (실험 CSV)" },
+  { id: "holdout", icon: "🧪", label: "홀드아웃 증분",       desc: "test vs control 증분·lift·iROAS (홀드아웃 CSV)" },
+];
+function renderExpTabs() {
+  const t = EXP_TAB_STATE.tab || "design";
+  return `<section class="block" style="padding:0;border:none;background:none;margin:4px 0 2px;"><div style="display:flex;gap:10px;flex-wrap:wrap;">${EXP_TABS.map(d => `<button class="mmm-stage-tab ${t === d.id ? "active" : ""}" data-exp-tab="${d.id}" style="flex:1;min-width:150px;text-align:left;color:var(--text-1);background:${t === d.id ? "linear-gradient(135deg,rgba(122,162,247,0.16),rgba(122,162,247,0.04))" : "var(--bg-2)"};border:1px solid ${t === d.id ? "rgba(122,162,247,0.55)" : "var(--border)"};border-radius:12px;padding:11px 14px;cursor:pointer;"><div style="font-size:14px;font-weight:700;">${d.icon} ${d.label}</div><div style="font-size:10.5px;color:var(--text-2);margin-top:2px;line-height:1.35;">${d.desc}</div></button>`).join("")}</div></section>`;
+}
+
+/* 설계 탭 = 기존 A/B Test Calculator 본문 (수동 입력, CSV 없음) */
+function monExpDesignBody() {
   const mode = AB_STATE.mode;
   const tt = AB_STATE.testType;
   const cur = AB_STATE.currency;
@@ -7072,20 +7086,7 @@ function page_5_4() {
     </div>
   ` : "";
 
-  return pageShell(meta, {
-    deck: "마케팅 캠페인 A/B 테스트의 모수 계산 + 결과 분석 도구. CVR(전환율) + 연속 데이터(CPR/ARPPU/Revenue) 모두 지원. Frequentist (p-value)와 Bayesian (P(B>A)) 두 방식 동시 제공 + 예산 계산기 포함.",
-    chips: `
-      <span class="chip"><span class="dot"></span>도구 · A/B Test Calculator</span>
-      <span class="chip ok"><span class="dot"></span>Binary + Continuous</span>
-      <span class="chip"><span class="dot"></span>참조 · Campaign Test Parameter Checker (Next.js)</span>
-      ${authStatusChip()}`,
-    summary: "통계 라이브러리(z-test, Welch z-근사, Φ⁻¹ Acklam, Beta-Binomial Monte Carlo)를 클라이언트에서 직접 실행. 테스트 유형 토글로 Binary(전환율) ↔ Continuous(평균값) 전환. Plan 모드에는 예상 CPR 입력 시 필요 예산 자동 계산 포함.",
-    toc: [
-      { id: "s-mode", title: "모드 선택" },
-      { id: "s-body", title: "계산기" },
-      { id: "s-notes", title: "통계 노트" },
-    ],
-    body: `
+  return `
       <section class="block" id="s-mode">
         <h2 class="section-title"><span class="ix">§1</span>모드 선택</h2>
         ${tabs}
@@ -7111,7 +7112,64 @@ function page_5_4() {
           <li><strong>주의</strong>: 멀티 변형(A/B/C/...) 테스트 시 Bonferroni 보정(<code class="inline">α/k</code>) 필요. 본 도구는 2-arm 기준.</li>
         </ul>
       </section>
-    `,
+    `;
+}
+
+function page_5_4() {
+  const meta = findMeta("5-4");
+  const tab = EXP_TAB_STATE.tab || "design";
+
+  // 설계 탭 — 수동 A/B 계산기 (CSV 게이트 없음)
+  if (tab === "design") {
+    return pageShell(meta, {
+      deck: "마케팅 실험을 한 도구에서: 설계(A/B 표본·예산) → 결과 판독(arm×지표) → 홀드아웃 증분. 설계 탭은 CVR(전환율)·연속(CPR/ARPPU/Revenue) 모두 지원하며 Frequentist(p-value)·Bayesian(P(B>A)) 두 방식 동시 제공.",
+      chips: `
+        <span class="chip"><span class="dot"></span>도구 · 실험 분석</span>
+        <span class="chip ok"><span class="dot"></span>설계 · 결과 · 홀드아웃</span>
+        ${authStatusChip()}`,
+      summary: "통계 라이브러리(z-test, Welch z-근사, Φ⁻¹ Acklam, Beta-Binomial 고정 grid)를 클라이언트에서 직접 실행. 설계 탭으로 표본·예산을 계산하고, 실험을 돌린 뒤 결과/홀드아웃 탭에 CSV를 올려 판독합니다.",
+      toc: [
+        { id: "s-mode", title: "모드 선택" },
+        { id: "s-body", title: "계산기" },
+        { id: "s-notes", title: "통계 노트" },
+      ],
+      body: `${renderExpTabs()}${monExpDesignBody()}`,
+    });
+  }
+
+  // 결과(Readout) / 홀드아웃 — 각자 CSV grain (cross-grain: 탭별 스냅샷 전환)
+  const csvTool = tab === "holdout" ? "5-15" : "5-7";
+  loadCsvFromTool(csvTool);
+  const missing = checkRequiredForTool(csvTool);
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed(csvTool)) {
+    return pageShell(meta, {
+      deck: tab === "holdout"
+        ? "홀드아웃 증분 — test(노출) vs control(holdout) 그룹 CSV가 필요합니다. 어트리뷰션이 아닌 진짜 증분 측정."
+        : "실험 결과 — experiment×arm×metric grain CSV를 올리면 frequentist + Bayesian dual로 2단 게이트 verdict + 다지표 비교표 자동 산출.",
+      chips: `<span class="chip warning"><span class="dot"></span>${tab === "holdout" ? "홀드아웃 CSV 업로드 대기" : "실험 CSV 업로드 대기"}</span>${authStatusChip()}`,
+      summary: tab === "holdout"
+        ? "필수: holdout_group(test/control)·numerator(전환수)·denominator(그룹 사용자수). 옵션: experiment_id·spend·revenue_d7. 반사실 = control 전환율로 test를 환산해 증분 산출."
+        : "필수: experiment_id·arm_id·is_control·metric_tier·metric_name·numerator·denominator. Stage 1(upper_funnel) 통과 시만 Stage 2(downstream_quality) 평가.",
+      toc: [{ id: "s-prep", title: "데이터 준비" }],
+      body: `${renderExpTabs()}<section class="block" id="s-prep">${renderInlineCsvUpload(csvTool)}</section>`,
+    });
+  }
+
+  const body = tab === "holdout" ? monHoldoutBody() : monReadoutBody();
+  const toc = tab === "holdout"
+    ? [{ id: "s-prep", title: "데이터 준비" }, { id: "s-incr", title: "증분 결과" }]
+    : [{ id: "s-prep", title: "데이터 준비" }, { id: "s-validation", title: "검증" }, { id: "s-experiments", title: "실험 목록" }, { id: "s-matrix", title: "비교 매트릭스" }, { id: "s-detail", title: "상세" }];
+
+  return pageShell(meta, {
+    deck: tab === "holdout"
+      ? "Holdout 증분 측정: 증분 전환 = test 전환 − (test 인원 × control 전환율). iROAS = 증분 매출 / 비용."
+      : "Stage 1(upper_funnel) + Stage 2(downstream_quality) 2단 게이트 + arm×지표 비교 매트릭스. 두 방법 일치(promote/kill) vs 불일치(inconclusive) 결정론 룰.",
+    chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>${authStatusChip()}`,
+    summary: tab === "holdout"
+      ? "어트리뷰션 숫자는 과대계상되기 쉬움. holdout(control)과 비교한 증분만이 진짜 기여입니다. lift 유의성은 two-proportion z-test로 검정."
+      : "α=0.05, Bayesian promote ≥ 0.95 / kill ≤ 0.05. promote = 두 방법 모두 양의 유의 / kill = 두 방법 모두 음의 유의 / inconclusive = 그 외.",
+    toc,
+    body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경) · ${tab === "holdout" ? "홀드아웃 CSV" : "실험 CSV"}</summary><div style="margin-top:10px;">${renderInlineCsvUpload(csvTool)}</div></details>${renderExpTabs()}${body}`,
   });
 }
 PAGE_RENDERERS["5-4"] = page_5_4;
@@ -10412,46 +10470,18 @@ function computeMetricVerdict(freq, probBgtA) {
 }
 
 /* page_5_7 */
-function page_5_7() {
-  const meta = findMeta("5-7");
-  const missing = checkRequiredForTool("5-7");
-  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-7")) {
-    return pageShell(meta, {
-      deck: "실험 결과 CSV(experiment_id × arm_id × metric_name grain)를 업로드하면 frequentist + Bayesian dual method로 2단 게이트 verdict 자동 산출.",
-      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
-      summary: "Stage 1: upper_funnel 지표 → Stage 2: downstream_quality 지표 (Stage 1 통과 시만). 두 방법 일치할 때만 promote / kill, 불일치하면 inconclusive로 결정론 룰 적용.",
-      toc: [{ id: "s-prep", title: "데이터 준비" }],
-      body: renderInlineCsvUpload("5-7"),
-    });
-  }
-
+/* 실험 결과(Readout) 본문 — 5-4 host의 readout 탭에서 호출. 게이트는 host가 처리. */
+function monReadoutBody() {
   buildReadoutCache();
   const c = READOUT_CACHE;
   const cur = c.experiments.find(e => e.experiment_id === READOUT_STATE.selectedExperiment) || c.experiments[0];
-
-  return pageShell(meta, {
-    deck: "Stage 1(upper_funnel) + Stage 2(downstream_quality) 2단 게이트. 두 방법 일치(promote/kill) vs 불일치(inconclusive) 결정론 룰. priorA=priorB=1, gridN=2000 고정 grid 적분.",
-    chips: `
-      <span class="chip"><span class="dot"></span>도구 · Test Readout</span>
-      <span class="chip ok"><span class="dot"></span>실험 ${c.experiments.length}개</span>
-      <span class="chip"><span class="dot"></span>config ${READOUT_CONFIG.version} · snapshot ${c.snapshotHash}</span>
-      ${authStatusChip()}`,
-    summary: "α=0.05, Bayesian promote ≥ 0.95 / kill ≤ 0.05. arm별 verdict: promote = 두 방법 모두 양의 유의 / kill = 두 방법 모두 음의 유의 / inconclusive = 그 외.",
-    toc: [
-      { id: "s-prep", title: "데이터 준비" },
-      { id: "s-validation", title: "검증" },
-      { id: "s-experiments", title: "실험 목록" },
-      { id: "s-detail", title: "상세 결과" },
-    ],
-    body: `
-      <section class="block" id="s-prep">${renderInlineCsvUpload("5-7")}</section>
-      ${renderReadoutValidation(c.validation)}
-      ${renderReadoutExperimentList(c.experiments)}
-      ${renderReadoutDetail(cur)}
-    `,
-  });
+  return `
+    ${renderReadoutValidation(c.validation)}
+    ${renderReadoutExperimentList(c.experiments)}
+    ${renderReadoutMatrix(cur)}
+    ${renderReadoutDetail(cur)}
+  `;
 }
-PAGE_RENDERERS["5-7"] = page_5_7;
 
 function renderReadoutValidation(v) {
   if (!v || (v.errors.length === 0 && v.droppedRows === 0)) return `
@@ -10515,6 +10545,76 @@ function renderReadoutExperimentList(experiments) {
     </section>`;
 }
 
+/* §3 비교 매트릭스 — arm(행) × 지표(열) 다지표 비교표 (결과표 강화, PR-4) */
+function renderReadoutMatrix(exp) {
+  if (!exp || !exp.arms || !exp.arms.length || !exp.control) return "";
+  // 지표 컬럼 순서: upper_funnel(Stage 1) 먼저, 그다음 downstream_quality(Stage 2)
+  const order = []; const seen = new Set();
+  exp.arms.forEach(arm => arm.metrics.forEach(m => {
+    if (m.error) return;
+    const k = m.tier + "|" + m.metric_name;
+    if (!seen.has(k)) { seen.add(k); order.push({ tier: m.tier, name: m.metric_name, key: k }); }
+  }));
+  order.sort((a, b) => (a.tier === b.tier ? 0 : a.tier === "upper_funnel" ? -1 : 1));
+  if (!order.length) return "";
+  // arm_id → metricKey → metricResult
+  const cell = {};
+  exp.arms.forEach(arm => { cell[arm.arm_id] = {}; arm.metrics.forEach(m => { if (!m.error) cell[arm.arm_id][m.tier + "|" + m.metric_name] = m; }); });
+  // 지표별 최고 variant 전환율 arm (winner) — variant 2개 이상일 때만 표시
+  const winner = {};
+  order.forEach(mc => { let best = null, br = -Infinity; exp.arms.forEach(arm => { const m = cell[arm.arm_id][mc.key]; if (m && m.variant.rate > br) { br = m.variant.rate; best = arm.arm_id; } }); winner[mc.key] = best; });
+
+  const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v * 100).toFixed(2) + "%";
+  const tierLabel = (t) => t === "upper_funnel" ? "Stage 1" : "Stage 2";
+  const verdictMini = (v) => v === "promote" ? '<span style="color:#22c55e;">✓</span>' : v === "kill" ? '<span style="color:#f87171;">✗</span>' : '<span style="color:var(--text-muted);">−</span>';
+
+  const headCols = order.map(mc => `<th style="text-align:center;border-bottom:2px solid ${mc.tier === "upper_funnel" ? "rgba(122,162,247,0.5)" : "rgba(192,132,252,0.5)"};"><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;">${tierLabel(mc.tier)}</div>${escapeHtml(mc.name)}</th>`).join("");
+
+  // 대조군 baseline 행 (절대 전환율)
+  const ctlRow = `<tr style="background:rgba(255,255,255,0.02);">
+    <td><strong>${escapeHtml(exp.control.arm_label || exp.control.arm_id)}</strong> <span class="chip" style="font-size:9px;padding:1px 6px;">대조군</span></td>
+    <td style="text-align:center;color:var(--text-muted);">기준</td>
+    ${order.map(mc => { let cr = null; for (const aid in cell) { const m = cell[aid][mc.key]; if (m) { cr = m.control.rate; break; } } return `<td class="tnum" style="text-align:center;color:var(--text-2);">${fmtPct(cr)}</td>`; }).join("")}
+  </tr>`;
+
+  const vRows = exp.arms.map(arm => {
+    const cells = order.map(mc => {
+      const m = cell[arm.arm_id][mc.key];
+      if (!m) return `<td style="text-align:center;color:var(--text-muted);">—</td>`;
+      const rel = m.control.rate > 0 ? (m.variant.rate - m.control.rate) / m.control.rate : null;
+      const sig = m.freq.p < READOUT_CONFIG.alpha;
+      const col = m.verdict === "promote" ? "#22c55e" : m.verdict === "kill" ? "#f87171" : "var(--text-2)";
+      const se = Math.sqrt(m.control.rate * (1 - m.control.rate) / m.control.den + m.variant.rate * (1 - m.variant.rate) / m.variant.den);
+      const d = m.variant.rate - m.control.rate;
+      const ciLo = (d - 1.96 * se) * 100, ciHi = (d + 1.96 * se) * 100;
+      const isWin = winner[mc.key] === arm.arm_id && exp.arms.length > 1;
+      return `<td style="text-align:center;${isWin ? "background:rgba(34,197,94,0.08);" : ""}">
+        <div style="font-weight:700;color:${col};font-size:12.5px;">${isWin ? "🏆 " : ""}${rel == null ? "—" : (rel >= 0 ? "+" : "") + (rel * 100).toFixed(1) + "%"} ${sig ? '<span style="font-size:10px;">★</span>' : ""}</div>
+        <div style="font-size:9px;color:var(--text-muted);line-height:1.3;">P=${m.probBgtA.toFixed(2)} ${verdictMini(m.verdict)}<br>CI[${ciLo.toFixed(1)},${ciHi.toFixed(1)}]%p</div>
+      </td>`;
+    }).join("");
+    const vcol = arm.finalVerdict === "promote" ? "#22c55e" : arm.finalVerdict === "kill" ? "#f87171" : "#fbbf24";
+    return `<tr>
+      <td><strong>${escapeHtml(arm.arm_label || arm.arm_id)}</strong></td>
+      <td style="text-align:center;"><span style="color:${vcol};font-weight:700;font-size:11px;">${arm.finalVerdict}</span></td>
+      ${cells}
+    </tr>`;
+  }).join("");
+
+  return `
+    <section class="block" id="s-matrix">
+      <h2 class="section-title"><span class="ix">§3</span>비교 매트릭스 — ${escapeHtml(exp.experiment_id)}</h2>
+      <p class="muted">arm(행) × 지표(열) 한눈 비교. 셀 = 대조군 대비 <strong>상대 lift</strong> · ★ = frequentist 유의(p&lt;${READOUT_CONFIG.alpha}) · P = P(B&gt;A) · CI = 95% 신뢰구간(절대 차이 %p) · 🏆 = 지표별 최고 전환율 arm. 색: <span style="color:#22c55e;">초록 promote</span> / <span style="color:#f87171;">빨강 kill</span> / 회색 무유의.</p>
+      <div class="table-wrap">
+        <table class="data" style="font-size:11px;">
+          <thead><tr><th>Arm</th><th style="text-align:center;">종합</th>${headCols}</tr></thead>
+          <tbody>${ctlRow}${vRows}</tbody>
+        </table>
+      </div>
+      <p class="muted" style="margin-top:8px;font-size:10.5px;">💡 <strong>읽는 법</strong>: 상대 lift는 "대조군 전환율 대비 몇 % 올랐나"입니다. CI(신뢰구간)가 0을 포함하면(예: [-1.2, +3.4]) 차이가 통계적으로 불확실 — 표본을 더 모아야 합니다. 종합 verdict는 Stage 1→2 2단 게이트 + 두 방법(빈도·베이지안) 합의 결과입니다.</p>
+    </section>`;
+}
+
 function renderReadoutDetail(exp) {
   if (!exp) return "";
   const fmt = (v) => v == null || !isFinite(v) ? "—" : v.toFixed(4);
@@ -10536,11 +10636,14 @@ function renderReadoutDetail(exp) {
       const bayesPass = m.probBgtA >= READOUT_CONFIG.promoteProb;
       const bayesKill = m.probBgtA <= READOUT_CONFIG.killProb;
       const freqSig = m.freq.p < READOUT_CONFIG.alpha;
+      const se = Math.sqrt(m.control.rate * (1 - m.control.rate) / m.control.den + m.variant.rate * (1 - m.variant.rate) / m.variant.den);
+      const ciLo = (m.freq.diff - 1.96 * se) * 100, ciHi = (m.freq.diff + 1.96 * se) * 100;
+      const ciCrossesZero = ciLo <= 0 && ciHi >= 0;
       return `<tr>
         <td>${escapeHtml(m.metric_name)}</td>
         <td class="tnum">${fmtPct(m.control.rate)} <span style="color:var(--text-muted);font-size:10px;">(${m.control.num}/${m.control.den})</span></td>
         <td class="tnum">${fmtPct(m.variant.rate)} <span style="color:var(--text-muted);font-size:10px;">(${m.variant.num}/${m.variant.den})</span></td>
-        <td class="tnum"><strong style="color:${m.freq.diff >= 0 ? '#22c55e' : '#f87171'};">${fmtDiff(m.freq.diff)}</strong></td>
+        <td class="tnum"><strong style="color:${m.freq.diff >= 0 ? '#22c55e' : '#f87171'};">${fmtDiff(m.freq.diff)}</strong><div style="font-size:9px;color:${ciCrossesZero ? 'var(--text-muted)' : 'var(--text-2)'};">95%CI [${ciLo.toFixed(2)}, ${ciHi.toFixed(2)}]%p</div></td>
         <td class="tnum">p = ${fmt(m.freq.p)} ${freqSig ? '<span style="color:#22c55e;">★</span>' : ''}</td>
         <td class="tnum">P(B&gt;A) = ${fmt(m.probBgtA)} ${bayesPass ? '<span style="color:#22c55e;">✓</span>' : bayesKill ? '<span style="color:#f87171;">✗</span>' : ''}</td>
         <td>${verdictBadge(m.verdict)}</td>
@@ -10575,7 +10678,7 @@ function renderReadoutDetail(exp) {
 
   return `
     <section class="block" id="s-detail">
-      <h2 class="section-title"><span class="ix">§3</span>상세 — ${escapeHtml(exp.experiment_id)}</h2>
+      <h2 class="section-title"><span class="ix">§4</span>상세 — ${escapeHtml(exp.experiment_id)}</h2>
       <p class="muted">α=${READOUT_CONFIG.alpha} · promote P(B&gt;A) ≥ ${READOUT_CONFIG.promoteProb} · kill P(B&gt;A) ≤ ${READOUT_CONFIG.killProb}. 두 방법 일치할 때만 verdict 확정.</p>
       ${exp.control ? `<p style="font-size:12px;color:var(--text-muted);">대조군: <strong>${escapeHtml(exp.control.arm_label || exp.control.arm_id)}</strong> · variant ${exp.arms.length}개</p>` : '<div class="callout danger"><div class="ico">!</div><div class="body"><strong>대조군 없음</strong> — is_control 컬럼에서 정확히 1개 arm이 control이어야 합니다.</div></div>'}
       ${armCards}
@@ -10587,7 +10690,7 @@ function bindReadoutHandlers() {
   document.querySelectorAll("[data-readout-select]").forEach(btn => {
     btn.addEventListener("click", () => {
       READOUT_STATE.selectedExperiment = btn.dataset.readoutSelect;
-      navigate("5-7");
+      navigate("5-4");
       setTimeout(() => {
         const t = document.getElementById("s-detail");
         if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -10716,28 +10819,12 @@ function buildIncrementality() {
   }
   return { experiments: out, validation };
 }
-function page_5_15() {
-  const meta = findMeta("5-15");
-  const missing = checkRequiredForTool("5-15");
-  if (missing.length>0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-15")) {
-    return pageShell(meta, {
-      deck: "Holdout 실험 결과 — test(노출) vs control(holdout) 그룹의 증분 전환·lift·iROAS를 계산합니다. 어트리뷰션이 아닌 진짜 증분 측정.",
-      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
-      summary: "필수 컬럼: holdout_group(test/control), numerator(전환수), denominator(그룹 사용자수). 옵션: experiment_id, spend(증분 비용), revenue_d7(iROAS). 반사실 = control 전환율로 test를 환산해 증분 산출.",
-      toc: [{ id:"s-prep", title:"데이터 준비" }],
-      body: renderInlineCsvUpload("5-15"),
-    });
-  }
+/* 홀드아웃 증분 본문 — 5-4 host의 holdout 탭에서 호출. 게이트는 host가 처리. */
+function monHoldoutBody() {
   const { experiments, validation } = buildIncrementality();
   const fmtPct = (v)=> v==null||!isFinite(v) ? "—" : (v*100).toFixed(2)+"%";
   const fmtX = (v)=> v==null||!isFinite(v) ? "—" : v.toFixed(2)+"×";
-  return pageShell(meta, {
-    deck: "Holdout 증분 측정: 증분 전환 = test 전환 − (test 인원 × control 전환율). iROAS = 증분 매출 / 비용.",
-    chips: `<span class="chip"><span class="dot"></span>도구 · Incrementality</span><span class="chip ok"><span class="dot"></span>실험 ${experiments.length}개</span>${authStatusChip()}`,
-    summary: "어트리뷰션 숫자는 과대계상되기 쉬움. holdout(control)과 비교한 증분만이 진짜 기여입니다. lift 유의성은 two-proportion z-test로 검정.",
-    toc: [{ id:"s-prep", title:"데이터 준비" }, { id:"s-incr", title:"증분 결과" }],
-    body: `
-      <section class="block" id="s-prep">${renderInlineCsvUpload("5-15")}</section>
+  return `
       ${validation.dropped>0||validation.errors.length ? `<section class="block"><div class="callout warn"><div class="ico">!</div><div class="body"><strong>${validation.dropped}개 row 제외</strong> — holdout_group이 test/control로 인식 안 되거나 분자/분모 오류. (test/control/holdout/노출/대조 등 인식)</div></div></section>` : ""}
       <section class="block" id="s-incr">
         <h2 class="section-title"><span class="ix">§1</span>증분 결과 (test vs control)</h2>
@@ -10746,13 +10833,21 @@ function page_5_15() {
           if (!r) return `<div class="callout warn"><div class="ico">!</div><div class="body"><strong>${escapeHtml(e.eid)}</strong>: test/control 양쪽 데이터 필요</div></div>`;
           const sigTxt = e.sig ? (e.sig.p < 0.05 ? `<span style="color:#22c55e;">유의 (p=${e.sig.p.toFixed(4)})</span>` : `<span style="color:var(--text-muted);">무유의 (p=${e.sig.p.toFixed(3)})</span>`) : "—";
           const liftPositive = r.liftRel != null && r.liftRel > 0;
+          // 절대 lift 95% CI (unpooled) — control/test 전환율 기준
+          let ciTxt = "";
+          if (r.cRate != null && r.tRate != null && e.control.den > 0 && e.test.den > 0) {
+            const se = Math.sqrt(r.cRate*(1-r.cRate)/e.control.den + r.tRate*(1-r.tRate)/e.test.den);
+            const lo = (r.liftAbs - 1.96*se)*100, hi = (r.liftAbs + 1.96*se)*100;
+            const crossesZero = lo <= 0 && hi >= 0;
+            ciTxt = `<div class="ab-stat-hint" style="color:${crossesZero?'var(--text-muted)':'var(--text-2)'};">95%CI [${lo.toFixed(2)}, ${hi.toFixed(2)}]%p${crossesZero?' · 0 포함(불확실)':''}</div>`;
+          }
           return `
             <div class="alloc-card" style="margin-bottom:14px;border-left:3px solid ${liftPositive && e.sig && e.sig.p<0.05 ? '#22c55e' : '#fbbf24'};">
               <div class="alloc-card-title">${escapeHtml(e.eid)}</div>
               <div class="ab-stat-row" style="margin:8px 0;">
                 <div class="ab-stat"><div class="ab-stat-label">Control 전환율</div><div class="ab-stat-value tnum">${fmtPct(r.cRate)}</div><div class="ab-stat-hint">${e.control.num.toLocaleString()}/${e.control.den.toLocaleString()}</div></div>
                 <div class="ab-stat"><div class="ab-stat-label">Test 전환율</div><div class="ab-stat-value tnum">${fmtPct(r.tRate)}</div><div class="ab-stat-hint">${e.test.num.toLocaleString()}/${e.test.den.toLocaleString()}</div></div>
-                <div class="ab-stat"><div class="ab-stat-label">상대 Lift</div><div class="ab-stat-value tnum ${liftPositive?'pos':'neg'}">${r.liftRel!=null?(r.liftRel>0?'+':'')+(r.liftRel*100).toFixed(1)+'%':'—'}</div></div>
+                <div class="ab-stat"><div class="ab-stat-label">상대 Lift</div><div class="ab-stat-value tnum ${liftPositive?'pos':'neg'}">${r.liftRel!=null?(r.liftRel>0?'+':'')+(r.liftRel*100).toFixed(1)+'%':'—'}</div>${ciTxt}</div>
                 <div class="ab-stat"><div class="ab-stat-label">증분 전환</div><div class="ab-stat-value tnum">${Math.round(r.incrementalConv).toLocaleString()}</div><div class="ab-stat-hint">test − 반사실</div></div>
                 ${r.cpia!=null?`<div class="ab-stat"><div class="ab-stat-label">증분 전환당 비용</div><div class="ab-stat-value tnum">${fmtCurrency(r.cpia)}</div></div>`:""}
                 ${r.iroas!=null?`<div class="ab-stat"><div class="ab-stat-label">iROAS</div><div class="ab-stat-value tnum ${r.iroas>=1?'pos':'neg'}">${fmtX(r.iroas)}</div><div class="ab-stat-hint">증분매출/비용</div></div>`:""}
@@ -10764,10 +10859,8 @@ function page_5_15() {
           <strong>증분 전환</strong> = test 전환 − (test 인원 × control 전환율). 어트리뷰션이 "광고 클릭 후 전환"을 다 카운트하는 것과 달리, holdout은 <strong>광고가 없었어도 일어났을 전환(control)</strong>을 빼서 진짜 기여만 봅니다. iROAS &lt; 1이면 증분 기준 적자, lift가 통계적으로 유의해야 신뢰 가능합니다.
         </p></div></div>
       </section>
-    `,
-  });
+    `;
 }
-PAGE_RENDERERS["5-15"] = page_5_15;
 function bindIncrHandlers() { bindInlineCsvHandlers(); }
 function runIncrTests(verbose=true){
   const results=[];
@@ -17244,6 +17337,9 @@ async function navigate(id) {
   if (id === "5-19") { MMM_METH_STATE.stage = "lab"; id = "5-18"; }
   // 5-5 간단 카니발은 5-18 카니발 진단 탭의 '간단' 모드로 통합 → redirect + 해당 탭·모드 활성
   if (id === "5-5") { MMM_METH_STATE.stage = "diagnose"; MMM_METH_STATE.cannibMode = "simple"; id = "5-18"; }
+  // 5-7 Test Readout·5-15 Incrementality는 5-4 실험 분석의 결과/홀드아웃 탭으로 통합 → redirect + 탭 활성
+  if (id === "5-7")  { EXP_TAB_STATE.tab = "readout"; id = "5-4"; }
+  if (id === "5-15") { EXP_TAB_STATE.tab = "holdout"; id = "5-4"; }
 
   // Ops Dashboard 페이지 접근 제어
   if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid()) {
@@ -17459,7 +17555,9 @@ function bindCSVPageHandlers() {
   document.querySelectorAll("[data-ltv-tab]").forEach(b => b.addEventListener("click", () => { LTV_TAB_STATE.tab = b.dataset.ltvTab; navigate("5-9"); }));
   if (document.getElementById("alloc-recompute") || document.getElementById("alloc-filter-apply") || document.getElementById("alloc-filter-reopen")) bindBudgetAllocatorHandlers();
 
-  // ----- 5-4: A/B Test Calculator 핸들러 -----
+  // ----- 5-4: 실험 분석 탭 전환 (설계/결과/홀드아웃 — 결과·홀드아웃은 CSV grain 전환) -----
+  document.querySelectorAll("[data-exp-tab]").forEach(b => b.addEventListener("click", () => { EXP_TAB_STATE.tab = b.dataset.expTab; navigate("5-4"); }));
+  // ----- 5-4: A/B Test Calculator 핸들러 (설계 탭) -----
   if (document.querySelector(".ab-tab")) bindABCalculatorHandlers();
 
   // ----- 5-5: Cannibalization Analyzer 핸들러 + 차트 -----
@@ -20378,7 +20476,7 @@ const TOOL_GROUP = {
   "5-9": "efficiency", "5-10": "efficiency", "5-11": "efficiency",
   "5-12": "efficiency", "5-13": "efficiency", "5-14": "efficiency",
   "5-6": "creative",
-  "5-4": "experiment", "5-7": "experiment", "5-15": "experiment",
+  "5-4": "experiment", "5-7": "experiment_readout", "5-15": "experiment_holdout",
   "5-5": "cannibalization",
   "5-8": "cohort",
   "5-16": "efficiency",  // ROAS maturation: 일별 캠페인 revenue_d 컬럼 사용

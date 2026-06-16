@@ -84,6 +84,8 @@ tools:
 
 5-18 3옵션+Trend Forecast(PR #124~126): ① 독립 Regression Forecast(5-17) 제거→`navigate` redirect+죽은 renderer 통째 삭제(§7), 표시번호 자동 당김. ② `MMM_METH_STATE.stage` 기본 `null`(옵션 카드)→diagnose/mmm/forecast 3분기, `MMM_STAGE_DEFS` 일원화. ③ colMap `date` 역할 + `_mmmParseDate`/`_mmmGranularity`(일/주/월)/`panel.dates·dateLabel` → 차트 x축 `xlab=dateLabel??t`(변화점 마커는 `getPixelForValue(label,index)`로 문자라벨 안전). date는 표시·예측·단위환산 전용(분석은 행순서 t·byte-동일). ④ `mmmForecast`=관측+미래 **결합패널**에 동일 `mmmBuildFeatures`→관측 적합(`mmmOls`/`mmmRidgeFit`)→미래행 예측. **OLS fitted는 컬럼 재척도/센터링 불변**이라 결합패널 빌드해도 과거 적합=기존 decomp와 일치. adstock 자연이월·계절/추세 연장·미래더미0·step영구. CI OLS=ŷ±t√(σ²(1+lev))·ridge±1.96σ. 모델=decompModel 재사용. 예산=채널별(기본 최근평균)×rowDays/unitDays(per-row), horizon=행수. 검증 주입식 harness(`code+inject`로 내부 const 접근): validate_date 11·validate_forecast 23. **render-throw는 골든이 못 잡음→/tmp repro 필수**(Chart 스텁+plugins.afterDatasetsDraw 실행).
 
+도구 통합 탭형 병합(SaaS, PR#132~137, 17→6): 같은/다른 grain 도구를 host `page_5_N` 탭으로. 흡수 `page_5_M()`→`monXxxBody()`(섹션만·게이트/pageShell/s-prep 제거)+등록 삭제, `XXX_TAB_STATE`+`data-xxx-tab`+redirect+IA·AUTH 정리, bind/chart/math 함수 유지(DOM-gate 자동발화). **cross-grain**: `loadCsvFromTool(csvTool)` 탭별 스왑(저장없이 로드만 안전) — 단 흡수 도구가 grain 다르면 `TOOL_GROUP`을 distinct로(같으면 findGroupCsvSnapshot 폴백이 잘못된 CSV 끌어옴). **실험 분석(PR#137)**: 5-4+5-7+5-15→`page_5_4` 3탭(design 무CSV/readout/holdout). **결과표 강화**=`renderReadoutMatrix` arm×지표 비교 매트릭스(상대lift·★·P(B>A)·95%CI·🏆winner·색) + detail/holdout unpooled 95%CI. render층만→골든·runReadoutTests/runIncrTests byte-동일. validate_exp 20/20.
+
 # 통계 도구 표준 (5-5 등)
 
 - 순수 함수 객체에 분리 (`CANNIBAL_STATS`, `ALLOC_MATH`)
