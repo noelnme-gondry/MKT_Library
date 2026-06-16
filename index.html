@@ -2717,6 +2717,13 @@
         <span class="sep">/</span>
         <span class="current">Overview</span>
       </nav>
+      <div class="topbar-actions">
+        <button class="btn ghost" id="cmdk-launch" type="button" aria-label="명령 팔레트 열기" title="명령 팔레트 (⌘K)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span>빠른 이동</span>
+          <span class="kbd">⌘K</span>
+        </button>
+      </div>
     </header>
 
     <article class="content" id="content" aria-live="polite"></article>
@@ -21173,6 +21180,9 @@ function runCmdkSelected() {
 }
 
 function bindCmdk() {
+  // 탑바 런처 버튼 → 팔레트 열기 (키보드 모르는 사용자용 discoverability)
+  const launch = document.getElementById("cmdk-launch");
+  if (launch) launch.addEventListener("click", () => openCmdk());
   // 전역 ⌘K / Ctrl+K → 팔레트 토글
   document.addEventListener("keydown", (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
