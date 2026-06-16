@@ -2783,7 +2783,7 @@ const OPS_GROUP_IDS = new Set(["05", "06", "07", "10"]);
 const PHASES = [
   {
     id: "p1",
-    label: "초기",
+    label: "셋업",
     sub: "MMP & 트래킹 셋업",
     desc: "MMP 인프라, 이벤트 택소노미, 매체 포스트백, iOS 프라이버시 대응까지. 본격 운영 전 반드시 갖춰야 할 토대.",
     groups: ["01"],
@@ -2791,7 +2791,7 @@ const PHASES = [
   },
   {
     id: "p2",
-    label: "중기",
+    label: "운영",
     sub: "캠페인 운영 & 소재",
     desc: "UAC·Meta·ASA·리타겟팅 실전 셋업과 ASO·매체별 소재 규격·3초 훅까지. 운영 일과의 표준 절차.",
     groups: ["02", "03"],
@@ -2799,7 +2799,7 @@ const PHASES = [
   },
   {
     id: "p3",
-    label: "후기",
+    label: "운영 후 분석",
     sub: "분석 & 최적화",
     desc: "KPI 벤치마크, 코호트·LTV, 카니발리제이션 보정, 광고 프로드 탐지. 데이터로 검증하고 다시 묶는 단계.",
     groups: ["04"],
@@ -3124,29 +3124,87 @@ function updateNavActive(activeId) {
 }
 
 /* ========== Page renderers ========== */
+/* ===== 랜딩: 2단계 목표 선택 (① 가이드 vs 분석 → ② 세부 선택) =====
+ * 사이드바·탑바는 navigate가 is-home으로 숨김. 첫 화면은 선택 카드만. */
+const LANDING_STATE = { track: null }; // null = step1 / "guide" / "analyze"
+
+// 도구 티어 (freemium): 시각화·모니터링만 무료, 나머지 Pro
+const TOOL_TIER = { "5-2": "free", "5-3": "pro", "5-9": "pro", "5-6": "pro", "5-4": "pro", "5-18": "pro" };
+function toolTier(id) { return TOOL_TIER[id] || "pro"; }
+
+// 분석 트랙의 목표 버킷 (사용자 승인 구조)
+const ANALYZE_BUCKETS = [
+  { id: "monitor",    icon: "📊", label: "시각화 · 모니터링", tier: "free", desc: "운영 데이터를 대시보드로 — 시계열·스코어카드·페이싱·이상 탐지", tools: ["5-2"] },
+  { id: "efficiency", icon: "💰", label: "효율화 · 예산",     tier: "pro",  desc: "예산 배분·퍼널·세그먼트 + LTV:CAC·ROAS 성숙도·코호트",     tools: ["5-3", "5-9"] },
+  { id: "experiment", icon: "🧪", label: "실험 · 소재",       tier: "pro",  desc: "A/B 설계·결과 판독·홀드아웃 증분 + 소재 성과 분해",        tools: ["5-4", "5-6"] },
+  { id: "advanced",   icon: "📈", label: "고급 분석",         tier: "pro",  desc: "마케팅 반응 회귀 — 카니발 진단·Forecast·MMM 기여 분해·범용 회귀", tools: ["5-18"] },
+];
+
+function tierBadge(tier) {
+  return tier === "free"
+    ? `<span class="chip ok" style="font-size:10px;padding:1px 8px;"><span class="dot"></span>무료</span>`
+    : `<span class="chip" style="font-size:10px;padding:1px 8px;background:linear-gradient(135deg,rgba(122,162,247,0.22),rgba(192,132,252,0.14));border-color:rgba(122,162,247,0.5);color:var(--text-1);">🔒 Pro</span>`;
+}
+
 function pageHome() {
+  const track = LANDING_STATE.track;
+  if (track === "guide") return renderLandingGuide();
+  if (track === "analyze") return renderLandingAnalyze();
+  return renderLandingHome();
+}
+
+/* STEP 1 — 가이드 vs 분석 */
+function renderLandingHome() {
   const totalGuides = IA.filter(g => !OPS_GROUP_IDS.has(g.id)).reduce((a, g) => a + g.items.length, 0);
   const totalTools = IA.filter(g => OPS_GROUP_IDS.has(g.id)).reduce((a, g) => a + g.items.length, 0);
-
   return `
     <div class="page-eyebrow">Performance Marketing Library</div>
-    <h1 class="page-title">앱 퍼포먼스 마케팅, 운영의 표준화.</h1>
-    <p class="page-deck">마케팅 사이클의 단계에 맞춰 필요한 가이드와 도구만 골라 보세요. 초기 셋업부터 캠페인 운영, 데이터 분석, 자동화 도구까지 4단계로 정리되어 있습니다.</p>
+    <h1 class="page-title">무엇을 하시겠어요?</h1>
+    <p class="page-deck">운영 표준 가이드를 보거나, 내 운영 데이터를 올려 바로 분석하세요. 원하는 쪽을 고르면 그 안에서만 메뉴가 열립니다.</p>
 
-    <div class="meta-row">
-      <span class="chip"><span class="dot"></span><span class="tnum">${totalGuides}</span>개 가이드</span>
-      <span class="chip"><span class="dot"></span><span class="tnum">${totalTools}</span>개 분석 도구</span>
-      <span class="chip ok"><span class="dot"></span>iOS 18 SKAN 4.0 대응</span>
+    <div class="phase-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));margin-top:1.6rem;">
+      <div class="phase-card" data-landing-track="guide">
+        <div class="phase-card-head">
+          <span class="phase-card-step">가이드</span>
+          <span class="phase-card-tag">SOP 문서</span>
+        </div>
+        <div class="phase-card-title">📘 운영 가이드 확인</div>
+        <div class="phase-card-desc">MMP·트래킹 셋업부터 캠페인 운영·소재, 운영 후 분석·최적화까지. 단계별 표준 절차 문서.</div>
+        <div class="phase-card-foot"><span class="phase-card-meta tnum">${totalGuides}개 가이드</span></div>
+        <div class="phase-card-cta">가이드 보기 →</div>
+      </div>
+      <div class="phase-card phase-card-tool" data-landing-track="analyze">
+        <div class="phase-card-head">
+          <span class="phase-card-step">분석</span>
+          <span class="phase-card-tag">대시보드 · 도구</span>
+        </div>
+        <div class="phase-card-title">📊 마케팅 분석 · 대시보드</div>
+        <div class="phase-card-desc">실제 운영한 캠페인 CSV를 올려 대시보드 시각화·효율 분석·실험 판독·고급 회귀까지. 시각화·모니터링은 무료.</div>
+        <div class="phase-card-foot"><span class="phase-card-meta tnum">${totalTools}개 분석 도구</span></div>
+        <div class="phase-card-cta">분석 시작 →</div>
+      </div>
     </div>
+  `;
+}
 
-    <h2 class="section-title" style="margin-top:2rem;">지금 어떤 단계에 있나요?</h2>
-    <div class="phase-grid">
-      ${PHASES.map((p, idx) => {
+function landingBackBtn() {
+  return `<button data-landing-back style="display:inline-flex;align-items:center;gap:6px;background:var(--bg-2);border:1px solid var(--border);color:var(--text-2);border-radius:9px;padding:7px 13px;font-size:12.5px;cursor:pointer;margin-bottom:1.2rem;">← 처음으로</button>`;
+}
+
+/* STEP 2a — 가이드 (초기→셋업 / 중기→운영 / 후기→운영 후 분석) */
+function renderLandingGuide() {
+  const guidePhases = PHASES.filter(p => p.id !== "p4");
+  return `
+    ${landingBackBtn()}
+    <div class="page-eyebrow">운영 가이드</div>
+    <h1 class="page-title">어느 단계의 가이드를 보시겠어요?</h1>
+    <p class="page-deck">셋업 → 운영 → 운영 후 분석 순서의 표준 절차 문서입니다.</p>
+    <div class="phase-grid" style="margin-top:1.4rem;">
+      ${guidePhases.map((p, idx) => {
         const linkedGroups = IA.filter(g => p.groups.includes(g.id));
         const itemCount = linkedGroups.reduce((a, g) => a + g.items.length, 0);
-        const isTool = p.id === "p4";
         return `
-          <div class="phase-card ${isTool ? 'phase-card-tool' : ''}" data-route="${p.cta}">
+          <div class="phase-card" data-route="${p.cta}">
             <div class="phase-card-head">
               <span class="phase-card-step">STEP ${idx + 1}</span>
               <span class="phase-card-tag">${escapeHtml(p.label)}</span>
@@ -3154,15 +3212,48 @@ function pageHome() {
             <div class="phase-card-title">${escapeHtml(p.sub)}</div>
             <div class="phase-card-desc">${escapeHtml(p.desc)}</div>
             <div class="phase-card-foot">
-              <span class="phase-card-meta">${linkedGroups.map(g => `${displayGroupNumber(g.id)} · ${escapeHtml(g.title)}`).join(" / ")}</span>
+              <span class="phase-card-meta">${linkedGroups.map(g => `${escapeHtml(g.title)}`).join(" / ")}</span>
               <span class="phase-card-meta tnum">${itemCount}개 항목</span>
             </div>
             <div class="phase-card-cta">시작하기 →</div>
-          </div>
-        `;
+          </div>`;
       }).join("")}
     </div>
+  `;
+}
 
+/* STEP 2b — 분석 (목표 버킷 → 도구; 무료/Pro 배지) */
+function renderLandingAnalyze() {
+  return `
+    ${landingBackBtn()}
+    <div class="page-eyebrow">마케팅 분석 · 대시보드</div>
+    <h1 class="page-title">무엇을 분석하시겠어요?</h1>
+    <p class="page-deck">목표를 고르면 맞는 도구로 바로 들어갑니다. <strong>시각화·모니터링은 무료</strong>이고, 나머지는 Pro 키가 필요합니다(키 요청은 도구 안에서 안내).</p>
+    ${ANALYZE_BUCKETS.map(b => `
+      <section class="block" style="margin-top:1rem;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <span style="font-size:18px;">${b.icon}</span>
+          <h2 class="section-title" style="margin:0;border:none;padding:0;">${escapeHtml(b.label)}</h2>
+          ${tierBadge(b.tier)}
+        </div>
+        <p class="muted" style="margin:-4px 0 12px;">${escapeHtml(b.desc)}</p>
+        <div class="phase-grid">
+          ${b.tools.map(tid => {
+            const meta = findMeta(tid);
+            if (!meta) return "";
+            const tier = toolTier(tid);
+            return `
+              <div class="phase-card ${tier === "free" ? "" : "phase-card-tool"}" data-route="${tid}">
+                <div class="phase-card-head">
+                  <span class="phase-card-step">${escapeHtml(meta.title)}</span>
+                  ${tierBadge(tier)}
+                </div>
+                <div class="phase-card-desc" style="margin-top:6px;">${escapeHtml(meta.desc || "")}</div>
+                <div class="phase-card-cta">${tier === "free" ? "바로 사용 →" : "열기 (Pro) →"}</div>
+              </div>`;
+          }).join("")}
+        </div>
+      </section>`).join("")}
   `;
 }
 
@@ -5314,7 +5405,8 @@ const AUTH_STATE = {
   session: null,       // { keyLabel, expiresAt(ISO), hash }
 };
 
-const AUTH_PROTECTED_PAGES = new Set(["5-2", "5-3", "5-4", "5-6", "5-9", "5-18"]);
+// freemium: 5-2 시각화·모니터링은 무료. 나머지 분석 도구는 Pro(접근 키 필요).
+const AUTH_PROTECTED_PAGES = new Set(["5-3", "5-4", "5-6", "5-9", "5-18"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -17341,6 +17433,9 @@ async function navigate(id) {
   if (id === "5-7")  { EXP_TAB_STATE.tab = "readout"; id = "5-4"; }
   if (id === "5-15") { EXP_TAB_STATE.tab = "holdout"; id = "5-4"; }
 
+  // 실제 페이지로 진입하면 랜딩 트랙 리셋 → 홈 복귀 시 항상 STEP 1(선택 창)부터
+  if (id && id !== "home") LANDING_STATE.track = null;
+
   // Ops Dashboard 페이지 접근 제어
   if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid()) {
     content.innerHTML = pageAuthGate(id);
@@ -17460,6 +17555,13 @@ function bindSortableTables() {
 function bindCardLinks() {
   $$('.card[data-route], .phase-card[data-route]').forEach(c => {
     c.addEventListener("click", () => navigate(c.dataset.route));
+  });
+  // 랜딩 2단계 토글 (가이드/분석 트랙 선택 + 처음으로)
+  $$('[data-landing-track]').forEach(c => {
+    c.addEventListener("click", () => { LANDING_STATE.track = c.dataset.landingTrack; navigate("home"); });
+  });
+  $$('[data-landing-back]').forEach(c => {
+    c.addEventListener("click", () => { LANDING_STATE.track = null; navigate("home"); });
   });
 }
 
@@ -20889,7 +20991,7 @@ function handleCSVFile(file, toolId) {
 
 function bindBrandClick() {
   const b = document.getElementById("brand");
-  if (b) b.addEventListener("click", () => navigate("home"));
+  if (b) b.addEventListener("click", () => { LANDING_STATE.track = null; navigate("home"); });
 }
 
 /* ========== Sidebar search filter ========== */
