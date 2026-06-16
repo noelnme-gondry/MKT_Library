@@ -13936,8 +13936,9 @@ function downloadMmmForecastCsv() {
     return "재료 " + nm;
   };
   const L = [];
-  // ── 1. 메타 (1~11행)
-  [["# 도구", "MMM Trend Forecast (5-18)"], ["# 대상", tKo + " (" + t + ")"], ["# 모델", fc.model], ["# adstock_lambda(광고잔효)", fc.lam], ["# R2(모델 적합도·1에 가까울수록 잘맞음)", fc.r2], ["# sigma_resid(평균 오차폭)", fc.sigma], ["# 과거 데이터 행수", fc.n], ["# 예측 기간(행)", fc.horizon], ["# 데이터 주기", fc.granLabel], ["# 예산 단위", fc.unit], ["# 밴드 종류(95%)", fc.bandLabel + (fc.bandMode === "mean" ? " — 평균 추세 범위(좁음, t·σ·√leverage)" : " — 개별 주 범위(넓음, t·σ·√(1+leverage), 노이즈 포함)")], ["# 주의", "관측 회귀의 외삽(가설)입니다. 인과/증분 아님 — 확정은 holdout(5-15). 미래 휴일=0, 이벤트는 마지막 값 지속."]].forEach(kv => L.push(kv.map(q).join(",")));
+  // ── 1. 메타 (adstock_lambda 셀 행을 잡아 아래 adstock 수식이 참조)
+  let lamRow = 4;
+  [["# 도구", "MMM Trend Forecast (5-18)"], ["# 대상", tKo + " (" + t + ")"], ["# 모델", fc.model], ["# adstock_lambda(광고잔효 λ)", fc.lam], ["# R2(모델 적합도·1에 가까울수록 잘맞음)", fc.r2], ["# sigma_resid(평균 오차폭)", fc.sigma], ["# 과거 데이터 행수", fc.n], ["# 예측 기간(행)", fc.horizon], ["# 데이터 주기", fc.granLabel], ["# 예산 단위", fc.unit], ["# 밴드 종류(95%)", fc.bandLabel + (fc.bandMode === "mean" ? " — 평균 추세 범위(좁음, t·σ·√leverage)" : " — 개별 주 범위(넓음, t·σ·√(1+leverage), 노이즈 포함)")], ["# 주의", "관측 회귀의 외삽(가설)입니다. 인과/증분 아님 — 확정은 holdout(5-15). 미래 휴일=0, 이벤트는 마지막 값 지속."]].forEach(kv => { if (String(kv[0]).includes("adstock_lambda")) lamRow = L.length + 1; L.push(kv.map(q).join(",")); });
   L.push("");
   // ── 2. 계수표 (term / coef / 편차 / p값 / 쉬운 의미). coef는 B열 — 아래 수식이 참조.
   L.push(["# 계수 (이 값들을 바꾸면 아래 예측이 자동 재계산됩니다)"].map(q).join(","));
@@ -13951,27 +13952,42 @@ function downloadMmmForecastCsv() {
   ["# 1) 위 '기본값(Intercept)'에서 출발합니다.",
    "# 2) 각 재료마다 '계수'가 있습니다. 그 주의 '재료 값 × 계수'를 차례로 더합니다.",
    "# 3) 계수가 양수면 그 재료가 클수록 예측이 올라가고, 음수면 내려갑니다.",
-   "# 4) 채널 지출은 그대로 쓰지 않고, 광고가 며칠 이어지는 효과와 많이 쓸수록 효율이 떨어지는 효과를 적용한 값을 'ln_채널' 칼럼에 미리 계산해 두었습니다.",
-   "# 5) 모든 재료를 더한 합이 그 주의 예측값입니다.",
-   "# ※ '예측값' 칸은 값이 아니라 엑셀 수식이라, 위 계수(B열)나 재료 값을 바꾸면 자동으로 다시 계산됩니다.",
-   "# ※ 하한/상한(95%)은 예측값을 중심으로 한 오차 범위입니다 (미래만)."].forEach(s => L.push([s].map(q).join(",")));
+   "# 4) 채널 지출(spend) 칸을 바꾸면 → 'adstock' 칸 → 'ln_채널' 칸 → 예측이 자동으로 줄줄이 다시 계산됩니다 (전부 수식). spend로 직접 시나리오를 넣어도 됩니다.",
+   "# 5) adstock(광고잔효) = 이번 주 지출 + λ × 지난주 adstock — 광고 효과가 다음 주로 이어지는 누적값입니다. 그래서 한 주 지출을 바꾸면 그 주뿐 아니라 다음 몇 주 예측도 같이 움직입니다(점점 줄며).",
+   "# 6) ln_채널 = LN(1 + adstock) — 많이 쓸수록 추가 효과가 줄어드는(수확체감) 변환. ※ ln(지출)이 아니라 ln(1+누적잔효)라, 지출에 그냥 ln 씌운 값과는 다릅니다.",
+   "# 7) 모든 재료를 더한 합이 그 주의 예측값입니다.",
+   "# ※ 하한/상한(95%)은 예측값을 중심으로 한 오차 범위입니다 (미래만).",
+   "# ※ 과거에 지출이 빈칸이던 주는 도구가 평균으로 메워 계산했어서 미세하게 다를 수 있습니다. 미래 예측은 입력한 지출 그대로라 정확합니다.",
+   "# ※ adstock λ는 위 메타의 'adstock_lambda' 셀(B" + lamRow + ")을 참조합니다 — 그 값을 바꾸면 잔효 계산이 전부 바뀝니다."].forEach(s => L.push([s].map(q).join(",")));
   L.push("");
-  // ── 4. 시계열 — 예측값은 수식. 재료 값 칼럼(H~) + 채널 지출.
-  const featStart = 7;   // A~G(7개) 다음부터 재료 칼럼
-  const header = ["t", fc.gran ? "date" : "label", "segment", "actual(실측)", "fitted_or_forecast(예측·수식)", "lo95(하한)", "hi95(상한)", ...fc.names, ...fc.chans.map(ch => "spend_" + ch.label)];
-  L.push("# 시계열 — 예측값은 살아있는 수식, 그 오른쪽은 수식이 쓰는 '재료 값' + 채널 지출");
-  L.push(header.map(q).join(","));
+  // ── 4. 시계열 — spend → adstock → ln → 예측 전부 살아있는 수식 체인.
   const fcMatrix = fc.featMatrix;
-  const buildFormula = (er) => "=$B$" + coefRow["(Intercept)"] + fc.names.map((nm, j) => "+$B$" + coefRow[nm] + "*" + colL(featStart + j) + er).join("");
+  const featStart = 7, nNames = fc.names.length;   // A~G(7개) 다음부터 재료 칼럼
+  // ln_채널 feature ↔ 채널 매핑 (ols/ridge는 1:1; merge는 합산이라 매칭 안 돼 값으로 폴백)
+  const lnChanK = {};                              // feature col index j → 채널 index k
+  fc.chans.forEach((ch, k) => { const j = fc.names.indexOf("ln_" + ch.key); if (j >= 0) lnChanK[j] = k; });
+  const chansLn = fc.chans.map((_, k) => k).filter(k => Object.values(lnChanK).includes(k));   // adstock 칼럼 가질 채널 index
+  const adStart = featStart + nNames, spStart = adStart + chansLn.length;
+  const featCol = (j) => colL(featStart + j);
+  const adCol = (k) => colL(adStart + chansLn.indexOf(k));
+  const spCol = (k) => colL(spStart + k);
+  const header = ["t", fc.gran ? "date" : "label", "segment", "actual(실측)", "fitted_or_forecast(예측·수식)", "lo95(하한)", "hi95(상한)", ...fc.names, ...chansLn.map(k => "adstock_" + fc.chans[k].label), ...fc.chans.map(ch => "spend_" + ch.label)];
+  L.push("# 시계열 — spend 칸을 바꾸면 adstock·ln·예측이 자동 연쇄 계산 (전부 수식)");
+  L.push(header.map(q).join(","));
+  const buildFitted = (er) => "=$B$" + coefRow["(Intercept)"] + fc.names.map((nm, j) => "+$B$" + coefRow[nm] + "*" + featCol(j) + er).join("");
+  const firstRow = L.length + 1;
   for (let i = 0; i < fc.n + fc.horizon; i++) {
-    const er = L.length + 1;   // 이 데이터 행의 엑셀 행번호
-    const isHist = i < fc.n;
+    const er = L.length + 1, isHist = i < fc.n;
     const lbl = isHist ? fc.histLabels[i] : fc.futLabels[i - fc.n];
-    const feats = fc.names.map((_, j) => num(fcMatrix[i][j], 6));
-    const spend = fc.chans.map(ch => isHist ? num((fc.histSpendByKey[ch.key] || [])[i], 0) : num(fc.futSpendByKey[ch.key][i - fc.n], 0));
+    // feature 칸: ln_채널은 =LN(1+adstock), 나머지(계절·추세·더미)는 값
+    const feats = fc.names.map((nm, j) => (lnChanK[j] != null) ? ("=LN(1+" + adCol(lnChanK[j]) + er + ")") : num(fcMatrix[i][j], 6));
+    // adstock 칸: 첫 행=spend(seed), 이후=spend + λ×윗행 adstock (재귀)
+    const adcells = chansLn.map(k => er === firstRow ? ("=" + spCol(k) + er) : ("=" + spCol(k) + er + "+$B$" + lamRow + "*" + adCol(k) + (er - 1)));
+    // spend 칸: 값 (편집 가능 — 바꾸면 위로 연쇄)
+    const spend = fc.chans.map((ch, k) => isHist ? num((fc.histSpendByKey[ch.key] || [])[i], 0) : num(fc.futSpendByKey[ch.key][i - fc.n], 0));
     let loCell = "", hiCell = "";
     if (!isHist) { const k = i - fc.n, margin = +(fc.hi[k] - fc.predFut[k]).toFixed(2); loCell = "=E" + er + "-" + margin; hiCell = "=E" + er + "+" + margin; }
-    const row = [i + 1, lbl, isHist ? "history" : "forecast", isHist ? Math.round(fc.actual[i]) : "", buildFormula(er), loCell, hiCell, ...feats, ...spend];
+    const row = [i + 1, lbl, isHist ? "history" : "forecast", isHist ? Math.round(fc.actual[i]) : "", buildFitted(er), loCell, hiCell, ...feats, ...adcells, ...spend];
     L.push(row.map(q).join(","));
   }
   _mmmDownload(`mmm_forecast_${t}_${fc.model}_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + L.join("\r\n"), "text/csv;charset=utf-8");
