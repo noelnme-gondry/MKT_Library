@@ -12047,10 +12047,16 @@ function mmmBuildFeatures(panel, cfg, lam, withTrend = true) {
   const t = panel.week, n = t.length, cols = [], names = [];
   const push = (nm, arr) => { names.push(nm); cols.push(arr); };
   cfg.seasonalityPeriods.forEach((P, i) => { push(`sin_${i}`, t.map(tt => Math.sin(2 * Math.PI * tt / P))); push(`cos_${i}`, t.map(tt => Math.cos(2 * Math.PI * tt / P))); });
-  const seol = new Set(cfg.lunarWeeks.seollal), chu = new Set(cfg.lunarWeeks.chuseok);
-  push("lny", t.map(tt => seol.has(tt) ? 1 : 0)); push("chuseok", t.map(tt => chu.has(tt) ? 1 : 0));
   // 흡수(공선) 집합: cfg.absorbed = 다중공선으로 제거할 컬럼 키(채널 key 또는 step 이름). 기본은 step 흡수(캠페인 유지).
   const absorbed = cfg.absorbed || new Set(cfg.foldIntoRegime || []);
+  // 휴일/이벤트: 사용자가 매핑한 더미(panel.useDummies)가 있으면 그것을 모델에 포함(실제 이벤트 신호 — liveness 등).
+  // 없으면 도구 기본 cfg.lunarWeeks(주차번호 가정). → legacy/골든 패널(useDummies 미설정)은 byte-동일.
+  if (panel.useDummies && panel.dummy && Object.keys(panel.dummy).length) {
+    for (const [nm, arr] of Object.entries(panel.dummy)) { if (absorbed.has("d_" + nm)) continue; push("d_" + nm, arr); }
+  } else {
+    const seol = new Set(cfg.lunarWeeks.seollal), chu = new Set(cfg.lunarWeeks.chuseok);
+    push("lny", t.map(tt => seol.has(tt) ? 1 : 0)); push("chuseok", t.map(tt => chu.has(tt) ? 1 : 0));
+  }
   const steps = _mmmStepSeries(panel, cfg);
   for (const [nm, arr] of Object.entries(steps)) { if (absorbed.has(nm)) continue; push(nm, arr); }
   const sparse = cfg.excludeSparse ? mmmSparseChannels(panel, cfg) : new Set();
@@ -12571,10 +12577,18 @@ function mmmSelectAdstock(panel, cfg, targetName) {
   return { cv_rmse: results, best_lambda: best };
 }
 function mmmShapleyGroups(names, channels) {
-  const def = [["Trend", ["trend"]], ["Seasonality", ["sin_0", "cos_0", "sin_1", "cos_1"]], ["Holidays", ["lny", "chuseok"]],
-    ["Regime(steps)", Object.keys(MMM_METH_CONFIG.steps)]];
-  for (const ch of (channels || [])) def.push([ch.label, ["ln_" + ch.key]]);   // 채널별 그룹 (동적)
-  return def.map(([nm, cs]) => ({ name: nm, cols: cs.map(c => names.indexOf(c)).filter(i => i >= 0) })).filter(g => g.cols.length);
+  // 휴일=lny/chuseok 또는 매핑 더미(d_*). Regime=cfg.steps + 사용자 매핑 step(나머지 비-계절/추세/휴일/채널).
+  // 골든(lny/chuseok·post_step/line_off·ln_*)은 그룹 멤버십·순서 동일 → byte-동일.
+  const isSeason = n => /^(sin|cos)_/.test(n), isHol = n => n === "lny" || n === "chuseok" || n.startsWith("d_"), isCh = n => n.startsWith("ln_");
+  const colsWhere = (pred) => names.map((n, i) => pred(n) ? i : -1).filter(i => i >= 0);
+  const groups = [
+    { name: "Trend", cols: colsWhere(n => n === "trend") },
+    { name: "Seasonality", cols: colsWhere(isSeason) },
+    { name: "Holidays", cols: colsWhere(isHol) },
+    { name: "Regime(steps)", cols: colsWhere(n => n !== "trend" && !isSeason(n) && !isHol(n) && !isCh(n)) },
+  ];
+  for (const ch of (channels || [])) groups.push({ name: ch.label, cols: [names.indexOf("ln_" + ch.key)].filter(i => i >= 0) });
+  return groups.filter(g => g.cols.length);
 }
 function mmmRunMmm(panel, cfg, targetName) {
   const ad = mmmSelectAdstock(panel, cfg, targetName);
@@ -12849,18 +12863,21 @@ function mmmForecast(panel, cfg, target, lam, model, futureSpend, horizon, stepO
   const futWeek = Array.from({ length: H }, (_, j) => (isFinite(lastWk) ? lastWk : n) + j + 1);
   const futSpendByKey = {};
   chans.forEach(ch => { const fs = (futureSpend && futureSpend[ch.key]) || null; futSpendByKey[ch.key] = Array.from({ length: H }, (_, j) => (fs && isFinite(fs[j])) ? fs[j] : recentMean[ch.key]); });
-  const combined = { week: [...panel.week, ...futWeek], ch: {}, dummy: {}, steps: {}, targets: {} };
+  const combined = { week: [...panel.week, ...futWeek], ch: {}, dummy: {}, steps: {}, targets: {}, useDummies: panel.useDummies };
   chans.forEach(ch => combined.ch[ch.key] = [...panel.ch[ch.key], ...futSpendByKey[ch.key]]);
-  for (const k in (panel.dummy || {})) combined.dummy[k] = [...panel.dummy[k], ...Array(H).fill(0)];          // 미래 더미(휴일 포함)=0 — 미래 휴일 미반영(캐비엇)
-  // step(이벤트/구조변화): 관측 시리즈를 _mmmStepSeries로 그대로(=비-forecast 파이프라인과 동일) materialize 후
-  // 미래는 stepOff[key] 제어 — undefined/빈값=지속(마지막 값), 숫자 N=N기간 켜둔 뒤 0(끔). N=0=즉시 끔.
+  // 이벤트/구조변화/휴일더미: 관측 시리즈를 그대로(=비-forecast 파이프라인과 동일) materialize 후
+  // 미래는 stepOff[key] 제어 — 빈값=지속(마지막 값·1로 끝난 이벤트는 계속 ON), 숫자 N=N기간 켜둔 뒤 0, N=0=즉시 끔.
   const obsSteps = _mmmStepSeries(panel, cfg);
-  const stepKeys = Object.keys(obsSteps);
-  stepKeys.forEach(k => {
-    const obs = obsSteps[k], lastV = obs[obs.length - 1] || 0;
-    const offN = stepOff ? stepOff[k] : null;
+  const useDum = panel.useDummies && panel.dummy && Object.keys(panel.dummy).length;
+  const ctl = [];   // 제어 대상: step + (useDummies면) 매핑 더미
+  Object.keys(obsSteps).forEach(k => ctl.push({ key: k, kind: "step", obs: obsSteps[k] }));
+  if (useDum) Object.keys(panel.dummy).forEach(k => ctl.push({ key: k, kind: "event", obs: panel.dummy[k] }));
+  ctl.forEach(it => {
+    const obs = it.obs, lastV = obs[obs.length - 1] || 0;
+    const offN = stepOff ? stepOff[it.key] : null;
     const fut = Array.from({ length: H }, (_, j) => (offN != null && isFinite(offN)) ? (j < offN ? lastV : 0) : lastV);
-    combined.steps[k] = [...obs, ...fut];
+    const full = [...obs, ...fut];
+    if (it.kind === "step") combined.steps[it.key] = full; else combined.dummy[it.key] = full;
   });
   combined.targets[target] = [...y, ...Array(H).fill(NaN)];
   combined.channels = panel.channels;
@@ -12898,7 +12915,7 @@ function mmmForecast(panel, cfg, target, lam, model, futureSpend, horizon, stepO
     futWeek, futDates, gran,
     chans: chans.map(ch => ({ key: ch.key, label: ch.label })),
     futSpendByKey, recentMean, histSpendByKey: Object.fromEntries(chans.map(ch => [ch.key, panel.ch[ch.key]])),
-    steps: stepKeys.map(k => ({ key: k, label: (panel.stepDefs && (panel.stepDefs.find(s => s.key === k) || {}).label) || k, lastOn: (obsSteps[k][obsSteps[k].length - 1] || 0) > 0.5 })),
+    steps: ctl.map(it => ({ key: it.key, kind: it.kind, label: (it.kind === "step" ? (panel.stepDefs && (panel.stepDefs.find(s => s.key === it.key) || {}).label) : (panel.dummyDefs && (panel.dummyDefs.find(d => d.key === it.key) || {}).label)) || it.key, lastOn: (it.obs[it.obs.length - 1] || 0) > 0.5 })),
     stepOff: { ...(stepOff || {}) },
   };
 }
@@ -13261,6 +13278,8 @@ function mmmGetPanelFromColMap(cm) {
   if (panel.targets.Regs && panel.targets.React) panel.targets.RR = panel.week.map((_, i) => panel.targets.Regs[i] + panel.targets.React[i]);
   panel.channels = chans.map(ch => ({ key: ch.key, label: ch.label, kind: ch.kind }));
   panel.stepDefs = r.steps.map(s => ({ key: s.key, label: s.label }));   // 노티스 캐비엇용: 사용자 매핑 step 여부 판별
+  panel.dummyDefs = r.dummies.map(d => ({ key: d.key, label: d.label }));
+  panel.useDummies = true;   // colMap(실사용 데이터) = 매핑한 휴일/이벤트 더미를 모델에 포함 (legacy/골든은 cfg.lunarWeeks)
   if (r.date) {   // 날짜 컬럼: 파싱(분석 무영향) → 차트 x축·예측·단위 환산용. weekLabel과 별개.
     panel.dates = re(raw.map(row => _mmmParseDate(row[r.date])));
     panel.granularity = _mmmGranularity(panel.dates);
@@ -13797,7 +13816,7 @@ function renderMmmStage3Intro(c) {
       <div style="flex:1;min-width:200px;background:var(--bg-2);border-radius:8px;padding:11px 13px;font-size:12px;color:var(--text-1);line-height:1.55;"><strong style="color:#adc6ff;">② 예산 → 예측</strong><br>채널별 <strong>일/주/월 평균 예산</strong>을 넣으면 데이터 주기에 맞춰 환산해 미래 지출로 쓰고, adstock·계절·추세를 연장해 예측 + 95% 밴드.</div>
       <div style="flex:1;min-width:200px;background:var(--bg-2);border-radius:8px;padding:11px 13px;font-size:12px;color:var(--text-1);line-height:1.55;"><strong style="color:#adc6ff;">③ 전체 다운로드</strong><br>독립변수 계수·계산식·과거 실측/적합·미래 예산/예측을 한 CSV로. 스프레드시트에서 직접 재현.</div>
     </div>
-    <p style="font-size:11px;color:var(--text-muted);margin-top:9px;">⚠ 예측은 <strong>관측 회귀의 외삽(가설)</strong>입니다. 밴드는 모델 불확실성(예측구간)이며 "예산 가정 자체"의 불확실성은 포함하지 않습니다. 이벤트/구조변화 step은 아래에서 <strong>지속/종료 시점을 선택</strong>하고, <strong>휴일은 미래 예측에 반영되지 않습니다</strong>(미래=0). 인과·증분 확정은 holdout(5-15).</p>
+    <p style="font-size:11px;color:var(--text-muted);margin-top:9px;">⚠ 예측은 <strong>관측 회귀의 외삽(가설)</strong>입니다. 밴드는 모델 불확실성(예측구간)이며 "예산 가정 자체"의 불확실성은 포함하지 않습니다. 매핑한 <strong>휴일/이벤트·구조변화 더미는 모델에 포함</strong>되고, 미래는 아래에서 <strong>지속/종료 시점을 선택</strong>합니다(1로 끝난 이벤트는 기본 지속). 인과·증분 확정은 holdout(5-15).</p>
   </section>`;
 }
 // Stage 1 안내: 진단 철학(제거법) + lead/lag가 여기 있는 이유
@@ -13861,13 +13880,14 @@ function renderMmmForecast(c) {
   const delta = histAvg > 0 ? (futAvg / histAvg - 1) * 100 : 0;
   const tabRows = fc.futLabels.map((lab, i) => `<tr><td>${escapeHtml(String(lab))}</td><td class="tnum">${fmt(fc.predFut[i])}</td><td class="tnum" style="color:var(--text-muted);">${fmt(fc.lo[i])}</td><td class="tnum" style="color:var(--text-muted);">${fmt(fc.hi[i])}</td>${fc.chans.map(ch => `<td class="tnum" style="color:var(--text-muted);">${fmt(fc.futSpendByKey[ch.key][i])}</td>`).join("")}</tr>`).join("");
   // 이벤트/구조변화(step) 미래 처리: 비우면 지속, 숫자 N이면 N기간 켜둔 뒤 끔
+  const kindKo = (k) => k === "step" ? "구조변화" : "이벤트/휴일";
   const stepCtl = (fc.steps && fc.steps.length)
-    ? `<h3 style="font-size:13px;margin:16px 0 6px;">이벤트 · 구조변화(step) 미래 처리 <span style="font-size:11px;color:var(--text-muted);font-weight:400;">— 비우면 <strong>지속</strong>, 숫자 N이면 N${perName} 켜둔 뒤 끔(0=즉시 끔)</span></h3>
-      <div class="table-wrap" style="max-width:540px;"><table class="data" style="font-size:12px;"><thead><tr><th>이벤트(step)</th><th>현재(관측 끝)</th><th>켜둘 미래 ${perName}</th></tr></thead><tbody>
-      ${fc.steps.map(s => { const cur = (MMM_METH_STATE.fcStepOff || {})[s.key]; return `<tr><td>${escapeHtml(s.label)}</td><td style="color:${s.lastOn ? '#22c55e' : 'var(--text-muted)'};font-size:11px;">${s.lastOn ? '켜짐(ON)' : '꺼짐(OFF)'}</td><td><input type="number" min="0" data-mmm-fc-stepoff="${escapeHtml(s.key)}" value="${cur != null && isFinite(cur) ? cur : ''}" placeholder="지속" style="width:110px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:4px 7px;text-align:right;"></td></tr>`; }).join("")}
+    ? `<h3 style="font-size:13px;margin:16px 0 6px;">이벤트 · 구조변화 · 휴일더미 미래 처리 <span style="font-size:11px;color:var(--text-muted);font-weight:400;">— 비우면 <strong>지속</strong>(마지막 값 유지), 숫자 N이면 N${perName} 켜둔 뒤 끔(0=즉시 끔)</span></h3>
+      <div class="table-wrap" style="max-width:600px;"><table class="data" style="font-size:12px;"><thead><tr><th>항목</th><th>종류</th><th>현재(관측 끝)</th><th>켜둘 미래 ${perName}</th></tr></thead><tbody>
+      ${fc.steps.map(s => { const cur = (MMM_METH_STATE.fcStepOff || {})[s.key]; return `<tr><td>${escapeHtml(s.label)}</td><td style="font-size:11px;color:var(--text-muted);">${kindKo(s.kind)}</td><td style="color:${s.lastOn ? '#22c55e' : 'var(--text-muted)'};font-size:11px;">${s.lastOn ? '켜짐(ON)' : '꺼짐(OFF)'}</td><td><input type="number" min="0" data-mmm-fc-stepoff="${escapeHtml(s.key)}" value="${cur != null && isFinite(cur) ? cur : ''}" placeholder="지속" style="width:110px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:4px 7px;text-align:right;"></td></tr>`; }).join("")}
       </tbody></table></div>
-      <p class="muted" style="font-size:11px;margin-top:4px;">예: "이 캠페인을 12${perName} 더 유지 후 종료" → <code class="inline">12</code>. 영구 구조변화(되돌아가지 않음)는 비워두세요(지속). ⚠ <strong>휴일은 미래 예측에 반영되지 않습니다</strong>(미래=0) — 도구 기본 휴일은 관측 주차 기준이라 미래 주엔 적용 안 됨.</p>`
-    : `<p class="muted" style="font-size:11px;margin-top:8px;">⚠ 매핑된 이벤트(step)가 없습니다(매핑의 📐 step 역할로 지정). <strong>휴일은 미래 예측에 반영되지 않습니다</strong>(미래=0).</p>`;
+      <p class="muted" style="font-size:11px;margin-top:4px;">매핑한 휴일/이벤트 더미는 <strong>모델에 포함</strong>되며 미래엔 <strong>마지막 값으로 지속</strong>합니다 — <strong>1로 끝난 이벤트(예: liveness)는 계속 ON</strong>, 0으로 끝난 단발 휴일은 0. 종료 시점은 N으로 지정(예: 12${perName} 뒤 종료 → <code class="inline">12</code>). 영구 구조변화는 비워두세요(지속).</p>`
+    : `<p class="muted" style="font-size:11px;margin-top:8px;">매핑된 이벤트·구조변화·휴일더미가 없습니다(매핑의 🔢 더미 / 📐 step 역할로 지정하면 모델에 포함됩니다).</p>`;
   return `<section class="block" id="s-forecast">
     <h2 class="section-title"><span class="ix">§7</span>${tKo} 예측 — 과거 적합 + 미래 예산 시나리오</h2>
     ${mmmExplain(`<strong>${modelLabel}</strong> 모델로 과거를 적합(R²=${fc.r2})하고, 아래 채널별 예산을 미래로 연장해 ${tKo}를 예측합니다. 회색=실측·파란선=모델/예측·음영=95% 밴드. 미래로 갈수록 밴드가 벌어지는 건 외삽 불확실성(σ=${fmt(fc.sigma)}). 모델을 바꾸면 과거 적합과 예측이 같이 바뀝니다.`)}
