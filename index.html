@@ -111,6 +111,10 @@
     grid-template-columns: var(--sidebar-width) 1fr;
     min-height: 100vh;
   }
+  /* 랜딩(첫 화면) — 선택 카드만 깔끔하게: 사이드바·탑바 숨기고 중앙 정렬 */
+  .app.is-home { grid-template-columns: 1fr; }
+  .app.is-home .sidebar { display: none; }
+  .app.is-home .topbar { display: none; }
 
   /* ----- Sidebar ----- */
   .sidebar {
@@ -3181,31 +3185,6 @@ function pageHome() {
       }).join("")}
     </div>
 
-    ${PHASES.map(p => {
-      const linkedGroups = IA.filter(g => p.groups.includes(g.id));
-      return `
-        <h2 class="section-title" style="margin-top:2.5rem;">
-          <span class="ix">${escapeHtml(p.label)}</span>${escapeHtml(p.sub)}
-        </h2>
-        <p style="margin:-0.5rem 0 0.75rem; color:var(--text-secondary); font-size:13px;">${escapeHtml(p.desc)}</p>
-        ${linkedGroups.map(g => `
-          <div style="margin-bottom:1rem;">
-            <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">
-              ${displayGroupNumber(g.id)} · ${escapeHtml(g.title)}
-            </div>
-            <div class="grid-cards">
-              ${g.items.map(it => `
-                <div class="card" data-route="${it.id}">
-                  <div class="card-eyebrow">${displayItemNumber(it.id)}</div>
-                  <div class="card-title">${escapeHtml(it.title)}</div>
-                  <div class="card-desc">${escapeHtml(it.desc)}</div>
-                </div>
-              `).join("")}
-            </div>
-          </div>
-        `).join("")}
-      `;
-    }).join("")}
   `;
 }
 
@@ -17400,6 +17379,9 @@ async function navigate(id) {
   //  이후 update()를 호출해도 화면에 안 그려지는 버그 방지)
   destroyAllCharts();
   content.innerHTML = html;
+  // 랜딩(첫 화면)에서는 사이드바·탑바 숨김 — 선택 카드만. 단계 진입 후부터 네비 표시.
+  const appEl = document.querySelector(".app");
+  if (appEl) appEl.classList.toggle("is-home", !id || id === "home");
   setBreadcrumb(id);
   renderNav(id);
   bindCopyButtons();
@@ -20965,6 +20947,8 @@ async function init() {
     else { const meta = findMeta(id); html = meta ? pageDummy(meta) : pageHome(); }
     destroyAllCharts();  // 이전 chart instance 정리 (canvas DOM 교체 전)
     content.innerHTML = html;
+    const appEl = document.querySelector(".app");
+    if (appEl) appEl.classList.toggle("is-home", !id || id === "home");
     setBreadcrumb(id === "" ? "home" : id);
     renderNav(id === "" ? null : id);
     bindCopyButtons();
