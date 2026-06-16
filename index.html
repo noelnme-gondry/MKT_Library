@@ -2517,6 +2517,40 @@
     max-width: 480px;
     margin: 1.5rem 0 2rem;
   }
+  /* ===== Freemium 페이월 (Pro 전용 블러 프리뷰 + 잠금 오버레이) ===== */
+  .paywall { position: relative; margin-top: 1.25rem; border-radius: var(--radius-xl); overflow: hidden; border: 1px solid var(--border-subtle); }
+  .paywall-demo { filter: blur(7px) saturate(0.8); opacity: 0.5; pointer-events: none; user-select: none; padding: 1.4rem; min-height: 460px; background: var(--bg-1); }
+  .paywall-demo .pw-statrow { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .paywall-demo .pw-stat { flex: 1; min-width: 130px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .paywall-demo .pw-stat .pw-k { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+  .paywall-demo .pw-stat .pw-v { font-size: 22px; font-weight: 800; color: var(--text-1); }
+  .paywall-demo .pw-bars { display: flex; align-items: flex-end; gap: 10px; height: 150px; padding: 14px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 16px; }
+  .paywall-demo .pw-bar { flex: 1; border-radius: 5px 5px 0 0; background: linear-gradient(180deg, rgba(122,162,247,0.85), rgba(122,162,247,0.35)); }
+  .paywall-demo .pw-trow { display: flex; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  .paywall-demo .pw-trow > span { flex: 1; height: 11px; background: var(--bg-3, rgba(255,255,255,0.06)); border-radius: 4px; }
+  .paywall-lock {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(13,15,23,0.55), rgba(13,15,23,0.86));
+    padding: 1.5rem;
+  }
+  .paywall-lock-card {
+    background: var(--surface-container-lowest, var(--bg-2)); border: 1px solid rgba(122,162,247,0.45);
+    border-radius: var(--radius-xl); padding: 1.6rem 1.6rem 1.35rem; max-width: 460px; width: 100%;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5); text-align: left;
+  }
+  .paywall-pro-pill {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700;
+    background: linear-gradient(135deg, rgba(122,162,247,0.25), rgba(192,132,252,0.18));
+    border: 1px solid rgba(122,162,247,0.5); color: var(--text-1);
+    border-radius: 999px; padding: 3px 11px; margin-bottom: 12px;
+  }
+  .paywall-dm {
+    display: inline-flex; align-items: center; gap: 8px; margin-top: 4px;
+    background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045); color: #fff; font-weight: 700;
+    border-radius: 11px; padding: 10px 16px; font-size: 13px; text-decoration: none;
+  }
+  .paywall-dm:hover { filter: brightness(1.08); }
+  .paywall-dm-note { font-size: 11.5px; color: var(--text-secondary); margin-top: 8px; }
   .auth-label {
     font-family: var(--font-mono);
     font-size: 11px;
@@ -3062,6 +3096,7 @@ function renderNav(activeId) {
               <div class="nav-item ${it.id === activeId ? "active" : ""}" data-route="${it.id}">
                 <span class="ix tnum">${displayItemNumber(it.id)}</span>
                 <span>${escapeHtml(it.title)}</span>
+                ${TOOL_TIER[it.id] === "pro" ? `<span class="nav-pro-lock" title="Pro 전용" style="margin-left:auto;font-size:10px;opacity:0.65;">🔒</span>` : TOOL_TIER[it.id] === "free" ? `<span class="nav-pro-lock" title="무료" style="margin-left:auto;font-size:9px;color:#5ad19a;font-weight:700;">FREE</span>` : ""}
               </div>
             `).join("")}
           </div>
@@ -5501,33 +5536,52 @@ function formatExpiry(iso) {
   return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
 }
 
+/* Pro 페이월의 블러 프리뷰 — 일반적인 대시보드 목업(실제 도구 렌더 없이·데이터 불필요) */
+function renderPaywallDemo() {
+  const bars = [62, 78, 45, 90, 70, 55, 83, 48, 95, 67, 72, 58].map(h => `<div class="pw-bar" style="height:${h}%;"></div>`).join("");
+  const stat = (k, v) => `<div class="pw-stat"><div class="pw-k">${k}</div><div class="pw-v">${v}</div></div>`;
+  const trow = `<div class="pw-trow"><span></span><span></span><span></span><span></span><span></span></div>`;
+  return `
+    <div class="paywall-demo" aria-hidden="true">
+      <div class="pw-statrow">${stat("CPI", "₩2,480")}${stat("D7 ROAS", "184%")}${stat("증분 전환", "12,940")}${stat("iROAS", "2.3×")}</div>
+      <div class="pw-bars">${bars}</div>
+      <div style="background:var(--bg-2);border:1px solid var(--border);border-radius:12px;overflow:hidden;">${trow.repeat(6)}</div>
+    </div>`;
+}
+
 function pageAuthGate(targetId) {
   const meta = findMeta(targetId);
-  const groupBlurb = meta ? `${meta.id}. ${escapeHtml(meta.title)}` : "Ops Dashboard";
+  const title = meta ? escapeHtml(meta.title) : "분석 도구";
   const configIssue = AUTH_STATE.configError;
+  const IG_URL = "https://www.instagram.com/gondry__workshop/";
   return `
-    <div class="page-eyebrow">접근 제한</div>
-    <h1 class="page-title">Ops Dashboard 접근 키 필요</h1>
-    <p class="page-deck">${groupBlurb} 페이지는 발급된 접근 키 보유자만 사용할 수 있습니다. 관리자에게 키를 받아 입력해 주세요.</p>
+    <div class="paywall">
+      ${renderPaywallDemo()}
+      <div class="paywall-lock">
+        <div class="paywall-lock-card">
+          <span class="paywall-pro-pill">🔒 Pro 전용</span>
+          <h1 class="page-title" style="font-size:1.45rem;margin:0 0 6px;">${title}</h1>
+          <p class="page-deck" style="margin:0 0 14px;font-size:13.5px;">이 도구는 Pro 키 보유자만 사용할 수 있습니다. 키가 있으면 입력하고, 없으면 Instagram DM으로 요청해 주세요.</p>
 
-    ${configIssue ? `
-      <div class="callout danger" style="margin-bottom:1.5rem;">
-        <div class="ico">!</div>
-        <div class="body">
-          <strong>Supabase 설정 미완료</strong>
-          <p>${escapeHtml(configIssue)}</p>
+          ${configIssue ? `
+            <div class="callout danger" style="margin-bottom:1rem;">
+              <div class="ico">!</div>
+              <div class="body"><strong>Supabase 설정 미완료</strong><p>${escapeHtml(configIssue)}</p></div>
+            </div>` : ""}
+
+          <div class="auth-label">접근 키</div>
+          <div class="auth-input-row">
+            <input id="auth-key-input" type="password" placeholder="발급받은 Pro 키를 입력하세요" autocomplete="off" spellcheck="false" />
+            <button class="btn primary" id="auth-submit">확인</button>
+          </div>
+          <div class="auth-msg" id="auth-msg"></div>
+
+          <div style="border-top:1px solid var(--border-subtle);padding-top:12px;margin-top:6px;">
+            <div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:8px;">키가 없으신가요?</div>
+            <a class="paywall-dm" href="${IG_URL}" target="_blank" rel="noopener noreferrer">📩 Instagram @gondry__workshop 으로 키 요청</a>
+            <div class="paywall-dm-note">키는 SHA-256 해시 후 검증되며 평문은 서버에 전송되지 않습니다. 세션은 키 만료 시각까지 유효합니다.</div>
+          </div>
         </div>
-      </div>` : ""}
-
-    <div class="auth-card">
-      <div class="auth-label">접근 키</div>
-      <div class="auth-input-row">
-        <input id="auth-key-input" type="password" placeholder="발급받은 키를 입력하세요" autocomplete="off" spellcheck="false" />
-        <button class="btn primary" id="auth-submit">확인</button>
-      </div>
-      <div class="auth-msg" id="auth-msg"></div>
-      <div class="auth-help">
-        키는 SHA-256 해시 후 검증되며, 평문은 서버에 전송되지 않습니다. 세션은 키 만료 시각까지 유효합니다.
       </div>
     </div>
   `;
