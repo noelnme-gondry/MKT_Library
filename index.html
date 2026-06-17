@@ -3899,6 +3899,7 @@ function pageShell(meta, opts) {
     <div class="meta-row">${opts.chips || ""}</div>
     <div class="with-toc">
       <div>
+        ${renderDemoBanner(meta.id)}
         ${opts.summary ? `<div class="summary"><div class="summary-label">핵심 요약</div><p>${opts.summary}</p></div>` : ""}
         ${opts.body}
         <div class="page-footer">
@@ -5625,6 +5626,12 @@ function pageAuthGate(targetId) {
           </div>
           <div class="auth-msg" id="auth-msg"></div>
 
+          ${demoKeyForPage(targetId) ? `<div style="border-top:1px solid var(--border-subtle);padding-top:12px;margin:6px 0 2px;">
+            <div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:8px;">키 없이 먼저 둘러보시겠어요?</div>
+            ${renderDemoButton(demoKeyForPage(targetId))}
+            <span style="font-size:11px;color:var(--text-muted);margin-left:6px;">샘플 데이터로 이 도구를 미리 봅니다 (실제 분석엔 영향 없음).</span>
+          </div>` : ""}
+
           <div style="border-top:1px solid var(--border-subtle);padding-top:12px;margin-top:6px;">
             <div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:8px;">키가 없으신가요?</div>
             <a class="paywall-dm" href="${IG_URL}" target="_blank" rel="noopener noreferrer">📩 Instagram @gondry__workshop 으로 키 요청</a>
@@ -5637,6 +5644,7 @@ function pageAuthGate(targetId) {
 }
 
 function bindAuthGateHandlers(targetId) {
+  bindDemoHandlers();  // 페이월의 "데모 미리보기" 버튼 (키 없이도 동작)
   const input = document.getElementById("auth-key-input");
   const submit = document.getElementById("auth-submit");
   const msg = document.getElementById("auth-msg");
@@ -13662,6 +13670,10 @@ function renderMmmDataPrep() {
         <div class="dropzone-sub">UTF-8, 첫 행이 헤더인 .csv. 주차·가입(또는 재활성)·채널 spend 1개 이상 필요.</div>
         <input type="file" accept=".csv,text/csv" class="file-input" data-tool-csv-input="5-18" />
       </div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        ${renderDemoButton("5-18")}
+        <span style="font-size:11.5px;color:var(--text-muted);">데이터가 없어도 샘플 주간 패널로 카니발·예측·MMM이 어떻게 보이는지 미리 볼 수 있어요. <strong>실제 분석엔 영향 없음.</strong></span>
+      </div>
     </section>`;
   }
   mmmColMapInit(false);
@@ -17539,8 +17551,11 @@ async function navigate(id) {
   // 실제 페이지로 진입하면 랜딩 트랙 리셋 → 홈 복귀 시 항상 STEP 1(선택 창)부터
   if (id && id !== "home") LANDING_STATE.track = null;
 
-  // Ops Dashboard 페이지 접근 제어
-  if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid()) {
+  // 데모 페이지를 떠나면 데모 자동 종료(실제 데이터 복원). 같은 페이지 재렌더(탭/토글)는 유지.
+  if (DEMO_STATE.tool && DEMO_STATE.page && id !== DEMO_STATE.page) { DEMO_STATE.tool = null; DEMO_STATE.page = null; }
+
+  // Ops Dashboard 페이지 접근 제어 (단, 데모 모드는 키 없이도 미리보기 허용 — freemium 훅)
+  if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid() && !(DEMO_STATE.tool && DEMO_STATE.page === id)) {
     content.innerHTML = pageAuthGate(id);
     setBreadcrumb(id);
     renderNav(id);
@@ -17706,6 +17721,9 @@ function bindCSVPageHandlers() {
   // 신규 매핑 select(동일한 .map-select 클래스 보유)에도 바인딩되어, 5-3 등에서 매핑 변경 시
   // navigate('5-1') → (5-1→5-5 redirect) → Cannibalization(5-5)로 튀는 버그를 유발했음.
   // 신규 매핑 select는 data-tool-csv 기반 bindInlineCsvHandlers가 전담한다.
+
+  // ----- 데모 모드 버튼/배너 (전 도구 공통) -----
+  bindDemoHandlers();
 
   // ----- 5-2: 운영 모니터링 탭 전환 (시각화/스코어카드/페이싱/이상탐지) -----
   document.querySelectorAll("[data-mon-tab]").forEach(b => b.addEventListener("click", () => { MON_STATE.tab = b.dataset.monTab; navigate("5-2"); }));
@@ -20690,6 +20708,7 @@ const TOOL_GROUP = {
 
 function saveCsvToTool(toolId) {
   if (!toolId) return;
+  if (DEMO_STATE.tool === toolId) return;  // 데모 데이터는 절대 실제 스냅샷에 저장하지 않음
   TOOL_CSV_SNAPSHOTS[toolId] = {
     fileName: CSV_STATE.fileName,
     raw: CSV_STATE.raw,
@@ -20711,6 +20730,7 @@ function findGroupCsvSnapshot(toolId) {
 
 function loadCsvFromTool(toolId) {
   if (!toolId) return;
+  if (DEMO_STATE.tool === toolId) { _applyDemoToCsvState(toolId); return; }  // 데모: 실제 스냅샷 미접근, 데모 데이터만 로드
   ACTIVE_CSV_TOOL = toolId;
   // 본인 스냅샷 우선, 없으면 같은 그룹 형제의 CSV를 이어받음 (하나 업로드 → 연속 처리)
   let snap = TOOL_CSV_SNAPSHOTS[toolId];
@@ -20770,8 +20790,141 @@ function toolAnalyzeSig(toolId) {
   const sig = cm ? "cm:" + JSON.stringify(cm) : Object.entries(m).filter(([, v]) => v !== "__ignore__").map(([h, v]) => `${v}:${h}`).sort().join("|");
   return `${toolId}|${CSV_STATE.fileName}|${(CSV_STATE.raw || []).length}|${sig}`;
 }
-function isToolAnalyzed(toolId) { return TOOL_ANALYZED[toolId] === toolAnalyzeSig(toolId); }
-function markToolAnalyzed(toolId) { TOOL_ANALYZED[toolId] = toolAnalyzeSig(toolId); }
+function isToolAnalyzed(toolId) { if (DEMO_STATE.tool === toolId) return true; return TOOL_ANALYZED[toolId] === toolAnalyzeSig(toolId); }
+function markToolAnalyzed(toolId) { if (DEMO_STATE.tool === toolId) return; TOOL_ANALYZED[toolId] = toolAnalyzeSig(toolId); }
+
+/* ============================================================
+ * 데모 모드 — 샘플 데이터로 도구 미리보기.
+ * ★ 실제 분석/업로드 데이터에 절대 영향 없음:
+ *   · loadCsvFromTool: 데모 중 데모 데이터만 CSV_STATE에 로드(실제 스냅샷 미접근)
+ *   · saveCsvToTool / markToolAnalyzed: 데모 중 no-op(스냅샷·분석상태 보존)
+ *   · 데모 종료 시 실제 스냅샷 그대로 복원 (TOOL_CSV_SNAPSHOTS는 데모 중 한 번도 안 건드림)
+ * 데이터는 결정론(seededNoise) — 새로고침/재방문 동일.
+ * ============================================================ */
+const DEMO_STATE = { tool: null, page: null };
+
+function _demoEfficiencyData() {
+  const rng = seededNoise(424242);
+  const chans = ["Google UAC", "Meta", "TikTok", "Apple Search"];
+  const countries = ["KR", "JP", "US"];
+  const rows = [];
+  const base = Date.UTC(2025, 9, 1);
+  for (let d = 0; d < 45; d++) {
+    const date = new Date(base + d * 86400000).toISOString().slice(0, 10);
+    for (let ci = 0; ci < chans.length; ci++) {
+      const trend = 1 + d * 0.012, scale = [1.0, 0.75, 0.5, 0.35][ci];
+      const cost = Math.round((900000 * scale * trend) * (1 + (rng() + 0.5) * 0.3));
+      const imp = Math.round(cost / 18 * (1 + (rng() + 0.5) * 0.2));
+      const clk = Math.round(imp * (0.022 + (rng() + 0.5) * 0.006));
+      const inst = Math.max(1, Math.round(clk * (0.30 + (rng() + 0.5) * 0.06)));
+      const r0 = Math.round(inst * (900 + (rng() + 0.5) * 300));
+      rows.push({ date, channel: chans[ci], campaign_name: chans[ci] + " · Prospecting", country: countries[(d + ci) % 3], platform: (d + ci) % 2 ? "android" : "ios", cost, impressions: imp, clicks: clk, installs: inst, actions: Math.round(inst * 0.42), revenue_d0: r0, revenue_d7: Math.round(r0 * 2.3), revenue_d14: Math.round(r0 * 3.1) });
+    }
+  }
+  return { fileName: "demo_efficiency.csv", headers: ["date", "channel", "campaign_name", "country", "platform", "cost", "impressions", "clicks", "installs", "actions", "revenue_d0", "revenue_d7", "revenue_d14"], rows };
+}
+function _demoCohortData() {
+  const rng = seededNoise(70707); const rows = []; const offs = [0, 1, 3, 7, 14, 30, 60, 90];
+  for (let c = 0; c < 10; c++) {
+    const cd = new Date(Date.UTC(2025, 7, 1 + c * 7)).toISOString().slice(0, 10);
+    const size = Math.round(1200 + (rng() + 0.5) * 600 + c * 40);
+    for (const off of offs) {
+      const ret = Math.round(size * Math.pow(off + 1, -0.42) * (1 + (rng() + 0.5) * 0.05));
+      rows.push({ cohort_date: cd, day_offset: off, cohort_size: size, retained_users: ret, cohort_revenue: Math.round(ret * (520 + off * 55)), channel: ["Google UAC", "Meta", "TikTok"][c % 3] });
+    }
+  }
+  return { fileName: "demo_cohort.csv", headers: ["cohort_date", "day_offset", "cohort_size", "retained_users", "cohort_revenue", "channel"], rows };
+}
+function _demoCreativeData() {
+  const rng = seededNoise(60606);
+  const crs = [{ id: "CR_ugc_hook", hook: "UGC", angle: "혜택", fmt: "9:16", dur: "0-15s" }, { id: "CR_demo", hook: "데모", angle: "기능", fmt: "1:1", dur: "15-30s" }, { id: "CR_testimonial", hook: "후기", angle: "신뢰", fmt: "9:16", dur: "0-15s" }, { id: "CR_promo", hook: "프로모", angle: "긴급", fmt: "16:9", dur: "15-30s" }];
+  const rows = []; const base = Date.UTC(2025, 9, 10);
+  for (let d = 0; d < 30; d++) {
+    const date = new Date(base + d * 86400000).toISOString().slice(0, 10);
+    for (let ci = 0; ci < crs.length; ci++) {
+      const cr = crs[ci], fatigue = Math.max(0.4, 1 - d * 0.015 * (ci + 1) * 0.4);
+      const imp = Math.max(1, Math.round((30000 * fatigue) * (1 + (rng() + 0.5) * 0.3) * [1, 0.7, 0.6, 0.5][ci]));
+      const clk = Math.max(1, Math.round(imp * (0.018 + (rng() + 0.5) * 0.01) * fatigue));
+      const inst = Math.max(1, Math.round(clk * (0.28 + (rng() + 0.5) * 0.06)));
+      const v3 = Math.round(imp * (0.45 + (rng() + 0.5) * 0.1));
+      rows.push({ creative_id: cr.id, date, channel: ["Meta", "TikTok"][ci % 2], campaign_id: "C" + (ci % 2 + 1), impressions: imp, clicks: clk, installs: inst, spend: Math.round(clk * (480 + (rng() + 0.5) * 120)), actions: Math.round(inst * 0.4), revenue_d7: Math.round(inst * 2100), video_3s_views: v3, video_completions: Math.round(v3 * (0.25 + (rng() + 0.5) * 0.1)), hook_type: cr.hook, message_angle: cr.angle, format: cr.fmt, duration_bucket: cr.dur });
+    }
+  }
+  return { fileName: "demo_creative.csv", headers: ["creative_id", "date", "channel", "campaign_id", "impressions", "clicks", "installs", "spend", "actions", "revenue_d7", "video_3s_views", "video_completions", "hook_type", "message_angle", "format", "duration_bucket"], rows };
+}
+function _demoReadoutData() {
+  const rows = [];
+  const mk = (arm, label, ctl, ic, pc) => {
+    rows.push({ experiment_id: "EXP_온보딩개편", arm_id: arm, arm_label: label, is_control: ctl ? "true" : "false", metric_tier: "upper_funnel", metric_name: "가입 전환율", numerator: Math.round(ic * 12000), denominator: 12000, start_date: "2025-10-01", end_date: "2025-10-21" });
+    rows.push({ experiment_id: "EXP_온보딩개편", arm_id: arm, arm_label: label, is_control: ctl ? "true" : "false", metric_tier: "downstream_quality", metric_name: "D7 결제 전환율", numerator: Math.round(pc * 12000), denominator: 12000, start_date: "2025-10-01", end_date: "2025-10-21" });
+  };
+  mk("A", "대조군", true, 0.082, 0.021); mk("B", "변형 B (새 온보딩)", false, 0.097, 0.027); mk("C", "변형 C (간소화)", false, 0.088, 0.019);
+  return { fileName: "demo_readout.csv", headers: ["experiment_id", "arm_id", "arm_label", "is_control", "metric_tier", "metric_name", "numerator", "denominator", "start_date", "end_date"], rows };
+}
+function _demoHoldoutData() {
+  return { fileName: "demo_holdout.csv", headers: ["experiment_id", "holdout_group", "numerator", "denominator", "spend", "revenue_d7"], rows: [
+    { experiment_id: "Meta_증분테스트", holdout_group: "control", numerator: 480, denominator: 10000, spend: 0, revenue_d7: 0 },
+    { experiment_id: "Meta_증분테스트", holdout_group: "test", numerator: 760, denominator: 10000, spend: 6200000, revenue_d7: 11800000 },
+  ] };
+}
+function _demoMmmData() {
+  const rng = seededNoise(518518); const rows = [];
+  for (let w = 0; w < 90; w++) {
+    const date = new Date(Date.UTC(2024, 0, 1) + w * 7 * 86400000).toISOString().slice(0, 10);
+    const trend = 2600 + w * 9, season = 280 * Math.sin(w / 52.18 * 2 * Math.PI);
+    const g = Math.round(16000 + 5000 * Math.sin(w / 9) + 2500 * (rng() + 0.5) + w * 30);
+    const meta = Math.round(9000 + 3000 * Math.sin(w / 7 + 1) + 1800 * (rng() + 0.5));
+    const tt = Math.round(4000 + 1500 * Math.sin(w / 6 + 2) + 1200 * (rng() + 0.5));
+    const brand = Math.round(2500 + 600 * (rng() + 0.5));
+    const reg = Math.round(trend + season + 0.045 * g + 0.03 * meta + 0.02 * tt + 0.05 * brand + 150 * (rng() + 0.5));
+    rows.push({ Week: date, Regs: reg, google_roi: g, meta, tiktok: tt, brand });
+  }
+  return { fileName: "demo_mmm_weekly.csv", headers: ["Week", "Regs", "google_roi", "meta", "tiktok", "brand"], rows, colMap: { Week: { role: "week" }, Regs: { role: "reg", plat: "common" }, google_roi: { role: "channel", kind: "perf", plat: "common" }, meta: { role: "channel", kind: "perf", plat: "common" }, tiktok: { role: "channel", kind: "perf", plat: "common" }, brand: { role: "channel", kind: "brand", plat: "common" } } };
+}
+
+// csvTool → 데모 데이터 빌더 (효율 grain은 5-2/5-3/5-9 공유)
+const DEMO_BUILDERS = {
+  "5-2": _demoEfficiencyData, "5-3": _demoEfficiencyData, "5-9": _demoEfficiencyData,
+  "5-8": _demoCohortData, "5-6": _demoCreativeData,
+  "5-7": _demoReadoutData, "5-15": _demoHoldoutData, "5-18": _demoMmmData,
+};
+function _applyDemoToCsvState(toolId) {
+  const b = DEMO_BUILDERS[toolId]; if (!b) return;
+  const d = b();
+  CSV_STATE.fileName = d.fileName; CSV_STATE.raw = d.rows; CSV_STATE.headers = d.headers;
+  CSV_STATE.mapping = {}; d.headers.forEach(h => CSV_STATE.mapping[h] = h); CSV_STATE.selectedCohort = 7;
+  ACTIVE_CSV_TOOL = toolId;
+  if (toolId === "5-18" && d.colMap) MMM_METH_STATE.colMap = d.colMap;
+}
+// 페이지(host) → 그 페이지에서 보여줄 기본 데모 데이터 키 (5-4 실험은 결과 탭 demo)
+function demoKeyForPage(pageId) {
+  if (DEMO_BUILDERS[pageId]) return pageId;
+  if (pageId === "5-4") return "5-7";
+  return null;
+}
+function enterDemo(toolId) {
+  if (!DEMO_BUILDERS[toolId]) return;
+  DEMO_STATE.tool = toolId;
+  DEMO_STATE.page = (location.hash || "").replace(/^#/, "") || "home";
+  if (toolId === "5-18") MMM_METH_STATE.stage = "diagnose";
+  navigate(DEMO_STATE.page);
+}
+function exitDemo() {
+  const page = DEMO_STATE.page; DEMO_STATE.tool = null; DEMO_STATE.page = null;
+  navigate(page || "home");
+}
+function renderDemoButton(toolId) {
+  if (!DEMO_BUILDERS[toolId]) return "";
+  return `<button class="ab-pill" data-tool-demo="${toolId}" style="background:linear-gradient(135deg,rgba(192,132,252,0.2),rgba(122,162,247,0.1));border-color:rgba(192,132,252,0.5);color:var(--text-1);font-weight:600;">🎭 데모 데이터로 미리보기</button>`;
+}
+function renderDemoBanner(pageId) {
+  if (!DEMO_STATE.tool || DEMO_STATE.page !== pageId) return "";
+  return `<div class="callout" style="margin:0 0 14px;border-color:rgba(192,132,252,0.5);background:linear-gradient(135deg,rgba(192,132,252,0.12),rgba(122,162,247,0.04));"><div class="ico">🎭</div><div class="body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;"><div><strong>데모 모드 — 샘플 데이터입니다.</strong> 실제 업로드 데이터·분석 결과에는 전혀 영향을 주지 않습니다. 도구가 어떻게 보이는지 둘러보세요.</div><button class="ab-pill" data-demo-exit="1" style="white-space:nowrap;">✕ 데모 종료</button></div></div>`;
+}
+function bindDemoHandlers() {
+  document.querySelectorAll("[data-tool-demo]").forEach(b => b.addEventListener("click", () => enterDemo(b.dataset.toolDemo)));
+  document.querySelectorAll("[data-demo-exit]").forEach(b => b.addEventListener("click", () => exitDemo()));
+}
 
 /* ============================================================
  * 도구 내장형 CSV 업로드 + 매핑 UI (compact)
@@ -20996,6 +21149,11 @@ function renderInlineCsvUpload(toolId) {
         <div class="dropzone-sub">UTF-8 인코딩, 첫 행이 헤더인 .csv 파일.</div>
         <input type="file" accept=".csv,text/csv" class="file-input" data-tool-csv-input="${toolId}" />
       </div>
+
+      ${DEMO_BUILDERS[toolId] ? `<div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        ${renderDemoButton(toolId)}
+        <span style="font-size:11.5px;color:var(--text-muted);">데이터가 없어도 샘플로 이 도구가 어떻게 보이는지 미리 볼 수 있어요. <strong>실제 분석엔 영향 없음.</strong></span>
+      </div>` : ""}
 
       <details style="margin-top:16px;">
         <summary style="cursor:pointer;color:var(--text-muted);font-weight:500;font-size:12px;">▸ 이 도구가 필요로 하는 컬럼 가이드 (업로드 전 미리보기)</summary>
@@ -21238,7 +21396,8 @@ async function init() {
     const content = $("#content");
     let html = "";
 
-    if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid()) {
+    if (DEMO_STATE.tool && DEMO_STATE.page && id !== DEMO_STATE.page) { DEMO_STATE.tool = null; DEMO_STATE.page = null; }
+    if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid() && !(DEMO_STATE.tool && DEMO_STATE.page === id)) {
       content.innerHTML = pageAuthGate(id);
       setBreadcrumb(id);
       renderNav(id);

@@ -86,6 +86,10 @@ tools:
 
 도구 통합 탭형 병합(SaaS, PR#132~137, 17→6): 같은/다른 grain 도구를 host `page_5_N` 탭으로. 흡수 `page_5_M()`→`monXxxBody()`(섹션만·게이트/pageShell/s-prep 제거)+등록 삭제, `XXX_TAB_STATE`+`data-xxx-tab`+redirect+IA·AUTH 정리, bind/chart/math 함수 유지(DOM-gate 자동발화). **cross-grain**: `loadCsvFromTool(csvTool)` 탭별 스왑(저장없이 로드만 안전) — 단 흡수 도구가 grain 다르면 `TOOL_GROUP`을 distinct로(같으면 findGroupCsvSnapshot 폴백이 잘못된 CSV 끌어옴). **실험 분석(PR#137)**: 5-4+5-7+5-15→`page_5_4` 3탭(design 무CSV/readout/holdout). **결과표 강화**=`renderReadoutMatrix` arm×지표 비교 매트릭스(상대lift·★·P(B>A)·95%CI·🏆winner·색) + detail/holdout unpooled 95%CI. render층만→골든·runReadoutTests/runIncrTests byte-동일. validate_exp 20/20.
 
+SaaS 셸(PR#139~142): 랜딩 2단계(LANDING_STATE.track)·freemium 티어(TOOL_TIER, 5-2 free)·Pro 페이월(pageAuthGate 블러+Instagram DM @gondry__workshop)·⌘K 팔레트(CMDK_STATE, 전역 오버레이). 전부 render층→골든 byte-동일. **남음(보류)**: 전역 데이터 필터·매핑 DnD(둘 다 침습적·headless 검증 불가).
+
+데모 모드(PR#143~, "모든 도구 데모 버튼·실제 분석 영향 X"): `DEMO_STATE={tool,page}` 활성 시 saveCsvToTool/markToolAnalyzed **no-op**·loadCsvFromTool은 데모만 로드(실제 스냅샷 미접근)·isToolAnalyzed true. TOOL_CSV_SNAPSHOTS 데모 중 불변→종료 시 자동 복원. `DEMO_BUILDERS`(csvTool→seededNoise 결정론, 헤더=STANDARD 키 identity 매핑, 5-18은 colMap 포함). 페이월 auth 우회(`demoKeyForPage`)로 키 없이 미리보기(freemium 훅). enterDemo/exitDemo/renderDemoButton/renderDemoBanner/bindDemoHandlers. 가드는 `DEMO_STATE.tool===toolId` 조건→비데모 무영향·골든 byte-동일. validate_demo 19/19(★스냅샷 불변·복원).
+
 # 통계 도구 표준 (5-5 등)
 
 - 순수 함수 객체에 분리 (`CANNIBAL_STATS`, `ALLOC_MATH`)
