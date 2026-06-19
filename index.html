@@ -6167,16 +6167,50 @@ const MON_TAB_GROUPS = [
   { label: "효율 진단", tabs: ["funnel", "segment"] },
 ];
 const MON_TABS = [
-  { id: "viz",        icon: "📊", label: "시각화",       desc: "시계열·채널·CPI 5종 + KPI" },
-  { id: "scorecard",  icon: "🧮", label: "스코어카드",   desc: "핵심 KPI + 직전 대비(WoW)" },
-  { id: "pacing",     icon: "📈", label: "페이싱",       desc: "월말 착지 예측·페이스 경고" },
-  { id: "anomaly",    icon: "🚨", label: "이상탐지",     desc: "급등·급락 z-score 감지" },
-  { id: "ltv",        icon: "💵", label: "LTV:CAC",     desc: "CAC 대비 LTV 배수·회수기간 (효율 CSV)" },
-  { id: "maturation", icon: "📊", label: "ROAS 성숙도", desc: "조기 ROAS → D90/D180 성숙 예측 (효율 CSV)" },
-  { id: "cohort",     icon: "📉", label: "코호트 리텐션", desc: "리텐션 곡선·LTV 외삽 (코호트 CSV 별도)" },
-  { id: "funnel",     icon: "🪜", label: "퍼널 진단",   desc: "노출→클릭→설치→액션 단계 CVR·이탈" },
-  { id: "segment",    icon: "🗺", label: "세그먼트",    desc: "국가×채널×플랫폼 효율 매트릭스" },
+  { id: "viz",        icon: "📊", label: "시각화",       desc: "시계열·채널·CPI 5종 + KPI",                  requiresAny: [] },
+  { id: "scorecard",  icon: "🧮", label: "스코어카드",   desc: "핵심 KPI + 직전 대비(WoW)",                  requiresAny: ["installs", "actions"] },
+  { id: "pacing",     icon: "📈", label: "페이싱",       desc: "월말 착지 예측·페이스 경고",                 requiresAny: [] },
+  { id: "anomaly",    icon: "🚨", label: "이상탐지",     desc: "급등·급락 z-score 감지",                    requiresAny: [] },
+  { id: "ltv",        icon: "💵", label: "LTV:CAC",     desc: "CAC 대비 LTV 배수·회수기간 (효율 CSV)",      requiresAny: ["revenue_d30","revenue_d60","revenue_d90","revenue_d180","revenue_d360"] },
+  { id: "maturation", icon: "📊", label: "ROAS 성숙도", desc: "조기 ROAS → D90/D180 성숙 예측 (효율 CSV)", requiresAny: ["revenue_d30","revenue_d60","revenue_d90","revenue_d180","revenue_d360"] },
+  { id: "cohort",     icon: "📉", label: "코호트 리텐션", desc: "리텐션 곡선·LTV 외삽 (코호트 CSV 별도)",   requiresAny: [] },
+  { id: "funnel",     icon: "🪜", label: "퍼널 진단",   desc: "노출→클릭→설치→액션 단계 CVR·이탈",         requiresAny: ["click"] },
+  { id: "segment",    icon: "🗺", label: "세그먼트",    desc: "국가×채널×플랫폼 효율 매트릭스",             requiresAny: ["channel","country","platform"] },
 ];
+function isTabUnlocked(tab) {
+  const ra = tab.requiresAny || [];
+  if (!ra.length) return true;
+  const mapped = new Set(Object.values(CSV_STATE.mapping || {}).filter(v => v && v !== "__ignore__"));
+  return ra.some(k => mapped.has(k));
+}
+function renderCapabilityMatrix() {
+  const rows = [
+    { series: "기본",          cols: "date, cost",                      unlocks: "시각화 · 페이싱 · 이상탐지",               note: "" },
+    { series: "설치/액션",     cols: "installs / actions",              unlocks: "스코어카드 KPI",                           note: "" },
+    { series: "클릭수",        cols: "click",                           unlocks: "퍼널 CVR 완전 표시",                       note: "" },
+    { series: "채널·국가·플랫폼", cols: "channel, country, platform",  unlocks: "세그먼트 비교",                            note: "" },
+    { series: "Revenue(Dn)",  cols: "revenue_d30 ~ d360",              unlocks: "LTV:CAC · ROAS 성숙도",                    note: "→ ROAS 자동 산출" },
+    { series: "PU(Dn)",       cols: "pu_d30 ~ d360",                   unlocks: "PUR 분석",                                 note: "→ PUR 자동 산출" },
+    { series: "Retention(Dn)", cols: "ret_d30 ~ d360",                 unlocks: "리텐션 예측",                              note: "" },
+  ];
+  return `<div class="block" style="padding:16px 20px;margin-bottom:16px;">
+    <div style="font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:10px;">📋 데이터×기능 연결표</div>
+    <p style="font-size:11.5px;color:var(--text-muted);margin:0 0 12px;">컬럼을 더 매핑할수록 열리는 탭이 늘어납니다.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="border-bottom:1px solid var(--border);">
+        <th style="text-align:left;padding:5px 10px 5px 0;color:var(--text-muted);font-weight:600;">데이터 계열</th>
+        <th style="text-align:left;padding:5px 10px;color:var(--text-muted);font-weight:600;">컬럼 예시</th>
+        <th style="text-align:left;padding:5px 0;color:var(--text-muted);font-weight:600;">열리는 기능</th>
+      </tr></thead>
+      <tbody>${rows.map((r,i) => `<tr style="border-bottom:1px solid var(--border-subtle);">
+        <td style="padding:7px 10px 7px 0;font-weight:600;color:var(--text-1);white-space:nowrap;">${r.series}</td>
+        <td style="padding:7px 10px;color:var(--text-2);font-family:'JetBrains Mono',monospace;font-size:11px;">${r.cols}</td>
+        <td style="padding:7px 0;color:var(--text-2);">${r.unlocks}${r.note ? `<span style="margin-left:6px;font-size:10.5px;color:var(--accent);opacity:.85;">${r.note}</span>` : ""}</td>
+      </tr>`).join("")}</tbody>
+    </table>
+    <p style="font-size:11px;color:var(--text-muted);margin:10px 0 0;">🔒 데이터는 브라우저 메모리에서만 처리됩니다. 서버 전송·저장 없음.</p>
+  </div>`;
+}
 function renderMonFilterBar() {
   const rows = getMappedRows(); // option 추출용 — 필터 전 전체
   const mapped = new Set(Object.values(CSV_STATE.mapping || {}).filter(v => v !== "__ignore__"));
@@ -6250,9 +6284,9 @@ function renderMonTabs() {
     ${MON_TAB_GROUPS.map(g => `
     <div style="margin-bottom:6px;">
       <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px 2px;">${g.label}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">${g.tabs.map(id => { const d = tabMap[id]; if (!d) return ""; return `<button class="mmm-stage-tab ${t === d.id ? "active" : ""}" data-mon-tab="${d.id}" style="flex:1;min-width:130px;text-align:left;color:var(--text-1);background:${t === d.id ? "linear-gradient(135deg,rgba(122,162,247,0.16),rgba(122,162,247,0.04))" : "var(--bg-2)"};border:1px solid ${t === d.id ? "rgba(122,162,247,0.55)" : "var(--border)"};border-radius:12px;padding:10px 13px;cursor:pointer;transition:all .15s;">
-        <div style="font-size:13px;font-weight:700;">${d.icon} ${d.label}</div>
-        <div style="font-size:10px;color:var(--text-2);margin-top:2px;line-height:1.3;">${d.desc}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">${g.tabs.map(id => { const d = tabMap[id]; if (!d) return ""; const locked = !isTabUnlocked(d); return `<button class="mmm-stage-tab ${t === d.id && !locked ? "active" : ""}" data-mon-tab="${d.id}" ${locked ? 'disabled title="이 탭을 열려면 추가 컬럼을 매핑하세요"' : ""} style="flex:1;min-width:130px;text-align:left;color:${locked ? "var(--text-muted)" : "var(--text-1)"};background:${t === d.id && !locked ? "linear-gradient(135deg,rgba(122,162,247,0.16),rgba(122,162,247,0.04))" : "var(--bg-2)"};border:1px solid ${t === d.id && !locked ? "rgba(122,162,247,0.55)" : "var(--border)"};border-radius:12px;padding:10px 13px;cursor:${locked ? "default" : "pointer"};opacity:${locked ? ".55" : "1"};transition:all .15s;">
+        <div style="font-size:13px;font-weight:700;">${locked ? "🔒" : d.icon} ${d.label}</div>
+        <div style="font-size:10px;color:var(--text-2);margin-top:2px;line-height:1.3;">${locked ? "추가 컬럼 매핑 필요" : d.desc}</div>
       </button>`; }).join("")}</div>
     </div>`).join("")}
   </section>`;
@@ -6270,8 +6304,8 @@ function page_5_2() {
       chips: `<span class="chip warning"><span class="dot"></span>${isCohort ? "코호트 CSV 업로드 대기" : "CSV 업로드 대기"}</span>${authStatusChip()}`,
       stickyFilter: renderMonFilterBar(),
       summary: isCohort ? "코호트별 리텐션 곡선 + LTV 외삽. 코호트 날짜·경과일·코호트 크기·잔존/매출 컬럼 필요." : "필수: date + cost(또는 installs/actions). 컬럼을 더 매핑하면 LTV·퍼널·세그먼트 탭이 추가로 열립니다.",
-      toc: [{ id: "s-prep", title: "데이터 준비" }],
-      body: `<section class="block" id="s-prep">${renderInlineCsvUpload(csvTool)}</section>`,
+      toc: [{ id: "s-prep", title: "데이터 준비" }, { id: "s-cap", title: "데이터×기능 연결표" }],
+      body: `<section class="block" id="s-prep">${renderInlineCsvUpload(csvTool)}</section><div id="s-cap">${isCohort ? "" : renderCapabilityMatrix()}</div>`,
     });
   }
   // 탭 → 본문 dispatch
