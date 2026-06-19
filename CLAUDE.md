@@ -571,6 +571,7 @@ self-update 메커니즘이 사라지면 하네스가 정체됨.
 
 상세는 `docs/backlog.md` 참조 (CLAUDE.md 비대화 방지로 분리 보관).
 
+- **Q3 작업 (다른 모델 실행 예정, 스펙 확정)**: `docs/q3-sticky-progressive-cohort-maturation.md` — ① WS1 5-2 상단 sticky 필터 바(날짜/platform/국가/channel, `getMappedRowsForMon` 실제 필터링) ② WS2 CSV 업로드 점진 공개 + `MON_FEATURES` SSOT 데이터×기능 capability 매트릭스 ③ WS3 코호트 Revenue/Retention/PUR Dn 동적 확장 + 마투레이션 예측(성숙 코호트 완성비→Predict D90/D180, §8 가드레일). 권장 순서 WS2→WS1→WS3(3-A/B/C 분할).
 - **남은 UI 작업**: ① SOP 콘텐츠 보강(1-2~4-4 인라인, 정확성 검수 기반·진행방식 미정) ② MMM.
 - **MMM = Tinder KR Reg/React Marketing-Response Regression** 스펙(`docs/backlog.md` § B)이 정식 요구사항.
   착수 전 범위 확정 필요: 분석 파이프라인 실행 환경 + 결과 JSON을 본 대시보드(5-N)가 소비하는 연결 형태.
