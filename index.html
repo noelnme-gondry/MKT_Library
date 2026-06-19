@@ -13971,7 +13971,7 @@ function page_5_18() {
   }
   const stage = MMM_METH_STATE.stage;
   const tocByStage = stage === "mmm"
-    ? [{ id: "s-prep", title: "데이터·매핑" }, { id: "s-stage2-intro", title: "② MMM 안내" }, { id: "s-effects", title: "채널별 효과" }, { id: "s-mmm", title: "§5 수확체감·계수" }, { id: "s-decomp", title: "§5.5 기여 분해" }, { id: "s-verdict", title: "§6 종합·export" }]
+    ? [{ id: "s-prep", title: "데이터·매핑" }, { id: "s-stage2-intro", title: "② MMM 안내" }, { id: "s-effects", title: "채널별 효과" }, { id: "s-budget-guide", title: "예산 배분 가이드" }, { id: "s-mmm", title: "§5 수확체감·계수" }, { id: "s-decomp", title: "§5.5 기여 분해" }, { id: "s-verdict", title: "§6 종합·export" }]
     : stage === "forecast"
       ? [{ id: "s-prep", title: "데이터·매핑" }, { id: "s-stage3-intro", title: "③ 예측 안내" }, { id: "s-forecast", title: "§7 예측·예산·다운로드" }]
       : stage === "diagnose"
@@ -13981,6 +13981,7 @@ function page_5_18() {
         ${renderMmmStageTabs(c)}${renderMmmTargetSelector(c)}
         ${renderMmmStage2Intro(c)}
         ${renderMmmEffectsCard(c)}
+        ${renderMmmBudgetGuide(c)}
         ${renderMmmAbsorbNotice(c)}
         ${renderMmmConfig(c)}
         ${renderMmmMmm(c)}
@@ -14791,6 +14792,50 @@ function renderMmmMmm(c) {
     })()}
   </section>`;
 }
+/* P4 증분 예산 배분 가이드 — saturationByChannel 한계효과 내림차순 랭킹.
+   render-only: 캐시 lookup만, 무거운 파이프라인 재실행 없음. 골든 byte-identical. */
+function renderMmmBudgetGuide(c) {
+  const t = MMM_METH_STATE.target;
+  const T = c.byTarget && c.byTarget[t];
+  if (!T || !T.mmm) return "";
+  const sbc = T.mmm.saturationByChannel || {};
+  const keys = Object.keys(sbc);
+  if (!keys.length) return "";
+
+  const tgtN = (typeof _MMM_TARGET_KO !== "undefined" ? (_MMM_TARGET_KO[t] || t) : t).split(" ")[0];
+  const channels = keys
+    .map(k => {
+      const s = sbc[k];
+      const curMarg = s.recentMean > 0 ? +(s.ln_coef / (1 + s.recentMean) * 1000).toFixed(1) : null;
+      return { k, s, curMarg };
+    })
+    .filter(({ s, curMarg }) => s.ln_coef > 0 && curMarg != null && curMarg > 0)
+    .sort((a, b) => (b.curMarg || 0) - (a.curMarg || 0));
+
+  if (!channels.length) return "";
+
+  const ranked = channels.map(({ s, curMarg }, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:${i === 0 ? "rgba(122,162,247,0.08)" : "var(--bg-2)"};border-radius:8px;margin-bottom:6px;border:1px solid ${i === 0 ? "rgba(122,162,247,0.25)" : "var(--border)"};">
+      <span style="font-size:17px;font-weight:700;color:${i === 0 ? "#7aa2f7" : "var(--text-muted)"};min-width:22px;">${i + 1}</span>
+      <div style="flex:1;">
+        <strong>${escapeHtml(s.label)}</strong>
+        <div style="font-size:12px;color:var(--text-secondary);">+$1k당 <strong style="color:#22c55e;">+${curMarg}명</strong> · 현 지출 $${(s.recentMean / 1000).toFixed(1)}k/일</div>
+      </div>
+      ${i === 0 ? `<span style="font-size:10px;background:rgba(122,162,247,0.18);color:#7aa2f7;padding:2px 8px;border-radius:4px;">↑ 다음 예산 우선</span>` : ""}
+    </div>`).join("");
+
+  return `<section class="block" id="s-budget-guide">
+    <h2 class="section-title"><span class="ix">§5.3</span>증분 예산 배분 가이드 <span style="font-size:11px;background:rgba(251,191,36,0.12);color:#fbbf24;padding:2px 8px;border-radius:4px;margin-left:6px;">가설 — 인과 아님</span></h2>
+    <div class="callout warning" style="margin-bottom:0.75rem;">
+      <div class="ico">⚠</div>
+      <div class="body"><p><strong>가설 가이드</strong> — 회귀 반응곡선(관측 연관성) 기반입니다. 인과·증분 확정은 holdout(5-15) 전용. 채널 단위 가이드이며 캠페인 단위 배분·시나리오는 <a href="#5-3" data-route="5-3" style="color:var(--accent);">Pro 예산 배분(5-3) →</a></p></div>
+    </div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:0.75rem;">현 지출 기준 +$1k 한계 효과(${escapeHtml(tgtN)}) 내림차순. 다음 예산 증액 시 <strong>상위 채널 우선</strong>이 반응곡선상 효율적입니다.</p>
+    ${ranked}
+    <p style="font-size:11px;color:var(--text-muted);margin-top:0.75rem;">§5 수확체감 누적 응답곡선 기반. 음수 계수 채널 제외(노이즈). 절대 인원·ROI 확정은 holdout(5-15). 단기 캠페인 배분은 Pro 예산 배분(5-3)을 사용하세요.</p>
+  </section>`;
+}
+
 const MMM_DECOMP_PALETTE = ["#7aa2f7", "#22c55e", "#fbbf24", "#f87171", "#bb9af7", "#7dcfff", "#e0af68", "#9ece6a", "#ff9e64", "#2ac3de"];
 function mmmDriverColor(name, groupNames) { const i = groupNames.indexOf(name); return MMM_DECOMP_PALETTE[(i < 0 ? 0 : i) % MMM_DECOMP_PALETTE.length]; }
 // 활성 모델(ols/merge/ridge)·타깃의 분해 (가벼운 메모 — 모델 토글은 분해만 재계산, 무거운 파이프라인 캐시 유지)
