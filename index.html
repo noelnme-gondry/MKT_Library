@@ -309,6 +309,29 @@
   }
 
   .topbar-actions { display: flex; align-items: center; gap: 0.5rem; }
+  /* 5-2 운영 대시보드 sticky 탭+필터 바 */
+  .mon-sticky-bar {
+    position: sticky;
+    top: 48px;
+    z-index: 9;
+    background: rgba(12,13,15,.92);
+    backdrop-filter: saturate(160%) blur(8px);
+    margin: 0 -24px;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .mon-filter-bar { padding: 5px 0 6px; }
+  .mon-filter-inner { display:flex;align-items:center;gap:10px;flex-wrap:wrap;overflow-x:auto; }
+  .mon-filter-title { font-size:11.5px;font-weight:600;color:var(--text-muted);white-space:nowrap;flex-shrink:0; }
+  .mon-filter-badge { background:#7aa2f7;color:#0b0d12;border-radius:99px;padding:0 5px;font-size:9.5px;margin-left:3px; }
+  .mon-filter-item { display:flex;align-items:center;gap:4px;flex-shrink:0; }
+  .mon-filter-label { font-size:11px;color:var(--text-muted);white-space:nowrap; }
+  .mon-filter-input, .mon-filter-select {
+    font-size:11.5px;background:var(--bg-2);border:1px solid var(--border);
+    border-radius:5px;color:var(--text-1);padding:3px 6px;height:26px;
+  }
+  .mon-filter-select[multiple] { height:26px;overflow:hidden; }
+  .mon-filter-reset { font-size:11px; }
   .btn {
     display: inline-flex; align-items: center; gap: 0.4rem;
     font-size: 13px;
@@ -5777,9 +5800,27 @@ function getMappedRows() {
   });
 }
 
+function monFilterKey() {
+  const f = MON_FILTER_STATE;
+  const cs = f.countries ? [...f.countries].sort().join(",") : "*";
+  const ch = f.channels  ? [...f.channels].sort().join(",")  : "*";
+  return `${f.dateStart||""}|${f.dateEnd||""}|${f.platform}|${cs}|${ch}`;
+}
+
+function getMappedRowsForMon() {
+  let rows = getMappedRows();
+  const f = MON_FILTER_STATE;
+  if (f.dateStart) rows = rows.filter(r => r.date >= f.dateStart);
+  if (f.dateEnd)   rows = rows.filter(r => r.date <= f.dateEnd);
+  if (f.platform !== "all") rows = rows.filter(r => String(r.platform || "") === f.platform);
+  if (f.countries) rows = rows.filter(r => f.countries.has(String(r.country  || "").trim()));
+  if (f.channels)  rows = rows.filter(r => f.channels.has(String(r.channel   || "").trim()));
+  return rows;
+}
+
 // KPI 자동 계산 (선택된 코호트 기준)
 function calculateKPIs() {
-  const rows = getMappedRows();
+  const rows = getMappedRowsForMon();
   const cohort = CSV_STATE.selectedCohort;
   const sum = (key) => rows.reduce((a, r) => a + (Number(r[key]) || 0), 0);
   const cost        = sum("cost");
@@ -6035,6 +6076,15 @@ function monVizBody() {
 }
 const MON_STATE = { tab: "viz" };
 
+// 운영 대시보드 필터 상태 (efficiency 탭 전용 — cohort 탭은 별도 grain)
+const MON_FILTER_STATE = {
+  dateStart: null,   // "YYYY-MM-DD" | null = 무제한
+  dateEnd:   null,
+  platform:  "all",  // "all" | 실제 platform 값 (데이터에서 추출)
+  countries: null,   // null = 전체 | Set(선택 국가)
+  channels:  null,   // null = 전체 | Set(선택 채널)
+};
+
 // 기능×필드 SSOT — 어떤 필드가 어떤 탭을 활성화하는지 한 곳에 정의
 const MON_FEATURES = [
   { key: "viz",        label: "시각화",       need: ["date","cost"],                boost: ["channel","platform","country","impressions","clicks"] },
@@ -6064,6 +6114,72 @@ const MON_TABS = [
   { id: "funnel",     icon: "🪜", label: "퍼널 진단",   desc: "노출→클릭→설치→액션 단계 CVR·이탈" },
   { id: "segment",    icon: "🗺", label: "세그먼트",    desc: "국가×채널×플랫폼 효율 매트릭스" },
 ];
+function renderMonFilterBar() {
+  const rows = getMappedRows(); // option 추출용 — 필터 전 전체
+  const mapped = new Set(Object.values(CSV_STATE.mapping || {}).filter(v => v !== "__ignore__"));
+  const f = MON_FILTER_STATE;
+  const hasDate     = mapped.has("date");
+  const hasPlatform = mapped.has("platform");
+  const hasCountry  = mapped.has("country");
+  const hasChannel  = mapped.has("channel");
+  if (!hasDate && !hasPlatform && !hasCountry && !hasChannel) return "";
+
+  const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
+  const platforms = hasPlatform ? uniq(rows.map(r => String(r.platform || ""))) : [];
+  const countries = hasCountry  ? uniq(rows.map(r => String(r.country  || ""))) : [];
+  const channels  = hasChannel  ? uniq(rows.map(r => String(r.channel  || ""))) : [];
+  const dates     = hasDate     ? rows.map(r => r.date).filter(Boolean).sort() : [];
+  const minDate = dates[0] || "", maxDate = dates[dates.length - 1] || "";
+
+  let active = 0;
+  if (f.dateStart) active++;
+  if (f.dateEnd)   active++;
+  if (f.platform !== "all") active++;
+  if (f.countries) active++;
+  if (f.channels)  active++;
+
+  const parts = [];
+  if (hasDate) parts.push(`
+    <label class="mon-filter-item">
+      <span class="mon-filter-label">시작</span>
+      <input type="date" class="mon-filter-input" data-mon-filter="dateStart" value="${f.dateStart||""}" min="${minDate}" max="${maxDate}">
+    </label>
+    <label class="mon-filter-item">
+      <span class="mon-filter-label">종료</span>
+      <input type="date" class="mon-filter-input" data-mon-filter="dateEnd" value="${f.dateEnd||""}" min="${minDate}" max="${maxDate}">
+    </label>`);
+  if (hasPlatform && platforms.length) parts.push(`
+    <label class="mon-filter-item">
+      <span class="mon-filter-label">Platform</span>
+      <select class="mon-filter-select" data-mon-filter="platform">
+        <option value="all" ${f.platform==="all"?"selected":""}>전체</option>
+        ${platforms.map(p=>`<option value="${escapeHtml(p)}" ${f.platform===p?"selected":""}>${escapeHtml(p)}</option>`).join("")}
+      </select>
+    </label>`);
+  if (hasCountry && countries.length) parts.push(`
+    <label class="mon-filter-item" title="Ctrl/⌘+클릭으로 다중 선택">
+      <span class="mon-filter-label">국가</span>
+      <select class="mon-filter-select" data-mon-filter="countries" multiple size="1" style="min-width:80px;">
+        ${countries.map(c=>`<option value="${escapeHtml(c)}" ${(f.countries===null||f.countries.has(c))?"selected":""}>${escapeHtml(c)}</option>`).join("")}
+      </select>
+    </label>`);
+  if (hasChannel && channels.length) parts.push(`
+    <label class="mon-filter-item" title="Ctrl/⌘+클릭으로 다중 선택">
+      <span class="mon-filter-label">채널</span>
+      <select class="mon-filter-select" data-mon-filter="channels" multiple size="1" style="min-width:80px;">
+        ${channels.map(c=>`<option value="${escapeHtml(c)}" ${(f.channels===null||f.channels.has(c))?"selected":""}>${escapeHtml(c)}</option>`).join("")}
+      </select>
+    </label>`);
+
+  return `<div class="mon-filter-bar">
+    <div class="mon-filter-inner">
+      <span class="mon-filter-title">필터${active>0?`<span class="mon-filter-badge">${active}</span>`:""}</span>
+      ${parts.join("")}
+      ${active>0?`<button class="copy-btn mon-filter-reset" data-mon-filter-reset>초기화</button>`:""}
+    </div>
+  </div>`;
+}
+
 function renderCapabilityMatrix(toolId) {
   if (toolId !== "5-2") return "";
   const mapped = new Set(Object.values(CSV_STATE.mapping || {}).filter(v => v !== "__ignore__"));
@@ -6185,7 +6301,7 @@ function page_5_2() {
     chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span><span class="chip ok"><span class="dot"></span>${CSV_STATE.raw.length.toLocaleString()}행</span>${authStatusChip()}`,
     summary: "한 번의 업로드로 9개 탭을 탭으로 전환하며 모니터링합니다. 컬럼 매핑을 늘릴수록 더 많은 탭이 활성화됩니다.",
     toc,
-    body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경${csvLabel})</summary><div style="margin-top:10px;"><div style="margin-bottom:8px;font-size:11px;color:var(--text-muted);">🔒 데이터는 브라우저 메모리에서만 처리됩니다. 서버 전송·저장 없음.</div>${renderInlineCsvUpload(csvTool)}</div></details>${renderMonTabs()}${body}`,
+    body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경${csvLabel})</summary><div style="margin-top:10px;"><div style="margin-bottom:8px;font-size:11px;color:var(--text-muted);">🔒 데이터는 브라우저 메모리에서만 처리됩니다. 서버 전송·저장 없음.</div>${renderInlineCsvUpload(csvTool)}</div></details><div class="mon-sticky-bar">${renderMonTabs()}${tab !== "cohort" ? renderMonFilterBar() : ""}</div>${body}`,
   });
 }
 PAGE_RENDERERS["5-2"] = page_5_2;
@@ -16345,7 +16461,7 @@ function buildLtvCacCache() {
   if (typeof window !== "undefined") window.__LTVCAC = LTVCAC_CACHE;
   const key = ltvcacCacheKey();
   if (LTVCAC_CACHE.key === key) return LTVCAC_CACHE;
-  const rows = getMappedRows();
+  const rows = getMappedRowsForMon();
   const unitField = LTVCAC_STATE.unitField;
   const denomField = (new Set(Object.values(CSV_STATE.mapping||{}))).has("installs") ? "installs" : "actions";
 
@@ -16533,7 +16649,7 @@ function buildPacingCache() {
   if (typeof window!=="undefined") window.__PACING = PACING_CACHE;
   const key = pacingCacheKey();
   if (PACING_CACHE.key === key) return PACING_CACHE;
-  const rows = getMappedRows();
+  const rows = getMappedRowsForMon();
   const metric = PACING_STATE.metric;
   const dm = new Map();
   for (const r of rows) {
@@ -16651,7 +16767,7 @@ function funnelCacheKey(){
 function buildFunnelCache(){
   if(typeof window!=="undefined")window.__FUNNEL=FUNNEL_CACHE;
   const key=funnelCacheKey(); if(FUNNEL_CACHE.key===key)return FUNNEL_CACHE;
-  const rows=getMappedRows();
+  const rows=getMappedRowsForMon();
   const mapped=new Set(Object.values(CSV_STATE.mapping||{}));
   const unit=FUNNEL_STATE.unitField;
   const agg=new Map();
@@ -16768,7 +16884,7 @@ function segmentMetricValue(c, metric){
 function buildSegmentCache(){
   if(typeof window!=="undefined")window.__SEGMENT=SEGMENT_CACHE;
   const key=segmentCacheKey(); if(SEGMENT_CACHE.key===key)return SEGMENT_CACHE;
-  const rows=getMappedRows();
+  const rows=getMappedRowsForMon();
   const ra=SEGMENT_STATE.rowAxis, ca=SEGMENT_STATE.colAxis;
   const cells=new Map(); const rowSet=new Set(), colSet=new Set();
   for(const r of rows){
@@ -16856,7 +16972,7 @@ if(typeof window!=="undefined"){ window.runSegmentTests=runSegmentTests; }
 
 /* 효율 CSV → 일별 합산 시리즈 (date 정렬) */
 function buildDailyAgg() {
-  const rows = getMappedRows();
+  const rows = getMappedRowsForMon();
   const dm = new Map();
   for (const r of rows) {
     if (!r.date) continue;
@@ -17078,7 +17194,7 @@ const MATURATION_MATH = {
   },
 };
 function buildMaturationRows() {
-  const rows = getMappedRows();
+  const rows = getMappedRowsForMon();
   const unit = MATURATION_STATE.unitField;
   const map = new Map();
   for (const r of rows) {
@@ -17982,6 +18098,39 @@ function bindCSVPageHandlers() {
 
   // ----- 5-2: 운영 모니터링 탭 전환 (시각화/스코어카드/페이싱/이상탐지) -----
   document.querySelectorAll("[data-mon-tab]").forEach(b => b.addEventListener("click", () => { MON_STATE.tab = b.dataset.monTab; navigate("5-2"); }));
+
+  // ----- 5-2: sticky 필터 바 핸들러 -----
+  const _monInvalidateCaches = () => {
+    PACING_CACHE.key = null;
+    LTVCAC_CACHE.key = null;
+    if (typeof FUNNEL_CACHE   !== "undefined") FUNNEL_CACHE.key   = null;
+    if (typeof SEGMENT_CACHE  !== "undefined") SEGMENT_CACHE.key  = null;
+  };
+  document.querySelectorAll("[data-mon-filter]").forEach(el => {
+    el.addEventListener("change", () => {
+      const key = el.dataset.monFilter;
+      if (key === "dateStart" || key === "dateEnd") {
+        MON_FILTER_STATE[key] = el.value || null;
+      } else if (key === "platform") {
+        MON_FILTER_STATE.platform = el.value;
+      } else if (key === "countries" || key === "channels") {
+        const opts = [...el.options];
+        const sel  = opts.filter(o => o.selected).map(o => o.value);
+        MON_FILTER_STATE[key] = sel.length === opts.length ? null : new Set(sel);
+      }
+      _monInvalidateCaches();
+      navigate("5-2");
+    });
+  });
+  document.querySelectorAll("[data-mon-filter-reset]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      MON_FILTER_STATE.dateStart = null; MON_FILTER_STATE.dateEnd = null;
+      MON_FILTER_STATE.platform  = "all";
+      MON_FILTER_STATE.countries = null;  MON_FILTER_STATE.channels = null;
+      _monInvalidateCaches();
+      navigate("5-2");
+    });
+  });
 
   // ----- 5-2: 코호트 토글 -----
   const toggle = document.getElementById("cohort-toggle");
