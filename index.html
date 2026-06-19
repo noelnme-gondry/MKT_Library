@@ -351,8 +351,27 @@
     font-size:11.5px;background:var(--bg-2);border:1px solid var(--border);
     border-radius:5px;color:var(--text-1);padding:3px 6px;height:26px;
   }
-  .mon-filter-select[multiple] { height:26px;overflow:hidden; }
   .mon-filter-reset { font-size:11px; }
+  /* 커스텀 multi-select 드롭다운 */
+  .mon-multisel { position:relative; }
+  .mon-multisel-btn {
+    height:26px;padding:0 8px;background:var(--bg-2);border:1px solid var(--border);
+    border-radius:5px;color:var(--text-1);font-size:11.5px;cursor:pointer;white-space:nowrap;
+    display:flex;align-items:center;gap:4px;
+  }
+  .mon-multisel-btn:hover { border-color:var(--accent,#7aa2f7); }
+  .mon-multisel-list {
+    position:absolute;top:calc(100% + 3px);left:0;z-index:999;
+    background:var(--bg-2);border:1px solid var(--border);border-radius:6px;
+    padding:4px;min-width:130px;max-height:200px;overflow-y:auto;
+    box-shadow:0 6px 18px rgba(0,0,0,.35);
+  }
+  .mon-multisel-list label {
+    display:flex;align-items:center;gap:7px;padding:5px 8px;cursor:pointer;
+    font-size:12px;white-space:nowrap;border-radius:4px;color:var(--text-1);
+  }
+  .mon-multisel-list label:hover { background:var(--bg-3); }
+  .mon-multisel-list input[type=checkbox] { accent-color:#7aa2f7;width:13px;height:13px;flex-shrink:0; }
   .btn {
     display: inline-flex; align-items: center; gap: 0.4rem;
     font-size: 13px;
@@ -6252,20 +6271,32 @@ function renderMonFilterBar() {
         ${platforms.map(p=>`<option value="${escapeHtml(p)}" ${f.platform===p?"selected":""}>${escapeHtml(p)}</option>`).join("")}
       </select>
     </label>`);
-  if (hasCountry && countries.length) parts.push(`
-    <label class="mon-filter-item" title="Ctrl/⌘+클릭으로 다중 선택">
+  if (hasCountry && countries.length) {
+    const cntLabel = f.countries === null ? `전체 (${countries.length})` : `${f.countries.size}개 선택됨`;
+    parts.push(`
+    <div class="mon-filter-item" style="align-items:center;gap:4px;">
       <span class="mon-filter-label">국가</span>
-      <select class="mon-filter-select" data-mon-filter="countries" multiple size="1" style="min-width:80px;">
-        ${countries.map(c=>`<option value="${escapeHtml(c)}" ${(f.countries===null||f.countries.has(c))?"selected":""}>${escapeHtml(c)}</option>`).join("")}
-      </select>
-    </label>`);
-  if (hasChannel && channels.length) parts.push(`
-    <label class="mon-filter-item" title="Ctrl/⌘+클릭으로 다중 선택">
+      <div class="mon-multisel" data-multisel="countries">
+        <button class="mon-multisel-btn" type="button" data-multisel-toggle="countries">${cntLabel} ∨</button>
+        <div class="mon-multisel-list" hidden>
+          ${countries.map(c=>`<label><input type="checkbox" value="${escapeHtml(c)}" ${(f.countries===null||f.countries.has(c))?"checked":""}> ${escapeHtml(c)}</label>`).join("")}
+        </div>
+      </div>
+    </div>`);
+  }
+  if (hasChannel && channels.length) {
+    const chLabel = f.channels === null ? `전체 (${channels.length})` : `${f.channels.size}개 선택됨`;
+    parts.push(`
+    <div class="mon-filter-item" style="align-items:center;gap:4px;">
       <span class="mon-filter-label">채널</span>
-      <select class="mon-filter-select" data-mon-filter="channels" multiple size="1" style="min-width:80px;">
-        ${channels.map(c=>`<option value="${escapeHtml(c)}" ${(f.channels===null||f.channels.has(c))?"selected":""}>${escapeHtml(c)}</option>`).join("")}
-      </select>
-    </label>`);
+      <div class="mon-multisel" data-multisel="channels">
+        <button class="mon-multisel-btn" type="button" data-multisel-toggle="channels">${chLabel} ∨</button>
+        <div class="mon-multisel-list" hidden>
+          ${channels.map(c=>`<label><input type="checkbox" value="${escapeHtml(c)}" ${(f.channels===null||f.channels.has(c))?"checked":""}> ${escapeHtml(c)}</label>`).join("")}
+        </div>
+      </div>
+    </div>`);
+  }
 
   return `<div class="mon-filter-bar">
     <div class="mon-filter-inner">
@@ -19191,15 +19222,37 @@ function bindCSVPageHandlers() {
         MON_FILTER_STATE[key] = el.value || null;
       } else if (key === "platform") {
         MON_FILTER_STATE.platform = el.value;
-      } else if (key === "countries" || key === "channels") {
-        const opts = [...el.options];
-        const sel  = opts.filter(o => o.selected).map(o => o.value);
-        MON_FILTER_STATE[key] = sel.length === opts.length ? null : new Set(sel);
       }
       _monInvalidateCaches();
       navigate("5-2");
     });
   });
+  // 커스텀 multi-select: 토글 버튼
+  document.querySelectorAll("[data-multisel-toggle]").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const list = btn.nextElementSibling;
+      const opening = list.hidden;
+      document.querySelectorAll(".mon-multisel-list").forEach(l => { l.hidden = true; });
+      if (opening) list.hidden = false;
+    });
+  });
+  // 커스텀 multi-select: 체크박스 변경
+  document.querySelectorAll("[data-multisel] input[type=checkbox]").forEach(cb => {
+    cb.addEventListener("change", () => {
+      const wrap = cb.closest("[data-multisel]");
+      const key  = wrap.dataset.multisel;
+      const allCbs = [...wrap.querySelectorAll("input[type=checkbox]")];
+      const checked = allCbs.filter(c => c.checked).map(c => c.value);
+      MON_FILTER_STATE[key] = checked.length === allCbs.length ? null : new Set(checked);
+      _monInvalidateCaches();
+      navigate("5-2");
+    });
+  });
+  // 바깥 클릭 시 모든 multisel 닫기
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".mon-multisel-list").forEach(l => { l.hidden = true; });
+  }, { passive: true });
   document.querySelectorAll("[data-mon-filter-reset]").forEach(btn => {
     btn.addEventListener("click", () => {
       MON_FILTER_STATE.dateStart = null; MON_FILTER_STATE.dateEnd = null;
