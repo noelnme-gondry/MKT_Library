@@ -2980,11 +2980,21 @@ const STANDARD_FIELDS = {
   revenue_d14:   { label: "매출 D14",     aliases: ["rev_d14", "revenue14", "매출_d14"],         type: "number",  required: false, group: "코호트 D14", cohort: 14 },
   pu_d14:        { label: "결제건수 D14", aliases: ["pu_cnt_d14", "purchase_d14", "결제_d14"],   type: "number",  required: false, group: "코호트 D14", cohort: 14 },
   ret_d14:       { label: "잔존율 D14",   aliases: ["retention_d14", "잔존_d14"],                type: "percent", required: false, group: "코호트 D14", cohort: 14 },
-  revenue_d30:   { label: "매출 D30",     aliases: ["rev_d30", "revenue30", "매출_d30"],         type: "number",  required: false, group: "코호트 D30", cohort: 30 },
-  revenue_d60:   { label: "매출 D60",     aliases: ["rev_d60", "revenue60", "매출_d60"],         type: "number",  required: false, group: "코호트 D60", cohort: 60 },
-  revenue_d90:   { label: "매출 D90",     aliases: ["rev_d90", "revenue90", "매출_d90"],         type: "number",  required: false, group: "코호트 D90", cohort: 90 },
-  revenue_d180:  { label: "매출 D180",    aliases: ["rev_d180", "revenue180", "매출_d180"],      type: "number",  required: false, group: "코호트 D180", cohort: 180 },
-  revenue_d360:  { label: "매출 D360",    aliases: ["rev_d360", "revenue360", "매출_d360"],      type: "number",  required: false, group: "코호트 D360", cohort: 360 },
+  revenue_d30:   { label: "매출 D30",      aliases: ["rev_d30", "revenue30", "매출_d30"],                        type: "number",  required: false, group: "코호트 D30",  cohort: 30 },
+  pu_d30:        { label: "결제건수 D30",  aliases: ["pu_cnt_d30", "purchase_d30", "결제_d30"],                  type: "number",  required: false, group: "코호트 D30",  cohort: 30 },
+  ret_d30:       { label: "잔존율 D30",    aliases: ["retention_d30", "잔존_d30", "ret30", "r_d30"],             type: "percent", required: false, group: "코호트 D30",  cohort: 30 },
+  revenue_d60:   { label: "매출 D60",      aliases: ["rev_d60", "revenue60", "매출_d60"],                        type: "number",  required: false, group: "코호트 D60",  cohort: 60 },
+  pu_d60:        { label: "결제건수 D60",  aliases: ["pu_cnt_d60", "purchase_d60", "결제_d60"],                  type: "number",  required: false, group: "코호트 D60",  cohort: 60 },
+  ret_d60:       { label: "잔존율 D60",    aliases: ["retention_d60", "잔존_d60", "ret60", "r_d60"],             type: "percent", required: false, group: "코호트 D60",  cohort: 60 },
+  revenue_d90:   { label: "매출 D90",      aliases: ["rev_d90", "revenue90", "매출_d90"],                        type: "number",  required: false, group: "코호트 D90",  cohort: 90 },
+  pu_d90:        { label: "결제건수 D90",  aliases: ["pu_cnt_d90", "purchase_d90", "결제_d90"],                  type: "number",  required: false, group: "코호트 D90",  cohort: 90 },
+  ret_d90:       { label: "잔존율 D90",    aliases: ["retention_d90", "잔존_d90", "ret90", "r_d90"],             type: "percent", required: false, group: "코호트 D90",  cohort: 90 },
+  revenue_d180:  { label: "매출 D180",     aliases: ["rev_d180", "revenue180", "매출_d180"],                     type: "number",  required: false, group: "코호트 D180", cohort: 180 },
+  pu_d180:       { label: "결제건수 D180", aliases: ["pu_cnt_d180", "purchase_d180", "결제_d180"],               type: "number",  required: false, group: "코호트 D180", cohort: 180 },
+  ret_d180:      { label: "잔존율 D180",   aliases: ["retention_d180", "잔존_d180", "ret180", "r_d180"],         type: "percent", required: false, group: "코호트 D180", cohort: 180 },
+  revenue_d360:  { label: "매출 D360",     aliases: ["rev_d360", "revenue360", "매출_d360"],                     type: "number",  required: false, group: "코호트 D360", cohort: 360 },
+  pu_d360:       { label: "결제건수 D360", aliases: ["pu_cnt_d360", "purchase_d360", "결제_d360"],               type: "number",  required: false, group: "코호트 D360", cohort: 360 },
+  ret_d360:      { label: "잔존율 D360",   aliases: ["retention_d360", "잔존_d360", "ret360", "r_d360"],         type: "percent", required: false, group: "코호트 D360", cohort: 360 },
   // === Cannibalization Analyzer 전용 (5-5) ===
   paid_regs:     { label: "유료 가입",     aliases: ["paid regs", "paid signups", "paid_signups", "유료가입", "유료_가입"],                  type: "number", required: false, group: "Cannibalization" },
   organic_regs:  { label: "오가닉 가입",   aliases: ["organic regs", "organic signups", "organic_signups", "오가닉가입", "유기적가입"],     type: "number", required: false, group: "Cannibalization" },
@@ -3062,6 +3072,18 @@ const STANDARD_FIELDS = {
   d_otherhol:  { label: "OtherHol 더미", aliases: ["OtherHol", "other_hol", "기타공휴일"], type: "number", required: false, group: "MMM" },
   mmm_platform:{ label: "플랫폼(iOS/AOS)", aliases: ["platform", "os", "플랫폼", "platform_name"], type: "string", required: false, group: "MMM" },
 };
+
+/* ========== 파생 지표 헬퍼 (순수 함수, getMappedRows 적용 후 row 사용) ========== */
+function roasDn(row, d) {
+  const rev = Number(row[`revenue_d${d}`] ?? 0);
+  const cost = Number(row.cost ?? 0);
+  return (rev > 0 && cost > 0) ? rev / cost : null;
+}
+function purDn(row, d) {
+  const pu = Number(row[`pu_d${d}`] ?? 0);
+  const n = Number(row.installs ?? 0) || Number(row.actions ?? 0) || 0;
+  return (pu > 0 && n > 0) ? pu / n : null;
+}
 
 /* ========== CSV Global State ========== */
 const CSV_STATE = {
@@ -22079,10 +22101,19 @@ function _demoEfficiencyData() {
       const clk = Math.round(imp * (0.022 + (rng() + 0.5) * 0.006));
       const inst = Math.max(1, Math.round(clk * (0.30 + (rng() + 0.5) * 0.06)));
       const r0 = Math.round(inst * (900 + (rng() + 0.5) * 300));
-      rows.push({ date, channel: chans[ci], campaign_name: chans[ci] + " · Prospecting", country: countries[(d + ci) % 3], platform: (d + ci) % 2 ? "android" : "ios", cost, impressions: imp, clicks: clk, installs: inst, actions: Math.round(inst * 0.42), revenue_d0: r0, revenue_d7: Math.round(r0 * 2.3), revenue_d14: Math.round(r0 * 3.1), revenue_d30: Math.round(r0 * 4.5), revenue_d90: Math.round(r0 * 6.8), revenue_d180: Math.round(r0 * 8.5) });
+      rows.push({ date, channel: chans[ci], campaign_name: chans[ci] + " · Prospecting", country: countries[(d + ci) % 3], platform: (d + ci) % 2 ? "android" : "ios", cost, impressions: imp, clicks: clk, installs: inst, actions: Math.round(inst * 0.42),
+        revenue_d0: r0, revenue_d7: Math.round(r0 * 2.3), revenue_d14: Math.round(r0 * 3.1),
+        revenue_d30: Math.round(r0 * 4.5), revenue_d60: Math.round(r0 * 5.7),
+        revenue_d90: Math.round(r0 * 6.8), revenue_d180: Math.round(r0 * 8.5), revenue_d360: Math.round(r0 * 10.5),
+        pu_d0: Math.round(inst * 0.010), pu_d7: Math.round(inst * 0.040), pu_d14: Math.round(inst * 0.060),
+        pu_d30: Math.round(inst * 0.090), pu_d60: Math.round(inst * 0.110),
+        pu_d90: Math.round(inst * 0.130), pu_d180: Math.round(inst * 0.150), pu_d360: Math.round(inst * 0.170),
+        ret_d0: 1.00, ret_d7: 0.450, ret_d14: 0.350,
+        ret_d30: 0.280, ret_d60: 0.220, ret_d90: 0.180, ret_d180: 0.140, ret_d360: 0.110,
+      });
     }
   }
-  return { fileName: "demo_efficiency.csv", headers: ["date", "channel", "campaign_name", "country", "platform", "cost", "impressions", "clicks", "installs", "actions", "revenue_d0", "revenue_d7", "revenue_d14", "revenue_d30", "revenue_d90", "revenue_d180"], rows };
+  return { fileName: "demo_efficiency.csv", headers: ["date", "channel", "campaign_name", "country", "platform", "cost", "impressions", "clicks", "installs", "actions", "revenue_d0", "revenue_d7", "revenue_d14", "revenue_d30", "revenue_d60", "revenue_d90", "revenue_d180", "revenue_d360", "pu_d0", "pu_d7", "pu_d14", "pu_d30", "pu_d60", "pu_d90", "pu_d180", "pu_d360", "ret_d0", "ret_d7", "ret_d14", "ret_d30", "ret_d60", "ret_d90", "ret_d180", "ret_d360"], rows };
 }
 function _demoCohortData() {
   const rng = seededNoise(70707); const rows = []; const offs = [0, 1, 3, 7, 14, 30, 60, 90];
