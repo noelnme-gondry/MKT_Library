@@ -6241,7 +6241,14 @@ function monAllocBody() {
               <button class="btn primary" id="alloc-recompute">재계산</button>
             </div>
           </div>
-          <p style="margin:0;font-size:12px;color:var(--text-secondary);">
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.75rem;flex-wrap:wrap;">
+            <span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">집계 윈도우</span>
+            <span class="budget-period-toggle">
+              ${[7,14,28,90].map(d => `<button type="button" data-allocwindow="${d}" class="${ALLOC_STATE.recentDays === d ? 'active' : ''}">${d}일</button>`).join("")}
+            </span>
+            <span style="font-size:12px;color:var(--text-secondary);">최근 N일 데이터로 CPR/ROAS를 산출해 배분합니다.</span>
+          </div>
+          <p style="margin:0.5rem 0 0;font-size:12px;color:var(--text-secondary);">
             ${(() => {
               const sel = ALLOC_STATE.selectedChannels;
               const cnt = sel ? sel.size : 0;
@@ -6258,8 +6265,8 @@ function monAllocBody() {
           <h2 class="section-title">
             <span class="ix">§3</span>추천 배분 비중
             <span class="alloc-mode-toggle">
-              <button type="button" data-allocmode="b" class="${ALLOC_STATE.allocMode === 'b' ? 'active' : ''}" title="한계효용 그리디 — 추세선 기반 step별 marginal results 최대 채널에 투입 (외삽 차단)">한계효용 그리디</button>
-              <button type="button" data-allocmode="c" class="${ALLOC_STATE.allocMode === 'c' ? 'active' : ''}" title="절대 CPR 가중 — 1/평균CPR 비례 정적 분배">절대 CPR 가중</button>
+              <button type="button" data-allocmode="c" class="${ALLOC_STATE.allocMode === 'c' ? 'active' : ''}" title="절대 CPR/ROAS 가중 — 1/평균CPR 비례 정적 분배. 집계 윈도우 내 데이터 기반, 안정적.">절대 CPR/ROAS 가중</button>
+              <button type="button" data-allocmode="b" class="${ALLOC_STATE.allocMode === 'b' ? 'active' : ''}" title="한계효용 그리디 (고급·실험적) — 추세선 기반 step별 marginal results 최대 채널에 투입. 지출 변동이 작으면 곡선 불안정.">그리디 (고급)</button>
             </span>
           </h2>
           <div class="alloc-bar" id="alloc-bar"></div>
@@ -6309,7 +6316,7 @@ function monAllocBody() {
         <div class="ico">i</div>
         <div class="body">
           <strong>예산을 입력하면 분배 결과가 표시됩니다</strong>
-          <p>§2에서 총 예산을 입력하세요. 산점도(§1)에서 선택한 채널/캠페인에 대한 한계효용 그리디 분배가 자동으로 계산됩니다.</p>
+          <p>§2에서 총 예산을 입력하세요. 산점도(§1)에서 선택한 채널/캠페인에 대한 <strong>절대 CPR/ROAS 가중</strong> 분배가 자동으로 계산됩니다. 고급 한계효용 그리디는 §3에서 전환할 수 있습니다.</p>
         </div>
       </div>
 
@@ -6330,15 +6337,21 @@ weight     = efficiency_i / Σ efficiency
 # 4) 배분
 allocation = total_budget × weight`)}
         <p style="margin-top:1rem;">
-          <strong>한계효용 그리디 (모드 B)</strong>는 채널별로 Linear/Log/Poly2/Power 추세선을 적합하고,
+          <strong>그리디 (고급·실험적, 모드 B)</strong>는 채널별로 Linear/Log/Poly2/Power 추세선을 적합하고,
           작은 step(0.2%) 단위로 Δresults가 최대인 채널에 예산을 투입하는 방식. CPR Cap, 최신 데이터 가중치 옵션 포함.
-          현재는 별도 Streamlit 도구(Campaign Allocator)로 제공되며, 추후 본 라이브러리에 통합 예정.
         </p>
+        <div class="callout warning" style="margin-top:0.75rem;">
+          <div class="ico">⚠</div>
+          <div class="body">
+            <strong>그리디 주의사항</strong>
+            <p>채널별 spend 변동이 작거나 데이터가 적으면 곡선 적합이 불안정해져 추천이 편향될 수 있습니다. <strong>기본 추천은 절대 CPR/ROAS 가중</strong>을 권장합니다. 증분 효과를 기반으로 한 배분은 <a href="#5-18" data-route="5-18" style="color:var(--accent);">마케팅 반응 분석 MMM →</a>의 반응곡선 가이드를 참고하세요.</p>
+          </div>
+        </div>
         <div class="callout info" style="margin-top:1rem;">
           <div class="ico">i</div>
           <div class="body">
             <strong>주의</strong>
-            <p>본 추천은 과거 데이터 기준입니다. 신규 채널 진입, 시장 변화, 매체 알고리즘 업데이트 시 재계산 필요. 또한 모드 A는 데이터가 부족하거나 노이즈가 큰 채널에서도 안전한 1차 권고를 제공하지만, 정확한 한계효용 평가는 모드 B를 권장합니다.</p>
+            <p>본 추천은 과거 데이터 기준입니다. 신규 채널 진입, 시장 변화, 매체 알고리즘 업데이트 시 재계산 필요. 절대 CPR/ROAS 가중은 데이터 부족·노이즈 채널에서도 안정적인 1차 권고를 제공합니다.</p>
           </div>
         </div>
       </section>
@@ -6913,11 +6926,11 @@ const ALLOC_STATE = {
   normalizeMode: "raw",    // raw | log | minmax | robust (차트 표시용)
   budget: null,            // 총 예산 (사용자 입력 raw 값)
   budgetPeriod: "daily",   // daily | monthly (월예산이면 ÷30으로 일예산 환산)
-  allocMode: "b",          // b: 한계효용 그리디 | c: 절대 CPR 가중 (1/avgCPR 비례)
+  allocMode: "c",          // c: 절대 CPR/ROAS 가중 (기본, 1/avgCPR 비례) | b: 한계효용 그리디 (고급·실험적)
   allocOverrides: {},      // { channel: fixedCost } — 사용자가 수동 입력한 채널별 배분액 (고정)
   metric: null,            // 성과 지표 (installs | actions | pu_d7)
   selectedChannels: null,  // null = 자동 상위 6, Set = 선택된 채널들
-  recentDays: 14,          // 최근 강조 기간 (일)
+  recentDays: 28,          // 집계·강조 윈도우 (일) — 기본 4주
   showRecent: true,
   hidePoints: false,       // 점 숨김 (추세선만 표시)
   sim: {                   // 시뮬레이션 상태 (채널 1개 선택 시)
@@ -20472,6 +20485,17 @@ function bindBudgetAllocatorHandlers() {
       // placeholder도 갱신
       const inp = document.getElementById("alloc-budget");
       if (inp) inp.placeholder = ALLOC_STATE.budgetPeriod === 'monthly' ? '예: 30000000 (월)' : '예: 1000000 (일)';
+      refreshAllocationResults();
+    });
+  });
+
+  // 집계 윈도우 토글 (7/14/28/90일)
+  document.querySelectorAll("[data-allocwindow]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      ALLOC_STATE.recentDays = parseInt(btn.dataset.allocwindow, 10);
+      document.querySelectorAll("[data-allocwindow]").forEach(b =>
+        b.classList.toggle("active", parseInt(b.dataset.allocwindow, 10) === ALLOC_STATE.recentDays));
+      ALLOC_CACHE.key = null; // 윈도우 변경 시 캐시 무효화
       refreshAllocationResults();
     });
   });
