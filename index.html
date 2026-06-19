@@ -2828,9 +2828,8 @@ const IA = [
     title: "효율 & 예산 분석",
     subtitle: "일별 캠페인 CSV 1개 → 효율·배분 분석 연속 처리",
     items: [
-      { id: "5-2", title: "운영 모니터링", desc: "시각화·스코어카드·페이싱·이상탐지 통합 — 한 CSV로 현황 감시" },
-      { id: "5-3", title: "효율·배분 탐색", desc: "예산 배분(한계효용) + 퍼널 진단 + 세그먼트 매트릭스 통합" },
-      { id: "5-9", title: "LTV·성숙도·코호트", desc: "LTV:CAC + ROAS 성숙도 + 코호트 리텐션 통합 — 장기 가치 추정" },
+      { id: "5-2", title: "운영 대시보드", desc: "시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트 — 한 CSV로 현황 감시" },
+      { id: "5-3", title: "예산 배분", desc: "절대 CPR/ROAS 가중 배분 + 한계효용 그리디(고급) — 채널별 예산 최적화" },
     ],
   },
   {
@@ -3213,13 +3212,13 @@ function updateNavActive(activeId) {
 const LANDING_STATE = { track: null }; // null = step1 / "guide" / "analyze"
 
 // 도구 티어 (freemium): 시각화·모니터링만 무료, 나머지 Pro
-const TOOL_TIER = { "5-2": "free", "5-3": "pro", "5-9": "pro", "5-6": "pro", "5-4": "pro", "5-18": "pro" };
+const TOOL_TIER = { "5-2": "free", "5-3": "pro", "5-6": "pro", "5-4": "pro", "5-18": "pro" };
 function toolTier(id) { return TOOL_TIER[id] || "pro"; }
 
 // 분석 트랙의 목표 버킷 (사용자 승인 구조)
 const ANALYZE_BUCKETS = [
-  { id: "monitor",    icon: "📊", label: "시각화 · 모니터링", tier: "free", desc: "운영 데이터를 대시보드로 — 시계열·스코어카드·페이싱·이상 탐지", tools: ["5-2"] },
-  { id: "efficiency", icon: "💰", label: "효율화 · 예산",     tier: "pro",  desc: "예산 배분·퍼널·세그먼트 + LTV:CAC·ROAS 성숙도·코호트",     tools: ["5-3", "5-9"] },
+  { id: "monitor",    icon: "📊", label: "운영 대시보드",      tier: "free", desc: "시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트 통합", tools: ["5-2"] },
+  { id: "efficiency", icon: "💰", label: "효율화 · 예산",     tier: "pro",  desc: "절대 CPR/ROAS 기반 예산 배분 + 한계효용 그리디(고급) — 채널별 최적화",  tools: ["5-3"] },
   { id: "experiment", icon: "🧪", label: "실험 · 소재",       tier: "pro",  desc: "A/B 설계·결과 판독·홀드아웃 증분 + 소재 성과 분해",        tools: ["5-4", "5-6"] },
   { id: "advanced",   icon: "📈", label: "고급 분석",         tier: "pro",  desc: "마케팅 반응 회귀 — 카니발 진단·Forecast·MMM 기여 분해·범용 회귀", tools: ["5-18"] },
 ];
@@ -5491,7 +5490,7 @@ const AUTH_STATE = {
 };
 
 // freemium: 5-2 시각화·모니터링은 무료. 나머지 분석 도구는 Pro(접근 키 필요).
-const AUTH_PROTECTED_PAGES = new Set(["5-3", "5-4", "5-6", "5-9", "5-18"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-3", "5-4", "5-6", "5-18"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -6031,55 +6030,90 @@ function monVizBody() {
         </div>
       </section>
 
-      <section class="block" id="s-data">
-        <h2 class="section-title"><span class="ix">§5</span>원본 데이터 (전체 ${k.rowCount.toLocaleString()}행)</h2>
-        ${(() => {
-          const headers = CSV_STATE.headers.map(h => ({ label: h, type: "string" }));
-          const rows = CSV_STATE.raw.map(r => CSV_STATE.headers.map(h => String(r[h] ?? "")));
-          return dataTable(headers, rows);
-        })()}
-      </section>
     `;
 }
 const MON_STATE = { tab: "viz" };
+// 탭 그룹: monitoring(모니터링) | value(가치) | efficiency(효율)
+const MON_TAB_GROUPS = [
+  { label: "모니터링", tabs: ["viz", "scorecard", "pacing", "anomaly"] },
+  { label: "장기 가치", tabs: ["ltv", "maturation", "cohort"] },
+  { label: "효율 진단", tabs: ["funnel", "segment"] },
+];
 const MON_TABS = [
-  { id: "viz", icon: "📊", label: "시각화", desc: "시계열·채널·CPI·퍼널·코호트 5종 + KPI" },
-  { id: "scorecard", icon: "🧮", label: "스코어카드", desc: "핵심 KPI + 직전 대비(WoW)" },
-  { id: "pacing", icon: "📈", label: "페이싱", desc: "월말 착지 예측·페이스 경고" },
-  { id: "anomaly", icon: "🚨", label: "이상탐지", desc: "급등·급락 z-score 감지" },
+  { id: "viz",        icon: "📊", label: "시각화",       desc: "시계열·채널·CPI 5종 + KPI" },
+  { id: "scorecard",  icon: "🧮", label: "스코어카드",   desc: "핵심 KPI + 직전 대비(WoW)" },
+  { id: "pacing",     icon: "📈", label: "페이싱",       desc: "월말 착지 예측·페이스 경고" },
+  { id: "anomaly",    icon: "🚨", label: "이상탐지",     desc: "급등·급락 z-score 감지" },
+  { id: "ltv",        icon: "💵", label: "LTV:CAC",     desc: "CAC 대비 LTV 배수·회수기간 (효율 CSV)" },
+  { id: "maturation", icon: "📊", label: "ROAS 성숙도", desc: "조기 ROAS → D90/D180 성숙 예측 (효율 CSV)" },
+  { id: "cohort",     icon: "📉", label: "코호트 리텐션", desc: "리텐션 곡선·LTV 외삽 (코호트 CSV 별도)" },
+  { id: "funnel",     icon: "🪜", label: "퍼널 진단",   desc: "노출→클릭→설치→액션 단계 CVR·이탈" },
+  { id: "segment",    icon: "🗺", label: "세그먼트",    desc: "국가×채널×플랫폼 효율 매트릭스" },
 ];
 function renderMonTabs() {
   const t = MON_STATE.tab || "viz";
-  return `<section class="block" style="padding:0;border:none;background:none;margin:4px 0 2px;">
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">${MON_TABS.map(d => `<button class="mmm-stage-tab ${t === d.id ? "active" : ""}" data-mon-tab="${d.id}" style="flex:1;min-width:150px;text-align:left;color:var(--text-1);background:${t === d.id ? "linear-gradient(135deg,rgba(122,162,247,0.16),rgba(122,162,247,0.04))" : "var(--bg-2)"};border:1px solid ${t === d.id ? "rgba(122,162,247,0.55)" : "var(--border)"};border-radius:12px;padding:11px 14px;cursor:pointer;transition:all .15s;">
-      <div style="font-size:14px;font-weight:700;">${d.icon} ${d.label}</div>
-      <div style="font-size:10.5px;color:var(--text-2);margin-top:2px;line-height:1.35;">${d.desc}</div>
-    </button>`).join("")}</div></section>`;
+  const tabMap = Object.fromEntries(MON_TABS.map(d => [d.id, d]));
+  return `<section class="block" style="padding:0;border:none;background:none;margin:4px 0 6px;">
+    ${MON_TAB_GROUPS.map(g => `
+    <div style="margin-bottom:6px;">
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px 2px;">${g.label}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">${g.tabs.map(id => { const d = tabMap[id]; if (!d) return ""; return `<button class="mmm-stage-tab ${t === d.id ? "active" : ""}" data-mon-tab="${d.id}" style="flex:1;min-width:130px;text-align:left;color:var(--text-1);background:${t === d.id ? "linear-gradient(135deg,rgba(122,162,247,0.16),rgba(122,162,247,0.04))" : "var(--bg-2)"};border:1px solid ${t === d.id ? "rgba(122,162,247,0.55)" : "var(--border)"};border-radius:12px;padding:10px 13px;cursor:pointer;transition:all .15s;">
+        <div style="font-size:13px;font-weight:700;">${d.icon} ${d.label}</div>
+        <div style="font-size:10px;color:var(--text-2);margin-top:2px;line-height:1.3;">${d.desc}</div>
+      </button>`; }).join("")}</div>
+    </div>`).join("")}
+  </section>`;
 }
 function page_5_2() {
   const meta = findMeta("5-2");
-  const missing = checkRequiredForTool("5-2");
-  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-2")) {
+  const tab = MON_STATE.tab || "viz";
+  // 코호트 탭은 별도 grain(5-8 코호트 CSV), 나머지는 효율 CSV(5-2)
+  const csvTool = (tab === "cohort") ? "5-8" : "5-2";
+  loadCsvFromTool(csvTool);
+  const missing = checkRequiredForTool(csvTool);
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed(csvTool)) {
+    const isCohort = (csvTool === "5-8");
+    const notice = `
+      <div class="callout info" style="margin:0 0 14px;">
+        <strong>📌 컬럼을 더 매핑할수록 더 많은 탭이 켜집니다</strong>
+        <table style="margin-top:8px;width:100%;font-size:11.5px;border-collapse:collapse;">
+          <thead><tr style="color:var(--text-muted);"><th style="text-align:left;padding:3px 8px 3px 0;">기능 탭</th><th style="text-align:left;padding:3px 8px;">필요 추가 컬럼</th></tr></thead>
+          <tbody>
+            <tr><td style="padding:3px 8px 3px 0;">📈 페이싱·🧮 스코어카드·🚨 이상탐지</td><td style="padding:3px 8px;color:var(--text-2);">date + cost (기본)</td></tr>
+            <tr><td style="padding:3px 8px 3px 0;">🪜 퍼널 진단</td><td style="padding:3px 8px;color:var(--text-2);">impressions, clicks</td></tr>
+            <tr><td style="padding:3px 8px 3px 0;">💵 LTV:CAC · 📊 ROAS 성숙도</td><td style="padding:3px 8px;color:var(--text-2);">revenue_d0/d7/d14</td></tr>
+            <tr><td style="padding:3px 8px 3px 0;">🗺 세그먼트</td><td style="padding:3px 8px;color:var(--text-2);">country (또는 channel/platform)</td></tr>
+            <tr><td style="padding:3px 8px 3px 0;">📉 코호트 리텐션</td><td style="padding:3px 8px;color:var(--text-2);">별도 코호트 CSV 업로드 필요</td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">🔒 모든 데이터는 브라우저 메모리에서만 처리됩니다. 서버로 전송·저장되지 않습니다.</div>
+      </div>`;
     return pageShell(meta, {
-      deck: "운영 데이터를 한 번 업로드하면 시각화·스코어카드·페이싱·이상탐지를 탭으로 전환하며 봅니다. 이 도구 전용 CSV를 업로드하세요.",
-      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
-      summary: "필수 컬럼(날짜 + 비용/설치/액션 중 1개)만 매핑되면 KPI·차트·페이싱·이상탐지가 자동 계산됩니다.",
+      deck: isCohort ? "코호트 리텐션 — 코호트(날짜×경과일) 전용 CSV가 필요합니다." : "운영 대시보드 — 효율 CSV 업로드 후 9개 탭으로 전환하며 봅니다.",
+      chips: `<span class="chip warning"><span class="dot"></span>${isCohort ? "코호트 CSV 업로드 대기" : "CSV 업로드 대기"}</span>${authStatusChip()}`,
+      summary: isCohort ? "코호트별 리텐션 곡선 + LTV 외삽. 코호트 날짜·경과일·코호트 크기·잔존/매출 컬럼 필요." : "필수: date + cost(또는 installs/actions). 컬럼을 더 매핑하면 LTV·퍼널·세그먼트 탭이 추가로 열립니다.",
       toc: [{ id: "s-prep", title: "데이터 준비" }],
-      body: renderInlineCsvUpload("5-2"),
+      body: `${renderMonTabs()}${notice}<section class="block" id="s-prep">${renderInlineCsvUpload(csvTool)}</section>`,
     });
   }
-  const tab = MON_STATE.tab || "viz";
-  const body = tab === "pacing" ? monPacingBody() : tab === "scorecard" ? monScorecardBody() : tab === "anomaly" ? monAnomalyBody() : monVizBody();
-  const toc = tab === "pacing" ? [{ id: "s-pace", title: "페이싱" }]
-    : tab === "scorecard" ? [{ id: "s-score", title: "스코어카드" }]
-    : tab === "anomaly" ? [{ id: "s-anom", title: "이상 감지" }]
-    : [{ id: "s-cohort", title: "코호트" }, { id: "s-kpi", title: "KPI 요약" }, { id: "s-charts", title: "차트" }, { id: "s-data", title: "원본 데이터" }];
+  // 탭 → 본문 dispatch
+  let body, toc;
+  if (tab === "pacing")     { body = monPacingBody();     toc = [{ id: "s-pace", title: "페이싱" }]; }
+  else if (tab === "scorecard") { body = monScorecardBody(); toc = [{ id: "s-score", title: "스코어카드" }]; }
+  else if (tab === "anomaly")   { body = monAnomalyBody();   toc = [{ id: "s-anom", title: "이상 감지" }]; }
+  else if (tab === "ltv")       { body = monLtvCacBody();    toc = [{ id: "s-ctl", title: "분석 단위" }, { id: "s-table", title: "LTV:CAC 표" }]; }
+  else if (tab === "maturation"){ body = monMaturationBody();toc = [{ id: "s-mat", title: "ROAS 성숙도" }]; }
+  else if (tab === "cohort")    { body = monCohortBody();    toc = [{ id: "s-retention", title: "리텐션" }, { id: "s-ltv", title: "LTV 외삽" }, { id: "s-segment", title: "세그먼트" }, { id: "s-cohorts", title: "코호트 표" }]; }
+  else if (tab === "funnel")    { body = monFunnelBody();    toc = [{ id: "s-funnel", title: "퍼널" }]; }
+  else if (tab === "segment")   { body = monSegmentBody();   toc = [{ id: "s-matrix", title: "세그먼트" }]; }
+  else                          { body = monVizBody();       toc = [{ id: "s-cohort", title: "코호트" }, { id: "s-kpi", title: "KPI 요약" }, { id: "s-charts", title: "차트" }]; }
+  const csvLabel = tab === "cohort" ? " · 코호트 CSV" : " · 효율 CSV";
   return pageShell(meta, {
-    deck: "운영 모니터링 — 시각화·스코어카드·페이싱·이상탐지를 한 도구에서. 효율 그룹 CSV 공유.",
+    deck: "운영 대시보드 — 시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트를 한 도구에서.",
     chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span><span class="chip ok"><span class="dot"></span>${CSV_STATE.raw.length.toLocaleString()}행</span>${authStatusChip()}`,
-    summary: "한 번의 업로드로 KPI·시계열·WoW·월말 착지·이상치를 탭으로 전환하며 모니터링합니다.",
+    summary: "한 번의 업로드로 9개 탭을 탭으로 전환하며 모니터링합니다. 컬럼 매핑을 늘릴수록 더 많은 탭이 활성화됩니다.",
     toc,
-    body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경)</summary><div style="margin-top:10px;">${renderInlineCsvUpload("5-2")}</div></details>${renderMonTabs()}${body}`,
+    body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경${csvLabel})</summary><div style="margin-top:10px;"><div style="margin-bottom:8px;font-size:11px;color:var(--text-muted);">🔒 데이터는 브라우저 메모리에서만 처리됩니다. 서버 전송·저장 없음.</div>${renderInlineCsvUpload(csvTool)}</div></details>${renderMonTabs()}${body}`,
   });
 }
 PAGE_RENDERERS["5-2"] = page_5_2;
@@ -6312,38 +6346,27 @@ allocation = total_budget × weight`)}
 }
 // ===== 효율·배분 탐색 host (예산 배분 / 퍼널 / 세그먼트 탭) =====
 const ALLOC_TAB_STATE = { tab: "alloc" };
-const ALLOC_TABS = [
-  { id: "alloc", icon: "💰", label: "예산 배분", desc: "한계효용·CPR 추세 기반 채널 배분" },
-  { id: "funnel", icon: "🪜", label: "퍼널 진단", desc: "노출→클릭→설치→액션 단계 CVR·이탈" },
-  { id: "segment", icon: "🗺", label: "세그먼트", desc: "국가×채널×플랫폼 효율 매트릭스" },
-];
-function renderAllocTabs() {
-  const t = ALLOC_TAB_STATE.tab || "alloc";
-  return `<section class="block" style="padding:0;border:none;background:none;margin:4px 0 2px;"><div style="display:flex;gap:10px;flex-wrap:wrap;">${ALLOC_TABS.map(d => `<button class="mmm-stage-tab ${t === d.id ? "active" : ""}" data-alloc-tab="${d.id}" style="flex:1;min-width:150px;text-align:left;color:var(--text-1);background:${t === d.id ? "linear-gradient(135deg,rgba(122,162,247,0.16),rgba(122,162,247,0.04))" : "var(--bg-2)"};border:1px solid ${t === d.id ? "rgba(122,162,247,0.55)" : "var(--border)"};border-radius:12px;padding:11px 14px;cursor:pointer;"><div style="font-size:14px;font-weight:700;">${d.icon} ${d.label}</div><div style="font-size:10.5px;color:var(--text-2);margin-top:2px;line-height:1.35;">${d.desc}</div></button>`).join("")}</div></section>`;
-}
 function page_5_3() {
   const meta = findMeta("5-3");
   const missing = checkRequiredForTool("5-3");
   if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-3")) {
     return pageShell(meta, {
-      deck: "효율 그룹 CSV 한 번 업로드로 예산 배분·퍼널·세그먼트를 탭으로 분석합니다. 이 도구 전용 CSV를 업로드하세요.",
+      deck: "효율 CSV 한 번 업로드로 채널별 예산 배분을 분석합니다.",
       chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
-      summary: "필수: 날짜·비용·(채널 또는 캠페인)·(설치 또는 액션). 매핑·분석 후 3개 탭이 열립니다.",
+      summary: "필수: 날짜·비용·(채널 또는 캠페인)·(설치 또는 액션). 퍼널·세그먼트 진단은 무료 운영 대시보드(5-2)에서 확인하세요.",
       toc: [{ id: "s-prep", title: "데이터 준비" }],
       body: renderInlineCsvUpload("5-3"),
     });
   }
-  const tab = ALLOC_TAB_STATE.tab || "alloc";
-  const body = tab === "funnel" ? monFunnelBody() : tab === "segment" ? monSegmentBody() : monAllocBody();
-  const toc = tab === "funnel" ? [{ id: "s-funnel", title: "퍼널" }]
-    : tab === "segment" ? [{ id: "s-matrix", title: "세그먼트" }]
-    : (ALLOC_FILTER_STATE.applied ? [{ id: "s-scatter", title: "산점도" }, { id: "s-controls", title: "예산" }, { id: "s-bar", title: "배분" }, { id: "s-scenario", title: "시나리오" }, { id: "s-table", title: "상세" }, { id: "s-algo", title: "알고리즘" }] : [{ id: "s-filter", title: "분석 단위" }]);
+  const toc = ALLOC_FILTER_STATE.applied
+    ? [{ id: "s-scatter", title: "산점도" }, { id: "s-controls", title: "예산" }, { id: "s-bar", title: "배분" }, { id: "s-scenario", title: "시나리오" }, { id: "s-table", title: "상세" }, { id: "s-algo", title: "알고리즘" }]
+    : [{ id: "s-filter", title: "분석 단위" }];
   return pageShell(meta, {
-    deck: "효율·배분 탐색 — 예산 배분·퍼널·세그먼트를 한 도구에서. 효율 그룹 CSV 공유.",
+    deck: "예산 배분 — 절대 CPR/ROAS 기반 채널 배분 + 한계효용 그리디(고급).",
     chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>${authStatusChip()}`,
-    summary: "한 번의 업로드로 예산 배분(한계효용)·퍼널 진단·세그먼트 매트릭스를 탭으로 전환합니다.",
+    summary: "절대 CPR/ROAS 가중으로 채널별 최적 예산을 계산합니다. 퍼널·세그먼트는 무료 운영 대시보드에서 확인하세요.",
     toc,
-    body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경)</summary><div style="margin-top:10px;">${renderInlineCsvUpload("5-3")}</div></details>${renderAllocTabs()}${body}`,
+    body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경)</summary><div style="margin-top:10px;">${renderInlineCsvUpload("5-3")}</div></details>${monAllocBody()}`,
   });
 }
 PAGE_RENDERERS["5-3"] = page_5_3;
@@ -16127,45 +16150,7 @@ function monLtvCacBody() {
       ${renderLtvCacTable(c)}
     `;
 }
-// ===== LTV·성숙도·코호트 host — 효율 grain(ltv·maturation) + 코호트 grain(cohort) 탭별 CSV 전환 =====
-const LTV_TAB_STATE = { tab: "ltv" };
-const LTV_TABS = [
-  { id: "ltv", icon: "💵", label: "LTV:CAC", desc: "CAC 대비 LTV 배수·회수기간 (효율 CSV)" },
-  { id: "maturation", icon: "📊", label: "ROAS 성숙도", desc: "조기 ROAS → D90/D180 성숙 예측 (효율 CSV)" },
-  { id: "cohort", icon: "📉", label: "코호트 리텐션", desc: "리텐션 곡선·LTV 외삽 (코호트 CSV)" },
-];
-function renderLtvTabs() {
-  const t = LTV_TAB_STATE.tab || "ltv";
-  return `<section class="block" style="padding:0;border:none;background:none;margin:4px 0 2px;"><div style="display:flex;gap:10px;flex-wrap:wrap;">${LTV_TABS.map(d => `<button class="mmm-stage-tab ${t === d.id ? "active" : ""}" data-ltv-tab="${d.id}" style="flex:1;min-width:150px;text-align:left;color:var(--text-1);background:${t === d.id ? "linear-gradient(135deg,rgba(122,162,247,0.16),rgba(122,162,247,0.04))" : "var(--bg-2)"};border:1px solid ${t === d.id ? "rgba(122,162,247,0.55)" : "var(--border)"};border-radius:12px;padding:11px 14px;cursor:pointer;"><div style="font-size:14px;font-weight:700;">${d.icon} ${d.label}</div><div style="font-size:10.5px;color:var(--text-2);margin-top:2px;line-height:1.35;">${d.desc}</div></button>`).join("")}</div></section>`;
-}
-function page_5_9() {
-  const meta = findMeta("5-9");
-  const tab = LTV_TAB_STATE.tab || "ltv";
-  const csvTool = (tab === "cohort") ? "5-8" : "5-9";   // 코호트는 다른 grain → 자기 CSV 스냅샷 사용
-  loadCsvFromTool(csvTool);
-  const missing = checkRequiredForTool(csvTool);
-  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed(csvTool)) {
-    return pageShell(meta, {
-      deck: tab === "cohort" ? "코호트 리텐션·LTV — 코호트(날짜×경과일) CSV가 필요합니다." : "LTV:CAC·ROAS 성숙도 — 효율 그룹 일별 캠페인 CSV(비용·D0/D7/D14 매출).",
-      chips: `<span class="chip warning"><span class="dot"></span>${tab === "cohort" ? "코호트 CSV 업로드 대기" : "효율 CSV 업로드 대기"}</span>${authStatusChip()}`,
-      summary: tab === "cohort" ? "코호트별 리텐션 곡선 + LTV 외삽. 코호트 날짜·경과일·코호트 크기·잔존/매출 컬럼 필요." : "CAC 대비 LTV 배수·회수기간·ROAS 성숙(D90/D180). 비용·설치/액션·D0/D7/D14 매출.",
-      toc: [{ id: "s-prep", title: "데이터 준비" }],
-      body: `${renderLtvTabs()}<section class="block" id="s-prep">${renderInlineCsvUpload(csvTool)}</section>`,
-    });
-  }
-  const body = tab === "maturation" ? monMaturationBody() : tab === "cohort" ? monCohortBody() : monLtvCacBody();
-  const toc = tab === "maturation" ? [{ id: "s-mat", title: "ROAS 성숙도" }]
-    : tab === "cohort" ? [{ id: "s-retention", title: "리텐션" }, { id: "s-ltv", title: "LTV 외삽" }, { id: "s-segment", title: "세그먼트" }, { id: "s-cohorts", title: "코호트 표" }]
-    : [{ id: "s-ctl", title: "분석 단위" }, { id: "s-table", title: "LTV:CAC 표" }];
-  return pageShell(meta, {
-    deck: "LTV·성숙도·코호트 — 장기 가치 추정을 한 도구에서. 탭별 데이터 grain 자동 전환(효율/코호트).",
-    chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>${authStatusChip()}`,
-    summary: "효율 CSV로 LTV:CAC·ROAS 성숙도, 코호트 CSV로 리텐션 곡선을 봅니다. 탭을 바꾸면 그 탭에 맞는 CSV로 전환됩니다.",
-    toc,
-    body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경)${tab === "cohort" ? " · 코호트 CSV" : " · 효율 CSV"}</summary><div style="margin-top:10px;">${renderInlineCsvUpload(csvTool)}</div></details>${renderLtvTabs()}${body}`,
-  });
-}
-PAGE_RENDERERS["5-9"] = page_5_9;
+// 5-9 → 5-2로 통합됨 (§12.30 패턴). monLtvCacBody / monMaturationBody / monCohortBody는 page_5_2에서 사용.
 
 function renderLtvCacTable(c) {
   const rows = c.rows || [];
@@ -17536,10 +17521,12 @@ async function navigate(id) {
   if (id === "5-17") { id = "5-18"; }
   // 5-10 페이싱·5-13 스코어카드·5-14 이상탐지는 5-2 운영 모니터링 탭으로 통합 → redirect (북마크 보존)
   if (id === "5-10" || id === "5-13" || id === "5-14") { id = "5-2"; }
-  // 5-11 퍼널·5-12 세그먼트는 5-3 효율·배분 탐색 탭으로 통합 → redirect
-  if (id === "5-11" || id === "5-12") { id = "5-3"; }
-  // 5-16 ROAS 성숙도·5-8 코호트는 5-9 LTV·성숙도·코호트 탭으로 통합 → redirect
-  if (id === "5-16" || id === "5-8") { id = "5-9"; }
+  // 5-11 퍼널·5-12 세그먼트·5-9 LTV성숙도·5-16 ROAS성숙도·5-8 코호트 → 5-2 운영 대시보드 탭으로 통합 → redirect (북마크 보존)
+  if (id === "5-11") { MON_STATE.tab = "funnel"; id = "5-2"; }
+  if (id === "5-12") { MON_STATE.tab = "segment"; id = "5-2"; }
+  if (id === "5-16") { MON_STATE.tab = "maturation"; id = "5-2"; }
+  if (id === "5-8")  { MON_STATE.tab = "cohort"; id = "5-2"; }
+  if (id === "5-9")  { if (!["ltv","maturation","cohort"].includes(MON_STATE.tab)) MON_STATE.tab = "ltv"; id = "5-2"; }
   // 5-19 범용 회귀는 5-18 마케팅 반응 분석의 범용 회귀(Lab) 탭으로 통합 → redirect + 해당 탭 활성
   if (id === "5-19") { MMM_METH_STATE.stage = "lab"; id = "5-18"; }
   // 5-5 간단 카니발은 5-18 카니발 진단 탭의 '간단' 모드로 통합 → redirect + 해당 탭·모드 활성
@@ -17774,8 +17761,8 @@ function bindCSVPageHandlers() {
   // ----- 5-3: Budget Allocator 핸들러 -----
   // ----- 5-3: 효율·배분 탭 전환 (예산 배분/퍼널/세그먼트) -----
   document.querySelectorAll("[data-alloc-tab]").forEach(b => b.addEventListener("click", () => { ALLOC_TAB_STATE.tab = b.dataset.allocTab; navigate("5-3"); }));
-  // ----- 5-9: LTV·성숙도·코호트 탭 전환 (코호트 탭은 CSV grain 전환) -----
-  document.querySelectorAll("[data-ltv-tab]").forEach(b => b.addEventListener("click", () => { LTV_TAB_STATE.tab = b.dataset.ltvTab; navigate("5-9"); }));
+  // ----- (구 5-9) LTV·성숙도·코호트 탭: data-ltv-tab → MON_STATE.tab + navigate("5-2") (하위호환) -----
+  document.querySelectorAll("[data-ltv-tab]").forEach(b => b.addEventListener("click", () => { MON_STATE.tab = b.dataset.ltvTab; navigate("5-2"); }));
   if (document.getElementById("alloc-recompute") || document.getElementById("alloc-filter-apply") || document.getElementById("alloc-filter-reopen")) bindBudgetAllocatorHandlers();
 
   // ----- 5-4: 실험 분석 탭 전환 (설계/결과/홀드아웃 — 결과·홀드아웃은 CSV grain 전환) -----
@@ -20560,14 +20547,15 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "channel",        unlocks: "채널별 비중·시계열 분석" },
     { key: "campaign_name",  unlocks: "캠페인 단위 분석" },
     { key: "platform",       unlocks: "OS 분포 시각화" },
-    { key: "impressions",    unlocks: "CTR/CPM 계산" },
-    { key: "clicks",         unlocks: "CTR/CVR/CPC 계산" },
+    { key: "country",        unlocks: "🗺 세그먼트 탭 — 국가 차원 분석" },
+    { key: "impressions",    unlocks: "🪜 퍼널 탭 — CTR/CPM 계산 (clicks와 함께)" },
+    { key: "clicks",         unlocks: "🪜 퍼널 탭 — CTR/CVR/CPC 계산 (impressions와 함께)" },
     { key: "actions",        unlocks: "CPA·전환수 분석 (installs와 별도)" },
-    { key: "revenue_d7",     unlocks: "ROAS D7 계산" },
+    { key: "revenue_d0",     unlocks: "💵 LTV:CAC 탭 · 📊 ROAS 성숙도 탭 — D0 매출/ROAS" },
+    { key: "revenue_d7",     unlocks: "💵 LTV:CAC 탭 · 📊 ROAS 성숙도 탭 — D7 매출/ROAS" },
+    { key: "revenue_d14",    unlocks: "💵 LTV:CAC 탭 · 📊 ROAS 성숙도 탭 — D14 매출/ROAS" },
     { key: "pu_d7",          unlocks: "결제건수 D7 코호트" },
     { key: "ret_d7",         unlocks: "리텐션 D7 코호트" },
-    { key: "revenue_d0",     unlocks: "D0 매출/ROAS" },
-    { key: "revenue_d14",    unlocks: "D14 매출/ROAS" },
   ],
   "5-3": [
     { key: "country",        unlocks: "분석 단위 선택 (국가/채널/캠페인) + 국가 필터" },
@@ -20882,9 +20870,9 @@ function _demoMmmData() {
   return { fileName: "demo_mmm_weekly.csv", headers: ["Week", "Regs", "google_roi", "meta", "tiktok", "brand"], rows, colMap: { Week: { role: "week" }, Regs: { role: "reg", plat: "common" }, google_roi: { role: "channel", kind: "perf", plat: "common" }, meta: { role: "channel", kind: "perf", plat: "common" }, tiktok: { role: "channel", kind: "perf", plat: "common" }, brand: { role: "channel", kind: "brand", plat: "common" } } };
 }
 
-// csvTool → 데모 데이터 빌더 (효율 grain은 5-2/5-3/5-9 공유)
+// csvTool → 데모 데이터 빌더 (효율 grain은 5-2/5-3 공유; 5-9는 5-2로 통합)
 const DEMO_BUILDERS = {
-  "5-2": _demoEfficiencyData, "5-3": _demoEfficiencyData, "5-9": _demoEfficiencyData,
+  "5-2": _demoEfficiencyData, "5-3": _demoEfficiencyData,
   "5-8": _demoCohortData, "5-6": _demoCreativeData,
   "5-7": _demoReadoutData, "5-15": _demoHoldoutData, "5-18": _demoMmmData,
 };
