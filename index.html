@@ -2980,6 +2980,11 @@ const STANDARD_FIELDS = {
   revenue_d14:   { label: "매출 D14",     aliases: ["rev_d14", "revenue14", "매출_d14"],         type: "number",  required: false, group: "코호트 D14", cohort: 14 },
   pu_d14:        { label: "결제건수 D14", aliases: ["pu_cnt_d14", "purchase_d14", "결제_d14"],   type: "number",  required: false, group: "코호트 D14", cohort: 14 },
   ret_d14:       { label: "잔존율 D14",   aliases: ["retention_d14", "잔존_d14"],                type: "percent", required: false, group: "코호트 D14", cohort: 14 },
+  revenue_d30:   { label: "매출 D30",     aliases: ["rev_d30", "revenue30", "매출_d30"],         type: "number",  required: false, group: "코호트 D30", cohort: 30 },
+  revenue_d60:   { label: "매출 D60",     aliases: ["rev_d60", "revenue60", "매출_d60"],         type: "number",  required: false, group: "코호트 D60", cohort: 60 },
+  revenue_d90:   { label: "매출 D90",     aliases: ["rev_d90", "revenue90", "매출_d90"],         type: "number",  required: false, group: "코호트 D90", cohort: 90 },
+  revenue_d180:  { label: "매출 D180",    aliases: ["rev_d180", "revenue180", "매출_d180"],      type: "number",  required: false, group: "코호트 D180", cohort: 180 },
+  revenue_d360:  { label: "매출 D360",    aliases: ["rev_d360", "revenue360", "매출_d360"],      type: "number",  required: false, group: "코호트 D360", cohort: 360 },
   // === Cannibalization Analyzer 전용 (5-5) ===
   paid_regs:     { label: "유료 가입",     aliases: ["paid regs", "paid signups", "paid_signups", "유료가입", "유료_가입"],                  type: "number", required: false, group: "Cannibalization" },
   organic_regs:  { label: "오가닉 가입",   aliases: ["organic regs", "organic signups", "organic_signups", "오가닉가입", "유기적가입"],     type: "number", required: false, group: "Cannibalization" },
@@ -6093,7 +6098,7 @@ const MON_FEATURES = [
   { key: "pacing",     label: "페이싱",       need: ["date"],                       boost: ["cost","installs","actions","revenue_d7"] },
   { key: "anomaly",    label: "이상탐지",     need: ["date"],                       boost: ["cost","installs","actions","clicks","impressions","revenue_d7"] },
   { key: "ltv",        label: "LTV:CAC",      need: ["date","cost"],                boost: ["revenue_d0","revenue_d7","revenue_d14","installs","actions"] },
-  { key: "maturation", label: "ROAS 성숙도",  need: ["cost"],                       boost: ["revenue_d0","revenue_d7","revenue_d14","channel"] },
+  { key: "maturation", label: "ROAS 성숙도",  need: ["cost"],                       boost: ["revenue_d0","revenue_d7","revenue_d14","revenue_d30","revenue_d90","revenue_d180","channel"] },
   { key: "funnel",     label: "퍼널 진단",    need: ["impressions","clicks"],       boost: ["installs","actions","channel"] },
   { key: "segment",    label: "세그먼트",     need: ["cost"],                       boost: ["country","channel","platform","installs","actions"] },
 ];
@@ -17901,106 +17906,303 @@ if(typeof window!=="undefined"){ window.runScorecardAnomalyTests=runScorecardAno
  * ROAS Maturation (5-16) — 효율 그룹
  * 조기 ROAS(D0/D7/D14)로 성숙 ROAS(D30/D90/D180) 예측 (누적 ROAS power 외삽)
  * ============================================================ */
-const MATURATION_STATE = { unitField: "_all" };
+const MATURATION_STATE = {
+  unitField:     "_all",
+  anchorDns:     null,   // null = all available Dns; or sorted int[] subset to include in curve fit
+  showCurve:     true,
+  showEmpirical: true,
+  targetHorizon: 360,    // for anchor sufficiency diagnosis
+};
 const MATURATION_MATH = {
-  // 누적 ROAS 점들 [{day, roas}] → power fit y=a*(day+1)^b → 임의 day 예측
+  ALL_DNS: [0, 7, 14, 30, 60, 90, 180, 360],
+  // power fit y=a*(day+1)^b on [{day, roas}] points
   fit(points) {
     const v = points.filter(p => p.roas != null && isFinite(p.roas) && p.roas > 0);
-    if (v.length < 2) { const f = v[0]?.roas ?? null; return f != null ? { predict: () => f, kind:"flat" } : null; }
+    if (v.length < 2) { const f = v[0]?.roas ?? null; return f != null ? { predict: () => f, kind: "flat" } : null; }
     const xs = v.map(p => Math.log(p.day + 1)), ys = v.map(p => Math.log(p.roas));
-    const n = xs.length, mx = xs.reduce((a,b)=>a+b,0)/n, my = ys.reduce((a,b)=>a+b,0)/n;
-    let num=0, den=0; for (let i=0;i<n;i++){ num+=(xs[i]-mx)*(ys[i]-my); den+=(xs[i]-mx)**2; }
-    if (den===0) { const f=v[v.length-1].roas; return { predict:()=>f, kind:"flat" }; }
-    const b=num/den, a=Math.exp(my-b*mx);
-    return { predict:(d)=>a*Math.pow(d+1,b), a, b, kind:"power" };
+    const n = xs.length, mx = xs.reduce((a, b) => a + b, 0) / n, my = ys.reduce((a, b) => a + b, 0) / n;
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) { num += (xs[i] - mx) * (ys[i] - my); den += (xs[i] - mx) ** 2; }
+    if (den === 0) { const f = v[v.length - 1].roas; return { predict: () => f, kind: "flat" }; }
+    const b = num / den, a = Math.exp(my - b * mx);
+    return { predict: (d) => a * Math.pow(d + 1, b), a, b, kind: "power" };
+  },
+  // Empirical completion ratios: for each targetDn, cost-weighted avg(roas[tDn]/roas[anchorDn])
+  // among units that have both. returns {tDn: {avg, count}} or null entries if insufficient.
+  empiricalRatios(units, anchorDn, targetDns) {
+    const result = {};
+    for (const tDn of targetDns) {
+      if (tDn <= anchorDn) { result[tDn] = null; continue; }
+      const complete = units.filter(u => u.roas[anchorDn] != null && u.roas[tDn] != null && u.roas[anchorDn] > 0);
+      if (complete.length < 2) { result[tDn] = null; continue; }
+      const tw = complete.reduce((s, u) => s + u.cost, 0);
+      if (!tw) { result[tDn] = null; continue; }
+      result[tDn] = {
+        avg:   complete.reduce((s, u) => s + (u.roas[tDn] / u.roas[anchorDn]) * u.cost, 0) / tw,
+        count: complete.length,
+      };
+    }
+    return result;
+  },
+  // Anchor sufficiency: expand anchor set step-by-step, track D{targetDn} prediction stability
+  sufficiency(units, availDns, targetDn, threshold = 0.02) {
+    const anchors = [...availDns].filter(d => d < targetDn).sort((a, b) => a - b);
+    if (anchors.length < 1) return null;
+    const steps = [];
+    for (let i = 1; i <= anchors.length; i++) {
+      const set = anchors.slice(0, i);
+      const sumR = {}, sumC = {};
+      for (const u of units) {
+        for (const d of set) {
+          if (u.roas[d] != null && u.cost > 0) {
+            sumR[d] = (sumR[d] || 0) + u.roas[d] * u.cost;
+            sumC[d] = (sumC[d] || 0) + u.cost;
+          }
+        }
+      }
+      const pts = Object.entries(sumR)
+        .filter(([d]) => sumC[d] > 0)
+        .map(([d, s]) => ({ day: Number(d), roas: s / sumC[d] }))
+        .sort((a, b) => a.day - b.day);
+      const fit = this.fit(pts);
+      const raw = fit ? fit.predict(targetDn) : null;
+      const pred = (raw != null && isFinite(raw) && raw > 0) ? raw : null;
+      const prev = steps.length > 0 ? steps[steps.length - 1].pred : null;
+      const chg = (pred != null && prev != null && prev > 0) ? Math.abs(pred - prev) / prev : null;
+      steps.push({ set, pred, chg, converged: chg != null && chg < threshold });
+    }
+    const idx = steps.findIndex(s => s.converged);
+    return { steps, convergedAt: idx >= 0 ? steps[idx].set : null };
   },
 };
 function buildMaturationRows() {
   const rows = getMappedRowsForMon();
   const unit = MATURATION_STATE.unitField;
+  const ALL_DNS = MATURATION_MATH.ALL_DNS;
+  const mapped = new Set(Object.values(CSV_STATE.mapping || {}));
+  const isDnMapped = d => mapped.has(`revenue_d${d}`);
   const map = new Map();
   for (const r of rows) {
-    const k = unit==="_all" ? "전체" : (String(r[unit]??"").trim()||"(미지정)");
-    if (!map.has(k)) map.set(k, { unit:k, cost:0, r0:0, r7:0, r14:0, h0:false, h7:false, h14:false });
+    const k = unit === "_all" ? "전체" : (String(r[unit] ?? "").trim() || "(미지정)");
+    if (!map.has(k)) {
+      const e = { unit: k, cost: 0 };
+      ALL_DNS.forEach(d => { e[`r${d}`] = 0; e[`h${d}`] = false; });
+      map.set(k, e);
+    }
     const b = map.get(k);
-    b.cost += Number(r.cost)||0;
-    if (r.revenue_d0!=null&&r.revenue_d0!=="") { b.r0+=Number(r.revenue_d0)||0; b.h0=true; }
-    if (r.revenue_d7!=null&&r.revenue_d7!=="") { b.r7+=Number(r.revenue_d7)||0; b.h7=true; }
-    if (r.revenue_d14!=null&&r.revenue_d14!=="") { b.r14+=Number(r.revenue_d14)||0; b.h14=true; }
+    b.cost += Number(r.cost) || 0;
+    for (const d of ALL_DNS) {
+      if (!isDnMapped(d)) continue;
+      const v = r[`revenue_d${d}`];
+      const vNum = Number(v); if (vNum > 0) { b[`r${d}`] += vNum; b[`h${d}`] = true; }
+    }
   }
-  return [...map.values()].map(b => {
-    const roas = (rev) => b.cost>0 ? rev/b.cost : null;
-    const pts = [];
-    if (b.h0)  pts.push({ day:0,  roas: roas(b.r0) });
-    if (b.h7)  pts.push({ day:7,  roas: roas(b.r7) });
-    if (b.h14) pts.push({ day:14, roas: roas(b.r14) });
-    const fit = MATURATION_MATH.fit(pts);
-    const roas7 = b.h7 ? roas(b.r7) : null;
-    const pred = (d) => fit ? fit.predict(d) : null;
-    return {
-      unit:b.unit, cost:b.cost,
-      roas0: b.h0?roas(b.r0):null, roas7, roas14: b.h14?roas(b.r14):null,
-      roas30: pred(30), roas90: pred(90), roas180: pred(180),
-      maturation90: (roas7!=null && pred(90)!=null && roas7>0) ? pred(90)/roas7 : null,
-      fitKind: fit?.kind||"none",
-    };
-  }).sort((a,b)=>b.cost-a.cost);
+  // Dns with actual data in at least one unit AND column is mapped
+  const availDns = ALL_DNS.filter(d => isDnMapped(d) && [...map.values()].some(b => b[`h${d}`]));
+  // Selected anchors for curve fit (subset of availDns)
+  const selAnchors = MATURATION_STATE.anchorDns
+    ? MATURATION_STATE.anchorDns.filter(d => availDns.includes(d))
+    : [...availDns];
+  // Build unit records
+  const units = [...map.values()].map(b => {
+    const roas = {};
+    ALL_DNS.forEach(d => { roas[d] = (b[`h${d}`] && b.cost > 0) ? b[`r${d}`] / b.cost : null; });
+    const pts = selAnchors.filter(d => roas[d] != null).map(d => ({ day: d, roas: roas[d] }));
+    return { unit: b.unit, cost: b.cost, roas, fit: MATURATION_MATH.fit(pts) };
+  }).sort((a, b) => b.cost - a.cost);
+  // Empirical base = highest anchor where ALL units have observed data (so every unit gets a prediction)
+  // Falls back to highest with any unit observed if "all" requirement can't be met
+  const empiricalBase = (() => {
+    if (!units.length) return null;
+    return [...selAnchors].reverse().find(d => units.every(u => u.roas[d] != null))
+      ?? [...selAnchors].reverse().find(d => units.some(u => u.roas[d] != null))
+      ?? null;
+  })();
+  const targetDns = ALL_DNS.filter(d => empiricalBase != null && d > empiricalBase);
+  const empRatios = empiricalBase != null ? MATURATION_MATH.empiricalRatios(units, empiricalBase, targetDns) : {};
+  return { units, availDns, selAnchors, empiricalBase, empRatios };
 }
 function monMaturationBody() {
-  const rows = buildMaturationRows();
+  const { units, availDns, selAnchors, empiricalBase, empRatios } = buildMaturationRows();
+  const pct = v => (v == null || !isFinite(v)) ? null : (v * 100).toFixed(0) + "%";
+  const mapped = new Set(Object.values(CSV_STATE.mapping || {}));
+  const isDnMapped = d => mapped.has(`revenue_d${d}`);
+  // Table columns: all observed Dns + standard prediction horizons not yet observed
+  const showCols = [...new Set([
+    ...availDns,
+    ...[90, 180, 360].filter(d => !availDns.includes(d)),
+  ])].sort((a, b) => a - b);
+  // Sufficiency analysis (needs ≥2 anchor Dns and ≥1 unit)
+  const suffData = (units.length > 0 && availDns.length >= 2)
+    ? MATURATION_MATH.sufficiency(units, availDns, MATURATION_STATE.targetHorizon)
+    : null;
+  const fmtCell = (actual, curve, emp) => {
+    if (actual != null) return `<strong>${pct(actual)}</strong>`;
+    const parts = [];
+    if (MATURATION_STATE.showCurve    && curve != null) parts.push(`<span style="color:var(--accent)">${pct(curve)}</span>`);
+    if (MATURATION_STATE.showEmpirical && emp  != null) parts.push(`<em style="color:#9ece6a">${pct(emp)}</em>`);
+    return parts.length ? parts.join("<br>") : `<span style="color:var(--text-muted)">—</span>`;
+  };
   return `
-      <section class="block" id="s-mat">
-        <h2 class="section-title"><span class="ix">§1</span>ROAS 성숙 예측</h2>
+    <section class="block" id="s-mat">
+      <h2 class="section-title"><span class="ix">§1</span>ROAS 성숙 예측</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;margin-bottom:14px;">
         <div class="ab-pillgroup">
           <span class="ab-pillgroup-label">단위</span>
-          ${[["_all","전체"],["channel","채널"],["campaign_name","캠페인"]].map(([k,l])=>{
-            const av = k==="_all" || (new Set(Object.values(CSV_STATE.mapping||{}))).has(k);
-            return `<button class="ab-pill ${MATURATION_STATE.unitField===k?'active':''} ${!av?'disabled':''}" ${av?`data-mat-unit="${k}"`:'disabled'}>${l}${!av?' 🔒':''}</button>`;
+          ${[["_all","전체"],["channel","채널"],["campaign_name","캠페인"]].map(([k, l]) => {
+            const av = k === "_all" || mapped.has(k);
+            return `<button class="ab-pill ${MATURATION_STATE.unitField === k ? "active" : ""} ${!av ? "disabled" : ""}" ${av ? `data-mat-unit="${k}"` : "disabled"}>${l}${!av ? " 🔒" : ""}</button>`;
           }).join("")}
         </div>
-        <div class="table-wrap" style="margin-top:10px;"><table class="data" style="font-size:11.5px;">
-          <thead><tr><th>단위</th><th>비용</th><th>ROAS D0</th><th>D7</th><th>D14</th><th>예측 D30</th><th>예측 D90</th><th>예측 D180</th><th>성숙배수(D90/D7)</th><th>외삽</th></tr></thead>
-          <tbody>
-            ${rows.slice(0,60).map(r=>{
-              const pct = (v)=> v==null||!isFinite(v) ? "—" : (v*100).toFixed(0)+"%";
-              return `<tr>
-                <td><strong>${escapeHtml(String(r.unit).slice(0,24))}</strong></td>
-                <td class="tnum">${fmtCurrency(r.cost)}</td>
-                <td class="tnum">${pct(r.roas0)}</td>
-                <td class="tnum">${pct(r.roas7)}</td>
-                <td class="tnum">${pct(r.roas14)}</td>
-                <td class="tnum">${pct(r.roas30)}</td>
-                <td class="tnum"><strong>${pct(r.roas90)}</strong></td>
-                <td class="tnum">${pct(r.roas180)}</td>
-                <td class="tnum">${r.maturation90!=null?r.maturation90.toFixed(2)+"×":"—"}</td>
-                <td class="tnum" style="color:var(--text-muted);font-size:10px;">${r.fitKind}</td>
-              </tr>`;
-            }).join("")}
-          </tbody>
-        </table></div>
-        <div class="callout" style="margin-top:10px;"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">조기 ROAS가 낮아 보여도 <strong>성숙배수</strong>가 크면(예: 2×+) D90엔 손익분기를 넘길 수 있습니다. 조기 D7만 보고 끄지 말고 성숙 예측을 함께 보세요. ⚠ D14 이후는 외삽이므로 실측 누적되면 재확인.</p></div></div>
-      </section>
-    `;
+        <div class="ab-pillgroup">
+          <span class="ab-pillgroup-label">Anchor Dn <small style="opacity:0.6;font-weight:400">(곡선 fit 포함)</small></span>
+          ${MATURATION_MATH.ALL_DNS.filter(d => isDnMapped(d)).map(d => {
+            const avail = availDns.includes(d);
+            const sel   = MATURATION_STATE.anchorDns == null || MATURATION_STATE.anchorDns.includes(d);
+            return `<button class="ab-pill ${sel && avail ? "active" : ""} ${!avail ? "disabled" : ""}" ${avail ? `data-mat-anchor="${d}"` : "disabled"}>D${d}</button>`;
+          }).join("")}
+        </div>
+        <div class="ab-pillgroup">
+          <span class="ab-pillgroup-label">방법 표시</span>
+          <button class="ab-pill ${MATURATION_STATE.showCurve     ? "active" : ""}" data-mat-show="curve"     style="color:var(--accent)">커브 fit</button>
+          <button class="ab-pill ${MATURATION_STATE.showEmpirical ? "active" : ""}" data-mat-show="empirical" style="color:#9ece6a">경험적 비율</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table class="data" style="font-size:11px;">
+        <thead><tr>
+          <th>단위</th><th>비용</th>
+          ${showCols.map(d => `<th>D${d}</th>`).join("")}
+          <th>성숙배수</th><th>외삽</th>
+        </tr></thead>
+        <tbody>
+          ${units.slice(0, 60).map(u => {
+            const curvePred = d => u.fit ? u.fit.predict(d) : null;
+            const empPred   = d => {
+              if (empiricalBase == null || empRatios[d] == null || u.roas[d] != null || u.roas[empiricalBase] == null) return null;
+              return u.roas[empiricalBase] * empRatios[d].avg;
+            };
+            const base   = selAnchors.length ? (u.roas[selAnchors[selAnchors.length - 1]] ?? u.roas[7] ?? u.roas[14]) : null;
+            const pred90 = u.roas[90] ?? curvePred(90);
+            const mat    = (base != null && pred90 != null && base > 0) ? pred90 / base : null;
+            return `<tr>
+              <td><strong>${escapeHtml(String(u.unit).slice(0, 24))}</strong></td>
+              <td class="tnum">${fmtCurrency(u.cost)}</td>
+              ${showCols.map(d => `<td class="tnum">${fmtCell(u.roas[d], u.roas[d] == null ? curvePred(d) : null, empPred(d))}</td>`).join("")}
+              <td class="tnum">${mat != null ? mat.toFixed(2) + "×" : "—"}</td>
+              <td class="tnum" style="color:var(--text-muted);font-size:10px;">${u.fit?.kind || "—"}</td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table></div>
+      ${empiricalBase != null && Object.values(empRatios).some(v => v != null) ? `
+      <div class="callout" style="margin-top:8px;"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">
+        <strong style="color:#9ece6a">경험적 비율</strong>: D${empiricalBase} 실측 기반 완성비.
+        D${empiricalBase}와 목표 Dn을 모두 보유한 단위들의 비율(비용 가중 평균)을 미완성 단위에 적용합니다.
+        커브 fit과 일치할수록 예측 신뢰도 ↑.
+      </p></div></div>
+      ` : ""}
+      ${suffData ? `
+      <h3 style="margin:20px 0 10px;font-size:13px;font-weight:600;">🎯 Anchor 충분성 진단
+        <small style="opacity:0.6;font-weight:400;margin-left:8px;">— D${MATURATION_STATE.targetHorizon} 예측이 안정화되는 최소 anchor 집합 자동 탐지</small>
+        <div class="ab-pillgroup" style="display:inline-flex;margin-left:14px;vertical-align:middle;">
+          ${[90, 180, 360].map(h => `<button class="ab-pill ${MATURATION_STATE.targetHorizon === h ? "active" : ""}" data-mat-horizon="${h}">D${h}</button>`).join("")}
+        </div>
+      </h3>
+      <div class="table-wrap"><table class="data" style="font-size:12px;">
+        <thead><tr><th>Anchor 집합</th><th>D${MATURATION_STATE.targetHorizon} 커브 예측</th><th>이전 대비 변화율</th><th>상태</th></tr></thead>
+        <tbody>
+          ${suffData.steps.map((s, i) => `<tr style="${s.converged ? "background:rgba(158,206,106,0.06);" : ""}">
+            <td><code style="font-size:11px;">[${s.set.map(d => "D" + d).join(", ")}]</code></td>
+            <td class="tnum"><strong>${s.pred != null ? (s.pred * 100).toFixed(1) + "%" : "—"}</strong></td>
+            <td class="tnum">${s.chg != null ? (s.chg * 100).toFixed(1) + "%" : "—"}</td>
+            <td>${s.converged
+              ? '<span style="color:#9ece6a;font-weight:600;">✓ 안정화 (&lt;2%)</span>'
+              : i === suffData.steps.length - 1 && !suffData.convergedAt
+                ? '<span style="color:var(--text-muted);">추가 데이터 필요</span>'
+                : '<span style="color:var(--text-muted);">—</span>'}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table></div>
+      ${suffData.convergedAt
+        ? `<div class="callout" style="margin-top:8px;border-color:rgba(158,206,106,0.4);background:rgba(158,206,106,0.05);">
+             <div class="ico" style="color:#9ece6a">✓</div>
+             <div class="body"><p style="margin:0;font-size:12px;"><strong>[${suffData.convergedAt.map(d => "D" + d).join(", ")}] anchor 집합부터 D${MATURATION_STATE.targetHorizon} 예측 안정화</strong> (변화율 &lt;2%). 이 Dn 이상의 데이터가 있으면 예측이 충분히 수렴합니다.</p></div>
+           </div>`
+        : `<div class="callout warn" style="margin-top:8px;"><div class="ico">⚠</div><div class="body"><p style="margin:0;font-size:12px;">사용 가능한 anchor 조합으로 D${MATURATION_STATE.targetHorizon} 예측이 아직 안정화되지 않았습니다. 더 장기 Dn 데이터(예: D30, D90)를 추가하면 신뢰도가 높아집니다.</p></div></div>`}
+      ` : ""}
+      <div class="callout" style="margin-top:12px;"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">조기 ROAS가 낮아 보여도 <strong>성숙배수</strong>가 크면(예: 2×+) D90엔 손익분기를 넘길 수 있습니다. 조기 D7만 보고 끄지 말고 성숙 예측을 함께 보세요. ⚠ 관측 이후 Dn은 외삽이므로 실측 누적되면 재확인.</p></div></div>
+    </section>
+  `;
 }
 function bindMaturationHandlers() {
   bindInlineCsvHandlers();
-  document.querySelectorAll("[data-mat-unit]").forEach(b=>b.addEventListener("click",()=>{ if(b.classList.contains("disabled"))return; MATURATION_STATE.unitField=b.dataset.matUnit; navigate("5-16"); }));
+  document.querySelectorAll("[data-mat-unit]").forEach(b => b.addEventListener("click", () => {
+    if (b.classList.contains("disabled")) return;
+    MATURATION_STATE.unitField = b.dataset.matUnit; navigate("5-16");
+  }));
+  document.querySelectorAll("[data-mat-anchor]").forEach(b => b.addEventListener("click", () => {
+    const d = Number(b.dataset.matAnchor);
+    const mp = new Set(Object.values(CSV_STATE.mapping || {}));
+    const avDns = MATURATION_MATH.ALL_DNS.filter(dn => mp.has(`revenue_d${dn}`));
+    let cur = MATURATION_STATE.anchorDns ? [...MATURATION_STATE.anchorDns] : [...avDns];
+    const idx = cur.indexOf(d);
+    if (idx >= 0 && cur.length > 1) { cur.splice(idx, 1); } else if (idx < 0) { cur.push(d); cur.sort((a, b) => a - b); }
+    MATURATION_STATE.anchorDns = cur.length === avDns.length ? null : cur;
+    navigate("5-16");
+  }));
+  document.querySelectorAll("[data-mat-show]").forEach(b => b.addEventListener("click", () => {
+    const w = b.dataset.matShow;
+    if (w === "curve")     MATURATION_STATE.showCurve     = !MATURATION_STATE.showCurve;
+    if (w === "empirical") MATURATION_STATE.showEmpirical = !MATURATION_STATE.showEmpirical;
+    navigate("5-16");
+  }));
+  document.querySelectorAll("[data-mat-horizon]").forEach(b => b.addEventListener("click", () => {
+    MATURATION_STATE.targetHorizon = Number(b.dataset.matHorizon); navigate("5-16");
+  }));
 }
-function runMaturationTests(verbose=true){
-  const results=[];
-  // roas = 0.1*(day+1)^0.5: D0=0.1, D7≈0.283, D14≈0.387 → fit a=0.1,b=0.5 → D90 pred 0.1*sqrt(91)=0.954
-  const fit=MATURATION_MATH.fit([{day:0,roas:0.1},{day:7,roas:0.1*Math.sqrt(8)},{day:14,roas:0.1*Math.sqrt(15)}]);
-  const p90=fit.predict(90);
-  results.push({test:"T1 · power fit D90", expected:"~0.954", actual:p90.toFixed(4), pass: Math.abs(p90-0.1*Math.sqrt(91))<1e-6?"✓":"✗"});
-  // 1점 → flat
-  const f1=MATURATION_MATH.fit([{day:7,roas:0.3}]);
-  results.push({test:"T2 · 1점 flat", expected:"0.3", actual:String(f1.predict(90)), pass:f1.predict(90)===0.3?"✓":"✗"});
-  // 0점 → null
-  results.push({test:"T3 · 0점 null", expected:"null", actual:String(MATURATION_MATH.fit([])), pass:MATURATION_MATH.fit([])===null?"✓":"✗"});
-  if(verbose){console.log("%c=== Maturation · Golden ===","color:#adc6ff;font-weight:bold;");console.table(results);}
+function runMaturationTests(verbose = true) {
+  const results = [];
+  // T1: power fit — y=0.1*(day+1)^0.5: D90 pred = 0.1*sqrt(91)
+  const fit = MATURATION_MATH.fit([{ day: 0, roas: 0.1 }, { day: 7, roas: 0.1 * Math.sqrt(8) }, { day: 14, roas: 0.1 * Math.sqrt(15) }]);
+  const p90 = fit.predict(90);
+  results.push({ test: "T1 · power fit D90", expected: "~0.9539", actual: p90.toFixed(4), pass: Math.abs(p90 - 0.1 * Math.sqrt(91)) < 1e-6 ? "✓" : "✗" });
+  // T2: 1점 flat
+  const f1 = MATURATION_MATH.fit([{ day: 7, roas: 0.3 }]);
+  results.push({ test: "T2 · 1점 flat", expected: "0.3", actual: String(f1.predict(90)), pass: f1.predict(90) === 0.3 ? "✓" : "✗" });
+  // T3: 0점 null
+  results.push({ test: "T3 · 0점 null", expected: "null", actual: String(MATURATION_MATH.fit([])), pass: MATURATION_MATH.fit([]) === null ? "✓" : "✗" });
+  // T4: empiricalRatios — 2 units, ratio 5.0 cost-weighted
+  {
+    const us = [{ cost: 1000, roas: { 7: 0.10, 90: 0.50 } }, { cost: 1000, roas: { 7: 0.20, 90: 1.00 } }];
+    const er = MATURATION_MATH.empiricalRatios(us, 7, [90]);
+    const pass = er[90] != null && Math.abs(er[90].avg - 5.0) < 1e-9;
+    results.push({ test: "T4 · empiricalRatios avg=5.0", expected: "5.0", actual: er[90] ? er[90].avg.toFixed(6) : "null", pass: pass ? "✓" : "✗" });
+  }
+  // T5: sufficiency — 3 anchors [D0,D7,D14], detect convergence
+  {
+    const us = [{ cost: 1000, roas: { 0: 0.05, 7: 0.10, 14: 0.14 } }];
+    const suf = MATURATION_MATH.sufficiency(us, [0, 7, 14], 90);
+    const pass = suf != null && Array.isArray(suf.steps) && suf.steps.length === 3;
+    results.push({ test: "T5 · sufficiency 3-anchor → 3 steps", expected: "steps=3", actual: suf ? `steps=${suf.steps.length}` : "null", pass: pass ? "✓" : "✗" });
+  }
+  // T6: buildMaturationRows — new object return structure with units/availDns
+  {
+    const oFN = CSV_STATE.fileName, oMap = CSV_STATE.mapping, oRaw = CSV_STATE.raw;
+    CSV_STATE.fileName = "__mat_t6__";
+    CSV_STATE.mapping  = { cost: "cost", revenue_d7: "revenue_d7", revenue_d90: "revenue_d90" };
+    CSV_STATE.raw      = [{ cost: "1000", revenue_d7: "100", revenue_d90: "500" }];
+    const res = buildMaturationRows();
+    const pass = res != null && Array.isArray(res.units) && Array.isArray(res.availDns)
+              && res.availDns.includes(7) && res.availDns.includes(90)
+              && res.units[0].roas[7]  != null
+              && res.units[0].roas[90] != null;
+    results.push({ test: "T6 · buildMaturationRows obj+availDns", expected: "units[]+avail[7,90]", actual: res ? `u=${res.units.length},avail=[${res.availDns}]` : "null", pass: pass ? "✓" : "✗" });
+    CSV_STATE.fileName = oFN; CSV_STATE.mapping = oMap; CSV_STATE.raw = oRaw;
+  }
+  if (verbose) { console.log("%c=== Maturation · Golden ===", "color:#adc6ff;font-weight:bold;"); console.table(results); }
   return results;
 }
-if(typeof window!=="undefined"){ window.runMaturationTests=runMaturationTests; window.MATURATION_MATH=MATURATION_MATH; }
+if (typeof window !== "undefined") { window.runMaturationTests = runMaturationTests; window.MATURATION_MATH = MATURATION_MATH; }
 
 /* 붙여넣은 텍스트에서 숫자 추출 → {n, mean, stdev(표본 표준편차), cv}
    천단위 콤마 처리: 줄바꿈/탭이 있으면(컬럼 붙여넣기) 콤마=천단위 → 제거,
@@ -21686,7 +21888,7 @@ const TOOL_REQUIRED_FIELDS = {
   "5-12": ["cost", { oneOf: ["channel", "country", "platform", "campaign_name"] }, { oneOf: ["installs", "actions"] }],
   "5-13": ["date", "cost", { oneOf: ["installs", "actions"] }],
   "5-14": ["date", { oneOf: ["cost", "installs", "actions", "clicks", "impressions"] }],
-  "5-16": ["cost", { oneOf: ["revenue_d0", "revenue_d7", "revenue_d14"] }],
+  "5-16": ["cost", { oneOf: ["revenue_d0", "revenue_d7", "revenue_d14", "revenue_d30", "revenue_d90", "revenue_d180", "revenue_d360"] }],
   "5-15": ["holdout_group", "numerator", "denominator"],
   "5-18": ["week", { oneOf: ["mmm_reg", "mmm_react"] }, { oneOf: ["ch_google_roi", "ch_google_cbua", "ch_meta", "ch_tiktok", "ch_brand"] }],
 };
@@ -21801,11 +22003,16 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "revenue_d7",  unlocks: "매출·ROAS 이상 감지" },
   ],
   "5-16": [
-    { key: "channel",     unlocks: "채널별 ROAS 성숙 분리" },
+    { key: "channel",      unlocks: "채널별 ROAS 성숙 분리" },
     { key: "campaign_name", unlocks: "캠페인별 성숙" },
-    { key: "revenue_d0",  unlocks: "D0 ROAS (성숙곡선 시작점)" },
-    { key: "revenue_d7",  unlocks: "D7 ROAS" },
-    { key: "revenue_d14", unlocks: "D14 ROAS (외삽 정확도 ↑)" },
+    { key: "revenue_d0",   unlocks: "D0 ROAS (성숙곡선 시작점)" },
+    { key: "revenue_d7",   unlocks: "D7 ROAS" },
+    { key: "revenue_d14",  unlocks: "D14 ROAS (외삽 정확도 ↑)" },
+    { key: "revenue_d30",  unlocks: "D30 ROAS (경험적 비율 anchor · 충분성 진단)" },
+    { key: "revenue_d60",  unlocks: "D60 ROAS (장기 곡선 정밀도 ↑)" },
+    { key: "revenue_d90",  unlocks: "D90 ROAS (실측 성숙 검증)" },
+    { key: "revenue_d180", unlocks: "D180 ROAS (완전 성숙 기준)" },
+    { key: "revenue_d360", unlocks: "D360 ROAS (연간 ROAS 실측)" },
   ],
   "5-15": [
     { key: "experiment_id", unlocks: "실험별 분리 readout" },
@@ -21957,10 +22164,10 @@ function _demoEfficiencyData() {
       const clk = Math.round(imp * (0.022 + (rng() + 0.5) * 0.006));
       const inst = Math.max(1, Math.round(clk * (0.30 + (rng() + 0.5) * 0.06)));
       const r0 = Math.round(inst * (900 + (rng() + 0.5) * 300));
-      rows.push({ date, channel: chans[ci], campaign_name: chans[ci] + " · Prospecting", country: countries[(d + ci) % 3], platform: (d + ci) % 2 ? "android" : "ios", cost, impressions: imp, clicks: clk, installs: inst, actions: Math.round(inst * 0.42), revenue_d0: r0, revenue_d7: Math.round(r0 * 2.3), revenue_d14: Math.round(r0 * 3.1) });
+      rows.push({ date, channel: chans[ci], campaign_name: chans[ci] + " · Prospecting", country: countries[(d + ci) % 3], platform: (d + ci) % 2 ? "android" : "ios", cost, impressions: imp, clicks: clk, installs: inst, actions: Math.round(inst * 0.42), revenue_d0: r0, revenue_d7: Math.round(r0 * 2.3), revenue_d14: Math.round(r0 * 3.1), revenue_d30: Math.round(r0 * 4.5), revenue_d90: Math.round(r0 * 6.8), revenue_d180: Math.round(r0 * 8.5) });
     }
   }
-  return { fileName: "demo_efficiency.csv", headers: ["date", "channel", "campaign_name", "country", "platform", "cost", "impressions", "clicks", "installs", "actions", "revenue_d0", "revenue_d7", "revenue_d14"], rows };
+  return { fileName: "demo_efficiency.csv", headers: ["date", "channel", "campaign_name", "country", "platform", "cost", "impressions", "clicks", "installs", "actions", "revenue_d0", "revenue_d7", "revenue_d14", "revenue_d30", "revenue_d90", "revenue_d180"], rows };
 }
 function _demoCohortData() {
   const rng = seededNoise(70707); const rows = []; const offs = [0, 1, 3, 7, 14, 30, 60, 90];
