@@ -6172,7 +6172,7 @@ const MON_TABS = [
   { id: "pacing",     icon: "📈", label: "페이싱",     desc: "월말 착지 예측·페이스 경고",                          requiresAny: [] },
   { id: "anomaly",    icon: "🚨", label: "이상탐지",   desc: "급등·급락 z-score 감지",                             requiresAny: [] },
   { id: "ltv",        icon: "💹", label: "장기 가치",  desc: "LTV:CAC 회수기간 + ROAS 성숙도 예측 (효율 CSV)",      requiresAny: ["revenue_d30","revenue_d60","revenue_d90","revenue_d180","revenue_d360"] },
-  { id: "cohort",     icon: "📉", label: "리텐션",     desc: "리텐션 곡선·LTV 외삽 (코호트 CSV 별도)",              requiresAny: [] },
+  { id: "cohort",     icon: "📉", label: "리텐션",     desc: "리텐션 곡선·세그먼트·예측 (효율 CSV ret_dN 컬럼)",    requiresAny: ["ret_d30","ret_d60","ret_d90","ret_d180","ret_d360"] },
   { id: "funnel",     icon: "🪜", label: "퍼널 진단",  desc: "노출→클릭→설치→액션 단계 CVR·이탈",                  requiresAny: ["click"] },
   { id: "segment",    icon: "🗺", label: "세그먼트",   desc: "국가×채널×플랫폼 효율 매트릭스",                      requiresAny: ["channel","country","platform"] },
 ];
@@ -6297,18 +6297,17 @@ function monValueBody() {
 function page_5_2() {
   const meta = findMeta("5-2");
   const tab = MON_STATE.tab || "viz";
-  // 코호트 탭은 별도 grain(5-8 코호트 CSV), 나머지는 효율 CSV(5-2)
-  const csvTool = (tab === "cohort") ? "5-8" : "5-2";
+  // 전 탭 효율 CSV(5-2) 단일 grain (Phase 2 wide 전환)
+  const csvTool = "5-2";
   loadCsvFromTool(csvTool);
   const missing = checkRequiredForTool(csvTool);
   if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed(csvTool)) {
-    const isCohort = (csvTool === "5-8");
     return pageShell(meta, {
-      chips: `<span class="chip warning"><span class="dot"></span>${isCohort ? "코호트 CSV 업로드 대기" : "CSV 업로드 대기"}</span>${authStatusChip()}`,
+      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
       stickyFilter: renderMonFilterBar(),
-      summary: isCohort ? "코호트별 리텐션 곡선 + LTV 외삽. 코호트 날짜·경과일·코호트 크기·잔존/매출 컬럼 필요." : "필수: date + cost(또는 installs/actions). 컬럼을 더 매핑하면 LTV·퍼널·세그먼트 탭이 추가로 열립니다.",
+      summary: "필수: date + cost(또는 installs/actions). 컬럼을 더 매핑하면 LTV·리텐션·퍼널·세그먼트 탭이 추가로 열립니다.",
       toc: [{ id: "s-prep", title: "데이터 준비" }, { id: "s-cap", title: "데이터×기능 연결표" }],
-      body: `<section class="block" id="s-prep">${renderInlineCsvUpload(csvTool)}</section><div id="s-cap">${isCohort ? "" : renderCapabilityMatrix()}</div>`,
+      body: `<section class="block" id="s-prep">${renderInlineCsvUpload(csvTool)}</section><div id="s-cap">${renderCapabilityMatrix()}</div>`,
     });
   }
   // 탭 → 본문 dispatch
@@ -6319,16 +6318,15 @@ function page_5_2() {
   else if (tab === "scorecard") { body = monScorecardBody(); toc = [{ id: "s-score", title: "스코어카드" }]; }
   else if (tab === "anomaly")   { body = monAnomalyBody();   toc = [{ id: "s-anom", title: "이상 감지" }]; }
   else if (tab === "ltv")       { body = monValueBody();     toc = [{ id: "s-ctl", title: "분석 단위" }, { id: "s-table", title: "LTV:CAC 표" }, { id: "s-mat", title: "ROAS 성숙도" }]; }
-  else if (tab === "cohort")    { body = monCohortBody();    toc = [{ id: "s-retention", title: "리텐션" }, { id: "s-ltv", title: "LTV 외삽" }, { id: "s-segment", title: "세그먼트" }, { id: "s-cohorts", title: "코호트 표" }]; }
+  else if (tab === "cohort")    { body = monCohortBody();    toc = [{ id: "s-retention", title: "리텐션 곡선" }, { id: "s-ret-segment", title: "세그먼트별" }, { id: "s-ret-predict", title: "예측" }]; }
   else if (tab === "funnel")    { body = monFunnelBody();    toc = [{ id: "s-funnel", title: "퍼널" }]; }
   else if (tab === "segment")   { body = monSegmentBody();   toc = [{ id: "s-matrix", title: "세그먼트" }]; }
   else                          { body = monVizBody();       toc = [{ id: "s-cohort", title: "코호트" }, { id: "s-kpi", title: "KPI 요약" }, { id: "s-charts", title: "차트" }]; }
-  const csvLabel = tab === "cohort" ? " · 코호트 CSV" : " · 효율 CSV";
   return pageShell(meta, {
     chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span><span class="chip ok"><span class="dot"></span>${CSV_STATE.raw.length.toLocaleString()}행</span>${authStatusChip()}`,
-    stickyFilter: tab !== "cohort" ? renderMonFilterBar() : "",
+    stickyFilter: renderMonFilterBar(),
     toc,
-    body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경${csvLabel})</summary><div style="margin-top:10px;"><div style="margin-bottom:8px;font-size:11px;color:var(--text-muted);">🔒 데이터는 브라우저 메모리에서만 처리됩니다. 서버 전송·저장 없음.</div>${renderInlineCsvUpload(csvTool)}</div></details><div class="mon-sticky-bar">${renderMonTabs()}</div>${body}`,
+    body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경 · 효율 CSV)</summary><div style="margin-top:10px;"><div style="margin-bottom:8px;font-size:11px;color:var(--text-muted);">🔒 데이터는 브라우저 메모리에서만 처리됩니다. 서버 전송·저장 없음.</div>${renderInlineCsvUpload(csvTool)}</div></details><div class="mon-sticky-bar">${renderMonTabs()}</div>${body}`,
   });
 }
 PAGE_RENDERERS["5-2"] = page_5_2;
@@ -16411,18 +16409,153 @@ function buildMaturationCache() {
   return COHORT_MAT_CACHE;
 }
 
+/* ===== Wide 리텐션 엔진 (효율 CSV ret_dN 컬럼 직접 사용) ===== */
+const WIDE_RET_CACHE = { key: null, retDays: [], retCurve: [], bySegment: {} };
+
+function buildWideRetentionCache() {
+  const mapped = new Set(Object.values(CSV_STATE.mapping || {}).filter(v => v && v !== "__ignore__"));
+  const retDays = [0, 7, 14, 30, 60, 90, 180, 360].filter(d => mapped.has(`ret_d${d}`));
+  const key = [CSV_STATE.raw.length, CSV_STATE.fileName, retDays.join(",")].join("|");
+  if (WIDE_RET_CACHE.key === key) return WIDE_RET_CACHE;
+
+  const rows = getMappedRowsForMon();
+
+  function wgtCurve(subset) {
+    return retDays.map(day => {
+      const key = `ret_d${day}`;
+      const pts = subset.filter(r => Number(r[key]) > 0);
+      const totalN = pts.reduce((s, r) => s + (Number(r.installs || r.actions || 0) || 1), 0);
+      if (!totalN || !pts.length) return null;
+      const wtd = pts.reduce((s, r) => {
+        const n = Number(r.installs || r.actions || 0) || 1;
+        return s + Number(r[key]) * n;
+      }, 0) / totalN;
+      return { day, retentionRate: Math.min(1, Math.max(0, wtd)), n: totalN };
+    }).filter(Boolean);
+  }
+
+  const retCurve = wgtCurve(rows);
+
+  const bySegment = {};
+  for (const sk of ["channel", "country", "platform"]) {
+    if (!mapped.has(sk)) continue;
+    const groups = [...new Set(rows.map(r => String(r[sk] || "")).filter(Boolean))].sort();
+    bySegment[sk] = {};
+    for (const g of groups.slice(0, 12)) {
+      bySegment[sk][g] = wgtCurve(rows.filter(r => String(r[sk] || "") === g));
+    }
+  }
+
+  WIDE_RET_CACHE.key = key;
+  WIDE_RET_CACHE.retDays = retDays;
+  WIDE_RET_CACHE.retCurve = retCurve;
+  WIDE_RET_CACHE.bySegment = bySegment;
+  return WIDE_RET_CACHE;
+}
+
 function monCohortBody() {
-  buildQualityCache();
-  const c = QUALITY_CACHE;
+  const wrc = buildWideRetentionCache();
+  if (!wrc.retDays.length) {
+    return `<section class="block" id="s-retention">
+      <h2 class="section-title"><span class="ix">§1</span>리텐션 곡선</h2>
+      <div class="callout warn"><div class="ico">!</div><div class="body"><strong>리텐션 데이터 없음</strong>
+        <p>효율 CSV에 <code>ret_d30</code>, <code>ret_d90</code> 등 Retention(Dn) 컬럼을 매핑하세요.</p>
+      </div></div>
+    </section>`;
+  }
   return `
-      ${renderQualityValidation(c.validation)}
-      ${renderQualityRetention(c.retentionCurve)}
-      ${renderQualityLTV(c.ltv)}
-      ${renderQualityPUR(c.retentionCurve)}
-      ${renderQualitySegment(c.segmentCompare)}
-      ${renderQualityCohorts(c.cohorts)}
-      ${renderQualityMaturation()}
-    `;
+    ${renderWideRetentionSection(wrc)}
+    ${renderWideRetSegmentSection(wrc)}
+    ${renderWideRetPredictSection(wrc)}
+  `;
+}
+
+function renderWideRetentionSection(wrc) {
+  const fmtPct = v => v == null ? "—" : (v * 100).toFixed(1) + "%";
+  const curve = wrc.retCurve;
+  if (!curve.length) return "";
+  const chartId = "wide-ret-curve";
+  const labels = curve.map(p => `D${p.day}`);
+  const data = curve.map(p => +(p.retentionRate * 100).toFixed(2));
+  const chartScript = `<script>
+    (function(){
+      destroyChartIfExists("${chartId}");
+      CHART_INSTANCES["${chartId}"] = new Chart(document.getElementById("${chartId}"), {
+        type: "line",
+        data: { labels: ${JSON.stringify(labels)}, datasets: [{ label: "전체 리텐션", data: ${JSON.stringify(data)}, borderColor: "#7aa2f7", backgroundColor: "rgba(122,162,247,0.08)", tension: 0.35, pointRadius: 4, fill: true }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100, ticks: { callback: v => v + "%" }, grid: { color: "rgba(255,255,255,0.05)" } }, x: { grid: { color: "rgba(255,255,255,0.05)" } } }, plugins: { legend: { labels: { color: getCssVar("--text-2") } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ": " + ctx.parsed.y.toFixed(1) + "%" } } } }
+      });
+    })();
+  <\/script>`;
+  const tableRows = curve.map(p => `<tr><td>D${p.day}</td><td>${fmtPct(p.retentionRate)}</td><td>${p.n ? p.n.toLocaleString() : "—"}</td></tr>`).join("");
+  return `<section class="block" id="s-retention">
+    <h2 class="section-title"><span class="ix">§1</span>전체 리텐션 곡선</h2>
+    <div class="chart-container" style="height:220px;"><canvas id="${chartId}"></canvas></div>
+    ${chartScript}
+    <table style="margin-top:14px;width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="border-bottom:1px solid var(--border);"><th style="text-align:left;padding:4px 8px;color:var(--text-muted);">구간</th><th style="text-align:right;padding:4px 8px;color:var(--text-muted);">잔존율</th><th style="text-align:right;padding:4px 8px;color:var(--text-muted);">설치 수</th></tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table>
+  </section>`;
+}
+
+function renderWideRetSegmentSection(wrc) {
+  const segKeys = Object.keys(wrc.bySegment);
+  if (!segKeys.length) return "";
+  const fmtPct = v => v == null ? "—" : (v * 100).toFixed(1) + "%";
+  let html = `<section class="block" id="s-ret-segment">
+    <h2 class="section-title"><span class="ix">§2</span>세그먼트별 리텐션</h2>`;
+  const PALETTE = ["#7aa2f7","#9ece6a","#e0af68","#f7768e","#bb9af7","#2ac3de","#ff9e64","#73daca","#c0caf5","#a9b1d6","#db4b4b","#41a6b5"];
+  for (const sk of segKeys) {
+    const groups = Object.keys(wrc.bySegment[sk]);
+    const allDays = wrc.retDays;
+    const chartId = `wide-ret-seg-${sk}`;
+    const datasets = groups.map((g, gi) => ({
+      label: g, borderColor: PALETTE[gi % PALETTE.length],
+      data: allDays.map(day => { const pt = wrc.bySegment[sk][g].find(p => p.day === day); return pt ? +(pt.retentionRate * 100).toFixed(2) : null; }),
+      tension: 0.35, pointRadius: 3, fill: false, spanGaps: true
+    }));
+    const chartScript = `<script>
+      (function(){
+        destroyChartIfExists("${chartId}");
+        CHART_INSTANCES["${chartId}"] = new Chart(document.getElementById("${chartId}"), {
+          type: "line",
+          data: { labels: ${JSON.stringify(allDays.map(d => `D${d}`))}, datasets: ${JSON.stringify(datasets)} },
+          options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100, ticks: { callback: v => v + "%" }, grid: { color: "rgba(255,255,255,0.05)" } }, x: { grid: { color: "rgba(255,255,255,0.05)" } } }, plugins: { legend: { labels: { color: getCssVar("--text-2"), boxWidth: 12 } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ": " + ctx.parsed.y.toFixed(1) + "%" } } } }
+        });
+      })();
+    <\/script>`;
+    const label = sk === "channel" ? "채널" : sk === "country" ? "국가" : "플랫폼";
+    html += `<div style="margin-bottom:20px;"><div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;">${label}</div>
+      <div class="chart-container" style="height:200px;"><canvas id="${chartId}"></canvas></div>${chartScript}</div>`;
+  }
+  html += `</section>`;
+  return html;
+}
+
+function renderWideRetPredictSection(wrc) {
+  const curve = wrc.retCurve;
+  if (curve.length < 2) return "";
+  // 마지막 두 관측점으로 power-law 외삽
+  const pts = curve.filter(p => p.day > 0 && p.retentionRate > 0);
+  if (pts.length < 2) return "";
+  const pwr = fitPowerCurve(pts.map(p => p.day), pts.map(p => p.retentionRate));
+  if (!pwr) return "";
+  const horizons = [90, 180, 360].filter(d => !wrc.retDays.includes(d));
+  if (!horizons.length) return "";
+  const fmtPct = v => v == null ? "—" : (v * 100).toFixed(1) + "%";
+  const rows = horizons.map(d => {
+    const pred = pwr.a * Math.pow(d, pwr.b);
+    return `<tr><td>D${d}</td><td style="color:var(--accent);">${fmtPct(Math.min(1, Math.max(0, pred)))}</td><td style="color:var(--text-muted);font-size:11px;">Power fit 외삽</td></tr>`;
+  }).join("");
+  return `<section class="block" id="s-ret-predict">
+    <h2 class="section-title"><span class="ix">§3</span>리텐션 예측</h2>
+    <p class="muted" style="font-size:12px;">관측된 Dn 데이터로 power-law 커브를 적합해 미관측 구간을 외삽합니다. 참고값으로만 사용하세요.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;">
+      <thead><tr style="border-bottom:1px solid var(--border);"><th style="text-align:left;padding:4px 8px;color:var(--text-muted);">구간</th><th style="text-align:right;padding:4px 8px;color:var(--text-muted);">예측 잔존율</th><th style="text-align:right;padding:4px 8px;color:var(--text-muted);">방법</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </section>`;
 }
 
 function renderQualityValidation(v) {
