@@ -16103,6 +16103,258 @@ function buildQualityCache() {
   return QUALITY_CACHE;
 }
 
+/* ============================================================
+ * COHORT_MATURATION — 순수 마투레이션 예측 엔진 (PR 3-B)
+ *
+ * 2-트랙 자동 전환:
+ *   ① 경험적 완성비 (empirical): 성숙 코호트 수 ≥ MATURED_MIN 일 때
+ *   ② parametric 곡선 폴백 (curve): 미만이거나 관측 밖 외삽
+ * metric: "revenue" | "retention" | "payments"
+ * 결정론: Math.random 없음. 단조 보정: revenue/payments=비감소, retention=비증가.
+ * ============================================================ */
+const COHORT_MATUR_CFG = {
+  maturedMinDaily:  30,   // 일별 코호트 최소 성숙 코호트 수
+  maturedMinWeekly: 12,   // 주별 코호트 최소 성숙 코호트 수
+  anchorDn:         7,    // 경험적 비율의 분모 (기본 D7)
+  horizons:         [30, 90, 180, 365],
+  convThreshold:    0.02, // anchor 수렴 임계 (3-D에서 사용)
+};
+
+const COHORT_MATURATION = (function() {
+  function _parseMs(s) {
+    const [y, mo, d] = s.split("-").map(Number);
+    return Date.UTC(y, mo - 1, d);
+  }
+
+  function cohortAge(cohort_date, asOfDate) {
+    return Math.floor((_parseMs(asOfDate) - _parseMs(cohort_date)) / 86400000);
+  }
+
+  function inferAsOf(cohorts) {
+    let maxMs = 0;
+    for (const co of cohorts) {
+      const bMs = _parseMs(co.cohort_date);
+      const maxDay = co.points.length ? Math.max(...co.points.map(p => p.day)) : 0;
+      const ms = bMs + maxDay * 86400000;
+      if (ms > maxMs) maxMs = ms;
+    }
+    const d = new Date(maxMs);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  }
+
+  function detectGranularity(cohorts) {
+    if (cohorts.length < 2) return "daily";
+    const ms = cohorts.map(c => _parseMs(c.cohort_date)).sort((a,b)=>a-b);
+    const gaps = [];
+    for (let i = 1; i < ms.length; i++) gaps.push((ms[i]-ms[i-1])/86400000);
+    const sorted = [...gaps].sort((a,b)=>a-b);
+    const med = sorted[Math.floor(sorted.length / 2)];
+    return med >= 5 ? "weekly" : "daily";
+  }
+
+  function _getV(point, metric) {
+    if (!point) return null;
+    if (metric === "retention") return point.retentionRate;
+    if (metric === "revenue")   return point.arpu;
+    if (metric === "payments")  return point.pur;
+    return null;
+  }
+
+  function _wStats(vals, wts) {
+    const n = vals.length;
+    if (n === 0) return { mean: null, ci95: 0 };
+    const tw = wts.reduce((s,w) => s+w, 0);
+    if (tw === 0) return { mean: null, ci95: 0 };
+    const mean = vals.reduce((s,v,i) => s+v*wts[i], 0) / tw;
+    if (n < 2) return { mean, ci95: 0 };
+    const vari = wts.reduce((s,w,i) => s+w*(vals[i]-mean)**2, 0) / (tw * (n-1)/n);
+    return { mean, ci95: 1.96 * Math.sqrt(vari / n) };
+  }
+
+  /* 단조 보정: 오브젝트 배열 [{n, v, ...}] 를 day 순으로 정렬·수정 (in-place). */
+  function monoCorrect(pts, metric) {
+    if (!pts.length) return pts;
+    pts.sort((a,b) => a.n - b.n);
+    if (metric === "retention") {
+      let run = Infinity;
+      for (const p of pts) { if (p.v != null && isFinite(p.v)) { run = Math.min(run, p.v); p.v = Math.max(0, Math.min(1, run)); } }
+    } else {
+      let run = -Infinity;
+      for (const p of pts) { if (p.v != null && isFinite(p.v)) { run = Math.max(run, p.v); p.v = Math.max(0, run); } }
+    }
+    return pts;
+  }
+
+  function predict(cohorts, asOfDate, metric, cfg) {
+    const anchorDn = cfg?.anchorDn  ?? COHORT_MATUR_CFG.anchorDn;
+    const horizons  = cfg?.horizons || COHORT_MATUR_CFG.horizons;
+    const asOf      = asOfDate || inferAsOf(cohorts);
+    const gran      = detectGranularity(cohorts);
+    const matMin    = gran === "weekly" ? COHORT_MATUR_CFG.maturedMinWeekly : COHORT_MATUR_CFG.maturedMinDaily;
+
+    /* ---- 전체 관측 평균 (곡선 폴백용) ---- */
+    const obsByDay = new Map();
+    for (const co of cohorts) {
+      for (const pt of co.points) {
+        const v = _getV(pt, metric);
+        if (v == null || !isFinite(v)) continue;
+        if (!obsByDay.has(pt.day)) obsByDay.set(pt.day, { vS: 0, wS: 0 });
+        const d = obsByDay.get(pt.day);
+        d.vS += v * co.size; d.wS += co.size;
+      }
+    }
+    const obsPts = [...obsByDay.entries()]
+      .sort((a,b) => a[0]-b[0])
+      .map(([day, d]) => ({ day, v: d.wS > 0 ? d.vS / d.wS : null }))
+      .filter(p => p.v != null && isFinite(p.v));
+    const maxObsDay = obsPts.length ? Math.max(...obsPts.map(p=>p.day)) : 0;
+
+    const fitObs = obsPts.filter(p => p.day > 0 && p.v > 0);
+    const cPwr = fitPowerCurve(fitObs.map(p=>p.day), fitObs.map(p=>p.v));
+    const cLog = fitLogCurve(fitObs.map(p=>p.day), fitObs.map(p=>p.v));
+    const curveFit = cPwr && cLog ? (cPwr.R2 >= cLog.R2 ? cPwr : cLog) : (cPwr || cLog);
+
+    /* ---- Per-horizon 계산 ---- */
+    const avgCurve = [];
+
+    for (const targetDn of horizons) {
+      /* 성숙 코호트: cohortAge ≥ targetDn AND 해당 Dn 실측 보유 */
+      const mature = cohorts.filter(co => {
+        if (cohortAge(co.cohort_date, asOf) < targetDn) return false;
+        const pt = co.points.find(p => p.day === targetDn);
+        const v  = _getV(pt, metric);
+        return v != null && isFinite(v);
+      });
+
+      if (mature.length >= matMin) {
+        /* 경험적 경로 */
+        let entV = null, entLo = null, entHi = null;
+        let avgRatio = null, ci95Ratio = 0;
+
+        if (metric !== "retention") {
+          /* 비율 기반: v(targetDn) / v(anchorDn) */
+          const withAnchor = mature.filter(co => {
+            const apt = co.points.find(p => p.day === anchorDn);
+            const av  = _getV(apt, metric);
+            return av != null && av > 0 && isFinite(av);
+          });
+          if (withAnchor.length >= 2) {
+            const ratios = withAnchor.map(co => {
+              const tpt = co.points.find(p => p.day === targetDn);
+              const apt = co.points.find(p => p.day === anchorDn);
+              return _getV(tpt, metric) / _getV(apt, metric);
+            });
+            const wts = withAnchor.map(co => co.size);
+            const { mean: mr, ci95: cir } = _wStats(ratios, wts);
+            avgRatio  = mr;
+            ci95Ratio = cir;
+          }
+          /* 글로벌 평균 (표 표시용) */
+          const aVals = mature.map(co => { const pt = co.points.find(p => p.day === targetDn); return _getV(pt, metric); });
+          const aWts  = mature.map(co => co.size);
+          const { mean: mv, ci95: cv } = _wStats(aVals, aWts);
+          entV = mv; entLo = Math.max(0, mv - cv); entHi = mv + cv;
+        } else {
+          /* 리텐션: 레벨 가중평균 */
+          const aVals = mature.map(co => { const pt = co.points.find(p => p.day === targetDn); return _getV(pt, metric); });
+          const aWts  = mature.map(co => co.size);
+          const { mean: mv, ci95: cv } = _wStats(aVals, aWts);
+          entV = mv; entLo = Math.max(0, mv - cv); entHi = Math.min(1, mv + cv);
+        }
+        avgCurve.push({ n: targetDn, v: entV, lo: entLo, hi: entHi, avgRatio, ci95Ratio, maturedCount: mature.length, method: "empirical" });
+
+      } else if (curveFit) {
+        /* 곡선 폴백 */
+        const v = curveFit.predict(targetDn);
+        if (isFinite(v) && v >= 0) {
+          avgCurve.push({ n: targetDn, v, lo: null, hi: null, avgRatio: null, ci95Ratio: 0, maturedCount: mature.length, method: "curve" });
+        } else {
+          avgCurve.push({ n: targetDn, v: null, lo: null, hi: null, avgRatio: null, ci95Ratio: 0, maturedCount: mature.length, method: "insufficient" });
+        }
+      } else {
+        avgCurve.push({ n: targetDn, v: null, lo: null, hi: null, avgRatio: null, ci95Ratio: 0, maturedCount: mature.length, method: "insufficient" });
+      }
+    }
+
+    /* avgCurve 단조 보정 (관측 평균 포함) */
+    const monoInput = [
+      ...obsPts.map(p => ({ n: p.day, v: p.v })),
+      ...avgCurve.filter(e => e.v != null).map(e => ({ n: e.n, v: e.v })),
+    ];
+    monoCorrect(monoInput, metric);
+    const monoMap = new Map(monoInput.map(p => [p.n, p.v]));
+    for (const ent of avgCurve) {
+      if (ent.v != null) {
+        const corrV = monoMap.get(ent.n);
+        if (corrV != null) {
+          const diff = corrV - ent.v;
+          ent.v  = corrV;
+          if (ent.lo != null) ent.lo = Math.max(0, ent.lo + diff);
+          if (ent.hi != null) ent.hi = metric === "retention" ? Math.min(1, ent.hi + diff) : ent.hi + diff;
+        }
+      }
+    }
+
+    /* ---- 코호트별 예측 ---- */
+    const byCohort = cohorts.map(co => {
+      const age    = cohortAge(co.cohort_date, asOf);
+      const actual = co.points
+        .map(p => ({ n: p.day, v: _getV(p, metric) }))
+        .filter(p => p.v != null && isFinite(p.v));
+      const actualSet = new Set(actual.map(p => p.n));
+
+      const anchorPt = co.points.find(p => p.day === anchorDn);
+      const anchorV  = anchorPt ? _getV(anchorPt, metric) : null;
+
+      const predicted = [];
+      for (const ent of avgCurve) {
+        if (actualSet.has(ent.n)) continue;        // 이미 실측
+        if (ent.v == null && ent.avgRatio == null) continue; // 데이터 부족
+
+        let predV, predLo, predHi;
+        if (ent.avgRatio != null && anchorV != null && anchorV > 0) {
+          predV   = anchorV * ent.avgRatio;
+          predLo  = Math.max(0, anchorV * (ent.avgRatio - ent.ci95Ratio));
+          predHi  = anchorV * (ent.avgRatio + ent.ci95Ratio);
+        } else if (ent.v != null) {
+          predV = ent.v; predLo = ent.lo; predHi = ent.hi;
+        } else {
+          continue;
+        }
+        if (!isFinite(predV) || predV < 0) continue;
+        if (metric === "retention") {
+          predV  = Math.min(1, predV);
+          predLo = predLo != null ? Math.max(0, predLo) : null;
+          predHi = predHi != null ? Math.min(1, predHi) : null;
+        }
+        predicted.push({ n: ent.n, v: predV, lo: predLo, hi: predHi, method: ent.method });
+      }
+
+      /* 코호트별 단조 보정 (실측 + 예측 합산) */
+      const combined = [
+        ...actual.map(p => ({ n: p.n, v: p.v, _a: true })),
+        ...predicted.map(p => ({ n: p.n, v: p.v, lo: p.lo, hi: p.hi, method: p.method, _a: false })),
+      ];
+      monoCorrect(combined, metric);
+      const corrPred = combined.filter(p => !p._a).map(p => ({ n: p.n, v: p.v, lo: p.lo, hi: p.hi, method: p.method }));
+
+      return { cohort_date: co.cohort_date, size: co.size, age, actual, predicted: corrPred };
+    });
+
+    return { avgCurve, byCohort, asOf, metric, anchorDn, curveFit: curveFit ? { type: curveFit.type, R2: curveFit.R2 } : null };
+  }
+
+  function predictAll(cohorts, asOfDate, cfg) {
+    return {
+      revenue:    predict(cohorts, asOfDate, "revenue",    cfg),
+      retention:  predict(cohorts, asOfDate, "retention",  cfg),
+      payments:   predict(cohorts, asOfDate, "payments",   cfg),
+    };
+  }
+
+  return { cohortAge, inferAsOf, detectGranularity, monoCorrect, predict, predictAll };
+})();
+
 function monCohortBody() {
   buildQualityCache();
   const c = QUALITY_CACHE;
@@ -16488,6 +16740,98 @@ function runQualityTests(verbose = true) {
     results.push({ test: "T4 · PUR dayMap (60/1000=0.06)", expected: "0.06", actual: purPt ? purPt.purMean.toFixed(6) : "null", pass: purOk ? "✓" : "✗" });
     // 복원
     CSV_STATE.raw = origState; CSV_STATE.mapping = origMap; CSV_STATE.fileName = origFN; QUALITY_CACHE.key = origKey;
+  }
+
+  // T5: COHORT_MATURATION — 경험적 비율 예측 (revenue)
+  // 35개 성숙 코호트, 각 D7=10, D30=20 (비율=2.0)
+  // 새 코호트 D7=15 → predict D30 = 15*2.0 = 30.0
+  {
+    const makeT5Cohorts = (n) => {
+      const cs = [];
+      for (let i = 0; i < n; i++) {
+        const dStr = `2024-${String(Math.floor(i/28)+1).padStart(2,'0')}-${String((i%28)+1).padStart(2,'0')}`;
+        cs.push({
+          cohort_date: dStr, size: 1000,
+          points: [
+            { day: 7,  retentionRate: 0.5, arpu: 10, pur: 0.02 },
+            { day: 30, retentionRate: 0.3, arpu: 20, pur: 0.04 },
+          ],
+        });
+      }
+      return cs;
+    };
+    const matureCohorts = makeT5Cohorts(35);
+    const asOf = "2025-06-01";
+    const res = COHORT_MATURATION.predict(matureCohorts, asOf, "revenue", { anchorDn: 7, horizons: [30] });
+    const ent30 = res.avgCurve.find(e => e.n === 30);
+    const ratioOk = ent30 && ent30.method === "empirical" && Math.abs(ent30.avgRatio - 2.0) < 1e-6;
+    results.push({ test: "T5 · COHORT_MATURATION 경험적 비율=2.0", expected: "avgRatio=2.0", actual: ent30 ? `avgRatio=${ent30.avgRatio?.toFixed(4)}` : "null", pass: ratioOk ? "✓" : "✗" });
+
+    // 코호트별 예측: 신규 코호트 D7=15 → predict D30=30
+    const newCohort = [{ cohort_date: "2025-05-28", size: 500, points: [{ day: 7, retentionRate: 0.5, arpu: 15, pur: 0.03 }] }];
+    const allCs = [...matureCohorts, ...newCohort];
+    const res2 = COHORT_MATURATION.predict(allCs, asOf, "revenue", { anchorDn: 7, horizons: [30] });
+    const newEntry = res2.byCohort.find(c => c.cohort_date === "2025-05-28");
+    const pred30 = newEntry?.predicted.find(p => p.n === 30);
+    const pred30Ok = pred30 && Math.abs(pred30.v - 30) < 1e-4;
+    results.push({ test: "T5b · COHORT_MATURATION 코호트별 예측(D7=15→D30=30)", expected: "30.0", actual: pred30 ? pred30.v.toFixed(4) : "null", pass: pred30Ok ? "✓" : "✗" });
+  }
+
+  // T6: 성숙 코호트 부족 → 곡선 폴백 (5개 < maturedMinDaily=30)
+  {
+    const fewCohorts = [];
+    for (let i = 0; i < 5; i++) {
+      fewCohorts.push({
+        cohort_date: `2024-01-${String(i+1).padStart(2,'0')}`, size: 1000,
+        points: [
+          { day: 1,  retentionRate: 0.9, arpu:  2, pur: 0.01 },
+          { day: 7,  retentionRate: 0.5, arpu: 10, pur: 0.02 },
+          { day: 14, retentionRate: 0.4, arpu: 14, pur: 0.03 },
+          { day: 30, retentionRate: 0.3, arpu: 18, pur: 0.04 },
+        ],
+      });
+    }
+    const res = COHORT_MATURATION.predict(fewCohorts, "2025-06-01", "revenue", { anchorDn: 7, horizons: [90] });
+    const ent90 = res.avgCurve.find(e => e.n === 90);
+    const isCurve = ent90 && (ent90.method === "curve" || ent90.method === "insufficient");
+    results.push({ test: "T6 · COHORT_MATURATION 부족→폴백", expected: "method=curve|insufficient", actual: ent90 ? ent90.method : "null", pass: isCurve ? "✓" : "✗" });
+  }
+
+  // T7: COHORT_MATURATION 결정론
+  {
+    const dcs = [];
+    for (let i = 0; i < 35; i++) {
+      dcs.push({ cohort_date: `2024-01-${String(i+1).padStart(2,'0')}`, size: 500, points: [{ day: 7, retentionRate: 0.5, arpu: 8 + i*0.1, pur: 0.02 }, { day: 30, retentionRate: 0.3, arpu: 15 + i*0.1, pur: 0.04 }] });
+    }
+    const r1 = COHORT_MATURATION.predict(dcs, "2025-06-01", "revenue", { anchorDn: 7, horizons: [30] });
+    const r2 = COHORT_MATURATION.predict(dcs, "2025-06-01", "revenue", { anchorDn: 7, horizons: [30] });
+    const e1 = r1.avgCurve.find(e=>e.n===30), e2 = r2.avgCurve.find(e=>e.n===30);
+    const det = e1 && e2 && e1.avgRatio === e2.avgRatio && e1.maturedCount === e2.maturedCount;
+    results.push({ test: "T7 · COHORT_MATURATION 결정론", expected: "identical", actual: det ? "identical" : "differ", pass: det ? "✓" : "✗" });
+  }
+
+  // T8: 단조 보정 — revenue 비감소
+  {
+    const monoTest = [
+      { n: 7,  v: 10 },
+      { n: 30, v:  8 }, // 의도적으로 감소 → 보정 후 10
+      { n: 90, v: 12 },
+    ];
+    COHORT_MATURATION.monoCorrect(monoTest, "revenue");
+    const mono8 = monoTest.find(p=>p.n===30);
+    results.push({ test: "T8 · 단조 보정 revenue(D30:8→10)", expected: "10", actual: mono8 ? mono8.v : "null", pass: mono8 && mono8.v === 10 ? "✓" : "✗" });
+  }
+
+  // T9: 단조 보정 — retention 비증가
+  {
+    const retTest = [
+      { n: 7,  v: 0.5 },
+      { n: 30, v: 0.6 }, // 의도적으로 증가 → 보정 후 0.5
+      { n: 90, v: 0.2 },
+    ];
+    COHORT_MATURATION.monoCorrect(retTest, "retention");
+    const ret30 = retTest.find(p=>p.n===30);
+    results.push({ test: "T9 · 단조 보정 retention(D30:0.6→0.5)", expected: "0.5", actual: ret30 ? ret30.v : "null", pass: ret30 && Math.abs(ret30.v - 0.5) < 1e-9 ? "✓" : "✗" });
   }
 
   if (verbose) {
