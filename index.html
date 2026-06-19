@@ -17947,9 +17947,9 @@ const MATURATION_MATH = {
   // Anchor sufficiency: expand anchor set step-by-step, track D{targetDn} prediction stability
   sufficiency(units, availDns, targetDn, threshold = 0.02) {
     const anchors = [...availDns].filter(d => d < targetDn).sort((a, b) => a - b);
-    if (anchors.length < 1) return null;
+    if (anchors.length < 2) return null;
     const steps = [];
-    for (let i = 1; i <= anchors.length; i++) {
+    for (let i = 2; i <= anchors.length; i++) {
       const set = anchors.slice(0, i);
       const sumR = {}, sumC = {};
       for (const u of units) {
@@ -18130,7 +18130,7 @@ function monMaturationBody() {
            </div>`
         : `<div class="callout warn" style="margin-top:8px;"><div class="ico">⚠</div><div class="body"><p style="margin:0;font-size:12px;">사용 가능한 anchor 조합으로 D${MATURATION_STATE.targetHorizon} 예측이 아직 안정화되지 않았습니다. 더 장기 Dn 데이터(예: D30, D90)를 추가하면 신뢰도가 높아집니다.</p></div></div>`}
       ` : ""}
-      <div class="callout" style="margin-top:12px;"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">조기 ROAS가 낮아 보여도 <strong>성숙배수</strong>가 크면(예: 2×+) D90엔 손익분기를 넘길 수 있습니다. 조기 D7만 보고 끄지 말고 성숙 예측을 함께 보세요. ⚠ 관측 이후 Dn은 외삽이므로 실측 누적되면 재확인.</p></div></div>
+      <div class="callout" style="margin-top:12px;"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">조기 ROAS가 낮아 보여도 <strong>성숙배수</strong>가 크면(예: 2×+) D90엔 손익분기를 넘길 수 있습니다. 조기 D7만 보고 끄지 말고 성숙 예측을 함께 보세요. ⚠ 관측 이후 Dn은 외삽이므로 실측 누적되면 재확인.</p><p style="margin:6px 0 0;font-size:11px;opacity:0.75;">📋 이 도구는 <strong>효율 CSV(일별 집계)</strong>를 사용합니다. D90 매출이 아직 없는 최근 행의 비용도 분모에 포함되므로, 부분 성숙 채널의 고-Dn 관측값이 실제보다 낮게 나올 수 있습니다. 코호트별 정확한 maturation을 보려면 코호트 CSV 기반 5-8 도구를 사용하세요.</p></div></div>
     </section>
   `;
 }
@@ -18182,8 +18182,8 @@ function runMaturationTests(verbose = true) {
   {
     const us = [{ cost: 1000, roas: { 0: 0.05, 7: 0.10, 14: 0.14 } }];
     const suf = MATURATION_MATH.sufficiency(us, [0, 7, 14], 90);
-    const pass = suf != null && Array.isArray(suf.steps) && suf.steps.length === 3;
-    results.push({ test: "T5 · sufficiency 3-anchor → 3 steps", expected: "steps=3", actual: suf ? `steps=${suf.steps.length}` : "null", pass: pass ? "✓" : "✗" });
+    const pass = suf != null && Array.isArray(suf.steps) && suf.steps.length === 2;
+    results.push({ test: "T5 · sufficiency 3-anchor → 2 steps (2-pt min)", expected: "steps=2", actual: suf ? `steps=${suf.steps.length}` : "null", pass: pass ? "✓" : "✗" });
   }
   // T6: buildMaturationRows — new object return structure with units/availDns
   {
