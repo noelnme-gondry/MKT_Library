@@ -164,11 +164,19 @@ const MON_FEATURES = [
 **적극 추천. 이건 LTV 예측의 업계 표준 기법** ("cohort triangle completion" / "maturation curve" / "vintage completion"). 근거:
 - 기존 ROAS 성숙도 도구(5-16)가 이미 **단순화 버전**(D0/D7/D14 3점 power fit)을 하고 있음. 이를 (a) 임의 Dn, (b) Retention·PUR로 확장, (c) **경험적 평균 완성비(empirical completion ratio)** 추가가 자연스러운 진화.
 - **경험적 완성비가 parametric 곡선보다 강건**할 때가 많음 — 성숙 코호트가 충분하면 "D90/D30 비율의 가중평균"이 곡선 강제보다 정확. 단 관측 Dn 범위 **밖** 외삽(예: 관측 최대 D90인데 D180 예측)은 곡선 fit 필요.
-- **권장: 2-트랙** — ① 경험적 완성비(성숙 코호트 ≥ K개일 때 주 방법) ② parametric 곡선(`fitPowerCurve`/`fitLogCurve` 재사용, 관측 밖 외삽·sparse 보완).
+
+### 2-트랙 자동 전환 규칙 (사용자 확정)
+- **① 경험적 완성비 (주 방법)**: 그 Dn을 실측 보유한 **마감 코호트(window) 수 ≥ MATURED_MIN** 일 때.
+- **② parametric 곡선 폴백** (`fitPowerCurve`/`fitLogCurve` 재사용): 마감 window 수 **< MATURED_MIN** 이거나 관측 Dn 범위 밖 외삽.
+- **MATURED_MIN = config** (사용자 지정 30 또는 60). ⚠ **코호트 단위(일/주)에 따라 양 부담 다름**:
+  - 일별 코호트: 30~60 window = 1~2개월 (현실적)
+  - 주별 코호트: 30~60 window = 7~14개월 (부담 큼)
+  - → `COHORT_MATUR_CFG = { maturedMinDaily: 30, maturedMinWeekly: 12, ... }` 식으로 단위별 기본값 분리 권장(둘 다 config 노출). 사용자 명시값(30/60)은 일별 기준으로 채택.
+- 메서드 선택은 Dn별로 독립(가까운 Dn은 경험적, 먼 Dn은 곡선). 각 예측값에 `method:"empirical"|"curve"` 태깅.
 
 ### ⚠ 통계 가드레일 (CLAUDE.md §8 필수 준수)
 - **결정론** — `Math.random` 금지(§8.7). 같은 입력 → byte-identical.
-- **성숙 충족 게이트** — Dn 예측은 그 Dn을 **실측 보유한 성숙 코호트 ≥ K개**(예 K=3, config)일 때만. 미달 = "⊘ 데이터 부족"(예측 금지).
+- **성숙 충족 게이트 / 메서드 전환** — Dn 예측 시 그 Dn을 실측 보유한 마감 코호트 수가 `MATURED_MIN` 이상이면 경험적, 미만이면 곡선 폴백(위 2-트랙 규칙). 곡선조차 점이 3개 미만이면 "⊘ 데이터 부족"(예측 금지).
 - **단조성 보정** — Retention은 [0,1]·비증가(running-min), Revenue/PUR 누적은 비감소(running-max). artifact 차단(§8.5 패턴).
 - **신뢰구간** — 완성비의 코호트 간 분산으로 예측 밴드. 실측 vs 예측 시각 구분(실선/점선·색).
 - **캐비엇 강제** — "예측은 과거 성숙 코호트가 신규에도 재현된다 가정. 획득 믹스·시즈널리티 변하면 깨짐. 확정 아님." UI+다운로드에 명시.
@@ -203,12 +211,30 @@ const MON_FEATURES = [
 - **PR 3-C (UI·소비)**: 5-8(또는 5-2 cohort 탭)에 마투레이션 뷰 —
   - 코호트 vintage 표(행=cohort_date, 열=Dn, 셀=실측 진하게/예측 점선·연하게/⊘ 부족), 마지막 열 = Predict D90/D180.
   - 차트: 성숙 코호트 평균 완성곡선 + 미성숙 코호트 예측 오버레이(실선/점선).
-  - metric 토글(Revenue/Retention/PUR), anchor·K·asOf config UI.
+  - metric 토글(Revenue/Retention/PUR), anchor·MATURED_MIN·asOf config UI.
   - **다운로드 CSV**: 코호트×Dn 실측+예측+lo/hi+method, BOM+CRLF(§7 PR#85).
   - 캐비엇 콜아웃 강제.
 
+- **PR 3-D (ROAS 성숙도 5-16 — 듀얼 메서드 + anchor 충분성 진단) [사용자 확정·핵심]**:
+  - **두 방법 동시 표시**: 경험적 완성비 예측 + 곡선 fit 예측을 **같은 차트/표에 나란히**(체크박스로 각각 on/off). 일치할수록 모델 신뢰.
+  - **사용할 Dn을 사용자가 선택**: 어떤 Dn까지 anchor로 쓸지 멀티셀렉트(예 `[D0,D7,D14,D30,D60]` 체크). 선택 Dn만으로 예측 재계산.
+  - **🎯 anchor 충분성 진단 (사용자가 가장 원한 기능)**: D360(또는 목표 horizon) 예측을 anchor 집합을 점진 확장하며 계산 — `[~D30]` → `[~D60]` → `[~D90]` …. **예측이 안정되는 첫 Dn을 자동 탐지**해 직접 안내: 예) "✅ D60 이후 예측 변화 < 2% → D90+ 데이터 수집 불필요" / "⚠ D90까지도 예측이 흔들림 → 더 긴 데이터 필요". 임계(예 2%)는 config.
+    - 두 진단 구분: ① **방법 일치도**(경험적 vs 곡선, 같은 horizon) ② **anchor 충분성**(같은 방법, anchor 점진 확장 → 수렴점). ②를 전면 배치(사용자 핵심 질문 = "D60이면 충분한가").
+  - 표: anchor 집합별 D360 예측 + 직전 대비 변화율 + 수렴 여부(✓). 두 방법 컬럼 병기.
+  - 기존 `MATURATION_MATH`(`:16993`) 재사용·확장, `COHORT_MATURATION`(3-B)와 공유 가능하면 공유.
+
+- **PR 3-E (주차별 retention vintage + base 선택) [사용자 확정]**:
+  - **현재**: retention 곡선이 전체 기간 통합(단일 평균 곡선).
+  - **추가**: "주차별 보기" 토글 → cohort_date를 **월~일(Monday-anchored) 주 경계로 묶어** 주차 vintage별 곡선(최근 주가 과거 주보다 잘 남는지 = 코호트 품질 추세).
+  - **retention base 선택**: `retained_users = base × retention_rate`, base ∈ {registration, install} 를 사용자가 선택. 주차별로 `Σretained_users / Σbase` = 주차 retention rate.
+  - ⚠ **함정(§7)**: 주차 버킷팅은 Monday-anchored 주 경계를 정확히(타임존·`Date` 파싱·윤년 주의). `_weekStartMonday(dateStr)` 순수함수로 분리·유닛테스트.
+  - ⚠ **base 절대값 필요**: 주차 sum이 의미 있으려면 registration/install **절대 수** 매핑 필요. rate만 있으면 base 가중평균으로 폴백 + 안내.
+  - 곡선 fit·외삽은 기존 `fitPowerCurve`/`fitLogCurve` 그대로(전체 vs 주차별만 grain 분기).
+
 ### 검증
 - `runQualityTests` 확장 + 신규 `validate_maturation.js`(주입식): 합성 완성비 복원·게이트·단조·결정론·render throw. 기존 골든 byte-동일(신규 모듈 추가라 코어 무변).
+- **3-D**: anchor 점진 확장 수렴 탐지 — 합성(완성비 일정) 코호트로 "D60에서 수렴" 정답 복원. 듀얼 메서드 일치도. 결정론.
+- **3-E**: `_weekStartMonday` 경계 유닛테스트(월요일 입력→자기 자신, 일요일→6일 전, 연말연시·윤년 경계). base registration vs install 분기 정확.
 - 차트는 headless 불가 → 브라우저 확인.
 
 ---
@@ -216,7 +242,7 @@ const MON_FEATURES = [
 ## 실행 순서 권장
 1. **WS2** (점진 공개·매트릭스) — 위험 낮고 사용자 첫인상 개선 즉효. SSOT(`MON_FEATURES`)가 WS1/WS3 게이트에도 재사용됨.
 2. **WS1** (sticky 필터) — `getMappedRowsForMon` 파이프라인 작업. WS2의 매트릭스와 독립.
-3. **WS3** (코호트·마투레이션) — 3-A→3-B→3-C 순. 가장 크고 통계 정확성 중요.
+3. **WS3** (코호트·마투레이션) — 3-A→3-B→3-C→3-D→3-E 순. 가장 크고 통계 정확성 중요. (3-D ROAS 듀얼메서드·anchor 충분성, 3-E 주차별 retention vintage는 사용자 확정 추가.)
 
 ## 각 PR 공통 체크리스트 (CLAUDE.md §14)
 - [ ] syntax check (`<script>` 추출 + `new Function`)
