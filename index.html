@@ -3019,7 +3019,8 @@ const STANDARD_FIELDS = {
   day_offset:     { label: "Day Offset",    aliases: ["day", "d_offset", "day_n", "days_since_install"], type: "number", required: false, group: "Quality" },
   cohort_size:    { label: "코호트 크기",   aliases: ["cohort_size", "n_users", "users", "n_installs", "초기사용자수"], type: "number", required: false, group: "Quality" },
   retained_users: { label: "잔존 사용자수", aliases: ["retained", "retained_users", "active_users", "잔존수"], type: "number", required: false, group: "Quality" },
-  cohort_revenue: { label: "코호트 매출",   aliases: ["cohort_revenue", "cumulative_revenue", "revenue", "rev"], type: "number", required: false, group: "Quality" },
+  cohort_revenue:   { label: "코호트 매출",      aliases: ["cohort_revenue", "cumulative_revenue", "revenue", "rev"], type: "number", required: false, group: "Quality" },
+  cohort_payments:  { label: "코호트 결제건수", aliases: ["cohort_payments", "payments", "num_payments", "payment_count", "결제건수"], type: "number", required: false, group: "Quality" },
   // === Marketing-Response Regression / MMM 전용 (5-18) — 주간 per-platform ===
   iso_week_start: { label: "ISO 주 시작일", aliases: ["iso_week_start", "week", "week_start", "주시작", "주"], type: "date", required: false, group: "MMR" },
   org_reg:        { label: "Organic 가입",  aliases: ["org_reg", "organic_reg", "organic_registration", "오가닉가입"], type: "number", required: false, group: "MMR" },
@@ -15922,7 +15923,7 @@ const QUALITY_STATE = {
 
 function qualityCacheKey() {
   const m = CSV_STATE.mapping || {};
-  const sig = ["cohort_date","day_offset","cohort_size","retained_users","cohort_revenue","channel","country","platform"]
+  const sig = ["cohort_date","day_offset","cohort_size","retained_users","cohort_revenue","cohort_payments","channel","country","platform"]
     .map(k => `${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
   return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|seg:${QUALITY_STATE.segmentBy}|cfg:${QUALITY_CONFIG.version}`;
 }
@@ -15993,12 +15994,13 @@ function buildQualityCache() {
     const size = Number(r.cohort_size);
     const ret = r.retained_users != null && r.retained_users !== "" ? Number(r.retained_users) : null;
     const rev = r.cohort_revenue != null && r.cohort_revenue !== "" ? Number(r.cohort_revenue) : null;
+    const pay = r.cohort_payments != null && r.cohort_payments !== "" ? Number(r.cohort_payments) : null;
     if (!isFinite(day) || day < 0) { validation.errors.push(`잘못된 day_offset: ${r.cohort_date} ${r.day_offset}`); validation.droppedRows++; continue; }
     if (!isFinite(size) || size <= 0) { validation.errors.push(`잘못된 cohort_size: ${r.cohort_date} (${size})`); validation.droppedRows++; continue; }
     if (ret != null && ret > size) { validation.errors.push(`retained > size: ${r.cohort_date} day ${day} (${ret}/${size})`); }
     clean.push({
       cohort_date: r.cohort_date,
-      day, size, retained: ret, revenue: rev,
+      day, size, retained: ret, revenue: rev, payments: pay,
       channel: r.channel, country: r.country, platform: r.platform,
     });
   }
@@ -16013,6 +16015,8 @@ function buildQualityCache() {
       retentionRate: c.retained != null ? c.retained / c.size : null,
       revenue: c.revenue,
       arpu: c.revenue != null ? c.revenue / c.size : null,
+      payments: c.payments,
+      pur: c.payments != null ? c.payments / c.size : null,
     });
   }
   const cohorts = [...cohortMap.values()].sort((a,b)=>a.cohort_date.localeCompare(b.cohort_date));
@@ -16023,17 +16027,19 @@ function buildQualityCache() {
   for (const co of cohorts) {
     for (const p of co.points) {
       if (p.retentionRate == null) continue;
-      if (!dayMap.has(p.day)) dayMap.set(p.day, { day: p.day, retSum: 0, sizeSum: 0, arpuSum: 0, arpuW: 0 });
+      if (!dayMap.has(p.day)) dayMap.set(p.day, { day: p.day, retSum: 0, sizeSum: 0, arpuSum: 0, arpuW: 0, purSum: 0, purW: 0 });
       const d = dayMap.get(p.day);
       d.retSum += p.retentionRate * co.size;
       d.sizeSum += co.size;
       if (p.arpu != null) { d.arpuSum += p.arpu * co.size; d.arpuW += co.size; }
+      if (p.pur  != null) { d.purSum  += p.pur  * co.size; d.purW  += co.size; }
     }
   }
   const retentionCurve = [...dayMap.values()].sort((a,b)=>a.day-b.day).map(d => ({
     day: d.day,
     mean: d.sizeSum > 0 ? d.retSum / d.sizeSum : null,
     arpuMean: d.arpuW > 0 ? d.arpuSum / d.arpuW : null,
+    purMean:  d.purW  > 0 ? d.purSum  / d.purW  : null,
     n: d.sizeSum,
   }));
 
@@ -16104,6 +16110,7 @@ function monCohortBody() {
       ${renderQualityValidation(c.validation)}
       ${renderQualityRetention(c.retentionCurve)}
       ${renderQualityLTV(c.ltv)}
+      ${renderQualityPUR(c.retentionCurve)}
       ${renderQualitySegment(c.segmentCompare)}
       ${renderQualityCohorts(c.cohorts)}
     `;
@@ -16193,6 +16200,47 @@ function renderQualityLTV(ltv) {
     </section>`;
 }
 
+function renderQualityPUR(curve) {
+  const validPur = (curve || []).filter(d => d.purMean != null);
+  if (!validPur.length) return `<section class="block" id="s-pur">
+    <h2 class="section-title"><span class="ix">§4</span>PUR (결제건수/유저)</h2>
+    <div class="callout warn"><div class="ico">!</div><div class="body"><strong>결제건수 데이터 부족</strong><p>cohort_payments 컬럼이 매핑되어야 합니다.</p></div></div>
+  </section>`;
+  const fmt2 = v => v == null || !isFinite(v) ? "—" : v.toFixed(3);
+  // power + log curve fit on PUR (같은 패턴)
+  const days = validPur.map(d => d.day);
+  const purs  = validPur.map(d => d.purMean);
+  const power = fitPowerCurve(days, purs);
+  const log   = fitLogCurve(days, purs);
+  const fit = QUALITY_STATE.curveModel === "logarithmic" ? log : power;
+  const horizons = QUALITY_CONFIG.ltvHorizons;
+  const extrapRows = fit ? horizons.map(h => {
+    const v = fit.predict(h);
+    const inRange = h <= Math.max(...days);
+    return `<div class="ab-stat"><div class="ab-stat-label">D${h} 예측 PUR</div><div class="ab-stat-value tnum">${fmt2(v)}</div><div class="ab-stat-hint">${inRange ? "실측 범위 내" : "외삽"}</div></div>`;
+  }).join("") : "";
+  return `
+    <section class="block" id="s-pur">
+      <h2 class="section-title"><span class="ix">§4</span>PUR 곡선 (결제건수 / 코호트 크기)</h2>
+      <p class="muted">코호트 단위 누적 결제건수를 초기 크기로 나눈 비율. 과금 전환·결제 성숙도 파악에 사용.</p>
+      ${fit ? `<p style="font-size:12px;color:var(--text-muted);">Fit: <strong>${fit.type}</strong> · a=${fmt2(fit.a)} · b=${fmt2(fit.b)} · R²=${fmt2(fit.R2)}</p>` : ""}
+      ${extrapRows ? `<div class="ab-stat-row" style="margin-bottom:12px;">${extrapRows}</div>` : ""}
+      <div class="alloc-card" style="margin-bottom:12px;">
+        <div class="cann-card-header">
+          <div class="alloc-card-title">PUR 곡선 + 외삽</div>
+          <button class="ab-pill" data-pngdownload="quality-pur" data-pngname="quality_pur" title="PNG">⬇ PNG</button>
+        </div>
+        <div class="chart-container"><canvas id="quality-pur"></canvas></div>
+      </div>
+      <div class="table-wrap">
+        <table class="data" style="font-size:11.5px;">
+          <thead><tr><th>Day</th><th>PUR (관측)</th><th>n (가중)</th></tr></thead>
+          <tbody>${validPur.slice(0, 30).map(d => `<tr><td class="tnum">D${d.day}</td><td class="tnum"><strong>${fmt2(d.purMean)}</strong></td><td class="tnum">${(d.n||0).toLocaleString()}</td></tr>`).join("")}</tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
 function renderQualitySegment(seg) {
   const segToggle = `
     <div class="ab-pillgroup" style="margin-bottom:12px;">
@@ -16201,14 +16249,14 @@ function renderQualitySegment(seg) {
     </div>`;
   if (!seg || !seg.length) return `
     <section class="block" id="s-segment">
-      <h2 class="section-title"><span class="ix">§4</span>세그먼트 비교</h2>
+      <h2 class="section-title"><span class="ix">§5</span>세그먼트 비교</h2>
       ${segToggle}
       <p class="muted">세그먼트 선택 시 해당 차원별로 리텐션 곡선 분리.</p>
     </section>`;
   const fmtPct = (v) => v == null ? "—" : (v*100).toFixed(1) + "%";
   return `
     <section class="block" id="s-segment">
-      <h2 class="section-title"><span class="ix">§4</span>세그먼트 비교 — ${escapeHtml(QUALITY_STATE.segmentBy)}별</h2>
+      <h2 class="section-title"><span class="ix">§5</span>세그먼트 비교 — ${escapeHtml(QUALITY_STATE.segmentBy)}별</h2>
       ${segToggle}
       <div class="alloc-card" style="margin-bottom:12px;">
         <div class="cann-card-header">
@@ -16242,7 +16290,7 @@ function renderQualityCohorts(cohorts) {
   const top = cohorts.slice(0, 30);
   return `
     <section class="block" id="s-cohorts">
-      <h2 class="section-title"><span class="ix">§5</span>코호트 목록 (최근 ${top.length}개)</h2>
+      <h2 class="section-title"><span class="ix">§6</span>코호트 목록 (최근 ${top.length}개)</h2>
       <div class="table-wrap">
         <table class="data" style="font-size:11px;">
           <thead><tr><th>Cohort Date</th><th>크기</th><th>D1</th><th>D7</th><th>D30</th><th>D90</th><th>관측일수</th></tr></thead>
@@ -16317,6 +16365,36 @@ function renderQualityCharts() {
     });
   }
 
+  // PUR chart
+  const pCtx = document.getElementById("quality-pur");
+  if (pCtx && c.retentionCurve?.some(d => d.purMean != null)) {
+    destroyChartIfExists("quality-pur");
+    const validPur = c.retentionCurve.filter(d => d.purMean != null);
+    const purDays  = validPur.map(d => d.day);
+    const purVals  = validPur.map(d => d.purMean);
+    const purFit   = QUALITY_STATE.curveModel === "logarithmic" ? fitLogCurve(purDays, purVals) : fitPowerCurve(purDays, purVals);
+    const maxHorizon = Math.max(...QUALITY_CONFIG.ltvHorizons);
+    const fitDays = [];
+    for (let d = 1; d <= maxHorizon; d += Math.max(1, Math.floor(maxHorizon/60))) fitDays.push(d);
+    CHART_INSTANCES["quality-pur"] = new Chart(pCtx, {
+      type: "line",
+      data: {
+        datasets: [
+          { label: "관측 PUR", data: validPur.map(d => ({ x: d.day, y: d.purMean })), borderColor: "#fbbf24", backgroundColor: "#fbbf24AA", pointRadius: 4, showLine: false },
+          ...(purFit ? [{ label: `Fit (${purFit.type})`, data: fitDays.map(d => ({ x: d, y: purFit.predict(d) })), borderColor: "#adc6ff", borderWidth: 2, borderDash: [4,4], pointRadius: 0, fill: false }] : []),
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: getCssVar('--text-muted'), font: { size: 11 } } } },
+        scales: {
+          x: { type: "linear", title: { display: true, text: "Day", color: getCssVar('--text-muted') }, ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } },
+          y: { title: { display: true, text: "PUR (결제/유저)", color: getCssVar('--text-muted') }, ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } },
+        },
+      },
+    });
+  }
+
   // Segment chart
   const sCtx = document.getElementById("quality-segment");
   if (sCtx && c.segmentCompare?.length) {
@@ -16359,7 +16437,7 @@ function bindQualityHandlers() {
   document.querySelectorAll("[data-quality-segment]").forEach(btn => {
     btn.addEventListener("click", () => { QUALITY_STATE.segmentBy = btn.dataset.qualitySegment; QUALITY_CACHE.key = null; navigate("5-8"); });
   });
-  document.querySelectorAll("#s-retention [data-pngdownload], #s-ltv [data-pngdownload], #s-segment [data-pngdownload]").forEach(btn => {
+  document.querySelectorAll("#s-retention [data-pngdownload], #s-ltv [data-pngdownload], #s-pur [data-pngdownload], #s-segment [data-pngdownload]").forEach(btn => {
     btn.addEventListener("click", () => downloadChartAsPNG(btn.dataset.pngdownload, btn.dataset.pngname));
   });
   renderQualityCharts();
@@ -16390,6 +16468,27 @@ function runQualityTests(verbose = true) {
   const pwr2 = fitPowerCurve([1,2,4], [1,1.4142,2]);
   const same = pwr1 && pwr2 && pwr1.a === pwr2.a && pwr1.b === pwr2.b;
   results.push({ test: "T3 · Power fit 결정론", expected: "identical", actual: same ? "identical" : "differ", pass: same ? "✓" : "✗" });
+
+  // T4: PUR — buildQualityCache가 purMean을 retentionCurve에 올바르게 계산하는지
+  {
+    const origState = CSV_STATE.raw;
+    const origMap   = CSV_STATE.mapping;
+    const origFN    = CSV_STATE.fileName;
+    const origKey   = QUALITY_CACHE.key;
+    // 단일 코호트: size=1000, day=7, retained=300, payments=60 → pur=0.06
+    CSV_STATE.fileName = "__pur_test__";
+    CSV_STATE.mapping = { cohort_date: "cohort_date", day_offset: "day_offset", cohort_size: "cohort_size", retained_users: "retained_users", cohort_payments: "cohort_payments" };
+    CSV_STATE.raw = [
+      { cohort_date: "2025-01-01", day_offset: "7", cohort_size: "1000", retained_users: "300", cohort_payments: "60" },
+    ];
+    QUALITY_CACHE.key = null;
+    const qc = buildQualityCache();
+    const purPt = qc.retentionCurve.find(d => d.day === 7);
+    const purOk = purPt != null && Math.abs(purPt.purMean - 0.06) < 1e-9;
+    results.push({ test: "T4 · PUR dayMap (60/1000=0.06)", expected: "0.06", actual: purPt ? purPt.purMean.toFixed(6) : "null", pass: purOk ? "✓" : "✗" });
+    // 복원
+    CSV_STATE.raw = origState; CSV_STATE.mapping = origMap; CSV_STATE.fileName = origFN; QUALITY_CACHE.key = origKey;
+  }
 
   if (verbose) {
     console.log("%c=== Quality Analyzer · Golden Tests ===", "color: #adc6ff; font-weight: bold;");
@@ -21026,8 +21125,9 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "channel",        unlocks: "채널별 코호트 비교 분리" },
     { key: "country",        unlocks: "국가별 코호트 비교 분리" },
     { key: "platform",       unlocks: "OS별 코호트 비교 분리" },
-    { key: "retained_users", unlocks: "리텐션 곡선 분석" },
-    { key: "cohort_revenue", unlocks: "LTV 곡선 + 외삽 분석" },
+    { key: "retained_users",  unlocks: "리텐션 곡선 분석" },
+    { key: "cohort_revenue",  unlocks: "LTV 곡선 + 외삽 분석" },
+    { key: "cohort_payments", unlocks: "PUR(결제건수) 곡선 + 외삽 분석" },
   ],
   "5-9": [
     { key: "channel",       unlocks: "채널별 LTV:CAC 분리" },
@@ -21246,10 +21346,11 @@ function _demoCohortData() {
     const size = Math.round(1200 + (rng() + 0.5) * 600 + c * 40);
     for (const off of offs) {
       const ret = Math.round(size * Math.pow(off + 1, -0.42) * (1 + (rng() + 0.5) * 0.05));
-      rows.push({ cohort_date: cd, day_offset: off, cohort_size: size, retained_users: ret, cohort_revenue: Math.round(ret * (520 + off * 55)), channel: ["Google UAC", "Meta", "TikTok"][c % 3] });
+      const pay = Math.round(ret * 0.18 * Math.pow(off + 1, 0.15) * (1 + (rng() + 0.5) * 0.08));
+      rows.push({ cohort_date: cd, day_offset: off, cohort_size: size, retained_users: ret, cohort_revenue: Math.round(ret * (520 + off * 55)), cohort_payments: pay, channel: ["Google UAC", "Meta", "TikTok"][c % 3] });
     }
   }
-  return { fileName: "demo_cohort.csv", headers: ["cohort_date", "day_offset", "cohort_size", "retained_users", "cohort_revenue", "channel"], rows };
+  return { fileName: "demo_cohort.csv", headers: ["cohort_date", "day_offset", "cohort_size", "retained_users", "cohort_revenue", "cohort_payments", "channel"], rows };
 }
 function _demoCreativeData() {
   const rng = seededNoise(60606);
