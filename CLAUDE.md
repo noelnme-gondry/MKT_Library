@@ -584,7 +584,7 @@ self-update 메커니즘이 사라지면 하네스가 정체됨.
 
 상세는 `docs/backlog.md` 참조 (CLAUDE.md 비대화 방지로 분리 보관).
 
-- **★ 운영 대시보드 통합 (다음 모델 실행 예정, 스펙 확정 2026-06-20)**: `docs/operational-dashboard-unification.md` — ① 통일 wide 데이터 모델(Revenue·Retention·PU 전부 D0~D360 + ROAS·PUR 파생) ② 코호트 long→wide 마이그레이션(B안)·리텐션 탭을 Week/Month·세그먼트·Predict 3대로 재포커스(PUR·LTV는 가치 탭으로 분리) ③ 9탭→3그룹·소수 풍부 대시보드 ④ 업로드 전 연결표 가이드(Dn 계열 묶음)·업로드 후 탭(잠금 표시) ⑤ 분석 페이지 압축 sticky 바(제목+칩+필터, eyebrow·deck 제거)/SOP는 현행+불필요칩 제거. 권장순서 P1→P5→P4→P3→P2. **PR#160에서 잘못 삭제한 연결표는 P4에서 새 형태로 복원.**
+- **★ 운영 대시보드 통합 — 완료 (PR#162~166, 2026-06-20)**: Phase 1(D30~D360 PU/Ret 확장)·Phase 5(sticky 압축바)·Phase 4(게이트 연결표+탭 🔒)·Phase 3(9→8탭, 장기가치 통합)·Phase 2(Wide 리텐션 엔진, 효율 CSV 단일 grain). `MON_TABS`에 `requiresAny` 필드·`isTabUnlocked()` 헬퍼·`WIDE_RET_CACHE`·`buildWideRetentionCache()` 추가됨.
 - **Q3 작업 (다른 모델 실행 예정, 스펙 확정)**: `docs/q3-sticky-progressive-cohort-maturation.md` — ① WS1 5-2 상단 sticky 필터 바(날짜/platform/국가/channel, `getMappedRowsForMon` 실제 필터링) ② WS2 CSV 업로드 점진 공개 + `MON_FEATURES` SSOT 데이터×기능 capability 매트릭스 ③ WS3 코호트 Revenue/Retention/PUR Dn 동적 확장 + 마투레이션 예측(성숙 코호트 완성비→Predict D90/D180, §8 가드레일). 권장 순서 WS2→WS1→WS3(3-A/B/C 분할).
 - **남은 UI 작업**: ① SOP 콘텐츠 보강(1-2~4-4 인라인, 정확성 검수 기반·진행방식 미정) ② MMM.
 - **MMM = Tinder KR Reg/React Marketing-Response Regression** 스펙(`docs/backlog.md` § B)이 정식 요구사항.
