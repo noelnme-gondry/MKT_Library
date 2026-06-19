@@ -6163,19 +6163,18 @@ const MON_FILTER_STATE = {
 // 탭 그룹: monitoring(모니터링) | value(가치) | efficiency(효율)
 const MON_TAB_GROUPS = [
   { label: "모니터링", tabs: ["viz", "scorecard", "pacing", "anomaly"] },
-  { label: "장기 가치", tabs: ["ltv", "maturation", "cohort"] },
+  { label: "장기 가치", tabs: ["ltv", "cohort"] },
   { label: "효율 진단", tabs: ["funnel", "segment"] },
 ];
 const MON_TABS = [
-  { id: "viz",        icon: "📊", label: "시각화",       desc: "시계열·채널·CPI 5종 + KPI",                  requiresAny: [] },
-  { id: "scorecard",  icon: "🧮", label: "스코어카드",   desc: "핵심 KPI + 직전 대비(WoW)",                  requiresAny: ["installs", "actions"] },
-  { id: "pacing",     icon: "📈", label: "페이싱",       desc: "월말 착지 예측·페이스 경고",                 requiresAny: [] },
-  { id: "anomaly",    icon: "🚨", label: "이상탐지",     desc: "급등·급락 z-score 감지",                    requiresAny: [] },
-  { id: "ltv",        icon: "💵", label: "LTV:CAC",     desc: "CAC 대비 LTV 배수·회수기간 (효율 CSV)",      requiresAny: ["revenue_d30","revenue_d60","revenue_d90","revenue_d180","revenue_d360"] },
-  { id: "maturation", icon: "📊", label: "ROAS 성숙도", desc: "조기 ROAS → D90/D180 성숙 예측 (효율 CSV)", requiresAny: ["revenue_d30","revenue_d60","revenue_d90","revenue_d180","revenue_d360"] },
-  { id: "cohort",     icon: "📉", label: "코호트 리텐션", desc: "리텐션 곡선·LTV 외삽 (코호트 CSV 별도)",   requiresAny: [] },
-  { id: "funnel",     icon: "🪜", label: "퍼널 진단",   desc: "노출→클릭→설치→액션 단계 CVR·이탈",         requiresAny: ["click"] },
-  { id: "segment",    icon: "🗺", label: "세그먼트",    desc: "국가×채널×플랫폼 효율 매트릭스",             requiresAny: ["channel","country","platform"] },
+  { id: "viz",        icon: "📊", label: "시각화",     desc: "시계열·채널·CPI 5종 + KPI",                           requiresAny: [] },
+  { id: "scorecard",  icon: "🧮", label: "스코어카드", desc: "핵심 KPI + 직전 대비(WoW)",                           requiresAny: ["installs", "actions"] },
+  { id: "pacing",     icon: "📈", label: "페이싱",     desc: "월말 착지 예측·페이스 경고",                          requiresAny: [] },
+  { id: "anomaly",    icon: "🚨", label: "이상탐지",   desc: "급등·급락 z-score 감지",                             requiresAny: [] },
+  { id: "ltv",        icon: "💹", label: "장기 가치",  desc: "LTV:CAC 회수기간 + ROAS 성숙도 예측 (효율 CSV)",      requiresAny: ["revenue_d30","revenue_d60","revenue_d90","revenue_d180","revenue_d360"] },
+  { id: "cohort",     icon: "📉", label: "리텐션",     desc: "리텐션 곡선·LTV 외삽 (코호트 CSV 별도)",              requiresAny: [] },
+  { id: "funnel",     icon: "🪜", label: "퍼널 진단",  desc: "노출→클릭→설치→액션 단계 CVR·이탈",                  requiresAny: ["click"] },
+  { id: "segment",    icon: "🗺", label: "세그먼트",   desc: "국가×채널×플랫폼 효율 매트릭스",                      requiresAny: ["channel","country","platform"] },
 ];
 function isTabUnlocked(tab) {
   const ra = tab.requiresAny || [];
@@ -6291,6 +6290,10 @@ function renderMonTabs() {
     </div>`).join("")}
   </section>`;
 }
+function monValueBody() {
+  // LTV:CAC + ROAS 성숙도를 한 탭(장기 가치)에 통합
+  return monLtvCacBody() + monMaturationBody();
+}
 function page_5_2() {
   const meta = findMeta("5-2");
   const tab = MON_STATE.tab || "viz";
@@ -6310,11 +6313,12 @@ function page_5_2() {
   }
   // 탭 → 본문 dispatch
   let body, toc;
+  // "maturation" 접근 → "ltv" 탭(장기 가치)으로 redirect
+  if (tab === "maturation") { MON_STATE.tab = "ltv"; return page_5_2(); }
   if (tab === "pacing")     { body = monPacingBody();     toc = [{ id: "s-pace", title: "페이싱" }]; }
   else if (tab === "scorecard") { body = monScorecardBody(); toc = [{ id: "s-score", title: "스코어카드" }]; }
   else if (tab === "anomaly")   { body = monAnomalyBody();   toc = [{ id: "s-anom", title: "이상 감지" }]; }
-  else if (tab === "ltv")       { body = monLtvCacBody();    toc = [{ id: "s-ctl", title: "분석 단위" }, { id: "s-table", title: "LTV:CAC 표" }]; }
-  else if (tab === "maturation"){ body = monMaturationBody();toc = [{ id: "s-mat", title: "ROAS 성숙도" }]; }
+  else if (tab === "ltv")       { body = monValueBody();     toc = [{ id: "s-ctl", title: "분석 단위" }, { id: "s-table", title: "LTV:CAC 표" }, { id: "s-mat", title: "ROAS 성숙도" }]; }
   else if (tab === "cohort")    { body = monCohortBody();    toc = [{ id: "s-retention", title: "리텐션" }, { id: "s-ltv", title: "LTV 외삽" }, { id: "s-segment", title: "세그먼트" }, { id: "s-cohorts", title: "코호트 표" }]; }
   else if (tab === "funnel")    { body = monFunnelBody();    toc = [{ id: "s-funnel", title: "퍼널" }]; }
   else if (tab === "segment")   { body = monSegmentBody();   toc = [{ id: "s-matrix", title: "세그먼트" }]; }
