@@ -5971,6 +5971,7 @@ function monVizBody() {
   `;
 
   return `
+      ${renderBudgetHealthCard()}
       ${shareBar}
       ${alertHtml}
 
@@ -7111,6 +7112,145 @@ const ALLOC_CACHE = {
 };
 function clearAllocCache() {
   for (const k of Object.keys(ALLOC_CACHE)) ALLOC_CACHE[k] = null;
+}
+
+/* ===== P3 예산 건강 탐지 (절대-CPR 벤치마크) =====
+   무료 5-2에서 이상 캠페인을 요약 카드로 노출 → Pro 5-3 유도.
+   캠페인별 정확 plan/export는 Pro 전용. */
+const BUDGET_HEALTH_RULES = {
+  minCostShare:  0.10,  // 세그먼트 비용의 ≥ 10% 점유
+  minCprGapRatio: 0.30, // 동료 CPR 대비 ≥ 30% 나쁨
+  minDays: 5,           // 최소 집행일
+  minRows: 5,           // 최소 행 수
+};
+
+/* 순수 함수: 절대 CPR 가중 배분 비중 (5-3 mode "c" 동일 로직).
+   campaigns: [{ id, avgCPR }]  →  { [id]: efficiencyShare (0~1) } */
+function calcCprWeightedAllocPure(campaigns) {
+  const valid = campaigns.filter(c => c.avgCPR > 0 && isFinite(c.avgCPR));
+  if (!valid.length) return {};
+  const totalEff = valid.reduce((s, c) => s + 1 / c.avgCPR, 0);
+  if (totalEff <= 0) return {};
+  const out = {};
+  for (const c of valid) out[c.id] = (1 / c.avgCPR) / totalEff;
+  return out;
+}
+
+const BUDGET_HEALTH_CACHE = { key: null, result: null };
+
+function buildBudgetHealthCache() {
+  const recentDays = ALLOC_STATE.recentDays || 28;
+  const mappedVals = Object.values(CSV_STATE.mapping || {}).filter(Boolean).sort().join("|");
+  const sig = mappedVals + "|" + recentDays + "|" + (CSV_STATE.raw || []).length;
+  if (BUDGET_HEALTH_CACHE.key === sig) return BUDGET_HEALTH_CACHE.result;
+  BUDGET_HEALTH_CACHE.key = sig;
+  BUDGET_HEALTH_CACHE.result = _computeBudgetHealth(recentDays);
+  return BUDGET_HEALTH_CACHE.result;
+}
+
+function _computeBudgetHealth(recentDays) {
+  const allRows = getMappedRows ? getMappedRows() : [];
+  if (!allRows.length) return { hasData: false };
+
+  // 최근 N일 필터
+  const dts = allRows.map(r => r.date ? Date.parse(r.date) : NaN).filter(d => !isNaN(d));
+  if (!dts.length) return { hasData: false };
+  const maxDate = Math.max(...dts);
+  const threshold = maxDate - recentDays * 86400 * 1000;
+  const rows = allRows.filter(r => r.date && Date.parse(r.date) >= threshold);
+  if (!rows.length) return { hasData: false };
+
+  // 세그먼트 키: country×platform (country 없으면 platform만)
+  const hasCountry = rows.some(r => r.country);
+  const hasPlatform = rows.some(r => r.platform);
+  const segKey = r => {
+    const parts = [];
+    if (hasCountry && r.country) parts.push(r.country);
+    if (hasPlatform && r.platform) parts.push(r.platform);
+    return parts.length ? parts.join("|") : "_all";
+  };
+  // 캠페인 키
+  const campKey = r => r.campaign_name || r.channel || "_total";
+
+  // 세그먼트별 집계
+  const segs = new Map();
+  const metric = ALLOC_STATE.metric || "installs";
+  for (const r of rows) {
+    const sk = segKey(r), ck = campKey(r);
+    if (!segs.has(sk)) segs.set(sk, new Map());
+    const seg = segs.get(sk);
+    if (!seg.has(ck)) seg.set(ck, { id: ck, totalCost: 0, totalResults: 0, dates: new Set(), rowCount: 0 });
+    const c = seg.get(ck);
+    c.totalCost += Number(r.cost) || 0;
+    c.totalResults += Number(r[metric]) || 0;
+    if (r.date) c.dates.add(r.date);
+    c.rowCount++;
+  }
+
+  const flags = [];
+  let totalReallocPotential = 0;
+
+  for (const [sk, seg] of segs) {
+    const camps = [...seg.values()].map(c => ({
+      ...c,
+      dayCount: c.dates.size,
+      avgCPR: c.totalResults > 0 ? c.totalCost / c.totalResults : null,
+    }));
+    const segCost = camps.reduce((s, c) => s + c.totalCost, 0);
+    if (segCost <= 0) continue;
+
+    // 세그먼트 효율 가중 배분
+    const validCamps = camps.filter(c => c.avgCPR != null && c.avgCPR > 0);
+    if (validCamps.length < 2) continue; // 비교 대상 없으면 스킵
+    const allocShares = calcCprWeightedAllocPure(validCamps);
+
+    // 세그먼트 가중평균 CPR (효율 기준)
+    const wCPR = validCamps.reduce((s, c) => s + (1 / c.avgCPR), 0);
+    const segEffCPR = wCPR > 0 ? validCamps.length / wCPR : null;
+
+    for (const c of validCamps) {
+      if (!c.avgCPR || !segEffCPR) continue;
+      const costShare = c.totalCost / segCost;
+      const cprRatio = c.avgCPR / segEffCPR - 1; // 동료 대비 CPR 얼마나 나쁜지
+      const dataOK = c.dayCount >= BUDGET_HEALTH_RULES.minDays && c.rowCount >= BUDGET_HEALTH_RULES.minRows;
+      if (!dataOK) continue;
+      if (costShare >= BUDGET_HEALTH_RULES.minCostShare && cprRatio >= BUDGET_HEALTH_RULES.minCprGapRatio) {
+        const effAllocCost = (allocShares[c.id] || 0) * segCost;
+        const reallocDiff = c.totalCost - effAllocCost;
+        if (reallocDiff > 0) {
+          flags.push({ seg: sk, campaign: c.id, costShare, cprRatio, reallocDiff });
+          totalReallocPotential += reallocDiff;
+        }
+      }
+    }
+  }
+
+  return {
+    hasData: true,
+    segmentCount: segs.size,
+    flagCount: flags.length,
+    flags,
+    totalReallocPotential,
+    recentDays,
+    metric,
+  };
+}
+
+function renderBudgetHealthCard() {
+  if (!CSV_STATE.headers.length || !isToolAnalyzed("5-2")) return "";
+  const h = buildBudgetHealthCache();
+  if (!h || !h.hasData) return "";
+  if (!h.flagCount) return ""; // 이상 없으면 카드 숨김 (조용한 기본 상태)
+  const potential = fmtCurrency ? fmtCurrency(h.totalReallocPotential) : Math.round(h.totalReallocPotential).toLocaleString();
+  return `<div class="callout warning" style="margin-bottom:1.25rem;" id="budget-health-card">
+    <div class="ico">💰</div>
+    <div class="body">
+      <strong>예산 배분 이상 탐지</strong>
+      <p>최근 ${h.recentDays}일 기준 <strong>${h.flagCount}개 캠페인</strong>이 세그먼트 내 효율 구간을 초과합니다. 재배분 여지 약 <strong>${potential}</strong>.</p>
+      <p style="font-size:12px;color:var(--text-secondary);">캠페인별 상세 배분 계획·시나리오는 Pro 예산 배분에서 확인하세요.</p>
+      <button class="btn primary" style="margin-top:0.5rem;" onclick="navigate('5-3')">📊 예산 배분에서 보기 →</button>
+    </div>
+  </div>`;
 }
 
 /* row → 그룹 키 (채널 + 캠페인명).
@@ -16641,6 +16781,7 @@ function monScorecardBody() {
   ].filter(Boolean);
   const dateRange = recent.length ? `${recent[0].date} ~ ${recent[recent.length-1].date}` : "—";
   return `
+      ${renderBudgetHealthCard()}
       <section class="block" id="s-score">
         <h2 class="section-title"><span class="ix">§1</span>핵심 KPI (최근 ${W}일)</h2>
         <div class="ab-pillgroup">
