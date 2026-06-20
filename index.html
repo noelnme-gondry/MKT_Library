@@ -6278,7 +6278,7 @@ function renderMonFilterBar() {
       <span class="mon-filter-label">국가</span>
       <div class="mon-multisel" data-multisel="countries">
         <button class="mon-multisel-btn" type="button" data-multisel-toggle="countries">${cntLabel} ∨</button>
-        <div class="mon-multisel-list" hidden>
+        <div class="mon-multisel-list" data-ms-list="countries" hidden>
           ${countries.map(c=>`<label><input type="checkbox" value="${escapeHtml(c)}" ${(f.countries===null||f.countries.has(c))?"checked":""}> ${escapeHtml(c)}</label>`).join("")}
         </div>
       </div>
@@ -6291,7 +6291,7 @@ function renderMonFilterBar() {
       <span class="mon-filter-label">채널</span>
       <div class="mon-multisel" data-multisel="channels">
         <button class="mon-multisel-btn" type="button" data-multisel-toggle="channels">${chLabel} ∨</button>
-        <div class="mon-multisel-list" hidden>
+        <div class="mon-multisel-list" data-ms-list="channels" hidden>
           ${channels.map(c=>`<label><input type="checkbox" value="${escapeHtml(c)}" ${(f.channels===null||f.channels.has(c))?"checked":""}> ${escapeHtml(c)}</label>`).join("")}
         </div>
       </div>
@@ -19425,14 +19425,22 @@ function bindCSVPageHandlers() {
       navigate("5-2");
     });
   });
-  // 커스텀 multi-select: 토글 버튼 (position:fixed — 부모 overflow 클리핑 회피)
+  // 커스텀 multi-select 드롭다운.
+  // ⚠ sticky 바(.page-sticky-bar)가 backdrop-filter로 fixed의 containing block이 되고
+  //   .mon-filter-inner의 overflow가 클리핑하므로, 열 때 body로 portal해서 두 제약을 모두 탈출.
+  const _closeAllMultisel = () => document.querySelectorAll(".mon-multisel-list").forEach(l => { l.hidden = true; });
+  // 이전 렌더에서 body로 portal됐던 stale 리스트 정리
+  document.querySelectorAll("body > .mon-multisel-list").forEach(l => l.remove());
   document.querySelectorAll("[data-multisel-toggle]").forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      const list = btn.nextElementSibling;
+      const key = btn.dataset.multiselToggle;
+      const list = document.querySelector(`.mon-multisel-list[data-ms-list="${key}"]`);
+      if (!list) return;
       const opening = list.hidden;
-      document.querySelectorAll(".mon-multisel-list").forEach(l => { l.hidden = true; });
+      _closeAllMultisel();
       if (opening) {
+        document.body.appendChild(list); // viewport 기준 fixed + overflow 미클리핑
         const r = btn.getBoundingClientRect();
         list.style.top = (r.bottom + 3) + "px";
         list.style.left = r.left + "px";
@@ -19440,12 +19448,12 @@ function bindCSVPageHandlers() {
       }
     });
   });
-  // 커스텀 multi-select: 체크박스 변경
-  document.querySelectorAll("[data-multisel] input[type=checkbox]").forEach(cb => {
+  // 체크박스 변경 (list가 body로 이동해도 closest는 list 기준이라 동작)
+  document.querySelectorAll(".mon-multisel-list input[type=checkbox]").forEach(cb => {
     cb.addEventListener("change", () => {
-      const wrap = cb.closest("[data-multisel]");
-      const key  = wrap.dataset.multisel;
-      const allCbs = [...wrap.querySelectorAll("input[type=checkbox]")];
+      const list = cb.closest(".mon-multisel-list");
+      const key  = list.dataset.msList;
+      const allCbs = [...list.querySelectorAll("input[type=checkbox]")];
       const checked = allCbs.filter(c => c.checked).map(c => c.value);
       MON_FILTER_STATE[key] = checked.length === allCbs.length ? null : new Set(checked);
       _monInvalidateCaches();
