@@ -2813,28 +2813,22 @@
 <div id="lead-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="lead-modal-title" hidden>
   <div class="modal-card">
     <button class="modal-close" id="lead-modal-close" aria-label="닫기">×</button>
-    <div class="modal-eyebrow">전체 인사이트 잠금 해제</div>
+    <div class="modal-eyebrow">Pro 분석 모듈 잠금 해제</div>
     <h2 class="modal-title" id="lead-modal-title">맞춤형 퍼포먼스 분석 리포트</h2>
     <p class="modal-deck">
-      LTV 예측·카니발리제이션 보정·프로드 탐지 등 고급 분석 모듈을 사용하려면 본인 계정으로 로그인하세요.
-      분석 결과는 클라우드에 자동 백업되며, 영업일 기준 1일 내 맞춤형 셋업 컨설팅을 이메일로 안내드립니다.
+      LTV 예측·카니발리제이션 보정·프로드 탐지 등 고급 분석 모듈은 Pro 접근 키가 필요합니다.
+      키가 있으면 해당 도구에서 입력하고, 없으면 Instagram DM으로 요청해 주세요.
     </p>
     <div class="modal-benefits">
       <div class="modal-benefit">생존 곡선 기반 12개월 LTV 예측</div>
       <div class="modal-benefit">매체별 카니발리제이션 비율 + iROAS 보정</div>
       <div class="modal-benefit">CTIT 이상 패턴 기반 광고 프로드 탐지</div>
     </div>
-    <button class="google-signin" id="google-signin-btn">
-      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
-        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
-        <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
-        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
-      </svg>
-      <span>Google 계정으로 로그인</span>
-    </button>
+    <a class="paywall-dm" id="lead-modal-dm" href="https://www.instagram.com/gondry__workshop/" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+      📩 Instagram @gondry__workshop 으로 키 요청
+    </a>
     <p class="modal-fineprint">
-      로그인 시 서비스 이용약관 및 개인정보 처리방침에 동의하는 것으로 간주됩니다.
+      🔒 올리신 CSV는 <strong>브라우저 메모리에서만</strong> 처리되며 서버에 전송·저장되지 않습니다. 보안이 우리의 기본값입니다.
       <br />※ 추후 PG사 연동 후 1회성 분석 키 결제 옵션도 제공될 예정입니다.
     </p>
   </div>
@@ -5561,35 +5555,13 @@ function closeLeadModal() {
   modal.hidden = true;
   document.body.style.overflow = "";
 }
-function handleMockGoogleLogin() {
-  const btn = document.getElementById("google-signin-btn");
-  if (!btn) return;
-  // 1) 로그인 중 상태 표시
-  btn.disabled = true;
-  const orig = btn.innerHTML;
-  btn.innerHTML = `<span>인증 중…</span>`;
-
-  // 2) Firebase Auth 인터랙션 모방 (실제 Firebase 연동 시 이 자리에
-  //    signInWithPopup(auth, GoogleAuthProvider) 호출 후 onAuthStateChanged 처리)
-  setTimeout(() => {
-    btn.innerHTML = orig;
-    btn.disabled = false;
-    closeLeadModal();
-    showToast({
-      variant: "success",
-      title: "분석 리포트가 클라우드에 백업되었습니다",
-      body: "영업일 기준 1일 내 이메일로 맞춤형 컨설팅을 제안해 드립니다.",
-      duration: 6000,
-    });
-  }, 1000);
-}
-
 function bindLeadModalHandlers() {
   const overlay = document.getElementById("lead-modal");
   const closeBtn = document.getElementById("lead-modal-close");
-  const googleBtn = document.getElementById("google-signin-btn");
+  const dmBtn = document.getElementById("lead-modal-dm");
   if (closeBtn) closeBtn.addEventListener("click", closeLeadModal);
-  if (googleBtn) googleBtn.addEventListener("click", handleMockGoogleLogin);
+  // Instagram DM 링크는 새 탭으로 열리므로 클릭 후 모달만 닫는다
+  if (dmBtn) dmBtn.addEventListener("click", () => setTimeout(closeLeadModal, 50));
   if (overlay) overlay.addEventListener("click", e => { if (e.target === overlay) closeLeadModal(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeLeadModal(); });
 }
@@ -16465,27 +16437,35 @@ function buildMaturationCache() {
 }
 
 /* ===== Wide 리텐션 엔진 (효율 CSV ret_dN 컬럼 직접 사용) ===== */
-const WIDE_RET_CACHE = { key: null, retDays: [], retCurve: [], bySegment: {} };
+const WIDE_RET_CACHE = { key: null, retDays: [], retCurve: [], bySegment: {}, anchor: "installs" };
+// 리텐션 모수(잔존 유저 절대 인원 산출 기준): 설치(installs) vs 가입/액션(actions)
+const WIDE_RET_STATE = { anchor: "installs" };
 
 function buildWideRetentionCache() {
   const mapped = new Set(Object.values(CSV_STATE.mapping || {}).filter(v => v && v !== "__ignore__"));
   const retDays = [0, 7, 14, 30, 60, 90, 180, 360].filter(d => mapped.has(`ret_d${d}`));
-  const key = [CSV_STATE.raw.length, CSV_STATE.fileName, retDays.join(",")].join("|");
+  // anchor 결정: 매핑 안 됐으면 가능한 것으로 폴백
+  let anchor = WIDE_RET_STATE.anchor === "actions" ? "actions" : "installs";
+  if (anchor === "installs" && !mapped.has("installs") && mapped.has("actions")) anchor = "actions";
+  if (anchor === "actions" && !mapped.has("actions") && mapped.has("installs")) anchor = "installs";
+  const other = anchor === "installs" ? "actions" : "installs";
+  const key = [CSV_STATE.raw.length, CSV_STATE.fileName, retDays.join(","), anchor, MON_FILTER_KEY()].join("|");
   if (WIDE_RET_CACHE.key === key) return WIDE_RET_CACHE;
 
   const rows = getMappedRowsForMon();
+  // 모수: anchor 컬럼 우선, 0/누락이면 다른 컬럼 폴백
+  const baseOf = r => { const a = Number(r[anchor]); if (a > 0) return a; const b = Number(r[other]); return b > 0 ? b : 0; };
 
   function wgtCurve(subset) {
     return retDays.map(day => {
-      const key = `ret_d${day}`;
-      const pts = subset.filter(r => Number(r[key]) > 0);
-      const totalN = pts.reduce((s, r) => s + (Number(r.installs || r.actions || 0) || 1), 0);
+      const rk = `ret_d${day}`;
+      const pts = subset.filter(r => Number(r[rk]) > 0);
+      const totalN = pts.reduce((s, r) => s + (baseOf(r) || 1), 0);
       if (!totalN || !pts.length) return null;
-      const wtd = pts.reduce((s, r) => {
-        const n = Number(r.installs || r.actions || 0) || 1;
-        return s + Number(r[key]) * n;
-      }, 0) / totalN;
-      return { day, retentionRate: Math.min(1, Math.max(0, wtd)), n: totalN };
+      const wtd = pts.reduce((s, r) => s + Number(r[rk]) * (baseOf(r) || 1), 0) / totalN;
+      const rate = Math.min(1, Math.max(0, wtd));
+      // 잔존 유저 = 잔존율 × 모수 코호트(D0)
+      return { day, retentionRate: rate, n: totalN, survivors: Math.round(rate * totalN) };
     }).filter(Boolean);
   }
 
@@ -16505,6 +16485,7 @@ function buildWideRetentionCache() {
   WIDE_RET_CACHE.retDays = retDays;
   WIDE_RET_CACHE.retCurve = retCurve;
   WIDE_RET_CACHE.bySegment = bySegment;
+  WIDE_RET_CACHE.anchor = anchor;
   return WIDE_RET_CACHE;
 }
 
@@ -16517,10 +16498,11 @@ function renderWideRetCharts() {
   const overallCtx = document.getElementById("wide-ret-curve");
   if (curve.length && overallCtx) {
     destroyChartIfExists("wide-ret-curve");
+    const survLbl = wrc.anchor === "actions" ? "잔존 가입자" : "잔존 유저";
     CHART_INSTANCES["wide-ret-curve"] = new Chart(overallCtx, {
       type: "line",
-      data: { labels: curve.map(p => `D${p.day}`), datasets: [{ label: "전체 리텐션", data: curve.map(p => +(p.retentionRate * 100).toFixed(2)), borderColor: "#7aa2f7", backgroundColor: "rgba(122,162,247,0.08)", tension: 0.35, pointRadius: 4, fill: true }] },
-      options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100, ticks: { color: getCssVar('--text-muted'), callback: v => v + "%" }, grid: { color: getCssVar('--border') } }, x: { ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } } }, plugins: { legend: { labels: { color: getCssVar("--text-2") } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ": " + ctx.parsed.y.toFixed(1) + "%" } } } }
+      data: { labels: curve.map(p => `D${p.day}`), datasets: [{ label: "전체 리텐션", data: curve.map(p => +(p.retentionRate * 100).toFixed(2)), _surv: curve.map(p => p.survivors), borderColor: "#7aa2f7", backgroundColor: "rgba(122,162,247,0.08)", tension: 0.35, pointRadius: 4, fill: true }] },
+      options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, scales: { y: { min: 0, max: 100, ticks: { color: getCssVar('--text-muted'), callback: v => v + "%" }, grid: { color: getCssVar('--border') } }, x: { ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } } }, plugins: { legend: { labels: { color: getCssVar("--text-2") } }, tooltip: { callbacks: { label: ctx => { const sv = ctx.dataset._surv && ctx.dataset._surv[ctx.dataIndex]; return ctx.dataset.label + ": " + ctx.parsed.y.toFixed(1) + "%" + (sv != null ? ` · ${survLbl} ${sv.toLocaleString()}명` : ""); } } } } }
     });
   }
   // 세그먼트별 곡선
@@ -16529,16 +16511,18 @@ function renderWideRetCharts() {
   for (const sk of Object.keys(wrc.bySegment || {})) {
     const ctx = document.getElementById(`wide-ret-seg-${sk}`); if (!ctx) continue;
     const groups = Object.keys(wrc.bySegment[sk]);
+    const survLbl = wrc.anchor === "actions" ? "잔존 가입자" : "잔존 유저";
     const datasets = groups.map((g, gi) => ({
       label: g, borderColor: PALETTE[gi % PALETTE.length],
       data: allDays.map(day => { const pt = wrc.bySegment[sk][g].find(p => p.day === day); return pt ? +(pt.retentionRate * 100).toFixed(2) : null; }),
+      _surv: allDays.map(day => { const pt = wrc.bySegment[sk][g].find(p => p.day === day); return pt ? pt.survivors : null; }),
       tension: 0.35, pointRadius: 3, fill: false, spanGaps: true
     }));
     destroyChartIfExists(`wide-ret-seg-${sk}`);
     CHART_INSTANCES[`wide-ret-seg-${sk}`] = new Chart(ctx, {
       type: "line",
       data: { labels: allDays.map(d => `D${d}`), datasets },
-      options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100, ticks: { color: getCssVar('--text-muted'), callback: v => v + "%" }, grid: { color: getCssVar('--border') } }, x: { ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } } }, plugins: { legend: { labels: { color: getCssVar("--text-2"), boxWidth: 12 } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ": " + ctx.parsed.y.toFixed(1) + "%" } } } }
+      options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, scales: { y: { min: 0, max: 100, ticks: { color: getCssVar('--text-muted'), callback: v => v + "%" }, grid: { color: getCssVar('--border') } }, x: { ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } } }, plugins: { legend: { labels: { color: getCssVar("--text-2"), boxWidth: 12 } }, tooltip: { callbacks: { label: ctx => { const sv = ctx.dataset._surv && ctx.dataset._surv[ctx.dataIndex]; return ctx.dataset.label + ": " + ctx.parsed.y.toFixed(1) + "%" + (sv != null ? ` · ${survLbl} ${sv.toLocaleString()}명` : ""); } } } } }
     });
   }
 }
@@ -16563,15 +16547,28 @@ function renderWideRetentionSection(wrc) {
   const fmtPct = v => v == null ? "—" : (v * 100).toFixed(1) + "%";
   const curve = wrc.retCurve;
   if (!curve.length) return "";
-  const chartId = "wide-ret-curve";
-  const tableRows = curve.map(p => `<tr><td>D${p.day}</td><td>${fmtPct(p.retentionRate)}</td><td>${p.n ? p.n.toLocaleString() : "—"}</td></tr>`).join("");
+  const anchorLabel = wrc.anchor === "actions" ? "가입(액션)" : "설치";
+  const survLabel = wrc.anchor === "actions" ? "잔존 가입자 수" : "잔존 유저 수";
+  const mapped = new Set(Object.values(CSV_STATE.mapping || {}).filter(v => v && v !== "__ignore__"));
+  const canActions = mapped.has("actions"), canInstalls = mapped.has("installs");
+  const tableRows = curve.map(p =>
+    `<tr><td class="tnum">D${p.day}</td><td class="tnum">${fmtPct(p.retentionRate)}</td><td class="tnum">${(p.survivors || 0).toLocaleString()}</td></tr>`
+  ).join("");
+  const anchorToggle = (canActions && canInstalls) ? `
+    <div class="ab-pillgroup" style="margin-bottom:10px;">
+      <span class="ab-pillgroup-label">리텐션 기준</span>
+      <button class="ab-pill ${wrc.anchor !== "actions" ? "active" : ""}" data-ret-anchor="installs">설치 기준</button>
+      <button class="ab-pill ${wrc.anchor === "actions" ? "active" : ""}" data-ret-anchor="actions">가입(액션) 기준</button>
+    </div>` : "";
   return `<section class="block" id="s-retention">
     <h2 class="section-title"><span class="ix">§1</span>전체 리텐션 곡선</h2>
-    <div class="chart-container" style="height:220px;"><canvas id="${chartId}"></canvas></div>
-    <table style="margin-top:14px;width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr style="border-bottom:1px solid var(--border);"><th style="text-align:left;padding:4px 8px;color:var(--text-muted);">구간</th><th style="text-align:right;padding:4px 8px;color:var(--text-muted);">잔존율</th><th style="text-align:right;padding:4px 8px;color:var(--text-muted);">설치 수</th></tr></thead>
+    ${anchorToggle}
+    <div class="chart-container" style="height:220px;"><canvas id="wide-ret-curve"></canvas></div>
+    <div class="table-wrap" style="margin-top:14px;"><table class="data" style="font-size:12px;">
+      <thead><tr><th style="text-align:left;">구간</th><th style="text-align:right;">잔존율</th><th style="text-align:right;">${survLabel}</th></tr></thead>
       <tbody>${tableRows}</tbody>
-    </table>
+    </table></div>
+    <p class="muted" style="font-size:11px;margin-top:8px;">${survLabel} = 잔존율 × ${anchorLabel} 코호트(D0). <code>ret_dN</code>은 업로드된 잔존율이며, 기준 토글은 절대 인원 산출의 모수(${anchorLabel})를 바꿉니다.</p>
   </section>`;
 }
 
@@ -19577,6 +19574,10 @@ function bindCSVPageHandlers() {
   if (document.getElementById("wide-ret-curve")) {
     renderWideRetCharts();
   }
+  // 리텐션 기준(설치/가입) 토글
+  document.querySelectorAll("[data-ret-anchor]").forEach(b => b.addEventListener("click", () => {
+    WIDE_RET_STATE.anchor = b.dataset.retAnchor; WIDE_RET_CACHE.key = null; navigate("5-2");
+  }));
 
   // ----- 5-13: Executive Scorecard 핸들러 -----
   if (document.querySelector("[data-score-window]")) {
