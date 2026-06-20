@@ -6192,7 +6192,7 @@ const MON_TABS = [
   { id: "anomaly",    icon: "🚨", label: "이상탐지",   desc: "급등·급락 z-score 감지",                             requiresAny: [] },
   { id: "ltv",        icon: "💹", label: "장기 가치",  desc: "LTV:CAC 회수기간 + ROAS 성숙도 예측 (효율 CSV)",      requiresAny: ["revenue_d30","revenue_d60","revenue_d90","revenue_d180","revenue_d360"] },
   { id: "cohort",     icon: "📉", label: "리텐션",     desc: "리텐션 곡선·세그먼트·예측 (효율 CSV ret_dN 컬럼)",    requiresAny: ["ret_d30","ret_d60","ret_d90","ret_d180","ret_d360"] },
-  { id: "funnel",     icon: "🪜", label: "퍼널 진단",  desc: "노출→클릭→설치→액션 단계 CVR·이탈",                  requiresAny: ["click"] },
+  { id: "funnel",     icon: "🪜", label: "퍼널 진단",  desc: "노출→클릭→설치→액션 단계 CVR·이탈",                  requiresAny: ["clicks"] },
   { id: "segment",    icon: "🗺", label: "세그먼트",   desc: "국가×채널×플랫폼 효율 매트릭스",                      requiresAny: ["channel","country","platform"] },
 ];
 function isTabUnlocked(tab) {
@@ -6205,7 +6205,7 @@ function renderCapabilityMatrix() {
   const rows = [
     { series: "기본",          cols: "date, cost",                      unlocks: "시각화 · 페이싱 · 이상탐지",               note: "" },
     { series: "설치/액션",     cols: "installs / actions",              unlocks: "스코어카드 KPI",                           note: "" },
-    { series: "클릭수",        cols: "click",                           unlocks: "퍼널 CVR 완전 표시",                       note: "" },
+    { series: "클릭수",        cols: "clicks",                          unlocks: "퍼널 CVR 완전 표시",                       note: "" },
     { series: "채널·국가·플랫폼", cols: "channel, country, platform",  unlocks: "세그먼트 비교",                            note: "" },
     { series: "Revenue(Dn)",  cols: "revenue_d30 ~ d360",              unlocks: "LTV:CAC · ROAS 성숙도",                    note: "→ ROAS 자동 산출" },
     { series: "PU(Dn)",       cols: "pu_d30 ~ d360",                   unlocks: "PUR 분석",                                 note: "→ PUR 자동 산출" },
@@ -6307,18 +6307,42 @@ function renderMonFilterBar() {
   </div>`;
 }
 
+// 탭 id가 속한 그룹 반환 (없으면 첫 그룹)
+function monGroupOf(tabId) {
+  return MON_TAB_GROUPS.find(g => g.tabs.includes(tabId)) || MON_TAB_GROUPS[0];
+}
+// 그룹의 첫 해제(unlock)된 탭 id (없으면 첫 탭)
+function monFirstUnlockedTab(g) {
+  const tabMap = Object.fromEntries(MON_TABS.map(d => [d.id, d]));
+  return g.tabs.find(id => tabMap[id] && isTabUnlocked(tabMap[id])) || g.tabs[0];
+}
+const MON_GROUP_ICON = { "모니터링": "🖥", "장기 가치": "💎", "효율 진단": "🔬" };
 function renderMonTabs() {
   const t = MON_STATE.tab || "viz";
   const tabMap = Object.fromEntries(MON_TABS.map(d => [d.id, d]));
+  const activeGroup = monGroupOf(t);
+  // ── 1차: 그룹 카드 3개 ──
+  const primary = MON_TAB_GROUPS.map((g, gi) => {
+    const on = g === activeGroup;
+    const subs = g.tabs.map(id => tabMap[id] && tabMap[id].label).filter(Boolean).join(" · ");
+    return `<button class="mmm-stage-tab ${on ? "active" : ""}" data-mon-group="${gi}" style="flex:1;min-width:150px;text-align:left;color:var(--text-1);background:${on ? "linear-gradient(135deg,rgba(122,162,247,0.18),rgba(122,162,247,0.05))" : "var(--bg-2)"};border:1px solid ${on ? "rgba(122,162,247,0.6)" : "var(--border)"};border-radius:12px;padding:11px 14px;cursor:pointer;transition:all .15s;">
+      <div style="font-size:14px;font-weight:700;">${MON_GROUP_ICON[g.label] || ""} ${g.label}</div>
+      <div style="font-size:10px;color:var(--text-2);margin-top:3px;line-height:1.3;">${subs}</div>
+    </button>`;
+  }).join("");
+  // ── 2차: 활성 그룹의 하위 도구 pill ──
+  const secondary = activeGroup.tabs.map(id => {
+    const d = tabMap[id]; if (!d) return "";
+    const locked = !isTabUnlocked(d);
+    const on = t === d.id && !locked;
+    return `<button class="ab-pill ${on ? "active" : ""}" ${locked ? 'disabled title="이 도구를 열려면 추가 컬럼을 매핑하세요"' : `data-mon-tab="${d.id}"`} style="opacity:${locked ? ".5" : "1"};cursor:${locked ? "default" : "pointer"};">${locked ? "🔒" : d.icon} ${d.label}</button>`;
+  }).join("");
   return `<section class="block" style="padding:0;border:none;background:none;margin:4px 0 6px;">
-    ${MON_TAB_GROUPS.map(g => `
-    <div style="margin-bottom:6px;">
-      <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px 2px;">${g.label}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">${g.tabs.map(id => { const d = tabMap[id]; if (!d) return ""; const locked = !isTabUnlocked(d); return `<button class="mmm-stage-tab ${t === d.id && !locked ? "active" : ""}" data-mon-tab="${d.id}" ${locked ? 'disabled title="이 탭을 열려면 추가 컬럼을 매핑하세요"' : ""} style="flex:1;min-width:130px;text-align:left;color:${locked ? "var(--text-muted)" : "var(--text-1)"};background:${t === d.id && !locked ? "linear-gradient(135deg,rgba(122,162,247,0.16),rgba(122,162,247,0.04))" : "var(--bg-2)"};border:1px solid ${t === d.id && !locked ? "rgba(122,162,247,0.55)" : "var(--border)"};border-radius:12px;padding:10px 13px;cursor:${locked ? "default" : "pointer"};opacity:${locked ? ".55" : "1"};transition:all .15s;">
-        <div style="font-size:13px;font-weight:700;">${locked ? "🔒" : d.icon} ${d.label}</div>
-        <div style="font-size:10px;color:var(--text-2);margin-top:2px;line-height:1.3;">${locked ? "추가 컬럼 매핑 필요" : d.desc}</div>
-      </button>`; }).join("")}</div>
-    </div>`).join("")}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">${primary}</div>
+    <div class="ab-pillgroup" style="margin:0;">
+      <span class="ab-pillgroup-label">${activeGroup.label}</span>
+      ${secondary}
+    </div>
   </section>`;
 }
 function monValueBody() {
@@ -6350,7 +6374,7 @@ function page_5_2() {
   else if (tab === "anomaly")   { body = monAnomalyBody();   toc = [{ id: "s-anom", title: "이상 감지" }]; }
   else if (tab === "ltv")       { body = monValueBody();     toc = [{ id: "s-ctl", title: "분석 단위" }, { id: "s-table", title: "LTV:CAC 표" }, { id: "s-mat", title: "ROAS 성숙도" }]; }
   else if (tab === "cohort")    { body = monCohortBody();    toc = [{ id: "s-retention", title: "리텐션 곡선" }, { id: "s-ret-segment", title: "세그먼트별" }, { id: "s-ret-predict", title: "예측" }]; }
-  else if (tab === "funnel")    { body = monFunnelBody();    toc = [{ id: "s-funnel", title: "퍼널" }]; }
+  else if (tab === "funnel")    { body = monFunnelBody();    toc = [{ id: "s-funnel", title: "단계별 전환" }, { id: "s-funnel-trend", title: "시계열 급락" }, { id: "s-funnel-seg", title: "세그먼트 랭킹" }]; }
   else if (tab === "segment")   { body = monSegmentBody();   toc = [{ id: "s-matrix", title: "세그먼트" }]; }
   else                          { body = monVizBody();       toc = [{ id: "s-cohort", title: "코호트" }, { id: "s-kpi", title: "KPI 요약" }, { id: "s-charts", title: "차트" }]; }
   return pageShell(meta, {
@@ -17681,39 +17705,134 @@ function buildFunnelCache(){
   const key=funnelCacheKey(); if(FUNNEL_CACHE.key===key)return FUNNEL_CACHE;
   const rows=getMappedRowsForMon();
   const mapped=new Set(Object.values(CSV_STATE.mapping||{}));
-  const unit=FUNNEL_STATE.unitField;
-  const agg=new Map();
-  for(const r of rows){
-    const k = unit==="_all" ? "전체" : (String(r[unit]??"").trim()||"(미지정)");
-    if(!agg.has(k)) agg.set(k,{unit:k,impr:0,clk:0,inst:0,act:0,rev:0});
-    const b=agg.get(k);
-    b.impr+=Number(r.impressions)||0; b.clk+=Number(r.clicks)||0;
-    b.inst+=Number(r.installs)||0; b.act+=Number(r.actions)||0; b.rev+=Number(r.revenue_d7)||0;
-  }
+  const blank=()=>({impr:0,clk:0,inst:0,act:0,rev:0});
+  const add=(b,r)=>{ b.impr+=Number(r.impressions)||0; b.clk+=Number(r.clicks)||0; b.inst+=Number(r.installs)||0; b.act+=Number(r.actions)||0; b.rev+=Number(r.revenue_d7)||0; };
   const stageDefs=[
     {key:"impr",label:"노출",on:mapped.has("impressions")},
     {key:"clk", label:"클릭",on:mapped.has("clicks")},
     {key:"inst",label:"설치",on:mapped.has("installs")},
     {key:"act", label:"액션",on:mapped.has("actions")},
   ].filter(s=>s.on);
-  const rowsOut=[...agg.values()].sort((a,b)=>b.impr-a.impr).map(b=>{
+
+  // ── 단위별 집계(표) + 전체 합계 ──
+  const unit=FUNNEL_STATE.unitField;
+  const overall=blank(); const agg=new Map();
+  for(const r of rows){
+    add(overall,r);
+    const k = unit==="_all" ? "전체" : (String(r[unit]??"").trim()||"(미지정)");
+    if(!agg.has(k)) agg.set(k,{unit:k,...blank()});
+    add(agg.get(k),r);
+  }
+  const stepsOf=(b)=>{
     const steps=[];
     for(let i=0;i<stageDefs.length;i++){
       const cur=b[stageDefs[i].key];
       const prev=i>0?b[stageDefs[i-1].key]:null;
       steps.push({ label:stageDefs[i].label, count:cur, cvr: prev!=null&&prev>0?cur/prev:null, drop: prev!=null&&prev>0?(prev-cur)/prev:null });
     }
-    return { unit:b.unit, steps };
-  });
+    return steps;
+  };
+  const overallSteps=stepsOf(overall);
+  // ── 병목 단계 = 전체에서 가장 큰 이탈(전이 중) ──
+  let bnIdx=null, maxDrop=-1;
+  for(let i=1;i<overallSteps.length;i++){
+    if(overallSteps[i].drop!=null && overallSteps[i].drop>maxDrop){ maxDrop=overallSteps[i].drop; bnIdx=i; }
+  }
+  const bnFrom = bnIdx!=null ? stageDefs[bnIdx-1].key : null;
+  const bnTo   = bnIdx!=null ? stageDefs[bnIdx].key   : null;
+  const bnLabel= bnIdx!=null ? `${stageDefs[bnIdx-1].label}→${stageDefs[bnIdx].label}` : null;
+  const cvrOf=(b)=>(bnFrom && b[bnFrom]>0)? b[bnTo]/b[bnFrom] : null;
+  const overallBnCvr=cvrOf(overall);
+
+  // ── 시계열: 날짜별 병목 CVR + 급락 탐지(평균−1σ) ──
+  let daily=[], dailyMean=null, dailySd=null;
+  if(mapped.has("date") && bnFrom){
+    const dmap=new Map();
+    for(const r of rows){ const d=r.date; if(!d)continue; if(!dmap.has(d))dmap.set(d,{date:d,...blank()}); add(dmap.get(d),r); }
+    daily=[...dmap.values()].sort((a,b)=>a.date<b.date?-1:1).map(b=>({date:b.date,cvr:cvrOf(b),vol:b[bnFrom]}));
+    const valid=daily.filter(x=>x.cvr!=null && x.vol>0);
+    if(valid.length){
+      dailyMean=valid.reduce((s,x)=>s+x.cvr,0)/valid.length;
+      dailySd=Math.sqrt(valid.reduce((s,x)=>s+(x.cvr-dailyMean)**2,0)/valid.length);
+      daily.forEach(x=>{ x.devPct = (x.cvr!=null&&dailyMean>0)?(x.cvr-dailyMean)/dailyMean:null; x.low = x.cvr!=null && dailySd>0 && x.cvr < dailyMean - dailySd; });
+    }
+  }
+
+  // ── 세그먼트 랭킹: 병목 CVR 기준 (전체 단위면 채널>국가>OS 자동) ──
+  let segRank=null;
+  const segField = unit==="_all" ? (mapped.has("channel")?"channel":(mapped.has("country")?"country":(mapped.has("platform")?"platform":null))) : unit;
+  if(segField && bnFrom){
+    const smap=new Map();
+    for(const r of rows){ const k=String(r[segField]??"").trim()||"(미지정)"; if(!smap.has(k))smap.set(k,{seg:k,...blank()}); add(smap.get(k),r); }
+    const arr=[...smap.values()].map(b=>({seg:b.seg,cvr:cvrOf(b),vol:b[bnFrom]})).filter(x=>x.cvr!=null && x.vol>0).sort((a,b)=>b.cvr-a.cvr);
+    if(arr.length>=2) segRank={ field:segField, best:arr.slice(0,3), worst:arr.slice(-3).reverse(), avg:overallBnCvr };
+  }
+
+  const rowsOut=[...agg.values()].sort((a,b)=>b.impr-a.impr).map(b=>({unit:b.unit,steps:stepsOf(b)}));
   FUNNEL_CACHE.key=key; FUNNEL_CACHE.stages=stageDefs; FUNNEL_CACHE.rows=rowsOut;
+  FUNNEL_CACHE.overall=overall; FUNNEL_CACHE.overallSteps=overallSteps;
+  FUNNEL_CACHE.bottleneck={index:bnIdx,label:bnLabel,drop:maxDrop,cvr:overallBnCvr};
+  FUNNEL_CACHE.daily=daily; FUNNEL_CACHE.dailyMean=dailyMean; FUNNEL_CACHE.dailySd=dailySd;
+  FUNNEL_CACHE.segRank=segRank;
   return FUNNEL_CACHE;
+}
+const FUNNEL_FIELD_LABEL = { channel:"채널", country:"국가", platform:"OS" };
+function renderFunnelSummary(c){
+  const fmtPct=(v)=>v==null?"—":(v*100).toFixed(2)+"%";
+  const bn=c.bottleneck||{};
+  if(bn.index==null) return "";
+  const advice = bn.label && bn.label.startsWith("노출") ? "소재·타게팅(노출 효율)을 점검하세요."
+    : bn.label && bn.label.includes("클릭→설치") ? "스토어 페이지(ASO)·랜딩을 점검하세요."
+    : bn.label && bn.label.includes("설치→액션") ? "온보딩·초기 UX를 점검하세요." : "해당 단계 전환을 점검하세요.";
+  return `<div class="ab-statgrid" style="margin-bottom:12px;">
+    <div class="ab-stat" style="background:linear-gradient(135deg,rgba(248,113,113,0.12),rgba(248,113,113,0.03));border-color:rgba(248,113,113,0.4);">
+      <div class="ab-stat-label">최대 병목 단계</div><div class="ab-stat-value">${bn.label||"—"}</div>
+      <div class="ab-stat-hint">이탈 ${bn.drop!=null?(bn.drop*100).toFixed(0):"—"}%</div>
+    </div>
+    <div class="ab-stat"><div class="ab-stat-label">병목 평균 CVR</div><div class="ab-stat-value tnum">${fmtPct(bn.cvr)}</div><div class="ab-stat-hint">전체 기간 가중평균</div></div>
+    ${c.dailySd!=null?`<div class="ab-stat"><div class="ab-stat-label">일별 변동(σ)</div><div class="ab-stat-value tnum">±${(c.dailySd*100).toFixed(2)}%p</div><div class="ab-stat-hint">평균 대비 흔들림</div></div>`:""}
+  </div>
+  <div class="callout warning"><div class="ico">!</div><div class="body"><p style="margin:0;font-size:12px;"><strong>${bn.label}</strong> 단계가 가장 큰 병목입니다 (평균 CVR ${fmtPct(bn.cvr)}). ${advice}</p></div></div>`;
+}
+function renderFunnelTrendSection(c){
+  const daily=c.daily||[];
+  if(daily.filter(x=>x.cvr!=null).length<3) return "";
+  const lows=daily.filter(x=>x.low).slice(-8);
+  const bnLabel=(c.bottleneck||{}).label||"병목";
+  return `<section class="block" id="s-funnel-trend">
+    <h2 class="section-title"><span class="ix">§2</span>언제 떨어졌나 — ${escapeHtml(bnLabel)} CVR 추이</h2>
+    <div class="chart-container" style="height:240px;"><canvas id="funnel-trend-chart"></canvas></div>
+    ${lows.length?`<div class="callout" style="margin-top:10px;"><div class="ico">!</div><div class="body"><p style="margin:0 0 4px;font-size:12px;"><strong>평균 대비 급락한 날 (−1σ 이하)</strong></p><div style="display:flex;flex-wrap:wrap;gap:6px;">${lows.map(x=>`<span class="chip warning" style="font-size:11px;">${escapeHtml(x.date)} · ${(x.cvr*100).toFixed(1)}% <span style="opacity:.7;">(${x.devPct<0?"":"+"}${(x.devPct*100).toFixed(0)}%)</span></span>`).join("")}</div></div></div>`:`<p class="muted" style="margin-top:8px;font-size:12px;">평균 대비 −1σ 이상 급락한 날은 없습니다. CVR이 안정적입니다.</p>`}
+  </section>`;
+}
+function renderFunnelSegSection(c){
+  const sr=c.segRank; if(!sr) return "";
+  const fmtPct=(v)=>v==null?"—":(v*100).toFixed(2)+"%";
+  const bnLabel=(c.bottleneck||{}).label||"병목";
+  const fieldL=FUNNEL_FIELD_LABEL[sr.field]||sr.field;
+  const row=(x,tone)=>{ const dev=sr.avg>0?(x.cvr-sr.avg)/sr.avg:0; return `<tr><td><strong>${escapeHtml(String(x.seg).slice(0,24))}</strong></td><td class="tnum ${tone}">${fmtPct(x.cvr)}</td><td class="tnum" style="color:${dev>=0?'#34d399':'#f87171'};">${dev>=0?"+":""}${(dev*100).toFixed(0)}%</td><td class="tnum" style="color:var(--text-muted);">${(x.vol||0).toLocaleString()}</td></tr>`; };
+  return `<section class="block" id="s-funnel-seg">
+    <h2 class="section-title"><span class="ix">§3</span>${fieldL}별 ${escapeHtml(bnLabel)} CVR — 평균 대비</h2>
+    <p class="muted" style="font-size:12px;margin:-4px 0 10px;">평균(${fmtPct(sr.avg)}) 대비 높은/낮은 ${fieldL}. 분모 볼륨이 충분한 세그먼트만 표시합니다.</p>
+    <div class="table-wrap"><table class="data" style="font-size:11.5px;">
+      <thead><tr><th>${fieldL}</th><th>병목 CVR</th><th>평균 대비</th><th>분모 볼륨</th></tr></thead>
+      <tbody>
+        <tr><td colspan="4" style="font-weight:700;color:#34d399;font-size:11px;padding-top:8px;">▲ 잘 전환되는 ${fieldL}</td></tr>
+        ${sr.best.map(x=>row(x,"pos")).join("")}
+        <tr><td colspan="4" style="font-weight:700;color:#f87171;font-size:11px;padding-top:8px;">▼ 전환이 낮은 ${fieldL}</td></tr>
+        ${sr.worst.map(x=>row(x,"neg")).join("")}
+      </tbody>
+    </table></div>
+  </section>`;
 }
 function monFunnelBody(){
   buildFunnelCache();
   const c=FUNNEL_CACHE;
+  if(!(c.rows||[]).length) return `<section class="block" id="s-funnel"><h2 class="section-title"><span class="ix">§1</span>퍼널 진단</h2><p class="muted">데이터 없음</p></section>`;
   return `
       <section class="block" id="s-funnel">
         <h2 class="section-title"><span class="ix">§1</span>퍼널 단계별 전환·이탈</h2>
+        ${renderFunnelSummary(c)}
         <div class="ab-pillgroup">
           <span class="ab-pillgroup-label">분리 단위</span>
           ${[["_all","전체"],["channel","채널"],["country","국가"],["platform","OS"]].map(([k,l])=>{
@@ -17723,33 +17842,54 @@ function monFunnelBody(){
         </div>
         ${renderFunnelTable(c)}
       </section>
+      ${renderFunnelTrendSection(c)}
+      ${renderFunnelSegSection(c)}
     `;
 }
 function renderFunnelTable(c){
   const rows=c.rows||[]; if(!rows.length)return "<p class='muted'>데이터 없음</p>";
   const stages=c.stages;
+  const bnIdx=(c.bottleneck||{}).index;
   const fmtPct=(v)=>v==null?"—":(v*100).toFixed(2)+"%";
   return `
     <div class="table-wrap"><table class="data" style="font-size:11.5px;">
-      <thead><tr><th>단위</th>${stages.map(s=>`<th>${s.label}</th>`).join("")}${stages.slice(1).map(s=>`<th>→${s.label} CVR</th>`).join("")}</tr></thead>
+      <thead><tr><th>단위</th>${stages.map(s=>`<th>${s.label}</th>`).join("")}${stages.slice(1).map((s,i)=>`<th>→${s.label} CVR${i+1===bnIdx?' 🔻':''}</th>`).join("")}</tr></thead>
       <tbody>
         ${rows.slice(0,40).map(r=>`
           <tr>
             <td><strong>${escapeHtml(String(r.unit).slice(0,24))}</strong></td>
             ${r.steps.map(s=>`<td class="tnum">${(s.count||0).toLocaleString()}</td>`).join("")}
-            ${r.steps.slice(1).map(s=>{
+            ${r.steps.slice(1).map((s,i)=>{
+              const isBn = i+1===bnIdx;
               const worst = s.drop!=null && s.drop>0.7;
-              return `<td class="tnum ${worst?'neg':''}">${fmtPct(s.cvr)}${s.drop!=null?` <span style="color:var(--text-muted);font-size:10px;">(이탈 ${(s.drop*100).toFixed(0)}%)</span>`:''}</td>`;
+              return `<td class="tnum ${worst?'neg':''}" ${isBn?'style="background:rgba(248,113,113,0.06);"':''}>${fmtPct(s.cvr)}${s.drop!=null?` <span style="color:var(--text-muted);font-size:10px;">(이탈 ${(s.drop*100).toFixed(0)}%)</span>`:''}</td>`;
             }).join("")}
           </tr>
         `).join("")}
       </tbody>
     </table></div>
-    <div class="callout" style="margin-top:10px;"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">이탈률(빨강 = 70%↑)이 가장 큰 단계가 병목입니다. 노출→클릭 이탈이 크면 소재/타게팅, 클릭→설치 이탈이 크면 스토어 페이지(ASO)/랜딩, 설치→액션 이탈이 크면 온보딩/UX를 점검하세요.</p></div></div>`;
+    <div class="callout" style="margin-top:10px;"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">🔻 = 전체 기준 최대 병목 단계. 이탈률(빨강 = 70%↑)이 큰 단계가 병목입니다. 노출→클릭 이탈이 크면 소재/타게팅, 클릭→설치 이탈이 크면 스토어 페이지(ASO)/랜딩, 설치→액션 이탈이 크면 온보딩/UX를 점검하세요.</p></div></div>`;
+}
+function renderFunnelTrendChart(){
+  if(typeof Chart==="undefined")return;
+  const c=FUNNEL_CACHE; const daily=(c.daily||[]).filter(x=>x.cvr!=null);
+  if(daily.length<3)return;
+  const ctx=document.getElementById("funnel-trend-chart"); if(!ctx)return;
+  destroyChartIfExists("funnel-trend-chart");
+  const labels=daily.map(x=>x.date.slice(5));
+  const cvr=daily.map(x=>+(x.cvr*100).toFixed(2));
+  const mean=c.dailyMean!=null?+(c.dailyMean*100).toFixed(2):null;
+  const ptColors=daily.map(x=>x.low?"#f87171":"#adc6ff");
+  const ds=[{ label:`${(c.bottleneck||{}).label||"병목"} CVR(%)`, data:cvr, borderColor:"#adc6ff", backgroundColor:"#adc6ff20", fill:true, tension:0.2, pointRadius:daily.map(x=>x.low?4:2), pointBackgroundColor:ptColors, pointBorderColor:ptColors }];
+  if(mean!=null) ds.push({ label:"평균", data:daily.map(()=>mean), borderColor:"#fbbf24", borderDash:[5,4], borderWidth:1.5, pointRadius:0 });
+  CHART_INSTANCES["funnel-trend-chart"]=new Chart(ctx,{ type:"line", data:{labels,datasets:ds},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:getCssVar('--text-muted'),font:{size:11}}}},
+      scales:{ x:{ticks:{color:getCssVar('--text-muted'),maxTicksLimit:12},grid:{color:getCssVar('--border')}}, y:{ticks:{color:getCssVar('--text-muted'),callback:v=>v+"%"},grid:{color:getCssVar('--border')}} } } });
 }
 function bindFunnelHandlers(){
   bindInlineCsvHandlers();
   document.querySelectorAll("[data-funnel-unit]").forEach(b=>b.addEventListener("click",()=>{ if(b.classList.contains("disabled"))return; FUNNEL_STATE.unitField=b.dataset.funnelUnit; FUNNEL_CACHE.key=null; navigate("5-11"); }));
+  renderFunnelTrendChart();
 }
 function runFunnelTests(verbose=true){
   const results=[];
@@ -19207,6 +19347,13 @@ function bindCSVPageHandlers() {
 
   // ----- 5-2: 운영 모니터링 탭 전환 (시각화/스코어카드/페이싱/이상탐지) -----
   document.querySelectorAll("[data-mon-tab]").forEach(b => b.addEventListener("click", () => { MON_STATE.tab = b.dataset.monTab; navigate("5-2"); }));
+  // 1차 그룹 카드: 이미 그 그룹에 있으면 유지, 아니면 첫 해제 탭으로
+  document.querySelectorAll("[data-mon-group]").forEach(b => b.addEventListener("click", () => {
+    const g = MON_TAB_GROUPS[+b.dataset.monGroup]; if (!g) return;
+    if (g.tabs.includes(MON_STATE.tab)) return;
+    MON_STATE.tab = monFirstUnlockedTab(g);
+    navigate("5-2");
+  }));
 
   // ----- 5-2: sticky 필터 바 핸들러 -----
   const _monInvalidateCaches = () => {
