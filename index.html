@@ -361,9 +361,9 @@
   }
   .mon-multisel-btn:hover { border-color:var(--accent,#7aa2f7); }
   .mon-multisel-list {
-    position:absolute;top:calc(100% + 3px);left:0;z-index:999;
+    position:fixed;z-index:9999;
     background:var(--bg-2);border:1px solid var(--border);border-radius:6px;
-    padding:4px;min-width:130px;max-height:200px;overflow-y:auto;
+    padding:4px;min-width:130px;max-height:240px;overflow-y:auto;
     box-shadow:0 6px 18px rgba(0,0,0,.35);
   }
   .mon-multisel-list label {
@@ -6374,7 +6374,7 @@ function page_5_2() {
   else if (tab === "anomaly")   { body = monAnomalyBody();   toc = [{ id: "s-anom", title: "이상 감지" }]; }
   else if (tab === "ltv")       { body = monValueBody();     toc = [{ id: "s-ctl", title: "분석 단위" }, { id: "s-table", title: "LTV:CAC 표" }, { id: "s-mat", title: "ROAS 성숙도" }]; }
   else if (tab === "cohort")    { body = monCohortBody();    toc = [{ id: "s-retention", title: "리텐션 곡선" }, { id: "s-ret-segment", title: "세그먼트별" }, { id: "s-ret-predict", title: "예측" }]; }
-  else if (tab === "funnel")    { body = monFunnelBody();    toc = [{ id: "s-funnel", title: "단계별 전환" }, { id: "s-funnel-trend", title: "시계열 급락" }, { id: "s-funnel-seg", title: "세그먼트 랭킹" }]; }
+  else if (tab === "funnel")    { body = monFunnelBody();    toc = [{ id: "s-funnel-wow", title: "주간 변화" }, { id: "s-funnel-ctl", title: "단계 선택" }, { id: "s-funnel-trend", title: "시계열 급락" }, { id: "s-funnel-seg", title: "세그먼트 랭킹" }, { id: "s-funnel", title: "전체 퍼널 표" }]; }
   else if (tab === "segment")   { body = monSegmentBody();   toc = [{ id: "s-matrix", title: "세그먼트" }]; }
   else                          { body = monVizBody();       toc = [{ id: "s-cohort", title: "코호트" }, { id: "s-kpi", title: "KPI 요약" }, { id: "s-charts", title: "차트" }]; }
   return pageShell(meta, {
@@ -16508,6 +16508,40 @@ function buildWideRetentionCache() {
   return WIDE_RET_CACHE;
 }
 
+// 리텐션 차트 렌더 (innerHTML의 <script>는 실행 안 되므로 bind 후 직접 호출)
+function renderWideRetCharts() {
+  if (typeof Chart === "undefined") return;
+  const wrc = WIDE_RET_CACHE;
+  // 전체 곡선
+  const curve = wrc.retCurve || [];
+  const overallCtx = document.getElementById("wide-ret-curve");
+  if (curve.length && overallCtx) {
+    destroyChartIfExists("wide-ret-curve");
+    CHART_INSTANCES["wide-ret-curve"] = new Chart(overallCtx, {
+      type: "line",
+      data: { labels: curve.map(p => `D${p.day}`), datasets: [{ label: "전체 리텐션", data: curve.map(p => +(p.retentionRate * 100).toFixed(2)), borderColor: "#7aa2f7", backgroundColor: "rgba(122,162,247,0.08)", tension: 0.35, pointRadius: 4, fill: true }] },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100, ticks: { color: getCssVar('--text-muted'), callback: v => v + "%" }, grid: { color: getCssVar('--border') } }, x: { ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } } }, plugins: { legend: { labels: { color: getCssVar("--text-2") } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ": " + ctx.parsed.y.toFixed(1) + "%" } } } }
+    });
+  }
+  // 세그먼트별 곡선
+  const PALETTE = ["#7aa2f7","#9ece6a","#e0af68","#f7768e","#bb9af7","#2ac3de","#ff9e64","#73daca","#c0caf5","#a9b1d6","#db4b4b","#41a6b5"];
+  const allDays = wrc.retDays || [];
+  for (const sk of Object.keys(wrc.bySegment || {})) {
+    const ctx = document.getElementById(`wide-ret-seg-${sk}`); if (!ctx) continue;
+    const groups = Object.keys(wrc.bySegment[sk]);
+    const datasets = groups.map((g, gi) => ({
+      label: g, borderColor: PALETTE[gi % PALETTE.length],
+      data: allDays.map(day => { const pt = wrc.bySegment[sk][g].find(p => p.day === day); return pt ? +(pt.retentionRate * 100).toFixed(2) : null; }),
+      tension: 0.35, pointRadius: 3, fill: false, spanGaps: true
+    }));
+    destroyChartIfExists(`wide-ret-seg-${sk}`);
+    CHART_INSTANCES[`wide-ret-seg-${sk}`] = new Chart(ctx, {
+      type: "line",
+      data: { labels: allDays.map(d => `D${d}`), datasets },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100, ticks: { color: getCssVar('--text-muted'), callback: v => v + "%" }, grid: { color: getCssVar('--border') } }, x: { ticks: { color: getCssVar('--text-muted') }, grid: { color: getCssVar('--border') } } }, plugins: { legend: { labels: { color: getCssVar("--text-2"), boxWidth: 12 } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ": " + ctx.parsed.y.toFixed(1) + "%" } } } }
+    });
+  }
+}
 function monCohortBody() {
   const wrc = buildWideRetentionCache();
   if (!wrc.retDays.length) {
@@ -16530,23 +16564,10 @@ function renderWideRetentionSection(wrc) {
   const curve = wrc.retCurve;
   if (!curve.length) return "";
   const chartId = "wide-ret-curve";
-  const labels = curve.map(p => `D${p.day}`);
-  const data = curve.map(p => +(p.retentionRate * 100).toFixed(2));
-  const chartScript = `<script>
-    (function(){
-      destroyChartIfExists("${chartId}");
-      CHART_INSTANCES["${chartId}"] = new Chart(document.getElementById("${chartId}"), {
-        type: "line",
-        data: { labels: ${JSON.stringify(labels)}, datasets: [{ label: "전체 리텐션", data: ${JSON.stringify(data)}, borderColor: "#7aa2f7", backgroundColor: "rgba(122,162,247,0.08)", tension: 0.35, pointRadius: 4, fill: true }] },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100, ticks: { callback: v => v + "%" }, grid: { color: "rgba(255,255,255,0.05)" } }, x: { grid: { color: "rgba(255,255,255,0.05)" } } }, plugins: { legend: { labels: { color: getCssVar("--text-2") } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ": " + ctx.parsed.y.toFixed(1) + "%" } } } }
-      });
-    })();
-  <\/script>`;
   const tableRows = curve.map(p => `<tr><td>D${p.day}</td><td>${fmtPct(p.retentionRate)}</td><td>${p.n ? p.n.toLocaleString() : "—"}</td></tr>`).join("");
   return `<section class="block" id="s-retention">
     <h2 class="section-title"><span class="ix">§1</span>전체 리텐션 곡선</h2>
     <div class="chart-container" style="height:220px;"><canvas id="${chartId}"></canvas></div>
-    ${chartScript}
     <table style="margin-top:14px;width:100%;border-collapse:collapse;font-size:12px;">
       <thead><tr style="border-bottom:1px solid var(--border);"><th style="text-align:left;padding:4px 8px;color:var(--text-muted);">구간</th><th style="text-align:right;padding:4px 8px;color:var(--text-muted);">잔존율</th><th style="text-align:right;padding:4px 8px;color:var(--text-muted);">설치 수</th></tr></thead>
       <tbody>${tableRows}</tbody>
@@ -16565,24 +16586,9 @@ function renderWideRetSegmentSection(wrc) {
     const groups = Object.keys(wrc.bySegment[sk]);
     const allDays = wrc.retDays;
     const chartId = `wide-ret-seg-${sk}`;
-    const datasets = groups.map((g, gi) => ({
-      label: g, borderColor: PALETTE[gi % PALETTE.length],
-      data: allDays.map(day => { const pt = wrc.bySegment[sk][g].find(p => p.day === day); return pt ? +(pt.retentionRate * 100).toFixed(2) : null; }),
-      tension: 0.35, pointRadius: 3, fill: false, spanGaps: true
-    }));
-    const chartScript = `<script>
-      (function(){
-        destroyChartIfExists("${chartId}");
-        CHART_INSTANCES["${chartId}"] = new Chart(document.getElementById("${chartId}"), {
-          type: "line",
-          data: { labels: ${JSON.stringify(allDays.map(d => `D${d}`))}, datasets: ${JSON.stringify(datasets)} },
-          options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100, ticks: { callback: v => v + "%" }, grid: { color: "rgba(255,255,255,0.05)" } }, x: { grid: { color: "rgba(255,255,255,0.05)" } } }, plugins: { legend: { labels: { color: getCssVar("--text-2"), boxWidth: 12 } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ": " + ctx.parsed.y.toFixed(1) + "%" } } } }
-        });
-      })();
-    <\/script>`;
     const label = sk === "channel" ? "채널" : sk === "country" ? "국가" : "플랫폼";
     html += `<div style="margin-bottom:20px;"><div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;">${label}</div>
-      <div class="chart-container" style="height:200px;"><canvas id="${chartId}"></canvas></div>${chartScript}</div>`;
+      <div class="chart-container" style="height:200px;"><canvas id="${chartId}"></canvas></div></div>`;
   }
   html += `</section>`;
   return html;
@@ -17693,12 +17699,12 @@ if (typeof window!=="undefined"){ window.runPacingTests=runPacingTests; window.P
  * Funnel 진단 (5-11) — 효율 그룹
  * 노출→클릭→설치→(액션)→(매출) 단계별 CVR·이탈
  * ============================================================ */
-const FUNNEL_STATE = { unitField: "_all" };
+const FUNNEL_STATE = { unitField: "_all", cvrStep: null };
 const FUNNEL_CACHE = { key:null, stages:null, rows:null };
 function funnelCacheKey(){
   const m=CSV_STATE.mapping||{};
-  const sig=["impressions","clicks","installs","actions","revenue_d7","channel","country","platform"].map(k=>`${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
-  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|u:${FUNNEL_STATE.unitField}`;
+  const sig=["impressions","clicks","installs","actions","revenue_d7","channel","country","platform","date"].map(k=>`${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
+  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|u:${FUNNEL_STATE.unitField}|s:${FUNNEL_STATE.cvrStep}|${MON_FILTER_KEY()}`;
 }
 function buildFunnelCache(){
   if(typeof window!=="undefined")window.__FUNNEL=FUNNEL_CACHE;
@@ -17713,6 +17719,18 @@ function buildFunnelCache(){
     {key:"inst",label:"설치",on:mapped.has("installs")},
     {key:"act", label:"액션",on:mapped.has("actions")},
   ].filter(s=>s.on);
+
+  // ── 전이(transition) 목록 + 분석 단계 선택 ──
+  const trans=[];
+  for(let i=1;i<stageDefs.length;i++) trans.push({ i, fromKey:stageDefs[i-1].key, toKey:stageDefs[i].key, label:`${stageDefs[i-1].label}→${stageDefs[i].label}` });
+  // 기본 = 클릭→설치(install CVR). 없으면 노출→클릭이 아닌 첫 전이. (노출→클릭=CTR은 항상 큰 이탈이라 기본 아님)
+  let selI = FUNNEL_STATE.cvrStep;
+  if(!trans.some(t=>t.i===selI)){
+    const pref = trans.find(t=>t.fromKey==="clk"&&t.toKey==="inst") || trans.find(t=>t.fromKey!=="impr") || trans[0];
+    selI = pref ? pref.i : null;
+  }
+  const selT = trans.find(t=>t.i===selI) || null;
+  const cvrSel=(b)=>(selT && b[selT.fromKey]>0)? b[selT.toKey]/b[selT.fromKey] : null;
 
   // ── 단위별 집계(표) + 전체 합계 ──
   const unit=FUNNEL_STATE.unitField;
@@ -17733,23 +17751,36 @@ function buildFunnelCache(){
     return steps;
   };
   const overallSteps=stepsOf(overall);
-  // ── 병목 단계 = 전체에서 가장 큰 이탈(전이 중) ──
-  let bnIdx=null, maxDrop=-1;
-  for(let i=1;i<overallSteps.length;i++){
-    if(overallSteps[i].drop!=null && overallSteps[i].drop>maxDrop){ maxDrop=overallSteps[i].drop; bnIdx=i; }
-  }
-  const bnFrom = bnIdx!=null ? stageDefs[bnIdx-1].key : null;
-  const bnTo   = bnIdx!=null ? stageDefs[bnIdx].key   : null;
-  const bnLabel= bnIdx!=null ? `${stageDefs[bnIdx-1].label}→${stageDefs[bnIdx].label}` : null;
-  const cvrOf=(b)=>(bnFrom && b[bnFrom]>0)? b[bnTo]/b[bnFrom] : null;
-  const overallBnCvr=cvrOf(overall);
+  const overallSelCvr=cvrSel(overall);
 
-  // ── 시계열: 날짜별 병목 CVR + 급락 탐지(평균−1σ) ──
+  // ── 주간 변화(WoW): 최근 7개 날짜 vs 직전 7개 날짜, 전이별 CVR 변화 ──
+  let wow=null, wowBiggestDrop=null, wowRange=null;
+  if(mapped.has("date") && trans.length){
+    const uniqDates=[...new Set(rows.map(r=>r.date).filter(Boolean))].sort();
+    if(uniqDates.length>=4){
+      const thisD=new Set(uniqDates.slice(-7));
+      const lastD=new Set(uniqDates.slice(-14,-7));
+      const tw=blank(), lw=blank();
+      for(const r of rows){ if(thisD.has(r.date)) add(tw,r); else if(lastD.has(r.date)) add(lw,r); }
+      const cvrT=(b,t)=>b[t.fromKey]>0? b[t.toKey]/b[t.fromKey] : null;
+      wow=trans.map(t=>{
+        const a=cvrT(tw,t), bb=cvrT(lw,t);
+        const delta=(a!=null&&bb!=null&&bb>0)?(a-bb)/bb:null;
+        return { i:t.i, label:t.label, cvrThis:a, cvrLast:bb, delta };
+      });
+      const drops=wow.filter(w=>w.delta!=null).sort((x,y)=>x.delta-y.delta);
+      wowBiggestDrop = drops.length ? drops[0] : null;
+      const tw2=[...thisD].sort();
+      if(tw2.length) wowRange={ from:tw2[0], to:tw2[tw2.length-1] };
+    }
+  }
+
+  // ── 시계열: 날짜별 선택 단계 CVR + 급락 탐지(평균−1σ) ──
   let daily=[], dailyMean=null, dailySd=null;
-  if(mapped.has("date") && bnFrom){
+  if(mapped.has("date") && selT){
     const dmap=new Map();
     for(const r of rows){ const d=r.date; if(!d)continue; if(!dmap.has(d))dmap.set(d,{date:d,...blank()}); add(dmap.get(d),r); }
-    daily=[...dmap.values()].sort((a,b)=>a.date<b.date?-1:1).map(b=>({date:b.date,cvr:cvrOf(b),vol:b[bnFrom]}));
+    daily=[...dmap.values()].sort((a,b)=>a.date<b.date?-1:1).map(b=>({date:b.date,cvr:cvrSel(b),vol:b[selT.fromKey]}));
     const valid=daily.filter(x=>x.cvr!=null && x.vol>0);
     if(valid.length){
       dailyMean=valid.reduce((s,x)=>s+x.cvr,0)/valid.length;
@@ -17758,49 +17789,75 @@ function buildFunnelCache(){
     }
   }
 
-  // ── 세그먼트 랭킹: 병목 CVR 기준 (전체 단위면 채널>국가>OS 자동) ──
+  // ── 세그먼트 랭킹: 선택 단계 CVR 기준 (전체 단위면 채널>국가>OS 자동) ──
   let segRank=null;
   const segField = unit==="_all" ? (mapped.has("channel")?"channel":(mapped.has("country")?"country":(mapped.has("platform")?"platform":null))) : unit;
-  if(segField && bnFrom){
+  if(segField && selT){
     const smap=new Map();
     for(const r of rows){ const k=String(r[segField]??"").trim()||"(미지정)"; if(!smap.has(k))smap.set(k,{seg:k,...blank()}); add(smap.get(k),r); }
-    const arr=[...smap.values()].map(b=>({seg:b.seg,cvr:cvrOf(b),vol:b[bnFrom]})).filter(x=>x.cvr!=null && x.vol>0).sort((a,b)=>b.cvr-a.cvr);
-    if(arr.length>=2) segRank={ field:segField, best:arr.slice(0,3), worst:arr.slice(-3).reverse(), avg:overallBnCvr };
+    const arr=[...smap.values()].map(b=>({seg:b.seg,cvr:cvrSel(b),vol:b[selT.fromKey]})).filter(x=>x.cvr!=null && x.vol>0).sort((a,b)=>b.cvr-a.cvr);
+    if(arr.length>=2) segRank={ field:segField, best:arr.slice(0,3), worst:arr.slice(-3).reverse(), avg:overallSelCvr };
   }
 
   const rowsOut=[...agg.values()].sort((a,b)=>b.impr-a.impr).map(b=>({unit:b.unit,steps:stepsOf(b)}));
   FUNNEL_CACHE.key=key; FUNNEL_CACHE.stages=stageDefs; FUNNEL_CACHE.rows=rowsOut;
   FUNNEL_CACHE.overall=overall; FUNNEL_CACHE.overallSteps=overallSteps;
-  FUNNEL_CACHE.bottleneck={index:bnIdx,label:bnLabel,drop:maxDrop,cvr:overallBnCvr};
+  FUNNEL_CACHE.trans=trans; FUNNEL_CACHE.selStep=selI; FUNNEL_CACHE.selLabel=selT?selT.label:null; FUNNEL_CACHE.selCvr=overallSelCvr;
+  FUNNEL_CACHE.wow=wow; FUNNEL_CACHE.wowBiggestDrop=wowBiggestDrop; FUNNEL_CACHE.wowRange=wowRange;
   FUNNEL_CACHE.daily=daily; FUNNEL_CACHE.dailyMean=dailyMean; FUNNEL_CACHE.dailySd=dailySd;
   FUNNEL_CACHE.segRank=segRank;
   return FUNNEL_CACHE;
 }
+// MON_FILTER_STATE 시그니처(필터 변경 시 캐시 무효화용)
+function MON_FILTER_KEY(){
+  const f=MON_FILTER_STATE||{};
+  return `${f.dateStart||""}~${f.dateEnd||""}|${f.platform||"all"}|${f.countries?[...f.countries].sort().join(","):"*"}|${f.channels?[...f.channels].sort().join(","):"*"}`;
+}
 const FUNNEL_FIELD_LABEL = { channel:"채널", country:"국가", platform:"OS" };
-function renderFunnelSummary(c){
+// §1 주간 변화 — 최근 주 대비 가장 많이 떨어진 전환 단계
+function renderFunnelWow(c){
   const fmtPct=(v)=>v==null?"—":(v*100).toFixed(2)+"%";
-  const bn=c.bottleneck||{};
-  if(bn.index==null) return "";
-  const advice = bn.label && bn.label.startsWith("노출") ? "소재·타게팅(노출 효율)을 점검하세요."
-    : bn.label && bn.label.includes("클릭→설치") ? "스토어 페이지(ASO)·랜딩을 점검하세요."
-    : bn.label && bn.label.includes("설치→액션") ? "온보딩·초기 UX를 점검하세요." : "해당 단계 전환을 점검하세요.";
-  return `<div class="ab-statgrid" style="margin-bottom:12px;">
-    <div class="ab-stat" style="background:linear-gradient(135deg,rgba(248,113,113,0.12),rgba(248,113,113,0.03));border-color:rgba(248,113,113,0.4);">
-      <div class="ab-stat-label">최대 병목 단계</div><div class="ab-stat-value">${bn.label||"—"}</div>
-      <div class="ab-stat-hint">이탈 ${bn.drop!=null?(bn.drop*100).toFixed(0):"—"}%</div>
-    </div>
-    <div class="ab-stat"><div class="ab-stat-label">병목 평균 CVR</div><div class="ab-stat-value tnum">${fmtPct(bn.cvr)}</div><div class="ab-stat-hint">전체 기간 가중평균</div></div>
-    ${c.dailySd!=null?`<div class="ab-stat"><div class="ab-stat-label">일별 변동(σ)</div><div class="ab-stat-value tnum">±${(c.dailySd*100).toFixed(2)}%p</div><div class="ab-stat-hint">평균 대비 흔들림</div></div>`:""}
-  </div>
-  <div class="callout warning"><div class="ico">!</div><div class="body"><p style="margin:0;font-size:12px;"><strong>${bn.label}</strong> 단계가 가장 큰 병목입니다 (평균 CVR ${fmtPct(bn.cvr)}). ${advice}</p></div></div>`;
+  const fmtDelta=(d)=> d==null?"—":`<span style="color:${d>=0?'#34d399':'#f87171'};">${d>=0?"▲ +":"▼ "}${(d*100).toFixed(1)}%</span>`;
+  if(!c.wow){
+    return `<section class="block" id="s-funnel-wow"><h2 class="section-title"><span class="ix">§1</span>주간 변화</h2>
+      <p class="muted" style="font-size:12px;">날짜 컬럼을 매핑하면 <strong>최근 주 vs 지난 주</strong> 단계별 전환율 변화를 볼 수 있습니다.</p></section>`;
+  }
+  const bd=c.wowBiggestDrop;
+  const rangeStr=c.wowRange?`${c.wowRange.from} ~ ${c.wowRange.to}`:"최근 주";
+  const headline = (bd && bd.delta!=null && bd.delta<0)
+    ? `<div class="callout warning"><div class="ico">!</div><div class="body"><p style="margin:0;font-size:13px;"><strong>${escapeHtml(bd.label)}</strong> 전환율이 지난 주 대비 가장 많이 떨어졌습니다 — ${fmtDelta(bd.delta)} <span style="color:var(--text-muted);">(${fmtPct(bd.cvrLast)} → ${fmtPct(bd.cvrThis)})</span></p></div></div>`
+    : `<div class="callout ok"><div class="ico">✓</div><div class="body"><p style="margin:0;font-size:13px;">지난 주 대비 전환율이 하락한 단계가 없습니다.</p></div></div>`;
+  return `<section class="block" id="s-funnel-wow">
+    <h2 class="section-title"><span class="ix">§1</span>주간 변화 — 지난 주 대비</h2>
+    <p class="muted" style="font-size:12px;margin:-4px 0 10px;">이번 주(${escapeHtml(rangeStr)}) 단계별 전환율을 직전 주와 비교합니다. (최근 7개 영업일 vs 직전 7개)</p>
+    ${headline}
+    <div class="table-wrap" style="margin-top:10px;"><table class="data" style="font-size:11.5px;">
+      <thead><tr><th>전환 단계</th><th>지난 주</th><th>이번 주</th><th>변화</th></tr></thead>
+      <tbody>${c.wow.map(w=>`<tr ${bd&&w.i===bd.i&&w.delta!=null&&w.delta<0?'style="background:rgba(248,113,113,0.06);"':''}><td><strong>${escapeHtml(w.label)}</strong></td><td class="tnum">${fmtPct(w.cvrLast)}</td><td class="tnum">${fmtPct(w.cvrThis)}</td><td class="tnum">${fmtDelta(w.delta)}</td></tr>`).join("")}</tbody>
+    </table></div>
+  </section>`;
+}
+// 전환 단계 선택 + 분리 단위 선택 컨트롤
+function renderFunnelControls(c){
+  const trans=c.trans||[];
+  const stepPills = trans.map(t=>`<button class="ab-pill ${c.selStep===t.i?'active':''}" data-funnel-step="${t.i}">${escapeHtml(t.label)}</button>`).join("");
+  const unitPills = [["_all","전체"],["channel","채널"],["country","국가"],["platform","OS"]].map(([k,l])=>{
+    const av = k==="_all" || (new Set(Object.values(CSV_STATE.mapping||{}))).has(k);
+    return `<button class="ab-pill ${FUNNEL_STATE.unitField===k?'active':''} ${!av?'disabled':''}" ${av?`data-funnel-unit="${k}"`:'disabled'}>${l}${!av?' 🔒':''}</button>`;
+  }).join("");
+  return `<section class="block" id="s-funnel-ctl" style="padding:12px 16px;">
+    <div class="ab-pillgroup" style="margin-bottom:8px;"><span class="ab-pillgroup-label">전환 단계</span>${stepPills}</div>
+    <div class="ab-pillgroup" style="margin:0;"><span class="ab-pillgroup-label">분리 단위</span>${unitPills}</div>
+    <p class="muted" style="font-size:11px;margin:8px 0 0;">아래 추이·세그먼트·랭킹은 선택한 <strong>전환 단계(${escapeHtml(c.selLabel||"—")})</strong> 기준입니다.</p>
+  </section>`;
 }
 function renderFunnelTrendSection(c){
   const daily=c.daily||[];
   if(daily.filter(x=>x.cvr!=null).length<3) return "";
   const lows=daily.filter(x=>x.low).slice(-8);
-  const bnLabel=(c.bottleneck||{}).label||"병목";
+  const lbl=c.selLabel||"선택 단계";
   return `<section class="block" id="s-funnel-trend">
-    <h2 class="section-title"><span class="ix">§2</span>언제 떨어졌나 — ${escapeHtml(bnLabel)} CVR 추이</h2>
+    <h2 class="section-title"><span class="ix">§3</span>언제 떨어졌나 — ${escapeHtml(lbl)} CVR 추이</h2>
     <div class="chart-container" style="height:240px;"><canvas id="funnel-trend-chart"></canvas></div>
     ${lows.length?`<div class="callout" style="margin-top:10px;"><div class="ico">!</div><div class="body"><p style="margin:0 0 4px;font-size:12px;"><strong>평균 대비 급락한 날 (−1σ 이하)</strong></p><div style="display:flex;flex-wrap:wrap;gap:6px;">${lows.map(x=>`<span class="chip warning" style="font-size:11px;">${escapeHtml(x.date)} · ${(x.cvr*100).toFixed(1)}% <span style="opacity:.7;">(${x.devPct<0?"":"+"}${(x.devPct*100).toFixed(0)}%)</span></span>`).join("")}</div></div></div>`:`<p class="muted" style="margin-top:8px;font-size:12px;">평균 대비 −1σ 이상 급락한 날은 없습니다. CVR이 안정적입니다.</p>`}
   </section>`;
@@ -17808,14 +17865,14 @@ function renderFunnelTrendSection(c){
 function renderFunnelSegSection(c){
   const sr=c.segRank; if(!sr) return "";
   const fmtPct=(v)=>v==null?"—":(v*100).toFixed(2)+"%";
-  const bnLabel=(c.bottleneck||{}).label||"병목";
+  const lbl=c.selLabel||"선택 단계";
   const fieldL=FUNNEL_FIELD_LABEL[sr.field]||sr.field;
   const row=(x,tone)=>{ const dev=sr.avg>0?(x.cvr-sr.avg)/sr.avg:0; return `<tr><td><strong>${escapeHtml(String(x.seg).slice(0,24))}</strong></td><td class="tnum ${tone}">${fmtPct(x.cvr)}</td><td class="tnum" style="color:${dev>=0?'#34d399':'#f87171'};">${dev>=0?"+":""}${(dev*100).toFixed(0)}%</td><td class="tnum" style="color:var(--text-muted);">${(x.vol||0).toLocaleString()}</td></tr>`; };
   return `<section class="block" id="s-funnel-seg">
-    <h2 class="section-title"><span class="ix">§3</span>${fieldL}별 ${escapeHtml(bnLabel)} CVR — 평균 대비</h2>
+    <h2 class="section-title"><span class="ix">§4</span>${fieldL}별 ${escapeHtml(lbl)} CVR — 평균 대비</h2>
     <p class="muted" style="font-size:12px;margin:-4px 0 10px;">평균(${fmtPct(sr.avg)}) 대비 높은/낮은 ${fieldL}. 분모 볼륨이 충분한 세그먼트만 표시합니다.</p>
     <div class="table-wrap"><table class="data" style="font-size:11.5px;">
-      <thead><tr><th>${fieldL}</th><th>병목 CVR</th><th>평균 대비</th><th>분모 볼륨</th></tr></thead>
+      <thead><tr><th>${fieldL}</th><th>${escapeHtml(lbl)} CVR</th><th>평균 대비</th><th>분모 볼륨</th></tr></thead>
       <tbody>
         <tr><td colspan="4" style="font-weight:700;color:#34d399;font-size:11px;padding-top:8px;">▲ 잘 전환되는 ${fieldL}</td></tr>
         ${sr.best.map(x=>row(x,"pos")).join("")}
@@ -17828,47 +17885,40 @@ function renderFunnelSegSection(c){
 function monFunnelBody(){
   buildFunnelCache();
   const c=FUNNEL_CACHE;
-  if(!(c.rows||[]).length) return `<section class="block" id="s-funnel"><h2 class="section-title"><span class="ix">§1</span>퍼널 진단</h2><p class="muted">데이터 없음</p></section>`;
+  if(!(c.rows||[]).length) return `<section class="block" id="s-funnel-wow"><h2 class="section-title"><span class="ix">§1</span>퍼널 진단</h2><p class="muted">데이터 없음</p></section>`;
   return `
-      <section class="block" id="s-funnel">
-        <h2 class="section-title"><span class="ix">§1</span>퍼널 단계별 전환·이탈</h2>
-        ${renderFunnelSummary(c)}
-        <div class="ab-pillgroup">
-          <span class="ab-pillgroup-label">분리 단위</span>
-          ${[["_all","전체"],["channel","채널"],["country","국가"],["platform","OS"]].map(([k,l])=>{
-            const av = k==="_all" || (new Set(Object.values(CSV_STATE.mapping||{}))).has(k);
-            return `<button class="ab-pill ${FUNNEL_STATE.unitField===k?'active':''} ${!av?'disabled':''}" ${av?`data-funnel-unit="${k}"`:'disabled'}>${l}${!av?' 🔒':''}</button>`;
-          }).join("")}
-        </div>
-        ${renderFunnelTable(c)}
-      </section>
+      ${renderFunnelWow(c)}
+      ${renderFunnelControls(c)}
       ${renderFunnelTrendSection(c)}
       ${renderFunnelSegSection(c)}
+      <section class="block" id="s-funnel">
+        <h2 class="section-title"><span class="ix">§5</span>전체 퍼널 단계 표</h2>
+        ${renderFunnelTable(c)}
+      </section>
     `;
 }
 function renderFunnelTable(c){
   const rows=c.rows||[]; if(!rows.length)return "<p class='muted'>데이터 없음</p>";
   const stages=c.stages;
-  const bnIdx=(c.bottleneck||{}).index;
+  const selStep=c.selStep;
   const fmtPct=(v)=>v==null?"—":(v*100).toFixed(2)+"%";
   return `
     <div class="table-wrap"><table class="data" style="font-size:11.5px;">
-      <thead><tr><th>단위</th>${stages.map(s=>`<th>${s.label}</th>`).join("")}${stages.slice(1).map((s,i)=>`<th>→${s.label} CVR${i+1===bnIdx?' 🔻':''}</th>`).join("")}</tr></thead>
+      <thead><tr><th>단위</th>${stages.map(s=>`<th>${s.label}</th>`).join("")}${stages.slice(1).map((s,i)=>`<th>→${s.label} CVR${i+1===selStep?' ◆':''}</th>`).join("")}</tr></thead>
       <tbody>
         ${rows.slice(0,40).map(r=>`
           <tr>
             <td><strong>${escapeHtml(String(r.unit).slice(0,24))}</strong></td>
             ${r.steps.map(s=>`<td class="tnum">${(s.count||0).toLocaleString()}</td>`).join("")}
             ${r.steps.slice(1).map((s,i)=>{
-              const isBn = i+1===bnIdx;
-              const worst = s.drop!=null && s.drop>0.7;
-              return `<td class="tnum ${worst?'neg':''}" ${isBn?'style="background:rgba(248,113,113,0.06);"':''}>${fmtPct(s.cvr)}${s.drop!=null?` <span style="color:var(--text-muted);font-size:10px;">(이탈 ${(s.drop*100).toFixed(0)}%)</span>`:''}</td>`;
+              const isSel = i+1===selStep;
+              return `<td class="tnum" ${isSel?'style="background:rgba(122,162,247,0.08);font-weight:700;"':''}>${fmtPct(s.cvr)}${s.drop!=null?` <span style="color:var(--text-muted);font-size:10px;">(이탈 ${(s.drop*100).toFixed(0)}%)</span>`:''}</td>`;
             }).join("")}
           </tr>
         `).join("")}
       </tbody>
     </table></div>
-    <div class="callout" style="margin-top:10px;"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">🔻 = 전체 기준 최대 병목 단계. 이탈률(빨강 = 70%↑)이 큰 단계가 병목입니다. 노출→클릭 이탈이 크면 소재/타게팅, 클릭→설치 이탈이 크면 스토어 페이지(ASO)/랜딩, 설치→액션 이탈이 크면 온보딩/UX를 점검하세요.</p></div></div>`;
+    <div class="callout" style="margin-top:10px;"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">◆ = 선택한 전환 단계. 노출→클릭(CTR)은 보통 97~99% 이탈이 정상이므로 병목 판단에서 제외하고, <strong>클릭→설치 / 설치→액션</strong> 같은 후속 단계로 진단하세요.</p></div></div>`;
 }
 function renderFunnelTrendChart(){
   if(typeof Chart==="undefined")return;
@@ -17880,7 +17930,7 @@ function renderFunnelTrendChart(){
   const cvr=daily.map(x=>+(x.cvr*100).toFixed(2));
   const mean=c.dailyMean!=null?+(c.dailyMean*100).toFixed(2):null;
   const ptColors=daily.map(x=>x.low?"#f87171":"#adc6ff");
-  const ds=[{ label:`${(c.bottleneck||{}).label||"병목"} CVR(%)`, data:cvr, borderColor:"#adc6ff", backgroundColor:"#adc6ff20", fill:true, tension:0.2, pointRadius:daily.map(x=>x.low?4:2), pointBackgroundColor:ptColors, pointBorderColor:ptColors }];
+  const ds=[{ label:`${c.selLabel||"선택 단계"} CVR(%)`, data:cvr, borderColor:"#adc6ff", backgroundColor:"#adc6ff20", fill:true, tension:0.2, pointRadius:daily.map(x=>x.low?4:2), pointBackgroundColor:ptColors, pointBorderColor:ptColors }];
   if(mean!=null) ds.push({ label:"평균", data:daily.map(()=>mean), borderColor:"#fbbf24", borderDash:[5,4], borderWidth:1.5, pointRadius:0 });
   CHART_INSTANCES["funnel-trend-chart"]=new Chart(ctx,{ type:"line", data:{labels,datasets:ds},
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:getCssVar('--text-muted'),font:{size:11}}}},
@@ -17889,6 +17939,7 @@ function renderFunnelTrendChart(){
 function bindFunnelHandlers(){
   bindInlineCsvHandlers();
   document.querySelectorAll("[data-funnel-unit]").forEach(b=>b.addEventListener("click",()=>{ if(b.classList.contains("disabled"))return; FUNNEL_STATE.unitField=b.dataset.funnelUnit; FUNNEL_CACHE.key=null; navigate("5-11"); }));
+  document.querySelectorAll("[data-funnel-step]").forEach(b=>b.addEventListener("click",()=>{ FUNNEL_STATE.cvrStep=+b.dataset.funnelStep; FUNNEL_CACHE.key=null; navigate("5-11"); }));
   renderFunnelTrendChart();
 }
 function runFunnelTests(verbose=true){
@@ -19374,14 +19425,19 @@ function bindCSVPageHandlers() {
       navigate("5-2");
     });
   });
-  // 커스텀 multi-select: 토글 버튼
+  // 커스텀 multi-select: 토글 버튼 (position:fixed — 부모 overflow 클리핑 회피)
   document.querySelectorAll("[data-multisel-toggle]").forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const list = btn.nextElementSibling;
       const opening = list.hidden;
       document.querySelectorAll(".mon-multisel-list").forEach(l => { l.hidden = true; });
-      if (opening) list.hidden = false;
+      if (opening) {
+        const r = btn.getBoundingClientRect();
+        list.style.top = (r.bottom + 3) + "px";
+        list.style.left = r.left + "px";
+        list.hidden = false;
+      }
     });
   });
   // 커스텀 multi-select: 체크박스 변경
@@ -19396,10 +19452,13 @@ function bindCSVPageHandlers() {
       navigate("5-2");
     });
   });
-  // 바깥 클릭 시 모든 multisel 닫기
-  document.addEventListener("click", () => {
-    document.querySelectorAll(".mon-multisel-list").forEach(l => { l.hidden = true; });
-  }, { passive: true });
+  // 바깥 클릭·스크롤 시 모든 multisel 닫기 (전역 리스너는 1회만 등록 — navigate 누적 방지)
+  if (!window.__monMultiselGlobalBound) {
+    const closeAllMultisel = () => document.querySelectorAll(".mon-multisel-list").forEach(l => { l.hidden = true; });
+    document.addEventListener("click", closeAllMultisel, { passive: true });
+    window.addEventListener("scroll", closeAllMultisel, { passive: true, capture: true });
+    window.__monMultiselGlobalBound = true;
+  }
   document.querySelectorAll("[data-mon-filter-reset]").forEach(btn => {
     btn.addEventListener("click", () => {
       MON_FILTER_STATE.dateStart = null; MON_FILTER_STATE.dateEnd = null;
@@ -19504,6 +19563,11 @@ function bindCSVPageHandlers() {
   // ----- 5-12: Segment Explorer 핸들러 -----
   if (document.querySelector("[data-seg-row], [data-seg-col], [data-seg-metric]")) {
     bindSegmentHandlers();
+  }
+
+  // ----- 5-2 cohort 탭: Wide 리텐션 차트 (innerHTML <script> 미실행 → 직접 렌더) -----
+  if (document.getElementById("wide-ret-curve")) {
+    renderWideRetCharts();
   }
 
   // ----- 5-13: Executive Scorecard 핸들러 -----
