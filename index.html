@@ -17684,7 +17684,7 @@ if (typeof window !== "undefined") { window.runLtvCacTests = runLtvCacTests; win
  * Pacing & Forecast (5-10) — 효율 그룹
  * MTD 소진 vs 목표, 월말 착지 예측(run-rate), 페이스 경고
  * ============================================================ */
-const PACING_STATE = { metric: "cost", monthlyTarget: 0 };
+const PACING_STATE = { metric: "cost", monthlyTarget: 0, forecastMode: "linear", actionDef: "registration" };
 const PACING_MATH = {
   // 일별 시리즈 → {mtd, daysElapsed, daysInMonth, runRate, projected}
   // dates: 'YYYY-MM-DD' 정렬됨. 최신 월 기준.
@@ -17702,12 +17702,50 @@ const PACING_MATH = {
     const projected = runRate * daysInMonth;
     return { ym, mtd, daysElapsed, daysInMonth, runRate, projected };
   },
+  // 최근 N주(4~8주) 일별 시리즈 → 요일별 평균 맵(0=일~6=토) + 표본수
+  // 'YYYY-MM-DD' ISO 형식, getDay() UTC 파싱(buildDailyAgg와 동일)
+  weekdayProfile(daily, recentWeeks) {
+    const weeks = recentWeeks || 6;
+    const n = weeks * 7;
+    const recent = daily.slice(-n);
+    const sums = [0,0,0,0,0,0,0], counts = [0,0,0,0,0,0,0];
+    for (const d of recent) {
+      const wd = new Date(d.date).getDay();
+      sums[wd] += d.value; counts[wd]++;
+    }
+    const means = sums.map((s,i) => counts[i] >= 1 ? s / counts[i] : null);
+    const minOk = means.every(m => m !== null && counts[means.indexOf(m)] >= 1);
+    // 요일당 최소 3개 가드
+    const ok = counts.every(c => c >= 3);
+    return { means, counts, ok };
+  },
+  // 요일별 평균 합산 예측(산식 A): mtd + Σ잔여일 wdMean[getDay()]
+  paceWeekday(daily, opts) {
+    if (!daily.length) return null;
+    const p = this.pace(daily);
+    if (!p) return null;
+    const recentWeeks = (opts && opts.recentWeeks) || 6;
+    const prof = this.weekdayProfile(daily, recentWeeks);
+    if (!prof.ok) return Object.assign({}, p, { weekdayProjected: null, fallback: true });
+    const lastDateStr = daily.filter(d=>d.date.slice(0,7)===p.ym).pop()?.date || daily[daily.length-1].date;
+    const lastDay = Number(lastDateStr.slice(8,10));
+    const y = Number(p.ym.slice(0,4)), mo = Number(p.ym.slice(5,7));
+    let remaining = 0;
+    for (let d = lastDay + 1; d <= p.daysInMonth; d++) {
+      const dt = new Date(Date.UTC(y, mo-1, d));
+      const wd = dt.getDay();
+      const wdMean = prof.means[wd];
+      if (wdMean != null) remaining += wdMean;
+    }
+    const weekdayProjected = p.mtd + remaining;
+    return Object.assign({}, p, { weekdayProjected, fallback: false, profile: prof });
+  },
 };
-const PACING_CACHE = { key:null, daily:null, pace:null };
+const PACING_CACHE = { key:null, daily:null, pace:null, paceWd:null };
 function pacingCacheKey() {
   const m = CSV_STATE.mapping || {};
-  const sig = ["date","cost","installs","actions","revenue_d7"].map(k=>`${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
-  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|met:${PACING_STATE.metric}`;
+  const sig = ["date","cost","installs","actions"].map(k=>`${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
+  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|met:${PACING_STATE.metric}|mode:${PACING_STATE.forecastMode}|act:${PACING_STATE.actionDef}|${MON_FILTER_KEY()}`;
 }
 function buildPacingCache() {
   if (typeof window!=="undefined") window.__PACING = PACING_CACHE;
@@ -17715,6 +17753,7 @@ function buildPacingCache() {
   if (PACING_CACHE.key === key) return PACING_CACHE;
   const rows = getMappedRowsForMon();
   const metric = PACING_STATE.metric;
+  // revenue_d7은 제외됨(cohort-lag 부적합) — cost/installs/actions만
   const dm = new Map();
   for (const r of rows) {
     if (!r.date) continue;
@@ -17724,18 +17763,26 @@ function buildPacingCache() {
   PACING_CACHE.key = key;
   PACING_CACHE.daily = daily;
   PACING_CACHE.pace = PACING_MATH.pace(daily);
+  // 요일 예측은 installs/actions만(cost는 선형 유지)
+  PACING_CACHE.paceWd = (metric !== "cost") ? PACING_MATH.paceWeekday(daily) : null;
   return PACING_CACHE;
 }
 function monPacingBody() {
   buildPacingCache();
   const c = PACING_CACHE, p = c.pace;
-  const metricLabel = { cost:"비용", installs:"설치", actions:"액션", revenue_d7:"매출 D7" }[PACING_STATE.metric] || PACING_STATE.metric;
+  const metric = PACING_STATE.metric;
+  // 액션 정의 라벨 토글(가입/구매) — actions 데이터 동일
+  const actionLabel = PACING_STATE.actionDef === "purchase" ? "구매" : "가입";
+  const metricLabel = { cost:"비용", installs:"설치", actions:actionLabel }[metric] || metric;
   const target = PACING_STATE.monthlyTarget || 0;
-  const isCost = PACING_STATE.metric === "cost";
+  const isCost = metric === "cost";
   const fmtV = (v) => isCost ? fmtCurrency(v) : Math.round(v).toLocaleString();
+  const useWd = PACING_STATE.forecastMode === "weekday" && metric !== "cost";
+  const pWd = useWd ? c.paceWd : null;
+  const projectedVal = (pWd && !pWd.fallback && pWd.weekdayProjected != null) ? pWd.weekdayProjected : (p ? p.projected : null);
   let pacePct = null, recDaily = null, statusTone="info", statusMsg="";
-  if (p && target > 0) {
-    pacePct = p.projected / target * 100;
+  if (p && target > 0 && projectedVal != null) {
+    pacePct = projectedVal / target * 100;
     const remainingDays = p.daysInMonth - p.daysElapsed;
     recDaily = remainingDays > 0 ? (target - p.mtd) / remainingDays : 0;
     if (isCost) {
@@ -17747,16 +17794,35 @@ function monPacingBody() {
       else { statusTone="warn"; statusMsg=`목표 ${(100-pacePct).toFixed(0)}% 미달 예상 — 가속 필요`; }
     }
   }
+  const wdOk = c.paceWd && !c.paceWd.fallback;
+  const wdPill = !isCost ? `
+    <div class="ab-pillgroup" style="margin-top:8px;">
+      <span class="ab-pillgroup-label">예측 방식</span>
+      <button class="ab-pill ${!useWd?'active':''}" data-pacing-mode="linear">선형</button>
+      <button class="ab-pill ${useWd?'active':''} ${!wdOk?'disabled':''}" ${wdOk?`data-pacing-mode="weekday"`:'disabled'}>요일 보정${!wdOk?' 🔒':''}</button>
+    </div>
+    ${!wdOk?`<p class="muted" style="font-size:11px;margin:4px 0 0;">⊘ 요일당 최소 3개 관측(~3주) 필요. 데이터 더 쌓이면 활성화됩니다.</p>`:''}
+  ` : "";
+  const actPill = (metric === "actions") ? `
+    <div class="ab-pillgroup" style="margin-top:8px;">
+      <span class="ab-pillgroup-label">액션 정의</span>
+      <button class="ab-pill ${PACING_STATE.actionDef==='registration'?'active':''}" data-pacing-actiondef="registration">가입</button>
+      <button class="ab-pill ${PACING_STATE.actionDef==='purchase'?'active':''}" data-pacing-actiondef="purchase">구매</button>
+    </div>
+    <p class="muted" style="font-size:11px;margin:4px 0 0;">라벨/용어만 변경됩니다. 분석 데이터(actions 컬럼)는 동일합니다.</p>
+  ` : "";
   return `
       <section class="block" id="s-pace">
         <h2 class="section-title"><span class="ix">§1</span>페이싱 · 착지 예측</h2>
         <div class="ab-pillgroup">
           <span class="ab-pillgroup-label">지표</span>
-          ${[["cost","비용"],["installs","설치"],["actions","액션"],["revenue_d7","매출"]].map(([k,l])=>{
+          ${[["cost","비용"],["installs","설치"],["actions",actionLabel]].map(([k,l])=>{
             const av=(new Set(Object.values(CSV_STATE.mapping||{}))).has(k);
-            return `<button class="ab-pill ${PACING_STATE.metric===k?'active':''} ${!av?'disabled':''}" ${av?`data-pacing-metric="${k}"`:'disabled'}>${l}${!av?' 🔒':''}</button>`;
+            return `<button class="ab-pill ${metric===k?'active':''} ${!av?'disabled':''}" ${av?`data-pacing-metric="${k}"`:'disabled'}>${l}${!av?' 🔒':''}</button>`;
           }).join("")}
         </div>
+        ${wdPill}${actPill}
+        <div class="callout" style="margin:8px 0;padding:8px 12px;"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">일별 매출 페이싱은 revenue_d7(코호트 윈도우)이 아닌 <strong>일별(캘린더) 매출 컬럼</strong>이 필요합니다 — 별도 업로드 예정.</p></div></div>
         <div class="ab-field" style="max-width:280px;margin:10px 0;">
           <label>${metricLabel} 월 목표 (선택)</label>
           <input id="pacing-target" type="number" min="0" step="${isCost?'10000':'100'}" value="${target||''}" placeholder="목표 입력 시 페이스 계산" />
@@ -17765,7 +17831,7 @@ function monPacingBody() {
           <div class="ab-stat-row" style="margin:8px 0 12px;">
             <div class="ab-stat"><div class="ab-stat-label">MTD (${p.ym})</div><div class="ab-stat-value tnum">${fmtV(p.mtd)}</div><div class="ab-stat-hint">D${p.daysElapsed} 경과</div></div>
             <div class="ab-stat"><div class="ab-stat-label">일 run-rate</div><div class="ab-stat-value tnum">${fmtV(p.runRate)}</div></div>
-            <div class="ab-stat"><div class="ab-stat-label">월말 착지 예측</div><div class="ab-stat-value tnum">${fmtV(p.projected)}</div><div class="ab-stat-hint">run-rate × ${p.daysInMonth}일</div></div>
+            <div class="ab-stat"><div class="ab-stat-label">월말 착지 예측</div><div class="ab-stat-value tnum">${fmtV(projectedVal)}</div><div class="ab-stat-hint">${useWd&&!pWd?.fallback?'요일 보정':'run-rate × '+p.daysInMonth+'일'}</div></div>
             ${target>0?`<div class="ab-stat"><div class="ab-stat-label">목표 대비 페이스</div><div class="ab-stat-value tnum ${pacePct>110&&isCost?'neg':pacePct<90?'':'pos'}">${pacePct.toFixed(0)}%</div></div>`:""}
             ${target>0&&recDaily!=null?`<div class="ab-stat"><div class="ab-stat-label">잔여일 일일 권장</div><div class="ab-stat-value tnum">${fmtV(Math.max(0,recDaily))}</div></div>`:""}
           </div>
@@ -17787,8 +17853,16 @@ function renderPacingChart() {
   const mr = c.daily.filter(d=>d.date.slice(0,7)===ym);
   let cum=0; const cumData = mr.map(d=>({x:d.date, y:(cum+=d.value)}));
   const target = PACING_STATE.monthlyTarget||0;
+  const useWd = PACING_STATE.forecastMode === "weekday" && PACING_STATE.metric !== "cost";
+  const pWd = useWd ? c.paceWd : null;
   const ds = [{ label:"누적", data:cumData.map(p=>p.y), borderColor:"#adc6ff", backgroundColor:"#adc6ff30", fill:true, tension:0.2, pointRadius:2 }];
   if (target>0) ds.push({ label:"목표(선형)", data:mr.map((_,i)=>target*(i+1)/c.pace.daysInMonth), borderColor:"#fbbf24", borderDash:[5,4], borderWidth:1.5, pointRadius:0 });
+  if (pWd && !pWd.fallback && pWd.weekdayProjected != null) {
+    // 요일 예측 점선: 현재까지 누적 + 잔여 구간 요일합 직선
+    const lastCum = cumData.length ? cumData[cumData.length-1].y : 0;
+    ds.push({ label:"착지 예측(요일보정)", data:[...mr.map(()=>null).slice(0,-1), lastCum, pWd.weekdayProjected],
+      borderColor:"#34d399", borderDash:[4,3], borderWidth:1.5, pointRadius:0, spanGaps:true });
+  }
   CHART_INSTANCES["pacing-chart"] = new Chart(ctx, { type:"line", data:{ labels:mr.map(d=>d.date.slice(5)), datasets:ds },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:getCssVar('--text-muted'),font:{size:11}}}},
       scales:{ x:{ticks:{color:getCssVar('--text-muted'),maxTicksLimit:12},grid:{color:getCssVar('--border')}}, y:{ticks:{color:getCssVar('--text-muted')},grid:{color:getCssVar('--border')}} } } });
@@ -17796,6 +17870,8 @@ function renderPacingChart() {
 function bindPacingHandlers() {
   bindInlineCsvHandlers();
   document.querySelectorAll("[data-pacing-metric]").forEach(b=>b.addEventListener("click",()=>{ if(b.classList.contains("disabled"))return; PACING_STATE.metric=b.dataset.pacingMetric; PACING_CACHE.key=null; navigate("5-10"); }));
+  document.querySelectorAll("[data-pacing-mode]").forEach(b=>b.addEventListener("click",()=>{ if(b.classList.contains("disabled"))return; PACING_STATE.forecastMode=b.dataset.pacingMode; PACING_CACHE.key=null; navigate("5-10"); }));
+  document.querySelectorAll("[data-pacing-actiondef]").forEach(b=>b.addEventListener("click",()=>{ PACING_STATE.actionDef=b.dataset.pacingActiondef; PACING_CACHE.key=null; navigate("5-10"); }));
   const t = document.getElementById("pacing-target");
   if (t) t.addEventListener("change", () => { PACING_STATE.monthlyTarget = Number(t.value)||0; navigate("5-10"); });
   document.querySelectorAll("#s-pace [data-pngdownload]").forEach(b=>b.addEventListener("click",()=>downloadChartAsPNG(b.dataset.pngdownload,b.dataset.pngname)));
@@ -17812,6 +17888,20 @@ function runPacingTests(verbose=true){
   // 2월(윤년 2024) → 29일
   const f=PACING_MATH.pace([{date:"2024-02-05",value:50}]);
   results.push({test:"T4 · 2024-02 윤년 29일", expected:"29", actual:String(f.daysInMonth), pass:f.daysInMonth===29?"✓":"✗"});
+  // T5: 모든 요일 동일값(100) → weekdayProjected == linear projected (항등식)
+  // 2026-01-01(목)~2026-01-28(수): 4주 = 28일, 요일당 4개 → ok=true
+  const daily28=[]; for(let d=1;d<=28;d++) daily28.push({date:`2026-01-${String(d).padStart(2,'0')}`,value:100});
+  const pw5=PACING_MATH.paceWeekday(daily28);
+  const lin5=PACING_MATH.pace(daily28);
+  results.push({test:"T5 · 요일 균등 → weekday=linear", expected:String(lin5.projected), actual:pw5&&!pw5.fallback?String(Math.round(pw5.weekdayProjected)):String(pw5?.weekdayProjected), pass:pw5&&!pw5.fallback&&Math.abs(pw5.weekdayProjected-lin5.projected)<1?"✓":"✗"});
+  // T6: 데이터 부족(7일 → 요일당 1~2개) → fallback:true
+  const daily7=[]; for(let d=1;d<=7;d++) daily7.push({date:`2026-01-${String(d).padStart(2,'0')}`,value:100});
+  const pw6=PACING_MATH.paceWeekday(daily7);
+  results.push({test:"T6 · 데이터 부족 → fallback true", expected:"true", actual:String(pw6?.fallback), pass:pw6?.fallback===true?"✓":"✗"});
+  // T7: 결정론 — 2회 호출 byte-동일
+  const pw7a=PACING_MATH.paceWeekday(daily28);
+  const pw7b=PACING_MATH.paceWeekday(daily28);
+  results.push({test:"T7 · 결정론 — weekdayProjected 2회 동일", expected:"same", actual:(pw7a?.weekdayProjected===pw7b?.weekdayProjected)?"same":"diff", pass:pw7a?.weekdayProjected===pw7b?.weekdayProjected?"✓":"✗"});
   if(verbose){console.log("%c=== Pacing · Golden ===","color:#adc6ff;font-weight:bold;");console.table(results);const pa=results.filter(r=>r.pass==="✓").length;console.log(`${pa}/${results.length}`);}
   return results;
 }
@@ -17821,12 +17911,12 @@ if (typeof window!=="undefined"){ window.runPacingTests=runPacingTests; window.P
  * Funnel 진단 (5-11) — 효율 그룹
  * 노출→클릭→설치→(액션)→(매출) 단계별 CVR·이탈
  * ============================================================ */
-const FUNNEL_STATE = { unitField: "_all", cvrStep: null };
+const FUNNEL_STATE = { unitField: "_all", cvrStep: null, weekdayAdj: false };
 const FUNNEL_CACHE = { key:null, stages:null, rows:null };
 function funnelCacheKey(){
   const m=CSV_STATE.mapping||{};
   const sig=["impressions","clicks","installs","actions","revenue_d7","channel","country","platform","date"].map(k=>`${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
-  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|u:${FUNNEL_STATE.unitField}|s:${FUNNEL_STATE.cvrStep}|${MON_FILTER_KEY()}`;
+  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|u:${FUNNEL_STATE.unitField}|s:${FUNNEL_STATE.cvrStep}|wadj:${FUNNEL_STATE.weekdayAdj}|${MON_FILTER_KEY()}`;
 }
 function buildFunnelCache(){
   if(typeof window!=="undefined")window.__FUNNEL=FUNNEL_CACHE;
@@ -17921,12 +18011,40 @@ function buildFunnelCache(){
     if(arr.length>=2) segRank={ field:segField, best:arr.slice(0,3), worst:arr.slice(-3).reverse(), avg:overallSelCvr };
   }
 
+  // ── 요일 2-bucket 보정 (additive, 평일/주말 평균 차이 제거) ──
+  // 'YYYY-MM-DD'.getDay() UTC — buildDailyAgg와 동일 ISO 형식 가정
+  let weekdayProfile = null, weekdayAdjOk = false;
+  if (daily.length >= 2 && selT) {
+    const valid = daily.filter(x => x.cvr != null);
+    const grpSums = [0, 0], grpNs = [0, 0];
+    for (const x of valid) {
+      const wd = new Date(x.date).getDay();
+      const isWe = (wd === 0 || wd === 6) ? 1 : 0;
+      grpSums[isWe] += x.cvr; grpNs[isWe]++;
+    }
+    const grpMean = [grpNs[0]>0 ? grpSums[0]/grpNs[0] : null, grpNs[1]>0 ? grpSums[1]/grpNs[1] : null];
+    weekdayAdjOk = grpNs[0] >= 3 && grpNs[1] >= 3 && grpMean[0] != null && grpMean[1] != null;
+    weekdayProfile = { weekday: grpMean[0], weekend: grpMean[1], nWeekday: grpNs[0], nWeekend: grpNs[1] };
+    if (weekdayAdjOk && dailyMean != null) {
+      // additive: cvrAdj = cvr - grpMean[bucket] + dailyMean
+      for (const x of daily) {
+        if (x.cvr == null) { x.cvrAdj = null; x.devPctAdj = null; x.lowAdj = false; continue; }
+        const wd = new Date(x.date).getDay();
+        const isWe = (wd === 0 || wd === 6) ? 1 : 0;
+        x.cvrAdj = x.cvr - grpMean[isWe] + dailyMean;
+        x.devPctAdj = dailyMean > 0 ? (x.cvrAdj - dailyMean) / dailyMean : null;
+        x.lowAdj = dailySd > 0 && x.cvrAdj < dailyMean - dailySd;
+      }
+    }
+  }
+
   const rowsOut=[...agg.values()].sort((a,b)=>b.impr-a.impr).map(b=>({unit:b.unit,steps:stepsOf(b)}));
   FUNNEL_CACHE.key=key; FUNNEL_CACHE.stages=stageDefs; FUNNEL_CACHE.rows=rowsOut;
   FUNNEL_CACHE.overall=overall; FUNNEL_CACHE.overallSteps=overallSteps;
   FUNNEL_CACHE.trans=trans; FUNNEL_CACHE.selStep=selI; FUNNEL_CACHE.selLabel=selT?selT.label:null; FUNNEL_CACHE.selCvr=overallSelCvr;
   FUNNEL_CACHE.wow=wow; FUNNEL_CACHE.wowBiggestDrop=wowBiggestDrop; FUNNEL_CACHE.wowRange=wowRange;
   FUNNEL_CACHE.daily=daily; FUNNEL_CACHE.dailyMean=dailyMean; FUNNEL_CACHE.dailySd=dailySd;
+  FUNNEL_CACHE.weekdayProfile=weekdayProfile; FUNNEL_CACHE.weekdayAdjOk=weekdayAdjOk;
   FUNNEL_CACHE.segRank=segRank;
   return FUNNEL_CACHE;
 }
@@ -17967,21 +18085,36 @@ function renderFunnelControls(c){
     const av = k==="_all" || (new Set(Object.values(CSV_STATE.mapping||{}))).has(k);
     return `<button class="ab-pill ${FUNNEL_STATE.unitField===k?'active':''} ${!av?'disabled':''}" ${av?`data-funnel-unit="${k}"`:'disabled'}>${l}${!av?' 🔒':''}</button>`;
   }).join("");
+  const adjOk = c.weekdayAdjOk;
+  const adjActive = FUNNEL_STATE.weekdayAdj && adjOk;
+  const adjPill = adjOk
+    ? `<button class="ab-pill ${adjActive?'active':''}" data-funnel-wadj="${adjActive?'0':'1'}">요일 보정 ${adjActive?'ON':'OFF'}</button>`
+    : `<button class="ab-pill disabled" disabled title="평일·주말 각 3일 이상 필요">요일 보정 🔒</button>`;
   return `<section class="block" id="s-funnel-ctl" style="padding:12px 16px;">
     <div class="ab-pillgroup" style="margin-bottom:8px;"><span class="ab-pillgroup-label">전환 단계</span>${stepPills}</div>
-    <div class="ab-pillgroup" style="margin:0;"><span class="ab-pillgroup-label">분리 단위</span>${unitPills}</div>
+    <div class="ab-pillgroup" style="margin-bottom:8px;"><span class="ab-pillgroup-label">분리 단위</span>${unitPills}</div>
+    <div class="ab-pillgroup" style="margin:0;"><span class="ab-pillgroup-label">§3 요일</span>${adjPill}</div>
     <p class="muted" style="font-size:11px;margin:8px 0 0;">아래 추이·세그먼트·랭킹은 선택한 <strong>전환 단계(${escapeHtml(c.selLabel||"—")})</strong> 기준입니다.</p>
   </section>`;
 }
 function renderFunnelTrendSection(c){
   const daily=c.daily||[];
   if(daily.filter(x=>x.cvr!=null).length<3) return "";
-  const lows=daily.filter(x=>x.low).slice(-8);
+  const adjOn = FUNNEL_STATE.weekdayAdj && c.weekdayAdjOk;
+  const lows = adjOn ? daily.filter(x=>x.lowAdj) : daily.filter(x=>x.low);
   const lbl=c.selLabel||"선택 단계";
+  const adjNote = adjOn
+    ? `<div class="callout" style="margin:0 0 8px;padding:8px 12px;"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">💡 요일(평일/주말) 보정됨 — 같은 요일끼리 비교한 결과입니다. 평일 평균 ${(c.weekdayProfile.weekday*100).toFixed(1)}% / 주말 평균 ${(c.weekdayProfile.weekend*100).toFixed(1)}%.</p></div></div>`
+    : "";
   return `<section class="block" id="s-funnel-trend">
-    <h2 class="section-title"><span class="ix">§3</span>언제 떨어졌나 — ${escapeHtml(lbl)} CVR 추이</h2>
+    <h2 class="section-title"><span class="ix">§3</span>언제 떨어졌나 — ${escapeHtml(lbl)} CVR 추이${adjOn?' (요일 보정)':''}</h2>
+    ${adjNote}
     <div class="chart-container" style="height:240px;"><canvas id="funnel-trend-chart"></canvas></div>
-    ${lows.length?`<div class="callout" style="margin-top:10px;"><div class="ico">!</div><div class="body"><p style="margin:0 0 4px;font-size:12px;"><strong>평균 대비 급락한 날 (−1σ 이하)</strong></p><div style="display:flex;flex-wrap:wrap;gap:6px;">${lows.map(x=>`<span class="chip warning" style="font-size:11px;">${escapeHtml(x.date)} · ${(x.cvr*100).toFixed(1)}% <span style="opacity:.7;">(${x.devPct<0?"":"+"}${(x.devPct*100).toFixed(0)}%)</span></span>`).join("")}</div></div></div>`:`<p class="muted" style="margin-top:8px;font-size:12px;">평균 대비 −1σ 이상 급락한 날은 없습니다. CVR이 안정적입니다.</p>`}
+    ${lows.length?`<div class="callout" style="margin-top:10px;"><div class="ico">!</div><div class="body"><p style="margin:0 0 4px;font-size:12px;"><strong>평균 대비 급락한 날 (−1σ 이하${adjOn?', 요일 보정 후':''})</strong></p><div style="display:flex;flex-wrap:wrap;gap:6px;">${lows.map(x=>{
+      const cv = adjOn ? x.cvrAdj : x.cvr;
+      const dp = adjOn ? x.devPctAdj : x.devPct;
+      return `<span class="chip warning" style="font-size:11px;">${escapeHtml(x.date)} · ${cv!=null?(cv*100).toFixed(1):'—'}% <span style="opacity:.7;">(${dp!=null&&dp<0?"":"+"}${dp!=null?(dp*100).toFixed(0):'—'}%)</span></span>`;
+    }).join("")}</div></div></div>`:`<p class="muted" style="margin-top:8px;font-size:12px;">평균 대비 −1σ 이상 급락한 날은 없습니다. CVR이 안정적입니다.</p>`}
   </section>`;
 }
 function renderFunnelSegSection(c){
@@ -18048,11 +18181,14 @@ function renderFunnelTrendChart(){
   if(daily.length<3)return;
   const ctx=document.getElementById("funnel-trend-chart"); if(!ctx)return;
   destroyChartIfExists("funnel-trend-chart");
+  const adjOn = FUNNEL_STATE.weekdayAdj && c.weekdayAdjOk;
   const labels=daily.map(x=>x.date.slice(5));
-  const cvr=daily.map(x=>+(x.cvr*100).toFixed(2));
+  const cvrData=daily.map(x=>+(( (adjOn&&x.cvrAdj!=null?x.cvrAdj:x.cvr) *100).toFixed(2)));
   const mean=c.dailyMean!=null?+(c.dailyMean*100).toFixed(2):null;
-  const ptColors=daily.map(x=>x.low?"#f87171":"#adc6ff");
-  const ds=[{ label:`${c.selLabel||"선택 단계"} CVR(%)`, data:cvr, borderColor:"#adc6ff", backgroundColor:"#adc6ff20", fill:true, tension:0.2, pointRadius:daily.map(x=>x.low?4:2), pointBackgroundColor:ptColors, pointBorderColor:ptColors }];
+  const ptColors=daily.map(x=>(adjOn?x.lowAdj:x.low)?"#f87171":"#adc6ff");
+  const ptR=daily.map(x=>(adjOn?x.lowAdj:x.low)?4:2);
+  const lbl=`${c.selLabel||"선택 단계"} CVR(%)}${adjOn?' (요일보정)':''}`;
+  const ds=[{ label:lbl, data:cvrData, borderColor:"#adc6ff", backgroundColor:"#adc6ff20", fill:true, tension:0.2, pointRadius:ptR, pointBackgroundColor:ptColors, pointBorderColor:ptColors }];
   if(mean!=null) ds.push({ label:"평균", data:daily.map(()=>mean), borderColor:"#fbbf24", borderDash:[5,4], borderWidth:1.5, pointRadius:0 });
   CHART_INSTANCES["funnel-trend-chart"]=new Chart(ctx,{ type:"line", data:{labels,datasets:ds},
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:getCssVar('--text-muted'),font:{size:11}}}},
@@ -18062,6 +18198,7 @@ function bindFunnelHandlers(){
   bindInlineCsvHandlers();
   document.querySelectorAll("[data-funnel-unit]").forEach(b=>b.addEventListener("click",()=>{ if(b.classList.contains("disabled"))return; FUNNEL_STATE.unitField=b.dataset.funnelUnit; FUNNEL_CACHE.key=null; navigate("5-11"); }));
   document.querySelectorAll("[data-funnel-step]").forEach(b=>b.addEventListener("click",()=>{ FUNNEL_STATE.cvrStep=+b.dataset.funnelStep; FUNNEL_CACHE.key=null; navigate("5-11"); }));
+  document.querySelectorAll("[data-funnel-wadj]").forEach(b=>b.addEventListener("click",()=>{ FUNNEL_STATE.weekdayAdj=b.dataset.funnelWadj==="1"; FUNNEL_CACHE.key=null; navigate("5-11"); }));
   renderFunnelTrendChart();
 }
 function runFunnelTests(verbose=true){
@@ -18071,6 +18208,35 @@ function runFunnelTests(verbose=true){
   results.push({test:"T1 · CTR 10%", expected:"0.1", actual:String(cvr(100,1000)), pass:cvr(100,1000)===0.1?"✓":"✗"});
   results.push({test:"T2 · 설치CVR 20%", expected:"0.2", actual:String(cvr(20,100)), pass:cvr(20,100)===0.2?"✓":"✗"});
   results.push({test:"T3 · 분모0 → null", expected:"null", actual:String(cvr(5,0)), pass:cvr(5,0)===null?"✓":"✗"});
+  // T4: 요일 보정 additive 수학 검증
+  // 합성: 평일 CVR 0.10 × 15일, 주말 CVR 0.30 × 6일 (3주, 2025-01-06 월요일 시작)
+  // 기대: weekdayAdjOk=true, cvrAdj = cvr - grpMean[bucket] + dailyMean → 평일/주말 모두 dailyMean으로 수렴
+  const _synDaily = [];
+  const _start = new Date("2025-01-06"); // 월요일
+  for (let i=0;i<21;i++){
+    const d=new Date(_start.getTime()+i*86400000);
+    const iso=d.toISOString().slice(0,10);
+    const wd=d.getDay();
+    const cvrV = (wd===0||wd===6)?0.30:0.10;
+    _synDaily.push({date:iso,cvr:cvrV});
+  }
+  const _valid=_synDaily.filter(x=>x.cvr!=null);
+  const _dm=_valid.reduce((s,x)=>s+x.cvr,0)/_valid.length;
+  const _sd=Math.sqrt(_valid.reduce((s,x)=>s+(x.cvr-_dm)**2,0)/_valid.length);
+  _synDaily.forEach(x=>{ x.devPct=(x.cvr-_dm)/_dm; x.low=_sd>0&&x.cvr<_dm-_sd; });
+  // 보정 계산
+  const _gs=[0,0],_gn=[0,0];
+  for(const x of _synDaily){const wd=new Date(x.date).getDay(),b=(wd===0||wd===6)?1:0;_gs[b]+=x.cvr;_gn[b]++;}
+  const _gm=[_gn[0]>0?_gs[0]/_gn[0]:null,_gn[1]>0?_gs[1]/_gn[1]:null];
+  const _adjOk=_gn[0]>=3&&_gn[1]>=3&&_gm[0]!=null&&_gm[1]!=null;
+  if(_adjOk){for(const x of _synDaily){const wd=new Date(x.date).getDay(),b=(wd===0||wd===6)?1:0;x.cvrAdj=x.cvr-_gm[b]+_dm;x.lowAdj=_sd>0&&x.cvrAdj<_dm-_sd;}}
+  // 보정 후 cvrAdj는 모두 _dm으로 수렴해야 함 (additive 항등식)
+  const _adjConverge = _adjOk && _synDaily.every(x=>x.cvrAdj!=null && Math.abs(x.cvrAdj-_dm)<1e-9);
+  // 그룹 최소 관측 충족 (nWeekday=15 ≥ 3, nWeekend=6 ≥ 3)
+  results.push({test:"T4 · weekdayAdjOk=true(각 그룹 ≥3)", expected:"true", actual:String(_adjOk), pass:_adjOk?"✓":"✗"});
+  results.push({test:"T4b · cvrAdj=dailyMean(additive 항등식)", expected:"true", actual:String(_adjConverge), pass:_adjConverge?"✓":"✗"});
+  results.push({test:"T4c · 그룹 표본 수 정확(평일15·주말6)", expected:"15,6", actual:`${_gn[0]},${_gn[1]}`, pass:_gn[0]===15&&_gn[1]===6?"✓":"✗"});
+  results.push({test:"T4d · 결정론 — 2회 adjConverge 동일", expected:"same", actual:(()=>{ const _s2=[];const _st2=new Date("2025-01-06");for(let i=0;i<21;i++){const d2=new Date(_st2.getTime()+i*86400000);const wd2=d2.getDay();_s2.push({date:d2.toISOString().slice(0,10),cvr:(wd2===0||wd2===6)?0.30:0.10});}const _dm2=_s2.reduce((s,x)=>s+x.cvr,0)/_s2.length;const _g2=[[0,0],[0,0]];for(const x of _s2){const b=(new Date(x.date).getDay()===0||new Date(x.date).getDay()===6)?1:0;_g2[b][0]+=x.cvr;_g2[b][1]++;}const _gm2=[_g2[0][1]>0?_g2[0][0]/_g2[0][1]:null,_g2[1][1]>0?_g2[1][0]/_g2[1][1]:null];for(const x of _s2){const b=(new Date(x.date).getDay()===0||new Date(x.date).getDay()===6)?1:0;x.cvrAdj2=x.cvr-_gm2[b]+_dm2;}return _s2.every(x=>x.cvrAdj2!=null&&Math.abs(x.cvrAdj2-_dm2)<1e-9)?"same":"diff";})(), pass:"same"?"✓":"✗"});
   if(verbose){console.log("%c=== Funnel · Golden ===","color:#adc6ff;font-weight:bold;");console.table(results);}
   return results;
 }
@@ -18210,10 +18376,12 @@ function buildDailyAgg() {
 }
 
 /* ---- 5-13 Executive Scorecard ---- */
-const SCORECARD_STATE = { windowDays: 7 };
+const SCORECARD_STATE = { windowDays: 7, selectedMetric: null };
 function monScorecardBody() {
   const daily = buildDailyAgg();
-  const W = SCORECARD_STATE.windowDays;
+  // D30 잔존 방어 클램프
+  const W = [7,14,28].includes(SCORECARD_STATE.windowDays) ? SCORECARD_STATE.windowDays : 7;
+  if (W !== SCORECARD_STATE.windowDays) SCORECARD_STATE.windowDays = W;
   const recent = daily.slice(-W), prev = daily.slice(-2*W, -W);
   const sum = (arr, k) => arr.reduce((s,d)=>s+(d[k]||0),0);
   const mapped = new Set(Object.values(CSV_STATE.mapping||{}));
@@ -18234,14 +18402,45 @@ function monScorecardBody() {
     mapped.has("impressions") && mapped.has("clicks") && { k:"ctr", label:"CTR", val:r.ctr, prev:p.ctr, fmt:(v)=>v!=null?(v*100).toFixed(2)+"%":"—", better:"high" },
     mapped.has("revenue_d7") && { k:"roas", label:"ROAS", val:r.roas, prev:p.roas, fmt:(v)=>v!=null?(v*100).toFixed(0)+"%":"—", better:"high" },
   ].filter(Boolean);
-  const dateRange = recent.length ? `${recent[0].date} ~ ${recent[recent.length-1].date}` : "—";
+  // 매핑 해제 시 selectedMetric 조용히 리셋
+  if (SCORECARD_STATE.selectedMetric && !cards.find(c=>c.k===SCORECARD_STATE.selectedMetric)) {
+    SCORECARD_STATE.selectedMetric = null;
+  }
+  const sel = SCORECARD_STATE.selectedMetric;
+  // 일별 차트용 시리즈 — monAnomalyBody seriesVal과 동일 공식
+  let dailyChartHtml = "";
+  if (sel) {
+    const slice2W = daily.slice(-2*W);
+    const seriesVal = (d) => {
+      switch(sel){
+        case "cost": return d.cost;
+        case "inst": return d.installs;
+        case "cpi": return d.installs>0?d.cost/d.installs:null;
+        case "act": return d.actions;
+        case "cpa": return d.actions>0?d.cost/d.actions:null;
+        case "cvr": return d.clicks>0?d.installs/d.clicks:null;
+        case "ctr": return d.impressions>0?d.clicks/d.impressions:null;
+        case "roas": return d.cost>0?d.revenue/d.cost:null;
+        default: return null;
+      }
+    };
+    const hasEnough = slice2W.length >= 2;
+    const warn = slice2W.length < 2*W ? `<p class="muted" style="font-size:11px;margin:4px 0 0;">⚠ 데이터가 충분하지 않습니다 (${slice2W.length}일). 있는 만큼 표시합니다.</p>` : "";
+    dailyChartHtml = `<section class="block" id="s-score-daily" style="padding-top:8px;">
+      <h3 style="font-size:13px;font-weight:600;margin:0 0 8px;color:var(--text-muted);">일별 상세 — ${escapeHtml(cards.find(c=>c.k===sel)?.label||sel)} (최근 ${slice2W.length}일)</h3>
+      <p class="muted" style="font-size:11px;margin:0 0 8px;">🟠 비교주(직전 ${W}일) / 🔵 목표주(최근 ${W}일) · 카드 재클릭 시 닫힘</p>
+      ${warn}
+      ${hasEnough ? `<div class="chart-container" style="height:220px;"><canvas id="scorecard-daily-chart"></canvas></div>` : ""}
+      <button class="ab-pill" style="margin-top:8px;" data-pngdownload="scorecard-daily-chart" data-pngname="scorecard_daily">⬇ PNG</button>
+    </section>`;
+  }
   return `
       ${renderBudgetHealthCard()}
       <section class="block" id="s-score">
         <h2 class="section-title"><span class="ix">§1</span>핵심 KPI (최근 ${W}일)</h2>
         <div class="ab-pillgroup">
           <span class="ab-pillgroup-label">기간</span>
-          ${[7,14,28,30].map(d=>`<button class="ab-pill ${W===d?'active':''}" data-score-window="${d}">${d}일</button>`).join("")}
+          ${[7,14,28].map(d=>`<button class="ab-pill ${W===d?'active':''}" data-score-window="${d}">${d}일</button>`).join("")}
         </div>
         <div class="ab-stat-row" style="margin-top:10px;">
           ${cards.map(c => {
@@ -18249,20 +18448,72 @@ function monScorecardBody() {
             const good = c.better==="none"||d==null ? null : (c.better==="high" ? d>0 : d<0);
             const arrow = d==null?"":d>0?"▲":d<0?"▼":"—";
             const cls = good==null?"":good?"pos":"neg";
-            return `<div class="ab-stat">
+            const isActive = sel === c.k;
+            return `<div class="ab-stat" data-score-metric="${c.k}" style="cursor:pointer;${isActive?'outline:2px solid #adc6ff;border-radius:6px;':''}">
               <div class="ab-stat-label">${c.label}</div>
               <div class="ab-stat-value tnum">${c.fmt(c.val)}</div>
               <div class="ab-stat-hint ${cls}">${d==null?'직전 데이터 없음':`${arrow} ${Math.abs(d*100).toFixed(1)}% WoW`}</div>
             </div>`;
           }).join("")}
         </div>
-        <p class="muted" style="font-size:11px;margin-top:8px;">WoW = 최근 ${W}일 vs 직전 ${W}일. 색은 지표 성격 반영(CPI/CPA↓·설치/ROAS↑ = 초록). 비용은 중립(규모).</p>
+        <p class="muted" style="font-size:11px;margin-top:8px;">WoW = 최근 ${W}일 vs 직전 ${W}일. 색은 지표 성격 반영(CPI/CPA↓·설치/ROAS↑ = 초록). 비용은 중립(규모). 카드 클릭 시 일별 상세.</p>
       </section>
+      ${dailyChartHtml}
     `;
+}
+function renderScorecardDailyChart() {
+  if (typeof Chart === "undefined") return;
+  const ctx = document.getElementById("scorecard-daily-chart"); if (!ctx) return;
+  destroyChartIfExists("scorecard-daily-chart");
+  const W = SCORECARD_STATE.windowDays;
+  const sel = SCORECARD_STATE.selectedMetric; if (!sel) return;
+  const daily = buildDailyAgg();
+  const slice2W = daily.slice(-2*W);
+  const seriesVal = (d) => {
+    switch(sel){
+      case "cost": return d.cost;
+      case "inst": return d.installs;
+      case "cpi": return d.installs>0?d.cost/d.installs:null;
+      case "act": return d.actions;
+      case "cpa": return d.actions>0?d.cost/d.actions:null;
+      case "cvr": return d.clicks>0?d.installs/d.clicks:null;
+      case "ctr": return d.impressions>0?d.clicks/d.impressions:null;
+      case "roas": return d.cost>0?d.revenue/d.cost:null;
+      default: return null;
+    }
+  };
+  const vals = slice2W.map(seriesVal);
+  const labels = slice2W.map(d=>d.date.slice(5));
+  const n = slice2W.length;
+  // 앞 절반 = 비교주(주황 #fbbf24), 뒤 절반 = 목표주(파랑 #adc6ff)
+  const pivotIdx = n - W;
+  const ptBg = vals.map((_,i) => i < pivotIdx ? "#fbbf2460" : "#adc6ff60");
+  const ptBorder = vals.map((_,i) => i < pivotIdx ? "#fbbf24" : "#adc6ff");
+  const barColors = vals.map((_,i) => i < pivotIdx ? "#fbbf2480" : "#adc6ff80");
+  const isContinuous = ["cvr","ctr","roas","cpi","cpa"].includes(sel);
+  const ds = isContinuous
+    ? [{ label:"", data:vals, borderColor:ptBorder, backgroundColor:ptBg, pointBackgroundColor:ptBorder, pointBorderColor:ptBorder, pointRadius:4, tension:0.1, fill:false }]
+    : [{ label:"", data:vals, backgroundColor:barColors, borderColor:barColors.map(c=>c.replace("80","cc")), borderWidth:1 }];
+  const type = isContinuous ? "line" : "bar";
+  CHART_INSTANCES["scorecard-daily-chart"] = new Chart(ctx, {
+    type, data: { labels, datasets: ds },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ title:(items)=>items[0].label } } },
+      scales:{ x:{ticks:{color:getCssVar('--text-muted'),maxTicksLimit:14},grid:{color:getCssVar('--border')},
+          afterBuildTicks(ax){ if(ax.ticks.length > 0 && pivotIdx > 0 && pivotIdx < n) ax.ticks[pivotIdx] = Object.assign({}, ax.ticks[pivotIdx], {major:true}); } },
+        y:{ticks:{color:getCssVar('--text-muted')},grid:{color:getCssVar('--border')}} } }
+  });
 }
 function bindScorecardHandlers() {
   bindInlineCsvHandlers();
   document.querySelectorAll("[data-score-window]").forEach(b=>b.addEventListener("click",()=>{ SCORECARD_STATE.windowDays=Number(b.dataset.scoreWindow); navigate("5-13"); }));
+  document.querySelectorAll("[data-score-metric]").forEach(b=>b.addEventListener("click",()=>{
+    const k = b.dataset.scoreMetric;
+    SCORECARD_STATE.selectedMetric = (SCORECARD_STATE.selectedMetric === k) ? null : k;
+    navigate("5-13");
+  }));
+  document.querySelectorAll("#s-score-daily [data-pngdownload]").forEach(b=>b.addEventListener("click",()=>downloadChartAsPNG(b.dataset.pngdownload,b.dataset.pngname)));
+  renderScorecardDailyChart();
 }
 
 /* ---- 5-14 Anomaly 탐지 ---- */
