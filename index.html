@@ -17361,6 +17361,7 @@ const LTVCAC_CONFIG = {
   paybackTargetDays: 90, // 회수 목표 (일)
 };
 const LTVCAC_STATE = { unitField: "channel", ltvHorizon: 14 };
+const LTVCAC_ALL_DNS = [0, 7, 14, 30, 60, 90, 180, 360];
 
 const LTVCAC_MATH = {
   safeDiv(n, d) { n = Number(n)||0; d = Number(d)||0; return d > 0 ? n/d : null; },
@@ -17383,6 +17384,30 @@ const LTVCAC_MATH = {
     if (den === 0) { const f = valid[valid.length-1].arpu; return { predict: ()=>f, kind:"flat" }; }
     const b = num/den, a = Math.exp(my - b*mx);
     return { predict: (day) => a * Math.pow(day + 1, b), a, b, kind: "power" };
+  },
+  // SSOT 예측 함수 — buildLtvCacCache 산출 unit 객체와 targetDay로 LTV 예측
+  // 비율법 우선(성숙 arpu 비율 평균 × anchorArpu) → 곡선 폴백
+  // 반환: { value, predicted } — predicted=true면 미마감 구간 예측값
+  ltvPredict(unitObj, targetDay) {
+    if (!unitObj) return { value: null, predicted: false };
+    const { arpu0, arpu7, arpu14, arpuByDay, observedDays, fit } = unitObj;
+    // 관측값 직접 있으면 반환
+    if (arpuByDay && arpuByDay[targetDay] != null) return { value: arpuByDay[targetDay], predicted: false };
+    // 레거시(D0/7/14): 정확 매치
+    if (targetDay === 0 && arpu0 != null) return { value: arpu0, predicted: false };
+    if (targetDay === 7 && arpu7 != null) return { value: arpu7, predicted: false };
+    if (targetDay === 14 && arpu14 != null) return { value: arpu14, predicted: false };
+    // 예측 경로: 비율법 우선
+    if (unitObj.ratioByDay && unitObj.ratioBase != null) {
+      const ratio = unitObj.ratioByDay[targetDay];
+      if (ratio != null && ratio > 0) return { value: unitObj.ratioBase * ratio, predicted: true };
+    }
+    // 곡선 폴백
+    if (fit) {
+      const v = fit.predict(targetDay);
+      if (v != null && isFinite(v) && v >= 0) return { value: v, predicted: true };
+    }
+    return { value: null, predicted: true };
   },
   // CAC를 회수하는 day 탐색 (누적 ARPU(day) ≥ CAC 되는 최소 day). 없으면 null(외삽 한계).
   paybackDay(fit, cac, maxDay = 720) {
@@ -17413,37 +17438,60 @@ function buildLtvCacCache() {
   const map = new Map();
   for (const r of rows) {
     const key2 = String(r[unitField] ?? "").trim() || "(미지정)";
-    if (!map.has(key2)) map.set(key2, { unit:key2, cost:0, denom:0, rev0:0, rev7:0, rev14:0, has0:false, has7:false, has14:false });
+    if (!map.has(key2)) {
+      const init = { unit: key2, cost: 0, denom: 0 };
+      LTVCAC_ALL_DNS.forEach(d => { init[`rev${d}`] = 0; init[`has${d}`] = false; });
+      map.set(key2, init);
+    }
     const b = map.get(key2);
     b.cost  += Number(r.cost) || 0;
     b.denom += Number(r[denomField]) || 0;
-    if (r.revenue_d0  != null && r.revenue_d0  !== "") { b.rev0  += Number(r.revenue_d0)  || 0; b.has0=true; }
-    if (r.revenue_d7  != null && r.revenue_d7  !== "") { b.rev7  += Number(r.revenue_d7)  || 0; b.has7=true; }
-    if (r.revenue_d14 != null && r.revenue_d14 !== "") { b.rev14 += Number(r.revenue_d14) || 0; b.has14=true; }
+    for (const d of LTVCAC_ALL_DNS) {
+      const k = `revenue_d${d}`;
+      if (r[k] != null && r[k] !== "") { b[`rev${d}`] += Number(r[k]) || 0; b[`has${d}`] = true; }
+    }
   }
 
   const out = [];
   for (const b of map.values()) {
-    const cac = LTVCAC_MATH.safeDiv(b.cost, b.denom);  // 비용 / 유저
-    const arpu0  = b.has0  ? LTVCAC_MATH.safeDiv(b.rev0,  b.denom) : null;
-    const arpu7  = b.has7  ? LTVCAC_MATH.safeDiv(b.rev7,  b.denom) : null;
-    const arpu14 = b.has14 ? LTVCAC_MATH.safeDiv(b.rev14, b.denom) : null;
+    const cac = LTVCAC_MATH.safeDiv(b.cost, b.denom);
+    // arpuByDay: 관측된 Dn별 누적 ARPU
+    const arpuByDay = {};
+    const observedDays = [];
     const pts = [];
-    if (arpu0  != null) pts.push({ day:0,  arpu:arpu0 });
-    if (arpu7  != null) pts.push({ day:7,  arpu:arpu7 });
-    if (arpu14 != null) pts.push({ day:14, arpu:arpu14 });
+    for (const d of LTVCAC_ALL_DNS) {
+      if (b[`has${d}`]) {
+        const arpu = LTVCAC_MATH.safeDiv(b[`rev${d}`], b.denom);
+        if (arpu != null) { arpuByDay[d] = arpu; observedDays.push(d); pts.push({ day: d, arpu }); }
+      }
+    }
+    const arpu0  = arpuByDay[0]  ?? null;
+    const arpu7  = arpuByDay[7]  ?? null;
+    const arpu14 = arpuByDay[14] ?? null;
     const fit = LTVCAC_MATH.fitCumArpu(pts);
+    // 비율법: anchor=마감 최고 Dn의 arpu, ratioByDay[d] = obs[d]/obs[anchor]
+    const ratioByDay = {};
+    let ratioBase = null;
+    if (observedDays.length >= 2) {
+      const anchorDay = observedDays[observedDays.length - 1];
+      ratioBase = arpuByDay[anchorDay];
+      if (ratioBase != null && ratioBase > 0) {
+        for (const [d, v] of Object.entries(arpuByDay)) ratioByDay[d] = v / ratioBase;
+      }
+    }
+    // ltvPredict 호출을 위한 unitObj 임시 구성 (SSOT 함수 자기 참조)
+    const unitRef = { arpu0, arpu7, arpu14, arpuByDay, observedDays, fit, ratioByDay, ratioBase };
     const horizon = LTVCAC_STATE.ltvHorizon;
-    const ltvAtHorizon = fit ? fit.predict(horizon) : (arpu14 ?? arpu7 ?? arpu0);
+    const { value: ltvAtHorizon, predicted: ltvPredicted } = LTVCAC_MATH.ltvPredict(unitRef, horizon);
     const ratio = (cac != null && ltvAtHorizon != null && cac > 0) ? ltvAtHorizon / cac : null;
     const payback = LTVCAC_MATH.paybackDay(fit, cac);
-    // ROAS@horizon (누적매출/비용)
-    const roasH = (cac != null && ltvAtHorizon != null && cac > 0) ? ltvAtHorizon / cac : null; // == ratio (ARPU/CAC = revenue/cost)
+    const maxObsDn = observedDays.length ? observedDays[observedDays.length - 1] : 0;
     out.push({
       unit: b.unit, cost: b.cost, users: b.denom, cac,
-      arpu0, arpu7, arpu14, ltvAtHorizon, ratio, payback,
-      roas0: LTVCAC_MATH.safeDiv(b.rev0, b.cost),
-      roas7: LTVCAC_MATH.safeDiv(b.rev7, b.cost),
+      arpu0, arpu7, arpu14, arpuByDay, observedDays, fit, ratioByDay, ratioBase,
+      ltvAtHorizon, ltvPredicted, ratio, payback, maxObsDn,
+      roas0:  LTVCAC_MATH.safeDiv(b.rev0,  b.cost),
+      roas7:  LTVCAC_MATH.safeDiv(b.rev7,  b.cost),
       roas14: LTVCAC_MATH.safeDiv(b.rev14, b.cost),
       fitKind: fit?.kind || "none",
     });
@@ -17472,7 +17520,7 @@ function monLtvCacBody() {
         </div>
         <div class="ab-pillgroup">
           <span class="ab-pillgroup-label">LTV Horizon</span>
-          ${[7,14,30,90,180].map(d => `<button class="ab-pill ${LTVCAC_STATE.ltvHorizon===d?'active':''}" data-ltvcac-horizon="${d}">D${d}</button>`).join("")}
+          ${[7,14,30,90,180,360].map(d => `<button class="ab-pill ${LTVCAC_STATE.ltvHorizon===d?'active':''}" data-ltvcac-horizon="${d}">D${d}</button>`).join("")}
         </div>
       </section>
       ${renderLtvCacTable(c)}
@@ -17491,7 +17539,7 @@ function renderLtvCacTable(c) {
   return `
     <section class="block" id="s-table">
       <h2 class="section-title"><span class="ix">§2</span>LTV:CAC · 회수기간 (LTV horizon = D${h})</h2>
-      <p class="muted">초록 = LTV:CAC ≥ ${LTVCAC_CONFIG.healthyRatio}× (건강) · 빨강 = &lt; ${LTVCAC_CONFIG.warnRatio}× (적자). payback = 누적 ARPU가 CAC에 도달하는 day (power 외삽).</p>
+      <p class="muted">초록 = LTV:CAC ≥ ${LTVCAC_CONFIG.healthyRatio}× (건강) · 빨강 = &lt; ${LTVCAC_CONFIG.warnRatio}× (적자). payback = 누적 ARPU가 CAC에 도달하는 day (power 외삽). ⓘ = 미마감 구간 예측값.</p>
       <div class="table-wrap">
         <table class="data" style="font-size:11.5px;">
           <thead><tr>
@@ -17499,7 +17547,10 @@ function renderLtvCacTable(c) {
             <th>ROAS D7</th><th>ROAS D14</th><th>LTV(D${h})/user</th><th>LTV:CAC</th><th>Payback</th><th>외삽</th>
           </tr></thead>
           <tbody>
-            ${rows.slice(0,60).map(r => `
+            ${rows.slice(0,60).map(r => {
+              const { value: ltvH, predicted: isPred } = LTVCAC_MATH.ltvPredict(r, h);
+              const infoTitle = isPred ? `title="이 단위는 D${r.maxObsDn}까지만 실측. D${h}는 미마감 구간으로 이전 Dn 추이를 기반으로 예측한 값입니다. 실측이 누적되면 재확인하세요."` : "";
+              return `
               <tr>
                 <td><strong>${escapeHtml(String(r.unit).slice(0,28))}</strong></td>
                 <td class="tnum">${fmtCurrency(r.cost)}</td>
@@ -17507,23 +17558,74 @@ function renderLtvCacTable(c) {
                 <td class="tnum">${r.cac!=null?fmtCurrency(r.cac):"—"}</td>
                 <td class="tnum">${fmtPct(r.roas7)}</td>
                 <td class="tnum">${fmtPct(r.roas14)}</td>
-                <td class="tnum">${r.ltvAtHorizon!=null?fmtCurrency(r.ltvAtHorizon):"—"}</td>
+                <td class="tnum">${ltvH!=null?(fmtCurrency(ltvH)+(isPred?` <span style='font-size:9px;color:#adc6ff;cursor:help;' ${infoTitle}>ⓘ</span>`:"")):("—")}</td>
                 <td class="tnum ${ratioCls(r.ratio)}"><strong>${fmtX(r.ratio)}</strong></td>
                 <td class="tnum">${fmtPb(r.payback)}</td>
                 <td class="tnum" style="color:var(--text-muted);font-size:10px;">${r.fitKind}</td>
-              </tr>
-            `).join("")}
+              </tr>`;
+            }).join("")}
           </tbody>
         </table>
       </div>
       <div class="callout" style="margin-top:10px;"><div class="ico">i</div><div class="body">
         <p style="margin:0;font-size:12px;">LTV:CAC는 <strong>유닛 이코노믹스 건강도</strong>의 핵심 지표입니다. 3× 이상이면 공격적 확장 여지, 1× 미만이면 해당 단위는 적자이므로 입찰/예산 축소 또는 LTV 개선이 필요합니다. 회수기간이 목표(${LTVCAC_CONFIG.paybackTargetDays}일)보다 길면 현금흐름 부담을 검토하세요.</p>
       </div></div>
+    </section>
+    <section class="block" id="s-ltv-curve">
+      <h2 class="section-title"><span class="ix">§3</span>LTV D0~D360 곡선</h2>
+      <p class="muted">실선 = 실측 ARPU · 점선 = 예측(ⓘ 미마감). 단위 필터 및 Horizon 토글과 연동됩니다.</p>
+      <div class="chart-container" style="height:260px;"><canvas id="ltvcac-curve"></canvas></div>
     </section>`;
+}
+
+// LTV D0~D360 곡선 차트 (SSOT: ltvPredict 호출)
+function renderLtvCacChart() {
+  if (typeof Chart === "undefined") return;
+  const cv = document.getElementById("ltvcac-curve"); if (!cv) return;
+  const c = LTVCAC_CACHE;
+  const rows = (c.rows || []).slice(0, 8); // 상위 8 단위만 (가독성)
+  if (!rows.length) return;
+  const PALETTE = ["#7aa2f7","#9ece6a","#e0af68","#f7768e","#bb9af7","#2ac3de","#ff9e64","#73daca"];
+  const labels = LTVCAC_ALL_DNS.map(d => `D${d}`);
+  const datasets = rows.map((r, ri) => {
+    const color = PALETTE[ri % PALETTE.length];
+    const pts = LTVCAC_ALL_DNS.map(d => {
+      const { value, predicted } = LTVCAC_MATH.ltvPredict(r, d);
+      return { y: value != null && isFinite(value) ? Math.round(value) : null, predicted };
+    });
+    // 실측(predicted=false) 구간: solid / 예측(predicted=true): dashed segment
+    const solidData = pts.map(p => p.predicted ? null : p.y);
+    const dashData  = pts.map(p => p.predicted ? p.y : null);
+    return [
+      { label: `${r.unit}`, data: solidData, borderColor: color, backgroundColor: "transparent", borderWidth: 2, pointRadius: 4, tension: 0.3, spanGaps: false },
+      { label: `${r.unit} (예측)`, data: dashData, borderColor: color, backgroundColor: "transparent", borderWidth: 1.5, borderDash: [4, 4], pointRadius: 3, pointBorderColor: color, pointBackgroundColor: "transparent", tension: 0.3, spanGaps: false },
+    ];
+  }).flat();
+  destroyChartIfExists("ltvcac-curve");
+  CHART_INSTANCES["ltvcac-curve"] = new Chart(cv, {
+    type: "line",
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      scales: {
+        y: { ticks: { color: getCssVar("--text-muted"), callback: v => fmtCurrency(v) }, grid: { color: getCssVar("--border") } },
+        x: { ticks: { color: getCssVar("--text-muted") }, grid: { color: getCssVar("--border") } }
+      },
+      plugins: {
+        legend: { labels: { color: getCssVar("--text-2"), filter: item => !item.text.endsWith("(예측)"), boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx => {
+          const v = ctx.parsed.y;
+          return v != null ? `${ctx.dataset.label}: ${fmtCurrency(v)}` : null;
+        }}}
+      }
+    }
+  });
 }
 
 function bindLtvCacHandlers() {
   bindInlineCsvHandlers();
+  bindMmmInfoOnce();
   document.querySelectorAll("[data-ltvcac-unit]").forEach(b => b.addEventListener("click", () => {
     if (b.classList.contains("disabled")) return;
     LTVCAC_STATE.unitField = b.dataset.ltvcacUnit; LTVCAC_CACHE.key=null; navigate("5-9");
@@ -17531,6 +17633,7 @@ function bindLtvCacHandlers() {
   document.querySelectorAll("[data-ltvcac-horizon]").forEach(b => b.addEventListener("click", () => {
     LTVCAC_STATE.ltvHorizon = Number(b.dataset.ltvcacHorizon); LTVCAC_CACHE.key=null; navigate("5-9");
   }));
+  renderLtvCacChart();
 }
 
 function runLtvCacTests(verbose = true) {
@@ -17548,9 +17651,25 @@ function runLtvCacTests(verbose = true) {
   // T4: safeDiv 분모0 → null
   results.push({ test:"T4 · safeDiv 0", expected:"null", actual:String(LTVCAC_MATH.safeDiv(5,0)), pass: LTVCAC_MATH.safeDiv(5,0)===null?"✓":"✗" });
   // T5: 결정론
-  const a=LTVCAC_MATH.fitCumArpu([{day:0,arpu:2},{day:7,arpu:4}]).predict(30);
-  const b=LTVCAC_MATH.fitCumArpu([{day:0,arpu:2},{day:7,arpu:4}]).predict(30);
-  results.push({ test:"T5 · 결정론", expected:"identical", actual:a===b?"identical":`${a} vs ${b}`, pass:a===b?"✓":"✗" });
+  const a5=LTVCAC_MATH.fitCumArpu([{day:0,arpu:2},{day:7,arpu:4}]).predict(30);
+  const b5=LTVCAC_MATH.fitCumArpu([{day:0,arpu:2},{day:7,arpu:4}]).predict(30);
+  results.push({ test:"T5 · 결정론", expected:"identical", actual:a5===b5?"identical":`${a5} vs ${b5}`, pass:a5===b5?"✓":"✗" });
+  // T6: 관측마감 판정 — arpuByDay에 D14까지만 있으면 D90 호출 시 predicted=true
+  const unitObs = { arpu0:10, arpu7:20, arpu14:28, arpuByDay:{0:10,7:20,14:28}, observedDays:[0,7,14],
+    fit: LTVCAC_MATH.fitCumArpu([{day:0,arpu:10},{day:7,arpu:20},{day:14,arpu:28}]),
+    ratioByDay:{0:10/28,7:20/28,14:1}, ratioBase:28 };
+  const r14 = LTVCAC_MATH.ltvPredict(unitObs, 14);
+  const r90 = LTVCAC_MATH.ltvPredict(unitObs, 90);
+  results.push({ test:"T6a · 관측마감=D14 → D14 predicted=false", expected:"false", actual:String(r14.predicted), pass: r14.predicted===false?"✓":"✗" });
+  results.push({ test:"T6b · 관측마감=D14 → D90 predicted=true", expected:"true", actual:String(r90.predicted), pass: r90.predicted===true?"✓":"✗" });
+  results.push({ test:"T6c · D90 value not null (비율법)", expected:"not null", actual:String(r90.value!=null), pass: r90.value!=null?"✓":"✗" });
+  // T7: 표=차트 SSOT — ltvPredict로 동일 함수 경로
+  const unitSimple = { arpu0:5, arpu7:8, arpu14:10, arpuByDay:{0:5,7:8,14:10}, observedDays:[0,7,14],
+    fit: LTVCAC_MATH.fitCumArpu([{day:0,arpu:5},{day:7,arpu:8},{day:14,arpu:10}]),
+    ratioByDay:{}, ratioBase:null };
+  const tbl14 = LTVCAC_MATH.ltvPredict(unitSimple, 14);
+  const chart14 = LTVCAC_MATH.ltvPredict(unitSimple, 14);
+  results.push({ test:"T7 · 표=차트 SSOT byte-동일(D14)", expected:"equal", actual: tbl14.value===chart14.value?"equal":"diff", pass:tbl14.value===chart14.value?"✓":"✗" });
   if (verbose) {
     console.log("%c=== LTV:CAC · Golden Tests ===","color:#adc6ff;font-weight:bold;");
     console.table(results);
