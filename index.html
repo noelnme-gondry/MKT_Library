@@ -5870,7 +5870,8 @@ function monFilterKey() {
   const f = MON_FILTER_STATE;
   const cs = f.countries ? [...f.countries].sort().join(",") : "*";
   const ch = f.channels  ? [...f.channels].sort().join(",")  : "*";
-  return `${f.dateStart||""}|${f.dateEnd||""}|${f.platform}|${cs}|${ch}`;
+  const pf = f.platforms ? [...f.platforms].sort().join(",") : "*";
+  return `${f.dateStart||""}|${f.dateEnd||""}|${pf}|${cs}|${ch}`;
 }
 
 function getMappedRowsForMon() {
@@ -5878,7 +5879,7 @@ function getMappedRowsForMon() {
   const f = MON_FILTER_STATE;
   if (f.dateStart) rows = rows.filter(r => r.date >= f.dateStart);
   if (f.dateEnd)   rows = rows.filter(r => r.date <= f.dateEnd);
-  if (f.platform !== "all") rows = rows.filter(r => String(r.platform || "") === f.platform);
+  if (f.platforms) rows = rows.filter(r => f.platforms.has(String(r.platform || "")));
   if (f.countries) rows = rows.filter(r => f.countries.has(String(r.country  || "").trim()));
   if (f.channels)  rows = rows.filter(r => f.channels.has(String(r.channel   || "").trim()));
   return rows;
@@ -6146,7 +6147,7 @@ const MON_STATE = { tab: "viz" };
 const MON_FILTER_STATE = {
   dateStart: null,   // "YYYY-MM-DD" | null = 무제한
   dateEnd:   null,
-  platform:  "all",  // "all" | 실제 platform 값 (데이터에서 추출)
+  platforms: null,   // null = 전체 | Set(선택 platform 값)
   countries: null,   // null = 전체 | Set(선택 국가)
   channels:  null,   // null = 전체 | Set(선택 채널)
 };
@@ -6221,7 +6222,7 @@ function renderMonFilterBar() {
   let active = 0;
   if (f.dateStart) active++;
   if (f.dateEnd)   active++;
-  if (f.platform !== "all") active++;
+  if (f.platforms) active++;
   if (f.countries) active++;
   if (f.channels)  active++;
 
@@ -6235,14 +6236,19 @@ function renderMonFilterBar() {
       <span class="mon-filter-label">종료</span>
       <input type="date" class="mon-filter-input" data-mon-filter="dateEnd" value="${f.dateEnd||""}" min="${minDate}" max="${maxDate}">
     </label>`);
-  if (hasPlatform && platforms.length) parts.push(`
-    <label class="mon-filter-item">
+  if (hasPlatform && platforms.length) {
+    const pfLabel = f.platforms === null ? `전체 (${platforms.length})` : `${f.platforms.size}개 선택됨`;
+    parts.push(`
+    <div class="mon-filter-item" style="align-items:center;gap:4px;">
       <span class="mon-filter-label">Platform</span>
-      <select class="mon-filter-select" data-mon-filter="platform">
-        <option value="all" ${f.platform==="all"?"selected":""}>전체</option>
-        ${platforms.map(p=>`<option value="${escapeHtml(p)}" ${f.platform===p?"selected":""}>${escapeHtml(p)}</option>`).join("")}
-      </select>
-    </label>`);
+      <div class="mon-multisel" data-multisel="platforms">
+        <button class="mon-multisel-btn" type="button" data-multisel-toggle="platforms">${pfLabel} ∨</button>
+        <div class="mon-multisel-list" data-ms-list="platforms" hidden>
+          ${platforms.map(p=>`<label><input type="checkbox" value="${escapeHtml(p)}" ${(f.platforms===null||f.platforms.has(p))?"checked":""}> ${escapeHtml(p)}</label>`).join("")}
+        </div>
+      </div>
+    </div>`);
+  }
   if (hasCountry && countries.length) {
     const cntLabel = f.countries === null ? `전체 (${countries.length})` : `${f.countries.size}개 선택됨`;
     parts.push(`
@@ -16552,7 +16558,7 @@ function renderWideRetentionSection(wrc) {
   const mapped = new Set(Object.values(CSV_STATE.mapping || {}).filter(v => v && v !== "__ignore__"));
   const canActions = mapped.has("actions"), canInstalls = mapped.has("installs");
   const tableRows = curve.map(p =>
-    `<tr><td class="tnum">D${p.day}</td><td class="tnum">${fmtPct(p.retentionRate)}</td><td class="tnum">${(p.survivors || 0).toLocaleString()}</td></tr>`
+    `<tr><td class="tnum">D${p.day}</td><td class="tnum" style="text-align:right;">${fmtPct(p.retentionRate)}</td><td class="tnum" style="text-align:right;">${(p.survivors || 0).toLocaleString()}</td></tr>`
   ).join("");
   const anchorToggle = (canActions && canInstalls) ? `
     <div class="ab-pillgroup" style="margin-bottom:10px;">
@@ -17808,7 +17814,7 @@ function buildFunnelCache(){
 // MON_FILTER_STATE 시그니처(필터 변경 시 캐시 무효화용)
 function MON_FILTER_KEY(){
   const f=MON_FILTER_STATE||{};
-  return `${f.dateStart||""}~${f.dateEnd||""}|${f.platform||"all"}|${f.countries?[...f.countries].sort().join(","):"*"}|${f.channels?[...f.channels].sort().join(","):"*"}`;
+  return `${f.dateStart||""}~${f.dateEnd||""}|${f.platforms?[...f.platforms].sort().join(","):"*"}|${f.countries?[...f.countries].sort().join(","):"*"}|${f.channels?[...f.channels].sort().join(","):"*"}`;
 }
 const FUNNEL_FIELD_LABEL = { channel:"채널", country:"국가", platform:"OS" };
 // §1 주간 변화 — 최근 주 대비 가장 많이 떨어진 전환 단계
@@ -19415,8 +19421,6 @@ function bindCSVPageHandlers() {
       const key = el.dataset.monFilter;
       if (key === "dateStart" || key === "dateEnd") {
         MON_FILTER_STATE[key] = el.value || null;
-      } else if (key === "platform") {
-        MON_FILTER_STATE.platform = el.value;
       }
       _monInvalidateCaches();
       navigate("5-2");
@@ -19467,7 +19471,7 @@ function bindCSVPageHandlers() {
   document.querySelectorAll("[data-mon-filter-reset]").forEach(btn => {
     btn.addEventListener("click", () => {
       MON_FILTER_STATE.dateStart = null; MON_FILTER_STATE.dateEnd = null;
-      MON_FILTER_STATE.platform  = "all";
+      MON_FILTER_STATE.platforms = null;
       MON_FILTER_STATE.countries = null;  MON_FILTER_STATE.channels = null;
       _monInvalidateCaches();
       navigate("5-2");
@@ -19480,6 +19484,7 @@ function bindCSVPageHandlers() {
     toggle.querySelectorAll("button[data-cohort]").forEach(btn => {
       btn.addEventListener("click", () => {
         CSV_STATE.selectedCohort = parseInt(btn.dataset.cohort, 10);
+        saveCsvToTool(ACTIVE_CSV_TOOL);
         navigate("5-2");
       });
     });
@@ -22522,7 +22527,7 @@ function loadCsvFromTool(toolId) {
   CSV_STATE.raw = snap?.raw || [];
   CSV_STATE.headers = snap?.headers || [];
   CSV_STATE.mapping = snap ? { ...snap.mapping } : {};
-  CSV_STATE.selectedCohort = snap?.selectedCohort || 7;
+  CSV_STATE.selectedCohort = snap?.selectedCohort ?? CSV_STATE.selectedCohort ?? 7;
 }
 
 function resetCsvForTool(toolId) {
@@ -22675,7 +22680,7 @@ function _applyDemoToCsvState(toolId) {
   const b = DEMO_BUILDERS[toolId]; if (!b) return;
   const d = b();
   CSV_STATE.fileName = d.fileName; CSV_STATE.raw = d.rows; CSV_STATE.headers = d.headers;
-  CSV_STATE.mapping = {}; d.headers.forEach(h => CSV_STATE.mapping[h] = h); CSV_STATE.selectedCohort = 7;
+  CSV_STATE.mapping = {}; d.headers.forEach(h => CSV_STATE.mapping[h] = h); if (CSV_STATE.selectedCohort == null) CSV_STATE.selectedCohort = 7;
   ACTIVE_CSV_TOOL = toolId;
   if (toolId === "5-18" && d.colMap) MMM_METH_STATE.colMap = d.colMap;
 }
