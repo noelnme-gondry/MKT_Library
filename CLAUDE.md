@@ -260,6 +260,7 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 - **설계 스펙 먼저, 구현은 단순 모델로 핸드오프** (본 세션·§16 docs/*.md 반복): 비용 큰 작업은 파일:줄·옵션·함정·검증까지 자체완결형 스펙 문서(`docs/*.md`)로 먼저 확정한 뒤 실행을 저비용 실행자에 위임. 스펙엔 ① design-only 항목은 ⛔ '결정 전 코드 금지' 박스로 3중 게이트 ② 검증 자산은 실재(`/tmp` 파일·in-page `window.run*Tests()`)만 기준으로, 없는 파일은 '신규 작성'으로 분리 ③ trim 같은 미세 동작 비대칭은 근거 1줄로 못박을 것(단순 모델이 복붙하다 모순 일으킴).
 - **정직한 UI 카피·인증** (PR #171): 동작 안 하거나 §2 클라이언트-100% 보안 모델과 모순되는 마케팅 문구·가짜 로그인 금지. '클라우드 자동 백업' 카피·setTimeout만 있는 mock Google 로그인을 사용자가 정면 거부 → 실동선(Instagram DM)·'서버 미전송'을 보안 강점으로 노출. §9 정직성('거짓 숫자 금지')이 외부 카피·인증까지 확장.
 - **raw 비율 거부 + 모수 명시 + 절대 인원 병기** (PR #168·#169·#171): 진단은 '비율만'이 아니라 ① 평균/벤치마크 대비 ② 언제 꺾였나(WoW·급락일·변화점) ③ 세그먼트 best/worst로. 항상-병목 단계(CTR)는 기본 제외+단계 선택권. 비율 지표는 모수(설치 vs 가입) 토글하고 %와 함께 절대 인원(잔존 유저 수)을 병기('몇 %'보다 '몇 명').
+- **cohort-window 지표를 캘린더-일별 분석에 섞지 말 것** (#4 페이싱 결정): `revenue_d7`(설치일+7일 코호트-lag)은 "그 날 발생한 매출"이 아니므로 일별 페이싱/착지 예측에 부적합 → 매출을 페이싱에서 제거하고 일별(캘린더) 매출 컬럼 별도 업로드 권장. **지표의 시간 의미(코호트-lag vs 캘린더-일별)가 분석 단위와 맞는지 먼저 확인.** 요일 계절성 보정은 **평일/주말 2그룹·additive(요일 평균 빼기)·기본 OFF 토글** 선호(7요일 full·z-score는 표본 부담).
 
 ---
 
@@ -605,7 +606,7 @@ self-update 메커니즘이 사라지면 하네스가 정체됨.
 
 - **★ 운영 대시보드 통합 — 완료 (PR#162~166, 2026-06-20)**: Phase 1(D30~D360 PU/Ret 확장)·Phase 5(sticky 압축바)·Phase 4(게이트 연결표+탭 🔒)·Phase 3(9→8탭, 장기가치 통합)·Phase 2(Wide 리텐션 엔진, 효율 CSV 단일 grain). `MON_TABS`에 `requiresAny` 필드·`isTabUnlocked()` 헬퍼·`WIDE_RET_CACHE`·`buildWideRetentionCache()` 추가됨.
 - **Q3 작업 (다른 모델 실행 예정, 스펙 확정)**: `docs/q3-sticky-progressive-cohort-maturation.md` — ① WS1 5-2 상단 sticky 필터 바(날짜/platform/국가/channel, `getMappedRowsForMon` 실제 필터링) ② WS2 CSV 업로드 점진 공개 + `MON_FEATURES` SSOT 데이터×기능 capability 매트릭스 ③ WS3 코호트 Revenue/Retention/PUR Dn 동적 확장 + 마투레이션 예측(성숙 코호트 완성비→Predict D90/D180, §8 가드레일). 권장 순서 WS2→WS1→WS3(3-A/B/C 분할).
-- **운영 대시보드 8개 피드백 실행 스펙** (`docs/operational-dashboard-fixes-spec.md`, 적대 검수 반영 완료): #1 Platform 멀티셀렉트·#2 코호트 토글 버그·#5 LTV D360·#6 표정렬·#7 색상확인은 결정 불요(즉시 착수), #3 스코어카드·#4 페이싱·#8 퍼널 요일보정은 design-only(⛔ 결정 게이트). 단순 모델 핸드오프용. 권장 묶음: #1·#2·#6(+#7 확인) 1 PR → #5 → 설계 결정 후 #3·#4·#8.
+- **운영 대시보드 8개 피드백 실행 스펙** (`docs/operational-dashboard-fixes-spec.md`, 적대 검수 + **설계 결정 완료 2026-06-22**): 8개 전부 구현 착수 가능. 결정 — #3 혼합차트·cost클릭·있는만큼+경고 / #4 최근4~8주·산식A·가입구매 라벨토글·**설치/액션만(매출은 페이싱서 제거, 일별매출 별도 업로드 추후)** / #8 C(WoW강조+토글)·평일주말 2그룹·additive·기본OFF. **남은 결정 1건 = #5 작업A 예측모델(옵션 B 비율법/C 곡선폴백)**. 권장 묶음: #1·#2·#6(+#7 확인) 1 PR → #5(B·C) → #3·#4·#8.
 - **남은 UI 작업**: ① SOP 콘텐츠 보강(1-2~4-4 인라인, 정확성 검수 기반·진행방식 미정) ② MMM.
 - **MMM = Tinder KR Reg/React Marketing-Response Regression** 스펙(`docs/backlog.md` § B)이 정식 요구사항.
   착수 전 범위 확정 필요: 분석 파이프라인 실행 환경 + 결과 JSON을 본 대시보드(5-N)가 소비하는 연결 형태.
