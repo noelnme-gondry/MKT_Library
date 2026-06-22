@@ -606,7 +606,7 @@ self-update 메커니즘이 사라지면 하네스가 정체됨.
 
 - **★ 운영 대시보드 통합 — 완료 (PR#162~166, 2026-06-20)**: Phase 1(D30~D360 PU/Ret 확장)·Phase 5(sticky 압축바)·Phase 4(게이트 연결표+탭 🔒)·Phase 3(9→8탭, 장기가치 통합)·Phase 2(Wide 리텐션 엔진, 효율 CSV 단일 grain). `MON_TABS`에 `requiresAny` 필드·`isTabUnlocked()` 헬퍼·`WIDE_RET_CACHE`·`buildWideRetentionCache()` 추가됨.
 - **Q3 작업 (다른 모델 실행 예정, 스펙 확정)**: `docs/q3-sticky-progressive-cohort-maturation.md` — ① WS1 5-2 상단 sticky 필터 바(날짜/platform/국가/channel, `getMappedRowsForMon` 실제 필터링) ② WS2 CSV 업로드 점진 공개 + `MON_FEATURES` SSOT 데이터×기능 capability 매트릭스 ③ WS3 코호트 Revenue/Retention/PUR Dn 동적 확장 + 마투레이션 예측(성숙 코호트 완성비→Predict D90/D180, §8 가드레일). 권장 순서 WS2→WS1→WS3(3-A/B/C 분할).
-- **운영 대시보드 8개 피드백 실행 스펙** (`docs/operational-dashboard-fixes-spec.md`, 적대 검수 + **설계 결정 완료 2026-06-22**): 8개 전부 구현 착수 가능. 결정 — #3 혼합차트·cost클릭·있는만큼+경고 / #4 최근4~8주·산식A·가입구매 라벨토글·**설치/액션만(매출은 페이싱서 제거, 일별매출 별도 업로드 추후)** / #8 C(WoW강조+토글)·평일주말 2그룹·additive·기본OFF. **남은 결정 1건 = #5 작업A 예측모델(옵션 B 비율법/C 곡선폴백)**. 권장 묶음: #1·#2·#6(+#7 확인) 1 PR → #5(B·C) → #3·#4·#8.
+- **운영 대시보드 8개 피드백 실행 스펙** (`docs/operational-dashboard-fixes-spec.md`, 적대 검수 + **설계 결정 전부 완료 2026-06-22 — 미해결 없음**): 8개 전부 구현 착수 가능. 결정 — #3 혼합차트·cost클릭·있는만큼+경고 / #4 최근4~8주·산식A·가입구매 라벨토글·**설치/액션만(매출은 페이싱서 제거, 일별매출 별도 업로드 추후)** / #5 작업A=**비율법 우선+곡선 폴백(COHORT_MATURATION 재사용)** / #8 C(WoW강조+토글)·평일주말 2그룹·additive·기본OFF. 권장 착수 순서: #1·#2·#6(+#7 확인) 1 PR → #5 → #3·#4·#8.
 - **남은 UI 작업**: ① SOP 콘텐츠 보강(1-2~4-4 인라인, 정확성 검수 기반·진행방식 미정) ② MMM.
 - **MMM = Tinder KR Reg/React Marketing-Response Regression** 스펙(`docs/backlog.md` § B)이 정식 요구사항.
   착수 전 범위 확정 필요: 분석 파이프라인 실행 환경 + 결과 JSON을 본 대시보드(5-N)가 소비하는 연결 형태.
