@@ -19611,6 +19611,7 @@ async function navigate(id) {
   // Ops Dashboard 페이지 접근 제어 (단, 데모 모드는 키 없이도 미리보기 허용 — freemium 훅)
   if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid() && !(DEMO_STATE.tool && DEMO_STATE.page === id)) {
     content.innerHTML = pageAuthGate(id);
+    track("paywall_hit", { tool: id });
     setBreadcrumb(id);
     renderNav(id);
     bindAuthGateHandlers(id);
@@ -19673,7 +19674,40 @@ async function navigate(id) {
     window.scrollTo({ top: prevScrollY, behavior: "instant" });
   } else {
     window.scrollTo({ top: 0, behavior: "instant" });
+    // 실제 도구/페이지 진입만 추적(in-place 재렌더 toggle/filter는 제외). CSV 데이터 미전송.
+    track("tool_view", { tool: id || "home", title: (findMeta(id) && findMeta(id).title) || (id || "home") });
   }
+}
+
+/* ========== Analytics (GA4 이벤트) ========== */
+// ⚠ CSV 내용·수치·매핑값은 절대 전송하지 않는다 — 페이지 ID·도구명·버튼 종류 같은
+//   메타데이터만 (§2 클라이언트 100% 보안). gtag 미정의(애드블록·차단) 시 안전하게 no-op.
+function track(name, params) {
+  try { if (window.gtag) gtag("event", name, params || {}); } catch (e) {}
+}
+// 전역 위임 리스너 1개 — 기존 data-* 속성에서 이벤트를 추론(버튼마다 속성 안 붙여도 됨).
+// 향후 명시적 추적은 data-ga-event="..." 속성만 붙이면 자동 수집.
+function bindAnalytics() {
+  document.addEventListener("click", (e) => {
+    const t = e.target;
+    if (!t || !t.closest) return;
+    // 리드 전환 — Instagram DM
+    if (t.closest('a[href*="instagram.com/gondry"]')) { track("dm_click", { page: location.hash || "#" }); return; }
+    // 분석 실행 (핵심 전환)
+    const an = t.closest("[data-tool-analyze]");
+    if (an) { track("run_analysis", { tool: an.dataset.toolAnalyze || "" }); return; }
+    // PNG 다운로드
+    const png = t.closest("[data-pngdownload]");
+    if (png) { track("download", { type: "png", name: png.dataset.pngname || png.dataset.pngdownload || "" }); return; }
+    // CSV 다운로드 (data-*csv* 속성 보유 버튼 — 명칭이 다양해 dataset 키로 탐지)
+    const btn = t.closest("button, a");
+    if (btn && Object.keys(btn.dataset || {}).some(k => /csv/i.test(k))) {
+      track("download", { type: "csv", name: Object.keys(btn.dataset).find(k => /csv/i.test(k)) || "" }); return;
+    }
+    // 명시적 선언 (향후 확장)
+    const ga = t.closest("[data-ga-event]");
+    if (ga) track(ga.dataset.gaEvent, { label: ga.dataset.gaLabel || "", page: location.hash || "#" });
+  }, { passive: true });
 }
 
 /* ========== Behaviors ========== */
@@ -23072,6 +23106,7 @@ function demoKeyForPage(pageId) {
 }
 function enterDemo(toolId) {
   if (!DEMO_BUILDERS[toolId]) return;
+  track("demo_start", { tool: toolId });
   DEMO_STATE.tool = toolId;
   DEMO_STATE.page = (location.hash || "").replace(/^#/, "") || "home";
   if (toolId === "5-18") MMM_METH_STATE.stage = "diagnose";
@@ -23410,6 +23445,7 @@ function handleCSVFile(file, toolId) {
       CSV_STATE.headers = results.meta.fields || [];
       CSV_STATE.mapping = autoMapHeaders(CSV_STATE.headers);
       saveCsvToTool(targetTool);
+      track("csv_upload", { tool: targetTool, rows: (CSV_STATE.raw || []).length });
       navigate(targetTool);
     },
     error: (err) => {
@@ -23550,6 +23586,7 @@ async function init() {
   bindBrandClick();
   bindCmdk();               // ⌘K 명령 팔레트 (전역)
   bindLeadModalHandlers();  // Lead Capture 모달 (전역)
+  bindAnalytics();          // GA4 이벤트 위임 리스너 (전역)
   navigate(hash || "home");
 
   // 브라우저 뒤로가기 / 앞으로가기 대응
