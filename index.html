@@ -6445,6 +6445,13 @@ function monAllocBody() {
             <button class="ab-pill" data-normalize="robust">Robust z</button>
           </div>
           <div class="ab-pillgroup">
+            <span class="ab-pillgroup-label">외삽 한도 (Cap)</span>
+            <button class="ab-pill" data-extrapolate="1.0">1.0x (엄격)</button>
+            <button class="ab-pill" data-extrapolate="1.3">1.3x (보통)</button>
+            <button class="ab-pill" data-extrapolate="1.5">1.5x (공격적)</button>
+            <button class="ab-pill" data-extrapolate="fallback">비례배분 (무제한)</button>
+          </div>
+          <div class="ab-pillgroup">
             <span class="ab-pillgroup-label">표시</span>
             <button class="ab-pill" data-pointtoggle="show">점 + 추세선</button>
             <button class="ab-pill" data-pointtoggle="hide">추세선만</button>
@@ -6569,6 +6576,7 @@ function monAllocBody() {
                 <tr>
                   <th>채널 · 이전 관측 합산</th>
                   <th>배분 Cost (편집 가능)</th>
+                  <th>최소/최대 제약 (Min ~ Max)</th>
                   <th>예상 결과</th>
                   <th>예상 평균 CPR</th>
                   <th>비중</th>
@@ -7082,11 +7090,67 @@ const ALLOC_MATH = (() => {
     }
   }
 
+  function predictSafeCpr(ch, cost) {
+    if (!ch || !ch.model) return null;
+    let evalCost = cost;
+    if (ch.poly2Shape) {
+      if (ch.poly2Shape.shape === "bell" && evalCost > ch.poly2Shape.vertex) {
+        evalCost = ch.poly2Shape.vertex;
+      } else if (ch.poly2Shape.shape === "u" && evalCost < ch.poly2Shape.vertex) {
+        evalCost = ch.poly2Shape.vertex;
+      }
+    }
+    if (evalCost > ch.xMax) {
+      evalCost = ch.xMax;
+    }
+    const cpr = ch.model.predict(evalCost);
+    if (isFinite(cpr) && cpr > 0) return cpr;
+    const cprFallback = ch.model.predict(ch.xMax);
+    if (isFinite(cprFallback) && cprFallback > 0) return cprFallback;
+    return null;
+  }
+
   return {
     fitLinear, fitLog, fitPoly2, fitPower, fitBest, calcR2, isDescending, calcDateWeights,
-    removeOutliers, calcNormContext, normalizeXY, getAxisLabels, detectPoly2Shape,
+    removeOutliers, calcNormContext, normalizeXY, getAxisLabels, detectPoly2Shape, predictSafeCpr,
   };
 })();
+
+// ALLOC poly2 골든 테스트 — 종모양/U자형 감지 + 극점/외삽 안전 CPR (§8 결정론·합성 유닛테스트)
+function runAllocPoly2Tests() {
+  const A = ALLOC_MATH;
+  let pass = 0, fail = 0;
+  const ok = (l, c) => { if (c) { pass++; console.log("  ✓", l); } else { fail++; console.error("  ✗", l); } };
+  const approx = (a, b, e) => Math.abs(a - b) <= (e || 1e-9);
+  const poly2 = (a, b, c) => ({ type: "Poly2", predict: x => a * x * x + b * x + c, params: { a, b, c } });
+
+  console.log("[ALLOC poly2] detectPoly2Shape + predictSafeCpr");
+  // T1 bell(a<0): vertex=-b/2a, 위로 볼록 → 정점이 최대
+  const mBell = poly2(-1, 10, 0), sBell = A.detectPoly2Shape(mBell);
+  ok("T1 bell 감지·vertex=5", sBell && sBell.shape === "bell" && approx(sBell.vertex, 5));
+  // T2 u(a>0)
+  const mU = poly2(1, -10, 30), sU = A.detectPoly2Shape(mU);
+  ok("T2 u 감지·vertex=5", sU && sU.shape === "u" && approx(sU.vertex, 5));
+  // T3 비-Poly2 / a=0 → null
+  ok("T3 비-Poly2 → null", A.detectPoly2Shape({ type: "Linear", params: { a: 1, b: 0 } }) === null);
+  ok("T3 a=0 → null", A.detectPoly2Shape(poly2(0, 5, 1)) === null);
+  // T4 bell: cost>vertex 클램프(하강 착시 차단), cost<vertex 비클램프
+  const chBell = { model: mBell, poly2Shape: sBell, xMax: 20 };
+  ok("T4 bell cost>vertex 클램프 → predict(5)=25", approx(A.predictSafeCpr(chBell, 8), 25));
+  ok("T4 bell cost<vertex 비클램프 → predict(3)=21", approx(A.predictSafeCpr(chBell, 3), 21));
+  // T5 u: cost<vertex 클램프, cost>vertex 비클램프
+  const chU = { model: mU, poly2Shape: sU, xMax: 20 };
+  ok("T5 u cost<vertex 클램프 → predict(5)=5", approx(A.predictSafeCpr(chU, 2), 5));
+  ok("T5 u cost>vertex 비클램프 → predict(8)=14", approx(A.predictSafeCpr(chU, 8), 14));
+  // T6 xMax 하드 클램프(관측 범위 밖 외삽 차단)
+  ok("T6 cost>xMax 클램프 → predict(20)=230", approx(A.predictSafeCpr(chU, 25), 230));
+  // T7 결정론
+  ok("T7 결정론(동일입력=동일출력)", A.predictSafeCpr(chBell, 8) === A.predictSafeCpr(chBell, 8));
+
+  console.log(`[ALLOC poly2] ${pass}/${pass + fail} ` + (fail === 0 ? "ALL PASS ✓" : "FAILED ✗"));
+  return fail === 0;
+}
+if (typeof window !== "undefined") { window.runAllocPoly2Tests = runAllocPoly2Tests; window.ALLOC_MATH = ALLOC_MATH; }
 
 /* ========== Budget Allocator · 채널 시뮬레이션 ==========
    추세선에 현재/목표 Cost를 넣어 예측 CPR/Results/Revenue/ROAS와
@@ -7196,6 +7260,9 @@ const ALLOC_STATE = {
   budgetPeriod: "daily",   // daily | monthly (월예산이면 ÷30으로 일예산 환산)
   allocMode: "c",          // c: 절대 CPR/ROAS 가중 (기본, 1/avgCPR 비례) | b: 한계효용 그리디 (고급·실험적)
   allocOverrides: {},      // { channel: fixedCost } — 사용자가 수동 입력한 채널별 배분액 (고정)
+  allocMinSpend: {},       // { channel: minSpend } — 최소 집행 제약
+  allocMaxSpend: {},       // { channel: maxSpend } — 최대 집행 제약
+  extrapolateMode: "1.3",  // "1.0" | "1.3" | "1.5" | "fallback" — 외삽 한도 모드
   metric: null,            // 성과 지표 (installs | actions | pu_d7)
   selectedChannels: null,  // null = 자동 상위 6, Set = 선택된 채널들
   recentDays: 28,          // 집계·강조 윈도우 (일) — 기본 4주
@@ -19687,7 +19754,7 @@ async function navigate(id) {
   } else {
     window.scrollTo({ top: 0, behavior: "instant" });
     // 실제 도구/페이지 진입만 추적(in-place 재렌더 toggle/filter는 제외). CSV 데이터 미전송.
-    track("tool_view", { tool: id || "home", title: (findMeta(id) && findMeta(id).title) || (id || "home") });
+    track("tool_view", { tool: id || "home", title: (findMeta(id) && findMeta(id).title) || (id || "home"), content_type: gaContentType(id), group: (id || "home").split("-")[0] });
   }
 }
 
@@ -19697,6 +19764,30 @@ async function navigate(id) {
 function track(name, params) {
   try { if (window.gtag) gtag("event", name, params || {}); } catch (e) {}
 }
+// 페이지 분류: SOP 문서(1~4-x) vs 대시보드 도구(5-x) vs 홈. GA에서 분리 분석용.
+function gaContentType(id) {
+  if (!id || id === "home") return "home";
+  if (TOOL_REQUIRED_FIELDS[id] || /^5-/.test(id)) return "tool";
+  if (/^[1-4]-/.test(id)) return "sop";
+  return "page";
+}
+// 스크롤 읽기 깊이 — 페이지(hash)별 25/50/75/100% 임계값을 한 번씩만 발화.
+let _gaScroll = { page: "", fired: null };
+let _gaScrollTick = false;
+function _gaScrollCheck() {
+  const page = location.hash || "#";
+  if (page !== _gaScroll.page) _gaScroll = { page, fired: new Set() };
+  const max = document.documentElement.scrollHeight - window.innerHeight;
+  if (max < 200) return; // 한 화면에 들어오는 짧은 페이지는 스킵
+  const pct = Math.min(100, Math.round((window.scrollY / max) * 100));
+  const id = page.replace(/^#/, "");
+  [25, 50, 75, 100].forEach(th => {
+    if (pct >= th && !_gaScroll.fired.has(th)) {
+      _gaScroll.fired.add(th);
+      track("scroll_depth", { page, percent: th, content_type: gaContentType(id) });
+    }
+  });
+}
 // 전역 위임 리스너 1개 — 기존 data-* 속성에서 이벤트를 추론(버튼마다 속성 안 붙여도 됨).
 // 향후 명시적 추적은 data-ga-event="..." 속성만 붙이면 자동 수집.
 function bindAnalytics() {
@@ -19705,6 +19796,9 @@ function bindAnalytics() {
     if (!t || !t.closest) return;
     // 리드 전환 — Instagram DM
     if (t.closest('a[href*="instagram.com/gondry"]')) { track("dm_click", { page: location.hash || "#" }); return; }
+    // SOP 코드/콘텐츠 복사 (유용성 신호)
+    const cp = t.closest(".copy-btn");
+    if (cp) { track("sop_copy", { page: location.hash || "#", target: cp.dataset.copyTarget || "" }); return; }
     // 분석 실행 (핵심 전환)
     const an = t.closest("[data-tool-analyze]");
     if (an) { track("run_analysis", { tool: an.dataset.toolAnalyze || "" }); return; }
@@ -19719,6 +19813,12 @@ function bindAnalytics() {
     // 명시적 선언 (향후 확장)
     const ga = t.closest("[data-ga-event]");
     if (ga) track(ga.dataset.gaEvent, { label: ga.dataset.gaLabel || "", page: location.hash || "#" });
+  }, { passive: true });
+  // 스크롤 읽기 깊이 (rAF 스로틀)
+  window.addEventListener("scroll", () => {
+    if (_gaScrollTick) return;
+    _gaScrollTick = true;
+    requestAnimationFrame(() => { _gaScrollTick = false; _gaScrollCheck(); });
   }, { passive: true });
 }
 
@@ -20229,14 +20329,18 @@ function renderVizCharts() {
    - 추세선이 음수 CPR을 예측하면 그 채널은 skip (한계효용 종료)
    - 모든 채널에서 Δresults ≤ 0이면 종료, 잔여 금액 unallocated로 반환
    - selectedChannels Set이면 그 채널만 분배 대상 (산점도 선택 기준) */
-function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, overrides = {}, stepRatio = 0.002 }) {
+function calculateAllocationModeB({
+  modelsMap, totalBudget, selectedChannels,
+  overrides = {}, minSpends = {}, maxSpends = {},
+  extrapolateMode = "1.3", currency = "KRW", stepRatio = 0.002
+}) {
   if (!modelsMap || totalBudget <= 0) return { items: [], unallocated: totalBudget || 0, overspent: false, totalAllocated: 0 };
 
-  // 1) 채널을 locked(수동 입력)와 greedy(자동 분배 대상)으로 분리
   const lockedChannels = [];
   const greedyChannels = [];
   let fixedCostSum = 0;
 
+  // 1) locked(수동 고정)과 greedy(자동 분배 대상) 채널 분리
   for (const [ch, meta] of modelsMap) {
     if (!meta || !meta.model) continue;
     if (selectedChannels && selectedChannels.size > 0 && !selectedChannels.has(ch)) continue;
@@ -20252,11 +20356,12 @@ function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, ov
       });
       fixedCostSum += cost;
     } else {
+      const min = Number(minSpends[ch]) || 0;
+      const max = maxSpends[ch] != null && maxSpends[ch] >= 0 ? Math.max(min, Number(maxSpends[ch])) : null;
       greedyChannels.push({
         channel: ch, model: meta.model, xMin: meta.xMin, xMax: meta.xMax, poly2Shape: shape,
         cost: 0, results: 0, locked: false,
-        // 옵션 A · 단조 비감소 marginal CPR 강제용
-        // = 채널별 "지금까지 본 최소 marginal results". 이후 step은 이 이상으로 못 늘어남.
+        minSpend: min, maxSpend: max,
         minMarginalSoFar: Infinity,
       });
     }
@@ -20266,33 +20371,69 @@ function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, ov
   const overspent = fixedCostSum > totalBudget;
   let remaining = Math.max(0, totalBudget - fixedCostSum);
 
-  // 2) 남은 예산이 있으면 greedy 채널에 한계효용 그리디
+  // 2) 최소 집행 제약(minSpend) 선배분
   if (greedyChannels.length > 0 && remaining > 0) {
-    const step = remaining * stepRatio;
+    const minSpendSum = greedyChannels.reduce((s, c) => s + c.minSpend, 0);
+    if (minSpendSum > 0) {
+      if (remaining >= minSpendSum) {
+        for (const c of greedyChannels) {
+          c.cost = c.minSpend;
+          const cpr = ALLOC_MATH.predictSafeCpr(c, c.cost);
+          c.results = (cpr && cpr > 0) ? c.cost / cpr : 0;
+        }
+        remaining -= minSpendSum;
+      } else {
+        // 남은 예산이 최소 제약 합계보다 부족하면 비율 분배 후 종료
+        for (const c of greedyChannels) {
+          c.cost = remaining * (c.minSpend / minSpendSum);
+          const cpr = ALLOC_MATH.predictSafeCpr(c, c.cost);
+          c.results = (cpr && cpr > 0) ? c.cost / cpr : 0;
+        }
+        remaining = 0;
+      }
+    }
+  }
+
+  // 3) 남은 예산이 있으면 한계효용 그리디 진행
+  if (greedyChannels.length > 0 && remaining > 0) {
+    // 통화 단위별 최소 스텝 정의 (KRW: 10원, USD: 0.01)
+    const minStep = (currency === "USD" || currency === "usd") ? 0.01 : 10;
+    const step = Math.max(minStep, remaining * stepRatio);
+
     if (step > 0) {
-      const maxIters = Math.ceil(1 / stepRatio) + 10;
+      const maxIters = Math.ceil(remaining / step) + 20;
       let iter = 0;
       while (remaining >= step && iter < maxIters) {
         let bestCh = null;
         let bestMarginal = 0;
         let bestRawMarginal = 0;
+
         for (const ch of greedyChannels) {
           const newCost = ch.cost + step;
-          // 1) 관측 cost 상한 초과 차단 (외삽 영역 사용 안 함)
-          if (newCost > ch.xMax) continue;
-          // 2) Poly2 종모양: vertex 이후 영역 차단 (CPR 감소 = 외삽 위험)
-          if (ch.poly2Shape && ch.poly2Shape.shape === "bell" && newCost > ch.poly2Shape.vertex) continue;
-          // 3) Poly2 U자형: vertex 이전 영역 차단
-          if (ch.poly2Shape && ch.poly2Shape.shape === "u" && newCost < ch.poly2Shape.vertex) continue;
 
-          const cpr = ch.model.predict(newCost);
-          if (!isFinite(cpr) || cpr <= 0) continue;
+          // 제약 1: 개별 최대 제약 (maxSpend) 또는 외삽 한도 (xMax * factor) 적용
+          let cap = ch.maxSpend;
+          if (cap == null) {
+            if (extrapolateMode === "1.0") cap = ch.xMax;
+            else if (extrapolateMode === "1.3") cap = ch.xMax * 1.3;
+            else if (extrapolateMode === "1.5") cap = ch.xMax * 1.5;
+            else cap = Infinity;
+          }
+          if (newCost > cap) continue;
+
+          // 제약 2: Poly2 종모양/U자형 극점 제약
+          if (ch.poly2Shape) {
+            if (ch.poly2Shape.shape === "bell" && newCost > ch.poly2Shape.vertex) continue;
+            if (ch.poly2Shape.shape === "u" && newCost < ch.poly2Shape.vertex) continue;
+          }
+
+          const cpr = ALLOC_MATH.predictSafeCpr(ch, newCost);
+          if (!cpr || cpr <= 0) continue;
           const newResults = newCost / cpr;
           const rawMarginal = newResults - ch.results;
           if (rawMarginal <= 0) continue;
-          // 옵션 A · 단조 비감소 marginal CPR 강제
-          // = marginal results는 한 번 줄어들면 다시 늘어날 수 없다 (diminishing returns 락)
-          // → Log/Power 곡선이 끝에서 marginal이 다시 좋아지는 인공물(artifact) 차단
+
+          // 단조성 잠금 (diminishing returns 강제)
           const marginalResults = Math.min(rawMarginal, ch.minMarginalSoFar);
           if (marginalResults > bestMarginal) {
             bestMarginal = marginalResults;
@@ -20300,21 +20441,55 @@ function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, ov
             bestCh = ch;
           }
         }
+
         if (!bestCh) break;
+
         bestCh.cost += step;
-        const cpr = bestCh.model.predict(bestCh.cost);
+        const cpr = ALLOC_MATH.predictSafeCpr(bestCh, bestCh.cost);
         bestCh.results = bestCh.cost / cpr;
-        // 단조 보정 기준 갱신: 다음 step부터 이 값을 상한으로 사용
         bestCh.minMarginalSoFar = Math.min(bestCh.minMarginalSoFar, bestRawMarginal);
         remaining -= step;
         iter++;
       }
+
+      // 미세 잔액 (Sweep) 처리
+      if (remaining > 0 && remaining < step) {
+        let bestCh = null;
+        let bestEff = -Infinity;
+        for (const ch of greedyChannels) {
+          const cpr = ALLOC_MATH.predictSafeCpr(ch, ch.cost);
+          if (cpr && cpr > 0) {
+            const eff = 1 / cpr;
+            if (eff > bestEff) { bestEff = eff; bestCh = ch; }
+          }
+        }
+        if (bestCh) {
+          bestCh.cost += remaining;
+          const cpr = ALLOC_MATH.predictSafeCpr(bestCh, bestCh.cost);
+          bestCh.results = bestCh.cost / cpr;
+          remaining = 0;
+        }
+      }
+    }
+  }
+
+  // 4) 한계효용 종료(모든 채널 한도 도달 등) 후 남은 초과 예산 비례 배분 (fallback)
+  if (greedyChannels.length > 0 && remaining > 0 && extrapolateMode !== "1.0") {
+    const sumGreedyCost = greedyChannels.reduce((s, c) => s + c.cost, 0);
+    if (sumGreedyCost > 0) {
+      for (const c of greedyChannels) {
+        const extra = remaining * (c.cost / sumGreedyCost);
+        c.cost += extra;
+        const cpr = ALLOC_MATH.predictSafeCpr(c, c.cost);
+        c.results = (cpr && cpr > 0) ? c.cost / cpr : c.results;
+      }
+      remaining = 0;
     }
   }
 
   const allChannels = [...lockedChannels, ...greedyChannels];
   const totalAllocated = allChannels.reduce((a, ch) => a + ch.cost, 0);
-  // cost=0 채널도 결과에 포함 (사용자가 수동으로 강제 분배 가능하도록 표에 노출)
+
   const items = allChannels
     .map(ch => ({
       channel: ch.channel,
@@ -20327,7 +20502,7 @@ function calculateAllocationModeB({ modelsMap, totalBudget, selectedChannels, ov
       xMax: ch.xMax,
       poly2Shape: ch.poly2Shape,
     }))
-    .sort((a, b) => b.cost - a.cost);  // cost=0 채널은 자연스럽게 표 하단
+    .sort((a, b) => b.cost - a.cost);
 
   return { items, unallocated: Math.max(0, remaining), overspent, totalAllocated, lockedTotal };
 }
@@ -20420,6 +20595,12 @@ function bindStaticAllocatorControls() {
       queueAllocatorRender();
     });
   });
+  container.querySelectorAll(".ab-pill[data-extrapolate]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      ALLOC_STATE.extrapolateMode = btn.dataset.extrapolate;
+      queueAllocatorRender();
+    });
+  });
 
   container.dataset.bound = "1";
 }
@@ -20462,6 +20643,8 @@ function updateAllocatorPillStates() {
     btn.classList.toggle("active", btn.dataset.strength === outlierStrength));
   document.querySelectorAll(".ab-pill[data-normalize]").forEach(btn =>
     btn.classList.toggle("active", btn.dataset.normalize === ALLOC_STATE.normalizeMode));
+  document.querySelectorAll(".ab-pill[data-extrapolate]").forEach(btn =>
+    btn.classList.toggle("active", btn.dataset.extrapolate === (ALLOC_STATE.extrapolateMode || "1.3")));
 
   const strengthGroup = document.getElementById("outlier-strength-group");
   if (strengthGroup) {
@@ -21993,11 +22176,18 @@ function refreshAllocationResults() {
   const result = mode === "c"
     ? calculateAllocationModeC({
         modelsMap, totalBudget: dailyBudget, selectedChannels: selected,
-        overrides: ALLOC_STATE.allocOverrides, metric,
+        overrides: ALLOC_STATE.allocOverrides,
+        minSpends: ALLOC_STATE.allocMinSpend || {},
+        maxSpends: ALLOC_STATE.allocMaxSpend || {},
+        metric,
       })
     : calculateAllocationModeB({
         modelsMap, totalBudget: dailyBudget, selectedChannels: selected,
         overrides: ALLOC_STATE.allocOverrides,
+        minSpends: ALLOC_STATE.allocMinSpend || {},
+        maxSpends: ALLOC_STATE.allocMaxSpend || {},
+        extrapolateMode: ALLOC_STATE.extrapolateMode || "1.3",
+        currency: ALLOC_STATE.currency || AB_STATE.currency || "KRW",
       });
 
   const { items, unallocated, overspent, totalAllocated, lockedTotal } = result;
@@ -22023,8 +22213,21 @@ function renderAllocScenario({ modelsMap, selected, metric, mode, dailyBudget })
   const mults = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
   const runAt = (budget) => {
     const r = mode === "c"
-      ? calculateAllocationModeC({ modelsMap, totalBudget: budget, selectedChannels: selected, overrides: ALLOC_STATE.allocOverrides, metric })
-      : calculateAllocationModeB({ modelsMap, totalBudget: budget, selectedChannels: selected, overrides: ALLOC_STATE.allocOverrides });
+      ? calculateAllocationModeC({
+          modelsMap, totalBudget: budget, selectedChannels: selected,
+          overrides: ALLOC_STATE.allocOverrides,
+          minSpends: ALLOC_STATE.allocMinSpend || {},
+          maxSpends: ALLOC_STATE.allocMaxSpend || {},
+          metric,
+        })
+      : calculateAllocationModeB({
+          modelsMap, totalBudget: budget, selectedChannels: selected,
+          overrides: ALLOC_STATE.allocOverrides,
+          minSpends: ALLOC_STATE.allocMinSpend || {},
+          maxSpends: ALLOC_STATE.allocMaxSpend || {},
+          extrapolateMode: ALLOC_STATE.extrapolateMode || "1.3",
+          currency: ALLOC_STATE.currency || AB_STATE.currency || "KRW",
+        });
     const totResults = r.items.reduce((s, it) => s + (it.results || 0), 0);
     const totCost = r.totalAllocated || r.items.reduce((s, it) => s + (it.cost || 0), 0);
     const avgCpr = totResults > 0 ? totCost / totResults : null; // 내부 CPR
@@ -22205,7 +22408,10 @@ function renderAllocationTotalCard(payload) {
    각 채널의 관측 기간 평균 CPR 기준으로 1/avgCPR 가중치 분배.
    외삽 위험 없음(추세선 모델 사용 안 함, 평균값 기준).
    사용자 직관: "CPR이 낮은 채널에 비례적으로 더 분배" */
-function calculateAllocationModeC({ modelsMap, totalBudget, selectedChannels, overrides = {}, metric }) {
+function calculateAllocationModeC({
+  modelsMap, totalBudget, selectedChannels,
+  overrides = {}, minSpends = {}, maxSpends = {}, metric
+}) {
   if (!modelsMap || totalBudget <= 0) return { items: [], unallocated: totalBudget || 0, overspent: false, totalAllocated: 0 };
 
   const lockedChannels = [];
@@ -22216,13 +22422,14 @@ function calculateAllocationModeC({ modelsMap, totalBudget, selectedChannels, ov
     if (!meta) continue;
     if (selectedChannels && selectedChannels.size > 0 && !selectedChannels.has(ch)) continue;
 
+    const shape = ALLOC_MATH.detectPoly2Shape(meta.model);
     if (overrides[ch] != null && overrides[ch] >= 0) {
       const cost = Number(overrides[ch]);
-      const cpr = meta.model ? meta.model.predict(cost) : null;
+      const cpr = meta.model ? ALLOC_MATH.predictSafeCpr(meta, cost) : null;
       const results = (isFinite(cpr) && cpr > 0 && cost > 0) ? cost / cpr : 0;
       lockedChannels.push({
         channel: ch, cost, results, locked: true,
-        xMin: meta.xMin, xMax: meta.xMax, poly2Shape: ALLOC_MATH.detectPoly2Shape(meta.model),
+        xMin: meta.xMin, xMax: meta.xMax, poly2Shape: shape,
         model: meta.model, avgCPR: null,
       });
       fixedSum += cost;
@@ -22232,10 +22439,12 @@ function calculateAllocationModeC({ modelsMap, totalBudget, selectedChannels, ov
     // 관측 기간 평균 CPR
     const history = calcChannelHistorySummary(ch, metric);
     const avgCPR = history && history.avgCPR != null && history.avgCPR > 0 ? history.avgCPR : null;
+    const min = Number(minSpends[ch]) || 0;
+    const max = maxSpends[ch] != null && maxSpends[ch] >= 0 ? Math.max(min, Number(maxSpends[ch])) : Infinity;
     greedyChannels.push({
       channel: ch, cost: 0, results: 0, locked: false,
-      xMin: meta.xMin, xMax: meta.xMax, poly2Shape: ALLOC_MATH.detectPoly2Shape(meta.model),
-      model: meta.model, avgCPR,
+      xMin: meta.xMin, xMax: meta.xMax, poly2Shape: shape,
+      model: meta.model, avgCPR, minSpend: min, maxSpend: max,
     });
   }
 
@@ -22243,23 +22452,61 @@ function calculateAllocationModeC({ modelsMap, totalBudget, selectedChannels, ov
   const overspent = fixedSum > totalBudget;
   let remaining = Math.max(0, totalBudget - fixedSum);
 
-  // 1/avgCPR 가중 분배 (평균 CPR이 없는 채널은 제외)
-  const validForWeight = greedyChannels.filter(c => c.avgCPR != null && c.avgCPR > 0);
-  if (validForWeight.length > 0 && remaining > 0) {
-    const totalEfficiency = validForWeight.reduce((s, c) => s + 1 / c.avgCPR, 0);
-    if (totalEfficiency > 0) {
-      for (const c of validForWeight) {
+  // 1) 최소 집행 제약(minSpend) 선배분
+  if (greedyChannels.length > 0 && remaining > 0) {
+    const minSpendSum = greedyChannels.reduce((s, c) => s + c.minSpend, 0);
+    if (minSpendSum > 0) {
+      if (remaining >= minSpendSum) {
+        for (const c of greedyChannels) {
+          c.cost = c.minSpend;
+        }
+        remaining -= minSpendSum;
+      } else {
+        // 남은 예산이 최소 제약 합계보다 부족하면 비율 분배 후 종료
+        for (const c of greedyChannels) {
+          c.cost = remaining * (c.minSpend / minSpendSum);
+        }
+        remaining = 0;
+      }
+    }
+  }
+
+  // 2) 1/avgCPR 효율 가중 비분배 진행 (최대 제약 준수하면서 반복 배분)
+  let active = greedyChannels.filter(c => c.cost < c.maxSpend && c.avgCPR != null && c.avgCPR > 0);
+  if (active.length > 0 && remaining > 0) {
+    while (active.length > 0 && remaining > 0.01) {
+      const totalEfficiency = active.reduce((s, c) => s + 1 / c.avgCPR, 0);
+      if (totalEfficiency <= 0) break;
+
+      let nextRemaining = 0;
+      const nextActive = [];
+
+      for (const c of active) {
         const weight = (1 / c.avgCPR) / totalEfficiency;
-        c.cost = remaining * weight;
-        // 예상 결과: 추세선 model 있으면 그걸로, 없으면 avgCPR로
-        if (c.model) {
-          const cpr = c.model.predict(c.cost);
-          c.results = (isFinite(cpr) && cpr > 0) ? c.cost / cpr : c.cost / c.avgCPR;
+        const share = remaining * weight;
+        const newCost = c.cost + share;
+
+        if (newCost > c.maxSpend) {
+          const allowed = c.maxSpend - c.cost;
+          c.cost = c.maxSpend;
+          nextRemaining += (share - allowed);
         } else {
-          c.results = c.cost / c.avgCPR;
+          c.cost = newCost;
+          nextActive.push(c);
         }
       }
-      remaining = 0;
+      remaining = nextRemaining;
+      active = nextActive;
+    }
+  }
+
+  // 3) 예상 결과 산출 (model 있으면 predictSafeCpr 사용, 없으면 avgCPR)
+  for (const c of greedyChannels) {
+    if (c.model) {
+      const cpr = ALLOC_MATH.predictSafeCpr(c, c.cost);
+      c.results = (cpr && cpr > 0) ? c.cost / cpr : c.cost / (c.avgCPR || 1);
+    } else {
+      c.results = c.cost / (c.avgCPR || 1);
     }
   }
 
@@ -22371,6 +22618,17 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
           </div>
           ${hist && hist.totalCost > 0 && !isZero ? `<div class="alloc-cost-delta">최근 ${recentDays}일 ${fmtCurrency(hist.totalCost)} → ${it.cost > hist.totalCost ? '▲' : it.cost < hist.totalCost ? '▼' : '='} ${fmtCurrency(it.cost)} (일)</div>` : ''}
         </td>
+        <td>
+          <div style="display:flex;gap:4px;align-items:center;">
+            <input type="number" class="alloc-min-input" data-channel="${escapeHtml(it.channel)}"
+                   value="${ALLOC_STATE.allocMinSpend[it.channel] != null ? ALLOC_STATE.allocMinSpend[it.channel] : ''}"
+                   placeholder="Min (0)" style="width:70px;font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg-2);color:var(--text-1);" min="0" />
+            <span style="color:var(--text-muted);">~</span>
+            <input type="number" class="alloc-max-input" data-channel="${escapeHtml(it.channel)}"
+                   value="${ALLOC_STATE.allocMaxSpend[it.channel] != null ? ALLOC_STATE.allocMaxSpend[it.channel] : ''}"
+                   placeholder="Max" style="width:70px;font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg-2);color:var(--text-1);" min="0" />
+          </div>
+        </td>
         <td class="tnum">
           ${isZero ? '<span style="color:var(--text-muted);">—</span>' : formatNumber(it.results, { decimals: 0 })}
           ${hist && hist.totalResults > 0 && !isZero ? `<div class="alloc-delta-hint">최근 ${recentDays}일 ${formatNumber(hist.totalResults, {decimals:0})}</div>` : ''}
@@ -22393,6 +22651,33 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
         delete ALLOC_STATE.allocOverrides[ch];
       } else {
         ALLOC_STATE.allocOverrides[ch] = v;
+      }
+      refreshAllocationResults();
+    });
+    input.addEventListener("keydown", e => { if (e.key === "Enter") input.blur(); });
+  });
+  // 최소/최대 제약조건 입력 핸들러
+  tbody.querySelectorAll(".alloc-min-input").forEach(input => {
+    input.addEventListener("change", () => {
+      const ch = input.dataset.channel;
+      const v = parseFloat(input.value);
+      if (isNaN(v) || v < 0) {
+        delete ALLOC_STATE.allocMinSpend[ch];
+      } else {
+        ALLOC_STATE.allocMinSpend[ch] = v;
+      }
+      refreshAllocationResults();
+    });
+    input.addEventListener("keydown", e => { if (e.key === "Enter") input.blur(); });
+  });
+  tbody.querySelectorAll(".alloc-max-input").forEach(input => {
+    input.addEventListener("change", () => {
+      const ch = input.dataset.channel;
+      const v = parseFloat(input.value);
+      if (isNaN(v) || v < 0) {
+        delete ALLOC_STATE.allocMaxSpend[ch];
+      } else {
+        ALLOC_STATE.allocMaxSpend[ch] = v;
       }
       refreshAllocationResults();
     });
@@ -22714,6 +22999,8 @@ function bindBudgetAllocatorHandlers() {
     metricSelect.addEventListener("change", () => {
       ALLOC_STATE.metric = metricSelect.value;
       ALLOC_STATE.allocOverrides = {};  // metric 바뀌면 채널별 모델도 다르므로 override 무효화
+      ALLOC_STATE.allocMinSpend = {};
+      ALLOC_STATE.allocMaxSpend = {};
       clearAllocCache();
       renderAllocatorScatter();
     });
@@ -23450,6 +23737,8 @@ function handleCSVFile(file, toolId) {
         clearAllocCache();
         resetAllChannelOverrides();
         ALLOC_STATE.allocOverrides = {};
+        ALLOC_STATE.allocMinSpend = {};
+        ALLOC_STATE.allocMaxSpend = {};
         resetAllocFilter();
       }
       CSV_STATE.fileName = file.name;
