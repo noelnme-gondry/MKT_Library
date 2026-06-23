@@ -7116,6 +7116,42 @@ const ALLOC_MATH = (() => {
   };
 })();
 
+// ALLOC poly2 골든 테스트 — 종모양/U자형 감지 + 극점/외삽 안전 CPR (§8 결정론·합성 유닛테스트)
+function runAllocPoly2Tests() {
+  const A = ALLOC_MATH;
+  let pass = 0, fail = 0;
+  const ok = (l, c) => { if (c) { pass++; console.log("  ✓", l); } else { fail++; console.error("  ✗", l); } };
+  const approx = (a, b, e) => Math.abs(a - b) <= (e || 1e-9);
+  const poly2 = (a, b, c) => ({ type: "Poly2", predict: x => a * x * x + b * x + c, params: { a, b, c } });
+
+  console.log("[ALLOC poly2] detectPoly2Shape + predictSafeCpr");
+  // T1 bell(a<0): vertex=-b/2a, 위로 볼록 → 정점이 최대
+  const mBell = poly2(-1, 10, 0), sBell = A.detectPoly2Shape(mBell);
+  ok("T1 bell 감지·vertex=5", sBell && sBell.shape === "bell" && approx(sBell.vertex, 5));
+  // T2 u(a>0)
+  const mU = poly2(1, -10, 30), sU = A.detectPoly2Shape(mU);
+  ok("T2 u 감지·vertex=5", sU && sU.shape === "u" && approx(sU.vertex, 5));
+  // T3 비-Poly2 / a=0 → null
+  ok("T3 비-Poly2 → null", A.detectPoly2Shape({ type: "Linear", params: { a: 1, b: 0 } }) === null);
+  ok("T3 a=0 → null", A.detectPoly2Shape(poly2(0, 5, 1)) === null);
+  // T4 bell: cost>vertex 클램프(하강 착시 차단), cost<vertex 비클램프
+  const chBell = { model: mBell, poly2Shape: sBell, xMax: 20 };
+  ok("T4 bell cost>vertex 클램프 → predict(5)=25", approx(A.predictSafeCpr(chBell, 8), 25));
+  ok("T4 bell cost<vertex 비클램프 → predict(3)=21", approx(A.predictSafeCpr(chBell, 3), 21));
+  // T5 u: cost<vertex 클램프, cost>vertex 비클램프
+  const chU = { model: mU, poly2Shape: sU, xMax: 20 };
+  ok("T5 u cost<vertex 클램프 → predict(5)=5", approx(A.predictSafeCpr(chU, 2), 5));
+  ok("T5 u cost>vertex 비클램프 → predict(8)=14", approx(A.predictSafeCpr(chU, 8), 14));
+  // T6 xMax 하드 클램프(관측 범위 밖 외삽 차단)
+  ok("T6 cost>xMax 클램프 → predict(20)=230", approx(A.predictSafeCpr(chU, 25), 230));
+  // T7 결정론
+  ok("T7 결정론(동일입력=동일출력)", A.predictSafeCpr(chBell, 8) === A.predictSafeCpr(chBell, 8));
+
+  console.log(`[ALLOC poly2] ${pass}/${pass + fail} ` + (fail === 0 ? "ALL PASS ✓" : "FAILED ✗"));
+  return fail === 0;
+}
+if (typeof window !== "undefined") { window.runAllocPoly2Tests = runAllocPoly2Tests; window.ALLOC_MATH = ALLOC_MATH; }
+
 /* ========== Budget Allocator · 채널 시뮬레이션 ==========
    추세선에 현재/목표 Cost를 넣어 예측 CPR/Results/Revenue/ROAS와
    해당 구간의 marginal CPR / marginal ROAS를 계산. */
