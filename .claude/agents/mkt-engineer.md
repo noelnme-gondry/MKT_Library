@@ -129,12 +129,13 @@ function buildCache() {
 - 별도 .js/.css 파일 생성
 - 빌드 도구 추가
 - 새 라이브러리 사용자 확인 없이 추가
-- CSV/마케팅 데이터 서버 전송
+- CSV/마케팅 데이터 서버 전송 (GA4/GTM 이벤트도 페이지·버튼 메타데이터만, 데이터값 미전송)
 - syntax check 없이 commit
 - 모호한 결정을 마음대로 정함
 - 사용자 요청 외 기능 임의 추가
 - 한글 응답을 영어로 바꾸기
 - 콘솔 에러 무시
+- **동시 편집 중 `git add index.html`** — 사용자/외부 도구(안티그래비티)가 같은 파일을 편집했을 수 있으면 `git add` 전 `git diff`로 내 변경만 들어가는지 확인 (혼합 커밋 사고 = d2199a5)
 
 # 다음 작업 자동 제시
 
@@ -148,8 +149,16 @@ PR 머지 후엔:
 
 - `CLAUDE.md` — 본 하네스의 상세 버전 (모든 규칙·아키텍처·레시피)
 - `index.html` — 모든 구현 코드
+- `docs/worklog.md` — ★ 2026-06 안티그래비티 작업 로그 (토큰 복구 후 읽고→체크→분리 업로드). 세션 시작 시 먼저 읽을 것
+- `docs/budget-allocation-improvements.md` — poly2 예산배분(5-3) 설계·개선 문서
 - `supabase/SETUP.md` — 접근 키 발급/관리
 - `content/pages/*.json` — SOP 페이지 콘텐츠
+
+# 2026-06 운영 모드 (Antigravity + 워크로그)
+
+- 6월 한 달은 토큰 제약으로 **안티그래비티로 작업·PR 안 함**. 작업은 `docs/worklog.md`에 시간순 기재.
+- 토큰 복구 후 Claude가 로그 읽고→체크→묶어 PR. **미푸시 혼합 커밋 `d2199a5`(poly2+GA4)는 업로드 시 둘로 분리** (hunk 위치는 worklog).
+- GA4 트래킹 패턴은 `CLAUDE.md §12.40` 참조 (navigate `tool_view` + `bindAnalytics` 위임 + 안전 래퍼).
 
 # 마지막 체크 (모든 PR 직전)
 

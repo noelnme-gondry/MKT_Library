@@ -39,3 +39,49 @@
 - **왜**: §8 통계 도구 표준(순수함수 합성 테스트). poly2 작업에 회귀 안전망 부재였음.
 - **검증**: syntax OK, 10/10 ALL PASS (node inject).
 - **주의**: 미푸시 상태 유지(6월 PR 안 함). 업로드 시 poly2 PR에 포함.
+
+---
+
+## 세션 상태 스냅샷 (2026-06-24 기준)
+
+**origin/main에 머지 완료 (PR)**:
+- #175 운영대시보드 Bundle A(#6 표정렬·#1 platform 멀티셀렉트·#2 코호트토글) / #176 Bundle B(#5 LTV D360 예측·ⓘ·곡선) / #177 Bundle C(#3 스코어카드·#8 퍼널 요일보정·#4 페이싱 요일예측·매출제거)
+- #178 GA4 gtag.js / #179 GA4 이벤트 트래킹 / #180 GTM + 페이월 너비 / #181 GA4 SOP/대시보드 세분화
+
+**로컬 미푸시 (feat/poly2-bell-warning, 6월엔 PR 안 함)**:
+- `d2199a5` — poly2 예산배분(안티그래비티) + GA4 SOP 세분화(Claude) **혼합** → 업로드 시 분리
+- `050e04b` — poly2 골든 테스트 + 본 워크로그 + 설계문서
+
+**브랜치**: `feat/poly2-bell-warning` (장수 feature 브랜치, main은 squash merge)
+
+---
+
+## 다른 계정/세션에서 이어가기
+
+새 계정·새 세션에서 이 작업을 그대로 이어가려면, 레포 클론(또는 동기화) 후 아래 프롬프트로 시작:
+
+```
+이 레포는 Performance Marketing Library (단일 index.html SPA, Railway 배포)다.
+작업 규칙은 CLAUDE.md를, 6월 작업 이력은 docs/worklog.md를 먼저 끝까지 읽어라.
+
+현재 상태:
+- 브랜치 feat/poly2-bell-warning에 로컬 미푸시 커밋 2개(d2199a5, 050e04b)가 있다.
+- d2199a5는 poly2 예산배분(안티그래비티 작업)과 GA4 SOP 세분화(Claude 작업)가
+  한 커밋에 섞여 있다(§11 git add footgun). origin/main에 미푸시.
+- 6월엔 토큰 제약으로 PR을 하지 않고 docs/worklog.md에만 기록하는 모드다.
+
+내가 원하는 것: [여기에 목적 명시 — 예: "안티그래비티로 작업한 poly2를 마저 다듬고 싶다" /
+"이제 토큰 복구됐으니 worklog 읽고 미푸시분을 poly2/GA4 둘로 분리해서 PR 올려줘" /
+"5-3 예산배분에 X 기능 추가"]
+
+진행 전 모호하면 AskUserQuestion으로 2~4지선다로 물어라.
+변경 후 syntax check + window.runAllocPoly2Tests() 같은 in-page 골든 필수.
+git add 전에 git diff로 내 변경만 들어가는지 확인할 것(동시편집 흡수 방지).
+```
+
+**업로드(분리 PR) 지시 예시** (토큰 복구 후):
+```
+docs/worklog.md의 "미해결" 섹션을 읽고, 미푸시 커밋(d2199a5)을 poly2(5-3 예산배분)와
+GA4 SOP 세분화 둘로 분리해서 각각 PR로 올려줘. 분리 hunk 위치는 worklog에 적혀 있다.
+각 PR 전 syntax check + 골든 테스트, CLAUDE.md §6 PR 흐름 준수.
+```
