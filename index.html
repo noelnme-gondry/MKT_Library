@@ -2970,21 +2970,89 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   
   /* Additional accessibility fixes for Light Mode */
   body.light-mode .block,
-  body.light-mode .sidebar-search input,
   body.light-mode .kpi-card,
   body.light-mode .callout,
   body.light-mode .ab-pill {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   }
+  body.light-mode .ab-pill {
+    border: 1px solid var(--border) !important;
+    color: var(--text-secondary) !important;
+    background: var(--bg-2) !important;
+  }
   body.light-mode .ab-pill.active {
     background: var(--primary) !important;
     color: #ffffff !important;
+    border-color: var(--primary) !important;
   }
   body.light-mode .topbar {
     border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   }
   body.light-mode .sidebar {
     border-right: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  
+  /* Sidebar search light theme override */
+  body.light-mode .sidebar-search {
+    background: var(--bg-1) !important;
+    border: 1px solid var(--border) !important;
+  }
+  body.light-mode .sidebar-search input {
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    box-shadow: none !important;
+  }
+  body.light-mode .sidebar-search input::placeholder {
+    color: var(--text-muted) !important;
+  }
+  
+  /* Light Mode Callout Contrast Overrides */
+  body.light-mode .callout {
+    background: var(--bg-1) !important;
+    border-left-width: 4px !important;
+    color: var(--text-primary) !important;
+  }
+  body.light-mode .callout.warn,
+  body.light-mode .callout.warning {
+    background: #fffbeb !important;
+    border-color: #f59e0b !important;
+    color: #b45309 !important;
+  }
+  body.light-mode .callout.warn *,
+  body.light-mode .callout.warning * {
+    color: #b45309 !important;
+  }
+  body.light-mode .callout.info {
+    background: #eff6ff !important;
+    border-color: #3b82f6 !important;
+    color: #1d4ed8 !important;
+  }
+  body.light-mode .callout.info * {
+    color: #1d4ed8 !important;
+  }
+
+  /* Light Mode Alert Banner Overrides */
+  body.light-mode .alert-banner {
+    background: #fffbeb !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+    border-left: 3px solid #f59e0b !important;
+  }
+  body.light-mode .alert-banner .alert-icon {
+    color: #b45309 !important;
+  }
+  body.light-mode .alert-banner .alert-body {
+    color: #111827 !important;
+  }
+  body.light-mode .alert-banner .alert-body strong {
+    color: #b45309 !important;
+  }
+  body.light-mode .alert-banner .alert-cta {
+    background: #fef3c7 !important;
+    border-color: rgba(245, 158, 11, 0.4) !important;
+    color: #b45309 !important;
+  }
+  body.light-mode .alert-banner .alert-cta:hover {
+    background: #fde68a !important;
   }
 </style>
 </head>
@@ -2995,6 +3063,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 
 <div class="app">
+  <script>
+    (function() {
+      const hashRaw = (location.hash || "").replace(/^#/, "");
+      const isHome = !hashRaw || hashRaw === "home" || !(/^\d+-\d+$/.test(hashRaw));
+      if (isHome) {
+        document.querySelector(".app").classList.add("is-home");
+      }
+    })();
+  </script>
   <!-- ===================== SIDEBAR ===================== -->
   <aside class="sidebar" id="sidebar">
     <div class="brand" id="brand" style="cursor:pointer;">
@@ -6913,9 +6990,13 @@ function page_5_3() {
     ? [{ id: "s-scatter", title: "산점도" }, { id: "s-controls", title: "예산" }, { id: "s-bar", title: "배분" }, { id: "s-scenario", title: "시나리오" }, { id: "s-table", title: "상세" }, { id: "s-algo", title: "알고리즘" }]
     : [{ id: "s-filter", title: "분석 단위" }];
   return pageShell(meta, {
-    deck: "예산 배분 — 절대 CPR/ROAS 기반 채널 배분 + 한계효용 그리디(고급).",
+    deck: "채널/캠페인 단위의 예산 배분 및 한계효용(Greedy Optimization) 시뮬레이션",
     chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>${authStatusChip()}`,
-    summary: "절대 CPR/ROAS 가중으로 채널별 최적 예산을 계산합니다. 퍼널·세그먼트는 무료 운영 대시보드에서 확인하세요.",
+    summary: "채널별 절대 성과(CPR/ROAS) 가중과 수확체감 모형을 반영하여 최적 예산 포트폴리오를 제안합니다.<br>" +
+      "<details style='margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer;'><summary>⚠️ 알고리즘 참고사항 펼치기</summary>" +
+      "<div style='margin-top: 6px; padding: 8px 10px; background: var(--bg-1); border-left: 3px solid var(--primary); line-height: 1.6;'>" +
+      "비용 대비 성과 산점도를 곡선 적합(Saturation)하여 한계효용 극대화 배분을 도출합니다. 데이터가 지나치게 적거나 채널별 지출액 변동성이 없으면 외삽이 불안정할 수 있으므로, 단순 CPR/ROAS 배분 비율과 비교하여 의사결정하시길 권장합니다." +
+      "</div></details>",
     toc,
     stickyFilter: ALLOC_FILTER_STATE.applied ? renderAllocStickyFilterBar() : "",
     body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경)</summary><div style="margin-top:10px;">${renderInlineCsvUpload("5-3")}</div></details>${monAllocBody()}`,
@@ -8125,12 +8206,16 @@ function page_5_4() {
   // 설계 탭 — 수동 A/B 계산기 (CSV 게이트 없음)
   if (tab === "design") {
     return pageShell(meta, {
-      deck: "마케팅 실험을 한 도구에서: 설계(A/B 표본·예산) → 결과 판독(arm×지표) → 홀드아웃 증분. 설계 탭은 CVR(전환율)·연속(CPR/ARPPU/Revenue) 모두 지원하며 Frequentist(p-value)·Bayesian(P(B>A)) 두 방식 동시 제공.",
+      deck: "마케팅 실험 설계 및 분석 (표본 계산, A/B 테스트 결과 판독, 홀드아웃 증분)",
       chips: `
         <span class="chip"><span class="dot"></span>도구 · 실험 분석</span>
         <span class="chip ok"><span class="dot"></span>설계 · 결과 · 홀드아웃</span>
         ${authStatusChip()}`,
-      summary: "통계 라이브러리(z-test, Welch z-근사, Φ⁻¹ Acklam, Beta-Binomial 고정 grid)를 클라이언트에서 직접 실행. 설계 탭으로 표본·예산을 계산하고, 실험을 돌린 뒤 결과/홀드아웃 탭에 CSV를 올려 판독합니다.",
+      summary: "실험 전 표본 수/기간을 설계하고, 실험 종료 후 A/B 결과 또는 홀드아웃 데이터를 업로드하여 신뢰도를 판독합니다.<br>" +
+        "<details style='margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer;'><summary>📚 통계 설계 노트 펼치기</summary>" +
+        "<div style='margin-top: 6px; padding: 8px 10px; background: var(--bg-1); border-left: 3px solid var(--primary); line-height: 1.6;'>" +
+        "본 도구는 Frequentist(z-test, Welch z-근사)와 Bayesian(Beta-Binomial 고정 그리드) 분석 모델을 동시에 제공하여 의사결정 신뢰도를 높입니다. 연속형 지표(CPR/ARPPU)와 전환율 지표(CVR)를 모두 시뮬레이션할 수 있습니다." +
+        "</div></details>",
       toc: [
         { id: "s-mode", title: "모드 선택" },
         { id: "s-body", title: "계산기" },
@@ -8165,12 +8250,20 @@ function page_5_4() {
 
   return pageShell(meta, {
     deck: tab === "holdout"
-      ? "Holdout 증분 측정: 증분 전환 = test 전환 − (test 인원 × control 전환율). iROAS = 증분 매출 / 비용."
-      : "Stage 1(upper_funnel) + Stage 2(downstream_quality) 2단 게이트 + arm×지표 비교 매트릭스. 두 방법 일치(promote/kill) vs 불일치(inconclusive) 결정론 룰.",
+      ? "Holdout 그룹 비교를 통한 진짜 마케팅 증분 효과(iROAS) 측정"
+      : "실험 다지표 판독 및 2단 필터 게이트(Upper Funnel & Downstream Quality) 분석",
     chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>${authStatusChip()}`,
     summary: tab === "holdout"
-      ? "어트리뷰션 숫자는 과대계상되기 쉬움. holdout(control)과 비교한 증분만이 진짜 기여입니다. lift 유의성은 two-proportion z-test로 검정."
-      : "α=0.05, Bayesian promote ≥ 0.95 / kill ≤ 0.05. promote = 두 방법 모두 양의 유의 / kill = 두 방법 모두 음의 유의 / inconclusive = 그 외.",
+      ? "어트리뷰션 수치가 아닌, 홀드아웃 통제 집단(Control)과의 직접 비교를 통해 순수 증분 성과를 도출합니다.<br>" +
+        "<details style='margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer;'><summary>⚠️ 홀드아웃 증분 공식 참고사항 펼치기</summary>" +
+        "<div style='margin-top: 6px; padding: 8px 10px; background: var(--bg-1); border-left: 3px solid var(--primary); line-height: 1.6;'>" +
+        "증분 전환 = Test 전환 − (Test 인원 × Control 전환율)로 계산하며, 통계 유의성은 Two-proportion z-test로 검정합니다. iROAS(증분 매출 / 광고비)가 벤치마크를 상회하는지 확인하세요." +
+        "</div></details>"
+      : "상위 깔때기 지표(Stage 1)와 유저 품질 지표(Stage 2)를 순차적으로 검증하여 의사결정의 편향을 방지합니다.<br>" +
+        "<details style='margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer;'><summary>⚠️ 2단 게이트 판정 규칙 펼치기</summary>" +
+        "<div style='margin-top: 6px; padding: 8px 10px; background: var(--bg-1); border-left: 3px solid var(--primary); line-height: 1.6;'>" +
+        "α=0.05 유의 수준에서 Frequentist 검정과 Bayesian 사후 확률(promote ≥ 0.95, kill ≤ 0.05) 기준을 동시 만족하는 경우에만 Promote/Kill 판정을 내리며, 그 외에는 보수적인 Inconclusive로 판단합니다." +
+        "</div></details>",
     toc,
     body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경) · ${tab === "holdout" ? "홀드아웃 CSV" : "실험 CSV"}</summary><div style="margin-top:10px;">${renderInlineCsvUpload(csvTool)}</div></details>${renderExpTabs()}${body}`,
   });
@@ -10615,13 +10708,17 @@ function page_5_6() {
   const c = CREATIVE_CACHE;
 
   return pageShell(meta, {
-    deck: "소재별 파생지표 → attribute별 WLS 분해 → Fatigue 검출 → Concept Matrix → 다음 테스트 후보. 모든 통계는 단일 캐시에서 lookup.",
+    deck: "소재별 파생지표 모니터링, 속성별 기여도 분해(WLS), 소재 피로도(Fatigue) 진단 및 테스트 추천",
     chips: `
       <span class="chip"><span class="dot"></span>도구 · Creative Analyzer</span>
       <span class="chip ok"><span class="dot"></span>소재 ${c.metrics.length}개</span>
       <span class="chip"><span class="dot"></span>config ${CREATIVE_CONFIG.version} · snapshot ${c.snapshotHash}</span>
       ${authStatusChip()}`,
-    summary: "WLS impressions-weighted LPM으로 attribute별 효과를 분해. campaign_id는 within-transformation으로 흡수. BH 다중검정 보정. ⚠ 관찰 분해 = delivery selection bias 포함 → 인과 후보로만 해석, 확정은 5-7 실험 readout에서.",
+    summary: "업로드된 소재별 일자별 성과 데이터를 분석하여 효율적인 예산 배분 및 크리에이티브 방향성을 제시합니다.<br>" +
+      "<details style='margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer;'><summary>⚠️ 통계 분석 및 해석 한계 펼치기</summary>" +
+      "<div style='margin-top: 6px; padding: 8px 10px; background: var(--bg-1); border-left: 3px solid var(--primary); line-height: 1.6;'>" +
+      "노출량 가중 최소제곱법(WLS)과 다중 검정 보정(BH)을 통해 크리에이티브 속성(Hook, Format 등)의 효과를 추정합니다. 본 분해 결과는 매체 알고리즘에 따른 노출 편향(Selection Bias)이 포함되어 있으므로 인과적 효과가 아닌 상관 관계로 해석해야 하며, 최종 확정은 실험 도구(5-4)를 통해 검증하시는 것을 권장합니다." +
+      "</div></details>",
     toc: [
       { id: "s-prep", title: "데이터 준비" },
       { id: "s-validation", title: "검증" },
@@ -14628,9 +14725,13 @@ function page_5_18() {
         ${renderMmmOptionCards(c)}
       `;
   return pageShell(meta, {
-    deck: "추세 존재 검정 → 카니발 vs 오가닉 삼각검증 + 시트 audit + adstock·Shapley·수확체감 + 예산 시나리오 예측. 모든 결론은 관측 회귀 = 연관(가설). 인과는 geo holdout / organic-split.",
+    deck: "카니발 진단 → Trend Forecast → MMM 기여 분해 → 범용 회귀 (가설·기술용 분석)",
     chips: `<span class="chip"><span class="dot"></span>도구 · MMM 방법론</span><span class="chip warning"><span class="dot"></span>가설·기술용 · holdout 아님</span>${authStatusChip()}`,
-    summary: "⚠ 어떤 계수도 측정된 인과/증분 효과가 아닙니다. 추세는 가정하지 않고 검정(STL·MK·ADF·KPSS), 추론은 HAC+AR(1), 귀인은 Shapley R². 예측은 관측 회귀의 외삽(가설). cannibalization·증분 결정은 holdout(5-15) 전용.",
+    summary: "관측 데이터 기반 마케팅 반응 곡선 추정 및 기여도 분해 분석 모델입니다.<br>" +
+      "<details style='margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer;'><summary>⚠️ 통계적 한계 및 주의사항 펼치기</summary>" +
+      "<div style='margin-top: 6px; padding: 8px 10px; background: var(--bg-1); border-left: 3px solid var(--warning); line-height: 1.6;'>" +
+      "어떤 회귀 계수도 엄밀한 인과/증분 효과를 대변하지 않습니다. 추세 검정(STL·MK·ADF), 추론(HAC+AR(1)), 귀인(Shapley R²) 분석을 통해 채널별 기여를 근사합니다. 정확한 인과 검증을 위해서는 Geo Holdout / Campaign Split(5-15) 분석이 필수적입니다." +
+      "</div></details>",
     toc: tocByStage,
     tocFilters: stage ? renderMmmFilters(c) : "",
     body: `
@@ -23321,8 +23422,8 @@ function bindAllocStickyFilterHandlers() {
       if (opening) {
         document.body.appendChild(list);
         const r = btn.getBoundingClientRect();
-        list.style.top = (r.bottom + window.scrollY + 3) + "px";
-        list.style.left = (r.left + window.scrollX) + "px";
+        list.style.top = (r.bottom + 3) + "px";
+        list.style.left = r.left + "px";
         list.hidden = false;
       }
     });
