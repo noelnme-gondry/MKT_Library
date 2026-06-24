@@ -3054,6 +3054,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   body.light-mode .alert-banner .alert-cta:hover {
     background: #fde68a !important;
   }
+
+  /* Light Mode mmmExplain Collapsible Overrides */
+  body.light-mode .mmm-explain-details {
+    background: #f0f4ff !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
+  }
+  body.light-mode .mmm-explain-details summary {
+    color: #1d4ed8 !important;
+  }
+  body.light-mode .mmm-explain-details div {
+    border-top-color: rgba(59, 130, 246, 0.15) !important;
+  }
 </style>
 </head>
 <body>
@@ -10730,9 +10742,7 @@ function page_5_6() {
       { id: "s-next", title: "다음 테스트" },
     ],
     body: `
-      <section class="block" id="s-prep">
-        ${renderInlineCsvUpload("5-6")}
-      </section>
+      <details class="block" id="s-prep" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);outline:none;">🗂 데이터 매핑 설정 (펼쳐서 변경)</summary><div style="margin-top:10px;">${renderInlineCsvUpload("5-6")}</div></details>
 
       ${renderCreativeValidation(c.validation)}
       ${renderCreativeVelocity(c)}
@@ -10985,7 +10995,9 @@ function renderCreativeNextTest(nextTest) {
   return `
     <section class="block" id="s-next">
       <h2 class="section-title"><span class="ix">§6</span>다음 테스트 후보</h2>
-      <p class="muted">Concept Matrix 빈 셀(탐색) + 유망 셀(최적화) + WLS 음의 효과(제거)에서 자동 생성. exploreRatio=${(CREATIVE_CONFIG.test.exploreRatio*100).toFixed(0)}%, batchSize=${CREATIVE_CONFIG.test.batchSize}.</p>
+      <p class="muted" style="margin-top: 6px; line-height: 1.5;">
+        분석 결과를 기반으로 다음 광고 소재 테스트를 위한 가설 후보들을 제안합니다. 아직 집행 데이터가 없는 조합(🔍 탐색), 가능성이 보이지만 확증이 필요한 조합(🎯 최적화), 통계적으로 음의 영향이 뚜렷하여 배제가 권장되는 속성(❌ 제거)을 자동으로 도출합니다. (배치 크기: ${CREATIVE_CONFIG.test.batchSize}개)
+      </p>
       <div class="table-wrap">
         <table class="data" style="font-size:11.5px;">
           <thead><tr><th>유형</th><th>대상</th><th>arms</th><th>근거</th><th>샘플사이즈</th><th>게이트</th></tr></thead>
@@ -14744,8 +14756,12 @@ PAGE_RENDERERS["5-18"] = page_5_18;
 
 // 인라인 "쉬운 해석" 콜아웃 — 모든 섹션 공통
 function mmmExplain(html) {
-  return `<div style="display:flex;gap:8px;align-items:flex-start;background:rgba(122,162,247,0.07);border:1px solid rgba(122,162,247,0.22);border-radius:8px;padding:9px 12px;margin:8px 0;font-size:12px;line-height:1.6;color:var(--text-1);">
-    <span style="flex-shrink:0;font-size:14px;">💡</span><div><strong style="color:#adc6ff;">쉽게 말하면</strong> · ${html}</div></div>`;
+  return `<details class="mmm-explain-details" style="margin:8px 0;border:1px solid rgba(122,162,247,0.22);border-radius:8px;background:rgba(122,162,247,0.04);outline:none;">
+    <summary style="cursor:pointer;padding:8px 12px;font-size:12px;font-weight:600;color:var(--primary);outline:none;display:flex;align-items:center;gap:6px;list-style:none;">💡 쉬운 해석 보기 (펼치기)</summary>
+    <div style="padding:0 12px 10px 12px;font-size:12px;line-height:1.6;color:var(--text-1);border-top:1px dashed rgba(122,162,247,0.15);margin-top:2px;padding-top:8px;">
+      <strong style="color:var(--primary);">쉽게 말하면</strong> · ${html}
+    </div>
+  </details>`;
 }
 const _MMM_TARGET_KO = { Regs: "가입 (Registration)", React: "재활성 (Reactivation)" };
 
@@ -15688,14 +15704,14 @@ function renderMmmCharts(c) {
     destroyChartIfExists("mmm-cannib-spend-chart");
     CHART_INSTANCES["mmm-cannib-spend-chart"] = new Chart(document.getElementById("mmm-cannib-spend-chart"), {
       data: { labels: xlab, datasets: [
-        { type: "line", label: tgtKo + " (실측)", data: tgtY, borderColor: "#e6e9ef", borderWidth: 1.6, pointRadius: 0, yAxisID: "y", tension: 0.2, order: 1 },
+        { type: "line", label: tgtKo + " (실측)", data: tgtY, borderColor: getCssVar('--text-secondary'), borderWidth: 1.6, pointRadius: 0, yAxisID: "y", tension: 0.2, order: 1 },
         { type: "line", label: chL, data: spY, borderColor: "#7aa2f7", backgroundColor: "rgba(122,162,247,0.12)", borderWidth: 1.5, pointRadius: 0, yAxisID: "y1", fill: true, tension: 0.2, order: 2 },
       ] },
       options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
         plugins: { legend: { display: true, labels: { color: muted, font: { size: 10 }, boxWidth: 12 } } },
         scales: {
           x: { ticks: { color: muted, maxTicksLimit: 12 }, grid: { color: border } },
-          y: { position: "left", title: { display: true, text: tgtKo, color: "#e6e9ef" }, ticks: { color: muted }, grid: { color: border } },
+          y: { position: "left", title: { display: true, text: tgtKo, color: getCssVar('--text-secondary') }, ticks: { color: muted }, grid: { color: border } },
           y1: { position: "right", title: { display: true, text: "지출", color: "#7aa2f7" }, ticks: { color: "#7aa2f7" }, grid: { drawOnChartArea: false } },
         } },
     });
@@ -23982,15 +23998,33 @@ function _demoCohortData() {
 }
 function _demoCreativeData() {
   const rng = seededNoise(60606);
-  const crs = [{ id: "CR_ugc_hook", hook: "UGC", angle: "혜택", fmt: "9:16", dur: "0-15s" }, { id: "CR_demo", hook: "데모", angle: "기능", fmt: "1:1", dur: "15-30s" }, { id: "CR_testimonial", hook: "후기", angle: "신뢰", fmt: "9:16", dur: "0-15s" }, { id: "CR_promo", hook: "프로모", angle: "긴급", fmt: "16:9", dur: "15-30s" }];
+  const crs = [
+    { id: "CR_ugc_hook", hook: "UGC", angle: "혜택", fmt: "9:16", dur: "0-15s" },
+    { id: "CR_demo", hook: "데모", angle: "기능", fmt: "1:1", dur: "15-30s" },
+    { id: "CR_testimonial", hook: "후기", angle: "신뢰", fmt: "9:16", dur: "0-15s" },
+    { id: "CR_promo", hook: "프로모", angle: "긴급", fmt: "16:9", dur: "15-30s" },
+    { id: "CR_fear_compare", hook: "비교", angle: "공포", fmt: "16:9", dur: "15-30s", bad: true },
+    { id: "CR_small_trust", hook: "후기", angle: "신뢰", fmt: "1:1", dur: "0-15s", promising: true }
+  ];
   const rows = []; const base = Date.UTC(2025, 9, 10);
   for (let d = 0; d < 30; d++) {
     const date = new Date(base + d * 86400000).toISOString().slice(0, 10);
     for (let ci = 0; ci < crs.length; ci++) {
       const cr = crs[ci], fatigue = Math.max(0.4, 1 - d * 0.015 * (ci + 1) * 0.4);
-      const imp = Math.max(1, Math.round((30000 * fatigue) * (1 + (rng() + 0.5) * 0.3) * [1, 0.7, 0.6, 0.5][ci]));
-      const clk = Math.max(1, Math.round(imp * (0.018 + (rng() + 0.5) * 0.01) * fatigue));
-      const inst = Math.max(1, Math.round(clk * (0.28 + (rng() + 0.5) * 0.06)));
+      let imp, clk, inst;
+      if (cr.bad) {
+        imp = Math.max(1, Math.round(15000 * (1 + (rng() + 0.5) * 0.2)));
+        clk = Math.max(1, Math.round(imp * 0.0015)); // Extremely low CTR!
+        inst = Math.max(1, Math.round(clk * 0.05)); // Extremely low CVR!
+      } else if (cr.promising) {
+        imp = Math.max(1, Math.round(80 * (1 + (rng() + 0.5) * 0.1))); // Low impressions
+        clk = Math.max(1, Math.round(imp * 0.055)); // Very high CTR!
+        inst = Math.max(1, Math.round(clk * 0.35));
+      } else {
+        imp = Math.max(1, Math.round((30000 * fatigue) * (1 + (rng() + 0.5) * 0.3) * [1, 0.7, 0.6, 0.5][ci]));
+        clk = Math.max(1, Math.round(imp * (0.018 + (rng() + 0.5) * 0.01) * fatigue));
+        inst = Math.max(1, Math.round(clk * (0.28 + (rng() + 0.5) * 0.06)));
+      }
       const v3 = Math.round(imp * (0.45 + (rng() + 0.5) * 0.1));
       rows.push({ creative_id: cr.id, date, channel: ["Meta", "TikTok"][ci % 2], campaign_id: "C" + (ci % 2 + 1), impressions: imp, clicks: clk, installs: inst, spend: Math.round(clk * (480 + (rng() + 0.5) * 120)), actions: Math.round(inst * 0.4), revenue_d7: Math.round(inst * 2100), video_3s_views: v3, video_completions: Math.round(v3 * (0.25 + (rng() + 0.5) * 0.1)), hook_type: cr.hook, message_angle: cr.angle, format: cr.fmt, duration_bucket: cr.dur });
     }
