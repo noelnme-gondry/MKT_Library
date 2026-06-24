@@ -10094,6 +10094,20 @@ const CREATIVE_CONFIG = {
     multipleTesting: "bh",
   },
   fatigue: { decayWindow: 7, dropPct: 0.20 },
+  fatigueAlert: {
+    minDays: 7,          // 추세 적합에 필요한 최소 운영일
+    trendWindow: 14,      // 최근 N일로 추세(slope) 적합
+    ctrWeight: 0.45,       // 복합지수 가중치 (CTR 하락)
+    freqWeight: 0.35,      // 노출강도(일평균 impressions) 상승 가중치
+    cpmWeight: 0.20,       // CPM 상승 가중치
+    alertScore: 0.5,       // 복합지수 이 값 이상이면 경보
+    horizonDays: 30,       // 임계점 도달 예상치 탐색 한도(일)
+  },
+  autoPlanner: {
+    defaultWeeklyVelocity: 3,  // 주당 신규 소재 공급 가능 개수 (사용자 입력 기본값)
+    urgentDays: 7,              // 임계점 도달까지 이 기간 이하면 '긴급'
+    soonDays: 21,                // '예정' 구간
+  },
   matrix: { rows: "message_angle", cols: "format" },
   test:    { exploreRatio: 0.3, batchSize: 6, power: 0.8, alpha: 0.05 },
   bayes:   { priorA: 1, priorB: 1, gridN: 2000, promoteProb: 0.95, killProb: 0.05 },
@@ -10217,6 +10231,205 @@ const CREATIVE_MATH = {
       vifs[j] = 1 / Math.max(0.001, 1 - r2);
     }
     return vifs;
+  },
+};
+
+/* ----- CREATIVE_FATIGUE: Ad Fatigue Alert & Auto-Planner (§2-B) -----
+ * 다차원 Fatigue 지수(CTR 하락 + 노출강도(impressions/day) 상승 + CPM 상승) + 임계점 도달 예상 시점
+ * + 주당 신규 소재 공급량(velocity) 기반 교체 우선순위 타임라인.
+ * 순수 함수만. Math.random 금지 — 전부 OLS 추세선 기반 결정론적 산출.
+ */
+const CREATIVE_FATIGUE = {
+  // 단순 OLS 기울기(slope) — x=0..n-1 인덱스, y=값. 결측(null/NaN)은 스킵.
+  // 반환: { slope, intercept, n } 또는 null (n<2)
+  olsSlope(values) {
+    const pts = values
+      .map((v, i) => ({ x: i, y: v }))
+      .filter(p => p.y != null && isFinite(p.y));
+    const n = pts.length;
+    if (n < 2) return null;
+    const mx = pts.reduce((s, p) => s + p.x, 0) / n;
+    const my = pts.reduce((s, p) => s + p.y, 0) / n;
+    let sxy = 0, sxx = 0;
+    for (const p of pts) { sxy += (p.x - mx) * (p.y - my); sxx += (p.x - mx) ** 2; }
+    const slope = sxx > 0 ? sxy / sxx : 0;
+    const intercept = my - slope * mx;
+    return { slope, intercept, n };
+  },
+
+  // 소재별 일자순 series → 일별 CTR / impressions(노출강도 proxy) / CPM 시리즈 구성
+  buildDailySeries(series) {
+    return series.map(r => {
+      const imp = Number(r.impressions) || 0;
+      const clk = Number(r.clicks) || 0;
+      const spend = Number(r.spend ?? r.cost) || 0;
+      return {
+        date: r.date,
+        ctr: imp > 0 ? clk / imp : null,
+        impressions: imp,
+        cpm: imp > 0 ? (spend / imp) * 1000 : null,
+      };
+    });
+  },
+
+  // 복합 Fatigue 지수: CTR slope(음수=하락→양의 위험), 노출강도 slope(양수=상승→위험), CPM slope(양수=상승→위험)
+  // 각 slope를 해당 시리즈의 평균으로 정규화(스케일 무관 비교) 후 가중합.
+  // 반환: { score, ctrTrendPctPerDay, freqTrendPctPerDay, cpmTrendPctPerDay, n } 또는 null(데이터 부족)
+  compositeIndex(dailySeries, cfg) {
+    const W = cfg.trendWindow;
+    const recent = dailySeries.slice(-W);
+    if (recent.length < cfg.minDays) return null;
+
+    const ctrVals = recent.map(d => d.ctr);
+    const freqVals = recent.map(d => d.impressions);
+    const cpmVals = recent.map(d => d.cpm);
+
+    const ctrFit = this.olsSlope(ctrVals);
+    const freqFit = this.olsSlope(freqVals);
+    const cpmFit = this.olsSlope(cpmVals);
+
+    const meanOf = (arr) => {
+      const v = arr.filter(x => x != null && isFinite(x));
+      return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+    };
+    const ctrMean = meanOf(ctrVals);
+    const freqMean = meanOf(freqVals);
+    const cpmMean = meanOf(cpmVals);
+
+    // %/day 정규화 (평균 0 또는 fit 없음이면 0)
+    const ctrPctPerDay = (ctrFit && ctrMean) ? ctrFit.slope / ctrMean : 0;
+    const freqPctPerDay = (freqFit && freqMean) ? freqFit.slope / freqMean : 0;
+    const cpmPctPerDay = (cpmFit && cpmMean) ? cpmFit.slope / cpmMean : 0;
+
+    // 위험 방향: CTR 하락(-)·노출강도 상승(+)·CPM 상승(+) 모두 위험 → 부호 정규화해 0~1 risk 성분으로
+    const ctrRisk = Math.max(0, -ctrPctPerDay);   // CTR이 떨어질수록 양수
+    const freqRisk = Math.max(0, freqPctPerDay);  // 노출강도 오를수록 양수
+    const cpmRisk = Math.max(0, cpmPctPerDay);    // CPM 오를수록 양수
+
+    // 가중합 → 0~1 클램프 (스케일은 %/day라 작은 값. tanh로 압축해 0~1 점수화)
+    const raw = cfg.ctrWeight * ctrRisk + cfg.freqWeight * freqRisk + cfg.cpmWeight * cpmRisk;
+    const score = Math.max(0, Math.min(1, Math.tanh(raw * 20)));  // 20은 스케일 보정(결정론 상수)
+
+    return {
+      score,
+      ctrTrendPctPerDay: ctrPctPerDay,
+      freqTrendPctPerDay: freqPctPerDay,
+      cpmTrendPctPerDay: cpmPctPerDay,
+      n: recent.length,
+    };
+  },
+
+  // 임계점(alertScore) 도달까지 예상 일수. score가 이미 임계 이상이면 0.
+  // score 추세가 비양수(개선/평탄)면 도달 안 함 → null.
+  // 단순 선형 외삽: 최근 trendWindow 구간의 score 변화 속도를 추정하기 위해
+  // 최근/이전 절반 구간 score 차이를 일변화율로 사용(결정론적, 추가 회귀 불필요).
+  projectThreshold(dailySeries, cfg) {
+    const W = cfg.trendWindow;
+    const recent = dailySeries.slice(-W);
+    if (recent.length < cfg.minDays) return { etaDays: null, reason: "데이터 부족" };
+    const half = Math.floor(recent.length / 2);
+    if (half < 2) return { etaDays: null, reason: "데이터 부족" };
+    const idxFirst = this.compositeIndex(recent.slice(0, Math.max(cfg.minDays, half)), cfg);
+    const idxSecond = this.compositeIndex(recent, cfg);
+    if (!idxFirst || !idxSecond) return { etaDays: null, reason: "데이터 부족" };
+    const cur = idxSecond.score;
+    if (cur >= cfg.alertScore) return { etaDays: 0, reason: "이미 임계 도달" };
+    const deltaPerHalfWindow = idxSecond.score - idxFirst.score;
+    const halfWindowDays = Math.max(1, recent.length - Math.max(cfg.minDays, half));
+    const ratePerDay = deltaPerHalfWindow / halfWindowDays;
+    if (ratePerDay <= 0) return { etaDays: null, reason: "악화 추세 없음" };
+    const remaining = cfg.alertScore - cur;
+    const eta = remaining / ratePerDay;
+    if (!isFinite(eta) || eta < 0) return { etaDays: null, reason: "추정 불가" };
+    if (eta > cfg.horizonDays) return { etaDays: null, reason: `horizon(${cfg.horizonDays}일) 밖` };
+    return { etaDays: Math.round(eta), reason: "추세 외삽" };
+  },
+
+  // 소재별 fatigue alert 종합: composite index + 임계점 도달 예상일
+  buildAlerts(rows, cfg) {
+    const byId = new Map();
+    for (const r of rows) {
+      if (!r.creative_id || !r.date) continue;
+      if (!byId.has(r.creative_id)) byId.set(r.creative_id, []);
+      byId.get(r.creative_id).push(r);
+    }
+    const out = [];
+    for (const [id, series] of byId) {
+      const sorted = series.slice().sort((a, b) => a.date.localeCompare(b.date));
+      const daily = this.buildDailySeries(sorted);
+      const idx = this.compositeIndex(daily, cfg);
+      const proj = this.projectThreshold(daily, cfg);
+      const channel = sorted[0]?.channel || null;
+      out.push({
+        creative_id: id,
+        channel,
+        days: sorted.length,
+        score: idx ? idx.score : null,
+        ctrTrendPctPerDay: idx ? idx.ctrTrendPctPerDay : null,
+        freqTrendPctPerDay: idx ? idx.freqTrendPctPerDay : null,
+        cpmTrendPctPerDay: idx ? idx.cpmTrendPctPerDay : null,
+        alert: idx ? idx.score >= cfg.alertScore : false,
+        etaDays: proj.etaDays,
+        etaReason: proj.reason,
+        lastDate: sorted[sorted.length - 1].date,
+      });
+    }
+    return out;
+  },
+
+  // Velocity 기반 교체 플랜: alert + eta 순으로 우선순위 큐를 만들고
+  // 주당 weeklyVelocity 개씩 교체 가능하다는 제약 하에 교체 예정주(week offset)를 배정.
+  // urgency: etaDays 작을수록(또는 이미 alert) 우선.
+  buildPlan(alerts, weeklyVelocity, cfg) {
+    const wv = Math.max(0.01, Number(weeklyVelocity) || cfg.defaultWeeklyVelocity);
+    // 우선순위: alert=true가 우선, 그 안에서 etaDays 오름차순(null은 맨 뒤), score desc
+    const candidates = alerts
+      .filter(a => a.score != null)
+      .slice()
+      .sort((a, b) => {
+        if (a.alert !== b.alert) return a.alert ? -1 : 1;
+        const ea = a.etaDays == null ? Infinity : a.etaDays;
+        const eb = b.etaDays == null ? Infinity : b.etaDays;
+        if (ea !== eb) return ea - eb;
+        return (b.score || 0) - (a.score || 0);
+      });
+
+    // 큐 안에서 주당 wv개씩 소화 — 각 항목에 배정 주차(0-indexed)와 슬롯 부여
+    const plan = candidates.map((a, i) => {
+      const weekIdx = Math.floor(i / wv);
+      const urgency = a.alert
+        ? "urgent"
+        : (a.etaDays != null && a.etaDays <= cfg.urgentDays)
+          ? "urgent"
+          : (a.etaDays != null && a.etaDays <= cfg.soonDays)
+            ? "soon"
+            : "planned";
+      return { ...a, queueRank: i + 1, scheduledWeek: weekIdx, urgency };
+    });
+
+    const urgentCount = plan.filter(p => p.urgency === "urgent").length;
+    const weeksNeededForUrgent = wv > 0 ? Math.ceil(urgentCount / wv) : null;
+    // 적정 속도 권고: urgent 소재를 1주 내 전부 교체하려면 필요한 주당 개수
+    const recommendedWeeklyVelocity = urgentCount > 0 ? urgentCount : 0;
+
+    return {
+      weeklyVelocity: wv,
+      plan,
+      urgentCount,
+      weeksNeededForUrgent,
+      recommendedWeeklyVelocity,
+      isUndersupplied: recommendedWeeklyVelocity > wv,
+    };
+  },
+
+  // Gantt 타임라인용: scheduledWeek 기준 week bucket (0..maxWeek) 별로 그룹화
+  ganttBuckets(plan, maxWeeks = 8) {
+    const buckets = Array.from({ length: maxWeeks }, (_, w) => ({ week: w, items: [] }));
+    for (const p of plan) {
+      const w = Math.min(p.scheduledWeek, maxWeeks - 1);
+      buckets[w].items.push(p);
+    }
+    return buckets;
   },
 };
 
@@ -10594,6 +10807,7 @@ const CREATIVE_STATS = {
 const CREATIVE_CACHE = {
   key: null, metrics: null, decompose: null, fatigue: null,
   matrix: null, nextTest: null, validation: null, snapshotHash: null,
+  fatigueAlerts: null, autoPlan: null,
 };
 
 function creativeCacheKey() {
@@ -10601,7 +10815,7 @@ function creativeCacheKey() {
   const sig = ["creative_id","date","channel","campaign_id","impressions","clicks","installs","spend",
                "hook_type","message_angle","format","first_3s","cta_style","duration_bucket"]
     .map(k => `${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
-  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|cfg:${CREATIVE_CONFIG.version}`;
+  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|cfg:${CREATIVE_CONFIG.version}|wv:${CREATIVE_STATE.weeklyVelocity}`;
 }
 
 // 결정론 hash (FNV-1a 32-bit) — snapshotHash 생성용
@@ -10659,6 +10873,11 @@ function buildCreativeCache() {
   // Next-test 후보 (matrix 기반)
   const nextTest = matrix ? generateNextTestHypotheses(matrix, decompose) : null;
 
+  // Ad Fatigue Alert: 다차원 복합지수 + 임계점 도달 예상일
+  const fatigueAlerts = CREATIVE_FATIGUE.buildAlerts(cleanRows, CREATIVE_CONFIG.fatigueAlert);
+  // Auto-Planner: 사용자 입력 weeklyVelocity 기반 교체 우선순위 + Gantt 스케줄
+  const autoPlan = CREATIVE_FATIGUE.buildPlan(fatigueAlerts, CREATIVE_STATE.weeklyVelocity, CREATIVE_CONFIG.autoPlanner);
+
   CREATIVE_CACHE.key = key;
   CREATIVE_CACHE.metrics = metrics;
   CREATIVE_CACHE.decompose = decompose;
@@ -10666,6 +10885,8 @@ function buildCreativeCache() {
   CREATIVE_CACHE.matrix = matrix;
   CREATIVE_CACHE.nextTest = nextTest;
   CREATIVE_CACHE.validation = validation;
+  CREATIVE_CACHE.fatigueAlerts = fatigueAlerts;
+  CREATIVE_CACHE.autoPlan = autoPlan;
   CREATIVE_CACHE.snapshotHash = creativeHashStr(key + cleanRows.length);
   return CREATIVE_CACHE;
 }
@@ -10720,6 +10941,8 @@ const CREATIVE_STATE = {
   matrixAxes:      "default", // 'default' | 'angle_vs_hook' 등 사용자 지정 가능
   selectedCell:    null,      // {row, col} — Concept Matrix 클릭 시 metric 표 필터
   fatigueShowAll:  false,     // true면 fatigue 발견 안 된 소재도 chart에 포함
+  weeklyVelocity:  CREATIVE_CONFIG.autoPlanner.defaultWeeklyVelocity, // 사용자 입력: 주당 신규 소재 공급 가능 개수
+  ganttWeeks:      8,         // Gantt 타임라인 표시 주수
 };
 
 function page_5_6() {
@@ -10757,6 +10980,8 @@ function page_5_6() {
       { id: "s-metrics", title: "소재별 지표" },
       { id: "s-decompose", title: "WLS 분해" },
       { id: "s-fatigue", title: "Fatigue 검출" },
+      { id: "s-fatigue-alert", title: "Ad Fatigue Alert" },
+      { id: "s-auto-planner", title: "Auto-Planner" },
       { id: "s-matrix", title: "Concept Matrix" },
       { id: "s-next", title: "다음 테스트" },
     ],
@@ -10768,6 +10993,8 @@ function page_5_6() {
       ${renderCreativeMetricsTable(c.metrics)}
       ${renderCreativeDecompose(c.decompose)}
       ${renderCreativeFatigue(c.fatigue, c.metrics)}
+      ${renderCreativeFatigueAlert(c)}
+      ${renderCreativeAutoPlanner(c)}
       ${renderCreativeMatrix(c.matrix)}
       ${renderCreativeNextTest(c.nextTest)}
     `,
@@ -10950,6 +11177,111 @@ function renderCreativeFatigue(fatigue, metrics) {
             </tr>
           `).join("")}</tbody>
         </table></div>` : `<p class="muted">감지된 fatigue 소재 없음. (양호)</p>`}
+    </section>`;
+}
+
+/* §2-B Ad Fatigue Alert — 다차원 복합지수(CTR↓ + 노출강도↑ + CPM↑) + 임계점 도달 예상일 */
+function renderCreativeFatigueAlert(c) {
+  const alerts = c.autoPlan ? c.autoPlan.plan : null;
+  const raw = c.fatigueAlerts || [];
+  if (!raw.length) return `<section class="block" id="s-fatigue-alert">
+    <h2 class="section-title"><span class="ix">§4.5</span>Ad Fatigue Alert</h2>
+    <p class="muted">분석 가능한 소재 없음 (운영 기간 ${CREATIVE_CONFIG.fatigueAlert.minDays}일 미만).</p>
+  </section>`;
+
+  const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "") + (v * 100).toFixed(2) + "%/일";
+  const alertN = raw.filter(a => a.alert).length;
+  const soonN = raw.filter(a => !a.alert && a.etaDays != null && a.etaDays <= CREATIVE_CONFIG.autoPlanner.soonDays).length;
+  // 표는 score desc (null은 맨 뒤), 상위 30개
+  const sorted = raw.slice().sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+
+  return `
+    <section class="block" id="s-fatigue-alert">
+      <h2 class="section-title"><span class="ix">§4.5</span>Ad Fatigue Alert</h2>
+      <p class="muted">CTR 하락 + 노출강도(impressions/day) 상승 + CPM 상승 추세를 결합한 복합 Fatigue 지수(0~1). ${(CREATIVE_CONFIG.fatigueAlert.alertScore*100).toFixed(0)}% 이상이면 즉시 경고, 미달이라도 추세 외삽으로 ${CREATIVE_CONFIG.fatigueAlert.horizonDays}일 내 도달 예상 시점을 산출합니다.</p>
+      <div class="ab-stat-row" style="margin:8px 0 12px;">
+        <div class="ab-stat"><div class="ab-stat-label">분석 소재 수</div><div class="ab-stat-value tnum">${raw.length}</div></div>
+        <div class="ab-stat"><div class="ab-stat-label">즉시 경고</div><div class="ab-stat-value tnum ${alertN>0?'neg':'pos'}">${alertN}</div></div>
+        <div class="ab-stat"><div class="ab-stat-label">${CREATIVE_CONFIG.autoPlanner.soonDays}일 내 도달 예상</div><div class="ab-stat-value tnum ${soonN>0?'neg':'pos'}">${soonN}</div></div>
+      </div>
+      <div class="table-wrap">
+        <table class="data" style="font-size:11.5px;">
+          <thead><tr><th>Creative ID</th><th>채널</th><th>운영일</th><th>Fatigue Score</th><th>CTR 추세</th><th>노출강도 추세</th><th>CPM 추세</th><th>임계 도달 예상</th></tr></thead>
+          <tbody>${sorted.slice(0, 30).map(a => `
+            <tr>
+              <td><code class="inline" style="font-size:10px;">${escapeHtml(String(a.creative_id).slice(0,24))}</code></td>
+              <td>${escapeHtml(a.channel || "—")}</td>
+              <td class="tnum">${a.days}일</td>
+              <td class="tnum"><strong style="color:${a.score==null?'var(--text-muted)':a.alert?'#f87171':a.score>=0.3?'#fbbf24':'#22c55e'};">${a.score==null?"—":(a.score*100).toFixed(0)+"%"}</strong>${a.alert?' 🔴':''}</td>
+              <td class="tnum" style="color:${(a.ctrTrendPctPerDay||0)<0?'#f87171':'var(--text-muted)'};">${fmtPct(a.ctrTrendPctPerDay)}</td>
+              <td class="tnum" style="color:${(a.freqTrendPctPerDay||0)>0?'#f87171':'var(--text-muted)'};">${fmtPct(a.freqTrendPctPerDay)}</td>
+              <td class="tnum" style="color:${(a.cpmTrendPctPerDay||0)>0?'#f87171':'var(--text-muted)'};">${fmtPct(a.cpmTrendPctPerDay)}</td>
+              <td class="tnum">${a.etaDays == null ? `<span style="color:var(--text-muted);font-size:10.5px;">${escapeHtml(a.etaReason||"—")}</span>` : a.etaDays === 0 ? `<strong style="color:#f87171;">즉시</strong>` : `<strong>${a.etaDays}일 후</strong>`}</td>
+            </tr>
+          `).join("")}</tbody>
+        </table>
+      </div>
+      <p class="muted" style="font-size:11px;margin-top:8px;">⚠ 노출강도(impressions/day)는 빈도(Frequency) 컬럼이 없어 사용하는 proxy입니다 — 동일 타겟에 노출이 급증하면 빈도 상승과 상관됩니다.</p>
+    </section>`;
+}
+
+/* §2-B Auto-Planner — 주당 신규 소재 공급량(velocity) 기반 교체 우선순위 + Gantt 타임라인 */
+function renderCreativeAutoPlanner(c) {
+  const plan = c.autoPlan;
+  if (!plan || !plan.plan.length) return `<section class="block" id="s-auto-planner">
+    <h2 class="section-title"><span class="ix">§4.6</span>Auto-Planner</h2>
+    <p class="muted">교체가 필요한 소재 없음.</p>
+  </section>`;
+
+  const buckets = CREATIVE_FATIGUE.ganttBuckets(plan.plan, CREATIVE_STATE.ganttWeeks);
+  const urgencyColor = { urgent: "#f87171", soon: "#fbbf24", planned: "#60a5fa" };
+  const urgencyLabel = { urgent: "긴급", soon: "곧", planned: "예정" };
+  const maxItemsInWeek = Math.max(1, ...buckets.map(b => b.items.length));
+
+  return `
+    <section class="block" id="s-auto-planner">
+      <h2 class="section-title"><span class="ix">§4.6</span>Auto-Planner — 교체 주기 자동 기획</h2>
+      <p class="muted">주당 신규 소재 공급 가능 개수(velocity)를 입력하면, Fatigue 경고 우선순위로 교체 주차를 자동 배정합니다.</p>
+      <div style="display:flex;align-items:center;gap:10px;margin:8px 0 12px;flex-wrap:wrap;">
+        <label style="font-size:12px;color:var(--text-muted);">주당 신규 소재 공급량</label>
+        <input type="number" id="creative-weekly-velocity" min="0.5" step="0.5" value="${plan.weeklyVelocity}"
+          style="width:70px;padding:4px 8px;background:var(--bg-2);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-size:12px;" />
+        <span style="font-size:11px;color:var(--text-muted);">개/주</span>
+      </div>
+      <div class="ab-stat-row" style="margin:8px 0 12px;">
+        <div class="ab-stat"><div class="ab-stat-label">긴급 교체 필요</div><div class="ab-stat-value tnum ${plan.urgentCount>0?'neg':'pos'}">${plan.urgentCount}</div></div>
+        <div class="ab-stat"><div class="ab-stat-label">긴급 소화 소요</div><div class="ab-stat-value tnum">${plan.weeksNeededForUrgent == null ? "—" : plan.weeksNeededForUrgent + "주"}</div></div>
+        <div class="ab-stat"><div class="ab-stat-label">권고 주당 속도</div><div class="ab-stat-value tnum">${plan.recommendedWeeklyVelocity}개</div></div>
+      </div>
+      ${plan.isUndersupplied ? `
+        <div class="callout warn"><div class="ico">!</div><div class="body"><strong>공급 부족</strong><p>긴급 교체가 필요한 소재가 ${plan.urgentCount}개인데 현재 주당 공급량(${plan.weeklyVelocity})으로는 1주 내 전부 소화할 수 없습니다. 주당 ${plan.recommendedWeeklyVelocity}개 이상으로 늘리거나 긴급도가 낮은 소재의 교체를 늦추세요.</p></div></div>
+      ` : `<div class="callout"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">현재 공급량(주당 ${plan.weeklyVelocity}개)으로 긴급 교체 물량을 충분히 소화 가능합니다.</p></div></div>`}
+
+      <div class="alloc-card" style="margin-top:12px;">
+        <div class="cann-card-header"><div class="alloc-card-title">교체 타임라인 (Gantt) — 향후 ${CREATIVE_STATE.ganttWeeks}주</div></div>
+        <div style="display:flex;flex-direction:column;gap:4px;margin-top:8px;">
+          ${buckets.map(b => `
+            <div style="display:flex;align-items:stretch;gap:8px;">
+              <div style="width:54px;flex-shrink:0;font-size:11px;color:var(--text-muted);padding-top:4px;">W+${b.week}</div>
+              <div style="flex:1;display:flex;gap:3px;flex-wrap:wrap;min-height:26px;align-items:center;background:var(--bg-2);border-radius:6px;padding:4px 6px;">
+                ${b.items.length === 0 ? `<span style="font-size:10.5px;color:var(--text-muted);">—</span>` :
+                  b.items.map(p => `
+                    <span title="${escapeHtml(String(p.creative_id))} · ${urgencyLabel[p.urgency]} · score=${p.score==null?"—":(p.score*100).toFixed(0)+"%"}"
+                      style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;background:${urgencyColor[p.urgency]}33;border:1px solid ${urgencyColor[p.urgency]}88;color:var(--text-1);">
+                      #${p.queueRank} ${escapeHtml(String(p.creative_id).slice(0,12))}
+                    </span>
+                  `).join("")}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">
+          <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${urgencyColor.urgent};margin-right:4px;"></span>긴급(즉시 경고 또는 ${CREATIVE_CONFIG.autoPlanner.urgentDays}일 내)
+          <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${urgencyColor.soon};margin:0 4px 0 12px;"></span>곧(${CREATIVE_CONFIG.autoPlanner.soonDays}일 내)
+          <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${urgencyColor.planned};margin:0 4px 0 12px;"></span>예정
+        </div>
+      </div>
+      <p class="muted" style="font-size:11px;margin-top:8px;">큐 순위는 [즉시 경고 우선 → 임계 도달 예상일 빠른 순 → Fatigue Score 높은 순]으로 배정되며, 주당 공급량만큼씩 주차에 배치됩니다.</p>
     </section>`;
 }
 
@@ -11144,6 +11476,14 @@ function bindCreativeHandlers() {
   });
   const expBtn = document.getElementById("creative-export-metrics");
   if (expBtn) expBtn.addEventListener("click", exportCreativeMetricsCSV);
+
+  // Auto-Planner: 주당 신규 소재 공급량(velocity) 입력
+  const velInput = document.getElementById("creative-weekly-velocity");
+  if (velInput) velInput.addEventListener("change", () => {
+    const v = Number(velInput.value);
+    CREATIVE_STATE.weeklyVelocity = v > 0 ? v : CREATIVE_CONFIG.autoPlanner.defaultWeeklyVelocity;
+    navigate("5-6");
+  });
 
   // 차트 렌더 (Chart.js 준비 후)
   renderCreativeCharts();
@@ -11379,6 +11719,70 @@ function runCreativeTests(verbose = true) {
     pass: r1 === r2 ? "✓" : "✗",
   });
 
+  // T7: CREATIVE_FATIGUE.olsSlope — 정확한 선형 시리즈 (y = 1 + 2*x)
+  const olsFit = CREATIVE_FATIGUE.olsSlope([1, 3, 5, 7, 9]);
+  results.push({
+    test: "T7 · CREATIVE_FATIGUE.olsSlope 정확도 (y=1+2x)",
+    expected: "slope=2, intercept=1",
+    actual: olsFit ? `slope=${olsFit.slope.toFixed(4)}, intercept=${olsFit.intercept.toFixed(4)}` : "null",
+    pass: olsFit && Math.abs(olsFit.slope - 2) < 1e-9 && Math.abs(olsFit.intercept - 1) < 1e-9 ? "✓" : "✗",
+  });
+
+  // T8: compositeIndex — CTR 뚜렷이 하락 + 노출강도 뚜렷이 상승 + CPM 뚜렷이 상승 → 높은 score(위험)
+  const declineDays = Array.from({ length: 14 }, (_, i) => ({
+    date: `2024-01-${String(i + 1).padStart(2, "0")}`,
+    ctr: 0.05 - i * 0.003,        // 뚜렷한 하락
+    impressions: 1000 + i * 200,  // 뚜렷한 상승
+    cpm: 5 + i * 0.5,             // 뚜렷한 상승
+  }));
+  const idxBad = CREATIVE_FATIGUE.compositeIndex(declineDays, CREATIVE_CONFIG.fatigueAlert);
+  results.push({
+    test: "T8 · compositeIndex 악화 시나리오 → 높은 score",
+    expected: "score > 0.5, 모든 추세 위험 방향",
+    actual: idxBad ? `score=${idxBad.score.toFixed(3)}` : "null",
+    pass: idxBad && idxBad.score > 0.5 && idxBad.ctrTrendPctPerDay < 0 && idxBad.freqTrendPctPerDay > 0 && idxBad.cpmTrendPctPerDay > 0 ? "✓" : "✗",
+  });
+
+  // T9: compositeIndex — 완전 평탄(추세 없음) → score ≈ 0
+  const flatDays = Array.from({ length: 14 }, (_, i) => ({
+    date: `2024-02-${String(i + 1).padStart(2, "0")}`,
+    ctr: 0.05, impressions: 1000, cpm: 5,
+  }));
+  const idxFlat = CREATIVE_FATIGUE.compositeIndex(flatDays, CREATIVE_CONFIG.fatigueAlert);
+  results.push({
+    test: "T9 · compositeIndex 평탄 시나리오 → score≈0",
+    expected: "score < 0.01",
+    actual: idxFlat ? `score=${idxFlat.score.toFixed(5)}` : "null",
+    pass: idxFlat && idxFlat.score < 0.01 ? "✓" : "✗",
+  });
+
+  // T10: projectThreshold — 악화 추세면 양의 etaDays, 개선/평탄 추세면 null
+  const projBad = CREATIVE_FATIGUE.projectThreshold(declineDays, CREATIVE_CONFIG.fatigueAlert);
+  const projFlat = CREATIVE_FATIGUE.projectThreshold(flatDays, CREATIVE_CONFIG.fatigueAlert);
+  results.push({
+    test: "T10 · projectThreshold (악화→eta 산출, 평탄→null)",
+    expected: "악화: etaDays!=null 또는 0, 평탄: etaDays=null",
+    actual: `bad.etaDays=${projBad.etaDays}, flat.etaDays=${projFlat.etaDays}`,
+    pass: (projBad.etaDays !== null || projBad.reason === "이미 임계 도달") && projFlat.etaDays === null ? "✓" : "✗",
+  });
+
+  // T11: buildPlan — alert=true 항목이 우선순위 큐 맨 앞으로, queueRank 오름차순 배정
+  const synthAlerts = [
+    { creative_id: "low", channel: "fb", days: 20, score: 0.2, alert: false, etaDays: 25, etaReason: "추세 외삽" },
+    { creative_id: "urgent", channel: "fb", days: 20, score: 0.8, alert: true, etaDays: 0, etaReason: "이미 임계 도달" },
+    { creative_id: "mid", channel: "ig", days: 20, score: 0.4, alert: false, etaDays: 10, etaReason: "추세 외삽" },
+  ];
+  const planT11 = CREATIVE_FATIGUE.buildPlan(synthAlerts, 1, CREATIVE_CONFIG.autoPlanner);
+  const firstId = planT11.plan[0]?.creative_id;
+  const bucketsT11 = CREATIVE_FATIGUE.ganttBuckets(planT11.plan, 8);
+  const totalBucketed = bucketsT11.reduce((s, b) => s + b.items.length, 0);
+  results.push({
+    test: "T11 · buildPlan 우선순위(alert 우선) + ganttBuckets 합 보존",
+    expected: "1순위=urgent, bucket 총합=3",
+    actual: `1순위=${firstId}, bucket합=${totalBucketed}, urgentCount=${planT11.urgentCount}`,
+    pass: firstId === "urgent" && totalBucketed === 3 && planT11.urgentCount === 1 ? "✓" : "✗",
+  });
+
   if (verbose) {
     console.log("%c=== Creative Analyzer · Golden Tests ===", "color: #adc6ff; font-weight: bold;");
     console.table(results);
@@ -11393,6 +11797,7 @@ if (typeof window !== "undefined") {
   window.CREATIVE_STATS = CREATIVE_STATS;
   window.CREATIVE_MATH = CREATIVE_MATH;
   window.CREATIVE_CONFIG = CREATIVE_CONFIG;
+  window.CREATIVE_FATIGUE = CREATIVE_FATIGUE;
 }
 
 /* ============================================================
