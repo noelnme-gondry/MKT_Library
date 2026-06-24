@@ -6759,52 +6759,59 @@ function monAllocBody() {
           <strong>최근 ${ALLOC_STATE.recentDays}일</strong> 데이터는 ▲ 마커 + 진한 색으로 강조됩니다.
         </p>
         <div id="alloc-scope-label" class="alloc-scope-label"></div>
+        <div class="alloc-scatter-controls-wrap">
         <div class="alloc-scatter-controls">
           <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">추세선</span>
+            <span class="ab-pillgroup-label">추세선${mmmTip(ALLOC_FILTER_TIPS.trendtype)}</span>
             <button class="ab-pill" data-trendtype="auto">Auto (Best R²)</button>
             <button class="ab-pill" data-trendtype="linear">Linear</button>
             <button class="ab-pill" data-trendtype="log">Log</button>
             <button class="ab-pill" data-trendtype="poly2">Poly2</button>
             <button class="ab-pill" data-trendtype="power">Power</button>
           </div>
+          <button class="ab-pill" id="alloc-advanced-toggle" style="margin-left:auto;">
+            ${ALLOC_STATE.advancedOpen ? "▲ 상세 설정 닫기" : "▼ 상세 설정 (가중치·이상치·정규화·외삽·표시)"}
+          </button>
+        </div>
+        <div class="alloc-scatter-controls" id="alloc-advanced-panel" style="${ALLOC_STATE.advancedOpen ? "" : "display:none;"}">
           <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">최근 가중치</span>
+            <span class="ab-pillgroup-label">최근 가중치${mmmTip(ALLOC_FILTER_TIPS.weightmode)}</span>
             <button class="ab-pill" data-weightmode="none">없음 (균등)</button>
             <button class="ab-pill" data-weightmode="linear">선형 (최오래 0.2)</button>
             <button class="ab-pill" data-weightmode="exponential">지수 (반감기 30일)</button>
           </div>
           <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">이상치 제거</span>
+            <span class="ab-pillgroup-label">이상치 제거${mmmTip(ALLOC_FILTER_TIPS.outlier)}</span>
             <button class="ab-pill" data-outlier="none">없음</button>
             <button class="ab-pill" data-outlier="iqr">IQR</button>
             <button class="ab-pill" data-outlier="modz">Modified Z</button>
           </div>
           <div class="ab-pillgroup" id="outlier-strength-group">
-            <span class="ab-pillgroup-label">강도</span>
+            <span class="ab-pillgroup-label">강도${mmmTip(ALLOC_FILTER_TIPS.strength)}</span>
             <button class="ab-pill" data-strength="standard">표준</button>
             <button class="ab-pill" data-strength="strong">강함</button>
             <button class="ab-pill" data-strength="very_strong">매우 강함</button>
           </div>
           <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">정규화</span>
+            <span class="ab-pillgroup-label">정규화${mmmTip(ALLOC_FILTER_TIPS.normalize)}</span>
             <button class="ab-pill" data-normalize="raw">절대값</button>
             <button class="ab-pill" data-normalize="log">로그 스케일</button>
             <button class="ab-pill" data-normalize="minmax">채널 0~1</button>
             <button class="ab-pill" data-normalize="robust">Robust z</button>
           </div>
           <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">외삽 한도 (Cap)</span>
+            <span class="ab-pillgroup-label">외삽 한도 (Cap)${mmmTip(ALLOC_FILTER_TIPS.extrapolate)}</span>
             <button class="ab-pill" data-extrapolate="1.0">1.0x (엄격)</button>
             <button class="ab-pill" data-extrapolate="1.3">1.3x (보통)</button>
             <button class="ab-pill" data-extrapolate="1.5">1.5x (공격적)</button>
             <button class="ab-pill" data-extrapolate="fallback">비례배분 (무제한)</button>
           </div>
           <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">표시</span>
+            <span class="ab-pillgroup-label">표시${mmmTip(ALLOC_FILTER_TIPS.pointtoggle)}</span>
             <button class="ab-pill" data-pointtoggle="show">점 + 추세선</button>
             <button class="ab-pill" data-pointtoggle="hide">추세선만</button>
           </div>
+        </div>
         </div>
         <div id="alloc-outlier-summary"></div>
         <div id="alloc-channel-filter" class="alloc-channel-filter"></div>
@@ -7624,6 +7631,7 @@ const ALLOC_STATE = {
   recentDays: 28,          // 집계·강조 윈도우 (일) — 기본 4주
   showRecent: true,
   hidePoints: false,       // 점 숨김 (추세선만 표시)
+  advancedOpen: false,     // 상세 설정(최근 가중치/이상치/강도/정규화/외삽/표시) 펼침 여부
   sim: {                   // 시뮬레이션 상태 (채널 1개 선택 시)
     channel: null,
     currentCost: null,
@@ -7634,6 +7642,17 @@ const ALLOC_STATE = {
      다중 채널 보기 시 글로벌 토글 변경은 미설정 채널만 영향.
      구조: { [channelKey]: { trendType?, weightMode?, outlierMethod?, outlierStrength? } } */
   perChannel: {},
+};
+
+/* 필터 그룹별 호버 설명 — "언제 쓰는지 · 무슨 역할" 1~2줄 */
+const ALLOC_FILTER_TIPS = {
+  trendtype: "채널의 Cost↔CPR 관계를 어떤 곡선으로 적합할지 선택. Auto는 R²가 가장 높은 모델을 자동 선택(기본 추천). 데이터가 거의 직선이면 Linear, 수확체감이 뚜렷하면 Log/Power, 곡선이 휘는 패턴(종모양·U자)이 보이면 Poly2.",
+  weightmode: "추세선을 적합할 때 최근 데이터에 더 큰 비중을 줄지 선택. 시장 상황이 최근 바뀌었다면 선형/지수로 최근 데이터를 더 신뢰. 시즌 영향 없이 안정적인 채널은 '없음'으로 전체 기간을 동등하게.",
+  outlier: "비정상적으로 튀는 (Cost, CPR) 데이터 포인트를 추세선 계산에서 제외. 프로모션·버그·일시적 이벤트로 튄 날짜가 있으면 IQR(표준) 또는 Modified Z(더 보수적, 표본 적을 때)로 제거 추천.",
+  strength: "이상치 제거 기준의 엄격도. '표준'은 일반적인 데이터, '강함/매우 강함'은 노이즈가 많아 이상치가 자주 끼는 채널에 사용(제거되는 데이터가 늘어남).",
+  normalize: "차트에 표시할 때의 축 스케일만 변경(추세선 계산엔 영향 없음). 채널 간 CPR 단위 차이가 커서 비교가 어려우면 로그/0~1/Robust z로 시각적 비교를 쉽게.",
+  extrapolate: "추세선을 관측 범위 밖(미집행 Cost 구간)까지 예측에 쓸 때의 한도. 데이터가 적거나 신뢰도가 낮으면 1.0x(엄격)로 안전하게, 충분한 데이터로 공격적 배분을 원하면 1.5x. '비례배분'은 추세선 외삽 없이 평균 효율로만 분배.",
+  pointtoggle: "차트에 원본 데이터 점을 같이 표시할지(추세선 신뢰도를 점 분포로 직접 확인) 추세선만 깔끔하게 볼지 선택.",
 };
 
 /* ===== 5-3 분석 단위 + 국가/채널/플랫폼 필터 ===== */
@@ -20960,8 +20979,19 @@ function queueAllocatorRender(delay = 80) {
 /* 정적 pillgroup 리스너 (페이지당 1회). 이전에 renderAllocatorScatter 안에서
    매번 새로 부착되던 게 누수 원인이었음. */
 function bindStaticAllocatorControls() {
-  const container = document.querySelector(".alloc-scatter-controls");
+  bindMmmInfoOnce();
+  const container = document.querySelector(".alloc-scatter-controls-wrap");
   if (!container || container.dataset.bound === "1") return;
+
+  const advToggle = document.getElementById("alloc-advanced-toggle");
+  if (advToggle) {
+    advToggle.addEventListener("click", () => {
+      ALLOC_STATE.advancedOpen = !ALLOC_STATE.advancedOpen;
+      const panel = document.getElementById("alloc-advanced-panel");
+      if (panel) panel.style.display = ALLOC_STATE.advancedOpen ? "" : "none";
+      advToggle.textContent = ALLOC_STATE.advancedOpen ? "▲ 상세 설정 닫기" : "▼ 상세 설정 (가중치·이상치·정규화·외삽·표시)";
+    });
+  }
 
   container.querySelectorAll(".ab-pill[data-trendtype]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -22438,89 +22468,66 @@ function renderTrendSummary(trendInfo) {
         </tr>`;
     }).join("");
 
+  // 한 줄 alert + 호버 설명(왜 위험·왜 발생·어떻게 처리) — 긴 본문은 mmmTip으로 이동
+  const allocAlertLine = (variant, headline, channels, tip) => `
+    <div class="callout ${variant}" style="margin-top:0.6rem;padding:0.55rem 0.8rem;">
+      <div class="ico">!</div>
+      <div class="body" style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
+        <strong style="font-size:13px;">${headline}</strong>${mmmTip(tip)}
+        ${channels ? `<span style="font-size:12px;color:var(--text-secondary);">${channels}</span>` : ""}
+      </div>
+    </div>`;
+
   wrap.innerHTML = `
-    ${descending.length > 0 ? `
-      <div class="callout danger" style="margin-top:1rem;">
-        <div class="ico">!</div>
-        <div class="body">
-          <strong>우하향 추세선 ${descending.length}개 채널 감지</strong>
-          <p>
-            ${descending.map(d => `<code class="inline">${escapeHtml(truncateLabel(d.channel, 28))}</code>`).join(", ")}
-          </p>
-          <p>
-            우하향 추세선(Cost↑ → CPR↓)은 일반적인 한계효용 체감 패턴과 반대입니다. 가능한 원인:
-            <strong>(1) 짧은 학습 기간으로 인한 데이터 부족</strong>,
-            <strong>(2) 채널 진입 초기 효율 상승 구간</strong>,
-            <strong>(3) 노이즈가 큰 운영 케이스</strong>.
-            한계효용 그리디(모드 B)를 사용하면 외삽 시 음수 CPR을 예측해 해당 채널에만 예산이 몰리는 위험이 있으니, 모드 A(가중평균 CPR) 사용 또는 CPR Cap 적용을 권장합니다.
-          </p>
-        </div>
-      </div>` : ""}
+    ${descending.length > 0 ? allocAlertLine(
+      "danger",
+      `우하향 추세선 채널 ${descending.length}개 감지`,
+      descending.map(d => `<code class="inline">${escapeHtml(truncateLabel(d.channel, 28))}</code>`).join(", "),
+      "왜 위험: 우하향(Cost↑→CPR↓)은 한계효용 체감 패턴과 반대라, 한계효용 그리디(모드 B)에서 외삽 시 음수 CPR을 예측해 이 채널에 예산이 무리하게 몰릴 수 있습니다. " +
+      "왜 발생: 짧은 학습 기간으로 데이터가 부족하거나, 채널 진입 초기 효율 상승 구간이거나, 노이즈가 큰 운영 케이스일 때 흔합니다. " +
+      "어떻게: 모드 A(가중평균 CPR) 사용 또는 CPR Cap 적용을 권장. R²가 조금 낮더라도 Log/Power 등 다른 추세선 모델을 시도해보고, 데이터 기간이 너무 길어 서로 다른 시기의 추세가 섞여 있다면 집계 윈도우(최근 N일)를 좁혀 다시 확인해보세요."
+    ) : ""}
 
-    ${bellShapes.length > 0 ? `
-      <div class="callout danger" style="margin-top:1rem;">
-        <div class="ico">!</div>
-        <div class="body">
-          <strong>Poly2 종모양(∩) 추세선 — 위험 (${bellShapes.length}개 채널)</strong>
-          <p>
-            ${bellShapes.map(s => {
-              const v = s.poly2Shape.vertex;
-              const recBest = recommendSafeFit(s.allFits);
-              const rec = recBest ? ` · 권장 모드: <code class="inline">${recBest.name}</code> (R²=${recBest.r2.toFixed(2)})` : "";
-              return `<code class="inline">${escapeHtml(truncateLabel(s.channel, 26))}</code> vertex≈${fmtCurrency(v)}${rec}`;
-            }).join("<br>")}
-          </p>
-          <p>
-            vertex 이후 <strong>CPR(또는 CPA)이 감소</strong>하는 영역이 그려졌습니다 — "더 쓸수록 더 효율적이 됨"이라는 비정상 신호.
-            한계효용 그리디(모드 B)를 적용하면 <strong>해당 채널에 무한 예산을 투입</strong>해야 한다고 잘못 추론될 위험.
-            대응:
-            (1) 추세선 모드를 <code class="inline">Log</code>나 <code class="inline">Power</code>로 변경 (위에 권장 모드 표시),
-            (2) 모드 A (가중평균) 사용,
-            (3) vertex 이후 영역(<strong>${fmtCurrency(bellShapes[0]?.poly2Shape.vertex)} 초과</strong>)에서는 예산 캡 적용.
-            해당 영역은 차트에서 <strong>점선</strong>으로 표시됩니다.
-          </p>
-        </div>
-      </div>` : ""}
+    ${bellShapes.length > 0 ? allocAlertLine(
+      "danger",
+      `종모양(∩) 추세선 — 위험 ${bellShapes.length}개 감지`,
+      bellShapes.map(s => {
+        const v = s.poly2Shape.vertex;
+        const recBest = recommendSafeFit(s.allFits);
+        const rec = recBest ? ` · 권장 <code class="inline">${recBest.name}</code>(R²=${recBest.r2.toFixed(2)})` : "";
+        return `<code class="inline">${escapeHtml(truncateLabel(s.channel, 26))}</code> vertex≈${fmtCurrency(v)}${rec}`;
+      }).join(" / "),
+      "왜 위험: vertex 이후 CPR이 감소하는 비정상 구간이 그려져, 한계효용 그리디(모드 B)가 \"더 쓸수록 더 효율적\"으로 오판해 해당 채널에 예산을 무한히 투입하려 할 수 있습니다. " +
+      "왜 발생: Poly2가 적은 데이터에 과적합되었거나, 관측 기간이 길어 서로 다른 시기의 효율 패턴(시즌·캠페인 변경 등)이 한 곡선에 섞였을 때 흔합니다. " +
+      "어떻게: 추세선 모드를 Log/Power로 바꿔보세요(R²가 표시된 값보다 조금 낮더라도 외삽이 안전한 모델이 더 낫습니다). 모드 A(가중평균) 사용도 안전. vertex 초과 구간엔 예산 캡 적용. 기간이 너무 길어 추세가 섞였다면 집계 윈도우를 좁혀(예: 28일→7일) 최근 패턴만 보고 다시 적합해보세요."
+    ) : ""}
 
-    ${uShapes.length > 0 ? `
-      <div class="callout warn" style="margin-top:1rem;">
-        <div class="ico">!</div>
-        <div class="body">
-          <strong>Poly2 U자형(∪) 추세선 — 주의 (${uShapes.length}개 채널)</strong>
-          <p>
-            ${uShapes.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 26))}</code> vertex≈${fmtCurrency(s.poly2Shape.vertex)}`).join(", ")}
-          </p>
-          <p>
-            vertex 이전이 우하향(낮은 cost일수록 CPR↑)이라 마찬가지로 외삽 위험. vertex 이전 영역은 점선 처리됨.
-          </p>
-        </div>
-      </div>` : ""}
+    ${uShapes.length > 0 ? allocAlertLine(
+      "warn",
+      `U자형(∪) 추세선 — 주의 ${uShapes.length}개 감지`,
+      uShapes.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 26))}</code> vertex≈${fmtCurrency(s.poly2Shape.vertex)}`).join(", "),
+      "왜 위험: vertex 이전 구간이 우하향(낮은 Cost일수록 CPR↑)으로 그려져, 그 구간으로 외삽하면 예산을 줄일수록 효율이 나빠진다는 잘못된 결론을 낼 수 있습니다. " +
+      "왜 발생: 종모양과 동일하게 데이터 과적합 또는 기간이 길어 여러 시기의 추세가 섞였을 때 흔합니다. " +
+      "어떻게: R²가 조금 낮아도 Log나 Linear 등 더 단순한 모델로 바꿔 비교해보세요. 기간이 너무 길어 추세가 섞여 있다면 집계 윈도우를 좁혀 다시 적합해보는 것도 효과적입니다."
+    ) : ""}
 
-    ${suspects.length > 0 ? `
-      <div class="callout warn" style="margin-top:1rem;">
-        <div class="ico">!</div>
-        <div class="body">
-          <strong>Poly2 추세선의 꼬리 의심 (${suspects.length}개 채널)</strong>
-          <p>
-            ${suspects.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 28))}</code>`).join(", ")}
-          </p>
-          <p>
-            관측 데이터의 한쪽에 점이 거의 없는데 곡선이 강제로 휘는 경우. 해당 영역은 점선으로 표시되며, 추세선 예측의 통계적 근거가 약합니다.
-          </p>
-        </div>
-      </div>` : ""}
+    ${suspects.length > 0 ? allocAlertLine(
+      "warn",
+      `Poly2 꼬리 의심 ${suspects.length}개 감지`,
+      suspects.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 28))}</code>`).join(", "),
+      "왜 위험: 관측 데이터가 한쪽에 거의 없는데 곡선이 그 방향으로 강제로 휘어, 점선(저신뢰) 구간의 예측이 통계적 근거 없이 과장될 수 있습니다. " +
+      "왜 발생: 해당 Cost 구간에 실제 운영 데이터가 거의 없는데 2차 곡선이 양끝을 억지로 통과시키려 할 때 발생합니다. " +
+      "어떻게: R²가 낮더라도 더 안정적인 Linear/Log 모델로 바꿔보거나, 데이터가 부족한 구간을 분석 대상에서 제외(집계 윈도우 조정)해보세요."
+    ) : ""}
 
-    ${sparseChannels.length > 0 ? `
-      <div class="callout warn" style="margin-top:1rem;">
-        <div class="ico">!</div>
-        <div class="body">
-          <strong>데이터 부족 채널 (${sparseChannels.length}개)</strong>
-          <p>
-            점 수가 10개 미만인 채널은 추세선이 <strong>전체 점선</strong>으로 표시됩니다.
-            5개 미만이면 추세선 자체를 그리지 않습니다.
-          </p>
-        </div>
-      </div>` : ""}
+    ${sparseChannels.length > 0 ? allocAlertLine(
+      "warn",
+      `데이터 부족 채널 ${sparseChannels.length}개`,
+      "",
+      "왜 위험: 점 수가 10개 미만이면 추세선이 전체 점선으로 표시되고(저신뢰), 5개 미만이면 추세선 자체를 그리지 않습니다 — 적은 데이터로 추세를 단정하면 잘못된 배분 결정으로 이어질 수 있습니다. " +
+      "왜 발생: 집계 윈도우(최근 N일)가 좁거나 해당 채널의 집행 빈도가 낮을 때 발생합니다. " +
+      "어떻게: 집계 윈도우를 늘려(예: 7일→28일) 더 많은 데이터 포인트를 확보하거나, 데이터가 누적될 때까지는 모드 A(가중평균)처럼 추세선 외삽에 덜 의존하는 방식을 사용하세요."
+    ) : ""}
 
     <div class="alloc-trend-table">
       <div class="alloc-trend-table-title">채널별 추세선 R² · 방향</div>
