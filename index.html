@@ -7240,10 +7240,72 @@ const STATS = (() => {
     return { costA, costB, total: costA + costB, cprA, cprB: cprBuse };
   }
 
+  /* ========== 대량 실험 검정 (Mass Test Readout) ==========
+     control arm 대비 모든 variant arm에 twoPropZTest를 일괄 적용.
+     Bayesian P(B>A)는 CREATIVE_STATS.betaProbGreater(고정 그리드, 결정론) 재사용 — Monte Carlo 금지(§8). */
+  function massReadout(arms) {
+    const control = arms.find(a => a.isControl) || arms[0];
+    if (!control || !control.n || control.n <= 0) return { control: null, rows: [] };
+    const rows = arms.map(a => {
+      if (a === control) {
+        return {
+          name: a.name, n: a.n, x: a.x, isControl: true,
+          rate: a.n > 0 ? a.x / a.n : 0,
+          liftRel: 0, z: 0, pValue: 1, ciLow95: 0, ciHigh95: 0,
+          probBWins: 0.5, sig: false,
+        };
+      }
+      const freq = twoPropZTest(control.n, control.x, a.n, a.x);
+      const probBWins = (typeof CREATIVE_STATS !== "undefined")
+        ? CREATIVE_STATS.betaProbGreater(control.x, control.n, a.x, a.n)
+        : NaN;
+      return {
+        name: a.name, n: a.n, x: a.x, isControl: false,
+        rate: freq.pB, liftRel: freq.liftRel, z: freq.z, pValue: freq.pValue,
+        ciLow95: freq.ciLow95, ciHigh95: freq.ciHigh95,
+        probBWins, sig: freq.pValue < 0.05,
+      };
+    });
+    return { control, rows };
+  }
+
+  /* ========== MDE vs Sample Size 파워 커브 ==========
+     sampleSizePerArm을 역으로 — 고정 sample size 그리드에서 binary search로 MDE(relative) 역산.
+     n(mde)가 mde에 대해 단조감소이므로 이분 탐색 안전. 결정론(반복 고정 50회). */
+  function mdeForSampleSize({ baseline, n, alpha = 0.05, power = 0.8, twoSided = true, maxMde = 5 }) {
+    if (!(baseline > 0) || baseline >= 1 || !(n > 0)) return NaN;
+    let lo = 1e-6, hi = maxMde;
+    // hi가 충분히 크지 않으면(=n(hi) > n) 확장
+    for (let i = 0; i < 30; i++) {
+      const nHi = sampleSizePerArm({ baseline, mdeRelative: hi, alpha, power, twoSided }).n;
+      if (isFinite(nHi) && nHi <= n) break;
+      hi *= 1.6;
+      if (hi > 50) break; // baseline*(1+mde) >= 1 한계 도달
+    }
+    for (let i = 0; i < 50; i++) {
+      const mid = (lo + hi) / 2;
+      const r = sampleSizePerArm({ baseline, mdeRelative: mid, alpha, power, twoSided });
+      if (!isFinite(r.n) || isNaN(r.n) || r.n > n) lo = mid; else hi = mid;
+    }
+    return hi;
+  }
+
+  function powerCurve({ baseline, alpha = 0.05, power = 0.8, points = 24, nMin = 200, nMax = 200000 }) {
+    const out = [];
+    const logMin = Math.log(nMin), logMax = Math.log(nMax);
+    for (let i = 0; i < points; i++) {
+      const n = Math.round(Math.exp(logMin + (logMax - logMin) * i / (points - 1)));
+      const mde = mdeForSampleSize({ baseline, n, alpha, power });
+      out.push({ n, mdePct: isFinite(mde) ? mde * 100 : null });
+    }
+    return out;
+  }
+
   return {
     normalCDF, normalInverse,
     sampleSizePerArm, twoPropZTest, bayesianAB,
     sampleSizeContinuous, continuousTest, budgetForTest,
+    massReadout, mdeForSampleSize, powerCurve,
   };
 })();
 
@@ -7658,6 +7720,20 @@ const AB_STATE = {
   mode: "plan",          // plan | analyze | threshold
   testType: "binary",    // binary (CVR) | continuous (CPR/ARPPU/Revenue per user)
   currency: "KRW",       // KRW (₩) | USD ($)
+};
+
+/* 대량 실험 검정(Mass Test Readout) — 독립 CSV 업로드(소형, TOOL_GROUP/CSV_STATE 파이프라인과 무관) */
+const AB_MASS_STATE = {
+  fileName: null,
+  rows: [],       // [{ name, n, x, isControl }]
+  headers: [],
+};
+
+/* MDE vs Sample Size 파워 커브 입력 (기존 §2 Plan 모드 baseline/alpha/power 값과 별개 입력) */
+const AB_POWER_STATE = {
+  baseline: 5,    // %
+  alpha: 0.05,
+  power: 0.8,
 };
 
 const ALLOC_STATE = {
@@ -8263,8 +8339,16 @@ function monExpDesignBody() {
         ${mode === "threshold" ? renderModeThreshold() : ""}
       </section>
 
+      <section class="block" id="s-mass">
+        ${renderMassReadout()}
+      </section>
+
+      <section class="block" id="s-powercurve">
+        ${renderPowerCurve()}
+      </section>
+
       <section class="block" id="s-notes">
-        <h2 class="section-title"><span class="ix">§4</span>통계 노트</h2>
+        <h2 class="section-title"><span class="ix">§5</span>통계 노트</h2>
         <ul>
           <li><strong>Binary (CVR) · z-test</strong>: <code class="inline">z = (p̂_B - p̂_A) / √(p̄(1-p̄)(1/n_A + 1/n_B))</code>. p-value &lt; α 시 귀무가설 기각.</li>
           <li><strong>Binary · Sample Size</strong>: <code class="inline">n = 2 × (z_α/2 + z_β)² × p̄(1-p̄) / δ²</code></li>
@@ -8273,6 +8357,8 @@ function monExpDesignBody() {
           <li><strong>Bayesian</strong>: Binary 전용. 사전 Beta(1,1). 사후 Beta(1+x, 1+n-x). Monte Carlo 10,000 sim.</li>
           <li><strong>예산 계산</strong>: <code class="inline">Total Budget = n_per_arm × (CPR_A + CPR_B)</code>. CPR은 Cost Per Result (전환당 비용).</li>
           <li><strong>주의</strong>: 멀티 변형(A/B/C/...) 테스트 시 Bonferroni 보정(<code class="inline">α/k</code>) 필요. 본 도구는 2-arm 기준.</li>
+          <li><strong>대량 실험 검정 (§3)</strong>: control arm 대비 모든 variant arm에 동일한 two-proportion z-test를 일괄 적용. Bayesian P(B&gt;A)는 Monte Carlo가 아닌 고정 그리드 수치적분(결정론, §8)으로 계산.</li>
+          <li><strong>파워 커브 (§4)</strong>: <code class="inline">n = 2 × (z_α/2 + z_β)² × p̄(1-p̄) / δ²</code> 식을 sample size 기준으로 역산(이분 탐색)하여 탐지 가능한 최소 MDE를 도출.</li>
         </ul>
       </section>
     `;
@@ -8298,6 +8384,8 @@ function page_5_4() {
       toc: [
         { id: "s-mode", title: "모드 선택" },
         { id: "s-body", title: "계산기" },
+        { id: "s-mass", title: "대량 실험 검정" },
+        { id: "s-powercurve", title: "파워 커브" },
         { id: "s-notes", title: "통계 노트" },
       ],
       body: `${renderExpTabs()}${monExpDesignBody()}`,
@@ -12343,6 +12431,79 @@ function runReadoutTests(verbose = true) {
 if (typeof window !== "undefined") {
   window.runReadoutTests = runReadoutTests;
   window.READOUT_CONFIG = READOUT_CONFIG;
+}
+
+/* ============================================================
+ * 5-4 대량 실험 검정(Mass Test Readout) + MDE 파워 커브 — 골든 테스트
+ * ============================================================ */
+function runMassReadoutTests(verbose = true) {
+  const results = [];
+
+  // T1: 명확한 positive variant → 유의 + lift 양수 + probBWins 높음
+  const r1 = STATS.massReadout([
+    { name: "control", n: 10000, x: 500, isControl: true },
+    { name: "variant_b", n: 10000, x: 650, isControl: false },
+  ]);
+  const row1 = r1.rows.find(r => !r.isControl);
+  const t1pass = row1 && row1.sig === true && row1.liftRel > 0 && row1.probBWins > 0.9;
+  results.push({ test: "T1 · 명확한 positive → sig+lift+probBWins", expected: "sig=true,lift>0,prob>0.9", actual: row1 ? `sig=${row1.sig},lift=${row1.liftRel.toFixed(3)},prob=${row1.probBWins.toFixed(3)}` : "no row", pass: t1pass ? "✓" : "✗" });
+
+  // T2: 명확한 negative variant → 유의 + lift 음수 + probBWins 낮음
+  const r2 = STATS.massReadout([
+    { name: "control", n: 10000, x: 650, isControl: true },
+    { name: "variant_c", n: 10000, x: 500, isControl: false },
+  ]);
+  const row2 = r2.rows.find(r => !r.isControl);
+  const t2pass = row2 && row2.sig === true && row2.liftRel < 0 && row2.probBWins < 0.1;
+  results.push({ test: "T2 · 명확한 negative → sig+lift<0+probBWins낮음", expected: "sig=true,lift<0,prob<0.1", actual: row2 ? `sig=${row2.sig},lift=${row2.liftRel.toFixed(3)},prob=${row2.probBWins.toFixed(3)}` : "no row", pass: t2pass ? "✓" : "✗" });
+
+  // T3: is_control 누락 시 첫 행을 대조군 보정 (호출부 동작 확인 — massReadout 자체는 첫 인자 fallback)
+  const r3 = STATS.massReadout([
+    { name: "alpha", n: 5000, x: 300, isControl: false },
+    { name: "beta", n: 5000, x: 320, isControl: false },
+  ]);
+  const t3pass = r3.control && r3.control.name === "alpha" && r3.rows[0].isControl === true;
+  results.push({ test: "T3 · is_control 없을 때 첫 행 fallback", expected: "control=alpha", actual: r3.control ? r3.control.name : "null", pass: t3pass ? "✓" : "✗" });
+
+  // T4: 결정론 — 같은 입력 두 번 호출 시 byte-identical
+  const arms = [
+    { name: "control", n: 8000, x: 400, isControl: true },
+    { name: "v1", n: 8000, x: 460, isControl: false },
+  ];
+  const m1 = JSON.stringify(STATS.massReadout(arms));
+  const m2 = JSON.stringify(STATS.massReadout(arms));
+  results.push({ test: "T4 · massReadout 결정론", expected: "identical", actual: m1 === m2 ? "identical" : "differ", pass: m1 === m2 ? "✓" : "✗" });
+
+  // T5: mdeForSampleSize ↔ sampleSizePerArm 라운드트립 (역함수 정합성)
+  const baseline = 0.05;
+  const mde0 = 0.20; // 20% relative
+  const nFromMde = STATS.sampleSizePerArm({ baseline, mdeRelative: mde0, alpha: 0.05, power: 0.8 }).n;
+  const mdeFromN = STATS.mdeForSampleSize({ baseline, n: nFromMde, alpha: 0.05, power: 0.8 });
+  const roundtripErr = Math.abs(mdeFromN - mde0) / mde0;
+  results.push({ test: "T5 · MDE↔SampleSize 라운드트립", expected: "오차<5%", actual: `${(roundtripErr * 100).toFixed(2)}%`, pass: roundtripErr < 0.05 ? "✓" : "✗" });
+
+  // T6: powerCurve는 n이 클수록 MDE가 단조감소
+  const curve = STATS.powerCurve({ baseline: 0.05, alpha: 0.05, power: 0.8, points: 12 });
+  const valid = curve.filter(p => p.mdePct != null);
+  const monotone = valid.every((p, i) => i === 0 || p.mdePct <= valid[i - 1].mdePct + 1e-9);
+  results.push({ test: "T6 · powerCurve MDE 단조감소", expected: "monotone", actual: monotone ? "monotone" : "violated", pass: monotone ? "✓" : "✗" });
+
+  // T7: 결정론 — powerCurve 같은 입력 두 번
+  const c1 = JSON.stringify(STATS.powerCurve({ baseline: 0.05, alpha: 0.05, power: 0.8 }));
+  const c2 = JSON.stringify(STATS.powerCurve({ baseline: 0.05, alpha: 0.05, power: 0.8 }));
+  results.push({ test: "T7 · powerCurve 결정론", expected: "identical", actual: c1 === c2 ? "identical" : "differ", pass: c1 === c2 ? "✓" : "✗" });
+
+  if (verbose) {
+    console.log("%c=== Mass Readout / Power Curve · Golden Tests ===", "color: #adc6ff; font-weight: bold;");
+    console.table(results);
+    const pass = results.filter(r => r.pass === "✓").length;
+    console.log(`%c${pass}/${results.length} 통과`, `color: ${pass === results.length ? '#22c55e' : '#f87171'}; font-weight: bold;`);
+  }
+  return results;
+}
+
+if (typeof window !== "undefined") {
+  window.runMassReadoutTests = runMassReadoutTests;
 }
 
 /* ============================================================
@@ -20215,6 +20376,148 @@ function renderModeThreshold() {
   `;
 }
 
+/* ========== §3. 대량 실험 검정 (Mass Test Readout) ==========
+   Multi-variant CSV(arm명·노출수·전환수) 업로드 → control 대비 모든 arm 일괄 z-test + Bayesian 승률.
+   기존 STATS.twoPropZTest / CREATIVE_STATS.betaProbGreater 재사용(§8 결정론 — Monte Carlo 금지). */
+function renderMassReadout() {
+  const rowsCount = AB_MASS_STATE.rows.length;
+  const sample = "arm,exposures,conversions,is_control\ncontrol,10000,500,1\nvariant_b,10000,560,0\nvariant_c,9800,545,0";
+
+  let resultHtml = "";
+  if (rowsCount > 0) {
+    const readout = STATS.massReadout(AB_MASS_STATE.rows);
+    if (!readout.control) {
+      resultHtml = `<div class="callout warn"><div class="ico">!</div><div class="body"><strong>대조군(control)을 찾을 수 없습니다</strong><p>is_control 컬럼이 1(또는 true)인 행이 최소 1개 필요합니다. 없으면 첫 행을 control로 간주합니다.</p></div></div>`;
+    } else {
+      resultHtml = `
+        <p style="font-size:12px;color:var(--text-muted);margin:6px 0 10px;">대조군: <strong>${escapeHtml(readout.control.name)}</strong> (n=${readout.control.n.toLocaleString()}, 전환율 ${(readout.rows[0] ? "" : "")}${((readout.control.x / readout.control.n) * 100).toFixed(2)}%)</p>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Arm</th><th>표본수</th><th>전환율</th><th>대조군 대비 Lift</th>
+                <th>z</th><th>p-value</th><th>95% CI (절대차)</th><th>P(B&gt;A)</th><th>유의성</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${readout.rows.map(r => {
+                const sigBadge = r.isControl
+                  ? '<span class="pill tier-3">대조군</span>'
+                  : (r.pValue < 0.01 ? '<span class="pill tier-1">p &lt; 0.01</span>'
+                     : r.pValue < 0.05 ? '<span class="pill tier-2">p &lt; 0.05</span>'
+                     : '<span class="pill tier-3">비유의</span>');
+                return `<tr>
+                  <td>${escapeHtml(r.name)}${r.isControl ? " <span style='color:var(--text-muted);font-size:11px;'>(control)</span>" : ""}</td>
+                  <td class="tnum">${r.n.toLocaleString()}</td>
+                  <td class="tnum">${(r.rate*100).toFixed(2)}%</td>
+                  <td class="tnum ${r.isControl ? "" : (r.liftRel >= 0 ? "" : "down")}">${r.isControl ? "—" : (r.liftRel*100).toFixed(2)+"%"}</td>
+                  <td class="tnum">${r.isControl ? "—" : r.z.toFixed(3)}</td>
+                  <td class="tnum">${r.isControl ? "—" : r.pValue.toFixed(4)}</td>
+                  <td class="tnum">${r.isControl ? "—" : `[${(r.ciLow95*100).toFixed(2)}%, ${(r.ciHigh95*100).toFixed(2)}%]`}</td>
+                  <td class="tnum">${r.isControl ? "—" : (isNaN(r.probBWins) ? "—" : (r.probBWins*100).toFixed(1)+"%")}</td>
+                  <td>${sigBadge}</td>
+                </tr>`;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+  }
+
+  return `
+    <h2 class="section-title"><span class="ix">§3</span>대량 실험 검정 (Mass Test Readout)</h2>
+    <p style="color:var(--text-secondary);">Multi-variant 실험 결과 CSV를 업로드하면, 대조군(control) 대비 모든 Arm의 유의성 검정을 한 번에 계산합니다. 도구 상단 CSV 파이프라인과 무관한 독립 업로드입니다 — 서버 전송 없음.</p>
+    <div class="ab-form-grid" style="align-items:flex-start;">
+      <div class="ab-field" style="grid-column:1/-1;">
+        <label>CSV 업로드 (헤더: arm, exposures, conversions, is_control)</label>
+        <input id="ab-mass-file" type="file" accept=".csv" />
+        <span class="ab-field-hint">is_control은 1/0 또는 true/false. 비어 있으면 첫 행을 대조군으로 간주.</span>
+      </div>
+      <div class="ab-field">
+        <button class="ab-pill" id="ab-mass-sample">샘플 CSV로 체험</button>
+        ${AB_MASS_STATE.fileName ? `<span class="ab-field-hint">현재: ${escapeHtml(AB_MASS_STATE.fileName)} (${rowsCount}개 arm)</span>` : ""}
+      </div>
+    </div>
+    <details style="margin:6px 0 4px;">
+      <summary style="cursor:pointer;font-size:11.5px;color:var(--text-muted);">CSV 형식 예시 펼치기</summary>
+      <pre style="margin-top:6px;padding:8px 10px;background:var(--bg-1);border-radius:8px;font-size:11.5px;overflow:auto;">${escapeHtml(sample)}</pre>
+    </details>
+    <div id="ab-mass-result">${resultHtml}</div>
+  `;
+}
+
+/* ========== §4. MDE vs Sample Size 파워 커브 ==========
+   고정 baseline/alpha/power에서 sample size(per-arm)가 늘어날수록 탐지 가능한 MDE가 줄어드는 곡선. */
+function renderPowerCurve() {
+  const s = AB_POWER_STATE;
+  return `
+    <h2 class="section-title"><span class="ix">§4</span>MDE vs Sample Size 파워 커브</h2>
+    <p style="color:var(--text-secondary);">표본 수(그룹당)가 커질수록 통계적으로 탐지 가능한 최소 효과 크기(MDE)가 줄어듭니다. baseline 전환율이 낮을수록 더 많은 표본이 필요합니다.</p>
+    <div class="ab-form-grid">
+      <div class="ab-field">
+        <label>현재 전환율 (%) · baseline</label>
+        <input id="ab-pc-baseline" type="number" step="0.01" min="0.01" max="99.99" value="${s.baseline}" />
+      </div>
+      <div class="ab-field">
+        <label>유의수준 α</label>
+        <select id="ab-pc-alpha">
+          <option value="0.10" ${s.alpha === 0.10 ? "selected" : ""}>0.10 (90% 신뢰)</option>
+          <option value="0.05" ${s.alpha === 0.05 ? "selected" : ""}>0.05 (95% 신뢰)</option>
+          <option value="0.01" ${s.alpha === 0.01 ? "selected" : ""}>0.01 (99% 신뢰)</option>
+        </select>
+      </div>
+      <div class="ab-field">
+        <label>검정력 (Power)</label>
+        <select id="ab-pc-power">
+          <option value="0.70" ${s.power === 0.70 ? "selected" : ""}>0.70</option>
+          <option value="0.80" ${s.power === 0.80 ? "selected" : ""}>0.80</option>
+          <option value="0.90" ${s.power === 0.90 ? "selected" : ""}>0.90</option>
+        </select>
+      </div>
+    </div>
+    <div class="chart-container" style="--chart-h:340px;">
+      <canvas id="ab-power-chart"></canvas>
+    </div>
+  `;
+}
+
+function renderPowerCurveChart() {
+  if (typeof Chart === "undefined") return;
+  const canvas = document.getElementById("ab-power-chart");
+  if (!canvas) return;
+  const s = AB_POWER_STATE;
+  const baseline = s.baseline / 100;
+  if (!(baseline > 0) || baseline >= 1) return;
+  const curve = STATS.powerCurve({ baseline, alpha: s.alpha, power: s.power });
+  const pts = curve.filter(p => p.mdePct != null);
+  const muted = getCssVar("--text-muted"), border = getCssVar("--border");
+  destroyChartIfExists("ab-power-chart");
+  CHART_INSTANCES["ab-power-chart"] = new Chart(canvas, {
+    type: "line",
+    data: {
+      datasets: [{
+        label: `MDE (%) · baseline ${s.baseline}%`,
+        data: pts.map(p => ({ x: p.n, y: p.mdePct })),
+        borderColor: "#7aa2f7", backgroundColor: "rgba(122,162,247,0.12)",
+        borderWidth: 2, pointRadius: 2, tension: 0.2, fill: true,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "nearest", intersect: false },
+      plugins: {
+        legend: { labels: { color: muted, font: { size: 11 } } },
+        tooltip: { callbacks: { label: (ctx) => `n=${Math.round(ctx.parsed.x).toLocaleString()} → MDE ${ctx.parsed.y.toFixed(2)}%` } },
+      },
+      scales: {
+        x: { type: "logarithmic", title: { display: true, text: "Sample Size (per arm)", color: muted }, ticks: { color: muted }, grid: { color: border } },
+        y: { title: { display: true, text: "MDE (%)", color: muted }, ticks: { color: muted }, grid: { color: border } },
+      },
+    },
+  });
+}
+
 function bindABCalculatorHandlers() {
   // Tab / Toggle switching
   document.querySelectorAll(".ab-tab").forEach(btn => {
@@ -20480,6 +20783,65 @@ function bindABCalculatorHandlers() {
     ancBtn.addEventListener("click", run);
     run();
   }
+
+  // === §3: 대량 실험 검정 (Mass Test Readout) — 독립 소형 CSV 업로드 ===
+  function parseMassCsvRows(data) {
+    return data
+      .map(row => {
+        const name = String(row.arm ?? row.name ?? "").trim();
+        const n = parseFloat(row.exposures ?? row.n ?? row.visitors);
+        const x = parseFloat(row.conversions ?? row.x ?? row.converted);
+        const icRaw = row.is_control ?? row.control ?? "";
+        const isControl = icRaw === true || icRaw === 1 || /^(1|true|yes)$/i.test(String(icRaw).trim());
+        return { name, n, x, isControl };
+      })
+      .filter(r => r.name && isFinite(r.n) && r.n > 0 && isFinite(r.x) && r.x >= 0 && r.x <= r.n);
+  }
+  const massFileEl = document.getElementById("ab-mass-file");
+  if (massFileEl) massFileEl.addEventListener("change", e => {
+    const file = e.target.files[0]; if (!file) return;
+    AB_MASS_STATE.fileName = file.name;
+    Papa.parse(file, {
+      header: true, dynamicTyping: false, skipEmptyLines: true,
+      complete: r => {
+        AB_MASS_STATE.headers = r.meta.fields || [];
+        AB_MASS_STATE.rows = parseMassCsvRows(r.data);
+        if (AB_MASS_STATE.rows.length > 0 && !AB_MASS_STATE.rows.some(x => x.isControl)) AB_MASS_STATE.rows[0].isControl = true;
+        navigate("5-4");
+      },
+    });
+  });
+  const massSampleBtn = document.getElementById("ab-mass-sample");
+  if (massSampleBtn) massSampleBtn.addEventListener("click", () => {
+    AB_MASS_STATE.fileName = "sample_mass_readout.csv";
+    AB_MASS_STATE.rows = [
+      { name: "control",   n: 10000, x: 500, isControl: true },
+      { name: "variant_b", n: 10000, x: 560, isControl: false },
+      { name: "variant_c", n: 9800,  x: 545, isControl: false },
+      { name: "variant_d", n: 9600,  x: 470, isControl: false },
+    ];
+    navigate("5-4");
+  });
+
+  // === §4: MDE vs Sample Size 파워 커브 ===
+  const pcBaseline = document.getElementById("ab-pc-baseline");
+  const pcAlpha = document.getElementById("ab-pc-alpha");
+  const pcPower = document.getElementById("ab-pc-power");
+  if (pcBaseline && pcAlpha && pcPower) {
+    const runPowerCurve = () => {
+      const b = parseFloat(pcBaseline.value);
+      const a = parseFloat(pcAlpha.value);
+      const p = parseFloat(pcPower.value);
+      if (isFinite(b) && b > 0 && b < 100) AB_POWER_STATE.baseline = b;
+      if (isFinite(a)) AB_POWER_STATE.alpha = a;
+      if (isFinite(p)) AB_POWER_STATE.power = p;
+      renderPowerCurveChart();
+    };
+    pcBaseline.addEventListener("change", runPowerCurve);
+    pcAlpha.addEventListener("change", runPowerCurve);
+    pcPower.addEventListener("change", runPowerCurve);
+  }
+  renderPowerCurveChart();
 }
 
 /* ---------- Fallback (drafts only) ---------- */
