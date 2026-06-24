@@ -6440,6 +6440,7 @@ function monVizBody() {
       <section class="block" id="s-charts">
         <h2 class="section-title"><span class="ix">§3</span>차트 시각화</h2>
         <p style="color:var(--text-secondary);font-size:13px;">업로드된 데이터를 기반으로 시계열·채널 비중·CPI 비교·퍼널·코호트 매출 5종 차트가 렌더링됩니다.</p>
+        ${renderMonEventMarkerUI()}
         <div class="chart-grid cols-2">
           <div class="chart-card">
             <div class="chart-title">일별 비용·설치 추이</div>
@@ -6472,6 +6473,53 @@ function monVizBody() {
     `;
 }
 const MON_STATE = { tab: "viz" };
+
+// 주요 이벤트 마커 (캠페인 런칭/프로모션/매체 이슈 등) — 클라이언트 메모리 전용, 새로고침 리셋 (localStorage 금지)
+const MON_EVENT_MARKERS = []; // [{ id, date: "YYYY-MM-DD", label: "..." }]
+function renderMonEventMarkerUI() {
+  const rows = [...MON_EVENT_MARKERS].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  return `
+    <div class="block" id="mon-event-marker-ui" style="padding:14px 18px;margin:12px 0;border:1px solid var(--border-subtle);border-radius:8px;background:var(--bg-2);">
+      <div style="font-size:12.5px;font-weight:700;color:var(--text-1);margin-bottom:8px;">📌 주요 이벤트 마커 <span style="font-weight:400;color:var(--text-muted);">(캠페인 런칭·프로모션·매체 이슈 등 — 새로고침 시 초기화)</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+        <input type="date" id="mon-event-date" style="padding:6px 8px;font-size:12px;background:var(--bg-1);color:var(--text-1);border:1px solid var(--border);border-radius:4px;" />
+        <input type="text" id="mon-event-label" placeholder="라벨 (예: 신규 프로모션 시작)" maxlength="40" style="flex:1;min-width:160px;padding:6px 8px;font-size:12px;background:var(--bg-1);color:var(--text-1);border:1px solid var(--border);border-radius:4px;" />
+        <button class="ab-pill" id="mon-event-add" type="button">+ 마커 추가</button>
+      </div>
+      ${rows.length ? `
+        <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;">
+          ${rows.map(m => `
+            <li style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text-2);">
+              <span style="font-family:'JetBrains Mono',monospace;color:var(--text-muted);">${m.date}</span>
+              <span style="flex:1;">${m.label.replace(/</g, "&lt;")}</span>
+              <button class="ab-pill" data-mon-event-del="${m.id}" type="button" style="padding:2px 8px;font-size:10.5px;">삭제</button>
+            </li>`).join("")}
+        </ul>
+      ` : `<p style="font-size:11.5px;color:var(--text-muted);margin:0;">등록된 마커가 없습니다. 날짜와 라벨을 입력해 추가하세요.</p>`}
+    </div>`;
+}
+function bindMonEventMarkerHandlers() {
+  const addBtn = document.getElementById("mon-event-add");
+  if (addBtn) {
+    addBtn.addEventListener("click", () => {
+      const dateInput = document.getElementById("mon-event-date");
+      const labelInput = document.getElementById("mon-event-label");
+      const date = dateInput ? dateInput.value : "";
+      const label = labelInput ? labelInput.value.trim() : "";
+      if (!date || !label) return;
+      MON_EVENT_MARKERS.push({ id: "m" + Date.now() + Math.random().toString(36).slice(2, 7), date, label });
+      navigate(location.hash.slice(1) || "5-2");
+    });
+  }
+  document.querySelectorAll("[data-mon-event-del]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.monEventDel;
+      const idx = MON_EVENT_MARKERS.findIndex(m => m.id === id);
+      if (idx >= 0) MON_EVENT_MARKERS.splice(idx, 1);
+      navigate(location.hash.slice(1) || "5-2");
+    });
+  });
+}
 
 // 운영 대시보드 필터 상태 (efficiency 탭 전용 — cohort 탭은 별도 grain)
 const MON_FILTER_STATE = {
@@ -20880,6 +20928,9 @@ function bindCSVPageHandlers() {
   // ----- 5-2: 차트 5종 렌더링 -----
   if (document.getElementById("chart-timeseries")) renderVizCharts();
 
+  // ----- 5-2: 주요 이벤트 마커 UI -----
+  if (document.getElementById("mon-event-marker-ui")) bindMonEventMarkerHandlers();
+
   // ----- 5-3: Budget Allocator 핸들러 -----
   // ----- 5-3: 효율·배분 탭 전환 (예산 배분/퍼널/세그먼트) -----
   document.querySelectorAll("[data-alloc-tab]").forEach(b => b.addEventListener("click", () => { ALLOC_TAB_STATE.tab = b.dataset.allocTab; navigate("5-3"); }));
@@ -21002,11 +21053,42 @@ function renderVizCharts() {
     // 위 한줄은 가독성을 위해 풀어쓰면:
     const dailyAgg = aggregateByKey(rows.filter(r => r.date), "date", ["cost", "installs"]);
     dailyAgg.sort((a, b) => String(a.key).localeCompare(String(b.key)));
+    const tsLabels = dailyAgg.map(d => d.key);
+
+    // 주요 이벤트 마커 — 세로 점선 + 라벨 (annotation 라이브러리 없이 캔버스 직접, §12.22 패턴 재사용)
+    // 카테고리(문자열) x축이라 getPixelForValue(label, index) 형태로 index를 같이 넘겨 모호성 회피
+    const evMarks = MON_EVENT_MARKERS
+      .map(m => ({ ...m, idx: tsLabels.indexOf(m.date) }))
+      .filter(m => m.idx >= 0);
+    const evMarkerPlugin = {
+      id: "monEventMarkers",
+      afterDatasetsDraw(chart) {
+        if (!evMarks.length) return;
+        const xs = chart.scales.x, area = chart.chartArea, ctx2 = chart.ctx;
+        ctx2.save();
+        ctx2.lineWidth = 1.5;
+        ctx2.font = "9px sans-serif";
+        evMarks.forEach(m => {
+          const px = xs.getPixelForValue(m.date, m.idx);
+          if (px == null || isNaN(px)) return;
+          ctx2.strokeStyle = "rgba(251,191,36,0.7)";
+          ctx2.setLineDash([4, 4]);
+          ctx2.beginPath(); ctx2.moveTo(px, area.top); ctx2.lineTo(px, area.bottom); ctx2.stroke();
+          ctx2.fillStyle = "rgba(251,191,36,0.95)";
+          ctx2.save();
+          ctx2.translate(px + 3, area.top + 4);
+          ctx2.rotate(-Math.PI / 2.4);
+          ctx2.fillText(m.label, 0, 0);
+          ctx2.restore();
+        });
+        ctx2.restore();
+      },
+    };
 
     CHART_INSTANCES.ts = new Chart(tsCanvas.getContext("2d"), {
       type: "line",
       data: {
-        labels: dailyAgg.map(d => d.key),
+        labels: tsLabels,
         datasets: [
           { label: "비용", data: dailyAgg.map(d => d.cost), yAxisID: "y",
             borderColor: CHART_THEME.primary, backgroundColor: "rgba(173,198,255,0.1)",
@@ -21024,6 +21106,7 @@ function renderVizCharts() {
           y1: { ...chartCommonOpts().scales.y, position: "right", title: { display: true, text: "설치수", color: CHART_THEME.muted, font: { size: 10 } }, grid: { display: false } },
         },
       },
+      plugins: [evMarkerPlugin],
     });
   }
 
