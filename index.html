@@ -72,25 +72,40 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <style>
   /* ========== Design Tokens (Obsidian Flux) ========== */
   :root {
-    --background: #0f172a;
-    --surface-base: #1e293b;
-    --surface-raised: #334155;
-    --surface-overlay: #1e293b;
-    --surface-container-lowest: #0b0f19;
-    --surface-container-low: #1e293b;
-    --surface-container: #334155;
-    --surface-container-high: #475569;
-    --surface-container-highest: #64748b;
+    /* --- Dark Mode (Default) - Saturation-less Dark Gray --- */
+    --background: #121212;
+    --surface-base: #1e1e1e;
+    --surface-raised: #2c2c2c;
+    --surface-overlay: #1e1e1e;
+    --surface-container-lowest: #0a0a0a;
+    --surface-container-low: #1c1c1c;
+    --surface-container: #282828;
+    --surface-container-high: #383838;
+    --surface-container-highest: #4e4e4e;
+    
     --primary: #adc6ff;
-    --primary-container: #4d8eff;
+    --primary-container: #2b4c80;
     --secondary: #4cd7f6;
     --text-primary: #F8FAFC;
     --text-secondary: #94A3B8;
     --text-muted: #64748B;
-    /* MMM(5-18 등)에서 쓰는 시맨틱 토큰 — 정의 누락 시 div는 상속으로 보이나 button은 기본 검정색이 됨(가독성 버그). 명시 정의. */
-    --text-1: #F8FAFC; --text-2: #94A3B8; --bg-1: #0f172a; --bg-2: #1e293b; --border: rgba(148, 163, 184, 0.12);
-    --border-subtle: rgba(148, 163, 184, 0.08);
-    --border-stronger: rgba(148, 163, 184, 0.18);
+    
+    --text-1: #F8FAFC; 
+    --text-2: #94A3B8; 
+    --bg-1: #121212; 
+    --bg-2: #1e1e1e; 
+    --border: rgba(255, 255, 255, 0.08);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --border-stronger: rgba(255, 255, 255, 0.15);
+    
+    --topbar-bg: rgba(18, 18, 18, 0.85);
+    --page-sticky-bg: rgba(18, 18, 18, 0.92);
+
+    /* Delta Indicators for Dark Mode (Pastel / Neon) */
+    --success: #34d399;   /* Mint Green */
+    --danger: #f87171;    /* Coral Pink */
+    --warning: #fbbf24;   /* Warm Gold */
+    --info: #60a5fa;
 
     --radius-default: 0.125rem;
     --radius-lg: 0.25rem;
@@ -104,6 +119,43 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
     --font-sans: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  }
+
+  body.light-mode {
+    /* --- Light Mode --- */
+    --background: #f8f9fa;
+    --surface-base: #ffffff;
+    --surface-raised: #f1f3f5;
+    --surface-overlay: #ffffff;
+    --surface-container-lowest: #ffffff;
+    --surface-container-low: #f8f9fa;
+    --surface-container: #f1f3f5;
+    --surface-container-high: #e9ecef;
+    --surface-container-highest: #dee2e6;
+    
+    --primary: #2b6cb0;
+    --primary-container: #ebf8ff;
+    --secondary: #0d9488;
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #9ca3af;
+    
+    --text-1: #111827; 
+    --text-2: #4b5563; 
+    --bg-1: #f8f9fa; 
+    --bg-2: #ffffff; 
+    --border: rgba(0, 0, 0, 0.08);
+    --border-subtle: rgba(0, 0, 0, 0.04);
+    --border-stronger: rgba(0, 0, 0, 0.12);
+    
+    --topbar-bg: rgba(255, 255, 255, 0.85);
+    --page-sticky-bg: rgba(255, 255, 255, 0.92);
+
+    /* Delta Indicators for Light Mode (Highly visible dark/rich tones) */
+    --success: #059669;   /* Dark Green */
+    --danger: #dc2626;    /* Dark Red */
+    --warning: #d97706;   /* Dark Gold */
+    --info: #2563eb;
   }
 
   * { box-sizing: border-box; }
@@ -285,7 +337,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     position: sticky;
     top: 0;
     z-index: 10;
-    background: rgba(18,19,21,0.85);
+    background: var(--topbar-bg);
     backdrop-filter: saturate(160%) blur(8px);
     border-bottom: 1px solid var(--border-subtle);
     padding: 0.625rem 1.5rem;
@@ -332,7 +384,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     position: sticky;
     top: 48px;
     z-index: 9;
-    background: rgba(12,13,15,.92);
+    background: var(--page-sticky-bg);
     backdrop-filter: saturate(160%) blur(8px);
     margin: 0 -2.5rem;
     padding: 0 2.5rem;
@@ -2856,6 +2908,164 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .toc-filters .tf-pills { display: flex; gap: 5px; flex-wrap: wrap; }
   .toc-filters .tf-pill { font-size: 11px; padding: 3px 9px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg-2); color: var(--text-1); cursor: pointer; }
   .toc-filters .tf-pill.active { background: #7aa2f7; color: #0b0d12; border-color: #7aa2f7; font-weight: 600; }
+
+  /* ===================== Theme & Visibility Overrides ===================== */
+  /* Delta colors overrides for positive, negative, and other inline styles */
+  .pos, .pos *, [style*="color:#22c55e"], [style*="color: #22c55e"], [style*="color:#34d399"], [style*="color: #34d399"], [style*="color:rgb(34,197,94)"] {
+    color: var(--success) !important;
+  }
+  .neg, .neg *, [style*="color:#f87171"], [style*="color: #f87171"], [style*="color:#ff8a8a"], [style*="color: #ff8a8a"], [style*="color:#ff5a5a"] {
+    color: var(--danger) !important;
+  }
+  [style*="color:#fbbf24"], [style*="color: #fbbf24"] {
+    color: var(--warning) !important;
+  }
+
+  /* Table padding, typography, and visual hierarchy overrides */
+  table.data thead th {
+    opacity: 0.7;
+    padding: 0.72rem 1.0rem !important;
+    color: var(--text-secondary) !important;
+  }
+  table.data tbody td {
+    padding: 0.72rem 1.0rem !important;
+    vertical-align: middle;
+  }
+  /* Bold value fields and tabular numbers */
+  table.data tbody td.tnum,
+  table.data tbody td.num,
+  table.data tbody td .tnum,
+  table.data tbody td strong,
+  table.data tbody td .value {
+    color: var(--text-primary) !important;
+    font-weight: 600;
+  }
+  table.data tbody td {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Specific override for LTV:CAC and other status text colors */
+  table.data tbody td.pos strong {
+    color: var(--success) !important;
+  }
+  table.data tbody td.neg strong {
+    color: var(--danger) !important;
+  }
+  
+  /* Theme toggle button styling */
+  #theme-toggle {
+    margin-right: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+  }
+  body.light-mode .sun-icon { display: none !important; }
+  body.light-mode .moon-icon { display: block !important; }
+  body:not(.light-mode) .sun-icon { display: block !important; }
+  body:not(.light-mode) .moon-icon { display: none !important; }
+  
+  /* Additional accessibility fixes for Light Mode */
+  body.light-mode .block,
+  body.light-mode .kpi-card,
+  body.light-mode .callout,
+  body.light-mode .ab-pill {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  body.light-mode .ab-pill {
+    border: 1px solid var(--border) !important;
+    color: var(--text-secondary) !important;
+    background: var(--bg-2) !important;
+  }
+  body.light-mode .ab-pill.active {
+    background: var(--primary) !important;
+    color: #ffffff !important;
+    border-color: var(--primary) !important;
+  }
+  body.light-mode .topbar {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  body.light-mode .sidebar {
+    border-right: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  
+  /* Sidebar search light theme override */
+  body.light-mode .sidebar-search {
+    background: var(--bg-1) !important;
+    border: 1px solid var(--border) !important;
+  }
+  body.light-mode .sidebar-search input {
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    box-shadow: none !important;
+  }
+  body.light-mode .sidebar-search input::placeholder {
+    color: var(--text-muted) !important;
+  }
+  
+  /* Light Mode Callout Contrast Overrides */
+  body.light-mode .callout {
+    background: var(--bg-1) !important;
+    border-left-width: 4px !important;
+    color: var(--text-primary) !important;
+  }
+  body.light-mode .callout.warn,
+  body.light-mode .callout.warning {
+    background: #fffbeb !important;
+    border-color: #f59e0b !important;
+    color: #b45309 !important;
+  }
+  body.light-mode .callout.warn *,
+  body.light-mode .callout.warning * {
+    color: #b45309 !important;
+  }
+  body.light-mode .callout.info {
+    background: #eff6ff !important;
+    border-color: #3b82f6 !important;
+    color: #1d4ed8 !important;
+  }
+  body.light-mode .callout.info * {
+    color: #1d4ed8 !important;
+  }
+
+  /* Light Mode Alert Banner Overrides */
+  body.light-mode .alert-banner {
+    background: #fffbeb !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+    border-left: 3px solid #f59e0b !important;
+  }
+  body.light-mode .alert-banner .alert-icon {
+    color: #b45309 !important;
+  }
+  body.light-mode .alert-banner .alert-body {
+    color: #111827 !important;
+  }
+  body.light-mode .alert-banner .alert-body strong {
+    color: #b45309 !important;
+  }
+  body.light-mode .alert-banner .alert-cta {
+    background: #fef3c7 !important;
+    border-color: rgba(245, 158, 11, 0.4) !important;
+    color: #b45309 !important;
+  }
+  body.light-mode .alert-banner .alert-cta:hover {
+    background: #fde68a !important;
+  }
+
+  /* Light Mode mmmExplain Collapsible Overrides */
+  body.light-mode .mmm-explain-details {
+    background: #f0f4ff !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
+  }
+  body.light-mode .mmm-explain-details summary {
+    color: #1d4ed8 !important;
+  }
+  body.light-mode .mmm-explain-details div {
+    border-top-color: rgba(59, 130, 246, 0.15) !important;
+  }
 </style>
 </head>
 <body>
@@ -2865,6 +3075,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 
 <div class="app">
+  <script>
+    (function() {
+      const hashRaw = (location.hash || "").replace(/^#/, "");
+      const isHome = !hashRaw || hashRaw === "home" || !(/^\d+-\d+$/.test(hashRaw));
+      if (isHome) {
+        document.querySelector(".app").classList.add("is-home");
+      }
+    })();
+  </script>
   <!-- ===================== SIDEBAR ===================== -->
   <aside class="sidebar" id="sidebar">
     <div class="brand" id="brand" style="cursor:pointer;">
@@ -2893,6 +3112,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <span class="current">Overview</span>
       </nav>
       <div class="topbar-actions">
+        <button class="btn ghost" id="theme-toggle" type="button" aria-label="테마 전환" title="테마 전환 (라이트/다크)">
+          <svg class="sun-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          <svg class="moon-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
         <button class="btn ghost" id="cmdk-launch" type="button" aria-label="명령 팔레트 열기" title="명령 팔레트 (⌘K)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <span>빠른 이동</span>
@@ -5557,11 +5780,11 @@ PAGE_RENDERERS["4-4"] = page_4_4;
 
 /* ========== Chart.js 공통 테마 (Obsidian Flux 적용) ========== */
 const CHART_THEME = {
-  text: "#9CA3AF",
-  textPrimary: "#F9FAFB",
-  muted: "#6B7280",
-  grid: "rgba(255,255,255,0.06)",
-  border: "rgba(255,255,255,0.08)",
+  get text() { return document.body.classList.contains("light-mode") ? "#4b5563" : "#9CA3AF"; },
+  get textPrimary() { return document.body.classList.contains("light-mode") ? "#111827" : "#F9FAFB"; },
+  get muted() { return document.body.classList.contains("light-mode") ? "#9ca3af" : "#6B7280"; },
+  get grid() { return document.body.classList.contains("light-mode") ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"; },
+  get border() { return document.body.classList.contains("light-mode") ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)"; },
   primary: "#adc6ff",
   primaryContainer: "#4d8eff",
   secondary: "#4cd7f6",
@@ -5584,15 +5807,16 @@ function chartCommonOpts() {
         },
       },
       tooltip: {
-        backgroundColor: "#1f2021",
-        titleColor: CHART_THEME.textPrimary,
-        bodyColor: CHART_THEME.text,
-        borderColor: CHART_THEME.border,
+        backgroundColor: "rgba(15, 23, 42, 0.95)",
+        titleColor: "#ffffff",
+        bodyColor: "#f1f5f9",
+        borderColor: "rgba(255, 255, 255, 0.15)",
         borderWidth: 1,
         padding: 10,
-        titleFont: { family: "JetBrains Mono", size: 11 },
+        titleFont: { family: "JetBrains Mono", size: 11, weight: "bold" },
         bodyFont: { family: "JetBrains Mono", size: 11 },
-        boxPadding: 4,
+        boxPadding: 6,
+        usePointStyle: true,
       },
     },
     scales: {
@@ -6778,9 +7002,13 @@ function page_5_3() {
     ? [{ id: "s-scatter", title: "산점도" }, { id: "s-controls", title: "예산" }, { id: "s-bar", title: "배분" }, { id: "s-scenario", title: "시나리오" }, { id: "s-table", title: "상세" }, { id: "s-algo", title: "알고리즘" }]
     : [{ id: "s-filter", title: "분석 단위" }];
   return pageShell(meta, {
-    deck: "예산 배분 — 절대 CPR/ROAS 기반 채널 배분 + 한계효용 그리디(고급).",
+    deck: "채널/캠페인 단위의 예산 배분 및 한계효용(Greedy Optimization) 시뮬레이션",
     chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>${authStatusChip()}`,
-    summary: "절대 CPR/ROAS 가중으로 채널별 최적 예산을 계산합니다. 퍼널·세그먼트는 무료 운영 대시보드에서 확인하세요.",
+    summary: "채널별 절대 성과(CPR/ROAS) 가중과 수확체감 모형을 반영하여 최적 예산 포트폴리오를 제안합니다.<br>" +
+      "<details style='margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer;'><summary>⚠️ 알고리즘 참고사항 펼치기</summary>" +
+      "<div style='margin-top: 6px; padding: 8px 10px; background: var(--bg-1); border-left: 3px solid var(--primary); line-height: 1.6;'>" +
+      "비용 대비 성과 산점도를 곡선 적합(Saturation)하여 한계효용 극대화 배분을 도출합니다. 데이터가 지나치게 적거나 채널별 지출액 변동성이 없으면 외삽이 불안정할 수 있으므로, 단순 CPR/ROAS 배분 비율과 비교하여 의사결정하시길 권장합니다." +
+      "</div></details>",
     toc,
     stickyFilter: ALLOC_FILTER_STATE.applied ? renderAllocStickyFilterBar() : "",
     body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경)</summary><div style="margin-top:10px;">${renderInlineCsvUpload("5-3")}</div></details>${monAllocBody()}`,
@@ -7990,12 +8218,16 @@ function page_5_4() {
   // 설계 탭 — 수동 A/B 계산기 (CSV 게이트 없음)
   if (tab === "design") {
     return pageShell(meta, {
-      deck: "마케팅 실험을 한 도구에서: 설계(A/B 표본·예산) → 결과 판독(arm×지표) → 홀드아웃 증분. 설계 탭은 CVR(전환율)·연속(CPR/ARPPU/Revenue) 모두 지원하며 Frequentist(p-value)·Bayesian(P(B>A)) 두 방식 동시 제공.",
+      deck: "마케팅 실험 설계 및 분석 (표본 계산, A/B 테스트 결과 판독, 홀드아웃 증분)",
       chips: `
         <span class="chip"><span class="dot"></span>도구 · 실험 분석</span>
         <span class="chip ok"><span class="dot"></span>설계 · 결과 · 홀드아웃</span>
         ${authStatusChip()}`,
-      summary: "통계 라이브러리(z-test, Welch z-근사, Φ⁻¹ Acklam, Beta-Binomial 고정 grid)를 클라이언트에서 직접 실행. 설계 탭으로 표본·예산을 계산하고, 실험을 돌린 뒤 결과/홀드아웃 탭에 CSV를 올려 판독합니다.",
+      summary: "실험 전 표본 수/기간을 설계하고, 실험 종료 후 A/B 결과 또는 홀드아웃 데이터를 업로드하여 신뢰도를 판독합니다.<br>" +
+        "<details style='margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer;'><summary>📚 통계 설계 노트 펼치기</summary>" +
+        "<div style='margin-top: 6px; padding: 8px 10px; background: var(--bg-1); border-left: 3px solid var(--primary); line-height: 1.6;'>" +
+        "본 도구는 Frequentist(z-test, Welch z-근사)와 Bayesian(Beta-Binomial 고정 그리드) 분석 모델을 동시에 제공하여 의사결정 신뢰도를 높입니다. 연속형 지표(CPR/ARPPU)와 전환율 지표(CVR)를 모두 시뮬레이션할 수 있습니다." +
+        "</div></details>",
       toc: [
         { id: "s-mode", title: "모드 선택" },
         { id: "s-body", title: "계산기" },
@@ -8030,12 +8262,20 @@ function page_5_4() {
 
   return pageShell(meta, {
     deck: tab === "holdout"
-      ? "Holdout 증분 측정: 증분 전환 = test 전환 − (test 인원 × control 전환율). iROAS = 증분 매출 / 비용."
-      : "Stage 1(upper_funnel) + Stage 2(downstream_quality) 2단 게이트 + arm×지표 비교 매트릭스. 두 방법 일치(promote/kill) vs 불일치(inconclusive) 결정론 룰.",
+      ? "Holdout 그룹 비교를 통한 진짜 마케팅 증분 효과(iROAS) 측정"
+      : "실험 다지표 판독 및 2단 필터 게이트(Upper Funnel & Downstream Quality) 분석",
     chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>${authStatusChip()}`,
     summary: tab === "holdout"
-      ? "어트리뷰션 숫자는 과대계상되기 쉬움. holdout(control)과 비교한 증분만이 진짜 기여입니다. lift 유의성은 two-proportion z-test로 검정."
-      : "α=0.05, Bayesian promote ≥ 0.95 / kill ≤ 0.05. promote = 두 방법 모두 양의 유의 / kill = 두 방법 모두 음의 유의 / inconclusive = 그 외.",
+      ? "어트리뷰션 수치가 아닌, 홀드아웃 통제 집단(Control)과의 직접 비교를 통해 순수 증분 성과를 도출합니다.<br>" +
+        "<details style='margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer;'><summary>⚠️ 홀드아웃 증분 공식 참고사항 펼치기</summary>" +
+        "<div style='margin-top: 6px; padding: 8px 10px; background: var(--bg-1); border-left: 3px solid var(--primary); line-height: 1.6;'>" +
+        "증분 전환 = Test 전환 − (Test 인원 × Control 전환율)로 계산하며, 통계 유의성은 Two-proportion z-test로 검정합니다. iROAS(증분 매출 / 광고비)가 벤치마크를 상회하는지 확인하세요." +
+        "</div></details>"
+      : "상위 깔때기 지표(Stage 1)와 유저 품질 지표(Stage 2)를 순차적으로 검증하여 의사결정의 편향을 방지합니다.<br>" +
+        "<details style='margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer;'><summary>⚠️ 2단 게이트 판정 규칙 펼치기</summary>" +
+        "<div style='margin-top: 6px; padding: 8px 10px; background: var(--bg-1); border-left: 3px solid var(--primary); line-height: 1.6;'>" +
+        "α=0.05 유의 수준에서 Frequentist 검정과 Bayesian 사후 확률(promote ≥ 0.95, kill ≤ 0.05) 기준을 동시 만족하는 경우에만 Promote/Kill 판정을 내리며, 그 외에는 보수적인 Inconclusive로 판단합니다." +
+        "</div></details>",
     toc,
     body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경) · ${tab === "holdout" ? "홀드아웃 CSV" : "실험 CSV"}</summary><div style="margin-top:10px;">${renderInlineCsvUpload(csvTool)}</div></details>${renderExpTabs()}${body}`,
   });
@@ -10480,13 +10720,17 @@ function page_5_6() {
   const c = CREATIVE_CACHE;
 
   return pageShell(meta, {
-    deck: "소재별 파생지표 → attribute별 WLS 분해 → Fatigue 검출 → Concept Matrix → 다음 테스트 후보. 모든 통계는 단일 캐시에서 lookup.",
+    deck: "소재별 파생지표 모니터링, 속성별 기여도 분해(WLS), 소재 피로도(Fatigue) 진단 및 테스트 추천",
     chips: `
       <span class="chip"><span class="dot"></span>도구 · Creative Analyzer</span>
       <span class="chip ok"><span class="dot"></span>소재 ${c.metrics.length}개</span>
       <span class="chip"><span class="dot"></span>config ${CREATIVE_CONFIG.version} · snapshot ${c.snapshotHash}</span>
       ${authStatusChip()}`,
-    summary: "WLS impressions-weighted LPM으로 attribute별 효과를 분해. campaign_id는 within-transformation으로 흡수. BH 다중검정 보정. ⚠ 관찰 분해 = delivery selection bias 포함 → 인과 후보로만 해석, 확정은 5-7 실험 readout에서.",
+    summary: "업로드된 소재별 일자별 성과 데이터를 분석하여 효율적인 예산 배분 및 크리에이티브 방향성을 제시합니다.<br>" +
+      "<details style='margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer;'><summary>⚠️ 통계 분석 및 해석 한계 펼치기</summary>" +
+      "<div style='margin-top: 6px; padding: 8px 10px; background: var(--bg-1); border-left: 3px solid var(--primary); line-height: 1.6;'>" +
+      "노출량 가중 최소제곱법(WLS)과 다중 검정 보정(BH)을 통해 크리에이티브 속성(Hook, Format 등)의 효과를 추정합니다. 본 분해 결과는 매체 알고리즘에 따른 노출 편향(Selection Bias)이 포함되어 있으므로 인과적 효과가 아닌 상관 관계로 해석해야 하며, 최종 확정은 실험 도구(5-4)를 통해 검증하시는 것을 권장합니다." +
+      "</div></details>",
     toc: [
       { id: "s-prep", title: "데이터 준비" },
       { id: "s-validation", title: "검증" },
@@ -10498,9 +10742,7 @@ function page_5_6() {
       { id: "s-next", title: "다음 테스트" },
     ],
     body: `
-      <section class="block" id="s-prep">
-        ${renderInlineCsvUpload("5-6")}
-      </section>
+      <details class="block" id="s-prep" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);outline:none;">🗂 데이터 매핑 설정 (펼쳐서 변경)</summary><div style="margin-top:10px;">${renderInlineCsvUpload("5-6")}</div></details>
 
       ${renderCreativeValidation(c.validation)}
       ${renderCreativeVelocity(c)}
@@ -10753,7 +10995,9 @@ function renderCreativeNextTest(nextTest) {
   return `
     <section class="block" id="s-next">
       <h2 class="section-title"><span class="ix">§6</span>다음 테스트 후보</h2>
-      <p class="muted">Concept Matrix 빈 셀(탐색) + 유망 셀(최적화) + WLS 음의 효과(제거)에서 자동 생성. exploreRatio=${(CREATIVE_CONFIG.test.exploreRatio*100).toFixed(0)}%, batchSize=${CREATIVE_CONFIG.test.batchSize}.</p>
+      <p class="muted" style="margin-top: 6px; line-height: 1.5;">
+        분석 결과를 기반으로 다음 광고 소재 테스트를 위한 가설 후보들을 제안합니다. 아직 집행 데이터가 없는 조합(🔍 탐색), 가능성이 보이지만 확증이 필요한 조합(🎯 최적화), 통계적으로 음의 영향이 뚜렷하여 배제가 권장되는 속성(❌ 제거)을 자동으로 도출합니다. (배치 크기: ${CREATIVE_CONFIG.test.batchSize}개)
+      </p>
       <div class="table-wrap">
         <table class="data" style="font-size:11.5px;">
           <thead><tr><th>유형</th><th>대상</th><th>arms</th><th>근거</th><th>샘플사이즈</th><th>게이트</th></tr></thead>
@@ -14493,9 +14737,13 @@ function page_5_18() {
         ${renderMmmOptionCards(c)}
       `;
   return pageShell(meta, {
-    deck: "추세 존재 검정 → 카니발 vs 오가닉 삼각검증 + 시트 audit + adstock·Shapley·수확체감 + 예산 시나리오 예측. 모든 결론은 관측 회귀 = 연관(가설). 인과는 geo holdout / organic-split.",
+    deck: "카니발 진단 → Trend Forecast → MMM 기여 분해 → 범용 회귀 (가설·기술용 분석)",
     chips: `<span class="chip"><span class="dot"></span>도구 · MMM 방법론</span><span class="chip warning"><span class="dot"></span>가설·기술용 · holdout 아님</span>${authStatusChip()}`,
-    summary: "⚠ 어떤 계수도 측정된 인과/증분 효과가 아닙니다. 추세는 가정하지 않고 검정(STL·MK·ADF·KPSS), 추론은 HAC+AR(1), 귀인은 Shapley R². 예측은 관측 회귀의 외삽(가설). cannibalization·증분 결정은 holdout(5-15) 전용.",
+    summary: "관측 데이터 기반 마케팅 반응 곡선 추정 및 기여도 분해 분석 모델입니다.<br>" +
+      "<details style='margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer;'><summary>⚠️ 통계적 한계 및 주의사항 펼치기</summary>" +
+      "<div style='margin-top: 6px; padding: 8px 10px; background: var(--bg-1); border-left: 3px solid var(--warning); line-height: 1.6;'>" +
+      "어떤 회귀 계수도 엄밀한 인과/증분 효과를 대변하지 않습니다. 추세 검정(STL·MK·ADF), 추론(HAC+AR(1)), 귀인(Shapley R²) 분석을 통해 채널별 기여를 근사합니다. 정확한 인과 검증을 위해서는 Geo Holdout / Campaign Split(5-15) 분석이 필수적입니다." +
+      "</div></details>",
     toc: tocByStage,
     tocFilters: stage ? renderMmmFilters(c) : "",
     body: `
@@ -14508,8 +14756,12 @@ PAGE_RENDERERS["5-18"] = page_5_18;
 
 // 인라인 "쉬운 해석" 콜아웃 — 모든 섹션 공통
 function mmmExplain(html) {
-  return `<div style="display:flex;gap:8px;align-items:flex-start;background:rgba(122,162,247,0.07);border:1px solid rgba(122,162,247,0.22);border-radius:8px;padding:9px 12px;margin:8px 0;font-size:12px;line-height:1.6;color:var(--text-1);">
-    <span style="flex-shrink:0;font-size:14px;">💡</span><div><strong style="color:#adc6ff;">쉽게 말하면</strong> · ${html}</div></div>`;
+  return `<details class="mmm-explain-details" style="margin:8px 0;border:1px solid rgba(122,162,247,0.22);border-radius:8px;background:rgba(122,162,247,0.04);outline:none;">
+    <summary style="cursor:pointer;padding:8px 12px;font-size:12px;font-weight:600;color:var(--primary);outline:none;display:flex;align-items:center;gap:6px;list-style:none;">💡 쉬운 해석 보기 (펼치기)</summary>
+    <div style="padding:0 12px 10px 12px;font-size:12px;line-height:1.6;color:var(--text-1);border-top:1px dashed rgba(122,162,247,0.15);margin-top:2px;padding-top:8px;">
+      <strong style="color:var(--primary);">쉽게 말하면</strong> · ${html}
+    </div>
+  </details>`;
 }
 const _MMM_TARGET_KO = { Regs: "가입 (Registration)", React: "재활성 (Reactivation)" };
 
@@ -15452,14 +15704,14 @@ function renderMmmCharts(c) {
     destroyChartIfExists("mmm-cannib-spend-chart");
     CHART_INSTANCES["mmm-cannib-spend-chart"] = new Chart(document.getElementById("mmm-cannib-spend-chart"), {
       data: { labels: xlab, datasets: [
-        { type: "line", label: tgtKo + " (실측)", data: tgtY, borderColor: "#e6e9ef", borderWidth: 1.6, pointRadius: 0, yAxisID: "y", tension: 0.2, order: 1 },
+        { type: "line", label: tgtKo + " (실측)", data: tgtY, borderColor: getCssVar('--text-secondary'), borderWidth: 1.6, pointRadius: 0, yAxisID: "y", tension: 0.2, order: 1 },
         { type: "line", label: chL, data: spY, borderColor: "#7aa2f7", backgroundColor: "rgba(122,162,247,0.12)", borderWidth: 1.5, pointRadius: 0, yAxisID: "y1", fill: true, tension: 0.2, order: 2 },
       ] },
       options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
         plugins: { legend: { display: true, labels: { color: muted, font: { size: 10 }, boxWidth: 12 } } },
         scales: {
           x: { ticks: { color: muted, maxTicksLimit: 12 }, grid: { color: border } },
-          y: { position: "left", title: { display: true, text: tgtKo, color: "#e6e9ef" }, ticks: { color: muted }, grid: { color: border } },
+          y: { position: "left", title: { display: true, text: tgtKo, color: getCssVar('--text-secondary') }, ticks: { color: muted }, grid: { color: border } },
           y1: { position: "right", title: { display: true, text: "지출", color: "#7aa2f7" }, ticks: { color: "#7aa2f7" }, grid: { drawOnChartArea: false } },
         } },
     });
@@ -19809,6 +20061,7 @@ function renderLoadingPlaceholder() {
 }
 
 async function navigate(id) {
+  window.CURRENT_PAGE_ID = id || "home";
   const content = $("#content");
   let html = "";
   // 같은 페이지 재렌더(토글/필터/매핑 변경 등)일 때 스크롤 위치 보존용.
@@ -23185,8 +23438,8 @@ function bindAllocStickyFilterHandlers() {
       if (opening) {
         document.body.appendChild(list);
         const r = btn.getBoundingClientRect();
-        list.style.top = (r.bottom + window.scrollY + 3) + "px";
-        list.style.left = (r.left + window.scrollX) + "px";
+        list.style.top = (r.bottom + 3) + "px";
+        list.style.left = r.left + "px";
         list.hidden = false;
       }
     });
@@ -23745,15 +23998,33 @@ function _demoCohortData() {
 }
 function _demoCreativeData() {
   const rng = seededNoise(60606);
-  const crs = [{ id: "CR_ugc_hook", hook: "UGC", angle: "혜택", fmt: "9:16", dur: "0-15s" }, { id: "CR_demo", hook: "데모", angle: "기능", fmt: "1:1", dur: "15-30s" }, { id: "CR_testimonial", hook: "후기", angle: "신뢰", fmt: "9:16", dur: "0-15s" }, { id: "CR_promo", hook: "프로모", angle: "긴급", fmt: "16:9", dur: "15-30s" }];
+  const crs = [
+    { id: "CR_ugc_hook", hook: "UGC", angle: "혜택", fmt: "9:16", dur: "0-15s" },
+    { id: "CR_demo", hook: "데모", angle: "기능", fmt: "1:1", dur: "15-30s" },
+    { id: "CR_testimonial", hook: "후기", angle: "신뢰", fmt: "9:16", dur: "0-15s" },
+    { id: "CR_promo", hook: "프로모", angle: "긴급", fmt: "16:9", dur: "15-30s" },
+    { id: "CR_fear_compare", hook: "비교", angle: "공포", fmt: "16:9", dur: "15-30s", bad: true },
+    { id: "CR_small_trust", hook: "후기", angle: "신뢰", fmt: "1:1", dur: "0-15s", promising: true }
+  ];
   const rows = []; const base = Date.UTC(2025, 9, 10);
   for (let d = 0; d < 30; d++) {
     const date = new Date(base + d * 86400000).toISOString().slice(0, 10);
     for (let ci = 0; ci < crs.length; ci++) {
       const cr = crs[ci], fatigue = Math.max(0.4, 1 - d * 0.015 * (ci + 1) * 0.4);
-      const imp = Math.max(1, Math.round((30000 * fatigue) * (1 + (rng() + 0.5) * 0.3) * [1, 0.7, 0.6, 0.5][ci]));
-      const clk = Math.max(1, Math.round(imp * (0.018 + (rng() + 0.5) * 0.01) * fatigue));
-      const inst = Math.max(1, Math.round(clk * (0.28 + (rng() + 0.5) * 0.06)));
+      let imp, clk, inst;
+      if (cr.bad) {
+        imp = Math.max(1, Math.round(15000 * (1 + (rng() + 0.5) * 0.2)));
+        clk = Math.max(1, Math.round(imp * 0.0015)); // Extremely low CTR!
+        inst = Math.max(1, Math.round(clk * 0.05)); // Extremely low CVR!
+      } else if (cr.promising) {
+        imp = Math.max(1, Math.round(80 * (1 + (rng() + 0.5) * 0.1))); // Low impressions
+        clk = Math.max(1, Math.round(imp * 0.055)); // Very high CTR!
+        inst = Math.max(1, Math.round(clk * 0.35));
+      } else {
+        imp = Math.max(1, Math.round((30000 * fatigue) * (1 + (rng() + 0.5) * 0.3) * [1, 0.7, 0.6, 0.5][ci]));
+        clk = Math.max(1, Math.round(imp * (0.018 + (rng() + 0.5) * 0.01) * fatigue));
+        inst = Math.max(1, Math.round(clk * (0.28 + (rng() + 0.5) * 0.06)));
+      }
       const v3 = Math.round(imp * (0.45 + (rng() + 0.5) * 0.1));
       rows.push({ creative_id: cr.id, date, channel: ["Meta", "TikTok"][ci % 2], campaign_id: "C" + (ci % 2 + 1), impressions: imp, clicks: clk, installs: inst, spend: Math.round(clk * (480 + (rng() + 0.5) * 120)), actions: Math.round(inst * 0.4), revenue_d7: Math.round(inst * 2100), video_3s_views: v3, video_completions: Math.round(v3 * (0.25 + (rng() + 0.5) * 0.1)), hook_type: cr.hook, message_angle: cr.angle, format: cr.fmt, duration_bucket: cr.dur });
     }
@@ -24284,8 +24555,36 @@ function isValidRouteId(s) {
   return s === "home" || /^\d+-\d+$/.test(s || "");
 }
 
+/* ========== Theme (Light / Dark Mode) ========== */
+function initTheme() {
+  const savedTheme = localStorage.getItem("mkt-library-theme");
+  const systemPrefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+  const isLight = savedTheme === "light" || (!savedTheme && systemPrefersLight);
+  if (isLight) {
+    document.body.classList.add("light-mode");
+  } else {
+    document.body.classList.remove("light-mode");
+  }
+}
+
+function toggleTheme() {
+  const isLight = document.body.classList.toggle("light-mode");
+  localStorage.setItem("mkt-library-theme", isLight ? "light" : "dark");
+  if (window.CURRENT_PAGE_ID) {
+    navigate(window.CURRENT_PAGE_ID);
+  }
+}
+
+function bindThemeToggle() {
+  const btn = document.getElementById("theme-toggle");
+  if (btn) {
+    btn.addEventListener("click", toggleTheme);
+  }
+}
+
 /* ========== Init ========== */
 async function init() {
+  initTheme();
   const hashRaw = (location.hash || "").replace(/^#/, "");
   const hash = isValidRouteId(hashRaw) ? hashRaw : "home";
   await initializeAuth();   // Supabase 클라이언트 + 저장된 세션 복구
@@ -24293,6 +24592,7 @@ async function init() {
   bindSearch();
   bindBrandClick();
   bindCmdk();               // ⌘K 명령 팔레트 (전역)
+  bindThemeToggle();        // 테마 전환 버튼 (전역)
   bindLeadModalHandlers();  // Lead Capture 모달 (전역)
   bindAnalytics();          // GA4 이벤트 위임 리스너 (전역)
   navigate(hash || "home");
