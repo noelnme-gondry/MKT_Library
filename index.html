@@ -72,25 +72,25 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <style>
   /* ========== Design Tokens (Obsidian Flux) ========== */
   :root {
-    --background: #121315;
-    --surface-base: #08090A;
-    --surface-raised: #111827;
-    --surface-overlay: #1F2937;
-    --surface-container-lowest: #0d0e0f;
-    --surface-container-low: #1b1c1d;
-    --surface-container: #1f2021;
-    --surface-container-high: #292a2b;
-    --surface-container-highest: #343536;
+    --background: #0f172a;
+    --surface-base: #1e293b;
+    --surface-raised: #334155;
+    --surface-overlay: #1e293b;
+    --surface-container-lowest: #0b0f19;
+    --surface-container-low: #1e293b;
+    --surface-container: #334155;
+    --surface-container-high: #475569;
+    --surface-container-highest: #64748b;
     --primary: #adc6ff;
     --primary-container: #4d8eff;
     --secondary: #4cd7f6;
-    --text-primary: #F9FAFB;
-    --text-secondary: #9CA3AF;
-    --text-muted: #6B7280;
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
     /* MMM(5-18 등)에서 쓰는 시맨틱 토큰 — 정의 누락 시 div는 상속으로 보이나 button은 기본 검정색이 됨(가독성 버그). 명시 정의. */
-    --text-1: #F9FAFB; --text-2: #9CA3AF; --bg-1: #141517; --bg-2: #1b1c1d; --border: rgba(255, 255, 255, 0.10);
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-stronger: rgba(255, 255, 255, 0.14);
+    --text-1: #F8FAFC; --text-2: #94A3B8; --bg-1: #0f172a; --bg-2: #1e293b; --border: rgba(148, 163, 184, 0.12);
+    --border-subtle: rgba(148, 163, 184, 0.08);
+    --border-stronger: rgba(148, 163, 184, 0.18);
 
     --radius-default: 0.125rem;
     --radius-lg: 0.25rem;
@@ -378,18 +378,72 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     display:flex;align-items:center;gap:4px;
   }
   .mon-multisel-btn:hover { border-color:var(--accent,#7aa2f7); }
-  .mon-multisel-list {
+  .mon-multisel-list, .alloc-multisel-list {
     position:fixed;z-index:9999;
     background:var(--bg-2);border:1px solid var(--border);border-radius:6px;
     padding:4px;min-width:130px;max-height:240px;overflow-y:auto;
     box-shadow:0 6px 18px rgba(0,0,0,.35);
   }
-  .mon-multisel-list label {
+  .mon-multisel-list label, .alloc-multisel-list label {
     display:flex;align-items:center;gap:7px;padding:5px 8px;cursor:pointer;
     font-size:12px;white-space:nowrap;border-radius:4px;color:var(--text-1);
   }
-  .mon-multisel-list label:hover { background:var(--bg-3); }
-  .mon-multisel-list input[type=checkbox] { accent-color:#7aa2f7;width:13px;height:13px;flex-shrink:0; }
+  .mon-multisel-list label:hover, .alloc-multisel-list label:hover { background:var(--bg-3); }
+  .mon-multisel-list input[type=checkbox], .alloc-multisel-list input[type=checkbox], .alloc-multisel-list input[type=radio] { accent-color:#7aa2f7;width:13px;height:13px;flex-shrink:0; }
+  /* Budget Allocator improvements styling */
+  .alloc-chips-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    transition: max-height 0.25s ease-out;
+    overflow: hidden;
+  }
+  .alloc-chips-wrapper.collapsed {
+    max-height: 72px; /* roughly 2 rows of chips */
+  }
+  .alloc-chips-toggle-btn {
+    font-size: 11px;
+    padding: 3px 8px;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-muted);
+    margin-top: 4px;
+    align-self: flex-start;
+  }
+  .alloc-chips-toggle-btn:hover {
+    color: var(--text-1);
+    background: var(--bg-4);
+  }
+  .alloc-budget-alert-banner {
+    background: rgba(255, 90, 90, 0.1);
+    border: 1px solid var(--danger);
+    color: #ff8a8a;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .alloc-outlier-alert-banner {
+    background: rgba(122, 162, 247, 0.08);
+    border: 1px solid var(--accent);
+    color: #adc6ff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+  /* For hover highlight on charts */
+  .chart-fade-inactive {
+    opacity: 0.15 !important;
+    transition: opacity 0.2s ease;
+  }
+
   .btn {
     display: inline-flex; align-items: center; gap: 0.4rem;
     font-size: 13px;
@@ -2186,6 +2240,17 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     color: var(--text-muted);
     margin-top: 0.125rem;
   }
+  .alloc-budget-alert-banner {
+    background: rgba(224, 86, 86, 0.08);
+    border: 1px solid rgba(224, 86, 86, 0.2);
+    color: #e05656;
+    border-radius: var(--radius-sm);
+    padding: 0.35rem 0.5rem;
+    font-size: 11px;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+  }
   .ab-arm-title {
     font-family: var(--font-mono);
     font-size: 12px;
@@ -2249,6 +2314,31 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     letter-spacing: -0.005em;
   }
   .ab-stat-value.down { color: #ff8a8a; }
+  .ab-stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.5rem;
+  }
+  .ab-stat {
+    padding: 0.75rem 1rem;
+    background: var(--surface-container-low);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-subtle);
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .ab-stat:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  .ab-stat-hint {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+  }
+  .ab-stat-hint.pos { color: #22c55e; }
+  .ab-stat-hint.neg { color: #ff8a8a; }
 
   /* ========== Context Alert Banner ========== */
   .alert-banner {
@@ -3247,13 +3337,15 @@ function renderNav(activeId) {
             <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </div>
           <div class="nav-items">
-            ${group.items.map(it => `
+            ${group.items.map(it => {
+              const lockIcon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;opacity:0.6;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+              return `
               <div class="nav-item ${it.id === activeId ? "active" : ""}" data-route="${it.id}">
                 <span class="ix tnum">${displayItemNumber(it.id)}</span>
                 <span>${escapeHtml(it.title)}</span>
-                ${TOOL_TIER[it.id] === "pro" ? `<span class="nav-pro-lock" title="Pro 전용" style="margin-left:auto;font-size:10px;opacity:0.65;">🔒</span>` : TOOL_TIER[it.id] === "free" ? `<span class="nav-pro-lock" title="무료" style="margin-left:auto;font-size:9px;color:#5ad19a;font-weight:700;">FREE</span>` : ""}
-              </div>
-            `).join("")}
+                ${TOOL_TIER[it.id] === "pro" ? lockIcon : TOOL_TIER[it.id] === "free" ? `<span class="nav-pro-lock" title="무료" style="margin-left:auto;font-size:9px;color:#5ad19a;font-weight:700;">FREE</span>` : ""}
+              </div>`;
+            }).join("")}
           </div>
         </div>`;
     }).join("");
@@ -5965,15 +6057,9 @@ function monVizBody() {
 
   // === Share Bar (클립보드 복사) ===
   const d7Kpi = (() => {
-    const r = CSV_STATE.raw;
-    const cost = r.reduce((a, x) => {
-      const inv = Object.entries(CSV_STATE.mapping).find(([_, v]) => v === "cost")?.[0];
-      return a + (inv ? Number(String(x[inv]).replace(/[^\d.\-]/g, "")) || 0 : 0);
-    }, 0);
-    const rev = r.reduce((a, x) => {
-      const inv = Object.entries(CSV_STATE.mapping).find(([_, v]) => v === "revenue_d7")?.[0];
-      return a + (inv ? Number(String(x[inv]).replace(/[^\d.\-]/g, "")) || 0 : 0);
-    }, 0);
+    const rows = getMappedRowsForMon();
+    const cost = rows.reduce((a, r) => a + (Number(r.cost) || 0), 0);
+    const rev = rows.reduce((a, r) => a + (Number(r.revenue_d7) || 0), 0);
     return cost ? rev / cost : null;
   })();
   const d7Display = formatPercent(d7Kpi);
@@ -6181,14 +6267,14 @@ const MON_TAB_GROUPS = [
   { label: "효율 진단", tabs: ["funnel", "segment"] },
 ];
 const MON_TABS = [
-  { id: "viz",        icon: "📊", label: "시각화",     desc: "시계열·채널·CPI 5종 + KPI",                           requiresAny: [] },
-  { id: "scorecard",  icon: "🧮", label: "스코어카드", desc: "핵심 KPI + 직전 대비(WoW)",                           requiresAny: ["installs", "actions"] },
-  { id: "pacing",     icon: "📈", label: "페이싱",     desc: "월말 착지 예측·페이스 경고",                          requiresAny: [] },
-  { id: "anomaly",    icon: "🚨", label: "이상탐지",   desc: "급등·급락 z-score 감지",                             requiresAny: [] },
-  { id: "ltv",        icon: "💹", label: "장기 가치",  desc: "LTV:CAC 회수기간 + ROAS 성숙도 예측 (효율 CSV)",      requiresAny: ["revenue_d30","revenue_d60","revenue_d90","revenue_d180","revenue_d360"] },
-  { id: "cohort",     icon: "📉", label: "리텐션",     desc: "리텐션 곡선·세그먼트·예측 (효율 CSV ret_dN 컬럼)",    requiresAny: ["ret_d30","ret_d60","ret_d90","ret_d180","ret_d360"] },
-  { id: "funnel",     icon: "🪜", label: "퍼널 진단",  desc: "노출→클릭→설치→액션 단계 CVR·이탈",                  requiresAny: ["clicks"] },
-  { id: "segment",    icon: "🗺", label: "세그먼트",   desc: "국가×채널×플랫폼 효율 매트릭스",                      requiresAny: ["channel","country","platform"] },
+  { id: "viz",        icon: "viz",        label: "시각화",     desc: "시계열·채널·CPI 5종 + KPI",                           requiresAny: [] },
+  { id: "scorecard",  icon: "scorecard",  label: "스코어카드", desc: "핵심 KPI + 직전 대비(WoW)",                           requiresAny: ["installs", "actions"] },
+  { id: "pacing",     icon: "pacing",     label: "페이싱",     desc: "월말 착지 예측·페이스 경고",                          requiresAny: [] },
+  { id: "anomaly",    icon: "anomaly",    label: "이상탐지",   desc: "급등·급락 z-score 감지",                             requiresAny: [] },
+  { id: "ltv",        icon: "ltv",        label: "장기 가치",  desc: "LTV:CAC 회수기간 + ROAS 성숙도 예측 (효율 CSV)",      requiresAny: ["revenue_d30","revenue_d60","revenue_d90","revenue_d180","revenue_d360"] },
+  { id: "cohort",     icon: "cohort",     label: "리텐션",     desc: "리텐션 곡선·세그먼트·예측 (효율 CSV ret_dN 컬럼)",    requiresAny: ["ret_d30","ret_d60","ret_d90","ret_d180","ret_d360"] },
+  { id: "funnel",     icon: "funnel",     label: "퍼널 진단",  desc: "노출→클릭→설치→액션 단계 CVR·이탈",                  requiresAny: ["clicks"] },
+  { id: "segment",    icon: "segment",    label: "세그먼트",   desc: "국가×채널×플랫폼 효율 매트릭스",                      requiresAny: ["channel","country","platform"] },
 ];
 function isTabUnlocked(tab) {
   const ra = tab.requiresAny || [];
@@ -6316,7 +6402,48 @@ function monFirstUnlockedTab(g) {
   const tabMap = Object.fromEntries(MON_TABS.map(d => [d.id, d]));
   return g.tabs.find(id => tabMap[id] && isTabUnlocked(tabMap[id])) || g.tabs[0];
 }
-const MON_GROUP_ICON = { "모니터링": "🖥", "장기 가치": "💎", "효율 진단": "🔬" };
+function getSvgIcon(name, className = "") {
+  const cls = className ? `class="${className}"` : "";
+  const base = `width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2.5px;margin-right:6px;" ${cls}`;
+  
+  switch(name) {
+    // Groups
+    case "monitoring":
+      return `<svg ${base}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>`;
+    case "ltv_group":
+      return `<svg ${base}><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></svg>`;
+    case "diag_group":
+      return `<svg ${base}><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>`;
+
+    // Tabs
+    case "viz":
+      return `<svg ${base}><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`;
+    case "scorecard":
+      return `<svg ${base}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line></svg>`;
+    case "pacing":
+      return `<svg ${base}><path d="M23 6l-9.5 9.5-5-5L1 18"></svg>`;
+    case "anomaly":
+      return `<svg ${base}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></svg>`;
+    case "ltv":
+      return `<svg ${base}><rect x="2" y="2" width="20" height="20" rx="2.5" ry="2.5"></rect><line x1="3" y1="12" x2="21" y2="12"></line></svg>`;
+    case "cohort":
+      return `<svg ${base}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></svg>`;
+    case "funnel":
+      return `<svg ${base}><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"></svg>`;
+    case "segment":
+      return `<svg ${base}><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`;
+    
+    default:
+      return "";
+  }
+}
+
+const MON_GROUP_ICON = {
+  "모니터링": getSvgIcon("monitoring"),
+  "장기 가치": getSvgIcon("ltv_group"),
+  "효율 진단": getSvgIcon("diag_group")
+};
+
 function renderMonTabs() {
   const t = MON_STATE.tab || "viz";
   const tabMap = Object.fromEntries(MON_TABS.map(d => [d.id, d]));
@@ -6326,7 +6453,7 @@ function renderMonTabs() {
     const on = g === activeGroup;
     const subs = g.tabs.map(id => tabMap[id] && tabMap[id].label).filter(Boolean).join(" · ");
     return `<button class="mmm-stage-tab ${on ? "active" : ""}" data-mon-group="${gi}" style="flex:1;min-width:150px;text-align:left;color:var(--text-1);background:${on ? "linear-gradient(135deg,rgba(122,162,247,0.18),rgba(122,162,247,0.05))" : "var(--bg-2)"};border:1px solid ${on ? "rgba(122,162,247,0.6)" : "var(--border)"};border-radius:12px;padding:11px 14px;cursor:pointer;transition:all .15s;">
-      <div style="font-size:14px;font-weight:700;">${MON_GROUP_ICON[g.label] || ""} ${g.label}</div>
+      <div style="font-size:14px;font-weight:700;display:flex;align-items:center;">${MON_GROUP_ICON[g.label] || ""} ${g.label}</div>
       <div style="font-size:10px;color:var(--text-2);margin-top:3px;line-height:1.3;">${subs}</div>
     </button>`;
   }).join("");
@@ -6335,7 +6462,7 @@ function renderMonTabs() {
     const d = tabMap[id]; if (!d) return "";
     const locked = !isTabUnlocked(d);
     const on = t === d.id && !locked;
-    return `<button class="ab-pill ${on ? "active" : ""}" ${locked ? 'disabled title="이 도구를 열려면 추가 컬럼을 매핑하세요"' : `data-mon-tab="${d.id}"`} style="opacity:${locked ? ".5" : "1"};cursor:${locked ? "default" : "pointer"};">${locked ? "🔒" : d.icon} ${d.label}</button>`;
+    return `<button class="ab-pill ${on ? "active" : ""}" ${locked ? 'disabled title="이 도구를 열려면 추가 컬럼을 매핑하세요"' : `data-mon-tab="${d.id}"`} style="opacity:${locked ? ".5" : "1"};cursor:${locked ? "default" : "pointer"};display:inline-flex;align-items:center;">${locked ? "🔒" : getSvgIcon(d.icon)} ${d.label}</button>`;
   }).join("");
   return `<section class="block" style="padding:0;border:none;background:none;margin:4px 0 6px;">
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">${primary}</div>
@@ -6481,6 +6608,7 @@ function monAllocBody() {
                 </span>
               </label>
               <input id="alloc-budget" type="number" inputmode="numeric" placeholder="${ALLOC_STATE.budgetPeriod === 'monthly' ? '예: 30000000 (월)' : '예: 1000000 (일)'}" value="${ALLOC_STATE.budget != null ? ALLOC_STATE.budget : ''}" />
+              <div id="alloc-budget-warning-container"></div>
               <span class="ab-field-hint" id="alloc-budget-hint">
                 ${(() => {
                   const raw = ALLOC_STATE.budget || 0;
@@ -6570,6 +6698,7 @@ function monAllocBody() {
             배분 Cost 셀에 직접 입력하면 그 채널이 잠기고(🔒), 나머지에 자동 재분배됩니다.
             🔒 또는 ↺ 클릭 시 잠금 해제.
           </p>
+          <div id="alloc-table-warning-container"></div>
           <div class="table-wrap">
             <table class="data">
               <thead>
@@ -6655,6 +6784,7 @@ function page_5_3() {
     chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>${authStatusChip()}`,
     summary: "절대 CPR/ROAS 가중으로 채널별 최적 예산을 계산합니다. 퍼널·세그먼트는 무료 운영 대시보드에서 확인하세요.",
     toc,
+    stickyFilter: ALLOC_FILTER_STATE.applied ? renderAllocStickyFilterBar() : "",
     body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경)</summary><div style="margin-top:10px;">${renderInlineCsvUpload("5-3")}</div></details>${monAllocBody()}`,
   });
 }
@@ -7308,6 +7438,33 @@ function resetAllocFilter() {
   ALLOC_FILTER_STATE.selectedChannelsFilter = null;
   ALLOC_FILTER_STATE.platform = "all";
   ALLOC_FILTER_STATE.applied = false;
+}
+
+function makeSelectMultiToggle(selectEl) {
+  if (!selectEl) return;
+  selectEl.addEventListener("mousedown", function(e) {
+    e.preventDefault();
+    const option = e.target;
+    if (option.tagName === "OPTION") {
+      const isAll = option.value === "all";
+      if (isAll) {
+        const targetState = !option.selected;
+        Array.from(selectEl.options).forEach(o => {
+          o.selected = targetState;
+        });
+      } else {
+        option.selected = !option.selected;
+        // Sync "all" option
+        const allOpt = Array.from(selectEl.options).find(o => o.value === "all");
+        if (allOpt) {
+          const others = Array.from(selectEl.options).filter(o => o.value !== "all");
+          const allSelected = others.length > 0 && others.every(o => o.selected);
+          allOpt.selected = allSelected;
+        }
+      }
+      selectEl.dispatchEvent(new Event("change"));
+    }
+  });
 }
 
 /* 활성 도구가 5-3이고 ALLOC_FILTER_STATE.applied=true일 때 사용하는 row 필터 */
@@ -20159,7 +20316,7 @@ function bindCSVPageHandlers() {
 function renderVizCharts() {
   destroyAllCharts();
   if (typeof Chart === "undefined") return;
-  const rows = getMappedRows();
+  const rows = getMappedRowsForMon();
   if (!rows.length) return;
 
   // === 1) 일별 시계열 ===
@@ -22134,6 +22291,67 @@ function refreshAllocationResults() {
   const legendWrap = document.getElementById("alloc-bar-legend");
   if (!tbody || !barWrap) return;
 
+  // 예산 입력값 유효성 검사 및 경고 노출
+  const warningContainer = document.getElementById("alloc-budget-warning-container");
+  if (warningContainer) {
+    const budgetRawInput = document.getElementById("alloc-budget");
+    const valStr = budgetRawInput ? budgetRawInput.value.trim() : "";
+    if (valStr !== "") {
+      const parsed = parseFloat(valStr);
+      if (isNaN(parsed)) {
+        warningContainer.innerHTML = `
+          <div class="alloc-budget-alert-banner">
+            <span>⚠ 유효한 예산 금액을 입력해 주세요. (숫자만 입력 가능)</span>
+          </div>`;
+      } else if (parsed <= 0) {
+        warningContainer.innerHTML = `
+          <div class="alloc-budget-alert-banner">
+            <span>⚠ 예산은 0보다 큰 양수여야 합니다. (입력값: ${parsed})</span>
+          </div>`;
+      } else {
+        warningContainer.innerHTML = "";
+      }
+    } else {
+      warningContainer.innerHTML = "";
+    }
+  }
+
+  // 제약조건 및 수동입력 예산 유효성 검사 및 경고 노출
+  const tableWarnEl = document.getElementById("alloc-table-warning-container");
+  if (tableWarnEl) {
+    const tableWarnings = [];
+    const allChannels = new Set([
+      ...Object.keys(ALLOC_STATE.allocMinSpend || {}),
+      ...Object.keys(ALLOC_STATE.allocMaxSpend || {}),
+      ...Object.keys(ALLOC_STATE.allocOverrides || {})
+    ]);
+    for (const ch of allChannels) {
+      const minVal = ALLOC_STATE.allocMinSpend[ch];
+      const maxVal = ALLOC_STATE.allocMaxSpend[ch];
+      const overrideVal = ALLOC_STATE.allocOverrides[ch];
+
+      if (minVal != null && maxVal != null && minVal > maxVal) {
+        tableWarnings.push(`<strong>[${escapeHtml(ch)}]</strong> 최소 예산(${fmtCurrency(minVal)})이 최대 예산(${fmtCurrency(maxVal)})보다 큽니다.`);
+      }
+      if (overrideVal != null) {
+        if (minVal != null && overrideVal < minVal) {
+          tableWarnings.push(`<strong>[${escapeHtml(ch)}]</strong> 수동 입력 예산(${fmtCurrency(overrideVal)})이 최소 제한(${fmtCurrency(minVal)})보다 작습니다.`);
+        }
+        if (maxVal != null && overrideVal > maxVal) {
+          tableWarnings.push(`<strong>[${escapeHtml(ch)}]</strong> 수동 입력 예산(${fmtCurrency(overrideVal)})이 최대 제한(${fmtCurrency(maxVal)})보다 큽니다.`);
+        }
+      }
+    }
+    if (tableWarnings.length > 0) {
+      tableWarnEl.innerHTML = `
+        <div class="alloc-budget-alert-banner" style="margin-bottom:12px;padding:8px 12px;line-height:1.5;">
+          ${tableWarnings.map(w => `<div style="display:flex;align-items:center;gap:6px;"><span>⚠</span> <span>${w}</span></div>`).join("")}
+        </div>`;
+    } else {
+      tableWarnEl.innerHTML = "";
+    }
+  }
+
   // hint 텍스트 동적 갱신
   const hintEl = document.getElementById("alloc-budget-hint");
   if (hintEl) {
@@ -22597,6 +22815,18 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
       </div>
     ` : '<div class="alloc-ch-history" style="color:var(--text-muted);">최근 ' + recentDays + '일 데이터 없음</div>';
 
+    const minVal = ALLOC_STATE.allocMinSpend[it.channel];
+    const maxVal = ALLOC_STATE.allocMaxSpend[it.channel];
+    const overrideVal = ALLOC_STATE.allocOverrides[it.channel];
+
+    const isMinMaxErr = minVal != null && maxVal != null && minVal > maxVal;
+    const isOverrideMinErr = overrideVal != null && minVal != null && overrideVal < minVal;
+    const isOverrideMaxErr = overrideVal != null && maxVal != null && overrideVal > maxVal;
+
+    const costStyle = (isOverrideMinErr || isOverrideMaxErr) ? "border-color:#e05656;box-shadow:0 0 0 1px rgba(224, 86, 86, 0.2);" : "";
+    const minStyle = isMinMaxErr ? "border-color:#e05656;box-shadow:0 0 0 1px rgba(224, 86, 86, 0.2);" : "";
+    const maxStyle = isMinMaxErr ? "border-color:#e05656;box-shadow:0 0 0 1px rgba(224, 86, 86, 0.2);" : "";
+
     return `
       <tr ${isZero ? 'class="alloc-row-zero"' : ''}>
         <td>
@@ -22611,7 +22841,7 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
           <div class="alloc-cost-cell">
             <input type="number" class="alloc-cost-input ${it.locked ? 'locked' : ''}"
                    data-channel="${escapeHtml(it.channel)}"
-                   value="${Math.round(it.cost)}" step="100" min="0" />
+                   value="${Math.round(it.cost)}" step="100" min="0" style="${costStyle}" />
             ${it.locked
               ? `<button class="alloc-cost-reset" data-channel="${escapeHtml(it.channel)}" title="자동 분배로 되돌리기">↺</button>`
               : ''}
@@ -22622,11 +22852,11 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
           <div style="display:flex;gap:4px;align-items:center;">
             <input type="number" class="alloc-min-input" data-channel="${escapeHtml(it.channel)}"
                    value="${ALLOC_STATE.allocMinSpend[it.channel] != null ? ALLOC_STATE.allocMinSpend[it.channel] : ''}"
-                   placeholder="Min (0)" style="width:70px;font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg-2);color:var(--text-1);" min="0" />
+                   placeholder="Min (0)" style="width:70px;font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg-2);color:var(--text-1);${minStyle}" min="0" />
             <span style="color:var(--text-muted);">~</span>
             <input type="number" class="alloc-max-input" data-channel="${escapeHtml(it.channel)}"
                    value="${ALLOC_STATE.allocMaxSpend[it.channel] != null ? ALLOC_STATE.allocMaxSpend[it.channel] : ''}"
-                   placeholder="Max" style="width:70px;font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg-2);color:var(--text-1);" min="0" />
+                   placeholder="Max" style="width:70px;font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg-2);color:var(--text-1);${maxStyle}" min="0" />
           </div>
         </td>
         <td class="tnum">
@@ -22730,8 +22960,12 @@ function renderAllocFilterPanel(compact) {
     { v: "campaign", label: "캠페인별 (Country × Channel × Campaign)", desc: "가장 세분화. 캠페인 수 많을 때 국가 필터 필수" },
   ];
 
-  const optionsHtml = (values, sel) =>
-    values.map(v => `<option value="${escapeHtml(v)}" ${sel && sel.has(v) ? 'selected' : ''}>${escapeHtml(v)}</option>`).join("");
+  const optionsHtml = (values, sel) => {
+    const allSelected = !sel || sel.size === values.length;
+    const firstOpt = `<option value="all" ${allSelected ? 'selected' : ''}>-- 전체 (모두 선택) --</option>`;
+    const opts = values.map(v => `<option value="${escapeHtml(v)}" ${sel && sel.has(v) ? 'selected' : ''}>${escapeHtml(v)}</option>`).join("");
+    return firstOpt + opts;
+  };
 
   // 최적화 목표 옵션 (사용 가능 여부는 매핑된 컬럼으로 자동 결정)
   const mapped = new Set(Object.values(CSV_STATE.mapping || {}).filter(v => v !== "__ignore__"));
@@ -22787,10 +23021,10 @@ function renderAllocFilterPanel(compact) {
         ${opt.hasCountry ? `
           <div class="alloc-filter-group">
             <span class="alloc-filter-group-label">국가 (다중 선택, 미선택 = 전체)</span>
-            <select class="alloc-filter-select" id="alloc-filter-country" multiple size="${Math.min(6, opt.countries.length)}">
+            <select class="alloc-filter-select" id="alloc-filter-country" multiple size="${Math.min(6, opt.countries.length + 1)}">
               ${optionsHtml(opt.countries, f.selectedCountries)}
             </select>
-            <span style="font-size:10px;color:var(--text-muted);">Cmd/Ctrl 클릭으로 다중 선택</span>
+            <span style="font-size:10px;color:var(--text-muted);">클릭하여 다중 선택 (Ctrl/Cmd 불필요)</span>
           </div>` : `
           <div class="alloc-filter-group">
             <span class="alloc-filter-group-label">국가</span>
@@ -22800,10 +23034,10 @@ function renderAllocFilterPanel(compact) {
         ${opt.hasChannel ? `
           <div class="alloc-filter-group">
             <span class="alloc-filter-group-label">채널 (다중 선택, 미선택 = 전체)</span>
-            <select class="alloc-filter-select" id="alloc-filter-channel" multiple size="${Math.min(6, availableChannels.length)}">
+            <select class="alloc-filter-select" id="alloc-filter-channel" multiple size="${Math.min(6, availableChannels.length + 1)}">
               ${optionsHtml(availableChannels, f.selectedChannelsFilter)}
             </select>
-            <span style="font-size:10px;color:var(--text-muted);">국가 선택 시 그 국가에 있는 채널만 표시</span>
+            <span style="font-size:10px;color:var(--text-muted);">클릭하여 다중 선택 (Ctrl/Cmd 불필요)</span>
           </div>` : ""}
 
         ${opt.hasPlatform ? `
@@ -22848,7 +23082,176 @@ function renderAllocFilterSummary() {
   `;
 }
 
+function renderAllocStickyFilterBar() {
+  const opt = detectAllocFilterOptions();
+  const f = ALLOC_FILTER_STATE;
+
+  let active = 0;
+  if (f.selectedCountries && f.selectedCountries.size > 0) active++;
+  if (f.selectedChannelsFilter && f.selectedChannelsFilter.size > 0) active++;
+  if (f.platform !== "all") active++;
+
+  const parts = [];
+
+  // 1) OS 플랫폼 (Platform)
+  if (opt.hasPlatform) {
+    const pfLabel = f.platform === "all" ? "전체 OS" : f.platform === "android" ? "Android" : "iOS";
+    parts.push(`
+      <div class="mon-filter-item" style="align-items:center;gap:4px;display:flex;">
+        <span class="mon-filter-label" style="font-size:11.5px;color:var(--text-muted);">OS:</span>
+        <div class="mon-multisel" data-alloc-multisel="platform">
+          <button class="mon-multisel-btn" type="button" data-alloc-multisel-toggle="platform">${pfLabel} ∨</button>
+          <div class="alloc-multisel-list" data-alloc-ms-list="platform" hidden>
+            ${["all", "android", "ios"].map(p => {
+              const enabled = p === "all" || opt.platforms.has(p);
+              if (!enabled) return "";
+              return `<label style="display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;"><input type="radio" name="alloc-sticky-pf" value="${p}" ${f.platform === p ? "checked" : ""}> ${p === "all" ? "전체 OS" : p === "android" ? "Android" : "iOS"}</label>`;
+            }).join("")}
+          </div>
+        </div>
+      </div>
+    `);
+  }
+
+  // 2) 국가 (Country)
+  if (opt.hasCountry && opt.countries.length) {
+    const cntLabel = f.selectedCountries === null ? `전체 (${opt.countries.length})` : `${f.selectedCountries.size}개 선택됨`;
+    parts.push(`
+      <div class="mon-filter-item" style="align-items:center;gap:4px;display:flex;">
+        <span class="mon-filter-label" style="font-size:11.5px;color:var(--text-muted);">국가:</span>
+        <div class="mon-multisel" data-alloc-multisel="countries">
+          <button class="mon-multisel-btn" type="button" data-alloc-multisel-toggle="countries">${cntLabel} ∨</button>
+          <div class="alloc-multisel-list" data-alloc-ms-list="countries" hidden>
+            ${opt.countries.map(c => `<label style="display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;"><input type="checkbox" name="alloc-sticky-country" value="${escapeHtml(c)}" ${(!f.selectedCountries || f.selectedCountries.has(c)) ? "checked" : ""}> ${escapeHtml(c)}</label>`).join("")}
+          </div>
+        </div>
+      </div>
+    `);
+  }
+
+  // 3) 채널 (Channel)
+  if (opt.hasChannel && opt.channels.length) {
+    // country cascading
+    let availableChannels = opt.channels;
+    if (f.selectedCountries && f.selectedCountries.size > 0) {
+      const set = new Set();
+      for (const c of f.selectedCountries) {
+        const chs = opt.channelByCountry.get(c);
+        if (chs) chs.forEach(x => set.add(x));
+      }
+      availableChannels = [...set].sort();
+    }
+    
+    const chLabel = f.selectedChannelsFilter === null ? `전체 (${availableChannels.length})` : `${f.selectedChannelsFilter.size}개 선택됨`;
+    parts.push(`
+      <div class="mon-filter-item" style="align-items:center;gap:4px;display:flex;">
+        <span class="mon-filter-label" style="font-size:11.5px;color:var(--text-muted);">채널:</span>
+        <div class="mon-multisel" data-alloc-multisel="channels">
+          <button class="mon-multisel-btn" type="button" data-alloc-multisel-toggle="channels">${chLabel} ∨</button>
+          <div class="alloc-multisel-list" data-alloc-ms-list="channels" hidden>
+            ${availableChannels.map(c => `<label style="display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;"><input type="checkbox" name="alloc-sticky-channel" value="${escapeHtml(c)}" ${(!f.selectedChannelsFilter || f.selectedChannelsFilter.has(c)) ? "checked" : ""}> ${escapeHtml(c)}</label>`).join("")}
+          </div>
+        </div>
+      </div>
+    `);
+  }
+
+  return `
+    <div class="mon-filter-bar" style="margin-top:0;border-bottom:1px solid var(--border);">
+      <div class="mon-filter-inner" style="display:flex;align-items:center;gap:12px;padding:6px 12px;overflow:visible;">
+        <span class="mon-filter-title" style="font-size:12px;font-weight:700;color:var(--text-1);">배분 필터${active > 0 ? `<span class="mon-filter-badge" style="background:var(--accent);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;margin-left:4px;">${active}</span>` : ""}</span>
+        ${parts.join("")}
+        ${active > 0 ? `<button class="copy-btn mon-filter-reset" id="alloc-sticky-filter-reset" style="font-size:11px;padding:2px 6px;cursor:pointer;">초기화</button>` : ""}
+        <button class="ab-pill" id="alloc-sticky-filter-edit-wizard" style="margin-left:auto;font-size:11px;padding:3px 8px;cursor:pointer;">⚙ 목표·단위 변경</button>
+      </div>
+    </div>
+  `;
+}
+
+function bindAllocStickyFilterHandlers() {
+  const container = document.querySelector(".mon-filter-bar");
+  if (!container) return;
+
+  const _closeAllAllocMultisel = () => document.querySelectorAll(".alloc-multisel-list").forEach(l => { l.hidden = true; });
+  // Clean up body portals from previous renders
+  document.querySelectorAll("body > .alloc-multisel-list").forEach(l => l.remove());
+
+  document.querySelectorAll("[data-alloc-multisel-toggle]").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const key = btn.dataset.allocMultiselToggle;
+      const list = document.querySelector(`.alloc-multisel-list[data-alloc-ms-list="${key}"]`);
+      if (!list) return;
+      const opening = list.hidden;
+      _closeAllAllocMultisel();
+      if (opening) {
+        document.body.appendChild(list);
+        const r = btn.getBoundingClientRect();
+        list.style.top = (r.bottom + window.scrollY + 3) + "px";
+        list.style.left = (r.left + window.scrollX) + "px";
+        list.hidden = false;
+      }
+    });
+  });
+
+  // Checkbox/Radio change listeners
+  document.querySelectorAll(".alloc-multisel-list input").forEach(cb => {
+    cb.addEventListener("change", () => {
+      const list = cb.closest(".alloc-multisel-list");
+      const key = list.dataset.allocMsList;
+      const allInputs = [...list.querySelectorAll("input")];
+
+      if (key === "platform") {
+        const checkedVal = allInputs.find(i => i.checked)?.value || "all";
+        ALLOC_FILTER_STATE.platform = checkedVal;
+      } else if (key === "countries") {
+        const checked = allInputs.filter(i => i.checked).map(i => i.value);
+        ALLOC_FILTER_STATE.selectedCountries = checked.length === allInputs.length ? null : new Set(checked);
+        // Cascading: reset channel filter when country changes
+        ALLOC_FILTER_STATE.selectedChannelsFilter = null;
+      } else if (key === "channels") {
+        const checked = allInputs.filter(i => i.checked).map(i => i.value);
+        ALLOC_FILTER_STATE.selectedChannelsFilter = checked.length === allInputs.length ? null : new Set(checked);
+      }
+
+      if (typeof clearAllocCache === "function") clearAllocCache();
+      navigate("5-3");
+    });
+  });
+
+  // Reset button
+  const resetBtn = document.getElementById("alloc-sticky-filter-reset");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      ALLOC_FILTER_STATE.selectedCountries = null;
+      ALLOC_FILTER_STATE.selectedChannelsFilter = null;
+      ALLOC_FILTER_STATE.platform = "all";
+      if (typeof clearAllocCache === "function") clearAllocCache();
+      navigate("5-3");
+    });
+  }
+
+  // Edit wizard button
+  const editWizardBtn = document.getElementById("alloc-sticky-filter-edit-wizard");
+  if (editWizardBtn) {
+    editWizardBtn.addEventListener("click", () => {
+      ALLOC_FILTER_STATE.applied = false;
+      if (typeof clearAllocCache === "function") clearAllocCache();
+      navigate("5-3");
+    });
+  }
+
+  // Register click/scroll listeners once to close dropdowns
+  if (!window.__allocMultiselGlobalBound) {
+    const closeAll = () => document.querySelectorAll(".alloc-multisel-list").forEach(l => { l.hidden = true; });
+    document.addEventListener("click", closeAll, { passive: true });
+    window.addEventListener("scroll", closeAll, { passive: true, capture: true });
+    window.__allocMultiselGlobalBound = true;
+  }
+}
+
 function bindBudgetAllocatorHandlers() {
+  bindAllocStickyFilterHandlers();
   // 최적화 목표 칩
   document.querySelectorAll("[data-alloc-objective]").forEach(el => {
     el.addEventListener("click", () => {
@@ -22874,19 +23277,25 @@ function bindBudgetAllocatorHandlers() {
   });
   // 국가 multi-select → cascading 채널 옵션 재렌더
   const ctrySel = document.getElementById("alloc-filter-country");
-  if (ctrySel) ctrySel.addEventListener("change", () => {
-    const selected = [...ctrySel.selectedOptions].map(o => o.value);
-    ALLOC_FILTER_STATE.selectedCountries = selected.length ? new Set(selected) : null;
-    // 채널 선택은 country 변경 시 reset (cascading)
-    ALLOC_FILTER_STATE.selectedChannelsFilter = null;
-    navigate("5-3");
-  });
+  if (ctrySel) {
+    makeSelectMultiToggle(ctrySel);
+    ctrySel.addEventListener("change", () => {
+      const selected = [...ctrySel.selectedOptions].map(o => o.value).filter(v => v !== "all");
+      ALLOC_FILTER_STATE.selectedCountries = selected.length ? new Set(selected) : null;
+      // 채널 선택은 country 변경 시 reset (cascading)
+      ALLOC_FILTER_STATE.selectedChannelsFilter = null;
+      navigate("5-3");
+    });
+  }
   // 채널 multi-select
   const chSel = document.getElementById("alloc-filter-channel");
-  if (chSel) chSel.addEventListener("change", () => {
-    const selected = [...chSel.selectedOptions].map(o => o.value);
-    ALLOC_FILTER_STATE.selectedChannelsFilter = selected.length ? new Set(selected) : null;
-  });
+  if (chSel) {
+    makeSelectMultiToggle(chSel);
+    chSel.addEventListener("change", () => {
+      const selected = [...chSel.selectedOptions].map(o => o.value).filter(v => v !== "all");
+      ALLOC_FILTER_STATE.selectedChannelsFilter = selected.length ? new Set(selected) : null;
+    });
+  }
   // 적용
   const applyBtn = document.getElementById("alloc-filter-apply");
   if (applyBtn) applyBtn.addEventListener("click", () => {
@@ -22896,7 +23305,7 @@ function bindBudgetAllocatorHandlers() {
     }
     // 채널 select 현재 값 다시 읽기 (change 안 거치고 적용 누른 경우)
     if (chSel) {
-      const selected = [...chSel.selectedOptions].map(o => o.value);
+      const selected = [...chSel.selectedOptions].map(o => o.value).filter(v => v !== "all");
       ALLOC_FILTER_STATE.selectedChannelsFilter = selected.length ? new Set(selected) : null;
     }
     // objective → ALLOC_STATE.metric 자동 설정 (revenue_d7 metric은 1/ROAS = CPR로 처리됨, minimize CPR = maximize ROAS)
