@@ -188,7 +188,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
   /* ----- Sidebar ----- */
   .sidebar {
-    background: var(--surface-container-lowest);
+    background: #0b1329;
     border-right: 1px solid var(--border-subtle);
     position: sticky;
     top: 0;
@@ -3634,13 +3634,13 @@ function updateNavActive(activeId) {
 const LANDING_STATE = { track: null }; // null = step1 / "guide" / "analyze"
 
 // 도구 티어 (freemium): 시각화·모니터링만 무료, 나머지 Pro
-const TOOL_TIER = { "5-2": "free", "5-3": "pro", "5-6": "pro", "5-4": "pro", "5-18": "pro" };
+const TOOL_TIER = { "5-2": "free", "5-3": "free", "5-6": "pro", "5-4": "pro", "5-18": "pro" };
 function toolTier(id) { return TOOL_TIER[id] || "pro"; }
 
 // 분석 트랙의 목표 버킷 (사용자 승인 구조)
 const ANALYZE_BUCKETS = [
   { id: "monitor",    icon: "📊", label: "운영 대시보드",      tier: "free", desc: "시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트 통합", tools: ["5-2"] },
-  { id: "efficiency", icon: "💰", label: "효율화 · 예산",     tier: "pro",  desc: "절대 CPR/ROAS 기반 예산 배분 + 한계효용 그리디(고급) — 채널별 최적화",  tools: ["5-3"] },
+  { id: "efficiency", icon: "💰", label: "효율화 · 예산",     tier: "free",  desc: "절대 CPR/ROAS 기반 예산 배분 + 한계효용 그리디(고급) — 채널별 최적화",  tools: ["5-3"] },
   { id: "experiment", icon: "🧪", label: "실험 · 소재",       tier: "pro",  desc: "A/B 설계·결과 판독·홀드아웃 증분 + 소재 성과 분해",        tools: ["5-4", "5-6"] },
   { id: "advanced",   icon: "📈", label: "고급 분석",         tier: "pro",  desc: "마케팅 반응 회귀 — 카니발 진단·Forecast·MMM 기여 분해·범용 회귀", tools: ["5-18"] },
 ];
@@ -5917,7 +5917,7 @@ const AUTH_STATE = {
 };
 
 // freemium: 5-2 시각화·모니터링은 무료. 나머지 분석 도구는 Pro(접근 키 필요).
-const AUTH_PROTECTED_PAGES = new Set(["5-3", "5-4", "5-6", "5-18"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-4", "5-6", "5-18"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -6829,7 +6829,10 @@ function monAllocBody() {
                   <button type="button" data-period="monthly" class="${ALLOC_STATE.budgetPeriod === 'monthly' ? 'active' : ''}">월예산</button>
                 </span>
               </label>
-              <input id="alloc-budget" type="number" inputmode="numeric" placeholder="${ALLOC_STATE.budgetPeriod === 'monthly' ? '예: 30000000 (월)' : '예: 1000000 (일)'}" value="${ALLOC_STATE.budget != null ? ALLOC_STATE.budget : ''}" />
+              <div style="display:flex;gap:6px;">
+                <input id="alloc-budget" type="number" inputmode="numeric" placeholder="${ALLOC_STATE.budgetPeriod === 'monthly' ? '예: 30000000 (월)' : '예: 1000000 (일)'}" value="${ALLOC_STATE.budget != null ? ALLOC_STATE.budget : ''}" style="flex:1;" />
+                <button type="button" class="btn secondary" id="alloc-fetch-recent" style="padding: 0.5rem 0.75rem; font-size:11.5px; white-space:nowrap;" title="최근 집계 윈도우 기간 동안 실제 집행된 예산의 평균치를 계산해 자동으로 채웁니다.">최근 집행 불러오기</button>
+              </div>
               <div id="alloc-budget-warning-container"></div>
               <span class="ab-field-hint" id="alloc-budget-hint">
                 ${(() => {
@@ -10952,22 +10955,22 @@ function renderCreativeMatrix(matrix) {
   const statusLabel = { validated:"검증", promising:"유망", insufficient:"부족", empty:"미관측" };
 
   const headerRow = `<tr>
-    <th style="background:var(--bg-2);"><strong>${escapeHtml(CREATIVE_CONFIG.matrix.rows)}</strong> ↓ \\ <strong>${escapeHtml(CREATIVE_CONFIG.matrix.cols)}</strong> →</th>
-    ${matrix.cols.map(c => `<th style="background:var(--bg-2);">${escapeHtml(c)}</th>`).join("")}
+    <th style="background:var(--bg-2);padding:10px 12px;vertical-align:middle;"><strong>${escapeHtml(CREATIVE_CONFIG.matrix.rows)}</strong> ↓ \\ <strong>${escapeHtml(CREATIVE_CONFIG.matrix.cols)}</strong> →</th>
+    ${matrix.cols.map(c => `<th style="background:var(--bg-2);padding:10px 12px;vertical-align:middle;text-align:center;">${escapeHtml(c)}</th>`).join("")}
   </tr>`;
   const sel = CREATIVE_STATE.selectedCell;
   const bodyRows = matrix.grid.map((row, i) => `<tr>
-    <th style="background:var(--bg-2);text-align:left;">${escapeHtml(matrix.rows[i])}</th>
+    <th style="background:var(--bg-2);text-align:left;padding:10px 12px;vertical-align:middle;">${escapeHtml(matrix.rows[i])}</th>
     ${row.map(cell => {
       const isSelected = sel && sel.row === cell.row && sel.col === cell.col;
       const clickable = cell.status !== "empty";
       return `<td
         ${clickable ? `data-matrix-cell-row="${escapeHtml(cell.row)}" data-matrix-cell-col="${escapeHtml(cell.col)}"` : ""}
-        style="background:${statusColor[cell.status]};padding:8px;font-size:11px;line-height:1.5;${clickable ? 'cursor:pointer;' : ''}${isSelected ? 'outline:2px solid var(--primary,#adc6ff);outline-offset:-2px;' : ''}">
-        <div style="font-size:10px;color:var(--text-muted);">${statusLabel[cell.status]}${cell.n ? ` · n=${cell.n}` : ""}${isSelected ? ' ★ 선택됨' : ''}</div>
+        style="background:${statusColor[cell.status]};padding:10px 12px !important;font-size:11px;line-height:1.5;vertical-align:middle;${clickable ? 'cursor:pointer;' : ''}${isSelected ? 'outline:2px solid var(--primary,#adc6ff);outline-offset:-2px;' : ''}">
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">${statusLabel[cell.status]}${cell.n ? ` · n=${cell.n}` : ""}${isSelected ? ' ★ 선택됨' : ''}</div>
         ${cell.status !== 'empty' ? `
-          <div class="tnum">CTR ${fmtPct(cell.ctr)}</div>
-          <div class="tnum" style="color:var(--text-muted);">CVR ${fmtPct(cell.cvr)}</div>
+          <div class="tnum" style="font-weight:600;">CTR ${fmtPct(cell.ctr)}</div>
+          <div class="tnum" style="color:var(--text-muted);font-size:10px;">CVR ${fmtPct(cell.cvr)}</div>
         ` : `<div style="color:var(--text-muted);">—</div>`}
       </td>`;
     }).join("")}
@@ -10976,12 +10979,17 @@ function renderCreativeMatrix(matrix) {
   return `
     <section class="block" id="s-matrix">
       <h2 class="section-title"><span class="ix">§5</span>Concept Matrix — ${escapeHtml(CREATIVE_CONFIG.matrix.rows)} × ${escapeHtml(CREATIVE_CONFIG.matrix.cols)}</h2>
-      <p class="muted">셀 상태: <span style="background:${statusColor.validated};padding:2px 8px;border-radius:4px;">검증</span> ·
+      <p class="muted" style="margin-bottom:14px;">셀 상태: <span style="background:${statusColor.validated};padding:2px 8px;border-radius:4px;">검증</span> ·
         <span style="background:${statusColor.promising};padding:2px 8px;border-radius:4px;">유망</span> ·
         <span style="background:${statusColor.insufficient};padding:2px 8px;border-radius:4px;">데이터 부족</span> ·
         <span style="background:${statusColor.empty};padding:2px 8px;border-radius:4px;">미관측 (탐색 후보)</span>
       </p>
-      <div class="table-wrap"><table class="data" style="font-size:11px;">${headerRow}${bodyRows}</table></div>
+      <div class="table-wrap">
+        <table class="data" style="font-size:11px;">
+          <thead>${headerRow}</thead>
+          <tbody>${bodyRows}</tbody>
+        </table>
+      </div>
     </section>`;
 }
 
@@ -23562,6 +23570,33 @@ function bindBudgetAllocatorHandlers() {
     // objective → ALLOC_STATE.metric 자동 설정 (revenue_d7 metric은 1/ROAS = CPR로 처리됨, minimize CPR = maximize ROAS)
     const obj = getObjectiveCfg();
     if (obj) ALLOC_STATE.metric = obj.metric;
+
+    // 만약 예산이 비어 있으면 최근 평균으로 자동 세팅
+    if (ALLOC_STATE.budget == null) {
+      const rows = getMappedRowsForAlloc();
+      if (rows.length) {
+        const dates = [...new Set(rows.map(r => r.date).filter(Boolean))].map(d => Date.parse(d)).filter(d => !isNaN(d));
+        if (dates.length) {
+          const maxDate = Math.max(...dates);
+          const recentDays = ALLOC_STATE.recentDays || 28;
+          const threshold = maxDate - recentDays * 86400 * 1000;
+          const recentRows = rows.filter(r => r.date && Date.parse(r.date) >= threshold);
+          if (recentRows.length) {
+            const totalCost = recentRows.reduce((sum, r) => sum + (Number(r.cost) || 0), 0);
+            const uniqueRecentDates = new Set(recentRows.map(r => r.date).filter(Boolean));
+            const days = uniqueRecentDates.size || 1;
+            const dailyAvg = totalCost / days;
+            
+            if (ALLOC_STATE.budgetPeriod === "monthly") {
+              ALLOC_STATE.budget = Math.round(dailyAvg * 30);
+            } else {
+              ALLOC_STATE.budget = Math.round(dailyAvg);
+            }
+          }
+        }
+      }
+    }
+
     ALLOC_FILTER_STATE.applied = true;
     if (typeof clearAllocCache === "function") clearAllocCache();
     navigate("5-3");
@@ -23650,6 +23685,58 @@ function bindBudgetAllocatorHandlers() {
         refreshAllocationResults();
         _budgetTimer = null;
       }, 100);
+    });
+  }
+
+  // 최근 집행 예산 자동 가져오기 버튼 리스너
+  const fetchRecentBtn = document.getElementById("alloc-fetch-recent");
+  if (fetchRecentBtn) {
+    fetchRecentBtn.addEventListener("click", () => {
+      const rows = getMappedRowsForAlloc();
+      if (!rows.length) {
+        alert("분석할 광고 집행 데이터가 없습니다.");
+        return;
+      }
+      const dates = [...new Set(rows.map(r => r.date).filter(Boolean))].map(d => Date.parse(d)).filter(d => !isNaN(d));
+      if (!dates.length) {
+        alert("유효한 날짜 데이터가 없습니다.");
+        return;
+      }
+      const maxDate = Math.max(...dates);
+      const recentDays = ALLOC_STATE.recentDays || 28;
+      const threshold = maxDate - recentDays * 86400 * 1000;
+      
+      const recentRows = rows.filter(r => r.date && Date.parse(r.date) >= threshold);
+      if (!recentRows.length) {
+        alert(`최근 ${recentDays}일 동안의 집행 데이터가 없습니다.`);
+        return;
+      }
+      
+      const totalCost = recentRows.reduce((sum, r) => sum + (Number(r.cost) || 0), 0);
+      const uniqueRecentDates = new Set(recentRows.map(r => r.date).filter(Boolean));
+      const days = uniqueRecentDates.size || 1;
+      const dailyAvg = totalCost / days;
+      
+      let computed = 0;
+      if (ALLOC_STATE.budgetPeriod === "monthly") {
+        computed = Math.round(dailyAvg * 30);
+      } else {
+        computed = Math.round(dailyAvg);
+      }
+      
+      ALLOC_STATE.budget = computed;
+      const budgetInp = document.getElementById("alloc-budget");
+      if (budgetInp) {
+        budgetInp.value = computed;
+      }
+      
+      const hasBudget = computed > 0;
+      const reqEl = document.getElementById("alloc-budget-required");
+      const emptyEl = document.getElementById("alloc-budget-empty");
+      if (reqEl) reqEl.style.display = hasBudget ? "" : "none";
+      if (emptyEl) emptyEl.style.display = hasBudget ? "none" : "";
+      
+      refreshAllocationResults();
     });
   }
 
