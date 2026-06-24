@@ -17946,6 +17946,19 @@ function renderQualityCohorts(cohorts) {
     </section>`;
 }
 
+// rate: 0~1 잔존율. isPredicted=true면 예측값(더 옅은 채도)로 표시.
+// 0% = 투명(배경 그대로), 100%에 가까울수록 --primary(#adc6ff) 계열이 진해짐.
+function retentionHeatColor(rate, isPredicted) {
+  if (rate == null || !Number.isFinite(rate) || rate <= 0) return "transparent";
+  const clamped = Math.max(0, Math.min(1, rate));
+  // 시각적 구분을 위해 sqrt curve로 저값 구간도 살짜기 보이게(0~1 비선형 매핑)
+  const intensity = Math.sqrt(clamped);
+  const maxAlpha = isPredicted ? 0.22 : 0.42;
+  const alpha = (intensity * maxAlpha).toFixed(3);
+  const rgb = isPredicted ? "148,163,184" : "173,198,255"; // 예측=슬레이트 / 실측=primary blue
+  return `rgba(${rgb},${alpha})`;
+}
+
 function renderQualityMaturation() {
   buildMaturationCache();
   const qc = QUALITY_CACHE;
@@ -17992,13 +18005,17 @@ function renderQualityMaturation() {
     .map(co => {
       const cells = allCols.map(dn => {
         const actual = co.actual.find(p => p.n === dn);
-        if (actual) return `<td class="tnum"><strong>${fmtV(actual.v)}</strong></td>`;
+        if (actual) {
+          const bg = metric === "retention" ? ` style="background:${retentionHeatColor(actual.v, false)};"` : "";
+          return `<td class="tnum"${bg}><strong>${fmtV(actual.v)}</strong></td>`;
+        }
         const pred = co.predicted.find(p => p.n === dn);
         if (pred) {
           const ci = (pred.lo != null && pred.hi != null)
             ? ` <span style="font-size:9px;color:var(--text-muted);">[${fmtV(pred.lo)}·${fmtV(pred.hi)}]</span>`
             : "";
-          return `<td class="tnum" style="color:var(--text-muted);font-style:italic;">~${fmtV(pred.v)}${ci}</td>`;
+          const bg = metric === "retention" ? `background:${retentionHeatColor(pred.v, true)};` : "";
+          return `<td class="tnum" style="${bg}color:var(--text-muted);font-style:italic;">~${fmtV(pred.v)}${ci}</td>`;
         }
         return `<td class="tnum" style="color:var(--text-muted);opacity:0.35;">${co.age < dn ? "—" : "⊘"}</td>`;
       }).join("");
@@ -18037,7 +18054,7 @@ function renderQualityMaturation() {
           <tbody>${tableRows}</tbody>
         </table>
       </div>
-      <p class="muted" style="font-size:11px;margin-top:8px;">실측=<strong>굵게</strong> · 예측=<em>기울임·~값[CI]</em> · —=미도달 · ⊘=데이터없음. Anchor D${anchor} 기준 비율법(매출·결제) · 레벨평균법(리텐션). 성숙기준 ${COHORT_MATUR_CFG.maturedMinDaily}개(일별)·${COHORT_MATUR_CFG.maturedMinWeekly}개(주별).</p>
+      <p class="muted" style="font-size:11px;margin-top:8px;">실측=<strong>굵게</strong> · 예측=<em>기울임·~값[CI]</em> · —=미도달 · ⊘=데이터없음. Anchor D${anchor} 기준 비율법(매출·결제) · 레벨평균법(리텐션). 성숙기준 ${COHORT_MATUR_CFG.maturedMinDaily}개(일별)·${COHORT_MATUR_CFG.maturedMinWeekly}개(주별).${metric === "retention" ? " 셀 배경=잔존율 Heatmap(진할수록 높음, 실측=청색·예측=회청색 옅은 톤)." : ""}</p>
     </section>`;
 }
 
@@ -18463,6 +18480,25 @@ function runQualityTests(verbose = true) {
     CSV_STATE.fileName = origFN; CSV_STATE.mapping = origMap; CSV_STATE.raw = origRaw;
     QUALITY_CACHE.key = null; COHORT_MAT_CACHE.key = null;
     results.push({ test: "T12 · renderQualityMaturation §7 렌더", expected: "s-maturation + §7", actual: t12Actual, pass: t12Pass ? "✓" : "✗" });
+  }
+
+  // T13: retentionHeatColor — 순수함수 결정론 + 단조성 + null가드 + 실측/예측 구분
+  {
+    const c0   = retentionHeatColor(0, false);
+    const c25  = retentionHeatColor(0.25, false);
+    const c100 = retentionHeatColor(1, false);
+    const c50  = retentionHeatColor(0.5, false);
+    const cPred50 = retentionHeatColor(0.5, true);
+    const cNull   = retentionHeatColor(null, false);
+    const alphaOf = s => { const m = /,([\d.]+)\)$/.exec(s); return m ? parseFloat(m[1]) : null; };
+    const a25 = alphaOf(c25), a50 = alphaOf(c50), a100 = alphaOf(c100), aPred50 = alphaOf(cPred50);
+    const pass13 = c0 === "transparent"
+      && cNull === "transparent"
+      && a25 != null && a50 != null && a100 != null
+      && a25 < a50 && a50 < a100               // 단조 증가
+      && aPred50 != null && aPred50 < a50      // 예측은 실측보다 옅음(같은 rate)
+      && retentionHeatColor(0.5, false) === c50; // 결정론(재호출 동일)
+    results.push({ test: "T13 · retentionHeatColor 단조성/null가드/실측-예측 구분", expected: "단조↑·0→transparent·예측<실측·결정론", actual: `c0=${c0},a25=${a25},a50=${a50},a100=${a100},aPred50=${aPred50}`, pass: pass13 ? "✓" : "✗" });
   }
 
   if (verbose) {
