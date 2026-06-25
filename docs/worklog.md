@@ -51,6 +51,13 @@
 - **검증**: syntax check 통과, conflict marker 0, Playwright headless로 `ahaUploadSection()` 렌더 결과 스크린샷 확인(표준 dropzone과 시각적으로 일치), 데모 모드 진입까지 콘솔 에러 없음.
 - **부수 조사 (미해결, 재현 안 됨)**: "다크 모드엔 보이는 좌상단 브랜드명이 라이트 모드 스크린샷엔 안 보인다"는 피드백 — 현재 브랜치 코드(`index.html:218` `.brand-name`, `body.light-mode` 변수)를 Playwright로 라이트/다크 양쪽 렌더 확인했으나 **재현 안 됨**(양쪽 모두 정상 표시). 배포본(production)이 이 브랜치보다 오래된 버전이거나 캐시 문제일 가능성 — 사용자에게 재확인 요청 필요.
 
+### 2026-06-25 — 접근 키 디바이스 바인딩 (키 공유 방지)
+- **무엇**: 같은 Pro 접근 키를 여러 사람이 동시에 돌려쓰는 것을 막기 위해, 키가 최초 검증에 성공한 기기에 자동 바인딩되고 이후 다른 기기에서 같은 키 사용 시 거부되도록 구현.
+- **왜**: 사용자 질문 — "키를 전달해서 쓸 때 여러명이 한개를 돌려쓰거나 할수 있잖아.. 막는 방법이 뭐가 없을까?" → 4지선다 중 "디바이스 바인딩" 선택.
+- **심볼**: `access_keys.device_token`/`device_set_at` 컬럼 추가, `validate_access_key(input_hash, input_device)` RPC 시그니처 변경(기존 `validate_access_key(TEXT)` DROP 후 재생성, `device_mismatch` 반환 추가) — `supabase/schema.sql`. 클라이언트: `getDeviceToken()`(localStorage `mkt_library_device_id`, `crypto.randomUUID()`) + `tryAuthenticate`가 device 토큰 동봉, mismatch 시 전용 에러 메시지 — `index.html` (`AUTH_DEVICE_STORAGE_KEY` 부근, line ~5932/5987).
+- **검증**: syntax check 통과, conflict marker 0, `git diff --stat`으로 의도한 4파일(index.html/supabase/schema.sql/supabase/SETUP.md/CLAUDE.md)만 변경 확인. **Supabase 실제 RPC 동작은 미검증**(이 컨테이너에서 Supabase 콘솔 접근 불가) — 다음 PR 머지 후 실제 DB에 schema.sql 재실행 필요(`DROP FUNCTION IF EXISTS validate_access_key(TEXT)` 포함이라 기존 함수 안전하게 교체됨, 기존 키들의 `device_token`은 NULL로 시작해 다음 로그인 기기에 새로 바인딩됨).
+- **주의**: 완전한 보안 장치 아님(브라우저 데이터 삭제·시크릿 모드로 우회 가능) — 무심한 키 공유를 막는 1차 방어선. 정당한 기기변경은 admin이 SQL로 `device_token=NULL` 리셋(`supabase/SETUP.md` §7.1 문서화).
+
 ---
 
 ## 2026-06-21~22 — poly2 예산배분(5-3) 안전장치 4종 (안티그래비티)

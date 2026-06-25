@@ -5935,6 +5935,21 @@ async function sha256Hex(str) {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+const AUTH_DEVICE_STORAGE_KEY = "mkt_library_device_id";
+// 키 공유 방지: 이 기기를 식별하는 랜덤 토큰을 1회 생성해 localStorage에 보관.
+// validate_access_key RPC가 키별로 최초 검증 기기에 이 토큰을 바인딩하고, 다른 기기에서의 재사용을 거부한다.
+function getDeviceToken() {
+  let t = localStorage.getItem(AUTH_DEVICE_STORAGE_KEY);
+  if (!t) {
+    t = (crypto.randomUUID ? crypto.randomUUID() : sha256HexFallbackId());
+    localStorage.setItem(AUTH_DEVICE_STORAGE_KEY, t);
+  }
+  return t;
+}
+function sha256HexFallbackId() {
+  return "dev-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+}
+
 async function initializeAuth() {
   // 설정 파일 로드
   try {
@@ -5984,12 +5999,16 @@ async function tryAuthenticate(plainKey) {
     return { ok: false, error: "키 형식이 올바르지 않습니다." };
   }
   const hash = await sha256Hex(plainKey.trim());
-  const { data, error } = await AUTH_STATE.client.rpc("validate_access_key", { input_hash: hash });
+  const deviceToken = getDeviceToken();
+  const { data, error } = await AUTH_STATE.client.rpc("validate_access_key", { input_hash: hash, input_device: deviceToken });
   if (error) {
     return { ok: false, error: "검증 실패: " + error.message };
   }
   const row = Array.isArray(data) ? data[0] : data;
   if (!row || !row.valid) {
+    if (row && row.device_mismatch) {
+      return { ok: false, error: "이 키는 이미 다른 기기에서 사용 중입니다. 키 공유는 지원하지 않습니다 — 발급자에게 문의해주세요." };
+    }
     if (row && row.expires_at && new Date(row.expires_at) <= new Date()) {
       return { ok: false, error: "키가 만료되었습니다 (라벨: " + (row.key_label || "?") + ")." };
     }
