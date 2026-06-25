@@ -3248,10 +3248,18 @@ const IA = [
       { id: "5-18", title: "마케팅 반응 분석", desc: "4탭: 카니발 진단 · Trend Forecast(예산 예측) · MMM 기여 분해 · 범용 회귀(Lab) (가설용·holdout 아님)" },
     ],
   },
+  {
+    id: "11",
+    title: "행동 분석",
+    subtitle: "유저 행동 → Aha-moment 탐색",
+    items: [
+      { id: "5-20", title: "Aha-Moment Finder", desc: "선행 행동 윈도우×횟수 그리드 탐색 — F1/Lift로 타겟 달성과 가장 강한 연관 찾기 (가설용·홀드아웃 아님)" },
+    ],
+  },
 ];
 
 /* Ops Dashboard(운영) 그룹 id 집합 — 가이드/도구 카운트 구분용 */
-const OPS_GROUP_IDS = new Set(["05", "06", "07", "10"]);
+const OPS_GROUP_IDS = new Set(["05", "06", "07", "10", "11"]);
 
 /* ========== Marketing Phases (사용자 여정 기준) ========== */
 const PHASES = [
@@ -3634,7 +3642,7 @@ function updateNavActive(activeId) {
 const LANDING_STATE = { track: null }; // null = step1 / "guide" / "analyze"
 
 // 도구 티어 (freemium): 시각화·모니터링만 무료, 나머지 Pro
-const TOOL_TIER = { "5-2": "free", "5-3": "free", "5-6": "pro", "5-4": "pro", "5-18": "pro" };
+const TOOL_TIER = { "5-2": "free", "5-3": "free", "5-6": "pro", "5-4": "pro", "5-18": "pro", "5-20": "pro" };
 function toolTier(id) { return TOOL_TIER[id] || "pro"; }
 
 // 분석 트랙의 목표 버킷 (사용자 승인 구조)
@@ -3643,6 +3651,7 @@ const ANALYZE_BUCKETS = [
   { id: "efficiency", icon: "💰", label: "효율화 · 예산",     tier: "free",  desc: "절대 CPR/ROAS 기반 예산 배분 + 한계효용 그리디(고급) — 채널별 최적화",  tools: ["5-3"] },
   { id: "experiment", icon: "🧪", label: "실험 · 소재",       tier: "pro",  desc: "A/B 설계·결과 판독·홀드아웃 증분 + 소재 성과 분해",        tools: ["5-4", "5-6"] },
   { id: "advanced",   icon: "📈", label: "고급 분석",         tier: "pro",  desc: "마케팅 반응 회귀 — 카니발 진단·Forecast·MMM 기여 분해·범용 회귀", tools: ["5-18"] },
+  { id: "behavior",   icon: "🎯", label: "행동 분석",         tier: "pro",  desc: "Aha-Moment Finder — 선행 행동 윈도우×횟수 그리드로 타겟 달성과 연관 탐색", tools: ["5-20"] },
 ];
 
 function tierBadge(tier) {
@@ -5917,7 +5926,7 @@ const AUTH_STATE = {
 };
 
 // freemium: 5-2 시각화·모니터링은 무료. 나머지 분석 도구는 Pro(접근 키 필요).
-const AUTH_PROTECTED_PAGES = new Set(["5-4", "5-6", "5-18"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-4", "5-6", "5-18", "5-20"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -6440,6 +6449,7 @@ function monVizBody() {
       <section class="block" id="s-charts">
         <h2 class="section-title"><span class="ix">§3</span>차트 시각화</h2>
         <p style="color:var(--text-secondary);font-size:13px;">업로드된 데이터를 기반으로 시계열·채널 비중·CPI 비교·퍼널·코호트 매출 5종 차트가 렌더링됩니다.</p>
+        ${renderMonEventMarkerUI()}
         <div class="chart-grid cols-2">
           <div class="chart-card">
             <div class="chart-title">일별 비용·설치 추이</div>
@@ -6472,6 +6482,53 @@ function monVizBody() {
     `;
 }
 const MON_STATE = { tab: "viz" };
+
+// 주요 이벤트 마커 (캠페인 런칭/프로모션/매체 이슈 등) — 클라이언트 메모리 전용, 새로고침 리셋 (localStorage 금지)
+const MON_EVENT_MARKERS = []; // [{ id, date: "YYYY-MM-DD", label: "..." }]
+function renderMonEventMarkerUI() {
+  const rows = [...MON_EVENT_MARKERS].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  return `
+    <div class="block" id="mon-event-marker-ui" style="padding:14px 18px;margin:12px 0;border:1px solid var(--border-subtle);border-radius:8px;background:var(--bg-2);">
+      <div style="font-size:12.5px;font-weight:700;color:var(--text-1);margin-bottom:8px;">📌 주요 이벤트 마커 <span style="font-weight:400;color:var(--text-muted);">(캠페인 런칭·프로모션·매체 이슈 등 — 새로고침 시 초기화)</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+        <input type="date" id="mon-event-date" style="padding:6px 8px;font-size:12px;background:var(--bg-1);color:var(--text-1);border:1px solid var(--border);border-radius:4px;" />
+        <input type="text" id="mon-event-label" placeholder="라벨 (예: 신규 프로모션 시작)" maxlength="40" style="flex:1;min-width:160px;padding:6px 8px;font-size:12px;background:var(--bg-1);color:var(--text-1);border:1px solid var(--border);border-radius:4px;" />
+        <button class="ab-pill" id="mon-event-add" type="button">+ 마커 추가</button>
+      </div>
+      ${rows.length ? `
+        <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;">
+          ${rows.map(m => `
+            <li style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text-2);">
+              <span style="font-family:'JetBrains Mono',monospace;color:var(--text-muted);">${m.date}</span>
+              <span style="flex:1;">${m.label.replace(/</g, "&lt;")}</span>
+              <button class="ab-pill" data-mon-event-del="${m.id}" type="button" style="padding:2px 8px;font-size:10.5px;">삭제</button>
+            </li>`).join("")}
+        </ul>
+      ` : `<p style="font-size:11.5px;color:var(--text-muted);margin:0;">등록된 마커가 없습니다. 날짜와 라벨을 입력해 추가하세요.</p>`}
+    </div>`;
+}
+function bindMonEventMarkerHandlers() {
+  const addBtn = document.getElementById("mon-event-add");
+  if (addBtn) {
+    addBtn.addEventListener("click", () => {
+      const dateInput = document.getElementById("mon-event-date");
+      const labelInput = document.getElementById("mon-event-label");
+      const date = dateInput ? dateInput.value : "";
+      const label = labelInput ? labelInput.value.trim() : "";
+      if (!date || !label) return;
+      MON_EVENT_MARKERS.push({ id: "m" + Date.now() + Math.random().toString(36).slice(2, 7), date, label });
+      navigate(location.hash.slice(1) || "5-2");
+    });
+  }
+  document.querySelectorAll("[data-mon-event-del]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.monEventDel;
+      const idx = MON_EVENT_MARKERS.findIndex(m => m.id === id);
+      if (idx >= 0) MON_EVENT_MARKERS.splice(idx, 1);
+      navigate(location.hash.slice(1) || "5-2");
+    });
+  });
+}
 
 // 운영 대시보드 필터 상태 (efficiency 탭 전용 — cohort 탭은 별도 grain)
 const MON_FILTER_STATE = {
@@ -6759,52 +6816,59 @@ function monAllocBody() {
           <strong>최근 ${ALLOC_STATE.recentDays}일</strong> 데이터는 ▲ 마커 + 진한 색으로 강조됩니다.
         </p>
         <div id="alloc-scope-label" class="alloc-scope-label"></div>
+        <div class="alloc-scatter-controls-wrap">
         <div class="alloc-scatter-controls">
           <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">추세선</span>
+            <span class="ab-pillgroup-label">추세선${mmmTip(ALLOC_FILTER_TIPS.trendtype)}</span>
             <button class="ab-pill" data-trendtype="auto">Auto (Best R²)</button>
             <button class="ab-pill" data-trendtype="linear">Linear</button>
             <button class="ab-pill" data-trendtype="log">Log</button>
             <button class="ab-pill" data-trendtype="poly2">Poly2</button>
             <button class="ab-pill" data-trendtype="power">Power</button>
           </div>
+          <button class="ab-pill" id="alloc-advanced-toggle" style="margin-left:auto;">
+            ${ALLOC_STATE.advancedOpen ? "▲ 상세 설정 닫기" : "▼ 상세 설정 (가중치·이상치·정규화·외삽·표시)"}
+          </button>
+        </div>
+        <div class="alloc-scatter-controls" id="alloc-advanced-panel" style="${ALLOC_STATE.advancedOpen ? "" : "display:none;"}">
           <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">최근 가중치</span>
+            <span class="ab-pillgroup-label">최근 가중치${mmmTip(ALLOC_FILTER_TIPS.weightmode)}</span>
             <button class="ab-pill" data-weightmode="none">없음 (균등)</button>
             <button class="ab-pill" data-weightmode="linear">선형 (최오래 0.2)</button>
             <button class="ab-pill" data-weightmode="exponential">지수 (반감기 30일)</button>
           </div>
           <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">이상치 제거</span>
+            <span class="ab-pillgroup-label">이상치 제거${mmmTip(ALLOC_FILTER_TIPS.outlier)}</span>
             <button class="ab-pill" data-outlier="none">없음</button>
             <button class="ab-pill" data-outlier="iqr">IQR</button>
             <button class="ab-pill" data-outlier="modz">Modified Z</button>
           </div>
           <div class="ab-pillgroup" id="outlier-strength-group">
-            <span class="ab-pillgroup-label">강도</span>
+            <span class="ab-pillgroup-label">강도${mmmTip(ALLOC_FILTER_TIPS.strength)}</span>
             <button class="ab-pill" data-strength="standard">표준</button>
             <button class="ab-pill" data-strength="strong">강함</button>
             <button class="ab-pill" data-strength="very_strong">매우 강함</button>
           </div>
           <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">정규화</span>
+            <span class="ab-pillgroup-label">정규화${mmmTip(ALLOC_FILTER_TIPS.normalize)}</span>
             <button class="ab-pill" data-normalize="raw">절대값</button>
             <button class="ab-pill" data-normalize="log">로그 스케일</button>
             <button class="ab-pill" data-normalize="minmax">채널 0~1</button>
             <button class="ab-pill" data-normalize="robust">Robust z</button>
           </div>
           <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">외삽 한도 (Cap)</span>
+            <span class="ab-pillgroup-label">외삽 한도 (Cap)${mmmTip(ALLOC_FILTER_TIPS.extrapolate)}</span>
             <button class="ab-pill" data-extrapolate="1.0">1.0x (엄격)</button>
             <button class="ab-pill" data-extrapolate="1.3">1.3x (보통)</button>
             <button class="ab-pill" data-extrapolate="1.5">1.5x (공격적)</button>
             <button class="ab-pill" data-extrapolate="fallback">비례배분 (무제한)</button>
           </div>
           <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">표시</span>
+            <span class="ab-pillgroup-label">표시${mmmTip(ALLOC_FILTER_TIPS.pointtoggle)}</span>
             <button class="ab-pill" data-pointtoggle="show">점 + 추세선</button>
             <button class="ab-pill" data-pointtoggle="hide">추세선만</button>
           </div>
+        </div>
         </div>
         <div id="alloc-outlier-summary"></div>
         <div id="alloc-channel-filter" class="alloc-channel-filter"></div>
@@ -7188,10 +7252,72 @@ const STATS = (() => {
     return { costA, costB, total: costA + costB, cprA, cprB: cprBuse };
   }
 
+  /* ========== 대량 실험 검정 (Mass Test Readout) ==========
+     control arm 대비 모든 variant arm에 twoPropZTest를 일괄 적용.
+     Bayesian P(B>A)는 CREATIVE_STATS.betaProbGreater(고정 그리드, 결정론) 재사용 — Monte Carlo 금지(§8). */
+  function massReadout(arms) {
+    const control = arms.find(a => a.isControl) || arms[0];
+    if (!control || !control.n || control.n <= 0) return { control: null, rows: [] };
+    const rows = arms.map(a => {
+      if (a === control) {
+        return {
+          name: a.name, n: a.n, x: a.x, isControl: true,
+          rate: a.n > 0 ? a.x / a.n : 0,
+          liftRel: 0, z: 0, pValue: 1, ciLow95: 0, ciHigh95: 0,
+          probBWins: 0.5, sig: false,
+        };
+      }
+      const freq = twoPropZTest(control.n, control.x, a.n, a.x);
+      const probBWins = (typeof CREATIVE_STATS !== "undefined")
+        ? CREATIVE_STATS.betaProbGreater(control.x, control.n, a.x, a.n)
+        : NaN;
+      return {
+        name: a.name, n: a.n, x: a.x, isControl: false,
+        rate: freq.pB, liftRel: freq.liftRel, z: freq.z, pValue: freq.pValue,
+        ciLow95: freq.ciLow95, ciHigh95: freq.ciHigh95,
+        probBWins, sig: freq.pValue < 0.05,
+      };
+    });
+    return { control, rows };
+  }
+
+  /* ========== MDE vs Sample Size 파워 커브 ==========
+     sampleSizePerArm을 역으로 — 고정 sample size 그리드에서 binary search로 MDE(relative) 역산.
+     n(mde)가 mde에 대해 단조감소이므로 이분 탐색 안전. 결정론(반복 고정 50회). */
+  function mdeForSampleSize({ baseline, n, alpha = 0.05, power = 0.8, twoSided = true, maxMde = 5 }) {
+    if (!(baseline > 0) || baseline >= 1 || !(n > 0)) return NaN;
+    let lo = 1e-6, hi = maxMde;
+    // hi가 충분히 크지 않으면(=n(hi) > n) 확장
+    for (let i = 0; i < 30; i++) {
+      const nHi = sampleSizePerArm({ baseline, mdeRelative: hi, alpha, power, twoSided }).n;
+      if (isFinite(nHi) && nHi <= n) break;
+      hi *= 1.6;
+      if (hi > 50) break; // baseline*(1+mde) >= 1 한계 도달
+    }
+    for (let i = 0; i < 50; i++) {
+      const mid = (lo + hi) / 2;
+      const r = sampleSizePerArm({ baseline, mdeRelative: mid, alpha, power, twoSided });
+      if (!isFinite(r.n) || isNaN(r.n) || r.n > n) lo = mid; else hi = mid;
+    }
+    return hi;
+  }
+
+  function powerCurve({ baseline, alpha = 0.05, power = 0.8, points = 24, nMin = 200, nMax = 200000 }) {
+    const out = [];
+    const logMin = Math.log(nMin), logMax = Math.log(nMax);
+    for (let i = 0; i < points; i++) {
+      const n = Math.round(Math.exp(logMin + (logMax - logMin) * i / (points - 1)));
+      const mde = mdeForSampleSize({ baseline, n, alpha, power });
+      out.push({ n, mdePct: isFinite(mde) ? mde * 100 : null });
+    }
+    return out;
+  }
+
   return {
     normalCDF, normalInverse,
     sampleSizePerArm, twoPropZTest, bayesianAB,
     sampleSizeContinuous, continuousTest, budgetForTest,
+    massReadout, mdeForSampleSize, powerCurve,
   };
 })();
 
@@ -7608,6 +7734,20 @@ const AB_STATE = {
   currency: "KRW",       // KRW (₩) | USD ($)
 };
 
+/* 대량 실험 검정(Mass Test Readout) — 독립 CSV 업로드(소형, TOOL_GROUP/CSV_STATE 파이프라인과 무관) */
+const AB_MASS_STATE = {
+  fileName: null,
+  rows: [],       // [{ name, n, x, isControl }]
+  headers: [],
+};
+
+/* MDE vs Sample Size 파워 커브 입력 (기존 §2 Plan 모드 baseline/alpha/power 값과 별개 입력) */
+const AB_POWER_STATE = {
+  baseline: 5,    // %
+  alpha: 0.05,
+  power: 0.8,
+};
+
 const ALLOC_STATE = {
   trendType: "auto",       // linear | log | poly2 | power | auto
   weightMode: "none",      // none | linear | exponential (최근 데이터 가중)
@@ -7627,6 +7767,7 @@ const ALLOC_STATE = {
   recentDays: 28,          // 집계·강조 윈도우 (일) — 기본 4주
   showRecent: true,
   hidePoints: false,       // 점 숨김 (추세선만 표시)
+  advancedOpen: false,     // 상세 설정(최근 가중치/이상치/강도/정규화/외삽/표시) 펼침 여부
   sim: {                   // 시뮬레이션 상태 (채널 1개 선택 시)
     channel: null,
     currentCost: null,
@@ -7637,6 +7778,17 @@ const ALLOC_STATE = {
      다중 채널 보기 시 글로벌 토글 변경은 미설정 채널만 영향.
      구조: { [channelKey]: { trendType?, weightMode?, outlierMethod?, outlierStrength? } } */
   perChannel: {},
+};
+
+/* 필터 그룹별 호버 설명 — "언제 쓰는지 · 무슨 역할" 1~2줄 */
+const ALLOC_FILTER_TIPS = {
+  trendtype: "채널의 Cost↔CPR 관계를 어떤 곡선으로 적합할지 선택. Auto는 R²가 가장 높은 모델을 자동 선택(기본 추천). 데이터가 거의 직선이면 Linear, 수확체감이 뚜렷하면 Log/Power, 곡선이 휘는 패턴(종모양·U자)이 보이면 Poly2.",
+  weightmode: "추세선을 적합할 때 최근 데이터에 더 큰 비중을 줄지 선택. 시장 상황이 최근 바뀌었다면 선형/지수로 최근 데이터를 더 신뢰. 시즌 영향 없이 안정적인 채널은 '없음'으로 전체 기간을 동등하게.",
+  outlier: "비정상적으로 튀는 (Cost, CPR) 데이터 포인트를 추세선 계산에서 제외. 프로모션·버그·일시적 이벤트로 튄 날짜가 있으면 IQR(표준) 또는 Modified Z(더 보수적, 표본 적을 때)로 제거 추천.",
+  strength: "이상치 제거 기준의 엄격도. '표준'은 일반적인 데이터, '강함/매우 강함'은 노이즈가 많아 이상치가 자주 끼는 채널에 사용(제거되는 데이터가 늘어남).",
+  normalize: "차트에 표시할 때의 축 스케일만 변경(추세선 계산엔 영향 없음). 채널 간 CPR 단위 차이가 커서 비교가 어려우면 로그/0~1/Robust z로 시각적 비교를 쉽게.",
+  extrapolate: "추세선을 관측 범위 밖(미집행 Cost 구간)까지 예측에 쓸 때의 한도. 데이터가 적거나 신뢰도가 낮으면 1.0x(엄격)로 안전하게, 충분한 데이터로 공격적 배분을 원하면 1.5x. '비례배분'은 추세선 외삽 없이 평균 효율로만 분배.",
+  pointtoggle: "차트에 원본 데이터 점을 같이 표시할지(추세선 신뢰도를 점 분포로 직접 확인) 추세선만 깔끔하게 볼지 선택.",
 };
 
 /* ===== 5-3 분석 단위 + 국가/채널/플랫폼 필터 ===== */
@@ -8199,8 +8351,16 @@ function monExpDesignBody() {
         ${mode === "threshold" ? renderModeThreshold() : ""}
       </section>
 
+      <section class="block" id="s-mass">
+        ${renderMassReadout()}
+      </section>
+
+      <section class="block" id="s-powercurve">
+        ${renderPowerCurve()}
+      </section>
+
       <section class="block" id="s-notes">
-        <h2 class="section-title"><span class="ix">§4</span>통계 노트</h2>
+        <h2 class="section-title"><span class="ix">§5</span>통계 노트</h2>
         <ul>
           <li><strong>Binary (CVR) · z-test</strong>: <code class="inline">z = (p̂_B - p̂_A) / √(p̄(1-p̄)(1/n_A + 1/n_B))</code>. p-value &lt; α 시 귀무가설 기각.</li>
           <li><strong>Binary · Sample Size</strong>: <code class="inline">n = 2 × (z_α/2 + z_β)² × p̄(1-p̄) / δ²</code></li>
@@ -8209,6 +8369,8 @@ function monExpDesignBody() {
           <li><strong>Bayesian</strong>: Binary 전용. 사전 Beta(1,1). 사후 Beta(1+x, 1+n-x). Monte Carlo 10,000 sim.</li>
           <li><strong>예산 계산</strong>: <code class="inline">Total Budget = n_per_arm × (CPR_A + CPR_B)</code>. CPR은 Cost Per Result (전환당 비용).</li>
           <li><strong>주의</strong>: 멀티 변형(A/B/C/...) 테스트 시 Bonferroni 보정(<code class="inline">α/k</code>) 필요. 본 도구는 2-arm 기준.</li>
+          <li><strong>대량 실험 검정 (§3)</strong>: control arm 대비 모든 variant arm에 동일한 two-proportion z-test를 일괄 적용. Bayesian P(B&gt;A)는 Monte Carlo가 아닌 고정 그리드 수치적분(결정론, §8)으로 계산.</li>
+          <li><strong>파워 커브 (§4)</strong>: <code class="inline">n = 2 × (z_α/2 + z_β)² × p̄(1-p̄) / δ²</code> 식을 sample size 기준으로 역산(이분 탐색)하여 탐지 가능한 최소 MDE를 도출.</li>
         </ul>
       </section>
     `;
@@ -8234,6 +8396,8 @@ function page_5_4() {
       toc: [
         { id: "s-mode", title: "모드 선택" },
         { id: "s-body", title: "계산기" },
+        { id: "s-mass", title: "대량 실험 검정" },
+        { id: "s-powercurve", title: "파워 커브" },
         { id: "s-notes", title: "통계 노트" },
       ],
       body: `${renderExpTabs()}${monExpDesignBody()}`,
@@ -10078,6 +10242,20 @@ const CREATIVE_CONFIG = {
     multipleTesting: "bh",
   },
   fatigue: { decayWindow: 7, dropPct: 0.20 },
+  fatigueAlert: {
+    minDays: 7,          // 추세 적합에 필요한 최소 운영일
+    trendWindow: 14,      // 최근 N일로 추세(slope) 적합
+    ctrWeight: 0.45,       // 복합지수 가중치 (CTR 하락)
+    freqWeight: 0.35,      // 노출강도(일평균 impressions) 상승 가중치
+    cpmWeight: 0.20,       // CPM 상승 가중치
+    alertScore: 0.5,       // 복합지수 이 값 이상이면 경보
+    horizonDays: 30,       // 임계점 도달 예상치 탐색 한도(일)
+  },
+  autoPlanner: {
+    defaultWeeklyVelocity: 3,  // 주당 신규 소재 공급 가능 개수 (사용자 입력 기본값)
+    urgentDays: 7,              // 임계점 도달까지 이 기간 이하면 '긴급'
+    soonDays: 21,                // '예정' 구간
+  },
   matrix: { rows: "message_angle", cols: "format" },
   test:    { exploreRatio: 0.3, batchSize: 6, power: 0.8, alpha: 0.05 },
   bayes:   { priorA: 1, priorB: 1, gridN: 2000, promoteProb: 0.95, killProb: 0.05 },
@@ -10201,6 +10379,205 @@ const CREATIVE_MATH = {
       vifs[j] = 1 / Math.max(0.001, 1 - r2);
     }
     return vifs;
+  },
+};
+
+/* ----- CREATIVE_FATIGUE: Ad Fatigue Alert & Auto-Planner (§2-B) -----
+ * 다차원 Fatigue 지수(CTR 하락 + 노출강도(impressions/day) 상승 + CPM 상승) + 임계점 도달 예상 시점
+ * + 주당 신규 소재 공급량(velocity) 기반 교체 우선순위 타임라인.
+ * 순수 함수만. Math.random 금지 — 전부 OLS 추세선 기반 결정론적 산출.
+ */
+const CREATIVE_FATIGUE = {
+  // 단순 OLS 기울기(slope) — x=0..n-1 인덱스, y=값. 결측(null/NaN)은 스킵.
+  // 반환: { slope, intercept, n } 또는 null (n<2)
+  olsSlope(values) {
+    const pts = values
+      .map((v, i) => ({ x: i, y: v }))
+      .filter(p => p.y != null && isFinite(p.y));
+    const n = pts.length;
+    if (n < 2) return null;
+    const mx = pts.reduce((s, p) => s + p.x, 0) / n;
+    const my = pts.reduce((s, p) => s + p.y, 0) / n;
+    let sxy = 0, sxx = 0;
+    for (const p of pts) { sxy += (p.x - mx) * (p.y - my); sxx += (p.x - mx) ** 2; }
+    const slope = sxx > 0 ? sxy / sxx : 0;
+    const intercept = my - slope * mx;
+    return { slope, intercept, n };
+  },
+
+  // 소재별 일자순 series → 일별 CTR / impressions(노출강도 proxy) / CPM 시리즈 구성
+  buildDailySeries(series) {
+    return series.map(r => {
+      const imp = Number(r.impressions) || 0;
+      const clk = Number(r.clicks) || 0;
+      const spend = Number(r.spend ?? r.cost) || 0;
+      return {
+        date: r.date,
+        ctr: imp > 0 ? clk / imp : null,
+        impressions: imp,
+        cpm: imp > 0 ? (spend / imp) * 1000 : null,
+      };
+    });
+  },
+
+  // 복합 Fatigue 지수: CTR slope(음수=하락→양의 위험), 노출강도 slope(양수=상승→위험), CPM slope(양수=상승→위험)
+  // 각 slope를 해당 시리즈의 평균으로 정규화(스케일 무관 비교) 후 가중합.
+  // 반환: { score, ctrTrendPctPerDay, freqTrendPctPerDay, cpmTrendPctPerDay, n } 또는 null(데이터 부족)
+  compositeIndex(dailySeries, cfg) {
+    const W = cfg.trendWindow;
+    const recent = dailySeries.slice(-W);
+    if (recent.length < cfg.minDays) return null;
+
+    const ctrVals = recent.map(d => d.ctr);
+    const freqVals = recent.map(d => d.impressions);
+    const cpmVals = recent.map(d => d.cpm);
+
+    const ctrFit = this.olsSlope(ctrVals);
+    const freqFit = this.olsSlope(freqVals);
+    const cpmFit = this.olsSlope(cpmVals);
+
+    const meanOf = (arr) => {
+      const v = arr.filter(x => x != null && isFinite(x));
+      return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+    };
+    const ctrMean = meanOf(ctrVals);
+    const freqMean = meanOf(freqVals);
+    const cpmMean = meanOf(cpmVals);
+
+    // %/day 정규화 (평균 0 또는 fit 없음이면 0)
+    const ctrPctPerDay = (ctrFit && ctrMean) ? ctrFit.slope / ctrMean : 0;
+    const freqPctPerDay = (freqFit && freqMean) ? freqFit.slope / freqMean : 0;
+    const cpmPctPerDay = (cpmFit && cpmMean) ? cpmFit.slope / cpmMean : 0;
+
+    // 위험 방향: CTR 하락(-)·노출강도 상승(+)·CPM 상승(+) 모두 위험 → 부호 정규화해 0~1 risk 성분으로
+    const ctrRisk = Math.max(0, -ctrPctPerDay);   // CTR이 떨어질수록 양수
+    const freqRisk = Math.max(0, freqPctPerDay);  // 노출강도 오를수록 양수
+    const cpmRisk = Math.max(0, cpmPctPerDay);    // CPM 오를수록 양수
+
+    // 가중합 → 0~1 클램프 (스케일은 %/day라 작은 값. tanh로 압축해 0~1 점수화)
+    const raw = cfg.ctrWeight * ctrRisk + cfg.freqWeight * freqRisk + cfg.cpmWeight * cpmRisk;
+    const score = Math.max(0, Math.min(1, Math.tanh(raw * 20)));  // 20은 스케일 보정(결정론 상수)
+
+    return {
+      score,
+      ctrTrendPctPerDay: ctrPctPerDay,
+      freqTrendPctPerDay: freqPctPerDay,
+      cpmTrendPctPerDay: cpmPctPerDay,
+      n: recent.length,
+    };
+  },
+
+  // 임계점(alertScore) 도달까지 예상 일수. score가 이미 임계 이상이면 0.
+  // score 추세가 비양수(개선/평탄)면 도달 안 함 → null.
+  // 단순 선형 외삽: 최근 trendWindow 구간의 score 변화 속도를 추정하기 위해
+  // 최근/이전 절반 구간 score 차이를 일변화율로 사용(결정론적, 추가 회귀 불필요).
+  projectThreshold(dailySeries, cfg) {
+    const W = cfg.trendWindow;
+    const recent = dailySeries.slice(-W);
+    if (recent.length < cfg.minDays) return { etaDays: null, reason: "데이터 부족" };
+    const half = Math.floor(recent.length / 2);
+    if (half < 2) return { etaDays: null, reason: "데이터 부족" };
+    const idxFirst = this.compositeIndex(recent.slice(0, Math.max(cfg.minDays, half)), cfg);
+    const idxSecond = this.compositeIndex(recent, cfg);
+    if (!idxFirst || !idxSecond) return { etaDays: null, reason: "데이터 부족" };
+    const cur = idxSecond.score;
+    if (cur >= cfg.alertScore) return { etaDays: 0, reason: "이미 임계 도달" };
+    const deltaPerHalfWindow = idxSecond.score - idxFirst.score;
+    const halfWindowDays = Math.max(1, recent.length - Math.max(cfg.minDays, half));
+    const ratePerDay = deltaPerHalfWindow / halfWindowDays;
+    if (ratePerDay <= 0) return { etaDays: null, reason: "악화 추세 없음" };
+    const remaining = cfg.alertScore - cur;
+    const eta = remaining / ratePerDay;
+    if (!isFinite(eta) || eta < 0) return { etaDays: null, reason: "추정 불가" };
+    if (eta > cfg.horizonDays) return { etaDays: null, reason: `horizon(${cfg.horizonDays}일) 밖` };
+    return { etaDays: Math.round(eta), reason: "추세 외삽" };
+  },
+
+  // 소재별 fatigue alert 종합: composite index + 임계점 도달 예상일
+  buildAlerts(rows, cfg) {
+    const byId = new Map();
+    for (const r of rows) {
+      if (!r.creative_id || !r.date) continue;
+      if (!byId.has(r.creative_id)) byId.set(r.creative_id, []);
+      byId.get(r.creative_id).push(r);
+    }
+    const out = [];
+    for (const [id, series] of byId) {
+      const sorted = series.slice().sort((a, b) => a.date.localeCompare(b.date));
+      const daily = this.buildDailySeries(sorted);
+      const idx = this.compositeIndex(daily, cfg);
+      const proj = this.projectThreshold(daily, cfg);
+      const channel = sorted[0]?.channel || null;
+      out.push({
+        creative_id: id,
+        channel,
+        days: sorted.length,
+        score: idx ? idx.score : null,
+        ctrTrendPctPerDay: idx ? idx.ctrTrendPctPerDay : null,
+        freqTrendPctPerDay: idx ? idx.freqTrendPctPerDay : null,
+        cpmTrendPctPerDay: idx ? idx.cpmTrendPctPerDay : null,
+        alert: idx ? idx.score >= cfg.alertScore : false,
+        etaDays: proj.etaDays,
+        etaReason: proj.reason,
+        lastDate: sorted[sorted.length - 1].date,
+      });
+    }
+    return out;
+  },
+
+  // Velocity 기반 교체 플랜: alert + eta 순으로 우선순위 큐를 만들고
+  // 주당 weeklyVelocity 개씩 교체 가능하다는 제약 하에 교체 예정주(week offset)를 배정.
+  // urgency: etaDays 작을수록(또는 이미 alert) 우선.
+  buildPlan(alerts, weeklyVelocity, cfg) {
+    const wv = Math.max(0.01, Number(weeklyVelocity) || cfg.defaultWeeklyVelocity);
+    // 우선순위: alert=true가 우선, 그 안에서 etaDays 오름차순(null은 맨 뒤), score desc
+    const candidates = alerts
+      .filter(a => a.score != null)
+      .slice()
+      .sort((a, b) => {
+        if (a.alert !== b.alert) return a.alert ? -1 : 1;
+        const ea = a.etaDays == null ? Infinity : a.etaDays;
+        const eb = b.etaDays == null ? Infinity : b.etaDays;
+        if (ea !== eb) return ea - eb;
+        return (b.score || 0) - (a.score || 0);
+      });
+
+    // 큐 안에서 주당 wv개씩 소화 — 각 항목에 배정 주차(0-indexed)와 슬롯 부여
+    const plan = candidates.map((a, i) => {
+      const weekIdx = Math.floor(i / wv);
+      const urgency = a.alert
+        ? "urgent"
+        : (a.etaDays != null && a.etaDays <= cfg.urgentDays)
+          ? "urgent"
+          : (a.etaDays != null && a.etaDays <= cfg.soonDays)
+            ? "soon"
+            : "planned";
+      return { ...a, queueRank: i + 1, scheduledWeek: weekIdx, urgency };
+    });
+
+    const urgentCount = plan.filter(p => p.urgency === "urgent").length;
+    const weeksNeededForUrgent = wv > 0 ? Math.ceil(urgentCount / wv) : null;
+    // 적정 속도 권고: urgent 소재를 1주 내 전부 교체하려면 필요한 주당 개수
+    const recommendedWeeklyVelocity = urgentCount > 0 ? urgentCount : 0;
+
+    return {
+      weeklyVelocity: wv,
+      plan,
+      urgentCount,
+      weeksNeededForUrgent,
+      recommendedWeeklyVelocity,
+      isUndersupplied: recommendedWeeklyVelocity > wv,
+    };
+  },
+
+  // Gantt 타임라인용: scheduledWeek 기준 week bucket (0..maxWeek) 별로 그룹화
+  ganttBuckets(plan, maxWeeks = 8) {
+    const buckets = Array.from({ length: maxWeeks }, (_, w) => ({ week: w, items: [] }));
+    for (const p of plan) {
+      const w = Math.min(p.scheduledWeek, maxWeeks - 1);
+      buckets[w].items.push(p);
+    }
+    return buckets;
   },
 };
 
@@ -10578,6 +10955,7 @@ const CREATIVE_STATS = {
 const CREATIVE_CACHE = {
   key: null, metrics: null, decompose: null, fatigue: null,
   matrix: null, nextTest: null, validation: null, snapshotHash: null,
+  fatigueAlerts: null, autoPlan: null,
 };
 
 function creativeCacheKey() {
@@ -10585,7 +10963,7 @@ function creativeCacheKey() {
   const sig = ["creative_id","date","channel","campaign_id","impressions","clicks","installs","spend",
                "hook_type","message_angle","format","first_3s","cta_style","duration_bucket"]
     .map(k => `${k}:${Object.entries(m).find(([,v])=>v===k)?.[0]||"-"}`).join("|");
-  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|cfg:${CREATIVE_CONFIG.version}`;
+  return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|cfg:${CREATIVE_CONFIG.version}|wv:${CREATIVE_STATE.weeklyVelocity}`;
 }
 
 // 결정론 hash (FNV-1a 32-bit) — snapshotHash 생성용
@@ -10643,6 +11021,11 @@ function buildCreativeCache() {
   // Next-test 후보 (matrix 기반)
   const nextTest = matrix ? generateNextTestHypotheses(matrix, decompose) : null;
 
+  // Ad Fatigue Alert: 다차원 복합지수 + 임계점 도달 예상일
+  const fatigueAlerts = CREATIVE_FATIGUE.buildAlerts(cleanRows, CREATIVE_CONFIG.fatigueAlert);
+  // Auto-Planner: 사용자 입력 weeklyVelocity 기반 교체 우선순위 + Gantt 스케줄
+  const autoPlan = CREATIVE_FATIGUE.buildPlan(fatigueAlerts, CREATIVE_STATE.weeklyVelocity, CREATIVE_CONFIG.autoPlanner);
+
   CREATIVE_CACHE.key = key;
   CREATIVE_CACHE.metrics = metrics;
   CREATIVE_CACHE.decompose = decompose;
@@ -10650,6 +11033,8 @@ function buildCreativeCache() {
   CREATIVE_CACHE.matrix = matrix;
   CREATIVE_CACHE.nextTest = nextTest;
   CREATIVE_CACHE.validation = validation;
+  CREATIVE_CACHE.fatigueAlerts = fatigueAlerts;
+  CREATIVE_CACHE.autoPlan = autoPlan;
   CREATIVE_CACHE.snapshotHash = creativeHashStr(key + cleanRows.length);
   return CREATIVE_CACHE;
 }
@@ -10704,6 +11089,8 @@ const CREATIVE_STATE = {
   matrixAxes:      "default", // 'default' | 'angle_vs_hook' 등 사용자 지정 가능
   selectedCell:    null,      // {row, col} — Concept Matrix 클릭 시 metric 표 필터
   fatigueShowAll:  false,     // true면 fatigue 발견 안 된 소재도 chart에 포함
+  weeklyVelocity:  CREATIVE_CONFIG.autoPlanner.defaultWeeklyVelocity, // 사용자 입력: 주당 신규 소재 공급 가능 개수
+  ganttWeeks:      8,         // Gantt 타임라인 표시 주수
 };
 
 function page_5_6() {
@@ -10741,6 +11128,8 @@ function page_5_6() {
       { id: "s-metrics", title: "소재별 지표" },
       { id: "s-decompose", title: "WLS 분해" },
       { id: "s-fatigue", title: "Fatigue 검출" },
+      { id: "s-fatigue-alert", title: "Ad Fatigue Alert" },
+      { id: "s-auto-planner", title: "Auto-Planner" },
       { id: "s-matrix", title: "Concept Matrix" },
       { id: "s-next", title: "다음 테스트" },
     ],
@@ -10752,6 +11141,8 @@ function page_5_6() {
       ${renderCreativeMetricsTable(c.metrics)}
       ${renderCreativeDecompose(c.decompose)}
       ${renderCreativeFatigue(c.fatigue, c.metrics)}
+      ${renderCreativeFatigueAlert(c)}
+      ${renderCreativeAutoPlanner(c)}
       ${renderCreativeMatrix(c.matrix)}
       ${renderCreativeNextTest(c.nextTest)}
     `,
@@ -10934,6 +11325,111 @@ function renderCreativeFatigue(fatigue, metrics) {
             </tr>
           `).join("")}</tbody>
         </table></div>` : `<p class="muted">감지된 fatigue 소재 없음. (양호)</p>`}
+    </section>`;
+}
+
+/* §2-B Ad Fatigue Alert — 다차원 복합지수(CTR↓ + 노출강도↑ + CPM↑) + 임계점 도달 예상일 */
+function renderCreativeFatigueAlert(c) {
+  const alerts = c.autoPlan ? c.autoPlan.plan : null;
+  const raw = c.fatigueAlerts || [];
+  if (!raw.length) return `<section class="block" id="s-fatigue-alert">
+    <h2 class="section-title"><span class="ix">§4.5</span>Ad Fatigue Alert</h2>
+    <p class="muted">분석 가능한 소재 없음 (운영 기간 ${CREATIVE_CONFIG.fatigueAlert.minDays}일 미만).</p>
+  </section>`;
+
+  const fmtPct = (v) => v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "") + (v * 100).toFixed(2) + "%/일";
+  const alertN = raw.filter(a => a.alert).length;
+  const soonN = raw.filter(a => !a.alert && a.etaDays != null && a.etaDays <= CREATIVE_CONFIG.autoPlanner.soonDays).length;
+  // 표는 score desc (null은 맨 뒤), 상위 30개
+  const sorted = raw.slice().sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+
+  return `
+    <section class="block" id="s-fatigue-alert">
+      <h2 class="section-title"><span class="ix">§4.5</span>Ad Fatigue Alert</h2>
+      <p class="muted">CTR 하락 + 노출강도(impressions/day) 상승 + CPM 상승 추세를 결합한 복합 Fatigue 지수(0~1). ${(CREATIVE_CONFIG.fatigueAlert.alertScore*100).toFixed(0)}% 이상이면 즉시 경고, 미달이라도 추세 외삽으로 ${CREATIVE_CONFIG.fatigueAlert.horizonDays}일 내 도달 예상 시점을 산출합니다.</p>
+      <div class="ab-stat-row" style="margin:8px 0 12px;">
+        <div class="ab-stat"><div class="ab-stat-label">분석 소재 수</div><div class="ab-stat-value tnum">${raw.length}</div></div>
+        <div class="ab-stat"><div class="ab-stat-label">즉시 경고</div><div class="ab-stat-value tnum ${alertN>0?'neg':'pos'}">${alertN}</div></div>
+        <div class="ab-stat"><div class="ab-stat-label">${CREATIVE_CONFIG.autoPlanner.soonDays}일 내 도달 예상</div><div class="ab-stat-value tnum ${soonN>0?'neg':'pos'}">${soonN}</div></div>
+      </div>
+      <div class="table-wrap">
+        <table class="data" style="font-size:11.5px;">
+          <thead><tr><th>Creative ID</th><th>채널</th><th>운영일</th><th>Fatigue Score</th><th>CTR 추세</th><th>노출강도 추세</th><th>CPM 추세</th><th>임계 도달 예상</th></tr></thead>
+          <tbody>${sorted.slice(0, 30).map(a => `
+            <tr>
+              <td><code class="inline" style="font-size:10px;">${escapeHtml(String(a.creative_id).slice(0,24))}</code></td>
+              <td>${escapeHtml(a.channel || "—")}</td>
+              <td class="tnum">${a.days}일</td>
+              <td class="tnum"><strong style="color:${a.score==null?'var(--text-muted)':a.alert?'#f87171':a.score>=0.3?'#fbbf24':'#22c55e'};">${a.score==null?"—":(a.score*100).toFixed(0)+"%"}</strong>${a.alert?' 🔴':''}</td>
+              <td class="tnum" style="color:${(a.ctrTrendPctPerDay||0)<0?'#f87171':'var(--text-muted)'};">${fmtPct(a.ctrTrendPctPerDay)}</td>
+              <td class="tnum" style="color:${(a.freqTrendPctPerDay||0)>0?'#f87171':'var(--text-muted)'};">${fmtPct(a.freqTrendPctPerDay)}</td>
+              <td class="tnum" style="color:${(a.cpmTrendPctPerDay||0)>0?'#f87171':'var(--text-muted)'};">${fmtPct(a.cpmTrendPctPerDay)}</td>
+              <td class="tnum">${a.etaDays == null ? `<span style="color:var(--text-muted);font-size:10.5px;">${escapeHtml(a.etaReason||"—")}</span>` : a.etaDays === 0 ? `<strong style="color:#f87171;">즉시</strong>` : `<strong>${a.etaDays}일 후</strong>`}</td>
+            </tr>
+          `).join("")}</tbody>
+        </table>
+      </div>
+      <p class="muted" style="font-size:11px;margin-top:8px;">⚠ 노출강도(impressions/day)는 빈도(Frequency) 컬럼이 없어 사용하는 proxy입니다 — 동일 타겟에 노출이 급증하면 빈도 상승과 상관됩니다.</p>
+    </section>`;
+}
+
+/* §2-B Auto-Planner — 주당 신규 소재 공급량(velocity) 기반 교체 우선순위 + Gantt 타임라인 */
+function renderCreativeAutoPlanner(c) {
+  const plan = c.autoPlan;
+  if (!plan || !plan.plan.length) return `<section class="block" id="s-auto-planner">
+    <h2 class="section-title"><span class="ix">§4.6</span>Auto-Planner</h2>
+    <p class="muted">교체가 필요한 소재 없음.</p>
+  </section>`;
+
+  const buckets = CREATIVE_FATIGUE.ganttBuckets(plan.plan, CREATIVE_STATE.ganttWeeks);
+  const urgencyColor = { urgent: "#f87171", soon: "#fbbf24", planned: "#60a5fa" };
+  const urgencyLabel = { urgent: "긴급", soon: "곧", planned: "예정" };
+  const maxItemsInWeek = Math.max(1, ...buckets.map(b => b.items.length));
+
+  return `
+    <section class="block" id="s-auto-planner">
+      <h2 class="section-title"><span class="ix">§4.6</span>Auto-Planner — 교체 주기 자동 기획</h2>
+      <p class="muted">주당 신규 소재 공급 가능 개수(velocity)를 입력하면, Fatigue 경고 우선순위로 교체 주차를 자동 배정합니다.</p>
+      <div style="display:flex;align-items:center;gap:10px;margin:8px 0 12px;flex-wrap:wrap;">
+        <label style="font-size:12px;color:var(--text-muted);">주당 신규 소재 공급량</label>
+        <input type="number" id="creative-weekly-velocity" min="0.5" step="0.5" value="${plan.weeklyVelocity}"
+          style="width:70px;padding:4px 8px;background:var(--bg-2);border:1px solid var(--border);border-radius:6px;color:var(--text-1);font-size:12px;" />
+        <span style="font-size:11px;color:var(--text-muted);">개/주</span>
+      </div>
+      <div class="ab-stat-row" style="margin:8px 0 12px;">
+        <div class="ab-stat"><div class="ab-stat-label">긴급 교체 필요</div><div class="ab-stat-value tnum ${plan.urgentCount>0?'neg':'pos'}">${plan.urgentCount}</div></div>
+        <div class="ab-stat"><div class="ab-stat-label">긴급 소화 소요</div><div class="ab-stat-value tnum">${plan.weeksNeededForUrgent == null ? "—" : plan.weeksNeededForUrgent + "주"}</div></div>
+        <div class="ab-stat"><div class="ab-stat-label">권고 주당 속도</div><div class="ab-stat-value tnum">${plan.recommendedWeeklyVelocity}개</div></div>
+      </div>
+      ${plan.isUndersupplied ? `
+        <div class="callout warn"><div class="ico">!</div><div class="body"><strong>공급 부족</strong><p>긴급 교체가 필요한 소재가 ${plan.urgentCount}개인데 현재 주당 공급량(${plan.weeklyVelocity})으로는 1주 내 전부 소화할 수 없습니다. 주당 ${plan.recommendedWeeklyVelocity}개 이상으로 늘리거나 긴급도가 낮은 소재의 교체를 늦추세요.</p></div></div>
+      ` : `<div class="callout"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">현재 공급량(주당 ${plan.weeklyVelocity}개)으로 긴급 교체 물량을 충분히 소화 가능합니다.</p></div></div>`}
+
+      <div class="alloc-card" style="margin-top:12px;">
+        <div class="cann-card-header"><div class="alloc-card-title">교체 타임라인 (Gantt) — 향후 ${CREATIVE_STATE.ganttWeeks}주</div></div>
+        <div style="display:flex;flex-direction:column;gap:4px;margin-top:8px;">
+          ${buckets.map(b => `
+            <div style="display:flex;align-items:stretch;gap:8px;">
+              <div style="width:54px;flex-shrink:0;font-size:11px;color:var(--text-muted);padding-top:4px;">W+${b.week}</div>
+              <div style="flex:1;display:flex;gap:3px;flex-wrap:wrap;min-height:26px;align-items:center;background:var(--bg-2);border-radius:6px;padding:4px 6px;">
+                ${b.items.length === 0 ? `<span style="font-size:10.5px;color:var(--text-muted);">—</span>` :
+                  b.items.map(p => `
+                    <span title="${escapeHtml(String(p.creative_id))} · ${urgencyLabel[p.urgency]} · score=${p.score==null?"—":(p.score*100).toFixed(0)+"%"}"
+                      style="display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;background:${urgencyColor[p.urgency]}33;border:1px solid ${urgencyColor[p.urgency]}88;color:var(--text-1);">
+                      #${p.queueRank} ${escapeHtml(String(p.creative_id).slice(0,12))}
+                    </span>
+                  `).join("")}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">
+          <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${urgencyColor.urgent};margin-right:4px;"></span>긴급(즉시 경고 또는 ${CREATIVE_CONFIG.autoPlanner.urgentDays}일 내)
+          <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${urgencyColor.soon};margin:0 4px 0 12px;"></span>곧(${CREATIVE_CONFIG.autoPlanner.soonDays}일 내)
+          <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${urgencyColor.planned};margin:0 4px 0 12px;"></span>예정
+        </div>
+      </div>
+      <p class="muted" style="font-size:11px;margin-top:8px;">큐 순위는 [즉시 경고 우선 → 임계 도달 예상일 빠른 순 → Fatigue Score 높은 순]으로 배정되며, 주당 공급량만큼씩 주차에 배치됩니다.</p>
     </section>`;
 }
 
@@ -11133,6 +11629,14 @@ function bindCreativeHandlers() {
   });
   const expBtn = document.getElementById("creative-export-metrics");
   if (expBtn) expBtn.addEventListener("click", exportCreativeMetricsCSV);
+
+  // Auto-Planner: 주당 신규 소재 공급량(velocity) 입력
+  const velInput = document.getElementById("creative-weekly-velocity");
+  if (velInput) velInput.addEventListener("change", () => {
+    const v = Number(velInput.value);
+    CREATIVE_STATE.weeklyVelocity = v > 0 ? v : CREATIVE_CONFIG.autoPlanner.defaultWeeklyVelocity;
+    navigate("5-6");
+  });
 
   // 차트 렌더 (Chart.js 준비 후)
   renderCreativeCharts();
@@ -11368,6 +11872,70 @@ function runCreativeTests(verbose = true) {
     pass: r1 === r2 ? "✓" : "✗",
   });
 
+  // T7: CREATIVE_FATIGUE.olsSlope — 정확한 선형 시리즈 (y = 1 + 2*x)
+  const olsFit = CREATIVE_FATIGUE.olsSlope([1, 3, 5, 7, 9]);
+  results.push({
+    test: "T7 · CREATIVE_FATIGUE.olsSlope 정확도 (y=1+2x)",
+    expected: "slope=2, intercept=1",
+    actual: olsFit ? `slope=${olsFit.slope.toFixed(4)}, intercept=${olsFit.intercept.toFixed(4)}` : "null",
+    pass: olsFit && Math.abs(olsFit.slope - 2) < 1e-9 && Math.abs(olsFit.intercept - 1) < 1e-9 ? "✓" : "✗",
+  });
+
+  // T8: compositeIndex — CTR 뚜렷이 하락 + 노출강도 뚜렷이 상승 + CPM 뚜렷이 상승 → 높은 score(위험)
+  const declineDays = Array.from({ length: 14 }, (_, i) => ({
+    date: `2024-01-${String(i + 1).padStart(2, "0")}`,
+    ctr: 0.05 - i * 0.003,        // 뚜렷한 하락
+    impressions: 1000 + i * 200,  // 뚜렷한 상승
+    cpm: 5 + i * 0.5,             // 뚜렷한 상승
+  }));
+  const idxBad = CREATIVE_FATIGUE.compositeIndex(declineDays, CREATIVE_CONFIG.fatigueAlert);
+  results.push({
+    test: "T8 · compositeIndex 악화 시나리오 → 높은 score",
+    expected: "score > 0.5, 모든 추세 위험 방향",
+    actual: idxBad ? `score=${idxBad.score.toFixed(3)}` : "null",
+    pass: idxBad && idxBad.score > 0.5 && idxBad.ctrTrendPctPerDay < 0 && idxBad.freqTrendPctPerDay > 0 && idxBad.cpmTrendPctPerDay > 0 ? "✓" : "✗",
+  });
+
+  // T9: compositeIndex — 완전 평탄(추세 없음) → score ≈ 0
+  const flatDays = Array.from({ length: 14 }, (_, i) => ({
+    date: `2024-02-${String(i + 1).padStart(2, "0")}`,
+    ctr: 0.05, impressions: 1000, cpm: 5,
+  }));
+  const idxFlat = CREATIVE_FATIGUE.compositeIndex(flatDays, CREATIVE_CONFIG.fatigueAlert);
+  results.push({
+    test: "T9 · compositeIndex 평탄 시나리오 → score≈0",
+    expected: "score < 0.01",
+    actual: idxFlat ? `score=${idxFlat.score.toFixed(5)}` : "null",
+    pass: idxFlat && idxFlat.score < 0.01 ? "✓" : "✗",
+  });
+
+  // T10: projectThreshold — 악화 추세면 양의 etaDays, 개선/평탄 추세면 null
+  const projBad = CREATIVE_FATIGUE.projectThreshold(declineDays, CREATIVE_CONFIG.fatigueAlert);
+  const projFlat = CREATIVE_FATIGUE.projectThreshold(flatDays, CREATIVE_CONFIG.fatigueAlert);
+  results.push({
+    test: "T10 · projectThreshold (악화→eta 산출, 평탄→null)",
+    expected: "악화: etaDays!=null 또는 0, 평탄: etaDays=null",
+    actual: `bad.etaDays=${projBad.etaDays}, flat.etaDays=${projFlat.etaDays}`,
+    pass: (projBad.etaDays !== null || projBad.reason === "이미 임계 도달") && projFlat.etaDays === null ? "✓" : "✗",
+  });
+
+  // T11: buildPlan — alert=true 항목이 우선순위 큐 맨 앞으로, queueRank 오름차순 배정
+  const synthAlerts = [
+    { creative_id: "low", channel: "fb", days: 20, score: 0.2, alert: false, etaDays: 25, etaReason: "추세 외삽" },
+    { creative_id: "urgent", channel: "fb", days: 20, score: 0.8, alert: true, etaDays: 0, etaReason: "이미 임계 도달" },
+    { creative_id: "mid", channel: "ig", days: 20, score: 0.4, alert: false, etaDays: 10, etaReason: "추세 외삽" },
+  ];
+  const planT11 = CREATIVE_FATIGUE.buildPlan(synthAlerts, 1, CREATIVE_CONFIG.autoPlanner);
+  const firstId = planT11.plan[0]?.creative_id;
+  const bucketsT11 = CREATIVE_FATIGUE.ganttBuckets(planT11.plan, 8);
+  const totalBucketed = bucketsT11.reduce((s, b) => s + b.items.length, 0);
+  results.push({
+    test: "T11 · buildPlan 우선순위(alert 우선) + ganttBuckets 합 보존",
+    expected: "1순위=urgent, bucket 총합=3",
+    actual: `1순위=${firstId}, bucket합=${totalBucketed}, urgentCount=${planT11.urgentCount}`,
+    pass: firstId === "urgent" && totalBucketed === 3 && planT11.urgentCount === 1 ? "✓" : "✗",
+  });
+
   if (verbose) {
     console.log("%c=== Creative Analyzer · Golden Tests ===", "color: #adc6ff; font-weight: bold;");
     console.table(results);
@@ -11382,6 +11950,7 @@ if (typeof window !== "undefined") {
   window.CREATIVE_STATS = CREATIVE_STATS;
   window.CREATIVE_MATH = CREATIVE_MATH;
   window.CREATIVE_CONFIG = CREATIVE_CONFIG;
+  window.CREATIVE_FATIGUE = CREATIVE_FATIGUE;
 }
 
 /* ============================================================
@@ -11879,6 +12448,79 @@ function runReadoutTests(verbose = true) {
 if (typeof window !== "undefined") {
   window.runReadoutTests = runReadoutTests;
   window.READOUT_CONFIG = READOUT_CONFIG;
+}
+
+/* ============================================================
+ * 5-4 대량 실험 검정(Mass Test Readout) + MDE 파워 커브 — 골든 테스트
+ * ============================================================ */
+function runMassReadoutTests(verbose = true) {
+  const results = [];
+
+  // T1: 명확한 positive variant → 유의 + lift 양수 + probBWins 높음
+  const r1 = STATS.massReadout([
+    { name: "control", n: 10000, x: 500, isControl: true },
+    { name: "variant_b", n: 10000, x: 650, isControl: false },
+  ]);
+  const row1 = r1.rows.find(r => !r.isControl);
+  const t1pass = row1 && row1.sig === true && row1.liftRel > 0 && row1.probBWins > 0.9;
+  results.push({ test: "T1 · 명확한 positive → sig+lift+probBWins", expected: "sig=true,lift>0,prob>0.9", actual: row1 ? `sig=${row1.sig},lift=${row1.liftRel.toFixed(3)},prob=${row1.probBWins.toFixed(3)}` : "no row", pass: t1pass ? "✓" : "✗" });
+
+  // T2: 명확한 negative variant → 유의 + lift 음수 + probBWins 낮음
+  const r2 = STATS.massReadout([
+    { name: "control", n: 10000, x: 650, isControl: true },
+    { name: "variant_c", n: 10000, x: 500, isControl: false },
+  ]);
+  const row2 = r2.rows.find(r => !r.isControl);
+  const t2pass = row2 && row2.sig === true && row2.liftRel < 0 && row2.probBWins < 0.1;
+  results.push({ test: "T2 · 명확한 negative → sig+lift<0+probBWins낮음", expected: "sig=true,lift<0,prob<0.1", actual: row2 ? `sig=${row2.sig},lift=${row2.liftRel.toFixed(3)},prob=${row2.probBWins.toFixed(3)}` : "no row", pass: t2pass ? "✓" : "✗" });
+
+  // T3: is_control 누락 시 첫 행을 대조군 보정 (호출부 동작 확인 — massReadout 자체는 첫 인자 fallback)
+  const r3 = STATS.massReadout([
+    { name: "alpha", n: 5000, x: 300, isControl: false },
+    { name: "beta", n: 5000, x: 320, isControl: false },
+  ]);
+  const t3pass = r3.control && r3.control.name === "alpha" && r3.rows[0].isControl === true;
+  results.push({ test: "T3 · is_control 없을 때 첫 행 fallback", expected: "control=alpha", actual: r3.control ? r3.control.name : "null", pass: t3pass ? "✓" : "✗" });
+
+  // T4: 결정론 — 같은 입력 두 번 호출 시 byte-identical
+  const arms = [
+    { name: "control", n: 8000, x: 400, isControl: true },
+    { name: "v1", n: 8000, x: 460, isControl: false },
+  ];
+  const m1 = JSON.stringify(STATS.massReadout(arms));
+  const m2 = JSON.stringify(STATS.massReadout(arms));
+  results.push({ test: "T4 · massReadout 결정론", expected: "identical", actual: m1 === m2 ? "identical" : "differ", pass: m1 === m2 ? "✓" : "✗" });
+
+  // T5: mdeForSampleSize ↔ sampleSizePerArm 라운드트립 (역함수 정합성)
+  const baseline = 0.05;
+  const mde0 = 0.20; // 20% relative
+  const nFromMde = STATS.sampleSizePerArm({ baseline, mdeRelative: mde0, alpha: 0.05, power: 0.8 }).n;
+  const mdeFromN = STATS.mdeForSampleSize({ baseline, n: nFromMde, alpha: 0.05, power: 0.8 });
+  const roundtripErr = Math.abs(mdeFromN - mde0) / mde0;
+  results.push({ test: "T5 · MDE↔SampleSize 라운드트립", expected: "오차<5%", actual: `${(roundtripErr * 100).toFixed(2)}%`, pass: roundtripErr < 0.05 ? "✓" : "✗" });
+
+  // T6: powerCurve는 n이 클수록 MDE가 단조감소
+  const curve = STATS.powerCurve({ baseline: 0.05, alpha: 0.05, power: 0.8, points: 12 });
+  const valid = curve.filter(p => p.mdePct != null);
+  const monotone = valid.every((p, i) => i === 0 || p.mdePct <= valid[i - 1].mdePct + 1e-9);
+  results.push({ test: "T6 · powerCurve MDE 단조감소", expected: "monotone", actual: monotone ? "monotone" : "violated", pass: monotone ? "✓" : "✗" });
+
+  // T7: 결정론 — powerCurve 같은 입력 두 번
+  const c1 = JSON.stringify(STATS.powerCurve({ baseline: 0.05, alpha: 0.05, power: 0.8 }));
+  const c2 = JSON.stringify(STATS.powerCurve({ baseline: 0.05, alpha: 0.05, power: 0.8 }));
+  results.push({ test: "T7 · powerCurve 결정론", expected: "identical", actual: c1 === c2 ? "identical" : "differ", pass: c1 === c2 ? "✓" : "✗" });
+
+  if (verbose) {
+    console.log("%c=== Mass Readout / Power Curve · Golden Tests ===", "color: #adc6ff; font-weight: bold;");
+    console.table(results);
+    const pass = results.filter(r => r.pass === "✓").length;
+    console.log(`%c${pass}/${results.length} 통과`, `color: ${pass === results.length ? '#22c55e' : '#f87171'}; font-weight: bold;`);
+  }
+  return results;
+}
+
+if (typeof window !== "undefined") {
+  window.runMassReadoutTests = runMassReadoutTests;
 }
 
 /* ============================================================
@@ -16455,6 +17097,617 @@ function runRegLabTests(verbose = true) {
 if (typeof window !== "undefined") { window.runRegLabTests = runRegLabTests; window.REG_LAB_STATE = REG_LAB_STATE; }
 
 /* ============================================================
+ * 5-20 Aha-Moment Finder — 유저별 선행행동 윈도우×횟수(k) 그리드 탐색
+ * 사전집계 wide 멀티윈도우 CSV (가입일·이벤트일 컬럼 없음, {action}_d{N} 누적 컬럼들)
+ * → 어느 액션을 어느 윈도우 내 몇 번 이상 해야 타겟 달성과 가장 강하게 연관되는지(F1) 탐색.
+ * ⚠ 가설 생성·기술용(association). 인과/증분 확정은 holdout(5-4) 전용.
+ * 독립 CSV 업로드(AB_MASS_STATE 패턴) + colMap(헤더 정규식 역할 자동추정, 5-18 패턴) — TOOL_GROUP/STANDARD_FIELDS 미사용
+ * (컬럼이 매 업로드마다 완전히 동적이라 고정 필드셋 공유 파이프라인에 맞지 않음).
+ * 문서: docs/aha-moment-finder-spec.md
+ * ============================================================ */
+const AHA_STATE = {
+  fileName: null,
+  rows: [],            // 원본 행 배열 (객체, 헤더→값)
+  headers: [],
+  colMap: {},           // header → { role: "id"|"target"|"feature"|"ignore", action, window }
+  sortBy: "f1",          // f1 | lift | precision
+  minSupport: 30,
+  holdoutOn: true,
+  drilldownAction: null, // §4 윈도우×k 히트맵 대상 액션
+  analyzedSig: null,     // 게이트: 매핑 시그니처(이 값과 현재 시그가 같아야 결과 표시)
+};
+
+/* ----- 컬럼 자동 그룹핑: header → { action, window } -----
+ * 정규식 ^(.*?)[_-]?d(\d+)$ (대소문자 무시). 매치 안 되면 window=Infinity(단일 윈도우 액션). */
+function ahaParseActionWindow(header) {
+  const m = String(header).match(/^(.*?)[_-]?d(\d+)$/i);
+  if (m && m[1]) return { action: m[1], window: parseInt(m[2], 10) };
+  return { action: String(header), window: Infinity };
+}
+/* target 후보 추정: 값이 전부 {0,1}(또는 빈값)인 숫자 컬럼. user_id 추정: 헤더명에 id/user 포함 + 값 unique 비율 높음. */
+function ahaAutoMapColumns(headers, rows) {
+  const out = {};
+  for (const h of headers) {
+    const name = String(h).toLowerCase();
+    const vals = rows.map(r => r[h]).filter(v => v != null && String(v).trim() !== "");
+    const nums = vals.map(v => parseFloat(v)).filter(v => !isNaN(v));
+    const isNum = vals.length > 0 && nums.length >= vals.length * 0.8;
+    const uniq = isNum ? [...new Set(nums)] : [];
+    const isBin01 = isNum && uniq.length > 0 && uniq.every(v => v === 0 || v === 1);
+    let role = "feature";
+    if (/(^|_)(user|client|device)?_?id$|^id$|^uid$/.test(name)) role = "id";
+    else if (isBin01 && /target|conv|retain|churn|activ|타겟|전환|리텐션/.test(name)) role = "target";
+    else if (!isNum) role = "ignore";
+    const aw = ahaParseActionWindow(h);
+    out[h] = { role, action: aw.action, window: aw.window };
+  }
+  // target 자동추정이 하나도 없으면, 가장 그럴듯한 bin01 컬럼(이름 매치 없어도) 1개를 제안
+  if (!Object.values(out).some(d => d.role === "target")) {
+    for (const h of headers) {
+      const name = String(h).toLowerCase();
+      const vals = rows.map(r => r[h]).filter(v => v != null && String(v).trim() !== "");
+      const nums = vals.map(v => parseFloat(v)).filter(v => !isNaN(v));
+      const uniq = [...new Set(nums)];
+      const isBin01 = nums.length >= vals.length * 0.8 && vals.length > 0 && uniq.length > 0 && uniq.every(v => v === 0 || v === 1) && uniq.length <= 2;
+      if (isBin01 && out[h].role !== "id") { out[h].role = "target"; break; }
+    }
+  }
+  return out;
+}
+/* colMap에서 role=feature인 컬럼들을 액션별로 그룹핑 → { action: [{header, window}] } */
+function ahaGroupedActions(colMap) {
+  const groups = {};
+  for (const [h, def] of Object.entries(colMap || {})) {
+    if (!def || def.role !== "feature") continue;
+    const a = def.action || h, w = (def.window != null) ? def.window : Infinity;
+    if (!groups[a]) groups[a] = [];
+    groups[a].push({ header: h, window: w });
+  }
+  for (const a in groups) groups[a].sort((x, y) => x.window - y.window);
+  return groups;
+}
+function ahaTargetColumn(colMap) {
+  for (const [h, def] of Object.entries(colMap || {})) if (def && def.role === "target") return h;
+  return null;
+}
+
+/* ----- AHA_STATS: 순수 통계 모듈 (단위테스트 가능, Math.random 금지) ----- */
+const AHA_STATS = (function () {
+  // F1: P=R=0 가드 (스펙 원문엔 없던 edge case — 분모 0 방지)
+  function f1(p, r) {
+    if (!(p + r > 0)) return 0;
+    return 2 * p * r / (p + r);
+  }
+  function lift(precision, baseRate) {
+    if (!(baseRate > 0)) return null;
+    return precision / baseRate;
+  }
+  // 결정론적 해시 기반 train/holdout 50:50 분할. 같은 (n, seed) → 항상 byte-identical.
+  function _hashIdx(i, seed) {
+    let h = (i * 2654435761 + seed * 40503) >>> 0;
+    h = ((h ^ (h >>> 13)) * 1274126177) >>> 0;
+    return (h >>> 0) / 4294967296;
+  }
+  function splitDeterministic(n, seed) {
+    const train = [], holdout = [];
+    for (let i = 0; i < n; i++) (_hashIdx(i, seed) < 0.5 ? train : holdout).push(i);
+    return { train, holdout };
+  }
+  // 한 액션×윈도우 조합: values(누적 카운트)·targets(0/1) 전체, idx(분석 대상 인덱스 부분집합), minSupport.
+  // O(n log n): 값 내림차순 정렬 후 누적합으로 모든 threshold(k) 동시 평가.
+  function bestThreshold(values, targets, idx, minSupport) {
+    const pts = idx.map(i => ({ v: values[i], t: targets[i] })).filter(p => p.v > 0);
+    if (!pts.length) return null;
+    pts.sort((a, b) => b.v - a.v); // 내림차순
+    const totalPos = idx.reduce((s, i) => s + (targets[i] ? 1 : 0), 0);
+    const uniqVals = [...new Set(pts.map(p => p.v))].sort((a, b) => b - a); // 내림차순 unique
+    let cumTP = 0, cumN = 0, vi = 0;
+    let best = null, bestAnySupport = null;
+    for (const k of uniqVals) {
+      while (vi < pts.length && pts[vi].v >= k) { cumN++; if (pts[vi].t) cumTP++; vi++; }
+      const TP = cumTP, FP = cumN - cumTP, FN = totalPos - cumTP;
+      const support = TP + FP;
+      const P = support > 0 ? TP / support : 0;
+      const R = (TP + FN) > 0 ? TP / (TP + FN) : 0;
+      const F1 = f1(P, R);
+      const cand = { k, P, R, F1, support, TP, FP, FN };
+      if (!bestAnySupport || cand.F1 > bestAnySupport.F1 || (cand.F1 === bestAnySupport.F1 && cand.support > bestAnySupport.support)) bestAnySupport = cand;
+      if (support >= minSupport) {
+        if (!best || cand.F1 > best.F1 || (cand.F1 === best.F1 && cand.support > best.support)) best = cand;
+      }
+    }
+    // support 게이트 통과 조합이 하나도 없으면 → 최대 support 조합으로 폴백(크래시 없음, T5)
+    if (!best) return { ...bestAnySupport, gated: true };
+    return { ...best, gated: false };
+  }
+  // 액션 1개: 가진 모든 윈도우 컬럼에 대해 bestThreshold → 윈도우×k 그리드에서 train 최고(F1, support 게이트) 선택
+  // → holdout 재평가. windowCols = [{header, window, valuesAll}]
+  function gridSearch(windowCols, targets, trainIdx, holdoutIdx, minSupport) {
+    let bestW = null;
+    const grid = []; // §4 드릴다운용: 윈도우×k 전체
+    for (const wc of windowCols) {
+      const tr = bestThreshold(wc.valuesAll, targets, trainIdx, minSupport);
+      if (tr) {
+        grid.push({ window: wc.window, header: wc.header, k: tr.k, F1: tr.F1, P: tr.P, R: tr.R, support: tr.support, gated: tr.gated });
+        if (!bestW || tr.F1 > bestW.train.F1 || (tr.F1 === bestW.train.F1 && tr.support > bestW.train.support)) {
+          bestW = { window: wc.window, header: wc.header, k: tr.k, train: tr };
+        }
+      }
+    }
+    if (!bestW) return null;
+    // holdout 재평가: 동일 (window, k)로 holdout 인덱스에 TP/FP/FN
+    const vals = windowCols.find(w => w.header === bestW.header).valuesAll;
+    let TP = 0, FP = 0, FN = 0;
+    for (const i of holdoutIdx) {
+      const v = vals[i] || 0, t = targets[i];
+      if (v >= bestW.k) { if (t) TP++; else FP++; } else if (t) FN++;
+    }
+    const support = TP + FP;
+    const P = support > 0 ? TP / support : 0;
+    const R = (TP + FN) > 0 ? TP / (TP + FN) : 0;
+    const F1h = f1(P, R);
+    return {
+      bestWindow: bestW.window, bestHeader: bestW.header, bestK: bestW.k,
+      train: { P: bestW.train.P, R: bestW.train.R, F1: bestW.train.F1, support: bestW.train.support },
+      holdout: { P, R, F1: F1h, support },
+      gated: bestW.train.gated,
+      grid,
+    };
+  }
+  return { f1, lift, splitDeterministic, bestThreshold, gridSearch };
+})();
+
+/* ----- 캐시: mapping+minSupport+split seed 해시 → AHA_CACHE.key. 토글(정렬·minSupport·holdout on/off)은 lookup만 ----- */
+const AHA_CACHE = { key: null, baseRate: 0, n: 0, results: [] };
+function ahaCacheKey() {
+  const cm = JSON.stringify(AHA_STATE.colMap);
+  return `${AHA_STATE.fileName}|${AHA_STATE.rows.length}|${cm}|${AHA_STATE.minSupport}|${AHA_STATE.holdoutOn ? 1 : 0}`;
+}
+function buildAhaCache() {
+  const key = ahaCacheKey();
+  if (AHA_CACHE.key === key) return AHA_CACHE;
+  const rows = AHA_STATE.rows, cm = AHA_STATE.colMap;
+  const targetCol = ahaTargetColumn(cm);
+  const groups = ahaGroupedActions(cm);
+  const n = rows.length;
+  AHA_CACHE.key = key; AHA_CACHE.n = n; AHA_CACHE.results = []; AHA_CACHE.baseRate = 0; AHA_CACHE.targetCol = targetCol; AHA_CACHE.groups = groups;
+  if (!targetCol || !Object.keys(groups).length || !n) return AHA_CACHE;
+  const targets = rows.map(r => { const v = parseFloat(r[targetCol]); return (isFinite(v) && v >= 0.5) ? 1 : 0; });
+  const baseRate = targets.reduce((s, t) => s + t, 0) / n;
+  AHA_CACHE.baseRate = baseRate;
+  const minSupport = Math.max(1, AHA_STATE.minSupport || 1);
+  let trainIdx, holdoutIdx;
+  if (AHA_STATE.holdoutOn) {
+    const sp = AHA_STATS.splitDeterministic(n, 20260620);
+    trainIdx = sp.train; holdoutIdx = sp.holdout;
+  } else {
+    trainIdx = rows.map((_, i) => i); holdoutIdx = trainIdx; // holdout 끄면 train==전체, holdout 평가도 전체로(참고용)
+  }
+  const results = [];
+  for (const [action, cols] of Object.entries(groups)) {
+    const windowCols = cols.map(c => ({ header: c.header, window: c.window, valuesAll: rows.map(r => { const v = parseFloat(r[c.header]); return isFinite(v) ? v : 0; }) }));
+    const gs = AHA_STATS.gridSearch(windowCols, targets, trainIdx, holdoutIdx, minSupport);
+    if (!gs) continue;
+    results.push({
+      action, bestWindow: gs.bestWindow, bestHeader: gs.bestHeader, bestK: gs.bestK,
+      train: gs.train, holdout: gs.holdout, gated: gs.gated,
+      lift: AHA_STATS.lift(gs.holdout.P, baseRate),
+      grid: gs.grid, windowCols,
+    });
+  }
+  AHA_CACHE.results = results;
+  return AHA_CACHE;
+}
+function ahaSortedResults() {
+  const c = buildAhaCache();
+  const by = AHA_STATE.sortBy;
+  const key = (r) => by === "lift" ? (r.lift == null ? -Infinity : r.lift) : by === "precision" ? r.holdout.P : r.holdout.F1;
+  return [...c.results].sort((a, b) => {
+    const ga = a.holdout.support >= AHA_STATE.minSupport, gb = b.holdout.support >= AHA_STATE.minSupport;
+    if (ga !== gb) return ga ? -1 : 1; // 표본부족 ⊘는 하위로
+    return key(b) - key(a);
+  });
+}
+function ahaTopAction() {
+  const sorted = ahaSortedResults();
+  return sorted.length ? sorted[0] : null;
+}
+function ahaAnalyzeSig() { return JSON.stringify(AHA_STATE.colMap) + "|" + AHA_STATE.fileName; }
+function isAhaAnalyzed() { return AHA_STATE.analyzedSig != null && AHA_STATE.analyzedSig === ahaAnalyzeSig(); }
+function markAhaAnalyzed() { AHA_STATE.analyzedSig = ahaAnalyzeSig(); }
+
+/* ----- 데모 데이터 빌더 (DEMO_BUILDERS["5-20"], §12.32 패턴) -----
+ * wide 멀티윈도우: user_id·target·{action}_d{0,3,7,14}(누적·단조↑). 액션별 신호 다양 — 일부는 invite_d3에서 강하게 분리, 일부는 노이즈. */
+function _demoAhaData() {
+  const rng = seededNoise(200007);
+  const actions = ["invite", "share", "search", "msg_sent", "profile_edit"];
+  const n = 600;
+  const headers = ["user_id", "target"];
+  for (const a of actions) for (const w of [0, 3, 7, 14]) headers.push(`${a}_d${w}`);
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const ahaSignal = rng() + 0.5 < 0.42; // 약 42% 유저가 invite를 일찍·많이 함 → target과 강하게 연관
+    const target = ahaSignal ? (rng() + 0.5 < 0.78 ? 1 : 0) : (rng() + 0.5 < 0.18 ? 1 : 0);
+    const row = { user_id: "u" + (i + 1), target };
+    // invite: d3에 신호 집중 (좁은 윈도우 강신호 → T6 패턴)
+    const inviteD0 = ahaSignal ? Math.round((rng() + 0.5) * 2) : (rng() + 0.5 < 0.5 ? 1 : 0);
+    const inviteD3 = inviteD0 + (ahaSignal ? Math.round((rng() + 0.5) * 3) + 1 : Math.round((rng() + 0.5) * 1));
+    const inviteD7 = inviteD3 + Math.round((rng() + 0.5) * 1);
+    const inviteD14 = inviteD7 + Math.round((rng() + 0.5) * 1);
+    row.invite_d0 = inviteD0; row.invite_d3 = inviteD3; row.invite_d7 = inviteD7; row.invite_d14 = inviteD14;
+    // share: 약한 신호
+    const shareBase = Math.round((rng() + 0.5) * 2 + (target ? 0.6 : 0));
+    row.share_d0 = shareBase; row.share_d3 = shareBase + Math.round((rng() + 0.5) * 2);
+    row.share_d7 = row.share_d3 + Math.round((rng() + 0.5) * 2); row.share_d14 = row.share_d7 + Math.round((rng() + 0.5) * 2);
+    // search/msg_sent/profile_edit: 순수 노이즈(타겟과 무관)
+    for (const a of ["search", "msg_sent", "profile_edit"]) {
+      const b0 = Math.round((rng() + 0.5) * 3);
+      const b3 = b0 + Math.round((rng() + 0.5) * 3), b7 = b3 + Math.round((rng() + 0.5) * 3), b14 = b7 + Math.round((rng() + 0.5) * 3);
+      row[`${a}_d0`] = b0; row[`${a}_d3`] = b3; row[`${a}_d7`] = b7; row[`${a}_d14`] = b14;
+    }
+    rows.push(row);
+  }
+  const colMap = ahaAutoMapColumns(headers, rows);
+  colMap.user_id.role = "id"; colMap.target.role = "target";
+  return { fileName: "demo_aha_moment.csv", headers, rows, colMap };
+}
+
+/* ----- 업로드 처리 ----- */
+function ahaLoadRows(rows, headers, fileName) {
+  AHA_STATE.fileName = fileName; AHA_STATE.rows = rows; AHA_STATE.headers = headers;
+  AHA_STATE.colMap = ahaAutoMapColumns(headers, rows);
+  AHA_STATE.analyzedSig = null; AHA_CACHE.key = null;
+  AHA_STATE.drilldownAction = null;
+}
+// 데모 모드 진입 시 AHA_STATE에 데모 데이터를 주입 + 즉시 분석완료 상태로(§12.32, 독립 상태라 _applyDemoToCsvState 우회)
+function ahaLoadDemoData(d) {
+  AHA_STATE.fileName = d.fileName; AHA_STATE.rows = d.rows; AHA_STATE.headers = d.headers;
+  AHA_STATE.colMap = d.colMap;
+  AHA_CACHE.key = null; AHA_STATE.drilldownAction = null;
+  markAhaAnalyzed();
+}
+
+/* ----- UI 렌더 ----- */
+function ahaUploadSection() {
+  const hasFile = AHA_STATE.headers.length > 0;
+  const sample = "user_id,target,invite_d0,invite_d3,invite_d7,invite_d14\nu1,1,1,4,5,6\nu2,0,0,1,1,2\nu3,1,2,5,6,7";
+  return `<section class="block" id="s-aha-upload">
+    <h2 class="section-title"><span class="ix">§0</span>데이터 업로드</h2>
+    <p class="muted">유저 1명당 1행. 가입일·이벤트일 컬럼 <strong>없음</strong> — 각 후보 액션은 윈도우별 누적 count 컬럼 묶음(<code class="inline">invite_d0, invite_d3, invite_d7, invite_d14</code>). 헤더가 <code class="inline">{action}_d{N}</code> 형태면 자동으로 액션·윈도우를 파싱합니다. 데이터는 브라우저 메모리에만 — 서버 전송 없음.</p>
+    <div class="ab-form-grid" style="align-items:flex-start;">
+      <div class="ab-field" style="grid-column:1/-1;">
+        <label>CSV 업로드</label>
+        <input id="aha-file" type="file" accept=".csv,text/csv" />
+        <span class="ab-field-hint">user_id(미사용·중복검증용) · target(0/1) · 액션 윈도우 컬럼들.</span>
+      </div>
+      <div class="ab-field">
+        ${renderDemoButton("5-20")}
+        ${hasFile ? `<span class="ab-field-hint">현재: ${escapeHtml(AHA_STATE.fileName)} (${AHA_STATE.rows.length.toLocaleString()}행)</span>` : ""}
+      </div>
+    </div>
+    <details style="margin:6px 0 4px;">
+      <summary style="cursor:pointer;font-size:11.5px;color:var(--text-muted);">CSV 형식 예시 펼치기</summary>
+      <pre style="margin-top:6px;padding:8px 10px;background:var(--bg-1);border-radius:8px;font-size:11.5px;overflow:auto;">${escapeHtml(sample)}</pre>
+    </details>
+  </section>`;
+}
+function ahaRoleSelectOptions(selected) {
+  const opts = [["feature", "선행 행동(feature)"], ["target", "타겟(target, 0/1)"], ["id", "user_id(미사용)"], ["ignore", "사용 안 함"]];
+  return opts.map(([v, l]) => `<option value="${v}" ${selected === v ? "selected" : ""}>${l}</option>`).join("");
+}
+function ahaMappingSection() {
+  if (!AHA_STATE.headers.length) return "";
+  const cm = AHA_STATE.colMap;
+  const targetCol = ahaTargetColumn(cm);
+  const featureCount = Object.values(cm).filter(d => d.role === "feature").length;
+  const groups = ahaGroupedActions(cm);
+  const actionCount = Object.keys(groups).length;
+  const rows = AHA_STATE.headers.map(h => {
+    const def = cm[h] || { role: "ignore", action: h, window: Infinity };
+    const isFeature = def.role === "feature";
+    const winLabel = def.window === Infinity ? "" : `d${def.window}`;
+    return `<tr>
+      <td title="${escapeHtml(h)}">${escapeHtml(h)}</td>
+      <td><select class="map-select" data-aha-role="${escapeHtml(h)}">${ahaRoleSelectOptions(def.role)}</select></td>
+      <td>${isFeature ? `<input type="text" class="map-select" style="width:120px;" data-aha-action="${escapeHtml(h)}" value="${escapeHtml(def.action || "")}" placeholder="액션명" />` : "—"}</td>
+      <td>${isFeature ? `<input type="text" class="map-select" style="width:70px;" data-aha-window="${escapeHtml(h)}" value="${escapeHtml(winLabel)}" placeholder="d7" title="비우면 단일 윈도우(전체)" />` : "—"}</td>
+    </tr>`;
+  }).join("");
+  const missing = [];
+  if (!targetCol) missing.push("타겟(target, 0/1) 1개");
+  if (!actionCount) missing.push("선행 행동(feature) 1개 이상");
+  const analyzed = isAhaAnalyzed();
+  const gate = missing.length
+    ? `<div class="required-banner"><strong>⚠ 필수 역할이 비어 있습니다</strong><p style="margin:.25rem 0 0;">${missing.map(m => `<code class="inline">${escapeHtml(m)}</code>`).join(", ")}</p></div>`
+    : (analyzed
+      ? `<div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="color:#22c55e;font-size:12px;font-weight:600;">✓ 분석 완료</span><span style="color:var(--text-muted);font-size:11px;">매핑을 바꾸면 결과가 숨겨지고 다시 "분석하기"를 눌러야 합니다.</span><button class="ab-pill" data-tool-analyze="5-20" style="margin-left:auto;">↻ 다시 분석</button></div>`
+      : `<div style="margin-top:12px;background:linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03));border:1px solid rgba(122,162,247,0.3);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;"><div style="font-size:12.5px;color:var(--text-1);">✅ 필수 역할 매핑 완료. <strong>매핑이 맞는지 확인한 뒤 분석을 실행하세요.</strong></div><button class="ab-pill" data-tool-analyze="5-20" style="background:#7aa2f7;color:#0b0d12;font-weight:700;border-color:#7aa2f7;font-size:13px;padding:8px 18px;">▶ 분석하기</button></div>`);
+  return `<section class="block" id="s-aha-map">
+    <h2 class="section-title"><span class="ix">§0</span>컬럼 역할 매핑</h2>
+    <div class="csv-loaded-bar"><div class="csv-loaded-info"><span class="dot" style="background:#22c55e;"></span><strong>${escapeHtml(AHA_STATE.fileName)}</strong><span class="csv-loaded-stats tnum">${AHA_STATE.rows.length.toLocaleString()}행 · ${AHA_STATE.headers.length}컬럼 · 후보 액션 ${actionCount}개</span></div><button class="ab-pill csv-change-btn" data-aha-reset="1" title="CSV 제거하고 다른 파일 업로드">⟳ CSV 변경</button></div>
+    <details ${analyzed ? "" : "open"} style="margin-top:10px;">
+      <summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:${analyzed ? "var(--text-muted)" : "#adc6ff"};">🗂 컬럼 역할 매핑 ${analyzed ? "(분석 완료 — 펼쳐서 수정)" : "(자동 추정 — 틀리면 수정)"}</summary>
+      <p class="muted" style="font-size:12px;margin:8px 0;"><strong>헤더가 <code class="inline">{action}_d{N}</code> 형태면 액션·윈도우 자동 파싱</strong>됩니다(예: <code class="inline">invite_d7</code> → 액션 invite, 윈도우 d7). target 컬럼은 0/1 값으로 자동 추정 — 틀리면 직접 선택하세요. <code class="inline">revenue_d7</code> 같은 매출 컬럼이 잘못 후보로 잡혔으면 "사용 안 함"으로 제외하세요.</p>
+      <div class="table-wrap"><table class="data" style="font-size:12px;"><thead><tr><th>CSV 컬럼</th><th>역할</th><th>액션명</th><th>윈도우</th></tr></thead><tbody>${rows}</tbody></table></div>
+    </details>
+    ${gate}
+  </section>`;
+}
+function ahaConfidenceDots(f1Val) {
+  const n = f1Val >= 0.7 ? 5 : f1Val >= 0.5 ? 4 : f1Val >= 0.3 ? 3 : f1Val >= 0.15 ? 2 : 1;
+  return "●".repeat(n) + "○".repeat(5 - n);
+}
+function ahaHeroSection() {
+  const c = buildAhaCache();
+  const top = ahaTopAction();
+  const totalTargets = c.results.length ? Math.round(c.baseRate * c.n) : 0;
+  const topLine = top
+    ? `가입 <strong>${top.bestWindow === Infinity ? "전체" : top.bestWindow + "일"}</strong> 내 <strong>${escapeHtml(top.action)}</strong>를 <strong>${top.bestK}번</strong> 이상 → holdout F1 <strong>${top.holdout.F1.toFixed(2)}</strong>, lift <strong>${top.lift == null ? "—" : top.lift.toFixed(1) + "배"}</strong> ${ahaConfidenceDots(top.holdout.F1)}`
+    : `분석 가능한 액션이 없습니다 — 매핑을 확인하세요.`;
+  return `<section class="block" id="s-aha-hero" style="background:linear-gradient(135deg,rgba(122,162,247,0.12),rgba(192,132,252,0.05));border:1px solid rgba(122,162,247,0.25);border-radius:14px;padding:18px 20px;">
+    <h2 class="section-title" style="margin-top:0;"><span class="ix">§0</span>한눈에 보기</h2>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:10px;">
+      <div><div style="font-size:11px;color:var(--text-muted);">전체 유저</div><div class="tnum" style="font-size:20px;font-weight:700;">${c.n.toLocaleString()}</div></div>
+      <div><div style="font-size:11px;color:var(--text-muted);">타겟 달성 유저</div><div class="tnum" style="font-size:20px;font-weight:700;">${totalTargets.toLocaleString()}</div></div>
+      <div><div style="font-size:11px;color:var(--text-muted);">Base Rate</div><div class="tnum" style="font-size:20px;font-weight:700;">${(c.baseRate * 100).toFixed(1)}%</div></div>
+    </div>
+    <div style="font-size:13.5px;color:var(--text-1);margin-bottom:10px;">🏆 Top Aha: ${topLine}</div>
+    <div class="callout warn" style="margin:0;"><div class="ico">⚠</div><div class="body"><strong>연관(association)이지 인과 아님</strong><p style="margin:.25rem 0 0;">engaged 유저는 모든 액션을 많이 하는 경향(공통원인)이 있어, 어떤 액션이 타겟 달성을 "유발"한다고 단정할 수 없습니다. 이 도구는 가설 생성용입니다 — 확정은 <a href="#5-4" data-route="5-4">홀드아웃 실험(5-4)</a>으로 검증하세요.</p></div></div>
+  </section>`;
+}
+function ahaControlsSection() {
+  const sortOpts = [["f1", "F1"], ["lift", "Lift"], ["precision", "Precision"]];
+  return `<section class="block" id="s-aha-controls">
+    <h2 class="section-title"><span class="ix">§1</span>컨트롤</h2>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span style="font-size:12px;color:var(--text-muted);">정렬:</span>
+        ${sortOpts.map(([v, l]) => `<button class="ab-pill ${AHA_STATE.sortBy === v ? "active" : ""}" data-aha-sort="${v}">${l}</button>`).join("")}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span style="font-size:12px;color:var(--text-muted);">최소 표본(support):</span>
+        <input type="number" min="1" step="1" value="${AHA_STATE.minSupport}" data-aha-minsupport="1" style="width:70px;" class="map-select" />
+      </div>
+      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--text-muted);cursor:pointer;">
+        <input type="checkbox" data-aha-holdout="1" ${AHA_STATE.holdoutOn ? "checked" : ""} /> Train/Holdout 50:50 split
+      </label>
+    </div>
+    <p class="muted" style="font-size:11.5px;margin-top:8px;">윈도우는 그리드에서 자동 선택됩니다 — 액션별 Best Window가 결과로 나옵니다. Best k를 고르고 그 F1을 그대로 보고하면 낙관 편향(in-sample overfitting)이 생기므로, 기본적으로 train에서 k를 고르고 holdout에서 재평가합니다.</p>
+  </section>`;
+}
+function ahaScatterSection() {
+  const c = buildAhaCache();
+  if (!c.results.length) return "";
+  return `<section class="block" id="s-aha-scatter">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <h2 class="section-title" style="margin:0;"><span class="ix">§2</span>Aha Scatter (Precision × Recall)</h2>
+      <button class="ab-pill" data-pngdownload="aha-scatter" data-pngname="aha_scatter">⬇ PNG</button>
+    </div>
+    <p class="muted">X=Recall, Y=Precision, 점 크기 = 표본(support), 색 = F1(또는 정렬기준). 표본 부족(<${AHA_STATE.minSupport}) 액션은 회색·반투명입니다.</p>
+    <div class="chart-container" style="height:380px;"><canvas id="aha-scatter"></canvas></div>
+  </section>`;
+}
+function ahaResultTableSection() {
+  const sorted = ahaSortedResults();
+  if (!sorted.length) return "";
+  const rows = sorted.map(r => {
+    const lowSupport = r.holdout.support < AHA_STATE.minSupport;
+    const overfit = r.train.F1 - r.holdout.F1 > 0.2;
+    const liftStrong = r.lift != null && r.lift >= 1.5;
+    const cls = lowSupport ? "style='color:var(--text-muted);'" : "";
+    return `<tr ${cls} data-aha-drill="${escapeHtml(r.action)}" style="cursor:pointer;">
+      <td>${escapeHtml(r.action)}${lowSupport ? " ⊘" : ""}</td>
+      <td class="tnum">${r.bestWindow === Infinity ? "전체" : "d" + r.bestWindow}</td>
+      <td class="tnum">≥${r.bestK}</td>
+      <td class="tnum" style="${overfit ? "color:#f87171;" : ""}">${r.holdout.F1.toFixed(3)}</td>
+      <td class="tnum">${r.holdout.P.toFixed(3)}</td>
+      <td class="tnum">${r.holdout.R.toFixed(3)}</td>
+      <td class="tnum" style="${liftStrong ? "color:#22c55e;font-weight:600;" : ""}">${r.lift == null ? "—" : r.lift.toFixed(2) + "×"}</td>
+      <td class="tnum">${r.holdout.support.toLocaleString()}${lowSupport ? " ⊘" : ""}</td>
+      <td class="tnum">${r.train.F1.toFixed(3)}</td>
+    </tr>`;
+  }).join("");
+  return `<section class="block" id="s-aha-table">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <h2 class="section-title" style="margin:0;"><span class="ix">§3</span>결과 표</h2>
+      <button class="ab-pill" data-aha-csv="1">⬇ CSV</button>
+    </div>
+    <p class="muted" style="font-size:11.5px;">행을 클릭하면 §4 윈도우×k 히트맵에서 그 액션을 드릴다운합니다. 초록 lift = 강한 연관(≥1.5×). 빨강 F1 = train≫holdout(과적합 의심).</p>
+    <div class="table-wrap"><table class="data" style="font-size:12.5px;"><thead><tr><th>액션</th><th>Best Window</th><th>Best k</th><th>holdout F1</th><th>Precision</th><th>Recall</th><th>Lift</th><th>support</th><th>train F1</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </section>`;
+}
+function ahaDrilldownSection() {
+  const c = buildAhaCache();
+  if (!c.results.length) return "";
+  const action = AHA_STATE.drilldownAction && c.results.some(r => r.action === AHA_STATE.drilldownAction) ? AHA_STATE.drilldownAction : (ahaTopAction() || {}).action;
+  if (!action) return "";
+  const r = c.results.find(x => x.action === action);
+  if (!r || !r.grid.length) return "";
+  const windows = [...new Set(r.grid.map(g => g.window))].sort((a, b) => a - b);
+  const ks = [...new Set(r.grid.map(g => g.k))].sort((a, b) => a - b);
+  const cellFor = (w, k) => r.grid.find(g => g.window === w && g.k === k);
+  const maxF1 = Math.max(...r.grid.map(g => g.F1), 0.0001);
+  const cells = ks.map(k => `<tr><td class="tnum">≥${k}</td>${windows.map(w => {
+    const cell = cellFor(w, k);
+    if (!cell) return `<td class="tnum" style="color:var(--text-muted);">—</td>`;
+    const isBest = cell.window === r.bestWindow && cell.k === r.bestK;
+    const intensity = Math.round((cell.F1 / maxF1) * 100);
+    return `<td class="tnum" style="background:rgba(122,162,247,${(intensity / 100 * 0.45).toFixed(2)});${isBest ? "outline:2px solid #7aa2f7;font-weight:700;" : ""}">${cell.F1.toFixed(2)}</td>`;
+  }).join("")}</tr>`).join("");
+  return `<section class="block" id="s-aha-drill">
+    <h2 class="section-title"><span class="ix">§4</span>액션 드릴다운 — ${escapeHtml(action)}</h2>
+    <p class="muted">윈도우 × k 그리드의 F1 히트맵. 진할수록 F1 높음, 굵은 테두리 = Best 조합. <strong>단일 셀만 튀고 주변이 흐리면 우연(과적합) 의심</strong> — support·holdout F1을 §3에서 같이 확인하세요.</p>
+    <div style="margin-bottom:8px;">
+      <select class="map-select" data-aha-drill-select="1">${c.results.map(x => `<option value="${escapeHtml(x.action)}" ${x.action === action ? "selected" : ""}>${escapeHtml(x.action)}</option>`).join("")}</select>
+    </div>
+    <div class="table-wrap"><table class="data" style="font-size:12px;"><thead><tr><th>k \\ window</th>${windows.map(w => `<th class="tnum">${w === Infinity ? "전체" : "d" + w}</th>`).join("")}</tr></thead><tbody>${cells}</tbody></table></div>
+  </section>`;
+}
+function page_5_20() {
+  const meta = findMeta("5-20");
+  const hasFile = AHA_STATE.headers.length > 0;
+  const analyzed = isAhaAnalyzed();
+  if (!hasFile) {
+    return pageShell(meta, {
+      summary: "유저별 선행 행동 윈도우×횟수 그리드를 탐색해, 어떤 행동을 가입 N일 내 몇 번 이상 해야 타겟 달성과 가장 강하게 연관되는지 F1/Lift로 찾는 가설 생성용 도구입니다. 인과·증분 확정은 홀드아웃(5-4) 전용.",
+      toc: [{ id: "s-aha-upload", title: "데이터 업로드" }],
+      body: ahaUploadSection(),
+    });
+  }
+  const body = analyzed && buildAhaCache().results.length
+    ? `${ahaMappingSection()}${ahaHeroSection()}${ahaControlsSection()}${ahaScatterSection()}${ahaResultTableSection()}${ahaDrilldownSection()}`
+    : ahaMappingSection();
+  const toc = [{ id: "s-aha-map", title: "데이터·매핑" }];
+  if (analyzed) {
+    toc.push({ id: "s-aha-hero", title: "한눈에 보기" }, { id: "s-aha-controls", title: "컨트롤" }, { id: "s-aha-scatter", title: "Aha Scatter" }, { id: "s-aha-table", title: "결과 표" }, { id: "s-aha-drill", title: "액션 드릴다운" });
+  }
+  return pageShell(meta, { toc, body });
+}
+PAGE_RENDERERS["5-20"] = page_5_20;
+
+function renderAhaScatterChart() {
+  const canvas = document.getElementById("aha-scatter");
+  if (!canvas) return;
+  destroyChartIfExists("aha-scatter");
+  const sorted = ahaSortedResults();
+  if (!sorted.length) return;
+  const byVal = (r) => AHA_STATE.sortBy === "lift" ? (r.lift == null ? 0 : r.lift) : AHA_STATE.sortBy === "precision" ? r.holdout.P : r.holdout.F1;
+  const maxVal = Math.max(...sorted.map(byVal), 0.0001);
+  const points = sorted.map(r => {
+    const lowSupport = r.holdout.support < AHA_STATE.minSupport;
+    const intensity = Math.max(0.15, byVal(r) / maxVal);
+    const color = lowSupport ? "rgba(148,163,184,0.35)" : `rgba(${Math.round(247 - intensity * 100)},${Math.round(113 + intensity * 100)},${Math.round(113 + intensity * 30)},0.85)`;
+    return { x: r.holdout.R, y: r.holdout.P, r: Math.max(4, Math.min(22, Math.sqrt(r.holdout.support) * 1.4)), action: r.action, bestWindow: r.bestWindow, bestK: r.bestK, F1: r.holdout.F1, trainF1: r.train.F1, lift: r.lift, support: r.holdout.support, lowSupport, _color: color };
+  });
+  CHART_INSTANCES["aha-scatter"] = new Chart(canvas, {
+    type: "bubble",
+    data: { datasets: [{ data: points, backgroundColor: points.map(p => p._color), borderColor: "rgba(255,255,255,0.25)", borderWidth: 1 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { title: { display: true, text: "Recall", color: getCssVar("--text-muted") }, min: 0, max: 1, ticks: { color: getCssVar("--text-muted") }, grid: { color: "rgba(255,255,255,0.06)" } },
+        y: { title: { display: true, text: "Precision", color: getCssVar("--text-muted") }, min: 0, max: 1, ticks: { color: getCssVar("--text-muted") }, grid: { color: "rgba(255,255,255,0.06)" } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => { const p = ctx.raw; const win = p.bestWindow === Infinity ? "전체" : "d" + p.bestWindow; return [`${p.action} (Best Window ${win}, k≥${p.bestK})`, `Precision ${p.y.toFixed(3)} · Recall ${p.x.toFixed(3)} · F1 ${p.F1.toFixed(3)}`, `Lift ${p.lift == null ? "—" : p.lift.toFixed(2) + "×"} · support ${p.support.toLocaleString()}`, `train F1 ${p.trainF1.toFixed(3)}${p.lowSupport ? " · ⊘ 표본 부족" : ""}`]; } } },
+      },
+    },
+  });
+}
+function downloadAhaCsv() {
+  const sorted = ahaSortedResults();
+  const q = (s) => { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const header = ["action", "best_window", "best_k", "holdout_precision", "holdout_recall", "holdout_f1", "lift", "holdout_support", "train_precision", "train_recall", "train_f1", "support_gated"];
+  const lines = [header.join(",")];
+  for (const r of sorted) {
+    lines.push([r.action, r.bestWindow === Infinity ? "all" : r.bestWindow, r.bestK, r.holdout.P.toFixed(4), r.holdout.R.toFixed(4), r.holdout.F1.toFixed(4), r.lift == null ? "" : r.lift.toFixed(4), r.holdout.support, r.train.P.toFixed(4), r.train.R.toFixed(4), r.train.F1.toFixed(4), r.gated ? "1" : "0"].map(q).join(","));
+  }
+  _mmmDownload(`aha_moment_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
+}
+function bindAhaHandlers() {
+  const fileEl = document.getElementById("aha-file");
+  if (fileEl) {
+    fileEl.addEventListener("change", (e) => {
+      const file = e.target.files[0]; if (!file) return;
+      Papa.parse(file, { header: true, dynamicTyping: false, skipEmptyLines: true, complete: (res) => {
+        const headers = res.meta.fields || [];
+        ahaLoadRows(res.data, headers, file.name);
+        navigate("5-20");
+      } });
+    });
+  }
+  document.querySelectorAll("[data-aha-reset]").forEach(b => b.addEventListener("click", () => {
+    AHA_STATE.fileName = null; AHA_STATE.rows = []; AHA_STATE.headers = []; AHA_STATE.colMap = {}; AHA_STATE.analyzedSig = null; AHA_CACHE.key = null;
+    navigate("5-20");
+  }));
+  document.querySelectorAll("[data-aha-role]").forEach(sel => sel.addEventListener("change", () => {
+    const h = sel.dataset.ahaRole; if (!AHA_STATE.colMap[h]) AHA_STATE.colMap[h] = { role: "ignore", action: h, window: Infinity };
+    AHA_STATE.colMap[h].role = sel.value; navigate("5-20");
+  }));
+  document.querySelectorAll("[data-aha-action]").forEach(inp => inp.addEventListener("change", () => {
+    const h = inp.dataset.ahaAction; if (AHA_STATE.colMap[h]) AHA_STATE.colMap[h].action = inp.value.trim() || h; navigate("5-20");
+  }));
+  document.querySelectorAll("[data-aha-window]").forEach(inp => inp.addEventListener("change", () => {
+    const h = inp.dataset.ahaWindow; if (!AHA_STATE.colMap[h]) return;
+    const raw = String(inp.value).trim().replace(/^d/i, "");
+    const v = parseInt(raw, 10);
+    AHA_STATE.colMap[h].window = (raw === "" || !isFinite(v)) ? Infinity : v;
+    navigate("5-20");
+  }));
+  document.querySelectorAll('[data-tool-analyze="5-20"]').forEach(b => b.addEventListener("click", () => { markAhaAnalyzed(); navigate("5-20"); }));
+  document.querySelectorAll("[data-aha-sort]").forEach(b => b.addEventListener("click", () => { AHA_STATE.sortBy = b.dataset.ahaSort; navigate("5-20"); }));
+  document.querySelectorAll("[data-aha-minsupport]").forEach(inp => inp.addEventListener("change", () => {
+    const v = parseInt(inp.value, 10); AHA_STATE.minSupport = (isFinite(v) && v >= 1) ? v : 1; AHA_CACHE.key = null; navigate("5-20");
+  }));
+  document.querySelectorAll("[data-aha-holdout]").forEach(cb => cb.addEventListener("change", () => { AHA_STATE.holdoutOn = cb.checked; AHA_CACHE.key = null; navigate("5-20"); }));
+  document.querySelectorAll("[data-aha-csv]").forEach(b => b.addEventListener("click", downloadAhaCsv));
+  document.querySelectorAll("[data-aha-drill]").forEach(tr => tr.addEventListener("click", () => { AHA_STATE.drilldownAction = tr.dataset.ahaDrill; navigate("5-20"); }));
+  document.querySelectorAll("[data-aha-drill-select]").forEach(sel => sel.addEventListener("change", () => { AHA_STATE.drilldownAction = sel.value; navigate("5-20"); }));
+  try { renderAhaScatterChart(); } catch (e) { console.warn("Aha scatter render skipped:", e.message); }
+}
+
+/* ----- 골든 테스트: window.runAhaTests() — 스펙 §5 T1~T7 ----- */
+function runAhaTests(verbose) {
+  const R = [];
+  // T1: F1 항등식 — P=R=1→1, P=R=0→0(가드)
+  const f1a = AHA_STATS.f1(1, 1), f1b = AHA_STATS.f1(0, 0);
+  R.push({ test: "T1 · F1 항등식 (P=R=1→1, P=R=0→0 가드)", actual: `f1(1,1)=${f1a}, f1(0,0)=${f1b}`, pass: f1a === 1 && f1b === 0 ? "✓" : "✗" });
+
+  // T2: bestThreshold 단조 — 완전 분리 신호(k>=k0에서 target=1, 그 외 target=0) → bestK=k0, F1=1
+  const N2 = 200, k0 = 5;
+  const vals2 = Array.from({ length: N2 }, (_, i) => i % 10); // 0..9 반복
+  const targets2 = vals2.map(v => v >= k0 ? 1 : 0);
+  const idx2 = vals2.map((_, i) => i);
+  const bt2 = AHA_STATS.bestThreshold(vals2, targets2, idx2, 5);
+  R.push({ test: "T2 · bestThreshold 완전분리 (bestK=5, F1=1)", actual: `k=${bt2 ? bt2.k : "null"}, F1=${bt2 ? bt2.F1.toFixed(3) : "null"}`, pass: bt2 && bt2.k === k0 && Math.abs(bt2.F1 - 1) < 1e-9 ? "✓" : "✗" });
+
+  // T3: split 결정론 — 같은 (n,seed) → 같은 분할(재호출 byte-identical)
+  const sp1 = AHA_STATS.splitDeterministic(500, 777);
+  const sp2 = AHA_STATS.splitDeterministic(500, 777);
+  const splitIdentical = JSON.stringify(sp1) === JSON.stringify(sp2);
+  const splitCoversAll = sp1.train.length + sp1.holdout.length === 500 && new Set([...sp1.train, ...sp1.holdout]).size === 500;
+  R.push({ test: "T3 · split 결정론 (같은 seed → byte-identical, 전체 커버)", actual: `train=${sp1.train.length} holdout=${sp1.holdout.length} identical=${splitIdentical}`, pass: splitIdentical && splitCoversAll ? "✓" : "✗" });
+
+  // T4: lift 정확 — baseRate 0.5, precision 0.75 → lift 1.5
+  const liftVal = AHA_STATS.lift(0.75, 0.5);
+  R.push({ test: "T4 · lift 정확 (precision=0.75, baseRate=0.5 → 1.5)", actual: `lift=${liftVal}`, pass: Math.abs(liftVal - 1.5) < 1e-9 ? "✓" : "✗" });
+
+  // T5: support 게이트 — 전부 minSupport 미달 → 최대 support 조합 선택(크래시 없음)
+  const vals5 = [1, 1, 2, 2, 3]; const targets5 = [1, 0, 1, 0, 1]; const idx5 = [0, 1, 2, 3, 4];
+  let bt5, threw5 = false;
+  try { bt5 = AHA_STATS.bestThreshold(vals5, targets5, idx5, 1000); } catch (e) { threw5 = true; }
+  R.push({ test: "T5 · support 게이트 (전부 미달 → 최대 support 폴백, 크래시 없음)", actual: threw5 ? "THREW" : `gated=${bt5 ? bt5.gated : "null"}, support=${bt5 ? bt5.support : "null"}`, pass: !threw5 && bt5 && bt5.gated === true && bt5.support > 0 ? "✓" : "✗" });
+
+  // T6: 윈도우×k 그리드 — 좁은 윈도우(d3)에 강신호, 넓은 윈도우(d14)에 노이즈 → bestW=3 선택
+  const N6 = 300;
+  const rng6 = seededNoise(31415);
+  const targets6 = Array.from({ length: N6 }, () => rng6() + 0.5 < 0.4 ? 1 : 0);
+  const d3vals = targets6.map(t => t === 1 ? 5 : 1); // d3: 완전분리(타겟=1이면 5, 아니면 1)
+  const d14vals = Array.from({ length: N6 }, () => Math.round((rng6() + 0.5) * 10)); // d14: 순수 노이즈
+  const idx6all = targets6.map((_, i) => i);
+  const sp6 = AHA_STATS.splitDeterministic(N6, 1);
+  const windowCols6 = [{ header: "a_d3", window: 3, valuesAll: d3vals }, { header: "a_d14", window: 14, valuesAll: d14vals }];
+  const gs6 = AHA_STATS.gridSearch(windowCols6, targets6, sp6.train, sp6.holdout, 5);
+  R.push({ test: "T6 · 윈도우×k 그리드 (d3 강신호 vs d14 노이즈 → bestWindow=3)", actual: `bestWindow=${gs6 ? gs6.bestWindow : "null"}, holdoutF1=${gs6 ? gs6.holdout.F1.toFixed(3) : "null"}`, pass: gs6 && gs6.bestWindow === 3 ? "✓" : "✗" });
+
+  // T7: 컬럼 그룹핑 정규식 — invite_d7 → action=invite, window=7
+  const aw7 = ahaParseActionWindow("invite_d7");
+  const aw7b = ahaParseActionWindow("revenue_d7"); // 의도적으로 같은 정규식에 걸림(스펙 §7 — 수동 보정 대상)
+  const aw7c = ahaParseActionWindow("no_window_action"); // 매치 안 됨 → window=Infinity
+  R.push({ test: "T7 · 컬럼 그룹핑 정규식 (invite_d7 → action=invite, window=7)", actual: `${JSON.stringify(aw7)} | no-match=${JSON.stringify(aw7c)}`, pass: aw7.action === "invite" && aw7.window === 7 && aw7c.window === Infinity ? "✓" : "✗" });
+
+  if (verbose) {
+    console.log("%c=== Aha-Moment Finder · Validation Tests ===", "color: #adc6ff; font-weight: bold;");
+    console.table(R);
+    const passCount = R.filter(r => r.pass === "✓").length;
+    console.log(`%c${passCount}/${R.length} 통과`, `color: ${passCount === R.length ? '#22c55e' : '#f87171'}; font-weight: bold;`);
+  }
+  return R;
+}
+if (typeof window !== "undefined") { window.runAhaTests = runAhaTests; window.AHA_STATS = AHA_STATS; window.AHA_STATE = AHA_STATE; }
+
+/* ============================================================
  * Quality Analyzer (5-8) — 코호트 리텐션 곡선 + LTV 외삽
  * grain: cohort_date × day_offset (선택적으로 channel/country/platform 분기)
  * ============================================================ */
@@ -17321,6 +18574,19 @@ function renderQualityCohorts(cohorts) {
     </section>`;
 }
 
+// rate: 0~1 잔존율. isPredicted=true면 예측값(더 옅은 채도)로 표시.
+// 0% = 투명(배경 그대로), 100%에 가까울수록 --primary(#adc6ff) 계열이 진해짐.
+function retentionHeatColor(rate, isPredicted) {
+  if (rate == null || !Number.isFinite(rate) || rate <= 0) return "transparent";
+  const clamped = Math.max(0, Math.min(1, rate));
+  // 시각적 구분을 위해 sqrt curve로 저값 구간도 살짜기 보이게(0~1 비선형 매핑)
+  const intensity = Math.sqrt(clamped);
+  const maxAlpha = isPredicted ? 0.22 : 0.42;
+  const alpha = (intensity * maxAlpha).toFixed(3);
+  const rgb = isPredicted ? "148,163,184" : "173,198,255"; // 예측=슬레이트 / 실측=primary blue
+  return `rgba(${rgb},${alpha})`;
+}
+
 function renderQualityMaturation() {
   buildMaturationCache();
   const qc = QUALITY_CACHE;
@@ -17367,13 +18633,17 @@ function renderQualityMaturation() {
     .map(co => {
       const cells = allCols.map(dn => {
         const actual = co.actual.find(p => p.n === dn);
-        if (actual) return `<td class="tnum"><strong>${fmtV(actual.v)}</strong></td>`;
+        if (actual) {
+          const bg = metric === "retention" ? ` style="background:${retentionHeatColor(actual.v, false)};"` : "";
+          return `<td class="tnum"${bg}><strong>${fmtV(actual.v)}</strong></td>`;
+        }
         const pred = co.predicted.find(p => p.n === dn);
         if (pred) {
           const ci = (pred.lo != null && pred.hi != null)
             ? ` <span style="font-size:9px;color:var(--text-muted);">[${fmtV(pred.lo)}·${fmtV(pred.hi)}]</span>`
             : "";
-          return `<td class="tnum" style="color:var(--text-muted);font-style:italic;">~${fmtV(pred.v)}${ci}</td>`;
+          const bg = metric === "retention" ? `background:${retentionHeatColor(pred.v, true)};` : "";
+          return `<td class="tnum" style="${bg}color:var(--text-muted);font-style:italic;">~${fmtV(pred.v)}${ci}</td>`;
         }
         return `<td class="tnum" style="color:var(--text-muted);opacity:0.35;">${co.age < dn ? "—" : "⊘"}</td>`;
       }).join("");
@@ -17412,7 +18682,7 @@ function renderQualityMaturation() {
           <tbody>${tableRows}</tbody>
         </table>
       </div>
-      <p class="muted" style="font-size:11px;margin-top:8px;">실측=<strong>굵게</strong> · 예측=<em>기울임·~값[CI]</em> · —=미도달 · ⊘=데이터없음. Anchor D${anchor} 기준 비율법(매출·결제) · 레벨평균법(리텐션). 성숙기준 ${COHORT_MATUR_CFG.maturedMinDaily}개(일별)·${COHORT_MATUR_CFG.maturedMinWeekly}개(주별).</p>
+      <p class="muted" style="font-size:11px;margin-top:8px;">실측=<strong>굵게</strong> · 예측=<em>기울임·~값[CI]</em> · —=미도달 · ⊘=데이터없음. Anchor D${anchor} 기준 비율법(매출·결제) · 레벨평균법(리텐션). 성숙기준 ${COHORT_MATUR_CFG.maturedMinDaily}개(일별)·${COHORT_MATUR_CFG.maturedMinWeekly}개(주별).${metric === "retention" ? " 셀 배경=잔존율 Heatmap(진할수록 높음, 실측=청색·예측=회청색 옅은 톤)." : ""}</p>
     </section>`;
 }
 
@@ -17838,6 +19108,25 @@ function runQualityTests(verbose = true) {
     CSV_STATE.fileName = origFN; CSV_STATE.mapping = origMap; CSV_STATE.raw = origRaw;
     QUALITY_CACHE.key = null; COHORT_MAT_CACHE.key = null;
     results.push({ test: "T12 · renderQualityMaturation §7 렌더", expected: "s-maturation + §7", actual: t12Actual, pass: t12Pass ? "✓" : "✗" });
+  }
+
+  // T13: retentionHeatColor — 순수함수 결정론 + 단조성 + null가드 + 실측/예측 구분
+  {
+    const c0   = retentionHeatColor(0, false);
+    const c25  = retentionHeatColor(0.25, false);
+    const c100 = retentionHeatColor(1, false);
+    const c50  = retentionHeatColor(0.5, false);
+    const cPred50 = retentionHeatColor(0.5, true);
+    const cNull   = retentionHeatColor(null, false);
+    const alphaOf = s => { const m = /,([\d.]+)\)$/.exec(s); return m ? parseFloat(m[1]) : null; };
+    const a25 = alphaOf(c25), a50 = alphaOf(c50), a100 = alphaOf(c100), aPred50 = alphaOf(cPred50);
+    const pass13 = c0 === "transparent"
+      && cNull === "transparent"
+      && a25 != null && a50 != null && a100 != null
+      && a25 < a50 && a50 < a100               // 단조 증가
+      && aPred50 != null && aPred50 < a50      // 예측은 실측보다 옅음(같은 rate)
+      && retentionHeatColor(0.5, false) === c50; // 결정론(재호출 동일)
+    results.push({ test: "T13 · retentionHeatColor 단조성/null가드/실측-예측 구분", expected: "단조↑·0→transparent·예측<실측·결정론", actual: `c0=${c0},a25=${a25},a50=${a50},a100=${a100},aPred50=${aPred50}`, pass: pass13 ? "✓" : "✗" });
   }
 
   if (verbose) {
@@ -19751,6 +21040,148 @@ function renderModeThreshold() {
   `;
 }
 
+/* ========== §3. 대량 실험 검정 (Mass Test Readout) ==========
+   Multi-variant CSV(arm명·노출수·전환수) 업로드 → control 대비 모든 arm 일괄 z-test + Bayesian 승률.
+   기존 STATS.twoPropZTest / CREATIVE_STATS.betaProbGreater 재사용(§8 결정론 — Monte Carlo 금지). */
+function renderMassReadout() {
+  const rowsCount = AB_MASS_STATE.rows.length;
+  const sample = "arm,exposures,conversions,is_control\ncontrol,10000,500,1\nvariant_b,10000,560,0\nvariant_c,9800,545,0";
+
+  let resultHtml = "";
+  if (rowsCount > 0) {
+    const readout = STATS.massReadout(AB_MASS_STATE.rows);
+    if (!readout.control) {
+      resultHtml = `<div class="callout warn"><div class="ico">!</div><div class="body"><strong>대조군(control)을 찾을 수 없습니다</strong><p>is_control 컬럼이 1(또는 true)인 행이 최소 1개 필요합니다. 없으면 첫 행을 control로 간주합니다.</p></div></div>`;
+    } else {
+      resultHtml = `
+        <p style="font-size:12px;color:var(--text-muted);margin:6px 0 10px;">대조군: <strong>${escapeHtml(readout.control.name)}</strong> (n=${readout.control.n.toLocaleString()}, 전환율 ${(readout.rows[0] ? "" : "")}${((readout.control.x / readout.control.n) * 100).toFixed(2)}%)</p>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Arm</th><th>표본수</th><th>전환율</th><th>대조군 대비 Lift</th>
+                <th>z</th><th>p-value</th><th>95% CI (절대차)</th><th>P(B&gt;A)</th><th>유의성</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${readout.rows.map(r => {
+                const sigBadge = r.isControl
+                  ? '<span class="pill tier-3">대조군</span>'
+                  : (r.pValue < 0.01 ? '<span class="pill tier-1">p &lt; 0.01</span>'
+                     : r.pValue < 0.05 ? '<span class="pill tier-2">p &lt; 0.05</span>'
+                     : '<span class="pill tier-3">비유의</span>');
+                return `<tr>
+                  <td>${escapeHtml(r.name)}${r.isControl ? " <span style='color:var(--text-muted);font-size:11px;'>(control)</span>" : ""}</td>
+                  <td class="tnum">${r.n.toLocaleString()}</td>
+                  <td class="tnum">${(r.rate*100).toFixed(2)}%</td>
+                  <td class="tnum ${r.isControl ? "" : (r.liftRel >= 0 ? "" : "down")}">${r.isControl ? "—" : (r.liftRel*100).toFixed(2)+"%"}</td>
+                  <td class="tnum">${r.isControl ? "—" : r.z.toFixed(3)}</td>
+                  <td class="tnum">${r.isControl ? "—" : r.pValue.toFixed(4)}</td>
+                  <td class="tnum">${r.isControl ? "—" : `[${(r.ciLow95*100).toFixed(2)}%, ${(r.ciHigh95*100).toFixed(2)}%]`}</td>
+                  <td class="tnum">${r.isControl ? "—" : (isNaN(r.probBWins) ? "—" : (r.probBWins*100).toFixed(1)+"%")}</td>
+                  <td>${sigBadge}</td>
+                </tr>`;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+  }
+
+  return `
+    <h2 class="section-title"><span class="ix">§3</span>대량 실험 검정 (Mass Test Readout)</h2>
+    <p style="color:var(--text-secondary);">Multi-variant 실험 결과 CSV를 업로드하면, 대조군(control) 대비 모든 Arm의 유의성 검정을 한 번에 계산합니다. 도구 상단 CSV 파이프라인과 무관한 독립 업로드입니다 — 서버 전송 없음.</p>
+    <div class="ab-form-grid" style="align-items:flex-start;">
+      <div class="ab-field" style="grid-column:1/-1;">
+        <label>CSV 업로드 (헤더: arm, exposures, conversions, is_control)</label>
+        <input id="ab-mass-file" type="file" accept=".csv" />
+        <span class="ab-field-hint">is_control은 1/0 또는 true/false. 비어 있으면 첫 행을 대조군으로 간주.</span>
+      </div>
+      <div class="ab-field">
+        <button class="ab-pill" id="ab-mass-sample">샘플 CSV로 체험</button>
+        ${AB_MASS_STATE.fileName ? `<span class="ab-field-hint">현재: ${escapeHtml(AB_MASS_STATE.fileName)} (${rowsCount}개 arm)</span>` : ""}
+      </div>
+    </div>
+    <details style="margin:6px 0 4px;">
+      <summary style="cursor:pointer;font-size:11.5px;color:var(--text-muted);">CSV 형식 예시 펼치기</summary>
+      <pre style="margin-top:6px;padding:8px 10px;background:var(--bg-1);border-radius:8px;font-size:11.5px;overflow:auto;">${escapeHtml(sample)}</pre>
+    </details>
+    <div id="ab-mass-result">${resultHtml}</div>
+  `;
+}
+
+/* ========== §4. MDE vs Sample Size 파워 커브 ==========
+   고정 baseline/alpha/power에서 sample size(per-arm)가 늘어날수록 탐지 가능한 MDE가 줄어드는 곡선. */
+function renderPowerCurve() {
+  const s = AB_POWER_STATE;
+  return `
+    <h2 class="section-title"><span class="ix">§4</span>MDE vs Sample Size 파워 커브</h2>
+    <p style="color:var(--text-secondary);">표본 수(그룹당)가 커질수록 통계적으로 탐지 가능한 최소 효과 크기(MDE)가 줄어듭니다. baseline 전환율이 낮을수록 더 많은 표본이 필요합니다.</p>
+    <div class="ab-form-grid">
+      <div class="ab-field">
+        <label>현재 전환율 (%) · baseline</label>
+        <input id="ab-pc-baseline" type="number" step="0.01" min="0.01" max="99.99" value="${s.baseline}" />
+      </div>
+      <div class="ab-field">
+        <label>유의수준 α</label>
+        <select id="ab-pc-alpha">
+          <option value="0.10" ${s.alpha === 0.10 ? "selected" : ""}>0.10 (90% 신뢰)</option>
+          <option value="0.05" ${s.alpha === 0.05 ? "selected" : ""}>0.05 (95% 신뢰)</option>
+          <option value="0.01" ${s.alpha === 0.01 ? "selected" : ""}>0.01 (99% 신뢰)</option>
+        </select>
+      </div>
+      <div class="ab-field">
+        <label>검정력 (Power)</label>
+        <select id="ab-pc-power">
+          <option value="0.70" ${s.power === 0.70 ? "selected" : ""}>0.70</option>
+          <option value="0.80" ${s.power === 0.80 ? "selected" : ""}>0.80</option>
+          <option value="0.90" ${s.power === 0.90 ? "selected" : ""}>0.90</option>
+        </select>
+      </div>
+    </div>
+    <div class="chart-container" style="--chart-h:340px;">
+      <canvas id="ab-power-chart"></canvas>
+    </div>
+  `;
+}
+
+function renderPowerCurveChart() {
+  if (typeof Chart === "undefined") return;
+  const canvas = document.getElementById("ab-power-chart");
+  if (!canvas) return;
+  const s = AB_POWER_STATE;
+  const baseline = s.baseline / 100;
+  if (!(baseline > 0) || baseline >= 1) return;
+  const curve = STATS.powerCurve({ baseline, alpha: s.alpha, power: s.power });
+  const pts = curve.filter(p => p.mdePct != null);
+  const muted = getCssVar("--text-muted"), border = getCssVar("--border");
+  destroyChartIfExists("ab-power-chart");
+  CHART_INSTANCES["ab-power-chart"] = new Chart(canvas, {
+    type: "line",
+    data: {
+      datasets: [{
+        label: `MDE (%) · baseline ${s.baseline}%`,
+        data: pts.map(p => ({ x: p.n, y: p.mdePct })),
+        borderColor: "#7aa2f7", backgroundColor: "rgba(122,162,247,0.12)",
+        borderWidth: 2, pointRadius: 2, tension: 0.2, fill: true,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "nearest", intersect: false },
+      plugins: {
+        legend: { labels: { color: muted, font: { size: 11 } } },
+        tooltip: { callbacks: { label: (ctx) => `n=${Math.round(ctx.parsed.x).toLocaleString()} → MDE ${ctx.parsed.y.toFixed(2)}%` } },
+      },
+      scales: {
+        x: { type: "logarithmic", title: { display: true, text: "Sample Size (per arm)", color: muted }, ticks: { color: muted }, grid: { color: border } },
+        y: { title: { display: true, text: "MDE (%)", color: muted }, ticks: { color: muted }, grid: { color: border } },
+      },
+    },
+  });
+}
+
 function bindABCalculatorHandlers() {
   // Tab / Toggle switching
   document.querySelectorAll(".ab-tab").forEach(btn => {
@@ -20016,6 +21447,65 @@ function bindABCalculatorHandlers() {
     ancBtn.addEventListener("click", run);
     run();
   }
+
+  // === §3: 대량 실험 검정 (Mass Test Readout) — 독립 소형 CSV 업로드 ===
+  function parseMassCsvRows(data) {
+    return data
+      .map(row => {
+        const name = String(row.arm ?? row.name ?? "").trim();
+        const n = parseFloat(row.exposures ?? row.n ?? row.visitors);
+        const x = parseFloat(row.conversions ?? row.x ?? row.converted);
+        const icRaw = row.is_control ?? row.control ?? "";
+        const isControl = icRaw === true || icRaw === 1 || /^(1|true|yes)$/i.test(String(icRaw).trim());
+        return { name, n, x, isControl };
+      })
+      .filter(r => r.name && isFinite(r.n) && r.n > 0 && isFinite(r.x) && r.x >= 0 && r.x <= r.n);
+  }
+  const massFileEl = document.getElementById("ab-mass-file");
+  if (massFileEl) massFileEl.addEventListener("change", e => {
+    const file = e.target.files[0]; if (!file) return;
+    AB_MASS_STATE.fileName = file.name;
+    Papa.parse(file, {
+      header: true, dynamicTyping: false, skipEmptyLines: true,
+      complete: r => {
+        AB_MASS_STATE.headers = r.meta.fields || [];
+        AB_MASS_STATE.rows = parseMassCsvRows(r.data);
+        if (AB_MASS_STATE.rows.length > 0 && !AB_MASS_STATE.rows.some(x => x.isControl)) AB_MASS_STATE.rows[0].isControl = true;
+        navigate("5-4");
+      },
+    });
+  });
+  const massSampleBtn = document.getElementById("ab-mass-sample");
+  if (massSampleBtn) massSampleBtn.addEventListener("click", () => {
+    AB_MASS_STATE.fileName = "sample_mass_readout.csv";
+    AB_MASS_STATE.rows = [
+      { name: "control",   n: 10000, x: 500, isControl: true },
+      { name: "variant_b", n: 10000, x: 560, isControl: false },
+      { name: "variant_c", n: 9800,  x: 545, isControl: false },
+      { name: "variant_d", n: 9600,  x: 470, isControl: false },
+    ];
+    navigate("5-4");
+  });
+
+  // === §4: MDE vs Sample Size 파워 커브 ===
+  const pcBaseline = document.getElementById("ab-pc-baseline");
+  const pcAlpha = document.getElementById("ab-pc-alpha");
+  const pcPower = document.getElementById("ab-pc-power");
+  if (pcBaseline && pcAlpha && pcPower) {
+    const runPowerCurve = () => {
+      const b = parseFloat(pcBaseline.value);
+      const a = parseFloat(pcAlpha.value);
+      const p = parseFloat(pcPower.value);
+      if (isFinite(b) && b > 0 && b < 100) AB_POWER_STATE.baseline = b;
+      if (isFinite(a)) AB_POWER_STATE.alpha = a;
+      if (isFinite(p)) AB_POWER_STATE.power = p;
+      renderPowerCurveChart();
+    };
+    pcBaseline.addEventListener("change", runPowerCurve);
+    pcAlpha.addEventListener("change", runPowerCurve);
+    pcPower.addEventListener("change", runPowerCurve);
+  }
+  renderPowerCurveChart();
 }
 
 /* ---------- Fallback (drafts only) ---------- */
@@ -20464,6 +21954,9 @@ function bindCSVPageHandlers() {
   // ----- 5-2: 차트 5종 렌더링 -----
   if (document.getElementById("chart-timeseries")) renderVizCharts();
 
+  // ----- 5-2: 주요 이벤트 마커 UI -----
+  if (document.getElementById("mon-event-marker-ui")) bindMonEventMarkerHandlers();
+
   // ----- 5-3: Budget Allocator 핸들러 -----
   // ----- 5-3: 효율·배분 탭 전환 (예산 배분/퍼널/세그먼트) -----
   document.querySelectorAll("[data-alloc-tab]").forEach(b => b.addEventListener("click", () => { ALLOC_TAB_STATE.tab = b.dataset.allocTab; navigate("5-3"); }));
@@ -20563,6 +22056,11 @@ function bindCSVPageHandlers() {
     bindRegLabHandlers();
   }
 
+  // ----- 5-20: Aha-Moment Finder 핸들러 (독립 AHA_STATE, TOOL_GROUP 비참여) -----
+  if (document.getElementById("aha-file") || document.querySelector("[data-aha-role], [data-tool-analyze=\"5-20\"], [data-aha-sort], [data-aha-drill]")) {
+    bindAhaHandlers();
+  }
+
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
   // dropzone(업로드 전) OR 매핑 select/리셋 버튼(업로드 후) 중 하나라도 있으면 바인딩.
   // (CSV 로드 후엔 dropzone이 숨겨지므로 dropzone만 체크하면 매핑 select가 unbound 됨)
@@ -20586,11 +22084,42 @@ function renderVizCharts() {
     // 위 한줄은 가독성을 위해 풀어쓰면:
     const dailyAgg = aggregateByKey(rows.filter(r => r.date), "date", ["cost", "installs"]);
     dailyAgg.sort((a, b) => String(a.key).localeCompare(String(b.key)));
+    const tsLabels = dailyAgg.map(d => d.key);
+
+    // 주요 이벤트 마커 — 세로 점선 + 라벨 (annotation 라이브러리 없이 캔버스 직접, §12.22 패턴 재사용)
+    // 카테고리(문자열) x축이라 getPixelForValue(label, index) 형태로 index를 같이 넘겨 모호성 회피
+    const evMarks = MON_EVENT_MARKERS
+      .map(m => ({ ...m, idx: tsLabels.indexOf(m.date) }))
+      .filter(m => m.idx >= 0);
+    const evMarkerPlugin = {
+      id: "monEventMarkers",
+      afterDatasetsDraw(chart) {
+        if (!evMarks.length) return;
+        const xs = chart.scales.x, area = chart.chartArea, ctx2 = chart.ctx;
+        ctx2.save();
+        ctx2.lineWidth = 1.5;
+        ctx2.font = "9px sans-serif";
+        evMarks.forEach(m => {
+          const px = xs.getPixelForValue(m.date, m.idx);
+          if (px == null || isNaN(px)) return;
+          ctx2.strokeStyle = "rgba(251,191,36,0.7)";
+          ctx2.setLineDash([4, 4]);
+          ctx2.beginPath(); ctx2.moveTo(px, area.top); ctx2.lineTo(px, area.bottom); ctx2.stroke();
+          ctx2.fillStyle = "rgba(251,191,36,0.95)";
+          ctx2.save();
+          ctx2.translate(px + 3, area.top + 4);
+          ctx2.rotate(-Math.PI / 2.4);
+          ctx2.fillText(m.label, 0, 0);
+          ctx2.restore();
+        });
+        ctx2.restore();
+      },
+    };
 
     CHART_INSTANCES.ts = new Chart(tsCanvas.getContext("2d"), {
       type: "line",
       data: {
-        labels: dailyAgg.map(d => d.key),
+        labels: tsLabels,
         datasets: [
           { label: "비용", data: dailyAgg.map(d => d.cost), yAxisID: "y",
             borderColor: CHART_THEME.primary, backgroundColor: "rgba(173,198,255,0.1)",
@@ -20608,6 +22137,7 @@ function renderVizCharts() {
           y1: { ...chartCommonOpts().scales.y, position: "right", title: { display: true, text: "설치수", color: CHART_THEME.muted, font: { size: 10 } }, grid: { display: false } },
         },
       },
+      plugins: [evMarkerPlugin],
     });
   }
 
@@ -20968,8 +22498,19 @@ function queueAllocatorRender(delay = 80) {
 /* 정적 pillgroup 리스너 (페이지당 1회). 이전에 renderAllocatorScatter 안에서
    매번 새로 부착되던 게 누수 원인이었음. */
 function bindStaticAllocatorControls() {
-  const container = document.querySelector(".alloc-scatter-controls");
+  bindMmmInfoOnce();
+  const container = document.querySelector(".alloc-scatter-controls-wrap");
   if (!container || container.dataset.bound === "1") return;
+
+  const advToggle = document.getElementById("alloc-advanced-toggle");
+  if (advToggle) {
+    advToggle.addEventListener("click", () => {
+      ALLOC_STATE.advancedOpen = !ALLOC_STATE.advancedOpen;
+      const panel = document.getElementById("alloc-advanced-panel");
+      if (panel) panel.style.display = ALLOC_STATE.advancedOpen ? "" : "none";
+      advToggle.textContent = ALLOC_STATE.advancedOpen ? "▲ 상세 설정 닫기" : "▼ 상세 설정 (가중치·이상치·정규화·외삽·표시)";
+    });
+  }
 
   container.querySelectorAll(".ab-pill[data-trendtype]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -22446,89 +23987,66 @@ function renderTrendSummary(trendInfo) {
         </tr>`;
     }).join("");
 
+  // 한 줄 alert + 호버 설명(왜 위험·왜 발생·어떻게 처리) — 긴 본문은 mmmTip으로 이동
+  const allocAlertLine = (variant, headline, channels, tip) => `
+    <div class="callout ${variant}" style="margin-top:0.6rem;padding:0.55rem 0.8rem;">
+      <div class="ico">!</div>
+      <div class="body" style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
+        <strong style="font-size:13px;">${headline}</strong>${mmmTip(tip)}
+        ${channels ? `<span style="font-size:12px;color:var(--text-secondary);">${channels}</span>` : ""}
+      </div>
+    </div>`;
+
   wrap.innerHTML = `
-    ${descending.length > 0 ? `
-      <div class="callout danger" style="margin-top:1rem;">
-        <div class="ico">!</div>
-        <div class="body">
-          <strong>우하향 추세선 ${descending.length}개 채널 감지</strong>
-          <p>
-            ${descending.map(d => `<code class="inline">${escapeHtml(truncateLabel(d.channel, 28))}</code>`).join(", ")}
-          </p>
-          <p>
-            우하향 추세선(Cost↑ → CPR↓)은 일반적인 한계효용 체감 패턴과 반대입니다. 가능한 원인:
-            <strong>(1) 짧은 학습 기간으로 인한 데이터 부족</strong>,
-            <strong>(2) 채널 진입 초기 효율 상승 구간</strong>,
-            <strong>(3) 노이즈가 큰 운영 케이스</strong>.
-            한계효용 그리디(모드 B)를 사용하면 외삽 시 음수 CPR을 예측해 해당 채널에만 예산이 몰리는 위험이 있으니, 모드 A(가중평균 CPR) 사용 또는 CPR Cap 적용을 권장합니다.
-          </p>
-        </div>
-      </div>` : ""}
+    ${descending.length > 0 ? allocAlertLine(
+      "danger",
+      `우하향 추세선 채널 ${descending.length}개 감지`,
+      descending.map(d => `<code class="inline">${escapeHtml(truncateLabel(d.channel, 28))}</code>`).join(", "),
+      "왜 위험: 우하향(Cost↑→CPR↓)은 한계효용 체감 패턴과 반대라, 한계효용 그리디(모드 B)에서 외삽 시 음수 CPR을 예측해 이 채널에 예산이 무리하게 몰릴 수 있습니다. " +
+      "왜 발생: 짧은 학습 기간으로 데이터가 부족하거나, 채널 진입 초기 효율 상승 구간이거나, 노이즈가 큰 운영 케이스일 때 흔합니다. " +
+      "어떻게: 모드 A(가중평균 CPR) 사용 또는 CPR Cap 적용을 권장. R²가 조금 낮더라도 Log/Power 등 다른 추세선 모델을 시도해보고, 데이터 기간이 너무 길어 서로 다른 시기의 추세가 섞여 있다면 집계 윈도우(최근 N일)를 좁혀 다시 확인해보세요."
+    ) : ""}
 
-    ${bellShapes.length > 0 ? `
-      <div class="callout danger" style="margin-top:1rem;">
-        <div class="ico">!</div>
-        <div class="body">
-          <strong>Poly2 종모양(∩) 추세선 — 위험 (${bellShapes.length}개 채널)</strong>
-          <p>
-            ${bellShapes.map(s => {
-              const v = s.poly2Shape.vertex;
-              const recBest = recommendSafeFit(s.allFits);
-              const rec = recBest ? ` · 권장 모드: <code class="inline">${recBest.name}</code> (R²=${recBest.r2.toFixed(2)})` : "";
-              return `<code class="inline">${escapeHtml(truncateLabel(s.channel, 26))}</code> vertex≈${fmtCurrency(v)}${rec}`;
-            }).join("<br>")}
-          </p>
-          <p>
-            vertex 이후 <strong>CPR(또는 CPA)이 감소</strong>하는 영역이 그려졌습니다 — "더 쓸수록 더 효율적이 됨"이라는 비정상 신호.
-            한계효용 그리디(모드 B)를 적용하면 <strong>해당 채널에 무한 예산을 투입</strong>해야 한다고 잘못 추론될 위험.
-            대응:
-            (1) 추세선 모드를 <code class="inline">Log</code>나 <code class="inline">Power</code>로 변경 (위에 권장 모드 표시),
-            (2) 모드 A (가중평균) 사용,
-            (3) vertex 이후 영역(<strong>${fmtCurrency(bellShapes[0]?.poly2Shape.vertex)} 초과</strong>)에서는 예산 캡 적용.
-            해당 영역은 차트에서 <strong>점선</strong>으로 표시됩니다.
-          </p>
-        </div>
-      </div>` : ""}
+    ${bellShapes.length > 0 ? allocAlertLine(
+      "danger",
+      `종모양(∩) 추세선 — 위험 ${bellShapes.length}개 감지`,
+      bellShapes.map(s => {
+        const v = s.poly2Shape.vertex;
+        const recBest = recommendSafeFit(s.allFits);
+        const rec = recBest ? ` · 권장 <code class="inline">${recBest.name}</code>(R²=${recBest.r2.toFixed(2)})` : "";
+        return `<code class="inline">${escapeHtml(truncateLabel(s.channel, 26))}</code> vertex≈${fmtCurrency(v)}${rec}`;
+      }).join(" / "),
+      "왜 위험: vertex 이후 CPR이 감소하는 비정상 구간이 그려져, 한계효용 그리디(모드 B)가 \"더 쓸수록 더 효율적\"으로 오판해 해당 채널에 예산을 무한히 투입하려 할 수 있습니다. " +
+      "왜 발생: Poly2가 적은 데이터에 과적합되었거나, 관측 기간이 길어 서로 다른 시기의 효율 패턴(시즌·캠페인 변경 등)이 한 곡선에 섞였을 때 흔합니다. " +
+      "어떻게: 추세선 모드를 Log/Power로 바꿔보세요(R²가 표시된 값보다 조금 낮더라도 외삽이 안전한 모델이 더 낫습니다). 모드 A(가중평균) 사용도 안전. vertex 초과 구간엔 예산 캡 적용. 기간이 너무 길어 추세가 섞였다면 집계 윈도우를 좁혀(예: 28일→7일) 최근 패턴만 보고 다시 적합해보세요."
+    ) : ""}
 
-    ${uShapes.length > 0 ? `
-      <div class="callout warn" style="margin-top:1rem;">
-        <div class="ico">!</div>
-        <div class="body">
-          <strong>Poly2 U자형(∪) 추세선 — 주의 (${uShapes.length}개 채널)</strong>
-          <p>
-            ${uShapes.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 26))}</code> vertex≈${fmtCurrency(s.poly2Shape.vertex)}`).join(", ")}
-          </p>
-          <p>
-            vertex 이전이 우하향(낮은 cost일수록 CPR↑)이라 마찬가지로 외삽 위험. vertex 이전 영역은 점선 처리됨.
-          </p>
-        </div>
-      </div>` : ""}
+    ${uShapes.length > 0 ? allocAlertLine(
+      "warn",
+      `U자형(∪) 추세선 — 주의 ${uShapes.length}개 감지`,
+      uShapes.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 26))}</code> vertex≈${fmtCurrency(s.poly2Shape.vertex)}`).join(", "),
+      "왜 위험: vertex 이전 구간이 우하향(낮은 Cost일수록 CPR↑)으로 그려져, 그 구간으로 외삽하면 예산을 줄일수록 효율이 나빠진다는 잘못된 결론을 낼 수 있습니다. " +
+      "왜 발생: 종모양과 동일하게 데이터 과적합 또는 기간이 길어 여러 시기의 추세가 섞였을 때 흔합니다. " +
+      "어떻게: R²가 조금 낮아도 Log나 Linear 등 더 단순한 모델로 바꿔 비교해보세요. 기간이 너무 길어 추세가 섞여 있다면 집계 윈도우를 좁혀 다시 적합해보는 것도 효과적입니다."
+    ) : ""}
 
-    ${suspects.length > 0 ? `
-      <div class="callout warn" style="margin-top:1rem;">
-        <div class="ico">!</div>
-        <div class="body">
-          <strong>Poly2 추세선의 꼬리 의심 (${suspects.length}개 채널)</strong>
-          <p>
-            ${suspects.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 28))}</code>`).join(", ")}
-          </p>
-          <p>
-            관측 데이터의 한쪽에 점이 거의 없는데 곡선이 강제로 휘는 경우. 해당 영역은 점선으로 표시되며, 추세선 예측의 통계적 근거가 약합니다.
-          </p>
-        </div>
-      </div>` : ""}
+    ${suspects.length > 0 ? allocAlertLine(
+      "warn",
+      `Poly2 꼬리 의심 ${suspects.length}개 감지`,
+      suspects.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 28))}</code>`).join(", "),
+      "왜 위험: 관측 데이터가 한쪽에 거의 없는데 곡선이 그 방향으로 강제로 휘어, 점선(저신뢰) 구간의 예측이 통계적 근거 없이 과장될 수 있습니다. " +
+      "왜 발생: 해당 Cost 구간에 실제 운영 데이터가 거의 없는데 2차 곡선이 양끝을 억지로 통과시키려 할 때 발생합니다. " +
+      "어떻게: R²가 낮더라도 더 안정적인 Linear/Log 모델로 바꿔보거나, 데이터가 부족한 구간을 분석 대상에서 제외(집계 윈도우 조정)해보세요."
+    ) : ""}
 
-    ${sparseChannels.length > 0 ? `
-      <div class="callout warn" style="margin-top:1rem;">
-        <div class="ico">!</div>
-        <div class="body">
-          <strong>데이터 부족 채널 (${sparseChannels.length}개)</strong>
-          <p>
-            점 수가 10개 미만인 채널은 추세선이 <strong>전체 점선</strong>으로 표시됩니다.
-            5개 미만이면 추세선 자체를 그리지 않습니다.
-          </p>
-        </div>
-      </div>` : ""}
+    ${sparseChannels.length > 0 ? allocAlertLine(
+      "warn",
+      `데이터 부족 채널 ${sparseChannels.length}개`,
+      "",
+      "왜 위험: 점 수가 10개 미만이면 추세선이 전체 점선으로 표시되고(저신뢰), 5개 미만이면 추세선 자체를 그리지 않습니다 — 적은 데이터로 추세를 단정하면 잘못된 배분 결정으로 이어질 수 있습니다. " +
+      "왜 발생: 집계 윈도우(최근 N일)가 좁거나 해당 채널의 집행 빈도가 낮을 때 발생합니다. " +
+      "어떻게: 집계 윈도우를 늘려(예: 7일→28일) 더 많은 데이터 포인트를 확보하거나, 데이터가 누적될 때까지는 모드 A(가중평균)처럼 추세선 외삽에 덜 의존하는 방식을 사용하세요."
+    ) : ""}
 
     <div class="alloc-trend-table">
       <div class="alloc-trend-table-title">채널별 추세선 R² · 방향</div>
@@ -24153,9 +25671,11 @@ const DEMO_BUILDERS = {
   "5-2": _demoEfficiencyData, "5-3": _demoEfficiencyData,
   "5-8": _demoCohortData, "5-6": _demoCreativeData,
   "5-7": _demoReadoutData, "5-15": _demoHoldoutData, "5-18": _demoMmmData,
+  "5-20": _demoAhaData,
 };
 function _applyDemoToCsvState(toolId) {
   const b = DEMO_BUILDERS[toolId]; if (!b) return;
+  if (toolId === "5-20") { ahaLoadDemoData(b()); return; }
   const d = b();
   CSV_STATE.fileName = d.fileName; CSV_STATE.raw = d.rows; CSV_STATE.headers = d.headers;
   CSV_STATE.mapping = {}; d.headers.forEach(h => CSV_STATE.mapping[h] = h); if (CSV_STATE.selectedCohort == null) CSV_STATE.selectedCohort = 7;
@@ -24174,10 +25694,13 @@ function enterDemo(toolId) {
   DEMO_STATE.tool = toolId;
   DEMO_STATE.page = (location.hash || "").replace(/^#/, "") || "home";
   if (toolId === "5-18") MMM_METH_STATE.stage = "diagnose";
+  if (toolId === "5-20") _applyDemoToCsvState("5-20");
   navigate(DEMO_STATE.page);
 }
 function exitDemo() {
-  const page = DEMO_STATE.page; DEMO_STATE.tool = null; DEMO_STATE.page = null;
+  const page = DEMO_STATE.page; const toolId = DEMO_STATE.tool;
+  DEMO_STATE.tool = null; DEMO_STATE.page = null;
+  if (toolId === "5-20") { AHA_STATE.fileName = null; AHA_STATE.rows = []; AHA_STATE.headers = []; AHA_STATE.colMap = {}; AHA_STATE.analyzedSig = null; AHA_CACHE.key = null; }
   navigate(page || "home");
 }
 function renderDemoButton(toolId) {
