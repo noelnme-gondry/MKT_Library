@@ -3248,10 +3248,18 @@ const IA = [
       { id: "5-18", title: "마케팅 반응 분석", desc: "4탭: 카니발 진단 · Trend Forecast(예산 예측) · MMM 기여 분해 · 범용 회귀(Lab) (가설용·holdout 아님)" },
     ],
   },
+  {
+    id: "11",
+    title: "행동 분석",
+    subtitle: "유저 행동 → Aha-moment 탐색",
+    items: [
+      { id: "5-20", title: "Aha-Moment Finder", desc: "선행 행동 윈도우×횟수 그리드 탐색 — F1/Lift로 타겟 달성과 가장 강한 연관 찾기 (가설용·홀드아웃 아님)" },
+    ],
+  },
 ];
 
 /* Ops Dashboard(운영) 그룹 id 집합 — 가이드/도구 카운트 구분용 */
-const OPS_GROUP_IDS = new Set(["05", "06", "07", "10"]);
+const OPS_GROUP_IDS = new Set(["05", "06", "07", "10", "11"]);
 
 /* ========== Marketing Phases (사용자 여정 기준) ========== */
 const PHASES = [
@@ -3634,7 +3642,7 @@ function updateNavActive(activeId) {
 const LANDING_STATE = { track: null }; // null = step1 / "guide" / "analyze"
 
 // 도구 티어 (freemium): 시각화·모니터링만 무료, 나머지 Pro
-const TOOL_TIER = { "5-2": "free", "5-3": "pro", "5-6": "pro", "5-4": "pro", "5-18": "pro" };
+const TOOL_TIER = { "5-2": "free", "5-3": "pro", "5-6": "pro", "5-4": "pro", "5-18": "pro", "5-20": "pro" };
 function toolTier(id) { return TOOL_TIER[id] || "pro"; }
 
 // 분석 트랙의 목표 버킷 (사용자 승인 구조)
@@ -3643,6 +3651,7 @@ const ANALYZE_BUCKETS = [
   { id: "efficiency", icon: "💰", label: "효율화 · 예산",     tier: "pro",  desc: "절대 CPR/ROAS 기반 예산 배분 + 한계효용 그리디(고급) — 채널별 최적화",  tools: ["5-3"] },
   { id: "experiment", icon: "🧪", label: "실험 · 소재",       tier: "pro",  desc: "A/B 설계·결과 판독·홀드아웃 증분 + 소재 성과 분해",        tools: ["5-4", "5-6"] },
   { id: "advanced",   icon: "📈", label: "고급 분석",         tier: "pro",  desc: "마케팅 반응 회귀 — 카니발 진단·Forecast·MMM 기여 분해·범용 회귀", tools: ["5-18"] },
+  { id: "behavior",   icon: "🎯", label: "행동 분석",         tier: "pro",  desc: "Aha-Moment Finder — 선행 행동 윈도우×횟수 그리드로 타겟 달성과 연관 탐색", tools: ["5-20"] },
 ];
 
 function tierBadge(tier) {
@@ -5917,7 +5926,7 @@ const AUTH_STATE = {
 };
 
 // freemium: 5-2 시각화·모니터링은 무료. 나머지 분석 도구는 Pro(접근 키 필요).
-const AUTH_PROTECTED_PAGES = new Set(["5-3", "5-4", "5-6", "5-18"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-3", "5-4", "5-6", "5-18", "5-20"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -17080,6 +17089,617 @@ function runRegLabTests(verbose = true) {
 if (typeof window !== "undefined") { window.runRegLabTests = runRegLabTests; window.REG_LAB_STATE = REG_LAB_STATE; }
 
 /* ============================================================
+ * 5-20 Aha-Moment Finder — 유저별 선행행동 윈도우×횟수(k) 그리드 탐색
+ * 사전집계 wide 멀티윈도우 CSV (가입일·이벤트일 컬럼 없음, {action}_d{N} 누적 컬럼들)
+ * → 어느 액션을 어느 윈도우 내 몇 번 이상 해야 타겟 달성과 가장 강하게 연관되는지(F1) 탐색.
+ * ⚠ 가설 생성·기술용(association). 인과/증분 확정은 holdout(5-4) 전용.
+ * 독립 CSV 업로드(AB_MASS_STATE 패턴) + colMap(헤더 정규식 역할 자동추정, 5-18 패턴) — TOOL_GROUP/STANDARD_FIELDS 미사용
+ * (컬럼이 매 업로드마다 완전히 동적이라 고정 필드셋 공유 파이프라인에 맞지 않음).
+ * 문서: docs/aha-moment-finder-spec.md
+ * ============================================================ */
+const AHA_STATE = {
+  fileName: null,
+  rows: [],            // 원본 행 배열 (객체, 헤더→값)
+  headers: [],
+  colMap: {},           // header → { role: "id"|"target"|"feature"|"ignore", action, window }
+  sortBy: "f1",          // f1 | lift | precision
+  minSupport: 30,
+  holdoutOn: true,
+  drilldownAction: null, // §4 윈도우×k 히트맵 대상 액션
+  analyzedSig: null,     // 게이트: 매핑 시그니처(이 값과 현재 시그가 같아야 결과 표시)
+};
+
+/* ----- 컬럼 자동 그룹핑: header → { action, window } -----
+ * 정규식 ^(.*?)[_-]?d(\d+)$ (대소문자 무시). 매치 안 되면 window=Infinity(단일 윈도우 액션). */
+function ahaParseActionWindow(header) {
+  const m = String(header).match(/^(.*?)[_-]?d(\d+)$/i);
+  if (m && m[1]) return { action: m[1], window: parseInt(m[2], 10) };
+  return { action: String(header), window: Infinity };
+}
+/* target 후보 추정: 값이 전부 {0,1}(또는 빈값)인 숫자 컬럼. user_id 추정: 헤더명에 id/user 포함 + 값 unique 비율 높음. */
+function ahaAutoMapColumns(headers, rows) {
+  const out = {};
+  for (const h of headers) {
+    const name = String(h).toLowerCase();
+    const vals = rows.map(r => r[h]).filter(v => v != null && String(v).trim() !== "");
+    const nums = vals.map(v => parseFloat(v)).filter(v => !isNaN(v));
+    const isNum = vals.length > 0 && nums.length >= vals.length * 0.8;
+    const uniq = isNum ? [...new Set(nums)] : [];
+    const isBin01 = isNum && uniq.length > 0 && uniq.every(v => v === 0 || v === 1);
+    let role = "feature";
+    if (/(^|_)(user|client|device)?_?id$|^id$|^uid$/.test(name)) role = "id";
+    else if (isBin01 && /target|conv|retain|churn|activ|타겟|전환|리텐션/.test(name)) role = "target";
+    else if (!isNum) role = "ignore";
+    const aw = ahaParseActionWindow(h);
+    out[h] = { role, action: aw.action, window: aw.window };
+  }
+  // target 자동추정이 하나도 없으면, 가장 그럴듯한 bin01 컬럼(이름 매치 없어도) 1개를 제안
+  if (!Object.values(out).some(d => d.role === "target")) {
+    for (const h of headers) {
+      const name = String(h).toLowerCase();
+      const vals = rows.map(r => r[h]).filter(v => v != null && String(v).trim() !== "");
+      const nums = vals.map(v => parseFloat(v)).filter(v => !isNaN(v));
+      const uniq = [...new Set(nums)];
+      const isBin01 = nums.length >= vals.length * 0.8 && vals.length > 0 && uniq.length > 0 && uniq.every(v => v === 0 || v === 1) && uniq.length <= 2;
+      if (isBin01 && out[h].role !== "id") { out[h].role = "target"; break; }
+    }
+  }
+  return out;
+}
+/* colMap에서 role=feature인 컬럼들을 액션별로 그룹핑 → { action: [{header, window}] } */
+function ahaGroupedActions(colMap) {
+  const groups = {};
+  for (const [h, def] of Object.entries(colMap || {})) {
+    if (!def || def.role !== "feature") continue;
+    const a = def.action || h, w = (def.window != null) ? def.window : Infinity;
+    if (!groups[a]) groups[a] = [];
+    groups[a].push({ header: h, window: w });
+  }
+  for (const a in groups) groups[a].sort((x, y) => x.window - y.window);
+  return groups;
+}
+function ahaTargetColumn(colMap) {
+  for (const [h, def] of Object.entries(colMap || {})) if (def && def.role === "target") return h;
+  return null;
+}
+
+/* ----- AHA_STATS: 순수 통계 모듈 (단위테스트 가능, Math.random 금지) ----- */
+const AHA_STATS = (function () {
+  // F1: P=R=0 가드 (스펙 원문엔 없던 edge case — 분모 0 방지)
+  function f1(p, r) {
+    if (!(p + r > 0)) return 0;
+    return 2 * p * r / (p + r);
+  }
+  function lift(precision, baseRate) {
+    if (!(baseRate > 0)) return null;
+    return precision / baseRate;
+  }
+  // 결정론적 해시 기반 train/holdout 50:50 분할. 같은 (n, seed) → 항상 byte-identical.
+  function _hashIdx(i, seed) {
+    let h = (i * 2654435761 + seed * 40503) >>> 0;
+    h = ((h ^ (h >>> 13)) * 1274126177) >>> 0;
+    return (h >>> 0) / 4294967296;
+  }
+  function splitDeterministic(n, seed) {
+    const train = [], holdout = [];
+    for (let i = 0; i < n; i++) (_hashIdx(i, seed) < 0.5 ? train : holdout).push(i);
+    return { train, holdout };
+  }
+  // 한 액션×윈도우 조합: values(누적 카운트)·targets(0/1) 전체, idx(분석 대상 인덱스 부분집합), minSupport.
+  // O(n log n): 값 내림차순 정렬 후 누적합으로 모든 threshold(k) 동시 평가.
+  function bestThreshold(values, targets, idx, minSupport) {
+    const pts = idx.map(i => ({ v: values[i], t: targets[i] })).filter(p => p.v > 0);
+    if (!pts.length) return null;
+    pts.sort((a, b) => b.v - a.v); // 내림차순
+    const totalPos = idx.reduce((s, i) => s + (targets[i] ? 1 : 0), 0);
+    const uniqVals = [...new Set(pts.map(p => p.v))].sort((a, b) => b - a); // 내림차순 unique
+    let cumTP = 0, cumN = 0, vi = 0;
+    let best = null, bestAnySupport = null;
+    for (const k of uniqVals) {
+      while (vi < pts.length && pts[vi].v >= k) { cumN++; if (pts[vi].t) cumTP++; vi++; }
+      const TP = cumTP, FP = cumN - cumTP, FN = totalPos - cumTP;
+      const support = TP + FP;
+      const P = support > 0 ? TP / support : 0;
+      const R = (TP + FN) > 0 ? TP / (TP + FN) : 0;
+      const F1 = f1(P, R);
+      const cand = { k, P, R, F1, support, TP, FP, FN };
+      if (!bestAnySupport || cand.F1 > bestAnySupport.F1 || (cand.F1 === bestAnySupport.F1 && cand.support > bestAnySupport.support)) bestAnySupport = cand;
+      if (support >= minSupport) {
+        if (!best || cand.F1 > best.F1 || (cand.F1 === best.F1 && cand.support > best.support)) best = cand;
+      }
+    }
+    // support 게이트 통과 조합이 하나도 없으면 → 최대 support 조합으로 폴백(크래시 없음, T5)
+    if (!best) return { ...bestAnySupport, gated: true };
+    return { ...best, gated: false };
+  }
+  // 액션 1개: 가진 모든 윈도우 컬럼에 대해 bestThreshold → 윈도우×k 그리드에서 train 최고(F1, support 게이트) 선택
+  // → holdout 재평가. windowCols = [{header, window, valuesAll}]
+  function gridSearch(windowCols, targets, trainIdx, holdoutIdx, minSupport) {
+    let bestW = null;
+    const grid = []; // §4 드릴다운용: 윈도우×k 전체
+    for (const wc of windowCols) {
+      const tr = bestThreshold(wc.valuesAll, targets, trainIdx, minSupport);
+      if (tr) {
+        grid.push({ window: wc.window, header: wc.header, k: tr.k, F1: tr.F1, P: tr.P, R: tr.R, support: tr.support, gated: tr.gated });
+        if (!bestW || tr.F1 > bestW.train.F1 || (tr.F1 === bestW.train.F1 && tr.support > bestW.train.support)) {
+          bestW = { window: wc.window, header: wc.header, k: tr.k, train: tr };
+        }
+      }
+    }
+    if (!bestW) return null;
+    // holdout 재평가: 동일 (window, k)로 holdout 인덱스에 TP/FP/FN
+    const vals = windowCols.find(w => w.header === bestW.header).valuesAll;
+    let TP = 0, FP = 0, FN = 0;
+    for (const i of holdoutIdx) {
+      const v = vals[i] || 0, t = targets[i];
+      if (v >= bestW.k) { if (t) TP++; else FP++; } else if (t) FN++;
+    }
+    const support = TP + FP;
+    const P = support > 0 ? TP / support : 0;
+    const R = (TP + FN) > 0 ? TP / (TP + FN) : 0;
+    const F1h = f1(P, R);
+    return {
+      bestWindow: bestW.window, bestHeader: bestW.header, bestK: bestW.k,
+      train: { P: bestW.train.P, R: bestW.train.R, F1: bestW.train.F1, support: bestW.train.support },
+      holdout: { P, R, F1: F1h, support },
+      gated: bestW.train.gated,
+      grid,
+    };
+  }
+  return { f1, lift, splitDeterministic, bestThreshold, gridSearch };
+})();
+
+/* ----- 캐시: mapping+minSupport+split seed 해시 → AHA_CACHE.key. 토글(정렬·minSupport·holdout on/off)은 lookup만 ----- */
+const AHA_CACHE = { key: null, baseRate: 0, n: 0, results: [] };
+function ahaCacheKey() {
+  const cm = JSON.stringify(AHA_STATE.colMap);
+  return `${AHA_STATE.fileName}|${AHA_STATE.rows.length}|${cm}|${AHA_STATE.minSupport}|${AHA_STATE.holdoutOn ? 1 : 0}`;
+}
+function buildAhaCache() {
+  const key = ahaCacheKey();
+  if (AHA_CACHE.key === key) return AHA_CACHE;
+  const rows = AHA_STATE.rows, cm = AHA_STATE.colMap;
+  const targetCol = ahaTargetColumn(cm);
+  const groups = ahaGroupedActions(cm);
+  const n = rows.length;
+  AHA_CACHE.key = key; AHA_CACHE.n = n; AHA_CACHE.results = []; AHA_CACHE.baseRate = 0; AHA_CACHE.targetCol = targetCol; AHA_CACHE.groups = groups;
+  if (!targetCol || !Object.keys(groups).length || !n) return AHA_CACHE;
+  const targets = rows.map(r => { const v = parseFloat(r[targetCol]); return (isFinite(v) && v >= 0.5) ? 1 : 0; });
+  const baseRate = targets.reduce((s, t) => s + t, 0) / n;
+  AHA_CACHE.baseRate = baseRate;
+  const minSupport = Math.max(1, AHA_STATE.minSupport || 1);
+  let trainIdx, holdoutIdx;
+  if (AHA_STATE.holdoutOn) {
+    const sp = AHA_STATS.splitDeterministic(n, 20260620);
+    trainIdx = sp.train; holdoutIdx = sp.holdout;
+  } else {
+    trainIdx = rows.map((_, i) => i); holdoutIdx = trainIdx; // holdout 끄면 train==전체, holdout 평가도 전체로(참고용)
+  }
+  const results = [];
+  for (const [action, cols] of Object.entries(groups)) {
+    const windowCols = cols.map(c => ({ header: c.header, window: c.window, valuesAll: rows.map(r => { const v = parseFloat(r[c.header]); return isFinite(v) ? v : 0; }) }));
+    const gs = AHA_STATS.gridSearch(windowCols, targets, trainIdx, holdoutIdx, minSupport);
+    if (!gs) continue;
+    results.push({
+      action, bestWindow: gs.bestWindow, bestHeader: gs.bestHeader, bestK: gs.bestK,
+      train: gs.train, holdout: gs.holdout, gated: gs.gated,
+      lift: AHA_STATS.lift(gs.holdout.P, baseRate),
+      grid: gs.grid, windowCols,
+    });
+  }
+  AHA_CACHE.results = results;
+  return AHA_CACHE;
+}
+function ahaSortedResults() {
+  const c = buildAhaCache();
+  const by = AHA_STATE.sortBy;
+  const key = (r) => by === "lift" ? (r.lift == null ? -Infinity : r.lift) : by === "precision" ? r.holdout.P : r.holdout.F1;
+  return [...c.results].sort((a, b) => {
+    const ga = a.holdout.support >= AHA_STATE.minSupport, gb = b.holdout.support >= AHA_STATE.minSupport;
+    if (ga !== gb) return ga ? -1 : 1; // 표본부족 ⊘는 하위로
+    return key(b) - key(a);
+  });
+}
+function ahaTopAction() {
+  const sorted = ahaSortedResults();
+  return sorted.length ? sorted[0] : null;
+}
+function ahaAnalyzeSig() { return JSON.stringify(AHA_STATE.colMap) + "|" + AHA_STATE.fileName; }
+function isAhaAnalyzed() { return AHA_STATE.analyzedSig != null && AHA_STATE.analyzedSig === ahaAnalyzeSig(); }
+function markAhaAnalyzed() { AHA_STATE.analyzedSig = ahaAnalyzeSig(); }
+
+/* ----- 데모 데이터 빌더 (DEMO_BUILDERS["5-20"], §12.32 패턴) -----
+ * wide 멀티윈도우: user_id·target·{action}_d{0,3,7,14}(누적·단조↑). 액션별 신호 다양 — 일부는 invite_d3에서 강하게 분리, 일부는 노이즈. */
+function _demoAhaData() {
+  const rng = seededNoise(200007);
+  const actions = ["invite", "share", "search", "msg_sent", "profile_edit"];
+  const n = 600;
+  const headers = ["user_id", "target"];
+  for (const a of actions) for (const w of [0, 3, 7, 14]) headers.push(`${a}_d${w}`);
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const ahaSignal = rng() + 0.5 < 0.42; // 약 42% 유저가 invite를 일찍·많이 함 → target과 강하게 연관
+    const target = ahaSignal ? (rng() + 0.5 < 0.78 ? 1 : 0) : (rng() + 0.5 < 0.18 ? 1 : 0);
+    const row = { user_id: "u" + (i + 1), target };
+    // invite: d3에 신호 집중 (좁은 윈도우 강신호 → T6 패턴)
+    const inviteD0 = ahaSignal ? Math.round((rng() + 0.5) * 2) : (rng() + 0.5 < 0.5 ? 1 : 0);
+    const inviteD3 = inviteD0 + (ahaSignal ? Math.round((rng() + 0.5) * 3) + 1 : Math.round((rng() + 0.5) * 1));
+    const inviteD7 = inviteD3 + Math.round((rng() + 0.5) * 1);
+    const inviteD14 = inviteD7 + Math.round((rng() + 0.5) * 1);
+    row.invite_d0 = inviteD0; row.invite_d3 = inviteD3; row.invite_d7 = inviteD7; row.invite_d14 = inviteD14;
+    // share: 약한 신호
+    const shareBase = Math.round((rng() + 0.5) * 2 + (target ? 0.6 : 0));
+    row.share_d0 = shareBase; row.share_d3 = shareBase + Math.round((rng() + 0.5) * 2);
+    row.share_d7 = row.share_d3 + Math.round((rng() + 0.5) * 2); row.share_d14 = row.share_d7 + Math.round((rng() + 0.5) * 2);
+    // search/msg_sent/profile_edit: 순수 노이즈(타겟과 무관)
+    for (const a of ["search", "msg_sent", "profile_edit"]) {
+      const b0 = Math.round((rng() + 0.5) * 3);
+      const b3 = b0 + Math.round((rng() + 0.5) * 3), b7 = b3 + Math.round((rng() + 0.5) * 3), b14 = b7 + Math.round((rng() + 0.5) * 3);
+      row[`${a}_d0`] = b0; row[`${a}_d3`] = b3; row[`${a}_d7`] = b7; row[`${a}_d14`] = b14;
+    }
+    rows.push(row);
+  }
+  const colMap = ahaAutoMapColumns(headers, rows);
+  colMap.user_id.role = "id"; colMap.target.role = "target";
+  return { fileName: "demo_aha_moment.csv", headers, rows, colMap };
+}
+
+/* ----- 업로드 처리 ----- */
+function ahaLoadRows(rows, headers, fileName) {
+  AHA_STATE.fileName = fileName; AHA_STATE.rows = rows; AHA_STATE.headers = headers;
+  AHA_STATE.colMap = ahaAutoMapColumns(headers, rows);
+  AHA_STATE.analyzedSig = null; AHA_CACHE.key = null;
+  AHA_STATE.drilldownAction = null;
+}
+// 데모 모드 진입 시 AHA_STATE에 데모 데이터를 주입 + 즉시 분석완료 상태로(§12.32, 독립 상태라 _applyDemoToCsvState 우회)
+function ahaLoadDemoData(d) {
+  AHA_STATE.fileName = d.fileName; AHA_STATE.rows = d.rows; AHA_STATE.headers = d.headers;
+  AHA_STATE.colMap = d.colMap;
+  AHA_CACHE.key = null; AHA_STATE.drilldownAction = null;
+  markAhaAnalyzed();
+}
+
+/* ----- UI 렌더 ----- */
+function ahaUploadSection() {
+  const hasFile = AHA_STATE.headers.length > 0;
+  const sample = "user_id,target,invite_d0,invite_d3,invite_d7,invite_d14\nu1,1,1,4,5,6\nu2,0,0,1,1,2\nu3,1,2,5,6,7";
+  return `<section class="block" id="s-aha-upload">
+    <h2 class="section-title"><span class="ix">§0</span>데이터 업로드</h2>
+    <p class="muted">유저 1명당 1행. 가입일·이벤트일 컬럼 <strong>없음</strong> — 각 후보 액션은 윈도우별 누적 count 컬럼 묶음(<code class="inline">invite_d0, invite_d3, invite_d7, invite_d14</code>). 헤더가 <code class="inline">{action}_d{N}</code> 형태면 자동으로 액션·윈도우를 파싱합니다. 데이터는 브라우저 메모리에만 — 서버 전송 없음.</p>
+    <div class="ab-form-grid" style="align-items:flex-start;">
+      <div class="ab-field" style="grid-column:1/-1;">
+        <label>CSV 업로드</label>
+        <input id="aha-file" type="file" accept=".csv,text/csv" />
+        <span class="ab-field-hint">user_id(미사용·중복검증용) · target(0/1) · 액션 윈도우 컬럼들.</span>
+      </div>
+      <div class="ab-field">
+        ${renderDemoButton("5-20")}
+        ${hasFile ? `<span class="ab-field-hint">현재: ${escapeHtml(AHA_STATE.fileName)} (${AHA_STATE.rows.length.toLocaleString()}행)</span>` : ""}
+      </div>
+    </div>
+    <details style="margin:6px 0 4px;">
+      <summary style="cursor:pointer;font-size:11.5px;color:var(--text-muted);">CSV 형식 예시 펼치기</summary>
+      <pre style="margin-top:6px;padding:8px 10px;background:var(--bg-1);border-radius:8px;font-size:11.5px;overflow:auto;">${escapeHtml(sample)}</pre>
+    </details>
+  </section>`;
+}
+function ahaRoleSelectOptions(selected) {
+  const opts = [["feature", "선행 행동(feature)"], ["target", "타겟(target, 0/1)"], ["id", "user_id(미사용)"], ["ignore", "사용 안 함"]];
+  return opts.map(([v, l]) => `<option value="${v}" ${selected === v ? "selected" : ""}>${l}</option>`).join("");
+}
+function ahaMappingSection() {
+  if (!AHA_STATE.headers.length) return "";
+  const cm = AHA_STATE.colMap;
+  const targetCol = ahaTargetColumn(cm);
+  const featureCount = Object.values(cm).filter(d => d.role === "feature").length;
+  const groups = ahaGroupedActions(cm);
+  const actionCount = Object.keys(groups).length;
+  const rows = AHA_STATE.headers.map(h => {
+    const def = cm[h] || { role: "ignore", action: h, window: Infinity };
+    const isFeature = def.role === "feature";
+    const winLabel = def.window === Infinity ? "" : `d${def.window}`;
+    return `<tr>
+      <td title="${escapeHtml(h)}">${escapeHtml(h)}</td>
+      <td><select class="map-select" data-aha-role="${escapeHtml(h)}">${ahaRoleSelectOptions(def.role)}</select></td>
+      <td>${isFeature ? `<input type="text" class="map-select" style="width:120px;" data-aha-action="${escapeHtml(h)}" value="${escapeHtml(def.action || "")}" placeholder="액션명" />` : "—"}</td>
+      <td>${isFeature ? `<input type="text" class="map-select" style="width:70px;" data-aha-window="${escapeHtml(h)}" value="${escapeHtml(winLabel)}" placeholder="d7" title="비우면 단일 윈도우(전체)" />` : "—"}</td>
+    </tr>`;
+  }).join("");
+  const missing = [];
+  if (!targetCol) missing.push("타겟(target, 0/1) 1개");
+  if (!actionCount) missing.push("선행 행동(feature) 1개 이상");
+  const analyzed = isAhaAnalyzed();
+  const gate = missing.length
+    ? `<div class="required-banner"><strong>⚠ 필수 역할이 비어 있습니다</strong><p style="margin:.25rem 0 0;">${missing.map(m => `<code class="inline">${escapeHtml(m)}</code>`).join(", ")}</p></div>`
+    : (analyzed
+      ? `<div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="color:#22c55e;font-size:12px;font-weight:600;">✓ 분석 완료</span><span style="color:var(--text-muted);font-size:11px;">매핑을 바꾸면 결과가 숨겨지고 다시 "분석하기"를 눌러야 합니다.</span><button class="ab-pill" data-tool-analyze="5-20" style="margin-left:auto;">↻ 다시 분석</button></div>`
+      : `<div style="margin-top:12px;background:linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03));border:1px solid rgba(122,162,247,0.3);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;"><div style="font-size:12.5px;color:var(--text-1);">✅ 필수 역할 매핑 완료. <strong>매핑이 맞는지 확인한 뒤 분석을 실행하세요.</strong></div><button class="ab-pill" data-tool-analyze="5-20" style="background:#7aa2f7;color:#0b0d12;font-weight:700;border-color:#7aa2f7;font-size:13px;padding:8px 18px;">▶ 분석하기</button></div>`);
+  return `<section class="block" id="s-aha-map">
+    <h2 class="section-title"><span class="ix">§0</span>컬럼 역할 매핑</h2>
+    <div class="csv-loaded-bar"><div class="csv-loaded-info"><span class="dot" style="background:#22c55e;"></span><strong>${escapeHtml(AHA_STATE.fileName)}</strong><span class="csv-loaded-stats tnum">${AHA_STATE.rows.length.toLocaleString()}행 · ${AHA_STATE.headers.length}컬럼 · 후보 액션 ${actionCount}개</span></div><button class="ab-pill csv-change-btn" data-aha-reset="1" title="CSV 제거하고 다른 파일 업로드">⟳ CSV 변경</button></div>
+    <details ${analyzed ? "" : "open"} style="margin-top:10px;">
+      <summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:${analyzed ? "var(--text-muted)" : "#adc6ff"};">🗂 컬럼 역할 매핑 ${analyzed ? "(분석 완료 — 펼쳐서 수정)" : "(자동 추정 — 틀리면 수정)"}</summary>
+      <p class="muted" style="font-size:12px;margin:8px 0;"><strong>헤더가 <code class="inline">{action}_d{N}</code> 형태면 액션·윈도우 자동 파싱</strong>됩니다(예: <code class="inline">invite_d7</code> → 액션 invite, 윈도우 d7). target 컬럼은 0/1 값으로 자동 추정 — 틀리면 직접 선택하세요. <code class="inline">revenue_d7</code> 같은 매출 컬럼이 잘못 후보로 잡혔으면 "사용 안 함"으로 제외하세요.</p>
+      <div class="table-wrap"><table class="data" style="font-size:12px;"><thead><tr><th>CSV 컬럼</th><th>역할</th><th>액션명</th><th>윈도우</th></tr></thead><tbody>${rows}</tbody></table></div>
+    </details>
+    ${gate}
+  </section>`;
+}
+function ahaConfidenceDots(f1Val) {
+  const n = f1Val >= 0.7 ? 5 : f1Val >= 0.5 ? 4 : f1Val >= 0.3 ? 3 : f1Val >= 0.15 ? 2 : 1;
+  return "●".repeat(n) + "○".repeat(5 - n);
+}
+function ahaHeroSection() {
+  const c = buildAhaCache();
+  const top = ahaTopAction();
+  const totalTargets = c.results.length ? Math.round(c.baseRate * c.n) : 0;
+  const topLine = top
+    ? `가입 <strong>${top.bestWindow === Infinity ? "전체" : top.bestWindow + "일"}</strong> 내 <strong>${escapeHtml(top.action)}</strong>를 <strong>${top.bestK}번</strong> 이상 → holdout F1 <strong>${top.holdout.F1.toFixed(2)}</strong>, lift <strong>${top.lift == null ? "—" : top.lift.toFixed(1) + "배"}</strong> ${ahaConfidenceDots(top.holdout.F1)}`
+    : `분석 가능한 액션이 없습니다 — 매핑을 확인하세요.`;
+  return `<section class="block" id="s-aha-hero" style="background:linear-gradient(135deg,rgba(122,162,247,0.12),rgba(192,132,252,0.05));border:1px solid rgba(122,162,247,0.25);border-radius:14px;padding:18px 20px;">
+    <h2 class="section-title" style="margin-top:0;"><span class="ix">§0</span>한눈에 보기</h2>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:10px;">
+      <div><div style="font-size:11px;color:var(--text-muted);">전체 유저</div><div class="tnum" style="font-size:20px;font-weight:700;">${c.n.toLocaleString()}</div></div>
+      <div><div style="font-size:11px;color:var(--text-muted);">타겟 달성 유저</div><div class="tnum" style="font-size:20px;font-weight:700;">${totalTargets.toLocaleString()}</div></div>
+      <div><div style="font-size:11px;color:var(--text-muted);">Base Rate</div><div class="tnum" style="font-size:20px;font-weight:700;">${(c.baseRate * 100).toFixed(1)}%</div></div>
+    </div>
+    <div style="font-size:13.5px;color:var(--text-1);margin-bottom:10px;">🏆 Top Aha: ${topLine}</div>
+    <div class="callout warn" style="margin:0;"><div class="ico">⚠</div><div class="body"><strong>연관(association)이지 인과 아님</strong><p style="margin:.25rem 0 0;">engaged 유저는 모든 액션을 많이 하는 경향(공통원인)이 있어, 어떤 액션이 타겟 달성을 "유발"한다고 단정할 수 없습니다. 이 도구는 가설 생성용입니다 — 확정은 <a href="#5-4" data-route="5-4">홀드아웃 실험(5-4)</a>으로 검증하세요.</p></div></div>
+  </section>`;
+}
+function ahaControlsSection() {
+  const sortOpts = [["f1", "F1"], ["lift", "Lift"], ["precision", "Precision"]];
+  return `<section class="block" id="s-aha-controls">
+    <h2 class="section-title"><span class="ix">§1</span>컨트롤</h2>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span style="font-size:12px;color:var(--text-muted);">정렬:</span>
+        ${sortOpts.map(([v, l]) => `<button class="ab-pill ${AHA_STATE.sortBy === v ? "active" : ""}" data-aha-sort="${v}">${l}</button>`).join("")}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span style="font-size:12px;color:var(--text-muted);">최소 표본(support):</span>
+        <input type="number" min="1" step="1" value="${AHA_STATE.minSupport}" data-aha-minsupport="1" style="width:70px;" class="map-select" />
+      </div>
+      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--text-muted);cursor:pointer;">
+        <input type="checkbox" data-aha-holdout="1" ${AHA_STATE.holdoutOn ? "checked" : ""} /> Train/Holdout 50:50 split
+      </label>
+    </div>
+    <p class="muted" style="font-size:11.5px;margin-top:8px;">윈도우는 그리드에서 자동 선택됩니다 — 액션별 Best Window가 결과로 나옵니다. Best k를 고르고 그 F1을 그대로 보고하면 낙관 편향(in-sample overfitting)이 생기므로, 기본적으로 train에서 k를 고르고 holdout에서 재평가합니다.</p>
+  </section>`;
+}
+function ahaScatterSection() {
+  const c = buildAhaCache();
+  if (!c.results.length) return "";
+  return `<section class="block" id="s-aha-scatter">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <h2 class="section-title" style="margin:0;"><span class="ix">§2</span>Aha Scatter (Precision × Recall)</h2>
+      <button class="ab-pill" data-pngdownload="aha-scatter" data-pngname="aha_scatter">⬇ PNG</button>
+    </div>
+    <p class="muted">X=Recall, Y=Precision, 점 크기 = 표본(support), 색 = F1(또는 정렬기준). 표본 부족(<${AHA_STATE.minSupport}) 액션은 회색·반투명입니다.</p>
+    <div class="chart-container" style="height:380px;"><canvas id="aha-scatter"></canvas></div>
+  </section>`;
+}
+function ahaResultTableSection() {
+  const sorted = ahaSortedResults();
+  if (!sorted.length) return "";
+  const rows = sorted.map(r => {
+    const lowSupport = r.holdout.support < AHA_STATE.minSupport;
+    const overfit = r.train.F1 - r.holdout.F1 > 0.2;
+    const liftStrong = r.lift != null && r.lift >= 1.5;
+    const cls = lowSupport ? "style='color:var(--text-muted);'" : "";
+    return `<tr ${cls} data-aha-drill="${escapeHtml(r.action)}" style="cursor:pointer;">
+      <td>${escapeHtml(r.action)}${lowSupport ? " ⊘" : ""}</td>
+      <td class="tnum">${r.bestWindow === Infinity ? "전체" : "d" + r.bestWindow}</td>
+      <td class="tnum">≥${r.bestK}</td>
+      <td class="tnum" style="${overfit ? "color:#f87171;" : ""}">${r.holdout.F1.toFixed(3)}</td>
+      <td class="tnum">${r.holdout.P.toFixed(3)}</td>
+      <td class="tnum">${r.holdout.R.toFixed(3)}</td>
+      <td class="tnum" style="${liftStrong ? "color:#22c55e;font-weight:600;" : ""}">${r.lift == null ? "—" : r.lift.toFixed(2) + "×"}</td>
+      <td class="tnum">${r.holdout.support.toLocaleString()}${lowSupport ? " ⊘" : ""}</td>
+      <td class="tnum">${r.train.F1.toFixed(3)}</td>
+    </tr>`;
+  }).join("");
+  return `<section class="block" id="s-aha-table">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <h2 class="section-title" style="margin:0;"><span class="ix">§3</span>결과 표</h2>
+      <button class="ab-pill" data-aha-csv="1">⬇ CSV</button>
+    </div>
+    <p class="muted" style="font-size:11.5px;">행을 클릭하면 §4 윈도우×k 히트맵에서 그 액션을 드릴다운합니다. 초록 lift = 강한 연관(≥1.5×). 빨강 F1 = train≫holdout(과적합 의심).</p>
+    <div class="table-wrap"><table class="data" style="font-size:12.5px;"><thead><tr><th>액션</th><th>Best Window</th><th>Best k</th><th>holdout F1</th><th>Precision</th><th>Recall</th><th>Lift</th><th>support</th><th>train F1</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </section>`;
+}
+function ahaDrilldownSection() {
+  const c = buildAhaCache();
+  if (!c.results.length) return "";
+  const action = AHA_STATE.drilldownAction && c.results.some(r => r.action === AHA_STATE.drilldownAction) ? AHA_STATE.drilldownAction : (ahaTopAction() || {}).action;
+  if (!action) return "";
+  const r = c.results.find(x => x.action === action);
+  if (!r || !r.grid.length) return "";
+  const windows = [...new Set(r.grid.map(g => g.window))].sort((a, b) => a - b);
+  const ks = [...new Set(r.grid.map(g => g.k))].sort((a, b) => a - b);
+  const cellFor = (w, k) => r.grid.find(g => g.window === w && g.k === k);
+  const maxF1 = Math.max(...r.grid.map(g => g.F1), 0.0001);
+  const cells = ks.map(k => `<tr><td class="tnum">≥${k}</td>${windows.map(w => {
+    const cell = cellFor(w, k);
+    if (!cell) return `<td class="tnum" style="color:var(--text-muted);">—</td>`;
+    const isBest = cell.window === r.bestWindow && cell.k === r.bestK;
+    const intensity = Math.round((cell.F1 / maxF1) * 100);
+    return `<td class="tnum" style="background:rgba(122,162,247,${(intensity / 100 * 0.45).toFixed(2)});${isBest ? "outline:2px solid #7aa2f7;font-weight:700;" : ""}">${cell.F1.toFixed(2)}</td>`;
+  }).join("")}</tr>`).join("");
+  return `<section class="block" id="s-aha-drill">
+    <h2 class="section-title"><span class="ix">§4</span>액션 드릴다운 — ${escapeHtml(action)}</h2>
+    <p class="muted">윈도우 × k 그리드의 F1 히트맵. 진할수록 F1 높음, 굵은 테두리 = Best 조합. <strong>단일 셀만 튀고 주변이 흐리면 우연(과적합) 의심</strong> — support·holdout F1을 §3에서 같이 확인하세요.</p>
+    <div style="margin-bottom:8px;">
+      <select class="map-select" data-aha-drill-select="1">${c.results.map(x => `<option value="${escapeHtml(x.action)}" ${x.action === action ? "selected" : ""}>${escapeHtml(x.action)}</option>`).join("")}</select>
+    </div>
+    <div class="table-wrap"><table class="data" style="font-size:12px;"><thead><tr><th>k \\ window</th>${windows.map(w => `<th class="tnum">${w === Infinity ? "전체" : "d" + w}</th>`).join("")}</tr></thead><tbody>${cells}</tbody></table></div>
+  </section>`;
+}
+function page_5_20() {
+  const meta = findMeta("5-20");
+  const hasFile = AHA_STATE.headers.length > 0;
+  const analyzed = isAhaAnalyzed();
+  if (!hasFile) {
+    return pageShell(meta, {
+      summary: "유저별 선행 행동 윈도우×횟수 그리드를 탐색해, 어떤 행동을 가입 N일 내 몇 번 이상 해야 타겟 달성과 가장 강하게 연관되는지 F1/Lift로 찾는 가설 생성용 도구입니다. 인과·증분 확정은 홀드아웃(5-4) 전용.",
+      toc: [{ id: "s-aha-upload", title: "데이터 업로드" }],
+      body: ahaUploadSection(),
+    });
+  }
+  const body = analyzed && buildAhaCache().results.length
+    ? `${ahaMappingSection()}${ahaHeroSection()}${ahaControlsSection()}${ahaScatterSection()}${ahaResultTableSection()}${ahaDrilldownSection()}`
+    : ahaMappingSection();
+  const toc = [{ id: "s-aha-map", title: "데이터·매핑" }];
+  if (analyzed) {
+    toc.push({ id: "s-aha-hero", title: "한눈에 보기" }, { id: "s-aha-controls", title: "컨트롤" }, { id: "s-aha-scatter", title: "Aha Scatter" }, { id: "s-aha-table", title: "결과 표" }, { id: "s-aha-drill", title: "액션 드릴다운" });
+  }
+  return pageShell(meta, { toc, body });
+}
+PAGE_RENDERERS["5-20"] = page_5_20;
+
+function renderAhaScatterChart() {
+  const canvas = document.getElementById("aha-scatter");
+  if (!canvas) return;
+  destroyChartIfExists("aha-scatter");
+  const sorted = ahaSortedResults();
+  if (!sorted.length) return;
+  const byVal = (r) => AHA_STATE.sortBy === "lift" ? (r.lift == null ? 0 : r.lift) : AHA_STATE.sortBy === "precision" ? r.holdout.P : r.holdout.F1;
+  const maxVal = Math.max(...sorted.map(byVal), 0.0001);
+  const points = sorted.map(r => {
+    const lowSupport = r.holdout.support < AHA_STATE.minSupport;
+    const intensity = Math.max(0.15, byVal(r) / maxVal);
+    const color = lowSupport ? "rgba(148,163,184,0.35)" : `rgba(${Math.round(247 - intensity * 100)},${Math.round(113 + intensity * 100)},${Math.round(113 + intensity * 30)},0.85)`;
+    return { x: r.holdout.R, y: r.holdout.P, r: Math.max(4, Math.min(22, Math.sqrt(r.holdout.support) * 1.4)), action: r.action, bestWindow: r.bestWindow, bestK: r.bestK, F1: r.holdout.F1, trainF1: r.train.F1, lift: r.lift, support: r.holdout.support, lowSupport, _color: color };
+  });
+  CHART_INSTANCES["aha-scatter"] = new Chart(canvas, {
+    type: "bubble",
+    data: { datasets: [{ data: points, backgroundColor: points.map(p => p._color), borderColor: "rgba(255,255,255,0.25)", borderWidth: 1 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { title: { display: true, text: "Recall", color: getCssVar("--text-muted") }, min: 0, max: 1, ticks: { color: getCssVar("--text-muted") }, grid: { color: "rgba(255,255,255,0.06)" } },
+        y: { title: { display: true, text: "Precision", color: getCssVar("--text-muted") }, min: 0, max: 1, ticks: { color: getCssVar("--text-muted") }, grid: { color: "rgba(255,255,255,0.06)" } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => { const p = ctx.raw; const win = p.bestWindow === Infinity ? "전체" : "d" + p.bestWindow; return [`${p.action} (Best Window ${win}, k≥${p.bestK})`, `Precision ${p.y.toFixed(3)} · Recall ${p.x.toFixed(3)} · F1 ${p.F1.toFixed(3)}`, `Lift ${p.lift == null ? "—" : p.lift.toFixed(2) + "×"} · support ${p.support.toLocaleString()}`, `train F1 ${p.trainF1.toFixed(3)}${p.lowSupport ? " · ⊘ 표본 부족" : ""}`]; } } },
+      },
+    },
+  });
+}
+function downloadAhaCsv() {
+  const sorted = ahaSortedResults();
+  const q = (s) => { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const header = ["action", "best_window", "best_k", "holdout_precision", "holdout_recall", "holdout_f1", "lift", "holdout_support", "train_precision", "train_recall", "train_f1", "support_gated"];
+  const lines = [header.join(",")];
+  for (const r of sorted) {
+    lines.push([r.action, r.bestWindow === Infinity ? "all" : r.bestWindow, r.bestK, r.holdout.P.toFixed(4), r.holdout.R.toFixed(4), r.holdout.F1.toFixed(4), r.lift == null ? "" : r.lift.toFixed(4), r.holdout.support, r.train.P.toFixed(4), r.train.R.toFixed(4), r.train.F1.toFixed(4), r.gated ? "1" : "0"].map(q).join(","));
+  }
+  _mmmDownload(`aha_moment_${new Date().toISOString().slice(0, 10)}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
+}
+function bindAhaHandlers() {
+  const fileEl = document.getElementById("aha-file");
+  if (fileEl) {
+    fileEl.addEventListener("change", (e) => {
+      const file = e.target.files[0]; if (!file) return;
+      Papa.parse(file, { header: true, dynamicTyping: false, skipEmptyLines: true, complete: (res) => {
+        const headers = res.meta.fields || [];
+        ahaLoadRows(res.data, headers, file.name);
+        navigate("5-20");
+      } });
+    });
+  }
+  document.querySelectorAll("[data-aha-reset]").forEach(b => b.addEventListener("click", () => {
+    AHA_STATE.fileName = null; AHA_STATE.rows = []; AHA_STATE.headers = []; AHA_STATE.colMap = {}; AHA_STATE.analyzedSig = null; AHA_CACHE.key = null;
+    navigate("5-20");
+  }));
+  document.querySelectorAll("[data-aha-role]").forEach(sel => sel.addEventListener("change", () => {
+    const h = sel.dataset.ahaRole; if (!AHA_STATE.colMap[h]) AHA_STATE.colMap[h] = { role: "ignore", action: h, window: Infinity };
+    AHA_STATE.colMap[h].role = sel.value; navigate("5-20");
+  }));
+  document.querySelectorAll("[data-aha-action]").forEach(inp => inp.addEventListener("change", () => {
+    const h = inp.dataset.ahaAction; if (AHA_STATE.colMap[h]) AHA_STATE.colMap[h].action = inp.value.trim() || h; navigate("5-20");
+  }));
+  document.querySelectorAll("[data-aha-window]").forEach(inp => inp.addEventListener("change", () => {
+    const h = inp.dataset.ahaWindow; if (!AHA_STATE.colMap[h]) return;
+    const raw = String(inp.value).trim().replace(/^d/i, "");
+    const v = parseInt(raw, 10);
+    AHA_STATE.colMap[h].window = (raw === "" || !isFinite(v)) ? Infinity : v;
+    navigate("5-20");
+  }));
+  document.querySelectorAll('[data-tool-analyze="5-20"]').forEach(b => b.addEventListener("click", () => { markAhaAnalyzed(); navigate("5-20"); }));
+  document.querySelectorAll("[data-aha-sort]").forEach(b => b.addEventListener("click", () => { AHA_STATE.sortBy = b.dataset.ahaSort; navigate("5-20"); }));
+  document.querySelectorAll("[data-aha-minsupport]").forEach(inp => inp.addEventListener("change", () => {
+    const v = parseInt(inp.value, 10); AHA_STATE.minSupport = (isFinite(v) && v >= 1) ? v : 1; AHA_CACHE.key = null; navigate("5-20");
+  }));
+  document.querySelectorAll("[data-aha-holdout]").forEach(cb => cb.addEventListener("change", () => { AHA_STATE.holdoutOn = cb.checked; AHA_CACHE.key = null; navigate("5-20"); }));
+  document.querySelectorAll("[data-aha-csv]").forEach(b => b.addEventListener("click", downloadAhaCsv));
+  document.querySelectorAll("[data-aha-drill]").forEach(tr => tr.addEventListener("click", () => { AHA_STATE.drilldownAction = tr.dataset.ahaDrill; navigate("5-20"); }));
+  document.querySelectorAll("[data-aha-drill-select]").forEach(sel => sel.addEventListener("change", () => { AHA_STATE.drilldownAction = sel.value; navigate("5-20"); }));
+  try { renderAhaScatterChart(); } catch (e) { console.warn("Aha scatter render skipped:", e.message); }
+}
+
+/* ----- 골든 테스트: window.runAhaTests() — 스펙 §5 T1~T7 ----- */
+function runAhaTests(verbose) {
+  const R = [];
+  // T1: F1 항등식 — P=R=1→1, P=R=0→0(가드)
+  const f1a = AHA_STATS.f1(1, 1), f1b = AHA_STATS.f1(0, 0);
+  R.push({ test: "T1 · F1 항등식 (P=R=1→1, P=R=0→0 가드)", actual: `f1(1,1)=${f1a}, f1(0,0)=${f1b}`, pass: f1a === 1 && f1b === 0 ? "✓" : "✗" });
+
+  // T2: bestThreshold 단조 — 완전 분리 신호(k>=k0에서 target=1, 그 외 target=0) → bestK=k0, F1=1
+  const N2 = 200, k0 = 5;
+  const vals2 = Array.from({ length: N2 }, (_, i) => i % 10); // 0..9 반복
+  const targets2 = vals2.map(v => v >= k0 ? 1 : 0);
+  const idx2 = vals2.map((_, i) => i);
+  const bt2 = AHA_STATS.bestThreshold(vals2, targets2, idx2, 5);
+  R.push({ test: "T2 · bestThreshold 완전분리 (bestK=5, F1=1)", actual: `k=${bt2 ? bt2.k : "null"}, F1=${bt2 ? bt2.F1.toFixed(3) : "null"}`, pass: bt2 && bt2.k === k0 && Math.abs(bt2.F1 - 1) < 1e-9 ? "✓" : "✗" });
+
+  // T3: split 결정론 — 같은 (n,seed) → 같은 분할(재호출 byte-identical)
+  const sp1 = AHA_STATS.splitDeterministic(500, 777);
+  const sp2 = AHA_STATS.splitDeterministic(500, 777);
+  const splitIdentical = JSON.stringify(sp1) === JSON.stringify(sp2);
+  const splitCoversAll = sp1.train.length + sp1.holdout.length === 500 && new Set([...sp1.train, ...sp1.holdout]).size === 500;
+  R.push({ test: "T3 · split 결정론 (같은 seed → byte-identical, 전체 커버)", actual: `train=${sp1.train.length} holdout=${sp1.holdout.length} identical=${splitIdentical}`, pass: splitIdentical && splitCoversAll ? "✓" : "✗" });
+
+  // T4: lift 정확 — baseRate 0.5, precision 0.75 → lift 1.5
+  const liftVal = AHA_STATS.lift(0.75, 0.5);
+  R.push({ test: "T4 · lift 정확 (precision=0.75, baseRate=0.5 → 1.5)", actual: `lift=${liftVal}`, pass: Math.abs(liftVal - 1.5) < 1e-9 ? "✓" : "✗" });
+
+  // T5: support 게이트 — 전부 minSupport 미달 → 최대 support 조합 선택(크래시 없음)
+  const vals5 = [1, 1, 2, 2, 3]; const targets5 = [1, 0, 1, 0, 1]; const idx5 = [0, 1, 2, 3, 4];
+  let bt5, threw5 = false;
+  try { bt5 = AHA_STATS.bestThreshold(vals5, targets5, idx5, 1000); } catch (e) { threw5 = true; }
+  R.push({ test: "T5 · support 게이트 (전부 미달 → 최대 support 폴백, 크래시 없음)", actual: threw5 ? "THREW" : `gated=${bt5 ? bt5.gated : "null"}, support=${bt5 ? bt5.support : "null"}`, pass: !threw5 && bt5 && bt5.gated === true && bt5.support > 0 ? "✓" : "✗" });
+
+  // T6: 윈도우×k 그리드 — 좁은 윈도우(d3)에 강신호, 넓은 윈도우(d14)에 노이즈 → bestW=3 선택
+  const N6 = 300;
+  const rng6 = seededNoise(31415);
+  const targets6 = Array.from({ length: N6 }, () => rng6() + 0.5 < 0.4 ? 1 : 0);
+  const d3vals = targets6.map(t => t === 1 ? 5 : 1); // d3: 완전분리(타겟=1이면 5, 아니면 1)
+  const d14vals = Array.from({ length: N6 }, () => Math.round((rng6() + 0.5) * 10)); // d14: 순수 노이즈
+  const idx6all = targets6.map((_, i) => i);
+  const sp6 = AHA_STATS.splitDeterministic(N6, 1);
+  const windowCols6 = [{ header: "a_d3", window: 3, valuesAll: d3vals }, { header: "a_d14", window: 14, valuesAll: d14vals }];
+  const gs6 = AHA_STATS.gridSearch(windowCols6, targets6, sp6.train, sp6.holdout, 5);
+  R.push({ test: "T6 · 윈도우×k 그리드 (d3 강신호 vs d14 노이즈 → bestWindow=3)", actual: `bestWindow=${gs6 ? gs6.bestWindow : "null"}, holdoutF1=${gs6 ? gs6.holdout.F1.toFixed(3) : "null"}`, pass: gs6 && gs6.bestWindow === 3 ? "✓" : "✗" });
+
+  // T7: 컬럼 그룹핑 정규식 — invite_d7 → action=invite, window=7
+  const aw7 = ahaParseActionWindow("invite_d7");
+  const aw7b = ahaParseActionWindow("revenue_d7"); // 의도적으로 같은 정규식에 걸림(스펙 §7 — 수동 보정 대상)
+  const aw7c = ahaParseActionWindow("no_window_action"); // 매치 안 됨 → window=Infinity
+  R.push({ test: "T7 · 컬럼 그룹핑 정규식 (invite_d7 → action=invite, window=7)", actual: `${JSON.stringify(aw7)} | no-match=${JSON.stringify(aw7c)}`, pass: aw7.action === "invite" && aw7.window === 7 && aw7c.window === Infinity ? "✓" : "✗" });
+
+  if (verbose) {
+    console.log("%c=== Aha-Moment Finder · Validation Tests ===", "color: #adc6ff; font-weight: bold;");
+    console.table(R);
+    const passCount = R.filter(r => r.pass === "✓").length;
+    console.log(`%c${passCount}/${R.length} 통과`, `color: ${passCount === R.length ? '#22c55e' : '#f87171'}; font-weight: bold;`);
+  }
+  return R;
+}
+if (typeof window !== "undefined") { window.runAhaTests = runAhaTests; window.AHA_STATS = AHA_STATS; window.AHA_STATE = AHA_STATE; }
+
+/* ============================================================
  * Quality Analyzer (5-8) — 코호트 리텐션 곡선 + LTV 외삽
  * grain: cohort_date × day_offset (선택적으로 channel/country/platform 분기)
  * ============================================================ */
@@ -21428,6 +22048,11 @@ function bindCSVPageHandlers() {
     bindRegLabHandlers();
   }
 
+  // ----- 5-20: Aha-Moment Finder 핸들러 (독립 AHA_STATE, TOOL_GROUP 비참여) -----
+  if (document.getElementById("aha-file") || document.querySelector("[data-aha-role], [data-tool-analyze=\"5-20\"], [data-aha-sort], [data-aha-drill]")) {
+    bindAhaHandlers();
+  }
+
   // ----- 도구 공통: 인라인 CSV 업로드/매핑 핸들러 -----
   // dropzone(업로드 전) OR 매핑 select/리셋 버튼(업로드 후) 중 하나라도 있으면 바인딩.
   // (CSV 로드 후엔 dropzone이 숨겨지므로 dropzone만 체크하면 매핑 select가 unbound 됨)
@@ -24959,9 +25584,11 @@ const DEMO_BUILDERS = {
   "5-2": _demoEfficiencyData, "5-3": _demoEfficiencyData,
   "5-8": _demoCohortData, "5-6": _demoCreativeData,
   "5-7": _demoReadoutData, "5-15": _demoHoldoutData, "5-18": _demoMmmData,
+  "5-20": _demoAhaData,
 };
 function _applyDemoToCsvState(toolId) {
   const b = DEMO_BUILDERS[toolId]; if (!b) return;
+  if (toolId === "5-20") { ahaLoadDemoData(b()); return; }
   const d = b();
   CSV_STATE.fileName = d.fileName; CSV_STATE.raw = d.rows; CSV_STATE.headers = d.headers;
   CSV_STATE.mapping = {}; d.headers.forEach(h => CSV_STATE.mapping[h] = h); if (CSV_STATE.selectedCohort == null) CSV_STATE.selectedCohort = 7;
@@ -24980,10 +25607,13 @@ function enterDemo(toolId) {
   DEMO_STATE.tool = toolId;
   DEMO_STATE.page = (location.hash || "").replace(/^#/, "") || "home";
   if (toolId === "5-18") MMM_METH_STATE.stage = "diagnose";
+  if (toolId === "5-20") _applyDemoToCsvState("5-20");
   navigate(DEMO_STATE.page);
 }
 function exitDemo() {
-  const page = DEMO_STATE.page; DEMO_STATE.tool = null; DEMO_STATE.page = null;
+  const page = DEMO_STATE.page; const toolId = DEMO_STATE.tool;
+  DEMO_STATE.tool = null; DEMO_STATE.page = null;
+  if (toolId === "5-20") { AHA_STATE.fileName = null; AHA_STATE.rows = []; AHA_STATE.headers = []; AHA_STATE.colMap = {}; AHA_STATE.analyzedSig = null; AHA_CACHE.key = null; }
   navigate(page || "home");
 }
 function renderDemoButton(toolId) {
