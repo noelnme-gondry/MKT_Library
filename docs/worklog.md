@@ -40,8 +40,16 @@
 - **근본원인**: 전역 CSS `table.data tbody td{vertical-align:top}`가 `<td>`에만 적용되고 `<th>`엔 안 먹어 기본값(middle)로 어긋남. → CLAUDE.md §7에 함정 기재 완료.
 - **심볼**: `renderSegmentMatrix()` → `renderSegmentMatrix(metric)`로 파라미터화(no-arg 호출부 없음을 Grep으로 확인), `monSegmentBody()`에서 `metBtns` cost 필터 + 2회 호출(선택 지표 + 고정 `"cost"`).
 - **검증**: syntax check 통과, conflict marker 0, `renderSegmentMatrix()` no-arg 잔존 호출 없음(Grep), 독립 Node 하네스로 `runSegmentTests(false)` 5/5 PASS.
-- **상태**: **아직 git add/commit 안 됨** (diff만 확인). `git diff --stat -- index.html` → `1 file changed, 10 insertions(+), 8 deletions(-)`.
+- **상태**: 커밋 완료 — `356aee4`(index.html+CLAUDE.md+mkt-engineer.md+worklog 4파일, syntax/conflict-marker 확인 후).
 - **하네스 업데이트**: CLAUDE.md §7에 vertical-align 함정 추가 완료(2026-06-25).
+
+### 2026-06-25 — 5-20 업로드 UI 표준화 (다른 도구와 통일)
+- **무엇**: Aha-Moment Finder §0 데이터 업로드를 `.ab-form-grid`/플레인 `<input>` 방식 → 표준 `.dropzone`(아이콘·타이틀·서브텍스트·drag&drop) + 데모 버튼 + 접이식 가이드로 교체. 다른 분석도구(`renderInlineCsvUpload` 패턴)와 시각적으로 통일.
+- **왜**: 사용자 피드백 — "데이터 업로드 CSV 파트가 다른 곳이랑 너무 다르다, 다른 거랑 아예 맞춰줘라" (스크린샷 비교).
+- **근본 발견**: `ahaUploadSection()`엔 죽은 `hasFile` 분기가 있었음(파일 로드 후엔 `page_5_20`이 항상 별도 함수 `ahaMappingSection()`을 호출하므로 그 분기는 도달 불가) — 제거.
+- **심볼**: `ahaUploadSection()`(line ~17363, dropzone 마크업 + `data-aha-dropzone`), `bindAhaHandlers()`에 `parseAhaFile` 헬퍼 추출 + dropzone click/dragover/dragleave/drop 바인딩 추가.
+- **검증**: syntax check 통과, conflict marker 0, Playwright headless로 `ahaUploadSection()` 렌더 결과 스크린샷 확인(표준 dropzone과 시각적으로 일치), 데모 모드 진입까지 콘솔 에러 없음.
+- **부수 조사 (미해결, 재현 안 됨)**: "다크 모드엔 보이는 좌상단 브랜드명이 라이트 모드 스크린샷엔 안 보인다"는 피드백 — 현재 브랜치 코드(`index.html:218` `.brand-name`, `body.light-mode` 변수)를 Playwright로 라이트/다크 양쪽 렌더 확인했으나 **재현 안 됨**(양쪽 모두 정상 표시). 배포본(production)이 이 브랜치보다 오래된 버전이거나 캐시 문제일 가능성 — 사용자에게 재확인 요청 필요.
 
 ---
 

@@ -17361,26 +17361,29 @@ function ahaLoadDemoData(d) {
 
 /* ----- UI 렌더 ----- */
 function ahaUploadSection() {
-  const hasFile = AHA_STATE.headers.length > 0;
   const sample = "user_id,target,invite_d0,invite_d3,invite_d7,invite_d14\nu1,1,1,4,5,6\nu2,0,0,1,1,2\nu3,1,2,5,6,7";
+  const guide = `<details style="margin-top:12px;">
+      <summary style="cursor:pointer;color:var(--text-muted);font-weight:500;font-size:12px;">📋 CSV 형식 예시 펼치기</summary>
+      <pre style="margin-top:6px;padding:8px 10px;background:var(--bg-1);border-radius:8px;font-size:11.5px;overflow:auto;">${escapeHtml(sample)}</pre>
+    </details>`;
+
   return `<section class="block" id="s-aha-upload">
     <h2 class="section-title"><span class="ix">§0</span>데이터 업로드</h2>
     <p class="muted">유저 1명당 1행. 가입일·이벤트일 컬럼 <strong>없음</strong> — 각 후보 액션은 윈도우별 누적 count 컬럼 묶음(<code class="inline">invite_d0, invite_d3, invite_d7, invite_d14</code>). 헤더가 <code class="inline">{action}_d{N}</code> 형태면 자동으로 액션·윈도우를 파싱합니다. 데이터는 브라우저 메모리에만 — 서버 전송 없음.</p>
-    <div class="ab-form-grid" style="align-items:flex-start;">
-      <div class="ab-field" style="grid-column:1/-1;">
-        <label>CSV 업로드</label>
-        <input id="aha-file" type="file" accept=".csv,text/csv" />
-        <span class="ab-field-hint">user_id(미사용·중복검증용) · target(0/1) · 액션 윈도우 컬럼들.</span>
+    <div class="dropzone" data-aha-dropzone>
+      <div class="dropzone-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
       </div>
-      <div class="ab-field">
-        ${renderDemoButton("5-20")}
-        ${hasFile ? `<span class="ab-field-hint">현재: ${escapeHtml(AHA_STATE.fileName)} (${AHA_STATE.rows.length.toLocaleString()}행)</span>` : ""}
-      </div>
+      <div class="dropzone-title">CSV 파일을 드래그하거나 클릭해서 업로드</div>
+      <div class="dropzone-sub">UTF-8 인코딩, 첫 행이 헤더인 .csv 파일. user_id(미사용) · target(0/1) · 액션 윈도우 컬럼들.</div>
+      <input id="aha-file" type="file" accept=".csv,text/csv" class="file-input" />
     </div>
-    <details style="margin:6px 0 4px;">
-      <summary style="cursor:pointer;font-size:11.5px;color:var(--text-muted);">CSV 형식 예시 펼치기</summary>
-      <pre style="margin-top:6px;padding:8px 10px;background:var(--bg-1);border-radius:8px;font-size:11.5px;overflow:auto;">${escapeHtml(sample)}</pre>
-    </details>
+
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      ${renderDemoButton("5-20")}
+      <span style="font-size:11.5px;color:var(--text-muted);">데이터가 없어도 샘플로 이 도구가 어떻게 보이는지 미리 볼 수 있어요. <strong>실제 분석엔 영향 없음.</strong></span>
+    </div>
+    ${guide}
   </section>`;
 }
 function ahaRoleSelectOptions(selected) {
@@ -17599,14 +17602,26 @@ function downloadAhaCsv() {
 }
 function bindAhaHandlers() {
   const fileEl = document.getElementById("aha-file");
+  const parseAhaFile = (file) => {
+    if (!file) return;
+    Papa.parse(file, { header: true, dynamicTyping: false, skipEmptyLines: true, complete: (res) => {
+      const headers = res.meta.fields || [];
+      ahaLoadRows(res.data, headers, file.name);
+      navigate("5-20");
+    } });
+  };
   if (fileEl) {
-    fileEl.addEventListener("change", (e) => {
-      const file = e.target.files[0]; if (!file) return;
-      Papa.parse(file, { header: true, dynamicTyping: false, skipEmptyLines: true, complete: (res) => {
-        const headers = res.meta.fields || [];
-        ahaLoadRows(res.data, headers, file.name);
-        navigate("5-20");
-      } });
+    fileEl.addEventListener("change", (e) => parseAhaFile(e.target.files[0]));
+  }
+  const dz = document.querySelector("[data-aha-dropzone]");
+  if (dz) {
+    dz.addEventListener("click", (e) => { if (e.target.tagName !== "INPUT") fileEl?.click(); });
+    dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("dragover"); });
+    dz.addEventListener("dragleave", () => dz.classList.remove("dragover"));
+    dz.addEventListener("drop", e => {
+      e.preventDefault();
+      dz.classList.remove("dragover");
+      parseAhaFile(e.dataTransfer?.files?.[0]);
     });
   }
   document.querySelectorAll("[data-aha-reset]").forEach(b => b.addEventListener("click", () => {
