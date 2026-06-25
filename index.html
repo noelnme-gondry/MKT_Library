@@ -17378,9 +17378,44 @@ function ahaUploadSection() {
         ${hasFile ? `<span class="ab-field-hint">현재: ${escapeHtml(AHA_STATE.fileName)} (${AHA_STATE.rows.length.toLocaleString()}행)</span>` : ""}
       </div>
     </div>
-    <details style="margin:6px 0 4px;">
-      <summary style="cursor:pointer;font-size:11.5px;color:var(--text-muted);">CSV 형식 예시 펼치기</summary>
-      <pre style="margin-top:6px;padding:8px 10px;background:var(--bg-1);border-radius:8px;font-size:11.5px;overflow:auto;">${escapeHtml(sample)}</pre>
+    <details style="margin-top:12px;">
+      <summary style="cursor:pointer;color:var(--text-muted);font-weight:500;font-size:12px;">📋 전체 컬럼·기능 안내 (alias 포함)</summary>
+      <div class="table-wrap" style="margin-top:8px;">
+        <table class="data" style="font-size:12px;">
+          <thead>
+            <tr>
+              <th>구분</th>
+              <th>표준 필드</th>
+              <th>타입</th>
+              <th>매핑 상태</th>
+              <th>활성화되는 기능 / 별칭 예시</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="chip danger" style="font-size:11px;padding:2px 8px;"><span class="dot"></span>필수</span></td>
+              <td><strong>타겟(0/1)</strong> <code class="inline" style="font-size:10px;color:var(--text-muted);">target</code></td>
+              <td class="tnum">number</td>
+              <td><span style="color:var(--text-muted);">—</span></td>
+              <td style="color:var(--text-muted);font-size:11px;">윈도우×k 그리드 탐색 기준 / 별칭: y, label, is_converted, 타겟, converted</td>
+            </tr>
+            <tr>
+              <td><span class="chip danger" style="font-size:11px;padding:2px 8px;"><span class="dot"></span>필수 1개+</span></td>
+              <td><strong>선행 행동 컬럼</strong> <code class="inline" style="font-size:10px;color:var(--text-muted);">{action}_d{N}</code></td>
+              <td class="tnum">number</td>
+              <td><span style="color:var(--text-muted);">—</span></td>
+              <td style="color:var(--text-muted);font-size:11px;"><code class="inline" style="font-size:10px;">_d{N}</code> suffix 자동 파싱 → 액션·윈도우 그룹 / 예: invite_d7, like_d14, message_d0</td>
+            </tr>
+            <tr>
+              <td><span class="chip" style="font-size:11px;padding:2px 8px;background:var(--bg-3);color:var(--text-muted);">옵션</span></td>
+              <td><strong>유저 ID</strong> <code class="inline" style="font-size:10px;color:var(--text-muted);">user_id</code></td>
+              <td class="tnum">string</td>
+              <td><span style="color:var(--text-muted);">—</span></td>
+              <td style="color:var(--text-muted);font-size:11px;">중복 행 검증용 (결과에 미영향) / 별칭: user, uid, id</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </details>
   </section>`;
 }
