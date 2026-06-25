@@ -18,6 +18,31 @@
   - **업로드 시**: 둘로 분리 PR. poly2 = 5-3 영역 hunk(`@@ 6444 / 6569 / 7082(ALLOC_MATH) / 7196(ALLOC_STATE) / 20293~22963`), GA4 = `navigate`(tool_view content_type) + `bindAnalytics`(gaContentType·sop_copy·scroll_depth, 약 19718~19790).
   - 이후 안티그래비티 작업은 이 위에 쌓이므로, 업로드 시점에 통합 분리.
 
+- **⚠ 별도 브랜치 `claude/jolly-curie-4zjla6`의 GitHub 권한 차단**: 이 클라우드 컨테이너의 GitHub 자격증명이 `noelnme-gondry/MKT_Library`에 **읽기조차 안 됨**(git push 403 + MCP `get_file_contents`/`list_branches` 404, `get_me`는 성공 — 즉 인증은 되는데 이 레포에 대한 권한이 없음). 이 브랜치 위 커밋들은 patch 파일로 추출해 사용자에게 전달하는 방식으로 핸드오프 중(아래 "패치 핸드오프" 절 참조). poly2/GA4 워크로그(위)와는 **다른 브랜치·다른 차단 원인**이므로 혼동 주의.
+
+---
+
+## 패치 핸드오프 — `claude/jolly-curie-4zjla6` 브랜치 (이 컨테이너, GitHub 권한 차단)
+
+> 이 섹션은 위 안티그래비티 워크로그와 별개. 이 컨테이너에서 작업한 내용은 `main`에 push가 안 되므로,
+> 완료된 작업을 모아 **patch 파일**로 추출해 사용자가 다른 계정/세션에 적용하게 한다.
+> PR 준비되면 아래 "적용할 파일" 항목을 그대로 안내.
+
+### 2026-06-25 — 5-20 Aha-Moment Finder (윈도우×k 그리드 탐색)
+- **무엇**: 신규 분석도구 5-20 "Aha-Moment Finder" — 사용자 행동 데이터에서 리텐션과 가장 상관관계 높은 "초기 행동 윈도우 × 횟수(k)" 조합을 그리드 탐색.
+- **커밋**: `35e9f19`(설계 스펙) → `5c1565f`(스펙 갱신: wide 멀티윈도우) → `8501b3d`(구현: 윈도우×k 그리드 탐색).
+- **검증**: syntax check 통과, `window.runAhaTests()` 등 골든 테스트 통과(구현 커밋 시점 확인됨).
+- **하네스 업데이트**: 미반영 — 다음 커밋에서 CLAUDE.md §3/§13(신규 도구 등록)·mkt-engineer.md에 보강 필요.
+- **패치**: `main..claude/jolly-curie-4zjla6 -- index.html docs/aha-moment-finder-spec.md` 추출본을 `SendUserFile`로 전달함(2026-06-25, 1786 insertions/100 deletions, 8개 커밋 전체 포함). 사용자가 다른 계정에 적용 시 이 patch 1개로 5-20 전체 + 본 worklog 이전 작업까지 한꺼번에 들어감(브랜치 전체 diff이기 때문 — 개별 분리 아님).
+
+### 2026-06-25 — 5-12 Segment Explorer Cost 고정 + 정렬 수정 (미커밋)
+- **무엇**: §1 세그먼트 효율 매트릭스(5-12) ① Cost를 지표 선택 pill에서 제외(CPI/CPA/ROAS/CTR/CVR만 선택) ② "Cost 분배 (고정)" 섹션을 선택 지표와 무관하게 항상 하단에 추가 렌더 ③ 행 헤더(`<th>`, 국가 라벨) vertical-align 불일치 수정.
+- **근본원인**: 전역 CSS `table.data tbody td{vertical-align:top}`가 `<td>`에만 적용되고 `<th>`엔 안 먹어 기본값(middle)로 어긋남. → CLAUDE.md §7에 함정 기재 완료.
+- **심볼**: `renderSegmentMatrix()` → `renderSegmentMatrix(metric)`로 파라미터화(no-arg 호출부 없음을 Grep으로 확인), `monSegmentBody()`에서 `metBtns` cost 필터 + 2회 호출(선택 지표 + 고정 `"cost"`).
+- **검증**: syntax check 통과, conflict marker 0, `renderSegmentMatrix()` no-arg 잔존 호출 없음(Grep), 독립 Node 하네스로 `runSegmentTests(false)` 5/5 PASS.
+- **상태**: **아직 git add/commit 안 됨** (diff만 확인). `git diff --stat -- index.html` → `1 file changed, 10 insertions(+), 8 deletions(-)`.
+- **하네스 업데이트**: CLAUDE.md §7에 vertical-align 함정 추가 완료(2026-06-25).
+
 ---
 
 ## 2026-06-21~22 — poly2 예산배분(5-3) 안전장치 4종 (안티그래비티)

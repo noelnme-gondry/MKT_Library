@@ -20089,22 +20089,24 @@ function monSegmentBody(){
             const ok=av.has(k);
             return `<button class="ab-pill ${cur===k?'active':''} ${!ok?'disabled':''}" ${ok?`data-seg-${role}="${k}"`:'disabled'}>${l}${!ok?' 🔒':''}</button>`;
           }).join("");
-          const metBtns=Object.entries(SEGMENT_METRICS).map(([k,v])=>`<button class="ab-pill ${SEGMENT_STATE.metric===k?'active':''}" data-seg-metric="${k}">${v.label}</button>`).join("");
+          const metBtns=Object.entries(SEGMENT_METRICS).filter(([k])=>k!=="cost").map(([k,v])=>`<button class="ab-pill ${SEGMENT_STATE.metric===k?'active':''}" data-seg-metric="${k}">${v.label}</button>`).join("");
           return `
             <div class="ab-pillgroup"><span class="ab-pillgroup-label">행 축</span>${axisBtns("row",SEGMENT_STATE.rowAxis)}</div>
             <div class="ab-pillgroup"><span class="ab-pillgroup-label">열 축</span>${axisBtns("col",SEGMENT_STATE.colAxis)}</div>
             <div class="ab-pillgroup"><span class="ab-pillgroup-label">지표</span>${metBtns}</div>`;
         })()}
-        ${renderSegmentMatrix()}
+        ${renderSegmentMatrix(SEGMENT_STATE.metric)}
+        <h3 style="font-size:13px;font-weight:600;margin:20px 0 8px;color:var(--text-muted);">Cost 분배 (고정)</h3>
+        ${renderSegmentMatrix("cost")}
       </section>
     `;
 }
-function renderSegmentMatrix(){
-  const c=SEGMENT_CACHE; const met=SEGMENT_METRICS[SEGMENT_STATE.metric];
+function renderSegmentMatrix(metric){
+  const c=SEGMENT_CACHE; const met=SEGMENT_METRICS[metric];
   if(!c.grid||!c.rows.length)return "<p class='muted'>데이터 없음</p>";
   // 색 스케일: 유효값 모아 min/max → better 방향에 따라 초록/빨강
   const vals=[];
-  c.grid.forEach(row=>row.forEach(cell=>{ if(cell){const v=segmentMetricValue(cell,SEGMENT_STATE.metric); if(v!=null&&isFinite(v))vals.push(v);} }));
+  c.grid.forEach(row=>row.forEach(cell=>{ if(cell){const v=segmentMetricValue(cell,metric); if(v!=null&&isFinite(v))vals.push(v);} }));
   const vmin=Math.min(...vals), vmax=Math.max(...vals), span=(vmax-vmin)||1;
   const cellBg=(v)=>{
     if(v==null||!isFinite(v)||met.better==="none")return "transparent";
@@ -20114,10 +20116,10 @@ function renderSegmentMatrix(){
     const g=Math.round(34+(t)*(180-34)), r=Math.round(248-(t)*(248-60));
     return `rgba(${r},${g},90,0.18)`;
   };
-  const header=`<tr><th style="background:var(--bg-2);">${escapeHtml(SEGMENT_STATE.rowAxis)} ↓ \\ ${escapeHtml(SEGMENT_STATE.colAxis)} →</th>${c.cols.map(ck=>`<th style="background:var(--bg-2);">${escapeHtml(String(ck).slice(0,16))}</th>`).join("")}</tr>`;
-  const body=c.grid.map((row,i)=>`<tr><th style="background:var(--bg-2);text-align:left;">${escapeHtml(String(c.rows[i]).slice(0,20))}</th>${row.map(cell=>{
+  const header=`<tr><th style="background:var(--bg-2);vertical-align:middle;">${escapeHtml(SEGMENT_STATE.rowAxis)} ↓ \\ ${escapeHtml(SEGMENT_STATE.colAxis)} →</th>${c.cols.map(ck=>`<th style="background:var(--bg-2);vertical-align:middle;">${escapeHtml(String(ck).slice(0,16))}</th>`).join("")}</tr>`;
+  const body=c.grid.map((row,i)=>`<tr><th style="background:var(--bg-2);text-align:left;vertical-align:top;">${escapeHtml(String(c.rows[i]).slice(0,20))}</th>${row.map(cell=>{
     if(!cell)return `<td style="color:var(--text-muted);">—</td>`;
-    const v=segmentMetricValue(cell,SEGMENT_STATE.metric);
+    const v=segmentMetricValue(cell,metric);
     return `<td class="tnum" style="background:${cellBg(v)};">${met.fmt(cell)}<div style="font-size:9px;color:var(--text-muted);">${fmtCurrency(cell.cost)}</div></td>`;
   }).join("")}</tr>`).join("");
   return `<div class="table-wrap"><table class="data" style="font-size:11px;">${header}${body}</table></div>
