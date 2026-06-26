@@ -107,6 +107,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     --warning: #fbbf24;   /* Warm Gold */
     --info: #60a5fa;
 
+    /* Code block syntax colors — dark mode 기본값 (라이트 모드는 body.light-mode 에서 재정의) */
+    --code-text: #e6e8ec;
+    --code-keyword: #c792ea;
+    --code-string: #c3e88d;
+    --code-number: #f78c6c;
+    --code-comment: #6B7280;
+    --code-type: #82aaff;
+    --code-attr: #ffcb6b;
+
     --radius-default: 0.125rem;
     --radius-lg: 0.25rem;
     --radius-xl: 0.5rem;
@@ -156,6 +165,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     --danger: #dc2626;    /* Dark Red */
     --warning: #d97706;   /* Dark Gold */
     --info: #2563eb;
+
+    /* Code block syntax colors — 라이트 배경(--surface-container-lowest: #fff) 위에서 읽히는 어두운 톤 */
+    --code-text: #1f2430;
+    --code-keyword: #8b3fc9;
+    --code-string: #15803d;
+    --code-number: #c2410c;
+    --code-comment: #6b7280;
+    --code-type: #1d4ed8;
+    --code-attr: #b45309;
   }
 
   * { box-sizing: border-box; }
@@ -679,7 +697,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   }
   .summary p { color: var(--text-primary); margin: 0; line-height: 22px; }
 
-  /* Code block */
+  /* Code block — 배경은 테마 변수 그대로(다크/라이트 다 따라감), 텍스트만 테마별 코드색 변수로 고정 */
   .code-block {
     background: var(--surface-container-lowest);
     border: 1px solid var(--border-subtle);
@@ -728,17 +746,17 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     font-family: var(--font-mono);
     font-size: 12.5px;
     line-height: 1.65;
-    color: #e6e8ec;
+    color: var(--code-text);
     overflow-x: auto;
     white-space: pre;
   }
-  pre .k { color: #c792ea; }
-  pre .s { color: #c3e88d; }
-  pre .n { color: #f78c6c; }
-  pre .c { color: #6B7280; font-style: italic; }
-  pre .t { color: #82aaff; }
+  pre .k { color: var(--code-keyword); }
+  pre .s { color: var(--code-string); }
+  pre .n { color: var(--code-number); }
+  pre .c { color: var(--code-comment); font-style: italic; }
+  pre .t { color: var(--code-type); }
   pre .p { color: var(--text-muted); }
-  pre .a { color: #ffcb6b; }
+  pre .a { color: var(--code-attr); }
 
   /* Tables */
   .table-wrap {
@@ -3243,24 +3261,17 @@ const IA = [
   },
   {
     id: "10",
-    title: "마케팅 반응 회귀 (MMM)",
-    subtitle: "주간 per-platform · 가설 생성용 (인과 아님)",
+    title: "고급 분석",
+    subtitle: "MMM 마케팅 반응 회귀 + 유저 행동 Aha-moment 탐색 · 가설 생성용 (인과/holdout 아님)",
     items: [
       { id: "5-18", title: "마케팅 반응 분석", desc: "4탭: 카니발 진단 · Trend Forecast(예산 예측) · MMM 기여 분해 · 범용 회귀(Lab) (가설용·holdout 아님)" },
-    ],
-  },
-  {
-    id: "11",
-    title: "행동 분석",
-    subtitle: "유저 행동 → Aha-moment 탐색",
-    items: [
       { id: "5-20", title: "Aha-Moment Finder", desc: "선행 행동 윈도우×횟수 그리드 탐색 — F1/Lift로 타겟 달성과 가장 강한 연관 찾기 (가설용·홀드아웃 아님)" },
     ],
   },
 ];
 
 /* Ops Dashboard(운영) 그룹 id 집합 — 가이드/도구 카운트 구분용 */
-const OPS_GROUP_IDS = new Set(["05", "06", "07", "10", "11"]);
+const OPS_GROUP_IDS = new Set(["05", "06", "07", "10"]);
 
 /* ========== Marketing Phases (사용자 여정 기준) ========== */
 const PHASES = [
@@ -3647,7 +3658,7 @@ const TOOL_TIER = { "5-2": "free", "5-3": "pro", "5-6": "pro", "5-4": "pro", "5-
 function toolTier(id) { return TOOL_TIER[id] || "pro"; }
 
 // 분석 트랙 그룹 아이콘 (IA가 source of truth — 새 그룹 생길 때만 1줄 추가, drift 위험 낮음. §D1)
-const GROUP_ICONS = { "05": "📊", "06": "🎨", "07": "🧪", "10": "📈", "11": "🎯" };
+const GROUP_ICONS = { "05": "📊", "06": "🎨", "07": "🧪", "10": "📈" };
 
 function tierBadge(tier) {
   return tier === "free"
@@ -25934,7 +25945,7 @@ function _demoMmmData() {
 // csvTool → 데모 데이터 빌더 (효율 grain은 5-2/5-3 공유; 5-9는 5-2로 통합)
 const DEMO_BUILDERS = {
   "5-2": _demoEfficiencyData, "5-3": _demoEfficiencyData,
-  "5-8": _demoCohortData, "5-6": _demoCreativeData,
+  "5-8": _demoCohortData, "5-6": _demoCreativeData, "5-21": _demoCreativeData,
   "5-7": _demoReadoutData, "5-15": _demoHoldoutData, "5-18": _demoMmmData,
   "5-20": _demoAhaData,
 };
