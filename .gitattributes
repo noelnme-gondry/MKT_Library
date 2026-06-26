@@ -1,0 +1,8 @@
+# 깃 충돌 시 CLAUDE.md는 항상 현재 작업 중인 브랜치(ours) 버전을 우선한다.
+# main의 squash-merge로 장수 브랜치와 히스토리가 갈려도, 하네스 메모리(CLAUDE.md)가
+# 과거 버전으로 덮어써지는 것을 방지하기 위한 설정.
+#
+# 주의: "ours" 머지 드라이버는 git 내장이 아니므로, 각 클론에서 1회 등록이 필요하다:
+#   git config merge.ours.driver true
+# (등록 안 하면 이 라인은 무시되고 일반 머지로 동작.)
+CLAUDE.md merge=ours

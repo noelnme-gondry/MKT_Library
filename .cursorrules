@@ -1,0 +1,36 @@
+# Performance Marketing Library — Cursor / AI Agent 규칙 (경량 포인터)
+#
+# 이 파일은 핵심 규칙만 발췌한 "고정 메모리"입니다. 깃 히스토리 꼬임으로 CLAUDE.md가
+# 오염돼도 여기 적힌 절대 원칙·브랜치 전략은 유지되어야 합니다.
+# 상세 규칙·아키텍처·레시피·현재 상태는 항상 ./CLAUDE.md 를 정본(SSOT)으로 참조하세요.
+
+## 절대 원칙 (NEVER 위반)
+1. 단일 HTML 파일: 모든 코드는 index.html 하나에. 별도 .js/.css 파일·빌드 도구 금지. CDN 라이브러리만.
+2. 클라이언트 사이드 100%: 사용자 CSV·마케팅 데이터는 브라우저 메모리만. 서버 전송/저장 절대 금지.
+3. Supabase service_role key 절대 요청·저장·언급 금지. anon public key(RLS 보호)만.
+4. main 직접 push 금지. 반드시 새 브랜치 → PR → squash merge.
+5. Force push to main 금지. hook skip(--no-verify) 금지.
+6. `git add -A`/`git add .` 금지. `git status` 확인 후 변경 파일만 명시적으로 stage. 외부 데이터는 먼저 .gitignore.
+7. 모호한 결정 임의 확정 금지. 합리적 선택지 2개 이상이면 사용자에게 질문.
+8. 정직성: 동작 안 하는 기능·거짓 숫자·보안모델과 모순되는 카피 금지.
+
+## 브랜치 관리 전략 (충돌 방지의 핵심)
+- main은 squash-merge 방식 → 장수 브랜치를 재사용하면 매 머지마다 index.html/CLAUDE.md 충돌 누적.
+- **새 작업 시 항상 최신 main에서 새 브랜치를 생성한다** (`git checkout main && git pull` → `git checkout -b feat/<작업명>`).
+- 과거 브랜치 재활용 금지. 작업 단위가 끝나면 PR → squash merge → 브랜치 폐기.
+- PR body: `## Summary` bullets + `## Test plan` checkboxes + Co-Authored-By 라인.
+- CLAUDE.md는 .gitattributes의 `merge=ours`로 보호됨(각 클론에서 `git config merge.ours.driver true` 등록 필요).
+
+## 기술 스택 / 아키텍처 (요약)
+- Vanilla HTML/CSS/JS. 빌드 없음. `serve . -l $PORT`가 전부.
+- CDN: Chart.js · PapaParse · Supabase JS(anon RPC) · SheetJS · Google Fonts(Inter/JetBrains Mono).
+- Hash 라우팅(`#5-3`) + `PAGE_RENDERERS[id]` 디스패치. 내부 id(`5-2`)는 절대 불변(표시번호만 `displayItemNumber`).
+- 통계 순수함수는 객체로 모음(`PVM_MATH`·`MMM_STATS`·`ALLOC_MATH`·`CANNIBAL_STATS`) + `runXxxTests()` 골든.
+- 결정론 필수: `Math.random` 금지, 같은 입력 → byte-동일.
+
+## 작업 전 필수 체크
+- 변경 후 syntax check: <script> 추출(ld+json 제외) → `new Function(total)`.
+- 해당 도구 validation test(`runPvmTests` 등) 통과 확인 후 commit.
+- conflict marker 없음(`grep -n "^<<<<<<<" index.html`).
+
+상세·최신 상태는 CLAUDE.md 정본 참조.
