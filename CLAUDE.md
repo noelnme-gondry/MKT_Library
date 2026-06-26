@@ -227,6 +227,7 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 - **log-log 탄력성 적합은 타깃에 0/빈값 1개만 있어도 전체가 NaN** (PR #82, 5-18): `target.map(Math.log)`에서 `log(0)=-Inf`(또는 빈값→num이 0으로)가 AR1 적합 전체를 오염 → **모든 채널 elas=NaN·p=1**(faRaw 기반 "주당 인원"은 멀쩡해 진단이 헷갈림). 수정: `_mmmLogFitAR1`로 **타깃≤0·비유한 주차를 제외**(log(0)은 관측 불가라 통계적으로 정당). 타깃 전부 양수면 모든 행 유지 → Tinder/골든 byte-동일. 임의 데이터(초기 램프·휴면 0주)에서 흔함. semi-log raw 적합(faRaw)은 0이 정상값이라 제외 불필요.
 - **공용 `table.data tbody td{vertical-align:top}` 규칙은 `<th>`엔 안 먹음** (5-12 Segment Explorer): 커스텀 데이터 테이블이 행 헤더를 `<th>`로 쓰면 그 셀은 브라우저 기본값(`middle`)을 따라 옆 `<td>`(top)와 시각적으로 어긋남. row-header `<th>`에도 명시적으로 `vertical-align` 지정 필요(헤더행은 middle, 행라벨은 top로 값 셀과 맞춤).
 - **렌더 함수에 `hasFile`류 분기 추가 전 실제 호출부 확인** (5-20 Aha-Moment Finder, PR 미머지): `ahaUploadSection()`(empty-state 전용)에 "파일 로드 후" 분기를 추가했었으나 `page_5_20()`은 파일 로드 시 항상 별도 함수 `ahaMappingSection()`을 호출 → 그 분기는 영원히 도달 불가한 죽은 코드였음. **교훈**: 함수에 상태별 분기 추가 전 그 함수의 실제 호출 지점(누가 어떤 조건으로 부르는지)을 먼저 확인할 것. 업로드 UI는 다른 도구와 통일하려면 `renderInlineCsvUpload` 표준 `.dropzone`(아이콘·드래그앤드롭·데모버튼·접이식가이드) 마크업을 그대로 복제 + 도구 전용 `data-*`(예: `data-aha-dropzone`) 핸들러로 바인딩(`CSV_STATE` 비사용 도구는 제너릭 바인더 재사용 불가).
+- **단계 독립 Bennet은 grain별 부분합 비정합 → 드릴다운 정합 필요 시 최소 grain 롤업** (PR #190, 5-21): 채널/캠페인/소재 단계마다 따로 Bennet 분해하면 합산 grain이 달라 §2 채널 Σ ≠ §3 캠페인 Σ가 됨. 최소 grain(채널×캠페인×소재×일)에서 한 번만 분해 후 상위로 `rollup`(단순 합산)해야 모든 단계가 항등식으로 정합.
 
 ---
 
@@ -511,6 +512,9 @@ SPA(해시 라우팅 `#5-N`)에 GA 이벤트 다는 법. ① gtag.js는 `<head>`
 - **리텐션 표 재설계(사용자: "설치수 컬럼 불필요·코호트라 다 같음, 설치 vs registration 정해야, D0~D360 잔존율+잔존인원")**: `WIDE_RET_STATE.anchor`(installs|actions) 토글 추가 — `wgtCurve`가 anchor 모수로 가중·base 계산, `survivors=round(rate×n)` 필드 추가. §1 표에서 **설치 수 제거 → 잔존 유저 수**(가입 기준이면 "잔존 가입자 수"), 라벨·모수 토글로 전환. 표는 ad-hoc 인라인 th `text-align` 대신 **`class="data"`+`tnum`**으로 정렬 일관화(헤더 우측+값 우측). `MON_FILTER_KEY()`를 cache key에 넣어 필터에도 반응(기존엔 `_monInvalidateCaches`가 WIDE_RET_CACHE를 안 건드려 미반영이던 버그도 해소).
 - **세그먼트 차트 호버**: Chart 옵션에 `interaction:{mode:"index",intersect:false}` + dataset `_surv`(잔존 인원) 실어 툴팁이 "라벨: N% · 잔존 유저 M명" 표시(겹친 라인도 index 모드로 전부 노출).
 - **⚠ 거짓 마케팅 문구·가짜 인증 금지(사용자: "클라우드 저장 안 하는 게 우리 보안 강점인데 왜 그런 말을 해")**: 리드 모달이 "분석 결과는 클라우드에 자동 백업" + **가짜 Google 로그인**(`handleMockGoogleLogin`=setTimeout만, 실제 인증 0)이었음 → §2 클라이언트 100% 원칙과 정면 모순. **수정: 클라우드 문구 삭제 + "CSV는 브라우저 메모리에서만 처리·서버 미전송"을 보안 강점으로 명시, mock Google 로그인 제거 → 실제 동선(Instagram DM @gondry__workshop, 기존 페이월과 동일)으로 교체.** 외부 노출 카피에 동작하지 않는 기능·우리 보안 모델과 모순되는 문구를 넣지 말 것. validate_retention 21/21. 브라우저 검증 완료.
+
+### 12.41 5-21 PVM 중첩 분해 — 최소 grain 롤업 + 기간 파라미터 (PR #190)
+최소 grain(채널×캠페인×소재×일)에서 Bennet(mix/rate) 분해 1회(`decomposeFinest`) 후 `rollup`으로 합산해 §2 채널→§3 캠페인→§4 소재(모드 A) 드릴다운이 항등식으로 정합(Σ§2=Σ§3=Σ§4). 단계별 독립 분해는 grain 다르면 부분합 불일치라 폐기. 기간 선택은 `weekBasis`(calendar/rolling7) × `lookback`(1/2/3) 파라메트릭. ₩/$ 토글은 표시층 전용(`pvmFmtMoney`). 모드 B(`crMode:"creativeOnly"`)는 의도적으로 비중첩(소재 단독 partition). `window.runPvmTests()` 33/33.
 
 ## 13. 참고 파일
 
