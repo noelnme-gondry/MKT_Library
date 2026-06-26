@@ -64,6 +64,7 @@ tools:
 - centered MA 경계 NaN → LOESS 사용 또는 boundary handling
 - 페이지 비활성 시 redirect만 남기지 말고 죽은 `page_5_N()` + `PAGE_RENDERERS` 등록 통째 삭제 (잔존 중복 id·공유 클래스가 cross-page 핸들러 버그 불씨, PR #33/#34)
 - 공용 `table.data tbody td{vertical-align:top}`는 `<th>`엔 안 먹음 — 행헤더를 `<th>`로 쓰는 커스텀 테이블은 명시적 vertical-align 지정 필요 (5-12)
+- 단계 독립 Bennet 분해는 grain별 부분합 비정합 → 드릴다운 정합 필요 시 최소 grain에서 1회 분해 후 `rollup` (5-21 PVM, PR #190)
 
 # 도구 추가 패턴
 
@@ -88,6 +89,8 @@ tools:
 도구 통합 탭형 병합(SaaS, PR#132~137, 17→6): 같은/다른 grain 도구를 host `page_5_N` 탭으로. 흡수 `page_5_M()`→`monXxxBody()`(섹션만·게이트/pageShell/s-prep 제거)+등록 삭제, `XXX_TAB_STATE`+`data-xxx-tab`+redirect+IA·AUTH 정리, bind/chart/math 함수 유지(DOM-gate 자동발화). **cross-grain**: `loadCsvFromTool(csvTool)` 탭별 스왑(저장없이 로드만 안전) — 단 흡수 도구가 grain 다르면 `TOOL_GROUP`을 distinct로(같으면 findGroupCsvSnapshot 폴백이 잘못된 CSV 끌어옴). **실험 분석(PR#137)**: 5-4+5-7+5-15→`page_5_4` 3탭(design 무CSV/readout/holdout). **결과표 강화**=`renderReadoutMatrix` arm×지표 비교 매트릭스(상대lift·★·P(B>A)·95%CI·🏆winner·색) + detail/holdout unpooled 95%CI. render층만→골든·runReadoutTests/runIncrTests byte-동일. validate_exp 20/20.
 
 SaaS 셸(PR#139~142): 랜딩 2단계(LANDING_STATE.track)·freemium 티어(TOOL_TIER, 5-2 free)·Pro 페이월(pageAuthGate 블러+Instagram DM @gondry__workshop)·⌘K 팔레트(CMDK_STATE, 전역 오버레이). 전부 render층→골든 byte-동일. **남음(보류)**: 전역 데이터 필터·매핑 DnD(둘 다 침습적·headless 검증 불가).
+
+5-21 PVM 중첩 분해(PR #190): 최소 grain(채널×캠페인×소재×일)에서 Bennet(mix/rate) 분해 1회(`decomposeFinest`) 후 `rollup`으로 §2 채널→§3 캠페인→§4 소재(모드 A) 드릴다운 항등식 정합(Σ§2=Σ§3=Σ§4). 단계 독립 분해는 grain 다르면 부분합 불일치라 폐기. 기간 `weekBasis`(calendar/rolling7)×`lookback`(1/2/3), ₩/$ 토글(`pvmFmtMoney`, 표시층 전용). 모드 B(`crMode:"creativeOnly"`)는 의도적 비중첩(소재 단독 partition). `window.runPvmTests()` 33/33.
 
 데모 모드(PR#143~, "모든 도구 데모 버튼·실제 분석 영향 X"): `DEMO_STATE={tool,page}` 활성 시 saveCsvToTool/markToolAnalyzed **no-op**·loadCsvFromTool은 데모만 로드(실제 스냅샷 미접근)·isToolAnalyzed true. TOOL_CSV_SNAPSHOTS 데모 중 불변→종료 시 자동 복원. `DEMO_BUILDERS`(csvTool→seededNoise 결정론, 헤더=STANDARD 키 identity 매핑, 5-18은 colMap 포함). 페이월 auth 우회(`demoKeyForPage`)로 키 없이 미리보기(freemium 훅). enterDemo/exitDemo/renderDemoButton/renderDemoBanner/bindDemoHandlers. 가드는 `DEMO_STATE.tool===toolId` 조건→비데모 무영향·골든 byte-동일. validate_demo 19/19(★스냅샷 불변·복원).
 
