@@ -54,7 +54,8 @@ tools:
 - 공유 CSS 클래스 + 전역 핸들러 = cross-page 점프 버그 → 신규 핸들러는 페이지 전용 `data-*`로 스코프 한정.
 - 공용 `td{vertical-align:top}`은 `<th>`엔 안 먹음 → 행헤더 `<th>` 명시 지정.
 - 단계 독립 Bennet 분해는 grain별 부분합 비정합 → 최소 grain 1회 분해 후 `rollup`(5-21 PVM).
-- **render-throw는 골든이 못 잡음** → /tmp repro 필수(Chart 스텁+`afterDatasetsDraw` 직접 실행).
+- **render-throw는 골든이 못 잡음** → /tmp repro 필수(Chart 스텁+`afterDatasetsDraw` 직접 실행). 상태 의존 분기는 전 상태값으로 repro.
+- **const 초기화식 자기 참조 = TDZ throw**(5-21): `const sel = ... arr.some(x=>x.k===sel)`처럼 자신을 참조하면 callback 실행 시 ReferenceError. `&&` 단락 기본 경로는 멀쩡, 조건 truthy 순간(다른 채널 클릭) 탭 멈춤.
 - innerHTML로 주입한 인라인 `<script>`는 실행 안 됨 → `bindXxxHandlers`에서 `renderXxxChart()` 직접 호출.
 - `position:fixed`도 `backdrop-filter` 조상 안에선 viewport 기준 아님 → 드롭다운 body portal.
 - 게이트 `requiresAny` 키는 `STANDARD_FIELDS` 정규키와 정확히 일치(단/복수) — 추측 말고 복붙.
@@ -77,6 +78,7 @@ tools:
 - 신뢰구간 자동(95%=1.96/√n). 자동 종합 해석(색상: 빨강 부정/초록 긍정/회색 무유의).
 - 입증책임 비대칭: 공선이면 분해 거부+수치 설명+대안(거짓 숫자 X). non-sig≠무효과.
 - 단조 비감소 보정(running max) — artifact 차단.
+- shift-share/mix 분해는 전체 평균 대비 centering(`mix=(cpāᵢ−C̄)·Δsᵢ`): ΣΔs=0이라 합·중첩 불변이면서 per-entity 부호가 해석 가능(5-21). 잔차 0이어도 각 항 부호가 직관과 맞는지 합성 데이터로 검증.
 
 # 캐시 패턴
 
