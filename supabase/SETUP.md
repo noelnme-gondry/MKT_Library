@@ -98,6 +98,24 @@ $$;
 | `anon` key | 클라이언트 JS 코드 | ✓ (RLS로 직접 SELECT 차단됨) |
 | `access_keys.key_hash` | DB에만 | ✓ (anon은 직접 SELECT 불가) |
 | 평문 키 (`plain`) | 발급 시 1회만 표시 | ✓ (DB에 저장 안 됨, 라벨 보유자만 분실 시 재발급) |
-| `validate_access_key(hash)` RPC | anon에게 노출 | ✓ (해시 입력 필요, 통과 시 만료/라벨만 반환) |
+| `validate_access_key(hash, device)` RPC | anon에게 노출 | ✓ (해시 입력 필요, 통과 시 만료/라벨/디바이스매치만 반환) |
 
 anon key가 코드에 노출되어도 RLS와 RPC 게이트로 인해 키 목록 자체는 못 빼냅니다.
+
+### 7.1 디바이스 바인딩 (키 공유 방지)
+
+키 1개를 여러 명이 동시에 돌려쓰는 것을 막기 위해, 키가 **최초로 검증에 성공한 기기**에
+자동으로 바인딩됩니다(`access_keys.device_token`, 클라이언트가 `localStorage`에 보관하는
+랜덤 UUID). 이후 다른 기기에서 같은 키로 로그인을 시도하면 거부됩니다("이미 다른 기기에서
+사용 중" 메시지).
+
+- 완전한 보안 장치는 아닙니다(브라우저 데이터 삭제·시크릿 모드로 우회 가능) — 무심한 키 공유를
+  막는 1차 방어선입니다.
+- 정당한 기기 변경(새 노트북 구입 등)은 admin이 SQL Editor에서 바인딩 해제:
+  ```sql
+  UPDATE access_keys SET device_token = NULL, device_set_at = NULL
+  WHERE key_label = '키 라벨';
+  ```
+- 기존 DB에 적용 시 `supabase/schema.sql`의 `ALTER TABLE`+`DROP FUNCTION`+`CREATE OR REPLACE FUNCTION`
+  블록을 SQL Editor에서 재실행하면 마이그레이션됩니다(기존 키의 `device_token`은 NULL로 시작 →
+  다음 검증 시 그 기기에 새로 바인딩).

@@ -188,7 +188,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
   /* ----- Sidebar ----- */
   .sidebar {
-    background: #0b1329;
+    background: var(--surface-container-lowest);
     border-right: 1px solid var(--border-subtle);
     position: sticky;
     top: 0;
@@ -3222,6 +3222,7 @@ const IA = [
     items: [
       { id: "5-2", title: "운영 대시보드", desc: "시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트 — 한 CSV로 현황 감시" },
       { id: "5-3", title: "예산 배분", desc: "절대 CPR/ROAS 가중 배분 + 한계효용 그리디(고급) — 채널별 예산 최적화" },
+      { id: "5-21", title: "성과 변동 진단", desc: "WoW CPA 변동을 채널·캠페인·소재 단위로 분해 — 무엇이 비용을 올리고 내렸는지" },
     ],
   },
   {
@@ -3242,17 +3243,24 @@ const IA = [
   },
   {
     id: "10",
-    title: "고급 분석",
-    subtitle: "마케팅 반응 회귀(MMM) · 행동 분석 — 가설 생성용 (인과 아님)",
+    title: "마케팅 반응 회귀 (MMM)",
+    subtitle: "주간 per-platform · 가설 생성용 (인과 아님)",
     items: [
       { id: "5-18", title: "마케팅 반응 분석", desc: "4탭: 카니발 진단 · Trend Forecast(예산 예측) · MMM 기여 분해 · 범용 회귀(Lab) (가설용·holdout 아님)" },
+    ],
+  },
+  {
+    id: "11",
+    title: "행동 분석",
+    subtitle: "유저 행동 → Aha-moment 탐색",
+    items: [
       { id: "5-20", title: "Aha-Moment Finder", desc: "선행 행동 윈도우×횟수 그리드 탐색 — F1/Lift로 타겟 달성과 가장 강한 연관 찾기 (가설용·홀드아웃 아님)" },
     ],
   },
 ];
 
 /* Ops Dashboard(운영) 그룹 id 집합 — 가이드/도구 카운트 구분용 */
-const OPS_GROUP_IDS = new Set(["05", "06", "07", "10"]);
+const OPS_GROUP_IDS = new Set(["05", "06", "07", "10", "11"]);
 
 /* ========== Marketing Phases (사용자 여정 기준) ========== */
 const PHASES = [
@@ -3635,22 +3643,20 @@ function updateNavActive(activeId) {
 const LANDING_STATE = { track: null }; // null = step1 / "guide" / "analyze"
 
 // 도구 티어 (freemium): 시각화·모니터링만 무료, 나머지 Pro
-const TOOL_TIER = { "5-2": "free", "5-3": "free", "5-6": "pro", "5-4": "pro", "5-18": "pro", "5-20": "pro" };
+const TOOL_TIER = { "5-2": "free", "5-3": "pro", "5-6": "pro", "5-4": "pro", "5-18": "pro", "5-20": "pro", "5-21": "free" };
 function toolTier(id) { return TOOL_TIER[id] || "pro"; }
 
-// 분석 트랙의 목표 버킷 (사용자 승인 구조)
-const ANALYZE_BUCKETS = [
-  { id: "monitor",    icon: "📊", label: "운영 대시보드",      tier: "free", desc: "시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트 통합", tools: ["5-2"] },
-  { id: "efficiency", icon: "💰", label: "효율화 · 예산",     tier: "free",  desc: "절대 CPR/ROAS 기반 예산 배분 + 한계효용 그리디(고급) — 채널별 최적화",  tools: ["5-3"] },
-  { id: "experiment", icon: "🧪", label: "실험 · 소재",       tier: "pro",  desc: "A/B 설계·결과 판독·홀드아웃 증분 + 소재 성과 분해",        tools: ["5-4", "5-6"] },
-  { id: "advanced",   icon: "📈", label: "고급 분석",         tier: "pro",  desc: "마케팅 반응 회귀 — 카니발 진단·Forecast·MMM 기여 분해·범용 회귀", tools: ["5-18"] },
-  { id: "behavior",   icon: "🎯", label: "행동 분석",         tier: "pro",  desc: "Aha-Moment Finder — 선행 행동 윈도우×횟수 그리드로 타겟 달성과 연관 탐색", tools: ["5-20"] },
-];
+// 분석 트랙 그룹 아이콘 (IA가 source of truth — 새 그룹 생길 때만 1줄 추가, drift 위험 낮음. §D1)
+const GROUP_ICONS = { "05": "📊", "06": "🎨", "07": "🧪", "10": "📈", "11": "🎯" };
 
 function tierBadge(tier) {
   return tier === "free"
     ? `<span class="chip ok" style="font-size:10px;padding:1px 8px;"><span class="dot"></span>무료</span>`
     : `<span class="chip" style="font-size:10px;padding:1px 8px;background:linear-gradient(135deg,rgba(122,162,247,0.22),rgba(192,132,252,0.14));border-color:rgba(122,162,247,0.5);color:var(--text-1);">🔒 Pro</span>`;
+}
+// 그룹 안에 free 도구가 1개라도 있으면 무료 배지(가장 낮은 티어 강조) — 도구별 개별 배지가 본진이라 보조 정보일 뿐.
+function groupTierBadge(toolIds) {
+  return toolIds.some(t => toolTier(t) === "free") ? tierBadge("free") : tierBadge("pro");
 }
 
 function pageHome() {
@@ -3736,16 +3742,18 @@ function renderLandingAnalyze() {
     <div class="page-eyebrow">마케팅 분석 · 대시보드</div>
     <h1 class="page-title">무엇을 분석하시겠어요?</h1>
     <p class="page-deck">목표를 고르면 맞는 도구로 바로 들어갑니다. <strong>시각화·모니터링은 무료</strong>이고, 나머지는 Pro 키가 필요합니다(키 요청은 도구 안에서 안내).</p>
-    ${ANALYZE_BUCKETS.map(b => `
+    ${IA.filter(g => OPS_GROUP_IDS.has(g.id)).map(g => {
+      const toolIds = g.items.map(it => it.id);
+      return `
       <section class="block" style="margin-top:1rem;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <span style="font-size:18px;">${b.icon}</span>
-          <h2 class="section-title" style="margin:0;border:none;padding:0;">${escapeHtml(b.label)}</h2>
-          ${tierBadge(b.tier)}
+          <span style="font-size:18px;">${GROUP_ICONS[g.id] || "📦"}</span>
+          <h2 class="section-title" style="margin:0;border:none;padding:0;">${escapeHtml(g.title)}</h2>
+          ${groupTierBadge(toolIds)}
         </div>
-        <p class="muted" style="margin:-4px 0 12px;">${escapeHtml(b.desc)}</p>
+        <p class="muted" style="margin:-4px 0 12px;">${escapeHtml(g.subtitle || "")}</p>
         <div class="phase-grid">
-          ${b.tools.map(tid => {
+          ${toolIds.map(tid => {
             const meta = findMeta(tid);
             if (!meta) return "";
             const tier = toolTier(tid);
@@ -3760,7 +3768,8 @@ function renderLandingAnalyze() {
               </div>`;
           }).join("")}
         </div>
-      </section>`).join("")}
+      </section>`;
+    }).join("")}
   `;
 }
 
@@ -5919,13 +5928,28 @@ const AUTH_STATE = {
 };
 
 // freemium: 5-2 시각화·모니터링은 무료. 나머지 분석 도구는 Pro(접근 키 필요).
-const AUTH_PROTECTED_PAGES = new Set(["5-4", "5-6", "5-18", "5-20"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-3", "5-4", "5-6", "5-18", "5-20"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
   const buf = new TextEncoder().encode(str);
   const hash = await crypto.subtle.digest("SHA-256", buf);
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+const AUTH_DEVICE_STORAGE_KEY = "mkt_library_device_id";
+// 키 공유 방지: 이 기기를 식별하는 랜덤 토큰을 1회 생성해 localStorage에 보관.
+// validate_access_key RPC가 키별로 최초 검증 기기에 이 토큰을 바인딩하고, 다른 기기에서의 재사용을 거부한다.
+function getDeviceToken() {
+  let t = localStorage.getItem(AUTH_DEVICE_STORAGE_KEY);
+  if (!t) {
+    t = (crypto.randomUUID ? crypto.randomUUID() : sha256HexFallbackId());
+    localStorage.setItem(AUTH_DEVICE_STORAGE_KEY, t);
+  }
+  return t;
+}
+function sha256HexFallbackId() {
+  return "dev-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
 }
 
 async function initializeAuth() {
@@ -5977,12 +6001,16 @@ async function tryAuthenticate(plainKey) {
     return { ok: false, error: "키 형식이 올바르지 않습니다." };
   }
   const hash = await sha256Hex(plainKey.trim());
-  const { data, error } = await AUTH_STATE.client.rpc("validate_access_key", { input_hash: hash });
+  const deviceToken = getDeviceToken();
+  const { data, error } = await AUTH_STATE.client.rpc("validate_access_key", { input_hash: hash, input_device: deviceToken });
   if (error) {
     return { ok: false, error: "검증 실패: " + error.message };
   }
   const row = Array.isArray(data) ? data[0] : data;
   if (!row || !row.valid) {
+    if (row && row.device_mismatch) {
+      return { ok: false, error: "이 키는 이미 다른 기기에서 사용 중입니다. 키 공유는 지원하지 않습니다 — 발급자에게 문의해주세요." };
+    }
     if (row && row.expires_at && new Date(row.expires_at) <= new Date()) {
       return { ok: false, error: "키가 만료되었습니다 (라벨: " + (row.key_label || "?") + ")." };
     }
@@ -6886,10 +6914,7 @@ function monAllocBody() {
                   <button type="button" data-period="monthly" class="${ALLOC_STATE.budgetPeriod === 'monthly' ? 'active' : ''}">월예산</button>
                 </span>
               </label>
-              <div style="display:flex;gap:6px;">
-                <input id="alloc-budget" type="number" inputmode="numeric" placeholder="${ALLOC_STATE.budgetPeriod === 'monthly' ? '예: 30000000 (월)' : '예: 1000000 (일)'}" value="${ALLOC_STATE.budget != null ? ALLOC_STATE.budget : ''}" style="flex:1;" />
-                <button type="button" class="btn secondary" id="alloc-fetch-recent" style="padding: 0.5rem 0.75rem; font-size:11.5px; white-space:nowrap;" title="최근 집계 윈도우 기간 동안 실제 집행된 예산의 평균치를 계산해 자동으로 채웁니다.">최근 집행 불러오기</button>
-              </div>
+              <input id="alloc-budget" type="number" inputmode="numeric" placeholder="${ALLOC_STATE.budgetPeriod === 'monthly' ? '예: 30000000 (월)' : '예: 1000000 (일)'}" value="${ALLOC_STATE.budget != null ? ALLOC_STATE.budget : ''}" />
               <div id="alloc-budget-warning-container"></div>
               <span class="ab-field-hint" id="alloc-budget-hint">
                 ${(() => {
@@ -11444,22 +11469,22 @@ function renderCreativeMatrix(matrix) {
   const statusLabel = { validated:"검증", promising:"유망", insufficient:"부족", empty:"미관측" };
 
   const headerRow = `<tr>
-    <th style="background:var(--bg-2);padding:10px 12px;vertical-align:middle;"><strong>${escapeHtml(CREATIVE_CONFIG.matrix.rows)}</strong> ↓ \\ <strong>${escapeHtml(CREATIVE_CONFIG.matrix.cols)}</strong> →</th>
-    ${matrix.cols.map(c => `<th style="background:var(--bg-2);padding:10px 12px;vertical-align:middle;text-align:center;">${escapeHtml(c)}</th>`).join("")}
+    <th style="background:var(--bg-2);"><strong>${escapeHtml(CREATIVE_CONFIG.matrix.rows)}</strong> ↓ \\ <strong>${escapeHtml(CREATIVE_CONFIG.matrix.cols)}</strong> →</th>
+    ${matrix.cols.map(c => `<th style="background:var(--bg-2);">${escapeHtml(c)}</th>`).join("")}
   </tr>`;
   const sel = CREATIVE_STATE.selectedCell;
   const bodyRows = matrix.grid.map((row, i) => `<tr>
-    <th style="background:var(--bg-2);text-align:left;padding:10px 12px;vertical-align:middle;">${escapeHtml(matrix.rows[i])}</th>
+    <th style="background:var(--bg-2);text-align:left;">${escapeHtml(matrix.rows[i])}</th>
     ${row.map(cell => {
       const isSelected = sel && sel.row === cell.row && sel.col === cell.col;
       const clickable = cell.status !== "empty";
       return `<td
         ${clickable ? `data-matrix-cell-row="${escapeHtml(cell.row)}" data-matrix-cell-col="${escapeHtml(cell.col)}"` : ""}
-        style="background:${statusColor[cell.status]};padding:10px 12px !important;font-size:11px;line-height:1.5;vertical-align:middle;${clickable ? 'cursor:pointer;' : ''}${isSelected ? 'outline:2px solid var(--primary,#adc6ff);outline-offset:-2px;' : ''}">
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">${statusLabel[cell.status]}${cell.n ? ` · n=${cell.n}` : ""}${isSelected ? ' ★ 선택됨' : ''}</div>
+        style="background:${statusColor[cell.status]};padding:8px;font-size:11px;line-height:1.5;${clickable ? 'cursor:pointer;' : ''}${isSelected ? 'outline:2px solid var(--primary,#adc6ff);outline-offset:-2px;' : ''}">
+        <div style="font-size:10px;color:var(--text-muted);">${statusLabel[cell.status]}${cell.n ? ` · n=${cell.n}` : ""}${isSelected ? ' ★ 선택됨' : ''}</div>
         ${cell.status !== 'empty' ? `
-          <div class="tnum" style="font-weight:600;">CTR ${fmtPct(cell.ctr)}</div>
-          <div class="tnum" style="color:var(--text-muted);font-size:10px;">CVR ${fmtPct(cell.cvr)}</div>
+          <div class="tnum">CTR ${fmtPct(cell.ctr)}</div>
+          <div class="tnum" style="color:var(--text-muted);">CVR ${fmtPct(cell.cvr)}</div>
         ` : `<div style="color:var(--text-muted);">—</div>`}
       </td>`;
     }).join("")}
@@ -11468,17 +11493,12 @@ function renderCreativeMatrix(matrix) {
   return `
     <section class="block" id="s-matrix">
       <h2 class="section-title"><span class="ix">§5</span>Concept Matrix — ${escapeHtml(CREATIVE_CONFIG.matrix.rows)} × ${escapeHtml(CREATIVE_CONFIG.matrix.cols)}</h2>
-      <p class="muted" style="margin-bottom:14px;">셀 상태: <span style="background:${statusColor.validated};padding:2px 8px;border-radius:4px;">검증</span> ·
+      <p class="muted">셀 상태: <span style="background:${statusColor.validated};padding:2px 8px;border-radius:4px;">검증</span> ·
         <span style="background:${statusColor.promising};padding:2px 8px;border-radius:4px;">유망</span> ·
         <span style="background:${statusColor.insufficient};padding:2px 8px;border-radius:4px;">데이터 부족</span> ·
         <span style="background:${statusColor.empty};padding:2px 8px;border-radius:4px;">미관측 (탐색 후보)</span>
       </p>
-      <div class="table-wrap">
-        <table class="data" style="font-size:11px;">
-          <thead>${headerRow}</thead>
-          <tbody>${bodyRows}</tbody>
-        </table>
-      </div>
+      <div class="table-wrap"><table class="data" style="font-size:11px;">${headerRow}${bodyRows}</table></div>
     </section>`;
 }
 
@@ -17362,61 +17382,29 @@ function ahaLoadDemoData(d) {
 
 /* ----- UI 렌더 ----- */
 function ahaUploadSection() {
-  const hasFile = AHA_STATE.headers.length > 0;
   const sample = "user_id,target,invite_d0,invite_d3,invite_d7,invite_d14\nu1,1,1,4,5,6\nu2,0,0,1,1,2\nu3,1,2,5,6,7";
+  const guide = `<details style="margin-top:12px;">
+      <summary style="cursor:pointer;color:var(--text-muted);font-weight:500;font-size:12px;">📋 CSV 형식 예시 펼치기</summary>
+      <pre style="margin-top:6px;padding:8px 10px;background:var(--bg-1);border-radius:8px;font-size:11.5px;overflow:auto;">${escapeHtml(sample)}</pre>
+    </details>`;
+
   return `<section class="block" id="s-aha-upload">
     <h2 class="section-title"><span class="ix">§0</span>데이터 업로드</h2>
     <p class="muted">유저 1명당 1행. 가입일·이벤트일 컬럼 <strong>없음</strong> — 각 후보 액션은 윈도우별 누적 count 컬럼 묶음(<code class="inline">invite_d0, invite_d3, invite_d7, invite_d14</code>). 헤더가 <code class="inline">{action}_d{N}</code> 형태면 자동으로 액션·윈도우를 파싱합니다. 데이터는 브라우저 메모리에만 — 서버 전송 없음.</p>
-    <div class="ab-form-grid" style="align-items:flex-start;">
-      <div class="ab-field" style="grid-column:1/-1;">
-        <label>CSV 업로드</label>
-        <input id="aha-file" type="file" accept=".csv,text/csv" />
-        <span class="ab-field-hint">user_id(미사용·중복검증용) · target(0/1) · 액션 윈도우 컬럼들.</span>
+    <div class="dropzone" data-aha-dropzone>
+      <div class="dropzone-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
       </div>
-      <div class="ab-field">
-        ${renderDemoButton("5-20")}
-        ${hasFile ? `<span class="ab-field-hint">현재: ${escapeHtml(AHA_STATE.fileName)} (${AHA_STATE.rows.length.toLocaleString()}행)</span>` : ""}
-      </div>
+      <div class="dropzone-title">CSV 파일을 드래그하거나 클릭해서 업로드</div>
+      <div class="dropzone-sub">UTF-8 인코딩, 첫 행이 헤더인 .csv 파일. user_id(미사용) · target(0/1) · 액션 윈도우 컬럼들.</div>
+      <input id="aha-file" type="file" accept=".csv,text/csv" class="file-input" />
     </div>
-    <details style="margin-top:12px;">
-      <summary style="cursor:pointer;color:var(--text-muted);font-weight:500;font-size:12px;">📋 전체 컬럼·기능 안내 (alias 포함)</summary>
-      <div class="table-wrap" style="margin-top:8px;">
-        <table class="data" style="font-size:12px;">
-          <thead>
-            <tr>
-              <th>구분</th>
-              <th>표준 필드</th>
-              <th>타입</th>
-              <th>매핑 상태</th>
-              <th>활성화되는 기능 / 별칭 예시</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><span class="chip danger" style="font-size:11px;padding:2px 8px;"><span class="dot"></span>필수</span></td>
-              <td><strong>타겟(0/1)</strong> <code class="inline" style="font-size:10px;color:var(--text-muted);">target</code></td>
-              <td class="tnum">number</td>
-              <td><span style="color:var(--text-muted);">—</span></td>
-              <td style="color:var(--text-muted);font-size:11px;">윈도우×k 그리드 탐색 기준 / 별칭: y, label, is_converted, 타겟, converted</td>
-            </tr>
-            <tr>
-              <td><span class="chip danger" style="font-size:11px;padding:2px 8px;"><span class="dot"></span>필수 1개+</span></td>
-              <td><strong>선행 행동 컬럼</strong> <code class="inline" style="font-size:10px;color:var(--text-muted);">{action}_d{N}</code></td>
-              <td class="tnum">number</td>
-              <td><span style="color:var(--text-muted);">—</span></td>
-              <td style="color:var(--text-muted);font-size:11px;"><code class="inline" style="font-size:10px;">_d{N}</code> suffix 자동 파싱 → 액션·윈도우 그룹 / 예: invite_d7, like_d14, message_d0</td>
-            </tr>
-            <tr>
-              <td><span class="chip" style="font-size:11px;padding:2px 8px;background:var(--bg-3);color:var(--text-muted);">옵션</span></td>
-              <td><strong>유저 ID</strong> <code class="inline" style="font-size:10px;color:var(--text-muted);">user_id</code></td>
-              <td class="tnum">string</td>
-              <td><span style="color:var(--text-muted);">—</span></td>
-              <td style="color:var(--text-muted);font-size:11px;">중복 행 검증용 (결과에 미영향) / 별칭: user, uid, id</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </details>
+
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      ${renderDemoButton("5-20")}
+      <span style="font-size:11.5px;color:var(--text-muted);">데이터가 없어도 샘플로 이 도구가 어떻게 보이는지 미리 볼 수 있어요. <strong>실제 분석엔 영향 없음.</strong></span>
+    </div>
+    ${guide}
   </section>`;
 }
 function ahaRoleSelectOptions(selected) {
@@ -17593,6 +17581,316 @@ function page_5_20() {
 }
 PAGE_RENDERERS["5-20"] = page_5_20;
 
+/* ============================================================
+ * 5-21 성과 변동 진단 — PVM(Mix/Rate) Bridge 분해 (§D2, docs/d1-d4-direction-spec.md)
+ * WoW 전체 CPA/CPI 변동을 엔티티(채널/캠페인/소재) 단위로 무잔차 분해.
+ * ============================================================ */
+const PVM_NOISE_THRESHOLD = 10;  // 두 기간 합산 result < 이 값이면 "기타(소액)" 버킷
+const PVM_STATE = { level: "channel" };
+
+const PVM_MATH = (function () {
+  function aggregate(rows, groupKey, resultField) {
+    const m = new Map();
+    for (const r of rows) {
+      const k = String(r[groupKey] ?? "");
+      if (!m.has(k)) m.set(k, { cost: 0, result: 0 });
+      const e = m.get(k);
+      e.cost += Number(r.spend) || 0;
+      e.result += Number(r[resultField]) || 0;
+    }
+    return m;
+  }
+
+  // 두 기간 합산 result가 threshold 미만인 엔티티를 "기타(소액)" 버킷으로 병합 (decompose 이전, 원시 합산 단계)
+  function applyNoiseGuard(agg1, agg2, threshold) {
+    const keys = new Set([...agg1.keys(), ...agg2.keys()]);
+    const out1 = new Map(), out2 = new Map();
+    const OTHER = "기타(소액)";
+    for (const k of keys) {
+      const e1 = agg1.get(k) || { cost: 0, result: 0 };
+      const e2 = agg2.get(k) || { cost: 0, result: 0 };
+      const small = (e1.result + e2.result) < threshold;
+      const dest = small ? OTHER : k;
+      if (!out1.has(dest)) out1.set(dest, { cost: 0, result: 0 });
+      if (!out2.has(dest)) out2.set(dest, { cost: 0, result: 0 });
+      out1.get(dest).cost += e1.cost; out1.get(dest).result += e1.result;
+      out2.get(dest).cost += e2.cost; out2.get(dest).result += e2.result;
+    }
+    return [out1, out2];
+  }
+
+  // 핵심 분해 — agg1/agg2: Map(key -> {cost, result}). 잔차 없는 mix/rate bridge.
+  function decompose(agg1, agg2) {
+    const keys = new Set([...agg1.keys(), ...agg2.keys()]);
+    const Cost1 = [...agg1.values()].reduce((a, e) => a + e.cost, 0);
+    const Cost2 = [...agg2.values()].reduce((a, e) => a + e.cost, 0);
+    const Result1 = [...agg1.values()].reduce((a, e) => a + e.result, 0);
+    const Result2 = [...agg2.values()].reduce((a, e) => a + e.result, 0);
+    if (Result1 <= 0 || Result2 <= 0) return null;
+    const CPA1 = Cost1 / Result1, CPA2 = Cost2 / Result2;
+    const entities = [];
+    for (const k of keys) {
+      const e1 = agg1.get(k) || { cost: 0, result: 0 };
+      const e2 = agg2.get(k) || { cost: 0, result: 0 };
+      const cpa1raw = e1.result > 0 ? e1.cost / e1.result : null;
+      const cpa2raw = e2.result > 0 ? e2.cost / e2.result : null;
+      const cpa1 = cpa1raw ?? cpa2raw ?? 0;
+      const cpa2 = cpa2raw ?? cpa1raw ?? 0;
+      const s1 = Result1 > 0 ? e1.result / Result1 : 0;
+      const s2 = Result2 > 0 ? e2.result / Result2 : 0;
+      const cpaBar = (cpa1 + cpa2) / 2;
+      const sBar = (s1 + s2) / 2;
+      const mix = cpaBar * (s2 - s1);
+      const rate = sBar * (cpa2 - cpa1);
+      entities.push({
+        key: k, cost1: e1.cost, cost2: e2.cost, result1: e1.result, result2: e2.result,
+        cpa1, cpa2, s1, s2, mix, rate, contribution: mix + rate,
+      });
+    }
+    return { CPA1, CPA2, deltaCpa: CPA2 - CPA1, Cost1, Cost2, Result1, Result2, entities };
+  }
+
+  function decomposeRows(rowsP1, rowsP2, groupKey, resultField, threshold) {
+    const agg1raw = aggregate(rowsP1, groupKey, resultField);
+    const agg2raw = aggregate(rowsP2, groupKey, resultField);
+    const [agg1, agg2] = applyNoiseGuard(agg1raw, agg2raw, threshold ?? PVM_NOISE_THRESHOLD);
+    return decompose(agg1, agg2);
+  }
+
+  // 엔티티별 내러티브 분류 (§내러티브 생성 로직)
+  function classifyNarrative(e, label) {
+    const fmt0 = (v) => Math.round(v).toLocaleString();
+    const fmtPct = (v) => (v * 100).toFixed(1) + "%";
+    const absC = Math.abs(e.contribution) || 1e-9;
+    const dualEffect = Math.abs(e.mix) >= 0.2 * absC && Math.abs(e.rate) >= 0.2 * absC;
+    const leadMix = Math.abs(e.mix) >= Math.abs(e.rate);
+    const mixWorse = e.mix >= 0;
+    const rateWorse = e.rate >= 0;
+    const mixText = mixWorse
+      ? `<strong>${label}</strong>의 비중이 ${fmtPct(e.s1)}→${fmtPct(e.s2)}로 늘었고 평균보다 비싼 편(CPA ${fmt0(e.cpa2)}원)이라 전체를 <strong style="color:#f87171;">+${fmt0(e.mix)}원</strong> 끌어올림`
+      : `<strong>${label}</strong>의 비중이 ${fmtPct(e.s1)}→${fmtPct(e.s2)}로 ${e.s2 >= e.s1 ? "늘었고" : "줄었고"} 평균보다 저렴해 전체를 <strong style="color:#22c55e;">${fmt0(e.mix)}원</strong> 끌어내림`;
+    const rateText = rateWorse
+      ? `<strong>${label}</strong> 자체의 CPA가 ${fmt0(e.cpa1)}→${fmt0(e.cpa2)}원으로 상승해 전체를 <strong style="color:#f87171;">+${fmt0(e.rate)}원</strong> 끌어올림(소재 피로/경쟁 심화 가능성)`
+      : `<strong>${label}</strong> 자체의 CPA가 ${fmt0(e.cpa1)}→${fmt0(e.cpa2)}원으로 개선돼 전체를 <strong style="color:#22c55e;">${fmt0(e.rate)}원</strong> 끌어내림`;
+    if (dualEffect) return `${mixText}. 동시에 ${rateText.replace(/<strong>.*?<\/strong>\s*/, "")}`;
+    return leadMix ? mixText : rateText;
+  }
+
+  return { aggregate, applyNoiseGuard, decompose, decomposeRows, classifyNarrative };
+})();
+
+window.runPvmTests = function () {
+  const results = [];
+  const approx = (a, b, eps) => Math.abs(a - b) < (eps ?? 1e-9);
+  const assert = (name, cond) => results.push({ name, pass: !!cond });
+
+  // T1 — 대칭 swap
+  {
+    const agg1 = new Map([["A", { cost: 1000, result: 100 }], ["B", { cost: 1000, result: 50 }]]);
+    const agg2 = new Map([["A", { cost: 1000, result: 50 }], ["B", { cost: 1000, result: 100 }]]);
+    const r = PVM_MATH.decompose(agg1, agg2);
+    const A = r.entities.find(e => e.key === "A"), B = r.entities.find(e => e.key === "B");
+    assert("T1 CPA1=13.333", approx(r.CPA1, 2000 / 150, 1e-6));
+    assert("T1 CPA2=13.333", approx(r.CPA2, 2000 / 150, 1e-6));
+    assert("T1 mix_A=-5", approx(A.mix, -5, 1e-6));
+    assert("T1 rate_A=+5", approx(A.rate, 5, 1e-6));
+    assert("T1 contribution_A=0", approx(A.contribution, 0, 1e-6));
+    assert("T1 mix_B=+5", approx(B.mix, 5, 1e-6));
+    assert("T1 rate_B=-5", approx(B.rate, -5, 1e-6));
+    assert("T1 contribution_B=0", approx(B.contribution, 0, 1e-6));
+    const sigma = r.entities.reduce((a, e) => a + e.contribution, 0);
+    assert("T1 Σcontribution = ΔCPA_total", approx(sigma, r.deltaCpa, 1e-9));
+  }
+
+  // T2 — 신규 엔티티 진입
+  {
+    const agg1 = new Map([["A", { cost: 900, result: 90 }]]);
+    const agg2 = new Map([["A", { cost: 900, result: 90 }], ["C", { cost: 300, result: 10 }]]);
+    const r = PVM_MATH.decompose(agg1, agg2);
+    const A = r.entities.find(e => e.key === "A"), C = r.entities.find(e => e.key === "C");
+    assert("T2 CPA1=10", approx(r.CPA1, 10, 1e-9));
+    assert("T2 CPA2=12", approx(r.CPA2, 12, 1e-9));
+    assert("T2 mix_A=-1", approx(A.mix, -1, 1e-6));
+    assert("T2 rate_A=0", approx(A.rate, 0, 1e-6));
+    assert("T2 contribution_A=-1", approx(A.contribution, -1, 1e-6));
+    assert("T2 mix_C=+3", approx(C.mix, 3, 1e-6));
+    assert("T2 rate_C=0", approx(C.rate, 0, 1e-6));
+    assert("T2 contribution_C=+3", approx(C.contribution, 3, 1e-6));
+    const sigma = r.entities.reduce((a, e) => a + e.contribution, 0);
+    assert("T2 Σcontribution = ΔCPA_total(=2)", approx(sigma, r.deltaCpa, 1e-9) && approx(r.deltaCpa, 2, 1e-9));
+  }
+
+  // T3 — 엔티티 소멸 (T2의 대칭)
+  {
+    const agg1 = new Map([["A", { cost: 900, result: 90 }], ["D", { cost: 300, result: 10 }]]);
+    const agg2 = new Map([["A", { cost: 900, result: 90 }]]);
+    const r = PVM_MATH.decompose(agg1, agg2);
+    const A = r.entities.find(e => e.key === "A"), D = r.entities.find(e => e.key === "D");
+    assert("T3 CPA1=12", approx(r.CPA1, 12, 1e-9));
+    assert("T3 CPA2=10", approx(r.CPA2, 10, 1e-9));
+    assert("T3 mix_A=+1", approx(A.mix, 1, 1e-6));
+    assert("T3 rate_A=0", approx(A.rate, 0, 1e-6));
+    assert("T3 contribution_A=+1", approx(A.contribution, 1, 1e-6));
+    assert("T3 mix_D=-3", approx(D.mix, -3, 1e-6));
+    assert("T3 rate_D=0", approx(D.rate, 0, 1e-6));
+    assert("T3 contribution_D=-3", approx(D.contribution, -3, 1e-6));
+    const sigma = r.entities.reduce((a, e) => a + e.contribution, 0);
+    assert("T3 Σcontribution = ΔCPA_total(=-2)", approx(sigma, r.deltaCpa, 1e-9) && approx(r.deltaCpa, -2, 1e-9));
+  }
+
+  const passed = results.filter(r => r.pass).length;
+  console.log(`[PVM Tests] ${passed}/${results.length} passed`);
+  results.filter(r => !r.pass).forEach(r => console.error("FAIL:", r.name));
+  return results;
+};
+
+function buildPvmCache() {
+  const rows = getMappedRows();
+  const mapped = new Set(Object.values(CSV_STATE.mapping || {}).filter(v => v !== "__ignore__"));
+  const resultField = mapped.has("installs") ? "installs" : "actions";
+  const campaignMapped = mapped.has("campaign_id");
+  const dates = [...new Set(rows.map(r => String(r.date || "")))].filter(Boolean).sort((a, b) => a.localeCompare(b));
+  if (dates.length < 14) return { insufficientData: true, dateCount: dates.length };
+  const last14 = dates.slice(-14);
+  const p1set = new Set(last14.slice(0, 7));
+  const p2set = new Set(last14.slice(7, 14));
+  const rowsP1 = rows.filter(r => p1set.has(String(r.date)));
+  const rowsP2 = rows.filter(r => p2set.has(String(r.date)));
+  const levels = { channel: "channel", campaign_id: "campaign_id", creative_id: "creative_id" };
+  const byLevel = {};
+  for (const [lv, key] of Object.entries(levels)) {
+    if (lv === "campaign_id" && !campaignMapped) continue;
+    byLevel[lv] = PVM_MATH.decomposeRows(rowsP1, rowsP2, key, resultField);
+  }
+  return {
+    insufficientData: false, resultField, campaignMapped,
+    p1Range: [last14[0], last14[6]], p2Range: [last14[7], last14[13]],
+    byLevel,
+  };
+}
+
+function renderPvmLevelPills(c) {
+  const levels = [
+    { id: "channel", label: "채널" },
+    { id: "campaign_id", label: "캠페인" },
+    { id: "creative_id", label: "소재" },
+  ];
+  return `<div class="ab-pillgroup" style="margin-bottom:10px;">
+    <span class="ab-pillgroup-label">분해 단계</span>
+    ${levels.map(lv => {
+      const locked = lv.id === "campaign_id" && !c.campaignMapped;
+      const on = PVM_STATE.level === lv.id && !locked;
+      return `<button class="ab-pill ${on ? "active" : ""}" ${locked ? 'disabled title="campaign_id 컬럼을 매핑하면 캠페인 단계를 볼 수 있습니다"' : `data-pvm-level="${lv.id}"`} style="opacity:${locked ? ".5" : "1"};cursor:${locked ? "default" : "pointer"};">
+        ${locked ? "🔒" : ""} ${lv.label}
+      </button>`;
+    }).join("")}
+  </div>`;
+}
+
+function renderPvmBody(c) {
+  if (c.insufficientData) {
+    return `<section class="block" id="s-pvm-result">
+      <div class="callout warn"><div class="ico">!</div><div class="body"><strong>데이터 부족</strong><p>최소 14일(연속 또는 비연속 일자) 데이터가 필요합니다. 현재 ${c.dateCount}일.</p></div></div>
+    </section>`;
+  }
+  let level = PVM_STATE.level;
+  if (level === "campaign_id" && !c.campaignMapped) level = "channel";
+  const d = c.byLevel[level];
+  if (!d) {
+    return `<section class="block" id="s-pvm-result">${renderPvmLevelPills(c)}
+      <div class="callout warn"><div class="ico">!</div><div class="body"><strong>분해 불가</strong><p>해당 기간 전환(${c.resultField === "installs" ? "설치" : "액션"})이 0입니다.</p></div></div>
+    </section>`;
+  }
+  const fmt0 = (v) => Math.round(v).toLocaleString();
+  const metricLabel = c.resultField === "installs" ? "CPI" : "CPA";
+  const sorted = [...d.entities].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
+  const top = sorted.slice(0, 10);
+  const sigma = d.entities.reduce((a, e) => a + e.contribution, 0);
+
+  const narrativeItems = top.map(e => {
+    const color = e.contribution > 0 ? "#f87171" : "#22c55e";
+    const dot = e.contribution > 0 ? "🔴" : "🟢";
+    return `<li style="margin-bottom:8px;line-height:1.6;">
+      ${dot} <span style="font-size:11px;color:var(--text-muted);">(${fmt0(e.contribution)}원)</span><br>
+      <span style="font-size:12.5px;">${PVM_MATH.classifyNarrative(e, escapeHtml(e.key))}</span>
+    </li>`;
+  }).join("");
+
+  const tableRows = sorted.map(e => `
+    <tr>
+      <td>${escapeHtml(e.key)}</td>
+      <td class="tnum">${fmt0(e.result1)} → ${fmt0(e.result2)}</td>
+      <td class="tnum">${fmt0(e.cpa1)} → ${fmt0(e.cpa2)}</td>
+      <td class="tnum">${(e.s1 * 100).toFixed(1)}% → ${(e.s2 * 100).toFixed(1)}%</td>
+      <td class="tnum" style="color:${e.mix >= 0 ? "#f87171" : "#22c55e"};">${e.mix >= 0 ? "+" : ""}${fmt0(e.mix)}</td>
+      <td class="tnum" style="color:${e.rate >= 0 ? "#f87171" : "#22c55e"};">${e.rate >= 0 ? "+" : ""}${fmt0(e.rate)}</td>
+      <td class="tnum"><strong style="color:${e.contribution >= 0 ? "#f87171" : "#22c55e"};">${e.contribution >= 0 ? "+" : ""}${fmt0(e.contribution)}</strong></td>
+    </tr>`).join("");
+
+  return `
+    <section class="block" id="s-pvm-result">
+      ${renderPvmLevelPills(c)}
+      <div class="callout" style="margin-bottom:12px;">
+        <div class="ico">i</div>
+        <div class="body">
+          <strong>전체 ${metricLabel}: ${fmt0(d.CPA1)}원 → ${fmt0(d.CPA2)}원 (${d.deltaCpa >= 0 ? "+" : ""}${fmt0(d.deltaCpa)}원)</strong>
+          <p style="margin-top:4px;font-size:11.5px;color:var(--text-muted);">기간1 ${escapeHtml(c.p1Range[0])}~${escapeHtml(c.p1Range[1])} vs 기간2 ${escapeHtml(c.p2Range[0])}~${escapeHtml(c.p2Range[1])}</p>
+        </div>
+      </div>
+      <h2 class="section-title"><span class="ix">§1</span>이번주 변동 원인 (기여도 절대값 상위 ${top.length})</h2>
+      <ul style="margin:0 0 14px 0;padding:0;list-style:none;">${narrativeItems}</ul>
+      <div class="callout ok" style="margin-bottom:14px;">
+        <div class="ico">✓</div>
+        <div class="body"><strong>Σ 기여 = 전체 Δ${metricLabel}</strong><p style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${fmt0(sigma)}원 = ${fmt0(d.deltaCpa)}원 (잔차 없음)</p></div>
+      </div>
+      <h2 class="section-title"><span class="ix">§2</span>엔티티별 분해 표</h2>
+      <div class="table-wrap">
+        <table class="data" style="font-size:11.5px;">
+          <thead><tr>
+            <th>엔티티</th><th>전환(P1→P2)</th><th>${metricLabel}(P1→P2)</th><th>비중(P1→P2)</th>
+            <th>Mix 효과</th><th>Rate 효과</th><th>기여(원)</th>
+          </tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+function page_5_21() {
+  const meta = findMeta("5-21");
+  const missing = checkRequiredForTool("5-21");
+  if (missing.length > 0 || !CSV_STATE.headers.length || !isToolAnalyzed("5-21")) {
+    return pageShell(meta, {
+      deck: "WoW 전체 CPA/CPI 변동을 채널·캠페인·소재 단위로 무잔차 분해해 무엇이 비용을 올리고 내렸는지 보여줍니다.",
+      chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>`,
+      summary: "5-6(소재 분석)과 동일한 소재 daily CSV를 사용합니다 — 이미 5-6에 업로드했다면 자동으로 이어받습니다.",
+      toc: [{ id: "s-prep", title: "데이터 준비" }],
+      body: renderInlineCsvUpload("5-21"),
+    });
+  }
+
+  const c = buildPvmCache();
+
+  return pageShell(meta, {
+    deck: "WoW 전체 CPA/CPI 변동을 채널·캠페인·소재 단위로 무잔차 분해 — Mix(비중 변화) vs Rate(자체 효율 변화)",
+    chips: `<span class="chip"><span class="dot"></span>도구 · 성과 변동 진단</span><span class="chip ok"><span class="dot"></span>무료</span>`,
+    summary: "Price-Volume-Mix(PVM) Bridge 분해로 전체 CPA/CPI 변화를 엔티티별로 정확히 나눕니다(잔차 없음).<br>" +
+      "<details style='margin-top:6px;font-size:11.5px;color:var(--text-secondary);cursor:pointer;'><summary>⚠️ 해석 한계 펼치기</summary>" +
+      "<div style='margin-top:6px;padding:8px 10px;background:var(--bg-1);border-left:3px solid var(--primary);line-height:1.6;'>" +
+      "이 분해는 산술적으로 정확하지만 인과관계를 증명하지 않습니다(association). 같은 단계 내 엔티티 합은 전체 변동과 정확히 일치하지만, 단계(채널/캠페인/소재) 사이의 합산 일치는 보장하지 않습니다(각 단계는 독립적으로 분해됨)." +
+      "</div></details>",
+    toc: [
+      { id: "s-prep", title: "데이터 준비" },
+      { id: "s-pvm-result", title: "변동 원인" },
+    ],
+    body: `
+      <details class="block" id="s-prep" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);outline:none;">🗂 데이터 매핑 설정 (펼쳐서 변경)</summary><div style="margin-top:10px;">${renderInlineCsvUpload("5-21")}</div></details>
+      ${renderPvmBody(c)}
+    `,
+  });
+}
+PAGE_RENDERERS["5-21"] = page_5_21;
+
 function renderAhaScatterChart() {
   const canvas = document.getElementById("aha-scatter");
   if (!canvas) return;
@@ -17635,14 +17933,26 @@ function downloadAhaCsv() {
 }
 function bindAhaHandlers() {
   const fileEl = document.getElementById("aha-file");
+  const parseAhaFile = (file) => {
+    if (!file) return;
+    Papa.parse(file, { header: true, dynamicTyping: false, skipEmptyLines: true, complete: (res) => {
+      const headers = res.meta.fields || [];
+      ahaLoadRows(res.data, headers, file.name);
+      navigate("5-20");
+    } });
+  };
   if (fileEl) {
-    fileEl.addEventListener("change", (e) => {
-      const file = e.target.files[0]; if (!file) return;
-      Papa.parse(file, { header: true, dynamicTyping: false, skipEmptyLines: true, complete: (res) => {
-        const headers = res.meta.fields || [];
-        ahaLoadRows(res.data, headers, file.name);
-        navigate("5-20");
-      } });
+    fileEl.addEventListener("change", (e) => parseAhaFile(e.target.files[0]));
+  }
+  const dz = document.querySelector("[data-aha-dropzone]");
+  if (dz) {
+    dz.addEventListener("click", (e) => { if (e.target.tagName !== "INPUT") fileEl?.click(); });
+    dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("dragover"); });
+    dz.addEventListener("dragleave", () => dz.classList.remove("dragover"));
+    dz.addEventListener("drop", e => {
+      e.preventDefault();
+      dz.classList.remove("dragover");
+      parseAhaFile(e.dataTransfer?.files?.[0]);
     });
   }
   document.querySelectorAll("[data-aha-reset]").forEach(b => b.addEventListener("click", () => {
@@ -20125,22 +20435,24 @@ function monSegmentBody(){
             const ok=av.has(k);
             return `<button class="ab-pill ${cur===k?'active':''} ${!ok?'disabled':''}" ${ok?`data-seg-${role}="${k}"`:'disabled'}>${l}${!ok?' 🔒':''}</button>`;
           }).join("");
-          const metBtns=Object.entries(SEGMENT_METRICS).map(([k,v])=>`<button class="ab-pill ${SEGMENT_STATE.metric===k?'active':''}" data-seg-metric="${k}">${v.label}</button>`).join("");
+          const metBtns=Object.entries(SEGMENT_METRICS).filter(([k])=>k!=="cost").map(([k,v])=>`<button class="ab-pill ${SEGMENT_STATE.metric===k?'active':''}" data-seg-metric="${k}">${v.label}</button>`).join("");
           return `
             <div class="ab-pillgroup"><span class="ab-pillgroup-label">행 축</span>${axisBtns("row",SEGMENT_STATE.rowAxis)}</div>
             <div class="ab-pillgroup"><span class="ab-pillgroup-label">열 축</span>${axisBtns("col",SEGMENT_STATE.colAxis)}</div>
             <div class="ab-pillgroup"><span class="ab-pillgroup-label">지표</span>${metBtns}</div>`;
         })()}
-        ${renderSegmentMatrix()}
+        ${renderSegmentMatrix(SEGMENT_STATE.metric)}
+        <h3 style="font-size:13px;font-weight:600;margin:20px 0 8px;color:var(--text-muted);">Cost 분배 (고정)</h3>
+        ${renderSegmentMatrix("cost")}
       </section>
     `;
 }
-function renderSegmentMatrix(){
-  const c=SEGMENT_CACHE; const met=SEGMENT_METRICS[SEGMENT_STATE.metric];
+function renderSegmentMatrix(metric){
+  const c=SEGMENT_CACHE; const met=SEGMENT_METRICS[metric];
   if(!c.grid||!c.rows.length)return "<p class='muted'>데이터 없음</p>";
   // 색 스케일: 유효값 모아 min/max → better 방향에 따라 초록/빨강
   const vals=[];
-  c.grid.forEach(row=>row.forEach(cell=>{ if(cell){const v=segmentMetricValue(cell,SEGMENT_STATE.metric); if(v!=null&&isFinite(v))vals.push(v);} }));
+  c.grid.forEach(row=>row.forEach(cell=>{ if(cell){const v=segmentMetricValue(cell,metric); if(v!=null&&isFinite(v))vals.push(v);} }));
   const vmin=Math.min(...vals), vmax=Math.max(...vals), span=(vmax-vmin)||1;
   const cellBg=(v)=>{
     if(v==null||!isFinite(v)||met.better==="none")return "transparent";
@@ -20150,10 +20462,10 @@ function renderSegmentMatrix(){
     const g=Math.round(34+(t)*(180-34)), r=Math.round(248-(t)*(248-60));
     return `rgba(${r},${g},90,0.18)`;
   };
-  const header=`<tr><th style="background:var(--bg-2);">${escapeHtml(SEGMENT_STATE.rowAxis)} ↓ \\ ${escapeHtml(SEGMENT_STATE.colAxis)} →</th>${c.cols.map(ck=>`<th style="background:var(--bg-2);">${escapeHtml(String(ck).slice(0,16))}</th>`).join("")}</tr>`;
-  const body=c.grid.map((row,i)=>`<tr><th style="background:var(--bg-2);text-align:left;">${escapeHtml(String(c.rows[i]).slice(0,20))}</th>${row.map(cell=>{
+  const header=`<tr><th style="background:var(--bg-2);vertical-align:middle;">${escapeHtml(SEGMENT_STATE.rowAxis)} ↓ \\ ${escapeHtml(SEGMENT_STATE.colAxis)} →</th>${c.cols.map(ck=>`<th style="background:var(--bg-2);vertical-align:middle;">${escapeHtml(String(ck).slice(0,16))}</th>`).join("")}</tr>`;
+  const body=c.grid.map((row,i)=>`<tr><th style="background:var(--bg-2);text-align:left;vertical-align:top;">${escapeHtml(String(c.rows[i]).slice(0,20))}</th>${row.map(cell=>{
     if(!cell)return `<td style="color:var(--text-muted);">—</td>`;
-    const v=segmentMetricValue(cell,SEGMENT_STATE.metric);
+    const v=segmentMetricValue(cell,metric);
     return `<td class="tnum" style="background:${cellBg(v)};">${met.fmt(cell)}<div style="font-size:9px;color:var(--text-muted);">${fmtCurrency(cell.cost)}</div></td>`;
   }).join("")}</tr>`).join("");
   return `<div class="table-wrap"><table class="data" style="font-size:11px;">${header}${body}</table></div>
@@ -21860,7 +22172,7 @@ function bindCSVPageHandlers() {
   bindDemoHandlers();
 
   // ----- 5-2: 운영 모니터링 탭 전환 (시각화/스코어카드/페이싱/이상탐지) -----
-  document.querySelectorAll("[data-mon-tab]").forEach(b => b.addEventListener("click", () => { MON_STATE.tab = b.dataset.monTab; navigate("5-2"); }));
+  document.querySelectorAll("[data-mon-tab]").forEach(b => b.addEventListener("click", () => { MON_STATE.tab = b.dataset.monTab; track("mon_tab_click", { tab: b.dataset.monTab }); navigate("5-2"); }));
   // 1차 그룹 카드: 이미 그 그룹에 있으면 유지, 아니면 첫 해제 탭으로
   document.querySelectorAll("[data-mon-group]").forEach(b => b.addEventListener("click", () => {
     const g = MON_TAB_GROUPS[+b.dataset.monGroup]; if (!g) return;
@@ -25116,33 +25428,6 @@ function bindBudgetAllocatorHandlers() {
     // objective → ALLOC_STATE.metric 자동 설정 (revenue_d7 metric은 1/ROAS = CPR로 처리됨, minimize CPR = maximize ROAS)
     const obj = getObjectiveCfg();
     if (obj) ALLOC_STATE.metric = obj.metric;
-
-    // 만약 예산이 비어 있으면 최근 평균으로 자동 세팅
-    if (ALLOC_STATE.budget == null) {
-      const rows = getMappedRowsForAlloc();
-      if (rows.length) {
-        const dates = [...new Set(rows.map(r => r.date).filter(Boolean))].map(d => Date.parse(d)).filter(d => !isNaN(d));
-        if (dates.length) {
-          const maxDate = Math.max(...dates);
-          const recentDays = ALLOC_STATE.recentDays || 28;
-          const threshold = maxDate - recentDays * 86400 * 1000;
-          const recentRows = rows.filter(r => r.date && Date.parse(r.date) >= threshold);
-          if (recentRows.length) {
-            const totalCost = recentRows.reduce((sum, r) => sum + (Number(r.cost) || 0), 0);
-            const uniqueRecentDates = new Set(recentRows.map(r => r.date).filter(Boolean));
-            const days = uniqueRecentDates.size || 1;
-            const dailyAvg = totalCost / days;
-            
-            if (ALLOC_STATE.budgetPeriod === "monthly") {
-              ALLOC_STATE.budget = Math.round(dailyAvg * 30);
-            } else {
-              ALLOC_STATE.budget = Math.round(dailyAvg);
-            }
-          }
-        }
-      }
-    }
-
     ALLOC_FILTER_STATE.applied = true;
     if (typeof clearAllocCache === "function") clearAllocCache();
     navigate("5-3");
@@ -25234,58 +25519,6 @@ function bindBudgetAllocatorHandlers() {
     });
   }
 
-  // 최근 집행 예산 자동 가져오기 버튼 리스너
-  const fetchRecentBtn = document.getElementById("alloc-fetch-recent");
-  if (fetchRecentBtn) {
-    fetchRecentBtn.addEventListener("click", () => {
-      const rows = getMappedRowsForAlloc();
-      if (!rows.length) {
-        alert("분석할 광고 집행 데이터가 없습니다.");
-        return;
-      }
-      const dates = [...new Set(rows.map(r => r.date).filter(Boolean))].map(d => Date.parse(d)).filter(d => !isNaN(d));
-      if (!dates.length) {
-        alert("유효한 날짜 데이터가 없습니다.");
-        return;
-      }
-      const maxDate = Math.max(...dates);
-      const recentDays = ALLOC_STATE.recentDays || 28;
-      const threshold = maxDate - recentDays * 86400 * 1000;
-      
-      const recentRows = rows.filter(r => r.date && Date.parse(r.date) >= threshold);
-      if (!recentRows.length) {
-        alert(`최근 ${recentDays}일 동안의 집행 데이터가 없습니다.`);
-        return;
-      }
-      
-      const totalCost = recentRows.reduce((sum, r) => sum + (Number(r.cost) || 0), 0);
-      const uniqueRecentDates = new Set(recentRows.map(r => r.date).filter(Boolean));
-      const days = uniqueRecentDates.size || 1;
-      const dailyAvg = totalCost / days;
-      
-      let computed = 0;
-      if (ALLOC_STATE.budgetPeriod === "monthly") {
-        computed = Math.round(dailyAvg * 30);
-      } else {
-        computed = Math.round(dailyAvg);
-      }
-      
-      ALLOC_STATE.budget = computed;
-      const budgetInp = document.getElementById("alloc-budget");
-      if (budgetInp) {
-        budgetInp.value = computed;
-      }
-      
-      const hasBudget = computed > 0;
-      const reqEl = document.getElementById("alloc-budget-required");
-      const emptyEl = document.getElementById("alloc-budget-empty");
-      if (reqEl) reqEl.style.display = hasBudget ? "" : "none";
-      if (emptyEl) emptyEl.style.display = hasBudget ? "none" : "";
-      
-      refreshAllocationResults();
-    });
-  }
-
   // metric select — cache 무효 + 수동 배분 리셋 + 산점도 재계산
   const metricSelect = document.getElementById("alloc-metric");
   if (metricSelect) {
@@ -25329,6 +25562,7 @@ const TOOL_REQUIRED_FIELDS = {
   "5-16": ["cost", { oneOf: ["revenue_d0", "revenue_d7", "revenue_d14", "revenue_d30", "revenue_d90", "revenue_d180", "revenue_d360"] }],
   "5-15": ["holdout_group", "numerator", "denominator"],
   "5-18": ["week", { oneOf: ["mmm_reg", "mmm_react"] }, { oneOf: ["ch_google_roi", "ch_google_cbua", "ch_meta", "ch_tiktok", "ch_brand"] }],
+  "5-21": ["date", "channel", "creative_id", "spend", { oneOf: ["installs", "actions"] }],
 };
 
 /* 도구별 옵션 필드 — 매핑하면 추가 기능 활성화. */
@@ -25471,6 +25705,9 @@ const TOOL_OPTIONAL_FIELDS = {
     { key: "d_postchuwk",    unlocks: "추석 후주 더미" },
     { key: "d_otherhol",     unlocks: "기타 공휴일 더미" },
   ],
+  "5-21": [
+    { key: "campaign_id", unlocks: "캠페인 단계 분해 — 매핑 안 하면 채널→소재 2단계로 동작" },
+  ],
 };
 
 const TOOL_CSV_SNAPSHOTS = {};  // toolId → { fileName, raw, headers, mapping, selectedCohort }
@@ -25482,7 +25719,7 @@ const TOOL_GROUP = {
   "5-2": "efficiency", "5-3": "efficiency",
   "5-9": "efficiency", "5-10": "efficiency", "5-11": "efficiency",
   "5-12": "efficiency", "5-13": "efficiency", "5-14": "efficiency",
-  "5-6": "creative",
+  "5-6": "creative", "5-21": "creative",
   "5-4": "experiment", "5-7": "experiment_readout", "5-15": "experiment_holdout",
   "5-5": "cannibalization",
   "5-8": "cohort",

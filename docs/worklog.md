@@ -18,6 +18,46 @@
   - **업로드 시**: 둘로 분리 PR. poly2 = 5-3 영역 hunk(`@@ 6444 / 6569 / 7082(ALLOC_MATH) / 7196(ALLOC_STATE) / 20293~22963`), GA4 = `navigate`(tool_view content_type) + `bindAnalytics`(gaContentType·sop_copy·scroll_depth, 약 19718~19790).
   - 이후 안티그래비티 작업은 이 위에 쌓이므로, 업로드 시점에 통합 분리.
 
+- **⚠ 별도 브랜치 `claude/jolly-curie-4zjla6`의 GitHub 권한 차단**: 이 클라우드 컨테이너의 GitHub 자격증명이 `noelnme-gondry/MKT_Library`에 **읽기조차 안 됨**(git push 403 + MCP `get_file_contents`/`list_branches` 404, `get_me`는 성공 — 즉 인증은 되는데 이 레포에 대한 권한이 없음). 이 브랜치 위 커밋들은 patch 파일로 추출해 사용자에게 전달하는 방식으로 핸드오프 중(아래 "패치 핸드오프" 절 참조). poly2/GA4 워크로그(위)와는 **다른 브랜치·다른 차단 원인**이므로 혼동 주의.
+
+---
+
+## 패치 핸드오프 — `claude/jolly-curie-4zjla6` 브랜치 (이 컨테이너, GitHub 권한 차단)
+
+> 이 섹션은 위 안티그래비티 워크로그와 별개. 이 컨테이너에서 작업한 내용은 `main`에 push가 안 되므로,
+> 완료된 작업을 모아 **patch 파일**로 추출해 사용자가 다른 계정/세션에 적용하게 한다.
+> PR 준비되면 아래 "적용할 파일" 항목을 그대로 안내.
+
+### 2026-06-25 — 5-20 Aha-Moment Finder (윈도우×k 그리드 탐색)
+- **무엇**: 신규 분석도구 5-20 "Aha-Moment Finder" — 사용자 행동 데이터에서 리텐션과 가장 상관관계 높은 "초기 행동 윈도우 × 횟수(k)" 조합을 그리드 탐색.
+- **커밋**: `35e9f19`(설계 스펙) → `5c1565f`(스펙 갱신: wide 멀티윈도우) → `8501b3d`(구현: 윈도우×k 그리드 탐색).
+- **검증**: syntax check 통과, `window.runAhaTests()` 등 골든 테스트 통과(구현 커밋 시점 확인됨).
+- **하네스 업데이트**: 미반영 — 다음 커밋에서 CLAUDE.md §3/§13(신규 도구 등록)·mkt-engineer.md에 보강 필요.
+- **패치**: `main..claude/jolly-curie-4zjla6 -- index.html docs/aha-moment-finder-spec.md` 추출본을 `SendUserFile`로 전달함(2026-06-25, 1786 insertions/100 deletions, 8개 커밋 전체 포함). 사용자가 다른 계정에 적용 시 이 patch 1개로 5-20 전체 + 본 worklog 이전 작업까지 한꺼번에 들어감(브랜치 전체 diff이기 때문 — 개별 분리 아님).
+
+### 2026-06-25 — 5-12 Segment Explorer Cost 고정 + 정렬 수정 (미커밋)
+- **무엇**: §1 세그먼트 효율 매트릭스(5-12) ① Cost를 지표 선택 pill에서 제외(CPI/CPA/ROAS/CTR/CVR만 선택) ② "Cost 분배 (고정)" 섹션을 선택 지표와 무관하게 항상 하단에 추가 렌더 ③ 행 헤더(`<th>`, 국가 라벨) vertical-align 불일치 수정.
+- **근본원인**: 전역 CSS `table.data tbody td{vertical-align:top}`가 `<td>`에만 적용되고 `<th>`엔 안 먹어 기본값(middle)로 어긋남. → CLAUDE.md §7에 함정 기재 완료.
+- **심볼**: `renderSegmentMatrix()` → `renderSegmentMatrix(metric)`로 파라미터화(no-arg 호출부 없음을 Grep으로 확인), `monSegmentBody()`에서 `metBtns` cost 필터 + 2회 호출(선택 지표 + 고정 `"cost"`).
+- **검증**: syntax check 통과, conflict marker 0, `renderSegmentMatrix()` no-arg 잔존 호출 없음(Grep), 독립 Node 하네스로 `runSegmentTests(false)` 5/5 PASS.
+- **상태**: 커밋 완료 — `356aee4`(index.html+CLAUDE.md+mkt-engineer.md+worklog 4파일, syntax/conflict-marker 확인 후).
+- **하네스 업데이트**: CLAUDE.md §7에 vertical-align 함정 추가 완료(2026-06-25).
+
+### 2026-06-25 — 5-20 업로드 UI 표준화 (다른 도구와 통일)
+- **무엇**: Aha-Moment Finder §0 데이터 업로드를 `.ab-form-grid`/플레인 `<input>` 방식 → 표준 `.dropzone`(아이콘·타이틀·서브텍스트·drag&drop) + 데모 버튼 + 접이식 가이드로 교체. 다른 분석도구(`renderInlineCsvUpload` 패턴)와 시각적으로 통일.
+- **왜**: 사용자 피드백 — "데이터 업로드 CSV 파트가 다른 곳이랑 너무 다르다, 다른 거랑 아예 맞춰줘라" (스크린샷 비교).
+- **근본 발견**: `ahaUploadSection()`엔 죽은 `hasFile` 분기가 있었음(파일 로드 후엔 `page_5_20`이 항상 별도 함수 `ahaMappingSection()`을 호출하므로 그 분기는 도달 불가) — 제거.
+- **심볼**: `ahaUploadSection()`(line ~17363, dropzone 마크업 + `data-aha-dropzone`), `bindAhaHandlers()`에 `parseAhaFile` 헬퍼 추출 + dropzone click/dragover/dragleave/drop 바인딩 추가.
+- **검증**: syntax check 통과, conflict marker 0, Playwright headless로 `ahaUploadSection()` 렌더 결과 스크린샷 확인(표준 dropzone과 시각적으로 일치), 데모 모드 진입까지 콘솔 에러 없음.
+- **부수 조사 (미해결, 재현 안 됨)**: "다크 모드엔 보이는 좌상단 브랜드명이 라이트 모드 스크린샷엔 안 보인다"는 피드백 — 현재 브랜치 코드(`index.html:218` `.brand-name`, `body.light-mode` 변수)를 Playwright로 라이트/다크 양쪽 렌더 확인했으나 **재현 안 됨**(양쪽 모두 정상 표시). 배포본(production)이 이 브랜치보다 오래된 버전이거나 캐시 문제일 가능성 — 사용자에게 재확인 요청 필요.
+
+### 2026-06-25 — 접근 키 디바이스 바인딩 (키 공유 방지)
+- **무엇**: 같은 Pro 접근 키를 여러 사람이 동시에 돌려쓰는 것을 막기 위해, 키가 최초 검증에 성공한 기기에 자동 바인딩되고 이후 다른 기기에서 같은 키 사용 시 거부되도록 구현.
+- **왜**: 사용자 질문 — "키를 전달해서 쓸 때 여러명이 한개를 돌려쓰거나 할수 있잖아.. 막는 방법이 뭐가 없을까?" → 4지선다 중 "디바이스 바인딩" 선택.
+- **심볼**: `access_keys.device_token`/`device_set_at` 컬럼 추가, `validate_access_key(input_hash, input_device)` RPC 시그니처 변경(기존 `validate_access_key(TEXT)` DROP 후 재생성, `device_mismatch` 반환 추가) — `supabase/schema.sql`. 클라이언트: `getDeviceToken()`(localStorage `mkt_library_device_id`, `crypto.randomUUID()`) + `tryAuthenticate`가 device 토큰 동봉, mismatch 시 전용 에러 메시지 — `index.html` (`AUTH_DEVICE_STORAGE_KEY` 부근, line ~5932/5987).
+- **검증**: syntax check 통과, conflict marker 0, `git diff --stat`으로 의도한 4파일(index.html/supabase/schema.sql/supabase/SETUP.md/CLAUDE.md)만 변경 확인. **Supabase 실제 RPC 동작은 미검증**(이 컨테이너에서 Supabase 콘솔 접근 불가) — 다음 PR 머지 후 실제 DB에 schema.sql 재실행 필요(`DROP FUNCTION IF EXISTS validate_access_key(TEXT)` 포함이라 기존 함수 안전하게 교체됨, 기존 키들의 `device_token`은 NULL로 시작해 다음 로그인 기기에 새로 바인딩됨).
+- **주의**: 완전한 보안 장치 아님(브라우저 데이터 삭제·시크릿 모드로 우회 가능) — 무심한 키 공유를 막는 1차 방어선. 정당한 기기변경은 admin이 SQL로 `device_token=NULL` 리셋(`supabase/SETUP.md` §7.1 문서화).
+
 ---
 
 ## 2026-06-21~22 — poly2 예산배분(5-3) 안전장치 4종 (안티그래비티)

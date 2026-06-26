@@ -103,8 +103,9 @@ function buildXxxCache() {
 ### 4.5 접근 키 인증
 
 - `AUTH_PROTECTED_PAGES = Set(["5-2", "5-3", "5-4", "5-5"])`
-- 키는 SHA-256 해시 후 Supabase `validate_access_key(input_hash)` RPC로 검증
+- 키는 SHA-256 해시 후 Supabase `validate_access_key(input_hash, input_device)` RPC로 검증
 - 평문 키는 절대 서버 전송 X
+- **디바이스 바인딩(키 공유 방지)**: `access_keys.device_token`이 최초 검증 기기에 자동 바인딩, 이후 다른 기기에서 같은 키 사용 시 거부(`device_mismatch`). 클라이언트는 `getDeviceToken()`(localStorage `mkt_library_device_id`, `crypto.randomUUID()`)으로 기기 식별. 완전 차단은 아님(브라우저 데이터 삭제로 우회 가능)— 무심한 공유 방지용. 정당한 기기변경은 admin이 `device_token=NULL`로 리셋.
 - 키 발급/관리: `supabase/SETUP.md` 참조
 
 ---
@@ -224,6 +225,8 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 - **audit가 전부 0·p1 = 설계행렬 특이(겹치는 더미·하드코딩 step과 동일 컬럼)** (PR #85, 5-18 §2): 임의 매핑에서 사용자가 겹치는 휴일 더미(LNY=PreLNY|Seollal, Chuseok=ChuseokOnly|PostChuWk)나 도구 하드코딩 step(line_off week55)과 동일한 컬럼을 넣으면 `mmmSheetDesign` 설계행렬이 완전공선 → `CREATIVE_MATH.inverse` pivot<1e-12 null → `mmmOls` null → `mmmFitNamed`이 **전 계수 coef0·p1·R²0**로 silent 디폴트(NaN 아니라 0이라 "—" 안 뜨고 "0.00"로 보임 → 진단 헷갈림). `_nonConstCols`(상수만 드롭)로는 못 막음. 수정: `_nonRedundantCols`(절편 포함 점진 Gram-Schmidt, 잔차노름/원노름<1e-8이면 드롭=statsmodels pinv 동치)로 교체 → 종속 열 자동 드롭, 나머지 정상 추정. 단일 플랫폼(Tinder)은 공선 없어 keep 동일 → byte-동일. MMM 본체(`mmmBuildFeatures`)는 더미 미사용이라 §3/§5는 멀쩡, audit(§2)만 깨짐 → "audit만 1로 도배"가 시그니처.
 - **CSV 다운로드가 엑셀서 안 열림 = LF-only 줄바꿈** (PR #85): `lines.join("\n")`는 RFC4180 위반이라 Excel(특히 BOM+LF)에서 한 행으로 뭉치거나 깨짐. **`\r\n`(CRLF)** 로 조인 + BOM(`﻿`) 유지 + `text/csv;charset=utf-8`. 한글 깨짐 방지엔 BOM, 행 분리엔 CRLF 둘 다 필요. (decomp/cannib/regression export 전부 동일 패턴.)
 - **log-log 탄력성 적합은 타깃에 0/빈값 1개만 있어도 전체가 NaN** (PR #82, 5-18): `target.map(Math.log)`에서 `log(0)=-Inf`(또는 빈값→num이 0으로)가 AR1 적합 전체를 오염 → **모든 채널 elas=NaN·p=1**(faRaw 기반 "주당 인원"은 멀쩡해 진단이 헷갈림). 수정: `_mmmLogFitAR1`로 **타깃≤0·비유한 주차를 제외**(log(0)은 관측 불가라 통계적으로 정당). 타깃 전부 양수면 모든 행 유지 → Tinder/골든 byte-동일. 임의 데이터(초기 램프·휴면 0주)에서 흔함. semi-log raw 적합(faRaw)은 0이 정상값이라 제외 불필요.
+- **공용 `table.data tbody td{vertical-align:top}` 규칙은 `<th>`엔 안 먹음** (5-12 Segment Explorer): 커스텀 데이터 테이블이 행 헤더를 `<th>`로 쓰면 그 셀은 브라우저 기본값(`middle`)을 따라 옆 `<td>`(top)와 시각적으로 어긋남. row-header `<th>`에도 명시적으로 `vertical-align` 지정 필요(헤더행은 middle, 행라벨은 top로 값 셀과 맞춤).
+- **렌더 함수에 `hasFile`류 분기 추가 전 실제 호출부 확인** (5-20 Aha-Moment Finder, PR 미머지): `ahaUploadSection()`(empty-state 전용)에 "파일 로드 후" 분기를 추가했었으나 `page_5_20()`은 파일 로드 시 항상 별도 함수 `ahaMappingSection()`을 호출 → 그 분기는 영원히 도달 불가한 죽은 코드였음. **교훈**: 함수에 상태별 분기 추가 전 그 함수의 실제 호출 지점(누가 어떤 조건으로 부르는지)을 먼저 확인할 것. 업로드 UI는 다른 도구와 통일하려면 `renderInlineCsvUpload` 표준 `.dropzone`(아이콘·드래그앤드롭·데모버튼·접이식가이드) 마크업을 그대로 복제 + 도구 전용 `data-*`(예: `data-aha-dropzone`) 핸들러로 바인딩(`CSV_STATE` 비사용 도구는 제너릭 바인더 재사용 불가).
 
 ---
 
@@ -620,6 +623,7 @@ self-update 메커니즘이 사라지면 하네스가 정체됨.
 - **Q3 작업 (다른 모델 실행 예정, 스펙 확정)**: `docs/q3-sticky-progressive-cohort-maturation.md` — ① WS1 5-2 상단 sticky 필터 바(날짜/platform/국가/channel, `getMappedRowsForMon` 실제 필터링) ② WS2 CSV 업로드 점진 공개 + `MON_FEATURES` SSOT 데이터×기능 capability 매트릭스 ③ WS3 코호트 Revenue/Retention/PUR Dn 동적 확장 + 마투레이션 예측(성숙 코호트 완성비→Predict D90/D180, §8 가드레일). 권장 순서 WS2→WS1→WS3(3-A/B/C 분할).
 - **운영 대시보드 8개 피드백 실행 스펙** (`docs/operational-dashboard-fixes-spec.md`, 적대 검수 + **설계 결정 전부 완료 2026-06-22 — 미해결 없음**): 8개 전부 구현 착수 가능. 결정 — #3 혼합차트·cost클릭·있는만큼+경고 / #4 최근4~8주·산식A·가입구매 라벨토글·**설치/액션만(매출은 페이싱서 제거, 일별매출 별도 업로드 추후)** / #5 작업A=**비율법 우선+곡선 폴백(COHORT_MATURATION 재사용)** / #8 C(WoW강조+토글)·평일주말 2그룹·additive·기본OFF. 권장 착수 순서: #1·#2·#6(+#7 확인) 1 PR → #5 → #3·#4·#8.
 - **남은 UI 작업**: ① SOP 콘텐츠 보강(1-2~4-4 인라인, 정확성 검수 기반·진행방식 미정) ② MMM.
+- **★ D1~D4 완료 (`docs/d1-d4-direction-spec.md`, 미푸시 로컬커밋, 2026-06-26)**: D1(사이드바/랜딩 그룹 통합, `GROUP_ICONS`/`groupTierBadge`)·D3(버그 no-repro, 사용자 하드리프레시 권장)·D4(`mon_tab_click` 1줄 추가)는 경미. **D2 = 신규 5-21 "성과 변동 진단"**(Free, `TOOL_GROUP["5-21"]="creative"`로 5-6 CSV 공유) — PVM(Mix/Rate) Bridge: `mix_i=cpāᵢ·(s2−s1)`+`rate_i=s̄ᵢ·(cpa2−cpa1)`로 WoW CPA 변동을 무잔차 분해(Σcontribution=ΔCPA_total 항등식, `PVM_MATH.decompose`+`window.runPvmTests()` 27/27). **함정 발견(기존 코드, D1 작업 잔재)**: `renderLandingAnalyze()`의 `IA.filter(...).map(g => { ... return \`...\`; }).join("")`에서 내부 화살표함수 닫는 `}`가 누락된 채 `return\`...\`).join("")`로 합쳐져 있어 전체 스크립트가 SyntaxError로 죽어있었음(브라우저 콘솔 미확인이면 영구 잠복). **교훈: 새 기능 작업 전 항상 Node `new vm.Script(extractedScript)` syntax check를 먼저 돌려 기존 코드 베이스가 깨져있지 않은지 확인할 것** — 이번처럼 직전 세션의 미검증 커밋이 원인일 수 있음.
 - **MMM = Tinder KR Reg/React Marketing-Response Regression** 스펙(`docs/backlog.md` § B)이 정식 요구사항.
   착수 전 범위 확정 필요: 분석 파이프라인 실행 환경 + 결과 JSON을 본 대시보드(5-N)가 소비하는 연결 형태.
 - 핵심 제약: 회귀는 **가설 생성·기술용**이며 인과/증분/cannibalization 판정은 **holdout 전용**. 계수를 인과로 제시 금지.
