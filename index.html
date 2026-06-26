@@ -17440,7 +17440,7 @@ function ahaMappingSection() {
       : `<div style="margin-top:12px;background:linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03));border:1px solid rgba(122,162,247,0.3);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;"><div style="font-size:12.5px;color:var(--text-1);">✅ 필수 역할 매핑 완료. <strong>매핑이 맞는지 확인한 뒤 분석을 실행하세요.</strong></div><button class="ab-pill" data-tool-analyze="5-20" style="background:#7aa2f7;color:#0b0d12;font-weight:700;border-color:#7aa2f7;font-size:13px;padding:8px 18px;">▶ 분석하기</button></div>`);
   return `<section class="block" id="s-aha-map">
     <h2 class="section-title"><span class="ix">§0</span>컬럼 역할 매핑</h2>
-    <div class="csv-loaded-bar"><div class="csv-loaded-info"><span class="dot" style="background:#22c55e;"></span><strong>${escapeHtml(AHA_STATE.fileName)}</strong><span class="csv-loaded-stats tnum">${AHA_STATE.rows.length.toLocaleString()}행 · ${AHA_STATE.headers.length}컬럼 · 후보 액션 ${actionCount}개</span></div><button class="ab-pill csv-change-btn" data-aha-reset="1" title="CSV 제거하고 다른 파일 업로드">⟳ CSV 변경</button></div>
+    <div class="csv-loaded-bar"><div class="csv-loaded-info"><span class="dot" style="background:#22c55e;"></span><strong>${escapeHtml(AHA_STATE.fileName)}</strong><span class="csv-loaded-stats tnum">${AHA_STATE.rows.length.toLocaleString()}행 · ${AHA_STATE.headers.length}컬럼 · 후보 액션 ${actionCount}개</span></div>${DEMO_STATE.tool === "5-20" ? `<span style="font-size:11px;color:var(--text-muted);">데모 모드 · 키 입력 후 변경 가능</span>` : `<button class="ab-pill csv-change-btn" data-aha-reset="1" title="CSV 제거하고 다른 파일 업로드">⟳ CSV 변경</button>`}</div>
     <details ${analyzed ? "" : "open"} style="margin-top:10px;">
       <summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:${analyzed ? "var(--text-muted)" : "#adc6ff"};">🗂 컬럼 역할 매핑 ${analyzed ? "(분석 완료 — 펼쳐서 수정)" : "(자동 추정 — 틀리면 수정)"}</summary>
       <p class="muted" style="font-size:12px;margin:8px 0;"><strong>헤더가 <code class="inline">{action}_d{N}</code> 형태면 액션·윈도우 자동 파싱</strong>됩니다(예: <code class="inline">invite_d7</code> → 액션 invite, 윈도우 d7). target 컬럼은 0/1 값으로 자동 추정 — 틀리면 직접 선택하세요. <code class="inline">revenue_d7</code> 같은 매출 컬럼이 잘못 후보로 잡혔으면 "사용 안 함"으로 제외하세요.</p>
@@ -26144,7 +26144,9 @@ function renderInlineCsvUpload(toolId) {
             <strong>${escapeHtml(CSV_STATE.fileName)}</strong>
             <span class="csv-loaded-stats tnum">${CSV_STATE.raw.length.toLocaleString()}행 · ${CSV_STATE.headers.length}컬럼</span>
           </div>
-          <button class="ab-pill csv-change-btn" data-tool-csv-reset="${toolId}" title="이 도구의 CSV를 제거하고 다른 파일 업로드">⟳ CSV 변경</button>
+          ${DEMO_STATE.tool === toolId
+            ? `<span style="font-size:11px;color:var(--text-muted);">데모 모드 · 키 입력 후 변경 가능</span>`
+            : `<button class="ab-pill csv-change-btn" data-tool-csv-reset="${toolId}" title="이 도구의 CSV를 제거하고 다른 파일 업로드">⟳ CSV 변경</button>`}
         </div>
 
         <!-- 2) 매핑 상태 배너 -->
@@ -26262,6 +26264,7 @@ function bindInlineCsvHandlers() {
   // CSV 변경(=리셋) 버튼
   document.querySelectorAll("[data-tool-csv-reset]").forEach(btn => {
     btn.addEventListener("click", () => {
+      if (DEMO_STATE.tool) return; // 데모 모드 중 CSV 조작 차단
       const toolId = btn.dataset.toolCsvReset;
       if (confirm("이 도구의 CSV를 제거하고 다시 업로드하시겠어요?")) {
         resetCsvForTool(toolId);
@@ -26272,6 +26275,7 @@ function bindInlineCsvHandlers() {
 }
 
 function handleCSVFile(file, toolId) {
+  if (DEMO_STATE.tool) return; // 데모 모드 중 실제 CSV 업로드 차단
   if (!file.name.toLowerCase().endsWith(".csv")) {
     alert("CSV 파일만 업로드할 수 있습니다.");
     return;
