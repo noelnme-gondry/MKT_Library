@@ -17606,7 +17606,7 @@ const PVM_STATE = {
   crMode: "full",         // §4 모드: "full"(채널+캠페인+소재) | "creativeOnly"(소재만 merged)
   crChannel: null,        // §4 모드 A 선택 채널
   crCampaign: null,       // §4 모드 A 선택 캠페인
-  showNew: true,          // §4 모드 A New 소재만 필터
+  showNew: false,         // §4 모드 A New 소재만 필터(기본 off — 전체 소재 표시)
 };
 
 // 월요일(UTC 고정) — 마감주(calendar weekBasis) 계산 기준
@@ -18258,7 +18258,7 @@ function pvmChannelDrilldownSection(c, byChannel) {
       <div class="callout warn"><div class="ico">!</div><div class="body"><strong>🔒 campaign_id 컬럼을 매핑하면 캠페인 단계를 볼 수 있습니다</strong></div></div>
     </section>`;
   }
-  const sel = PVM_STATE.drillChannel && byChannel.some(ch => ch.key === sel) ? PVM_STATE.drillChannel : byChannel[0]?.key;
+  const sel = PVM_STATE.drillChannel && byChannel.some(ch => ch.key === PVM_STATE.drillChannel) ? PVM_STATE.drillChannel : byChannel[0]?.key;
   const selCh = byChannel.find(ch => ch.key === sel) || byChannel[0];
   const pool = c.finest.filter(f => f.chKey === sel);
   const byCampaign = PVM_MATH.rollup(pool, f => f.cmpKey ?? "(미지정)", c.Result1, c.Result2)
