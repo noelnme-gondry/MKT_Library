@@ -3342,10 +3342,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <!-- ===================== SIDEBAR ===================== -->
   <aside class="sidebar" id="sidebar">
     <div class="brand" id="brand" style="cursor:pointer;">
-      <div class="brand-mark">PM</div>
+      <div class="brand-mark">GO</div>
       <div>
-        <div class="brand-name">Performance Marketing</div>
-        <div class="brand-sub">Library · App Growth</div>
+        <div class="brand-name">Growth Ops</div>
+        <div class="brand-sub">Playbook</div>
       </div>
     </div>
 
@@ -23794,7 +23794,7 @@ function bindCSVPageHandlers() {
   if (shareBtn) {
     shareBtn.addEventListener("click", async () => {
       const d7 = shareBtn.dataset.d7 || "—";
-      const text = `내 앱의 D7 ROAS는 ${d7}입니다. (분석 도구: Performance Marketing Library)`;
+      const text = `내 앱의 D7 ROAS는 ${d7}입니다. (분석 도구: Growth Ops Playbook)`;
       try {
         await navigator.clipboard.writeText(text);
       } catch {
@@ -25301,7 +25301,7 @@ function downloadChannelCSV(metaOrChannel, metricMaybe, metaMaybe) {
   const lines = [];
 
   // --- Metadata block ---
-  lines.push("# Performance Marketing Library · Budget Allocator Export");
+  lines.push("# Growth Ops Playbook · Budget Allocator Export");
   lines.push(`# Generated,${new Date().toISOString()}`);
   lines.push(`# Channel,${csvCell(channel)}`);
   lines.push(`# Trend Type,${meta.model.type}`);
@@ -25409,7 +25409,7 @@ function buildChannelSheetAOA(channel, meta, metric) {
   const aoa = [];
 
   // --- Metadata block ---
-  aoa.push(["Performance Marketing Library · Trendline Export"]);
+  aoa.push(["Growth Ops Playbook · Trendline Export"]);
   aoa.push(["Generated", new Date().toISOString()]);
   aoa.push(["Channel", channel]);
   aoa.push(["Trend Type", meta.model.type]);
@@ -25537,7 +25537,7 @@ function downloadChannelsWorkbook(selectedChannels, metric, channelModels) {
 
   // 요약 시트 (목차)
   const summary = [
-    ["Performance Marketing Library · Channel Trendlines"],
+    ["Growth Ops Playbook · Channel Trendlines"],
     ["Generated", new Date().toISOString()],
     ["Cost Metric", getCostMetricLabel(metric)],
     ["Channels", selectedChannels.length],
