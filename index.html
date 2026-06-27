@@ -3085,11 +3085,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   /* MMM 신뢰도 호버 툴팁 — body에 붙는 floating tip(JS)으로 표/overflow 클리핑 회피 */
   .mmm-tip { cursor: help; }
   #mmm-hover-tip {
-    position: fixed; z-index: 10000; max-width: 280px; background: rgba(22,24,33,0.97);
-    border: 1px solid rgba(122,162,247,0.4); border-radius: 8px; padding: 8px 11px;
-    font-size: 11.5px; line-height: 1.55; color: var(--text-1); white-space: normal;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.45); pointer-events: none;
+    position: fixed; z-index: 10000; max-width: 380px; background: rgba(18,20,28,0.98);
+    border: 1px solid rgba(122,162,247,0.5); border-radius: 9px; padding: 11px 13px;
+    font-size: 12px; line-height: 1.62; color: var(--text-1, #e8ebf5); white-space: normal;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.55); pointer-events: none;
   }
+  #mmm-hover-tip .mmm-tip-pre { color: var(--text-muted, #aeb4c6); margin-bottom: 7px; }
+  #mmm-hover-tip .mmm-tip-sec { padding: 5px 0; }
+  #mmm-hover-tip .mmm-tip-sec + .mmm-tip-sec { border-top: 1px solid rgba(255,255,255,0.08); }
+  #mmm-hover-tip .mmm-tip-lbl { display: block; font-weight: 700; color: #adc6ff; font-size: 11px; margin-bottom: 2px; }
   /* Regression Lab 드래그앤드롭 매핑 */
   .reg-zone { min-height: 56px; border: 1.5px dashed var(--border); border-radius: 10px; padding: 9px 11px; background: var(--bg-2); transition: border-color .12s, background .12s; }
   .reg-zone.over { border-color: #7aa2f7; background: rgba(122,162,247,0.08); }
@@ -8142,6 +8146,43 @@ function detectAllocFilterOptions() {
     channels: [...channels].sort(),
     channelByCountry, platforms,
   };
+}
+
+/* 채널별·캠페인별은 국가 grain(Country×Channel)이라 한 국가 내 비교가 의미 있음.
+   → 다른 국가 데이터가 산점도·배분에 섞이지 않도록 국가를 단일로 강제. */
+function allocIsSingleCountryUnit() {
+  return ALLOC_FILTER_STATE.unit === "channel" || ALLOC_FILTER_STATE.unit === "campaign";
+}
+/* 국가별 총 지출 최대 국가(결정론: 동률이면 가나다 앞). candidates 주면 그 중에서. */
+function allocTopSpendCountry(candidates) {
+  const rows = getMappedRows();
+  const byC = new Map();
+  for (const r of rows) {
+    const c = String(r.country || "").trim();
+    if (!c) continue;
+    if (candidates && candidates.length && !candidates.includes(c)) continue;
+    byC.set(c, (byC.get(c) || 0) + (Number(r.cost) || 0));
+  }
+  let best = null, bestV = -Infinity;
+  for (const c of [...byC.keys()].sort()) {
+    if (byC.get(c) > bestV) { bestV = byC.get(c); best = c; }
+  }
+  return best;
+}
+/* 채널/캠페인별이면 selectedCountries를 단일로 정규화(0·복수·무효 → 최고지출).
+   국가가 1개뿐이거나 국가별 단위면 무동작(byte-동일). 호출: unit 변경·렌더 직전. */
+function normalizeAllocCountryFilter() {
+  if (!allocIsSingleCountryUnit()) return;
+  const opt = detectAllocFilterOptions();
+  if (!opt.hasCountry || opt.countries.length <= 1) return;
+  const sel = ALLOC_FILTER_STATE.selectedCountries;
+  const validSel = sel ? [...sel].filter(c => opt.countries.includes(c)) : [];
+  if (validSel.length === 1) {
+    if (!sel || sel.size !== 1) ALLOC_FILTER_STATE.selectedCountries = new Set(validSel);
+    return;
+  }
+  const pick = (validSel.length ? allocTopSpendCountry(validSel) : null) || allocTopSpendCountry();
+  ALLOC_FILTER_STATE.selectedCountries = pick ? new Set([pick]) : null;
 }
 
 /* 채널별 effective 값 lookup. perChannel에 있으면 그 값, 없으면 글로벌 default. */
@@ -14721,6 +14762,28 @@ function mmmChannelEffects(panel, cfg, targetName, lam) {
 function mmmConfDots(level) { const n = Math.max(0, Math.min(5, Math.round(level))); return "●".repeat(n) + "○".repeat(5 - n); }
 // ? 호버 툴팁 (수학값 의미)
 function mmmTip(text) { return `<span class="mmm-tip" data-mmm-tiptext="${escapeHtml(text)}" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid rgba(122,162,247,0.5);color:#adc6ff;font-size:9px;font-weight:700;margin-left:4px;vertical-align:middle;">?</span>`; }
+
+/* 긴 진단 툴팁("왜 위험: … 왜 발생: … 어떻게: …")을 라벨별 단락으로 구조화해 가독성↑.
+   마커 없으면 평문 그대로. dev-authored 텍스트지만 innerHTML 사용이라 escapeHtml 필수. */
+function formatMmmTipText(raw) {
+  const s = String(raw == null ? "" : raw).trim();
+  const MARK = [
+    { key: "왜 위험:", label: "⚠ 왜 위험한가" },
+    { key: "왜 발생:", label: "왜 생기나" },
+    { key: "어떻게:",  label: "✅ 어떻게 하나" },
+  ];
+  const found = MARK.map(m => ({ ...m, i: s.indexOf(m.key) })).filter(m => m.i >= 0).sort((a, b) => a.i - b.i);
+  if (found.length === 0) return escapeHtml(s);
+  let html = "";
+  const pre = s.slice(0, found[0].i).trim();
+  if (pre) html += `<div class="mmm-tip-pre">${escapeHtml(pre)}</div>`;
+  for (let k = 0; k < found.length; k++) {
+    const start = found[k].i + found[k].key.length;
+    const end = k + 1 < found.length ? found[k + 1].i : s.length;
+    html += `<div class="mmm-tip-sec"><span class="mmm-tip-lbl">${escapeHtml(found[k].label)}</span>${escapeHtml(s.slice(start, end).trim())}</div>`;
+  }
+  return html;
+}
 // dots + 실제 수학값 + ? 설명 (신뢰도 셀)
 function mmmConfInline(level, valueText, tip) {
   return `<span style="color:#adc6ff;letter-spacing:1px;">${mmmConfDots(level)}</span> <span style="color:var(--text-muted);font-size:11px;font-family:var(--font-mono,monospace);">${valueText}</span>${tip ? mmmTip(tip) : ""}`;
@@ -15703,7 +15766,7 @@ function bindMmmInfoOnce() {
     const el = e.target.closest && e.target.closest("[data-mmm-tiptext]"); if (!el) return;
     hideTip();
     const tip = document.createElement("div"); tip.id = "mmm-hover-tip";
-    tip.textContent = el.getAttribute("data-mmm-tiptext"); document.body.appendChild(tip);
+    tip.innerHTML = formatMmmTipText(el.getAttribute("data-mmm-tiptext")); document.body.appendChild(tip);
     const r = el.getBoundingClientRect();
     tip.style.left = Math.min(window.innerWidth - tip.offsetWidth - 8, Math.max(8, r.left + r.width / 2 - tip.offsetWidth / 2)) + "px";
     let top = r.top - tip.offsetHeight - 8; if (top < 8) top = r.bottom + 8;   // 위 공간 없으면 아래로
@@ -26609,6 +26672,7 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
 
 /* 5-3 분석 단위 + 필터 패널 렌더 */
 function renderAllocFilterPanel(compact) {
+  normalizeAllocCountryFilter();  // 채널/캠페인별이면 국가 단일 강제
   const opt = detectAllocFilterOptions();
   const f = ALLOC_FILTER_STATE;
 
@@ -26687,14 +26751,28 @@ function renderAllocFilterPanel(compact) {
       </div>
 
       <div class="alloc-filter-row">
-        ${opt.hasCountry ? `
+        ${opt.hasCountry ? (() => {
+          const single = allocIsSingleCountryUnit() && opt.countries.length > 1;
+          if (single) {
+            const cur = (f.selectedCountries && f.selectedCountries.size) ? [...f.selectedCountries][0] : null;
+            return `
+          <div class="alloc-filter-group">
+            <span class="alloc-filter-group-label">국가 (채널·캠페인별은 1개만)</span>
+            <select class="alloc-filter-select" id="alloc-filter-country" size="${Math.min(6, opt.countries.length)}">
+              ${opt.countries.map(c => `<option value="${escapeHtml(c)}" ${c === cur ? 'selected' : ''}>${escapeHtml(c)}</option>`).join("")}
+            </select>
+            <span style="font-size:10px;color:var(--text-muted);">한 국가 내 채널만 비교 (국가 간 예산 혼입 방지)</span>
+          </div>`;
+          }
+          return `
           <div class="alloc-filter-group">
             <span class="alloc-filter-group-label">국가 (다중 선택, 미선택 = 전체)</span>
             <select class="alloc-filter-select" id="alloc-filter-country" multiple size="${Math.min(6, opt.countries.length + 1)}">
               ${optionsHtml(opt.countries, f.selectedCountries)}
             </select>
             <span style="font-size:10px;color:var(--text-muted);">클릭하여 다중 선택 (Ctrl/Cmd 불필요)</span>
-          </div>` : `
+          </div>`;
+        })() : `
           <div class="alloc-filter-group">
             <span class="alloc-filter-group-label">국가</span>
             <div style="padding:8px 10px;color:var(--text-muted);font-size:12px;">매핑 없음 (country 컬럼 미연결)</div>
@@ -26752,6 +26830,7 @@ function renderAllocFilterSummary() {
 }
 
 function renderAllocStickyFilterBar() {
+  normalizeAllocCountryFilter();  // 채널/캠페인별이면 국가 단일 강제
   const opt = detectAllocFilterOptions();
   const f = ALLOC_FILTER_STATE;
 
@@ -26782,16 +26861,25 @@ function renderAllocStickyFilterBar() {
     `);
   }
 
-  // 2) 국가 (Country)
+  // 2) 국가 (Country) — 채널/캠페인별은 단일(radio) 강제
   if (opt.hasCountry && opt.countries.length) {
-    const cntLabel = f.selectedCountries === null ? `전체 (${opt.countries.length})` : `${f.selectedCountries.size}개 선택됨`;
+    const single = allocIsSingleCountryUnit() && opt.countries.length > 1;
+    const curCountry = (f.selectedCountries && f.selectedCountries.size) ? [...f.selectedCountries][0] : null;
+    const cntLabel = single
+      ? (curCountry || opt.countries[0])
+      : (f.selectedCountries === null ? `전체 (${opt.countries.length})` : `${f.selectedCountries.size}개 선택됨`);
+    const inputType = single ? "radio" : "checkbox";
+    const ctryRows = opt.countries.map(c => {
+      const checked = single ? (c === curCountry) : (!f.selectedCountries || f.selectedCountries.has(c));
+      return `<label style="display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;"><input type="${inputType}" name="alloc-sticky-country" value="${escapeHtml(c)}" ${checked ? "checked" : ""}> ${escapeHtml(c)}</label>`;
+    }).join("");
     parts.push(`
       <div class="mon-filter-item" style="align-items:center;gap:4px;display:flex;">
         <span class="mon-filter-label" style="font-size:11.5px;color:var(--text-muted);">국가:</span>
         <div class="mon-multisel" data-alloc-multisel="countries">
-          <button class="mon-multisel-btn" type="button" data-alloc-multisel-toggle="countries">${cntLabel} ∨</button>
+          <button class="mon-multisel-btn" type="button" data-alloc-multisel-toggle="countries">${escapeHtml(cntLabel)} ∨</button>
           <div class="alloc-multisel-list" data-alloc-ms-list="countries" hidden>
-            ${opt.countries.map(c => `<label style="display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;"><input type="checkbox" name="alloc-sticky-country" value="${escapeHtml(c)}" ${(!f.selectedCountries || f.selectedCountries.has(c)) ? "checked" : ""}> ${escapeHtml(c)}</label>`).join("")}
+            ${ctryRows}
           </div>
         </div>
       </div>
@@ -26933,6 +27021,11 @@ function bindBudgetAllocatorHandlers() {
   document.querySelectorAll("[data-alloc-unit]").forEach(el => {
     el.addEventListener("click", () => {
       ALLOC_FILTER_STATE.unit = el.dataset.allocUnit;
+      // 채널·캠페인별이면 국가 단일 강제(다른 국가 혼입 방지) + 변하면 채널 선택 cascading 리셋
+      const beforeCountries = ALLOC_FILTER_STATE.selectedCountries;
+      normalizeAllocCountryFilter();
+      if (ALLOC_FILTER_STATE.selectedCountries !== beforeCountries) ALLOC_FILTER_STATE.selectedChannelsFilter = null;
+      if (typeof clearAllocCache === "function") clearAllocCache();
       navigate("5-3");
     });
   });
@@ -26947,14 +27040,24 @@ function bindBudgetAllocatorHandlers() {
   // 국가 multi-select → cascading 채널 옵션 재렌더
   const ctrySel = document.getElementById("alloc-filter-country");
   if (ctrySel) {
-    makeSelectMultiToggle(ctrySel);
-    ctrySel.addEventListener("change", () => {
-      const selected = [...ctrySel.selectedOptions].map(o => o.value).filter(v => v !== "all");
-      ALLOC_FILTER_STATE.selectedCountries = selected.length ? new Set(selected) : null;
-      // 채널 선택은 country 변경 시 reset (cascading)
-      ALLOC_FILTER_STATE.selectedChannelsFilter = null;
-      navigate("5-3");
-    });
+    if (!ctrySel.multiple) {
+      // 단일 강제 모드(채널·캠페인별): 일반 single-select
+      ctrySel.addEventListener("change", () => {
+        const v = ctrySel.value;
+        ALLOC_FILTER_STATE.selectedCountries = v ? new Set([v]) : null;
+        ALLOC_FILTER_STATE.selectedChannelsFilter = null;  // cascading
+        navigate("5-3");
+      });
+    } else {
+      makeSelectMultiToggle(ctrySel);
+      ctrySel.addEventListener("change", () => {
+        const selected = [...ctrySel.selectedOptions].map(o => o.value).filter(v => v !== "all");
+        ALLOC_FILTER_STATE.selectedCountries = selected.length ? new Set(selected) : null;
+        // 채널 선택은 country 변경 시 reset (cascading)
+        ALLOC_FILTER_STATE.selectedChannelsFilter = null;
+        navigate("5-3");
+      });
+    }
   }
   // 채널 multi-select
   const chSel = document.getElementById("alloc-filter-channel");
