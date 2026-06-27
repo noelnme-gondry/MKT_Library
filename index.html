@@ -17782,6 +17782,19 @@ const PVM_MATH = (function () {
     return [out1, out2];
   }
 
+    function calculateCpa(cost, result) {
+    const userVal = result > 0 ? cost / result : null;
+    let engineVal = 0;
+    if (result > 0) {
+      engineVal = cost / result;
+    } else if (cost > 0) {
+      engineVal = cost; // Rule A
+    } else {
+      engineVal = 0;    // Rule B
+    }
+    return { userVal, engineVal };
+  }
+
   // 핵심 분해 — agg1/agg2: Map(key -> {cost, result}). 잔차 없는 mix/rate bridge.
   function decompose(agg1, agg2) {
     const keys = new Set([...agg1.keys(), ...agg2.keys()]);
@@ -17796,10 +17809,12 @@ const PVM_MATH = (function () {
     for (const k of keys) {
       const e1 = agg1.get(k) || { cost: 0, result: 0 };
       const e2 = agg2.get(k) || { cost: 0, result: 0 };
-      const cpa1raw = e1.result > 0 ? e1.cost / e1.result : null;
-      const cpa2raw = e2.result > 0 ? e2.cost / e2.result : null;
-      const cpa1 = cpa1raw ?? cpa2raw ?? 0;
-      const cpa2 = cpa2raw ?? cpa1raw ?? 0;
+      const cpa1Data = calculateCpa(e1.cost, e1.result);
+      const cpa2Data = calculateCpa(e2.cost, e2.result);
+      const cpa1 = cpa1Data.engineVal;
+      const cpa2 = cpa2Data.engineVal;
+      const userCpa1 = cpa1Data.userVal;
+      const userCpa2 = cpa2Data.userVal;
       const s1 = Result1 > 0 ? e1.result / Result1 : 0;
       const s2 = Result2 > 0 ? e2.result / Result2 : 0;
       const cpaBar = (cpa1 + cpa2) / 2;
@@ -17810,7 +17825,7 @@ const PVM_MATH = (function () {
       const rate = sBar * (cpa2 - cpa1);
       entities.push({
         key: k, cost1: e1.cost, cost2: e2.cost, result1: e1.result, result2: e2.result,
-        cpa1, cpa2, s1, s2, mix, rate, contribution: mix + rate,
+        cpa1, cpa2, userCpa1, userCpa2, s1, s2, mix, rate, contribution: mix + rate,
       });
     }
     return { CPA1, CPA2, deltaCpa: CPA2 - CPA1, Cost1, Cost2, Result1, Result2, entities };
@@ -17825,7 +17840,7 @@ const PVM_MATH = (function () {
       const ch = String(r[keys.ch] ?? "");
       const cmp = keys.cmp ? String(r[keys.cmp] ?? "") : "";
       const cr = keys.cr ? String(r[keys.cr] ?? "") : "";
-      return ch + "" + cmp + "" + cr;
+      return ch + " " + cmp + " " + cr;
     }
     function aggTuple(rows) {
       const m = new Map();
@@ -17860,10 +17875,12 @@ const PVM_MATH = (function () {
       const e1 = agg1.get(k) || { cost: 0, result: 0 };
       const e2 = agg2.get(k) || { cost: 0, result: 0 };
       const meta = agg1.get(k) || agg2.get(k);
-      const cpa1raw = e1.result > 0 ? e1.cost / e1.result : null;
-      const cpa2raw = e2.result > 0 ? e2.cost / e2.result : null;
-      const cpa1 = cpa1raw ?? cpa2raw ?? 0;
-      const cpa2 = cpa2raw ?? cpa1raw ?? 0;
+      const cpa1Data = calculateCpa(e1.cost, e1.result);
+      const cpa2Data = calculateCpa(e2.cost, e2.result);
+      const cpa1 = cpa1Data.engineVal;
+      const cpa2 = cpa2Data.engineVal;
+      const userCpa1 = cpa1Data.userVal;
+      const userCpa2 = cpa2Data.userVal;
       const s1 = Result1 > 0 ? e1.result / Result1 : 0;
       const s2 = Result2 > 0 ? e2.result / Result2 : 0;
       const cpaBar = (cpa1 + cpa2) / 2;
@@ -17873,7 +17890,7 @@ const PVM_MATH = (function () {
       finest.push({
         chKey: meta.chKey, cmpKey: meta.cmpKey, crKey: meta.crKey,
         cost1: e1.cost, cost2: e2.cost, result1: e1.result, result2: e2.result,
-        cpa1, cpa2, s1, s2, mix, rate, contribution: mix + rate,
+        cpa1, cpa2, userCpa1, userCpa2, s1, s2, mix, rate, contribution: mix + rate,
       });
     }
     return { CPA1, CPA2, deltaCpa: CPA2 - CPA1, Cost1, Cost2, Result1, Result2, finest };
@@ -17923,10 +17940,12 @@ const PVM_MATH = (function () {
       const e2 = agg2.get(gk) || { cost: 0, result: 0 };
       const meta = agg1.get(gk) || agg2.get(gk);
 
-      const cpa1raw = e1.result > 0 ? e1.cost / e1.result : null;
-      const cpa2raw = e2.result > 0 ? e2.cost / e2.result : null;
-      const cpa1 = cpa1raw ?? cpa2raw ?? 0;
-      const cpa2 = cpa2raw ?? cpa1raw ?? 0;
+      const cpa1Data = calculateCpa(e1.cost, e1.result);
+      const cpa2Data = calculateCpa(e2.cost, e2.result);
+      const cpa1 = cpa1Data.engineVal;
+      const cpa2 = cpa2Data.engineVal;
+      const userCpa1 = cpa1Data.userVal;
+      const userCpa2 = cpa2Data.userVal;
 
       const s1 = Result1 > 0 ? e1.result / Result1 : 0;
       const s2 = Result2 > 0 ? e2.result / Result2 : 0;
@@ -17943,7 +17962,7 @@ const PVM_MATH = (function () {
         cmpKey: meta.cmpKey,
         crKey: meta.crKey,
         cost1: e1.cost, cost2: e2.cost, result1: e1.result, result2: e2.result,
-        cpa1, cpa2, s1, s2, mix, rate, contribution: mix + rate,
+        cpa1, cpa2, userCpa1, userCpa2, s1, s2, mix, rate, contribution: mix + rate,
       });
     }
     return entities;
@@ -18034,8 +18053,8 @@ window.runPvmTests = function () {
     assert("T2 mix_A=+0.1", approx(A.mix, 0.1, 1e-6));
     assert("T2 rate_A=0", approx(A.rate, 0, 1e-6));
     assert("T2 contribution_A=+0.1", approx(A.contribution, 0.1, 1e-6));
-    assert("T2 mix_C=+1.9", approx(C.mix, 1.9, 1e-6));
-    assert("T2 rate_C=0", approx(C.rate, 0, 1e-6));
+    assert("T2 mix_C=+0.4", approx(C.mix, 0.4, 1e-6));
+    assert("T2 rate_C=+1.5", approx(C.rate, 1.5, 1e-6));
     assert("T2 contribution_C=+1.9", approx(C.contribution, 1.9, 1e-6));
     const sigma = r.entities.reduce((a, e) => a + e.contribution, 0);
     assert("T2 Σcontribution = ΔCPA_total(=2)", approx(sigma, r.deltaCpa, 1e-9) && approx(r.deltaCpa, 2, 1e-9));
@@ -18053,8 +18072,8 @@ window.runPvmTests = function () {
     assert("T3 mix_A=-0.1", approx(A.mix, -0.1, 1e-6));
     assert("T3 rate_A=0", approx(A.rate, 0, 1e-6));
     assert("T3 contribution_A=-0.1", approx(A.contribution, -0.1, 1e-6));
-    assert("T3 mix_D=-1.9", approx(D.mix, -1.9, 1e-6));
-    assert("T3 rate_D=0", approx(D.rate, 0, 1e-6));
+    assert("T3 mix_D=-0.4", approx(D.mix, -0.4, 1e-6));
+    assert("T3 rate_D=-1.5", approx(D.rate, -1.5, 1e-6));
     assert("T3 contribution_D=-1.9", approx(D.contribution, -1.9, 1e-6));
     const sigma = r.entities.reduce((a, e) => a + e.contribution, 0);
     assert("T3 Σcontribution = ΔCPA_total(=-2)", approx(sigma, r.deltaCpa, 1e-9) && approx(r.deltaCpa, -2, 1e-9));
@@ -18302,12 +18321,15 @@ function buildPvmCache() {
     for (const cmp of layer2) {
       const relatedCreatives = layer3.filter(cr => cr.chKey === cmp.chKey && cr.cmpKey === cmp.cmpKey);
       const creativeSumMix = relatedCreatives.reduce((sum, cr) => sum + cr.mix, 0);
+      const creativeSumRate = relatedCreatives.reduce((sum, cr) => sum + cr.rate, 0);
       cmp.creativeSumMix = creativeSumMix;
+      cmp.creativeSumRate = creativeSumRate;
       cmp.withinMix = creativeSumMix - cmp.mix;
     }
   } else if (keys.cmp) {
     for (const cmp of layer2) {
       cmp.creativeSumMix = 0;
+      cmp.creativeSumRate = 0;
       cmp.withinMix = 0;
     }
   }
@@ -18568,103 +18590,153 @@ function pvmTableHeader(c, opts) {
   opts = opts || {};
   const metricLabel = pvmMetricLabel(c);
   const curSym = (c.currency || PVM_STATE.currency) === "usd" ? "$" : "원";
-  if (opts.isCampaign) {
-    return `<tr>
-      ${opts.showNewCol ? `<th>상태</th>` : ""}
-      ${pvmEntityCols(opts).map(col => `<th>${col.label}</th>`).join("")}
-      <th data-type="number">Cost(P1→P2)</th>
-      <th data-type="number">${metricLabel}(P1→P2)</th>
-      <th data-type="number">비중(P1→P2)</th>
-      ${opts.showCtr ? `<th data-type="number">CTR(P1→P2)</th>` : ""}
-      <th data-type="number" title="채널 내 캠페인 예산 배분 영향 (캠페인 계산 Mix)">Mix (Macro)</th>
-      <th data-type="number" title="캠페인 내부 소재 최적화 실패/성공 영향 (소재 합산 Mix - 캠페인 계산 Mix)">Mix (Within)</th>
-      <th data-type="number">Rate</th>
-      <th data-type="number">${metricLabel} 영향(${curSym})</th>
-      ${opts.showUrl ? `<th>링크</th>` : ""}
-    </tr>`;
-  }
+  const nameLabel = opts.level === "channel" ? "채널" : (opts.level === "campaign" ? "캠페인" : "소재");
   return `<tr>
-    ${opts.showNewCol ? `<th>상태</th>` : ""}
-    ${pvmEntityCols(opts).map(col => `<th>${col.label}</th>`).join("")}
-    <th data-type="number">Cost(P1→P2)</th>
-    <th data-type="number">${metricLabel}(P1→P2)</th>
-    <th data-type="number">비중(P1→P2)</th>
-    ${opts.showCtr ? `<th data-type="number">CTR(P1→P2)</th>` : ""}
-    <th data-type="number">Mix</th>
-    <th data-type="number">Rate</th>
+    <th>${nameLabel}</th>
+    <th data-type="number">COST (P1→P2)</th>
+    <th data-type="number">${metricLabel} (P1→P2)</th>
+    <th data-type="number">비중 (P1→P2)</th>
+    <th data-type="number" title="순수 이동 효과 (Macro Mix)">MIX (순수 이동)</th>
+    <th data-type="number" title="순수 단가 변동 (Rate)">RATE (순수 단가)</th>
+    <th data-type="number" title="하위 세그먼트 합산 믹스 효과">MIX (하위합)</th>
+    <th data-type="number" title="하위 세그먼트 합산 레이트 효과">RATE (하위합)</th>
+    <th>진단</th>
     <th data-type="number">${metricLabel} 영향(${curSym})</th>
-    ${opts.showUrl ? `<th>링크</th>` : ""}
   </tr>`;
 }
-// colspan 계산(빈 표 fallback용) — 옵션에 따라 컬럼 수가 달라짐
+
 function pvmColCount(opts) {
-  opts = opts || {};
-  const extraMixCol = opts.isCampaign ? 1 : 0;
-  return (opts.showNewCol ? 1 : 0) + pvmEntityCols(opts).length + 3 /*cost,metric,share*/ + (opts.showCtr ? 1 : 0) + 3 /*mix,rate,impact*/ + (opts.showUrl ? 1 : 0) + extraMixCol;
+  return 10;
 }
+
+function pvmGenerateDiagnosis(e, level, c) {
+  const cur = c.currency || PVM_STATE.currency;
+  const unit = cur === "usd" ? "$" : "원";
+  const fmt = (val) => {
+    const s = pvmFmtMoney(Math.abs(val), cur);
+    return val >= 0 ? `+${s}${unit}` : `-${s}${unit}`;
+  };
+
+  const mixVal = e.mix;
+  const rateVal = e.rate;
+
+  if (level === "creative") {
+    return `소재 단위 최하위 레벨입니다. 이 소재의 예산 비중 변화(믹스 효과: ${fmt(mixVal)})와 단가 자체의 변동(레이트 효과: ${fmt(rateVal)})이 합산되어 최종 CPA에 ${fmt(e.contribution)}만큼 영향을 주었습니다.`;
+  }
+
+  const subMix = level === "channel" ? (e.cmpSumMix || 0) : (e.creativeSumMix || 0);
+  const subRate = level === "channel" ? (e.cmpSumRate || 0) : (e.creativeSumRate || 0);
+
+  let diagnosis = "";
+  if (mixVal < 0 && subMix > 0) {
+    diagnosis = `이 ${level === "channel" ? "채널" : "캠페인"}의 예산 비중을 줄인 전략(순수 이동 효과: ${fmt(mixVal)})은 매우 훌륭했습니다. 하지만 내부 하위 세그먼트에서 단가가 비싼 항목으로 예산이 쏠리는 배달 사고(하위 세그먼트합 믹스: ${fmt(subMix)})가 발생해 성과를 저해하고 있습니다. 하위 레벨 탭을 확인하여 비효율 항목의 예산을 줄이거나 OFF 하세요.`;
+  } else if (mixVal > 0 && subMix < 0) {
+    diagnosis = `이 ${level === "channel" ? "채널" : "캠페인"}에 예산을 더 배분한 결정(순수 이동 효과: ${fmt(mixVal)})은 일시적으로 CPA 상승 요인이 되었으나, 내부 하위 세그먼트 단위에서 단가가 저렴한 효율적 항목 위주로 유입을 집중시키는 최적화(하위 세그먼트합 믹스: ${fmt(subMix)})가 잘 작동하고 있습니다. 향후 이 세그먼트 배분 비중을 재조정해 보세요.`;
+  } else if (mixVal < 0 && subMix < 0) {
+    diagnosis = `예산 배분 전략(순수 이동 효과: ${fmt(mixVal)})과 하위 세그먼트 유입 최적화(하위 세그먼트합 믹스: ${fmt(subMix)})가 양방향 모두에서 극히 효율적으로 작동했습니다. 전체 CPA가 개선되는 이상적인 상태이므로 현재의 운영 기조를 유지해 주시기 바랍니다.`;
+  } else if (mixVal > 0 && subMix > 0) {
+    diagnosis = `예산 배분 비중 변화(순수 이동 효과: ${fmt(mixVal)})와 하위 세그먼트 선택(하위 세그먼트합 믹스: ${fmt(subMix)}) 모두 비효율적으로 작동해 CPA 상승의 주원인이 되고 있습니다. 성과가 저조한 하위 항목들의 비중을 대폭 줄이거나 소재를 점검해야 합니다.`;
+  } else {
+    diagnosis = `예산 이동 및 효율이 복합적인 영향을 미치고 있습니다. 순수 이동 효과: ${fmt(mixVal)}, 하위 세그먼트합 믹스: ${fmt(subMix)}, 단가 변동(레이트 효과): ${fmt(rateVal)}를 각각 분석해 개선 기회를 도출해 보세요.`;
+  }
+  return diagnosis;
+}
+
+window.togglePvmDiagnosis = function(btn) {
+  const row = btn.closest('tr');
+  const diagRow = row.nextElementSibling;
+  if (diagRow && diagRow.classList.contains('pvm-diag-row')) {
+    const isHidden = diagRow.style.display === 'none';
+    diagRow.style.display = isHidden ? 'table-row' : 'none';
+    btn.classList.toggle('active', isHidden);
+  }
+};
+
 function pvmTableRow(e, label, c, opts) {
   opts = opts || {};
   const cur = c.currency || PVM_STATE.currency;
-  const isNew = opts.isNew;
-  const ctr = opts.ctr;
-  const safeUrl = opts.url ? pvmSafeUrl(opts.url) : null;
-  const newCell = opts.showNewCol
-    ? `<td>${isNew ? `<span class="chip ok" style="padding:1px 6px;font-size:9.5px;">🆕 New</span>` : `<span style="color:var(--text-muted);">·</span>`}</td>`
-    : "";
-  const urlCell = opts.showUrl
-    ? `<td>${safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" title="소재 링크 열기" style="text-decoration:none;font-size:11px;white-space:nowrap;">🔗 열기</a>` : `<span style="color:var(--text-muted);">—</span>`}</td>`
-    : "";
-  const entityCells = opts.entityCols
-    ? opts.entityCols.map(col => `<td>${col.html != null ? col.html : escapeHtml(col.value || "")}</td>`).join("")
-    : `<td>${opts.labelHtml || escapeHtml(label)}</td>`;
+  const level = opts.level || "channel";
 
-  let mixCellHtml = "";
-  let rateCellHtml = "";
-  if (opts.isCampaign) {
-    mixCellHtml = `
-      <td class="tnum" data-sortval="${e.mix}" style="color:${pvmColor(e.mix)};">${e.mix >= 0 ? "+" : ""}${pvmFmtMoney(e.mix, cur)}</td>
-      <td class="tnum" data-sortval="${e.withinMix}" style="color:${pvmColor(e.withinMix)};">${e.withinMix >= 0 ? "+" : ""}${pvmFmtMoney(e.withinMix, cur)}</td>
-    `;
-    rateCellHtml = `<td class="tnum" data-sortval="${e.rate}" style="color:${pvmColor(e.rate)};">${e.rate >= 0 ? "+" : ""}${pvmFmtMoney(e.rate, cur)}</td>`;
-  } else if (!opts.isCampaign && !opts.entityCols) {
-    const diffMix = e.cmpSumMix - e.mix;
-    const diffRate = e.cmpSumRate - e.rate;
-    mixCellHtml = `
-      <td class="tnum" data-sortval="${e.mix}">
-        <span style="color:${pvmColor(e.mix)};">${e.mix >= 0 ? "+" : ""}${pvmFmtMoney(e.mix, cur)}</span>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:2px;font-weight:normal;" title="하위 캠페인 단순 합산 Mix 효과 및 차이">
-          캠페인합: ${e.cmpSumMix >= 0 ? "+" : ""}${pvmFmtMoney(e.cmpSumMix, cur)} (차이: ${diffMix >= 0 ? "+" : ""}${pvmFmtMoney(diffMix, cur)})
-        </div>
-      </td>
-    `;
-    rateCellHtml = `
-      <td class="tnum" data-sortval="${e.rate}">
-        <span style="color:${pvmColor(e.rate)};">${e.rate >= 0 ? "+" : ""}${pvmFmtMoney(e.rate, cur)}</span>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:2px;font-weight:normal;" title="하위 캠페인 단순 합산 Rate 효과 및 차이">
-          캠페인합: ${e.cmpSumRate >= 0 ? "+" : ""}${pvmFmtMoney(e.cmpSumRate, cur)} (차이: ${diffRate >= 0 ? "+" : ""}${pvmFmtMoney(diffRate, cur)})
-        </div>
-      </td>
-    `;
+  let nameHtml = "";
+  if (level === "creative") {
+    const isNew = opts.isNew;
+    const safeUrl = opts.url ? pvmSafeUrl(opts.url) : null;
+    const newChip = isNew ? `<span class="chip ok" style="padding:1px 6px;font-size:9.5px;margin-right:4px;vertical-align:middle;">🆕 New</span>` : "";
+    const linkIcon = safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" title="소재 링크 열기" style="text-decoration:none;font-size:11px;margin-left:4px;vertical-align:middle;">🔗</a>` : "";
+    const breadcrumb = c.campaignMapped
+      ? `<span style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">${escapeHtml(e.chKey)} › ${escapeHtml(e.cmpKey || "(미지정)")}</span>`
+      : `<span style="font-size:10px;color:var(--text-muted);display:block;margin-bottom:2px;">${escapeHtml(e.chKey)}</span>`;
+    nameHtml = `${breadcrumb}${newChip}<strong style="vertical-align:middle;">${escapeHtml(e.crKey || "(미지정)")}</strong>${linkIcon}`;
+  } else if (level === "campaign") {
+    nameHtml = escapeHtml(label || e.cmpKey || "(미지정)");
   } else {
-    mixCellHtml = `<td class="tnum" data-sortval="${e.mix}" style="color:${pvmColor(e.mix)};">${e.mix >= 0 ? "+" : ""}${pvmFmtMoney(e.mix, cur)}</td>`;
-    rateCellHtml = `<td class="tnum" data-sortval="${e.rate}" style="color:${pvmColor(e.rate)};">${e.rate >= 0 ? "+" : ""}${pvmFmtMoney(e.rate, cur)}</td>`;
+    nameHtml = escapeHtml(label || e.key || "(미지정)");
   }
 
-  return `<tr>
-    ${newCell}
-    ${entityCells}
-    <td class="tnum" data-sortval="${e.cost2 - e.cost1}">${pvmFmtMoney(e.cost1, cur)} → ${pvmFmtMoney(e.cost2, cur)}</td>
-    <td class="tnum" data-sortval="${e.cpa2 - e.cpa1}">${pvmFmtMoney(e.cpa1, cur)} → ${pvmFmtMoney(e.cpa2, cur)}</td>
-    <td class="tnum" data-sortval="${e.s2 - e.s1}">${(e.s1 * 100).toFixed(1)}% → ${(e.s2 * 100).toFixed(1)}%</td>
-    ${opts.showCtr ? `<td class="tnum" data-sortval="${ctr && ctr.ctr2 != null ? ctr.ctr2 : 0}">${ctr && ctr.ctr1 != null ? (ctr.ctr1 * 100).toFixed(2) + "%" : "—"} → ${ctr && ctr.ctr2 != null ? (ctr.ctr2 * 100).toFixed(2) + "%" : "—"}</td>` : ""}
-    ${mixCellHtml}
-    ${rateCellHtml}
-    <td class="tnum" data-sortval="${e.contribution}"><strong style="color:${pvmColor(e.contribution)};">${e.contribution >= 0 ? "+" : ""}${pvmFmtMoney(e.contribution, cur)}</strong></td>
-    ${urlCell}
-  </tr>`;
+  const cost1 = e.cost1, cost2 = e.cost2;
+  const result1 = e.result1, result2 = e.result2;
+
+  // UI View CPA (Result == 0 yields null formatted as '—')
+  const userCpa1Val = result1 > 0 ? cost1 / result1 : null;
+  const userCpa2Val = result2 > 0 ? cost2 / result2 : null;
+  
+  const cpa1Str = userCpa1Val !== null ? pvmFmtMoney(userCpa1Val, cur) : "—";
+  const cpa2Str = userCpa2Val !== null ? pvmFmtMoney(userCpa2Val, cur) : "—";
+
+  const share1Str = (e.s1 * 100).toFixed(1) + "%";
+  const share2Str = (e.s2 * 100).toFixed(1) + "%";
+
+  const mixStr = (e.mix >= 0 ? "+" : "") + pvmFmtMoney(e.mix, cur);
+  const rateStr = (e.rate >= 0 ? "+" : "") + pvmFmtMoney(e.rate, cur);
+
+  let subMixStr = "—";
+  let subRateStr = "—";
+  let subMixVal = 0;
+  let subRateVal = 0;
+  
+  if (level === "channel") {
+    subMixVal = e.cmpSumMix || 0;
+    subRateVal = e.cmpSumRate || 0;
+    subMixStr = (subMixVal >= 0 ? "+" : "") + pvmFmtMoney(subMixVal, cur);
+    subRateStr = (subRateVal >= 0 ? "+" : "") + pvmFmtMoney(subRateVal, cur);
+  } else if (level === "campaign") {
+    subMixVal = e.creativeSumMix || 0;
+    subRateVal = e.creativeSumRate || 0;
+    subMixStr = (subMixVal >= 0 ? "+" : "") + pvmFmtMoney(subMixVal, cur);
+    subRateStr = (subRateVal >= 0 ? "+" : "") + pvmFmtMoney(subRateVal, cur);
+  } else {
+    subMixStr = `<span style="color:var(--text-muted);font-size:10px;">— (최하위 레벨)</span>`;
+    subRateStr = `<span style="color:var(--text-muted);font-size:10px;">— (최하위 레벨)</span>`;
+  }
+
+  const diagText = pvmGenerateDiagnosis(e, level, c);
+  const diagnosisCell = `<button class="ab-pill pvm-diag-btn" onclick="togglePvmDiagnosis(this)" style="padding:2px 6px;font-size:11px;cursor:pointer;background:var(--bg-3);border:1px solid var(--border-color);color:var(--text-1);">💡 진단</button>`;
+  const impactStr = (e.contribution >= 0 ? "+" : "") + pvmFmtMoney(e.contribution, cur);
+
+  return `
+    <tr data-pvm-level="${level}">
+      <td>${nameHtml}</td>
+      <td class="tnum" data-sortval="${cost2 - cost1}">${pvmFmtMoney(cost1, cur)} → ${pvmFmtMoney(cost2, cur)}</td>
+      <td class="tnum" data-sortval="${(userCpa2Val ?? 0) - (userCpa1Val ?? 0)}">${cpa1Str} → ${cpa2Str}</td>
+      <td class="tnum" data-sortval="${e.s2 - e.s1}">${share1Str} → ${share2Str}</td>
+      <td class="tnum" data-sortval="${e.mix}" style="color:${pvmColor(e.mix)};">${mixStr}</td>
+      <td class="tnum" data-sortval="${e.rate}" style="color:${pvmColor(e.rate)};">${rateStr}</td>
+      <td class="tnum" data-sortval="${subMixVal}" style="color:${pvmColor(subMixVal)};">${subMixStr}</td>
+      <td class="tnum" data-sortval="${subRateVal}" style="color:${pvmColor(subRateVal)};">${subRateStr}</td>
+      <td style="text-align:center;">${diagnosisCell}</td>
+      <td class="tnum" data-sortval="${e.contribution}"><strong style="color:${pvmColor(e.contribution)};">${impactStr}</strong></td>
+    </tr>
+    <tr class="pvm-diag-row" style="display:none;background:var(--bg-2);">
+      <td colspan="10" style="padding:10px 14px;font-size:11.5px;line-height:1.6;color:var(--text-2);">
+        <div style="border-left:3px solid var(--primary);padding-left:10px;">
+          <strong>🔍 성과 진단 리포트:</strong>
+          <p style="margin:4px 0 0;color:var(--text-muted);white-space:normal;word-break:keep-all;">${escapeHtml(diagText)}</p>
+        </div>
+      </td>
+    </tr>
+  `;
 }
 
-// Mix·Rate·영향 용어 설명 토글 (§2에 1회 노출)
 function pvmMetricGuide(c) {
   const m = pvmMetricLabel(c);
   return `<details class="block" style="padding:11px 14px;margin-bottom:10px;background:var(--bg-2);border-radius:10px;">
@@ -18707,15 +18779,14 @@ function pvmChannelTableSection(c, byChannel) {
     </div>
     <div class="table-wrap">
       <table class="data" data-sortable="1" style="font-size:11.5px;">
-        <thead>${pvmTableHeader(c, { entityLabel: "채널" })}</thead>
-        <tbody>${byChannel.map(e => pvmTableRow(e, e.key, c)).join("")}</tbody>
+        <thead>${pvmTableHeader(c, { level: "channel" })}</thead>
+        <tbody>${byChannel.map(e => pvmTableRow(e, e.key, c, { level: "channel" })).join("")}</tbody>
       </table>
     </div>
     <div class="callout ok" style="margin-top:10px;"><div class="ico">✓</div><div class="body"><strong>Σ ${metricLabel} 영향 = 전체 Δ${metricLabel}</strong><p style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${pvmFmtMoney(sigma, cur)} = ${pvmFmtMoney(c.deltaCpa, cur)} (잔차 없음)</p></div></div>
   </section>`;
 }
 
-// §3 채널 딥다이브(캠페인)
 function pvmChannelDrilldownSection(c, byChannel) {
   if (!c.campaignMapped) {
     return `<section class="block" id="s-pvm-campaigns">
@@ -18739,15 +18810,14 @@ function pvmChannelDrilldownSection(c, byChannel) {
     ${selector}
     <div class="table-wrap">
       <table class="data" data-sortable="1" style="font-size:11.5px;">
-        <thead>${pvmTableHeader(c, { entityLabel: "캠페인", isCampaign: true })}</thead>
-        <tbody>${byCampaign.map(e => pvmTableRow(e, e.key, c, { isCampaign: true })).join("")}</tbody>
+        <thead>${pvmTableHeader(c, { level: "campaign" })}</thead>
+        <tbody>${byCampaign.map(e => pvmTableRow(e, e.key, c, { level: "campaign" })).join("")}</tbody>
       </table>
     </div>
     <div class="callout ok" style="margin-top:10px;"><div class="ico">✓</div><div class="body"><strong>Σ = ${escapeHtml(sel)} 채널 ${metricLabel} 영향</strong><p style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${pvmFmtMoney(sigma, cur)} = ${pvmFmtMoney(selCh ? selCh.contribution : 0, cur)}</p></div></div>
   </section>`;
 }
 
-// §4 소재별 결과 — 채널→(옵션)캠페인→소재 계층. ch/cmp/cr은 고정 별도 컬럼. (모드 B 제거됨)
 function pvmCreativeDrilldownSection(c, byChannel) {
   if (!c.creativeMapped) {
     return `<section class="block" id="s-pvm-creatives">
@@ -18758,7 +18828,6 @@ function pvmCreativeDrilldownSection(c, byChannel) {
   const cur = c.currency || PVM_STATE.currency;
   const metricLabel = pvmMetricLabel(c);
 
-  // 페이지네이션(20행/page) — total>PER일 때만 컨트롤 노출
   const PER = 20;
   const pvmPager = (total) => {
     let page = PVM_STATE.crPage || 1;
@@ -18774,7 +18843,6 @@ function pvmCreativeDrilldownSection(c, byChannel) {
     return { page, start, ctrl };
   };
 
-  // 채널 → (옵션) 캠페인 → 소재. 채널="__all__"(전체)이면 ch×cmp×cr 계층 전체 표시.
   const isAllCh = PVM_STATE.crChannel === "__all__";
   const channelKeys = byChannel.map(ch => ch.key);
   const selCh = isAllCh ? "__all__"
@@ -18784,7 +18852,7 @@ function pvmCreativeDrilldownSection(c, byChannel) {
     <button class="ab-pill ${isAllCh ? "active" : ""}" data-pvm-cr-channel="__all__">전체</button>
     ${byChannel.map(ch => `<button class="ab-pill ${!isAllCh && ch.key === selCh ? "active" : ""}" data-pvm-cr-channel="${escapeHtml(ch.key)}">${escapeHtml(ch.key)}</button>`).join("")}
   </div>`;
-  // 캠페인 셀렉터는 단일 채널 선택 시에만(채널 전체는 횡단이라 의미 없음 → selCmp=null 강제)
+
   let cmpSelector = "", selCmp = null;
   if (c.campaignMapped && !isAllCh) {
     const campaignsInCh = [...new Set(c.layer3.filter(f => f.chKey === selCh).map(f => f.cmpKey ?? ""))];
@@ -18812,33 +18880,21 @@ function pvmCreativeDrilldownSection(c, byChannel) {
         ? (c.layer2.find(f => f.chKey === selCh && f.cmpKey === selCmp)?.contribution ?? 0)
         : (c.layer1.find(ch => ch.key === selCh)?.contribution ?? 0));
 
-  // 채널·캠페인·소재 고정 컬럼(합친 라벨 X). 캠페인 미매핑이면 캠페인 컬럼 생략.
-  const headerEntityCols = c.campaignMapped
-    ? [{ label: "채널" }, { label: "캠페인" }, { label: "소재" }]
-    : [{ label: "채널" }, { label: "소재" }];
-  const rowEntityCols = (f) => {
-    const chCell = { html: escapeHtml(f.chKey) };
-    const crCell = { html: `<strong>${escapeHtml(f.crKey || "(미지정)")}</strong>` };
-    return c.campaignMapped ? [chCell, { html: escapeHtml(f.cmpKey || "(미지정)") }, crCell] : [chCell, crCell];
-  };
-
   const showNew = PVM_STATE.showNew;
   const newFilterToggle = `<label style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);margin-bottom:10px;cursor:pointer;">
     <input type="checkbox" data-pvm-show-new ${showNew ? "checked" : ""}> 🆕 신규 소재만 보기(이전 기간 0건 → 현재 1건 이상)
   </label>`;
   const rowsToShow = showNew ? byCreative.filter(e => e.result1 === 0 && e.result2 > 0) : byCreative;
-  const headerOpts = { showCtr: c.ctrMapped, showNewCol: true, showUrl: c.urlMapped, entityCols: headerEntityCols };
+  
   const { start, ctrl } = pvmPager(rowsToShow.length);
   const rows = rowsToShow.slice(start, start + PER).map(e => {
-    const f = e;
-    const ctr = pvmCtrFor(c, f.chKey, f.cmpKey, f.crKey);
     return pvmTableRow(e, "", c, {
-      showCtr: c.ctrMapped, showNewCol: true, showUrl: c.urlMapped,
-      entityCols: rowEntityCols(f), ctr,
+      level: "creative",
       isNew: e.result1 === 0 && e.result2 > 0,
-      url: c.crUrlMap ? c.crUrlMap.get(f.crKey) : null,
+      url: c.crUrlMap ? c.crUrlMap.get(e.crKey) : null,
     });
   }).join("");
+  
   const sigmaLabel = isAllCh ? "전체"
     : (selCmp != null ? `${escapeHtml(selCh)} · ${escapeHtml(selCmp || "(미지정)")}` : `${escapeHtml(selCh)} 채널`);
 
@@ -18846,8 +18902,8 @@ function pvmCreativeDrilldownSection(c, byChannel) {
     <h2 class="section-title"><span class="ix">§4</span>소재별 결과</h2>
     ${chSelector}${cmpSelector}
     <div class="table-wrap"><table class="data" data-sortable="1" style="font-size:11.5px;">
-      <thead>${pvmTableHeader(c, headerOpts)}</thead>
-      <tbody>${rows || `<tr><td colspan="${pvmColCount(headerOpts)}" style="text-align:center;color:var(--text-muted);">표시할 소재가 없습니다</td></tr>`}</tbody>
+      <thead>${pvmTableHeader(c, { level: "creative" })}</thead>
+      <tbody>${rows || `<tr><td colspan="10" style="text-align:center;color:var(--text-muted);">표시할 소재가 없습니다</td></tr>`}</tbody>
     </table></div>
     ${ctrl}
     ${newFilterToggle}
@@ -18855,9 +18911,6 @@ function pvmCreativeDrilldownSection(c, byChannel) {
   </section>`;
 }
 
-// 결과 CSV — META/SCORECARD/CREATIVE_FULL/CHANNEL/CAMPAIGN 1개 파일(section 태그).
-// mix/rate는 하드코딩 X — finest는 centering 공식, 롤업은 하위 소재 cell 합(+) 살아있는 엑셀 수식.
-// (SUMIFS는 콤마 때문에 CSV에서 깨짐 → 명시 셀 `+` 합으로 콤마 회피.) CRLF+BOM, q() 이스케이프(§7).
 function downloadPvmCsv() {
   const c = buildPvmCache();
   if (!c || c.insufficientData) { alert("분석 데이터가 없습니다. 먼저 분석을 실행하세요."); return; }
