@@ -78,6 +78,8 @@ tools:
 
 피드백 설문(VOC, §12.13): 사이드바 하단 상시 링크(`.sidebar` flex+`margin-top:auto`)+⌘K `action:"feedback"` + `pageShell` 5-x 분기 `renderFeedbackNudge`(게이트 `/^5-/`+`isToolAnalyzed`+`!FEEDBACK_NUDGE.dismissed`, 세션당 1회·localStorage X). `bindFeedback` 전역 위임, `target=_blank rel=noopener`. 색은 semantic 토큰만(다크/라이트 자동). render층(골든 무관).
 
+5-3 결론·검증 UX(§12.14, render층): §0 진단 카드(`renderAllocDiagnosis` — 최악·기회·집중도 평어+절대값, eff=CPR/`1/ROAS` 통일 배수, 집중도 `≥0.5 && ≥1.5/n`로 50/50 오탐 차단) + §5 검증 스트립(`renderAllocVerifyStrip` — 모드 C 효율↔배분 역전 플래그, 모드 B는 한계효율 정직 안내). 국가 단일 강제(`normalizeAllocCountryFilter` — 채널/캠페인별은 최고지출 국가 1개, 위저드 single-select·sticky radio, 국가1개/국가별 무동작). 라이브 콤마(`allocLiveCommaFormat` 커서 보존, input=포맷·change=재계산). de-jargon(배지·헤드라인 평어+`title`, 툴팁 `formatMmmTipText`로 왜위험/왜발생/어떻게 라벨 단락).
+
 # 통계 도구 표준
 
 - 순수 함수 객체 분리(`CANNIBAL_STATS`·`ALLOC_MATH`·`MMM_STATS`·`PVM_MATH`).

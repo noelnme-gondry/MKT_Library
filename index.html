@@ -1961,6 +1961,16 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .alloc-diag-line.neutral { border-left-color: #f7b955; }
   .alloc-diag-line.muted { color: var(--text-muted); }
 
+  /* §5 배분 점검 스트립 (검증) */
+  .alloc-verify-strip { border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; margin: 0 0 11px; font-size: 12px; line-height: 1.55; background: var(--surface-container-lowest, var(--bg-2)); }
+  .alloc-verify-strip.good { border-left: 3px solid #5ad19a; }
+  .alloc-verify-strip.bad { border-left: 3px solid #ff8a8a; }
+  .alloc-verify-strip.neutral { border-left: 3px solid #f7b955; }
+  .alloc-verify-head { font-weight: 700; color: var(--text-primary); }
+  .alloc-verify-body { color: var(--text-secondary); }
+  .alloc-verify-strip strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .alloc-verify-note { margin-top: 6px; font-size: 11px; color: var(--text-muted); }
+
   /* §1 산점도·진단 접이식 + 추세선 알림 칩 */
   .alloc-diag > summary.alloc-diag-summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 0; }
   .alloc-diag > summary.alloc-diag-summary::-webkit-details-marker { display: none; }
@@ -7232,6 +7242,7 @@ function monAllocBody() {
             🔒 또는 ↺ 클릭 시 잠금 해제.
           </p>
           <div id="alloc-table-warning-container"></div>
+          <div id="alloc-verify-strip"></div>
           <div class="table-wrap">
             <table class="data">
               <thead>
@@ -8236,6 +8247,26 @@ function allocParseNum(s) {
 }
 function allocFmtNum(n) {
   return (n == null || isNaN(n)) ? "" : Math.round(n).toLocaleString();
+}
+/* 입력 중 라이브 천단위 콤마 — 커서 위치 보존(콤마 추가분 보정). 정수 입력(예산·cost 셀)용.
+   재계산은 호출부의 change/blur에서. type="text" 입력만(setSelectionRange). */
+function allocLiveCommaFormat(input) {
+  if (!input) return;
+  const old = input.value;
+  const sel = input.selectionStart == null ? old.length : input.selectionStart;
+  const digitsLeft = old.slice(0, sel).replace(/\D/g, "").length;
+  const digits = old.replace(/\D/g, "");
+  if (digits === "") { if (old !== "") input.value = ""; return; }
+  const formatted = Number(digits).toLocaleString("en-US");
+  if (formatted === old) return;  // 변화 없으면 커서 유지
+  input.value = formatted;
+  if (digitsLeft <= 0) { try { input.setSelectionRange(0, 0); } catch (_) {} return; }
+  let seen = 0, pos = formatted.length;
+  for (let i = 0; i < formatted.length; i++) {
+    if (formatted.charCodeAt(i) >= 48 && formatted.charCodeAt(i) <= 57) seen++;
+    if (seen >= digitsLeft) { pos = i + 1; break; }
+  }
+  try { input.setSelectionRange(pos, pos); } catch (_) {}
 }
 
 /* perChannel 상태를 cache 키에 포함시키기 위한 해시 */
@@ -25508,8 +25539,8 @@ function renderTrendComparison(meta) {
     let badge = "";
     if (name === "Poly2") {
       const shape = ALLOC_MATH.detectPoly2Shape(fit.model);
-      if (shape?.shape === "bell") badge = `<span class="pill" style="border-color:rgba(255,138,138,0.4);color:#ff8a8a;background:rgba(255,138,138,0.08);">⚠ 종모양</span>`;
-      else if (shape?.shape === "u") badge = `<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);">⚠ U자형</span>`;
+      if (shape?.shape === "bell") badge = `<span class="pill" style="border-color:rgba(255,138,138,0.4);color:#ff8a8a;background:rgba(255,138,138,0.08);" title="곡선이 ∩(종모양): 예산을 늘리면 예측이 빗나갈 수 있어 위험.">⚠ 증액 시 빗나감</span>`;
+      else if (shape?.shape === "u") badge = `<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);" title="곡선이 ∪(U자형): 예산을 줄이면 예측이 빗나갈 수 있어 주의.">⚠ 감액 시 빗나감</span>`;
     }
     const isRec = name === recName;
     if (isRec) badge += ` <span class="pill" style="border-color:rgba(90,209,154,0.4);color:#5ad19a;background:rgba(90,209,154,0.08);">★ 추천</span>`;
@@ -25776,10 +25807,10 @@ function renderTrendSummary(trendInfo) {
                                    `<span class="pill tier-3">${t.r2.toFixed(2)}</span>`;
       const badges = [];
       badges.push(t.descending
-        ? `<span class="pill" style="border-color:rgba(255,138,138,0.4);color:#ff8a8a;background:rgba(255,138,138,0.08);">우하향 ⚠</span>`
-        : `<span class="pill" style="border-color:rgba(90,209,154,0.3);color:#5ad19a;background:rgba(90,209,154,0.06);">우상향</span>`);
-      if (t.sparseData) badges.push(`<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);">데이터 부족</span>`);
-      if (t.suspect) badges.push(`<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);" title="곡선의 꼭짓점(vertex)이 관측 데이터 밖에 있어 외삽 예측이 과장될 수 있습니다">외삽 주의</span>`);
+        ? `<span class="pill" style="border-color:rgba(255,138,138,0.4);color:#ff8a8a;background:rgba(255,138,138,0.08);" title="우하향 추세선 (Cost↑ → CPR↓). 더 쓸수록 싸지는 비정상 패턴 — 모델이 과신해 예산을 몰 수 있어 주의.">효율 거꾸로 ⚠</span>`
+        : `<span class="pill" style="border-color:rgba(90,209,154,0.3);color:#5ad19a;background:rgba(90,209,154,0.06);" title="우상향 추세선 (Cost↑ → CPR↑). 더 쓸수록 비싸지는 정상적 수확체감 패턴.">정상 ✓</span>`);
+      if (t.sparseData) badges.push(`<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);" title="점이 10개 미만이면 추세선 신뢰도가 낮습니다 (점선 표시). 집계 윈도우를 늘려 데이터를 확보하세요.">데이터 부족</span>`);
+      if (t.suspect) badges.push(`<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);" title="외삽 주의: 곡선의 꼭짓점(vertex)이 관측 데이터 밖에 있어 그 방향으로 예측하면 과장될 수 있습니다.">예측 과장 위험</span>`);
       return `
         <tr>
           <td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${t.color};margin-right:0.4rem;"></span>${escapeHtml(truncateLabel(t.channel, 40))}</td>
@@ -25808,7 +25839,7 @@ function renderTrendSummary(trendInfo) {
       <summary class="alloc-alert-chip">${dangerCount > 0 ? '⚠' : 'ⓘ'} 추세선 진단 ${totalIssues}건 — 클릭해 자세히 보기</summary>` : ''}
     ${descending.length > 0 ? allocAlertLine(
       "danger",
-      `우하향 추세선 채널 ${descending.length}개 감지`,
+      `효율이 거꾸로 가는 채널 ${descending.length}개 — 더 쓸수록 싸지는 비정상 추세`,
       descending.map(d => `<code class="inline">${escapeHtml(truncateLabel(d.channel, 28))}</code>`).join(", "),
       "왜 위험: 우하향(Cost↑→CPR↓)은 한계효용 체감 패턴과 반대라, 한계효용 그리디(모드 B)에서 외삽 시 음수 CPR을 예측해 이 채널에 예산이 무리하게 몰릴 수 있습니다. " +
       "왜 발생: 짧은 학습 기간으로 데이터가 부족하거나, 채널 진입 초기 효율 상승 구간이거나, 노이즈가 큰 운영 케이스일 때 흔합니다. " +
@@ -25817,7 +25848,7 @@ function renderTrendSummary(trendInfo) {
 
     ${bellShapes.length > 0 ? allocAlertLine(
       "danger",
-      `종모양(∩) 추세선 — 위험 ${bellShapes.length}개 감지`,
+      `예산 늘리면 예측이 빗나가는 채널 ${bellShapes.length}개 — 곡선이 ∩(종모양)`,
       bellShapes.map(s => {
         const v = s.poly2Shape.vertex;
         const recBest = recommendSafeFit(s.allFits);
@@ -25831,7 +25862,7 @@ function renderTrendSummary(trendInfo) {
 
     ${uShapes.length > 0 ? allocAlertLine(
       "warn",
-      `U자형(∪) 추세선 — 주의 ${uShapes.length}개 감지`,
+      `예산 줄이면 예측이 빗나가는 채널 ${uShapes.length}개 — 곡선이 ∪(U자형)`,
       uShapes.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 26))}</code> vertex≈${fmtCurrency(s.poly2Shape.vertex)}`).join(", "),
       "왜 위험: vertex 이전 구간이 우하향(낮은 Cost일수록 CPR↑)으로 그려져, 그 구간으로 외삽하면 예산을 줄일수록 효율이 나빠진다는 잘못된 결론을 낼 수 있습니다. " +
       "왜 발생: 종모양과 동일하게 데이터 과적합 또는 기간이 길어 여러 시기의 추세가 섞였을 때 흔합니다. " +
@@ -25840,7 +25871,7 @@ function renderTrendSummary(trendInfo) {
 
     ${suspects.length > 0 ? allocAlertLine(
       "warn",
-      `Poly2 꼬리 의심 ${suspects.length}개 감지`,
+      `곡선 끝 예측 신뢰가 낮은 채널 ${suspects.length}개 — 데이터 없는 구간으로 휜 곡선`,
       suspects.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 28))}</code>`).join(", "),
       "왜 위험: 관측 데이터가 한쪽에 거의 없는데 곡선이 그 방향으로 강제로 휘어, 점선(저신뢰) 구간의 예측이 통계적 근거 없이 과장될 수 있습니다. " +
       "왜 발생: 해당 Cost 구간에 실제 운영 데이터가 거의 없는데 2차 곡선이 양끝을 억지로 통과시키려 할 때 발생합니다. " +
@@ -26004,6 +26035,7 @@ function refreshAllocationResults() {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">분배 대상 채널이 없습니다. 산점도에서 채널을 선택했는지 확인하세요.</td></tr>`;
     barWrap.innerHTML = ""; legendWrap.innerHTML = "";
     renderAllocationTotalCard(null);
+    renderAllocVerifyStrip(null);
     return;
   }
 
@@ -26011,6 +26043,7 @@ function refreshAllocationResults() {
   renderAllocationTotalCard({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
   renderAllocDiagnosis({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
   renderAllocVerdict({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
+  renderAllocVerifyStrip({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
   renderAllocScenario({ modelsMap, selected, metric, mode, dailyBudget });
 }
 
@@ -26352,6 +26385,75 @@ function renderAllocVerdict(payload) {
     </div>`;
 }
 
+/* §5 배분 점검 스트립 — "효율 좋은 채널에 더 배분됐나?"(목표 ③ 검증).
+   모드 C(절대 CPR 가중): 제약 없는 채널은 1/avgCPR 순서를 따라야 정상 → 역전 플래그.
+   모드 B(그리디): 평균이 아니라 한계효율 기준이라 평균 순서와 달라도 정상(정직 안내). */
+function renderAllocVerifyStrip(payload) {
+  const wrap = document.getElementById("alloc-verify-strip");
+  if (!wrap) return;
+  if (!payload || !payload.items || payload.items.length < 2) { wrap.innerHTML = ""; return; }
+  const { items, metric, mode } = payload;
+  const recentDays = ALLOC_STATE.recentDays || 14;
+  const roas = isRoasMetric(metric);
+  const metricLabel = getCostMetricLabel(metric);
+  const minMap = ALLOC_STATE.allocMinSpend || {};
+  const maxMap = ALLOC_STATE.allocMaxSpend || {};
+
+  const rows = items.map(it => {
+    const h = calcChannelHistorySummary(it.channel, metric, { recentDays });
+    let eff = null;
+    if (h) {
+      if (roas) eff = (h.avgROAS != null && h.avgROAS > 0) ? 1 / h.avgROAS : null;
+      else eff = (h.avgCPR != null && h.avgCPR > 0) ? h.avgCPR : null;
+    }
+    return {
+      ch: it.channel, alloc: it.cost || 0, eff,
+      cpr: h ? h.avgCPR : null, roasV: h ? h.avgROAS : null,
+      locked: !!it.locked,
+      hasMin: Number(minMap[it.channel]) > 0,
+      hasMax: maxMap[it.channel] != null && Number(maxMap[it.channel]) >= 0,
+      zero: (it.cost || 0) === 0,
+    };
+  });
+  const effLbl = (r) => r.eff == null ? "—" : (roas ? `${(r.roasV * 100).toFixed(0)}%` : fmtCostMetric(r.cpr, metric));
+  const constrainedN = rows.filter(r => r.locked || r.hasMin || r.hasMax).length;
+
+  let head = "", body = "", tone = "good";
+  if (mode === "b") {
+    tone = "neutral";
+    head = "한계효용 기준 배분";
+    const zeros = rows.filter(r => r.zero && !r.locked).map(r => escapeHtml(r.ch));
+    body = `그리디(고급)는 <strong>평균 효율이 아니라 '추가 1원이 만드는 효과(한계효율)'</strong> 기준으로 배분합니다 — 평균 ${metricLabel} 순서와 달라도 정상입니다.`
+      + (zeros.length ? ` 추가 투입 효과가 없어 <strong>0 배분</strong>된 채널: ${zeros.join(", ")}.` : "");
+  } else {
+    const free = rows.filter(r => r.eff != null && !r.locked && !r.hasMin && !r.hasMax && !r.zero);
+    const sorted = [...free].sort((a, b) => (a.eff - b.eff) || (a.ch < b.ch ? -1 : 1));  // 효율 좋은 순
+    const inv = [];
+    for (let i = 0; i < sorted.length - 1; i++) {
+      if (sorted[i + 1].alloc > sorted[i].alloc * 1.001) inv.push([sorted[i], sorted[i + 1]]);  // 나쁜 효율이 더 많이 받음
+    }
+    if (free.length < 2) {
+      tone = "neutral";
+      head = "점검 생략";
+      body = `제약 없는 비교 가능 채널이 부족합니다(잠금·제약 ${constrainedN}개). 표에서 직접 확인하세요.`;
+    } else if (inv.length === 0) {
+      tone = "good";
+      head = "✓ 효율 순서대로 배분됨";
+      body = `제약 없는 채널은 <strong>효율(${metricLabel})이 좋을수록 예산이 더 갔습니다</strong> — 절대 CPR 가중이 정상 작동 중.`;
+    } else {
+      tone = "bad";
+      head = "⚠ 효율↔배분 역전";
+      body = inv.slice(0, 2).map(([b, w]) => `<strong>${escapeHtml(w.ch)}</strong>(${effLbl(w)})가 <strong>${escapeHtml(b.ch)}</strong>(${effLbl(b)})보다 효율이 낮은데 예산이 더 많습니다`).join(" · ")
+        + `. 잠금/최소·최대 제약 때문일 수 있으니 표에서 확인하세요.`;
+    }
+  }
+  const note = constrainedN > 0
+    ? `<div class="alloc-verify-note">🔒 ${constrainedN}개 채널은 수동 고정·최소/최대 제약으로 효율 순서와 무관하게 우선 배분됩니다.</div>`
+    : "";
+
+  wrap.innerHTML = `<div class="alloc-verify-strip ${tone}"><div class="alloc-verify-main"><span class="alloc-verify-head">${head}</span> <span class="alloc-verify-body">${body}</span></div>${note}</div>`;
+}
+
 /* ========== 모드 C · 절대 CPR 가중 분배 ==========
    각 채널의 관측 기간 평균 CPR 기준으로 1/avgCPR 가중치 분배.
    외삽 위험 없음(추세선 모델 사용 안 함, 평균값 기준).
@@ -26606,6 +26708,7 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
 
   // editable input + 자물쇠 클릭 = 해제 핸들러
   tbody.querySelectorAll(".alloc-cost-input").forEach(input => {
+    input.addEventListener("input", () => allocLiveCommaFormat(input));  // 라이브 콤마(재계산은 change)
     input.addEventListener("change", () => {
       const ch = input.dataset.channel;
       const v = allocParseNum(input.value);
@@ -27157,6 +27260,7 @@ function bindBudgetAllocatorHandlers() {
   if (budgetInput) {
     let _budgetTimer = null;
     budgetInput.addEventListener("input", () => {
+      allocLiveCommaFormat(budgetInput);  // 라이브 천단위 콤마
       const newBudget = allocParseNum(budgetInput.value);
       ALLOC_STATE.budget = newBudget;
       const hasBudget = (newBudget || 0) > 0;
