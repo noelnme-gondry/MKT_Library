@@ -7248,7 +7248,16 @@ function monAllocBody() {
       <section class="block" id="s-controls">
         <h2 class="section-title"><span class="ix">§2</span>예산 설정</h2>
         <div class="alloc-card">
-          <div class="alloc-controls" style="grid-template-columns: 1fr 200px 120px;">
+          <div style="margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem;">
+            <div class="sim-mode-toggle budget-period-toggle" style="display: inline-flex; margin-bottom: 8px;">
+              <button type="button" data-simmode="auto" class="${ALLOC_STATE.simMode === 'auto' ? 'active' : ''}">총 예산 자동 분배</button>
+              <button type="button" data-simmode="manual" class="${ALLOC_STATE.simMode === 'manual' ? 'active' : ''}">캠페인별 수동 시뮬레이션</button>
+            </div>
+            <p class="muted" style="font-size:12px; margin:0;">
+              ${ALLOC_STATE.simMode === 'auto' ? "총 예산을 입력하면 모델에 따라 가장 효율적인 비율로 자동 분배합니다." : "아래 분배 결과 표에서 각 캠페인의 Cost를 직접 수정하여 변화를 시뮬레이션하세요."}
+            </p>
+          </div>
+          <div class="alloc-controls" style="grid-template-columns: 1fr 200px 120px; ${ALLOC_STATE.simMode === 'manual' ? 'display:none;' : ''}">
             <div>
               <label style="display:flex;align-items:center;gap:0.5rem;">
                 <span>총 예산</span>
@@ -8119,6 +8128,8 @@ const ALLOC_STATE = {
   normalizeMode: "raw",    // raw | log | minmax | robust (차트 표시용)
   budget: null,            // 총 예산 (사용자 입력 raw 값)
   budgetPeriod: "daily",   // daily | monthly (월예산이면 ÷30으로 일예산 환산)
+  simMode: "auto",         // auto | manual — 자동 예산 분배 vs 사용자 수동 기입
+  simManualBudgets: {},    // { group: rawCost } — 수동 시뮬레이션 시 사용자가 입력한 그룹별 예산
   allocMode: "c",          // c: 절대 CPR/ROAS 가중 (기본, 1/avgCPR 비례) | b: 한계효용 그리디 (고급·실험적)
   allocOverrides: {},      // { channel: fixedCost } — 사용자가 수동 입력한 채널별 배분액 (고정)
   allocMinSpend: {},       // { channel: minSpend } — 최소 집행 제약
@@ -26123,7 +26134,7 @@ function refreshAllocationResults() {
     }
   }
 
-  if (dailyBudget <= 0) {
+  if (dailyBudget <= 0 && ALLOC_STATE.simMode !== 'manual') {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">총 예산을 입력해 주세요.</td></tr>`;
     barWrap.innerHTML = ""; legendWrap.innerHTML = "";
     return;
@@ -26149,22 +26160,32 @@ function refreshAllocationResults() {
 
   const metric = ALLOC_STATE.metric || "installs";
   const mode = ALLOC_STATE.allocMode || "b";
-  const result = mode === "c"
-    ? calculateAllocationModeC({
-        modelsMap, totalBudget: dailyBudget, selectedChannels: selected,
-        overrides: ALLOC_STATE.allocOverrides,
-        minSpends: ALLOC_STATE.allocMinSpend || {},
-        maxSpends: ALLOC_STATE.allocMaxSpend || {},
-        metric,
-      })
-    : calculateAllocationModeB({
-        modelsMap, totalBudget: dailyBudget, selectedChannels: selected,
-        overrides: ALLOC_STATE.allocOverrides,
-        minSpends: ALLOC_STATE.allocMinSpend || {},
-        maxSpends: ALLOC_STATE.allocMaxSpend || {},
-        extrapolateMode: ALLOC_STATE.extrapolateMode || "1.3",
-        currency: ALLOC_STATE.currency || AB_STATE.currency || "KRW",
-      });
+  let result;
+  
+  if (ALLOC_STATE.simMode === 'manual') {
+    result = calculateAllocationManual({
+      modelsMap, selectedChannels: selected,
+      manualBudgets: ALLOC_STATE.simManualBudgets || {},
+      metric
+    });
+  } else {
+    result = mode === "c"
+      ? calculateAllocationModeC({
+          modelsMap, totalBudget: dailyBudget, selectedChannels: selected,
+          overrides: ALLOC_STATE.allocOverrides,
+          minSpends: ALLOC_STATE.allocMinSpend || {},
+          maxSpends: ALLOC_STATE.allocMaxSpend || {},
+          metric,
+        })
+      : calculateAllocationModeB({
+          modelsMap, totalBudget: dailyBudget, selectedChannels: selected,
+          overrides: ALLOC_STATE.allocOverrides,
+          minSpends: ALLOC_STATE.allocMinSpend || {},
+          maxSpends: ALLOC_STATE.allocMaxSpend || {},
+          extrapolateMode: ALLOC_STATE.extrapolateMode || "1.3",
+          currency: ALLOC_STATE.currency || AB_STATE.currency || "KRW",
+        });
+  }
 
   const { items, unallocated, overspent, totalAllocated, lockedTotal } = result;
 
@@ -26188,6 +26209,12 @@ function refreshAllocationResults() {
    결과는 lookup 수준 (모델 재적합 없음) — 캐시된 modelsMap을 다른 budget으로 greedy 재실행. */
 function renderAllocScenario({ modelsMap, selected, metric, mode, dailyBudget }) {
   const host = document.getElementById("alloc-scenario-table");
+  const chartHost = document.getElementById("alloc-scenario-chart");
+  if (ALLOC_STATE.simMode === 'manual') {
+    if (host) host.innerHTML = `<div style="text-align:center;padding:1rem;color:var(--text-muted);">수동 모드에서는 예산 시뮬레이션이 제공되지 않습니다.</div>`;
+    if (chartHost) chartHost.innerHTML = "";
+    return;
+  }
   if (!host || !modelsMap || dailyBudget <= 0) { if (host) host.innerHTML = ""; return; }
   const isRoas = isRoasMetric(metric);
   const mults = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
@@ -26595,6 +26622,57 @@ function renderAllocVerifyStrip(payload) {
    각 채널의 관측 기간 평균 CPR 기준으로 1/avgCPR 가중치 분배.
    외삽 위험 없음(추세선 모델 사용 안 함, 평균값 기준).
    사용자 직관: "CPR이 낮은 채널에 비례적으로 더 분배" */
+function calculateAllocationManual({
+  modelsMap, selectedChannels, manualBudgets = {}, metric
+}) {
+  if (!modelsMap) return { items: [], unallocated: 0, overspent: false, totalAllocated: 0, lockedTotal: 0 };
+
+  const items = [];
+  let totalAllocated = 0;
+
+  for (const [ch, meta] of modelsMap) {
+    if (!meta) continue;
+    if (selectedChannels && selectedChannels.size > 0 && !selectedChannels.has(ch)) continue;
+
+    const cost = typeof manualBudgets[ch] === 'number' ? manualBudgets[ch] : 0;
+    const res = meta.predict ? meta.predict(cost) : 0;
+
+    let cpr = 0;
+    if (metric === 'revenue' && cost > 0) {
+      cpr = res / cost; // ROAS
+    } else if (res > 0) {
+      cpr = cost / res;
+    }
+
+    items.push({
+      channel: ch,
+      cost,
+      results: res,
+      cpr,
+      locked: false,
+      weight: 0,
+      xMin: meta.xMin || 0,
+      xMax: meta.xMax || Infinity
+    });
+    
+    totalAllocated += cost;
+  }
+  
+  if (totalAllocated > 0) {
+    for (const it of items) it.weight = it.cost / totalAllocated;
+  }
+
+  items.sort((a, b) => b.cost - a.cost || b.results - a.results);
+
+  return {
+    items,
+    unallocated: 0,
+    overspent: false,
+    totalAllocated,
+    lockedTotal: 0
+  };
+}
+
 function calculateAllocationModeC({
   modelsMap, totalBudget, selectedChannels,
   overrides = {}, minSpends = {}, maxSpends = {}, metric
@@ -26798,8 +26876,11 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
     const minStyle = isMinMaxErr ? "border-color:#e05656;box-shadow:0 0 0 1px rgba(224, 86, 86, 0.2);" : "";
     const maxStyle = isMinMaxErr ? "border-color:#e05656;box-shadow:0 0 0 1px rgba(224, 86, 86, 0.2);" : "";
 
-    return `
-      <tr ${isZero ? 'class="alloc-row-zero"' : ''}>
+    let trClass = isZero ? "alloc-row-zero" : "";
+    if (ALLOC_STATE.simMode === 'manual') trClass += (trClass ? " " : "") + "alloc-row-clickable";
+
+    let trHtml = `
+      <tr class="${trClass}" ${ALLOC_STATE.simMode === 'manual' ? `style="cursor:pointer;" data-channel="${escapeHtml(it.channel)}"` : ''}>
         <td>
           <div class="alloc-ch-name">
             ${escapeHtml(it.channel)}
@@ -26810,12 +26891,16 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
         </td>
         <td>
           <div class="alloc-cost-cell">
-            <input type="text" inputmode="numeric" autocomplete="off" class="alloc-cost-input ${it.locked ? 'locked' : ''}"
+            ${ALLOC_STATE.simMode === 'manual' 
+              ? `<span class="alloc-cost-text" style="${costStyle}">${allocFmtNum(it.cost)}</span>
+                 <button class="alloc-cost-edit-btn" data-channel="${escapeHtml(it.channel)}" title="Cost 수정">✎</button>`
+              : `<input type="text" inputmode="numeric" autocomplete="off" class="alloc-cost-input ${it.locked ? 'locked' : ''}"
                    data-channel="${escapeHtml(it.channel)}"
                    value="${allocFmtNum(it.cost)}" style="${costStyle}" />
-            ${it.locked
-              ? `<button class="alloc-cost-reset" data-channel="${escapeHtml(it.channel)}" title="자동 분배로 되돌리기">↺</button>`
-              : ''}
+                 ${it.locked
+                   ? `<button class="alloc-cost-reset" data-channel="${escapeHtml(it.channel)}" title="자동 분배로 되돌리기">↺</button>`
+                   : ''}`
+            }
           </div>
           ${hist && hist.totalCost > 0 && !isZero ? `<div class="alloc-cost-delta">최근 ${recentDays}일 ${fmtCurrency(hist.totalCost)} → ${it.cost > hist.totalCost ? '▲' : it.cost < hist.totalCost ? '▼' : '='} ${fmtCurrency(it.cost)} (일)</div>` : ''}
         </td>
@@ -26838,9 +26923,24 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
           ${isZero ? '<span style="color:var(--text-muted);">—</span>' : fmtCostMetric(it.cpr, metric)}
           ${hist && hist.avgCPR != null && !isZero ? `<div class="alloc-delta-hint">최근 ${recentDays}일 ${fmtCostMetric(hist.avgCPR, metric)}</div>` : ''}
         </td>
+    trHtml += `
         <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong></td>
       </tr>
     `;
+
+    if (ALLOC_STATE.simMode === 'manual') {
+      trHtml += `
+      <tr class="alloc-row-sim-detail" id="sim-detail-${escapeHtml(it.channel)}" style="display:none;">
+        <td colspan="7">
+          <div style="font-weight:600;margin-bottom:4px;">${escapeHtml(it.channel)} 비용-성과 시뮬레이션</div>
+          <div style="color:var(--text-muted);font-size:0.85rem;margin-bottom:8px;">Cost 변화에 따른 예상 성과입니다. 그래프를 확인하며 최적의 비용을 결정하세요.</div>
+          <div class="sim-detail-chart" id="sim-chart-${escapeHtml(it.channel)}"></div>
+        </td>
+      </tr>
+      `;
+    }
+
+    return trHtml;
   }).join("");
 
   // editable input + 자물쇠 클릭 = 해제 핸들러
@@ -26849,10 +26949,19 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
     input.addEventListener("change", () => {
       const ch = input.dataset.channel;
       const v = allocParseNum(input.value);
-      if (v == null || v < 0) {
-        delete ALLOC_STATE.allocOverrides[ch];
+      
+      if (ALLOC_STATE.simMode === 'manual') {
+        if (v == null || v < 0) {
+          ALLOC_STATE.simManualBudgets[ch] = 0;
+        } else {
+          ALLOC_STATE.simManualBudgets[ch] = v;
+        }
       } else {
-        ALLOC_STATE.allocOverrides[ch] = v;
+        if (v == null || v < 0) {
+          delete ALLOC_STATE.allocOverrides[ch];
+        } else {
+          ALLOC_STATE.allocOverrides[ch] = v;
+        }
       }
       refreshAllocationResults();
     });
@@ -26887,11 +26996,46 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
   });
   // 자물쇠 OR 되돌리기 버튼 둘 다 잠금 해제
   tbody.querySelectorAll(".alloc-cost-reset, .alloc-lock-toggle").forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
       delete ALLOC_STATE.allocOverrides[btn.dataset.channel];
       refreshAllocationResults();
     });
   });
+
+  if (ALLOC_STATE.simMode === 'manual') {
+    tbody.querySelectorAll(".alloc-cost-edit-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const ch = btn.dataset.channel;
+        const currentVal = ALLOC_STATE.simManualBudgets[ch] || 0;
+        const input = prompt(`[${ch}] 새로운 예산(Cost)을 입력하세요:`, currentVal);
+        if (input !== null) {
+          const v = allocParseNum(input);
+          if (v != null && v >= 0) {
+            ALLOC_STATE.simManualBudgets[ch] = v;
+            refreshAllocationResults();
+          }
+        }
+      });
+    });
+
+    tbody.querySelectorAll(".alloc-row-clickable").forEach(row => {
+      row.addEventListener("click", () => {
+        const ch = row.dataset.channel;
+        const detailRow = document.getElementById(`sim-detail-${ch}`);
+        if (detailRow) {
+          if (detailRow.style.display === "none") {
+            detailRow.style.display = "table-row";
+            const currentCost = ALLOC_STATE.simManualBudgets[ch] != null ? ALLOC_STATE.simManualBudgets[ch] : 0;
+            drawSimDetailChart(ch, `sim-chart-${ch}`, currentCost);
+          } else {
+            detailRow.style.display = "none";
+          }
+        }
+      });
+    });
+  }
 
   barWrap.innerHTML = items.map((it, i) => `
     <div class="alloc-bar-seg ${it.locked ? 'locked' : ''}" style="width:${(it.weight * 100).toFixed(2)}%;background:${CHART_THEME.series[i % CHART_THEME.series.length]};" title="${escapeHtml(it.channel)} ${(it.weight*100).toFixed(1)}%${it.locked ? ' · 수동 입력' : ''}"></div>
@@ -27349,8 +27493,8 @@ function bindAllocVerificationHandlers() {
     modelSelect.value = override ? override : "auto";
   }
   
-  const insightEl = document.getElementById("alloc-verify-insight");
-  if (insightEl) {
+  const inlineInsightEl = document.getElementById("alloc-verify-insight-inline");
+  if (inlineInsightEl) {
     const curModelObj = ALLOC_STATE.groupModels[ALLOC_STATE.verifySelectedGroup] || modelsMap.get(ALLOC_STATE.verifySelectedGroup);
     const curModelString = typeof curModelObj === 'string' ? curModelObj : (curModelObj?.model?.type || "auto");
     const curModel = curModelString.toLowerCase();
@@ -27362,7 +27506,7 @@ function bindAllocVerificationHandlers() {
     let problemReason = null;
     
     if (outRes && outRes.kept.length < 3) {
-      problemReason = "데이터 부족 (산점도를 그릴 수 없습니다)";
+      problemReason = "데이터 부족";
     } else if (allFits && allFits[curModelName]) {
       const fit = allFits[curModelName];
       if (curModel === 'poly2' && fit.model && fit.model.params && fit.model.params.a < 0) {
@@ -27372,21 +27516,24 @@ function bindAllocVerificationHandlers() {
         const range = xMax - xMin;
         const vx = -fit.model.params.b / (2 * fit.model.params.a);
         if (vx >= xMin + 0.1 * range && vx <= xMax - 0.1 * range) {
-          problemReason = "꼭짓점(Vertex) 주의: 데이터 내에 수확체감이 꺾이는 꼭짓점이 존재합니다. 예산 투입 시 효율이 오히려 떨어질 수 있습니다.";
+          problemReason = "꼭짓점 주의";
         }
       } else if (fit.r2 < 0.2) {
-        problemReason = `낮은 적합도 (R² = ${fit.r2.toFixed(2)}): 모델이 데이터를 충분히 설명하지 못합니다.`;
+        problemReason = `낮은 R² (${fit.r2.toFixed(2)})`;
       }
     } else if (curModel === 'auto') {
-      problemReason = "적합 실패: 적합한 모델을 찾을 수 없습니다.";
+      problemReason = "적합 실패";
     }
     
     if (ALLOC_STATE.groupVerification[ALLOC_STATE.verifySelectedGroup] === "verified") {
-      insightEl.innerHTML = `<span style="color:var(--success);font-weight:600;">✓ 확인됨:</span> 이 그룹의 추세선 모델이 사용자에게 승인되었습니다.`;
+      inlineInsightEl.innerHTML = `<span style="color:var(--success);">✓ 승인됨</span>`;
+      inlineInsightEl.style.display = "inline-flex";
     } else if (problemReason) {
-      insightEl.innerHTML = `<span style="color:var(--danger);font-weight:600;">⚠ 주의:</span> ${problemReason}`;
+      inlineInsightEl.innerHTML = `⚠ ${problemReason}`;
+      inlineInsightEl.style.color = "var(--danger)";
+      inlineInsightEl.style.display = "inline-flex";
     } else {
-      insightEl.innerHTML = `<span style="color:var(--text-primary);font-weight:600;">ⓘ 상태 양호:</span> 현재 선택된 모델이 데이터에 잘 맞습니다. '확정' 버튼을 눌러 승인하세요.`;
+      inlineInsightEl.style.display = "none";
     }
   }
 
@@ -27446,10 +27593,17 @@ function bindAllocVerificationHandlers() {
         }
       }
       
-      // 검증 통과한 그룹을 분배 대상 기본값으로 설정
+      // 검증 통과한 그룹 중 Cost 총합이 가장 높은 1개만 기본 선택
       const verified = groups.filter(g => ALLOC_STATE.groupVerification[g] === "verified");
       if (verified.length > 0) {
-        ALLOC_STATE.selectedChannels = new Set(verified);
+        let maxCostGroup = verified[0];
+        let maxCost = 0;
+        verified.forEach(g => {
+          const m = modelsMap.get(g);
+          const cost = m && m.pts ? m.pts.reduce((sum, p) => sum + p.x, 0) : 0;
+          if (cost > maxCost) { maxCost = cost; maxCostGroup = g; }
+        });
+        ALLOC_STATE.selectedChannels = new Set([maxCostGroup]);
       }
       
       ALLOC_FILTER_STATE.step = 3;
@@ -27576,6 +27730,42 @@ function bindBudgetAllocatorHandlers() {
     b.addEventListener("click", () => downloadChartAsPNG(b.dataset.pngdownload, b.dataset.pngname)));
 
   const refresh = refreshAllocationResults;
+
+  // 시뮬레이션 모드 토글 (자동 분배 / 수동 시뮬레이션)
+  document.querySelectorAll(".sim-mode-toggle button[data-simmode]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const isManual = btn.dataset.simmode === 'manual';
+      ALLOC_STATE.simMode = btn.dataset.simmode;
+      document.querySelectorAll(".sim-mode-toggle button").forEach(b =>
+        b.classList.toggle("active", b.dataset.simmode === ALLOC_STATE.simMode));
+      
+      // manual 모드로 전환 시, 현재 할당된 예산으로 simManualBudgets 초기화
+      if (isManual) {
+        document.querySelectorAll(".alloc-cost-input").forEach(inp => {
+          const ch = inp.dataset.channel;
+          const valStr = inp.value;
+          const parsed = allocParseNum(valStr);
+          if (ch && parsed != null) {
+            ALLOC_STATE.simManualBudgets[ch] = parsed;
+          }
+        });
+      }
+      
+      const sControlsDesc = document.querySelector("#s-controls .muted");
+      if (sControlsDesc) {
+        sControlsDesc.textContent = ALLOC_STATE.simMode === 'auto' 
+          ? "총 예산을 입력하면 모델에 따라 가장 효율적인 비율로 자동 분배합니다." 
+          : "아래 분배 결과 표에서 각 캠페인의 Cost를 직접 수정하여 변화를 시뮬레이션하세요.";
+      }
+      
+      const allocControls = document.querySelector("#s-controls .alloc-controls");
+      if (allocControls) {
+        allocControls.style.display = ALLOC_STATE.simMode === 'manual' ? 'none' : 'grid';
+      }
+      
+      refreshAllocationResults();
+    });
+  });
 
   // 분배 모드 토글 (한계효용 그리디 / 절대 CPR 가중)
   document.querySelectorAll(".alloc-mode-toggle button[data-allocmode]").forEach(btn => {
