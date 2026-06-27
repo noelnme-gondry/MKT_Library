@@ -62,6 +62,7 @@ tools:
 - Chart.js v4 커스텀 `generateLabels`는 per-item `fontColor` 자동 주입 X → 다크모드 범례 텍스트 안 보임. legend item에 `fontColor: CHART_THEME.text` 명시. 차트 색/텍스트는 항상 `CHART_THEME` getter(하드코딩 hex 금지, 다크/라이트 양쪽 확인). 부호 색쌍은 명도차 크게.
 - `position:fixed`도 `backdrop-filter` 조상 안에선 viewport 기준 아님 → 드롭다운 body portal.
 - 게이트 `requiresAny` 키는 `STANDARD_FIELDS` 정규키와 정확히 일치(단/복수) — 추측 말고 복붙.
+- CSV 자동매핑·매핑 드롭다운은 도구별 필드로 스코프(`toolFieldKeySet` = `TOOL_REQUIRED_FIELDS` oneOf 포함 + `TOOL_OPTIONAL_FIELDS`). 전역 `autoMapHeaders`/전체 `STANDARD_FIELDS`는 안 쓰는 필드까지 매핑 → "매핑됐는데 못 씀". 형제 CSV 이어받을 때도 본인 기준 재매핑. 표준필드 겹침 0이면 null→전체 폴백. `cost`(효율)≠`spend`(Creative) 별도 키(`spend`에 `cost`/`비용` 별칭, 스코프가 충돌 차단).
 
 # 도구 추가 패턴
 

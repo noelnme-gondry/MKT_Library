@@ -3480,7 +3480,7 @@ const STANDARD_FIELDS = {
   // === Creative Analyzer 전용 (5-6) ===
   creative_id:        { label: "소재ID",        aliases: ["creative", "creative id", "크리에이티브id", "소재"], type: "string", required: false, group: "Creative" },
   campaign_id:        { label: "캠페인ID",       aliases: ["campaign id", "캠페인id", "ad_set", "adset"], type: "string", required: false, group: "Creative" },
-  spend:              { label: "비용(Creative)",  aliases: ["광고비", "spend", "creative spend"], type: "number", required: false, group: "Creative" },
+  spend:              { label: "비용(Creative)",  aliases: ["광고비", "spend", "creative spend", "cost", "비용"], type: "number", required: false, group: "Creative" },
   audience_segment:   { label: "오디언스 세그먼트", aliases: ["audience", "타겟", "오디언스", "segment"], type: "string", required: false, group: "Creative" },
   video_3s_views:     { label: "3초 조회수",      aliases: ["3sec views", "3초조회", "video 3s", "3s views"], type: "number", required: false, group: "Creative" },
   video_completions:  { label: "영상 완료수",     aliases: ["video completions", "완료수", "video complete"], type: "number", required: false, group: "Creative" },
@@ -6250,13 +6250,32 @@ function bindAuthStatusHandlers() {
 
 /* ========== CSV Analyzer Logic ========== */
 
-// 자동 매핑: CSV 헤더를 STANDARD_FIELDS의 별칭과 매칭
-function autoMapHeaders(csvHeaders) {
+// 이 도구가 실제로 사용하는 표준 필드 키 집합 (required oneOf 포함 + optional).
+// 정의가 없거나 표준필드와 겹치는 키가 하나도 없으면(=colMap류, 예: 5-18 MMM) null → 전체 허용.
+function toolFieldKeySet(toolId) {
+  const reqs = TOOL_REQUIRED_FIELDS[toolId];
+  const opts = TOOL_OPTIONAL_FIELDS[toolId];
+  if (!reqs && !opts) return null;
+  const set = new Set();
+  for (const r of (reqs || [])) {
+    if (typeof r === "string") set.add(r);
+    else if (r && r.oneOf) r.oneOf.forEach(k => set.add(k));
+  }
+  for (const o of (opts || [])) if (o && o.key) set.add(o.key);
+  if (![...set].some(k => STANDARD_FIELDS[k])) return null;  // 표준필드 겹침 0 → 스코프 무의미
+  return set.size ? set : null;
+}
+
+// 자동 매핑: CSV 헤더를 STANDARD_FIELDS의 별칭과 매칭.
+// toolId가 주어지면 그 도구가 쓰는 필드로만 매핑(안 쓰는 필드로의 낭비 매핑 방지).
+function autoMapHeaders(csvHeaders, toolId) {
+  const allow = toolId ? toolFieldKeySet(toolId) : null;
   const mapping = {};
   csvHeaders.forEach(h => {
     const norm = String(h).trim().toLowerCase().replace(/[\s\-_]/g, "");
     let matched = null;
     for (const [key, def] of Object.entries(STANDARD_FIELDS)) {
+      if (allow && !allow.has(key)) continue;   // 이 도구가 안 쓰는 표준필드로는 매핑 안 함
       const candidates = [key, def.label, ...def.aliases];
       if (candidates.some(c => String(c).toLowerCase().replace(/[\s\-_]/g, "") === norm)) {
         matched = key; break;
@@ -26754,12 +26773,13 @@ function loadCsvFromTool(toolId) {
   if (!snap || !(snap.raw || []).length) {
     const sibling = findGroupCsvSnapshot(toolId);
     if (sibling) {
-      snap = sibling;
-      // 본인 슬롯에도 복사해 매핑 변경이 독립적으로 유지되게
+      // 형제 CSV(raw)는 이어받되, 매핑은 이 도구 필드 기준으로 새로 자동매핑(본인 슬롯 독립).
+      // 형제 매핑을 그대로 복사하면 이 도구가 안 쓰는 필드가 끌려와 "매핑됐는데 못 씀"이 됨.
       TOOL_CSV_SNAPSHOTS[toolId] = {
         fileName: sibling.fileName, raw: sibling.raw, headers: sibling.headers,
-        mapping: { ...sibling.mapping }, selectedCohort: sibling.selectedCohort,
+        mapping: autoMapHeaders(sibling.headers, toolId), selectedCohort: sibling.selectedCohort,
       };
+      snap = TOOL_CSV_SNAPSHOTS[toolId];
     }
   }
   CSV_STATE.fileName = snap?.fileName || null;
@@ -27061,20 +27081,34 @@ function renderInlineCsvUpload(toolId) {
       </div>
     </div>` : "";
 
-  // 필드 옵션 (그룹별)
+  // 필드 옵션 (그룹별) — 이 도구가 쓰는 필드만 (정의 없으면 전체).
+  const allowKeys = toolFieldKeySet(toolId);
   const fieldGroups = {};
   for (const [key, def] of Object.entries(STANDARD_FIELDS)) {
+    if (allowKeys && !allowKeys.has(key)) continue;   // 이 도구가 안 쓰는 필드는 드롭다운에서 제외
     if (!fieldGroups[def.group]) fieldGroups[def.group] = [];
     fieldGroups[def.group].push({ key, label: def.label });
   }
-  const optionsHtml = (selected) => `
+  // 스코프 결과가 비면(이 도구 키가 STANDARD_FIELDS에 없음) 전체로 폴백 — 빈 드롭다운 방지
+  if (!Object.keys(fieldGroups).length) {
+    for (const [key, def] of Object.entries(STANDARD_FIELDS)) {
+      if (!fieldGroups[def.group]) fieldGroups[def.group] = [];
+      fieldGroups[def.group].push({ key, label: def.label });
+    }
+  }
+  const optionsHtml = (selected) => {
+    // 현재 선택값이 스코프 밖 표준필드면(레거시/공유 매핑) 잃지 않도록 별도 옵션으로 보존
+    const outOfScope = selected && selected !== "__ignore__" && STANDARD_FIELDS[selected] && allowKeys && !allowKeys.has(selected);
+    return `
     <option value="__ignore__" ${selected === "__ignore__" ? "selected" : ""}>(사용 안 함)</option>
+    ${outOfScope ? `<option value="${selected}" selected>${escapeHtml(STANDARD_FIELDS[selected].label)} (이 도구 미사용)</option>` : ""}
     ${Object.entries(fieldGroups).map(([gr, fs]) => `
       <optgroup label="${escapeHtml(gr)}">
         ${fs.map(f => `<option value="${f.key}" ${selected === f.key ? "selected" : ""}>${escapeHtml(f.label)}</option>`).join("")}
       </optgroup>
     `).join("")}
   `;
+  };
 
   const mappingRows = hasFile ? CSV_STATE.headers.map(h => {
     const sel = CSV_STATE.mapping[h] || "__ignore__";
@@ -27355,7 +27389,7 @@ function handleCSVFile(file, toolId) {
       CSV_STATE.fileName = file.name;
       CSV_STATE.raw = results.data;
       CSV_STATE.headers = results.meta.fields || [];
-      CSV_STATE.mapping = autoMapHeaders(CSV_STATE.headers);
+      CSV_STATE.mapping = autoMapHeaders(CSV_STATE.headers, targetTool);
       saveCsvToTool(targetTool);
       track("csv_upload", { tool: targetTool, rows: (CSV_STATE.raw || []).length });
       navigate(targetTool);
