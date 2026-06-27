@@ -27404,7 +27404,7 @@ function bindAllocVerificationHandlers() {
     const newBtn = bulkBtn.cloneNode(true);
     bulkBtn.parentNode.replaceChild(newBtn, bulkBtn);
     
-    newBtn.textContent = \`건강한 그룹 일괄 승인 (\${healthyGroups.length}건)\`;
+    newBtn.textContent = `건강한 그룹 일괄 승인 (${healthyGroups.length}건)`;
     if (healthyGroups.length === 0) {
       newBtn.disabled = true;
       newBtn.style.opacity = "0.5";
@@ -27426,7 +27426,7 @@ function bindAllocVerificationHandlers() {
     newBtn.addEventListener("click", () => {
       const unverified = groups.filter(g => ALLOC_STATE.groupVerification[g] !== "verified");
       if (unverified.length > 0) {
-        if (!confirm(\`아직 검증되지 않은 그룹이 \${unverified.length}개 있습니다. 이대로 예산 배분을 진행하시겠습니까?\`)) {
+        if (!confirm(`아직 검증되지 않은 그룹이 ${unverified.length}개 있습니다. 이대로 예산 배분을 진행하시겠습니까?`)) {
           return;
         }
       }
