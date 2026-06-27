@@ -59,6 +59,7 @@ tools:
 - **render-throw는 골든이 못 잡음** → /tmp repro 필수(Chart 스텁+`afterDatasetsDraw` 직접 실행). 상태 의존 분기는 전 상태값으로 repro.
 - **const 초기화식 자기 참조 = TDZ throw**(5-21): `const sel = ... arr.some(x=>x.k===sel)`처럼 자신을 참조하면 callback 실행 시 ReferenceError. `&&` 단락 기본 경로는 멀쩡, 조건 truthy 순간(다른 채널 클릭) 탭 멈춤.
 - innerHTML로 주입한 인라인 `<script>`는 실행 안 됨 → `bindXxxHandlers`에서 `renderXxxChart()` 직접 호출.
+- Chart.js v4 커스텀 `generateLabels`는 per-item `fontColor` 자동 주입 X → 다크모드 범례 텍스트 안 보임. legend item에 `fontColor: CHART_THEME.text` 명시. 차트 색/텍스트는 항상 `CHART_THEME` getter(하드코딩 hex 금지, 다크/라이트 양쪽 확인). 부호 색쌍은 명도차 크게.
 - `position:fixed`도 `backdrop-filter` 조상 안에선 viewport 기준 아님 → 드롭다운 body portal.
 - 게이트 `requiresAny` 키는 `STANDARD_FIELDS` 정규키와 정확히 일치(단/복수) — 추측 말고 복붙.
 

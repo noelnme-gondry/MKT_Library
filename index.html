@@ -18782,8 +18782,9 @@ function renderPvmChannelStack(c, byChannel, cur, ml) {
   destroyChartIfExists("pvm-channel-stack");
   const arr = [...byChannel].sort((a, b) => Math.abs(a.contribution) - Math.abs(b.contribution));
   const labels = arr.map(e => e.key);
-  const MIX_POS = "#4d8eff", MIX_NEG = "#adc6ff", RATE_POS = "#f7b955", RATE_NEG = "#ffcb6b";
+  const MIX_POS = "#4d8eff", MIX_NEG = "#adc6ff", RATE_POS = "#d97706", RATE_NEG = "#ffd98a";
   const base = chartCommonOpts();
+  const legendTextColor = CHART_THEME.text;
   CHART_INSTANCES["pvm-channel-stack"] = new Chart(canvas.getContext("2d"), {
     type: "bar",
     data: { labels, datasets: [
@@ -18798,9 +18799,11 @@ function renderPvmChannelStack(c, byChannel, cur, ml) {
       },
       plugins: {
         ...base.plugins,
-        legend: { ...base.plugins.legend, onClick: () => {}, labels: { ...base.plugins.legend.labels, generateLabels: () => [
-          { text: "Mix +(악화)", fillStyle: MIX_POS }, { text: "Mix −(개선)", fillStyle: MIX_NEG },
-          { text: "Rate +(악화)", fillStyle: RATE_POS }, { text: "Rate −(개선)", fillStyle: RATE_NEG },
+        legend: { ...base.plugins.legend, onClick: () => {}, labels: { ...base.plugins.legend.labels, color: legendTextColor, generateLabels: () => [
+          { text: "Mix +(악화)", fillStyle: MIX_POS, strokeStyle: MIX_POS, fontColor: legendTextColor, pointStyle: "circle" },
+          { text: "Mix −(개선)", fillStyle: MIX_NEG, strokeStyle: MIX_NEG, fontColor: legendTextColor, pointStyle: "circle" },
+          { text: "Rate +(악화)", fillStyle: RATE_POS, strokeStyle: RATE_POS, fontColor: legendTextColor, pointStyle: "circle" },
+          { text: "Rate −(개선)", fillStyle: RATE_NEG, strokeStyle: RATE_NEG, fontColor: legendTextColor, pointStyle: "circle" },
         ] } },
         tooltip: { ...base.plugins.tooltip, callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.x >= 0 ? "+" : ""}${pvmFmtMoney(ctx.parsed.x, cur)}` } },
       },
