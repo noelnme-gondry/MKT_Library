@@ -1944,6 +1944,23 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .alloc-verdict-num { font-size: 11.5px; color: var(--text-muted); }
   .alloc-verdict-num strong { display: block; font-size: 15px; color: var(--text-primary); margin-top: 2px; font-variant-numeric: tabular-nums; }
 
+  /* §0 진단 카드 — "어디가 문제인가" (결론 카드 위) */
+  .alloc-diag-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl, 12px);
+    background: var(--surface-container-lowest, var(--bg-2));
+    padding: 13px 16px;
+    margin: 0 0 12px;
+  }
+  .alloc-diag-title { font-size: 13.5px; font-weight: 700; color: var(--text-primary); margin-bottom: 9px; }
+  .alloc-diag-line { font-size: 12.5px; line-height: 1.6; color: var(--text-secondary); padding: 6px 0 6px 11px; border-left: 3px solid var(--border); }
+  .alloc-diag-line + .alloc-diag-line { margin-top: 5px; }
+  .alloc-diag-line strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .alloc-diag-line.bad { border-left-color: #ff8a8a; }
+  .alloc-diag-line.good { border-left-color: #5ad19a; }
+  .alloc-diag-line.neutral { border-left-color: #f7b955; }
+  .alloc-diag-line.muted { color: var(--text-muted); }
+
   /* §1 산점도·진단 접이식 + 추세선 알림 칩 */
   .alloc-diag > summary.alloc-diag-summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 0; }
   .alloc-diag > summary.alloc-diag-summary::-webkit-details-marker { display: none; }
@@ -7031,6 +7048,7 @@ function monAllocBody() {
   return `
       ${currencyToggle}
       ${filterSummary}
+      <div id="alloc-diagnosis"></div>
       <div id="alloc-verdict"></div>
       <section class="block" id="s-scatter">
         <details class="alloc-diag" ${ALLOC_STATE.scatterOpen ? "open" : ""}>
@@ -25797,6 +25815,8 @@ function refreshAllocationResults() {
   if (!tbody || !barWrap) return;
   const _verdictEl = document.getElementById("alloc-verdict");
   if (_verdictEl) _verdictEl.innerHTML = "";  // 성공 경로에서만 다시 채움(아래)
+  const _diagEl = document.getElementById("alloc-diagnosis");
+  if (_diagEl) _diagEl.innerHTML = "";  // 진단 카드도 성공 경로에서만 채움
 
   // 예산 입력값 유효성 검사 및 경고 노출
   const warningContainer = document.getElementById("alloc-budget-warning-container");
@@ -25926,6 +25946,7 @@ function refreshAllocationResults() {
 
   renderAllocItems(items, dailyBudget, tbody, barWrap, legendWrap, mode === "c" ? "mode-c" : "mode-b", { unallocated, overspent, totalAllocated, lockedTotal });
   renderAllocationTotalCard({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
+  renderAllocDiagnosis({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
   renderAllocVerdict({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
   renderAllocScenario({ modelsMap, selected, metric, mode, dailyBudget });
 }
@@ -26128,6 +26149,80 @@ function renderAllocationTotalCard(payload) {
       </div>
     </div>
   `;
+}
+
+/* §0 진단 카드 — "지금 어디가 문제인가"를 평어+절대값으로 먼저 지목.
+   처방(verdict) 전에 문제·기회 채널을 짚어 결론의 대상을 명확히 한다.
+   관측(최근 N일) 효율 기준 — 제안 배분이 아니라 현 상태를 진단(목표 ① WHERE).
+   eff = 낮을수록 효율적: CPR이면 그대로, ROAS면 1/ROAS로 통일(totCost/totResults 동일 공간). */
+function renderAllocDiagnosis(payload) {
+  const wrap = document.getElementById("alloc-diagnosis");
+  if (!wrap) return;
+  if (!payload || !payload.items || !payload.items.length) { wrap.innerHTML = ""; return; }
+
+  const { items, metric } = payload;
+  const recentDays = ALLOC_STATE.recentDays || 14;
+  const roas = isRoasMetric(metric);
+  const metricLabel = getCostMetricLabel(metric);
+
+  const chans = [];
+  let totCost = 0, totResults = 0;
+  for (const it of items) {
+    const h = calcChannelHistorySummary(it.channel, metric, { recentDays });
+    if (!h || h.totalCost <= 0) continue;
+    let eff;
+    if (roas) eff = (h.avgROAS != null && h.avgROAS > 0) ? 1 / h.avgROAS : Infinity;
+    else      eff = (h.avgCPR != null && h.totalResults > 0) ? h.avgCPR : Infinity;
+    chans.push({ ch: it.channel, cost: h.totalCost, results: h.totalResults, cpr: h.avgCPR, roasV: h.avgROAS, eff });
+    totCost += h.totalCost;
+    totResults += h.totalResults;
+  }
+
+  if (!chans.length || totCost <= 0) {
+    wrap.innerHTML = `<div class="alloc-diag-card"><div class="alloc-diag-title">🔍 진단</div><div class="alloc-diag-line muted">최근 ${recentDays}일 집행 데이터가 부족해 문제 진단을 생략합니다.</div></div>`;
+    return;
+  }
+
+  const portEff = totResults > 0 ? totCost / totResults : null;  // CPR 또는 1/ROAS 공간 공통
+  const fin = chans.filter(c => isFinite(c.eff));
+  const worst = [...chans].sort((a, b) => (b.eff - a.eff) || (a.ch < b.ch ? -1 : 1))[0];           // 가장 비효율
+  const best  = [...fin].sort((a, b) => (a.eff - b.eff) || (a.ch < b.ch ? -1 : 1))[0] || null;     // 가장 효율
+  const topCh = chans.reduce((a, b) => (b.cost > a.cost ? b : a));
+  const topShare = totCost > 0 ? topCh.cost / totCost : 0;
+
+  const rnd     = (v) => Math.round(v);
+  const costSh  = (c) => totCost > 0 ? c.cost / totCost * 100 : 0;
+  const resSh   = (c) => totResults > 0 ? c.results / totResults * 100 : 0;
+  const resLbl  = (c) => roas ? fmtCurrency(c.results) : `${formatNumber(c.results, { decimals: 0 })}건`;
+  const effLbl  = (c) => !isFinite(c.eff) ? "—" : (roas ? `${(c.roasV * 100).toFixed(0)}%` : fmtCostMetric(c.cpr, metric));
+  const line    = (cls, html) => `<div class="alloc-diag-line ${cls}">${html}</div>`;
+
+  const ratioBad  = (isFinite(worst.eff) && portEff > 0) ? worst.eff / portEff : Infinity;
+  const ratioGood = (best && isFinite(best.eff) && best.eff > 0 && portEff > 0) ? portEff / best.eff : 1;
+
+  const lines = [];
+  if (chans.length < 2) {
+    lines.push(line("muted", `채널을 2개 이상 선택하면 채널 간 효율 비교 진단이 표시됩니다 (현재 ${chans.length}개).`));
+  } else {
+    // 최악 채널 (또는 효율 차이가 작으면 균형 메시지)
+    if (!isFinite(worst.eff)) {
+      lines.push(line("bad", `💸 <strong>${escapeHtml(worst.ch)}</strong> — 최근 ${recentDays}일 예산의 <strong>${rnd(costSh(worst))}%</strong>(${fmtCurrency(worst.cost)})를 쓰는데 ${roas ? "매출" : "결과"}가 거의 없습니다. 가장 시급한 점검 대상입니다.`));
+    } else if (ratioBad >= 1.2) {
+      lines.push(line("bad", `💸 <strong>${escapeHtml(worst.ch)}</strong> — 최근 ${recentDays}일 예산의 <strong>${rnd(costSh(worst))}%</strong>(${fmtCurrency(worst.cost)})를 쓰는데 ${roas ? "매출 비중" : "결과 비중"}은 <strong>${rnd(resSh(worst))}%</strong>(${resLbl(worst)})뿐입니다. ${metricLabel} ${effLbl(worst)} — 평균보다 <strong>${ratioBad.toFixed(1)}배 비효율</strong>.`));
+    } else {
+      lines.push(line("neutral", `📊 채널 간 효율 차이가 작습니다 (최고↔최저 ${best && best.eff > 0 ? (worst.eff / best.eff).toFixed(1) : "—"}배). 재배분으로 얻을 효율은 제한적 — 채널 자체 효율(소재·타겟) 개선이 우선입니다.`));
+    }
+    // 기회 채널 (저비용 고효율인데 예산 적음)
+    if (best && best.ch !== worst.ch && isFinite(best.eff) && ratioGood >= 1.2) {
+      lines.push(line("good", `💎 <strong>${escapeHtml(best.ch)}</strong> — ${metricLabel} ${effLbl(best)}로 가장 효율적(평균보다 <strong>${ratioGood.toFixed(1)}배</strong>)인데 예산은 <strong>${rnd(costSh(best))}%</strong>뿐입니다. 증액 여지가 있습니다.`));
+    }
+    // 집중도 (단일 채널 의존) — 균등배분(1/n)보다 확연히 높을 때만. 2채널 50/50 오탐 방지.
+    if (topShare >= 0.5 && topShare >= 1.5 / chans.length) {
+      lines.push(line("neutral", `📊 예산이 <strong>${escapeHtml(topCh.ch)}</strong>에 <strong>${rnd(topShare * 100)}%</strong> 집중 — 단일 채널 의존도가 높습니다. 리스크 분산을 점검하세요.`));
+    }
+  }
+
+  wrap.innerHTML = `<div class="alloc-diag-card"><div class="alloc-diag-title">🔍 진단 — 지금 어디가 문제인가</div>${lines.join("")}</div>`;
 }
 
 /* 결론·액션 카드 — 전문 진단 없이 "지금 이렇게 하세요"를 평어로 제시.
