@@ -18830,7 +18830,7 @@ function pvmCreativeDrilldownSection(c, byChannel) {
   const headerOpts = { showCtr: c.ctrMapped, showNewCol: true, showUrl: c.urlMapped, entityCols: headerEntityCols };
   const { start, ctrl } = pvmPager(rowsToShow.length);
   const rows = rowsToShow.slice(start, start + PER).map(e => {
-    const f = e.children[0];
+    const f = e;
     const ctr = pvmCtrFor(c, f.chKey, f.cmpKey, f.crKey);
     return pvmTableRow(e, "", c, {
       showCtr: c.ctrMapped, showNewCol: true, showUrl: c.urlMapped,
