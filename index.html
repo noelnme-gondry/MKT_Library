@@ -26836,6 +26836,104 @@ function calcChannelHistorySummary(channel, metric, opts = {}) {
   };
 }
 
+function drawSimDetailChart(channel, hostId, currentCost) {
+  const host = document.getElementById(hostId);
+  if (!host) return;
+  const modelsMap = ALLOC_STATE.modelsMap;
+  if (!modelsMap) return;
+  const modelData = modelsMap.get(channel);
+  if (!modelData || !modelData.pts || modelData.pts.length === 0) return;
+
+  const pts = modelData.pts;
+  let scatterData = pts.map(p => ({ x: p.x, y: p.y }));
+  
+  let fitLineData = [];
+  if (modelData.model && modelData.model.predict) {
+    const maxX = Math.max(...pts.map(p => p.x));
+    const range = Math.max(maxX, currentCost || 0) * 1.5;
+    const step = range / 50;
+    for (let x = 0; x <= range; x += step) {
+      fitLineData.push({ x: x, y: modelData.model.predict(x) });
+    }
+  }
+  
+  let currentPointData = [];
+  if (currentCost != null && modelData.model && modelData.model.predict) {
+    const currentY = modelData.model.predict(currentCost);
+    if (currentY != null) {
+      currentPointData.push({ x: currentCost, y: currentY });
+    }
+  }
+
+  // Canvas 생성
+  host.innerHTML = '<canvas style="width:100%;height:100%;"></canvas>';
+  const ctx = host.querySelector('canvas').getContext('2d');
+
+  new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: 'Real Data',
+          data: scatterData,
+          backgroundColor: 'rgba(54, 162, 235, 0.5)',
+          pointRadius: 4,
+          order: 3
+        },
+        {
+          label: 'Trend Line',
+          data: fitLineData,
+          type: 'line',
+          borderColor: 'rgba(200, 200, 200, 0.8)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          pointRadius: 0,
+          fill: false,
+          order: 2
+        },
+        {
+          label: 'Current Allocation',
+          data: currentPointData,
+          backgroundColor: '#ff4d4f',
+          pointRadius: 8,
+          pointHoverRadius: 10,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              if (ctx.datasetIndex === 2) {
+                return `현재 예산: ${allocFmtNum(ctx.parsed.x)} | 예상 성과: ${allocFmtNum(ctx.parsed.y)}`;
+              }
+              return `Cost: ${allocFmtNum(ctx.parsed.x)}, Result: ${allocFmtNum(ctx.parsed.y)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          position: 'bottom',
+          ticks: { callback: (v) => allocFmtNum(v) },
+          grid: { color: 'rgba(200, 200, 200, 0.2)', borderDash: [2, 2] }
+        },
+        y: {
+          type: 'linear',
+          ticks: { callback: (v) => allocFmtNum(v) },
+          grid: { color: 'rgba(200, 200, 200, 0.2)', borderDash: [2, 2] }
+        }
+      }
+    }
+  });
+}
+
 function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, extra) {
   const metric = ALLOC_STATE.metric || "installs";
   const unitLabel = getMetricUnitLabel(metric);
@@ -26922,7 +27020,8 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
         <td class="tnum">
           ${isZero ? '<span style="color:var(--text-muted);">—</span>' : fmtCostMetric(it.cpr, metric)}
           ${hist && hist.avgCPR != null && !isZero ? `<div class="alloc-delta-hint">최근 ${recentDays}일 ${fmtCostMetric(hist.avgCPR, metric)}</div>` : ''}
-        </td>
+        </td>`;
+    
     trHtml += `
         <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong></td>
       </tr>
@@ -26934,7 +27033,7 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
         <td colspan="7">
           <div style="font-weight:600;margin-bottom:4px;">${escapeHtml(it.channel)} 비용-성과 시뮬레이션</div>
           <div style="color:var(--text-muted);font-size:0.85rem;margin-bottom:8px;">Cost 변화에 따른 예상 성과입니다. 그래프를 확인하며 최적의 비용을 결정하세요.</div>
-          <div class="sim-detail-chart" id="sim-chart-${escapeHtml(it.channel)}"></div>
+          <div class="sim-detail-chart" id="sim-chart-${escapeHtml(it.channel)}" style="height:300px; width:100%;"></div>
         </td>
       </tr>
       `;
