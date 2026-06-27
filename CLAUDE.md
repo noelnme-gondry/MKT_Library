@@ -233,17 +233,11 @@ HTML `<div class="chart-container"><canvas id="X"></canvas></div>` → 헤더에
 ### 12.8 데모 모드 (전 도구 샘플 미리보기)
 `DEMO_STATE={tool,page}` 활성 시 안전성 코드 강제: `loadCsvFromTool`=실제 스냅샷 미접근·데모만 로드, `saveCsvToTool`/`markToolAnalyzed`=no-op, `isToolAnalyzed`=true. **`TOOL_CSV_SNAPSHOTS` 데모 중 무접근** → 종료 시 자동 복원. 데이터는 `seededNoise`. `DEMO_BUILDERS`(csvTool→빌더). 가드는 `DEMO_STATE.tool===id` 조건이라 비데모 시 byte-동일.
 
-### 12.9 5-18 MMM 도구 (복잡 — 마케팅 반응 회귀)
-Tinder KR Reg/React 회귀 기반. **2-stage**: ① 진단(카니발·추세·그랜저·변화점) ② MMM(adstock·saturation 기여 분해·Trend Forecast) + Regression Lab(범용 OLS) stage. 핵심:
-- **회귀=가설 생성·기술용, 인과 아님**. cannibalization/incrementality 확정은 holdout(5-15) 전용. UI+JSON+README 3곳에 캐비엇 강제.
-- **카니발 3-STATE 투표**(FOR/AGAINST/ABSTAIN) + 검정력 게이트 + 채널 prior + CEI 랭킹. 동시점 삼각검증(선행성·탈추세·net) + 그랜저(시차·방향) + IRF + 변화점.
-- **colMap DnD**(header→role 매핑) 임의 N채널 일반화. `_nonRedundantCols`로 특이행렬 차단. 희소/저커버리지/공선 채널 가드.
-- **decomp 3모델**(ols centered / merge / ridge level). adstock+saturation. baseline 토글.
-- **Trend Forecast**: 관측+미래 결합패널에 동일 `mmmBuildFeatures`→적합→예측. 예산 시나리오·날짜 인식·step/더미 미래 제어. CSV는 엑셀 살아있는 수식(adstock 재귀 체인) + 평어.
-- 상세: PR #51~190, `docs/backlog.md` §B.
+### 12.9 5-18 MMM (마케팅 반응 회귀)
+2-stage: ① 진단(카니발·추세·그랜저·변화점) ② MMM(adstock·saturation 기여 분해·Trend Forecast) + Regression Lab. 회귀=가설 생성·기술용, **인과 아님**(확정은 holdout 전용). colMap DnD 임의 N채널, `_nonRedundantCols`로 특이행렬 차단. 상세: `docs/backlog.md` §B, PR #51~190.
 
-### 12.10 5-21 PVM 중첩 분해 (캠페인 성과 변동 탐지)
-최소 grain(채널×캠페인×소재×일) Bennet 분해 1회(`decomposeFinest`) 후 `rollup`으로 §2 채널→§3 채널·캠페인별→§4 소재별(모드 A) 드릴다운 항등식 정합. `mix=(cpāᵢ−C̄)·(s2−s1)`(전체 평균 대비 centering, §8.8)+`rate=s̄ᵢ·(cpa2−cpa1)`, `Σcontribution=ΔCPA_total`. 표시 라벨 "CPA/CPI 영향"(=mix+rate, 먼저 볼 값) + §2 Mix·Rate 설명 토글. **§4 계층 드릴다운은 `rollup` 복합 keyFn으로**: 채널전체=`ch│cmp│cr`/채널특정+캠페인전체=`cmp│cr`/둘다특정=`cr`(단일레벨 키로 묶으면 상위 over-merge 버그). 각 그룹=단일 finest → `children[0]`로 대표 ch/cmp/cr 추출(url·CTR·New). **§4는 ch/cmp/cr 고정 별도 컬럼**(`entityCols` 배열로 pvmTableHeader/Row 다중 엔티티 일반화 — 합친 라벨 X). §4 표 20행 페이지네이션(`crPage`, 필터변경 시 1리셋). New=이름 앞 상태 컬럼·링크=영향 뒤 컬럼. 기간 `weekBasis`(calendar/rolling7)×`lookback`(1/2/3). ₩/$ 토글(`pvmFmtMoney`). 소재 URL: `creative_url` 매핑 시 §4 링크 컬럼(`crUrlMap` 비용최대 변형, `pvmSafeUrl` http/https만=XSS 차단). §0 sleek 칩(`pvmImpactChip`)+Top-mover 카드, §1 Bridge 2줄(P1→P2=Δ%). §2 차트 2종(`renderPvmCharts` — `chartCommonOpts()`+`CHART_THEME` 재사용으로 5-2와 톤 통일): **0 기준 막대 브릿지**(CPA1/채널기여±/CPA2, 음수 0 아래, `afterDatasetsDraw` 값 라벨) + Mix·Rate 가로 누적막대(부호별 per-bar 색 — Mix 진한/연한 블루, Rate 진한 앰버 `#d97706`/연한 `#ffd98a`; 커스텀 legend item에 `fontColor: CHART_THEME.text` 명시해야 다크모드 보임 §7). 결과 CSV(`downloadPvmCsv`): META/SCORECARD/CREATIVE_FULL/CHANNEL/CAMPAIGN, **mix/rate 살아있는 엑셀 수식**(finest=centering 공식 `=(N-O)*(M-L)`, 롤업=하위 소재 cell `+`합 — SUMIFS는 콤마로 CSV 깨짐 회피), `_mmmDownload`+CRLF+BOM. **모드 B(소재만 merged) 제거**(`decomposeRows`도 삭제). `runPvmTests()` 36/36 + 확장 harness(전체계층 Σ·비병합·페이지네이션·차트·CSV 수식).
+### 12.10 5-21 PVM (캠페인 성과 변동 탐지)
+최소 grain(채널×캠페인×소재×일) Bennet 분해 1회 → `rollup`으로 §2→§3→§4 항등식 정합. centering mix `(cpāᵢ−C̄)·Δsᵢ`. §4 복합 keyFn(over-merge 방지). 상세: `docs/pvm-campaign-variance-spec.md`.
 
 ### 12.11 SaaS 셸
 랜딩 2단계(`LANDING_STATE.track`: null/guide/analyze), freemium 티어(`TOOL_TIER`), Pro 페이월(`pageAuthGate`), ⌘K 명령 팔레트(`CMDK_STATE`, 전역 오버레이 — 사이드바 숨김 랜딩에서도 동작). 전부 render층 → 골든 byte-동일.
