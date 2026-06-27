@@ -510,16 +510,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     margin-top: 10px;
     margin-bottom: 10px;
   }
-  .pvm-diag-icon {
-    position: relative;
-    display: inline-block;
-  }
-  .pvm-diag-icon::after {
-    content: attr(data-tip);
-    position: absolute;
-    bottom: calc(100% + 10px);
-    right: 50%;
-    transform: translateX(50%) translateY(4px);
+  /* PVM floating tooltip (JS-driven, appended to body to escape overflow) */
+  #pvm-float-tip {
+    position: fixed;
     width: 340px;
     max-width: 85vw;
     padding: 12px 14px;
@@ -533,32 +526,28 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     white-space: normal;
     word-break: keep-all;
     box-shadow: 0 8px 32px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.15);
-    z-index: 9999;
+    z-index: 99999;
     pointer-events: none;
     opacity: 0;
-    transition: opacity .18s ease, transform .18s ease;
+    transform: translateY(6px);
+    transition: opacity .15s ease, transform .15s ease;
   }
-  .pvm-diag-icon:hover::after,
-  .pvm-diag-icon:focus::after {
+  #pvm-float-tip.visible {
     opacity: 1;
-    transform: translateX(50%) translateY(0);
+    transform: translateY(0);
   }
-  .pvm-diag-icon::before {
+  #pvm-float-tip::after {
     content: '';
     position: absolute;
-    bottom: calc(100% + 4px);
+    bottom: -6px;
     left: 50%;
     transform: translateX(-50%);
     border: 6px solid transparent;
     border-top-color: #1a1a2e;
-    z-index: 9999;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity .18s ease;
   }
-  .pvm-diag-icon:hover::before,
-  .pvm-diag-icon:focus::before {
-    opacity: 1;
+  .pvm-diag-icon {
+    display: inline-block;
+    cursor: help;
   }
   
 
@@ -27978,6 +27967,67 @@ async function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
+</script>
+
+<div id="pvm-float-tip"></div>
+<script>
+(function() {
+  const tip = document.getElementById('pvm-float-tip');
+  let hideTimer = null;
+  
+  function showTip(icon) {
+    clearTimeout(hideTimer);
+    const text = icon.getAttribute('data-tip');
+    if (!text) return;
+    tip.textContent = text;
+    tip.classList.add('visible');
+
+    const rect = icon.getBoundingClientRect();
+    const tipW = 340;
+    // Position above the icon, centered
+    let left = rect.left + rect.width / 2 - tipW / 2;
+    // Clamp to viewport
+    if (left < 8) left = 8;
+    if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 8;
+    
+    // Show above the icon; if not enough room, show below
+    tip.style.left = left + 'px';
+    const tipH = tip.offsetHeight;
+    const above = rect.top - tipH - 12;
+    if (above > 4) {
+      tip.style.top = above + 'px';
+      // arrow at bottom pointing down
+      tip.style.removeProperty('--arrow-flip');
+    } else {
+      tip.style.top = (rect.bottom + 10) + 'px';
+    }
+  }
+  
+  function hideTip() {
+    hideTimer = setTimeout(function() {
+      tip.classList.remove('visible');
+    }, 80);
+  }
+  
+  document.addEventListener('mouseover', function(ev) {
+    const icon = ev.target.closest('.pvm-diag-icon');
+    if (icon) showTip(icon);
+  });
+  document.addEventListener('mouseout', function(ev) {
+    const icon = ev.target.closest('.pvm-diag-icon');
+    if (icon) hideTip();
+  });
+  document.addEventListener('focusin', function(ev) {
+    const icon = ev.target.closest('.pvm-diag-icon');
+    if (icon) showTip(icon);
+  });
+  document.addEventListener('focusout', function(ev) {
+    const icon = ev.target.closest('.pvm-diag-icon');
+    if (icon) hideTip();
+  });
+  // Hide on scroll to prevent stale position
+  document.addEventListener('scroll', function() { hideTip(); }, true);
+})();
 </script>
 </body>
 </html>
