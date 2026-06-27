@@ -73,6 +73,8 @@ tools:
 
 현재 도구: 5-2 운영 대시보드(9탭,free)·5-3 예산 배분·5-4 실험 분석(3탭)·5-6 소재·5-18 MMM 2-stage+Forecast·5-21 PVM 변동 탐지. 상세는 CLAUDE.md §4.2·§12.9·§12.10.
 
+피드백 설문(VOC, §12.13): 사이드바 하단 상시 링크(`.sidebar` flex+`margin-top:auto`)+⌘K `action:"feedback"` + `pageShell` 5-x 분기 `renderFeedbackNudge`(게이트 `/^5-/`+`isToolAnalyzed`+`!FEEDBACK_NUDGE.dismissed`, 세션당 1회·localStorage X). `bindFeedback` 전역 위임, `target=_blank rel=noopener`. 색은 semantic 토큰만(다크/라이트 자동). render층(골든 무관).
+
 # 통계 도구 표준
 
 - 순수 함수 객체 분리(`CANNIBAL_STATS`·`ALLOC_MATH`·`MMM_STATS`·`PVM_MATH`).
