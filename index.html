@@ -510,6 +510,51 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     margin-top: 10px;
     margin-bottom: 10px;
   }
+  .pvm-diag-icon {
+    position: relative;
+    display: inline-block;
+  }
+  .pvm-diag-icon::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: -20px;
+    width: 320px;
+    max-width: 80vw;
+    padding: 10px 12px;
+    background: var(--bg-1);
+    color: var(--text-1);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 11.5px;
+    line-height: 1.6;
+    white-space: normal;
+    word-break: keep-all;
+    box-shadow: 0 4px 16px rgba(0,0,0,.25);
+    z-index: 999;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity .15s ease, transform .15s ease;
+  }
+  .pvm-diag-icon:hover::after,
+  .pvm-diag-icon:focus::after {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+
+  /* PVM table nowrap defaults */
+  #s-pvm-channels .data td,
+  #s-pvm-channels .data th,
+  #s-pvm-campaigns .data td,
+  #s-pvm-campaigns .data th,
+  #s-pvm-creatives .data td,
+  #s-pvm-creatives .data th {
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
   /* For hover highlight on charts */
   .chart-fade-inactive {
     opacity: 0.15 !important;
@@ -18642,15 +18687,7 @@ function pvmGenerateDiagnosis(e, level, c) {
   return diagnosis;
 }
 
-window.togglePvmDiagnosis = function(btn) {
-  const row = btn.closest('tr');
-  const diagRow = row.nextElementSibling;
-  if (diagRow && diagRow.classList.contains('pvm-diag-row')) {
-    const isHidden = diagRow.style.display === 'none';
-    diagRow.style.display = isHidden ? 'table-row' : 'none';
-    btn.classList.toggle('active', isHidden);
-  }
-};
+
 
 function pvmTableRow(e, label, c, opts) {
   opts = opts || {};
@@ -18710,31 +18747,20 @@ function pvmTableRow(e, label, c, opts) {
   }
 
   const diagText = pvmGenerateDiagnosis(e, level, c);
-  const diagnosisCell = `<button class="ab-pill pvm-diag-btn" onclick="togglePvmDiagnosis(this)" style="padding:2px 6px;font-size:11px;cursor:pointer;background:var(--bg-3);border:1px solid var(--border-color);color:var(--text-1);">💡 진단</button>`;
   const impactStr = (e.contribution >= 0 ? "+" : "") + pvmFmtMoney(e.contribution, cur);
 
-  return `
-    <tr data-pvm-level="${level}">
-      <td>${nameHtml}</td>
-      <td class="tnum" data-sortval="${cost2 - cost1}">${pvmFmtMoney(cost1, cur)} → ${pvmFmtMoney(cost2, cur)}</td>
-      <td class="tnum" data-sortval="${(userCpa2Val ?? 0) - (userCpa1Val ?? 0)}">${cpa1Str} → ${cpa2Str}</td>
-      <td class="tnum" data-sortval="${e.s2 - e.s1}">${share1Str} → ${share2Str}</td>
-      <td class="tnum" data-sortval="${e.mix}" style="color:${pvmColor(e.mix)};">${mixStr}</td>
-      <td class="tnum" data-sortval="${e.rate}" style="color:${pvmColor(e.rate)};">${rateStr}</td>
-      <td class="tnum" data-sortval="${subMixVal}" style="color:${pvmColor(subMixVal)};">${subMixStr}</td>
-      <td class="tnum" data-sortval="${subRateVal}" style="color:${pvmColor(subRateVal)};">${subRateStr}</td>
-      <td style="text-align:center;">${diagnosisCell}</td>
-      <td class="tnum" data-sortval="${e.contribution}"><strong style="color:${pvmColor(e.contribution)};">${impactStr}</strong></td>
-    </tr>
-    <tr class="pvm-diag-row" style="display:none;background:var(--bg-2);">
-      <td colspan="10" style="padding:10px 14px;font-size:11.5px;line-height:1.6;color:var(--text-2);">
-        <div style="border-left:3px solid var(--primary);padding-left:10px;">
-          <strong>🔍 성과 진단 리포트:</strong>
-          <p style="margin:4px 0 0;color:var(--text-muted);white-space:normal;word-break:keep-all;">${escapeHtml(diagText)}</p>
-        </div>
-      </td>
-    </tr>
-  `;
+  return `<tr data-pvm-level="${level}">
+      <td style="white-space:nowrap;">${nameHtml}</td>
+      <td class="tnum" style="white-space:nowrap;" data-sortval="${cost2 - cost1}">${pvmFmtMoney(cost1, cur)} → ${pvmFmtMoney(cost2, cur)}</td>
+      <td class="tnum" style="white-space:nowrap;" data-sortval="${(userCpa2Val ?? 0) - (userCpa1Val ?? 0)}">${cpa1Str} → ${cpa2Str}</td>
+      <td class="tnum" style="white-space:nowrap;" data-sortval="${e.s2 - e.s1}">${share1Str} → ${share2Str}</td>
+      <td class="tnum" style="white-space:nowrap;color:${pvmColor(e.mix)};" data-sortval="${e.mix}">${mixStr}</td>
+      <td class="tnum" style="white-space:nowrap;color:${pvmColor(e.rate)};" data-sortval="${e.rate}">${rateStr}</td>
+      <td class="tnum" style="white-space:nowrap;color:${pvmColor(subMixVal)};" data-sortval="${subMixVal}">${subMixStr}</td>
+      <td class="tnum" style="white-space:nowrap;color:${pvmColor(subRateVal)};" data-sortval="${subRateVal}">${subRateStr}</td>
+      <td style="text-align:center;white-space:nowrap;position:relative;"><span class="pvm-diag-icon" tabindex="0" style="cursor:help;font-size:14px;opacity:.7;" data-tip="${escapeHtml(diagText)}">💡</span></td>
+      <td class="tnum" style="white-space:nowrap;" data-sortval="${e.contribution}"><strong style="color:${pvmColor(e.contribution)};">${impactStr}</strong></td>
+    </tr>`;
 }
 
 function pvmMetricGuide(c) {
