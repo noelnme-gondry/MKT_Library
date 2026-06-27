@@ -1944,6 +1944,33 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .alloc-verdict-num { font-size: 11.5px; color: var(--text-muted); }
   .alloc-verdict-num strong { display: block; font-size: 15px; color: var(--text-primary); margin-top: 2px; font-variant-numeric: tabular-nums; }
 
+  /* §0 진단 카드 — "어디가 문제인가" (결론 카드 위) */
+  .alloc-diag-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl, 12px);
+    background: var(--surface-container-lowest, var(--bg-2));
+    padding: 13px 16px;
+    margin: 0 0 12px;
+  }
+  .alloc-diag-title { font-size: 13.5px; font-weight: 700; color: var(--text-primary); margin-bottom: 9px; }
+  .alloc-diag-line { font-size: 12.5px; line-height: 1.6; color: var(--text-secondary); padding: 6px 0 6px 11px; border-left: 3px solid var(--border); }
+  .alloc-diag-line + .alloc-diag-line { margin-top: 5px; }
+  .alloc-diag-line strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .alloc-diag-line.bad { border-left-color: #ff8a8a; }
+  .alloc-diag-line.good { border-left-color: #5ad19a; }
+  .alloc-diag-line.neutral { border-left-color: #f7b955; }
+  .alloc-diag-line.muted { color: var(--text-muted); }
+
+  /* §5 배분 점검 스트립 (검증) */
+  .alloc-verify-strip { border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; margin: 0 0 11px; font-size: 12px; line-height: 1.55; background: var(--surface-container-lowest, var(--bg-2)); }
+  .alloc-verify-strip.good { border-left: 3px solid #5ad19a; }
+  .alloc-verify-strip.bad { border-left: 3px solid #ff8a8a; }
+  .alloc-verify-strip.neutral { border-left: 3px solid #f7b955; }
+  .alloc-verify-head { font-weight: 700; color: var(--text-primary); }
+  .alloc-verify-body { color: var(--text-secondary); }
+  .alloc-verify-strip strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .alloc-verify-note { margin-top: 6px; font-size: 11px; color: var(--text-muted); }
+
   /* §1 산점도·진단 접이식 + 추세선 알림 칩 */
   .alloc-diag > summary.alloc-diag-summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 0; }
   .alloc-diag > summary.alloc-diag-summary::-webkit-details-marker { display: none; }
@@ -3068,11 +3095,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   /* MMM 신뢰도 호버 툴팁 — body에 붙는 floating tip(JS)으로 표/overflow 클리핑 회피 */
   .mmm-tip { cursor: help; }
   #mmm-hover-tip {
-    position: fixed; z-index: 10000; max-width: 280px; background: rgba(22,24,33,0.97);
-    border: 1px solid rgba(122,162,247,0.4); border-radius: 8px; padding: 8px 11px;
-    font-size: 11.5px; line-height: 1.55; color: var(--text-1); white-space: normal;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.45); pointer-events: none;
+    position: fixed; z-index: 10000; max-width: 380px; background: rgba(18,20,28,0.98);
+    border: 1px solid rgba(122,162,247,0.5); border-radius: 9px; padding: 11px 13px;
+    font-size: 12px; line-height: 1.62; color: var(--text-1, #e8ebf5); white-space: normal;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.55); pointer-events: none;
   }
+  #mmm-hover-tip .mmm-tip-pre { color: var(--text-muted, #aeb4c6); margin-bottom: 7px; }
+  #mmm-hover-tip .mmm-tip-sec { padding: 5px 0; }
+  #mmm-hover-tip .mmm-tip-sec + .mmm-tip-sec { border-top: 1px solid rgba(255,255,255,0.08); }
+  #mmm-hover-tip .mmm-tip-lbl { display: block; font-weight: 700; color: #adc6ff; font-size: 11px; margin-bottom: 2px; }
   /* Regression Lab 드래그앤드롭 매핑 */
   .reg-zone { min-height: 56px; border: 1.5px dashed var(--border); border-radius: 10px; padding: 9px 11px; background: var(--bg-2); transition: border-color .12s, background .12s; }
   .reg-zone.over { border-color: #7aa2f7; background: rgba(122,162,247,0.08); }
@@ -3408,8 +3439,8 @@ const IA = [
     subtitle: "일별 캠페인 CSV 1개 → 효율·배분 분석 연속 처리",
     items: [
       { id: "5-2", title: "운영 대시보드", desc: "시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트 — 한 CSV로 현황 감시" },
-      { id: "5-3", title: "예산 배분", desc: "절대 CPR/ROAS 가중 배분 + 한계효용 그리디(고급) — 채널별 예산 최적화" },
       { id: "5-21", title: "캠페인 성과 변동 탐지", desc: "이번주 vs 지난주 CPA/CPI 변동을 채널→캠페인→소재로 드릴다운 — 무엇이 비용을 올리고 내렸는지 무잔차 분해" },
+      { id: "5-3", title: "예산 배분", desc: "절대 CPR/ROAS 가중 배분 + 한계효용 그리디(고급) — 채널별 예산 최적화" },
     ],
   },
   {
@@ -3824,7 +3855,7 @@ function updateNavActive(activeId) {
 const LANDING_STATE = { track: null }; // null = step1 / "guide" / "analyze"
 
 // 도구 티어 (freemium): 시각화·모니터링만 무료, 나머지 Pro
-const TOOL_TIER = { "5-2": "free", "5-3": "free", "5-6": "pro", "5-4": "pro", "5-18": "pro", "5-20": "pro", "5-21": "pro" };
+const TOOL_TIER = { "5-2": "free", "5-3": "pro", "5-6": "pro", "5-4": "pro", "5-18": "pro", "5-20": "pro", "5-21": "free" };
 function toolTier(id) { return TOOL_TIER[id] || "pro"; }
 
 // 분석 트랙 그룹 아이콘 (IA가 source of truth — 새 그룹 생길 때만 1줄 추가, drift 위험 낮음. §D1)
@@ -6110,7 +6141,7 @@ const AUTH_STATE = {
 };
 
 // freemium: 5-2 시각화·모니터링은 무료. 나머지 분석 도구는 Pro(접근 키 필요).
-const AUTH_PROTECTED_PAGES = new Set(["5-4", "5-6", "5-18", "5-20", "5-21"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-4", "5-6", "5-18", "5-20", "5-3"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -7031,6 +7062,7 @@ function monAllocBody() {
   return `
       ${currencyToggle}
       ${filterSummary}
+      <div id="alloc-diagnosis"></div>
       <div id="alloc-verdict"></div>
       <section class="block" id="s-scatter">
         <details class="alloc-diag" ${ALLOC_STATE.scatterOpen ? "open" : ""}>
@@ -7210,6 +7242,7 @@ function monAllocBody() {
             🔒 또는 ↺ 클릭 시 잠금 해제.
           </p>
           <div id="alloc-table-warning-container"></div>
+          <div id="alloc-verify-strip"></div>
           <div class="table-wrap">
             <table class="data">
               <thead>
@@ -8126,6 +8159,43 @@ function detectAllocFilterOptions() {
   };
 }
 
+/* 채널별·캠페인별은 국가 grain(Country×Channel)이라 한 국가 내 비교가 의미 있음.
+   → 다른 국가 데이터가 산점도·배분에 섞이지 않도록 국가를 단일로 강제. */
+function allocIsSingleCountryUnit() {
+  return ALLOC_FILTER_STATE.unit === "channel" || ALLOC_FILTER_STATE.unit === "campaign";
+}
+/* 국가별 총 지출 최대 국가(결정론: 동률이면 가나다 앞). candidates 주면 그 중에서. */
+function allocTopSpendCountry(candidates) {
+  const rows = getMappedRows();
+  const byC = new Map();
+  for (const r of rows) {
+    const c = String(r.country || "").trim();
+    if (!c) continue;
+    if (candidates && candidates.length && !candidates.includes(c)) continue;
+    byC.set(c, (byC.get(c) || 0) + (Number(r.cost) || 0));
+  }
+  let best = null, bestV = -Infinity;
+  for (const c of [...byC.keys()].sort()) {
+    if (byC.get(c) > bestV) { bestV = byC.get(c); best = c; }
+  }
+  return best;
+}
+/* 채널/캠페인별이면 selectedCountries를 단일로 정규화(0·복수·무효 → 최고지출).
+   국가가 1개뿐이거나 국가별 단위면 무동작(byte-동일). 호출: unit 변경·렌더 직전. */
+function normalizeAllocCountryFilter() {
+  if (!allocIsSingleCountryUnit()) return;
+  const opt = detectAllocFilterOptions();
+  if (!opt.hasCountry || opt.countries.length <= 1) return;
+  const sel = ALLOC_FILTER_STATE.selectedCountries;
+  const validSel = sel ? [...sel].filter(c => opt.countries.includes(c)) : [];
+  if (validSel.length === 1) {
+    if (!sel || sel.size !== 1) ALLOC_FILTER_STATE.selectedCountries = new Set(validSel);
+    return;
+  }
+  const pick = (validSel.length ? allocTopSpendCountry(validSel) : null) || allocTopSpendCountry();
+  ALLOC_FILTER_STATE.selectedCountries = pick ? new Set([pick]) : null;
+}
+
 /* 채널별 effective 값 lookup. perChannel에 있으면 그 값, 없으면 글로벌 default. */
 function getEffSetting(channel, field) {
   return ALLOC_STATE.perChannel[channel]?.[field] ?? ALLOC_STATE[field];
@@ -8177,6 +8247,26 @@ function allocParseNum(s) {
 }
 function allocFmtNum(n) {
   return (n == null || isNaN(n)) ? "" : Math.round(n).toLocaleString();
+}
+/* 입력 중 라이브 천단위 콤마 — 커서 위치 보존(콤마 추가분 보정). 정수 입력(예산·cost 셀)용.
+   재계산은 호출부의 change/blur에서. type="text" 입력만(setSelectionRange). */
+function allocLiveCommaFormat(input) {
+  if (!input) return;
+  const old = input.value;
+  const sel = input.selectionStart == null ? old.length : input.selectionStart;
+  const digitsLeft = old.slice(0, sel).replace(/\D/g, "").length;
+  const digits = old.replace(/\D/g, "");
+  if (digits === "") { if (old !== "") input.value = ""; return; }
+  const formatted = Number(digits).toLocaleString("en-US");
+  if (formatted === old) return;  // 변화 없으면 커서 유지
+  input.value = formatted;
+  if (digitsLeft <= 0) { try { input.setSelectionRange(0, 0); } catch (_) {} return; }
+  let seen = 0, pos = formatted.length;
+  for (let i = 0; i < formatted.length; i++) {
+    if (formatted.charCodeAt(i) >= 48 && formatted.charCodeAt(i) <= 57) seen++;
+    if (seen >= digitsLeft) { pos = i + 1; break; }
+  }
+  try { input.setSelectionRange(pos, pos); } catch (_) {}
 }
 
 /* perChannel 상태를 cache 키에 포함시키기 위한 해시 */
@@ -14703,6 +14793,28 @@ function mmmChannelEffects(panel, cfg, targetName, lam) {
 function mmmConfDots(level) { const n = Math.max(0, Math.min(5, Math.round(level))); return "●".repeat(n) + "○".repeat(5 - n); }
 // ? 호버 툴팁 (수학값 의미)
 function mmmTip(text) { return `<span class="mmm-tip" data-mmm-tiptext="${escapeHtml(text)}" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid rgba(122,162,247,0.5);color:#adc6ff;font-size:9px;font-weight:700;margin-left:4px;vertical-align:middle;">?</span>`; }
+
+/* 긴 진단 툴팁("왜 위험: … 왜 발생: … 어떻게: …")을 라벨별 단락으로 구조화해 가독성↑.
+   마커 없으면 평문 그대로. dev-authored 텍스트지만 innerHTML 사용이라 escapeHtml 필수. */
+function formatMmmTipText(raw) {
+  const s = String(raw == null ? "" : raw).trim();
+  const MARK = [
+    { key: "왜 위험:", label: "⚠ 왜 위험한가" },
+    { key: "왜 발생:", label: "왜 생기나" },
+    { key: "어떻게:",  label: "✅ 어떻게 하나" },
+  ];
+  const found = MARK.map(m => ({ ...m, i: s.indexOf(m.key) })).filter(m => m.i >= 0).sort((a, b) => a.i - b.i);
+  if (found.length === 0) return escapeHtml(s);
+  let html = "";
+  const pre = s.slice(0, found[0].i).trim();
+  if (pre) html += `<div class="mmm-tip-pre">${escapeHtml(pre)}</div>`;
+  for (let k = 0; k < found.length; k++) {
+    const start = found[k].i + found[k].key.length;
+    const end = k + 1 < found.length ? found[k + 1].i : s.length;
+    html += `<div class="mmm-tip-sec"><span class="mmm-tip-lbl">${escapeHtml(found[k].label)}</span>${escapeHtml(s.slice(start, end).trim())}</div>`;
+  }
+  return html;
+}
 // dots + 실제 수학값 + ? 설명 (신뢰도 셀)
 function mmmConfInline(level, valueText, tip) {
   return `<span style="color:#adc6ff;letter-spacing:1px;">${mmmConfDots(level)}</span> <span style="color:var(--text-muted);font-size:11px;font-family:var(--font-mono,monospace);">${valueText}</span>${tip ? mmmTip(tip) : ""}`;
@@ -15685,7 +15797,7 @@ function bindMmmInfoOnce() {
     const el = e.target.closest && e.target.closest("[data-mmm-tiptext]"); if (!el) return;
     hideTip();
     const tip = document.createElement("div"); tip.id = "mmm-hover-tip";
-    tip.textContent = el.getAttribute("data-mmm-tiptext"); document.body.appendChild(tip);
+    tip.innerHTML = formatMmmTipText(el.getAttribute("data-mmm-tiptext")); document.body.appendChild(tip);
     const r = el.getBoundingClientRect();
     tip.style.left = Math.min(window.innerWidth - tip.offsetWidth - 8, Math.max(8, r.left + r.width / 2 - tip.offsetWidth / 2)) + "px";
     let top = r.top - tip.offsetHeight - 8; if (top < 8) top = r.bottom + 8;   // 위 공간 없으면 아래로
@@ -25427,8 +25539,8 @@ function renderTrendComparison(meta) {
     let badge = "";
     if (name === "Poly2") {
       const shape = ALLOC_MATH.detectPoly2Shape(fit.model);
-      if (shape?.shape === "bell") badge = `<span class="pill" style="border-color:rgba(255,138,138,0.4);color:#ff8a8a;background:rgba(255,138,138,0.08);">⚠ 종모양</span>`;
-      else if (shape?.shape === "u") badge = `<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);">⚠ U자형</span>`;
+      if (shape?.shape === "bell") badge = `<span class="pill" style="border-color:rgba(255,138,138,0.4);color:#ff8a8a;background:rgba(255,138,138,0.08);" title="곡선이 ∩(종모양): 예산을 늘리면 예측이 빗나갈 수 있어 위험.">⚠ 증액 시 빗나감</span>`;
+      else if (shape?.shape === "u") badge = `<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);" title="곡선이 ∪(U자형): 예산을 줄이면 예측이 빗나갈 수 있어 주의.">⚠ 감액 시 빗나감</span>`;
     }
     const isRec = name === recName;
     if (isRec) badge += ` <span class="pill" style="border-color:rgba(90,209,154,0.4);color:#5ad19a;background:rgba(90,209,154,0.08);">★ 추천</span>`;
@@ -25695,10 +25807,10 @@ function renderTrendSummary(trendInfo) {
                                    `<span class="pill tier-3">${t.r2.toFixed(2)}</span>`;
       const badges = [];
       badges.push(t.descending
-        ? `<span class="pill" style="border-color:rgba(255,138,138,0.4);color:#ff8a8a;background:rgba(255,138,138,0.08);">우하향 ⚠</span>`
-        : `<span class="pill" style="border-color:rgba(90,209,154,0.3);color:#5ad19a;background:rgba(90,209,154,0.06);">우상향</span>`);
-      if (t.sparseData) badges.push(`<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);">데이터 부족</span>`);
-      if (t.suspect) badges.push(`<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);" title="곡선의 꼭짓점(vertex)이 관측 데이터 밖에 있어 외삽 예측이 과장될 수 있습니다">외삽 주의</span>`);
+        ? `<span class="pill" style="border-color:rgba(255,138,138,0.4);color:#ff8a8a;background:rgba(255,138,138,0.08);" title="우하향 추세선 (Cost↑ → CPR↓). 더 쓸수록 싸지는 비정상 패턴 — 모델이 과신해 예산을 몰 수 있어 주의.">효율 거꾸로 ⚠</span>`
+        : `<span class="pill" style="border-color:rgba(90,209,154,0.3);color:#5ad19a;background:rgba(90,209,154,0.06);" title="우상향 추세선 (Cost↑ → CPR↑). 더 쓸수록 비싸지는 정상적 수확체감 패턴.">정상 ✓</span>`);
+      if (t.sparseData) badges.push(`<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);" title="점이 10개 미만이면 추세선 신뢰도가 낮습니다 (점선 표시). 집계 윈도우를 늘려 데이터를 확보하세요.">데이터 부족</span>`);
+      if (t.suspect) badges.push(`<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);" title="외삽 주의: 곡선의 꼭짓점(vertex)이 관측 데이터 밖에 있어 그 방향으로 예측하면 과장될 수 있습니다.">예측 과장 위험</span>`);
       return `
         <tr>
           <td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${t.color};margin-right:0.4rem;"></span>${escapeHtml(truncateLabel(t.channel, 40))}</td>
@@ -25727,7 +25839,7 @@ function renderTrendSummary(trendInfo) {
       <summary class="alloc-alert-chip">${dangerCount > 0 ? '⚠' : 'ⓘ'} 추세선 진단 ${totalIssues}건 — 클릭해 자세히 보기</summary>` : ''}
     ${descending.length > 0 ? allocAlertLine(
       "danger",
-      `우하향 추세선 채널 ${descending.length}개 감지`,
+      `효율이 거꾸로 가는 채널 ${descending.length}개 — 더 쓸수록 싸지는 비정상 추세`,
       descending.map(d => `<code class="inline">${escapeHtml(truncateLabel(d.channel, 28))}</code>`).join(", "),
       "왜 위험: 우하향(Cost↑→CPR↓)은 한계효용 체감 패턴과 반대라, 한계효용 그리디(모드 B)에서 외삽 시 음수 CPR을 예측해 이 채널에 예산이 무리하게 몰릴 수 있습니다. " +
       "왜 발생: 짧은 학습 기간으로 데이터가 부족하거나, 채널 진입 초기 효율 상승 구간이거나, 노이즈가 큰 운영 케이스일 때 흔합니다. " +
@@ -25736,7 +25848,7 @@ function renderTrendSummary(trendInfo) {
 
     ${bellShapes.length > 0 ? allocAlertLine(
       "danger",
-      `종모양(∩) 추세선 — 위험 ${bellShapes.length}개 감지`,
+      `예산 늘리면 예측이 빗나가는 채널 ${bellShapes.length}개 — 곡선이 ∩(종모양)`,
       bellShapes.map(s => {
         const v = s.poly2Shape.vertex;
         const recBest = recommendSafeFit(s.allFits);
@@ -25750,7 +25862,7 @@ function renderTrendSummary(trendInfo) {
 
     ${uShapes.length > 0 ? allocAlertLine(
       "warn",
-      `U자형(∪) 추세선 — 주의 ${uShapes.length}개 감지`,
+      `예산 줄이면 예측이 빗나가는 채널 ${uShapes.length}개 — 곡선이 ∪(U자형)`,
       uShapes.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 26))}</code> vertex≈${fmtCurrency(s.poly2Shape.vertex)}`).join(", "),
       "왜 위험: vertex 이전 구간이 우하향(낮은 Cost일수록 CPR↑)으로 그려져, 그 구간으로 외삽하면 예산을 줄일수록 효율이 나빠진다는 잘못된 결론을 낼 수 있습니다. " +
       "왜 발생: 종모양과 동일하게 데이터 과적합 또는 기간이 길어 여러 시기의 추세가 섞였을 때 흔합니다. " +
@@ -25759,7 +25871,7 @@ function renderTrendSummary(trendInfo) {
 
     ${suspects.length > 0 ? allocAlertLine(
       "warn",
-      `Poly2 꼬리 의심 ${suspects.length}개 감지`,
+      `곡선 끝 예측 신뢰가 낮은 채널 ${suspects.length}개 — 데이터 없는 구간으로 휜 곡선`,
       suspects.map(s => `<code class="inline">${escapeHtml(truncateLabel(s.channel, 28))}</code>`).join(", "),
       "왜 위험: 관측 데이터가 한쪽에 거의 없는데 곡선이 그 방향으로 강제로 휘어, 점선(저신뢰) 구간의 예측이 통계적 근거 없이 과장될 수 있습니다. " +
       "왜 발생: 해당 Cost 구간에 실제 운영 데이터가 거의 없는데 2차 곡선이 양끝을 억지로 통과시키려 할 때 발생합니다. " +
@@ -25797,6 +25909,8 @@ function refreshAllocationResults() {
   if (!tbody || !barWrap) return;
   const _verdictEl = document.getElementById("alloc-verdict");
   if (_verdictEl) _verdictEl.innerHTML = "";  // 성공 경로에서만 다시 채움(아래)
+  const _diagEl = document.getElementById("alloc-diagnosis");
+  if (_diagEl) _diagEl.innerHTML = "";  // 진단 카드도 성공 경로에서만 채움
 
   // 예산 입력값 유효성 검사 및 경고 노출
   const warningContainer = document.getElementById("alloc-budget-warning-container");
@@ -25921,12 +26035,15 @@ function refreshAllocationResults() {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">분배 대상 채널이 없습니다. 산점도에서 채널을 선택했는지 확인하세요.</td></tr>`;
     barWrap.innerHTML = ""; legendWrap.innerHTML = "";
     renderAllocationTotalCard(null);
+    renderAllocVerifyStrip(null);
     return;
   }
 
   renderAllocItems(items, dailyBudget, tbody, barWrap, legendWrap, mode === "c" ? "mode-c" : "mode-b", { unallocated, overspent, totalAllocated, lockedTotal });
   renderAllocationTotalCard({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
+  renderAllocDiagnosis({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
   renderAllocVerdict({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
+  renderAllocVerifyStrip({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
   renderAllocScenario({ modelsMap, selected, metric, mode, dailyBudget });
 }
 
@@ -26130,6 +26247,80 @@ function renderAllocationTotalCard(payload) {
   `;
 }
 
+/* §0 진단 카드 — "지금 어디가 문제인가"를 평어+절대값으로 먼저 지목.
+   처방(verdict) 전에 문제·기회 채널을 짚어 결론의 대상을 명확히 한다.
+   관측(최근 N일) 효율 기준 — 제안 배분이 아니라 현 상태를 진단(목표 ① WHERE).
+   eff = 낮을수록 효율적: CPR이면 그대로, ROAS면 1/ROAS로 통일(totCost/totResults 동일 공간). */
+function renderAllocDiagnosis(payload) {
+  const wrap = document.getElementById("alloc-diagnosis");
+  if (!wrap) return;
+  if (!payload || !payload.items || !payload.items.length) { wrap.innerHTML = ""; return; }
+
+  const { items, metric } = payload;
+  const recentDays = ALLOC_STATE.recentDays || 14;
+  const roas = isRoasMetric(metric);
+  const metricLabel = getCostMetricLabel(metric);
+
+  const chans = [];
+  let totCost = 0, totResults = 0;
+  for (const it of items) {
+    const h = calcChannelHistorySummary(it.channel, metric, { recentDays });
+    if (!h || h.totalCost <= 0) continue;
+    let eff;
+    if (roas) eff = (h.avgROAS != null && h.avgROAS > 0) ? 1 / h.avgROAS : Infinity;
+    else      eff = (h.avgCPR != null && h.totalResults > 0) ? h.avgCPR : Infinity;
+    chans.push({ ch: it.channel, cost: h.totalCost, results: h.totalResults, cpr: h.avgCPR, roasV: h.avgROAS, eff });
+    totCost += h.totalCost;
+    totResults += h.totalResults;
+  }
+
+  if (!chans.length || totCost <= 0) {
+    wrap.innerHTML = `<div class="alloc-diag-card"><div class="alloc-diag-title">🔍 진단</div><div class="alloc-diag-line muted">최근 ${recentDays}일 집행 데이터가 부족해 문제 진단을 생략합니다.</div></div>`;
+    return;
+  }
+
+  const portEff = totResults > 0 ? totCost / totResults : null;  // CPR 또는 1/ROAS 공간 공통
+  const fin = chans.filter(c => isFinite(c.eff));
+  const worst = [...chans].sort((a, b) => (b.eff - a.eff) || (a.ch < b.ch ? -1 : 1))[0];           // 가장 비효율
+  const best  = [...fin].sort((a, b) => (a.eff - b.eff) || (a.ch < b.ch ? -1 : 1))[0] || null;     // 가장 효율
+  const topCh = chans.reduce((a, b) => (b.cost > a.cost ? b : a));
+  const topShare = totCost > 0 ? topCh.cost / totCost : 0;
+
+  const rnd     = (v) => Math.round(v);
+  const costSh  = (c) => totCost > 0 ? c.cost / totCost * 100 : 0;
+  const resSh   = (c) => totResults > 0 ? c.results / totResults * 100 : 0;
+  const resLbl  = (c) => roas ? fmtCurrency(c.results) : `${formatNumber(c.results, { decimals: 0 })}건`;
+  const effLbl  = (c) => !isFinite(c.eff) ? "—" : (roas ? `${(c.roasV * 100).toFixed(0)}%` : fmtCostMetric(c.cpr, metric));
+  const line    = (cls, html) => `<div class="alloc-diag-line ${cls}">${html}</div>`;
+
+  const ratioBad  = (isFinite(worst.eff) && portEff > 0) ? worst.eff / portEff : Infinity;
+  const ratioGood = (best && isFinite(best.eff) && best.eff > 0 && portEff > 0) ? portEff / best.eff : 1;
+
+  const lines = [];
+  if (chans.length < 2) {
+    lines.push(line("muted", `채널을 2개 이상 선택하면 채널 간 효율 비교 진단이 표시됩니다 (현재 ${chans.length}개).`));
+  } else {
+    // 최악 채널 (또는 효율 차이가 작으면 균형 메시지)
+    if (!isFinite(worst.eff)) {
+      lines.push(line("bad", `💸 <strong>${escapeHtml(worst.ch)}</strong> — 최근 ${recentDays}일 예산의 <strong>${rnd(costSh(worst))}%</strong>(${fmtCurrency(worst.cost)})를 쓰는데 ${roas ? "매출" : "결과"}가 거의 없습니다. 가장 시급한 점검 대상입니다.`));
+    } else if (ratioBad >= 1.2) {
+      lines.push(line("bad", `💸 <strong>${escapeHtml(worst.ch)}</strong> — 최근 ${recentDays}일 예산의 <strong>${rnd(costSh(worst))}%</strong>(${fmtCurrency(worst.cost)})를 쓰는데 ${roas ? "매출 비중" : "결과 비중"}은 <strong>${rnd(resSh(worst))}%</strong>(${resLbl(worst)})뿐입니다. ${metricLabel} ${effLbl(worst)} — 평균보다 <strong>${ratioBad.toFixed(1)}배 비효율</strong>.`));
+    } else {
+      lines.push(line("neutral", `📊 채널 간 효율 차이가 작습니다 (최고↔최저 ${best && best.eff > 0 ? (worst.eff / best.eff).toFixed(1) : "—"}배). 재배분으로 얻을 효율은 제한적 — 채널 자체 효율(소재·타겟) 개선이 우선입니다.`));
+    }
+    // 기회 채널 (저비용 고효율인데 예산 적음)
+    if (best && best.ch !== worst.ch && isFinite(best.eff) && ratioGood >= 1.2) {
+      lines.push(line("good", `💎 <strong>${escapeHtml(best.ch)}</strong> — ${metricLabel} ${effLbl(best)}로 가장 효율적(평균보다 <strong>${ratioGood.toFixed(1)}배</strong>)인데 예산은 <strong>${rnd(costSh(best))}%</strong>뿐입니다. 증액 여지가 있습니다.`));
+    }
+    // 집중도 (단일 채널 의존) — 균등배분(1/n)보다 확연히 높을 때만. 2채널 50/50 오탐 방지.
+    if (topShare >= 0.5 && topShare >= 1.5 / chans.length) {
+      lines.push(line("neutral", `📊 예산이 <strong>${escapeHtml(topCh.ch)}</strong>에 <strong>${rnd(topShare * 100)}%</strong> 집중 — 단일 채널 의존도가 높습니다. 리스크 분산을 점검하세요.`));
+    }
+  }
+
+  wrap.innerHTML = `<div class="alloc-diag-card"><div class="alloc-diag-title">🔍 진단 — 지금 어디가 문제인가</div>${lines.join("")}</div>`;
+}
+
 /* 결론·액션 카드 — 전문 진단 없이 "지금 이렇게 하세요"를 평어로 제시.
    총 합계 카드와 같은 computeAllocSummary를 써서 수치가 일치한다(§ drift 방지). */
 function renderAllocVerdict(payload) {
@@ -26192,6 +26383,75 @@ function renderAllocVerdict(payload) {
       ${acts.length ? `<ul class="alloc-verdict-actions">${acts.map(a => `<li><span>${a}</span></li>`).join("")}</ul>` : ""}
       <div class="alloc-verdict-nums">${nums}</div>
     </div>`;
+}
+
+/* §5 배분 점검 스트립 — "효율 좋은 채널에 더 배분됐나?"(목표 ③ 검증).
+   모드 C(절대 CPR 가중): 제약 없는 채널은 1/avgCPR 순서를 따라야 정상 → 역전 플래그.
+   모드 B(그리디): 평균이 아니라 한계효율 기준이라 평균 순서와 달라도 정상(정직 안내). */
+function renderAllocVerifyStrip(payload) {
+  const wrap = document.getElementById("alloc-verify-strip");
+  if (!wrap) return;
+  if (!payload || !payload.items || payload.items.length < 2) { wrap.innerHTML = ""; return; }
+  const { items, metric, mode } = payload;
+  const recentDays = ALLOC_STATE.recentDays || 14;
+  const roas = isRoasMetric(metric);
+  const metricLabel = getCostMetricLabel(metric);
+  const minMap = ALLOC_STATE.allocMinSpend || {};
+  const maxMap = ALLOC_STATE.allocMaxSpend || {};
+
+  const rows = items.map(it => {
+    const h = calcChannelHistorySummary(it.channel, metric, { recentDays });
+    let eff = null;
+    if (h) {
+      if (roas) eff = (h.avgROAS != null && h.avgROAS > 0) ? 1 / h.avgROAS : null;
+      else eff = (h.avgCPR != null && h.avgCPR > 0) ? h.avgCPR : null;
+    }
+    return {
+      ch: it.channel, alloc: it.cost || 0, eff,
+      cpr: h ? h.avgCPR : null, roasV: h ? h.avgROAS : null,
+      locked: !!it.locked,
+      hasMin: Number(minMap[it.channel]) > 0,
+      hasMax: maxMap[it.channel] != null && Number(maxMap[it.channel]) >= 0,
+      zero: (it.cost || 0) === 0,
+    };
+  });
+  const effLbl = (r) => r.eff == null ? "—" : (roas ? `${(r.roasV * 100).toFixed(0)}%` : fmtCostMetric(r.cpr, metric));
+  const constrainedN = rows.filter(r => r.locked || r.hasMin || r.hasMax).length;
+
+  let head = "", body = "", tone = "good";
+  if (mode === "b") {
+    tone = "neutral";
+    head = "한계효용 기준 배분";
+    const zeros = rows.filter(r => r.zero && !r.locked).map(r => escapeHtml(r.ch));
+    body = `그리디(고급)는 <strong>평균 효율이 아니라 '추가 1원이 만드는 효과(한계효율)'</strong> 기준으로 배분합니다 — 평균 ${metricLabel} 순서와 달라도 정상입니다.`
+      + (zeros.length ? ` 추가 투입 효과가 없어 <strong>0 배분</strong>된 채널: ${zeros.join(", ")}.` : "");
+  } else {
+    const free = rows.filter(r => r.eff != null && !r.locked && !r.hasMin && !r.hasMax && !r.zero);
+    const sorted = [...free].sort((a, b) => (a.eff - b.eff) || (a.ch < b.ch ? -1 : 1));  // 효율 좋은 순
+    const inv = [];
+    for (let i = 0; i < sorted.length - 1; i++) {
+      if (sorted[i + 1].alloc > sorted[i].alloc * 1.001) inv.push([sorted[i], sorted[i + 1]]);  // 나쁜 효율이 더 많이 받음
+    }
+    if (free.length < 2) {
+      tone = "neutral";
+      head = "점검 생략";
+      body = `제약 없는 비교 가능 채널이 부족합니다(잠금·제약 ${constrainedN}개). 표에서 직접 확인하세요.`;
+    } else if (inv.length === 0) {
+      tone = "good";
+      head = "✓ 효율 순서대로 배분됨";
+      body = `제약 없는 채널은 <strong>효율(${metricLabel})이 좋을수록 예산이 더 갔습니다</strong> — 절대 CPR 가중이 정상 작동 중.`;
+    } else {
+      tone = "bad";
+      head = "⚠ 효율↔배분 역전";
+      body = inv.slice(0, 2).map(([b, w]) => `<strong>${escapeHtml(w.ch)}</strong>(${effLbl(w)})가 <strong>${escapeHtml(b.ch)}</strong>(${effLbl(b)})보다 효율이 낮은데 예산이 더 많습니다`).join(" · ")
+        + `. 잠금/최소·최대 제약 때문일 수 있으니 표에서 확인하세요.`;
+    }
+  }
+  const note = constrainedN > 0
+    ? `<div class="alloc-verify-note">🔒 ${constrainedN}개 채널은 수동 고정·최소/최대 제약으로 효율 순서와 무관하게 우선 배분됩니다.</div>`
+    : "";
+
+  wrap.innerHTML = `<div class="alloc-verify-strip ${tone}"><div class="alloc-verify-main"><span class="alloc-verify-head">${head}</span> <span class="alloc-verify-body">${body}</span></div>${note}</div>`;
 }
 
 /* ========== 모드 C · 절대 CPR 가중 분배 ==========
@@ -26448,6 +26708,7 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
 
   // editable input + 자물쇠 클릭 = 해제 핸들러
   tbody.querySelectorAll(".alloc-cost-input").forEach(input => {
+    input.addEventListener("input", () => allocLiveCommaFormat(input));  // 라이브 콤마(재계산은 change)
     input.addEventListener("change", () => {
       const ch = input.dataset.channel;
       const v = allocParseNum(input.value);
@@ -26514,6 +26775,7 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
 
 /* 5-3 분석 단위 + 필터 패널 렌더 */
 function renderAllocFilterPanel(compact) {
+  normalizeAllocCountryFilter();  // 채널/캠페인별이면 국가 단일 강제
   const opt = detectAllocFilterOptions();
   const f = ALLOC_FILTER_STATE;
 
@@ -26592,14 +26854,28 @@ function renderAllocFilterPanel(compact) {
       </div>
 
       <div class="alloc-filter-row">
-        ${opt.hasCountry ? `
+        ${opt.hasCountry ? (() => {
+          const single = allocIsSingleCountryUnit() && opt.countries.length > 1;
+          if (single) {
+            const cur = (f.selectedCountries && f.selectedCountries.size) ? [...f.selectedCountries][0] : null;
+            return `
+          <div class="alloc-filter-group">
+            <span class="alloc-filter-group-label">국가 (채널·캠페인별은 1개만)</span>
+            <select class="alloc-filter-select" id="alloc-filter-country" size="${Math.min(6, opt.countries.length)}">
+              ${opt.countries.map(c => `<option value="${escapeHtml(c)}" ${c === cur ? 'selected' : ''}>${escapeHtml(c)}</option>`).join("")}
+            </select>
+            <span style="font-size:10px;color:var(--text-muted);">한 국가 내 채널만 비교 (국가 간 예산 혼입 방지)</span>
+          </div>`;
+          }
+          return `
           <div class="alloc-filter-group">
             <span class="alloc-filter-group-label">국가 (다중 선택, 미선택 = 전체)</span>
             <select class="alloc-filter-select" id="alloc-filter-country" multiple size="${Math.min(6, opt.countries.length + 1)}">
               ${optionsHtml(opt.countries, f.selectedCountries)}
             </select>
             <span style="font-size:10px;color:var(--text-muted);">클릭하여 다중 선택 (Ctrl/Cmd 불필요)</span>
-          </div>` : `
+          </div>`;
+        })() : `
           <div class="alloc-filter-group">
             <span class="alloc-filter-group-label">국가</span>
             <div style="padding:8px 10px;color:var(--text-muted);font-size:12px;">매핑 없음 (country 컬럼 미연결)</div>
@@ -26657,6 +26933,7 @@ function renderAllocFilterSummary() {
 }
 
 function renderAllocStickyFilterBar() {
+  normalizeAllocCountryFilter();  // 채널/캠페인별이면 국가 단일 강제
   const opt = detectAllocFilterOptions();
   const f = ALLOC_FILTER_STATE;
 
@@ -26687,16 +26964,25 @@ function renderAllocStickyFilterBar() {
     `);
   }
 
-  // 2) 국가 (Country)
+  // 2) 국가 (Country) — 채널/캠페인별은 단일(radio) 강제
   if (opt.hasCountry && opt.countries.length) {
-    const cntLabel = f.selectedCountries === null ? `전체 (${opt.countries.length})` : `${f.selectedCountries.size}개 선택됨`;
+    const single = allocIsSingleCountryUnit() && opt.countries.length > 1;
+    const curCountry = (f.selectedCountries && f.selectedCountries.size) ? [...f.selectedCountries][0] : null;
+    const cntLabel = single
+      ? (curCountry || opt.countries[0])
+      : (f.selectedCountries === null ? `전체 (${opt.countries.length})` : `${f.selectedCountries.size}개 선택됨`);
+    const inputType = single ? "radio" : "checkbox";
+    const ctryRows = opt.countries.map(c => {
+      const checked = single ? (c === curCountry) : (!f.selectedCountries || f.selectedCountries.has(c));
+      return `<label style="display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;"><input type="${inputType}" name="alloc-sticky-country" value="${escapeHtml(c)}" ${checked ? "checked" : ""}> ${escapeHtml(c)}</label>`;
+    }).join("");
     parts.push(`
       <div class="mon-filter-item" style="align-items:center;gap:4px;display:flex;">
         <span class="mon-filter-label" style="font-size:11.5px;color:var(--text-muted);">국가:</span>
         <div class="mon-multisel" data-alloc-multisel="countries">
-          <button class="mon-multisel-btn" type="button" data-alloc-multisel-toggle="countries">${cntLabel} ∨</button>
+          <button class="mon-multisel-btn" type="button" data-alloc-multisel-toggle="countries">${escapeHtml(cntLabel)} ∨</button>
           <div class="alloc-multisel-list" data-alloc-ms-list="countries" hidden>
-            ${opt.countries.map(c => `<label style="display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;"><input type="checkbox" name="alloc-sticky-country" value="${escapeHtml(c)}" ${(!f.selectedCountries || f.selectedCountries.has(c)) ? "checked" : ""}> ${escapeHtml(c)}</label>`).join("")}
+            ${ctryRows}
           </div>
         </div>
       </div>
@@ -26838,6 +27124,11 @@ function bindBudgetAllocatorHandlers() {
   document.querySelectorAll("[data-alloc-unit]").forEach(el => {
     el.addEventListener("click", () => {
       ALLOC_FILTER_STATE.unit = el.dataset.allocUnit;
+      // 채널·캠페인별이면 국가 단일 강제(다른 국가 혼입 방지) + 변하면 채널 선택 cascading 리셋
+      const beforeCountries = ALLOC_FILTER_STATE.selectedCountries;
+      normalizeAllocCountryFilter();
+      if (ALLOC_FILTER_STATE.selectedCountries !== beforeCountries) ALLOC_FILTER_STATE.selectedChannelsFilter = null;
+      if (typeof clearAllocCache === "function") clearAllocCache();
       navigate("5-3");
     });
   });
@@ -26852,14 +27143,24 @@ function bindBudgetAllocatorHandlers() {
   // 국가 multi-select → cascading 채널 옵션 재렌더
   const ctrySel = document.getElementById("alloc-filter-country");
   if (ctrySel) {
-    makeSelectMultiToggle(ctrySel);
-    ctrySel.addEventListener("change", () => {
-      const selected = [...ctrySel.selectedOptions].map(o => o.value).filter(v => v !== "all");
-      ALLOC_FILTER_STATE.selectedCountries = selected.length ? new Set(selected) : null;
-      // 채널 선택은 country 변경 시 reset (cascading)
-      ALLOC_FILTER_STATE.selectedChannelsFilter = null;
-      navigate("5-3");
-    });
+    if (!ctrySel.multiple) {
+      // 단일 강제 모드(채널·캠페인별): 일반 single-select
+      ctrySel.addEventListener("change", () => {
+        const v = ctrySel.value;
+        ALLOC_FILTER_STATE.selectedCountries = v ? new Set([v]) : null;
+        ALLOC_FILTER_STATE.selectedChannelsFilter = null;  // cascading
+        navigate("5-3");
+      });
+    } else {
+      makeSelectMultiToggle(ctrySel);
+      ctrySel.addEventListener("change", () => {
+        const selected = [...ctrySel.selectedOptions].map(o => o.value).filter(v => v !== "all");
+        ALLOC_FILTER_STATE.selectedCountries = selected.length ? new Set(selected) : null;
+        // 채널 선택은 country 변경 시 reset (cascading)
+        ALLOC_FILTER_STATE.selectedChannelsFilter = null;
+        navigate("5-3");
+      });
+    }
   }
   // 채널 multi-select
   const chSel = document.getElementById("alloc-filter-channel");
@@ -26959,6 +27260,7 @@ function bindBudgetAllocatorHandlers() {
   if (budgetInput) {
     let _budgetTimer = null;
     budgetInput.addEventListener("input", () => {
+      allocLiveCommaFormat(budgetInput);  // 라이브 천단위 콤마
       const newBudget = allocParseNum(budgetInput.value);
       ALLOC_STATE.budget = newBudget;
       const hasBudget = (newBudget || 0) > 0;

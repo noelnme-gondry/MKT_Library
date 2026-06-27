@@ -56,11 +56,11 @@ HTML/CSS/JS (Vanilla) — 빌드 도구 없음. `serve . -l $PORT` 가 전부.
 |---|---|---|---|
 | 1-x~4-x | SOP 문서 | free | 정적 JSON |
 | 5-2 | 운영 대시보드 (시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트, 9탭) | **free** | 효율 CSV |
-| 5-3 | 예산 배분 (절대 CPR/ROAS 가중 + 한계효용 그리디) | free | 효율 CSV |
+| 5-3 | 예산 배분 (절대 CPR/ROAS 가중 + 한계효용 그리디) | **pro** | 효율 CSV |
 | 5-4 | 실험 분석 (A/B·Test Readout·Incrementality, 3탭) | pro | 수동/CSV |
 | 5-6 | 소재 분석 | pro | 소재 daily CSV |
 | 5-18 | 마케팅 반응 분석 (MMM: 진단/기여/Forecast + Regression Lab) | pro | 주간 패널 CSV |
-| 5-21 | 캠페인 성과 변동 탐지 (PVM 무잔차 분해) | pro | 소재 CSV 공유 |
+| 5-21 | 캠페인 성과 변동 탐지 (PVM 무잔차 분해) | **free** | 소재 CSV 공유 |
 
 티어: `TOOL_TIER`(free/pro) + `AUTH_PROTECTED_PAGES`. 흡수된 구 도구 id는 `navigate` redirect로 보존.
 
@@ -247,6 +247,14 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 
 ### 12.13 피드백 설문(VOC) 노출
 외부 Google Form(`FEEDBACK_URL`) 링크. ① **상시 진입점**: 사이드바 하단 `.sidebar-feedback`(`.sidebar` flex column + `margin-top:auto`로 바닥 고정) + ⌘K 명령(`buildCmdkCommands` action`:"feedback"`→`runCmdkSelected`→`openFeedback`). ② **분석 후 넛지**: `pageShell`의 5-x 분기에서 `renderFeedbackNudge(meta.id)`(게이트 `/^5-/`+`isToolAnalyzed`+`!FEEDBACK_NUDGE.dismissed`) — 결과 하단 슬림 콜아웃, **세션당 1회**(`FEEDBACK_NUDGE.dismissed` 메모리 플래그, localStorage 영속 X→새로고침 리셋). 핸들러는 `bindFeedback`(전역 위임, `data-feedback-go`/`data-feedback-dismiss` 스코프). 링크는 `target=_blank rel=noopener noreferrer`(데이터 전송 0), `track("feedback_open",{from})`. **전부 render층**(골든 무관). 색은 semantic 토큰(`--text-primary/--text-muted/--primary/--surface-base`)만 → 다크/라이트 자동.
+
+### 12.14 5-3 예산배분 결론·검증 UX 레이어 (마케터 가시성: ①어디가 문제 ②어떻게 배분 ③맞게 분배됐나)
+전문 진단은 §1 fold 유지, **결론층을 두껍게**. 전부 render층(골든 byte-동일).
+- **§0 진단**(`renderAllocDiagnosis`, verdict 위): 최악(예산비중↑·결과비중↓·평균 대비 N배)·기회(저비용 고효율인데 예산 적음)·집중도(`topShare≥0.5 && ≥1.5/n` — 2채널 50/50 오탐 차단) 평어+절대값(₩·건). eff 통일=CPR 그대로/ROAS는 `1/ROAS`→`totCost/totResults` 동일 공간 배수(방향 무관). 효율차<1.2면 억지 처방 대신 "재배분 여지 작음, 채널 자체 효율 우선"(P0 정직). verdict neutral 텍스트는 §0가 대상 지목해주므로 현행 유지 가능.
+- **§5 검증 스트립**(`renderAllocVerifyStrip`): 모드 C는 제약 없는 채널 효율↔배분 정합(eff asc 정렬 인접쌍 역전 플래그), 모드 B는 "한계효율 기준이라 평균 순서와 달라도 정상" 정직 안내(0배분 채널 명시). 잠금·min/max는 별도 note. free<2면 "점검 생략".
+- **국가 단일 강제**(`normalizeAllocCountryFilter`): 채널·캠페인별(Country×Channel grain)은 타국가 혼입 방지 위해 국가 1개 강제(`allocTopSpendCountry` 최고지출 기본, 결정론 가나다 tiebreak). 위저드=single-select(`!ctrySel.multiple` 분기)·sticky=radio. unit 전환 시 국가 변하면 채널필터 cascading 리셋. 국가1개/국가별이면 무동작(byte-동일). 호출=unit핸들러+양 렌더 직전(idempotent).
+- **라이브 콤마**(`allocLiveCommaFormat`): 입력 중 천단위 콤마+커서 보존(커서 왼쪽 숫자 개수로 위치 복원). `input` 이벤트는 포맷만, 재계산은 `change`/blur에서(키마다 재계산 방지). 예산·§5 cost 셀(`type=text`). `parseFloat(콤마)` 함정은 §7 그대로.
+- **de-jargon**: 추세선 배지·헤드라인 평어화(우하향→"효율 거꾸로", 종모양(∩)→"증액 시 빗나감", U자(∪)→"감액 시 빗나감", Poly2 꼬리→"곡선 끝 신뢰 낮음"), 기술용어는 `title`·alert 본문에만. 긴 진단 툴팁은 `formatMmmTipText`로 "왜위험/왜발생/어떻게" 라벨 단락 구조화(`#mmm-hover-tip` innerHTML+escapeHtml, max-width 380·고대비). 마커 없으면 평문 escape.
 
 ---
 
