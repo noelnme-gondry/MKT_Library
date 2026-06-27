@@ -23,7 +23,7 @@ tools:
 
 1. 요청 → 모호하면 `AskUserQuestion`(2~4 옵션 + 트레이드오프).
 2. Read → Edit/Write → 변경.
-3. **syntax check 필수**: `<script>` 추출(ld+json 제외) → `new Function(total)`.
+3. **검증 필수**: `node validate.js`(= `npm test`) — syntax + 전 `runXxxTests` 한 번에. render-throw·특정 분기는 §7 주입식 harness 보강.
 4. validation test(해당 도구): Node 주입식 harness.
 5. `git add <명시 파일>` + commit(Co-Authored-By).
 6. 기본: main 직접 push. 대규모 변경: PR 모드(CLAUDE.md §6.1).

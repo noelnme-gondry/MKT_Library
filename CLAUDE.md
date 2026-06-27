@@ -18,7 +18,7 @@
 
 ## 2. 절대 원칙 (NEVER 깨지 말 것)
 
-1. **단일 HTML 파일**: 모든 코드는 `index.html` 하나에. 별도 .js/.css 금지. 빌드 도구 없음. CDN 라이브러리만.
+1. **단일 HTML 파일**: 배포되는 앱의 모든 클라이언트 로직은 `index.html` 하나에. 앱 구동용 별도 .js/.css 분리 금지. 빌드 도구 없음. CDN 라이브러리만. **예외**: 배포되지 않는 로컬 개발·테스트 실행용 스크립트(`validate.js` 등)는 허용 — 단 **실행·리포팅만** 담고, 테스트에 필요한 비즈니스 로직·목업 데이터가 빠져나가지 않게 전부 `index.html`의 `runXxxTests`에 유지(관심사 분리 엄수).
 2. **클라이언트 사이드 100%**: 사용자 CSV는 브라우저 메모리에만. 서버 전송/저장 절대 금지.
 3. **Supabase service_role key 절대 요청·저장·언급 금지**. anon public key만 (RLS 보호).
 4. **main 직접 push 금지**. 반드시 feat 브랜치 → PR → squash merge.
@@ -56,10 +56,10 @@ HTML/CSS/JS (Vanilla) — 빌드 도구 없음. `serve . -l $PORT` 가 전부.
 |---|---|---|---|
 | 1-x~4-x | SOP 문서 | free | 정적 JSON |
 | 5-2 | 운영 대시보드 (시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트, 9탭) | **free** | 효율 CSV |
-| 5-3 | 예산 배분 (절대 CPR/ROAS 가중 + 한계효용 그리디) | **pro** | 효율 CSV |
-| 5-4 | 실험 분석 (A/B·Test Readout·Incrementality, 3탭) | pro | 수동/CSV |
-| 5-6 | 소재 분석 | pro | 소재 daily CSV |
-| 5-18 | 마케팅 반응 분석 (MMM: 진단/기여/Forecast + Regression Lab) | pro | 주간 패널 CSV |
+| 5-3 | 예산 배분 (절대 CPR/ROAS 가중 + 한계효용 그리디) | **free** | 효율 CSV |
+| 5-4 | 실험 분석 (A/B·Test Readout·Incrementality, 3탭) | free | 수동/CSV |
+| 5-6 | 소재 분석 | free | 소재 daily CSV |
+| 5-18 | 마케팅 반응 분석 (MMM: 진단/기여/Forecast + Regression Lab) | free | 주간 패널 CSV |
 | 5-21 | 캠페인 성과 변동 탐지 (PVM 무잔차 분해) | **free** | 소재 CSV 공유 |
 
 티어: `TOOL_TIER`(free/pro) + `AUTH_PROTECTED_PAGES`. 흡수된 구 도구 id는 `navigate` redirect로 보존.
@@ -105,7 +105,7 @@ function buildXxxCache() {
 ### 6.1 기본 흐름
 1. 요청 받음 → 모호하면 `AskUserQuestion`(옵션·트레이드오프 명시).
 2. 작업 브랜치 `feat/poly2-bell-warning`(장수 feature 브랜치, 지속 사용).
-3. 변경 후 **syntax check 필수**: `<script>` 블록 추출(ld+json 제외) → `new Function(total)`.
+3. 변경 후 **검증 필수**: `node validate.js`(= `npm test`) — syntax(vm compile) + 전 `runXxxTests` 한 번에 실행, 실패 시 nonzero. (순수함수 외 특정 분기·render-throw는 여전히 §7 주입식 harness로 보강.)
 4. `git add <명시 파일>` + 커밋(Co-Authored-By 라인, HEREDOC).
 5. push → `gh pr create --base main`. PR body: `## Summary` bullets + `## Test plan` checkboxes + `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
 6. `gh pr merge <N> --squash`. 충돌 시 §6.2.
@@ -260,8 +260,10 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 
 ## 13. 참고 파일
 
-- `index.html` — 모든 코드
-- `package.json` — `serve . -l $PORT` / `Procfile`·`railway.json` — Railway 배포
+- `index.html` — 모든 앱 코드
+- `validate.js` — 로컬 테스트 러너(§2.1 예외·비배포). `node validate.js`/`npm test` — index.html 인라인 로드 후 전 `runXxxTests` 실행·리포팅(실행·리포팅만, 비즈니스 로직·데이터는 index.html 유지)
+- `package.json` — `serve . -l $PORT`(start)·`node validate.js`(test) / `Procfile`·`railway.json` — Railway 배포(index.html만)
+- `docs/code-health-audit.md` — 코드·아키텍처 건강성 감사 + 정리 로드맵
 - `supabase/SETUP.md` — 접근 키 발급 / `supabase/schema.sql` — `access_keys` 테이블+RPC
 - `content/supabase-config.json` — URL+anon key(커밋됨, RLS 보호) / `content/pages/*.json` — SOP 콘텐츠
 - `docs/backlog.md` — 진행 중 백로그 + MMM 스펙(§B) / `docs/*.md` — 기능별 설계 스펙
