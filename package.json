@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "DevHub · App Performance Marketing Library",
   "scripts": {
-    "start": "serve . -l $PORT"
+    "start": "serve . -l $PORT",
+    "test": "node validate.js"
   },
   "dependencies": {
     "serve": "^14.2.3"
