@@ -27278,20 +27278,22 @@ function bindAllocVerificationHandlers() {
     const isVerified = ALLOC_STATE.groupVerification[group] === "verified";
     const curModel = ALLOC_STATE.groupModels[group] || modelsMap.get(group);
     
+    const ttMap = { linear: "Linear", log: "Log", poly2: "Poly2", power: "Power" };
+    const curModelName = ttMap[curModel] || "auto";
     const allFits = allFitsMap.get(group);
     const outRes = outliersMap.get(group);
     let problemReason = null;
     
     if (outRes && outRes.kept.length < 3) {
       problemReason = "데이터 부족";
-    } else if (allFits && allFits.has(curModel)) {
-      const fit = allFits.get(curModel);
-      if (curModel === 'poly2' && fit.a < 0) {
+    } else if (allFits && allFits[curModelName]) {
+      const fit = allFits[curModelName];
+      if (curModel === 'poly2' && fit.model && fit.model.params && fit.model.params.a < 0) {
         const xs = outRes.kept.map(p => p.x);
         const xMin = Math.min(...xs);
         const xMax = Math.max(...xs);
         const range = xMax - xMin;
-        const vx = -fit.b / (2 * fit.a);
+        const vx = -fit.model.params.b / (2 * fit.model.params.a);
         if (vx >= xMin + 0.1 * range && vx <= xMax - 0.1 * range) {
           problemReason = "꼭짓점(Vertex) 주의";
         }
@@ -27342,20 +27344,22 @@ function bindAllocVerificationHandlers() {
   const insightEl = document.getElementById("alloc-verify-insight");
   if (insightEl) {
     const curModel = ALLOC_STATE.groupModels[ALLOC_STATE.verifySelectedGroup] || modelsMap.get(ALLOC_STATE.verifySelectedGroup);
+    const ttMap = { linear: "Linear", log: "Log", poly2: "Poly2", power: "Power" };
+    const curModelName = ttMap[curModel] || "auto";
     const allFits = allFitsMap.get(ALLOC_STATE.verifySelectedGroup);
     const outRes = outliersMap.get(ALLOC_STATE.verifySelectedGroup);
     let problemReason = null;
     
     if (outRes && outRes.kept.length < 3) {
       problemReason = "데이터 부족 (산점도를 그릴 수 없습니다)";
-    } else if (allFits && allFits.has(curModel)) {
-      const fit = allFits.get(curModel);
-      if (curModel === 'poly2' && fit.a < 0) {
+    } else if (allFits && allFits[curModelName]) {
+      const fit = allFits[curModelName];
+      if (curModel === 'poly2' && fit.model && fit.model.params && fit.model.params.a < 0) {
         const xs = outRes.kept.map(p => p.x);
         const xMin = Math.min(...xs);
         const xMax = Math.max(...xs);
         const range = xMax - xMin;
-        const vx = -fit.b / (2 * fit.a);
+        const vx = -fit.model.params.b / (2 * fit.model.params.a);
         if (vx >= xMin + 0.1 * range && vx <= xMax - 0.1 * range) {
           problemReason = "꼭짓점(Vertex) 주의: 데이터 내에 수확체감이 꺾이는 꼭짓점이 존재합니다. 예산 투입 시 효율이 오히려 떨어질 수 있습니다.";
         }
