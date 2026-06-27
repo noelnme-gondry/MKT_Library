@@ -7094,10 +7094,104 @@ function page_5_2() {
 PAGE_RENDERERS["5-2"] = page_5_2;
 
 /* ---------- 5-3. Budget Allocator ---------- */
+function renderAllocVerificationStep() {
+  return `
+    <section class="block" style="display:flex; flex-direction: column; gap: 1rem;">
+      <div style="display:flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+          <h2 class="section-title" style="margin:0;"><span class="ix">§2</span>추세선 검증 (Trendline Verification)</h2>
+          <p class="muted" style="font-size:13px; margin:4px 0 0;">각 분석 단위의 산점도와 추세선을 확인하고, 가장 적합한 회귀 모델을 확정해 주세요. 이상치나 꼭짓점(Vertex) 문제가 있는 경우 수동 변경을 권장합니다.</p>
+        </div>
+        <div style="display:flex; gap: 8px;">
+          <button class="btn secondary" id="alloc-bulk-confirm-btn">건강한 그룹 일괄 승인</button>
+          <button class="btn primary" id="alloc-finish-verify-btn">검증 완료 및 예산 배분 →</button>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 280px 1fr; gap: 1rem; align-items: start;">
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div style="background:var(--surface-sunken); padding:10px 14px; border-bottom:1px solid var(--border-subtle); font-size:12px; font-weight:600; color:var(--text-secondary);">
+            분석 단위 목록 <span id="alloc-verify-count"></span>
+          </div>
+          <div id="alloc-verify-list" style="max-height: 500px; overflow-y: auto; background: var(--surface);"></div>
+        </div>
+        <div class="card" style="padding:16px;">
+          <div id="alloc-verify-detail-header" style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; min-height:32px;">
+            <h3 style="margin:0; font-size:15px; font-weight:600;" id="alloc-verify-title">그룹을 선택하세요</h3>
+            <div id="alloc-verify-controls" style="display:none; gap: 6px;">
+              <select id="alloc-verify-model-select" style="padding:4px 8px; border-radius:4px; border:1px solid var(--border-subtle); background:var(--surface); font-size:12px;">
+                <option value="auto">Auto (Best R²)</option>
+                <option value="linear">Linear</option>
+                <option value="log">Log</option>
+                <option value="poly2">Poly2</option>
+                <option value="power">Power</option>
+              </select>
+              <button class="btn primary" id="alloc-verify-confirm-single" style="padding: 4px 12px; font-size: 12px;">확정</button>
+            </div>
+          </div>
+          <div class="alloc-scatter-controls-wrap" style="margin-bottom: 1rem; border-top: 1px solid var(--border-subtle); padding-top: 1rem; margin-top: 1rem;">
+            <div class="alloc-scatter-controls">
+              <button class="ab-pill" id="alloc-advanced-toggle" style="margin-left:auto;">
+                ${ALLOC_STATE.advancedOpen ? "▲ 상세 설정 닫기" : "▼ 상세 설정 (가중치·이상치·정규화·외삽·표시)"}
+              </button>
+            </div>
+            <div class="alloc-scatter-controls" id="alloc-advanced-panel" style="${ALLOC_STATE.advancedOpen ? "" : "display:none;"}">
+              <div class="ab-pillgroup">
+                <span class="ab-pillgroup-label">최근 가중치${mmmTip(ALLOC_FILTER_TIPS.weightmode)}</span>
+                <button class="ab-pill" data-weightmode="none">없음 (균등)</button>
+                <button class="ab-pill" data-weightmode="linear">선형 (최오래 0.2)</button>
+                <button class="ab-pill" data-weightmode="exponential">지수 (반감기 30일)</button>
+              </div>
+              <div class="ab-pillgroup">
+                <span class="ab-pillgroup-label">이상치 제거${mmmTip(ALLOC_FILTER_TIPS.outlier)}</span>
+                <button class="ab-pill" data-outlier="none">없음</button>
+                <button class="ab-pill" data-outlier="iqr">IQR</button>
+                <button class="ab-pill" data-outlier="modz">Modified Z</button>
+              </div>
+              <div class="ab-pillgroup" id="outlier-strength-group">
+                <span class="ab-pillgroup-label">강도${mmmTip(ALLOC_FILTER_TIPS.strength)}</span>
+                <button class="ab-pill" data-strength="standard">표준</button>
+                <button class="ab-pill" data-strength="strong">강함</button>
+                <button class="ab-pill" data-strength="very_strong">매우 강함</button>
+              </div>
+              <div class="ab-pillgroup">
+                <span class="ab-pillgroup-label">정규화${mmmTip(ALLOC_FILTER_TIPS.normalize)}</span>
+                <button class="ab-pill" data-normalize="raw">절대값</button>
+                <button class="ab-pill" data-normalize="log">로그 스케일</button>
+                <button class="ab-pill" data-normalize="minmax">채널 0~1</button>
+                <button class="ab-pill" data-normalize="robust">Robust z</button>
+              </div>
+              <div class="ab-pillgroup">
+                <span class="ab-pillgroup-label">외삽 한도 (Cap)${mmmTip(ALLOC_FILTER_TIPS.extrapolate)}</span>
+                <button class="ab-pill" data-extrapolate="1.0">1.0x (엄격)</button>
+                <button class="ab-pill" data-extrapolate="1.3">1.3x (보통)</button>
+                <button class="ab-pill" data-extrapolate="1.5">1.5x (공격적)</button>
+                <button class="ab-pill" data-extrapolate="fallback">비례배분 (무제한)</button>
+              </div>
+              <div class="ab-pillgroup">
+                <span class="ab-pillgroup-label">표시${mmmTip(ALLOC_FILTER_TIPS.pointtoggle)}</span>
+                <button class="ab-pill" data-pointtoggle="show">점 + 추세선</button>
+                <button class="ab-pill" data-pointtoggle="hide">추세선만</button>
+              </div>
+            </div>
+          </div>
+          <div id="alloc-outlier-summary"></div>
+          <div id="alloc-channel-filter" class="alloc-channel-filter" style="display:none;"></div>
+          <div class="chart-canvas-wrap" style="height:350px; margin-top:0.875rem;">
+            <canvas id="chart-alloc-scatter"></canvas>
+          </div>
+          <div id="alloc-trend-summary"></div>
+          <div id="alloc-verify-insight" style="margin-top: 1rem; font-size: 13px; color: var(--text-secondary); background: var(--surface-sunken); padding: 12px; border-radius: 6px;"></div>
+          <div id="alloc-sim-container" style="margin-top:1rem;"></div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 // ===== 효율·배분 탐색 (5-3) — 배분/퍼널/세그먼트 통합 host. monAllocBody = 배분 탭 본문 =====
 function monAllocBody() {
   // CSV는 준비됐지만 분석 필터가 아직 적용 안 됨 → 분석 단위 + 국가/채널 선택 UI만
-  if (!ALLOC_FILTER_STATE.applied) {
+  if (ALLOC_FILTER_STATE.step === 1 || !ALLOC_FILTER_STATE.applied) {
     return `
       <section class="block" id="s-filter">
         <h2 class="section-title"><span class="ix">§1</span>분석 단위 선택</h2>
@@ -7105,85 +7199,44 @@ function monAllocBody() {
         ${renderAllocFilterPanel(false)}
       </section>`;
   }
+
+  if (ALLOC_FILTER_STATE.step === 2) {
+    return renderAllocVerificationStep();
+  }
+
   const filterSummary = renderAllocFilterSummary();
   const currencyToggle = `<div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:6px;"><button class="ab-pill ${AB_STATE.currency === 'KRW' ? 'active' : ''}" data-alloccurrency="KRW">₩ KRW</button><button class="ab-pill ${AB_STATE.currency === 'USD' ? 'active' : ''}" data-alloccurrency="USD">$ USD</button></div>`;
   return `
       ${currencyToggle}
       ${filterSummary}
+      <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin:0;font-size:16px;">Step 3: 시뮬레이션 및 예산 분배</h3>
+        <button class="btn secondary" onclick="ALLOC_FILTER_STATE.step=2; navigate('5-3');" style="padding:4px 10px; font-size:12px;">← 검증 단계로 돌아가기</button>
+      </div>
       <div id="alloc-diagnosis"></div>
       <div id="alloc-verdict"></div>
+
       <section class="block" id="s-scatter">
-        <details class="alloc-diag" ${ALLOC_STATE.scatterOpen ? "open" : ""}>
-        <summary class="section-title alloc-diag-summary"><span class="ix">§1</span>Cost vs CPR 산점도 &amp; 추세선 진단<span class="alloc-diag-hint">▸ 펼쳐서 진단·고급 설정 보기 (이상치·정규화·추세선 위험)</span></summary>
-        <p style="color:var(--text-secondary);font-size:13px;">
-          각 row를 (Cost, CPR) 점으로 시각화하고, 채널별로 추세선을 적합합니다.
-          <strong>최근 ${ALLOC_STATE.recentDays}일</strong> 데이터는 ▲ 마커 + 진한 색으로 강조됩니다.
-        </p>
-        <div id="alloc-scope-label" class="alloc-scope-label"></div>
-        <div class="alloc-scatter-controls-wrap">
-        <div class="alloc-scatter-controls">
-          <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">추세선${mmmTip(ALLOC_FILTER_TIPS.trendtype)}</span>
-            <button class="ab-pill" data-trendtype="auto">Auto (Best R²)</button>
-            <button class="ab-pill" data-trendtype="linear">Linear</button>
-            <button class="ab-pill" data-trendtype="log">Log</button>
-            <button class="ab-pill" data-trendtype="poly2">Poly2</button>
-            <button class="ab-pill" data-trendtype="power">Power</button>
+        <h2 class="section-title"><span class="ix">§1</span>효율 및 추세선 분석 (단위 곡선)</h2>
+        <div class="alloc-card">
+          <div class="alloc-scatter-controls-wrap">
+            <div id="alloc-outlier-controls" style="display:flex; gap:0.5rem; align-items:flex-start; flex-wrap:wrap; font-size:12px; margin-bottom:0.75rem;">
+              <!-- controls from Step 2 are hidden here, but we keep the structure so renderAllocatorScatter finds it if needed, or we just keep it simple -->
+            </div>
           </div>
-          <button class="ab-pill" id="alloc-advanced-toggle" style="margin-left:auto;">
-            ${ALLOC_STATE.advancedOpen ? "▲ 상세 설정 닫기" : "▼ 상세 설정 (가중치·이상치·정규화·외삽·표시)"}
-          </button>
-        </div>
-        <div class="alloc-scatter-controls" id="alloc-advanced-panel" style="${ALLOC_STATE.advancedOpen ? "" : "display:none;"}">
-          <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">최근 가중치${mmmTip(ALLOC_FILTER_TIPS.weightmode)}</span>
-            <button class="ab-pill" data-weightmode="none">없음 (균등)</button>
-            <button class="ab-pill" data-weightmode="linear">선형 (최오래 0.2)</button>
-            <button class="ab-pill" data-weightmode="exponential">지수 (반감기 30일)</button>
+          <div id="alloc-outlier-summary"></div>
+          
+          <div style="margin-bottom:0.75rem;">
+            <strong style="font-size:13px; color:var(--text-1);">분배 대상 선택</strong>
+            <p style="font-size:12px; color:var(--text-muted); margin:4px 0 8px;">아래에서 선택한 대상만 예산 분배 시뮬레이션에 포함됩니다.</p>
+            <div id="alloc-channel-filter" class="alloc-channel-filter"></div>
           </div>
-          <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">이상치 제거${mmmTip(ALLOC_FILTER_TIPS.outlier)}</span>
-            <button class="ab-pill" data-outlier="none">없음</button>
-            <button class="ab-pill" data-outlier="iqr">IQR</button>
-            <button class="ab-pill" data-outlier="modz">Modified Z</button>
-          </div>
-          <div class="ab-pillgroup" id="outlier-strength-group">
-            <span class="ab-pillgroup-label">강도${mmmTip(ALLOC_FILTER_TIPS.strength)}</span>
-            <button class="ab-pill" data-strength="standard">표준</button>
-            <button class="ab-pill" data-strength="strong">강함</button>
-            <button class="ab-pill" data-strength="very_strong">매우 강함</button>
-          </div>
-          <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">정규화${mmmTip(ALLOC_FILTER_TIPS.normalize)}</span>
-            <button class="ab-pill" data-normalize="raw">절대값</button>
-            <button class="ab-pill" data-normalize="log">로그 스케일</button>
-            <button class="ab-pill" data-normalize="minmax">채널 0~1</button>
-            <button class="ab-pill" data-normalize="robust">Robust z</button>
-          </div>
-          <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">외삽 한도 (Cap)${mmmTip(ALLOC_FILTER_TIPS.extrapolate)}</span>
-            <button class="ab-pill" data-extrapolate="1.0">1.0x (엄격)</button>
-            <button class="ab-pill" data-extrapolate="1.3">1.3x (보통)</button>
-            <button class="ab-pill" data-extrapolate="1.5">1.5x (공격적)</button>
-            <button class="ab-pill" data-extrapolate="fallback">비례배분 (무제한)</button>
-          </div>
-          <div class="ab-pillgroup">
-            <span class="ab-pillgroup-label">표시${mmmTip(ALLOC_FILTER_TIPS.pointtoggle)}</span>
-            <button class="ab-pill" data-pointtoggle="show">점 + 추세선</button>
-            <button class="ab-pill" data-pointtoggle="hide">추세선만</button>
-          </div>
-        </div>
-        </div>
-        <div id="alloc-outlier-summary"></div>
-        <div id="alloc-channel-filter" class="alloc-channel-filter"></div>
-        <div class="chart-card" style="margin-top:0.875rem;">
-          <div class="chart-canvas-wrap" style="height:380px;">
+          
+          <div class="chart-canvas-wrap" style="height:400px;">
             <canvas id="chart-alloc-scatter"></canvas>
           </div>
+          <div id="alloc-trend-summary"></div>
         </div>
-        <div id="alloc-trend-summary"></div>
-        <div id="alloc-sim-container" style="margin-top:1rem;"></div>
-        </details>
       </section>
 
       <section class="block" id="s-controls">
@@ -8077,6 +8130,9 @@ const ALLOC_STATE = {
     currentCost: null,
     targetCost: null,
   },
+  groupModels: {},         // { [groupKey]: trendType } — 사용자가 검증 단계에서 확정한 모델
+  groupVerification: {},   // { [groupKey]: "verified" | "pending" } — 그룹별 수동 검증 상태
+  verifySelectedGroup: null, // 검증 단계(Step 2)에서 현재 활성화된 단일 그룹
   /* 채널별 개별 셋업 (메모리만, CSV 재업로드 시 리셋)
      단일 채널 선택 시 토글 변경하면 그 채널의 perChannel entry에 저장됨.
      다중 채널 보기 시 글로벌 토글 변경은 미설정 채널만 영향.
@@ -8102,7 +8158,8 @@ const ALLOC_FILTER_STATE = {
   selectedCountries: null,   // null = 전체, Set = 명시 선택
   selectedChannelsFilter: null, // null = 전체, Set = 명시 선택
   platform: "all",           // 'all' | 'android' | 'ios'
-  applied: false,            // 적용 버튼 누른 후 true → 분석 표시
+  applied: false,            // (deprecated)
+  step: 1,                   // 1: Filter, 2: Trendline Verification, 3: Budget Allocation
 };
 
 /* objective → 내부 metric 매핑 + 라벨/방향 */
@@ -8123,6 +8180,9 @@ function resetAllocFilter() {
   ALLOC_FILTER_STATE.selectedChannelsFilter = null;
   ALLOC_FILTER_STATE.platform = "all";
   ALLOC_FILTER_STATE.applied = false;
+  ALLOC_FILTER_STATE.step = 1;
+  ALLOC_STATE.groupModels = {};
+  ALLOC_STATE.groupVerification = {};
 }
 
 function makeSelectMultiToggle(selectEl) {
@@ -8246,6 +8306,7 @@ function normalizeAllocCountryFilter() {
 
 /* 채널별 effective 값 lookup. perChannel에 있으면 그 값, 없으면 글로벌 default. */
 function getEffSetting(channel, field) {
+  if (field === "trendType" && ALLOC_STATE.groupModels[channel]) return ALLOC_STATE.groupModels[channel];
   return ALLOC_STATE.perChannel[channel]?.[field] ?? ALLOC_STATE[field];
 }
 function isSingleChannelMode() {
@@ -8505,23 +8566,35 @@ function getRowGroupKey(row) {
   const country  = String(row.country ?? "").trim();
   const channel  = String(row.channel ?? "").trim();
   const campaign = String(row.campaign_name ?? "").trim();
+  const platform = String(row.platform ?? "").trim();
   const unit = (typeof ALLOC_FILTER_STATE !== "undefined") ? ALLOC_FILTER_STATE.unit : "channel";
 
+  let parts = [];
+  
   if (unit === "country") {
-    return country || channel || campaign || null;
+    if (country) parts.push(country);
+    else if (channel) parts.push(channel);
+    else if (campaign) parts.push(campaign);
+  } else if (unit === "campaign") {
+    if (country) parts.push(country);
+    if (channel) parts.push(channel);
+    if (campaign) parts.push(campaign);
+  } else {
+    // 'channel' 기본: 국가 + 채널
+    if (country) parts.push(country);
+    if (channel) parts.push(channel);
+    if (!country && !channel && campaign) parts.push(campaign);
   }
-  if (unit === "campaign") {
-    // 국가 + 채널 + 캠페인 (가장 세분화)
-    const parts = [country, channel, campaign].filter(Boolean);
-    return parts.length ? parts.join(" · ") : null;
+  
+  // OS(Platform)가 있다면 기본 분석 차원으로 무조건 분리 (단, 사용자가 OS 필터에서 특정 OS를 고르든 전체를 고르든 그룹 키에 병합)
+  if (platform) {
+    const pLow = platform.toLowerCase();
+    if (pLow.includes("ios") || pLow === "iphone") parts.push("iOS");
+    else if (pLow.includes("android")) parts.push("Android");
+    else parts.push(platform);
   }
-  // 'channel' 기본: 국가 + 채널 (country 없으면 channel만)
-  if (country && channel) return `${country} · ${channel}`;
-  if (channel && campaign) return `${channel} · ${campaign}`;
-  if (channel) return channel;
-  if (country) return country;
-  if (campaign) return campaign;
-  return null;
+
+  return parts.length ? parts.join(" · ") : null;
 }
 
 /* 그룹별 raw points (cost > 0, results > 0 자동 필터). 의존성: rows, metric. */
@@ -21805,7 +21878,7 @@ function renderFunnelTable(c){
             <td><strong>${escapeHtml(String(r.unit).slice(0,24))}</strong></td>
             ${r.steps.map(s=>`<td class="tnum">${(s.count||0).toLocaleString()}</td>`).join("")}
             ${r.steps.slice(1).map((s,i)=>{
-              const isSel = i+1===selStep;
+      const isSel = i+1===selStep;
               return `<td class="tnum" ${isSel?'style="background:rgba(122,162,247,0.08);font-weight:700;"':''}>${fmtPct(s.cvr)}${s.drop!=null?` <span style="color:var(--text-muted);font-size:10px;">(이탈 ${(s.drop*100).toFixed(0)}%)</span>`:''}</td>`;
             }).join("")}
           </tr>
@@ -23829,7 +23902,7 @@ function bindCSVPageHandlers() {
   document.querySelectorAll("[data-alloc-tab]").forEach(b => b.addEventListener("click", () => { ALLOC_TAB_STATE.tab = b.dataset.allocTab; navigate("5-3"); }));
   // ----- (구 5-9) LTV·성숙도·코호트 탭: data-ltv-tab → MON_STATE.tab + navigate("5-2") (하위호환) -----
   document.querySelectorAll("[data-ltv-tab]").forEach(b => b.addEventListener("click", () => { MON_STATE.tab = b.dataset.ltvTab; navigate("5-2"); }));
-  if (document.getElementById("alloc-recompute") || document.getElementById("alloc-filter-apply") || document.getElementById("alloc-filter-reopen")) bindBudgetAllocatorHandlers();
+  if (document.getElementById("alloc-recompute") || document.getElementById("alloc-filter-apply") || document.getElementById("alloc-filter-reopen") || document.getElementById("alloc-verify-list")) bindBudgetAllocatorHandlers();
 
   // ----- 5-4: 실험 분석 탭 전환 (설계/결과/홀드아웃 — 결과·홀드아웃은 CSV grain 전환) -----
   document.querySelectorAll("[data-exp-tab]").forEach(b => b.addEventListener("click", () => { EXP_TAB_STATE.tab = b.dataset.expTab; navigate("5-4"); }));
@@ -24619,7 +24692,18 @@ function renderAllocatorScatter() {
   if (ALLOC_STATE.selectedChannels == null) {
     ALLOC_STATE.selectedChannels = new Set(allChannels.slice(0, 6));
   }
-  const channels = allChannels.filter(c => ALLOC_STATE.selectedChannels.has(c));
+  
+  let channels;
+  if (ALLOC_FILTER_STATE.step === 2) {
+    channels = ALLOC_STATE.verifySelectedGroup ? [ALLOC_STATE.verifySelectedGroup] : [];
+    // 검증 모드에서는 좌측 목록을 쓰므로 필터 UI를 숨김 (추후 DOM 레벨에서 숨김 처리하지만 안전상 비움)
+    const filterEl = document.getElementById("alloc-channel-filter");
+    if (filterEl) filterEl.style.display = "none";
+  } else {
+    channels = allChannels.filter(c => ALLOC_STATE.selectedChannels.has(c));
+    const filterEl = document.getElementById("alloc-channel-filter");
+    if (filterEl) filterEl.style.display = "block";
+  }
 
   // 채널 필터 UI 렌더 (chip 토글)
   const filterEl = document.getElementById("alloc-channel-filter");
@@ -27157,8 +27241,211 @@ function bindAllocStickyFilterHandlers() {
   }
 }
 
+function bindAllocVerificationHandlers() {
+  const listEl = document.getElementById("alloc-verify-list");
+  if (!listEl) return;
+
+  const metricSelect = document.getElementById("alloc-metric");
+  const metric = ALLOC_STATE.metric || (metricSelect ? metricSelect.value : null) || "installs";
+  const rows = getMappedRowsForAlloc();
+  const byChannel = getCachedByChannel(rows, metric);
+  
+  if (byChannel.size === 0) {
+    listEl.innerHTML = `<div style="padding: 16px; color: var(--text-muted); font-size: 13px;">데이터가 없습니다. 필터를 변경해 주세요.</div>`;
+    return;
+  }
+  
+  if (!ALLOC_STATE.verifySelectedGroup || !byChannel.has(ALLOC_STATE.verifySelectedGroup)) {
+    ALLOC_STATE.verifySelectedGroup = [...byChannel.keys()][0];
+  }
+  
+  const outliersMap = getCachedOutliers(byChannel);
+  const allDates = rows.map(r => r.date ? Date.parse(r.date) : NaN).filter(d => !isNaN(d));
+  const maxDate = allDates.length ? Math.max(...allDates) : null;
+  const weightsMap = getCachedWeights(outliersMap, maxDate);
+  const allFitsMap = getCachedAllFits(outliersMap, weightsMap);
+  const modelsMap = getCachedModels(outliersMap, weightsMap);
+
+  const groups = [...byChannel.keys()].sort();
+  const countEl = document.getElementById("alloc-verify-count");
+  if (countEl) countEl.textContent = `(${groups.length}개)`;
+
+  let listHtml = "";
+  let healthyGroups = [];
+  
+  groups.forEach(group => {
+    const isSelected = group === ALLOC_STATE.verifySelectedGroup;
+    const isVerified = ALLOC_STATE.groupVerification[group] === "verified";
+    const curModel = ALLOC_STATE.groupModels[group] || modelsMap.get(group);
+    
+    const allFits = allFitsMap.get(group);
+    const outRes = outliersMap.get(group);
+    let problemReason = null;
+    
+    if (outRes && outRes.kept.length < 3) {
+      problemReason = "데이터 부족";
+    } else if (allFits && allFits.has(curModel)) {
+      const fit = allFits.get(curModel);
+      if (curModel === 'poly2' && fit.a < 0) {
+        const xs = outRes.kept.map(p => p.x);
+        const xMin = Math.min(...xs);
+        const xMax = Math.max(...xs);
+        const range = xMax - xMin;
+        const vx = -fit.b / (2 * fit.a);
+        if (vx >= xMin + 0.1 * range && vx <= xMax - 0.1 * range) {
+          problemReason = "꼭짓점(Vertex) 주의";
+        }
+      } else if (fit.r2 < 0.2) {
+        problemReason = "낮은 적합도 (R² < 0.2)";
+      }
+    } else if (curModel === 'auto') {
+      problemReason = "적합 실패";
+    }
+    
+    const isHealthy = !problemReason;
+    if (isHealthy && !isVerified) healthyGroups.push(group);
+    
+    const statusHtml = isVerified 
+      ? `<span style="color:var(--success); font-size:12px; font-weight:600;">✓ 확인됨</span>`
+      : problemReason 
+        ? `<span style="color:var(--danger); font-size:12px; font-weight:600;">⚠ ${problemReason}</span>`
+        : `<span style="color:var(--text-secondary); font-size:12px;">대기중</span>`;
+
+    listHtml += `
+      <div class="alloc-verify-item ${isSelected ? 'active' : ''}" data-verify-group="${escapeHtml(group)}"
+           style="padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; display:flex; flex-direction:column; gap:4px;
+                  background: ${isSelected ? 'var(--bg-2)' : 'transparent'};">
+        <div style="display:flex; justify-content: space-between; align-items: center;">
+          <span style="font-size:13px; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:180px;" title="${escapeHtml(group)}">${escapeHtml(group)}</span>
+          ${statusHtml}
+        </div>
+        <div style="font-size:11px; color:var(--text-muted);">
+          선택된 모델: <strong>${curModel}</strong>
+        </div>
+      </div>
+    `;
+  });
+  
+  listEl.innerHTML = listHtml;
+  
+  const titleEl = document.getElementById("alloc-verify-title");
+  if (titleEl) titleEl.textContent = ALLOC_STATE.verifySelectedGroup;
+  const controlsEl = document.getElementById("alloc-verify-controls");
+  if (controlsEl) controlsEl.style.display = "flex";
+  
+  const modelSelect = document.getElementById("alloc-verify-model-select");
+  if (modelSelect) {
+    const override = ALLOC_STATE.groupModels[ALLOC_STATE.verifySelectedGroup];
+    modelSelect.value = override ? override : "auto";
+  }
+  
+  const insightEl = document.getElementById("alloc-verify-insight");
+  if (insightEl) {
+    const curModel = ALLOC_STATE.groupModels[ALLOC_STATE.verifySelectedGroup] || modelsMap.get(ALLOC_STATE.verifySelectedGroup);
+    const allFits = allFitsMap.get(ALLOC_STATE.verifySelectedGroup);
+    const outRes = outliersMap.get(ALLOC_STATE.verifySelectedGroup);
+    let problemReason = null;
+    
+    if (outRes && outRes.kept.length < 3) {
+      problemReason = "데이터 부족 (산점도를 그릴 수 없습니다)";
+    } else if (allFits && allFits.has(curModel)) {
+      const fit = allFits.get(curModel);
+      if (curModel === 'poly2' && fit.a < 0) {
+        const xs = outRes.kept.map(p => p.x);
+        const xMin = Math.min(...xs);
+        const xMax = Math.max(...xs);
+        const range = xMax - xMin;
+        const vx = -fit.b / (2 * fit.a);
+        if (vx >= xMin + 0.1 * range && vx <= xMax - 0.1 * range) {
+          problemReason = "꼭짓점(Vertex) 주의: 데이터 내에 수확체감이 꺾이는 꼭짓점이 존재합니다. 예산 투입 시 효율이 오히려 떨어질 수 있습니다.";
+        }
+      } else if (fit.r2 < 0.2) {
+        problemReason = `낮은 적합도 (R² = ${fit.r2.toFixed(2)}): 모델이 데이터를 충분히 설명하지 못합니다.`;
+      }
+    } else if (curModel === 'auto') {
+      problemReason = "적합 실패: 적합한 모델을 찾을 수 없습니다.";
+    }
+    
+    if (ALLOC_STATE.groupVerification[ALLOC_STATE.verifySelectedGroup] === "verified") {
+      insightEl.innerHTML = `<span style="color:var(--success);font-weight:600;">✓ 확인됨:</span> 이 그룹의 추세선 모델이 사용자에게 승인되었습니다.`;
+    } else if (problemReason) {
+      insightEl.innerHTML = `<span style="color:var(--danger);font-weight:600;">⚠ 주의:</span> ${problemReason}`;
+    } else {
+      insightEl.innerHTML = `<span style="color:var(--text-primary);font-weight:600;">ⓘ 상태 양호:</span> 현재 선택된 모델이 데이터에 잘 맞습니다. '확정' 버튼을 눌러 승인하세요.`;
+    }
+  }
+
+  listEl.querySelectorAll(".alloc-verify-item").forEach(item => {
+    item.addEventListener("click", () => {
+      ALLOC_STATE.verifySelectedGroup = item.dataset.verifyGroup;
+      navigate("5-3");
+    });
+  });
+  
+  const confirmSingleBtn = document.getElementById("alloc-verify-confirm-single");
+  if (confirmSingleBtn) {
+    const newBtn = confirmSingleBtn.cloneNode(true);
+    confirmSingleBtn.parentNode.replaceChild(newBtn, confirmSingleBtn);
+    newBtn.addEventListener("click", () => {
+      ALLOC_STATE.groupVerification[ALLOC_STATE.verifySelectedGroup] = "verified";
+      const selectedModel = document.getElementById("alloc-verify-model-select").value;
+      if (selectedModel !== "auto") {
+        ALLOC_STATE.groupModels[ALLOC_STATE.verifySelectedGroup] = selectedModel;
+      } else {
+        delete ALLOC_STATE.groupModels[ALLOC_STATE.verifySelectedGroup];
+      }
+      if (typeof clearAllocCache === "function") clearAllocCache();
+      navigate("5-3");
+    });
+  }
+  
+  const bulkBtn = document.getElementById("alloc-bulk-confirm-btn");
+  if (bulkBtn) {
+    const newBtn = bulkBtn.cloneNode(true);
+    bulkBtn.parentNode.replaceChild(newBtn, bulkBtn);
+    
+    newBtn.textContent = \`건강한 그룹 일괄 승인 (\${healthyGroups.length}건)\`;
+    if (healthyGroups.length === 0) {
+      newBtn.disabled = true;
+      newBtn.style.opacity = "0.5";
+      newBtn.style.cursor = "not-allowed";
+    }
+    
+    newBtn.addEventListener("click", () => {
+      healthyGroups.forEach(g => {
+        ALLOC_STATE.groupVerification[g] = "verified";
+      });
+      navigate("5-3");
+    });
+  }
+  
+  const finishBtn = document.getElementById("alloc-finish-verify-btn");
+  if (finishBtn) {
+    const newBtn = finishBtn.cloneNode(true);
+    finishBtn.parentNode.replaceChild(newBtn, finishBtn);
+    newBtn.addEventListener("click", () => {
+      const unverified = groups.filter(g => ALLOC_STATE.groupVerification[g] !== "verified");
+      if (unverified.length > 0) {
+        if (!confirm(\`아직 검증되지 않은 그룹이 \${unverified.length}개 있습니다. 이대로 예산 배분을 진행하시겠습니까?\`)) {
+          return;
+        }
+      }
+      
+      // 검증 통과한 그룹을 분배 대상 기본값으로 설정
+      const verified = groups.filter(g => ALLOC_STATE.groupVerification[g] === "verified");
+      if (verified.length > 0) {
+        ALLOC_STATE.selectedChannels = new Set(verified);
+      }
+      
+      ALLOC_FILTER_STATE.step = 3;
+      navigate("5-3");
+    });
+  }
+}
+
 function bindBudgetAllocatorHandlers() {
   bindAllocStickyFilterHandlers();
+  if (typeof bindAllocVerificationHandlers === "function") bindAllocVerificationHandlers();
   // 최적화 목표 칩
   document.querySelectorAll("[data-alloc-objective]").forEach(el => {
     el.addEventListener("click", () => {
@@ -27234,6 +27521,13 @@ function bindBudgetAllocatorHandlers() {
     const obj = getObjectiveCfg();
     if (obj) ALLOC_STATE.metric = obj.metric;
     ALLOC_FILTER_STATE.applied = true;
+    ALLOC_FILTER_STATE.step = 2; // Step 2: Verification 단계로 이동
+    
+    // 그룹별 모델 초기화
+    ALLOC_STATE.groupModels = {};
+    ALLOC_STATE.groupVerification = {};
+    ALLOC_STATE.verifySelectedGroup = null;
+
     if (typeof clearAllocCache === "function") clearAllocCache();
     navigate("5-3");
   });
