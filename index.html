@@ -864,6 +864,41 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .kpi-card .delta { font-family: var(--font-mono); font-size: 12px; color: var(--secondary); }
   .kpi-card .delta.down { color: #ff8a8a; }
 
+  /* PVM(5-21) — sleek impact chip / bridge scorecard / top-mover */
+  .pvm-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 1px 8px; border-radius: 999px;
+    font-family: var(--font-mono); font-size: 11.5px; font-weight: 600;
+    line-height: 1.7; white-space: nowrap; vertical-align: middle;
+  }
+  .pvm-chip.up { color: #ff8a8a; background: rgba(248,113,113,0.12); }
+  .pvm-chip.down { color: #4ade80; background: rgba(34,197,94,0.13); }
+  .pvm-chip.flat { color: var(--text-muted); background: var(--surface-container); }
+  .pvm-bridge {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px;
+    padding: 13px 16px; border-radius: var(--radius-xl);
+    border: 1px solid var(--border-subtle); background: var(--surface-container-lowest);
+    margin-bottom: 8px;
+  }
+  .pvm-bridge .bl { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; color: var(--text-muted); width: 46px; flex-shrink: 0; }
+  .pvm-bridge .flow { display: flex; align-items: baseline; gap: 8px; font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .pvm-bridge .flow .arr { color: var(--text-muted); font-weight: 400; }
+  .pvm-bridge .flow .p1 { color: var(--text-muted); font-weight: 500; }
+  .pvm-bridge .dl { margin-left: auto; }
+  .pvm-mover {
+    flex: 1; min-width: 200px; display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px; border-radius: var(--radius-xl);
+    border: 1px solid var(--border-subtle); background: var(--surface-container-lowest);
+  }
+  .pvm-mover .ar { font-size: 18px; line-height: 1; }
+  .pvm-mover.up .ar { color: #ff8a8a; }
+  .pvm-mover.down .ar { color: #4ade80; }
+  .pvm-mover .mt { font-size: 10.5px; color: var(--text-muted); letter-spacing: 0.04em; }
+  .pvm-mover .mn { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .pvm-mover .mv { margin-left: auto; font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+  .pvm-mover.up .mv { color: #ff8a8a; }
+  .pvm-mover.down .mv { color: #4ade80; }
+
   /* Pitfall / Callout */
   .callout {
     display: flex;
@@ -17604,10 +17639,10 @@ const PVM_STATE = {
   weekBasis: "calendar",  // "calendar"(마감주 월~일) | "rolling7"(최근 7일 롤링)
   lookback: 1,            // 1=직전주 | 2=2주전 | 3=3주전 — 현재(P2)는 항상 최신 마감주 고정, 기준(P1)만 뒤로
   drillChannel: null,     // §3 채널 딥다이브 선택 채널(null=기본 |기여| 최대 채널)
-  crMode: "full",         // §4 모드: "full"(채널+캠페인+소재) | "creativeOnly"(소재만 merged)
-  crChannel: null,        // §4 모드 A 선택 채널
+  crChannel: null,        // §4 선택 채널("__all__"=전 채널 계층, null=기본 채널)
   crCampaign: null,       // §4 모드 A 선택 캠페인
   showNew: false,         // §4 모드 A New 소재만 필터(기본 off — 전체 소재 표시)
+  crPage: 1,              // §4 표 페이지네이션(20행/page) — 필터 변경 시 1로 리셋
 };
 
 // 월요일(UTC 고정) — 마감주(calendar weekBasis) 계산 기준
@@ -17708,13 +17743,6 @@ const PVM_MATH = (function () {
       });
     }
     return { CPA1, CPA2, deltaCpa: CPA2 - CPA1, Cost1, Cost2, Result1, Result2, entities };
-  }
-
-  function decomposeRows(rowsP1, rowsP2, groupKey, resultField, threshold) {
-    const agg1raw = aggregate(rowsP1, groupKey, resultField);
-    const agg2raw = aggregate(rowsP2, groupKey, resultField);
-    const [agg1, agg2] = applyNoiseGuard(agg1raw, agg2raw, threshold ?? PVM_NOISE_THRESHOLD);
-    return decompose(agg1, agg2);
   }
 
   // 최소 grain(채널×캠페인×소재 튜플, 매핑 안 된 키는 null) 전역 분해 — 중첩 롤업의 기반.
@@ -17826,7 +17854,7 @@ const PVM_MATH = (function () {
     return leadMix ? mixText : rateText;
   }
 
-  return { aggregate, applyNoiseGuard, decompose, decomposeRows, classifyNarrative, decomposeFinest, rollup };
+  return { aggregate, applyNoiseGuard, decompose, classifyNarrative, decomposeFinest, rollup };
 })();
 
 window.runPvmTests = function () {
@@ -18121,6 +18149,29 @@ function pvmResultLabel(c) { return c.resultField === "installs" ? "설치" : "�
 function pvmFmt0(v) { return Math.round(v).toLocaleString(); }
 function pvmColor(v) { return v >= 0 ? "#f87171" : "#22c55e"; }
 function pvmDot(v) { return v >= 0 ? "🔴" : "🟢"; }
+// §0/탑무버 sleek 칩 — 이모지 빨간점 대체. +면 악화(빨강 ▲), −면 개선(초록 ▼), 0이면 회색.
+function pvmImpactChip(v, cur, opts) {
+  opts = opts || {};
+  const cls = v > 0 ? "up" : v < 0 ? "down" : "flat";
+  const arr = v > 0 ? "▲" : v < 0 ? "▼" : "—";
+  const word = v > 0 ? "악화" : v < 0 ? "개선" : "변화 없음";
+  const prefix = opts.prefix ? opts.prefix + " " : "";
+  const sign = v >= 0 ? "+" : "";
+  return `<span class="pvm-chip ${cls}">${arr} ${prefix}${sign}${pvmFmtMoney(v, cur)}${opts.hideWord ? "" : " " + word}</span>`;
+}
+// Top-mover 카드 — kind:"up"(가장 올린 요인) | "down"(가장 내린 요인)
+function pvmMoverCard(e, c, kind) {
+  const cur = c.currency || PVM_STATE.currency;
+  const ml = pvmMetricLabel(c);
+  const ar = kind === "up" ? "▲" : "▼";
+  const title = kind === "up" ? `${ml} 가장 올린 요인` : `${ml} 가장 내린 요인`;
+  const sign = e.contribution >= 0 ? "+" : "";
+  return `<div class="pvm-mover ${kind}">
+    <span class="ar">${ar}</span>
+    <div><div class="mt">${title}</div><div class="mn">${escapeHtml(e.key)}</div></div>
+    <span class="mv">${sign}${pvmFmtMoney(e.contribution, cur)}</span>
+  </div>`;
+}
 // 사용자 CSV의 URL은 http/https만 허용(javascript: 등 XSS 차단). 통과 시 escape된 href 반환.
 function pvmSafeUrl(u) {
   if (!u) return null;
@@ -18210,62 +18261,92 @@ function pvmHeadlineSection(c) {
   }
   const r = pvmComputeRollups(c);
   const flat = pvmIsOverallFlat(c.deltaCpa, c.CPA1);
+
+  // Top-mover 2카드 — byChannel에서 가장 올린/내린 채널(있을 때만)
+  const upMover = [...r.byChannel].filter(e => e.contribution > 0).sort((a, b) => b.contribution - a.contribution)[0];
+  const downMover = [...r.byChannel].filter(e => e.contribution < 0).sort((a, b) => a.contribution - b.contribution)[0];
+  const movers = [];
+  if (upMover) movers.push(pvmMoverCard(upMover, c, "up"));
+  if (downMover) movers.push(pvmMoverCard(downMover, c, "down"));
+  const moverRow = movers.length
+    ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 4px;">${movers.join("")}</div>`
+    : "";
+
+  // 드라이버 라인 — 빨간점 이모지 대신 sleek 칩(부호·악화/개선 명확)
   const lines = [];
   lines.push(flat
     ? `전체 ${metricLabel}는 ${pvmFmtMoney(c.CPA1, cur)} → ${pvmFmtMoney(c.CPA2, cur)}로 큰 변화 없음(±${(PVM_SIG_RULES.overallFlatPct * 100).toFixed(0)}% 이내)`
-    : `전체 ${metricLabel}: ${pvmFmtMoney(c.CPA1, cur)} → ${pvmFmtMoney(c.CPA2, cur)} (${c.deltaCpa >= 0 ? "+" : ""}${pvmFmtMoney(c.deltaCpa, cur)})`);
+    : `전체 ${metricLabel} <strong>${pvmFmtMoney(c.CPA1, cur)} → ${pvmFmtMoney(c.CPA2, cur)}</strong> ${pvmImpactChip(c.deltaCpa, cur)}`);
   if (r.topChannel && pvmIsEntitySignificant(r.topChannel.contribution, c.deltaCpa, c.CPA2)) {
-    lines.push(`${pvmDot(r.topChannel.contribution)} 채널: <strong>${escapeHtml(r.topChannel.key)}</strong>가 ${r.topChannel.contribution >= 0 ? "상승" : "하락"}에 가장 큰 영향(기여 ${pvmFmtMoney(r.topChannel.contribution, cur)})`);
+    lines.push(`<span style="color:var(--text-muted);">채널</span> <strong>${escapeHtml(r.topChannel.key)}</strong> ${pvmImpactChip(r.topChannel.contribution, cur, { prefix: metricLabel })}`);
   }
   if (r.topCampaign && pvmIsEntitySignificant(r.topCampaign.contribution, c.deltaCpa, c.CPA2)) {
-    lines.push(`${pvmDot(r.topCampaign.contribution)} 캠페인: ${escapeHtml(r.topChannel.key)} 내 <strong>${escapeHtml(r.topCampaign.key || "(미지정)")}</strong> 기여 ${pvmFmtMoney(r.topCampaign.contribution, cur)}`);
+    lines.push(`<span style="color:var(--text-muted);">캠페인</span> ${escapeHtml(r.topChannel.key)} › <strong>${escapeHtml(r.topCampaign.key || "(미지정)")}</strong> ${pvmImpactChip(r.topCampaign.contribution, cur, { prefix: metricLabel })}`);
   }
   if (r.topCreative && pvmIsEntitySignificant(r.topCreative.contribution, c.deltaCpa, c.CPA2)) {
-    lines.push(`${pvmDot(r.topCreative.contribution)} 소재: <strong>${escapeHtml(r.topCreative.key || "(미지정)")}</strong> 기여 ${pvmFmtMoney(r.topCreative.contribution, cur)}`);
+    lines.push(`<span style="color:var(--text-muted);">소재</span> <strong>${escapeHtml(r.topCreative.key || "(미지정)")}</strong> ${pvmImpactChip(r.topCreative.contribution, cur, { prefix: metricLabel })}`);
   }
   return `<section class="block" id="s-pvm-result" style="background:linear-gradient(135deg,rgba(122,162,247,0.12),rgba(192,132,252,0.05));border:1px solid rgba(122,162,247,0.25);border-radius:14px;padding:18px 20px;">
-    <h2 class="section-title"><span class="ix">§0</span>한눈에 보기</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <h2 class="section-title" style="margin:0;"><span class="ix">§0</span>한눈에 보기</h2>
+      <button class="ab-pill" data-pvm-download title="이 분석의 모든 표·비교 데이터를 CSV로 내려받기">⬇ 결과 다운받기</button>
+    </div>
     ${pvmPillsHeader(c)}
-    <ul style="margin:12px 0 10px;padding:0;list-style:none;">${lines.map(l => `<li style="margin-bottom:7px;font-size:13px;line-height:1.6;">${l}</li>`).join("")}</ul>
+    ${moverRow}
+    <ul style="margin:12px 0 10px;padding:0;list-style:none;">${lines.map(l => `<li style="margin-bottom:7px;font-size:13px;line-height:1.7;">${l}</li>`).join("")}</ul>
     <div class="callout warn" style="margin-top:6px;"><div class="ico">!</div><div class="body" style="font-size:11.5px;">association(연관)일 뿐 인과를 증명하지 않습니다. 채널·캠페인·소재 모두 최소 단위(채널×캠페인×소재)에서 한 번 분해 후 합산해 §2~§4(모드A)는 항상 정확히 중첩됩니다.</div></div>
   </section>`;
 }
 
-// §1 스코어카드
+// §1 스코어카드 — Bridge 2줄(Cost/CPA). 각 줄 P1 → P2 = Δ(±%) 흐름.
 function pvmScorecardSection(c) {
   const metricLabel = pvmMetricLabel(c);
   const cur = c.currency || PVM_STATE.currency;
-  const cards = [
-    { label: `기준 Cost (P1)`, value: pvmFmtMoney(c.Cost1, cur) },
-    { label: `현재 Cost (P2)`, value: pvmFmtMoney(c.Cost2, cur), delta: c.Cost2 - c.Cost1 },
-    { label: `Δ Cost`, value: pvmFmtMoney(c.Cost2 - c.Cost1, cur), delta: c.Cost2 - c.Cost1 },
-    { label: `기준 ${metricLabel} (P1)`, value: pvmFmtMoney(c.CPA1, cur) },
-    { label: `현재 ${metricLabel} (P2)`, value: pvmFmtMoney(c.CPA2, cur), delta: c.deltaCpa },
-    { label: `Δ ${metricLabel}`, value: pvmFmtMoney(c.deltaCpa, cur), delta: c.deltaCpa },
-  ];
+  // colored=false면 회색(Cost는 증감 자체가 좋/나쁨 아님), true면 빨강(악화)/초록(개선)
+  const bridgeRow = (label, v1, v2, colored) => {
+    const d = v2 - v1;
+    const pct = v1 ? (d / v1 * 100) : 0;
+    const arr = d > 0 ? "▲" : d < 0 ? "▼" : "—";
+    const sign = d >= 0 ? "+" : "";
+    const cls = !colored ? "flat" : d > 0 ? "up" : d < 0 ? "down" : "flat";
+    return `<div class="pvm-bridge">
+      <span class="bl">${label}</span>
+      <div class="flow"><span class="p1">${pvmFmtMoney(v1, cur)}</span><span class="arr">→</span><span>${pvmFmtMoney(v2, cur)}</span></div>
+      <span class="pvm-chip ${cls}" style="margin-left:auto;">${arr} ${sign}${pvmFmtMoney(d, cur)} (${sign}${Math.abs(pct) < 0.05 ? "0" : pct.toFixed(1)}%)</span>
+    </div>`;
+  };
   return `<section class="block" id="s-pvm-scorecard">
     <h2 class="section-title"><span class="ix">§1</span>스코어카드</h2>
-    <div class="kpi-grid">
-      ${cards.map(k => `<div class="kpi-card"><div class="label">${k.label}</div><div class="value">${k.value}</div>${k.delta !== undefined ? `<div class="delta ${k.delta > 0 ? "down" : ""}">${k.delta >= 0 ? "▲" : "▼"} ${pvmFmtMoney(Math.abs(k.delta), cur)}</div>` : ""}</div>`).join("")}
-    </div>
-    <p style="margin-top:10px;font-size:11.5px;color:var(--text-muted);">기준 ${escapeHtml(c.p1Range[0])}~${escapeHtml(c.p1Range[1])} vs 현재 ${escapeHtml(c.p2Range[0])}~${escapeHtml(c.p2Range[1])}${c.p2DaysCovered < 7 ? ` · ⚠ 현재 기간 ${c.p2DaysCovered}일만 집계됨` : ""}</p>
+    ${bridgeRow("COST", c.Cost1, c.Cost2, false)}
+    ${bridgeRow(metricLabel, c.CPA1, c.CPA2, true)}
+    <p style="margin-top:8px;font-size:11.5px;color:var(--text-muted);">기준 ${escapeHtml(c.p1Range[0])}~${escapeHtml(c.p1Range[1])} (P1) vs 현재 ${escapeHtml(c.p2Range[0])}~${escapeHtml(c.p2Range[1])} (P2)${c.p2DaysCovered < 7 ? ` · ⚠ 현재 기간 ${c.p2DaysCovered}일만 집계됨` : ""}</p>
   </section>`;
 }
 
-// §2/§3/§4-A 공유 표 헤더/행
+// §2/§3/§4 공유 표 헤더/행. opts.entityCols=[{label,html}] 다중 엔티티 컬럼(없으면 entityLabel 단일).
+// opts.showNewCol(맨 앞 상태) / opts.showUrl(맨 뒤 링크) / opts.showCtr.
+function pvmEntityCols(opts) { return opts.entityCols || [{ label: opts.entityLabel || "엔티티" }]; }
 function pvmTableHeader(c, opts) {
   opts = opts || {};
   const metricLabel = pvmMetricLabel(c);
+  const curSym = (c.currency || PVM_STATE.currency) === "usd" ? "$" : "원";
   return `<tr>
-    <th>${opts.entityLabel || "엔티티"}</th>
+    ${opts.showNewCol ? `<th>상태</th>` : ""}
+    ${pvmEntityCols(opts).map(col => `<th>${col.label}</th>`).join("")}
     <th data-type="number">Cost(P1→P2)</th>
     <th data-type="number">${metricLabel}(P1→P2)</th>
     <th data-type="number">비중(P1→P2)</th>
     ${opts.showCtr ? `<th data-type="number">CTR(P1→P2)</th>` : ""}
     <th data-type="number">Mix</th>
     <th data-type="number">Rate</th>
-    <th data-type="number">${metricLabel} 영향(${(c.currency || PVM_STATE.currency) === "usd" ? "$" : "원"})</th>
+    <th data-type="number">${metricLabel} 영향(${curSym})</th>
+    ${opts.showUrl ? `<th>링크</th>` : ""}
   </tr>`;
+}
+// colspan 계산(빈 표 fallback용) — 옵션에 따라 컬럼 수가 달라짐
+function pvmColCount(opts) {
+  opts = opts || {};
+  return (opts.showNewCol ? 1 : 0) + pvmEntityCols(opts).length + 3 /*cost,metric,share*/ + (opts.showCtr ? 1 : 0) + 3 /*mix,rate,impact*/ + (opts.showUrl ? 1 : 0);
 }
 function pvmTableRow(e, label, c, opts) {
   opts = opts || {};
@@ -18273,9 +18354,18 @@ function pvmTableRow(e, label, c, opts) {
   const isNew = opts.isNew;
   const ctr = opts.ctr;
   const safeUrl = opts.url ? pvmSafeUrl(opts.url) : null;
-  const urlLink = safeUrl ? ` <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" title="소재 링크 열기" style="text-decoration:none;font-size:11px;">🔗</a>` : "";
+  const newCell = opts.showNewCol
+    ? `<td>${isNew ? `<span class="chip ok" style="padding:1px 6px;font-size:9.5px;">🆕 New</span>` : `<span style="color:var(--text-muted);">·</span>`}</td>`
+    : "";
+  const urlCell = opts.showUrl
+    ? `<td>${safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" title="소재 링크 열기" style="text-decoration:none;font-size:11px;white-space:nowrap;">🔗 열기</a>` : `<span style="color:var(--text-muted);">—</span>`}</td>`
+    : "";
+  const entityCells = opts.entityCols
+    ? opts.entityCols.map(col => `<td>${col.html != null ? col.html : escapeHtml(col.value || "")}</td>`).join("")
+    : `<td>${opts.labelHtml || escapeHtml(label)}</td>`;
   return `<tr>
-    <td>${escapeHtml(label)}${isNew ? ` <span class="chip ok" style="padding:1px 6px;font-size:9.5px;">🆕 New</span>` : ""}${urlLink}</td>
+    ${newCell}
+    ${entityCells}
     <td class="tnum" data-sortval="${e.cost2 - e.cost1}">${pvmFmtMoney(e.cost1, cur)} → ${pvmFmtMoney(e.cost2, cur)}</td>
     <td class="tnum" data-sortval="${e.cpa2 - e.cpa1}">${pvmFmtMoney(e.cpa1, cur)} → ${pvmFmtMoney(e.cpa2, cur)}</td>
     <td class="tnum" data-sortval="${e.s2 - e.s1}">${(e.s1 * 100).toFixed(1)}% → ${(e.s2 * 100).toFixed(1)}%</td>
@@ -18283,6 +18373,7 @@ function pvmTableRow(e, label, c, opts) {
     <td class="tnum" data-sortval="${e.mix}" style="color:${pvmColor(e.mix)};">${e.mix >= 0 ? "+" : ""}${pvmFmtMoney(e.mix, cur)}</td>
     <td class="tnum" data-sortval="${e.rate}" style="color:${pvmColor(e.rate)};">${e.rate >= 0 ? "+" : ""}${pvmFmtMoney(e.rate, cur)}</td>
     <td class="tnum" data-sortval="${e.contribution}"><strong style="color:${pvmColor(e.contribution)};">${e.contribution >= 0 ? "+" : ""}${pvmFmtMoney(e.contribution, cur)}</strong></td>
+    ${urlCell}
   </tr>`;
 }
 
@@ -18311,6 +18402,22 @@ function pvmChannelTableSection(c, byChannel) {
   return `<section class="block" id="s-pvm-channels">
     <h2 class="section-title"><span class="ix">§2</span>채널별 결과</h2>
     ${pvmMetricGuide(c)}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:14px;">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <span style="font-size:12px;font-weight:600;color:var(--text-2);">${metricLabel} 브릿지 — 지난주 전체 → 채널 기여(±) → 이번주 전체</span>
+          <button class="ab-pill" data-pngdownload="pvm-waterfall" data-pngname="pvm_waterfall" title="PNG 다운로드">⬇ PNG</button>
+        </div>
+        <div class="chart-container" style="--chart-h:260px;"><canvas id="pvm-waterfall"></canvas></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <span style="font-size:12px;font-weight:600;color:var(--text-2);">채널별 Mix·Rate 분해</span>
+          <button class="ab-pill" data-pngdownload="pvm-channel-stack" data-pngname="pvm_channel_stack" title="PNG 다운로드">⬇ PNG</button>
+        </div>
+        <div class="chart-container" style="--chart-h:260px;"><canvas id="pvm-channel-stack"></canvas></div>
+      </div>
+    </div>
     <div class="table-wrap">
       <table class="data" data-sortable="1" style="font-size:11.5px;">
         <thead>${pvmTableHeader(c, { entityLabel: "채널" })}</thead>
@@ -18354,7 +18461,7 @@ function pvmChannelDrilldownSection(c, byChannel) {
   </section>`;
 }
 
-// §4 소재 딥다이브 — 모드 A(채널+캠페인+소재, 중첩) / 모드 B(소재만 merged, 별도 렌즈)
+// §4 소재별 결과 — 채널→(옵션)캠페인→소재 계층. ch/cmp/cr은 고정 별도 컬럼. (모드 B 제거됨)
 function pvmCreativeDrilldownSection(c, byChannel) {
   if (!c.creativeMapped) {
     return `<section class="block" id="s-pvm-creatives">
@@ -18364,41 +18471,36 @@ function pvmCreativeDrilldownSection(c, byChannel) {
   }
   const cur = c.currency || PVM_STATE.currency;
   const metricLabel = pvmMetricLabel(c);
-  const mode = PVM_STATE.crMode === "creativeOnly" ? "creativeOnly" : "full";
-  const modeToggle = `<div class="ab-pillgroup" style="margin-bottom:10px;">
-    <span class="ab-pillgroup-label">모드</span>
-    <button class="ab-pill ${mode === "full" ? "active" : ""}" data-pvm-cr-mode="full">채널+캠페인+소재</button>
-    <button class="ab-pill ${mode === "creativeOnly" ? "active" : ""}" data-pvm-cr-mode="creativeOnly">소재만 merged</button>
-  </div>`;
 
-  if (mode === "creativeOnly") {
-    const modeB = PVM_MATH.decomposeRows(c.rowsP1, c.rowsP2, "creative_id", c.resultField);
-    if (!modeB) {
-      return `<section class="block" id="s-pvm-creatives"><h2 class="section-title"><span class="ix">§4</span>소재별 결과</h2>${modeToggle}<div class="callout warn"><div class="ico">!</div><div class="body">분해 불가(전환 0)</div></div></section>`;
-    }
-    const sorted = [...modeB.entities].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
-    const sigma = sorted.reduce((a, e) => a + e.contribution, 0);
-    const rows = sorted.map(e => pvmTableRow(e, e.key, c, { isNew: e.result1 === 0 && e.result2 > 0, url: c.crUrlMap ? c.crUrlMap.get(e.key) : null })).join("");
-    return `<section class="block" id="s-pvm-creatives">
-      <h2 class="section-title"><span class="ix">§4</span>소재별 결과</h2>
-      ${modeToggle}
-      <div class="callout warn" style="margin-bottom:10px;"><div class="ico">!</div><div class="body" style="font-size:11.5px;">⚠ 이 모드는 채널·캠페인을 무시하고 소재 키만으로 전역 재분해합니다. §2/§3과 합산이 일치하지 않습니다(의도된 별도 렌즈).</div></div>
-      <div class="table-wrap"><table class="data" data-sortable="1" style="font-size:11.5px;">
-        <thead>${pvmTableHeader(c, { entityLabel: "소재" })}</thead>
-        <tbody>${rows}</tbody>
-      </table></div>
-      <div class="callout ok" style="margin-top:10px;"><div class="ico">✓</div><div class="body"><strong>Σ ${metricLabel} 영향 = 전체 Δ${metricLabel}(소재 렌즈)</strong><p style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${pvmFmtMoney(sigma, cur)} = ${pvmFmtMoney(modeB.deltaCpa, cur)}</p></div></div>
-    </section>`;
-  }
+  // 페이지네이션(20행/page) — total>PER일 때만 컨트롤 노출
+  const PER = 20;
+  const pvmPager = (total) => {
+    let page = PVM_STATE.crPage || 1;
+    const maxPage = Math.max(1, Math.ceil(total / PER));
+    if (page > maxPage) page = maxPage;
+    if (page < 1) page = 1;
+    const start = (page - 1) * PER;
+    const ctrl = total > PER ? `<div style="display:flex;align-items:center;gap:10px;justify-content:flex-end;margin-top:8px;font-size:11.5px;color:var(--text-muted);">
+      <span>${start + 1}–${Math.min(page * PER, total)} / ${total.toLocaleString()}행</span>
+      <button class="ab-pill" data-pvm-cr-page="prev" ${page <= 1 ? "disabled style='opacity:.4;cursor:default;'" : ""}>← 이전</button>
+      <button class="ab-pill" data-pvm-cr-page="next" ${page >= maxPage ? "disabled style='opacity:.4;cursor:default;'" : ""}>다음 →</button>
+    </div>` : "";
+    return { page, start, ctrl };
+  };
 
-  // 모드 A: 채널 → (옵션) 캠페인 → 소재
-  const selCh = PVM_STATE.crChannel && byChannel.some(ch => ch.key === PVM_STATE.crChannel) ? PVM_STATE.crChannel : byChannel[0]?.key;
+  // 채널 → (옵션) 캠페인 → 소재. 채널="__all__"(전체)이면 ch×cmp×cr 계층 전체 표시.
+  const isAllCh = PVM_STATE.crChannel === "__all__";
+  const channelKeys = byChannel.map(ch => ch.key);
+  const selCh = isAllCh ? "__all__"
+    : (PVM_STATE.crChannel && channelKeys.includes(PVM_STATE.crChannel) ? PVM_STATE.crChannel : byChannel[0]?.key);
   const chSelector = `<div class="ab-pillgroup" style="margin-bottom:8px;">
     <span class="ab-pillgroup-label">채널</span>
-    ${byChannel.map(ch => `<button class="ab-pill ${ch.key === selCh ? "active" : ""}" data-pvm-cr-channel="${escapeHtml(ch.key)}">${escapeHtml(ch.key)}</button>`).join("")}
+    <button class="ab-pill ${isAllCh ? "active" : ""}" data-pvm-cr-channel="__all__">전체</button>
+    ${byChannel.map(ch => `<button class="ab-pill ${!isAllCh && ch.key === selCh ? "active" : ""}" data-pvm-cr-channel="${escapeHtml(ch.key)}">${escapeHtml(ch.key)}</button>`).join("")}
   </div>`;
+  // 캠페인 셀렉터는 단일 채널 선택 시에만(채널 전체는 횡단이라 의미 없음 → selCmp=null 강제)
   let cmpSelector = "", selCmp = null;
-  if (c.campaignMapped) {
+  if (c.campaignMapped && !isAllCh) {
     const campaignsInCh = [...new Set(c.finest.filter(f => f.chKey === selCh).map(f => f.cmpKey ?? ""))];
     selCmp = PVM_STATE.crCampaign && campaignsInCh.includes(PVM_STATE.crCampaign) ? PVM_STATE.crCampaign : null;
     cmpSelector = `<div class="ab-pillgroup" style="margin-bottom:10px;">
@@ -18407,36 +18509,151 @@ function pvmCreativeDrilldownSection(c, byChannel) {
       ${campaignsInCh.map(cmp => `<button class="ab-pill ${cmp === selCmp ? "active" : ""}" data-pvm-cr-campaign="${escapeHtml(cmp)}">${escapeHtml(cmp || "(미지정)")}</button>`).join("")}
     </div>`;
   }
-  const pool = c.finest.filter(f => f.chKey === selCh && (selCmp != null ? f.cmpKey === selCmp : true));
-  const byCreative = PVM_MATH.rollup(pool, f => f.crKey ?? "(미지정)", c.Result1, c.Result2)
+
+  // 계층별 그룹핑 키 — finest 합산이라 어떤 keyFn이든 Σ 항등식 자동 보존(§4.3). 각 그룹=단일 finest 튜플.
+  let pool, keyFn;
+  if (isAllCh) {
+    pool = c.finest; keyFn = f => `${f.chKey}│${f.cmpKey ?? ""}│${f.crKey ?? ""}`;
+  } else if (selCmp == null && c.campaignMapped) {
+    pool = c.finest.filter(f => f.chKey === selCh); keyFn = f => `${f.cmpKey ?? ""}│${f.crKey ?? ""}`;
+  } else {
+    pool = c.finest.filter(f => f.chKey === selCh && (selCmp != null ? f.cmpKey === selCmp : true)); keyFn = f => f.crKey ?? "(미지정)";
+  }
+  const byCreative = PVM_MATH.rollup(pool, keyFn, c.Result1, c.Result2)
     .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
   const sigma = byCreative.reduce((a, e) => a + e.contribution, 0);
-  const parentContribution = selCmp != null
-    ? (PVM_MATH.rollup(c.finest.filter(f => f.chKey === selCh && f.cmpKey === selCmp), () => "x", c.Result1, c.Result2)[0]?.contribution ?? 0)
-    : (byChannel.find(ch => ch.key === selCh)?.contribution ?? 0);
+  const parentContribution = isAllCh
+    ? c.deltaCpa
+    : (selCmp != null
+        ? (PVM_MATH.rollup(c.finest.filter(f => f.chKey === selCh && f.cmpKey === selCmp), () => "x", c.Result1, c.Result2)[0]?.contribution ?? 0)
+        : (byChannel.find(ch => ch.key === selCh)?.contribution ?? 0));
+
+  // 채널·캠페인·소재 고정 컬럼(합친 라벨 X). 캠페인 미매핑이면 캠페인 컬럼 생략.
+  const headerEntityCols = c.campaignMapped
+    ? [{ label: "채널" }, { label: "캠페인" }, { label: "소재" }]
+    : [{ label: "채널" }, { label: "소재" }];
+  const rowEntityCols = (f) => {
+    const chCell = { html: escapeHtml(f.chKey) };
+    const crCell = { html: `<strong>${escapeHtml(f.crKey || "(미지정)")}</strong>` };
+    return c.campaignMapped ? [chCell, { html: escapeHtml(f.cmpKey || "(미지정)") }, crCell] : [chCell, crCell];
+  };
 
   const showNew = PVM_STATE.showNew;
-  const filtered = showNew ? byCreative : byCreative;
   const newFilterToggle = `<label style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);margin-bottom:10px;cursor:pointer;">
     <input type="checkbox" data-pvm-show-new ${showNew ? "checked" : ""}> 🆕 신규 소재만 보기(이전 기간 0건 → 현재 1건 이상)
   </label>`;
-  const rowsToShow = showNew ? filtered.filter(e => e.result1 === 0 && e.result2 > 0) : filtered;
-  const rows = rowsToShow.map(e => {
-    const ctr = pvmCtrFor(c, selCh, selCmp, e.key === "(미지정)" ? null : e.key);
-    return pvmTableRow(e, e.key, c, { showCtr: c.ctrMapped, ctr, isNew: e.result1 === 0 && e.result2 > 0, url: c.crUrlMap && e.key !== "(미지정)" ? c.crUrlMap.get(e.key) : null });
+  const rowsToShow = showNew ? byCreative.filter(e => e.result1 === 0 && e.result2 > 0) : byCreative;
+  const headerOpts = { showCtr: c.ctrMapped, showNewCol: true, showUrl: c.urlMapped, entityCols: headerEntityCols };
+  const { start, ctrl } = pvmPager(rowsToShow.length);
+  const rows = rowsToShow.slice(start, start + PER).map(e => {
+    const f = e.children[0];
+    const ctr = pvmCtrFor(c, f.chKey, f.cmpKey, f.crKey);
+    return pvmTableRow(e, "", c, {
+      showCtr: c.ctrMapped, showNewCol: true, showUrl: c.urlMapped,
+      entityCols: rowEntityCols(f), ctr,
+      isNew: e.result1 === 0 && e.result2 > 0,
+      url: c.crUrlMap ? c.crUrlMap.get(f.crKey) : null,
+    });
   }).join("");
+  const sigmaLabel = isAllCh ? "전체"
+    : (selCmp != null ? `${escapeHtml(selCh)} · ${escapeHtml(selCmp || "(미지정)")}` : `${escapeHtml(selCh)} 채널`);
 
   return `<section class="block" id="s-pvm-creatives">
     <h2 class="section-title"><span class="ix">§4</span>소재별 결과</h2>
-    ${modeToggle}
     ${chSelector}${cmpSelector}
     <div class="table-wrap"><table class="data" data-sortable="1" style="font-size:11.5px;">
-      <thead>${pvmTableHeader(c, { entityLabel: "소재", showCtr: c.ctrMapped })}</thead>
-      <tbody>${rows || `<tr><td colspan="${c.ctrMapped ? 8 : 7}" style="text-align:center;color:var(--text-muted);">표시할 소재가 없습니다</td></tr>`}</tbody>
+      <thead>${pvmTableHeader(c, headerOpts)}</thead>
+      <tbody>${rows || `<tr><td colspan="${pvmColCount(headerOpts)}" style="text-align:center;color:var(--text-muted);">표시할 소재가 없습니다</td></tr>`}</tbody>
     </table></div>
+    ${ctrl}
     ${newFilterToggle}
-    <div class="callout ok" style="margin-top:6px;"><div class="ico">✓</div><div class="body"><strong>Σ = ${escapeHtml(selCh)}${selCmp != null ? " · " + escapeHtml(selCmp) : ""} ${metricLabel} 영향</strong><p style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${pvmFmtMoney(sigma, cur)} = ${pvmFmtMoney(parentContribution, cur)}</p></div></div>
+    <div class="callout ok" style="margin-top:6px;"><div class="ico">✓</div><div class="body"><strong>Σ = ${sigmaLabel} ${metricLabel} 영향</strong><p style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">${pvmFmtMoney(sigma, cur)} = ${pvmFmtMoney(parentContribution, cur)}</p></div></div>
   </section>`;
+}
+
+// 결과 CSV — META/SCORECARD/CREATIVE_FULL/CHANNEL/CAMPAIGN 1개 파일(section 태그).
+// mix/rate는 하드코딩 X — finest는 centering 공식, 롤업은 하위 소재 cell 합(+) 살아있는 엑셀 수식.
+// (SUMIFS는 콤마 때문에 CSV에서 깨짐 → 명시 셀 `+` 합으로 콤마 회피.) CRLF+BOM, q() 이스케이프(§7).
+function downloadPvmCsv() {
+  const c = buildPvmCache();
+  if (!c || c.insufficientData) { alert("분석 데이터가 없습니다. 먼저 분석을 실행하세요."); return; }
+  const q = (s) => { s = String(s == null ? "" : s); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const ml = pvmMetricLabel(c);
+  const r0 = Math.round, r1 = (v) => (v == null || !isFinite(v) ? "" : v.toFixed(1)), r4 = (v) => (v == null || !isFinite(v) ? "" : v.toFixed(4));
+  const lines = [];
+  const push = (arr) => lines.push(arr.map(q).join(","));
+  const rowNum = () => lines.length + 1;              // 다음 push의 스프레드시트 행번호(1-indexed)
+  const Cbar = (c.CPA1 + c.CPA2) / 2;                 // 전체 평균 CPA(centering 기준)
+  const sumF = (col, rows) => rows.length ? "=" + rows.map(r => col + r).join("+") : "0";
+
+  // META — 공식 정의 + 상수(Cbar, 총 result) 노출
+  push(["section", "key", "value"]);
+  push(["META", "지표", ml]);
+  push(["META", "통화", (c.currency || PVM_STATE.currency) === "usd" ? "USD" : "KRW"]);
+  push(["META", "기준주", pvmWeekBasisLabel(c.weekBasis)]);
+  push(["META", "비교기준", pvmLookbackLabel(c.lookback)]);
+  push(["META", "P1", `${c.p1Range[0]}~${c.p1Range[1]}`]);
+  push(["META", "P2", `${c.p2Range[0]}~${c.p2Range[1]}`]);
+  push(["META", "mix 공식", "mix=(cpaBar-Cbar)*(share2-share1)"]);
+  push(["META", "rate 공식", "rate=sBar*(cpa2-cpa1)"]);
+  push(["META", "Cbar(전체평균CPA)", r1(Cbar)]);
+  push(["META", "총 result1(P1)", r0(c.Result1)]);
+  push(["META", "총 result2(P2)", r0(c.Result2)]);
+  lines.push("");
+
+  // SCORECARD — delta는 수식
+  push(["section", "metric", "P1", "P2", "delta"]);
+  { const r = rowNum(); push(["SCORECARD", "Cost", r0(c.Cost1), r0(c.Cost2), `=D${r}-C${r}`]); }
+  { const r = rowNum(); push(["SCORECARD", ml, r1(c.CPA1), r1(c.CPA2), `=D${r}-C${r}`]); }
+  lines.push("");
+
+  // 엔티티 공통 헤더(CREATIVE_FULL/CHANNEL/CAMPAIGN 공유, 컬럼 A~S 고정)
+  // A section B channel C campaign D creative E url F cost1 G cost2 H result1 I result2
+  // J cpa1 K cpa2 L share1 M share2 N cpaBar O Cbar P sBar Q mix R rate S impact
+  push(["section", "channel", "campaign", "creative", "url", "cost1", "cost2", "result1", "result2", "cpa1", "cpa2", "share1", "share2", "cpaBar", "Cbar", "sBar", "mix", "rate", "impact"]);
+
+  // CREATIVE_FULL(최소 grain) — mix/rate/impact 살아있는 수식, 컴포넌트 모두 노출
+  const chRows = new Map(), cmpRows = new Map();   // 채널/(채널│캠페인) → 소속 소재 행번호
+  [...c.finest].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)).forEach(f => {
+    const r = rowNum();
+    const url = c.crUrlMap ? (c.crUrlMap.get(f.crKey) || "") : "";
+    push(["CREATIVE_FULL", f.chKey, f.cmpKey || "", f.crKey || "", url,
+      r0(f.cost1), r0(f.cost2), r0(f.result1), r0(f.result2),
+      r1(f.cpa1), r1(f.cpa2), r4(f.s1), r4(f.s2),
+      `=(J${r}+K${r})/2`, r1(Cbar), `=(L${r}+M${r})/2`,
+      `=(N${r}-O${r})*(M${r}-L${r})`, `=P${r}*(K${r}-J${r})`, `=Q${r}+R${r}`]);
+    if (!chRows.has(f.chKey)) chRows.set(f.chKey, []);
+    chRows.get(f.chKey).push(r);
+    const ck = `${f.chKey}│${f.cmpKey ?? ""}`;
+    if (!cmpRows.has(ck)) cmpRows.set(ck, []);
+    cmpRows.get(ck).push(r);
+  });
+  lines.push("");
+
+  // CHANNEL(rollup = 하위 소재 합) — cost/result/mix/rate를 소재 cell `+` 합 수식으로
+  const rollRow = (tag, ch, cmp, rows) => {
+    const r = rowNum();
+    push([tag, ch, cmp, "", "",
+      sumF("F", rows), sumF("G", rows), sumF("H", rows), sumF("I", rows),
+      `=F${r}/H${r}`, `=G${r}/I${r}`, `=H${r}/${r0(c.Result1)}`, `=I${r}/${r0(c.Result2)}`,
+      "", "", "",
+      sumF("Q", rows), sumF("R", rows), `=Q${r}+R${r}`]);
+  };
+  PVM_MATH.rollup(c.finest, f => f.chKey, c.Result1, c.Result2)
+    .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
+    .forEach(e => rollRow("CHANNEL", e.children[0].chKey, "", chRows.get(e.children[0].chKey) || []));
+  lines.push("");
+
+  // CAMPAIGN(캠페인 매핑 시)
+  if (c.campaignMapped) {
+    PVM_MATH.rollup(c.finest, f => `${f.chKey}│${f.cmpKey ?? ""}`, c.Result1, c.Result2)
+      .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
+      .forEach(e => { const f0 = e.children[0]; rollRow("CAMPAIGN", f0.chKey, f0.cmpKey || "", cmpRows.get(`${f0.chKey}│${f0.cmpKey ?? ""}`) || []); });
+  }
+
+  const fname = `pvm_result_${ml}_${c.p2Range[1]}.csv`;
+  _mmmDownload(fname, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
+  track("pvm_csv_download", { metric: ml, weekBasis: c.weekBasis, lookback: c.lookback });
 }
 
 function renderPvmBody(c) {
@@ -18472,7 +18689,7 @@ function page_5_21() {
     summary: "Price-Volume-Mix(PVM) Bridge 분해로 전체 CPA/CPI 변화를 채널·캠페인·소재 단위로 정확히 나눕니다(잔차 없음).<br>" +
       "<details style='margin-top:6px;font-size:11.5px;color:var(--text-secondary);cursor:pointer;'><summary>⚠️ 해석 한계 펼치기</summary>" +
       "<div style='margin-top:6px;padding:8px 10px;background:var(--bg-1);border-left:3px solid var(--primary);line-height:1.6;'>" +
-      "이 분해는 산술적으로 정확하지만 인과관계를 증명하지 않습니다(association). 채널×캠페인×소재 최소 단위에서 한 번 분해 후 합산하므로 §2(채널)·§3(캠페인)·§4 모드A(소재)는 항상 정확히 중첩됩니다(Σ 일치). §4 모드 B(소재만 merged)는 채널·캠페인을 무시한 별도 분해라 §2/§3과 합산이 일치하지 않습니다(의도된 다른 렌즈)." +
+      "이 분해는 산술적으로 정확하지만 인과관계를 증명하지 않습니다(association). 채널×캠페인×소재 최소 단위에서 한 번 분해 후 합산하므로 §2(채널)·§3(캠페인)·§4(소재)는 항상 정확히 중첩됩니다(Σ 일치)." +
       "</div></details>",
     toc: [
       { id: "s-prep", title: "데이터 준비" },
@@ -18489,6 +18706,110 @@ function page_5_21() {
   });
 }
 PAGE_RENDERERS["5-21"] = page_5_21;
+
+// §2 시각화 — navigate 후 캔버스 존재 시 호출(인라인 script 금지, §7). buildPvmCache 캐시 히트.
+function renderPvmCharts() {
+  if (typeof Chart === "undefined") return;
+  const c = buildPvmCache();
+  if (!c || c.insufficientData) return;
+  const cur = c.currency || PVM_STATE.currency;
+  const ml = pvmMetricLabel(c);
+  let byChannel = PVM_MATH.rollup(c.finest, f => f.chKey, c.Result1, c.Result2)
+    .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
+  if (byChannel.length > 8) {   // 채널 많으면 top7 + 기타로 축약
+    const top = byChannel.slice(0, 7);
+    const merged = { key: "기타", mix: 0, rate: 0, contribution: 0 };
+    byChannel.slice(7).forEach(e => { merged.mix += e.mix; merged.rate += e.rate; merged.contribution += e.contribution; });
+    byChannel = [...top, merged];
+  }
+  renderPvmWaterfall(c, byChannel, cur, ml);
+  renderPvmChannelStack(c, byChannel, cur, ml);
+}
+// 기여 브릿지 — 0 기준 막대: 지난주 전체 CPA / 채널 기여(±, 0 위아래) / 이번주 전체 CPA.
+function renderPvmWaterfall(c, byChannel, cur, ml) {
+  const canvas = document.getElementById("pvm-waterfall");
+  if (!canvas) return;
+  destroyChartIfExists("pvm-waterfall");
+  const NEUTRAL = "#64748b", RED = "#ff8a8a", GREEN = "#5ad19a";
+  const labels = ["지난주 전체", ...byChannel.map(e => e.key), "이번주 전체"];
+  const values = [c.CPA1, ...byChannel.map(e => e.contribution), c.CPA2];
+  const isCpaIdx = (i) => i === 0 || i === values.length - 1;
+  const colors = values.map((v, i) => isCpaIdx(i) ? NEUTRAL : (v >= 0 ? RED : GREEN));
+  // y축: 모든 값(음수 기여 포함) 기준 + 균일 눈금
+  const lo = Math.min(0, ...values), hi = Math.max(0, ...values);
+  const niceStep = (raw) => [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 25000, 50000].find(s => s >= raw) || raw;
+  const step = niceStep((hi - lo) / 7) || 1;
+  const yMin = Math.floor(lo / step) * step, yMax = Math.ceil(hi / step) * step;
+  const labelPlugin = {
+    id: "pvmWfLabels",
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx, meta = chart.getDatasetMeta(0);
+      ctx.save();
+      ctx.font = "10px JetBrains Mono"; ctx.textAlign = "center";
+      meta.data.forEach((bar, i) => {
+        const v = values[i];
+        const txt = isCpaIdx(i) ? pvmFmtMoney(v, cur) : (v >= 0 ? "+" : "") + pvmFmtMoney(v, cur);
+        ctx.fillStyle = isCpaIdx(i) ? CHART_THEME.text : (v >= 0 ? RED : GREEN);
+        ctx.fillText(txt, bar.x, v >= 0 ? bar.y - 4 : bar.y + 13);
+      });
+      ctx.restore();
+    },
+  };
+  const base = chartCommonOpts();
+  CHART_INSTANCES["pvm-waterfall"] = new Chart(canvas.getContext("2d"), {
+    type: "bar",
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderRadius: 4, barPercentage: 0.7, categoryPercentage: 0.82 }] },
+    options: {
+      ...base,
+      scales: {
+        x: { ...base.scales.x, grid: { display: false }, ticks: { ...base.scales.x.ticks, maxRotation: 0, autoSkip: false } },
+        y: { ...base.scales.y, beginAtZero: false, min: yMin, max: yMax, ticks: { ...base.scales.y.ticks, stepSize: step, callback: (v) => pvmFmtMoney(v, cur) } },
+      },
+      plugins: {
+        ...base.plugins,
+        legend: { display: false },
+        tooltip: { ...base.plugins.tooltip, callbacks: { label: (ctx) => { const i = ctx.dataIndex, v = values[i];
+          return isCpaIdx(i) ? `${ml} ${pvmFmtMoney(v, cur)}` : `${ctx.label}: ${v >= 0 ? "+" : ""}${pvmFmtMoney(v, cur)} (${v >= 0 ? "악화" : "개선"})`; } } },
+      },
+    },
+    plugins: [labelPlugin],
+  });
+}
+// 채널별 Mix·Rate 가로 누적막대 — 부호별 색(진하면 악화 + / 연하면 개선 −)
+function renderPvmChannelStack(c, byChannel, cur, ml) {
+  const canvas = document.getElementById("pvm-channel-stack");
+  if (!canvas) return;
+  destroyChartIfExists("pvm-channel-stack");
+  const arr = [...byChannel].sort((a, b) => Math.abs(a.contribution) - Math.abs(b.contribution));
+  const labels = arr.map(e => e.key);
+  const MIX_POS = "#4d8eff", MIX_NEG = "#adc6ff", RATE_POS = "#d97706", RATE_NEG = "#ffd98a";
+  const base = chartCommonOpts();
+  const legendTextColor = CHART_THEME.text;
+  CHART_INSTANCES["pvm-channel-stack"] = new Chart(canvas.getContext("2d"), {
+    type: "bar",
+    data: { labels, datasets: [
+      { label: "Mix(비중)", data: arr.map(e => e.mix), backgroundColor: arr.map(e => e.mix >= 0 ? MIX_POS : MIX_NEG), borderRadius: 3, barThickness: 15 },
+      { label: "Rate(효율)", data: arr.map(e => e.rate), backgroundColor: arr.map(e => e.rate >= 0 ? RATE_POS : RATE_NEG), borderRadius: 3, barThickness: 15 },
+    ] },
+    options: {
+      ...base, indexAxis: "y",
+      scales: {
+        x: { ...base.scales.x, stacked: true, ticks: { ...base.scales.x.ticks, callback: (v) => pvmFmtMoney(v, cur) }, title: { display: true, text: `${ml} 영향(${cur === "usd" ? "$" : "원"})`, color: CHART_THEME.muted, font: { size: 10 } } },
+        y: { ...base.scales.y, stacked: true, beginAtZero: true, grid: { display: false } },
+      },
+      plugins: {
+        ...base.plugins,
+        legend: { ...base.plugins.legend, onClick: () => {}, labels: { ...base.plugins.legend.labels, color: legendTextColor, generateLabels: () => [
+          { text: "Mix +(악화)", fillStyle: MIX_POS, strokeStyle: MIX_POS, fontColor: legendTextColor, pointStyle: "circle" },
+          { text: "Mix −(개선)", fillStyle: MIX_NEG, strokeStyle: MIX_NEG, fontColor: legendTextColor, pointStyle: "circle" },
+          { text: "Rate +(악화)", fillStyle: RATE_POS, strokeStyle: RATE_POS, fontColor: legendTextColor, pointStyle: "circle" },
+          { text: "Rate −(개선)", fillStyle: RATE_NEG, strokeStyle: RATE_NEG, fontColor: legendTextColor, pointStyle: "circle" },
+        ] } },
+        tooltip: { ...base.plugins.tooltip, callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.x >= 0 ? "+" : ""}${pvmFmtMoney(ctx.parsed.x, cur)}` } },
+      },
+    },
+  });
+}
 
 function renderAhaScatterChart() {
   const canvas = document.getElementById("aha-scatter");
@@ -22781,10 +23102,14 @@ function bindCSVPageHandlers() {
   document.querySelectorAll("[data-pvm-lookback]").forEach(b => b.addEventListener("click", () => { PVM_STATE.lookback = parseInt(b.dataset.pvmLookback, 10); navigate("5-21"); }));
   document.querySelectorAll("[data-pvm-currency]").forEach(b => b.addEventListener("click", () => { PVM_STATE.currency = b.dataset.pvmCurrency; navigate("5-21"); }));
   document.querySelectorAll("[data-pvm-drill-channel]").forEach(b => b.addEventListener("click", () => { PVM_STATE.drillChannel = b.dataset.pvmDrillChannel; navigate("5-21"); }));
-  document.querySelectorAll("[data-pvm-cr-mode]").forEach(b => b.addEventListener("click", () => { PVM_STATE.crMode = b.dataset.pvmCrMode; navigate("5-21"); }));
-  document.querySelectorAll("[data-pvm-cr-channel]").forEach(b => b.addEventListener("click", () => { PVM_STATE.crChannel = b.dataset.pvmCrChannel; PVM_STATE.crCampaign = null; navigate("5-21"); }));
-  document.querySelectorAll("[data-pvm-cr-campaign]").forEach(b => b.addEventListener("click", () => { PVM_STATE.crCampaign = b.dataset.pvmCrCampaign || null; navigate("5-21"); }));
-  document.querySelectorAll("[data-pvm-show-new]").forEach(cb => cb.addEventListener("change", () => { PVM_STATE.showNew = cb.checked; navigate("5-21"); }));
+  document.querySelectorAll("[data-pvm-cr-channel]").forEach(b => b.addEventListener("click", () => { PVM_STATE.crChannel = b.dataset.pvmCrChannel; PVM_STATE.crCampaign = null; PVM_STATE.crPage = 1; navigate("5-21"); }));
+  document.querySelectorAll("[data-pvm-cr-campaign]").forEach(b => b.addEventListener("click", () => { PVM_STATE.crCampaign = b.dataset.pvmCrCampaign || null; PVM_STATE.crPage = 1; navigate("5-21"); }));
+  document.querySelectorAll("[data-pvm-show-new]").forEach(cb => cb.addEventListener("change", () => { PVM_STATE.showNew = cb.checked; PVM_STATE.crPage = 1; navigate("5-21"); }));
+  document.querySelectorAll("[data-pvm-cr-page]").forEach(b => b.addEventListener("click", () => { if (b.disabled) return; PVM_STATE.crPage = Math.max(1, (PVM_STATE.crPage || 1) + (b.dataset.pvmCrPage === "next" ? 1 : -1)); navigate("5-21"); }));
+  document.querySelectorAll("[data-pvm-download]").forEach(b => b.addEventListener("click", () => { try { downloadPvmCsv(); } catch (e) { console.warn("PVM CSV download failed:", e.message); alert("CSV 생성 중 오류가 발생했습니다."); } }));
+  if (document.getElementById("pvm-waterfall") || document.getElementById("pvm-channel-stack")) {
+    try { renderPvmCharts(); } catch (e) { console.warn("PVM charts skipped:", e.message); }
+  }
 
   // ----- 5-2: 운영 모니터링 탭 전환 (시각화/스코어카드/페이싱/이상탐지) -----
   document.querySelectorAll("[data-mon-tab]").forEach(b => b.addEventListener("click", () => { MON_STATE.tab = b.dataset.monTab; track("mon_tab_click", { tab: b.dataset.monTab }); navigate("5-2"); }));
