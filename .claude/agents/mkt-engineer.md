@@ -59,6 +59,8 @@ tools:
 - innerHTML로 주입한 인라인 `<script>`는 실행 안 됨 → `bindXxxHandlers`에서 `renderXxxChart()` 직접 호출.
 - `position:fixed`도 `backdrop-filter` 조상 안에선 viewport 기준 아님 → 드롭다운 body portal.
 - 게이트 `requiresAny` 키는 `STANDARD_FIELDS` 정규키와 정확히 일치(단/복수) — 추측 말고 복붙.
+- **`type="number"`는 콤마 표시 불가** → 금액 입력은 `text inputmode=numeric`+blur 재포맷(`allocFmtNum`)+**모든 read 사이트 콤마 strip**(`allocParseNum`). `parseFloat("72,341")=72` 함정, 하나라도 빠지면 분배 0. NaN가드 `==null`. `<details>` 안 canvas는 펼칠 때 `chart.resize()`(캔버스 id≠인스턴스 키 주의).
+- **마케터 도구는 결론·액션 먼저, 진단 접기**(5-3): §0 평어 결론 카드(`computeAllocSummary` 재사용=총합계와 수치 일치)+산점도·추세선 진단은 `<details>` 기본 접힘+알림 다발은 한 줄 칩 fold. 전문 용어(vertex/종모양)는 평어+title 툴팁.
 
 # 도구 추가 패턴
 
