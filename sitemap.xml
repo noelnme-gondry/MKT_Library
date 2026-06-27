@@ -1,117 +1,117 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://mkt-library.up.railway.app/</loc>
+    <loc>https://mktlibrary.up.railway.app/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-mmp-sdk-setup</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-mmp-sdk-setup</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-event-taxonomy</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-event-taxonomy</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-postback-manual</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-postback-manual</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-ios-privacy-skan</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-ios-privacy-skan</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-google-uac-guide</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-google-uac-guide</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-meta-aap-opt</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-meta-aap-opt</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-apple-search-ads</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-apple-search-ads</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-app-retargeting</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-app-retargeting</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-aso-basic</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-aso-basic</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-creative-spec</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-creative-spec</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-3sec-hook</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-3sec-hook</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-kpi-analysis</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-kpi-analysis</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-cohort-retention</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-cohort-retention</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-cannibalization-analysis</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-cannibalization-analysis</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/SOP-ad-fraud-detection</loc>
+    <loc>https://mktlibrary.up.railway.app/SOP-ad-fraud-detection</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/Analysis-ops-dashboard</loc>
+    <loc>https://mktlibrary.up.railway.app/Analysis-ops-dashboard</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/Analysis-campaign-pvm</loc>
+    <loc>https://mktlibrary.up.railway.app/Analysis-campaign-pvm</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/Analysis-budget-allocation</loc>
+    <loc>https://mktlibrary.up.railway.app/Analysis-budget-allocation</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/Analysis-creative-analyzer</loc>
+    <loc>https://mktlibrary.up.railway.app/Analysis-creative-analyzer</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/Analysis-ab-test</loc>
+    <loc>https://mktlibrary.up.railway.app/Analysis-ab-test</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/Analysis-marketing-response</loc>
+    <loc>https://mktlibrary.up.railway.app/Analysis-marketing-response</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://mkt-library.up.railway.app/Analysis-aha-moment</loc>
+    <loc>https://mktlibrary.up.railway.app/Analysis-aha-moment</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
