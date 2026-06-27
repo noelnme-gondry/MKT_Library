@@ -151,6 +151,8 @@ git merge origin/main --no-edit → git checkout --ours index.html
 - **게이트 `requiresAny` 키는 `STANDARD_FIELDS` 정규키와 정확히 일치(단/복수)**(PR #168): `["click"]` vs 정규키 `clicks` 불일치 → 데모인데 영구 잠김(silent). 키는 추측 말고 복붙.
 - **CSV 자동매핑·드롭다운은 도구별 필드로 스코프**(`toolFieldKeySet`): 전역 `autoMapHeaders`/전체 `STANDARD_FIELDS` 드롭다운은 그 도구가 안 쓰는 필드(코호트·MMM·국가 등)까지 매핑해 "매핑됐는데 기능엔 못 씀" 유발. `TOOL_REQUIRED_FIELDS`(oneOf 포함)+`TOOL_OPTIONAL_FIELDS` 합집합으로 자동매핑·드롭다운 제한, 형제 CSV 이어받을 때도(`loadCsvFromTool`) 복사 대신 본인 도구 기준 재자동매핑. 표준필드 겹침 0(colMap류 5-18)이면 null→전체 폴백. 스코프 밖 기존 선택값은 "(이 도구 미사용)" 옵션으로 보존(데이터 손실 방지). 주의: `cost`(효율)와 `spend`(Creative)는 별도 키 — 같은 "비용"이라도 도구 grain 따라 다름. `spend`에 `cost`/`비용` 별칭 부여(스코프가 충돌 차단 — 효율은 `cost`키 우선, creative는 `cost`키 스코프 밖이라 `spend`로 잡힘).
 - **5-18 MMM 특이사항**: ROAS는 표시층 invert만(배분은 CPR 공간)·화면+export 한 세트. 회귀계수는 **연관≠인과**(확정은 holdout 5-15 전용). 전부-0/완전공선 컬럼 → 특이행렬 → `mmmBuildFeatures`의 `_nonRedundantCols`(Gram-Schmidt)로 드롭. 희소·저커버리지 채널 음수 탄력성은 "노이즈"지 "잠식" 아님. 상세는 §12.9·PR #51~190.
+- **`type="number"`는 천단위 콤마 표시 불가**: 금액 입력은 `type="text" inputmode="numeric"` + blur 재포맷(`allocFmtNum`=toLocaleString) + **모든 read 사이트에서 콤마 strip**(`allocParseNum`=`replace(/[,\s]/g,'')` 후 parseFloat). `parseFloat("72,341,057")=72` 함정 — 입력 핸들러·검증·셀 핸들러 전부 교체 필수(하나라도 빠지면 분배 0 버그). NaN가드는 `==null`(allocParseNum이 null 반환, isNaN(null)=false). 5-3 예산/§5 cost 셀 적용(PR 예산배분 UX).
+- **전문 진단은 결론 뒤로 접기(5-3)**: 마케터 대상 도구는 §0 평어 **결론·액션 카드**(computeAllocSummary 재사용으로 총합계 카드와 수치 일치) 맨 위 + 산점도·추세선 진단·이상치/정규화는 `<details>` 기본 접힘. 알림 callout 다발은 한 줄 칩(`⚠ N건 — 보기`)으로 fold. `<details>` 안 canvas는 0px로 그려져 펼칠 때 `chart.resize()` 필요(instance 키 확인: 캔버스 id≠인스턴스 키). vertex/종모양 등 용어는 평어+title 툴팁.
 
 ---
 

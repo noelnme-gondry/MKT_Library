@@ -1923,6 +1923,37 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     font-weight: 600;
   }
 
+  /* 결론·액션 카드 (맨 위) */
+  .alloc-verdict-card {
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--primary, #adc6ff);
+    border-radius: var(--radius-xl, 12px);
+    background: var(--surface-container-lowest, var(--bg-2));
+    padding: 14px 18px;
+    margin: 0 0 16px;
+  }
+  .alloc-verdict-card.good { border-left-color: #5ad19a; }
+  .alloc-verdict-card.bad { border-left-color: #ff8a8a; }
+  .alloc-verdict-card.neutral { border-left-color: #f7b955; }
+  .alloc-verdict-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+  .alloc-verdict-text { font-size: 13px; color: var(--text-secondary); line-height: 1.65; }
+  .alloc-verdict-actions { margin: 11px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .alloc-verdict-actions li { font-size: 12.5px; color: var(--text-primary); display: flex; gap: 7px; align-items: baseline; line-height: 1.5; }
+  .alloc-verdict-actions li::before { content: "✅"; font-size: 11px; flex: none; }
+  .alloc-verdict-nums { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--border-subtle); }
+  .alloc-verdict-num { font-size: 11.5px; color: var(--text-muted); }
+  .alloc-verdict-num strong { display: block; font-size: 15px; color: var(--text-primary); margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+  /* §1 산점도·진단 접이식 + 추세선 알림 칩 */
+  .alloc-diag > summary.alloc-diag-summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 0; }
+  .alloc-diag > summary.alloc-diag-summary::-webkit-details-marker { display: none; }
+  .alloc-diag-hint { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+  .alloc-alert-fold { margin: 0.6rem 0 0; }
+  .alloc-alert-fold > summary.alloc-alert-chip { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-secondary); background: var(--surface-container-lowest, var(--bg-2)); }
+  .alloc-alert-fold > summary.alloc-alert-chip::-webkit-details-marker { display: none; }
+  .alloc-alert-fold.is-danger > summary.alloc-alert-chip { color: #ff8a8a; border-color: rgba(255,138,138,0.4); background: rgba(255,138,138,0.08); }
+  .alloc-alert-fold.is-warn > summary.alloc-alert-chip { color: #f7b955; border-color: rgba(247,185,85,0.4); background: rgba(247,185,85,0.08); }
+
   /* §4 아래 총 합계 비교 카드 */
   .alloc-total-card {
     background: var(--surface-container-lowest);
@@ -7000,8 +7031,10 @@ function monAllocBody() {
   return `
       ${currencyToggle}
       ${filterSummary}
+      <div id="alloc-verdict"></div>
       <section class="block" id="s-scatter">
-        <h2 class="section-title"><span class="ix">§1</span>Cost vs CPR 산점도 & 추세선</h2>
+        <details class="alloc-diag" ${ALLOC_STATE.scatterOpen ? "open" : ""}>
+        <summary class="section-title alloc-diag-summary"><span class="ix">§1</span>Cost vs CPR 산점도 &amp; 추세선 진단<span class="alloc-diag-hint">▸ 펼쳐서 진단·고급 설정 보기 (이상치·정규화·추세선 위험)</span></summary>
         <p style="color:var(--text-secondary);font-size:13px;">
           각 row를 (Cost, CPR) 점으로 시각화하고, 채널별로 추세선을 적합합니다.
           <strong>최근 ${ALLOC_STATE.recentDays}일</strong> 데이터는 ▲ 마커 + 진한 색으로 강조됩니다.
@@ -7070,6 +7103,7 @@ function monAllocBody() {
         </div>
         <div id="alloc-trend-summary"></div>
         <div id="alloc-sim-container" style="margin-top:1rem;"></div>
+        </details>
       </section>
 
       <section class="block" id="s-controls">
@@ -7084,7 +7118,7 @@ function monAllocBody() {
                   <button type="button" data-period="monthly" class="${ALLOC_STATE.budgetPeriod === 'monthly' ? 'active' : ''}">월예산</button>
                 </span>
               </label>
-              <input id="alloc-budget" type="number" inputmode="numeric" placeholder="${ALLOC_STATE.budgetPeriod === 'monthly' ? '예: 30000000 (월)' : '예: 1000000 (일)'}" value="${ALLOC_STATE.budget != null ? ALLOC_STATE.budget : ''}" />
+              <input id="alloc-budget" type="text" inputmode="numeric" autocomplete="off" placeholder="${ALLOC_STATE.budgetPeriod === 'monthly' ? '예: 30,000,000 (월)' : '예: 1,000,000 (일)'}" value="${allocFmtNum(ALLOC_STATE.budget)}" />
               <div id="alloc-budget-warning-container"></div>
               <span class="ab-field-hint" id="alloc-budget-hint">
                 ${(() => {
@@ -7956,6 +7990,7 @@ const ALLOC_STATE = {
   showRecent: true,
   hidePoints: false,       // 점 숨김 (추세선만 표시)
   advancedOpen: false,     // 상세 설정(최근 가중치/이상치/강도/정규화/외삽/표시) 펼침 여부
+  scatterOpen: false,      // §1 산점도·추세선 진단 패널 펼침 여부(기본 접힘 — 결론·액션 먼저)
   sim: {                   // 시뮬레이션 상태 (채널 1개 선택 시)
     channel: null,
     currentCost: null,
@@ -8132,6 +8167,16 @@ function resetAllChannelOverrides() {
 function getEffectiveDailyBudget() {
   const raw = ALLOC_STATE.budget || 0;
   return ALLOC_STATE.budgetPeriod === "monthly" ? raw / 30 : raw;
+}
+
+/* 콤마 포함 숫자 입력 파싱/표시 — type="number"는 천단위 콤마를 못 보여줘 text+inputmode로 전환.
+   parseFloat("72,341,057")는 72에서 멈추므로 모든 read 사이트에서 반드시 strip 후 파싱. */
+function allocParseNum(s) {
+  const n = parseFloat(String(s == null ? "" : s).replace(/[,\s]/g, ""));
+  return isNaN(n) ? null : n;
+}
+function allocFmtNum(n) {
+  return (n == null || isNaN(n)) ? "" : Math.round(n).toLocaleString();
 }
 
 /* perChannel 상태를 cache 키에 포함시키기 위한 해시 */
@@ -24165,6 +24210,19 @@ function bindStaticAllocatorControls() {
   const container = document.querySelector(".alloc-scatter-controls-wrap");
   if (!container || container.dataset.bound === "1") return;
 
+  // §1 산점도·진단 패널 펼침 상태 보존 (재렌더 시 유지)
+  const diagFold = document.querySelector("#s-scatter details.alloc-diag");
+  if (diagFold) {
+    diagFold.addEventListener("toggle", () => {
+      ALLOC_STATE.scatterOpen = diagFold.open;
+      // 접힌 상태에서 0px로 그려진 산점도를 펼칠 때 재사이징 (Chart.js hidden-canvas)
+      if (diagFold.open) {
+        const ch = CHART_INSTANCES["alloc-scatter"];
+        if (ch && typeof ch.resize === "function") requestAnimationFrame(() => ch.resize());
+      }
+    });
+  }
+
   const advToggle = document.getElementById("alloc-advanced-toggle");
   if (advToggle) {
     advToggle.addEventListener("click", () => {
@@ -25640,7 +25698,7 @@ function renderTrendSummary(trendInfo) {
         ? `<span class="pill" style="border-color:rgba(255,138,138,0.4);color:#ff8a8a;background:rgba(255,138,138,0.08);">우하향 ⚠</span>`
         : `<span class="pill" style="border-color:rgba(90,209,154,0.3);color:#5ad19a;background:rgba(90,209,154,0.06);">우상향</span>`);
       if (t.sparseData) badges.push(`<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);">데이터 부족</span>`);
-      if (t.suspect) badges.push(`<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);">vertex 의심</span>`);
+      if (t.suspect) badges.push(`<span class="pill" style="border-color:rgba(247,185,85,0.4);color:#f7b955;background:rgba(247,185,85,0.08);" title="곡선의 꼭짓점(vertex)이 관측 데이터 밖에 있어 외삽 예측이 과장될 수 있습니다">외삽 주의</span>`);
       return `
         <tr>
           <td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${t.color};margin-right:0.4rem;"></span>${escapeHtml(truncateLabel(t.channel, 40))}</td>
@@ -25660,7 +25718,13 @@ function renderTrendSummary(trendInfo) {
       </div>
     </div>`;
 
+  const dangerCount = descending.length + bellShapes.length;
+  const warnCount = uShapes.length + suspects.length + sparseChannels.length;
+  const totalIssues = dangerCount + warnCount;
+
   wrap.innerHTML = `
+    ${totalIssues > 0 ? `<details class="alloc-alert-fold ${dangerCount > 0 ? 'is-danger' : 'is-warn'}">
+      <summary class="alloc-alert-chip">${dangerCount > 0 ? '⚠' : 'ⓘ'} 추세선 진단 ${totalIssues}건 — 클릭해 자세히 보기</summary>` : ''}
     ${descending.length > 0 ? allocAlertLine(
       "danger",
       `우하향 추세선 채널 ${descending.length}개 감지`,
@@ -25710,6 +25774,7 @@ function renderTrendSummary(trendInfo) {
       "왜 발생: 집계 윈도우(최근 N일)가 좁거나 해당 채널의 집행 빈도가 낮을 때 발생합니다. " +
       "어떻게: 집계 윈도우를 늘려(예: 7일→28일) 더 많은 데이터 포인트를 확보하거나, 데이터가 누적될 때까지는 모드 A(가중평균)처럼 추세선 외삽에 덜 의존하는 방식을 사용하세요."
     ) : ""}
+    ${totalIssues > 0 ? `</details>` : ''}
 
     <div class="alloc-trend-table">
       <div class="alloc-trend-table-title">채널별 추세선 R² · 방향</div>
@@ -25730,6 +25795,8 @@ function refreshAllocationResults() {
   const barWrap = document.getElementById("alloc-bar");
   const legendWrap = document.getElementById("alloc-bar-legend");
   if (!tbody || !barWrap) return;
+  const _verdictEl = document.getElementById("alloc-verdict");
+  if (_verdictEl) _verdictEl.innerHTML = "";  // 성공 경로에서만 다시 채움(아래)
 
   // 예산 입력값 유효성 검사 및 경고 노출
   const warningContainer = document.getElementById("alloc-budget-warning-container");
@@ -25737,8 +25804,8 @@ function refreshAllocationResults() {
     const budgetRawInput = document.getElementById("alloc-budget");
     const valStr = budgetRawInput ? budgetRawInput.value.trim() : "";
     if (valStr !== "") {
-      const parsed = parseFloat(valStr);
-      if (isNaN(parsed)) {
+      const parsed = allocParseNum(valStr);
+      if (parsed == null) {
         warningContainer.innerHTML = `
           <div class="alloc-budget-alert-banner">
             <span>⚠ 유효한 예산 금액을 입력해 주세요. (숫자만 입력 가능)</span>
@@ -25859,6 +25926,7 @@ function refreshAllocationResults() {
 
   renderAllocItems(items, dailyBudget, tbody, barWrap, legendWrap, mode === "c" ? "mode-c" : "mode-b", { unallocated, overspent, totalAllocated, lockedTotal });
   renderAllocationTotalCard({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
+  renderAllocVerdict({ items, metric, dailyBudget, totalAllocated, unallocated, mode });
   renderAllocScenario({ modelsMap, selected, metric, mode, dailyBudget });
 }
 
@@ -25956,17 +26024,9 @@ function renderAllocScenarioChart(scenarios, metric) {
   });
 }
 
-/* 총 합계 카드 — 이전 N일 합산 vs 분배 후 예상 비교 */
-function renderAllocationTotalCard(payload) {
-  const wrap = document.getElementById("alloc-total-card");
-  if (!wrap) return;
-  if (!payload) { wrap.innerHTML = ""; return; }
-
-  const { items, metric, dailyBudget, totalAllocated, unallocated, mode } = payload;
-  const metricLabel = getCostMetricLabel(metric);
-  const unitLabel = getMetricUnitLabel(metric);
-
-  // 최근 N일 합산 (기본 14일)
+/* 배분 결과 요약(이전 N일 vs 분배 후 예상) — 총 합계 카드와 결론 카드가 공유해 수치 drift 방지 */
+function computeAllocSummary(payload) {
+  const { items, metric } = payload;
   const recentDays = ALLOC_STATE.recentDays || 14;
   const prev = items.reduce((acc, it) => {
     const hist = calcChannelHistorySummary(it.channel, metric, { recentDays });
@@ -25980,41 +26040,49 @@ function renderAllocationTotalCard(payload) {
     }
     return acc;
   }, { cost: 0, results: 0, installs: 0, actions: 0, revenue: 0, rowCount: 0 });
-
-  // 예상 분배 합산
   const next = items.reduce((acc, it) => {
     acc.cost += it.cost;
     acc.results += it.results;
     return acc;
   }, { cost: 0, results: 0 });
-
-  const prevAvgCPR = prev.results > 0 ? prev.cost / prev.results : null;
-  const prevROAS = (prev.cost > 0 && prev.revenue > 0) ? prev.revenue / prev.cost : null;
-  const nextAvgCPR = next.results > 0 ? next.cost / next.results : null;
   // 예상 revenue/ROAS: 채널별 평균 revenue/result 가정해서 추정 (최근 N일 기준)
   let nextRevenue = 0;
   for (const it of items) {
     const hist = calcChannelHistorySummary(it.channel, metric, { recentDays });
     if (hist && hist.totalResults > 0 && hist.totalRevenue > 0) {
-      const revPerResult = hist.totalRevenue / hist.totalResults;
-      nextRevenue += it.results * revPerResult;
+      nextRevenue += it.results * (hist.totalRevenue / hist.totalResults);
     }
   }
-  const nextROAS = (next.cost > 0 && nextRevenue > 0) ? nextRevenue / next.cost : null;
-
-  // 일/월 환산 (사용자 입력값 기준)
-  const periodLabel = ALLOC_STATE.budgetPeriod === "monthly" ? "월 (÷30 환산)" : "일";
-
-  const dCost = next.cost - (prev.cost / Math.max(1, prev.rowCount));  // 일 단위 비교
-  const arrow = (v) => v > 0 ? "▲" : v < 0 ? "▼" : "—";
-  const colorClass = (v) => v > 0 ? "" : v < 0 ? "down" : "";
-
-  // 일 단위 이전 (rowCount일 평균)
   const prevPerDay = prev.rowCount > 0 ? {
     cost: prev.cost / prev.rowCount,
     results: prev.results / prev.rowCount,
     revenue: prev.revenue / prev.rowCount,
   } : null;
+  return {
+    recentDays, prev, next, nextRevenue, prevPerDay,
+    prevAvgCPR: prev.results > 0 ? prev.cost / prev.results : null,
+    nextAvgCPR: next.results > 0 ? next.cost / next.results : null,
+    prevROAS: (prev.cost > 0 && prev.revenue > 0) ? prev.revenue / prev.cost : null,
+    nextROAS: (next.cost > 0 && nextRevenue > 0) ? nextRevenue / next.cost : null,
+  };
+}
+
+/* 총 합계 카드 — 이전 N일 합산 vs 분배 후 예상 비교 */
+function renderAllocationTotalCard(payload) {
+  const wrap = document.getElementById("alloc-total-card");
+  if (!wrap) return;
+  if (!payload) { wrap.innerHTML = ""; return; }
+
+  const { items, metric, dailyBudget, totalAllocated, unallocated, mode } = payload;
+  const metricLabel = getCostMetricLabel(metric);
+  const unitLabel = getMetricUnitLabel(metric);
+
+  const { recentDays, prev, next, nextRevenue, prevPerDay, prevAvgCPR, nextAvgCPR, prevROAS, nextROAS } = computeAllocSummary(payload);
+
+  // 일/월 환산 (사용자 입력값 기준)
+  const periodLabel = ALLOC_STATE.budgetPeriod === "monthly" ? "월 (÷30 환산)" : "일";
+  const arrow = (v) => v > 0 ? "▲" : v < 0 ? "▼" : "—";
+  const colorClass = (v) => v > 0 ? "" : v < 0 ? "down" : "";
 
   wrap.innerHTML = `
     <div class="alloc-total-card">
@@ -26060,6 +26128,70 @@ function renderAllocationTotalCard(payload) {
       </div>
     </div>
   `;
+}
+
+/* 결론·액션 카드 — 전문 진단 없이 "지금 이렇게 하세요"를 평어로 제시.
+   총 합계 카드와 같은 computeAllocSummary를 써서 수치가 일치한다(§ drift 방지). */
+function renderAllocVerdict(payload) {
+  const wrap = document.getElementById("alloc-verdict");
+  if (!wrap) return;
+  if (!payload || !payload.items || !payload.items.length) { wrap.innerHTML = ""; return; }
+
+  const { items, metric, unallocated } = payload;
+  const S = computeAllocSummary(payload);
+  const metricLabel = getCostMetricLabel(metric);
+  const unitLabel = getMetricUnitLabel(metric);
+  const roas = isRoasMetric(metric);
+
+  // 효율 변화는 표시 공간(display-space)에서 — CPI/CPA는 낮을수록, ROAS는 높을수록 긍정
+  const dPrev = displayMetricValue(S.prevAvgCPR, metric);
+  const dNext = displayMetricValue(S.nextAvgCPR, metric);
+  let tone = "neutral", verdict = "", pct = null;
+  if (dPrev != null && dNext != null && dPrev !== 0) {
+    const d = dNext - dPrev;
+    pct = Math.abs(d / dPrev) * 100;
+    const good = roas ? d > 0 : d < 0;
+    if (pct < 2) {
+      tone = "neutral";
+      verdict = `추천 배분은 현재와 거의 같습니다 (${metricLabel} 변화 ${pct.toFixed(1)}%). 재배분만으로 얻을 효율 개선은 미미하니, 채널 자체 효율(소재·타겟·랜딩)을 손보는 편이 낫습니다.`;
+    } else if (good) {
+      tone = "good";
+      verdict = `추천대로 재배분하면 ${metricLabel}가 약 <strong>${pct.toFixed(1)}% ${roas ? "상승" : "개선"}</strong>할 것으로 보입니다. 아래 액션부터 적용해 보세요.`;
+    } else {
+      tone = "bad";
+      verdict = `현재 입력·제약으로는 ${metricLabel}가 약 <strong>${pct.toFixed(1)}% 악화</strong>됩니다. Min/Max·잠금 제약이나 선택한 채널을 점검하세요.`;
+    }
+  } else {
+    verdict = `예상 ${unitLabel} ${formatNumber(S.next.results, { decimals: 0 })}건 기준으로 배분했습니다. 효율을 비교할 과거 데이터가 부족해 개선폭은 추정하지 않았습니다.`;
+  }
+
+  // 액션: 채널별 일단위 증감 (최대 증액 1 + 최대 감액/0 배분 1)
+  const moves = items.map(it => {
+    const h = calcChannelHistorySummary(it.channel, metric, { recentDays: S.recentDays });
+    const prevDaily = (h && h.rowCount > 0) ? h.totalCost / h.rowCount : 0;
+    return { ch: it.channel, cost: it.cost, prevDaily, delta: it.cost - prevDaily, zero: it.cost === 0 };
+  });
+  const incr = moves.filter(m => m.delta > 0).sort((a, b) => b.delta - a.delta);
+  const decr = moves.filter(m => m.delta < 0).sort((a, b) => a.delta - b.delta);
+  const acts = [];
+  if (incr[0]) acts.push(`<strong>${escapeHtml(incr[0].ch)}</strong> 증액 — 일 ${fmtCurrency(Math.round(incr[0].delta))} 더 (${fmtCurrency(Math.round(incr[0].prevDaily))} → ${fmtCurrency(Math.round(incr[0].cost))})`);
+  if (decr[0]) acts.push(`<strong>${escapeHtml(decr[0].ch)}</strong> ${decr[0].zero ? "중단·0 배분" : "감액"} — 일 ${fmtCurrency(Math.round(Math.abs(decr[0].delta)))} 줄임${decr[0].zero ? " (추가 예산 대비 효율 없음 → 현 수준 유지/재검토)" : ""}`);
+  if ((unallocated || 0) > 0) acts.push(`남은 ${fmtCurrency(unallocated)}은 더 투입해도 효율이 오르지 않아 <strong>미배분</strong>으로 두는 편이 낫습니다.`);
+
+  const num = (label, val) => `<div class="alloc-verdict-num">${label}<strong>${val}</strong></div>`;
+  const nums = [
+    num(`예상 ${unitLabel}수`, formatNumber(S.next.results, { decimals: 0 })),
+    num(`예상 평균 ${metricLabel}`, `${S.prevAvgCPR != null ? fmtCostMetric(S.prevAvgCPR, metric) : "—"} → ${S.nextAvgCPR != null ? fmtCostMetric(S.nextAvgCPR, metric) : "—"}`),
+    S.nextROAS != null ? num("예상 ROAS", `${(S.nextROAS * 100).toFixed(1)}%`) : "",
+  ].join("");
+
+  wrap.innerHTML = `
+    <div class="alloc-verdict-card ${tone}">
+      <div class="alloc-verdict-title">📌 결론 — 이 예산으로 무엇을 할까</div>
+      <div class="alloc-verdict-text">${verdict}</div>
+      ${acts.length ? `<ul class="alloc-verdict-actions">${acts.map(a => `<li><span>${a}</span></li>`).join("")}</ul>` : ""}
+      <div class="alloc-verdict-nums">${nums}</div>
+    </div>`;
 }
 
 /* ========== 모드 C · 절대 CPR 가중 분배 ==========
@@ -26238,7 +26370,9 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
     const hist = calcChannelHistorySummary(it.channel, metric, { recentDays });
     const isZero = it.cost === 0;
     const reasonNoAlloc = isZero && !it.locked
-      ? (it.xMax ? `한계효용 ≤ 0 (관측 범위 ${fmtCurrency(it.xMin)}~${fmtCurrency(it.xMax)} 내 더 효율적인 채널 없음)` : "추세선 부족")
+      ? (it.xMax
+          ? { msg: "지금보다 예산을 더 줘도 효율이 오르지 않아 0 배분 — 현 수준 유지를 권장합니다", tip: `한계효용 ≤ 0 · 관측 범위 ${fmtCurrency(it.xMin)}~${fmtCurrency(it.xMax)} 내 더 효율적인 채널 없음` }
+          : { msg: "추세선 데이터가 부족해 배분을 계산하지 못했습니다", tip: "" })
       : null;
 
     // 풍부한 데이터 표시: 비용, 설치, 액션, 매출, 평균 CPI/CPA/ROAS
@@ -26275,13 +26409,13 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
             ${it.locked ? `<button class="alloc-lock-toggle" data-channel="${escapeHtml(it.channel)}" title="잠금 해제 (자동 분배로 되돌리기)">🔒</button>` : ''}
           </div>
           ${histLine}
-          ${reasonNoAlloc ? `<div class="alloc-ch-warn">${escapeHtml(reasonNoAlloc)} — 강제 분배하려면 우측에 직접 입력</div>` : ''}
+          ${reasonNoAlloc ? `<div class="alloc-ch-warn"${reasonNoAlloc.tip ? ` title="${escapeHtml(reasonNoAlloc.tip)}"` : ''}>${escapeHtml(reasonNoAlloc.msg)} — 강제 분배하려면 우측에 직접 입력</div>` : ''}
         </td>
         <td>
           <div class="alloc-cost-cell">
-            <input type="number" class="alloc-cost-input ${it.locked ? 'locked' : ''}"
+            <input type="text" inputmode="numeric" autocomplete="off" class="alloc-cost-input ${it.locked ? 'locked' : ''}"
                    data-channel="${escapeHtml(it.channel)}"
-                   value="${Math.round(it.cost)}" step="100" min="0" style="${costStyle}" />
+                   value="${allocFmtNum(it.cost)}" style="${costStyle}" />
             ${it.locked
               ? `<button class="alloc-cost-reset" data-channel="${escapeHtml(it.channel)}" title="자동 분배로 되돌리기">↺</button>`
               : ''}
@@ -26316,8 +26450,8 @@ function renderAllocItems(items, budget, tbody, barWrap, legendWrap, modeLabel, 
   tbody.querySelectorAll(".alloc-cost-input").forEach(input => {
     input.addEventListener("change", () => {
       const ch = input.dataset.channel;
-      const v = parseFloat(input.value);
-      if (isNaN(v) || v < 0) {
+      const v = allocParseNum(input.value);
+      if (v == null || v < 0) {
         delete ALLOC_STATE.allocOverrides[ch];
       } else {
         ALLOC_STATE.allocOverrides[ch] = v;
@@ -26825,7 +26959,7 @@ function bindBudgetAllocatorHandlers() {
   if (budgetInput) {
     let _budgetTimer = null;
     budgetInput.addEventListener("input", () => {
-      const newBudget = parseFloat(budgetInput.value) || null;
+      const newBudget = allocParseNum(budgetInput.value);
       ALLOC_STATE.budget = newBudget;
       const hasBudget = (newBudget || 0) > 0;
       // §3/§4 visibility 토글 (DOM 그대로, display만)
@@ -26839,6 +26973,11 @@ function bindBudgetAllocatorHandlers() {
         refreshAllocationResults();
         _budgetTimer = null;
       }, 100);
+    });
+    // blur 시 천단위 콤마 재적용 (타이핑 중엔 커서 점프 방지 위해 미적용)
+    budgetInput.addEventListener("blur", () => {
+      const n = allocParseNum(budgetInput.value);
+      budgetInput.value = allocFmtNum(n);
     });
   }
 
