@@ -3432,10 +3432,10 @@ const IA = [
     title: "Foundation",
     subtitle: "앱 트래킹 인프라 및 계정 셋업",
     items: [
-      { id: "1-1", title: "개발자 협업 가이드 및 테크니컬 PRD", desc: "MMP SDK 초기화 스펙, 딥링크 라우팅 로직, QA 시나리오" },
-      { id: "1-2", title: "인앱 이벤트 택소노미 설계서", desc: "비즈니스 핵심 퍼널 및 파라미터 규격" },
-      { id: "1-3", title: "매체별 포스트백 연동 매뉴얼", desc: "Adjust-매체 간 파트너 연동" },
-      { id: "1-4", title: "iOS 프라이버시 대응 (ATT & SKAN)", desc: "프롬프트 최적화 및 Conversion Value 스키마" },
+      { id: "1-1", slug: "SOP-mmp-sdk-setup", title: "개발자 협업 가이드 및 테크니컬 PRD", desc: "MMP SDK 초기화 스펙, 딥링크 라우팅 로직, QA 시나리오" },
+      { id: "1-2", slug: "SOP-event-taxonomy", title: "인앱 이벤트 택소노미 설계서", desc: "비즈니스 핵심 퍼널 및 파라미터 규격" },
+      { id: "1-3", slug: "SOP-postback-manual", title: "매체별 포스트백 연동 매뉴얼", desc: "Adjust-매체 간 파트너 연동" },
+      { id: "1-4", slug: "SOP-ios-privacy-skan", title: "iOS 프라이버시 대응 (ATT & SKAN)", desc: "프롬프트 최적화 및 Conversion Value 스키마" },
     ],
   },
   {
@@ -3443,10 +3443,10 @@ const IA = [
     title: "Execution",
     subtitle: "앱 설치 및 인게이지먼트 캠페인 세팅",
     items: [
-      { id: "2-1", title: "Google App Campaigns (UAC) 가이드", desc: "tCPI, tCPA 캠페인 및 에셋 그룹 구조" },
-      { id: "2-2", title: "Meta Advantage+ App (AAP) 최적화", desc: "OS별 분리 및 머신러닝 최적화" },
-      { id: "2-3", title: "Apple Search Ads (ASA) 운영 매뉴얼", desc: "Search Match 및 키워드 그룹핑" },
-      { id: "2-4", title: "앱 리타겟팅 및 Re-engagement", desc: "디퍼드 딥링크 활용 및 오디언스 세분화" },
+      { id: "2-1", slug: "SOP-google-uac-guide", title: "Google App Campaigns (UAC) 가이드", desc: "tCPI, tCPA 캠페인 및 에셋 그룹 구조" },
+      { id: "2-2", slug: "SOP-meta-aap-opt", title: "Meta Advantage+ App (AAP) 최적화", desc: "OS별 분리 및 머신러닝 최적화" },
+      { id: "2-3", slug: "SOP-apple-search-ads", title: "Apple Search Ads (ASA) 운영 매뉴얼", desc: "Search Match 및 키워드 그룹핑" },
+      { id: "2-4", slug: "SOP-app-retargeting", title: "앱 리타겟팅 및 Re-engagement", desc: "디퍼드 딥링크 활용 및 오디언스 세분화" },
     ],
   },
   {
@@ -3454,9 +3454,9 @@ const IA = [
     title: "Creative & Copy",
     subtitle: "앱 스토어 및 소재 기획",
     items: [
-      { id: "3-1", title: "앱 스토어 최적화 (ASO) 베이직", desc: "메타데이터 및 스크린샷 A/B 테스트" },
-      { id: "3-2", title: "매체별 앱 설치 유도 소재 규격", desc: "플레이어블, 숏폼 영상 안전 영역" },
-      { id: "3-3", title: "초기 3초 훅(Hook) 설계 프레임워크", desc: "핵심 UI/UX 강조 패턴" },
+      { id: "3-1", slug: "SOP-aso-basic", title: "앱 스토어 최적화 (ASO) 베이직", desc: "메타데이터 및 스크린샷 A/B 테스트" },
+      { id: "3-2", slug: "SOP-creative-spec", title: "매체별 앱 설치 유도 소재 규격", desc: "플레이어블, 숏폼 영상 안전 영역" },
+      { id: "3-3", slug: "SOP-3sec-hook", title: "초기 3초 훅(Hook) 설계 프레임워크", desc: "핵심 UI/UX 강조 패턴" },
     ],
   },
   {
@@ -3464,10 +3464,10 @@ const IA = [
     title: "Analysis & Optimization",
     subtitle: "MMP 기반 데이터 분석",
     items: [
-      { id: "4-1", title: "앱 마케팅 핵심 지표(KPI) 분석", desc: "CPI, CPA, ARPU, ROAS 벤치마크" },
-      { id: "4-2", title: "코호트 기반 리텐션 가이드", desc: "D+N 잔존율 및 LTV 검증" },
-      { id: "4-3", title: "오가닉 vs 페이드 카니발리제이션 분석", desc: "기여 모델 보정" },
-      { id: "4-4", title: "모바일 광고 프로드 탐지", desc: "클릭 스팸, SDK 스푸핑 방어" },
+      { id: "4-1", slug: "SOP-kpi-analysis", title: "앱 마케팅 핵심 지표(KPI) 분석", desc: "CPI, CPA, ARPU, ROAS 벤치마크" },
+      { id: "4-2", slug: "SOP-cohort-retention", title: "코호트 기반 리텐션 가이드", desc: "D+N 잔존율 및 LTV 검증" },
+      { id: "4-3", slug: "SOP-cannibalization-analysis", title: "오가닉 vs 페이드 카니발리제이션 분석", desc: "기여 모델 보정" },
+      { id: "4-4", slug: "SOP-ad-fraud-detection", title: "모바일 광고 프로드 탐지", desc: "클릭 스팸, SDK 스푸핑 방어" },
     ],
   },
   {
@@ -3475,9 +3475,9 @@ const IA = [
     title: "효율 & 예산 분석",
     subtitle: "일별 캠페인 CSV 1개 → 효율·배분 분석 연속 처리",
     items: [
-      { id: "5-2", title: "운영 대시보드", desc: "시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트 — 한 CSV로 현황 감시" },
-      { id: "5-21", title: "캠페인 성과 변동 탐지", desc: "이번주 vs 지난주 CPA/CPI 변동을 채널→캠페인→소재로 드릴다운 — 무엇이 비용을 올리고 내렸는지 무잔차 분해" },
-      { id: "5-3", title: "예산 배분", desc: "절대 CPR/ROAS 가중 배분 + 한계효용 그리디(고급) — 채널별 예산 최적화" },
+      { id: "5-2", slug: "Analysis-ops-dashboard", title: "운영 대시보드", desc: "시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트 — 한 CSV로 현황 감시" },
+      { id: "5-21", slug: "Analysis-campaign-pvm", title: "캠페인 성과 변동 탐지", desc: "이번주 vs 지난주 CPA/CPI 변동을 채널→캠페인→소재로 드릴다운 — 무엇이 비용을 올리고 내렸는지 무잔차 분해" },
+      { id: "5-3", slug: "Analysis-budget-allocation", title: "예산 배분", desc: "절대 CPR/ROAS 가중 배분 + 한계효용 그리디(고급) — 채널별 예산 최적화" },
     ],
   },
   {
@@ -3485,7 +3485,7 @@ const IA = [
     title: "크리에이티브 분석",
     subtitle: "소재 성과 daily CSV",
     items: [
-      { id: "5-6", title: "Creative Analyzer", desc: "소재 성과 분해 + Fatigue + Concept Matrix + Next-test 후보" },
+      { id: "5-6", slug: "Analysis-creative-analyzer", title: "Creative Analyzer", desc: "소재 성과 분해 + Fatigue + Concept Matrix + Next-test 후보" },
     ],
   },
   {
@@ -3493,7 +3493,7 @@ const IA = [
     title: "실험 & 측정",
     subtitle: "실험 설계·판독 + 증분 측정",
     items: [
-      { id: "5-4", title: "실험 분석", desc: "3탭: 실험 설계(A/B 표본·예산) · 결과 판독(arm×지표 비교 매트릭스) · 홀드아웃 증분(lift·iROAS)" },
+      { id: "5-4", slug: "Analysis-ab-test", title: "실험 분석", desc: "3탭: 실험 설계(A/B 표본·예산) · 결과 판독(arm×지표 비교 매트릭스) · 홀드아웃 증분(lift·iROAS)" },
     ],
   },
   {
@@ -3501,11 +3501,20 @@ const IA = [
     title: "고급 분석",
     subtitle: "MMM 마케팅 반응 회귀 + 유저 행동 Aha-moment 탐색 · 가설 생성용 (인과/holdout 아님)",
     items: [
-      { id: "5-18", title: "마케팅 반응 분석", desc: "4탭: 카니발 진단 · Trend Forecast(예산 예측) · MMM 기여 분해 · 범용 회귀(Lab) (가설용·holdout 아님)" },
-      { id: "5-20", title: "Aha-Moment Finder", desc: "선행 행동 윈도우×횟수 그리드 탐색 — F1/Lift로 타겟 달성과 가장 강한 연관 찾기 (가설용·홀드아웃 아님)" },
+      { id: "5-18", slug: "Analysis-marketing-response", title: "마케팅 반응 분석", desc: "4탭: 카니발 진단 · Trend Forecast(예산 예측) · MMM 기여 분해 · 범용 회귀(Lab) (가설용·holdout 아님)" },
+      { id: "5-20", slug: "Analysis-aha-moment", title: "Aha-Moment Finder", desc: "선행 행동 윈도우×횟수 그리드 탐색 — F1/Lift로 타겟 달성과 가장 강한 연관 찾기 (가설용·홀드아웃 아님)" },
     ],
   },
 ];
+
+const slugToId = {};
+const idToSlug = {};
+IA.forEach(g => g.items.forEach(i => {
+  if (i.slug) {
+    slugToId[i.slug] = i.id;
+    idToSlug[i.id] = i.slug;
+  }
+}));
 
 /* Ops Dashboard(운영) 그룹 id 집합 — 가이드/도구 카운트 구분용 */
 const OPS_GROUP_IDS = new Set(["05", "06", "07", "10"]);
@@ -3819,13 +3828,14 @@ function renderNav(activeId) {
           </div>
           <div class="nav-items">
             ${group.items.map(it => {
+              const slug = idToSlug[it.id] || it.id;
               const lockIcon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;opacity:0.6;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
               return `
-              <div class="nav-item ${it.id === activeId ? "active" : ""}" data-route="${it.id}">
+              <a href="/${slug}" class="nav-item ${it.id === activeId ? "active" : ""}" data-route="${it.id}">
                 <span class="ix tnum">${displayItemNumber(it.id)}</span>
                 <span>${escapeHtml(it.title)}</span>
                 ${TOOL_TIER[it.id] === "pro" ? lockIcon : TOOL_TIER[it.id] === "free" ? `<span class="nav-pro-lock" title="무료" style="margin-left:auto;font-size:9px;color:#5ad19a;font-weight:700;">FREE</span>` : ""}
-              </div>`;
+              </a>`;
             }).join("")}
           </div>
         </div>`;
@@ -3847,9 +3857,7 @@ function renderNav(activeId) {
     `;
   }).join("");
 
-  $$('.nav-item').forEach(el => {
-    el.addEventListener("click", () => navigate(el.dataset.route));
-  });
+  // (a 태그 클릭은 bindLinkInterception()에서 전역으로 가로채어 처리함)
   $$('.nav-group-header').forEach(el => {
     el.addEventListener("click", () => {
       el.parentElement.classList.toggle("collapsed");
@@ -3967,7 +3975,7 @@ function renderLandingGuide() {
         const linkedGroups = IA.filter(g => p.groups.includes(g.id));
         const itemCount = linkedGroups.reduce((a, g) => a + g.items.length, 0);
         return `
-          <div class="phase-card" data-route="${p.cta}">
+          <a class="phase-card" href="/${idToSlug[p.cta] || p.cta}" data-route="${p.cta}">
             <div class="phase-card-head">
               <span class="phase-card-step">STEP ${idx + 1}</span>
               <span class="phase-card-tag">${escapeHtml(p.label)}</span>
@@ -3979,7 +3987,7 @@ function renderLandingGuide() {
               <span class="phase-card-meta tnum">${itemCount}개 항목</span>
             </div>
             <div class="phase-card-cta">시작하기 →</div>
-          </div>`;
+          </a>`;
       }).join("")}
     </div>
   `;
@@ -4008,14 +4016,14 @@ function renderLandingAnalyze() {
             if (!meta) return "";
             const tier = toolTier(tid);
             return `
-              <div class="phase-card ${tier === "free" ? "" : "phase-card-tool"}" data-route="${tid}">
+              <a class="phase-card ${tier === "free" ? "" : "phase-card-tool"}" href="/${idToSlug[tid] || tid}" data-route="${tid}">
                 <div class="phase-card-head">
                   <span class="phase-card-step">${escapeHtml(meta.title)}</span>
                   ${tierBadge(tier)}
                 </div>
                 <div class="phase-card-desc" style="margin-top:6px;">${escapeHtml(meta.desc || "")}</div>
                 <div class="phase-card-cta">${tier === "free" ? "바로 사용 →" : "열기 (Pro) →"}</div>
-              </div>`;
+              </a>`;
           }).join("")}
         </div>
       </section>`;
@@ -7331,7 +7339,7 @@ allocation = total_budget × weight`)}
           <div class="ico">⚠</div>
           <div class="body">
             <strong>그리디 주의사항</strong>
-            <p>채널별 spend 변동이 작거나 데이터가 적으면 곡선 적합이 불안정해져 추천이 편향될 수 있습니다. <strong>기본 추천은 절대 CPR/ROAS 가중</strong>을 권장합니다. 증분 효과를 기반으로 한 배분은 <a href="#5-18" data-route="5-18" style="color:var(--accent);">마케팅 반응 분석 MMM →</a>의 반응곡선 가이드를 참고하세요.</p>
+            <p>채널별 spend 변동이 작거나 데이터가 적으면 곡선 적합이 불안정해져 추천이 편향될 수 있습니다. <strong>기본 추천은 절대 CPR/ROAS 가중</strong>을 권장합니다. 증분 효과를 기반으로 한 배분은 <a href="/${idToSlug['5-18'] || '5-18'}" data-route="5-18" style="color:var(--accent);">마케팅 반응 분석 MMM →</a>의 반응곡선 가이드를 참고하세요.</p>
           </div>
         </div>
         <div class="callout info" style="margin-top:1rem;">
@@ -16597,7 +16605,7 @@ function renderMmmBudgetGuide(c) {
     <h2 class="section-title"><span class="ix">§5.3</span>증분 예산 배분 가이드 <span style="font-size:11px;background:rgba(251,191,36,0.12);color:#fbbf24;padding:2px 8px;border-radius:4px;margin-left:6px;">가설 — 인과 아님</span></h2>
     <div class="callout warning" style="margin-bottom:0.75rem;">
       <div class="ico">⚠</div>
-      <div class="body"><p><strong>가설 가이드</strong> — 회귀 반응곡선(관측 연관성) 기반입니다. 인과·증분 확정은 holdout(5-15) 전용. 채널 단위 가이드이며 캠페인 단위 배분·시나리오는 <a href="#5-3" data-route="5-3" style="color:var(--accent);">예산 배분(${displayItemNumber("5-3")}) →</a></p></div>
+      <div class="body"><p><strong>가설 가이드</strong> — 회귀 반응곡선(관측 연관성) 기반입니다. 인과·증분 확정은 holdout(5-15) 전용. 채널 단위 가이드이며 캠페인 단위 배분·시나리오는 <a href="/${idToSlug['5-3'] || '5-3'}" data-route="5-3" style="color:var(--accent);">예산 배분(${displayItemNumber("5-3")}) →</a></p></div>
     </div>
     <p style="font-size:13px;color:var(--text-secondary);margin-bottom:0.75rem;">현 지출 기준 +$1k 한계 효과(${escapeHtml(tgtN)}) 내림차순. 다음 예산 증액 시 <strong>상위 채널 우선</strong>이 반응곡선상 효율적입니다.</p>
     ${ranked}
@@ -17833,7 +17841,7 @@ function ahaHeroSection() {
       <div><div style="font-size:11px;color:var(--text-muted);">Base Rate</div><div class="tnum" style="font-size:20px;font-weight:700;">${(c.baseRate * 100).toFixed(1)}%</div></div>
     </div>
     <div style="font-size:13.5px;color:var(--text-1);margin-bottom:10px;">🏆 Top Aha: ${topLine}</div>
-    <div class="callout warn" style="margin:0;"><div class="ico">⚠</div><div class="body"><strong>연관(association)이지 인과 아님</strong><p style="margin:.25rem 0 0;">engaged 유저는 모든 액션을 많이 하는 경향(공통원인)이 있어, 어떤 액션이 타겟 달성을 "유발"한다고 단정할 수 없습니다. 이 도구는 가설 생성용입니다 — 확정은 <a href="#5-4" data-route="5-4">홀드아웃 실험(5-4)</a>으로 검증하세요.</p></div></div>
+    <div class="callout warn" style="margin:0;"><div class="ico">⚠</div><div class="body"><strong>연관(association)이지 인과 아님</strong><p style="margin:.25rem 0 0;">engaged 유저는 모든 액션을 많이 하는 경향(공통원인)이 있어, 어떤 액션이 타겟 달성을 "유발"한다고 단정할 수 없습니다. 이 도구는 가설 생성용입니다 — 확정은 <a href="/${idToSlug['5-4'] || '5-4'}" data-route="5-4">홀드아웃 실험(5-4)</a>으로 검증하세요.</p></div></div>
   </section>`;
 }
 function ahaControlsSection() {
@@ -23396,14 +23404,22 @@ function renderLoadingPlaceholder() {
   `;
 }
 
-async function navigate(id) {
+function navigate(id) {
+  const slug = idToSlug[id] || id;
+  const newPath = id === "home" || !id ? "/" : "/" + slug;
+  if (location.pathname !== newPath) {
+    history.pushState({ route: id }, "", newPath);
+  }
+  navigate_silent(id);
+}
+
+async function navigate_silent(id) {
   window.CURRENT_PAGE_ID = id || "home";
   const content = $("#content");
   let html = "";
   // 같은 페이지 재렌더(토글/필터/매핑 변경 등)일 때 스크롤 위치 보존용.
-  // navigate 진입 시점의 현재 hash와 scrollY를 캡처해 둔다.
   const prevScrollY = window.scrollY;
-  const prevHashForScroll = location.hash || "#";
+  const prevPathForScroll = location.pathname || "/";
 
   // 5-1은 제거됨 → 5-5(가장 자주 쓰이는 분석기)로 자동 redirect
   if (id === "5-1") { id = "5-5"; }
@@ -23431,19 +23447,7 @@ async function navigate(id) {
   // 데모 페이지를 떠나면 데모 자동 종료(실제 데이터 복원). 같은 페이지 재렌더(탭/토글)는 유지.
   if (DEMO_STATE.tool && DEMO_STATE.page && id !== DEMO_STATE.page) { DEMO_STATE.tool = null; DEMO_STATE.page = null; }
 
-  // Ops Dashboard 페이지 접근 제어 (단, 데모 모드는 키 없이도 미리보기 허용 — freemium 훅)
-  /* [전체 무료화] auth gate 비활성화 — 추후 복원
-  if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid() && !(DEMO_STATE.tool && DEMO_STATE.page === id)) {
-    content.innerHTML = pageAuthGate(id);
-    track("paywall_hit", { tool: id });
-    setBreadcrumb(id);
-    renderNav(id);
-    bindAuthGateHandlers(id);
-    const newHash = "#" + id;
-    if (location.hash !== newHash) history.pushState({ route: id }, "", newHash);
-    window.scrollTo({ top: 0, behavior: "instant" });
-    return;
-  } */
+  /* [전체 무료화] auth gate 비활성화 — 추후 복원 */
 
   // 도구별 독립 CSV: 도구 진입 시 해당 도구의 snapshot 로드
   if (TOOL_REQUIRED_FIELDS[id]) {
@@ -23469,12 +23473,11 @@ async function navigate(id) {
     if (!meta) { html = pageHome(); id = "home"; }
     else html = pageDummy(meta);
   }
+  
   // 페이지 본문 교체 전에 이전 차트 인스턴스 모두 정리.
-  // (innerHTML로 canvas DOM이 사라지면 chart instance는 detached 상태가 되어
-  //  이후 update()를 호출해도 화면에 안 그려지는 버그 방지)
   destroyAllCharts();
   content.innerHTML = html;
-  // 랜딩(첫 화면)에서는 사이드바·탑바 숨김 — 선택 카드만. 단계 진입 후부터 네비 표시.
+  
   const appEl = document.querySelector(".app");
   if (appEl) appEl.classList.toggle("is-home", !id || id === "home");
   setBreadcrumb(id);
@@ -23485,15 +23488,18 @@ async function navigate(id) {
   bindTocScrollspy();
   bindCSVPageHandlers();
   bindAuthStatusHandlers();
-  const newHash = id && id !== "home" ? "#" + id : "#";
-  const curHash = location.hash || "#";
-  if (newHash !== curHash) {
-    history.pushState({ route: id }, "", newHash);
+  
+  const slug = idToSlug[id] || id;
+  const newPath = id && id !== "home" ? "/" + slug : "/";
+  const curPath = location.pathname || "/";
+  
+  if (newPath !== curPath) {
+    history.replaceState({ route: id }, "", newPath);
   }
+  
   // 같은 페이지를 다시 그리는 경우(필터/토글/매핑 변경 등 in-place 재렌더)엔
   // 스크롤을 맨 위로 올리지 않고 사용자가 보던 위치를 유지한다.
-  // 다른 페이지로 진입할 때만 top으로 리셋.
-  const isSamePageRerender = newHash === prevHashForScroll;
+  const isSamePageRerender = newPath === prevPathForScroll;
   if (isSamePageRerender) {
     window.scrollTo({ top: prevScrollY, behavior: "instant" });
   } else {
@@ -23621,7 +23627,7 @@ function bindSortableTables() {
 }
 
 function bindCardLinks() {
-  $$('.card[data-route], .phase-card[data-route]').forEach(c => {
+  $$('.card[data-route]').forEach(c => {
     c.addEventListener("click", () => navigate(c.dataset.route));
   });
   // 랜딩 2단계 토글 (가이드/분석 트랙 선택 + 처음으로)
@@ -28353,9 +28359,12 @@ function bindCmdk() {
   if (ov) ov.addEventListener("click", (e) => { if (e.target === ov) closeCmdk(); });
 }
 
-// 페이지 ID 형식("1-1", "5-2" 등)만 라우팅 대상으로 인정. anchor hash(#s-*) 등은 무시.
+// 페이지 ID 형식("1-1", "5-2" 등) 또는 slug만 라우팅 대상으로 인정.
 function isValidRouteId(s) {
-  return s === "home" || /^\d+-\d+$/.test(s || "");
+  if (s === "home") return true;
+  if (/^\d+-\d+$/.test(s || "")) return true;
+  if (slugToId[s]) return true;
+  return false;
 }
 
 /* ========== Theme (Light / Dark Mode) ========== */
@@ -28388,10 +28397,29 @@ function bindThemeToggle() {
 /* ========== Init ========== */
 async function init() {
   initTheme();
-  const hashRaw = (location.hash || "").replace(/^#/, "");
-  const hash = isValidRouteId(hashRaw) ? hashRaw : "home";
+  
+  // History API: 경로 분석
+  const pathRaw = location.pathname.replace(/^\//, "") || "home";
+  
+  // 하위 호환성 폴백: 만약 hash가 존재한다면 (예: /#5-2), pathRaw를 hash로 덮어씌움
+  let targetRaw = pathRaw;
+  const hashRaw = location.hash.replace(/^#/, "");
+  if (hashRaw && isValidRouteId(hashRaw)) {
+    targetRaw = hashRaw;
+  }
+  
+  let route = "home";
+  if (targetRaw !== "home") {
+    if (isValidRouteId(targetRaw)) {
+      route = targetRaw;
+    }
+  }
+  
+  // 만약 route가 slug이면 id로 변환
+  const id = slugToId[route] || route;
+
   await initializeAuth();   // Supabase 클라이언트 + 저장된 세션 복구
-  renderNav(hash || null);
+  renderNav(id === "home" ? null : id);
   bindSearch();
   bindBrandClick();
   bindCmdk();               // ⌘K 명령 팔레트 (전역)
@@ -28399,54 +28427,51 @@ async function init() {
   bindThemeToggle();        // 테마 전환 버튼 (전역)
   bindLeadModalHandlers();  // Lead Capture 모달 (전역)
   bindAnalytics();          // GA4 이벤트 위임 리스너 (전역)
-  navigate(hash || "home");
+  
+  // 내부 링크 클릭을 History API로 가로채기
+  bindLinkInterception();
+
+  // 최초 페이지 진입은 히스토리 수정 없이 렌더링 + 올바른 URL로 폴백 
+  navigate_silent(id);
+  const slug = idToSlug[id] || id;
+  const correctPath = id === "home" ? "/" : "/" + slug;
+  if (location.pathname !== correctPath || location.hash) {
+    history.replaceState({ route: id }, "", correctPath);
+  }
 
   // 브라우저 뒤로가기 / 앞으로가기 대응
   window.addEventListener("popstate", (e) => {
-    const raw = e.state?.route || (location.hash || "").replace(/^#/, "") || "home";
-    const route = isValidRouteId(raw) ? raw : "home";
+    let route = "home";
+    if (e.state && e.state.route) {
+      route = e.state.route;
+    } else {
+      const pRaw = location.pathname.replace(/^\//, "");
+      route = slugToId[pRaw] || (isValidRouteId(pRaw) ? pRaw : "home");
+    }
     navigate_silent(route);
   });
-
-  async function navigate_silent(id) {
-    // pushState 없이 콘텐츠만 교체 (이미 history에 있는 항목)
-    const content = $("#content");
-    let html = "";
-
-    if (DEMO_STATE.tool && DEMO_STATE.page && id !== DEMO_STATE.page) { DEMO_STATE.tool = null; DEMO_STATE.page = null; }
-    /* [전체 무료화] auth gate 비활성화 — 추후 복원
-    if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid() && !(DEMO_STATE.tool && DEMO_STATE.page === id)) {
-      content.innerHTML = pageAuthGate(id);
-      setBreadcrumb(id);
-      renderNav(id);
-      bindAuthGateHandlers(id);
-      window.scrollTo({ top: 0, behavior: "instant" });
-      return;
-    } */
-
-    if (!id || id === "home") html = pageHome();
-    else if (DATA_BASED_PAGES.has(id)) {
-      html = await renderPageFromData(id);
-      if (!html) html = PAGE_RENDERERS[id] ? PAGE_RENDERERS[id]() : pageDummy(findMeta(id) || { id, title: id });
-    }
-    else if (PAGE_RENDERERS[id]) html = PAGE_RENDERERS[id]();
-    else { const meta = findMeta(id); html = meta ? pageDummy(meta) : pageHome(); }
-    destroyAllCharts();  // 이전 chart instance 정리 (canvas DOM 교체 전)
-    content.innerHTML = html;
-    const appEl = document.querySelector(".app");
-    if (appEl) appEl.classList.toggle("is-home", !id || id === "home");
-    setBreadcrumb(id === "" ? "home" : id);
-    renderNav(id === "" ? null : id);
-    bindCopyButtons();
-    bindSortableTables();
-    bindCardLinks();
-    bindTocScrollspy();
-    bindCSVPageHandlers();
-  bindAuthStatusHandlers();
-    window.scrollTo({ top: 0, behavior: "instant" });
-  }
 }
 
+// <a> 태그 클릭 이벤트 가로채기
+function bindLinkInterception() {
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest("a");
+    if (!a) return;
+    
+    const href = a.getAttribute("href");
+    // 외부 링크나 hash 링크 무시
+    if (!href || href.startsWith("http") || href.startsWith("mailto:") || a.target === "_blank") return;
+    
+    // 내부 라우팅 대상 (예: /Analysis-ops-dashboard)
+    if (href.startsWith("/")) {
+      e.preventDefault();
+      const raw = href.replace(/^\//, "");
+      const id = slugToId[raw] || (isValidRouteId(raw) ? raw : "home");
+      navigate(id);
+    }
+  });
+}
+// (navigate functions moved to their original place)
 document.addEventListener("DOMContentLoaded", init);
 </script>
 
