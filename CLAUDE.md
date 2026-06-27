@@ -56,11 +56,11 @@ HTML/CSS/JS (Vanilla) — 빌드 도구 없음. `serve . -l $PORT` 가 전부.
 |---|---|---|---|
 | 1-x~4-x | SOP 문서 | free | 정적 JSON |
 | 5-2 | 운영 대시보드 (시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트, 9탭) | **free** | 효율 CSV |
-| 5-3 | 예산 배분 (절대 CPR/ROAS 가중 + 한계효용 그리디) | free | 효율 CSV |
+| 5-3 | 예산 배분 (절대 CPR/ROAS 가중 + 한계효용 그리디) | **pro** | 효율 CSV |
 | 5-4 | 실험 분석 (A/B·Test Readout·Incrementality, 3탭) | pro | 수동/CSV |
 | 5-6 | 소재 분석 | pro | 소재 daily CSV |
 | 5-18 | 마케팅 반응 분석 (MMM: 진단/기여/Forecast + Regression Lab) | pro | 주간 패널 CSV |
-| 5-21 | 캠페인 성과 변동 탐지 (PVM 무잔차 분해) | pro | 소재 CSV 공유 |
+| 5-21 | 캠페인 성과 변동 탐지 (PVM 무잔차 분해) | **free** | 소재 CSV 공유 |
 
 티어: `TOOL_TIER`(free/pro) + `AUTH_PROTECTED_PAGES`. 흡수된 구 도구 id는 `navigate` redirect로 보존.
 

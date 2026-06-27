@@ -3439,8 +3439,8 @@ const IA = [
     subtitle: "일별 캠페인 CSV 1개 → 효율·배분 분석 연속 처리",
     items: [
       { id: "5-2", title: "운영 대시보드", desc: "시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트 — 한 CSV로 현황 감시" },
-      { id: "5-3", title: "예산 배분", desc: "절대 CPR/ROAS 가중 배분 + 한계효용 그리디(고급) — 채널별 예산 최적화" },
       { id: "5-21", title: "캠페인 성과 변동 탐지", desc: "이번주 vs 지난주 CPA/CPI 변동을 채널→캠페인→소재로 드릴다운 — 무엇이 비용을 올리고 내렸는지 무잔차 분해" },
+      { id: "5-3", title: "예산 배분", desc: "절대 CPR/ROAS 가중 배분 + 한계효용 그리디(고급) — 채널별 예산 최적화" },
     ],
   },
   {
@@ -3855,7 +3855,7 @@ function updateNavActive(activeId) {
 const LANDING_STATE = { track: null }; // null = step1 / "guide" / "analyze"
 
 // 도구 티어 (freemium): 시각화·모니터링만 무료, 나머지 Pro
-const TOOL_TIER = { "5-2": "free", "5-3": "free", "5-6": "pro", "5-4": "pro", "5-18": "pro", "5-20": "pro", "5-21": "pro" };
+const TOOL_TIER = { "5-2": "free", "5-3": "pro", "5-6": "pro", "5-4": "pro", "5-18": "pro", "5-20": "pro", "5-21": "free" };
 function toolTier(id) { return TOOL_TIER[id] || "pro"; }
 
 // 분석 트랙 그룹 아이콘 (IA가 source of truth — 새 그룹 생길 때만 1줄 추가, drift 위험 낮음. §D1)
@@ -6141,7 +6141,7 @@ const AUTH_STATE = {
 };
 
 // freemium: 5-2 시각화·모니터링은 무료. 나머지 분석 도구는 Pro(접근 키 필요).
-const AUTH_PROTECTED_PAGES = new Set(["5-4", "5-6", "5-18", "5-20", "5-21"]);
+const AUTH_PROTECTED_PAGES = new Set(["5-4", "5-6", "5-18", "5-20", "5-3"]);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
