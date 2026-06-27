@@ -27276,7 +27276,9 @@ function bindAllocVerificationHandlers() {
   groups.forEach(group => {
     const isSelected = group === ALLOC_STATE.verifySelectedGroup;
     const isVerified = ALLOC_STATE.groupVerification[group] === "verified";
-    const curModel = ALLOC_STATE.groupModels[group] || modelsMap.get(group);
+    const curModelObj = ALLOC_STATE.groupModels[group] || modelsMap.get(group);
+    const curModelString = typeof curModelObj === 'string' ? curModelObj : (curModelObj?.model?.type || "auto");
+    const curModel = curModelString.toLowerCase();
     
     const ttMap = { linear: "Linear", log: "Log", poly2: "Poly2", power: "Power" };
     const curModelName = ttMap[curModel] || "auto";
@@ -27343,7 +27345,10 @@ function bindAllocVerificationHandlers() {
   
   const insightEl = document.getElementById("alloc-verify-insight");
   if (insightEl) {
-    const curModel = ALLOC_STATE.groupModels[ALLOC_STATE.verifySelectedGroup] || modelsMap.get(ALLOC_STATE.verifySelectedGroup);
+    const curModelObj = ALLOC_STATE.groupModels[ALLOC_STATE.verifySelectedGroup] || modelsMap.get(ALLOC_STATE.verifySelectedGroup);
+    const curModelString = typeof curModelObj === 'string' ? curModelObj : (curModelObj?.model?.type || "auto");
+    const curModel = curModelString.toLowerCase();
+    
     const ttMap = { linear: "Linear", log: "Log", poly2: "Poly2", power: "Power" };
     const curModelName = ttMap[curModel] || "auto";
     const allFits = allFitsMap.get(ALLOC_STATE.verifySelectedGroup);
