@@ -35,6 +35,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23adc6ff'/><text x='16' y='22' font-family='Inter, system-ui, sans-serif' font-size='18' font-weight='700' text-anchor='middle' fill='%231a1a2e'>M</text></svg>" />
 
 <!-- ===== Open Graph ===== -->
+<meta property="og:url" content="https://mkt-library.up.railway.app/" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Performance Marketing Library" />
 <meta property="og:title" content="앱 퍼포먼스 마케팅, 운영의 표준화" />
@@ -52,7 +53,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
 <!-- ===== Structured Data (JSON-LD) ===== -->
 <script type="application/ld+json">
-{
+[{
   "@context": "https://schema.org",
   "@type": "TechArticle",
   "headline": "앱 퍼포먼스 마케팅 운영의 표준화",
@@ -60,15 +61,29 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   "keywords": "SKAN 4.0 스키마, Adjust 딥링크, 카니발리제이션 측정, GeoX, Holdout",
   "inLanguage": "ko-KR",
   "audience": { "@type": "Audience", "audienceType": "Performance Marketers, Growth Engineers" }
-}
+},
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Performance Marketing Library",
+  "url": "https://mkt-library.up.railway.app/",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "All",
+  "description": "CSV 기반 마케팅 성과 분석, 예산 배분, 카니발리제이션 측정 도구를 브라우저 메모리 내에서 안전하게 제공합니다.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0"
+  }
+}]
 </script>
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   /* ========== Design Tokens (Obsidian Flux) ========== */
   :root {
@@ -3287,6 +3302,24 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 
+<!-- SEO Fallback for No-JS Crawlers -->
+<noscript>
+  <div style="padding:2rem; max-width:800px; margin:0 auto; font-family:sans-serif;">
+    <h1>Performance Marketing Library</h1>
+    <p>앱 퍼포먼스 마케팅 SOP 및 실시간 CSV 데이터 분석 도구 모음입니다. 이 애플리케이션을 사용하려면 JavaScript를 활성화해야 합니다.</p>
+    <h2>주요 기능</h2>
+    <ul>
+      <li><strong>운영 대시보드:</strong> 실시간 KPI 모니터링, 추세 및 상관관계 분석</li>
+      <li><strong>예산 배분 최적화:</strong> 채널별 목표 CPA 기반 예산 자동 배분 알고리즘</li>
+      <li><strong>실험 분석:</strong> A/B 테스트 성과 검증, 베이지안 A/B 테스트 계산기</li>
+      <li><strong>카니발리제이션 & MMM:</strong> 매체별 잠식 효과 분석, Adstock 및 Saturation 기여 분해</li>
+      <li><strong>캠페인 성과 변동 탐지 (PVM):</strong> CPI/CPA 변동의 주요 원인(Mix vs Rate) 다차원 요인 분해</li>
+    </ul>
+    <h2>프라이버시 & 보안</h2>
+    <p>업로드한 CSV 파일은 서버로 전송되지 않으며 전적으로 클라이언트(브라우저) 메모리에서만 처리됩니다.</p>
+  </div>
+</noscript>
+
 <div class="app">
   <script>
     (function() {
@@ -3855,8 +3888,9 @@ function updateNavActive(activeId) {
 const LANDING_STATE = { track: null }; // null = step1 / "guide" / "analyze"
 
 // 도구 티어 (freemium): 시각화·모니터링만 무료, 나머지 Pro
-const TOOL_TIER = { "5-2": "free", "5-3": "pro", "5-6": "pro", "5-4": "pro", "5-18": "pro", "5-20": "pro", "5-21": "free" };
-function toolTier(id) { return TOOL_TIER[id] || "pro"; }
+// [전체 무료화] 원본: { "5-2": "free", "5-3": "pro", "5-6": "pro", "5-4": "pro", "5-18": "pro", "5-20": "pro", "5-21": "free" }
+const TOOL_TIER = { "5-2": "free", "5-3": "free", "5-6": "free", "5-4": "free", "5-18": "free", "5-20": "free", "5-21": "free" };
+function toolTier(id) { return TOOL_TIER[id] || "free"; } // 전체 무료화
 
 // 분석 트랙 그룹 아이콘 (IA가 source of truth — 새 그룹 생길 때만 1줄 추가, drift 위험 낮음. §D1)
 const GROUP_ICONS = { "05": "📊", "06": "🎨", "07": "🧪", "10": "📈" };
@@ -6141,7 +6175,7 @@ const AUTH_STATE = {
 };
 
 // freemium: 5-2 시각화·모니터링은 무료. 나머지 분석 도구는 Pro(접근 키 필요).
-const AUTH_PROTECTED_PAGES = new Set(["5-4", "5-6", "5-18", "5-20", "5-3"]);
+const AUTH_PROTECTED_PAGES = new Set(/* ["5-4", "5-6", "5-18", "5-20", "5-3"] — 전체 무료화: 추후 복원 */);
 const AUTH_STORAGE_KEY = "mkt_library_auth_session";
 
 async function sha256Hex(str) {
@@ -23394,6 +23428,7 @@ async function navigate(id) {
   if (DEMO_STATE.tool && DEMO_STATE.page && id !== DEMO_STATE.page) { DEMO_STATE.tool = null; DEMO_STATE.page = null; }
 
   // Ops Dashboard 페이지 접근 제어 (단, 데모 모드는 키 없이도 미리보기 허용 — freemium 훅)
+  /* [전체 무료화] auth gate 비활성화 — 추후 복원
   if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid() && !(DEMO_STATE.tool && DEMO_STATE.page === id)) {
     content.innerHTML = pageAuthGate(id);
     track("paywall_hit", { tool: id });
@@ -23404,7 +23439,7 @@ async function navigate(id) {
     if (location.hash !== newHash) history.pushState({ route: id }, "", newHash);
     window.scrollTo({ top: 0, behavior: "instant" });
     return;
-  }
+  } */
 
   // 도구별 독립 CSV: 도구 진입 시 해당 도구의 snapshot 로드
   if (TOOL_REQUIRED_FIELDS[id]) {
@@ -28375,6 +28410,7 @@ async function init() {
     let html = "";
 
     if (DEMO_STATE.tool && DEMO_STATE.page && id !== DEMO_STATE.page) { DEMO_STATE.tool = null; DEMO_STATE.page = null; }
+    /* [전체 무료화] auth gate 비활성화 — 추후 복원
     if (AUTH_PROTECTED_PAGES.has(id) && !isAuthValid() && !(DEMO_STATE.tool && DEMO_STATE.page === id)) {
       content.innerHTML = pageAuthGate(id);
       setBreadcrumb(id);
@@ -28382,7 +28418,7 @@ async function init() {
       bindAuthGateHandlers(id);
       window.scrollTo({ top: 0, behavior: "instant" });
       return;
-    }
+    } */
 
     if (!id || id === "home") html = pageHome();
     else if (DATA_BASED_PAGES.has(id)) {
