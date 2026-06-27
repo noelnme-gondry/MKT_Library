@@ -146,6 +146,7 @@ git merge origin/main --no-edit → git checkout --ours index.html
 - **렌더 함수에 상태 분기 추가 전 실제 호출부 확인**(5-20): 호출 조건 모르면 도달 불가 죽은 코드 생성.
 - **공용 `td{vertical-align:top}`은 `<th>`엔 안 먹음**(5-12): 행헤더 `<th>`에 명시적 `vertical-align` 지정.
 - **게이트 `requiresAny` 키는 `STANDARD_FIELDS` 정규키와 정확히 일치(단/복수)**(PR #168): `["click"]` vs 정규키 `clicks` 불일치 → 데모인데 영구 잠김(silent). 키는 추측 말고 복붙.
+- **CSV 자동매핑·드롭다운은 도구별 필드로 스코프**(`toolFieldKeySet`): 전역 `autoMapHeaders`/전체 `STANDARD_FIELDS` 드롭다운은 그 도구가 안 쓰는 필드(코호트·MMM·국가 등)까지 매핑해 "매핑됐는데 기능엔 못 씀" 유발. `TOOL_REQUIRED_FIELDS`(oneOf 포함)+`TOOL_OPTIONAL_FIELDS` 합집합으로 자동매핑·드롭다운 제한, 형제 CSV 이어받을 때도(`loadCsvFromTool`) 복사 대신 본인 도구 기준 재자동매핑. 표준필드 겹침 0(colMap류 5-18)이면 null→전체 폴백. 스코프 밖 기존 선택값은 "(이 도구 미사용)" 옵션으로 보존(데이터 손실 방지). 주의: `cost`(효율)와 `spend`(Creative)는 별도 키 — 같은 "비용"이라도 도구 grain 따라 다름.
 - **5-18 MMM 특이사항**: ROAS는 표시층 invert만(배분은 CPR 공간)·화면+export 한 세트. 회귀계수는 **연관≠인과**(확정은 holdout 5-15 전용). 전부-0/완전공선 컬럼 → 특이행렬 → `mmmBuildFeatures`의 `_nonRedundantCols`(Gram-Schmidt)로 드롭. 희소·저커버리지 채널 음수 탄력성은 "노이즈"지 "잠식" 아님. 상세는 §12.9·PR #51~190.
 
 ---
