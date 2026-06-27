@@ -3837,7 +3837,6 @@ function renderNav(activeId) {
               <a href="/${slug}" class="nav-item ${it.id === activeId ? "active" : ""}" data-route="${it.id}">
                 <span class="ix tnum">${displayItemNumber(it.id)}</span>
                 <span>${escapeHtml(it.title)}</span>
-                ${TOOL_TIER[it.id] === "pro" ? lockIcon : TOOL_TIER[it.id] === "free" ? `<span class="nav-pro-lock" title="무료" style="margin-left:auto;font-size:9px;color:#5ad19a;font-weight:700;">FREE</span>` : ""}
               </a>`;
             }).join("")}
           </div>
@@ -3911,13 +3910,11 @@ function toolTier(id) { return TOOL_TIER[id] || "free"; } // 전체 무료화
 const GROUP_ICONS = { "05": "📊", "06": "🎨", "07": "🧪", "10": "📈" };
 
 function tierBadge(tier) {
-  return tier === "free"
-    ? `<span class="chip ok" style="font-size:10px;padding:1px 8px;"><span class="dot"></span>무료</span>`
-    : `<span class="chip" style="font-size:10px;padding:1px 8px;background:linear-gradient(135deg,rgba(122,162,247,0.22),rgba(192,132,252,0.14));border-color:rgba(122,162,247,0.5);color:var(--text-1);">🔒 Pro</span>`;
+  return "";
 }
 // 그룹 안에 free 도구가 1개라도 있으면 무료 배지(가장 낮은 티어 강조) — 도구별 개별 배지가 본진이라 보조 정보일 뿐.
 function groupTierBadge(toolIds) {
-  return toolIds.some(t => toolTier(t) === "free") ? tierBadge("free") : tierBadge("pro");
+  return "";
 }
 
 function pageHome() {
@@ -6716,7 +6713,7 @@ function monVizBody() {
       </section>
 
       <section class="block" id="s-kpi">
-        <h2 class="section-title"><span class="ix">§2</span>KPI 요약 <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);background:rgba(90,209,154,0.08);border:1px solid rgba(90,209,154,0.2);padding:2px 8px;border-radius:2px;margin-left:0.5rem;letter-spacing:0.04em;">FREE</span></h2>
+        <h2 class="section-title"><span class="ix">§2</span>KPI 요약</h2>
         <div class="kpi-grid">
           <div class="kpi-card"><div class="label">총 비용</div><div class="value tnum">${formatNumber(k.cost, { decimals: 0 })}</div><div class="delta">합산 cost</div></div>
           <div class="kpi-card"><div class="label">총 설치 수</div><div class="value tnum">${formatNumber(k.installs, { decimals: 0 })}</div><div class="delta">합산 installs</div></div>
@@ -23389,7 +23386,7 @@ function setBreadcrumb(id) {
     bc.innerHTML = `
       <span class="crumb-link" data-nav="home">Library</span>
       <span class="sep">/</span>
-      <span class="crumb-link" data-nav="home" title="${escapeHtml(meta.group.title)}">${displayGroupNumber(meta.group.id)} · ${escapeHtml(meta.group.title)}</span>
+      <span class="current" title="${escapeHtml(meta.group.title)}" style="color:var(--text-secondary);cursor:default;">${displayGroupNumber(meta.group.id)} · ${escapeHtml(meta.group.title)}</span>
       <span class="sep">/</span>
       <span class="current">${displayItemNumber(meta.id)} · ${escapeHtml(meta.title)}</span>`;
   }
@@ -27832,7 +27829,7 @@ function enterDemo(toolId) {
   if (!DEMO_BUILDERS[toolId]) return;
   track("demo_start", { tool: toolId });
   DEMO_STATE.tool = toolId;
-  DEMO_STATE.page = (location.hash || "").replace(/^#/, "") || "home";
+  DEMO_STATE.page = window.CURRENT_PAGE_ID || "home";
   if (toolId === "5-18") MMM_METH_STATE.stage = "diagnose";
   if (toolId === "5-20") _applyDemoToCsvState("5-20");
   navigate(DEMO_STATE.page);
@@ -28294,12 +28291,9 @@ function renderCmdkResults(q) {
   if (!box) return;
   if (!filtered.length) { box.innerHTML = `<div class="cmdk-empty">결과 없음</div>`; return; }
   box.innerHTML = filtered.map((c, i) => {
-    const tier = c.tier === "free" ? `<span class="cmdk-tier" style="color:#5ad19a;">FREE</span>`
-      : c.tier === "pro" ? `<span class="cmdk-tier" style="color:#adc6ff;">🔒 Pro</span>` : "";
     return `<div class="cmdk-item ${i === CMDK_STATE.sel ? "sel" : ""}" data-cmdk-idx="${i}">
       <span class="cmdk-ico">${c.icon}</span>
       <span class="cmdk-l"><b>${escapeHtml(c.label)}</b><small>${escapeHtml(c.sub)}</small></span>
-      ${tier}
     </div>`;
   }).join("");
   const selEl = box.querySelector(".cmdk-item.sel");
