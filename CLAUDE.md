@@ -50,7 +50,7 @@ HTML/CSS/JS (Vanilla) — 빌드 도구 없음. `serve . -l $PORT` 가 전부.
 - `pageShell(meta, { deck, chips, summary, toc, body, tocFilters })` 공통 레이아웃.
 - **내부 id(`5-2`)는 절대 불변** — hash·렌더러·navigate·AUTH·TOOL_* 수백 곳 의존, 북마크 깨짐. 표시 번호만 바꾸려면 `displayItemNumber(id)`/`displayGroupNumber(id)` 순수함수 사용(§12.6).
 
-### 4.2 현재 도구 (17→5/6 통합 완료)
+### 4.2 현재 도구 (17→7 통합 완료)
 
 | ID | 도구 | 티어 | 데이터 |
 |---|---|---|---|
@@ -60,6 +60,7 @@ HTML/CSS/JS (Vanilla) — 빌드 도구 없음. `serve . -l $PORT` 가 전부.
 | 5-4 | 실험 분석 (A/B·Test Readout·Incrementality, 3탭) | free | 수동/CSV |
 | 5-6 | 소재 분석 | free | 소재 daily CSV |
 | 5-18 | 마케팅 반응 분석 (3탭: 카니발 진단·MMM 기여·**회귀+미래예측**[Cost·임의변수 자유매핑·OS별 분리·MMM브리지]) | free | 주간 패널 CSV |
+| 5-20 | Aha-Moment Finder (선행 행동 윈도우×횟수 그리드 탐색, F1/Lift) | free | 이벤트 CSV |
 | 5-21 | 캠페인 성과 변동 탐지 (PVM 무잔차 분해) | **free** | 소재 CSV 공유 |
 
 티어: `TOOL_TIER`(free/pro) + `AUTH_PROTECTED_PAGES`. 흡수된 구 도구 id는 `navigate` redirect로 보존.
@@ -104,11 +105,11 @@ function buildXxxCache() {
 
 ### 6.1 기본 흐름
 1. 요청 받음 → 모호하면 `AskUserQuestion`(옵션·트레이드오프 명시).
-2. 작업 브랜치 `feat/poly2-bell-warning`(장수 feature 브랜치, 지속 사용).
+2. **작업 시작 전 항상 `git fetch origin main`으로 최신 main 확인** → 그 위에서 **단명 브랜치**(`chore/xxx`·`feat/xxx`) 새로 생성. **장수 feature 브랜치 재사용 금지**(2026-06부터: 사용자가 Antigravity 등 다른 경로로 main에 직접·수시로 push 중이라 장수 브랜치는 금방 stale돼 conflict·구버전 역행 위험).
 3. 변경 후 **검증 필수**: `node validate.js`(= `npm test`) — syntax(vm compile) + 전 `runXxxTests` 한 번에 실행, 실패 시 nonzero. (순수함수 외 특정 분기·render-throw는 여전히 §7 주입식 harness로 보강.)
 4. `git add <명시 파일>` + 커밋(Co-Authored-By 라인, HEREDOC).
 5. push → `gh pr create --base main`. PR body: `## Summary` bullets + `## Test plan` checkboxes + `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
-6. `gh pr merge <N> --squash`. 충돌 시 §6.2.
+6. `gh pr merge <N> --squash` → **머지 확인 후 브랜치 삭제**(`git push origin --delete <branch>`). 충돌 시 §6.2.
 
 ### 6.2 squash-merge 충돌 해결 (반복 패턴)
 main이 squash-merge라 장수 feat 브랜치와 매 PR마다 index.html 충돌. feat는 보통 main의 superset:

@@ -26,7 +26,7 @@ tools:
 3. **검증 필수**: `node validate.js`(= `npm test`) — syntax + 전 `runXxxTests` 한 번에. render-throw·특정 분기는 §7 주입식 harness 보강.
 4. validation test(해당 도구): Node 주입식 harness.
 5. `git add <명시 파일>` + commit(Co-Authored-By).
-6. 기본: main 직접 push. 대규모 변경: PR 모드(CLAUDE.md §6.1).
+6. **main 직접 push 금지** — 최신 main에서 새 단명 브랜치 → PR → squash merge → 머지 확인 후 브랜치 삭제(CLAUDE.md §6.1).
 
 # 현재 도구
 
