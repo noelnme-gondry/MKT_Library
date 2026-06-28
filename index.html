@@ -44292,20 +44292,25 @@ allocation = total_budget × weight`,
 
           const statusHtml = isVerified
             ? `<span style="color:var(--success); font-size:12px; font-weight:600;">✓ 확인됨</span>`
-            : problemReason
-              ? `<span style="color:#f7b955; font-size:12px; font-weight:600;">⚠ ${problemReason}</span>`
-              : `<span style="color:var(--text-secondary); font-size:12px;">대기중</span>`;
+            : `<span style="color:var(--text-secondary); font-size:12px;">대기중</span>`;
+
+          const alertHtml = problemReason
+            ? `<div style="color:var(--danger); font-size:11.5px; font-weight:600; margin-bottom:2px;">⚠ ${problemReason}</div>`
+            : "";
 
           listHtml += `
       <div class="alloc-verify-item ${isSelected ? "active" : ""}" data-verify-group="${escapeHtml(group)}"
            style="padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; display:flex; flex-direction:column; gap:4px;
                   background: ${isSelected ? "var(--bg-2)" : "transparent"};">
-        <div style="display:flex; justify-content: space-between; align-items: center;">
-          <span style="font-size:13px; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:180px;" title="${escapeHtml(group)}">${escapeHtml(group)}</span>
-          ${statusHtml}
+        <div style="display:flex; justify-content: space-between; align-items: flex-start;">
+          <span style="font-size:13px; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:180px; padding-right:8px;" title="${escapeHtml(group)}">${escapeHtml(group)}</span>
+          <div style="white-space:nowrap;">${statusHtml}</div>
         </div>
-        <div style="font-size:11px; color:var(--text-muted);">
-          선택된 모델: <strong>${curModel}</strong>
+        <div>
+          ${alertHtml}
+          <div style="font-size:11px; color:var(--text-muted);">
+            선택된 모델: <strong>${curModel}</strong>
+          </div>
         </div>
       </div>
     `;
