@@ -10810,11 +10810,15 @@
                     <thead>
                       <tr>
                         <th style="min-width:140px;">채널 (검증 통과)</th>
-                        <th style="min-width:140px;">배분 Cost (편집 가능)</th>
-                        <th style="min-width:160px;">예산 제약 (Min ~ Max)</th>
-                        <th style="min-width:110px;">예상 결과</th>
-                        <th style="min-width:110px;">예상 효율 (CPR)</th>
-                        <th style="min-width:70px;">비중</th>
+                        <th style="min-width:130px;">배분 Cost (편집 가능)</th>
+                        <th style="min-width:150px;">예산 제약 (Min ~ Max)</th>
+                        <th style="min-width:90px;">예상 결과</th>
+                        <th style="min-width:100px;">예상 CPR</th>
+                        <th style="min-width:60px;">예산 비중</th>
+                        <th style="min-width:100px;border-left:2px solid var(--border);" title="최근 N일 평균 일예산">이전 평균 예산</th>
+                        <th style="min-width:90px;">이전 평균 결과</th>
+                        <th style="min-width:100px;">이전 평균 CPR</th>
+                        <th style="min-width:60px;">이전 비중</th>
                       </tr>
                     </thead>
                     <tbody id="alloc-tbody"></tbody>
@@ -43196,7 +43200,7 @@
               }
 
               if (dailyBudget <= 0 && ALLOC_STATE.simMode !== "manual") {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">총 예산을 입력해 주세요.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:1rem;">총 예산을 입력해 주세요.</td></tr>`;
                 barWrap.innerHTML = "";
                 legendWrap.innerHTML = "";
                 return;
@@ -43217,7 +43221,7 @@
                   selected,
                 );
                 if (!alloc.length) {
-                  tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">선택된 채널의 데이터가 없습니다.</td></tr>`;
+                  tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:1rem;">선택된 채널의 데이터가 없습니다.</td></tr>`;
                   barWrap.innerHTML = "";
                   legendWrap.innerHTML = "";
                   return;
@@ -43275,7 +43279,7 @@
                 result;
 
               if (!items.length) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">분배 대상 채널이 없습니다. 산점도에서 채널을 선택했는지 확인하세요.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:1rem;">분배 대상 채널이 없습니다. 산점도에서 채널을 선택했는지 확인하세요.</td></tr>`;
                 barWrap.innerHTML = "";
                 legendWrap.innerHTML = "";
                 renderAllocationTotalCard(null);
@@ -44436,11 +44440,36 @@
               const unitLabel = getMetricUnitLabel(metric);
               const recentDays = ALLOC_STATE.recentDays || 14;
 
+              // #3 이전(과거) 평균 — 최근 N일 평균 일예산/결과/CPR + 전체 비중 분모. 별도 컬럼으로 표시.
+              const prevByCh = {};
+              let prevTotalDaily = 0;
+              items.forEach((it) => {
+                const h = calcChannelHistorySummary(it.channel, metric, {
+                  recentDays,
+                });
+                const daily =
+                  h && isFinite(h.windowCost) ? h.windowCost / recentDays : 0;
+                const resDaily =
+                  h && isFinite(h.windowResults)
+                    ? h.windowResults / recentDays
+                    : 0;
+                prevByCh[it.channel] = {
+                  daily,
+                  resDaily,
+                  cpr: h ? h.avgCPR : null,
+                };
+                prevTotalDaily += daily;
+              });
+
               tbody.innerHTML = items
                 .map((it, i) => {
-                  const hist = calcChannelHistorySummary(it.channel, metric, {
-                    recentDays,
-                  });
+                  const prev = prevByCh[it.channel] || {
+                    daily: 0,
+                    resDaily: 0,
+                    cpr: null,
+                  };
+                  const prevShare =
+                    prevTotalDaily > 0 ? (prev.daily / prevTotalDaily) * 100 : 0;
                   const isZero = it.cost === 0;
                   const reasonNoAlloc =
                     isZero && !it.locked
@@ -44454,22 +44483,6 @@
                             tip: "",
                           }
                       : null;
-
-                  // 풍부한 데이터 표시: 비용, 설치, 액션, 매출, 평균 CPI/CPA/ROAS
-                  const histLine = hist
-                    ? `
-            <div class="alloc-ch-history">
-              <span class="alloc-hist-label" title="비용은 최신 1일 데이터, 효율(CPI/ROAS)은 최근 ${recentDays}일 데이터 기반">과거 기준 (1일)</span>
-              <span>· 비용 ${fmtCurrency(hist.totalCost)}</span>
-              ${hist.totalInstalls > 0 ? `<span>· 설치(예상) ${formatNumber(hist.totalInstalls, { decimals: 0 })}</span>` : ""}
-              ${hist.totalActions > 0 ? `<span>· 액션(예상) ${formatNumber(hist.totalActions, { decimals: 0 })}</span>` : ""}
-              ${hist.totalRevenue > 0 ? `<span>· 매출(예상) ${fmtCurrency(hist.totalRevenue)}</span>` : ""}
-              ${hist.avgCPI != null ? `<span>· CPI ${fmtCurrency(hist.avgCPI, { metric: true })} (최근 ${recentDays}일)</span>` : ""}
-              ${hist.avgCPA != null ? `<span>· CPA ${fmtCurrency(hist.avgCPA, { metric: true })} (최근 ${recentDays}일)</span>` : ""}
-              ${hist.avgROAS != null ? `<span>· ROAS ${(hist.avgROAS * 100).toFixed(1)}% (최근 ${recentDays}일)</span>` : ""}
-            </div>
-          `
-                    : '<div class="alloc-ch-history" style="color:var(--text-muted);">데이터 없음</div>';
 
                   const minVal = ALLOC_STATE.allocMinSpend[it.channel];
                   const maxVal = ALLOC_STATE.allocMaxSpend[it.channel];
@@ -44504,7 +44517,6 @@
                   ${escapeHtml(it.channel)}
                   ${it.locked ? `<button class="alloc-lock-toggle" data-channel="${escapeHtml(it.channel)}" title="잠금 해제 (자동 분배로 되돌리기)">🔒</button>` : ""}
                 </div>
-                ${histLine}
                 ${reasonNoAlloc ? `<div class="alloc-ch-warn"${reasonNoAlloc.tip ? ` title="${escapeHtml(reasonNoAlloc.tip)}"` : ""}>${escapeHtml(reasonNoAlloc.msg)} — 강제 분배하려면 우측에 직접 입력</div>` : ""}
               </td>
               <td>
@@ -44523,7 +44535,6 @@
                        }`
                   }
                 </div>
-                ${hist && hist.totalCost > 0 && !isZero ? `<div class="alloc-cost-delta">과거(1일) ${fmtCurrency(hist.totalCost)} → ${it.cost > hist.totalCost ? "▲" : it.cost < hist.totalCost ? "▼" : "="} ${fmtCurrency(it.cost)}</div>` : ""}
               </td>
               <td>
                 <div style="display:flex;gap:4px;align-items:center;">
@@ -44538,22 +44549,24 @@
               </td>
               <td class="tnum">
                 ${isZero ? '<span style="color:var(--text-muted);">—</span>' : formatNumber(it.results, { decimals: 0 })}
-                ${hist && hist.totalResults > 0 && !isZero ? `<div class="alloc-delta-hint">과거(1일) ${formatNumber(hist.totalResults, { decimals: 0 })}</div>` : ""}
               </td>
               <td class="tnum">
                 ${isZero ? '<span style="color:var(--text-muted);">—</span>' : fmtCostMetric(it.cpr, metric)}
-                ${hist && hist.avgCPR != null && !isZero ? `<div class="alloc-delta-hint">과거(평균) ${fmtCostMetric(hist.avgCPR, metric)}</div>` : ""}
-              </td>`;
+              </td>
+              <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong></td>
+              <td class="tnum" style="border-left:2px solid var(--border);color:var(--text-muted);">${prev.daily > 0 ? fmtCurrency(prev.daily) : "—"}</td>
+              <td class="tnum" style="color:var(--text-muted);">${prev.resDaily > 0 ? formatNumber(prev.resDaily, { decimals: 0 }) : "—"}</td>
+              <td class="tnum" style="color:var(--text-muted);">${prev.cpr != null ? fmtCostMetric(prev.cpr, metric) : "—"}</td>
+              <td class="tnum" style="color:var(--text-muted);">${prevShare > 0 ? prevShare.toFixed(1) + "%" : "—"}</td>`;
 
                   trHtml += `
-              <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong></td>
             </tr>
           `;
 
                   if (ALLOC_STATE.simMode === "manual") {
                     trHtml += `
             <tr class="alloc-row-sim-detail" id="sim-detail-${escapeHtml(it.channel)}" style="display:none;">
-              <td colspan="7">
+              <td colspan="10">
                 <div style="font-weight:600;margin-bottom:4px;">${escapeHtml(it.channel)} 비용-성과 시뮬레이션</div>
                 <div style="color:var(--text-muted);font-size:0.85rem;margin-bottom:8px;">Cost 변화에 따른 예상 성과입니다. 그래프를 확인하며 최적의 비용을 결정하세요.</div>
                 <div class="sim-detail-chart" id="sim-chart-${escapeHtml(it.channel)}" style="height:300px; width:100%;"></div>
@@ -44574,37 +44587,33 @@
               const totalResults = items.reduce((s, it) => s + it.results, 0);
               const avgCpr = totalResults > 0 ? totalCost / totalResults : 0;
 
-              let totalHistCost = 0;
-              let totalHistResults = 0;
+              // 이전(과거) 평균 합계 — 별도 컬럼용 (최근 N일 평균 일단위)
+              let totalPrevDaily = 0;
+              let totalPrevResultsDaily = 0;
               items.forEach((it) => {
-                const hist = calcChannelHistorySummary(it.channel, metric, {
-                  recentDays,
-                });
-                if (hist) {
-                  totalHistCost += hist.totalCost;
-                  totalHistResults += hist.totalResults;
+                const p = prevByCh[it.channel];
+                if (p) {
+                  totalPrevDaily += p.daily;
+                  totalPrevResultsDaily += p.resDaily;
                 }
               });
-              const avgHistCpr =
-                totalHistResults > 0 ? totalHistCost / totalHistResults : 0;
+              const avgPrevCpr =
+                totalPrevResultsDaily > 0
+                  ? totalPrevDaily / totalPrevResultsDaily
+                  : 0;
 
               const totalHtml = `
           <tr style="background:var(--bg-2); font-weight:bold; border-top: 2px solid var(--border);">
             <td style="text-align:right; padding-right:16px;">TOTAL</td>
-            <td>
-              <div style="font-size:14px;">${fmtCurrency(totalCost)}</div>
-              <div style="font-size:11px;color:var(--text-secondary);font-weight:normal;margin-top:4px;">과거: ${fmtCurrency(totalHistCost)}</div>
-            </td>
+            <td><div style="font-size:14px;">${fmtCurrency(totalCost)}</div></td>
             <td></td>
-            <td class="tnum">
-              <div style="font-size:14px;">${formatNumber(totalResults, { decimals: 0 })}</div>
-              <div style="font-size:11px;color:var(--text-secondary);font-weight:normal;margin-top:4px;">과거: ${formatNumber(totalHistResults, { decimals: 0 })}</div>
-            </td>
-            <td class="tnum">
-              <div style="font-size:14px;">${fmtCostMetric(avgCpr, metric)}</div>
-              <div style="font-size:11px;color:var(--text-secondary);font-weight:normal;margin-top:4px;">과거: ${fmtCostMetric(avgHistCpr, metric)}</div>
-            </td>
+            <td class="tnum"><div style="font-size:14px;">${formatNumber(totalResults, { decimals: 0 })}</div></td>
+            <td class="tnum"><div style="font-size:14px;">${fmtCostMetric(avgCpr, metric)}</div></td>
             <td class="tnum" style="font-size:14px;">100.0%</td>
+            <td class="tnum" style="border-left:2px solid var(--border);color:var(--text-secondary);">${fmtCurrency(totalPrevDaily)}</td>
+            <td class="tnum" style="color:var(--text-secondary);">${formatNumber(totalPrevResultsDaily, { decimals: 0 })}</td>
+            <td class="tnum" style="color:var(--text-secondary);">${fmtCostMetric(avgPrevCpr, metric)}</td>
+            <td class="tnum" style="color:var(--text-secondary);font-size:14px;">100.0%</td>
           </tr>
         `;
 
