@@ -5111,7 +5111,7 @@
               id: "5-18",
               slug: "Analysis-marketing-response",
               title: "마케팅 반응 분석",
-              desc: "4탭: 카니발 진단 · Trend Forecast(예산 예측) · MMM 기여 분해 · 범용 회귀(Lab) (가설용·holdout 아님)",
+              desc: "3탭: 카니발 진단 · MMM 기여 분해 · 회귀·미래예측(Cost·임의 변수 자유 매핑) (가설용·holdout 아님)",
             },
             {
               id: "5-20",
@@ -20191,6 +20191,7 @@ allocation = total_budget × weight`,
             TSS,
             F,
             Fp,
+            XtXi, // 예측 밴드 leverage 계산용 (additive — 기존 호출부 무영향)
           };
         }
         function r2of(X, y) {
@@ -24494,6 +24495,8 @@ allocation = total_budget × weight`,
       }
       function page_5_18() {
         const meta = findMeta("5-18");
+        // Trend Forecast(구 forecast stage)는 범용 회귀·예측(lab)으로 흡수 → redirect(북마크 보존).
+        if (MMM_METH_STATE.stage === "forecast") MMM_METH_STATE.stage = "lab";
         // 범용 회귀(Lab) — MMM colMap과 무관한 자체 데이터(REG_LAB_STATE) → MMM 매핑 게이트 우회. 상단 탭으로 전환 가능.
         if (MMM_METH_STATE.stage === "lab") {
           const F = REG_LAB_STATE.fit;
@@ -24565,10 +24568,10 @@ allocation = total_budget × weight`,
           !isToolAnalyzed("5-18")
         ) {
           return pageShell(meta, {
-            deck: "주간 가입·재활성 마케팅 반응 분석. 카니발 진단 → 예측 → 기여 분해(MMM) → 범용 회귀. ⚠ 가설·기술용 — 인과/증분은 holdout 전용.",
+            deck: "주간 가입·재활성 마케팅 반응 분석. 카니발 진단 → 기여 분해(MMM) → 회귀·미래예측. ⚠ 가설·기술용 — 인과/증분은 holdout 전용.",
             chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
             summary:
-              "필수: week(t) + (가입 또는 재활성) + 채널 spend 1개 이상. 채널/더미는 옵션. (범용 회귀 탭은 별도 CSV — 위 탭에서 바로 진입 가능.)",
+              "필수: week(t) + (가입 또는 재활성) + 채널 spend 1개 이상. 채널/더미는 옵션. (회귀·예측 탭은 별도 CSV 또는 MMM 데이터 불러오기로 진입.)",
             toc: [{ id: "s-prep", title: "데이터 준비" }],
             body: renderMmmStageTabs() + renderMmmDataPrep(),
           });
@@ -24649,7 +24652,7 @@ allocation = total_budget × weight`,
         ${renderMmmOptionCards(c)}
       `;
         return pageShell(meta, {
-          deck: "카니발 진단 → Trend Forecast → MMM 기여 분해 → 범용 회귀 (가설·기술용 분석)",
+          deck: "카니발 진단 → MMM 기여 분해 → 회귀·미래예측 (가설·기술용 분석)",
           chips: `<span class="chip"><span class="dot"></span>도구 · MMM 방법론</span><span class="chip warning"><span class="dot"></span>가설·기술용 · holdout 아님</span>${authStatusChip()}`,
           summary:
             "관측 데이터 기반 마케팅 반응 곡선 추정 및 기여도 분해 분석 모델입니다.<br>" +
@@ -24970,6 +24973,8 @@ allocation = total_budget × weight`,
       }
       // 목차 고정 필터 패널 — 타깃(Reg/React) + 플랫폼(All/iOS/AOS) 페이지 전역 컨트롤
       // 3옵션: 카니발 분석 / MMM 기여 분해 / Trend Forecast. 같은 데이터·매핑·캐시 공유, 표시만 분리.
+      // Trend Forecast(구 forecast stage)는 범용 회귀(Lab)로 흡수 — 회귀+예측 단일 도구.
+      // 구 stage="forecast" 진입은 page_5_18 상단에서 "lab"으로 redirect(북마크 보존).
       const MMM_STAGE_DEFS = [
         {
           id: "diagnose",
@@ -24979,25 +24984,18 @@ allocation = total_budget × weight`,
           desc: "어느 채널이 오가닉을 잠식하나 / 추세 하락에 뭐가 영향 주나. 제거법 + 시차(lead/lag).",
         },
         {
-          id: "forecast",
-          no: "② 예측",
-          title: "Trend Forecast",
-          icon: "📈",
-          desc: "과거 실측 vs 모델 적합도 + 미래 예산 시나리오를 넣어 예측 + 95% 밴드. 전체 다운로드.",
-        },
-        {
           id: "mmm",
-          no: "③ 기여",
+          no: "② 기여",
           title: "MMM 기여 분해",
           icon: "🧩",
           desc: "각 채널·이벤트가 매주 얼마 기여하나(decomp) + 채널별 효과. adstock·수확체감.",
         },
         {
           id: "lab",
-          no: "④ 회귀",
-          title: "범용 회귀 (Lab)",
-          icon: "🧪",
-          desc: "임의 CSV OLS — 종속/독립 매핑·계수표·실제vs예측·기여도. 마케팅 외 데이터도. (별도 업로드)",
+          no: "③ 회귀·예측",
+          title: "회귀 · 미래 예측",
+          icon: "📈",
+          desc: "임의 CSV OLS(Cost·임의 변수 자유 매핑) — 계수·실제vs예측·기여도 + 미래 시나리오 예측(95% 밴드)·OS별 분리. MMM 데이터도 바로 불러오기.",
         },
       ];
       function renderMmmStageTabs(c) {
@@ -25085,12 +25083,68 @@ allocation = total_budget × weight`,
   </section>`;
       }
       // Trend Forecast 본문 — 모델·단위·horizon·채널별 예산 입력 + 차트 + 미래 표 + 전체 CSV
+      // 예측 실패(fc=null) 원인 진단 — "모델 적합 실패" 한 줄 대신 왜·얼마나 부족한지(행 수 vs 변수 수 분해).
+      // 원인: ① MMM 미적합 ② 종속변수 빈값 ③ 행≤변수(특이행렬). 전부 render층(골든 무관).
+      function mmmForecastFailReason(c) {
+        const t = MMM_METH_STATE.target,
+          tKo = t === "Regs" ? "가입" : "재활성";
+        const T = c && c.byTarget && c.byTarget[t];
+        if (!T || !T.mmm)
+          return {
+            head: "MMM 분석이 먼저 필요합니다.",
+            detail:
+              "매핑을 마친 뒤 “▶ 분석하기”를 눌러 모델을 적합한 다음 예측이 생성됩니다.",
+          };
+        const y = c.panel && c.panel.targets ? c.panel.targets[t] : null;
+        if (!y || !y.length || y.every((v) => !isFinite(v)))
+          return {
+            head: `종속변수(${tKo})가 비어 있거나 매핑되지 않았습니다.`,
+            detail: `${tKo} 열을 매핑하고 값이 비지 않았는지 확인하세요.`,
+          };
+        let names = [];
+        try {
+          names = mmmBuildFeatures(c.panel, c.cfg, T.mmm.best_lambda, true)
+            .names;
+        } catch (e) {
+          names = [];
+        }
+        const n = y.length,
+          k = names.length + 1; // +절편
+        // 변수 카테고리 분해
+        const cat = { 채널: 0, "이벤트/휴일": 0, 계절성: 0, 추세: 0, 구조변화: 0 };
+        names.forEach((nm) => {
+          if (/^ln_/.test(nm)) cat["채널"]++;
+          else if (/^(d_|lny$|chuseok$)/.test(nm)) cat["이벤트/휴일"]++;
+          else if (/^(sin_|cos_)/.test(nm)) cat["계절성"]++;
+          else if (nm === "trend") cat["추세"]++;
+          else cat["구조변화"]++;
+        });
+        const parts = Object.entries(cat)
+          .filter(([, v]) => v > 0)
+          .map(([kk, v]) => `${kk} ${v}`)
+          .join(" + ");
+        if (n <= k)
+          return {
+            head: `데이터 ${n}행이 변수 ${k}개(절편 포함)보다 적거나 같아 회귀가 불안정합니다.`,
+            detail: `변수 = ${parts || "—"} + 절편. 데이터 기간을 늘리거나, 채널·이벤트 더미를 줄이세요 (행 수가 변수보다 충분히 많아야 적합됩니다).`,
+            n,
+            k,
+          };
+        return {
+          head: "변수 간 완전 공선(똑같이 움직이는 열)이 있거나 데이터가 한 점에 뭉쳐 있습니다.",
+          detail: `행 ${n} / 변수 ${k}개는 충분하지만 적합이 불안정합니다. 거의 같은 채널·중복 더미를 하나로 합치거나, 지출 변동이 없는 채널을 제외하세요.`,
+          n,
+          k,
+        };
+      }
       function renderMmmForecast(c) {
         const fc = mmmGetForecast(c);
         const t = MMM_METH_STATE.target,
           tKo = t === "Regs" ? "가입" : "재활성";
-        if (!fc)
-          return `<section class="block" id="s-forecast"><h2 class="section-title"><span class="ix">§7</span>Trend Forecast</h2><p class="muted">예측을 만들 수 없습니다 (모델 적합 실패 — 채널·타깃 매핑/데이터 양 확인).</p></section>`;
+        if (!fc) {
+          const r = mmmForecastFailReason(c);
+          return `<section class="block" id="s-forecast"><h2 class="section-title"><span class="ix">§7</span>${tKo} 예측</h2><div class="callout warn" style="margin:8px 0;"><div class="ico">!</div><div class="body" style="font-size:12.5px;"><strong>예측을 만들 수 없습니다.</strong> ${escapeHtml(r.head)}<br><span style="color:var(--text-muted);">${escapeHtml(r.detail)}</span></div></div></section>`;
+        }
         const unitName =
           { daily: "일", weekly: "주", monthly: "월" }[fc.unit] || "주";
         const perName = fc.gran ? fc.gran.label.replace("별", "") : "행";
@@ -27935,6 +27989,15 @@ allocation = total_budget × weight`,
         groupKeep: null,
         groupCol: null,
         fit: null,
+        // 미래 예측(§7) 상태: horizon·밴드·계절성 토글 + 변수별 미래스펙 + OS 모드
+        fc: {
+          horizon: 13,
+          band: "mean",
+          season: true,
+          spec: {}, // { [col]: {value} (연속) | {off} (이벤트) }
+          osMode: "split", // split=OS별 분리 모델 | pool=전체 풀링
+          osPick: null, // split 모드에서 보고 있는 OS 값
+        },
       };
       const REG_CACHE = { key: null };
       const _REG_ROLES = [
@@ -27942,6 +28005,7 @@ allocation = total_budget × weight`,
         "dependent",
         "independent",
         "group",
+        "time",
         "label",
       ];
       const _REG_TYPES = ["continuous", "binary", "label"];
@@ -27966,7 +28030,7 @@ allocation = total_budget × weight`,
           role = "independent";
           tf = "none";
         } else if (/date|day|week|월|일자|주차/.test(name)) {
-          role = "label";
+          role = "time"; // 예측 X축 + 계절성/추세 생성원 (구 label에서 승격)
           type = "label";
         } else if (
           /platform|os|채널|channel|group|구분|reg|react/.test(name) &&
@@ -28003,6 +28067,59 @@ allocation = total_budget × weight`,
         REG_LAB_STATE.groupCol = null;
         REG_LAB_STATE.fit = null;
         REG_CACHE.key = null;
+      }
+      // MMM(5-18) 데이터를 회귀·예측으로 가져오기 — TF 흡수 후 "내 채널 데이터로 예측" 동선 보존.
+      // CSV_STATE.raw + MMM colMap 역할을 범용회귀 역할로 번역(채널→독립+adstock_log, 더미/step→이벤트,
+      // week/date→시간, platform→그룹, 활성 타깃→종속).
+      function mmmHasDataForBridge() {
+        const raw = CSV_STATE.raw || [],
+          cm = MMM_METH_STATE.colMap || {};
+        return (
+          raw.length > 0 &&
+          Object.values(cm).some((d) => d && d.role === "channel")
+        );
+      }
+      function regLabFromMmm() {
+        const raw = CSV_STATE.raw || [],
+          heads = CSV_STATE.headers || [],
+          cm = MMM_METH_STATE.colMap || {};
+        if (!raw.length || !heads.length) return false;
+        const target = MMM_METH_STATE.target; // "Regs" | "React"
+        REG_LAB_STATE.fileName =
+          (CSV_STATE.fileName || "mmm_data.csv") + " (MMM)";
+        REG_LAB_STATE.rows = raw.slice();
+        REG_LAB_STATE.headers = heads.slice();
+        REG_LAB_STATE.map = {};
+        heads.forEach((h) => {
+          const role = (cm[h] || {}).role;
+          let def = { role: "ignore", type: "continuous", tf: "none" };
+          if (role === "reg" || role === "react") {
+            const isTarget =
+              (role === "reg" && target === "Regs") ||
+              (role === "react" && target === "React");
+            def = isTarget
+              ? { role: "dependent", type: "continuous", tf: "none" }
+              : { role: "ignore", type: "continuous", tf: "none" };
+          } else if (role === "channel")
+            def = {
+              role: "independent",
+              type: "continuous",
+              tf: "adstock_log",
+              kind: (cm[h] || {}).kind || "perf",
+            };
+          else if (role === "dummy" || role === "step")
+            def = { role: "independent", type: "binary", tf: "none" };
+          else if (role === "week" || role === "date")
+            def = { role: "time", type: "label", tf: "none" };
+          else if (role === "platform")
+            def = { role: "group", type: "label", tf: "none" };
+          REG_LAB_STATE.map[h] = def;
+        });
+        REG_LAB_STATE.groupKeep = null;
+        REG_LAB_STATE.groupCol = null;
+        REG_LAB_STATE.fit = null;
+        REG_CACHE.key = null;
+        return true;
       }
       function regLabMakeSample() {
         const fields = [
@@ -28067,6 +28184,7 @@ allocation = total_budget × weight`,
           dep: null,
           indep: [],
           group: null,
+          time: null,
           label: null,
           types: {},
           tf: {},
@@ -28078,6 +28196,7 @@ allocation = total_budget × weight`,
           if (def.role === "dependent") m.dep = m.dep || c;
           else if (def.role === "independent") m.indep.push(c);
           else if (def.role === "group") m.group = m.group || c;
+          else if (def.role === "time") m.time = m.time || c;
           else if (def.role === "label") m.label = m.label || c;
         }
         return m;
@@ -28092,6 +28211,335 @@ allocation = total_budget × weight`,
             ? [...REG_LAB_STATE.groupKeep].sort()
             : null,
         });
+      }
+      /* ============================================================
+       * REG_FORECAST — 범용회귀 미래 투영 (Trend Forecast 일반화)
+       * 임의 독립변수 회귀에 "미래로 투영" 층을 더한다: 변수별 미래스펙
+       * (연속=시나리오 값 / 이벤트=지속·N기간후끔) + 시간→계절성/추세 자동연장
+       * + 95% 밴드(leverage). REG_STATS.ols·REG_TRANSFORMS·_mmmParseDate 재사용. 결정론.
+       * ⚠ 관측 회귀의 외삽(가설). 인과/증분 확정은 holdout(5-15) 전용.
+       * ============================================================ */
+      const REG_FORECAST = {
+        _mean(a) {
+          return a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0;
+        },
+        _std(a) {
+          const m = this._mean(a);
+          return Math.sqrt(
+            a.reduce((s, x) => s + (x - m) ** 2, 0) / Math.max(1, a.length - 1),
+          );
+        },
+        _num(v) {
+          if (v == null || String(v).trim() === "") return NaN;
+          const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ""));
+          return isNaN(n) ? NaN : n;
+        },
+        // 95% 양측 t 임계값 (REG_STATS.tSF 역추적 — tinv 비노출 대체, 결정론 이분탐색)
+        _tcrit(df) {
+          let lo = 0,
+            hi = 1000;
+          for (let i = 0; i < 100; i++) {
+            const mid = (lo + hi) / 2;
+            REG_STATS.tSF(mid, df) > 0.05 ? (lo = mid) : (hi = mid);
+          }
+          return (lo + hi) / 2;
+        },
+        // 시간열 → 추세(표준화 인덱스) + (옵션)계절성(Fourier). 미래 horizon행 연장.
+        buildTimeFeatures(timeVals, horizon, season) {
+          const n = timeVals ? timeVals.length : 0;
+          const t = Array.from({ length: n }, (_, i) => i + 1);
+          const futT = Array.from({ length: horizon }, (_, j) => n + j + 1);
+          const tm = this._mean(t),
+            ts = this._std(t) || 1;
+          const cols = [
+            {
+              name: "trend",
+              hist: t.map((x) => (x - tm) / ts),
+              fut: futT.map((x) => (x - tm) / ts),
+            },
+          ];
+          let dates = null,
+            hasDates = false,
+            futLabels = futT.map((x) => "+" + (x - n));
+          if (timeVals) {
+            dates = timeVals.map((v) => _mmmParseDate(v));
+            hasDates = dates.length > 1 && dates.every((d) => d);
+          }
+          if (hasDates) {
+            const gaps = [];
+            for (let i = 1; i < dates.length; i++)
+              gaps.push((dates[i] - dates[i - 1]) / 86400000);
+            const sorted = gaps.slice().sort((a, b) => a - b);
+            const medGap = sorted[Math.floor(sorted.length / 2)] || 7;
+            const rowsPerYear = 365.25 / (medGap || 7);
+            const last = dates[n - 1];
+            futLabels = Array.from({ length: horizon }, (_, j) =>
+              new Date(last.getTime() + (j + 1) * medGap * 86400000)
+                .toISOString()
+                .slice(0, 10),
+            );
+            if (season && n >= rowsPerYear * 1.5 && rowsPerYear >= 3 && rowsPerYear <= 400) {
+              const P = rowsPerYear;
+              cols.push({
+                name: "sin_yr",
+                hist: t.map((x) => Math.sin((2 * Math.PI * x) / P)),
+                fut: futT.map((x) => Math.sin((2 * Math.PI * x) / P)),
+              });
+              cols.push({
+                name: "cos_yr",
+                hist: t.map((x) => Math.cos((2 * Math.PI * x) / P)),
+                fut: futT.map((x) => Math.cos((2 * Math.PI * x) / P)),
+              });
+            }
+          }
+          return { cols, futLabels, hasDates };
+        },
+        // 변환을 hist+future 결합 시리즈에 1회 적용 후 슬라이스 (adstock 이월·정규화 스케일 일관)
+        _transformCombined(rawHist, rawFut, tf, lam) {
+          const comb = REG_TRANSFORMS[tf]
+            ? REG_TRANSFORMS[tf]([...rawHist, ...rawFut], lam)
+            : [...rawHist, ...rawFut];
+          return {
+            hist: comb.slice(0, rawHist.length),
+            fut: comb.slice(rawHist.length),
+          };
+        },
+        // 종속 역변환 (예측을 원 스케일로) — rawY로 정규화 파라미터 복원
+        _invDep(vals, tf, rawY) {
+          if (tf === "none" || !tf) return vals.slice();
+          if (tf === "log1p" || tf === "adstock_log")
+            return vals.map((v) => Math.expm1(v));
+          if (tf === "zscore") {
+            const m = this._mean(rawY),
+              s = this._std(rawY) || 1;
+            return vals.map((v) => v * s + m);
+          }
+          if (tf === "minmax") {
+            const lo = Math.min(...rawY),
+              hi = Math.max(...rawY),
+              r = hi - lo || 1;
+            return vals.map((v) => v * r + lo);
+          }
+          return vals.slice();
+        },
+        /* 미래 예측 코어.
+         * opts: { rows, m(매핑), lam, futureSpec{col→{off}|{value}}, horizon, bandMode, season }
+         * 반환: { ok, reason?, terms[], coef[], r2, n, k, vif[], se[], pval[], sigma,
+         *         actual[], fittedHist[], predFut[], lo[], hi[], histLabels[], futLabels[],
+         *         labels[], splitAt, futRows{col→[]}, depTf, bandMode, hasSeasonality } */
+        run(opts) {
+          const { rows, m, lam, horizon, bandMode, season } = opts;
+          const futureSpec = opts.futureSpec || {};
+          const H = Math.max(1, Math.min(260, horizon | 0));
+          const tfOf = (c) =>
+            m.types[c] === "binary" ? "none" : m.tf[c] || "none";
+          const num = (v) => this._num(v);
+          if (!m.dep) return { ok: false, reason: "종속변수를 지정하세요." };
+          if (!m.indep.length)
+            return { ok: false, reason: "독립변수를 1개 이상 지정하세요." };
+          const used = [m.dep, ...m.indep];
+          const valid = rows.filter((r) =>
+            used.every((c) => isFinite(num(r[c]))),
+          );
+          const nHist = valid.length;
+          const rawY = valid.map((r) => num(r[m.dep]));
+          const depTf = tfOf(m.dep);
+          const y = REG_TRANSFORMS[depTf]
+            ? REG_TRANSFORMS[depTf](rawY, lam)
+            : rawY.slice();
+          const futRows = {};
+          const indepCols = m.indep.map((c) => {
+            const rawHist = valid.map((r) => num(r[c]));
+            const isBinary = m.types[c] === "binary";
+            const spec = futureSpec[c] || {};
+            let rawFut;
+            if (isBinary) {
+              const lastV = rawHist[rawHist.length - 1] || 0;
+              const off = spec.off;
+              rawFut = Array.from({ length: H }, (_, j) =>
+                off != null && isFinite(off) ? (j < off ? lastV : 0) : lastV,
+              );
+            } else {
+              const recentN = Math.min(8, nHist);
+              const recentMean =
+                this._mean(rawHist.slice(-recentN).filter(isFinite)) || 0;
+              const val =
+                spec.value != null && isFinite(spec.value)
+                  ? spec.value
+                  : recentMean;
+              rawFut = Array(H).fill(val);
+            }
+            futRows[c] = rawFut.slice();
+            return this._transformCombined(rawHist, rawFut, tfOf(c), lam);
+          });
+          const timeVals = m.time ? valid.map((r) => r[m.time]) : null;
+          const tfeat = this.buildTimeFeatures(timeVals, H, season);
+          const featNames = [...m.indep, ...tfeat.cols.map((c) => c.name)];
+          const Xhist = [],
+            Xfut = [];
+          for (let i = 0; i < nHist; i++)
+            Xhist.push([
+              1,
+              ...indepCols.map((c) => c.hist[i]),
+              ...tfeat.cols.map((c) => c.hist[i]),
+            ]);
+          for (let j = 0; j < H; j++)
+            Xfut.push([
+              1,
+              ...indepCols.map((c) => c.fut[j]),
+              ...tfeat.cols.map((c) => c.fut[j]),
+            ]);
+          const k = featNames.length + 1;
+          if (nHist <= k)
+            return {
+              ok: false,
+              reason: `데이터 ${nHist}행이 변수 ${k}개(절편 포함)보다 적거나 같아 적합 불가. 기간을 늘리거나 변수를 줄이세요.`,
+              n: nHist,
+              k,
+            };
+          let fit;
+          try {
+            fit = REG_STATS.ols(Xhist, y);
+          } catch (e) {
+            return { ok: false, reason: "적합 실패: " + e.message, n: nHist, k };
+          }
+          const beta = fit.beta;
+          const predFutT = Xfut.map((r) =>
+            r.reduce((s, v, i) => s + v * beta[i], 0),
+          );
+          const tcrit = this._tcrit(Math.max(1, fit.df));
+          const noise = bandMode === "pred" ? 1 : 0;
+          const lev = (xrow) => {
+            let s = 0;
+            for (let a = 0; a < xrow.length; a++)
+              for (let b = 0; b < xrow.length; b++)
+                s += xrow[a] * fit.XtXi[a][b] * xrow[b];
+            return s;
+          };
+          const loT = [],
+            hiT = [];
+          Xfut.forEach((r, j) => {
+            const se = Math.sqrt(Math.max(0, fit.sigma2 * (noise + lev(r))));
+            loT.push(predFutT[j] - tcrit * se);
+            hiT.push(predFutT[j] + tcrit * se);
+          });
+          const fittedHist = this._invDep(fit.yhat, depTf, rawY);
+          const predFut = this._invDep(predFutT, depTf, rawY);
+          const lo = this._invDep(loT, depTf, rawY);
+          const hi = this._invDep(hiT, depTf, rawY);
+          const histLabels = m.time
+            ? valid.map((r) => String(r[m.time]))
+            : valid.map((_, i) => i + 1);
+          const vif = m.indep.map((_, j) => {
+            if (m.indep.length < 2) return 1;
+            const Xj = Xhist.map((r) => r.filter((_, c) => c !== j + 1));
+            const r2 = REG_STATS.r2of(Xj, indepCols[j].hist);
+            return isFinite(r2) && r2 < 1 ? 1 / (1 - r2) : Infinity;
+          });
+          return {
+            ok: true,
+            terms: ["(Intercept)", ...featNames],
+            coef: beta,
+            r2: fit.R2,
+            adjR2: fit.adjR2,
+            n: nHist,
+            k,
+            df: fit.df,
+            sigma: Math.sqrt(fit.sigma2),
+            vif,
+            se: fit.se,
+            pval: fit.pval,
+            actual: rawY,
+            fittedHist,
+            predFut,
+            lo,
+            hi,
+            histLabels,
+            futLabels: tfeat.futLabels,
+            labels: [...histLabels, ...tfeat.futLabels],
+            splitAt: nHist,
+            futRows,
+            depTf,
+            bandMode: bandMode === "pred" ? "pred" : "mean",
+            hasSeasonality: tfeat.cols.length > 1,
+            indepNames: m.indep.slice(),
+          };
+        },
+      };
+      // 골든 — 합성 데이터로 결정론·예측 외삽·밴드·degenerate 검증
+      function runRegForecastTests(verbose = true) {
+        const R = [];
+        const ok = (label, cond, actual) =>
+          R.push({ test: label, actual: String(actual), pass: cond ? "✓" : "✗" });
+        // 합성: y = 8000 + 600*log(cost) - 5*t + 400*sin(2πt/52) + noise
+        const n = 104;
+        let seed = 99;
+        const rnd = () => {
+          seed = (seed * 1664525 + 1013904223) >>> 0;
+          return seed / 4294967296 - 0.5;
+        };
+        const rows = [];
+        for (let i = 0; i < n; i++) {
+          const cost = 5000 + i * 40 + rnd() * 1000;
+          const hol = i % 13 === 0 ? 1 : 0;
+          const date = new Date(Date.UTC(2024, 0, 1) + i * 7 * 86400000)
+            .toISOString()
+            .slice(0, 10);
+          const y =
+            8000 +
+            600 * Math.log1p(cost) -
+            5 * i +
+            400 * Math.sin((2 * Math.PI * i) / 52.18) +
+            300 * hol +
+            rnd() * 100;
+          rows.push({ week: date, cost, is_promo: hol, regs: Math.round(y) });
+        }
+        const m = {
+          dep: "regs",
+          indep: ["cost", "is_promo"],
+          time: "week",
+          group: null,
+          types: { regs: "continuous", cost: "continuous", is_promo: "binary" },
+          tf: { regs: "none", cost: "adstock_log", is_promo: "none" },
+        };
+        const opts = {
+          rows,
+          m,
+          lam: 0.3,
+          horizon: 13,
+          bandMode: "mean",
+          season: true,
+          futureSpec: { cost: { value: 9000 }, is_promo: { off: null } },
+        };
+        const r1 = REG_FORECAST.run(opts);
+        ok("T1 · 예측 성공·R²유효", r1.ok && r1.r2 > 0 && r1.r2 < 1, r1.ok ? r1.r2.toFixed(3) : r1.reason);
+        ok("T2 · 예측 길이=horizon", r1.predFut && r1.predFut.length === 13, r1.predFut ? r1.predFut.length : 0);
+        ok("T3 · 밴드 lo<hi", r1.lo && r1.lo.every((v, j) => v <= r1.hi[j]), "n=" + (r1.lo ? r1.lo.length : 0));
+        ok("T4 · 계절성 포함(주간·2년+)", r1.hasSeasonality === true, r1.hasSeasonality);
+        const r2 = REG_FORECAST.run(opts);
+        ok("T5 · 결정론(2회 동일)", JSON.stringify(r1.predFut) === JSON.stringify(r2.predFut), "");
+        // 미래 예산↑ → 예측 상승 (cost 계수 양수 기대)
+        const rHi = REG_FORECAST.run({ ...opts, futureSpec: { cost: { value: 20000 }, is_promo: { off: null } } });
+        const meanFut = (x) => x.predFut.reduce((s, v) => s + v, 0) / x.predFut.length;
+        ok("T6 · 예산↑→예측↑", meanFut(rHi) > meanFut(r1), `${Math.round(meanFut(r1))}→${Math.round(meanFut(rHi))}`);
+        // degenerate: 변수>행
+        const few = rows.slice(0, 3);
+        const rDeg = REG_FORECAST.run({ ...opts, rows: few });
+        ok("T7 · 행≤변수 degenerate 거부", rDeg.ok === false, rDeg.reason ? "ok=false" : "ok=true");
+        // 이벤트 N기간 후 끔: off=3 → 미래 4번째부터 0
+        const rOff = REG_FORECAST.run({ ...opts, futureSpec: { cost: { value: 9000 }, is_promo: { off: 3 } } });
+        ok("T8 · 이벤트 off=3 미래반영", rOff.ok && rOff.futRows.is_promo[5] === 0, rOff.ok ? rOff.futRows.is_promo.slice(0, 6).join("") : "fail");
+        if (verbose) {
+          console.log("%c=== REG_FORECAST · Golden ===", "color:#adc6ff;font-weight:bold;");
+          console.table(R);
+          const p = R.filter((x) => x.pass === "✓").length;
+          console.log(`%c${p}/${R.length} 통과`, `color:${p === R.length ? "#22c55e" : "#f87171"};font-weight:bold;`);
+        }
+        return R;
+      }
+      if (typeof window !== "undefined") {
+        window.runRegForecastTests = runRegForecastTests;
+        window.REG_FORECAST = REG_FORECAST;
       }
       function regLabRun() {
         const m = regLabReadMapping(),
@@ -28141,8 +28589,9 @@ allocation = total_budget × weight`,
           const r2 = REG_STATS.r2of(Xj, Xcols[j]);
           return isFinite(r2) && r2 < 1 ? 1 / (1 - r2) : Infinity;
         });
-        const labels = m.label
-          ? rows.map((r) => r[m.label])
+        const labelCol = m.time || m.label;
+        const labels = labelCol
+          ? rows.map((r) => r[labelCol])
           : rows.map((_, i) => i + 1);
         REG_LAB_STATE.fit = {
           m,
@@ -28173,7 +28622,8 @@ allocation = total_budget × weight`,
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
       <label class="ab-pill" style="cursor:pointer;">CSV 업로드<input type="file" id="reg-file" accept=".csv,.tsv,.txt" style="display:none;"></label>
       <button class="ab-pill" id="reg-sample">샘플 데이터 넣기</button>
-      <span class="muted" style="font-size:12px;">${hasData ? `${escapeHtml(S.fileName)} · ${S.rows.length}행 · ${S.headers.length}컬럼` : "wide CSV (1행=1관측). 컬럼 자유."}</span>
+      ${mmmHasDataForBridge() ? `<button class="ab-pill" id="reg-from-mmm" style="border-color:rgba(122,162,247,0.5);">📊 MMM 데이터 불러오기</button>` : ""}
+      <span class="muted" style="font-size:12px;">${hasData ? `${escapeHtml(S.fileName)} · ${S.rows.length}행 · ${S.headers.length}컬럼` : "wide CSV (1행=1관측). 컬럼 자유. 또는 위에서 매핑한 MMM 데이터를 바로 불러오기."}</span>
     </div>
   </section>`;
         if (!S.rows.length) return dataSec;
@@ -28213,14 +28663,17 @@ allocation = total_budget × weight`,
         );
         return `<section class="block" id="s-map">
     <h2 class="section-title"><span class="ix">§2</span>컬럼 매핑 (드래그앤드롭)</h2>
-    <p class="muted" style="font-size:12px;margin-top:-4px;">아래 컬럼 칩을 <strong>종속(Y)·독립·그룹·라벨 영역으로 드래그</strong>하세요. 독립변수 칩에서 타입·변환·(지출이면)perf/brand를 고릅니다. binary는 변환 자동 '없음'.</p>
+    <p class="muted" style="font-size:12px;margin-top:-4px;">아래 컬럼 칩을 <strong>종속(Y)·독립·그룹·시간 영역으로 드래그</strong>하세요. 독립변수 칩에서 타입·변환·(지출이면)perf/brand를 고릅니다. binary는 변환 자동 '없음'. <strong>시간(날짜·주차)</strong>을 지정하면 아래 §7에서 <strong>미래 예측</strong>이 열립니다.</p>
     <div class="reg-zone" data-reg-zone="ignore" style="border-style:solid;"><div class="reg-zone-label">📦 컬럼 (미지정 — 드래그해서 배치)</div><div class="reg-chips" id="reg-tray">${tray.map((c) => chip(c, false)).join("") || `<span style="color:var(--text-muted);font-size:11px;">모두 배치됨</span>`}</div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
       ${zone("dependent", "🎯 종속변수 (Y) — 1개", true)}
       ${zone("group", "🔀 그룹 (세그먼트 필터·선택)", false)}
     </div>
     <div style="margin-top:10px;">${zone("independent", "📈 독립변수 (여러 개)", true)}</div>
-    <div style="margin-top:10px;">${zone("label", "🏷 라벨 (x축·선택)", false)}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+      ${zone("time", "🕐 시간 (날짜·주차 — 예측 X축·계절성)", false)}
+      ${zone("label", "🏷 라벨 (x축·선택)", false)}
+    </div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;">
       <label style="font-size:12px;color:var(--text-muted);">Adstock λ<br><input type="number" id="reg-lambda" value="${S.lambda}" step="0.05" min="0" max="0.95" style="width:90px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:4px 7px;margin-top:3px;"></label>
       <div id="reg-groupwrap" style="flex:1 1 100%;${regLabGroupColOf() ? "" : "display:none;"}">
@@ -28303,7 +28756,8 @@ allocation = total_budget × weight`,
     <section class="block" id="s-chart"><h2 class="section-title"><span class="ix">§5</span>실제 vs 예측</h2><div class="chart-container" style="height:280px;"><canvas id="reg-fit-chart"></canvas></div></section>
     <section class="block" id="s-out"><h2 class="section-title"><span class="ix">§6</span>추출 & 설명</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"><button class="ab-pill" id="reg-dl-data">⬇ 예측·기여도 데이터셋 CSV</button><button class="ab-pill" id="reg-dl-coef">⬇ 계수표 CSV</button></div>
-      <pre style="white-space:pre-wrap;font-family:var(--font-mono,monospace);font-size:12px;line-height:1.65;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:14px;margin:0;color:var(--text-1);">${escapeHtml(regLabSummary())}</pre></section>`;
+      <pre style="white-space:pre-wrap;font-family:var(--font-mono,monospace);font-size:12px;line-height:1.65;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:14px;margin:0;color:var(--text-1);">${escapeHtml(regLabSummary())}</pre></section>
+    ${renderRegForecast()}`;
       }
       function regLabSummary() {
         const R = REG_LAB_STATE.fit;
@@ -28433,6 +28887,250 @@ allocation = total_budget × weight`,
           },
         );
       }
+      // === 미래 예측(§7) — REG_FORECAST 기반 (Phase 5·6) ===
+      function regForecastRows() {
+        const m = regLabReadMapping();
+        const S = REG_LAB_STATE,
+          fc = S.fc;
+        let rows = S.rows.slice();
+        if (m.group) {
+          if (fc.osMode === "split" && fc.osPick != null)
+            rows = rows.filter(
+              (r) => String(r[m.group]) === String(fc.osPick),
+            );
+          else if (fc.osMode === "pool" && S.groupKeep)
+            rows = rows.filter((r) => S.groupKeep.has(String(r[m.group])));
+        }
+        return rows;
+      }
+      function regGetForecast(rowsOverride) {
+        const m = regLabReadMapping();
+        const fc = REG_LAB_STATE.fc;
+        return REG_FORECAST.run({
+          rows: rowsOverride || regForecastRows(),
+          m,
+          lam: REG_LAB_STATE.lambda,
+          futureSpec: fc.spec,
+          horizon: fc.horizon,
+          bandMode: fc.band,
+          season: fc.season,
+        });
+      }
+      function renderRegForecast() {
+        const m = regLabReadMapping();
+        const S = REG_LAB_STATE,
+          fc = S.fc;
+        const fmt = (v) =>
+          v == null || !isFinite(v) ? "—" : Math.round(v).toLocaleString();
+        // OS(그룹) 분리/풀링 바
+        let osBar = "",
+          osCompare = "";
+        if (m.group) {
+          const vals = [
+            ...new Set(S.rows.map((r) => String(r[m.group]))),
+          ].filter((v) => v !== "null" && v !== "");
+          if (
+            fc.osMode === "split" &&
+            (fc.osPick == null || !vals.includes(String(fc.osPick)))
+          )
+            fc.osPick = vals[0];
+          const modeToggle = `<div class="ab-pillgroup" style="margin:0;"><span class="ab-pillgroup-label" style="font-size:10px;">${escapeHtml(m.group)}</span><button class="ab-pill ${fc.osMode === "split" ? "active" : ""}" data-reg-fc-osmode="split">그룹별 분리</button><button class="ab-pill ${fc.osMode === "pool" ? "active" : ""}" data-reg-fc-osmode="pool">전체 풀링</button></div>`;
+          const osPills =
+            fc.osMode === "split"
+              ? `<div class="ab-pillgroup" style="margin:0;">${vals.map((v) => `<button class="ab-pill ${String(fc.osPick) === v ? "active" : ""}" data-reg-fc-ospick="${escapeHtml(v)}">${escapeHtml(v)}</button>`).join("")}</div>`
+              : "";
+          osBar = `<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">${modeToggle}${osPills}</div>`;
+          if (fc.osMode === "split") {
+            const cmp = vals.map((v) => ({
+              v,
+              r: regGetForecast(
+                S.rows.filter((x) => String(x[m.group]) === v),
+              ),
+            }));
+            osCompare = `<h3 style="font-size:13px;margin:14px 0 6px;">그룹별 예측 비교 <span style="font-size:11px;color:var(--text-muted);font-weight:400;">— 각 그룹 독립 모델(반응계수가 그룹마다 다를 수 있음)</span></h3>
+      <div class="table-wrap" style="max-width:600px;"><table class="data" style="font-size:11.5px;"><thead><tr><th>${escapeHtml(m.group)}</th><th>n</th><th>R²</th><th>예측 평균</th><th>최근 평균</th><th>변화</th></tr></thead><tbody>${cmp
+        .map(({ v, r }) => {
+          if (!r.ok)
+            return `<tr><td><strong>${escapeHtml(v)}</strong></td><td colspan="5" class="muted" style="font-size:11px;">${escapeHtml(r.reason || "적합 불가")}</td></tr>`;
+          const rn = Math.min(r.predFut.length, r.actual.length);
+          const fa = r.predFut.reduce((s, x) => s + x, 0) / r.predFut.length;
+          const ha = r.actual.slice(-rn).reduce((s, x) => s + x, 0) / rn;
+          const d = ha > 0 ? (fa / ha - 1) * 100 : 0;
+          return `<tr><td><strong>${String(fc.osPick) === v ? "▶ " : ""}${escapeHtml(v)}</strong></td><td class="tnum">${r.n}</td><td class="tnum">${r.r2.toFixed(3)}</td><td class="tnum">${fmt(fa)}</td><td class="tnum" style="color:var(--text-muted);">${fmt(ha)}</td><td class="tnum ${d >= 0 ? "pos" : "neg"}">${d >= 0 ? "+" : ""}${d.toFixed(1)}%</td></tr>`;
+        })
+        .join("")}</tbody></table></div>`;
+          }
+        }
+        const r = regGetForecast();
+        const timeNote = m.time
+          ? ""
+          : `<p class="muted" style="font-size:11.5px;margin:6px 0;">⏱ <strong>시간(날짜·주차) 열을 매핑</strong>하면 날짜 라벨·계절성이 추가됩니다. 지금은 행 순서로 추세만 연장합니다.</p>`;
+        const head = `<h2 class="section-title"><span class="ix">§7</span>미래 예측 <span style="font-size:11px;color:var(--text-muted);font-weight:400;">— 관측 회귀의 외삽(가설). 인과·증분은 holdout 전용</span></h2>`;
+        if (!r.ok)
+          return `<section class="block" id="s-forecast">${head}${osBar}<div class="callout warn" style="margin:8px 0;"><div class="ico">!</div><div class="body" style="font-size:12.5px;"><strong>예측을 만들 수 없습니다.</strong> ${escapeHtml(r.reason || "")}</div></div>${osCompare}</section>`;
+        // 컨트롤
+        const horizonInput = `<label style="font-size:11px;color:var(--text-muted);">예측 기간 (미래 행 수)<br><input type="number" data-reg-fc-horizon value="${fc.horizon}" min="1" max="104" style="margin-top:3px;width:90px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:4px 7px;"></label>`;
+        const bandToggle = `<div class="ab-pillgroup" style="margin:0;"><span class="ab-pillgroup-label" style="font-size:10px;">밴드</span>${[
+          ["mean", "평균 추세(좁음)"],
+          ["pred", "개별 행(넓음)"],
+        ]
+          .map(
+            ([v, l]) =>
+              `<button class="ab-pill ${fc.band === v ? "active" : ""}" data-reg-fc-band="${v}">${l}</button>`,
+          )
+          .join("")}</div>`;
+        const seasonToggle = `<label style="font-size:11px;color:var(--text-muted);align-self:flex-end;cursor:pointer;"><input type="checkbox" data-reg-fc-season ${fc.season ? "checked" : ""} style="vertical-align:middle;"> 계절성 포함${r.hasSeasonality ? "" : " <span style='opacity:.6;'>(적용 안 됨 — 날짜·기간 부족)</span>"}</label>`;
+        // 결론 카드
+        const rn = Math.min(r.predFut.length, r.actual.length);
+        const futAvg = r.predFut.reduce((s, v) => s + v, 0) / r.predFut.length;
+        const histAvg = r.actual.slice(-rn).reduce((s, v) => s + v, 0) / rn;
+        const delta = histAvg > 0 ? (futAvg / histAvg - 1) * 100 : 0;
+        const statRow = `<div class="ab-stat-row" style="margin-top:10px;">
+      <div class="ab-stat"><div class="ab-stat-label">예측 평균</div><div class="ab-stat-value tnum">${fmt(futAvg)}</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">최근 ${rn} 평균</div><div class="ab-stat-value tnum">${fmt(histAvg)}</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">변화</div><div class="ab-stat-value tnum ${delta >= 0 ? "pos" : "neg"}">${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%</div></div>
+      <div class="ab-stat"><div class="ab-stat-label">모델 R²</div><div class="ab-stat-value tnum">${r.r2.toFixed(3)}</div></div></div>`;
+        // 변수별 미래 입력
+        const specRows = m.indep
+          .map((c) => {
+            const isBin = m.types[c] === "binary";
+            const spec = fc.spec[c] || {};
+            const futVal = r.futRows[c] ? r.futRows[c][0] : 0;
+            if (isBin)
+              return `<tr><td>${escapeHtml(c)}</td><td style="font-size:11px;color:var(--text-muted);">이벤트(0/1)</td><td><input type="number" min="0" data-reg-fc-off="${escapeHtml(c)}" value="${spec.off != null && isFinite(spec.off) ? spec.off : ""}" placeholder="지속" style="width:120px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:4px 7px;text-align:right;"></td></tr>`;
+            return `<tr><td>${escapeHtml(c)}</td><td style="font-size:11px;color:var(--text-muted);">연속(시나리오)</td><td><input type="number" data-reg-fc-val="${escapeHtml(c)}" value="${Math.round(spec.value != null && isFinite(spec.value) ? spec.value : futVal)}" style="width:120px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:4px 7px;text-align:right;"></td></tr>`;
+          })
+          .join("");
+        const tabRows = r.futLabels
+          .map(
+            (lab, i) =>
+              `<tr><td>${escapeHtml(String(lab))}</td><td class="tnum">${fmt(r.predFut[i])}</td><td class="tnum" style="color:var(--text-muted);">${fmt(r.lo[i])}</td><td class="tnum" style="color:var(--text-muted);">${fmt(r.hi[i])}</td></tr>`,
+          )
+          .join("");
+        return `<section class="block" id="s-forecast">${head}${timeNote}${osBar}
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin:8px 0;">${horizonInput}${bandToggle}${seasonToggle}</div>
+    ${statRow}
+    <div class="chart-container" style="height:300px;margin-top:12px;"><canvas id="reg-fc-chart"></canvas></div>
+    <h3 style="font-size:13px;margin:16px 0 6px;">변수별 미래값 <span style="font-size:11px;color:var(--text-muted);font-weight:400;">— 연속=시나리오 값(기본 최근평균), 이벤트=지속(비움)/N행 뒤 끔. 수정 시 즉시 재예측.</span></h3>
+    <div class="table-wrap" style="max-width:480px;"><table class="data" style="font-size:12px;"><thead><tr><th>변수</th><th>종류</th><th>미래값</th></tr></thead><tbody>${specRows}</tbody></table></div>
+    <div style="margin:12px 0 6px;"><button class="ab-pill" data-reg-fc-csv="1" style="background:#7aa2f7;color:#0b0d12;font-weight:600;border-color:#7aa2f7;">⬇ 예측 CSV (미래 + 95% 밴드)</button></div>
+    <h3 style="font-size:13px;margin:14px 0 6px;">미래 예측값 (${r.predFut.length}행)</h3>
+    <div class="table-wrap"><table class="data" style="font-size:11px;"><thead><tr><th>${m.time ? "날짜" : "미래"}</th><th>예측</th><th>하한(95%)</th><th>상한(95%)</th></tr></thead><tbody>${tabRows}</tbody></table></div>
+    ${osCompare}
+  </section>`;
+      }
+      function regForecastChart() {
+        const el = document.getElementById("reg-fc-chart");
+        if (!el || typeof Chart === "undefined") return;
+        const r = regGetForecast();
+        if (!r.ok) return;
+        const muted = getCssVar("--text-muted"),
+          border = getCssVar("--border"),
+          sp = r.splitAt;
+        const nulls = (n) => Array(n).fill(null);
+        const actual = [...r.actual, ...nulls(r.predFut.length)];
+        const model = [...r.fittedHist, ...r.predFut];
+        const bandLo = [...nulls(sp), ...r.lo];
+        const bandHi = [...nulls(sp), ...r.hi];
+        destroyChartIfExists("reg-fc-chart");
+        CHART_INSTANCES["reg-fc-chart"] = new Chart(el, {
+          type: "line",
+          data: {
+            labels: r.labels.map((x) => String(x)),
+            datasets: [
+              {
+                label: "95% 밴드 하한",
+                data: bandLo,
+                borderColor: "transparent",
+                backgroundColor: "rgba(122,162,247,0.13)",
+                pointRadius: 0,
+                fill: "+1",
+              },
+              {
+                label: "95% 밴드 상한",
+                data: bandHi,
+                borderColor: "transparent",
+                backgroundColor: "rgba(122,162,247,0.13)",
+                pointRadius: 0,
+                fill: false,
+              },
+              {
+                label: "실제",
+                data: actual,
+                borderColor: muted,
+                borderWidth: 1.4,
+                pointRadius: 0,
+                tension: 0.15,
+              },
+              {
+                label: "모델/예측",
+                data: model,
+                borderColor: "#7aa2f7",
+                borderWidth: 1.8,
+                pointRadius: 0,
+                tension: 0.15,
+                segment: {
+                  borderDash: (ctx) =>
+                    ctx.p0DataIndex >= sp - 1 ? [5, 3] : undefined,
+                },
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+              legend: {
+                labels: {
+                  color: muted,
+                  font: { size: 11 },
+                  filter: (it) => !/밴드/.test(it.text),
+                },
+              },
+            },
+            scales: {
+              x: {
+                ticks: { color: muted, maxTicksLimit: 12 },
+                grid: { color: border },
+              },
+              y: { ticks: { color: muted }, grid: { color: border } },
+            },
+          },
+        });
+      }
+      function regForecastExportCsv() {
+        const m = regLabReadMapping();
+        const r = regGetForecast();
+        if (!r.ok) return;
+        const q = (s) => {
+          const t = String(s == null ? "" : s);
+          return /[",\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+        };
+        const head = [
+          m.time ? "date" : "future_row",
+          "pred",
+          "lo95",
+          "hi95",
+          ...m.indep.map((c) => `future_${c}`),
+        ];
+        const lines = [head.map(q).join(",")];
+        r.futLabels.forEach((lab, i) => {
+          lines.push(
+            [
+              q(lab),
+              r.predFut[i].toFixed(4),
+              r.lo[i].toFixed(4),
+              r.hi[i].toFixed(4),
+              ...m.indep.map((c) =>
+                r.futRows[c] ? r.futRows[c][i] : "",
+              ),
+            ].join(","),
+          );
+        });
+        const csv = "﻿" + lines.join("\r\n");
+        _mmmDownload("regression_forecast.csv", csv, "text/csv;charset=utf-8");
+      }
       function bindRegLabHandlers() {
         const fileEl = document.getElementById("reg-file");
         if (fileEl)
@@ -28457,6 +29155,18 @@ allocation = total_budget × weight`,
             const s = regLabMakeSample();
             regLabLoad(s.rows, s.fields);
             navigate("5-19");
+          });
+        const fromMmmEl = document.getElementById("reg-from-mmm");
+        if (fromMmmEl)
+          fromMmmEl.addEventListener("click", () => {
+            if (regLabFromMmm()) {
+              try {
+                regLabRun();
+              } catch (e) {
+                /* 매핑 불완전 시 결과 없이 매핑 화면 */
+              }
+              navigate("5-19");
+            }
           });
         document.querySelectorAll("[data-reg-map]").forEach((selEl) =>
           selEl.addEventListener("change", () => {
@@ -28529,6 +29239,63 @@ allocation = total_budget × weight`,
         if (dlData) dlData.addEventListener("click", regLabExportData);
         const dlCoef = document.getElementById("reg-dl-coef");
         if (dlCoef) dlCoef.addEventListener("click", regLabExportCoef);
+        bindRegForecastHandlers();
+        regForecastChart();
+      }
+      // 미래 예측(§7) 핸들러 — 토글·시나리오 입력 → 상태 갱신 후 재렌더
+      function bindRegForecastHandlers() {
+        const FC = REG_LAB_STATE.fc;
+        const rerender = () => navigate("5-19");
+        const hz = document.querySelector("[data-reg-fc-horizon]");
+        if (hz)
+          hz.addEventListener("change", () => {
+            const v = parseInt(hz.value, 10);
+            if (isFinite(v) && v > 0) FC.horizon = Math.min(104, v);
+            rerender();
+          });
+        document.querySelectorAll("[data-reg-fc-band]").forEach((b) =>
+          b.addEventListener("click", () => {
+            FC.band = b.dataset.regFcBand;
+            rerender();
+          }),
+        );
+        const se = document.querySelector("[data-reg-fc-season]");
+        if (se)
+          se.addEventListener("change", () => {
+            FC.season = se.checked;
+            rerender();
+          });
+        document.querySelectorAll("[data-reg-fc-osmode]").forEach((b) =>
+          b.addEventListener("click", () => {
+            FC.osMode = b.dataset.regFcOsmode;
+            rerender();
+          }),
+        );
+        document.querySelectorAll("[data-reg-fc-ospick]").forEach((b) =>
+          b.addEventListener("click", () => {
+            FC.osPick = b.dataset.regFcOspick;
+            rerender();
+          }),
+        );
+        document.querySelectorAll("[data-reg-fc-val]").forEach((inp) =>
+          inp.addEventListener("change", () => {
+            const c = inp.dataset.regFcVal;
+            const v = parseFloat(String(inp.value).replace(/[,\s]/g, ""));
+            FC.spec[c] = isFinite(v) ? { value: v } : {};
+            rerender();
+          }),
+        );
+        document.querySelectorAll("[data-reg-fc-off]").forEach((inp) =>
+          inp.addEventListener("change", () => {
+            const c = inp.dataset.regFcOff;
+            const raw = String(inp.value).trim();
+            const v = parseInt(raw, 10);
+            FC.spec[c] = raw === "" ? { off: null } : { off: isFinite(v) ? v : null };
+            rerender();
+          }),
+        );
+        const csv = document.querySelector("[data-reg-fc-csv]");
+        if (csv) csv.addEventListener("click", regForecastExportCsv);
       }
       function regLabExportData() {
         const R = REG_LAB_STATE.fit;
