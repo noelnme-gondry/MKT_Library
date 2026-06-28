@@ -4905,8 +4905,8 @@
         </h2>
         <p class="modal-deck">
           LTV 예측·카니발리제이션 보정·프로드 탐지 등 고급 분석 모듈은 Pro 접근
-          키가 필요합니다. 키가 있으면 해당 도구에서 입력하고, 운영 관련 문의 사항이 있으면 Instagram
-          DM으로 말씀해 주세요.
+          키가 필요합니다. 키가 있으면 해당 도구에서 입력하고, 운영 관련 문의
+          사항이 있으면 Instagram DM으로 말씀해 주세요.
         </p>
         <div class="modal-benefits">
           <div class="modal-benefit">생존 곡선 기반 12개월 LTV 예측</div>
@@ -17824,14 +17824,12 @@ allocation = total_budget × weight`,
               metrics: [],
             });
           }
-          e.arms
-            .get(r.arm_id)
-            .metrics.push({
-              tier: r.tier,
-              metric_name: r.metric_name,
-              num: r.num,
-              den: r.den,
-            });
+          e.arms.get(r.arm_id).metrics.push({
+            tier: r.tier,
+            metric_name: r.metric_name,
+            num: r.num,
+            den: r.den,
+          });
         }
 
         // 3) 실험별 verdict 계산
@@ -41068,11 +41066,6 @@ allocation = total_budget × weight`,
           <div class="alloc-sim-tag" style="background:${meta.color}22;border-color:${meta.color}55;color:${meta.color};">
             ${escapeHtml(truncateLabel(ch, 60))}${hasChannelOverride(ch) ? ' <span class="alloc-chip-star">★</span>' : ""}
           </div>
-          <div class="alloc-sim-title">예산 변경 시뮬레이션</div>
-          <div class="alloc-sim-sub">
-            추세선 ${meta.model.type} · R²=${meta.r2 != null ? meta.r2.toFixed(2) : "—"} ·
-            관측 Cost 범위 ${fmtCurrency(meta.xMin)} ~ ${fmtCurrency(meta.xMax)}
-          </div>
         </div>
         <button class="alloc-csv-btn" id="alloc-csv-download" title="채널 데이터 + 추세선 식을 CSV로 다운로드">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -41086,56 +41079,9 @@ allocation = total_budget × weight`,
 
       ${renderChannelSetupPanel(ch)}
 
-      <div class="alloc-sim-form">
-        <div class="ab-field">
-          <label>현재 Cost</label>
-          <input id="sim-current" type="number" step="100" min="0" value="${currentCost}" />
-          <span class="ab-field-hint">평균 관측치: ${fmtCurrency(avgCost)}</span>
-        </div>
-        <div class="ab-field">
-          <label>목표 Cost</label>
-          <input id="sim-target" type="number" step="100" min="0" value="${targetCost}" />
-          <span class="ab-field-hint">+/- 자유롭게 설정</span>
-        </div>
-      </div>
-
-      ${renderSimResults(sim, currentCost, targetCost, meta, !!sim.rev, metricLabel, unitLabel)}
-
       ${renderTrendComparison(meta)}
-
-      ${renderMarginalIntervals(meta, metricLabel, unitLabel)}
     </div>
   `;
-
-        const refresh = () => {
-          const c = parseFloat(document.getElementById("sim-current").value);
-          const t = parseFloat(document.getElementById("sim-target").value);
-          if (isNaN(c) || isNaN(t) || c < 0 || t < 0) return;
-          ALLOC_STATE.sim.currentCost = c;
-          ALLOC_STATE.sim.targetCost = t;
-          const newSim = simulateChannel({
-            model: meta.model,
-            currentCost: c,
-            targetCost: t,
-            channelRows,
-            metric,
-          });
-          const wrap = document.getElementById("alloc-sim-results");
-          if (wrap)
-            wrap.outerHTML = renderSimResults(
-              newSim,
-              c,
-              t,
-              meta,
-              !!newSim.rev,
-              metricLabel,
-              unitLabel,
-            );
-        };
-        const cInp = document.getElementById("sim-current");
-        const tInp = document.getElementById("sim-target");
-        if (cInp) cInp.addEventListener("input", refresh);
-        if (tInp) tInp.addEventListener("input", refresh);
 
         const csvBtn = document.getElementById("alloc-csv-download");
         if (csvBtn)
@@ -44347,7 +44293,7 @@ allocation = total_budget × weight`,
           const statusHtml = isVerified
             ? `<span style="color:var(--success); font-size:12px; font-weight:600;">✓ 확인됨</span>`
             : problemReason
-              ? `<span style="color:var(--danger); font-size:12px; font-weight:600;">⚠ ${problemReason}</span>`
+              ? `<span style="color:#f7b955; font-size:12px; font-weight:600;">⚠ ${problemReason}</span>`
               : `<span style="color:var(--text-secondary); font-size:12px;">대기중</span>`;
 
           listHtml += `
