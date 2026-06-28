@@ -25039,12 +25039,68 @@ allocation = total_budget × weight`,
   </section>`;
       }
       // Trend Forecast 본문 — 모델·단위·horizon·채널별 예산 입력 + 차트 + 미래 표 + 전체 CSV
+      // 예측 실패(fc=null) 원인 진단 — "모델 적합 실패" 한 줄 대신 왜·얼마나 부족한지(행 수 vs 변수 수 분해).
+      // 원인: ① MMM 미적합 ② 종속변수 빈값 ③ 행≤변수(특이행렬). 전부 render층(골든 무관).
+      function mmmForecastFailReason(c) {
+        const t = MMM_METH_STATE.target,
+          tKo = t === "Regs" ? "가입" : "재활성";
+        const T = c && c.byTarget && c.byTarget[t];
+        if (!T || !T.mmm)
+          return {
+            head: "MMM 분석이 먼저 필요합니다.",
+            detail:
+              "매핑을 마친 뒤 “▶ 분석하기”를 눌러 모델을 적합한 다음 예측이 생성됩니다.",
+          };
+        const y = c.panel && c.panel.targets ? c.panel.targets[t] : null;
+        if (!y || !y.length || y.every((v) => !isFinite(v)))
+          return {
+            head: `종속변수(${tKo})가 비어 있거나 매핑되지 않았습니다.`,
+            detail: `${tKo} 열을 매핑하고 값이 비지 않았는지 확인하세요.`,
+          };
+        let names = [];
+        try {
+          names = mmmBuildFeatures(c.panel, c.cfg, T.mmm.best_lambda, true)
+            .names;
+        } catch (e) {
+          names = [];
+        }
+        const n = y.length,
+          k = names.length + 1; // +절편
+        // 변수 카테고리 분해
+        const cat = { 채널: 0, "이벤트/휴일": 0, 계절성: 0, 추세: 0, 구조변화: 0 };
+        names.forEach((nm) => {
+          if (/^ln_/.test(nm)) cat["채널"]++;
+          else if (/^(d_|lny$|chuseok$)/.test(nm)) cat["이벤트/휴일"]++;
+          else if (/^(sin_|cos_)/.test(nm)) cat["계절성"]++;
+          else if (nm === "trend") cat["추세"]++;
+          else cat["구조변화"]++;
+        });
+        const parts = Object.entries(cat)
+          .filter(([, v]) => v > 0)
+          .map(([kk, v]) => `${kk} ${v}`)
+          .join(" + ");
+        if (n <= k)
+          return {
+            head: `데이터 ${n}행이 변수 ${k}개(절편 포함)보다 적거나 같아 회귀가 불안정합니다.`,
+            detail: `변수 = ${parts || "—"} + 절편. 데이터 기간을 늘리거나, 채널·이벤트 더미를 줄이세요 (행 수가 변수보다 충분히 많아야 적합됩니다).`,
+            n,
+            k,
+          };
+        return {
+          head: "변수 간 완전 공선(똑같이 움직이는 열)이 있거나 데이터가 한 점에 뭉쳐 있습니다.",
+          detail: `행 ${n} / 변수 ${k}개는 충분하지만 적합이 불안정합니다. 거의 같은 채널·중복 더미를 하나로 합치거나, 지출 변동이 없는 채널을 제외하세요.`,
+          n,
+          k,
+        };
+      }
       function renderMmmForecast(c) {
         const fc = mmmGetForecast(c);
         const t = MMM_METH_STATE.target,
           tKo = t === "Regs" ? "가입" : "재활성";
-        if (!fc)
-          return `<section class="block" id="s-forecast"><h2 class="section-title"><span class="ix">§7</span>Trend Forecast</h2><p class="muted">예측을 만들 수 없습니다 (모델 적합 실패 — 채널·타깃 매핑/데이터 양 확인).</p></section>`;
+        if (!fc) {
+          const r = mmmForecastFailReason(c);
+          return `<section class="block" id="s-forecast"><h2 class="section-title"><span class="ix">§7</span>${tKo} 예측</h2><div class="callout warn" style="margin:8px 0;"><div class="ico">!</div><div class="body" style="font-size:12.5px;"><strong>예측을 만들 수 없습니다.</strong> ${escapeHtml(r.head)}<br><span style="color:var(--text-muted);">${escapeHtml(r.detail)}</span></div></div></section>`;
+        }
         const unitName =
           { daily: "일", weekly: "주", monthly: "월" }[fc.unit] || "주";
         const perName = fc.gran ? fc.gran.label.replace("별", "") : "행";
