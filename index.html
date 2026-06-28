@@ -5120,7 +5120,7 @@
               id: "5-18",
               slug: "Analysis-marketing-response",
               title: "마케팅 반응 분석",
-              desc: "4탭: 카니발 진단 · Trend Forecast(예산 예측) · MMM 기여 분해 · 범용 회귀(Lab) (가설용·holdout 아님)",
+              desc: "3탭: 카니발 진단 · MMM 기여 분해 · 회귀·미래예측(Cost·임의 변수 자유 매핑) (가설용·holdout 아님)",
             },
             {
               id: "5-20",
@@ -24449,6 +24449,8 @@ allocation = total_budget × weight`,
       }
       function page_5_18() {
         const meta = findMeta("5-18");
+        // Trend Forecast(구 forecast stage)는 범용 회귀·예측(lab)으로 흡수 → redirect(북마크 보존).
+        if (MMM_METH_STATE.stage === "forecast") MMM_METH_STATE.stage = "lab";
         // 범용 회귀(Lab) — MMM colMap과 무관한 자체 데이터(REG_LAB_STATE) → MMM 매핑 게이트 우회. 상단 탭으로 전환 가능.
         if (MMM_METH_STATE.stage === "lab") {
           const F = REG_LAB_STATE.fit;
@@ -24520,10 +24522,10 @@ allocation = total_budget × weight`,
           !isToolAnalyzed("5-18")
         ) {
           return pageShell(meta, {
-            deck: "주간 가입·재활성 마케팅 반응 분석. 카니발 진단 → 예측 → 기여 분해(MMM) → 범용 회귀. ⚠ 가설·기술용 — 인과/증분은 holdout 전용.",
+            deck: "주간 가입·재활성 마케팅 반응 분석. 카니발 진단 → 기여 분해(MMM) → 회귀·미래예측. ⚠ 가설·기술용 — 인과/증분은 holdout 전용.",
             chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
             summary:
-              "필수: week(t) + (가입 또는 재활성) + 채널 spend 1개 이상. 채널/더미는 옵션. (범용 회귀 탭은 별도 CSV — 위 탭에서 바로 진입 가능.)",
+              "필수: week(t) + (가입 또는 재활성) + 채널 spend 1개 이상. 채널/더미는 옵션. (회귀·예측 탭은 별도 CSV 또는 MMM 데이터 불러오기로 진입.)",
             toc: [{ id: "s-prep", title: "데이터 준비" }],
             body: renderMmmStageTabs() + renderMmmDataPrep(),
           });
@@ -24604,7 +24606,7 @@ allocation = total_budget × weight`,
         ${renderMmmOptionCards(c)}
       `;
         return pageShell(meta, {
-          deck: "카니발 진단 → Trend Forecast → MMM 기여 분해 → 범용 회귀 (가설·기술용 분석)",
+          deck: "카니발 진단 → MMM 기여 분해 → 회귀·미래예측 (가설·기술용 분석)",
           chips: `<span class="chip"><span class="dot"></span>도구 · MMM 방법론</span><span class="chip warning"><span class="dot"></span>가설·기술용 · holdout 아님</span>${authStatusChip()}`,
           summary:
             "관측 데이터 기반 마케팅 반응 곡선 추정 및 기여도 분해 분석 모델입니다.<br>" +
@@ -24925,6 +24927,8 @@ allocation = total_budget × weight`,
       }
       // 목차 고정 필터 패널 — 타깃(Reg/React) + 플랫폼(All/iOS/AOS) 페이지 전역 컨트롤
       // 3옵션: 카니발 분석 / MMM 기여 분해 / Trend Forecast. 같은 데이터·매핑·캐시 공유, 표시만 분리.
+      // Trend Forecast(구 forecast stage)는 범용 회귀(Lab)로 흡수 — 회귀+예측 단일 도구.
+      // 구 stage="forecast" 진입은 page_5_18 상단에서 "lab"으로 redirect(북마크 보존).
       const MMM_STAGE_DEFS = [
         {
           id: "diagnose",
@@ -24934,25 +24938,18 @@ allocation = total_budget × weight`,
           desc: "어느 채널이 오가닉을 잠식하나 / 추세 하락에 뭐가 영향 주나. 제거법 + 시차(lead/lag).",
         },
         {
-          id: "forecast",
-          no: "② 예측",
-          title: "Trend Forecast",
-          icon: "📈",
-          desc: "과거 실측 vs 모델 적합도 + 미래 예산 시나리오를 넣어 예측 + 95% 밴드. 전체 다운로드.",
-        },
-        {
           id: "mmm",
-          no: "③ 기여",
+          no: "② 기여",
           title: "MMM 기여 분해",
           icon: "🧩",
           desc: "각 채널·이벤트가 매주 얼마 기여하나(decomp) + 채널별 효과. adstock·수확체감.",
         },
         {
           id: "lab",
-          no: "④ 회귀",
-          title: "범용 회귀 (Lab)",
-          icon: "🧪",
-          desc: "임의 CSV OLS — 종속/독립 매핑·계수표·실제vs예측·기여도. 마케팅 외 데이터도. (별도 업로드)",
+          no: "③ 회귀·예측",
+          title: "회귀 · 미래 예측",
+          icon: "📈",
+          desc: "임의 CSV OLS(Cost·임의 변수 자유 매핑) — 계수·실제vs예측·기여도 + 미래 시나리오 예측(95% 밴드)·OS별 분리. MMM 데이터도 바로 불러오기.",
         },
       ];
       function renderMmmStageTabs(c) {
@@ -28025,6 +28022,59 @@ allocation = total_budget × weight`,
         REG_LAB_STATE.fit = null;
         REG_CACHE.key = null;
       }
+      // MMM(5-18) 데이터를 회귀·예측으로 가져오기 — TF 흡수 후 "내 채널 데이터로 예측" 동선 보존.
+      // CSV_STATE.raw + MMM colMap 역할을 범용회귀 역할로 번역(채널→독립+adstock_log, 더미/step→이벤트,
+      // week/date→시간, platform→그룹, 활성 타깃→종속).
+      function mmmHasDataForBridge() {
+        const raw = CSV_STATE.raw || [],
+          cm = MMM_METH_STATE.colMap || {};
+        return (
+          raw.length > 0 &&
+          Object.values(cm).some((d) => d && d.role === "channel")
+        );
+      }
+      function regLabFromMmm() {
+        const raw = CSV_STATE.raw || [],
+          heads = CSV_STATE.headers || [],
+          cm = MMM_METH_STATE.colMap || {};
+        if (!raw.length || !heads.length) return false;
+        const target = MMM_METH_STATE.target; // "Regs" | "React"
+        REG_LAB_STATE.fileName =
+          (CSV_STATE.fileName || "mmm_data.csv") + " (MMM)";
+        REG_LAB_STATE.rows = raw.slice();
+        REG_LAB_STATE.headers = heads.slice();
+        REG_LAB_STATE.map = {};
+        heads.forEach((h) => {
+          const role = (cm[h] || {}).role;
+          let def = { role: "ignore", type: "continuous", tf: "none" };
+          if (role === "reg" || role === "react") {
+            const isTarget =
+              (role === "reg" && target === "Regs") ||
+              (role === "react" && target === "React");
+            def = isTarget
+              ? { role: "dependent", type: "continuous", tf: "none" }
+              : { role: "ignore", type: "continuous", tf: "none" };
+          } else if (role === "channel")
+            def = {
+              role: "independent",
+              type: "continuous",
+              tf: "adstock_log",
+              kind: (cm[h] || {}).kind || "perf",
+            };
+          else if (role === "dummy" || role === "step")
+            def = { role: "independent", type: "binary", tf: "none" };
+          else if (role === "week" || role === "date")
+            def = { role: "time", type: "label", tf: "none" };
+          else if (role === "platform")
+            def = { role: "group", type: "label", tf: "none" };
+          REG_LAB_STATE.map[h] = def;
+        });
+        REG_LAB_STATE.groupKeep = null;
+        REG_LAB_STATE.groupCol = null;
+        REG_LAB_STATE.fit = null;
+        REG_CACHE.key = null;
+        return true;
+      }
       function regLabMakeSample() {
         const fields = [
           "week",
@@ -28526,7 +28576,8 @@ allocation = total_budget × weight`,
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
       <label class="ab-pill" style="cursor:pointer;">CSV 업로드<input type="file" id="reg-file" accept=".csv,.tsv,.txt" style="display:none;"></label>
       <button class="ab-pill" id="reg-sample">샘플 데이터 넣기</button>
-      <span class="muted" style="font-size:12px;">${hasData ? `${escapeHtml(S.fileName)} · ${S.rows.length}행 · ${S.headers.length}컬럼` : "wide CSV (1행=1관측). 컬럼 자유."}</span>
+      ${mmmHasDataForBridge() ? `<button class="ab-pill" id="reg-from-mmm" style="border-color:rgba(122,162,247,0.5);">📊 MMM 데이터 불러오기</button>` : ""}
+      <span class="muted" style="font-size:12px;">${hasData ? `${escapeHtml(S.fileName)} · ${S.rows.length}행 · ${S.headers.length}컬럼` : "wide CSV (1행=1관측). 컬럼 자유. 또는 위에서 매핑한 MMM 데이터를 바로 불러오기."}</span>
     </div>
   </section>`;
         if (!S.rows.length) return dataSec;
@@ -29058,6 +29109,18 @@ allocation = total_budget × weight`,
             const s = regLabMakeSample();
             regLabLoad(s.rows, s.fields);
             navigate("5-19");
+          });
+        const fromMmmEl = document.getElementById("reg-from-mmm");
+        if (fromMmmEl)
+          fromMmmEl.addEventListener("click", () => {
+            if (regLabFromMmm()) {
+              try {
+                regLabRun();
+              } catch (e) {
+                /* 매핑 불완전 시 결과 없이 매핑 화면 */
+              }
+              navigate("5-19");
+            }
           });
         document.querySelectorAll("[data-reg-map]").forEach((selEl) =>
           selEl.addEventListener("change", () => {
