@@ -24503,7 +24503,7 @@
               if (MMM_METH_STATE.stage === "forecast") MMM_METH_STATE.stage = "lab";
               // 범용 회귀(Lab) — MMM colMap과 무관한 자체 데이터(REG_LAB_STATE) → MMM 매핑 게이트 우회. 상단 탭으로 전환 가능.
               if (MMM_METH_STATE.stage === "lab") {
-                const F = REG_LAB_STATE.fit;
+                const F = REG_LAB_STATE.fits && Object.keys(REG_LAB_STATE.fits).length; // #206 멀티모델 게이트
                 return pageShell(meta, {
                   deck: "마케팅 반응 분석 · 범용 회귀(Lab) — 임의 CSV를 올려 OLS 회귀(종속/독립 매핑·계수·실제vs예측·기여도). MMM과 별도 데이터.",
                   chips: `<span class="chip"><span class="dot"></span>범용 회귀 (Lab)</span><span class="chip warning"><span class="dot"></span>가설·기술용</span>${authStatusChip()}`,
@@ -28107,7 +28107,7 @@
               headers.forEach((c) => (REG_LAB_STATE.map[c] = regLabGuess(c, valid)));
               REG_LAB_STATE.groupKeep = null;
               REG_LAB_STATE.groupCol = null;
-              REG_LAB_STATE.fit = null;
+              REG_LAB_STATE.fits = null;
               REG_CACHE.key = null;
             }
             // MMM(5-18) 데이터를 회귀·예측으로 가져오기 — TF 흡수 후 "내 채널 데이터로 예측" 동선 보존.
@@ -28155,7 +28155,7 @@
               });
               REG_LAB_STATE.groupKeep = null;
               REG_LAB_STATE.groupCol = null;
-              REG_LAB_STATE.fit = null;
+              REG_LAB_STATE.fits = null;
               REG_CACHE.key = null;
               return true;
             }
@@ -28686,7 +28686,7 @@
             function monRegLabBody() {
               const S = REG_LAB_STATE;
               const hasData = S.rows.length > 0;
-              const F = S.fit;
+              const F = S.fits && Object.keys(S.fits).length; // #206 멀티모델: fits{} 게이트
               const dataSec = `<section class="block" id="s-data">
           <h2 class="section-title"><span class="ix">§1</span>데이터</h2>
           <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
@@ -28837,13 +28837,27 @@
               // Obsolete function, removed logic
             }
             function regLabCharts() {
-              const R = REG_LAB_STATE.fit;
+              const fits = REG_LAB_STATE.fits;
               if (
-                !R ||
+                !fits ||
+                !Object.keys(fits).length ||
                 typeof Chart === "undefined" ||
                 !document.getElementById("reg-fit-chart")
               )
                 return;
+              // #206 멀티모델: 활성 탭이 특정 OS면 그 모델, sum이면 집계 hist를 차트
+              const osPick = REG_LAB_STATE.fc.osPick || "sum";
+              let R;
+              if (osPick !== "sum" && fits[osPick]) R = fits[osPick];
+              else {
+                const agg = getAggregatedForecast("sum");
+                if (!agg.ok) return;
+                R = {
+                  labels: agg.labels.slice(0, agg.splitAt),
+                  y: agg.actual,
+                  fit: { yhat: agg.fittedHist },
+                };
+              }
               const muted = getCssVar("--text-muted"),
                 border = getCssVar("--border");
               destroyChartIfExists("reg-fit-chart");
@@ -28968,6 +28982,7 @@
               // We will take a union of all indeps across all models for UI rendering
               const baseM = regLabReadMapping();
               const m = baseM;
+              const osBar = ""; // OS 전환은 §3 적합도 탭(makeTabs)에서 제어 — 여기선 빈 바
 
               const timeNote = m.time
                 ? ""
@@ -28997,14 +29012,14 @@
             </div>`;
 
               // 변수별 미래 입력 (Cost)
-              const specRowsCost = m.indep.filter(c => m.types[c] === "continuous").map((c) => {
+              const specRowsCost = m.indeps.filter(c => m.types[c] === "continuous").map((c) => {
                   const spec = fc.spec[c] || {};
                   const futVal = r.futRows[c] ? r.futRows[c][0] : 0;
                   return `<tr><td>${escapeHtml(c)}</td><td><input type="number" data-reg-fc-val="${escapeHtml(c)}" value="${Math.round(spec.value != null && isFinite(spec.value) ? spec.value : futVal)}" style="width:120px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:4px 7px;text-align:right;"></td></tr>`;
                 }).join("");
 
               // 변수별 미래 입력 (Event/Step)
-              const specRowsEvent = m.indep.filter(c => m.types[c] === "binary").map((c) => {
+              const specRowsEvent = m.indeps.filter(c => m.types[c] === "binary").map((c) => {
                   const spec = fc.spec[c] || {};
                   const offType = spec.offType || (spec.off != null ? 'off_n' : 'keep');
                   return `<tr><td>${escapeHtml(c)}</td><td style="color:var(--text-muted);font-size:11px;">${m.tf[c]==="step"?"Step":"Event"}</td><td>
@@ -29457,7 +29472,10 @@
               if (csv) csv.addEventListener("click", regForecastExportCsv);
             }
             function regLabExportData() {
-              const R = REG_LAB_STATE.fit;
+              const fits = REG_LAB_STATE.fits;
+              if (!fits || !Object.keys(fits).length) return;
+              const op = REG_LAB_STATE.fc.osPick || "sum";
+              const R = op !== "sum" && fits[op] ? fits[op] : fits[Object.keys(fits)[0]];
               if (!R) return;
               const { fit, m, Xcols } = R;
               const head = [
@@ -29488,7 +29506,10 @@
               _mmmDownload("regression_dataset.csv", lines.join("\n"), "text/csv");
             }
             function regLabExportCoef() {
-              const R = REG_LAB_STATE.fit;
+              const fits = REG_LAB_STATE.fits;
+              if (!fits || !Object.keys(fits).length) return;
+              const op = REG_LAB_STATE.fc.osPick || "sum";
+              const R = op !== "sum" && fits[op] ? fits[op] : fits[Object.keys(fits)[0]];
               if (!R) return;
               const { fit, terms, vif, m } = R;
               const lines = [
