@@ -12014,6 +12014,7 @@
               outlierStrength: "standard", // standard | strong | very_strong
               normalizeMode: "raw", // raw | log | minmax | robust (차트 표시용)
               budget: null, // 총 예산 (사용자 입력 raw 값)
+              budgetAutoDefaulted: false, // #2: 총예산 모델 최초 진입 시 최근 일예산 합계로 1회 기본값 채움
               budgetPeriod: "daily", // daily | monthly (월예산이면 ÷30으로 일예산 환산)
               simMode: "auto", // auto | manual — 자동 예산 분배 vs 사용자 수동 기입
               simManualBudgets: {}, // { group: rawCost } — 수동 시뮬레이션 시 사용자가 입력한 그룹별 예산
@@ -41787,9 +41788,10 @@
               const hintEl = document.querySelector("#s-controls .alloc-card p");
               if (hintEl && ALLOC_STATE.simMode === "auto") {
                 hintEl.innerHTML =
-                  cnt > 0
+                  (cnt > 0
                     ? `산점도에서 선택한 <strong>${cnt}개 채널/캠페인</strong>에 대해 예산을 배분합니다. 선택을 바꾸면 즉시 재계산됩니다.`
-                    : `산점도에서 분배할 채널/캠페인을 먼저 선택하세요.`;
+                    : `산점도에서 분배할 채널/캠페인을 먼저 선택하세요.`) +
+                  `<br><span style="font-size:11px;color:var(--text-muted);">가장 최초의 예산은 가장 최근 사용한 일 예산 합계입니다.</span>`;
               }
 
               // 채널 chip 클릭 핸들러 (debounced)
@@ -43072,6 +43074,31 @@
             }
 
             function refreshAllocationResults() {
+              // #2: 총예산(auto) 모델 최초 진입 시, 배분 대상 채널들의 최근 평균 일예산 합계를 기본 예산으로 1회 채움.
+              if (
+                ALLOC_STATE.simMode === "auto" &&
+                !ALLOC_STATE.budgetAutoDefaulted &&
+                (ALLOC_STATE.budget || 0) <= 0 &&
+                ALLOC_CACHE.models &&
+                ALLOC_CACHE.models.size
+              ) {
+                const _metric = ALLOC_STATE.metric || "installs";
+                let _sum = 0;
+                for (const [ch] of ALLOC_CACHE.models)
+                  _sum += allocRecentDailySpend(ch, _metric);
+                if (_sum > 0) {
+                  const _mult = ALLOC_STATE.budgetPeriod === "monthly" ? 30 : 1;
+                  ALLOC_STATE.budget = Math.round(_sum * _mult);
+                  ALLOC_STATE.budgetAutoDefaulted = true;
+                  const _inp = document.getElementById("alloc-budget");
+                  if (_inp) _inp.value = allocFmtNum(ALLOC_STATE.budget);
+                  // 최초 진입 시 표시되던 "예산 입력하세요" 빈 상태를 결과 표시로 전환
+                  const _req = document.getElementById("alloc-budget-required");
+                  if (_req) _req.style.display = "";
+                  const _empty = document.getElementById("alloc-budget-empty");
+                  if (_empty) _empty.style.display = "none";
+                }
+              }
               // 일예산 환산 (월예산이면 ÷ 30)
               const dailyBudget = getEffectiveDailyBudget();
               const tbody = document.getElementById("alloc-tbody");
