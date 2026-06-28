@@ -41389,16 +41389,16 @@
               // 채널별 raw points → 메모이제이션
               const byChannel = getCachedByChannel(rows, metric);
 
-              // 채널 정렬: 최근 SELECT_RECENT_DAYS(20)일 Cost 합산 큰 순서 (ALLOC_MATH.sortChannelsByRecentCost, §순수추출)
-              const SELECT_RECENT_DAYS = 20;
+              // 채널 정렬: 최근 SELECT_RECENT_DAYS(7)일 Cost 합산 큰 순서 (ALLOC_MATH.sortChannelsByRecentCost, §순수추출)
+              const SELECT_RECENT_DAYS = 7;
               let allChannels = ALLOC_MATH.sortChannelsByRecentCost(
                 byChannel,
                 SELECT_RECENT_DAYS,
               );
 
-              // 선택 초기값: 상위 6채널
+              // 선택 초기값: 최근 7일 Cost 최다 1개만 (나머지는 유저가 칩으로 추가)
               if (ALLOC_STATE.selectedChannels == null) {
-                ALLOC_STATE.selectedChannels = new Set(allChannels.slice(0, 6));
+                ALLOC_STATE.selectedChannels = new Set(allChannels.slice(0, 1));
               }
 
               let channels;
@@ -41422,8 +41422,7 @@
               if (filterEl) {
                 filterEl.innerHTML = `
             <div class="alloc-filter-header">
-              <span class="alloc-filter-label">채널 선택 (최근 20일 Cost순 · ${allChannels.length}개)</span>
-              <button class="ab-pill" id="alloc-filter-top6">상위 6개</button>
+              <span class="alloc-filter-label">채널 선택 (최근 7일 Cost순 · ${allChannels.length}개)</span>
               <button class="ab-pill" id="alloc-filter-all">전체</button>
               <button class="ab-pill" id="alloc-filter-none">모두 해제</button>
               <button class="ab-pill alloc-csv-btn" id="alloc-csv-download-all" title="선택된 모든 채널을 단일 XLSX 파일로 다운로드 (채널마다 별도 탭)">
@@ -41784,8 +41783,9 @@
               const cnt = ALLOC_STATE.selectedChannels
                 ? ALLOC_STATE.selectedChannels.size
                 : 0;
+              // 총예산(auto) 모드에서만 산점도 선택 안내로 덮어씀. 수동(manual)은 자기 설명 유지(§2 버그).
               const hintEl = document.querySelector("#s-controls .alloc-card p");
-              if (hintEl) {
+              if (hintEl && ALLOC_STATE.simMode === "auto") {
                 hintEl.innerHTML =
                   cnt > 0
                     ? `산점도에서 선택한 <strong>${cnt}개 채널/캠페인</strong>에 대해 예산을 배분합니다. 선택을 바꾸면 즉시 재계산됩니다.`
@@ -41817,14 +41817,8 @@
                     queueAllocatorRender();
                   });
                 });
-              const top6Btn = document.getElementById("alloc-filter-top6");
               const allBtn = document.getElementById("alloc-filter-all");
               const noneBtn = document.getElementById("alloc-filter-none");
-              if (top6Btn)
-                top6Btn.addEventListener("click", () => {
-                  ALLOC_STATE.selectedChannels = new Set(allChannels.slice(0, 6));
-                  queueAllocatorRender();
-                });
               if (allBtn)
                 allBtn.addEventListener("click", () => {
                   ALLOC_STATE.selectedChannels = new Set(allChannels);
