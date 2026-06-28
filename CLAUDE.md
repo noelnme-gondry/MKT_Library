@@ -59,7 +59,7 @@ HTML/CSS/JS (Vanilla) — 빌드 도구 없음. `serve . -l $PORT` 가 전부.
 | 5-3 | 예산 배분 (절대 CPR/ROAS 가중 + 한계효용 그리디) | **free** | 효율 CSV |
 | 5-4 | 실험 분석 (A/B·Test Readout·Incrementality, 3탭) | free | 수동/CSV |
 | 5-6 | 소재 분석 | free | 소재 daily CSV |
-| 5-18 | 마케팅 반응 분석 (MMM: 진단/기여/Forecast + Regression Lab) | free | 주간 패널 CSV |
+| 5-18 | 마케팅 반응 분석 (3탭: 카니발 진단·MMM 기여·**회귀+미래예측**[Cost·임의변수 자유매핑·OS별 분리·MMM브리지]) | free | 주간 패널 CSV |
 | 5-21 | 캠페인 성과 변동 탐지 (PVM 무잔차 분해) | **free** | 소재 CSV 공유 |
 
 티어: `TOOL_TIER`(free/pro) + `AUTH_PROTECTED_PAGES`. 흡수된 구 도구 id는 `navigate` redirect로 보존.
@@ -256,6 +256,12 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 - **라이브 콤마**(`allocLiveCommaFormat`): 입력 중 천단위 콤마+커서 보존(커서 왼쪽 숫자 개수로 위치 복원). `input` 이벤트는 포맷만, 재계산은 `change`/blur에서(키마다 재계산 방지). 예산·§5 cost 셀(`type=text`). `parseFloat(콤마)` 함정은 §7 그대로.
 - **de-jargon**: 추세선 배지·헤드라인 평어화(우하향→"효율 거꾸로", 종모양(∩)→"증액 시 빗나감", U자(∪)→"감액 시 빗나감", Poly2 꼬리→"곡선 끝 신뢰 낮음"), 기술용어는 `title`·alert 본문에만. 긴 진단 툴팁은 `formatMmmTipText`로 "왜위험/왜발생/어떻게" 라벨 단락 구조화(`#mmm-hover-tip` innerHTML+escapeHtml, max-width 380·고대비). 마커 없으면 평문 escape.
 
+### 12.15 회귀 ⊕ 미래예측 통합 (5-18 회귀·예측 탭, `docs/regression-forecast-merge-spec.md`)
+TF와 범용회귀는 같은 OLS(`REG_STATS`)·차이는 "미래 투영"뿐 → 범용회귀에 예측층 이식해 단일 도구화(TF 탭 제거·`stage="forecast"`→`"lab"` redirect).
+- **`REG_FORECAST`**(순수): `run(opts)`=변수별 미래스펙(연속=시나리오값/이벤트=지속·N후끔/시간=fourier·trend 자동연장)으로 설계행렬 미래연장→`REG_STATS.ols`→leverage 95% 밴드→종속 역변환(원스케일). `buildTimeFeatures`(날짜간격으로 연주기 자동추정). `runRegForecastTests` 골든.
+- **변환은 hist+future 결합 1회 후 슬라이스**(`_transformCombined`) — adstock 이월·zscore/minmax 스케일 일관(fit·predict 같은 basis). `REG_STATS.ols`에 `XtXi` additive 노출(밴드용).
+- **OS(group)별 분리 기본**: `fc.osMode="split"`+`osPick` pills 각 OS 독립모델+비교표, "전체 풀링" 토글. **MMM 브리지**(`regLabFromMmm`): CSV_STATE.raw+colMap 역할→회귀 역할 번역(채널→독립+adstock_log·더미→이벤트·week→time·platform→group·활성타깃→종속)로 "내 채널 데이터로 예측" 동선 보존. 전부 render층+순수엔진(골든 byte-동일), render-throw는 주입 harness로 양분기.
+
 ---
 
 ## 13. 참고 파일
@@ -300,12 +306,12 @@ Chart.js 네이티브 없음 → `type:"bar", indexAxis:"y"` floating bar(`[ciLo
 
 **완료된 큰 흐름**:
 - 도구 통합 17→5/6(탭형 병합, §12.7) · SaaS 셸(랜딩·페이월·⌘K, §12.11) · 전 도구 데모 모드(§12.8) · GA4 이벤트 트래킹.
-- 운영 대시보드 5-2 9탭 통합 + sticky 필터 + 코호트 성숙도 예측 · 5-3 효율·배분 · 5-4 실험 분석 3탭 · 5-18 MMM 2-stage+Forecast · 5-21 PVM 변동 탐지.
+- 운영 대시보드 5-2 9탭 통합 + sticky 필터 + 코호트 성숙도 예측 · 5-3 효율·배분 · 5-4 실험 분석 3탭 · 5-18 회귀+미래예측 통합(§12.15, TF 흡수) · 5-21 PVM 변동 탐지.
 - 골든 테스트 유지(byte-동일 보증). 상세 이력은 git·PR·`docs/`.
 
 **다음 작업 (백로그, `docs/backlog.md` 참조)**:
 - **SOP 콘텐츠 보강**(1-2~4-4 인라인, 정확성 검수 기반 — 진행방식 미정).
-- **MMM 정식화**: Tinder KR Reg/React 마케팅 반응 회귀(`docs/backlog.md` §B). 회귀는 가설 생성·기술용, 인과 확정은 holdout 전용.
+- **회귀·예측 후속**(§12.15 위): 예측 모델 선택(ridge)·계절성 period 수동지정·예측 CI 캐비엇 강화. 인과 확정은 holdout 전용.
 - **Pro 처방 레이어**: 증분 플래너·시나리오→MMM / 처방 페이싱·LTV 배분→5-3 / 이상치 근본원인→5-2.
 
 ---
