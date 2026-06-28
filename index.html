@@ -29530,82 +29530,62 @@
               R.push({
                 test: "T1 · 샘플 결정론(2회 동일)",
                 actual: "",
-                pass:
-                  JSON.stringify(s) === JSON.stringify(regLabMakeSample())
-                    ? "✓"
-                    : "✗",
+                pass: JSON.stringify(s) === JSON.stringify(regLabMakeSample()) ? "✓" : "✗",
               });
-              // 샘플로 적합: regs ~ cost들(log)+holiday → R² 높고 holiday 계수 양수
+              
               regLabLoad(s.rows, s.fields);
               const m = regLabReadMapping();
-              REG_LAB_STATE.groupKeep = null;
-              // guess가 regs=dep, cost*=indep(adstock_log), is_holiday=indep(none), platform=group, week=label 으로 잡았는지
+              
               R.push({
-                test: "T2 · 자동매핑(dep=regs·group=platform)",
-                actual: `dep=${m.dep} group=${m.group} indep=${m.indep.length}`,
-                pass:
-                  m.dep === "regs" && m.group === "platform" && m.indep.length >= 3
-                    ? "✓"
-                    : "✗",
+                test: "T2 · 자동매핑(deps=regs, indeps>=3)",
+                actual: `deps=${m.deps.join(",")} indeps=${m.indeps.length}`,
+                pass: m.deps.includes("regs") && m.indeps.length >= 3 ? "✓" : "✗",
               });
+              
               try {
                 regLabRun();
-                const F = REG_LAB_STATE.fit;
-                const ok =
-                  isFinite(F.fit.R2) &&
-                  F.fit.R2 > 0 &&
-                  F.fit.R2 < 1 &&
-                  F.fit.beta.length === F.k &&
-                  F.terms.length === F.k;
+                const fits = REG_LAB_STATE.fits;
+                const F = fits ? fits["both"] : null;
+                const ok = F && isFinite(F.fit.R2) && F.fit.R2 > 0 && F.fit.R2 < 1 && F.fit.beta.length === F.k && F.terms.length === F.k;
                 R.push({
                   test: "T3 · 샘플 적합 산출(R² 유효)",
-                  actual: `R²=${F.fit.R2.toFixed(3)} k=${F.k}`,
+                  actual: F ? `R²=${F.fit.R2.toFixed(3)} k=${F.k}` : "null",
                   pass: ok ? "✓" : "✗",
                 });
               } catch (e) {
-                R.push({
-                  test: "T3 · 샘플 적합",
-                  actual: "ERR " + e.message,
-                  pass: "✗",
-                });
+                R.push({ test: "T3 · 샘플 적합", actual: "ERR " + e.message, pass: "✗" });
               }
-              // 그룹필터: iOS만 → n=60
-              REG_LAB_STATE.groupKeep = new Set(["iOS"]);
-              regLabRun();
+              
+              // We don't have groupKeep anymore. We can test that fits has 'both' and n=120
               R.push({
-                test: "T4 · 그룹필터 iOS만 n=60",
-                actual: String(REG_LAB_STATE.fit.n),
-                pass: REG_LAB_STATE.fit.n === 60 ? "✓" : "✗",
+                test: "T4 · 기본 모델 데이터 n=120",
+                actual: REG_LAB_STATE.fits && REG_LAB_STATE.fits["both"] ? String(REG_LAB_STATE.fits["both"].n) : "0",
+                pass: REG_LAB_STATE.fits && REG_LAB_STATE.fits["both"] && REG_LAB_STATE.fits["both"].n === 120 ? "✓" : "✗",
               });
+              
               // λ 변경 → adstock_log 계수 변함 + 결정론
-              REG_LAB_STATE.groupKeep = null;
               REG_LAB_STATE.lambda = 0.6;
               regLabRun();
-              const b6 = REG_LAB_STATE.fit.fit.beta[1];
+              const b6 = REG_LAB_STATE.fits["both"].fit.beta[1];
               REG_LAB_STATE.lambda = 0.3;
               regLabRun();
-              const b3 = REG_LAB_STATE.fit.fit.beta[1];
+              const b3 = REG_LAB_STATE.fits["both"].fit.beta[1];
               REG_LAB_STATE.lambda = 0.6;
               regLabRun();
-              const b6b = REG_LAB_STATE.fit.fit.beta[1];
+              const b6b = REG_LAB_STATE.fits["both"].fit.beta[1];
               R.push({
                 test: "T5 · λ 변경시 계수변화+결정론",
                 actual: `λ.6=${b6.toFixed(3)} λ.3=${b3.toFixed(3)}`,
                 pass: Math.abs(b6 - b3) > 1e-6 && b6 === b6b ? "✓" : "✗",
               });
+              
               REG_LAB_STATE.rows = [];
-              REG_LAB_STATE.fit = null; // 상태 정리
+              REG_LAB_STATE.fits = null; 
               if (verbose) {
-                console.log(
-                  "%c=== Regression Lab · Golden ===",
-                  "color:#adc6ff;font-weight:bold;",
-                );
+                console.log("%c=== Regression Lab · Golden ===", "color:#adc6ff;font-weight:bold;");
                 console.table(R);
                 const p = R.filter((x) => x.pass === "✓").length;
-                console.log(
-                  `%c${p}/${R.length} 통과`,
-                  `color:${p === R.length ? "#22c55e" : "#f87171"};font-weight:bold;`,
-                );
+                console.log(`%c${p}/${R.length} 통과`, `color:${p === R.length ? "#22c55e" : "#f87171"};font-weight:bold;`);
               }
               return R;
             }
