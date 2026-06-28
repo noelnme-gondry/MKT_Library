@@ -26385,6 +26385,56 @@ allocation = total_budget × weight`,
             );
           }
         }
+              function regLabExportData() {
+              const fits = REG_LAB_STATE.fits;
+              if (!fits) return;
+
+              let allIndeps = new Set();
+              Object.values(fits).forEach(R => R.m.indep.forEach(c => allIndeps.add(c)));
+              const indepList = Array.from(allIndeps);
+
+              const head = ["tag", "label", `actual`, "fitted", "residual", "contrib_Intercept", ...indepList.map((c) => `contrib_${c}`)];
+              const lines = [head.join(",")];
+
+              Object.keys(fits).forEach(k => {
+                const R = fits[k];
+                const { fit, m, Xcols } = R;
+                R.rows.forEach((row, i) => {
+                  const rec = [k, R.labels[i], R.y[i], fit.yhat[i].toFixed(6), fit.resid[i].toFixed(6), fit.beta[0].toFixed(6)];
+                  indepList.forEach(c => {
+                     const idx = m.indep.indexOf(c);
+                     if (idx >= 0) {
+                       rec.push((fit.beta[idx + 1] * Xcols[idx][i]).toFixed(6));
+                     } else {
+                       rec.push("");
+                     }
+                  });
+                  lines.push(rec.join(","));
+                });
+              });
+              if (lines.length > 1) _mmmDownload("regression_dataset.csv", lines.join("\n"), "text/csv");
+            }
+
+            function regLabExportCoef() {
+              const fits = REG_LAB_STATE.fits;
+              if (!fits) return;
+              const lines = ["tag,term,coef,std_err,t,p_value,ci_low,ci_high,vif,transform"];
+              Object.keys(fits).forEach(k => {
+                const R = fits[k];
+                const { fit, terms, vif, m } = R;
+                terms.forEach((t, j) => {
+                  const v = j === 0 ? "" : isFinite(vif[j - 1]) ? vif[j - 1].toFixed(4) : "Inf";
+                  const tf = j === 0 ? "" : m.types[m.indep[j - 1]] === "binary" ? "none" : m.tf[m.indep[j - 1]];
+                  lines.push([
+                    k, t, fit.beta[j].toFixed(6), fit.se[j].toFixed(6), fit.tval[j].toFixed(6),
+                    fit.pval[j].toFixed(6), fit.ci[j][0].toFixed(6), fit.ci[j][1].toFixed(6),
+                    v, tf
+                  ].join(","));
+                });
+              });
+              if (lines.length > 1) _mmmDownload("regression_coefficients.csv", lines.join("\n"), "text/csv");
+            }
+
         const noLegendOpts = (title) => ({
           responsive: true,
           maintainAspectRatio: false,
@@ -28003,19 +28053,23 @@ allocation = total_budget × weight`,
           osPick: null, // split 모드에서 보고 있는 OS 값
         },
       };
+            const REG_CACHE = { key: null };
       const _REG_ROLES = [
         "ignore",
         "dependent",
         "cost",
         "event",
         "step",
-        "group",
         "time"
       ];
 
       // 자동 매핑 추정 (PRD 부록 B)
       function regLabGuess(col, rows) {
         const name = String(col).toLowerCase();
+              let tag = "both";
+              if (name.includes("android")) tag = "android";
+              else if (name.includes("ios")) tag = "ios";
+
         const vals = rows
           .map((r) => r[col])
           .filter((v) => v != null && v !== "");
@@ -28024,21 +28078,23 @@ allocation = total_budget × weight`,
         const uniq = [...new Set(nums)];
         const isBin =
           isNum && uniq.every((v) => v === 0 || v === 1) && uniq.length <= 2;
+
         let role = "ignore";
+              let tf = "none";
         if (isBin) {
           role = "event";
         } else if (/date|day|week|월|일자|주차/.test(name)) {
           role = "time";
-        } else if (/platform|os|채널|channel|group|구분|reg|react/.test(name) && !isNum) {
-          role = "group";
         } else if (/regs?$|react|conv|install|signup|purchase|pur|revenue|매출|등록|재활성/.test(name) && isNum) {
           role = "dependent";
         } else if (isNum && /cost|spend|비용|지출|budget|imp|click/.test(name)) {
           role = "cost";
+                tf = "adstock_log";
         } else if (isNum) {
-          role = "cost"; // Treat all other numbers as cost/continuous by default
+                role = "cost";
+                tf = "adstock_log";
         }
-        return { role };
+              return { role, tf, tag };
       }
       function regLabLoad(rows, headers) {
         const valid = rows.filter((r) =>
@@ -28163,9 +28219,9 @@ allocation = total_budget × weight`,
       }
       function regLabReadMapping() {
         const m = {
-          dep: null,
-          indep: [],
-          group: null,
+                deps: [],
+                indeps: [],
+                tags: {},
           time: null,
           types: {},
           tf: {},
@@ -28175,23 +28231,25 @@ allocation = total_budget × weight`,
           const r = def.role || "ignore";
           
           if (r === "cost") {
-            m.indep.push(c);
+                  m.indeps.push(c);
             m.types[c] = "continuous";
             m.tf[c] = "adstock_log";
+                  m.tags[c] = def.tag || "both";
           } else if (r === "event") {
-            m.indep.push(c);
+                  m.indeps.push(c);
             m.types[c] = "binary";
             m.tf[c] = "none";
+                  m.tags[c] = def.tag || "both";
           } else if (r === "step") {
-            m.indep.push(c);
+                  m.indeps.push(c);
             m.types[c] = "binary";
             m.tf[c] = "step";
+                  m.tags[c] = def.tag || "both";
           } else if (r === "dependent") {
-            m.dep = m.dep || c;
+                  m.deps.push(c);
             m.types[c] = "continuous";
             m.tf[c] = "none";
-          } else if (r === "group") {
-            m.group = m.group || c;
+                  m.tags[c] = def.tag || "both";
           } else if (r === "time") {
             m.time = m.time || c;
           }
@@ -28202,10 +28260,7 @@ allocation = total_budget × weight`,
         return JSON.stringify({
           f: REG_LAB_STATE.fileName,
           n: REG_LAB_STATE.rows.length,
-          map: REG_LAB_STATE.map,
-          keep: REG_LAB_STATE.groupKeep
-            ? [...REG_LAB_STATE.groupKeep].sort()
-            : null,
+                map: REG_LAB_STATE.map
         });
       }
       /* ============================================================
@@ -28548,31 +28603,36 @@ allocation = total_budget × weight`,
         window.REG_FORECAST = REG_FORECAST;
       }
       function regLabRun() {
-        const m = regLabReadMapping();
-        if (!m.dep) throw new Error("종속변수(dependent)를 하나 지정하세요.");
-        if (!m.indep.length) throw new Error("독립변수(비용, 이벤트 등)를 1개 이상 지정하세요.");
-        let rows = REG_LAB_STATE.rows.slice();
-        if (m.group) {
-          const keep = REG_LAB_STATE.groupKeep || new Set([...new Set(rows.map((r) => String(r[m.group])))]);
-          rows = rows.filter((r) => keep.has(String(r[m.group])));
-          if (!rows.length) throw new Error("선택된 그룹에 데이터가 없습니다.");
-        }
-        const used = [m.dep, ...m.indep];
-        rows = rows.filter((r) => used.every((c) => r[c] != null && r[c] !== "" && !isNaN(Number(r[c]))));
-        const n = rows.length, k = m.indep.length + 1;
-        if (n <= k) throw new Error(`표본(${n})이 변수 수(${k})보다 작거나 같아 적합 불가.`);
+              const baseM = regLabReadMapping();
+              if (baseM.deps.length === 0) throw new Error("종속변수(dependent)를 하나 이상 지정하세요.");
         
-        const tfOf = (c) => m.tf[c] || "none";
-        const rawY = rows.map((r) => Number(r[m.dep]));
+              let allRows = REG_LAB_STATE.rows.slice();
+              REG_LAB_STATE.fits = {}; // Store models by tag (e.g. android, ios, both)
+              REG_LAB_STATE.lambda = 0;
+
+              let anyFit = false;
         
-        // Grid Search for best Lambda (if adstock is used)
-        const hasAdstock = m.indep.some(c => tfOf(c) === "adstock_log");
+              baseM.deps.forEach(depCol => {
+                 const depTag = baseM.tags[depCol] || "both";
+                 const indepCols = baseM.indeps.filter(c => baseM.tags[c] === depTag || baseM.tags[c] === 'both');
+                 if (!indepCols.length) return; // Skip if no independent variables for this target
+
+                 // Filter valid rows for this specific model
+                 const used = [depCol, ...indepCols];
+                 const rows = allRows.filter((r) => used.every((c) => r[c] != null && r[c] !== "" && !isNaN(Number(r[c]))));
+                 const n = rows.length, k = indepCols.length + 1;
+                 if (n <= k) return; // Skip if not enough data
+
+                 const tfOf = (c) => baseM.tf[c] || "none";
+                 const rawY = rows.map((r) => Number(r[depCol]));
+
+                 const hasAdstock = indepCols.some(c => tfOf(c) === "adstock_log");
         let bestLam = 0.0, bestR2 = -Infinity, bestFit, bestXcols, bestY;
         const lamCands = hasAdstock ? [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9] : [0];
         
         for (const lam of lamCands) {
-          const tryY = REG_TRANSFORMS[tfOf(m.dep)](rawY, lam);
-          const tryXcols = m.indep.map((c) => REG_TRANSFORMS[tfOf(c)](rows.map((r) => Number(r[c])), lam));
+                   const tryY = rawY;
+                   const tryXcols = indepCols.map((c) => REG_TRANSFORMS[tfOf(c)](rows.map((r) => Number(r[c])), lam));
           const tryX = rows.map((_, i) => [1, ...tryXcols.map((col) => col[i])]);
           try {
             const fit = REG_STATS.ols(tryX, tryY);
@@ -28586,41 +28646,40 @@ allocation = total_budget × weight`,
           } catch(e) {}
         }
         
-        if (!bestFit) throw new Error("회귀 적합에 실패했습니다 (특이 행렬 등). 변수를 조절해주세요.");
-        REG_LAB_STATE.lambda = bestLam;
+                 if (!bestFit) return;
+
         const lam = bestLam, fit = bestFit, Xcols = bestXcols, y = bestY;
         const X = rows.map((_, i) => [1, ...Xcols.map((col) => col[i])]);
-        
-        const vif = m.indep.map((_, j) => {
-          if (m.indep.length < 2) return 1;
-          const Xj = rows.map((_, i) => [
-            1,
-            ...Xcols.filter((_, jj) => jj !== j).map((col) => col[i]),
-          ]);
+                 const vif = indepCols.map((_, j) => {
+                   if (indepCols.length < 2) return 1;
+                   const Xj = rows.map((_, i) => [1, ...Xcols.filter((_, jj) => jj !== j).map((col) => col[i])]);
           const r2 = REG_STATS.r2of(Xj, Xcols[j]);
           return isFinite(r2) && r2 < 1 ? 1 / (1 - r2) : Infinity;
         });
-        const labelCol = m.time || m.label;
-        const labels = labelCol
-          ? rows.map((r) => r[labelCol])
-          : rows.map((_, i) => i + 1);
-        REG_LAB_STATE.fit = {
-          m,
-          lam,
-          rows,
-          labels,
-          Xcols,
-          rawY,
-          y,
-          fit,
-          vif,
-          n,
-          k,
-          terms: ["(Intercept)", ...m.indep],
-          tfOf: m.indep.map((c) => tfOf(c)),
-          depTf: tfOf(m.dep),
+
+                 const labelCol = baseM.time || baseM.label;
+                 const labels = labelCol ? rows.map(r => r[labelCol]) : rows.map((_, i) => i + 1);
+
+                 // Construct specific m for this model
+                 const m = {
+                   dep: depCol,
+                   tag: depTag,
+                   indep: indepCols,
+                   time: baseM.time,
+                   types: baseM.types,
+                   tf: baseM.tf
+                 };
+
+                 REG_LAB_STATE.fits[depTag] = {
+                   lam, fit, vif, terms: ["(Intercept)", ...indepCols], m, n, labels, y, rawY, Xcols, rows, k, tfOf: indepCols.map((c) => tfOf(c)), depTf: tfOf(depCol)
         };
+                 anyFit = true;
+                 REG_LAB_STATE.lambda = Math.max(REG_LAB_STATE.lambda, lam); // Just a fallback global lambda
+              });
+
+              if (!anyFit) throw new Error("적합 가능한 회귀 모델이 없습니다. 독립변수가 부족하거나 표본 수가 적습니다.");
         REG_CACHE.key = regLabSignature();
+              REG_LAB_STATE.fc.osPick = "sum"; // Reset default view to sum
       }
 
       // 범용 회귀(Lab) — 마케팅 반응 분석(5-18)의 한 탭으로 흡수. 자체 데이터(REG_LAB_STATE), MMM colMap과 무관.
@@ -28645,7 +28704,15 @@ allocation = total_budget × weight`,
         const S = REG_LAB_STATE;
         const chip = (col) => {
           const def = S.map[col] || {};
-          return `<span class="reg-chip ${def.role === "dependent" ? "dep" : ""}" draggable="true" data-reg-chip="${escapeHtml(col)}"><strong>${escapeHtml(col)}</strong><span class="x" data-reg-unassign="${escapeHtml(col)}" title="제외로">✕</span></span>`;
+                let tagHtml = "";
+                if (def.role !== "ignore" && def.role !== "time") {
+                  tagHtml = `<select data-reg-tag="${escapeHtml(col)}" style="margin-left:6px;font-size:10px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;padding:2px 4px;cursor:pointer;">
+                    <option value="both" ${def.tag==='both'?'selected':''}>공통</option>
+                    <option value="android" ${def.tag==='android'?'selected':''}>Android</option>
+                    <option value="ios" ${def.tag==='ios'?'selected':''}>iOS</option>
+                  </select>`;
+                }
+                return `<span class="reg-chip ${def.role === "dependent" ? "dep" : ""}" draggable="true" data-reg-chip="${escapeHtml(col)}"><strong>${escapeHtml(col)}</strong>${tagHtml}<span class="x" data-reg-unassign="${escapeHtml(col)}" title="제외로">✕</span></span>`;
         };
         const inRole = (role) => S.headers.filter((c) => (S.map[c]?.role || "ignore") === role);
         const zone = (role, label, desc) =>
@@ -28659,9 +28726,8 @@ allocation = total_budget × weight`,
     <p class="muted" style="font-size:12px;margin-top:-4px;">아래 컬럼 칩을 알맞은 영역으로 드래그하세요. <strong>시간(날짜·주차)</strong>을 지정하면 미래 예측이 가능해집니다.</p>
     <div class="reg-zone" data-reg-zone="ignore" style="border-style:solid;"><div class="reg-zone-label">📦 미지정 컬럼</div><div class="reg-chips" id="reg-tray">${tray.map((c) => chip(c)).join("") || `<span style="color:var(--text-muted);font-size:11px;">모두 배치됨</span>`}</div></div>
     
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-      ${zone("dependent", "🎯 종속변수 (Y)", "1개 필수")}
-      ${zone("group", "🔀 그룹 (OS/플랫폼)", "자동 분리")}
+          <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px;">
+            ${zone("dependent", "🎯 종속변수 (Y)", "여러 개 가능. 태그(iOS/Android)별로 모델을 생성합니다.")}
     </div>
     
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;">
@@ -28675,24 +28741,39 @@ allocation = total_budget × weight`,
     </div>
 
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;">
-      <div id="reg-groupwrap" style="flex:1 1 100%;${regLabGroupColOf() ? "" : "display:none;"}">
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:5px;">분석에 포함할 그룹 선택 (탭하여 토글)</div>
-        <div class="ab-pillgroup" id="reg-grouppills"></div>
-      </div>
-    </div>
     <div style="margin-top:14px;"><button class="ab-pill" id="reg-run" style="background:#7aa2f7;color:#0b0d12;font-weight:600;border-color:#7aa2f7;">회귀 적합 실행 (Adstock 최적화)</button> <span id="reg-err" style="color:#f87171;font-size:12px;"></span></div>
   </section>`;
       }
       function renderRegResults() {
-        const R = REG_LAB_STATE.fit;
-        if (!R) return "";
-        const { fit, vif, terms, m, n } = R,
-          f = (v, d = 4) =>
-            v == null || !isFinite(v)
-              ? v === Infinity
-                ? "∞"
-                : "—"
-              : (+v).toFixed(d);
+              const fits = REG_LAB_STATE.fits;
+              if (!fits || Object.keys(fits).length === 0) return "";
+              const tags = Object.keys(fits).sort();
+              let osPick = REG_LAB_STATE.fc.osPick || "sum";
+              if (osPick !== "sum" && !fits[osPick]) osPick = "sum";
+
+              const makeTabs = () => {
+                let html = `<div style="display:flex;gap:8px;margin-bottom:16px;">`;
+                const activeStyle = `background:var(--bg-2);border-color:var(--text-1);color:var(--text-1);`;
+                const btn = (val, label) => `<button class="ab-pill" data-reg-fc-ospick="${val}" style="${osPick===val ? activeStyle : ''}">${label}</button>`;
+                html += btn("sum", "총합계 (Sum)");
+                tags.forEach(t => html += btn(t, t === 'both' ? '공통' : t.toUpperCase()));
+                html += `</div>`;
+                return html;
+              };
+
+              if (osPick === "sum") {
+                return `
+          <section class="block" id="s-fit"><h2 class="section-title"><span class="ix">§3</span>적합도 (다중 모델)</h2>
+            ${makeTabs()}
+            <div class="callout warn" style="margin:8px 0;"><div class="ico">!</div><div class="body" style="font-size:12px;"><strong>총합계 모드</strong>: 개별 계수는 표시하지 않습니다. 계수 및 성과를 보려면 위 탭에서 개별 모델을 선택하세요.</div></div>
+          </section>
+          <section class="block" id="s-chart"><h2 class="section-title"><span class="ix">§5</span>실제 vs 예측 (총합계)</h2><div class="chart-container" style="height:280px;"><canvas id="reg-fit-chart"></canvas></div></section>
+          ${renderRegForecast()}`;
+              }
+
+              const R = fits[osPick];
+              const { fit, vif, terms, m, n } = R;
+              const f = (v, d = 4) => v == null || !isFinite(v) ? (v === Infinity ? "∞" : "—") : (+v).toFixed(d);
         const fmtP = (p) => (p < 1e-4 ? "<0.0001" : p.toFixed(4));
         const stats = [
           ["R²", fit.R2.toFixed(4)],
@@ -28702,42 +28783,15 @@ allocation = total_budget × weight`,
           ["df", fit.df],
           ["σ", Math.sqrt(fit.sigma2).toFixed(2)],
           ["F p", fmtP(fit.Fp)],
-        ]
-          .map(
-            ([k, v]) =>
-              `<div class="ab-stat"><div class="ab-stat-label">${k}</div><div class="ab-stat-value tnum">${v}</div></div>`,
-          )
-          .join("");
-        const hasLog = Object.entries(m.tf).some(
-          ([c, t]) =>
-            (t === "log1p" || t === "adstock_log") &&
-            (c === m.dep || m.indep.includes(c)),
-        );
-        const logNote = hasLog
-          ? `<div class="callout warn" style="margin:8px 0;"><div class="ico">!</div><div class="body" style="font-size:12px;"><strong>로그/adstock 변환 사용 중.</strong> 변환된 항의 계수는 탄력성/반로그 스케일이라 "지출 0으로 되돌린 기여" 같은 level-share 외삽은 무효(범위 밖 극단 외삽)입니다. 추출 contribution은 β·x(변환스케일) 적합 분해이며, 인과 기여는 탄력성·포화곡선으로 별도 검토하세요.</div></div>`
-          : "";
-        const coefRows = terms
-          .map((t, j) => {
-            const p = fit.pval[j],
-              sig = p < 0.05,
-              v = j === 0 ? "" : vif[j - 1];
-            const vifCls = v === "" ? "" : v > 10 ? "neg" : v > 5 ? "" : "";
-            const vifStyle =
-              v === ""
-                ? ""
-                : v > 10
-                  ? "color:#f87171;font-weight:600;"
-                  : v > 5
-                    ? "color:#fbbf24;"
-                    : "";
-            const tf =
-              j === 0
-                ? ""
-                : TRANSFORM_LABELS[
-                    m.types[m.indep[j - 1]] === "binary"
-                      ? "none"
-                      : m.tf[m.indep[j - 1]]
-                  ];
+              ].map(([k, v]) => `<div class="ab-stat"><div class="ab-stat-label">${k}</div><div class="ab-stat-value tnum">${v}</div></div>`).join("");
+
+              const hasLog = Object.entries(m.tf).some(([c, t]) => (t === "log1p" || t === "adstock_log") && (c === m.dep || m.indep.includes(c)));
+              const logNote = hasLog ? `<div class="callout warn" style="margin:8px 0;"><div class="ico">!</div><div class="body" style="font-size:12px;"><strong>로그/adstock 변환 사용 중.</strong> 변환된 항의 계수는 탄력성/반로그 스케일이라 극단적 외삽은 무효합니다.</div></div>` : "";
+
+              const coefRows = terms.map((t, j) => {
+                const p = fit.pval[j], sig = p < 0.05, v = j === 0 ? "" : vif[j - 1];
+                const vifStyle = v === "" ? "" : v > 10 ? "color:#f87171;font-weight:600;" : v > 5 ? "color:#fbbf24;" : "";
+                const tf = j === 0 ? "" : TRANSFORM_LABELS[m.types[m.indep[j - 1]] === "binary" ? "none" : m.tf[m.indep[j - 1]]];
             return `<tr>
       <td>${escapeHtml(t)}</td><td class="tnum">${f(fit.beta[j])}</td><td class="tnum" style="color:var(--text-muted);">${f(fit.se[j])}</td>
       <td class="tnum">${fit.tval[j].toFixed(2)}</td>
@@ -28745,13 +28799,15 @@ allocation = total_budget × weight`,
       <td class="tnum" style="font-size:11px;">[${f(fit.ci[j][0], 3)}, ${f(fit.ci[j][1], 3)}]</td>
       <td class="tnum" style="${vifStyle}">${v === "" ? "" : isFinite(v) ? v.toFixed(2) : "∞"}</td>
       <td class="muted" style="font-size:11px;">${tf}</td></tr>`;
-          })
-          .join("");
+              }).join("");
+
         return `
-    <section class="block" id="s-fit"><h2 class="section-title"><span class="ix">§3</span>적합도</h2><div class="ab-stat-row">${stats}</div>${logNote}
+          <section class="block" id="s-fit"><h2 class="section-title"><span class="ix">§3</span>적합도</h2>
+            ${makeTabs()}
+            <div class="ab-stat-row">${stats}</div>${logNote}
     <div style="margin-top:14px;background:var(--bg-2);padding:14px;border-radius:8px;border:1px solid var(--border);">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"><button class="ab-pill" id="reg-dl-data">⬇ 과거 기여도 데이터 CSV</button><button class="ab-pill" id="reg-dl-coef">⬇ 계수표 CSV</button></div>
-      <pre style="white-space:pre-wrap;font-family:var(--font-mono,monospace);font-size:12px;line-height:1.65;margin:0;color:var(--text-1);">${escapeHtml(regLabSummary())}</pre>
+            <pre style="white-space:pre-wrap;font-family:var(--font-mono,monospace);font-size:12px;line-height:1.65;margin:0;color:var(--text-1);">${escapeHtml(regLabSummary(R))}</pre>
     </div>
     </section>
     <section class="block" id="s-coef"><h2 class="section-title"><span class="ix">§4</span>계수 (coefficients)</h2>
@@ -28760,81 +28816,25 @@ allocation = total_budget × weight`,
     <section class="block" id="s-chart"><h2 class="section-title"><span class="ix">§5</span>실제 vs 예측</h2><div class="chart-container" style="height:280px;"><canvas id="reg-fit-chart"></canvas></div></section>
     ${renderRegForecast()}`;
       }
-      function regLabSummary() {
-        const R = REG_LAB_STATE.fit;
+            function regLabSummary(R) {
+              if (!R) return "";
         const { fit, m, terms, vif, n } = R;
-        const sigs = terms
-          .map((t, j) => ({ t, p: fit.pval[j], b: fit.beta[j], j }))
-          .filter((x) => x.j > 0 && x.p < 0.05);
-        const yScale =
-          m.tf[m.dep] === "none"
-            ? "원 스케일"
-            : `${TRANSFORM_LABELS[m.tf[m.dep]]} 변환`;
-        const vifHi = m.indep
-          .map((c, j) => ({ c, v: vif[j] }))
-          .filter((x) => x.v > 5);
+              const sigs = terms.map((t, j) => ({ t, p: fit.pval[j], b: fit.beta[j], j })).filter((x) => x.j > 0 && x.p < 0.05);
+              const yScale = m.tf[m.dep] === "none" ? "원 스케일" : `${TRANSFORM_LABELS[m.tf[m.dep]]} 변환`;
+              const vifHi = m.indep.map((c, j) => ({ c, v: vif[j] })).filter((x) => x.v > 5);
         const L = [];
-        L.push(`■ 모델: ${m.dep} (${yScale}) ~ ${m.indep.join(" + ")}`);
-        if (m.group)
-          L.push(
-            `■ 그룹 필터: ${m.group} ∈ {${[...(REG_LAB_STATE.groupKeep || [])].join(", ") || "전체"}}`,
-          );
+              L.push(`■ 모델 [${m.tag.toUpperCase()}]: ${m.dep} (${yScale}) ~ ${m.indep.join(" + ")}`);
         L.push(`■ 표본 n=${n}, 파라미터 k=${R.k}, df=${fit.df}`);
-        L.push(
-          `■ 적합도: R²=${fit.R2.toFixed(3)}, Adj R²=${fit.adjR2.toFixed(3)}, 모델 F p=${fit.Fp < 1e-4 ? "<0.0001" : fit.Fp.toFixed(4)}`
-        );
-        if (m.indep.some(c => m.tf[c] === "adstock_log")) {
-          L.push(`■ 최적 Adstock Lambda: ${REG_LAB_STATE.lambda}`);
-        }
+              L.push(`■ 적합도: R²=${fit.R2.toFixed(3)}, Adj R²=${fit.adjR2.toFixed(3)}, 모델 F p=${fit.Fp < 1e-4 ? "<0.0001" : fit.Fp.toFixed(4)}`);
+              if (m.indep.some(c => m.tf[c] === "adstock_log")) L.push(`■ 최적 Adstock Lambda: ${R.lam}`);
         L.push(``);
-        L.push(
-          `■ 유의한 변수 (p<.05): ${sigs.length ? sigs.map((x) => `${x.t}(β=${x.b.toFixed(3)})`).join(", ") : "없음"}`,
-        );
-        L.push(
-          `■ 해석: 다른 변수 고정 시, 각 독립변수 1단위(변환스케일) 변화당 ${m.dep}가 β만큼 변동.`,
-        );
-        if (vifHi.length)
-          L.push(
-            `■ ⚠ 다중공선성 주의: ${vifHi.map((x) => `${x.c}(VIF ${isFinite(x.v) ? x.v.toFixed(1) : "∞"})`).join(", ")} — 계수·SE 신뢰도 저하. 변수 통합/직교화 검토.`,
-          );
-        L.push(``);
-        L.push(
-          `■ 추출 데이터셋: 행별 actual·fitted·residual·항별 contribution(β·x). 그래프 그대로 재현 가능.`,
-        );
+              L.push(`■ 유의한 변수 (p<.05): ${sigs.length ? sigs.map((x) => `${x.t}(β=${x.b.toFixed(3)})`).join(", ") : "없음"}`);
+              L.push(`■ 해석: 다른 변수 고정 시, 각 독립변수 1단위(변환스케일) 변화당 ${m.dep}가 β만큼 변동.`);
+              if (vifHi.length) L.push(`■ ⚠ 다중공선성 주의: ${vifHi.map((x) => `${x.c}(VIF ${isFinite(x.v) ? x.v.toFixed(1) : "∞"})`).join(", ")}`);
         return L.join("\n");
       }
       function regLabRenderGroupPills() {
-        const wrap = document.getElementById("reg-groupwrap"),
-          host = document.getElementById("reg-grouppills");
-        if (!wrap || !host) return;
-        const gcol = regLabGroupColOf();
-        if (!gcol) {
-          wrap.style.display = "none";
-          return;
-        }
-        wrap.style.display = "";
-        const vals = [
-          ...new Set(REG_LAB_STATE.rows.map((r) => String(r[gcol]))),
-        ].filter((v) => v !== "null" && v !== "");
-        if (REG_LAB_STATE.groupCol !== gcol || !REG_LAB_STATE.groupKeep) {
-          REG_LAB_STATE.groupCol = gcol;
-          REG_LAB_STATE.groupKeep = new Set(vals);
-        }
-        const keep = REG_LAB_STATE.groupKeep;
-        host.innerHTML = vals
-          .map(
-            (v) =>
-              `<button class="ab-pill ${keep.has(v) ? "active" : ""}" data-reg-pill="${escapeHtml(v)}">${escapeHtml(v)}</button>`,
-          )
-          .join("");
-        host.querySelectorAll("[data-reg-pill]").forEach((b) =>
-          b.addEventListener("click", () => {
-            const v = b.dataset.regPill;
-            if (keep.has(v)) keep.delete(v);
-            else keep.add(v);
-            b.classList.toggle("active");
-          }),
-        );
+              // Obsolete function, removed logic
       }
       function regLabCharts() {
         const R = REG_LAB_STATE.fit;
@@ -28892,76 +28892,45 @@ allocation = total_budget × weight`,
         );
       }
       // === 미래 예측(§7) — REG_FORECAST 기반 (Phase 5·6) ===
-      function regForecastRows() {
-        const m = regLabReadMapping();
-        const S = REG_LAB_STATE,
-          fc = S.fc;
-        let rows = S.rows.slice();
-        if (m.group) {
-          if (fc.osMode === "split" && fc.osPick != null)
-            rows = rows.filter(
-              (r) => String(r[m.group]) === String(fc.osPick),
-            );
-          else if (fc.osMode === "pool" && S.groupKeep)
-            rows = rows.filter((r) => S.groupKeep.has(String(r[m.group])));
-        }
-        return rows;
-      }
-      function regGetForecast(rowsOverride) {
-        const m = regLabReadMapping();
+            function regGetForecast(tag) {
+              const fits = REG_LAB_STATE.fits;
+              if (!fits || !fits[tag]) return { ok: false, reason: "모델이 없습니다." };
+              const model = fits[tag];
         const fc = REG_LAB_STATE.fc;
         return REG_FORECAST.run({
-          rows: rowsOverride || regForecastRows(),
-          m,
-          lam: REG_LAB_STATE.lambda,
+                rows: model.rows,
+                m: model.m,
+                lam: model.lam,
           futureSpec: fc.spec,
           horizon: fc.horizon,
           bandMode: fc.band,
           season: fc.season,
         });
       }
-      function renderRegForecast() {
-        const m = regLabReadMapping();
-        const S = REG_LAB_STATE,
-          fc = S.fc;
-        const fmt = (v) =>
-          v == null || !isFinite(v) ? "—" : Math.round(v).toLocaleString();
         
-        let osBar = "";
-        let r; // The final forecast result to display
+            function getAggregatedForecast(osPick) {
+              const fits = REG_LAB_STATE.fits;
+              if (!fits) return { ok: false, reason: "모델이 없습니다." };
+              if (osPick !== "sum") return regGetForecast(osPick);
 
-        if (m.group) {
-          const vals = [...new Set(S.rows.map((r) => String(r[m.group])))].filter((v) => v !== "null" && v !== "");
-          if (fc.osMode === "split" && (fc.osPick == null || !vals.includes(String(fc.osPick)))) {
-            fc.osPick = vals[0];
-          }
-          const modeToggle = `<div class="ab-pillgroup" style="margin:0;"><span class="ab-pillgroup-label" style="font-size:10px;">${escapeHtml(m.group)}</span><button class="ab-pill ${fc.osMode === "split" ? "active" : ""}" data-reg-fc-osmode="split">그룹별 개별 확인</button><button class="ab-pill ${fc.osMode === "pool" ? "active" : ""}" data-reg-fc-osmode="pool">전체 합산(Sum)</button></div>`;
-          const osPills = fc.osMode === "split"
-              ? `<div class="ab-pillgroup" style="margin:0;">${vals.map((v) => `<button class="ab-pill ${String(fc.osPick) === v ? "active" : ""}" data-reg-fc-ospick="${escapeHtml(v)}">${escapeHtml(v)}</button>`).join("")}</div>`
-              : "";
-          osBar = `<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">${modeToggle}${osPills}</div>`;
-          
-          if (fc.osMode === "pool") {
-            // Sum pooling: Get forecast for each group and sum them
-            let sumPredFut = null, sumActual = null, sumLo = null, sumHi = null;
+              const modelKeys = Object.keys(fits);
+              let sumPredFut = null, sumActual = null, sumLo = null, sumHi = null, sumFittedHist = null;
             let sumFutRows = {}, nTotal = 0, r2Sum = 0, validGroups = 0;
-            let futLabels = null, hasSeasonality = false;
+              let futLabels = null, labels = null, hasSeasonality = false, splitAt = 0;
             let ok = true, reason = "";
 
-            for (const v of vals) {
-              const gRows = S.rows.filter((x) => String(x[m.group]) === v);
-              const gr = regGetForecast(gRows);
-              if (!gr.ok) {
-                ok = false;
-                reason = `그룹 ${v} 적합 불가: ` + gr.reason;
-                break;
-              }
+              for (const k of modelKeys) {
+                const gr = regGetForecast(k);
+                if (!gr.ok) { ok = false; reason = `모델 ${k} 예측 실패: ` + gr.reason; break; }
               if (!sumPredFut) {
                 sumPredFut = new Array(gr.predFut.length).fill(0);
                 sumActual = new Array(gr.actual.length).fill(0);
                 sumLo = new Array(gr.lo.length).fill(0);
                 sumHi = new Array(gr.hi.length).fill(0);
+                  sumFittedHist = new Array(gr.fittedHist.length).fill(0);
                 futLabels = gr.futLabels;
+                  labels = gr.labels;
+                  splitAt = gr.splitAt;
                 hasSeasonality = gr.hasSeasonality;
                 for (const c in gr.futRows) sumFutRows[c] = new Array(gr.futRows[c].length).fill(0);
               }
@@ -28969,29 +28938,36 @@ allocation = total_budget × weight`,
               gr.actual.forEach((val, i) => sumActual[i] += val);
               gr.lo.forEach((val, i) => sumLo[i] += val);
               gr.hi.forEach((val, i) => sumHi[i] += val);
+                gr.fittedHist.forEach((val, i) => sumFittedHist[i] += val);
+
+                const m = fits[k].m;
               for (const c in gr.futRows) {
+                  if(!sumFutRows[c]) sumFutRows[c] = new Array(gr.futRows[c].length).fill(0);
                 gr.futRows[c].forEach((val, i) => {
                   if (m.types[c] === "continuous") sumFutRows[c][i] += val;
-                  else sumFutRows[c][i] = Math.max(sumFutRows[c][i], val); // Events/Steps take max (logical OR)
+                    else sumFutRows[c][i] = Math.max(sumFutRows[c][i], val);
                 });
               }
               nTotal += gr.n;
               r2Sum += gr.r2;
               validGroups++;
             }
-            if (ok) {
-              r = { ok: true, predFut: sumPredFut, actual: sumActual, lo: sumLo, hi: sumHi, futRows: sumFutRows, futLabels, hasSeasonality, n: nTotal, r2: r2Sum / validGroups };
-            } else {
-              r = { ok: false, reason };
-            }
-          } else {
-            // Split mode
-            r = regGetForecast(S.rows.filter((x) => String(x[m.group]) === fc.osPick));
-          }
-        } else {
-          // No group mapping
-          r = regGetForecast();
+              if (!ok) return { ok: false, reason };
+              return { ok: true, predFut: sumPredFut, actual: sumActual, lo: sumLo, hi: sumHi, fittedHist: sumFittedHist, futRows: sumFutRows, futLabels, labels, splitAt, hasSeasonality, n: nTotal, r2: r2Sum / validGroups };
         }
+
+            function renderRegForecast() {
+              const fits = REG_LAB_STATE.fits;
+              if (!fits) return "";
+              const S = REG_LAB_STATE, fc = S.fc;
+              const osPick = fc.osPick || "sum";
+              const fmt = (v) => v == null || !isFinite(v) ? "—" : Math.round(v).toLocaleString();
+
+              const r = getAggregatedForecast(osPick);
+
+              // We will take a union of all indeps across all models for UI rendering
+              const baseM = regLabReadMapping();
+              const m = baseM;
 
         const timeNote = m.time
           ? ""
@@ -29071,8 +29047,9 @@ allocation = total_budget × weight`,
       function regForecastChart() {
         const el = document.getElementById("reg-fc-chart");
         if (!el || typeof Chart === "undefined") return;
-        const r = regGetForecast();
-        if (!r.ok) return;
+              const osPick = REG_LAB_STATE.fc.osPick || "sum";
+              const r = getAggregatedForecast(osPick);
+              if (!r || !r.ok) return;
         const muted = getCssVar("--text-muted"),
           border = getCssVar("--border"),
           sp = r.splitAt;
@@ -29158,35 +29135,29 @@ allocation = total_budget × weight`,
       }
 
       function regForecastExportCsv() {
-        const m = regLabReadMapping();
+              const fits = REG_LAB_STATE.fits;
+              if (!fits) return;
         const S = REG_LAB_STATE, fc = S.fc;
+              const baseM = regLabReadMapping();
         const lam = S.lambda || 0;
-        let models = [];
         
-        if (m.group) {
-          const vals = [...new Set(S.rows.map((r) => String(r[m.group])))].filter((v) => v !== "null" && v !== "");
-          if (fc.osMode === "split") {
-             models.push({ groupVal: fc.osPick, r: regGetForecast(S.rows.filter(x => String(x[m.group]) === fc.osPick)) });
-          } else {
-             vals.forEach(v => {
-               models.push({ groupVal: v, r: regGetForecast(S.rows.filter(x => String(x[m.group]) === v)) });
-             });
-          }
-        } else {
-          models.push({ groupVal: null, r: regGetForecast() });
-        }
+              let models = Object.keys(fits).map(k => ({ tag: k, r: regGetForecast(k), m: fits[k].m }));
+
+              let allIndeps = new Set();
+              models.forEach(mod => mod.m.indep.forEach(c => allIndeps.add(c)));
+              const indepList = Array.from(allIndeps);
         
         let cols = [];
-        cols.push(m.time ? "Date" : "RowIndex");
-        if (m.group) cols.push("Group");
+              cols.push(baseM.time ? "Date" : "RowIndex");
+              cols.push("Tag");
         
-        m.indep.forEach(c => {
+              indepList.forEach(c => {
            cols.push(c);
-           if (m.tf[c] === "adstock_log") cols.push(c + "_Adstock");
-           if (m.tf[c] === "step") cols.push(c + "_Accum");
+                 if (baseM.tf[c] === "adstock_log") cols.push(c + "_Adstock");
+                 if (baseM.tf[c] === "step") cols.push(c + "_Accum");
         });
-        cols.push("Pred_" + m.dep);
-        if (m.group && fc.osMode === "pool") cols.push("Data_Type");
+              cols.push("Pred_Y");
+              cols.push("Data_Type");
         
         const q = (s) => {
           const t = String(s == null ? "" : s);
@@ -29205,9 +29176,9 @@ allocation = total_budget × weight`,
         };
 
         models.forEach(mod => {
-          const { groupVal, r } = mod;
+                const { tag, r, m } = mod;
           if (!r.ok) return;
-          const gRows = groupVal ? S.rows.filter(x => String(x[m.group]) === groupVal) : S.rows;
+                const gRows = fits[tag].rows;
           const used = [m.dep, ...m.indep];
           const valid = gRows.filter((row) => used.every((c) => isFinite(num(row[c]))));
           
@@ -29217,9 +29188,10 @@ allocation = total_budget × weight`,
           for (let i = 0; i < valid.length; i++) {
             let rowData = [];
             rowData.push(q(r.histLabels[i]));
-            if (m.group) rowData.push(q(groupVal));
+                  rowData.push(q(tag));
             
-            m.indep.forEach(c => {
+                  indepList.forEach(c => {
+                     if (m.indep.includes(c)) {
                const val = num(valid[i][c]);
                rowData.push(val);
                if (m.tf[c] === "adstock_log") {
@@ -29231,9 +29203,14 @@ allocation = total_budget × weight`,
                   if (i === 0) rowData.push(val);
                   else rowData.push(`=${getColName(cols.indexOf(c))}*1 + ${getColName(cols.indexOf(c+"_Accum"))}${excelRow - 1}`);
                }
+                     } else {
+                       rowData.push(""); // val
+                       if (baseM.tf[c] === "adstock_log") rowData.push("");
+                       if (baseM.tf[c] === "step") rowData.push("");
+                     }
             });
             rowData.push(r.actual[i]);
-            if (m.group && fc.osMode === "pool") rowData.push("Historical");
+                  rowData.push("Historical");
             lines.push(rowData.join(","));
             excelRow++;
           }
@@ -29242,23 +29219,20 @@ allocation = total_budget × weight`,
           for (let j = 0; j < r.futLabels.length; j++) {
              let rowData = [];
              rowData.push(q(r.futLabels[j]));
-             if (m.group) rowData.push(q(groupVal));
+                   rowData.push(q(tag));
              
              let dynamicPart = 0;
              let termIdx = 1;
              
              m.indep.forEach(c => {
                const val = r.futRows[c][j];
-               rowData.push(val);
                if (m.tf[c] === "adstock_log") {
                   lastStates[c] = val + lam * lastStates[c];
                   dynamicPart += r.coef[termIdx] * Math.log1p(Math.max(0, lastStates[c]));
-                  rowData.push(`=${getColName(cols.indexOf(c))}${excelRow} + ${lam}*${getColName(cols.indexOf(c+"_Adstock"))}${excelRow - 1}`);
                   termIdx++;
                } else if (m.tf[c] === "step") {
                   lastStates[c] = lastStates[c] + val;
                   dynamicPart += r.coef[termIdx] * lastStates[c];
-                  rowData.push(`=${getColName(cols.indexOf(c))}${excelRow} + ${getColName(cols.indexOf(c+"_Accum"))}${excelRow - 1}`);
                   termIdx++;
                } else {
                   dynamicPart += r.coef[termIdx] * val;
@@ -29286,8 +29260,24 @@ allocation = total_budget × weight`,
                }
              });
              
+                   indepList.forEach(c => {
+                     if (m.indep.includes(c)) {
+                       const val = r.futRows[c][j];
+                       rowData.push(val);
+                       if (m.tf[c] === "adstock_log") {
+                          rowData.push(`=${getColName(cols.indexOf(c))}${excelRow} + ${lam}*${getColName(cols.indexOf(c+"_Adstock"))}${excelRow - 1}`);
+                       } else if (m.tf[c] === "step") {
+                          rowData.push(`=${getColName(cols.indexOf(c))}${excelRow} + ${getColName(cols.indexOf(c+"_Accum"))}${excelRow - 1}`);
+                       }
+                     } else {
+                       rowData.push(""); // val
+                       if (baseM.tf[c] === "adstock_log") rowData.push("");
+                       if (baseM.tf[c] === "step") rowData.push("");
+                     }
+                   });
+
              rowData.push(predFormula);
-             if (m.group && fc.osMode === "pool") rowData.push("Forecast");
+                   rowData.push("Forecast");
              lines.push(rowData.join(","));
              excelRow++;
           }
@@ -29364,15 +29354,19 @@ allocation = total_budget × weight`,
             const col = e.dataTransfer.getData("text/plain");
             if (!col || !REG_LAB_STATE.map[col]) return;
             const role = z.dataset.regZone;
-            if (role === "dependent")
-              REG_LAB_STATE.headers.forEach((c) => {
-                if (REG_LAB_STATE.map[c]?.role === "dependent")
-                  REG_LAB_STATE.map[c].role = "ignore";
-              }); // Y는 1개
             REG_LAB_STATE.map[col].role = role;
             navigate("5-19");
           });
         });
+              document.querySelectorAll("[data-reg-tag]").forEach((s) =>
+                s.addEventListener("change", (e) => {
+                  const col = s.dataset.regTag;
+                  if (REG_LAB_STATE.map[col]) REG_LAB_STATE.map[col].tag = s.value;
+                  // navigate to re-render is not needed if we just want to save state,
+                  // but for UI consistency let's re-render
+                  navigate("5-19");
+                })
+              );
         document.querySelectorAll("[data-reg-unassign]").forEach((x) =>
           x.addEventListener("click", (e) => {
             e.stopPropagation();
