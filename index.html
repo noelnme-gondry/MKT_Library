@@ -11720,6 +11720,39 @@ allocation = total_budget × weight`,
           return null;
         }
 
+        // 채널 정렬: 최근 recentDays일 Cost 합산 큰 순서, 동률(최근 0)이면 전체 Cost로 2차 정렬
+        // (전체 기간 합산 정렬은 과거 큰돈 쓴 채널이 상위를 점유해 최근 신규/활성 캠페인이
+        //  상위 N에서 밀려 안 보이는 문제 → 최근 윈도우 기준 정렬)
+        function sortChannelsByRecentCost(byChannel, recentDays) {
+          const allDates = [];
+          for (const pts of byChannel.values()) {
+            for (const p of pts) {
+              const t = p.date ? Date.parse(p.date) : NaN;
+              if (!isNaN(t)) allDates.push(t);
+            }
+          }
+          const maxDate = allDates.length ? Math.max(...allDates) : null;
+          const recentThreshold =
+            maxDate != null ? maxDate - recentDays * 86400 * 1000 : null;
+          const recentCost = (ch) => {
+            const pts = byChannel.get(ch) || [];
+            if (recentThreshold == null)
+              return pts.reduce((s, p) => s + p.x, 0);
+            let sum = 0;
+            for (const p of pts) {
+              const t = p.date ? Date.parse(p.date) : NaN;
+              if (!isNaN(t) && t >= recentThreshold) sum += p.x;
+            }
+            return sum;
+          };
+          const totalCost = (ch) =>
+            (byChannel.get(ch) || []).reduce((s, p) => s + p.x, 0);
+          return [...byChannel.keys()].sort((a, b) => {
+            const d = recentCost(b) - recentCost(a);
+            return d !== 0 ? d : totalCost(b) - totalCost(a);
+          });
+        }
+
         return {
           fitLinear,
           fitLog,
@@ -11735,6 +11768,7 @@ allocation = total_budget × weight`,
           getAxisLabels,
           detectPoly2Shape,
           predictSafeCpr,
+          sortChannelsByRecentCost,
         };
       })();
 
@@ -11810,6 +11844,27 @@ allocation = total_budget × weight`,
         ok(
           "T7 결정론(동일입력=동일출력)",
           A.predictSafeCpr(chBell, 8) === A.predictSafeCpr(chBell, 8),
+        );
+        // T8 sortChannelsByRecentCost: 최근 윈도우 Cost 우선, 동률 시 전체 Cost desc 폴백
+        const byChannelSort = new Map([
+          ["chRecent", [{ x: 100, y: 1, date: "2024-03-01" }]],
+          ["chOldHigh", [{ x: 500, y: 1, date: "2024-01-01" }]],
+          ["chOldMid", [{ x: 300, y: 1, date: "2024-01-02" }]],
+          ["chOldLow", [{ x: 200, y: 1, date: "2024-01-03" }]],
+        ]);
+        ok(
+          "T8 최근윈도우 우선 정렬 + 동률 전체Cost desc 폴백",
+          JSON.stringify(A.sortChannelsByRecentCost(byChannelSort, 20)) ===
+            JSON.stringify([
+              "chRecent",
+              "chOldHigh",
+              "chOldMid",
+              "chOldLow",
+            ]),
+        );
+        ok(
+          "T8 빈 맵 → []",
+          A.sortChannelsByRecentCost(new Map(), 20).length === 0,
         );
 
         console.log(
@@ -40407,42 +40462,12 @@ allocation = total_budget × weight`,
         // 채널별 raw points → 메모이제이션
         const byChannel = getCachedByChannel(rows, metric);
 
-        // 채널 정렬: 최근 SELECT_RECENT_DAYS(20)일 Cost 합산 큰 순서.
-        // (전체 기간 합산으로 정렬하면 과거에 큰돈 쓴 채널이 상위를 점유해
-        //  최근 신규/활성 캠페인이 상위 6에서 밀려 안 보이는 문제 → 최근 윈도우 기준 정렬)
+        // 채널 정렬: 최근 SELECT_RECENT_DAYS(20)일 Cost 합산 큰 순서 (ALLOC_MATH.sortChannelsByRecentCost, §순수추출)
         const SELECT_RECENT_DAYS = 20;
-        const allDatesForSort = [];
-        for (const pts of byChannel.values()) {
-          for (const p of pts) {
-            const t = p.date ? Date.parse(p.date) : NaN;
-            if (!isNaN(t)) allDatesForSort.push(t);
-          }
-        }
-        const maxDateForSort = allDatesForSort.length
-          ? Math.max(...allDatesForSort)
-          : null;
-        const recentThresholdForSort =
-          maxDateForSort != null
-            ? maxDateForSort - SELECT_RECENT_DAYS * 86400 * 1000
-            : null;
-        const recentCost = (ch) => {
-          const pts = byChannel.get(ch) || [];
-          if (recentThresholdForSort == null)
-            return pts.reduce((s, p) => s + p.x, 0);
-          let sum = 0;
-          for (const p of pts) {
-            const t = p.date ? Date.parse(p.date) : NaN;
-            if (!isNaN(t) && t >= recentThresholdForSort) sum += p.x;
-          }
-          return sum;
-        };
-        // 최근 윈도우 Cost로 1차 정렬, 동률(최근 0)이면 전체 Cost로 2차 정렬 (최근 활동 없는 채널도 안정적 순서)
-        const totalCost = (ch) =>
-          (byChannel.get(ch) || []).reduce((s, p) => s + p.x, 0);
-        let allChannels = [...byChannel.keys()].sort((a, b) => {
-          const d = recentCost(b) - recentCost(a);
-          return d !== 0 ? d : totalCost(b) - totalCost(a);
-        });
+        let allChannels = ALLOC_MATH.sortChannelsByRecentCost(
+          byChannel,
+          SELECT_RECENT_DAYS,
+        );
 
         // 선택 초기값: 상위 6채널
         if (ALLOC_STATE.selectedChannels == null) {
