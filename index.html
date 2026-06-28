@@ -20145,6 +20145,7 @@ allocation = total_budget × weight`,
             TSS,
             F,
             Fp,
+            XtXi, // 예측 밴드 leverage 계산용 (additive — 기존 호출부 무영향)
           };
         }
         function r2of(X, y) {
@@ -27952,6 +27953,7 @@ allocation = total_budget × weight`,
         "dependent",
         "independent",
         "group",
+        "time",
         "label",
       ];
       const _REG_TYPES = ["continuous", "binary", "label"];
@@ -27976,7 +27978,7 @@ allocation = total_budget × weight`,
           role = "independent";
           tf = "none";
         } else if (/date|day|week|월|일자|주차/.test(name)) {
-          role = "label";
+          role = "time"; // 예측 X축 + 계절성/추세 생성원 (구 label에서 승격)
           type = "label";
         } else if (
           /platform|os|채널|channel|group|구분|reg|react/.test(name) &&
@@ -28077,6 +28079,7 @@ allocation = total_budget × weight`,
           dep: null,
           indep: [],
           group: null,
+          time: null,
           label: null,
           types: {},
           tf: {},
@@ -28088,6 +28091,7 @@ allocation = total_budget × weight`,
           if (def.role === "dependent") m.dep = m.dep || c;
           else if (def.role === "independent") m.indep.push(c);
           else if (def.role === "group") m.group = m.group || c;
+          else if (def.role === "time") m.time = m.time || c;
           else if (def.role === "label") m.label = m.label || c;
         }
         return m;
@@ -28102,6 +28106,335 @@ allocation = total_budget × weight`,
             ? [...REG_LAB_STATE.groupKeep].sort()
             : null,
         });
+      }
+      /* ============================================================
+       * REG_FORECAST — 범용회귀 미래 투영 (Trend Forecast 일반화)
+       * 임의 독립변수 회귀에 "미래로 투영" 층을 더한다: 변수별 미래스펙
+       * (연속=시나리오 값 / 이벤트=지속·N기간후끔) + 시간→계절성/추세 자동연장
+       * + 95% 밴드(leverage). REG_STATS.ols·REG_TRANSFORMS·_mmmParseDate 재사용. 결정론.
+       * ⚠ 관측 회귀의 외삽(가설). 인과/증분 확정은 holdout(5-15) 전용.
+       * ============================================================ */
+      const REG_FORECAST = {
+        _mean(a) {
+          return a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0;
+        },
+        _std(a) {
+          const m = this._mean(a);
+          return Math.sqrt(
+            a.reduce((s, x) => s + (x - m) ** 2, 0) / Math.max(1, a.length - 1),
+          );
+        },
+        _num(v) {
+          if (v == null || String(v).trim() === "") return NaN;
+          const n = parseFloat(String(v).replace(/[^0-9.\-]/g, ""));
+          return isNaN(n) ? NaN : n;
+        },
+        // 95% 양측 t 임계값 (REG_STATS.tSF 역추적 — tinv 비노출 대체, 결정론 이분탐색)
+        _tcrit(df) {
+          let lo = 0,
+            hi = 1000;
+          for (let i = 0; i < 100; i++) {
+            const mid = (lo + hi) / 2;
+            REG_STATS.tSF(mid, df) > 0.05 ? (lo = mid) : (hi = mid);
+          }
+          return (lo + hi) / 2;
+        },
+        // 시간열 → 추세(표준화 인덱스) + (옵션)계절성(Fourier). 미래 horizon행 연장.
+        buildTimeFeatures(timeVals, horizon, season) {
+          const n = timeVals ? timeVals.length : 0;
+          const t = Array.from({ length: n }, (_, i) => i + 1);
+          const futT = Array.from({ length: horizon }, (_, j) => n + j + 1);
+          const tm = this._mean(t),
+            ts = this._std(t) || 1;
+          const cols = [
+            {
+              name: "trend",
+              hist: t.map((x) => (x - tm) / ts),
+              fut: futT.map((x) => (x - tm) / ts),
+            },
+          ];
+          let dates = null,
+            hasDates = false,
+            futLabels = futT.map((x) => "+" + (x - n));
+          if (timeVals) {
+            dates = timeVals.map((v) => _mmmParseDate(v));
+            hasDates = dates.length > 1 && dates.every((d) => d);
+          }
+          if (hasDates) {
+            const gaps = [];
+            for (let i = 1; i < dates.length; i++)
+              gaps.push((dates[i] - dates[i - 1]) / 86400000);
+            const sorted = gaps.slice().sort((a, b) => a - b);
+            const medGap = sorted[Math.floor(sorted.length / 2)] || 7;
+            const rowsPerYear = 365.25 / (medGap || 7);
+            const last = dates[n - 1];
+            futLabels = Array.from({ length: horizon }, (_, j) =>
+              new Date(last.getTime() + (j + 1) * medGap * 86400000)
+                .toISOString()
+                .slice(0, 10),
+            );
+            if (season && n >= rowsPerYear * 1.5 && rowsPerYear >= 3 && rowsPerYear <= 400) {
+              const P = rowsPerYear;
+              cols.push({
+                name: "sin_yr",
+                hist: t.map((x) => Math.sin((2 * Math.PI * x) / P)),
+                fut: futT.map((x) => Math.sin((2 * Math.PI * x) / P)),
+              });
+              cols.push({
+                name: "cos_yr",
+                hist: t.map((x) => Math.cos((2 * Math.PI * x) / P)),
+                fut: futT.map((x) => Math.cos((2 * Math.PI * x) / P)),
+              });
+            }
+          }
+          return { cols, futLabels, hasDates };
+        },
+        // 변환을 hist+future 결합 시리즈에 1회 적용 후 슬라이스 (adstock 이월·정규화 스케일 일관)
+        _transformCombined(rawHist, rawFut, tf, lam) {
+          const comb = REG_TRANSFORMS[tf]
+            ? REG_TRANSFORMS[tf]([...rawHist, ...rawFut], lam)
+            : [...rawHist, ...rawFut];
+          return {
+            hist: comb.slice(0, rawHist.length),
+            fut: comb.slice(rawHist.length),
+          };
+        },
+        // 종속 역변환 (예측을 원 스케일로) — rawY로 정규화 파라미터 복원
+        _invDep(vals, tf, rawY) {
+          if (tf === "none" || !tf) return vals.slice();
+          if (tf === "log1p" || tf === "adstock_log")
+            return vals.map((v) => Math.expm1(v));
+          if (tf === "zscore") {
+            const m = this._mean(rawY),
+              s = this._std(rawY) || 1;
+            return vals.map((v) => v * s + m);
+          }
+          if (tf === "minmax") {
+            const lo = Math.min(...rawY),
+              hi = Math.max(...rawY),
+              r = hi - lo || 1;
+            return vals.map((v) => v * r + lo);
+          }
+          return vals.slice();
+        },
+        /* 미래 예측 코어.
+         * opts: { rows, m(매핑), lam, futureSpec{col→{off}|{value}}, horizon, bandMode, season }
+         * 반환: { ok, reason?, terms[], coef[], r2, n, k, vif[], se[], pval[], sigma,
+         *         actual[], fittedHist[], predFut[], lo[], hi[], histLabels[], futLabels[],
+         *         labels[], splitAt, futRows{col→[]}, depTf, bandMode, hasSeasonality } */
+        run(opts) {
+          const { rows, m, lam, horizon, bandMode, season } = opts;
+          const futureSpec = opts.futureSpec || {};
+          const H = Math.max(1, Math.min(260, horizon | 0));
+          const tfOf = (c) =>
+            m.types[c] === "binary" ? "none" : m.tf[c] || "none";
+          const num = (v) => this._num(v);
+          if (!m.dep) return { ok: false, reason: "종속변수를 지정하세요." };
+          if (!m.indep.length)
+            return { ok: false, reason: "독립변수를 1개 이상 지정하세요." };
+          const used = [m.dep, ...m.indep];
+          const valid = rows.filter((r) =>
+            used.every((c) => isFinite(num(r[c]))),
+          );
+          const nHist = valid.length;
+          const rawY = valid.map((r) => num(r[m.dep]));
+          const depTf = tfOf(m.dep);
+          const y = REG_TRANSFORMS[depTf]
+            ? REG_TRANSFORMS[depTf](rawY, lam)
+            : rawY.slice();
+          const futRows = {};
+          const indepCols = m.indep.map((c) => {
+            const rawHist = valid.map((r) => num(r[c]));
+            const isBinary = m.types[c] === "binary";
+            const spec = futureSpec[c] || {};
+            let rawFut;
+            if (isBinary) {
+              const lastV = rawHist[rawHist.length - 1] || 0;
+              const off = spec.off;
+              rawFut = Array.from({ length: H }, (_, j) =>
+                off != null && isFinite(off) ? (j < off ? lastV : 0) : lastV,
+              );
+            } else {
+              const recentN = Math.min(8, nHist);
+              const recentMean =
+                this._mean(rawHist.slice(-recentN).filter(isFinite)) || 0;
+              const val =
+                spec.value != null && isFinite(spec.value)
+                  ? spec.value
+                  : recentMean;
+              rawFut = Array(H).fill(val);
+            }
+            futRows[c] = rawFut.slice();
+            return this._transformCombined(rawHist, rawFut, tfOf(c), lam);
+          });
+          const timeVals = m.time ? valid.map((r) => r[m.time]) : null;
+          const tfeat = this.buildTimeFeatures(timeVals, H, season);
+          const featNames = [...m.indep, ...tfeat.cols.map((c) => c.name)];
+          const Xhist = [],
+            Xfut = [];
+          for (let i = 0; i < nHist; i++)
+            Xhist.push([
+              1,
+              ...indepCols.map((c) => c.hist[i]),
+              ...tfeat.cols.map((c) => c.hist[i]),
+            ]);
+          for (let j = 0; j < H; j++)
+            Xfut.push([
+              1,
+              ...indepCols.map((c) => c.fut[j]),
+              ...tfeat.cols.map((c) => c.fut[j]),
+            ]);
+          const k = featNames.length + 1;
+          if (nHist <= k)
+            return {
+              ok: false,
+              reason: `데이터 ${nHist}행이 변수 ${k}개(절편 포함)보다 적거나 같아 적합 불가. 기간을 늘리거나 변수를 줄이세요.`,
+              n: nHist,
+              k,
+            };
+          let fit;
+          try {
+            fit = REG_STATS.ols(Xhist, y);
+          } catch (e) {
+            return { ok: false, reason: "적합 실패: " + e.message, n: nHist, k };
+          }
+          const beta = fit.beta;
+          const predFutT = Xfut.map((r) =>
+            r.reduce((s, v, i) => s + v * beta[i], 0),
+          );
+          const tcrit = this._tcrit(Math.max(1, fit.df));
+          const noise = bandMode === "pred" ? 1 : 0;
+          const lev = (xrow) => {
+            let s = 0;
+            for (let a = 0; a < xrow.length; a++)
+              for (let b = 0; b < xrow.length; b++)
+                s += xrow[a] * fit.XtXi[a][b] * xrow[b];
+            return s;
+          };
+          const loT = [],
+            hiT = [];
+          Xfut.forEach((r, j) => {
+            const se = Math.sqrt(Math.max(0, fit.sigma2 * (noise + lev(r))));
+            loT.push(predFutT[j] - tcrit * se);
+            hiT.push(predFutT[j] + tcrit * se);
+          });
+          const fittedHist = this._invDep(fit.yhat, depTf, rawY);
+          const predFut = this._invDep(predFutT, depTf, rawY);
+          const lo = this._invDep(loT, depTf, rawY);
+          const hi = this._invDep(hiT, depTf, rawY);
+          const histLabels = m.time
+            ? valid.map((r) => String(r[m.time]))
+            : valid.map((_, i) => i + 1);
+          const vif = m.indep.map((_, j) => {
+            if (m.indep.length < 2) return 1;
+            const Xj = Xhist.map((r) => r.filter((_, c) => c !== j + 1));
+            const r2 = REG_STATS.r2of(Xj, indepCols[j].hist);
+            return isFinite(r2) && r2 < 1 ? 1 / (1 - r2) : Infinity;
+          });
+          return {
+            ok: true,
+            terms: ["(Intercept)", ...featNames],
+            coef: beta,
+            r2: fit.R2,
+            adjR2: fit.adjR2,
+            n: nHist,
+            k,
+            df: fit.df,
+            sigma: Math.sqrt(fit.sigma2),
+            vif,
+            se: fit.se,
+            pval: fit.pval,
+            actual: rawY,
+            fittedHist,
+            predFut,
+            lo,
+            hi,
+            histLabels,
+            futLabels: tfeat.futLabels,
+            labels: [...histLabels, ...tfeat.futLabels],
+            splitAt: nHist,
+            futRows,
+            depTf,
+            bandMode: bandMode === "pred" ? "pred" : "mean",
+            hasSeasonality: tfeat.cols.length > 1,
+            indepNames: m.indep.slice(),
+          };
+        },
+      };
+      // 골든 — 합성 데이터로 결정론·예측 외삽·밴드·degenerate 검증
+      function runRegForecastTests(verbose = true) {
+        const R = [];
+        const ok = (label, cond, actual) =>
+          R.push({ test: label, actual: String(actual), pass: cond ? "✓" : "✗" });
+        // 합성: y = 8000 + 600*log(cost) - 5*t + 400*sin(2πt/52) + noise
+        const n = 104;
+        let seed = 99;
+        const rnd = () => {
+          seed = (seed * 1664525 + 1013904223) >>> 0;
+          return seed / 4294967296 - 0.5;
+        };
+        const rows = [];
+        for (let i = 0; i < n; i++) {
+          const cost = 5000 + i * 40 + rnd() * 1000;
+          const hol = i % 13 === 0 ? 1 : 0;
+          const date = new Date(Date.UTC(2024, 0, 1) + i * 7 * 86400000)
+            .toISOString()
+            .slice(0, 10);
+          const y =
+            8000 +
+            600 * Math.log1p(cost) -
+            5 * i +
+            400 * Math.sin((2 * Math.PI * i) / 52.18) +
+            300 * hol +
+            rnd() * 100;
+          rows.push({ week: date, cost, is_promo: hol, regs: Math.round(y) });
+        }
+        const m = {
+          dep: "regs",
+          indep: ["cost", "is_promo"],
+          time: "week",
+          group: null,
+          types: { regs: "continuous", cost: "continuous", is_promo: "binary" },
+          tf: { regs: "none", cost: "adstock_log", is_promo: "none" },
+        };
+        const opts = {
+          rows,
+          m,
+          lam: 0.3,
+          horizon: 13,
+          bandMode: "mean",
+          season: true,
+          futureSpec: { cost: { value: 9000 }, is_promo: { off: null } },
+        };
+        const r1 = REG_FORECAST.run(opts);
+        ok("T1 · 예측 성공·R²유효", r1.ok && r1.r2 > 0 && r1.r2 < 1, r1.ok ? r1.r2.toFixed(3) : r1.reason);
+        ok("T2 · 예측 길이=horizon", r1.predFut && r1.predFut.length === 13, r1.predFut ? r1.predFut.length : 0);
+        ok("T3 · 밴드 lo<hi", r1.lo && r1.lo.every((v, j) => v <= r1.hi[j]), "n=" + (r1.lo ? r1.lo.length : 0));
+        ok("T4 · 계절성 포함(주간·2년+)", r1.hasSeasonality === true, r1.hasSeasonality);
+        const r2 = REG_FORECAST.run(opts);
+        ok("T5 · 결정론(2회 동일)", JSON.stringify(r1.predFut) === JSON.stringify(r2.predFut), "");
+        // 미래 예산↑ → 예측 상승 (cost 계수 양수 기대)
+        const rHi = REG_FORECAST.run({ ...opts, futureSpec: { cost: { value: 20000 }, is_promo: { off: null } } });
+        const meanFut = (x) => x.predFut.reduce((s, v) => s + v, 0) / x.predFut.length;
+        ok("T6 · 예산↑→예측↑", meanFut(rHi) > meanFut(r1), `${Math.round(meanFut(r1))}→${Math.round(meanFut(rHi))}`);
+        // degenerate: 변수>행
+        const few = rows.slice(0, 3);
+        const rDeg = REG_FORECAST.run({ ...opts, rows: few });
+        ok("T7 · 행≤변수 degenerate 거부", rDeg.ok === false, rDeg.reason ? "ok=false" : "ok=true");
+        // 이벤트 N기간 후 끔: off=3 → 미래 4번째부터 0
+        const rOff = REG_FORECAST.run({ ...opts, futureSpec: { cost: { value: 9000 }, is_promo: { off: 3 } } });
+        ok("T8 · 이벤트 off=3 미래반영", rOff.ok && rOff.futRows.is_promo[5] === 0, rOff.ok ? rOff.futRows.is_promo.slice(0, 6).join("") : "fail");
+        if (verbose) {
+          console.log("%c=== REG_FORECAST · Golden ===", "color:#adc6ff;font-weight:bold;");
+          console.table(R);
+          const p = R.filter((x) => x.pass === "✓").length;
+          console.log(`%c${p}/${R.length} 통과`, `color:${p === R.length ? "#22c55e" : "#f87171"};font-weight:bold;`);
+        }
+        return R;
+      }
+      if (typeof window !== "undefined") {
+        window.runRegForecastTests = runRegForecastTests;
+        window.REG_FORECAST = REG_FORECAST;
       }
       function regLabRun() {
         const m = regLabReadMapping(),
@@ -28151,8 +28484,9 @@ allocation = total_budget × weight`,
           const r2 = REG_STATS.r2of(Xj, Xcols[j]);
           return isFinite(r2) && r2 < 1 ? 1 / (1 - r2) : Infinity;
         });
-        const labels = m.label
-          ? rows.map((r) => r[m.label])
+        const labelCol = m.time || m.label;
+        const labels = labelCol
+          ? rows.map((r) => r[labelCol])
           : rows.map((_, i) => i + 1);
         REG_LAB_STATE.fit = {
           m,
@@ -28223,14 +28557,17 @@ allocation = total_budget × weight`,
         );
         return `<section class="block" id="s-map">
     <h2 class="section-title"><span class="ix">§2</span>컬럼 매핑 (드래그앤드롭)</h2>
-    <p class="muted" style="font-size:12px;margin-top:-4px;">아래 컬럼 칩을 <strong>종속(Y)·독립·그룹·라벨 영역으로 드래그</strong>하세요. 독립변수 칩에서 타입·변환·(지출이면)perf/brand를 고릅니다. binary는 변환 자동 '없음'.</p>
+    <p class="muted" style="font-size:12px;margin-top:-4px;">아래 컬럼 칩을 <strong>종속(Y)·독립·그룹·시간 영역으로 드래그</strong>하세요. 독립변수 칩에서 타입·변환·(지출이면)perf/brand를 고릅니다. binary는 변환 자동 '없음'. <strong>시간(날짜·주차)</strong>을 지정하면 아래 §7에서 <strong>미래 예측</strong>이 열립니다.</p>
     <div class="reg-zone" data-reg-zone="ignore" style="border-style:solid;"><div class="reg-zone-label">📦 컬럼 (미지정 — 드래그해서 배치)</div><div class="reg-chips" id="reg-tray">${tray.map((c) => chip(c, false)).join("") || `<span style="color:var(--text-muted);font-size:11px;">모두 배치됨</span>`}</div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
       ${zone("dependent", "🎯 종속변수 (Y) — 1개", true)}
       ${zone("group", "🔀 그룹 (세그먼트 필터·선택)", false)}
     </div>
     <div style="margin-top:10px;">${zone("independent", "📈 독립변수 (여러 개)", true)}</div>
-    <div style="margin-top:10px;">${zone("label", "🏷 라벨 (x축·선택)", false)}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+      ${zone("time", "🕐 시간 (날짜·주차 — 예측 X축·계절성)", false)}
+      ${zone("label", "🏷 라벨 (x축·선택)", false)}
+    </div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;">
       <label style="font-size:12px;color:var(--text-muted);">Adstock λ<br><input type="number" id="reg-lambda" value="${S.lambda}" step="0.05" min="0" max="0.95" style="width:90px;background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:5px;padding:4px 7px;margin-top:3px;"></label>
       <div id="reg-groupwrap" style="flex:1 1 100%;${regLabGroupColOf() ? "" : "display:none;"}">
