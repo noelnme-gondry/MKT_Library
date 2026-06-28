@@ -50,7 +50,7 @@ HTML/CSS/JS (Vanilla) — 빌드 도구 없음. `serve . -l $PORT` 가 전부.
 - `pageShell(meta, { deck, chips, summary, toc, body, tocFilters })` 공통 레이아웃.
 - **내부 id(`5-2`)는 절대 불변** — hash·렌더러·navigate·AUTH·TOOL_* 수백 곳 의존, 북마크 깨짐. 표시 번호만 바꾸려면 `displayItemNumber(id)`/`displayGroupNumber(id)` 순수함수 사용(§12.6).
 
-### 4.2 현재 도구 (17→5/6 통합 완료)
+### 4.2 현재 도구 (17→7 통합 완료)
 
 | ID | 도구 | 티어 | 데이터 |
 |---|---|---|---|
@@ -60,6 +60,7 @@ HTML/CSS/JS (Vanilla) — 빌드 도구 없음. `serve . -l $PORT` 가 전부.
 | 5-4 | 실험 분석 (A/B·Test Readout·Incrementality, 3탭) | free | 수동/CSV |
 | 5-6 | 소재 분석 | free | 소재 daily CSV |
 | 5-18 | 마케팅 반응 분석 (MMM: 진단/기여/Forecast + Regression Lab) | free | 주간 패널 CSV |
+| 5-20 | Aha-Moment Finder (선행 행동 윈도우×횟수 그리드 탐색, F1/Lift) | free | 이벤트 CSV |
 | 5-21 | 캠페인 성과 변동 탐지 (PVM 무잔차 분해) | **free** | 소재 CSV 공유 |
 
 티어: `TOOL_TIER`(free/pro) + `AUTH_PROTECTED_PAGES`. 흡수된 구 도구 id는 `navigate` redirect로 보존.
