@@ -8,8 +8,8 @@
 ## 0. 요약 (TL;DR)
 
 - 규모: **28,474줄 / 1.64MB**. JS 단일 `<script>` 블록 **1.36MB**, CSS 단일 `<style>` **101KB**. 함수 ~1,000개(`function` 680 + arrow ~386).
-- 안전망: 순수함수 단위테스트 **18종**(`runXxxTests`, stats 잘 커버) + 골든 byte-동일 + syntax check. **단, 전부 세션마다 Node 주입 harness로 즉석 실행 — 커밋된 러너·CI 없음.**
-- 권고 순서: **① 테스트 러너 커밋(안전망 고정) → ② 문서 드리프트·중복 CSS(저위험 정리) → ③ 대형 함수 분해(골든 보호 하)**. 안전망부터 깔아야 이후 정리가 안전.
+- 안전망: 순수함수 단위테스트 **20종**(`runXxxTests`, stats 잘 커버) + 골든 byte-동일 + syntax check. ✅ `validate.js`(`npm test`) 커밋 완료(PR #201) — 더 이상 세션 즉석 harness 의존 안 함.
+- 권고 순서: **① 테스트 러너 커밋(안전망 고정) ✅ → ② 문서 드리프트·중복 CSS(저위험 정리) ✅ → ③ 대형 함수 분해(골든 보호 하) 🔶 진행 중(1건 완료)**.
 
 ---
 
@@ -17,13 +17,8 @@
 
 | 항목 | 값 | 비고 |
 |---|---|---|
-| 총 줄/바이트 | 28,474줄 / 1.64MB | 단일 파일 |
-| JS 블록 | 1,357,622 chars (1블록) | block 10 |
-| CSS 블록 | 100,797 chars (1블록) | style 1 |
-| 함수 | `function` 680 + arrow ~386 | |
-| 테스트 함수 | 18× `runXxxTests` | stats 순수함수 커버 |
-| console.log | 31 (대부분 테스트 출력) | 잔재 아님 |
-| TODO/FIXME/debugger | 0 | 클린 |
+| 총 줄/바이트 | 46,683줄 / 1.92MB (2026-06 2차 재측정) | 단일 파일. 1차 측정(28,474줄/1.64MB) 이후 외부 11개 커밋으로 +18k줄 |
+| 테스트 함수 | 20× `runXxxTests` | `node validate.js` 20/20 통과 |
 | 활성 분석 도구 | 7 (5-2·5-3·5-4·5-6·5-18·5-20·5-21) | |
 | 흡수 구 id | 13 (5-5·5-7~5-19) | navigate redirect 보존 |
 
@@ -33,26 +28,27 @@
 
 ### P1 — 안전망·정합성 (먼저)
 
-**2.1 커밋된 테스트 러너·CI 부재** 〔효과 高 / 노력 中 / 위험 低〕
+**2.1 커밋된 테스트 러너·CI 부재** 〔효과 高 / 노력 中 / 위험 低〕 ✅ 완료(PR #201)
 18개 `runXxxTests` + 골든이 있으나 **세션마다 `/tmp` Node 주입 스크립트로 즉석 재작성** → 재현·회귀 감지가 사람 손에 의존. render-throw(§7 PR#102)는 골든도 못 잡음.
 - **제안**: 루트에 `validate.js`(Node) 커밋 — index.html에서 `<script>` 추출→`vm`로 로드→전 `runXxxTests()` 실행 + syntax check, 실패 시 nonzero exit. `package.json`에 `"test": "node validate.js"`. (선택) GitHub Action 1개.
 - **규칙 충돌 확인 필요**: §2.1 "별도 .js 금지"는 **앱(배포) 코드** 대상. `validate.js`는 dev 도구(배포 X)지만 NEVER 원칙이라 **사용자 승인 후** 진행.
 
-**2.2 CLAUDE.md §4.2 문서 드리프트** 〔효과 中 / 노력 極低 / 위험 低〕
-§4.2 표가 **6개 도구만 + "17→5/6 통합"**으로 기재 — 실제로 **5-20 Aha-Moment Finder가 활성**(IA `index.html:3468` · `page_5_20` 17889 · `runAhaTests` · `docs/aha-moment-finder-spec.md` 존재). 표에 5-20 누락, "17→7"로 수정 필요. 하네스가 한 도구 뒤처져 후속 작업 오도 위험.
+**2.2 CLAUDE.md §4.2 문서 드리프트** 〔효과 中 / 노력 極低 / 위험 低〕 ✅ 완료
+§4.2 표가 **6개 도구만 + "17→5/6 통합"**으로 기재 — 실제로 **5-20 Aha-Moment Finder가 활성**(IA `index.html:3468` · `page_5_20` 17889 · `runAhaTests` · `docs/aha-moment-finder-spec.md` 존재). 표에 5-20 추가, "17→7"로 정정 완료.
 
 ### P2 — 죽은/중복 코드 (저위험 정리)
 
-**2.3 중복 CSS 셀렉터** 〔효과 低 / 노력 極低 / 위험 低〕
-`.alloc-budget-alert-banner` **2회 정의** (`index.html:491`, `:2460`). 충돌·혼란 — 하나로 통합.
+**2.3 중복 CSS 셀렉터** 〔효과 低 / 노력 極低 / 위험 低〕 ✅ 완료
+`.alloc-budget-alert-banner` 2회 정의(`:718`, `:3333`, 서로 다른 속성값 — 캐스케이드로 병합되던 상태)였음. 현재 유효 속성값 그대로 한 블록으로 통합(렌더링 변화 없음), 중복 삭제.
 
 **2.4 console.log 감사** 〔효과 低 / 노력 低 / 위험 低〕
 31개 중 대부분 `runXxxTests` 출력(의도적, 유지). 비-테스트 잔재만 선별 제거(전수 11곳 확인 결과 테스트가 다수). 낮은 우선순위.
 
 ### P3 — 유지보수성 (골든 보호 하 리팩토링)
 
-**2.5 대형 함수 분해 후보** 〔효과 中 / 노력 中 / 위험 中〕
-`renderAllocatorScatter`(395줄, `:24526`) · `bindBudgetAllocatorHandlers`(385줄, `:27113`) · `page_5_4`(269줄) · `bindABCalculatorHandlers`(267줄) · `bindCSVPageHandlers`(265줄) · `monAllocBody`(261줄) · `renderInlineCsvUpload`(251줄). 거대 함수는 §7 함정(상태 분기·cross-page 핸들러) 온상. **순수 추출 위주**, 렌더/핸들러는 골든+주입 harness로 양 분기 검증 후.
+**2.5 대형 함수 분해 후보** 〔효과 中 / 노력 中 / 위험 中〕 🔶 1건 완료, 재측정 필요
+외부(Antigravity) 11개 커밋이 5-3 영역을 크게 변경해 audit 시점 대비 줄 수·순위가 달라짐(재측정, 2026-06 2차):
+`renderMmmCharts`(810줄, `:26173`, 신규 1위) · `renderAllocatorScatter`(533→**503줄**, `:40444` — 채널정렬 로직 `ALLOC_MATH.sortChannelsByRecentCost`로 추출 완료✅) · `bindABCalculatorHandlers`(438줄) · `bindCSVPageHandlers`(431줄) · `renderQualityCharts`(422줄) · `bindBudgetAllocatorHandlers`(335줄) · `renderInlineCsvUpload`(293줄) · `monAllocBody`(238줄, 감소) · `page_5_4`(90줄, 감소 — 탭 분리로 이미 슬림화됨). 거대 함수는 §7 함정(상태 분기·cross-page 핸들러) 온상. **순수 추출 위주**(2.5의 1건 패턴 반복), 렌더/핸들러는 골든+주입 harness로 양 분기 검증 후. 나머지(특히 `renderMmmCharts`)는 다음 패스 백로그.
 
 **2.6 CSS/JS 단일 대형 블록 항법** 〔효과 低 / 노력 低 / 위험 低〕
 1.36MB JS·101KB CSS 단일 블록 — 분할 불가(§2.1). **섹션 인덱스 주석**(`// ===== [N] 5-3 예산배분 =====`) 표준화로 점프 비용↓.
@@ -66,14 +62,14 @@
 
 ## 3. 우선순위 로드맵
 
-| # | 작업 | 효과 | 노력 | 위험 | 선행 |
-|---|---|---|---|---|---|
-| 1 | 테스트 러너 `validate.js` + `npm test` 커밋 (§2.1 승인 필요) | 高 | 中 | 低 | — |
-| 2 | CLAUDE.md §4.2 + agents 5-20 반영·"17→7" | 中 | 極低 | 低 | — |
-| 3 | 중복 CSS `.alloc-budget-alert-banner` 통합 | 低 | 極低 | 低 | — |
-| 4 | 섹션 인덱스 주석 표준화(항법) | 中 | 中 | 低 | 1 |
-| 5 | 대형 함수 순수 추출(scatter·bind류) | 中 | 中 | 中 | 1 |
-| 6 | console.log 비-테스트 잔재 선별 | 低 | 低 | 低 | — |
+| # | 작업 | 효과 | 노력 | 위험 | 선행 | 상태 |
+|---|---|---|---|---|---|---|
+| 1 | 테스트 러너 `validate.js` + `npm test` 커밋 (§2.1 승인 필요) | 高 | 中 | 低 | — | ✅ 완료 |
+| 2 | CLAUDE.md §4.2 + agents 5-20 반영·"17→7" | 中 | 極低 | 低 | — | ✅ 완료 |
+| 3 | 중복 CSS `.alloc-budget-alert-banner` 통합 | 低 | 極低 | 低 | — | ✅ 완료 |
+| 4 | 섹션 인덱스 주석 표준화(항법) | 中 | 中 | 低 | 1 | 미착수 |
+| 5 | 대형 함수 순수 추출(scatter·bind류) | 中 | 中 | 中 | 1 | 🔶 1건(`renderAllocatorScatter` 채널정렬) |
+| 6 | console.log 비-테스트 잔재 선별 | 低 | 低 | 低 | — | 미착수 |
 
 **핵심**: 1번(안전망)을 먼저 깔면 4·5번 리팩토링이 골든+자동테스트로 byte-동일 보증되어 위험이 낮아진다. 1번 없이 5번부터 가면 §7 render-throw 함정에 노출.
 
