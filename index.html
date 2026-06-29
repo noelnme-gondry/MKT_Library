@@ -10180,6 +10180,9 @@
                 label: "장기 가치",
                 desc: "LTV:CAC 회수기간 + ROAS 성숙도 예측 (효율 CSV)",
                 requiresAny: [
+                  "revenue_d0",
+                  "revenue_d7",
+                  "revenue_d14",
                   "revenue_d30",
                   "revenue_d60",
                   "revenue_d90",
@@ -10193,6 +10196,8 @@
                 label: "리텐션",
                 desc: "리텐션 곡선·세그먼트·예측 (효율 CSV ret_dN 컬럼)",
                 requiresAny: [
+                  "ret_d7",
+                  "ret_d14",
                   "ret_d30",
                   "ret_d60",
                   "ret_d90",
@@ -46888,20 +46893,32 @@
                   unlocks: "🪜 퍼널 탭 — CTR/CVR/CPC 계산 (impressions와 함께)",
                 },
                 { key: "actions", unlocks: "CPA·전환수 분석 (installs와 별도)" },
-                {
-                  key: "revenue_d0",
-                  unlocks: "💵 LTV:CAC 탭 · 📊 ROAS 성숙도 탭 — D0 매출/ROAS",
-                },
-                {
-                  key: "revenue_d7",
-                  unlocks: "💵 LTV:CAC 탭 · 📊 ROAS 성숙도 탭 — D7 매출/ROAS",
-                },
-                {
-                  key: "revenue_d14",
-                  unlocks: "💵 LTV:CAC 탭 · 📊 ROAS 성숙도 탭 — D14 매출/ROAS",
-                },
-                { key: "pu_d7", unlocks: "결제건수 D7 코호트" },
-                { key: "ret_d7", unlocks: "리텐션 D7 코호트" },
+                // 매출(Dn): 하나라도 매핑하면 💵 장기 가치 탭(LTV:CAC 회수기간·ROAS 성숙도) 활성.
+                // 여러 시점(D0·D7·…·D360)을 매핑할수록 회수곡선·성숙도 예측 정확도 ↑.
+                { key: "revenue_d0", unlocks: "💵 장기 가치 탭 — D0 매출/ROAS" },
+                { key: "revenue_d7", unlocks: "💵 장기 가치 탭 — D7 매출/ROAS" },
+                { key: "revenue_d14", unlocks: "💵 장기 가치 탭 — D14 매출/ROAS" },
+                { key: "revenue_d30", unlocks: "💵 장기 가치 탭 — D30 매출/ROAS" },
+                { key: "revenue_d60", unlocks: "💵 장기 가치 탭 — D60 매출/ROAS" },
+                { key: "revenue_d90", unlocks: "💵 장기 가치 탭 — D90 매출/ROAS" },
+                { key: "revenue_d180", unlocks: "💵 장기 가치 탭 — D180 매출/ROAS" },
+                { key: "revenue_d360", unlocks: "💵 장기 가치 탭 — D360 매출/ROAS" },
+                // 리텐션(Dn): 하나라도 매핑하면 🔁 리텐션 탭(리텐션 곡선·예측) 활성.
+                { key: "ret_d7", unlocks: "🔁 리텐션 탭 — D7 잔존율" },
+                { key: "ret_d14", unlocks: "🔁 리텐션 탭 — D14 잔존율" },
+                { key: "ret_d30", unlocks: "🔁 리텐션 탭 — D30 잔존율" },
+                { key: "ret_d60", unlocks: "🔁 리텐션 탭 — D60 잔존율" },
+                { key: "ret_d90", unlocks: "🔁 리텐션 탭 — D90 잔존율" },
+                { key: "ret_d180", unlocks: "🔁 리텐션 탭 — D180 잔존율" },
+                { key: "ret_d360", unlocks: "🔁 리텐션 탭 — D360 잔존율" },
+                // 결제건수(Dn, PUR): 코호트 결제 분석.
+                { key: "pu_d7", unlocks: "💳 결제건수(PUR) 코호트 — D7" },
+                { key: "pu_d14", unlocks: "💳 결제건수(PUR) 코호트 — D14" },
+                { key: "pu_d30", unlocks: "💳 결제건수(PUR) 코호트 — D30" },
+                { key: "pu_d60", unlocks: "💳 결제건수(PUR) 코호트 — D60" },
+                { key: "pu_d90", unlocks: "💳 결제건수(PUR) 코호트 — D90" },
+                { key: "pu_d180", unlocks: "💳 결제건수(PUR) 코호트 — D180" },
+                { key: "pu_d360", unlocks: "💳 결제건수(PUR) 코호트 — D360" },
               ],
               "5-3": [
                 {
