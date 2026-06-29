@@ -28729,13 +28729,30 @@
               const hasData = S.rows.length > 0;
               const F = S.fits && Object.keys(S.fits).length; // #206 멀티모델: fits{} 게이트
               const dataSec = `<section class="block" id="s-data">
-          <h2 class="section-title"><span class="ix">§1</span>데이터</h2>
-          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-            <label class="ab-pill" style="cursor:pointer;">CSV 업로드<input type="file" id="reg-file" accept=".csv,.tsv,.txt" style="display:none;"></label>
-            <button class="ab-pill" id="reg-sample">샘플 데이터 넣기</button>
+          <h2 class="section-title"><span class="ix">§1</span>데이터 준비</h2>
+          ${
+            hasData
+              ? `<div class="file-state">
+              <div class="meta-text"><span class="dot"></span><span>${escapeHtml(S.fileName)}</span></div>
+              <div class="meta-stats tnum">${S.rows.length.toLocaleString()}행 · ${S.headers.length}컬럼
+                <label class="copy-btn" style="margin-left:0.75rem;cursor:pointer;">CSV 변경<input type="file" id="reg-file" accept=".csv,.tsv,.txt" style="display:none;"></label>
+                <button class="copy-btn" id="reg-sample" style="margin-left:0.5rem;">데모 데이터</button>
+                ${mmmHasDataForBridge() ? `<button class="copy-btn" id="reg-from-mmm" style="margin-left:0.5rem;">📊 MMM 데이터</button>` : ""}
+              </div>
+            </div>`
+              : `<p class="muted">임의 wide CSV(1행=1관측)를 올려 OLS 회귀·미래예측을 돌립니다. 종속변수(Y)·비용/이벤트·시간 컬럼은 다음 단계에서 드래그로 지정합니다. 데이터는 회귀·예측 전용으로 저장(다른 도구와 독립)됩니다.</p>
+          <label class="dropzone" style="cursor:pointer;display:block;">
+            <div class="dropzone-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></div>
+            <div class="dropzone-title">CSV 파일을 클릭해서 업로드</div>
+            <div class="dropzone-sub">UTF-8, 첫 행이 헤더. 예: week, regs_ios, regs_android, cost_google, is_holiday …</div>
+            <input type="file" id="reg-file" accept=".csv,.tsv,.txt" style="display:none;">
+          </label>
+          <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <button class="ab-pill" id="reg-sample" style="background:#7aa2f7;color:#0b0d12;font-weight:600;border-color:#7aa2f7;">▶ 데모 데이터로 미리보기</button>
             ${mmmHasDataForBridge() ? `<button class="ab-pill" id="reg-from-mmm" style="border-color:rgba(122,162,247,0.5);">📊 MMM 데이터 불러오기</button>` : ""}
-            <span class="muted" style="font-size:12px;">${hasData ? `${escapeHtml(S.fileName)} · ${S.rows.length}행 · ${S.headers.length}컬럼` : "wide CSV (1행=1관측). 컬럼 자유. 또는 위에서 매핑한 MMM 데이터를 바로 불러오기."}</span>
-          </div>
+            <span style="font-size:11.5px;color:var(--text-muted);">데이터가 없어도 샘플로 회귀·예측이 어떻게 보이는지 미리 볼 수 있어요. <strong>실제 분석엔 영향 없음.</strong></span>
+          </div>`
+          }
         </section>`;
               if (!S.rows.length) return dataSec;
               return dataSec + renderRegMap() + (F ? renderRegResults() : "");
