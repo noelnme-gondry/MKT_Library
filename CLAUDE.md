@@ -160,6 +160,9 @@ git merge origin/main --no-edit → git checkout --ours index.html
 - **`<thead>` 없는 표는 전역 `thead th` 정렬 규칙 미적용**(5-12 매트릭스): `<table>${header}${body}`처럼 thead 태그 없이 `<th>` 직접 쓰면 열 헤더=브라우저 기본 center, 데이터 `<td>`=left로 어긋남. 헤더·셀에 명시 `text-align`(숫자=right) 부여, 행 라벨/좌상단만 left.
 - **`pageShell`의 `opts.deck`는 `5-x` 도구 페이지에서 항상 무시됨**(분석 도구=압축 sticky바라 eyebrow/deck 생략 분기, §4.1): "데이터 없음" 상태에 역할 설명 카피를 추가할 때 `deck`에 적으면 죽은 코드 — 실제 렌더되는 `summary`에 넣어야 함(5-6에서 발견·수정).
 - **render-layer 변경은 골든이 못 잡음 → 주입식 harness로 직접 검증**(5-6): `validate.js`는 순수 통계함수만 보장. `page_5_N`·`renderXxx` 카피/분기 확인은 vm 샌드박스에서 probe 코드를 **같은 `vm.runInContext` 호출의 code 문자열에 이어붙여** 실행해야 함 — top-level `const`(`CSV_STATE` 등)는 함수선언과 달리 global object 프로퍼티가 안 되므로 별도 호출에서 `sandbox.CSV_STATE`로 접근 시 `undefined`. 결과는 `globalThis.__PROBE_RESULTS__`로 받기.
+- **FWL within-transform은 절편을 demean하지 말고 제거**(5-6 decompose P0): campaign_id 등 고정효과를 그룹평균 차감(demean)으로 흡수할 때 절편(col 0, 항상 1)까지 demean하면 전 행이 0 → X'X 무조건 특이행렬 → fit null → `campaign_id`만 매핑하면 **데이터 무관 모든 분석이 n=0**으로 죽음. demean은 dummy 컬럼(1..p)만, within 후 절편은 **제거**(절편 남기면 가중치 큰 데이터서 대각항만 거대 → ill-conditioned → SE 폭발·음수 R²). 절편 유무는 `off` 오프셋으로 VIF·계수추출 인덱싱 통일.
+- **Gauss-Jordan inverse는 절대 pivot 임계로 rank-deficiency 못 잡음 → `I·M≈단위행렬` 검증**(5-6): `max<1e-12` 절대 임계는 스케일 큰 행렬(가중치=노출수 등)에서 사실상 특이인데도 통과 → 가비지 inverse 반환(β·SE 엉터리·R²<0, 화면엔 거짓 숫자). inverse 말미에 `maxErr=max|I·M−δ|>1e-6`면 null 반환 → 호출자가 "추정 불가" 정직 처리. **데모 데이터는 full-rank로 설계**(소재 수 충분+속성 결정론 셔플 독립배치, rank 검증)해야 유의효과 산출.
+- **shift-share/Bennet "비중"은 비용 아니라 결과량(분모) share**(5-21): CPA 분해 믹스효과는 `s=result/ΣResult`(전환 건수 비중)로 가중하는 게 정의 — COST 컬럼 옆 "비중"은 비용 비중으로 오독돼 "숫자 틀렸다" 신뢰 붕괴. 효율 좋아진 항목은 비용↓인데 결과 비중↑이 정상(수학 정확). 라벨을 "**결과 비중**"으로 명시 + 툴팁으로 비용 비중 아님을 고지(거짓 숫자 의심받는 카피=실질 버그).
 
 ---
 
