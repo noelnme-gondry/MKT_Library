@@ -10796,8 +10796,22 @@
             </section>
 
             <div id="alloc-budget-required" style="display:${(ALLOC_STATE.budget || 0) > 0 || ALLOC_STATE.simMode === "manual" ? "" : "none"};">
+              <section class="block" id="s-bar" style="display:${ALLOC_STATE.simMode === "manual" ? "none" : "block"};">
+                <h2 class="section-title">
+                  <span class="ix">§3</span>추천 배분 비중
+                  <span class="alloc-mode-toggle">
+                    <button type="button" data-allocmode="c" class="${ALLOC_STATE.allocMode === "c" ? "active" : ""}" title="절대 CPR/ROAS 가중 — 1/평균CPR 비례 정적 분배. 집계 윈도우 내 데이터 기반, 안정적.">절대 CPR/ROAS 가중</button>
+                    <button type="button" data-allocmode="b" class="${ALLOC_STATE.allocMode === "b" ? "active" : ""}" title="한계효용 그리디 (고급·실험적) — 추세선 기반 step별 marginal results 최대 채널에 투입. 지출 변동이 작으면 곡선 불안정.">그리디 (고급)</button>
+                  </span>
+                </h2>
+                <div class="alloc-bar" id="alloc-bar"></div>
+                <div class="alloc-bar-legend" id="alloc-bar-legend"></div>
+              </section>
+
+              <div id="alloc-total-card" style="display:${ALLOC_STATE.simMode === "manual" ? "none" : "block"};"></div>
+
               <section class="block" id="s-table">
-                <h2 class="section-title"><span class="ix">§3</span>채널별 상세</h2>
+                <h2 class="section-title"><span class="ix">§4</span>채널별 상세</h2>
                 <p style="color:var(--text-secondary);font-size:13px;margin:0 0 0.5rem;">
                   각 행은 채널의 <strong>이전 관측 합산</strong>과 <strong>제안된 분배 후 예상값</strong>을 함께 표시합니다.
                   배분 Cost 셀에 직접 입력하면 그 채널이 잠기고(🔒), 나머지에 자동 재분배됩니다.
@@ -10825,20 +10839,6 @@
                   </table>
                 </div>
               </section>
-
-              <section class="block" id="s-bar" style="display:${ALLOC_STATE.simMode === "manual" ? "none" : "block"};">
-                <h2 class="section-title">
-                  <span class="ix">§4</span>추천 배분 비중
-                  <span class="alloc-mode-toggle">
-                    <button type="button" data-allocmode="c" class="${ALLOC_STATE.allocMode === "c" ? "active" : ""}" title="절대 CPR/ROAS 가중 — 1/평균CPR 비례 정적 분배. 집계 윈도우 내 데이터 기반, 안정적.">절대 CPR/ROAS 가중</button>
-                    <button type="button" data-allocmode="b" class="${ALLOC_STATE.allocMode === "b" ? "active" : ""}" title="한계효용 그리디 (고급·실험적) — 추세선 기반 step별 marginal results 최대 채널에 투입. 지출 변동이 작으면 곡선 불안정.">그리디 (고급)</button>
-                  </span>
-                </h2>
-                <div class="alloc-bar" id="alloc-bar"></div>
-                <div class="alloc-bar-legend" id="alloc-bar-legend"></div>
-              </section>
-
-              <div id="alloc-total-card" style="display:${ALLOC_STATE.simMode === "manual" ? "none" : "block"};"></div>
 
               <section class="block" id="s-scenario" style="display:${ALLOC_STATE.simMode === "manual" ? "none" : "block"};">
                 <details id="alloc-scenario-details" style="background:var(--bg-1); border:1px solid var(--border); border-radius:6px; padding:12px;">
@@ -46248,9 +46248,12 @@
                   );
                   const imp = Math.round((cost / 18) * (1 + (rng() + 0.5) * 0.2));
                   const clk = Math.round(imp * (0.022 + (rng() + 0.5) * 0.006));
+                  // 채널별 효율 차등 — Apple Search가 가장 효율(낮은 CPI), Google UAC가 가장 비효율.
+                  // → "절대 CPR/ROAS 가중"이 효율 채널에 더 배분하는 걸 데모가 보여줌.
+                  const effMult = [0.7, 0.95, 1.2, 1.6][ci];
                   const inst = Math.max(
                     1,
-                    Math.round(clk * (0.3 + (rng() + 0.5) * 0.06)),
+                    Math.round(clk * (0.3 + (rng() + 0.5) * 0.06) * effMult),
                   );
                   const r0 = Math.round(inst * (900 + (rng() + 0.5) * 300));
                   rows.push({
