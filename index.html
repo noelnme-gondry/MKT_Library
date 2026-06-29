@@ -36412,7 +36412,23 @@
               warnRatio: 1.0, // < 1 = 적자
               paybackTargetDays: 90, // 회수 목표 (일)
             };
-            const LTVCAC_STATE = { unitField: "channel", ltvHorizon: 14 };
+            const LTVCAC_STATE = {
+              unitField: "channel",
+              ltvHorizon: 14,
+              denomBasis: "installs", // "installs" | "actions" — CAC·ARPU 분모 기준(매핑 없으면 자동 폴백)
+            };
+            // 작은 값(USD 스케일·저 ARPU)도 0으로 뭉개지지 않게 자릿수 적응 통화 포맷.
+            // |v|<10 → 2자리, <1000 → 1자리, 그 외 정수. 통화기호는 fmtCurrency와 동일(AB_STATE.currency).
+            function fmtCurrencyPrecise(value) {
+              if (value == null || !isFinite(value)) return "—";
+              const sym = CURRENCY_SYMBOLS[AB_STATE.currency] || "₩";
+              const a = Math.abs(value);
+              const dec = a === 0 ? 0 : a < 10 ? 2 : a < 1000 ? 1 : 0;
+              return `${sym}${Number(value).toLocaleString("ko-KR", {
+                minimumFractionDigits: dec,
+                maximumFractionDigits: dec,
+              })}`;
+            }
             const LTVCAC_ALL_DNS = [0, 7, 14, 30, 60, 90, 180, 360];
 
             const LTVCAC_MATH = {
@@ -36519,7 +36535,7 @@
                     `${k}:${Object.entries(m).find(([, v]) => v === k)?.[0] || "-"}`,
                 )
                 .join("|");
-              return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|u:${LTVCAC_STATE.unitField}|cfg:${LTVCAC_CONFIG.version}`;
+              return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|u:${LTVCAC_STATE.unitField}|d:${LTVCAC_STATE.denomBasis}|cfg:${LTVCAC_CONFIG.version}`;
             }
 
             function buildLtvCacCache() {
@@ -36528,11 +36544,12 @@
               if (LTVCAC_CACHE.key === key) return LTVCAC_CACHE;
               const rows = getMappedRowsForMon();
               const unitField = LTVCAC_STATE.unitField;
-              const denomField = new Set(Object.values(CSV_STATE.mapping || {})).has(
-                "installs",
-              )
-                ? "installs"
-                : "actions";
+              // 분모(유저수) 기준: 사용자 선택(설치수/액션수) 우선, 미매핑이면 자동 폴백.
+              // "액션=가입"이면 가입자수 기준 CAC·ARPU를 보고 싶을 수 있음 → 명시 토글 제공.
+              const mappedSet = new Set(Object.values(CSV_STATE.mapping || {}));
+              let denomField = LTVCAC_STATE.denomBasis;
+              if (!mappedSet.has(denomField))
+                denomField = mappedSet.has("installs") ? "installs" : "actions";
 
               const map = new Map();
               for (const r of rows) {
@@ -36670,6 +36687,33 @@
                 <span class="ab-pillgroup-label">LTV Horizon</span>
                 ${[7, 14, 30, 90, 180, 360].map((d) => `<button class="ab-pill ${LTVCAC_STATE.ltvHorizon === d ? "active" : ""}" data-ltvcac-horizon="${d}">D${d}</button>`).join("")}
               </div>
+              <div class="ab-pillgroup">
+                <span class="ab-pillgroup-label" title="CAC와 ARPU의 분모(유저수) 기준. 액션이 '가입'이면 가입자수 기준으로 보고 싶을 수 있습니다.">유저수 기준</span>
+                ${[
+                  ["installs", "설치수 (installs)"],
+                  ["actions", "액션수 (actions)"],
+                ]
+                  .map(([k, l]) => {
+                    const avail = new Set(
+                      Object.values(CSV_STATE.mapping || {}),
+                    ).has(k);
+                    const active = (c.denomField || LTVCAC_STATE.denomBasis) === k;
+                    return `<button class="ab-pill ${active ? "active" : ""} ${!avail ? "disabled" : ""}" ${avail ? `data-ltvcac-denom="${k}"` : "disabled"}>${l}${!avail ? " 🔒" : ""}</button>`;
+                  })
+                  .join("")}
+              </div>
+              <div class="ab-pillgroup">
+                <span class="ab-pillgroup-label" title="표시 통화 단위만 전환합니다(값 변환 아님 — CSV 통화 그대로). 작은 값도 자릿수를 살려 표시합니다.">표시 통화</span>
+                ${[
+                  ["KRW", "원 (₩)"],
+                  ["USD", "달러 ($)"],
+                ]
+                  .map(
+                    ([k, l]) =>
+                      `<button class="ab-pill ${AB_STATE.currency === k ? "active" : ""}" data-ltvcac-currency="${k}">${l}</button>`,
+                  )
+                  .join("")}
+              </div>
             </section>
             ${renderLtvCacTable(c)}
           `;
@@ -36701,7 +36745,7 @@
             <div class="table-wrap">
               <table class="data" style="font-size:11.5px;">
                 <thead><tr>
-                  <th>단위</th><th>비용</th><th>유저</th><th>CAC</th>
+                  <th>단위</th><th>비용</th><th title="${c.denomField === "actions" ? "액션수(actions) 기준" : "설치수(installs) 기준"}">유저(${c.denomField === "actions" ? "액션" : "설치"})</th><th>CAC</th>
                   <th>ROAS D7</th><th>ROAS D14</th><th>LTV(D${h})/user</th><th>LTV:CAC</th><th>Payback</th><th>외삽</th>
                 </tr></thead>
                 <tbody>
@@ -36767,7 +36811,12 @@
                   const pts = LTVCAC_ALL_DNS.map((d) => {
                     const { value, predicted } = LTVCAC_MATH.ltvPredict(r, d);
                     return {
-                      y: value != null && isFinite(value) ? Math.round(value) : null,
+                      // ⚠ Math.round 금지 — 작은 ARPU(USD 스케일·저객단가)가 0으로 뭉개져
+                      // 곡선이 0축에 붙는 버그. 의미있는 자릿수 보존 후 표시층에서만 포맷.
+                      y:
+                        value != null && isFinite(value)
+                          ? Math.round(value * 100) / 100
+                          : null,
                       predicted,
                     };
                   });
@@ -36813,7 +36862,7 @@
                     y: {
                       ticks: {
                         color: getCssVar("--text-muted"),
-                        callback: (v) => fmtCurrency(v),
+                        callback: (v) => fmtCurrencyPrecise(v),
                       },
                       grid: { color: getCssVar("--border") },
                     },
@@ -36835,7 +36884,7 @@
                         label: (ctx) => {
                           const v = ctx.parsed.y;
                           return v != null
-                            ? `${ctx.dataset.label}: ${fmtCurrency(v)}`
+                            ? `${ctx.dataset.label}: ${fmtCurrencyPrecise(v)}`
                             : null;
                         },
                       },
@@ -36861,6 +36910,20 @@
                   LTVCAC_STATE.ltvHorizon = Number(b.dataset.ltvcacHorizon);
                   LTVCAC_CACHE.key = null;
                   navigate("5-9");
+                }),
+              );
+              document.querySelectorAll("[data-ltvcac-denom]").forEach((b) =>
+                b.addEventListener("click", () => {
+                  if (b.classList.contains("disabled")) return;
+                  LTVCAC_STATE.denomBasis = b.dataset.ltvcacDenom;
+                  LTVCAC_CACHE.key = null; // 분모 변경 → 재계산
+                  navigate("5-9");
+                }),
+              );
+              document.querySelectorAll("[data-ltvcac-currency]").forEach((b) =>
+                b.addEventListener("click", () => {
+                  AB_STATE.currency = b.dataset.ltvcacCurrency; // 표시 통화(값 변환 X)
+                  navigate("5-9"); // 표시층만 — 캐시 무효화 불필요
                 }),
               );
               renderLtvCacChart();
