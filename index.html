@@ -10728,9 +10728,37 @@
                   <p class="muted" style="font-size:12px; margin:0;">
                     ${ALLOC_STATE.simMode === "auto" ? "총 예산을 입력하면 모델에 따라 가장 효율적인 비율로 자동 분배합니다." : "아래 분배 결과 표에서 각 캠페인의 Cost를 직접 수정하여 변화를 시뮬레이션하세요."}
                   </p>
+                  ${
+                    ALLOC_STATE.simMode === "auto"
+                      ? `<div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span class="sim-mode-toggle budget-period-toggle" style="display:inline-flex;">
+                      <button type="button" data-os-split="off" class="${!ALLOC_STATE.osSplit ? "active" : ""}">OS 통합</button>
+                      <button type="button" data-os-split="on" class="${ALLOC_STATE.osSplit ? "active" : ""}">OS 분리 (Android·iOS)</button>
+                    </span>
+                    <span class="muted" style="font-size:11.5px;">${ALLOC_STATE.osSplit ? "Android·iOS 예산을 따로 입력 → 각 OS 안에서만 분배합니다." : "Android·iOS를 한 풀에서 함께 분배합니다."}</span>
+                  </div>`
+                      : ""
+                  }
                 </div>
                 <div class="alloc-controls" style="grid-template-columns: 1fr 200px 120px; ${ALLOC_STATE.simMode === "manual" ? "display:none;" : ""}">
-                  <div>
+                  ${
+                    ALLOC_STATE.osSplit
+                      ? `<div>
+                    <label style="display:flex;align-items:center;gap:0.5rem;">
+                      <span>예산 (Android · iOS 별도)</span>
+                      <span class="budget-period-toggle">
+                        <button type="button" data-period="daily" class="${ALLOC_STATE.budgetPeriod === "daily" ? "active" : ""}">일예산</button>
+                        <button type="button" data-period="monthly" class="${ALLOC_STATE.budgetPeriod === "monthly" ? "active" : ""}">월예산</button>
+                      </span>
+                    </label>
+                    <div style="display:flex;gap:8px;">
+                      <input id="alloc-budget-android" type="text" inputmode="numeric" autocomplete="off" placeholder="Android 예산" value="${allocFmtNum(ALLOC_STATE.budgetAndroid)}" style="flex:1;" />
+                      <input id="alloc-budget-ios" type="text" inputmode="numeric" autocomplete="off" placeholder="iOS 예산" value="${allocFmtNum(ALLOC_STATE.budgetIos)}" style="flex:1;" />
+                    </div>
+                    <div id="alloc-budget-warning-container"></div>
+                    <span class="ab-field-hint">Android·iOS 각각 그 OS 채널에만 분배. 기본값 = 각 OS 최근 7일 평균 지출 합.</span>
+                  </div>`
+                      : `<div>
                     <label style="display:flex;align-items:center;gap:0.5rem;">
                       <span>총 예산</span>
                       <span class="budget-period-toggle">
@@ -10751,7 +10779,8 @@
                         return `일 ${fmtCurrency(raw)} 기준 분배`;
                       })()}
                     </span>
-                  </div>
+                  </div>`
+                  }
                   <div>
                     <label>성과 지표</label>
                     <select id="alloc-metric">
@@ -10795,7 +10824,7 @@
               </div>
             </section>
 
-            <div id="alloc-budget-required" style="display:${(ALLOC_STATE.budget || 0) > 0 || ALLOC_STATE.simMode === "manual" ? "" : "none"};">
+            <div id="alloc-budget-required" style="display:${(ALLOC_STATE.budget || 0) > 0 || (ALLOC_STATE.osSplit && ((ALLOC_STATE.budgetAndroid || 0) > 0 || (ALLOC_STATE.budgetIos || 0) > 0)) || ALLOC_STATE.simMode === "manual" ? "" : "none"};">
               <section class="block" id="s-bar" style="display:${ALLOC_STATE.simMode === "manual" ? "none" : "block"};">
                 <h2 class="section-title">
                   <span class="ix">§3</span>추천 배분 비중
@@ -10860,7 +10889,7 @@
               </section>
             </div>
 
-            <div id="alloc-budget-empty" class="callout info" style="margin: 1.25rem 0; display:${(ALLOC_STATE.budget || 0) > 0 || ALLOC_STATE.simMode === "manual" ? "none" : ""};">
+            <div id="alloc-budget-empty" class="callout info" style="margin: 1.25rem 0; display:${(ALLOC_STATE.budget || 0) > 0 || (ALLOC_STATE.osSplit && ((ALLOC_STATE.budgetAndroid || 0) > 0 || (ALLOC_STATE.budgetIos || 0) > 0)) || ALLOC_STATE.simMode === "manual" ? "none" : ""};">
               <div class="ico">i</div>
               <div class="body">
                 <strong>예산을 입력하면 분배 결과가 표시됩니다</strong>
@@ -12020,6 +12049,11 @@
               budget: null, // 총 예산 (사용자 입력 raw 값)
               budgetAutoDefaulted: false, // #2: 총예산 모델 최초 진입 시 최근 일예산 합계로 1회 기본값 채움
               budgetPeriod: "daily", // daily | monthly (월예산이면 ÷30으로 일예산 환산)
+              osSplit: false, // #2.1: OS 분리 배분 — Android/iOS 예산·분배를 따로
+              budgetAndroid: null, // osSplit 시 Android 예산
+              budgetIos: null, // osSplit 시 iOS 예산
+              osBudgetDefaulted: false, // osSplit 예산 1회 자동 채움 플래그
+              osShareExpanded: false, // #2.2: 추천 배분 비중에서 OS별 막대 펼침 여부
               simMode: "auto", // auto | manual — 자동 예산 분배 vs 사용자 수동 기입
               simManualBudgets: {}, // { group: rawCost } — 수동 시뮬레이션 시 사용자가 입력한 그룹별 예산
               allocMode: "c", // c: 절대 CPR/ROAS 가중 (기본, 1/avgCPR 비례) | b: 한계효용 그리디 (고급·실험적)
@@ -43126,8 +43160,39 @@
                   if (_empty) _empty.style.display = "none";
                 }
               }
+              // #2.1: OS 분리 모드 최초 진입 시 Android/iOS 예산을 각 OS 최근 7일평균 지출 합으로 1회 채움.
+              if (
+                ALLOC_STATE.simMode === "auto" &&
+                ALLOC_STATE.osSplit &&
+                !ALLOC_STATE.osBudgetDefaulted &&
+                ALLOC_CACHE.models &&
+                ALLOC_CACHE.models.size
+              ) {
+                const _metric = ALLOC_STATE.metric || "installs";
+                const _mult = ALLOC_STATE.budgetPeriod === "monthly" ? 30 : 1;
+                if ((ALLOC_STATE.budgetAndroid || 0) <= 0)
+                  ALLOC_STATE.budgetAndroid =
+                    allocOsBudgetDefault(ALLOC_CACHE.models, "android", _metric) *
+                    _mult;
+                if ((ALLOC_STATE.budgetIos || 0) <= 0)
+                  ALLOC_STATE.budgetIos =
+                    allocOsBudgetDefault(ALLOC_CACHE.models, "ios", _metric) *
+                    _mult;
+                ALLOC_STATE.osBudgetDefaulted = true;
+                const _ai = document.getElementById("alloc-budget-android");
+                if (_ai) _ai.value = allocFmtNum(ALLOC_STATE.budgetAndroid);
+                const _ii = document.getElementById("alloc-budget-ios");
+                if (_ii) _ii.value = allocFmtNum(ALLOC_STATE.budgetIos);
+              }
               // 일예산 환산 (월예산이면 ÷ 30)
               const dailyBudget = getEffectiveDailyBudget();
+              // #2.1 OS 분리 시 Android/iOS 일예산 + 합본 유효예산
+              const _periodDiv = ALLOC_STATE.budgetPeriod === "monthly" ? 30 : 1;
+              const dailyAndroid = (ALLOC_STATE.budgetAndroid || 0) / _periodDiv;
+              const dailyIos = (ALLOC_STATE.budgetIos || 0) / _periodDiv;
+              const effDailyBudget = ALLOC_STATE.osSplit
+                ? dailyAndroid + dailyIos
+                : dailyBudget;
               const tbody = document.getElementById("alloc-tbody");
               const barWrap = document.getElementById("alloc-bar");
               const legendWrap = document.getElementById("alloc-bar-legend");
@@ -43222,7 +43287,7 @@
                 }
               }
 
-              if (dailyBudget <= 0 && ALLOC_STATE.simMode !== "manual") {
+              if (effDailyBudget <= 0 && ALLOC_STATE.simMode !== "manual") {
                 tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:1rem;">총 예산을 입력해 주세요.</td></tr>`;
                 barWrap.innerHTML = "";
                 legendWrap.innerHTML = "";
@@ -43265,6 +43330,28 @@
               const mode = ALLOC_STATE.allocMode || "b";
               let result;
 
+              const runAlloc = (mm, budget) =>
+                mode === "c"
+                  ? calculateAllocationModeC({
+                      modelsMap: mm,
+                      totalBudget: budget,
+                      selectedChannels: selected,
+                      overrides: ALLOC_STATE.allocOverrides,
+                      minSpends: ALLOC_STATE.allocMinSpend || {},
+                      maxSpends: ALLOC_STATE.allocMaxSpend || {},
+                      metric,
+                    })
+                  : calculateAllocationModeB({
+                      modelsMap: mm,
+                      totalBudget: budget,
+                      selectedChannels: selected,
+                      overrides: ALLOC_STATE.allocOverrides,
+                      minSpends: ALLOC_STATE.allocMinSpend || {},
+                      maxSpends: ALLOC_STATE.allocMaxSpend || {},
+                      extrapolateMode: ALLOC_STATE.extrapolateMode || "1.3",
+                      currency: ALLOC_STATE.currency || AB_STATE.currency || "KRW",
+                    });
+
               if (ALLOC_STATE.simMode === "manual") {
                 // 입력 안 된 채널은 최근 평균 일예산을 기본값으로 (빈 0 방지, #4)
                 ensureManualBudgetDefaults(modelsMap, selected, metric);
@@ -43274,32 +43361,45 @@
                   manualBudgets: ALLOC_STATE.simManualBudgets || {},
                   metric,
                 });
+              } else if (ALLOC_STATE.osSplit) {
+                // #2.1 OS 분리: Android/iOS 채널을 각 예산으로 따로 분배 후 병합. 비중은 전체 대비 재계산.
+                const andM = new Map(),
+                  iosM = new Map();
+                for (const [k, v] of modelsMap) {
+                  const os = allocChannelOS(k);
+                  if (os === "android") andM.set(k, v);
+                  else if (os === "ios") iosM.set(k, v);
+                }
+                const empty = {
+                  items: [],
+                  unallocated: 0,
+                  overspent: false,
+                  totalAllocated: 0,
+                  lockedTotal: 0,
+                };
+                const rA = andM.size && dailyAndroid > 0 ? runAlloc(andM, dailyAndroid) : empty;
+                const rI = iosM.size && dailyIos > 0 ? runAlloc(iosM, dailyIos) : empty;
+                const mergedItems = [...rA.items, ...rI.items];
+                const totalC = mergedItems.reduce((s, it) => s + it.cost, 0);
+                mergedItems.forEach((it) => {
+                  it.weight = totalC > 0 ? it.cost / totalC : 0;
+                });
+                result = {
+                  items: mergedItems,
+                  unallocated: rA.unallocated + rI.unallocated,
+                  overspent: rA.overspent || rI.overspent,
+                  totalAllocated: rA.totalAllocated + rI.totalAllocated,
+                  lockedTotal: (rA.lockedTotal || 0) + (rI.lockedTotal || 0),
+                  _osSplit: { android: rA, ios: rI },
+                };
               } else {
-                result =
-                  mode === "c"
-                    ? calculateAllocationModeC({
-                        modelsMap,
-                        totalBudget: dailyBudget,
-                        selectedChannels: selected,
-                        overrides: ALLOC_STATE.allocOverrides,
-                        minSpends: ALLOC_STATE.allocMinSpend || {},
-                        maxSpends: ALLOC_STATE.allocMaxSpend || {},
-                        metric,
-                      })
-                    : calculateAllocationModeB({
-                        modelsMap,
-                        totalBudget: dailyBudget,
-                        selectedChannels: selected,
-                        overrides: ALLOC_STATE.allocOverrides,
-                        minSpends: ALLOC_STATE.allocMinSpend || {},
-                        maxSpends: ALLOC_STATE.allocMaxSpend || {},
-                        extrapolateMode: ALLOC_STATE.extrapolateMode || "1.3",
-                        currency: ALLOC_STATE.currency || AB_STATE.currency || "KRW",
-                      });
+                result = runAlloc(modelsMap, dailyBudget);
               }
 
               const { items, unallocated, overspent, totalAllocated, lockedTotal } =
                 result;
+              // #2.2 OS별 막대 펼침용 — 마지막 OS 분리 결과 보관
+              ALLOC_STATE._lastOsSplit = result._osSplit || null;
 
               if (!items.length) {
                 tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:1rem;">분배 대상 채널이 없습니다. 산점도에서 채널을 선택했는지 확인하세요.</td></tr>`;
@@ -43312,7 +43412,7 @@
 
               renderAllocItems(
                 items,
-                dailyBudget,
+                effDailyBudget,
                 tbody,
                 barWrap,
                 legendWrap,
@@ -43322,7 +43422,7 @@
               renderAllocationTotalCard({
                 items,
                 metric,
-                dailyBudget,
+                dailyBudget: effDailyBudget,
                 totalAllocated,
                 unallocated,
                 mode,
@@ -43330,7 +43430,7 @@
               renderAllocDiagnosis({
                 items,
                 metric,
-                dailyBudget,
+                dailyBudget: effDailyBudget,
                 totalAllocated,
                 unallocated,
                 mode,
@@ -43338,7 +43438,7 @@
               renderAllocVerdict({
                 items,
                 metric,
-                dailyBudget,
+                dailyBudget: effDailyBudget,
                 totalAllocated,
                 unallocated,
                 mode,
@@ -43346,12 +43446,18 @@
               renderAllocVerifyStrip({
                 items,
                 metric,
-                dailyBudget,
+                dailyBudget: effDailyBudget,
                 totalAllocated,
                 unallocated,
                 mode,
               });
-              renderAllocScenario({ modelsMap, selected, metric, mode, dailyBudget });
+              renderAllocScenario({
+                modelsMap,
+                selected,
+                metric,
+                mode,
+                dailyBudget: effDailyBudget,
+              });
             }
 
             /* What-if 시나리오: 현재 예산의 0.5×~2× 구간을 동일 알고리즘으로 재배분해 예상 성과 비교.
@@ -44095,6 +44201,23 @@
                   mb[ch] = Math.round(allocRecentDailySpend(ch, metric));
               }
             }
+            // #2.1 채널 그룹키(예: "JP · Apple Search · Android")의 마지막 세그먼트로 OS 판별.
+            function allocChannelOS(key) {
+              const parts = String(key || "").split(" · ");
+              const last = (parts[parts.length - 1] || "").trim().toLowerCase();
+              if (last === "ios") return "ios";
+              if (last === "android") return "android";
+              return null;
+            }
+            // OS별 채널들의 최근 7일 평균 일예산 합계 (osSplit 예산 기본값용).
+            function allocOsBudgetDefault(modelsMap, os, metric) {
+              if (!modelsMap) return 0;
+              let sum = 0;
+              for (const [ch] of modelsMap)
+                if (allocChannelOS(ch) === os)
+                  sum += allocRecentDailySpend(ch, metric);
+              return Math.round(sum);
+            }
 
             function calculateAllocationModeC({
               modelsMap,
@@ -44781,6 +44904,43 @@
                 (extra && extra.overspent
                   ? ` <span style="color:#ff8a8a;">· ⚠ 수동 입력 합계 ${fmtCurrency(extra.lockedTotal)}이 예산 ${fmtCurrency(budget)}을 초과</span>`
                   : "");
+
+              // #2.2 OS 분리 시: "OS별 펼치기" 버튼 + (펼치면) Android·iOS 각각의 추천 비중 막대(각 OS 내 100%).
+              if (ALLOC_STATE.osSplit && ALLOC_STATE._lastOsSplit) {
+                const osData = ALLOC_STATE._lastOsSplit;
+                const subBar = (label, r) => {
+                  const its = (r && r.items) || [];
+                  const tot = its.reduce((s, it) => s + it.cost, 0);
+                  if (!its.length || tot <= 0)
+                    return `<div style="margin-top:12px;"><div style="font-size:12.5px;font-weight:700;margin-bottom:4px;">${label}</div><div class="muted" style="font-size:11px;">분배 결과 없음 (예산 0 또는 채널 없음)</div></div>`;
+                  const seg = its
+                    .map(
+                      (it, i) =>
+                        `<div class="alloc-bar-seg" style="width:${((it.cost / tot) * 100).toFixed(2)}%;background:${CHART_THEME.series[i % CHART_THEME.series.length]};" title="${escapeHtml(it.channel)} ${((it.cost / tot) * 100).toFixed(1)}%"></div>`,
+                    )
+                    .join("");
+                  const leg = its
+                    .map(
+                      (it, i) =>
+                        `<span><span class="sw" style="background:${CHART_THEME.series[i % CHART_THEME.series.length]};"></span>${escapeHtml(it.channel)} <span class="tnum">${((it.cost / tot) * 100).toFixed(1)}%</span></span>`,
+                    )
+                    .join("");
+                  return `<div style="margin-top:12px;"><div style="font-size:12.5px;font-weight:700;margin-bottom:4px;">${label} <span class="muted" style="font-weight:400;font-size:11px;">일 ${fmtCurrency(tot)}</span></div><div class="alloc-bar">${seg}</div><div class="alloc-bar-legend" style="margin-top:4px;">${leg}</div></div>`;
+                };
+                legendWrap.innerHTML +=
+                  `<div style="margin-top:10px;"><button class="ab-pill" data-os-expand="1">${ALLOC_STATE.osShareExpanded ? "▲ OS별 접기" : "▼ OS별 (Android · iOS) 비중 펼치기"}</button></div>` +
+                  (ALLOC_STATE.osShareExpanded
+                    ? subBar("📱 Android", osData.android) +
+                      subBar("🍎 iOS", osData.ios)
+                    : "");
+                // 동적 생성 버튼이라 여기서 바인딩 (bind 시점엔 없음)
+                const _exp = legendWrap.querySelector("[data-os-expand]");
+                if (_exp)
+                  _exp.addEventListener("click", () => {
+                    ALLOC_STATE.osShareExpanded = !ALLOC_STATE.osShareExpanded;
+                    refreshAllocationResults();
+                  });
+              }
             }
 
             /* 5-3 분석 단위 + 필터 패널 렌더 */
@@ -45739,6 +45899,35 @@
                   budgetInput.value = allocFmtNum(n);
                 });
               }
+
+              // #2.1 OS 분리 토글 (예산 입력 구조가 바뀌므로 전체 재렌더)
+              document.querySelectorAll("[data-os-split]").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                  ALLOC_STATE.osSplit = btn.dataset.osSplit === "on";
+                  navigate("5-3");
+                });
+              });
+              // OS 분리 예산 입력 (Android·iOS)
+              ["android", "ios"].forEach((os) => {
+                const el = document.getElementById("alloc-budget-" + os);
+                if (!el) return;
+                let _t = null;
+                el.addEventListener("input", () => {
+                  allocLiveCommaFormat(el);
+                  const v = allocParseNum(el.value);
+                  if (os === "android") ALLOC_STATE.budgetAndroid = v;
+                  else ALLOC_STATE.budgetIos = v;
+                  if (_t) clearTimeout(_t);
+                  _t = setTimeout(() => {
+                    refreshAllocationResults();
+                    _t = null;
+                  }, 120);
+                });
+                el.addEventListener("blur", () => {
+                  el.value = allocFmtNum(allocParseNum(el.value));
+                });
+              });
+              // (OS별 펼치기 버튼은 동적 막대 안에 있어 renderAllocItems에서 바인딩)
 
               // metric select — cache 무효 + 수동 배분 리셋 + 산점도 재계산
               const metricSelect = document.getElementById("alloc-metric");
