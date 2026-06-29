@@ -5068,6 +5068,12 @@
                     desc: "이번주 vs 지난주 CPA/CPI 변동을 채널→캠페인→소재로 드릴다운 — 무엇이 비용을 올리고 내렸는지 무잔차 분해",
                   },
                   {
+                    id: "5-22",
+                    slug: "Analysis-saturation-detector",
+                    title: "캠페인 포화도 탐지",
+                    desc: "채널·캠페인별 수확체감(한계 CPA/ROAS) 진단 — 증액 시 효율이 꺾이는 곳 vs 더 키울 여유가 있는 곳",
+                  },
+                  {
                     id: "5-3",
                     slug: "Analysis-budget-allocation",
                     title: "예산 배분",
@@ -6349,6 +6355,7 @@
             const TOOL_TIER = {
               "5-2": "free",
               "5-3": "free",
+              "5-22": "free",
               "5-6": "free",
               "5-4": "free",
               "5-18": "free",
@@ -10728,9 +10735,37 @@
                   <p class="muted" style="font-size:12px; margin:0;">
                     ${ALLOC_STATE.simMode === "auto" ? "총 예산을 입력하면 모델에 따라 가장 효율적인 비율로 자동 분배합니다." : "아래 분배 결과 표에서 각 캠페인의 Cost를 직접 수정하여 변화를 시뮬레이션하세요."}
                   </p>
+                  ${
+                    ALLOC_STATE.simMode === "auto"
+                      ? `<div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span class="sim-mode-toggle budget-period-toggle" style="display:inline-flex;">
+                      <button type="button" data-os-split="off" class="${!ALLOC_STATE.osSplit ? "active" : ""}">OS 통합</button>
+                      <button type="button" data-os-split="on" class="${ALLOC_STATE.osSplit ? "active" : ""}">OS 분리 (Android·iOS)</button>
+                    </span>
+                    <span class="muted" style="font-size:11.5px;">${ALLOC_STATE.osSplit ? "Android·iOS 예산을 따로 입력 → 각 OS 안에서만 분배합니다." : "Android·iOS를 한 풀에서 함께 분배합니다."}</span>
+                  </div>`
+                      : ""
+                  }
                 </div>
                 <div class="alloc-controls" style="grid-template-columns: 1fr 200px 120px; ${ALLOC_STATE.simMode === "manual" ? "display:none;" : ""}">
-                  <div>
+                  ${
+                    ALLOC_STATE.osSplit
+                      ? `<div>
+                    <label style="display:flex;align-items:center;gap:0.5rem;">
+                      <span>예산 (Android · iOS 별도)</span>
+                      <span class="budget-period-toggle">
+                        <button type="button" data-period="daily" class="${ALLOC_STATE.budgetPeriod === "daily" ? "active" : ""}">일예산</button>
+                        <button type="button" data-period="monthly" class="${ALLOC_STATE.budgetPeriod === "monthly" ? "active" : ""}">월예산</button>
+                      </span>
+                    </label>
+                    <div style="display:flex;gap:8px;">
+                      <input id="alloc-budget-android" type="text" inputmode="numeric" autocomplete="off" placeholder="Android 예산" value="${allocFmtNum(ALLOC_STATE.budgetAndroid)}" style="flex:1;" />
+                      <input id="alloc-budget-ios" type="text" inputmode="numeric" autocomplete="off" placeholder="iOS 예산" value="${allocFmtNum(ALLOC_STATE.budgetIos)}" style="flex:1;" />
+                    </div>
+                    <div id="alloc-budget-warning-container"></div>
+                    <span class="ab-field-hint">Android·iOS 각각 그 OS 채널에만 분배. 기본값 = 각 OS 최근 7일 평균 지출 합.</span>
+                  </div>`
+                      : `<div>
                     <label style="display:flex;align-items:center;gap:0.5rem;">
                       <span>총 예산</span>
                       <span class="budget-period-toggle">
@@ -10751,7 +10786,8 @@
                         return `일 ${fmtCurrency(raw)} 기준 분배`;
                       })()}
                     </span>
-                  </div>
+                  </div>`
+                  }
                   <div>
                     <label>성과 지표</label>
                     <select id="alloc-metric">
@@ -10795,9 +10831,23 @@
               </div>
             </section>
 
-            <div id="alloc-budget-required" style="display:${(ALLOC_STATE.budget || 0) > 0 || ALLOC_STATE.simMode === "manual" ? "" : "none"};">
+            <div id="alloc-budget-required" style="display:${(ALLOC_STATE.budget || 0) > 0 || (ALLOC_STATE.osSplit && ((ALLOC_STATE.budgetAndroid || 0) > 0 || (ALLOC_STATE.budgetIos || 0) > 0)) || ALLOC_STATE.simMode === "manual" ? "" : "none"};">
+              <section class="block" id="s-bar" style="display:${ALLOC_STATE.simMode === "manual" ? "none" : "block"};">
+                <h2 class="section-title">
+                  <span class="ix">§3</span>추천 배분 비중
+                  <span class="alloc-mode-toggle">
+                    <button type="button" data-allocmode="c" class="${ALLOC_STATE.allocMode === "c" ? "active" : ""}" title="절대 CPR/ROAS 가중 — 1/평균CPR 비례 정적 분배. 집계 윈도우 내 데이터 기반, 안정적.">절대 CPR/ROAS 가중</button>
+                    <button type="button" data-allocmode="b" class="${ALLOC_STATE.allocMode === "b" ? "active" : ""}" title="한계효용 그리디 (고급·실험적) — 추세선 기반 step별 marginal results 최대 채널에 투입. 지출 변동이 작으면 곡선 불안정.">그리디 (고급)</button>
+                  </span>
+                </h2>
+                <div class="alloc-bar" id="alloc-bar"></div>
+                <div class="alloc-bar-legend" id="alloc-bar-legend"></div>
+              </section>
+
+              <div id="alloc-total-card" style="display:${ALLOC_STATE.simMode === "manual" ? "none" : "block"};"></div>
+
               <section class="block" id="s-table">
-                <h2 class="section-title"><span class="ix">§3</span>채널별 상세</h2>
+                <h2 class="section-title"><span class="ix">§4</span>채널별 상세</h2>
                 <p style="color:var(--text-secondary);font-size:13px;margin:0 0 0.5rem;">
                   각 행은 채널의 <strong>이전 관측 합산</strong>과 <strong>제안된 분배 후 예상값</strong>을 함께 표시합니다.
                   배분 Cost 셀에 직접 입력하면 그 채널이 잠기고(🔒), 나머지에 자동 재분배됩니다.
@@ -10810,31 +10860,21 @@
                     <thead>
                       <tr>
                         <th style="min-width:140px;">채널 (검증 통과)</th>
-                        <th style="min-width:140px;">배분 Cost (편집 가능)</th>
-                        <th style="min-width:160px;">예산 제약 (Min ~ Max)</th>
-                        <th style="min-width:110px;">예상 결과</th>
-                        <th style="min-width:110px;">예상 효율 (CPR)</th>
-                        <th style="min-width:70px;">비중</th>
+                        <th style="min-width:130px;">배분 Cost (편집 가능)</th>
+                        <th style="min-width:150px;">예산 제약 (Min ~ Max)</th>
+                        <th style="min-width:90px;">예상 결과</th>
+                        <th style="min-width:100px;">예상 CPR</th>
+                        <th style="min-width:60px;">예산 비중</th>
+                        <th style="min-width:100px;border-left:2px solid var(--border);" title="최근 N일 평균 일예산">이전 평균 예산</th>
+                        <th style="min-width:90px;">이전 평균 결과</th>
+                        <th style="min-width:100px;">이전 평균 CPR</th>
+                        <th style="min-width:60px;">이전 비중</th>
                       </tr>
                     </thead>
                     <tbody id="alloc-tbody"></tbody>
                   </table>
                 </div>
               </section>
-
-              <section class="block" id="s-bar" style="display:${ALLOC_STATE.simMode === "manual" ? "none" : "block"};">
-                <h2 class="section-title">
-                  <span class="ix">§4</span>추천 배분 비중
-                  <span class="alloc-mode-toggle">
-                    <button type="button" data-allocmode="c" class="${ALLOC_STATE.allocMode === "c" ? "active" : ""}" title="절대 CPR/ROAS 가중 — 1/평균CPR 비례 정적 분배. 집계 윈도우 내 데이터 기반, 안정적.">절대 CPR/ROAS 가중</button>
-                    <button type="button" data-allocmode="b" class="${ALLOC_STATE.allocMode === "b" ? "active" : ""}" title="한계효용 그리디 (고급·실험적) — 추세선 기반 step별 marginal results 최대 채널에 투입. 지출 변동이 작으면 곡선 불안정.">그리디 (고급)</button>
-                  </span>
-                </h2>
-                <div class="alloc-bar" id="alloc-bar"></div>
-                <div class="alloc-bar-legend" id="alloc-bar-legend"></div>
-              </section>
-
-              <div id="alloc-total-card" style="display:${ALLOC_STATE.simMode === "manual" ? "none" : "block"};"></div>
 
               <section class="block" id="s-scenario" style="display:${ALLOC_STATE.simMode === "manual" ? "none" : "block"};">
                 <details id="alloc-scenario-details" style="background:var(--bg-1); border:1px solid var(--border); border-radius:6px; padding:12px;">
@@ -10856,7 +10896,7 @@
               </section>
             </div>
 
-            <div id="alloc-budget-empty" class="callout info" style="margin: 1.25rem 0; display:${(ALLOC_STATE.budget || 0) > 0 || ALLOC_STATE.simMode === "manual" ? "none" : ""};">
+            <div id="alloc-budget-empty" class="callout info" style="margin: 1.25rem 0; display:${(ALLOC_STATE.budget || 0) > 0 || (ALLOC_STATE.osSplit && ((ALLOC_STATE.budgetAndroid || 0) > 0 || (ALLOC_STATE.budgetIos || 0) > 0)) || ALLOC_STATE.simMode === "manual" ? "none" : ""};">
               <div class="ico">i</div>
               <div class="body">
                 <strong>예산을 입력하면 분배 결과가 표시됩니다</strong>
@@ -10950,6 +10990,741 @@
               });
             }
             PAGE_RENDERERS["5-3"] = page_5_3;
+
+            /* ========================================================================
+             * 5-22. 캠페인 포화도 탐지 (Saturation Detector)
+             * 효율 CSV(5-3과 같은 efficiency 그룹)를 채널/캠페인 단위로 수확체감 곡선
+             * 적합 → 현 지출점의 한계 CPA(또는 ROAS)를 평균과 비교해 "증액 위험(포화)"
+             * vs "증액 기회(여유)"를 판정. 순수 엔진 SAT_MATH는 ALLOC_MATH의 곡선·아웃
+             * 라이어 로직을 재사용(중복 구현 금지). 렌더층은 별도.
+             * ===================================================================== */
+            const SAT_STATE = {
+              grain: "channel", // channel | campaign
+              metric: "cpa", // cpa | roas
+              selected: null, // 응답곡선에 표시할 엔티티명
+            };
+            const SAT_CONFIG = {
+              satHigh: 1.3, // 포화지수 ≥ → 포화(한계가 평균보다 30%+ 비쌈, 증액 위험)
+              scaleLow: 0.85, // 포화지수 < → 여유(한계가 평균보다 15%+ 쌈, 증액 기회)
+              deltaPct: 0.1, // 한계 측정용 +지출 비율 (현 지출의 10%)
+              minPoints: 4, // 곡선 적합 최소 관측 수
+              recentDays: 7, // '현 지출점' = 최근 N일 평균 일예산
+            };
+
+            const SAT_MATH = (() => {
+              /* 현 지출점: 최근 recentDays일 평균 일예산. 날짜 없으면 전체 평균. */
+              function recentAvgDailyCost(pts, recentDays) {
+                const dated = pts.filter(
+                  (p) => p.date && !isNaN(Date.parse(p.date)),
+                );
+                if (!dated.length)
+                  return pts.reduce((s, p) => s + p.x, 0) / pts.length;
+                const maxT = Math.max(...dated.map((p) => Date.parse(p.date)));
+                const cutoff = maxT - recentDays * 86400000;
+                const recent = dated.filter((p) => Date.parse(p.date) >= cutoff);
+                const use = recent.length ? recent : dated;
+                return use.reduce((s, p) => s + p.x, 0) / use.length;
+              }
+
+              /* 포화지수(한계/평균, 클수록 포화) → 판정. */
+              function classify(satIndex, cfg) {
+                cfg = cfg || SAT_CONFIG;
+                if (satIndex == null || !isFinite(satIndex)) return "saturated";
+                if (satIndex >= cfg.satHigh) return "saturated";
+                if (satIndex < cfg.scaleLow) return "scale";
+                return "linear";
+              }
+
+              /* 한 엔티티 분석. rawPts: [{x:cost, y:cpr, date, rev}] (일별 관측).
+                 곡선 적합 → 현 지출점 평균/한계 CPA·포화지수·판정(+rev 있으면 ROAS 동일분석). */
+              function analyzeEntity(rawPts, cfg) {
+                cfg = cfg || SAT_CONFIG;
+                const A = ALLOC_MATH;
+                if (!rawPts || rawPts.length < cfg.minPoints)
+                  return {
+                    ok: false,
+                    reason: "insufficient",
+                    n: rawPts ? rawPts.length : 0,
+                  };
+                const cleaned = A.removeOutliers(rawPts, "iqr", { iqrMult: 1.5 });
+                const kept =
+                  cleaned && cleaned.kept && cleaned.kept.length >= cfg.minPoints
+                    ? cleaned.kept
+                    : rawPts;
+                const pairs = kept.map((p) => [p.x, p.y]);
+                const model = A.fitBest(pairs, null);
+                if (!model) return { ok: false, reason: "nofit", n: kept.length };
+                const xs = kept.map((p) => p.x);
+                const xMin = Math.min(...xs),
+                  xMax = Math.max(...xs);
+                const poly2Shape = A.detectPoly2Shape(model);
+                const chWrap = { model, poly2Shape, xMax };
+                const currentCost = recentAvgDailyCost(kept, cfg.recentDays);
+                const avgCpr = A.predictSafeCpr(chWrap, currentCost);
+                if (avgCpr == null || avgCpr <= 0)
+                  return { ok: false, reason: "out_of_range", n: kept.length };
+                const resC = currentCost / avgCpr;
+                const delta = Math.max(currentCost * cfg.deltaPct, 1e-9);
+                const cprT = A.predictSafeCpr(chWrap, currentCost + delta);
+                let marginalCpr = Infinity,
+                  resT = resC;
+                if (cprT != null && cprT > 0) {
+                  resT = (currentCost + delta) / cprT;
+                  const dRes = resT - resC;
+                  marginalCpr = dRes > 1e-12 ? delta / dRes : Infinity;
+                }
+                const satIndex =
+                  isFinite(marginalCpr) && avgCpr > 0
+                    ? marginalCpr / avgCpr
+                    : Infinity;
+                // 실측 합계
+                let totCost = 0,
+                  totRes = 0,
+                  totRev = 0,
+                  hasRev = false;
+                for (const p of kept) {
+                  totCost += p.x;
+                  totRes += p.y > 0 ? p.x / p.y : 0;
+                  if (p.rev != null && isFinite(p.rev)) {
+                    totRev += p.rev;
+                    hasRev = true;
+                  }
+                }
+                const actualCpr = totRes > 0 ? totCost / totRes : null;
+                // ROAS 분석 (매출 있을 때) — 한계 ROAS < 평균 ROAS면 포화 → satIndexRoas=평균/한계
+                let roas = null;
+                if (hasRev && totRev > 0 && totRes > 0) {
+                  const revPerRes = totRev / totRes;
+                  const revC = resC * revPerRes;
+                  const revT = resT * revPerRes;
+                  const avgRoas = currentCost > 0 ? revC / currentCost : null;
+                  const marginalRoas = delta > 0 ? (revT - revC) / delta : null;
+                  const satIndexRoas =
+                    marginalRoas > 0 && avgRoas > 0
+                      ? avgRoas / marginalRoas
+                      : Infinity;
+                  roas = {
+                    avgRoas,
+                    marginalRoas,
+                    satIndexRoas,
+                    revPerRes,
+                    verdict: classify(satIndexRoas, cfg),
+                  };
+                }
+                return {
+                  ok: true,
+                  n: kept.length,
+                  model,
+                  modelType: model.type,
+                  r2: model.r2,
+                  currentCost,
+                  avgCpr,
+                  marginalCpr,
+                  satIndex,
+                  verdict: classify(satIndex, cfg),
+                  actualCpr,
+                  totCost,
+                  totRes,
+                  poly2Shape,
+                  xMin,
+                  xMax,
+                  kept,
+                  roas,
+                };
+              }
+
+              return { recentAvgDailyCost, classify, analyzeEntity };
+            })();
+            if (typeof window !== "undefined") window.SAT_MATH = SAT_MATH;
+
+            /* 효율 CSV 행 → 단위(채널/캠페인)별 일별 포인트. cost>0·결과>0만. */
+            function satBuildPoints(rows, grain, metricField, revField) {
+              const m = new Map();
+              for (const r of rows) {
+                let key;
+                if (grain === "campaign") {
+                  const cmp = String(r.campaign_name ?? "").trim();
+                  if (!cmp) continue;
+                  const ch = String(r.channel ?? "").trim();
+                  // 채널 접두로 서로 다른 채널의 동명 캠페인 분리. 단 캠페인명이 이미
+                  // 채널로 시작하면(데모 등) 중복 표기 방지.
+                  key = ch && !cmp.startsWith(ch) ? ch + " · " + cmp : cmp;
+                } else {
+                  const ch = String(r.channel ?? "").trim();
+                  if (!ch) continue;
+                  key = ch;
+                }
+                const cost = Number(r.cost) || 0;
+                const res = Number(r[metricField]) || 0;
+                if (cost <= 0 || res <= 0) continue;
+                const rev = revField ? Number(r[revField]) : null;
+                if (!m.has(key)) m.set(key, []);
+                m.get(key).push({
+                  x: cost,
+                  y: cost / res,
+                  date: r.date,
+                  rev: rev != null && isFinite(rev) ? rev : null,
+                });
+              }
+              return m;
+            }
+
+            /* 매핑된 표준필드에서 결과/매출 컬럼 자동 선택. */
+            function satAvailableFields() {
+              const mappedKeys = new Set(
+                Object.values(CSV_STATE.mapping || {}).filter(
+                  (v) => v && v !== "__ignore__",
+                ),
+              );
+              const metricField = mappedKeys.has("installs")
+                ? "installs"
+                : mappedKeys.has("actions")
+                  ? "actions"
+                  : null;
+              const revCandidates = [
+                "revenue_d7",
+                "revenue_d0",
+                "revenue_d14",
+                "revenue_d30",
+                "revenue_d90",
+                "revenue_d180",
+                "revenue_d360",
+              ];
+              const revField =
+                revCandidates.find((k) => mappedKeys.has(k)) || null;
+              const hasCampaign = mappedKeys.has("campaign_name");
+              return { metricField, revField, hasCampaign };
+            }
+
+            const SAT_CACHE = { key: null, rows: null };
+            function satAnalyzeAll() {
+              const { metricField, revField } = satAvailableFields();
+              const grain = SAT_STATE.grain;
+              const rows = getMappedRows();
+              const key = `${rows.length}|${grain}|${metricField}|${revField}`;
+              if (SAT_CACHE.key === key && SAT_CACHE.rows) return SAT_CACHE.rows;
+              const pointsMap = satBuildPoints(
+                rows,
+                grain,
+                metricField,
+                revField,
+              );
+              const out = [];
+              for (const [name, pts] of pointsMap) {
+                const a = SAT_MATH.analyzeEntity(pts, SAT_CONFIG);
+                out.push({ name, raw: pts.length, ...a });
+              }
+              SAT_CACHE.rows = out;
+              SAT_CACHE.key = key;
+              return out;
+            }
+
+            /* 활성 기준(CPA/ROAS)의 포화지수·판정 — 정렬·표시 공통. */
+            function satActiveIndex(r) {
+              if (!r.ok) return -1;
+              if (SAT_STATE.metric === "roas") {
+                if (!r.roas) return -1;
+                return isFinite(r.roas.satIndexRoas)
+                  ? r.roas.satIndexRoas
+                  : 1e9;
+              }
+              return isFinite(r.satIndex) ? r.satIndex : 1e9;
+            }
+            function satActiveVerdict(r) {
+              if (SAT_STATE.metric === "roas")
+                return r.roas ? r.roas.verdict : null;
+              return r.verdict;
+            }
+            function satVerdictMeta(v) {
+              if (v === "saturated")
+                return {
+                  label: "포화",
+                  color: "#f87171",
+                  icon: "▲",
+                  advice: "증액 위험",
+                };
+              if (v === "scale")
+                return {
+                  label: "여유",
+                  color: "#22c55e",
+                  icon: "▼",
+                  advice: "증액 기회",
+                };
+              if (v === "linear")
+                return {
+                  label: "적정",
+                  color: "#9ca3af",
+                  icon: "●",
+                  advice: "현상 유지",
+                };
+              return {
+                label: "—",
+                color: "#6b7280",
+                icon: "·",
+                advice: "분석 불가",
+              };
+            }
+
+            function page_5_22() {
+              const meta = findMeta("5-22");
+              const missing = checkRequiredForTool("5-22");
+              if (
+                missing.length > 0 ||
+                !CSV_STATE.headers.length ||
+                !isToolAnalyzed("5-22")
+              ) {
+                return pageShell(meta, {
+                  deck: "효율 CSV 한 번 업로드로 채널·캠페인별 수확체감(포화) 여부를 진단합니다.",
+                  chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+                  summary: `필수: 날짜·비용·(채널 또는 캠페인)·(설치 또는 액션). 매출(${STANDARD_FIELDS["revenue_d7"]?.label || "revenue_d7"}) 매핑 시 ROAS 기준 포화도도 분석합니다.`,
+                  toc: [{ id: "s-prep", title: "데이터 준비" }],
+                  body: renderInlineCsvUpload("5-22"),
+                });
+              }
+              return pageShell(meta, {
+                deck: "채널·캠페인 단위 한계 CPA/ROAS로 '증액하면 효율이 꺾이는가'를 판정",
+                chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>${authStatusChip()}`,
+                summary:
+                  "각 채널·캠페인의 비용↔효율 산점도를 곡선 적합해 <strong>현재 지출점의 한계 효율</strong>을 평균과 비교합니다. 한계가 평균보다 나쁘면 <strong style='color:#f87171;'>포화(증액 위험)</strong>, 좋으면 <strong style='color:#22c55e;'>여유(증액 기회)</strong>입니다." +
+                  "<details style='margin-top:6px;font-size:11.5px;color:var(--text-secondary);cursor:pointer;'><summary>⚠️ 해석 참고</summary>" +
+                  "<div style='margin-top:6px;padding:8px 10px;background:var(--bg-1);border-left:3px solid var(--primary);line-height:1.6;'>" +
+                  "포화지수 = 한계 CPA ÷ 평균 CPA(ROAS는 평균 ÷ 한계). 1보다 크면 다음 1원이 평균보다 비싸다는 뜻. 관측 범위 밖 외삽은 불안정하므로, 지출 변동이 거의 없는 채널의 곡선은 신뢰도가 낮습니다." +
+                  "</div></details>",
+                toc: [
+                  { id: "s-sat-summary", title: "요약" },
+                  { id: "s-sat", title: "포화도 순위" },
+                  { id: "s-sat-curve", title: "응답곡선" },
+                ],
+                body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경)</summary><div style="margin-top:10px;">${renderInlineCsvUpload("5-22")}</div></details>${monSatBody()}`,
+              });
+            }
+            PAGE_RENDERERS["5-22"] = page_5_22;
+
+            function monSatBody() {
+              const { revField, hasCampaign } = satAvailableFields();
+              if (SAT_STATE.metric === "roas" && !revField)
+                SAT_STATE.metric = "cpa";
+              if (SAT_STATE.grain === "campaign" && !hasCampaign)
+                SAT_STATE.grain = "channel";
+              const rows = satAnalyzeAll();
+              const okRows = rows
+                .filter((r) => r.ok && satActiveVerdict(r))
+                .sort((a, b) => satActiveIndex(b) - satActiveIndex(a));
+              const badRows = rows.filter((r) => !r.ok || !satActiveVerdict(r));
+
+              const activeStyle =
+                "background:var(--bg-2);border-color:var(--text-1);color:var(--text-1);";
+              const grainBtn = (val, label, disabled) =>
+                `<button type="button" class="ab-pill" data-sat-grain="${val}" ${disabled ? 'disabled title="캠페인명(campaign_name) 컬럼을 매핑하면 활성화"' : ""} style="${SAT_STATE.grain === val ? activeStyle : ""}${disabled ? "opacity:0.4;cursor:not-allowed;" : ""}">${label}</button>`;
+              const metricBtn = (val, label, disabled) =>
+                `<button type="button" class="ab-pill" data-sat-metric="${val}" ${disabled ? 'disabled title="매출(revenue) 컬럼을 매핑하면 활성화"' : ""} style="${SAT_STATE.metric === val ? activeStyle : ""}${disabled ? "opacity:0.4;cursor:not-allowed;" : ""}">${label}</button>`;
+              const controls = `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+                <div style="display:flex;gap:6px;align-items:center;"><span style="font-size:12px;color:var(--text-muted);">분석 단위</span>${grainBtn("channel", "채널", false)}${grainBtn("campaign", "캠페인", !hasCampaign)}</div>
+                <div style="display:flex;gap:6px;align-items:center;"><span style="font-size:12px;color:var(--text-muted);">효율 기준</span>${metricBtn("cpa", "CPA (낮을수록 좋음)", false)}${metricBtn("roas", "ROAS (높을수록 좋음)", !revField)}</div>
+              </div>`;
+
+              return (
+                renderSatSummary(okRows) +
+                `<section class="block" id="s-sat">
+                  <h2 class="section-title"><span class="ix">§1</span>포화도 순위</h2>
+                  ${controls}
+                  ${renderSatTable(okRows, badRows)}
+                </section>` +
+                renderSatCurveSection(okRows)
+              );
+            }
+
+            function renderSatSummary(okRows) {
+              const isRoas = SAT_STATE.metric === "roas";
+              const grainLabel = SAT_STATE.grain === "campaign" ? "캠페인" : "채널";
+              const metricLabel = isRoas ? "ROAS" : "CPA";
+              const sat = okRows.filter((r) => satActiveVerdict(r) === "saturated");
+              const scale = okRows.filter((r) => satActiveVerdict(r) === "scale");
+              if (!okRows.length) {
+                return `<section class="block" id="s-sat-summary"><div class="callout warn"><div class="ico">!</div><div class="body">분석 가능한 ${grainLabel}이 없습니다. 각 ${grainLabel}에 최소 ${SAT_CONFIG.minPoints}개 이상의 일별 관측(비용·결과 &gt;0)이 필요합니다.</div></div></section>`;
+              }
+              const fmtList = (arr, n) =>
+                arr
+                  .slice(0, n)
+                  .map((r) => `<strong>${escapeHtml(r.name)}</strong>`)
+                  .join(", ");
+              const headParts = [];
+              if (sat.length)
+                headParts.push(
+                  `<span style="color:#f87171;">포화 ${sat.length}개</span> (증액 위험)`,
+                );
+              if (scale.length)
+                headParts.push(
+                  `<span style="color:#22c55e;">여유 ${scale.length}개</span> (증액 기회)`,
+                );
+              const head = headParts.length
+                ? headParts.join(" · ")
+                : `대부분 적정 구간`;
+              let advice = "";
+              if (sat.length && scale.length) {
+                advice = `${fmtList(sat, 2)}는 이미 포화 — 추가 예산은 ${fmtList(scale, 2)} 쪽으로 옮기면 같은 돈으로 ${isRoas ? "더 높은 매출" : "더 많은 결과"}를 기대할 수 있습니다.`;
+              } else if (sat.length) {
+                advice = `${fmtList(sat, 3)}는 ${metricLabel} 기준 포화 상태 — 증액 시 효율이 빠르게 나빠집니다. 증액보다 소재·타겟 개선이 우선입니다.`;
+              } else if (scale.length) {
+                advice = `${fmtList(scale, 3)}는 아직 여유 구간 — 증액하면 효율이 오히려 개선될 여지가 있습니다.`;
+              } else {
+                advice = `모든 ${grainLabel}이 선형(적정) 구간 — 현 배분을 크게 흔들 근거는 약합니다.`;
+              }
+              return `<section class="block" id="s-sat-summary">
+                <h2 class="section-title"><span class="ix">§0</span>한눈에 보기</h2>
+                <div style="font-size:15px;font-weight:600;margin-bottom:6px;">${head}</div>
+                <div style="font-size:13px;color:var(--text-secondary);line-height:1.65;">${advice}</div>
+              </section>`;
+            }
+
+            function renderSatTable(okRows, badRows) {
+              const isRoas = SAT_STATE.metric === "roas";
+              const effHead = isRoas
+                ? `<th class="tnum">평균 ROAS</th><th class="tnum">한계 ROAS</th>`
+                : `<th class="tnum">평균 CPA</th><th class="tnum">한계 CPA</th>`;
+              const fmtRoas = (v) =>
+                v == null || !isFinite(v) ? "—" : `${v.toFixed(2)}x`;
+              const body = okRows
+                .map((r, i) => {
+                  const v = satActiveVerdict(r);
+                  const vm = satVerdictMeta(v);
+                  const idx = satActiveIndex(r);
+                  const idxStr =
+                    idx == null || !isFinite(idx) ? "∞" : `${idx.toFixed(2)}x`;
+                  const sel = SAT_STATE.selected === r.name;
+                  const effCells = isRoas
+                    ? `<td class="tnum">${fmtRoas(r.roas.avgRoas)}</td><td class="tnum">${fmtRoas(r.roas.marginalRoas)}</td>`
+                    : `<td class="tnum">${fmtCurrency(r.avgCpr, { metric: true })}</td><td class="tnum">${isFinite(r.marginalCpr) ? fmtCurrency(r.marginalCpr, { metric: true }) : "∞"}</td>`;
+                  return `<tr data-sat-row="${escapeHtml(r.name)}" style="cursor:pointer;${sel ? "background:rgba(122,162,247,0.08);" : ""}" title="클릭 → 응답곡선 보기">
+                    <td class="tnum" style="color:var(--text-muted);">${i + 1}</td>
+                    <td><strong>${escapeHtml(r.name)}</strong></td>
+                    <td style="font-size:11px;color:var(--text-muted);">${r.modelType} <span class="tnum">R²=${r.r2 != null ? r.r2.toFixed(2) : "—"}</span></td>
+                    <td class="tnum">${fmtCurrency(r.currentCost)}</td>
+                    ${effCells}
+                    <td class="tnum" style="font-weight:700;color:${vm.color};">${idxStr}</td>
+                    <td><span class="chip" style="font-size:11px;padding:2px 8px;color:${vm.color};border-color:${vm.color}55;"><span class="dot" style="background:${vm.color};"></span>${vm.label}</span> <span style="font-size:10.5px;color:var(--text-muted);">${vm.advice}</span></td>
+                  </tr>`;
+                })
+                .join("");
+              const badNote = badRows.length
+                ? `<details style="margin-top:10px;"><summary style="cursor:pointer;font-size:11.5px;color:var(--text-muted);">⚠ 분석 제외 ${badRows.length}개 — 보기</summary><div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.7;">${badRows
+                    .map((r) => {
+                      const why =
+                        r.reason === "insufficient"
+                          ? `관측 ${r.raw || r.n || 0}개 (최소 ${SAT_CONFIG.minPoints} 필요)`
+                          : r.reason === "out_of_range"
+                            ? "곡선이 현 지출점에서 음수/비정상"
+                            : r.reason === "nofit"
+                              ? "곡선 적합 실패"
+                              : SAT_STATE.metric === "roas"
+                                ? "매출 데이터 없음"
+                                : "분석 불가";
+                      return `<div>• <strong>${escapeHtml(r.name)}</strong> — ${why}</div>`;
+                    })
+                    .join("")}</div></details>`
+                : "";
+              return `<div class="table-wrap"><table class="data" style="font-size:12.5px;">
+                <thead><tr>
+                  <th class="tnum">#</th><th>${SAT_STATE.grain === "campaign" ? "캠페인" : "채널"}</th><th>적합 모델</th>
+                  <th class="tnum">최근 일예산</th>${effHead}
+                  <th class="tnum" title="한계효율 ÷ 평균효율. 1보다 크면 다음 1원이 평균보다 비쌈">포화지수</th><th>판정</th>
+                </tr></thead>
+                <tbody>${body}</tbody>
+              </table></div>${badNote}`;
+            }
+
+            function renderSatCurveSection(okRows) {
+              if (!okRows.length) return "";
+              let sel = SAT_STATE.selected
+                ? okRows.find((r) => r.name === SAT_STATE.selected)
+                : null;
+              if (!sel) sel = okRows[0];
+              return `<section class="block" id="s-sat-curve">
+                <h2 class="section-title"><span class="ix">§2</span>응답곡선 — ${escapeHtml(sel.name)}</h2>
+                <p class="muted" style="font-size:12px;margin-top:-4px;">위 표에서 행을 클릭하면 해당 ${SAT_STATE.grain === "campaign" ? "캠페인" : "채널"}의 곡선으로 바뀝니다. 점=일별 관측(비용 vs CPA), 선=적합 곡선, 주황 점선=현 지출점.</p>
+                <div class="chart-container" style="height:300px;"><canvas id="sat-curve-chart"></canvas></div>
+              </section>`;
+            }
+
+            function renderSatChart() {
+              if (typeof Chart === "undefined") return;
+              const canvas = document.getElementById("sat-curve-chart");
+              if (!canvas) return;
+              const rows = satAnalyzeAll();
+              const okRows = rows
+                .filter((r) => r.ok && satActiveVerdict(r))
+                .sort((a, b) => satActiveIndex(b) - satActiveIndex(a));
+              if (!okRows.length) return;
+              let sel = SAT_STATE.selected
+                ? okRows.find((r) => r.name === SAT_STATE.selected)
+                : null;
+              if (!sel) sel = okRows[0];
+              const A = ALLOC_MATH;
+              const xs = sel.kept.map((p) => p.x);
+              const xMin = Math.min(...xs),
+                xMax = Math.max(...xs);
+              const margin = (xMax - xMin) * 0.05 || xMax * 0.05 || 1;
+              const fitMin = Math.max(0.0001, xMin - margin),
+                fitMax = xMax + margin;
+              const chWrap = {
+                model: sel.model,
+                poly2Shape: sel.poly2Shape,
+                xMax,
+              };
+              const curve = [];
+              const STEPS = 60;
+              for (let s = 0; s <= STEPS; s++) {
+                const x = fitMin + (fitMax - fitMin) * (s / STEPS);
+                const y = A.predictSafeCpr(chWrap, x);
+                if (y != null && isFinite(y)) curve.push({ x, y });
+              }
+              const scatter = sel.kept.map((p) => ({ x: p.x, y: p.y }));
+              const allY = scatter.map((p) => p.y).concat(curve.map((p) => p.y));
+              const yLo = Math.min(...allY),
+                yHi = Math.max(...allY);
+              const marker = [
+                { x: sel.currentCost, y: yLo },
+                { x: sel.currentCost, y: yHi },
+              ];
+              const primary = getCssVar("--primary") || "#7aa2f7";
+              const text = getCssVar("--text-muted") || "#9ca3af";
+              const grid = getCssVar("--border") || "#2a2a2a";
+              try {
+                CHART_INSTANCES["sat-curve-chart"]?.destroy?.();
+              } catch {}
+              CHART_INSTANCES["sat-curve-chart"] = new Chart(
+                canvas.getContext("2d"),
+                {
+                  type: "scatter",
+                  data: {
+                    datasets: [
+                      {
+                        label: "일별 관측 (Cost vs CPA)",
+                        data: scatter,
+                        backgroundColor: primary + "55",
+                        borderColor: primary + "55",
+                        pointRadius: 3,
+                        showLine: false,
+                      },
+                      {
+                        label: `적합 ${sel.modelType} (R²=${sel.r2 != null ? sel.r2.toFixed(2) : "—"})`,
+                        data: curve,
+                        borderColor: primary,
+                        backgroundColor: "transparent",
+                        pointRadius: 0,
+                        showLine: true,
+                        borderWidth: 2,
+                        tension: 0.2,
+                      },
+                      {
+                        label: "현 지출점",
+                        data: marker,
+                        borderColor: "#f59e0b",
+                        borderDash: [5, 4],
+                        pointRadius: 0,
+                        showLine: true,
+                        borderWidth: 1.5,
+                      },
+                    ],
+                  },
+                  options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { labels: { color: text, font: { size: 11 } } },
+                    },
+                    scales: {
+                      x: {
+                        title: { display: true, text: "일 Cost", color: text },
+                        ticks: { color: text },
+                        grid: { color: grid },
+                      },
+                      y: {
+                        title: {
+                          display: true,
+                          text: "CPA (Cost/결과, 낮을수록 좋음)",
+                          color: text,
+                        },
+                        ticks: { color: text },
+                        grid: { color: grid },
+                      },
+                    },
+                  },
+                },
+              );
+            }
+
+            function bindSatHandlers() {
+              bindInlineCsvHandlers();
+              document.querySelectorAll("[data-sat-grain]").forEach((b) =>
+                b.addEventListener("click", () => {
+                  if (b.disabled) return;
+                  SAT_STATE.grain = b.dataset.satGrain;
+                  SAT_STATE.selected = null;
+                  SAT_CACHE.key = null;
+                  navigate("5-22");
+                }),
+              );
+              document.querySelectorAll("[data-sat-metric]").forEach((b) =>
+                b.addEventListener("click", () => {
+                  if (b.disabled) return;
+                  SAT_STATE.metric = b.dataset.satMetric;
+                  navigate("5-22");
+                }),
+              );
+              document.querySelectorAll("[data-sat-row]").forEach((tr) =>
+                tr.addEventListener("click", () => {
+                  SAT_STATE.selected = tr.dataset.satRow;
+                  const sy = window.scrollY;
+                  navigate("5-22");
+                  requestAnimationFrame(() => window.scrollTo(0, sy));
+                }),
+              );
+            }
+
+            /* 합성 데이터 유닛 테스트 (§8 결정론) */
+            function runSatTests(verbose) {
+              let pass = 0,
+                fail = 0;
+              const ok = (l, c) => {
+                if (c) {
+                  pass++;
+                  if (verbose) console.log("  ✓", l);
+                } else {
+                  fail++;
+                  console.error("  ✗", l);
+                }
+              };
+              // 합성: 포화 채널(증액할수록 CPA 급등) vs 여유 채널(증액해도 CPA 거의 평탄/하락)
+              const mkDates = (n) => {
+                const out = [];
+                const base = Date.parse("2024-01-01");
+                for (let i = 0; i < n; i++)
+                  out.push(
+                    new Date(base + i * 86400000).toISOString().slice(0, 10),
+                  );
+                return out;
+              };
+              const ds = mkDates(30);
+              // 포화: cost 1000→3000, CPA가 cost에 비례 급등 (y = cost/100)
+              const satPts = ds.map((d, i) => {
+                const cost = 1000 + i * 70;
+                const cpa = cost / 100; // 비용↑ → CPA↑ (한계 ≫ 평균)
+                return { x: cost, y: cpa, date: d, rev: null };
+              });
+              const satRes = SAT_MATH.analyzeEntity(satPts, SAT_CONFIG);
+              ok("포화 채널 적합 성공", satRes.ok);
+              ok(
+                "포화 채널 판정 = saturated",
+                satRes.ok && satRes.verdict === "saturated",
+              );
+              ok(
+                "포화 채널 포화지수 > 1",
+                satRes.ok && satRes.satIndex > 1,
+              );
+              // 여유: CPA가 cost와 무관하게 평탄 후 하락 (규모의 경제) → 한계 < 평균
+              const scalePts = ds.map((d, i) => {
+                const cost = 1000 + i * 70;
+                const cpa = 50 - i * 0.5; // 비용↑ → CPA↓ (한계 < 평균)
+                return { x: cost, y: Math.max(cpa, 5), date: d, rev: null };
+              });
+              const scaleRes = SAT_MATH.analyzeEntity(scalePts, SAT_CONFIG);
+              ok("여유 채널 적합 성공", scaleRes.ok);
+              ok(
+                "여유 채널 포화지수 < 포화 채널",
+                scaleRes.ok &&
+                  satRes.ok &&
+                  satActiveIndexPure(scaleRes) < satRes.satIndex,
+              );
+              // 관측 부족 → 분석 제외
+              const few = SAT_MATH.analyzeEntity(
+                [
+                  { x: 100, y: 10, date: ds[0] },
+                  { x: 200, y: 12, date: ds[1] },
+                ],
+                SAT_CONFIG,
+              );
+              ok("관측 부족 → ok=false", few.ok === false);
+              // 결정론 (동일 입력 = 동일 포화지수)
+              const again = SAT_MATH.analyzeEntity(satPts, SAT_CONFIG);
+              ok(
+                "결정론 (동일 입력 동일 출력)",
+                again.satIndex === satRes.satIndex,
+              );
+              // ROAS 분석 (rev 포함)
+              const revPts = ds.map((d, i) => {
+                const cost = 1000 + i * 70;
+                const res = cost / (cost / 100); // = 100 results... keep simple
+                const cpa = cost / 100;
+                return { x: cost, y: cpa, date: d, rev: (cost / cpa) * 80 };
+              });
+              const revRes = SAT_MATH.analyzeEntity(revPts, SAT_CONFIG);
+              ok("ROAS 분석 생성 (rev 있을 때)", revRes.ok && revRes.roas != null);
+              // grouping
+              const gm = satBuildPoints(
+                [
+                  {
+                    channel: "A",
+                    campaign_name: "c1",
+                    cost: 100,
+                    installs: 10,
+                    date: ds[0],
+                  },
+                  {
+                    channel: "A",
+                    campaign_name: "c2",
+                    cost: 200,
+                    installs: 10,
+                    date: ds[1],
+                  },
+                  {
+                    channel: "B",
+                    campaign_name: "c3",
+                    cost: 300,
+                    installs: 10,
+                    date: ds[2],
+                  },
+                ],
+                "channel",
+                "installs",
+                null,
+              );
+              ok("채널 그룹핑 → 2개 (A,B)", gm.size === 2);
+              ok("채널 A 포인트 2개", (gm.get("A") || []).length === 2);
+              const gmc = satBuildPoints(
+                [
+                  {
+                    channel: "A",
+                    campaign_name: "c1",
+                    cost: 100,
+                    installs: 10,
+                    date: ds[0],
+                  },
+                  {
+                    channel: "A",
+                    campaign_name: "c2",
+                    cost: 200,
+                    installs: 10,
+                    date: ds[1],
+                  },
+                ],
+                "campaign",
+                "installs",
+                null,
+              );
+              ok("캠페인 그룹핑 → 복합키 2개", gmc.size === 2);
+              console.log(
+                `[SAT] ${pass}/${pass + fail} ` +
+                  (fail === 0 ? "ALL PASS ✓" : "FAILED ✗"),
+              );
+              return fail === 0;
+            }
+            // 테스트용 순수 포화지수 (활성 metric 무관, CPA 기준)
+            function satActiveIndexPure(r) {
+              if (!r.ok) return -1;
+              return isFinite(r.satIndex) ? r.satIndex : 1e9;
+            }
+            if (typeof window !== "undefined") window.runSatTests = runSatTests;
 
             /* ========== 통계 라이브러리 (5-4 A/B Test Calculator) ==========
          원본: Campaign Test Parameter Checker (Next.js + TypeScript)
@@ -12014,7 +12789,13 @@
               outlierStrength: "standard", // standard | strong | very_strong
               normalizeMode: "raw", // raw | log | minmax | robust (차트 표시용)
               budget: null, // 총 예산 (사용자 입력 raw 값)
+              budgetAutoDefaulted: false, // #2: 총예산 모델 최초 진입 시 최근 일예산 합계로 1회 기본값 채움
               budgetPeriod: "daily", // daily | monthly (월예산이면 ÷30으로 일예산 환산)
+              osSplit: false, // #2.1: OS 분리 배분 — Android/iOS 예산·분배를 따로
+              budgetAndroid: null, // osSplit 시 Android 예산
+              budgetIos: null, // osSplit 시 iOS 예산
+              osBudgetDefaulted: false, // osSplit 예산 1회 자동 채움 플래그
+              osShareExpanded: false, // #2.2: 추천 배분 비중에서 OS별 막대 펼침 여부
               simMode: "auto", // auto | manual — 자동 예산 분배 vs 사용자 수동 기입
               simManualBudgets: {}, // { group: rawCost } — 수동 시뮬레이션 시 사용자가 입력한 그룹별 예산
               allocMode: "c", // c: 절대 CPR/ROAS 가중 (기본, 1/avgCPR 비례) | b: 한계효용 그리디 (고급·실험적)
@@ -12024,7 +12805,7 @@
               extrapolateMode: "1.3", // "1.0" | "1.3" | "1.5" | "fallback" — 외삽 한도 모드
               metric: null, // 성과 지표 (installs | actions | pu_d7)
               selectedChannels: null, // null = 자동 상위 6, Set = 선택된 채널들
-              recentDays: 28, // 집계·강조 윈도우 (일) — 기본 4주
+              recentDays: 7, // 집계·강조 윈도우 (일) — 기본 1주(과거기준·자동예산을 7일 평균으로, #1)
               showRecent: true,
               hidePoints: false, // 점 숨김 (추세선만 표시)
               advancedOpen: false, // 상세 설정(최근 가중치/이상치/강도/정규화/외삽/표시) 펼침 여부
@@ -28082,10 +28863,15 @@
               let role = "ignore";
               let tf = "none";
               if (isBin) {
-                role = "event";
+                // 한번 켜지면 유지되는 연속 상태(종료·출시·전환 등)는 step, 단발성은 event.
+                role = /sunset|종료|중단|launch|출시|시작|전환|상태|step|on_?off|폐지|단종/.test(
+                  name,
+                )
+                  ? "step"
+                  : "event";
               } else if (/date|day|week|월|일자|주차/.test(name)) {
                 role = "time";
-              } else if (/regs?$|react|conv|install|signup|purchase|pur|revenue|매출|등록|재활성/.test(name) && isNum) {
+              } else if (/(^|_)regs?($|_)|react|conv|install|signup|purchase|pur|revenue|매출|등록|재활성/.test(name) && isNum) {
                 role = "dependent";
               } else if (isNum && /cost|spend|비용|지출|budget|imp|click/.test(name)) {
                 role = "cost";
@@ -28160,53 +28946,50 @@
               return true;
             }
             function regLabMakeSample() {
+              // OS별 종속변수 데모(#206 멀티모델 시연): regs_ios·regs_android 태그별 모델 + iOS 전용 Step.
               const fields = [
                 "week",
-                "platform",
                 "cost_google",
                 "cost_meta",
                 "cost_tiktok",
                 "is_holiday",
-                "regs",
+                "ios_sunset",
+                "regs_ios",
+                "regs_android",
               ];
               const rows = [],
                 rng = seededNoise(20250610);
-              for (const plat of ["iOS", "Android"]) {
-                for (let w = 0; w < 60; w++) {
-                  const g = Math.max(
-                    0,
-                    12000 + 3000 * Math.sin(w / 6) + rng() * 4000,
-                  );
-                  const me = Math.max(
-                    0,
-                    8000 + 2500 * Math.cos(w / 5) + rng() * 3000,
-                  );
-                  const tt = Math.max(
-                    0,
-                    w > 20 ? 5000 + 1500 * Math.sin(w / 4) + rng() * 2000 : 0,
-                  );
-                  const hol = w % 13 === 0 ? 1 : 0;
-                  const base = plat === "iOS" ? 900 : 1400,
-                    trend = -3 * w;
-                  const regs = Math.round(
-                    base +
-                      trend +
+              for (let w = 0; w < 60; w++) {
+                const g = Math.max(0, 12000 + 3000 * Math.sin(w / 6) + rng() * 4000);
+                const me = Math.max(0, 8000 + 2500 * Math.cos(w / 5) + rng() * 3000);
+                const tt = Math.max(
+                  0,
+                  w > 20 ? 5000 + 1500 * Math.sin(w / 4) + rng() * 2000 : 0,
+                );
+                const hol = w % 13 === 0 ? 1 : 0;
+                // 연속적 상태(Step): iOS 캠페인 종료 — w≥40부터 1로 켜진 뒤 유지(누적). iOS 가입만 깎음.
+                const iosSunset = w >= 40 ? 1 : 0;
+                const reg = (base, sunsetEff) =>
+                  Math.round(
+                    base -
+                      3 * w +
                       120 * Math.log1p(g) +
                       90 * Math.log1p(me) +
                       60 * Math.log1p(tt) +
                       180 * hol +
+                      sunsetEff * iosSunset +
                       rng() * 120,
                   );
-                  rows.push({
-                    week: `2025-W${String(w + 1).padStart(2, "0")}`,
-                    platform: plat,
-                    cost_google: Math.round(g),
-                    cost_meta: Math.round(me),
-                    cost_tiktok: Math.round(tt),
-                    is_holiday: hol,
-                    regs,
-                  });
-                }
+                rows.push({
+                  week: `2025-W${String(w + 1).padStart(2, "0")}`,
+                  cost_google: Math.round(g),
+                  cost_meta: Math.round(me),
+                  cost_tiktok: Math.round(tt),
+                  is_holiday: hol,
+                  ios_sunset: iosSunset,
+                  regs_ios: reg(900, -500), // iOS: 종료 후 급감
+                  regs_android: reg(1400, 0), // Android: 영향 없음
+                });
               }
               return { rows, fields };
             }
@@ -28688,13 +29471,30 @@
               const hasData = S.rows.length > 0;
               const F = S.fits && Object.keys(S.fits).length; // #206 멀티모델: fits{} 게이트
               const dataSec = `<section class="block" id="s-data">
-          <h2 class="section-title"><span class="ix">§1</span>데이터</h2>
-          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
-            <label class="ab-pill" style="cursor:pointer;">CSV 업로드<input type="file" id="reg-file" accept=".csv,.tsv,.txt" style="display:none;"></label>
-            <button class="ab-pill" id="reg-sample">샘플 데이터 넣기</button>
+          <h2 class="section-title"><span class="ix">§1</span>데이터 준비</h2>
+          ${
+            hasData
+              ? `<div class="file-state">
+              <div class="meta-text"><span class="dot"></span><span>${escapeHtml(S.fileName)}</span></div>
+              <div class="meta-stats tnum">${S.rows.length.toLocaleString()}행 · ${S.headers.length}컬럼
+                <label class="copy-btn" style="margin-left:0.75rem;cursor:pointer;">CSV 변경<input type="file" id="reg-file" accept=".csv,.tsv,.txt" style="display:none;"></label>
+                <button class="copy-btn" id="reg-sample" style="margin-left:0.5rem;">데모 데이터</button>
+                ${mmmHasDataForBridge() ? `<button class="copy-btn" id="reg-from-mmm" style="margin-left:0.5rem;">📊 MMM 데이터</button>` : ""}
+              </div>
+            </div>`
+              : `<p class="muted">임의 wide CSV(1행=1관측)를 올려 OLS 회귀·미래예측을 돌립니다. 종속변수(Y)·비용/이벤트·시간 컬럼은 다음 단계에서 드래그로 지정합니다. 데이터는 회귀·예측 전용으로 저장(다른 도구와 독립)됩니다.</p>
+          <label class="dropzone" style="cursor:pointer;display:block;">
+            <div class="dropzone-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></div>
+            <div class="dropzone-title">CSV 파일을 클릭해서 업로드</div>
+            <div class="dropzone-sub">UTF-8, 첫 행이 헤더. 예: week, regs_ios, regs_android, cost_google, is_holiday …</div>
+            <input type="file" id="reg-file" accept=".csv,.tsv,.txt" style="display:none;">
+          </label>
+          <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <button class="ab-pill" id="reg-sample" style="background:#7aa2f7;color:#0b0d12;font-weight:600;border-color:#7aa2f7;">▶ 데모 데이터로 미리보기</button>
             ${mmmHasDataForBridge() ? `<button class="ab-pill" id="reg-from-mmm" style="border-color:rgba(122,162,247,0.5);">📊 MMM 데이터 불러오기</button>` : ""}
-            <span class="muted" style="font-size:12px;">${hasData ? `${escapeHtml(S.fileName)} · ${S.rows.length}행 · ${S.headers.length}컬럼` : "wide CSV (1행=1관측). 컬럼 자유. 또는 위에서 매핑한 MMM 데이터를 바로 불러오기."}</span>
-          </div>
+            <span style="font-size:11.5px;color:var(--text-muted);">데이터가 없어도 샘플로 회귀·예측이 어떻게 보이는지 미리 볼 수 있어요. <strong>실제 분석엔 영향 없음.</strong></span>
+          </div>`
+          }
         </section>`;
               if (!S.rows.length) return dataSec;
               return dataSec + renderRegMap() + (F ? renderRegResults() : "");
@@ -29558,42 +30358,63 @@
               const m = regLabReadMapping();
               
               R.push({
-                test: "T2 · 자동매핑(deps=regs, indeps>=3)",
+                test: "T2 · 자동매핑(deps=regs_ios·regs_android, indeps>=3)",
                 actual: `deps=${m.deps.join(",")} indeps=${m.indeps.length}`,
-                pass: m.deps.includes("regs") && m.indeps.length >= 3 ? "✓" : "✗",
+                pass:
+                  m.deps.includes("regs_ios") &&
+                  m.deps.includes("regs_android") &&
+                  m.indeps.length >= 3
+                    ? "✓"
+                    : "✗",
               });
-              
+
               try {
                 regLabRun();
                 const fits = REG_LAB_STATE.fits;
-                const F = fits ? fits["both"] : null;
+                const F = fits ? fits["ios"] : null;
                 const ok = F && isFinite(F.fit.R2) && F.fit.R2 > 0 && F.fit.R2 < 1 && F.fit.beta.length === F.k && F.terms.length === F.k;
                 R.push({
-                  test: "T3 · 샘플 적합 산출(R² 유효)",
+                  test: "T3 · iOS 모델 적합(R² 유효)",
                   actual: F ? `R²=${F.fit.R2.toFixed(3)} k=${F.k}` : "null",
                   pass: ok ? "✓" : "✗",
                 });
               } catch (e) {
                 R.push({ test: "T3 · 샘플 적합", actual: "ERR " + e.message, pass: "✗" });
               }
-              
-              // We don't have groupKeep anymore. We can test that fits has 'both' and n=120
+
+              // OS별 분리 모델(ios·android) 각 n=60
               R.push({
-                test: "T4 · 기본 모델 데이터 n=120",
-                actual: REG_LAB_STATE.fits && REG_LAB_STATE.fits["both"] ? String(REG_LAB_STATE.fits["both"].n) : "0",
-                pass: REG_LAB_STATE.fits && REG_LAB_STATE.fits["both"] && REG_LAB_STATE.fits["both"].n === 120 ? "✓" : "✗",
+                test: "T4 · OS별 모델 ios·android n=60",
+                actual: REG_LAB_STATE.fits
+                  ? `ios=${REG_LAB_STATE.fits["ios"]?.n} android=${REG_LAB_STATE.fits["android"]?.n}`
+                  : "0",
+                pass:
+                  REG_LAB_STATE.fits &&
+                  REG_LAB_STATE.fits["ios"]?.n === 60 &&
+                  REG_LAB_STATE.fits["android"]?.n === 60
+                    ? "✓"
+                    : "✗",
               });
-              
-              // λ 변경 → adstock_log 계수 변함 + 결정론
+
+              // T4b · iOS 모델에 ios_sunset(step)이 음수 계수로 포함(종료가 가입 감소)
+              const iosF = REG_LAB_STATE.fits["ios"];
+              const sIdx = iosF ? iosF.m.indep.indexOf("ios_sunset") : -1;
+              R.push({
+                test: "T4b · iOS step(ios_sunset) 음수 계수",
+                actual: sIdx >= 0 ? iosF.fit.beta[sIdx + 1].toFixed(1) : "없음",
+                pass: sIdx >= 0 && iosF.fit.beta[sIdx + 1] < 0 ? "✓" : "✗",
+              });
+
+              // λ 변경 → adstock_log 계수 변함 + 결정론 (iOS 모델 기준)
               REG_LAB_STATE.lambda = 0.6;
               regLabRun();
-              const b6 = REG_LAB_STATE.fits["both"].fit.beta[1];
+              const b6 = REG_LAB_STATE.fits["ios"].fit.beta[1];
               REG_LAB_STATE.lambda = 0.3;
               regLabRun();
-              const b3 = REG_LAB_STATE.fits["both"].fit.beta[1];
+              const b3 = REG_LAB_STATE.fits["ios"].fit.beta[1];
               REG_LAB_STATE.lambda = 0.6;
               regLabRun();
-              const b6b = REG_LAB_STATE.fits["both"].fit.beta[1];
+              const b6b = REG_LAB_STATE.fits["ios"].fit.beta[1];
               R.push({
                 test: "T5 · λ 변경시 계수변화+결정론",
                 actual: `λ.6=${b6.toFixed(3)} λ.3=${b3.toFixed(3)}`,
@@ -40318,6 +41139,12 @@
               )
                 bindBudgetAllocatorHandlers();
 
+              // ----- 5-22: 캠페인 포화도 탐지 핸들러 + 응답곡선 차트 -----
+              if (document.getElementById("s-sat")) {
+                bindSatHandlers();
+                renderSatChart();
+              }
+
               // ----- 5-4: 실험 분석 탭 전환 (설계/결과/홀드아웃 — 결과·홀드아웃은 CSV grain 전환) -----
               document.querySelectorAll("[data-exp-tab]").forEach((b) =>
                 b.addEventListener("click", () => {
@@ -41389,16 +42216,16 @@
               // 채널별 raw points → 메모이제이션
               const byChannel = getCachedByChannel(rows, metric);
 
-              // 채널 정렬: 최근 SELECT_RECENT_DAYS(20)일 Cost 합산 큰 순서 (ALLOC_MATH.sortChannelsByRecentCost, §순수추출)
-              const SELECT_RECENT_DAYS = 20;
+              // 채널 정렬: 최근 SELECT_RECENT_DAYS(7)일 Cost 합산 큰 순서 (ALLOC_MATH.sortChannelsByRecentCost, §순수추출)
+              const SELECT_RECENT_DAYS = 7;
               let allChannels = ALLOC_MATH.sortChannelsByRecentCost(
                 byChannel,
                 SELECT_RECENT_DAYS,
               );
 
-              // 선택 초기값: 상위 6채널
+              // 선택 초기값: 최근 7일 Cost 최다 1개만 (나머지는 유저가 칩으로 추가)
               if (ALLOC_STATE.selectedChannels == null) {
-                ALLOC_STATE.selectedChannels = new Set(allChannels.slice(0, 6));
+                ALLOC_STATE.selectedChannels = new Set(allChannels.slice(0, 1));
               }
 
               let channels;
@@ -41422,8 +42249,7 @@
               if (filterEl) {
                 filterEl.innerHTML = `
             <div class="alloc-filter-header">
-              <span class="alloc-filter-label">채널 선택 (최근 20일 Cost순 · ${allChannels.length}개)</span>
-              <button class="ab-pill" id="alloc-filter-top6">상위 6개</button>
+              <span class="alloc-filter-label">채널 선택 (최근 7일 Cost순 · ${allChannels.length}개)</span>
               <button class="ab-pill" id="alloc-filter-all">전체</button>
               <button class="ab-pill" id="alloc-filter-none">모두 해제</button>
               <button class="ab-pill alloc-csv-btn" id="alloc-csv-download-all" title="선택된 모든 채널을 단일 XLSX 파일로 다운로드 (채널마다 별도 탭)">
@@ -41784,12 +42610,14 @@
               const cnt = ALLOC_STATE.selectedChannels
                 ? ALLOC_STATE.selectedChannels.size
                 : 0;
+              // 총예산(auto) 모드에서만 산점도 선택 안내로 덮어씀. 수동(manual)은 자기 설명 유지(§2 버그).
               const hintEl = document.querySelector("#s-controls .alloc-card p");
-              if (hintEl) {
+              if (hintEl && ALLOC_STATE.simMode === "auto") {
                 hintEl.innerHTML =
-                  cnt > 0
+                  (cnt > 0
                     ? `산점도에서 선택한 <strong>${cnt}개 채널/캠페인</strong>에 대해 예산을 배분합니다. 선택을 바꾸면 즉시 재계산됩니다.`
-                    : `산점도에서 분배할 채널/캠페인을 먼저 선택하세요.`;
+                    : `산점도에서 분배할 채널/캠페인을 먼저 선택하세요.`) +
+                  `<br><span style="font-size:11px;color:var(--text-muted);">가장 최초의 예산은 가장 최근 사용한 일 예산 합계입니다.</span>`;
               }
 
               // 채널 chip 클릭 핸들러 (debounced)
@@ -41817,14 +42645,8 @@
                     queueAllocatorRender();
                   });
                 });
-              const top6Btn = document.getElementById("alloc-filter-top6");
               const allBtn = document.getElementById("alloc-filter-all");
               const noneBtn = document.getElementById("alloc-filter-none");
-              if (top6Btn)
-                top6Btn.addEventListener("click", () => {
-                  ALLOC_STATE.selectedChannels = new Set(allChannels.slice(0, 6));
-                  queueAllocatorRender();
-                });
               if (allBtn)
                 allBtn.addEventListener("click", () => {
                   ALLOC_STATE.selectedChannels = new Set(allChannels);
@@ -43078,8 +43900,64 @@
             }
 
             function refreshAllocationResults() {
+              // #2: 총예산(auto) 모델 최초 진입 시, 배분 대상 채널들의 최근 평균 일예산 합계를 기본 예산으로 1회 채움.
+              if (
+                ALLOC_STATE.simMode === "auto" &&
+                !ALLOC_STATE.budgetAutoDefaulted &&
+                (ALLOC_STATE.budget || 0) <= 0 &&
+                ALLOC_CACHE.models &&
+                ALLOC_CACHE.models.size
+              ) {
+                const _metric = ALLOC_STATE.metric || "installs";
+                let _sum = 0;
+                for (const [ch] of ALLOC_CACHE.models)
+                  _sum += allocRecentDailySpend(ch, _metric);
+                if (_sum > 0) {
+                  const _mult = ALLOC_STATE.budgetPeriod === "monthly" ? 30 : 1;
+                  ALLOC_STATE.budget = Math.round(_sum * _mult);
+                  ALLOC_STATE.budgetAutoDefaulted = true;
+                  const _inp = document.getElementById("alloc-budget");
+                  if (_inp) _inp.value = allocFmtNum(ALLOC_STATE.budget);
+                  // 최초 진입 시 표시되던 "예산 입력하세요" 빈 상태를 결과 표시로 전환
+                  const _req = document.getElementById("alloc-budget-required");
+                  if (_req) _req.style.display = "";
+                  const _empty = document.getElementById("alloc-budget-empty");
+                  if (_empty) _empty.style.display = "none";
+                }
+              }
+              // #2.1: OS 분리 모드 최초 진입 시 Android/iOS 예산을 각 OS 최근 7일평균 지출 합으로 1회 채움.
+              if (
+                ALLOC_STATE.simMode === "auto" &&
+                ALLOC_STATE.osSplit &&
+                !ALLOC_STATE.osBudgetDefaulted &&
+                ALLOC_CACHE.models &&
+                ALLOC_CACHE.models.size
+              ) {
+                const _metric = ALLOC_STATE.metric || "installs";
+                const _mult = ALLOC_STATE.budgetPeriod === "monthly" ? 30 : 1;
+                if ((ALLOC_STATE.budgetAndroid || 0) <= 0)
+                  ALLOC_STATE.budgetAndroid =
+                    allocOsBudgetDefault(ALLOC_CACHE.models, "android", _metric) *
+                    _mult;
+                if ((ALLOC_STATE.budgetIos || 0) <= 0)
+                  ALLOC_STATE.budgetIos =
+                    allocOsBudgetDefault(ALLOC_CACHE.models, "ios", _metric) *
+                    _mult;
+                ALLOC_STATE.osBudgetDefaulted = true;
+                const _ai = document.getElementById("alloc-budget-android");
+                if (_ai) _ai.value = allocFmtNum(ALLOC_STATE.budgetAndroid);
+                const _ii = document.getElementById("alloc-budget-ios");
+                if (_ii) _ii.value = allocFmtNum(ALLOC_STATE.budgetIos);
+              }
               // 일예산 환산 (월예산이면 ÷ 30)
               const dailyBudget = getEffectiveDailyBudget();
+              // #2.1 OS 분리 시 Android/iOS 일예산 + 합본 유효예산
+              const _periodDiv = ALLOC_STATE.budgetPeriod === "monthly" ? 30 : 1;
+              const dailyAndroid = (ALLOC_STATE.budgetAndroid || 0) / _periodDiv;
+              const dailyIos = (ALLOC_STATE.budgetIos || 0) / _periodDiv;
+              const effDailyBudget = ALLOC_STATE.osSplit
+                ? dailyAndroid + dailyIos
+                : dailyBudget;
               const tbody = document.getElementById("alloc-tbody");
               const barWrap = document.getElementById("alloc-bar");
               const legendWrap = document.getElementById("alloc-bar-legend");
@@ -43174,8 +44052,8 @@
                 }
               }
 
-              if (dailyBudget <= 0 && ALLOC_STATE.simMode !== "manual") {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">총 예산을 입력해 주세요.</td></tr>`;
+              if (effDailyBudget <= 0 && ALLOC_STATE.simMode !== "manual") {
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:1rem;">총 예산을 입력해 주세요.</td></tr>`;
                 barWrap.innerHTML = "";
                 legendWrap.innerHTML = "";
                 return;
@@ -43196,7 +44074,7 @@
                   selected,
                 );
                 if (!alloc.length) {
-                  tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">선택된 채널의 데이터가 없습니다.</td></tr>`;
+                  tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:1rem;">선택된 채널의 데이터가 없습니다.</td></tr>`;
                   barWrap.innerHTML = "";
                   legendWrap.innerHTML = "";
                   return;
@@ -43217,42 +44095,79 @@
               const mode = ALLOC_STATE.allocMode || "b";
               let result;
 
+              const runAlloc = (mm, budget) =>
+                mode === "c"
+                  ? calculateAllocationModeC({
+                      modelsMap: mm,
+                      totalBudget: budget,
+                      selectedChannels: selected,
+                      overrides: ALLOC_STATE.allocOverrides,
+                      minSpends: ALLOC_STATE.allocMinSpend || {},
+                      maxSpends: ALLOC_STATE.allocMaxSpend || {},
+                      metric,
+                    })
+                  : calculateAllocationModeB({
+                      modelsMap: mm,
+                      totalBudget: budget,
+                      selectedChannels: selected,
+                      overrides: ALLOC_STATE.allocOverrides,
+                      minSpends: ALLOC_STATE.allocMinSpend || {},
+                      maxSpends: ALLOC_STATE.allocMaxSpend || {},
+                      extrapolateMode: ALLOC_STATE.extrapolateMode || "1.3",
+                      currency: ALLOC_STATE.currency || AB_STATE.currency || "KRW",
+                    });
+
               if (ALLOC_STATE.simMode === "manual") {
+                // 입력 안 된 채널은 최근 평균 일예산을 기본값으로 (빈 0 방지, #4)
+                ensureManualBudgetDefaults(modelsMap, selected, metric);
                 result = calculateAllocationManual({
                   modelsMap,
                   selectedChannels: selected,
                   manualBudgets: ALLOC_STATE.simManualBudgets || {},
                   metric,
                 });
+              } else if (ALLOC_STATE.osSplit) {
+                // #2.1 OS 분리: Android/iOS 채널을 각 예산으로 따로 분배 후 병합. 비중은 전체 대비 재계산.
+                const andM = new Map(),
+                  iosM = new Map();
+                for (const [k, v] of modelsMap) {
+                  const os = allocChannelOS(k);
+                  if (os === "android") andM.set(k, v);
+                  else if (os === "ios") iosM.set(k, v);
+                }
+                const empty = {
+                  items: [],
+                  unallocated: 0,
+                  overspent: false,
+                  totalAllocated: 0,
+                  lockedTotal: 0,
+                };
+                const rA = andM.size && dailyAndroid > 0 ? runAlloc(andM, dailyAndroid) : empty;
+                const rI = iosM.size && dailyIos > 0 ? runAlloc(iosM, dailyIos) : empty;
+                const mergedItems = [...rA.items, ...rI.items];
+                const totalC = mergedItems.reduce((s, it) => s + it.cost, 0);
+                mergedItems.forEach((it) => {
+                  it.weight = totalC > 0 ? it.cost / totalC : 0;
+                });
+                result = {
+                  items: mergedItems,
+                  unallocated: rA.unallocated + rI.unallocated,
+                  overspent: rA.overspent || rI.overspent,
+                  totalAllocated: rA.totalAllocated + rI.totalAllocated,
+                  lockedTotal: (rA.lockedTotal || 0) + (rI.lockedTotal || 0),
+                  _osSplit: { android: rA, ios: rI },
+                };
               } else {
-                result =
-                  mode === "c"
-                    ? calculateAllocationModeC({
-                        modelsMap,
-                        totalBudget: dailyBudget,
-                        selectedChannels: selected,
-                        overrides: ALLOC_STATE.allocOverrides,
-                        minSpends: ALLOC_STATE.allocMinSpend || {},
-                        maxSpends: ALLOC_STATE.allocMaxSpend || {},
-                        metric,
-                      })
-                    : calculateAllocationModeB({
-                        modelsMap,
-                        totalBudget: dailyBudget,
-                        selectedChannels: selected,
-                        overrides: ALLOC_STATE.allocOverrides,
-                        minSpends: ALLOC_STATE.allocMinSpend || {},
-                        maxSpends: ALLOC_STATE.allocMaxSpend || {},
-                        extrapolateMode: ALLOC_STATE.extrapolateMode || "1.3",
-                        currency: ALLOC_STATE.currency || AB_STATE.currency || "KRW",
-                      });
+                result = runAlloc(modelsMap, dailyBudget);
               }
 
               const { items, unallocated, overspent, totalAllocated, lockedTotal } =
                 result;
+              // #2.2 OS별 막대 펼침용 — 마지막 OS 분리 결과 보관
+              ALLOC_STATE._lastOsSplit = result._osSplit || null;
 
               if (!items.length) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:1rem;">분배 대상 채널이 없습니다. 산점도에서 채널을 선택했는지 확인하세요.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:1rem;">분배 대상 채널이 없습니다. 산점도에서 채널을 선택했는지 확인하세요.</td></tr>`;
                 barWrap.innerHTML = "";
                 legendWrap.innerHTML = "";
                 renderAllocationTotalCard(null);
@@ -43262,7 +44177,7 @@
 
               renderAllocItems(
                 items,
-                dailyBudget,
+                effDailyBudget,
                 tbody,
                 barWrap,
                 legendWrap,
@@ -43272,7 +44187,7 @@
               renderAllocationTotalCard({
                 items,
                 metric,
-                dailyBudget,
+                dailyBudget: effDailyBudget,
                 totalAllocated,
                 unallocated,
                 mode,
@@ -43280,7 +44195,7 @@
               renderAllocDiagnosis({
                 items,
                 metric,
-                dailyBudget,
+                dailyBudget: effDailyBudget,
                 totalAllocated,
                 unallocated,
                 mode,
@@ -43288,7 +44203,7 @@
               renderAllocVerdict({
                 items,
                 metric,
-                dailyBudget,
+                dailyBudget: effDailyBudget,
                 totalAllocated,
                 unallocated,
                 mode,
@@ -43296,12 +44211,18 @@
               renderAllocVerifyStrip({
                 items,
                 metric,
-                dailyBudget,
+                dailyBudget: effDailyBudget,
                 totalAllocated,
                 unallocated,
                 mode,
               });
-              renderAllocScenario({ modelsMap, selected, metric, mode, dailyBudget });
+              renderAllocScenario({
+                modelsMap,
+                selected,
+                metric,
+                mode,
+                dailyBudget: effDailyBudget,
+              });
             }
 
             /* What-if 시나리오: 현재 예산의 0.5×~2× 구간을 동일 알고리즘으로 재배분해 예상 성과 비교.
@@ -43565,8 +44486,8 @@
             <div class="alloc-total-grid">
 
               <div class="alloc-total-block">
-                <div class="alloc-total-block-title">과거 기준 (최신 1일 비용 대비)</div>
-                <div class="alloc-total-row"><span>비용 (1일)</span><strong class="tnum">${fmtCurrency(prev.cost)}</strong></div>
+                <div class="alloc-total-block-title">과거 기준 (최근 ${recentDays}일 평균 일예산)</div>
+                <div class="alloc-total-row"><span>비용 (일평균)</span><strong class="tnum">${fmtCurrency(prev.cost)}</strong></div>
                 ${prev.installs > 0 ? `<div class="alloc-total-row"><span>설치 (예상)</span><strong class="tnum">${formatNumber(prev.installs, { decimals: 0 })}</strong></div>` : ""}
                 ${prev.actions > 0 ? `<div class="alloc-total-row"><span>액션 (예상)</span><strong class="tnum">${formatNumber(prev.actions, { decimals: 0 })}</strong></div>` : ""}
                 ${prev.revenue > 0 ? `<div class="alloc-total-row"><span>매출 (예상)</span><strong class="tnum">${fmtCurrency(prev.revenue)}</strong></div>` : ""}
@@ -44021,6 +44942,48 @@
               };
             }
 
+            // 채널의 최근 N일 평균 일예산 (windowCost ÷ recentDays). 수동 기본값·총예산 기본값에 사용.
+            function allocRecentDailySpend(channel, metric) {
+              const rd = ALLOC_STATE.recentDays || 7;
+              const h = calcChannelHistorySummary(channel, metric, {
+                recentDays: rd,
+              });
+              return h && isFinite(h.windowCost) ? h.windowCost / rd : 0;
+            }
+            // 수동 모드: 아직 입력 안 된 선택 채널을 최근 평균 일예산으로 채움 (#4 빈 0 방지).
+            function ensureManualBudgetDefaults(modelsMap, selectedChannels, metric) {
+              if (!modelsMap) return;
+              if (!ALLOC_STATE.simManualBudgets) ALLOC_STATE.simManualBudgets = {};
+              const mb = ALLOC_STATE.simManualBudgets;
+              for (const [ch] of modelsMap) {
+                if (
+                  selectedChannels &&
+                  selectedChannels.size > 0 &&
+                  !selectedChannels.has(ch)
+                )
+                  continue;
+                if (mb[ch] == null)
+                  mb[ch] = Math.round(allocRecentDailySpend(ch, metric));
+              }
+            }
+            // #2.1 채널 그룹키(예: "JP · Apple Search · Android")의 마지막 세그먼트로 OS 판별.
+            function allocChannelOS(key) {
+              const parts = String(key || "").split(" · ");
+              const last = (parts[parts.length - 1] || "").trim().toLowerCase();
+              if (last === "ios") return "ios";
+              if (last === "android") return "android";
+              return null;
+            }
+            // OS별 채널들의 최근 7일 평균 일예산 합계 (osSplit 예산 기본값용).
+            function allocOsBudgetDefault(modelsMap, os, metric) {
+              if (!modelsMap) return 0;
+              let sum = 0;
+              for (const [ch] of modelsMap)
+                if (allocChannelOS(ch) === os)
+                  sum += allocRecentDailySpend(ch, metric);
+              return Math.round(sum);
+            }
+
             function calculateAllocationModeC({
               modelsMap,
               totalBudget,
@@ -44253,8 +45216,13 @@
                   ? windowRevenue / windowCost
                   : null;
 
-              // 3) 최신 1일 Cost와 윈도우 CPR을 결합해 "과거(기준) 결과" 산출
-              const baselineCost = latestCost;
+              // 3) 최근 N일 평균 일예산(windowCost÷N)을 기준으로 "과거(기준) 결과" 산출.
+              //    (구: 최신 1일 latestCost — Android가 그날 0이면 iOS만 잡혀 왜곡됨. #1 일관화)
+              const periodDays =
+                opts.recentDays && opts.recentDays > 0
+                  ? opts.recentDays
+                  : new Set(windowRows.map((r) => r.date)).size || 1;
+              const baselineCost = windowCost / periodDays;
               const baselineResults = avgCPR ? baselineCost / avgCPR : 0;
               const baselineInstalls = avgCPI ? baselineCost / avgCPI : 0;
               const baselineActions = avgCPA ? baselineCost / avgCPA : 0;
@@ -44388,11 +45356,36 @@
               const unitLabel = getMetricUnitLabel(metric);
               const recentDays = ALLOC_STATE.recentDays || 14;
 
+              // #3 이전(과거) 평균 — 최근 N일 평균 일예산/결과/CPR + 전체 비중 분모. 별도 컬럼으로 표시.
+              const prevByCh = {};
+              let prevTotalDaily = 0;
+              items.forEach((it) => {
+                const h = calcChannelHistorySummary(it.channel, metric, {
+                  recentDays,
+                });
+                const daily =
+                  h && isFinite(h.windowCost) ? h.windowCost / recentDays : 0;
+                const resDaily =
+                  h && isFinite(h.windowResults)
+                    ? h.windowResults / recentDays
+                    : 0;
+                prevByCh[it.channel] = {
+                  daily,
+                  resDaily,
+                  cpr: h ? h.avgCPR : null,
+                };
+                prevTotalDaily += daily;
+              });
+
               tbody.innerHTML = items
                 .map((it, i) => {
-                  const hist = calcChannelHistorySummary(it.channel, metric, {
-                    recentDays,
-                  });
+                  const prev = prevByCh[it.channel] || {
+                    daily: 0,
+                    resDaily: 0,
+                    cpr: null,
+                  };
+                  const prevShare =
+                    prevTotalDaily > 0 ? (prev.daily / prevTotalDaily) * 100 : 0;
                   const isZero = it.cost === 0;
                   const reasonNoAlloc =
                     isZero && !it.locked
@@ -44406,22 +45399,6 @@
                             tip: "",
                           }
                       : null;
-
-                  // 풍부한 데이터 표시: 비용, 설치, 액션, 매출, 평균 CPI/CPA/ROAS
-                  const histLine = hist
-                    ? `
-            <div class="alloc-ch-history">
-              <span class="alloc-hist-label" title="비용은 최신 1일 데이터, 효율(CPI/ROAS)은 최근 ${recentDays}일 데이터 기반">과거 기준 (1일)</span>
-              <span>· 비용 ${fmtCurrency(hist.totalCost)}</span>
-              ${hist.totalInstalls > 0 ? `<span>· 설치(예상) ${formatNumber(hist.totalInstalls, { decimals: 0 })}</span>` : ""}
-              ${hist.totalActions > 0 ? `<span>· 액션(예상) ${formatNumber(hist.totalActions, { decimals: 0 })}</span>` : ""}
-              ${hist.totalRevenue > 0 ? `<span>· 매출(예상) ${fmtCurrency(hist.totalRevenue)}</span>` : ""}
-              ${hist.avgCPI != null ? `<span>· CPI ${fmtCurrency(hist.avgCPI, { metric: true })} (최근 ${recentDays}일)</span>` : ""}
-              ${hist.avgCPA != null ? `<span>· CPA ${fmtCurrency(hist.avgCPA, { metric: true })} (최근 ${recentDays}일)</span>` : ""}
-              ${hist.avgROAS != null ? `<span>· ROAS ${(hist.avgROAS * 100).toFixed(1)}% (최근 ${recentDays}일)</span>` : ""}
-            </div>
-          `
-                    : '<div class="alloc-ch-history" style="color:var(--text-muted);">데이터 없음</div>';
 
                   const minVal = ALLOC_STATE.allocMinSpend[it.channel];
                   const maxVal = ALLOC_STATE.allocMaxSpend[it.channel];
@@ -44456,7 +45433,6 @@
                   ${escapeHtml(it.channel)}
                   ${it.locked ? `<button class="alloc-lock-toggle" data-channel="${escapeHtml(it.channel)}" title="잠금 해제 (자동 분배로 되돌리기)">🔒</button>` : ""}
                 </div>
-                ${histLine}
                 ${reasonNoAlloc ? `<div class="alloc-ch-warn"${reasonNoAlloc.tip ? ` title="${escapeHtml(reasonNoAlloc.tip)}"` : ""}>${escapeHtml(reasonNoAlloc.msg)} — 강제 분배하려면 우측에 직접 입력</div>` : ""}
               </td>
               <td>
@@ -44475,7 +45451,6 @@
                        }`
                   }
                 </div>
-                ${hist && hist.totalCost > 0 && !isZero ? `<div class="alloc-cost-delta">과거(1일) ${fmtCurrency(hist.totalCost)} → ${it.cost > hist.totalCost ? "▲" : it.cost < hist.totalCost ? "▼" : "="} ${fmtCurrency(it.cost)}</div>` : ""}
               </td>
               <td>
                 <div style="display:flex;gap:4px;align-items:center;">
@@ -44490,22 +45465,24 @@
               </td>
               <td class="tnum">
                 ${isZero ? '<span style="color:var(--text-muted);">—</span>' : formatNumber(it.results, { decimals: 0 })}
-                ${hist && hist.totalResults > 0 && !isZero ? `<div class="alloc-delta-hint">과거(1일) ${formatNumber(hist.totalResults, { decimals: 0 })}</div>` : ""}
               </td>
               <td class="tnum">
                 ${isZero ? '<span style="color:var(--text-muted);">—</span>' : fmtCostMetric(it.cpr, metric)}
-                ${hist && hist.avgCPR != null && !isZero ? `<div class="alloc-delta-hint">과거(평균) ${fmtCostMetric(hist.avgCPR, metric)}</div>` : ""}
-              </td>`;
+              </td>
+              <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong></td>
+              <td class="tnum" style="border-left:2px solid var(--border);color:var(--text-muted);">${prev.daily > 0 ? fmtCurrency(prev.daily) : "—"}</td>
+              <td class="tnum" style="color:var(--text-muted);">${prev.resDaily > 0 ? formatNumber(prev.resDaily, { decimals: 0 }) : "—"}</td>
+              <td class="tnum" style="color:var(--text-muted);">${prev.cpr != null ? fmtCostMetric(prev.cpr, metric) : "—"}</td>
+              <td class="tnum" style="color:var(--text-muted);">${prevShare > 0 ? prevShare.toFixed(1) + "%" : "—"}</td>`;
 
                   trHtml += `
-              <td class="tnum"><strong>${(it.weight * 100).toFixed(1)}%</strong></td>
             </tr>
           `;
 
                   if (ALLOC_STATE.simMode === "manual") {
                     trHtml += `
             <tr class="alloc-row-sim-detail" id="sim-detail-${escapeHtml(it.channel)}" style="display:none;">
-              <td colspan="7">
+              <td colspan="10">
                 <div style="font-weight:600;margin-bottom:4px;">${escapeHtml(it.channel)} 비용-성과 시뮬레이션</div>
                 <div style="color:var(--text-muted);font-size:0.85rem;margin-bottom:8px;">Cost 변화에 따른 예상 성과입니다. 그래프를 확인하며 최적의 비용을 결정하세요.</div>
                 <div class="sim-detail-chart" id="sim-chart-${escapeHtml(it.channel)}" style="height:300px; width:100%;"></div>
@@ -44526,37 +45503,33 @@
               const totalResults = items.reduce((s, it) => s + it.results, 0);
               const avgCpr = totalResults > 0 ? totalCost / totalResults : 0;
 
-              let totalHistCost = 0;
-              let totalHistResults = 0;
+              // 이전(과거) 평균 합계 — 별도 컬럼용 (최근 N일 평균 일단위)
+              let totalPrevDaily = 0;
+              let totalPrevResultsDaily = 0;
               items.forEach((it) => {
-                const hist = calcChannelHistorySummary(it.channel, metric, {
-                  recentDays,
-                });
-                if (hist) {
-                  totalHistCost += hist.totalCost;
-                  totalHistResults += hist.totalResults;
+                const p = prevByCh[it.channel];
+                if (p) {
+                  totalPrevDaily += p.daily;
+                  totalPrevResultsDaily += p.resDaily;
                 }
               });
-              const avgHistCpr =
-                totalHistResults > 0 ? totalHistCost / totalHistResults : 0;
+              const avgPrevCpr =
+                totalPrevResultsDaily > 0
+                  ? totalPrevDaily / totalPrevResultsDaily
+                  : 0;
 
               const totalHtml = `
           <tr style="background:var(--bg-2); font-weight:bold; border-top: 2px solid var(--border);">
             <td style="text-align:right; padding-right:16px;">TOTAL</td>
-            <td>
-              <div style="font-size:14px;">${fmtCurrency(totalCost)}</div>
-              <div style="font-size:11px;color:var(--text-secondary);font-weight:normal;margin-top:4px;">과거: ${fmtCurrency(totalHistCost)}</div>
-            </td>
+            <td><div style="font-size:14px;">${fmtCurrency(totalCost)}</div></td>
             <td></td>
-            <td class="tnum">
-              <div style="font-size:14px;">${formatNumber(totalResults, { decimals: 0 })}</div>
-              <div style="font-size:11px;color:var(--text-secondary);font-weight:normal;margin-top:4px;">과거: ${formatNumber(totalHistResults, { decimals: 0 })}</div>
-            </td>
-            <td class="tnum">
-              <div style="font-size:14px;">${fmtCostMetric(avgCpr, metric)}</div>
-              <div style="font-size:11px;color:var(--text-secondary);font-weight:normal;margin-top:4px;">과거: ${fmtCostMetric(avgHistCpr, metric)}</div>
-            </td>
+            <td class="tnum"><div style="font-size:14px;">${formatNumber(totalResults, { decimals: 0 })}</div></td>
+            <td class="tnum"><div style="font-size:14px;">${fmtCostMetric(avgCpr, metric)}</div></td>
             <td class="tnum" style="font-size:14px;">100.0%</td>
+            <td class="tnum" style="border-left:2px solid var(--border);color:var(--text-secondary);">${fmtCurrency(totalPrevDaily)}</td>
+            <td class="tnum" style="color:var(--text-secondary);">${formatNumber(totalPrevResultsDaily, { decimals: 0 })}</td>
+            <td class="tnum" style="color:var(--text-secondary);">${fmtCostMetric(avgPrevCpr, metric)}</td>
+            <td class="tnum" style="color:var(--text-secondary);font-size:14px;">100.0%</td>
           </tr>
         `;
 
@@ -44696,6 +45669,43 @@
                 (extra && extra.overspent
                   ? ` <span style="color:#ff8a8a;">· ⚠ 수동 입력 합계 ${fmtCurrency(extra.lockedTotal)}이 예산 ${fmtCurrency(budget)}을 초과</span>`
                   : "");
+
+              // #2.2 OS 분리 시: "OS별 펼치기" 버튼 + (펼치면) Android·iOS 각각의 추천 비중 막대(각 OS 내 100%).
+              if (ALLOC_STATE.osSplit && ALLOC_STATE._lastOsSplit) {
+                const osData = ALLOC_STATE._lastOsSplit;
+                const subBar = (label, r) => {
+                  const its = (r && r.items) || [];
+                  const tot = its.reduce((s, it) => s + it.cost, 0);
+                  if (!its.length || tot <= 0)
+                    return `<div style="margin-top:12px;"><div style="font-size:12.5px;font-weight:700;margin-bottom:4px;">${label}</div><div class="muted" style="font-size:11px;">분배 결과 없음 (예산 0 또는 채널 없음)</div></div>`;
+                  const seg = its
+                    .map(
+                      (it, i) =>
+                        `<div class="alloc-bar-seg" style="width:${((it.cost / tot) * 100).toFixed(2)}%;background:${CHART_THEME.series[i % CHART_THEME.series.length]};" title="${escapeHtml(it.channel)} ${((it.cost / tot) * 100).toFixed(1)}%"></div>`,
+                    )
+                    .join("");
+                  const leg = its
+                    .map(
+                      (it, i) =>
+                        `<span><span class="sw" style="background:${CHART_THEME.series[i % CHART_THEME.series.length]};"></span>${escapeHtml(it.channel)} <span class="tnum">${((it.cost / tot) * 100).toFixed(1)}%</span></span>`,
+                    )
+                    .join("");
+                  return `<div style="margin-top:12px;"><div style="font-size:12.5px;font-weight:700;margin-bottom:4px;">${label} <span class="muted" style="font-weight:400;font-size:11px;">일 ${fmtCurrency(tot)}</span></div><div class="alloc-bar">${seg}</div><div class="alloc-bar-legend" style="margin-top:4px;">${leg}</div></div>`;
+                };
+                legendWrap.innerHTML +=
+                  `<div style="margin-top:10px;"><button class="ab-pill" data-os-expand="1">${ALLOC_STATE.osShareExpanded ? "▲ OS별 접기" : "▼ OS별 (Android · iOS) 비중 펼치기"}</button></div>` +
+                  (ALLOC_STATE.osShareExpanded
+                    ? subBar("📱 Android", osData.android) +
+                      subBar("🍎 iOS", osData.ios)
+                    : "");
+                // 동적 생성 버튼이라 여기서 바인딩 (bind 시점엔 없음)
+                const _exp = legendWrap.querySelector("[data-os-expand]");
+                if (_exp)
+                  _exp.addEventListener("click", () => {
+                    ALLOC_STATE.osShareExpanded = !ALLOC_STATE.osShareExpanded;
+                    refreshAllocationResults();
+                  });
+              }
             }
 
             /* 5-3 분석 단위 + 필터 패널 렌더 */
@@ -45542,46 +46552,8 @@
                         ),
                       );
 
-                    // manual 모드로 첫 전환 시, 현재 총 예산을 기준으로 가장 효율적인 알고리즘 결과를 초기값으로 설정
-                    if (
-                      isManual &&
-                      Object.keys(ALLOC_STATE.simManualBudgets || {}).length === 0
-                    ) {
-                      const modelsMap = ALLOC_CACHE.models;
-                      const totalBudget = ALLOC_STATE.budget || 0;
-                      const metric = ALLOC_STATE.metric || "installs";
-                      if (modelsMap && totalBudget > 0) {
-                        const resB = calculateAllocationModeB({
-                          modelsMap,
-                          totalBudget,
-                          selectedChannels: null,
-                          extrapolateMode: ALLOC_STATE.extrapolateMode || "1.3",
-                          currency:
-                            ALLOC_STATE.currency || AB_STATE.currency || "KRW",
-                        });
-                        const resC = calculateAllocationModeC({
-                          modelsMap,
-                          totalBudget,
-                          selectedChannels: null,
-                          metric,
-                        });
-                        const totalResB = resB.items.reduce(
-                          (sum, it) => sum + (it.allocResult || 0),
-                          0,
-                        );
-                        const totalResC = resC.items.reduce(
-                          (sum, it) => sum + (it.allocResult || 0),
-                          0,
-                        );
-
-                        const bestItems =
-                          totalResB >= totalResC ? resB.items : resC.items;
-                        ALLOC_STATE.simManualBudgets = {};
-                        bestItems.forEach((it) => {
-                          ALLOC_STATE.simManualBudgets[it.channel] = it.allocCost;
-                        });
-                      }
-                    }
+                    // 수동 모드 진입 시 채널별 기본값(최근 평균 일예산)은 refreshAllocationResults의
+                    // ensureManualBudgetDefaults가 채움 — 총예산 입력 여부와 무관하게 항상 baseline 표시(#4).
 
                     const sControlsDesc =
                       document.querySelector("#s-controls .muted");
@@ -45693,6 +46665,35 @@
                 });
               }
 
+              // #2.1 OS 분리 토글 (예산 입력 구조가 바뀌므로 전체 재렌더)
+              document.querySelectorAll("[data-os-split]").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                  ALLOC_STATE.osSplit = btn.dataset.osSplit === "on";
+                  navigate("5-3");
+                });
+              });
+              // OS 분리 예산 입력 (Android·iOS)
+              ["android", "ios"].forEach((os) => {
+                const el = document.getElementById("alloc-budget-" + os);
+                if (!el) return;
+                let _t = null;
+                el.addEventListener("input", () => {
+                  allocLiveCommaFormat(el);
+                  const v = allocParseNum(el.value);
+                  if (os === "android") ALLOC_STATE.budgetAndroid = v;
+                  else ALLOC_STATE.budgetIos = v;
+                  if (_t) clearTimeout(_t);
+                  _t = setTimeout(() => {
+                    refreshAllocationResults();
+                    _t = null;
+                  }, 120);
+                });
+                el.addEventListener("blur", () => {
+                  el.value = allocFmtNum(allocParseNum(el.value));
+                });
+              });
+              // (OS별 펼치기 버튼은 동적 막대 안에 있어 renderAllocItems에서 바인딩)
+
               // metric select — cache 무효 + 수동 배분 리셋 + 산점도 재계산
               const metricSelect = document.getElementById("alloc-metric");
               if (metricSelect) {
@@ -45727,6 +46728,12 @@
             const TOOL_REQUIRED_FIELDS = {
               "5-2": ["date", { oneOf: ["installs", "actions", "cost"] }],
               "5-3": [
+                "date",
+                "cost",
+                { oneOf: ["channel", "campaign_name"] },
+                { oneOf: ["installs", "actions"] },
+              ],
+              "5-22": [
                 "date",
                 "cost",
                 { oneOf: ["channel", "campaign_name"] },
@@ -45860,6 +46867,18 @@
                 { key: "pu_d7", unlocks: "결제건수 기준 분배 (대안 metric)" },
                 { key: "impressions", unlocks: "노출 기반 시뮬레이션" },
                 { key: "clicks", unlocks: "클릭 기반 시뮬레이션" },
+              ],
+              "5-22": [
+                {
+                  key: "campaign_name",
+                  unlocks: "분석 단위 '캠페인' 토글 — 캠페인별 포화도",
+                },
+                {
+                  key: "revenue_d7",
+                  unlocks: "ROAS 기준 포화도 (한계 ROAS vs 평균 ROAS)",
+                },
+                { key: "platform", unlocks: "OS(Android/iOS)별 행 분리" },
+                { key: "actions", unlocks: "액션 기준 분석 (설치 대안)" },
               ],
               "5-5": [
                 {
@@ -46050,6 +47069,7 @@
             const TOOL_GROUP = {
               "5-2": "efficiency",
               "5-3": "efficiency",
+              "5-22": "efficiency",
               "5-9": "efficiency",
               "5-10": "efficiency",
               "5-11": "efficiency",
@@ -46199,16 +47219,32 @@
               for (let d = 0; d < 45; d++) {
                 const date = new Date(base + d * 86400000).toISOString().slice(0, 10);
                 for (let ci = 0; ci < chans.length; ci++) {
-                  const trend = 1 + d * 0.012,
+                  // 비용을 완만하지만 넓게 램프(0.45→1.65배, ~3.7배)해 cost↔효율 관계를 식별 가능하게.
+                  //  (램프가 좁고 노이즈가 크면 포화 곡선이 노이즈에 묻혀 5-22·5-3 한계효용 데모가 안 보임)
+                  const trend = 0.45 + d * 0.027,
                     scale = [1.0, 0.75, 0.5, 0.35][ci];
                   const cost = Math.round(
-                    900000 * scale * trend * (1 + (rng() + 0.5) * 0.3),
+                    900000 * scale * trend * (1 + (rng() + 0.5) * 0.1),
                   );
-                  const imp = Math.round((cost / 18) * (1 + (rng() + 0.5) * 0.2));
-                  const clk = Math.round(imp * (0.022 + (rng() + 0.5) * 0.006));
+                  const imp = Math.round((cost / 18) * (1 + (rng() + 0.5) * 0.05));
+                  const clk = Math.round(imp * (0.022 + (rng() + 0.5) * 0.004));
+                  // 채널별 효율 차등 — Apple Search가 가장 효율(낮은 CPI), Google UAC가 가장 비효율.
+                  // → "절대 CPR/ROAS 가중"이 효율 채널에 더 배분하는 걸 데모가 보여줌.
+                  const effMult = [0.7, 0.95, 1.2, 1.6][ci];
+                  // 채널별 수확체감(포화) 곡률 — 설치 반응 ∝ cost^satExp.
+                  //  satExp<1 → 증액할수록 CPI↑(포화), >1 → 증액할수록 CPI↓(여유).
+                  //  노이즈를 낮춰 멱법칙 신호가 선명하게(Power/Log 적합이 이겨 한계효율이 또렷) —
+                  //  5-22 포화도·5-3 한계효용 데모가 "포화 vs 증액 기회"를 실제로 보여주게 함.
+                  const satExp = [0.5, 0.82, 1.05, 1.4][ci];
+                  const costRatio = cost / (900000 * scale); // 채널 기준치 대비 (≈1, trend·noise로 변동)
                   const inst = Math.max(
                     1,
-                    Math.round(clk * (0.3 + (rng() + 0.5) * 0.06)),
+                    Math.round(
+                      clk *
+                        (0.34 + (rng() + 0.5) * 0.03) *
+                        effMult *
+                        Math.pow(costRatio, satExp - 1),
+                    ),
                   );
                   const r0 = Math.round(inst * (900 + (rng() + 0.5) * 300));
                   rows.push({
@@ -46701,6 +47737,7 @@
             const DEMO_BUILDERS = {
               "5-2": _demoEfficiencyData,
               "5-3": _demoEfficiencyData,
+              "5-22": _demoEfficiencyData,
               "5-8": _demoCohortData,
               "5-6": _demoCreativeData,
               "5-21": _demoPvmData,
