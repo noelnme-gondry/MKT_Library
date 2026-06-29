@@ -17330,10 +17330,9 @@
                 !isToolAnalyzed("5-6")
               ) {
                 return pageShell(meta, {
-                  deck: "소재 성과 daily CSV를 업로드하면 파생지표 + WLS 분해 + Fatigue + Concept Matrix + 다음 테스트 후보를 자동 생성.",
                   chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
                   summary:
-                    "creative_id × date × channel × campaign_id grain의 wide CSV가 필요합니다. attribute 컬럼(hook_type/message_angle/format 등)이 매핑되면 decompose + matrix가 활성화됩니다.",
+                    "소재별 일별 성과 CSV를 올리면 어떤 소재가 잘 되는지, 어떤 특징이 효과적인지, 언제 새로 바꿔야 하는지를 자동으로 분석해 드립니다. 소재(creative) 단위로 날짜·채널별 일별 성과가 들어있는 CSV가 필요합니다 (creative_id × date × channel × campaign_id 단위). 소재 속성 컬럼(후킹 방식·메시지 콘셉트·포맷 등 — hook_type/message_angle/format)을 함께 매핑하면 '어떤 특징이 효과적인지' 분석과 조합별 성과표까지 자동으로 켜집니다.",
                   toc: [{ id: "s-prep", title: "데이터 준비" }],
                   body: renderInlineCsvUpload("5-6"),
                 });
@@ -17343,29 +17342,35 @@
               const c = CREATIVE_CACHE;
 
               return pageShell(meta, {
-                deck: "소재별 파생지표 모니터링, 속성별 기여도 분해(WLS), 소재 피로도(Fatigue) 진단 및 테스트 추천",
+                deck: "소재별 성과 한눈에 보기, 어떤 특징이 효과적인지 분석, 지치기 전에 교체 시점 알려주기",
                 chips: `
             <span class="chip"><span class="dot"></span>도구 · 소재 분석</span>
             <span class="chip ok"><span class="dot"></span>소재 ${c.metrics.length}개</span>
             <span class="chip"><span class="dot"></span>config ${CREATIVE_CONFIG.version} · snapshot ${c.snapshotHash}</span>
             ${authStatusChip()}`,
                 summary:
-                  "업로드된 소재별 일자별 성과 데이터를 분석하여 효율적인 예산 배분 및 크리에이티브 방향성을 제시합니다.<br>" +
-                  "<details style='margin-top: 6px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer;'><summary>⚠️ 통계 분석 및 해석 한계 펼치기</summary>" +
+                  "소재(영상·이미지 등 광고 크리에이티브)별로 어떤 게 잘 되고 있는지, 왜 잘 되는지, 언제 새로 바꿔야 하는지를 한 곳에서 보여줍니다." +
+                  "<ul style='margin:8px 0 0;padding-left:18px;font-size:12.5px;line-height:1.7;color:var(--text-secondary);'>" +
+                  "<li><strong>어떤 소재가 이기고 있나</strong> — 승률·교체 속도·생존 기간 (Win-rate · Velocity)</li>" +
+                  "<li><strong>어떤 특징이 효과적인가</strong> — 후킹 방식·포맷 등 속성별 효과 분석 (WLS 분해)</li>" +
+                  "<li><strong>지금 지치고 있는 소재가 있나</strong> — 소재 피로도 진단과 교체 시점 추천 (Fatigue)</li>" +
+                  "<li><strong>다음엔 뭘 테스트할까</strong> — 조합별 성과표 기반 다음 테스트 후보 추천</li>" +
+                  "</ul>" +
+                  "<details style='margin-top: 8px; font-size: 11.5px; color: var(--text-secondary); cursor: pointer;'><summary>⚠️ 통계 분석 및 해석 한계 펼치기</summary>" +
                   "<div style='margin-top: 6px; padding: 8px 10px; background: var(--bg-1); border-left: 3px solid var(--primary); line-height: 1.6;'>" +
                   "노출량 가중 최소제곱법(WLS)과 다중 검정 보정(BH)을 통해 크리에이티브 속성(Hook, Format 등)의 효과를 추정합니다. 본 분해 결과는 매체 알고리즘에 따른 노출 편향(Selection Bias)이 포함되어 있으므로 인과적 효과가 아닌 상관 관계로 해석해야 하며, 최종 확정은 실험 도구(5-4)를 통해 검증하시는 것을 권장합니다." +
                   "</div></details>",
                 toc: [
                   { id: "s-prep", title: "데이터 준비" },
-                  { id: "s-validation", title: "검증" },
-                  { id: "s-velocity", title: "Win-rate · Velocity" },
-                  { id: "s-metrics", title: "소재별 지표" },
-                  { id: "s-decompose", title: "WLS 분해" },
-                  { id: "s-fatigue", title: "Fatigue 검출" },
-                  { id: "s-fatigue-alert", title: "Ad Fatigue Alert" },
-                  { id: "s-auto-planner", title: "Auto-Planner" },
-                  { id: "s-matrix", title: "Concept Matrix" },
-                  { id: "s-next", title: "다음 테스트" },
+                  { id: "s-validation", title: "데이터 점검" },
+                  { id: "s-velocity", title: "운영 건강도" },
+                  { id: "s-metrics", title: "소재별 성과표" },
+                  { id: "s-decompose", title: "어떤 특징이 효과적인가" },
+                  { id: "s-fatigue", title: "소재 피로도" },
+                  { id: "s-fatigue-alert", title: "피로도 임박 경고" },
+                  { id: "s-auto-planner", title: "교체 일정 추천" },
+                  { id: "s-matrix", title: "조합별 성과표" },
+                  { id: "s-next", title: "다음 테스트 추천" },
                 ],
                 body: `
             <details class="block" id="s-prep" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);outline:none;">🗂 데이터 매핑 설정 (펼쳐서 변경)</summary><div style="margin-top:10px;">${renderInlineCsvUpload("5-6")}</div></details>
@@ -17390,12 +17395,12 @@
               if (!hasIssues)
                 return `
           <section class="block" id="s-validation">
-            <h2 class="section-title"><span class="ix">§1</span>검증</h2>
+            <h2 class="section-title"><span class="ix">§1</span>데이터 점검 (검증)</h2>
             <div class="callout ok"><div class="ico">✓</div><div class="body"><strong>모든 row 통과</strong><p>음수·grain 위반 없음.</p></div></div>
           </section>`;
               return `
           <section class="block" id="s-validation">
-            <h2 class="section-title"><span class="ix">§1</span>검증</h2>
+            <h2 class="section-title"><span class="ix">§1</span>데이터 점검 (검증)</h2>
             <div class="callout warn">
               <div class="ico">!</div>
               <div class="body">
@@ -17436,21 +17441,22 @@
                 .slice(0, 50);
               const filterBanner = sel
                 ? `<div class="callout" style="margin-bottom:8px;"><div class="ico">i</div><div class="body">
-              <strong>Concept Matrix 필터 적용 중:</strong> ${escapeHtml(rowAttr)}=<code class="inline">${escapeHtml(sel.row)}</code> × ${escapeHtml(colAttr)}=<code class="inline">${escapeHtml(sel.col)}</code> (${filtered.length}개 소재)
+              <strong>조합별 성과표(Concept Matrix) 필터 적용 중:</strong> ${escapeHtml(rowAttr)}=<code class="inline">${escapeHtml(sel.row)}</code> × ${escapeHtml(colAttr)}=<code class="inline">${escapeHtml(sel.col)}</code> (${filtered.length}개 소재)
               <button class="ab-pill" id="creative-clear-cell" style="margin-left:8px;">필터 해제</button>
             </div></div>`
                 : "";
               return `
           <section class="block" id="s-metrics">
-            <h2 class="section-title"><span class="ix">§2</span>소재별 지표 ${sel ? `(필터됨)` : `(상위 50, impressions 순)`}</h2>
+            <h2 class="section-title"><span class="ix">§3</span>소재별 성과표 ${sel ? `(필터됨)` : `(상위 50, 노출수 순)`}</h2>
+            <p class="muted" style="margin-bottom:6px;">노출·클릭·설치 같은 원자료와, 클릭률·전환율·설치당비용 같은 계산된 효율 지표를 함께 봅니다. 약어 위에 마우스를 올리면 설명이 나옵니다.</p>
             ${filterBanner}
             <div class="table-wrap">
               <table class="data" style="font-size:11.5px;">
                 <thead><tr>
-                  <th>Creative ID</th><th>Channel</th><th>Days</th>
-                  <th>Impr</th><th>Clicks</th><th>Inst</th><th>Spend</th>
-                  <th>CTR</th><th>CVR</th><th>IPM</th><th>CPI</th>
-                  <th>Hook %</th><th>Comp %</th>
+                  <th>Creative ID</th><th>Channel</th><th title="데이터가 존재하는 일수">Days</th>
+                  <th title="노출수 (Impressions)">Impr</th><th title="클릭수 (Clicks)">Clicks</th><th title="설치수 (Installs)">Inst</th><th title="지출 비용 (Spend)">Spend</th>
+                  <th title="클릭률 — 노출 대비 클릭 비율 (CTR)">CTR</th><th title="전환율 — 클릭 대비 설치 비율 (CVR)">CVR</th><th title="노출 1,000회당 설치수 (Installs Per Mille)">IPM</th><th title="설치 1건당 비용 (Cost Per Install)">CPI</th>
+                  <th title="3초 이상 시청 비율 (Hook Rate)">Hook %</th><th title="영상 완주율 (Completion Rate)">Comp %</th>
                 </tr></thead>
                 <tbody>
                   ${sorted
@@ -17487,8 +17493,8 @@
               if (!decompose || !Object.keys(decompose).length) {
                 return `
             <section class="block" id="s-decompose">
-              <h2 class="section-title"><span class="ix">§3</span>WLS 분해</h2>
-              <div class="callout warn"><div class="ico">!</div><div class="body"><strong>분해 불가</strong><p>attribute 컬럼(hook_type/format 등) 매핑 또는 row 수(≥30) 부족.</p></div></div>
+              <h2 class="section-title"><span class="ix">§4</span>어떤 특징이 효과적인가 (속성별 효과 분석 · WLS 분해)</h2>
+              <div class="callout warn"><div class="ico">!</div><div class="body"><strong>분석 불가</strong><p>소재 속성 컬럼(후킹 방식·포맷 등 — hook_type/format) 매핑 또는 데이터 행 수(30행 이상)가 부족합니다.</p></div></div>
             </section>`;
               }
               const cur = decompose[CREATIVE_STATE.decomposeMetric] || decompose.ctr;
@@ -17500,7 +17506,7 @@
 
               const metricToggle = `
           <div class="ab-pillgroup" style="margin-bottom:8px;">
-            <span class="ab-pillgroup-label">분해 metric</span>
+            <span class="ab-pillgroup-label">분석 기준 지표</span>
             ${["ctr", "cvr"].map((m) => (decompose[m] ? `<button class="ab-pill ${CREATIVE_STATE.decomposeMetric === m ? "active" : ""}" data-decompose-metric="${m}">${m.toUpperCase()}</button>` : "")).join("")}
           </div>
         `;
@@ -17525,19 +17531,25 @@
 
               return `
           <section class="block" id="s-decompose">
-            <h2 class="section-title"><span class="ix">§3</span>WLS 분해 — attribute별 효과</h2>
-            <p class="muted">impressions-weighted Linear Probability Model. campaign_id는 within-transformation 흡수. BH 다중검정 보정. ⚠ 관찰 분해라 delivery selection bias 포함 — 인과 후보로만.</p>
+            <h2 class="section-title"><span class="ix">§4</span>어떤 특징이 효과적인가 (속성별 효과 분석 · WLS 분해)</h2>
+            <p class="muted">후킹 방식·메시지 콘셉트·포맷 같은 소재 속성이 클릭률/전환율에 실제로 영향을 주는지 통계적으로 분석합니다.</p>
+            <details style="margin-bottom:8px;font-size:11.5px;color:var(--text-muted);cursor:pointer;"><summary>어떻게 계산하나요? (분석 방법 펼치기)</summary>
+              <div style="margin-top:6px;padding:8px 10px;background:var(--bg-1);border-left:3px solid var(--primary);line-height:1.6;">
+                노출수로 가중한 회귀분석(impressions-weighted Linear Probability Model)으로 추정하며, 캠페인별 차이는 자동으로 보정합니다(campaign_id within-transformation). 여러 속성을 동시에 검정하므로 다중검정 보정(BH)을 적용합니다.
+                ⚠ 실제 노출 데이터를 관찰해서 분석한 결과라 매체 알고리즘의 노출 편향(selection bias)이 섞여 있을 수 있습니다 — 상관관계로만 참고하고, 확정은 실험 분석 도구(5-4)로 검증하는 것을 권장합니다.
+              </div>
+            </details>
             ${metricToggle}
-            <p style="font-size:12px;color:var(--text-muted);">n=${cur.diag?.n || 0} · R²=${fmt(cur.diag?.R2)} · 제거된 변수: ${(cur.dropped || []).length ? cur.dropped.join(", ") : "없음"}</p>
+            <p style="font-size:12px;color:var(--text-muted);">분석에 쓰인 데이터 행 수(n)=${cur.diag?.n || 0} · <span title="모델이 데이터를 얼마나 잘 설명하는지 (0~1, 높을수록 설명력 높음)">설명력(R²)</span>=${fmt(cur.diag?.R2)} · 제외된 속성(다중공선성): ${(cur.dropped || []).length ? cur.dropped.join(", ") : "없음"}</p>
             ${
               (cur.effects || []).length
                 ? `
               <div class="alloc-card" style="margin:12px 0;">
                 <div class="cann-card-header">
-                  <div class="alloc-card-title">Forest plot — β 효과 + 95% CI</div>
+                  <div class="alloc-card-title">속성별 영향력 그림 (Forest plot — β + 95% 신뢰구간)</div>
                   <button class="ab-pill" data-pngdownload="creative-forest-${CREATIVE_STATE.decomposeMetric}" data-pngname="creative_forest_${CREATIVE_STATE.decomposeMetric}" title="PNG 다운로드">⬇ PNG</button>
                 </div>
-                <p class="muted">막대 = 효과 크기(β), 점선 = 95% CI. 0 기준선 안 걸치고 BH-adj p&lt;0.05면 유의.</p>
+                <p class="muted">막대 길이 = 영향력 크기(β), 양옆 점선 = 신뢰구간(95% CI). 막대가 0선에 안 걸치고 보정된 유의확률(BH-adj p)&lt;0.05면 통계적으로 의미있는 효과입니다.</p>
                 <div class="chart-container" style="--chart-h: ${Math.max(280, Math.min(800, (cur.effects || []).length * 26 + 80))}px;"><canvas id="creative-forest-${CREATIVE_STATE.decomposeMetric}"></canvas></div>
               </div>`
                 : ""
@@ -17547,11 +17559,11 @@
                 ? `<div class="table-wrap">
               <table class="data" style="font-size:11.5px;">
                 <thead><tr>
-                  <th>Factor</th><th>Level</th><th>효과 (β)</th><th>95% CI</th><th>p</th><th>BH-adj p</th><th>n</th><th>유의</th>
+                  <th title="비교 대상 속성">속성 (Factor)</th><th title="속성 안의 구체적인 값">값 (Level)</th><th title="기준값 대비 변화량">영향력 (β)</th><th title="이 범위 안에 실제 효과가 있을 가능성이 95%">신뢰구간 (95% CI)</th><th title="우연일 확률">유의확률 (p)</th><th title="여러 속성을 동시에 검정할 때 보정한 유의확률">보정된 유의확률 (BH-adj p)</th><th title="표본 수">n</th><th>유의 여부</th>
                 </tr></thead>
                 <tbody>${effRows}</tbody>
               </table></div>`
-                : `<p class="muted">유의한 효과 없음.</p>`
+                : `<p class="muted">통계적으로 의미있는 효과가 발견되지 않았습니다.</p>`
             }
           </section>`;
             }
@@ -17566,21 +17578,21 @@
               const top5 = fatigued.sort((a, b) => b.dropPct - a.dropPct).slice(0, 5);
               return `
           <section class="block" id="s-fatigue">
-            <h2 class="section-title"><span class="ix">§4</span>Fatigue 검출</h2>
-            <p class="muted">7일 rolling CTR이 peak 대비 ${(CREATIVE_CONFIG.fatigue.dropPct * 100).toFixed(0)}% 이상 하락하고 회복 없으면 flag.</p>
+            <h2 class="section-title"><span class="ix">§5</span>소재 피로도 진단 (Fatigue 검출)</h2>
+            <p class="muted">최근 7일 평균 클릭률이 가장 좋았던 시점보다 ${(CREATIVE_CONFIG.fatigue.dropPct * 100).toFixed(0)}% 이상 떨어지고 회복하지 못하면 '지친 소재(fatigued)'로 표시합니다.</p>
             <div class="ab-stat-row" style="margin:8px 0 12px;">
               <div class="ab-stat"><div class="ab-stat-label">분석 소재 수</div><div class="ab-stat-value tnum">${fatigue.length}</div></div>
-              <div class="ab-stat"><div class="ab-stat-label">Fatigue 감지</div><div class="ab-stat-value tnum ${fatigued.length > 0 ? "neg" : "pos"}">${fatigued.length}</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">피로해진 소재 수 (Fatigue)</div><div class="ab-stat-value tnum ${fatigued.length > 0 ? "neg" : "pos"}">${fatigued.length}</div></div>
             </div>
             ${
               top5.length
                 ? `
               <div class="alloc-card" style="margin-bottom:12px;">
                 <div class="cann-card-header">
-                  <div class="alloc-card-title">Decay 라인 — Drop % 상위 ${top5.length}개</div>
+                  <div class="alloc-card-title">클릭률 하락 추이 — 하락률 상위 ${top5.length}개 (Decay 라인)</div>
                   <button class="ab-pill" data-pngdownload="creative-fatigue-decay" data-pngname="creative_fatigue_decay" title="PNG 다운로드">⬇ PNG</button>
                 </div>
-                <p class="muted">7일 rolling CTR. ▲ peak 시점, ▼ 최저점.</p>
+                <p class="muted">최근 7일 평균 클릭률(rolling CTR). ▲ 가장 좋았던 시점(peak), ▼ 가장 낮았던 시점.</p>
                 <div class="chart-container"><canvas id="creative-fatigue-decay"></canvas></div>
               </div>`
                 : ""
@@ -17589,7 +17601,7 @@
               fatigued.length
                 ? `<div class="table-wrap">
               <table class="data" style="font-size:11.5px;">
-                <thead><tr><th>Creative ID</th><th>Peak Date</th><th>Peak CTR</th><th>현재 CTR</th><th>Drop %</th><th>운영 기간</th></tr></thead>
+                <thead><tr><th>Creative ID</th><th title="가장 좋았던 날짜">최고점 날짜 (Peak Date)</th><th title="가장 좋았던 시점의 클릭률">최고 클릭률 (Peak CTR)</th><th>현재 CTR</th><th title="최고점 대비 하락률">하락률 (Drop %)</th><th>운영 기간</th></tr></thead>
                 <tbody>${fatigued
                   .sort((a, b) => b.dropPct - a.dropPct)
                   .slice(0, 30)
@@ -17607,19 +17619,19 @@
                   )
                   .join("")}</tbody>
               </table></div>`
-                : `<p class="muted">감지된 fatigue 소재 없음. (양호)</p>`
+                : `<p class="muted">지친 소재가 감지되지 않았습니다. (양호)</p>`
             }
           </section>`;
             }
 
-            /* §2-B Ad Fatigue Alert — 다차원 복합지수(CTR↓ + 노출강도↑ + CPM↑) + 임계점 도달 예상일 */
+            /* §6 피로도 임박 경고 (Ad Fatigue Alert) — 다차원 복합지수(CTR↓ + 노출강도↑ + CPM↑) + 임계점 도달 예상일 */
             function renderCreativeFatigueAlert(c) {
               const alerts = c.autoPlan ? c.autoPlan.plan : null;
               const raw = c.fatigueAlerts || [];
               if (!raw.length)
                 return `<section class="block" id="s-fatigue-alert">
-          <h2 class="section-title"><span class="ix">§4.5</span>Ad Fatigue Alert</h2>
-          <p class="muted">분석 가능한 소재 없음 (운영 기간 ${CREATIVE_CONFIG.fatigueAlert.minDays}일 미만).</p>
+          <h2 class="section-title"><span class="ix">§6</span>피로도 임박 경고 (Ad Fatigue Alert)</h2>
+          <p class="muted">분석 가능한 소재가 없습니다 (운영 기간 ${CREATIVE_CONFIG.fatigueAlert.minDays}일 미만).</p>
         </section>`;
 
               const fmtPct = (v) =>
@@ -17640,16 +17652,21 @@
 
               return `
           <section class="block" id="s-fatigue-alert">
-            <h2 class="section-title"><span class="ix">§4.5</span>Ad Fatigue Alert</h2>
-            <p class="muted">CTR 하락 + 노출강도(impressions/day) 상승 + CPM 상승 추세를 결합한 복합 Fatigue 지수(0~1). ${(CREATIVE_CONFIG.fatigueAlert.alertScore * 100).toFixed(0)}% 이상이면 즉시 경고, 미달이라도 추세 외삽으로 ${CREATIVE_CONFIG.fatigueAlert.horizonDays}일 내 도달 예상 시점을 산출합니다.</p>
+            <h2 class="section-title"><span class="ix">§6</span>피로도 임박 경고 (Ad Fatigue Alert)</h2>
+            <p class="muted">클릭률 하락 + 노출 강도 상승 + 노출당비용(CPM) 상승 추세를 합쳐 피로도를 0~100% 점수로 계산합니다. 추세가 계속되면 며칠 후 위험 수준에 도달할지도 함께 예상합니다.</p>
+            <details style="margin-bottom:8px;font-size:11.5px;color:var(--text-muted);cursor:pointer;"><summary>점수는 어떻게 계산하나요?</summary>
+              <div style="margin-top:6px;padding:8px 10px;background:var(--bg-1);border-left:3px solid var(--primary);line-height:1.6;">
+                CTR 하락 + 노출강도(impressions/day) 상승 + CPM 상승 추세를 결합한 복합 지수(0~1)입니다. ${(CREATIVE_CONFIG.fatigueAlert.alertScore * 100).toFixed(0)}% 이상이면 즉시 경고, 미달이라도 추세를 외삽해 ${CREATIVE_CONFIG.fatigueAlert.horizonDays}일 내 도달 예상 시점을 산출합니다.
+              </div>
+            </details>
             <div class="ab-stat-row" style="margin:8px 0 12px;">
               <div class="ab-stat"><div class="ab-stat-label">분석 소재 수</div><div class="ab-stat-value tnum">${raw.length}</div></div>
-              <div class="ab-stat"><div class="ab-stat-label">즉시 경고</div><div class="ab-stat-value tnum ${alertN > 0 ? "neg" : "pos"}">${alertN}</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">지금 바로 경고</div><div class="ab-stat-value tnum ${alertN > 0 ? "neg" : "pos"}">${alertN}</div></div>
               <div class="ab-stat"><div class="ab-stat-label">${CREATIVE_CONFIG.autoPlanner.soonDays}일 내 도달 예상</div><div class="ab-stat-value tnum ${soonN > 0 ? "neg" : "pos"}">${soonN}</div></div>
             </div>
             <div class="table-wrap">
               <table class="data" style="font-size:11.5px;">
-                <thead><tr><th>Creative ID</th><th>채널</th><th>운영일</th><th>Fatigue Score</th><th>CTR 추세</th><th>노출강도 추세</th><th>CPM 추세</th><th>임계 도달 예상</th></tr></thead>
+                <thead><tr><th>Creative ID</th><th>채널</th><th>운영일</th><th title="0~100%, 높을수록 위험">피로도 점수 (Fatigue Score)</th><th title="클릭률(CTR) 변화 추세">클릭률 추세</th><th title="하루 노출수 변화 추세 — 빈도(Frequency) 데이터가 없을 때 대신 쓰는 지표">노출강도 추세</th><th title="노출당비용(CPM) 변화 추세">CPM 추세</th><th title="이대로면 위험 수준에 도달할 것으로 예상되는 시점">위험 수준 도달 예상</th></tr></thead>
                 <tbody>${sorted
                   .slice(0, 30)
                   .map(
@@ -17669,7 +17686,7 @@
                   .join("")}</tbody>
               </table>
             </div>
-            <p class="muted" style="font-size:11px;margin-top:8px;">⚠ 노출강도(impressions/day)는 빈도(Frequency) 컬럼이 없어 사용하는 proxy입니다 — 동일 타겟에 노출이 급증하면 빈도 상승과 상관됩니다.</p>
+            <p class="muted" style="font-size:11px;margin-top:8px;">⚠ 노출강도(하루 노출수, impressions/day)는 빈도(Frequency) 데이터가 없을 때 대신 쓰는 지표입니다 — 같은 사람에게 노출이 급증하면 빈도 상승과 함께 움직이는 경향이 있습니다.</p>
           </section>`;
             }
 
@@ -17678,8 +17695,8 @@
               const plan = c.autoPlan;
               if (!plan || !plan.plan.length)
                 return `<section class="block" id="s-auto-planner">
-          <h2 class="section-title"><span class="ix">§4.6</span>Auto-Planner</h2>
-          <p class="muted">교체가 필요한 소재 없음.</p>
+          <h2 class="section-title"><span class="ix">§7</span>교체 일정 추천 (Auto-Planner)</h2>
+          <p class="muted">교체가 필요한 소재가 없습니다.</p>
         </section>`;
 
               const buckets = CREATIVE_FATIGUE.ganttBuckets(
@@ -17699,8 +17716,8 @@
 
               return `
           <section class="block" id="s-auto-planner">
-            <h2 class="section-title"><span class="ix">§4.6</span>Auto-Planner — 교체 주기 자동 기획</h2>
-            <p class="muted">주당 신규 소재 공급 가능 개수(velocity)를 입력하면, Fatigue 경고 우선순위로 교체 주차를 자동 배정합니다.</p>
+            <h2 class="section-title"><span class="ix">§7</span>교체 일정 추천 (Auto-Planner)</h2>
+            <p class="muted">한 주에 새로 만들 수 있는 소재 개수를 입력하면, 피로도가 급한 소재부터 교체할 주차를 자동으로 배정해 드립니다.</p>
             <div style="display:flex;align-items:center;gap:10px;margin:8px 0 12px;flex-wrap:wrap;">
               <label style="font-size:12px;color:var(--text-muted);">주당 신규 소재 공급량</label>
               <input type="number" id="creative-weekly-velocity" min="0.5" step="0.5" value="${plan.weeklyVelocity}"
@@ -17708,9 +17725,9 @@
               <span style="font-size:11px;color:var(--text-muted);">개/주</span>
             </div>
             <div class="ab-stat-row" style="margin:8px 0 12px;">
-              <div class="ab-stat"><div class="ab-stat-label">긴급 교체 필요</div><div class="ab-stat-value tnum ${plan.urgentCount > 0 ? "neg" : "pos"}">${plan.urgentCount}</div></div>
-              <div class="ab-stat"><div class="ab-stat-label">긴급 소화 소요</div><div class="ab-stat-value tnum">${plan.weeksNeededForUrgent == null ? "—" : plan.weeksNeededForUrgent + "주"}</div></div>
-              <div class="ab-stat"><div class="ab-stat-label">권고 주당 속도</div><div class="ab-stat-value tnum">${plan.recommendedWeeklyVelocity}개</div></div>
+              <div class="ab-stat"><div class="ab-stat-label" title="즉시 경고 또는 임박 위험으로 분류된 소재 수">긴급 교체 필요</div><div class="ab-stat-value tnum ${plan.urgentCount > 0 ? "neg" : "pos"}">${plan.urgentCount}</div></div>
+              <div class="ab-stat"><div class="ab-stat-label" title="현재 공급 속도로 긴급 소재를 전부 교체하는 데 걸리는 기간">긴급 물량 처리 기간</div><div class="ab-stat-value tnum">${plan.weeksNeededForUrgent == null ? "—" : plan.weeksNeededForUrgent + "주"}</div></div>
+              <div class="ab-stat"><div class="ab-stat-label" title="긴급 물량을 1주 내 소화하려면 필요한 주당 신규 소재 수">추천 주당 교체 속도</div><div class="ab-stat-value tnum">${plan.recommendedWeeklyVelocity}개</div></div>
             </div>
             ${
               plan.isUndersupplied
@@ -17755,15 +17772,15 @@
                 <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${urgencyColor.planned};margin:0 4px 0 12px;"></span>예정
               </div>
             </div>
-            <p class="muted" style="font-size:11px;margin-top:8px;">큐 순위는 [즉시 경고 우선 → 임계 도달 예상일 빠른 순 → Fatigue Score 높은 순]으로 배정되며, 주당 공급량만큼씩 주차에 배치됩니다.</p>
+            <p class="muted" style="font-size:11px;margin-top:8px;">교체 순서는 [지금 바로 경고 우선 → 위험 도달 예상이 빠른 순 → 피로도 점수 높은 순]으로 정해지며, 입력한 주당 개수만큼씩 주차에 나눠 배치됩니다.</p>
           </section>`;
             }
 
             function renderCreativeMatrix(matrix) {
               if (!matrix || !matrix.grid.length) {
                 return `<section class="block" id="s-matrix">
-            <h2 class="section-title"><span class="ix">§5</span>Concept Matrix</h2>
-            <div class="callout warn"><div class="ico">!</div><div class="body"><strong>매트릭스 생성 불가</strong><p>${CREATIVE_CONFIG.matrix.rows} / ${CREATIVE_CONFIG.matrix.cols} 컬럼 매핑 필요.</p></div></div>
+            <h2 class="section-title"><span class="ix">§8</span>조합별 성과표 (Concept Matrix)</h2>
+            <div class="callout warn"><div class="ico">!</div><div class="body"><strong>성과표 생성 불가</strong><p>${CREATIVE_CONFIG.matrix.rows} 컬럼과 ${CREATIVE_CONFIG.matrix.cols} 컬럼이 모두 매핑되어야 합니다.</p></div></div>
           </section>`;
               }
               const fmtPct = (v) =>
@@ -17816,11 +17833,12 @@
 
               return `
           <section class="block" id="s-matrix">
-            <h2 class="section-title"><span class="ix">§5</span>Concept Matrix — ${escapeHtml(CREATIVE_CONFIG.matrix.rows)} × ${escapeHtml(CREATIVE_CONFIG.matrix.cols)}</h2>
-            <p class="muted">셀 상태: <span style="background:${statusColor.validated};padding:2px 8px;border-radius:4px;">검증</span> ·
-              <span style="background:${statusColor.promising};padding:2px 8px;border-radius:4px;">유망</span> ·
-              <span style="background:${statusColor.insufficient};padding:2px 8px;border-radius:4px;">데이터 부족</span> ·
-              <span style="background:${statusColor.empty};padding:2px 8px;border-radius:4px;">미관측 (탐색 후보)</span>
+            <h2 class="section-title"><span class="ix">§8</span>조합별 성과표 (Concept Matrix) — ${escapeHtml(CREATIVE_CONFIG.matrix.rows)} × ${escapeHtml(CREATIVE_CONFIG.matrix.cols)}</h2>
+            <p class="muted">소재 속성 두 가지를 교차해서, 어떤 조합이 이미 검증됐고 어떤 조합을 더 시도해봐야 하는지 한눈에 봅니다. 셀을 클릭하면 §3 성과표가 그 조합으로 필터링됩니다.</p>
+            <p class="muted">셀 상태: <span style="background:${statusColor.validated};padding:2px 8px;border-radius:4px;" title="충분한 데이터로 효과가 확인된 조합">검증</span> ·
+              <span style="background:${statusColor.promising};padding:2px 8px;border-radius:4px;" title="좋아 보이지만 아직 데이터가 적어 확정하기 어려운 조합">유망</span> ·
+              <span style="background:${statusColor.insufficient};padding:2px 8px;border-radius:4px;" title="시도는 했지만 판단하기엔 데이터가 너무 적은 조합">데이터 부족</span> ·
+              <span style="background:${statusColor.empty};padding:2px 8px;border-radius:4px;" title="아직 한 번도 시도하지 않은 조합 — 다음 테스트 후보">미관측 (탐색 후보)</span>
             </p>
             <div class="table-wrap"><table class="data" style="font-size:11px;">${headerRow}${bodyRows}</table></div>
           </section>`;
@@ -17829,20 +17847,20 @@
             function renderCreativeNextTest(nextTest) {
               if (!nextTest || !nextTest.length)
                 return `<section class="block" id="s-next">
-          <h2 class="section-title"><span class="ix">§6</span>다음 테스트 후보</h2>
-          <p class="muted">제안할 가설 없음 (모든 셀 검증됨 또는 데이터 부족).</p>
+          <h2 class="section-title"><span class="ix">§9</span>다음 테스트 추천</h2>
+          <p class="muted">추천할 다음 테스트가 없습니다 (모든 조합이 검증되었거나 데이터가 부족합니다).</p>
         </section>`;
               const typeIcon = { explore: "🔍", exploit: "🎯", kill: "❌" };
               const typeLabel = { explore: "탐색", exploit: "최적화", kill: "제거" };
               return `
           <section class="block" id="s-next">
-            <h2 class="section-title"><span class="ix">§6</span>다음 테스트 후보</h2>
+            <h2 class="section-title"><span class="ix">§9</span>다음 테스트 추천</h2>
             <p class="muted" style="margin-top: 6px; line-height: 1.5;">
-              분석 결과를 기반으로 다음 광고 소재 테스트를 위한 가설 후보들을 제안합니다. 아직 집행 데이터가 없는 조합(🔍 탐색), 가능성이 보이지만 확증이 필요한 조합(🎯 최적화), 통계적으로 음의 영향이 뚜렷하여 배제가 권장되는 속성(❌ 제거)을 자동으로 도출합니다. (배치 크기: ${CREATIVE_CONFIG.test.batchSize}개)
+              지금까지의 분석을 바탕으로 다음에 무엇을 테스트하면 좋을지 제안합니다. 아직 집행한 적 없는 조합(🔍 탐색), 가능성이 보이지만 확증이 더 필요한 조합(🎯 최적화), 통계적으로 효과가 뚜렷하게 나빠서 배제를 권장하는 속성(❌ 제거)을 자동으로 골라줍니다. (한 번에 최대 ${CREATIVE_CONFIG.test.batchSize}개)
             </p>
             <div class="table-wrap">
               <table class="data" style="font-size:11.5px;">
-                <thead><tr><th>유형</th><th>대상</th><th>arms</th><th>근거</th><th>샘플사이즈</th><th>게이트</th></tr></thead>
+                <thead><tr><th>유형</th><th>대상</th><th title="비교해볼 변형 개수">테스트 그룹 수 (arms)</th><th>근거</th><th title="결론을 믿을 수 있으려면 필요한 데이터 양">필요 샘플 수</th><th title="이 추천이 유효하려면 만족해야 하는 조건">확인 조건 (게이트)</th></tr></thead>
                 <tbody>
                   ${nextTest
                     .map(
@@ -17859,7 +17877,7 @@
                 </tbody>
               </table>
             </div>
-            <p class="muted" style="font-size:11px;margin-top:8px;">⚠ 본 분석은 관찰 데이터 분해. 가설은 5-7 Test Readout(실험)으로 확정 필요.</p>
+            <p class="muted" style="font-size:11px;margin-top:8px;">⚠ 이 추천은 실제 운영 데이터를 관찰해서 만든 가설입니다. 확정은 실험 분석 도구(5-4)에서 A/B 테스트로 검증하는 것을 권장합니다.</p>
           </section>`;
             }
 
@@ -17924,20 +17942,20 @@
 
               return `
           <section class="block" id="s-velocity">
-            <h2 class="section-title"><span class="ix">§2.5</span>Win-rate · Velocity · 라이프사이클</h2>
-            <p class="muted">소재 운영의 건강도: 얼마나 이기고(win-rate), 얼마나 빨리 갈아끼우고(velocity), 얼마나 오래 사는가(lifespan).</p>
+            <h2 class="section-title"><span class="ix">§2</span>운영 건강도 (Win-rate · Velocity · 라이프사이클)</h2>
+            <p class="muted">소재 운영이 잘 되고 있는지 보는 3가지 질문 — 새 소재가 얼마나 자주 <strong>이기는지(이긴 비율, Win-rate)</strong>, 얼마나 빠르게 <strong>갈아끼우는지(교체 속도, Velocity)</strong>, 하나가 얼마나 <strong>오래 버티는지(생존 기간, 라이프사이클)</strong>.</p>
             <div class="ab-stat-row" style="margin:8px 0 12px;">
-              <div class="ab-stat"><div class="ab-stat-label">CTR Win-rate</div><div class="ab-stat-value tnum">${pctOf(ctrWinners.length, elig.length)}</div><div class="ab-stat-hint">중앙값 초과 ${ctrWinners.length}/${elig.length} (≥${minImp.toLocaleString()} impr)</div></div>
-              <div class="ab-stat"><div class="ab-stat-label">CVR Win-rate</div><div class="ab-stat-value tnum">${pctOf(cvrWinners.length, elig.length)}</div><div class="ab-stat-hint">중앙값 ${fmtPct(medCvr)} 초과</div></div>
-              <div class="ab-stat"><div class="ab-stat-label">승자 소재 비용 점유</div><div class="ab-stat-value tnum">${pctOf(winnerSpend, totalSpend)}</div><div class="ab-stat-hint">CTR 승자에 쓴 비용 비중</div></div>
-              <div class="ab-stat"><div class="ab-stat-label">주당 신규 소재</div><div class="ab-stat-value tnum">${avgPerWeek.toFixed(1)}</div><div class="ab-stat-hint">${weeks.length}주 평균</div></div>
-              <div class="ab-stat"><div class="ab-stat-label">평균 수명</div><div class="ab-stat-value tnum">${avgLife != null ? avgLife.toFixed(0) + "일" : "—"}</div></div>
-              <div class="ab-stat"><div class="ab-stat-label">Fatigue 소재</div><div class="ab-stat-value tnum ${fatiguedN > 0 ? "neg" : "pos"}">${pctOf(fatiguedN, fatigue.length)}</div><div class="ab-stat-hint">${fatiguedN}/${fatigue.length}</div></div>
+              <div class="ab-stat"><div class="ab-stat-label" title="다른 소재들의 클릭률 중간값보다 잘 나온 소재 비율">클릭이 잘 되는 소재 비율 (CTR Win-rate)</div><div class="ab-stat-value tnum">${pctOf(ctrWinners.length, elig.length)}</div><div class="ab-stat-hint">중앙값 초과 ${ctrWinners.length}/${elig.length} (≥${minImp.toLocaleString()} impr)</div></div>
+              <div class="ab-stat"><div class="ab-stat-label" title="다른 소재들의 전환율 중간값보다 잘 나온 소재 비율">전환이 잘 되는 소재 비율 (CVR Win-rate)</div><div class="ab-stat-value tnum">${pctOf(cvrWinners.length, elig.length)}</div><div class="ab-stat-hint">중앙값 ${fmtPct(medCvr)} 초과</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">잘 되는 소재에 쓴 비용 비중</div><div class="ab-stat-value tnum">${pctOf(winnerSpend, totalSpend)}</div><div class="ab-stat-hint">CTR 승자 소재에 쓴 비용 비중</div></div>
+              <div class="ab-stat"><div class="ab-stat-label" title="한 주에 새로 등장한 소재 개수의 평균">한 주에 새로 올리는 소재 수 (Velocity)</div><div class="ab-stat-value tnum">${avgPerWeek.toFixed(1)}</div><div class="ab-stat-hint">${weeks.length}주 평균</div></div>
+              <div class="ab-stat"><div class="ab-stat-label">소재 하나가 버티는 평균 기간</div><div class="ab-stat-value tnum">${avgLife != null ? avgLife.toFixed(0) + "일" : "—"}</div></div>
+              <div class="ab-stat"><div class="ab-stat-label" title="성과가 떨어지며 지친 것으로 진단된 소재 비율">피로해진 소재 비율 (Fatigue)</div><div class="ab-stat-value tnum ${fatiguedN > 0 ? "neg" : "pos"}">${pctOf(fatiguedN, fatigue.length)}</div><div class="ab-stat-hint">${fatiguedN}/${fatigue.length}</div></div>
             </div>
             <div class="callout"><div class="ico">i</div><div class="body"><p style="margin:0;font-size:12px;">
-              <strong>Win-rate</strong>가 50%를 크게 밑돌면 소재 기획 적중률이 낮은 것 — 컨셉 다양화(5-6 §6 Next-test) 필요.
-              <strong>주당 신규 소재</strong>가 너무 적으면 fatigue를 못 따라잡습니다 (벤치마크: 활성 소재의 20~30% / 주).
-              <strong>승자 비용 점유</strong>가 낮으면 좋은 소재에 예산이 안 실리고 있다는 신호입니다.
+              <strong>이긴 비율(Win-rate)</strong>이 50%를 크게 밑돌면 소재 기획 적중률이 낮은 것 — 컨셉 다양화(§9 다음 테스트 추천) 필요.
+              <strong>한 주에 새로 올리는 소재 수</strong>가 너무 적으면 지치는 소재를 못 따라잡습니다 (벤치마크: 활성 소재의 20~30% / 주).
+              <strong>잘 되는 소재에 쓴 비용 비중</strong>이 낮으면 좋은 소재에 예산이 안 실리고 있다는 신호입니다.
             </p></div></div>
           </section>`;
             }
@@ -18879,12 +18897,12 @@
               if (!v || (v.errors.length === 0 && v.droppedRows === 0))
                 return `
           <section class="block" id="s-validation">
-            <h2 class="section-title"><span class="ix">§1</span>검증</h2>
+            <h2 class="section-title"><span class="ix">§1</span>데이터 점검 (검증)</h2>
             <div class="callout ok"><div class="ico">✓</div><div class="body"><strong>모든 row 통과</strong></div></div>
           </section>`;
               return `
           <section class="block" id="s-validation">
-            <h2 class="section-title"><span class="ix">§1</span>검증</h2>
+            <h2 class="section-title"><span class="ix">§1</span>데이터 점검 (검증)</h2>
             <div class="callout warn">
               <div class="ico">!</div>
               <div class="body">
@@ -34953,12 +34971,12 @@
               if (!v || (v.errors.length === 0 && v.droppedRows === 0))
                 return `
           <section class="block" id="s-validation">
-            <h2 class="section-title"><span class="ix">§1</span>검증</h2>
+            <h2 class="section-title"><span class="ix">§1</span>데이터 점검 (검증)</h2>
             <div class="callout ok"><div class="ico">✓</div><div class="body"><strong>모든 row 통과</strong></div></div>
           </section>`;
               return `
           <section class="block" id="s-validation">
-            <h2 class="section-title"><span class="ix">§1</span>검증</h2>
+            <h2 class="section-title"><span class="ix">§1</span>데이터 점검 (검증)</h2>
             <div class="callout warn">
               <div class="ico">!</div>
               <div class="body">
