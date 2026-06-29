@@ -5068,6 +5068,12 @@
                     desc: "이번주 vs 지난주 CPA/CPI 변동을 채널→캠페인→소재로 드릴다운 — 무엇이 비용을 올리고 내렸는지 무잔차 분해",
                   },
                   {
+                    id: "5-22",
+                    slug: "Analysis-saturation-detector",
+                    title: "캠페인 포화도 탐지",
+                    desc: "채널·캠페인별 수확체감(한계 CPA/ROAS) 진단 — 증액 시 효율이 꺾이는 곳 vs 더 키울 여유가 있는 곳",
+                  },
+                  {
                     id: "5-3",
                     slug: "Analysis-budget-allocation",
                     title: "예산 배분",
@@ -6349,6 +6355,7 @@
             const TOOL_TIER = {
               "5-2": "free",
               "5-3": "free",
+              "5-22": "free",
               "5-6": "free",
               "5-4": "free",
               "5-18": "free",
@@ -10983,6 +10990,741 @@
               });
             }
             PAGE_RENDERERS["5-3"] = page_5_3;
+
+            /* ========================================================================
+             * 5-22. 캠페인 포화도 탐지 (Saturation Detector)
+             * 효율 CSV(5-3과 같은 efficiency 그룹)를 채널/캠페인 단위로 수확체감 곡선
+             * 적합 → 현 지출점의 한계 CPA(또는 ROAS)를 평균과 비교해 "증액 위험(포화)"
+             * vs "증액 기회(여유)"를 판정. 순수 엔진 SAT_MATH는 ALLOC_MATH의 곡선·아웃
+             * 라이어 로직을 재사용(중복 구현 금지). 렌더층은 별도.
+             * ===================================================================== */
+            const SAT_STATE = {
+              grain: "channel", // channel | campaign
+              metric: "cpa", // cpa | roas
+              selected: null, // 응답곡선에 표시할 엔티티명
+            };
+            const SAT_CONFIG = {
+              satHigh: 1.3, // 포화지수 ≥ → 포화(한계가 평균보다 30%+ 비쌈, 증액 위험)
+              scaleLow: 0.85, // 포화지수 < → 여유(한계가 평균보다 15%+ 쌈, 증액 기회)
+              deltaPct: 0.1, // 한계 측정용 +지출 비율 (현 지출의 10%)
+              minPoints: 4, // 곡선 적합 최소 관측 수
+              recentDays: 7, // '현 지출점' = 최근 N일 평균 일예산
+            };
+
+            const SAT_MATH = (() => {
+              /* 현 지출점: 최근 recentDays일 평균 일예산. 날짜 없으면 전체 평균. */
+              function recentAvgDailyCost(pts, recentDays) {
+                const dated = pts.filter(
+                  (p) => p.date && !isNaN(Date.parse(p.date)),
+                );
+                if (!dated.length)
+                  return pts.reduce((s, p) => s + p.x, 0) / pts.length;
+                const maxT = Math.max(...dated.map((p) => Date.parse(p.date)));
+                const cutoff = maxT - recentDays * 86400000;
+                const recent = dated.filter((p) => Date.parse(p.date) >= cutoff);
+                const use = recent.length ? recent : dated;
+                return use.reduce((s, p) => s + p.x, 0) / use.length;
+              }
+
+              /* 포화지수(한계/평균, 클수록 포화) → 판정. */
+              function classify(satIndex, cfg) {
+                cfg = cfg || SAT_CONFIG;
+                if (satIndex == null || !isFinite(satIndex)) return "saturated";
+                if (satIndex >= cfg.satHigh) return "saturated";
+                if (satIndex < cfg.scaleLow) return "scale";
+                return "linear";
+              }
+
+              /* 한 엔티티 분석. rawPts: [{x:cost, y:cpr, date, rev}] (일별 관측).
+                 곡선 적합 → 현 지출점 평균/한계 CPA·포화지수·판정(+rev 있으면 ROAS 동일분석). */
+              function analyzeEntity(rawPts, cfg) {
+                cfg = cfg || SAT_CONFIG;
+                const A = ALLOC_MATH;
+                if (!rawPts || rawPts.length < cfg.minPoints)
+                  return {
+                    ok: false,
+                    reason: "insufficient",
+                    n: rawPts ? rawPts.length : 0,
+                  };
+                const cleaned = A.removeOutliers(rawPts, "iqr", { iqrMult: 1.5 });
+                const kept =
+                  cleaned && cleaned.kept && cleaned.kept.length >= cfg.minPoints
+                    ? cleaned.kept
+                    : rawPts;
+                const pairs = kept.map((p) => [p.x, p.y]);
+                const model = A.fitBest(pairs, null);
+                if (!model) return { ok: false, reason: "nofit", n: kept.length };
+                const xs = kept.map((p) => p.x);
+                const xMin = Math.min(...xs),
+                  xMax = Math.max(...xs);
+                const poly2Shape = A.detectPoly2Shape(model);
+                const chWrap = { model, poly2Shape, xMax };
+                const currentCost = recentAvgDailyCost(kept, cfg.recentDays);
+                const avgCpr = A.predictSafeCpr(chWrap, currentCost);
+                if (avgCpr == null || avgCpr <= 0)
+                  return { ok: false, reason: "out_of_range", n: kept.length };
+                const resC = currentCost / avgCpr;
+                const delta = Math.max(currentCost * cfg.deltaPct, 1e-9);
+                const cprT = A.predictSafeCpr(chWrap, currentCost + delta);
+                let marginalCpr = Infinity,
+                  resT = resC;
+                if (cprT != null && cprT > 0) {
+                  resT = (currentCost + delta) / cprT;
+                  const dRes = resT - resC;
+                  marginalCpr = dRes > 1e-12 ? delta / dRes : Infinity;
+                }
+                const satIndex =
+                  isFinite(marginalCpr) && avgCpr > 0
+                    ? marginalCpr / avgCpr
+                    : Infinity;
+                // 실측 합계
+                let totCost = 0,
+                  totRes = 0,
+                  totRev = 0,
+                  hasRev = false;
+                for (const p of kept) {
+                  totCost += p.x;
+                  totRes += p.y > 0 ? p.x / p.y : 0;
+                  if (p.rev != null && isFinite(p.rev)) {
+                    totRev += p.rev;
+                    hasRev = true;
+                  }
+                }
+                const actualCpr = totRes > 0 ? totCost / totRes : null;
+                // ROAS 분석 (매출 있을 때) — 한계 ROAS < 평균 ROAS면 포화 → satIndexRoas=평균/한계
+                let roas = null;
+                if (hasRev && totRev > 0 && totRes > 0) {
+                  const revPerRes = totRev / totRes;
+                  const revC = resC * revPerRes;
+                  const revT = resT * revPerRes;
+                  const avgRoas = currentCost > 0 ? revC / currentCost : null;
+                  const marginalRoas = delta > 0 ? (revT - revC) / delta : null;
+                  const satIndexRoas =
+                    marginalRoas > 0 && avgRoas > 0
+                      ? avgRoas / marginalRoas
+                      : Infinity;
+                  roas = {
+                    avgRoas,
+                    marginalRoas,
+                    satIndexRoas,
+                    revPerRes,
+                    verdict: classify(satIndexRoas, cfg),
+                  };
+                }
+                return {
+                  ok: true,
+                  n: kept.length,
+                  model,
+                  modelType: model.type,
+                  r2: model.r2,
+                  currentCost,
+                  avgCpr,
+                  marginalCpr,
+                  satIndex,
+                  verdict: classify(satIndex, cfg),
+                  actualCpr,
+                  totCost,
+                  totRes,
+                  poly2Shape,
+                  xMin,
+                  xMax,
+                  kept,
+                  roas,
+                };
+              }
+
+              return { recentAvgDailyCost, classify, analyzeEntity };
+            })();
+            if (typeof window !== "undefined") window.SAT_MATH = SAT_MATH;
+
+            /* 효율 CSV 행 → 단위(채널/캠페인)별 일별 포인트. cost>0·결과>0만. */
+            function satBuildPoints(rows, grain, metricField, revField) {
+              const m = new Map();
+              for (const r of rows) {
+                let key;
+                if (grain === "campaign") {
+                  const cmp = String(r.campaign_name ?? "").trim();
+                  if (!cmp) continue;
+                  const ch = String(r.channel ?? "").trim();
+                  // 채널 접두로 서로 다른 채널의 동명 캠페인 분리. 단 캠페인명이 이미
+                  // 채널로 시작하면(데모 등) 중복 표기 방지.
+                  key = ch && !cmp.startsWith(ch) ? ch + " · " + cmp : cmp;
+                } else {
+                  const ch = String(r.channel ?? "").trim();
+                  if (!ch) continue;
+                  key = ch;
+                }
+                const cost = Number(r.cost) || 0;
+                const res = Number(r[metricField]) || 0;
+                if (cost <= 0 || res <= 0) continue;
+                const rev = revField ? Number(r[revField]) : null;
+                if (!m.has(key)) m.set(key, []);
+                m.get(key).push({
+                  x: cost,
+                  y: cost / res,
+                  date: r.date,
+                  rev: rev != null && isFinite(rev) ? rev : null,
+                });
+              }
+              return m;
+            }
+
+            /* 매핑된 표준필드에서 결과/매출 컬럼 자동 선택. */
+            function satAvailableFields() {
+              const mappedKeys = new Set(
+                Object.values(CSV_STATE.mapping || {}).filter(
+                  (v) => v && v !== "__ignore__",
+                ),
+              );
+              const metricField = mappedKeys.has("installs")
+                ? "installs"
+                : mappedKeys.has("actions")
+                  ? "actions"
+                  : null;
+              const revCandidates = [
+                "revenue_d7",
+                "revenue_d0",
+                "revenue_d14",
+                "revenue_d30",
+                "revenue_d90",
+                "revenue_d180",
+                "revenue_d360",
+              ];
+              const revField =
+                revCandidates.find((k) => mappedKeys.has(k)) || null;
+              const hasCampaign = mappedKeys.has("campaign_name");
+              return { metricField, revField, hasCampaign };
+            }
+
+            const SAT_CACHE = { key: null, rows: null };
+            function satAnalyzeAll() {
+              const { metricField, revField } = satAvailableFields();
+              const grain = SAT_STATE.grain;
+              const rows = getMappedRows();
+              const key = `${rows.length}|${grain}|${metricField}|${revField}`;
+              if (SAT_CACHE.key === key && SAT_CACHE.rows) return SAT_CACHE.rows;
+              const pointsMap = satBuildPoints(
+                rows,
+                grain,
+                metricField,
+                revField,
+              );
+              const out = [];
+              for (const [name, pts] of pointsMap) {
+                const a = SAT_MATH.analyzeEntity(pts, SAT_CONFIG);
+                out.push({ name, raw: pts.length, ...a });
+              }
+              SAT_CACHE.rows = out;
+              SAT_CACHE.key = key;
+              return out;
+            }
+
+            /* 활성 기준(CPA/ROAS)의 포화지수·판정 — 정렬·표시 공통. */
+            function satActiveIndex(r) {
+              if (!r.ok) return -1;
+              if (SAT_STATE.metric === "roas") {
+                if (!r.roas) return -1;
+                return isFinite(r.roas.satIndexRoas)
+                  ? r.roas.satIndexRoas
+                  : 1e9;
+              }
+              return isFinite(r.satIndex) ? r.satIndex : 1e9;
+            }
+            function satActiveVerdict(r) {
+              if (SAT_STATE.metric === "roas")
+                return r.roas ? r.roas.verdict : null;
+              return r.verdict;
+            }
+            function satVerdictMeta(v) {
+              if (v === "saturated")
+                return {
+                  label: "포화",
+                  color: "#f87171",
+                  icon: "▲",
+                  advice: "증액 위험",
+                };
+              if (v === "scale")
+                return {
+                  label: "여유",
+                  color: "#22c55e",
+                  icon: "▼",
+                  advice: "증액 기회",
+                };
+              if (v === "linear")
+                return {
+                  label: "적정",
+                  color: "#9ca3af",
+                  icon: "●",
+                  advice: "현상 유지",
+                };
+              return {
+                label: "—",
+                color: "#6b7280",
+                icon: "·",
+                advice: "분석 불가",
+              };
+            }
+
+            function page_5_22() {
+              const meta = findMeta("5-22");
+              const missing = checkRequiredForTool("5-22");
+              if (
+                missing.length > 0 ||
+                !CSV_STATE.headers.length ||
+                !isToolAnalyzed("5-22")
+              ) {
+                return pageShell(meta, {
+                  deck: "효율 CSV 한 번 업로드로 채널·캠페인별 수확체감(포화) 여부를 진단합니다.",
+                  chips: `<span class="chip warning"><span class="dot"></span>CSV 업로드 대기</span>${authStatusChip()}`,
+                  summary: `필수: 날짜·비용·(채널 또는 캠페인)·(설치 또는 액션). 매출(${STANDARD_FIELDS["revenue_d7"]?.label || "revenue_d7"}) 매핑 시 ROAS 기준 포화도도 분석합니다.`,
+                  toc: [{ id: "s-prep", title: "데이터 준비" }],
+                  body: renderInlineCsvUpload("5-22"),
+                });
+              }
+              return pageShell(meta, {
+                deck: "채널·캠페인 단위 한계 CPA/ROAS로 '증액하면 효율이 꺾이는가'를 판정",
+                chips: `<span class="chip"><span class="dot"></span>${escapeHtml(CSV_STATE.fileName)}</span>${authStatusChip()}`,
+                summary:
+                  "각 채널·캠페인의 비용↔효율 산점도를 곡선 적합해 <strong>현재 지출점의 한계 효율</strong>을 평균과 비교합니다. 한계가 평균보다 나쁘면 <strong style='color:#f87171;'>포화(증액 위험)</strong>, 좋으면 <strong style='color:#22c55e;'>여유(증액 기회)</strong>입니다." +
+                  "<details style='margin-top:6px;font-size:11.5px;color:var(--text-secondary);cursor:pointer;'><summary>⚠️ 해석 참고</summary>" +
+                  "<div style='margin-top:6px;padding:8px 10px;background:var(--bg-1);border-left:3px solid var(--primary);line-height:1.6;'>" +
+                  "포화지수 = 한계 CPA ÷ 평균 CPA(ROAS는 평균 ÷ 한계). 1보다 크면 다음 1원이 평균보다 비싸다는 뜻. 관측 범위 밖 외삽은 불안정하므로, 지출 변동이 거의 없는 채널의 곡선은 신뢰도가 낮습니다." +
+                  "</div></details>",
+                toc: [
+                  { id: "s-sat-summary", title: "요약" },
+                  { id: "s-sat", title: "포화도 순위" },
+                  { id: "s-sat-curve", title: "응답곡선" },
+                ],
+                body: `<details class="block" style="padding:13px 16px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text-muted);">🗂 데이터·매핑 (펼쳐서 변경)</summary><div style="margin-top:10px;">${renderInlineCsvUpload("5-22")}</div></details>${monSatBody()}`,
+              });
+            }
+            PAGE_RENDERERS["5-22"] = page_5_22;
+
+            function monSatBody() {
+              const { revField, hasCampaign } = satAvailableFields();
+              if (SAT_STATE.metric === "roas" && !revField)
+                SAT_STATE.metric = "cpa";
+              if (SAT_STATE.grain === "campaign" && !hasCampaign)
+                SAT_STATE.grain = "channel";
+              const rows = satAnalyzeAll();
+              const okRows = rows
+                .filter((r) => r.ok && satActiveVerdict(r))
+                .sort((a, b) => satActiveIndex(b) - satActiveIndex(a));
+              const badRows = rows.filter((r) => !r.ok || !satActiveVerdict(r));
+
+              const activeStyle =
+                "background:var(--bg-2);border-color:var(--text-1);color:var(--text-1);";
+              const grainBtn = (val, label, disabled) =>
+                `<button type="button" class="ab-pill" data-sat-grain="${val}" ${disabled ? 'disabled title="캠페인명(campaign_name) 컬럼을 매핑하면 활성화"' : ""} style="${SAT_STATE.grain === val ? activeStyle : ""}${disabled ? "opacity:0.4;cursor:not-allowed;" : ""}">${label}</button>`;
+              const metricBtn = (val, label, disabled) =>
+                `<button type="button" class="ab-pill" data-sat-metric="${val}" ${disabled ? 'disabled title="매출(revenue) 컬럼을 매핑하면 활성화"' : ""} style="${SAT_STATE.metric === val ? activeStyle : ""}${disabled ? "opacity:0.4;cursor:not-allowed;" : ""}">${label}</button>`;
+              const controls = `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+                <div style="display:flex;gap:6px;align-items:center;"><span style="font-size:12px;color:var(--text-muted);">분석 단위</span>${grainBtn("channel", "채널", false)}${grainBtn("campaign", "캠페인", !hasCampaign)}</div>
+                <div style="display:flex;gap:6px;align-items:center;"><span style="font-size:12px;color:var(--text-muted);">효율 기준</span>${metricBtn("cpa", "CPA (낮을수록 좋음)", false)}${metricBtn("roas", "ROAS (높을수록 좋음)", !revField)}</div>
+              </div>`;
+
+              return (
+                renderSatSummary(okRows) +
+                `<section class="block" id="s-sat">
+                  <h2 class="section-title"><span class="ix">§1</span>포화도 순위</h2>
+                  ${controls}
+                  ${renderSatTable(okRows, badRows)}
+                </section>` +
+                renderSatCurveSection(okRows)
+              );
+            }
+
+            function renderSatSummary(okRows) {
+              const isRoas = SAT_STATE.metric === "roas";
+              const grainLabel = SAT_STATE.grain === "campaign" ? "캠페인" : "채널";
+              const metricLabel = isRoas ? "ROAS" : "CPA";
+              const sat = okRows.filter((r) => satActiveVerdict(r) === "saturated");
+              const scale = okRows.filter((r) => satActiveVerdict(r) === "scale");
+              if (!okRows.length) {
+                return `<section class="block" id="s-sat-summary"><div class="callout warn"><div class="ico">!</div><div class="body">분석 가능한 ${grainLabel}이 없습니다. 각 ${grainLabel}에 최소 ${SAT_CONFIG.minPoints}개 이상의 일별 관측(비용·결과 &gt;0)이 필요합니다.</div></div></section>`;
+              }
+              const fmtList = (arr, n) =>
+                arr
+                  .slice(0, n)
+                  .map((r) => `<strong>${escapeHtml(r.name)}</strong>`)
+                  .join(", ");
+              const headParts = [];
+              if (sat.length)
+                headParts.push(
+                  `<span style="color:#f87171;">포화 ${sat.length}개</span> (증액 위험)`,
+                );
+              if (scale.length)
+                headParts.push(
+                  `<span style="color:#22c55e;">여유 ${scale.length}개</span> (증액 기회)`,
+                );
+              const head = headParts.length
+                ? headParts.join(" · ")
+                : `대부분 적정 구간`;
+              let advice = "";
+              if (sat.length && scale.length) {
+                advice = `${fmtList(sat, 2)}는 이미 포화 — 추가 예산은 ${fmtList(scale, 2)} 쪽으로 옮기면 같은 돈으로 ${isRoas ? "더 높은 매출" : "더 많은 결과"}를 기대할 수 있습니다.`;
+              } else if (sat.length) {
+                advice = `${fmtList(sat, 3)}는 ${metricLabel} 기준 포화 상태 — 증액 시 효율이 빠르게 나빠집니다. 증액보다 소재·타겟 개선이 우선입니다.`;
+              } else if (scale.length) {
+                advice = `${fmtList(scale, 3)}는 아직 여유 구간 — 증액하면 효율이 오히려 개선될 여지가 있습니다.`;
+              } else {
+                advice = `모든 ${grainLabel}이 선형(적정) 구간 — 현 배분을 크게 흔들 근거는 약합니다.`;
+              }
+              return `<section class="block" id="s-sat-summary">
+                <h2 class="section-title"><span class="ix">§0</span>한눈에 보기</h2>
+                <div style="font-size:15px;font-weight:600;margin-bottom:6px;">${head}</div>
+                <div style="font-size:13px;color:var(--text-secondary);line-height:1.65;">${advice}</div>
+              </section>`;
+            }
+
+            function renderSatTable(okRows, badRows) {
+              const isRoas = SAT_STATE.metric === "roas";
+              const effHead = isRoas
+                ? `<th class="tnum">평균 ROAS</th><th class="tnum">한계 ROAS</th>`
+                : `<th class="tnum">평균 CPA</th><th class="tnum">한계 CPA</th>`;
+              const fmtRoas = (v) =>
+                v == null || !isFinite(v) ? "—" : `${v.toFixed(2)}x`;
+              const body = okRows
+                .map((r, i) => {
+                  const v = satActiveVerdict(r);
+                  const vm = satVerdictMeta(v);
+                  const idx = satActiveIndex(r);
+                  const idxStr =
+                    idx == null || !isFinite(idx) ? "∞" : `${idx.toFixed(2)}x`;
+                  const sel = SAT_STATE.selected === r.name;
+                  const effCells = isRoas
+                    ? `<td class="tnum">${fmtRoas(r.roas.avgRoas)}</td><td class="tnum">${fmtRoas(r.roas.marginalRoas)}</td>`
+                    : `<td class="tnum">${fmtCurrency(r.avgCpr, { metric: true })}</td><td class="tnum">${isFinite(r.marginalCpr) ? fmtCurrency(r.marginalCpr, { metric: true }) : "∞"}</td>`;
+                  return `<tr data-sat-row="${escapeHtml(r.name)}" style="cursor:pointer;${sel ? "background:rgba(122,162,247,0.08);" : ""}" title="클릭 → 응답곡선 보기">
+                    <td class="tnum" style="color:var(--text-muted);">${i + 1}</td>
+                    <td><strong>${escapeHtml(r.name)}</strong></td>
+                    <td style="font-size:11px;color:var(--text-muted);">${r.modelType} <span class="tnum">R²=${r.r2 != null ? r.r2.toFixed(2) : "—"}</span></td>
+                    <td class="tnum">${fmtCurrency(r.currentCost)}</td>
+                    ${effCells}
+                    <td class="tnum" style="font-weight:700;color:${vm.color};">${idxStr}</td>
+                    <td><span class="chip" style="font-size:11px;padding:2px 8px;color:${vm.color};border-color:${vm.color}55;"><span class="dot" style="background:${vm.color};"></span>${vm.label}</span> <span style="font-size:10.5px;color:var(--text-muted);">${vm.advice}</span></td>
+                  </tr>`;
+                })
+                .join("");
+              const badNote = badRows.length
+                ? `<details style="margin-top:10px;"><summary style="cursor:pointer;font-size:11.5px;color:var(--text-muted);">⚠ 분석 제외 ${badRows.length}개 — 보기</summary><div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.7;">${badRows
+                    .map((r) => {
+                      const why =
+                        r.reason === "insufficient"
+                          ? `관측 ${r.raw || r.n || 0}개 (최소 ${SAT_CONFIG.minPoints} 필요)`
+                          : r.reason === "out_of_range"
+                            ? "곡선이 현 지출점에서 음수/비정상"
+                            : r.reason === "nofit"
+                              ? "곡선 적합 실패"
+                              : SAT_STATE.metric === "roas"
+                                ? "매출 데이터 없음"
+                                : "분석 불가";
+                      return `<div>• <strong>${escapeHtml(r.name)}</strong> — ${why}</div>`;
+                    })
+                    .join("")}</div></details>`
+                : "";
+              return `<div class="table-wrap"><table class="data" style="font-size:12.5px;">
+                <thead><tr>
+                  <th class="tnum">#</th><th>${SAT_STATE.grain === "campaign" ? "캠페인" : "채널"}</th><th>적합 모델</th>
+                  <th class="tnum">최근 일예산</th>${effHead}
+                  <th class="tnum" title="한계효율 ÷ 평균효율. 1보다 크면 다음 1원이 평균보다 비쌈">포화지수</th><th>판정</th>
+                </tr></thead>
+                <tbody>${body}</tbody>
+              </table></div>${badNote}`;
+            }
+
+            function renderSatCurveSection(okRows) {
+              if (!okRows.length) return "";
+              let sel = SAT_STATE.selected
+                ? okRows.find((r) => r.name === SAT_STATE.selected)
+                : null;
+              if (!sel) sel = okRows[0];
+              return `<section class="block" id="s-sat-curve">
+                <h2 class="section-title"><span class="ix">§2</span>응답곡선 — ${escapeHtml(sel.name)}</h2>
+                <p class="muted" style="font-size:12px;margin-top:-4px;">위 표에서 행을 클릭하면 해당 ${SAT_STATE.grain === "campaign" ? "캠페인" : "채널"}의 곡선으로 바뀝니다. 점=일별 관측(비용 vs CPA), 선=적합 곡선, 주황 점선=현 지출점.</p>
+                <div class="chart-container" style="height:300px;"><canvas id="sat-curve-chart"></canvas></div>
+              </section>`;
+            }
+
+            function renderSatChart() {
+              if (typeof Chart === "undefined") return;
+              const canvas = document.getElementById("sat-curve-chart");
+              if (!canvas) return;
+              const rows = satAnalyzeAll();
+              const okRows = rows
+                .filter((r) => r.ok && satActiveVerdict(r))
+                .sort((a, b) => satActiveIndex(b) - satActiveIndex(a));
+              if (!okRows.length) return;
+              let sel = SAT_STATE.selected
+                ? okRows.find((r) => r.name === SAT_STATE.selected)
+                : null;
+              if (!sel) sel = okRows[0];
+              const A = ALLOC_MATH;
+              const xs = sel.kept.map((p) => p.x);
+              const xMin = Math.min(...xs),
+                xMax = Math.max(...xs);
+              const margin = (xMax - xMin) * 0.05 || xMax * 0.05 || 1;
+              const fitMin = Math.max(0.0001, xMin - margin),
+                fitMax = xMax + margin;
+              const chWrap = {
+                model: sel.model,
+                poly2Shape: sel.poly2Shape,
+                xMax,
+              };
+              const curve = [];
+              const STEPS = 60;
+              for (let s = 0; s <= STEPS; s++) {
+                const x = fitMin + (fitMax - fitMin) * (s / STEPS);
+                const y = A.predictSafeCpr(chWrap, x);
+                if (y != null && isFinite(y)) curve.push({ x, y });
+              }
+              const scatter = sel.kept.map((p) => ({ x: p.x, y: p.y }));
+              const allY = scatter.map((p) => p.y).concat(curve.map((p) => p.y));
+              const yLo = Math.min(...allY),
+                yHi = Math.max(...allY);
+              const marker = [
+                { x: sel.currentCost, y: yLo },
+                { x: sel.currentCost, y: yHi },
+              ];
+              const primary = getCssVar("--primary") || "#7aa2f7";
+              const text = getCssVar("--text-muted") || "#9ca3af";
+              const grid = getCssVar("--border") || "#2a2a2a";
+              try {
+                CHART_INSTANCES["sat-curve-chart"]?.destroy?.();
+              } catch {}
+              CHART_INSTANCES["sat-curve-chart"] = new Chart(
+                canvas.getContext("2d"),
+                {
+                  type: "scatter",
+                  data: {
+                    datasets: [
+                      {
+                        label: "일별 관측 (Cost vs CPA)",
+                        data: scatter,
+                        backgroundColor: primary + "55",
+                        borderColor: primary + "55",
+                        pointRadius: 3,
+                        showLine: false,
+                      },
+                      {
+                        label: `적합 ${sel.modelType} (R²=${sel.r2 != null ? sel.r2.toFixed(2) : "—"})`,
+                        data: curve,
+                        borderColor: primary,
+                        backgroundColor: "transparent",
+                        pointRadius: 0,
+                        showLine: true,
+                        borderWidth: 2,
+                        tension: 0.2,
+                      },
+                      {
+                        label: "현 지출점",
+                        data: marker,
+                        borderColor: "#f59e0b",
+                        borderDash: [5, 4],
+                        pointRadius: 0,
+                        showLine: true,
+                        borderWidth: 1.5,
+                      },
+                    ],
+                  },
+                  options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { labels: { color: text, font: { size: 11 } } },
+                    },
+                    scales: {
+                      x: {
+                        title: { display: true, text: "일 Cost", color: text },
+                        ticks: { color: text },
+                        grid: { color: grid },
+                      },
+                      y: {
+                        title: {
+                          display: true,
+                          text: "CPA (Cost/결과, 낮을수록 좋음)",
+                          color: text,
+                        },
+                        ticks: { color: text },
+                        grid: { color: grid },
+                      },
+                    },
+                  },
+                },
+              );
+            }
+
+            function bindSatHandlers() {
+              bindInlineCsvHandlers();
+              document.querySelectorAll("[data-sat-grain]").forEach((b) =>
+                b.addEventListener("click", () => {
+                  if (b.disabled) return;
+                  SAT_STATE.grain = b.dataset.satGrain;
+                  SAT_STATE.selected = null;
+                  SAT_CACHE.key = null;
+                  navigate("5-22");
+                }),
+              );
+              document.querySelectorAll("[data-sat-metric]").forEach((b) =>
+                b.addEventListener("click", () => {
+                  if (b.disabled) return;
+                  SAT_STATE.metric = b.dataset.satMetric;
+                  navigate("5-22");
+                }),
+              );
+              document.querySelectorAll("[data-sat-row]").forEach((tr) =>
+                tr.addEventListener("click", () => {
+                  SAT_STATE.selected = tr.dataset.satRow;
+                  const sy = window.scrollY;
+                  navigate("5-22");
+                  requestAnimationFrame(() => window.scrollTo(0, sy));
+                }),
+              );
+            }
+
+            /* 합성 데이터 유닛 테스트 (§8 결정론) */
+            function runSatTests(verbose) {
+              let pass = 0,
+                fail = 0;
+              const ok = (l, c) => {
+                if (c) {
+                  pass++;
+                  if (verbose) console.log("  ✓", l);
+                } else {
+                  fail++;
+                  console.error("  ✗", l);
+                }
+              };
+              // 합성: 포화 채널(증액할수록 CPA 급등) vs 여유 채널(증액해도 CPA 거의 평탄/하락)
+              const mkDates = (n) => {
+                const out = [];
+                const base = Date.parse("2024-01-01");
+                for (let i = 0; i < n; i++)
+                  out.push(
+                    new Date(base + i * 86400000).toISOString().slice(0, 10),
+                  );
+                return out;
+              };
+              const ds = mkDates(30);
+              // 포화: cost 1000→3000, CPA가 cost에 비례 급등 (y = cost/100)
+              const satPts = ds.map((d, i) => {
+                const cost = 1000 + i * 70;
+                const cpa = cost / 100; // 비용↑ → CPA↑ (한계 ≫ 평균)
+                return { x: cost, y: cpa, date: d, rev: null };
+              });
+              const satRes = SAT_MATH.analyzeEntity(satPts, SAT_CONFIG);
+              ok("포화 채널 적합 성공", satRes.ok);
+              ok(
+                "포화 채널 판정 = saturated",
+                satRes.ok && satRes.verdict === "saturated",
+              );
+              ok(
+                "포화 채널 포화지수 > 1",
+                satRes.ok && satRes.satIndex > 1,
+              );
+              // 여유: CPA가 cost와 무관하게 평탄 후 하락 (규모의 경제) → 한계 < 평균
+              const scalePts = ds.map((d, i) => {
+                const cost = 1000 + i * 70;
+                const cpa = 50 - i * 0.5; // 비용↑ → CPA↓ (한계 < 평균)
+                return { x: cost, y: Math.max(cpa, 5), date: d, rev: null };
+              });
+              const scaleRes = SAT_MATH.analyzeEntity(scalePts, SAT_CONFIG);
+              ok("여유 채널 적합 성공", scaleRes.ok);
+              ok(
+                "여유 채널 포화지수 < 포화 채널",
+                scaleRes.ok &&
+                  satRes.ok &&
+                  satActiveIndexPure(scaleRes) < satRes.satIndex,
+              );
+              // 관측 부족 → 분석 제외
+              const few = SAT_MATH.analyzeEntity(
+                [
+                  { x: 100, y: 10, date: ds[0] },
+                  { x: 200, y: 12, date: ds[1] },
+                ],
+                SAT_CONFIG,
+              );
+              ok("관측 부족 → ok=false", few.ok === false);
+              // 결정론 (동일 입력 = 동일 포화지수)
+              const again = SAT_MATH.analyzeEntity(satPts, SAT_CONFIG);
+              ok(
+                "결정론 (동일 입력 동일 출력)",
+                again.satIndex === satRes.satIndex,
+              );
+              // ROAS 분석 (rev 포함)
+              const revPts = ds.map((d, i) => {
+                const cost = 1000 + i * 70;
+                const res = cost / (cost / 100); // = 100 results... keep simple
+                const cpa = cost / 100;
+                return { x: cost, y: cpa, date: d, rev: (cost / cpa) * 80 };
+              });
+              const revRes = SAT_MATH.analyzeEntity(revPts, SAT_CONFIG);
+              ok("ROAS 분석 생성 (rev 있을 때)", revRes.ok && revRes.roas != null);
+              // grouping
+              const gm = satBuildPoints(
+                [
+                  {
+                    channel: "A",
+                    campaign_name: "c1",
+                    cost: 100,
+                    installs: 10,
+                    date: ds[0],
+                  },
+                  {
+                    channel: "A",
+                    campaign_name: "c2",
+                    cost: 200,
+                    installs: 10,
+                    date: ds[1],
+                  },
+                  {
+                    channel: "B",
+                    campaign_name: "c3",
+                    cost: 300,
+                    installs: 10,
+                    date: ds[2],
+                  },
+                ],
+                "channel",
+                "installs",
+                null,
+              );
+              ok("채널 그룹핑 → 2개 (A,B)", gm.size === 2);
+              ok("채널 A 포인트 2개", (gm.get("A") || []).length === 2);
+              const gmc = satBuildPoints(
+                [
+                  {
+                    channel: "A",
+                    campaign_name: "c1",
+                    cost: 100,
+                    installs: 10,
+                    date: ds[0],
+                  },
+                  {
+                    channel: "A",
+                    campaign_name: "c2",
+                    cost: 200,
+                    installs: 10,
+                    date: ds[1],
+                  },
+                ],
+                "campaign",
+                "installs",
+                null,
+              );
+              ok("캠페인 그룹핑 → 복합키 2개", gmc.size === 2);
+              console.log(
+                `[SAT] ${pass}/${pass + fail} ` +
+                  (fail === 0 ? "ALL PASS ✓" : "FAILED ✗"),
+              );
+              return fail === 0;
+            }
+            // 테스트용 순수 포화지수 (활성 metric 무관, CPA 기준)
+            function satActiveIndexPure(r) {
+              if (!r.ok) return -1;
+              return isFinite(r.satIndex) ? r.satIndex : 1e9;
+            }
+            if (typeof window !== "undefined") window.runSatTests = runSatTests;
 
             /* ========== 통계 라이브러리 (5-4 A/B Test Calculator) ==========
          원본: Campaign Test Parameter Checker (Next.js + TypeScript)
@@ -40397,6 +41139,12 @@
               )
                 bindBudgetAllocatorHandlers();
 
+              // ----- 5-22: 캠페인 포화도 탐지 핸들러 + 응답곡선 차트 -----
+              if (document.getElementById("s-sat")) {
+                bindSatHandlers();
+                renderSatChart();
+              }
+
               // ----- 5-4: 실험 분석 탭 전환 (설계/결과/홀드아웃 — 결과·홀드아웃은 CSV grain 전환) -----
               document.querySelectorAll("[data-exp-tab]").forEach((b) =>
                 b.addEventListener("click", () => {
@@ -45985,6 +46733,12 @@
                 { oneOf: ["channel", "campaign_name"] },
                 { oneOf: ["installs", "actions"] },
               ],
+              "5-22": [
+                "date",
+                "cost",
+                { oneOf: ["channel", "campaign_name"] },
+                { oneOf: ["installs", "actions"] },
+              ],
               "5-5": ["date", "paid_regs", "organic_regs"],
               "5-6": [
                 "creative_id",
@@ -46113,6 +46867,18 @@
                 { key: "pu_d7", unlocks: "결제건수 기준 분배 (대안 metric)" },
                 { key: "impressions", unlocks: "노출 기반 시뮬레이션" },
                 { key: "clicks", unlocks: "클릭 기반 시뮬레이션" },
+              ],
+              "5-22": [
+                {
+                  key: "campaign_name",
+                  unlocks: "분석 단위 '캠페인' 토글 — 캠페인별 포화도",
+                },
+                {
+                  key: "revenue_d7",
+                  unlocks: "ROAS 기준 포화도 (한계 ROAS vs 평균 ROAS)",
+                },
+                { key: "platform", unlocks: "OS(Android/iOS)별 행 분리" },
+                { key: "actions", unlocks: "액션 기준 분석 (설치 대안)" },
               ],
               "5-5": [
                 {
@@ -46303,6 +47069,7 @@
             const TOOL_GROUP = {
               "5-2": "efficiency",
               "5-3": "efficiency",
+              "5-22": "efficiency",
               "5-9": "efficiency",
               "5-10": "efficiency",
               "5-11": "efficiency",
@@ -46452,19 +47219,32 @@
               for (let d = 0; d < 45; d++) {
                 const date = new Date(base + d * 86400000).toISOString().slice(0, 10);
                 for (let ci = 0; ci < chans.length; ci++) {
-                  const trend = 1 + d * 0.012,
+                  // 비용을 완만하지만 넓게 램프(0.45→1.65배, ~3.7배)해 cost↔효율 관계를 식별 가능하게.
+                  //  (램프가 좁고 노이즈가 크면 포화 곡선이 노이즈에 묻혀 5-22·5-3 한계효용 데모가 안 보임)
+                  const trend = 0.45 + d * 0.027,
                     scale = [1.0, 0.75, 0.5, 0.35][ci];
                   const cost = Math.round(
-                    900000 * scale * trend * (1 + (rng() + 0.5) * 0.3),
+                    900000 * scale * trend * (1 + (rng() + 0.5) * 0.1),
                   );
-                  const imp = Math.round((cost / 18) * (1 + (rng() + 0.5) * 0.2));
-                  const clk = Math.round(imp * (0.022 + (rng() + 0.5) * 0.006));
+                  const imp = Math.round((cost / 18) * (1 + (rng() + 0.5) * 0.05));
+                  const clk = Math.round(imp * (0.022 + (rng() + 0.5) * 0.004));
                   // 채널별 효율 차등 — Apple Search가 가장 효율(낮은 CPI), Google UAC가 가장 비효율.
                   // → "절대 CPR/ROAS 가중"이 효율 채널에 더 배분하는 걸 데모가 보여줌.
                   const effMult = [0.7, 0.95, 1.2, 1.6][ci];
+                  // 채널별 수확체감(포화) 곡률 — 설치 반응 ∝ cost^satExp.
+                  //  satExp<1 → 증액할수록 CPI↑(포화), >1 → 증액할수록 CPI↓(여유).
+                  //  노이즈를 낮춰 멱법칙 신호가 선명하게(Power/Log 적합이 이겨 한계효율이 또렷) —
+                  //  5-22 포화도·5-3 한계효용 데모가 "포화 vs 증액 기회"를 실제로 보여주게 함.
+                  const satExp = [0.5, 0.82, 1.05, 1.4][ci];
+                  const costRatio = cost / (900000 * scale); // 채널 기준치 대비 (≈1, trend·noise로 변동)
                   const inst = Math.max(
                     1,
-                    Math.round(clk * (0.3 + (rng() + 0.5) * 0.06) * effMult),
+                    Math.round(
+                      clk *
+                        (0.34 + (rng() + 0.5) * 0.03) *
+                        effMult *
+                        Math.pow(costRatio, satExp - 1),
+                    ),
                   );
                   const r0 = Math.round(inst * (900 + (rng() + 0.5) * 300));
                   rows.push({
@@ -46957,6 +47737,7 @@
             const DEMO_BUILDERS = {
               "5-2": _demoEfficiencyData,
               "5-3": _demoEfficiencyData,
+              "5-22": _demoEfficiencyData,
               "5-8": _demoCohortData,
               "5-6": _demoCreativeData,
               "5-21": _demoPvmData,
