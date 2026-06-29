@@ -28,8 +28,8 @@
 > 완료된 작업을 모아 **patch 파일**로 추출해 사용자가 다른 계정/세션에 적용하게 한다.
 > PR 준비되면 아래 "적용할 파일" 항목을 그대로 안내.
 
-### 2026-06-25 — 5-20 Aha-Moment Finder (윈도우×k 그리드 탐색)
-- **무엇**: 신규 분석도구 5-20 "Aha-Moment Finder" — 사용자 행동 데이터에서 리텐션과 가장 상관관계 높은 "초기 행동 윈도우 × 횟수(k)" 조합을 그리드 탐색.
+### 2026-06-25 — 5-20 핵심 가치 발굴 (윈도우×k 그리드 탐색)
+- **무엇**: 신규 분석도구 5-20 "핵심 가치 발굴" — 사용자 행동 데이터에서 리텐션과 가장 상관관계 높은 "초기 행동 윈도우 × 횟수(k)" 조합을 그리드 탐색.
 - **커밋**: `35e9f19`(설계 스펙) → `5c1565f`(스펙 갱신: wide 멀티윈도우) → `8501b3d`(구현: 윈도우×k 그리드 탐색).
 - **검증**: syntax check 통과, `window.runAhaTests()` 등 골든 테스트 통과(구현 커밋 시점 확인됨).
 - **하네스 업데이트**: 미반영 — 다음 커밋에서 CLAUDE.md §3/§13(신규 도구 등록)·mkt-engineer.md에 보강 필요.
@@ -44,7 +44,7 @@
 - **하네스 업데이트**: CLAUDE.md §7에 vertical-align 함정 추가 완료(2026-06-25).
 
 ### 2026-06-25 — 5-20 업로드 UI 표준화 (다른 도구와 통일)
-- **무엇**: Aha-Moment Finder §0 데이터 업로드를 `.ab-form-grid`/플레인 `<input>` 방식 → 표준 `.dropzone`(아이콘·타이틀·서브텍스트·drag&drop) + 데모 버튼 + 접이식 가이드로 교체. 다른 분석도구(`renderInlineCsvUpload` 패턴)와 시각적으로 통일.
+- **무엇**: 핵심 가치 발굴 §0 데이터 업로드를 `.ab-form-grid`/플레인 `<input>` 방식 → 표준 `.dropzone`(아이콘·타이틀·서브텍스트·drag&drop) + 데모 버튼 + 접이식 가이드로 교체. 다른 분석도구(`renderInlineCsvUpload` 패턴)와 시각적으로 통일.
 - **왜**: 사용자 피드백 — "데이터 업로드 CSV 파트가 다른 곳이랑 너무 다르다, 다른 거랑 아예 맞춰줘라" (스크린샷 비교).
 - **근본 발견**: `ahaUploadSection()`엔 죽은 `hasFile` 분기가 있었음(파일 로드 후엔 `page_5_20`이 항상 별도 함수 `ahaMappingSection()`을 호출하므로 그 분기는 도달 불가) — 제거.
 - **심볼**: `ahaUploadSection()`(line ~17363, dropzone 마크업 + `data-aha-dropzone`), `bindAhaHandlers()`에 `parseAhaFile` 헬퍼 추출 + dropzone click/dragover/dragleave/drop 바인딩 추가.

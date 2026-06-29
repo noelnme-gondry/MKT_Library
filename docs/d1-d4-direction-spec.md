@@ -82,7 +82,7 @@
 - **목표**: WoW(주간 대비) 전체 CPA(또는 CPI) 변동을 엔티티 단위로 분해해 "무엇이 비용을 얼마나 올리고 내렸는지"를 원화로 보여줌 + 내러티브 자동 생성.
 
 ### 데이터 소스 결정
-**5-6(Creative Analyzer)의 소재-grain CSV를 그대로 재사용**한다. 5-2/5-3(efficiency grain)과 cross-grain join을 하지 않는다.
+**5-6(소재 분석)의 소재-grain CSV를 그대로 재사용**한다. 5-2/5-3(efficiency grain)과 cross-grain join을 하지 않는다.
 
 근거(코드 확인 완료):
 - `TOOL_REQUIRED_FIELDS["5-6"]`(line 25241) = `["creative_id","date","channel","impressions","clicks","installs","spend"]` — **channel이 이미 필수 필드**로 들어있어 채널 단계는 항상 보장됨.
