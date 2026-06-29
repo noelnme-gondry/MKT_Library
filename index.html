@@ -16211,7 +16211,7 @@
               minImpressions: 1000,
               minNCell: 5,
               decompose: {
-                metrics: ["ctr", "cvr"],
+                metrics: ["ctr", "cpa", "roas"],
                 controls: ["channel", "iso_week"], // campaign_id는 demean으로 흡수
                 method: "wls",
                 vifThreshold: 5.0,
@@ -16306,6 +16306,20 @@
                     }
                   }
                 }
+                // 수치적 특이(ill-conditioned) 검증: 절대 1e-12 pivot 임계는 스케일이 큰 행렬에서
+                // 사실상 rank-deficient인데도 통과해 가비지 inv를 반환할 수 있다(예: 데이터가
+                // 설계상 식별 불가일 때 β·SE가 엉터리로 나오고 R²<0). I·M ≈ 단위행렬인지 확인해
+                // 아니면 null(정직한 실패)을 반환 — 호출자(decompose 등)가 "추정 불가"로 처리.
+                let maxErr = 0;
+                for (let i = 0; i < n; i++) {
+                  for (let j = 0; j < n; j++) {
+                    let s = 0;
+                    for (let k = 0; k < n; k++) s += I[i][k] * M[k][j];
+                    const t = i === j ? 1 : 0;
+                    if (Math.abs(s - t) > maxErr) maxErr = Math.abs(s - t);
+                  }
+                }
+                if (maxErr > 1e-6) return null;
                 return I;
               },
               // FWL within-transformation: 그룹 평균을 X와 y에서 차감
@@ -16721,8 +16735,8 @@
               },
 
               // WLS 기반 LPM decompose
-              // metric='ctr' 또는 'cvr'. attribute는 controls + active attrs로 더미 인코딩.
-              // campaign_id는 demean으로 흡수. weight = impressions.
+              // metric='ctr'|'cpa'|'roas'. attribute는 controls + active attrs로 더미 인코딩.
+              // campaign_id는 demean으로 흡수. weight = 비율의 분모(impressions/actions/spend).
               decompose(rows, opts) {
                 const metric = opts.metric;
                 const activeAttrs = opts.attributes; // ['hook_type','format', ...] 사용자 토글
@@ -16736,11 +16750,13 @@
                   const ratio =
                     metric === "ctr"
                       ? this.safeDiv(r.clicks, r.impressions)
-                      : metric === "cvr"
-                        ? this.safeDiv(r.installs, r.clicks)
-                        : metric === "ipm"
-                          ? this.safeDiv(r.installs * 1000, r.impressions)
-                          : null;
+                      : metric === "cpa"
+                        ? this.safeDiv(r.spend, r.actions)
+                        : metric === "roas"
+                          ? this.safeDiv(r.revenue_d7, r.spend)
+                          : metric === "ipm"
+                            ? this.safeDiv(r.installs * 1000, r.impressions)
+                            : null;
                   if (ratio == null || !isFinite(ratio)) return false;
                   for (const a of activeAttrs) {
                     if (r[a] == null || r[a] === "") return false;
@@ -16762,10 +16778,19 @@
                   _metricVal:
                     metric === "ctr"
                       ? r.clicks / r.impressions
-                      : metric === "cvr"
-                        ? r.installs / r.clicks
-                        : (r.installs * 1000) / r.impressions,
-                  _w: Number(r.impressions) || 0,
+                      : metric === "cpa"
+                        ? r.spend / r.actions
+                        : metric === "roas"
+                          ? r.revenue_d7 / r.spend
+                          : (r.installs * 1000) / r.impressions,
+                  // 가중치 = 비율의 정밀도를 좌우하는 분모(노출/액션/지출). CPA·ROAS는 노출이 아니라
+                  // 각자의 분모로 가중해야 통계적으로 정당함(작은 분모=노이즈 큰 추정치).
+                  _w:
+                    metric === "cpa"
+                      ? Number(r.actions) || 0
+                      : metric === "roas"
+                        ? Number(r.spend) || 0
+                        : Number(r.impressions) || 0,
                 }));
 
                 // attribute별 levels 추출 + reference level
@@ -16794,8 +16819,8 @@
                   }
                 }
 
-                // X 행렬: [1, ...factorCols dummies]
-                const X = rowsWithExtras.map((r) => {
+                // X 행렬: [1, ...factorCols dummies]. 절편은 col 0.
+                let X = rowsWithExtras.map((r) => {
                   const row = [1];
                   for (const fc of factorCols)
                     row.push(r[fc.factor] === fc.level ? 1 : 0);
@@ -16803,18 +16828,27 @@
                 });
                 let y = rowsWithExtras.map((r) => r._metricVal);
                 let w = rowsWithExtras.map((r) => r._w);
+                let hasIntercept = true;
 
-                // campaign_id within-transformation (FWL)
+                // campaign_id within-transformation (FWL).
                 if (rowsWithExtras[0].campaign_id) {
                   const camp = rowsWithExtras.map((r) => r.campaign_id || "_");
-                  // y와 X 각 컬럼을 campaign 평균 차감
+                  // y와 dummy 컬럼(1..p)을 campaign 평균 차감. col 0(절편)은 건드리지 않는다.
                   y = CREATIVE_MATH.demeanColumn(y, camp);
-                  for (let j = 0; j < X[0].length; j++) {
+                  for (let j = 1; j < X[0].length; j++) {
                     const colVals = X.map((r) => r[j]);
                     const dem = CREATIVE_MATH.demeanColumn(colVals, camp);
                     for (let i = 0; i < X.length; i++) X[i][j] = dem[i];
                   }
+                  // ⚠ within-transform 후에는 절편을 제거해야 한다(FWL 정석). 상수 1열을
+                  // 그룹평균(=1)으로 빼면 전 행이 0이 돼 X'X가 특이행렬이 되고(→ wlsSolve null,
+                  // n=0으로 분석이 죽음), 그렇다고 1로 남기면 가중치(impressions 등)가 큰 데이터에서
+                  // 절편 대각항(Σw)만 거대해져 행렬이 ill-conditioned → SE 폭발(p=1)·음수 R² 발생.
+                  // demean이 이미 모든 그룹평균(전체 수준 포함)을 흡수하므로 절편은 불필요.
+                  X = X.map((row) => row.slice(1));
+                  hasIntercept = false;
                 }
+                const off = hasIntercept ? 1 : 0; // beta/X에서 factorCols 시작 오프셋
 
                 // VIF 체크 + 제거
                 const dropped = [];
@@ -16822,9 +16856,31 @@
                   curCols = factorCols.slice();
                 let safety = 0;
                 while (safety++ < 10) {
-                  // intercept 제외 VIF
-                  const subX = curX.map((r) => r.slice(1));
+                  // 절편 컬럼(있으면 col 0) 제외하고 VIF 평가
+                  const subX = curX.map((r) => r.slice(off));
                   if (subX[0].length === 0) break;
+                  // campaign_id demean 후 분산 0이 된 컬럼(예: channel이 campaign_id와 완전
+                  // 공선이면 그룹 내 분산이 사라짐) — VIF는 이 케이스를 못 잡으므로(자기 분산 0이라
+                  // R²도 0) 먼저 직접 제거. 안 그러면 design matrix가 특이행렬이 돼 fit 전체가 죽음.
+                  let zeroVarIdx = -1;
+                  for (let j = 0; j < subX[0].length; j++) {
+                    const col = subX.map((r) => r[j]);
+                    if (Math.max(...col) - Math.min(...col) < 1e-9) {
+                      zeroVarIdx = j;
+                      break;
+                    }
+                  }
+                  if (zeroVarIdx !== -1) {
+                    const dc = curCols[zeroVarIdx];
+                    dropped.push(
+                      `${dc.factor}=${dc.level} (campaign_id와 완전 공선 — 분산 0)`,
+                    );
+                    curX = curX.map((r) =>
+                      r.filter((_, k) => k !== zeroVarIdx + off),
+                    );
+                    curCols = curCols.filter((_, k) => k !== zeroVarIdx);
+                    continue;
+                  }
                   const vifs = CREATIVE_MATH.vif(subX);
                   const maxVif = Math.max(...vifs);
                   if (maxVif < cfg.vifThreshold) break;
@@ -16848,7 +16904,7 @@
                   dropped.push(
                     `${dc.factor}=${dc.level} (VIF=${vifs[dropIdx].toFixed(2)})`,
                   );
-                  curX = curX.map((r) => r.filter((_, k) => k !== dropIdx + 1)); // +1 for intercept
+                  curX = curX.map((r) => r.filter((_, k) => k !== dropIdx + off));
                   curCols = curCols.filter((_, k) => k !== dropIdx);
                 }
 
@@ -16861,18 +16917,17 @@
                     diag: { error: "행렬 특이값 — control 매핑 부족" },
                   };
 
-                // p-values (z-test 근사, large n)
+                // p-values (z-test 근사, large n). off=절편 유무에 따른 factorCols 시작 인덱스.
                 const effects = [];
                 const pvals = [];
-                for (let j = 1; j < fit.beta.length; j++) {
-                  // 0은 intercept
+                for (let j = off; j < fit.beta.length; j++) {
                   const z = fit.se[j] > 0 ? fit.beta[j] / fit.se[j] : 0;
                   const p = 2 * (1 - this.stdNormalCdf(Math.abs(z)));
                   pvals.push(p);
                   effects.push({
-                    factor: curCols[j - 1].factor,
-                    level: curCols[j - 1].level,
-                    ref: curCols[j - 1].ref,
+                    factor: curCols[j - off].factor,
+                    level: curCols[j - off].level,
+                    ref: curCols[j - off].ref,
                     coef: fit.beta[j],
                     se: fit.se[j],
                     z,
@@ -16880,7 +16935,7 @@
                     ciLow: fit.beta[j] - 1.96 * fit.se[j],
                     ciHigh: fit.beta[j] + 1.96 * fit.se[j],
                     n: rowsWithExtras.filter(
-                      (r) => r[curCols[j - 1].factor] === curCols[j - 1].level,
+                      (r) => r[curCols[j - off].factor] === curCols[j - off].level,
                     ).length,
                   });
                 }
@@ -17312,7 +17367,7 @@
 
             /* ----- page_5_6 ----- */
             const CREATIVE_STATE = {
-              decomposeMetric: "ctr", // 'ctr' | 'cvr' | 'ipm'
+              decomposeMetric: "ctr", // 'ctr' | 'cpa' | 'roas'
               fatigueMetric: "ctr",
               matrixAxes: "default", // 'default' | 'angle_vs_hook' 등 사용자 지정 가능
               selectedCell: null, // {row, col} — Concept Matrix 클릭 시 metric 표 필터
@@ -17489,6 +17544,59 @@
           </section>`;
             }
 
+            // 분해 지표별 표시 메타: 단위·부호방향·포맷터. CTR=%p(높을수록 좋음),
+            // CPA=원(낮을수록 좋음 → 부호 반전), ROAS=배(높을수록 좋음).
+            function decomposeMetricMeta(m) {
+              const META = {
+                ctr: {
+                  label: "CTR",
+                  desc: "클릭률(CTR)",
+                  weightLabel: "노출수(impressions)",
+                  betterWhenHigher: true,
+                  fmtVal: (v) =>
+                    v == null || !isFinite(v)
+                      ? "—"
+                      : (v >= 0 ? "+" : "") + (v * 100).toFixed(2) + "%p",
+                  axisUnit: "%p",
+                  chartScale: (v) => v * 100, // 차트는 %p 스케일
+                  axisTick: (v) => v.toFixed(2) + "%p",
+                },
+                cpa: {
+                  label: "CPA",
+                  desc: "획득당 비용(CPA)",
+                  weightLabel: "액션수(actions)",
+                  betterWhenHigher: false,
+                  fmtVal: (v) =>
+                    v == null || !isFinite(v)
+                      ? "—"
+                      : (v >= 0 ? "+" : "−") +
+                        Math.round(Math.abs(v)).toLocaleString() +
+                        "원",
+                  axisUnit: "원",
+                  chartScale: (v) => v,
+                  axisTick: (v) => Math.round(v).toLocaleString(),
+                },
+                roas: {
+                  label: "ROAS",
+                  desc: "광고비 대비 매출(ROAS)",
+                  weightLabel: "지출액(spend)",
+                  betterWhenHigher: true,
+                  fmtVal: (v) =>
+                    v == null || !isFinite(v)
+                      ? "—"
+                      : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(3) + "배",
+                  axisUnit: "배",
+                  chartScale: (v) => v,
+                  axisTick: (v) => v.toFixed(2),
+                },
+              };
+              return META[m] || META.ctr;
+            }
+            // 계수 부호가 "좋은 방향"인가 (색·유의칩 방향에 사용). CPA는 낮을수록 좋아 부호 반전.
+            function decomposeEffectIsGood(coef, meta) {
+              return meta.betterWhenHigher ? coef > 0 : coef < 0;
+            }
+
             function renderCreativeDecompose(decompose) {
               if (!decompose || !Object.keys(decompose).length) {
                 return `
@@ -17497,17 +17605,18 @@
               <div class="callout warn"><div class="ico">!</div><div class="body"><strong>분석 불가</strong><p>소재 속성 컬럼(후킹 방식·포맷 등 — hook_type/format) 매핑 또는 데이터 행 수(30행 이상)가 부족합니다.</p></div></div>
             </section>`;
               }
-              const cur = decompose[CREATIVE_STATE.decomposeMetric] || decompose.ctr;
+              const curMetric = decompose[CREATIVE_STATE.decomposeMetric]
+                ? CREATIVE_STATE.decomposeMetric
+                : "ctr";
+              const cur = decompose[curMetric] || decompose.ctr;
+              const meta = decomposeMetricMeta(curMetric);
               const fmt = (v) => (v == null || !isFinite(v) ? "—" : v.toFixed(4));
-              const fmtPct = (v) =>
-                v == null || !isFinite(v)
-                  ? "—"
-                  : (v >= 0 ? "+" : "") + (v * 100).toFixed(2) + "%p";
+              const fmtVal = meta.fmtVal;
 
               const metricToggle = `
           <div class="ab-pillgroup" style="margin-bottom:8px;">
             <span class="ab-pillgroup-label">분석 기준 지표</span>
-            ${["ctr", "cvr"].map((m) => (decompose[m] ? `<button class="ab-pill ${CREATIVE_STATE.decomposeMetric === m ? "active" : ""}" data-decompose-metric="${m}">${m.toUpperCase()}</button>` : "")).join("")}
+            ${["ctr", "cpa", "roas"].map((m) => (decompose[m] ? `<button class="ab-pill ${curMetric === m ? "active" : ""}" data-decompose-metric="${m}">${decomposeMetricMeta(m).label}</button>` : "")).join("")}
           </div>
         `;
 
@@ -17515,12 +17624,15 @@
                 .sort((a, b) => a.pAdj - b.pAdj)
                 .map((e) => {
                   const sig = e.pAdj < 0.05 ? "유의" : e.pAdj < 0.1 ? "경계" : "—";
-                  const sigCls = e.pAdj < 0.05 ? (e.coef > 0 ? "ok" : "danger") : "";
+                  const isGood = decomposeEffectIsGood(e.coef, meta);
+                  const sigCls = e.pAdj < 0.05 ? (isGood ? "ok" : "danger") : "";
+                  // 색은 "좋은 방향"(초록)/"나쁜 방향"(빨강) 기준 — CPA는 낮을수록 좋아 부호와 반대.
+                  const color = isGood ? "#22c55e" : "#f87171";
                   return `<tr>
             <td>${escapeHtml(e.factor)}</td>
             <td><strong>${escapeHtml(e.level)}</strong> <span style="color:var(--text-muted);font-size:10px;">vs ${escapeHtml(e.ref)}</span></td>
-            <td class="tnum"><strong style="color:${e.coef >= 0 ? "#22c55e" : "#f87171"};">${fmtPct(e.coef)}</strong></td>
-            <td class="tnum" style="font-size:11px;color:var(--text-muted);">[${fmtPct(e.ciLow)}, ${fmtPct(e.ciHigh)}]</td>
+            <td class="tnum"><strong style="color:${color};">${fmtVal(e.coef)}</strong></td>
+            <td class="tnum" style="font-size:11px;color:var(--text-muted);">[${fmtVal(e.ciLow)}, ${fmtVal(e.ciHigh)}]</td>
             <td class="tnum">${fmt(e.p)}</td>
             <td class="tnum"><strong>${fmt(e.pAdj)}</strong></td>
             <td class="tnum">${e.n}</td>
@@ -17532,15 +17644,15 @@
               return `
           <section class="block" id="s-decompose">
             <h2 class="section-title"><span class="ix">§4</span>어떤 특징이 효과적인가 (속성별 효과 분석 · WLS 분해)</h2>
-            <p class="muted">후킹 방식·메시지 콘셉트·포맷 같은 소재 속성이 클릭률/전환율에 실제로 영향을 주는지 통계적으로 분석합니다.</p>
+            <p class="muted">후킹 방식·메시지 콘셉트·포맷 같은 소재 속성이 <strong>${meta.desc}</strong>에 실제로 영향을 주는지 통계적으로 분석합니다. 위 버튼으로 분석 기준 지표(CTR·CPA·ROAS)를 바꿀 수 있습니다.</p>
             <details style="margin-bottom:8px;font-size:11.5px;color:var(--text-muted);cursor:pointer;"><summary>어떻게 계산하나요? (분석 방법 펼치기)</summary>
               <div style="margin-top:6px;padding:8px 10px;background:var(--bg-1);border-left:3px solid var(--primary);line-height:1.6;">
-                노출수로 가중한 회귀분석(impressions-weighted Linear Probability Model)으로 추정하며, 캠페인별 차이는 자동으로 보정합니다(campaign_id within-transformation). 여러 속성을 동시에 검정하므로 다중검정 보정(BH)을 적용합니다.
-                ⚠ 실제 노출 데이터를 관찰해서 분석한 결과라 매체 알고리즘의 노출 편향(selection bias)이 섞여 있을 수 있습니다 — 상관관계로만 참고하고, 확정은 실험 분석 도구(5-4)로 검증하는 것을 권장합니다.
+                ${meta.weightLabel}로 가중한 선형회귀(weighted least squares)로 ${meta.desc}를 추정하며, 캠페인별 차이는 자동으로 보정합니다(campaign_id within-transformation). 가중치를 ${meta.weightLabel}로 두는 이유는 분모가 큰(=추정이 정밀한) 소재에 더 큰 비중을 주기 위함입니다. 여러 속성을 동시에 검정하므로 다중검정 보정(BH)을 적용합니다.
+                ⚠ 실제 운영 데이터를 관찰해서 분석한 결과라 매체 알고리즘의 노출 편향(selection bias)이 섞여 있을 수 있습니다 — 상관관계로만 참고하고, 확정은 실험 분석 도구(5-4)로 검증하는 것을 권장합니다.
               </div>
             </details>
             ${metricToggle}
-            <p style="font-size:12px;color:var(--text-muted);">분석에 쓰인 데이터 행 수(n)=${cur.diag?.n || 0} · <span title="모델이 데이터를 얼마나 잘 설명하는지 (0~1, 높을수록 설명력 높음)">설명력(R²)</span>=${fmt(cur.diag?.R2)} · 제외된 속성(다중공선성): ${(cur.dropped || []).length ? cur.dropped.join(", ") : "없음"}</p>
+            <p style="font-size:12px;color:var(--text-muted);">분석에 쓰인 데이터 행 수(n)=${cur.diag?.n || 0} · <span title="모델이 데이터를 얼마나 잘 설명하는지 (0~1, 높을수록 설명력 높음)">설명력(R²)</span>=${fmt(cur.diag?.R2)} · 제외된 속성(다중공선성): ${(cur.dropped || []).length ? cur.dropped.join(", ") : "없음"}${cur.diag?.error ? ` · <span style="color:#f87171;">추정 불가: ${escapeHtml(cur.diag.error)}</span>` : ""}</p>
             ${
               (cur.effects || []).length
                 ? `
@@ -17559,7 +17671,7 @@
                 ? `<div class="table-wrap">
               <table class="data" style="font-size:11.5px;">
                 <thead><tr>
-                  <th title="비교 대상 속성">속성 (Factor)</th><th title="속성 안의 구체적인 값">값 (Level)</th><th title="기준값 대비 변화량">영향력 (β)</th><th title="이 범위 안에 실제 효과가 있을 가능성이 95%">신뢰구간 (95% CI)</th><th title="우연일 확률">유의확률 (p)</th><th title="여러 속성을 동시에 검정할 때 보정한 유의확률">보정된 유의확률 (BH-adj p)</th><th title="표본 수">n</th><th>유의 여부</th>
+                  <th title="비교 대상 속성">속성 (Factor)</th><th title="속성 안의 구체적인 값">값 (Level)</th><th title="기준값(가장 흔한 값) 대비 ${meta.desc} 변화량">영향력 (β, ${meta.axisUnit})</th><th title="이 범위 안에 실제 효과가 있을 가능성이 95%">신뢰구간 (95% CI)</th><th title="우연일 확률">유의확률 (p)</th><th title="여러 속성을 동시에 검정할 때 보정한 유의확률">보정된 유의확률 (BH-adj p)</th><th title="표본 수">n</th><th>유의 여부</th>
                 </tr></thead>
                 <tbody>${effRows}</tbody>
               </table></div>`
@@ -18032,8 +18144,14 @@
 
             /* Forest plot: 가로 floating bar (CI) + 점(coef) */
             function renderForestPlot() {
-              const cur = CREATIVE_CACHE.decompose?.[CREATIVE_STATE.decomposeMetric];
+              const curMetric = CREATIVE_CACHE.decompose?.[
+                CREATIVE_STATE.decomposeMetric
+              ]
+                ? CREATIVE_STATE.decomposeMetric
+                : "ctr";
+              const cur = CREATIVE_CACHE.decompose?.[curMetric];
               if (!cur || !cur.effects || !cur.effects.length) return;
+              const meta = decomposeMetricMeta(curMetric);
               const canvasId = `creative-forest-${CREATIVE_STATE.decomposeMetric}`;
               const ctx = document.getElementById(canvasId);
               if (!ctx) return;
@@ -18044,14 +18162,19 @@
               const labels = eff.map(
                 (e) => `${e.factor} = ${String(e.level).slice(0, 16)}`,
               );
-              // floating bar: data = [ciLow, ciHigh] · color: 유의이고 양수→초록, 유의이고 음수→빨강, else 회색
-              const barData = eff.map((e) => [e.ciLow * 100, e.ciHigh * 100]); // %p 단위
+              const sc = meta.chartScale; // 지표별 차트 스케일(CTR=%p ×100, CPA·ROAS=원본)
+              // floating bar: data = [ciLow, ciHigh]. color: 유의이고 "좋은 방향"→초록, 나쁜 방향→빨강.
+              // (CPA는 낮을수록 좋아 부호 반전 — decomposeEffectIsGood가 처리)
+              const barData = eff.map((e) => [sc(e.ciLow), sc(e.ciHigh)]);
               const barColors = eff.map((e) => {
-                if (e.pAdj < 0.05) return e.coef > 0 ? "#22c55eAA" : "#f87171AA";
+                if (e.pAdj < 0.05)
+                  return decomposeEffectIsGood(e.coef, meta)
+                    ? "#22c55eAA"
+                    : "#f87171AA";
                 return "rgba(150,150,150,0.4)";
               });
               // 점(coef) 시리즈
-              const pointData = eff.map((e, i) => ({ x: e.coef * 100, y: i }));
+              const pointData = eff.map((e, i) => ({ x: sc(e.coef), y: i }));
 
               CHART_INSTANCES[canvasId] = new Chart(ctx, {
                 type: "bar",
@@ -18093,7 +18216,7 @@
                         label: (c) => {
                           const e = eff[c.dataIndex];
                           if (!e) return "";
-                          return `β=${(e.coef * 100).toFixed(2)}%p · CI=[${(e.ciLow * 100).toFixed(2)}, ${(e.ciHigh * 100).toFixed(2)}] · BH-p=${e.pAdj.toFixed(4)} · n=${e.n}`;
+                          return `β=${meta.fmtVal(e.coef)} · CI=[${meta.fmtVal(e.ciLow)}, ${meta.fmtVal(e.ciHigh)}] · BH-p=${e.pAdj.toFixed(4)} · n=${e.n}`;
                         },
                       },
                     },
@@ -18102,12 +18225,12 @@
                     x: {
                       title: {
                         display: true,
-                        text: `${CREATIVE_STATE.decomposeMetric.toUpperCase()} 효과 (%p, 0 = 기준 level)`,
+                        text: `${meta.label} 효과 (${meta.axisUnit}, 0 = 기준 level)`,
                         color: getCssVar("--text-muted"),
                       },
                       ticks: {
                         color: getCssVar("--text-muted"),
-                        callback: (v) => v.toFixed(2) + "%p",
+                        callback: (v) => meta.axisTick(v),
                       },
                       grid: { color: getCssVar("--border") },
                     },
@@ -47418,101 +47541,88 @@
             }
             function _demoCreativeData() {
               const rng = seededNoise(60606);
-              const crs = [
-                {
-                  id: "CR_ugc_hook",
-                  hook: "UGC",
-                  angle: "혜택",
-                  fmt: "9:16",
-                  dur: "0-15s",
-                },
-                {
-                  id: "CR_demo",
-                  hook: "데모",
-                  angle: "기능",
-                  fmt: "1:1",
-                  dur: "15-30s",
-                },
-                {
-                  id: "CR_testimonial",
-                  hook: "후기",
-                  angle: "신뢰",
-                  fmt: "9:16",
-                  dur: "0-15s",
-                },
-                {
-                  id: "CR_promo",
-                  hook: "프로모",
-                  angle: "긴급",
-                  fmt: "16:9",
-                  dur: "15-30s",
-                },
-                {
-                  id: "CR_fear_compare",
-                  hook: "비교",
-                  angle: "공포",
-                  fmt: "16:9",
-                  dur: "15-30s",
-                  bad: true,
-                },
-                {
-                  id: "CR_small_trust",
-                  hook: "후기",
-                  angle: "신뢰",
-                  fmt: "1:1",
-                  dur: "0-15s",
-                  promising: true,
-                },
-              ];
+              // 속성별 "진짜 효과"를 명시 주입 → WLS 회귀가 통계적으로 유의미한 계수를 복원하도록.
+              // CTR=hook_type 주도 · 설치율(CVR)=message_angle · 액션율(CPA 동인)=format · ARPU(ROAS 동인)=duration.
+              // CPA=spend/actions, ROAS=revenue/spend라 angle·format·duration이 함께 신호를 만든다.
+              const hooks = ["UGC", "데모", "후기", "프로모"];
+              const angles = ["혜택", "기능", "신뢰", "긴급"];
+              const fmts = ["9:16", "1:1", "16:9"];
+              const durs = ["0-15s", "15-30s"];
+              const ctrMul = { UGC: 1.4, 데모: 1.0, 후기: 1.18, 프로모: 0.72 };
+              const cvrMul = { 혜택: 1.3, 기능: 1.0, 신뢰: 1.22, 긴급: 0.78 };
+              const actMul = { "9:16": 0.52, "1:1": 0.4, "16:9": 0.3 }; // 액션/install
+              const arpuMul = { "0-15s": 2700, "15-30s": 1650 }; // revenue_d7/install
+              const channels = ["Meta", "TikTok"];
+              const campaigns = ["C_prospecting", "C_retargeting", "C_lookalike"];
+              // 24 소재: 소재단위 더미(hook3+angle3+fmt2+dur1+channel1=10개)를 campaign FE(3) 흡수
+              // 후에도 식별하려면 소재 수가 충분 + 속성이 서로 공선되지 않아야 한다(고정 주기 배치는
+              // 숨은 선형종속을 만들어 rank-deficient → 가비지 추정). 각 factor를 결정론 셔플(seed 고정)로
+              // 독립 배치해 full-rank를 보장(seed=1에서 rank 10/10 검증). campaign은 8개씩 균등 3블록.
+              const rosterRng = seededNoise(1);
+              const shuffled = () => {
+                const a = Array.from({ length: 24 }, (_, i) => i);
+                for (let i = a.length - 1; i > 0; i--) {
+                  const j = Math.floor((rosterRng() + 0.5) * (i + 1));
+                  [a[i], a[j]] = [a[j], a[i]];
+                }
+                return a;
+              };
+              const ph = shuffled(),
+                pa = shuffled(),
+                pf = shuffled(),
+                pd = shuffled(),
+                pc = shuffled();
+              const crs = [];
+              for (let i = 0; i < 24; i++) {
+                crs.push({
+                  id: "CR_" + String(i + 1).padStart(2, "0"),
+                  hook: hooks[ph[i] % 4],
+                  angle: angles[pa[i] % 4],
+                  fmt: fmts[pf[i] % 3],
+                  dur: durs[pd[i] % 2],
+                  channel: channels[pc[i] % 2],
+                  campaign: campaigns[Math.floor(i / 8) % 3],
+                });
+              }
               const rows = [];
               const base = Date.UTC(2025, 9, 10);
               for (let d = 0; d < 30; d++) {
                 const date = new Date(base + d * 86400000).toISOString().slice(0, 10);
                 for (let ci = 0; ci < crs.length; ci++) {
-                  const cr = crs[ci],
-                    fatigue = Math.max(0.4, 1 - d * 0.015 * (ci + 1) * 0.4);
-                  let imp, clk, inst;
-                  if (cr.bad) {
-                    imp = Math.max(1, Math.round(15000 * (1 + (rng() + 0.5) * 0.2)));
-                    clk = Math.max(1, Math.round(imp * 0.0015)); // Extremely low CTR!
-                    inst = Math.max(1, Math.round(clk * 0.05)); // Extremely low CVR!
-                  } else if (cr.promising) {
-                    imp = Math.max(1, Math.round(80 * (1 + (rng() + 0.5) * 0.1))); // Low impressions
-                    clk = Math.max(1, Math.round(imp * 0.055)); // Very high CTR!
-                    inst = Math.max(1, Math.round(clk * 0.35));
-                  } else {
-                    imp = Math.max(
-                      1,
-                      Math.round(
-                        30000 *
-                          fatigue *
-                          (1 + (rng() + 0.5) * 0.3) *
-                          [1, 0.7, 0.6, 0.5][ci],
-                      ),
-                    );
-                    clk = Math.max(
-                      1,
-                      Math.round(imp * (0.018 + (rng() + 0.5) * 0.01) * fatigue),
-                    );
-                    inst = Math.max(
-                      1,
-                      Math.round(clk * (0.28 + (rng() + 0.5) * 0.06)),
-                    );
-                  }
-                  const v3 = Math.round(imp * (0.45 + (rng() + 0.5) * 0.1));
+                  const cr = crs[ci];
+                  // 약한 시간감쇠(피로도 narrative 유지) — 소재마다 다른 감쇠율.
+                  const fatigue = Math.max(0.55, 1 - d * 0.01 * (1 + (ci % 4) * 0.25));
+                  const imp = Math.max(
+                    1200,
+                    Math.round(
+                      20000 * fatigue * (1 + rng() * 0.12) * (0.7 + (ci % 3) * 0.2),
+                    ),
+                  );
+                  const ctr =
+                    0.02 * ctrMul[cr.hook] * (1 + rng() * 0.1) * (0.9 + fatigue * 0.1);
+                  const clk = Math.max(1, Math.round(imp * ctr));
+                  const cvr = 0.3 * cvrMul[cr.angle] * (1 + rng() * 0.1);
+                  const inst = Math.max(1, Math.round(clk * cvr));
+                  const cpc = 500 * (1 + rng() * 0.1);
+                  const spend = Math.round(clk * cpc);
+                  const actRate = actMul[cr.fmt] * (1 + rng() * 0.08);
+                  const actions = Math.max(1, Math.round(inst * actRate));
+                  const arpu = arpuMul[cr.dur] * (1 + rng() * 0.08);
+                  const revenue_d7 = Math.round(inst * arpu);
+                  const v3 = Math.round(imp * (0.45 + (rng() + 0.5) * 0.08));
                   rows.push({
                     creative_id: cr.id,
                     date,
-                    channel: ["Meta", "TikTok"][ci % 2],
-                    campaign_id: "C" + ((ci % 2) + 1),
+                    channel: cr.channel,
+                    campaign_id: cr.campaign,
                     impressions: imp,
                     clicks: clk,
                     installs: inst,
-                    spend: Math.round(clk * (480 + (rng() + 0.5) * 120)),
-                    actions: Math.round(inst * 0.4),
-                    revenue_d7: Math.round(inst * 2100),
+                    spend,
+                    actions,
+                    revenue_d7,
                     video_3s_views: v3,
-                    video_completions: Math.round(v3 * (0.25 + (rng() + 0.5) * 0.1)),
+                    video_completions: Math.round(v3 * (0.25 + (rng() + 0.5) * 0.08)),
                     hook_type: cr.hook,
                     message_angle: cr.angle,
                     format: cr.fmt,
