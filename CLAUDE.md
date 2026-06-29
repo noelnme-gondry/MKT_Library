@@ -158,6 +158,8 @@ git merge origin/main --no-edit → git checkout --ours index.html
 - **모델 래퍼는 `.model.predict`지 `.predict` 아님**(5-3 manual): `getCachedModels`가 주는 객체는 `{model,poly2Shape,xMax,…}` 래퍼 — 예측은 `ALLOC_MATH.predictSafeCpr(wrap, cost)`(CPR 반환)이고 결과=cost÷CPR. `meta.predict(cost)` 직접 호출은 **undefined→결과 0**(분배 후 예상 전부 0). 골든은 순수 math만 봐서 못 잡음 → manual/greedy/modeC **각 분배 경로를 데모로 repro**(실제 items[].results 확인).
 - **지표 토글 추가 시 차트도 같이 전환**(5-22): 표만 metric 분기하고 차트가 한 지표(CPA) 공간 고정이면 "토글해도 곡선 안 바뀜". 차트 y변환·축라벨·점/곡선 전부 metric별 분기(ROAS=revPerRes÷CPR). 캡션의 단위 문자열도 같이.
 - **`<thead>` 없는 표는 전역 `thead th` 정렬 규칙 미적용**(5-12 매트릭스): `<table>${header}${body}`처럼 thead 태그 없이 `<th>` 직접 쓰면 열 헤더=브라우저 기본 center, 데이터 `<td>`=left로 어긋남. 헤더·셀에 명시 `text-align`(숫자=right) 부여, 행 라벨/좌상단만 left.
+- **`pageShell`의 `opts.deck`는 `5-x` 도구 페이지에서 항상 무시됨**(분석 도구=압축 sticky바라 eyebrow/deck 생략 분기, §4.1): "데이터 없음" 상태에 역할 설명 카피를 추가할 때 `deck`에 적으면 죽은 코드 — 실제 렌더되는 `summary`에 넣어야 함(5-6에서 발견·수정).
+- **render-layer 변경은 골든이 못 잡음 → 주입식 harness로 직접 검증**(5-6): `validate.js`는 순수 통계함수만 보장. `page_5_N`·`renderXxx` 카피/분기 확인은 vm 샌드박스에서 probe 코드를 **같은 `vm.runInContext` 호출의 code 문자열에 이어붙여** 실행해야 함 — top-level `const`(`CSV_STATE` 등)는 함수선언과 달리 global object 프로퍼티가 안 되므로 별도 호출에서 `sandbox.CSV_STATE`로 접근 시 `undefined`. 결과는 `globalThis.__PROBE_RESULTS__`로 받기.
 
 ---
 
@@ -271,6 +273,9 @@ TF와 범용회귀는 같은 OLS(`REG_STATS`)·차이는 "미래 투영"뿐 → 
 5-3 곡선 엔진 재사용한 진단 도구 — 신규 곡선/아웃라이어 구현 금지. `SAT_MATH.analyzeEntity`(순수)가 `ALLOC_MATH.removeOutliers·fitBest·predictSafeCpr·detectPoly2Shape` 호출. **포화지수 = 한계 CPA ÷ 평균 CPA**(ROAS는 평균÷한계, 둘 다 >1=다음 1원이 평균보다 나쁨), `≥satHigh` 포화·`<scaleLow` 여유·중간 적정(임계 `SAT_CONFIG` 분리·결정론). 한계는 현 지출점(최근 7일 평균 일예산)에서 +10% finite-diff. `satBuildPoints` 자체 grouping(채널/캠페인 토글)·ALLOC 캐시 미접근(unit 결합 회피). `runSatTests` 골든.
 - **공유 데모 신호 부여**: 진단 도구 데모가 의미 있으려면 합성 패턴이 실제 신호를 띠어야 함 — 효율 데모 설치반응에 `cost^satExp` 수확체감 곡률 + 비용 램프 확대·노이즈 축소(노이즈 크면 Poly2가 멱법칙 곡률 덮어써 한계효율 납작). 공유 fixture 수정은 형제 도구(5-2/5-3) render 스모크로 회귀 확인. 골든은 합성 데이터라 demo 값 변경과 무관(byte-동일 불변).
 
+### 12.17 쉬운말 우선 표기 (전문용어 변환, 5-6 전면 적용)
+일반 유저 대상 라벨·헤딩은 **쉬운 말 먼저 + 전문용어는 괄호로 뒤에**(`데이터 점검 (검증)`·`영향력 (β)` — 역순 금지). 전문용어 자체는 유지 가능하나 항상 명확한 설명이 붙어야 함. 표 헤더처럼 공간 좁은 곳은 약어 유지 + `title` 툴팁(`<th title="노출수 (Impressions)">Impr</th>`). 방법론처럼 긴 설명은 본문에 늘어놓지 말고 짧은 평어 한 줄 + `<details><summary>...펼치기</summary>`로 접기(§12.14의 "결론 vs 진단" fold와 별개 축 — 이건 라벨 wording 순서 문제).
+
 ---
 
 ## 13. 참고 파일
@@ -317,8 +322,10 @@ TF와 범용회귀는 같은 OLS(`REG_STATS`)·차이는 "미래 투영"뿐 → 
 - 도구 통합 17→5/6(탭형 병합, §12.7) · SaaS 셸(랜딩·페이월·⌘K, §12.11) · 전 도구 데모 모드(§12.8) · GA4 이벤트 트래킹.
 - 운영 대시보드 5-2 9탭 통합 + sticky 필터 + 코호트 성숙도 예측 · 5-3 효율·배분(OS분리 배분·결론/검증 UX) · 5-22 포화도 탐지(§12.16) · 5-4 실험 분석 3탭 · 5-18 회귀+미래예측 통합(§12.15, TF 흡수) · 5-21 PVM 변동 탐지.
 - 골든 테스트 유지(byte-동일 보증). 상세 이력은 git·PR·`docs/`.
+- **도구별 쉬운말 딥다이브 1/4 — 5-6 소재 분석 완료**(§12.17): 전 섹션 라벨·헤딩 쉬운말 우선 변환 + 방법론 설명 fold. 사용자 계획: 5-6 → 5-4(실험 분석) → 5-18(마케팅 반응 분석) → 5-20(Aha-moment Finder) 순서로 동일 패스 예정, 나머지 3개 미착수.
 
 **다음 작업 (백로그, `docs/backlog.md` 참조)**:
+- **쉬운말 딥다이브 잔여**: 5-4 실험 분석 → 5-18 마케팅 반응 분석 → 5-20 Aha-moment Finder(§12.17 패턴 적용).
 - **SOP 콘텐츠 보강**(1-2~4-4 인라인, 정확성 검수 기반 — 진행방식 미정).
 - **회귀·예측 후속**(§12.15 위): 예측 모델 선택(ridge)·계절성 period 수동지정·예측 CI 캐비엇 강화. 인과 확정은 holdout 전용.
 - **Pro 처방 레이어**: 증분 플래너·시나리오→MMM / 처방 페이싱·LTV 배분→5-3 / 이상치 근본원인→5-2.
