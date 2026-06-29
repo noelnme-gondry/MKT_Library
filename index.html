@@ -10331,6 +10331,218 @@
               );
               return ra.some((k) => mapped.has(k));
             }
+
+            // ===== 통합 스키마 + 도구별 데이터×기능 연결표 (범용) =====
+            // 효율&예산 4총사(공유 grain) — 미사용 필드는 "어느 도구가 쓰는지" 고지.
+            const DFM_FAMILY = ["5-2", "5-3", "5-22", "5-21"];
+            const DFM_TOOL_SHORT = {
+              "5-2": "운영 대시보드",
+              "5-3": "예산 배분",
+              "5-22": "포화도 탐지",
+              "5-21": "성과 변동 탐지",
+            };
+            function dfmToolName(id) {
+              return DFM_TOOL_SHORT[id] || findMeta(id)?.title || id;
+            }
+            // 통합 캔버니컬 컬럼 순서 — 차원 먼저(depth), 지표는 퍼널·가치 순
+            const DFM_SERIES = [
+              { name: "기간", fields: ["date"] },
+              {
+                name: "세그먼트 (차원)",
+                fields: [
+                  "country",
+                  "platform",
+                  "channel",
+                  "campaign_name",
+                  "adgroup_name",
+                  "creative_id",
+                  "creative_url",
+                ],
+              },
+              { name: "비용", fields: ["cost"] },
+              {
+                name: "유입·퍼널",
+                fields: ["impressions", "clicks", "installs", "actions"],
+              },
+              {
+                name: "결제 (PU Dn)",
+                collapse: true,
+                fields: [
+                  "pu_d0",
+                  "pu_d7",
+                  "pu_d14",
+                  "pu_d30",
+                  "pu_d60",
+                  "pu_d90",
+                  "pu_d180",
+                  "pu_d360",
+                ],
+              },
+              {
+                name: "매출 (Revenue Dn)",
+                collapse: true,
+                fields: [
+                  "revenue_d0",
+                  "revenue_d7",
+                  "revenue_d14",
+                  "revenue_d30",
+                  "revenue_d60",
+                  "revenue_d90",
+                  "revenue_d180",
+                  "revenue_d360",
+                ],
+              },
+              {
+                name: "리텐션 (Retention Dn)",
+                collapse: true,
+                fields: [
+                  "ret_d7",
+                  "ret_d14",
+                  "ret_d30",
+                  "ret_d60",
+                  "ret_d90",
+                  "ret_d180",
+                  "ret_d360",
+                ],
+              },
+            ];
+            // 도구에서 한 필드의 상태: 필수/필수(택1)/옵션/미사용
+            function dfmStatus(toolId, key) {
+              for (const r of TOOL_REQUIRED_FIELDS[toolId] || []) {
+                if (typeof r === "string" && r === key) return { kind: "req" };
+                if (r && r.oneOf && r.oneOf.includes(key)) return { kind: "req1" };
+              }
+              const o = (TOOL_OPTIONAL_FIELDS[toolId] || []).find(
+                (x) => x.key === key,
+              );
+              if (o) return { kind: "opt", unlocks: o.unlocks };
+              return { kind: "unused" };
+            }
+            function dfmFamilyUsers(key, exclude) {
+              return DFM_FAMILY.filter(
+                (t) => t !== exclude && dfmStatus(t, key).kind !== "unused",
+              );
+            }
+            // 템플릿 헤더(canonical) — creative_id는 사용자 친화적으로 creative_name 표기
+            function dfmCanonHeader(key) {
+              return key === "creative_id" ? "creative_name" : key;
+            }
+            function dfmUnifiedFields() {
+              return DFM_SERIES.flatMap((s) => s.fields);
+            }
+            // 깨끗한 헤더만(자동매핑 안 깨지게). BOM+CRLF (§7 CSV 규칙).
+            function buildToolTemplateCsv(toolId, scope) {
+              const all = dfmUnifiedFields();
+              const fields =
+                scope === "unified"
+                  ? all
+                  : all.filter((k) => dfmStatus(toolId, k).kind !== "unused");
+              const headers = [...new Set(fields.map(dfmCanonHeader))];
+              return "﻿" + headers.join(",") + "\r\n";
+            }
+            function dfmDownloadTemplate(toolId, scope) {
+              const csv = buildToolTemplateCsv(toolId, scope);
+              const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download =
+                scope === "unified"
+                  ? "template_efficiency_unified.csv"
+                  : `template_${toolId}.csv`;
+              a.click();
+              setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+            }
+            function dfmBadge(kind) {
+              if (kind === "req" || kind === "req1")
+                return `<span class="chip danger" style="font-size:10px;padding:1px 7px;"><span class="dot"></span>${kind === "req1" ? "필수 (택1)" : "필수"}</span>`;
+              if (kind === "opt")
+                return `<span class="chip ok" style="font-size:10px;padding:1px 7px;"><span class="dot"></span>옵션</span>`;
+              return `<span style="font-size:10px;color:var(--text-muted);">— 미사용</span>`;
+            }
+            // 범용 per-tool 데이터×기능 연결표 — TOOL_REQUIRED/OPTIONAL_FIELDS + STANDARD_FIELDS에서 자동 생성.
+            function renderDataFeatureMatrix(toolId) {
+              const isFamily = DFM_FAMILY.includes(toolId);
+              const mapped = new Set(
+                Object.values(CSV_STATE.mapping || {}).filter(
+                  (v) => v && v !== "__ignore__",
+                ),
+              );
+              const mapCell = (on) =>
+                on
+                  ? `<span class="chip ok" style="font-size:10px;padding:1px 6px;"><span class="dot"></span>매핑됨</span>`
+                  : `<span style="color:var(--text-muted);">—</span>`;
+              const tdField = (codeStr, label) =>
+                `<td style="padding:6px 10px 6px 0;"><code class="inline" style="font-size:10.5px;">${escapeHtml(codeStr)}</code>${label ? `<span style="color:var(--text-muted);font-size:10.5px;margin-left:6px;">${escapeHtml(label)}</span>` : ""}</td>`;
+              const body = [];
+              for (const series of DFM_SERIES) {
+                const fields = isFamily
+                  ? series.fields
+                  : series.fields.filter(
+                      (k) => dfmStatus(toolId, k).kind !== "unused",
+                    );
+                if (!fields.length) continue;
+                body.push(
+                  `<tr><td colspan="4" style="padding:9px 0 3px;font-weight:700;color:var(--text-1);font-size:11.5px;border-bottom:1px solid var(--border);">${series.name}</td></tr>`,
+                );
+                if (series.collapse) {
+                  const statuses = fields.map((k) => dfmStatus(toolId, k));
+                  const best =
+                    statuses.find(
+                      (s) => s.kind === "req" || s.kind === "req1",
+                    ) ||
+                    statuses.find((s) => s.kind === "opt") || { kind: "unused" };
+                  const anyMapped = fields.some((k) => mapped.has(k));
+                  const range = `${dfmCanonHeader(fields[0])} ~ ${dfmCanonHeader(fields[fields.length - 1])}`;
+                  let note = (statuses.find((s) => s.unlocks) || {}).unlocks || "";
+                  if (best.kind === "unused") {
+                    const users = dfmFamilyUsers(fields[0], toolId);
+                    note = users.length
+                      ? `이 도구는 미사용 — <strong>${users.map(dfmToolName).join("·")}</strong>에서 사용`
+                      : "이 도구 미사용";
+                  }
+                  body.push(
+                    `<tr style="border-bottom:1px solid var(--border-subtle);">${tdField(range)}<td style="padding:6px 10px;">${dfmBadge(best.kind)}</td><td style="padding:6px 10px;">${mapCell(anyMapped)}</td><td style="padding:6px 0;color:var(--text-2);font-size:11px;">${note}</td></tr>`,
+                  );
+                } else {
+                  for (const k of fields) {
+                    const st = dfmStatus(toolId, k);
+                    const def = STANDARD_FIELDS[k] || {};
+                    let note = st.unlocks || "";
+                    if (st.kind === "unused") {
+                      const users = dfmFamilyUsers(k, toolId);
+                      note = users.length
+                        ? `이 도구는 미사용 — <strong>${users.map(dfmToolName).join("·")}</strong>에서 사용`
+                        : "이 도구 미사용";
+                    }
+                    body.push(
+                      `<tr style="border-bottom:1px solid var(--border-subtle);">${tdField(dfmCanonHeader(k), def.label || "")}<td style="padding:6px 10px;">${dfmBadge(st.kind)}</td><td style="padding:6px 10px;">${mapCell(mapped.has(k))}</td><td style="padding:6px 0;color:var(--text-2);font-size:11px;">${escapeHtml(note)}</td></tr>`,
+                    );
+                  }
+                }
+              }
+              const tplBtns = `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${isFamily ? `<button class="ab-pill" data-template-dl="unified" data-template-tool="${toolId}" title="효율&예산 4개 도구 공통 통합 템플릿(전체 컬럼)">⬇ 통합 템플릿 CSV</button>` : ""}
+            <button class="ab-pill" data-template-dl="tool" data-template-tool="${toolId}" title="이 도구가 쓰는 컬럼만">⬇ 이 도구 템플릿 CSV</button>
+          </div>`;
+              return `<div class="block" style="padding:16px 20px;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+            <div style="font-size:13px;font-weight:700;color:var(--text-1);">📋 데이터×기능 연결표 — ${escapeHtml(dfmToolName(toolId))}</div>
+            ${tplBtns}
+          </div>
+          <p style="font-size:11.5px;color:var(--text-muted);margin:0 0 10px;">필수/옵션 컬럼과, 이 도구가 안 쓰지만 다른 도구가 쓰는 컬럼을 한눈에. 템플릿은 헤더만 들어있어 그대로 채워 올리면 됩니다.${isFamily ? " 4개 도구(운영·예산·포화도·변동)는 같은 CSV를 공유합니다." : ""}</p>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead><tr style="border-bottom:1px solid var(--border);">
+              <th style="text-align:left;padding:4px 10px 4px 0;color:var(--text-muted);font-weight:600;">표준 필드</th>
+              <th style="text-align:left;padding:4px 10px;color:var(--text-muted);font-weight:600;">이 도구</th>
+              <th style="text-align:left;padding:4px 10px;color:var(--text-muted);font-weight:600;">매핑</th>
+              <th style="text-align:left;padding:4px 0;color:var(--text-muted);font-weight:600;">열리는 기능 / 비고</th>
+            </tr></thead>
+            <tbody>${body.join("")}</tbody>
+          </table>
+          <p style="font-size:11px;color:var(--text-muted);margin:10px 0 0;">🔒 데이터는 브라우저 메모리에서만 처리됩니다. 서버 전송·저장 없음.</p>
+        </div>`;
+            }
+
             function renderCapabilityMatrix() {
               const rows = [
                 {
@@ -10633,11 +10845,8 @@
                   stickyFilter: renderMonFilterBar(),
                   summary:
                     "필수: date + cost(또는 installs/actions). 컬럼을 더 매핑하면 LTV·리텐션·퍼널·세그먼트 탭이 추가로 열립니다.",
-                  toc: [
-                    { id: "s-prep", title: "데이터 준비" },
-                    { id: "s-cap", title: "데이터×기능 연결표" },
-                  ],
-                  body: `<section class="block" id="s-prep">${renderInlineCsvUpload(csvTool)}</section><div id="s-cap">${renderCapabilityMatrix()}</div>`,
+                  toc: [{ id: "s-prep", title: "데이터 준비 · 데이터×기능 연결표" }],
+                  body: `<section class="block" id="s-prep">${renderInlineCsvUpload(csvTool)}</section>`,
                 });
               }
               // 탭 → 본문 dispatch
@@ -48491,11 +48700,8 @@
                 </div>
               </div>
 
-              <!-- 4) 필요한 컬럼 가이드 — 항상 collapsed (참고용) -->
-              <details style="margin-top:12px;">
-                <summary style="cursor:pointer;color:var(--text-muted);font-weight:500;font-size:12px;">▸ 참고: 이 도구가 사용할 수 있는 표준 필드 가이드</summary>
-                ${guideTable}
-              </details>
+              <!-- 4) 데이터×기능 연결표 (펼친 형태) -->
+              ${renderDataFeatureMatrix(toolId)}
 
               <!-- 5) 분석 게이트 — 매핑 완료 후 명시적 실행 -->
               ${
@@ -48541,16 +48747,26 @@
                 : ""
             }
 
-            <details style="margin-top:12px;">
-              <summary style="cursor:pointer;color:var(--text-muted);font-weight:500;font-size:12px;">📋 전체 컬럼·기능 안내 (alias 포함)</summary>
-              ${guideTable}
-            </details>
+            ${renderDataFeatureMatrix(toolId)}
           </section>
         `;
             }
 
             /* 인라인 업로드 핸들러 부착 (페이지 진입 후 1회 호출) */
             function bindInlineCsvHandlers() {
+              // 템플릿 CSV 다운로드 (연결표) — 통합/이 도구
+              document.querySelectorAll("[data-template-dl]").forEach((btn) =>
+                btn.addEventListener("click", () => {
+                  dfmDownloadTemplate(
+                    btn.dataset.templateTool,
+                    btn.dataset.templateDl,
+                  );
+                  track("template_download", {
+                    tool: btn.dataset.templateTool,
+                    scope: btn.dataset.templateDl,
+                  });
+                }),
+              );
               // 분석하기 게이트 — 매핑 확정 후 명시적 실행
               document.querySelectorAll("[data-tool-analyze]").forEach((btn) =>
                 btn.addEventListener("click", () => {
