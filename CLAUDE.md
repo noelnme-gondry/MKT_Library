@@ -50,12 +50,13 @@ HTML/CSS/JS (Vanilla) — 빌드 도구 없음. `serve . -l $PORT` 가 전부.
 - `pageShell(meta, { deck, chips, summary, toc, body, tocFilters })` 공통 레이아웃.
 - **내부 id(`5-2`)는 절대 불변** — hash·렌더러·navigate·AUTH·TOOL_* 수백 곳 의존, 북마크 깨짐. 표시 번호만 바꾸려면 `displayItemNumber(id)`/`displayGroupNumber(id)` 순수함수 사용(§12.6).
 
-### 4.2 현재 도구 (17→7 통합 완료)
+### 4.2 현재 도구 (17→8 통합 완료)
 
 | ID | 도구 | 티어 | 데이터 |
 |---|---|---|---|
 | 1-x~4-x | SOP 문서 | free | 정적 JSON |
 | 5-2 | 운영 대시보드 (시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트, 9탭) | **free** | 효율 CSV |
+| 5-22 | 캠페인 포화도 탐지 (채널·캠페인 한계 CPA/ROAS vs 평균 → 포화/여유 판정·응답곡선) | **free** | 효율 CSV 공유 |
 | 5-3 | 예산 배분 (절대 CPR/ROAS 가중 + 한계효용 그리디) | **free** | 효율 CSV |
 | 5-4 | 실험 분석 (A/B·Test Readout·Incrementality, 3탭) | free | 수동/CSV |
 | 5-6 | 소재 분석 | free | 소재 daily CSV |
@@ -263,6 +264,10 @@ TF와 범용회귀는 같은 OLS(`REG_STATS`)·차이는 "미래 투영"뿐 → 
 - **변환은 hist+future 결합 1회 후 슬라이스**(`_transformCombined`) — adstock 이월·zscore/minmax 스케일 일관(fit·predict 같은 basis). `REG_STATS.ols`에 `XtXi` additive 노출(밴드용).
 - **OS(group)별 분리 기본**: `fc.osMode="split"`+`osPick` pills 각 OS 독립모델+비교표, "전체 풀링" 토글. **MMM 브리지**(`regLabFromMmm`): CSV_STATE.raw+colMap 역할→회귀 역할 번역(채널→독립+adstock_log·더미→이벤트·week→time·platform→group·활성타깃→종속)로 "내 채널 데이터로 예측" 동선 보존. 전부 render층+순수엔진(골든 byte-동일), render-throw는 주입 harness로 양분기.
 
+### 12.16 캠페인 포화도 탐지 (5-22, 효율 CSV 공유)
+5-3 곡선 엔진 재사용한 진단 도구 — 신규 곡선/아웃라이어 구현 금지. `SAT_MATH.analyzeEntity`(순수)가 `ALLOC_MATH.removeOutliers·fitBest·predictSafeCpr·detectPoly2Shape` 호출. **포화지수 = 한계 CPA ÷ 평균 CPA**(ROAS는 평균÷한계, 둘 다 >1=다음 1원이 평균보다 나쁨), `≥satHigh` 포화·`<scaleLow` 여유·중간 적정(임계 `SAT_CONFIG` 분리·결정론). 한계는 현 지출점(최근 7일 평균 일예산)에서 +10% finite-diff. `satBuildPoints` 자체 grouping(채널/캠페인 토글)·ALLOC 캐시 미접근(unit 결합 회피). `runSatTests` 골든.
+- **공유 데모 신호 부여**: 진단 도구 데모가 의미 있으려면 합성 패턴이 실제 신호를 띠어야 함 — 효율 데모 설치반응에 `cost^satExp` 수확체감 곡률 + 비용 램프 확대·노이즈 축소(노이즈 크면 Poly2가 멱법칙 곡률 덮어써 한계효율 납작). 공유 fixture 수정은 형제 도구(5-2/5-3) render 스모크로 회귀 확인. 골든은 합성 데이터라 demo 값 변경과 무관(byte-동일 불변).
+
 ---
 
 ## 13. 참고 파일
@@ -307,7 +312,7 @@ TF와 범용회귀는 같은 OLS(`REG_STATS`)·차이는 "미래 투영"뿐 → 
 
 **완료된 큰 흐름**:
 - 도구 통합 17→5/6(탭형 병합, §12.7) · SaaS 셸(랜딩·페이월·⌘K, §12.11) · 전 도구 데모 모드(§12.8) · GA4 이벤트 트래킹.
-- 운영 대시보드 5-2 9탭 통합 + sticky 필터 + 코호트 성숙도 예측 · 5-3 효율·배분 · 5-4 실험 분석 3탭 · 5-18 회귀+미래예측 통합(§12.15, TF 흡수) · 5-21 PVM 변동 탐지.
+- 운영 대시보드 5-2 9탭 통합 + sticky 필터 + 코호트 성숙도 예측 · 5-3 효율·배분(OS분리 배분·결론/검증 UX) · 5-22 포화도 탐지(§12.16) · 5-4 실험 분석 3탭 · 5-18 회귀+미래예측 통합(§12.15, TF 흡수) · 5-21 PVM 변동 탐지.
 - 골든 테스트 유지(byte-동일 보증). 상세 이력은 git·PR·`docs/`.
 
 **다음 작업 (백로그, `docs/backlog.md` 참조)**:
