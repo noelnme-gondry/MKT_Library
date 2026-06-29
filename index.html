@@ -5252,11 +5252,28 @@
               },
               campaign_name: {
                 label: "캠페인명",
-                aliases: ["campaign", "캠페인", "캠페인명"],
+                aliases: ["campaign", "campaign_name", "campaignname", "캠페인", "캠페인명"],
                 type: "string",
                 required: false,
                 group: "디멘션",
                 oneOfGroup: "grouping",
+              },
+              adgroup_name: {
+                label: "광고그룹명",
+                aliases: [
+                  "adgroup",
+                  "adgroup_name",
+                  "adgroupname",
+                  "ad_group",
+                  "ad group",
+                  "adset",
+                  "adset_name",
+                  "광고그룹",
+                  "광고세트",
+                ],
+                type: "string",
+                required: false,
+                group: "디멘션",
               },
               country: {
                 label: "국가",
@@ -5295,12 +5312,20 @@
                 oneOfGroup: "outcome",
               },
               actions: {
-                label: "액션 수",
+                label: "액션 수 (가입/전환)",
                 aliases: [
                   "action",
                   "actions",
                   "conversions",
                   "events",
+                  "registration",
+                  "registrations",
+                  "regs",
+                  "signup",
+                  "signups",
+                  "가입",
+                  "가입수",
+                  "회원가입",
                   "전환",
                   "액션",
                 ],
@@ -9805,30 +9830,37 @@
               const impressions = sum("impressions");
               const clicks = sum("clicks");
               const installs = sum("installs");
+              const actions = sum("actions");
               const revenue = sum(`revenue_d${cohort}`);
               const purchases = sum(`pu_d${cohort}`);
-              const retVals = rows
-                .map((r) => r[`ret_d${cohort}`])
-                .filter((v) => typeof v === "number" && v > 0);
-              const retentionAvg = retVals.length
-                ? retVals.reduce((a, b) => a + b, 0) / retVals.length
-                : null;
+              // 전역 기준(설치/가입) — 분모를 한 곳에서 결정. 설치 없고 가입만 있어도 동작.
+              const basis = effectiveDenomBasis();
+              const denom = basis === "actions" ? actions : installs;
+              // 가중 리텐션(SSOT) — 단순평균 버그 대체
+              const ret = computeWeightedRetention(rows, cohort, basis);
 
               return {
                 cost,
                 impressions,
                 clicks,
                 installs,
+                actions,
                 revenue,
                 purchases,
-                retentionAvg,
+                retentionAvg: ret.rate,
+                retentionSurvivors: ret.survivors,
+                retentionDenom: ret.denom,
+                retentionWholePctWarn: !!ret.hasWholePct,
                 cohort,
-                cpi: installs ? cost / installs : null,
+                basis,
+                denom,
+                // 획득단가: 기준이 설치면 CPI, 가입이면 CPA(가입당 비용)
+                cpi: denom ? cost / denom : null,
                 ctr: impressions ? clicks / impressions : null,
-                cvr: clicks ? installs / clicks : null,
+                cvr: clicks ? denom / clicks : null,
                 cpa: purchases ? cost / purchases : null,
                 roas: cost ? revenue / cost : null,
-                arpu: installs ? revenue / installs : null,
+                arpu: denom ? revenue / denom : null,
                 arppu: purchases ? revenue / purchases : null,
                 rowCount: rows.length,
               };
@@ -10000,9 +10032,9 @@
               <div class="kpi-grid">
                 <div class="kpi-card"><div class="label">총 비용</div><div class="value tnum">${formatNumber(k.cost, { decimals: 0 })}</div><div class="delta">합산 cost</div></div>
                 <div class="kpi-card"><div class="label">총 설치 수</div><div class="value tnum">${formatNumber(k.installs, { decimals: 0 })}</div><div class="delta">합산 installs</div></div>
-                <div class="kpi-card"><div class="label">CPI</div><div class="value tnum">${formatNumber(k.cpi, { decimals: 2 })}</div><div class="delta">cost / installs</div></div>
+                <div class="kpi-card"><div class="label">${k.basis === "actions" ? "가입당 비용 (CPA)" : "CPI"}</div><div class="value tnum">${formatNumber(k.cpi, { decimals: 2 })}</div><div class="delta">cost / ${k.basis === "actions" ? "actions(가입)" : "installs"}</div></div>
                 <div class="kpi-card"><div class="label">CTR</div><div class="value tnum">${formatPercent(k.ctr)}</div><div class="delta">clicks / impressions</div></div>
-                <div class="kpi-card"><div class="label">CVR (Click→Install)</div><div class="value tnum">${formatPercent(k.cvr)}</div><div class="delta">installs / clicks</div></div>
+                <div class="kpi-card"><div class="label">CVR (Click→${k.basis === "actions" ? "가입" : "Install"})</div><div class="value tnum">${formatPercent(k.cvr)}</div><div class="delta">${k.basis === "actions" ? "actions" : "installs"} / clicks</div></div>
                 <div class="kpi-card"><div class="label">총 매출 (D${k.cohort})</div><div class="value tnum">${formatNumber(k.revenue, { decimals: 0 })}</div><div class="delta">cohort revenue 합산</div></div>
                 <div class="kpi-card" style="position:relative;">
                   <div class="label">ROAS (D${k.cohort})</div>
@@ -10024,11 +10056,11 @@
                     }
                   </div>
                 </div>
-                <div class="kpi-card"><div class="label">ARPU (D${k.cohort})</div><div class="value tnum">${formatNumber(k.arpu, { decimals: 2 })}</div><div class="delta">revenue / installs</div></div>
+                <div class="kpi-card"><div class="label">ARPU (D${k.cohort})</div><div class="value tnum">${formatNumber(k.arpu, { decimals: 2 })}</div><div class="delta">revenue / ${k.basis === "actions" ? "actions(가입)" : "installs"}</div></div>
                 <div class="kpi-card"><div class="label">결제수 (D${k.cohort})</div><div class="value tnum">${formatNumber(k.purchases, { decimals: 0 })}</div><div class="delta">pu_d${k.cohort} 합산</div></div>
                 <div class="kpi-card"><div class="label">CPA (D${k.cohort})</div><div class="value tnum">${formatNumber(k.cpa, { decimals: 2 })}</div><div class="delta">cost / pu_d${k.cohort}</div></div>
                 <div class="kpi-card"><div class="label">ARPPU (D${k.cohort})</div><div class="value tnum">${formatNumber(k.arppu, { decimals: 2 })}</div><div class="delta">revenue / 결제수</div></div>
-                <div class="kpi-card"><div class="label">잔존율 평균 (D${k.cohort})</div><div class="value tnum">${formatPercent(k.retentionAvg)}</div><div class="delta">행별 평균</div></div>
+                <div class="kpi-card"><div class="label">잔존율 (D${k.cohort})</div><div class="value tnum">${formatPercent(k.retentionAvg)}</div><div class="delta">${k.basis === "actions" ? "가입" : "설치"} 모수 가중${k.retentionWholePctWarn ? " · ⚠인원수 해석" : ""}</div></div>
               </div>
             </section>
 
@@ -10048,13 +10080,23 @@
                   <div class="chart-canvas-wrap"><canvas id="chart-channel-donut"></canvas></div>
                 </div>
                 <div class="chart-card">
-                  <div class="chart-title">채널별 CPI 비교</div>
-                  <div class="chart-sub">가로 막대 · cost / installs</div>
+                  <div class="chart-title">채널별 ${effectiveDenomBasis() === "actions" ? "CPA" : "CPI"} 비교</div>
+                  <div class="chart-sub">가로 막대 · cost / ${effectiveDenomBasis() === "actions" ? "actions(가입)" : "installs"}</div>
                   <div class="chart-canvas-wrap"><canvas id="chart-cpi-bar"></canvas></div>
                 </div>
                 <div class="chart-card">
-                  <div class="chart-title">전환 퍼널</div>
-                  <div class="chart-sub">노출 → 클릭 → 설치 → 결제(D7) 단계별 절대값</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                    <div class="chart-title">전환 퍼널</div>
+                    <div class="ab-pillgroup" style="margin:0;">
+                      <button class="ab-pill ${MON_FUNNEL_STATE.view === "absolute" ? "active" : ""}" data-funnel-view="absolute" style="font-size:11px;padding:2px 8px;">절대 건수</button>
+                      <button class="ab-pill ${MON_FUNNEL_STATE.view === "rate" ? "active" : ""}" data-funnel-view="rate" style="font-size:11px;padding:2px 8px;">전환율</button>
+                    </div>
+                  </div>
+                  <div class="chart-sub">${
+                    MON_FUNNEL_STATE.view === "rate"
+                      ? `단계별 전환율 (앞 단계 대비 %)`
+                      : `${effectiveDenomBasis() === "actions" ? "노출 → 클릭 → 설치 → 가입 → 구매" : "노출 → 클릭 → 설치 → 구매"} 절대 건수 (로그 스케일)`
+                  }</div>
                   <div class="chart-canvas-wrap"><canvas id="chart-funnel"></canvas></div>
                 </div>
                 <div class="chart-card" style="grid-column: 1 / -1;">
@@ -10138,6 +10180,65 @@
               countries: null, // null = 전체 | Set(선택 국가)
               channels: null, // null = 전체 | Set(선택 채널)
             };
+
+            // 전역 분모 기준 — 운영 대시보드의 CPI/CPA·CVR·ARPU·리텐션·LTV·퍼널이 공유.
+            // "installs"(설치) | "actions"(가입/액션). 데이터에 설치가 없고 가입만 있는 운영을 지원.
+            const MON_DENOM_STATE = { basis: "installs" };
+            // 퍼널 보기: "absolute"(절대 건수, 로그 스케일) | "rate"(단계 전환율)
+            const MON_FUNNEL_STATE = { view: "absolute" };
+            function effectiveDenomBasis() {
+              const mapped = new Set(Object.values(CSV_STATE.mapping || {}));
+              let b = MON_DENOM_STATE.basis;
+              if (!mapped.has(b))
+                b = mapped.has("installs")
+                  ? "installs"
+                  : mapped.has("actions")
+                    ? "actions"
+                    : b;
+              return b;
+            }
+            function denomBasisShortLabel(b) {
+              return (b || effectiveDenomBasis()) === "actions" ? "가입" : "설치";
+            }
+            // 가중 리텐션 (SSOT) — 스코어카드·리텐션 탭이 공유.
+            // 분모 = Σ 모수(설치 or 액션). 분자 = 비율컬럼이면 Σ(ret×모수), 인원수컬럼이면 Σret.
+            // 비율/인원 판별: 컬럼 단위 max ≤ 1 → 비율(0.x), 초과 → 인원수(자연수). (정수 퍼센트 30=30%는
+            // 인원수로 잡혀 hasWholePct 경고). 단순 산술평균(비가중) 버그 대체.
+            function computeWeightedRetention(rows, day, basis) {
+              basis = basis || effectiveDenomBasis();
+              const rk = `ret_d${day}`;
+              const vals = rows
+                .map((r) => Number(r[rk]))
+                .filter((v) => isFinite(v) && v > 0);
+              if (!vals.length)
+                return { rate: null, survivors: 0, denom: 0, isRate: null };
+              const isRate = Math.max(...vals) <= 1; // 컬럼 단위 판별
+              let num = 0,
+                denom = 0,
+                hasWholePct = false;
+              for (const r of rows) {
+                const v = Number(r[rk]);
+                if (!isFinite(v) || v <= 0) continue;
+                const base = Number(r[basis]) || 0;
+                if (isRate) {
+                  num += v * base;
+                  denom += base;
+                } else {
+                  num += v; // 인원수 그대로
+                  denom += base;
+                  if (v > 1 && v <= 100) hasWholePct = true; // 정수 퍼센트 의심
+                }
+              }
+              const rate =
+                denom > 0 ? Math.min(1, Math.max(0, num / denom)) : null;
+              return {
+                rate,
+                survivors: Math.round(num),
+                denom,
+                isRate,
+                hasWholePct,
+              };
+            }
 
             // 탭 그룹: monitoring(모니터링) | value(가치) | efficiency(효율)
             const MON_TAB_GROUPS = [
@@ -10397,9 +10498,24 @@
           </div>`);
               }
 
+              // 전역 분모 기준(설치/가입) — 대시보드 전 지표가 함께 전환
+              const hasInst = mapped.has("installs"),
+                hasAct = mapped.has("actions");
+              const effBasis = effectiveDenomBasis();
+              const basisPart =
+                hasInst || hasAct
+                  ? `
+          <div class="mon-filter-item" style="align-items:center;gap:4px;">
+            <span class="mon-filter-label" title="CPI/CPA·CVR·ARPU·리텐션·LTV·퍼널의 분모를 설치/가입 중 무엇으로 볼지 — 대시보드 전체에 적용">기준</span>
+            <button class="ab-pill ${effBasis !== "actions" ? "active" : ""} ${!hasInst ? "disabled" : ""}" ${hasInst ? `data-mon-basis="installs"` : "disabled"}>설치${!hasInst ? " 🔒" : ""}</button>
+            <button class="ab-pill ${effBasis === "actions" ? "active" : ""} ${!hasAct ? "disabled" : ""}" ${hasAct ? `data-mon-basis="actions"` : "disabled"}>가입${!hasAct ? " 🔒" : ""}</button>
+          </div>`
+                  : "";
+
               return `<div class="mon-filter-bar">
           <div class="mon-filter-inner">
             <span class="mon-filter-title">필터${active > 0 ? `<span class="mon-filter-badge">${active}</span>` : ""}</span>
+            ${basisPart}
             ${parts.join("")}
             ${active > 0 ? `<button class="copy-btn mon-filter-reset" data-mon-filter-reset>초기화</button>` : ""}
           </div>
@@ -34737,22 +34853,8 @@
               const retDays = [0, 7, 14, 30, 60, 90, 180, 360].filter((d) =>
                 mapped.has(`ret_d${d}`),
               );
-              // anchor 결정: 매핑 안 됐으면 가능한 것으로 폴백
-              let anchor =
-                WIDE_RET_STATE.anchor === "actions" ? "actions" : "installs";
-              if (
-                anchor === "installs" &&
-                !mapped.has("installs") &&
-                mapped.has("actions")
-              )
-                anchor = "actions";
-              if (
-                anchor === "actions" &&
-                !mapped.has("actions") &&
-                mapped.has("installs")
-              )
-                anchor = "installs";
-              const other = anchor === "installs" ? "actions" : "installs";
+              // anchor = 전역 분모 기준(설치/가입). effectiveDenomBasis가 미매핑 폴백 처리.
+              const anchor = effectiveDenomBasis();
               const key = [
                 CSV_STATE.raw.length,
                 CSV_STATE.fileName,
@@ -34763,31 +34865,20 @@
               if (WIDE_RET_CACHE.key === key) return WIDE_RET_CACHE;
 
               const rows = getMappedRowsForMon();
-              // 모수: anchor 컬럼 우선, 0/누락이면 다른 컬럼 폴백
-              const baseOf = (r) => {
-                const a = Number(r[anchor]);
-                if (a > 0) return a;
-                const b = Number(r[other]);
-                return b > 0 ? b : 0;
-              };
 
+              // SSOT 가중 리텐션 헬퍼 사용 (비율/인원 자동 판별 + 모수 가중)
+              let anyWholePct = false;
               function wgtCurve(subset) {
                 return retDays
                   .map((day) => {
-                    const rk = `ret_d${day}`;
-                    const pts = subset.filter((r) => Number(r[rk]) > 0);
-                    const totalN = pts.reduce((s, r) => s + (baseOf(r) || 1), 0);
-                    if (!totalN || !pts.length) return null;
-                    const wtd =
-                      pts.reduce((s, r) => s + Number(r[rk]) * (baseOf(r) || 1), 0) /
-                      totalN;
-                    const rate = Math.min(1, Math.max(0, wtd));
-                    // 잔존 유저 = 잔존율 × 모수 코호트(D0)
+                    const r = computeWeightedRetention(subset, day, anchor);
+                    if (r.rate == null) return null;
+                    if (r.hasWholePct) anyWholePct = true;
                     return {
                       day,
-                      retentionRate: rate,
-                      n: totalN,
-                      survivors: Math.round(rate * totalN),
+                      retentionRate: r.rate,
+                      n: r.denom,
+                      survivors: r.survivors,
                     };
                   })
                   .filter(Boolean);
@@ -34814,6 +34905,7 @@
               WIDE_RET_CACHE.retCurve = retCurve;
               WIDE_RET_CACHE.bySegment = bySegment;
               WIDE_RET_CACHE.anchor = anchor;
+              WIDE_RET_CACHE.wholePctWarn = anyWholePct;
               return WIDE_RET_CACHE;
             }
 
@@ -35028,7 +35120,12 @@
             <thead><tr><th style="text-align:left;">구간</th><th style="text-align:right;">잔존율</th><th style="text-align:right;">${survLabel}</th></tr></thead>
             <tbody>${tableRows}</tbody>
           </table></div>
-          <p class="muted" style="font-size:11px;margin-top:8px;">${survLabel} = 잔존율 × ${anchorLabel} 코호트(D0). <code>ret_dN</code>은 업로드된 잔존율이며, 기준 토글은 절대 인원 산출의 모수(${anchorLabel})를 바꿉니다.</p>
+          <p class="muted" style="font-size:11px;margin-top:8px;">${survLabel} = Σ(잔존 인원) ÷ Σ(${anchorLabel} 모수). <code>ret_dN</code>이 <strong>0~1 비율</strong>이면 ×모수로 인원 환산, <strong>자연수면 인원수</strong> 그대로 합산합니다(코호트 크기 가중 — 단순평균 아님). 기준 토글은 모수(${anchorLabel})를 바꿉니다.</p>
+          ${
+            wrc.wholePctWarn
+              ? `<div class="callout warn" style="margin-top:8px;"><div class="ico">!</div><div class="body"><strong>리텐션 값이 1을 넘습니다(예: 30, 50)</strong><p style="margin:.25rem 0 0;font-size:11.5px;">정수 퍼센트(30=30%)가 아니라 <strong>잔존 인원수</strong>로 해석했습니다. 비율로 넣으려면 0~1(0.3·0.5)로, 인원수면 그대로 두세요.</p></div></div>`
+              : ""
+          }
         </section>`;
             }
 
@@ -36535,7 +36632,7 @@
                     `${k}:${Object.entries(m).find(([, v]) => v === k)?.[0] || "-"}`,
                 )
                 .join("|");
-              return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|u:${LTVCAC_STATE.unitField}|d:${LTVCAC_STATE.denomBasis}|cfg:${LTVCAC_CONFIG.version}`;
+              return `${CSV_STATE.fileName}|${CSV_STATE.raw.length}|${sig}|u:${LTVCAC_STATE.unitField}|d:${effectiveDenomBasis()}|cfg:${LTVCAC_CONFIG.version}`;
             }
 
             function buildLtvCacCache() {
@@ -36544,12 +36641,8 @@
               if (LTVCAC_CACHE.key === key) return LTVCAC_CACHE;
               const rows = getMappedRowsForMon();
               const unitField = LTVCAC_STATE.unitField;
-              // 분모(유저수) 기준: 사용자 선택(설치수/액션수) 우선, 미매핑이면 자동 폴백.
-              // "액션=가입"이면 가입자수 기준 CAC·ARPU를 보고 싶을 수 있음 → 명시 토글 제공.
-              const mappedSet = new Set(Object.values(CSV_STATE.mapping || {}));
-              let denomField = LTVCAC_STATE.denomBasis;
-              if (!mappedSet.has(denomField))
-                denomField = mappedSet.has("installs") ? "installs" : "actions";
+              // 분모(유저수) 기준 = 전역 기준(설치/가입). 대시보드 전체와 한 값을 공유.
+              const denomField = effectiveDenomBasis();
 
               const map = new Map();
               for (const r of rows) {
@@ -36697,7 +36790,7 @@
                     const avail = new Set(
                       Object.values(CSV_STATE.mapping || {}),
                     ).has(k);
-                    const active = (c.denomField || LTVCAC_STATE.denomBasis) === k;
+                    const active = (c.denomField || effectiveDenomBasis()) === k;
                     return `<button class="ab-pill ${active ? "active" : ""} ${!avail ? "disabled" : ""}" ${avail ? `data-ltvcac-denom="${k}"` : "disabled"}>${l}${!avail ? " 🔒" : ""}</button>`;
                   })
                   .join("")}
@@ -36915,8 +37008,9 @@
               document.querySelectorAll("[data-ltvcac-denom]").forEach((b) =>
                 b.addEventListener("click", () => {
                   if (b.classList.contains("disabled")) return;
-                  LTVCAC_STATE.denomBasis = b.dataset.ltvcacDenom;
+                  MON_DENOM_STATE.basis = b.dataset.ltvcacDenom; // 전역 기준 변경
                   LTVCAC_CACHE.key = null; // 분모 변경 → 재계산
+                  WIDE_RET_CACHE.key = null;
                   navigate("5-9");
                 }),
               );
@@ -41297,6 +41391,26 @@
                 });
               });
 
+              // 퍼널 보기 토글 (절대 건수 ↔ 전환율)
+              document.querySelectorAll("[data-funnel-view]").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                  MON_FUNNEL_STATE.view = btn.dataset.funnelView;
+                  navigate("5-2");
+                });
+              });
+
+              // 전역 분모 기준 토글 (설치 ↔ 가입/액션) — 대시보드 전체 지표가 함께 전환
+              document.querySelectorAll("[data-mon-basis]").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                  if (btn.classList.contains("disabled")) return;
+                  MON_DENOM_STATE.basis = btn.dataset.monBasis;
+                  _monInvalidateCaches();
+                  WIDE_RET_CACHE.key = null;
+                  LTVCAC_CACHE.key = null;
+                  navigate("5-2");
+                });
+              });
+
               // ----- 5-2: 코호트 토글 -----
               const toggle = document.getElementById("cohort-toggle");
               if (toggle) {
@@ -41457,8 +41571,9 @@
               // 리텐션 기준(설치/가입) 토글
               document.querySelectorAll("[data-ret-anchor]").forEach((b) =>
                 b.addEventListener("click", () => {
-                  WIDE_RET_STATE.anchor = b.dataset.retAnchor;
+                  MON_DENOM_STATE.basis = b.dataset.retAnchor; // 전역 기준 변경
                   WIDE_RET_CACHE.key = null;
+                  LTVCAC_CACHE.key = null;
                   navigate("5-2");
                 }),
               );
@@ -41702,15 +41817,17 @@
               // === 3) 채널별 CPI 가로 막대 ===
               const cpiCanvas = document.getElementById("chart-cpi-bar");
               if (cpiCanvas) {
+                const denomBasis = effectiveDenomBasis(); // 설치/가입 — 전역 기준
+                const acqLabel = denomBasis === "actions" ? "CPA" : "CPI";
                 const byCh = aggregateByKey(
                   rows.filter((r) => r.channel),
                   "channel",
-                  ["cost", "installs"],
+                  ["cost", denomBasis],
                 );
                 const data = byCh
                   .map((c) => ({
                     key: c.key,
-                    cpi: c.installs ? c.cost / c.installs : 0,
+                    cpi: c[denomBasis] ? c.cost / c[denomBasis] : 0,
                   }))
                   .filter((d) => d.cpi > 0)
                   .sort((a, b) => a.cpi - b.cpi);
@@ -41720,7 +41837,7 @@
                     labels: data.map((d) => d.key),
                     datasets: [
                       {
-                        label: "CPI",
+                        label: acqLabel,
                         data: data.map((d) => d.cpi),
                         backgroundColor: data.map(
                           (_, i) =>
@@ -41742,60 +41859,144 @@
                 });
               }
 
-              // === 4) 퍼널 (절대값 막대) ===
+              // === 4) 퍼널 — 기준(설치/가입)별 단계 + 절대값(로그) / 전환율 토글 ===
               const funnelCanvas = document.getElementById("chart-funnel");
               if (funnelCanvas) {
-                const totals = ["impressions", "clicks", "installs", "pu_d7"].reduce(
-                  (acc, f) => {
-                    acc[f] = rows.reduce((a, r) => a + (Number(r[f]) || 0), 0);
-                    return acc;
-                  },
-                  {},
-                );
-                CHART_INSTANCES.funnel = new Chart(funnelCanvas.getContext("2d"), {
-                  type: "bar",
-                  data: {
-                    labels: ["노출", "클릭", "설치", "결제 (D7)"],
-                    datasets: [
-                      {
-                        label: "건수",
-                        data: [
-                          totals.impressions,
-                          totals.clicks,
-                          totals.installs,
-                          totals.pu_d7,
-                        ],
-                        backgroundColor: ["#adc6ff", "#4cd7f6", "#5ad19a", "#f7b955"],
-                        borderRadius: 4,
-                      },
-                    ],
-                  },
-                  options: {
-                    ...chartCommonOpts(),
-                    plugins: {
-                      ...chartCommonOpts().plugins,
-                      legend: { display: false },
+                const fBasis = effectiveDenomBasis();
+                const fSum = (f) =>
+                  rows.reduce((a, r) => a + (Number(r[f]) || 0), 0);
+                // 설치 기준=4단계(노출·클릭·설치·구매), 가입 기준=5단계(노출·클릭·설치·가입·구매)
+                const steps =
+                  fBasis === "actions"
+                    ? [
+                        { label: "노출", v: fSum("impressions") },
+                        { label: "클릭", v: fSum("clicks") },
+                        { label: "설치", v: fSum("installs") },
+                        { label: "가입", v: fSum("actions") },
+                        { label: "구매", v: fSum("pu_d7") },
+                      ]
+                    : [
+                        { label: "노출", v: fSum("impressions") },
+                        { label: "클릭", v: fSum("clicks") },
+                        { label: "설치", v: fSum("installs") },
+                        { label: "구매", v: fSum("pu_d7") },
+                      ];
+                const fColors = [
+                  "#adc6ff",
+                  "#4cd7f6",
+                  "#5ad19a",
+                  "#f7b955",
+                  "#f78fb3",
+                ];
+                if (MON_FUNNEL_STATE.view === "rate") {
+                  // 단계 전환율 = 각 단계 / 앞 단계 (%)
+                  const rLabels = [],
+                    rData = [],
+                    rColors = [];
+                  for (let i = 1; i < steps.length; i++) {
+                    rLabels.push(`${steps[i - 1].label}→${steps[i].label}`);
+                    rData.push(
+                      steps[i - 1].v > 0 ? (steps[i].v / steps[i - 1].v) * 100 : 0,
+                    );
+                    rColors.push(fColors[i % fColors.length]);
+                  }
+                  CHART_INSTANCES.funnel = new Chart(funnelCanvas.getContext("2d"), {
+                    type: "bar",
+                    data: {
+                      labels: rLabels,
+                      datasets: [
+                        { label: "전환율", data: rData, backgroundColor: rColors, borderRadius: 4 },
+                      ],
                     },
-                  },
-                });
+                    options: {
+                      ...chartCommonOpts(),
+                      plugins: {
+                        ...chartCommonOpts().plugins,
+                        legend: { display: false },
+                        tooltip: {
+                          callbacks: {
+                            label: (c) => `${c.parsed.y.toFixed(2)}%`,
+                          },
+                        },
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          ticks: {
+                            color: getCssVar("--text-muted"),
+                            callback: (v) => v + "%",
+                          },
+                          grid: { color: getCssVar("--border") },
+                        },
+                        x: {
+                          ticks: { color: getCssVar("--text-muted") },
+                          grid: { color: getCssVar("--border") },
+                        },
+                      },
+                    },
+                  });
+                } else {
+                  // 절대 건수 — 로그 스케일(노출이 너무 커서 나머지가 바닥에 깔리는 문제 해소)
+                  CHART_INSTANCES.funnel = new Chart(funnelCanvas.getContext("2d"), {
+                    type: "bar",
+                    data: {
+                      labels: steps.map((s) => s.label),
+                      datasets: [
+                        {
+                          label: "건수",
+                          data: steps.map((s) => s.v),
+                          backgroundColor: steps.map((_, i) => fColors[i % fColors.length]),
+                          borderRadius: 4,
+                        },
+                      ],
+                    },
+                    options: {
+                      ...chartCommonOpts(),
+                      plugins: {
+                        ...chartCommonOpts().plugins,
+                        legend: { display: false },
+                        tooltip: {
+                          callbacks: {
+                            label: (c) => Number(c.parsed.y).toLocaleString() + "건",
+                          },
+                        },
+                      },
+                      scales: {
+                        y: {
+                          type: "logarithmic",
+                          ticks: {
+                            color: getCssVar("--text-muted"),
+                            callback: (v) => Number(v).toLocaleString(),
+                          },
+                          grid: { color: getCssVar("--border") },
+                        },
+                        x: {
+                          ticks: { color: getCssVar("--text-muted") },
+                          grid: { color: getCssVar("--border") },
+                        },
+                      },
+                    },
+                  });
+                }
               }
 
               // === 5) 채널별 코호트 매출 증가 (D0 / D7 / D14) ===
               const cohortCanvas = document.getElementById("chart-cohort");
               if (cohortCanvas) {
+                const arpuBasis = effectiveDenomBasis(); // 설치/가입 — ARPU 분모
                 const byCh = aggregateByKey(
                   rows.filter((r) => r.channel),
                   "channel",
-                  ["installs", "revenue_d0", "revenue_d7", "revenue_d14"],
+                  [arpuBasis, "revenue_d0", "revenue_d7", "revenue_d14"],
                 );
                 byCh.sort((a, b) => (b.revenue_d7 || 0) - (a.revenue_d7 || 0));
                 const top = byCh.slice(0, 6); // 상위 6개 채널만
                 const datasets = top.map((c, i) => ({
                   label: c.key,
                   data: [
-                    c.installs ? c.revenue_d0 / c.installs : 0,
-                    c.installs ? c.revenue_d7 / c.installs : 0,
-                    c.installs ? c.revenue_d14 / c.installs : 0,
+                    c[arpuBasis] ? c.revenue_d0 / c[arpuBasis] : 0,
+                    c[arpuBasis] ? c.revenue_d7 / c[arpuBasis] : 0,
+                    c[arpuBasis] ? c.revenue_d14 / c[arpuBasis] : 0,
                   ],
                   borderColor: CHART_THEME.series[i % CHART_THEME.series.length],
                   backgroundColor:
