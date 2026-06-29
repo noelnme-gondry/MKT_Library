@@ -1,4 +1,4 @@
-# 5-20 Aha-Moment Finder — 설계 스펙 (self-contained)
+# 5-20 핵심 가치 발굴 — 설계 스펙 (self-contained)
 
 > 목적: 유저별 **행동 횟수(count) + 가입일** 데이터에서, 어떤 선행 행동을 **가입 N일 내 몇 번(k) 이상** 하면
 > 타겟 액션(리텐션/전환) 달성과 가장 강하게 연관되는지를 Precision/Recall/F1 + Lift로 탐색.
@@ -153,7 +153,7 @@ baseRate = mean(target)
   minSupport 게이트 + holdout 재평가 + §4 히트맵(단일 셀만 튀면 신뢰낮음)으로 삼중 방어.
 
 ## 8. 통합 절차 (§12.1)
-1. IA에 새 그룹(예 id "11" "행동 분석") + `{id:"5-20", title:"Aha-Moment Finder", desc}` / OPS_GROUP_IDS 추가
+1. IA에 새 그룹(예 id "11" "행동 분석") + `{id:"5-20", title:"핵심 가치 발굴", desc}` / OPS_GROUP_IDS 추가
 2. AUTH_PROTECTED_PAGES += "5-20" (Pro 티어 — TOOL_TIER)
 3. TOOL_REQUIRED_FIELDS/OPTIONAL["5-20"] (§2)
 4. page_5_20() — checkRequiredForTool + renderInlineCsvUpload fallback + 분석게이트(§12.14)

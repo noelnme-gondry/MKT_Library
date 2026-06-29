@@ -73,7 +73,7 @@
 
 ---
 
-### 5-6. 크리에이티브 분석기 (Creative Analyzer)
+### 5-6. 크리에이티브 분석기 (소재 분석)
 
 > Ad Fatigue Alert 및 Auto-Planner는 이 섹션 아래에 통합 구현 예정 (신규 툴 §2-B 참조).
 
