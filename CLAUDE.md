@@ -26,6 +26,8 @@
 6. **`git add -A`/`git add .` 금지** — 사용자가 드롭한 민감 데이터·대용량 폴더가 통째로 커밋될 수 있음(PR #54 사고). 항상 `git status` 확인 후 **변경 파일만 명시적으로** `git add index.html CLAUDE.md ...`. 외부 데이터는 먼저 `.gitignore`.
 7. **모호한 결정 임의 확정 금지** — 합리적 선택지 2개 이상이면 `AskUserQuestion`으로 묻기.
 8. **정직성**: 동작 안 하는 기능·거짓 숫자·우리 보안모델과 모순되는 카피 금지. 추정 불가하면 "추정 불가"라고 정직하게.
+9. **병렬 사용 환경 동기화 의무**: Antigravity와 Claude Code가 병렬 작동 중이므로, 작업 시작 전 항상 `git fetch` 및 `git status`로 로컬 상태를 확인하고, 리모트와 다르면 반드시 사용자에게 "pull 후 진행할까요?"라고 확인.
+10. **전체 파일 덮어쓰기 및 임의 포맷팅 금지**: 충돌과 작업 유실 방지를 위해 파일 전체를 삭제/재작성하지 말 것. 무관한 코드의 들여쓰기나 포맷을 임의 변경하지 말고, 정확히 타겟팅된 부분(Delta)만 수정.
 
 ---
 
@@ -106,7 +108,7 @@ function buildXxxCache() {
 
 ### 6.1 기본 흐름
 1. 요청 받음 → 모호하면 `AskUserQuestion`(옵션·트레이드오프 명시).
-2. **작업 시작 전 항상 `git fetch origin main`으로 최신 main 확인** → 그 위에서 **단명 브랜치**(`chore/xxx`·`feat/xxx`) 새로 생성. **장수 feature 브랜치 재사용 금지**(2026-06부터: 사용자가 Antigravity 등 다른 경로로 main에 직접·수시로 push 중이라 장수 브랜치는 금방 stale돼 conflict·구버전 역행 위험).
+2. **작업 시작 전 항상 `git fetch origin main` 및 `git status` 확인**: 리모트와 로컬 차이가 있으면 반드시 사용자에게 "pull 후 진행할까요?"라고 묻기. 이후 최신 main 위에서 **단명 브랜치**(`chore/xxx`·`feat/xxx`) 새로 생성. **장수 feature 브랜치 재사용 금지**(conflict·구버전 역행 위험).
 3. 변경 후 **검증 필수**: `node validate.js`(= `npm test`) — syntax(vm compile) + 전 `runXxxTests` 한 번에 실행, 실패 시 nonzero. (순수함수 외 특정 분기·render-throw는 여전히 §7 주입식 harness로 보강.)
 4. `git add <명시 파일>` + 커밋(Co-Authored-By 라인, HEREDOC).
 5. push → `gh pr create --base main`. PR body: `## Summary` bullets + `## Test plan` checkboxes + `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
@@ -322,6 +324,7 @@ TF와 범용회귀는 같은 OLS(`REG_STATS`)·차이는 "미래 투영"뿐 → 
 - **형식**: 해당 섹션에 항목 추가, **태스크당 5줄 이내**, 다른 항목과 톤 일치. 압축본이므로 새 항목도 **간결하게**(과거 PR별 장문 내러티브 반복 금지 — 핵심 패턴만, 상세는 PR 참조).
 - **용량 규율 (필수)**: 도구 추가·기능 갱신으로 본 파일/`agents/mkt-engineer.md`가 늘어나면 **추가와 동시에** 과거 PR별 장문 내러티브를 일반 패턴으로 압축해 전체 용량을 줄인다. 새 항목 추가 = 압축 1회 동반. 단순 append-only로 무한정 비대해지지 말 것(상세는 git·PR·docs/에 보존). 두 파일은 같이 동기화.
 - **커밋**: 작업 PR에 같이 포함(선호) `docs(harness): ...` 또는 별도 docs 커밋.
+- **주기적 압축 및 개선 제안**: 문서가 지속 비대해지는 것을 막기 위해, 작업 전후로 사용자에게 "CLAUDE.md 파일을 압축·개선할까요?"라고 주도적으로 묻고 최적화를 수행한다.
 - **사용자 우선**: 사용자가 "self-update 하지 마"면 즉시 중단(단 그 예외도 본 §15에 메모). **§15 자체를 삭제하지 말 것** — 메커니즘 사라지면 하네스 정체.
 - **자기 검증**: 업데이트 후 `Read CLAUDE.md`로 자연스럽게 합쳐졌는지·길이 확인.
 
