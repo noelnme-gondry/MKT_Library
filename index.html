@@ -9844,8 +9844,13 @@
               // 전역 기준(설치/가입) — 분모를 한 곳에서 결정. 설치 없고 가입만 있어도 동작.
               const basis = effectiveDenomBasis();
               const denom = basis === "actions" ? actions : installs;
-              // 가중 리텐션(SSOT) — 단순평균 버그 대체
-              const ret = computeWeightedRetention(rows, cohort, basis);
+              // 가중 리텐션(SSOT) — 단순평균 버그 대체. 마감 코호트 필터 반영.
+              const ret = computeWeightedRetention(
+                rows,
+                cohort,
+                basis,
+                MON_RET_MATURITY.maturedOnly,
+              );
 
               return {
                 cost,
@@ -10197,6 +10202,13 @@
             const MON_DENOM_STATE = { basis: "installs" };
             // 퍼널 보기: "absolute"(절대 건수, 로그 스케일) | "rate"(단계 전환율)
             const MON_FUNNEL_STATE = { view: "absolute" };
+            // 리텐션 마감 필터: false=있는 데이터 전부 / true=오늘 기준 D일이 지난(마감된) 코호트만
+            const MON_RET_MATURITY = { maturedOnly: false };
+            // 오늘(로컬) 자정 timestamp — 데이터 최대 날짜가 아닌 실제 오늘 기준.
+            function _todayMidnightTs() {
+              const t = new Date();
+              return Date.UTC(t.getFullYear(), t.getMonth(), t.getDate());
+            }
             function effectiveDenomBasis() {
               const mapped = new Set(Object.values(CSV_STATE.mapping || {}));
               let b = MON_DENOM_STATE.basis;
@@ -10215,10 +10227,20 @@
             // 분모 = Σ 모수(설치 or 액션). 분자 = 비율컬럼이면 Σ(ret×모수), 인원수컬럼이면 Σret.
             // 비율/인원 판별: 컬럼 단위 max ≤ 1 → 비율(0.x), 초과 → 인원수(자연수). (정수 퍼센트 30=30%는
             // 인원수로 잡혀 hasWholePct 경고). 단순 산술평균(비가중) 버그 대체.
-            function computeWeightedRetention(rows, day, basis) {
+            function computeWeightedRetention(rows, day, basis, maturedOnly) {
               basis = basis || effectiveDenomBasis();
               const rk = `ret_d${day}`;
-              const vals = rows
+              // 마감 필터: 오늘 기준 D일이 지난 코호트(행)만 — 분자·분모 둘 다 동일 적용해야
+              // 부풀려지지 않음(분모만 필터하면 오히려 더 부풀려짐). day=0은 필터 불필요.
+              let scopeRows = rows;
+              if (maturedOnly && day > 0) {
+                const cutoff = _todayMidnightTs() - day * 86400000;
+                scopeRows = rows.filter((r) => {
+                  const d = Date.parse(r.date);
+                  return isFinite(d) && d <= cutoff;
+                });
+              }
+              const vals = scopeRows
                 .map((r) => Number(r[rk]))
                 .filter((v) => isFinite(v) && v > 0);
               if (!vals.length)
@@ -10227,7 +10249,7 @@
               let num = 0,
                 denom = 0,
                 hasWholePct = false;
-              for (const r of rows) {
+              for (const r of scopeRows) {
                 const v = Number(r[rk]);
                 if (!isFinite(v) || v <= 0) continue;
                 const base = Number(r[basis]) || 0;
@@ -35098,11 +35120,13 @@
               const retDays = retDaysMapped.length ? [0, ...retDaysMapped] : [];
               // anchor = 전역 분모 기준(설치/가입). effectiveDenomBasis가 미매핑 폴백 처리.
               const anchor = effectiveDenomBasis();
+              const maturedOnly = MON_RET_MATURITY.maturedOnly;
               const key = [
                 CSV_STATE.raw.length,
                 CSV_STATE.fileName,
                 retDays.join(","),
                 anchor,
+                maturedOnly ? "mat" : "all",
                 MON_FILTER_KEY(),
               ].join("|");
               if (WIDE_RET_CACHE.key === key) return WIDE_RET_CACHE;
@@ -35123,7 +35147,12 @@
                       if (!n) return null;
                       return { day: 0, retentionRate: 1, n, survivors: n };
                     }
-                    const r = computeWeightedRetention(subset, day, anchor);
+                    const r = computeWeightedRetention(
+                      subset,
+                      day,
+                      anchor,
+                      maturedOnly,
+                    );
                     if (r.rate == null) return null;
                     if (r.hasWholePct) anyWholePct = true;
                     return {
@@ -35364,9 +35393,16 @@
             <button class="ab-pill ${wrc.anchor === "actions" ? "active" : ""}" data-ret-anchor="actions">가입(액션) 기준</button>
           </div>`
                   : "";
+              const maturityToggle = `
+          <div class="ab-pillgroup" style="margin-bottom:10px;">
+            <span class="ab-pillgroup-label" title="아직 D일이 지나지 않은(미마감) 최근 코호트는 잔존율을 왜곡시킵니다. '마감만'은 오늘 기준 D일이 지난 코호트만 분자·분모 양쪽에서 집계.">코호트 마감</span>
+            <button class="ab-pill ${!MON_RET_MATURITY.maturedOnly ? "active" : ""}" data-ret-maturity="all">전체 포함</button>
+            <button class="ab-pill ${MON_RET_MATURITY.maturedOnly ? "active" : ""}" data-ret-maturity="matured">마감된 코호트만</button>
+          </div>`;
               return `<section class="block" id="s-retention">
           <h2 class="section-title"><span class="ix">§1</span>전체 리텐션 곡선</h2>
           ${anchorToggle}
+          ${maturityToggle}
           <div class="chart-container" style="height:220px;"><canvas id="wide-ret-curve"></canvas></div>
           <div class="table-wrap" style="margin-top:14px;"><table class="data" style="font-size:12px;">
             <thead><tr><th style="text-align:left;">구간</th><th style="text-align:right;">잔존율</th><th style="text-align:right;">${survLabel}</th></tr></thead>
@@ -41828,6 +41864,14 @@
                   MON_DENOM_STATE.basis = b.dataset.retAnchor; // 전역 기준 변경
                   WIDE_RET_CACHE.key = null;
                   LTVCAC_CACHE.key = null;
+                  navigate("5-2");
+                }),
+              );
+              document.querySelectorAll("[data-ret-maturity]").forEach((b) =>
+                b.addEventListener("click", () => {
+                  MON_RET_MATURITY.maturedOnly =
+                    b.dataset.retMaturity === "matured";
+                  WIDE_RET_CACHE.key = null;
                   navigate("5-2");
                 }),
               );
