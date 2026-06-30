@@ -22,11 +22,11 @@ tools:
 # 작업 흐름 (요약)
 
 1. 요청 → 모호하면 `AskUserQuestion`(2~4 옵션 + 트레이드오프).
-2. Read → Edit/Write → 변경.
+2. Read → Edit/Write → 변경. (관련 없는 파일/코드 전체 덮어쓰기·들여쓰기 변경 절대 금지, Delta만 수정)
 3. **검증 필수**: `node validate.js`(= `npm test`) — syntax + 전 `runXxxTests` 한 번에. render-throw·특정 분기는 §7 주입식 harness 보강.
 4. validation test(해당 도구): Node 주입식 harness.
 5. `git add <명시 파일>` + commit(Co-Authored-By).
-6. **main 직접 push 금지** — 최신 main에서 새 단명 브랜치 → PR → squash merge → 머지 확인 후 브랜치 삭제(CLAUDE.md §6.1).
+6. **동기화 및 main 직접 push 금지** — 시작 전 `git fetch/status` 확인 후 리모트와 다르면 사용자에게 "pull?" 묻기. 이후 최신 main에서 새 단명 브랜치 → PR → 머지 후 삭제(CLAUDE.md §6.1).
 
 # 현재 도구
 
