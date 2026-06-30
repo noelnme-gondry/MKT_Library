@@ -5358,6 +5358,14 @@
                 group: "코호트 D0",
                 cohort: 0,
               },
+              ret_d1: {
+                label: "잔존율 D1",
+                aliases: ["retention_d1", "잔존_d1", "ret1", "r_d1"],
+                type: "percent",
+                required: false,
+                group: "코호트 D1",
+                cohort: 1,
+              },
               revenue_d7: {
                 label: "매출 D7",
                 aliases: ["rev_d7", "revenue7", "매출_d7"],
@@ -9892,9 +9900,12 @@
             // page_5_2가 게이트 + 탭바 + 활성 탭 디스패치를 담당. (구 5-10/5-13/5-14 흡수, redirect 보존)
             function monVizBody() {
               const k = calculateKPIs();
+              const _mapped = new Set(Object.values(CSV_STATE.mapping || {}));
+              const _hasD1 = _mapped.has("ret_d1"); // D1은 잔존율 컬럼 있을 때만 노출
               const cohortToggle = `
           <div class="cohort-toggle" id="cohort-toggle" style="margin-bottom:1rem;">
             <button data-cohort="0"  class="${k.cohort === 0 ? "active" : ""}">D0</button>
+            ${_hasD1 ? `<button data-cohort="1" class="${k.cohort === 1 ? "active" : ""}">D1</button>` : ""}
             <button data-cohort="7"  class="${k.cohort === 7 ? "active" : ""}">D7</button>
             <button data-cohort="14" class="${k.cohort === 14 ? "active" : ""}">D14</button>
           </div>`;
@@ -10396,6 +10407,7 @@
                 name: "리텐션 (Retention Dn)",
                 collapse: true,
                 fields: [
+                  "ret_d1",
                   "ret_d7",
                   "ret_d14",
                   "ret_d30",
@@ -35078,9 +35090,12 @@
                   (v) => v && v !== "__ignore__",
                 ),
               );
-              const retDays = [0, 7, 14, 30, 60, 90, 180, 360].filter((d) =>
+              // D1 추가. D0은 항상 100% 앵커(설치/가입일=전원 잔존) — ret_dN(N≥1)이 하나라도
+              // 매핑됐을 때만 곡선 시작점으로 prepend(아무 ret도 없으면 빈 곡선 유지).
+              const retDaysMapped = [1, 7, 14, 30, 60, 90, 180, 360].filter((d) =>
                 mapped.has(`ret_d${d}`),
               );
+              const retDays = retDaysMapped.length ? [0, ...retDaysMapped] : [];
               // anchor = 전역 분모 기준(설치/가입). effectiveDenomBasis가 미매핑 폴백 처리.
               const anchor = effectiveDenomBasis();
               const key = [
@@ -35099,6 +35114,15 @@
               function wgtCurve(subset) {
                 return retDays
                   .map((day) => {
+                    // D0 = 항상 100%(설치/가입일 전원 잔존). 모수 = anchor 코호트 크기.
+                    if (day === 0) {
+                      const n = subset.reduce(
+                        (s, r) => s + (Number(r[anchor]) || 0),
+                        0,
+                      );
+                      if (!n) return null;
+                      return { day: 0, retentionRate: 1, n, survivors: n };
+                    }
                     const r = computeWeightedRetention(subset, day, anchor);
                     if (r.rate == null) return null;
                     if (r.hasWholePct) anyWholePct = true;
@@ -36754,7 +36778,7 @@
                 maximumFractionDigits: dec,
               })}`;
             }
-            const LTVCAC_ALL_DNS = [0, 7, 14, 30, 60, 90, 180, 360];
+            const LTVCAC_ALL_DNS = [0, 1, 7, 14, 30, 60, 90, 180, 360];
 
             const LTVCAC_MATH = {
               safeDiv(n, d) {
@@ -47521,6 +47545,7 @@
                 { key: "revenue_d180", unlocks: "💵 장기 가치 탭 — D180 매출/ROAS" },
                 { key: "revenue_d360", unlocks: "💵 장기 가치 탭 — D360 매출/ROAS" },
                 // 리텐션(Dn): 하나라도 매핑하면 🔁 리텐션 탭(리텐션 곡선·예측) 활성.
+                { key: "ret_d1", unlocks: "🔁 리텐션 탭 — D1 잔존율" },
                 { key: "ret_d7", unlocks: "🔁 리텐션 탭 — D7 잔존율" },
                 { key: "ret_d14", unlocks: "🔁 리텐션 탭 — D14 잔존율" },
                 { key: "ret_d30", unlocks: "🔁 리텐션 탭 — D30 잔존율" },
