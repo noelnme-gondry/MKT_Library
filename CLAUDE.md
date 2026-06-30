@@ -163,6 +163,8 @@ git merge origin/main --no-edit → git checkout --ours index.html
 - **FWL within-transform은 절편을 demean하지 말고 제거**(5-6 decompose P0): campaign_id 등 고정효과를 그룹평균 차감(demean)으로 흡수할 때 절편(col 0, 항상 1)까지 demean하면 전 행이 0 → X'X 무조건 특이행렬 → fit null → `campaign_id`만 매핑하면 **데이터 무관 모든 분석이 n=0**으로 죽음. demean은 dummy 컬럼(1..p)만, within 후 절편은 **제거**(절편 남기면 가중치 큰 데이터서 대각항만 거대 → ill-conditioned → SE 폭발·음수 R²). 절편 유무는 `off` 오프셋으로 VIF·계수추출 인덱싱 통일.
 - **Gauss-Jordan inverse는 절대 pivot 임계로 rank-deficiency 못 잡음 → `I·M≈단위행렬` 검증**(5-6): `max<1e-12` 절대 임계는 스케일 큰 행렬(가중치=노출수 등)에서 사실상 특이인데도 통과 → 가비지 inverse 반환(β·SE 엉터리·R²<0, 화면엔 거짓 숫자). inverse 말미에 `maxErr=max|I·M−δ|>1e-6`면 null 반환 → 호출자가 "추정 불가" 정직 처리. **데모 데이터는 full-rank로 설계**(소재 수 충분+속성 결정론 셔플 독립배치, rank 검증)해야 유의효과 산출.
 - **shift-share/Bennet "비중"은 비용 아니라 결과량(분모) share**(5-21): CPA 분해 믹스효과는 `s=result/ΣResult`(전환 건수 비중)로 가중하는 게 정의 — COST 컬럼 옆 "비중"은 비용 비중으로 오독돼 "숫자 틀렸다" 신뢰 붕괴. 효율 좋아진 항목은 비용↓인데 결과 비중↑이 정상(수학 정확). 라벨을 "**결과 비중**"으로 명시 + 툴팁으로 비용 비중 아님을 고지(거짓 숫자 의심받는 카피=실질 버그).
+- **차트 데이터 `Math.round` = 작은 ARPU 0 뭉개짐**(5-2 LTV 곡선): 곡선 y값을 `Math.round(value)`하면 USD 스케일·저객단가(<1)가 0/1/2로 뭉개져 0축에 붙음("왜 안 나오냐"). round 금지(소수 보존) + 표시층은 값 크기별 자릿수 적응(`fmtCurrencyPrecise`: |v|<10→2자리). 통화 토글(₩/$)도 같이.
+- **리텐션은 모수 가중 + %-vs-인원수 컬럼 판별**(5-2): 행별 단순평균(`Σret/n`) 금지(코호트 크기 무시) · 비율 전용 clamp(`min(1,..)`)도 인원수 입력을 100%로 망가뜨림. SSOT `computeWeightedRetention`: 분모=Σ모수(설치/가입), 분자=비율컬럼이면 Σ(ret×모수)·인원수컬럼이면 Σret. **컬럼 max≤1→비율, 초과→인원수**(정수% 30=30%는 인원수로 잡고 경고). 스코어카드·리텐션탭 공유.
 
 ---
 
@@ -278,6 +280,12 @@ TF와 범용회귀는 같은 OLS(`REG_STATS`)·차이는 "미래 투영"뿐 → 
 
 ### 12.17 쉬운말 우선 표기 (전문용어 변환, 5-6 전면 적용)
 일반 유저 대상 라벨·헤딩은 **쉬운 말 먼저 + 전문용어는 괄호로 뒤에**(`데이터 점검 (검증)`·`영향력 (β)` — 역순 금지). 전문용어 자체는 유지 가능하나 항상 명확한 설명이 붙어야 함. 표 헤더처럼 공간 좁은 곳은 약어 유지 + `title` 툴팁(`<th title="노출수 (Impressions)">Impr</th>`). 방법론처럼 긴 설명은 본문에 늘어놓지 말고 짧은 평어 한 줄 + `<details><summary>...펼치기</summary>`로 접기(§12.14의 "결론 vs 진단" fold와 별개 축 — 이건 라벨 wording 순서 문제).
+
+### 12.18 전역 분모 기준(설치/가입) 토글 (5-2 운영 대시보드)
+운영 대시보드가 과도하게 설치(install) 베이스라 가입(action) 운영 데이터에서 CPI 비교·코호트 ARPU가 빈 차트/0으로 깨짐. `MON_DENOM_STATE.basis`("installs"|"actions") + `effectiveDenomBasis()`(미매핑 자동 폴백)로 통일 — CPI/CPA·CVR·ARPU·리텐션·LTV·퍼널이 sticky 필터 1토글로 함께 전환. 기존 per-탭 토글(리텐션 anchor·LTV denom)도 전역과 동기화. CPI 차트는 기준 따라 CPA로 라벨/값 전환. 퍼널: 기준별 단계(설치 4=노출·클릭·설치·구매 / 가입 5=+가입), 절대값=로그 스케일(노출 압도 해소), "절대↔전환율" 토글(단계별 앞단계 대비 %). 전부 render층(골든 무관), 검증은 주입식 harness.
+
+### 12.19 도구별 데이터×기능 연결표 + 템플릿 CSV (CSV 통합)
+업로드 화면의 전역 평면 필드 가이드(접힘)를 제거하고 `renderDataFeatureMatrix(toolId)` 범용 연결표(펼침)로 통일 — `TOOL_REQUIRED/OPTIONAL_FIELDS`+`STANDARD_FIELDS`에서 **자동 생성**(하드코딩 표 금지, 표류 방지). 통합 컬럼 순서=차원(date·country·platform·channel·campaign·adgroup·creative·url) 먼저 → 지표(cost·퍼널·PU/Rev/Ret Dn). 필드별 필수/필수(택1)/옵션/미사용+매핑✓, 효율&예산 4총사(`DFM_FAMILY`)는 미사용에 "어느 도구가 쓰는지" 고지(공유 grain). `buildToolTemplateCsv(toolId, scope)`=깨끗한 헤더만(BOM+CRLF §7, canonical, `creative_id`→`creative_name`), 4총사는 통합+도구별 둘 다 버튼. Dn 윈도우는 1행으로 묶어 표시.
 
 ---
 
