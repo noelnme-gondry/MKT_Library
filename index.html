@@ -10031,7 +10031,7 @@
               <h2 class="section-title"><span class="ix">§2</span>KPI 요약</h2>
               <div class="kpi-grid">
                 <div class="kpi-card"><div class="label">총 비용</div><div class="value tnum">${formatNumber(k.cost, { decimals: 0 })}</div><div class="delta">합산 cost</div></div>
-                <div class="kpi-card"><div class="label">총 설치 수</div><div class="value tnum">${formatNumber(k.installs, { decimals: 0 })}</div><div class="delta">합산 installs</div></div>
+                <div class="kpi-card"><div class="label">${k.basis === "actions" ? "총 가입 수" : "총 설치 수"}</div><div class="value tnum">${formatNumber(k.denom, { decimals: 0 })}</div><div class="delta">합산 ${k.basis === "actions" ? "actions" : "installs"}</div></div>
                 <div class="kpi-card"><div class="label">${k.basis === "actions" ? "가입당 비용 (CPA)" : "CPI"}</div><div class="value tnum">${formatNumber(k.cpi, { decimals: 2 })}</div><div class="delta">cost / ${k.basis === "actions" ? "actions(가입)" : "installs"}</div></div>
                 <div class="kpi-card"><div class="label">CTR</div><div class="value tnum">${formatPercent(k.ctr)}</div><div class="delta">clicks / impressions</div></div>
                 <div class="kpi-card"><div class="label">CVR (Click→${k.basis === "actions" ? "가입" : "Install"})</div><div class="value tnum">${formatPercent(k.cvr)}</div><div class="delta">${k.basis === "actions" ? "actions" : "installs"} / clicks</div></div>
@@ -10058,7 +10058,7 @@
                 </div>
                 <div class="kpi-card"><div class="label">ARPU (D${k.cohort})</div><div class="value tnum">${formatNumber(k.arpu, { decimals: 2 })}</div><div class="delta">revenue / ${k.basis === "actions" ? "actions(가입)" : "installs"}</div></div>
                 <div class="kpi-card"><div class="label">결제수 (D${k.cohort})</div><div class="value tnum">${formatNumber(k.purchases, { decimals: 0 })}</div><div class="delta">pu_d${k.cohort} 합산</div></div>
-                <div class="kpi-card"><div class="label">CPA (D${k.cohort})</div><div class="value tnum">${formatNumber(k.cpa, { decimals: 2 })}</div><div class="delta">cost / pu_d${k.cohort}</div></div>
+                <div class="kpi-card"><div class="label">구매 유저 단가 (D${k.cohort})</div><div class="value tnum">${formatNumber(k.cpa, { decimals: 2 })}</div><div class="delta">cost / 구매 유저 수 (D${k.cohort})</div></div>
                 <div class="kpi-card"><div class="label">ARPPU (D${k.cohort})</div><div class="value tnum">${formatNumber(k.arppu, { decimals: 2 })}</div><div class="delta">revenue / 결제수</div></div>
                 <div class="kpi-card"><div class="label">잔존율 (D${k.cohort})</div><div class="value tnum">${formatPercent(k.retentionAvg)}</div><div class="delta">${k.basis === "actions" ? "가입" : "설치"} 모수 가중${k.retentionWholePctWarn ? " · ⚠인원수 해석" : ""}</div></div>
               </div>
@@ -36275,14 +36275,14 @@
                 btn.addEventListener("click", () => {
                   QUALITY_STATE.curveModel = btn.dataset.qualityCurve;
                   QUALITY_CACHE.key = null;
-                  navigate("5-8");
+                  navigate("5-2");
                 });
               });
               document.querySelectorAll("[data-quality-segment]").forEach((btn) => {
                 btn.addEventListener("click", () => {
                   QUALITY_STATE.segmentBy = btn.dataset.qualitySegment;
                   QUALITY_CACHE.key = null;
-                  navigate("5-8");
+                  navigate("5-2");
                 });
               });
               document
@@ -36297,13 +36297,13 @@
               document.querySelectorAll("[data-mat-metric]").forEach((btn) => {
                 btn.addEventListener("click", () => {
                   COHORT_MAT_STATE.metric = btn.dataset.matMetric;
-                  navigate("5-8");
+                  navigate("5-2");
                 });
               });
               document.querySelectorAll("[data-mat-anchor]").forEach((btn) => {
                 btn.addEventListener("click", () => {
                   COHORT_MAT_STATE.anchorDn = Number(btn.dataset.matAnchor);
-                  navigate("5-8");
+                  navigate("5-2");
                 });
               });
               const matDlBtn = document.querySelector("[data-matdlcsv]");
@@ -37125,6 +37125,12 @@
                   // 실측(predicted=false) 구간: solid / 예측(predicted=true): dashed segment
                   const solidData = pts.map((p) => (p.predicted ? null : p.y));
                   const dashData = pts.map((p) => (p.predicted ? p.y : null));
+                  // 실선→점선 연결: 마지막 실측 포인트를 점선 시작점에도 복제(둘 다 spanGaps:false라
+                  // 경계에 겹치는 점이 없으면 선이 끊김). 마지막 실측 index에 값 채워 자연스럽게 이음.
+                  let _lastObs = -1;
+                  for (let _i = 0; _i < pts.length; _i++)
+                    if (!pts[_i].predicted && pts[_i].y != null) _lastObs = _i;
+                  if (_lastObs >= 0) dashData[_lastObs] = pts[_lastObs].y;
                   return [
                     {
                       label: `${r.unit}`,
@@ -37204,14 +37210,14 @@
                   if (b.classList.contains("disabled")) return;
                   LTVCAC_STATE.unitField = b.dataset.ltvcacUnit;
                   LTVCAC_CACHE.key = null;
-                  navigate("5-9");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-ltvcac-horizon]").forEach((b) =>
                 b.addEventListener("click", () => {
                   LTVCAC_STATE.ltvHorizon = Number(b.dataset.ltvcacHorizon);
                   LTVCAC_CACHE.key = null;
-                  navigate("5-9");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-ltvcac-denom]").forEach((b) =>
@@ -37220,13 +37226,13 @@
                   MON_DENOM_STATE.basis = b.dataset.ltvcacDenom; // 전역 기준 변경
                   LTVCAC_CACHE.key = null; // 분모 변경 → 재계산
                   WIDE_RET_CACHE.key = null;
-                  navigate("5-9");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-ltvcac-currency]").forEach((b) =>
                 b.addEventListener("click", () => {
                   AB_STATE.currency = b.dataset.ltvcacCurrency; // 표시 통화(값 변환 X)
-                  navigate("5-9"); // 표시층만 — 캐시 무효화 불필요
+                  navigate("5-2"); // 표시층만 — 캐시 무효화 불필요
                 }),
               );
               renderLtvCacChart();
@@ -37685,7 +37691,7 @@
                   if (b.classList.contains("disabled")) return;
                   PACING_STATE.metric = b.dataset.pacingMetric;
                   PACING_CACHE.key = null;
-                  navigate("5-10");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-pacing-mode]").forEach((b) =>
@@ -37693,21 +37699,21 @@
                   if (b.classList.contains("disabled")) return;
                   PACING_STATE.forecastMode = b.dataset.pacingMode;
                   PACING_CACHE.key = null;
-                  navigate("5-10");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-pacing-actiondef]").forEach((b) =>
                 b.addEventListener("click", () => {
                   PACING_STATE.actionDef = b.dataset.pacingActiondef;
                   PACING_CACHE.key = null;
-                  navigate("5-10");
+                  navigate("5-2");
                 }),
               );
               const t = document.getElementById("pacing-target");
               if (t)
                 t.addEventListener("change", () => {
                   PACING_STATE.monthlyTarget = Number(t.value) || 0;
-                  navigate("5-10");
+                  navigate("5-2");
                 });
               document
                 .querySelectorAll("#s-pace [data-pngdownload]")
@@ -38355,21 +38361,21 @@
                   if (b.classList.contains("disabled")) return;
                   FUNNEL_STATE.unitField = b.dataset.funnelUnit;
                   FUNNEL_CACHE.key = null;
-                  navigate("5-11");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-funnel-step]").forEach((b) =>
                 b.addEventListener("click", () => {
                   FUNNEL_STATE.cvrStep = +b.dataset.funnelStep;
                   FUNNEL_CACHE.key = null;
-                  navigate("5-11");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-funnel-wadj]").forEach((b) =>
                 b.addEventListener("click", () => {
                   FUNNEL_STATE.weekdayAdj = b.dataset.funnelWadj === "1";
                   FUNNEL_CACHE.key = null;
-                  navigate("5-11");
+                  navigate("5-2");
                 }),
               );
               renderFunnelTrendChart();
@@ -38744,7 +38750,7 @@
                       .join("")}</tr>`,
                 )
                 .join("");
-              return `<div class="table-wrap"><table class="data" style="font-size:11px;">${header}${body}</table></div>
+              return `<div class="table-wrap"><table class="data seg-matrix" style="font-size:12px;"><thead>${header}</thead><tbody>${body}</tbody></table></div>
           <p class="muted" style="margin-top:8px;font-size:11px;">셀 하단 작은 숫자는 해당 조합의 비용(규모). 진한 초록=상대적으로 우수, 빨강=열위. ${met.better === "none" ? "(Cost는 규모 지표라 색 없음)" : ""}</p>`;
             }
             function bindSegmentHandlers() {
@@ -38754,7 +38760,7 @@
                   if (b.classList.contains("disabled")) return;
                   SEGMENT_STATE.rowAxis = b.dataset.segRow;
                   SEGMENT_CACHE.key = null;
-                  navigate("5-12");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-seg-col]").forEach((b) =>
@@ -38762,14 +38768,14 @@
                   if (b.classList.contains("disabled")) return;
                   SEGMENT_STATE.colAxis = b.dataset.segCol;
                   SEGMENT_CACHE.key = null;
-                  navigate("5-12");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-seg-metric]").forEach((b) =>
                 b.addEventListener("click", () => {
                   SEGMENT_STATE.metric = b.dataset.segMetric;
                   SEGMENT_CACHE.key = null;
-                  navigate("5-12");
+                  navigate("5-2");
                 }),
               );
             }
@@ -39154,7 +39160,7 @@
               document.querySelectorAll("[data-score-window]").forEach((b) =>
                 b.addEventListener("click", () => {
                   SCORECARD_STATE.windowDays = Number(b.dataset.scoreWindow);
-                  navigate("5-13");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-score-metric]").forEach((b) =>
@@ -39162,7 +39168,7 @@
                   const k = b.dataset.scoreMetric;
                   SCORECARD_STATE.selectedMetric =
                     SCORECARD_STATE.selectedMetric === k ? null : k;
-                  navigate("5-13");
+                  navigate("5-2");
                 }),
               );
               document
@@ -39366,24 +39372,24 @@
               bindInlineCsvHandlers();
               const re = () => {
                 ANOMALY_CACHE_DUMMY = null;
-                navigate("5-14");
+                navigate("5-2");
               };
               document.querySelectorAll("[data-anom-metric]").forEach((b) =>
                 b.addEventListener("click", () => {
                   ANOMALY_STATE.metric = b.dataset.anomMetric;
-                  navigate("5-14");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-anom-z]").forEach((b) =>
                 b.addEventListener("click", () => {
                   ANOMALY_STATE.z = Number(b.dataset.anomZ);
-                  navigate("5-14");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-anom-win]").forEach((b) =>
                 b.addEventListener("click", () => {
                   ANOMALY_STATE.window = Number(b.dataset.anomWin);
-                  navigate("5-14");
+                  navigate("5-2");
                 }),
               );
               document
@@ -39862,7 +39868,7 @@
                 b.addEventListener("click", () => {
                   if (b.classList.contains("disabled")) return;
                   MATURATION_STATE.unitField = b.dataset.matUnit;
-                  navigate("5-16");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-mat-anchor]").forEach((b) =>
@@ -39884,7 +39890,7 @@
                   }
                   MATURATION_STATE.anchorDns =
                     cur.length === avDns.length ? null : cur;
-                  navigate("5-16");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-mat-show]").forEach((b) =>
@@ -39894,13 +39900,13 @@
                     MATURATION_STATE.showCurve = !MATURATION_STATE.showCurve;
                   if (w === "empirical")
                     MATURATION_STATE.showEmpirical = !MATURATION_STATE.showEmpirical;
-                  navigate("5-16");
+                  navigate("5-2");
                 }),
               );
               document.querySelectorAll("[data-mat-horizon]").forEach((b) =>
                 b.addEventListener("click", () => {
                   MATURATION_STATE.targetHorizon = Number(b.dataset.matHorizon);
-                  navigate("5-16");
+                  navigate("5-2");
                 }),
               );
             }
