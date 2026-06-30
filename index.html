@@ -10710,11 +10710,28 @@
           </div>`);
               }
 
-              // 전역 분모 기준(설치/가입) — 대시보드 전 지표가 함께 전환
+              return `<div class="mon-filter-bar">
+          <div class="mon-filter-inner">
+            <span class="mon-filter-title">필터${active > 0 ? `<span class="mon-filter-badge">${active}</span>` : ""}</span>
+            ${parts.join("")}
+            ${active > 0 ? `<button class="copy-btn mon-filter-reset" data-mon-filter-reset>초기화</button>` : ""}
+          </div>
+        </div>${renderMonToggleBar()}`;
+            }
+
+            // 토글 바 — 기준(설치/가입) + 표시 통화(₩/$). 필터바와 별도 섹션.
+            // 둘 다 대시보드 전 탭에 전역 적용(분모·통화).
+            function renderMonToggleBar() {
+              const mapped = new Set(
+                Object.values(CSV_STATE.mapping || {}).filter(
+                  (v) => v !== "__ignore__",
+                ),
+              );
               const hasInst = mapped.has("installs"),
                 hasAct = mapped.has("actions");
               const effBasis = effectiveDenomBasis();
-              const basisPart =
+              const cur = AB_STATE.currency;
+              const basisGroup =
                 hasInst || hasAct
                   ? `
           <div class="mon-filter-item" style="align-items:center;gap:4px;">
@@ -10723,13 +10740,15 @@
             <button class="ab-pill ${effBasis === "actions" ? "active" : ""} ${!hasAct ? "disabled" : ""}" ${hasAct ? `data-mon-basis="actions"` : "disabled"}>가입${!hasAct ? " 🔒" : ""}</button>
           </div>`
                   : "";
-
-              return `<div class="mon-filter-bar">
+              return `<div class="mon-filter-bar" style="margin-top:6px;">
           <div class="mon-filter-inner">
-            <span class="mon-filter-title">필터${active > 0 ? `<span class="mon-filter-badge">${active}</span>` : ""}</span>
-            ${basisPart}
-            ${parts.join("")}
-            ${active > 0 ? `<button class="copy-btn mon-filter-reset" data-mon-filter-reset>초기화</button>` : ""}
+            <span class="mon-filter-title">토글</span>
+            ${basisGroup}
+            <div class="mon-filter-item" style="align-items:center;gap:4px;">
+              <span class="mon-filter-label" title="표시 통화 단위만 전환(값 변환 아님 — CSV 통화 그대로). 모든 탭·차트·표에 적용.">통화</span>
+              <button class="ab-pill ${cur === "KRW" ? "active" : ""}" data-mon-currency="KRW">원 ₩</button>
+              <button class="ab-pill ${cur === "USD" ? "active" : ""}" data-mon-currency="USD">달러 $</button>
+            </div>
           </div>
         </div>`;
             }
@@ -37004,18 +37023,6 @@
                   })
                   .join("")}
               </div>
-              <div class="ab-pillgroup">
-                <span class="ab-pillgroup-label" title="표시 통화 단위만 전환합니다(값 변환 아님 — CSV 통화 그대로). 작은 값도 자릿수를 살려 표시합니다.">표시 통화</span>
-                ${[
-                  ["KRW", "원 (₩)"],
-                  ["USD", "달러 ($)"],
-                ]
-                  .map(
-                    ([k, l]) =>
-                      `<button class="ab-pill ${AB_STATE.currency === k ? "active" : ""}" data-ltvcac-currency="${k}">${l}</button>`,
-                  )
-                  .join("")}
-              </div>
             </section>
             ${renderLtvCacTable(c)}
           `;
@@ -41625,6 +41632,14 @@
                   navigate("5-2");
                 });
               });
+
+              // 전역 표시 통화 토글 (₩/$) — 모든 탭 fmtCurrency에 반영(값 변환 X)
+              document.querySelectorAll("[data-mon-currency]").forEach((btn) =>
+                btn.addEventListener("click", () => {
+                  AB_STATE.currency = btn.dataset.monCurrency;
+                  navigate("5-2");
+                }),
+              );
 
               // ----- 5-2: 코호트 토글 -----
               const toggle = document.getElementById("cohort-toggle");
