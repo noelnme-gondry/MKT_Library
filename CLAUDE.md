@@ -287,6 +287,9 @@ TF와 범용회귀는 같은 OLS(`REG_STATS`)·차이는 "미래 투영"뿐 → 
 ### 12.19 도구별 데이터×기능 연결표 + 템플릿 CSV (CSV 통합)
 업로드 화면의 전역 평면 필드 가이드(접힘)를 제거하고 `renderDataFeatureMatrix(toolId)` 범용 연결표(펼침)로 통일 — `TOOL_REQUIRED/OPTIONAL_FIELDS`+`STANDARD_FIELDS`에서 **자동 생성**(하드코딩 표 금지, 표류 방지). 통합 컬럼 순서=차원(date·country·platform·channel·campaign·adgroup·creative·url) 먼저 → 지표(cost·퍼널·PU/Rev/Ret Dn). 필드별 필수/필수(택1)/옵션/미사용+매핑✓, 효율&예산 4총사(`DFM_FAMILY`)는 미사용에 "어느 도구가 쓰는지" 고지(공유 grain). `buildToolTemplateCsv(toolId, scope)`=깨끗한 헤더만(BOM+CRLF §7, canonical, `creative_id`→`creative_name`), 4총사는 통합+도구별 둘 다 버튼. Dn 윈도우는 1행으로 묶어 표시.
 
+### 12.20 운영 대시보드 v2 (KPI 기준·리텐션 마감·이상탐지 EMA/DOW·D1)
+5-2 후속 개선 묶음(전부 render층/순수, 골든 무관, 검증=주입식 harness). ① **KPI 기준 라벨**: "총 설치 수"→가입 기준 "총 가입 수"+`k.denom`, "CPA"는 실제 구매유저단가라 "구매 유저 단가"로 정정. ② **기준·통화 토글 분리**: `renderMonToggleBar()`(필터바와 별도) — 기준(설치/가입)+전역 통화(₩/$, `data-mon-currency`→`AB_STATE.currency`, LTV 탭 통화 토글은 제거하고 전역화). ③ **리텐션 마감 필터**(`MON_RET_MATURITY.maturedOnly`): 미마감 코호트(오늘 기준 D일 안 지남)가 잔존율 부풀림 → **분자·분모 둘 다** `_todayMidnightTs()-day` 컷오프로 필터(분모만 필터 금지). `computeWeightedRetention(rows,day,basis,maturedOnly)`. ④ **이상탐지 EMA**: SMA→EMA(α=2/(win+1))+EMA분산 → 트렌드 적응(첫 win개 skip 유지로 골든 통과), `dates`/`dowEffects` optional 인자(하위호환). **요일 보정**: `computeDowEffects`(eff[dow]=요일평균/전체평균), 기대값=EMA×요일승수+요일효과 테이블(평어). ⑤ **리텐션 D0/D1**: `ret_d1` 신규 필드, D0=항상 100% 앵커(`retDays`에 prepend), revenue_d1·pu_d1은 미존재라 리텐션만. ⑥ **토글 스크롤 리셋**: 모니터링 탭 내부 토글이 redirect ID(5-9·5-12 등)로 navigate→path 변경→`scrollTo(0)`. `navigate("5-2")`로 통일(MON_STATE.tab이 활성탭 유지). ⑦ 세그먼트 매트릭스 `<thead>/<tbody>` 구조화, LTV 곡선 실선→점선 마지막 실측점 복제로 연결.
+
 ---
 
 ## 13. 참고 파일
