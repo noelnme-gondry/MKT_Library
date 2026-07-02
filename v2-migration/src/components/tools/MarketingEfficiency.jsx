@@ -107,7 +107,10 @@ export default function MarketingEfficiency() {
     metric: "cpa", // cpa | roas
     selected: null,
   });
-  const [currency, setCurrency] = useState("KRW"); // KRW | USD (기호/소수만 — FX 변환 없음)
+  // 표시 통화는 전역 store 단일 소스(BasisCurrencyToggleBar 토글) — 로컬 currency
+  // state를 따로 두면 상단 토글을 눌러도 표에 반영 안 되는 버그(§7 재발) 발생.
+  const currency = useAppStore((state) => state.displayCurrency);
+  const setCurrency = useAppStore((state) => state.setDisplayCurrency);
 
   const hasData = csvData && csvData.raw && csvData.raw.length > 0;
 
@@ -360,30 +363,34 @@ export default function MarketingEfficiency() {
         </>
       }
       toc={analyzed && okRows.length ? SAT_TOC : undefined}
+      stickyFilter={
+        <>
+          {/* 🗂 데이터·매핑 (펼쳐서 변경) — index page_5_22 details 이식.
+              stickyFilter 슬롯(page-sticky-bar 내부, sticky top:48)에 배치해 스크롤 중에도
+              고정 노출(§7 재발 — 예전엔 children에 있어 스크롤하면 사라짐). */}
+          <details className="block" style={{ padding: "13px 16px" }} open={!analyzed}>
+            <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: analyzed ? "var(--text-muted)" : "var(--primary, #adc6ff)" }}>
+              🗂 데이터·매핑 {analyzed ? "(분석 완료 — 펼쳐서 변경)" : "(매핑 확인 후 분석)"}
+            </summary>
+            <div style={{ marginTop: "10px" }}>
+              <CsvUploader toolId="5-22" />
+              <div style={{ marginTop: "10px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                <button className="ab-pill" onClick={() => downloadSatTemplateCsv("5-22")} title="이 도구가 쓰는 컬럼만 빈 헤더 CSV로 내려받기 (BOM+CRLF)">
+                  ⬇ 템플릿 CSV (이 도구)
+                </button>
+                <span style={{ fontSize: "10.5px", color: "var(--text-muted)" }}>
+                  효율 CSV는 5-2·5-3와 공유합니다. 통합 템플릿은 5-3 예산 배분에서도 받을 수 있습니다.
+                </span>
+              </div>
+              {/* 분석 게이트 버튼은 CsvUploader가 단독 소유(§12.5/#5) — 위 CsvUploader의 "데이터 분석하기"/"↻ 다시 분석"이 store 그룹 게이트를 세팅. 중복 버튼 제거. */}
+            </div>
+          </details>
+
+          {/* 기준(설치/가입)·통화 토글 — 이전엔 5-2에만 있어 이 도구는 강제로 설치 기준이었음. */}
+          <BasisCurrencyToggleBar />
+        </>
+      }
     >
-      {/* 🗂 데이터·매핑 (펼쳐서 변경) — index page_5_22 details 이식.
-          미분석 상태면 자동으로 펼침 + 분석 게이트 버튼 노출. */}
-      <details className="block" style={{ padding: "13px 16px" }} open={!analyzed}>
-        <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: analyzed ? "var(--text-muted)" : "var(--primary, #adc6ff)" }}>
-          🗂 데이터·매핑 {analyzed ? "(분석 완료 — 펼쳐서 변경)" : "(매핑 확인 후 분석)"}
-        </summary>
-        <div style={{ marginTop: "10px" }}>
-          <CsvUploader toolId="5-22" />
-          <div style={{ marginTop: "10px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-            <button className="ab-pill" onClick={() => downloadSatTemplateCsv("5-22")} title="이 도구가 쓰는 컬럼만 빈 헤더 CSV로 내려받기 (BOM+CRLF)">
-              ⬇ 템플릿 CSV (이 도구)
-            </button>
-            <span style={{ fontSize: "10.5px", color: "var(--text-muted)" }}>
-              효율 CSV는 5-2·5-3와 공유합니다. 통합 템플릿은 5-3 예산 배분에서도 받을 수 있습니다.
-            </span>
-          </div>
-          {/* 분석 게이트 버튼은 CsvUploader가 단독 소유(§12.5/#5) — 위 CsvUploader의 "데이터 분석하기"/"↻ 다시 분석"이 store 그룹 게이트를 세팅. 중복 버튼 제거. */}
-        </div>
-      </details>
-
-      {/* 기준(설치/가입)·통화 토글 — 이전엔 5-2에만 있어 이 도구는 강제로 설치 기준이었음. */}
-      <BasisCurrencyToggleBar />
-
       {!analyzed ? (
         <section className="block" id="s-sat-gate">
           <div className="callout" style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
