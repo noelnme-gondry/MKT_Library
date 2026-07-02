@@ -18,7 +18,7 @@
 
 ## 2. 절대 원칙 (NEVER 깨지 말 것)
 
-1. **단일 HTML 파일**: 배포되는 앱의 모든 클라이언트 로직은 `index.html` 하나에. 앱 구동용 별도 .js/.css 분리 금지. 빌드 도구 없음. CDN 라이브러리만. **예외**: 배포되지 않는 로컬 개발·테스트 실행용 스크립트(`validate.js` 등)는 허용 — 단 **실행·리포팅만** 담고, 테스트에 필요한 비즈니스 로직·목업 데이터가 빠져나가지 않게 전부 `index.html`의 `runXxxTests`에 유지(관심사 분리 엄수).
+1. **아키텍처 이행 중 (단일HTML → Next.js 모듈, 2026-07~)**: 구 "단일 HTML·빌드도구 없음" 절대원칙은 **폐기**. 프로젝트는 이행 중 — `index.html`(단일 파일 레거시, **Phase 8 골든100% 컷오버 전까지 라이브 배포 유지**·버그픽스만) → `v2-migration/`(Next.js 16 App Router + React 19 + Zustand; `src/components`·`src/utils`(순수엔진)·`src/store`). **신규·이관 작업은 v2 모듈 구조**로, 어느 코드베이스 작업인지 명확히. 순수 수학은 `src/utils/*`(골든 검증), UI는 컴포넌트, 상태는 Zustand. 이행 계획·현황: `docs/v2-migration-tasks.md`(SSOT). (구 index.html 규칙은 §4~§12에 아직 유효 — 컷오버 전 index 유지보수용.)
 2. **클라이언트 사이드 100%**: 사용자 CSV는 브라우저 메모리에만. 서버 전송/저장 절대 금지.
 3. **Supabase service_role key 절대 요청·저장·언급 금지**. anon public key만 (RLS 보호).
 4. **main 직접 push 금지**. 반드시 feat 브랜치 → PR → squash merge.
@@ -33,14 +33,21 @@
 
 ## 3. 기술 스택
 
+**레거시 (index.html, 컷오버 전 라이브)**:
 ```
-HTML/CSS/JS (Vanilla) — 빌드 도구 없음. `serve . -l $PORT` 가 전부.
-├─ Chart.js 4.4.4       (CDN) — 모든 차트
-├─ PapaParse 5.4.1      (CDN) — CSV 파싱
-├─ Supabase JS 2.45.4   (CDN) — 접근 키 검증 (anon RPC만)
-├─ SheetJS 0.18.5       (CDN) — XLSX export
-└─ Inter / JetBrains Mono (Google Fonts) — Obsidian Flux 디자인 시스템
+HTML/CSS/JS (Vanilla) — 빌드 도구 없음. `serve . -l $PORT`.
+Chart.js 4.4.4 · PapaParse 5.4.1 · Supabase JS 2.45.4(주석화) · SheetJS 0.18.5 · Inter/JetBrains Mono (Obsidian Flux)
 ```
+**v2 (`v2-migration/`, 신규 작업 대상)**:
+```
+Next.js 16 (App Router, Turbopack) · React 19 · Zustand 5 (store) · Chart.js 4 · PapaParse 5 (npm)
+├─ src/utils/*.js   순수 통계엔진 (ESM export, vitest 골든 검증) — 수학 절대 변경 금지
+├─ src/components/  React 컴포넌트 (tools/·dashboard/·sops/)
+├─ src/store/useDataStore.js  Zustand — IA·csvData·필터·라우트 상태
+└─ 테스트: `npm test`(=vitest run src/utils) · 린트: `npm run lint`(eslint, 0 errors 유지)
+```
+- **CSS**: Obsidian Flux 토큰(`--bg-1`·`--text-muted`)+다크/라이트는 **전역 유지**(`globals.css`, `:root`+`body.light-mode`). CSS Modules는 일회성만(토큰 스코핑 불가). Tailwind 미사용.
+- **Supabase**: 전체 무료 전환으로 미사용 — v2 `layout.js`에 스크립트 주석화(`TODO(B2B)`). service_role key 규칙(§2.3)은 불변.
 
 ---
 
@@ -110,6 +117,7 @@ function buildXxxCache() {
 1. 요청 받음 → 모호하면 `AskUserQuestion`(옵션·트레이드오프 명시).
 2. **작업 시작 전 항상 `git fetch origin main` 및 `git status` 확인**: 리모트와 로컬 차이가 있으면 반드시 사용자에게 "pull 후 진행할까요?"라고 묻기. 이후 최신 main 위에서 **단명 브랜치**(`chore/xxx`·`feat/xxx`) 새로 생성. **장수 feature 브랜치 재사용 금지**(conflict·구버전 역행 위험).
 3. 변경 후 **검증 필수**: `node validate.js`(= `npm test`) — syntax(vm compile) + 전 `runXxxTests` 한 번에 실행, 실패 시 nonzero. (순수함수 외 특정 분기·render-throw는 여전히 §7 주입식 harness로 보강.)
+   **v2 preview MCP(스크린샷·스크롤·클릭 상호작용) 검증은 생략** — Gondry님이 브라우저에서 직접 확인(더 빠르고 정확함). `npm run test:all`+`npm run lint`+코드 리뷰까지만 하고 끝. 실행 자체가 필요한 디버깅(콘솔 에러 재현 등)엔 여전히 preview_eval/console_logs 사용 가능하나, "확인해보겠습니다" 식 스크린샷·스크롤 검증 루프는 하지 말 것(긴 스크롤 페이지에서 스크린샷 캡처 아티팩트 쫓다 시간 낭비했던 실사례 — §7에 함정으로도 기록).
 4. `git add <명시 파일>` + 커밋(Co-Authored-By 라인, HEREDOC).
 5. push → `gh pr create --base main`. PR body: `## Summary` bullets + `## Test plan` checkboxes + `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
 6. `gh pr merge <N> --squash` → **머지 확인 후 브랜치 삭제**(`git push origin --delete <branch>`). 충돌 시 §6.2.
@@ -167,6 +175,9 @@ git merge origin/main --no-edit → git checkout --ours index.html
 - **shift-share/Bennet "비중"은 비용 아니라 결과량(분모) share**(5-21): CPA 분해 믹스효과는 `s=result/ΣResult`(전환 건수 비중)로 가중하는 게 정의 — COST 컬럼 옆 "비중"은 비용 비중으로 오독돼 "숫자 틀렸다" 신뢰 붕괴. 효율 좋아진 항목은 비용↓인데 결과 비중↑이 정상(수학 정확). 라벨을 "**결과 비중**"으로 명시 + 툴팁으로 비용 비중 아님을 고지(거짓 숫자 의심받는 카피=실질 버그).
 - **차트 데이터 `Math.round` = 작은 ARPU 0 뭉개짐**(5-2 LTV 곡선): 곡선 y값을 `Math.round(value)`하면 USD 스케일·저객단가(<1)가 0/1/2로 뭉개져 0축에 붙음("왜 안 나오냐"). round 금지(소수 보존) + 표시층은 값 크기별 자릿수 적응(`fmtCurrencyPrecise`: |v|<10→2자리). 통화 토글(₩/$)도 같이.
 - **리텐션은 모수 가중 + %-vs-인원수 컬럼 판별**(5-2): 행별 단순평균(`Σret/n`) 금지(코호트 크기 무시) · 비율 전용 clamp(`min(1,..)`)도 인원수 입력을 100%로 망가뜨림. SSOT `computeWeightedRetention`: 분모=Σ모수(설치/가입), 분자=비율컬럼이면 Σ(ret×모수)·인원수컬럼이면 Σret. **컬럼 max≤1→비율, 초과→인원수**(정수% 30=30%는 인원수로 잡고 경고). 스코어카드·리텐션탭 공유.
+- **Chart.js에 CSS `var(--x)` 리터럴 직접 전달 금지**(v2 대시보드 차트 6개): canvas `strokeStyle`은 `var()` 문법을 못 읽어 불투명 검정으로 폴백(두꺼운 검정 그리드). `getCssVar("--border")`(렌더타임 실제 rgba 해석, `chartUtils.js`)로 항상 교체. `CHART_THEME.grid/muted/text`도 라이트/다크 getter로(정적 리터럴 금지).
+- **조건부 마운트 캔버스는 최초 폭 0으로 측정됨**(§7 구 `<details>` 0px 함정과 동일 원인, v2에서도 재발): 토글로 새로 보이는 섹션·step 전환으로 새로 마운트되는 차트는 Chart.js 생성 시점에 부모가 아직 레이아웃 안 잡혀 width=0. `new Chart(...)` 직후 `requestAnimationFrame(() => instance.resize())` 1회 필수.
+- **preview 스크린샷은 매우 긴 페이지(스크롤 20000px+)에서 캡처 아티팩트 남(빈 화면·이중노출)** — 스크롤 위치가 실제로 바뀌어도(`window.scrollY` 확인됨) 스크린샷이 빈 배경만 나올 수 있음. 실제 앱 버그가 아니라 툴 한계이므로, 판정은 `preview_snapshot`(접근성 트리, 픽셀 무관)이나 콘솔 에러 유무로 하고 스크린샷 하나만 믿고 "깨졌다" 결론 내지 말 것. (§6.1: 어차피 v2 preview 육안검증은 생략, Gondry님이 직접 확인.)
 
 ---
 
@@ -289,11 +300,27 @@ TF와 범용회귀는 같은 OLS(`REG_STATS`)·차이는 "미래 투영"뿐 → 
 ### 12.19 도구별 데이터×기능 연결표 + 템플릿 CSV (CSV 통합)
 업로드 화면의 전역 평면 필드 가이드(접힘)를 제거하고 `renderDataFeatureMatrix(toolId)` 범용 연결표(펼침)로 통일 — `TOOL_REQUIRED/OPTIONAL_FIELDS`+`STANDARD_FIELDS`에서 **자동 생성**(하드코딩 표 금지, 표류 방지). 통합 컬럼 순서=차원(date·country·platform·channel·campaign·adgroup·creative·url) 먼저 → 지표(cost·퍼널·PU/Rev/Ret Dn). 필드별 필수/필수(택1)/옵션/미사용+매핑✓, 효율&예산 4총사(`DFM_FAMILY`)는 미사용에 "어느 도구가 쓰는지" 고지(공유 grain). `buildToolTemplateCsv(toolId, scope)`=깨끗한 헤더만(BOM+CRLF §7, canonical, `creative_id`→`creative_name`), 4총사는 통합+도구별 둘 다 버튼. Dn 윈도우는 1행으로 묶어 표시.
 
+### 12.20 v2 마이그레이션 (index.html → Next.js) — 패턴·함정 (2026-07)
+index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상세 이력: `docs/v2-migration-tasks.md`.
+- **순수엔진 이관 = 골든-폐포 기반**: index 엔진 블록을 ESM export로 verbatim 복사(선언→`export`만, 수학 불변). 경계는 **base-indent 닫힘 자동검출**(닫는 줄 뒤 주석 허용 정규식 — plan의 라인범위 off-by-one/멀티행 배열 자가교정). 골든 테스트가 오라클 — **tolerance 완화·엔진수정 0**이면 충실 이관. 실행: vitest(`npm test`), extensionless ESM은 raw node 불가라 vitest 리졸버 사용.
+- **cost/spend 별칭 함정(§7 재발)**: 효율 CSV는 비용을 표준키 `cost`로 매핑하는데 PVM/creativeMath 엔진은 `r.spend`를 읽음 → COST 0 버그(결과 비중은 정상이라 놓치기 쉬움). **단일 지점 `getMappedRows`에서 cost↔spend 양쪽 채움**(엔진·골든 불변). 도구가 다른 표준키 읽는지 항상 확인.
+- **도구 배선 표준 패턴**: `getMappedRows(csvData)`(raw+mapping→표준키 행) → 도구별 엔진 입력 구성(값은 문자열, `Number()`) → 순수엔진 호출 → 기존 표/차트/헤드라인에 실값 렌더. **mock·`Math.random` 전량 제거**(§3 결정론), 컬럼 부족 시 정직 빈상태(fabricate 금지, §8). 검증은 `test:all`+`lint`+코드 리뷰까지(§6.1 — preview 라이브 육안검증은 생략, Gondry님이 직접 확인).
+- **CampaignPvm-class 렌더 크래시**(병렬 이관 산물): 존재않는 `...base.plugins.X.foo` 스프레드(`base.plugins`에 그 키 없음)→`undefined.prop` throw→Next 에러 오버레이. + `csvData && csvData.raw.length`(raw undefined 시 throw)→`csvData?.raw?.length`로 통일. 정적 색출 후 preview로 6도구 일괄 검증.
+- **role-based colMap auto-derive**(5-18 MMM): index는 DnD colMap(채널/target/time/dummy 역할). v2엔 UI 없어 자동 유도 — 표준 wide 경로 + **LONG→WIDE 주간 피벗**(row-per-channel-per-week → 기간×채널 spend 패널). null-fit(공선/기간부족)은 raw TypeError 대신 **정직 도메인 메시지**.
+- **IA 라벨↔라우트 정합**: store IA 라벨이 실제 마운트 컴포넌트와 일치해야(구 17-도구 라벨 잔재로 "클릭→다른 도구" 버그). 라우트 id 불변(§4.1), slug↔id 매핑층. Path 라우팅 전환 시 sitemap.xml 동반.
+- **CSV 상태 = 그룹별 스코프 공유**: 단일 전역/완전 개별 아닌 `TOOL_GROUP` 기반 — 결 비슷한 도구는 슬라이스 공유, 이질 도구는 분리(Zustand).
+- **5-18 MMM 3탭 단일 데이터 흐름**(Growth_Ops_Playbook v2, PR 1669e75): ①진단·②기여분해·③회귀예측 전부 **한 CSV+shared `mmmColMap`**로 게이트·계산. ③ lab이 별도 업로드·샘플·매핑을 갖고 shared 게이트를 early-return으로 우회하던 게 "화면이 다름"의 원인 → early-return 제거, ③도 동일 `MmmColumnMapper` 게이트·`controlBar` 사용. ③ 예측은 **`mmmForecast`(②와 동일 MMM 계수: adstock·trend·fourier계절·더미) 단일 엔진**으로 과거 적합+미래 외삽+95% 밴드; 별도 범용회귀(REG_FORECAST) 경로는 trend·계절 없어 fitted가 평평→제거. 죽은 `stage==="forecast"` 게이트로 §7 외삽이 영영 안 뜨던 것 → `stage==="lab"`로 연결. render층 memo는 `stage!=="lab"` 조기 return으로 비활성 탭 계산 차단.
+- **`buildPanelFromColMap` 타깃=플랫폼 합산**(같은 PR): OS 태그 컬럼 다중 매핑 시 종속(reg/react)을 `pick`(첫 1개)하면 Total인데 한 OS만 나옴(X는 filter라 대칭 깨짐). **플랫폼 일치 컬럼 index별 벡터합**으로 교체 → Total=Android+iOS. `_labTagOf`류 OS 태깅 정규식은 `\b` 대신 `[^a-z]` 구분자(언더스코어 `_ios_` 오탐 방지). 이 합산이 ②·③ target·platform 토글 정합의 단일 소스.
+- **패널 라벨 필드명 정합**: `mmmForecast`·차트는 `panel.dateLabel`·`panel.dates`·`panel.granularity`를 읽지 `weekLabel`이 아님 → `buildPanelFromColMap`이 `weekLabel`만 세팅하면 x축·미래라벨이 t 인덱스(1,2,+3…)로 폴백. 날짜 컬럼을 `_mmmParseDate`로 파싱해 `dateLabel`(=weekLabel)+`dates`+`granularity`(중앙 간격, days≥28 monthly/≥5 weekly)까지 세팅해야 실제 날짜로 표기. 엔진이 어떤 필드명 읽는지 항상 확인.
+- **콤마 입력은 v2 `CommaNumberInput` 재사용**(MarketingResponse.jsx): `type=number`는 천단위 콤마 불가(§7). §12.14 라이브 콤마+커서 보존 로직을 컴포넌트화 — `value`(number)·`onCommit(number|null)` props, type=text·표시 콤마·읽기 strip·blur 재포맷. 금액 입력 신규 시 재포팅 말고 이 컴포넌트 사용.
+
 ---
 
 ## 13. 참고 파일
 
-- `index.html` — 모든 앱 코드
+- **`v2-migration/ARCHITECTURE.md` — v2 코드맵** (경로 매핑 ~200줄): 라우트↔컴포넌트↔엔진, SSOT(store), 글로벌 CSS, 내비 팁. **v2 큰 작업 착수 전 먼저 읽어 위치 파악**(전체 파일 탐색보다 토큰 절약). 새 도구·엔진·경로·상태 추가/이동 시 **함께 갱신**(§15).
+- `docs/v2-migration-tasks.md` — v2 마이그레이션 SSOT (Phase 현황·결정 로그·패턴)
+- `index.html` — 레거시 앱 코드(컷오버 전 라이브)
 - `validate.js` — 로컬 테스트 러너(§2.1 예외·비배포). `node validate.js`/`npm test` — index.html 인라인 로드 후 전 `runXxxTests` 실행·리포팅(실행·리포팅만, 비즈니스 로직·데이터는 index.html 유지)
 - `package.json` — `serve . -l $PORT`(start)·`node validate.js`(test) / `Procfile`·`railway.json` — Railway 배포(index.html만)
 - `docs/code-health-audit.md` — 코드·아키텍처 건강성 감사 + 정리 로드맵
@@ -320,6 +347,7 @@ TF와 범용회귀는 같은 OLS(`REG_STATS`)·차이는 "미래 투영"뿐 → 
 
 - **트리거**: PR 머지 성공 / 사용자 작업 전환·확인 / 검증된 새 anti-pattern 발견.
 - **기록 대상**: 새 함정(§7) · 새 recipe(§12) · 새 anti-pattern(§11) · 새 사용자 의사결정 패턴(§9) · 새 통계 표준(§8) · 새 절대 원칙(§2).
+- **v2 코드맵 동기화 (필수)**: v2에 새 도구·엔진·경로·상태 슬라이스를 추가/이동/삭제하면 **`v2-migration/ARCHITECTURE.md`(코드맵)를 같은 작업에서 갱신**. 큰 v2 작업 착수 전 코드맵을 먼저 읽어 위치 파악(전체 파일 탐색 대비 토큰 절약). 코드맵은 경로 매핑만(설명 최소·~200줄 유지).
 - **기록 안 함**: 기존 패턴 평범 적용 · 일회성 결정 · 일반 프로그래밍 지식 · 너무 좁은 변수명/경로 · "임시"라고 명시한 것.
 - **형식**: 해당 섹션에 항목 추가, **태스크당 5줄 이내**, 다른 항목과 톤 일치. 압축본이므로 새 항목도 **간결하게**(과거 PR별 장문 내러티브 반복 금지 — 핵심 패턴만, 상세는 PR 참조).
 - **용량 규율 (필수)**: 도구 추가·기능 갱신으로 본 파일/`agents/mkt-engineer.md`가 늘어나면 **추가와 동시에** 과거 PR별 장문 내러티브를 일반 패턴으로 압축해 전체 용량을 줄인다. 새 항목 추가 = 압축 1회 동반. 단순 append-only로 무한정 비대해지지 말 것(상세는 git·PR·docs/에 보존). 두 파일은 같이 동기화.
@@ -330,19 +358,33 @@ TF와 범용회귀는 같은 OLS(`REG_STATS`)·차이는 "미래 투영"뿐 → 
 
 ---
 
+## 15.5. 유저 친화적 UI 개선 트리거 (필독) 🎨
+
+사용자가 **"유저 친화적으로 개선"·"너무 복잡"·"이해 안 됨"·"전문용어 많음"·"직관적이지 않음"·"가독성"** 등 UX 단순화를 요구하면, **작업 전 반드시 `v2-migration/claude-ux.md`를 먼저 읽고** 그 원칙대로 진행. (핵심: 결론 먼저·근거 접기 2층 구조, 여정=질문 프레임, 상태별 칸반 그룹핑(배지 반복 금지), 지표=평어 질문+평어 답, 그룹배지↔상세 판정 모순 방지, grid 균등 정렬, 맨밑 상세문서 다운로드 탈출구, 통계적 정직성·엔진 불변). 5-18 카니발 UI 재설계에서 확립(비전문 마케터 대상).
+
 ## 16. 현재 상태 + 다음 작업
 
-**완료된 큰 흐름**:
-- 도구 통합 17→5/6(탭형 병합, §12.7) · SaaS 셸(랜딩·페이월·⌘K, §12.11) · 전 도구 데모 모드(§12.8) · GA4 이벤트 트래킹.
-- 운영 대시보드 5-2 9탭 통합 + sticky 필터 + 코호트 성숙도 예측 · 5-3 효율·배분(OS분리 배분·결론/검증 UX) · 5-22 포화도 탐지(§12.16) · 5-4 실험 분석 3탭 · 5-18 회귀+미래예측 통합(§12.15, TF 흡수) · 5-21 PVM 변동 탐지.
-- 골든 테스트 유지(byte-동일 보증). 상세 이력은 git·PR·`docs/`.
-- **도구별 쉬운말 딥다이브 1/4 — 5-6 소재 분석 완료**(§12.17): 전 섹션 라벨·헤딩 쉬운말 우선 변환 + 방법론 설명 fold. 사용자 계획: 5-6 → 5-4(실험 분석) → 5-18(마케팅 반응 분석) → 5-20(Aha-moment Finder) 순서로 동일 패스 예정, 나머지 3개 미착수.
+**최우선 진행 = v2 Next.js 마이그레이션** (SSOT: `docs/v2-migration-tasks.md`, 패턴: §12.20):
+- ✅ Phase 1 수학엔진 이관 · Phase 2 Pro삭제+Supabase주석 · Phase 3 CSS 패리티 · Phase 4 전 도구 실배선 · **Phase 6.3 CSV 그룹 스코프 상태**(csvGroups+TOOL_GROUP 미러) · **6.4 Path 라우팅**(`[[...slug]]`+routeMap+sitemap) · **Phase 7 골든+스모크 하네스**(vitest golden+jsdom smoke).
+- ✅ 검증: `npm run test:all` **42파일·202 GREEN**(golden 22+smoke 20)·eslint 0·next build ✓·전 도구/대시보드 preview 크래시 0. **Phase 8 배포 게이트 충족**.
+- ✅ **Phase 8 컷오버 진행**(feat/v2-nextjs-cutover PR): v2를 별도 repo(Growth_Ops_Playbook)에서 개발 후 MKT_Library로 편입 — nested `.git` 제거·파일 복사, `index.html`·루트 `serve` package.json·`serve.json`·`validate.js`·`sitemap.xml`·`content/` 레거시 삭제. SOP가 런타임 fetch하는 `content/pages`·`schema.md`+`ads.txt`는 `v2-migration/public/`로 이동(v2 자기완결). 도메인 `mktlibrary.up.railway.app`로 교체(layout·routeMap).
+- ⚠ **배포 수동 작업(사용자)**: Railway 서비스 **Root Directory=`v2-migration`**, Build=`npm run build`, Start=`npm start`(`next start -p $PORT`). 이 설정 없으면 루트에 package.json 없어 빌드 실패. 이후 v2 작업은 MKT_Library `v2-migration/`에서.
 
-**다음 작업 (백로그, `docs/backlog.md` 참조)**:
-- **쉬운말 딥다이브 잔여**: 5-4 실험 분석 → 5-18 마케팅 반응 분석 → 5-20 Aha-moment Finder(§12.17 패턴 적용).
-- **SOP 콘텐츠 보강**(1-2~4-4 인라인, 정확성 검수 기반 — 진행방식 미정).
-- **회귀·예측 후속**(§12.15 위): 예측 모델 선택(ridge)·계절성 period 수동지정·예측 CI 캐비엇 강화. 인과 확정은 holdout 전용.
-- **Pro 처방 레이어**: 증분 플래너·시나리오→MMM / 처방 페이싱·LTV 배분→5-3 / 이상치 근본원인→5-2.
+**레거시 백로그** (필요 시): 쉬운말 딥다이브 잔여(5-4→5-18→5-20 §12.17) · SOP 콘텐츠 보강 · 회귀·예측 후속(§12.15·§12.20) · Pro 처방 레이어. (index.html은 git 히스토리에 보존.)
+
+---
+
+## 17. 토큰 효율 규율 (컨텍스트 위생) 💰
+
+파일 tool result = 매 턴 재전송(고정비용). 아래는 룩업 테이블, 장문 서술 금지(이 섹션 자체가 매 턴 실림).
+
+| # | 규율 | 적용 |
+|---|---|---|
+| 1 | 파일/함수 단위로만 읽기 | 큰 파일 `wc -l`→`offset`/`limit`. ToC(`ARCHITECTURE.md`·§13)로 위치 파악 후 그 파일만. 이미 컨텍스트에 있으면 재Read 금지 |
+| 2 | 무거운 탐색만 서브에이전트 | "영향범위·코드베이스 조사"류 → Task/Explore(요약만 회수). 작은 셸/git은 메인 직접(왕복 오버헤드 손해) |
+| 3 | `.claudeignore` 우선 차단 | `node_modules`·`.next`·`*.csv`·디버그잔재. 시그널 레이어일 뿐(우회 가능) — 진짜 민감파일은 `.claude/settings.json` `permissions.deny`(자격증명·`.env`류는 지금 즉시, "필요 시" 아님) |
+
+**세션 관리(Claude 규율 아님 — Gondry님 운영 체크리스트)**: 1~3은 세션 안에서 절약, 진짜 방지책은 **세션을 안 키우는 것**. `/compact`를 기능 종료마다, `/clear`를 작업 전환마다, `/rename <workstream>`+`claude --resume`으로 스트림 분리. 문서로 적어도 Claude가 대신 실행 못 함(권한 없음) — status line에 컨텍스트 % 경고 걸어두는 걸 강제 트리거로 권장.
 
 ---
 

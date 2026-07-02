@@ -1,0 +1,33 @@
+# Claude 컨텍스트에서 애초에 안 읽게 (토큰 절약, CLAUDE.md §17)
+# 빌드 산출물·의존성·대용량
+node_modules/
+v2-migration/node_modules/
+v2-migration/.next/
+v2-migration/out/
+v2-migration/dist/
+package-lock.json
+v2-migration/package-lock.json
+
+# 데이터 덤프·민감 (클라이언트 데이터, §2)
+*.csv
+tinder-mmm-methodology/
+*.zip
+
+# 로컬 디버그 잔재 (index.html brace-tracking·patch 작업물, §2.6)
+*.patch
+.Rhistory
+brace_levels.txt
+brace_track*.txt
+check*.js
+check_*.py
+find_*.py
+print_brace_indent.py
+track_brace*.py
+apply_edits.py
+fix_test.py
+main_script.js
+temp.js
+test_parse.js
+__pycache__/
+*.pyc
+.DS_Store
