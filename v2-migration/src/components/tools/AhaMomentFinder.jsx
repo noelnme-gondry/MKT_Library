@@ -161,6 +161,90 @@ function ahaAnalyzeSig(colMap, fileName) {
   return JSON.stringify(colMap || {}) + "|" + (fileName || "");
 }
 
+const MUTED = "var(--text-muted)";
+/* 상태 배지 톤 (5-18 BADGE_TONE 규칙 재사용 — 위험=red 아니라 여기선 강함=green) */
+const AHA_TONE = {
+  strong: { bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.45)", color: "#22c55e" },
+  maybe: { bg: "rgba(251,191,36,0.10)", border: "rgba(251,191,36,0.4)", color: "#fbbf24" },
+  weak: { bg: "var(--surface-container-low)", border: "var(--border)", color: MUTED },
+};
+
+/* 엔진 지표(lift·support·train/holdout F1) → 마케터용 3버킷 (렌더층 판정, 엔진 불변).
+   강함 = 표본 충분 + 강한 연관(lift≥1.5) + 과적합 아님. 약함 = 표본 부족. 나머지 애매. */
+function ahaBucketOf(r, minSupport) {
+  if (r.holdout.support < minSupport) return "weak";
+  const overfit = r.train.F1 - r.holdout.F1 > 0.2;
+  const strongLift = r.lift != null && r.lift >= 1.5;
+  const decentF1 = r.holdout.F1 >= 0.3;
+  if (strongLift && decentF1 && !overfit) return "strong";
+  return "maybe";
+}
+
+/* 액션 1개를 평어 한 줄로: "7일 내 invite 3번 이상 · 2.1배" */
+function ahaActionPhrase(r) {
+  const win = r.bestWindow === Infinity ? "전체 기간" : `${r.bestWindow}일`;
+  const liftTxt = r.lift == null ? "" : ` · ${r.lift.toFixed(1)}배`;
+  return `${win} 내 ${r.action} ${r.bestK}번 이상${liftTxt}`;
+}
+
+const _today = () => new Date().toISOString().slice(0, 10);
+function textDownload(name, text) {
+  const blob = new Blob(["﻿" + text], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* 전 과정 상세 설명 .md (claude-ux.md §6 탈출구): 평어 먼저 → 왜 중요 → 지표 평어 → 판정 규칙 → 현재 데이터 요약 → 한계 */
+function buildAhaGuideDoc(cache, sorted, minSupport) {
+  const L = [];
+  L.push(`# 핵심 가치(Aha-moment) 발굴 — 상세 설명`);
+  L.push(``);
+  L.push(`## 한 줄 요약`);
+  L.push(`유저가 우리 서비스에 "정착"(타겟 달성)하기 직전에 공통적으로 하는 **초기 행동**이 무엇인지 찾습니다. "가입 후 N일 안에 특정 행동을 K번 이상 한 유저는 정착 확률이 높더라" 같은 규칙을 데이터에서 자동으로 뒤져 찾아줍니다.`);
+  L.push(``);
+  L.push(`## 왜 중요한가`);
+  L.push(`Aha-moment를 알면 온보딩·푸시·추천을 그 행동으로 유도해 정착률을 끌어올릴 수 있습니다. 예: "7일 안에 친구 3명 초대"가 Aha면, 신규 유저에게 초대를 3명까지 강하게 유도하는 온보딩을 설계합니다.`);
+  L.push(``);
+  L.push(`## 각 숫자가 무엇을 묻나 (평어)`);
+  L.push(`- **최적 윈도우 (전문: best window)**: 그 행동을 "언제까지" 봤을 때 신호가 가장 강했나 (예: 가입 후 7일).`);
+  L.push(`- **기준 횟수 (전문: best k)**: 그 기간 안에 "몇 번 이상" 하면 정착 신호로 볼지 (예: 3번 이상).`);
+  L.push(`- **정밀도 (전문: Precision)**: 조건을 충족한 유저 중 실제로 정착한 비율. 높을수록 "이 조건을 채우면 거의 정착한다".`);
+  L.push(`- **재현율 (전문: Recall)**: 실제 정착한 유저 중 이 조건을 충족한 비율. 높을수록 "정착자 대부분이 이 행동을 거쳤다".`);
+  L.push(`- **예측 정확도 (전문: F1)**: 정밀도·재현율을 하나로 합친 점수(0~1). 클수록 좋습니다.`);
+  L.push(`- **평균 대비 배수 (전문: Lift)**: 아무 조건 없는 평균 정착률 대비 몇 배인지. 1.5배 이상이면 강한 연관.`);
+  L.push(`- **표본 (전문: support)**: 그 조건을 충족한 유저 수. 적으면(< ${minSupport}) 우연일 수 있어 신뢰를 낮춥니다.`);
+  L.push(``);
+  L.push(`## 강함/애매/약함 판정 규칙`);
+  L.push(`- **강한 Aha 신호**: 표본이 충분(≥ ${minSupport})하고, 평균 대비 1.5배 이상, 예측 정확도(F1)가 0.3 이상, 학습셋과 홀드아웃 점수 차이가 크지 않음(과적합 아님).`);
+  L.push(`- **살펴볼 만함**: 신호는 있으나 배수가 약하거나 정확도가 낮은 경우.`);
+  L.push(`- **약함 · 표본 부족**: 조건 충족 유저가 ${minSupport}명 미만이라 판단을 보류.`);
+  L.push(`- **과적합 의심**: 학습셋 점수는 높은데 홀드아웃(따로 떼어둔 검증셋)에서 뚝 떨어지면(차이 > 0.2) 우연에 가깝습니다.`);
+  L.push(``);
+  L.push(`## 현재 데이터 판정 요약`);
+  L.push(`- 전체 유저 ${cache.n.toLocaleString()}명 · 타겟 달성 ${Math.round(cache.baseRate * cache.n).toLocaleString()}명 · 평균 정착률(base rate) ${(cache.baseRate * 100).toFixed(1)}%`);
+  if (sorted.length) {
+    for (const r of sorted) {
+      const b = ahaBucketOf(r, minSupport);
+      const tag = b === "strong" ? "강한 Aha 신호" : b === "maybe" ? "살펴볼 만함" : "약함·표본 부족";
+      L.push(`- **${r.action}** → ${tag} · ${ahaActionPhrase(r)} · 정확도(F1) ${r.holdout.F1.toFixed(2)} · 표본 ${r.holdout.support.toLocaleString()}`);
+    }
+  } else {
+    L.push(`- 분석 가능한 액션이 없습니다 — 컬럼 매핑을 확인하세요.`);
+  }
+  L.push(``);
+  L.push(`## 한계 (꼭 읽어주세요)`);
+  L.push(`이 결과는 전부 **연관(association)**이지 **인과(causation)**가 아닙니다. 원래 열심히 쓰는(engaged) 유저는 모든 행동을 많이 하는 경향이 있어(공통 원인), 특정 행동이 정착을 "유발"한다고 단정할 수 없습니다. 이 도구의 역할은 **가설(용의자)을 좁혀주는 것**이고, 확정은 반드시 **홀드아웃 실험(5-4 실험 분석)**으로 하세요 — 강한 신호 칸의 행동부터 실험 1순위로 검토하면 됩니다.`);
+  L.push(``);
+  L.push(`_생성: ${_today()}_`);
+  return L.join("\n");
+}
+
 const AHA_ROLE_OPTIONS = [
   ["feature", "선행 행동(feature)"],
   ["target", "타겟(target, 0/1)"],
@@ -324,7 +408,20 @@ export default function AhaMomentFinder() {
 
   const topAction = sortedResults.length ? sortedResults[0] : null;
 
-  // §2 버블 차트 PNG 다운로드 (index.html data-pngdownload="aha-scatter" 이식)
+  // 전문가 뷰 아코디언 열릴 때 산점도 재측정 (claude-ux.md §5: 접힌 <details> 안 차트는 폭 0으로 마운트)
+  const onExpertToggle = (e) => {
+    if (e.currentTarget.open && chartInstance.current) {
+      requestAnimationFrame(() => {
+        try {
+          chartInstance.current && chartInstance.current.resize();
+        } catch {
+          /* noop */
+        }
+      });
+    }
+  };
+
+  // 버블 차트 PNG 다운로드 (index.html data-pngdownload="aha-scatter" 이식)
   const handleScatterPng = () => {
     if (!chartRef.current) {
       showToast({ variant: "warn", title: "차트를 찾을 수 없음", body: "aha-scatter" });
@@ -597,39 +694,46 @@ export default function AhaMomentFinder() {
 
       {showResults && (
         <>
+          {/* ── §0 한눈에 보기 — 여정 질문 + 평어 결론 (통계는 흐린 글씨로 강등) ── */}
           <section className="block" id="s-aha-hero" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}>
-            <h2 className="section-title" style={{ marginTop: 0 }}><span className="ix">§0</span>한눈에 보기</h2>
-            <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", marginBottom: "10px" }}>
-              <div>
-                <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>전체 유저</div>
-                <div className="tnum" style={{ fontSize: "20px", fontWeight: 700 }}>{cache.n.toLocaleString()}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>타겟 달성 유저</div>
-                <div className="tnum" style={{ fontSize: "20px", fontWeight: 700 }}>{totalTargets.toLocaleString()}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>Base Rate</div>
-                <div className="tnum" style={{ fontSize: "20px", fontWeight: 700 }}>{(cache.baseRate * 100).toFixed(1)}%</div>
-              </div>
+            <h2 className="section-title" style={{ marginTop: 0 }}>어떤 초기 행동이 유저를 정착시키나?</h2>
+            <p className="muted" style={{ fontSize: "12px", marginTop: "-4px", marginBottom: "14px" }}>
+              가입 직후 유저가 하는 행동 중, &quot;정착(타겟 달성)&quot;으로 이어지는 신호가 가장 강한 것을 찾았어요.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "12px", marginBottom: "14px" }}>
+              {[
+                ["전체 유저", cache.n.toLocaleString(), null],
+                ["정착(타겟 달성) 유저", totalTargets.toLocaleString(), null],
+                ["평균 정착률", (cache.baseRate * 100).toFixed(1) + "%", "아무 조건 없을 때 기준 (base rate)"],
+              ].map(([label, val, sub]) => (
+                <div key={label} style={{ background: "var(--surface-container-low)", border: "1px solid var(--border)", borderRadius: "10px", padding: "10px 12px" }}>
+                  <div style={{ fontSize: "11px", color: MUTED }}>{label}</div>
+                  <div className="tnum" style={{ fontSize: "20px", fontWeight: 700 }}>{val}</div>
+                  {sub ? <div style={{ fontSize: "10px", color: MUTED, marginTop: "2px" }}>{sub}</div> : null}
+                </div>
+              ))}
             </div>
-            <div style={{ fontSize: "13.5px", color: "var(--text-1)", marginBottom: "10px" }}>
-              🏆 Top Aha:{" "}
-              {topAction ? (
-                <span
+            {topAction ? (
+              <div style={{ background: "var(--surface-container-low)", border: "1px solid rgba(34,197,94,0.4)", borderRadius: "10px", padding: "12px 14px", marginBottom: "12px" }}>
+                <div style={{ fontSize: "12px", color: MUTED, marginBottom: "4px" }}>🏆 가장 강한 신호</div>
+                <div
+                  style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-1)", lineHeight: 1.6 }}
                   dangerouslySetInnerHTML={{
-                    __html: `가입 <strong>${topAction.bestWindow === Infinity ? "전체" : topAction.bestWindow + "일"}</strong> 내 <strong>${escapeHtml(topAction.action)}</strong>를 <strong>${topAction.bestK}번</strong> 이상 → holdout F1 <strong>${topAction.holdout.F1.toFixed(2)}</strong>, lift <strong>${topAction.lift == null ? "—" : topAction.lift.toFixed(1) + "배"}</strong> ${confidenceDots(topAction.holdout.F1)}`,
+                    __html: `가입 후 <strong>${topAction.bestWindow === Infinity ? "전체 기간" : topAction.bestWindow + "일"}</strong> 안에 <strong>${escapeHtml(topAction.action)}</strong>를 <strong>${topAction.bestK}번 이상</strong> 한 유저는, 정착할 확률이 평균의 <strong>${topAction.lift == null ? "—" : topAction.lift.toFixed(1) + "배"}</strong>예요.`,
                   }}
                 />
-              ) : (
-                "분석 가능한 액션이 없습니다 — 매핑을 확인하세요."
-              )}
-            </div>
+                <div style={{ fontSize: "10.5px", color: MUTED, marginTop: "6px", opacity: 0.85 }} title="통계 원값(전문가용): 홀드아웃 F1 = 정밀도·재현율 조화평균">
+                  예측 정확도(F1) {topAction.holdout.F1.toFixed(2)} · 신뢰도 {confidenceDots(topAction.holdout.F1)}
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: "13px", color: MUTED, marginBottom: "12px" }}>분석 가능한 액션이 없습니다 — 매핑을 확인하세요.</div>
+            )}
             <div className="callout warn" style={{ margin: 0 }}>
               <div className="ico">⚠</div>
               <div className="body">
                 <strong>연관(association)이지 인과 아님</strong>
-                <p style={{ margin: ".25rem 0 0" }}>engaged 유저는 모든 액션을 많이 하는 경향(공통원인)이 있어, 어떤 액션이 타겟 달성을 &quot;유발&quot;한다고 단정할 수 없습니다. 이 도구는 가설 생성용입니다 — 확정은{" "}
+                <p style={{ margin: ".25rem 0 0" }}>원래 열심히 쓰는(engaged) 유저는 모든 행동을 많이 하는 경향(공통 원인)이 있어, 특정 행동이 정착을 &quot;유발&quot;한다고 단정할 수 없습니다. 이 도구는 가설(용의자)을 좁혀줄 뿐 — 확정은{" "}
                   <a
                     href={idToSlug["5-4"] || "/tools/experiment-analysis"}
                     onClick={(e) => {
@@ -645,83 +749,56 @@ export default function AhaMomentFinder() {
             </div>
           </section>
 
-          <section className="block" id="s-aha-controls">
-            <h2 className="section-title"><span className="ix">§1</span>컨트롤</h2>
-            <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>정렬:</span>
-                <button className={`ab-pill ${sortBy === "f1" ? "active" : ""}`} onClick={() => setSortBy("f1")}>F1</button>
-                <button className={`ab-pill ${sortBy === "lift" ? "active" : ""}`} onClick={() => setSortBy("lift")}>Lift</button>
-                <button className={`ab-pill ${sortBy === "precision" ? "active" : ""}`} onClick={() => setSortBy("precision")}>Precision</button>
-              </div>
-              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>최소 표본(support):</span>
-                <input type="number" min="1" step="1" value={minSupport} onChange={(e) => setMinSupport(Number(e.target.value))} style={{ width: "70px" }} className="map-select" />
-              </div>
-              <label style={{ display: "flex", gap: "6px", alignItems: "center", fontSize: "12px", color: "var(--text-muted)", cursor: "pointer" }}>
-                <input type="checkbox" checked={holdoutOn} onChange={(e) => setHoldoutOn(e.target.checked)} /> Train/Holdout 50:50 split
-              </label>
-            </div>
-            <p className="muted" style={{ fontSize: "11.5px", marginTop: "8px" }}>윈도우는 그리드에서 자동 선택됩니다. 기본적으로 train에서 k를 고르고 holdout에서 재평가해 낙관 편향(overfitting)을 줄입니다.</p>
-          </section>
+          {/* ── §1 칸반 그룹핑 — 신호 세기별 3버킷(배지 반복 대신 칼럼 헤더가 곧 상태) ── */}
+          {(() => {
+            const buckets = { strong: [], maybe: [], weak: [] };
+            sortedResults.forEach((r) => buckets[ahaBucketOf(r, minSupport)].push(r));
+            const nS = buckets.strong.length;
+            const headTone = nS > 0 ? "strong" : buckets.maybe.length > 0 ? "maybe" : "weak";
+            const headline = nS > 0
+              ? `후보 ${sortedResults.length}개 중 ${nS}개가 강한 Aha 신호예요 — 초록 칸 행동부터 온보딩·실험에 써보세요.`
+              : buckets.maybe.length > 0
+                ? `뚜렷하게 강한 신호는 없지만 ${buckets.maybe.length}개는 살펴볼 만해요.`
+                : `표본이 충분한 후보가 적어요 — 전문가 뷰에서 최소 표본을 낮추거나 데이터를 더 모아보세요.`;
+            const col = (key, title, icon) => {
+              const list = buckets[key];
+              const c = AHA_TONE[key];
+              return (
+                <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "10px 12px" }}>
+                  <div style={{ fontSize: "13px", fontWeight: 700, color: c.color, marginBottom: "8px" }}>{icon} {title} · {list.length}</div>
+                  {list.length ? list.map((r) => (
+                    <div key={r.action} onClick={() => setDrilldownAction(r.action)}
+                      style={{ background: "var(--surface-container-low)", border: `1px solid ${r.action === drillTarget ? "rgba(122,162,247,0.55)" : "var(--border)"}`, borderRadius: "8px", padding: "8px 10px", marginBottom: "6px", cursor: "pointer" }}>
+                      <div style={{ fontSize: "13px", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px" }}>
+                        <span>{r.action}</span><span style={{ fontSize: "11px", color: MUTED }}>›</span>
+                      </div>
+                      <div style={{ fontSize: "11px", color: MUTED, marginTop: "2px" }}>{ahaActionPhrase(r)}</div>
+                    </div>
+                  )) : <div style={{ fontSize: "11px", color: MUTED }}>없음</div>}
+                </div>
+              );
+            };
+            return (
+              <section className="block" id="s-aha-kanban">
+                <h2 className="section-title"><span className="ix">§1</span>후보 행동을 신호 세기별로</h2>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", background: AHA_TONE[headTone].bg, border: `1px solid ${AHA_TONE[headTone].border}`, borderRadius: "10px", padding: "10px 14px", marginBottom: "10px" }}>
+                  <span style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text-1)" }}>{headline}</span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "10px" }}>
+                  {col("strong", "강한 Aha 신호", "✓")}
+                  {col("maybe", "살펴볼 만함", "?")}
+                  {col("weak", "약함 · 표본 부족", "⊘")}
+                </div>
+                <p style={{ fontSize: "11px", color: MUTED, marginTop: "10px" }}>행동 칩을 클릭하면 아래에서 자세한 근거(윈도우×횟수)를 볼 수 있어요. 강함/애매/약함 기준은 맨 아래 상세 문서에 설명돼 있어요.</p>
+              </section>
+            );
+          })()}
 
-          <section className="block" id="s-aha-scatter">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-              <h2 className="section-title" style={{ margin: 0 }}><span className="ix">§2</span>Aha Scatter (Precision × Recall)</h2>
-              <button className="ab-pill" onClick={handleScatterPng}>⬇ PNG</button>
-            </div>
-            <p className="muted">X=Recall, Y=Precision, 점 크기 = 표본(support), 색 = F1(또는 정렬기준). 표본 부족(&lt;{minSupport}) 액션은 회색·반투명입니다.</p>
-            <div className="chart-container" style={{ height: "380px" }}>
-              <canvas ref={chartRef}></canvas>
-            </div>
-          </section>
-
-          <section className="block" id="s-aha-table">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-              <h2 className="section-title" style={{ margin: 0 }}><span className="ix">§3</span>결과 표</h2>
-              <button className="ab-pill" onClick={() => downloadAhaCsv(sortedResults)} disabled={sortedResults.length === 0}>⬇ CSV</button>
-            </div>
-            <p className="muted" style={{ fontSize: "11.5px" }}>행을 클릭하면 §4 윈도우×k 히트맵에서 그 액션을 드릴다운합니다. 초록 lift = 강한 연관(≥1.5×). 빨강 F1 = train≫holdout(과적합 의심).</p>
-            <div className="table-wrap">
-              <table className="data" style={{ fontSize: "12.5px" }}>
-                <thead><tr><th>액션</th><th title="가장 강한 연관을 보인 관측 기간">최적 윈도우</th><th title="그 기간 내 최소 실행 횟수 (≥k)">기준 횟수</th><th title="홀드아웃 F1 = 정밀도·재현율 조화평균">홀드아웃 F1</th><th title="Precision — 조건 충족 유저 중 실제 타겟 달성 비율">정밀도</th><th title="Recall — 타겟 달성 유저 중 조건 충족 비율">재현율</th><th title="Lift — base rate 대비 정밀도 배수">Lift</th><th title="조건 충족 유저 수">표본</th><th title="학습셋 F1 (홀드아웃과 큰 차이 = 과적합)">학습 F1</th></tr></thead>
-                <tbody>
-                  {sortedResults.length === 0 ? (
-                    <tr><td colSpan="9" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>분석 가능한 액션이 없습니다</td></tr>
-                  ) : (
-                    sortedResults.map((r) => {
-                      const lowSupport = r.holdout.support < minSupport;
-                      const overfit = r.train.F1 - r.holdout.F1 > 0.2;
-                      const liftStrong = r.lift != null && r.lift >= 1.5;
-                      return (
-                        <tr
-                          key={r.action}
-                          onClick={() => setDrilldownAction(r.action)}
-                          style={{ cursor: "pointer", color: lowSupport ? "var(--text-muted)" : undefined }}
-                        >
-                          <td>{r.action}{lowSupport ? " ⊘" : ""}</td>
-                          <td className="tnum">{r.bestWindow === Infinity ? "전체" : "d" + r.bestWindow}</td>
-                          <td className="tnum">≥{r.bestK}</td>
-                          <td className="tnum" style={{ color: overfit ? "#f87171" : undefined }}>{r.holdout.F1.toFixed(3)}</td>
-                          <td className="tnum">{r.holdout.P.toFixed(3)}</td>
-                          <td className="tnum">{r.holdout.R.toFixed(3)}</td>
-                          <td className="tnum" style={{ color: liftStrong ? "#22c55e" : undefined, fontWeight: liftStrong ? 600 : undefined }}>{r.lift == null ? "—" : r.lift.toFixed(2) + "×"}</td>
-                          <td className="tnum">{r.holdout.support.toLocaleString()}{lowSupport ? " ⊘" : ""}</td>
-                          <td className="tnum">{r.train.F1.toFixed(3)}</td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
+          {/* ── §2 드릴다운 — 평어 해석(디테일화) + 윈도우×k 히트맵 ── */}
           <section className="block" id="s-aha-drill">
-            <h2 className="section-title"><span className="ix">§4</span>액션 드릴다운{drillTarget ? ` — ${drillTarget}` : ""}</h2>
-            <p className="muted">윈도우 × k 그리드의 F1 히트맵. 진할수록 F1 높음, 굵은 테두리 = Best 조합. <strong>단일 셀만 튀고 주변이 흐리면 우연(과적합) 의심</strong> — support·holdout F1을 §3에서 같이 확인하세요.</p>
+            <h2 className="section-title"><span className="ix">§2</span>선택한 행동 자세히{drillTarget ? ` — ${drillTarget}` : ""}</h2>
             {drillResult && cache.results.length > 0 && (
-              <div style={{ marginBottom: "8px" }}>
+              <div style={{ marginBottom: "10px" }}>
                 <select className="map-select" value={drillTarget} onChange={(e) => setDrilldownAction(e.target.value)}>
                   {cache.results.map((x) => (
                     <option key={x.action} value={x.action}>{x.action}</option>
@@ -729,14 +806,54 @@ export default function AhaMomentFinder() {
                 </select>
               </div>
             )}
+            {drillResult && (() => {
+              const bucket = ahaBucketOf(drillResult, minSupport);
+              const c = AHA_TONE[bucket];
+              const badge = bucket === "strong" ? "강한 Aha 신호" : bucket === "maybe" ? "살펴볼 만함" : "약함 · 표본 부족";
+              const win = drillResult.bestWindow === Infinity ? "전체 기간" : `${drillResult.bestWindow}일`;
+              const P = drillResult.holdout.P, R = drillResult.holdout.R;
+              const overfit = drillResult.train.F1 - drillResult.holdout.F1 > 0.2;
+              const metric = (q, ans, help, tech) => (
+                <div style={{ background: "var(--surface-container-low)", border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px" }}>
+                  <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.4, minHeight: "34px" }}>{q}</div>
+                  <div style={{ fontSize: "17px", fontWeight: 700, color: "var(--text-1)", margin: "6px 0 4px" }}>{ans}</div>
+                  <div style={{ fontSize: "11px", color: MUTED, lineHeight: 1.5 }}>{help}</div>
+                  <div style={{ fontSize: "10px", color: MUTED, marginTop: "6px", opacity: 0.8 }} title="통계 원값(전문가용)">{tech}</div>
+                </div>
+              );
+              return (
+                <>
+                  <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "12px", padding: "12px 14px", marginBottom: "12px", display: "flex", gap: "10px", alignItems: "flex-start", flexWrap: "wrap" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", padding: "3px 10px", borderRadius: "999px", background: c.bg, border: `1px solid ${c.border}`, color: c.color, fontWeight: 700, fontSize: "11.5px", whiteSpace: "nowrap" }}>{badge}</span>
+                    <div style={{ flex: 1, minWidth: "240px" }}>
+                      <div style={{ fontSize: "13px", color: "var(--text-1)", lineHeight: 1.6 }}
+                        dangerouslySetInnerHTML={{
+                          __html: `가입 후 <strong>${win}</strong> 안에 <strong>${escapeHtml(drillResult.action)}</strong>를 <strong>${drillResult.bestK}번 이상</strong> 한 유저 <strong>${drillResult.holdout.support.toLocaleString()}명</strong> 중 <strong>${(P * 100).toFixed(0)}%</strong>가 정착했고, 전체 정착자의 <strong>${(R * 100).toFixed(0)}%</strong>가 이 행동을 거쳤어요.`,
+                        }}
+                      />
+                      {overfit && (
+                        <div style={{ fontSize: "11.5px", color: "#fbbf24", marginTop: "6px" }}>⚠ 학습셋에선 잘 맞는데 검증셋(홀드아웃)에서 뚝 떨어져요 — 우연일 수 있으니 표본을 더 확인하세요.</div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "10px", marginBottom: "14px" }}>
+                    {metric("이 조건을 채우면 정착할까?", `${(P * 100).toFixed(0)}% 정착`, "조건을 충족한 유저 중 실제 정착 비율. 높을수록 확실한 신호.", `정밀도(Precision) ${P.toFixed(3)}`)}
+                    {metric("정착자를 얼마나 잡아내나?", `${(R * 100).toFixed(0)}% 포함`, "실제 정착자 중 이 조건을 거친 비율. 높을수록 폭넓게 설명.", `재현율(Recall) ${R.toFixed(3)}`)}
+                    {metric("평균보다 몇 배 잘 맞나?", drillResult.lift == null ? "—" : `${drillResult.lift.toFixed(1)}배`, "아무 조건 없는 평균 정착률 대비 배수. 1.5배↑ 강한 연관.", `Lift ${drillResult.lift == null ? "—" : drillResult.lift.toFixed(3)}`)}
+                  </div>
+                </>
+              );
+            })()}
+            <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)", marginTop: "4px" }}>어떤 기간·횟수 조합이 가장 강했나? <span style={{ color: MUTED, fontWeight: 400 }}>(윈도우 × 횟수 히트맵)</span></div>
+            <p className="muted" style={{ fontSize: "11.5px", margin: "2px 0 8px" }}>진할수록 예측 정확도(F1)가 높고, 굵은 테두리 = 자동으로 고른 최적 조합. <strong>한 칸만 튀고 주변이 흐리면 우연(과적합) 의심</strong>이에요.</p>
             <div className="table-wrap">
               {(() => {
                 if (!drillResult || !drillResult.grid.length) {
                   return (
                     <table className="data" style={{ fontSize: "12px" }}>
-                      <thead><tr><th>k \ window</th></tr></thead>
+                      <thead><tr><th>횟수 \ 기간</th></tr></thead>
                       <tbody>
-                        <tr><td colSpan="1" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>선택된 액션이 없습니다</td></tr>
+                        <tr><td colSpan="1" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>선택된 행동이 없습니다</td></tr>
                       </tbody>
                     </table>
                   );
@@ -750,7 +867,7 @@ export default function AhaMomentFinder() {
                   <table className="data" style={{ fontSize: "12px" }}>
                     <thead>
                       <tr>
-                        <th>k \ window</th>
+                        <th title="가로=관측 기간(윈도우), 세로=최소 실행 횟수">횟수 \ 기간</th>
                         {windows.map((w) => (
                           <th key={w} className="tnum">{w === Infinity ? "전체" : "d" + w}</th>
                         ))}
@@ -769,6 +886,7 @@ export default function AhaMomentFinder() {
                               <td
                                 key={w}
                                 className="tnum"
+                                title={`정확도(F1) ${cell.F1.toFixed(2)}`}
                                 style={{
                                   background: `rgba(122,162,247,${((intensity / 100) * 0.45).toFixed(2)})`,
                                   outline: isBest ? "2px solid #7aa2f7" : undefined,
@@ -787,6 +905,87 @@ export default function AhaMomentFinder() {
               })()}
             </div>
           </section>
+
+          {/* ── 2층: 전문가 뷰(기본 접힘) — 정렬·표본 설정, 산점도, 전체 지표 표 ── */}
+          <details className="block" onToggle={onExpertToggle}>
+            <summary style={{ cursor: "pointer", fontSize: "13px", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>
+              📊 전문가 뷰 — 정밀도·재현율 산점도, 전체 지표 표, 정렬·표본 설정
+            </summary>
+            <div style={{ marginTop: "12px" }}>
+              <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center", marginBottom: "14px" }}>
+                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  <span style={{ fontSize: "12px", color: MUTED }}>정렬:</span>
+                  <button className={`ab-pill ${sortBy === "f1" ? "active" : ""}`} onClick={() => setSortBy("f1")}>F1</button>
+                  <button className={`ab-pill ${sortBy === "lift" ? "active" : ""}`} onClick={() => setSortBy("lift")}>Lift</button>
+                  <button className={`ab-pill ${sortBy === "precision" ? "active" : ""}`} onClick={() => setSortBy("precision")}>Precision</button>
+                </div>
+                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  <span style={{ fontSize: "12px", color: MUTED }}>최소 표본(support):</span>
+                  <input type="number" min="1" step="1" value={minSupport} onChange={(e) => setMinSupport(Number(e.target.value))} style={{ width: "70px" }} className="map-select" />
+                </div>
+                <label style={{ display: "flex", gap: "6px", alignItems: "center", fontSize: "12px", color: MUTED, cursor: "pointer" }}>
+                  <input type="checkbox" checked={holdoutOn} onChange={(e) => setHoldoutOn(e.target.checked)} /> Train/Holdout 50:50 split
+                </label>
+              </div>
+              <p className="muted" style={{ fontSize: "11.5px", marginBottom: "14px" }}>윈도우는 그리드에서 자동 선택됩니다. train에서 k를 고르고 holdout에서 재평가해 낙관 편향(overfitting)을 줄입니다.</p>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>Aha Scatter (Precision × Recall)</div>
+                <button className="ab-pill" onClick={handleScatterPng}>⬇ PNG</button>
+              </div>
+              <p className="muted">X=Recall, Y=Precision, 점 크기 = 표본(support), 색 = F1(또는 정렬기준). 표본 부족(&lt;{minSupport}) 액션은 회색·반투명입니다.</p>
+              <div className="chart-container" style={{ height: "380px", marginBottom: "16px" }}>
+                <canvas ref={chartRef}></canvas>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>전체 지표 표</div>
+                <button className="ab-pill" onClick={() => downloadAhaCsv(sortedResults)} disabled={sortedResults.length === 0}>⬇ CSV</button>
+              </div>
+              <p className="muted" style={{ fontSize: "11.5px" }}>행을 클릭하면 위 §2 히트맵에서 그 행동을 드릴다운합니다. 초록 lift = 강한 연관(≥1.5×). 빨강 F1 = train≫holdout(과적합 의심).</p>
+              <div className="table-wrap">
+                <table className="data" style={{ fontSize: "12.5px" }}>
+                  <thead><tr><th>액션</th><th title="가장 강한 연관을 보인 관측 기간">최적 윈도우</th><th title="그 기간 내 최소 실행 횟수 (≥k)">기준 횟수</th><th title="홀드아웃 F1 = 정밀도·재현율 조화평균">홀드아웃 F1</th><th title="Precision — 조건 충족 유저 중 실제 타겟 달성 비율">정밀도</th><th title="Recall — 타겟 달성 유저 중 조건 충족 비율">재현율</th><th title="Lift — base rate 대비 정밀도 배수">Lift</th><th title="조건 충족 유저 수">표본</th><th title="학습셋 F1 (홀드아웃과 큰 차이 = 과적합)">학습 F1</th></tr></thead>
+                  <tbody>
+                    {sortedResults.length === 0 ? (
+                      <tr><td colSpan="9" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>분석 가능한 액션이 없습니다</td></tr>
+                    ) : (
+                      sortedResults.map((r) => {
+                        const lowSupport = r.holdout.support < minSupport;
+                        const overfit = r.train.F1 - r.holdout.F1 > 0.2;
+                        const liftStrong = r.lift != null && r.lift >= 1.5;
+                        return (
+                          <tr
+                            key={r.action}
+                            onClick={() => setDrilldownAction(r.action)}
+                            style={{ cursor: "pointer", color: lowSupport ? "var(--text-muted)" : undefined }}
+                          >
+                            <td>{r.action}{lowSupport ? " ⊘" : ""}</td>
+                            <td className="tnum">{r.bestWindow === Infinity ? "전체" : "d" + r.bestWindow}</td>
+                            <td className="tnum">≥{r.bestK}</td>
+                            <td className="tnum" style={{ color: overfit ? "#f87171" : undefined }}>{r.holdout.F1.toFixed(3)}</td>
+                            <td className="tnum">{r.holdout.P.toFixed(3)}</td>
+                            <td className="tnum">{r.holdout.R.toFixed(3)}</td>
+                            <td className="tnum" style={{ color: liftStrong ? "#22c55e" : undefined, fontWeight: liftStrong ? 600 : undefined }}>{r.lift == null ? "—" : r.lift.toFixed(2) + "×"}</td>
+                            <td className="tnum">{r.holdout.support.toLocaleString()}{lowSupport ? " ⊘" : ""}</td>
+                            <td className="tnum">{r.train.F1.toFixed(3)}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </details>
+
+          {/* ── 맨 밑: 전 과정 상세 설명 문서 다운로드 (claude-ux.md §6 탈출구) ── */}
+          <div style={{ marginTop: "16px", textAlign: "center" }}>
+            <button className="ab-pill" style={{ fontSize: "12.5px", padding: "9px 18px" }}
+              onClick={() => textDownload(`aha_moment_설명_${_today()}.md`, buildAhaGuideDoc(cache, sortedResults, minSupport))}>
+              📄 이 분석에 대한 자세한 설명이 듣고 싶으신가요? — 상세 문서 받기
+            </button>
+          </div>
         </>
       )}
     </div>
