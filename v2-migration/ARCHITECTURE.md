@@ -1,7 +1,7 @@
 # V2 CODE MAP — 어디에 무엇이 있는가
 
-> 목적: 최소 토큰으로 즉시 파일 탐색. 설명 최소화, **경로 매핑**에 집중.
-> 이행 중: `index.html`(레거시, Phase 8 컷오버 전 라이브) → 이 `v2-migration/`(Next.js). 상세 계획·현황: `../docs/v2-migration-tasks.md`.
+> 목적: 최소 토큰, 즉시 파일 탐색. 설명 최소, **경로 매핑** 집중.
+> 이행 중: `index.html`(레거시, Phase 8 컷오버 전 라이브) → `v2-migration/`(Next.js). 상세 계획·현황: `../docs/v2-migration-tasks.md`.
 
 ## 1. 디렉토리 트리 (핵심)
 ```
@@ -26,7 +26,7 @@ v2-migration/
 ```
 
 ## 2. 라우트 → slug → 컴포넌트 (Next Path 라우팅)
-**Next 표준 Path 라우팅**: `src/app/[[...slug]]/page.js`(optional catch-all)가 URL을 `src/lib/routeMap.js`(slug↔id SSOT)로 id 해석 → 컴포넌트 렌더. `src/app/sitemap.js`(23 URL)·`not-found.js`. route id는 §4.1 불변, slug↔id 매핑층. 사이드바=`<Link href>`, store `currentRouteId`는 URL 미러.
+**Next 표준 Path 라우팅**: `src/app/[[...slug]]/page.js`(optional catch-all) URL 받음 → `src/lib/routeMap.js`(slug↔id SSOT)로 id 해석 → 컴포넌트 렌더. `src/app/sitemap.js`(23 URL)·`not-found.js`. route id §4.1 불변, slug↔id 매핑층뿐. 사이드바=`<Link href>`, store `currentRouteId`는 URL 미러.
 
 | slug (URL) | id | 컴포넌트 |
 |---|---|---|
@@ -49,23 +49,23 @@ v2-migration/
 | CampaignPvm.jsx | `pvmMath.js` (PVM_MATH) | Bennet 분해·rollup |
 | CreativeAnalyzer.jsx | `creativeMath.js` (CREATIVE_MATH/FATIGUE/STATS) | WLS·피로도 |
 | AbTestHoldout.jsx | `abTestMath.js` (STATS) | z-test·bayesian·powerCurve |
-| MarketingResponse.jsx | `mmmMath.js`(MMM 기여분해+`mmmForecast` §7 미래예측)+`regMath.js`(mmmOls)+`responseCannibRank.js` | ①진단·②기여분해·③회귀예측 3탭 단일 CSV/colMap. ③ 예측=`mmmForecast`(②계수 외삽+95%밴드). `regForecastMath`는 mmmMath의 날짜포맷 헬퍼로만, `regLabMath`는 테스트 전용(앱 미사용) |
+| MarketingResponse.jsx | `mmmMath.js`(MMM 기여분해+`mmmForecast` §7 미래예측)+`regMath.js`(mmmOls)+`responseCannibRank.js` | ①진단·②기여분해·③회귀예측 3탭, 단일 CSV/colMap. ③예측=`mmmForecast`(②계수 외삽+95%밴드). `regForecastMath`=날짜포맷 헬퍼뿐, `regLabMath`=테스트 전용(앱 미사용) |
 | AhaMomentFinder.jsx | `ahaMath.js` (AHA_STATS) | gridSearch·F1/Lift |
-| dashboard/* (5-2) | `dashboardAggregator.js`(getMappedRows·KPI)·`ltvMath.js`·`funnelMath.js`·`segmentMath.js`·`anomalyMath.js`·`pacingMath.js`·`cohortMath.js`·`responseMath.js`(CANNIBAL_STATS) | 탭별 순수 math 추출 완료(골든 커버) |
+| dashboard/* (5-2) | `dashboardAggregator.js`(getMappedRows·KPI)·`ltvMath.js`·`funnelMath.js`·`segmentMath.js`·`anomalyMath.js`·`pacingMath.js`·`cohortMath.js`·`responseMath.js`(CANNIBAL_STATS) | 탭별 순수 math 추출 끝(골든 커버) |
 | AbTestHoldout 증분 | `incrMath.js`(홀드아웃 증분)·abTestMath.js | readout/incr 추출 |
 | (공통) | `chartUtils.js`·`testFixtures.js`(seededNoise) | 차트 헬퍼·결정론 픽스처 |
 | (필드 정의) | `csvConstants.js` (STANDARD_FIELDS·TOOL_REQUIRED/OPTIONAL_FIELDS) | 매핑 스키마 |
 
 ## 4. 상태 & 데이터 흐름 (SSOT)
 - **전역 상태 = `src/store/useDataStore.js` (Zustand)**: `currentRouteId`(URL 미러) · `dashboardFilter` · `isDarkMode` · `isCmdkOpen` · `IA`·`PHASES` · **`TOOL_GROUP`·`groupForRoute`**.
-- **CSV 그룹 스코프 상태(Phase 6.3)**: `csvGroups`{efficiency·creative·experiment·response·aha} 슬라이스. `csvData`=활성 그룹 **미러**(`setCurrentRouteId`가 라우트 변경 시 스왑, `setCsvData`가 활성 그룹+미러 기록). 효율 family(5-2·5-21·5-22·5-3) 공유, 나머지 격리. **소비자는 `s.csvData`만 읽으면 됨**(미러라 무변경).
+- **CSV 그룹 스코프 상태(Phase 6.3)**: `csvGroups`{efficiency·creative·experiment·response·aha} 슬라이스. `csvData`=활성 그룹 **미러**(`setCurrentRouteId`가 라우트 변경 시 스왑, `setCsvData`가 활성 그룹+미러 기록). 효율 family(5-2·5-21·5-22·5-3) 공유, 나머진 격리. **소비자는 `s.csvData`만 읽으면 끝**(미러라 무변경).
 - **데이터 파이프라인**: 업로드(`CsvUploader.jsx`, PapaParse+자동매핑) → `csvData` → **`dashboardAggregator.js:getMappedRows(csvData)`** (raw행 → 표준키 행; **cost↔spend 별칭 채움 §7**) → 도구별 엔진 입력 구성 → 순수엔진 → 렌더.
-- **함정**: 효율 CSV는 비용=`cost`키, PVM/creative 엔진은 `spend` 읽음 → getMappedRows가 양쪽 채움. creative 등 하위 grain CSV는 분해 안 하는 도구(5-22·5-3)에서 (그룹×날짜)로 **sum 후 점 생성**(satBuildPoints·buildByChannel).
+- **함정**: 효율 CSV 비용=`cost`키, PVM/creative 엔진은 `spend` 읽음 → getMappedRows가 양쪽 채움. creative 등 하위 grain CSV, 분해 안 하는 도구(5-22·5-3)에선 (그룹×날짜) **sum 후 점 생성**(satBuildPoints·buildByChannel).
 - **CSV 상태 스코프(Phase 6.3 예정)**: TOOL_GROUP 기반 — 효율 CSV family(5-2·5-21·5-22·5-3) 공유, 이질 도구는 별도 슬라이스.
 
 ## 5. 글로벌 스타일 (CSS/테마)
-- **`src/app/globals.css`** — 전 디자인 시스템(단일 파일). **CSS Modules로 쪼개지 말 것**(토큰 스코핑 불가).
-- **Obsidian Flux 토큰**: `:root { --bg-1·--text-muted·--border·--primary... }`. **다크/라이트 = `body.light-mode` 오버라이드** (토큰 값 스왑).
+- **`src/app/globals.css`** — 전 디자인 시스템, 단일 파일. **CSS Modules로 쪼개지 말 것**(토큰 스코핑 불가).
+- **Obsidian Flux 토큰**: `:root { --bg-1·--text-muted·--border·--primary... }`. **다크/라이트 = `body.light-mode` 오버라이드**(토큰 값 스왑).
 - 공용 클래스 전역: `.chart-container`·`.callout`·`.block`·`.ab-pill`·`.cmdk-*`·`.toast-*`·`.pvm-*` 등. 차트 색은 `CHART_THEME` getter(하드코딩 hex 금지).
 - 일회성 컴포넌트 스타일만 `*.module.css`.
 
@@ -80,4 +80,4 @@ v2-migration/
 - **전역 상태·IA·라우트 → `src/store/useDataStore.js`**.
 - **색/테마/레이아웃 → `src/app/globals.css`** (토큰은 `:root`+`body.light-mode`).
 - **CSV 매핑/필드 스키마 → `src/utils/csvConstants.js` + `src/components/CsvUploader.jsx`**.
-- **데이터가 엔진에 안 들어감 → `getMappedRows`(dashboardAggregator.js) + 표준키/별칭 확인**.
+- **데이터 엔진에 안 들어감 → `getMappedRows`(dashboardAggregator.js) + 표준키/별칭 확인**.

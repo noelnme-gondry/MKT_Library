@@ -1,7 +1,7 @@
 # Performance Marketing Library — Agent Harness
 
-이 프로젝트에서 작업하는 모든 Claude 인스턴스가 따르는 규칙·아키텍처·작업 방식.
-2026-06 압축본. 과거 PR별 상세 내러티브는 git 히스토리·PR·`docs/*.md`에 보존됨.
+이 프로젝트 작업하는 모든 Claude 인스턴스가 따르는 규칙·아키텍처·작업 방식.
+2026-06 압축본. 과거 PR별 상세 내러티브는 git 히스토리·PR·`docs/*.md` 보존.
 
 ---
 
@@ -18,16 +18,16 @@
 
 ## 2. 절대 원칙 (NEVER 깨지 말 것)
 
-1. **아키텍처 이행 중 (단일HTML → Next.js 모듈, 2026-07~)**: 구 "단일 HTML·빌드도구 없음" 절대원칙은 **폐기**. 프로젝트는 이행 중 — `index.html`(단일 파일 레거시, **Phase 8 골든100% 컷오버 전까지 라이브 배포 유지**·버그픽스만) → `v2-migration/`(Next.js 16 App Router + React 19 + Zustand; `src/components`·`src/utils`(순수엔진)·`src/store`). **신규·이관 작업은 v2 모듈 구조**로, 어느 코드베이스 작업인지 명확히. 순수 수학은 `src/utils/*`(골든 검증), UI는 컴포넌트, 상태는 Zustand. 이행 계획·현황: `docs/v2-migration-tasks.md`(SSOT). (구 index.html 규칙은 §4~§12에 아직 유효 — 컷오버 전 index 유지보수용.)
-2. **클라이언트 사이드 100%**: 사용자 CSV는 브라우저 메모리에만. 서버 전송/저장 절대 금지.
+1. **아키텍처 이행 중 (단일HTML → Next.js 모듈, 2026-07~)**: 구 "단일 HTML·빌드도구 없음" 원칙 **폐기**. 이행 중 — `index.html`(단일 파일 레거시, **Phase 8 골든100% 컷오버 전까지 라이브 유지**·버그픽스만) → `v2-migration/`(Next.js 16 App Router + React 19 + Zustand; `src/components`·`src/utils`(순수엔진)·`src/store`). **신규·이관 작업은 v2 모듈 구조**로, 어느 코드베이스인지 명확히. 순수 수학 `src/utils/*`(골든 검증), UI 컴포넌트, 상태 Zustand. 이행 계획·현황: `docs/v2-migration-tasks.md`(SSOT). (구 index.html 규칙 §4~§12 아직 유효 — 컷오버 전 index 유지보수용.)
+2. **클라이언트 사이드 100%**: 사용자 CSV 브라우저 메모리에만. 서버 전송/저장 절대 금지.
 3. **Supabase service_role key 절대 요청·저장·언급 금지**. anon public key만 (RLS 보호).
-4. **main 직접 push 금지**. 반드시 feat 브랜치 → PR → squash merge.
+4. **main 직접 push 금지**. feat 브랜치 → PR → squash merge 필수.
 5. **Force push to main 금지**. hook skip(`--no-verify`) 금지.
-6. **`git add -A`/`git add .` 금지** — 사용자가 드롭한 민감 데이터·대용량 폴더가 통째로 커밋될 수 있음(PR #54 사고). 항상 `git status` 확인 후 **변경 파일만 명시적으로** `git add index.html CLAUDE.md ...`. 외부 데이터는 먼저 `.gitignore`.
-7. **모호한 결정 임의 확정 금지** — 합리적 선택지 2개 이상이면 `AskUserQuestion`으로 묻기.
-8. **정직성**: 동작 안 하는 기능·거짓 숫자·우리 보안모델과 모순되는 카피 금지. 추정 불가하면 "추정 불가"라고 정직하게.
-9. **병렬 사용 환경 동기화 의무**: Antigravity와 Claude Code가 병렬 작동 중이므로, 작업 시작 전 항상 `git fetch` 및 `git status`로 로컬 상태를 확인하고, 리모트와 다르면 반드시 사용자에게 "pull 후 진행할까요?"라고 확인.
-10. **전체 파일 덮어쓰기 및 임의 포맷팅 금지**: 충돌과 작업 유실 방지를 위해 파일 전체를 삭제/재작성하지 말 것. 무관한 코드의 들여쓰기나 포맷을 임의 변경하지 말고, 정확히 타겟팅된 부분(Delta)만 수정.
+6. **`git add -A`/`git add .` 금지** — 사용자 드롭한 민감 데이터·대용량 폴더 통째 커밋 위험(PR #54 사고). 항상 `git status` 확인 후 **변경 파일만 명시**로 `git add index.html CLAUDE.md ...`. 외부 데이터는 먼저 `.gitignore`.
+7. **모호한 결정 임의 확정 금지** — 선택지 2개+면 `AskUserQuestion`으로 묻기.
+8. **정직성**: 동작 안 하는 기능·거짓 숫자·보안모델과 모순되는 카피 금지. 추정 불가하면 "추정 불가" 정직히.
+9. **병렬 사용 환경 동기화 의무**: Antigravity·Claude Code 병렬 작동 중 — 작업 시작 전 항상 `git fetch`+`git status` 확인, 리모트와 다르면 사용자에게 "pull 후 진행?" 확인.
+10. **전체 파일 덮어쓰기·임의 포맷팅 금지**: 충돌·작업유실 방지. 무관한 코드 들여쓰기·포맷 임의 변경 금지, 정확히 타겟팅된 부분(Delta)만 수정.
 
 ---
 
@@ -46,8 +46,8 @@ Next.js 16 (App Router, Turbopack) · React 19 · Zustand 5 (store) · Chart.js 
 ├─ src/store/useDataStore.js  Zustand — IA·csvData·필터·라우트 상태
 └─ 테스트: `npm test`(=vitest run src/utils) · 린트: `npm run lint`(eslint, 0 errors 유지)
 ```
-- **CSS**: Obsidian Flux 토큰(`--bg-1`·`--text-muted`)+다크/라이트는 **전역 유지**(`globals.css`, `:root`+`body.light-mode`). CSS Modules는 일회성만(토큰 스코핑 불가). Tailwind 미사용.
-- **Supabase**: 전체 무료 전환으로 미사용 — v2 `layout.js`에 스크립트 주석화(`TODO(B2B)`). service_role key 규칙(§2.3)은 불변.
+- **CSS**: Obsidian Flux 토큰(`--bg-1`·`--text-muted`)+다크/라이트 **전역 유지**(`globals.css`, `:root`+`body.light-mode`). CSS Modules는 일회성만(토큰 스코핑 불가). Tailwind 미사용.
+- **Supabase**: 전체 무료 전환으로 미사용 — v2 `layout.js`에 스크립트 주석화(`TODO(B2B)`). service_role key 규칙(§2.3) 불변.
 
 ---
 
@@ -83,10 +83,10 @@ CSV_STATE                                    // 활성 도구의 raw/headers/map
 ```
 - `navigate("5-N")` → `loadCsvFromTool("5-N")` → `CSV_STATE` 채움. 업로드/매핑 변경 → `saveCsvToTool(id)`.
 - 필수/옵션: `TOOL_REQUIRED_FIELDS` + `TOOL_OPTIONAL_FIELDS`. 인라인 업로드 UI: `renderInlineCsvUpload(toolId)`.
-- **공유 CSV**: `TOOL_GROUP` 맵으로 같은 grain 도구 묶음 → 형제 CSV 자동 이어받음(매핑은 본인 슬롯 독립). cross-grain은 distinct 그룹으로 분리(폴백이 잘못된 CSV 끌어오는 것 방지).
+- **공유 CSV**: `TOOL_GROUP` 맵으로 같은 grain 도구 묶음 → 형제 CSV 자동 이어받음(매핑은 본인 슬롯 독립). cross-grain은 distinct 그룹 분리(폴백이 잘못된 CSV 끌어오는 것 방지).
 
 ### 4.4 캐시 패턴
-무거운 계산은 항상 캐시. 키 = 입력 시그니처 해시. 토글 클릭은 **lookup만**(재계산 X).
+무거운 계산 항상 캐시. 키 = 입력 시그니처 해시. 토글 클릭은 **lookup만**(재계산 X).
 ```js
 function buildXxxCache() {
   const key = computeKey();             // mapping + data hash
@@ -115,21 +115,21 @@ function buildXxxCache() {
 
 ### 6.1 기본 흐름
 1. 요청 받음 → 모호하면 `AskUserQuestion`(옵션·트레이드오프 명시).
-2. **작업 시작 전 항상 `git fetch origin main` 및 `git status` 확인**: 리모트와 로컬 차이가 있으면 반드시 사용자에게 "pull 후 진행할까요?"라고 묻기. 이후 최신 main 위에서 **단명 브랜치**(`chore/xxx`·`feat/xxx`) 새로 생성. **장수 feature 브랜치 재사용 금지**(conflict·구버전 역행 위험).
+2. **작업 시작 전 항상 `git fetch origin main` + `git status` 확인**: 리모트·로컬 차이 있으면 사용자에게 "pull 후 진행?" 묻기. 이후 최신 main 위 **단명 브랜치**(`chore/xxx`·`feat/xxx`) 새로 생성. **장수 feature 브랜치 재사용 금지**(conflict·구버전 역행 위험).
 3. 변경 후 **검증 필수**: `node validate.js`(= `npm test`) — syntax(vm compile) + 전 `runXxxTests` 한 번에 실행, 실패 시 nonzero. (순수함수 외 특정 분기·render-throw는 여전히 §7 주입식 harness로 보강.)
-   **v2 preview MCP(스크린샷·스크롤·클릭 상호작용) 검증은 생략** — Gondry님이 브라우저에서 직접 확인(더 빠르고 정확함). `npm run test:all`+`npm run lint`+코드 리뷰까지만 하고 끝. 실행 자체가 필요한 디버깅(콘솔 에러 재현 등)엔 여전히 preview_eval/console_logs 사용 가능하나, "확인해보겠습니다" 식 스크린샷·스크롤 검증 루프는 하지 말 것(긴 스크롤 페이지에서 스크린샷 캡처 아티팩트 쫓다 시간 낭비했던 실사례 — §7에 함정으로도 기록).
+   **v2 preview MCP(스크린샷·스크롤·클릭) 검증은 생략** — Gondry님이 브라우저 직접 확인(더 빠르고 정확). `npm run test:all`+`npm run lint`+코드 리뷰까지만. 실행 필요한 디버깅(콘솔 에러 재현)엔 preview_eval/console_logs 여전히 가능, "확인해보겠습니다" 식 스크린샷·스크롤 검증 루프는 금지(긴 스크롤 페이지 스크린샷 아티팩트 쫓다 시간 낭비 실사례 — §7 함정 기록).
 4. `git add <명시 파일>` + 커밋(Co-Authored-By 라인, HEREDOC).
 5. push → `gh pr create --base main`. PR body: `## Summary` bullets + `## Test plan` checkboxes + `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
 6. `gh pr merge <N> --squash` → **머지 확인 후 브랜치 삭제**(`git push origin --delete <branch>`). 충돌 시 §6.2.
 
 ### 6.2 squash-merge 충돌 해결 (반복 패턴)
-main이 squash-merge라 장수 feat 브랜치와 매 PR마다 index.html 충돌. feat는 보통 main의 superset:
+main squash-merge라 장수 feat 브랜치와 매 PR마다 index.html 충돌. feat는 보통 main의 superset:
 ```
 git merge origin/main --no-edit → git checkout --ours index.html
 → grep -c "^<<<<<<<" index.html (0 확인) → syntax+골든 재실행
 → git commit --no-edit → push → 재 merge
 ```
-**마커 남긴 채 커밋 금지**. 단, --ours 전에 `git diff origin/main -- index.html`로 **진짜 divergent 편집(같은 라인 다른 값)**이 없는지 확인 — 있으면 어느 쪽이 최신 의도인지 판단 후 수동 병합(맹목 --ours 금지). 티어/표시문구 같은 의사결정성 라인이 갈리면 사용자에게 보고.
+**마커 남긴 채 커밋 금지**. 단, --ours 전에 `git diff origin/main -- index.html`로 **진짜 divergent 편집(같은 라인 다른 값)** 없는지 확인 — 있으면 어느 쪽이 최신 의도인지 판단 후 수동 병합(맹목 --ours 금지). 티어/표시문구 같은 의사결정성 라인 갈리면 사용자 보고.
 
 ### 6.3 commit 메시지
 - 1행 요약(50자 이내, 한글 OK) + 본문 섹션별(사유·근거 중심) + 마지막 `Co-Authored-By:` 라인 필수.
@@ -352,7 +352,7 @@ index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상�
 - **형식**: 해당 섹션에 항목 추가, **태스크당 5줄 이내**, 다른 항목과 톤 일치. 압축본이므로 새 항목도 **간결하게**(과거 PR별 장문 내러티브 반복 금지 — 핵심 패턴만, 상세는 PR 참조).
 - **용량 규율 (필수)**: 도구 추가·기능 갱신으로 본 파일/`agents/mkt-engineer.md`가 늘어나면 **추가와 동시에** 과거 PR별 장문 내러티브를 일반 패턴으로 압축해 전체 용량을 줄인다. 새 항목 추가 = 압축 1회 동반. 단순 append-only로 무한정 비대해지지 말 것(상세는 git·PR·docs/에 보존). 두 파일은 같이 동기화.
 - **커밋**: 작업 PR에 같이 포함(선호) `docs(harness): ...` 또는 별도 docs 커밋.
-- **주기적 압축 및 개선 제안**: 문서가 지속 비대해지는 것을 막기 위해, 작업 전후로 사용자에게 "CLAUDE.md 파일을 압축·개선할까요?"라고 주도적으로 묻고 최적화를 수행한다.
+- **주기적 압축 및 개선 제안**: 문서 지속 비대해지는 것을 막기 위해, 작업 전후로 사용자에게 "CLAUDE.md 파일을 압축·개선할까요?"라고 주도적으로 묻고 최적화를 수행한다.
 - **사용자 우선**: 사용자가 "self-update 하지 마"면 즉시 중단(단 그 예외도 본 §15에 메모). **§15 자체를 삭제하지 말 것** — 메커니즘 사라지면 하네스 정체.
 - **자기 검증**: 업데이트 후 `Read CLAUDE.md`로 자연스럽게 합쳐졌는지·길이 확인.
 
@@ -360,7 +360,7 @@ index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상�
 
 ## 15.5. 유저 친화적 UI 개선 트리거 (필독) 🎨
 
-사용자가 **"유저 친화적으로 개선"·"너무 복잡"·"이해 안 됨"·"전문용어 많음"·"직관적이지 않음"·"가독성"** 등 UX 단순화를 요구하면, **작업 전 반드시 `v2-migration/claude-ux.md`를 먼저 읽고** 그 원칙대로 진행. (핵심: 결론 먼저·근거 접기 2층 구조, 여정=질문 프레임, 상태별 칸반 그룹핑(배지 반복 금지), 지표=평어 질문+평어 답, 그룹배지↔상세 판정 모순 방지, grid 균등 정렬, 맨밑 상세문서 다운로드 탈출구, 통계적 정직성·엔진 불변). 5-18 카니발 UI 재설계에서 확립(비전문 마케터 대상).
+사용자가 **"유저 친화적으로 개선"·"너무 복잡"·"이해 안 됨"·"전문용어 많음"·"직관적이지 않음"·"가독성"** 등 UX 단순화 요구 시, **작업 전 반드시 `v2-migration/claude-ux.md` 먼저 읽고** 그 원칙대로 진행. (핵심: 결론 먼저·근거 접기 2층 구조, 여정=질문 프레임, 상태별 칸반 그룹핑(배지 반복 금지), 지표=평어 질문+평어 답, 그룹배지↔상세 판정 모순 방지, grid 균등 정렬, 맨밑 상세문서 다운로드 탈출구, 통계적 정직성·엔진 불변). 5-18 카니발 UI 재설계에서 확립(비전문 마케터 대상).
 
 ## 16. 현재 상태 + 다음 작업
 
@@ -384,8 +384,8 @@ index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상�
 | 2 | 무거운 탐색만 서브에이전트 | "영향범위·코드베이스 조사"류 → Task/Explore(요약만 회수). 작은 셸/git은 메인 직접(왕복 오버헤드 손해) |
 | 3 | `.claudeignore` 우선 차단 | `node_modules`·`.next`·`*.csv`·디버그잔재. 시그널 레이어일 뿐(우회 가능) — 진짜 민감파일은 `.claude/settings.json` `permissions.deny`(자격증명·`.env`류는 지금 즉시, "필요 시" 아님) |
 
-**세션 관리(Claude 규율 아님 — Gondry님 운영 체크리스트)**: 1~3은 세션 안에서 절약, 진짜 방지책은 **세션을 안 키우는 것**. `/compact`를 기능 종료마다, `/clear`를 작업 전환마다, `/rename <workstream>`+`claude --resume`으로 스트림 분리. 문서로 적어도 Claude가 대신 실행 못 함(권한 없음) — status line에 컨텍스트 % 경고 걸어두는 걸 강제 트리거로 권장.
+**세션 관리(Claude 규율 아님 — Gondry님 운영 체크리스트)**: 1~3은 세션 안에서 절약, 진짜 방지책은 **세션을 안 키우는 것**. `/compact`를 기능 종료마다, `/clear`를 작업 전환마다, `/rename <workstream>`+`claude --resume`으로 스트림 분리. 문서로 적어도 Claude 대신 실행 못 함(권한 없음) — status line 컨텍스트 % 경고 강제 트리거 권장.
 
 ---
 
-*과거 상세(PR별 함정·recipe 풀버전)는 git 히스토리와 각 PR description, `docs/*.md`에 보존. 본 파일은 의사결정에 실제 쓰이는 규칙·패턴·현재 상태만 유지한다.*
+*과거 상세(PR별 함정·recipe 풀버전)는 git 히스토리·각 PR description·`docs/*.md`에 보존. 본 파일은 의사결정에 실제 쓰이는 규칙·패턴·현재 상태만 유지한다.*
