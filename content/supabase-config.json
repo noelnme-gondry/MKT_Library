@@ -1,5 +1,0 @@
-{
-  "url": "https://fgxsziyavvpuhlijgqxe.supabase.co",
-  "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZneHN6aXlhdnZwdWhsaWpncXhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4NDIzNTgsImV4cCI6MjA5NTQxODM1OH0.x7JR-WsSg8M0FxnKQRfXxT2af5xrKhZlkJR2jv7RrvA",
-  "_comment": "Supabase Project: mkt-library-auth · Region: ap-northeast-2 (Seoul). anon key는 RLS와 RPC 게이트로 보호되므로 클라이언트 노출 OK."
-}

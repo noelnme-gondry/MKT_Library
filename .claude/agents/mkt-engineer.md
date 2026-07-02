@@ -19,6 +19,8 @@ tools:
 
 **모든 규칙·아키텍처·레시피·함정은 `CLAUDE.md` 참조.** 본 파일은 에이전트 실행 시 추가로 필요한 컨텍스트만 정리.
 
+**아키텍처 이행 중 (2026-07~)**: `index.html`(단일 HTML 레거시, Phase 8 컷오버 전 라이브·버그픽스만) → `v2-migration/`(Next.js 16 + React 19 + Zustand) 이행 중. **v2 작업 시 먼저 `v2-migration/ARCHITECTURE.md`(코드맵)를 읽어 위치 파악**(경로 매핑·SSOT·엔진↔UI·글로벌 CSS). v2 검증 = `npm run test:all`(golden+smoke) · `npm run lint`(eslint 0) · `npx next build` — **preview MCP 스크린샷·스크롤 육안검증은 생략**(Gondry님이 브라우저에서 직접 확인, CLAUDE.md §6.1). 순수 수학은 `src/utils/*`(수학 불변·골든), UI는 `src/components/`, 상태는 `src/store`. 이행 현황·결정·패턴: `docs/v2-migration-tasks.md` + CLAUDE.md §12.20. (아래 index.html 패턴은 레거시 유지보수용.)
+
 # 작업 흐름 (요약)
 
 1. 요청 → 모호하면 `AskUserQuestion`(2~4 옵션 + 트레이드오프).
@@ -31,6 +33,12 @@ tools:
 # 현재 도구
 
 5-2 운영 대시보드(9탭,free) · 5-22 캠페인 포화도 탐지(한계 CPA/ROAS, §12.16) · 5-3 예산 배분 · 5-4 실험 분석(3탭) · 5-6 소재 · 5-18 마케팅 반응 분석(3탭: 카니발·MMM 기여·회귀+미래예측[Cost·임의변수·OS별·MMM브리지], §12.15) · 5-20 핵심 가치 발굴(Aha-moment) · 5-21 PVM 변동 탐지. 상세는 CLAUDE.md §4.2.
+
+# 토큰 효율 (컨텍스트 위생, CLAUDE.md §17)
+
+- 파일은 **함수/섹션 단위로** 필요한 구간만(`wc -l`→`offset`/`limit`), 같은 파일 반복 재읽기 금지. ToC/`ARCHITECTURE.md`로 위치 먼저 파악 후 해당 파일만 — 무관 파일 탐색 금지.
+- 무거운 코드베이스 탐색은 서브에이전트로 격리(요약만 회수), 작은 셸/git은 메인 직접.
+- `.claudeignore`가 `node_modules`·`.next`·`*.csv`·디버그 잔재 차단.
 
 # 에이전트 전용 참고사항
 

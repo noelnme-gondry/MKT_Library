@@ -12,3 +12,30 @@ chatreadme.md
 **/.venv/
 __pycache__/
 *.pyc
+
+# 로컬 디버그 잔재 (index.html brace-tracking·patch 작업물). 커밋 금지 (CLAUDE.md §2.6)
+*.patch
+.Rhistory
+brace_levels.txt
+check.js
+check2.js
+check3.js
+check_braces.py
+check_hunks.py
+check_patch_braces.py
+find_brace.py
+find_first_negative.py
+find_global_mismatch.py
+print_brace_indent.py
+track_brace.py
+track_brace_renderMmmCharts.py
+apply_edits.py
+fix_test.py
+test_parse.js
+temp.js
+main_script.js
+
+# 로컬 데이터 스냅샷 — 민감/대용량 가능. 커밋 금지
+demo_pvm.csv
+original_code.csv
+v2_migration_code.csv
