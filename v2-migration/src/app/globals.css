@@ -728,7 +728,7 @@
         font-size: 16px;
         line-height: 24px;
         color: var(--text-secondary);
-        max-width: 68ch;
+        max-width: 46em;
         margin: 0 0 1.5rem;
       }
       .meta-row {

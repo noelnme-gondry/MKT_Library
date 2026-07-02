@@ -238,15 +238,8 @@ function LandingAnalyze({ onBack, onNavigate }) {
                   }}
                   style={{ cursor: "pointer", textDecoration: "none" }}
                 >
-                  <div className="phase-card-head">
-                    <span className="phase-card-step">{meta.title}</span>
-                  </div>
-                  <div
-                    className="phase-card-desc"
-                    style={{ marginTop: "6px" }}
-                  >
-                    {meta.desc || ""}
-                  </div>
+                  <div className="phase-card-title">{meta.title}</div>
+                  <div className="phase-card-desc">{meta.desc || ""}</div>
                   <div className="phase-card-cta">바로 사용 →</div>
                 </a>
               );
