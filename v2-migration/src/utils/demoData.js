@@ -299,24 +299,31 @@ function buildAha() {
 }
 
 // ── incrementality (5-23) ───────────────────────────────────────────────────
-// 통제군(suppression): exposed vs holdout 그룹별 1행. 5-4 홀드아웃과 동일 스키마.
+// 통제군(suppression): exposed vs holdout 그룹별·날짜별 1행. 올바른 홀드아웃 구조 —
+// 홀드아웃 기간 前엔 두 그룹 동일(균형 증거), 기간 中 홀드아웃 그룹만 광고 차단해
+// 벌어지고, 기간 後 다시 동일(광고 재개). 45일 중 [11..35]이 홀드아웃 창.
 export function buildIncrSuppressionDemo() {
   const headers = ["date", "holdout_group", "numerator", "denominator", "spend", "revenue_d7"];
   const revPerConv = 32000, costPerUser = 180;
-  const groups = [
-    { group: "holdout", cvr: 0.044, exposed: false },
-    { group: "exposed", cvr: 0.060, exposed: true },
-  ];
   const dates = generateDates(45, "2024-05-01");
+  const winStart = 11, winEnd = 35; // 홀드아웃 창(인덱스, inclusive)
+  const cvrOn = 0.060, cvrOrganic = 0.044; // 광고 있을 때 vs 차단(오가닉)
+  const groups = [
+    { group: "exposed", suppressed: false }, // 항상 광고 노출
+    { group: "holdout", suppressed: true },  // 창 기간만 광고 차단
+  ];
   const raw = [];
   let seed = 511;
   for (const g of groups) {
     const rnd = seededNoise((seed += 31));
     for (let d = 0; d < dates.length; d++) {
+      const inWindow = d >= winStart && d <= winEnd;
+      const adsOff = g.suppressed && inWindow;      // 이 그룹·이 날 광고 꺼짐?
+      const cvr = adsOff ? cvrOrganic : cvrOn;
       const denominator = round(8500 + rnd() * 1400);
-      const numerator = round(denominator * g.cvr * (1 + rnd() * 0.09));
-      const spend = g.exposed ? round(denominator * costPerUser) : 0;
-      const revenue = round(numerator * revPerConv * (1 + rnd() * 0.12));
+      const numerator = round(denominator * cvr * (1 + rnd() * 0.06));
+      const spend = adsOff ? 0 : round(denominator * costPerUser);
+      const revenue = round(numerator * revPerConv * (1 + rnd() * 0.10));
       raw.push({ date: dates[d], holdout_group: g.group, numerator, denominator, spend, revenue_d7: revenue });
     }
   }

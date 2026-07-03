@@ -135,95 +135,182 @@ function UploadPanel({ method, fileRef, handleFile, loadDemo }) {
 
 /* ── ① 통제군 (suppression) ── */
 function SuppressionView({ csvData, currency }) {
-  const data = useMemo(() => {
+  // 날짜별 그룹 집계 (전환율·모수·비용·매출)
+  const series = useMemo(() => {
     const rows = getMappedRows(csvData);
-    let cNum = 0, cDen = 0, tNum = 0, tDen = 0, spend = 0, revenue = 0;
+    const hasDate = rows.some((r) => looksDate(r.date));
+    if (!hasDate) return null;
+    const byDate = new Map();
+    rows.forEach((r) => {
+      if (!looksDate(r.date)) return;
+      const g = parseHoldoutGroup(r.holdout_group);
+      if (g !== "control" && g !== "test") return;
+      const d = String(r.date);
+      if (!byDate.has(d)) byDate.set(d, { exp: { n: 0, d: 0, s: 0, rev: 0 }, hold: { n: 0, d: 0, s: 0, rev: 0 } });
+      const slot = byDate.get(d)[g === "test" ? "exp" : "hold"];
+      slot.n += num(r.numerator) || 0; slot.d += num(r.denominator) || 0;
+      slot.s += num(r.spend) || 0; slot.rev += num(r.revenue_d7 ?? r.revenue) || 0;
+    });
+    const labels = [...byDate.keys()].sort();
+    if (labels.length < 2) return null;
+    const cell = (d, k) => byDate.get(d)[k];
+    return {
+      labels,
+      expRate: labels.map((d) => { const s = cell(d, "exp"); return s.d > 0 ? (s.n / s.d) * 100 : null; }),
+      holdRate: labels.map((d) => { const s = cell(d, "hold"); return s.d > 0 ? (s.n / s.d) * 100 : null; }),
+      byDate,
+    };
+  }, [csvData]);
+
+  // 전체 그룹 존재 여부(창 무관)
+  const totals = useMemo(() => {
+    const rows = getMappedRows(csvData);
+    let cDen = 0, tDen = 0;
     rows.forEach((r) => {
       const g = parseHoldoutGroup(r.holdout_group);
-      const n = num(r.numerator) || 0, d = num(r.denominator) || 0;
-      if (g === "control") { cNum += n; cDen += d; }
-      else if (g === "test") { tNum += n; tDen += d; spend += num(r.spend) || 0; revenue += num(r.revenue_d7 ?? r.revenue) || 0; }
+      if (g === "control") cDen += num(r.denominator) || 0;
+      else if (g === "test") tDen += num(r.denominator) || 0;
     });
-    if (cDen <= 0 || tDen <= 0) return { insufficient: true };
-    // 날짜별 시계열 (date × group 전환율) — 있으면 라인차트로.
-    let series = null;
-    if (rows.some((r) => looksDate(r.date))) {
-      const byDate = new Map();
-      rows.forEach((r) => {
-        if (!looksDate(r.date)) return;
-        const g = parseHoldoutGroup(r.holdout_group);
-        if (g !== "control" && g !== "test") return;
-        const d = String(r.date);
-        if (!byDate.has(d)) byDate.set(d, { exp: { n: 0, d: 0 }, hold: { n: 0, d: 0 } });
-        const slot = byDate.get(d)[g === "test" ? "exp" : "hold"];
-        slot.n += num(r.numerator) || 0; slot.d += num(r.denominator) || 0;
-      });
-      const labels = [...byDate.keys()].sort();
-      if (labels.length > 1) {
-        series = {
-          labels,
-          exposed: labels.map((d) => { const s = byDate.get(d).exp; return s.d > 0 ? (s.n / s.d) * 100 : null; }),
-          holdout: labels.map((d) => { const s = byDate.get(d).hold; return s.d > 0 ? (s.n / s.d) * 100 : null; }),
-        };
-      }
-    }
-    return { incr: INCR_MATH.compute({ num: tNum, den: tDen, spend, rev: revenue > 0 ? revenue : null }, { num: cNum, den: cDen }), cNum, cDen, tNum, tDen, spend, series };
+    return { cDen, tDen };
   }, [csvData]);
+
+  // 홀드아웃 창 자동 감지(두 그룹 전환율 차가 큰 구간). 없으면 전체.
+  const detected = useMemo(() => {
+    if (!series) return null;
+    const { labels, expRate, holdRate } = series;
+    const diffs = labels.map((_, i) => (expRate[i] != null && holdRate[i] != null) ? expRate[i] - holdRate[i] : 0);
+    const maxD = Math.max(...diffs, 0);
+    if (maxD < 0.3) return { start: labels[0], end: labels[labels.length - 1] }; // 안 벌어짐 → 전체
+    const thr = maxD * 0.4;
+    const idx = diffs.map((x, i) => x >= thr ? i : -1).filter((i) => i >= 0);
+    return { start: labels[idx[0]], end: labels[idx[idx.length - 1]] };
+  }, [series]);
+
+  const [winStart, setWinStart] = useState("");
+  const [winEnd, setWinEnd] = useState("");
+  const start = winStart || detected?.start || "";
+  const end = winEnd || detected?.end || "";
+
+  // 창 기간 내 집계 → 증분 (창 밖 pre/post는 균형 확인용)
+  const win = useMemo(() => {
+    if (!series || !start || !end) return null;
+    const { labels, byDate } = series;
+    let cN = 0, cD = 0, tN = 0, tD = 0, sp = 0, rv = 0;      // 창 내
+    let preExpN = 0, preExpD = 0, preHoldN = 0, preHoldD = 0; // 창 전(균형 확인)
+    labels.forEach((d) => {
+      const e = byDate.get(d).exp, h = byDate.get(d).hold;
+      if (d >= start && d <= end) {
+        tN += e.n; tD += e.d; sp += e.s; rv += e.rev;
+        cN += h.n; cD += h.d;
+      } else if (d < start) {
+        preExpN += e.n; preExpD += e.d; preHoldN += h.n; preHoldD += h.d;
+      }
+    });
+    if (cD <= 0 || tD <= 0) return null;
+    const incr = INCR_MATH.compute({ num: tN, den: tD, spend: sp, rev: rv > 0 ? rv : null }, { num: cN, den: cD });
+    const preExp = preExpD > 0 ? (preExpN / preExpD) * 100 : null;
+    const preHold = preHoldD > 0 ? (preHoldN / preHoldD) * 100 : null;
+    const preDiff = (preExp != null && preHold != null) ? preExp - preHold : null;
+    const balanced = preDiff != null ? Math.abs(preDiff) < 0.5 : null; // 0.5%p 이내면 균형
+    return { incr, cN, cD, tN, tD, sp, preExp, preHold, preDiff, balanced, hasPre: preExpD > 0 };
+  }, [series, start, end]);
 
   const chartInst = useRef(null);
   useEffect(() => {
     if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; }
-    const s = data.series;
-    if (data.insufficient || !s) return;
+    if (!series) return;
     const ctx = document.getElementById("incr-suppression-chart"); if (!ctx) return;
+    const { labels, expRate, holdRate } = series;
+    const sIdx = labels.indexOf(start), eIdx = labels.indexOf(end);
+    // 홀드아웃 시작·종료 세로선 (inline 플러그인)
+    const markerPlugin = {
+      id: "holdoutMarkers",
+      afterDatasetsDraw(chart) {
+        const { ctx: c, chartArea, scales } = chart; const x = scales.x; if (!x) return;
+        [[sIdx, "홀드아웃 시작"], [eIdx, "홀드아웃 종료"]].forEach(([i, lab]) => {
+          if (i == null || i < 0) return;
+          const px = x.getPixelForValue(i);
+          c.save();
+          c.strokeStyle = "#f59e0b"; c.setLineDash([4, 4]); c.lineWidth = 1.5;
+          c.beginPath(); c.moveTo(px, chartArea.top); c.lineTo(px, chartArea.bottom); c.stroke();
+          c.setLineDash([]); c.fillStyle = "#f59e0b"; c.font = "10px sans-serif";
+          c.fillText(lab, Math.min(px + 3, chartArea.right - 60), chartArea.top + 11);
+          c.restore();
+        });
+      },
+    };
     chartInst.current = new Chart(ctx, {
       type: "line",
-      data: { labels: s.labels, datasets: [
-        { label: "노출 그룹(광고 봄)", data: s.exposed, borderColor: "#22c55e", backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, tension: 0.15 },
-        { label: "홀드아웃(광고 차단)", data: s.holdout, borderColor: getCssVar("--text-muted"), backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, borderDash: [5, 4], tension: 0.15 },
+      data: { labels, datasets: [
+        { label: "노출 그룹(광고 봄)", data: expRate, borderColor: "#22c55e", backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, tension: 0.15 },
+        { label: "홀드아웃(광고 차단)", data: holdRate, borderColor: getCssVar("--text-muted"), backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, borderDash: [5, 4], tension: 0.15 },
       ] },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: CHART_THEME.text } }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y != null ? c.parsed.y.toFixed(2) + "%" : "—"}` } } },
+        plugins: { legend: { labels: { color: CHART_THEME.text } }, tooltip: { callbacks: { label: (cx) => `${cx.dataset.label}: ${cx.parsed.y != null ? cx.parsed.y.toFixed(2) + "%" : "—"}` } } },
         scales: {
           x: { ticks: { color: CHART_THEME.muted, autoSkip: true, maxTicksLimit: 10 }, grid: { color: getCssVar("--border") } },
           y: { ticks: { color: CHART_THEME.muted, callback: (v) => v + "%" }, grid: { color: getCssVar("--border") }, title: { display: true, text: "전환율", color: CHART_THEME.muted } },
         },
       },
+      plugins: [markerPlugin],
     });
     requestAnimationFrame(() => chartInst.current && chartInst.current.resize());
     return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
-  }, [data]);
+  }, [series, start, end]);
 
-  if (data.insufficient) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>노출(exposed)·홀드아웃(holdout) 양쪽 데이터가 필요합니다</strong><p>holdout_group 컬럼에 두 그룹이 모두 있어야 증분을 계산합니다.</p></div></div>;
-  const r = data.incr;
-  const inc = Math.round(r.incrementalConv);
-  const positive = r.incrementalConv > 0;
+  if (totals.cDen <= 0 || totals.tDen <= 0) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>노출(exposed)·홀드아웃(holdout) 양쪽 데이터가 필요합니다</strong><p>holdout_group 컬럼에 두 그룹이 모두 있어야 증분을 계산합니다.</p></div></div>;
+
+  const r = win?.incr;
+  const inc = r ? Math.round(r.incrementalConv) : 0;
+  const positive = r ? r.incrementalConv > 0 : false;
+
   return (
     <section className="block">
-      <h2 className="section-title"><span className="ix">§1</span>증분 결과 (노출 vs 홀드아웃)</h2>
-      <div className="alloc-card" style={{ borderLeft: `3px solid ${positive ? "#22c55e" : "#ef4444"}` }}>
-        <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-          <Stat label="홀드아웃 전환율" value={fmtPct(r.cRate)} hint={`${fmtNum(data.cNum)}/${fmtNum(data.cDen)}`} />
-          <Stat label="노출 전환율" value={fmtPct(r.tRate)} hint={`${fmtNum(data.tNum)}/${fmtNum(data.tDen)}`} />
-          <Stat label="상대 Lift" value={r.liftRel != null ? fmtPct(r.liftRel) : "—"} color={positive ? "#22c55e" : "#ef4444"} />
-          <Stat label="증분 전환" value={fmtNum(inc)} hint="광고가 새로 만든 전환" />
-          {r.cpia != null && <Stat label="증분 전환당 비용" value={fmtCurrency(r.cpia, { currency })} />}
-          {r.iroas != null && <Stat label="iROAS" value={`${r.iroas.toFixed(2)}×`} color={r.iroas >= 1 ? "#22c55e" : "#ef4444"} hint="증분 매출/광고비" />}
+      <h2 className="section-title"><span className="ix">§1</span>증분 결과 (홀드아웃 기간)</h2>
+
+      {series && (
+        <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "flex-end", marginBottom: "12px" }}>
+          <Field label="홀드아웃 시작일"><select className="map-select" value={start} onChange={(e) => setWinStart(e.target.value)}>{series.labels.map((d) => <option key={d} value={d}>{d}</option>)}</select></Field>
+          <Field label="홀드아웃 종료일"><select className="map-select" value={end} onChange={(e) => setWinEnd(e.target.value)}>{series.labels.map((d) => <option key={d} value={d}>{d}</option>)}</select></Field>
+          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>이 기간에만 광고를 차단했다고 보고 증분을 계산합니다.</span>
         </div>
-      </div>
-      {data.series && (
+      )}
+
+      {series && win?.hasPre && (
+        <div className={`callout ${win.balanced ? "ok" : "warn"}`} style={{ marginBottom: "10px" }}><div className="ico">{win.balanced ? "✓" : "!"}</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
+          <strong>그룹 균형 확인 (홀드아웃 전):</strong> 노출 {fmtPct(win.preExp, 2, { asRatio: false })} vs 홀드아웃 {fmtPct(win.preHold, 2, { asRatio: false })} — 차이 {fmtPct(win.preDiff, 2, { asRatio: false })}p. {win.balanced ? "시작 전엔 거의 같음 → 두 그룹이 비교 가능(균형)했다는 증거." : "시작 전부터 차이가 큼 → 그룹 균형이 의심되어 증분이 왜곡될 수 있음."}
+        </p></div></div>
+      )}
+
+      {r && (
+        <div className="alloc-card" style={{ borderLeft: `3px solid ${positive ? "#22c55e" : "#ef4444"}` }}>
+          <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
+            <Stat label="홀드아웃 전환율" value={fmtPct(r.cRate)} hint={`${fmtNum(win.cN)}/${fmtNum(win.cD)}`} />
+            <Stat label="노출 전환율" value={fmtPct(r.tRate)} hint={`${fmtNum(win.tN)}/${fmtNum(win.tD)}`} />
+            <Stat label="상대 Lift" value={r.liftRel != null ? fmtPct(r.liftRel) : "—"} color={positive ? "#22c55e" : "#ef4444"} />
+            <Stat label="증분 전환" value={fmtNum(inc)} hint="광고가 새로 만든 전환" />
+            {r.cpia != null && <Stat label="증분 전환당 비용" value={fmtCurrency(r.cpia, { currency })} />}
+            {r.iroas != null && <Stat label="iROAS" value={`${r.iroas.toFixed(2)}×`} color={r.iroas >= 1 ? "#22c55e" : "#ef4444"} hint="증분 매출/광고비" />}
+          </div>
+        </div>
+      )}
+
+      {series && (
         <div style={{ marginTop: "14px" }}>
           <h3 style={{ fontSize: "13px", margin: "0 0 6px", color: "var(--text-secondary)" }}>날짜별 전환율 — 노출 vs 홀드아웃</h3>
-          <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "0 0 8px" }}>두 선의 간격이 광고가 만든 증분입니다(노출이 위, 홀드아웃이 아래면 정상).</p>
+          <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "0 0 8px" }}>홀드아웃 기간(주황 세로선 사이)에만 두 선이 벌어져야 정상 — 그 간격이 광고 증분. 기간 밖은 거의 겹쳐야 그룹이 균형입니다.</p>
           <div className="chart-container" style={{ height: "300px" }}><canvas id="incr-suppression-chart"></canvas></div>
         </div>
       )}
-      <div className="callout" style={{ marginTop: "14px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
-        <strong>쉽게 말하면:</strong> 광고를 안 본 홀드아웃도 자연 전환이 있습니다. 그 몫을 뺀 <strong>증분 전환 {fmtNum(inc)}건</strong>이 광고가 실제로 만든 값입니다.{r.iroas != null && <> iROAS {r.iroas.toFixed(2)}× — {r.iroas >= 1 ? "광고비보다 증분 매출이 큼(이득)." : "증분 기준 광고비가 매출보다 큼."}</>}
-      </p></div></div>
+
+      {r && (
+        <div className="callout" style={{ marginTop: "14px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
+          <strong>쉽게 말하면:</strong> 홀드아웃 기간에 광고를 안 본 그룹도 자연 전환이 있습니다. 그 몫을 뺀 <strong>증분 전환 {fmtNum(inc)}건</strong>이 광고가 실제로 만든 값입니다.{r.iroas != null && <> iROAS {r.iroas.toFixed(2)}× — {r.iroas >= 1 ? "광고비보다 증분 매출이 큼(이득)." : "증분 기준 광고비가 매출보다 큼."}</>}
+        </p></div></div>
+      )}
       <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "11.5px", lineHeight: 1.6 }}>
-        <strong>정직하게:</strong> 홀드아웃이 <strong>무작위 분할</strong>일 때만 인과로 해석됩니다. 표본이 적으면 신뢰도가 떨어집니다.
+        <strong>정직하게:</strong> 홀드아웃이 <strong>무작위 분할</strong>이고, 홀드아웃 前 두 그룹이 균형(위 확인)일 때만 인과로 해석됩니다. 표본이 적으면 신뢰도가 떨어집니다.
       </p></div></div>
     </section>
   );
