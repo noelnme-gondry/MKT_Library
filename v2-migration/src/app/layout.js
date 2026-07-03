@@ -14,9 +14,10 @@ export const metadata = {
     index: true,
     follow: true,
   },
-  alternates: {
-    canonical: "https://mktlibrary.up.railway.app/",
-  },
+  // metadataBase로 상대 canonical 해석. layout에 canonical을 직접 박으면 자식
+  // 페이지(privacy/terms 등)가 그대로 상속받아 "홈을 canonical로 선언" → GSC
+  // "적절한 표준 태그가 포함된 대체 페이지"로 색인 제외됨. canonical은 페이지별로.
+  metadataBase: new URL("https://mktlibrary.up.railway.app"),
   openGraph: {
     type: "website",
     url: "https://mktlibrary.up.railway.app/",
