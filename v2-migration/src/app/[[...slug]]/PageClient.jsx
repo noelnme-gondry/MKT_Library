@@ -1,23 +1,27 @@
 "use client";
 import { use, useEffect } from "react";
 import { notFound } from "next/navigation";
+import dynamic from "next/dynamic";
 
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
-import Dashboard from "@/components/Dashboard";
 import SopContent from "@/components/sops/SopContent";
 import LandingPage from "@/components/LandingPage";
 
-// Pro Tools
-import BudgetAllocation from "@/components/tools/BudgetAllocation";
-import CampaignPvm from "@/components/tools/CampaignPvm";
-import CreativeAnalyzer from "@/components/tools/CreativeAnalyzer";
-import AbTestHoldout from "@/components/tools/AbTestHoldout";
-import MarketingResponse from "@/components/tools/MarketingResponse";
-import AhaMomentFinder from "@/components/tools/AhaMomentFinder";
-import MarketingEfficiency from "@/components/tools/MarketingEfficiency";
-import Incrementality from "@/components/tools/Incrementality";
+// 도구는 무겁고(Chart.js·XLSX·PapaParse) 라우트별로 하나만 필요 → next/dynamic으로
+// 코드 분할. 정적 import 시 홈 포함 모든 경로가 앱 전체 JS(~1MB)를 최초 로드해
+// 초기 로딩이 느렸음. 각 도구는 해당 라우트 진입 시에만 청크 로드.
+const dyn = (loader) => dynamic(loader, { loading: () => <div style={{ padding: "40px", color: "var(--text-muted)", fontSize: "13px" }}>로딩 중…</div> });
+const Dashboard = dyn(() => import("@/components/Dashboard"));
+const BudgetAllocation = dyn(() => import("@/components/tools/BudgetAllocation"));
+const CampaignPvm = dyn(() => import("@/components/tools/CampaignPvm"));
+const CreativeAnalyzer = dyn(() => import("@/components/tools/CreativeAnalyzer"));
+const AbTestHoldout = dyn(() => import("@/components/tools/AbTestHoldout"));
+const MarketingResponse = dyn(() => import("@/components/tools/MarketingResponse"));
+const AhaMomentFinder = dyn(() => import("@/components/tools/AhaMomentFinder"));
+const MarketingEfficiency = dyn(() => import("@/components/tools/MarketingEfficiency"));
+const Incrementality = dyn(() => import("@/components/tools/Incrementality"));
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId } from "@/lib/routeMap";
