@@ -27,6 +27,7 @@ export const TOOL_GUIDE = {
       "revenue_d7 같은 코호트 지표는 '설치 후 7일' 누적 값 — 캘린더 일별과 섞지 말 것.",
       "컬럼이 많을수록 더 많은 탭이 열립니다(옵션 컬럼 = 기능 잠금 해제).",
     ],
+    example: "date,channel,cost,impressions,clicks,installs,revenue_d7\n2024-01-01,Google UAC,850000,420000,9800,720,5400000\n2024-01-01,Meta AAP,610000,510000,7200,540,3900000\n2024-01-02,Google UAC,880000,430000,10100,735,5600000",
   },
   "5-3": {
     when: "채널·캠페인별 반응 곡선을 추정해 '한 푼 더 쓰면 어디가 이득인지' 예산 재배분을 시뮬레이션합니다.",
@@ -42,6 +43,7 @@ export const TOOL_GUIDE = {
       "곡선 추정에 지출 변동이 있어야 함 — 매일 같은 금액이면 곡선이 안 나옴.",
       "국가·채널이 섞이면 국가 1개로 강제됩니다(타국가 혼입 방지).",
     ],
+    example: "date,channel,cost,installs,revenue_d7\n2024-01-01,Google UAC,850000,720,5400000\n2024-01-01,Meta AAP,610000,540,3900000\n2024-01-02,TikTok,430000,510,2600000",
   },
   "5-22": {
     when: "채널·캠페인이 '이미 포화(더 써도 효율 하락)인지, 아직 여유인지'를 한계 vs 평균 효율로 진단합니다.",
@@ -54,6 +56,7 @@ export const TOOL_GUIDE = {
       { col: "revenue_d7", label: "매출", why: "ROAS 기준 포화도(옵션)", required: false },
     ],
     prep: ["5-2·5-3와 같은 효율 CSV를 공유합니다 — 한 번 올리면 형제 도구가 이어받습니다."],
+    example: "date,channel,cost,installs,revenue_d7\n2024-01-01,Google UAC,850000,720,5400000\n2024-01-02,Google UAC,880000,735,5600000\n2024-01-03,Google UAC,920000,742,5700000",
   },
   "5-21": {
     when: "성과가 변한 원인을 물량(Volume)·효율(Efficiency)·믹스(Mix)로 무잔차 분해합니다(왜 CPA가 올랐나?).",
@@ -66,6 +69,7 @@ export const TOOL_GUIDE = {
       { col: "campaign_name·creative_id", label: "캠페인·소재", why: "드릴다운(채널→캠페인→소재)", required: false },
     ],
     prep: ["가장 잘게(소재·일별) 넣을수록 분해 항등식이 정확합니다.", "효율 CSV 공유(5-2/5-3/5-22)."],
+    example: "date,channel,campaign_name,creative_id,spend,installs\n2024-01-01,Meta AAP,Prospecting,cr_101,320000,240\n2024-01-01,Meta AAP,Retargeting,cr_102,180000,160\n2024-01-02,Meta AAP,Prospecting,cr_101,340000,255",
   },
   "5-6": {
     when: "소재별 성과·피로도·속성 효과(어떤 후킹·포맷이 잘 되나)를 분석하고 교체 시점을 알려줍니다.",
@@ -81,6 +85,7 @@ export const TOOL_GUIDE = {
       "속성 컬럼(메시지·포맷·훅)을 넣으면 '어떤 특징이 효과적인가' 분해와 조합표가 열립니다.",
       "조합표는 조합당 소재 5개 이상 있어야 '검증'으로 뜹니다.",
     ],
+    example: "creative_id,date,channel,impressions,clicks,installs,spend,message_angle,format\ncr_001,2024-02-01,Meta AAP,52000,1600,210,610000,사회적증거,UGC\ncr_002,2024-02-01,TikTok,48000,1900,180,540000,할인혜택,플레이어블",
   },
   "5-4": {
     when: "A/B 테스트를 설계(표본 수 계산)하고, 결과 CSV로 어느 안이 통계적으로 이겼는지 판정합니다.",
@@ -109,6 +114,7 @@ export const TOOL_GUIDE = {
       "업로드 후 컬럼을 '역할'로 드래그합니다(주차·성과·채널 spend).",
       "채널당 지출 변동과 최소 6개월+ 기간이 있어야 안정적으로 추정됩니다.",
     ],
+    example: "week,signups,google_spend,meta_spend,tiktok_spend\n2024-01-01,3800,32000000,22000000,8000000\n2024-01-08,4100,35000000,24000000,9500000\n2024-01-15,3950,31000000,21000000,7800000",
   },
   "5-20": {
     when: "어떤 초기 행동(매칭·메시지 등)을 몇 번/며칠 안에 하면 정착(전환)하는지 'Aha-moment'를 찾습니다.",
@@ -122,6 +128,7 @@ export const TOOL_GUIDE = {
       "행동 컬럼은 '초기 N일 안의 횟수'(예: 7일 내 메시지 수)로 넣습니다.",
       "전환 컬럼은 0/1 — 1이 정착/목표 달성.",
     ],
+    example: "user_id,converted,matches_first_7d,messages_sent_7d,profile_completed\nu10001,1,8,32,1\nu10002,0,1,4,0\nu10003,1,12,45,1",
   },
   // 5-23 증분 분석 — 방법별 데이터가 달라 서브키로 분리("5-23:<method>").
   "5-23:suppression": {

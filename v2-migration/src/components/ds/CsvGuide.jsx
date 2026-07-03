@@ -75,12 +75,25 @@ export default function CsvGuide({ toolId, onDownloadTemplate }) {
                 </section>
               )}
 
-              {guide.example && (
-                <section>
-                  <h4>예시</h4>
-                  <pre className="csv-guide-example">{guide.example}</pre>
-                </section>
-              )}
+              {guide.example && (() => {
+                const lines = guide.example.trim().split("\n");
+                const head = (lines[0] || "").split(",");
+                const body = lines.slice(1).map((l) => l.split(","));
+                return (
+                  <section>
+                    <h4>이렇게 생긴 파일이면 됩니다 (예시)</h4>
+                    <div className="table-wrap">
+                      <table className="data csv-guide-example-table">
+                        <thead><tr>{head.map((h, i) => <th key={i} style={{ textAlign: "left", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
+                        <tbody>{body.map((row, ri) => (
+                          <tr key={ri}>{row.map((c, ci) => <td key={ci} style={{ textAlign: "left", whiteSpace: "nowrap" }}>{c}</td>)}</tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                    <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0" }}>첫 줄 = 컬럼 이름(헤더), 그 아래 = 실제 데이터 한 줄씩.</p>
+                  </section>
+                );
+              })()}
             </div>
 
             <div className="csv-guide-modal-foot">
