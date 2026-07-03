@@ -17,7 +17,7 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
-export default function CsvUploader({ toolId }) {
+export default function CsvUploader({ toolId, showMatrix = true }) {
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
   const setGroupAnalyzed = useAppStore((s) => s.setGroupAnalyzed);
@@ -251,7 +251,7 @@ export default function CsvUploader({ toolId }) {
         </div>
         <DemoLoadButton onLoad={handleLoadDemo} />
         {errorMsg && <div style={{ color: "var(--danger)", marginTop: "10px", fontSize: "12px" }}>{errorMsg}</div>}
-        <DataFeatureMatrix toolId={toolId} analyzed={missing.length === 0} />
+        {showMatrix && <DataFeatureMatrix toolId={toolId} analyzed={missing.length === 0} />}
       </div>
     );
   }
@@ -403,7 +403,7 @@ export default function CsvUploader({ toolId }) {
         </div>
       )}
 
-      <DataFeatureMatrix toolId={toolId} analyzed={missing.length === 0} />
+      {showMatrix && <DataFeatureMatrix toolId={toolId} analyzed={missing.length === 0} />}
 
       {missing.length === 0 && (
         isAnalyzed ? (

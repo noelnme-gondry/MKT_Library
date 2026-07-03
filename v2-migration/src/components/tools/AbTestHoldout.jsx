@@ -6,8 +6,39 @@ import { STATS } from "@/utils/abTestMath";
 import { CREATIVE_STATS } from "@/utils/creativeMath";
 import { INCR_MATH, parseHoldoutGroup } from "@/utils/incrMath";
 import CsvUploader from "@/components/CsvUploader";
+import { getMappedRows } from "@/utils/dashboardAggregator";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
+
+/* 5-4 전용 템플릿 CSV (DataFeatureMatrix는 효율 스키마라 부적합 → 자체 제공).
+   BOM+CRLF (§7). 헤더 + 예시 1~N행. */
+function downloadCsv(fileName, text) {
+  const blob = new Blob(["﻿" + text], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function downloadAbTemplate() {
+  const rows = [
+    "arm_id,is_control,numerator,denominator",
+    "Control,1,400,8000",
+    "Variant A,0,496,8000",
+    "Variant B,0,424,8000",
+  ];
+  downloadCsv("template_5-4_ab.csv", rows.join("\r\n") + "\r\n");
+}
+function downloadHoldoutTemplate() {
+  const rows = [
+    "holdout_group,numerator,denominator,spend,revenue_d7",
+    "exposed,516,8600,1548000,16512000",
+    "holdout,378,8600,0,12096000",
+  ];
+  downloadCsv("template_5-4_holdout.csv", rows.join("\r\n") + "\r\n");
+}
 
 /* 통화 포맷 — index.html fmtCurrency 포팅 (통화 토글 반영) */
 function fmtCurrency(value, currency) {
@@ -178,7 +209,9 @@ export default function AbTestHoldout() {
   //  Readout aggregation (CSV) — 2-arm significance + optional mass
   // ============================================================
   const readoutData = useMemo(() => {
-    const rows = csvData?.raw;
+    // 매핑 적용 행(표준키) — 사용자가 임의 헤더를 매핑해도 엔진이 읽게. 데모/템플릿은
+    // 헤더가 이미 표준키라 identity 매핑.
+    const rows = getMappedRows(csvData);
     if (!rows || rows.length === 0) return null;
 
     // Detect an arm dimension for mass readout
@@ -232,7 +265,7 @@ export default function AbTestHoldout() {
   //  Holdout incrementality (CSV) — control-transform + significance
   // ============================================================
   const holdoutData = useMemo(() => {
-    const rows = csvData?.raw;
+    const rows = getMappedRows(csvData);
     if (!rows || rows.length === 0) return null;
 
     let cNum = 0, cDen = 0, tNum = 0, tDen = 0, spend = 0, revenue = 0;
@@ -742,8 +775,11 @@ export default function AbTestHoldout() {
                 <div className="ico">!</div>
                 <div className="body">
                   <strong>실험 결과 CSV 업로드 대기</strong>
-                  <p>필수: is_control·numerator·denominator (옵션: arm_id로 다중 변형 대량 검정)</p>
-                  <div style={{ marginTop: "1rem" }}><CsvUploader toolId="5-4" /></div>
+                  <p style={{ margin: "2px 0 6px" }}>그룹별 1행. <strong>필수</strong>: 대조군 여부(is_control) · 전환수(numerator) · 그룹 인원(denominator). <strong>옵션</strong>: 변형 그룹(arm_id)이 있으면 Variant A/B/C… 대량검정.</p>
+                  <div style={{ margin: "6px 0 4px" }}>
+                    <button className="ab-pill" onClick={downloadAbTemplate}>⬇ A/B 템플릿 CSV (예시 포함)</button>
+                  </div>
+                  <div style={{ marginTop: "1rem" }}><CsvUploader toolId="5-4" showMatrix={false} /></div>
                 </div>
               </div>
             ) : (
@@ -835,8 +871,11 @@ export default function AbTestHoldout() {
                 <div className="ico">!</div>
                 <div className="body">
                   <strong>홀드아웃 CSV 업로드 대기</strong>
-                  <p>필수: holdout_group(test/control)·numerator(전환수)·denominator(그룹 사용자수). 옵션: spend·revenue_d7</p>
-                  <div style={{ marginTop: "1rem" }}><CsvUploader toolId="5-4" /></div>
+                  <p style={{ margin: "2px 0 6px" }}>그룹별 1행(지역·일자별로 쪼개도 됨). <strong>필수</strong>: 노출/홀드아웃 구분(holdout_group = exposed vs holdout) · 전환수(numerator) · 그룹 인원(denominator). <strong>옵션</strong>: 광고비(spend)·매출(revenue_d7)을 넣으면 iROAS·증분 CPA까지 계산.</p>
+                  <div style={{ margin: "6px 0 4px" }}>
+                    <button className="ab-pill" onClick={downloadHoldoutTemplate}>⬇ 홀드아웃 템플릿 CSV (예시 포함)</button>
+                  </div>
+                  <div style={{ marginTop: "1rem" }}><CsvUploader toolId="5-4" showMatrix={false} /></div>
                 </div>
               </div>
             ) : holdoutData.insufficient ? (

@@ -60,8 +60,10 @@ describe("demo sanity", () => {
 
   it("experiment: control vs test aggregate differ", () => {
     const d = buildDemoCsv("experiment");
+    const mapped = getMappedRows(d); // in-app path uses getMappedRows (identity mapping)
+    expect(mapped.length).toBe(d.raw.length);
     let cNum = 0, cDen = 0, tNum = 0, tDen = 0;
-    for (const r of d.raw) {
+    for (const r of mapped) {
       const isC = Number(r.is_control) === 1;
       if (isC) { cNum += r.numerator; cDen += r.denominator; }
       else { tNum += r.numerator; tDen += r.denominator; }
@@ -74,7 +76,7 @@ describe("demo sanity", () => {
     const d = buildDemoCsv("experiment");
     // holdout(control) vs exposed(test) with spend+revenue → incremental + iROAS
     let cNum = 0, cDen = 0, tNum = 0, tDen = 0, spend = 0, rev = 0;
-    for (const r of d.raw) {
+    for (const r of getMappedRows(d)) {
       const g = String(r.holdout_group).toLowerCase();
       if (g.includes("holdout")) { cNum += r.numerator; cDen += r.denominator; }
       else if (g.includes("exposed")) { tNum += r.numerator; tDen += r.denominator; spend += Number(r.spend) || 0; rev += Number(r.revenue_d7) || 0; }

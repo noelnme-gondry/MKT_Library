@@ -209,7 +209,10 @@ function buildExperiment() {
       });
     }
   }
-  return { raw, headers, mapping: {}, fileName: "demo_experiment.csv" };
+  // 5-4는 이제 getMappedRows로 읽음 → 헤더=표준키 identity 매핑 필요.
+  const mapping = {};
+  headers.forEach((h) => { mapping[h] = h; });
+  return { raw, headers, mapping, fileName: "demo_experiment.csv" };
 }
 
 // ── response (5-18) ─────────────────────────────────────────────────────────
