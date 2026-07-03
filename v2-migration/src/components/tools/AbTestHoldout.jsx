@@ -70,8 +70,9 @@ export default function AbTestHoldout() {
   const [activeTab, setActiveTab] = useState("design");
   const [mode, setMode] = useState("plan");
   const [testType, setTestType] = useState("binary");
-  // 전역 통화(design-system) — 토글 UI는 Header뿐, 여기선 포맷에만 구독(§1.2).
+  // 전역 통화(design-system §1.2) — 이 도구엔 다른 토글 UI가 없어 여기 단독 배치.
   const currency = useAppStore((s) => s.displayCurrency);
+  const setDisplayCurrency = useAppStore((s) => s.setDisplayCurrency);
   const { csvData } = useAppStore();
 
   const sym = CURRENCY_SYMBOLS[currency] || "₩";
@@ -369,6 +370,15 @@ export default function AbTestHoldout() {
               <span className="ab-pillgroup-label">테스트 유형</span>
               <button className={`ab-pill ${testType === "binary" ? "active" : ""}`} onClick={() => setTestType("binary")}>Binary · CVR (전환율)</button>
               <button className={`ab-pill ${testType === "continuous" ? "active" : ""}`} onClick={() => setTestType("continuous")}>Continuous · CPR / ARPPU / Revenue</button>
+            </div>
+
+            {/* 이 도구는 CSV 없이 수동 계산이라 효율 패밀리의 "토글 기준" 필터줄이
+                없음 — 통화 표시가 실제 쓰이는(§2 예산·평균값) 이 자리에 단독 토글.
+                다른 페이지와 달리 중복 아님(이 페이지엔 이거 하나뿐). */}
+            <div className="ab-pillgroup" style={{ marginTop: "10px" }}>
+              <span className="ab-pillgroup-label">통화</span>
+              <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setDisplayCurrency("KRW")}>₩ KRW</button>
+              <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setDisplayCurrency("USD")}>$ USD</button>
             </div>
 
           </section>
