@@ -60,6 +60,17 @@
         --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
       }
 
+      /* 한글 어절 단위 줄바꿈 — keep-all 없으면 브라우저가 글자 단위로 끊어
+         "...하세요. 원하는 쪽을... / 다." 처럼 조사·어미가 다음 줄에 혼자 남음.
+         전역 적용 후 표(tnum)·코드(pre/code)만 예외(숫자·심볼은 어절 규칙 무의미). */
+      html {
+        word-break: keep-all;
+        overflow-wrap: break-word;
+      }
+      pre, code, .tnum {
+        word-break: normal;
+      }
+
       body.light-mode {
         /* --- Light Mode --- */
         --background: #f8f9fa;
