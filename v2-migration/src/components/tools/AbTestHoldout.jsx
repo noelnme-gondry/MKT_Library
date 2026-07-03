@@ -78,7 +78,9 @@ export default function AbTestHoldout() {
   const [activeTab, setActiveTab] = useState("design");
   const [mode, setMode] = useState("plan");
   const [testType, setTestType] = useState("binary");
-  const [currency, setCurrency] = useState("KRW");
+  // 전역 통화(design-system) — 도구별 통화 state 대신 store 구독(§1.2).
+  const currency = useAppStore((s) => s.displayCurrency);
+  const setCurrency = useAppStore((s) => s.setDisplayCurrency);
   const { csvData } = useAppStore();
 
   const sym = CURRENCY_SYMBOLS[currency] || "₩";

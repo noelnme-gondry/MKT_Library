@@ -5,10 +5,12 @@ import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, aggregateByKey } from "@/utils/dashboardAggregator";
 import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { ANOMALY_MATH } from "@/utils/anomalyMath";
+import { fmtCurrency } from "@/utils/format";
 
 export default function AnomalyTab() {
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
+  const displayCurrency = useAppStore((state) => state.displayCurrency);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
 
   const [metric, setMetric] = useState("cost");
@@ -102,7 +104,7 @@ export default function AnomalyTab() {
   const formatValue = (v) => {
     if (v == null) return "—";
     if (["cvr", "ctr", "roas"].includes(metric)) return (v * 100).toFixed(2) + "%";
-    if (["cost", "cpi", "cpm", "cpa"].includes(metric)) return `₩${Math.round(v).toLocaleString()}`;
+    if (["cost", "cpi", "cpm", "cpa"].includes(metric)) return fmtCurrency(v, { currency: displayCurrency });
     return Math.round(v).toLocaleString();
   };
 

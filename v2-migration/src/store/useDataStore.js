@@ -195,12 +195,6 @@ export const useAppStore = create((set, get) => ({
   isDarkMode: false,
   toggleTheme: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
 
-  // Global currency (design-system baseline) — ONE toggle drives every tool's
-  // money formatting via format.js. Tools subscribe here instead of keeping
-  // per-tool currency state. (docs/design-system-baseline.md §1.2)
-  currency: "KRW", // "KRW" | "USD"
-  setCurrency: (c) => set({ currency: c === "USD" ? "USD" : "KRW" }),
-
   // Command Palette State (CMDK)
   isCmdkOpen: false,
   setCmdkOpen: (isOpen) => set({ isCmdkOpen: isOpen }),
