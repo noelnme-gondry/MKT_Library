@@ -6,6 +6,7 @@ import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/u
 import DataFeatureMatrix from "@/components/DataFeatureMatrix";
 import { buildDemoCsv } from "@/utils/demoData";
 import DemoLoadButton from "@/components/DemoLoadButton";
+import CsvGuide from "@/components/ds/CsvGuide";
 
 function escapeHtml(str) {
   if (!str) return "";
@@ -225,6 +226,7 @@ export default function CsvUploader({ toolId, showMatrix = true }) {
   if (!hasFile) {
     return (
       <div>
+        <CsvGuide toolId={toolId} />
         <div
           className={`csv-dropzone ${isDragging ? "dragover" : ""}`}
           onDragOver={handleDragOver}
@@ -263,6 +265,7 @@ export default function CsvUploader({ toolId, showMatrix = true }) {
 
   return (
     <div>
+      <CsvGuide toolId={toolId} />
       <div className="file-state">
         <div className="meta-text">
           <span className="dot" style={{ background: "#22c55e" }}></span>

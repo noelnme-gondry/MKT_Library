@@ -3744,6 +3744,106 @@ body:not(.light-mode) .moon-icon {
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* ── CsvGuide (design-system baseline §1.4) — 업로드 설명 하이브리드 ── */
+.csv-guide { margin-bottom: 14px; }
+.csv-guide-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-lg, 10px);
+  background: var(--surface-container-lowest);
+}
+.csv-guide-line { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.csv-guide-when { font-size: 12.5px; color: var(--text-primary); line-height: 1.5; }
+.csv-guide-need { font-size: 11px; color: var(--text-muted); }
+.csv-guide-btn {
+  flex-shrink: 0;
+  padding: 7px 13px;
+  border-radius: var(--radius-lg, 10px);
+  border: 1px solid var(--primary);
+  background: transparent;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.csv-guide-btn:hover { background: var(--primary); color: var(--surface-base, #0b0d12); }
+
+.csv-guide-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+}
+.csv-guide-modal {
+  width: min(680px, 100%);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-base, var(--bg-1));
+  border: 1px solid var(--border-stronger, var(--border));
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+}
+.csv-guide-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.csv-guide-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+}
+.csv-guide-close:hover { color: var(--text-primary); }
+.csv-guide-modal-body { padding: 16px 18px; overflow-y: auto; }
+.csv-guide-modal-body section { margin-bottom: 16px; }
+.csv-guide-modal-body h4 {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.csv-guide-modal-body p { margin: 0 0 4px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+.csv-guide-grain { color: var(--text-muted) !important; font-size: 11.5px !important; }
+.csv-guide-prep { margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
+.csv-guide-example {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--bg-2, var(--surface-container-lowest));
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  overflow-x: auto;
+  white-space: pre;
+}
+.csv-guide-modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+}
 /* csv-drop-icon → mirrors index .dropzone-icon */
 .csv-drop-icon {
   width: 48px;
