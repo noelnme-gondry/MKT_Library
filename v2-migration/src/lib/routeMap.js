@@ -21,6 +21,7 @@ export const ROUTES = [
   { id: "5-4", slug: "/tools/experiment-analysis", component: "AbTestHoldout" },
   { id: "5-18", slug: "/tools/marketing-response", component: "MarketingResponse" },
   { id: "5-20", slug: "/tools/aha-moment", component: "AhaMomentFinder" },
+  { id: "5-23", slug: "/tools/incrementality", component: "Incrementality" },
   { id: "1-1", slug: "/guide/dev-collaboration", component: "SopContent" },
   { id: "1-2", slug: "/guide/event-taxonomy", component: "SopContent" },
   { id: "1-3", slug: "/guide/postback-integration", component: "SopContent" },

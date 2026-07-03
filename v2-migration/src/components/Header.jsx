@@ -9,6 +9,9 @@ export default function Header() {
   const isDarkMode = useAppStore((state) => state.isDarkMode);
   const toggleTheme = useAppStore((state) => state.toggleTheme);
   const setCmdkOpen = useAppStore((state) => state.setCmdkOpen);
+  // 전역 통화(design-system §1.2) — 어느 도구서든 도달 가능한 단일 토글.
+  const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const setDisplayCurrency = useAppStore((state) => state.setDisplayCurrency);
   // 현재 활성 그룹(효율/소재/실험/응답/aha)의 csvData — 전역 헤더에서 파일명 노출 +
   // 어느 도구에서든 동일하게 초기화 가능하게(§ 그룹 스코프 csvData 미러).
   const csvData = useAppStore((state) => state.csvData);
@@ -72,6 +75,20 @@ export default function Header() {
         )}
       </nav>
       <div className="topbar-actions">
+        {currentRouteId.startsWith("5-") && (
+          <span className="hdr-currency" role="group" aria-label="표시 통화" title="표시 통화 — 전 도구에 적용">
+            {["KRW", "USD"].map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={`hdr-currency-btn ${displayCurrency === c ? "active" : ""}`}
+                onClick={() => setDisplayCurrency(c)}
+              >
+                {c === "KRW" ? "₩" : "$"}
+              </button>
+            ))}
+          </span>
+        )}
         {hasCsv && (
           <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11.5px", color: "var(--text-muted)", marginRight: "4px" }}>
             <span className="chip" title={csvData.fileName}>

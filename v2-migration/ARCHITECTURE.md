@@ -18,6 +18,7 @@ v2-migration/
 │  │  └─ useDataStore.js    # ★ SSOT: Zustand — IA·csvGroups(스코프)·csvData(미러)·TOOL_GROUP·필터·currentRouteId·테마
 │  ├─ utils/                # ★ 순수 통계엔진 (ESM, 수학 불변, vitest 골든) + 데이터층 + 추출 math(funnel/segment/anomaly/pacing/cohort/incr)
 │  └─ components/
+│     ├─ ds/            # ★ 디자인시스템 공용(design-system-baseline.md): DataTable·CsvGuide
 │     ├─ Sidebar/Header/LandingPage/CsvUploader/GlobalModals/Dashboard.jsx  # 셸
 │     ├─ tools/             # 8개 Pro 도구 (route별 1 컴포넌트)
 │     ├─ dashboard/         # 5-2 운영 대시보드 8탭 + 필터바 + 이벤트마커
@@ -36,7 +37,8 @@ v2-migration/
 | `/tools/campaign-saturation` | 5-22 | tools/MarketingEfficiency.jsx (포화도) |
 | `/tools/budget-allocation` | 5-3 | tools/BudgetAllocation.jsx (예산) |
 | `/tools/creative-analysis` | 5-6 | tools/CreativeAnalyzer.jsx (소재) |
-| `/tools/experiment-analysis` | 5-4(+5-7,5-15) | tools/AbTestHoldout.jsx (실험) |
+| `/tools/experiment-analysis` | 5-4(+5-7,5-15) | tools/AbTestHoldout.jsx (A/B 설계+판독) |
+| `/tools/incrementality` | 5-23 | tools/Incrementality.jsx (증분: 통제군·전후 on/off) |
 | `/tools/marketing-response` | 5-18 | tools/MarketingResponse.jsx (MMM·회귀·예측·Lab) |
 | `/tools/aha-moment` | 5-20 | tools/AhaMomentFinder.jsx (Aha) |
 | `/guide/<kebab>` | 1-x~4-x | sops/SopContent.jsx (SOP) |
@@ -48,12 +50,13 @@ v2-migration/
 | MarketingEfficiency.jsx | `satMath.js` (SAT_MATH,satBuildPoints) + allocationMath | 포화지수 |
 | CampaignPvm.jsx | `pvmMath.js` (PVM_MATH) | Bennet 분해·rollup |
 | CreativeAnalyzer.jsx | `creativeMath.js` (CREATIVE_MATH/FATIGUE/STATS) | WLS·피로도 |
-| AbTestHoldout.jsx | `abTestMath.js` (STATS) | z-test·bayesian·powerCurve |
+| AbTestHoldout.jsx | `abTestMath.js` (STATS) | z-test·bayesian·powerCurve (A/B만) |
+| Incrementality.jsx (5-23) | `incrMath.js`(통제군 INCR_MATH)+`incrPrePostMath.js`(전후 on/off·DiD·Welch) | 3방법 탭·CSV 그룹 독립 |
 | MarketingResponse.jsx | `mmmMath.js`(MMM 기여분해+`mmmForecast` §7 미래예측)+`regMath.js`(mmmOls)+`responseCannibRank.js` | ①진단·②기여분해·③회귀예측 3탭, 단일 CSV/colMap. ③예측=`mmmForecast`(②계수 외삽+95%밴드). `regForecastMath`=날짜포맷 헬퍼뿐, `regLabMath`=테스트 전용(앱 미사용) |
 | AhaMomentFinder.jsx | `ahaMath.js` (AHA_STATS) | gridSearch·F1/Lift |
 | dashboard/* (5-2) | `dashboardAggregator.js`(getMappedRows·KPI)·`ltvMath.js`·`funnelMath.js`·`segmentMath.js`·`anomalyMath.js`·`pacingMath.js`·`cohortMath.js`·`responseMath.js`(CANNIBAL_STATS) | 탭별 순수 math 추출 끝(골든 커버) |
 | AbTestHoldout 증분 | `incrMath.js`(홀드아웃 증분)·abTestMath.js | readout/incr 추출 |
-| (공통) | `chartUtils.js`·`testFixtures.js`(seededNoise) | 차트 헬퍼·결정론 픽스처 |
+| (공통) | `chartUtils.js`·`testFixtures.js`(seededNoise)·`format.js`(fmtCurrency/Pct/Num·§7 콤마)·`toolGuide.js`(TOOL_GUIDE) | 차트·픽스처·표시포맷 SSOT·업로드 설명 |
 | (필드 정의) | `csvConstants.js` (STANDARD_FIELDS·TOOL_REQUIRED/OPTIONAL_FIELDS) | 매핑 스키마 |
 
 ## 4. 상태 & 데이터 흐름 (SSOT)

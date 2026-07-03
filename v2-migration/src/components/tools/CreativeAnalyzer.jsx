@@ -665,33 +665,53 @@ export default function CreativeAnalyzer() {
 
   return (
     <div className="tab-pane active" id="tab-creative">
-      {/* 히어로 — index pageShell deck/chips/snapshot + 요약 불릿 + 방법론 fold 이식 */}
-      <div className="hero" style={{ marginBottom: "16px" }}>
-        <h1 className="hero-title">소재 분석 (Creative Analyzer)</h1>
-        <p className="hero-subtitle">
-          소재별 성과 한눈에 보기, 어떤 특징이 효과적인지 분석, 지치기 전에 교체 시점 알려주기
-        </p>
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", margin: "8px 0 4px" }}>
-          <span className="chip"><span className="dot"></span>도구 · 소재 분석</span>
-          <span className="chip ok"><span className="dot"></span>소재 {metrics.length}개</span>
-          <span className="chip"><span className="dot"></span>config {CREATIVE_CONFIG.version} · snapshot {snapshotHash}</span>
+      {/* 히어로 — 결론 먼저(질문 헤드라인) + 여정=질문 grid + 방법론 fold (claude-ux §0·§1·§3·§5) */}
+      <section
+        className="block"
+        id="s-creative-hero"
+        style={{
+          background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))",
+          border: "1px solid rgba(122,162,247,0.25)",
+          borderRadius: "14px",
+          padding: "18px 20px",
+          marginBottom: "16px",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px" }}>
+          <div>
+            <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>어떤 소재가 이기고, 언제 갈아끼워야 하나?</h2>
+            <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6, maxWidth: "660px" }}>
+              소재(영상·이미지 등 광고 크리에이티브)별로 무엇이 잘 되는지, 왜 잘 되는지, 언제 새로 바꿔야 하는지를 한 곳에서 보여줍니다.
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            <span className="chip ok"><span className="dot"></span>소재 {metrics.length}개</span>
+            <span className="chip"><span className="dot"></span>config {CREATIVE_CONFIG.version}</span>
+          </div>
         </div>
-        <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: "8px 0 0", lineHeight: 1.6 }}>
-          소재(영상·이미지 등 광고 크리에이티브)별로 어떤 게 잘 되고 있는지, 왜 잘 되는지, 언제 새로 바꿔야 하는지를 한 곳에서 보여줍니다.
-        </p>
-        <ul style={{ margin: "8px 0 0", paddingLeft: "18px", fontSize: "12.5px", lineHeight: 1.7, color: "var(--text-secondary)" }}>
-          <li><strong>어떤 소재가 이기고 있나</strong> — 승률·교체 속도·생존 기간 (Win-rate · Velocity)</li>
-          <li><strong>어떤 특징이 효과적인가</strong> — 후킹 방식·포맷 등 속성별 효과 분석 (WLS 분해)</li>
-          <li><strong>지금 지치고 있는 소재가 있나</strong> — 소재 피로도 진단과 교체 시점 추천 (Fatigue)</li>
-          <li><strong>다음엔 뭘 테스트할까</strong> — 조합별 성과표 기반 다음 테스트 후보 추천</li>
-        </ul>
-        <details style={{ marginTop: "8px", fontSize: "11.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
-          <summary>⚠️ 통계 분석 및 해석 한계 펼치기</summary>
+
+        {/* 여정 = 질문 4개 (grid 균등 정렬) */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "10px", marginTop: "14px" }}>
+          {[
+            ["🏆", "어떤 소재가 이기고 있나", "승률·교체 속도·생존 기간"],
+            ["🔍", "어떤 특징이 효과적인가", "후킹 방식·포맷 등 속성별 효과"],
+            ["🔋", "지금 지치는 소재가 있나", "피로도 진단·교체 시점 추천"],
+            ["🧪", "다음엔 뭘 테스트할까", "조합별 성과 기반 후보 추천"],
+          ].map(([ic, q, a], i) => (
+            <div key={i} style={{ background: "var(--surface-container-lowest)", border: "1px solid var(--border)", borderRadius: "10px", padding: "11px 13px" }}>
+              <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.35 }}>{ic} {q}</div>
+              <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "4px", lineHeight: 1.5 }}>{a}</div>
+            </div>
+          ))}
+        </div>
+
+        <details style={{ marginTop: "12px", fontSize: "11.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
+          <summary>⚠️ 통계 분석 및 해석 한계 (상관 ≠ 인과)</summary>
           <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
             노출량 가중 최소제곱법(WLS)과 다중 검정 보정(BH)을 통해 크리에이티브 속성(Hook, Format 등)의 효과를 추정합니다. 본 분해 결과는 매체 알고리즘에 따른 노출 편향(Selection Bias)이 포함되어 있으므로 인과적 효과가 아닌 상관 관계로 해석해야 하며, 최종 확정은 실험 도구(5-4)를 통해 검증하시는 것을 권장합니다.
           </div>
         </details>
-      </div>
+      </section>
 
       <details className="block" id="s-prep" style={{ padding: "13px 16px" }}>
         <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: "var(--text-muted)", outline: "none" }}>🗂 데이터 매핑 설정 (펼쳐서 변경)</summary>
@@ -1168,9 +1188,9 @@ export default function CreativeAnalyzer() {
               <table className="data" style={{ fontSize: "11px" }}>
                 <tbody>
                   <tr>
-                    <th style={{ background: "var(--bg-2)" }}><strong>{rowAttr}</strong> ↓ \ <strong>{colAttr}</strong> →</th>
+                    <th style={{ background: "var(--bg-2)", textAlign: "left", whiteSpace: "nowrap" }}><strong>{rowAttr}</strong> ↓ \ <strong>{colAttr}</strong> →</th>
                     {matrix.cols.map((c) => (
-                      <th key={c} style={{ background: "var(--bg-2)" }}>{c}</th>
+                      <th key={c} style={{ background: "var(--bg-2)", textAlign: "left", whiteSpace: "nowrap" }}>{c}</th>
                     ))}
                   </tr>
                   {matrix.grid.map((row, ri) => (
@@ -1195,6 +1215,8 @@ export default function CreativeAnalyzer() {
                               padding: "8px",
                               fontSize: "11px",
                               lineHeight: 1.5,
+                              textAlign: "left",
+                              verticalAlign: "top",
                               cursor: clickable ? "pointer" : "default",
                               outline: isSel ? "2px solid var(--primary, #adc6ff)" : "none",
                               outlineOffset: isSel ? "-2px" : undefined,

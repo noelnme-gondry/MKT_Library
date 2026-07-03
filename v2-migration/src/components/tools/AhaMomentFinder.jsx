@@ -8,6 +8,9 @@ import { AHA_STATS, ahaParseActionWindow } from "@/utils/ahaMath";
 import { downloadChartAsPNG } from "@/utils/chartUtils";
 import { idToSlug } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
+import DemoLoadButton from "@/components/DemoLoadButton";
+import CsvGuide from "@/components/ds/CsvGuide";
+import { buildDemoCsv } from "@/utils/demoData";
 
 function escapeHtml(str) {
   if (str == null) return "";
@@ -268,6 +271,13 @@ export default function AhaMomentFinder() {
       },
     });
   };
+  // Demo: load sample event data + auto-confirm the analyze gate (see reseed below).
+  // State (not ref) because the reseed reads it during render.
+  const [demoPending, setDemoPending] = useState(false);
+  const handleLoadDemo = () => {
+    setDemoPending(true);
+    setCsvData(buildDemoCsv("aha"));
+  };
   const [minSupport, setMinSupport] = useState(30);
   const [holdoutOn, setHoldoutOn] = useState(true);
   const [sortBy, setSortBy] = useState("f1");
@@ -296,8 +306,11 @@ export default function AhaMomentFinder() {
   const seedKey = hasData ? `${fileName}|${headers.join(",")}|${csvData.raw.length}` : "";
   if (seededKey !== seedKey) {
     setSeededKey(seedKey);
-    setColMap(hasData ? ahaAutoMapColumns(headers, csvData.raw) : {});
-    setAnalyzedSig(null);
+    const cm = hasData ? ahaAutoMapColumns(headers, csvData.raw) : {};
+    setColMap(cm);
+    // Demo load auto-confirms the gate so results show instantly (matches other tools).
+    setAnalyzedSig(demoPending && hasData ? ahaAnalyzeSig(cm, fileName) : null);
+    if (demoPending) setDemoPending(false);
     setDrilldownAction(null);
   }
 
@@ -561,9 +574,7 @@ export default function AhaMomentFinder() {
       <div className="tab-pane active" id="tab-aha">
         <section className="block" id="s-prep">
           <h2 className="section-title">데이터 준비</h2>
-          <p className="muted" style={{ fontSize: "12px", marginBottom: "12px" }}>
-            유저 1명당 1행. 각 후보 액션은 윈도우별 누적 count 컬럼 묶음(예: <code className="inline">invite_d0, invite_d3, invite_d7</code>) + 타겟 달성 여부 컬럼(0/1)이 필요합니다. 업로드 후 컬럼 역할(선행 행동·타겟)을 확인·수정합니다. 데이터는 브라우저 메모리에만 — 서버 전송 없음.
-          </p>
+          <CsvGuide toolId="5-20" />
           <div
             className="csv-dropzone"
             onDragOver={(e) => e.preventDefault()}
@@ -583,6 +594,7 @@ export default function AhaMomentFinder() {
             <input type="file" accept=".csv,text/csv" style={{ display: "none" }} ref={ahaFileRef}
               onChange={(e) => { if (e.target.files?.[0]) handleAhaFile(e.target.files[0]); e.target.value = null; }} />
           </div>
+          <DemoLoadButton onLoad={handleLoadDemo} />
         </section>
       </div>
     );

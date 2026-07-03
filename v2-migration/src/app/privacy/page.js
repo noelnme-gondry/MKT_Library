@@ -1,4 +1,11 @@
-export const metadata = { title: "개인정보처리방침 | Growth Ops Playbook" };
+import { SITE_URL } from "@/lib/routeMap";
+
+// 자기 자신을 canonical로(layout canonical 제거로 홈 누수 방지, GSC 대체페이지 이슈).
+export const metadata = {
+  title: "개인정보처리방침 | Growth Ops Playbook",
+  alternates: { canonical: `${SITE_URL}/privacy` },
+  openGraph: { url: `${SITE_URL}/privacy` },
+};
 
 export default function PrivacyPage() {
   return (

@@ -14,9 +14,10 @@ export const metadata = {
     index: true,
     follow: true,
   },
-  alternates: {
-    canonical: "https://mktlibrary.up.railway.app/",
-  },
+  // metadataBase로 상대 canonical 해석. layout에 canonical을 직접 박으면 자식
+  // 페이지(privacy/terms 등)가 그대로 상속받아 "홈을 canonical로 선언" → GSC
+  // "적절한 표준 태그가 포함된 대체 페이지"로 색인 제외됨. canonical은 페이지별로.
+  metadataBase: new URL("https://mktlibrary.up.railway.app"),
   openGraph: {
     type: "website",
     url: "https://mktlibrary.up.railway.app/",
@@ -48,6 +49,7 @@ export default function RootLayout({ children }) {
     <html lang="ko" className="dark">
       <head>
         <meta name="theme-color" content="#121315" />
+        <meta name="naver-site-verification" content="f2fa6989a62ef790e6485b64f2b998bfc86b2cbe" />
         <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23adc6ff'/><text x='16' y='22' font-family='Inter, system-ui, sans-serif' font-size='18' font-weight='700' text-anchor='middle' fill='%231a1a2e'>M</text></svg>" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -57,6 +59,40 @@ export default function RootLayout({ children }) {
             콘솔 에러 유발)라 제거. Supabase는 전체 무료 전환으로 미사용(TODO(B2B) 재도입 시 layout에 재추가). */}
       </head>
       <body>
+        {/* 구조화 데이터 (JSON-LD) — 검색엔진이 사이트·조직을 인식(SEO). SSR로 초기 HTML에 포함. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "WebSite",
+                  "@id": "https://mktlibrary.up.railway.app/#website",
+                  url: "https://mktlibrary.up.railway.app/",
+                  name: "Growth Ops Playbook",
+                  description: "퍼포먼스 마케팅 SOP & 데이터 분석 도구",
+                  inLanguage: "ko-KR",
+                },
+                {
+                  "@type": "Organization",
+                  "@id": "https://mktlibrary.up.railway.app/#org",
+                  name: "Growth Ops Playbook",
+                  url: "https://mktlibrary.up.railway.app/",
+                  logo: "https://mktlibrary.up.railway.app/og-card.png",
+                },
+                {
+                  "@type": "SoftwareApplication",
+                  name: "Growth Ops Playbook",
+                  applicationCategory: "BusinessApplication",
+                  operatingSystem: "Web",
+                  offers: { "@type": "Offer", price: "0", priceCurrency: "KRW" },
+                  description: "GA4 세팅·ROAS 개선·MMM·예산배분 등 퍼포먼스 마케팅 실무 대시보드와 SOP 가이드.",
+                },
+              ],
+            }),
+          }}
+        />
         {/* Google Tag Manager (noscript) */}
         <noscript>
           <iframe

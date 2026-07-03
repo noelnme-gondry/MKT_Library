@@ -4,10 +4,33 @@ import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { STATS } from "@/utils/abTestMath";
 import { CREATIVE_STATS } from "@/utils/creativeMath";
-import { INCR_MATH, parseHoldoutGroup } from "@/utils/incrMath";
 import CsvUploader from "@/components/CsvUploader";
+import { getMappedRows } from "@/utils/dashboardAggregator";
+import DataTable from "@/components/ds/DataTable";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
+
+/* 5-4 전용 템플릿 CSV (DataFeatureMatrix는 효율 스키마라 부적합 → 자체 제공).
+   BOM+CRLF (§7). 헤더 + 예시 1~N행. */
+function downloadCsv(fileName, text) {
+  const blob = new Blob(["﻿" + text], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function downloadAbTemplate() {
+  const rows = [
+    "arm_id,is_control,numerator,denominator",
+    "Control,1,400,8000",
+    "Variant A,0,496,8000",
+    "Variant B,0,424,8000",
+  ];
+  downloadCsv("template_5-4_ab.csv", rows.join("\r\n") + "\r\n");
+}
 
 /* 통화 포맷 — index.html fmtCurrency 포팅 (통화 토글 반영) */
 function fmtCurrency(value, currency) {
@@ -47,7 +70,9 @@ export default function AbTestHoldout() {
   const [activeTab, setActiveTab] = useState("design");
   const [mode, setMode] = useState("plan");
   const [testType, setTestType] = useState("binary");
-  const [currency, setCurrency] = useState("KRW");
+  // 전역 통화(design-system) — 도구별 통화 state 대신 store 구독(§1.2).
+  const currency = useAppStore((s) => s.displayCurrency);
+  const setCurrency = useAppStore((s) => s.setDisplayCurrency);
   const { csvData } = useAppStore();
 
   const sym = CURRENCY_SYMBOLS[currency] || "₩";
@@ -80,7 +105,6 @@ export default function AbTestHoldout() {
   const [pcPower, setPcPower] = useState("0.80");
 
   const abChartRef = useRef(null);
-  const holdoutChartRef = useRef(null);
   const powerChartRef = useRef(null);
 
   // ============================================================
@@ -178,7 +202,9 @@ export default function AbTestHoldout() {
   //  Readout aggregation (CSV) — 2-arm significance + optional mass
   // ============================================================
   const readoutData = useMemo(() => {
-    const rows = csvData?.raw;
+    // 매핑 적용 행(표준키) — 사용자가 임의 헤더를 매핑해도 엔진이 읽게. 데모/템플릿은
+    // 헤더가 이미 표준키라 identity 매핑.
+    const rows = getMappedRows(csvData);
     if (!rows || rows.length === 0) return null;
 
     // Detect an arm dimension for mass readout
@@ -229,43 +255,6 @@ export default function AbTestHoldout() {
   }, [csvData]);
 
   // ============================================================
-  //  Holdout incrementality (CSV) — control-transform + significance
-  // ============================================================
-  const holdoutData = useMemo(() => {
-    const rows = csvData?.raw;
-    if (!rows || rows.length === 0) return null;
-
-    let cNum = 0, cDen = 0, tNum = 0, tDen = 0, spend = 0, revenue = 0;
-    rows.forEach((row) => {
-      const group = parseHoldoutGroup(row.holdout_group);
-      const n = num(row.numerator) || 0;
-      const d = num(row.denominator) || 0;
-      if (group === "control") { cNum += n; cDen += d; }
-      else if (group === "test") {
-        tNum += n; tDen += d;
-        spend += num(row.spend) || 0;
-        revenue += num(row.revenue_d7 ?? row.revenue) || 0;
-      }
-    });
-
-    if (cDen <= 0 || tDen <= 0) return { insufficient: true };
-
-    // 반사실·lift·iROAS는 순수 유틸(INCR_MATH.compute)로 산출 — index.html verbatim
-    const incr = INCR_MATH.compute(
-      { num: tNum, den: tDen, spend, rev: revenue > 0 ? revenue : null },
-      { num: cNum, den: cDen },
-    );
-    const { cRate, tRate, expected: counterfactual, incrementalConv, liftRel, liftAbs, iroas, cpia } = incr;
-
-    const sig = STATS.twoPropZTest(cDen, cNum, tDen, tNum);
-
-    return {
-      cNum, cDen, tNum, tDen, cRate: cRate * 100, tRate: tRate * 100,
-      counterfactual, incrementalConv, liftRel, liftAbs, iroas, cpia, sig, spend, revenue,
-    };
-  }, [csvData]);
-
-  // ============================================================
   //  Readout bar chart
   // ============================================================
   useEffect(() => {
@@ -289,31 +278,6 @@ export default function AbTestHoldout() {
       if (abChartRef.current) { abChartRef.current.destroy(); abChartRef.current = null; }
     };
   }, [activeTab, readoutData]);
-
-  // ============================================================
-  //  Holdout bar chart
-  // ============================================================
-  useEffect(() => {
-    if (holdoutChartRef.current) { holdoutChartRef.current.destroy(); holdoutChartRef.current = null; }
-    if (activeTab !== "holdout" || !holdoutData || holdoutData.insufficient) return;
-    const ctx = document.getElementById("holdout-bar");
-    if (!ctx) return;
-    holdoutChartRef.current = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: ["Control (Holdout)", "Test (Exposed)"],
-        datasets: [{
-          label: "전환율 (%)",
-          data: [holdoutData.cRate, holdoutData.tRate],
-          backgroundColor: ["#fbbf24", "#22c55e"],
-        }],
-      },
-      options: { responsive: true, maintainAspectRatio: false },
-    });
-    return () => {
-      if (holdoutChartRef.current) { holdoutChartRef.current.destroy(); holdoutChartRef.current = null; }
-    };
-  }, [activeTab, holdoutData]);
 
   // ============================================================
   //  Power curve chart (§4)
@@ -373,17 +337,24 @@ export default function AbTestHoldout() {
 
   return (
     <div className="tab-pane active" id="tab-ab">
-      <div className="ab-tabs" style={{ marginBottom: "20px" }}>
+      <div className="ab-tabs" style={{ marginBottom: "8px" }}>
         <button className={`ab-tab ${activeTab === "design" ? "active" : ""}`} onClick={() => setActiveTab("design")}>
-          실험 설계 및 수동 계산
+          ① 설계 · 얼마나 모아야 하나?
         </button>
         <button className={`ab-tab ${activeTab === "readout" ? "active" : ""}`} onClick={() => setActiveTab("readout")}>
-          실험 판독 (CSV)
-        </button>
-        <button className={`ab-tab ${activeTab === "holdout" ? "active" : ""}`} onClick={() => setActiveTab("holdout")}>
-          홀드아웃 증분 (CSV)
+          ② A/B 판독 · 어느 쪽이 이겼나?
         </button>
       </div>
+      {/* 탭별 한 줄 평어 안내 (claude-ux §1 여정=질문) */}
+      <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "0 0 18px", lineHeight: 1.6 }}>
+        {activeTab === "design" && "실험을 시작하기 전에 — 얼마나 많은 표본(사람 수)을 모아야 결과를 믿을 수 있는지 계산합니다."}
+        {activeTab === "readout" && "두 안(A vs B)을 모두 노출한 뒤 — 어느 쪽 전환율이 더 높고, 그 차이가 우연이 아닌지 판정합니다."}
+      </p>
+      {activeTab === "readout" && (
+        <div className="callout" style={{ marginBottom: "16px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
+          <strong>광고가 없었어도 일어났을 전환(증분)</strong>을 보려면? → 왼쪽 메뉴 <strong>증분 분석</strong> 도구(홀드아웃·전후 비교)를 쓰세요. A/B는 &quot;둘 중 뭐가 나은가&quot;, 증분 분석은 &quot;광고를 한 것 자체가 값어치였나&quot;를 봅니다.
+        </p></div></div>
+      )}
 
       {activeTab === "design" && (
         <>
@@ -683,22 +654,8 @@ export default function AbTestHoldout() {
             )}
           </section>
 
-          <section className="block" id="s-mass">
-            <h2 className="section-title"><span className="ix">§3</span>대량 실험 검정 (Mass Test Readout)</h2>
-            <div className="callout warning">
-              <div className="ico">!</div>
-              <div className="body">
-                <strong>CSV 업로드</strong>
-                <p>실험 결과 CSV(arm_id·is_control·numerator·denominator)를 업로드하면 &quot;실험 판독&quot; 탭에서 대조군 대비 모든 arm의 유의성을 한 번에 확인할 수 있습니다.</p>
-                <div style={{ marginTop: "1rem" }}>
-                  <CsvUploader toolId="5-4" />
-                </div>
-              </div>
-            </div>
-          </section>
-
           <section className="block" id="s-powercurve">
-            <h2 className="section-title"><span className="ix">§4</span>MDE vs Sample Size 파워 커브</h2>
+            <h2 className="section-title"><span className="ix">§3</span>MDE vs Sample Size 파워 커브</h2>
             <p style={{ color: "var(--text-secondary)" }}>표본 수(그룹당)가 커질수록 통계적으로 탐지 가능한 최소 효과 크기(MDE)가 줄어듭니다. baseline 전환율이 낮을수록 더 많은 표본이 필요합니다.</p>
             <div className="ab-form-grid">
               <div className="ab-field">
@@ -728,7 +685,7 @@ export default function AbTestHoldout() {
           </section>
 
           <section className="block" id="s-notes">
-            <h2 className="section-title"><span className="ix">§5</span>통계 노트</h2>
+            <h2 className="section-title"><span className="ix">§4</span>통계 노트</h2>
             <ul>
               <li><strong>Binary (CVR) · z-test</strong>: <code className="inline">z = (p̂_B - p̂_A) / √(p̄(1-p̄)(1/n_A + 1/n_B))</code>. p-value &lt; α 시 귀무가설 기각.</li>
               <li><strong>Binary · Sample Size</strong>: <code className="inline">n = 2 × (z_α/2 + z_β)² × p̄(1-p̄) / δ²</code></li>
@@ -750,8 +707,11 @@ export default function AbTestHoldout() {
                 <div className="ico">!</div>
                 <div className="body">
                   <strong>실험 결과 CSV 업로드 대기</strong>
-                  <p>필수: is_control·numerator·denominator (옵션: arm_id로 다중 변형 대량 검정)</p>
-                  <div style={{ marginTop: "1rem" }}><CsvUploader toolId="5-4" /></div>
+                  <p style={{ margin: "2px 0 6px" }}>그룹별 1행. <strong>필수</strong>: 대조군 여부(is_control) · 전환수(numerator) · 그룹 인원(denominator). <strong>옵션</strong>: 변형 그룹(arm_id)이 있으면 Variant A/B/C… 대량검정.</p>
+                  <div style={{ margin: "6px 0 4px" }}>
+                    <button className="ab-pill" onClick={downloadAbTemplate}>⬇ A/B 템플릿 CSV (예시 포함)</button>
+                  </div>
+                  <div style={{ marginTop: "1rem" }}><CsvUploader toolId="5-4" showMatrix={false} /></div>
                 </div>
               </div>
             ) : (
@@ -779,6 +739,12 @@ export default function AbTestHoldout() {
                       <div style={{ marginTop: "12px", fontWeight: 700, color: verdictColor(s.pValue, liftPositive) }}>
                         {s.pValue < 0.05 ? (liftPositive ? "✓ 유의미한 개선 (Ship 후보)" : "✗ 유의미한 악화 (Kill)") : "— 비유의 (Inconclusive — 더 많은 데이터 필요)"}
                       </div>
+                      <div className="callout" style={{ marginTop: "10px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
+                        <strong>쉽게 말하면:</strong> Test안이 Control보다 전환율이 <strong>{s.liftRel >= 0 ? "+" : ""}{(s.liftRel * 100).toFixed(1)}%</strong> {s.liftRel >= 0 ? "높습니다" : "낮습니다"}.
+                        {" "}<strong>p-value {s.pValue.toFixed(4)}</strong> = 이 차이가 순전히 우연일 확률 {(s.pValue * 100).toFixed(2)}%.
+                        {s.pValue < 0.05 ? " 0.05(5%)보다 작으니, 우연이 아닌 진짜 차이로 볼 수 있어요." : " 0.05(5%)보다 크니 아직 우연일 수 있어요 — 표본을 더 모으세요."}
+                        {" "}괄호 안 z·CI는 통계 원값(전문가용)입니다.
+                      </p></div></div>
                     </div>
                   );
                 })() : (
@@ -792,28 +758,21 @@ export default function AbTestHoldout() {
                   <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "6px 0 10px" }}>
                     대조군: <strong>{readoutData.mass.control.name}</strong> (n={readoutData.mass.control.n.toLocaleString()}, 전환율 {((readoutData.mass.control.x / readoutData.mass.control.n) * 100).toFixed(2)}%)
                   </p>
-                  <div className="table-wrap">
-                    <table className="data">
-                      <thead>
-                        <tr><th>Arm</th><th>표본수</th><th>전환율</th><th>대조군 대비 Lift</th><th>z</th><th>p-value</th><th>95% CI (절대차)</th><th>P(B&gt;A)</th><th>유의성</th></tr>
-                      </thead>
-                      <tbody>
-                        {readoutData.mass.rows.map((r, i) => (
-                          <tr key={i}>
-                            <td>{r.name}{r.isControl ? <span style={{ color: "var(--text-muted)", fontSize: "11px" }}> (control)</span> : ""}</td>
-                            <td className="tnum">{r.n.toLocaleString()}</td>
-                            <td className="tnum">{(r.rate * 100).toFixed(2)}%</td>
-                            <td className="tnum" style={{ color: r.isControl || r.liftRel >= 0 ? undefined : "#ef4444" }}>{r.isControl ? "—" : (r.liftRel * 100).toFixed(2) + "%"}</td>
-                            <td className="tnum">{r.isControl ? "—" : r.z.toFixed(3)}</td>
-                            <td className="tnum">{r.isControl ? "—" : r.pValue.toFixed(4)}</td>
-                            <td className="tnum">{r.isControl ? "—" : `[${(r.ciLow95 * 100).toFixed(2)}%, ${(r.ciHigh95 * 100).toFixed(2)}%]`}</td>
-                            <td className="tnum">{r.isControl ? "—" : isNaN(r.probBWins) ? "—" : (r.probBWins * 100).toFixed(1) + "%"}</td>
-                            <td>{r.isControl ? <span className="pill tier-3">대조군</span> : r.pValue < 0.01 ? <span className="pill tier-1">p &lt; 0.01</span> : r.pValue < 0.05 ? <span className="pill tier-2">p &lt; 0.05</span> : <span className="pill tier-3">비유의</span>}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <DataTable
+                    rows={readoutData.mass.rows}
+                    rowKey={(r, i) => i}
+                    columns={[
+                      { key: "name", label: "Arm", align: "left", fmt: (_, r) => <>{r.name}{r.isControl ? <span style={{ color: "var(--text-muted)", fontSize: "11px" }}> (control)</span> : ""}</> },
+                      { key: "n", label: "표본수", align: "right", fmt: (v) => v.toLocaleString() },
+                      { key: "rate", label: "전환율", align: "right", fmt: (v) => (v * 100).toFixed(2) + "%" },
+                      { key: "liftRel", label: "대조군 대비 Lift", align: "right", fmt: (_, r) => r.isControl ? "—" : <span style={{ color: r.liftRel >= 0 ? undefined : "#ef4444" }}>{(r.liftRel * 100).toFixed(2)}%</span> },
+                      { key: "z", label: "z", align: "right", fmt: (_, r) => r.isControl ? "—" : r.z.toFixed(3) },
+                      { key: "pValue", label: "p-value", align: "right", fmt: (_, r) => r.isControl ? "—" : r.pValue.toFixed(4) },
+                      { key: "ci", label: "95% CI (절대차)", align: "right", fmt: (_, r) => r.isControl ? "—" : `[${(r.ciLow95 * 100).toFixed(2)}%, ${(r.ciHigh95 * 100).toFixed(2)}%]` },
+                      { key: "probBWins", label: "P(B>A)", align: "right", fmt: (_, r) => r.isControl ? "—" : isNaN(r.probBWins) ? "—" : (r.probBWins * 100).toFixed(1) + "%" },
+                      { key: "sigv", label: "유의성", align: "left", fmt: (_, r) => r.isControl ? <span className="pill tier-3">대조군</span> : r.pValue < 0.01 ? <span className="pill tier-1">p &lt; 0.01</span> : r.pValue < 0.05 ? <span className="pill tier-2">p &lt; 0.05</span> : <span className="pill tier-3">비유의</span> },
+                    ]}
+                  />
                 </section>
               )}
 
@@ -828,69 +787,6 @@ export default function AbTestHoldout() {
         </>
       )}
 
-      {activeTab === "holdout" && (
-        <>
-          <section className="block" id="s-prep">
-            <h2 className="section-title">데이터 준비</h2>
-            {!holdoutData ? (
-              <div className="callout warning">
-                <div className="ico">!</div>
-                <div className="body">
-                  <strong>홀드아웃 CSV 업로드 대기</strong>
-                  <p>필수: holdout_group(test/control)·numerator(전환수)·denominator(그룹 사용자수). 옵션: spend·revenue_d7</p>
-                  <div style={{ marginTop: "1rem" }}><CsvUploader toolId="5-4" /></div>
-                </div>
-              </div>
-            ) : holdoutData.insufficient ? (
-              <div className="callout warn"><div className="ico">!</div><div className="body"><strong>test/control 양쪽 데이터가 필요합니다</strong><p>holdout_group이 test(exposed)와 control(holdout) 둘 다 있어야 증분을 계산합니다.</p></div></div>
-            ) : (
-              <div className="callout"><div className="ico">i</div><div className="body"><p style={{ margin: 0 }}>{csvData?.fileName ? <strong>{csvData.fileName}</strong> : "업로드된 데이터"}. 반사실 = test 인원 × control 전환율 기준 증분 산출.</p></div></div>
-            )}
-          </section>
-
-          {holdoutData && !holdoutData.insufficient && (
-            <section className="block" id="s-incr">
-              <h2 className="section-title"><span className="ix">§1</span>증분 결과 (test vs control)</h2>
-              {(() => {
-                const h = holdoutData;
-                const liftPositive = h.liftRel != null && h.liftRel > 0;
-                const isSig = h.sig && h.sig.pValue < 0.05;
-                // 절대 lift 95% CI (unpooled)
-                const cR = h.cRate / 100, tR = h.tRate / 100;
-                const se = Math.sqrt((cR * (1 - cR)) / h.cDen + (tR * (1 - tR)) / h.tDen);
-                const lo = (h.liftAbs - 1.96 * se) * 100, hi = (h.liftAbs + 1.96 * se) * 100;
-                const crossesZero = lo <= 0 && hi >= 0;
-                return (
-                  <div className="alloc-card" style={{ marginBottom: "14px", borderLeft: `3px solid ${liftPositive && isSig ? "#22c55e" : "#fbbf24"}` }}>
-                    <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px", margin: "8px 0" }}>
-                      <div className="ab-stat"><div className="ab-stat-label">Control 전환율</div><div className="ab-stat-value tnum">{h.cRate.toFixed(2)}%</div><div className="ab-stat-hint">{h.cNum.toLocaleString()}/{h.cDen.toLocaleString()}</div></div>
-                      <div className="ab-stat"><div className="ab-stat-label">Test 전환율</div><div className="ab-stat-value tnum">{h.tRate.toFixed(2)}%</div><div className="ab-stat-hint">{h.tNum.toLocaleString()}/{h.tDen.toLocaleString()}</div></div>
-                      <div className="ab-stat"><div className="ab-stat-label">상대 Lift</div><div className="ab-stat-value tnum" style={{ color: liftPositive ? "#22c55e" : "#ef4444" }}>{h.liftRel != null ? (h.liftRel > 0 ? "+" : "") + (h.liftRel * 100).toFixed(1) + "%" : "—"}</div><div className="ab-stat-hint" style={{ color: crossesZero ? "var(--text-muted)" : undefined }}>95%CI [{lo.toFixed(2)}, {hi.toFixed(2)}]%p{crossesZero ? " · 0 포함(불확실)" : ""}</div></div>
-                      <div className="ab-stat"><div className="ab-stat-label">증분 전환</div><div className="ab-stat-value tnum">{Math.round(h.incrementalConv).toLocaleString()}</div><div className="ab-stat-hint">test − 반사실</div></div>
-                      {h.cpia != null && <div className="ab-stat"><div className="ab-stat-label">증분 전환당 비용</div><div className="ab-stat-value tnum">{fmtCurrency(h.cpia, currency)}</div></div>}
-                      {h.iroas != null && <div className="ab-stat"><div className="ab-stat-label">iROAS</div><div className="ab-stat-value tnum" style={{ color: h.iroas >= 1 ? "#22c55e" : "#ef4444" }}>{h.iroas.toFixed(2)}×</div><div className="ab-stat-hint">증분매출/비용</div></div>}
-                      <div className="ab-stat"><div className="ab-stat-label">유의성</div><div className="ab-stat-value" style={{ fontSize: "13px" }}>{h.sig ? (h.sig.pValue < 0.05 ? <span style={{ color: "#22c55e" }}>유의 (p={h.sig.pValue.toFixed(4)})</span> : <span style={{ color: "var(--text-muted)" }}>무유의 (p={h.sig.pValue.toFixed(3)})</span>) : "—"}</div></div>
-                    </div>
-                    <div style={{ fontWeight: 700, color: verdictColor(h.sig?.pValue, liftPositive), marginTop: "8px" }}>
-                      {isSig ? (liftPositive ? "✓ 유의미한 증분 효과 확인" : "✗ 유의미한 음의 효과") : "— 증분 신호 불확실 (더 많은 데이터 필요)"}
-                    </div>
-                  </div>
-                );
-              })()}
-              <div className="callout" style={{ marginTop: "8px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "12px" }}>
-                <strong>증분 전환</strong> = test 전환 − (test 인원 × control 전환율). 어트리뷰션과 달리 holdout은 <strong>광고가 없었어도 일어났을 전환(control)</strong>을 빼서 진짜 기여만 봅니다. iROAS &lt; 1이면 증분 기준 적자, lift가 통계적으로 유의해야 신뢰 가능합니다.
-              </p></div></div>
-            </section>
-          )}
-
-          <section className="block" id="s-holdout-chart">
-            <h2 className="section-title">홀드아웃 결과 차트</h2>
-            <div className="chart-container" style={{ height: "300px", marginTop: "20px" }}>
-              <canvas id="holdout-bar"></canvas>
-            </div>
-          </section>
-        </>
-      )}
     </div>
   );
 }

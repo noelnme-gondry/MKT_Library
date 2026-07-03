@@ -511,8 +511,8 @@ export const STANDARD_FIELDS = {
                 group: "Test Readout",
               },
               arm_id: {
-                label: "암ID",
-                aliases: ["arm", "group_id", "variant_id", "암id", "그룹id"],
+                label: "변형 그룹 (Arm)",
+                aliases: ["arm", "group_id", "variant_id", "variant", "arm_id", "암id", "그룹id", "변형"],
                 type: "string",
                 required: false,
                 group: "Test Readout",
@@ -525,8 +525,8 @@ export const STANDARD_FIELDS = {
                 group: "Test Readout",
               },
               is_control: {
-                label: "대조군 여부",
-                aliases: ["control", "is control", "대조군여부", "대조군"],
+                label: "대조군 여부 (A/B)",
+                aliases: ["control", "is control", "is_control", "대조군여부", "대조군"],
                 type: "string",
                 required: false,
                 group: "Test Readout",
@@ -546,15 +546,15 @@ export const STANDARD_FIELDS = {
                 group: "Test Readout",
               },
               numerator: {
-                label: "분자",
-                aliases: ["num", "numerator", "성공수"],
+                label: "전환수 (분자)",
+                aliases: ["num", "numerator", "conversions", "conv", "성공수", "전환수", "전환"],
                 type: "number",
                 required: false,
                 group: "Test Readout",
               },
               denominator: {
-                label: "분모",
-                aliases: ["den", "denominator", "전체수", "노출수"],
+                label: "그룹 인원·모수 (분모)",
+                aliases: ["den", "denominator", "users", "exposures", "group_size", "전체수", "노출수", "인원", "모수"],
                 type: "number",
                 required: false,
                 group: "Test Readout",
@@ -575,12 +575,14 @@ export const STANDARD_FIELDS = {
               },
               // === Incrementality / Holdout 전용 (5-15) ===
               holdout_group: {
-                label: "Holdout 그룹",
+                label: "노출/홀드아웃 구분",
                 aliases: [
                   "holdout",
                   "holdout_group",
                   "group_type",
                   "test_control",
+                  "exposed",
+                  "exposed_control",
                   "노출그룹",
                   "홀드아웃",
                 ],
@@ -895,6 +897,11 @@ export const STANDARD_FIELDS = {
             };
 
 export const TOOL_REQUIRED_FIELDS = {
+              "5-4": [
+                "numerator",
+                "denominator",
+                { oneOf: ["is_control", "arm_id"] },
+              ],
               "5-2": ["date", { oneOf: ["installs", "actions", "cost"] }],
               "5-3": [
                 "date",
@@ -992,6 +999,11 @@ export const TOOL_REQUIRED_FIELDS = {
               ],
             };
 export const TOOL_OPTIONAL_FIELDS = {
+              "5-4": [
+                { key: "is_control", unlocks: "대조군(Control) vs Test 판정" },
+                { key: "arm_id", unlocks: "다변형 대량검정 (Variant A/B/C…)" },
+                { key: "date", unlocks: "기간 표기 (선택)" },
+              ],
               "5-2": [
                 { key: "channel", unlocks: "채널별 비중·시계열 분석" },
                 { key: "campaign_name", unlocks: "캠페인 단위 분석" },

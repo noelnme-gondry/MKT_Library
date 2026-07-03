@@ -17,6 +17,7 @@ import AbTestHoldout from "@/components/tools/AbTestHoldout";
 import MarketingResponse from "@/components/tools/MarketingResponse";
 import AhaMomentFinder from "@/components/tools/AhaMomentFinder";
 import MarketingEfficiency from "@/components/tools/MarketingEfficiency";
+import Incrementality from "@/components/tools/Incrementality";
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId } from "@/lib/routeMap";
@@ -58,6 +59,7 @@ export default function PageClient({ params }) {
             {routeId === "5-4" && <AbTestHoldout />}
             {routeId === "5-18" && <MarketingResponse />}
             {routeId === "5-20" && <AhaMomentFinder />}
+            {routeId === "5-23" && <Incrementality />}
 
             {routeId !== "home" &&
              !routeId.startsWith("5-") && (

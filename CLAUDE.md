@@ -67,7 +67,8 @@ Next.js 16 (App Router, Turbopack) · React 19 · Zustand 5 (store) · Chart.js 
 | 5-2 | 운영 대시보드 (시각화·스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트, 9탭) | **free** | 효율 CSV |
 | 5-22 | 캠페인 포화도 탐지 (채널·캠페인 한계 CPA/ROAS vs 평균 → 포화/여유 판정·응답곡선) | **free** | 효율 CSV 공유 |
 | 5-3 | 예산 배분 (절대 CPR/ROAS 가중 + 한계효용 그리디) | **free** | 효율 CSV |
-| 5-4 | 실험 분석 (A/B·Test Readout·Incrementality, 3탭) | free | 수동/CSV |
+| 5-4 | 실험 분석 (A/B: 설계+판독 2탭) | free | 수동/CSV |
+| 5-23 | 증분 분석 (홀드아웃 3방법: 통제군·신규켜기(on)·종료(off)) | free | 자체 CSV(그룹 독립) |
 | 5-6 | 소재 분석 | free | 소재 daily CSV |
 | 5-18 | 마케팅 반응 분석 (3탭: 카니발 진단·MMM 기여·**회귀+미래예측**[Cost·임의변수 자유매핑·OS별 분리·MMM브리지]) | free | 주간 패널 CSV |
 | 5-20 | 핵심 가치 발굴 (Aha-moment — 선행 행동 윈도우×횟수 그리드 탐색, F1/Lift) | free | 이벤트 CSV |
@@ -313,6 +314,12 @@ index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상�
 - **`buildPanelFromColMap` 타깃=플랫폼 합산**(같은 PR): OS 태그 컬럼 다중 매핑 시 종속(reg/react)을 `pick`(첫 1개)하면 Total인데 한 OS만 나옴(X는 filter라 대칭 깨짐). **플랫폼 일치 컬럼 index별 벡터합**으로 교체 → Total=Android+iOS. `_labTagOf`류 OS 태깅 정규식은 `\b` 대신 `[^a-z]` 구분자(언더스코어 `_ios_` 오탐 방지). 이 합산이 ②·③ target·platform 토글 정합의 단일 소스.
 - **패널 라벨 필드명 정합**: `mmmForecast`·차트는 `panel.dateLabel`·`panel.dates`·`panel.granularity`를 읽지 `weekLabel`이 아님 → `buildPanelFromColMap`이 `weekLabel`만 세팅하면 x축·미래라벨이 t 인덱스(1,2,+3…)로 폴백. 날짜 컬럼을 `_mmmParseDate`로 파싱해 `dateLabel`(=weekLabel)+`dates`+`granularity`(중앙 간격, days≥28 monthly/≥5 weekly)까지 세팅해야 실제 날짜로 표기. 엔진이 어떤 필드명 읽는지 항상 확인.
 - **콤마 입력은 v2 `CommaNumberInput` 재사용**(MarketingResponse.jsx): `type=number`는 천단위 콤마 불가(§7). §12.14 라이브 콤마+커서 보존 로직을 컴포넌트화 — `value`(number)·`onCommit(number|null)` props, type=text·표시 콤마·읽기 strip·blur 재포맷. 금액 입력 신규 시 재포팅 말고 이 컴포넌트 사용.
+
+### 12.21 디자인시스템 공용 규약 (전 도구·미래 도구 강제, `docs/design-system-baseline.md` SSOT)
+도구별 복붙·표류하던 UI를 `src/components/ds/*`·공용 유틸로 뽑아 상속. **신규 분석 도구 필수**: ① 숫자·통화·%는 `utils/format.js`(fmtCurrency/fmtPct/fmtNum/parseNum, §7 콤마) — 수동 포맷 금지 ② 통화는 전역 `store.displayCurrency`(₩/$ 토글 1개=전 도구, 도구별 통화 state 금지) ③ 표는 `ds/DataTable`(thead 강제·숫자 우측·헤더=셀 정렬 §7 근절) — 직접 `<table>` 지양 ④ CSV 업로드부는 `utils/toolGuide.js:TOOL_GUIDE[id]` 작성 → `ds/CsvGuide`(1줄 요약+📖버튼→모달, claude-ux §0 숨은어포던스 회피) ⑤ 차트 `chartCommonOpts()`+`CHART_THEME`(하드코딩 색 금지) ⑥ 엔진 순수 `*Math.js`+골든. 채택은 도구 1개씩 검증. (진행: format·통화·CsvGuide·DataTable 완료, DataTable 도구별 채택은 순차.)
+
+### 12.22 증분 분석 도구 (5-23, 홀드아웃 3방법 — 실험분석서 분리)
+증분(광고가 실제 만든 몫)은 실험분석(5-4 A/B)과 별개 → **소재·실험(06) 3번째 독립 도구**, CSV 그룹 독립. 3방법: ①통제군(suppression, `INCR_MATH`) 동시·무작위 노출 vs 홀드아웃 ②신규켜기(on)/③종료(off) 시점 전후(pre/post, `incrPrePostMath`: delta·counterfactual·Welch·대조군 DiD). ②③은 부호만 다른 한 엔진. 방법별 자체 드롭존·데모·템플릿. **정직성**: 무작위/DiD 아니면 인과 단정 X(claude-ux §7). 5-4는 홀드아웃 제거·A/B만.
 
 ---
 
