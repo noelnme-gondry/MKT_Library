@@ -1188,9 +1188,9 @@ export default function CreativeAnalyzer() {
               <table className="data" style={{ fontSize: "11px" }}>
                 <tbody>
                   <tr>
-                    <th style={{ background: "var(--bg-2)" }}><strong>{rowAttr}</strong> ↓ \ <strong>{colAttr}</strong> →</th>
+                    <th style={{ background: "var(--bg-2)", textAlign: "left", whiteSpace: "nowrap" }}><strong>{rowAttr}</strong> ↓ \ <strong>{colAttr}</strong> →</th>
                     {matrix.cols.map((c) => (
-                      <th key={c} style={{ background: "var(--bg-2)" }}>{c}</th>
+                      <th key={c} style={{ background: "var(--bg-2)", textAlign: "left", whiteSpace: "nowrap" }}>{c}</th>
                     ))}
                   </tr>
                   {matrix.grid.map((row, ri) => (
@@ -1215,6 +1215,8 @@ export default function CreativeAnalyzer() {
                               padding: "8px",
                               fontSize: "11px",
                               lineHeight: 1.5,
+                              textAlign: "left",
+                              verticalAlign: "top",
                               cursor: clickable ? "pointer" : "default",
                               outline: isSel ? "2px solid var(--primary, #adc6ff)" : "none",
                               outlineOffset: isSel ? "-2px" : undefined,

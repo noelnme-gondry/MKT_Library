@@ -19,9 +19,13 @@ describe("demo sanity", () => {
     );
     expect(matrix.rows.length).toBeGreaterThanOrEqual(4);
     expect(matrix.cols.length).toBeGreaterThanOrEqual(4);
-    // every cell has ≥5 creatives (not "insufficient")
+    // 다채로운 해석: 검증/데이터부족/미관측 상태가 모두 존재해야 함(전부 검증 X)
     const flat = matrix.grid.flat();
-    expect(flat.every((c) => c.n >= 5)).toBe(true);
+    const statuses = new Set(flat.map((c) => c.status));
+    expect(statuses.has("validated")).toBe(true);
+    expect(statuses.has("insufficient")).toBe(true);
+    expect(statuses.has("empty")).toBe(true);
+    expect(statuses.size).toBeGreaterThanOrEqual(3);
   });
 
   it("efficiency: rows + funnel + saturation signal", () => {

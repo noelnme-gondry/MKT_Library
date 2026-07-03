@@ -111,12 +111,24 @@ function buildCreative() {
   const channels = ["Meta AAP", "TikTok", "Google UAC", "Apple Search Ads"];
   const baseCtr = 0.022, baseCvr = 0.12, baseArppu = 12000;
   const dates = generateDates(28, "2024-02-01");
+  // 조합별 상태 플랜 — 셀이 전부 "검증"만 나오지 않게 다채롭게:
+  //  V=검증(n6·정상노출) · S=데이터부족(n3) · P=유망(n5·저노출<3000) · _=미관측(생성 안 함)
+  const plan = {
+    "할인혜택|UGC": "P", "할인혜택|정적이미지": "V", "할인혜택|제작영상": "S", "할인혜택|플레이어블": "_",
+    "사회적증거|UGC": "V", "사회적증거|정적이미지": "V", "사회적증거|제작영상": "V", "사회적증거|플레이어블": "S",
+    "기능강조|UGC": "V", "기능강조|정적이미지": "V", "기능강조|제작영상": "_", "기능강조|플레이어블": "V",
+    "감성스토리|UGC": "V", "감성스토리|정적이미지": "S", "감성스토리|제작영상": "V", "감성스토리|플레이어블": "P",
+  };
   const raw = [];
   let cIdx = 0, seed = 131;
-  // 각 (angle × format) 조합마다 6개 소재 → 4×4×6 = 96 소재, 셀당 6 ≥ minNCell(5)
   for (const ang of angles) {
     for (const fmt of formats) {
-      for (let k = 0; k < 6; k++) {
+      const code = plan[`${ang.v}|${fmt.v}`] || "V";
+      if (code === "_") continue; // 미관측 조합 — 소재 없음
+      const nCre = code === "S" ? 3 : code === "P" ? 5 : 6;
+      const lowImp = code === "P";           // 유망: 노출 적어 확정 어려움
+      const nDays = lowImp ? 1 : dates.length;
+      for (let k = 0; k < nCre; k++) {
         cIdx++;
         const rnd = seededNoise((seed += 23));
         const hook = hooks[cIdx % hooks.length];
@@ -130,9 +142,9 @@ function buildCreative() {
         const cCtr = clamp01(baseCtr + ang.ctr + fmt.ctr + (overlay ? 0.002 : 0));
         const cCvr = clamp01(baseCvr + ang.cvr + fmt.cvr + (hook === "혜택제시" ? 0.02 : 0));
         const arppu = baseArppu * (ang.v === "할인혜택" ? 0.85 : ang.v === "기능강조" ? 1.15 : 1);
-        for (let d = 0; d < dates.length; d++) {
+        for (let d = 0; d < nDays; d++) {
           const decay = Math.max(0.35, 1 - fatigue * d);
-          const impressions = round(40000 + rnd() * 30000);
+          const impressions = lowImp ? round(400 + rnd() * 120) : round(40000 + rnd() * 30000);
           const ctr = clamp01(cCtr * decay * (1 + rnd() * 0.12));
           const clicks = round(impressions * ctr);
           const cvr = clamp01(cCvr * (1 + rnd() * 0.15));
