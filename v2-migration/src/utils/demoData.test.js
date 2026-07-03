@@ -3,8 +3,27 @@ import { buildDemoCsv } from "./demoData";
 import { getMappedRows } from "./dashboardAggregator";
 import { satBuildPoints, SAT_MATH } from "./satMath";
 import { AHA_STATS } from "./ahaMath";
+import { CREATIVE_STATS } from "./creativeMath";
 
 describe("demo sanity", () => {
+  it("creative: concept matrix (message_angle × format) fills cells", () => {
+    const d = buildDemoCsv("creative");
+    const rows = getMappedRows({ raw: d.raw, headers: d.headers, mapping: d.mapping });
+    const metrics = CREATIVE_STATS.deriveMetrics(rows);
+    // attributes carried through
+    expect(metrics.some((m) => m.message_angle && m.format)).toBe(true);
+    const matrix = CREATIVE_STATS.conceptMatrix(
+      metrics,
+      { rows: "message_angle", cols: "format" },
+      { minNCell: 5, minImpressions: 1000 }
+    );
+    expect(matrix.rows.length).toBeGreaterThanOrEqual(4);
+    expect(matrix.cols.length).toBeGreaterThanOrEqual(4);
+    // every cell has ≥5 creatives (not "insufficient")
+    const flat = matrix.grid.flat();
+    expect(flat.every((c) => c.n >= 5)).toBe(true);
+  });
+
   it("efficiency: rows + funnel + saturation signal", () => {
     const d = buildDemoCsv("efficiency");
     expect(d.raw.length).toBeGreaterThan(300);

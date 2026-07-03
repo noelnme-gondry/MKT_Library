@@ -81,49 +81,78 @@ function buildEfficiency() {
 }
 
 // ── creative (5-6) ──────────────────────────────────────────────────────────
+// Concept Matrix(§8) 기본 축 = message_angle × format → 조합별 셀에 소재 ≥5개
+// (minNCell=5) 채우려면 소재를 조합 순회로 다수 생성 + 속성 컬럼 필수.
+// 속성별 효과(멀티플라이어)를 심어 §4 WLS 분해도 유의 신호 산출.
 function buildCreative() {
   const headers = [
     "creative_id", "date", "channel", "impressions", "clicks", "installs",
     "spend", "revenue_d7", "video_3s_views", "video_completions",
+    "message_angle", "format", "hook_type", "cta_style", "first_3s",
+    "duration_bucket", "has_text_overlay",
   ];
-  // Creatives with distinct CTR/CVR; some fatigue (CTR decays), some stable.
-  const creatives = [
-    { id: "video_hook_A", ch: "Meta AAP", ctr: 0.032, cvr: 0.14, fatigue: 0.010, arppu: 13000 },
-    { id: "video_hook_B", ch: "Meta AAP", ctr: 0.028, cvr: 0.11, fatigue: 0.004, arppu: 12000 },
-    { id: "ugc_testimonial", ch: "TikTok", ctr: 0.041, cvr: 0.09, fatigue: 0.014, arppu: 9000 },
-    { id: "ugc_trend", ch: "TikTok", ctr: 0.036, cvr: 0.08, fatigue: 0.002, arppu: 8500 },
-    { id: "static_offer", ch: "Google UAC", ctr: 0.018, cvr: 0.16, fatigue: 0.001, arppu: 15000 },
-    { id: "static_feature", ch: "Google UAC", ctr: 0.021, cvr: 0.13, fatigue: 0.007, arppu: 14000 },
-    { id: "carousel_social", ch: "Meta AAP", ctr: 0.024, cvr: 0.10, fatigue: 0.005, arppu: 11000 },
-    { id: "playable_demo", ch: "Apple Search Ads", ctr: 0.045, cvr: 0.19, fatigue: 0.003, arppu: 18000 },
-    { id: "influencer_collab", ch: "TikTok", ctr: 0.038, cvr: 0.12, fatigue: 0.009, arppu: 10000 },
-    { id: "motion_graphic", ch: "Google UAC", ctr: 0.026, cvr: 0.14, fatigue: 0.006, arppu: 13500 },
-    { id: "before_after", ch: "Meta AAP", ctr: 0.030, cvr: 0.13, fatigue: 0.011, arppu: 12500 },
-    { id: "app_walkthrough", ch: "Apple Search Ads", ctr: 0.033, cvr: 0.17, fatigue: 0.002, arppu: 16500 },
+  // 속성 어휘 + CTR/CVR 효과 (합성 신호)
+  const angles = [
+    { v: "할인혜택", ctr: 0.004, cvr: 0.02 },
+    { v: "사회적증거", ctr: 0.009, cvr: 0.03 },
+    { v: "기능강조", ctr: 0.000, cvr: 0.01 },
+    { v: "감성스토리", ctr: 0.003, cvr: -0.01 },
   ];
-  const dates = generateDates(45, "2024-02-01");
+  const formats = [
+    { v: "UGC", ctr: 0.006, cvr: 0.00, isVideo: true },
+    { v: "제작영상", ctr: 0.002, cvr: 0.02, isVideo: true },
+    { v: "정적이미지", ctr: -0.004, cvr: 0.01, isVideo: false },
+    { v: "플레이어블", ctr: 0.010, cvr: 0.04, isVideo: true },
+  ];
+  const hooks = ["문제제기", "호기심", "혜택제시"];
+  const ctas = ["지금설치", "무료체험", "한정할인"];
+  const first3 = ["얼굴클로즈업", "텍스트훅", "제품시연"];
+  const durations = ["<10s", "10-20s", "20s+"];
+  const channels = ["Meta AAP", "TikTok", "Google UAC", "Apple Search Ads"];
+  const baseCtr = 0.022, baseCvr = 0.12, baseArppu = 12000;
+  const dates = generateDates(28, "2024-02-01");
   const raw = [];
-  let seed = 131;
-  for (const c of creatives) {
-    const rnd = seededNoise((seed += 23));
-    for (let d = 0; d < dates.length; d++) {
-      const decay = Math.max(0.3, 1 - c.fatigue * d); // CTR fatigue over run
-      const impressions = round((120000 + rnd() * 40000));
-      const ctr = clamp01(c.ctr * decay * (1 + rnd() * 0.12));
-      const clicks = round(impressions * ctr);
-      const cvr = clamp01(c.cvr * (1 + rnd() * 0.15));
-      const installs = round(clicks * cvr);
-      const cpc = 380 + rnd() * 160;
-      const spend = round(clicks * cpc);
-      const pu = installs * (0.5 + rnd() * 0.15);
-      const revenue = round(pu * c.arppu * (1 + rnd() * 0.2));
-      const v3s = round(impressions * (0.55 + rnd() * 0.15));
-      const vcomp = round(v3s * (0.25 + rnd() * 0.15));
-      raw.push({
-        creative_id: c.id, date: dates[d], channel: c.ch,
-        impressions, clicks, installs, spend, revenue_d7: revenue,
-        video_3s_views: v3s, video_completions: vcomp,
-      });
+  let cIdx = 0, seed = 131;
+  // 각 (angle × format) 조합마다 6개 소재 → 4×4×6 = 96 소재, 셀당 6 ≥ minNCell(5)
+  for (const ang of angles) {
+    for (const fmt of formats) {
+      for (let k = 0; k < 6; k++) {
+        cIdx++;
+        const rnd = seededNoise((seed += 23));
+        const hook = hooks[cIdx % hooks.length];
+        const cta = ctas[(cIdx + 1) % ctas.length];
+        const f3 = first3[(cIdx + 2) % first3.length];
+        const dur = fmt.isVideo ? durations[(cIdx + k) % durations.length] : "<10s";
+        const overlay = (cIdx + k) % 2;
+        const ch = channels[cIdx % channels.length];
+        const id = `cr_${String(cIdx).padStart(3, "0")}_${fmt.v}_${ang.v}`;
+        const fatigue = 0.002 + (cIdx % 5) * 0.003;
+        const cCtr = clamp01(baseCtr + ang.ctr + fmt.ctr + (overlay ? 0.002 : 0));
+        const cCvr = clamp01(baseCvr + ang.cvr + fmt.cvr + (hook === "혜택제시" ? 0.02 : 0));
+        const arppu = baseArppu * (ang.v === "할인혜택" ? 0.85 : ang.v === "기능강조" ? 1.15 : 1);
+        for (let d = 0; d < dates.length; d++) {
+          const decay = Math.max(0.35, 1 - fatigue * d);
+          const impressions = round(40000 + rnd() * 30000);
+          const ctr = clamp01(cCtr * decay * (1 + rnd() * 0.12));
+          const clicks = round(impressions * ctr);
+          const cvr = clamp01(cCvr * (1 + rnd() * 0.15));
+          const installs = round(clicks * cvr);
+          const cpc = 380 + rnd() * 160;
+          const spend = round(clicks * cpc);
+          const pu = installs * (0.5 + rnd() * 0.15);
+          const revenue = round(pu * arppu * (1 + rnd() * 0.2));
+          const v3s = fmt.isVideo ? round(impressions * (0.55 + rnd() * 0.15)) : 0;
+          const vcomp = fmt.isVideo ? round(v3s * (0.25 + rnd() * 0.15)) : 0;
+          raw.push({
+            creative_id: id, date: dates[d], channel: ch,
+            impressions, clicks, installs, spend, revenue_d7: revenue,
+            video_3s_views: v3s, video_completions: vcomp,
+            message_angle: ang.v, format: fmt.v, hook_type: hook,
+            cta_style: cta, first_3s: f3, duration_bucket: dur,
+            has_text_overlay: overlay,
+          });
+        }
+      }
     }
   }
   const mapping = {};
