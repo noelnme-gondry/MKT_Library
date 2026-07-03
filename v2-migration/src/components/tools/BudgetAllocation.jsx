@@ -272,6 +272,78 @@ function toggleInSet(prev, value, allValues) {
   return cur;
 }
 
+// ── ★2 Step3 빠른 필터 바 — 드롭다운(전체 포함) + [적용] ────────────────────
+// 요약칩(읽기전용)을 인라인 드롭다운으로 교체. draft 로컬 상태라 드롭다운을 바꿔도
+// [적용] 누르기 전엔 결과가 안 변함(step3 재계산 X). 적용 시 부모 applyFiltersWith가
+// 시그 비교 → 바뀌었으면 재검증(Step2), 안 바뀌었으면 그대로 유지(★1). 컴포넌트라
+// step3 재진입마다 draft가 현재 applied 값으로 리셋(effect 불필요).
+function AllocQuickFilterBar({ applied, filterOptions, objectives, onApply }) {
+  const toSel = (v) => (v == null ? "__all__" : [...v][0] || "__all__");
+  const [objective, setObjective] = useState(applied.objective);
+  const [unitField, setUnitField] = useState(applied.unitField);
+  const [country, setCountry] = useState(toSel(applied.countries));   // "__all__" | 단일국가
+  const [channel, setChannel] = useState(toSel(applied.channels));    // "__all__" | 단일채널
+  const [platform, setPlatform] = useState(applied.platform);
+
+  const singleCountry = unitField === "channel" || unitField === "campaign_name";
+  const selStyle = { fontSize: "12px", padding: "3px 6px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--surface-container-lowest)", color: "var(--text-1)", fontWeight: 600 };
+  const lbl = { fontSize: "11px", color: "var(--text-muted)" };
+
+  const apply = () => {
+    const countries = country === "__all__" ? null : new Set([country]);
+    const channels = channel === "__all__" ? null : new Set([channel]);
+    onApply({ objective, unitField, countries, channels, platform });
+  };
+  const dirty = objective !== applied.objective || unitField !== applied.unitField
+    || country !== toSel(applied.countries) || channel !== toSel(applied.channels) || platform !== applied.platform;
+
+  return (
+    <div style={{ background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "8px 12px", marginTop: "10px", fontSize: "12px", display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+      <span style={lbl}>🎯 목표</span>
+      <select style={selStyle} value={objective || ""} onChange={(e) => setObjective(e.target.value)}>
+        {Object.entries(objectives).map(([k, o]) => <option key={k} value={k}>{o.short} {o.arrow}</option>)}
+      </select>
+      <span style={lbl}>단위</span>
+      <select style={selStyle} value={unitField} onChange={(e) => setUnitField(e.target.value)}>
+        <option value="country">국가별</option>
+        <option value="channel">국가 × 채널별</option>
+        <option value="campaign_name">국가 × 채널 × 캠페인별</option>
+      </select>
+      {filterOptions.hasCountry && (
+        <>
+          <span style={lbl}>국가</span>
+          <select style={selStyle} value={country === "__all__" && singleCountry ? (filterOptions.countries[0] || "") : country} onChange={(e) => setCountry(e.target.value)}>
+            {!singleCountry && <option value="__all__">전체</option>}
+            {filterOptions.countries.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </>
+      )}
+      {filterOptions.hasChannel && (
+        <>
+          <span style={lbl}>채널</span>
+          <select style={selStyle} value={channel} onChange={(e) => setChannel(e.target.value)}>
+            <option value="__all__">전체</option>
+            {filterOptions.channels.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </>
+      )}
+      {filterOptions.hasPlatform && (
+        <>
+          <span style={lbl}>OS</span>
+          <select style={selStyle} value={platform} onChange={(e) => setPlatform(e.target.value)}>
+            <option value="all">전체 OS</option>
+            <option value="android">Android</option>
+            <option value="ios">iOS</option>
+          </select>
+        </>
+      )}
+      <button className={`btn ${dirty ? "primary" : "secondary"}`} style={{ padding: "4px 12px", fontSize: "12px", marginLeft: "auto" }} onClick={apply}>
+        {dirty ? "적용 (재검증)" : "적용됨"}
+      </button>
+    </div>
+  );
+}
+
 
 export default function BudgetAllocation() {
   const csvData = useAppStore((state) => state.csvData);
@@ -482,6 +554,47 @@ export default function BudgetAllocation() {
     setUnitField(u);
     setSelectedCountries((prev) => normalizeCountryForUnit(u, prev));
   };
+
+  // ── ★1 필터 시그니처 캐시 + ★2 적용 게이트 ─────────────────────────────
+  // 필터(목표·단위·국가·채널·OS)를 문자열 시그로. "적용" 눌렀을 때 시그가 이전과
+  // 같으면 재검증하지 않고 확정 모델·검증 상태를 그대로 유지(안 바꿨는데 처음부터 다시
+  // 검증하던 번거로움 해소). 다르면 기존대로 검증 초기화.
+  const sigOf = (f) => JSON.stringify({
+    objective: f.objective,
+    unitField: f.unitField,
+    countries: f.countries ? [...f.countries].sort() : null,
+    channels: f.channels ? [...f.channels].sort() : null,
+    platform: f.platform,
+  });
+  const currentFilter = () => ({ objective, unitField, countries: selectedCountries, channels: selectedChannelsFilter, platform: platformFilter });
+  const filterSig = () => sigOf(currentFilter());
+  const [appliedSig, setAppliedSig] = useState(null);   // 검증(Step2)에 진입한 필터 시그
+  const [verifiedSig, setVerifiedSig] = useState(null); // 검증 완료(Step3 가능)까지 확정된 시그
+
+  // 필터 값 f를 실제 상태에 반영 + 시그 비교. f가 이전 적용과 같으면 재검증 스킵.
+  const applyFiltersWith = (f) => {
+    if (!f.objective) return;
+    // §12.14 국가 단일 강제 — 순수 채널별/캠페인별이면 국가 1개로 정규화.
+    const nc = normalizeCountryForUnit(f.unitField, f.countries);
+    const applied = { ...f, countries: nc };
+    setObjective(applied.objective);
+    setUnitField(applied.unitField);
+    setSelectedCountries(applied.countries);
+    setSelectedChannelsFilter(applied.channels);
+    setPlatformFilter(applied.platform);
+    const sig = sigOf(applied);
+    if (sig === appliedSig) {
+      setStep(verifiedSig === sig ? 3 : 2); // 안 바뀜 → 검증 보존(완료했으면 바로 결과)
+      return;
+    }
+    setGroupModels({});
+    setGroupVerification({});
+    setVerifySelectedGroup(null);
+    setAppliedSig(sig);
+    setVerifiedSig(null);
+    setStep(2);
+  };
+  const applyFilters = () => applyFiltersWith(currentFilter()); // 위저드(Step1) 진행 버튼용
 
   // 일예산 환산 (월예산이면 ÷30)
   const dailyBudget = useMemo(() => {
@@ -1197,14 +1310,7 @@ export default function BudgetAllocation() {
                 className="btn primary"
                 disabled={!objective}
                 style={{ opacity: objective ? 1 : 0.4, cursor: objective ? "pointer" : "not-allowed" }}
-                onClick={() => {
-                  if (!objective) return;
-                  // 필터 적용 시 단위별 검증 상태 초기화. index.html 적용 버튼 핸들러 이식(§2 재검증 강제).
-                  setGroupModels({});
-                  setGroupVerification({});
-                  setVerifySelectedGroup(null);
-                  setStep(2);
-                }}
+                onClick={applyFilters}
               >
                 {objective ? "✓ 적용 (검증 진행)" : "⚠ 최적화 목표를 먼저 선택하세요"}
               </button>
@@ -1344,6 +1450,7 @@ export default function BudgetAllocation() {
         });
       }
       applyBudgetDefault();
+      setVerifiedSig(filterSig()); // 이 필터 조합으로 검증 완료 → 재적용 시 재검증 스킵(★1)
       setStep(3);
     };
 
@@ -1704,18 +1811,13 @@ export default function BudgetAllocation() {
   const step3StickyFilter = (
     <>
       <BasisCurrencyToggleBar />
-
-      {/* 적용된 필터 요약 (sticky 필터바 역할) + 필터 변경 */}
-      <div style={{ background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "8px 12px", marginTop: "10px", fontSize: "12px", display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-        {effectiveObjective && ALLOC_OBJECTIVES[effectiveObjective] && (
-          <strong style={{ color: "var(--primary, #adc6ff)" }}>🎯 {ALLOC_OBJECTIVES[effectiveObjective].short} {ALLOC_OBJECTIVES[effectiveObjective].arrow}</strong>
-        )}
-        <span>· <strong>{{ country: "국가별", channel: "국가 × 채널별", campaign_name: "국가 × 채널 × 캠페인별" }[unitField] || unitField}</strong></span>
-        <span>· 국가: <strong>{selectedCountries && selectedCountries.size > 0 ? [...selectedCountries].join(", ") : "전체"}</strong></span>
-        <span>· 채널: <strong>{selectedChannelsFilter && selectedChannelsFilter.size > 0 ? [...selectedChannelsFilter].join(", ") : "전체"}</strong></span>
-        <span>· OS: <strong>{platformFilter === "all" ? "전체 OS" : platformFilter === "android" ? "Android" : "iOS"}</strong></span>
-        <button className="btn secondary" style={{ padding: "4px 8px", fontSize: "11px", marginLeft: "auto" }} onClick={() => setStep(1)}>⚙ 필터 변경</button>
-      </div>
+      {/* ★2 요약칩 → 드롭다운+적용 (토글 칩 바로 아래). draft라 적용 전엔 결과 불변. */}
+      <AllocQuickFilterBar
+        applied={{ objective, unitField, countries: selectedCountries, channels: selectedChannelsFilter, platform: platformFilter }}
+        filterOptions={filterOptions}
+        objectives={ALLOC_OBJECTIVES}
+        onApply={applyFiltersWith}
+      />
     </>
   );
 
