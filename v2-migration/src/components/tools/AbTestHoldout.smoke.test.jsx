@@ -67,8 +67,8 @@ describe("AbTestHoldout render smoke", () => {
 
   it("mounts without throwing in the no-data state", () => {
     expect(() => render(<AbTestHoldout />)).not.toThrow();
-    // The three top-level tabs render regardless of data.
-    expect(screen.getByText("실험 판독 (CSV)")).toBeTruthy();
+    // The three top-level tabs render regardless of data (question-framed labels).
+    expect(screen.getByText("② A/B 판독 · 어느 쪽이 이겼나?")).toBeTruthy();
   });
 
   it("mounts without throwing with a valid seeded CSV (design + charts)", () => {

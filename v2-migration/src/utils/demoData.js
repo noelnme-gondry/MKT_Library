@@ -173,15 +173,25 @@ function buildCreative() {
 }
 
 // ── experiment (5-4) ────────────────────────────────────────────────────────
-// 5-4 reads raw props directly (is_control/arm_id/holdout_group/numerator/
-// denominator) — no mapping needed. 3 arms, Variant A clear winner.
+// 5-4 reads raw props directly (arm_id/is_control/holdout_group/numerator/
+// denominator/spend/revenue_d7) — no mapping needed.
+//   · ② A/B 판독: arm_id·is_control 사용 → 3 variant 중 A가 명확한 승자
+//   · ③ 홀드아웃 증분: holdout_group(exposed vs holdout) + spend·revenue 사용 →
+//     광고를 아예 안 본 holdout(비용 0) 대비 exposed의 순증분·iROAS 산출
+//     (A/B와 달리 "광고 집행 자체의 값어치"를 봄).
 function buildExperiment() {
-  const headers = ["date", "arm_id", "is_control", "holdout_group", "numerator", "denominator"];
+  const headers = ["date", "arm_id", "is_control", "holdout_group", "numerator", "denominator", "spend", "revenue_d7"];
+  // 통합 행 — 매 행이 arm_id·is_control·holdout_group을 모두 담아 두 탭이 같은
+  // 데이터를 다른 관점으로 읽음(서로 오염 없음).
+  //   · Control = 광고 미노출(홀드아웃 베이스라인, spend 0) · is_control=1
+  //   · Variant A/B/C = 광고 노출(exposed, spend>0) · 전환율 차이 = 광고 증분
+  const revPerConv = 32000;   // 전환당 매출(KRW)
+  const costPerUser = 180;    // 노출 1인당 광고비(KRW) → iROAS ≈ 2x
   const arms = [
-    { id: "Control",   control: 1, group: "control", cvr: 0.050 },
-    { id: "Variant A", control: 0, group: "test",    cvr: 0.062 }, // winner (+24%)
-    { id: "Variant B", control: 0, group: "test",    cvr: 0.053 },
-    { id: "Variant C", control: 0, group: "test",    cvr: 0.048 }, // slight loser
+    { id: "Control",   control: 1, group: "holdout", cvr: 0.044, exposed: false }, // 오가닉만
+    { id: "Variant A", control: 0, group: "exposed", cvr: 0.062, exposed: true },  // A/B 승자
+    { id: "Variant B", control: 0, group: "exposed", cvr: 0.053, exposed: true },
+    { id: "Variant C", control: 0, group: "exposed", cvr: 0.050, exposed: true },
   ];
   const dates = generateDates(60, "2024-03-01");
   const raw = [];
@@ -189,11 +199,13 @@ function buildExperiment() {
   for (const a of arms) {
     const rnd = seededNoise((seed += 29));
     for (let d = 0; d < dates.length; d++) {
-      const denominator = round(8000 + rnd() * 1200);
+      const denominator = round(8000 + rnd() * 1400);
       const numerator = round(denominator * a.cvr * (1 + rnd() * 0.10));
+      const spend = a.exposed ? round(denominator * costPerUser) : 0;
+      const revenue = round(numerator * revPerConv * (1 + rnd() * 0.12));
       raw.push({
-        date: dates[d], arm_id: a.id, is_control: a.control,
-        holdout_group: a.group, numerator, denominator,
+        date: dates[d], arm_id: a.id, is_control: a.control, holdout_group: a.group,
+        numerator, denominator, spend, revenue_d7: revenue,
       });
     }
   }

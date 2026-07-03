@@ -373,17 +373,23 @@ export default function AbTestHoldout() {
 
   return (
     <div className="tab-pane active" id="tab-ab">
-      <div className="ab-tabs" style={{ marginBottom: "20px" }}>
+      <div className="ab-tabs" style={{ marginBottom: "8px" }}>
         <button className={`ab-tab ${activeTab === "design" ? "active" : ""}`} onClick={() => setActiveTab("design")}>
-          실험 설계 및 수동 계산
+          ① 설계 · 얼마나 모아야 하나?
         </button>
         <button className={`ab-tab ${activeTab === "readout" ? "active" : ""}`} onClick={() => setActiveTab("readout")}>
-          실험 판독 (CSV)
+          ② A/B 판독 · 어느 쪽이 이겼나?
         </button>
         <button className={`ab-tab ${activeTab === "holdout" ? "active" : ""}`} onClick={() => setActiveTab("holdout")}>
-          홀드아웃 증분 (CSV)
+          ③ 홀드아웃 · 광고가 진짜 만든 효과는?
         </button>
       </div>
+      {/* 탭별 한 줄 평어 안내 (claude-ux §1 여정=질문) */}
+      <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "0 0 18px", lineHeight: 1.6 }}>
+        {activeTab === "design" && "실험을 시작하기 전에 — 얼마나 많은 표본(사람 수)을 모아야 결과를 믿을 수 있는지 계산합니다."}
+        {activeTab === "readout" && "두 안(A vs B)을 모두 노출한 뒤 — 어느 쪽 전환율이 더 높고, 그 차이가 우연이 아닌지 판정합니다."}
+        {activeTab === "holdout" && "일부러 광고를 안 본 홀드아웃 그룹과 본 그룹을 비교 — 광고가 없었어도 일어났을 전환을 빼고 순수하게 광고가 만든 효과(증분)만 봅니다. A/B가 \"둘 중 뭐가 나은가\"라면, 홀드아웃은 \"광고를 한 것 자체가 값어치를 했나\"를 봅니다."}
+      </p>
 
       {activeTab === "design" && (
         <>
@@ -765,6 +771,12 @@ export default function AbTestHoldout() {
                       <div style={{ marginTop: "12px", fontWeight: 700, color: verdictColor(s.pValue, liftPositive) }}>
                         {s.pValue < 0.05 ? (liftPositive ? "✓ 유의미한 개선 (Ship 후보)" : "✗ 유의미한 악화 (Kill)") : "— 비유의 (Inconclusive — 더 많은 데이터 필요)"}
                       </div>
+                      <div className="callout" style={{ marginTop: "10px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
+                        <strong>쉽게 말하면:</strong> Test안이 Control보다 전환율이 <strong>{s.liftRel >= 0 ? "+" : ""}{(s.liftRel * 100).toFixed(1)}%</strong> {s.liftRel >= 0 ? "높습니다" : "낮습니다"}.
+                        {" "}<strong>p-value {s.pValue.toFixed(4)}</strong> = 이 차이가 순전히 우연일 확률 {(s.pValue * 100).toFixed(2)}%.
+                        {s.pValue < 0.05 ? " 0.05(5%)보다 작으니, 우연이 아닌 진짜 차이로 볼 수 있어요." : " 0.05(5%)보다 크니 아직 우연일 수 있어요 — 표본을 더 모으세요."}
+                        {" "}괄호 안 z·CI는 통계 원값(전문가용)입니다.
+                      </p></div></div>
                     </div>
                   );
                 })() : (
@@ -863,8 +875,13 @@ export default function AbTestHoldout() {
                   </div>
                 );
               })()}
-              <div className="callout" style={{ marginTop: "8px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "12px" }}>
-                <strong>증분 전환</strong> = test 전환 − (test 인원 × control 전환율). 어트리뷰션과 달리 holdout은 <strong>광고가 없었어도 일어났을 전환(control)</strong>을 빼서 진짜 기여만 봅니다. iROAS &lt; 1이면 증분 기준 적자, lift가 통계적으로 유의해야 신뢰 가능합니다.
+              <div className="callout" style={{ marginTop: "8px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
+                <strong>쉽게 말하면:</strong> 광고를 <strong>안 본 그룹(홀드아웃)</strong>도 자연히 전환하는 사람이 있습니다. 그 몫을 빼고 <strong>광고 때문에 새로 생긴 전환</strong>만 센 게 <strong>증분 전환({Math.round(holdoutData.incrementalConv).toLocaleString()}건)</strong>입니다.
+                {holdoutData.iroas != null && <> 여기에 쓴 광고비 대비 증분 매출이 <strong>iROAS {holdoutData.iroas.toFixed(2)}×</strong> — {holdoutData.iroas >= 1 ? "1배가 넘으니 광고를 한 게 값어치를 했어요." : "1배 미만이라 증분 기준으론 광고비가 매출보다 컸어요."}</>}
+                {" "}A/B 탭이 “어느 안이 나은가”라면, 이 탭은 “광고를 한 것 자체가 이득이었나”를 봅니다.
+              </p></div></div>
+              <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "11.5px", lineHeight: 1.6 }}>
+                <strong>정직하게:</strong> 이 증분은 홀드아웃 그룹이 <strong>무작위로(randomized)</strong> 나뉘었을 때만 인과로 해석할 수 있어요. 그냥 안 산 사람 vs 산 사람을 비교한 거라면 원래 성향 차이가 섞여 과대/과소 추정될 수 있습니다. 표본이 적으면 위 lift의 95% 구간이 넓어져 신뢰도가 떨어집니다.
               </p></div></div>
             </section>
           )}

@@ -4,6 +4,7 @@ import { getMappedRows } from "./dashboardAggregator";
 import { satBuildPoints, SAT_MATH } from "./satMath";
 import { AHA_STATS } from "./ahaMath";
 import { CREATIVE_STATS } from "./creativeMath";
+import { INCR_MATH } from "./incrMath";
 
 describe("demo sanity", () => {
   it("creative: concept matrix (message_angle × format) fills cells", () => {
@@ -67,6 +68,21 @@ describe("demo sanity", () => {
     }
     const cCvr = cNum / cDen, tCvr = tNum / tDen;
     expect(tCvr).toBeGreaterThan(cCvr); // test arms lift
+  });
+
+  it("experiment: holdout differs from A/B — has spend/revenue → iROAS", () => {
+    const d = buildDemoCsv("experiment");
+    // holdout(control) vs exposed(test) with spend+revenue → incremental + iROAS
+    let cNum = 0, cDen = 0, tNum = 0, tDen = 0, spend = 0, rev = 0;
+    for (const r of d.raw) {
+      const g = String(r.holdout_group).toLowerCase();
+      if (g.includes("holdout")) { cNum += r.numerator; cDen += r.denominator; }
+      else if (g.includes("exposed")) { tNum += r.numerator; tDen += r.denominator; spend += Number(r.spend) || 0; rev += Number(r.revenue_d7) || 0; }
+    }
+    const incr = INCR_MATH.compute({ num: tNum, den: tDen, spend, rev }, { num: cNum, den: cDen });
+    expect(incr.incrementalConv).toBeGreaterThan(0); // 광고가 만든 순증분
+    expect(incr.iroas).toBeGreaterThan(0);           // 매출/비용 비율 산출 (A/B엔 없음)
+    expect(spend).toBeGreaterThan(0);
   });
 
   it("response: signups vary and correlate with spend range", () => {
