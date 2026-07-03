@@ -49,6 +49,7 @@ export default function RootLayout({ children }) {
     <html lang="ko" className="dark">
       <head>
         <meta name="theme-color" content="#121315" />
+        <meta name="naver-site-verification" content="f2fa6989a62ef790e6485b64f2b998bfc86b2cbe" />
         <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23adc6ff'/><text x='16' y='22' font-family='Inter, system-ui, sans-serif' font-size='18' font-weight='700' text-anchor='middle' fill='%231a1a2e'>M</text></svg>" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
