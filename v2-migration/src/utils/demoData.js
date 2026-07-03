@@ -39,8 +39,8 @@ function buildEfficiency() {
     { name: "TikTok",     eff: 1.35, satExp: 0.74, arppu: 9000,  cvr: 0.30 },
     { name: "Apple Search Ads", eff: 0.70, satExp: 0.58, arppu: 18000, cvr: 0.50 },
   ];
-  const campaignsPer = ["Prospecting", "Retargeting"];
-  const dates = generateDates(45, "2024-01-01");
+  const campaignsPer = ["Prospecting", "Retargeting", "Lookalike"];
+  const dates = generateDates(90, "2024-01-01");
   const raw = [];
   let seed = 71;
   for (const ch of channels) {
@@ -96,8 +96,12 @@ function buildCreative() {
     { id: "static_feature", ch: "Google UAC", ctr: 0.021, cvr: 0.13, fatigue: 0.007, arppu: 14000 },
     { id: "carousel_social", ch: "Meta AAP", ctr: 0.024, cvr: 0.10, fatigue: 0.005, arppu: 11000 },
     { id: "playable_demo", ch: "Apple Search Ads", ctr: 0.045, cvr: 0.19, fatigue: 0.003, arppu: 18000 },
+    { id: "influencer_collab", ch: "TikTok", ctr: 0.038, cvr: 0.12, fatigue: 0.009, arppu: 10000 },
+    { id: "motion_graphic", ch: "Google UAC", ctr: 0.026, cvr: 0.14, fatigue: 0.006, arppu: 13500 },
+    { id: "before_after", ch: "Meta AAP", ctr: 0.030, cvr: 0.13, fatigue: 0.011, arppu: 12500 },
+    { id: "app_walkthrough", ch: "Apple Search Ads", ctr: 0.033, cvr: 0.17, fatigue: 0.002, arppu: 16500 },
   ];
-  const dates = generateDates(30, "2024-02-01");
+  const dates = generateDates(45, "2024-02-01");
   const raw = [];
   let seed = 131;
   for (const c of creatives) {
@@ -136,8 +140,9 @@ function buildExperiment() {
     { id: "Control",   control: 1, group: "control", cvr: 0.050 },
     { id: "Variant A", control: 0, group: "test",    cvr: 0.062 }, // winner (+24%)
     { id: "Variant B", control: 0, group: "test",    cvr: 0.053 },
+    { id: "Variant C", control: 0, group: "test",    cvr: 0.048 }, // slight loser
   ];
-  const dates = generateDates(30, "2024-03-01");
+  const dates = generateDates(60, "2024-03-01");
   const raw = [];
   let seed = 211;
   for (const a of arms) {
@@ -159,7 +164,7 @@ function buildExperiment() {
 // signups = trend + seasonality + adstock-saturated contribution of each channel.
 function buildResponse() {
   const headers = ["week", "signups", "google_spend", "meta_spend", "tiktok_spend", "brand_spend"];
-  const nWeeks = 78;
+  const nWeeks = 104;
   // channel: spend generator + response coefficient + adstock decay + saturation half-point
   const chans = [
     { key: "google_spend", coef: 0.85, lambda: 0.4, half: 40000000, base: 30000000, amp: 0.5 },
@@ -207,7 +212,7 @@ function buildAha() {
     "user_id", "converted",
     "matches_first_7d", "messages_sent_7d", "profile_completed", "boost_used",
   ];
-  const nUsers = 800;
+  const nUsers = 2400;
   const rnd = seededNoise(4242);
   const raw = [];
   for (let u = 0; u < nUsers; u++) {

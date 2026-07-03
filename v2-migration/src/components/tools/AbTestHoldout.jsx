@@ -683,22 +683,8 @@ export default function AbTestHoldout() {
             )}
           </section>
 
-          <section className="block" id="s-mass">
-            <h2 className="section-title"><span className="ix">§3</span>대량 실험 검정 (Mass Test Readout)</h2>
-            <div className="callout warning">
-              <div className="ico">!</div>
-              <div className="body">
-                <strong>CSV 업로드</strong>
-                <p>실험 결과 CSV(arm_id·is_control·numerator·denominator)를 업로드하면 &quot;실험 판독&quot; 탭에서 대조군 대비 모든 arm의 유의성을 한 번에 확인할 수 있습니다.</p>
-                <div style={{ marginTop: "1rem" }}>
-                  <CsvUploader toolId="5-4" />
-                </div>
-              </div>
-            </div>
-          </section>
-
           <section className="block" id="s-powercurve">
-            <h2 className="section-title"><span className="ix">§4</span>MDE vs Sample Size 파워 커브</h2>
+            <h2 className="section-title"><span className="ix">§3</span>MDE vs Sample Size 파워 커브</h2>
             <p style={{ color: "var(--text-secondary)" }}>표본 수(그룹당)가 커질수록 통계적으로 탐지 가능한 최소 효과 크기(MDE)가 줄어듭니다. baseline 전환율이 낮을수록 더 많은 표본이 필요합니다.</p>
             <div className="ab-form-grid">
               <div className="ab-field">
@@ -728,7 +714,7 @@ export default function AbTestHoldout() {
           </section>
 
           <section className="block" id="s-notes">
-            <h2 className="section-title"><span className="ix">§5</span>통계 노트</h2>
+            <h2 className="section-title"><span className="ix">§4</span>통계 노트</h2>
             <ul>
               <li><strong>Binary (CVR) · z-test</strong>: <code className="inline">z = (p̂_B - p̂_A) / √(p̄(1-p̄)(1/n_A + 1/n_B))</code>. p-value &lt; α 시 귀무가설 기각.</li>
               <li><strong>Binary · Sample Size</strong>: <code className="inline">n = 2 × (z_α/2 + z_β)² × p̄(1-p̄) / δ²</code></li>
@@ -883,12 +869,14 @@ export default function AbTestHoldout() {
             </section>
           )}
 
-          <section className="block" id="s-holdout-chart">
-            <h2 className="section-title">홀드아웃 결과 차트</h2>
-            <div className="chart-container" style={{ height: "300px", marginTop: "20px" }}>
-              <canvas id="holdout-bar"></canvas>
-            </div>
-          </section>
+          {holdoutData && !holdoutData.insufficient && (
+            <section className="block" id="s-holdout-chart">
+              <h2 className="section-title">홀드아웃 결과 차트</h2>
+              <div className="chart-container" style={{ height: "300px", marginTop: "20px" }}>
+                <canvas id="holdout-bar"></canvas>
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>

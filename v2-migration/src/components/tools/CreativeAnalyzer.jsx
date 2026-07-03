@@ -679,7 +679,7 @@ export default function CreativeAnalyzer() {
         <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: "8px 0 0", lineHeight: 1.6 }}>
           소재(영상·이미지 등 광고 크리에이티브)별로 어떤 게 잘 되고 있는지, 왜 잘 되는지, 언제 새로 바꿔야 하는지를 한 곳에서 보여줍니다.
         </p>
-        <ul style={{ margin: "8px 0 0", paddingLeft: "18px", fontSize: "12.5px", lineHeight: 1.7, color: "var(--text-secondary)" }}>
+        <ul style={{ margin: "10px auto 0", paddingLeft: "20px", maxWidth: "620px", textAlign: "left", fontSize: "12.5px", lineHeight: 1.7, color: "var(--text-secondary)" }}>
           <li><strong>어떤 소재가 이기고 있나</strong> — 승률·교체 속도·생존 기간 (Win-rate · Velocity)</li>
           <li><strong>어떤 특징이 효과적인가</strong> — 후킹 방식·포맷 등 속성별 효과 분석 (WLS 분해)</li>
           <li><strong>지금 지치고 있는 소재가 있나</strong> — 소재 피로도 진단과 교체 시점 추천 (Fatigue)</li>
