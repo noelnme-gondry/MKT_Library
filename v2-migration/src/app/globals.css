@@ -3745,6 +3745,27 @@ body:not(.light-mode) .moon-icon {
   color: var(--text-muted);
 }
 
+/* ── Header 전역 통화 토글 (design-system §1.2) ── */
+.hdr-currency {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-right: 4px;
+}
+.hdr-currency-btn {
+  padding: 4px 9px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.hdr-currency-btn.active { background: var(--primary); color: var(--surface-base, #0b0d12); }
+.hdr-currency-btn:not(.active):hover { color: var(--text-primary); }
+
 /* ── CsvGuide (design-system baseline §1.4) — 업로드 설명 하이브리드 ── */
 .csv-guide { margin-bottom: 14px; }
 .csv-guide-summary {

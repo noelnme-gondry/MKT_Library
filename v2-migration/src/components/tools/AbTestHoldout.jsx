@@ -6,6 +6,7 @@ import { STATS } from "@/utils/abTestMath";
 import { CREATIVE_STATS } from "@/utils/creativeMath";
 import CsvUploader from "@/components/CsvUploader";
 import { getMappedRows } from "@/utils/dashboardAggregator";
+import DataTable from "@/components/ds/DataTable";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
@@ -757,28 +758,21 @@ export default function AbTestHoldout() {
                   <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "6px 0 10px" }}>
                     대조군: <strong>{readoutData.mass.control.name}</strong> (n={readoutData.mass.control.n.toLocaleString()}, 전환율 {((readoutData.mass.control.x / readoutData.mass.control.n) * 100).toFixed(2)}%)
                   </p>
-                  <div className="table-wrap">
-                    <table className="data">
-                      <thead>
-                        <tr><th>Arm</th><th>표본수</th><th>전환율</th><th>대조군 대비 Lift</th><th>z</th><th>p-value</th><th>95% CI (절대차)</th><th>P(B&gt;A)</th><th>유의성</th></tr>
-                      </thead>
-                      <tbody>
-                        {readoutData.mass.rows.map((r, i) => (
-                          <tr key={i}>
-                            <td>{r.name}{r.isControl ? <span style={{ color: "var(--text-muted)", fontSize: "11px" }}> (control)</span> : ""}</td>
-                            <td className="tnum">{r.n.toLocaleString()}</td>
-                            <td className="tnum">{(r.rate * 100).toFixed(2)}%</td>
-                            <td className="tnum" style={{ color: r.isControl || r.liftRel >= 0 ? undefined : "#ef4444" }}>{r.isControl ? "—" : (r.liftRel * 100).toFixed(2) + "%"}</td>
-                            <td className="tnum">{r.isControl ? "—" : r.z.toFixed(3)}</td>
-                            <td className="tnum">{r.isControl ? "—" : r.pValue.toFixed(4)}</td>
-                            <td className="tnum">{r.isControl ? "—" : `[${(r.ciLow95 * 100).toFixed(2)}%, ${(r.ciHigh95 * 100).toFixed(2)}%]`}</td>
-                            <td className="tnum">{r.isControl ? "—" : isNaN(r.probBWins) ? "—" : (r.probBWins * 100).toFixed(1) + "%"}</td>
-                            <td>{r.isControl ? <span className="pill tier-3">대조군</span> : r.pValue < 0.01 ? <span className="pill tier-1">p &lt; 0.01</span> : r.pValue < 0.05 ? <span className="pill tier-2">p &lt; 0.05</span> : <span className="pill tier-3">비유의</span>}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <DataTable
+                    rows={readoutData.mass.rows}
+                    rowKey={(r, i) => i}
+                    columns={[
+                      { key: "name", label: "Arm", align: "left", fmt: (_, r) => <>{r.name}{r.isControl ? <span style={{ color: "var(--text-muted)", fontSize: "11px" }}> (control)</span> : ""}</> },
+                      { key: "n", label: "표본수", align: "right", fmt: (v) => v.toLocaleString() },
+                      { key: "rate", label: "전환율", align: "right", fmt: (v) => (v * 100).toFixed(2) + "%" },
+                      { key: "liftRel", label: "대조군 대비 Lift", align: "right", fmt: (_, r) => r.isControl ? "—" : <span style={{ color: r.liftRel >= 0 ? undefined : "#ef4444" }}>{(r.liftRel * 100).toFixed(2)}%</span> },
+                      { key: "z", label: "z", align: "right", fmt: (_, r) => r.isControl ? "—" : r.z.toFixed(3) },
+                      { key: "pValue", label: "p-value", align: "right", fmt: (_, r) => r.isControl ? "—" : r.pValue.toFixed(4) },
+                      { key: "ci", label: "95% CI (절대차)", align: "right", fmt: (_, r) => r.isControl ? "—" : `[${(r.ciLow95 * 100).toFixed(2)}%, ${(r.ciHigh95 * 100).toFixed(2)}%]` },
+                      { key: "probBWins", label: "P(B>A)", align: "right", fmt: (_, r) => r.isControl ? "—" : isNaN(r.probBWins) ? "—" : (r.probBWins * 100).toFixed(1) + "%" },
+                      { key: "sigv", label: "유의성", align: "left", fmt: (_, r) => r.isControl ? <span className="pill tier-3">대조군</span> : r.pValue < 0.01 ? <span className="pill tier-1">p &lt; 0.01</span> : r.pValue < 0.05 ? <span className="pill tier-2">p &lt; 0.05</span> : <span className="pill tier-3">비유의</span> },
+                    ]}
+                  />
                 </section>
               )}
 
