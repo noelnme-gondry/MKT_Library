@@ -115,7 +115,7 @@ export default function Incrementality() {
 function UploadPanel({ method, fileRef, handleFile, loadDemo }) {
   const isSup = method === "suppression";
   const tmpl = isSup
-    ? { name: "template_incr_suppression.csv", text: "holdout_group,numerator,denominator,spend,revenue_d7\r\nexposed,516,8600,1548000,16512000\r\nholdout,378,8600,0,12096000\r\n" }
+    ? { name: "template_incr_suppression.csv", text: "date,holdout_group,numerator,denominator,spend,revenue_d7\r\n2024-05-01,exposed,516,8600,1548000,16512000\r\n2024-05-01,holdout,378,8600,0,12096000\r\n" }
     : { name: `template_incr_prepost.csv`, text: "date,group,conversions\r\n2024-04-01,treatment,100\r\n2024-04-01,control,90\r\n2024-05-20,treatment,155\r\n2024-05-20,control,92\r\n" };
   return (
     <>
@@ -145,12 +145,58 @@ function SuppressionView({ csvData, currency }) {
       else if (g === "test") { tNum += n; tDen += d; spend += num(r.spend) || 0; revenue += num(r.revenue_d7 ?? r.revenue) || 0; }
     });
     if (cDen <= 0 || tDen <= 0) return { insufficient: true };
-    return { incr: INCR_MATH.compute({ num: tNum, den: tDen, spend, rev: revenue > 0 ? revenue : null }, { num: cNum, den: cDen }), cNum, cDen, tNum, tDen, spend };
+    // 날짜별 시계열 (date × group 전환율) — 있으면 라인차트로.
+    let series = null;
+    if (rows.some((r) => looksDate(r.date))) {
+      const byDate = new Map();
+      rows.forEach((r) => {
+        if (!looksDate(r.date)) return;
+        const g = parseHoldoutGroup(r.holdout_group);
+        if (g !== "control" && g !== "test") return;
+        const d = String(r.date);
+        if (!byDate.has(d)) byDate.set(d, { exp: { n: 0, d: 0 }, hold: { n: 0, d: 0 } });
+        const slot = byDate.get(d)[g === "test" ? "exp" : "hold"];
+        slot.n += num(r.numerator) || 0; slot.d += num(r.denominator) || 0;
+      });
+      const labels = [...byDate.keys()].sort();
+      if (labels.length > 1) {
+        series = {
+          labels,
+          exposed: labels.map((d) => { const s = byDate.get(d).exp; return s.d > 0 ? (s.n / s.d) * 100 : null; }),
+          holdout: labels.map((d) => { const s = byDate.get(d).hold; return s.d > 0 ? (s.n / s.d) * 100 : null; }),
+        };
+      }
+    }
+    return { incr: INCR_MATH.compute({ num: tNum, den: tDen, spend, rev: revenue > 0 ? revenue : null }, { num: cNum, den: cDen }), cNum, cDen, tNum, tDen, spend, series };
   }, [csvData]);
+
+  const chartInst = useRef(null);
+  useEffect(() => {
+    if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; }
+    const s = data.series;
+    if (data.insufficient || !s) return;
+    const ctx = document.getElementById("incr-suppression-chart"); if (!ctx) return;
+    chartInst.current = new Chart(ctx, {
+      type: "line",
+      data: { labels: s.labels, datasets: [
+        { label: "노출 그룹(광고 봄)", data: s.exposed, borderColor: "#22c55e", backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, tension: 0.15 },
+        { label: "홀드아웃(광고 차단)", data: s.holdout, borderColor: getCssVar("--text-muted"), backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, borderDash: [5, 4], tension: 0.15 },
+      ] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: CHART_THEME.text } }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y != null ? c.parsed.y.toFixed(2) + "%" : "—"}` } } },
+        scales: {
+          x: { ticks: { color: CHART_THEME.muted, autoSkip: true, maxTicksLimit: 10 }, grid: { color: getCssVar("--border") } },
+          y: { ticks: { color: CHART_THEME.muted, callback: (v) => v + "%" }, grid: { color: getCssVar("--border") }, title: { display: true, text: "전환율", color: CHART_THEME.muted } },
+        },
+      },
+    });
+    requestAnimationFrame(() => chartInst.current && chartInst.current.resize());
+    return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
+  }, [data]);
 
   if (data.insufficient) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>노출(exposed)·홀드아웃(holdout) 양쪽 데이터가 필요합니다</strong><p>holdout_group 컬럼에 두 그룹이 모두 있어야 증분을 계산합니다.</p></div></div>;
   const r = data.incr;
-  const isSig = r && r.liftRel != null && data.incr;
   const inc = Math.round(r.incrementalConv);
   const positive = r.incrementalConv > 0;
   return (
@@ -166,7 +212,14 @@ function SuppressionView({ csvData, currency }) {
           {r.iroas != null && <Stat label="iROAS" value={`${r.iroas.toFixed(2)}×`} color={r.iroas >= 1 ? "#22c55e" : "#ef4444"} hint="증분 매출/광고비" />}
         </div>
       </div>
-      <div className="callout" style={{ marginTop: "10px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
+      {data.series && (
+        <div style={{ marginTop: "14px" }}>
+          <h3 style={{ fontSize: "13px", margin: "0 0 6px", color: "var(--text-secondary)" }}>날짜별 전환율 — 노출 vs 홀드아웃</h3>
+          <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "0 0 8px" }}>두 선의 간격이 광고가 만든 증분입니다(노출이 위, 홀드아웃이 아래면 정상).</p>
+          <div className="chart-container" style={{ height: "300px" }}><canvas id="incr-suppression-chart"></canvas></div>
+        </div>
+      )}
+      <div className="callout" style={{ marginTop: "14px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
         <strong>쉽게 말하면:</strong> 광고를 안 본 홀드아웃도 자연 전환이 있습니다. 그 몫을 뺀 <strong>증분 전환 {fmtNum(inc)}건</strong>이 광고가 실제로 만든 값입니다.{r.iroas != null && <> iROAS {r.iroas.toFixed(2)}× — {r.iroas >= 1 ? "광고비보다 증분 매출이 큼(이득)." : "증분 기준 광고비가 매출보다 큼."}</>}
       </p></div></div>
       <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "11.5px", lineHeight: 1.6 }}>

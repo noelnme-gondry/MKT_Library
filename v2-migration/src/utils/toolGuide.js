@@ -138,14 +138,16 @@ export const TOOL_GUIDE = {
       { col: "holdout_group", label: "노출/홀드아웃 구분", why: "exposed(광고 봄) vs holdout(광고 차단) 그룹 구분", required: true },
       { col: "numerator", label: "전환수", why: "그룹 전환 건수", required: true },
       { col: "denominator", label: "그룹 인원", why: "그룹 크기(전환율=전환수/인원)", required: true },
+      { col: "date", label: "날짜", why: "넣으면 날짜별 전환율 추이 차트(노출 vs 홀드아웃)", required: false },
       { col: "spend", label: "광고비", why: "노출그룹 비용 → iROAS·증분 CPA", required: false },
       { col: "revenue_d7", label: "매출", why: "노출그룹 매출 → iROAS", required: false },
     ],
     prep: [
       "무작위 분할(randomized)이어야 인과로 해석됩니다.",
       "노출/미노출은 지역(Geo)·유저(Ghost ads)·오디언스 홀드아웃으로 나눈 결과를 집계해 올립니다.",
+      "date를 넣고 날짜별 여러 행으로 올리면 전환율 추이 시계열도 함께 나옵니다.",
     ],
-    example: "holdout_group,numerator,denominator,spend,revenue_d7\nexposed,516,8600,1548000,16512000\nholdout,378,8600,0,12096000",
+    example: "date,holdout_group,numerator,denominator,spend,revenue_d7\n2024-05-01,exposed,516,8600,1548000,16512000\n2024-05-01,holdout,378,8600,0,12096000\n2024-05-02,exposed,529,8700,1566000,16928000",
   },
   "5-23:on": {
     when: "안 하던 광고/캠페인을 켠 시점(cutoff) 전후를 비교해, 켜서 얻은 상승분을 봅니다.",
