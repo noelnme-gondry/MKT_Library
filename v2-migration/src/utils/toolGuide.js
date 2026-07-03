@@ -123,6 +123,51 @@ export const TOOL_GUIDE = {
       "전환 컬럼은 0/1 — 1이 정착/목표 달성.",
     ],
   },
+  // 5-23 증분 분석 — 방법별 데이터가 달라 서브키로 분리("5-23:<method>").
+  "5-23:suppression": {
+    when: "같은 기간, 무작위로 광고를 차단한 홀드아웃 그룹 vs 노출 그룹을 비교해 광고가 만든 순증분을 봅니다. 3방법 중 가장 신뢰 높음.",
+    grain: "1행 = 그룹(지역·일자별로 쪼개도 됨)",
+    needs: [
+      { col: "holdout_group", label: "노출/홀드아웃 구분", why: "exposed(광고 봄) vs holdout(광고 차단) 그룹 구분", required: true },
+      { col: "numerator", label: "전환수", why: "그룹 전환 건수", required: true },
+      { col: "denominator", label: "그룹 인원", why: "그룹 크기(전환율=전환수/인원)", required: true },
+      { col: "spend", label: "광고비", why: "노출그룹 비용 → iROAS·증분 CPA", required: false },
+      { col: "revenue_d7", label: "매출", why: "노출그룹 매출 → iROAS", required: false },
+    ],
+    prep: [
+      "무작위 분할(randomized)이어야 인과로 해석됩니다.",
+      "노출/미노출은 지역(Geo)·유저(Ghost ads)·오디언스 홀드아웃으로 나눈 결과를 집계해 올립니다.",
+    ],
+    example: "holdout_group,numerator,denominator,spend,revenue_d7\nexposed,516,8600,1548000,16512000\nholdout,378,8600,0,12096000",
+  },
+  "5-23:on": {
+    when: "안 하던 광고/캠페인을 켠 시점(cutoff) 전후를 비교해, 켜서 얻은 상승분을 봅니다.",
+    grain: "1행 = 하루(날짜)",
+    needs: [
+      { col: "date", label: "날짜", why: "전후 비교의 시간 축", required: true },
+      { col: "conversions 등 성과 지표", label: "성과 지표", why: "켠 뒤 얼마나 올랐는지 측정", required: true },
+      { col: "group", label: "그룹(treatment/control)", why: "대조군 넣으면 DiD로 계절·추세 제거", required: false },
+    ],
+    prep: [
+      "켠 날짜(cutoff)는 화면에서 선택합니다.",
+      "대조군(변하지 않은 그룹)을 넣으면 계절·추세를 걷어내 더 정확(DiD). 무작위 아니면 인과 단정 X.",
+    ],
+    example: "date,group,conversions\n2024-04-01,treatment,100\n2024-04-01,control,90\n2024-05-20,treatment,155\n2024-05-20,control,92",
+  },
+  "5-23:off": {
+    when: "켜뒀던 광고/캠페인을 끈 시점(cutoff) 전후를 비교해, 끄면서 잃은 하락분을 봅니다.",
+    grain: "1행 = 하루(날짜)",
+    needs: [
+      { col: "date", label: "날짜", why: "전후 비교의 시간 축", required: true },
+      { col: "conversions 등 성과 지표", label: "성과 지표", why: "끈 뒤 얼마나 떨어졌는지 측정", required: true },
+      { col: "group", label: "그룹(treatment/control)", why: "대조군 넣으면 DiD로 계절·추세 제거", required: false },
+    ],
+    prep: [
+      "끈 날짜(cutoff)는 화면에서 선택합니다.",
+      "대조군을 넣으면 계절·추세를 걷어내 더 정확(DiD). 무작위 아니면 인과 단정 X.",
+    ],
+    example: "date,group,conversions\n2024-04-01,treatment,200\n2024-04-01,control,180\n2024-05-20,treatment,120\n2024-05-20,control,182",
+  },
 };
 
 export function getToolGuide(toolId) {

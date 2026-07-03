@@ -9,6 +9,7 @@ import { downloadChartAsPNG } from "@/utils/chartUtils";
 import { idToSlug } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
 import DemoLoadButton from "@/components/DemoLoadButton";
+import CsvGuide from "@/components/ds/CsvGuide";
 import { buildDemoCsv } from "@/utils/demoData";
 
 function escapeHtml(str) {
@@ -573,9 +574,7 @@ export default function AhaMomentFinder() {
       <div className="tab-pane active" id="tab-aha">
         <section className="block" id="s-prep">
           <h2 className="section-title">데이터 준비</h2>
-          <p className="muted" style={{ fontSize: "12px", marginBottom: "12px" }}>
-            유저 1명당 1행. 각 후보 액션은 윈도우별 누적 count 컬럼 묶음(예: <code className="inline">invite_d0, invite_d3, invite_d7</code>) + 타겟 달성 여부 컬럼(0/1)이 필요합니다. 업로드 후 컬럼 역할(선행 행동·타겟)을 확인·수정합니다. 데이터는 브라우저 메모리에만 — 서버 전송 없음.
-          </p>
+          <CsvGuide toolId="5-20" />
           <div
             className="csv-dropzone"
             onDragOver={(e) => e.preventDefault()}

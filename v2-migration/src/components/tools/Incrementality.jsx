@@ -9,6 +9,7 @@ import { getMappedRows } from "@/utils/dashboardAggregator";
 import { fmtCurrency, fmtNum, fmtPct } from "@/utils/format";
 import { CHART_THEME, getCssVar } from "@/utils/chartUtils";
 import DemoLoadButton from "@/components/DemoLoadButton";
+import CsvGuide from "@/components/ds/CsvGuide";
 import { buildIncrSuppressionDemo, buildIncrPrepostDemo } from "@/utils/demoData";
 
 const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : NaN; };
@@ -118,14 +119,7 @@ function UploadPanel({ method, fileRef, handleFile, loadDemo }) {
     : { name: `template_incr_prepost.csv`, text: "date,group,conversions\r\n2024-04-01,treatment,100\r\n2024-04-01,control,90\r\n2024-05-20,treatment,155\r\n2024-05-20,control,92\r\n" };
   return (
     <>
-      <div className="callout" style={{ marginBottom: "10px" }}><div className="ico">📋</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
-        {isSup
-          ? <>필요 컬럼: <code className="inline">holdout_group</code>(exposed/holdout) · <code className="inline">numerator</code>(전환수) · <code className="inline">denominator</code>(그룹 인원). 옵션: <code className="inline">spend</code>·<code className="inline">revenue_d7</code> → iROAS·증분 CPA. 그룹별 1행(지역·일자별로 쪼개도 됨).</>
-          : <>필요 컬럼: <code className="inline">date</code>(날짜) · 성과 지표 컬럼(예 <code className="inline">conversions</code>). 옵션: <code className="inline">group</code>(treatment/control) → DiD로 계절·추세 제거. 날짜별 1행.</>}
-      </p></div></div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "8px" }}>
-        <button className="ab-pill" onClick={() => downloadCsv(tmpl.name, tmpl.text)}>⬇ 템플릿 CSV (예시 포함)</button>
-      </div>
+      <CsvGuide toolId={`5-23:${method}`} onDownloadTemplate={() => downloadCsv(tmpl.name, tmpl.text)} />
       <div className="csv-dropzone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]); }} onClick={() => fileRef.current?.click()} style={{ cursor: "pointer" }}>
         <div className="csv-drop-icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>

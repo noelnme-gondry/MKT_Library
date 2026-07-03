@@ -34,6 +34,7 @@ import {
 } from "@/utils/responseCannibRank";
 import CsvUploader from "@/components/CsvUploader";
 import DemoLoadButton from "@/components/DemoLoadButton";
+import CsvGuide from "@/components/ds/CsvGuide";
 import { buildDemoCsv } from "@/utils/demoData";
 import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, mmmPlatformTags } from "@/components/tools/MmmColumnMapper";
 
@@ -1365,9 +1366,7 @@ export default function MarketingResponse() {
   // 5-18 전용 dropzone (표준 CsvUploader/DataFeatureMatrix 미사용 — 단일 generic CSV → colMap).
   const mmmDropzone = (
     <>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "8px" }}>
-        <button className="ab-pill" onClick={downloadMmmTemplate}>⬇ 이 도구 템플릿 CSV</button>
-      </div>
+      <CsvGuide toolId="5-18" onDownloadTemplate={downloadMmmTemplate} />
       <div
         className="csv-dropzone"
         onDragOver={(e) => e.preventDefault()}
