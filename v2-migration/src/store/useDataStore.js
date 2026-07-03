@@ -15,6 +15,7 @@ export const TOOL_GROUP = {
   "5-4": "experiment", "5-7": "experiment", "5-15": "experiment",
   "5-18": "response",
   "5-20": "aha",
+  "5-23": "incrementality",
 };
 
 const EMPTY_SLICE = () => ({ raw: [], headers: [], mapping: {}, fileName: "" });
@@ -106,7 +107,8 @@ export const IA = [
     desc: "소재 성과·피로도 진단과 A/B·홀드아웃 실험 판독.",
     items: [
       { id: "5-6", title: "소재 분석 (지표·피로도·포레스트)" },
-      { id: "5-4", title: "실험 분석 (A/B·홀드아웃·증분)" },
+      { id: "5-4", title: "실험 분석 (A/B 테스트)" },
+      { id: "5-23", title: "증분 분석 (홀드아웃·전후 비교)" },
     ],
   },
   {
@@ -208,6 +210,7 @@ export const useAppStore = create((set, get) => ({
     experiment: EMPTY_SLICE(),
     response: EMPTY_SLICE(),
     aha: EMPTY_SLICE(),
+    incrementality: EMPTY_SLICE(),
   },
   // Mirror of the ACTIVE group's slice. Initial currentRouteId is "home" →
   // "efficiency", so the initial mirror is the (empty) efficiency slice.
@@ -246,6 +249,7 @@ export const useAppStore = create((set, get) => ({
     experiment: null,
     response: null,
     aha: null,
+    incrementality: null,
   },
   // Confirm analysis for the route's group. Stores the CURRENT active-slice sig.
   // Call from CsvUploader's "분석하기/데이터 분석하기" (and "↻ 다시 분석") button.

@@ -298,12 +298,69 @@ function buildAha() {
   return { raw, headers, mapping: {}, fileName: "demo_aha.csv" };
 }
 
+// ── incrementality (5-23) ───────────────────────────────────────────────────
+// 통제군(suppression): exposed vs holdout 그룹별 1행. 5-4 홀드아웃과 동일 스키마.
+export function buildIncrSuppressionDemo() {
+  const headers = ["date", "holdout_group", "numerator", "denominator", "spend", "revenue_d7"];
+  const revPerConv = 32000, costPerUser = 180;
+  const groups = [
+    { group: "holdout", cvr: 0.044, exposed: false },
+    { group: "exposed", cvr: 0.060, exposed: true },
+  ];
+  const dates = generateDates(45, "2024-05-01");
+  const raw = [];
+  let seed = 511;
+  for (const g of groups) {
+    const rnd = seededNoise((seed += 31));
+    for (let d = 0; d < dates.length; d++) {
+      const denominator = round(8500 + rnd() * 1400);
+      const numerator = round(denominator * g.cvr * (1 + rnd() * 0.09));
+      const spend = g.exposed ? round(denominator * costPerUser) : 0;
+      const revenue = round(numerator * revPerConv * (1 + rnd() * 0.12));
+      raw.push({ date: dates[d], holdout_group: g.group, numerator, denominator, spend, revenue_d7: revenue });
+    }
+  }
+  const mapping = {}; headers.forEach((h) => { mapping[h] = h; });
+  return { raw, headers, mapping, fileName: "demo_incr_suppression.csv" };
+}
+
+// 전후비교(pre/post): date·group(treatment/control)·conversions. cutoff = 중앙.
+// direction "on" → cutoff 후 treatment 상승, "off" → 하락. control은 계절만.
+export function buildIncrPrepostDemo(direction = "on") {
+  const headers = ["date", "group", "conversions"];
+  const nDays = 90, cutoff = 45;
+  const dates = generateDates(nDays, "2024-04-01");
+  const raw = [];
+  const rndT = seededNoise(direction === "on" ? 601 : 631);
+  const rndC = seededNoise(direction === "on" ? 661 : 691);
+  const baseT = direction === "on" ? 100 : 200;   // treatment 시작 수준
+  const jump = direction === "on" ? 55 : -80;      // cutoff 후 변화
+  for (let d = 0; d < nDays; d++) {
+    const trend = d * 0.3;
+    const season = 12 * Math.sin((d / 30) * 2 * Math.PI);
+    const post = d >= cutoff ? jump : 0;
+    // treatment
+    raw.push({
+      date: dates[d], group: "treatment",
+      conversions: Math.max(0, round(baseT + trend + season + post + rndT() * 14)),
+    });
+    // control (같은 계절·추세, 변화 없음 → DiD 기준선)
+    raw.push({
+      date: dates[d], group: "control",
+      conversions: Math.max(0, round(baseT * 0.9 + trend + season + rndC() * 14)),
+    });
+  }
+  const mapping = {}; headers.forEach((h) => { mapping[h] = h; });
+  return { raw, headers, mapping, fileName: `demo_incr_prepost_${direction}.csv` };
+}
+
 const BUILDERS = {
   efficiency: buildEfficiency,
   creative: buildCreative,
   experiment: buildExperiment,
   response: buildResponse,
   aha: buildAha,
+  incrementality: buildIncrSuppressionDemo,
 };
 
 // group name (TOOL_GROUP value) → demo csv. Falls back to efficiency.

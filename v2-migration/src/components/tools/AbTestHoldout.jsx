@@ -4,7 +4,6 @@ import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { STATS } from "@/utils/abTestMath";
 import { CREATIVE_STATS } from "@/utils/creativeMath";
-import { INCR_MATH, parseHoldoutGroup } from "@/utils/incrMath";
 import CsvUploader from "@/components/CsvUploader";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 
@@ -30,14 +29,6 @@ function downloadAbTemplate() {
     "Variant B,0,424,8000",
   ];
   downloadCsv("template_5-4_ab.csv", rows.join("\r\n") + "\r\n");
-}
-function downloadHoldoutTemplate() {
-  const rows = [
-    "holdout_group,numerator,denominator,spend,revenue_d7",
-    "exposed,516,8600,1548000,16512000",
-    "holdout,378,8600,0,12096000",
-  ];
-  downloadCsv("template_5-4_holdout.csv", rows.join("\r\n") + "\r\n");
 }
 
 /* 통화 포맷 — index.html fmtCurrency 포팅 (통화 토글 반영) */
@@ -113,7 +104,6 @@ export default function AbTestHoldout() {
   const [pcPower, setPcPower] = useState("0.80");
 
   const abChartRef = useRef(null);
-  const holdoutChartRef = useRef(null);
   const powerChartRef = useRef(null);
 
   // ============================================================
@@ -264,43 +254,6 @@ export default function AbTestHoldout() {
   }, [csvData]);
 
   // ============================================================
-  //  Holdout incrementality (CSV) — control-transform + significance
-  // ============================================================
-  const holdoutData = useMemo(() => {
-    const rows = getMappedRows(csvData);
-    if (!rows || rows.length === 0) return null;
-
-    let cNum = 0, cDen = 0, tNum = 0, tDen = 0, spend = 0, revenue = 0;
-    rows.forEach((row) => {
-      const group = parseHoldoutGroup(row.holdout_group);
-      const n = num(row.numerator) || 0;
-      const d = num(row.denominator) || 0;
-      if (group === "control") { cNum += n; cDen += d; }
-      else if (group === "test") {
-        tNum += n; tDen += d;
-        spend += num(row.spend) || 0;
-        revenue += num(row.revenue_d7 ?? row.revenue) || 0;
-      }
-    });
-
-    if (cDen <= 0 || tDen <= 0) return { insufficient: true };
-
-    // 반사실·lift·iROAS는 순수 유틸(INCR_MATH.compute)로 산출 — index.html verbatim
-    const incr = INCR_MATH.compute(
-      { num: tNum, den: tDen, spend, rev: revenue > 0 ? revenue : null },
-      { num: cNum, den: cDen },
-    );
-    const { cRate, tRate, expected: counterfactual, incrementalConv, liftRel, liftAbs, iroas, cpia } = incr;
-
-    const sig = STATS.twoPropZTest(cDen, cNum, tDen, tNum);
-
-    return {
-      cNum, cDen, tNum, tDen, cRate: cRate * 100, tRate: tRate * 100,
-      counterfactual, incrementalConv, liftRel, liftAbs, iroas, cpia, sig, spend, revenue,
-    };
-  }, [csvData]);
-
-  // ============================================================
   //  Readout bar chart
   // ============================================================
   useEffect(() => {
@@ -324,31 +277,6 @@ export default function AbTestHoldout() {
       if (abChartRef.current) { abChartRef.current.destroy(); abChartRef.current = null; }
     };
   }, [activeTab, readoutData]);
-
-  // ============================================================
-  //  Holdout bar chart
-  // ============================================================
-  useEffect(() => {
-    if (holdoutChartRef.current) { holdoutChartRef.current.destroy(); holdoutChartRef.current = null; }
-    if (activeTab !== "holdout" || !holdoutData || holdoutData.insufficient) return;
-    const ctx = document.getElementById("holdout-bar");
-    if (!ctx) return;
-    holdoutChartRef.current = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: ["Control (Holdout)", "Test (Exposed)"],
-        datasets: [{
-          label: "전환율 (%)",
-          data: [holdoutData.cRate, holdoutData.tRate],
-          backgroundColor: ["#fbbf24", "#22c55e"],
-        }],
-      },
-      options: { responsive: true, maintainAspectRatio: false },
-    });
-    return () => {
-      if (holdoutChartRef.current) { holdoutChartRef.current.destroy(); holdoutChartRef.current = null; }
-    };
-  }, [activeTab, holdoutData]);
 
   // ============================================================
   //  Power curve chart (§4)
@@ -415,16 +343,17 @@ export default function AbTestHoldout() {
         <button className={`ab-tab ${activeTab === "readout" ? "active" : ""}`} onClick={() => setActiveTab("readout")}>
           ② A/B 판독 · 어느 쪽이 이겼나?
         </button>
-        <button className={`ab-tab ${activeTab === "holdout" ? "active" : ""}`} onClick={() => setActiveTab("holdout")}>
-          ③ 홀드아웃 · 광고가 진짜 만든 효과는?
-        </button>
       </div>
       {/* 탭별 한 줄 평어 안내 (claude-ux §1 여정=질문) */}
       <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "0 0 18px", lineHeight: 1.6 }}>
         {activeTab === "design" && "실험을 시작하기 전에 — 얼마나 많은 표본(사람 수)을 모아야 결과를 믿을 수 있는지 계산합니다."}
         {activeTab === "readout" && "두 안(A vs B)을 모두 노출한 뒤 — 어느 쪽 전환율이 더 높고, 그 차이가 우연이 아닌지 판정합니다."}
-        {activeTab === "holdout" && "일부러 광고를 안 본 홀드아웃 그룹과 본 그룹을 비교 — 광고가 없었어도 일어났을 전환을 빼고 순수하게 광고가 만든 효과(증분)만 봅니다. A/B가 \"둘 중 뭐가 나은가\"라면, 홀드아웃은 \"광고를 한 것 자체가 값어치를 했나\"를 봅니다."}
       </p>
+      {activeTab === "readout" && (
+        <div className="callout" style={{ marginBottom: "16px" }}><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
+          <strong>광고가 없었어도 일어났을 전환(증분)</strong>을 보려면? → 왼쪽 메뉴 <strong>증분 분석</strong> 도구(홀드아웃·전후 비교)를 쓰세요. A/B는 &quot;둘 중 뭐가 나은가&quot;, 증분 분석은 &quot;광고를 한 것 자체가 값어치였나&quot;를 봅니다.
+        </p></div></div>
+      )}
 
       {activeTab === "design" && (
         <>
@@ -864,79 +793,6 @@ export default function AbTestHoldout() {
         </>
       )}
 
-      {activeTab === "holdout" && (
-        <>
-          <section className="block" id="s-prep">
-            <h2 className="section-title">데이터 준비</h2>
-            {!holdoutData ? (
-              <div className="callout warning">
-                <div className="ico">!</div>
-                <div className="body">
-                  <strong>홀드아웃 CSV 업로드 대기</strong>
-                  <p style={{ margin: "2px 0 6px" }}>그룹별 1행(지역·일자별로 쪼개도 됨). <strong>필수</strong>: 노출/홀드아웃 구분(holdout_group = exposed vs holdout) · 전환수(numerator) · 그룹 인원(denominator). <strong>옵션</strong>: 광고비(spend)·매출(revenue_d7)을 넣으면 iROAS·증분 CPA까지 계산.</p>
-                  <div style={{ margin: "6px 0 4px" }}>
-                    <button className="ab-pill" onClick={downloadHoldoutTemplate}>⬇ 홀드아웃 템플릿 CSV (예시 포함)</button>
-                  </div>
-                  <div style={{ marginTop: "1rem" }}><CsvUploader toolId="5-4" showMatrix={false} /></div>
-                </div>
-              </div>
-            ) : holdoutData.insufficient ? (
-              <div className="callout warn"><div className="ico">!</div><div className="body"><strong>test/control 양쪽 데이터가 필요합니다</strong><p>holdout_group이 test(exposed)와 control(holdout) 둘 다 있어야 증분을 계산합니다.</p></div></div>
-            ) : (
-              <div className="callout"><div className="ico">i</div><div className="body"><p style={{ margin: 0 }}>{csvData?.fileName ? <strong>{csvData.fileName}</strong> : "업로드된 데이터"}. 반사실 = test 인원 × control 전환율 기준 증분 산출.</p></div></div>
-            )}
-          </section>
-
-          {holdoutData && !holdoutData.insufficient && (
-            <section className="block" id="s-incr">
-              <h2 className="section-title"><span className="ix">§1</span>증분 결과 (test vs control)</h2>
-              {(() => {
-                const h = holdoutData;
-                const liftPositive = h.liftRel != null && h.liftRel > 0;
-                const isSig = h.sig && h.sig.pValue < 0.05;
-                // 절대 lift 95% CI (unpooled)
-                const cR = h.cRate / 100, tR = h.tRate / 100;
-                const se = Math.sqrt((cR * (1 - cR)) / h.cDen + (tR * (1 - tR)) / h.tDen);
-                const lo = (h.liftAbs - 1.96 * se) * 100, hi = (h.liftAbs + 1.96 * se) * 100;
-                const crossesZero = lo <= 0 && hi >= 0;
-                return (
-                  <div className="alloc-card" style={{ marginBottom: "14px", borderLeft: `3px solid ${liftPositive && isSig ? "#22c55e" : "#fbbf24"}` }}>
-                    <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px", margin: "8px 0" }}>
-                      <div className="ab-stat"><div className="ab-stat-label">Control 전환율</div><div className="ab-stat-value tnum">{h.cRate.toFixed(2)}%</div><div className="ab-stat-hint">{h.cNum.toLocaleString()}/{h.cDen.toLocaleString()}</div></div>
-                      <div className="ab-stat"><div className="ab-stat-label">Test 전환율</div><div className="ab-stat-value tnum">{h.tRate.toFixed(2)}%</div><div className="ab-stat-hint">{h.tNum.toLocaleString()}/{h.tDen.toLocaleString()}</div></div>
-                      <div className="ab-stat"><div className="ab-stat-label">상대 Lift</div><div className="ab-stat-value tnum" style={{ color: liftPositive ? "#22c55e" : "#ef4444" }}>{h.liftRel != null ? (h.liftRel > 0 ? "+" : "") + (h.liftRel * 100).toFixed(1) + "%" : "—"}</div><div className="ab-stat-hint" style={{ color: crossesZero ? "var(--text-muted)" : undefined }}>95%CI [{lo.toFixed(2)}, {hi.toFixed(2)}]%p{crossesZero ? " · 0 포함(불확실)" : ""}</div></div>
-                      <div className="ab-stat"><div className="ab-stat-label">증분 전환</div><div className="ab-stat-value tnum">{Math.round(h.incrementalConv).toLocaleString()}</div><div className="ab-stat-hint">test − 반사실</div></div>
-                      {h.cpia != null && <div className="ab-stat"><div className="ab-stat-label">증분 전환당 비용</div><div className="ab-stat-value tnum">{fmtCurrency(h.cpia, currency)}</div></div>}
-                      {h.iroas != null && <div className="ab-stat"><div className="ab-stat-label">iROAS</div><div className="ab-stat-value tnum" style={{ color: h.iroas >= 1 ? "#22c55e" : "#ef4444" }}>{h.iroas.toFixed(2)}×</div><div className="ab-stat-hint">증분매출/비용</div></div>}
-                      <div className="ab-stat"><div className="ab-stat-label">유의성</div><div className="ab-stat-value" style={{ fontSize: "13px" }}>{h.sig ? (h.sig.pValue < 0.05 ? <span style={{ color: "#22c55e" }}>유의 (p={h.sig.pValue.toFixed(4)})</span> : <span style={{ color: "var(--text-muted)" }}>무유의 (p={h.sig.pValue.toFixed(3)})</span>) : "—"}</div></div>
-                    </div>
-                    <div style={{ fontWeight: 700, color: verdictColor(h.sig?.pValue, liftPositive), marginTop: "8px" }}>
-                      {isSig ? (liftPositive ? "✓ 유의미한 증분 효과 확인" : "✗ 유의미한 음의 효과") : "— 증분 신호 불확실 (더 많은 데이터 필요)"}
-                    </div>
-                  </div>
-                );
-              })()}
-              <div className="callout" style={{ marginTop: "8px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
-                <strong>쉽게 말하면:</strong> 광고를 <strong>안 본 그룹(홀드아웃)</strong>도 자연히 전환하는 사람이 있습니다. 그 몫을 빼고 <strong>광고 때문에 새로 생긴 전환</strong>만 센 게 <strong>증분 전환({Math.round(holdoutData.incrementalConv).toLocaleString()}건)</strong>입니다.
-                {holdoutData.iroas != null && <> 여기에 쓴 광고비 대비 증분 매출이 <strong>iROAS {holdoutData.iroas.toFixed(2)}×</strong> — {holdoutData.iroas >= 1 ? "1배가 넘으니 광고를 한 게 값어치를 했어요." : "1배 미만이라 증분 기준으론 광고비가 매출보다 컸어요."}</>}
-                {" "}A/B 탭이 “어느 안이 나은가”라면, 이 탭은 “광고를 한 것 자체가 이득이었나”를 봅니다.
-              </p></div></div>
-              <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "11.5px", lineHeight: 1.6 }}>
-                <strong>정직하게:</strong> 이 증분은 홀드아웃 그룹이 <strong>무작위로(randomized)</strong> 나뉘었을 때만 인과로 해석할 수 있어요. 그냥 안 산 사람 vs 산 사람을 비교한 거라면 원래 성향 차이가 섞여 과대/과소 추정될 수 있습니다. 표본이 적으면 위 lift의 95% 구간이 넓어져 신뢰도가 떨어집니다.
-              </p></div></div>
-            </section>
-          )}
-
-          {holdoutData && !holdoutData.insufficient && (
-            <section className="block" id="s-holdout-chart">
-              <h2 className="section-title">홀드아웃 결과 차트</h2>
-              <div className="chart-container" style={{ height: "300px", marginTop: "20px" }}>
-                <canvas id="holdout-bar"></canvas>
-              </div>
-            </section>
-          )}
-        </>
-      )}
     </div>
   );
 }

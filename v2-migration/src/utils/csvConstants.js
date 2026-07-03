@@ -900,7 +900,7 @@ export const TOOL_REQUIRED_FIELDS = {
               "5-4": [
                 "numerator",
                 "denominator",
-                { oneOf: ["is_control", "holdout_group", "arm_id"] },
+                { oneOf: ["is_control", "arm_id"] },
               ],
               "5-2": ["date", { oneOf: ["installs", "actions", "cost"] }],
               "5-3": [
@@ -1000,11 +1000,8 @@ export const TOOL_REQUIRED_FIELDS = {
             };
 export const TOOL_OPTIONAL_FIELDS = {
               "5-4": [
-                { key: "is_control", unlocks: "② A/B 판독 — 대조군(Control) 구분" },
-                { key: "holdout_group", unlocks: "③ 홀드아웃 증분 — 노출/미노출(홀드아웃) 구분" },
-                { key: "arm_id", unlocks: "② 다변형 대량검정 (Variant A/B/C…)" },
-                { key: "spend", unlocks: "③ iROAS·증분 CPA (노출그룹 광고비)" },
-                { key: "revenue_d7", unlocks: "③ iROAS (노출그룹 증분 매출)" },
+                { key: "is_control", unlocks: "대조군(Control) vs Test 판정" },
+                { key: "arm_id", unlocks: "다변형 대량검정 (Variant A/B/C…)" },
                 { key: "date", unlocks: "기간 표기 (선택)" },
               ],
               "5-2": [
