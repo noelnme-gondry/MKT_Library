@@ -87,7 +87,7 @@ describe("MarketingEfficiency render smoke", () => {
     // added via ToolPageShell) — assert at least one match rather than a
     // single unique node.
     expect(screen.getAllByText(/포화도 순위/).length).toBeGreaterThan(0);
-    // Currency toggle present in the analyzed view.
-    expect(screen.getByRole("button", { name: /USD/ })).toBeTruthy();
+    // Currency toggle lives ONLY in Header now (design-system: single global
+    // toggle, no per-tool duplicates) — not asserted here.
   });
 });

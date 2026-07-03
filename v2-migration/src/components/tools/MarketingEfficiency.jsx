@@ -107,10 +107,8 @@ export default function MarketingEfficiency() {
     metric: "cpa", // cpa | roas
     selected: null,
   });
-  // 표시 통화는 전역 store 단일 소스(BasisCurrencyToggleBar 토글) — 로컬 currency
-  // state를 따로 두면 상단 토글을 눌러도 표에 반영 안 되는 버그(§7 재발) 발생.
+  // 표시 통화는 전역 store 단일 소스 — 토글 UI는 Header뿐(도구별 중복 금지).
   const currency = useAppStore((state) => state.displayCurrency);
-  const setCurrency = useAppStore((state) => state.setDisplayCurrency);
 
   const hasData = csvData && csvData.raw && csvData.raw.length > 0;
 
@@ -458,25 +456,6 @@ export default function MarketingEfficiency() {
               onClick={() => setSatState(s => ({...s, metric: "roas"}))}
             >
               ROAS (높을수록 좋음)
-            </button>
-          </div>
-          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>표시 통화</span>
-            <button
-              className="ab-pill"
-              style={currency === "KRW" ? activeStyle : {}}
-              onClick={() => setCurrency("KRW")}
-              title="원화 기호 표시 (환율 변환 없음 — 기호/소수 자리수만 변경)"
-            >
-              ₩ KRW
-            </button>
-            <button
-              className="ab-pill"
-              style={currency === "USD" ? activeStyle : {}}
-              onClick={() => setCurrency("USD")}
-              title="달러 기호 표시 (환율 변환 없음 — 기호/소수 자리수만 변경)"
-            >
-              $ USD
             </button>
           </div>
         </div>

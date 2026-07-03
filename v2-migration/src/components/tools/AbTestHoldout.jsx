@@ -70,9 +70,8 @@ export default function AbTestHoldout() {
   const [activeTab, setActiveTab] = useState("design");
   const [mode, setMode] = useState("plan");
   const [testType, setTestType] = useState("binary");
-  // 전역 통화(design-system) — 도구별 통화 state 대신 store 구독(§1.2).
+  // 전역 통화(design-system) — 토글 UI는 Header뿐, 여기선 포맷에만 구독(§1.2).
   const currency = useAppStore((s) => s.displayCurrency);
-  const setCurrency = useAppStore((s) => s.setDisplayCurrency);
   const { csvData } = useAppStore();
 
   const sym = CURRENCY_SYMBOLS[currency] || "₩";
@@ -372,13 +371,6 @@ export default function AbTestHoldout() {
               <button className={`ab-pill ${testType === "continuous" ? "active" : ""}`} onClick={() => setTestType("continuous")}>Continuous · CPR / ARPPU / Revenue</button>
             </div>
 
-            {mode === "plan" && (
-              <div className="ab-pillgroup" style={{ marginTop: "10px" }}>
-                <span className="ab-pillgroup-label">통화</span>
-                <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setCurrency("KRW")}>₩ KRW</button>
-                <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setCurrency("USD")}>$ USD</button>
-              </div>
-            )}
           </section>
 
           <section className="block" id="s-body">
