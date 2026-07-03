@@ -33,6 +33,8 @@ import {
   CANNIBAL_RANK,
 } from "@/utils/responseCannibRank";
 import CsvUploader from "@/components/CsvUploader";
+import DemoLoadButton from "@/components/DemoLoadButton";
+import { buildDemoCsv } from "@/utils/demoData";
 import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, mmmPlatformTags } from "@/components/tools/MmmColumnMapper";
 
 /* ============================================================================
@@ -736,10 +738,15 @@ export default function MarketingResponse() {
   // CSV 로드 시 colMap 자동 초기화(이름 기반 부분 추정 — reg/react/채널만, 나머지는 트레이).
   const csvSig = hasData ? `${csvData.fileName}|${(csvData.headers || []).join(",")}` : "";
   const prevCsvSig = useRef(null);
+  // Set by the demo button so the auto-guessed colMap is also auto-confirmed
+  // (analyze gate opened) — results render instantly, matching other tools.
+  const demoPending = useRef(false);
   useEffect(() => {
     if (hasData && prevCsvSig.current !== csvSig) {
-      setMmmColMap(autoGuessColMap(csvData.headers, csvData.raw));
-      setMmmAnalyzedSig(null);
+      const guess = autoGuessColMap(csvData.headers, csvData.raw);
+      setMmmColMap(guess);
+      setMmmAnalyzedSig(demoPending.current ? JSON.stringify(guess) : null);
+      demoPending.current = false;
       prevCsvSig.current = csvSig;
     } else if (!hasData && prevCsvSig.current !== null) {
       setMmmColMap(null);
@@ -760,6 +767,10 @@ export default function MarketingResponse() {
         setCsvData({ raw: res.data, headers: res.meta.fields || [], mapping: {}, fileName: file.name });
       },
     });
+  };
+  const handleLoadDemo = () => {
+    demoPending.current = true;
+    setCsvData(buildDemoCsv("response"));
   };
   const colMapSig = mmmColMap ? JSON.stringify(mmmColMap) : "";
   const mmmAnalyzed = mmmAnalyzedSig != null && mmmAnalyzedSig === colMapSig;
@@ -1376,6 +1387,7 @@ export default function MarketingResponse() {
         <input type="file" accept=".csv,text/csv" style={{ display: "none" }} ref={mmmFileRef}
           onChange={(e) => { if (e.target.files?.[0]) handleMmmFile(e.target.files[0]); e.target.value = null; }} />
       </div>
+      <DemoLoadButton onLoad={handleLoadDemo} />
     </>
   );
 

@@ -3713,6 +3713,37 @@ body:not(.light-mode) .moon-icon {
   border-color: var(--primary);
   background: rgba(173, 198, 255, 0.04);
 }
+/* 데모 데이터 버튼 — 전 도구 공통(동일 디자인·위치, 드롭존 바로 아래) */
+.demo-load-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: -0.75rem 0 1.25rem;
+}
+.demo-load-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-lg, 10px);
+  border: 1px solid var(--primary);
+  background: var(--surface-container-lowest);
+  color: var(--primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.demo-load-btn:hover {
+  background: var(--primary);
+  color: var(--surface-base, #0b0d12);
+}
+.demo-load-icon { font-size: 13px; line-height: 1; }
+.demo-load-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
 /* csv-drop-icon → mirrors index .dropzone-icon */
 .csv-drop-icon {
   width: 48px;

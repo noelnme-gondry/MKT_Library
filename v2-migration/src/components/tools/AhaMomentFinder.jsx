@@ -8,6 +8,8 @@ import { AHA_STATS, ahaParseActionWindow } from "@/utils/ahaMath";
 import { downloadChartAsPNG } from "@/utils/chartUtils";
 import { idToSlug } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
+import DemoLoadButton from "@/components/DemoLoadButton";
+import { buildDemoCsv } from "@/utils/demoData";
 
 function escapeHtml(str) {
   if (str == null) return "";
@@ -268,6 +270,13 @@ export default function AhaMomentFinder() {
       },
     });
   };
+  // Demo: load sample event data + auto-confirm the analyze gate (see reseed below).
+  // State (not ref) because the reseed reads it during render.
+  const [demoPending, setDemoPending] = useState(false);
+  const handleLoadDemo = () => {
+    setDemoPending(true);
+    setCsvData(buildDemoCsv("aha"));
+  };
   const [minSupport, setMinSupport] = useState(30);
   const [holdoutOn, setHoldoutOn] = useState(true);
   const [sortBy, setSortBy] = useState("f1");
@@ -296,8 +305,11 @@ export default function AhaMomentFinder() {
   const seedKey = hasData ? `${fileName}|${headers.join(",")}|${csvData.raw.length}` : "";
   if (seededKey !== seedKey) {
     setSeededKey(seedKey);
-    setColMap(hasData ? ahaAutoMapColumns(headers, csvData.raw) : {});
-    setAnalyzedSig(null);
+    const cm = hasData ? ahaAutoMapColumns(headers, csvData.raw) : {};
+    setColMap(cm);
+    // Demo load auto-confirms the gate so results show instantly (matches other tools).
+    setAnalyzedSig(demoPending && hasData ? ahaAnalyzeSig(cm, fileName) : null);
+    if (demoPending) setDemoPending(false);
     setDrilldownAction(null);
   }
 
@@ -583,6 +595,7 @@ export default function AhaMomentFinder() {
             <input type="file" accept=".csv,text/csv" style={{ display: "none" }} ref={ahaFileRef}
               onChange={(e) => { if (e.target.files?.[0]) handleAhaFile(e.target.files[0]); e.target.value = null; }} />
           </div>
+          <DemoLoadButton onLoad={handleLoadDemo} />
         </section>
       </div>
     );

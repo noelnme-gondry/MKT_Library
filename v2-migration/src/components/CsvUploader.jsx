@@ -1,9 +1,11 @@
 "use client";
 import React, { useState, useRef, useMemo } from "react";
 import Papa from "papaparse";
-import { useAppStore } from "@/store/useDataStore";
+import { useAppStore, TOOL_GROUP } from "@/store/useDataStore";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
 import DataFeatureMatrix from "@/components/DataFeatureMatrix";
+import { buildDemoCsv } from "@/utils/demoData";
+import DemoLoadButton from "@/components/DemoLoadButton";
 
 function escapeHtml(str) {
   if (!str) return "";
@@ -136,6 +138,17 @@ export default function CsvUploader({ toolId }) {
     setPreviewOpen(true);
   };
 
+  // Load a deterministic demo dataset for this tool's group and auto-confirm the
+  // analyze gate so results render immediately (§12.8 demo pattern).
+  const handleLoadDemo = () => {
+    setErrorMsg("");
+    const group = TOOL_GROUP[toolId] || "efficiency";
+    const demo = buildDemoCsv(group);
+    setCsvData(demo);
+    setGroupAnalyzed(toolId);
+    setPreviewOpen(false);
+  };
+
   const hasFile = csvData && csvData.headers && csvData.headers.length > 0;
 
   // --- Compute mapping requirements ---
@@ -236,6 +249,7 @@ export default function CsvUploader({ toolId }) {
             onChange={handleFileChange}
           />
         </div>
+        <DemoLoadButton onLoad={handleLoadDemo} />
         {errorMsg && <div style={{ color: "var(--danger)", marginTop: "10px", fontSize: "12px" }}>{errorMsg}</div>}
         <DataFeatureMatrix toolId={toolId} analyzed={missing.length === 0} />
       </div>
