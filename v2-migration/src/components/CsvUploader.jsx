@@ -3,7 +3,6 @@ import React, { useState, useRef, useMemo } from "react";
 import Papa from "papaparse";
 import { useAppStore, TOOL_GROUP } from "@/store/useDataStore";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
-import DataFeatureMatrix from "@/components/DataFeatureMatrix";
 import { buildDemoCsv } from "@/utils/demoData";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
@@ -18,7 +17,7 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
-export default function CsvUploader({ toolId, showMatrix = true }) {
+export default function CsvUploader({ toolId }) {
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
   const setGroupAnalyzed = useAppStore((s) => s.setGroupAnalyzed);
@@ -253,7 +252,6 @@ export default function CsvUploader({ toolId, showMatrix = true }) {
         </div>
         <DemoLoadButton onLoad={handleLoadDemo} />
         {errorMsg && <div style={{ color: "var(--danger)", marginTop: "10px", fontSize: "12px" }}>{errorMsg}</div>}
-        {showMatrix && <DataFeatureMatrix toolId={toolId} analyzed={missing.length === 0} />}
       </div>
     );
   }
@@ -405,8 +403,6 @@ export default function CsvUploader({ toolId, showMatrix = true }) {
           )}
         </div>
       )}
-
-      {showMatrix && <DataFeatureMatrix toolId={toolId} analyzed={missing.length === 0} />}
 
       {missing.length === 0 && (
         isAnalyzed ? (
