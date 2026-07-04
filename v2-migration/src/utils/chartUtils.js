@@ -62,9 +62,13 @@ export function chartCommonOpts() {
         },
       },
       tooltip: {
+        // 툴팁 배경은 항상 어둡게 고정(차트 색과 대비 위해 다크/라이트 공통) — 그런데
+        // titleColor/bodyColor에 테마별로 바뀌는 CHART_THEME.text를 쓰면 라이트모드에서
+        // 어두운 회색 글자가 어두운 배경 위에 놓여 거의 안 보였음. 배경이 항상 어두우니
+        // 글자색도 항상 밝게 고정.
         backgroundColor: "rgba(0,0,0,0.85)",
-        titleColor: CHART_THEME.text,
-        bodyColor: CHART_THEME.text,
+        titleColor: "#F9FAFB",
+        bodyColor: "#F9FAFB",
         bodyFont: { family: "JetBrains Mono", size: 12 },
         padding: 10,
         cornerRadius: 6,
