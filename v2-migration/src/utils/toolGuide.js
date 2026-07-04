@@ -17,7 +17,8 @@ export const TOOL_GUIDE = {
     grain: "1행 = 하루 × (채널/캠페인/소재 등) 단위 실적",
     needs: [
       { col: "date", label: "날짜", why: "시계열·페이싱·이상탐지의 축", required: true },
-      { col: "cost 또는 installs/actions", label: "비용 또는 전환", why: "KPI 계산의 최소 재료(하나 이상)", required: true },
+      { col: "cost", label: "비용", why: "CPI/CPA 등 KPI 계산의 분자", required: true },
+      { col: "installs 또는 actions", label: "설치 또는 가입", why: "KPI 계산의 분모(전환) — 둘 중 하나 이상", required: true },
       { col: "channel·campaign·platform·country", label: "차원", why: "채널·OS·국가별 쪼개보기", required: false },
       { col: "impressions·clicks", label: "노출·클릭", why: "퍼널(CTR/CVR/CPC) 계산", required: false },
       { col: "revenue_d7·ret_d7·pu_d7", label: "매출·리텐션·결제(Dn)", why: "LTV·ROAS 성숙도·코호트", required: false },
