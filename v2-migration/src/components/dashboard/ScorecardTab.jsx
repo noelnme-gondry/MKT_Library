@@ -109,16 +109,23 @@ export default function ScorecardTab() {
     const tickColor = getCssVar("--text-muted") || "#9ca3af";
 
     const isContinuous = ["cvr", "ctr", "roas", "cpi", "cpa"].includes(selectedMetric);
+    // Chart.js line은 borderColor 배열을 세그먼트별로 적용하지 않음(포인트 색상 배열은
+    // 적용됨) — 그래서 선 전체가 첫 색 하나로 통짜 렌더되던 버그. segment.borderColor로
+    // 각 구간(두 점 사이)을 비교주/목표주 색으로 분리. 피벗 경계 구간(비교주 마지막→
+    // 목표주 처음)은 목표주 색으로 이어줘 전환이 자연스럽게.
     const ds = isContinuous ? [{
       label: "",
       data: vals,
-      borderColor: ptBorder,
+      borderColor: "#adc6ff",
       backgroundColor: ptBg,
       pointBackgroundColor: ptBorder,
       pointBorderColor: ptBorder,
       pointRadius: 4,
       tension: 0.1,
       fill: false,
+      segment: {
+        borderColor: (ctx) => (ctx.p1DataIndex <= pivotIdx ? "#fbbf24" : "#adc6ff"),
+      },
     }] : [{
       label: "",
       data: vals,
