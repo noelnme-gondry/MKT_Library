@@ -59,10 +59,9 @@ const DFM_SERIES = [
     collapse: true,
     fields: ["ret_d7", "ret_d14", "ret_d30", "ret_d60", "ret_d90", "ret_d180", "ret_d360"],
   },
-  {
-    name: "MMM (주간 패널)",
-    fields: ["mmm_reg", "mmm_react", "ch_google_roi", "ch_google_cbua", "ch_meta", "ch_tiktok", "ch_brand"],
-  },
+  // MMM(주간 패널) 시리즈 제거 — 이 연결표를 쓰는 효율패밀리(5-2/3/6/21/22)는 MMM
+  // 미사용이라 항상 "미사용"으로 뜨며 지저분했고, 필드명(ch_google_roi 등)도 구버전.
+  // 5-18은 표준필드 대신 colMap DnD 역할 방식이라 이 표를 아예 안 씀.
 ];
 
 // 도구에서 한 필드의 상태: 필수/필수(택1)/옵션/미사용.
