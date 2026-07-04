@@ -356,10 +356,12 @@ export default function VizTab() {
         <h2 className="section-title"><span className="ix">§2</span>KPI 요약</h2>
         <div className="kpi-grid">
           <div className="kpi-card"><div className="label">총 비용</div><div className="value tnum">{formatNumber(kpi.cost)}</div><div className="delta">합산 cost</div></div>
+          <div className="kpi-card"><div className="label">CTR</div><div className="value tnum">{formatPercent(kpi.ctr)}</div><div className="delta">clicks / impressions</div></div>
           <div className="kpi-card"><div className="label">{effBasis === "actions" ? "총 가입 수" : "총 설치 수"}</div><div className="value tnum">{formatNumber(effBasis === "actions" ? kpi.actions : kpi.installs)}</div><div className="delta">{effBasis === "actions" ? "합산 actions" : "합산 installs"}</div></div>
           <div className="kpi-card"><div className="label">{acqLabel}</div><div className="value tnum">{formatNumber(kpi.cpi, { decimals: 2 })}</div><div className="delta">cost / {effBasis === "actions" ? "actions(가입)" : "installs"}</div></div>
-          <div className="kpi-card"><div className="label">CTR</div><div className="value tnum">{formatPercent(kpi.ctr)}</div><div className="delta">clicks / impressions</div></div>
-          <div className="kpi-card"><div className="label">CVR (Click→{effBasis === "actions" ? "가입" : "Install"})</div><div className="value tnum">{formatPercent(kpi.cvr)}</div><div className="delta">{effBasis === "actions" ? "actions" : "installs"} / clicks</div></div>
+          <div className="kpi-card"><div className="label">구매자 수 (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.purchases)}</div><div className="delta">pu_d{kpi.cohort} 합산</div></div>
+          <div className="kpi-card"><div className="label">구매율 (D{kpi.cohort})</div><div className="value tnum">{formatPercent(kpi.purchaseRate)}</div><div className="delta">구매자 수 / {effBasis === "actions" ? "가입" : "설치"}</div></div>
+          <div className="kpi-card"><div className="label">CPP (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.cpp, { decimals: 2 })}</div><div className="delta">cost / 구매자 수</div></div>
           <div className="kpi-card"><div className="label">총 매출 (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.revenue)}</div><div className="delta">cohort revenue 합산</div></div>
           <div className="kpi-card" style={{ position: "relative" }}>
             <div className="label">ROAS (D{kpi.cohort})</div>
@@ -367,8 +369,8 @@ export default function VizTab() {
             <div className="delta" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.25rem" }}>
               <span>revenue / cost</span>
               {d7Display && (
-                <button 
-                  className="share-btn" 
+                <button
+                  className="share-btn"
                   onClick={() => copyToClipboard(`현재 D${kpi.cohort} ROAS는 ${d7Display} 입니다.`)}
                   style={{ padding: "1px 5px", fontSize: "9.5px", height: "16px", lineHeight: "1", borderRadius: "3px", marginLeft: "auto", background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-subtle)", display: "inline-flex", alignItems: "center", gap: "3px", color: "var(--text-secondary)", cursor: "pointer", whiteSpace: "nowrap" }}
                 >
@@ -379,9 +381,7 @@ export default function VizTab() {
             </div>
           </div>
           <div className="kpi-card"><div className="label">ARPU (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.arpu, { decimals: 2 })}</div><div className="delta">revenue / {effBasis === "actions" ? "actions" : "installs"}</div></div>
-          <div className="kpi-card"><div className="label">결제수 (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.purchases)}</div><div className="delta">pu_d{kpi.cohort} 합산</div></div>
-          <div className="kpi-card"><div className="label">CPA (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.cpa, { decimals: 2 })}</div><div className="delta">cost / pu_d{kpi.cohort}</div></div>
-          <div className="kpi-card"><div className="label">ARPPU (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.arppu, { decimals: 2 })}</div><div className="delta">revenue / 결제수</div></div>
+          <div className="kpi-card"><div className="label">ARPPU (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.arppu, { decimals: 2 })}</div><div className="delta">revenue / 구매자 수</div></div>
           <div className="kpi-card"><div className="label">잔존율 평균 (D{kpi.cohort})</div><div className="value tnum">{formatPercent(kpi.retentionAvg)}</div><div className="delta">행별 평균</div></div>
         </div>
       </section>

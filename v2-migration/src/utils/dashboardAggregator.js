@@ -155,6 +155,8 @@ export function calculateKPIs(filteredRows, cohort = 7, denomBasis = "installs")
     cpi: denom ? cost / denom : null,
     // CVR = 분모(설치 or 가입) / clicks
     cvr: clicks ? denom / clicks : null,
+    // 구매율 = 구매자수(pu_dN) / 분모(설치 or 가입)
+    purchaseRate: denom ? purchases / denom : null,
     roas: cost ? revenue / cost : null,
     cpp: purchases ? cost / purchases : null,
     cpa: purchases ? cost / purchases : null,
