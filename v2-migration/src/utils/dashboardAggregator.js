@@ -133,20 +133,10 @@ export function calculateKPIs(filteredRows, cohort = 7, denomBasis = "installs")
   const actions = sum("actions");
   const denom = denomBasis === "actions" ? actions : installs;
 
-  const retVals = filteredRows
-    .map((r) => {
-      let v = r[`ret_d${cohort}`];
-      if (typeof v === 'string') {
-        v = Number(v.replace(/%/g, ''));
-        if (v > 1) v = v / 100;
-      }
-      return v;
-    })
-    .filter((v) => typeof v === "number" && !isNaN(v) && v > 0);
-
-  const retentionAvg = retVals.length
-    ? retVals.reduce((a, b) => a + b, 0) / retVals.length
-    : null;
+  // 리텐션은 SSOT computeWeightedRetention 재사용(§7) — 비율/인원수 컬럼 자동 판별 +
+  // 모수 가중. 예전엔 여기서 문자열 값만 %/비율 변환하고 숫자(인원수) 값은 그대로
+  // 평균해버려 ret_d7=50(명) 같은 값이 "50%"·"10895%"로 튀는 버그가 있었음.
+  const retentionAvg = computeWeightedRetention(filteredRows, cohort, denomBasis).rate;
 
   return {
     cost,
