@@ -22,7 +22,10 @@ function MultiSelect({ label, options, selected, onChange }) {
   const btnLabel = isAll ? `전체 (${options.length})` : `${selected.size}개 선택됨`;
 
   const toggle = (val) => {
-    const next = new Set(selected == null ? [] : selected);
+    // selected===null은 "전체 선택" 의미 — 여기서 빈 Set으로 시작하면 클릭한 항목
+    // 하나만 추가돼 "그것만 선택"으로 뒤집힘(반대 동작 버그). 전체 상태에선 전체
+    // 옵션에서 시작해 클릭한 항목을 빼야 "그것만 해제"가 됨.
+    const next = new Set(selected == null ? options : selected);
     if (next.has(val)) next.delete(val);
     else next.add(val);
     // 전체 선택 = null(필터 해제)로 정규화 → 다른 필터와 동일 의미
