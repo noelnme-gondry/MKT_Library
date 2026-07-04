@@ -7,6 +7,16 @@ import { CREATIVE_STATS } from "./creativeMath";
 import { INCR_MATH } from "./incrMath";
 
 describe("demo sanity", () => {
+  it("efficiency: retention < 설치·가입 both (리텐션 ≤ 100% 어느 분모든)", () => {
+    const d = buildDemoCsv("efficiency");
+    for (const r of d.raw) {
+      // ret_d7·ret_d14는 잔존 인원 — 설치·가입 어느 기준으로도 분모를 못 넘어야 함.
+      expect(r.ret_d7).toBeLessThan(r.installs);
+      expect(r.ret_d7).toBeLessThan(r.actions);
+      expect(r.ret_d14).toBeLessThanOrEqual(r.ret_d7);
+    }
+  });
+
   it("creative: concept matrix (message_angle × format) fills cells", () => {
     const d = buildDemoCsv("creative");
     const rows = getMappedRows({ raw: d.raw, headers: d.headers, mapping: d.mapping });

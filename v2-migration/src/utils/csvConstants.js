@@ -902,7 +902,7 @@ export const TOOL_REQUIRED_FIELDS = {
                 "denominator",
                 { oneOf: ["is_control", "arm_id"] },
               ],
-              "5-2": ["date", { oneOf: ["installs", "actions", "cost"] }],
+              "5-2": ["date", "cost", { oneOf: ["installs", "actions"] }],
               "5-3": [
                 "date",
                 "cost",
