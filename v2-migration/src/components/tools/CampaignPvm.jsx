@@ -325,6 +325,10 @@ export default function CampaignPvm() {
   const [crCampaign, setCrCampaign] = useState(null);
   const [showNew, setShowNew] = useState(false);
   const [crPage, setCrPage] = useState(1);
+  // §2/§3/§4 표 헤더 클릭 정렬 — 표마다 독립 상태(col=null이면 기존 기본 정렬(|영향| desc) 유지).
+  const [pvmSortChannel, setPvmSortChannel] = useState({ col: null, dir: "desc" });
+  const [pvmSortCampaign, setPvmSortCampaign] = useState({ col: null, dir: "desc" });
+  const [pvmSortCreative, setPvmSortCreative] = useState({ col: null, dir: "desc" });
 
   const hasData = csvData?.raw?.length > 0;
 
@@ -766,9 +770,38 @@ export default function CampaignPvm() {
     </div>
   );
 
+  // 정렬 가능 헤더용 — 클릭 시 그 컬럼 기준 desc, 다시 클릭하면 asc 토글. 값은 P2(현재
+  // 기간) 기준(정렬 의도가 "지금 뭐가 큰가"이므로). subMix/subRate는 레벨별로 다른
+  // 필드(채널=cmpSum*, 캠페인=creativeSum*, 소재=최하위라 null=미해당).
+  const PVM_SORT_ACCESSORS = {
+    name: (e, level) => String(level === "creative" ? e.crKey : (e.key ?? e.cmpKey ?? "")).toLowerCase(),
+    cost: (e) => e.cost2,
+    cpa: (e) => (e.result2 > 0 ? e.cost2 / e.result2 : null),
+    share: (e) => e.s2,
+    mix: (e) => e.mix,
+    rate: (e) => e.rate,
+    subMix: (e, level) => (level === "channel" ? e.cmpSumMix || 0 : level === "campaign" ? e.creativeSumMix || 0 : null),
+    subRate: (e, level) => (level === "channel" ? e.cmpSumRate || 0 : level === "campaign" ? e.creativeSumRate || 0 : null),
+    impact: (e) => e.contribution,
+  };
+  const pvmSortRows = (rows, level, sort) => {
+    if (!sort || !sort.col) return rows; // 미클릭 상태 — 호출부의 기본(|영향| desc) 유지
+    const acc = PVM_SORT_ACCESSORS[sort.col];
+    if (!acc) return rows;
+    const dir = sort.dir === "asc" ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      const va = acc(a, level), vb = acc(b, level);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1; // null(해당없음)은 항상 뒤로
+      if (vb == null) return -1;
+      if (typeof va === "string") return dir * va.localeCompare(vb);
+      return dir * (va - vb);
+    });
+  };
+
   // §2 표 행 렌더 (실제 layer1)
   const channelRows = ready
-    ? [...cache.layer1].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
+    ? pvmSortRows([...cache.layer1].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)), "channel", pvmSortChannel)
     : [];
   const channelSigma = channelRows.reduce((a, e) => a + e.contribution, 0);
 
@@ -780,9 +813,10 @@ export default function CampaignPvm() {
       : channelKeys[0];
   const campaignRows =
     ready && cache.campaignMapped && drillSel != null
-      ? cache.layer2
-          .filter((f) => f.chKey === drillSel)
-          .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution))
+      ? pvmSortRows(
+          cache.layer2.filter((f) => f.chKey === drillSel).sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)),
+          "campaign", pvmSortCampaign,
+        )
       : [];
   // §3 Σ 검증 — 캠페인 기여합 = 선택 채널 기여
   const campaignSigma = campaignRows.reduce((a, e) => a + e.contribution, 0);
@@ -827,6 +861,7 @@ export default function CampaignPvm() {
     if (showNew) {
       creativeRows = creativeRows.filter((e) => e.result1 === 0 && e.result2 > 0);
     }
+    creativeRows = pvmSortRows(creativeRows, "creative", pvmSortCreative);
   }
 
   // §4 Σ 검증 — 표시 소재 기여합 = 상위(전체/채널/캠페인) 기여
@@ -938,21 +973,36 @@ export default function CampaignPvm() {
     );
   };
 
-  const headerWithName = (name, withNewCol) => (
-    <tr>
-      {withNewCol && <th className="tnum" title="신규 소재(이전 기간 0건 → 현재 1건 이상)">New</th>}
-      <th>{name}</th>
-      <th>COST (P1→P2)</th>
-      <th>{ml} (P1→P2)</th>
-      <th title="전체 결과(전환) 건수 중 이 항목이 차지하는 비중 — 비용 비중이 아닙니다.">결과 비중 (P1→P2)</th>
-      <th title="순수 이동 효과 (Macro Mix)">MIX (순수 이동)</th>
-      <th title="순수 단가 변동 (Rate)">RATE (순수 단가)</th>
-      <th title="하위 세그먼트 합산 믹스 효과">MIX (하위합)</th>
-      <th title="하위 세그먼트 합산 레이트 효과">RATE (하위합)</th>
-      <th>진단</th>
-      <th>{ml} 영향</th>
-    </tr>
-  );
+  const headerWithName = (name, withNewCol, level, sort, setSort) => {
+    const th = (label, col, titleAttr) => {
+      const active = sort.col === col;
+      const arrow = active ? (sort.dir === "asc" ? " ▲" : " ▼") : "";
+      return (
+        <th
+          title={titleAttr}
+          style={{ cursor: "pointer", userSelect: "none" }}
+          onClick={() => setSort((prev) => (prev.col === col ? { col, dir: prev.dir === "desc" ? "asc" : "desc" } : { col, dir: "desc" }))}
+        >
+          {label}{arrow}
+        </th>
+      );
+    };
+    return (
+      <tr>
+        {withNewCol && <th className="tnum" title="신규 소재(이전 기간 0건 → 현재 1건 이상)">New</th>}
+        {th(name, "name")}
+        {th("COST (P1→P2)", "cost")}
+        {th(`${ml} (P1→P2)`, "cpa")}
+        {th("결과 비중 (P1→P2)", "share", "전체 결과(전환) 건수 중 이 항목이 차지하는 비중 — 비용 비중이 아닙니다.")}
+        {th("MIX (순수 이동)", "mix", "순수 이동 효과 (Macro Mix)")}
+        {th("RATE (순수 단가)", "rate", "순수 단가 변동 (Rate)")}
+        {th("MIX (하위합)", "subMix", "하위 세그먼트 합산 믹스 효과")}
+        {th("RATE (하위합)", "subRate", "하위 세그먼트 합산 레이트 효과")}
+        <th>진단</th>
+        {th(`${ml} 영향`, "impact")}
+      </tr>
+    );
+  };
 
   // 기간 캡션
   const periodCaption = ready
@@ -1131,7 +1181,7 @@ export default function CampaignPvm() {
 
         <div className="table-wrap">
           <table className="data" style={{ fontSize: "11.5px" }}>
-            <thead>{headerWithName("채널")}</thead>
+            <thead>{headerWithName("채널", false, "channel", pvmSortChannel, setPvmSortChannel)}</thead>
             <tbody>
               {channelRows.length ? (
                 channelRows.map((e) => renderRow(e, "channel", e.key))
@@ -1169,7 +1219,7 @@ export default function CampaignPvm() {
             </div>
             <div className="table-wrap">
               <table className="data" style={{ fontSize: "11.5px" }}>
-                <thead>{headerWithName("캠페인")}</thead>
+                <thead>{headerWithName("캠페인", false, "campaign", pvmSortCampaign, setPvmSortCampaign)}</thead>
                 <tbody>
                   {campaignRows.length ? (
                     campaignRows.map((e) => renderRow(e, "campaign", `${e.chKey}|${e.key}`))
@@ -1219,7 +1269,7 @@ export default function CampaignPvm() {
             )}
             <div className="table-wrap">
               <table className="data" style={{ fontSize: "11.5px" }}>
-                <thead>{headerWithName("소재", true)}</thead>
+                <thead>{headerWithName("소재", true, "creative", pvmSortCreative, setPvmSortCreative)}</thead>
                 <tbody>
                   {creativeRowsPage.length ? (
                     creativeRowsPage.map((e, i) => renderRow(e, "creative", `${e.chKey}|${e.cmpKey}|${e.crKey}|${crStart + i}`))
