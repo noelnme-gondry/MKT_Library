@@ -32,9 +32,12 @@ export const CHART_THEME = {
   quaternary: "#c2d6ff",
   accent: "#ffadc6",
   bg: "transparent",
+  // 채널/카테고리 비교용 팔레트 — 구 버전은 전부 파랑·인디고 계열이라 채널 3~4개만
+  // 써도(파이·막대) 색이 거의 구분 안 됐음. 서로 다른 색상(hue)으로 교체, 다크/라이트
+  // 양쪽에서 충분한 명도 대비 유지.
   colors: [
-    "#adc6ff", "#4cd7f6", "#94b8ff", "#c2d6ff", "#e0e7ff",
-    "#a5b4fc", "#818cf8", "#6366f1", "#4f46e5", "#4338ca",
+    "#adc6ff", "#4cd7f6", "#4ade80", "#fbbf24", "#f472b6",
+    "#a78bfa", "#fb923c", "#2dd4bf", "#f87171", "#94a3b8",
   ],
 };
 CHART_THEME.series = CHART_THEME.colors;
