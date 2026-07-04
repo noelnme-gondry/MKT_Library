@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { getToolGuide } from "@/utils/toolGuide";
+import { hasToolTemplate, downloadTemplateCsv, TEMPLATE_FAMILY } from "@/components/ds/csvTemplate";
 
 // CSV upload guidance (design-system baseline §1.4). Hybrid per claude-ux §0
 // (avoid hidden-affordance trap): an always-visible 1-line summary + a prominent
@@ -97,8 +98,17 @@ export default function CsvGuide({ toolId, onDownloadTemplate }) {
             </div>
 
             <div className="csv-guide-modal-foot">
-              {onDownloadTemplate && (
+              {/* 템플릿 다운로드 — 도구 자체 제공(onDownloadTemplate) 우선, 없으면 효율패밀리
+                  표준필드로 자동 생성(구 DataFeatureMatrix 통합 템플릿 이식). */}
+              {onDownloadTemplate ? (
                 <button type="button" className="ab-pill" onClick={onDownloadTemplate}>⬇ 템플릿 CSV 받기</button>
+              ) : hasToolTemplate(toolId) && (
+                <>
+                  <button type="button" className="ab-pill" onClick={() => downloadTemplateCsv(toolId, "tool")}>⬇ 이 도구 템플릿</button>
+                  {TEMPLATE_FAMILY.includes(toolId) && (
+                    <button type="button" className="ab-pill" title="효율·예산 도구(5-2/5-3/5-21/5-22) 공통 통합 템플릿" onClick={() => downloadTemplateCsv(toolId, "unified")}>⬇ 통합 템플릿</button>
+                  )}
+                </>
               )}
               <button type="button" className="ab-button" onClick={() => setOpen(false)}>확인</button>
             </div>

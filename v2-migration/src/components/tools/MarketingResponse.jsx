@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import Papa from "papaparse";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
-import { buildToolTemplateCsv } from "@/components/DataFeatureMatrix";
 import {
   MMM_METH_CONFIG,
   MMM_CHANNELS,
@@ -1348,11 +1347,9 @@ export default function MarketingResponse() {
     </section>
   );
 
-  // 5-18은 CsvUploader/DataFeatureMatrix를 안 쓰지만(§ colMap PRIMARY), 다른 도구와 똑같이
-  // "⬇ 이 도구 템플릿 CSV" 다운로드는 있어야 함 — TOOL_REQUIRED/OPTIONAL_FIELDS["5-18"] 기준
-  // (week/mmm_reg/mmm_react/ch_*) 헤더만 있는 빈 템플릿(§12.19 buildToolTemplateCsv 재사용).
+  // 5-18 전용 템플릿 — colMap 방식이라 표준필드 경로(효율 template)와 무관, 자체 헤더+예시.
   const downloadMmmTemplate = () => {
-    const csv = buildToolTemplateCsv("5-18", "tool");
+    const csv = "﻿week,signups,google_spend,meta_spend,tiktok_spend,brand_spend\r\n2024-01-01,3800,32000000,22000000,8000000,6000000\r\n2024-01-08,4100,35000000,24000000,9500000,6200000\r\n";
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
