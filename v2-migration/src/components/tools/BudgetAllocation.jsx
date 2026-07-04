@@ -387,6 +387,9 @@ export default function BudgetAllocation() {
   const [allocMaxSpend, setAllocMaxSpend] = useState({}); // { ch: maxSpend }
   // 라이브 콤마 입력 편집용 draft (blur/change 전까지 표시값)
   const [costDrafts, setCostDrafts] = useState({}); // { ch: "1,234" }
+  // ★3 §3 상세 표 롤업 뷰 레벨. detail=finest(편집형) · country_channel · country · all(전체).
+  // 분배는 항상 finest에서 계산, 롤업은 표시층 합산(레이트는 Σcost/Σresults 재계산, §8).
+  const [rollupLevel, setRollupLevel] = useState("detail");
 
   // Step 2 검증(추세선 검증) 상태 — index.html ALLOC_STATE.verifySelectedGroup/groupModels/groupVerification 이식.
   const [verifySelectedGroup, setVerifySelectedGroup] = useState(null); // 좌측 목록에서 선택된 단위
@@ -2086,12 +2089,104 @@ export default function BudgetAllocation() {
           prevByCh[it.channel] = { daily, resDaily, cpr: h ? h.avgCPR : null };
           prevTotalDaily += daily;
         });
+
+        // ★3 롤업 — 유닛 키("국가 · 채널 · [캠페인] · OS")를 prefix로 그룹핑.
+        // 분배는 finest 그대로, 여기선 표시용 합산 + 레이트 Σcost/Σresults 재계산(§8 함정).
+        const rollupLevels = unitField === "campaign_name"
+          ? [["detail", "상세"], ["country_channel", "국가×채널"], ["country", "국가"], ["all", "전체"]]
+          : unitField === "channel"
+            ? [["detail", "상세"], ["country", "국가"], ["all", "전체"]]
+            : [["detail", "상세"], ["all", "전체"]];
+        const rollupKeyOf = (chKey) => {
+          const parts = String(chKey).split(" · ");
+          if (rollupLevel === "country") return parts[0] || chKey;
+          if (rollupLevel === "country_channel") return parts.slice(0, 2).join(" · ") || chKey;
+          if (rollupLevel === "all") return "전체";
+          return chKey;
+        };
+        const rollupRows = (() => {
+          if (rollupLevel === "detail") return null;
+          const m = new Map();
+          items.forEach((it) => {
+            const k = rollupKeyOf(it.channel);
+            if (!m.has(k)) m.set(k, { channel: k, cost: 0, results: 0, prevDaily: 0, prevRes: 0 });
+            const g = m.get(k);
+            g.cost += it.cost; g.results += it.results;
+            const p = prevByCh[it.channel] || { daily: 0, resDaily: 0 };
+            g.prevDaily += p.daily; g.prevRes += p.resDaily;
+          });
+          const arr = [...m.values()];
+          arr.forEach((g) => {
+            g.cpr = g.results > 0 ? g.cost / g.results : null;       // Σcost/Σresults 재계산
+            g.prevCpr = g.prevRes > 0 ? g.prevDaily / g.prevRes : null;
+            g.weight = totalCost > 0 ? g.cost / totalCost : 0;
+            g.prevShare = prevTotalDaily > 0 ? (g.prevDaily / prevTotalDaily) * 100 : 0;
+          });
+          return arr.sort((a, b) => b.cost - a.cost);
+        })();
+
         return (
         <section className="block" id="s-table">
-          <h2 className="section-title"><span className="ix">§3</span>채널별 상세</h2>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+            <h2 className="section-title" style={{ margin: 0 }}><span className="ix">§3</span>채널별 상세</h2>
+            {rollupLevels.length > 1 && (
+              <div className="ab-pillgroup" style={{ margin: 0 }}>
+                <span className="ab-pillgroup-label" title="분배는 항상 최소 단위에서 계산되고, 여기 뷰만 합쳐서 봅니다(효율은 합계 기준 재계산).">묶어 보기</span>
+                {rollupLevels.map(([k, l]) => (
+                  <button key={k} className={`ab-pill ${rollupLevel === k ? "active" : ""}`} onClick={() => setRollupLevel(k)}>{l}</button>
+                ))}
+              </div>
+            )}
+          </div>
           <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: "0 0 0.5rem" }}>
-            각 행은 채널의 <strong>제안된 분배 Cost</strong>와 그에 따른 <strong>예상 {unitLabel}·효율</strong>을 표시합니다. Cost를 직접 입력하면 🔒 잠금(고정)되고, Min/Max로 채널별 제약을 걸 수 있습니다.
+            {rollupLevel === "detail"
+              ? <>각 행은 채널의 <strong>제안된 분배 Cost</strong>와 그에 따른 <strong>예상 {unitLabel}·효율</strong>을 표시합니다. Cost를 직접 입력하면 🔒 잠금(고정)되고, Min/Max로 채널별 제약을 걸 수 있습니다.</>
+              : <>최소 단위 분배 결과를 <strong>{rollupLevels.find(([k]) => k === rollupLevel)?.[1]}</strong> 기준으로 합쳐 봅니다(읽기 전용). 효율은 합계에서 재계산(Σ비용÷Σ{unitLabel}). Cost 편집·잠금은 <strong>상세</strong> 뷰에서.</>}
           </p>
+          {rollupLevel !== "detail" && rollupRows ? (
+            <div className="table-wrap">
+              <table className="data" style={{ fontSize: "12px" }}>
+                <thead>
+                  <tr>
+                    <th style={{ minWidth: "150px" }}>{rollupLevels.find(([k]) => k === rollupLevel)?.[1]}</th>
+                    <th style={{ textAlign: "right" }}>배분 Cost</th>
+                    <th style={{ textAlign: "right" }}>예상 {unitLabel}</th>
+                    <th style={{ textAlign: "right" }}>예상 {roas ? "ROAS" : "CPR"}</th>
+                    <th style={{ textAlign: "right" }}>비중</th>
+                    <th style={{ textAlign: "right", borderLeft: "2px solid var(--border)", color: "var(--text-muted)" }}>이전 비용</th>
+                    <th style={{ textAlign: "right", color: "var(--text-muted)" }}>이전 {unitLabel}</th>
+                    <th style={{ textAlign: "right", color: "var(--text-muted)" }}>이전 {roas ? "ROAS" : "CPR"}</th>
+                    <th style={{ textAlign: "right", color: "var(--text-muted)" }}>이전 비중</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rollupRows.map((g) => (
+                    <tr key={g.channel}>
+                      <td>{g.channel}</td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(Math.round(g.cost), currency)}</td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{g.results > 0 ? formatNumberK(g.results, 0) : "—"}</td>
+                      <td className="tnum" style={{ textAlign: "right" }}>{g.cpr != null ? fmtCostMetric(g.cpr, effectiveMetric, currency) : "—"}</td>
+                      <td className="tnum" style={{ textAlign: "right" }}><strong>{(g.weight * 100).toFixed(1)}%</strong></td>
+                      <td className="tnum" style={{ textAlign: "right", borderLeft: "2px solid var(--border)", color: "var(--text-muted)" }}>{g.prevDaily > 0 ? fmtCurrency(Math.round(g.prevDaily), currency) : "—"}</td>
+                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{g.prevRes > 0 ? formatNumberK(g.prevRes, 0) : "—"}</td>
+                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{g.prevCpr != null ? fmtCostMetric(g.prevCpr, effectiveMetric, currency) : "—"}</td>
+                      <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{g.prevShare > 0 ? g.prevShare.toFixed(1) + "%" : "—"}</td>
+                    </tr>
+                  ))}
+                  <tr style={{ background: "var(--bg-2)", fontWeight: "bold", borderTop: "2px solid var(--border)" }}>
+                    <td style={{ textAlign: "right", paddingRight: "16px" }}>TOTAL</td>
+                    <td className="tnum" style={{ textAlign: "right" }}>{fmtCurrency(totalCost, currency)}</td>
+                    <td className="tnum" style={{ textAlign: "right" }}>{formatNumberK(totalResults, 0)}</td>
+                    <td className="tnum" style={{ textAlign: "right" }}>{fmtCostMetric(avgCpr, effectiveMetric, currency)}</td>
+                    <td className="tnum" style={{ textAlign: "right" }}>100.0%</td>
+                    <td className="tnum" style={{ textAlign: "right", borderLeft: "2px solid var(--border)", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? fmtCurrency(Math.round(prevTotalDaily), currency) : "—"}</td>
+                    <td></td><td></td>
+                    <td className="tnum" style={{ textAlign: "right", color: "var(--text-muted)" }}>{prevTotalDaily > 0 ? "100.0%" : "—"}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ) : (
           <div className="table-wrap">
             <table className="data" style={{ fontSize: "12px" }}>
               <thead>
@@ -2249,6 +2344,7 @@ export default function BudgetAllocation() {
               </tbody>
             </table>
           </div>
+          )}
           {allocation.unallocated > 0 && (
             <p style={{ color: "var(--text-muted)", fontSize: "12px", marginTop: "8px" }}>
               · 미배분 {fmtCurrency(allocation.unallocated, currency)} (한계효용 ≤ 0 — 더 투입해도 효율이 오르지 않음)
