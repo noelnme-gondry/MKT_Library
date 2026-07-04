@@ -60,6 +60,17 @@
         --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
       }
 
+      /* 한글 어절 단위 줄바꿈 — keep-all 없으면 브라우저가 글자 단위로 끊어
+         "...하세요. 원하는 쪽을... / 다." 처럼 조사·어미가 다음 줄에 혼자 남음.
+         전역 적용 후 표(tnum)·코드(pre/code)만 예외(숫자·심볼은 어절 규칙 무의미). */
+      html {
+        word-break: keep-all;
+        overflow-wrap: break-word;
+      }
+      pre, code, .tnum {
+        word-break: normal;
+      }
+
       body.light-mode {
         /* --- Light Mode --- */
         --background: #f8f9fa;
@@ -3744,27 +3755,6 @@ body:not(.light-mode) .moon-icon {
   font-size: 11px;
   color: var(--text-muted);
 }
-
-/* ── Header 전역 통화 토글 (design-system §1.2) ── */
-.hdr-currency {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  margin-right: 4px;
-}
-.hdr-currency-btn {
-  padding: 4px 9px;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
-}
-.hdr-currency-btn.active { background: var(--primary); color: var(--surface-base, #0b0d12); }
-.hdr-currency-btn:not(.active):hover { color: var(--text-primary); }
 
 /* ── CsvGuide (design-system baseline §1.4) — 업로드 설명 하이브리드 ── */
 .csv-guide { margin-bottom: 14px; }

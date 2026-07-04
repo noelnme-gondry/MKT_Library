@@ -13,7 +13,6 @@ export default function LtvTab() {
   const denomBasis = useAppStore((state) => state.denomBasis);
   const setDenomBasis = useAppStore((state) => state.setDenomBasis);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
-  const setDisplayCurrency = useAppStore((state) => state.setDisplayCurrency);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
   const [unitField, setUnitField] = useState("channel");
   const [ltvHorizon, setLtvHorizon] = useState(30);
@@ -233,14 +232,6 @@ export default function LtvTab() {
               </button>
             );
           })}
-        </div>
-        <div className="ab-pillgroup">
-          <span className="ab-pillgroup-label" title="표시 통화 단위만 전환합니다(값 변환 아님 — CSV 통화 그대로). 작은 값도 자릿수를 살려 표시합니다.">표시 통화</span>
-          {[["KRW", "원 (₩)"], ["USD", "달러 ($)"]].map(([k, l]) => (
-            <button key={k} className={`ab-pill ${displayCurrency === k ? "active" : ""}`} onClick={() => setDisplayCurrency(k)}>
-              {l}
-            </button>
-          ))}
         </div>
       </section>
 

@@ -34,6 +34,7 @@ export default function Incrementality() {
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
   const currency = useAppStore((s) => s.displayCurrency);
+  const setDisplayCurrency = useAppStore((s) => s.setDisplayCurrency);
   const [method, setMethod] = useState("suppression");
   const fileRef = useRef(null);
   const hasData = csvData?.raw?.length > 0;
@@ -101,7 +102,12 @@ export default function Incrementality() {
               <strong>{csvData.fileName}</strong>
               <span className="csv-loaded-stats tnum">{csvData.raw.length.toLocaleString()}행</span>
             </div>
-            <button className="ab-pill csv-change-btn" onClick={resetCsv}>⟳ CSV 변경</button>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>통화</span>
+              <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setDisplayCurrency("KRW")}>₩</button>
+              <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setDisplayCurrency("USD")}>$</button>
+              <button className="ab-pill csv-change-btn" onClick={resetCsv}>⟳ CSV 변경</button>
+            </div>
           </div>
           {method === "suppression"
             ? <SuppressionView csvData={csvData} currency={currency} />

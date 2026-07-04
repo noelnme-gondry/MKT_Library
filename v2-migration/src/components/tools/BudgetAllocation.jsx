@@ -286,10 +286,8 @@ export default function BudgetAllocation() {
   const [budgetAutoDefaulted, setBudgetAutoDefaulted] = useState(false); // 최초 진입 시 최근 일예산 합계로 1회 채움
   const [recentDays, setRecentDays] = useState(7);
   const [allocMode, setAllocMode] = useState("c"); // c | b
-  // 표시 통화(₩/$) — 전역 store가 SSOT(상단 sticky 토글바와 공유). 로컬 useState 분리가
-  // 전역 토글 클릭을 무시하던 버그(PVM/MarketingEfficiency에서도 있었던 §12.18류 재발) 수정.
+  // 표시 통화(₩/$) — 전역 store가 SSOT, 토글 UI는 Header뿐(도구별 중복 금지).
   const currency = useAppStore((state) => state.displayCurrency);
-  const setCurrency = useAppStore((state) => state.setDisplayCurrency);
   const [extrapolateMode, setExtrapolateMode] = useState("1.3"); // 그리디 외삽 한도 "1.0"|"1.3"|"1.5"|"fallback"
   const [recalcTick, setRecalcTick] = useState(0); // 재계산 버튼 트리거
 
@@ -1706,10 +1704,6 @@ export default function BudgetAllocation() {
   const step3StickyFilter = (
     <>
       <BasisCurrencyToggleBar />
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", marginTop: "6px" }}>
-        <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setCurrency("KRW")}>₩ KRW</button>
-        <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setCurrency("USD")}>$ USD</button>
-      </div>
 
       {/* 적용된 필터 요약 (sticky 필터바 역할) + 필터 변경 */}
       <div style={{ background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "8px 12px", marginTop: "10px", fontSize: "12px", display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>

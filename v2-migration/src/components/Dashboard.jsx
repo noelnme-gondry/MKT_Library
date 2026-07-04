@@ -65,49 +65,34 @@ export default function Dashboard() {
       
       {/* Main Content Area */}
       <div style={{ flex: 1, minWidth: 0, paddingRight: showResults ? "220px" : "0" }}>
-        {/* Header / Breadcrumb - Assuming handled by layout, but title here */}
-        <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "10px" }}>
-          <h1 style={{ fontSize: "20px", fontWeight: "700", margin: 0 }}>운영 대시보드</h1>
-          {hasData && (
-            <>
-              <span className="chip" style={{ display: "inline-flex", alignItems: "center", background: "var(--bg-2)", border: "1px solid var(--border)", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", color: "var(--text-1)" }}>
-                <span className="dot" style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--accent)", marginRight: "6px" }}></span>
-                {csvData.fileName || "Data.csv"}
-              </span>
-              <span className="chip ok" style={{ display: "inline-flex", alignItems: "center", background: "var(--bg-2)", border: "1px solid var(--border)", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", color: "var(--success)" }}>
-                <span className="dot" style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--success)", marginRight: "6px" }}></span>
-                {csvData.raw.length.toLocaleString()}행
-              </span>
-            </>
-          )}
+        {/* 압축 sticky 타이틀 바 — 다른 5-x 도구(ToolPageShell)와 동일한
+            .page-sticky-bar/row1/title 클래스로 통일(§디자인시스템). 필터도
+            같은 박스 안에 이어 붙여 한 도구 셸처럼 보이게(제목만 박스 밖에
+            동떨어져 보이던 문제 해결). 결과가 열린 뒤엔 스크롤해도 상단(topbar
+            아래 top:48px)에 고정. */}
+        <div className="page-sticky-bar">
+          <div className="page-sticky-row1">
+            <span className="page-sticky-title">운영 대시보드</span>
+            {hasData && (
+              <>
+                <span className="chip" style={{ display: "inline-flex", alignItems: "center" }}>
+                  <span className="dot"></span>
+                  {csvData.fileName || "Data.csv"}
+                </span>
+                <span className="chip ok" style={{ display: "inline-flex", alignItems: "center" }}>
+                  <span className="dot"></span>
+                  {csvData.raw.length.toLocaleString()}행
+                </span>
+              </>
+            )}
+          </div>
+          {showResults && <DashboardFilterBar />}
         </div>
 
         {!hasData && (
-          <p style={{ color: "var(--text-secondary)", marginBottom: "2rem", fontSize: "13px" }}>
+          <p style={{ color: "var(--text-secondary)", margin: "1rem 0 2rem", fontSize: "13px" }}>
             일일 캠페인 리포트 CSV를 업로드하여 성과를 요약하고 주요 지표를 시각화합니다.
           </p>
-        )}
-
-        {/* Filter Bar (#2 sticky) — 결과가 열린 뒤 스크롤해도 필터/기준 토글이
-            상단(topbar 아래 top:48px)에 고정. 조상에 overflow가 없어(.app/.main/
-            .content 모두 non-overflow) viewport 기준 sticky가 정상 동작. 배경·블러로
-            아래 콘텐츠가 비쳐도 겹쳐 보이지 않게. 브레드크럼 복원은 Header 담당. */}
-        {showResults && (
-          <div
-            className="mon-sticky-bar"
-            style={{
-              position: "sticky",
-              top: "48px",
-              zIndex: 9,
-              background: "var(--page-sticky-bg)",
-              backdropFilter: "saturate(160%) blur(8px)",
-              margin: "0 -2.5rem",
-              padding: "0 2.5rem",
-              borderBottom: "1px solid var(--border-subtle)",
-            }}
-          >
-            <DashboardFilterBar />
-          </div>
         )}
 
         {/* Csv Uploader — 상태별 3분기:

@@ -300,11 +300,9 @@ export default function CampaignPvm() {
   const csvData = useAppStore((state) => state.csvData);
   const denomBasis = useAppStore((state) => state.denomBasis);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
-  // 전역 통화(₩/$) SSOT 구독 — 예전엔 이 파일만 로컬 useState("krw")를 따로 갖고 있어서
-  // 전역 토글(BasisCurrencyToggleBar)이 여기 숫자엔 전혀 반영 안 됐음. 이제 전역이 source,
-  // 이 파일의 ₩/$ 버튼은 전역 setter를 호출(단일 소스, 두 UI 동기화).
+  // 전역 통화(₩/$) SSOT 구독 — 토글 UI는 Header(브레드크럼 옆) 하나뿐(디자인시스템,
+  // 도구별 중복 토글 금지). 여기선 표시 포맷에만 사용.
   const displayCurrency = useAppStore((state) => state.displayCurrency);
-  const setDisplayCurrency = useAppStore((state) => state.setDisplayCurrency);
   // 전역 분모 기준(설치/가입) → 지표(가입=CPA, 설치=CPI). §12.18 SSOT 구독.
   const effBasis = effectiveDenomBasis(csvData, denomBasis);
   const basisMetric = effBasis === "installs" ? "cpi" : "cpa";
@@ -321,7 +319,6 @@ export default function CampaignPvm() {
   const [weekBasis, setWeekBasis] = useState("calendar");
   const [lookback, setLookback] = useState(1);
   const currency = displayCurrency === "USD" ? "usd" : "krw";
-  const setCurrency = (c) => setDisplayCurrency(c === "usd" ? "USD" : "KRW");
 
   const [drillChannel, setDrillChannel] = useState("__all__");
   const [crChannel, setCrChannel] = useState("__all__");
@@ -1036,11 +1033,6 @@ export default function CampaignPvm() {
                 </button>
               );
             })}
-          </div>
-          <div className="ab-pillgroup">
-            <span className="ab-pillgroup-label">표시 단위</span>
-            <button className={`ab-pill ${currency === "krw" ? "active" : ""}`} onClick={() => setCurrency("krw")}>₩</button>
-            <button className={`ab-pill ${currency === "usd" ? "active" : ""}`} onClick={() => setCurrency("usd")}>$</button>
           </div>
         </div>
 
