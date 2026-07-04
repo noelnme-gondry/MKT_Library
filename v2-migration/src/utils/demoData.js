@@ -29,7 +29,7 @@ function buildEfficiency() {
   const headers = [
     "date", "country", "platform", "channel", "campaign_name", "creative_id",
     "cost", "impressions", "clicks", "installs", "actions",
-    "revenue_d7", "pu_d7", "ret_d7",
+    "revenue_d0", "revenue_d7", "revenue_d14", "pu_d7", "pu_d14", "ret_d7", "ret_d14",
   ];
   // Channels differ in base efficiency (→ realloc opportunity in 5-3) and
   // saturation exponent (→ 5-22 marginal vs avg CPA spread).
@@ -63,13 +63,19 @@ function buildEfficiency() {
           const impressions = round(clicks * (38 + rnd() * 20)); // CTR ~2-3%
           const actions = round(installs * ch.cvr * (1 + rnd() * 0.2));
           const pu = round(actions * (0.55 + rnd() * 0.15));
-          const revenue = round(pu * ch.arppu * (1 + rnd() * 0.25));
+          const revenue = round(pu * ch.arppu * (1 + rnd() * 0.25)); // D7 매출
           const ret = round(installs * (0.22 + rnd() * 0.08)); // retained-user count (>1 → count basis)
+          // 성숙 곡선 — 매출·결제는 누적 성장(D0<D7<D14), 리텐션은 감소(D14<D7).
+          const revenueD0 = round(revenue * (0.38 + rnd() * 0.06));
+          const revenueD14 = round(revenue * (1.35 + rnd() * 0.12));
+          const puD14 = round(pu * (1.12 + rnd() * 0.08));
+          const retD14 = round(ret * (0.70 + rnd() * 0.08));
           raw.push({
             date: dates[d], country, platform, channel: ch.name,
             campaign_name: campaign, creative_id: creativeId,
             cost: round(cost), impressions, clicks, installs, actions,
-            revenue_d7: revenue, pu_d7: pu, ret_d7: ret,
+            revenue_d0: revenueD0, revenue_d7: revenue, revenue_d14: revenueD14,
+            pu_d7: pu, pu_d14: puD14, ret_d7: ret, ret_d14: retD14,
           });
         }
       }
