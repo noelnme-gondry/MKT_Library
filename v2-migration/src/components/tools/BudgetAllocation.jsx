@@ -825,8 +825,8 @@ export default function BudgetAllocation() {
           },
           tooltip: {
             backgroundColor: "#1f2021",
-            titleColor: CHART_THEME.textPrimary,
-            bodyColor: CHART_THEME.text,
+            titleColor: "#F9FAFB",
+            bodyColor: "#F9FAFB",
             borderColor: CHART_THEME.border,
             borderWidth: 1,
             callbacks: {
@@ -918,8 +918,8 @@ export default function BudgetAllocation() {
           },
           tooltip: {
             backgroundColor: "#1f2021",
-            titleColor: CHART_THEME.textPrimary,
-            bodyColor: CHART_THEME.text,
+            titleColor: "#F9FAFB",
+            bodyColor: "#F9FAFB",
             borderColor: CHART_THEME.border,
             borderWidth: 1,
             callbacks: {
@@ -1085,8 +1085,8 @@ export default function BudgetAllocation() {
           },
           tooltip: {
             backgroundColor: "#1f2021",
-            titleColor: CHART_THEME.textPrimary,
-            bodyColor: CHART_THEME.text,
+            titleColor: "#F9FAFB",
+            bodyColor: "#F9FAFB",
             borderColor: CHART_THEME.border,
             borderWidth: 1,
             callbacks: { label: (c) => `${c.dataset.label} ${c.parsed.x.toFixed(1)}%` },
