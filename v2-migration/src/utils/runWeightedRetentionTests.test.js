@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeWeightedRetention } from "./dashboardAggregator.js";
+import { computeWeightedRetention, calculateKPIs } from "./dashboardAggregator.js";
 
 // Golden test for computeWeightedRetention (SSOT 가중 리텐션) — index.html §7 이식.
 // 검증: (a) 비율컬럼 모수가중 (b) 인원수컬럼 Σret (c) 정수퍼센트 hasWholePct 경고
@@ -71,5 +71,18 @@ describe("computeWeightedRetention (golden)", () => {
     expect(byAct.denom).toBe(100);
     expect(byInst.survivors).toBe(60); // 0.2*100 + 0.4*100
     expect(byAct.survivors).toBe(30); // 0.2*50 + 0.4*50
+  });
+
+  it("T7 · calculateKPIs.retentionAvg는 SSOT 재사용 (≤1, 인원수 컬럼도 폭주 안 함)", () => {
+    // 회귀: 예전엔 여기서 ret_d7(인원수, 예 50명)을 문자열 아니라고 변환 없이 그대로
+    // 평균해 10895% 같은 값이 나오던 버그. 인원수 컬럼이어도 rate는 반드시 0~1.
+    const rows = [
+      { ret_d7: 50, installs: 100, cost: 1000, impressions: 0, clicks: 0, actions: 0 },
+      { ret_d7: 80, installs: 200, cost: 1000, impressions: 0, clicks: 0, actions: 0 },
+    ];
+    const kpi = calculateKPIs(rows, 7, "installs");
+    expect(kpi.retentionAvg).not.toBeNull();
+    expect(kpi.retentionAvg).toBeLessThanOrEqual(1);
+    expect(kpi.retentionAvg).toBeCloseTo((50 + 80) / (100 + 200), 12); // Σret/Σinstalls
   });
 });
