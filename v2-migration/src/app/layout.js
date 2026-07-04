@@ -3,12 +3,14 @@ import Script from "next/script";
 import Footer from "@/components/Footer";
 
 export const metadata = {
+  // GSC "페이지 제목 40자 이내·설명 80자 이내" 경고 해소 + 유저가 한눈에 "뭐 하는
+  // 사이트인지" 알 수 있게 재작성(SOP 문서 사이트가 아니라 CSV 분석 도구 중심으로 포지셔닝).
   title: {
-    default: "Growth Ops Playbook | 데이터 드리븐 퍼포먼스 마케팅 SOP",
+    default: "Growth Ops Playbook | 마케팅 데이터 분석툴", // 33자
     template: "%s | Growth Ops Playbook",
   },
-  description: "퍼포먼스 마케터와 데이터 분석가를 위한 실무 플레이북. GA4 세팅, ROAS 개선 전략, 콘텐츠 SEO 가이드 및 실무 마케팅 대시보드를 제공합니다.",
-  keywords: "퍼포먼스 마케팅, 데이터 분석, 콘텐츠 마케팅, 구글 애널리틱스, GA4, SEO, 검색엔진최적화, ROAS, 그로스 해킹, CRM 마케팅, 데이터 드리븐, 마케팅 대시보드, 마케팅 예산 배분, MMM, 마케팅 믹스 모델링, 퍼포먼스 마케팅 SOP",
+  description: "캠페인 CSV만 올리면 성과·예산 배분·A/B 테스트를 분석하는 무료 퍼포먼스 마케팅 도구 모음", // 53자
+  keywords: "퍼포먼스 마케팅, 마케팅 데이터 분석, 마케팅 분석툴, 데이터 분석, 콘텐츠 마케팅, 구글 애널리틱스, GA4, SEO, 검색엔진최적화, ROAS, 그로스 해킹, CRM 마케팅, 데이터 드리븐, 마케팅 대시보드, 마케팅 예산 배분, MMM, 마케팅 믹스 모델링, 퍼포먼스 마케팅 SOP",
   authors: [{ name: "Growth Ops Playbook" }],
   robots: {
     index: true,
@@ -21,8 +23,8 @@ export const metadata = {
   openGraph: {
     type: "website",
     url: "https://mktlibrary.up.railway.app/",
-    title: "Growth Ops Playbook | 마케팅 엔지니어링 데스크",
-    description: "실무에 바로 적용하는 퍼포먼스 마케팅 SOP & 데이터 분석 툴",
+    title: "Growth Ops Playbook | 마케팅 데이터 분석툴",
+    description: "캠페인 CSV로 바로 분석하는 무료 퍼포먼스 마케팅 데이터 도구", // 35자
     siteName: "Growth Ops Playbook",
     locale: "ko_KR",
     images: [
@@ -35,8 +37,8 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Growth Ops Playbook",
-    description: "실무에 바로 적용하는 퍼포먼스 마케팅 SOP & 데이터 분석 툴",
+    title: "Growth Ops Playbook | 마케팅 데이터 분석툴",
+    description: "캠페인 CSV로 바로 분석하는 무료 퍼포먼스 마케팅 데이터 도구",
     images: ["https://mktlibrary.up.railway.app/og-card.png"],
   },
   other: {
