@@ -64,7 +64,9 @@ function buildEfficiency() {
           const actions = round(installs * ch.cvr * (1 + rnd() * 0.2));
           const pu = round(actions * (0.55 + rnd() * 0.15));
           const revenue = round(pu * ch.arppu * (1 + rnd() * 0.25)); // D7 매출
-          const ret = round(installs * (0.22 + rnd() * 0.08)); // retained-user count (>1 → count basis)
+          // 리텐션(잔존 인원 count). 분모가 설치(installs) 또는 가입(actions≈0.27~0.33×installs)
+          // 어느 쪽이든 100% 넘지 않게 actions보다 작게 생성(0.09~0.15×installs).
+          const ret = round(installs * (0.12 + rnd() * 0.06));
           // 성숙 곡선 — 매출·결제는 누적 성장(D0<D7<D14), 리텐션은 감소(D14<D7).
           const revenueD0 = round(revenue * (0.38 + rnd() * 0.06));
           const revenueD14 = round(revenue * (1.35 + rnd() * 0.12));
