@@ -226,16 +226,35 @@ function buildExperiment() {
 // ── response (5-18) ─────────────────────────────────────────────────────────
 // 5-18 uses its own colMap (autoGuessColMap detects week/reg/*_spend by name).
 // signups = trend + seasonality + adstock-saturated contribution of each channel.
+// Cannibalization demo signal is deliberately MIXED across channels (not all the
+// same verdict) so the §4.5 diagnosis tabs show all three buckets:
+//   google/brand  genuine positive lift, no organic drag           → "문제 없음"
+//   tiktok        real negative causal link to organic (subtract)  → "잠식 의심"
+//   meta          sparse flighted bursts (<12 active weeks)        → "애매함" (데이터 부족)
+// Organic baseline dips early then recovers (NOT pure monotonic growth) — a
+// pure upward baseline makes every channel's low-spend window look like it
+// preceded organic growth, which trips the ①precedence vote AGAINST for ALL
+// channels regardless of true effect (root cause of "everything looks like
+// cannibalization" in the old demo).
 function buildResponse() {
   const headers = ["week", "signups", "google_spend", "meta_spend", "tiktok_spend", "brand_spend"];
   const nWeeks = 104;
-  // channel: spend generator + response coefficient + adstock decay + saturation half-point
+  // channel: spend generator + response coefficient + adstock decay + saturation half-point.
+  // sign: +1 = genuine lift (organic-friendly), -1 = genuine cannibalization (subtracts organic).
+  // steep = spend ramps up fast with little noise, so the lowest-25%-spend
+  // weeks are unambiguously the earliest weeks (no scatter from noise
+  // overlapping late-period values) — needed for the ①precedence test to
+  // read the early organic dip cleanly instead of a random subset of weeks.
   const chans = [
-    { key: "google_spend", coef: 0.85, lambda: 0.4, half: 40000000, base: 30000000, amp: 0.5 },
-    { key: "meta_spend",   coef: 0.60, lambda: 0.5, half: 30000000, base: 22000000, amp: 0.6 },
-    { key: "tiktok_spend", coef: 0.45, lambda: 0.3, half: 18000000, base: 8000000,  amp: 1.1 },
-    { key: "brand_spend",  coef: 1.10, lambda: 0.6, half: 12000000, base: 6000000,  amp: 0.3 },
+    { key: "google_spend", coef: 0.85, sign: 1,  lambda: 0.4, half: 40000000, base: 30000000, amp: 0.5, steep: true },
+    { key: "meta_spend",   coef: 0.60, sign: 1,  lambda: 0.5, half: 30000000, base: 22000000, amp: 0.6, flighted: true },
+    { key: "tiktok_spend", coef: 0.85, sign: -1, lambda: 0.3, half: 18000000, base: 8000000,  amp: 1.1 },
+    { key: "brand_spend",  coef: 1.10, sign: 1,  lambda: 0.6, half: 12000000, base: 6000000,  amp: 0.3, steep: true },
   ];
+  // meta_spend only fires in 3 short bursts (9 weeks total) → <12 active weeks
+  // → fails the eligibility gate (MIN_ACTIVE=12) on purpose, landing it in "애매함".
+  const metaBursts = [[10, 12], [45, 47], [80, 82]];
+  const inBurst = (w) => metaBursts.some(([a, b]) => w >= a && w <= b);
   const rndSpend = {};
   chans.forEach((c, i) => { rndSpend[c.key] = seededNoise(311 + i * 13); });
   const rndY = seededNoise(907);
@@ -249,17 +268,22 @@ function buildResponse() {
     let contrib = 0;
     for (const c of chans) {
       // spend: base * (trend) * (seasonal) * noise
-      const trend = 1 + (w / nWeeks) * 0.6;
+      const trend = c.steep ? 1 + (w / nWeeks) * 2.2 : 1 + (w / nWeeks) * 0.6;
+      const noiseAmp = c.steep ? 0.1 : 0.35;
       const seasonal = 1 + c.amp * 0.3 * Math.sin((w / 52) * 2 * Math.PI);
-      const spend = Math.max(0, c.base * trend * seasonal * (1 + rndSpend[c.key]() * 0.35));
+      let spend = Math.max(0, c.base * trend * seasonal * (1 + rndSpend[c.key]() * noiseAmp));
+      if (c.flighted && !inBurst(w)) spend = 0;
       row[c.key] = round(spend);
       // adstock carryover
       adstock[c.key] = spend + c.lambda * adstock[c.key];
       // hill saturation on adstocked spend
       const sat = adstock[c.key] / (adstock[c.key] + c.half);
-      contrib += c.coef * sat * 12000; // scale to signups units
+      contrib += c.sign * c.coef * sat * 12000; // scale to signups units
     }
-    const baseline = 3500 + w * 22; // organic trend
+    // organic baseline: dips ~20% over weeks 0-20, then recovers/grows — avoids a
+    // pure monotonic trend that would make every channel's low-spend window
+    // look like "organic was already rising", falsely flagging cannibalization.
+    const baseline = w <= 20 ? 6000 - 60 * w : 4800 + 25 * (w - 20);
     const season = 900 * Math.sin((w / 52) * 2 * Math.PI + 1);
     const signups = Math.max(0, round(baseline + season + contrib + rndY() * 700));
     row.signups = signups;
