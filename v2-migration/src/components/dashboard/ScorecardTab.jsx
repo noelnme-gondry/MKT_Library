@@ -244,8 +244,12 @@ export default function ScorecardTab() {
         title="핵심 KPI — 지표 편집"
         items={cards.map((c) => ({ key: c.k, label: c.label }))}
         config={scopeCfg}
-        onChange={(patch) => setViewConfig(SCORECARD_SCOPE, patch)}
-        onReset={() => resetViewConfig(SCORECARD_SCOPE)}
+        onSave={(next) => {
+          // 기본 상태(모두 표시·기본 순서)면 scope 키 제거로 정리, 아니면 저장.
+          if (!next.hidden.length && !next.order.length) resetViewConfig(SCORECARD_SCOPE);
+          else setViewConfig(SCORECARD_SCOPE, next);
+          setCfgOpen(false);
+        }}
       />
 
       {selectedMetric && (
