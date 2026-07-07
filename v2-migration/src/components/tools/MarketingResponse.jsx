@@ -1526,6 +1526,15 @@ export default function MarketingResponse() {
 
   return (
     <div className="tab-pane active" id="tab-response">
+      {/* 브레드크럼(타깃·플랫폼 토글)+통화 토글 — 페이지 맨 위 sticky(스테이지 카드보다
+          위, top:48px 고정)로 이동. 예전엔 스테이지 카드·데모 배너 아래 본문에 있어
+          "제일 위로 가야 한다"는 요청 반영(§유저 리포트, 스크롤 시 안 가려짐도 겸함). */}
+      {!panelEmpty && (
+        <div className="page-sticky-bar">
+          <div className="page-sticky-row1">{controlBar()}</div>
+          <BasisCurrencyToggleBar />
+        </div>
+      )}
       {renderTabs()}
 
       {panelEmpty ? (
@@ -1537,13 +1546,6 @@ export default function MarketingResponse() {
       ) : (
         <>
           {demoBanner}
-          {/* 브레드크럼(타깃·플랫폼 토글)+통화 토글을 page-sticky-bar로 묶어 스크롤해도
-              상단(topbar 아래 top:48px)에 고정 — 다른 5-x 도구(Dashboard 등)와 동일 패턴.
-              이전엔 본문에 그냥 떠 있어 스크롤하면 사라짐(§유저 리포트). */}
-          <div className="page-sticky-bar">
-            <div className="page-sticky-row1">{controlBar()}</div>
-            <BasisCurrencyToggleBar />
-          </div>
 
           {/* ③ LAB(회귀·미래예측)은 아래 §7 forecast 블록에서 렌더(mmmForecast 기반, stage==="lab"). */}
 
