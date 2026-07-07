@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
+import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, aggregateByKey } from "@/utils/dashboardAggregator";
 import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { ANOMALY_MATH } from "@/utils/anomalyMath";
@@ -266,6 +267,7 @@ export default function AnomalyTab() {
           </div>
         )}
       </section>
+      <CustomChartsSection sectionNo="2" chartScope="5-2:anomaly-charts" metricScope="5-2:viz-kpi" title="커스텀 차트" />
     </div>
   );
 }

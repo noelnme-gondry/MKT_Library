@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
+import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows } from "@/utils/dashboardAggregator";
 import { chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { buildFunnelData, FUNNEL_FIELD_LABEL } from "@/utils/funnelMath";
@@ -350,6 +351,7 @@ export default function FunnelTab() {
           </div>
         </div>
       </section>
+      <CustomChartsSection sectionNo="6" chartScope="5-2:funnel-charts" metricScope="5-2:viz-kpi" title="커스텀 차트" />
     </div>
   );
 }

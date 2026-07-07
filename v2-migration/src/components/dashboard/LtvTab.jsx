@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
+import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, effectiveDenomBasis, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { buildLtvData, LTV_DNS, LTVCAC_MATH } from "@/utils/ltvMath";
@@ -526,6 +527,7 @@ export default function LtvTab() {
           setLtvCfgOpen(false);
         }}
       />
+      <CustomChartsSection sectionNo="5" chartScope="5-2:ltv-charts" metricScope="5-2:viz-kpi" title="커스텀 차트" />
     </div>
   );
 }

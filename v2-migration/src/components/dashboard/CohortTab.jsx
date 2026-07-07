@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
+import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, effectiveDenomBasis, computeWeightedRetention } from "@/utils/dashboardAggregator";
 import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { fitPowerCurve, filterMaturedCohorts, retentionDays } from "@/utils/cohortMath";
@@ -325,6 +326,7 @@ export default function CohortTab() {
           </div>
         </section>
       )}
+      <CustomChartsSection sectionNo="4" chartScope="5-2:cohort-charts" metricScope="5-2:viz-kpi" title="커스텀 차트" />
     </div>
   );
 }
