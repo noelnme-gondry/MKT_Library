@@ -245,11 +245,15 @@ function buildResponse() {
   // weeks are unambiguously the earliest weeks (no scatter from noise
   // overlapping late-period values) — needed for the ①precedence test to
   // read the early organic dip cleanly instead of a random subset of weeks.
+  // half/base는 실제 주간 광고비 스케일(수천~수만 달러)이어야 함 — mmmSaturation의
+  // 한계효율 계산(marginal = coef/(1+spend)*1000)이 이 스케일을 전제로 함. 과거
+  // 1000배 큰 값(수천만 달러)이 들어있어 "다음 예산은 여기로" 한계효과가 전부
+  // 0으로 언더플로우되던 버그 수정(사용자 리포트).
   const chans = [
-    { key: "google_spend", coef: 0.85, sign: 1,  lambda: 0.4, half: 40000000, base: 30000000, amp: 0.5, steep: true },
-    { key: "meta_spend",   coef: 0.60, sign: 1,  lambda: 0.5, half: 30000000, base: 22000000, amp: 0.6, flighted: true },
-    { key: "tiktok_spend", coef: 0.85, sign: -1, lambda: 0.3, half: 18000000, base: 8000000,  amp: 1.1 },
-    { key: "brand_spend",  coef: 1.10, sign: 1,  lambda: 0.6, half: 12000000, base: 6000000,  amp: 0.3, steep: true },
+    { key: "google_spend", coef: 0.85, sign: 1,  lambda: 0.4, half: 40000, base: 30000, amp: 0.5, steep: true },
+    { key: "meta_spend",   coef: 0.60, sign: 1,  lambda: 0.5, half: 30000, base: 22000, amp: 0.6, flighted: true },
+    { key: "tiktok_spend", coef: 0.85, sign: -1, lambda: 0.3, half: 18000, base: 8000,  amp: 1.1 },
+    { key: "brand_spend",  coef: 1.10, sign: 1,  lambda: 0.6, half: 12000, base: 6000,  amp: 0.3, steep: true },
   ];
   // meta_spend only fires in 3 short bursts (9 weeks total) → <12 active weeks
   // → fails the eligibility gate (MIN_ACTIVE=12) on purpose, landing it in "애매함".
