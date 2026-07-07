@@ -193,6 +193,13 @@ export const persistPartialize = (state) => ({
 // setItem에서 throw하지 않게(브라우저에선 실제 localStorage 사용). 클라이언트 전용 저장.
 const noopStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
+// persist 스키마 버전 마이그레이션 훅(§4 persist 버저닝 — 골격만, 미래 스키마 변경 대비).
+// version을 올릴 때 이 함수에 `if (version < N) { ... }` 단계를 추가해 구 localStorage
+// 형태를 새 형태로 변환. 현재 version=1이라 무동작(export하여 골든으로 무증상 확인).
+export function persistMigrate(persistedState, version) {
+  return persistedState;
+}
+
 export const useAppStore = create(persist((set, get) => ({
   // Navigation State
   currentRouteId: "home",
@@ -406,4 +413,5 @@ export const useAppStore = create(persist((set, get) => ({
   version: 1,
   storage: createJSONStorage(() => (typeof window !== "undefined" ? window.localStorage : noopStorage)),
   partialize: persistPartialize,
+  migrate: persistMigrate,
 }));

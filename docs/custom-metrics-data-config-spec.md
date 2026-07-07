@@ -3,7 +3,7 @@
 > 목적: 유저가 (A) CSV 컬럼으로 파생 지표를 만들고 (B) 지표 표시/순서를 조정하고
 > (C) 그 설정을 브라우저에 저장해 지속 사용하게 한다.
 > 계층: v2-migration (Next.js). 순수 수학은 골든 불변(§8·§12.20).
-> 상태: 2026-07-07 — **A~D 완료·머지**(PR #245, `v2-migration/src/utils/metrics/*`). 5-2 스코어카드·Viz탭·LTV표만 적용(파일럿 범위). 잔여 작업은 §7 백로그.
+> 상태: 2026-07-07 — **A~D 완료·머지**(PR #245). §7 백로그 #1·#2·#4 완료(#2는 기 완료 확인). **#3(다른 도구 확장)만 보류**(다음 세션).
 
 ## 0. 확정된 결정 (유저 승인)
 
@@ -106,9 +106,9 @@ PR #245 머지로 A~D 종결. 아래는 **같은 SSOT 이어서** 후속 PR로 �
 
 | # | 항목 | 범위 | 비고 |
 |---|---|---|---|
-| 1 | **나머지 표 확장** | 5-2 내 Funnel(§단계표)·Cohort(§코호트표)·Anomaly(§이상탐지표)·Segment(§세그먼트표) — 현재 하드코딩 `<table class="data">` | LTV표(`LtvTab.jsx`) 패턴 재사용: `applyMetricView`+`MetricConfigPanel`+`resetViewConfig`. 각 표마다 독립 `viewConfig` scope 키 부여(예 `5-2:funnel-table`) |
-| 2 | **나머지 탭에 편집기** | Funnel·Cohort·Pacing·Anomaly·Segment 5개 탭 — 현재 `CustomChartsSection`(노출만) 있고 `MetricConfigPanel`/`CustomChartBuilder`(그 탭 안에서 직접 만들기) 없음 | VizTab.jsx 패턴 참고. `chartScope`는 이미 탭별로 있으니 빌더만 노출하면 됨 |
-| 3 | **다른 도구로 확장** | 5-3(예산배분)·5-6(소재분석)·5-18(MMM)·5-21(PVM) 등 — 현재 registry·customMetric·viewConfig 전부 5-2 전용 배선 | 도구별 `calculateKPIs` 상당 함수 확인 후 §2 렌더 파생 패턴 그대로 이식. scope 키는 도구 id 접두(`5-3:...`) |
-| 4 | **Phase E 마무리** | `useDataStore.js` persist `migrate` 훅 추가 | version 2 올릴 일 생기기 전에 훅 골격만이라도(스키마 진화 대비, §4) |
+| 1 | ✅ **나머지 표 확장** (2026-07-07 완료) | FunnelTab §5(단계별 count/CVR 컬럼)·CohortTab §1(잔존율/잔존유저수)·AnomalyTab(값/기준평균/z-score/방향) — LTV표 패턴(`applyMetricView`+`MetricConfigPanel`+`resetViewConfig`) 적용, scope `5-2:funnel-table`·`5-2:cohort-table`·`5-2:anomaly-table`. **SegmentTab 매트릭스는 제외** — 행/열이 데이터값(국가·채널 등)이라 고정 metric-column 리스트 모델과 구조 불일치 |
+| 2 | ✅ **나머지 탭 편집기** (기 완료 확인, 백로그 문서만 stale) | `CustomChartsSection`이 이미 `MetricConfigPanel`(⚙ 차트 편집)+`CustomChartBuilder`(＋ 커스텀 차트) 내장 — Funnel·Cohort·Pacing·Anomaly·Segment 5개 탭 전부 이미 적용됨(추가 작업 불필요) |
+| 3 | **다른 도구로 확장** (보류) | 5-3(예산배분 2481줄)·5-6(소재분석 1302줄)·5-18(MMM)·5-21(PVM 1305줄) — 표 26개+, 도구당 규모 큼+§7 함정(PVM rollup 항등식·predictSafeCpr wrapper 등) 밀도 높아 별도 세션 필요. 도구별 `calculateKPIs` 상당 함수 확인 후 §2 렌더 파생 패턴 이식. scope 키는 도구 id 접두(`5-3:...`) |
+| 4 | ✅ **Phase E 마무리** (2026-07-07 완료) | `useDataStore.js`에 `persistMigrate(persistedState, version)` export + persist `migrate` 훅 배선(현재 version=1 무동작, 골든 테스트로 확인) |
 
-우선순위·순서는 미정 — 착수 시 사용자와 순서 재확인.
+남은 항목: **#3만 잔존**(보류, 다음 세션).
