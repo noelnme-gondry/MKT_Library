@@ -4,15 +4,24 @@ import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, aggregateByKey, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
+import { applyMetricView } from "@/utils/metrics/metricView";
+import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import BudgetHealthCard from "./BudgetHealthCard";
+
+// 지표 뷰 설정 scope(도구:표면) — store viewConfig 키. persist 대상.
+const SCORECARD_SCOPE = "5-2:scorecard";
 
 export default function ScorecardTab() {
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const scopeCfg = useAppStore((state) => state.viewConfig[SCORECARD_SCOPE]);
+  const setViewConfig = useAppStore((state) => state.setViewConfig);
+  const resetViewConfig = useAppStore((state) => state.resetViewConfig);
   const [windowDays, setWindowDays] = useState(7);
   const [selectedMetric, setSelectedMetric] = useState(null);
+  const [cfgOpen, setCfgOpen] = useState(false);
 
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -65,14 +74,21 @@ export default function ScorecardTab() {
     ].filter(Boolean);
   }, [hasData, recent, prev, mapping, displayCurrency]);
 
-  // If selected metric is no longer valid, reset it quietly
+  // 유저 지표 뷰 설정(표시/순서) 적용 — 후보(cards)에 hidden/order 반영(§Phase B).
+  // scopeCfg 미설정(기본)이면 cards 원순서 그대로(byte-동일).
+  const orderedCards = useMemo(
+    () => applyMetricView(cards, scopeCfg, (c) => c.k),
+    [cards, scopeCfg],
+  );
+
+  // If selected metric is no longer valid (또는 숨김 처리됨), reset it quietly
   useEffect(() => {
-    if (selectedMetric && !cards.find(c => c.k === selectedMetric)) {
+    if (selectedMetric && !orderedCards.find(c => c.k === selectedMetric)) {
       // 선택 지표가 더는 유효하지 않으면 1회 리셋 — 조건부라 무한루프 없음(의도된 패턴)
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedMetric(null);
     }
-  }, [cards, selectedMetric]);
+  }, [orderedCards, selectedMetric]);
 
   const seriesVal = (d, sel) => {
     switch (sel) {
@@ -181,17 +197,20 @@ export default function ScorecardTab() {
       <BudgetHealthCard />
       <section className="block" id="s-score">
         <h2 className="section-title"><span className="ix">§1</span>핵심 KPI (최근 {windowDays}일)</h2>
-        <div className="ab-pillgroup">
+        <div className="ab-pillgroup" style={{ display: "flex", alignItems: "center" }}>
           <span className="ab-pillgroup-label">기간</span>
           {[7, 14, 28].map(d => (
             <button key={d} className={`ab-pill ${windowDays === d ? "active" : ""}`} onClick={() => setWindowDays(d)}>
               {d}일
             </button>
           ))}
+          <button className="ab-pill" onClick={() => setCfgOpen(true)} style={{ marginLeft: "auto" }} title="표시할 지표와 순서 편집">
+            ⚙ 지표 편집
+          </button>
         </div>
-        
+
         <div className="ab-stat-row" style={{ marginTop: "10px" }}>
-          {cards.map(c => {
+          {orderedCards.map(c => {
             const d = c.prev != null && c.prev !== 0 && c.val != null ? (c.val - c.prev) / c.prev : null;
             const good = c.better === "none" || d == null ? null : (c.better === "high" ? d > 0 : d < 0);
             const arrow = d == null ? "" : (d > 0 ? "▲" : (d < 0 ? "▼" : "—"));
@@ -218,6 +237,16 @@ export default function ScorecardTab() {
           WoW = 최근 {windowDays}일 vs 직전 {windowDays}일. 색은 지표 성격 반영(CPI/CPA↓·설치/ROAS↑ = 초록). 비용은 중립(규모). 카드 클릭 시 일별 상세.
         </p>
       </section>
+
+      <MetricConfigPanel
+        open={cfgOpen}
+        onClose={() => setCfgOpen(false)}
+        title="핵심 KPI — 지표 편집"
+        items={cards.map((c) => ({ key: c.k, label: c.label }))}
+        config={scopeCfg}
+        onChange={(patch) => setViewConfig(SCORECARD_SCOPE, patch)}
+        onReset={() => resetViewConfig(SCORECARD_SCOPE)}
+      />
 
       {selectedMetric && (
         <section className="block" id="s-score-daily" style={{ paddingTop: "8px" }}>
