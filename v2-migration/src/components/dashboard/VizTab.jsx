@@ -6,9 +6,21 @@ import { getMonFilteredRows, aggregateByKey, calculateKPIs, effectiveDenomBasis 
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
+import { METRIC_BY_ID, BASE_FIELDS, DERIVED_METRICS } from "@/utils/metrics/metricRegistry";
+import { CHART_TYPES, groupAggByDim, buildChartSeries } from "@/utils/metrics/chartBuilder";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
+import CustomChartBuilder from "@/components/ds/CustomChartBuilder";
 import { copyToClipboard } from "@/utils/toast";
+
+// 커스텀 차트 행(차원) 후보 — 매핑된 것만 노출.
+const DIM_CANDIDATES = [
+  { key: "channel", label: "채널" },
+  { key: "country", label: "국가" },
+  { key: "platform", label: "OS" },
+  { key: "campaign_name", label: "캠페인" },
+  { key: "date", label: "날짜" },
+];
 
 // 지표 뷰 설정 scope(도구:표면) — 운영 대시보드 자체(Viz 탭)의 KPI 카드·차트.
 const VIZ_KPI_SCOPE = "5-2:viz-kpi";
@@ -69,9 +81,13 @@ export default function VizTab() {
   const customMetrics = useAppStore((state) => state.customMetrics[VIZ_KPI_SCOPE]);
   const addCustomMetric = useAppStore((state) => state.addCustomMetric);
   const removeCustomMetric = useAppStore((state) => state.removeCustomMetric);
+  const customCharts = useAppStore((state) => state.customCharts[VIZ_CHART_SCOPE]);
+  const addCustomChart = useAppStore((state) => state.addCustomChart);
+  const removeCustomChart = useAppStore((state) => state.removeCustomChart);
   const [kpiCfgOpen, setKpiCfgOpen] = useState(false);
   const [chartCfgOpen, setChartCfgOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [chartBuilderOpen, setChartBuilderOpen] = useState(false);
 
   // Canvas 요소 refs — 차트 표시/순서가 동적이라 key→element 맵으로 보관(callback ref).
   // 숨긴 차트는 canvas가 unmount되며 React가 null로 세팅 → 생성 effect가 건너뜀.
@@ -139,6 +155,71 @@ export default function VizTab() {
 
   // 차트 메타(데이터 주도) — 표시/순서 설정을 적용해 렌더·생성 대상을 결정.
   // 숨긴 차트는 카드가 안 그려져 ref.current=null → 생성 effect가 건너뜀(§Phase B).
+  // ── 커스텀 지표/차트 공용: 매핑·집계키·지표 해석 ────────────────────────────
+  const mappingEntries = Object.entries((csvData && csvData.mapping) || {});
+  const mappedKeys = new Set(mappingEntries.map(([, v]) => v));
+  const headerFor = (stdKey) => (mappingEntries.find(([, v]) => v === stdKey) || [])[0] || "";
+  const hasRev = [...mappedKeys].some((k) => /^revenue_d/.test(k));
+  const hasPu = [...mappedKeys].some((k) => /^pu_d/.test(k));
+
+  // 커스텀 차트 행(차원) 후보 = 매핑된 차원 필드.
+  const availDims = DIM_CANDIDATES.filter((d) => mappedKeys.has(d.key));
+  // 값(지표) 후보 = 데이터에 있는 base + deps 충족 파생 + 커스텀 지표.
+  const availAggKeys = new Set(["cost"]);
+  ["impressions", "clicks", "installs", "actions"].forEach((k) => { if (mappedKeys.has(k)) availAggKeys.add(k); });
+  if (hasRev) availAggKeys.add("revenue");
+  if (hasPu) availAggKeys.add("purchases");
+  if (mappedKeys.has("installs") || mappedKeys.has("actions")) availAggKeys.add("denom");
+  const metricOptions = [
+    ...BASE_FIELDS.filter((f) => f.id !== "denom" && availAggKeys.has(f.id)).map((f) => ({ key: f.id, label: f.label })),
+    ...DERIVED_METRICS.filter((m) => m.deps.every((d) => availAggKeys.has(d))).map((m) => ({ key: m.id, label: m.label })),
+    ...(customMetrics || []).map((m) => ({ key: m.id, label: m.name })),
+  ];
+  const dimLabelOf = (k) => DIM_CANDIDATES.find((d) => d.key === k)?.label || k;
+  const metricLabelOf = (k) => metricOptions.find((m) => m.key === k)?.label || k;
+  const resolveMetricCompute = (metricKey) => {
+    if (METRIC_BY_ID[metricKey]) return METRIC_BY_ID[metricKey].compute;
+    const cm = (customMetrics || []).find((m) => m.id === metricKey);
+    if (cm) return customMetricToDescriptor(cm).compute;
+    return () => null;
+  };
+  const customChartDefs = customCharts || [];
+  const customChartSig = JSON.stringify(customChartDefs) + "|" + JSON.stringify(customMetrics || []) + "|" + selectedCohort;
+
+  // 커스텀 차트 Chart.js 설정 — 차원별 집계 후 지표 계산, 모양별 렌더.
+  const buildCustomChartConfig = (def) => {
+    const groups = groupAggByDim(filteredRows, def.dim, selectedCohort, effBasis);
+    const series = buildChartSeries(groups, resolveMetricCompute(def.metric), { topN: 20, sortDesc: def.type !== "line" });
+    const colors = series.labels.map((_, i) => CHART_THEME.series[i % CHART_THEME.series.length]);
+    const isPie = def.type === "pie" || def.type === "doughnut";
+    const isLine = def.type === "line";
+    const chartType = isPie ? def.type : isLine ? "line" : "bar";
+    return {
+      type: chartType,
+      data: {
+        labels: series.labels,
+        datasets: [{
+          label: metricLabelOf(def.metric),
+          data: series.values,
+          backgroundColor: isPie ? colors : isLine ? "rgba(173,198,255,0.1)" : colors.map((c) => c + "cc"),
+          borderColor: isLine ? CHART_THEME.primary : colors,
+          borderWidth: isLine ? 2 : 1,
+          borderRadius: isPie ? 0 : 4,
+          tension: 0.3,
+          pointRadius: isLine ? 2 : 0,
+          fill: isLine,
+        }],
+      },
+      options: isPie ? {
+        responsive: true, maintainAspectRatio: false, cutout: def.type === "doughnut" ? "62%" : 0,
+        plugins: { legend: { position: "right", labels: { color: CHART_THEME.text, font: { family: "Inter", size: 11 }, usePointStyle: true, padding: 10 } }, tooltip: chartCommonOpts().plugins.tooltip },
+      } : {
+        ...chartCommonOpts(), indexAxis: def.type === "hbar" ? "y" : "x",
+        plugins: { ...chartCommonOpts().plugins, legend: { display: false } },
+      },
+    };
+  };
+
   const chartMeta = useMemo(() => ([
     { k: "ts", title: `일별 비용·${effBasis === "actions" ? "가입" : "설치"} 추이`, sub: `시계열 라인 · 좌축 비용 / 우축 ${effBasis === "actions" ? "가입" : "설치"}`, full: false },
     { k: "donut", title: "채널별 비용 비중", sub: "도넛 · 합산 cost 기준", full: false },
@@ -146,16 +227,23 @@ export default function VizTab() {
     { k: "funnel", title: "전환 퍼널", sub: `${effBasis === "actions" ? "노출 → 클릭 → 설치 → 가입 → 결제(D7)" : "노출 → 클릭 → 설치 → 결제(D7)"} 단계별 절대 건수 (로그 스케일)`, full: false },
     { k: "cohort", title: "채널별 코호트 매출 증가 (D0 → D7 → D14)", sub: "라인 · 채널별 누적 ARPU 증가 곡선", full: true },
   ]), [effBasis, acqLabel]);
-  const orderedCharts = useMemo(() => applyMetricView(chartMeta, chartCfg, (c) => c.k), [chartMeta, chartCfg]);
+  // 커스텀 차트 메타를 기본 5종 뒤에 붙여 표시/순서 편집 대상에 포함.
+  const customChartMetas = customChartDefs.map((def) => ({
+    k: def.id, custom: true, full: false,
+    title: def.name,
+    sub: `${CHART_TYPES.find((t) => t.id === def.type)?.label || def.type} · ${dimLabelOf(def.dim)}별 ${metricLabelOf(def.metric)}`,
+  }));
+  const orderedCharts = applyMetricView([...chartMeta, ...customChartMetas], chartCfg, (c) => c.k);
   const visibleChartKeys = orderedCharts.map((c) => c.k).join(",");
 
   // 3. Chart Rendering Effect
   useEffect(() => {
     const instances = chartsRef.current;
 
-    // Destroy existing charts
-    Object.values(instances).forEach((chart) => {
-      if (chart) chart.destroy();
+    // Destroy existing charts + 삭제된 커스텀 차트의 stale 키 정리(다시 생성).
+    Object.keys(instances).forEach((k) => {
+      if (instances[k]) instances[k].destroy();
+      delete instances[k];
     });
 
     // 1) Time Series Chart (이벤트 마커 세로선 오버레이 포함)
@@ -343,6 +431,14 @@ export default function VizTab() {
       });
     }
 
+    // 6) 커스텀 차트 — 표시 중인 것만(숨김/삭제 시 canvas 없음 → skip). 유저가 만든
+    //    "모양+행+값"으로 차원별 집계·지표 계산해 렌더. 커스텀 지표 열도 값으로 사용.
+    for (const def of customChartDefs) {
+      const el = canvasRefs.current[def.id];
+      if (!el) continue;
+      instances[def.id] = new Chart(el.getContext("2d"), buildCustomChartConfig(def));
+    }
+
     // 마커 세로선(afterDatasetsDraw)은 Chart.js 애니메이션 완료 후에나 최초 페인트됨(§12.18) —
     // 마커 추가 시 매번 destroy+recreate라 400ms 페이드인 동안 "반영 안 됨"처럼 보일 수 있음.
     // 애니메이션/rAF 스케줄과 무관하게 즉시 1프레임 동기 draw로 마커가 바로 보이게 강제.
@@ -355,9 +451,11 @@ export default function VizTab() {
         if (chart) chart.destroy();
       });
     };
-    // visibleChartKeys를 dep에 포함 — 차트를 숨겼다 다시 켜거나 순서를 바꾸면
-    // 카드(canvas)가 remount되므로 effect가 재실행돼 새 인스턴스를 생성해야 함.
-  }, [dailyAgg, byChannel, totals, preparedMarkers, effBasis, acqLabel, trendOutcomeLabel, visibleChartKeys]);
+    // visibleChartKeys=표시/순서 변경, customChartSig=커스텀 차트 정의·코호트·커스텀지표
+    // 변경, filteredRows=데이터 변경 시 재생성. customChartDefs/buildCustomChartConfig는
+    // 매 렌더 새 참조지만 위 sig가 실질 변경을 모두 커버(매 렌더 재실행 방지).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dailyAgg, byChannel, totals, preparedMarkers, effBasis, acqLabel, trendOutcomeLabel, visibleChartKeys, customChartSig, filteredRows]);
 
   // KPI 카드(데이터 주도) — 표시/순서 설정 적용. node=기존 카드 JSX 유지(값·계산 불변).
   const kpiCards = [
@@ -419,11 +517,7 @@ export default function VizTab() {
   const agg = kpi;
 
   // 빌더 피연산자 = 실제 매핑된 컬럼만(오타 불가). 라벨 옆에 실제 CSV 헤더 표기.
-  const mappingEntries = Object.entries((csvData && csvData.mapping) || {});
-  const mappedKeys = new Set(mappingEntries.map(([, v]) => v));
-  const headerFor = (stdKey) => (mappingEntries.find(([, v]) => v === stdKey) || [])[0] || "";
-  const hasRev = [...mappedKeys].some((k) => /^revenue_d/.test(k));
-  const hasPu = [...mappedKeys].some((k) => /^pu_d/.test(k));
+  // (mappingEntries·mappedKeys·headerFor·hasRev·hasPu는 위 공용 블록에서 계산됨)
   const builderFields = [
     { key: "cost", label: "비용", header: headerFor("cost") },
     mappedKeys.has("impressions") && { key: "impressions", label: "노출수", header: headerFor("impressions") },
@@ -508,7 +602,10 @@ export default function VizTab() {
       <section className="block" id="s-charts">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h2 className="section-title"><span className="ix">§3</span>차트 시각화</h2>
-          <button className="ab-pill" onClick={() => setChartCfgOpen(true)} title="표시할 차트와 순서 편집">⚙ 차트 편집</button>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <button className="ab-pill" onClick={() => setChartBuilderOpen(true)} title="모양·행·값을 골라 나만의 차트 만들기">＋ 커스텀 차트</button>
+            <button className="ab-pill" onClick={() => setChartCfgOpen(true)} title="표시할 차트와 순서 편집">⚙ 차트 편집</button>
+          </div>
         </div>
         <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>업로드된 데이터를 기반으로 시계열·채널 비중·CPI 비교·퍼널·코호트 매출 차트가 렌더링됩니다. ⚙ 차트 편집에서 표시·순서 조정.</p>
 
@@ -552,9 +649,18 @@ export default function VizTab() {
         open={chartCfgOpen}
         onClose={() => setChartCfgOpen(false)}
         title="차트 시각화 — 차트 편집"
-        items={chartMeta.map((c) => ({ key: c.k, label: c.title }))}
+        items={[...chartMeta, ...customChartMetas].map((c) => ({ key: c.k, label: c.title }))}
         config={chartCfg}
         onSave={(next) => saveScope(VIZ_CHART_SCOPE, next, setChartCfgOpen)}
+      />
+      <CustomChartBuilder
+        open={chartBuilderOpen}
+        onClose={() => setChartBuilderOpen(false)}
+        dims={availDims}
+        metrics={metricOptions}
+        existing={customChartDefs}
+        onCreate={(def) => addCustomChart(VIZ_CHART_SCOPE, def)}
+        onDelete={(id) => removeCustomChart(VIZ_CHART_SCOPE, id)}
       />
     </div>
   );

@@ -186,6 +186,7 @@ export function displayItemNumberShort(itemId) {
 export const persistPartialize = (state) => ({
   viewConfig: state.viewConfig,
   customMetrics: state.customMetrics,
+  customCharts: state.customCharts,
 });
 
 // 서버(SSR)·테스트(node) 환경에는 localStorage가 없음 — no-op 폴백으로 persist가
@@ -379,6 +380,19 @@ export const useAppStore = create(persist((set, get) => ({
   removeCustomMetric: (scopeId, id) => set((state) => {
     const list = (state.customMetrics[scopeId] || []).filter((m) => m.id !== id);
     return { customMetrics: { ...state.customMetrics, [scopeId]: list } };
+  }),
+
+  // ── 커스텀 차트(Phase C) — 유저가 "모양+행(차원)+값(지표)"로 만든 차트 정의 ──────
+  // scope별 { [scopeId]: [{ id, name, type, dim, metric }] }. 정의(config)라 persist.
+  customCharts: {},
+  addCustomChart: (scopeId, def) => set((state) => {
+    const id = "ch_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const list = state.customCharts[scopeId] || [];
+    return { customCharts: { ...state.customCharts, [scopeId]: [...list, { ...def, id }] } };
+  }),
+  removeCustomChart: (scopeId, id) => set((state) => {
+    const list = (state.customCharts[scopeId] || []).filter((c) => c.id !== id);
+    return { customCharts: { ...state.customCharts, [scopeId]: list } };
   }),
 }), {
   // localStorage에 "설정만" 저장(§2.2 민감데이터 서버·로컬 잔존 최소화). 원본 CSV·필터
