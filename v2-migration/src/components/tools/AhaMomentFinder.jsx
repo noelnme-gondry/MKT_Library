@@ -115,6 +115,8 @@ function downloadAhaCsv(sorted) {
     "action",
     "best_window",
     "best_k",
+    "all_users_support",
+    "all_users_pct",
     "holdout_precision",
     "holdout_recall",
     "holdout_f1",
@@ -132,6 +134,8 @@ function downloadAhaCsv(sorted) {
         r.action,
         r.bestWindow === Infinity ? "all" : r.bestWindow,
         r.bestK,
+        r.allSupport || 0,
+        ((r.allPct || 0) * 100).toFixed(2),
         r.holdout.P.toFixed(4),
         r.holdout.R.toFixed(4),
         r.holdout.F1.toFixed(4),
@@ -301,6 +305,8 @@ export default function AhaMomentFinder() {
 
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
+  const sweepChartRef = useRef(null);
+  const sweepChartInstance = useRef(null);
   const [seededKey, setSeededKey] = useState(null);
 
   const headers = useMemo(() => {
@@ -403,13 +409,49 @@ export default function AhaMomentFinder() {
         bestK: gs.bestK,
         train: gs.train,
         holdout: gs.holdout,
+        allSupport: gs.allSupport,
+        allPct: gs.allPct,
         gated: gs.gated,
         lift: AHA_STATS.lift(gs.holdout.P, baseRate),
         grid: gs.grid,
+        // D1/D7 토글·k-스윕 곡선을 위해 원본 값 배열 보존(§드릴다운에서 온디맨드 재계산).
+        windowCols,
       });
     }
-    return { n, baseRate, results, targetCol, groups };
+    return { n, baseRate, results, targetCol, groups, targets, trainIdx, minSupport: ms };
   }, [hasData, csvData, colMap, minSupport, holdoutOn]);
+
+  // D1/D7 구간 토글 — null(해제)이면 액션별 자동 선택된 최적 윈도우(기존 동작).
+  // 특정 윈도우 선택 시 각 액션의 grid에서 그 윈도우 행(자체 홀드아웃 재평가값)만
+  // 뽑아 보여줌 — 그 윈도우 데이터가 없는 액션은 목록에서 제외.
+  const [windowFilter, setWindowFilter] = useState(null);
+  const availWindows = useMemo(() => {
+    const set = new Set();
+    (cache.results || []).forEach((r) => (r.grid || []).forEach((g) => { if (isFinite(g.window)) set.add(g.window); }));
+    return [...set].sort((a, b) => a - b);
+  }, [cache]);
+
+  const viewResults = useMemo(() => {
+    if (windowFilter == null) return cache.results;
+    return cache.results
+      .map((r) => {
+        const g = (r.grid || []).find((x) => x.window === windowFilter);
+        if (!g) return null;
+        return {
+          ...r,
+          bestWindow: g.window,
+          bestHeader: g.header,
+          bestK: g.k,
+          train: { P: g.P, R: g.R, F1: g.F1, support: g.support },
+          holdout: g.holdout,
+          allSupport: g.allSupport,
+          allPct: g.allPct,
+          gated: g.gated,
+          lift: AHA_STATS.lift(g.holdout.P, cache.baseRate),
+        };
+      })
+      .filter(Boolean);
+  }, [cache, windowFilter]);
 
   const sortedResults = useMemo(() => {
     const by = sortBy;
@@ -421,13 +463,13 @@ export default function AhaMomentFinder() {
         : by === "precision"
           ? r.holdout.P
           : r.holdout.F1;
-    return [...cache.results].sort((a, b) => {
+    return [...viewResults].sort((a, b) => {
       const ga = a.holdout.support >= minSupport;
       const gb = b.holdout.support >= minSupport;
       if (ga !== gb) return ga ? -1 : 1;
       return key(b) - key(a);
     });
-  }, [cache, sortBy, minSupport]);
+  }, [viewResults, sortBy, minSupport]);
 
   const topAction = sortedResults.length ? sortedResults[0] : null;
 
@@ -458,14 +500,23 @@ export default function AhaMomentFinder() {
     ? Math.round(cache.baseRate * cache.n)
     : 0;
 
-  // 드릴다운 대상: 사용자가 고른 액션 or Top
+  // 드릴다운 대상: 사용자가 고른 액션 or Top (윈도우 필터 적용된 목록 기준)
   const drillTarget =
-    drilldownAction && cache.results.some((r) => r.action === drilldownAction)
+    drilldownAction && viewResults.some((r) => r.action === drilldownAction)
       ? drilldownAction
       : (topAction || {}).action || null;
   const drillResult = drillTarget
-    ? cache.results.find((r) => r.action === drillTarget)
+    ? viewResults.find((r) => r.action === drillTarget)
     : null;
+
+  // "300회 vs 100회 vs 50회면 어느 정도?" — 선택된 행동·윈도우 안에서 k(최소
+  // 횟수)를 바꿔가며 F1/전체유저비중이 어떻게 변하는지 전 구간 스윕(§드릴다운 곡선).
+  const kSweep = useMemo(() => {
+    if (!drillResult || !drillResult.windowCols) return [];
+    const wc = drillResult.windowCols.find((w) => w.window === drillResult.bestWindow);
+    if (!wc) return [];
+    return AHA_STATS.thresholdSweep(wc.valuesAll, cache.targets, cache.trainIdx, cache.minSupport);
+  }, [drillResult, cache]);
 
   useEffect(() => {
     if (!hasData || !analyzed || !chartRef.current || !sortedResults.length) {
@@ -589,6 +640,72 @@ export default function AhaMomentFinder() {
       }
     };
   }, [hasData, analyzed, sortedResults, sortBy, minSupport, holdoutOn]);
+
+  // 선택된 행동의 k-스윕 곡선(§"300회 vs 100회 vs 50회면 어느 정도?").
+  useEffect(() => {
+    if (sweepChartInstance.current) {
+      sweepChartInstance.current.destroy();
+      sweepChartInstance.current = null;
+    }
+    if (!hasData || !analyzed || !sweepChartRef.current || !kSweep.length) return undefined;
+
+    const labels = kSweep.map((s) => `≥${s.k}`);
+    sweepChartInstance.current = new Chart(sweepChartRef.current, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "F1 (예측 정확도)",
+            data: kSweep.map((s) => s.F1),
+            borderColor: "#7aa2f7",
+            backgroundColor: "rgba(122,162,247,0.15)",
+            yAxisID: "y",
+            tension: 0.25,
+            pointRadius: kSweep.map((s) => (s.k === drillResult?.bestK ? 5 : 2)),
+            pointBackgroundColor: kSweep.map((s) => (s.k === drillResult?.bestK ? "#facc15" : "#7aa2f7")),
+          },
+          {
+            label: "전체 유저 중 비율(%)",
+            data: kSweep.map((s) => (s.allPct || 0) * 100),
+            borderColor: "#9ece6a",
+            borderDash: [4, 3],
+            yAxisID: "y1",
+            tension: 0.25,
+            pointRadius: 0,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: "var(--text-muted)", maxTicksLimit: 12 }, grid: { color: "rgba(255,255,255,0.06)" } },
+          y: { min: 0, max: 1, position: "left", title: { display: true, text: "F1", color: "var(--text-muted)" }, ticks: { color: "var(--text-muted)" }, grid: { color: "rgba(255,255,255,0.06)" } },
+          y1: { min: 0, max: 100, position: "right", title: { display: true, text: "전체 유저 %", color: "var(--text-muted)" }, ticks: { color: "var(--text-muted)", callback: (v) => v + "%" }, grid: { display: false } },
+        },
+        plugins: {
+          legend: { labels: { color: "var(--text-muted)", font: { size: 10 } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const s = kSweep[ctx.dataIndex];
+                if (ctx.dataset.yAxisID === "y1") return `전체 유저 중 ${s.allSupport.toLocaleString()}명(${(s.allPct * 100).toFixed(1)}%)이 ≥${s.k}회`;
+                return `F1 ${s.F1.toFixed(3)} · Precision ${s.P.toFixed(3)} · Recall ${s.R.toFixed(3)} · 표본 ${s.support.toLocaleString()}${s.gated ? " ⊘표본부족" : ""}`;
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return () => {
+      if (sweepChartInstance.current) {
+        sweepChartInstance.current.destroy();
+        sweepChartInstance.current = null;
+      }
+    };
+  }, [hasData, analyzed, kSweep, drillResult]);
 
   if (!hasData) {
     return (
@@ -840,10 +957,10 @@ export default function AhaMomentFinder() {
           {/* ── §2 드릴다운 — 평어 해석(디테일화) + 윈도우×k 히트맵 ── */}
           <section className="block" id="s-aha-drill">
             <h2 className="section-title"><span className="ix">§2</span>선택한 행동 자세히{drillTarget ? ` — ${drillTarget}` : ""}</h2>
-            {drillResult && cache.results.length > 0 && (
+            {drillResult && viewResults.length > 0 && (
               <div style={{ marginBottom: "10px" }}>
                 <select className="map-select" value={drillTarget} onChange={(e) => setDrilldownAction(e.target.value)}>
-                  {cache.results.map((x) => (
+                  {viewResults.map((x) => (
                     <option key={x.action} value={x.action}>{x.action}</option>
                   ))}
                 </select>
@@ -879,7 +996,8 @@ export default function AhaMomentFinder() {
                       )}
                     </div>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "10px", marginBottom: "14px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: "10px", marginBottom: "14px" }}>
+                    {metric("전체 유저는 이 행동을 얼마나 하나?", `${(drillResult.allPct * 100).toFixed(0)}% (${(drillResult.allSupport || 0).toLocaleString()}명)`, "정착 여부와 무관하게, 전체 유저 중 이 조건(윈도우×횟수)을 채운 비율.", `전체 대비 support ${drillResult.allSupport || 0} / n`)}
                     {metric("이 조건을 채우면 정착할까?", `${(P * 100).toFixed(0)}% 정착`, "조건을 충족한 유저 중 실제 정착 비율. 높을수록 확실한 신호.", `정밀도(Precision) ${P.toFixed(3)}`)}
                     {metric("정착자를 얼마나 잡아내나?", `${(R * 100).toFixed(0)}% 포함`, "실제 정착자 중 이 조건을 거친 비율. 높을수록 폭넓게 설명.", `재현율(Recall) ${R.toFixed(3)}`)}
                     {metric("평균보다 몇 배 잘 맞나?", drillResult.lift == null ? "—" : `${drillResult.lift.toFixed(1)}배`, "아무 조건 없는 평균 정착률 대비 배수. 1.5배↑ 강한 연관.", `Lift ${drillResult.lift == null ? "—" : drillResult.lift.toFixed(3)}`)}
@@ -947,6 +1065,20 @@ export default function AhaMomentFinder() {
                 );
               })()}
             </div>
+
+            {kSweep.length > 0 && (
+              <div style={{ marginTop: "18px" }}>
+                <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)" }}>
+                  횟수(k)를 바꾸면 어떻게 달라지나? <span style={{ color: MUTED, fontWeight: 400 }}>({drillResult.bestWindow === Infinity ? "전체 기간" : `d${drillResult.bestWindow}`} 고정, k 스윕)</span>
+                </div>
+                <p className="muted" style={{ fontSize: "11.5px", margin: "2px 0 8px" }}>
+                  파랑 실선 = 그 횟수를 기준으로 잡았을 때 예측 정확도(F1) · 초록 점선 = 전체 유저 중 그 횟수 이상을 실제로 하는 비율(%). <span style={{ color: "#facc15" }}>●</span> 금색 점 = 자동으로 고른 최적 횟수(≥{drillResult.bestK}). 300회처럼 기준을 높이면 F1은 오르내릴 수 있지만 그만큼 해당하는 유저(초록선)는 줄어들어요.
+                </p>
+                <div className="chart-container" style={{ height: "220px" }}>
+                  <canvas ref={sweepChartRef}></canvas>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* ── 2층: 전문가 뷰(기본 접힘) — 정렬·표본 설정, 산점도, 전체 지표 표 ── */}
@@ -962,6 +1094,15 @@ export default function AhaMomentFinder() {
                   <button className={`ab-pill ${sortBy === "lift" ? "active" : ""}`} onClick={() => setSortBy("lift")}>Lift</button>
                   <button className={`ab-pill ${sortBy === "precision" ? "active" : ""}`} onClick={() => setSortBy("precision")}>Precision</button>
                 </div>
+                {availWindows.length > 1 && (
+                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }} title="켜면 액션마다 자동 선택된 최적 윈도우 대신, 고른 구간(D1/D7 등) 기준으로만 비교합니다.">
+                    <span style={{ fontSize: "12px", color: MUTED }}>구간:</span>
+                    <button className={`ab-pill ${windowFilter == null ? "active" : ""}`} onClick={() => setWindowFilter(null)}>자동(최적)</button>
+                    {availWindows.map((w) => (
+                      <button key={w} className={`ab-pill ${windowFilter === w ? "active" : ""}`} onClick={() => setWindowFilter(w)}>D{w}</button>
+                    ))}
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                   <span style={{ fontSize: "12px", color: MUTED }}>최소 표본(support):</span>
                   <input type="number" min="1" step="1" value={minSupport} onChange={(e) => setMinSupport(Number(e.target.value))} style={{ width: "70px" }} className="map-select" />
@@ -988,10 +1129,10 @@ export default function AhaMomentFinder() {
               <p className="muted" style={{ fontSize: "11.5px" }}>행을 클릭하면 위 §2 히트맵에서 그 행동을 드릴다운합니다. 초록 lift = 강한 연관(≥1.5×). 빨강 F1 = train≫holdout(과적합 의심).</p>
               <div className="table-wrap">
                 <table className="data" style={{ fontSize: "12.5px" }}>
-                  <thead><tr><th>액션</th><th title="가장 강한 연관을 보인 관측 기간">최적 윈도우</th><th title="그 기간 내 최소 실행 횟수 (≥k)">기준 횟수</th><th title="홀드아웃 F1 = 정밀도·재현율 조화평균">홀드아웃 F1</th><th title="Precision — 조건 충족 유저 중 실제 타겟 달성 비율">정밀도</th><th title="Recall — 타겟 달성 유저 중 조건 충족 비율">재현율</th><th title="Lift — base rate 대비 정밀도 배수">Lift</th><th title="조건 충족 유저 수">표본</th><th title="학습셋 F1 (홀드아웃과 큰 차이 = 과적합)">학습 F1</th></tr></thead>
+                  <thead><tr><th>액션</th><th title="가장 강한 연관을 보인 관측 기간">최적 윈도우</th><th title="그 기간 내 최소 실행 횟수 (≥k)">기준 횟수</th><th title="타겟 달성 여부와 무관하게, 전체 유저 중 이 조건을 채운 인원·비율">전체 유저 중</th><th title="홀드아웃 F1 = 정밀도·재현율 조화평균">홀드아웃 F1</th><th title="Precision — 조건 충족 유저 중 실제 타겟 달성 비율">정밀도</th><th title="Recall — 타겟 달성 유저 중 조건 충족 비율">재현율</th><th title="Lift — base rate 대비 정밀도 배수">Lift</th><th title="조건 충족 유저 수">표본</th><th title="학습셋 F1 (홀드아웃과 큰 차이 = 과적합)">학습 F1</th></tr></thead>
                   <tbody>
                     {sortedResults.length === 0 ? (
-                      <tr><td colSpan="9" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>분석 가능한 액션이 없습니다</td></tr>
+                      <tr><td colSpan="10" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>분석 가능한 액션이 없습니다</td></tr>
                     ) : (
                       sortedResults.map((r) => {
                         const lowSupport = r.holdout.support < minSupport;
@@ -1006,6 +1147,7 @@ export default function AhaMomentFinder() {
                             <td>{r.action}{lowSupport ? " ⊘" : ""}</td>
                             <td className="tnum">{r.bestWindow === Infinity ? "전체" : "d" + r.bestWindow}</td>
                             <td className="tnum">≥{r.bestK}</td>
+                            <td className="tnum">{(r.allSupport || 0).toLocaleString()}명 <span style={{ color: MUTED, fontSize: "10.5px" }}>({((r.allPct || 0) * 100).toFixed(1)}%)</span></td>
                             <td className="tnum" style={{ color: overfit ? "#f87171" : undefined }}>{r.holdout.F1.toFixed(3)}</td>
                             <td className="tnum">{r.holdout.P.toFixed(3)}</td>
                             <td className="tnum">{r.holdout.R.toFixed(3)}</td>
