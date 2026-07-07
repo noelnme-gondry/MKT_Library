@@ -1908,10 +1908,12 @@ export default function MarketingResponse() {
             const maxPct = Math.max(0.0001, ...shRows.map((r) => r.pct || 0));
             const barColor = (nm) => isMediaDrv(nm) ? "#7F77DD" : nm === "Seasonality" ? "#5DCAA5" : nm === "baseline" ? "var(--border-strong)" : "#85B7EB";
             const sat = mmm.run.saturationByChannel || {};
-            // 한계효과(curMarg)는 엔진이 원본 통화 단위로 계산("+1000 raw당") — 표시
-            // 통화가 다르면 "+1000 표시통화당"으로 환산해야 함(1 raw = currencyFactor
-            // display 이므로 나눠줌). 지출 자체(recentMean)는 convAmt로 별도 환산.
-            const currencyFactor = convAmt(1) || 1;
+            // 한계효과(curMarg)는 "원본 통화로 +1000 늘렸을 때"의 실제 증가 인원 —
+            // 이 실물량 자체는 표시 통화를 바꿔도 변하지 않는다(같은 실제 지출 증가분
+            // 얘기이므로 나눗셈 금지, §전에 나눠서 "+0명"으로 언더플로우되던 버그).
+            // 바뀌어야 하는 건 "그 +1000이 표시통화로 얼마인지" 라벨뿐이라 convAmt로
+            // 스텝 크기만 환산(예: $1000 = ₩1,400,000 → "+₩1,400,000당").
+            const stepDisplay = Math.round(convAmt(1000));
             const ranked = Object.values(sat)
               .map((s) => ({ ...s, curMarg: (s.ln_coef / (1 + (s.recentMean || 0))) * 1000 }))
               .filter((s) => s.ln_coef > 0 && s.curMarg > 0)
@@ -1963,13 +1965,13 @@ export default function MarketingResponse() {
               {/* ── 메인: 다음 예산은 여기로 (액션 카드) ── */}
               {ranked.length > 0 && (
                 <section className="block" style={{ border: "2px solid var(--primary, #adc6ff)" }}>
-                  <h2 className="section-title">🎯 다음 예산은 여기로 <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>· 지금 지출에서 +{currencySym}1,000당 늘어나는 {tgtKo}</span></h2>
+                  <h2 className="section-title">🎯 다음 예산은 여기로 <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>· 지금 지출에서 +{currencySym}{stepDisplay.toLocaleString()}당 늘어나는 {tgtKo}</span></h2>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     {ranked.map((s, i) => (
                       <div key={s.label} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: i === 0 ? "rgba(122,162,247,0.1)" : "transparent", borderRadius: "8px" }}>
                         <span style={{ fontSize: "15px", fontWeight: 700, color: i === 0 ? "#7aa2f7" : MUTED, minWidth: "20px" }}>{i + 1}</span>
                         <span style={{ flex: 1, fontSize: "14px", fontWeight: i === 0 ? 700 : 400 }}>{s.label}</span>
-                        <span style={{ fontSize: "14px", fontWeight: 600, color: "#22c55e" }}>+{(s.curMarg / currencyFactor).toFixed(0)}명</span>
+                        <span style={{ fontSize: "14px", fontWeight: 600, color: "#22c55e" }}>+{s.curMarg.toFixed(0)}명</span>
                         <span style={{ fontSize: "12px", color: MUTED }}>현 {currencySym}{(convAmt(s.recentMean || 0) / 1000).toFixed(1)}k/주</span>
                       </div>
                     ))}
@@ -2163,15 +2165,16 @@ export default function MarketingResponse() {
                     <div>
                       <div className="table-wrap">
                         <table className="data" style={{ fontSize: "11px" }}>
-                          <thead><tr><th>채널</th><th>현 지출<br />+{currencySym}1k당</th><th>{currencySym}{Math.round(convAmt(10000) / 1000).toLocaleString()}k당</th><th>{currencySym}{Math.round(convAmt(35000) / 1000).toLocaleString()}k당</th><th>{currencySym}{Math.round(convAmt(60000) / 1000).toLocaleString()}k당</th></tr></thead>
+                          <thead><tr><th>채널</th><th>현 지출<br />+{currencySym}{Math.round(convAmt(1000) / 1000).toLocaleString()}k당</th><th>{currencySym}{Math.round(convAmt(10000) / 1000).toLocaleString()}k당</th><th>{currencySym}{Math.round(convAmt(35000) / 1000).toLocaleString()}k당</th><th>{currencySym}{Math.round(convAmt(60000) / 1000).toLocaleString()}k당</th></tr></thead>
                           <tbody>
                             {(() => {
                               const sbc = mmm.run.saturationByChannel || {};
                               const keys = Object.keys(sbc);
                               if (!keys.length) return <tr><td colSpan="5" style={{ color: MUTED }}>—</td></tr>;
-                              // marginal_kpi_per_1k는 엔진이 원본 통화 "+1000 raw당"으로 계산 —
-                              // 표시통화가 다르면 "+1000 표시통화당"으로 환산(÷currencyFactor).
-                              const cell = (v) => (v == null ? "—" : `${v >= 0 ? "+" : ""}${(v / currencyFactor).toFixed(1)}명`);
+                              // marginal_kpi_per_1k는 "원본 통화 +1000 늘렸을 때"의 실제 증가
+                              // 인원 — 실물량이라 통화 토글로 나누면 안 됨(그 헤더 텍스트만
+                              // convAmt로 환산해서 "+1000이 표시통화로 얼마인지" 보여줌).
+                              const cell = (v) => (v == null ? "—" : `${v >= 0 ? "+" : ""}${v}명`);
                               return keys.map((k) => {
                                 const s = sbc[k], m = s.marginal_kpi_per_1k || {}, neg = s.ln_coef < 0;
                                 const curMarg = s.recentMean > 0 ? +((s.ln_coef / (1 + s.recentMean)) * 1000).toFixed(1) : null;
