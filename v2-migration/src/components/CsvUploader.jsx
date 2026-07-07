@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import Papa from "papaparse";
 import { useAppStore, TOOL_GROUP } from "@/store/useDataStore";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
@@ -150,6 +150,18 @@ export default function CsvUploader({ toolId }) {
   };
 
   const hasFile = csvData && csvData.headers && csvData.headers.length > 0;
+  const isDemo = !!(csvData && csvData.fileName && csvData.fileName.startsWith("demo_"));
+
+  // 첫 진입(데이터 없음) 시 샘플 데이터를 자동 로드해 빈 업로드 화면 대신 라이브
+  // 분석 화면을 즉시 보여준다(SEO·첫인상 개선). 마운트 1회만 — 사용자가 CSV 변경으로
+  // 명시적으로 비우면 재자동로드 없음(의도된 빈 드롭존 유지).
+  useEffect(() => {
+    // 마운트 1회성 초기 로드(다중 setState 의도적 — 데모 데이터+게이트+프리뷰 상태를
+    // 한 번에 세팅, 루프·반복 트리거 아님).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!hasFile) handleLoadDemo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // --- Compute mapping requirements ---
   const { missing, reqLabels, fieldGroups, allowKeys } = useMemo(() => {
@@ -266,16 +278,30 @@ export default function CsvUploader({ toolId }) {
       <CsvGuide toolId={toolId} />
       <div className="file-state">
         <div className="meta-text">
-          <span className="dot" style={{ background: "#22c55e" }}></span>
-          <strong>{csvData.fileName}</strong>
+          <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
+          {isDemo ? (
+            <strong>샘플 데이터로 미리보기 중</strong>
+          ) : (
+            <strong>{csvData.fileName}</strong>
+          )}
           <span className="csv-loaded-stats tnum">
-            {csvData.raw.length.toLocaleString()}행 · {csvData.headers.length}컬럼
+            {csvData.raw.length.toLocaleString()}행 · {csvData.headers.length}컬럼{isDemo ? " · 실제 데이터 아님" : ""}
           </span>
         </div>
         <button className="ab-pill csv-change-btn" title="이 도구의 CSV를 제거하고 다른 파일 업로드" onClick={handleReset}>
-          ⟳ CSV 변경
+          {isDemo ? "📁 내 CSV 업로드" : "⟳ CSV 변경"}
         </button>
       </div>
+      {isDemo && (
+        <div className="callout" style={{ margin: "8px 0" }}>
+          <div className="ico">i</div>
+          <div className="body">
+            <p style={{ margin: 0, fontSize: "12px" }}>
+              지금 보이는 결과는 <strong>합성 샘플 데이터</strong> 기준입니다(실제 데이터 아님, 서버 전송 없음). 내 데이터를 분석하려면 위 &quot;📁 내 CSV 업로드&quot;로 실제 CSV를 올리세요.
+            </p>
+          </div>
+        </div>
+      )}
 
       {missing.length > 0 ? (
         <div className="required-banner">

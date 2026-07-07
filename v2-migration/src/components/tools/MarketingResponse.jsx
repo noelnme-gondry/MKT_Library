@@ -726,6 +726,7 @@ export default function MarketingResponse() {
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
   const hasData = csvData?.raw?.length > 0;
+  const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
 
   // 5-18 = colMap DnD가 PRIMARY 매퍼(index.html page_5_18 이식). 단일 generic CSV를
   // 주차/날짜/가입/재활성/채널(perf·brand)/더미/step 역할로 드래그 → 모든 분석(진단·MMM·시뮬)
@@ -772,6 +773,12 @@ export default function MarketingResponse() {
     demoPending.current = true;
     setCsvData(buildDemoCsv("response"));
   };
+
+  // 첫 진입(데이터 없음) 시 샘플 데이터 자동 로드(CsvUploader와 동일 패턴, SEO·첫인상).
+  useEffect(() => {
+    if (!hasData) handleLoadDemo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const colMapSig = mmmColMap ? JSON.stringify(mmmColMap) : "";
   const mmmAnalyzed = mmmAnalyzedSig != null && mmmAnalyzedSig === colMapSig;
 
@@ -1395,12 +1402,12 @@ export default function MarketingResponse() {
       <section className="block" id="s-prep">
         <div className="file-state">
           <div className="meta-text">
-            <span className="dot" style={{ background: "#22c55e" }}></span>
-            <strong>{csvData.fileName}</strong>
-            <span className="csv-loaded-stats tnum">{csvData.raw.length.toLocaleString()}행 · {csvData.headers.length}컬럼</span>
+            <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
+            {isDemo ? <strong>샘플 데이터로 미리보기 중</strong> : <strong>{csvData.fileName}</strong>}
+            <span className="csv-loaded-stats tnum">{csvData.raw.length.toLocaleString()}행 · {csvData.headers.length}컬럼{isDemo ? " · 실제 데이터 아님" : ""}</span>
           </div>
           <button className="ab-pill csv-change-btn" title="CSV 제거 후 다른 파일 업로드"
-            onClick={() => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" })}>⟳ CSV 변경</button>
+            onClick={() => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" })}>{isDemo ? "📁 내 CSV 업로드" : "⟳ CSV 변경"}</button>
         </div>
         <h3 style={{ fontSize: "14px", margin: "12px 0 8px", color: "var(--primary, #adc6ff)" }}>🗂 컬럼 역할 매핑 (드래그로 지정)</h3>
         <MmmColumnMapper
@@ -1431,6 +1438,12 @@ export default function MarketingResponse() {
       <span style={{ fontSize: "12px", color: MUTED, whiteSpace: "nowrap" }}>
         마케팅 반응 분석 <span style={{ margin: "0 4px" }}>·</span> <strong style={{ color: "var(--text-1)" }}>{stageKo}</strong>
       </span>
+      {isDemo && (
+        <>
+          <span style={{ fontSize: "11px", color: "#f59e0b", fontWeight: 600 }}>샘플 데이터 · 실제 데이터 아님</span>
+          <button className="ab-pill" onClick={() => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" })}>📁 내 CSV 업로드</button>
+        </>
+      )}
       <span style={{ color: "var(--border-strong, #444)", fontSize: "12px" }}>|</span>
       <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
         {availTargets.length > 1 && (

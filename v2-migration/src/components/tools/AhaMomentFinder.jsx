@@ -278,6 +278,7 @@ export default function AhaMomentFinder() {
     setDemoPending(true);
     setCsvData(buildDemoCsv("aha"));
   };
+  const resetCsv = () => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" });
   const [minSupport, setMinSupport] = useState(30);
   const [holdoutOn, setHoldoutOn] = useState(true);
   const [sortBy, setSortBy] = useState("f1");
@@ -288,6 +289,15 @@ export default function AhaMomentFinder() {
   const [analyzedSig, setAnalyzedSig] = useState(null);
 
   const hasData = csvData?.raw?.length > 0;
+  const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
+
+  // 첫 진입(데이터 없음) 시 샘플 데이터 자동 로드(CsvUploader와 동일 패턴, SEO·첫인상).
+  useEffect(() => {
+    // 마운트 1회성 초기 로드(다중 setState 의도적 — 데모 데이터+게이트 상태 세팅).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!hasData) handleLoadDemo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -613,12 +623,13 @@ export default function AhaMomentFinder() {
         <h2 className="section-title"><span className="ix">§0</span>컬럼 역할 매핑</h2>
         <div className="csv-loaded-bar">
           <div className="csv-loaded-info">
-            <span className="dot" style={{ background: "#22c55e" }}></span>
-            <strong>{csvData.fileName || "data.csv"}</strong>
+            <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
+            {isDemo ? <strong>샘플 데이터로 미리보기 중</strong> : <strong>{csvData.fileName || "data.csv"}</strong>}
             <span className="csv-loaded-stats tnum">
-              {csvData.raw.length.toLocaleString()}행 · {headers.length}컬럼 · 후보 액션 {actionCount}개
+              {csvData.raw.length.toLocaleString()}행 · {headers.length}컬럼 · 후보 액션 {actionCount}개{isDemo ? " · 실제 데이터 아님" : ""}
             </span>
           </div>
+          <button className="ab-pill csv-change-btn" onClick={resetCsv}>{isDemo ? "📁 내 CSV 업로드" : "⟳ CSV 변경"}</button>
         </div>
         <details open={!analyzed} style={{ marginTop: "10px" }}>
           <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: analyzed ? "var(--text-muted)" : "#adc6ff" }}>🗂 컬럼 역할 매핑 {analyzed ? "(분석 완료 — 펼쳐서 수정)" : "(자동 추정 — 틀리면 수정)"}</summary>

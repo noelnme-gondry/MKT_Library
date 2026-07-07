@@ -35,9 +35,11 @@ function seedWithData() {
 
 describe("CsvUploader render smoke", () => {
   beforeEach(() => seedNoData());
-  it("no-data mounts (dropzone)", () => {
+  it("no-data mounts and auto-loads demo (mapping grid, not dropzone)", () => {
+    // 첫 진입(데이터 없음) 시 샘플 데이터 자동 로드 — 빈 드롭존 대신 즉시 매핑그리드/결과.
     expect(() => render(<CsvUploader toolId="5-2" />)).not.toThrow();
-    expect(document.querySelector(".csv-dropzone")).toBeTruthy();
+    expect(document.querySelector(".mapping-grid")).toBeTruthy();
+    expect(document.querySelector(".csv-dropzone")).toBeFalsy();
   });
   it("with-data mounts (mapping grid)", () => {
     seedWithData();
