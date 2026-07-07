@@ -5,6 +5,22 @@
 
 const CURRENCY_SYMBOL = { KRW: "₩", USD: "$" };
 
+// 고정 환율(결정론 — 실시간 조회 없음, §3). 대략적 기준값, 정밀 회계용 아님 —
+// CSV 업로드 시 사용자가 지정한 원본 통화(csvData.currency)와 표시 토글
+// (displayCurrency)이 다를 때 화면 표시 단위만 바꿔주는 용도.
+export const USD_KRW_RATE = 1400;
+
+// value가 `from` 통화로 기록된 원본이라 가정하고 `to` 통화 표시값으로 변환.
+// from===to면 그대로(불필요한 변환 오차 방지). from/to 미지정·동일 문자열이면 no-op.
+export function convertCurrency(value, from, to) {
+  if (value == null || !Number.isFinite(Number(value))) return value;
+  if (!from || !to || from === to) return value;
+  const v = Number(value);
+  if (from === "KRW" && to === "USD") return v / USD_KRW_RATE;
+  if (from === "USD" && to === "KRW") return v * USD_KRW_RATE;
+  return v;
+}
+
 // Currency: ₩ = 0 decimals, $ = 2 decimals. `precise` adapts small magnitudes
 // (|v|<10 → 2 decimals) so sub-unit ARPU/LTV don't collapse to 0 (§7 LTV 함정).
 export function fmtCurrency(value, opts = {}) {

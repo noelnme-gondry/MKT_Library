@@ -37,7 +37,7 @@ import CsvGuide from "@/components/ds/CsvGuide";
 import { buildDemoCsv } from "@/utils/demoData";
 import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, mmmPlatformTags } from "@/components/tools/MmmColumnMapper";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
-import { CURRENCY_SYMBOLS } from "@/utils/format";
+import { CURRENCY_SYMBOLS, convertCurrency } from "@/utils/format";
 
 /* ============================================================================
  * MarketingResponse (5-18) — MOCK → REAL 와이어링
@@ -729,6 +729,10 @@ export default function MarketingResponse() {
   const setCsvData = useAppStore((state) => state.setCsvData);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const currencySym = CURRENCY_SYMBOLS[displayCurrency] || "$";
+  // 원본 CSV 통화(업로드 시 지정, 기본 KRW) — 표시 토글과 다르면 실제 배율 변환.
+  // §전에는 토글이 라벨만 바꾸고 숫자는 그대로였음(예: $35k → ₩35k, 오해 유발).
+  const sourceCurrency = csvData?.currency || "KRW";
+  const convAmt = (v) => convertCurrency(v, sourceCurrency, displayCurrency);
   const hasData = csvData?.raw?.length > 0;
   const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
 
@@ -1057,8 +1061,8 @@ export default function MarketingResponse() {
           });
           const satOpts = chartBase();
           satOpts.plugins.legend = { display: false }; // 커스텀 HTML 범례(채널 토글) 사용
-          satOpts.plugins.tooltip = { ...satOpts.plugins.tooltip, callbacks: { label: (c) => `${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString()}명 @ ${currencySym}${Math.round(c.parsed.x / 1000)}k` } };
-          satOpts.scales.x = { type: "linear", ticks: { color: mutedColS, font: { size: 10 }, callback: (v) => currencySym + Math.round(v / 1000) + "k" }, grid: { display: false } };
+          satOpts.plugins.tooltip = { ...satOpts.plugins.tooltip, callbacks: { label: (c) => `${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString()}명 @ ${currencySym}${Math.round(convAmt(c.parsed.x) / 1000)}k` } };
+          satOpts.scales.x = { type: "linear", ticks: { color: mutedColS, font: { size: 10 }, callback: (v) => currencySym + Math.round(convAmt(v) / 1000) + "k" }, grid: { display: false } };
           satOpts.scales.y = { ticks: { color: mutedColS, font: { size: 10 }, callback: (v) => Math.round(v).toLocaleString() }, grid: { color: CHART_THEME.grid } };
           inst.push(
             new Chart(satRef.current.getContext("2d"), {
@@ -1202,7 +1206,10 @@ export default function MarketingResponse() {
       }
     }
     return () => inst.forEach((c) => c && c.destroy());
-  }, [stage, mmm, decomp, spikeNotes, decompGrouped, satHidden, currencySym]);
+    // convAmt는 sourceCurrency/displayCurrency로만 결정되는 순수 파생 함수라 그
+    // 둘을 deps에 넣는 것으로 충분(함수 레퍼런스 자체는 deps에 안 넣음, §매 렌더 재생성).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, mmm, decomp, spikeNotes, decompGrouped, satHidden, currencySym, sourceCurrency, displayCurrency]);
 
   // Stage ③ forecast chart
   useEffect(() => {
@@ -1413,6 +1420,13 @@ export default function MarketingResponse() {
           <button className="ab-pill csv-change-btn" title="CSV 제거 후 다른 파일 업로드"
             onClick={() => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" })}>{isDemo ? "📁 내 CSV 업로드" : "⟳ CSV 변경"}</button>
         </div>
+        {!isDemo && (
+          <div className="ab-pillgroup" style={{ marginTop: "8px" }} title="채널 spend·매출 등 이 CSV의 금액 컬럼이 어느 통화로 기록됐는지. 표시 통화 토글(₩/$)이 다르면 고정 환율로 실제 환산해서 보여줍니다.">
+            <span className="ab-pillgroup-label">이 CSV 금액 통화</span>
+            <button className={`ab-pill ${sourceCurrency === "KRW" ? "active" : ""}`} onClick={() => setCsvData({ ...csvData, currency: "KRW" })}>원 ₩</button>
+            <button className={`ab-pill ${sourceCurrency === "USD" ? "active" : ""}`} onClick={() => setCsvData({ ...csvData, currency: "USD" })}>달러 $</button>
+          </div>
+        )}
         <h3 style={{ fontSize: "14px", margin: "12px 0 8px", color: "var(--primary, #adc6ff)" }}>🗂 컬럼 역할 매핑 (드래그로 지정)</h3>
         <MmmColumnMapper
           headers={csvData.headers}
@@ -1447,7 +1461,7 @@ export default function MarketingResponse() {
     </div>
   );
   const controlBar = () => (
-    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "12px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
       <span style={{ fontSize: "12px", color: MUTED, whiteSpace: "nowrap" }}>
         마케팅 반응 분석 <span style={{ margin: "0 4px" }}>·</span> <strong style={{ color: "var(--text-1)" }}>{stageKo}</strong>
       </span>
@@ -1523,8 +1537,13 @@ export default function MarketingResponse() {
       ) : (
         <>
           {demoBanner}
-          {controlBar()}
-          <BasisCurrencyToggleBar />
+          {/* 브레드크럼(타깃·플랫폼 토글)+통화 토글을 page-sticky-bar로 묶어 스크롤해도
+              상단(topbar 아래 top:48px)에 고정 — 다른 5-x 도구(Dashboard 등)와 동일 패턴.
+              이전엔 본문에 그냥 떠 있어 스크롤하면 사라짐(§유저 리포트). */}
+          <div className="page-sticky-bar">
+            <div className="page-sticky-row1">{controlBar()}</div>
+            <BasisCurrencyToggleBar />
+          </div>
 
           {/* ③ LAB(회귀·미래예측)은 아래 §7 forecast 블록에서 렌더(mmmForecast 기반, stage==="lab"). */}
 
@@ -1889,6 +1908,10 @@ export default function MarketingResponse() {
             const maxPct = Math.max(0.0001, ...shRows.map((r) => r.pct || 0));
             const barColor = (nm) => isMediaDrv(nm) ? "#7F77DD" : nm === "Seasonality" ? "#5DCAA5" : nm === "baseline" ? "var(--border-strong)" : "#85B7EB";
             const sat = mmm.run.saturationByChannel || {};
+            // 한계효과(curMarg)는 엔진이 원본 통화 단위로 계산("+1000 raw당") — 표시
+            // 통화가 다르면 "+1000 표시통화당"으로 환산해야 함(1 raw = currencyFactor
+            // display 이므로 나눠줌). 지출 자체(recentMean)는 convAmt로 별도 환산.
+            const currencyFactor = convAmt(1) || 1;
             const ranked = Object.values(sat)
               .map((s) => ({ ...s, curMarg: (s.ln_coef / (1 + (s.recentMean || 0))) * 1000 }))
               .filter((s) => s.ln_coef > 0 && s.curMarg > 0)
@@ -1940,14 +1963,14 @@ export default function MarketingResponse() {
               {/* ── 메인: 다음 예산은 여기로 (액션 카드) ── */}
               {ranked.length > 0 && (
                 <section className="block" style={{ border: "2px solid var(--primary, #adc6ff)" }}>
-                  <h2 className="section-title">🎯 다음 예산은 여기로 <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>· 지금 지출에서 +$1,000당 늘어나는 {tgtKo}</span></h2>
+                  <h2 className="section-title">🎯 다음 예산은 여기로 <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>· 지금 지출에서 +{currencySym}1,000당 늘어나는 {tgtKo}</span></h2>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     {ranked.map((s, i) => (
                       <div key={s.label} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: i === 0 ? "rgba(122,162,247,0.1)" : "transparent", borderRadius: "8px" }}>
                         <span style={{ fontSize: "15px", fontWeight: 700, color: i === 0 ? "#7aa2f7" : MUTED, minWidth: "20px" }}>{i + 1}</span>
                         <span style={{ flex: 1, fontSize: "14px", fontWeight: i === 0 ? 700 : 400 }}>{s.label}</span>
-                        <span style={{ fontSize: "14px", fontWeight: 600, color: "#22c55e" }}>+{s.curMarg.toFixed(0)}명</span>
-                        <span style={{ fontSize: "12px", color: MUTED }}>현 {currencySym}{((s.recentMean || 0) / 1000).toFixed(1)}k/주</span>
+                        <span style={{ fontSize: "14px", fontWeight: 600, color: "#22c55e" }}>+{(s.curMarg / currencyFactor).toFixed(0)}명</span>
+                        <span style={{ fontSize: "12px", color: MUTED }}>현 {currencySym}{(convAmt(s.recentMean || 0) / 1000).toFixed(1)}k/주</span>
                       </div>
                     ))}
                   </div>
@@ -2140,20 +2163,22 @@ export default function MarketingResponse() {
                     <div>
                       <div className="table-wrap">
                         <table className="data" style={{ fontSize: "11px" }}>
-                          <thead><tr><th>채널</th><th>현 지출<br />+{currencySym}1k당</th><th>{currencySym}10k당</th><th>{currencySym}35k당</th><th>{currencySym}60k당</th></tr></thead>
+                          <thead><tr><th>채널</th><th>현 지출<br />+{currencySym}1k당</th><th>{currencySym}{Math.round(convAmt(10000) / 1000).toLocaleString()}k당</th><th>{currencySym}{Math.round(convAmt(35000) / 1000).toLocaleString()}k당</th><th>{currencySym}{Math.round(convAmt(60000) / 1000).toLocaleString()}k당</th></tr></thead>
                           <tbody>
                             {(() => {
                               const sbc = mmm.run.saturationByChannel || {};
                               const keys = Object.keys(sbc);
                               if (!keys.length) return <tr><td colSpan="5" style={{ color: MUTED }}>—</td></tr>;
-                              const cell = (v) => (v == null ? "—" : `${v >= 0 ? "+" : ""}${v}명`);
+                              // marginal_kpi_per_1k는 엔진이 원본 통화 "+1000 raw당"으로 계산 —
+                              // 표시통화가 다르면 "+1000 표시통화당"으로 환산(÷currencyFactor).
+                              const cell = (v) => (v == null ? "—" : `${v >= 0 ? "+" : ""}${(v / currencyFactor).toFixed(1)}명`);
                               return keys.map((k) => {
                                 const s = sbc[k], m = s.marginal_kpi_per_1k || {}, neg = s.ln_coef < 0;
                                 const curMarg = s.recentMean > 0 ? +((s.ln_coef / (1 + s.recentMean)) * 1000).toFixed(1) : null;
                                 return (
                                   <tr key={k} style={neg ? { opacity: 0.55 } : undefined}>
                                     <td><strong>{s.label}</strong>{neg ? <span style={{ fontSize: "9px", color: "#fbbf24" }}> 음수=노이즈</span> : ""}</td>
-                                    <td className="tnum" style={{ color: "#adc6ff" }}>{curMarg == null ? "—" : cell(curMarg)}{curMarg != null && <span style={{ fontSize: "9px", color: MUTED }}><br />@{currencySym}{(s.recentMean / 1000).toFixed(1)}k</span>}</td>
+                                    <td className="tnum" style={{ color: "#adc6ff" }}>{curMarg == null ? "—" : cell(curMarg)}{curMarg != null && <span style={{ fontSize: "9px", color: MUTED }}><br />@{currencySym}{(convAmt(s.recentMean) / 1000).toFixed(1)}k</span>}</td>
                                     <td className="tnum">{cell(m["$10k"])}</td>
                                     <td className="tnum">{cell(m["$35k"])}</td>
                                     <td className="tnum">{cell(m["$60k"])}</td>
