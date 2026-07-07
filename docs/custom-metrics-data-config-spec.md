@@ -3,7 +3,7 @@
 > 목적: 유저가 (A) CSV 컬럼으로 파생 지표를 만들고 (B) 지표 표시/순서를 조정하고
 > (C) 그 설정을 브라우저에 저장해 지속 사용하게 한다.
 > 계층: v2-migration (Next.js). 순수 수학은 골든 불변(§8·§12.20).
-> 상태: 설계 확정(2026-07-06), 미착수. 실행은 Phase A부터 증분.
+> 상태: 2026-07-07 — **A~D 완료·머지**(PR #245, `v2-migration/src/utils/metrics/*`). 5-2 스코어카드·Viz탭·LTV표만 적용(파일럿 범위). 잔여 작업은 §7 백로그.
 
 ## 0. 확정된 결정 (유저 승인)
 
@@ -66,6 +66,16 @@ src/components/ds/MetricConfigPanel.jsx  지표 편집 드로어
 
 권장: **A→B→C**를 1차 릴리즈. D·E는 후속(각 별도 PR).
 
+**실제 진행(2026-07-07, PR #245)**: A·B·C 계획대로 완료. **D는 계획과 다른 구현**으로 완료
+— `formulaEngine.js`(자유 문자열 파싱) 대신 `customMetric.js`(N항 체인: 컬럼/숫자+부호 반복)
+채택. eval도 파서도 없어 §4 규칙 그대로 지키면서 위험도 낮춤(원안 "위험:높음" 회피).
+**E는 부분** — `useDataStore.js`에 `version:1`+`partialize` 있으나 `migrate` 훅 없음(버전 그대로라
+아직 무증상). 리셋 버튼(§4)은 적용 3곳(스코어카드·Viz탭·LTV표) 모두 있음. IndexedDB 원본 옵트인
+미착수(원래 선택 항목).
+추가로 스펙 밖 확장: 커스텀 차트 빌더(`CustomChartBuilder.jsx`, 모양+행+값 조립) + 5-2 내
+Funnel·Cohort·Pacing·Anomaly·Segment 탭에 커스텀 차트 **노출**(각 탭 `CustomChartsSection`) +
+스코어카드/Viz탭 카드 인라인 드래그·on/off 편집(`InlineCardEditor.jsx`).
+
 ## 4. 불변 규칙 (반드시 준수)
 
 - **수식 `eval` 절대 금지** — 보안+결정론(§3.3). 화이트리스트 파서만.
@@ -89,3 +99,16 @@ src/components/ds/MetricConfigPanel.jsx  지표 편집 드로어
 - 편집 UI → `src/components/ds/MetricConfigPanel.jsx` (신규)
 - 파일럿 소비 → `src/components/dashboard/*`(5-2) columns를 registry+viewConfig에서 파생
 - 코드맵 갱신 → `v2-migration/ARCHITECTURE.md` (§3 도메인 매핑에 metrics/ 추가, §15 규율)
+
+## 7. 다음 작업 백로그 (2026-07-07 확정, 미착수)
+
+PR #245 머지로 A~D 종결. 아래는 **같은 SSOT 이어서** 후속 PR로 진행할 항목(순서 무관, 병렬 가능).
+
+| # | 항목 | 범위 | 비고 |
+|---|---|---|---|
+| 1 | **나머지 표 확장** | 5-2 내 Funnel(§단계표)·Cohort(§코호트표)·Anomaly(§이상탐지표)·Segment(§세그먼트표) — 현재 하드코딩 `<table class="data">` | LTV표(`LtvTab.jsx`) 패턴 재사용: `applyMetricView`+`MetricConfigPanel`+`resetViewConfig`. 각 표마다 독립 `viewConfig` scope 키 부여(예 `5-2:funnel-table`) |
+| 2 | **나머지 탭에 편집기** | Funnel·Cohort·Pacing·Anomaly·Segment 5개 탭 — 현재 `CustomChartsSection`(노출만) 있고 `MetricConfigPanel`/`CustomChartBuilder`(그 탭 안에서 직접 만들기) 없음 | VizTab.jsx 패턴 참고. `chartScope`는 이미 탭별로 있으니 빌더만 노출하면 됨 |
+| 3 | **다른 도구로 확장** | 5-3(예산배분)·5-6(소재분석)·5-18(MMM)·5-21(PVM) 등 — 현재 registry·customMetric·viewConfig 전부 5-2 전용 배선 | 도구별 `calculateKPIs` 상당 함수 확인 후 §2 렌더 파생 패턴 그대로 이식. scope 키는 도구 id 접두(`5-3:...`) |
+| 4 | **Phase E 마무리** | `useDataStore.js` persist `migrate` 훅 추가 | version 2 올릴 일 생기기 전에 훅 골격만이라도(스키마 진화 대비, §4) |
+
+우선순위·순서는 미정 — 착수 시 사용자와 순서 재확인.
