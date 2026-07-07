@@ -488,13 +488,23 @@ export default function AhaMomentFinder() {
         : sortBy === "precision"
           ? r.holdout.P
           : r.holdout.F1;
-    const maxVal = Math.max(...sortedResults.map(byVal), 0.0001);
+    // 색 대비를 위해 min-max 정규화(값/최대값만 쓰면 값이 클러스터돼 있을 때
+    // 색이 죄다 비슷해 보여 "정렬을 바꿔도 안 변한다"는 오해를 삼 — 표본충분
+    // 후보끼리의 실제 상대 범위로 스트레치해야 강함↔약함 그라데이션이 드러남.
+    const gatedVals = sortedResults.filter((r) => r.holdout.support >= minSupport).map(byVal);
+    const maxVal = Math.max(...gatedVals, 0.0001);
+    const minVal = gatedVals.length ? Math.min(...gatedVals) : 0;
+    const span = maxVal - minVal || 1;
+    // 현재 정렬 기준 1위(=topAction) 후보에 금색 테두리 — 정렬 버튼을 바꾸면
+    // 이 하이라이트가 다른 버블로 옮겨가 "정렬이 실제로 바뀐다"는 걸 눈에 보이게 함.
+    const topActionKey = sortedResults.length && sortedResults[0].holdout.support >= minSupport ? sortedResults[0].action : null;
     const points = sortedResults.map((r) => {
       const lowSupport = r.holdout.support < minSupport;
-      const intensity = Math.max(0.15, byVal(r) / maxVal);
+      const intensity = lowSupport ? 0.15 : Math.max(0.1, (byVal(r) - minVal) / span);
       const color = lowSupport
         ? "rgba(148,163,184,0.35)"
-        : `rgba(${Math.round(247 - intensity * 100)},${Math.round(113 + intensity * 100)},${Math.round(113 + intensity * 30)},0.85)`;
+        : `rgba(${Math.round(247 - intensity * 130)},${Math.round(90 + intensity * 130)},${Math.round(113 + intensity * 20)},0.85)`;
+      const isTop = r.action === topActionKey;
       return {
         x: r.holdout.R,
         y: r.holdout.P,
@@ -507,6 +517,7 @@ export default function AhaMomentFinder() {
         lift: r.lift,
         support: r.holdout.support,
         lowSupport,
+        isTop,
         _color: color,
       };
     });
@@ -518,8 +529,8 @@ export default function AhaMomentFinder() {
           {
             data: points,
             backgroundColor: points.map((p) => p._color),
-            borderColor: "rgba(255,255,255,0.25)",
-            borderWidth: 1,
+            borderColor: points.map((p) => (p.isTop ? "#facc15" : "rgba(255,255,255,0.25)")),
+            borderWidth: points.map((p) => (p.isTop ? 3 : 1)),
           },
         ],
       },
@@ -965,7 +976,7 @@ export default function AhaMomentFinder() {
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>Aha Scatter (Precision × Recall)</div>
                 <button className="ab-pill" onClick={handleScatterPng}>⬇ PNG</button>
               </div>
-              <p className="muted">X=Recall, Y=Precision, 점 크기 = 표본(support), 색 = F1(또는 정렬기준). 표본 부족(&lt;{minSupport}) 액션은 회색·반투명입니다.</p>
+              <p className="muted">X=Recall, Y=Precision, 점 크기 = 표본(support). 색은 <strong>후보끼리 상대 비교</strong>로 칠해집니다 — 진한 빨강일수록 선택한 정렬 기준(F1/Lift/Precision)에서 약함, 진한 초록일수록 강함. <span style={{ color: "#facc15" }}>●</span> 금색 테두리 = 현재 정렬 기준 1위. 표본 부족(&lt;{minSupport}) 액션은 회색·반투명입니다. 정렬 버튼을 바꾸면 색과 금색 테두리가 다시 계산됩니다.</p>
               <div className="chart-container" style={{ height: "380px", marginBottom: "16px" }}>
                 <canvas ref={chartRef}></canvas>
               </div>
