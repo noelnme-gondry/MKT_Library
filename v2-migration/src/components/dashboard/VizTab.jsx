@@ -6,21 +6,12 @@ import { getMonFilteredRows, aggregateByKey, calculateKPIs, effectiveDenomBasis 
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
-import { METRIC_BY_ID, BASE_FIELDS, DERIVED_METRICS } from "@/utils/metrics/metricRegistry";
-import { CHART_TYPES, groupAggByDim, buildChartSeries } from "@/utils/metrics/chartBuilder";
+import { CHART_TYPES } from "@/utils/metrics/chartBuilder";
+import { buildCustomChartConfig, buildChartFieldOptions } from "@/utils/customChartConfig";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
 import CustomChartBuilder from "@/components/ds/CustomChartBuilder";
 import { copyToClipboard } from "@/utils/toast";
-
-// 커스텀 차트 행(차원) 후보 — 매핑된 것만 노출.
-const DIM_CANDIDATES = [
-  { key: "channel", label: "채널" },
-  { key: "country", label: "국가" },
-  { key: "platform", label: "OS" },
-  { key: "campaign_name", label: "캠페인" },
-  { key: "date", label: "날짜" },
-];
 
 // 지표 뷰 설정 scope(도구:표면) — 운영 대시보드 자체(Viz 탭)의 KPI 카드·차트.
 const VIZ_KPI_SCOPE = "5-2:viz-kpi";
@@ -162,63 +153,11 @@ export default function VizTab() {
   const hasRev = [...mappedKeys].some((k) => /^revenue_d/.test(k));
   const hasPu = [...mappedKeys].some((k) => /^pu_d/.test(k));
 
-  // 커스텀 차트 행(차원) 후보 = 매핑된 차원 필드.
-  const availDims = DIM_CANDIDATES.filter((d) => mappedKeys.has(d.key));
-  // 값(지표) 후보 = 데이터에 있는 base + deps 충족 파생 + 커스텀 지표.
-  const availAggKeys = new Set(["cost"]);
-  ["impressions", "clicks", "installs", "actions"].forEach((k) => { if (mappedKeys.has(k)) availAggKeys.add(k); });
-  if (hasRev) availAggKeys.add("revenue");
-  if (hasPu) availAggKeys.add("purchases");
-  if (mappedKeys.has("installs") || mappedKeys.has("actions")) availAggKeys.add("denom");
-  const metricOptions = [
-    ...BASE_FIELDS.filter((f) => f.id !== "denom" && availAggKeys.has(f.id)).map((f) => ({ key: f.id, label: f.label })),
-    ...DERIVED_METRICS.filter((m) => m.deps.every((d) => availAggKeys.has(d))).map((m) => ({ key: m.id, label: m.label })),
-    ...(customMetrics || []).map((m) => ({ key: m.id, label: m.name })),
-  ];
-  const dimLabelOf = (k) => DIM_CANDIDATES.find((d) => d.key === k)?.label || k;
-  const metricLabelOf = (k) => metricOptions.find((m) => m.key === k)?.label || k;
-  const resolveMetricCompute = (metricKey) => {
-    if (METRIC_BY_ID[metricKey]) return METRIC_BY_ID[metricKey].compute;
-    const cm = (customMetrics || []).find((m) => m.id === metricKey);
-    if (cm) return customMetricToDescriptor(cm).compute;
-    return () => null;
-  };
+  // 커스텀 차트 차원/값 옵션·해석기(공용 헬퍼 — CustomChartsSection과 DRY).
+  const { availDims, metricOptions, resolveMetricCompute, dimLabelOf, metricLabelOf } =
+    buildChartFieldOptions(csvData && csvData.mapping, customMetrics);
   const customChartDefs = customCharts || [];
   const customChartSig = JSON.stringify(customChartDefs) + "|" + JSON.stringify(customMetrics || []) + "|" + selectedCohort;
-
-  // 커스텀 차트 Chart.js 설정 — 차원별 집계 후 지표 계산, 모양별 렌더.
-  const buildCustomChartConfig = (def) => {
-    const groups = groupAggByDim(filteredRows, def.dim, selectedCohort, effBasis);
-    const series = buildChartSeries(groups, resolveMetricCompute(def.metric), { topN: 20, sortDesc: def.type !== "line" });
-    const colors = series.labels.map((_, i) => CHART_THEME.series[i % CHART_THEME.series.length]);
-    const isPie = def.type === "pie" || def.type === "doughnut";
-    const isLine = def.type === "line";
-    const chartType = isPie ? def.type : isLine ? "line" : "bar";
-    return {
-      type: chartType,
-      data: {
-        labels: series.labels,
-        datasets: [{
-          label: metricLabelOf(def.metric),
-          data: series.values,
-          backgroundColor: isPie ? colors : isLine ? "rgba(173,198,255,0.1)" : colors.map((c) => c + "cc"),
-          borderColor: isLine ? CHART_THEME.primary : colors,
-          borderWidth: isLine ? 2 : 1,
-          borderRadius: isPie ? 0 : 4,
-          tension: 0.3,
-          pointRadius: isLine ? 2 : 0,
-          fill: isLine,
-        }],
-      },
-      options: isPie ? {
-        responsive: true, maintainAspectRatio: false, cutout: def.type === "doughnut" ? "62%" : 0,
-        plugins: { legend: { position: "right", labels: { color: CHART_THEME.text, font: { family: "Inter", size: 11 }, usePointStyle: true, padding: 10 } }, tooltip: chartCommonOpts().plugins.tooltip },
-      } : {
-        ...chartCommonOpts(), indexAxis: def.type === "hbar" ? "y" : "x",
-        plugins: { ...chartCommonOpts().plugins, legend: { display: false } },
-      },
-    };
-  };
 
   const chartMeta = useMemo(() => ([
     { k: "ts", title: `일별 비용·${effBasis === "actions" ? "가입" : "설치"} 추이`, sub: `시계열 라인 · 좌축 비용 / 우축 ${effBasis === "actions" ? "가입" : "설치"}`, full: false },
@@ -436,7 +375,9 @@ export default function VizTab() {
     for (const def of customChartDefs) {
       const el = canvasRefs.current[def.id];
       if (!el) continue;
-      instances[def.id] = new Chart(el.getContext("2d"), buildCustomChartConfig(def));
+      instances[def.id] = new Chart(el.getContext("2d"), buildCustomChartConfig(def, filteredRows, {
+        cohort: selectedCohort, denomBasis: effBasis, resolveMetricCompute, metricLabelOf,
+      }));
     }
 
     // 마커 세로선(afterDatasetsDraw)은 Chart.js 애니메이션 완료 후에나 최초 페인트됨(§12.18) —
