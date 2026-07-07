@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { materializeOrder } from "@/utils/metrics/metricView";
 
@@ -19,6 +19,8 @@ export default function MetricConfigPanel({
 }) {
   const [draft, setDraft] = useState({ hidden: [], order: [] });
   const [dragKey, setDragKey] = useState(null);
+  const dragKeyRef = useRef(null);   // 포인터 이동 핸들러가 읽는 현재 드래그 키
+  const rowRefs = useRef({});        // key → 표시 행 DOM(포인터 Y로 대상 행 판정)
 
   useEffect(() => {
     if (!open) return;
@@ -61,17 +63,45 @@ export default function MetricConfigPanel({
     commitOrder(nextOn, nextHidden);
   };
 
-  // DnD: 드래그 중 항목을 대상 위치로 실시간 재배치(표시 항목끼리만).
-  const onDragOver = (e, overKey) => {
-    e.preventDefault();
-    if (!dragKey || dragKey === overKey || hidden.has(overKey)) return;
-    const from = onKeys.indexOf(dragKey);
+  // 표시 항목끼리 순서 재배치(dragKey를 overKey 위치로).
+  const reorder = (fromKey, overKey) => {
+    if (!fromKey || fromKey === overKey || hidden.has(overKey)) return;
+    const from = onKeys.indexOf(fromKey);
     const to = onKeys.indexOf(overKey);
     if (from < 0 || to < 0) return;
     const next = onKeys.slice();
     next.splice(from, 1);
-    next.splice(to, 0, dragKey);
+    next.splice(to, 0, fromKey);
     commitOrder(next, hidden);
+  };
+
+  // ── 포인터 기반 DnD(마우스+터치 통합, §터치 지원) ────────────────────────────
+  // HTML5 draggable은 터치에서 안 됨 → Pointer Events로 통합. 손잡이(⠿)에서
+  // pointerdown→capture, pointermove로 Y 아래 행 판정해 실시간 재배치, pointerup 해제.
+  const keyAtY = (y) => {
+    for (const key of onKeys) {
+      const el = rowRefs.current[key];
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      if (y >= r.top && y <= r.bottom) return key;
+    }
+    return null;
+  };
+  const onHandleDown = (e, key) => {
+    dragKeyRef.current = key;
+    setDragKey(key);
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* noop */ }
+  };
+  const onHandleMove = (e) => {
+    if (!dragKeyRef.current) return;
+    e.preventDefault(); // 터치 스크롤 대신 드래그
+    const over = keyAtY(e.clientY);
+    if (over && over !== dragKeyRef.current && !hidden.has(over)) reorder(dragKeyRef.current, over);
+  };
+  const onHandleUp = (e) => {
+    dragKeyRef.current = null;
+    setDragKey(null);
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* noop */ }
   };
 
   const resetDraft = () => { setDraft({ hidden: [], order: [] }); };
@@ -114,14 +144,18 @@ export default function MetricConfigPanel({
             return (
               <div
                 key={key}
-                draggable
-                onDragStart={() => setDragKey(key)}
-                onDragOver={(e) => onDragOver(e, key)}
-                onDragEnd={() => setDragKey(null)}
-                onDrop={() => setDragKey(null)}
-                style={{ ...rowBase, background: "var(--bg-2, transparent)", opacity: isDragging ? 0.5 : 1, cursor: "grab" }}
+                ref={(el) => { rowRefs.current[key] = el; }}
+                style={{ ...rowBase, background: "var(--bg-2, transparent)", opacity: isDragging ? 0.5 : 1, boxShadow: isDragging ? "0 4px 14px rgba(0,0,0,0.3)" : "none" }}
               >
-                <span aria-hidden style={{ color: "var(--text-muted)", cursor: "grab", fontSize: "14px", lineHeight: 1, flex: "none" }}>⠿</span>
+                <span
+                  aria-hidden
+                  onPointerDown={(e) => onHandleDown(e, key)}
+                  onPointerMove={onHandleMove}
+                  onPointerUp={onHandleUp}
+                  onPointerCancel={onHandleUp}
+                  title="드래그해서 순서 변경"
+                  style={{ color: "var(--text-muted)", cursor: "grab", fontSize: "16px", lineHeight: 1, flex: "none", padding: "2px 4px", touchAction: "none", userSelect: "none" }}
+                >⠿</span>
                 <span style={{ flex: 1, minWidth: 0, fontSize: "13px", color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {it.label}
                   {it.desc ? <span className="muted" style={{ fontSize: "11px", marginLeft: "6px" }}>{it.desc}</span> : null}
