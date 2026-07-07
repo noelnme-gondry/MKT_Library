@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { useAppStore, persistPartialize } from "./useDataStore.js";
+import { useAppStore, persistPartialize, persistMigrate } from "./useDataStore.js";
 
 describe("useDataStore · viewConfig 액션", () => {
   beforeEach(() => useAppStore.setState({ viewConfig: {} }));
@@ -58,6 +58,11 @@ describe("useDataStore · persist 불변식(설정만 저장, 원본 CSV 제외 
     const json = JSON.stringify(persisted);
     expect(json).not.toContain("secret");
     expect(json).not.toContain("iOS");
+  });
+
+  it("persistMigrate — version 1(현재)은 저장 형태를 그대로 통과(무동작)", () => {
+    const persisted = { viewConfig: { s1: { hidden: ["a"], order: [] } }, customMetrics: {}, customCharts: {} };
+    expect(persistMigrate(persisted, 1)).toBe(persisted);
   });
 
   it("addCustomMetric/removeCustomMetric — scope별 정의 추가·삭제", () => {

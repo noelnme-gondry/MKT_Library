@@ -379,7 +379,7 @@ index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상�
 
 **레거시 백로그** (필요 시): 쉬운말 딥다이브 잔여(5-4→5-18→5-20 §12.17) · SOP 콘텐츠 보강 · 회귀·예측 후속(§12.15·§12.20) · Pro 처방 레이어. (index.html은 git 히스토리에 보존.)
 
-**커스텀 지표·데이터 구성** (SSOT: `docs/custom-metrics-data-config-spec.md`): ✅ PR #245 머지 — 레지스트리·표시조정·커스텀지표/차트(A~D), 5-2 스코어카드·Viz탭·LTV표만 적용. **다음 작업(스펙 §7)**: 나머지 표 확장(Funnel·Cohort·Anomaly·Segment) · 나머지 5개 탭에 편집기 노출 · 다른 도구(5-3·5-6·5-18 등)로 확장 · persist migrate 훅.
+**커스텀 지표·데이터 구성** (SSOT: `docs/custom-metrics-data-config-spec.md`): ✅ PR #245(A~D) + 후속(§7 #1·#2·#4 완료, 2026-07-07) — Funnel§5·Cohort§1·Anomaly 표 컬럼편집 추가(Segment 매트릭스는 구조 불일치로 제외), 5탭 커스텀차트 편집기 기 완료 확인, persist `migrate` 훅 골격. **다음 작업(§7 #3, 보류)**: 5-3·5-6·5-18·5-21로 registry+viewConfig 확장(도구당 1200~2500줄, 별도 세션).
 
 ---
 

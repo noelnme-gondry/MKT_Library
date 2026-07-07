@@ -7,12 +7,21 @@ import { getMonFilteredRows, aggregateByKey } from "@/utils/dashboardAggregator"
 import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { ANOMALY_MATH } from "@/utils/anomalyMath";
 import { fmtCurrency } from "@/utils/format";
+import { applyMetricView } from "@/utils/metrics/metricView";
+import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
+
+// 지표 뷰 설정 scope — 이상탐지 표의 지표 컬럼 표시/순서.
+const ANOMALY_TABLE_SCOPE = "5-2:anomaly-table";
 
 export default function AnomalyTab() {
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
+  const anomalyTableCfg = useAppStore((state) => state.viewConfig[ANOMALY_TABLE_SCOPE]);
+  const setViewConfig = useAppStore((state) => state.setViewConfig);
+  const resetViewConfig = useAppStore((state) => state.resetViewConfig);
+  const [anomalyCfgOpen, setAnomalyCfgOpen] = useState(false);
 
   const [metric, setMetric] = useState("cost");
   const [win, setWin] = useState(14);
@@ -176,6 +185,15 @@ export default function AnomalyTab() {
     );
   }
 
+  // 이상탐지 표 지표 컬럼 — 첫 컬럼 '날짜'는 고정, 나머지만 표시/순서 토글(값 불변).
+  const anomalyCols = [
+    { k: "value", label: "값", render: (a) => <strong>{formatValue(a.value)}</strong> },
+    { k: "mean", label: `기준 평균(${win}일)`, render: (a) => formatValue(a.mean) },
+    { k: "z", label: "z-score", cellClass: (a) => (Math.abs(a.z) >= 3 ? "neg" : ""), render: (a) => `${a.z > 0 ? "+" : ""}${a.z.toFixed(2)}` },
+    { k: "dir", label: "방향", render: (a) => (a.z > 0 ? <span style={{ color: "#fbbf24" }}>▲ 급등</span> : <span style={{ color: "#f87171" }}>▼ 급락</span>) },
+  ];
+  const orderedAnomalyCols = applyMetricView(anomalyCols, anomalyTableCfg, (col) => col.k);
+
   return (
     <div className="tab-pane active" id="tab-anomaly">
       <section className="block" id="s-anom">
@@ -229,34 +247,34 @@ export default function AnomalyTab() {
         </div>
 
         {anomalies.length ? (
-          <div className="table-wrap">
-            <table className="data" style={{ fontSize: "11.5px" }}>
-              <thead>
-                <tr>
-                  <th>날짜</th>
-                  <th>값</th>
-                  <th>기준 평균({win}일)</th>
-                  <th>z-score</th>
-                  <th>방향</th>
-                </tr>
-              </thead>
-              <tbody>
-                {anomalies.slice(0, 40).map((a, i) => (
-                  <tr key={i}>
-                    <td className="tnum">{a.date}</td>
-                    <td className="tnum"><strong>{formatValue(a.value)}</strong></td>
-                    <td className="tnum">{formatValue(a.mean)}</td>
-                    <td className={`tnum ${Math.abs(a.z) >= 3 ? "neg" : ""}`}>
-                      {a.z > 0 ? "+" : ""}{a.z.toFixed(2)}
-                    </td>
-                    <td>
-                      {a.z > 0 ? <span style={{ color: "#fbbf24" }}>▲ 급등</span> : <span style={{ color: "#f87171" }}>▼ 급락</span>}
-                    </td>
+          <>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "6px" }}>
+              <button className="ab-pill" onClick={() => setAnomalyCfgOpen(true)} title="표시할 지표 컬럼과 순서 편집">⚙ 컬럼 편집</button>
+            </div>
+            <div className="table-wrap">
+              <table className="data" style={{ fontSize: "11.5px" }}>
+                <thead>
+                  <tr>
+                    <th>날짜</th>
+                    {orderedAnomalyCols.map((col) => <th key={col.k}>{col.label}</th>)}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {anomalies.slice(0, 40).map((a, i) => (
+                    <tr key={i}>
+                      <td className="tnum">{a.date}</td>
+                      {orderedAnomalyCols.map((col) => (
+                        <td key={col.k} className={`tnum ${col.cellClass ? col.cellClass(a) : ""}`.trim()}>{col.render(a)}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {orderedAnomalyCols.length === 0 && (
+              <p className="muted" style={{ fontSize: "12px" }}>표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.</p>
+            )}
+          </>
         ) : (
           <div className="callout ok">
             <div className="ico">✓</div>
@@ -267,6 +285,18 @@ export default function AnomalyTab() {
           </div>
         )}
       </section>
+      <MetricConfigPanel
+        open={anomalyCfgOpen}
+        onClose={() => setAnomalyCfgOpen(false)}
+        title="이상탐지 표 — 컬럼 편집"
+        items={anomalyCols.map((col) => ({ key: col.k, label: col.label }))}
+        config={anomalyTableCfg}
+        onSave={(next) => {
+          if (!next.hidden.length && !next.order.length) resetViewConfig(ANOMALY_TABLE_SCOPE);
+          else setViewConfig(ANOMALY_TABLE_SCOPE, next);
+          setAnomalyCfgOpen(false);
+        }}
+      />
       <CustomChartsSection sectionNo="2" chartScope="5-2:anomaly-charts" metricScope="5-2:viz-kpi" title="커스텀 차트" />
     </div>
   );

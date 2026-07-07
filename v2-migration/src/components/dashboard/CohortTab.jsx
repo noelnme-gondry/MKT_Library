@@ -6,6 +6,11 @@ import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, effectiveDenomBasis, computeWeightedRetention } from "@/utils/dashboardAggregator";
 import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { fitPowerCurve, filterMaturedCohorts, retentionDays } from "@/utils/cohortMath";
+import { applyMetricView } from "@/utils/metrics/metricView";
+import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
+
+// 지표 뷰 설정 scope — §1 전체 리텐션 곡선 표의 지표 컬럼 표시/순서.
+const COHORT_TABLE_SCOPE = "5-2:cohort-table";
 
 export default function CohortTab() {
   const csvData = useAppStore((state) => state.csvData);
@@ -20,6 +25,10 @@ export default function CohortTab() {
 
   // 다크모드 토글 시 차트 재렌더 트리거(테마색 refresh, §12.20 패턴).
   const isDarkMode = useAppStore((state) => state.isDarkMode);
+  const cohortTableCfg = useAppStore((state) => state.viewConfig[COHORT_TABLE_SCOPE]);
+  const setViewConfig = useAppStore((state) => state.setViewConfig);
+  const resetViewConfig = useAppStore((state) => state.resetViewConfig);
+  const [cohortCfgOpen, setCohortCfgOpen] = useState(false);
 
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -227,6 +236,13 @@ export default function CohortTab() {
 
   const horizons = [90, 180, 360].filter(d => !wrc.retDays.includes(d));
 
+  // §1 리텐션 표 지표 컬럼 — 첫 컬럼 '구간'은 고정, 나머지만 표시/순서 토글(값 불변).
+  const cohortCols = [
+    { k: "rate", label: "잔존율", render: (p) => fmtPct(p.retentionRate) },
+    { k: "survivors", label: survLabel, render: (p) => (p.survivors || 0).toLocaleString() },
+  ];
+  const orderedCohortCols = applyMetricView(cohortCols, cohortTableCfg, (col) => col.k);
+
   return (
     <div className="tab-pane active" id="tab-cohort">
       <section className="block" id="s-retention">
@@ -250,26 +266,32 @@ export default function CohortTab() {
           <canvas id="wide-ret-curve" ref={chartRef}></canvas>
         </div>
         
+        <div style={{ display: "flex", justifyContent: "flex-end", margin: "14px 0 -6px" }}>
+          <button className="ab-pill" onClick={() => setCohortCfgOpen(true)} title="표시할 지표 컬럼과 순서 편집">⚙ 컬럼 편집</button>
+        </div>
         <div className="table-wrap" style={{ marginTop: "14px" }}>
           <table className="data" style={{ fontSize: "12px" }}>
             <thead>
               <tr>
                 <th style={{ textAlign: "left" }}>구간</th>
-                <th style={{ textAlign: "right" }}>잔존율</th>
-                <th style={{ textAlign: "right" }}>{survLabel}</th>
+                {orderedCohortCols.map((col) => <th key={col.k} style={{ textAlign: "right" }}>{col.label}</th>)}
               </tr>
             </thead>
             <tbody>
               {wrc.retCurve.map(p => (
                 <tr key={p.day}>
                   <td className="tnum">D{p.day}</td>
-                  <td className="tnum" style={{ textAlign: "right" }}>{fmtPct(p.retentionRate)}</td>
-                  <td className="tnum" style={{ textAlign: "right" }}>{(p.survivors || 0).toLocaleString()}</td>
+                  {orderedCohortCols.map((col) => (
+                    <td key={col.k} className="tnum" style={{ textAlign: "right" }}>{col.render(p)}</td>
+                  ))}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {orderedCohortCols.length === 0 && (
+          <p className="muted" style={{ fontSize: "12px" }}>표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.</p>
+        )}
         <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>
           {survLabel} = Σ(잔존 인원) ÷ Σ({anchorLabel} 모수). <code>ret_dN</code>이 <strong>0~1 비율</strong>이면 ×모수로 인원 환산, <strong>자연수면 인원수</strong> 그대로 합산합니다(코호트 크기 가중 — 단순평균 아님). 기준 토글은 모수({anchorLabel})를 바꿉니다.
         </p>
@@ -326,6 +348,18 @@ export default function CohortTab() {
           </div>
         </section>
       )}
+      <MetricConfigPanel
+        open={cohortCfgOpen}
+        onClose={() => setCohortCfgOpen(false)}
+        title="전체 리텐션 곡선 표 — 컬럼 편집"
+        items={cohortCols.map((col) => ({ key: col.k, label: col.label }))}
+        config={cohortTableCfg}
+        onSave={(next) => {
+          if (!next.hidden.length && !next.order.length) resetViewConfig(COHORT_TABLE_SCOPE);
+          else setViewConfig(COHORT_TABLE_SCOPE, next);
+          setCohortCfgOpen(false);
+        }}
+      />
       <CustomChartsSection sectionNo="4" chartScope="5-2:cohort-charts" metricScope="5-2:viz-kpi" title="커스텀 차트" />
     </div>
   );

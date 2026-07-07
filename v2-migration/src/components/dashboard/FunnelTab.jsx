@@ -6,6 +6,11 @@ import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows } from "@/utils/dashboardAggregator";
 import { chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { buildFunnelData, FUNNEL_FIELD_LABEL } from "@/utils/funnelMath";
+import { applyMetricView } from "@/utils/metrics/metricView";
+import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
+
+// 지표 뷰 설정 scope — §5 전체 퍼널 단계 표의 지표 컬럼 표시/순서.
+const FUNNEL_TABLE_SCOPE = "5-2:funnel-table";
 
 const fmtPct = (v) => (v == null ? "—" : (v * 100).toFixed(2) + "%");
 const fmtDelta = (d) => {
@@ -21,6 +26,10 @@ export default function FunnelTab() {
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
+  const funnelTableCfg = useAppStore((state) => state.viewConfig[FUNNEL_TABLE_SCOPE]);
+  const setViewConfig = useAppStore((state) => state.setViewConfig);
+  const resetViewConfig = useAppStore((state) => state.resetViewConfig);
+  const [funnelCfgOpen, setFunnelCfgOpen] = useState(false);
 
   const [unitField, setUnitField] = useState("_all");
   const [cvrStep, setCvrStep] = useState(2);
@@ -121,6 +130,35 @@ export default function FunnelTab() {
   const selLbl = c.selLabel || "선택 단계";
 
   const unitPills = [["_all", "전체"], ["channel", "채널"], ["country", "국가"], ["platform", "OS"]];
+
+  // §5 전체 퍼널 단계 표 지표 컬럼(데이터 주도) — 단계별 건수 + 단계간 CVR.
+  // 첫 컬럼 '단위'는 행 헤더라 고정, 나머지 지표 컬럼만 표시/순서 토글(render/값 불변).
+  const funnelCols = [
+    ...c.stages.map((s, si) => ({
+      k: `cnt:${s.key}`,
+      label: s.label,
+      render: (r) => (r.steps[si].count || 0).toLocaleString(),
+    })),
+    ...c.stages.slice(1).map((s, i) => {
+      const si = i + 1;
+      const isSel = si === c.selStep;
+      return {
+        k: `cvr:${s.key}`,
+        label: `→${s.label} CVR${isSel ? " ◆" : ""}`,
+        cellStyle: isSel ? { background: "rgba(122,162,247,0.08)", fontWeight: 700 } : undefined,
+        render: (r) => {
+          const step = r.steps[si];
+          return (
+            <>
+              {fmtPct(step.cvr)}
+              {step.drop != null && <span style={{ color: "var(--text-muted)", fontSize: "10px" }}> (이탈 {(step.drop * 100).toFixed(0)}%)</span>}
+            </>
+          );
+        },
+      };
+    }),
+  ];
+  const orderedFunnelCols = applyMetricView(funnelCols, funnelTableCfg, (col) => col.k);
 
   return (
     <div className="tab-pane active" id="tab-funnel">
@@ -309,39 +347,33 @@ export default function FunnelTab() {
 
       {/* §5 전체 퍼널 단계 표 */}
       <section className="block" id="s-funnel" style={{ marginTop: "24px" }}>
-        <h2 className="section-title"><span className="ix">§5</span>전체 퍼널 단계 표</h2>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h2 className="section-title"><span className="ix">§5</span>전체 퍼널 단계 표</h2>
+          <button className="ab-pill" onClick={() => setFunnelCfgOpen(true)} title="표시할 지표 컬럼과 순서 편집">⚙ 컬럼 편집</button>
+        </div>
         <div className="table-wrap">
           <table className="data" style={{ fontSize: "11.5px" }}>
             <thead>
               <tr>
                 <th>단위</th>
-                {c.stages.map((s) => <th key={s.key}>{s.label}</th>)}
-                {c.stages.slice(1).map((s, i) => (
-                  <th key={s.key + "-cvr"}>→{s.label} CVR{i + 1 === c.selStep ? " ◆" : ""}</th>
-                ))}
+                {orderedFunnelCols.map((col) => <th key={col.k}>{col.label}</th>)}
               </tr>
             </thead>
             <tbody>
               {c.rows.slice(0, 40).map((r, i) => (
                 <tr key={i}>
                   <td><strong>{String(r.unit).slice(0, 24)}</strong></td>
-                  {r.steps.map((s, si) => (
-                    <td key={si} className="tnum">{(s.count || 0).toLocaleString()}</td>
+                  {orderedFunnelCols.map((col) => (
+                    <td key={col.k} className="tnum" style={col.cellStyle}>{col.render(r)}</td>
                   ))}
-                  {r.steps.slice(1).map((s, si) => {
-                    const isSel = si + 1 === c.selStep;
-                    return (
-                      <td key={si + "-cvr"} className="tnum" style={isSel ? { background: "rgba(122,162,247,0.08)", fontWeight: 700 } : {}}>
-                        {fmtPct(s.cvr)}
-                        {s.drop != null && <span style={{ color: "var(--text-muted)", fontSize: "10px" }}> (이탈 {(s.drop * 100).toFixed(0)}%)</span>}
-                      </td>
-                    );
-                  })}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {orderedFunnelCols.length === 0 && (
+          <p className="muted" style={{ fontSize: "12px" }}>표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.</p>
+        )}
         <div className="callout" style={{ marginTop: "10px" }}>
           <div className="ico">i</div>
           <div className="body">
@@ -351,6 +383,18 @@ export default function FunnelTab() {
           </div>
         </div>
       </section>
+      <MetricConfigPanel
+        open={funnelCfgOpen}
+        onClose={() => setFunnelCfgOpen(false)}
+        title="전체 퍼널 단계 표 — 컬럼 편집"
+        items={funnelCols.map((col) => ({ key: col.k, label: col.label }))}
+        config={funnelTableCfg}
+        onSave={(next) => {
+          if (!next.hidden.length && !next.order.length) resetViewConfig(FUNNEL_TABLE_SCOPE);
+          else setViewConfig(FUNNEL_TABLE_SCOPE, next);
+          setFunnelCfgOpen(false);
+        }}
+      />
       <CustomChartsSection sectionNo="6" chartScope="5-2:funnel-charts" metricScope="5-2:viz-kpi" title="커스텀 차트" />
     </div>
   );
