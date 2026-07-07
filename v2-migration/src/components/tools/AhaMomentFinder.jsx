@@ -4,13 +4,14 @@ import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
-import { AHA_STATS, ahaParseActionWindow } from "@/utils/ahaMath";
+import { AHA_STATS } from "@/utils/ahaMath";
 import { downloadChartAsPNG } from "@/utils/chartUtils";
 import { idToSlug } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import { buildDemoCsv } from "@/utils/demoData";
+import AhaColumnMapper, { ahaAutoMapColumns } from "@/components/tools/AhaColumnMapper";
 
 function escapeHtml(str) {
   if (str == null) return "";
@@ -22,54 +23,8 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
-/* ahaParseActionWindow는 @/utils/ahaMath에서 import (index.html verbatim 추출) */
-
-/* target 후보 추정: 값이 전부 {0,1}인 숫자 컬럼. id 추정: 헤더명에 id/user 포함. (index.html ahaAutoMapColumns 이식) */
-function ahaAutoMapColumns(headers, rows) {
-  const out = {};
-  for (const h of headers) {
-    const name = String(h).toLowerCase();
-    const vals = rows
-      .map((r) => r[h])
-      .filter((v) => v != null && String(v).trim() !== "");
-    const nums = vals.map((v) => parseFloat(v)).filter((v) => !isNaN(v));
-    const isNum = vals.length > 0 && nums.length >= vals.length * 0.8;
-    const uniq = isNum ? [...new Set(nums)] : [];
-    const isBin01 =
-      isNum && uniq.length > 0 && uniq.every((v) => v === 0 || v === 1);
-    let role = "feature";
-    if (/(^|_)(user|client|device)?_?id$|^id$|^uid$/.test(name)) role = "id";
-    else if (
-      isBin01 &&
-      /target|conv|retain|churn|activ|타겟|전환|리텐션/.test(name)
-    )
-      role = "target";
-    else if (!isNum) role = "ignore";
-    const aw = ahaParseActionWindow(h);
-    out[h] = { role, action: aw.action, window: aw.window };
-  }
-  // target 자동추정이 하나도 없으면, 가장 그럴듯한 bin01 컬럼 1개를 제안
-  if (!Object.values(out).some((d) => d.role === "target")) {
-    for (const h of headers) {
-      const vals = rows
-        .map((r) => r[h])
-        .filter((v) => v != null && String(v).trim() !== "");
-      const nums = vals.map((v) => parseFloat(v)).filter((v) => !isNaN(v));
-      const uniq = [...new Set(nums)];
-      const isBin01 =
-        nums.length >= vals.length * 0.8 &&
-        vals.length > 0 &&
-        uniq.length > 0 &&
-        uniq.every((v) => v === 0 || v === 1) &&
-        uniq.length <= 2;
-      if (isBin01 && out[h].role !== "id") {
-        out[h].role = "target";
-        break;
-      }
-    }
-  }
-  return out;
-}
+/* colMap 자동추정(ahaAutoMapColumns)은 AhaColumnMapper.jsx에서 import(DnD 매퍼와
+   동일 로직 공유 — 컴포넌트 분리 시 두 곳에 흩어지면 드리프트 위험). */
 
 /* colMap에서 role=feature인 컬럼들을 액션별로 그룹핑 → { action: [{header, window}] } */
 function ahaGroupedActions(colMap) {
@@ -252,13 +207,6 @@ function buildAhaGuideDoc(cache, sorted, minSupport) {
   return L.join("\n");
 }
 
-const AHA_ROLE_OPTIONS = [
-  ["feature", "선행 행동(feature)"],
-  ["target", "타겟(target, 0/1)"],
-  ["id", "user_id(미사용)"],
-  ["ignore", "사용 안 함"],
-];
-
 export default function AhaMomentFinder() {
   const router = useRouter();
   const csvData = useAppStore((state) => state.csvData);
@@ -332,29 +280,6 @@ export default function AhaMomentFinder() {
 
   // 현재 매핑 시그니처가 분석된 시그니처와 일치할 때만 결과 노출 (게이트)
   const analyzed = analyzedSig != null && analyzedSig === ahaAnalyzeSig(colMap, fileName);
-
-  // --- 컬럼 역할 편집 핸들러 (index.html data-aha-role/action/window 이식) ---
-  const setRole = (h, role) => {
-    setColMap((prev) => {
-      const def = prev[h] || { role: "ignore", action: h, window: Infinity };
-      return { ...prev, [h]: { ...def, role } };
-    });
-  };
-  const setAction = (h, value) => {
-    setColMap((prev) => {
-      if (!prev[h]) return prev;
-      return { ...prev, [h]: { ...prev[h], action: value.trim() || h } };
-    });
-  };
-  const setWindow = (h, value) => {
-    setColMap((prev) => {
-      if (!prev[h]) return prev;
-      const raw = String(value).trim().replace(/^d/i, "");
-      const v = parseInt(raw, 10);
-      const window = raw === "" || !isFinite(v) ? Infinity : v;
-      return { ...prev, [h]: { ...prev[h], window } };
-    });
-  };
 
   // --- 분석 캐시 (index.html buildAhaCache 이식, 순수엔진 AHA_STATS 사용) ---
   const cache = useMemo(() => {
@@ -773,61 +698,7 @@ export default function AhaMomentFinder() {
           <p className="muted" style={{ fontSize: "12px", margin: "8px 0" }}>
             <strong>헤더가 <code className="inline">{"{action}_d{N}"}</code> 형태면 액션·윈도우가 자동 파싱</strong>됩니다(예: <code className="inline">invite_d7</code> → 액션 invite, 윈도우 d7). target 컬럼은 0/1 값으로 자동 추정 — 틀리면 직접 선택하세요. <code className="inline">revenue_d7</code> 같은 매출 컬럼이 잘못 후보로 잡혔으면 &quot;사용 안 함&quot;으로 제외하세요.
           </p>
-          <div className="table-wrap" style={{ marginTop: "8px" }}>
-            <table className="data" style={{ fontSize: "12px" }}>
-              <thead><tr><th>CSV 컬럼</th><th>역할</th><th>액션명</th><th>윈도우</th></tr></thead>
-              <tbody>
-                {headers.map((h) => {
-                  const def = colMap[h] || { role: "ignore", action: h, window: Infinity };
-                  const isFeature = def.role === "feature";
-                  const winLabel = def.window === Infinity ? "" : `d${def.window}`;
-                  return (
-                    <tr key={h}>
-                      <td title={h}>{h}</td>
-                      <td>
-                        <select
-                          className="map-select"
-                          value={def.role}
-                          onChange={(e) => setRole(h, e.target.value)}
-                        >
-                          {AHA_ROLE_OPTIONS.map(([v, l]) => (
-                            <option key={v} value={v}>{l}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        {isFeature ? (
-                          <input
-                            key={`${seedKey}|act|${h}`}
-                            type="text"
-                            className="map-select"
-                            style={{ width: "120px" }}
-                            defaultValue={def.action || ""}
-                            placeholder="액션명"
-                            onBlur={(e) => setAction(h, e.target.value)}
-                          />
-                        ) : "—"}
-                      </td>
-                      <td>
-                        {isFeature ? (
-                          <input
-                            key={`${seedKey}|win|${h}`}
-                            type="text"
-                            className="map-select"
-                            style={{ width: "70px" }}
-                            defaultValue={winLabel}
-                            placeholder="d7"
-                            title="비우면 단일 윈도우(전체)"
-                            onBlur={(e) => setWindow(h, e.target.value)}
-                          />
-                        ) : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <AhaColumnMapper headers={headers} rows={csvData.raw} colMap={colMap} onChange={setColMap} />
         </details>
         {missing.length > 0 ? (
           <div className="required-banner" style={{ marginTop: "12px" }}>
