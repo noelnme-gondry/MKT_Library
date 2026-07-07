@@ -22,6 +22,9 @@ export const ROUTES = [
   { id: "5-18", slug: "/tools/marketing-response", component: "MarketingResponse" },
   { id: "5-20", slug: "/tools/aha-moment", component: "AhaMomentFinder" },
   { id: "5-23", slug: "/tools/incrementality", component: "Incrementality" },
+  // ── Content Analytics (콘텐츠 도메인 — 엔진 재사용) ──
+  { id: "9-1", slug: "/content/element-analysis", component: "ContentElementAnalyzer" },
+  { id: "9-2", slug: "/content/killer-content", component: "KillerContentFinder" },
   { id: "1-1", slug: "/guide/dev-collaboration", component: "SopContent" },
   { id: "1-2", slug: "/guide/event-taxonomy", component: "SopContent" },
   { id: "1-3", slug: "/guide/postback-integration", component: "SopContent" },

@@ -321,6 +321,9 @@ index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상�
 ### 12.22 증분 분석 도구 (5-23, 홀드아웃 3방법 — 실험분석서 분리)
 증분(광고가 실제 만든 몫)은 실험분석(5-4 A/B)과 별개 → **소재·실험(06) 3번째 독립 도구**, CSV 그룹 독립. 3방법: ①통제군(suppression, `INCR_MATH`) 동시·무작위 노출 vs 홀드아웃 ②신규켜기(on)/③종료(off) 시점 전후(pre/post, `incrPrePostMath`: delta·counterfactual·Welch·대조군 DiD). ②③은 부호만 다른 한 엔진. 방법별 자체 드롭존·데모·템플릿. **정직성**: 무작위/DiD 아니면 인과 단정 X(claude-ux §7). 5-4는 홀드아웃 제거·A/B만.
 
+### 12.23 Content Analytics — 퍼포먼스 엔진 도메인 리라벨 (9-x, 콘텐츠 마케터 확장)
+퍼포먼스 엔진(`*Math.js`) **수학 불변·라벨만 콘텐츠 도메인 스왑**으로 신규 대분류 `[컨텐츠 분석]` 추가(파일럿 9-1·9-2, 확장 예정). **복제 금지, 라벨팩 파라미터화**(§12.21): SSOT=`utils/contentDomain.js`(도메인별 카피 객체+resolver). 소스 컴포넌트 1:1 있으면 `domain` prop 주입(9-2=`<AhaMomentFinder domain="content"/>` 얇은 래퍼; `AHA_COPY[domain]`, performance 팩=기존 문자열 동일→출력 불변→골든/스모크 안전), 없으면 엔진 위 신규 얇은 UI(9-1 요소분석기=`REG_STATS.ols` forest plot, |t| 랭킹·two-sided p). 배선: `IA`+새 `SECTIONS.content`(→Sidebar 자동)·`routeMap`(`/content/*`)·격리 `csvGroups.content_*`·`demoData`·`toolGuide`. **함정**: PageClient SOP 폴백 `!startsWith("5-")`가 `9-x`를 SopContent로 흘림 → 명시 디스패치+`!startsWith("9-")` 가드. **정직성(§8)**: 관측 리매핑=연관≠인과, OLS 미산출 수치("확률 85%") 금지, 무유의=증거부족.
+
 ---
 
 ## 13. 참고 파일

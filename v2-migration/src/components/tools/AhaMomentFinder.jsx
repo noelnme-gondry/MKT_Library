@@ -12,6 +12,7 @@ import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import { buildDemoCsv } from "@/utils/demoData";
 import AhaColumnMapper, { ahaAutoMapColumns } from "@/components/tools/AhaColumnMapper";
+import { resolveAhaCopy } from "@/utils/contentDomain";
 
 function escapeHtml(str) {
   if (str == null) return "";
@@ -163,15 +164,15 @@ function textDownload(name, text) {
 }
 
 /* 전 과정 상세 설명 .md (claude-ux.md §6 탈출구): 평어 먼저 → 왜 중요 → 지표 평어 → 판정 규칙 → 현재 데이터 요약 → 한계 */
-function buildAhaGuideDoc(cache, sorted, minSupport) {
+function buildAhaGuideDoc(cache, sorted, minSupport, C) {
   const L = [];
-  L.push(`# 핵심 가치(Aha-moment) 발굴 — 상세 설명`);
+  L.push(`# ${C.docTitle}`);
   L.push(``);
   L.push(`## 한 줄 요약`);
-  L.push(`유저가 우리 서비스에 "정착"(타겟 달성)하기 직전에 공통적으로 하는 **초기 행동**이 무엇인지 찾습니다. "가입 후 N일 안에 특정 행동을 K번 이상 한 유저는 정착 확률이 높더라" 같은 규칙을 데이터에서 자동으로 뒤져 찾아줍니다.`);
+  L.push(C.docSummary);
   L.push(``);
   L.push(`## 왜 중요한가`);
-  L.push(`Aha-moment를 알면 온보딩·푸시·추천을 그 행동으로 유도해 정착률을 끌어올릴 수 있습니다. 예: "7일 안에 친구 3명 초대"가 Aha면, 신규 유저에게 초대를 3명까지 강하게 유도하는 온보딩을 설계합니다.`);
+  L.push(C.docWhy);
   L.push(``);
   L.push(`## 각 숫자가 무엇을 묻나 (평어)`);
   L.push(`- **최적 윈도우 (전문: best window)**: 그 행동을 "언제까지" 봤을 때 신호가 가장 강했나 (예: 가입 후 7일).`);
@@ -189,7 +190,7 @@ function buildAhaGuideDoc(cache, sorted, minSupport) {
   L.push(`- **과적합 의심**: 학습셋 점수는 높은데 홀드아웃(따로 떼어둔 검증셋)에서 뚝 떨어지면(차이 > 0.2) 우연에 가깝습니다.`);
   L.push(``);
   L.push(`## 현재 데이터 판정 요약`);
-  L.push(`- 전체 유저 ${cache.n.toLocaleString()}명 · 타겟 달성 ${Math.round(cache.baseRate * cache.n).toLocaleString()}명 · 평균 정착률(base rate) ${(cache.baseRate * 100).toFixed(1)}%`);
+  L.push(C.docDataLine(cache));
   if (sorted.length) {
     for (const r of sorted) {
       const b = ahaBucketOf(r, minSupport);
@@ -201,13 +202,15 @@ function buildAhaGuideDoc(cache, sorted, minSupport) {
   }
   L.push(``);
   L.push(`## 한계 (꼭 읽어주세요)`);
-  L.push(`이 결과는 전부 **연관(association)**이지 **인과(causation)**가 아닙니다. 원래 열심히 쓰는(engaged) 유저는 모든 행동을 많이 하는 경향이 있어(공통 원인), 특정 행동이 정착을 "유발"한다고 단정할 수 없습니다. 이 도구의 역할은 **가설(용의자)을 좁혀주는 것**이고, 확정은 반드시 **홀드아웃 실험(5-4 실험 분석)**으로 하세요 — 강한 신호 칸의 행동부터 실험 1순위로 검토하면 됩니다.`);
+  L.push(C.docLimit);
   L.push(``);
   L.push(`_생성: ${_today()}_`);
   return L.join("\n");
 }
 
-export default function AhaMomentFinder() {
+export default function AhaMomentFinder({ domain = "performance" } = {}) {
+  // 도메인 라벨팩(§contentDomain): performance=기존 문구(출력 불변) / content=콘텐츠 번역.
+  const C = resolveAhaCopy(domain);
   const router = useRouter();
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
@@ -228,7 +231,7 @@ export default function AhaMomentFinder() {
   const [demoPending, setDemoPending] = useState(false);
   const handleLoadDemo = () => {
     setDemoPending(true);
-    setCsvData(buildDemoCsv("aha"));
+    setCsvData(buildDemoCsv(C.demoGroup));
   };
   const resetCsv = () => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" });
   const [minSupport, setMinSupport] = useState(30);
@@ -637,7 +640,7 @@ export default function AhaMomentFinder() {
       <div className="tab-pane active" id="tab-aha">
         <section className="block" id="s-prep">
           <h2 className="section-title">데이터 준비</h2>
-          <CsvGuide toolId="5-20" />
+          <CsvGuide toolId={C.guideToolId} />
           <div
             className="csv-dropzone"
             onDragOver={(e) => e.preventDefault()}
@@ -665,8 +668,8 @@ export default function AhaMomentFinder() {
 
   const targetCol = cache.targetCol;
   const missing = [];
-  if (!targetCol) missing.push("타겟(target, 0/1) 1개");
-  if (!actionCount) missing.push("선행 행동(feature) 1개 이상");
+  if (!targetCol) missing.push(C.missingTarget);
+  if (!actionCount) missing.push(C.missingFeature);
 
   const showResults = missing.length === 0 && analyzed && cache.results.length > 0;
 
@@ -727,15 +730,15 @@ export default function AhaMomentFinder() {
         <>
           {/* ── §0 한눈에 보기 — 여정 질문 + 평어 결론 (통계는 흐린 글씨로 강등) ── */}
           <section className="block" id="s-aha-hero" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}>
-            <h2 className="section-title" style={{ marginTop: 0 }}>어떤 초기 행동이 유저를 정착시키나?</h2>
+            <h2 className="section-title" style={{ marginTop: 0 }}>{C.heroQ}</h2>
             <p className="muted" style={{ fontSize: "12px", marginTop: "-4px", marginBottom: "14px" }}>
-              가입 직후 유저가 하는 행동 중, &quot;정착(타겟 달성)&quot;으로 이어지는 신호가 가장 강한 것을 찾았어요.
+              {C.heroSub}
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "12px", marginBottom: "14px" }}>
               {[
-                ["전체 유저", cache.n.toLocaleString(), null],
-                ["정착(타겟 달성) 유저", totalTargets.toLocaleString(), null],
-                ["평균 정착률", (cache.baseRate * 100).toFixed(1) + "%", "아무 조건 없을 때 기준 (base rate)"],
+                [C.statAll, cache.n.toLocaleString(), null],
+                [C.statTarget, totalTargets.toLocaleString(), null],
+                [C.statRate, (cache.baseRate * 100).toFixed(1) + "%", "아무 조건 없을 때 기준 (base rate)"],
               ].map(([label, val, sub]) => (
                 <div key={label} style={{ background: "var(--surface-container-low)", border: "1px solid var(--border)", borderRadius: "10px", padding: "10px 12px" }}>
                   <div style={{ fontSize: "11px", color: MUTED }}>{label}</div>
@@ -750,7 +753,12 @@ export default function AhaMomentFinder() {
                 <div
                   style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-1)", lineHeight: 1.6 }}
                   dangerouslySetInnerHTML={{
-                    __html: `가입 후 <strong>${topAction.bestWindow === Infinity ? "전체 기간" : topAction.bestWindow + "일"}</strong> 안에 <strong>${escapeHtml(topAction.action)}</strong>를 <strong>${topAction.bestK}번 이상</strong> 한 유저는, 정착할 확률이 평균의 <strong>${topAction.lift == null ? "—" : topAction.lift.toFixed(1) + "배"}</strong>예요.`,
+                    __html: C.leadPhrase(
+                      topAction.bestWindow === Infinity ? "전체 기간" : topAction.bestWindow + "일",
+                      escapeHtml(topAction.action),
+                      topAction.bestK,
+                      topAction.lift == null ? "—" : topAction.lift.toFixed(1) + "배",
+                    ),
                   }}
                 />
                 <div style={{ fontSize: "10.5px", color: MUTED, marginTop: "6px", opacity: 0.85 }} title="통계 원값(전문가용): 홀드아웃 F1 = 정밀도·재현율 조화평균">
@@ -763,8 +771,9 @@ export default function AhaMomentFinder() {
             <div className="callout warn" style={{ margin: 0 }}>
               <div className="ico">⚠</div>
               <div className="body">
-                <strong>연관(association)이지 인과 아님</strong>
-                <p style={{ margin: ".25rem 0 0" }}>원래 열심히 쓰는(engaged) 유저는 모든 행동을 많이 하는 경향(공통 원인)이 있어, 특정 행동이 정착을 &quot;유발&quot;한다고 단정할 수 없습니다. 이 도구는 가설(용의자)을 좁혀줄 뿐 — 확정은{" "}
+                <strong>{C.causationTitle}</strong>
+                <p style={{ margin: ".25rem 0 0" }}>{C.causationBody}</p>
+                <p style={{ margin: ".25rem 0 0" }}>확정은{" "}
                   <a
                     href={idToSlug["5-4"] || "/tools/experiment-analysis"}
                     onClick={(e) => {
@@ -787,7 +796,7 @@ export default function AhaMomentFinder() {
             const nS = buckets.strong.length;
             const headTone = nS > 0 ? "strong" : buckets.maybe.length > 0 ? "maybe" : "weak";
             const headline = nS > 0
-              ? `후보 ${sortedResults.length}개 중 ${nS}개가 강한 Aha 신호예요 — 초록 칸 행동부터 온보딩·실험에 써보세요.`
+              ? C.kanbanHeadStrong(sortedResults.length, nS)
               : buckets.maybe.length > 0
                 ? `뚜렷하게 강한 신호는 없지만 ${buckets.maybe.length}개는 살펴볼 만해요.`
                 : `표본이 충분한 후보가 적어요 — 전문가 뷰에서 최소 표본을 낮추거나 데이터를 더 모아보세요.`;
@@ -811,7 +820,7 @@ export default function AhaMomentFinder() {
             };
             return (
               <section className="block" id="s-aha-kanban">
-                <h2 className="section-title"><span className="ix">§1</span>후보 행동을 신호 세기별로</h2>
+                <h2 className="section-title"><span className="ix">§1</span>{C.kanbanTitle}</h2>
                 <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", background: AHA_TONE[headTone].bg, border: `1px solid ${AHA_TONE[headTone].border}`, borderRadius: "10px", padding: "10px 14px", marginBottom: "10px" }}>
                   <span style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text-1)" }}>{headline}</span>
                 </div>
@@ -827,7 +836,7 @@ export default function AhaMomentFinder() {
 
           {/* ── §2 드릴다운 — 평어 해석(디테일화) + 윈도우×k 히트맵 ── */}
           <section className="block" id="s-aha-drill">
-            <h2 className="section-title"><span className="ix">§2</span>선택한 행동 자세히{drillTarget ? ` — ${drillTarget}` : ""}</h2>
+            <h2 className="section-title"><span className="ix">§2</span>{C.drillTitle}{drillTarget ? ` — ${drillTarget}` : ""}</h2>
             {drillResult && viewResults.length > 0 && (
               <div style={{ marginBottom: "10px" }}>
                 <select className="map-select" value={drillTarget} onChange={(e) => setDrilldownAction(e.target.value)}>
@@ -859,7 +868,14 @@ export default function AhaMomentFinder() {
                     <div style={{ flex: 1, minWidth: "240px" }}>
                       <div style={{ fontSize: "13px", color: "var(--text-1)", lineHeight: 1.6 }}
                         dangerouslySetInnerHTML={{
-                          __html: `가입 후 <strong>${win}</strong> 안에 <strong>${escapeHtml(drillResult.action)}</strong>를 <strong>${drillResult.bestK}번 이상</strong> 한 유저 <strong>${drillResult.holdout.support.toLocaleString()}명</strong> 중 <strong>${(P * 100).toFixed(0)}%</strong>가 정착했고, 전체 정착자의 <strong>${(R * 100).toFixed(0)}%</strong>가 이 행동을 거쳤어요.`,
+                          __html: C.drillHeadline(
+                            win,
+                            escapeHtml(drillResult.action),
+                            drillResult.bestK,
+                            drillResult.holdout.support.toLocaleString(),
+                            (P * 100).toFixed(0),
+                            (R * 100).toFixed(0),
+                          ),
                         }}
                       />
                       {overfit && (
@@ -868,9 +884,9 @@ export default function AhaMomentFinder() {
                     </div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: "10px", marginBottom: "14px" }}>
-                    {metric("전체 유저는 이 행동을 얼마나 하나?", `${(drillResult.allPct * 100).toFixed(0)}% (${(drillResult.allSupport || 0).toLocaleString()}명)`, "정착 여부와 무관하게, 전체 유저 중 이 조건(윈도우×횟수)을 채운 비율.", `전체 대비 support ${drillResult.allSupport || 0} / n`)}
-                    {metric("이 조건을 채우면 정착할까?", `${(P * 100).toFixed(0)}% 정착`, "조건을 충족한 유저 중 실제 정착 비율. 높을수록 확실한 신호.", `정밀도(Precision) ${P.toFixed(3)}`)}
-                    {metric("정착자를 얼마나 잡아내나?", `${(R * 100).toFixed(0)}% 포함`, "실제 정착자 중 이 조건을 거친 비율. 높을수록 폭넓게 설명.", `재현율(Recall) ${R.toFixed(3)}`)}
+                    {metric(C.metricQAll, `${(drillResult.allPct * 100).toFixed(0)}% (${(drillResult.allSupport || 0).toLocaleString()}명)`, "정착 여부와 무관하게, 전체 중 이 조건(윈도우×횟수)을 채운 비율.", `전체 대비 support ${drillResult.allSupport || 0} / n`)}
+                    {metric(C.metricQPrecision, C.metricAPrecision((P * 100).toFixed(0)), "조건을 충족한 대상 중 실제 전환 비율. 높을수록 확실한 신호.", `정밀도(Precision) ${P.toFixed(3)}`)}
+                    {metric(C.metricQRecall, `${(R * 100).toFixed(0)}% 포함`, "실제 전환한 대상 중 이 조건을 거친 비율. 높을수록 폭넓게 설명.", `재현율(Recall) ${R.toFixed(3)}`)}
                     {metric("평균보다 몇 배 잘 맞나?", drillResult.lift == null ? "—" : `${drillResult.lift.toFixed(1)}배`, "아무 조건 없는 평균 정착률 대비 배수. 1.5배↑ 강한 연관.", `Lift ${drillResult.lift == null ? "—" : drillResult.lift.toFixed(3)}`)}
                   </div>
                 </>
@@ -1038,7 +1054,7 @@ export default function AhaMomentFinder() {
           {/* ── 맨 밑: 전 과정 상세 설명 문서 다운로드 (claude-ux.md §6 탈출구) ── */}
           <div style={{ marginTop: "16px", textAlign: "center" }}>
             <button className="ab-pill" style={{ fontSize: "12.5px", padding: "9px 18px" }}
-              onClick={() => textDownload(`aha_moment_설명_${_today()}.md`, buildAhaGuideDoc(cache, sortedResults, minSupport))}>
+              onClick={() => textDownload(`${C.docFileStem}_설명_${_today()}.md`, buildAhaGuideDoc(cache, sortedResults, minSupport, C))}>
               📄 이 분석에 대한 자세한 설명이 듣고 싶으신가요? — 상세 문서 받기
             </button>
           </div>

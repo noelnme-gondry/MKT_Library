@@ -178,6 +178,38 @@ export const TOOL_GUIDE = {
     ],
     example: "date,group,conversions\n2024-04-01,treatment,200\n2024-04-01,control,180\n2024-05-20,treatment,120\n2024-05-20,control,182",
   },
+
+  // ── Content Analytics (콘텐츠 도메인 — 엔진 재사용) ──
+  "9-1": {
+    when: "콘텐츠 여러 편의 제작 속성(제목 숫자·길이·이모지·썸네일 톤 등)과 성과(CTR·조회수)를 올려, 어떤 요소가 성과와 유의하게 연관되는지 다변량 회귀로 가려냅니다.",
+    grain: "1행 = 콘텐츠 1편",
+    needs: [
+      { col: "성과 지표(CTR·조회수 등)", label: "성과(종속변수)", why: "설명할 대상 — 숫자 1개", required: true },
+      { col: "제작 속성 컬럼(0/1 또는 숫자)", label: "콘텐츠 요소(설명변수)", why: "각 요소의 기여도(계수·유의성) 추정", required: true },
+      { col: "post_id·title 등", label: "콘텐츠 식별자", why: "행 식별(분석엔 미사용, 있으면 표기)", required: false },
+    ],
+    prep: [
+      "속성은 있음/없음이면 0/1, 길이·개수면 숫자로 넣습니다.",
+      "결과는 인과가 아니라 '연관'입니다 — 잘 쓰는 사람이 여러 요소를 함께 쓰는 교락이 있습니다.",
+      "확정은 A/B 테스트(콘텐츠 요소 하나만 바꿔)로 검증하세요.",
+    ],
+    example: "post_id,title_has_number,title_len,has_emoji,thumbnail_bright,ctr\np1001,1,42,0,1,3.9\np1002,0,58,1,0,2.1",
+  },
+  "9-2": {
+    when: "어떤 콘텐츠를 소비한 독자가 구독·회원가입·재방문으로 이어지는지 'Aha-Content'(킬러 콘텐츠)를 F1·Lift로 찾습니다.",
+    grain: "1행 = 독자 1명",
+    needs: [
+      { col: "reader_id", label: "독자 ID", why: "독자 단위 식별", required: true },
+      { col: "subscribed(0/1)", label: "전환 여부(타겟)", why: "구독/가입/재방문한 독자 표시", required: true },
+      { col: "콘텐츠 소비 컬럼(횟수)", label: "소비한 콘텐츠", why: "각 콘텐츠의 전환 예측력(F1/Lift)", required: true },
+    ],
+    prep: [
+      "소비 컬럼은 '첫 방문 N일 안에 그 콘텐츠를 본 횟수'로 넣습니다(예: 7일 내 조회수).",
+      "전환 컬럼은 0/1 — 1이 구독/가입/재방문.",
+      "결과는 연관이지 인과가 아닙니다 — 관심 많은 독자가 원래 많이 읽고 구독도 합니다.",
+    ],
+    example: "reader_id,subscribed,ga4guide_d7,casestudy_d7,pricing_d7\nr10001,1,3,4,1\nr10002,0,0,1,0\nr10003,1,2,5,0",
+  },
 };
 
 export function getToolGuide(toolId) {

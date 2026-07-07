@@ -6,9 +6,12 @@ import { idToSlug } from "@/lib/routeMap";
 
 const GUIDE_SECTION = SECTIONS.find((s) => s.id === "guide");
 const ANALYSIS_SECTION = SECTIONS.find((s) => s.id === "analysis");
+const CONTENT_SECTION = SECTIONS.find((s) => s.id === "content");
+const GUIDE_GROUP_IDS = new Set(GUIDE_SECTION.groups);
 const OPS_GROUP_IDS = new Set(ANALYSIS_SECTION.groups);
+const CONTENT_GROUP_IDS = new Set(CONTENT_SECTION ? CONTENT_SECTION.groups : []);
 
-const GROUP_ICONS = { "05": "📊", "06": "🎨", "07": "🧪" };
+const GROUP_ICONS = { "05": "📊", "06": "🎨", "07": "🧪", "09": "✍️" };
 
 function escapeHtml(unsafe) {
   if (!unsafe) return "";
@@ -22,11 +25,15 @@ function escapeHtml(unsafe) {
 
 /* ──────────────────────────── STEP 1 ──────────────────────────── */
 function LandingHome({ onTrack }) {
-  const totalGuides = IA.filter((g) => !OPS_GROUP_IDS.has(g.id)).reduce(
+  const totalGuides = IA.filter((g) => GUIDE_GROUP_IDS.has(g.id)).reduce(
     (a, g) => a + g.items.length,
     0
   );
   const totalTools = IA.filter((g) => OPS_GROUP_IDS.has(g.id)).reduce(
+    (a, g) => a + g.items.length,
+    0
+  );
+  const totalContent = IA.filter((g) => CONTENT_GROUP_IDS.has(g.id)).reduce(
     (a, g) => a + g.items.length,
     0
   );
@@ -43,7 +50,7 @@ function LandingHome({ onTrack }) {
       <div
         className="phase-grid"
         style={{
-          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
           marginTop: "1.6rem",
         }}
       >
@@ -90,6 +97,31 @@ function LandingHome({ onTrack }) {
           </div>
           <div className="phase-card-cta">분석 시작 →</div>
         </div>
+
+        {/* 컨텐츠 분석 카드 — 퍼포먼스 엔진을 콘텐츠 마케터 언어로 리라벨 */}
+        {totalContent > 0 && (
+          <div
+            className="phase-card phase-card-tool"
+            style={{ cursor: "pointer" }}
+            onClick={() => onTrack("content")}
+          >
+            <div className="phase-card-head">
+              <span className="phase-card-step">컨텐츠</span>
+              <span className="phase-card-tag">블로그 · SNS · 뉴스레터</span>
+            </div>
+            <div className="phase-card-title">✍️ 컨텐츠 성과 분석</div>
+            <div className="phase-card-desc">
+              콘텐츠 성과 CSV를 올려 어떤 제작 요소가 조회수·CTR을 끌어올리는지,
+              어떤 콘텐츠가 구독 전환을 만드는지 진단. 전부 무료.
+            </div>
+            <div className="phase-card-foot">
+              <span className="phase-card-meta tnum">
+                {totalContent}개 분석 도구
+              </span>
+            </div>
+            <div className="phase-card-cta">컨텐츠 분석 →</div>
+          </div>
+        )}
       </div>
 
       <div className="landing-social-row">
@@ -270,9 +302,97 @@ function LandingAnalyze({ onBack, onNavigate }) {
   );
 }
 
+/* ──────────────────────────── STEP 2c (컨텐츠) ──────────────────────────── */
+function LandingContent({ onBack, onNavigate }) {
+  const contentGroups = IA.filter((g) => CONTENT_GROUP_IDS.has(g.id));
+
+  const findMeta = (id) => {
+    for (const group of IA) {
+      const item = group.items.find((i) => i.id === id);
+      if (item) return item;
+    }
+    return null;
+  };
+
+  return (
+    <>
+      <button
+        className="landing-back-btn"
+        onClick={onBack}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "6px",
+          background: "var(--bg-2)",
+          border: "1px solid var(--border)",
+          color: "var(--text-2)",
+          borderRadius: "9px",
+          padding: "7px 13px",
+          fontSize: "12.5px",
+          cursor: "pointer",
+          marginBottom: "1.2rem",
+        }}
+      >
+        ← 처음으로
+      </button>
+      <div className="page-eyebrow">컨텐츠 성과 분석</div>
+      <h1 className="page-title">무엇을 알고 싶으세요?</h1>
+      <p className="page-deck">
+        블로그·SNS·뉴스레터 콘텐츠 성과 CSV를 올리면 바로 분석합니다.{" "}
+        <strong>모든 도구를 무료</strong>로 사용할 수 있습니다.
+      </p>
+
+      {contentGroups.map((g) => (
+        <section key={g.id} className="block" style={{ marginTop: "1rem" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              marginBottom: "10px",
+            }}
+          >
+            <span style={{ fontSize: "18px" }}>
+              {GROUP_ICONS[g.id] || "📦"}
+            </span>
+            <h2
+              className="section-title"
+              style={{ margin: 0, border: "none", padding: 0 }}
+            >
+              {g.title}
+            </h2>
+          </div>
+          <div className="phase-grid">
+            {g.items.map((item) => {
+              const meta = findMeta(item.id);
+              if (!meta) return null;
+              return (
+                <a
+                  key={item.id}
+                  className="phase-card"
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigate(item.id);
+                  }}
+                  style={{ cursor: "pointer", textDecoration: "none" }}
+                >
+                  <div className="phase-card-title">{meta.title}</div>
+                  <div className="phase-card-desc">{meta.desc || ""}</div>
+                  <div className="phase-card-cta">바로 사용 →</div>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+    </>
+  );
+}
+
 /* ──────────────────────────── MAIN ──────────────────────────── */
 export default function LandingPage() {
-  const [track, setTrack] = useState(null); // null = home, "guide", "analyze"
+  const [track, setTrack] = useState(null); // null = home, "guide", "analyze", "content"
   const router = useRouter();
 
   const handleNavigate = (routeId) => {
@@ -289,6 +409,14 @@ export default function LandingPage() {
   if (track === "analyze") {
     return (
       <LandingAnalyze
+        onBack={() => setTrack(null)}
+        onNavigate={handleNavigate}
+      />
+    );
+  }
+  if (track === "content") {
+    return (
+      <LandingContent
         onBack={() => setTrack(null)}
         onNavigate={handleNavigate}
       />
