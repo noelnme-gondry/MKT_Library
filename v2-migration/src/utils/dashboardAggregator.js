@@ -1,3 +1,5 @@
+import { DERIVED_METRICS, computeMetrics } from "./metrics/metricRegistry.js";
+
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
 /**
@@ -138,6 +140,13 @@ export function calculateKPIs(filteredRows, cohort = 7, denomBasis = "installs")
   // 평균해버려 ret_d7=50(명) 같은 값이 "50%"·"10895%"로 튀는 버그가 있었음.
   const retentionAvg = computeWeightedRetention(filteredRows, cohort, denomBasis).rate;
 
+  // 파생 지표(cpm·ctr·cpc·cpi·cvr·purchaseRate·roas·cpp·cpa·arpu·arppu)는 이제
+  // metricRegistry(SSOT)가 정의 — 여기서 하드코딩하지 않고 레지스트리 compute를 소비.
+  // agg 계약: registry의 파생식이 읽는 정규화 집계객체(denom·revenue·purchases는
+  // 위에서 분모기준·코호트 해석 완료). 반환 shape·값은 기존과 byte-identical.
+  const agg = { cost, impressions, clicks, installs, actions, revenue, purchases, denom };
+  const derived = computeMetrics(agg, DERIVED_METRICS);
+
   return {
     cost,
     impressions,
@@ -148,21 +157,7 @@ export function calculateKPIs(filteredRows, cohort = 7, denomBasis = "installs")
     purchases,
     denomBasis,
     denom,
-    cpm: impressions ? (cost / impressions) * 1000 : null,
-    ctr: impressions ? clicks / impressions : null,
-    cpc: clicks ? cost / clicks : null,
-    // CPI/CPA — 분모 기준 따라 설치당/가입당 비용
-    cpi: denom ? cost / denom : null,
-    // CVR = 분모(설치 or 가입) / clicks
-    cvr: clicks ? denom / clicks : null,
-    // 구매율 = 구매자수(pu_dN) / 분모(설치 or 가입)
-    purchaseRate: denom ? purchases / denom : null,
-    roas: cost ? revenue / cost : null,
-    cpp: purchases ? cost / purchases : null,
-    cpa: purchases ? cost / purchases : null,
-    // ARPU — 분모당 매출
-    arpu: denom ? revenue / denom : null,
-    arppu: purchases ? revenue / purchases : null,
+    ...derived,
     retentionAvg,
     cohort,
   };

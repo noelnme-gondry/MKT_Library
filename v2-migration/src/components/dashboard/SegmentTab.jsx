@@ -3,6 +3,7 @@ import React, { useState, useMemo } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { segmentMetricValue, buildSegmentGrid } from "@/utils/segmentMath";
+import CustomChartsSection from "./CustomChartsSection";
 
 export default function SegmentTab() {
   const csvData = useAppStore((state) => state.csvData);
@@ -169,6 +170,13 @@ export default function SegmentTab() {
         {renderMatrix("cost")}
 
       </section>
+
+      <CustomChartsSection
+        sectionNo="2"
+        chartScope="5-2:seg-charts"
+        metricScope="5-2:viz-kpi"
+        title="커스텀 차트"
+      />
     </div>
   );
 }

@@ -2,10 +2,16 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
+import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, effectiveDenomBasis, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { buildLtvData, LTV_DNS, LTVCAC_MATH } from "@/utils/ltvMath";
 import { buildMaturationRows, MATURATION_MATH } from "@/utils/cohortMath";
+import { applyMetricView } from "@/utils/metrics/metricView";
+import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
+
+// 지표 뷰 설정 scope — LTV:CAC 표(§2)의 지표 컬럼 표시/순서.
+const LTV_TABLE_SCOPE = "5-2:ltv-table";
 
 export default function LtvTab() {
   const csvData = useAppStore((state) => state.csvData);
@@ -14,6 +20,10 @@ export default function LtvTab() {
   const setDenomBasis = useAppStore((state) => state.setDenomBasis);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
+  const ltvTableCfg = useAppStore((state) => state.viewConfig[LTV_TABLE_SCOPE]);
+  const setViewConfig = useAppStore((state) => state.setViewConfig);
+  const resetViewConfig = useAppStore((state) => state.resetViewConfig);
+  const [ltvCfgOpen, setLtvCfgOpen] = useState(false);
   const [unitField, setUnitField] = useState("channel");
   const [ltvHorizon, setLtvHorizon] = useState(30);
   // ROAS 성숙 예측 상태(§4)
@@ -189,6 +199,26 @@ export default function LtvTab() {
   };
   const anchorSelected = (d) => matAnchors == null || matAnchors.includes(d);
 
+  // LTV:CAC 표(§2) 지표 컬럼(데이터 주도) — 첫 컬럼 '단위'는 행 헤더라 고정, 나머지
+  // 지표 컬럼만 표시/순서 토글. render/값·계산은 기존과 동일(byte-동일).
+  const ltvCols = [
+    { k: "cost", label: "비용", render: (r) => fmtCur(r.cost) },
+    { k: "users", label: `유저(${denomLabel})`, headTitle: `${denomLabel}수(${effBasis}) 기준`, render: (r) => (r.users || 0).toLocaleString() },
+    { k: "cac", label: "CAC", render: (r) => (r.cac != null ? fmtCur(r.cac) : "—") },
+    { k: "roas7", label: "ROAS D7", render: (r) => fmtPct(r.roas7) },
+    { k: "roas14", label: "ROAS D14", render: (r) => fmtPct(r.roas14) },
+    { k: "ltv", label: `LTV(D${ltvHorizon})/user`, render: (r) => (r.ltvAtHorizon != null ? (
+      <>
+        {fmtCur(r.ltvAtHorizon)}
+        {r.ltvPredicted && <span style={{ fontSize: "9px", color: "#adc6ff", cursor: "help", marginLeft: "4px" }} title={`이 단위는 D${r.maxObsDn}까지만 실측. D${ltvHorizon}는 미마감 구간으로 이전 Dn 추이를 기반으로 예측한 값입니다. 실측이 누적되면 재확인하세요.`}>ⓘ</span>}
+      </>
+    ) : "—") },
+    { k: "ratio", label: "LTV:CAC", cellClass: (r) => ratioCls(r.ratio), render: (r) => <strong>{fmtX(r.ratio)}</strong> },
+    { k: "payback", label: "Payback", render: (r) => fmtPb(r.payback) },
+    { k: "fitKind", label: "외삽", cellStyle: { color: "var(--text-muted)", fontSize: "10px" }, render: (r) => r.fitKind },
+  ];
+  const orderedLtvCols = applyMetricView(ltvCols, ltvTableCfg, (c) => c.k);
+
   return (
     <div className="tab-pane active" id="tab-ltv">
       <section className="block" id="s-ctl">
@@ -236,7 +266,10 @@ export default function LtvTab() {
       </section>
 
       <section className="block" id="s-table">
-        <h2 className="section-title"><span className="ix">§2</span>LTV:CAC · 회수기간 (LTV horizon = D{ltvHorizon})</h2>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h2 className="section-title"><span className="ix">§2</span>LTV:CAC · 회수기간 (LTV horizon = D{ltvHorizon})</h2>
+          <button className="ab-pill" onClick={() => setLtvCfgOpen(true)} title="표시할 지표 컬럼과 순서 편집">⚙ 컬럼 편집</button>
+        </div>
         <p className="muted">
           초록 = LTV:CAC ≥ {HEALTHY_RATIO}× (건강) · 빨강 = &lt; {WARN_RATIO}× (적자). payback = 누적 ARPU가 CAC에 도달하는 day (power 외삽). ⓘ = 미마감 구간 예측값.
         </p>
@@ -245,44 +278,32 @@ export default function LtvTab() {
             <thead>
               <tr>
                 <th>단위</th>
-                <th>비용</th>
-                <th title={`${denomLabel}수(${effBasis}) 기준`}>유저({denomLabel})</th>
-                <th>CAC</th>
-                <th>ROAS D7</th>
-                <th>ROAS D14</th>
-                <th>LTV(D{ltvHorizon})/user</th>
-                <th>LTV:CAC</th>
-                <th>Payback</th>
-                <th>외삽</th>
+                {orderedLtvCols.map((c) => (
+                  <th key={c.k} title={c.headTitle || undefined} style={{ textAlign: "right" }}>{c.label}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {rows.slice(0, 60).map((r, i) => (
                 <tr key={i}>
                   <td><strong>{String(r.unit).slice(0, 28)}</strong></td>
-                  <td className="tnum">{fmtCur(r.cost)}</td>
-                  <td className="tnum">{(r.users || 0).toLocaleString()}</td>
-                  <td className="tnum">{r.cac != null ? fmtCur(r.cac) : "—"}</td>
-                  <td className="tnum">{fmtPct(r.roas7)}</td>
-                  <td className="tnum">{fmtPct(r.roas14)}</td>
-                  <td className="tnum">
-                    {r.ltvAtHorizon != null ? (
-                      <>
-                        {fmtCur(r.ltvAtHorizon)}
-                        {r.ltvPredicted && <span style={{ fontSize: "9px", color: "#adc6ff", cursor: "help", marginLeft: "4px" }} title={`이 단위는 D${r.maxObsDn}까지만 실측. D${ltvHorizon}는 미마감 구간으로 이전 Dn 추이를 기반으로 예측한 값입니다. 실측이 누적되면 재확인하세요.`}>ⓘ</span>}
-                      </>
-                    ) : "—"}
-                  </td>
-                  <td className={`tnum ${ratioCls(r.ratio)}`}>
-                    <strong>{fmtX(r.ratio)}</strong>
-                  </td>
-                  <td className="tnum">{fmtPb(r.payback)}</td>
-                  <td className="tnum" style={{ color: "var(--text-muted)", fontSize: "10px" }}>{r.fitKind}</td>
+                  {orderedLtvCols.map((c) => (
+                    <td
+                      key={c.k}
+                      className={`tnum ${c.cellClass ? c.cellClass(r) : ""}`.trim()}
+                      style={c.cellStyle || undefined}
+                    >
+                      {c.render(r)}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {orderedLtvCols.length === 0 && (
+          <p className="muted" style={{ fontSize: "12px" }}>표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.</p>
+        )}
         <div className="callout" style={{ marginTop: "10px" }}>
           <div className="ico">i</div>
           <div className="body">
@@ -493,6 +514,20 @@ export default function LtvTab() {
           </div>
         </div>
       </section>
+
+      <MetricConfigPanel
+        open={ltvCfgOpen}
+        onClose={() => setLtvCfgOpen(false)}
+        title="LTV:CAC 표 — 컬럼 편집"
+        items={ltvCols.map((c) => ({ key: c.k, label: c.label }))}
+        config={ltvTableCfg}
+        onSave={(next) => {
+          if (!next.hidden.length && !next.order.length) resetViewConfig(LTV_TABLE_SCOPE);
+          else setViewConfig(LTV_TABLE_SCOPE, next);
+          setLtvCfgOpen(false);
+        }}
+      />
+      <CustomChartsSection sectionNo="5" chartScope="5-2:ltv-charts" metricScope="5-2:viz-kpi" title="커스텀 차트" />
     </div>
   );
 }

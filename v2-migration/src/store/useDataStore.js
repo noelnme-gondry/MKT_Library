@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import Papa from "papaparse";
 
 // ── Group-scoped CSV state (Phase 6.3) ──────────────────────────────────────
@@ -180,7 +181,19 @@ export function displayItemNumberShort(itemId) {
   return `${groupNum}-${itemNum}`;
 }
 
-export const useAppStore = create((set, get) => ({
+// persist 저장 대상 = "설정만"(§2.2). 원본 CSV(csvGroups·csvData)·필터 Set·차트상태는
+// 제외. export하여 불변식(원본 데이터 미저장)을 골든으로 잠금(useDataStore.test.js).
+export const persistPartialize = (state) => ({
+  viewConfig: state.viewConfig,
+  customMetrics: state.customMetrics,
+  customCharts: state.customCharts,
+});
+
+// 서버(SSR)·테스트(node) 환경에는 localStorage가 없음 — no-op 폴백으로 persist가
+// setItem에서 throw하지 않게(브라우저에선 실제 localStorage 사용). 클라이언트 전용 저장.
+const noopStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+
+export const useAppStore = create(persist((set, get) => ({
   // Navigation State
   currentRouteId: "home",
   // On route change, swap the csvData mirror to the newly-active group's slice
@@ -331,10 +344,66 @@ export const useAppStore = create((set, get) => ({
 
   // Event Markers for Dashboard Charts
   eventMarkers: [],
-  addEventMarker: (marker) => set((state) => ({ 
-    eventMarkers: [...state.eventMarkers, { ...marker, id: "m" + Date.now() + Math.random().toString(36).slice(2, 7) }] 
+  addEventMarker: (marker) => set((state) => ({
+    eventMarkers: [...state.eventMarkers, { ...marker, id: "m" + Date.now() + Math.random().toString(36).slice(2, 7) }]
   })),
-  removeEventMarker: (id) => set((state) => ({ 
-    eventMarkers: state.eventMarkers.filter((m) => m.id !== id) 
+  removeEventMarker: (id) => set((state) => ({
+    eventMarkers: state.eventMarkers.filter((m) => m.id !== id)
   })),
+
+  // ── 지표 뷰 설정(Phase B, custom-metrics-data-config-spec.md) ──────────────
+  // 유저가 지표를 끄거나 순서를 바꾼 설정. scope별(도구:표면, 예 "5-2:scorecard")
+  // 로 { hidden:[], order:[] }. 렌더는 applyMetricView(metricView.js)로 후보에 적용.
+  // ★ persist(localStorage) 대상 = viewConfig만(partialize). 원본 CSV는 절대 저장 X(§2.2).
+  viewConfig: {},
+  setViewConfig: (scopeId, patch) => set((state) => ({
+    viewConfig: {
+      ...state.viewConfig,
+      [scopeId]: { hidden: [], order: [], ...(state.viewConfig[scopeId] || {}), ...patch },
+    },
+  })),
+  resetViewConfig: (scopeId) => set((state) => {
+    const next = { ...state.viewConfig };
+    delete next[scopeId];
+    return { viewConfig: next };
+  }),
+
+  // ── 커스텀 지표(Phase C) — 유저가 실제 컬럼으로 "조립"한 지표 정의 ────────────
+  // scope별 정의 배열 { [scopeId]: [{ id, name, op, a, b, unit }] }. 정의(config)라
+  // persist 대상(원본 데이터 아님, §2.2). compute는 customMetric.js가 순수 생성(eval X).
+  customMetrics: {},
+  addCustomMetric: (scopeId, def) => set((state) => {
+    const id = "cm_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const list = state.customMetrics[scopeId] || [];
+    return { customMetrics: { ...state.customMetrics, [scopeId]: [...list, { ...def, id }] } };
+  }),
+  removeCustomMetric: (scopeId, id) => set((state) => {
+    const list = (state.customMetrics[scopeId] || []).filter((m) => m.id !== id);
+    return { customMetrics: { ...state.customMetrics, [scopeId]: list } };
+  }),
+  // 기존 커스텀 지표 수정(id 유지, 정의 교체) — 빌더 "수정" 흐름.
+  updateCustomMetric: (scopeId, id, patch) => set((state) => {
+    const list = (state.customMetrics[scopeId] || []).map((m) => (m.id === id ? { ...m, ...patch, id } : m));
+    return { customMetrics: { ...state.customMetrics, [scopeId]: list } };
+  }),
+
+  // ── 커스텀 차트(Phase C) — 유저가 "모양+행(차원)+값(지표)"로 만든 차트 정의 ──────
+  // scope별 { [scopeId]: [{ id, name, type, dim, metric }] }. 정의(config)라 persist.
+  customCharts: {},
+  addCustomChart: (scopeId, def) => set((state) => {
+    const id = "ch_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const list = state.customCharts[scopeId] || [];
+    return { customCharts: { ...state.customCharts, [scopeId]: [...list, { ...def, id }] } };
+  }),
+  removeCustomChart: (scopeId, id) => set((state) => {
+    const list = (state.customCharts[scopeId] || []).filter((c) => c.id !== id);
+    return { customCharts: { ...state.customCharts, [scopeId]: list } };
+  }),
+}), {
+  // localStorage에 "설정만" 저장(§2.2 민감데이터 서버·로컬 잔존 최소화). 원본 CSV·필터
+  // Set·차트상태는 partialize에서 제외 → 새로고침 시 데이터는 재업로드, 설정은 유지.
+  name: "mkt_view_config",
+  version: 1,
+  storage: createJSONStorage(() => (typeof window !== "undefined" ? window.localStorage : noopStorage)),
+  partialize: persistPartialize,
 }));

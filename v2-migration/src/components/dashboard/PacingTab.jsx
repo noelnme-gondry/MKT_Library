@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
+import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, aggregateByKey, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { PACING_MATH } from "@/utils/pacingMath";
@@ -287,6 +288,7 @@ export default function PacingTab() {
         </div>
 
       </section>
+      <CustomChartsSection sectionNo="2" chartScope="5-2:pacing-charts" metricScope="5-2:viz-kpi" title="커스텀 차트" />
     </div>
   );
 }

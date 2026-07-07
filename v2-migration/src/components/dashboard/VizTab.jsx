@@ -1,10 +1,22 @@
 "use client";
-import React, { useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useRef, useMemo, useState } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, aggregateByKey, calculateKPIs, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
+import { applyMetricView } from "@/utils/metrics/metricView";
+import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
+import { CHART_TYPES } from "@/utils/metrics/chartBuilder";
+import { buildCustomChartConfig, buildChartFieldOptions } from "@/utils/customChartConfig";
+import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
+import InlineCardEditor from "@/components/ds/InlineCardEditor";
+import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
+import CustomChartBuilder from "@/components/ds/CustomChartBuilder";
 import { copyToClipboard } from "@/utils/toast";
+
+// 지표 뷰 설정 scope(도구:표면) — 운영 대시보드 자체(Viz 탭)의 KPI 카드·차트.
+const VIZ_KPI_SCOPE = "5-2:viz-kpi";
+const VIZ_CHART_SCOPE = "5-2:viz-charts";
 
 // 차트에 이벤트 마커 세로선 + 라벨을 그리는 Chart.js 플러그인(§12.18 event marker draw).
 // category x축(날짜 라벨)에서 marker.date에 매칭되는 x 픽셀에 점선을 그림.
@@ -52,13 +64,28 @@ export default function VizTab() {
   const setSelectedCohort = useAppStore((state) => state.setSelectedCohort);
   const denomBasis = useAppStore((state) => state.denomBasis);
   const eventMarkers = useAppStore((state) => state.eventMarkers);
+  // 지표 뷰 설정(표시/순서) — KPI 카드·차트 각각 독립 scope.
+  const kpiCfg = useAppStore((state) => state.viewConfig[VIZ_KPI_SCOPE]);
+  const chartCfg = useAppStore((state) => state.viewConfig[VIZ_CHART_SCOPE]);
+  const setViewConfig = useAppStore((state) => state.setViewConfig);
+  const resetViewConfig = useAppStore((state) => state.resetViewConfig);
+  // 커스텀 지표(Phase C) — Viz KPI surface scope에 조립·저장.
+  const customMetrics = useAppStore((state) => state.customMetrics[VIZ_KPI_SCOPE]);
+  const addCustomMetric = useAppStore((state) => state.addCustomMetric);
+  const removeCustomMetric = useAppStore((state) => state.removeCustomMetric);
+  const updateCustomMetric = useAppStore((state) => state.updateCustomMetric);
+  const customCharts = useAppStore((state) => state.customCharts[VIZ_CHART_SCOPE]);
+  const addCustomChart = useAppStore((state) => state.addCustomChart);
+  const removeCustomChart = useAppStore((state) => state.removeCustomChart);
+  const [kpiEditMode, setKpiEditMode] = useState(false);
+  const [chartCfgOpen, setChartCfgOpen] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [chartBuilderOpen, setChartBuilderOpen] = useState(false);
 
-  // Refs for Canvases
-  const tsCanvasRef = useRef(null);
-  const donutCanvasRef = useRef(null);
-  const cpiCanvasRef = useRef(null);
-  const funnelCanvasRef = useRef(null);
-  const cohortCanvasRef = useRef(null);
+  // Canvas 요소 refs — 차트 표시/순서가 동적이라 key→element 맵으로 보관(callback ref).
+  // 숨긴 차트는 canvas가 unmount되며 React가 null로 세팅 → 생성 effect가 건너뜀.
+  const canvasRefs = useRef({});
+  const setCanvasRef = (key) => (el) => { canvasRefs.current[key] = el; };
 
   // Refs for Chart Instances
   const chartsRef = useRef({
@@ -119,18 +146,50 @@ export default function VizTab() {
     return (num * 100).toFixed(2) + "%";
   };
 
+  // 차트 메타(데이터 주도) — 표시/순서 설정을 적용해 렌더·생성 대상을 결정.
+  // 숨긴 차트는 카드가 안 그려져 ref.current=null → 생성 effect가 건너뜀(§Phase B).
+  // ── 커스텀 지표/차트 공용: 매핑·집계키·지표 해석 ────────────────────────────
+  const mappingEntries = Object.entries((csvData && csvData.mapping) || {});
+  const mappedKeys = new Set(mappingEntries.map(([, v]) => v));
+  const headerFor = (stdKey) => (mappingEntries.find(([, v]) => v === stdKey) || [])[0] || "";
+  const hasRev = [...mappedKeys].some((k) => /^revenue_d/.test(k));
+  const hasPu = [...mappedKeys].some((k) => /^pu_d/.test(k));
+
+  // 커스텀 차트 차원/값 옵션·해석기(공용 헬퍼 — CustomChartsSection과 DRY).
+  const { availDims, metricOptions, resolveMetricCompute, dimLabelOf, metricLabelOf } =
+    buildChartFieldOptions(csvData && csvData.mapping, customMetrics);
+  const customChartDefs = customCharts || [];
+  const customChartSig = JSON.stringify(customChartDefs) + "|" + JSON.stringify(customMetrics || []) + "|" + selectedCohort;
+
+  const chartMeta = useMemo(() => ([
+    { k: "ts", title: `일별 비용·${effBasis === "actions" ? "가입" : "설치"} 추이`, sub: `시계열 라인 · 좌축 비용 / 우축 ${effBasis === "actions" ? "가입" : "설치"}`, full: false },
+    { k: "donut", title: "채널별 비용 비중", sub: "도넛 · 합산 cost 기준", full: false },
+    { k: "cpi", title: `채널별 ${acqLabel} 비교`, sub: `가로 막대 · cost / ${effBasis === "actions" ? "actions(가입)" : "installs"}`, full: false },
+    { k: "funnel", title: "전환 퍼널", sub: `${effBasis === "actions" ? "노출 → 클릭 → 설치 → 가입 → 결제(D7)" : "노출 → 클릭 → 설치 → 결제(D7)"} 단계별 절대 건수 (로그 스케일)`, full: false },
+    { k: "cohort", title: "채널별 코호트 매출 증가 (D0 → D7 → D14)", sub: "라인 · 채널별 누적 ARPU 증가 곡선", full: true },
+  ]), [effBasis, acqLabel]);
+  // 커스텀 차트 메타를 기본 5종 뒤에 붙여 표시/순서 편집 대상에 포함.
+  const customChartMetas = customChartDefs.map((def) => ({
+    k: def.id, custom: true, full: false,
+    title: def.name,
+    sub: `${CHART_TYPES.find((t) => t.id === def.type)?.label || def.type} · ${dimLabelOf(def.dim)}별 ${metricLabelOf(def.metric)}`,
+  }));
+  const orderedCharts = applyMetricView([...chartMeta, ...customChartMetas], chartCfg, (c) => c.k);
+  const visibleChartKeys = orderedCharts.map((c) => c.k).join(",");
+
   // 3. Chart Rendering Effect
   useEffect(() => {
     const instances = chartsRef.current;
 
-    // Destroy existing charts
-    Object.values(instances).forEach((chart) => {
-      if (chart) chart.destroy();
+    // Destroy existing charts + 삭제된 커스텀 차트의 stale 키 정리(다시 생성).
+    Object.keys(instances).forEach((k) => {
+      if (instances[k]) instances[k].destroy();
+      delete instances[k];
     });
 
     // 1) Time Series Chart (이벤트 마커 세로선 오버레이 포함)
-    if (tsCanvasRef.current) {
-      instances.ts = new Chart(tsCanvasRef.current.getContext("2d"), {
+    if (canvasRefs.current.ts) {
+      instances.ts = new Chart(canvasRefs.current.ts.getContext("2d"), {
         type: "line",
         plugins: [makeEventMarkerPlugin(preparedMarkers)],
         data: {
@@ -181,9 +240,9 @@ export default function VizTab() {
     }
 
     // 2) Channel Donut Chart
-    if (donutCanvasRef.current) {
+    if (canvasRefs.current.donut) {
       const sortedCh = [...byChannel].sort((a, b) => b.cost - a.cost);
-      instances.donut = new Chart(donutCanvasRef.current.getContext("2d"), {
+      instances.donut = new Chart(canvasRefs.current.donut.getContext("2d"), {
         type: "doughnut",
         data: {
           labels: sortedCh.map((c) => c._key),
@@ -210,7 +269,7 @@ export default function VizTab() {
     }
 
     // 3) CPI/CPA Bar Chart — 전역 분모 기준 따라 설치당/가입당 비용
-    if (cpiCanvasRef.current) {
+    if (canvasRefs.current.cpi) {
       const cpiData = byChannel
         .map((c) => {
           const denom = effBasis === "actions" ? c.actions : c.installs;
@@ -219,7 +278,7 @@ export default function VizTab() {
         .filter((d) => d.cpi > 0)
         .sort((a, b) => a.cpi - b.cpi);
 
-      instances.cpi = new Chart(cpiCanvasRef.current.getContext("2d"), {
+      instances.cpi = new Chart(canvasRefs.current.cpi.getContext("2d"), {
         type: "bar",
         data: {
           labels: cpiData.map((d) => d.key),
@@ -240,7 +299,7 @@ export default function VizTab() {
     }
 
     // 4) Funnel Bar Chart — 기준이 '가입'이면 가입 단계 추가(설치 4단계 vs 가입 5단계)
-    if (funnelCanvasRef.current) {
+    if (canvasRefs.current.funnel) {
       const funnelLabels = effBasis === "actions"
         ? ["노출", "클릭", "설치", "가입", "결제 (D7)"]
         : ["노출", "클릭", "설치", "결제 (D7)"];
@@ -250,7 +309,7 @@ export default function VizTab() {
       const funnelColors = effBasis === "actions"
         ? ["#adc6ff", "#4cd7f6", "#5ad19a", "#bb9af7", "#f7b955"]
         : ["#adc6ff", "#4cd7f6", "#5ad19a", "#f7b955"];
-      instances.funnel = new Chart(funnelCanvasRef.current.getContext("2d"), {
+      instances.funnel = new Chart(canvasRefs.current.funnel.getContext("2d"), {
         type: "bar",
         data: {
           labels: funnelLabels,
@@ -274,7 +333,7 @@ export default function VizTab() {
     }
 
     // 5) Cohort Line Chart
-    if (cohortCanvasRef.current) {
+    if (canvasRefs.current.cohort) {
       const topCh = [...byChannel].sort((a, b) => (b.revenue_d7 || 0) - (a.revenue_d7 || 0)).slice(0, 6);
       const datasets = topCh.map((c, i) => {
         // 전역 분모 기준(설치/가입) — ARPU 분모도 다른 차트와 동일하게 전환(§12.18).
@@ -294,7 +353,7 @@ export default function VizTab() {
         };
       });
 
-      instances.cohort = new Chart(cohortCanvasRef.current.getContext("2d"), {
+      instances.cohort = new Chart(canvasRefs.current.cohort.getContext("2d"), {
         type: "line",
         data: {
           labels: ["D0", "D7", "D14"],
@@ -313,6 +372,16 @@ export default function VizTab() {
       });
     }
 
+    // 6) 커스텀 차트 — 표시 중인 것만(숨김/삭제 시 canvas 없음 → skip). 유저가 만든
+    //    "모양+행+값"으로 차원별 집계·지표 계산해 렌더. 커스텀 지표 열도 값으로 사용.
+    for (const def of customChartDefs) {
+      const el = canvasRefs.current[def.id];
+      if (!el) continue;
+      instances[def.id] = new Chart(el.getContext("2d"), buildCustomChartConfig(def, filteredRows, {
+        cohort: selectedCohort, denomBasis: effBasis, resolveMetricCompute, metricLabelOf,
+      }));
+    }
+
     // 마커 세로선(afterDatasetsDraw)은 Chart.js 애니메이션 완료 후에나 최초 페인트됨(§12.18) —
     // 마커 추가 시 매번 destroy+recreate라 400ms 페이드인 동안 "반영 안 됨"처럼 보일 수 있음.
     // 애니메이션/rAF 스케줄과 무관하게 즉시 1프레임 동기 draw로 마커가 바로 보이게 강제.
@@ -325,7 +394,109 @@ export default function VizTab() {
         if (chart) chart.destroy();
       });
     };
-  }, [dailyAgg, byChannel, totals, preparedMarkers, effBasis, acqLabel, trendOutcomeLabel]);
+    // visibleChartKeys=표시/순서 변경, customChartSig=커스텀 차트 정의·코호트·커스텀지표
+    // 변경, filteredRows=데이터 변경 시 재생성. customChartDefs/buildCustomChartConfig는
+    // 매 렌더 새 참조지만 위 sig가 실질 변경을 모두 커버(매 렌더 재실행 방지).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dailyAgg, byChannel, totals, preparedMarkers, effBasis, acqLabel, trendOutcomeLabel, visibleChartKeys, customChartSig, filteredRows]);
+
+  // KPI 카드(데이터 주도) — 표시/순서 설정 적용. node=기존 카드 JSX 유지(값·계산 불변).
+  const kpiCards = [
+    { k: "cost", label: "총 비용", node: (
+      <div key="cost" className="kpi-card"><div className="label">총 비용</div><div className="value tnum">{formatNumber(kpi.cost)}</div><div className="delta">합산 cost</div></div>
+    ) },
+    { k: "ctr", label: "CTR", node: (
+      <div key="ctr" className="kpi-card"><div className="label">CTR</div><div className="value tnum">{formatPercent(kpi.ctr)}</div><div className="delta">clicks / impressions</div></div>
+    ) },
+    { k: "outcome", label: effBasis === "actions" ? "총 가입 수" : "총 설치 수", node: (
+      <div key="outcome" className="kpi-card"><div className="label">{effBasis === "actions" ? "총 가입 수" : "총 설치 수"}</div><div className="value tnum">{formatNumber(effBasis === "actions" ? kpi.actions : kpi.installs)}</div><div className="delta">{effBasis === "actions" ? "합산 actions" : "합산 installs"}</div></div>
+    ) },
+    { k: "acq", label: acqLabel, node: (
+      <div key="acq" className="kpi-card"><div className="label">{acqLabel}</div><div className="value tnum">{formatNumber(kpi.cpi, { decimals: 2 })}</div><div className="delta">cost / {effBasis === "actions" ? "actions(가입)" : "installs"}</div></div>
+    ) },
+    { k: "purchases", label: "구매자 수", node: (
+      <div key="purchases" className="kpi-card"><div className="label">구매자 수 (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.purchases)}</div><div className="delta">pu_d{kpi.cohort} 합산</div></div>
+    ) },
+    { k: "purchaseRate", label: "구매율", node: (
+      <div key="purchaseRate" className="kpi-card"><div className="label">구매율 (D{kpi.cohort})</div><div className="value tnum">{formatPercent(kpi.purchaseRate)}</div><div className="delta">구매자 수 / {effBasis === "actions" ? "가입" : "설치"}</div></div>
+    ) },
+    { k: "cpp", label: "CPP", node: (
+      <div key="cpp" className="kpi-card"><div className="label">CPP (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.cpp, { decimals: 2 })}</div><div className="delta">cost / 구매자 수</div></div>
+    ) },
+    { k: "revenue", label: "총 매출", node: (
+      <div key="revenue" className="kpi-card"><div className="label">총 매출 (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.revenue)}</div><div className="delta">cohort revenue 합산</div></div>
+    ) },
+    { k: "roas", label: "ROAS", node: (
+      <div key="roas" className="kpi-card" style={{ position: "relative" }}>
+        <div className="label">ROAS (D{kpi.cohort})</div>
+        <div className="value tnum">{formatPercent(kpi.roas)}</div>
+        <div className="delta" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.25rem" }}>
+          <span>revenue / cost</span>
+          {d7Display && (
+            <button
+              className="share-btn"
+              onClick={() => copyToClipboard(`현재 D${kpi.cohort} ROAS는 ${d7Display} 입니다.`)}
+              style={{ padding: "1px 5px", fontSize: "9.5px", height: "16px", lineHeight: "1", borderRadius: "3px", marginLeft: "auto", background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-subtle)", display: "inline-flex", alignItems: "center", gap: "3px", color: "var(--text-secondary)", cursor: "pointer", whiteSpace: "nowrap" }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              공유 복사
+            </button>
+          )}
+        </div>
+      </div>
+    ) },
+    { k: "arpu", label: "ARPU", node: (
+      <div key="arpu" className="kpi-card"><div className="label">ARPU (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.arpu, { decimals: 2 })}</div><div className="delta">revenue / {effBasis === "actions" ? "actions" : "installs"}</div></div>
+    ) },
+    { k: "arppu", label: "ARPPU", node: (
+      <div key="arppu" className="kpi-card"><div className="label">ARPPU (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.arppu, { decimals: 2 })}</div><div className="delta">revenue / 구매자 수</div></div>
+    ) },
+    { k: "retention", label: "잔존율 평균", node: (
+      <div key="retention" className="kpi-card"><div className="label">잔존율 평균 (D{kpi.cohort})</div><div className="value tnum">{formatPercent(kpi.retentionAvg)}</div><div className="delta">행별 평균</div></div>
+    ) },
+  ];
+  // 커스텀/프리셋 지표가 읽는 집계객체 — kpi가 이미 base 합계(cost·impressions·…·
+  // revenue·purchases·denom)를 보유(calculateKPIs=metricRegistry 소비).
+  const agg = kpi;
+
+  // 빌더 피연산자 = 실제 매핑된 컬럼만(오타 불가). 라벨 옆에 실제 CSV 헤더 표기.
+  // (mappingEntries·mappedKeys·headerFor·hasRev·hasPu는 위 공용 블록에서 계산됨)
+  const builderFields = [
+    { key: "cost", label: "비용", header: headerFor("cost") },
+    mappedKeys.has("impressions") && { key: "impressions", label: "노출수", header: headerFor("impressions") },
+    mappedKeys.has("clicks") && { key: "clicks", label: "클릭수", header: headerFor("clicks") },
+    mappedKeys.has("installs") && { key: "installs", label: "설치수", header: headerFor("installs") },
+    mappedKeys.has("actions") && { key: "actions", label: "액션/가입", header: headerFor("actions") },
+    hasRev && { key: "revenue", label: `매출(D${kpi.cohort})`, header: headerFor(`revenue_d${kpi.cohort}`) },
+    hasPu && { key: "purchases", label: `결제건수(D${kpi.cohort})`, header: headerFor(`pu_d${kpi.cohort}`) },
+  ].filter(Boolean);
+
+  // 프리셋 지표(이익·이익률) — 매출 데이터 있을 때만 후보로. kpi에 이미 계산됨.
+  const presetCards = [];
+  if (hasRev) {
+    presetCards.push({ k: "profit", label: "이익", node: (
+      <div key="profit" className="kpi-card"><div className="label">이익 (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.profit)}</div><div className="delta">매출 − 비용</div></div>
+    ) });
+    presetCards.push({ k: "profitMargin", label: "이익률", node: (
+      <div key="profitMargin" className="kpi-card"><div className="label">이익률 (D{kpi.cohort})</div><div className="value tnum">{formatPercent(kpi.profitMargin)}</div><div className="delta">(매출−비용) / 매출</div></div>
+    ) });
+  }
+
+  // 유저 커스텀 지표 — 조립 정의를 순수 compute로 변환해 카드화(토글/순서/삭제 가능).
+  const customCards = (customMetrics || []).map((def) => {
+    const val = customMetricToDescriptor(def).compute(agg);
+    return { k: def.id, label: def.name, node: (
+      <div key={def.id} className="kpi-card"><div className="label">{def.name}</div><div className="value tnum">{val == null ? "—" : formatNumber(val, { decimals: 2 })}</div><div className="delta">커스텀 지표</div></div>
+    ) };
+  });
+
+  const allKpiCards = [...kpiCards, ...presetCards, ...customCards].map((c) => ({ key: c.k, label: c.label, node: c.node }));
+
+  const saveScope = (scope, next, setOpen) => {
+    if (!next.hidden.length && !next.order.length) resetViewConfig(scope);
+    else setViewConfig(scope, next);
+    setOpen(false);
+  };
 
   return (
     <div className="tab-pane active" id="tab-viz">
@@ -353,76 +524,93 @@ export default function VizTab() {
 
       {/* KPI Summary */}
       <section className="block" id="s-kpi">
-        <h2 className="section-title"><span className="ix">§2</span>KPI 요약</h2>
-        <div className="kpi-grid">
-          <div className="kpi-card"><div className="label">총 비용</div><div className="value tnum">{formatNumber(kpi.cost)}</div><div className="delta">합산 cost</div></div>
-          <div className="kpi-card"><div className="label">CTR</div><div className="value tnum">{formatPercent(kpi.ctr)}</div><div className="delta">clicks / impressions</div></div>
-          <div className="kpi-card"><div className="label">{effBasis === "actions" ? "총 가입 수" : "총 설치 수"}</div><div className="value tnum">{formatNumber(effBasis === "actions" ? kpi.actions : kpi.installs)}</div><div className="delta">{effBasis === "actions" ? "합산 actions" : "합산 installs"}</div></div>
-          <div className="kpi-card"><div className="label">{acqLabel}</div><div className="value tnum">{formatNumber(kpi.cpi, { decimals: 2 })}</div><div className="delta">cost / {effBasis === "actions" ? "actions(가입)" : "installs"}</div></div>
-          <div className="kpi-card"><div className="label">구매자 수 (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.purchases)}</div><div className="delta">pu_d{kpi.cohort} 합산</div></div>
-          <div className="kpi-card"><div className="label">구매율 (D{kpi.cohort})</div><div className="value tnum">{formatPercent(kpi.purchaseRate)}</div><div className="delta">구매자 수 / {effBasis === "actions" ? "가입" : "설치"}</div></div>
-          <div className="kpi-card"><div className="label">CPP (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.cpp, { decimals: 2 })}</div><div className="delta">cost / 구매자 수</div></div>
-          <div className="kpi-card"><div className="label">총 매출 (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.revenue)}</div><div className="delta">cohort revenue 합산</div></div>
-          <div className="kpi-card" style={{ position: "relative" }}>
-            <div className="label">ROAS (D{kpi.cohort})</div>
-            <div className="value tnum">{formatPercent(kpi.roas)}</div>
-            <div className="delta" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.25rem" }}>
-              <span>revenue / cost</span>
-              {d7Display && (
-                <button
-                  className="share-btn"
-                  onClick={() => copyToClipboard(`현재 D${kpi.cohort} ROAS는 ${d7Display} 입니다.`)}
-                  style={{ padding: "1px 5px", fontSize: "9.5px", height: "16px", lineHeight: "1", borderRadius: "3px", marginLeft: "auto", background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-subtle)", display: "inline-flex", alignItems: "center", gap: "3px", color: "var(--text-secondary)", cursor: "pointer", whiteSpace: "nowrap" }}
-                >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                  공유 복사
-                </button>
-              )}
-            </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h2 className="section-title"><span className="ix">§2</span>KPI 요약</h2>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <button className="ab-pill" onClick={() => setBuilderOpen(true)} title="데이터 컬럼으로 나만의 지표 만들기">＋ 커스텀 지표</button>
+            {kpiEditMode ? (
+              <>
+                <button className="ab-pill" onClick={() => resetViewConfig(VIZ_KPI_SCOPE)} title="전체 표시·기본 순서·기본 크기">초기화</button>
+                <button className="ab-pill active" onClick={() => setKpiEditMode(false)} style={{ fontWeight: 700 }}>완료</button>
+              </>
+            ) : (
+              <button className="ab-pill" onClick={() => setKpiEditMode(true)} title="카드를 그 자리에서 드래그·표시/숨김·크기 편집">✏️ 편집</button>
+            )}
           </div>
-          <div className="kpi-card"><div className="label">ARPU (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.arpu, { decimals: 2 })}</div><div className="delta">revenue / {effBasis === "actions" ? "actions" : "installs"}</div></div>
-          <div className="kpi-card"><div className="label">ARPPU (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.arppu, { decimals: 2 })}</div><div className="delta">revenue / 구매자 수</div></div>
-          <div className="kpi-card"><div className="label">잔존율 평균 (D{kpi.cohort})</div><div className="value tnum">{formatPercent(kpi.retentionAvg)}</div><div className="delta">행별 평균</div></div>
         </div>
+        {kpiEditMode && (
+          <p className="muted" style={{ fontSize: "11px", margin: "0 0 8px" }}>⠿ 드래그로 이동 · 👁 표시/숨김. 변경은 자동 저장됩니다.</p>
+        )}
+        {allKpiCards.length === 0 ? (
+          <p className="muted" style={{ fontSize: "12px" }}>표시할 KPI가 없습니다.</p>
+        ) : (
+          <InlineCardEditor
+            items={allKpiCards}
+            config={kpiCfg}
+            editMode={kpiEditMode}
+            onPatch={(p) => setViewConfig(VIZ_KPI_SCOPE, p)}
+            gridClassName="kpi-grid"
+          />
+        )}
       </section>
 
       {/* Charts Grid */}
       <section className="block" id="s-charts">
-        <h2 className="section-title"><span className="ix">§3</span>차트 시각화</h2>
-        <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>업로드된 데이터를 기반으로 시계열·채널 비중·CPI 비교·퍼널·코호트 매출 5종 차트가 렌더링됩니다.</p>
-        
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h2 className="section-title"><span className="ix">§3</span>차트 시각화</h2>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <button className="ab-pill" onClick={() => setChartBuilderOpen(true)} title="모양·행·값을 골라 나만의 차트 만들기">＋ 커스텀 차트</button>
+            <button className="ab-pill" onClick={() => setChartCfgOpen(true)} title="표시할 차트와 순서 편집">⚙ 차트 편집</button>
+          </div>
+        </div>
+        <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>업로드된 데이터를 기반으로 시계열·채널 비중·CPI 비교·퍼널·코호트 매출 차트가 렌더링됩니다. ⚙ 차트 편집에서 표시·순서 조정.</p>
+
         {/* 이벤트 마커 입력 UI는 여기가 아니라 Dashboard.jsx에서 탭 콘텐츠 위에
             <MonEventMarkerUI/>로 렌더됨(전 탭 공통 상단 1곳). 여기 시계열 차트는
             store.eventMarkers를 preparedMarkers로 구독해 세로선만 오버레이. */}
 
-        <div className="chart-grid cols-2">
-          <div className="chart-card">
-            <div className="chart-title">일별 비용·{effBasis === "actions" ? "가입" : "설치"} 추이</div>
-            <div className="chart-sub">시계열 라인 · 좌축 비용 / 우축 {effBasis === "actions" ? "가입" : "설치"}</div>
-            <div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={tsCanvasRef}></canvas></div>
+        {orderedCharts.length === 0 ? (
+          <p className="muted" style={{ fontSize: "12px" }}>표시할 차트가 없습니다. ⚙ 차트 편집에서 다시 켜세요.</p>
+        ) : (
+          <div className="chart-grid cols-2">
+            {orderedCharts.map((c) => (
+              <div key={c.k} className="chart-card" style={c.full ? { gridColumn: "1 / -1" } : undefined}>
+                <div className="chart-title">{c.title}</div>
+                <div className="chart-sub">{c.sub}</div>
+                <div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={setCanvasRef(c.k)}></canvas></div>
+              </div>
+            ))}
           </div>
-          <div className="chart-card">
-            <div className="chart-title">채널별 비용 비중</div>
-            <div className="chart-sub">도넛 · 합산 cost 기준</div>
-            <div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={donutCanvasRef}></canvas></div>
-          </div>
-          <div className="chart-card">
-            <div className="chart-title">채널별 {acqLabel} 비교</div>
-            <div className="chart-sub">가로 막대 · cost / {effBasis === "actions" ? "actions(가입)" : "installs"}</div>
-            <div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={cpiCanvasRef}></canvas></div>
-          </div>
-          <div className="chart-card">
-            <div className="chart-title">전환 퍼널</div>
-            <div className="chart-sub">{effBasis === "actions" ? "노출 → 클릭 → 설치 → 가입 → 결제(D7)" : "노출 → 클릭 → 설치 → 결제(D7)"} 단계별 절대 건수 (로그 스케일)</div>
-            <div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={funnelCanvasRef}></canvas></div>
-          </div>
-          <div className="chart-card" style={{ gridColumn: "1 / -1" }}>
-            <div className="chart-title">채널별 코호트 매출 증가 (D0 → D7 → D14)</div>
-            <div className="chart-sub">라인 · 채널별 누적 ARPU 증가 곡선</div>
-            <div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={cohortCanvasRef}></canvas></div>
-          </div>
-        </div>
+        )}
       </section>
+
+      <CustomMetricBuilder
+        open={builderOpen}
+        onClose={() => setBuilderOpen(false)}
+        fields={builderFields}
+        agg={agg}
+        existing={customMetrics || []}
+        onCreate={(def) => addCustomMetric(VIZ_KPI_SCOPE, def)}
+        onUpdate={(id, def) => updateCustomMetric(VIZ_KPI_SCOPE, id, def)}
+        onDelete={(id) => removeCustomMetric(VIZ_KPI_SCOPE, id)}
+      />
+      <MetricConfigPanel
+        open={chartCfgOpen}
+        onClose={() => setChartCfgOpen(false)}
+        title="차트 시각화 — 차트 편집"
+        items={[...chartMeta, ...customChartMetas].map((c) => ({ key: c.k, label: c.title }))}
+        config={chartCfg}
+        onSave={(next) => saveScope(VIZ_CHART_SCOPE, next, setChartCfgOpen)}
+      />
+      <CustomChartBuilder
+        open={chartBuilderOpen}
+        onClose={() => setChartBuilderOpen(false)}
+        dims={availDims}
+        metrics={metricOptions}
+        existing={customChartDefs}
+        onCreate={(def) => addCustomChart(VIZ_CHART_SCOPE, def)}
+        onDelete={(id) => removeCustomChart(VIZ_CHART_SCOPE, id)}
+      />
     </div>
   );
 }
