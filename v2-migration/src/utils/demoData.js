@@ -293,7 +293,9 @@ function buildResponse() {
     row.signups = signups;
     raw.push(row);
   }
-  return { raw, headers, mapping: {}, fileName: "demo_response.csv" };
+  // MMM 채널 spend 스케일(§base/half)은 USD 기준으로 설계됨(mmmSaturation의
+  // 고정 체크포인트 $10k/35k/60k와 정합) — 통화 토글이 KRW로 바뀌면 실제 환산.
+  return { raw, headers, mapping: {}, fileName: "demo_response.csv", currency: "USD" };
 }
 
 // ── aha (5-20) ──────────────────────────────────────────────────────────────

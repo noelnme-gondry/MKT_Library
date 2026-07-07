@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmtCurrency, fmtPct, fmtNum, fmtCompact, parseNum } from "./format";
+import { fmtCurrency, fmtPct, fmtNum, fmtCompact, parseNum, convertCurrency, USD_KRW_RATE } from "./format";
 
 describe("format", () => {
   it("fmtCurrency: ₩ 0 decimals, $ 2 decimals, precise small", () => {
@@ -36,5 +36,13 @@ describe("format", () => {
     expect(parseNum("")).toBe(null);
     expect(parseNum(null)).toBe(null);
     expect(parseNum("abc")).toBe(null);
+  });
+
+  it("convertCurrency: fixed-rate KRW<->USD, no-op when same/missing", () => {
+    expect(convertCurrency(1000, "USD", "KRW")).toBe(1000 * USD_KRW_RATE);
+    expect(convertCurrency(USD_KRW_RATE, "KRW", "USD")).toBe(1);
+    expect(convertCurrency(1000, "KRW", "KRW")).toBe(1000);
+    expect(convertCurrency(1000, null, "USD")).toBe(1000);
+    expect(convertCurrency(null, "USD", "KRW")).toBe(null);
   });
 });
