@@ -2,26 +2,35 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
-import { getMonFilteredRows, aggregateByKey, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { getMonFilteredRows, aggregateByKey, fmtCurrencyPrecise, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
+import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
+import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
 import BudgetHealthCard from "./BudgetHealthCard";
 
 // 지표 뷰 설정 scope(도구:표면) — store viewConfig 키. persist 대상.
 const SCORECARD_SCOPE = "5-2:scorecard";
+// 커스텀 지표 정의는 운영 대시보드(Viz KPI)와 공유 — 한 번 만들면 양쪽에 나타남.
+const KPI_METRIC_SCOPE = "5-2:viz-kpi";
 
 export default function ScorecardTab() {
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const denomBasis = useAppStore((state) => state.denomBasis);
   const scopeCfg = useAppStore((state) => state.viewConfig[SCORECARD_SCOPE]);
   const setViewConfig = useAppStore((state) => state.setViewConfig);
   const resetViewConfig = useAppStore((state) => state.resetViewConfig);
+  const customMetrics = useAppStore((state) => state.customMetrics[KPI_METRIC_SCOPE]);
+  const addCustomMetric = useAppStore((state) => state.addCustomMetric);
+  const removeCustomMetric = useAppStore((state) => state.removeCustomMetric);
   const [windowDays, setWindowDays] = useState(7);
   const [selectedMetric, setSelectedMetric] = useState(null);
   const [cfgOpen, setCfgOpen] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(false);
 
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -31,20 +40,24 @@ export default function ScorecardTab() {
       return { hasData: false, mapping: {} };
     }
     const rows = getMonFilteredRows(csvData, dashboardFilter);
-    const _daily = aggregateByKey(rows, "date", ["cost", "impressions", "clicks", "installs", "actions", "revenue_d7"]).sort((a, b) => a._key > b._key ? 1 : -1);
-    
+    const _daily = aggregateByKey(rows, "date", ["cost", "impressions", "clicks", "installs", "actions", "revenue_d7", "pu_d7"]).sort((a, b) => a._key > b._key ? 1 : -1);
+
     if (_daily.length === 0) return { hasData: false, mapping: csvData.mapping || {} };
 
     const w = windowDays;
     const _recent = _daily.slice(-w);
     const _prev = _daily.slice(-2 * w, -w);
+    const basis = effectiveDenomBasis(csvData, denomBasis);
 
     const sum = (arr, k) => arr.reduce((s, d) => s + (d[k] || 0), 0);
     const agg = (arr) => {
       const cost = sum(arr, "cost"), imp = sum(arr, "impressions"), clk = sum(arr, "clicks");
-      const inst = sum(arr, "installs"), act = sum(arr, "actions"), rev = sum(arr, "revenue_d7");
+      const inst = sum(arr, "installs"), act = sum(arr, "actions"), rev = sum(arr, "revenue_d7"), pu = sum(arr, "pu_d7");
       return {
         cost, imp, clk, inst, act, rev,
+        // 표준키 별칭 — 프리셋·커스텀 지표 compute(agg)용(Viz와 동일 계약).
+        impressions: imp, clicks: clk, installs: inst, actions: act, revenue: rev, purchases: pu,
+        denom: basis === "actions" ? act : inst,
         cpi: inst > 0 ? cost / inst : null,
         cpa: act > 0 ? cost / act : null,
         cvr: clk > 0 ? inst / clk : null,
@@ -55,24 +68,56 @@ export default function ScorecardTab() {
     };
 
     return { hasData: true, recent: agg(_recent), prev: agg(_prev), daily: _daily, mapping: csvData.mapping || {} };
-  }, [csvData, dashboardFilter, windowDays]);
+  }, [csvData, dashboardFilter, windowDays, denomBasis]);
 
   const cards = useMemo(() => {
     if (!hasData) return [];
     const fmtCurrency = (v) => fmtCurrencyPrecise(v, displayCurrency);
     const mapped = new Set(Object.values(mapping));
-    
-    return [
-      { k: "cost", label: "비용", val: recent.cost, prev: prev.cost, fmt: fmtCurrency, better: "none" },
-      mapped.has("installs") && { k: "inst", label: "설치", val: recent.inst, prev: prev.inst, fmt: v => Math.round(v).toLocaleString(), better: "high" },
-      mapped.has("installs") && { k: "cpi", label: "CPI", val: recent.cpi, prev: prev.cpi, fmt: v => v != null ? fmtCurrency(v) : "—", better: "low" },
-      mapped.has("actions") && { k: "act", label: "액션", val: recent.act, prev: prev.act, fmt: v => Math.round(v).toLocaleString(), better: "high" },
-      mapped.has("actions") && { k: "cpa", label: "CPA", val: recent.cpa, prev: prev.cpa, fmt: v => v != null ? fmtCurrency(v) : "—", better: "low" },
-      mapped.has("clicks") && mapped.has("installs") && { k: "cvr", label: "CVR", val: recent.cvr, prev: prev.cvr, fmt: v => v != null ? (v * 100).toFixed(2) + "%" : "—", better: "high" },
-      mapped.has("impressions") && mapped.has("clicks") && { k: "ctr", label: "CTR", val: recent.ctr, prev: prev.ctr, fmt: v => v != null ? (v * 100).toFixed(2) + "%" : "—", better: "high" },
-      mapped.has("revenue_d7") && { k: "roas", label: "ROAS", val: recent.roas, prev: prev.roas, fmt: v => v != null ? (v * 100).toFixed(0) + "%" : "—", better: "high" },
+    const hasRev = mapped.has("revenue_d7");
+
+    // 기본 지표 카드 — chartable=일별 상세 차트 지원.
+    const base = [
+      { k: "cost", label: "비용", val: recent.cost, prev: prev.cost, fmt: fmtCurrency, better: "none", chartable: true },
+      mapped.has("installs") && { k: "inst", label: "설치", val: recent.inst, prev: prev.inst, fmt: v => Math.round(v).toLocaleString(), better: "high", chartable: true },
+      mapped.has("installs") && { k: "cpi", label: "CPI", val: recent.cpi, prev: prev.cpi, fmt: v => v != null ? fmtCurrency(v) : "—", better: "low", chartable: true },
+      mapped.has("actions") && { k: "act", label: "액션", val: recent.act, prev: prev.act, fmt: v => Math.round(v).toLocaleString(), better: "high", chartable: true },
+      mapped.has("actions") && { k: "cpa", label: "CPA", val: recent.cpa, prev: prev.cpa, fmt: v => v != null ? fmtCurrency(v) : "—", better: "low", chartable: true },
+      mapped.has("clicks") && mapped.has("installs") && { k: "cvr", label: "CVR", val: recent.cvr, prev: prev.cvr, fmt: v => v != null ? (v * 100).toFixed(2) + "%" : "—", better: "high", chartable: true },
+      mapped.has("impressions") && mapped.has("clicks") && { k: "ctr", label: "CTR", val: recent.ctr, prev: prev.ctr, fmt: v => v != null ? (v * 100).toFixed(2) + "%" : "—", better: "high", chartable: true },
+      mapped.has("revenue_d7") && { k: "roas", label: "ROAS", val: recent.roas, prev: prev.roas, fmt: v => v != null ? (v * 100).toFixed(0) + "%" : "—", better: "high", chartable: true },
     ].filter(Boolean);
-  }, [hasData, recent, prev, mapping, displayCurrency]);
+
+    // 프리셋(이익·이익률) — 매출 있을 때. 커스텀과 함께 일별 상세는 없음(chartable=false).
+    const presets = [];
+    if (hasRev) {
+      presets.push({ k: "profit", label: "이익", val: recent.revenue - recent.cost, prev: prev.revenue - prev.cost, fmt: fmtCurrency, better: "high" });
+      presets.push({ k: "profitMargin", label: "이익률", val: recent.revenue ? (recent.revenue - recent.cost) / recent.revenue : null, prev: prev.revenue ? (prev.revenue - prev.cost) / prev.revenue : null, fmt: v => v != null ? (v * 100).toFixed(1) + "%" : "—", better: "high" });
+    }
+    // 커스텀 지표(공유 스코프) — recent/prev 각각 compute해 값+WoW.
+    const customCards = (customMetrics || []).map((def) => {
+      const desc = customMetricToDescriptor(def);
+      return { k: def.id, label: def.name, val: desc.compute(recent), prev: desc.compute(prev), fmt: v => v == null ? "—" : Number(v).toLocaleString("ko-KR", { maximumFractionDigits: 2 }), better: "none" };
+    });
+
+    return [...base, ...presets, ...customCards];
+  }, [hasData, recent, prev, mapping, displayCurrency, customMetrics]);
+
+  // 커스텀 지표 빌더 피연산자 = 실제 매핑된 컬럼만.
+  const builderFields = useMemo(() => {
+    const entries = Object.entries((csvData && csvData.mapping) || {});
+    const set = new Set(entries.map(([, v]) => v));
+    const headerFor = (k) => (entries.find(([, v]) => v === k) || [])[0] || "";
+    return [
+      { key: "cost", label: "비용", header: headerFor("cost") },
+      set.has("impressions") && { key: "impressions", label: "노출수", header: headerFor("impressions") },
+      set.has("clicks") && { key: "clicks", label: "클릭수", header: headerFor("clicks") },
+      set.has("installs") && { key: "installs", label: "설치수", header: headerFor("installs") },
+      set.has("actions") && { key: "actions", label: "액션/가입", header: headerFor("actions") },
+      set.has("revenue_d7") && { key: "revenue", label: "매출(D7)", header: headerFor("revenue_d7") },
+      set.has("pu_d7") && { key: "purchases", label: "결제건수(D7)", header: headerFor("pu_d7") },
+    ].filter(Boolean);
+  }, [csvData]);
 
   // 유저 지표 뷰 설정(표시/순서) 적용 — 후보(cards)에 hidden/order 반영(§Phase B).
   // scopeCfg 미설정(기본)이면 cards 원순서 그대로(byte-동일).
@@ -204,7 +249,10 @@ export default function ScorecardTab() {
               {d}일
             </button>
           ))}
-          <button className="ab-pill" onClick={() => setCfgOpen(true)} style={{ marginLeft: "auto" }} title="표시할 지표와 순서 편집">
+          <button className="ab-pill" onClick={() => setBuilderOpen(true)} style={{ marginLeft: "auto" }} title="데이터 컬럼으로 나만의 지표 만들기">
+            ＋ 커스텀 지표
+          </button>
+          <button className="ab-pill" onClick={() => setCfgOpen(true)} title="표시할 지표와 순서 편집">
             ⚙ 지표 편집
           </button>
         </div>
@@ -218,11 +266,11 @@ export default function ScorecardTab() {
             const isActive = selectedMetric === c.k;
 
             return (
-              <div 
-                key={c.k} 
-                className="ab-stat" 
-                onClick={() => setSelectedMetric(isActive ? null : c.k)} 
-                style={{ cursor: "pointer", ...(isActive ? { outline: "2px solid #adc6ff", borderRadius: "6px" } : {}) }}
+              <div
+                key={c.k}
+                className="ab-stat"
+                onClick={c.chartable ? () => setSelectedMetric(isActive ? null : c.k) : undefined}
+                style={{ cursor: c.chartable ? "pointer" : "default", ...(isActive ? { outline: "2px solid #adc6ff", borderRadius: "6px" } : {}) }}
               >
                 <div className="ab-stat-label">{c.label}</div>
                 <div className="ab-stat-value tnum">{c.fmt(c.val)}</div>
@@ -250,6 +298,15 @@ export default function ScorecardTab() {
           else setViewConfig(SCORECARD_SCOPE, next);
           setCfgOpen(false);
         }}
+      />
+      <CustomMetricBuilder
+        open={builderOpen}
+        onClose={() => setBuilderOpen(false)}
+        fields={builderFields}
+        agg={recent}
+        existing={customMetrics || []}
+        onCreate={(def) => addCustomMetric(KPI_METRIC_SCOPE, def)}
+        onDelete={(id) => removeCustomMetric(KPI_METRIC_SCOPE, id)}
       />
 
       {selectedMetric && (
