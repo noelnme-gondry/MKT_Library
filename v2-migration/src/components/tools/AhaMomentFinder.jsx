@@ -619,6 +619,15 @@ export default function AhaMomentFinder() {
 
   return (
     <div className="tab-pane active" id="tab-aha">
+      {isDemo && (
+        <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+          <div>
+            <strong>🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다</strong>
+            <p style={{ margin: "0.25rem 0 0" }}>실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.</p>
+          </div>
+          <button className="ab-button" onClick={resetCsv}>📁 내 CSV 업로드하기</button>
+        </div>
+      )}
       <section className="block" id="s-aha-map">
         <h2 className="section-title"><span className="ix">§0</span>컬럼 역할 매핑</h2>
         <div className="csv-loaded-bar">
@@ -629,7 +638,7 @@ export default function AhaMomentFinder() {
               {csvData.raw.length.toLocaleString()}행 · {headers.length}컬럼 · 후보 액션 {actionCount}개{isDemo ? " · 실제 데이터 아님" : ""}
             </span>
           </div>
-          <button className="ab-pill csv-change-btn" onClick={resetCsv}>{isDemo ? "📁 내 CSV 업로드" : "⟳ CSV 변경"}</button>
+          {!isDemo && <button className="ab-pill csv-change-btn" onClick={resetCsv}>⟳ CSV 변경</button>}
         </div>
         <details open={!analyzed} style={{ marginTop: "10px" }}>
           <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: analyzed ? "var(--text-muted)" : "#adc6ff" }}>🗂 컬럼 역할 매핑 {analyzed ? "(분석 완료 — 펼쳐서 수정)" : "(자동 추정 — 틀리면 수정)"}</summary>

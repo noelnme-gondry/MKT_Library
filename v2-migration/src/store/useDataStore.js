@@ -121,6 +121,14 @@ export const IA = [
       { id: "5-20", title: "핵심 가치 발굴 (Aha-moment)" },
     ],
   },
+  {
+    id: "08",
+    title: "데이터 가이드",
+    desc: "CSV 준비부터 컬럼 매핑까지 — 모든 분석 도구가 공통으로 쓰는 업로드 구조 참고 문서.",
+    items: [
+      { id: "8-1", title: "CSV 데이터 준비 & 컬럼 매핑 가이드" },
+    ],
+  },
 ];
 
 // ── 사이드바·브레드크럼 표시 번호 SSOT (§12.6: 내부 route id는 절대 불변,
@@ -130,7 +138,7 @@ export const IA = [
 // p4.groups에 존재하지 않는 "10" 그룹을 참조하던 죽은 참조·왜곡 모두 제거.
 export const SECTIONS = [
   { id: "guide", label: "가이드", groups: ["01", "02", "03", "04"] },
-  { id: "analysis", label: "분석", groups: ["05", "06", "07"] },
+  { id: "analysis", label: "분석", groups: ["05", "06", "07", "08"] },
 ];
 
 export function findGroupSection(groupId) {

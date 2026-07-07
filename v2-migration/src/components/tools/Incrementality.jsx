@@ -103,6 +103,15 @@ export default function Incrementality() {
         <UploadPanel method={method} fileRef={fileRef} handleFile={handleFile} loadDemo={loadDemo} />
       ) : (
         <div>
+          {isDemo && (
+            <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+              <div>
+                <strong>🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다</strong>
+                <p style={{ margin: "0.25rem 0 0" }}>실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.</p>
+              </div>
+              <button className="ab-button" onClick={resetCsv}>📁 내 CSV 업로드하기</button>
+            </div>
+          )}
           <div className="file-state" style={{ marginBottom: "12px" }}>
             <div className="meta-text">
               <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
@@ -113,7 +122,7 @@ export default function Incrementality() {
               <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>통화</span>
               <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setDisplayCurrency("KRW")}>₩</button>
               <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setDisplayCurrency("USD")}>$</button>
-              <button className="ab-pill csv-change-btn" onClick={resetCsv}>{isDemo ? "📁 내 CSV 업로드" : "⟳ CSV 변경"}</button>
+              {!isDemo && <button className="ab-pill csv-change-btn" onClick={resetCsv}>⟳ CSV 변경</button>}
             </div>
           </div>
           {method === "suppression"

@@ -275,6 +275,15 @@ export default function CsvUploader({ toolId }) {
 
   return (
     <div>
+      {isDemo && (
+        <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+          <div>
+            <strong>🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다</strong>
+            <p style={{ margin: "0.25rem 0 0" }}>실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.</p>
+          </div>
+          <button className="ab-button" onClick={handleReset}>📁 내 CSV 업로드하기</button>
+        </div>
+      )}
       <CsvGuide toolId={toolId} />
       <div className="file-state">
         <div className="meta-text">
@@ -288,20 +297,12 @@ export default function CsvUploader({ toolId }) {
             {csvData.raw.length.toLocaleString()}행 · {csvData.headers.length}컬럼{isDemo ? " · 실제 데이터 아님" : ""}
           </span>
         </div>
-        <button className="ab-pill csv-change-btn" title="이 도구의 CSV를 제거하고 다른 파일 업로드" onClick={handleReset}>
-          {isDemo ? "📁 내 CSV 업로드" : "⟳ CSV 변경"}
-        </button>
+        {!isDemo && (
+          <button className="ab-pill csv-change-btn" title="이 도구의 CSV를 제거하고 다른 파일 업로드" onClick={handleReset}>
+            ⟳ CSV 변경
+          </button>
+        )}
       </div>
-      {isDemo && (
-        <div className="callout" style={{ margin: "8px 0" }}>
-          <div className="ico">i</div>
-          <div className="body">
-            <p style={{ margin: 0, fontSize: "12px" }}>
-              지금 보이는 결과는 <strong>합성 샘플 데이터</strong> 기준입니다(실제 데이터 아님, 서버 전송 없음). 내 데이터를 분석하려면 위 &quot;📁 내 CSV 업로드&quot;로 실제 CSV를 올리세요.
-            </p>
-          </div>
-        </div>
-      )}
 
       {missing.length > 0 ? (
         <div className="required-banner">
