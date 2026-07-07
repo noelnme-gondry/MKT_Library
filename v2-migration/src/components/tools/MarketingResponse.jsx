@@ -36,6 +36,8 @@ import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import { buildDemoCsv } from "@/utils/demoData";
 import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, mmmPlatformTags } from "@/components/tools/MmmColumnMapper";
+import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
+import { CURRENCY_SYMBOLS } from "@/utils/format";
 
 /* ============================================================================
  * MarketingResponse (5-18) — MOCK → REAL 와이어링
@@ -725,6 +727,8 @@ export default function MarketingResponse() {
   const [cannibChannel, setCannibChannel] = useState(null);
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
+  const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const currencySym = CURRENCY_SYMBOLS[displayCurrency] || "$";
   const hasData = csvData?.raw?.length > 0;
   const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
 
@@ -1053,8 +1057,8 @@ export default function MarketingResponse() {
           });
           const satOpts = chartBase();
           satOpts.plugins.legend = { display: false }; // 커스텀 HTML 범례(채널 토글) 사용
-          satOpts.plugins.tooltip = { ...satOpts.plugins.tooltip, callbacks: { label: (c) => `${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString()}명 @ $${Math.round(c.parsed.x / 1000)}k` } };
-          satOpts.scales.x = { type: "linear", ticks: { color: mutedColS, font: { size: 10 }, callback: (v) => "$" + Math.round(v / 1000) + "k" }, grid: { display: false } };
+          satOpts.plugins.tooltip = { ...satOpts.plugins.tooltip, callbacks: { label: (c) => `${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString()}명 @ ${currencySym}${Math.round(c.parsed.x / 1000)}k` } };
+          satOpts.scales.x = { type: "linear", ticks: { color: mutedColS, font: { size: 10 }, callback: (v) => currencySym + Math.round(v / 1000) + "k" }, grid: { display: false } };
           satOpts.scales.y = { ticks: { color: mutedColS, font: { size: 10 }, callback: (v) => Math.round(v).toLocaleString() }, grid: { color: CHART_THEME.grid } };
           inst.push(
             new Chart(satRef.current.getContext("2d"), {
@@ -1198,7 +1202,7 @@ export default function MarketingResponse() {
       }
     }
     return () => inst.forEach((c) => c && c.destroy());
-  }, [stage, mmm, decomp, spikeNotes, decompGrouped, satHidden]);
+  }, [stage, mmm, decomp, spikeNotes, decompGrouped, satHidden, currencySym]);
 
   // Stage ③ forecast chart
   useEffect(() => {
@@ -1520,6 +1524,7 @@ export default function MarketingResponse() {
         <>
           {demoBanner}
           {controlBar()}
+          <BasisCurrencyToggleBar />
 
           {/* ③ LAB(회귀·미래예측)은 아래 §7 forecast 블록에서 렌더(mmmForecast 기반, stage==="lab"). */}
 
@@ -1942,7 +1947,7 @@ export default function MarketingResponse() {
                         <span style={{ fontSize: "15px", fontWeight: 700, color: i === 0 ? "#7aa2f7" : MUTED, minWidth: "20px" }}>{i + 1}</span>
                         <span style={{ flex: 1, fontSize: "14px", fontWeight: i === 0 ? 700 : 400 }}>{s.label}</span>
                         <span style={{ fontSize: "14px", fontWeight: 600, color: "#22c55e" }}>+{s.curMarg.toFixed(0)}명</span>
-                        <span style={{ fontSize: "12px", color: MUTED }}>현 ${((s.recentMean || 0) / 1000).toFixed(1)}k/주</span>
+                        <span style={{ fontSize: "12px", color: MUTED }}>현 {currencySym}{((s.recentMean || 0) / 1000).toFixed(1)}k/주</span>
                       </div>
                     ))}
                   </div>
@@ -2135,7 +2140,7 @@ export default function MarketingResponse() {
                     <div>
                       <div className="table-wrap">
                         <table className="data" style={{ fontSize: "11px" }}>
-                          <thead><tr><th>채널</th><th>현 지출<br />+$1k당</th><th>$10k당</th><th>$35k당</th><th>$60k당</th></tr></thead>
+                          <thead><tr><th>채널</th><th>현 지출<br />+{currencySym}1k당</th><th>{currencySym}10k당</th><th>{currencySym}35k당</th><th>{currencySym}60k당</th></tr></thead>
                           <tbody>
                             {(() => {
                               const sbc = mmm.run.saturationByChannel || {};
@@ -2148,7 +2153,7 @@ export default function MarketingResponse() {
                                 return (
                                   <tr key={k} style={neg ? { opacity: 0.55 } : undefined}>
                                     <td><strong>{s.label}</strong>{neg ? <span style={{ fontSize: "9px", color: "#fbbf24" }}> 음수=노이즈</span> : ""}</td>
-                                    <td className="tnum" style={{ color: "#adc6ff" }}>{curMarg == null ? "—" : cell(curMarg)}{curMarg != null && <span style={{ fontSize: "9px", color: MUTED }}><br />@${(s.recentMean / 1000).toFixed(1)}k</span>}</td>
+                                    <td className="tnum" style={{ color: "#adc6ff" }}>{curMarg == null ? "—" : cell(curMarg)}{curMarg != null && <span style={{ fontSize: "9px", color: MUTED }}><br />@{currencySym}{(s.recentMean / 1000).toFixed(1)}k</span>}</td>
                                     <td className="tnum">{cell(m["$10k"])}</td>
                                     <td className="tnum">{cell(m["$35k"])}</td>
                                     <td className="tnum">{cell(m["$60k"])}</td>
