@@ -8,31 +8,24 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 // CustomMetricBuilder — 커스텀 지표 조립 모달 (Phase C, 오타 없는 안전 빌더)
 // ─────────────────────────────────────────────────────────────────────────────
-// 유저는 "필드 A ∘ 필드 B"를 드롭다운으로만 조립(자유 텍스트 없음 → 오타·eval 원천 차단).
-// 피연산자 dropdown = 실제 데이터에 매핑된 컬럼만(fields). 라벨 옆에 실제 CSV 헤더 표기.
-// body portal(§7/PR#170). 생성/삭제는 이 모달에서, 표시/순서는 MetricConfigPanel에서.
+// 유저는 항(term)을 드롭다운/숫자입력으로만 조립(자유 텍스트 없음 → 오타·eval 차단).
+// N항 좌→우 순차 계산: [필드/숫자] ∘ [필드/숫자] ∘ … (예: 비용 ÷ 노출수 × 1000).
+// 피연산자 컬럼 dropdown = 실제 매핑된 것만. body portal(§7/PR#170).
 //
-// props:
-//  open, onClose
-//  fields    [{ key, label, header }] — 조립 가능한 필드(실제 매핑된 것만)
-//  agg       집계객체 — 라이브 미리보기 계산용
-//  existing  [{ id, name, op, a, b }] — 이미 만든 커스텀 지표(삭제용 목록)
-//  onCreate(def)   { name, op, a, b } 생성
-//  onDelete(id)    삭제
+// props: open, onClose, fields[{key,label,header}], agg, existing[], onCreate(def), onDelete(id)
 export default function CustomMetricBuilder({
   open, onClose, fields = [], agg = {}, existing = [], onCreate, onDelete,
 }) {
+  const firstFieldKey = fields[0] ? fields[0].key : "";
   const [name, setName] = useState("");
-  const [op, setOp] = useState("div");
-  const [a, setA] = useState("");
-  const [b, setB] = useState("");
+  // terms[0]=첫 피연산자(op 없음), terms[i>0]={op, type, value}.
+  const [terms, setTerms] = useState([{ type: "field", value: firstFieldKey }]);
 
-  // 열릴 때 폼 초기화(필드 있으면 기본 피연산자 세팅으로 바로 조립 가능하게).
   useEffect(() => {
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setName(""); setOp("div");
-    setA(fields[0] ? fields[0].key : ""); setB(fields[1] ? fields[1].key : (fields[0] ? fields[0].key : ""));
+    setName("");
+    setTerms([{ type: "field", value: fields[0] ? fields[0].key : "" }]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -46,34 +39,51 @@ export default function CustomMetricBuilder({
   if (!open || typeof document === "undefined") return null;
 
   const labelOf = (k) => (fields.find((f) => f.key === k)?.label) || k;
-  const draft = { name: name.trim() || "새 지표", op, a, b };
-  const valid = isValidCustomMetricDef({ name, op, a, b });
-  const previewVal = valid ? customMetricCompute(draft)(agg) : null;
+  const def = { name: name.trim() || "새 지표", terms };
+  const valid = isValidCustomMetricDef({ name, terms });
+  const previewVal = valid ? customMetricCompute(def)(agg) : null;
   const previewStr = previewVal == null
     ? "계산 불가 (분모 0 또는 데이터 없음)"
     : Number(previewVal).toLocaleString("ko-KR", { maximumFractionDigits: 4 });
 
+  const setTermAt = (i, next) => setTerms((ts) => ts.map((t, idx) => (idx === i ? next : t)));
+  const addTerm = () => setTerms((ts) => [...ts, { op: "div", type: "field", value: fields[0] ? fields[0].key : "" }]);
+  const removeTerm = (i) => setTerms((ts) => ts.filter((_, idx) => idx !== i));
+
   const create = () => {
     if (!valid) return;
-    onCreate?.({ name: name.trim(), op, a, b });
+    onCreate?.({ name: name.trim(), terms });
     setName("");
   };
 
-  const fieldSelect = (val, setter, label) => (
-    <label style={{ display: "flex", flexDirection: "column", gap: "3px", flex: 1, minWidth: 0 }}>
-      <span className="muted" style={{ fontSize: "10.5px" }}>{label}</span>
-      <select
-        value={val}
-        onChange={(e) => setter(e.target.value)}
-        style={{ padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", color: "var(--text-primary)", fontSize: "13px" }}
-      >
-        {fields.length === 0 && <option value="">사용 가능한 컬럼 없음</option>}
-        {fields.map((f) => (
-          <option key={f.key} value={f.key}>{f.label}{f.header ? ` (${f.header})` : ""}</option>
-        ))}
-      </select>
-    </label>
-  );
+  const sel = { padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", color: "var(--text-primary)", fontSize: "13px" };
+
+  // 항 하나의 피연산자 편집기 — 컬럼(드롭다운) 또는 숫자(입력) 토글.
+  const operandEditor = (t, i) => {
+    const isConst = t.type === "const";
+    const onType = (type) => setTermAt(i, { ...t, type, value: type === "const" ? "" : (fields[0] ? fields[0].key : "") });
+    return (
+      <>
+        <select value={t.type} onChange={(e) => onType(e.target.value)} style={{ ...sel, width: "72px", flex: "none" }} aria-label="종류">
+          <option value="field">컬럼</option>
+          <option value="const">숫자</option>
+        </select>
+        {isConst ? (
+          <input
+            type="text" inputMode="decimal" value={t.value}
+            onChange={(e) => setTermAt(i, { ...t, value: e.target.value })}
+            placeholder="숫자 (예: 1000)"
+            style={{ ...sel, flex: 1, minWidth: 0 }} aria-label="숫자 값"
+          />
+        ) : (
+          <select value={t.value} onChange={(e) => setTermAt(i, { ...t, value: e.target.value })} style={{ ...sel, flex: 1, minWidth: 0 }} aria-label="컬럼">
+            {fields.length === 0 && <option value="">컬럼 없음</option>}
+            {fields.map((f) => <option key={f.key} value={f.key}>{f.label}{f.header ? ` (${f.header})` : ""}</option>)}
+          </select>
+        )}
+      </>
+    );
+  };
 
   const modal = (
     <div
@@ -83,46 +93,55 @@ export default function CustomMetricBuilder({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ width: "min(480px, 94vw)", maxHeight: "85vh", overflow: "auto", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", padding: "18px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
+        style={{ width: "min(520px, 94vw)", maxHeight: "88vh", overflow: "auto", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", padding: "18px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
           <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>커스텀 지표 만들기</h3>
           <button className="ab-pill" onClick={onClose} aria-label="닫기" style={{ padding: "2px 8px" }}>✕</button>
         </div>
         <p className="muted" style={{ fontSize: "11px", margin: "0 0 14px" }}>
-          데이터에 있는 컬럼을 골라 조립합니다(직접 입력 없음 → 오타 걱정 X). 예: 매출 ÷ 비용 = ROAS.
+          컬럼·숫자를 골라 항을 이어 붙입니다(직접 입력 없음 → 오타 X). 왼쪽부터 순서대로 계산돼요(예: 비용 ÷ 노출수 × 1000 = eCPM).
         </p>
 
         {fields.length < 1 ? (
           <p className="muted" style={{ fontSize: "12px" }}>조립할 수 있는 숫자 컬럼이 데이터에 없습니다. CSV를 먼저 업로드·매핑하세요.</p>
         ) : (
           <>
-            <label style={{ display: "flex", flexDirection: "column", gap: "3px", marginBottom: "10px" }}>
+            <label style={{ display: "flex", flexDirection: "column", gap: "3px", marginBottom: "12px" }}>
               <span className="muted" style={{ fontSize: "10.5px" }}>지표 이름</span>
               <input
                 type="text" value={name} onChange={(e) => setName(e.target.value)}
-                placeholder="예: 순이익, 효율지수…"
-                style={{ padding: "7px 9px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", color: "var(--text-primary)", fontSize: "13px" }}
+                placeholder="예: 순이익, eCPM, 효율지수…"
+                style={{ ...sel, padding: "7px 9px" }}
               />
             </label>
 
-            <div style={{ display: "flex", gap: "8px", alignItems: "flex-end", marginBottom: "10px" }}>
-              {fieldSelect(a, setA, "필드 A")}
-              <label style={{ display: "flex", flexDirection: "column", gap: "3px", width: "110px" }}>
-                <span className="muted" style={{ fontSize: "10.5px" }}>연산</span>
-                <select
-                  value={op} onChange={(e) => setOp(e.target.value)}
-                  style={{ padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", color: "var(--text-primary)", fontSize: "13px" }}
-                >
-                  {CUSTOM_OPS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-                </select>
-              </label>
-              {fieldSelect(b, setB, "필드 B")}
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "10px" }}>
+              {/* 첫 항 (연산자 없음) */}
+              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                <span className="muted" style={{ fontSize: "11px", width: "34px", flex: "none" }}>시작</span>
+                {operandEditor(terms[0], 0)}
+                <span style={{ width: "26px", flex: "none" }} />
+              </div>
+              {/* 이후 항 (연산자 + 피연산자 + 삭제) */}
+              {terms.slice(1).map((t, idx) => {
+                const i = idx + 1;
+                return (
+                  <div key={i} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                    <select value={t.op} onChange={(e) => setTermAt(i, { ...t, op: e.target.value })} style={{ ...sel, width: "34px", flex: "none", padding: "6px 2px", textAlign: "center" }} aria-label="연산">
+                      {CUSTOM_OPS.map((o) => <option key={o.id} value={o.id}>{o.sym}</option>)}
+                    </select>
+                    {operandEditor(t, i)}
+                    <button className="ab-pill" onClick={() => removeTerm(i)} title="이 항 삭제" style={{ padding: "2px 7px", width: "26px", flex: "none" }}>✕</button>
+                  </div>
+                );
+              })}
+              <button className="ab-pill" onClick={addTerm} style={{ alignSelf: "flex-start" }}>＋ 항 추가</button>
             </div>
 
             <div style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", marginBottom: "12px" }}>
-              <div style={{ fontSize: "12px", color: "var(--text-primary)" }}>
-                <strong>{name.trim() || "새 지표"}</strong> = {customMetricFormula(draft, labelOf)}
+              <div style={{ fontSize: "12px", color: "var(--text-primary)", wordBreak: "break-word" }}>
+                <strong>{name.trim() || "새 지표"}</strong> = {customMetricFormula(def, labelOf)}
               </div>
               <div className="muted" style={{ fontSize: "11px", marginTop: "3px" }}>
                 현재 데이터 미리보기: <span style={{ color: "var(--text-primary)" }}>{previewStr}</span>
