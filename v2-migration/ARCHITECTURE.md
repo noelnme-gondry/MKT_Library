@@ -58,6 +58,7 @@ v2-migration/
 | AbTestHoldout 증분 | `incrMath.js`(홀드아웃 증분)·abTestMath.js | readout/incr 추출 |
 | (공통) | `chartUtils.js`·`testFixtures.js`(seededNoise)·`format.js`(fmtCurrency/Pct/Num·§7 콤마)·`toolGuide.js`(TOOL_GUIDE) | 차트·픽스처·표시포맷 SSOT·업로드 설명 |
 | (필드 정의) | `csvConstants.js` (STANDARD_FIELDS·TOOL_REQUIRED/OPTIONAL_FIELDS) | 매핑 스키마 |
+| (지표 정의) | `metrics/metricRegistry.js` (BASE_FIELDS·DERIVED_METRICS·getMetricRegistry·computeMetrics) | ★ 파생지표 SSOT(ctr·cpc·roas… 서술자). `calculateKPIs`가 소비. 커스텀 지표 병합 지점. 스펙: `../docs/custom-metrics-data-config-spec.md` |
 
 ## 4. 상태 & 데이터 흐름 (SSOT)
 - **전역 상태 = `src/store/useDataStore.js` (Zustand)**: `currentRouteId`(URL 미러) · `dashboardFilter` · `isDarkMode` · `isCmdkOpen` · `IA`·`PHASES` · **`TOOL_GROUP`·`groupForRoute`**.
