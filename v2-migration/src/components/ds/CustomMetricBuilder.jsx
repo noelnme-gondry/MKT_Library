@@ -12,22 +12,37 @@ import {
 // N항 좌→우 순차 계산: [필드/숫자] ∘ [필드/숫자] ∘ … (예: 비용 ÷ 노출수 × 1000).
 // 피연산자 컬럼 dropdown = 실제 매핑된 것만. body portal(§7/PR#170).
 //
-// props: open, onClose, fields[{key,label,header}], agg, existing[], onCreate(def), onDelete(id)
+// props: open, onClose, fields[{key,label,header}], agg, existing[], onCreate(def), onUpdate(id,def), onDelete(id)
 export default function CustomMetricBuilder({
-  open, onClose, fields = [], agg = {}, existing = [], onCreate, onDelete,
+  open, onClose, fields = [], agg = {}, existing = [], onCreate, onUpdate, onDelete,
 }) {
   const firstFieldKey = fields[0] ? fields[0].key : "";
   const [name, setName] = useState("");
   // terms[0]=첫 피연산자(op 없음), terms[i>0]={op, type, value}.
   const [terms, setTerms] = useState([{ type: "field", value: firstFieldKey }]);
+  const [editingId, setEditingId] = useState(null); // null=신규, 아니면 수정 중
+
+  const resetForm = () => {
+    setEditingId(null);
+    setName("");
+    setTerms([{ type: "field", value: fields[0] ? fields[0].key : "" }]);
+  };
 
   useEffect(() => {
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEditingId(null);
     setName("");
     setTerms([{ type: "field", value: fields[0] ? fields[0].key : "" }]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // 기존 지표를 폼으로 로드해 수정 시작(같은 화면에서 편집).
+  const startEdit = (m) => {
+    setEditingId(m.id);
+    setName(m.name || "");
+    setTerms((m.terms && m.terms.length) ? m.terms.map((t) => ({ ...t })) : [{ type: "field", value: fields[0] ? fields[0].key : "" }]);
+  };
 
   useEffect(() => {
     if (!open) return undefined;
@@ -50,10 +65,12 @@ export default function CustomMetricBuilder({
   const addTerm = () => setTerms((ts) => [...ts, { op: "div", type: "field", value: fields[0] ? fields[0].key : "" }]);
   const removeTerm = (i) => setTerms((ts) => ts.filter((_, idx) => idx !== i));
 
-  const create = () => {
+  const submit = () => {
     if (!valid) return;
-    onCreate?.({ name: name.trim(), terms });
-    setName("");
+    const def = { name: name.trim(), terms };
+    if (editingId) onUpdate?.(editingId, def);
+    else onCreate?.(def);
+    resetForm();
   };
 
   const sel = { padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", color: "var(--text-primary)", fontSize: "13px" };
@@ -148,10 +165,12 @@ export default function CustomMetricBuilder({
               </div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-              <button className="ab-pill" onClick={onClose}>닫기</button>
-              <button className={`ab-pill ${valid ? "active" : ""}`} onClick={create} disabled={!valid} style={{ fontWeight: 700, opacity: valid ? 1 : 0.5 }}>
-                + 지표 추가
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "8px" }}>
+              {editingId && <span className="muted" style={{ fontSize: "11px", marginRight: "auto" }}>수정 중…</span>}
+              {editingId && <button className="ab-pill" onClick={resetForm}>취소</button>}
+              {!editingId && <button className="ab-pill" onClick={onClose}>닫기</button>}
+              <button className={`ab-pill ${valid ? "active" : ""}`} onClick={submit} disabled={!valid} style={{ fontWeight: 700, opacity: valid ? 1 : 0.5 }}>
+                {editingId ? "수정 저장" : "+ 지표 추가"}
               </button>
             </div>
           </>
@@ -162,11 +181,12 @@ export default function CustomMetricBuilder({
             <div className="muted" style={{ fontSize: "10.5px", marginBottom: "6px" }}>내가 만든 지표 ({existing.length})</div>
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
               {existing.map((m) => (
-                <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border)" }}>
+                <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 8px", borderRadius: "6px", border: `1px solid ${editingId === m.id ? "var(--primary, #4c8dff)" : "var(--border)"}` }}>
                   <span style={{ fontSize: "12.5px", color: "var(--text-primary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     <strong>{m.name}</strong>
                     <span className="muted" style={{ marginLeft: "6px", fontSize: "11px" }}>{customMetricFormula(m, labelOf)}</span>
                   </span>
+                  <button className="ab-pill" onClick={() => startEdit(m)} title="수정" style={{ padding: "2px 8px" }}>✏️</button>
                   <button className="ab-pill" onClick={() => onDelete?.(m.id)} title="삭제" style={{ padding: "2px 8px" }}>🗑</button>
                 </div>
               ))}

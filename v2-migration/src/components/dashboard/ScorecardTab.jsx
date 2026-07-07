@@ -6,7 +6,7 @@ import { getMonFilteredRows, aggregateByKey, fmtCurrencyPrecise, effectiveDenomB
 import { chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
-import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
+import InlineCardEditor from "@/components/ds/InlineCardEditor";
 import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
 import BudgetHealthCard from "./BudgetHealthCard";
 
@@ -27,9 +27,10 @@ export default function ScorecardTab() {
   const customMetrics = useAppStore((state) => state.customMetrics[KPI_METRIC_SCOPE]);
   const addCustomMetric = useAppStore((state) => state.addCustomMetric);
   const removeCustomMetric = useAppStore((state) => state.removeCustomMetric);
+  const updateCustomMetric = useAppStore((state) => state.updateCustomMetric);
   const [windowDays, setWindowDays] = useState(7);
   const [selectedMetric, setSelectedMetric] = useState(null);
-  const [cfgOpen, setCfgOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
 
   const chartRef = useRef(null);
@@ -125,6 +126,32 @@ export default function ScorecardTab() {
     () => applyMetricView(cards, scopeCfg, (c) => c.k),
     [cards, scopeCfg],
   );
+
+  // 인라인 편집기용 카드 아이템(node=카드 엘리먼트). 편집 중엔 InlineCardEditor가
+  // 카드 클릭을 차단하므로 여기 onClick은 평시에만 발화(차트 상세).
+  const cardItems = cards.map((c) => {
+    const d = c.prev != null && c.prev !== 0 && c.val != null ? (c.val - c.prev) / c.prev : null;
+    const good = c.better === "none" || d == null ? null : (c.better === "high" ? d > 0 : d < 0);
+    const arrow = d == null ? "" : (d > 0 ? "▲" : (d < 0 ? "▼" : "—"));
+    const cls = good == null ? "" : (good ? "pos" : "neg");
+    const isActive = selectedMetric === c.k;
+    return {
+      key: c.k, label: c.label,
+      node: (
+        <div
+          className="ab-stat"
+          onClick={c.chartable ? () => setSelectedMetric(isActive ? null : c.k) : undefined}
+          style={{ cursor: c.chartable ? "pointer" : "default", ...(isActive ? { outline: "2px solid #adc6ff", borderRadius: "6px" } : {}) }}
+        >
+          <div className="ab-stat-label">{c.label}</div>
+          <div className="ab-stat-value tnum">{c.fmt(c.val)}</div>
+          <div className={`ab-stat-hint ${cls}`}>
+            {d == null ? "직전 데이터 없음" : `${arrow} ${Math.abs(d * 100).toFixed(1)}% WoW`}
+          </div>
+        </div>
+      ),
+    };
+  });
 
   // If selected metric is no longer valid (또는 숨김 처리됨), reset it quietly
   useEffect(() => {
@@ -252,53 +279,35 @@ export default function ScorecardTab() {
           <button className="ab-pill" onClick={() => setBuilderOpen(true)} style={{ marginLeft: "auto" }} title="데이터 컬럼으로 나만의 지표 만들기">
             ＋ 커스텀 지표
           </button>
-          <button className="ab-pill" onClick={() => setCfgOpen(true)} title="표시할 지표와 순서 편집">
-            ⚙ 지표 편집
-          </button>
+          {editMode ? (
+            <>
+              <button className="ab-pill" onClick={() => resetViewConfig(SCORECARD_SCOPE)} title="전체 표시·기본 순서·기본 크기">초기화</button>
+              <button className="ab-pill active" onClick={() => setEditMode(false)} style={{ fontWeight: 700 }}>완료</button>
+            </>
+          ) : (
+            <button className="ab-pill" onClick={() => setEditMode(true)} title="카드를 그 자리에서 드래그·표시/숨김·크기 편집">
+              ✏️ 편집
+            </button>
+          )}
         </div>
+        {editMode && (
+          <p className="muted" style={{ fontSize: "11px", margin: "8px 0 0" }}>⠿ 드래그로 이동 · 👁 표시/숨김 · ⤢ 크기(2칸). 변경은 자동 저장됩니다.</p>
+        )}
 
-        <div className="ab-stat-row" style={{ marginTop: "10px" }}>
-          {orderedCards.map(c => {
-            const d = c.prev != null && c.prev !== 0 && c.val != null ? (c.val - c.prev) / c.prev : null;
-            const good = c.better === "none" || d == null ? null : (c.better === "high" ? d > 0 : d < 0);
-            const arrow = d == null ? "" : (d > 0 ? "▲" : (d < 0 ? "▼" : "—"));
-            const cls = good == null ? "" : (good ? "pos" : "neg");
-            const isActive = selectedMetric === c.k;
-
-            return (
-              <div
-                key={c.k}
-                className="ab-stat"
-                onClick={c.chartable ? () => setSelectedMetric(isActive ? null : c.k) : undefined}
-                style={{ cursor: c.chartable ? "pointer" : "default", ...(isActive ? { outline: "2px solid #adc6ff", borderRadius: "6px" } : {}) }}
-              >
-                <div className="ab-stat-label">{c.label}</div>
-                <div className="ab-stat-value tnum">{c.fmt(c.val)}</div>
-                <div className={`ab-stat-hint ${cls}`}>
-                  {d == null ? "직전 데이터 없음" : `${arrow} ${Math.abs(d * 100).toFixed(1)}% WoW`}
-                </div>
-              </div>
-            );
-          })}
+        <div style={{ marginTop: "10px" }}>
+          <InlineCardEditor
+            items={cardItems}
+            config={scopeCfg}
+            editMode={editMode}
+            onPatch={(p) => setViewConfig(SCORECARD_SCOPE, p)}
+            gridClassName="ab-stat-row"
+          />
         </div>
         <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>
           WoW = 최근 {windowDays}일 vs 직전 {windowDays}일. 색은 지표 성격 반영(CPI/CPA↓·설치/ROAS↑ = 초록). 비용은 중립(규모). 카드 클릭 시 일별 상세.
         </p>
       </section>
 
-      <MetricConfigPanel
-        open={cfgOpen}
-        onClose={() => setCfgOpen(false)}
-        title="핵심 KPI — 지표 편집"
-        items={cards.map((c) => ({ key: c.k, label: c.label }))}
-        config={scopeCfg}
-        onSave={(next) => {
-          // 기본 상태(모두 표시·기본 순서)면 scope 키 제거로 정리, 아니면 저장.
-          if (!next.hidden.length && !next.order.length) resetViewConfig(SCORECARD_SCOPE);
-          else setViewConfig(SCORECARD_SCOPE, next);
-          setCfgOpen(false);
-        }}
-      />
       <CustomMetricBuilder
         open={builderOpen}
         onClose={() => setBuilderOpen(false)}
@@ -306,6 +315,7 @@ export default function ScorecardTab() {
         agg={recent}
         existing={customMetrics || []}
         onCreate={(def) => addCustomMetric(KPI_METRIC_SCOPE, def)}
+        onUpdate={(id, def) => updateCustomMetric(KPI_METRIC_SCOPE, id, def)}
         onDelete={(id) => removeCustomMetric(KPI_METRIC_SCOPE, id)}
       />
 

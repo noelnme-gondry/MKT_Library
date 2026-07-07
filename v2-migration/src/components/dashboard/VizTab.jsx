@@ -9,6 +9,7 @@ import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
 import { CHART_TYPES } from "@/utils/metrics/chartBuilder";
 import { buildCustomChartConfig, buildChartFieldOptions } from "@/utils/customChartConfig";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
+import InlineCardEditor from "@/components/ds/InlineCardEditor";
 import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
 import CustomChartBuilder from "@/components/ds/CustomChartBuilder";
 import { copyToClipboard } from "@/utils/toast";
@@ -72,10 +73,11 @@ export default function VizTab() {
   const customMetrics = useAppStore((state) => state.customMetrics[VIZ_KPI_SCOPE]);
   const addCustomMetric = useAppStore((state) => state.addCustomMetric);
   const removeCustomMetric = useAppStore((state) => state.removeCustomMetric);
+  const updateCustomMetric = useAppStore((state) => state.updateCustomMetric);
   const customCharts = useAppStore((state) => state.customCharts[VIZ_CHART_SCOPE]);
   const addCustomChart = useAppStore((state) => state.addCustomChart);
   const removeCustomChart = useAppStore((state) => state.removeCustomChart);
-  const [kpiCfgOpen, setKpiCfgOpen] = useState(false);
+  const [kpiEditMode, setKpiEditMode] = useState(false);
   const [chartCfgOpen, setChartCfgOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [chartBuilderOpen, setChartBuilderOpen] = useState(false);
@@ -488,8 +490,7 @@ export default function VizTab() {
     ) };
   });
 
-  const allKpiCards = [...kpiCards, ...presetCards, ...customCards];
-  const orderedKpiCards = applyMetricView(allKpiCards, kpiCfg, (c) => c.k);
+  const allKpiCards = [...kpiCards, ...presetCards, ...customCards].map((c) => ({ key: c.k, label: c.label, node: c.node }));
 
   const saveScope = (scope, next, setOpen) => {
     if (!next.hidden.length && !next.order.length) resetViewConfig(scope);
@@ -527,15 +528,29 @@ export default function VizTab() {
           <h2 className="section-title"><span className="ix">§2</span>KPI 요약</h2>
           <div style={{ display: "flex", gap: "6px" }}>
             <button className="ab-pill" onClick={() => setBuilderOpen(true)} title="데이터 컬럼으로 나만의 지표 만들기">＋ 커스텀 지표</button>
-            <button className="ab-pill" onClick={() => setKpiCfgOpen(true)} title="표시할 KPI와 순서 편집">⚙ 지표 편집</button>
+            {kpiEditMode ? (
+              <>
+                <button className="ab-pill" onClick={() => resetViewConfig(VIZ_KPI_SCOPE)} title="전체 표시·기본 순서·기본 크기">초기화</button>
+                <button className="ab-pill active" onClick={() => setKpiEditMode(false)} style={{ fontWeight: 700 }}>완료</button>
+              </>
+            ) : (
+              <button className="ab-pill" onClick={() => setKpiEditMode(true)} title="카드를 그 자리에서 드래그·표시/숨김·크기 편집">✏️ 편집</button>
+            )}
           </div>
         </div>
-        {orderedKpiCards.length === 0 ? (
-          <p className="muted" style={{ fontSize: "12px" }}>표시할 KPI가 없습니다. ⚙ 지표 편집에서 다시 켜세요.</p>
+        {kpiEditMode && (
+          <p className="muted" style={{ fontSize: "11px", margin: "0 0 8px" }}>⠿ 드래그로 이동 · 👁 표시/숨김 · ⤢ 크기(2칸). 변경은 자동 저장됩니다.</p>
+        )}
+        {allKpiCards.length === 0 ? (
+          <p className="muted" style={{ fontSize: "12px" }}>표시할 KPI가 없습니다.</p>
         ) : (
-          <div className="kpi-grid">
-            {orderedKpiCards.map((c) => c.node)}
-          </div>
+          <InlineCardEditor
+            items={allKpiCards}
+            config={kpiCfg}
+            editMode={kpiEditMode}
+            onPatch={(p) => setViewConfig(VIZ_KPI_SCOPE, p)}
+            gridClassName="kpi-grid"
+          />
         )}
       </section>
 
@@ -569,14 +584,6 @@ export default function VizTab() {
         )}
       </section>
 
-      <MetricConfigPanel
-        open={kpiCfgOpen}
-        onClose={() => setKpiCfgOpen(false)}
-        title="KPI 요약 — 지표 편집"
-        items={allKpiCards.map((c) => ({ key: c.k, label: c.label }))}
-        config={kpiCfg}
-        onSave={(next) => saveScope(VIZ_KPI_SCOPE, next, setKpiCfgOpen)}
-      />
       <CustomMetricBuilder
         open={builderOpen}
         onClose={() => setBuilderOpen(false)}
@@ -584,6 +591,7 @@ export default function VizTab() {
         agg={agg}
         existing={customMetrics || []}
         onCreate={(def) => addCustomMetric(VIZ_KPI_SCOPE, def)}
+        onUpdate={(id, def) => updateCustomMetric(VIZ_KPI_SCOPE, id, def)}
         onDelete={(id) => removeCustomMetric(VIZ_KPI_SCOPE, id)}
       />
       <MetricConfigPanel

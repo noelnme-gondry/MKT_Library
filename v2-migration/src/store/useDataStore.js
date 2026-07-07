@@ -381,6 +381,11 @@ export const useAppStore = create(persist((set, get) => ({
     const list = (state.customMetrics[scopeId] || []).filter((m) => m.id !== id);
     return { customMetrics: { ...state.customMetrics, [scopeId]: list } };
   }),
+  // 기존 커스텀 지표 수정(id 유지, 정의 교체) — 빌더 "수정" 흐름.
+  updateCustomMetric: (scopeId, id, patch) => set((state) => {
+    const list = (state.customMetrics[scopeId] || []).map((m) => (m.id === id ? { ...m, ...patch, id } : m));
+    return { customMetrics: { ...state.customMetrics, [scopeId]: list } };
+  }),
 
   // ── 커스텀 차트(Phase C) — 유저가 "모양+행(차원)+값(지표)"로 만든 차트 정의 ──────
   // scope별 { [scopeId]: [{ id, name, type, dim, metric }] }. 정의(config)라 persist.
