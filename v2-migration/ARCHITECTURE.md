@@ -59,7 +59,7 @@ v2-migration/
 | (공통) | `chartUtils.js`·`testFixtures.js`(seededNoise)·`format.js`(fmtCurrency/Pct/Num·§7 콤마)·`toolGuide.js`(TOOL_GUIDE) | 차트·픽스처·표시포맷 SSOT·업로드 설명 |
 | (필드 정의) | `csvConstants.js` (STANDARD_FIELDS·TOOL_REQUIRED/OPTIONAL_FIELDS) | 매핑 스키마 |
 | (지표 정의) | `metrics/metricRegistry.js` (BASE_FIELDS·DERIVED_METRICS·getMetricRegistry·computeMetrics) | ★ 파생지표 SSOT(ctr·cpc·roas… 서술자). `calculateKPIs`가 소비. 커스텀 지표 병합 지점. 스펙: `../docs/custom-metrics-data-config-spec.md` |
-| (지표 뷰 설정) | `metrics/metricView.js` (materializeOrder·applyMetricView·moveInOrder) | 순수 리졸버 — viewConfig(hidden/order)를 후보 지표/차트에 적용. `ds/MetricConfigPanel.jsx`=편집 드로어(body portal, draft+저장 버튼). 소비 scope: `5-2:scorecard`(ScorecardTab)·`5-2:viz-kpi`·`5-2:viz-charts`(VizTab KPI카드·차트). 표면당 ⚙ 진입점 |
+| (지표 뷰 설정) | `metrics/metricView.js` (materializeOrder·applyMetricView·moveInOrder) | 순수 리졸버 — viewConfig(hidden/order)를 후보 지표/차트에 적용. `ds/MetricConfigPanel.jsx`=편집 드로어(body portal, draft+저장 버튼). 소비 scope: `5-2:scorecard`(ScorecardTab)·`5-2:viz-kpi`·`5-2:viz-charts`(VizTab KPI카드·차트)·`5-2:ltv-table`(LtvTab §2 지표 컬럼). 표면당 ⚙ 진입점(카드=지표 편집·차트=차트 편집·표=컬럼 편집) |
 
 ## 4. 상태 & 데이터 흐름 (SSOT)
 - **전역 상태 = `src/store/useDataStore.js` (Zustand)**: `currentRouteId`(URL 미러) · `dashboardFilter` · `isDarkMode` · `isCmdkOpen` · `IA`·`PHASES` · **`TOOL_GROUP`·`groupForRoute`** · **`viewConfig`**(지표 표시/순서, scope별).
