@@ -54,11 +54,10 @@ function seedWithData() {
 describe("CampaignPvm render smoke", () => {
   beforeEach(() => seedNoData());
 
-  it("mounts without throwing in the no-data state", () => {
+  it("mounts without throwing in the no-data state (auto-loads demo)", () => {
     expect(() => render(<CampaignPvm />)).not.toThrow();
-    // No-data branch shows the uploader-prep block (ToolPageShell also renders
-    // a matching TOC link with the same text, so scope to the section heading).
-    expect(screen.getByRole("heading", { name: "데이터 준비" })).toBeTruthy();
+    // No-data → CsvUploader auto-loads sample data, replacing the uploader-prep block.
+    expect(screen.queryByRole("heading", { name: "데이터 준비" })).toBeFalsy();
   });
 
   it("mounts without throwing with a valid seeded CSV", () => {

@@ -61,9 +61,10 @@ const TABS = ["viz", "scorecard", "pacing", "anomaly", "ltv", "cohort", "funnel"
 describe("Dashboard render smoke", () => {
   beforeEach(() => seedNoData());
 
-  it("no-data mounts (uploader shown)", () => {
+  it("no-data mounts and auto-loads demo (mapping grid, not dropzone)", () => {
     expect(() => render(<Dashboard />)).not.toThrow();
-    expect(document.querySelector(".csv-dropzone")).toBeTruthy();
+    expect(document.querySelector(".mapping-grid")).toBeTruthy();
+    expect(document.querySelector(".csv-dropzone")).toBeFalsy();
   });
 
   for (const tab of TABS) {

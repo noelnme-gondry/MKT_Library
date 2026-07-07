@@ -55,6 +55,13 @@ export default function Incrementality() {
     else setCsvData(buildIncrPrepostDemo(method));
   };
   const resetCsv = () => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" });
+  const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
+
+  // 첫 진입(데이터 없음) 시 샘플 데이터 자동 로드(CsvUploader와 동일 패턴, SEO·첫인상).
+  useEffect(() => {
+    if (!hasData) loadDemo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="tab-pane active" id="tab-incr">
@@ -98,15 +105,15 @@ export default function Incrementality() {
         <div>
           <div className="file-state" style={{ marginBottom: "12px" }}>
             <div className="meta-text">
-              <span className="dot" style={{ background: "#22c55e" }}></span>
-              <strong>{csvData.fileName}</strong>
-              <span className="csv-loaded-stats tnum">{csvData.raw.length.toLocaleString()}행</span>
+              <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
+              {isDemo ? <strong>샘플 데이터로 미리보기 중</strong> : <strong>{csvData.fileName}</strong>}
+              <span className="csv-loaded-stats tnum">{csvData.raw.length.toLocaleString()}행{isDemo ? " · 실제 데이터 아님" : ""}</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>통화</span>
               <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setDisplayCurrency("KRW")}>₩</button>
               <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setDisplayCurrency("USD")}>$</button>
-              <button className="ab-pill csv-change-btn" onClick={resetCsv}>⟳ CSV 변경</button>
+              <button className="ab-pill csv-change-btn" onClick={resetCsv}>{isDemo ? "📁 내 CSV 업로드" : "⟳ CSV 변경"}</button>
             </div>
           </div>
           {method === "suppression"
