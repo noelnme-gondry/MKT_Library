@@ -36,6 +36,7 @@ export const ROUTES = [
   { id: "4-1", slug: "/guide/kpi-analysis", component: "SopContent" },
   { id: "4-2", slug: "/guide/cohort-retention", component: "SopContent" },
   { id: "4-3", slug: "/guide/cannibalization-analysis", component: "SopContent" },
+  { id: "8-1", slug: "/guide/csv-data-prep", component: "SopContent" },
   // ── Legacy id aliases (redirect-only; share 5-4's slug; excluded from sitemap) ──
   { id: "5-7", slug: "/tools/experiment-analysis", component: "AbTestHoldout", legacy: true },
   { id: "5-15", slug: "/tools/experiment-analysis", component: "AbTestHoldout", legacy: true },

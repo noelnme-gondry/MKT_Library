@@ -2805,7 +2805,109 @@ function findMeta(id) {
               });
             }
 
+/* ---------- 8-1. CSV 데이터 준비 & 컬럼 매핑 가이드 ---------- */
+function page_8_1() {
+  const meta = findMeta("8-1");
+  return pageShell(meta, {
+    deck: "모든 분석 도구가 공통으로 쓰는 CSV 업로드·자동 매핑 구조를 정리한 참고 문서. 처음 업로드할 때, 혹은 매핑이 이상하게 잡힐 때 이 문서부터 확인하세요.",
+    chips: `
+      <span class="chip"><span class="dot"></span>대상 · 전 분석 도구 공통</span>
+      <span class="chip ok"><span class="dot"></span>데이터 · 브라우저 메모리만, 서버 전송 없음</span>`,
+    summary:
+      "분석 도구는 CSV를 업로드하면 헤더명을 표준 필드(cost·installs·date 등)에 자동으로 매핑합니다. 자동 매핑이 틀렸거나 필수 컬럼이 안 잡히는 경우는 대부분 헤더명·형식 문제이며, 아래 체크리스트로 대부분 해결됩니다.",
+    toc: [
+      { id: "s-prep", title: "CSV 준비 체크리스트" },
+      { id: "s-automap", title: "자동 매핑 원리" },
+      { id: "s-errors", title: "자주 발생하는 매핑 오류" },
+      { id: "s-grain", title: "도구마다 필요한 컬럼이 다른 이유" },
+      { id: "s-privacy", title: "데이터는 어디로 가나" },
+    ],
+    body: `
+      <section class="block" id="s-prep">
+        <h2 class="section-title"><span class="ix">§1</span>CSV 준비 체크리스트</h2>
+        <p>업로드 전 아래만 지키면 자동 매핑 성공률이 크게 올라갑니다.</p>
+        <ul>
+          <li><strong>헤더는 1행만</strong> — 엑셀에서 자주 생기는 병합 셀·2행 헤더는 첫 행만 인식되어 나머지가 깨집니다.</li>
+          <li><strong>날짜는 텍스트 형식(YYYY-MM-DD)</strong> — 엑셀이 날짜를 시리얼 숫자(예: <code class="inline">45678</code>)로 저장한 채 CSV 내보내면 날짜 컬럼으로 인식되지 않습니다. 저장 전 서식을 "텍스트"로 바꾸거나 <code class="inline">2026-07-07</code> 형식을 직접 입력하세요.</li>
+          <li><strong>숫자 컬럼의 콤마·통화기호는 괜찮음</strong> — <code class="inline">"1,234,000"</code>처럼 따옴표로 감싸진 콤마 숫자는 정상 파싱됩니다. 단 <code class="inline">₩</code>·<code class="inline">$</code> 같은 통화 기호가 섞이면 숫자로 인식되지 않으니 순수 숫자만 남기세요.</li>
+          <li><strong>인코딩은 UTF-8</strong> — 한글 헤더·값이 깨져 보이면 엑셀에서 "CSV UTF-8(쉼표로 분리)"로 다시 내보내세요.</li>
+          <li><strong>빈 행·합계 행 제거</strong> — 표 맨 아래 "합계"·"평균" 같은 요약 행이 남아있으면 데이터 행으로 잘못 집계됩니다.</li>
+        </ul>
+        <div class="callout info">
+          <div class="ico">i</div>
+          <div class="body">
+            <strong>정확한 템플릿이 가장 빠른 길</strong>
+            <p>각 도구의 업로드 화면 상단 "📖 가이드"에 그 도구 전용 템플릿 다운로드 버튼이 있습니다. 헤더 이름과 형식이 이미 표준에 맞춰져 있어, 본인 데이터를 같은 컬럼 구조로만 채우면 매핑 단계를 건너뛸 수 있습니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="block" id="s-automap">
+        <h2 class="section-title"><span class="ix">§2</span>자동 매핑 원리</h2>
+        <p>업로드 직후 각 CSV 헤더명을 소문자·언더스코어 기준으로 표준 필드와 비교해 자동 매핑을 시도합니다. 예를 들어 <code class="inline">Spend</code>, <code class="inline">spend</code>, <code class="inline">cost</code>, <code class="inline">비용</code> 헤더는 모두 표준 필드 <code class="inline">cost</code>로 자동 인식됩니다. 표준 필드마다 여러 개의 별칭(alias)이 등록되어 있어 대부분의 매체 리포트 원본 헤더를 그대로 업로드해도 인식됩니다.</p>
+        <p>자동 매핑이 안 된 컬럼은 <strong>"(사용 안 함)"</strong>으로 표시되며, 매핑 화면의 드롭다운에서 직접 표준 필드를 선택하면 됩니다. 한 번 수동으로 고친 매핑은 그 세션 동안 유지됩니다(새로고침 시 리셋).</p>
+      </section>
+
+      <section class="block" id="s-errors">
+        <h2 class="section-title"><span class="ix">§3</span>자주 발생하는 매핑 오류</h2>
+        ${dataTable(
+          [
+            { label: "증상", type: "string" },
+            { label: "원인", type: "string" },
+            { label: "해결", type: "string" },
+          ],
+          [
+            [
+              "필수 컬럼 경고가 안 사라짐",
+              "필수 필드(예: date, cost)에 해당하는 헤더가 자동 매핑 안 됨",
+              "매핑 표에서 해당 헤더를 찾아 드롭다운으로 직접 표준 필드 선택",
+            ],
+            [
+              "\"분석하기\"를 눌러도 결과가 그대로",
+              "매핑 변경 후 게이트가 리셋됐는데 다시 누르지 않음",
+              "매핑 확인 후 반드시 \"분석하기\" 버튼을 다시 클릭 — 매핑이 바뀔 때마다 결과는 자동으로 숨겨집니다(의도된 동작)",
+            ],
+            [
+              "리텐션(Dn) 값이 전부 0%나 100%로 보임",
+              "ret_d30 컬럼이 정수 인원수(예: 128)인데 비율(0~1)로 해석됨, 또는 그 반대",
+              "값이 전부 1 이하면 비율, 1 초과 정수면 인원수로 자동 판별됩니다. 값이 정확히 0 또는 1인 행만 있으면 오판될 수 있어 이 경우 인원수 컬럼임을 별도로 확인",
+            ],
+            [
+              "효율 CSV의 비용이 소재 분석에서 0으로 나옴",
+              "도구마다 비용 컬럼의 표준 필드가 다름 — 효율 계열은 <code class=\"inline\">cost</code>, 소재 분석은 <code class=\"inline\">spend</code>",
+              "두 필드는 별개 표준키입니다. 소재 분석 CSV에는 비용 헤더가 <code class=\"inline\">spend</code>로 매핑됐는지 확인",
+            ],
+            [
+              "날짜별 차트가 순서 없이 뒤섞임",
+              "날짜 컬럼이 문자열로만 정렬되어 <code class=\"inline\">2026-1-9</code>처럼 자리수가 안 맞음",
+              "날짜는 항상 <code class=\"inline\">YYYY-MM-DD</code> 고정 자리수(예: <code class=\"inline\">2026-01-09</code>)로 통일",
+            ],
+          ],
+        )}
+      </section>
+
+      <section class="block" id="s-grain">
+        <h2 class="section-title"><span class="ix">§4</span>도구마다 필요한 컬럼이 다른 이유</h2>
+        <p>각 분석 도구는 서로 다른 <strong>단위(grain)</strong>로 데이터를 요구합니다. 예를 들어 운영 대시보드·예산 배분·포화도 진단은 "일자×채널×캠페인" 단위 효율 CSV를 공유하지만, 소재 분석은 "일자×소재" 단위, 실험 분석·증분 분석은 그룹(테스트/대조군) 구분이 있는 별도 CSV가 필요합니다. 같은 성격의 도구끼리는 CSV를 한 번만 업로드하면 자동으로 이어받고, grain이 다른 도구는 독립적으로 업로드합니다 — 이는 서로 다른 단위의 데이터가 잘못 섞여 집계되는 것을 막기 위한 설계입니다.</p>
+        <p>업로드 화면의 "데이터 연결표"에서 현재 도구가 어떤 필드를 필수/옵션으로 쓰는지, 그리고 다른 어떤 도구와 CSV를 공유하는지 확인할 수 있습니다.</p>
+      </section>
+
+      <section class="block" id="s-privacy">
+        <h2 class="section-title"><span class="ix">§5</span>데이터는 어디로 가나</h2>
+        <div class="callout ok">
+          <div class="ico">✓</div>
+          <div class="body">
+            <strong>업로드한 CSV 원본은 서버로 전송되지 않습니다</strong>
+            <p>모든 파싱·집계·차트 계산은 브라우저 안에서만 실행됩니다(클라이언트 사이드 100%). 새로고침하면 업로드한 데이터는 사라지고 다시 업로드해야 합니다 — 표시 설정(컬럼 순서·숨김 등)만 이 브라우저에 저장되고, 원본 데이터는 어디에도 저장되지 않습니다.</p>
+          </div>
+        </div>
+      </section>
+    `,
+  });
+}
+
 const PAGE_RENDERERS_MAP = {
+  "8-1": typeof page_8_1 !== 'undefined' ? page_8_1 : null,
   "1-1": typeof page_1_1 !== 'undefined' ? page_1_1 : null,
   "1-2": typeof page_1_2 !== 'undefined' ? page_1_2 : null,
   "1-3": typeof page_1_3 !== 'undefined' ? page_1_3 : null,

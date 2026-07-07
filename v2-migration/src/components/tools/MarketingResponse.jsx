@@ -1433,17 +1433,20 @@ export default function MarketingResponse() {
 
   // 브레드크럼 = 현재 위치 + 타깃/플랫폼 토글을 한 바(bar)에 좌측 정렬로 병합(토글이 곧 breadcrumb).
   const stageKo = stage === "mmm" ? "기여 분해" : stage === "lab" ? "회귀·미래예측" : "잠식 진단";
+  const demoBanner = isDemo && (
+    <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+      <div>
+        <strong>🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다</strong>
+        <p style={{ margin: "0.25rem 0 0" }}>실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.</p>
+      </div>
+      <button className="ab-button" onClick={() => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" })}>📁 내 CSV 업로드하기</button>
+    </div>
+  );
   const controlBar = () => (
     <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "12px" }}>
       <span style={{ fontSize: "12px", color: MUTED, whiteSpace: "nowrap" }}>
         마케팅 반응 분석 <span style={{ margin: "0 4px" }}>·</span> <strong style={{ color: "var(--text-1)" }}>{stageKo}</strong>
       </span>
-      {isDemo && (
-        <>
-          <span style={{ fontSize: "11px", color: "#f59e0b", fontWeight: 600 }}>샘플 데이터 · 실제 데이터 아님</span>
-          <button className="ab-pill" onClick={() => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" })}>📁 내 CSV 업로드</button>
-        </>
-      )}
       <span style={{ color: "var(--border-strong, #444)", fontSize: "12px" }}>|</span>
       <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
         {availTargets.length > 1 && (
@@ -1509,11 +1512,13 @@ export default function MarketingResponse() {
 
       {panelEmpty ? (
         <section className="block">
+          {demoBanner}
           <div className="callout warn"><div className="ico">!</div><div className="body"><strong>MMM 패널을 만들 수 없습니다</strong><p>{mmm.reason}</p></div></div>
           <div style={{ marginTop: "12px" }}>{mmmMapperSection()}</div>
         </section>
       ) : (
         <>
+          {demoBanner}
           {controlBar()}
 
           {/* ③ LAB(회귀·미래예측)은 아래 §7 forecast 블록에서 렌더(mmmForecast 기반, stage==="lab"). */}
