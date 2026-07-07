@@ -291,7 +291,7 @@ export default function ScorecardTab() {
           )}
         </div>
         {editMode && (
-          <p className="muted" style={{ fontSize: "11px", margin: "8px 0 0" }}>⠿ 드래그로 이동 · 👁 표시/숨김 · ⤢ 크기(2칸). 변경은 자동 저장됩니다.</p>
+          <p className="muted" style={{ fontSize: "11px", margin: "8px 0 0" }}>⠿ 드래그로 이동 · 👁 표시/숨김. 변경은 자동 저장됩니다.</p>
         )}
 
         <div style={{ marginTop: "10px" }}>

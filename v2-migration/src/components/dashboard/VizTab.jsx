@@ -539,7 +539,7 @@ export default function VizTab() {
           </div>
         </div>
         {kpiEditMode && (
-          <p className="muted" style={{ fontSize: "11px", margin: "0 0 8px" }}>⠿ 드래그로 이동 · 👁 표시/숨김 · ⤢ 크기(2칸). 변경은 자동 저장됩니다.</p>
+          <p className="muted" style={{ fontSize: "11px", margin: "0 0 8px" }}>⠿ 드래그로 이동 · 👁 표시/숨김. 변경은 자동 저장됩니다.</p>
         )}
         {allKpiCards.length === 0 ? (
           <p className="muted" style={{ fontSize: "12px" }}>표시할 KPI가 없습니다.</p>
