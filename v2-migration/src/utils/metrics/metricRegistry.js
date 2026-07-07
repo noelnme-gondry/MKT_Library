@@ -109,6 +109,19 @@ export const DERIVED_METRICS = [
     desc: "결제자 1인당 매출",
     compute: (a) => ratio(a.revenue, a.purchases),
   },
+  // ── 프리셋(Phase C) — 기본 노출 아님, 유저가 켜서 쓰는 큐레이션 지표 ──────────
+  {
+    id: "profit", label: "이익", unit: "currency", category: "value",
+    deps: ["revenue", "cost"], higherIsBetter: true, source: "preset",
+    desc: "매출 − 비용",
+    compute: (a) => a.revenue - a.cost,
+  },
+  {
+    id: "profitMargin", label: "이익률", unit: "ratio", category: "value",
+    deps: ["revenue", "cost"], higherIsBetter: true, source: "preset",
+    desc: "(매출 − 비용) ÷ 매출",
+    compute: (a) => ratio(a.revenue - a.cost, a.revenue),
+  },
 ];
 
 // id → 서술자 빠른 조회(base+derived). 커스텀은 getMetricRegistry에서 병합.

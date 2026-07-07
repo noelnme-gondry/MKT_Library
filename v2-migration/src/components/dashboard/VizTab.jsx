@@ -5,7 +5,9 @@ import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, aggregateByKey, calculateKPIs, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
+import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
+import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
 import { copyToClipboard } from "@/utils/toast";
 
 // 지표 뷰 설정 scope(도구:표면) — 운영 대시보드 자체(Viz 탭)의 KPI 카드·차트.
@@ -63,8 +65,13 @@ export default function VizTab() {
   const chartCfg = useAppStore((state) => state.viewConfig[VIZ_CHART_SCOPE]);
   const setViewConfig = useAppStore((state) => state.setViewConfig);
   const resetViewConfig = useAppStore((state) => state.resetViewConfig);
+  // 커스텀 지표(Phase C) — Viz KPI surface scope에 조립·저장.
+  const customMetrics = useAppStore((state) => state.customMetrics[VIZ_KPI_SCOPE]);
+  const addCustomMetric = useAppStore((state) => state.addCustomMetric);
+  const removeCustomMetric = useAppStore((state) => state.removeCustomMetric);
   const [kpiCfgOpen, setKpiCfgOpen] = useState(false);
   const [chartCfgOpen, setChartCfgOpen] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(false);
 
   // Canvas 요소 refs — 차트 표시/순서가 동적이라 key→element 맵으로 보관(callback ref).
   // 숨긴 차트는 canvas가 unmount되며 React가 null로 세팅 → 생성 effect가 건너뜀.
@@ -407,7 +414,47 @@ export default function VizTab() {
       <div key="retention" className="kpi-card"><div className="label">잔존율 평균 (D{kpi.cohort})</div><div className="value tnum">{formatPercent(kpi.retentionAvg)}</div><div className="delta">행별 평균</div></div>
     ) },
   ];
-  const orderedKpiCards = applyMetricView(kpiCards, kpiCfg, (c) => c.k);
+  // 커스텀/프리셋 지표가 읽는 집계객체 — kpi가 이미 base 합계(cost·impressions·…·
+  // revenue·purchases·denom)를 보유(calculateKPIs=metricRegistry 소비).
+  const agg = kpi;
+
+  // 빌더 피연산자 = 실제 매핑된 컬럼만(오타 불가). 라벨 옆에 실제 CSV 헤더 표기.
+  const mappingEntries = Object.entries((csvData && csvData.mapping) || {});
+  const mappedKeys = new Set(mappingEntries.map(([, v]) => v));
+  const headerFor = (stdKey) => (mappingEntries.find(([, v]) => v === stdKey) || [])[0] || "";
+  const hasRev = [...mappedKeys].some((k) => /^revenue_d/.test(k));
+  const hasPu = [...mappedKeys].some((k) => /^pu_d/.test(k));
+  const builderFields = [
+    { key: "cost", label: "비용", header: headerFor("cost") },
+    mappedKeys.has("impressions") && { key: "impressions", label: "노출수", header: headerFor("impressions") },
+    mappedKeys.has("clicks") && { key: "clicks", label: "클릭수", header: headerFor("clicks") },
+    mappedKeys.has("installs") && { key: "installs", label: "설치수", header: headerFor("installs") },
+    mappedKeys.has("actions") && { key: "actions", label: "액션/가입", header: headerFor("actions") },
+    hasRev && { key: "revenue", label: `매출(D${kpi.cohort})`, header: headerFor(`revenue_d${kpi.cohort}`) },
+    hasPu && { key: "purchases", label: `결제건수(D${kpi.cohort})`, header: headerFor(`pu_d${kpi.cohort}`) },
+  ].filter(Boolean);
+
+  // 프리셋 지표(이익·이익률) — 매출 데이터 있을 때만 후보로. kpi에 이미 계산됨.
+  const presetCards = [];
+  if (hasRev) {
+    presetCards.push({ k: "profit", label: "이익", node: (
+      <div key="profit" className="kpi-card"><div className="label">이익 (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.profit)}</div><div className="delta">매출 − 비용</div></div>
+    ) });
+    presetCards.push({ k: "profitMargin", label: "이익률", node: (
+      <div key="profitMargin" className="kpi-card"><div className="label">이익률 (D{kpi.cohort})</div><div className="value tnum">{formatPercent(kpi.profitMargin)}</div><div className="delta">(매출−비용) / 매출</div></div>
+    ) });
+  }
+
+  // 유저 커스텀 지표 — 조립 정의를 순수 compute로 변환해 카드화(토글/순서/삭제 가능).
+  const customCards = (customMetrics || []).map((def) => {
+    const val = customMetricToDescriptor(def).compute(agg);
+    return { k: def.id, label: def.name, node: (
+      <div key={def.id} className="kpi-card"><div className="label">{def.name}</div><div className="value tnum">{val == null ? "—" : formatNumber(val, { decimals: 2 })}</div><div className="delta">커스텀 지표</div></div>
+    ) };
+  });
+
+  const allKpiCards = [...kpiCards, ...presetCards, ...customCards];
+  const orderedKpiCards = applyMetricView(allKpiCards, kpiCfg, (c) => c.k);
 
   const saveScope = (scope, next, setOpen) => {
     if (!next.hidden.length && !next.order.length) resetViewConfig(scope);
@@ -443,7 +490,10 @@ export default function VizTab() {
       <section className="block" id="s-kpi">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h2 className="section-title"><span className="ix">§2</span>KPI 요약</h2>
-          <button className="ab-pill" onClick={() => setKpiCfgOpen(true)} title="표시할 KPI와 순서 편집">⚙ 지표 편집</button>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <button className="ab-pill" onClick={() => setBuilderOpen(true)} title="데이터 컬럼으로 나만의 지표 만들기">＋ 커스텀 지표</button>
+            <button className="ab-pill" onClick={() => setKpiCfgOpen(true)} title="표시할 KPI와 순서 편집">⚙ 지표 편집</button>
+          </div>
         </div>
         {orderedKpiCards.length === 0 ? (
           <p className="muted" style={{ fontSize: "12px" }}>표시할 KPI가 없습니다. ⚙ 지표 편집에서 다시 켜세요.</p>
@@ -485,9 +535,18 @@ export default function VizTab() {
         open={kpiCfgOpen}
         onClose={() => setKpiCfgOpen(false)}
         title="KPI 요약 — 지표 편집"
-        items={kpiCards.map((c) => ({ key: c.k, label: c.label }))}
+        items={allKpiCards.map((c) => ({ key: c.k, label: c.label }))}
         config={kpiCfg}
         onSave={(next) => saveScope(VIZ_KPI_SCOPE, next, setKpiCfgOpen)}
+      />
+      <CustomMetricBuilder
+        open={builderOpen}
+        onClose={() => setBuilderOpen(false)}
+        fields={builderFields}
+        agg={agg}
+        existing={customMetrics || []}
+        onCreate={(def) => addCustomMetric(VIZ_KPI_SCOPE, def)}
+        onDelete={(id) => removeCustomMetric(VIZ_KPI_SCOPE, id)}
       />
       <MetricConfigPanel
         open={chartCfgOpen}

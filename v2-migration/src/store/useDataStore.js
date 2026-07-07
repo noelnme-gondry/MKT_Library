@@ -183,7 +183,10 @@ export function displayItemNumberShort(itemId) {
 
 // persist 저장 대상 = "설정만"(§2.2). 원본 CSV(csvGroups·csvData)·필터 Set·차트상태는
 // 제외. export하여 불변식(원본 데이터 미저장)을 골든으로 잠금(useDataStore.test.js).
-export const persistPartialize = (state) => ({ viewConfig: state.viewConfig });
+export const persistPartialize = (state) => ({
+  viewConfig: state.viewConfig,
+  customMetrics: state.customMetrics,
+});
 
 // 서버(SSR)·테스트(node) 환경에는 localStorage가 없음 — no-op 폴백으로 persist가
 // setItem에서 throw하지 않게(브라우저에선 실제 localStorage 사용). 클라이언트 전용 저장.
@@ -362,6 +365,20 @@ export const useAppStore = create(persist((set, get) => ({
     const next = { ...state.viewConfig };
     delete next[scopeId];
     return { viewConfig: next };
+  }),
+
+  // ── 커스텀 지표(Phase C) — 유저가 실제 컬럼으로 "조립"한 지표 정의 ────────────
+  // scope별 정의 배열 { [scopeId]: [{ id, name, op, a, b, unit }] }. 정의(config)라
+  // persist 대상(원본 데이터 아님, §2.2). compute는 customMetric.js가 순수 생성(eval X).
+  customMetrics: {},
+  addCustomMetric: (scopeId, def) => set((state) => {
+    const id = "cm_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const list = state.customMetrics[scopeId] || [];
+    return { customMetrics: { ...state.customMetrics, [scopeId]: [...list, { ...def, id }] } };
+  }),
+  removeCustomMetric: (scopeId, id) => set((state) => {
+    const list = (state.customMetrics[scopeId] || []).filter((m) => m.id !== id);
+    return { customMetrics: { ...state.customMetrics, [scopeId]: list } };
   }),
 }), {
   // localStorage에 "설정만" 저장(§2.2 민감데이터 서버·로컬 잔존 최소화). 원본 CSV·필터

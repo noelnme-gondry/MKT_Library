@@ -36,9 +36,10 @@ describe("useDataStore · viewConfig 액션", () => {
 });
 
 describe("useDataStore · persist 불변식(설정만 저장, 원본 CSV 제외 §2.2)", () => {
-  it("partialize는 viewConfig만 남기고 원본 데이터·필터를 전부 제외", () => {
+  it("partialize는 설정(viewConfig·customMetrics)만 남기고 원본 데이터·필터 제외", () => {
     const fakeState = {
       viewConfig: { "5-2:scorecard": { hidden: ["ctr"], order: [] } },
+      customMetrics: { "5-2:viz-kpi": [{ id: "cm_1", name: "이익", op: "sub", a: "revenue", b: "cost" }] },
       csvGroups: { efficiency: { raw: [{ secret: 1 }] } },
       csvData: { raw: [{ secret: 2 }], mapping: { x: "cost" } },
       dashboardFilter: { platforms: new Set(["iOS"]) },
@@ -46,8 +47,9 @@ describe("useDataStore · persist 불변식(설정만 저장, 원본 CSV 제외 
       isDarkMode: true,
     };
     const persisted = persistPartialize(fakeState);
-    expect(Object.keys(persisted)).toEqual(["viewConfig"]);
+    expect(Object.keys(persisted).sort()).toEqual(["customMetrics", "viewConfig"]);
     expect(persisted.viewConfig).toBe(fakeState.viewConfig);
+    expect(persisted.customMetrics).toBe(fakeState.customMetrics);
     // 원본 데이터 키가 저장 payload에 절대 없어야 함
     expect(persisted.csvGroups).toBeUndefined();
     expect(persisted.csvData).toBeUndefined();
@@ -56,5 +58,16 @@ describe("useDataStore · persist 불변식(설정만 저장, 원본 CSV 제외 
     const json = JSON.stringify(persisted);
     expect(json).not.toContain("secret");
     expect(json).not.toContain("iOS");
+  });
+
+  it("addCustomMetric/removeCustomMetric — scope별 정의 추가·삭제", () => {
+    useAppStore.setState({ customMetrics: {} });
+    useAppStore.getState().addCustomMetric("5-2:viz-kpi", { name: "이익", op: "sub", a: "revenue", b: "cost" });
+    const list = useAppStore.getState().customMetrics["5-2:viz-kpi"];
+    expect(list).toHaveLength(1);
+    expect(list[0].id).toMatch(/^cm_/);
+    expect(list[0].name).toBe("이익");
+    useAppStore.getState().removeCustomMetric("5-2:viz-kpi", list[0].id);
+    expect(useAppStore.getState().customMetrics["5-2:viz-kpi"]).toHaveLength(0);
   });
 });
