@@ -1,5 +1,5 @@
 import { ROUTES, SITE_URL } from "@/lib/routeMap";
-import { getAllPosts } from "@/lib/blog";
+import { getAllPosts, getAllTags } from "@/lib/blog";
 
 const BASE = SITE_URL; // matches layout.js canonical/openGraph
 
@@ -33,6 +33,13 @@ export default function sitemap() {
       lastModified: p.date ? new Date(p.date) : new Date(),
       changeFrequency: "weekly",
       priority: 0.7,
+    })),
+    // 태그 랜딩(롱테일 SEO 허브) — 발행 글의 태그마다 1페이지.
+    ...getAllTags().map((t) => ({
+      url: `${BASE}/blog/tag/${t.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.5,
     })),
   ];
 

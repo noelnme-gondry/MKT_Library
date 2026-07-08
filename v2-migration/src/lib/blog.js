@@ -56,3 +56,33 @@ export function getAllPosts() {
 export function getPostBySlug(slug) {
   return getAllPosts().find((p) => p.slug === slug) || null;
 }
+
+// 태그 → URL slug (공백만 하이픈으로, 한글은 유지 — %-인코딩되어 서빙됨).
+export function tagSlug(tag) {
+  return String(tag).trim().replace(/\s+/g, "-");
+}
+
+// 전체 태그 목록 [{ tag, slug, count }] — 글 많은 순, 동률이면 가나다.
+export function getAllTags() {
+  const counts = new Map();
+  for (const p of getAllPosts()) {
+    for (const t of p.tags) {
+      if (!t) continue;
+      counts.set(t, (counts.get(t) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([tag, count]) => ({ tag, slug: tagSlug(tag), count }))
+    .sort((a, b) => (b.count - a.count) || a.tag.localeCompare(b.tag));
+}
+
+// 특정 태그(slug 기준)의 글 목록. getAllPosts 정렬 승계. 없으면 [].
+export function getPostsByTag(slug) {
+  return getAllPosts().filter((p) => p.tags.some((t) => tagSlug(t) === slug));
+}
+
+// slug → 원본 태그 라벨(표시용). 없으면 slug 그대로.
+export function tagLabelFromSlug(slug) {
+  const found = getAllTags().find((t) => t.slug === slug);
+  return found ? found.tag : slug;
+}
