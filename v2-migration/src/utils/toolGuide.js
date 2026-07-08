@@ -228,6 +228,23 @@ export const TOOL_GUIDE = {
     ],
     example: "date,traffic_source,category,content_id,cost,traffic\n2024-01-08,organic,튜토리얼,tut_101,96000,820\n2024-01-08,social,사례연구,case_201,168000,410\n2024-01-15,social,사례연구,case_201,246000,650",
   },
+  "9-6": {
+    when: "콘텐츠별 반응·신선도(시간이 지나며 반응이 식는지)·속성 효과(어떤 후킹·형식이 잘 되나)를 분석하고 새로 발행/교체할 시점을 알려줍니다.",
+    grain: "1행 = 하루 × 콘텐츠(content)",
+    needs: [
+      { col: "creative_id", label: "콘텐츠 ID", why: "콘텐츠 단위 집계의 키", required: true },
+      { col: "date", label: "날짜", why: "신선도(시간에 따른 반응 하락) 감지", required: true },
+      { col: "impressions·clicks·installs", label: "노출·클릭·전환", why: "CTR/CVR·승률 계산", required: true },
+      { col: "spend", label: "제작·배포 비용", why: "전환당비용·효율", required: true },
+      { col: "message_angle·format·hook_type…", label: "콘텐츠 속성", why: "속성별 효과(WLS)·조합 매트릭스", required: false },
+    ],
+    prep: [
+      "속성 컬럼(앵글·형식·후킹)을 넣으면 '어떤 특징이 효과적인가' 분해와 조합표가 열립니다.",
+      "조합표는 조합당 콘텐츠 5개 이상 있어야 '검증'으로 뜹니다.",
+      "결과는 인과가 아니라 '연관'입니다 — 확정은 실험(5-4)으로 검증하세요.",
+    ],
+    example: "creative_id,date,channel,impressions,clicks,installs,spend,message_angle,format\npost_001,2024-02-01,블로그,52000,1600,210,540000,정보성가이드,글\npost_002,2024-02-01,유튜브,48000,1900,180,480000,사례연구,영상",
+  },
 };
 
 export function getToolGuide(toolId) {

@@ -1006,6 +1006,18 @@ export const TOOL_REQUIRED_FIELDS = {
                 "channel",
                 { oneOf: ["installs", "actions"] },
               ],
+              // 9-6 콘텐츠 신선도 진단 — 5-6과 동일 엔진(creativeMath). 콘텐츠=creative_id·
+              // 배포채널=channel·전환=installs·제작배포비=spend. 필드명은 엔진 계약이라
+              // 5-6과 동일, 화면 라벨만 콘텐츠 도메인(콘텐츠/신선도/발행).
+              "9-6": [
+                "creative_id",
+                "date",
+                "channel",
+                "impressions",
+                "clicks",
+                "installs",
+                "spend",
+              ],
             };
 export const TOOL_OPTIONAL_FIELDS = {
               "5-4": [
@@ -1269,5 +1281,39 @@ export const TOOL_OPTIONAL_FIELDS = {
                   key: "clicks",
                   unlocks: "콘텐츠별 CTR 비교(§4) — impressions와 함께 매핑 시 활성화",
                 },
+              ],
+              // 9-6 콘텐츠 신선도 진단 — 5-6과 동일 옵션(속성 컬럼 = 신선도/조합 분해).
+              "9-6": [
+                {
+                  key: "campaign_id",
+                  unlocks: "카테고리 fixed effect (decompose 안정성 ↑)",
+                },
+                {
+                  key: "audience_segment",
+                  unlocks: "독자 세그먼트 control + decompose 차원",
+                },
+                { key: "video_3s_views", unlocks: "Hook rate · 3초 retention 분해" },
+                {
+                  key: "video_completions",
+                  unlocks: "Completion rate · 끝까지 보는 비율",
+                },
+                { key: "hook_type", unlocks: "Decompose: 후킹 유형별 효과" },
+                {
+                  key: "message_angle",
+                  unlocks: "Decompose: 콘텐츠 앵글별 효과 (Concept Matrix 행 기본)",
+                },
+                { key: "first_3s", unlocks: "Decompose: 오프닝 컨셉별 효과" },
+                { key: "format", unlocks: "Decompose + Concept Matrix 열 기본" },
+                {
+                  key: "has_text_overlay",
+                  unlocks: "Decompose: 텍스트 오버레이 유무 효과",
+                },
+                { key: "cta_style", unlocks: "Decompose: CTA 스타일별 효과" },
+                { key: "duration_bucket", unlocks: "Decompose: 길이대별 효과" },
+                {
+                  key: "actions",
+                  unlocks: "전환당비용 decompose (installs 대신 액션 기준)",
+                },
+                { key: "revenue_d7", unlocks: "ROAS metric (분해 대상에 추가)" },
               ],
             };

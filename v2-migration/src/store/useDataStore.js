@@ -22,6 +22,7 @@ export const TOOL_GROUP = {
   "9-1": "content_attr", // 콘텐츠 요소 분석기 (regMath 재사용)
   "9-2": "content_aha",  // 킬러 콘텐츠·충성 독자 발굴 (ahaMath 재사용)
   "9-3": "content_traffic", // 콘텐츠 트래픽 변동 탐지 (pvmMath 재사용) — grain(유입경로×기간×트래픽) 상이 → 전용 슬라이스
+  "9-6": "content_freshness", // 콘텐츠 수명주기·신선도 진단 (creativeMath 재사용) — grain(콘텐츠×일) 전용 슬라이스
 };
 
 const EMPTY_SLICE = () => ({ raw: [], headers: [], mapping: {}, fileName: "" });
@@ -144,6 +145,7 @@ export const IA = [
       { id: "9-1", title: "콘텐츠 요소 분석기 (요소별 성과 기여)" },
       { id: "9-2", title: "킬러 콘텐츠·충성 독자 발굴 (전환 동인)" },
       { id: "9-3", title: "콘텐츠 트래픽 변동 탐지 (유입·카테고리·콘텐츠별)" },
+      { id: "9-6", title: "콘텐츠 수명주기·신선도 진단 (반응 감쇠·발행 페이스)" },
     ],
   },
 ];
@@ -260,6 +262,7 @@ export const useAppStore = create(persist((set, get) => ({
     content_attr: EMPTY_SLICE(),
     content_aha: EMPTY_SLICE(),
     content_traffic: EMPTY_SLICE(),
+    content_freshness: EMPTY_SLICE(),
   },
   // Mirror of the ACTIVE group's slice. Initial currentRouteId is "home" →
   // "efficiency", so the initial mirror is the (empty) efficiency slice.
@@ -302,6 +305,7 @@ export const useAppStore = create(persist((set, get) => ({
     content_attr: null,
     content_aha: null,
     content_traffic: null,
+    content_freshness: null,
   },
   // Confirm analysis for the route's group. Stores the CURRENT active-slice sig.
   // Call from CsvUploader's "분석하기/데이터 분석하기" (and "↻ 다시 분석") button.

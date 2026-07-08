@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { CREATIVE_FATIGUE, CREATIVE_STATS } from "@/utils/creativeMath";
+import { resolveCreativeCopy } from "@/utils/contentDomain";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { downloadChartAsPNG } from "@/utils/chartUtils";
 import CsvUploader from "@/components/CsvUploader";
@@ -311,7 +312,10 @@ function fmtPctDay(v) {
     : (v >= 0 ? "+" : "") + (v * 100).toFixed(2) + "%/일";
 }
 
-export default function CreativeAnalyzer() {
+export default function CreativeAnalyzer({ domain = "performance" } = {}) {
+  // CREATIVE_COPY[domain]은 모듈 상수라 매 렌더 동일 참조. performance=기존 문자열
+  // 그대로(byte-동일), content=콘텐츠 도메인 라벨. 엔진·CSV 필드명은 불변(§12.21).
+  const C = resolveCreativeCopy(domain);
   const csvData = useAppStore((state) => state.csvData);
   const [metric, setMetric] = useState("ctr");
   // §8 Concept Matrix 셀 클릭 → §2 성과표 필터 (index CREATIVE_STATE.selectedCell)
@@ -614,9 +618,9 @@ export default function CreativeAnalyzer() {
             <div className="ico">!</div>
             <div className="body">
               <strong>CSV 업로드 대기</strong>
-              <p>소재 성과 데이터를 업로드하여 Fatigue와 Concept을 분석하세요.</p>
+              <p>{C.noDataDesc}</p>
               <div style={{ marginTop: "1rem" }}>
-                <CsvUploader toolId="5-6" />
+                <CsvUploader toolId={C.uploaderToolId} />
               </div>
             </div>
           </div>
@@ -679,25 +683,20 @@ export default function CreativeAnalyzer() {
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px" }}>
           <div>
-            <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>어떤 소재가 이기고, 언제 갈아끼워야 하나?</h2>
+            <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>{C.heroTitle}</h2>
             <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6, maxWidth: "660px" }}>
-              소재(영상·이미지 등 광고 크리에이티브)별로 무엇이 잘 되는지, 왜 잘 되는지, 언제 새로 바꿔야 하는지를 한 곳에서 보여줍니다.
+              {C.heroSub}
             </p>
           </div>
           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-            <span className="chip ok"><span className="dot"></span>소재 {metrics.length}개</span>
+            <span className="chip ok"><span className="dot"></span>{C.entity} {metrics.length}개</span>
             <span className="chip"><span className="dot"></span>config {CREATIVE_CONFIG.version}</span>
           </div>
         </div>
 
         {/* 여정 = 질문 4개 (grid 균등 정렬) */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "10px", marginTop: "14px" }}>
-          {[
-            ["🏆", "어떤 소재가 이기고 있나", "승률·교체 속도·생존 기간"],
-            ["🔍", "어떤 특징이 효과적인가", "후킹 방식·포맷 등 속성별 효과"],
-            ["🔋", "지금 지치는 소재가 있나", "피로도 진단·교체 시점 추천"],
-            ["🧪", "다음엔 뭘 테스트할까", "조합별 성과 기반 후보 추천"],
-          ].map(([ic, q, a], i) => (
+          {C.heroJourney.map(([ic, q, a], i) => (
             <div key={i} style={{ background: "var(--surface-container-lowest)", border: "1px solid var(--border)", borderRadius: "10px", padding: "11px 13px" }}>
               <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.35 }}>{ic} {q}</div>
               <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "4px", lineHeight: 1.5 }}>{a}</div>
@@ -708,7 +707,7 @@ export default function CreativeAnalyzer() {
         <details style={{ marginTop: "12px", fontSize: "11.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
           <summary>⚠️ 통계 분석 및 해석 한계 (상관 ≠ 인과)</summary>
           <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
-            노출량 가중 최소제곱법(WLS)과 다중 검정 보정(BH)을 통해 크리에이티브 속성(Hook, Format 등)의 효과를 추정합니다. 본 분해 결과는 매체 알고리즘에 따른 노출 편향(Selection Bias)이 포함되어 있으므로 인과적 효과가 아닌 상관 관계로 해석해야 하며, 최종 확정은 실험 도구(5-4)를 통해 검증하시는 것을 권장합니다.
+            {C.heroCausationBody}
           </div>
         </details>
       </section>
@@ -716,7 +715,7 @@ export default function CreativeAnalyzer() {
       <details className="block" id="s-prep" style={{ padding: "13px 16px" }}>
         <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: "var(--text-muted)", outline: "none" }}>🗂 데이터 매핑 설정 (펼쳐서 변경)</summary>
         <div style={{ marginTop: "10px" }}>
-          <CsvUploader toolId="5-6" />
+          <CsvUploader toolId={C.uploaderToolId} />
         </div>
       </details>
 
@@ -753,57 +752,57 @@ export default function CreativeAnalyzer() {
 
       {health && (
         <section className="block" id="s-velocity">
-          <h2 className="section-title"><span className="ix">§2</span>운영 건강도 (Win-rate · Velocity · 라이프사이클)</h2>
+          <h2 className="section-title"><span className="ix">§2</span>{C.healthTitle}</h2>
           <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
-            소재 운영이 잘 되고 있는지 보는 3가지 질문 — 새 소재가 얼마나 자주 <strong>이기는지(이긴 비율, Win-rate)</strong>, 얼마나 빠르게 <strong>갈아끼우는지(교체 속도, Velocity)</strong>, 하나가 얼마나 <strong>오래 버티는지(생존 기간, 라이프사이클)</strong>.
+            {C.healthDescPre}<strong>{C.healthDescS1}</strong>, 얼마나 빠르게 <strong>{C.healthDescS2}</strong>, 하나가 얼마나 <strong>{C.healthDescS3}</strong>.
           </p>
           <div className="ab-stat-row" style={{ margin: "8px 0 12px" }}>
             <div className="ab-stat">
-              <div className="ab-stat-label" title="다른 소재들의 클릭률 중간값보다 잘 나온 소재 비율">클릭이 잘 되는 소재 비율 (CTR Win-rate)</div>
+              <div className="ab-stat-label" title={C.statCtrTitle}>{C.statCtrLabel}</div>
               <div className="ab-stat-value tnum">{pctOf(health.ctrWinnersN, health.eligN)}</div>
               <div className="ab-stat-hint">중앙값 초과 {health.ctrWinnersN}/{health.eligN} (≥{health.minImp.toLocaleString()} impr)</div>
             </div>
             <div className="ab-stat">
-              <div className="ab-stat-label" title="다른 소재들의 전환율 중간값보다 잘 나온 소재 비율">전환이 잘 되는 소재 비율 (CVR Win-rate)</div>
+              <div className="ab-stat-label" title={C.statCvrTitle}>{C.statCvrLabel}</div>
               <div className="ab-stat-value tnum">{pctOf(health.cvrWinnersN, health.eligN)}</div>
               <div className="ab-stat-hint">중앙값 {fmtPct(health.medCvr)} 초과</div>
             </div>
             <div className="ab-stat">
-              <div className="ab-stat-label">잘 되는 소재에 쓴 비용 비중</div>
+              <div className="ab-stat-label">{C.statSpendLabel}</div>
               <div className="ab-stat-value tnum">{pctOf(health.winnerSpend, health.totalSpend)}</div>
-              <div className="ab-stat-hint">CTR 승자 소재에 쓴 비용 비중</div>
+              <div className="ab-stat-hint">{C.statSpendHint}</div>
             </div>
             <div className="ab-stat">
-              <div className="ab-stat-label" title="한 주에 새로 등장한 소재 개수의 평균">한 주에 새로 올리는 소재 수 (Velocity)</div>
+              <div className="ab-stat-label" title={C.statVelTitle}>{C.statVelLabel}</div>
               <div className="ab-stat-value tnum">{health.avgPerWeek.toFixed(1)}</div>
               <div className="ab-stat-hint">{health.weeksN}주 평균</div>
             </div>
             <div className="ab-stat">
-              <div className="ab-stat-label">소재 하나가 버티는 평균 기간</div>
+              <div className="ab-stat-label">{C.statLifeLabel}</div>
               <div className="ab-stat-value tnum">{health.avgLife != null ? health.avgLife.toFixed(0) + "일" : "—"}</div>
             </div>
             <div className="ab-stat">
-              <div className="ab-stat-label" title="성과가 떨어지며 지친 것으로 진단된 소재 비율">피로해진 소재 비율 (Fatigue)</div>
+              <div className="ab-stat-label" title={C.statFatTitle}>{C.statFatLabel}</div>
               <div className={`ab-stat-value tnum ${health.fatiguedN > 0 ? "neg" : "pos"}`}>{pctOf(health.fatiguedN, health.fatigueN)}</div>
               <div className="ab-stat-hint">{health.fatiguedN}/{health.fatigueN}</div>
             </div>
           </div>
           <div className="callout"><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "12px" }}>
-            <strong>이긴 비율(Win-rate)</strong>이 50%를 크게 밑돌면 소재 기획 적중률이 낮은 것 — 컨셉 다양화(§9 다음 테스트 추천) 필요.
-            {" "}<strong>한 주에 새로 올리는 소재 수</strong>가 너무 적으면 지치는 소재를 못 따라잡습니다 (벤치마크: 활성 소재의 20~30% / 주).
-            {" "}<strong>잘 되는 소재에 쓴 비용 비중</strong>이 낮으면 좋은 소재에 예산이 안 실리고 있다는 신호입니다.
+            <strong>이긴 비율(Win-rate)</strong>{C.healthCalloutT1}
+            {" "}<strong>{C.healthCalloutS2}</strong>{C.healthCalloutT2}
+            {" "}<strong>{C.healthCalloutS3}</strong>{C.healthCalloutT3}
           </p></div></div>
         </section>
       )}
 
       <section className="block" id="s-metrics">
-        <h2 className="section-title"><span className="ix">§3</span>소재별 성과표 {selectedCell ? "(필터됨)" : "(상위 50, 노출수 순)"}</h2>
-        <p className="muted" style={{ marginBottom: "6px", color: "var(--text-muted)", fontSize: "12px" }}>노출·클릭·설치 같은 원자료와, 클릭률·전환율·설치당비용 같은 계산된 효율 지표를 함께 봅니다. 약어 위에 마우스를 올리면 설명이 나옵니다.</p>
+        <h2 className="section-title"><span className="ix">§3</span>{C.metricsTitle} {selectedCell ? "(필터됨)" : "(상위 50, 노출수 순)"}</h2>
+        <p className="muted" style={{ marginBottom: "6px", color: "var(--text-muted)", fontSize: "12px" }}>{C.metricsDesc}</p>
         {selectedCell && (
           <div className="callout" style={{ marginBottom: "8px" }}>
             <div className="ico">i</div>
             <div className="body">
-              <strong>조합별 성과표(Concept Matrix) 필터 적용 중:</strong> {rowAttr}=<code className="inline">{selectedCell.row}</code> × {colAttr}=<code className="inline">{selectedCell.col}</code> ({filteredMetrics.length}개 소재)
+              <strong>{C.filterActiveLabel}</strong> {rowAttr}=<code className="inline">{selectedCell.row}</code> × {colAttr}=<code className="inline">{selectedCell.col}</code> ({filteredMetrics.length}개 {C.entity})
               <button className="ab-pill" style={{ marginLeft: "8px" }} onClick={() => setSelectedCell(null)}>필터 해제</button>
             </div>
           </div>
@@ -812,7 +811,7 @@ export default function CreativeAnalyzer() {
           <table className="data" style={{ fontSize: "11.5px" }}>
             <thead>
               <tr>
-                <th>Creative ID</th><th>Channel</th><th title="데이터가 존재하는 일수">Days</th>
+                <th>{C.colCreativeId}</th><th>Channel</th><th title="데이터가 존재하는 일수">Days</th>
                 <th title="노출수 (Impressions)">Impr</th><th title="클릭수 (Clicks)">Clicks</th><th title="설치수 (Installs)">Inst</th><th title="지출 비용 (Spend)">Spend</th>
                 <th title="클릭률 — 노출 대비 클릭 비율 (CTR)">CTR</th><th title="전환율 — 클릭 대비 설치 비율 (CVR)">CVR</th><th title="노출 1,000회당 설치수 (Installs Per Mille)">IPM</th><th title="설치 1건당 비용 (Cost Per Install)">CPI</th>
                 <th title="3초 이상 시청 비율 (Hook Rate)">Hook %</th><th title="영상 완주율 (Completion Rate)">Comp %</th>
@@ -859,13 +858,13 @@ export default function CreativeAnalyzer() {
         {hasDecompose ? (
           <>
             <p className="muted" style={{ fontSize: "12px", color: "var(--text-muted)", margin: "0 0 6px" }}>
-              후킹 방식·메시지 콘셉트·포맷 같은 소재 속성이 <strong>{decMeta.desc}</strong>에 실제로 영향을 주는지 통계적으로 분석합니다. 아래 버튼으로 분석 기준 지표(CTR·CVR·CPA·ROAS)를 바꿀 수 있습니다.
+              {C.decomposeDescPre}<strong>{decMeta.desc}</strong>에 실제로 영향을 주는지 통계적으로 분석합니다. 아래 버튼으로 분석 기준 지표(CTR·CVR·CPA·ROAS)를 바꿀 수 있습니다.
             </p>
             <details style={{ marginBottom: "8px", fontSize: "11.5px", color: "var(--text-muted)", cursor: "pointer" }}>
               <summary>어떻게 계산하나요? (분석 방법 펼치기)</summary>
               <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
-                {decMeta.weightLabel}로 가중한 선형회귀(weighted least squares)로 {decMeta.desc}를 추정하며, 캠페인별 차이는 자동으로 보정합니다(campaign_id within-transformation). 가중치를 {decMeta.weightLabel}로 두는 이유는 분모가 큰(=추정이 정밀한) 소재에 더 큰 비중을 주기 위함입니다. 여러 속성을 동시에 검정하므로 다중검정 보정(BH)을 적용합니다.
-                {" "}⚠ 실제 운영 데이터를 관찰해서 분석한 결과라 매체 알고리즘의 노출 편향(selection bias)이 섞여 있을 수 있습니다 — 상관관계로만 참고하고, 확정은 실험 분석 도구(5-4)로 검증하는 것을 권장합니다.
+                {decMeta.weightLabel}로 가중한 선형회귀(weighted least squares)로 {decMeta.desc}를 추정하며, 캠페인별 차이는 자동으로 보정합니다(campaign_id within-transformation). 가중치를 {decMeta.weightLabel}로 두는 이유는 분모가 큰(=추정이 정밀한) {C.entity}에 더 큰 비중을 주기 위함입니다. 여러 속성을 동시에 검정하므로 다중검정 보정(BH)을 적용합니다.
+                {" "}⚠ 실제 운영 데이터를 관찰해서 분석한 결과라 {C.decomposeBiasSource}의 노출 편향(selection bias)이 섞여 있을 수 있습니다 — 상관관계로만 참고하고, 확정은 실험 분석 도구(5-4)로 검증하는 것을 권장합니다.
               </div>
             </details>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "14px" }}>
@@ -968,16 +967,16 @@ export default function CreativeAnalyzer() {
             <div className="ico">!</div>
             <div className="body">
               <strong>분석 불가</strong>
-              <p>소재 속성 컬럼(hook_type·format 등) 매핑 또는 데이터 행 수(30행 이상)가 부족합니다.</p>
+              <p>{C.decomposeUnavailBody}</p>
             </div>
           </div>
         )}
       </section>
 
       <section className="block" id="s-fatigue">
-        <h2 className="section-title"><span className="ix">§5</span>소재 피로도 진단 (Fatigue 검출)</h2>
+        <h2 className="section-title"><span className="ix">§5</span>{C.fatigueTitle}</h2>
         <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
-          분석 소재 {(fatigue || []).length}개 · 피로해진 소재 {fatiguedCount}개
+          {C.fatigueDesc((fatigue || []).length, fatiguedCount)}
         </p>
         {fatiguedRows.length > 0 && (
           <div className="alloc-card" style={{ marginBottom: "12px" }}>
@@ -1002,7 +1001,7 @@ export default function CreativeAnalyzer() {
             <thead>
               <tr>
                 <th>상태</th>
-                <th>Creative ID</th>
+                <th>{C.colCreativeId}</th>
                 <th>Peak 일자</th>
                 <th>Peak 지표</th>
                 <th>현재 지표</th>
@@ -1014,7 +1013,7 @@ export default function CreativeAnalyzer() {
               {fatiguedRows.length ? (
                 fatiguedRows.map((f, i) => (
                   <tr key={i}>
-                    <td><span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: "#f87171" }}><span className="dot" style={{ background: "#f87171" }}></span>피로</span></td>
+                    <td><span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: "#f87171" }}><span className="dot" style={{ background: "#f87171" }}></span>{C.fatiguedBadge}</span></td>
                     <td><code className="inline" style={{ fontSize: "10px" }}>{String(f.creative_id).slice(0, 24)}</code></td>
                     <td className="tnum" style={{ fontSize: "11px" }}>{f.peakDate || ""}</td>
                     <td className="tnum">{fmtPct(f.peakValue)}</td>
@@ -1024,7 +1023,7 @@ export default function CreativeAnalyzer() {
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan="7" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>지친 소재가 감지되지 않았습니다 (양호)</td></tr>
+                <tr><td colSpan="7" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>{C.fatigueEmpty}</td></tr>
               )}
             </tbody>
           </table>
@@ -1032,16 +1031,16 @@ export default function CreativeAnalyzer() {
       </section>
 
       <section className="block" id="s-fatigue-alert">
-        <h2 className="section-title"><span className="ix">§6</span>피로도 임박 경고 (Ad Fatigue Alert)</h2>
+        <h2 className="section-title"><span className="ix">§6</span>{C.fatigueAlertTitle}</h2>
         <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
-          분석 소재 {(fatigueAlerts || []).length}개 · 지금 바로 경고 {alertNowN}개
+          {C.fatigueAlertDesc((fatigueAlerts || []).length, alertNowN)}
         </p>
         <div className="table-wrap">
           <table className="data" style={{ fontSize: "11.5px" }}>
             <thead>
               <tr>
                 <th>상태</th>
-                <th>Creative ID</th>
+                <th>{C.colCreativeId}</th>
                 <th>수명(일)</th>
                 <th>Fatigue Score</th>
                 <th>최근 CTR 추세</th>
@@ -1083,7 +1082,7 @@ export default function CreativeAnalyzer() {
                   );
                 })
               ) : (
-                <tr><td colSpan="8" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>분석 가능한 소재가 없습니다 (운영 기간 {CREATIVE_CONFIG.fatigueAlert.minDays}일 미만)</td></tr>
+                <tr><td colSpan="8" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>{C.fatigueAlertEmpty(CREATIVE_CONFIG.fatigueAlert.minDays)}</td></tr>
               )}
             </tbody>
           </table>
@@ -1091,17 +1090,17 @@ export default function CreativeAnalyzer() {
       </section>
 
       <section className="block" id="s-auto-planner">
-        <h2 className="section-title"><span className="ix">§7</span>교체 일정 추천 (Auto-Planner)</h2>
+        <h2 className="section-title"><span className="ix">§7</span>{C.plannerTitle}</h2>
         {autoPlan && autoPlan.plan.length ? (
           (() => {
             const buckets = CREATIVE_FATIGUE.ganttBuckets(autoPlan.plan, ganttWeeks);
             return (
               <>
                 <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
-                  한 주에 새로 만들 수 있는 소재 개수를 입력하면, 피로도가 급한 소재부터 교체할 주차를 자동으로 배정해 드립니다.
+                  {C.plannerDesc}
                 </p>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "8px 0 12px", flexWrap: "wrap" }}>
-                  <label style={{ fontSize: "12px", color: "var(--text-muted)" }}>주당 신규 소재 공급량</label>
+                  <label style={{ fontSize: "12px", color: "var(--text-muted)" }}>{C.plannerVelocityLabel}</label>
                   <input
                     type="number"
                     min="0.5"
@@ -1117,25 +1116,25 @@ export default function CreativeAnalyzer() {
                 </div>
                 <div className="ab-stat-row" style={{ margin: "8px 0 12px" }}>
                   <div className="ab-stat">
-                    <div className="ab-stat-label" title="즉시 경고 또는 임박 위험으로 분류된 소재 수">긴급 교체 필요</div>
+                    <div className="ab-stat-label" title={C.plannerStatUrgentTitle}>{C.plannerStatUrgentLabel}</div>
                     <div className={`ab-stat-value tnum ${autoPlan.urgentCount > 0 ? "neg" : "pos"}`}>{autoPlan.urgentCount}</div>
                   </div>
                   <div className="ab-stat">
-                    <div className="ab-stat-label" title="현재 공급 속도로 긴급 소재를 전부 교체하는 데 걸리는 기간">긴급 물량 처리 기간</div>
+                    <div className="ab-stat-label" title={C.plannerStatWeeksTitle}>긴급 물량 처리 기간</div>
                     <div className="ab-stat-value tnum">{autoPlan.weeksNeededForUrgent == null ? "—" : autoPlan.weeksNeededForUrgent + "주"}</div>
                   </div>
                   <div className="ab-stat">
-                    <div className="ab-stat-label" title="긴급 물량을 1주 내 소화하려면 필요한 주당 신규 소재 수">추천 주당 교체 속도</div>
+                    <div className="ab-stat-label" title={C.plannerStatRecTitle}>{C.plannerStatRecLabel}</div>
                     <div className="ab-stat-value tnum">{autoPlan.recommendedWeeklyVelocity}개</div>
                   </div>
                 </div>
                 {autoPlan.isUndersupplied ? (
-                  <div className="callout warning"><div className="ico">!</div><div className="body"><strong>공급 부족</strong><p>긴급 교체가 필요한 소재가 {autoPlan.urgentCount}개인데 현재 주당 공급량({autoPlan.weeklyVelocity})으로는 1주 내 전부 소화할 수 없습니다. 주당 {autoPlan.recommendedWeeklyVelocity}개 이상으로 늘리거나 긴급도가 낮은 소재의 교체를 늦추세요.</p></div></div>
+                  <div className="callout warning"><div className="ico">!</div><div className="body"><strong>공급 부족</strong><p>{C.plannerUndersupplyBody(autoPlan.urgentCount, autoPlan.weeklyVelocity, autoPlan.recommendedWeeklyVelocity)}</p></div></div>
                 ) : (
-                  <div className="callout"><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "12px" }}>현재 공급량(주당 {autoPlan.weeklyVelocity}개)으로 긴급 교체 물량을 충분히 소화 가능합니다.</p></div></div>
+                  <div className="callout"><div className="ico">i</div><div className="body"><p style={{ margin: 0, fontSize: "12px" }}>{C.plannerOkBody(autoPlan.weeklyVelocity)}</p></div></div>
                 )}
                 <div className="alloc-card" style={{ marginTop: "12px" }}>
-                  <div className="cann-card-header"><div className="alloc-card-title">교체 타임라인 (Gantt) — 향후 {ganttWeeks}주</div></div>
+                  <div className="cann-card-header"><div className="alloc-card-title">{C.plannerGanttTitle(ganttWeeks)}</div></div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "8px" }}>
                     {buckets.map((b) => (
                       <div key={b.week} style={{ display: "flex", alignItems: "stretch", gap: "8px" }}>
@@ -1164,12 +1163,12 @@ export default function CreativeAnalyzer() {
                     <span style={{ display: "inline-block", width: "9px", height: "9px", borderRadius: "2px", background: URGENCY_COLOR.planned, margin: "0 4px 0 12px" }}></span>예정
                   </div>
                 </div>
-                <p className="muted" style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "8px" }}>교체 순서는 [지금 바로 경고 우선 → 위험 도달 예상이 빠른 순 → 피로도 점수 높은 순]으로 정해지며, 입력한 주당 개수만큼씩 주차에 나눠 배치됩니다.</p>
+                <p className="muted" style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "8px" }}>{C.plannerFootnote}</p>
               </>
             );
           })()
         ) : (
-          <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>교체가 필요한 소재가 없습니다.</p>
+          <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>{C.plannerEmpty}</p>
         )}
       </section>
 
@@ -1177,7 +1176,7 @@ export default function CreativeAnalyzer() {
         <h2 className="section-title"><span className="ix">§8</span>조합별 성과표 (Concept Matrix){matrix ? ` — ${rowAttr} × ${colAttr}` : ""}</h2>
         {matrix && matrix.grid.length ? (
           <>
-            <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>소재 속성 두 가지를 교차해서, 어떤 조합이 이미 검증됐고 어떤 조합을 더 시도해봐야 하는지 한눈에 봅니다. 셀을 클릭하면 §3 성과표가 그 조합으로 필터링됩니다.</p>
+            <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>{C.matrixDesc1}</p>
             <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
               셀 상태: <span style={{ background: MATRIX_STATUS_COLOR.validated, padding: "2px 8px", borderRadius: "4px" }} title="충분한 데이터로 효과가 확인된 조합">검증</span> ·{" "}
               <span style={{ background: MATRIX_STATUS_COLOR.promising, padding: "2px 8px", borderRadius: "4px" }} title="좋아 보이지만 아직 데이터가 적어 확정하기 어려운 조합">유망</span> ·{" "}

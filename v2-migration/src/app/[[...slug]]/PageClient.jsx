@@ -26,6 +26,7 @@ const Incrementality = dyn(() => import("@/components/tools/Incrementality"));
 const ContentElementAnalyzer = dyn(() => import("@/components/tools/ContentElementAnalyzer"));
 const KillerContentFinder = dyn(() => import("@/components/tools/KillerContentFinder"));
 const ContentTrafficVariance = dyn(() => import("@/components/tools/ContentTrafficVariance"));
+const ContentFreshness = dyn(() => import("@/components/tools/ContentFreshness"));
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId } from "@/lib/routeMap";
@@ -72,6 +73,7 @@ export default function PageClient({ params }) {
             {routeId === "9-1" && <ContentElementAnalyzer />}
             {routeId === "9-2" && <KillerContentFinder />}
             {routeId === "9-3" && <ContentTrafficVariance />}
+            {routeId === "9-6" && <ContentFreshness />}
 
             {/* SOP 폴백: 도구 라우트(5-x·9-x)가 아닌 가이드 id만 SopContent로.
                 9-x 콘텐츠 도구가 이 폴백으로 새어 SopContent로 렌더되던 함정 차단(§plan). */}

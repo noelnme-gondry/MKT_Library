@@ -206,3 +206,158 @@ export const ELEMENT_COPY = {
   causationBody:
     '이 결과는 <strong>연관(association)</strong>이지 <strong>인과</strong>가 아닙니다. 잘 만드는 사람이 여러 좋은 요소를 함께 쓰는 경향(교락)이 있어, 한 요소만 따로 바꿨을 때의 효과는 다를 수 있어요. 확정은 요소 하나만 바꾼 <strong>A/B 테스트</strong>로 검증하세요.',
 };
+
+/* CreativeAnalyzer(5-6 / 9-6) 공용 카피팩 — 소재 피로도 진단기.
+   performance = 기존 하드코딩 문자열과 byte-동일(5-6 출력 불변, 스모크·골든 안전).
+   content = 콘텐츠 도메인 번역(소재→콘텐츠·피로도→신선도 저하·교체→발행).
+   엔진(creativeMath: CREATIVE_STATS·CREATIVE_FATIGUE)은 비율(CTR/CVR) 기반이라
+   스케일 안전 — 절대 불변, 라벨만 스왑. CSV 필드명·매핑키(creative_id·hook_type…)
+   도 엔진 계약이라 불변, 화면 라벨만 도메인화.
+   entity = 인라인 단수 명사(칩·필터 카운트 등에서 `${entity} N개`로 재사용). */
+export const CREATIVE_COPY = {
+  performance: {
+    uploaderToolId: "5-6",
+    entity: "소재",
+    // 빈 상태(no-data)
+    noDataDesc: "소재 성과 데이터를 업로드하여 Fatigue와 Concept을 분석하세요.",
+    // 히어로(§0)
+    heroTitle: "어떤 소재가 이기고, 언제 갈아끼워야 하나?",
+    heroSub:
+      "소재(영상·이미지 등 광고 크리에이티브)별로 무엇이 잘 되는지, 왜 잘 되는지, 언제 새로 바꿔야 하는지를 한 곳에서 보여줍니다.",
+    heroJourney: [
+      ["🏆", "어떤 소재가 이기고 있나", "승률·교체 속도·생존 기간"],
+      ["🔍", "어떤 특징이 효과적인가", "후킹 방식·포맷 등 속성별 효과"],
+      ["🔋", "지금 지치는 소재가 있나", "피로도 진단·교체 시점 추천"],
+      ["🧪", "다음엔 뭘 테스트할까", "조합별 성과 기반 후보 추천"],
+    ],
+    heroCausationBody:
+      "노출량 가중 최소제곱법(WLS)과 다중 검정 보정(BH)을 통해 크리에이티브 속성(Hook, Format 등)의 효과를 추정합니다. 본 분해 결과는 매체 알고리즘에 따른 노출 편향(Selection Bias)이 포함되어 있으므로 인과적 효과가 아닌 상관 관계로 해석해야 하며, 최종 확정은 실험 도구(5-4)를 통해 검증하시는 것을 권장합니다.",
+    // §2 운영 건강도
+    healthTitle: "운영 건강도 (Win-rate · Velocity · 라이프사이클)",
+    healthDescPre: "소재 운영이 잘 되고 있는지 보는 3가지 질문 — 새 소재가 얼마나 자주 ",
+    healthDescS1: "이기는지(이긴 비율, Win-rate)",
+    healthDescS2: "갈아끼우는지(교체 속도, Velocity)",
+    healthDescS3: "오래 버티는지(생존 기간, 라이프사이클)",
+    statCtrLabel: "클릭이 잘 되는 소재 비율 (CTR Win-rate)",
+    statCtrTitle: "다른 소재들의 클릭률 중간값보다 잘 나온 소재 비율",
+    statCvrLabel: "전환이 잘 되는 소재 비율 (CVR Win-rate)",
+    statCvrTitle: "다른 소재들의 전환율 중간값보다 잘 나온 소재 비율",
+    statSpendLabel: "잘 되는 소재에 쓴 비용 비중",
+    statSpendHint: "CTR 승자 소재에 쓴 비용 비중",
+    statVelLabel: "한 주에 새로 올리는 소재 수 (Velocity)",
+    statVelTitle: "한 주에 새로 등장한 소재 개수의 평균",
+    statLifeLabel: "소재 하나가 버티는 평균 기간",
+    statFatLabel: "피로해진 소재 비율 (Fatigue)",
+    statFatTitle: "성과가 떨어지며 지친 것으로 진단된 소재 비율",
+    healthCalloutT1: "이 50%를 크게 밑돌면 소재 기획 적중률이 낮은 것 — 컨셉 다양화(§9 다음 테스트 추천) 필요.",
+    healthCalloutS2: "한 주에 새로 올리는 소재 수",
+    healthCalloutT2: "가 너무 적으면 지치는 소재를 못 따라잡습니다 (벤치마크: 활성 소재의 20~30% / 주).",
+    healthCalloutS3: "잘 되는 소재에 쓴 비용 비중",
+    healthCalloutT3: "이 낮으면 좋은 소재에 예산이 안 실리고 있다는 신호입니다.",
+    // §3 성과표
+    metricsTitle: "소재별 성과표",
+    metricsDesc: "노출·클릭·설치 같은 원자료와, 클릭률·전환율·설치당비용 같은 계산된 효율 지표를 함께 봅니다. 약어 위에 마우스를 올리면 설명이 나옵니다.",
+    filterActiveLabel: "조합별 성과표(Concept Matrix) 필터 적용 중:",
+    colCreativeId: "Creative ID",
+    // §4 속성별 효과
+    decomposeDescPre: "후킹 방식·메시지 콘셉트·포맷 같은 소재 속성이 ",
+    decomposeBiasSource: "매체 알고리즘",
+    decomposeUnavailBody: "소재 속성 컬럼(hook_type·format 등) 매핑 또는 데이터 행 수(30행 이상)가 부족합니다.",
+    // §5 피로도 진단
+    fatigueTitle: "소재 피로도 진단 (Fatigue 검출)",
+    fatigueDesc: (total, count) => `분석 소재 ${total}개 · 피로해진 소재 ${count}개`,
+    fatiguedBadge: "피로",
+    fatigueEmpty: "지친 소재가 감지되지 않았습니다 (양호)",
+    // §6 임박 경고
+    fatigueAlertTitle: "피로도 임박 경고 (Ad Fatigue Alert)",
+    fatigueAlertDesc: (total, alertNow) => `분석 소재 ${total}개 · 지금 바로 경고 ${alertNow}개`,
+    fatigueAlertEmpty: (minDays) => `분석 가능한 소재가 없습니다 (운영 기간 ${minDays}일 미만)`,
+    // §7 교체 일정
+    plannerTitle: "교체 일정 추천 (Auto-Planner)",
+    plannerDesc: "한 주에 새로 만들 수 있는 소재 개수를 입력하면, 피로도가 급한 소재부터 교체할 주차를 자동으로 배정해 드립니다.",
+    plannerVelocityLabel: "주당 신규 소재 공급량",
+    plannerStatUrgentLabel: "긴급 교체 필요",
+    plannerStatUrgentTitle: "즉시 경고 또는 임박 위험으로 분류된 소재 수",
+    plannerStatWeeksTitle: "현재 공급 속도로 긴급 소재를 전부 교체하는 데 걸리는 기간",
+    plannerStatRecLabel: "추천 주당 교체 속도",
+    plannerStatRecTitle: "긴급 물량을 1주 내 소화하려면 필요한 주당 신규 소재 수",
+    plannerUndersupplyBody: (u, v, r) =>
+      `긴급 교체가 필요한 소재가 ${u}개인데 현재 주당 공급량(${v})으로는 1주 내 전부 소화할 수 없습니다. 주당 ${r}개 이상으로 늘리거나 긴급도가 낮은 소재의 교체를 늦추세요.`,
+    plannerOkBody: (v) => `현재 공급량(주당 ${v}개)으로 긴급 교체 물량을 충분히 소화 가능합니다.`,
+    plannerGanttTitle: (weeks) => `교체 타임라인 (Gantt) — 향후 ${weeks}주`,
+    plannerFootnote: "교체 순서는 [지금 바로 경고 우선 → 위험 도달 예상이 빠른 순 → 피로도 점수 높은 순]으로 정해지며, 입력한 주당 개수만큼씩 주차에 나눠 배치됩니다.",
+    plannerEmpty: "교체가 필요한 소재가 없습니다.",
+    // §8 조합표
+    matrixDesc1: "소재 속성 두 가지를 교차해서, 어떤 조합이 이미 검증됐고 어떤 조합을 더 시도해봐야 하는지 한눈에 봅니다. 셀을 클릭하면 §3 성과표가 그 조합으로 필터링됩니다.",
+  },
+  content: {
+    uploaderToolId: "9-6",
+    entity: "콘텐츠",
+    noDataDesc: "콘텐츠 성과 데이터를 업로드하여 신선도 저하와 반응 감쇠를 분석하세요.",
+    heroTitle: "어떤 콘텐츠가 반응이 좋고, 언제 새로 발행해야 하나?",
+    heroSub:
+      "콘텐츠(글·영상·포스트 등)별로 무엇이 잘 되는지, 왜 잘 되는지, 언제 새로 발행해야 하는지를 한 곳에서 보여줍니다.",
+    heroJourney: [
+      ["🏆", "어떤 콘텐츠가 반응이 좋나", "승률·발행 페이스·생존 기간"],
+      ["🔍", "어떤 특징이 효과적인가", "후킹 유형·형식 등 속성별 효과"],
+      ["🔋", "지금 신선도가 떨어지는 콘텐츠가 있나", "신선도 저하 진단·재발행 시점 추천"],
+      ["🧪", "다음엔 뭘 테스트할까", "조합별 성과 기반 후보 추천"],
+    ],
+    heroCausationBody:
+      "노출량 가중 최소제곱법(WLS)과 다중 검정 보정(BH)을 통해 콘텐츠 속성(후킹 유형·형식 등)의 효과를 추정합니다. 본 분해 결과는 노출·추천 알고리즘에 따른 노출 편향(Selection Bias)이 포함되어 있으므로 인과적 효과가 아닌 상관 관계로 해석해야 하며, 최종 확정은 실험 도구(5-4)를 통해 검증하시는 것을 권장합니다.",
+    healthTitle: "콘텐츠 운영 건강도 (Win-rate · 발행 페이스 · 라이프사이클)",
+    healthDescPre: "콘텐츠 운영이 잘 되고 있는지 보는 3가지 질문 — 새 콘텐츠가 얼마나 자주 ",
+    healthDescS1: "반응이 좋은지(이긴 비율, Win-rate)",
+    healthDescS2: "새로 발행하는지(발행 페이스, Velocity)",
+    healthDescS3: "오래 버티는지(생존 기간, 라이프사이클)",
+    statCtrLabel: "클릭이 잘 되는 콘텐츠 비율 (CTR Win-rate)",
+    statCtrTitle: "다른 콘텐츠들의 클릭률 중간값보다 잘 나온 콘텐츠 비율",
+    statCvrLabel: "전환이 잘 되는 콘텐츠 비율 (CVR Win-rate)",
+    statCvrTitle: "다른 콘텐츠들의 전환율 중간값보다 잘 나온 콘텐츠 비율",
+    statSpendLabel: "잘 되는 콘텐츠에 쓴 비용 비중",
+    statSpendHint: "CTR 상위 콘텐츠에 쓴 비용 비중",
+    statVelLabel: "한 주에 새로 발행하는 콘텐츠 수 (발행 페이스)",
+    statVelTitle: "한 주에 새로 발행된 콘텐츠 개수의 평균",
+    statLifeLabel: "콘텐츠 하나가 버티는 평균 기간",
+    statFatLabel: "신선도가 떨어진 콘텐츠 비율 (Freshness)",
+    statFatTitle: "반응이 떨어지며 노후한 것으로 진단된 콘텐츠 비율",
+    healthCalloutT1: "이 50%를 크게 밑돌면 콘텐츠 기획 적중률이 낮은 것 — 컨셉 다양화(§9 다음 테스트 추천) 필요.",
+    healthCalloutS2: "한 주에 새로 발행하는 콘텐츠 수",
+    healthCalloutT2: "가 너무 적으면 신선도가 떨어지는 콘텐츠를 못 따라잡습니다 (벤치마크: 활성 콘텐츠의 20~30% / 주).",
+    healthCalloutS3: "잘 되는 콘텐츠에 쓴 비용 비중",
+    healthCalloutT3: "이 낮으면 좋은 콘텐츠에 예산이 안 실리고 있다는 신호입니다.",
+    metricsTitle: "콘텐츠별 성과표",
+    metricsDesc: "노출·클릭·전환 같은 원자료와, 클릭률·전환율·전환당비용 같은 계산된 효율 지표를 함께 봅니다. 약어 위에 마우스를 올리면 설명이 나옵니다.",
+    filterActiveLabel: "조합별 성과표(Concept Matrix) 필터 적용 중:",
+    colCreativeId: "콘텐츠 ID",
+    decomposeDescPre: "후킹 유형·메시지 앵글·형식 같은 콘텐츠 속성이 ",
+    decomposeBiasSource: "노출·추천 알고리즘",
+    decomposeUnavailBody: "콘텐츠 속성 컬럼(hook_type·format 등) 매핑 또는 데이터 행 수(30행 이상)가 부족합니다.",
+    fatigueTitle: "콘텐츠 신선도 저하 진단 (반응 감쇠 검출)",
+    fatigueDesc: (total, count) => `분석 콘텐츠 ${total}개 · 신선도 저하 콘텐츠 ${count}개`,
+    fatiguedBadge: "저하",
+    fatigueEmpty: "신선도가 떨어진 콘텐츠가 감지되지 않았습니다 (양호)",
+    fatigueAlertTitle: "신선도 저하 임박 경고 (Content Fatigue Alert)",
+    fatigueAlertDesc: (total, alertNow) => `분석 콘텐츠 ${total}개 · 지금 바로 경고 ${alertNow}개`,
+    fatigueAlertEmpty: (minDays) => `분석 가능한 콘텐츠가 없습니다 (발행 기간 ${minDays}일 미만)`,
+    plannerTitle: "발행 일정 추천 (Auto-Planner)",
+    plannerDesc: "한 주에 새로 만들 수 있는 콘텐츠 개수를 입력하면, 신선도 저하가 급한 콘텐츠부터 새로 발행할 주차를 자동으로 배정해 드립니다.",
+    plannerVelocityLabel: "주당 신규 콘텐츠 발행량",
+    plannerStatUrgentLabel: "긴급 재발행 필요",
+    plannerStatUrgentTitle: "즉시 경고 또는 임박 위험으로 분류된 콘텐츠 수",
+    plannerStatWeeksTitle: "현재 발행 속도로 긴급 콘텐츠를 전부 교체하는 데 걸리는 기간",
+    plannerStatRecLabel: "추천 주당 발행 속도",
+    plannerStatRecTitle: "긴급 물량을 1주 내 소화하려면 필요한 주당 신규 콘텐츠 수",
+    plannerUndersupplyBody: (u, v, r) =>
+      `긴급 재발행이 필요한 콘텐츠가 ${u}개인데 현재 주당 발행량(${v})으로는 1주 내 전부 소화할 수 없습니다. 주당 ${r}개 이상으로 늘리거나 긴급도가 낮은 콘텐츠의 재발행을 늦추세요.`,
+    plannerOkBody: (v) => `현재 발행량(주당 ${v}개)으로 긴급 재발행 물량을 충분히 소화 가능합니다.`,
+    plannerGanttTitle: (weeks) => `발행 타임라인 (Gantt) — 향후 ${weeks}주`,
+    plannerFootnote: "발행 순서는 [지금 바로 경고 우선 → 위험 도달 예상이 빠른 순 → 신선도 저하 점수 높은 순]으로 정해지며, 입력한 주당 개수만큼씩 주차에 나눠 배치됩니다.",
+    plannerEmpty: "새로 발행이 필요한 콘텐츠가 없습니다.",
+    matrixDesc1: "콘텐츠 속성 두 가지를 교차해서, 어떤 조합이 이미 검증됐고 어떤 조합을 더 시도해봐야 하는지 한눈에 봅니다. 셀을 클릭하면 §3 성과표가 그 조합으로 필터링됩니다.",
+  },
+};
+
+export function resolveCreativeCopy(domain) {
+  return CREATIVE_COPY[domain] || CREATIVE_COPY.performance;
+}
