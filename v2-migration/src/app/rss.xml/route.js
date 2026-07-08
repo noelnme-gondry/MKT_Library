@@ -1,5 +1,6 @@
 import { ROUTES, SITE_URL } from "@/lib/routeMap";
 import { findMeta } from "@/store/useDataStore";
+import { getAllPosts } from "@/lib/blog";
 
 // Next 16 route handler → /rss.xml. 네이버 서치어드바이저 RSS 제출용.
 // sitemap.js와 동일하게 routeMap SSOT + IA(findMeta) 기반이라 도구/SOP 추가 시
@@ -26,8 +27,24 @@ export const dynamic = "force-static";
 
 export function GET() {
   const now = new Date().toUTCString();
+
+  // 블로그 글이 RSS의 본령 — 발행 글을 먼저(최신순), 그 아래 도구 페이지.
+  const blogItems = getAllPosts()
+    .map((p) => {
+      const link = `${SITE_URL}/blog/${p.slug}`;
+      const pub = p.date ? new Date(p.date).toUTCString() : now;
+      return `    <item>
+      <title>${xmlEscape(stripTags(p.title))}</title>
+      <link>${xmlEscape(link)}</link>
+      <description>${xmlEscape(stripTags(p.description))}</description>
+      <guid isPermaLink="true">${xmlEscape(link)}</guid>
+      <pubDate>${pub}</pubDate>
+    </item>`;
+    })
+    .join("\n");
+
   const seen = new Set();
-  const items = ROUTES.filter((r) => {
+  const toolItems = ROUTES.filter((r) => {
     if (r.legacy || r.slug === "/" || seen.has(r.slug)) return false;
     seen.add(r.slug);
     return !!findMeta(r.id);
@@ -48,6 +65,8 @@ export function GET() {
     </item>`;
     })
     .join("\n");
+
+  const items = [blogItems, toolItems].filter(Boolean).join("\n");
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">

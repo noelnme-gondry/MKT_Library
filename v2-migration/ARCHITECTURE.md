@@ -9,11 +9,12 @@ v2-migration/
 ├─ src/
 │  ├─ app/
 │  │  ├─ [[...slug]]/page.js # ★ Path 라우팅 dispatch (URL→routeMap→컴포넌트) + not-found.js
-│  │  ├─ sitemap.js         # sitemap.xml (23 URL)
-│  │  ├─ layout.js          # <head>·CDN 스크립트(Supabase 주석화·TODO(B2B))
+│  │  ├─ blog/page.js·[slug]/page.js # 블로그(SEO 마케팅 컬럼) — fs MD 파이프라인, routeMap 밖
+│  │  ├─ sitemap.js·rss.xml/route.js # SEO: routeMap ROUTES + getAllPosts(블로그) 파생
+│  │  ├─ layout.js          # <head>·SEO 메타(SITE_URL)·GTM/GA4/AdSense·naver·rss alternate
 │  │  ├─ globals.css        # ★ 전 디자인 시스템 (Obsidian Flux 토큰·다크/라이트·전 클래스)
 │  │  └─ page.module.css    # 랜딩 일부 스코프 스타일
-│  ├─ lib/routeMap.js       # ★ slug↔id↔컴포넌트 SSOT (id 불변, §4.1)
+│  ├─ lib/routeMap.js·blog.js # routeMap=slug↔id SSOT(id 불변, §4.1) / blog.js=fs MD 로더(server 전용, gray-matter+marked, content/blog/*.md 읽음)
 │  ├─ store/
 │  │  └─ useDataStore.js    # ★ SSOT: Zustand — IA·csvGroups(스코프)·csvData(미러)·TOOL_GROUP·필터·currentRouteId·테마
 │  ├─ utils/                # ★ 순수 통계엔진 (ESM, 수학 불변, vitest 골든) + 데이터층 + 추출 math(funnel/segment/anomaly/pacing/cohort/incr)

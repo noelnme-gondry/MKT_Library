@@ -40,7 +40,7 @@ Chart.js 4.4.4 · PapaParse 5.4.1 · Supabase JS 2.45.4(주석화) · SheetJS 0.
 ```
 **v2 (`v2-migration/`, 신규 작업 대상)**:
 ```
-Next.js 16 (App Router, Turbopack) · React 19 · Zustand 5 (store) · Chart.js 4 · PapaParse 5 (npm)
+Next.js 16 (App Router, Turbopack) · React 19 · Zustand 5 (store) · Chart.js 4 · PapaParse 5 (npm) · gray-matter+marked (블로그 MD, 빌드타임·server 전용)
 ├─ src/utils/*.js   순수 통계엔진 (ESM export, vitest 골든 검증) — 수학 절대 변경 금지
 ├─ src/components/  React 컴포넌트 (tools/·dashboard/·sops/)
 ├─ src/store/useDataStore.js  Zustand — IA·csvData·필터·라우트 상태
@@ -323,6 +323,9 @@ index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상�
 
 ### 12.23 Content Analytics — 퍼포먼스 엔진 도메인 리라벨 (9-x, 콘텐츠 마케터 확장)
 퍼포먼스 엔진(`*Math.js`) **수학 불변·라벨만 콘텐츠 도메인 스왑**으로 신규 대분류 `[컨텐츠 분석]` 추가(9-1·9-2·9-3·9-6·9-7 완료, 9-5 보류 — SSOT `docs/content-analytics-rollout-spec.md`). **9-4 CMM 드롭**(재시도 금지): MMM 엔진이 금액×수확체감 전제(`mmmSaturation` 체크포인트 $ 하드코딩·§2.1 불변)라 콘텐츠 발행 편수(카운트)와 근본 불일치 → 한계효과 언더플로우. **교훈**: 도메인 리라벨 전 엔진의 스케일 가정(금액 vs 카운트)이 새 도메인 데이터와 맞는지 먼저 검증(라벨만으론 안 됨). **복제 금지, 라벨팩 파라미터화**(§12.21): SSOT=`utils/contentDomain.js`(도메인별 카피 객체+resolver). 소스 컴포넌트 1:1 있으면 `domain` prop 주입(9-2=`<AhaMomentFinder domain="content"/>`·9-3=`<CampaignPvm domain="content"/>` 얇은 래퍼; `AHA_COPY`/`PVM_COPY[domain]`, performance 팩=기존 문자열 byte-동일→출력 불변→골든/스모크 안전), 없으면 엔진 위 신규 얇은 UI(9-1 요소분석기=`REG_STATS.ols` forest plot, |t| 랭킹·two-sided p). **1300줄+ 컴포넌트 리라벨**: 모듈 헬퍼(`pvmMetricLabel`)엔 C 인자 추가·내부 헬퍼는 클로저로 C 접근, 실제 CSV 필드명·매핑키(`campaign_id`·`installs`)는 불변(라벨만), 시간/방향 공통어("지난주"·"악화/개선")는 파라미터화 말 것(performance 불변 우선). 9-3 어휘: 채널→유입경로·캠페인→카테고리·소재→콘텐츠, 지표=방문당 비용(트래픽당). 9-6=`<CreativeAnalyzer domain="content"/>`(소재→콘텐츠·피로도→신선도, CTR 비율 기반이라 스케일 안전). **9-7 다중 컴포넌트 리라벨**(Dashboard→DashboardTabs→탭들, store 직접 구독): `domain`을 **prop drilling**으로 흘림, 게이트 `isGroupAnalyzed`·CsvUploader toolId 하드코딩(`5-2`)을 domain별 파생, **탭 서브셋 노출 시 공유 전역 `dashboardTab`이 허용셋 밖이면 기본탭 강제**(reset-on-change), 도메인에 없는 지표(매출·ROAS·코호트)는 라벨 날조 말고 **매핑 게이트로 정직 제외**(§8). 배선: `IA`+새 `SECTIONS.content`(→Sidebar 자동)·`routeMap`(`/content/*`)·격리 `csvGroups.content_*`·`demoData`·`toolGuide`. **함정**: PageClient SOP 폴백 `!startsWith("5-")`가 `9-x`를 SopContent로 흘림 → 명시 디스패치+`!startsWith("9-")` 가드. **정직성(§8)**: 관측 리매핑=연관≠인과, OLS 미산출 수치("확률 85%") 금지, 무유의=증거부족.
+
+### 12.24 블로그 (SEO 마케팅 컬럼, `/blog`)
+`routeMap`(도구 라우팅) **밖**의 fs 기반 MD 파이프라인 — 도구/SOP와 독립. **글 발행 = `v2-migration/content/blog/<slug>.md` 파일 추가**(frontmatter: `title`≤40·`description`≤80·`date`(ISO)·`slug`·`keywords`·`tags`·`draft`·`ogImage`; `_TEMPLATE.md` 복사, `_`프리픽스·`draft:true`는 미발행). `src/lib/blog.js`(`getAllPosts`/`getPostBySlug`, **server 전용** — gray-matter+marked, 클라이언트 import 금지). 라우트 `app/blog/page.js`(목록·빈상태)·`app/blog/[slug]/page.js`(`generateStaticParams`+`generateMetadata` canonical/OG article). **SEO 연동**: `sitemap.js`·`rss.xml/route.js`가 `getAllPosts`로 글을 직접 포함(routeMap 밖이라 SSOT 파생 안 됨 — 블로그는 fs가 SSOT). 타이포 `globals.css` `.blog-prose`. Sidebar에 `/blog` Link 1개. **SOP(JSON)는 MD 이관 안 함** — 렌더 HTML이 SEO 대상이라 소스 형식은 SEO 무관(불필요 리스크).
 
 ---
 
