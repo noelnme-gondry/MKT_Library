@@ -1018,6 +1018,10 @@ export const TOOL_REQUIRED_FIELDS = {
                 "installs",
                 "spend",
               ],
+              // 9-7 콘텐츠 운영 대시보드 — 5-2와 동일 엔진(dashboardAggregator).
+              // 트래픽 중심: 방문=installs, 구독=actions, 비용=cost. 매출·결제·리텐션은
+              // 콘텐츠 데이터에 없어 필수/옵션 어디에도 두지 않음(§정직성).
+              "9-7": ["date", "cost", { oneOf: ["installs", "actions"] }],
             };
 export const TOOL_OPTIONAL_FIELDS = {
               "5-4": [
@@ -1315,5 +1319,15 @@ export const TOOL_OPTIONAL_FIELDS = {
                   unlocks: "전환당비용 decompose (installs 대신 액션 기준)",
                 },
                 { key: "revenue_d7", unlocks: "ROAS metric (분해 대상에 추가)" },
+              ],
+              // 9-7 콘텐츠 운영 대시보드 — 트래픽 중심 옵션. 매출·결제·리텐션(revenue/
+              // pu/ret) 컬럼은 콘텐츠 데이터에 없어 노출하지 않음(§정직성, 날조 금지).
+              "9-7": [
+                { key: "channel", unlocks: "유입경로별 비중·방문당 비용 비교" },
+                { key: "campaign_name", unlocks: "카테고리 단위 분석" },
+                { key: "platform", unlocks: "디바이스(모바일/데스크톱) 분포" },
+                { key: "impressions", unlocks: "반응률(CTR)·CPM 계산 (clicks와 함께)" },
+                { key: "clicks", unlocks: "반응률(CTR)·방문 전환율(CVR) 계산" },
+                { key: "actions", unlocks: "구독당 비용·전환수 분석 (방문과 별도)" },
               ],
             };

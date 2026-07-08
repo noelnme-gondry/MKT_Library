@@ -631,6 +631,65 @@ function buildContentFreshness() {
   return { raw, headers, mapping, fileName: "demo_content_freshness.csv" };
 }
 
+// ── content_dashboard (9-7 콘텐츠 운영 대시보드) ──────────────────────────────
+// 콘텐츠 운영 CSV — 유입경로(traffic_source)·카테고리·콘텐츠·비용·노출·클릭·방문·구독.
+// 매출/결제/리텐션은 콘텐츠 데이터에 없으므로 넣지 않는다(대시보드가 content 도메인에서
+// 그 지표 카드/차트를 아예 노출하지 않음 — §정직성, 날조 금지). 트래픽 신호: 유입경로별
+// 방문당 비용 스프레드 + cost^0.72 수확체감 + 결정론 노이즈, 한 날짜 트래픽 급등(이상탐지).
+function buildContentDashboard() {
+  const headers = [
+    "date", "traffic_source", "device", "content_category", "content_id",
+    "content_cost", "impressions", "clicks", "visits", "subscribers",
+  ];
+  // 유입경로별 효율(방문당 비용) 차이 → donut/cpi 비교에 신호. subRate=방문→구독 전환율.
+  const sources = [
+    { name: "자연 검색", eff: 0.70, subRate: 0.06, ctr: 0.045 },
+    { name: "소셜", eff: 1.20, subRate: 0.03, ctr: 0.030 },
+    { name: "뉴스레터", eff: 0.55, subRate: 0.11, ctr: 0.070 },
+    { name: "직접 유입", eff: 0.85, subRate: 0.08, ctr: 0.050 },
+    { name: "추천/제휴", eff: 1.00, subRate: 0.05, ctr: 0.038 },
+  ];
+  const categories = ["튜토리얼", "사례연구", "업계뉴스"];
+  const dates = generateDates(60, "2024-01-01");
+  const raw = [];
+  let seed = 41;
+  for (let si = 0; si < sources.length; si++) {
+    const s = sources[si];
+    const rnd = seededNoise((seed += 23));
+    const baseCost = 180000 * s.eff;
+    for (let d = 0; d < dates.length; d++) {
+      const cat = categories[(d + si) % categories.length];
+      const contentId = `${cat}_${(d % 6) + 1}`;
+      const ramp = 1 + (d / dates.length) * 1.2;
+      const noise = 1 + rnd() * 0.22;
+      // 뉴스레터에 한 날짜(d=40) 대량 발송 → 트래픽·비용 급등(이상탐지 신호).
+      const spike = s.name === "뉴스레터" && d === 40 ? 3.2 : 1;
+      const cost = baseCost * ramp * noise * spike;
+      const visits = Math.max(
+        1,
+        round((Math.pow(cost, 0.72) / (9 * s.eff)) * (1 + rnd() * 0.15))
+      );
+      const clicks = Math.max(visits, round(visits * (1.4 + rnd() * 0.5)));
+      const impressions = round((clicks / s.ctr) * (1 + rnd() * 0.12));
+      const subscribers = round(visits * s.subRate * (1 + rnd() * 0.25));
+      raw.push({
+        date: dates[d], traffic_source: s.name,
+        device: d % 2 === 0 ? "Mobile" : "Desktop",
+        content_category: cat, content_id: contentId,
+        content_cost: round(cost), impressions, clicks, visits, subscribers,
+      });
+    }
+  }
+  // 콘텐츠 헤더 → 대시보드 표준키. visits=installs(트래픽 결과), subscribers=actions(구독).
+  const mapping = {
+    date: "date", traffic_source: "channel", device: "platform",
+    content_category: "campaign_name", content_id: "creative_id",
+    content_cost: "cost", impressions: "impressions", clicks: "clicks",
+    visits: "installs", subscribers: "actions",
+  };
+  return { raw, headers, mapping, fileName: "demo_content_dashboard.csv" };
+}
+
 const BUILDERS = {
   efficiency: buildEfficiency,
   creative: buildCreative,
@@ -642,6 +701,7 @@ const BUILDERS = {
   content_attr: buildContentAttr,
   content_traffic: buildContentTraffic,
   content_freshness: buildContentFreshness,
+  content_dashboard: buildContentDashboard,
 };
 
 // group name (TOOL_GROUP value) → demo csv. Falls back to efficiency.

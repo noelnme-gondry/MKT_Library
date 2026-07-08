@@ -1,6 +1,7 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAppStore } from "@/store/useDataStore";
+import { resolveDashCopy } from "@/utils/contentDomain";
 import CsvUploader from "@/components/CsvUploader";
 import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
@@ -44,13 +45,37 @@ const TOC_MAP = {
   segment: [{ id: "s-matrix", title: "세그먼트" }],
 };
 
-export default function Dashboard() {
+// 콘텐츠 대시보드(9-7)는 3탭만 노출 — 결제·예산·매출 전제 탭(pacing·ltv·cohort·
+// funnel·segment)은 콘텐츠 데이터로 의미가 없어 제외(§정직성).
+const CONTENT_TABS = ["viz", "scorecard", "anomaly"];
+const CONTENT_TOC_MAP = {
+  viz: [
+    { id: "s-kpi", title: "KPI 요약" },
+    { id: "s-charts", title: "차트" },
+  ],
+  scorecard: [{ id: "s-score", title: "스코어카드" }],
+  anomaly: [{ id: "s-anom", title: "이상 감지" }],
+};
+
+export default function Dashboard({ domain = "performance" } = {}) {
+  const C = resolveDashCopy(domain);
+  const isContent = domain === "content";
+  // 콘텐츠판은 9-7 CSV 슬라이스·게이트를, 기본판은 5-2를 사용.
+  const toolId = isContent ? "9-7" : "5-2";
   const csvData = useAppStore((state) => state.csvData);
   const dashboardTab = useAppStore((state) => state.dashboardTab);
+  const setDashboardTab = useAppStore((state) => state.setDashboardTab);
   // #4 분석 게이트: 업로드·자동매핑만으로는 바로 분석하지 않는다. 사용자가
   // CsvUploader의 "분석하기"를 눌러 매핑을 확정해야(그룹 sig 저장) 결과가 열림.
   // 매핑을 바꾸면 sig가 달라져 다시 false → 결과 자동 숨김(faithful isToolAnalyzed).
-  const analyzed = useAppStore((state) => state.isGroupAnalyzed("5-2"));
+  const analyzed = useAppStore((state) => state.isGroupAnalyzed(toolId));
+
+  // dashboardTab은 5-2와 공유하는 전역 상태 → 콘텐츠 진입 시 허용셋 밖(ltv 등)이면
+  // viz로 되돌린다(reset-on-change). 첫 페인트는 activeTab(파생값)으로 정확히 렌더.
+  const activeTab = isContent && !CONTENT_TABS.includes(dashboardTab) ? "viz" : dashboardTab;
+  useEffect(() => {
+    if (isContent && !CONTENT_TABS.includes(dashboardTab)) setDashboardTab("viz");
+  }, [isContent, dashboardTab, setDashboardTab]);
   // 분석 완료 후 접힌 "데이터 매핑 설정" details — native <details>는 열림/닫힘 상태를
   // React가 자동으로 모르므로 controlled로 추적(라벨 펼치기/접기 동기화, §CLAUDE 12.20류 렌더층 패턴).
   const [mappingOpen, setMappingOpen] = useState(false);
@@ -58,7 +83,8 @@ export default function Dashboard() {
   const hasData = csvData && csvData.raw.length > 0;
   // 결과(탭·차트·TOC)는 데이터가 있고 + 분석이 확정된 뒤에만 렌더.
   const showResults = hasData && analyzed;
-  const currentToc = showResults ? TOC_MAP[dashboardTab] || [] : [];
+  const tocMap = isContent ? CONTENT_TOC_MAP : TOC_MAP;
+  const currentToc = showResults ? tocMap[activeTab] || [] : [];
 
   return (
     <div className="section active" style={{ display: "flex", width: "100%", height: "100%" }}>
@@ -72,7 +98,7 @@ export default function Dashboard() {
             아래 top:48px)에 고정. */}
         <div className="page-sticky-bar">
           <div className="page-sticky-row1">
-            <span className="page-sticky-title">운영 대시보드</span>
+            <span className="page-sticky-title">{C.pageTitle}</span>
             {hasData && (
               <>
                 <span className="chip" style={{ display: "inline-flex", alignItems: "center" }}>
@@ -91,7 +117,7 @@ export default function Dashboard() {
 
         {!hasData && (
           <p style={{ color: "var(--text-secondary)", margin: "1rem 0 2rem", fontSize: "13px" }}>
-            일일 캠페인 리포트 CSV를 업로드하여 성과를 요약하고 주요 지표를 시각화합니다.
+            {C.noDataIntro}
           </p>
         )}
 
@@ -103,15 +129,15 @@ export default function Dashboard() {
         {!hasData ? (
           <div className="block">
             <h2 className="section-title">데이터 업로드</h2>
-            <p className="card-desc" style={{ marginBottom: "1rem" }}>운영 대시보드를 생성하기 위해 마케팅 성과 CSV 파일을 업로드해주세요.</p>
-            <CsvUploader toolId="5-2" />
+            <p className="card-desc" style={{ marginBottom: "1rem" }}>{C.uploadDesc}</p>
+            <CsvUploader toolId={toolId} />
           </div>
         ) : !analyzed ? (
           <div className="block" style={{ padding: "12px", margin: "0 0 16px", borderRadius: "var(--radius-lg)", background: "rgba(255,255,255,0.01)" }}>
             <div style={{ marginBottom: "8px", fontSize: "11px", color: "var(--text-muted)" }}>
               🔒 업로드 데이터는 브라우저 메모리에서만 안전하게 유지됩니다.
             </div>
-            <CsvUploader toolId="5-2" />
+            <CsvUploader toolId={toolId} />
           </div>
         ) : (
           <details
@@ -127,7 +153,7 @@ export default function Dashboard() {
               <div style={{ marginBottom: "6px", fontSize: "11px", color: "var(--text-muted)" }}>
                 🔒 업로드 데이터는 브라우저 메모리에서만 안전하게 유지됩니다.
               </div>
-              <CsvUploader toolId="5-2" />
+              <CsvUploader toolId={toolId} />
             </div>
           </details>
         )}
@@ -153,21 +179,22 @@ export default function Dashboard() {
         {showResults && (
           <div className="dashboard-content">
             <MonEventMarkerUI />
-            <DashboardTabs />
-            
+            <DashboardTabs domain={domain} />
+
             <div className="tab-content" style={{ marginTop: "1rem" }}>
-              {dashboardTab === "viz" && <VizTab />}
-              {dashboardTab === "scorecard" && <ScorecardTab />}
-              {dashboardTab === "pacing" && <PacingTab />}
-              {dashboardTab === "anomaly" && <AnomalyTab />}
-              {dashboardTab === "ltv" && <LtvTab />}
-              {dashboardTab === "cohort" && <CohortTab />}
-              {dashboardTab === "funnel" && <FunnelTab />}
-              {dashboardTab === "segment" && <SegmentTab />}
-              {!["viz", "scorecard", "pacing", "anomaly", "ltv", "cohort", "funnel", "segment"].includes(dashboardTab) && (
+              {activeTab === "viz" && <VizTab domain={domain} />}
+              {activeTab === "scorecard" && <ScorecardTab domain={domain} />}
+              {activeTab === "anomaly" && <AnomalyTab domain={domain} />}
+              {/* 콘텐츠 대시보드는 아래 마케팅 전용 탭(결제·예산·매출 전제)을 노출하지 않음. */}
+              {!isContent && activeTab === "pacing" && <PacingTab />}
+              {!isContent && activeTab === "ltv" && <LtvTab />}
+              {!isContent && activeTab === "cohort" && <CohortTab />}
+              {!isContent && activeTab === "funnel" && <FunnelTab />}
+              {!isContent && activeTab === "segment" && <SegmentTab />}
+              {!["viz", "scorecard", "pacing", "anomaly", "ltv", "cohort", "funnel", "segment"].includes(activeTab) && (
                 <div className="card">
                   <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "2rem 0" }}>
-                    [{dashboardTab}] 탭은 현재 마이그레이션 중입니다...
+                    [{activeTab}] 탭은 현재 마이그레이션 중입니다...
                   </p>
                 </div>
               )}

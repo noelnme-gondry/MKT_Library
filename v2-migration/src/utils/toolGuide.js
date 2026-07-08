@@ -245,6 +245,24 @@ export const TOOL_GUIDE = {
     ],
     example: "creative_id,date,channel,impressions,clicks,installs,spend,message_angle,format\npost_001,2024-02-01,블로그,52000,1600,210,540000,정보성가이드,글\npost_002,2024-02-01,유튜브,48000,1900,180,480000,사례연구,영상",
   },
+  "9-7": {
+    when: "콘텐츠 운영 성과를 한 화면에서 요약합니다 — 일별 트래픽 추이·유입경로별 비중·방문당 비용을 시각화(시각화)하고, 최근 성과를 직전 기간과 비교(스코어카드)하고, 트래픽·반응률이 튀는 날을 자동으로 잡아냅니다(이상탐지).",
+    grain: "1행 = 하루 × 유입경로(× 카테고리·콘텐츠)",
+    needs: [
+      { col: "date", label: "날짜", why: "일별 추이·기간 비교·이상탐지의 축", required: true },
+      { col: "cost(=제작·배포 비용)", label: "비용", why: "방문당 비용·비중 계산", required: true },
+      { col: "visits(=installs)", label: "방문·트래픽", why: "핵심 성과 지표(방문·세션·PV)", required: true },
+      { col: "traffic_source(=channel)", label: "유입경로", why: "유입경로별 비중·방문당 비용 비교", required: false },
+      { col: "impressions·clicks", label: "노출·클릭", why: "반응률(CTR)·노출 대비 클릭 분석", required: false },
+      { col: "subscribers(=actions)", label: "구독·전환", why: "구독당 비용·전환 지표", required: false },
+    ],
+    prep: [
+      "매출·결제·ROAS 컬럼은 없어도 됩니다 — 콘텐츠 대시보드는 트래픽·반응률 중심입니다(그 지표는 표시하지 않습니다).",
+      "방문(트래픽)을 핵심 성과로, 노출·클릭·구독을 보조로 매핑하면 3탭 전부 채워집니다.",
+      "최소 2주치 이상이면 스코어카드(WoW)·이상탐지가 의미 있게 동작합니다.",
+    ],
+    example: "date,traffic_source,content_cost,impressions,clicks,visits,subscribers\n2024-01-08,자연 검색,126000,58000,2600,1740,104\n2024-01-08,소셜,216000,74000,2200,1020,31\n2024-01-15,뉴스레터,99000,41000,2870,1980,218",
+  },
 };
 
 export function getToolGuide(toolId) {

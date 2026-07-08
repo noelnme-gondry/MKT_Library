@@ -361,3 +361,99 @@ export const CREATIVE_COPY = {
 export function resolveCreativeCopy(domain) {
   return CREATIVE_COPY[domain] || CREATIVE_COPY.performance;
 }
+
+/* Dashboard(5-2 / 9-7) 공용 카피팩 — 운영 대시보드 3탭(viz·scorecard·anomaly).
+   performance = 기존 하드코딩 문자열과 byte-동일(5-2 출력 불변, 스모크·골든 안전).
+   content = 콘텐츠 도메인 번역(채널→유입경로·설치→방문·가입→구독·CPI/CPA→방문/구독당
+   비용·CTR→반응률). 엔진(dashboardAggregator·anomalyMath)은 절대 불변 — 라벨만 스왑.
+   정직성(§8): 콘텐츠 데이터엔 매출·ROAS·ARPU·결제·리텐션이 없으므로 그 지표는 날조하지
+   않고 content에서 아예 노출하지 않는다(VizTab 카드/차트·BudgetHealthCard 도메인 게이트).
+   effBasis(installs/actions) 의존 문구는 함수로 두 분기 모두 정확히 반환. */
+export const DASH_COPY = {
+  performance: {
+    guideToolId: "5-2",
+    // Dashboard.jsx
+    pageTitle: "운영 대시보드",
+    noDataIntro:
+      "일일 캠페인 리포트 CSV를 업로드하여 성과를 요약하고 주요 지표를 시각화합니다.",
+    uploadDesc: "운영 대시보드를 생성하기 위해 마케팅 성과 CSV 파일을 업로드해주세요.",
+    // DashboardTabs — 그룹 라벨(모니터링). content는 단일 그룹.
+    monGroupLabel: "모니터링",
+    // VizTab
+    acqLabel: (b) => (b === "actions" ? "CPA" : "CPI"),
+    trendOutcome: (b) => (b === "actions" ? "가입수" : "설치수"),
+    tsTitle: (b) => `일별 비용·${b === "actions" ? "가입" : "설치"} 추이`,
+    tsSub: (b) => `시계열 라인 · 좌축 비용 / 우축 ${b === "actions" ? "가입" : "설치"}`,
+    donutTitle: "채널별 비용 비중",
+    donutSub: "도넛 · 합산 cost 기준",
+    cpiTitle: (acq) => `채널별 ${acq} 비교`,
+    cpiSub: (b) => `가로 막대 · cost / ${b === "actions" ? "actions(가입)" : "installs"}`,
+    kpiCostLabel: "총 비용",
+    kpiCostDelta: "합산 cost",
+    kpiCtrLabel: "CTR",
+    kpiCtrDelta: "clicks / impressions",
+    kpiOutcomeLabel: (b) => (b === "actions" ? "총 가입 수" : "총 설치 수"),
+    kpiOutcomeDelta: (b) => (b === "actions" ? "합산 actions" : "합산 installs"),
+    acqDelta: (b) => `cost / ${b === "actions" ? "actions(가입)" : "installs"}`,
+    chartsDesc:
+      "업로드된 데이터를 기반으로 시계열·채널 비중·CPI 비교·퍼널·코호트 매출 차트가 렌더링됩니다. ⚙ 차트 편집에서 표시·순서 조정.",
+    // ScorecardTab — 카드 라벨(값·계산 불변, 라벨만).
+    scLabels: {
+      cost: "비용", inst: "설치", cpi: "CPI", act: "액션", cpa: "CPA",
+      cvr: "CVR", ctr: "CTR", roas: "ROAS",
+    },
+    scFootnote: (w) =>
+      `WoW = 최근 ${w}일 vs 직전 ${w}일. 색은 지표 성격 반영(CPI/CPA↓·설치/ROAS↑ = 초록). 비용은 중립(규모). 카드 클릭 시 일별 상세.`,
+    // AnomalyTab — 지표 라벨.
+    anLabels: {
+      cost: "비용", impressions: "노출", clicks: "클릭", installs: "설치",
+      actions: "액션", cpm: "CPM", ctr: "CTR", cpi: "CPI", cvr: "CVR",
+      cpa: "CPA", roas: "ROAS",
+    },
+    // content에서만 사용(performance는 항상 false).
+    isContent: false,
+  },
+  content: {
+    guideToolId: "9-7",
+    pageTitle: "콘텐츠 운영 대시보드",
+    noDataIntro:
+      "콘텐츠 성과 CSV(유입경로·노출·클릭·방문 등)를 업로드하여 트래픽을 요약하고 주요 지표를 시각화합니다.",
+    uploadDesc:
+      "콘텐츠 운영 대시보드를 생성하기 위해 콘텐츠 성과 CSV 파일을 업로드해주세요.",
+    monGroupLabel: "모니터링",
+    acqLabel: (b) => (b === "actions" ? "구독당 비용" : "방문당 비용"),
+    trendOutcome: (b) => (b === "actions" ? "구독수" : "방문수"),
+    tsTitle: (b) => `일별 비용·${b === "actions" ? "구독" : "방문"} 추이`,
+    tsSub: (b) =>
+      `시계열 라인 · 좌축 비용 / 우축 ${b === "actions" ? "구독" : "방문"}`,
+    donutTitle: "유입경로별 비용 비중",
+    donutSub: "도넛 · 합산 비용 기준",
+    cpiTitle: (acq) => `유입경로별 ${acq} 비교`,
+    cpiSub: (b) => `가로 막대 · 비용 / ${b === "actions" ? "구독" : "방문"}`,
+    kpiCostLabel: "총 비용",
+    kpiCostDelta: "합산 비용",
+    kpiCtrLabel: "반응률 (CTR)",
+    kpiCtrDelta: "clicks / impressions",
+    kpiOutcomeLabel: (b) => (b === "actions" ? "총 구독 수" : "총 방문 수"),
+    kpiOutcomeDelta: (b) => (b === "actions" ? "합산 구독수" : "합산 방문수"),
+    acqDelta: (b) => `비용 / ${b === "actions" ? "구독" : "방문"}`,
+    chartsDesc:
+      "업로드된 데이터를 기반으로 일별 트래픽 추이·유입경로 비중·방문당 비용 차트가 렌더링됩니다. ⚙ 차트 편집에서 표시·순서 조정.",
+    scLabels: {
+      cost: "비용", inst: "방문", cpi: "방문당 비용", act: "구독",
+      cpa: "구독당 비용", cvr: "방문 전환율 (CVR)", ctr: "반응률 (CTR)", roas: "ROAS",
+    },
+    scFootnote: (w) =>
+      `WoW = 최근 ${w}일 vs 직전 ${w}일. 색은 지표 성격 반영(방문당 비용↓·방문↑ = 초록). 비용은 중립(규모). 카드 클릭 시 일별 상세.`,
+    anLabels: {
+      cost: "비용", impressions: "노출", clicks: "클릭", installs: "방문",
+      actions: "구독", cpm: "CPM", ctr: "반응률", cpi: "방문당 비용",
+      cvr: "방문 전환율", cpa: "구독당 비용", roas: "ROAS",
+    },
+    isContent: true,
+  },
+};
+
+export function resolveDashCopy(domain) {
+  return DASH_COPY[domain] || DASH_COPY.performance;
+}
