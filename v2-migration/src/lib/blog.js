@@ -39,16 +39,50 @@ function parseFile(fileName) {
   };
 }
 
-// 발행 글 전체(초안·언더스코어 프리픽스 제외), date 내림차순. 파일 0개면 [].
+// 발행 글 전체(초안·언더스코어 프리픽스 제외), date 내림차순(최신 위·오래된 아래).
+// 같은 날짜면 slug 내림차순으로 결정적 정렬(fs 읽기 순서 의존 제거). 파일 0개면 [].
 export function getAllPosts() {
   return readDir()
     .filter((f) => f.endsWith(".md") && !f.startsWith("_"))
     .map(parseFile)
     .filter((p) => !p.draft)
-    .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    .sort((a, b) => {
+      const byDate = String(b.date).localeCompare(String(a.date));
+      return byDate !== 0 ? byDate : String(b.slug).localeCompare(String(a.slug));
+    });
 }
 
 // slug 단건. 없으면 null. 초안/제외 규칙은 getAllPosts와 동일.
 export function getPostBySlug(slug) {
   return getAllPosts().find((p) => p.slug === slug) || null;
+}
+
+// 태그 → URL slug (공백만 하이픈으로, 한글은 유지 — %-인코딩되어 서빙됨).
+export function tagSlug(tag) {
+  return String(tag).trim().replace(/\s+/g, "-");
+}
+
+// 전체 태그 목록 [{ tag, slug, count }] — 글 많은 순, 동률이면 가나다.
+export function getAllTags() {
+  const counts = new Map();
+  for (const p of getAllPosts()) {
+    for (const t of p.tags) {
+      if (!t) continue;
+      counts.set(t, (counts.get(t) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([tag, count]) => ({ tag, slug: tagSlug(tag), count }))
+    .sort((a, b) => (b.count - a.count) || a.tag.localeCompare(b.tag));
+}
+
+// 특정 태그(slug 기준)의 글 목록. getAllPosts 정렬 승계. 없으면 [].
+export function getPostsByTag(slug) {
+  return getAllPosts().filter((p) => p.tags.some((t) => tagSlug(t) === slug));
+}
+
+// slug → 원본 태그 라벨(표시용). 없으면 slug 그대로.
+export function tagLabelFromSlug(slug) {
+  const found = getAllTags().find((t) => t.slug === slug);
+  return found ? found.tag : slug;
 }

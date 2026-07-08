@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAllPosts } from "@/lib/blog";
+import { getAllPosts, getAllTags } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
 
 export async function generateMetadata() {
@@ -24,10 +24,11 @@ function fmtDate(d) {
 
 export default function BlogIndexPage() {
   const posts = getAllPosts();
+  const tags = getAllTags();
 
   return (
     <div className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
-      <header style={{ marginBottom: "2rem" }}>
+      <header style={{ marginBottom: "1.5rem" }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
           블로그
         </h1>
@@ -35,6 +36,21 @@ export default function BlogIndexPage() {
           퍼포먼스 마케팅과 데이터 분석 인사이트를 정리합니다.
         </p>
       </header>
+
+      {tags.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "1.75rem" }}>
+          {tags.map((t) => (
+            <Link
+              key={t.slug}
+              href={`/blog/tag/${t.slug}`}
+              className="chip"
+              style={{ textDecoration: "none", cursor: "pointer" }}
+            >
+              #{t.tag} <span style={{ opacity: 0.6 }}>{t.count}</span>
+            </Link>
+          ))}
+        </div>
+      )}
 
       {posts.length === 0 ? (
         <div

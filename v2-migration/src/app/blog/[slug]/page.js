@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAllPosts, getPostBySlug } from "@/lib/blog";
+import { getAllPosts, getPostBySlug, tagSlug } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
 
 // 발행 글만 정적 생성. 0편이면 빈 배열(라우트 미생성) — 빌드 정상 통과.
@@ -64,7 +64,9 @@ export default async function BlogPostPage({ params }) {
         <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.75rem", flexWrap: "wrap", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-muted)" }}>
           <span>{fmtDate(post.date)}</span>
           {post.tags.map((t) => (
-            <span key={t}>#{t}</span>
+            <Link key={t} href={`/blog/tag/${tagSlug(t)}`} style={{ color: "inherit", textDecoration: "none" }}>
+              #{t}
+            </Link>
           ))}
         </div>
       </header>
