@@ -17,6 +17,10 @@ export const TOOL_GROUP = {
   "5-18": "response",
   "5-20": "aha",
   "5-23": "incrementality",
+  // ── Content Analytics (콘텐츠 마케터용, 엔진 재사용·도메인 라벨만 신규) ──
+  // 콘텐츠 데이터는 grain이 달라 효율/이벤트 CSV를 덮으면 안 됨 → 전용 슬라이스.
+  "9-1": "content_attr", // 콘텐츠 요소 분석기 (regMath 재사용)
+  "9-2": "content_aha",  // 킬러 콘텐츠·충성 독자 발굴 (ahaMath 재사용)
 };
 
 const EMPTY_SLICE = () => ({ raw: [], headers: [], mapping: {}, fileName: "" });
@@ -129,6 +133,17 @@ export const IA = [
       { id: "5-20", title: "핵심 가치 발굴 (Aha-moment)" },
     ],
   },
+  // ── Content Analytics — 퍼포먼스 엔진(regMath·ahaMath)을 콘텐츠 도메인으로
+  // 리라벨. 내부 id(9-x)는 불변(§4.1), 표시번호는 SECTIONS 위치로 계산. 파일럿 2종. ──
+  {
+    id: "09",
+    title: "컨텐츠 분석",
+    desc: "콘텐츠 성과 CSV로 어떤 제작 요소가 성과를 끌어올리는지, 어떤 콘텐츠가 구독 전환을 만드는지 진단.",
+    items: [
+      { id: "9-1", title: "콘텐츠 요소 분석기 (요소별 성과 기여)" },
+      { id: "9-2", title: "킬러 콘텐츠·충성 독자 발굴 (전환 동인)" },
+    ],
+  },
 ];
 
 // ── 사이드바·브레드크럼 표시 번호 SSOT (§12.6: 내부 route id는 절대 불변,
@@ -139,6 +154,7 @@ export const IA = [
 export const SECTIONS = [
   { id: "guide", label: "가이드", groups: ["01", "02", "03", "04"] },
   { id: "analysis", label: "분석", groups: ["08", "05", "06", "07"] },
+  { id: "content", label: "컨텐츠 분석", groups: ["09"] },
 ];
 
 export function findGroupSection(groupId) {
@@ -239,6 +255,8 @@ export const useAppStore = create(persist((set, get) => ({
     response: EMPTY_SLICE(),
     aha: EMPTY_SLICE(),
     incrementality: EMPTY_SLICE(),
+    content_attr: EMPTY_SLICE(),
+    content_aha: EMPTY_SLICE(),
   },
   // Mirror of the ACTIVE group's slice. Initial currentRouteId is "home" →
   // "efficiency", so the initial mirror is the (empty) efficiency slice.
@@ -278,6 +296,8 @@ export const useAppStore = create(persist((set, get) => ({
     response: null,
     aha: null,
     incrementality: null,
+    content_attr: null,
+    content_aha: null,
   },
   // Confirm analysis for the route's group. Stores the CURRENT active-slice sig.
   // Call from CsvUploader's "분석하기/데이터 분석하기" (and "↻ 다시 분석") button.

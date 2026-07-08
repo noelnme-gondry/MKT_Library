@@ -41,7 +41,11 @@ v2-migration/
 | `/tools/incrementality` | 5-23 | tools/Incrementality.jsx (증분: 통제군·전후 on/off) |
 | `/tools/marketing-response` | 5-18 | tools/MarketingResponse.jsx (MMM·회귀·예측·Lab) |
 | `/tools/aha-moment` | 5-20 | tools/AhaMomentFinder.jsx (Aha) |
+| `/content/element-analysis` | 9-1 | tools/ContentElementAnalyzer.jsx (요소 중요도, regMath 신규 UI) |
+| `/content/killer-content` | 9-2 | tools/KillerContentFinder.jsx → AhaMomentFinder domain="content" |
 | `/guide/<kebab>` | 1-x~4-x | sops/SopContent.jsx (SOP) |
+
+**Content Analytics(9-x)**: 퍼포먼스 엔진을 콘텐츠 도메인 라벨로 리라벨한 신규 대분류(SECTIONS `content`). 라벨팩 SSOT=`utils/contentDomain.js`(AHA_COPY 도메인별 카피·ELEMENT_COPY). CSV 격리 그룹 `content_attr`(9-1)·`content_aha`(9-2). PageClient 폴백 가드에 `!startsWith("9-")` 추가(SopContent 누수 차단). LandingPage 3번째 트랙 `content`.
 
 ## 3. 도메인 매핑 (도구 UI ↔ 순수 엔진)
 | 도구 (UI) | 엔진 (수학, utils/) | 비고 |
@@ -53,7 +57,9 @@ v2-migration/
 | AbTestHoldout.jsx | `abTestMath.js` (STATS) | z-test·bayesian·powerCurve (A/B만) |
 | Incrementality.jsx (5-23) | `incrMath.js`(통제군 INCR_MATH)+`incrPrePostMath.js`(전후 on/off·DiD·Welch) | 3방법 탭·CSV 그룹 독립 |
 | MarketingResponse.jsx | `mmmMath.js`(MMM 기여분해+`mmmForecast` §7 미래예측)+`regMath.js`(mmmOls)+`responseCannibRank.js` | ①진단·②기여분해·③회귀예측 3탭, 단일 CSV/colMap. ③예측=`mmmForecast`(②계수 외삽+95%밴드). `regForecastMath`=날짜포맷 헬퍼뿐, `regLabMath`=테스트 전용(앱 미사용) |
-| AhaMomentFinder.jsx | `ahaMath.js` (AHA_STATS) | gridSearch·F1/Lift |
+| AhaMomentFinder.jsx | `ahaMath.js` (AHA_STATS) | gridSearch·F1/Lift. `domain` prop(§contentDomain)로 5-20(perf)·9-2(content) 공용 |
+| ContentElementAnalyzer.jsx (9-1) | `regMath.js` (REG_STATS.ols) | 콘텐츠 요소 다변량 회귀·중요도(|t| 랭킹)·forest plot. 신규 UI(엔진 재사용) |
+| KillerContentFinder.jsx (9-2) | `ahaMath.js` (AHA_STATS) | AhaMomentFinder domain="content" 얇은 래퍼 |
 | dashboard/* (5-2) | `dashboardAggregator.js`(getMappedRows·KPI)·`ltvMath.js`·`funnelMath.js`·`segmentMath.js`·`anomalyMath.js`·`pacingMath.js`·`cohortMath.js`·`responseMath.js`(CANNIBAL_STATS) | 탭별 순수 math 추출 끝(골든 커버) |
 | AbTestHoldout 증분 | `incrMath.js`(홀드아웃 증분)·abTestMath.js | readout/incr 추출 |
 | (공통) | `chartUtils.js`·`testFixtures.js`(seededNoise)·`format.js`(fmtCurrency/Pct/Num·§7 콤마)·`toolGuide.js`(TOOL_GUIDE) | 차트·픽스처·표시포맷 SSOT·업로드 설명 |

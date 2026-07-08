@@ -28,7 +28,7 @@ function guessRole(col, rows) {
   const uniq = isNum ? [...new Set(nums)] : [];
   const isBin01 = isNum && uniq.length > 0 && uniq.every((v) => v === 0 || v === 1);
   if (/(^|_)(user|client|device)?_?id$|^id$|^uid$/.test(name)) return "id";
-  if (isBin01 && /target|conv|retain|churn|activ|타겟|전환|리텐션|정착/.test(name)) return "target";
+  if (isBin01 && /target|conv|retain|churn|activ|subscrib|signup|sign_up|register|타겟|전환|리텐션|정착|구독|가입/.test(name)) return "target";
   if (!isNum) return "ignore";
   return "feature";
 }

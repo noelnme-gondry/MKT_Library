@@ -399,6 +399,84 @@ export function buildIncrPrepostDemo(direction = "on") {
   return { raw, headers, mapping, fileName: `demo_incr_prepost_${direction}.csv` };
 }
 
+// ── content_aha (9-2 킬러 콘텐츠·충성 독자 발굴) ──────────────────────────────
+// aha와 동일 grain(1행=독자, target=구독 전환 0/1, feature=소비한 콘텐츠 횟수).
+// 특정 킬러 콘텐츠(ga4guide)를 소비한 독자가 구독으로 강하게 이어지도록 신호 설계.
+// (오직 subscribed만 이진값 → 타겟 자동탐지 명확. 나머지는 count.)
+function buildContentAha() {
+  const headers = [
+    "reader_id", "subscribed",
+    "ga4guide_d7", "casestudy_d7", "pricing_d7", "shared_d7",
+  ];
+  const nReaders = 2400;
+  const rnd = seededNoise(7311);
+  const raw = [];
+  for (let u = 0; u < nReaders; u++) {
+    const interest = clamp01(0.45 + rnd() * 1.0); // latent 관심도(구독·소비 공통원인)
+    const ga4 = Math.max(0, round(interest * 3 * (0.6 + rnd() + 0.4)));      // 킬러 콘텐츠(강한 연관)
+    const casestudy = Math.max(0, round(interest * 5 * (0.5 + rnd() + 0.5))); // 중간 연관
+    const pricing = rnd() + 0.5 > (0.4 + interest * 0.2) ? round(rnd() * 3) : 0; // 약한 연관
+    const shared = round(rnd() * 2); // 무관에 가까움(count)
+    const score =
+      (ga4 >= 2 ? 0.5 : ga4 * 0.12) +
+      (casestudy >= 3 ? 0.22 : casestudy * 0.03) +
+      (pricing > 0 ? 0.05 : 0) +
+      shared * 0.01 +
+      rnd() * 0.18;
+    const subscribed = score > 0.55 ? 1 : 0;
+    raw.push({
+      reader_id: `r${10000 + u}`,
+      subscribed,
+      ga4guide_d7: ga4,
+      casestudy_d7: casestudy,
+      pricing_d7: pricing,
+      shared_d7: shared,
+    });
+  }
+  return { raw, headers, mapping: {}, fileName: "demo_content_aha.csv" };
+}
+
+// ── content_attr (9-1 콘텐츠 요소 분석기) ────────────────────────────────────
+// 1행=콘텐츠 1편 + 제작 속성(0/1·길이) + 성과(CTR%). 다변량 회귀로 어떤 속성이
+// CTR과 유의하게 연관되는지 확인. 제목숫자·밝은썸네일=유의(+), 이모지=무유의(≈0)로
+// 설계 → "이모지는 유의미하지 않음" 서사가 데모에서 실제로 재현되도록.
+function buildContentAttr() {
+  const headers = [
+    "post_id",
+    "title_has_number", "title_len", "has_emoji", "thumbnail_bright", "listicle",
+    "ctr",
+  ];
+  const n = 260;
+  const rnd = seededNoise(9137);
+  const raw = [];
+  for (let i = 0; i < n; i++) {
+    const hasNum = rnd() + 0.5 > 0.5 ? 1 : 0;
+    const titleLen = round(20 + rnd() * 45); // 20..65자
+    const emoji = rnd() + 0.5 > 0.5 ? 1 : 0;
+    const bright = rnd() + 0.5 > 0.5 ? 1 : 0;
+    const listicle = rnd() + 0.5 > 0.6 ? 1 : 0;
+    let ctr =
+      2.4 +
+      hasNum * 1.35 +
+      (titleLen - 40) * -0.012 +
+      emoji * 0.03 + // ≈ 무유의(노이즈에 묻힘)
+      bright * 0.7 +
+      listicle * 0.5 +
+      (rnd() - 0.5) * 1.1; // 노이즈
+    ctr = Math.max(0.1, ctr);
+    raw.push({
+      post_id: `p${1000 + i}`,
+      title_has_number: hasNum,
+      title_len: titleLen,
+      has_emoji: emoji,
+      thumbnail_bright: bright,
+      listicle,
+      ctr: Number(ctr.toFixed(2)),
+    });
+  }
+  return { raw, headers, mapping: {}, fileName: "demo_content_attr.csv" };
+}
+
 const BUILDERS = {
   efficiency: buildEfficiency,
   creative: buildCreative,
@@ -406,6 +484,8 @@ const BUILDERS = {
   response: buildResponse,
   aha: buildAha,
   incrementality: buildIncrSuppressionDemo,
+  content_aha: buildContentAha,
+  content_attr: buildContentAttr,
 };
 
 // group name (TOOL_GROUP value) → demo csv. Falls back to efficiency.

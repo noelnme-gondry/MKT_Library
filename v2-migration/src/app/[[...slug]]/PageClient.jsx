@@ -22,6 +22,9 @@ const MarketingResponse = dyn(() => import("@/components/tools/MarketingResponse
 const AhaMomentFinder = dyn(() => import("@/components/tools/AhaMomentFinder"));
 const MarketingEfficiency = dyn(() => import("@/components/tools/MarketingEfficiency"));
 const Incrementality = dyn(() => import("@/components/tools/Incrementality"));
+// Content Analytics (콘텐츠 도메인 — 엔진 재사용, 라벨만 신규)
+const ContentElementAnalyzer = dyn(() => import("@/components/tools/ContentElementAnalyzer"));
+const KillerContentFinder = dyn(() => import("@/components/tools/KillerContentFinder"));
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId } from "@/lib/routeMap";
@@ -65,8 +68,14 @@ export default function PageClient({ params }) {
             {routeId === "5-20" && <AhaMomentFinder />}
             {routeId === "5-23" && <Incrementality />}
 
+            {routeId === "9-1" && <ContentElementAnalyzer />}
+            {routeId === "9-2" && <KillerContentFinder />}
+
+            {/* SOP 폴백: 도구 라우트(5-x·9-x)가 아닌 가이드 id만 SopContent로.
+                9-x 콘텐츠 도구가 이 폴백으로 새어 SopContent로 렌더되던 함정 차단(§plan). */}
             {routeId !== "home" &&
-             !routeId.startsWith("5-") && (
+             !routeId.startsWith("5-") &&
+             !routeId.startsWith("9-") && (
               <SopContent routeId={routeId} />
             )}
           </article>
