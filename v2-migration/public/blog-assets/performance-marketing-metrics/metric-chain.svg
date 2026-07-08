@@ -1,0 +1,63 @@
+<svg viewBox="0 0 720 270" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="720" height="270" fill="#ffffff"/>
+
+  <!-- 단계 노드 -->
+  <g>
+    <rect x="18"  y="44" width="108" height="46" rx="8" fill="#F1F5F9" stroke="#CBD5E1"/>
+    <rect x="158" y="44" width="108" height="46" rx="8" fill="#F1F5F9" stroke="#CBD5E1"/>
+    <rect x="298" y="44" width="108" height="46" rx="8" fill="#F1F5F9" stroke="#CBD5E1"/>
+    <rect x="438" y="44" width="108" height="46" rx="8" fill="#F1F5F9" stroke="#CBD5E1"/>
+    <rect x="578" y="44" width="108" height="46" rx="8" fill="#F1F5F9" stroke="#CBD5E1"/>
+  </g>
+  <g fill="#334155" font-size="14" font-weight="600" text-anchor="middle">
+    <text x="72"  y="72">광고비</text>
+    <text x="212" y="72">설치</text>
+    <text x="352" y="72">전환·구매</text>
+    <text x="492" y="72">매출</text>
+    <text x="632" y="72">재구매·장기</text>
+  </g>
+
+  <!-- 단계 사이 화살표 -->
+  <g stroke="#94A3B8" stroke-width="2" fill="#94A3B8">
+    <line x1="126" y1="67" x2="152" y2="67"/><polygon points="152,63 160,67 152,71"/>
+    <line x1="266" y1="67" x2="292" y2="67"/><polygon points="292,63 300,67 292,71"/>
+    <line x1="406" y1="67" x2="432" y2="67"/><polygon points="432,63 440,67 432,71"/>
+    <line x1="546" y1="67" x2="572" y2="67"/><polygon points="572,63 580,67 572,71"/>
+  </g>
+
+  <!-- 노드 → 지표 칩 연결선 -->
+  <g stroke="#CBD5E1" stroke-width="1.5">
+    <line x1="212" y1="90" x2="212" y2="132"/>
+    <line x1="352" y1="90" x2="352" y2="132"/>
+    <line x1="492" y1="90" x2="492" y2="132"/>
+    <line x1="632" y1="90" x2="632" y2="132"/>
+  </g>
+
+  <!-- 지표 칩 -->
+  <g>
+    <rect x="158" y="132" width="108" height="76" rx="8" fill="#EFF6FF" stroke="#BFDBFE"/>
+    <rect x="298" y="132" width="108" height="76" rx="8" fill="#EFF6FF" stroke="#BFDBFE"/>
+    <rect x="438" y="132" width="108" height="76" rx="8" fill="#EFF6FF" stroke="#BFDBFE"/>
+    <rect x="578" y="132" width="108" height="76" rx="8" fill="#EFF6FF" stroke="#BFDBFE"/>
+  </g>
+  <g text-anchor="middle">
+    <text x="212" y="155" fill="#1D4ED8" font-size="15" font-weight="700">CPI</text>
+    <text x="212" y="176" fill="#475569" font-size="11.5">광고비 ÷ 설치</text>
+    <text x="212" y="195" fill="#64748B" font-size="11">설치 1건 원가</text>
+
+    <text x="352" y="155" fill="#1D4ED8" font-size="15" font-weight="700">CPA</text>
+    <text x="352" y="176" fill="#475569" font-size="11.5">광고비 ÷ 전환</text>
+    <text x="352" y="195" fill="#64748B" font-size="11">전환 1건 원가</text>
+
+    <text x="492" y="155" fill="#1D4ED8" font-size="15" font-weight="700">ROAS</text>
+    <text x="492" y="176" fill="#475569" font-size="11.5">매출 ÷ 광고비</text>
+    <text x="492" y="195" fill="#64748B" font-size="11">광고비 회수율</text>
+
+    <text x="632" y="155" fill="#1D4ED8" font-size="15" font-weight="700">LTV : CAC</text>
+    <text x="632" y="176" fill="#475569" font-size="11.5">평생가치 ÷ 획득비</text>
+    <text x="632" y="195" fill="#64748B" font-size="11">장기 지속성</text>
+  </g>
+
+  <!-- 방향 라벨 -->
+  <text x="360" y="248" fill="#9CA3AF" font-size="12" text-anchor="middle">왼쪽에서 오른쪽으로 — 지출이 매출과 장기가치로 이어지는 흐름</text>
+</svg>

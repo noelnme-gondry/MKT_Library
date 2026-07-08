@@ -1,0 +1,37 @@
+<svg viewBox="0 0 720 250" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="720" height="250" fill="#ffffff"/>
+
+  <!-- 상태 pill: CPI 정상 -->
+  <rect x="16" y="34" width="150" height="62" rx="10" fill="#DCFCE7" stroke="#16A34A" stroke-width="1.5"/>
+  <text x="91" y="60" fill="#166534" font-size="16" font-weight="700" text-anchor="middle">CPI</text>
+  <text x="91" y="82" fill="#16A34A" font-size="13" font-weight="600" text-anchor="middle">✓ 정상</text>
+
+  <!-- CPA 정상 -->
+  <rect x="180" y="34" width="150" height="62" rx="10" fill="#DCFCE7" stroke="#16A34A" stroke-width="1.5"/>
+  <text x="255" y="60" fill="#166534" font-size="16" font-weight="700" text-anchor="middle">CPA</text>
+  <text x="255" y="82" fill="#16A34A" font-size="13" font-weight="600" text-anchor="middle">✓ 정상</text>
+
+  <!-- ROAS 빨간불 -->
+  <rect x="344" y="34" width="150" height="62" rx="10" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.5"/>
+  <text x="419" y="60" fill="#991B1B" font-size="16" font-weight="700" text-anchor="middle">ROAS</text>
+  <text x="419" y="82" fill="#DC2626" font-size="13" font-weight="600" text-anchor="middle">✕ 빨간불</text>
+
+  <!-- LTV:CAC 판단 보류 -->
+  <rect x="508" y="34" width="150" height="62" rx="10" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.5"/>
+  <text x="583" y="60" fill="#4B5563" font-size="16" font-weight="700" text-anchor="middle">LTV : CAC</text>
+  <text x="583" y="82" fill="#6B7280" font-size="13" font-weight="600" text-anchor="middle">? 판단 보류</text>
+
+  <!-- pill 사이 화살표 -->
+  <g stroke="#CBD5E1" stroke-width="2" fill="#CBD5E1">
+    <line x1="166" y1="65" x2="176" y2="65"/><polygon points="176,61 184,65 176,69"/>
+    <line x1="330" y1="65" x2="340" y2="65"/><polygon points="340,61 348,65 340,69"/>
+    <line x1="494" y1="65" x2="504" y2="65"/><polygon points="504,61 512,65 504,69"/>
+  </g>
+
+  <!-- 진단 콜아웃 -->
+  <rect x="16" y="122" width="688" height="106" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="34" y="150" fill="#0F172A" font-size="14" font-weight="700">읽는 법</text>
+  <text x="34" y="174" fill="#334155" font-size="13.5">전환은 싸게 잘 만드는데(CPA 정상) 매출이 안 붙어요(ROAS 빨간불).</text>
+  <text x="34" y="196" fill="#1D4ED8" font-size="13.5" font-weight="600">→ 문제는 광고 앞단이 아니라 '전환 후 매출'. 소재 더 돌리기 전에 객단가·타겟부터 보세요.</text>
+  <text x="34" y="217" fill="#94A3B8" font-size="12">LTV:CAC는 아직 데이터가 얕아 판단 보류 — 몇 주 더 쌓고 보는 게 정직합니다.</text>
+</svg>
