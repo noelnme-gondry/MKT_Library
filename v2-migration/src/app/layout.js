@@ -52,6 +52,7 @@ export default function RootLayout({ children }) {
       <head>
         <meta name="theme-color" content="#121315" />
         <meta name="naver-site-verification" content="c4cc3586f416c84363563356e79f834ca11544a7" />
+        <link rel="alternate" type="application/rss+xml" title="Growth Ops Playbook" href="/rss.xml" />
         <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23adc6ff'/><text x='16' y='22' font-family='Inter, system-ui, sans-serif' font-size='18' font-weight='700' text-anchor='middle' fill='%231a1a2e'>M</text></svg>" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
