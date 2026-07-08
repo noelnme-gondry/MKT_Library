@@ -19,17 +19,17 @@ export const metadata = {
   // metadataBase로 상대 canonical 해석. layout에 canonical을 직접 박으면 자식
   // 페이지(privacy/terms 등)가 그대로 상속받아 "홈을 canonical로 선언" → GSC
   // "적절한 표준 태그가 포함된 대체 페이지"로 색인 제외됨. canonical은 페이지별로.
-  metadataBase: new URL("https://mktlibrary.up.railway.app"),
+  metadataBase: new URL("https://growthoptplaybook.com"),
   openGraph: {
     type: "website",
-    url: "https://mktlibrary.up.railway.app/",
+    url: "https://growthoptplaybook.com/",
     title: "Growth Ops Playbook | 마케팅 데이터 분석툴",
     description: "캠페인 CSV로 바로 분석하는 무료 퍼포먼스 마케팅 데이터 도구", // 35자
     siteName: "Growth Ops Playbook",
     locale: "ko_KR",
     images: [
       {
-        url: "https://mktlibrary.up.railway.app/og-card.png",
+        url: "https://growthoptplaybook.com/og-card.png",
         width: 1200,
         height: 630,
       },
@@ -39,7 +39,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "Growth Ops Playbook | 마케팅 데이터 분석툴",
     description: "캠페인 CSV로 바로 분석하는 무료 퍼포먼스 마케팅 데이터 도구",
-    images: ["https://mktlibrary.up.railway.app/og-card.png"],
+    images: ["https://growthoptplaybook.com/og-card.png"],
   },
   other: {
     "google-adsense-account": "ca-pub-3073450406371629",
@@ -51,7 +51,7 @@ export default function RootLayout({ children }) {
     <html lang="ko" className="dark">
       <head>
         <meta name="theme-color" content="#121315" />
-        <meta name="naver-site-verification" content="f2fa6989a62ef790e6485b64f2b998bfc86b2cbe" />
+        <meta name="naver-site-verification" content="c4cc3586f416c84363563356e79f834ca11544a7" />
         <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23adc6ff'/><text x='16' y='22' font-family='Inter, system-ui, sans-serif' font-size='18' font-weight='700' text-anchor='middle' fill='%231a1a2e'>M</text></svg>" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -70,18 +70,18 @@ export default function RootLayout({ children }) {
               "@graph": [
                 {
                   "@type": "WebSite",
-                  "@id": "https://mktlibrary.up.railway.app/#website",
-                  url: "https://mktlibrary.up.railway.app/",
+                  "@id": "https://growthoptplaybook.com/#website",
+                  url: "https://growthoptplaybook.com/",
                   name: "Growth Ops Playbook",
                   description: "퍼포먼스 마케팅 SOP & 데이터 분석 도구",
                   inLanguage: "ko-KR",
                 },
                 {
                   "@type": "Organization",
-                  "@id": "https://mktlibrary.up.railway.app/#org",
+                  "@id": "https://growthoptplaybook.com/#org",
                   name: "Growth Ops Playbook",
-                  url: "https://mktlibrary.up.railway.app/",
-                  logo: "https://mktlibrary.up.railway.app/og-card.png",
+                  url: "https://growthoptplaybook.com/",
+                  logo: "https://growthoptplaybook.com/og-card.png",
                 },
                 {
                   "@type": "SoftwareApplication",
