@@ -96,6 +96,102 @@ export function resolveAhaCopy(domain) {
   return AHA_COPY[domain] || AHA_COPY.performance;
 }
 
+/* CampaignPvm(5-21 / 9-3) 공용 카피팩 — PVM Bridge 분해기.
+   performance = 기존 하드코딩 문자열과 byte-동일(5-21 출력 불변, 스모크·골든 안전).
+   content = 콘텐츠 도메인 번역(채널→유입경로·캠페인→카테고리·소재→콘텐츠,
+   분해 지표=트래픽당 비용). 엔진(pvmMath·pvmExport)은 절대 불변 — 라벨만 스왑.
+   metricLabel: performance=null → pvmMetricLabel이 기존 CPI/CPA 반환(불변).
+   content="방문당 비용" → 오버라이드(콘텐츠는 결과 지표 1개만 매핑, CPA/CPI 토글 숨김). */
+export const PVM_COPY = {
+  performance: {
+    uploaderToolId: "5-21",
+    metricLabel: null,
+    // 계층 라벨(채널/캠페인/소재)
+    levelChannel: "채널",
+    levelCampaign: "캠페인",
+    levelCreative: "소재",
+    // TOC(§2~§4) + 섹션 h2 텍스트
+    tocChannels: "§2 채널별 결과",
+    tocCampaigns: "§3 채널·캠페인별 결과",
+    tocCreatives: "§4 소재별 결과",
+    secChannels: "채널별 결과",
+    secCampaigns: "채널·캠페인별 결과",
+    secCreatives: "소재별 결과",
+    // 페이지 타이틀·chip
+    title: "캠페인 성과 변동",
+    chipMain: "도구 · 캠페인 성과 변동 탐지",
+    // 빈 상태(no-data)
+    noDataSummary:
+      "5-6(소재 분석)과 동일한 소재 daily CSV를 사용합니다 — 이미 5-6에 업로드했다면 자동으로 이어받습니다.",
+    noDataCalloutBody: "캠페인 효율 데이터(최소 2주치)를 업로드하여 변동 원인을 분석하세요.",
+    // 요약(summary)
+    summaryLead: (ml) =>
+      `Price-Volume-Mix(PVM) Bridge 분해로 전체 ${ml} 변화를 채널·캠페인·소재 단위로 정확히 나눕니다(잔차 없음).`,
+    summaryLimitBody:
+      "이 분해는 산술적으로 정확하지만 인과관계를 증명하지 않습니다(association). 채널×캠페인×소재 최소 단위에서 한 번 분해 후 합산하므로 §2(채널)·§3(캠페인)·§4(소재)는 항상 정확히 중첩됩니다(Σ 일치).",
+    // §0 인과 경고
+    causationCallout:
+      "association(연관)일 뿐 인과를 증명하지 않습니다. 채널·캠페인·소재 모두 최소 단위(채널×캠페인×소재)에서 한 번 분해 후 합산해 §2~§4(모드A)는 항상 정확히 중첩됩니다.",
+    // §2 Mix·Rate 설명
+    explainerMix: "예산 비중이 평균보다 비싼/싼 채널로 옮겨가며 생긴 변화.",
+    explainerRate: (ml) => `채널 자체 ${ml}가 변해서 생긴 변화.`,
+    // 표 헤더 — 결과 비중
+    shareHeader: "결과 비중 (P1→P2)",
+    shareHeaderTitle:
+      "전체 결과(전환) 건수 중 이 항목이 차지하는 비중 — 비용 비중이 아닙니다.",
+    // §3/§4 lock(필드명은 엔진 계약이라 유지, 단계 표현만 도메인화)
+    lockCampaign: "🔒 campaign_id 컬럼을 매핑하면 캠페인 단계를 볼 수 있습니다",
+    lockCreative: "🔒 creative_id 컬럼을 매핑하면 소재 단계를 볼 수 있습니다",
+    // §4 신규(New)
+    newBadgeTitle: "신규 소재(이전 기간 0건 → 현재 1건 이상)",
+    showNewLabel: "🆕 신규 소재만 보기(이전 기간 0건 → 현재 1건 이상)",
+    creativeLinkTitle: "소재 링크 열기",
+    insufficientFallback: "채널·비용·결과(설치/액션)·날짜 컬럼을 매핑하고 최소 2주치 데이터를 업로드하세요.",
+    emptyCreativeRows: "표시할 소재가 없습니다",
+  },
+  content: {
+    uploaderToolId: "9-3",
+    metricLabel: "방문당 비용",
+    levelChannel: "유입경로",
+    levelCampaign: "카테고리",
+    levelCreative: "콘텐츠",
+    tocChannels: "§2 유입경로별 결과",
+    tocCampaigns: "§3 유입경로·카테고리별 결과",
+    tocCreatives: "§4 콘텐츠별 결과",
+    secChannels: "유입경로별 결과",
+    secCampaigns: "유입경로·카테고리별 결과",
+    secCreatives: "콘텐츠별 결과",
+    title: "콘텐츠 트래픽 변동",
+    chipMain: "도구 · 콘텐츠 트래픽 변동 탐지",
+    noDataSummary:
+      "유입경로·날짜·제작/배포 비용·트래픽(PV·방문)이 담긴 콘텐츠 성과 CSV를 사용합니다(최소 2주치). 카테고리·콘텐츠 컬럼이 있으면 더 깊게 쪼갭니다.",
+    noDataCalloutBody:
+      "콘텐츠 트래픽 데이터(최소 2주치)를 업로드하여 어느 유입경로·카테고리·콘텐츠가 트래픽 변동을 일으켰는지 분석하세요.",
+    summaryLead: (ml) =>
+      `Price-Volume-Mix(PVM) Bridge 분해로 전체 ${ml} 변화를 유입경로·카테고리·콘텐츠 단위로 정확히 나눕니다(잔차 없음).`,
+    summaryLimitBody:
+      "이 분해는 산술적으로 정확하지만 인과관계를 증명하지 않습니다(association). 유입경로×카테고리×콘텐츠 최소 단위에서 한 번 분해 후 합산하므로 §2(유입경로)·§3(카테고리)·§4(콘텐츠)는 항상 정확히 중첩됩니다(Σ 일치).",
+    causationCallout:
+      "association(연관)일 뿐 인과를 증명하지 않습니다. 유입경로·카테고리·콘텐츠 모두 최소 단위(유입경로×카테고리×콘텐츠)에서 한 번 분해 후 합산해 §2~§4는 항상 정확히 중첩됩니다.",
+    explainerMix: "발행·노출 비중이 평균보다 비싼/싼 유입경로로 옮겨가며 생긴 변화.",
+    explainerRate: (ml) => `유입경로 자체 ${ml}가 변해서 생긴 변화.`,
+    shareHeader: "트래픽 비중 (P1→P2)",
+    shareHeaderTitle:
+      "전체 트래픽(방문·PV) 중 이 항목이 차지하는 비중 — 비용 비중이 아닙니다.",
+    lockCampaign: "🔒 campaign_id 컬럼을 매핑하면 카테고리 단계를 볼 수 있습니다",
+    lockCreative: "🔒 creative_id 컬럼을 매핑하면 콘텐츠 단계를 볼 수 있습니다",
+    newBadgeTitle: "신규 콘텐츠(이전 기간 0건 → 현재 1건 이상)",
+    showNewLabel: "🆕 신규 콘텐츠만 보기(이전 기간 0건 → 현재 1건 이상)",
+    creativeLinkTitle: "콘텐츠 링크 열기",
+    insufficientFallback: "유입경로·비용·트래픽(방문/PV)·날짜 컬럼을 매핑하고 최소 2주치 데이터를 업로드하세요.",
+    emptyCreativeRows: "표시할 콘텐츠가 없습니다",
+  },
+};
+
+export function resolvePvmCopy(domain) {
+  return PVM_COPY[domain] || PVM_COPY.performance;
+}
+
 /* ContentElementAnalyzer(9-1) 라벨팩 — 다변량 회귀(regMath) 요소 중요도 도메인 카피.
    단일 도메인(콘텐츠)이라 팩 1개지만, 미래 다른 도메인 확장 대비 구조는 동일. */
 export const ELEMENT_COPY = {

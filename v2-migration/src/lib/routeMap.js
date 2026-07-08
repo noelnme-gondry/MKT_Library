@@ -25,6 +25,7 @@ export const ROUTES = [
   // ── Content Analytics (콘텐츠 도메인 — 엔진 재사용) ──
   { id: "9-1", slug: "/content/element-analysis", component: "ContentElementAnalyzer" },
   { id: "9-2", slug: "/content/killer-content", component: "KillerContentFinder" },
+  { id: "9-3", slug: "/content/traffic-variance", component: "ContentTrafficVariance" },
   { id: "1-1", slug: "/guide/dev-collaboration", component: "SopContent" },
   { id: "1-2", slug: "/guide/event-taxonomy", component: "SopContent" },
   { id: "1-3", slug: "/guide/postback-integration", component: "SopContent" },

@@ -4,19 +4,23 @@ import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { PVM_MATH } from "@/utils/pvmMath";
 import { pvmGenerateDiagnosis, buildPvmResultCsv } from "@/utils/pvmExport";
+import { resolvePvmCopy } from "@/utils/contentDomain";
 import { getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import CsvUploader from "@/components/CsvUploader";
 import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
 import ToolPageShell from "@/components/ToolPageShell";
 
-// 우측 TOC — legacy page_5_21() 목차와 동일 (§0 한눈에 보기~§4 소재별 결과).
-const PVM_TOC = [
-  { id: "s-pvm-result", title: "§0 한눈에 보기" },
-  { id: "s-pvm-scorecard", title: "§1 스코어카드" },
-  { id: "s-pvm-channels", title: "§2 채널별 결과" },
-  { id: "s-pvm-campaigns", title: "§3 채널·캠페인별 결과" },
-  { id: "s-pvm-creatives", title: "§4 소재별 결과" },
-];
+// 우측 TOC — legacy page_5_21() 목차와 동일 (§0 한눈에 보기~§4 …별 결과).
+// §2~§4 라벨은 도메인 카피팩(C)에서 주입 — performance는 기존과 byte-동일.
+function buildPvmToc(C) {
+  return [
+    { id: "s-pvm-result", title: "§0 한눈에 보기" },
+    { id: "s-pvm-scorecard", title: "§1 스코어카드" },
+    { id: "s-pvm-channels", title: C.tocChannels },
+    { id: "s-pvm-campaigns", title: C.tocCampaigns },
+    { id: "s-pvm-creatives", title: C.tocCreatives },
+  ];
+}
 
 const DAY = 86400000;
 
@@ -284,7 +288,10 @@ function buildPvmCache(csvData, state) {
   };
 }
 
-function pvmMetricLabel(c) {
+// 지표 라벨 — 도메인 오버라이드(C.metricLabel)가 있으면 우선(예 content="방문당 비용"),
+// 없으면(performance) 기존 CPI/CPA 반환(byte-동일).
+function pvmMetricLabel(c, C) {
+  if (C && C.metricLabel) return C.metricLabel;
   return c.resultField === "installs" ? "CPI" : "CPA";
 }
 
@@ -296,7 +303,10 @@ function pvmSafeUrl(u) {
   return s;
 }
 
-export default function CampaignPvm() {
+export default function CampaignPvm({ domain = "performance" } = {}) {
+  // 도메인 카피팩(라벨만) — performance=기존 문자열 byte-동일, content=콘텐츠 번역.
+  // PVM_COPY[domain]은 모듈 상수라 매 렌더 동일 참조(effect 의존성 안정).
+  const C = resolvePvmCopy(domain);
   const csvData = useAppStore((state) => state.csvData);
   const denomBasis = useAppStore((state) => state.denomBasis);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
@@ -370,7 +380,7 @@ export default function CampaignPvm() {
     if (!ready || !byChannelChart.length) return;
 
     const cur = currency;
-    const ml = pvmMetricLabel(cache);
+    const ml = pvmMetricLabel(cache, C);
     const c = { CPA1: cache.CPA1, CPA2: cache.CPA2 };
     const byChannel = byChannelChart;
 
@@ -525,7 +535,7 @@ export default function CampaignPvm() {
       if (waterfallChart) waterfallChart.destroy();
       if (trendChart) trendChart.destroy();
     };
-  }, [ready, cache, byChannelChart, currency]);
+  }, [ready, cache, byChannelChart, currency, C]);
 
   // 진단(💡) 플로팅 툴팁 — index.html #pvm-float-tip 이식(document 위임, 스크롤 시 숨김)
   useEffect(() => {
@@ -613,7 +623,7 @@ export default function CampaignPvm() {
       return;
     }
     try {
-      const ml2 = pvmMetricLabel(cache);
+      const ml2 = pvmMetricLabel(cache, C);
       const content = buildPvmResultCsv(cache, ml2);
       const fname = `pvm_result_${ml2}_${cache.p2Range[1]}.csv`;
       const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
@@ -637,10 +647,10 @@ export default function CampaignPvm() {
     return (
       <div className="tab-pane active" id="tab-pvm">
         <ToolPageShell
-          title="캠페인 성과 변동"
+          title={C.title}
           chips={<span className="chip warning"><span className="dot"></span>CSV 업로드 대기</span>}
           summary={
-            <p>5-6(소재 분석)과 동일한 소재 daily CSV를 사용합니다 — 이미 5-6에 업로드했다면 자동으로 이어받습니다.</p>
+            <p>{C.noDataSummary}</p>
           }
           toc={[{ id: "s-prep", title: "데이터 준비" }]}
         >
@@ -650,9 +660,9 @@ export default function CampaignPvm() {
               <div className="ico">!</div>
               <div className="body">
                 <strong>CSV 업로드 대기</strong>
-                <p>캠페인 효율 데이터(최소 2주치)를 업로드하여 변동 원인을 분석하세요.</p>
+                <p>{C.noDataCalloutBody}</p>
                 <div style={{ marginTop: "1rem" }}>
-                  <CsvUploader toolId="5-21" />
+                  <CsvUploader toolId={C.uploaderToolId} />
                 </div>
               </div>
             </div>
@@ -663,7 +673,7 @@ export default function CampaignPvm() {
   }
 
   const cur = currency;
-  const ml = ready ? pvmMetricLabel(cache) : metric.toUpperCase();
+  const ml = ready ? pvmMetricLabel(cache, C) : (C.metricLabel || metric.toUpperCase());
   const bothMetricsMapped = cache?.bothMetricsMapped;
 
   // §0 헤드라인 chip 헬퍼 + pvmImpactChip 이식
@@ -730,7 +740,7 @@ export default function CampaignPvm() {
     if (topChannel && pvmIsEntitySignificant(topChannel.contribution, cache.deltaCpa, cache.CPA2)) {
       headlineLines.push(
         <li key="ch" style={{ marginBottom: "7px", fontSize: "13px", lineHeight: 1.7 }}>
-          <span style={{ color: "var(--text-muted)" }}>채널</span>{" "}
+          <span style={{ color: "var(--text-muted)" }}>{C.levelChannel}</span>{" "}
           <strong>{topChannel.key || "(미지정)"}</strong> {impactChip(topChannel.contribution, { prefix: ml })}
         </li>,
       );
@@ -738,7 +748,7 @@ export default function CampaignPvm() {
     if (topCampaign && pvmIsEntitySignificant(topCampaign.contribution, cache.deltaCpa, cache.CPA2)) {
       headlineLines.push(
         <li key="cmp" style={{ marginBottom: "7px", fontSize: "13px", lineHeight: 1.7 }}>
-          <span style={{ color: "var(--text-muted)" }}>캠페인</span> {topChannel.key} ›{" "}
+          <span style={{ color: "var(--text-muted)" }}>{C.levelCampaign}</span> {topChannel.key} ›{" "}
           <strong>{topCampaign.key || topCampaign.cmpKey || "(미지정)"}</strong>{" "}
           {impactChip(topCampaign.contribution, { prefix: ml })}
         </li>,
@@ -747,7 +757,7 @@ export default function CampaignPvm() {
     if (topCreative && pvmIsEntitySignificant(topCreative.contribution, cache.deltaCpa, cache.CPA2)) {
       headlineLines.push(
         <li key="cr" style={{ marginBottom: "7px", fontSize: "13px", lineHeight: 1.7 }}>
-          <span style={{ color: "var(--text-muted)" }}>소재</span>{" "}
+          <span style={{ color: "var(--text-muted)" }}>{C.levelCreative}</span>{" "}
           <strong>{topCreative.crKey || "(미지정)"}</strong>{" "}
           {impactChip(topCreative.contribution, { prefix: ml })}
         </li>,
@@ -877,7 +887,7 @@ export default function CampaignPvm() {
     ? "전체"
     : crSelCmp != null
       ? `${crSelCh} · ${crSelCmp || "(미지정)"}`
-      : `${crSelCh} 채널`;
+      : `${crSelCh} ${C.levelChannel}`;
 
   // §4 페이지네이션 (20행/페이지) — index.html pvmPager 이식
   const CR_PER = 20;
@@ -938,7 +948,7 @@ export default function CampaignPvm() {
           <span style={{ fontSize: "10px", color: "var(--text-muted)", display: "block", marginBottom: "2px" }}>{breadcrumb}</span>
           <strong style={{ verticalAlign: "middle" }}>{e.crKey || "(미지정)"}</strong>
           {safeUrl && (
-            <a href={safeUrl} target="_blank" rel="noopener noreferrer" title="소재 링크 열기" style={{ textDecoration: "none", fontSize: "11px", marginLeft: "4px", verticalAlign: "middle" }}>🔗</a>
+            <a href={safeUrl} target="_blank" rel="noopener noreferrer" title={C.creativeLinkTitle} style={{ textDecoration: "none", fontSize: "11px", marginLeft: "4px", verticalAlign: "middle" }}>🔗</a>
           )}
         </>
       );
@@ -951,7 +961,7 @@ export default function CampaignPvm() {
     return (
       <tr key={keyId}>
         {level === "creative" && (
-          <td className="tnum" style={{ whiteSpace: "nowrap", textAlign: "center" }} title={isNew ? "신규 소재(이전 기간 0건 → 현재 1건 이상)" : ""}>
+          <td className="tnum" style={{ whiteSpace: "nowrap", textAlign: "center" }} title={isNew ? C.newBadgeTitle : ""}>
             {isNew ? "🆕" : ""}
           </td>
         )}
@@ -989,11 +999,11 @@ export default function CampaignPvm() {
     };
     return (
       <tr>
-        {withNewCol && <th className="tnum" title="신규 소재(이전 기간 0건 → 현재 1건 이상)">New</th>}
+        {withNewCol && <th className="tnum" title={C.newBadgeTitle}>New</th>}
         {th(name, "name")}
         {th("COST (P1→P2)", "cost")}
         {th(`${ml} (P1→P2)`, "cpa")}
-        {th("결과 비중 (P1→P2)", "share", "전체 결과(전환) 건수 중 이 항목이 차지하는 비중 — 비용 비중이 아닙니다.")}
+        {th(C.shareHeader, "share", C.shareHeaderTitle)}
         {th("MIX (순수 이동)", "mix", "순수 이동 효과 (Macro Mix)")}
         {th("RATE (순수 단가)", "rate", "순수 단가 변동 (Rate)")}
         {th("MIX (하위합)", "subMix", "하위 세그먼트 합산 믹스 효과")}
@@ -1024,22 +1034,22 @@ export default function CampaignPvm() {
   return (
     <div className="tab-pane active" id="tab-pvm">
       <ToolPageShell
-        title="캠페인 성과 변동"
-        chips={<span className="chip"><span className="dot"></span>도구 · 캠페인 성과 변동 탐지</span>}
+        title={C.title}
+        chips={<span className="chip"><span className="dot"></span>{C.chipMain}</span>}
         summary={
           <>
             <p>
-              Price-Volume-Mix(PVM) Bridge 분해로 전체 {ml} 변화를 채널·캠페인·소재 단위로 정확히 나눕니다(잔차 없음).
+              {C.summaryLead(ml)}
             </p>
             <details style={{ marginTop: "6px", fontSize: "11.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
               <summary>⚠️ 해석 한계 펼치기</summary>
               <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
-                이 분해는 산술적으로 정확하지만 인과관계를 증명하지 않습니다(association). 채널×캠페인×소재 최소 단위에서 한 번 분해 후 합산하므로 §2(채널)·§3(캠페인)·§4(소재)는 항상 정확히 중첩됩니다(Σ 일치).
+                {C.summaryLimitBody}
               </div>
             </details>
           </>
         }
-        toc={PVM_TOC}
+        toc={buildPvmToc(C)}
         stickyFilter={<DashboardFilterBar />}
       >
       {/* §0 한눈에 보기 */}
@@ -1104,13 +1114,13 @@ export default function CampaignPvm() {
             <div className="ico">!</div>
             <div className="body">
               <strong>데이터 부족</strong>
-              <p>{cache?.message || "채널·비용·결과(설치/액션)·날짜 컬럼을 매핑하고 최소 2주치 데이터를 업로드하세요."}</p>
+              <p>{cache?.message || C.insufficientFallback}</p>
             </div>
           </div>
         )}
         <div className="callout warn" style={{ marginTop: "6px" }}>
           <div className="ico">!</div>
-          <div className="body" style={{ fontSize: "11.5px" }}>association(연관)일 뿐 인과를 증명하지 않습니다. 채널·캠페인·소재 모두 최소 단위(채널×캠페인×소재)에서 한 번 분해 후 합산해 §2~§4(모드A)는 항상 정확히 중첩됩니다.</div>
+          <div className="body" style={{ fontSize: "11.5px" }}>{C.causationCallout}</div>
         </div>
       </section>
 
@@ -1148,15 +1158,15 @@ export default function CampaignPvm() {
 
       {/* §2 채널별 결과 */}
       <section className="block" id="s-pvm-channels">
-        <h2 className="section-title"><span className="ix">§2</span>채널별 결과</h2>
+        <h2 className="section-title"><span className="ix">§2</span>{C.secChannels}</h2>
 
         <details className="block" style={{ padding: "11px 14px", marginBottom: "10px", background: "var(--bg-2)", borderRadius: "10px" }}>
           <summary style={{ cursor: "pointer", fontSize: "12px", fontWeight: 600, color: "var(--text-2)", outline: "none" }}>❓ Mix · Rate · {ml} 영향이 뭔가요? (펼치기)</summary>
           <div style={{ marginTop: "10px", fontSize: "12px", lineHeight: 1.7, color: "var(--text-muted)" }}>
             전체 {ml} 변동을 잔차 없이 두 원인으로 쪼갠 값입니다.
             <ul style={{ margin: "8px 0 4px", paddingLeft: "18px" }}>
-              <li><strong>Mix(비중 효과)</strong> — 예산 비중이 평균보다 비싼/싼 채널로 옮겨가며 생긴 변화.</li>
-              <li><strong>Rate(효율 효과)</strong> — 채널 자체 {ml}가 변해서 생긴 변화.</li>
+              <li><strong>Mix(비중 효과)</strong> — {C.explainerMix}</li>
+              <li><strong>Rate(효율 효과)</strong> — {C.explainerRate(ml)}</li>
               <li><strong>{ml} 영향 = Mix + Rate</strong> — 그 항목이 전체 {ml}를 실제로 몇 원 움직였나.</li>
             </ul>
           </div>
@@ -1165,14 +1175,14 @@ export default function CampaignPvm() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginBottom: "14px" }}>
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>{ml} 브릿지 — 지난주 전체 → 채널 기여(±) → 이번주 전체</span>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>{ml} 브릿지 — 지난주 전체 → {C.levelChannel} 기여(±) → 이번주 전체</span>
               <button className="ab-pill" title="PNG 다운로드" onClick={() => downloadChartPng(chartPvmWaterfall, "pvm_waterfall")}>⬇ PNG</button>
             </div>
             <div className="chart-container" style={{ height: "260px" }}><canvas id="pvm-waterfall" ref={chartPvmWaterfall}></canvas></div>
           </div>
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>채널별 Mix·Rate 분해</span>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>{C.levelChannel}별 Mix·Rate 분해</span>
               <button className="ab-pill" title="PNG 다운로드" onClick={() => downloadChartPng(chartPvmTrend, "pvm_channel_stack")}>⬇ PNG</button>
             </div>
             <div className="chart-container" style={{ height: "260px" }}><canvas id="pvm-channel-stack" ref={chartPvmTrend}></canvas></div>
@@ -1181,7 +1191,7 @@ export default function CampaignPvm() {
 
         <div className="table-wrap">
           <table className="data" style={{ fontSize: "11.5px" }}>
-            <thead>{headerWithName("채널", false, "channel", pvmSortChannel, setPvmSortChannel)}</thead>
+            <thead>{headerWithName(C.levelChannel, false, "channel", pvmSortChannel, setPvmSortChannel)}</thead>
             <tbody>
               {channelRows.length ? (
                 channelRows.map((e) => renderRow(e, "channel", e.key))
@@ -1204,22 +1214,22 @@ export default function CampaignPvm() {
 
       {/* §3 채널·캠페인별 결과 */}
       <section className="block" id="s-pvm-campaigns">
-        <h2 className="section-title"><span className="ix">§3</span>채널·캠페인별 결과</h2>
+        <h2 className="section-title"><span className="ix">§3</span>{C.secCampaigns}</h2>
         {!ready ? (
           <p className="muted" style={{ fontSize: "12px" }}>분석 가능한 데이터가 없습니다.</p>
         ) : !cache.campaignMapped ? (
-          <div className="callout warn"><div className="ico">!</div><div className="body"><strong>🔒 campaign_id 컬럼을 매핑하면 캠페인 단계를 볼 수 있습니다</strong></div></div>
+          <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{C.lockCampaign}</strong></div></div>
         ) : (
           <>
             <div className="ab-pillgroup" style={{ marginBottom: "10px" }}>
-              <span className="ab-pillgroup-label">채널</span>
+              <span className="ab-pillgroup-label">{C.levelChannel}</span>
               {channelRows.map((ch) => (
                 <button key={ch.key} className={`ab-pill ${ch.key === drillSel ? "active" : ""}`} onClick={() => setDrillChannel(ch.key)}>{ch.key || "(미지정)"}</button>
               ))}
             </div>
             <div className="table-wrap">
               <table className="data" style={{ fontSize: "11.5px" }}>
-                <thead>{headerWithName("캠페인", false, "campaign", pvmSortCampaign, setPvmSortCampaign)}</thead>
+                <thead>{headerWithName(C.levelCampaign, false, "campaign", pvmSortCampaign, setPvmSortCampaign)}</thead>
                 <tbody>
                   {campaignRows.length ? (
                     campaignRows.map((e) => renderRow(e, "campaign", `${e.chKey}|${e.key}`))
@@ -1233,7 +1243,7 @@ export default function CampaignPvm() {
               <div className="callout ok" style={{ marginTop: "10px" }}>
                 <div className="ico">✓</div>
                 <div className="body">
-                  <strong>Σ = {drillSel || "(미지정)"} 채널 {ml} 영향</strong>
+                  <strong>Σ = {drillSel || "(미지정)"} {C.levelChannel} {ml} 영향</strong>
                   <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "2px" }}>{pvmFmtMoney(campaignSigma, cur)} = {pvmFmtMoney(drillChContribution, cur)}</p>
                 </div>
               </div>
@@ -1244,15 +1254,15 @@ export default function CampaignPvm() {
 
       {/* §4 소재별 결과 */}
       <section className="block" id="s-pvm-creatives">
-        <h2 className="section-title"><span className="ix">§4</span>소재별 결과</h2>
+        <h2 className="section-title"><span className="ix">§4</span>{C.secCreatives}</h2>
         {!ready ? (
           <p className="muted" style={{ fontSize: "12px" }}>분석 가능한 데이터가 없습니다.</p>
         ) : !cache.creativeMapped ? (
-          <div className="callout warn"><div className="ico">!</div><div className="body"><strong>🔒 creative_id 컬럼을 매핑하면 소재 단계를 볼 수 있습니다</strong></div></div>
+          <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{C.lockCreative}</strong></div></div>
         ) : (
           <>
             <div className="ab-pillgroup" style={{ marginBottom: "8px" }}>
-              <span className="ab-pillgroup-label">채널</span>
+              <span className="ab-pillgroup-label">{C.levelChannel}</span>
               <button className={`ab-pill ${crIsAll ? "active" : ""}`} onClick={() => { setCrChannel("__all__"); setCrCampaign(null); setCrPage(1); }}>전체</button>
               {channelRows.map((ch) => (
                 <button key={ch.key} className={`ab-pill ${!crIsAll && ch.key === crSelCh ? "active" : ""}`} onClick={() => { setCrChannel(ch.key); setCrCampaign(null); setCrPage(1); }}>{ch.key || "(미지정)"}</button>
@@ -1260,7 +1270,7 @@ export default function CampaignPvm() {
             </div>
             {cache.campaignMapped && !crIsAll && (
               <div className="ab-pillgroup" style={{ marginBottom: "10px" }}>
-                <span className="ab-pillgroup-label">캠페인</span>
+                <span className="ab-pillgroup-label">{C.levelCampaign}</span>
                 <button className={`ab-pill ${crSelCmp === null ? "active" : ""}`} onClick={() => { setCrCampaign(null); setCrPage(1); }}>전체</button>
                 {campaignsInCh.map((cmp) => (
                   <button key={cmp} className={`ab-pill ${cmp === crSelCmp ? "active" : ""}`} onClick={() => { setCrCampaign(cmp || null); setCrPage(1); }}>{cmp || "(미지정)"}</button>
@@ -1269,12 +1279,12 @@ export default function CampaignPvm() {
             )}
             <div className="table-wrap">
               <table className="data" style={{ fontSize: "11.5px" }}>
-                <thead>{headerWithName("소재", true, "creative", pvmSortCreative, setPvmSortCreative)}</thead>
+                <thead>{headerWithName(C.levelCreative, true, "creative", pvmSortCreative, setPvmSortCreative)}</thead>
                 <tbody>
                   {creativeRowsPage.length ? (
                     creativeRowsPage.map((e, i) => renderRow(e, "creative", `${e.chKey}|${e.cmpKey}|${e.crKey}|${crStart + i}`))
                   ) : (
-                    <tr><td colSpan="11" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>표시할 소재가 없습니다</td></tr>
+                    <tr><td colSpan="11" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>{C.emptyCreativeRows}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1287,7 +1297,7 @@ export default function CampaignPvm() {
               </div>
             )}
             <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "10px", cursor: "pointer", marginTop: "10px" }}>
-              <input type="checkbox" checked={showNew} onChange={(e) => { setShowNew(e.target.checked); setCrPage(1); }} /> 🆕 신규 소재만 보기(이전 기간 0건 → 현재 1건 이상)
+              <input type="checkbox" checked={showNew} onChange={(e) => { setShowNew(e.target.checked); setCrPage(1); }} /> {C.showNewLabel}
             </label>
             <div className="callout ok" style={{ marginTop: "6px" }}>
               <div className="ico">✓</div>

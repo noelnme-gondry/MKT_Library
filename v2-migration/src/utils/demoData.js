@@ -477,6 +477,63 @@ function buildContentAttr() {
   return { raw, headers, mapping: {}, fileName: "demo_content_attr.csv" };
 }
 
+// ── content_traffic (9-3 콘텐츠 트래픽 변동 탐지) ─────────────────────────────
+// efficiency와 같은 PVM grain(1행 = 하루 × 유입경로 × 카테고리 × 콘텐츠)이되 콘텐츠
+// 도메인 매핑: channel=유입경로 · campaign_id=카테고리 · creative_id=콘텐츠 ·
+// cost=제작/배포 비용 · installs=트래픽(방문·PV). 결과 지표 1개(traffic→installs)만
+// 매핑 → bothMetricsMapped=false로 CPA/CPI 토글 자연히 숨김. 3주치(마감주 P1 vs P2)
+// 신호: W3(P2)에서 비싼 유입경로(social)로 트래픽 비중 이동(Mix↑) + social 방문당
+// 비용 상승(Rate↑)이 함께 보이도록 설계. 결정론(seededNoise, NO Math.random §3).
+function buildContentTraffic() {
+  const headers = [
+    "date", "traffic_source", "category", "content_id", "cost", "traffic",
+    "impressions", "clicks",
+  ];
+  // cpv = 방문당 비용(원). social은 후반 주로 갈수록 cpv 상승(Rate 악화 신호).
+  const sources = [
+    { name: "organic",    cpv: 120, share: 1.4 }, // 값싼 유입(검색/추천 유입)
+    { name: "social",     cpv: 420, share: 1.0, rampCpv: true }, // 비쌈 + 후반 악화
+    { name: "search",     cpv: 260, share: 1.1 },
+    { name: "newsletter", cpv: 680, share: 0.6 }, // 방문당 가장 비쌈
+  ];
+  const cats = ["튜토리얼", "사례연구"];
+  const dates = generateDates(21, "2024-01-01"); // 3 full calendar weeks (Mon 시작)
+  const raw = [];
+  let seed = 61;
+  for (const s of sources) {
+    for (let ci = 0; ci < cats.length; ci++) {
+      for (let k = 0; k < 2; k++) {
+        const contentId = `${s.name}_${ci === 0 ? "tut" : "case"}_${k + 1}`;
+        const rnd = seededNoise((seed += 19));
+        const baseVisits = 800 * s.share * (1 + k * 0.3);
+        for (let d = 0; d < dates.length; d++) {
+          const wk = Math.floor(d / 7); // 0=W1,1=W2(P1),2=W3(P2)
+          // W3에 social로 트래픽 비중 쏠림 → Mix 효과(비싼 유입경로로 이동).
+          const shareBoost = s.name === "social" && wk === 2 ? 1.6 : 1;
+          const visits = Math.max(1, round(baseVisits * shareBoost * (1 + rnd() * 0.12)));
+          // social 방문당 비용은 주가 갈수록 상승(Rate 효과).
+          const cpvNow = s.cpv * (s.rampCpv ? 1 + wk * 0.25 : 1);
+          const cost = round(visits * cpvNow * (1 + rnd() * 0.08));
+          const clicks = round(visits * (1.6 + rnd() * 0.4));
+          const impressions = round(clicks * (10 + rnd() * 4));
+          raw.push({
+            date: dates[d], traffic_source: s.name, category: cats[ci],
+            content_id: contentId, cost, traffic: visits, impressions, clicks,
+          });
+        }
+      }
+    }
+  }
+  // header → 표준키 매핑(엔진 계약): 유입경로=channel·카테고리=campaign_id·
+  // 콘텐츠=creative_id·트래픽=installs. getMonFilteredRows가 cost→spend 별칭 채움.
+  const mapping = {
+    date: "date", traffic_source: "channel", category: "campaign_id",
+    content_id: "creative_id", cost: "cost", traffic: "installs",
+    impressions: "impressions", clicks: "clicks",
+  };
+  return { raw, headers, mapping, fileName: "demo_content_traffic.csv" };
+}
+
 const BUILDERS = {
   efficiency: buildEfficiency,
   creative: buildCreative,
@@ -486,6 +543,7 @@ const BUILDERS = {
   incrementality: buildIncrSuppressionDemo,
   content_aha: buildContentAha,
   content_attr: buildContentAttr,
+  content_traffic: buildContentTraffic,
 };
 
 // group name (TOOL_GROUP value) → demo csv. Falls back to efficiency.

@@ -997,6 +997,15 @@ export const TOOL_REQUIRED_FIELDS = {
                 "channel",
                 { oneOf: ["installs", "actions"] },
               ],
+              // 9-3 콘텐츠 트래픽 변동 — 5-21과 동일 엔진(pvmMath). 유입경로=channel·
+              // 트래픽=installs(또는 actions)·제작/배포비=spend. 필드명은 엔진 계약이라
+              // 5-21과 동일, 화면 라벨만 콘텐츠 도메인(유입경로/카테고리/콘텐츠).
+              "9-3": [
+                "date",
+                "spend",
+                "channel",
+                { oneOf: ["installs", "actions"] },
+              ],
             };
 export const TOOL_OPTIONAL_FIELDS = {
               "5-4": [
@@ -1236,6 +1245,29 @@ export const TOOL_OPTIONAL_FIELDS = {
                 {
                   key: "clicks",
                   unlocks: "소재별 CTR 비교(§4) — impressions와 함께 매핑 시 활성화",
+                },
+              ],
+              // 9-3 콘텐츠 트래픽 변동 — campaign_id=카테고리·creative_id=콘텐츠 단계.
+              "9-3": [
+                {
+                  key: "campaign_id",
+                  unlocks: "카테고리 단계 분해 — 매핑 안 하면 유입경로→콘텐츠 2단계로 동작",
+                },
+                {
+                  key: "creative_id",
+                  unlocks: "콘텐츠 단계 딥다이브(§4) — 매핑 안 하면 유입경로/카테고리까지만 분해",
+                },
+                {
+                  key: "creative_url",
+                  unlocks: "콘텐츠별 결과(§4)에 콘텐츠 링크 표시 — 클릭 시 새 창",
+                },
+                {
+                  key: "impressions",
+                  unlocks: "콘텐츠별 CTR 비교(§4) — clicks와 함께 매핑 시 활성화",
+                },
+                {
+                  key: "clicks",
+                  unlocks: "콘텐츠별 CTR 비교(§4) — impressions와 함께 매핑 시 활성화",
                 },
               ],
             };

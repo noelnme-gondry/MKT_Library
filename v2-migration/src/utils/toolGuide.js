@@ -210,6 +210,24 @@ export const TOOL_GUIDE = {
     ],
     example: "reader_id,subscribed,ga4guide_d7,casestudy_d7,pricing_d7\nr10001,1,3,4,1\nr10002,0,0,1,0\nr10003,1,2,5,0",
   },
+  "9-3": {
+    when: "트래픽(방문·PV)이 변한 원인을 유입경로·카테고리·콘텐츠 단위로 무잔차 분해합니다(왜 방문당 비용이 올랐나? 어느 유입경로가 끌어올렸나?).",
+    grain: "1행 = 하루 × 유입경로 × 카테고리 × 콘텐츠(가장 잘게)",
+    needs: [
+      { col: "date", label: "날짜", why: "기간 비교(전 vs 후)", required: true },
+      { col: "traffic_source(=channel)", label: "유입경로", why: "분해 단위(organic·social·search·newsletter…)", required: true },
+      { col: "spend(=cost)", label: "제작·배포 비용", why: "방문당 비용 계산의 분자", required: true },
+      { col: "traffic(=installs/actions)", label: "트래픽(방문·PV)", why: "방문당 비용의 분모 — 결과 지표 1개", required: true },
+      { col: "category·content_id", label: "카테고리·콘텐츠", why: "드릴다운(유입경로→카테고리→콘텐츠)", required: false },
+      { col: "impressions·clicks", label: "노출·클릭", why: "콘텐츠별 CTR 비교(§4)", required: false },
+    ],
+    prep: [
+      "가장 잘게(콘텐츠·일별) 넣을수록 분해 항등식이 정확합니다.",
+      "결과 지표는 트래픽(방문·PV) 1개만 매핑합니다 — 지표 토글은 자동으로 숨겨집니다.",
+      "결과는 인과가 아니라 '연관'입니다 — 분해는 산술적으로만 정확합니다.",
+    ],
+    example: "date,traffic_source,category,content_id,cost,traffic\n2024-01-08,organic,튜토리얼,tut_101,96000,820\n2024-01-08,social,사례연구,case_201,168000,410\n2024-01-15,social,사례연구,case_201,246000,650",
+  },
 };
 
 export function getToolGuide(toolId) {
