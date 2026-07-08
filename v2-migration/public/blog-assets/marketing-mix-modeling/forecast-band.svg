@@ -1,0 +1,29 @@
+<svg viewBox="0 0 680 340" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="680" height="340" fill="#ffffff"/>
+
+  <!-- X축 -->
+  <line x1="70" y1="270" x2="620" y2="270" stroke="#9CA3AF" stroke-width="1.5"/>
+
+  <!-- 신뢰밴드 (미래, 오른쪽으로 넓어짐) -->
+  <path d="M 360 150 L 410 136 L 470 120 L 530 104 L 600 88 L 600 168 L 530 162 L 470 160 L 410 160 L 360 160 Z"
+        fill="#DBEAFE" opacity="0.75"/>
+
+  <!-- 실제 매출 (실선) -->
+  <polyline points="80,190 130,175 180,182 230,160 280,168 330,150 360,155"
+            fill="none" stroke="#2563EB" stroke-width="2.5"/>
+
+  <!-- 예측 (점선) -->
+  <polyline points="360,155 410,148 470,140 530,132 600,128"
+            fill="none" stroke="#2563EB" stroke-width="2.5" stroke-dasharray="6 5"/>
+
+  <!-- '오늘' 구분선 -->
+  <line x1="360" y1="70" x2="360" y2="270" stroke="#CBD5E1" stroke-width="1.3" stroke-dasharray="4 4"/>
+  <text x="360" y="62" fill="#94A3B8" font-size="12" text-anchor="middle">오늘</text>
+
+  <!-- 구간 라벨 -->
+  <text x="215" y="300" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">실제 매출</text>
+  <text x="490" y="300" fill="#1D4ED8" font-size="13" font-weight="600" text-anchor="middle">예측 + 95% 신뢰밴드</text>
+
+  <!-- 캡션 -->
+  <text x="340" y="328" fill="#6B7280" font-size="12.5" text-anchor="middle">점 하나로 단정하지 않아요. '이 범위쯤'으로 불확실성까지 정직하게 보여줘요.</text>
+</svg>
