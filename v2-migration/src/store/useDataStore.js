@@ -58,7 +58,7 @@ export const computeAnalyzeSig = (csvData) => {
 export const IA = [
   {
     id: "01",
-    title: "Foundation",
+    title: "트래킹 기반 구축",
     desc: "MMP 인프라, 이벤트 택소노미, 매체 포스트백, iOS 프라이버시 대응까지. 본격 운영 전 반드시 갖춰야 할 토대.",
     items: [
       { id: "1-1", title: "개발자 협업 가이드 및 테크니컬 PRD" },
@@ -69,7 +69,7 @@ export const IA = [
   },
   {
     id: "02",
-    title: "Execution",
+    title: "캠페인 실행",
     desc: "UAC·Meta·ASA·리타겟팅 캠페인 실전 셋업. 운영 일과의 표준 절차.",
     items: [
       { id: "2-1", title: "Google App Campaigns (UAC) 가이드" },
@@ -80,7 +80,7 @@ export const IA = [
   },
   {
     id: "03",
-    title: "Creative & Copy",
+    title: "소재·카피",
     desc: "ASO 베이직부터 매체별 소재 규격, 3초 훅 설계까지.",
     items: [
       { id: "3-1", title: "앱 스토어 최적화 (ASO) 베이직" },
@@ -90,7 +90,7 @@ export const IA = [
   },
   {
     id: "04",
-    title: "Analysis & Optimization",
+    title: "분석·최적화",
     desc: "KPI 벤치마크, 코호트·리텐션, 카니발리제이션 보정까지. 데이터로 검증하는 단계.",
     items: [
       { id: "4-1", title: "앱 마케팅 핵심 지표(KPI) 분석" },
@@ -140,7 +140,7 @@ export const IA = [
   // 리라벨. 내부 id(9-x)는 불변(§4.1), 표시번호는 SECTIONS 위치로 계산. 파일럿 2종. ──
   {
     id: "09",
-    title: "컨텐츠 분석",
+    title: "콘텐츠 분석",
     desc: "콘텐츠 성과 CSV로 어떤 제작 요소가 성과를 끌어올리는지, 어떤 콘텐츠가 구독 전환을 만드는지 진단.",
     items: [
       { id: "9-1", title: "콘텐츠 요소 분석기 (요소별 성과 기여)" },
@@ -160,7 +160,7 @@ export const IA = [
 export const SECTIONS = [
   { id: "guide", label: "가이드", groups: ["01", "02", "03", "04"] },
   { id: "analysis", label: "분석", groups: ["08", "05", "06", "07"] },
-  { id: "content", label: "컨텐츠 분석", groups: ["09"] },
+  { id: "content", label: "콘텐츠 분석", groups: ["09"] },
 ];
 
 export function findGroupSection(groupId) {
