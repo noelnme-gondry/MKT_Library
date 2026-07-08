@@ -1,0 +1,27 @@
+<svg viewBox="0 0 640 400" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="640" height="400" fill="#ffffff"/>
+
+  <!-- 상단 총합 라벨 -->
+  <text x="215" y="46" fill="#334155" font-size="14" font-weight="600" text-anchor="middle">대시보드가 보여주는 전환 500건</text>
+
+  <!-- 증분 세그먼트 (위, 파랑) -->
+  <rect x="140" y="60" width="150" height="67.2" fill="#2563EB"/>
+  <text x="215" y="102" fill="#ffffff" font-size="15" font-weight="700" text-anchor="middle">120건</text>
+
+  <!-- 베이스라인 세그먼트 (아래, 회색) -->
+  <rect x="140" y="127.2" width="150" height="212.8" fill="#E2E8F0" stroke="#CBD5E1"/>
+  <text x="215" y="232" fill="#475569" font-size="15" font-weight="700" text-anchor="middle">베이스라인 380건</text>
+  <text x="215" y="253" fill="#64748B" font-size="12" text-anchor="middle">광고 없어도</text>
+  <text x="215" y="270" fill="#64748B" font-size="12" text-anchor="middle">어차피 발생</text>
+
+  <!-- 구분선 -->
+  <line x1="140" y1="127.2" x2="290" y2="127.2" stroke="#ffffff" stroke-width="2"/>
+
+  <!-- 증분 브래킷 -->
+  <path d="M 300 60 h 8 v 67.2 h -8" fill="none" stroke="#2563EB" stroke-width="1.5"/>
+  <text x="318" y="88" fill="#1D4ED8" font-size="13.5" font-weight="700">광고가 진짜 만든</text>
+  <text x="318" y="107" fill="#1D4ED8" font-size="13.5" font-weight="700">증분 = 120건</text>
+
+  <!-- 하단 캡션 -->
+  <text x="320" y="378" fill="#6B7280" font-size="13" text-anchor="middle">500건이 찍혀도, 진짜 광고 성과는 파란 칸 120건뿐일 수 있어요.</text>
+</svg>

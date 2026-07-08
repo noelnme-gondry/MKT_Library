@@ -1,0 +1,21 @@
+<svg viewBox="0 0 620 380" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="620" height="380" fill="#ffffff"/>
+
+  <!-- X축 -->
+  <line x1="90" y1="300" x2="540" y2="300" stroke="#9CA3AF" stroke-width="1.5"/>
+
+  <!-- 겉보기 ROAS 막대 -->
+  <rect x="150" y="50" width="110" height="250" fill="#93C5FD"/>
+  <text x="205" y="42" fill="#1D4ED8" font-size="18" font-weight="700" text-anchor="middle">800%</text>
+  <text x="205" y="322" fill="#334155" font-size="14" font-weight="600" text-anchor="middle">겉보기 ROAS</text>
+  <text x="205" y="340" fill="#94A3B8" font-size="12" text-anchor="middle">(라스트클릭)</text>
+
+  <!-- 증분 ROAS 막대 -->
+  <rect x="370" y="240.6" width="110" height="59.4" fill="#2563EB"/>
+  <text x="425" y="232" fill="#1D4ED8" font-size="18" font-weight="700" text-anchor="middle">190%</text>
+  <text x="425" y="322" fill="#334155" font-size="14" font-weight="600" text-anchor="middle">증분 ROAS</text>
+  <text x="425" y="340" fill="#94A3B8" font-size="12" text-anchor="middle">(홀드아웃)</text>
+
+  <!-- 하단 캡션 -->
+  <text x="310" y="368" fill="#6B7280" font-size="13" text-anchor="middle">같은 캠페인·같은 데이터인데도 이렇게 달라요. 예산 판단은 오른쪽 숫자로.</text>
+</svg>
