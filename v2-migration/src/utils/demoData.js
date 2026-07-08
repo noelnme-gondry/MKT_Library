@@ -477,6 +477,219 @@ function buildContentAttr() {
   return { raw, headers, mapping: {}, fileName: "demo_content_attr.csv" };
 }
 
+// ── content_traffic (9-3 콘텐츠 트래픽 변동 탐지) ─────────────────────────────
+// efficiency와 같은 PVM grain(1행 = 하루 × 유입경로 × 카테고리 × 콘텐츠)이되 콘텐츠
+// 도메인 매핑: channel=유입경로 · campaign_id=카테고리 · creative_id=콘텐츠 ·
+// cost=제작/배포 비용 · installs=트래픽(방문·PV). 결과 지표 1개(traffic→installs)만
+// 매핑 → bothMetricsMapped=false로 CPA/CPI 토글 자연히 숨김. 3주치(마감주 P1 vs P2)
+// 신호: W3(P2)에서 비싼 유입경로(social)로 트래픽 비중 이동(Mix↑) + social 방문당
+// 비용 상승(Rate↑)이 함께 보이도록 설계. 결정론(seededNoise, NO Math.random §3).
+function buildContentTraffic() {
+  const headers = [
+    "date", "traffic_source", "category", "content_id", "cost", "traffic",
+    "impressions", "clicks",
+  ];
+  // cpv = 방문당 비용(원). social은 후반 주로 갈수록 cpv 상승(Rate 악화 신호).
+  const sources = [
+    { name: "organic",    cpv: 120, share: 1.4 }, // 값싼 유입(검색/추천 유입)
+    { name: "social",     cpv: 420, share: 1.0, rampCpv: true }, // 비쌈 + 후반 악화
+    { name: "search",     cpv: 260, share: 1.1 },
+    { name: "newsletter", cpv: 680, share: 0.6 }, // 방문당 가장 비쌈
+  ];
+  const cats = ["튜토리얼", "사례연구"];
+  const dates = generateDates(21, "2024-01-01"); // 3 full calendar weeks (Mon 시작)
+  const raw = [];
+  let seed = 61;
+  for (const s of sources) {
+    for (let ci = 0; ci < cats.length; ci++) {
+      for (let k = 0; k < 2; k++) {
+        const contentId = `${s.name}_${ci === 0 ? "tut" : "case"}_${k + 1}`;
+        const rnd = seededNoise((seed += 19));
+        const baseVisits = 800 * s.share * (1 + k * 0.3);
+        for (let d = 0; d < dates.length; d++) {
+          const wk = Math.floor(d / 7); // 0=W1,1=W2(P1),2=W3(P2)
+          // W3에 social로 트래픽 비중 쏠림 → Mix 효과(비싼 유입경로로 이동).
+          const shareBoost = s.name === "social" && wk === 2 ? 1.6 : 1;
+          const visits = Math.max(1, round(baseVisits * shareBoost * (1 + rnd() * 0.12)));
+          // social 방문당 비용은 주가 갈수록 상승(Rate 효과).
+          const cpvNow = s.cpv * (s.rampCpv ? 1 + wk * 0.25 : 1);
+          const cost = round(visits * cpvNow * (1 + rnd() * 0.08));
+          const clicks = round(visits * (1.6 + rnd() * 0.4));
+          const impressions = round(clicks * (10 + rnd() * 4));
+          raw.push({
+            date: dates[d], traffic_source: s.name, category: cats[ci],
+            content_id: contentId, cost, traffic: visits, impressions, clicks,
+          });
+        }
+      }
+    }
+  }
+  // header → 표준키 매핑(엔진 계약): 유입경로=channel·카테고리=campaign_id·
+  // 콘텐츠=creative_id·트래픽=installs. getMonFilteredRows가 cost→spend 별칭 채움.
+  const mapping = {
+    date: "date", traffic_source: "channel", category: "campaign_id",
+    content_id: "creative_id", cost: "cost", traffic: "installs",
+    impressions: "impressions", clicks: "clicks",
+  };
+  return { raw, headers, mapping, fileName: "demo_content_traffic.csv" };
+}
+
+// ── content_freshness (9-6 콘텐츠 수명주기·신선도 진단) ───────────────────────
+// creative(5-6)와 동일 grain(1행 = 하루 × 콘텐츠)·동일 엔진(creativeMath, CTR/CVR
+// 비율 기반이라 스케일 안전)이되 콘텐츠 도메인 값: creative_id=콘텐츠·channel=배포
+// 채널(블로그/유튜브/인스타/뉴스레터)·format=형식(글/영상/카드뉴스/인포그래픽)·
+// message_angle=콘텐츠 앵글·hook_type=후킹 유형. 신선도 신호: 콘텐츠마다 다른 감쇠율
+// (decay)을 심어 일부는 급격히 반응이 식고(신선도 저하 검출·경고), 일부는 신선 유지.
+// message_angle × format 조합당 콘텐츠 ≥5개(minNCell) 채워 §8 조합표도 산출.
+// 결정론(seededNoise, NO Math.random §3).
+function buildContentFreshness() {
+  const headers = [
+    "creative_id", "date", "channel", "impressions", "clicks", "installs",
+    "spend", "revenue_d7", "video_3s_views", "video_completions",
+    "message_angle", "format", "hook_type", "cta_style", "first_3s",
+    "duration_bucket", "has_text_overlay",
+  ];
+  // 콘텐츠 앵글 어휘 + CTR/CVR(구독전환) 효과 (합성 신호)
+  const angles = [
+    { v: "정보성가이드", ctr: 0.009, cvr: 0.03 },
+    { v: "사례연구", ctr: 0.004, cvr: 0.02 },
+    { v: "트렌드분석", ctr: 0.000, cvr: 0.01 },
+    { v: "오피니언", ctr: 0.003, cvr: -0.01 },
+  ];
+  const formats = [
+    { v: "영상", ctr: 0.006, cvr: 0.00, isVideo: true },
+    { v: "카드뉴스", ctr: 0.002, cvr: 0.02, isVideo: false },
+    { v: "글", ctr: -0.004, cvr: 0.01, isVideo: false },
+    { v: "인포그래픽", ctr: 0.010, cvr: 0.04, isVideo: false },
+  ];
+  const hooks = ["질문형", "숫자형", "공감형"];
+  const ctas = ["구독하기", "무료뉴스레터", "더보기"];
+  const first3 = ["핵심결론먼저", "질문던지기", "사례제시"];
+  const durations = ["<3분", "3-8분", "8분+"];
+  const channels = ["블로그", "유튜브", "인스타그램", "뉴스레터"];
+  const baseCtr = 0.022, baseCvr = 0.12, baseArppu = 12000;
+  const dates = generateDates(28, "2024-02-01");
+  // 조합별 상태 플랜 — creative와 동일 분포(검증/부족/유망/미관측)로 §8 다채롭게.
+  const plan = {
+    "정보성가이드|영상": "P", "정보성가이드|글": "V", "정보성가이드|카드뉴스": "S", "정보성가이드|인포그래픽": "_",
+    "사례연구|영상": "V", "사례연구|글": "V", "사례연구|카드뉴스": "V", "사례연구|인포그래픽": "S",
+    "트렌드분석|영상": "V", "트렌드분석|글": "V", "트렌드분석|카드뉴스": "_", "트렌드분석|인포그래픽": "V",
+    "오피니언|영상": "V", "오피니언|글": "S", "오피니언|카드뉴스": "V", "오피니언|인포그래픽": "P",
+  };
+  const raw = [];
+  let cIdx = 0, seed = 137;
+  for (const ang of angles) {
+    for (const fmt of formats) {
+      const code = plan[`${ang.v}|${fmt.v}`] || "V";
+      if (code === "_") continue; // 미관측 조합 — 콘텐츠 없음
+      const nCon = code === "S" ? 3 : code === "P" ? 5 : 6;
+      const lowImp = code === "P";           // 유망: 노출 적어 확정 어려움
+      const nDays = lowImp ? 1 : dates.length;
+      for (let k = 0; k < nCon; k++) {
+        cIdx++;
+        const rnd = seededNoise((seed += 23));
+        const hook = hooks[cIdx % hooks.length];
+        const cta = ctas[(cIdx + 1) % ctas.length];
+        const f3 = first3[(cIdx + 2) % first3.length];
+        const dur = fmt.isVideo ? durations[(cIdx + k) % durations.length] : "<3분";
+        const overlay = (cIdx + k) % 2;
+        const ch = channels[cIdx % channels.length];
+        const id = `post_${String(cIdx).padStart(3, "0")}_${fmt.v}_${ang.v}`;
+        // 신선도 감쇠율: 1/4 콘텐츠는 급격히 식음(신선도 저하 검출), 나머지는 완만.
+        const fastDecay = cIdx % 4 === 0;
+        const fatigue = fastDecay ? 0.020 + (cIdx % 3) * 0.004 : 0.002 + (cIdx % 5) * 0.002;
+        const cCtr = clamp01(baseCtr + ang.ctr + fmt.ctr + (overlay ? 0.002 : 0));
+        const cCvr = clamp01(baseCvr + ang.cvr + fmt.cvr + (hook === "공감형" ? 0.02 : 0));
+        const arppu = baseArppu * (ang.v === "정보성가이드" ? 1.15 : ang.v === "오피니언" ? 0.85 : 1);
+        for (let d = 0; d < nDays; d++) {
+          const decay = Math.max(0.3, 1 - fatigue * d);
+          const impressions = lowImp ? round(400 + rnd() * 120) : round(30000 + rnd() * 24000);
+          const ctr = clamp01(cCtr * decay * (1 + rnd() * 0.12));
+          const clicks = round(impressions * ctr);
+          const cvr = clamp01(cCvr * (1 + rnd() * 0.15));
+          const installs = round(clicks * cvr);
+          const cpc = 320 + rnd() * 140;
+          const spend = round(clicks * cpc);
+          const pu = installs * (0.5 + rnd() * 0.15);
+          const revenue = round(pu * arppu * (1 + rnd() * 0.2));
+          const v3s = fmt.isVideo ? round(impressions * (0.55 + rnd() * 0.15)) : 0;
+          const vcomp = fmt.isVideo ? round(v3s * (0.25 + rnd() * 0.15)) : 0;
+          raw.push({
+            creative_id: id, date: dates[d], channel: ch,
+            impressions, clicks, installs, spend, revenue_d7: revenue,
+            video_3s_views: v3s, video_completions: vcomp,
+            message_angle: ang.v, format: fmt.v, hook_type: hook,
+            cta_style: cta, first_3s: f3, duration_bucket: dur,
+            has_text_overlay: overlay,
+          });
+        }
+      }
+    }
+  }
+  const mapping = {};
+  headers.forEach((h) => { mapping[h] = h; });
+  return { raw, headers, mapping, fileName: "demo_content_freshness.csv" };
+}
+
+// ── content_dashboard (9-7 콘텐츠 운영 대시보드) ──────────────────────────────
+// 콘텐츠 운영 CSV — 유입경로(traffic_source)·카테고리·콘텐츠·비용·노출·클릭·방문·구독.
+// 매출/결제/리텐션은 콘텐츠 데이터에 없으므로 넣지 않는다(대시보드가 content 도메인에서
+// 그 지표 카드/차트를 아예 노출하지 않음 — §정직성, 날조 금지). 트래픽 신호: 유입경로별
+// 방문당 비용 스프레드 + cost^0.72 수확체감 + 결정론 노이즈, 한 날짜 트래픽 급등(이상탐지).
+function buildContentDashboard() {
+  const headers = [
+    "date", "traffic_source", "device", "content_category", "content_id",
+    "content_cost", "impressions", "clicks", "visits", "subscribers",
+  ];
+  // 유입경로별 효율(방문당 비용) 차이 → donut/cpi 비교에 신호. subRate=방문→구독 전환율.
+  const sources = [
+    { name: "자연 검색", eff: 0.70, subRate: 0.06, ctr: 0.045 },
+    { name: "소셜", eff: 1.20, subRate: 0.03, ctr: 0.030 },
+    { name: "뉴스레터", eff: 0.55, subRate: 0.11, ctr: 0.070 },
+    { name: "직접 유입", eff: 0.85, subRate: 0.08, ctr: 0.050 },
+    { name: "추천/제휴", eff: 1.00, subRate: 0.05, ctr: 0.038 },
+  ];
+  const categories = ["튜토리얼", "사례연구", "업계뉴스"];
+  const dates = generateDates(60, "2024-01-01");
+  const raw = [];
+  let seed = 41;
+  for (let si = 0; si < sources.length; si++) {
+    const s = sources[si];
+    const rnd = seededNoise((seed += 23));
+    const baseCost = 180000 * s.eff;
+    for (let d = 0; d < dates.length; d++) {
+      const cat = categories[(d + si) % categories.length];
+      const contentId = `${cat}_${(d % 6) + 1}`;
+      const ramp = 1 + (d / dates.length) * 1.2;
+      const noise = 1 + rnd() * 0.22;
+      // 뉴스레터에 한 날짜(d=40) 대량 발송 → 트래픽·비용 급등(이상탐지 신호).
+      const spike = s.name === "뉴스레터" && d === 40 ? 3.2 : 1;
+      const cost = baseCost * ramp * noise * spike;
+      const visits = Math.max(
+        1,
+        round((Math.pow(cost, 0.72) / (9 * s.eff)) * (1 + rnd() * 0.15))
+      );
+      const clicks = Math.max(visits, round(visits * (1.4 + rnd() * 0.5)));
+      const impressions = round((clicks / s.ctr) * (1 + rnd() * 0.12));
+      const subscribers = round(visits * s.subRate * (1 + rnd() * 0.25));
+      raw.push({
+        date: dates[d], traffic_source: s.name,
+        device: d % 2 === 0 ? "Mobile" : "Desktop",
+        content_category: cat, content_id: contentId,
+        content_cost: round(cost), impressions, clicks, visits, subscribers,
+      });
+    }
+  }
+  // 콘텐츠 헤더 → 대시보드 표준키. visits=installs(트래픽 결과), subscribers=actions(구독).
+  const mapping = {
+    date: "date", traffic_source: "channel", device: "platform",
+    content_category: "campaign_name", content_id: "creative_id",
+    content_cost: "cost", impressions: "impressions", clicks: "clicks",
+    visits: "installs", subscribers: "actions",
+  };
+  return { raw, headers, mapping, fileName: "demo_content_dashboard.csv" };
+}
+
 const BUILDERS = {
   efficiency: buildEfficiency,
   creative: buildCreative,
@@ -486,6 +699,9 @@ const BUILDERS = {
   incrementality: buildIncrSuppressionDemo,
   content_aha: buildContentAha,
   content_attr: buildContentAttr,
+  content_traffic: buildContentTraffic,
+  content_freshness: buildContentFreshness,
+  content_dashboard: buildContentDashboard,
 };
 
 // group name (TOOL_GROUP value) → demo csv. Falls back to efficiency.

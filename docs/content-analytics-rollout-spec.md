@@ -1,17 +1,20 @@
 # Content Analytics 확장 — 잔여 작업 (SSOT)
 
-`[컨텐츠 분석]`(9-x) 대분류의 파일럿(9-1·9-2)은 PR #259로 완료. 본 문서는
-**나머지 5개 도구 + 마무리 작업**을 추적한다. 패턴 상세는 `CLAUDE.md` §12.23,
+`[컨텐츠 분석]`(9-x) 대분류의 파일럿(9-1·9-2)은 PR #259, 9-3·9-6·9-7은 후속 PR로 완료. 본 문서는
+**남은 마무리 작업 + 보류 도구(9-5)**를 추적한다(9-4 CMM은 엔진 부적합으로 드롭 — §1 표). 패턴 상세는 `CLAUDE.md` §12.23,
 경로 매핑은 `v2-migration/ARCHITECTURE.md` 참조.
 
 ---
 
-## 0. 완료 (PR #259, `claude/feature-docs-marketing-ltdspt`)
+## 0. 완료
 
 | # | 도구 | 라우트 | 상태 |
 |---|---|---|---|
-| 9-1 | 콘텐츠 요소 분석기 | `/content/element-analysis` | ✅ 신규 UI(`ContentElementAnalyzer.jsx`) + `REG_STATS.ols` |
-| 9-2 | 킬러 콘텐츠·충성 독자 발굴 | `/content/killer-content` | ✅ `AhaMomentFinder domain="content"` 래퍼(`KillerContentFinder.jsx`) |
+| 9-1 | 콘텐츠 요소 분석기 | `/content/element-analysis` | ✅ (#259) 신규 UI(`ContentElementAnalyzer.jsx`) + `REG_STATS.ols` |
+| 9-2 | 킬러 콘텐츠·충성 독자 발굴 | `/content/killer-content` | ✅ (#259) `AhaMomentFinder domain="content"` 래퍼(`KillerContentFinder.jsx`) |
+| 9-3 | 콘텐츠 트래픽 변동 탐지 | `/content/traffic-variance` | ✅ `CampaignPvm domain="content"` 래퍼(`ContentTrafficVariance.jsx`) + `PVM_COPY` 라벨팩. 어휘=유입경로→카테고리→콘텐츠, 지표=방문당 비용, "결과 비중"→"트래픽 비중"(정의 불변). 격리 슬라이스 `content_traffic` |
+| 9-6 | 콘텐츠 수명주기·신선도 진단 | `/content/freshness` | ✅ `CreativeAnalyzer domain="content"` 래퍼(`ContentFreshness.jsx`) + `CREATIVE_COPY` 라벨팩(56키). 소재→콘텐츠·피로도→신선도. 엔진 CTR 비율 기반이라 스케일 안전. 격리 슬라이스 `content_freshness` |
+| 9-7 | 콘텐츠 운영 대시보드 | `/content/dashboard` | ✅ `Dashboard domain="content"` 래퍼(`ContentDashboard.jsx`) + `DASH_COPY` 라벨팩. **3탭만**(viz·scorecard·anomaly), 제외=pacing·ltv·cohort·funnel·segment. 다중 컴포넌트 prop drilling(Dashboard→DashboardTabs→탭). 매출·ROAS·코호트 지표는 콘텐츠 부재→정직 제외(날조 안 함). 격리 슬라이스 `content_dashboard` |
 
 배선 인프라(전부 완료, 재사용 가능): `IA`/`SECTIONS.content`(store) · `routeMap`(`/content/*`) ·
 `csvGroups` 격리 슬라이스 패턴 · `contentDomain.js` 라벨팩 SSOT · `demoData.js` 도메인 데모 ·
@@ -28,11 +31,8 @@ contentDomain.js 라벨팩 추가 → (소스 컴포넌트 재사용 시) domain
 
 | # | 도구명(안) | 재사용 엔진 | 소스 컴포넌트 | 방식 | 비고 |
 |---|---|---|---|---|---|
-| 9-3 | 콘텐츠 트래픽 변동 원인 탐지기 | `pvmMath.js`(Bennet 분해) | `CampaignPvm.jsx` | domain prop 파라미터화 | grain=채널×기간×PV. "믹스효과=결과비중"(§8 shift-share 정의, CLAUDE.md §7) 그대로 유지 — "결과 비중"을 "트래픽 비중"으로 재라벨 시에도 정의는 불변 |
-| 9-4 | 콘텐츠 기여·수명 분해(CMM) | `mmmMath.js`(+`mmmForecast`) | `MarketingResponse.jsx` | domain prop, 단 **3탭 중 필요한 탭만** 노출 검토 | 5-18은 3탭(진단·기여분해·회귀예측) 구조 — 콘텐츠 맥락에 "카니발 진단" 탭이 유효한지(카테고리 간 자기잠식 개념) 확인 필요. adstock→"콘텐츠 half-life" 재라벨 |
-| 9-5 | 콘텐츠 포화도·적정 발행량 진단 | `satMath.js` + `allocationMath.js` | `MarketingEfficiency.jsx` | domain prop 파라미터화 | grain=포맷×기간×발행빈도. 5-3 곡선엔진 의존(CLAUDE.md §12.16 원칙 — 신규 곡선/아웃라이어 구현 금지) 그대로 승계 |
-| 9-6 | 콘텐츠 수명주기·피로도 진단기 | `creativeMath.js`(WLS/FATIGUE) | `CreativeAnalyzer.jsx` | domain prop 파라미터화 | grain=콘텐츠(시리즈)×일. "소재 피로도"→"콘텐츠 신선도" 재라벨 |
-| 9-7 | 콘텐츠 운영 대시보드 | dashboard 엔진 일체(`dashboardAggregator`·`funnelMath`·`cohortMath`…) | `Dashboard.jsx` (8탭) | **범위 축소 검토 필요** | 사용자 확정: "5-2 재사용"이나 5-2는 9탭(스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트·시각화) 전부가 콘텐츠 맥락에 안 맞을 수 있음(예: LTV:CAC·ROAS 성숙도는 결제 데이터 전제) — **착수 전 어떤 탭을 켤지 사용자와 확정** |
+| ~~9-4~~ | ~~콘텐츠 기여·수명 분해(CMM)~~ | — | — | **드롭(재시도 금지)** | MMM 엔진이 "금액×수확체감" 전제(`mmmSaturation` 체크포인트 $10k/35k/60k 하드코딩·§2.1 불변)라 콘텐츠 "발행 편수"(0~30 카운트) 투입과 근본 불일치 — 편수 넣으면 한계효과 0 언더플로우로 "다음 예산 여기로" 액션 무의미. 비용 프레이밍으로 우회 가능하나 그건 5-18 중복. 콘텐츠 MMM은 엔진 부적합 결론(사용자 확정 2026-07-08). 프로토타입은 폐기 브랜치(커밋 bf9dc6f, unpushed)에만 존재 |
+| 9-5 | 콘텐츠 포화도·적정 발행량 진단 | `satMath.js` + `allocationMath.js` | `MarketingEfficiency.jsx` | domain prop 파라미터화 | **보류**(사용자가 9-6·9-7만 진행 지시). grain=포맷×기간×발행빈도. 5-3 곡선엔진 의존(§12.16). **주의: 9-4 교훈 — 곡선/포화 엔진도 금액 스케일 전제일 수 있음, 착수 전 발행량 카운트 호환성 먼저 검증** |
 
 ### 1.1 파일럿에서 확립된 재사용 가능 패턴
 - **라벨팩 방식**: 소스 컴포넌트가 1개 도메인만 다루면(5-20처럼) `domain` prop + `contentDomain.js`
@@ -47,8 +47,7 @@ contentDomain.js 라벨팩 추가 → (소스 컴포넌트 재사용 시) domain
   나머지 도구도 동일 원칙(§8) 적용.
 
 ### 1.2 착수 전 확인 필요 (모호한 지점, §2.7 임의 확정 금지)
-1. **9-4 카니발 진단 탭**: 콘텐츠 카테고리 간 "자기잠식" 개념이 유효한지, 아니면 기여분해·예측
-   2탭만 남길지.
+1. ~~**9-4 카니발 진단 탭**~~: 해소 불필요 — 9-4 자체가 드롭됨(§1 표. MMM 엔진 금액 스케일 vs 콘텐츠 편수 불일치).
 2. **9-7 대시보드 탭 범위**: 9탭 전체 vs 콘텐츠에 안 맞는 탭(LTV:CAC 등) 제외.
 3. **우선순위/범위**: 5개 전부 한 번에 vs 1~2개씩 단계적(파일럿 때와 동일 질문).
 

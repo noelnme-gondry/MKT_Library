@@ -210,6 +210,59 @@ export const TOOL_GUIDE = {
     ],
     example: "reader_id,subscribed,ga4guide_d7,casestudy_d7,pricing_d7\nr10001,1,3,4,1\nr10002,0,0,1,0\nr10003,1,2,5,0",
   },
+  "9-3": {
+    when: "트래픽(방문·PV)이 변한 원인을 유입경로·카테고리·콘텐츠 단위로 무잔차 분해합니다(왜 방문당 비용이 올랐나? 어느 유입경로가 끌어올렸나?).",
+    grain: "1행 = 하루 × 유입경로 × 카테고리 × 콘텐츠(가장 잘게)",
+    needs: [
+      { col: "date", label: "날짜", why: "기간 비교(전 vs 후)", required: true },
+      { col: "traffic_source(=channel)", label: "유입경로", why: "분해 단위(organic·social·search·newsletter…)", required: true },
+      { col: "spend(=cost)", label: "제작·배포 비용", why: "방문당 비용 계산의 분자", required: true },
+      { col: "traffic(=installs/actions)", label: "트래픽(방문·PV)", why: "방문당 비용의 분모 — 결과 지표 1개", required: true },
+      { col: "category·content_id", label: "카테고리·콘텐츠", why: "드릴다운(유입경로→카테고리→콘텐츠)", required: false },
+      { col: "impressions·clicks", label: "노출·클릭", why: "콘텐츠별 CTR 비교(§4)", required: false },
+    ],
+    prep: [
+      "가장 잘게(콘텐츠·일별) 넣을수록 분해 항등식이 정확합니다.",
+      "결과 지표는 트래픽(방문·PV) 1개만 매핑합니다 — 지표 토글은 자동으로 숨겨집니다.",
+      "결과는 인과가 아니라 '연관'입니다 — 분해는 산술적으로만 정확합니다.",
+    ],
+    example: "date,traffic_source,category,content_id,cost,traffic\n2024-01-08,organic,튜토리얼,tut_101,96000,820\n2024-01-08,social,사례연구,case_201,168000,410\n2024-01-15,social,사례연구,case_201,246000,650",
+  },
+  "9-6": {
+    when: "콘텐츠별 반응·신선도(시간이 지나며 반응이 식는지)·속성 효과(어떤 후킹·형식이 잘 되나)를 분석하고 새로 발행/교체할 시점을 알려줍니다.",
+    grain: "1행 = 하루 × 콘텐츠(content)",
+    needs: [
+      { col: "creative_id", label: "콘텐츠 ID", why: "콘텐츠 단위 집계의 키", required: true },
+      { col: "date", label: "날짜", why: "신선도(시간에 따른 반응 하락) 감지", required: true },
+      { col: "impressions·clicks·installs", label: "노출·클릭·전환", why: "CTR/CVR·승률 계산", required: true },
+      { col: "spend", label: "제작·배포 비용", why: "전환당비용·효율", required: true },
+      { col: "message_angle·format·hook_type…", label: "콘텐츠 속성", why: "속성별 효과(WLS)·조합 매트릭스", required: false },
+    ],
+    prep: [
+      "속성 컬럼(앵글·형식·후킹)을 넣으면 '어떤 특징이 효과적인가' 분해와 조합표가 열립니다.",
+      "조합표는 조합당 콘텐츠 5개 이상 있어야 '검증'으로 뜹니다.",
+      "결과는 인과가 아니라 '연관'입니다 — 확정은 실험(5-4)으로 검증하세요.",
+    ],
+    example: "creative_id,date,channel,impressions,clicks,installs,spend,message_angle,format\npost_001,2024-02-01,블로그,52000,1600,210,540000,정보성가이드,글\npost_002,2024-02-01,유튜브,48000,1900,180,480000,사례연구,영상",
+  },
+  "9-7": {
+    when: "콘텐츠 운영 성과를 한 화면에서 요약합니다 — 일별 트래픽 추이·유입경로별 비중·방문당 비용을 시각화(시각화)하고, 최근 성과를 직전 기간과 비교(스코어카드)하고, 트래픽·반응률이 튀는 날을 자동으로 잡아냅니다(이상탐지).",
+    grain: "1행 = 하루 × 유입경로(× 카테고리·콘텐츠)",
+    needs: [
+      { col: "date", label: "날짜", why: "일별 추이·기간 비교·이상탐지의 축", required: true },
+      { col: "cost(=제작·배포 비용)", label: "비용", why: "방문당 비용·비중 계산", required: true },
+      { col: "visits(=installs)", label: "방문·트래픽", why: "핵심 성과 지표(방문·세션·PV)", required: true },
+      { col: "traffic_source(=channel)", label: "유입경로", why: "유입경로별 비중·방문당 비용 비교", required: false },
+      { col: "impressions·clicks", label: "노출·클릭", why: "반응률(CTR)·노출 대비 클릭 분석", required: false },
+      { col: "subscribers(=actions)", label: "구독·전환", why: "구독당 비용·전환 지표", required: false },
+    ],
+    prep: [
+      "매출·결제·ROAS 컬럼은 없어도 됩니다 — 콘텐츠 대시보드는 트래픽·반응률 중심입니다(그 지표는 표시하지 않습니다).",
+      "방문(트래픽)을 핵심 성과로, 노출·클릭·구독을 보조로 매핑하면 3탭 전부 채워집니다.",
+      "최소 2주치 이상이면 스코어카드(WoW)·이상탐지가 의미 있게 동작합니다.",
+    ],
+    example: "date,traffic_source,content_cost,impressions,clicks,visits,subscribers\n2024-01-08,자연 검색,126000,58000,2600,1740,104\n2024-01-08,소셜,216000,74000,2200,1020,31\n2024-01-15,뉴스레터,99000,41000,2870,1980,218",
+  },
 };
 
 export function getToolGuide(toolId) {

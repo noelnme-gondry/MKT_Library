@@ -997,6 +997,31 @@ export const TOOL_REQUIRED_FIELDS = {
                 "channel",
                 { oneOf: ["installs", "actions"] },
               ],
+              // 9-3 콘텐츠 트래픽 변동 — 5-21과 동일 엔진(pvmMath). 유입경로=channel·
+              // 트래픽=installs(또는 actions)·제작/배포비=spend. 필드명은 엔진 계약이라
+              // 5-21과 동일, 화면 라벨만 콘텐츠 도메인(유입경로/카테고리/콘텐츠).
+              "9-3": [
+                "date",
+                "spend",
+                "channel",
+                { oneOf: ["installs", "actions"] },
+              ],
+              // 9-6 콘텐츠 신선도 진단 — 5-6과 동일 엔진(creativeMath). 콘텐츠=creative_id·
+              // 배포채널=channel·전환=installs·제작배포비=spend. 필드명은 엔진 계약이라
+              // 5-6과 동일, 화면 라벨만 콘텐츠 도메인(콘텐츠/신선도/발행).
+              "9-6": [
+                "creative_id",
+                "date",
+                "channel",
+                "impressions",
+                "clicks",
+                "installs",
+                "spend",
+              ],
+              // 9-7 콘텐츠 운영 대시보드 — 5-2와 동일 엔진(dashboardAggregator).
+              // 트래픽 중심: 방문=installs, 구독=actions, 비용=cost. 매출·결제·리텐션은
+              // 콘텐츠 데이터에 없어 필수/옵션 어디에도 두지 않음(§정직성).
+              "9-7": ["date", "cost", { oneOf: ["installs", "actions"] }],
             };
 export const TOOL_OPTIONAL_FIELDS = {
               "5-4": [
@@ -1237,5 +1262,72 @@ export const TOOL_OPTIONAL_FIELDS = {
                   key: "clicks",
                   unlocks: "소재별 CTR 비교(§4) — impressions와 함께 매핑 시 활성화",
                 },
+              ],
+              // 9-3 콘텐츠 트래픽 변동 — campaign_id=카테고리·creative_id=콘텐츠 단계.
+              "9-3": [
+                {
+                  key: "campaign_id",
+                  unlocks: "카테고리 단계 분해 — 매핑 안 하면 유입경로→콘텐츠 2단계로 동작",
+                },
+                {
+                  key: "creative_id",
+                  unlocks: "콘텐츠 단계 딥다이브(§4) — 매핑 안 하면 유입경로/카테고리까지만 분해",
+                },
+                {
+                  key: "creative_url",
+                  unlocks: "콘텐츠별 결과(§4)에 콘텐츠 링크 표시 — 클릭 시 새 창",
+                },
+                {
+                  key: "impressions",
+                  unlocks: "콘텐츠별 CTR 비교(§4) — clicks와 함께 매핑 시 활성화",
+                },
+                {
+                  key: "clicks",
+                  unlocks: "콘텐츠별 CTR 비교(§4) — impressions와 함께 매핑 시 활성화",
+                },
+              ],
+              // 9-6 콘텐츠 신선도 진단 — 5-6과 동일 옵션(속성 컬럼 = 신선도/조합 분해).
+              "9-6": [
+                {
+                  key: "campaign_id",
+                  unlocks: "카테고리 fixed effect (decompose 안정성 ↑)",
+                },
+                {
+                  key: "audience_segment",
+                  unlocks: "독자 세그먼트 control + decompose 차원",
+                },
+                { key: "video_3s_views", unlocks: "Hook rate · 3초 retention 분해" },
+                {
+                  key: "video_completions",
+                  unlocks: "Completion rate · 끝까지 보는 비율",
+                },
+                { key: "hook_type", unlocks: "Decompose: 후킹 유형별 효과" },
+                {
+                  key: "message_angle",
+                  unlocks: "Decompose: 콘텐츠 앵글별 효과 (Concept Matrix 행 기본)",
+                },
+                { key: "first_3s", unlocks: "Decompose: 오프닝 컨셉별 효과" },
+                { key: "format", unlocks: "Decompose + Concept Matrix 열 기본" },
+                {
+                  key: "has_text_overlay",
+                  unlocks: "Decompose: 텍스트 오버레이 유무 효과",
+                },
+                { key: "cta_style", unlocks: "Decompose: CTA 스타일별 효과" },
+                { key: "duration_bucket", unlocks: "Decompose: 길이대별 효과" },
+                {
+                  key: "actions",
+                  unlocks: "전환당비용 decompose (installs 대신 액션 기준)",
+                },
+                { key: "revenue_d7", unlocks: "ROAS metric (분해 대상에 추가)" },
+              ],
+              // 9-7 콘텐츠 운영 대시보드 — 트래픽 중심 옵션. 매출·결제·리텐션(revenue/
+              // pu/ret) 컬럼은 콘텐츠 데이터에 없어 노출하지 않음(§정직성, 날조 금지).
+              "9-7": [
+                { key: "channel", unlocks: "유입경로별 비중·방문당 비용 비교" },
+                { key: "campaign_name", unlocks: "카테고리 단위 분석" },
+                { key: "platform", unlocks: "디바이스(모바일/데스크톱) 분포" },
+                { key: "impressions", unlocks: "반응률(CTR)·CPM 계산 (clicks와 함께)" },
+                { key: "clicks", unlocks: "반응률(CTR)·방문 전환율(CVR) 계산" },
+                { key: "actions", unlocks: "구독당 비용·전환수 분석 (방문과 별도)" },
               ],
             };

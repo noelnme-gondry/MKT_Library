@@ -31,7 +31,13 @@ const TABS_INFO = {
   segment: { label: "세그먼트", icon: <Grid size={13} /> },
 };
 
-export default function DashboardTabs() {
+// 콘텐츠 대시보드(9-7)는 viz·scorecard·anomaly 3탭만(단일 그룹). 결제·예산·매출
+// 전제 탭은 제외 — 마케팅 전용 그룹(장기 가치·효율 진단)을 통째로 뺀다.
+const CONTENT_TAB_GROUPS = [
+  { label: "모니터링", icon: <Monitor size={14} />, tabs: ["viz", "scorecard", "anomaly"] },
+];
+
+export default function DashboardTabs({ domain = "performance" } = {}) {
   const dashboardTab = useAppStore((state) => state.dashboardTab);
   const setDashboardTab = useAppStore((state) => state.setDashboardTab);
   const csvData = useAppStore((state) => state.csvData);
@@ -39,9 +45,11 @@ export default function DashboardTabs() {
   const hasData = csvData && csvData.raw.length > 0;
   if (!hasData) return null;
 
+  const groups = domain === "content" ? CONTENT_TAB_GROUPS : MON_TAB_GROUPS;
+
   return (
     <div className="mon-sticky-bar" style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center", margin: "2px 0 16px 0" }}>
-      {MON_TAB_GROUPS.map((group, gIdx) => (
+      {groups.map((group, gIdx) => (
         <React.Fragment key={group.label}>
           <div style={{ display: "inline-flex", alignItems: "center", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "3px 6px", gap: "2px" }}>
             <span style={{ fontSize: "10.5px", color: "var(--text-muted)", fontWeight: "700", marginRight: "6px", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "4px" }}>
@@ -62,7 +70,7 @@ export default function DashboardTabs() {
               );
             })}
           </div>
-          {gIdx < MON_TAB_GROUPS.length - 1 && (
+          {gIdx < groups.length - 1 && (
             <span style={{ color: "var(--border-stronger)", alignSelf: "center", fontSize: "16px", margin: "0 4px" }}>|</span>
           )}
         </React.Fragment>

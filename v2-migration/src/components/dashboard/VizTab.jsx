@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useMemo, useState } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
+import { resolveDashCopy } from "@/utils/contentDomain";
 import { getMonFilteredRows, aggregateByKey, calculateKPIs, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
@@ -57,7 +58,9 @@ function makeEventMarkerPlugin(markers) {
   };
 }
 
-export default function VizTab() {
+export default function VizTab({ domain = "performance" } = {}) {
+  const C = resolveDashCopy(domain);
+  const isContent = domain === "content";
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const selectedCohort = useAppStore((state) => state.selectedCohort);
@@ -97,9 +100,6 @@ export default function VizTab() {
   });
 
   const effBasis = effectiveDenomBasis(csvData, denomBasis);
-  const acqLabel = effBasis === "actions" ? "CPA" : "CPI";
-  // 전역 분모 기준(설치/가입)에 따른 결과량 라벨 — 시계열 트렌드 라인·축(#1).
-  const trendOutcomeLabel = effBasis === "actions" ? "가입수" : "설치수";
 
   // 1. Data Aggregation (useMemo)
   const { filteredRows, dailyAgg, byChannel, totals, kpi, d7RoasNormalized, d7Display } = useMemo(() => {
@@ -129,6 +129,11 @@ export default function VizTab() {
 
     return { filteredRows: fRows, dailyAgg: dAgg, byChannel: chAgg, totals: t, kpi: k, d7RoasNormalized: roasNorm, d7Display };
   }, [csvData, dashboardFilter, selectedCohort, effBasis]);
+
+  // 도메인 라벨(effBasis 소비하는 C 메서드 호출은 데이터 메모 뒤에 둠 — 메모 앞에서
+  // 불투명 호출로 effBasis를 소비하면 React Compiler가 메모 보존을 못 함).
+  const acqLabel = C.acqLabel(effBasis);
+  const trendOutcomeLabel = C.trendOutcome(effBasis);
 
   // 이벤트 마커를 일별 차트 라벨(_key = YYYY-MM-DD)에 매칭할 형태로 준비.
   const preparedMarkers = useMemo(
@@ -161,13 +166,16 @@ export default function VizTab() {
   const customChartDefs = customCharts || [];
   const customChartSig = JSON.stringify(customChartDefs) + "|" + JSON.stringify(customMetrics || []) + "|" + selectedCohort;
 
-  const chartMeta = useMemo(() => ([
-    { k: "ts", title: `일별 비용·${effBasis === "actions" ? "가입" : "설치"} 추이`, sub: `시계열 라인 · 좌축 비용 / 우축 ${effBasis === "actions" ? "가입" : "설치"}`, full: false },
-    { k: "donut", title: "채널별 비용 비중", sub: "도넛 · 합산 cost 기준", full: false },
-    { k: "cpi", title: `채널별 ${acqLabel} 비교`, sub: `가로 막대 · cost / ${effBasis === "actions" ? "actions(가입)" : "installs"}`, full: false },
+  // 차트 메타(plain const — React Compiler가 자동 메모이즈). 콘텐츠는 매출/결제 전제
+  // 차트(퍼널·코호트 매출)를 제외하고 트래픽 차트 3종만 노출(§정직성).
+  const chartMetaBase = [
+    { k: "ts", title: C.tsTitle(effBasis), sub: C.tsSub(effBasis), full: false },
+    { k: "donut", title: C.donutTitle, sub: C.donutSub, full: false },
+    { k: "cpi", title: C.cpiTitle(acqLabel), sub: C.cpiSub(effBasis), full: false },
     { k: "funnel", title: "전환 퍼널", sub: `${effBasis === "actions" ? "노출 → 클릭 → 설치 → 가입 → 결제(D7)" : "노출 → 클릭 → 설치 → 결제(D7)"} 단계별 절대 건수 (로그 스케일)`, full: false },
     { k: "cohort", title: "채널별 코호트 매출 증가 (D0 → D7 → D14)", sub: "라인 · 채널별 누적 ARPU 증가 곡선", full: true },
-  ]), [effBasis, acqLabel]);
+  ];
+  const chartMeta = isContent ? chartMetaBase.filter((c) => ["ts", "donut", "cpi"].includes(c.k)) : chartMetaBase;
   // 커스텀 차트 메타를 기본 5종 뒤에 붙여 표시/순서 편집 대상에 포함.
   const customChartMetas = customChartDefs.map((def) => ({
     k: def.id, custom: true, full: false,
@@ -402,17 +410,17 @@ export default function VizTab() {
 
   // KPI 카드(데이터 주도) — 표시/순서 설정 적용. node=기존 카드 JSX 유지(값·계산 불변).
   const kpiCards = [
-    { k: "cost", label: "총 비용", node: (
-      <div key="cost" className="kpi-card"><div className="label">총 비용</div><div className="value tnum">{formatNumber(kpi.cost)}</div><div className="delta">합산 cost</div></div>
+    { k: "cost", label: C.kpiCostLabel, node: (
+      <div key="cost" className="kpi-card"><div className="label">{C.kpiCostLabel}</div><div className="value tnum">{formatNumber(kpi.cost)}</div><div className="delta">{C.kpiCostDelta}</div></div>
     ) },
-    { k: "ctr", label: "CTR", node: (
-      <div key="ctr" className="kpi-card"><div className="label">CTR</div><div className="value tnum">{formatPercent(kpi.ctr)}</div><div className="delta">clicks / impressions</div></div>
+    { k: "ctr", label: C.kpiCtrLabel, node: (
+      <div key="ctr" className="kpi-card"><div className="label">{C.kpiCtrLabel}</div><div className="value tnum">{formatPercent(kpi.ctr)}</div><div className="delta">{C.kpiCtrDelta}</div></div>
     ) },
-    { k: "outcome", label: effBasis === "actions" ? "총 가입 수" : "총 설치 수", node: (
-      <div key="outcome" className="kpi-card"><div className="label">{effBasis === "actions" ? "총 가입 수" : "총 설치 수"}</div><div className="value tnum">{formatNumber(effBasis === "actions" ? kpi.actions : kpi.installs)}</div><div className="delta">{effBasis === "actions" ? "합산 actions" : "합산 installs"}</div></div>
+    { k: "outcome", label: C.kpiOutcomeLabel(effBasis), node: (
+      <div key="outcome" className="kpi-card"><div className="label">{C.kpiOutcomeLabel(effBasis)}</div><div className="value tnum">{formatNumber(effBasis === "actions" ? kpi.actions : kpi.installs)}</div><div className="delta">{C.kpiOutcomeDelta(effBasis)}</div></div>
     ) },
     { k: "acq", label: acqLabel, node: (
-      <div key="acq" className="kpi-card"><div className="label">{acqLabel}</div><div className="value tnum">{formatNumber(kpi.cpi, { decimals: 2 })}</div><div className="delta">cost / {effBasis === "actions" ? "actions(가입)" : "installs"}</div></div>
+      <div key="acq" className="kpi-card"><div className="label">{acqLabel}</div><div className="value tnum">{formatNumber(kpi.cpi, { decimals: 2 })}</div><div className="delta">{C.acqDelta(effBasis)}</div></div>
     ) },
     { k: "purchases", label: "구매자 수", node: (
       <div key="purchases" className="kpi-card"><div className="label">구매자 수 (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.purchases)}</div><div className="delta">pu_d{kpi.cohort} 합산</div></div>
@@ -490,7 +498,12 @@ export default function VizTab() {
     ) };
   });
 
-  const allKpiCards = [...kpiCards, ...presetCards, ...customCards].map((c) => ({ key: c.k, label: c.label, node: c.node }));
+  // 콘텐츠는 매출·결제·리텐션 기반 카드(purchases/revenue/roas/arpu/retention 등)를
+  // 노출하지 않음 — 콘텐츠 데이터엔 그 지표가 없어 0으로 날조하지 않고 트래픽 지표만(§정직성).
+  const shownBase = isContent
+    ? kpiCards.filter((c) => ["cost", "ctr", "outcome", "acq"].includes(c.k))
+    : kpiCards;
+  const allKpiCards = [...shownBase, ...presetCards, ...customCards].map((c) => ({ key: c.k, label: c.label, node: c.node }));
 
   const saveScope = (scope, next, setOpen) => {
     if (!next.hidden.length && !next.order.length) resetViewConfig(scope);
@@ -511,7 +524,8 @@ export default function VizTab() {
         </aside>
       )}
 
-      {/* Cohort Toggle */}
+      {/* Cohort Toggle — 콘텐츠는 매출/결제/잔존율(코호트 지표)이 없어 제외(§정직성). */}
+      {!isContent && (
       <section className="block" id="s-cohort">
         <h2 className="section-title"><span className="ix">§1</span>코호트 시점</h2>
         <div className="cohort-toggle" id="cohort-toggle" style={{ marginBottom: "1rem" }}>
@@ -521,6 +535,7 @@ export default function VizTab() {
         </div>
         <p>매출/결제/잔존율은 선택된 코호트(D{kpi.cohort}) 기준으로 계산됩니다. 단일 지표(CPI/CTR/CVR/비용/설치)는 코호트 무관.</p>
       </section>
+      )}
 
       {/* KPI Summary */}
       <section className="block" id="s-kpi">
@@ -563,7 +578,7 @@ export default function VizTab() {
             <button className="ab-pill" onClick={() => setChartCfgOpen(true)} title="표시할 차트와 순서 편집">⚙ 차트 편집</button>
           </div>
         </div>
-        <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>업로드된 데이터를 기반으로 시계열·채널 비중·CPI 비교·퍼널·코호트 매출 차트가 렌더링됩니다. ⚙ 차트 편집에서 표시·순서 조정.</p>
+        <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>{C.chartsDesc}</p>
 
         {/* 이벤트 마커 입력 UI는 여기가 아니라 Dashboard.jsx에서 탭 콘텐츠 위에
             <MonEventMarkerUI/>로 렌더됨(전 탭 공통 상단 1곳). 여기 시계열 차트는

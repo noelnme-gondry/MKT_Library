@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
+import { resolveDashCopy } from "@/utils/contentDomain";
 import { getMonFilteredRows, aggregateByKey, fmtCurrencyPrecise, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
@@ -15,7 +16,9 @@ const SCORECARD_SCOPE = "5-2:scorecard";
 // 커스텀 지표 정의는 운영 대시보드(Viz KPI)와 공유 — 한 번 만들면 양쪽에 나타남.
 const KPI_METRIC_SCOPE = "5-2:viz-kpi";
 
-export default function ScorecardTab() {
+export default function ScorecardTab({ domain = "performance" } = {}) {
+  const C = resolveDashCopy(domain);
+  const isContent = domain === "content";
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
@@ -78,15 +81,16 @@ export default function ScorecardTab() {
     const hasRev = mapped.has("revenue_d7");
 
     // 기본 지표 카드 — chartable=일별 상세 차트 지원.
+    const L = C.scLabels;
     const base = [
-      { k: "cost", label: "비용", val: recent.cost, prev: prev.cost, fmt: fmtCurrency, better: "none", chartable: true },
-      mapped.has("installs") && { k: "inst", label: "설치", val: recent.inst, prev: prev.inst, fmt: v => Math.round(v).toLocaleString(), better: "high", chartable: true },
-      mapped.has("installs") && { k: "cpi", label: "CPI", val: recent.cpi, prev: prev.cpi, fmt: v => v != null ? fmtCurrency(v) : "—", better: "low", chartable: true },
-      mapped.has("actions") && { k: "act", label: "액션", val: recent.act, prev: prev.act, fmt: v => Math.round(v).toLocaleString(), better: "high", chartable: true },
-      mapped.has("actions") && { k: "cpa", label: "CPA", val: recent.cpa, prev: prev.cpa, fmt: v => v != null ? fmtCurrency(v) : "—", better: "low", chartable: true },
-      mapped.has("clicks") && mapped.has("installs") && { k: "cvr", label: "CVR", val: recent.cvr, prev: prev.cvr, fmt: v => v != null ? (v * 100).toFixed(2) + "%" : "—", better: "high", chartable: true },
-      mapped.has("impressions") && mapped.has("clicks") && { k: "ctr", label: "CTR", val: recent.ctr, prev: prev.ctr, fmt: v => v != null ? (v * 100).toFixed(2) + "%" : "—", better: "high", chartable: true },
-      mapped.has("revenue_d7") && { k: "roas", label: "ROAS", val: recent.roas, prev: prev.roas, fmt: v => v != null ? (v * 100).toFixed(0) + "%" : "—", better: "high", chartable: true },
+      { k: "cost", label: L.cost, val: recent.cost, prev: prev.cost, fmt: fmtCurrency, better: "none", chartable: true },
+      mapped.has("installs") && { k: "inst", label: L.inst, val: recent.inst, prev: prev.inst, fmt: v => Math.round(v).toLocaleString(), better: "high", chartable: true },
+      mapped.has("installs") && { k: "cpi", label: L.cpi, val: recent.cpi, prev: prev.cpi, fmt: v => v != null ? fmtCurrency(v) : "—", better: "low", chartable: true },
+      mapped.has("actions") && { k: "act", label: L.act, val: recent.act, prev: prev.act, fmt: v => Math.round(v).toLocaleString(), better: "high", chartable: true },
+      mapped.has("actions") && { k: "cpa", label: L.cpa, val: recent.cpa, prev: prev.cpa, fmt: v => v != null ? fmtCurrency(v) : "—", better: "low", chartable: true },
+      mapped.has("clicks") && mapped.has("installs") && { k: "cvr", label: L.cvr, val: recent.cvr, prev: prev.cvr, fmt: v => v != null ? (v * 100).toFixed(2) + "%" : "—", better: "high", chartable: true },
+      mapped.has("impressions") && mapped.has("clicks") && { k: "ctr", label: L.ctr, val: recent.ctr, prev: prev.ctr, fmt: v => v != null ? (v * 100).toFixed(2) + "%" : "—", better: "high", chartable: true },
+      mapped.has("revenue_d7") && { k: "roas", label: L.roas, val: recent.roas, prev: prev.roas, fmt: v => v != null ? (v * 100).toFixed(0) + "%" : "—", better: "high", chartable: true },
     ].filter(Boolean);
 
     // 프리셋(이익·이익률) — 매출 있을 때. 커스텀과 함께 일별 상세는 없음(chartable=false).
@@ -102,7 +106,7 @@ export default function ScorecardTab() {
     });
 
     return [...base, ...presets, ...customCards];
-  }, [hasData, recent, prev, mapping, displayCurrency, customMetrics]);
+  }, [hasData, recent, prev, mapping, displayCurrency, customMetrics, C]);
 
   // 커스텀 지표 빌더 피연산자 = 실제 매핑된 컬럼만.
   const builderFields = useMemo(() => {
@@ -266,7 +270,8 @@ export default function ScorecardTab() {
 
   return (
     <div className="tab-pane active" id="tab-scorecard">
-      <BudgetHealthCard />
+      {/* 예산 배분 진단·CTA는 마케팅 전용(콘텐츠엔 예산배분 도구가 없음) → content 제외. */}
+      {!isContent && <BudgetHealthCard />}
       <section className="block" id="s-score">
         <h2 className="section-title"><span className="ix">§1</span>핵심 KPI (최근 {windowDays}일)</h2>
         <div className="ab-pillgroup" style={{ display: "flex", alignItems: "center" }}>
@@ -304,7 +309,7 @@ export default function ScorecardTab() {
           />
         </div>
         <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>
-          WoW = 최근 {windowDays}일 vs 직전 {windowDays}일. 색은 지표 성격 반영(CPI/CPA↓·설치/ROAS↑ = 초록). 비용은 중립(규모). 카드 클릭 시 일별 상세.
+          {C.scFootnote(windowDays)}
         </p>
       </section>
 

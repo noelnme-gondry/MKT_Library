@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
+import { resolveDashCopy } from "@/utils/contentDomain";
 import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, aggregateByKey } from "@/utils/dashboardAggregator";
 import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
@@ -13,7 +14,8 @@ import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 // 지표 뷰 설정 scope — 이상탐지 표의 지표 컬럼 표시/순서.
 const ANOMALY_TABLE_SCOPE = "5-2:anomaly-table";
 
-export default function AnomalyTab() {
+export default function AnomalyTab({ domain = "performance" } = {}) {
+  const C = resolveDashCopy(domain);
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
@@ -42,18 +44,19 @@ export default function AnomalyTab() {
     const mapped = new Set(Object.values(csvData.mapping || {}));
 
     // 지표 순서: 비용,노출,클릭,설치,액션,CPM,CTR,CPI,CVR,CPA,ROAS(고정)
+    const AL = C.anLabels;
     const mOpts = [
-      ["cost", "비용"],
-      ["impressions", "노출"],
-      ["clicks", "클릭"],
-      ["installs", "설치"],
-      ["actions", "액션"],
-      ["cpm", "CPM"],
-      ["ctr", "CTR"],
-      ["cpi", "CPI"],
-      ["cvr", "CVR"],
-      ["cpa", "CPA"],
-      ["roas", "ROAS"]
+      ["cost", AL.cost],
+      ["impressions", AL.impressions],
+      ["clicks", AL.clicks],
+      ["installs", AL.installs],
+      ["actions", AL.actions],
+      ["cpm", AL.cpm],
+      ["ctr", AL.ctr],
+      ["cpi", AL.cpi],
+      ["cvr", AL.cvr],
+      ["cpa", AL.cpa],
+      ["roas", AL.roas]
     ].filter(([k]) => {
       if (k === "cost") return mapped.has("cost");
       if (k === "installs" || k === "cpi") return mapped.has("installs");
@@ -109,7 +112,7 @@ export default function AnomalyTab() {
       seriesVals: sVals,
       flags: _flags
     };
-  }, [csvData, dashboardFilter, metric, win, zThresh, dowAdjust]);
+  }, [csvData, dashboardFilter, metric, win, zThresh, dowAdjust, C]);
 
   const formatValue = (v) => {
     if (v == null) return "—";
