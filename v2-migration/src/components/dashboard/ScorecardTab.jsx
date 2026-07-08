@@ -93,16 +93,16 @@ export default function ScorecardTab({ domain = "performance" } = {}) {
       mapped.has("revenue_d7") && { k: "roas", label: L.roas, val: recent.roas, prev: prev.roas, fmt: v => v != null ? (v * 100).toFixed(0) + "%" : "—", better: "high", chartable: true },
     ].filter(Boolean);
 
-    // 프리셋(이익·이익률) — 매출 있을 때. 커스텀과 함께 일별 상세는 없음(chartable=false).
+    // 프리셋(이익·이익률) — 매출 있을 때. 일별 상세 차트 지원.
     const presets = [];
     if (hasRev) {
-      presets.push({ k: "profit", label: "이익", val: recent.revenue - recent.cost, prev: prev.revenue - prev.cost, fmt: fmtCurrency, better: "high" });
-      presets.push({ k: "profitMargin", label: "이익률", val: recent.revenue ? (recent.revenue - recent.cost) / recent.revenue : null, prev: prev.revenue ? (prev.revenue - prev.cost) / prev.revenue : null, fmt: v => v != null ? (v * 100).toFixed(1) + "%" : "—", better: "high" });
+      presets.push({ k: "profit", label: "이익", val: recent.revenue - recent.cost, prev: prev.revenue - prev.cost, fmt: fmtCurrency, better: "high", chartable: true });
+      presets.push({ k: "profitMargin", label: "이익률", val: recent.revenue ? (recent.revenue - recent.cost) / recent.revenue : null, prev: prev.revenue ? (prev.revenue - prev.cost) / prev.revenue : null, fmt: v => v != null ? (v * 100).toFixed(1) + "%" : "—", better: "high", chartable: true });
     }
-    // 커스텀 지표(공유 스코프) — recent/prev 각각 compute해 값+WoW.
+    // 커스텀 지표(공유 스코프) — recent/prev 각각 compute해 값+WoW. 일별 상세 차트 지원(seriesVal에서 def 재조회).
     const customCards = (customMetrics || []).map((def) => {
       const desc = customMetricToDescriptor(def);
-      return { k: def.id, label: def.name, val: desc.compute(recent), prev: desc.compute(prev), fmt: v => v == null ? "—" : Number(v).toLocaleString("ko-KR", { maximumFractionDigits: 2 }), better: "none" };
+      return { k: def.id, label: def.name, val: desc.compute(recent), prev: desc.compute(prev), fmt: v => v == null ? "—" : Number(v).toLocaleString("ko-KR", { maximumFractionDigits: 2 }), better: "none", chartable: true };
     });
 
     return [...base, ...presets, ...customCards];
@@ -176,7 +176,15 @@ export default function ScorecardTab({ domain = "performance" } = {}) {
       case "cvr": return d.clicks > 0 ? d.installs / d.clicks : null;
       case "ctr": return d.impressions > 0 ? d.clicks / d.impressions : null;
       case "roas": return d.cost > 0 ? d.revenue_d7 / d.cost : null;
-      default: return null;
+      case "profit": return d.revenue_d7 - d.cost;
+      case "profitMargin": return d.revenue_d7 ? (d.revenue_d7 - d.cost) / d.revenue_d7 : null;
+      default: {
+        // 커스텀 지표 — 일별 로우를 agg 계약 키(revenue/purchases 별칭)로 변환 후 재사용 compute.
+        const def = (customMetrics || []).find((m) => m.id === sel);
+        if (!def) return null;
+        const row = { ...d, revenue: d.revenue_d7, purchases: d.pu_d7 };
+        return customMetricToDescriptor(def).compute(row);
+      }
     }
   };
 
@@ -200,7 +208,10 @@ export default function ScorecardTab({ domain = "performance" } = {}) {
     const gridColor = getCssVar("--border") || "#2a2a2a";
     const tickColor = getCssVar("--text-muted") || "#9ca3af";
 
-    const isContinuous = ["cvr", "ctr", "roas", "cpi", "cpa"].includes(selectedMetric);
+    const customDef = (customMetrics || []).find((m) => m.id === selectedMetric);
+    const isContinuous = customDef
+      ? customDef.chartType === "line"
+      : ["cvr", "ctr", "roas", "cpi", "cpa", "profitMargin"].includes(selectedMetric);
     // Chart.js line은 borderColor 배열을 세그먼트별로 적용하지 않음(포인트 색상 배열은
     // 적용됨) — 그래서 선 전체가 첫 색 하나로 통짜 렌더되던 버그. segment.borderColor로
     // 각 구간(두 점 사이)을 비교주/목표주 색으로 분리. 피벗 경계 구간(비교주 마지막→
@@ -262,7 +273,7 @@ export default function ScorecardTab({ domain = "performance" } = {}) {
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [hasData, daily, selectedMetric, windowDays, isDarkMode]);
+  }, [hasData, daily, selectedMetric, windowDays, isDarkMode, customMetrics]);
 
   if (!hasData) {
     return <div className="tab-pane active"><p className="muted">데이터 없음</p></div>;
