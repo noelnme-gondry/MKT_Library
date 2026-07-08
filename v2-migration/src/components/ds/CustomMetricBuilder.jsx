@@ -20,12 +20,14 @@ export default function CustomMetricBuilder({
   const [name, setName] = useState("");
   // terms[0]=첫 피연산자(op 없음), terms[i>0]={op, type, value}.
   const [terms, setTerms] = useState([{ type: "field", value: firstFieldKey }]);
+  const [chartType, setChartType] = useState("bar"); // 일별 상세 차트 모양(막대/선)
   const [editingId, setEditingId] = useState(null); // null=신규, 아니면 수정 중
 
   const resetForm = () => {
     setEditingId(null);
     setName("");
     setTerms([{ type: "field", value: fields[0] ? fields[0].key : "" }]);
+    setChartType("bar");
   };
 
   useEffect(() => {
@@ -34,6 +36,7 @@ export default function CustomMetricBuilder({
     setEditingId(null);
     setName("");
     setTerms([{ type: "field", value: fields[0] ? fields[0].key : "" }]);
+    setChartType("bar");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -42,6 +45,7 @@ export default function CustomMetricBuilder({
     setEditingId(m.id);
     setName(m.name || "");
     setTerms((m.terms && m.terms.length) ? m.terms.map((t) => ({ ...t })) : [{ type: "field", value: fields[0] ? fields[0].key : "" }]);
+    setChartType(m.chartType === "line" ? "line" : "bar");
   };
 
   useEffect(() => {
@@ -67,7 +71,7 @@ export default function CustomMetricBuilder({
 
   const submit = () => {
     if (!valid) return;
-    const def = { name: name.trim(), terms };
+    const def = { name: name.trim(), terms, chartType };
     if (editingId) onUpdate?.(editingId, def);
     else onCreate?.(def);
     resetForm();
@@ -154,6 +158,14 @@ export default function CustomMetricBuilder({
                 );
               })}
               <button className="ab-pill" onClick={addTerm} style={{ alignSelf: "flex-start" }}>＋ 항 추가</button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginBottom: "14px" }}>
+              <span className="muted" style={{ fontSize: "10.5px" }}>일별 상세 차트 모양</span>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button type="button" onClick={() => setChartType("bar")} className={`ab-pill ${chartType === "bar" ? "active" : ""}`} style={{ fontWeight: chartType === "bar" ? 700 : 400 }}>📊 막대</button>
+                <button type="button" onClick={() => setChartType("line")} className={`ab-pill ${chartType === "line" ? "active" : ""}`} style={{ fontWeight: chartType === "line" ? 700 : 400 }}>📈 선</button>
+              </div>
             </div>
 
             <div style={{ padding: "10px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", marginBottom: "12px" }}>
