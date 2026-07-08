@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IA, SECTIONS } from "@/store/useDataStore";
 import { idToSlug } from "@/lib/routeMap";
@@ -106,10 +107,10 @@ function LandingHome({ onTrack }) {
             onClick={() => onTrack("content")}
           >
             <div className="phase-card-head">
-              <span className="phase-card-step">컨텐츠</span>
+              <span className="phase-card-step">콘텐츠</span>
               <span className="phase-card-tag">블로그 · SNS · 뉴스레터</span>
             </div>
-            <div className="phase-card-title">✍️ 컨텐츠 성과 분석</div>
+            <div className="phase-card-title">✍️ 콘텐츠 성과 분석</div>
             <div className="phase-card-desc">
               콘텐츠 성과 CSV를 올려 어떤 제작 요소가 조회수·CTR을 끌어올리는지,
               어떤 콘텐츠가 구독 전환을 만드는지 진단. 전부 무료.
@@ -119,10 +120,39 @@ function LandingHome({ onTrack }) {
                 {totalContent}개 분석 도구
               </span>
             </div>
-            <div className="phase-card-cta">컨텐츠 분석 →</div>
+            <div className="phase-card-cta">콘텐츠 분석 →</div>
           </div>
         )}
       </div>
+
+      {/* 블로그 진입 — 트랙 3카드와 다른 성격(읽을거리)이라 4번째 동급 카드가 아닌
+          풀폭 가로 배너로 아래에 길게 배치(시각 위계 구분 + 통일감). /blog로 이동. */}
+      <Link
+        href="/blog"
+        className="phase-card"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          marginTop: "1.1rem",
+          textDecoration: "none",
+          cursor: "pointer",
+        }}
+      >
+        <span style={{ fontSize: "30px", lineHeight: 1 }}>📝</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="phase-card-title" style={{ marginBottom: "3px" }}>
+            마케팅 블로그
+          </div>
+          <div className="phase-card-desc" style={{ margin: 0 }}>
+            퍼포먼스·콘텐츠 마케팅 실무 인사이트와 데이터·SEO·그로스 팁을 정기적으로
+            업데이트합니다.
+          </div>
+        </div>
+        <span className="phase-card-cta" style={{ whiteSpace: "nowrap", margin: 0 }}>
+          글 보러 가기 →
+        </span>
+      </Link>
 
       <div className="landing-social-row">
         <a className="landing-social-btn ls-youtube" href="https://youtube.com/channel/UCvRcpOHOqvSHQPNbgZdPNUw/" target="_blank" rel="noopener noreferrer">
