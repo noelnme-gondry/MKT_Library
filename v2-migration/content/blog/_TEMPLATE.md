@@ -14,7 +14,7 @@ slug: "example-post"                  # (필수) URL 경로. kebab-case 영문 �
 keywords: "퍼포먼스 마케팅, ROAS, 예산 배분"  # (필수) SEO 키워드. 쉼표로 구분한 문자열
 tags: ["마케팅", "분석"]              # (선택) 태그 배열. 목록 카드에 배지로 표시
 draft: true                           # (선택) true면 미발행(빌드/목록/사이트맵 제외). 발행하려면 false 또는 삭제
-ogImage: ""                           # (선택) OpenGraph 이미지 절대/상대 경로. 없으면 생략
+ogImage: "/blog-assets/example-post/og.png"  # (선택) SNS 공유 카드 이미지. public 기준 절대경로(권장 1200x630). 없으면 "" 또는 삭제
 # ─────────────────────────────────────────────────────────────
 ---
 
@@ -39,6 +39,19 @@ const roas = revenue / cost;
 ```
 
 [링크는 이렇게](https://growthoptplaybook.com) 씁니다.
+
+### 이미지 넣기
+
+1. 이미지 파일을 **`v2-migration/public/blog-assets/<이-글의-slug>/`** 에 넣습니다.
+   예: `public/blog-assets/example-post/chart.png`
+2. 본문에서 **public 기준 절대경로**로 참조합니다(맨 앞 `/`, `public` 은 안 씀):
+
+![차트 설명(대체 텍스트·SEO에 중요)](/blog-assets/example-post/chart.png)
+
+- 경로 규칙: `/blog-assets/<slug>/<파일명>` — `public/` 아래가 사이트 루트로 서빙됨.
+- 대괄호 안 텍스트 = `alt`(스크린리더·검색엔진용) → 꼭 채우기.
+- 이미지는 자동으로 가로 100%·둥근 모서리로 표시됨(`.blog-prose img`).
+- SNS 공유 썸네일은 본문 이미지와 별개 → 위 frontmatter `ogImage`에 지정(1200x630 권장).
 
 ---
 
