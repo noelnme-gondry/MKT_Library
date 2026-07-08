@@ -132,18 +132,25 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* 블로그는 tool 라우팅(routeMap/IA) 밖 — fs 기반 독립 섹션. 링크만 노출. */}
-      <div className="nav-group" style={{ marginTop: "0.5rem" }}>
-        <div className="nav-items">
-          <Link
-            href="/blog"
-            className={`nav-item ${(pathname || "").startsWith("/blog") ? "active" : ""}`}
-          >
-            <span className="ix tnum">✎</span>
-            <span>블로그</span>
-          </Link>
-        </div>
-      </div>
+      {/* 블로그는 tool 라우팅(routeMap/IA) 밖 — fs 기반 독립 섹션. 다른 섹션(phase-section)과
+          동일한 헤더 스타일로 통일(단, 하위 도구 트리가 없어 헤더 자체가 /blog 링크). */}
+      <section className="phase-section" data-section="blog">
+        <Link
+          href="/blog"
+          className="phase-header"
+          aria-current={(pathname || "").startsWith("/blog") ? "page" : undefined}
+          style={{
+            textDecoration: "none",
+            color: "inherit",
+            background: (pathname || "").startsWith("/blog") ? "var(--bg-2)" : undefined,
+          }}
+        >
+          <span className="phase-header-left">
+            <span className="phase-tag">블로그</span>
+          </span>
+          <span style={{ fontSize: "13px", opacity: 0.6 }}>→</span>
+        </Link>
+      </section>
 
       <div className="sidebar-social">
         <a className="ss-btn ss-youtube" href="https://youtube.com/channel/UCvRcpOHOqvSHQPNbgZdPNUw/" target="_blank" rel="noopener noreferrer" title="유튜브">
