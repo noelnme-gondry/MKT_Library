@@ -1,18 +1,17 @@
 # Content Analytics 확장 — 잔여 작업 (SSOT)
 
-`[컨텐츠 분석]`(9-x) 대분류의 파일럿(9-1·9-2)은 PR #259, 9-3은 후속 PR로 완료. 본 문서는
-**나머지 4개 도구(9-4~9-7) + 마무리 작업**을 추적한다. 패턴 상세는 `CLAUDE.md` §12.23,
+`[컨텐츠 분석]`(9-x) 대분류의 파일럿(9-1·9-2)은 PR #259로 완료. 본 문서는
+**나머지 5개 도구 + 마무리 작업**을 추적한다. 패턴 상세는 `CLAUDE.md` §12.23,
 경로 매핑은 `v2-migration/ARCHITECTURE.md` 참조.
 
 ---
 
-## 0. 완료
+## 0. 완료 (PR #259, `claude/feature-docs-marketing-ltdspt`)
 
 | # | 도구 | 라우트 | 상태 |
 |---|---|---|---|
-| 9-1 | 콘텐츠 요소 분석기 | `/content/element-analysis` | ✅ (#259) 신규 UI(`ContentElementAnalyzer.jsx`) + `REG_STATS.ols` |
-| 9-2 | 킬러 콘텐츠·충성 독자 발굴 | `/content/killer-content` | ✅ (#259) `AhaMomentFinder domain="content"` 래퍼(`KillerContentFinder.jsx`) |
-| 9-3 | 콘텐츠 트래픽 변동 탐지 | `/content/traffic-variance` | ✅ `CampaignPvm domain="content"` 래퍼(`ContentTrafficVariance.jsx`) + `PVM_COPY` 라벨팩. 어휘=유입경로→카테고리→콘텐츠, 지표=방문당 비용, "결과 비중"→"트래픽 비중"(정의 불변). 격리 슬라이스 `content_traffic` |
+| 9-1 | 콘텐츠 요소 분석기 | `/content/element-analysis` | ✅ 신규 UI(`ContentElementAnalyzer.jsx`) + `REG_STATS.ols` |
+| 9-2 | 킬러 콘텐츠·충성 독자 발굴 | `/content/killer-content` | ✅ `AhaMomentFinder domain="content"` 래퍼(`KillerContentFinder.jsx`) |
 
 배선 인프라(전부 완료, 재사용 가능): `IA`/`SECTIONS.content`(store) · `routeMap`(`/content/*`) ·
 `csvGroups` 격리 슬라이스 패턴 · `contentDomain.js` 라벨팩 SSOT · `demoData.js` 도메인 데모 ·
@@ -29,10 +28,11 @@ contentDomain.js 라벨팩 추가 → (소스 컴포넌트 재사용 시) domain
 
 | # | 도구명(안) | 재사용 엔진 | 소스 컴포넌트 | 방식 | 비고 |
 |---|---|---|---|---|---|
-| 9-4 | 콘텐츠 기여·수명 분해(CMM) | `mmmMath.js`(+`mmmForecast`) | `MarketingResponse.jsx` | domain prop, **기여분해+예측 2탭만**(사용자 확정 — 카니발 진단 탭 제외) | adstock→"콘텐츠 half-life" 재라벨 |
+| 9-3 | 콘텐츠 트래픽 변동 원인 탐지기 | `pvmMath.js`(Bennet 분해) | `CampaignPvm.jsx` | domain prop 파라미터화 | grain=채널×기간×PV. "믹스효과=결과비중"(§8 shift-share 정의, CLAUDE.md §7) 그대로 유지 — "결과 비중"을 "트래픽 비중"으로 재라벨 시에도 정의는 불변 |
+| 9-4 | 콘텐츠 기여·수명 분해(CMM) | `mmmMath.js`(+`mmmForecast`) | `MarketingResponse.jsx` | domain prop, 단 **3탭 중 필요한 탭만** 노출 검토 | 5-18은 3탭(진단·기여분해·회귀예측) 구조 — 콘텐츠 맥락에 "카니발 진단" 탭이 유효한지(카테고리 간 자기잠식 개념) 확인 필요. adstock→"콘텐츠 half-life" 재라벨 |
 | 9-5 | 콘텐츠 포화도·적정 발행량 진단 | `satMath.js` + `allocationMath.js` | `MarketingEfficiency.jsx` | domain prop 파라미터화 | grain=포맷×기간×발행빈도. 5-3 곡선엔진 의존(CLAUDE.md §12.16 원칙 — 신규 곡선/아웃라이어 구현 금지) 그대로 승계 |
 | 9-6 | 콘텐츠 수명주기·피로도 진단기 | `creativeMath.js`(WLS/FATIGUE) | `CreativeAnalyzer.jsx` | domain prop 파라미터화 | grain=콘텐츠(시리즈)×일. "소재 피로도"→"콘텐츠 신선도" 재라벨 |
-| 9-7 | 콘텐츠 운영 대시보드 | dashboard 엔진 일체(`dashboardAggregator`·`funnelMath`·`cohortMath`…) | `Dashboard.jsx` (8탭) | **결제전제 탭 제외**(사용자 확정 — LTV:CAC·ROAS 성숙도 등 결제 데이터 전제 탭 제거, 트래픽/참여 관련 탭만) | 착수 시 켤 탭 목록 최종 확정 |
+| 9-7 | 콘텐츠 운영 대시보드 | dashboard 엔진 일체(`dashboardAggregator`·`funnelMath`·`cohortMath`…) | `Dashboard.jsx` (8탭) | **범위 축소 검토 필요** | 사용자 확정: "5-2 재사용"이나 5-2는 9탭(스코어카드·페이싱·이상탐지·LTV·성숙도·코호트·퍼널·세그먼트·시각화) 전부가 콘텐츠 맥락에 안 맞을 수 있음(예: LTV:CAC·ROAS 성숙도는 결제 데이터 전제) — **착수 전 어떤 탭을 켤지 사용자와 확정** |
 
 ### 1.1 파일럿에서 확립된 재사용 가능 패턴
 - **라벨팩 방식**: 소스 컴포넌트가 1개 도메인만 다루면(5-20처럼) `domain` prop + `contentDomain.js`
