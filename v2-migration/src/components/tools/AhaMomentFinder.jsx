@@ -69,50 +69,64 @@ function confidenceDots(f1Val) {
   return "●".repeat(n) + "○".repeat(5 - n);
 }
 
-/* 결과 표 CSV 다운로드 (index.html downloadAhaCsv 이식: BOM + CRLF + text/csv;charset=utf-8, §7) */
-function downloadAhaCsv(sorted) {
+/* 결과 CSV 다운로드 — long-format: 액션 × 윈도우(D1/D7/전체) × 구간(k) 전 조합.
+ * 외부 편집이 쉽도록 요약(액션당 1행)이 아니라 **모든 윈도우·모든 임계값 k**를 한 행씩 펼침.
+ * 윈도우별 전 k는 AHA_STATS.thresholdSweep으로 스윕(학습셋 P/R/F1·표본 + 전체 커버리지, 결정론).
+ * is_optimal=1 행만 필터하면 예전 요약(윈도우별 최적)과 동일. holdout 재평가값은 요약행에서만
+ * 신뢰(자동선택 지점)라 여기선 학습셋 기준으로 통일(차트·드릴다운 구간표와 동일 기준).
+ * (index.html downloadAhaCsv 계열: BOM + CRLF + text/csv;charset=utf-8, §7) */
+function downloadAhaCsv(sorted, cache) {
   const q = (s) => {
     s = String(s);
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
   const header = [
     "action",
-    "best_window",
-    "best_k",
+    "window",       // d1 / d7 / all
+    "k",            // 최소 실행 횟수(임계값)
     "all_users_support",
     "all_users_pct",
-    "holdout_precision",
-    "holdout_recall",
-    "holdout_f1",
+    "precision",
+    "recall",
+    "f1",
+    "support",
     "lift",
-    "holdout_support",
-    "train_precision",
-    "train_recall",
-    "train_f1",
-    "support_gated",
+    "gated",        // 표본 부족으로 게이팅됐는지
+    "is_optimal",   // 자동 선택된 최적(윈도우·k) 지점이면 1
   ];
   const lines = [header.join(",")];
+  const baseRate = cache?.baseRate || 0;
+  const canSweep = cache && Array.isArray(cache.targets) && Array.isArray(cache.trainIdx);
   for (const r of sorted) {
-    lines.push(
-      [
-        r.action,
-        r.bestWindow === Infinity ? "all" : r.bestWindow,
-        r.bestK,
-        r.allSupport || 0,
-        ((r.allPct || 0) * 100).toFixed(2),
-        r.holdout.P.toFixed(4),
-        r.holdout.R.toFixed(4),
-        r.holdout.F1.toFixed(4),
-        r.lift == null ? "" : r.lift.toFixed(4),
-        r.holdout.support,
-        r.train.P.toFixed(4),
-        r.train.R.toFixed(4),
-        r.train.F1.toFixed(4),
-        r.gated ? "1" : "0",
-      ]
-        .map(q)
-        .join(","),
-    );
+    const wcs = (r.windowCols || []).slice().sort((a, b) => a.window - b.window);
+    for (const wc of wcs) {
+      // 윈도우별 전 k 스윕(구간별 데이터). cache 없으면(방어) grid의 최적 한 점만.
+      const sweep = canSweep
+        ? AHA_STATS.thresholdSweep(wc.valuesAll, cache.targets, cache.trainIdx, cache.minSupport || 1)
+        : [];
+      for (const s of sweep) {
+        const lift = baseRate > 0 ? s.P / baseRate : null;
+        const isOpt = wc.window === r.bestWindow && s.k === r.bestK;
+        lines.push(
+          [
+            r.action,
+            wc.window === Infinity ? "all" : "d" + wc.window,
+            s.k,
+            s.allSupport,
+            (s.allPct * 100).toFixed(2),
+            s.P.toFixed(4),
+            s.R.toFixed(4),
+            s.F1.toFixed(4),
+            s.support,
+            lift == null ? "" : lift.toFixed(4),
+            s.gated ? "1" : "0",
+            isOpt ? "1" : "0",
+          ]
+            .map(q)
+            .join(","),
+        );
+      }
+    }
   }
   const fileName = `aha_moment_${new Date().toISOString().slice(0, 10)}.csv`;
   const content = "﻿" + lines.join("\r\n");
@@ -1194,7 +1208,7 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>전체 지표 표</div>
-                <button className="ab-pill" onClick={() => downloadAhaCsv(sortedResults)} disabled={sortedResults.length === 0}>⬇ CSV</button>
+                <button className="ab-pill" onClick={() => downloadAhaCsv(sortedResults, cache)} disabled={sortedResults.length === 0} title="액션 × 윈도우(D1/D7) × 구간(k) 전 조합 long-format — is_optimal=1이 최적 지점">⬇ CSV</button>
               </div>
               <p className="muted" style={{ fontSize: "11.5px" }}><strong>체크박스</strong> = 위 산점도에 표시 · <strong>행(▸) 클릭</strong> = 달성률 구간별 상세 펼치기. 초록 lift = 강한 연관(≥1.5×). 빨강 F1 = train≫holdout(과적합 의심). 색 = 산점도 이벤트 색.</p>
               <div className="table-wrap">
