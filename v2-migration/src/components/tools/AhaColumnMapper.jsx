@@ -6,7 +6,8 @@ import { ahaParseActionWindow } from "@/utils/ahaMath";
  * 통일(§ 유저 요청: "같은 툴을 쓰라는 게 아니라 방식을 비슷하게"). 5-20 전용
  * 별도 컴포넌트 — colMap 스키마(role/action/window)는 기존과 동일해 엔진·
  * cache 빌더는 변경 없음(렌더층 교체만).
- * colMap: { [header]: { role: target|feature|id|ignore, action?, window? } }
+ * colMap: { [header]: { role: target|feature|id|segment|ignore, action?, window? } }
+ *   segment = 나눠보기 차원(성별·플랫폼·국가 등) — 분석 결과를 값별로 필터·재계산.
  *
  * 하위 컴포넌트(Chip/Zone)는 모듈 최상위에 고정 — 렌더마다 새 컴포넌트를
  * 만들면 안 된다는 lint 규칙(react-hooks/static-components) 대응.
@@ -29,6 +30,9 @@ function guessRole(col, rows) {
   const isBin01 = isNum && uniq.length > 0 && uniq.every((v) => v === 0 || v === 1);
   if (/(^|_)(user|client|device)?_?id$|^id$|^uid$/.test(name)) return "id";
   if (isBin01 && /target|conv|retain|churn|activ|subscrib|signup|sign_up|register|타겟|전환|리텐션|정착|구독|가입/.test(name)) return "target";
+  // 비수치 인구/플랫폼 차원은 나눠보기(segment)로 자동 배치 — 흔한 이름만(화이트리스트).
+  // 그 외 임의 문자열은 tray(ignore)로 둬 사용자가 판단(오탐 방지).
+  if (!isNum && /(^|_)(platform|os|gender|sex|country|nation|region|device|age_?group|tier|grade|segment|membership|plan)($|_)|플랫폼|성별|국가|지역|기기|기종|연령|등급|세그/.test(name)) return "segment";
   if (!isNum) return "ignore";
   return "feature";
 }
@@ -172,6 +176,7 @@ export default function AhaColumnMapper({ headers, rows, colMap, onChange }) {
   const targetCols = inRole("target");
   const idCols = inRole("id");
   const featureCols = inRole("feature");
+  const segmentCols = inRole("segment");
   const missing = [];
   if (!targetCols.length) missing.push("타겟(target, 0/1) 1개");
   if (!featureCols.length) missing.push("선행 행동(feature) 1개 이상");
@@ -185,7 +190,8 @@ export default function AhaColumnMapper({ headers, rows, colMap, onChange }) {
     const next = { ...cm };
     for (const h of headers || []) {
       const role = next[h]?.role;
-      if (role === "target" || role === "id") continue;
+      // 타겟·id·세그먼트(나눠보기)는 일괄 feature 배치에서 제외(사용자 지정 보존).
+      if (role === "target" || role === "id" || role === "segment") continue;
       const aw = ahaParseActionWindow(h);
       next[h] = { ...(next[h] || {}), role: "feature", action: next[h]?.action || aw.action, window: next[h]?.window ?? aw.window };
     }
@@ -233,6 +239,9 @@ export default function AhaColumnMapper({ headers, rows, colMap, onChange }) {
       </div>
       <div style={{ marginTop: "10px" }}>
         <Zone role="feature" label="🏃 선행 행동(feature) · 여러 개 · 액션명+윈도우(D1/D7/Dn) 개별 지정" feature cols={featureCols} cm={cm} setRole={setRole} setField={setField} dragCol={dragCol} setDragCol={setDragCol} />
+      </div>
+      <div style={{ marginTop: "10px" }}>
+        <Zone role="segment" label="🔀 세그먼트(나눠보기) · 선택 · 성별·플랫폼·국가 등 값별로 결과를 나눠 봅니다" cols={segmentCols} cm={cm} setRole={setRole} setField={setField} dragCol={dragCol} setDragCol={setDragCol} />
       </div>
       {missing.length > 0 && (
         <div className="callout warning" style={{ marginTop: "10px" }}>

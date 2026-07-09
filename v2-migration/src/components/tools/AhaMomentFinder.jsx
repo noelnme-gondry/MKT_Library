@@ -48,6 +48,13 @@ function ahaTargetColumn(colMap) {
   return null;
 }
 
+/* colMap에서 role=segment인 컬럼 목록 (성별·플랫폼·국가 등 나눠보기 차원) */
+function ahaSegmentColumns(colMap) {
+  return Object.entries(colMap || {})
+    .filter(([, def]) => def && def.role === "segment")
+    .map(([h]) => h);
+}
+
 function confidenceDots(f1Val) {
   const n =
     f1Val >= 0.7
@@ -310,6 +317,9 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
   const [expandedActions, setExpandedActions] = useState(() => new Set());
   // 편집 가능한 컬럼 역할 매핑 (index.html AHA_STATE.colMap — 자동추정 시드 후 사용자 편집)
   const [colMap, setColMap] = useState({});
+  // 나눠보기(세그먼트): null=전체, {col,value}=그 세그먼트 값만. minSupport처럼 탐색
+  // 토글이라 게이트 시그니처엔 안 들어감 → 전환 시 재분석 없이 자동 재계산(§12.5).
+  const [activeSeg, setActiveSeg] = useState(null);
   // 분석 게이트: 마지막으로 "분석하기"를 눌렀을 때의 매핑 시그니처
   const [analyzedSig, setAnalyzedSig] = useState(null);
 
@@ -349,10 +359,38 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
     setAnalyzedSig(demoPending && hasData ? ahaAnalyzeSig(cm, fileName) : null);
     if (demoPending) setDemoPending(false);
     setDrilldownAction(null);
+    setActiveSeg(null);
   }
 
   // 현재 매핑 시그니처가 분석된 시그니처와 일치할 때만 결과 노출 (게이트)
   const analyzed = analyzedSig != null && analyzedSig === ahaAnalyzeSig(colMap, fileName);
+
+  // 세그먼트 차원(성별·플랫폼 등)별 값 목록 — 분석 후에만 raw 1패스 순회(매핑 편집 중엔
+  // 미실행, §7 큰데이터 멈춤 방지). 값이 너무 많은(>20) 컬럼은 세그먼트로 부적합 → 잘라 표기.
+  const segMeta = useMemo(() => {
+    if (!hasData || !analyzed) return [];
+    const cols = ahaSegmentColumns(colMap);
+    if (!cols.length) return [];
+    return cols.map((col) => {
+      const freq = new Map();
+      for (const r of csvData.raw || []) {
+        const v = r[col];
+        if (v == null || String(v).trim() === "") continue;
+        const key = String(v);
+        freq.set(key, (freq.get(key) || 0) + 1);
+      }
+      const all = [...freq.entries()].sort((a, b) => b[1] - a[1]);
+      return { col, values: all.slice(0, 20).map(([value, count]) => ({ value, count })), truncated: all.length > 20 };
+    });
+  }, [hasData, analyzed, colMap, csvData.raw]);
+
+  // 현재 activeSeg가 여전히 유효한 세그먼트 컬럼·값인지 검증(매핑 변경 시 잔상 방지).
+  const validSeg = useMemo(() => {
+    if (!activeSeg) return null;
+    const m = segMeta.find((s) => s.col === activeSeg.col);
+    if (!m || !m.values.some((v) => v.value === activeSeg.value)) return null;
+    return activeSeg;
+  }, [activeSeg, segMeta]);
 
   // --- 분석 결과 캐시: "분석하기"(analyzed) 후에만 계산. colMap 변경으론 재계산 안 함 ---
   const [analysisData, setAnalysisData] = useState(null);
@@ -368,10 +406,14 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
     // 로딩 오버레이를 먼저 페인트한 뒤(더블 rAF) 무거운 계산 실행 → "멈춤"이 아닌 "분석 중".
     setIsAnalyzing(true);
     let cancelled = false;
+    // 세그먼트 선택 시 그 값의 행만 필터해 엔진에 넘김(수학 불변, 행 부분집합만 좁힘).
+    const segRows = validSeg
+      ? (csvData.raw || []).filter((r) => String(r[validSeg.col]) === validSeg.value)
+      : csvData.raw;
     const raf1 = requestAnimationFrame(() => {
       rafRef.current = requestAnimationFrame(() => {
         if (cancelled) return;
-        const data = computeAhaCache(csvData.raw, colMap, minSupport, holdoutOn);
+        const data = computeAhaCache(segRows, colMap, minSupport, holdoutOn);
         if (cancelled) return;
         setAnalysisData(data);
         setIsAnalyzing(false);
@@ -382,7 +424,7 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
       cancelAnimationFrame(raf1);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [hasData, analyzed, colMap, csvData, minSupport, holdoutOn]);
+  }, [hasData, analyzed, colMap, csvData, minSupport, holdoutOn, validSeg]);
 
   // 다운스트림 공용 캐시 — 분석 전/중엔 빈 결과(+ 매핑 UI용 live 역할값, 행 순회 없이 colMap만으로 파생).
   const cache = useMemo(
@@ -827,6 +869,44 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
 
       {showResults && (
         <>
+          {/* ── 나눠보기(세그먼트) — 매핑에서 segment role 준 컬럼 값별로 결과 재계산.
+              단일 토글([전체] 또는 값 1개). 전환 시 그 값 행만 필터해 재분석(오버레이). ── */}
+          {segMeta.length > 0 && (
+            <section className="block" id="s-aha-segment" style={{ padding: "12px 16px" }}>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-1)" }}>🔀 나눠보기</span>
+                <button
+                  className={`ab-pill ${validSeg == null ? "active" : ""}`}
+                  onClick={() => setActiveSeg(null)}
+                  title="전체 데이터로 분석"
+                >전체</button>
+                {segMeta.map((s) => (
+                  <React.Fragment key={s.col}>
+                    <span style={{ width: "1px", height: "18px", background: "var(--border)" }}></span>
+                    <span style={{ fontSize: "11.5px", color: MUTED }}>{s.col}:</span>
+                    {s.values.map((v) => {
+                      const on = validSeg && validSeg.col === s.col && validSeg.value === v.value;
+                      return (
+                        <button
+                          key={v.value}
+                          className={`ab-pill ${on ? "active" : ""}`}
+                          onClick={() => setActiveSeg(on ? null : { col: s.col, value: v.value })}
+                          title={`${v.count.toLocaleString()}행`}
+                        >{v.value} <span style={{ color: MUTED, fontSize: "10px" }}>{v.count.toLocaleString()}</span></button>
+                      );
+                    })}
+                    {s.truncated && <span style={{ fontSize: "10.5px", color: "#f59e0b" }}>⚠ 값이 많아 상위 20개만</span>}
+                  </React.Fragment>
+                ))}
+              </div>
+              {validSeg && (
+                <p className="muted" style={{ fontSize: "11px", margin: "8px 0 0" }}>
+                  현재 <strong style={{ color: "var(--text-1)" }}>{validSeg.col} = {validSeg.value}</strong> 세그먼트만 분석 중 (아래 모든 결과가 이 값 기준). 다른 세그먼트와 비교하려면 pill을 눌러 전환하세요.
+                </p>
+              )}
+            </section>
+          )}
+
           {/* ── §0 한눈에 보기 — 여정 질문 + 평어 결론 (통계는 흐린 글씨로 강등) ── */}
           <section className="block" id="s-aha-hero" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}>
             <h2 className="section-title" style={{ marginTop: 0 }}>{C.heroQ}</h2>
