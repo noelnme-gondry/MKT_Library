@@ -546,8 +546,11 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
     }
 
     // 이벤트마다 고유 색상 1개 + 달성률 5% 구간 대표점들을 선으로 이은 궤적.
-    // 선택된(체크된) 이벤트만 그린다. 최적 임계값 점은 금색·크게 강조.
+    // 선택된(체크된) 이벤트만 그린다. 점은 작게(겹쳐도 서로 안 가림) — 최적 임계값은
+    // 색을 안 바꾸고(이벤트 색 유지, 어느 곡선인지 계속 구분) 마지막에 별도 오버레이
+    // 데이터셋으로 금색 링을 그 위에 얹어 다른 곡선/점에 절대 가려지지 않게 함.
     const shown = sortedResults.filter((r) => (selectedActions ? selectedActions.has(r.action) : true));
+    const optimalOverlay = [];
     const datasets = shown.map((r) => {
       const color = actionColorMap[r.action] || "#94a3b8";
       const win = r.bestWindow === Infinity ? "전체" : "d" + r.bestWindow;
@@ -568,21 +571,36 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
         gated: b.gated,
         isOptimal: b.isOptimal,
       }));
+      data.forEach((p) => {
+        if (p.isOptimal) optimalOverlay.push({ ...p, _color: color });
+      });
       return {
         label: r.action,
         data,
         showLine: true,
         borderColor: color,
         backgroundColor: color,
-        borderWidth: 2,
+        borderWidth: 1.5,
         tension: 0.25,
-        pointBackgroundColor: data.map((p) => (p.isOptimal ? "#facc15" : color)),
-        pointBorderColor: data.map((p) => (p.isOptimal ? "#facc15" : color)),
-        pointBorderWidth: data.map((p) => (p.isOptimal ? 2 : 1)),
-        pointRadius: data.map((p) => (p.isOptimal ? 8 : Math.max(3, Math.min(11, Math.sqrt(p.allSupport || 1) * 0.5)))),
-        pointHoverRadius: data.map((p) => (p.isOptimal ? 10 : 6)),
+        pointBackgroundColor: color,
+        pointBorderColor: color,
+        pointBorderWidth: 1,
+        pointRadius: data.map((p) => Math.max(2, Math.min(6, Math.sqrt(p.allSupport || 1) * 0.28))),
+        pointHoverRadius: 6,
       };
     });
+    if (optimalOverlay.length) {
+      datasets.push({
+        label: "★ 최적",
+        data: optimalOverlay,
+        showLine: false,
+        pointBackgroundColor: optimalOverlay.map((p) => p._color),
+        pointBorderColor: "#facc15",
+        pointBorderWidth: 3,
+        pointRadius: 7,
+        pointHoverRadius: 9,
+      });
+    }
 
     chartInstance.current = new Chart(chartRef.current, {
       type: "scatter",
@@ -610,7 +628,13 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
           legend: {
             display: true,
             position: "right",
-            labels: { color: CHART_THEME.text, boxWidth: 12, font: { size: 11 }, usePointStyle: true },
+            labels: {
+              color: CHART_THEME.text,
+              boxWidth: 12,
+              font: { size: 11 },
+              usePointStyle: true,
+              filter: (item) => item.text !== "★ 최적",
+            },
           },
           tooltip: {
             callbacks: {
