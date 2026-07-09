@@ -21,6 +21,8 @@ export default function CsvUploader({ toolId }) {
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
   const setGroupAnalyzed = useAppStore((s) => s.setGroupAnalyzed);
+  // 분석하기 클릭 시 광고 인터스티셜 게이트(adFree면 즉시 실행). 데모 자동로드는 게이트 없이 직접.
+  const requestAd = useAppStore((s) => s.requestAd);
   // Single-source analyze gate (store, group-scoped §12.5). Reading the whole
   // store here (not a memoized selector) so the boolean recomputes on any
   // csvData / analyzedByGroup change — the same slice the tools render from.
@@ -436,13 +438,13 @@ export default function CsvUploader({ toolId }) {
           <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: 600 }}>✓ 분석 완료</span>
             <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>매핑을 바꾸면 결과가 숨겨지고 다시 &quot;분석하기&quot;를 눌러야 합니다.</span>
-            <button className="ab-pill" onClick={() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ marginLeft: "auto" }}>↻ 다시 분석</button>
+            <button className="ab-pill" onClick={() => requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); })} style={{ marginLeft: "auto" }}>↻ 다시 분석</button>
           </div>
         ) : (
           <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ color: "var(--danger)", fontSize: "12px", fontWeight: 600 }}>⚠ 매핑 확인 필요</span>
             <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>매핑이 올바른지 확인 후 &quot;분석하기&quot;를 클릭하여 분석을 시작하세요.</span>
-            <button className="ab-button" onClick={() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ marginLeft: "auto" }}>데이터 분석하기</button>
+            <button className="ab-button" onClick={() => requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); })} style={{ marginLeft: "auto" }}>데이터 분석하기</button>
           </div>
         )
       )}

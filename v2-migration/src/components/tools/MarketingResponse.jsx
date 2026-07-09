@@ -728,6 +728,7 @@ export default function MarketingResponse() {
   const [cannibChannel, setCannibChannel] = useState(null);
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
+  const requestAd = useAppStore((state) => state.requestAd);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const currencySym = CURRENCY_SYMBOLS[displayCurrency] || "$";
   // 원본 CSV 통화(업로드 시 지정, 기본 KRW) — 표시 토글과 다르면 실제 배율 변환.
@@ -1465,7 +1466,7 @@ export default function MarketingResponse() {
           <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px" }}>
             <span style={{ fontSize: "12.5px", color: "var(--text-1)" }}>✅ 필수 역할 매핑 완료. <strong>매핑이 맞는지 확인한 뒤 분석을 실행하세요.</strong> <span style={{ color: "var(--text-muted)" }}>(매핑만으로 자동 분석하지 않습니다.)</span></span>
             <button className="ab-button" style={{ marginLeft: "auto" }}
-              onClick={() => runMmmAnalyze(colMapSig)}>▶ 분석하기</button>
+              onClick={() => requestAd(() => runMmmAnalyze(colMapSig))}>▶ 분석하기</button>
           </div>
         )}
       </section>
