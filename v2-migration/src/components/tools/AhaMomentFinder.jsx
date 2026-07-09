@@ -553,8 +553,8 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
       const win = r.bestWindow === Infinity ? "전체" : "d" + r.bestWindow;
       const bks = bucketsByAction[r.action] || [];
       const data = bks.map((b) => ({
-        x: b.R,
-        y: b.P,
+        x: b.P,
+        y: b.R,
         action: r.action,
         win,
         k: b.k,
@@ -592,14 +592,14 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
         maintainAspectRatio: false,
         scales: {
           x: {
-            title: { display: true, text: "Recall (재현율)", color: CHART_THEME.text },
+            title: { display: true, text: "Precision (정밀도)", color: CHART_THEME.text },
             min: 0,
             max: 1,
             ticks: { color: CHART_THEME.text },
             grid: { color: CHART_THEME.grid },
           },
           y: {
-            title: { display: true, text: "Precision (정밀도)", color: CHART_THEME.text },
+            title: { display: true, text: "Recall (재현율)", color: CHART_THEME.text },
             min: 0,
             max: 1,
             ticks: { color: CHART_THEME.text },
@@ -1079,7 +1079,7 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>정밀도 × 재현율 산점도 — 이벤트별 달성률 곡선</div>
                 <button className="ab-pill" onClick={handleScatterPng}>⬇ PNG</button>
               </div>
-              <p className="muted">X=재현율, Y=정밀도. <strong>이벤트마다 색이 다르고</strong>, 각 점은 <strong>달성률(전체 유저 중 그 조건을 채운 비율) 5% 구간</strong>이에요 — 점을 이은 선을 따라가면 기준을 느슨/빡빡하게 했을 때 정밀도·재현율이 어떻게 바뀌는지 보입니다. 점 크기 = 해당 인원, <span style={{ color: "#facc15" }}>●</span> 금색 큰 점 = 자동으로 고른 최적 지점. <strong>아래 표의 체크박스로 표시할 이벤트를 고르세요.</strong></p>
+              <p className="muted">X=정밀도, Y=재현율. <strong>이벤트마다 색이 다르고</strong>, 각 점은 <strong>달성률(전체 유저 중 그 조건을 채운 비율) 5% 구간</strong>이에요 — 점을 이은 선을 따라가면 기준을 느슨/빡빡하게 했을 때 정밀도·재현율이 어떻게 바뀌는지 보입니다. 점 크기 = 해당 인원, <span style={{ color: "#facc15" }}>●</span> 금색 큰 점 = 자동으로 고른 최적 지점. <strong>아래 표의 체크박스로 표시할 이벤트를 고르세요.</strong></p>
               {allActionNames.length > 0 && (
                 <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginBottom: "8px" }}>
                   <span style={{ fontSize: "11.5px", color: MUTED }}>표시: {selectedCount}/{allActionNames.length}개</span>
