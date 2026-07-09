@@ -176,13 +176,44 @@ export default function AhaColumnMapper({ headers, rows, colMap, onChange }) {
   if (!targetCols.length) missing.push("타겟(target, 0/1) 1개");
   if (!featureCols.length) missing.push("선행 행동(feature) 1개 이상");
 
+  // 매핑 완전 초기화(전부 미지정 트레이로) — 실수로 잘못 매핑했을 때 처음부터 다시.
+  const clearAll = () => onChange({});
+  // 타겟/id를 제외한 모든 컬럼을 선행 행동(feature)으로 일괄 배치. 액션·윈도우는
+  // 헤더명 자동 파싱(ahaParseActionWindow) — 이벤트 컬럼이 많을 때 하나씩 드래그하지
+  // 않고 한 번에 매핑.
+  const mapAllAsFeature = () => {
+    const next = { ...cm };
+    for (const h of headers || []) {
+      const role = next[h]?.role;
+      if (role === "target" || role === "id") continue;
+      const aw = ahaParseActionWindow(h);
+      next[h] = { ...(next[h] || {}), role: "feature", action: next[h]?.action || aw.action, window: next[h]?.window ?? aw.window };
+    }
+    onChange(next);
+  };
+  // 이미 feature로 배치된 컬럼 전체의 윈도우를 한 번에 D1/D7로 맞춤 — 이벤트마다
+  // 개별 드롭다운을 바꾸지 않고 "전체 다 D7로 비교해보자" 같은 일괄 실험용.
+  const setAllWindow = (w) => {
+    const next = { ...cm };
+    for (const h of headers || []) {
+      if (next[h]?.role === "feature") next[h] = { ...next[h], window: w };
+    }
+    onChange(next);
+  };
+
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "8px" }}>
         <p className="muted" style={{ fontSize: "12px", margin: 0 }}>
           컬럼을 역할 영역으로 드래그하세요. 칩을 끌어 언제든 수정 가능합니다. 헤더가 <code className="inline">{"{action}_d{N}"}</code> 형태면 액션·윈도우가 자동 파싱됩니다.
         </p>
-        <button type="button" className="ab-pill" onClick={() => onChange(ahaAutoMapColumns(headers, rows))}>🪄 전부 자동 추정</button>
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+          <button type="button" className="ab-pill" onClick={() => onChange(ahaAutoMapColumns(headers, rows))}>🪄 전부 자동 추정</button>
+          <button type="button" className="ab-pill" onClick={mapAllAsFeature} title="타겟·id 제외 모든 컬럼을 선행 행동(feature)으로 일괄 배치">🏃 전체 이벤트 매핑</button>
+          <button type="button" className="ab-pill" onClick={() => setAllWindow(1)} disabled={!featureCols.length} title="배치된 선행 행동 전체의 윈도우를 D1로">D1 이벤트 매핑</button>
+          <button type="button" className="ab-pill" onClick={() => setAllWindow(7)} disabled={!featureCols.length} title="배치된 선행 행동 전체의 윈도우를 D7로">D7 이벤트 매핑</button>
+          <button type="button" className="ab-pill" onClick={clearAll} title="전체 매핑을 초기화하고 처음부터 다시">🗑 전체 해제</button>
+        </div>
       </div>
       <div
         onDragOver={(e) => e.preventDefault()}
