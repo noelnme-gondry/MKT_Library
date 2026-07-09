@@ -1,6 +1,7 @@
 import "./globals.css";
 import Script from "next/script";
 import Footer from "@/components/Footer";
+import GaPageviews from "@/components/GaPageviews";
 
 export const metadata = {
   // GSC "페이지 제목 40자 이내·설명 80자 이내" 경고 해소 + 유저가 한눈에 "뭐 하는
@@ -131,6 +132,7 @@ export default function RootLayout({ children }) {
         {/* AdSense */}
         <Script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3073450406371629" crossOrigin="anonymous" strategy="afterInteractive" />
 
+        <GaPageviews />
         {children}
         <Footer />
       </body>
