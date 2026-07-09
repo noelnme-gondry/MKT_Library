@@ -12,7 +12,7 @@
 // name (week→week, Regs→reg, *_spend→channel). Channels must vary INDEPENDENTLY
 // so the OLS panel is non-singular. Deterministic — NO Math.random (harness §3).
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, act } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import MarketingResponse from "@/components/tools/MarketingResponse";
 
@@ -57,6 +57,15 @@ function clickByText(container, text) {
 function enterMmmAndAnalyze(container) {
   clickByText(container, "분석하기");
 }
+// 분석하기는 로딩 오버레이를 먼저 페인트하려고 더블 rAF로 시그니처 커밋을 미룬다 →
+// 결과 검증 전 프레임을 flush해야 함(§7 성능: 큰 데이터 멈춤 방지 디퍼).
+async function flushRaf() {
+  await act(async () => {
+    await new Promise((r) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r))),
+    );
+  });
+}
 
 describe("MarketingResponse render smoke", () => {
   beforeEach(() => {
@@ -76,17 +85,19 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("분석하기");
   });
 
-  it("renders diagnose→MMM panel (§1 macro/audit, §4.5 ranking) after analyze without throwing", () => {
+  it("renders diagnose→MMM panel (§1 macro/audit, §4.5 ranking) after analyze without throwing", async () => {
     seedWithData();
     const { container } = render(<MarketingResponse />);
     expect(() => enterMmmAndAnalyze(container)).not.toThrow();
+    await flushRaf();
     expect(document.body.textContent).toContain("데이터 위생");
   });
 
-  it("renders the 회귀·미래 예측 (lab) stage without throwing (3-tab, forecast merged)", () => {
+  it("renders the 회귀·미래 예측 (lab) stage without throwing (3-tab, forecast merged)", async () => {
     seedWithData();
     const { container } = render(<MarketingResponse />);
     expect(() => enterMmmAndAnalyze(container)).not.toThrow();
+    await flushRaf();
     // 구 "시뮬레이션" 탭은 제거됨 — 없어야 함.
     const simTab = Array.from(container.querySelectorAll("button")).find((b) =>
       b.textContent.includes("시뮬레이션"),

@@ -34,6 +34,7 @@ import {
 import CsvUploader from "@/components/CsvUploader";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
+import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import { buildDemoCsv } from "@/utils/demoData";
 import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, mmmPlatformTags } from "@/components/tools/MmmColumnMapper";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
@@ -741,6 +742,19 @@ export default function MarketingResponse() {
   // 이 이 하나의 패널을 공유. 표준필드(DataFeatureMatrix) 경로 미사용.
   const [mmmColMap, setMmmColMap] = useState(null);
   const [mmmAnalyzedSig, setMmmAnalyzedSig] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  // 분석하기: 무거운 mmm useMemo가 커밋 렌더에서 동기 실행되므로, 로딩 오버레이를 먼저
+  // 페인트(더블 rAF)한 뒤 시그니처를 커밋 → "멈춤" 대신 "분석 중" 표시(§7 성능).
+  const runMmmAnalyze = (sig) => {
+    setIsAnalyzing(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setMmmAnalyzedSig(sig);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        requestAnimationFrame(() => setIsAnalyzing(false));
+      });
+    });
+  };
   // 플랫폼 필터(Total/Android/iOS) — colMap 헤더 태그(_android/_ios) 기준. 태그 없으면 토글 자체 숨김.
   const [platformFilter, setPlatformFilter] = useState("all"); // all | android | ios
 
@@ -1438,7 +1452,7 @@ export default function MarketingResponse() {
           <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px" }}>
             <span style={{ fontSize: "12.5px", color: "var(--text-1)" }}>✅ 필수 역할 매핑 완료. <strong>매핑이 맞는지 확인한 뒤 분석을 실행하세요.</strong> <span style={{ color: "var(--text-muted)" }}>(매핑만으로 자동 분석하지 않습니다.)</span></span>
             <button className="ab-button" style={{ marginLeft: "auto" }}
-              onClick={() => { setMmmAnalyzedSig(colMapSig); window.scrollTo({ top: 0, behavior: "smooth" }); }}>▶ 분석하기</button>
+              onClick={() => runMmmAnalyze(colMapSig)}>▶ 분석하기</button>
           </div>
         )}
       </section>
@@ -1515,6 +1529,7 @@ export default function MarketingResponse() {
   if (!mmmAnalyzed) {
     return (
       <div className="tab-pane active" id="tab-response">
+        <AnalyzingOverlay show={isAnalyzing} title="분석 중…" sub={`${(csvData?.raw?.length || 0).toLocaleString()}행 계산 중`} />
         {renderTabs()}
         {mmmMapperSection()}
       </div>
@@ -1526,6 +1541,7 @@ export default function MarketingResponse() {
 
   return (
     <div className="tab-pane active" id="tab-response">
+      <AnalyzingOverlay show={isAnalyzing} title="분석 중…" sub={`${(csvData?.raw?.length || 0).toLocaleString()}행 계산 중`} />
       {/* 브레드크럼(타깃·플랫폼 토글)+통화 토글 — 페이지 맨 위 sticky(스테이지 카드보다
           위, top:48px 고정)로 이동. 예전엔 스테이지 카드·데모 배너 아래 본문에 있어
           "제일 위로 가야 한다"는 요청 반영(§유저 리포트, 스크롤 시 안 가려짐도 겸함). */}

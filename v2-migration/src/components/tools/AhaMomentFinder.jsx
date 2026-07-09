@@ -10,6 +10,7 @@ import { idToSlug } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
+import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import { buildDemoCsv } from "@/utils/demoData";
 import AhaColumnMapper, { ahaAutoMapColumns } from "@/components/tools/AhaColumnMapper";
 import { resolveAhaCopy } from "@/utils/contentDomain";
@@ -208,6 +209,65 @@ function buildAhaGuideDoc(cache, sorted, minSupport, C) {
   return L.join("\n");
 }
 
+/* 무거운 Aha 분석 캐시 계산 (index.html buildAhaCache 이식). 원래 useMemo였으나 colMap이
+   바뀔 때마다 20만행을 재계산해 UI가 멈추던 문제(§7) 때문에 모듈 순수 함수로 추출 →
+   "분석하기" 클릭 시에만 rAF 디퍼로 호출(매핑 편집 중엔 미실행). 수학·반환 shape 불변. */
+function computeAhaCache(rows, colMap, minSupport, holdoutOn) {
+  const empty = { n: 0, baseRate: 0, results: [], targetCol: null, groups: {} };
+  if (!rows || !rows.length) return empty;
+  const targetCol = ahaTargetColumn(colMap);
+  const groups = ahaGroupedActions(colMap);
+  const n = rows.length;
+  if (!targetCol || !Object.keys(groups).length || !n)
+    return { ...empty, n, targetCol, groups };
+
+  const targets = rows.map((r) => {
+    const v = parseFloat(r[targetCol]);
+    return isFinite(v) && v >= 0.5 ? 1 : 0;
+  });
+  const baseRate = targets.reduce((s, t) => s + t, 0) / n;
+  const ms = Math.max(1, minSupport || 1);
+
+  let trainIdx, holdoutIdx;
+  if (holdoutOn) {
+    const sp = AHA_STATS.splitDeterministic(n, 20260620);
+    trainIdx = sp.train;
+    holdoutIdx = sp.holdout;
+  } else {
+    trainIdx = rows.map((_, i) => i);
+    holdoutIdx = trainIdx;
+  }
+
+  const results = [];
+  for (const [action, cols] of Object.entries(groups)) {
+    const windowCols = cols.map((c) => ({
+      header: c.header,
+      window: c.window,
+      valuesAll: rows.map((r) => {
+        const v = parseFloat(r[c.header]);
+        return isFinite(v) ? v : 0;
+      }),
+    }));
+    const gs = AHA_STATS.gridSearch(windowCols, targets, trainIdx, holdoutIdx, ms);
+    if (!gs) continue;
+    results.push({
+      action,
+      bestWindow: gs.bestWindow,
+      bestHeader: gs.bestHeader,
+      bestK: gs.bestK,
+      train: gs.train,
+      holdout: gs.holdout,
+      allSupport: gs.allSupport,
+      allPct: gs.allPct,
+      gated: gs.gated,
+      lift: AHA_STATS.lift(gs.holdout.P, baseRate),
+      grid: gs.grid,
+      windowCols,
+    });
+  }
+  return { n, baseRate, results, targetCol, groups, targets, trainIdx, minSupport: ms };
+}
+
 export default function AhaMomentFinder({ domain = "performance" } = {}) {
   // 도메인 라벨팩(§contentDomain): performance=기존 문구(출력 불변) / content=콘텐츠 번역.
   const C = resolveAhaCopy(domain);
@@ -215,15 +275,22 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
   const ahaFileRef = useRef(null);
+  const [isParsing, setIsParsing] = useState(false);
   const handleAhaFile = (file) => {
     if (!file) return;
+    setIsParsing(true);
+    // worker:true → 파싱을 워커 스레드에서 수행해 큰 파일(10~20만행) 업로드 시 메인 스레드
+    // 멈춤 방지(§7 성능). complete는 메인에서 콜백.
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
+      worker: true,
       complete: (res) => {
+        setIsParsing(false);
         if (!res.data || !res.data.length) return;
         setCsvData({ raw: res.data, headers: res.meta.fields || [], mapping: {}, fileName: file.name });
       },
+      error: () => setIsParsing(false),
     });
   };
   // Demo: load sample event data + auto-confirm the analyze gate (see reseed below).
@@ -284,70 +351,41 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
   // 현재 매핑 시그니처가 분석된 시그니처와 일치할 때만 결과 노출 (게이트)
   const analyzed = analyzedSig != null && analyzedSig === ahaAnalyzeSig(colMap, fileName);
 
-  // --- 분석 캐시 (index.html buildAhaCache 이식, 순수엔진 AHA_STATS 사용) ---
-  const cache = useMemo(() => {
-    const empty = { n: 0, baseRate: 0, results: [], targetCol: null, groups: {} };
-    if (!hasData) return empty;
-    const rows = csvData.raw;
-    const targetCol = ahaTargetColumn(colMap);
-    const groups = ahaGroupedActions(colMap);
-    const n = rows.length;
-    if (!targetCol || !Object.keys(groups).length || !n)
-      return { ...empty, n, targetCol, groups };
-
-    const targets = rows.map((r) => {
-      const v = parseFloat(r[targetCol]);
-      return isFinite(v) && v >= 0.5 ? 1 : 0;
-    });
-    const baseRate = targets.reduce((s, t) => s + t, 0) / n;
-    const ms = Math.max(1, minSupport || 1);
-
-    let trainIdx, holdoutIdx;
-    if (holdoutOn) {
-      const sp = AHA_STATS.splitDeterministic(n, 20260620);
-      trainIdx = sp.train;
-      holdoutIdx = sp.holdout;
-    } else {
-      trainIdx = rows.map((_, i) => i);
-      holdoutIdx = trainIdx;
+  // --- 분석 결과 캐시: "분석하기"(analyzed) 후에만 계산. colMap 변경으론 재계산 안 함 ---
+  const [analysisData, setAnalysisData] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const rafRef = useRef(0);
+  useEffect(() => {
+    if (!hasData || !analyzed) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAnalysisData(null);
+      setIsAnalyzing(false);
+      return undefined;
     }
-
-    const results = [];
-    for (const [action, cols] of Object.entries(groups)) {
-      const windowCols = cols.map((c) => ({
-        header: c.header,
-        window: c.window,
-        valuesAll: rows.map((r) => {
-          const v = parseFloat(r[c.header]);
-          return isFinite(v) ? v : 0;
-        }),
-      }));
-      const gs = AHA_STATS.gridSearch(
-        windowCols,
-        targets,
-        trainIdx,
-        holdoutIdx,
-        ms,
-      );
-      if (!gs) continue;
-      results.push({
-        action,
-        bestWindow: gs.bestWindow,
-        bestHeader: gs.bestHeader,
-        bestK: gs.bestK,
-        train: gs.train,
-        holdout: gs.holdout,
-        allSupport: gs.allSupport,
-        allPct: gs.allPct,
-        gated: gs.gated,
-        lift: AHA_STATS.lift(gs.holdout.P, baseRate),
-        grid: gs.grid,
-        // D1/D7 토글·k-스윕 곡선을 위해 원본 값 배열 보존(§드릴다운에서 온디맨드 재계산).
-        windowCols,
+    // 로딩 오버레이를 먼저 페인트한 뒤(더블 rAF) 무거운 계산 실행 → "멈춤"이 아닌 "분석 중".
+    setIsAnalyzing(true);
+    let cancelled = false;
+    const raf1 = requestAnimationFrame(() => {
+      rafRef.current = requestAnimationFrame(() => {
+        if (cancelled) return;
+        const data = computeAhaCache(csvData.raw, colMap, minSupport, holdoutOn);
+        if (cancelled) return;
+        setAnalysisData(data);
+        setIsAnalyzing(false);
       });
-    }
-    return { n, baseRate, results, targetCol, groups, targets, trainIdx, minSupport: ms };
-  }, [hasData, csvData, colMap, minSupport, holdoutOn]);
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [hasData, analyzed, colMap, csvData, minSupport, holdoutOn]);
+
+  // 다운스트림 공용 캐시 — 분석 전/중엔 빈 결과(+ 매핑 UI용 live 역할값, 행 순회 없이 colMap만으로 파생).
+  const cache = useMemo(
+    () => analysisData || { n: 0, baseRate: 0, results: [], targetCol: ahaTargetColumn(colMap), groups: ahaGroupedActions(colMap) },
+    [analysisData, colMap],
+  );
 
   // D1/D7 구간 토글 — null(해제)이면 액션별 자동 선택된 최적 윈도우(기존 동작).
   // 특정 윈도우 선택 시 각 액션의 grid에서 그 윈도우 행(자체 홀드아웃 재평가값)만
@@ -662,6 +700,7 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
           </div>
           <DemoLoadButton onLoad={handleLoadDemo} />
         </section>
+        <AnalyzingOverlay show={isParsing} title="데이터 불러오는 중…" sub="큰 파일은 몇 초 걸릴 수 있어요" />
       </div>
     );
   }
@@ -675,6 +714,8 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
 
   return (
     <div className="tab-pane active" id="tab-aha">
+      <AnalyzingOverlay show={isParsing} title="데이터 불러오는 중…" sub="큰 파일은 몇 초 걸릴 수 있어요" />
+      <AnalyzingOverlay show={isAnalyzing} title="분석 중…" sub={`${(csvData?.raw?.length || 0).toLocaleString()}행 계산 중`} />
       {isDemo && (
         <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <div>
