@@ -17,11 +17,12 @@ v2-migration/
 │  │  └─ page.module.css    # 랜딩 일부 스코프 스타일
 │  ├─ lib/routeMap.js·blog.js # routeMap=slug↔id SSOT(id 불변, §4.1) / blog.js=fs MD 로더(server 전용, gray-matter+marked, content/blog/*.md 읽음)
 │  ├─ store/
-│  │  └─ useDataStore.js    # ★ SSOT: Zustand — IA·csvGroups(스코프)·csvData(미러)·TOOL_GROUP·필터·currentRouteId·테마
+│  │  └─ useDataStore.js    # ★ SSOT: Zustand — IA·csvGroups(스코프)·csvData(미러)·TOOL_GROUP·필터·currentRouteId·테마·adGate/adFree(광고 §12.26)
 │  ├─ utils/                # ★ 순수 통계엔진 (ESM, 수학 불변, vitest 골든) + 데이터층 + 추출 math(funnel/segment/anomaly/pacing/cohort/incr)
 │  └─ components/
 │     ├─ ds/            # ★ 디자인시스템 공용(design-system-baseline.md): DataTable·CsvGuide·AnalyzingOverlay(분석/파싱 로딩)
 │     ├─ GaPageviews.jsx     # SPA 라우트 변경 시 GA4 page_view(usePathname, 최초 로드 제외)
+│     ├─ AdInterstitial.jsx·AdFreeInit.jsx # 분석하기 전면광고 모달(store adGate·requestAd/closeAd) + 광고제외 비밀 URL(?adfree=토큰). §12.26
 │     ├─ Sidebar/Header/LandingPage/CsvUploader/GlobalModals/Dashboard.jsx  # 셸
 │     ├─ tools/             # 8개 Pro 도구 (route별 1 컴포넌트)
 │     ├─ dashboard/         # 5-2 운영 대시보드 8탭 + 필터바 + 이벤트마커
