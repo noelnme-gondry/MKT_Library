@@ -217,6 +217,9 @@ export const persistPartialize = (state) => ({
   viewConfig: state.viewConfig,
   customMetrics: state.customMetrics,
   customCharts: state.customCharts,
+  // 광고 제외 모드(비밀 URL 파라미터로 켬) — 기기별 영속. 설정값이라 저장 대상(§2.2 원본
+  // 데이터 아님). 대외 공개 시에도 일반 유저엔 false 기본.
+  adFree: state.adFree,
 });
 
 // 서버(SSR)·테스트(node) 환경에는 localStorage가 없음 — no-op 폴백으로 persist가
@@ -250,6 +253,25 @@ export const useAppStore = create(persist((set, get) => ({
   // Command Palette State (CMDK)
   isCmdkOpen: false,
   setCmdkOpen: (isOpen) => set({ isCmdkOpen: isOpen }),
+
+  // ── 광고 인터스티셜 게이트 + 광고 제외(ad-free) ──────────────────────────
+  // 분석하기 클릭 시 광고 모달을 띄우고, 닫으면 실제 분석을 실행. adFree면 즉시 실행.
+  // adGate는 휘발(비영속): open=모달 표시, pending=닫을 때 실행할 콜백, seq=열 때마다
+  // 증가(광고 ins 리마운트·카운트다운 리셋 키). adFree는 persist 대상(위 partialize).
+  adFree: false,
+  setAdFree: (v) => set({ adFree: !!v }),
+  adGate: { open: false, pending: null, seq: 0 },
+  // 분석 실행 요청 — adFree면 콜백 즉시 실행, 아니면 광고 모달 오픈(닫을 때 콜백 실행).
+  requestAd: (cb) => {
+    if (get().adFree) { if (cb) cb(); return; }
+    set((st) => ({ adGate: { open: true, pending: cb || null, seq: st.adGate.seq + 1 } }));
+  },
+  // 광고 닫기 — 보류 콜백(원래의 분석 실행)을 돌린 뒤 모달 닫음.
+  closeAd: () => {
+    const cb = get().adGate.pending;
+    set((st) => ({ adGate: { open: false, pending: null, seq: st.adGate.seq } }));
+    if (cb) cb();
+  },
 
   // CSV Data State — group-scoped slices + an active-group mirror.
   // Consumers keep reading `s.csvData` unchanged; scoping happens by storing

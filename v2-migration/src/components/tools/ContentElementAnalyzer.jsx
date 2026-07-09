@@ -72,6 +72,7 @@ function downloadCoefCsv(rows) {
 export default function ContentElementAnalyzer() {
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
+  const requestAd = useAppStore((s) => s.requestAd);
   const fileRef = useRef(null);
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
@@ -330,12 +331,12 @@ export default function ContentElementAnalyzer() {
           <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: 600 }}>✓ 분석 완료</span>
             <span style={{ color: MUTED, fontSize: "11px" }}>컬럼을 바꾸면 결과가 숨겨지고 다시 분석해야 합니다.</span>
-            <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={() => setAnalyzedSig(analyzeSig(outcome, features, fileName))}>↻ 다시 분석</button>
+            <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={() => requestAd(() => setAnalyzedSig(analyzeSig(outcome, features, fileName)))}>↻ 다시 분석</button>
           </div>
         ) : (
           <div style={{ marginTop: "12px", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ fontSize: "12.5px", color: "var(--text-1)" }}>✅ 지정 완료. <strong>분석을 실행하세요.</strong></div>
-            <button className="ab-pill" style={{ background: "#7aa2f7", color: "#0b0d12", fontWeight: 700, borderColor: "#7aa2f7", fontSize: "13px", padding: "8px 18px" }} onClick={() => setAnalyzedSig(analyzeSig(outcome, features, fileName))}>▶ 분석하기</button>
+            <button className="ab-pill" style={{ background: "#7aa2f7", color: "#0b0d12", fontWeight: 700, borderColor: "#7aa2f7", fontSize: "13px", padding: "8px 18px" }} onClick={() => requestAd(() => setAnalyzedSig(analyzeSig(outcome, features, fileName)))}>▶ 분석하기</button>
           </div>
         )}
       </section>

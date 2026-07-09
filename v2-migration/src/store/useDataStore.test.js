@@ -46,8 +46,9 @@ describe("useDataStore · persist 불변식(설정만 저장, 원본 CSV 제외 
       eventMarkers: [{ id: "m1" }],
       isDarkMode: true,
     };
-    const persisted = persistPartialize({ ...fakeState, customCharts: { s: [{ id: "ch_1" }] } });
-    expect(Object.keys(persisted).sort()).toEqual(["customCharts", "customMetrics", "viewConfig"]);
+    const persisted = persistPartialize({ ...fakeState, customCharts: { s: [{ id: "ch_1" }] }, adFree: true });
+    // adFree(광고 제외 설정)도 저장 대상 — 원본 데이터 아님(§2.2 설정만).
+    expect(Object.keys(persisted).sort()).toEqual(["adFree", "customCharts", "customMetrics", "viewConfig"]);
     expect(persisted.viewConfig).toBe(fakeState.viewConfig);
     expect(persisted.customMetrics).toBe(fakeState.customMetrics);
     // 원본 데이터 키가 저장 payload에 절대 없어야 함
