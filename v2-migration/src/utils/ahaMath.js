@@ -7,6 +7,61 @@ export function ahaParseActionWindow(header) {
   return { action: String(header), window: Infinity };
 }
 
+/* 렌더층 헬퍼(엔진 AHA_STATS 불변): thresholdSweep 결과를 "달성률(=전체 유저 중 그 조건을
+ * 채우는 비율)" stepPct(기본 5%) 구간으로 접어 대표점 1개씩 반환. 임계 k를 낮출수록 달성률이
+ * 올라가는 곡선을 균등 분포로 시각화하기 위함 — 산점도에 이벤트별 점을 뿌리고, 표에서 구간별
+ * 브레이크다운을 보여준다. bestK 지점은 항상 포함하고 isOptimal 플래그. baseRate를 주면
+ * lift(P/baseRate)를 동봉. 순수·결정론(입력 같으면 byte-동일). */
+export function ahaCoverageBuckets(sweep, opts = {}) {
+  const { stepPct = 5, bestK = null, baseRate = null } = opts;
+  if (!Array.isArray(sweep) || !sweep.length) return [];
+  const shape = (s) => ({
+    k: s.k,
+    P: s.P,
+    R: s.R,
+    F1: s.F1,
+    support: s.support,
+    gated: s.gated,
+    allSupport: s.allSupport,
+    allPct: s.allPct,
+    lift: baseRate != null && baseRate > 0 ? s.P / baseRate : null,
+  });
+  const step = stepPct / 100;
+  const pcts = sweep.map((s) => s.allPct);
+  const maxPct = Math.max(...pcts);
+  const minPct = Math.min(...pcts);
+  const chosen = new Map(); // k -> point (dedup)
+  // maxPct 이하의 5% 배수 레벨(예: max 62% → 60,55,...,minPct). 각 레벨에서 allPct가 가장
+  // 가까운 sweep 점을 대표로 채택.
+  for (let lv = Math.floor(maxPct / step + 1e-9) * step; lv > 0 && lv >= minPct - 1e-9; lv -= step) {
+    let best = null;
+    let bestD = Infinity;
+    for (const s of sweep) {
+      const d = Math.abs(s.allPct - lv);
+      if (d < bestD) {
+        bestD = d;
+        best = s;
+      }
+    }
+    if (best && !chosen.has(best.k)) chosen.set(best.k, shape(best));
+  }
+  // 최고 달성률 점(가장 낮은 k)은 항상 보이도록 보강.
+  const topPt = sweep.reduce((a, b) => (b.allPct > a.allPct ? b : a), sweep[0]);
+  if (topPt && !chosen.has(topPt.k)) chosen.set(topPt.k, shape(topPt));
+  // 자동 선택된 최적 임계값(bestK) 포함.
+  if (bestK != null) {
+    const bp = sweep.find((s) => s.k === bestK);
+    if (bp && !chosen.has(bestK)) chosen.set(bestK, shape(bp));
+  }
+  const out = [...chosen.values()].map((p) => ({
+    ...p,
+    isOptimal: bestK != null && p.k === bestK,
+  }));
+  // 달성률 내림차순(높은 커버리지 → 낮은 커버리지, = k 오름차순)
+  out.sort((a, b) => b.allPct - a.allPct);
+  return out;
+}
+
 export const AHA_STATS = (() => {
   function f1(p, r) {
     if (!(p + r > 0)) return 0;
