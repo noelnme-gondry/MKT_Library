@@ -54,7 +54,10 @@ export default function RootLayout({ children }) {
         <meta name="theme-color" content="#121315" />
         <meta name="naver-site-verification" content="c4cc3586f416c84363563356e79f834ca11544a7" />
         <link rel="alternate" type="application/rss+xml" title="Growth Ops Playbook" href="/rss.xml" />
-        <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23adc6ff'/><text x='16' y='22' font-family='Inter, system-ui, sans-serif' font-size='18' font-weight='700' text-anchor='middle' fill='%231a1a2e'>M</text></svg>" />
+        {/* 구글 검색결과 파비콘은 data-URI를 못 읽음 → 크롤 가능한 파일 URL(/favicon.svg)로 제공.
+            SVG 파비콘은 구글·모던 브라우저 지원. apple-touch-icon은 iOS 홈화면·공유용. */}
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="apple-touch-icon" href="/favicon.svg" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
