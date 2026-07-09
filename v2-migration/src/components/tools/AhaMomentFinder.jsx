@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
-import { AHA_STATS } from "@/utils/ahaMath";
-import { downloadChartAsPNG } from "@/utils/chartUtils";
+import { AHA_STATS, ahaCoverageBuckets } from "@/utils/ahaMath";
+import { downloadChartAsPNG, CHART_THEME } from "@/utils/chartUtils";
 import { idToSlug } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
 import DemoLoadButton from "@/components/DemoLoadButton";
@@ -305,6 +305,9 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
   const [holdoutOn, setHoldoutOn] = useState(true);
   const [sortBy, setSortBy] = useState("f1");
   const [drilldownAction, setDrilldownAction] = useState(null);
+  // 전문가 뷰: 산점도에 표시할 이벤트 선택(null=전체) + 표에서 달성률 구간 펼침
+  const [selectedActions, setSelectedActions] = useState(null);
+  const [expandedActions, setExpandedActions] = useState(() => new Set());
   // 편집 가능한 컬럼 역할 매핑 (index.html AHA_STATE.colMap — 자동추정 시드 후 사용자 편집)
   const [colMap, setColMap] = useState({});
   // 분석 게이트: 마지막으로 "분석하기"를 눌렀을 때의 매핑 시그니처
@@ -439,6 +442,51 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
 
   const topAction = sortedResults.length ? sortedResults[0] : null;
 
+  // 이벤트별 고정 색상 — cache.results 삽입 순서 기준이라 정렬/선택이 바뀌어도 색이 안 흔들림.
+  const actionColorMap = useMemo(() => {
+    const m = {};
+    (cache.results || []).forEach((r, i) => {
+      m[r.action] = CHART_THEME.colors[i % CHART_THEME.colors.length];
+    });
+    return m;
+  }, [cache.results]);
+
+  // 이벤트별 달성률(전체 유저 중 비율) 5% 구간 대표점 — 각 이벤트의 최적 윈도우에서 k를
+  // 스윕한 뒤 ahaCoverageBuckets로 접음. §2 드릴다운 곡선과 같은 학습셋(trainIdx) 기준이라
+  // 최적 임계값(bestK)이 항상 포함됨. 산점도·표 브레이크다운 공용 데이터.
+  const bucketsByAction = useMemo(() => {
+    const out = {};
+    if (!cache.trainIdx || !cache.targets) return out;
+    for (const r of viewResults) {
+      const wc = (r.windowCols || []).find((w) => w.window === r.bestWindow);
+      if (!wc) continue;
+      const sweep = AHA_STATS.thresholdSweep(wc.valuesAll, cache.targets, cache.trainIdx, cache.minSupport);
+      out[r.action] = ahaCoverageBuckets(sweep, { stepPct: 5, bestK: r.bestK, baseRate: cache.baseRate });
+    }
+    return out;
+  }, [viewResults, cache]);
+
+  // 선택 상태: null=전체 표시. 토글 시 현재 유효집합을 실체화한 뒤 가감.
+  const allActionNames = useMemo(() => sortedResults.map((r) => r.action), [sortedResults]);
+  const isSel = (a) => (selectedActions ? selectedActions.has(a) : true);
+  const selectedCount = selectedActions ? allActionNames.filter((a) => selectedActions.has(a)).length : allActionNames.length;
+  const allSelected = selectedCount === allActionNames.length && allActionNames.length > 0;
+  const toggleSel = (a) =>
+    setSelectedActions((prev) => {
+      const base = prev ? new Set(prev) : new Set(allActionNames);
+      if (base.has(a)) base.delete(a);
+      else base.add(a);
+      return base;
+    });
+  const setAllSel = (on) => setSelectedActions(on ? new Set(allActionNames) : new Set());
+  const toggleExpand = (a) =>
+    setExpandedActions((prev) => {
+      const next = new Set(prev);
+      if (next.has(a)) next.delete(a);
+      else next.add(a);
+      return next;
+    });
+
   // 전문가 뷰 아코디언 열릴 때 산점도 재측정 (claude-ux.md §5: 접힌 <details> 안 차트는 폭 0으로 마운트)
   const onExpertToggle = (e) => {
     if (e.currentTarget.open && chartInstance.current) {
@@ -497,100 +545,86 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
       chartInstance.current.destroy();
     }
 
-    const byVal = (r) =>
-      sortBy === "lift"
-        ? r.lift == null
-          ? 0
-          : r.lift
-        : sortBy === "precision"
-          ? r.holdout.P
-          : r.holdout.F1;
-    // 색 대비를 위해 min-max 정규화(값/최대값만 쓰면 값이 클러스터돼 있을 때
-    // 색이 죄다 비슷해 보여 "정렬을 바꿔도 안 변한다"는 오해를 삼 — 표본충분
-    // 후보끼리의 실제 상대 범위로 스트레치해야 강함↔약함 그라데이션이 드러남.
-    const gatedVals = sortedResults.filter((r) => r.holdout.support >= minSupport).map(byVal);
-    const maxVal = Math.max(...gatedVals, 0.0001);
-    const minVal = gatedVals.length ? Math.min(...gatedVals) : 0;
-    const span = maxVal - minVal || 1;
-    // 현재 정렬 기준 1위(=topAction) 후보에 금색 테두리 — 정렬 버튼을 바꾸면
-    // 이 하이라이트가 다른 버블로 옮겨가 "정렬이 실제로 바뀐다"는 걸 눈에 보이게 함.
-    const topActionKey = sortedResults.length && sortedResults[0].holdout.support >= minSupport ? sortedResults[0].action : null;
-    const points = sortedResults.map((r) => {
-      const lowSupport = r.holdout.support < minSupport;
-      const intensity = lowSupport ? 0.15 : Math.max(0.1, (byVal(r) - minVal) / span);
-      const color = lowSupport
-        ? "rgba(148,163,184,0.35)"
-        : `rgba(${Math.round(247 - intensity * 130)},${Math.round(90 + intensity * 130)},${Math.round(113 + intensity * 20)},0.85)`;
-      const isTop = r.action === topActionKey;
-      return {
-        x: r.holdout.R,
-        y: r.holdout.P,
-        r: Math.max(4, Math.min(22, Math.sqrt(r.holdout.support) * 1.4)),
+    // 이벤트마다 고유 색상 1개 + 달성률 5% 구간 대표점들을 선으로 이은 궤적.
+    // 선택된(체크된) 이벤트만 그린다. 최적 임계값 점은 금색·크게 강조.
+    const shown = sortedResults.filter((r) => (selectedActions ? selectedActions.has(r.action) : true));
+    const datasets = shown.map((r) => {
+      const color = actionColorMap[r.action] || "#94a3b8";
+      const win = r.bestWindow === Infinity ? "전체" : "d" + r.bestWindow;
+      const bks = bucketsByAction[r.action] || [];
+      const data = bks.map((b) => ({
+        x: b.R,
+        y: b.P,
         action: r.action,
-        bestWindow: r.bestWindow,
-        bestK: r.bestK,
-        F1: r.holdout.F1,
-        trainF1: r.train.F1,
-        lift: r.lift,
-        support: r.holdout.support,
-        lowSupport,
-        isTop,
-        _color: color,
+        win,
+        k: b.k,
+        F1: b.F1,
+        P: b.P,
+        R: b.R,
+        lift: b.lift,
+        allSupport: b.allSupport,
+        allPct: b.allPct,
+        support: b.support,
+        gated: b.gated,
+        isOptimal: b.isOptimal,
+      }));
+      return {
+        label: r.action,
+        data,
+        showLine: true,
+        borderColor: color,
+        backgroundColor: color,
+        borderWidth: 2,
+        tension: 0.25,
+        pointBackgroundColor: data.map((p) => (p.isOptimal ? "#facc15" : color)),
+        pointBorderColor: data.map((p) => (p.isOptimal ? "#facc15" : color)),
+        pointBorderWidth: data.map((p) => (p.isOptimal ? 2 : 1)),
+        pointRadius: data.map((p) => (p.isOptimal ? 8 : Math.max(3, Math.min(11, Math.sqrt(p.allSupport || 1) * 0.5)))),
+        pointHoverRadius: data.map((p) => (p.isOptimal ? 10 : 6)),
       };
     });
 
     chartInstance.current = new Chart(chartRef.current, {
-      type: "bubble",
-      data: {
-        datasets: [
-          {
-            data: points,
-            backgroundColor: points.map((p) => p._color),
-            borderColor: points.map((p) => (p.isTop ? "#facc15" : "rgba(255,255,255,0.25)")),
-            borderWidth: points.map((p) => (p.isTop ? 3 : 1)),
-          },
-        ],
-      },
+      type: "scatter",
+      data: { datasets },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
           x: {
-            title: {
-              display: true,
-              text: "Recall",
-              color: "var(--text-muted)",
-            },
+            title: { display: true, text: "Recall (재현율)", color: CHART_THEME.text },
             min: 0,
             max: 1,
-            ticks: { color: "var(--text-muted)" },
-            grid: { color: "rgba(255,255,255,0.06)" },
+            ticks: { color: CHART_THEME.text },
+            grid: { color: CHART_THEME.grid },
           },
           y: {
-            title: {
-              display: true,
-              text: "Precision",
-              color: "var(--text-muted)",
-            },
+            title: { display: true, text: "Precision (정밀도)", color: CHART_THEME.text },
             min: 0,
             max: 1,
-            ticks: { color: "var(--text-muted)" },
-            grid: { color: "rgba(255,255,255,0.06)" },
+            ticks: { color: CHART_THEME.text },
+            grid: { color: CHART_THEME.grid },
           },
         },
         plugins: {
-          legend: { display: false },
+          legend: {
+            display: true,
+            position: "right",
+            labels: { color: CHART_THEME.text, boxWidth: 12, font: { size: 11 }, usePointStyle: true },
+          },
           tooltip: {
             callbacks: {
+              title: (items) => {
+                const p = items?.[0]?.raw;
+                return p ? `${p.action} (${p.win}, k≥${p.k})${p.isOptimal ? " ★ 최적" : ""}` : "";
+              },
               label: (ctx) => {
                 const p = ctx.raw;
                 if (!p) return [];
-                const win = p.bestWindow === Infinity ? "전체" : "d" + p.bestWindow;
                 return [
-                  `${p.action} (Best Window ${win}, k≥${p.bestK})`,
-                  `Precision ${p.y?.toFixed(3)} · Recall ${p.x?.toFixed(3)} · F1 ${p.F1?.toFixed(3)}`,
-                  `Lift ${p.lift == null ? "—" : p.lift.toFixed(2) + "×"} · support ${p.support?.toLocaleString()}`,
-                  `train F1 ${p.trainF1?.toFixed(3)}${p.lowSupport ? " · ⊘ 표본 부족" : ""}`,
+                  `달성률 ${(p.allPct * 100).toFixed(1)}% · ${p.allSupport?.toLocaleString()}명`,
+                  `정밀도 ${(p.P * 100).toFixed(0)}% · 재현율 ${(p.R * 100).toFixed(0)}% · F1 ${p.F1?.toFixed(3)}`,
+                  `평균 대비 ${p.lift == null ? "—" : p.lift.toFixed(2) + "배"} · 표본 ${p.support?.toLocaleString()}${p.gated ? " ⊘부족" : ""}`,
                 ];
               },
             },
@@ -605,7 +639,7 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
         chartInstance.current = null;
       }
     };
-  }, [hasData, analyzed, sortedResults, sortBy, minSupport, holdoutOn]);
+  }, [hasData, analyzed, sortedResults, bucketsByAction, actionColorMap, selectedActions, minSupport, holdoutOn]);
 
   // 선택된 행동의 k-스윕 곡선(§"300회 vs 100회 vs 50회면 어느 정도?").
   useEffect(() => {
@@ -1042,47 +1076,106 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
               <p className="muted" style={{ fontSize: "11.5px", marginBottom: "14px" }}>윈도우는 그리드에서 자동 선택됩니다. train에서 k를 고르고 holdout에서 재평가해 낙관 편향(overfitting)을 줄입니다.</p>
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>Aha Scatter (Precision × Recall)</div>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>정밀도 × 재현율 산점도 — 이벤트별 달성률 곡선</div>
                 <button className="ab-pill" onClick={handleScatterPng}>⬇ PNG</button>
               </div>
-              <p className="muted">X=Recall, Y=Precision, 점 크기 = 표본(support). 색은 <strong>후보끼리 상대 비교</strong>로 칠해집니다 — 진한 빨강일수록 선택한 정렬 기준(F1/Lift/Precision)에서 약함, 진한 초록일수록 강함. <span style={{ color: "#facc15" }}>●</span> 금색 테두리 = 현재 정렬 기준 1위. 표본 부족(&lt;{minSupport}) 액션은 회색·반투명입니다. 정렬 버튼을 바꾸면 색과 금색 테두리가 다시 계산됩니다.</p>
+              <p className="muted">X=재현율, Y=정밀도. <strong>이벤트마다 색이 다르고</strong>, 각 점은 <strong>달성률(전체 유저 중 그 조건을 채운 비율) 5% 구간</strong>이에요 — 점을 이은 선을 따라가면 기준을 느슨/빡빡하게 했을 때 정밀도·재현율이 어떻게 바뀌는지 보입니다. 점 크기 = 해당 인원, <span style={{ color: "#facc15" }}>●</span> 금색 큰 점 = 자동으로 고른 최적 지점. <strong>아래 표의 체크박스로 표시할 이벤트를 고르세요.</strong></p>
+              {allActionNames.length > 0 && (
+                <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "11.5px", color: MUTED }}>표시: {selectedCount}/{allActionNames.length}개</span>
+                  <button className="ab-pill" onClick={() => setAllSel(true)}>전체 선택</button>
+                  <button className="ab-pill" onClick={() => setAllSel(false)}>전체 해제</button>
+                </div>
+              )}
               <div className="chart-container" style={{ height: "380px", marginBottom: "16px" }}>
-                <canvas ref={chartRef}></canvas>
+                {selectedCount === 0 ? (
+                  <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontSize: "12.5px" }}>표시할 이벤트를 아래 표에서 체크하세요.</div>
+                ) : null}
+                <canvas ref={chartRef} style={{ display: selectedCount === 0 ? "none" : undefined }}></canvas>
               </div>
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>전체 지표 표</div>
                 <button className="ab-pill" onClick={() => downloadAhaCsv(sortedResults)} disabled={sortedResults.length === 0}>⬇ CSV</button>
               </div>
-              <p className="muted" style={{ fontSize: "11.5px" }}>행을 클릭하면 위 §2 히트맵에서 그 행동을 드릴다운합니다. 초록 lift = 강한 연관(≥1.5×). 빨강 F1 = train≫holdout(과적합 의심).</p>
+              <p className="muted" style={{ fontSize: "11.5px" }}><strong>체크박스</strong> = 위 산점도에 표시 · <strong>행(▸) 클릭</strong> = 달성률 구간별 상세 펼치기. 초록 lift = 강한 연관(≥1.5×). 빨강 F1 = train≫holdout(과적합 의심). 색 = 산점도 이벤트 색.</p>
               <div className="table-wrap">
                 <table className="data" style={{ fontSize: "12.5px" }}>
-                  <thead><tr><th>액션</th><th title="가장 강한 연관을 보인 관측 기간">최적 윈도우</th><th title="그 기간 내 최소 실행 횟수 (≥k)">기준 횟수</th><th title="타겟 달성 여부와 무관하게, 전체 유저 중 이 조건을 채운 인원·비율">전체 유저 중</th><th title="홀드아웃 F1 = 정밀도·재현율 조화평균">홀드아웃 F1</th><th title="Precision — 조건 충족 유저 중 실제 타겟 달성 비율">정밀도</th><th title="Recall — 타겟 달성 유저 중 조건 충족 비율">재현율</th><th title="Lift — base rate 대비 정밀도 배수">Lift</th><th title="조건 충족 유저 수">표본</th><th title="학습셋 F1 (홀드아웃과 큰 차이 = 과적합)">학습 F1</th></tr></thead>
+                  <thead><tr><th style={{ width: "30px", textAlign: "center" }}><input type="checkbox" checked={allSelected} onChange={(e) => setAllSel(e.target.checked)} title="전체 표시 토글" /></th><th style={{ width: "22px" }}></th><th>액션</th><th title="가장 강한 연관을 보인 관측 기간">최적 윈도우</th><th title="그 기간 내 최소 실행 횟수 (≥k)">기준 횟수</th><th title="타겟 달성 여부와 무관하게, 전체 유저 중 이 조건을 채운 인원·비율">전체 유저 중</th><th title="홀드아웃 F1 = 정밀도·재현율 조화평균">홀드아웃 F1</th><th title="Precision — 조건 충족 유저 중 실제 타겟 달성 비율">정밀도</th><th title="Recall — 타겟 달성 유저 중 조건 충족 비율">재현율</th><th title="Lift — base rate 대비 정밀도 배수">Lift</th><th title="조건 충족 유저 수">표본</th><th title="학습셋 F1 (홀드아웃과 큰 차이 = 과적합)">학습 F1</th></tr></thead>
                   <tbody>
                     {sortedResults.length === 0 ? (
-                      <tr><td colSpan="10" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>분석 가능한 액션이 없습니다</td></tr>
+                      <tr><td colSpan="12" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>분석 가능한 액션이 없습니다</td></tr>
                     ) : (
                       sortedResults.map((r) => {
                         const lowSupport = r.holdout.support < minSupport;
                         const overfit = r.train.F1 - r.holdout.F1 > 0.2;
                         const liftStrong = r.lift != null && r.lift >= 1.5;
+                        const color = actionColorMap[r.action] || "#94a3b8";
+                        const isExpanded = expandedActions.has(r.action);
+                        const bks = bucketsByAction[r.action] || [];
                         return (
-                          <tr
-                            key={r.action}
-                            onClick={() => setDrilldownAction(r.action)}
-                            style={{ cursor: "pointer", color: lowSupport ? "var(--text-muted)" : undefined }}
-                          >
-                            <td>{r.action}{lowSupport ? " ⊘" : ""}</td>
-                            <td className="tnum">{r.bestWindow === Infinity ? "전체" : "d" + r.bestWindow}</td>
-                            <td className="tnum">≥{r.bestK}</td>
-                            <td className="tnum">{(r.allSupport || 0).toLocaleString()}명 <span style={{ color: MUTED, fontSize: "10.5px" }}>({((r.allPct || 0) * 100).toFixed(1)}%)</span></td>
-                            <td className="tnum" style={{ color: overfit ? "#f87171" : undefined }}>{r.holdout.F1.toFixed(3)}</td>
-                            <td className="tnum">{r.holdout.P.toFixed(3)}</td>
-                            <td className="tnum">{r.holdout.R.toFixed(3)}</td>
-                            <td className="tnum" style={{ color: liftStrong ? "#22c55e" : undefined, fontWeight: liftStrong ? 600 : undefined }}>{r.lift == null ? "—" : r.lift.toFixed(2) + "×"}</td>
-                            <td className="tnum">{r.holdout.support.toLocaleString()}{lowSupport ? " ⊘" : ""}</td>
-                            <td className="tnum">{r.train.F1.toFixed(3)}</td>
-                          </tr>
+                          <React.Fragment key={r.action}>
+                            <tr style={{ color: lowSupport ? "var(--text-muted)" : undefined }}>
+                              <td style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+                                <input type="checkbox" checked={isSel(r.action)} onChange={() => toggleSel(r.action)} title="산점도에 표시" />
+                              </td>
+                              <td style={{ cursor: "pointer", textAlign: "center", color: MUTED }} onClick={() => toggleExpand(r.action)} title="달성률 구간별 상세">{isExpanded ? "▾" : "▸"}</td>
+                              <td style={{ cursor: "pointer" }} onClick={() => toggleExpand(r.action)}>
+                                <span style={{ display: "inline-block", width: "9px", height: "9px", borderRadius: "2px", background: color, marginRight: "6px", verticalAlign: "middle" }}></span>
+                                {r.action}{lowSupport ? " ⊘" : ""}
+                              </td>
+                              <td className="tnum">{r.bestWindow === Infinity ? "전체" : "d" + r.bestWindow}</td>
+                              <td className="tnum">≥{r.bestK}</td>
+                              <td className="tnum">{(r.allSupport || 0).toLocaleString()}명 <span style={{ color: MUTED, fontSize: "10.5px" }}>({((r.allPct || 0) * 100).toFixed(1)}%)</span></td>
+                              <td className="tnum" style={{ color: overfit ? "#f87171" : undefined }}>{r.holdout.F1.toFixed(3)}</td>
+                              <td className="tnum">{r.holdout.P.toFixed(3)}</td>
+                              <td className="tnum">{r.holdout.R.toFixed(3)}</td>
+                              <td className="tnum" style={{ color: liftStrong ? "#22c55e" : undefined, fontWeight: liftStrong ? 600 : undefined }}>{r.lift == null ? "—" : r.lift.toFixed(2) + "×"}</td>
+                              <td className="tnum">{r.holdout.support.toLocaleString()}{lowSupport ? " ⊘" : ""}</td>
+                              <td className="tnum">{r.train.F1.toFixed(3)}</td>
+                            </tr>
+                            {isExpanded && (
+                              <tr>
+                                <td colSpan="12" style={{ padding: "0", background: "var(--surface-container-low)" }}>
+                                  <div style={{ padding: "10px 12px 12px 40px", borderLeft: `3px solid ${color}` }}>
+                                    <div style={{ fontSize: "11.5px", color: MUTED, marginBottom: "6px" }}>
+                                      <strong style={{ color: "var(--text-1)" }}>{r.action}</strong> — 기준({r.bestWindow === Infinity ? "전체 기간" : `d${r.bestWindow}`})을 느슨하게(달성률↑)~빡빡하게(달성률↓) 바꿨을 때 구간별 데이터. <span style={{ color: "#facc15" }}>★</span> = 자동으로 고른 최적 지점.
+                                    </div>
+                                    {bks.length === 0 ? (
+                                      <div style={{ fontSize: "11.5px", color: MUTED }}>구간을 만들 데이터가 부족합니다.</div>
+                                    ) : (
+                                      <table className="data" style={{ fontSize: "11.5px", margin: 0 }}>
+                                        <thead>
+                                          <tr>
+                                            <th title="전체 유저 중 이 조건을 채운 비율">달성률</th>
+                                            <th title="그 달성률을 만드는 최소 실행 횟수">기준 횟수</th>
+                                            <th title="이 조건을 채운 인원">해당 인원</th>
+                                            <th title="조건 충족 유저 중 실제 전환 비율">정밀도</th>
+                                            <th title="실제 전환 유저 중 조건 충족 비율">재현율</th>
+                                            <th title="정밀도·재현율 조화평균">F1</th>
+                                            <th title="평균 정착률 대비 배수">평균 대비</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {bks.map((b) => (
+                                            <tr key={b.k} style={{ background: b.isOptimal ? "rgba(250,204,21,0.14)" : undefined, fontWeight: b.isOptimal ? 700 : undefined }}>
+                                              <td className="tnum">{b.isOptimal ? "★ " : ""}{(b.allPct * 100).toFixed(0)}%</td>
+                                              <td className="tnum">≥{b.k}</td>
+                                              <td className="tnum">{(b.allSupport || 0).toLocaleString()}명</td>
+                                              <td className="tnum">{(b.P * 100).toFixed(0)}%</td>
+                                              <td className="tnum">{(b.R * 100).toFixed(0)}%</td>
+                                              <td className="tnum">{b.F1.toFixed(3)}</td>
+                                              <td className="tnum" style={{ color: b.lift != null && b.lift >= 1.5 ? "#22c55e" : undefined }}>{b.lift == null ? "—" : b.lift.toFixed(2) + "×"}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         );
                       })
                     )}
