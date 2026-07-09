@@ -197,15 +197,28 @@ export default function AhaColumnMapper({ headers, rows, colMap, onChange }) {
     }
     onChange(next);
   };
-  // 이미 feature로 배치된 컬럼 전체의 윈도우를 한 번에 D1/D7로 맞춤 — 이벤트마다
-  // 개별 드롭다운을 바꾸지 않고 "전체 다 D7로 비교해보자" 같은 일괄 실험용.
-  const setAllWindow = (w) => {
+  // 헤더가 해당 윈도우(D1/D7)로 파싱되는 컬럼만 골라 feature로 자동 배치 — "D1 이벤트만
+  // 매핑". 이미 배치된 다른 컬럼은 건드리지 않음(타겟·id·세그먼트·다른 윈도우 feature 보존).
+  // (기존엔 배치된 feature 전체 window를 강제로 바꿔 "D1만 원하는데 전부 D1됨" 짜증 유발.)
+  const mapWindowEvents = (w) => {
     const next = { ...cm };
     for (const h of headers || []) {
-      if (next[h]?.role === "feature") next[h] = { ...next[h], window: w };
+      const role = next[h]?.role;
+      if (role === "target" || role === "id" || role === "segment") continue;
+      if (ahaParseActionWindow(h).window === w) {
+        next[h] = { ...(next[h] || {}), role: "feature", action: next[h]?.action || ahaParseActionWindow(h).action, window: w };
+      }
     }
     onChange(next);
   };
+  // 각 윈도우로 파싱되는 헤더 수(버튼 disabled·개수 표기용).
+  const windowEventCount = (w) => (headers || []).filter((h) => {
+    const role = cm[h]?.role;
+    if (role === "target" || role === "id" || role === "segment") return false;
+    return ahaParseActionWindow(h).window === w;
+  }).length;
+  const d1Count = windowEventCount(1);
+  const d7Count = windowEventCount(7);
 
   return (
     <div>
@@ -216,8 +229,8 @@ export default function AhaColumnMapper({ headers, rows, colMap, onChange }) {
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
           <button type="button" className="ab-pill" onClick={() => onChange(ahaAutoMapColumns(headers, rows))}>🪄 전부 자동 추정</button>
           <button type="button" className="ab-pill" onClick={mapAllAsFeature} title="타겟·id 제외 모든 컬럼을 선행 행동(feature)으로 일괄 배치">🏃 전체 이벤트 매핑</button>
-          <button type="button" className="ab-pill" onClick={() => setAllWindow(1)} disabled={!featureCols.length} title="배치된 선행 행동 전체의 윈도우를 D1로">D1 이벤트 매핑</button>
-          <button type="button" className="ab-pill" onClick={() => setAllWindow(7)} disabled={!featureCols.length} title="배치된 선행 행동 전체의 윈도우를 D7로">D7 이벤트 매핑</button>
+          <button type="button" className="ab-pill" onClick={() => mapWindowEvents(1)} disabled={!d1Count} title="헤더가 D1로 파싱되는 컬럼만 선행 행동으로 자동 매핑(다른 건 그대로)">D1 이벤트 매핑{d1Count ? ` (${d1Count})` : ""}</button>
+          <button type="button" className="ab-pill" onClick={() => mapWindowEvents(7)} disabled={!d7Count} title="헤더가 D7로 파싱되는 컬럼만 선행 행동으로 자동 매핑(다른 건 그대로)">D7 이벤트 매핑{d7Count ? ` (${d7Count})` : ""}</button>
           <button type="button" className="ab-pill" onClick={clearAll} title="전체 매핑을 초기화하고 처음부터 다시">🗑 전체 해제</button>
         </div>
       </div>
