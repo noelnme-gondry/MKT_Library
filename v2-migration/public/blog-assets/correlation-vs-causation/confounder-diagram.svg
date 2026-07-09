@@ -1,0 +1,32 @@
+<svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="640" height="320" fill="#ffffff"/>
+
+  <!-- 교란변수: 기온 (상단 중앙) -->
+  <rect x="240" y="34" width="160" height="52" rx="10" fill="#FEF3C7" stroke="#FCD34D"/>
+  <text x="320" y="60" fill="#92400E" font-size="15" font-weight="700" text-anchor="middle">기온 ↑ (여름)</text>
+  <text x="320" y="78" fill="#B45309" font-size="11.5" text-anchor="middle">숨은 제3의 변수</text>
+
+  <!-- 왼쪽: 아이스크림 -->
+  <rect x="60" y="180" width="180" height="52" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="150" y="212" fill="#1E3A8A" font-size="15" font-weight="700" text-anchor="middle">아이스크림 판매</text>
+
+  <!-- 오른쪽: 익사 -->
+  <rect x="400" y="180" width="180" height="52" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="490" y="212" fill="#1E3A8A" font-size="15" font-weight="700" text-anchor="middle">익사 사고</text>
+
+  <!-- 진짜 인과 화살표 (기온 → 각각) -->
+  <g stroke="#F59E0B" stroke-width="2.2" fill="#F59E0B">
+    <line x1="270" y1="86" x2="160" y2="176"/><polygon points="156,168 152,180 166,174"/>
+    <line x1="370" y1="86" x2="480" y2="176"/><polygon points="484,174 488,180 474,168"/>
+  </g>
+  <text x="180" y="130" fill="#B45309" font-size="12" font-weight="600">진짜 원인</text>
+  <text x="415" y="130" fill="#B45309" font-size="12" font-weight="600">진짜 원인</text>
+
+  <!-- 가짜 상관 (아이스크림 ⋯ 익사) -->
+  <line x1="240" y1="206" x2="400" y2="206" stroke="#94A3B8" stroke-width="1.6" stroke-dasharray="6 5"/>
+  <text x="320" y="198" fill="#64748B" font-size="12" text-anchor="middle">가짜 상관</text>
+  <text x="320" y="228" fill="#DC2626" font-size="15" font-weight="700" text-anchor="middle">✕ 직접 인과 아님</text>
+
+  <!-- 캡션 -->
+  <text x="320" y="300" fill="#6B7280" font-size="13" text-anchor="middle">숨은 제3의 변수(교란변수)가 둘 다를 움직인 거예요.</text>
+</svg>
