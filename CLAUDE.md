@@ -179,6 +179,8 @@ git merge origin/main --no-edit → git checkout --ours index.html
 - **Chart.js에 CSS `var(--x)` 리터럴 직접 전달 금지**(v2 대시보드 차트 6개): canvas `strokeStyle`은 `var()` 문법을 못 읽어 불투명 검정으로 폴백(두꺼운 검정 그리드). `getCssVar("--border")`(렌더타임 실제 rgba 해석, `chartUtils.js`)로 항상 교체. `CHART_THEME.grid/muted/text`도 라이트/다크 getter로(정적 리터럴 금지).
 - **조건부 마운트 캔버스는 최초 폭 0으로 측정됨**(§7 구 `<details>` 0px 함정과 동일 원인, v2에서도 재발): 토글로 새로 보이는 섹션·step 전환으로 새로 마운트되는 차트는 Chart.js 생성 시점에 부모가 아직 레이아웃 안 잡혀 width=0. `new Chart(...)` 직후 `requestAnimationFrame(() => instance.resize())` 1회 필수.
 - **preview 스크린샷은 매우 긴 페이지(스크롤 20000px+)에서 캡처 아티팩트 남(빈 화면·이중노출)** — 스크롤 위치가 실제로 바뀌어도(`window.scrollY` 확인됨) 스크린샷이 빈 배경만 나올 수 있음. 실제 앱 버그가 아니라 툴 한계이므로, 판정은 `preview_snapshot`(접근성 트리, 픽셀 무관)이나 콘솔 에러 유무로 하고 스크린샷 하나만 믿고 "깨졌다" 결론 내지 말 것. (§6.1: 어차피 v2 preview 육안검증은 생략, Gondry님이 직접 확인.)
+- **무거운 compute를 `useMemo(deps: colMap/매핑)`에 두면 큰 데이터(10~20만행)서 매핑 바꿀 때마다 재계산 → 메인 스레드 멈춤**(v2 5-20 Aha 실사례): 결과 계산은 **`분석하기`(analyzedSig) 게이트 뒤로만** 실행(5-18 MMM `if(!mmmAnalyzed) return` 패턴). 매핑 편집 중 UI(액션수·누락)는 행 순회 없이 colMap만으로 파생. compute는 모듈 순수함수로 추출 후 **더블 rAF 디퍼**로 `ds/AnalyzingOverlay`(스피너)를 먼저 페인트한 뒤 호출("멈춤"→"분석 중"). CSV 파싱은 `Papa {worker:true}`로 워커 스레드(업로드 멈춤 방지). 계산 자체는 여전히 메인 스레드라 진짜 논블로킹은 엔진 Web Worker화가 후속. rAF 디퍼로 바뀐 도구의 smoke는 `act`+rAF flush 필요.
+- **v2 SPA(next/link 소프트 내비)는 라우트 변경 시 GA4 page_view 자동 전송 안 함**(`gtag('config')`는 최초 로드 1회): 인앱 링크로만 도달하는 딥 페이지가 GA에 "추적 안 됨"으로 보임. `components/GaPageviews.jsx`(`usePathname`+최초 제외 ref 가드)가 경로 변경마다 `gtag('event','page_view')`. layout·GTM 이중 태깅이면 이중카운트 주의(현 GTM은 SPA 미추적이라 안전).
 
 ---
 

@@ -11,7 +11,8 @@ v2-migration/
 │  │  ├─ [[...slug]]/page.js # ★ Path 라우팅 dispatch (URL→routeMap→컴포넌트) + not-found.js
 │  │  ├─ blog/page.js·[slug]/page.js # 블로그(SEO 마케팅 컬럼) — fs MD 파이프라인, routeMap 밖
 │  │  ├─ sitemap.js·rss.xml/route.js # SEO: routeMap ROUTES + getAllPosts(블로그) 파생
-│  │  ├─ layout.js          # <head>·SEO 메타(SITE_URL)·GTM/GA4/AdSense·naver·rss alternate
+│  │  ├─ layout.js          # <head>·SEO 메타(SITE_URL)·GTM/GA4/AdSense·naver·rss alternate + <GaPageviews/>(SPA page_view)
+│  │  ├─ ../../next.config.mjs # 보안헤더(X-Frame-Options·CSP frame-ancestors·nosniff·Referrer-Policy)
 │  │  ├─ globals.css        # ★ 전 디자인 시스템 (Obsidian Flux 토큰·다크/라이트·전 클래스)
 │  │  └─ page.module.css    # 랜딩 일부 스코프 스타일
 │  ├─ lib/routeMap.js·blog.js # routeMap=slug↔id SSOT(id 불변, §4.1) / blog.js=fs MD 로더(server 전용, gray-matter+marked, content/blog/*.md 읽음)
@@ -19,7 +20,8 @@ v2-migration/
 │  │  └─ useDataStore.js    # ★ SSOT: Zustand — IA·csvGroups(스코프)·csvData(미러)·TOOL_GROUP·필터·currentRouteId·테마
 │  ├─ utils/                # ★ 순수 통계엔진 (ESM, 수학 불변, vitest 골든) + 데이터층 + 추출 math(funnel/segment/anomaly/pacing/cohort/incr)
 │  └─ components/
-│     ├─ ds/            # ★ 디자인시스템 공용(design-system-baseline.md): DataTable·CsvGuide
+│     ├─ ds/            # ★ 디자인시스템 공용(design-system-baseline.md): DataTable·CsvGuide·AnalyzingOverlay(분석/파싱 로딩)
+│     ├─ GaPageviews.jsx     # SPA 라우트 변경 시 GA4 page_view(usePathname, 최초 로드 제외)
 │     ├─ Sidebar/Header/LandingPage/CsvUploader/GlobalModals/Dashboard.jsx  # 셸
 │     ├─ tools/             # 8개 Pro 도구 (route별 1 컴포넌트)
 │     ├─ dashboard/         # 5-2 운영 대시보드 8탭 + 필터바 + 이벤트마커
