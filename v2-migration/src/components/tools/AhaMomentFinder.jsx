@@ -816,6 +816,38 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
     <div className="tab-pane active" id="tab-aha">
       <AnalyzingOverlay show={isParsing} title="데이터 불러오는 중…" sub="큰 파일은 몇 초 걸릴 수 있어요" />
       <AnalyzingOverlay show={isAnalyzing} title="분석 중…" sub={`${(csvData?.raw?.length || 0).toLocaleString()}행 계산 중`} />
+      {/* ── 나눠보기(세그먼트) 브레드크럼 — 상단 sticky(스크롤해도 붙어있음). 매핑에서 segment
+          role 준 컬럼 값별로 전체 결과를 재계산(단일 토글). 분석 후 세그먼트 있을 때만 노출. ── */}
+      {segMeta.length > 0 && (
+        <div className="page-sticky-bar" id="s-aha-segment">
+          <div className="page-sticky-row1">
+            <span className="page-sticky-title" style={{ fontSize: "13px" }}>🔀 나눠보기</span>
+            <button className={`ab-pill ${validSeg == null ? "active" : ""}`} onClick={() => setActiveSeg(null)} title="전체 데이터로 분석">전체</button>
+            {segMeta.map((s) => (
+              <React.Fragment key={s.col}>
+                <span style={{ width: "1px", height: "18px", background: "var(--border)" }}></span>
+                <span style={{ fontSize: "11.5px", color: MUTED }}>{s.col}:</span>
+                {s.values.map((v) => {
+                  const on = validSeg && validSeg.col === s.col && validSeg.value === v.value;
+                  return (
+                    <button key={v.value} className={`ab-pill ${on ? "active" : ""}`}
+                      onClick={() => setActiveSeg(on ? null : { col: s.col, value: v.value })}
+                      title={`${v.count.toLocaleString()}행`}>
+                      {v.value} <span style={{ color: MUTED, fontSize: "10px" }}>{v.count.toLocaleString()}</span>
+                    </button>
+                  );
+                })}
+                {s.truncated && <span style={{ fontSize: "10.5px", color: "#f59e0b" }}>⚠ 상위 20개만</span>}
+              </React.Fragment>
+            ))}
+            {validSeg && (
+              <span style={{ fontSize: "11px", color: MUTED, marginLeft: "auto" }}>
+                현재 <strong style={{ color: "var(--text-1)" }}>{validSeg.col}={validSeg.value}</strong>만 분석 중
+              </span>
+            )}
+          </div>
+        </div>
+      )}
       {isDemo && (
         <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <div>
@@ -869,44 +901,6 @@ export default function AhaMomentFinder({ domain = "performance" } = {}) {
 
       {showResults && (
         <>
-          {/* ── 나눠보기(세그먼트) — 매핑에서 segment role 준 컬럼 값별로 결과 재계산.
-              단일 토글([전체] 또는 값 1개). 전환 시 그 값 행만 필터해 재분석(오버레이). ── */}
-          {segMeta.length > 0 && (
-            <section className="block" id="s-aha-segment" style={{ padding: "12px 16px" }}>
-              <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-                <span style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-1)" }}>🔀 나눠보기</span>
-                <button
-                  className={`ab-pill ${validSeg == null ? "active" : ""}`}
-                  onClick={() => setActiveSeg(null)}
-                  title="전체 데이터로 분석"
-                >전체</button>
-                {segMeta.map((s) => (
-                  <React.Fragment key={s.col}>
-                    <span style={{ width: "1px", height: "18px", background: "var(--border)" }}></span>
-                    <span style={{ fontSize: "11.5px", color: MUTED }}>{s.col}:</span>
-                    {s.values.map((v) => {
-                      const on = validSeg && validSeg.col === s.col && validSeg.value === v.value;
-                      return (
-                        <button
-                          key={v.value}
-                          className={`ab-pill ${on ? "active" : ""}`}
-                          onClick={() => setActiveSeg(on ? null : { col: s.col, value: v.value })}
-                          title={`${v.count.toLocaleString()}행`}
-                        >{v.value} <span style={{ color: MUTED, fontSize: "10px" }}>{v.count.toLocaleString()}</span></button>
-                      );
-                    })}
-                    {s.truncated && <span style={{ fontSize: "10.5px", color: "#f59e0b" }}>⚠ 값이 많아 상위 20개만</span>}
-                  </React.Fragment>
-                ))}
-              </div>
-              {validSeg && (
-                <p className="muted" style={{ fontSize: "11px", margin: "8px 0 0" }}>
-                  현재 <strong style={{ color: "var(--text-1)" }}>{validSeg.col} = {validSeg.value}</strong> 세그먼트만 분석 중 (아래 모든 결과가 이 값 기준). 다른 세그먼트와 비교하려면 pill을 눌러 전환하세요.
-                </p>
-              )}
-            </section>
-          )}
-
           {/* ── §0 한눈에 보기 — 여정 질문 + 평어 결론 (통계는 흐린 글씨로 강등) ── */}
           <section className="block" id="s-aha-hero" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}>
             <h2 className="section-title" style={{ marginTop: 0 }}>{C.heroQ}</h2>
