@@ -29,7 +29,8 @@ export async function generateMetadata({ params }) {
     alternates: { canonical },
     openGraph: og,
     twitter: {
-      card: post.ogImage ? "summary_large_image" : "summary",
+      // opengraph-image.js(파일 컨벤션)가 1200×630 카드를 자동 주입 → 항상 큰 카드.
+      card: "summary_large_image",
       title: post.title,
       description: post.description,
     },
