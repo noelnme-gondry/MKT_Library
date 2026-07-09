@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ahaParseActionWindow, AHA_STATS } from "./ahaMath.js";
+import { ahaParseActionWindow, AHA_STATS, ahaCoverageBuckets } from "./ahaMath.js";
 
 describe("ahaParseActionWindow", () => {
   it("parses {action}_d{N} suffix", () => {
@@ -77,5 +77,33 @@ describe("AHA_STATS.thresholdSweep", () => {
 
   it("empty idx/no positive values → empty sweep (no throw)", () => {
     expect(AHA_STATS.thresholdSweep([], [], [], 1)).toEqual([]);
+  });
+});
+
+describe("ahaCoverageBuckets", () => {
+  it("folds a k-sweep into ~5% coverage buckets, sorted by 달성률 desc, optimal flagged", () => {
+    const { valuesAll, targets, idx } = buildSynthetic(100);
+    const sweep = AHA_STATS.thresholdSweep(valuesAll, targets, idx, 1);
+    const baseRate = targets.reduce((s, t) => s + t, 0) / targets.length;
+    const bestK = 50; // top-half threshold on this synthetic ramp
+    const buckets = ahaCoverageBuckets(sweep, { stepPct: 5, bestK, baseRate });
+    expect(buckets.length).toBeGreaterThan(1);
+    // 달성률 내림차순
+    for (let i = 1; i < buckets.length; i++)
+      expect(buckets[i].allPct).toBeLessThanOrEqual(buckets[i - 1].allPct);
+    // 최적 임계값 정확히 하나 포함·플래그
+    const opt = buckets.filter((b) => b.isOptimal);
+    expect(opt.length).toBe(1);
+    expect(opt[0].k).toBe(bestK);
+    // lift = P/baseRate 동봉
+    expect(opt[0].lift).toBeCloseTo(opt[0].P / baseRate, 10);
+    // 구간이 상식적으로 분포(연속 대표점 달성률 간격이 stepPct*2 이내)
+    for (let i = 1; i < buckets.length; i++)
+      expect(buckets[i - 1].allPct - buckets[i].allPct).toBeLessThan(0.1 + 1e-9);
+  });
+
+  it("empty sweep → empty (no throw)", () => {
+    expect(ahaCoverageBuckets([], { stepPct: 5 })).toEqual([]);
+    expect(ahaCoverageBuckets(null)).toEqual([]);
   });
 });
