@@ -1,10 +1,31 @@
 /* ----- 컬럼 자동 그룹핑: header → { action, window }.
- * 정규식 ^(.*?)[_-]?d(\d+)$ (대소문자 무시). 매치 안 되면 window=Infinity(단일 윈도우 액션).
- * (index.html ahaParseActionWindow ~30956 verbatim) */
+ * D1/D7 윈도우 표기를 접미/접두·숫자순서·day/일 변형까지 넓게 자동 인식(대소문자 무시).
+ * 어느 패턴도 안 맞으면 window=Infinity(단일 윈도우 액션). action이 비면 파싱 실패로 간주.
+ * 원 index.html은 접미사 `_dN`만 지원(`^(.*?)[_-]?d(\d+)$`) — 실데이터 관용표기(d7_invite,
+ * invite_7d, invite_day7, invite_7일 등)가 전체 윈도우로 잡히던 문제를 확장. 순수·결정론.
+ *   지원: invite_d7 / invited7 / invite_7d / invite_day7 / invite_7day / invite_7일
+ *         d7_invite / d7invite / 7d_invite / 7일_invite */
 export function ahaParseActionWindow(header) {
-  const m = String(header).match(/^(.*?)[_-]?d(\d+)$/i);
-  if (m && m[1]) return { action: m[1], window: parseInt(m[2], 10) };
-  return { action: String(header), window: Infinity };
+  const h = String(header).trim();
+  const ok = (action, win) => (action && action.trim() ? { action: action.trim(), window: win } : null);
+  // 접미사 계열 (숫자 뒤): action[_-]?dN  — 원 동작 우선(골든 유지).
+  let m = h.match(/^(.*?)[_-]?d(\d+)$/i);
+  let r = m && ok(m[1], parseInt(m[2], 10));
+  if (r) return r;
+  m = h.match(/^(.*?)[_-]?day(\d+)$/i); // action_day7
+  r = m && ok(m[1], parseInt(m[2], 10));
+  if (r) return r;
+  m = h.match(/^(.*?)[_-]?(\d+)(?:d|day|일)$/i); // action_7d / action7day / action_7일
+  r = m && ok(m[1], parseInt(m[2], 10));
+  if (r) return r;
+  // 접두사 계열 (숫자 앞): dN[_-]?action / Nd[_-]?action
+  m = h.match(/^d(\d+)[_-]?(.+)$/i); // d7_invite / d7invite
+  r = m && ok(m[2], parseInt(m[1], 10));
+  if (r) return r;
+  m = h.match(/^(\d+)(?:d|day|일)[_-]?(.+)$/i); // 7d_invite / 7일_invite
+  r = m && ok(m[2], parseInt(m[1], 10));
+  if (r) return r;
+  return { action: h, window: Infinity };
 }
 
 /* 렌더층 헬퍼(엔진 AHA_STATS 불변): thresholdSweep 결과를 "달성률(=전체 유저 중 그 조건을

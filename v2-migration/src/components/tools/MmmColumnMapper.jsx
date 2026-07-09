@@ -134,6 +134,27 @@ export function mmmPlatformTags(headers, colMap) {
   return [...set];
 }
 
+// 단일 컬럼 세그먼트(platform role) 모드일 때 그 컬럼의 고유 값 목록(빈도순, 상위 20).
+// 성별·플랫폼·국가 등 임의 차원을 값별 pill 토글로 노출하기 위한 열거. 태그 모드
+// (r.platform 없음)에선 [] 반환 — 그건 mmmPlatformTags가 담당.
+export function mmmSegmentValues(headers, rows, colMap) {
+  const r = colMapRoles(headers, colMap);
+  if (!r.platform) return null;
+  const freq = new Map();
+  for (const row of rows || []) {
+    const v = row[r.platform];
+    if (v == null || String(v).trim() === "") continue;
+    const key = String(v);
+    freq.set(key, (freq.get(key) || 0) + 1);
+  }
+  const all = [...freq.entries()].sort((a, b) => b[1] - a[1]);
+  return {
+    col: r.platform,
+    values: all.slice(0, 20).map(([value, count]) => ({ value, count })),
+    truncated: all.length > 20,
+  };
+}
+
 // colMap → MMM panel (index mmmGetPanelFromColMap 이식). platform: "all"|"android"|"ios" —
 // 컬럼 태그 모드면 plat 일치(+공통) 컬럼만 선택, 플랫폼 단일 컬럼(행필터) 모드면 그 값으로 행 필터.
 export function buildPanelFromColMap(headers, rows, colMap, platform = "all") {
@@ -211,7 +232,7 @@ const ZONES = [
   ["channel", "📈 채널 spend (여러 개 · perf/brand · 플랫폼)", true, true],
   ["dummy", "🔢 더미/이벤트 (0·1, 여러 개)", false, false],
   ["step", "📐 구조변화 step (0·1, 선택)", false, false],
-  ["platform", "🔀 플랫폼 단일 컬럼 (있을 때만)", false, false],
+  ["platform", "🔀 세그먼트/플랫폼 단일 컬럼 (선택 · 성별·플랫폼·국가 등 값별로 나눠보기)", false, false],
 ];
 
 export default function MmmColumnMapper({ headers, rows, colMap, onChange }) {

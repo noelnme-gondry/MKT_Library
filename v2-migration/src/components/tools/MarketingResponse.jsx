@@ -36,7 +36,7 @@ import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import { buildDemoCsv } from "@/utils/demoData";
-import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, mmmPlatformTags } from "@/components/tools/MmmColumnMapper";
+import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, mmmPlatformTags, mmmSegmentValues } from "@/components/tools/MmmColumnMapper";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import { CURRENCY_SYMBOLS, convertCurrency } from "@/utils/format";
 
@@ -804,6 +804,19 @@ export default function MarketingResponse() {
   const colMapSig = mmmColMap ? JSON.stringify(mmmColMap) : "";
   const mmmAnalyzed = mmmAnalyzedSig != null && mmmAnalyzedSig === colMapSig;
 
+  // 단일 컬럼 세그먼트(platform role) 모드 — 그 컬럼 고유값(성별·플랫폼·국가 등) pill 토글.
+  // 태그 모드(mmmPlatformTags)와 상호배타(buildPanelFromColMap: r.platform 있으면 태그 무시).
+  const segmentSel = useMemo(
+    () => (hasData && mmmColMap && mmmAnalyzed ? mmmSegmentValues(csvData.headers, csvData.raw, mmmColMap) : null),
+    [hasData, mmmColMap, csvData, mmmAnalyzed],
+  );
+  // platformFilter가 현재 세그먼트 값에 없으면(매핑 변경 잔상) Total로 파생(setState 대신
+  // 렌더타임 파생 — AHA validSeg 패턴, 캐스케이딩 렌더 회피). 패널·pill 모두 이 값 사용.
+  const effPlatformFilter = useMemo(() => {
+    if (segmentSel && platformFilter !== "all" && !segmentSel.values.some((v) => v.value === platformFilter)) return "all";
+    return platformFilter;
+  }, [segmentSel, platformFilter]);
+
   // Chart refs
   const cvRef = useRef(null);
   const shapleyRef = useRef(null);
@@ -824,7 +837,7 @@ export default function MarketingResponse() {
     try {
       // colMap(PRIMARY) → 패널. 미완성이면 매핑 안내(패널 empty).
       if (!mmmColMap) return { empty: true, reason: "컬럼 역할을 매핑하세요 (주차·가입/재활성·채널 spend)." };
-      const built = buildPanelFromColMap(csvData.headers, csvData.raw, mmmColMap, platformFilter);
+      const built = buildPanelFromColMap(csvData.headers, csvData.raw, mmmColMap, effPlatformFilter);
       if (built.missing.length) return { empty: true, reason: "필수 역할 미지정: " + built.missing.join(", ") };
       const panel = trimToActive(built.panel);
       const cfg = { ...MMM_METH_CONFIG, absorbed: new Set() };
@@ -858,7 +871,7 @@ export default function MarketingResponse() {
       }
       return { empty: true, reason: "분석 오류: " + msg };
     }
-  }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, platformFilter]);
+  }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, effPlatformFilter]);
 
   const decomp = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "mmm") return null;
@@ -1494,13 +1507,25 @@ export default function MarketingResponse() {
         {platformTags.length > 0 && (
           <div className="ab-pillgroup" style={{ margin: 0 }}>
             <span className="ab-pillgroup-label">플랫폼</span>
-            <button className={`ab-pill ${platformFilter === "all" ? "active" : ""}`} onClick={() => setPlatformFilter("all")}>Total</button>
+            <button className={`ab-pill ${effPlatformFilter === "all" ? "active" : ""}`} onClick={() => setPlatformFilter("all")}>Total</button>
             {platformTags.includes("android") && (
-              <button className={`ab-pill ${platformFilter === "android" ? "active" : ""}`} onClick={() => setPlatformFilter("android")}>Android</button>
+              <button className={`ab-pill ${effPlatformFilter === "android" ? "active" : ""}`} onClick={() => setPlatformFilter("android")}>Android</button>
             )}
             {platformTags.includes("ios") && (
-              <button className={`ab-pill ${platformFilter === "ios" ? "active" : ""}`} onClick={() => setPlatformFilter("ios")}>iOS</button>
+              <button className={`ab-pill ${effPlatformFilter === "ios" ? "active" : ""}`} onClick={() => setPlatformFilter("ios")}>iOS</button>
             )}
+          </div>
+        )}
+        {segmentSel && segmentSel.values.length > 0 && (
+          <div className="ab-pillgroup" style={{ margin: 0 }}>
+            <span className="ab-pillgroup-label" title={`나눠보기: ${segmentSel.col}`}>🔀 {segmentSel.col}</span>
+            <button className={`ab-pill ${effPlatformFilter === "all" ? "active" : ""}`} onClick={() => setPlatformFilter("all")}>전체</button>
+            {segmentSel.values.map((v) => (
+              <button key={v.value} className={`ab-pill ${effPlatformFilter === v.value ? "active" : ""}`} onClick={() => setPlatformFilter(v.value)} title={`${v.count.toLocaleString()}행`}>
+                {v.value}
+              </button>
+            ))}
+            {segmentSel.truncated && <span style={{ fontSize: "10.5px", color: "#f59e0b" }}>⚠ 상위 20개만</span>}
           </div>
         )}
       </div>

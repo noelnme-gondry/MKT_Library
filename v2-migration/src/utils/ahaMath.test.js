@@ -8,6 +8,20 @@ describe("ahaParseActionWindow", () => {
   it("falls back to Infinity window when no dN suffix", () => {
     expect(ahaParseActionWindow("invite")).toEqual({ action: "invite", window: Infinity });
   });
+  it("parses number-first suffix variants", () => {
+    expect(ahaParseActionWindow("invite_7d")).toEqual({ action: "invite", window: 7 });
+    expect(ahaParseActionWindow("invite_day7")).toEqual({ action: "invite", window: 7 });
+    expect(ahaParseActionWindow("invite_7day")).toEqual({ action: "invite", window: 7 });
+    expect(ahaParseActionWindow("초대_7일")).toEqual({ action: "초대", window: 7 });
+  });
+  it("parses prefix variants", () => {
+    expect(ahaParseActionWindow("d7_invite")).toEqual({ action: "invite", window: 7 });
+    expect(ahaParseActionWindow("7d_invite")).toEqual({ action: "invite", window: 7 });
+  });
+  it("keeps plain d0-like tokens as single-window actions", () => {
+    // action이 비면 파싱 실패(원 동작): 접두 d숫자만 있고 뒤가 없으면 그대로.
+    expect(ahaParseActionWindow("d0")).toEqual({ action: "d0", window: Infinity });
+  });
 });
 
 // Deterministic synthetic dataset (§3 no Math.random): 100 users, feature value
