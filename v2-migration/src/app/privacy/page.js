@@ -2,7 +2,7 @@ import { SITE_URL } from "@/lib/routeMap";
 
 // 자기 자신을 canonical로(layout canonical 제거로 홈 누수 방지, GSC 대체페이지 이슈).
 export const metadata = {
-  title: "개인정보처리방침 | Growth Ops Playbook",
+  title: "개인정보처리방침 | Growth Opt Playbook",
   alternates: { canonical: `${SITE_URL}/privacy` },
   openGraph: { url: `${SITE_URL}/privacy` },
 };
@@ -12,7 +12,7 @@ export default function PrivacyPage() {
     <main style={{ maxWidth: "720px", margin: "0 auto", padding: "48px 20px", lineHeight: 1.7 }}>
       <h1 style={{ fontSize: "24px", marginBottom: "24px" }}>개인정보처리방침</h1>
       <p>
-        본 서비스(Growth Ops Playbook)는 사용자가 업로드하는 CSV 등 운영 데이터를
+        본 서비스(Growth Opt Playbook)는 사용자가 업로드하는 CSV 등 운영 데이터를
         <strong> 서버로 전송하거나 저장하지 않으며, 브라우저 메모리에서만 처리</strong>합니다.
         페이지를 새로고침하면 업로드한 데이터는 즉시 삭제됩니다.
       </p>

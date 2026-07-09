@@ -5,7 +5,7 @@ import { getAllPosts } from "@/lib/blog";
 // Next 16 route handler → /rss.xml. 네이버 서치어드바이저 RSS 제출용.
 // sitemap.js와 동일하게 routeMap SSOT + IA(findMeta) 기반이라 도구/SOP 추가 시
 // 자동 반영(표류 없음). 홈은 채널(link)로 쓰고 item에서는 제외.
-const CHANNEL_TITLE = "Growth Ops Playbook | 마케팅 데이터 분석툴";
+const CHANNEL_TITLE = "Growth Opt Playbook | 마케팅 데이터 분석툴";
 const CHANNEL_DESC =
   "캠페인 CSV로 성과·예산 배분·A/B·MMM을 분석하는 무료 퍼포먼스 마케팅 도구와 실무 SOP.";
 

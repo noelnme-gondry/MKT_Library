@@ -41,7 +41,7 @@ function LandingHome({ onTrack }) {
 
   return (
     <>
-      <div className="page-eyebrow">Growth Ops Playbook</div>
+      <div className="page-eyebrow">Growth Opt Playbook</div>
       <h1 className="page-title">무엇을 하시겠어요?</h1>
       <p className="page-deck">
         운영 표준 가이드를 보거나, 내 운영 데이터를 올려 바로 분석하세요. 원하는
