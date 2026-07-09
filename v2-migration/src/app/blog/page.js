@@ -22,12 +22,47 @@ function fmtDate(d) {
   return dt.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
 }
 
+// 블로그 목록 구조화 데이터 — Blog(글 목록) + BreadcrumbList. ItemList로 글 순서 노출.
+function buildBlogListJsonLd(posts) {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Blog",
+        "@id": `${SITE_URL}/blog#blog`,
+        url: `${SITE_URL}/blog`,
+        name: "Growth Ops Playbook 블로그",
+        description: "퍼포먼스 마케팅·데이터 분석 인사이트",
+        inLanguage: "ko-KR",
+        blogPost: posts.slice(0, 20).map((p) => ({
+          "@type": "BlogPosting",
+          headline: p.title,
+          description: p.description,
+          datePublished: p.date || undefined,
+          url: `${SITE_URL}/blog/${p.slug}`,
+        })),
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "홈", item: `${SITE_URL}/` },
+          { "@type": "ListItem", position: 2, name: "블로그", item: `${SITE_URL}/blog` },
+        ],
+      },
+    ],
+  };
+}
+
 export default function BlogIndexPage() {
   const posts = getAllPosts();
   const tags = getAllTags();
 
   return (
     <div className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildBlogListJsonLd(posts)) }}
+      />
       <header style={{ marginBottom: "1.5rem" }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
           블로그

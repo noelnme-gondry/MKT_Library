@@ -43,13 +43,70 @@ function fmtDate(d) {
   return dt.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
 }
 
+// 본문 HTML에서 <img src> 절대경로 목록 추출(BlogPosting.image용 — 리치결과에 썸네일).
+function extractImages(html) {
+  const out = [];
+  const re = /<img[^>]+src="([^"]+)"/g;
+  let m;
+  while ((m = re.exec(html || ""))) {
+    const src = m[1];
+    out.push(src.startsWith("http") ? src : SITE_URL + src);
+  }
+  return out;
+}
+
+// 글별 구조화 데이터(JSON-LD) — BlogPosting(리치결과) + BreadcrumbList(빵부스러기).
+// SSR로 초기 HTML에 포함돼 크롤러가 즉시 파싱.
+function buildPostJsonLd(post, canonical) {
+  const publisher = {
+    "@type": "Organization",
+    name: "Growth Ops Playbook",
+    url: `${SITE_URL}/`,
+    logo: { "@type": "ImageObject", url: `${SITE_URL}/og-card.png` },
+  };
+  const images = extractImages(post.html);
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        headline: post.title,
+        description: post.description,
+        datePublished: post.date || undefined,
+        dateModified: post.date || undefined,
+        author: publisher,
+        publisher,
+        mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
+        url: canonical,
+        inLanguage: "ko-KR",
+        ...(post.keywords ? { keywords: post.keywords } : {}),
+        ...(images.length ? { image: images } : {}),
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "홈", item: `${SITE_URL}/` },
+          { "@type": "ListItem", position: 2, name: "블로그", item: `${SITE_URL}/blog` },
+          { "@type": "ListItem", position: 3, name: post.title, item: canonical },
+        ],
+      },
+    ],
+  };
+}
+
 export default async function BlogPostPage({ params }) {
   const { slug } = await params;
   const post = getPostBySlug(slug);
   if (!post) notFound();
 
+  const canonical = `${SITE_URL}/blog/${post.slug}`;
+
   return (
     <div className="page-inner" style={{ maxWidth: 760, margin: "0 auto", padding: "2rem 1.5rem" }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildPostJsonLd(post, canonical)) }}
+      />
       <Link
         href="/blog"
         style={{ fontSize: 13, color: "var(--text-muted)", textDecoration: "none" }}
