@@ -2,7 +2,7 @@ import { SITE_URL } from "@/lib/routeMap";
 
 // 자기 자신을 canonical로(layout canonical 제거로 홈 누수 방지, GSC 대체페이지 이슈).
 export const metadata = {
-  title: "이용약관 | Growth Ops Playbook",
+  title: "이용약관 | Growth Opt Playbook",
   alternates: { canonical: `${SITE_URL}/terms` },
   openGraph: { url: `${SITE_URL}/terms` },
 };
@@ -12,7 +12,7 @@ export default function TermsPage() {
     <main style={{ maxWidth: "720px", margin: "0 auto", padding: "48px 20px", lineHeight: 1.7 }}>
       <h1 style={{ fontSize: "24px", marginBottom: "24px" }}>이용약관</h1>
       <p>
-        본 서비스(Growth Ops Playbook)는 퍼포먼스 마케팅 SOP 문서와 CSV 기반 분석 도구를
+        본 서비스(Growth Opt Playbook)는 퍼포먼스 마케팅 SOP 문서와 CSV 기반 분석 도구를
         무료로 제공합니다. 서비스는 &quot;있는 그대로(as-is)&quot; 제공되며, 분석 결과의
         정확성에 대해 어떠한 보증도 하지 않습니다. 실제 의사결정은 사용자의 판단과 책임 하에
         이루어져야 합니다.

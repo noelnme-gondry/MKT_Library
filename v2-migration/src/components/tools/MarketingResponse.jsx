@@ -334,7 +334,7 @@ function buildCannibGuideDoc(cannib, targetKo) {
   L.push(`- **데이터 위생**: 분석 전에 데이터가 깨끗한지(결측·연속성) + 작년 대비 지표 변화.`);
   L.push(`- **단순 모델 점검**: "모든 지출을 하나로 뭉친 대충 만든 모델"이 왜 못 믿을 만한지(자기상관·공선성) 확인.`);
   L.push("");
-  L.push(`— Growth Ops Playbook · 마케팅 반응 분석(MMM)`);
+  L.push(`— Growth Opt Playbook · 마케팅 반응 분석(MMM)`);
   return L.join("\n");
 }
 
@@ -384,7 +384,7 @@ function buildMmmGuideDoc(mmm, targetKo) {
   L.push(`## 꼭 기억할 것`);
   L.push(`MMM는 관측 데이터 기반 **연관·기술(descriptive) 모델**이지 인과 확정이 아닙니다. "다음 예산 순위"는 반응곡선상의 가설이며, 실제 증분·ROI 확정은 홀드아웃 실험에서 합니다. 단기 캠페인 단위 배분은 예산 배분 시뮬레이터(5-3)를 쓰세요.`);
   L.push("");
-  L.push(`— Growth Ops Playbook · 마케팅 반응 분석(MMM)`);
+  L.push(`— Growth Opt Playbook · 마케팅 반응 분석(MMM)`);
   return L.join("\n");
 }
 

@@ -61,7 +61,7 @@ function extractImages(html) {
 function buildPostJsonLd(post, canonical) {
   const publisher = {
     "@type": "Organization",
-    name: "Growth Ops Playbook",
+    name: "Growth Opt Playbook",
     url: `${SITE_URL}/`,
     logo: { "@type": "ImageObject", url: `${SITE_URL}/og-card.png` },
   };

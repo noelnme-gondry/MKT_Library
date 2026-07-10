@@ -9,12 +9,12 @@ export const metadata = {
   // GSC "페이지 제목 40자 이내·설명 80자 이내" 경고 해소 + 유저가 한눈에 "뭐 하는
   // 사이트인지" 알 수 있게 재작성(SOP 문서 사이트가 아니라 CSV 분석 도구 중심으로 포지셔닝).
   title: {
-    default: "Growth Ops Playbook | 마케팅 데이터 분석툴", // 33자
-    template: "%s | Growth Ops Playbook",
+    default: "Growth Opt Playbook | 마케팅 데이터 분석툴", // 33자
+    template: "%s | Growth Opt Playbook",
   },
   description: "캠페인 CSV만 올리면 성과·예산 배분·A/B 테스트를 분석하는 무료 퍼포먼스 마케팅 도구 모음", // 53자
   keywords: "퍼포먼스 마케팅, 마케팅 데이터 분석, 마케팅 분석툴, 데이터 분석, 콘텐츠 마케팅, 구글 애널리틱스, GA4, SEO, 검색엔진최적화, ROAS, 그로스 해킹, CRM 마케팅, 데이터 드리븐, 마케팅 대시보드, 마케팅 예산 배분, MMM, 마케팅 믹스 모델링, 퍼포먼스 마케팅 SOP",
-  authors: [{ name: "Growth Ops Playbook" }],
+  authors: [{ name: "Growth Opt Playbook" }],
   robots: {
     index: true,
     follow: true,
@@ -26,9 +26,9 @@ export const metadata = {
   openGraph: {
     type: "website",
     url: "https://growthoptplaybook.com/",
-    title: "Growth Ops Playbook | 마케팅 데이터 분석툴",
+    title: "Growth Opt Playbook | 마케팅 데이터 분석툴",
     description: "캠페인 CSV로 바로 분석하는 무료 퍼포먼스 마케팅 데이터 도구", // 35자
-    siteName: "Growth Ops Playbook",
+    siteName: "Growth Opt Playbook",
     locale: "ko_KR",
     images: [
       {
@@ -40,7 +40,7 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Growth Ops Playbook | 마케팅 데이터 분석툴",
+    title: "Growth Opt Playbook | 마케팅 데이터 분석툴",
     description: "캠페인 CSV로 바로 분석하는 무료 퍼포먼스 마케팅 데이터 도구",
     images: ["https://growthoptplaybook.com/og-card.png"],
   },
@@ -55,7 +55,7 @@ export default function RootLayout({ children }) {
       <head>
         <meta name="theme-color" content="#121315" />
         <meta name="naver-site-verification" content="c4cc3586f416c84363563356e79f834ca11544a7" />
-        <link rel="alternate" type="application/rss+xml" title="Growth Ops Playbook" href="/rss.xml" />
+        <link rel="alternate" type="application/rss+xml" title="Growth Opt Playbook" href="/rss.xml" />
         {/* 구글 검색결과 파비콘은 data-URI를 못 읽음 → 크롤 가능한 파일 URL(/favicon.svg)로 제공.
             SVG 파비콘은 구글·모던 브라우저 지원. apple-touch-icon은 iOS 홈화면·공유용. */}
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -79,20 +79,20 @@ export default function RootLayout({ children }) {
                   "@type": "WebSite",
                   "@id": "https://growthoptplaybook.com/#website",
                   url: "https://growthoptplaybook.com/",
-                  name: "Growth Ops Playbook",
+                  name: "Growth Opt Playbook",
                   description: "퍼포먼스 마케팅 SOP & 데이터 분석 도구",
                   inLanguage: "ko-KR",
                 },
                 {
                   "@type": "Organization",
                   "@id": "https://growthoptplaybook.com/#org",
-                  name: "Growth Ops Playbook",
+                  name: "Growth Opt Playbook",
                   url: "https://growthoptplaybook.com/",
                   logo: "https://growthoptplaybook.com/og-card.png",
                 },
                 {
                   "@type": "SoftwareApplication",
-                  name: "Growth Ops Playbook",
+                  name: "Growth Opt Playbook",
                   applicationCategory: "BusinessApplication",
                   operatingSystem: "Web",
                   offers: { "@type": "Offer", price: "0", priceCurrency: "KRW" },

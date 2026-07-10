@@ -31,7 +31,7 @@ function buildBlogListJsonLd(posts) {
         "@type": "Blog",
         "@id": `${SITE_URL}/blog#blog`,
         url: `${SITE_URL}/blog`,
-        name: "Growth Ops Playbook 블로그",
+        name: "Growth Opt Playbook 블로그",
         description: "퍼포먼스 마케팅·데이터 분석 인사이트",
         inLanguage: "ko-KR",
         blogPost: posts.slice(0, 20).map((p) => ({

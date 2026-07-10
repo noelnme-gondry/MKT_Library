@@ -5,7 +5,7 @@ import { getAllPosts, getPostBySlug } from "@/lib/blog";
 // 각 글 <head>의 og:image·twitter:image에 자동 주입. 향후 글도 자동 커버(수동 PNG 불필요).
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "Growth Ops Playbook";
+export const alt = "Growth Opt Playbook";
 
 // 발행 글만 정적 생성(글 페이지 generateStaticParams와 동일 집합).
 export function generateStaticParams() {
@@ -33,9 +33,9 @@ async function loadGoogleFont(family, text) {
 export default async function Image({ params }) {
   const { slug } = await params;
   const post = getPostBySlug(slug);
-  const title = post?.title || "Growth Ops Playbook";
+  const title = post?.title || "Growth Opt Playbook";
   const desc = post?.description || "";
-  const brand = "Growth Ops Playbook";
+  const brand = "Growth Opt Playbook";
   const domain = "growthoptplaybook.com";
 
   // 카드에 등장하는 모든 글자를 모아 서브셋 요청(용량 최소화).

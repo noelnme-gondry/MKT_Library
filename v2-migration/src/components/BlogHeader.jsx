@@ -29,7 +29,7 @@ export default function BlogHeader() {
       <nav className="breadcrumb" aria-label="페이지 경로">
         <Link href="/" className="crumb-link" style={{ textDecoration: "none", color: "inherit", display: "inline-flex", alignItems: "center", gap: "8px" }}>
           <span className="brand-mark" style={{ width: "26px", height: "26px", fontSize: "12px" }}>GO</span>
-          <span style={{ fontWeight: 700 }}>Growth Ops Playbook</span>
+          <span style={{ fontWeight: 700 }}>Growth Opt Playbook</span>
         </Link>
         <span className="sep">/</span>
         <Link href="/blog" className="current" style={{ textDecoration: "none", color: "var(--text-secondary)" }}>블로그</Link>
