@@ -1,0 +1,27 @@
+<svg viewBox="0 0 640 400" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="640" height="400" fill="#ffffff"/>
+
+  <!-- Top total label -->
+  <text x="215" y="46" fill="#334155" font-size="14" font-weight="600" text-anchor="middle">500 conversions shown on the dashboard</text>
+
+  <!-- Incremental segment (top, blue) -->
+  <rect x="140" y="60" width="150" height="67.2" fill="#2563EB"/>
+  <text x="215" y="102" fill="#ffffff" font-size="15" font-weight="700" text-anchor="middle">120</text>
+
+  <!-- Baseline segment (bottom, gray) -->
+  <rect x="140" y="127.2" width="150" height="212.8" fill="#E2E8F0" stroke="#CBD5E1"/>
+  <text x="215" y="232" fill="#475569" font-size="15" font-weight="700" text-anchor="middle">Baseline: 380</text>
+  <text x="215" y="253" fill="#64748B" font-size="12" text-anchor="middle">Would have happened</text>
+  <text x="215" y="270" fill="#64748B" font-size="12" text-anchor="middle">without the ad</text>
+
+  <!-- Divider -->
+  <line x1="140" y1="127.2" x2="290" y2="127.2" stroke="#ffffff" stroke-width="2"/>
+
+  <!-- Incremental bracket -->
+  <path d="M 300 60 h 8 v 67.2 h -8" fill="none" stroke="#2563EB" stroke-width="1.5"/>
+  <text x="318" y="88" fill="#1D4ED8" font-size="13.5" font-weight="700">Truly created</text>
+  <text x="318" y="107" fill="#1D4ED8" font-size="13.5" font-weight="700">by the ad = 120</text>
+
+  <!-- Bottom caption -->
+  <text x="320" y="378" fill="#6B7280" font-size="13" text-anchor="middle">500 conversions show up, but the ad's real contribution may be just the blue 120.</text>
+</svg>

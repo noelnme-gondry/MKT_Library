@@ -20,7 +20,7 @@ MMM doesn't track individuals. Instead, it works backward from the big picture.
 
 Put simply, MMM takes "how much did we spend on each channel per week over the last year, and what was revenue each of those weeks?" and uses a statistical model to estimate **revenue = baseline + channel A contribution + channel B contribution + external factors**. The tool it uses here is regression (a statistical method for finding an equation that explains an outcome through multiple causes). It pulls out each cause's "share" as a number. Put even more simply: it's statistically slicing up the whole "outcome" cake you defined, showing how much each ingredient contributed.
 
-![A stacked bar chart showing MMM splitting a month of revenue into 55% baseline, 18% search, 15% social, and 12% display.](/blog-assets/marketing-mix-modeling/contribution-decomposition.svg)
+![A stacked bar chart showing MMM splitting a month of revenue into 55% baseline, 18% search, 15% social, and 12% display.](/blog-assets-en/marketing-mix-modeling/contribution-decomposition.svg)
 
 In this example, the outcome is set to "revenue." That's how it slices revenue up. Here, baseline is the share that would show up even without any advertising (brand awareness, organic traffic, repurchases, and the like) — the same baseline concept discussed in the [incrementality measurement post](/en/blog/incrementality-measurement). MMM draws that out across every channel at once.
 
@@ -34,7 +34,7 @@ Just running a naive regression of outcome on spend will give you the wrong answ
 
 An ad you saw today doesn't only produce its effect today. It can lead to a purchase days, or even weeks, later. This carryover effect is called **adstock** (the effect that lingers after you turn the ad off).
 
-![A bar chart showing that running an ad once (day 0) produces an effect that carries over and shrinks across day 1, day 2, and day 3.](/blog-assets/marketing-mix-modeling/adstock.svg)
+![A bar chart showing that running an ad once (day 0) produces an effect that carries over and shrinks across day 1, day 2, and day 3.](/blog-assets-en/marketing-mix-modeling/adstock.svg)
 
 Ignore this, and you'll attribute delayed conversions to the wrong moment and the wrong channel — distorting contribution.
 
@@ -50,7 +50,7 @@ To sum up, it answers three things.
 
 **Two, next month's forecast.** It projects roughly how much revenue you'd generate if you kept the current allocation. This comes from the nature of regression — once you have the fitted coefficients, forecasting follows naturally.
 
-![A line chart showing MMM's forecast extending from actual past revenue into the future, with uncertainty shown as a 95% confidence band that widens to the right rather than a single point estimate.](/blog-assets/marketing-mix-modeling/forecast-band.svg)
+![A line chart showing MMM's forecast extending from actual past revenue into the future, with uncertainty shown as a 95% confidence band that widens to the right rather than a single point estimate.](/blog-assets-en/marketing-mix-modeling/forecast-band.svg)
 
 What matters here is that it shouldn't claim "next month will be exactly $100k" as a single point. It shows uncertainty as a band — "somewhere in this range, with 95% probability." That's an honest forecast. Nothing in statistics is 100% certain.
 

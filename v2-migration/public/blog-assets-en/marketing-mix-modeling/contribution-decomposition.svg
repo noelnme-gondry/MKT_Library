@@ -1,0 +1,33 @@
+<svg viewBox="0 0 640 400" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="640" height="400" fill="#ffffff"/>
+
+  <!-- Top label -->
+  <text x="240" y="46" fill="#334155" font-size="14" font-weight="600" text-anchor="middle">One month of revenue = 100%</text>
+
+  <!-- Stacked bar (bottom to top: baseline, search, social, display) -->
+  <rect x="170" y="186"   width="140" height="154"  fill="#E2E8F0" stroke="#CBD5E1"/>
+  <rect x="170" y="135.6" width="140" height="50.4" fill="#2563EB"/>
+  <rect x="170" y="93.6"  width="140" height="42"   fill="#60A5FA"/>
+  <rect x="170" y="60"    width="140" height="33.6" fill="#BFDBFE"/>
+
+  <!-- Segment % -->
+  <text x="240" y="270" fill="#475569" font-size="15" font-weight="700" text-anchor="middle">55%</text>
+  <text x="240" y="166" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle">18%</text>
+  <text x="240" y="119" fill="#ffffff" font-size="12.5" font-weight="700" text-anchor="middle">15%</text>
+  <text x="240" y="82"  fill="#1E3A8A" font-size="12" font-weight="700" text-anchor="middle">12%</text>
+
+  <!-- Legend -->
+  <rect x="360" y="108" width="16" height="16" fill="#BFDBFE"/>
+  <text x="384" y="121" fill="#475569" font-size="13">Display ads</text>
+  <rect x="360" y="143" width="16" height="16" fill="#60A5FA"/>
+  <text x="384" y="156" fill="#475569" font-size="13">Social ads</text>
+  <rect x="360" y="178" width="16" height="16" fill="#2563EB"/>
+  <text x="384" y="191" fill="#475569" font-size="13">Search ads</text>
+  <rect x="360" y="213" width="16" height="16" fill="#E2E8F0" stroke="#CBD5E1"/>
+  <text x="384" y="226" fill="#475569" font-size="13">Baseline</text>
+  <text x="384" y="248" fill="#94A3B8" font-size="11.5">Revenue that would happen anyway</text>
+  <text x="384" y="264" fill="#94A3B8" font-size="11.5">(brand, organic, repurchase)</text>
+
+  <!-- Caption -->
+  <text x="320" y="380" fill="#6B7280" font-size="13" text-anchor="middle">MMM splits revenue into 'baseline + each channel's contribution.'</text>
+</svg>

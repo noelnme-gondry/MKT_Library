@@ -1,0 +1,37 @@
+<svg viewBox="0 0 660 340" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="660" height="340" fill="#ffffff"/>
+
+  <!-- Y axis label -->
+  <text x="40" y="150" fill="#9CA3AF" font-size="12" text-anchor="middle" transform="rotate(-90 40 150)">Ad effect</text>
+
+  <!-- X axis -->
+  <line x1="70" y1="280" x2="600" y2="280" stroke="#9CA3AF" stroke-width="1.5"/>
+
+  <!-- Effect bars (day 0..6, decaying) -->
+  <g fill="#2563EB">
+    <rect x="90"  y="80"  width="40" height="200"/>
+    <rect x="160" y="160" width="40" height="120"/>
+    <rect x="230" y="208" width="40" height="72"/>
+    <rect x="300" y="236" width="40" height="44"/>
+    <rect x="370" y="254" width="40" height="26"/>
+    <rect x="440" y="264" width="40" height="16"/>
+    <rect x="510" y="270" width="40" height="10"/>
+  </g>
+
+  <!-- X axis labels -->
+  <g fill="#94A3B8" font-size="12" text-anchor="middle">
+    <text x="110" y="298">Day 0</text>
+    <text x="180" y="298">Day 1</text>
+    <text x="250" y="298">Day 2</text>
+    <text x="320" y="298">Day 3</text>
+    <text x="390" y="298">Day 4</text>
+    <text x="460" y="298">Day 5</text>
+    <text x="530" y="298">Day 6</text>
+  </g>
+
+  <!-- day0 annotation -->
+  <text x="110" y="66" fill="#1D4ED8" font-size="12.5" font-weight="700" text-anchor="middle">Ad runs once here</text>
+
+  <!-- Caption -->
+  <text x="330" y="326" fill="#6B7280" font-size="13" text-anchor="middle">Even a single ad's effect carries over for days — that's adstock.</text>
+</svg>

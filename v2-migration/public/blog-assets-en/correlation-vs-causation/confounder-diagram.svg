@@ -1,0 +1,32 @@
+<svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="640" height="320" fill="#ffffff"/>
+
+  <!-- Confounder: temperature (top center) -->
+  <rect x="240" y="34" width="160" height="52" rx="10" fill="#FEF3C7" stroke="#FCD34D"/>
+  <text x="320" y="60" fill="#92400E" font-size="15" font-weight="700" text-anchor="middle">Temperature ↑ (summer)</text>
+  <text x="320" y="78" fill="#B45309" font-size="11.5" text-anchor="middle">Hidden third variable</text>
+
+  <!-- Left: ice cream -->
+  <rect x="60" y="180" width="180" height="52" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="150" y="212" fill="#1E3A8A" font-size="15" font-weight="700" text-anchor="middle">Ice cream sales</text>
+
+  <!-- Right: drowning -->
+  <rect x="400" y="180" width="180" height="52" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="490" y="212" fill="#1E3A8A" font-size="15" font-weight="700" text-anchor="middle">Drowning accidents</text>
+
+  <!-- Real causal arrows (temperature -> each) -->
+  <g stroke="#F59E0B" stroke-width="2.2" fill="#F59E0B">
+    <line x1="270" y1="86" x2="160" y2="176"/><polygon points="156,168 152,180 166,174"/>
+    <line x1="370" y1="86" x2="480" y2="176"/><polygon points="484,174 488,180 474,168"/>
+  </g>
+  <text x="180" y="130" fill="#B45309" font-size="12" font-weight="600">Real cause</text>
+  <text x="415" y="130" fill="#B45309" font-size="12" font-weight="600">Real cause</text>
+
+  <!-- Spurious correlation (ice cream ⋯ drowning) -->
+  <line x1="240" y1="206" x2="400" y2="206" stroke="#94A3B8" stroke-width="1.6" stroke-dasharray="6 5"/>
+  <text x="320" y="198" fill="#64748B" font-size="12" text-anchor="middle">Spurious correlation</text>
+  <text x="320" y="228" fill="#DC2626" font-size="15" font-weight="700" text-anchor="middle">✕ Not a direct cause</text>
+
+  <!-- Caption -->
+  <text x="320" y="300" fill="#6B7280" font-size="13" text-anchor="middle">A hidden third variable (confounder) is what's moving both of them.</text>
+</svg>

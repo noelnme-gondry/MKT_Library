@@ -33,7 +33,7 @@ Budget allocation is about deciding the future, not the past. So what you should
 
 Almost every marketing channel sees conversions grow more slowly past a certain point as you increase spend. (There are occasional exceptions, and marketers tend to run campaigns hoping for a miracle like that — though when that happens, suspecting a cannibalization effect is a chronic marketer's habit.) Plotted out, this looks like a curve that rises steeply at first and then flattens. This curve is called the **response curve**.
 
-![A response curve showing conversion growth slowing as ad spend increases. It rises steeply at first, then flattens in the saturation zone.](/blog-assets/marketing-budget-allocation/response-curve.svg)
+![A response curve showing conversion growth slowing as ad spend increases. It rises steeply at first, then flattens in the saturation zone.](/blog-assets-en/marketing-budget-allocation/response-curve.svg)
 
 A flattening section of the curve is a signal that a channel has become **saturated**. Pour more money in there, and conversions barely tick up while CPA climbs. Conversely, a channel whose curve is still steep still has room to grow.
 
@@ -50,7 +50,7 @@ The numbers make it click. Here's an example:
 - **Channel A**: average CPA looks cheap at 8,000 won. But it's already been pushed hard, so the **marginal CPA** on the next 1 million won is **15,000 won**.
 - **Channel B**: average CPA looks expensive at 12,000 won. But it still has room, so the **marginal CPA** on the next 1 million won is **13,000 won**.
 
-![A comparison of channel A and channel B's average CPA vs. marginal CPA. The average makes A (₩8,000) look cheaper, but the marginal CPA of the next won is cheaper for B (₩13,000) than for A (₩15,000).](/blog-assets/marketing-budget-allocation/marginal-cpa-comparison.svg)
+![A comparison of channel A and channel B's average CPA vs. marginal CPA. The average makes A (₩8,000) look cheaper, but the marginal CPA of the next won is cheaper for B (₩13,000) than for A (₩15,000).](/blog-assets-en/marketing-budget-allocation/marginal-cpa-comparison.svg)
 
 Looking only at averages, A looks cheaper, so you'd want to put more into A. But look at "the next won," and B is actually cheaper. So putting extra budget into B produces a bigger increase in total conversions than putting it into A. This happens because each channel hits its marginal efficiency point at a different level, and each is operating at a different spend scale to begin with. Keep shifting budget from the channel with the higher marginal CPA to the one with the lower marginal CPA, and at some point the two channels' marginal CPAs converge — and that point is your data-driven optimal allocation.
 

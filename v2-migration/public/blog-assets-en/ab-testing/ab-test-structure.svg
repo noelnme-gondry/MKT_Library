@@ -1,0 +1,33 @@
+<svg viewBox="0 0 680 330" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="680" height="330" fill="#ffffff"/>
+
+  <!-- Top traffic box -->
+  <rect x="270" y="26" width="140" height="42" rx="8" fill="#F1F5F9" stroke="#CBD5E1"/>
+  <text x="340" y="52" fill="#334155" font-size="14" font-weight="600" text-anchor="middle">Visitor traffic</text>
+
+  <!-- Split arrows -->
+  <g stroke="#94A3B8" stroke-width="1.8" fill="#94A3B8">
+    <line x1="330" y1="68" x2="200" y2="126"/><polygon points="197,118 194,130 205,124"/>
+    <line x1="350" y1="68" x2="480" y2="126"/><polygon points="483,124 486,130 475,118"/>
+  </g>
+  <text x="238" y="104" fill="#94A3B8" font-size="11.5">Random 50%</text>
+  <text x="405" y="104" fill="#94A3B8" font-size="11.5">Random 50%</text>
+
+  <!-- Variant A box -->
+  <rect x="80" y="130" width="200" height="112" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="180" y="158" fill="#334155" font-size="15" font-weight="700" text-anchor="middle">Variant A (current)</text>
+  <text x="180" y="182" fill="#475569" font-size="13" text-anchor="middle">4.2% conversion rate</text>
+  <rect x="100" y="196" width="160" height="12" rx="6" fill="#E5E7EB"/>
+  <rect x="100" y="196" width="112" height="12" rx="6" fill="#94A3B8"/>
+
+  <!-- Variant B box -->
+  <rect x="400" y="130" width="200" height="112" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="500" y="158" fill="#1E3A8A" font-size="15" font-weight="700" text-anchor="middle">Variant B (new)</text>
+  <text x="500" y="182" fill="#1D4ED8" font-size="13" font-weight="700" text-anchor="middle">4.8% conversion rate</text>
+  <rect x="420" y="196" width="160" height="12" rx="6" fill="#DBEAFE"/>
+  <rect x="420" y="196" width="128" height="12" rx="6" fill="#2563EB"/>
+
+  <!-- Bottom callout -->
+  <rect x="80" y="262" width="520" height="46" rx="10" fill="#FEF9F0" stroke="#FDE9C8"/>
+  <text x="340" y="290" fill="#92400E" font-size="13.5" font-weight="600" text-anchor="middle">B looks 0.6pp higher — but is that difference real, or just chance?</text>
+</svg>
