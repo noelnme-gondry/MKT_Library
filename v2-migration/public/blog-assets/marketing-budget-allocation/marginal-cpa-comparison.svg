@@ -33,9 +33,9 @@
 
   <!-- B채널 막대 -->
   <rect x="320" y="139" width="52" height="191" fill="#94A3B8"/>
-  <rect x="376" y="171" width="52" height="159" fill="#2563EB"/>
+  <rect x="376" y="123" width="52" height="207" fill="#2563EB"/>
   <text x="346" y="133" fill="#64748B" font-size="13" font-weight="600" text-anchor="middle">₩12,000</text>
-  <text x="402" y="165" fill="#1D4ED8" font-size="13" font-weight="700" text-anchor="middle">₩10,000</text>
+  <text x="402" y="117" fill="#1D4ED8" font-size="13" font-weight="700" text-anchor="middle">₩13,000</text>
 
   <!-- 채널 라벨 -->
   <text x="204" y="352" fill="#374151" font-size="14" font-weight="600" text-anchor="middle">A채널</text>

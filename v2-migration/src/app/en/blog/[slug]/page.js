@@ -1,22 +1,23 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAllPosts, getPostBySlug, tagSlug } from "@/lib/blog";
+import { getAllPosts, getPostBySlug } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
 
-// 발행 글만 정적 생성. 0편이면 빈 배열(라우트 미생성) — 빌드 정상 통과.
+// EN 글 상세 — KR /blog/[slug]/page.js 미러(getAllPosts/getPostBySlug locale="en").
+// hreflang: 같은 slug의 KR 파일이 있으면 alternates.languages로 상호 연결(§ blog-en 전략).
 export function generateStaticParams() {
-  return getAllPosts().map((p) => ({ slug: p.slug }));
+  return getAllPosts("en").map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const post = getPostBySlug(slug, "en");
   if (!post) return {};
 
-  const canonical = `${SITE_URL}/blog/${post.slug}`;
-  // EN 짝 파일 있으면 hreflang으로 상호 연결(§blog-en-translation-strategy) — EN은 KR 목록/내비 비노출, 링크로만 도달.
-  const enPost = getPostBySlug(slug, "en");
-  const languages = { ko: canonical, ...(enPost ? { en: `${SITE_URL}/en/blog/${slug}` } : {}) };
+  const canonical = `${SITE_URL}/en/blog/${post.slug}`;
+  const koPost = getPostBySlug(slug, "ko");
+  const languages = { en: canonical, ...(koPost ? { ko: `${SITE_URL}/blog/${slug}` } : {}) };
+
   const og = {
     type: "article",
     title: post.title,
@@ -32,7 +33,6 @@ export async function generateMetadata({ params }) {
     alternates: { canonical, languages },
     openGraph: og,
     twitter: {
-      // opengraph-image.js(파일 컨벤션)가 1200×630 카드를 자동 주입 → 항상 큰 카드.
       card: "summary_large_image",
       title: post.title,
       description: post.description,
@@ -44,10 +44,9 @@ function fmtDate(d) {
   if (!d) return "";
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return String(d);
-  return dt.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
+  return dt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
-// 본문 HTML에서 <img src> 절대경로 목록 추출(BlogPosting.image용 — 리치결과에 썸네일).
 function extractImages(html) {
   const out = [];
   const re = /<img[^>]+src="([^"]+)"/g;
@@ -59,8 +58,6 @@ function extractImages(html) {
   return out;
 }
 
-// 글별 구조화 데이터(JSON-LD) — BlogPosting(리치결과) + BreadcrumbList(빵부스러기).
-// SSR로 초기 HTML에 포함돼 크롤러가 즉시 파싱.
 function buildPostJsonLd(post, canonical) {
   const publisher = {
     "@type": "Organization",
@@ -82,15 +79,15 @@ function buildPostJsonLd(post, canonical) {
         publisher,
         mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
         url: canonical,
-        inLanguage: "ko-KR",
+        inLanguage: "en-US",
         ...(post.keywords ? { keywords: post.keywords } : {}),
         ...(images.length ? { image: images } : {}),
       },
       {
         "@type": "BreadcrumbList",
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "홈", item: `${SITE_URL}/` },
-          { "@type": "ListItem", position: 2, name: "블로그", item: `${SITE_URL}/blog` },
+          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+          { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/en/blog` },
           { "@type": "ListItem", position: 3, name: post.title, item: canonical },
         ],
       },
@@ -98,12 +95,12 @@ function buildPostJsonLd(post, canonical) {
   };
 }
 
-export default async function BlogPostPage({ params }) {
+export default async function EnBlogPostPage({ params }) {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const post = getPostBySlug(slug, "en");
   if (!post) notFound();
 
-  const canonical = `${SITE_URL}/blog/${post.slug}`;
+  const canonical = `${SITE_URL}/en/blog/${post.slug}`;
 
   return (
     <div className="page-inner" style={{ maxWidth: 760, margin: "0 auto", padding: "2rem 1.5rem" }}>
@@ -111,11 +108,8 @@ export default async function BlogPostPage({ params }) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildPostJsonLd(post, canonical)) }}
       />
-      <Link
-        href="/blog"
-        style={{ fontSize: 13, color: "var(--text-muted)", textDecoration: "none" }}
-      >
-        ← 블로그
+      <Link href="/en/blog" style={{ fontSize: 13, color: "var(--text-muted)", textDecoration: "none" }}>
+        ← Blog
       </Link>
 
       <header style={{ margin: "1rem 0 1.75rem", paddingBottom: "1.25rem", borderBottom: "1px solid var(--border-subtle)" }}>
@@ -125,9 +119,7 @@ export default async function BlogPostPage({ params }) {
         <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.75rem", flexWrap: "wrap", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-muted)" }}>
           <span>{fmtDate(post.date)}</span>
           {post.tags.map((t) => (
-            <Link key={t} href={`/blog/tag/${tagSlug(t)}`} style={{ color: "inherit", textDecoration: "none" }}>
-              #{t}
-            </Link>
+            <span key={t}>#{t}</span>
           ))}
         </div>
       </header>

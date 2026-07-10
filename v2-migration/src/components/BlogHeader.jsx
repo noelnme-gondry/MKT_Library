@@ -6,9 +6,13 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
 
-export default function BlogHeader() {
+export default function BlogHeader({ locale = "ko" }) {
   const isDarkMode = useAppStore((state) => state.isDarkMode);
   const toggleTheme = useAppStore((state) => state.toggleTheme);
+  const t =
+    locale === "en"
+      ? { blog: "Blog", home: "Home", blogHref: "/en/blog", themeLabel: "Toggle theme", crumbLabel: "Breadcrumb" }
+      : { blog: "블로그", home: "홈", blogHref: "/blog", themeLabel: "테마 전환", crumbLabel: "페이지 경로" };
 
   // body 클래스 + localStorage 반영(Header와 동일). 블로그 라우트에도 테마 적용.
   useEffect(() => {
@@ -26,13 +30,13 @@ export default function BlogHeader() {
 
   return (
     <header className="topbar" role="banner">
-      <nav className="breadcrumb" aria-label="페이지 경로">
+      <nav className="breadcrumb" aria-label={t.crumbLabel}>
         <Link href="/" className="crumb-link" style={{ textDecoration: "none", color: "inherit", display: "inline-flex", alignItems: "center", gap: "8px" }}>
           <span className="brand-mark" style={{ width: "26px", height: "26px", fontSize: "12px" }}>GO</span>
           <span style={{ fontWeight: 700 }}>Growth Ops Playbook</span>
         </Link>
         <span className="sep">/</span>
-        <Link href="/blog" className="current" style={{ textDecoration: "none", color: "var(--text-secondary)" }}>블로그</Link>
+        <Link href={t.blogHref} className="current" style={{ textDecoration: "none", color: "var(--text-secondary)" }}>{t.blog}</Link>
       </nav>
       <div className="topbar-actions">
         <Link href="/" className="btn ghost" style={{ textDecoration: "none" }}>
@@ -40,13 +44,13 @@ export default function BlogHeader() {
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
             <polyline points="9 22 9 12 15 12 15 22"></polyline>
           </svg>
-          <span>홈</span>
+          <span>{t.home}</span>
         </Link>
         <button
           className="btn ghost"
           type="button"
-          aria-label="테마 전환"
-          title="테마 전환 (라이트/다크)"
+          aria-label={t.themeLabel}
+          title={t.themeLabel}
           onClick={toggleTheme}
         >
           {isDarkMode ? (
