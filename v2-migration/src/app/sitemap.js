@@ -43,5 +43,17 @@ export default function sitemap() {
     })),
   ];
 
-  return [...routeEntries, ...blogEntries];
+  // EN 블로그(content/blog-en, §blog-en-translation-strategy) — 태그 랜딩 미구현, 목록+글만.
+  const enPosts = getAllPosts("en");
+  const enBlogEntries = [
+    { url: `${BASE}/en/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
+    ...enPosts.map((p) => ({
+      url: `${BASE}/en/blog/${p.slug}`,
+      lastModified: p.date ? new Date(p.date) : new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    })),
+  ];
+
+  return [...routeEntries, ...blogEntries, ...enBlogEntries];
 }
