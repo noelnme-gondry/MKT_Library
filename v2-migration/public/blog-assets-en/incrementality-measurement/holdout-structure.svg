@@ -1,5 +1,5 @@
-<svg viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
-  <rect x="0" y="0" width="680" height="320" fill="#ffffff"/>
+<svg viewBox="0 0 680 350" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="680" height="350" fill="#ffffff"/>
 
   <!-- Exposed-group box -->
   <rect x="30" y="40" width="240" height="170" rx="12" fill="#EFF6FF" stroke="#BFDBFE"/>
@@ -19,10 +19,12 @@
   <text x="340" y="138" fill="#94A3B8" font-size="40" font-weight="400" text-anchor="middle">−</text>
 
   <!-- Result callout -->
-  <rect x="30" y="232" width="620" height="52" rx="10" fill="#ECFDF5" stroke="#6EE7B7"/>
-  <text x="52" y="256" fill="#065F46" font-size="14.5" font-weight="700">5.0% − 3.8% = 1.2pp</text>
-  <text x="52" y="275" fill="#047857" font-size="13">This 1.2pp is the ad's net incrementality — conversions truly created by the ad.</text>
+  <rect x="30" y="232" width="620" height="66" rx="10" fill="#ECFDF5" stroke="#6EE7B7"/>
+  <text x="52" y="255" fill="#065F46" font-size="14.5" font-weight="700">5.0% − 3.8% = 1.2pp</text>
+  <text x="52" y="274" fill="#047857" font-size="13">This 1.2pp is the ad's net incrementality — conversions truly created</text>
+  <text x="52" y="291" fill="#047857" font-size="13">by the ad.</text>
 
   <!-- Note -->
-  <text x="30" y="306" fill="#94A3B8" font-size="11.5">* The key is randomly splitting the two groups so only ad exposure differs, with every other condition held equal.</text>
+  <text x="30" y="320" fill="#94A3B8" font-size="11.5">* The key is randomly splitting the two groups so only ad exposure differs,</text>
+  <text x="30" y="335" fill="#94A3B8" font-size="11.5">with every other condition held equal.</text>
 </svg>
