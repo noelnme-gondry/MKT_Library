@@ -1,5 +1,5 @@
-<svg viewBox="0 0 640 400" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
-  <rect x="0" y="0" width="640" height="400" fill="#ffffff"/>
+<svg viewBox="0 0 640 410" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="640" height="410" fill="#ffffff"/>
 
   <!-- Top total label -->
   <text x="215" y="46" fill="#334155" font-size="14" font-weight="600" text-anchor="middle">500 conversions shown on the dashboard</text>
@@ -23,5 +23,6 @@
   <text x="318" y="107" fill="#1D4ED8" font-size="13.5" font-weight="700">by the ad = 120</text>
 
   <!-- Bottom caption -->
-  <text x="320" y="378" fill="#6B7280" font-size="13" text-anchor="middle">500 conversions show up, but the ad's real contribution may be just the blue 120.</text>
+  <text x="320" y="378" fill="#6B7280" font-size="13" text-anchor="middle">500 conversions show up, but the ad's real contribution</text>
+  <text x="320" y="396" fill="#6B7280" font-size="13" text-anchor="middle">may be just the blue 120.</text>
 </svg>

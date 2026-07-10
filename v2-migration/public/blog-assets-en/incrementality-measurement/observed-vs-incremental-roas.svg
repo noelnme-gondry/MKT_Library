@@ -1,5 +1,5 @@
-<svg viewBox="0 0 620 380" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
-  <rect x="0" y="0" width="620" height="380" fill="#ffffff"/>
+<svg viewBox="0 0 620 400" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="620" height="400" fill="#ffffff"/>
 
   <!-- X axis -->
   <line x1="90" y1="300" x2="540" y2="300" stroke="#9CA3AF" stroke-width="1.5"/>
@@ -17,5 +17,6 @@
   <text x="425" y="340" fill="#94A3B8" font-size="12" text-anchor="middle">(holdout)</text>
 
   <!-- Bottom caption -->
-  <text x="310" y="368" fill="#6B7280" font-size="13" text-anchor="middle">Same campaign, same data, yet this different. Budget decisions should follow the right-hand number.</text>
+  <text x="310" y="368" fill="#6B7280" font-size="13" text-anchor="middle">Same campaign, same data, yet this different.</text>
+  <text x="310" y="386" fill="#6B7280" font-size="13" text-anchor="middle">Budget decisions should follow the right-hand number.</text>
 </svg>

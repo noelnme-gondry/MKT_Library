@@ -42,10 +42,11 @@
   <text x="374" y="352" fill="#374151" font-size="14" font-weight="600" text-anchor="middle">Channel B</text>
 
   <!-- Callout -->
-  <rect x="484" y="96" width="148" height="112" rx="8" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
-  <text x="498" y="120" fill="#1E3A8A" font-size="13" font-weight="700">Here's the key</text>
-  <text x="498" y="142" fill="#1E40AF" font-size="12.5">A looks cheaper</text>
-  <text x="498" y="161" fill="#1E40AF" font-size="12.5">on average. But B is</text>
-  <text x="498" y="180" fill="#1E40AF" font-size="12.5">cheaper on the next won.</text>
-  <text x="498" y="199" fill="#1D4ED8" font-size="12.5" font-weight="700">→ Add budget to B</text>
+  <rect x="484" y="96" width="148" height="132" rx="8" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+  <text x="498" y="118" fill="#1E3A8A" font-size="13" font-weight="700">Here's the key</text>
+  <text x="498" y="139" fill="#1E40AF" font-size="12">A looks cheaper</text>
+  <text x="498" y="156" fill="#1E40AF" font-size="12">on average — but</text>
+  <text x="498" y="173" fill="#1E40AF" font-size="12">B is cheaper on</text>
+  <text x="498" y="190" fill="#1E40AF" font-size="12">the next won.</text>
+  <text x="498" y="215" fill="#1D4ED8" font-size="12" font-weight="700">→ Add budget to B</text>
 </svg>

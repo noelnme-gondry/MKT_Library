@@ -42,20 +42,20 @@
   </g>
   <g text-anchor="middle">
     <text x="212" y="155" fill="#1D4ED8" font-size="15" font-weight="700">CPI</text>
-    <text x="212" y="176" fill="#475569" font-size="11.5">Spend ÷ Installs</text>
-    <text x="212" y="195" fill="#64748B" font-size="11">Cost per install</text>
+    <text x="212" y="175" fill="#475569" font-size="10.5">Spend ÷ Installs</text>
+    <text x="212" y="193" fill="#64748B" font-size="10">Cost per install</text>
 
     <text x="352" y="155" fill="#1D4ED8" font-size="15" font-weight="700">CPA</text>
-    <text x="352" y="176" fill="#475569" font-size="11.5">Spend ÷ Conversions</text>
-    <text x="352" y="195" fill="#64748B" font-size="11">Cost per conversion</text>
+    <text x="352" y="175" fill="#475569" font-size="10.5">Spend ÷ Convs.</text>
+    <text x="352" y="193" fill="#64748B" font-size="10">Cost per conv.</text>
 
     <text x="492" y="155" fill="#1D4ED8" font-size="15" font-weight="700">ROAS</text>
-    <text x="492" y="176" fill="#475569" font-size="11.5">Revenue ÷ Spend</text>
-    <text x="492" y="195" fill="#64748B" font-size="11">Spend recovery rate</text>
+    <text x="492" y="175" fill="#475569" font-size="10.5">Revenue ÷ Spend</text>
+    <text x="492" y="193" fill="#64748B" font-size="10">Spend recovered</text>
 
     <text x="632" y="155" fill="#1D4ED8" font-size="15" font-weight="700">LTV : CAC</text>
-    <text x="632" y="176" fill="#475569" font-size="11.5">Lifetime value ÷ acquisition cost</text>
-    <text x="632" y="195" fill="#64748B" font-size="11">Long-term sustainability</text>
+    <text x="632" y="175" fill="#475569" font-size="10.5">Value ÷ cost</text>
+    <text x="632" y="193" fill="#64748B" font-size="10">Long-term view</text>
   </g>
 
   <!-- Direction label -->
