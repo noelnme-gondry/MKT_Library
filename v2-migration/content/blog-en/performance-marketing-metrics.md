@@ -20,7 +20,7 @@ There's a reason for that. There isn't just one thing that can hurt performance.
 
 Spend ad budget, and people come in, install or sign up, purchase (convert), generate revenue, and — if things go well — repurchase. Each stage has its own metric attached to it.
 
-![A flow diagram of the performance marketing metrics chain. Ad spend leads to installs, conversion/purchase, revenue, and repurchase/long-term value, with CPI, CPA, ROAS, and LTV:CAC attached at each stage.](/blog-assets/performance-marketing-metrics/metric-chain.svg)
+![A flow diagram of the performance marketing metrics chain. Ad spend leads to installs, conversion/purchase, revenue, and repurchase/long-term value, with CPI, CPA, ROAS, and LTV:CAC attached at each stage.](/blog-assets-en/performance-marketing-metrics/metric-chain.svg)
 
 Lay it out left to right like this, and it becomes clear exactly which "link" each metric is watching. Let's go through them one at a time.
 
@@ -41,7 +41,7 @@ Here's where it gets genuinely useful. Line up every stage side by side, and you
 
 Here's an example. CPA is low — meaning you're generating conversions cheaply. But ROAS isn't showing up.
 
-![An example of locating the problem using the metrics chain. CPI and CPA are normal (green), but ROAS is flashing red, and LTV:CAC is on hold due to insufficient data. The problem sits in the post-conversion revenue stage.](/blog-assets/performance-marketing-metrics/metric-chain-diagnosis.svg)
+![An example of locating the problem using the metrics chain. CPI and CPA are normal (green), but ROAS is flashing red, and LTV:CAC is on hold due to insufficient data. The problem sits in the post-conversion revenue stage.](/blog-assets-en/performance-marketing-metrics/metric-chain-diagnosis.svg)
 
 In this case, the problem isn't upstream in the ad. Conversions are being generated fine — it's that the average order value of those conversions is too low to translate into revenue. A low average order value can mean either too few purchases, or plenty of purchases at too low a price point.
 

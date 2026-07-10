@@ -28,7 +28,7 @@ This is called the counterfactual (a hypothetical that never actually happened).
 
 A significant chunk of the conversions showing up in your dashboard may be "baseline" — conversions that would have happened even without the ad. Strip out that baseline, and what's left is the pure incremental share.
 
-![An illustration showing that of 500 conversions on the dashboard, 380 are baseline that would have happened without the ad, and only the 120 on top are the true incremental conversions the ad created.](/blog-assets/incrementality-measurement/attribution-vs-incremental.svg)
+![An illustration showing that of 500 conversions on the dashboard, 380 are baseline that would have happened without the ad, and only the 120 on top are the true incremental conversions the ad created.](/blog-assets-en/incrementality-measurement/attribution-vs-incremental.svg)
 
 Just like this image. Even if marketing shows 500 conversions, the ad may have genuinely created only the 120 on top. The other 380 were customers who were coming anyway. The problem is the dashboard doesn't separate the two — it shows all 500 as credit for the ad.
 
@@ -42,7 +42,7 @@ The core idea is one thing: compare a group that saw the ad against a group that
 
 Split users into two groups. Show one group the ad (exposed group), and deliberately withhold it from the other (control group, or holdout). Then compare the conversion rate difference between the two.
 
-![A holdout experiment structure diagram showing an exposed-group conversion rate of 5.0% minus a control-group conversion rate of 3.8%, yielding a net incrementality of 1.2 percentage points from the ad.](/blog-assets/incrementality-measurement/holdout-structure.svg)
+![A holdout experiment structure diagram showing an exposed-group conversion rate of 5.0% minus a control-group conversion rate of 3.8%, yielding a net incrementality of 1.2 percentage points from the ad.](/blog-assets-en/incrementality-measurement/holdout-structure.svg)
 
 The key point is that the two groups are identical in every condition except ad exposure. That lets you confidently attribute the difference to "thanks to the ad." It's the method closest to a true experiment (RCT, randomized controlled trial), and the most rigorous one for establishing causation. Platforms like Facebook and Google also offer holdout features (Conversion Lift).
 
@@ -68,7 +68,7 @@ If setting this up is too much of a hassle, you can instead use regression to ex
 
 Observed performance is inflated because it counts baseline as ad credit too. iROAS (incremental ROAS) and iCPA, recalculated on incrementality alone, usually come out lower — and that's closer to your ad's true performance.
 
-![A bar chart comparing observed ROAS of 800% against incremental ROAS of 190% side by side. Even for the same campaign, the incremental figure is far lower.](/blog-assets/incrementality-measurement/observed-vs-incremental-roas.svg)
+![A bar chart comparing observed ROAS of 800% against incremental ROAS of 190% side by side. Even for the same campaign, the incremental figure is far lower.](/blog-assets-en/incrementality-measurement/observed-vs-incremental-roas.svg)
 
 This isn't meant to scare you with the numbers — quite the opposite. It's exactly this right-hand number that lets you actually direct budget toward what's genuinely efficient. And that can meaningfully change the direction of your business.
 

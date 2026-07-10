@@ -1,0 +1,28 @@
+<svg viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="680" height="320" fill="#ffffff"/>
+
+  <!-- Exposed-group box -->
+  <rect x="30" y="40" width="240" height="170" rx="12" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="150" y="70" fill="#1E3A8A" font-size="16" font-weight="700" text-anchor="middle">Exposed group</text>
+  <text x="150" y="90" fill="#64748B" font-size="12.5" text-anchor="middle">Saw the ad</text>
+  <text x="150" y="122" fill="#1D4ED8" font-size="14" font-weight="700" text-anchor="middle">5.0% conversion rate</text>
+  <rect x="120" y="128" width="60" height="67" fill="#2563EB"/>
+
+  <!-- Control-group box -->
+  <rect x="410" y="40" width="240" height="170" rx="12" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="530" y="70" fill="#334155" font-size="16" font-weight="700" text-anchor="middle">Control group (holdout)</text>
+  <text x="530" y="90" fill="#64748B" font-size="12.5" text-anchor="middle">Deliberately withheld</text>
+  <text x="530" y="122" fill="#475569" font-size="14" font-weight="700" text-anchor="middle">3.8% conversion rate</text>
+  <rect x="500" y="144" width="60" height="51" fill="#94A3B8"/>
+
+  <!-- Minus -->
+  <text x="340" y="138" fill="#94A3B8" font-size="40" font-weight="400" text-anchor="middle">−</text>
+
+  <!-- Result callout -->
+  <rect x="30" y="232" width="620" height="52" rx="10" fill="#ECFDF5" stroke="#6EE7B7"/>
+  <text x="52" y="256" fill="#065F46" font-size="14.5" font-weight="700">5.0% − 3.8% = 1.2pp</text>
+  <text x="52" y="275" fill="#047857" font-size="13">This 1.2pp is the ad's net incrementality — conversions truly created by the ad.</text>
+
+  <!-- Note -->
+  <text x="30" y="306" fill="#94A3B8" font-size="11.5">* The key is randomly splitting the two groups so only ad exposure differs, with every other condition held equal.</text>
+</svg>

@@ -18,7 +18,7 @@ That's the kind of illusion you get when you confuse correlation with causation.
 
 Simply put: correlation means "they move together," causation means "one produces the other."
 
-![Two line charts of ice cream sales and drowning accidents, both spiking together in summer and falling together in winter over a year. They move identically, but neither causes the other.](/blog-assets/correlation-vs-causation/spurious-correlation.svg)
+![Two line charts of ice cream sales and drowning accidents, both spiking together in summer and falling together in winter over a year. They move identically, but neither causes the other.](/blog-assets-en/correlation-vs-causation/spurious-correlation.svg)
 
 Ice cream sales and drownings move in lockstep on a chart — the correlation is very high. But one doesn't produce the other. High correlation doesn't mean causation.
 
@@ -26,7 +26,7 @@ Ice cream sales and drownings move in lockstep on a chart — the correlation is
 
 The most common reason is a "hidden third cause." This is called a confounder — a hidden variable lurking behind the scenes that moves two things at once.
 
-![A diagram showing that the hidden variable of temperature (summer) is the true cause of both ice cream sales and drowning accidents, making the link between ice cream and drowning a spurious correlation.](/blog-assets/correlation-vs-causation/confounder-diagram.svg)
+![A diagram showing that the hidden variable of temperature (summer) is the true cause of both ice cream sales and drowning accidents, making the link between ice cream and drowning a spurious correlation.](/blog-assets-en/correlation-vs-causation/confounder-diagram.svg)
 
 The real cause behind ice cream and drowning is temperature. When summer arrives, ice cream sells more, and more people go swimming, so drownings rise too. Makes sense, right? But the connection between those two outcomes is a "spurious correlation."
 

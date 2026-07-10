@@ -1,0 +1,28 @@
+<svg viewBox="0 0 680 340" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="680" height="340" fill="#ffffff"/>
+
+  <!-- Legend -->
+  <rect x="150" y="26" width="14" height="14" fill="#2563EB"/>
+  <text x="170" y="38" fill="#475569" font-size="12.5">Ice cream sales</text>
+  <rect x="330" y="26" width="14" height="14" fill="#F59E0B"/>
+  <text x="350" y="38" fill="#475569" font-size="12.5">Drowning accidents</text>
+
+  <!-- Axis -->
+  <line x1="60" y1="270" x2="630" y2="270" stroke="#9CA3AF" stroke-width="1.5"/>
+
+  <!-- Ice cream line (summer peak) -->
+  <polyline points="80,240 130,225 180,190 230,140 280,95 330,72 380,80 430,110 480,155 530,200 580,230 620,245"
+            fill="none" stroke="#2563EB" stroke-width="2.8"/>
+
+  <!-- Drowning line (same shape, slightly lower) -->
+  <polyline points="80,252 130,240 180,208 230,162 280,120 330,100 380,106 430,132 480,172 530,214 580,242 620,255"
+            fill="none" stroke="#F59E0B" stroke-width="2.8" stroke-dasharray="6 4"/>
+
+  <!-- Season labels -->
+  <text x="330" y="292" fill="#94A3B8" font-size="12" text-anchor="middle">Summer</text>
+  <text x="90" y="292" fill="#94A3B8" font-size="12" text-anchor="middle">Winter</text>
+  <text x="610" y="292" fill="#94A3B8" font-size="12" text-anchor="middle">Winter</text>
+
+  <!-- Caption -->
+  <text x="345" y="322" fill="#6B7280" font-size="13" text-anchor="middle">They move in lockstep — but that doesn't mean ice cream causes drowning.</text>
+</svg>

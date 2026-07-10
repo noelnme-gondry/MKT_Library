@@ -26,7 +26,7 @@ Doing A/B testing properly means ruling out that chance and determining whether 
 
 The structure is simple. Randomly split your subjects roughly in half, show one half variant A and the other variant B, and compare conversion rate (or an absolute count).
 
-![An A/B test structure diagram splitting visitor traffic randomly 50/50 between variant A (4.2% conversion rate) and variant B (4.8% conversion rate) for comparison.](/blog-assets/ab-testing/ab-test-structure.svg)
+![An A/B test structure diagram splitting visitor traffic randomly 50/50 between variant A (4.2% conversion rate) and variant B (4.8% conversion rate) for comparison.](/blog-assets-en/ab-testing/ab-test-structure.svg)
 
 "Random" is the key word here. Randomize the split, and the two groups differ only in which screen they see — every other condition is equal. That lets you attribute the conversion rate difference to "thanks to the screen difference." (This is the same logic as the holdout in the [incrementality measurement post](/en/blog/incrementality-measurement) — you're just changing the screen instead of the ad.)
 
@@ -44,7 +44,7 @@ Significance is, simply put, "how unlikely is it that this difference is just ch
 
 This is the trap that catches the most people. You keep peeking at results mid-experiment, and the moment B pulls ahead, you go "got it!" and stop.
 
-![A chart showing the conversion rate gap between B and A in an A/B experiment swinging wildly early on, before converging over 14 days to the true difference of 0.4 percentage points. It's marked to show that stopping on day 3 would have looked like a decisive win for B.](/blog-assets/ab-testing/peeking-trap.svg)
+![A chart showing the conversion rate gap between B and A in an A/B experiment swinging wildly early on, before converging over 14 days to the true difference of 0.4 percentage points. It's marked to show that stopping on day 3 would have looked like a decisive win for B.](/blog-assets-en/ab-testing/peeking-trap.svg)
 
 As the chart shows, the gap swings wildly up and down early on. Stop on day 3, and you'd mistake it for "a landslide win for B" — but leave it running a few more days, and it converges to the real difference (here, +0.4 percentage points). That's why it's safer not to look at results until your planned sample is fully collected.
 

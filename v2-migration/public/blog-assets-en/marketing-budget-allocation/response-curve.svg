@@ -1,0 +1,35 @@
+<svg viewBox="0 0 640 400" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="640" height="400" fill="#ffffff"/>
+
+  <!-- Saturation zone shading -->
+  <rect x="360" y="40" width="240" height="280" fill="#FEE2E2" opacity="0.7"/>
+
+  <!-- Axes -->
+  <line x1="80" y1="320" x2="600" y2="320" stroke="#9CA3AF" stroke-width="1.5"/>
+  <line x1="80" y1="320" x2="80" y2="40" stroke="#9CA3AF" stroke-width="1.5"/>
+
+  <!-- Axis labels -->
+  <text x="600" y="345" fill="#6B7280" font-size="14" text-anchor="end">Ad spend →</text>
+  <text x="72" y="52" fill="#6B7280" font-size="14" text-anchor="end" transform="rotate(-90 72 52)">Conversions ↑</text>
+
+  <!-- Knee point dashed line -->
+  <line x1="360" y1="320" x2="360" y2="128" stroke="#DC2626" stroke-width="1.3" stroke-dasharray="5 4"/>
+
+  <!-- Response curve -->
+  <path d="M 80 320 C 170 175, 265 130, 600 108" fill="none" stroke="#2563EB" stroke-width="3"/>
+
+  <!-- Point on the curve -->
+  <circle cx="360" cy="128" r="4.5" fill="#DC2626"/>
+
+  <!-- Early-zone annotation -->
+  <text x="150" y="245" fill="#1E3A8A" font-size="14" font-weight="600">In this zone,</text>
+  <text x="150" y="265" fill="#1E3A8A" font-size="14" font-weight="600">every won converts fast</text>
+
+  <!-- Knee annotation -->
+  <text x="360" y="118" fill="#DC2626" font-size="13" font-weight="600" text-anchor="middle">Efficiency drops from here</text>
+
+  <!-- Saturation zone annotation -->
+  <text x="480" y="200" fill="#991B1B" font-size="14" font-weight="600" text-anchor="middle">Past this point,</text>
+  <text x="480" y="220" fill="#991B1B" font-size="14" font-weight="600" text-anchor="middle">more spend barely moves it</text>
+  <text x="480" y="240" fill="#991B1B" font-size="14" font-weight="600" text-anchor="middle">(saturation)</text>
+</svg>
