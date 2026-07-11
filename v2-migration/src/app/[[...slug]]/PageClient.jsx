@@ -8,6 +8,7 @@ import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
 import SopContent from "@/components/sops/SopContent";
 import LandingPage from "@/components/LandingPage";
+import MobileToolNudge from "@/components/MobileToolNudge";
 
 // 도구는 무겁고(Chart.js·XLSX·PapaParse) 라우트별로 하나만 필요 → next/dynamic으로
 // 코드 분할. 정적 import 시 홈 포함 모든 경로가 앱 전체 JS(~1MB)를 최초 로드해
@@ -58,6 +59,9 @@ export default function PageClient({ params }) {
         <main className="main">
           <Header />
           <article className="content" id="content" aria-live="polite">
+            {/* 모바일 안내 배너: 대시보드+전 분석 도구(5-x·9-x)만, 블로그/랜딩/SOP 제외 */}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge />}
+
             {/* 라우팅: URL에서 해석한 routeId 기준 직접 디스패치 (스토어 비의존 → 첫 페인트 플래시 없음) */}
             {routeId === "home" && <LandingPage />}
 

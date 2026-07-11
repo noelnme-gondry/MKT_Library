@@ -254,6 +254,11 @@ export const useAppStore = create(persist((set, get) => ({
   isCmdkOpen: false,
   setCmdkOpen: (isOpen) => set({ isCmdkOpen: isOpen }),
 
+  // 모바일 도구 안내 배너(§12.13 피드백 넛지와 동일 스타일) — 세션 한정 dismiss.
+  // persist 대상 아님(partialize 미포함) → 새로고침 시 리셋, 매 세션 다시 노출.
+  mobileNudgeDismissed: false,
+  dismissMobileNudge: () => set({ mobileNudgeDismissed: true }),
+
   // ── 광고 인터스티셜 게이트 + 광고 제외(ad-free) ──────────────────────────
   // 분석하기 클릭 시 광고 모달을 띄우고, 닫으면 실제 분석을 실행. adFree면 즉시 실행.
   // adGate는 휘발(비영속): open=모달 표시, pending=닫을 때 실행할 콜백, seq=열 때마다
