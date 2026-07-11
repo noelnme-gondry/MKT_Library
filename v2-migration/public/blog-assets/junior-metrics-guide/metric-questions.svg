@@ -1,0 +1,45 @@
+<svg viewBox="0 0 700 400" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="700" height="400" fill="#ffffff"/>
+
+  <!-- 세로 사슬 4단 -->
+  <!-- 1 CTR -->
+  <rect x="60" y="34" width="150" height="58" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="135" y="60" fill="#1D4ED8" font-size="15" font-weight="700" text-anchor="middle">CTR</text>
+  <text x="135" y="80" fill="#3B82F6" font-size="11.5" text-anchor="middle">클릭률</text>
+  <text x="234" y="60" fill="#334155" font-size="14" font-weight="600">"소재가 눈길을 끌었나?"</text>
+  <text x="234" y="82" fill="#64748B" font-size="12.5">낮으면 → 소재·후크 문제</text>
+
+  <!-- arrow -->
+  <line x1="135" y1="92" x2="135" y2="112" stroke="#94A3B8" stroke-width="2"/>
+  <polygon points="130,106 135,118 140,106" fill="#94A3B8"/>
+
+  <!-- 2 전환율 -->
+  <rect x="60" y="120" width="150" height="58" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="135" y="146" fill="#1D4ED8" font-size="15" font-weight="700" text-anchor="middle">전환율</text>
+  <text x="135" y="166" fill="#3B82F6" font-size="11.5" text-anchor="middle">CVR</text>
+  <text x="234" y="146" fill="#334155" font-size="14" font-weight="600">"들어와서 행동까지 갔나?"</text>
+  <text x="234" y="168" fill="#64748B" font-size="12.5">낮으면 → 랜딩·상품 문제</text>
+
+  <line x1="135" y1="178" x2="135" y2="198" stroke="#94A3B8" stroke-width="2"/>
+  <polygon points="130,192 135,204 140,192" fill="#94A3B8"/>
+
+  <!-- 3 CPA -->
+  <rect x="60" y="206" width="150" height="58" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="135" y="232" fill="#1D4ED8" font-size="15" font-weight="700" text-anchor="middle">CPA</text>
+  <text x="135" y="252" fill="#3B82F6" font-size="11.5" text-anchor="middle">전환당 비용</text>
+  <text x="234" y="232" fill="#334155" font-size="14" font-weight="600">"한 명 데려오는 데 얼마?"</text>
+  <text x="234" y="254" fill="#64748B" font-size="12.5">높으면 → 효율 or 배분 문제</text>
+
+  <line x1="135" y1="264" x2="135" y2="284" stroke="#94A3B8" stroke-width="2"/>
+  <polygon points="130,278 135,290 140,278" fill="#94A3B8"/>
+
+  <!-- 4 ROAS -->
+  <rect x="60" y="292" width="150" height="58" rx="10" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.6"/>
+  <text x="135" y="318" fill="#1D4ED8" font-size="15" font-weight="700" text-anchor="middle">ROAS</text>
+  <text x="135" y="338" fill="#3B82F6" font-size="11.5" text-anchor="middle">광고비 대비 매출</text>
+  <text x="234" y="318" fill="#334155" font-size="14" font-weight="600">"그래서 남는 장사인가?"</text>
+  <text x="234" y="340" fill="#64748B" font-size="12.5">낮으면 → 객단가·수익성까지</text>
+
+  <!-- 캡션 -->
+  <text x="350" y="384" fill="#6B7280" font-size="12.5" text-anchor="middle">외우지 말고 이렇게 읽으세요. 각 지표는 서로 다른 질문에 답해요.</text>
+</svg>
