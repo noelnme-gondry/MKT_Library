@@ -810,13 +810,13 @@ function hl(code, lang) {
                 let data;
                 if (locale === "en") {
                   try {
-                    data = await fetchJson(`./content/pages/${id}.en.json`);
+                    data = await fetchJson(`/content/pages/${id}.en.json`);
                   } catch (e) {
                     console.warn(`[content] ${id}.en.json 로드 실패, ko로 폴백:`, e.message);
-                    data = await fetchJson(`./content/pages/${id}.json`);
+                    data = await fetchJson(`/content/pages/${id}.json`);
                   }
                 } else {
-                  data = await fetchJson(`./content/pages/${id}.json`);
+                  data = await fetchJson(`/content/pages/${id}.json`);
                 }
                 PAGE_DATA_CACHE[cacheKey] = data;
                 return data;
