@@ -1,0 +1,46 @@
+<svg viewBox="0 0 700 460" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="700" height="460" fill="#ffffff"/>
+
+  <text x="350" y="28" fill="#334155" font-size="14.5" font-weight="700" text-anchor="middle">위에서부터 차례로. 순서를 건너뛰면 엉뚱한 데를 고쳐요.</text>
+
+  <!-- STEP 0 -->
+  <rect x="90" y="48" width="520" height="66" rx="10" fill="#F1F5F9" stroke="#CBD5E1"/>
+  <circle cx="126" cy="81" r="17" fill="#64748B"/>
+  <text x="126" y="87" fill="#ffffff" font-size="14" font-weight="700" text-anchor="middle">0</text>
+  <text x="158" y="76" fill="#334155" font-size="14" font-weight="700">숫자가 진짜인가?</text>
+  <text x="158" y="99" fill="#64748B" font-size="12.5">트래킹 깨짐 · 표본 부족 · 집계 지연부터 의심. 여기서 자주 헛발질해요.</text>
+
+  <line x1="350" y1="114" x2="350" y2="130" stroke="#94A3B8" stroke-width="2"/>
+  <polygon points="345,126 350,138 355,126" fill="#94A3B8"/>
+
+  <!-- STEP 1 -->
+  <rect x="90" y="140" width="520" height="66" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <circle cx="126" cy="173" r="17" fill="#2563EB"/>
+  <text x="126" y="179" fill="#ffffff" font-size="14" font-weight="700" text-anchor="middle">1</text>
+  <text x="158" y="168" fill="#1D4ED8" font-size="14" font-weight="700">전체가 떨어졌나, 일부가 떨어졌나?</text>
+  <text x="158" y="191" fill="#64748B" font-size="12.5">채널·캠페인별로 쪼개기. 한 군데만 무너진 거면 범위가 확 좁아져요.</text>
+
+  <line x1="350" y1="206" x2="350" y2="222" stroke="#94A3B8" stroke-width="2"/>
+  <polygon points="345,218 350,230 355,218" fill="#94A3B8"/>
+
+  <!-- STEP 2 -->
+  <rect x="90" y="232" width="520" height="66" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <circle cx="126" cy="265" r="17" fill="#2563EB"/>
+  <text x="126" y="271" fill="#ffffff" font-size="14" font-weight="700" text-anchor="middle">2</text>
+  <text x="158" y="260" fill="#1D4ED8" font-size="14" font-weight="700">배분이 바뀐 건가, 효율이 나빠진 건가?</text>
+  <text x="158" y="283" fill="#64748B" font-size="12.5">채널 CPA는 그대론데 비중만 옮겨가도 전체는 나빠져요(믹스효과).</text>
+
+  <line x1="350" y1="298" x2="350" y2="314" stroke="#94A3B8" stroke-width="2"/>
+  <polygon points="345,310 350,322 355,310" fill="#94A3B8"/>
+
+  <!-- STEP 3 -->
+  <rect x="90" y="324" width="520" height="82" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <circle cx="126" cy="365" r="17" fill="#2563EB"/>
+  <text x="126" y="371" fill="#ffffff" font-size="14" font-weight="700" text-anchor="middle">3</text>
+  <text x="158" y="352" fill="#1D4ED8" font-size="14" font-weight="700">효율이 나빠졌다면, 퍼널 어디서?</text>
+  <text x="158" y="375" fill="#64748B" font-size="12.5">CTR ↓ → 소재·피로 / 전환율 ↓ → 랜딩·상품</text>
+  <text x="158" y="395" fill="#64748B" font-size="12.5">CPM ↑ → 경쟁·빈도·타겟 / 셋 다 정상 → 외부 요인</text>
+
+  <!-- 캡션 -->
+  <text x="350" y="438" fill="#6B7280" font-size="12.5" text-anchor="middle">범인을 찾는 게 아니라, 범위를 좁히는 일이에요.</text>
+</svg>
