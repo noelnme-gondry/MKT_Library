@@ -1,0 +1,123 @@
+{
+  "$schema": "../schema.md",
+  "id": "8-1",
+  "eyebrow": "08 Data Guide · 8-1",
+  "title": "CSV Data Prep & Column Mapping Guide",
+  "deck": "A reference doc for the CSV upload + auto-mapping structure shared by every analysis tool. Check this first when uploading for the first time, or when mapping looks off.",
+  "chips": [
+    { "label": "Scope · All analysis tools" },
+    { "label": "Data · Browser memory only, never sent to a server", "variant": "ok" }
+  ],
+  "summary": "When you upload a CSV, each analysis tool auto-maps header names to standard fields (cost, installs, date, etc.). When auto-mapping is wrong or a required column isn't picked up, it's almost always a header-naming or formatting issue — the checklist below resolves most cases.",
+  "toc": [
+    { "id": "s-prep", "title": "CSV prep checklist" },
+    { "id": "s-automap", "title": "How auto-mapping works" },
+    { "id": "s-errors", "title": "Common mapping errors" },
+    { "id": "s-grain", "title": "Why each tool needs different columns" },
+    { "id": "s-privacy", "title": "Where your data goes" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-prep",
+      "ix": "§1",
+      "title": "CSV prep checklist",
+      "content": [
+        { "type": "paragraph", "html": "Follow these before uploading and your auto-mapping success rate goes up a lot." },
+        {
+          "type": "list",
+          "items": [
+            "<strong>Headers on row 1 only</strong> — merged cells and 2-row headers (common in Excel) only recognize the first row, breaking the rest.",
+            "<strong>Dates as text (YYYY-MM-DD)</strong> — if Excel stores dates as a serial number (e.g. <code class=\"inline\">45678</code>) and you export to CSV that way, it won't be recognized as a date column. Change the cell format to \"Text\" before saving, or type the date directly as <code class=\"inline\">2026-07-07</code>.",
+            "<strong>Commas and currency symbols in number columns are fine</strong> — quoted comma numbers like <code class=\"inline\">\"1,234,000\"</code> parse correctly. But currency symbols such as <code class=\"inline\">₩</code>/<code class=\"inline\">$</code> mixed in will stop it from being read as a number, so keep pure digits only.",
+            "<strong>Encoding should be UTF-8</strong> — if Korean/non-ASCII headers or values look garbled, re-export from Excel as \"CSV UTF-8 (Comma delimited)\".",
+            "<strong>Remove blank rows and total/summary rows</strong> — a leftover \"Total\"/\"Average\" row at the bottom gets aggregated as if it were a real data row."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "The exact template is the fastest path",
+          "html": "Every tool's upload screen has a \"📖 Guide\" button at the top with a download link for that tool's dedicated template. The header names and formats already match the standard, so filling in your own data under the same column structure lets you skip the mapping step entirely."
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-automap",
+      "ix": "§2",
+      "title": "How auto-mapping works",
+      "content": [
+        { "type": "paragraph", "html": "Right after upload, each CSV header is compared (lowercased, underscore-normalized) against the standard fields to attempt auto-mapping. For example, headers like <code class=\"inline\">Spend</code>, <code class=\"inline\">spend</code>, <code class=\"inline\">cost</code>, or <code class=\"inline\">비용</code> all get recognized as the standard field <code class=\"inline\">cost</code>. Each standard field has many registered aliases, so most raw headers straight from a network's report export are recognized as-is." },
+        { "type": "paragraph", "html": "Columns that don't auto-map show as <strong>\"(Not used)\"</strong> — pick the standard field manually from the dropdown on the mapping screen. Any manual fix you make persists for that session (resets on page reload)." }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-errors",
+      "ix": "§3",
+      "title": "Common mapping errors",
+      "content": [
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Symptom", "type": "string" },
+            { "label": "Cause", "type": "string" },
+            { "label": "Fix", "type": "string" }
+          ],
+          "rows": [
+            [
+              "A required-column warning won't go away",
+              "No header auto-mapped to a required field (e.g. date, cost)",
+              "Find that header in the mapping table and pick the standard field manually from the dropdown"
+            ],
+            [
+              "Clicking \"Analyze\" again does nothing new",
+              "The analysis gate reset after a mapping change, and you haven't clicked it again",
+              "After confirming the mapping, click \"Analyze\" again — results are automatically hidden whenever mapping changes (this is intentional)"
+            ],
+            [
+              "Retention (Dn) values all show as 0% or 100%",
+              "The ret_d30 column is a raw head count (e.g. 128) but got interpreted as a ratio (0-1), or vice versa",
+              "If every value is ≤ 1 it's treated as a ratio; if values are integers > 1 it's treated as a head count. Rows where every value is exactly 0 or 1 can be misjudged, so double-check manually in that case"
+            ],
+            [
+              "Cost shows as 0 in Creative Analysis even though the efficiency CSV has it",
+              { "html": "Each tool's cost column maps to a different standard field — the efficiency-family tools use <code class=\"inline\">cost</code>, Creative Analysis uses <code class=\"inline\">spend</code>" },
+              { "html": "These are separate standard keys. Confirm the cost header in your Creative Analysis CSV is mapped to <code class=\"inline\">spend</code>" }
+            ],
+            [
+              "Date-based charts appear out of order",
+              { "html": "The date column is sorted as plain text, and digit widths don't match — e.g. <code class=\"inline\">2026-1-9</code>" },
+              { "html": "Always use fixed-width <code class=\"inline\">YYYY-MM-DD</code> (e.g. <code class=\"inline\">2026-01-09</code>)" }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-grain",
+      "ix": "§4",
+      "title": "Why each tool needs different columns",
+      "content": [
+        { "type": "paragraph", "html": "Each analysis tool asks for data at a different <strong>grain</strong>. For example, the Dashboard, Budget Allocation, and Saturation Detection tools share an efficiency CSV at the \"date × channel × campaign\" grain, while Creative Analysis needs \"date × creative\" grain, and Experiment Analysis / Incrementality need a separate CSV with a group (test/control) column. Tools that share a grain automatically inherit the same CSV after a single upload; tools with a different grain require an independent upload — this design prevents data at mismatched grains from being aggregated together incorrectly." },
+        { "type": "paragraph", "html": "The \"Data-Feature Matrix\" on the upload screen shows which fields the current tool treats as required vs. optional, and which other tools share its CSV." }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-privacy",
+      "ix": "§5",
+      "title": "Where your data goes",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "The original CSV you upload is never sent to a server",
+          "html": "All parsing, aggregation, and chart computation run entirely in your browser (100% client-side). Refreshing the page clears your uploaded data — you'll need to re-upload it. Only display settings (column order, hidden columns, etc.) persist in this browser; the raw data itself is never stored anywhere."
+        }
+      ]
+    }
+  ]
+}

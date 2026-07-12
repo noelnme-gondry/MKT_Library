@@ -61,9 +61,10 @@ export default function sitemap() {
     })),
   ];
 
-  // EN 가이드(§ SOP EN pilot, 1-1 한정) — routeMap 밖의 별도 literal 라우트, EN 랜딩과 동일 방식.
+  // EN 가이드(§ SOP EN pilot, 1-1·8-1) — routeMap 밖의 별도 literal 라우트, EN 랜딩과 동일 방식.
   const enGuideEntries = [
     { url: `${BASE}/en/guide/dev-collaboration`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/en/guide/csv-data-prep`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
   ];
 
   return [...routeEntries, ...blogEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries];
