@@ -1,0 +1,36 @@
+<svg viewBox="0 0 700 400" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="700" height="400" fill="#ffffff"/>
+
+  <!-- 4층 (맨 위) -->
+  <polygon points="350,30 420,96 280,96" fill="#1D4ED8"/>
+  <text x="350" y="82" fill="#ffffff" font-size="13.5" font-weight="700" text-anchor="middle">인과 추론</text>
+  <text x="446" y="76" fill="#334155" font-size="13" font-weight="600">증분·실험 설계</text>
+  <text x="446" y="94" fill="#94A3B8" font-size="11.5">"진짜 내 광고가 만든 성과인가"</text>
+
+  <!-- 3층 -->
+  <polygon points="278,100 422,100 462,166 238,166" fill="#2563EB"/>
+  <text x="350" y="140" fill="#ffffff" font-size="13.5" font-weight="700" text-anchor="middle">분석·의사결정</text>
+  <text x="488" y="134" fill="#334155" font-size="13" font-weight="600">예산 배분·포화·기여도</text>
+  <text x="488" y="152" fill="#94A3B8" font-size="11.5">"그래서 어디에 얼마"</text>
+
+  <!-- 2층 -->
+  <polygon points="236,170 464,170 504,236 196,236" fill="#60A5FA"/>
+  <text x="350" y="210" fill="#ffffff" font-size="13.5" font-weight="700" text-anchor="middle">데이터 다루기</text>
+  <text x="530" y="204" fill="#334155" font-size="13" font-weight="600">스프레드시트·SQL·지표</text>
+  <text x="530" y="222" fill="#94A3B8" font-size="11.5">"숫자를 직접 꺼내고 검산"</text>
+
+  <!-- 1층 (기초) -->
+  <polygon points="194,240 506,240 546,306 154,306" fill="#BFDBFE"/>
+  <text x="350" y="280" fill="#1E40AF" font-size="13.5" font-weight="700" text-anchor="middle">운영 기본기</text>
+  <text x="562" y="274" fill="#334155" font-size="13" font-weight="600">계정 구조·소재·타겟팅</text>
+  <text x="562" y="292" fill="#94A3B8" font-size="11.5">"광고를 굴릴 줄 아는 것"</text>
+
+  <!-- 화살표 -->
+  <line x1="100" y1="296" x2="100" y2="80" stroke="#94A3B8" stroke-width="2"/>
+  <polygon points="95,88 100,72 105,88" fill="#94A3B8"/>
+  <text x="86" y="196" fill="#64748B" font-size="12.5" text-anchor="middle" transform="rotate(-90 86 196)">쌓이는 순서</text>
+
+  <!-- 캡션 -->
+  <text x="350" y="352" fill="#6B7280" font-size="12.5" text-anchor="middle">아래층 없이 위층부터 배우면 안 붙어요. 툴은 각 층을 거드는 도구일 뿐이고요.</text>
+  <text x="350" y="376" fill="#94A3B8" font-size="11.5" text-anchor="middle">* 순서는 일반적인 성장 경로예요. 팀·직무마다 다를 수 있어요.</text>
+</svg>

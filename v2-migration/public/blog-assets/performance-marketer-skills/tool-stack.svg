@@ -1,0 +1,44 @@
+<svg viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="700" height="320" fill="#ffffff"/>
+
+  <text x="350" y="34" fill="#334155" font-size="14.5" font-weight="700" text-anchor="middle">툴은 이름을 외우는 게 아니라, '무슨 일을 하는 칸'인지를 알면 돼요</text>
+
+  <!-- 1 집행 -->
+  <rect x="36" y="66" width="150" height="150" rx="12" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="111" y="98" fill="#334155" font-size="14.5" font-weight="700" text-anchor="middle">집행</text>
+  <text x="111" y="126" fill="#64748B" font-size="12.5" text-anchor="middle">광고를 내보내는 곳</text>
+  <text x="111" y="156" fill="#94A3B8" font-size="12" text-anchor="middle">매체 광고 관리자</text>
+  <text x="111" y="176" fill="#94A3B8" font-size="12" text-anchor="middle">(메타·구글 등)</text>
+
+  <!-- 2 수집 -->
+  <rect x="200" y="66" width="150" height="150" rx="12" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="275" y="98" fill="#334155" font-size="14.5" font-weight="700" text-anchor="middle">수집</text>
+  <text x="275" y="126" fill="#64748B" font-size="12.5" text-anchor="middle">무슨 일이 있었나</text>
+  <text x="275" y="156" fill="#94A3B8" font-size="12" text-anchor="middle">GA4 · MMP</text>
+  <text x="275" y="176" fill="#94A3B8" font-size="12" text-anchor="middle">이벤트·전환 기록</text>
+
+  <!-- 3 가공 -->
+  <rect x="364" y="66" width="150" height="150" rx="12" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="439" y="98" fill="#334155" font-size="14.5" font-weight="700" text-anchor="middle">가공</text>
+  <text x="439" y="126" fill="#64748B" font-size="12.5" text-anchor="middle">숫자를 꺼내고 정리</text>
+  <text x="439" y="156" fill="#94A3B8" font-size="12" text-anchor="middle">스프레드시트 · SQL</text>
+  <text x="439" y="176" fill="#94A3B8" font-size="12" text-anchor="middle">BI 대시보드</text>
+
+  <!-- 4 판단 -->
+  <rect x="528" y="66" width="150" height="150" rx="12" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="603" y="98" fill="#1D4ED8" font-size="14.5" font-weight="700" text-anchor="middle">판단</text>
+  <text x="603" y="126" fill="#3B82F6" font-size="12.5" text-anchor="middle">그래서 뭘 해야 하나</text>
+  <text x="603" y="156" fill="#94A3B8" font-size="12" text-anchor="middle">증분 · 포화 · 배분</text>
+  <text x="603" y="176" fill="#94A3B8" font-size="12" text-anchor="middle">기여도 분석</text>
+
+  <!-- 화살표 -->
+  <g stroke="#CBD5E1" stroke-width="2" fill="#CBD5E1">
+    <line x1="186" y1="141" x2="194" y2="141"/><polygon points="194,136 202,141 194,146"/>
+    <line x1="350" y1="141" x2="358" y2="141"/><polygon points="358,136 366,141 358,146"/>
+    <line x1="514" y1="141" x2="522" y2="141"/><polygon points="522,136 530,141 522,146"/>
+  </g>
+
+  <!-- 캡션 -->
+  <text x="350" y="256" fill="#6B7280" font-size="12.5" text-anchor="middle">신입이 제일 많이 빠뜨리는 칸은 맨 오른쪽이에요. 리포트는 넘치는데 결정이 안 나오는 이유죠.</text>
+  <text x="350" y="284" fill="#94A3B8" font-size="11.5" text-anchor="middle">* 회사마다 칸을 채우는 툴은 달라요. 중요한 건 제품명이 아니라 이 네 칸이 다 채워졌는지예요.</text>
+</svg>

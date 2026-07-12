@@ -1,0 +1,36 @@
+<svg viewBox="0 0 950 420" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="950" height="420" fill="#ffffff"/>
+
+  <!-- Layer 4 (top) -->
+  <polygon points="350,30 420,96 280,96" fill="#1D4ED8"/>
+  <text x="350" y="82" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">Causal</text>
+  <text x="446" y="76" fill="#334155" font-size="13" font-weight="600">Incrementality, Experiment Design</text>
+  <text x="446" y="94" fill="#94A3B8" font-size="11.5">"Did my ad actually cause this?"</text>
+
+  <!-- Layer 3 -->
+  <polygon points="278,100 422,100 462,166 238,166" fill="#2563EB"/>
+  <text x="350" y="140" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">Analysis &amp; Decisions</text>
+  <text x="488" y="134" fill="#334155" font-size="13" font-weight="600">Budget Allocation, Saturation, Attribution</text>
+  <text x="488" y="152" fill="#94A3B8" font-size="11.5">"So where, and how much?"</text>
+
+  <!-- Layer 2 -->
+  <polygon points="236,170 464,170 504,236 196,236" fill="#60A5FA"/>
+  <text x="350" y="210" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">Working with Data</text>
+  <text x="530" y="204" fill="#334155" font-size="13" font-weight="600">Spreadsheets, SQL, Metrics</text>
+  <text x="530" y="222" fill="#94A3B8" font-size="11.5">"Pull the numbers, check them yourself"</text>
+
+  <!-- Layer 1 (foundation) -->
+  <polygon points="194,240 506,240 546,306 154,306" fill="#BFDBFE"/>
+  <text x="350" y="280" fill="#1E40AF" font-size="12" font-weight="700" text-anchor="middle">Operating Fundamentals</text>
+  <text x="562" y="274" fill="#334155" font-size="13" font-weight="600">Account Structure, Creative, Targeting</text>
+  <text x="562" y="292" fill="#94A3B8" font-size="11.5">"Knowing how to run ads"</text>
+
+  <!-- arrow -->
+  <line x1="100" y1="296" x2="100" y2="80" stroke="#94A3B8" stroke-width="2"/>
+  <polygon points="95,88 100,72 105,88" fill="#94A3B8"/>
+  <text x="86" y="196" fill="#64748B" font-size="12" text-anchor="middle" transform="rotate(-90 86 196)">Growth order</text>
+
+  <!-- caption -->
+  <text x="475" y="372" fill="#6B7280" font-size="12.5" text-anchor="middle">Skip the lower layers and jump to the top, and it won't stick. Tools just support each layer.</text>
+  <text x="475" y="396" fill="#94A3B8" font-size="11.5" text-anchor="middle">* This is a general growth path &#8212; it can vary by team and role.</text>
+</svg>

@@ -1,0 +1,45 @@
+<svg viewBox="0 0 760 400" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="760" height="400" fill="#ffffff"/>
+
+  <!-- vertical chain, 4 steps -->
+  <!-- 1 CTR -->
+  <rect x="60" y="34" width="150" height="58" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="135" y="58" fill="#1D4ED8" font-size="15" font-weight="700" text-anchor="middle">CTR</text>
+  <text x="135" y="78" fill="#3B82F6" font-size="11" text-anchor="middle">Click Rate</text>
+  <text x="234" y="60" fill="#334155" font-size="14" font-weight="600">"Did the creative catch attention?"</text>
+  <text x="234" y="82" fill="#64748B" font-size="12.5">Low &#8594; creative or hook problem</text>
+
+  <!-- arrow -->
+  <line x1="135" y1="92" x2="135" y2="112" stroke="#94A3B8" stroke-width="2"/>
+  <polygon points="130,106 135,118 140,106" fill="#94A3B8"/>
+
+  <!-- 2 conversion rate -->
+  <rect x="60" y="120" width="150" height="58" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="135" y="144" fill="#1D4ED8" font-size="14" font-weight="700" text-anchor="middle">Conversion</text>
+  <text x="135" y="166" fill="#3B82F6" font-size="11" text-anchor="middle">CVR</text>
+  <text x="234" y="146" fill="#334155" font-size="14" font-weight="600">"Did visitors take action?"</text>
+  <text x="234" y="168" fill="#64748B" font-size="12.5">Low &#8594; landing page or product problem</text>
+
+  <line x1="135" y1="178" x2="135" y2="198" stroke="#94A3B8" stroke-width="2"/>
+  <polygon points="130,192 135,204 140,192" fill="#94A3B8"/>
+
+  <!-- 3 CPA -->
+  <rect x="60" y="206" width="150" height="58" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="135" y="230" fill="#1D4ED8" font-size="15" font-weight="700" text-anchor="middle">CPA</text>
+  <text x="135" y="250" fill="#3B82F6" font-size="11" text-anchor="middle">Acquisition Cost</text>
+  <text x="234" y="232" fill="#334155" font-size="14" font-weight="600">"What did one acquisition cost?"</text>
+  <text x="234" y="254" fill="#64748B" font-size="12.5">High &#8594; efficiency or spend-mix problem</text>
+
+  <line x1="135" y1="264" x2="135" y2="284" stroke="#94A3B8" stroke-width="2"/>
+  <polygon points="130,278 135,290 140,278" fill="#94A3B8"/>
+
+  <!-- 4 ROAS -->
+  <rect x="60" y="292" width="150" height="58" rx="10" fill="#DBEAFE" stroke="#2563EB" stroke-width="1.6"/>
+  <text x="135" y="316" fill="#1D4ED8" font-size="15" font-weight="700" text-anchor="middle">ROAS</text>
+  <text x="135" y="336" fill="#3B82F6" font-size="11" text-anchor="middle">Ad Spend Return</text>
+  <text x="234" y="318" fill="#334155" font-size="14" font-weight="600">"Is this actually profitable?"</text>
+  <text x="234" y="340" fill="#64748B" font-size="12.5">Low &#8594; check margin and profitability</text>
+
+  <!-- caption -->
+  <text x="380" y="384" fill="#6B7280" font-size="12.5" text-anchor="middle">Don't memorize these &#8212; read them. Each metric answers a different question.</text>
+</svg>
