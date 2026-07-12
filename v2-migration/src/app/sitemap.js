@@ -43,6 +43,12 @@ export default function sitemap() {
     })),
   ];
 
+  // EN 랜딩("/en") — routeMap 밖의 별도 literal 라우트(§en-landing-page). id 불변
+  // 규칙상 ROUTES에 추가하지 않고 여기서 직접 추가(EN 블로그와 동일 방식).
+  const enLandingEntries = [
+    { url: `${BASE}/en`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
+  ];
+
   // EN 블로그(content/blog-en, §blog-en-translation-strategy) — 태그 랜딩 미구현, 목록+글만.
   const enPosts = getAllPosts("en");
   const enBlogEntries = [
@@ -55,5 +61,5 @@ export default function sitemap() {
     })),
   ];
 
-  return [...routeEntries, ...blogEntries, ...enBlogEntries];
+  return [...routeEntries, ...blogEntries, ...enLandingEntries, ...enBlogEntries];
 }
