@@ -1,0 +1,163 @@
+{
+  "$schema": "../schema.md",
+  "id": "1-1",
+  "eyebrow": "1 Foundation · 1-1",
+  "title": "Developer Collaboration Guide & Technical PRD",
+  "deck": "A single document unifying MMP (Adjust) SDK initialization spec, deep-link routing logic, and pre-release QA scenarios. Written so this document doubles as the PRD.",
+  "chips": [
+    { "label": "Owner · Growth Eng." },
+    { "label": "Status · In production", "variant": "ok" },
+    { "label": "Adjust SDK ≥ v5.0.0" },
+    { "label": "iOS 14.5+ required", "variant": "warning" }
+  ],
+  "summary": "This document defines the <strong>minimum required spec</strong> that the dev team must implement to lay the attribution foundation for a new or relaunched app. Only builds that pass all three gates — Adjust SDK v5 initialization → deferred deep-link routing → release QA checklist — are allowed into LIVE campaigns. A single misconfigured line in the SDK can invalidate data across all campaigns, so every item requires <strong>code review + QA Lead double sign-off</strong>.",
+  "toc": [
+    { "id": "s-prereq", "title": "Prerequisites" },
+    { "id": "s-sdk", "title": "Implementation steps" },
+    { "id": "s-qa", "title": "QA scenarios" },
+    { "id": "s-troubleshoot", "title": "Troubleshooting" },
+    { "id": "s-handoff", "title": "Handoff checklist" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-prereq",
+      "ix": "§1",
+      "title": "Prerequisites",
+      "content": [
+        {
+          "type": "list",
+          "items": [
+            "<strong>Adjust dashboard access</strong>: App Token (separate for iOS/Android), Environment (sandbox/production), and Default Tracker issued",
+            "<strong>Bundle ID / Package Name</strong> pre-registered. Android uses the <code>applicationId</code>, iOS uses the App Store Connect <code>Bundle Identifier</code>",
+            "<strong>StoreKit 2 + ATTrackingManager</strong> dependency and iOS 14.5+ support",
+            "<strong>App Links / Universal Links</strong> domain verification files hosted (<code>.well-known/apple-app-site-association</code>, <code>.well-known/assetlinks.json</code>)"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-sdk",
+      "ix": "§2",
+      "title": "Implementation steps",
+      "content": [
+        { "type": "subheading", "title": "2.1 iOS · Adjust SDK initialization (Swift, AppDelegate)" },
+        { "type": "paragraph", "html": "Initialization <strong>must happen after the ATT prompt response</strong>. Initializing before the prompt permanently locks IDFA to 0, forcing attribution down to a SKAdNetwork-only channel." },
+        {
+          "type": "code",
+          "lang": "swift",
+          "label": "iOS · AppDelegate.swift",
+          "code": "import Adjust\nimport AdjustSdk\nimport AppTrackingTransparency\n\nfunc application(_ application: UIApplication,\n                 didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {\n\n    let appToken = \"abc1234xyz9\"  // Production token\n    let environment = ADJEnvironmentProduction\n\n    let config = ADJConfig(appToken: appToken,\n                           environment: environment,\n                           allowSuppressLogLevel: false)\n    config?.logLevel = ADJLogLevelInfo\n    config?.needsCost = true                 // Cost data for ROAS calculation\n    config?.linkMeMetadata = true            // Enable LinkMe clipboard matching\n    // attConsentWaitingInterval: max seconds Adjust waits for the ATT response.\n    // Unrelated to how long the ATT prompt itself is shown. 120 is recommended\n    // when maximizing the ATT response rate is the priority.\n    config?.attConsentWaitingInterval = 120\n\n    // SKAN 4.0 ConversionValue update delegate\n    config?.delegate = SKANDelegateHandler.shared\n\n    Adjust.appDidLaunch(config)\n\n    // Trigger the ATT prompt once the user has perceived the app's value\n    // (e.g. after onboarding completes).\n    OnboardingState.shared.onCompleted = {\n        ATTrackingManager.requestTrackingAuthorization { _ in\n            Adjust.requestTrackingAuthorization { status in\n                // status: 0 Not Determined / 3 Authorized\n                print(\"[ATT] status=\\(status)\")\n            }\n        }\n    }\n    return true\n}"
+        },
+        { "type": "subheading", "title": "2.2 Android · Adjust SDK initialization (Kotlin, Application class)" },
+        { "type": "paragraph", "html": "Must be placed at the <strong>very top of onCreate</strong> in your Application subclass. If it initializes later than external libraries (e.g. Firebase), the first session's install referrer is dropped." },
+        {
+          "type": "code",
+          "lang": "kotlin",
+          "label": "Android · App.kt",
+          "code": "import android.app.Application\nimport com.adjust.sdk.Adjust\nimport com.adjust.sdk.AdjustConfig\nimport com.adjust.sdk.LogLevel\n\nclass App : Application() {\n    override fun onCreate() {\n        super.onCreate()\n\n        val appToken = \"abc1234xyz9\"\n        val environment = AdjustConfig.ENVIRONMENT_PRODUCTION\n\n        val config = AdjustConfig(this, appToken, environment).apply {\n            setLogLevel(LogLevel.INFO)\n            setNeedsCost(true)\n            setPreinstallTrackingEnabled(true)        // Preinstall tracking\n            setSendInBackground(true)                 // Send while backgrounded\n            setEventBufferingEnabled(false)           // false for real-time campaign ops\n            setOnAttributionChangedListener { attr ->\n                // network_name / campaign_name / adgroup_name / creative_name\n                AppAnalytics.bindAttribution(attr)\n            }\n            setOnDeeplinkResponseListener { uri ->\n                DeeplinkRouter.handle(uri)            // Deferred deep-link routing\n                true\n            }\n        }\n\n        Adjust.onCreate(config)\n        registerActivityLifecycleCallbacks(AdjustLifecycleCallbacks())\n    }\n}"
+        },
+        { "type": "subheading", "title": "2.3 Deep-link routing logic (incl. deferred)" },
+        { "type": "paragraph", "html": "Unify three entry points into a single router: <strong>(a)</strong> Universal Link / App Link, <strong>(b)</strong> custom URI scheme, <strong>(c)</strong> Adjust deferred deep link (fires on first launch after a store visit while not yet installed). The router always normalizes to the standard <code>scheme://host/path?params</code> form before branching." },
+        {
+          "type": "code",
+          "lang": "kotlin",
+          "label": "Android · DeeplinkRouter.kt",
+          "code": "object DeeplinkRouter {\n    fun handle(uri: Uri): Boolean {\n        val path = uri.pathSegments.firstOrNull() ?: return openHome()\n        return when (path) {\n            \"product\" -> openProduct(uri.lastPathSegment ?: return openHome())\n            \"promo\"   -> openPromo(uri.getQueryParameter(\"code\"))\n            \"invite\"  -> openReferral(uri.getQueryParameter(\"ref\"))\n            else      -> openHome()\n        }.also {\n            Analytics.track(\"deeplink_opened\", mapOf(\n                \"deeplink_path\"   to uri.path.orEmpty(),\n                \"deeplink_source\" to (uri.getQueryParameter(\"utm_source\") ?: \"direct\"),\n                \"is_deferred\"     to (DeferredFlag.consume())\n            ))\n        }\n    }\n}"
+        },
+        { "type": "subheading", "title": "2.4 Standard URL schema" },
+        { "type": "paragraph", "html": "Network tracker URLs must enforce the schema below on the <strong>Adjust Custom URL</strong>. All macros use each network's own placeholders — no ad-hoc additions." },
+        {
+          "type": "code",
+          "lang": "http",
+          "label": "Adjust Click URL Template",
+          "code": "https://app.adjust.com/{tracker_token}\n  ?campaign={campaign_name}\n  &adgroup={adgroup_name}\n  &creative={creative_name}\n  &idfa={idfa}            // Auto-zeroed on iOS 14.5+\n  &gps_adid={gps_adid}    // Google Play Services ADID\n  &cost_type=cpc\n  &cost_amount={cost}\n  &cost_currency=USD\n  &deeplink=myapp%3A%2F%2Fproduct%2F{product_id}\n  &fallback=https%3A%2F%2Fwww.example.com%2Fproduct%2F{product_id}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-qa",
+      "ix": "§3",
+      "title": "QA scenarios (release gate)",
+      "content": [
+        { "type": "paragraph", "html": "All 12 scenarios below must PASS before a LIVE build is approved. One failure = build rejected." },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "ID" },
+            { "label": "Scenario" },
+            { "label": "Expected" },
+            { "label": "Severity" },
+            { "label": "Tool" }
+          ],
+          "rows": [
+            ["QA-01", "New install → first session fires", "install + session_start each fire once", { "pill": "tier-1", "text": "Blocker" }, "Adjust Testing Console"],
+            ["QA-02", "ATT prompt Authorized case", "IDFA non-empty, attribution reaches sandbox", { "pill": "tier-1", "text": "Blocker" }, "Charles Proxy"],
+            ["QA-03", "ATT Denied case", "IDFA=00000...0, SKAN-only channel works correctly", { "pill": "tier-1", "text": "Blocker" }, "Console"],
+            ["QA-04", "Universal Link cold start", "DeeplinkRouter.handle called exactly once", { "pill": "tier-2", "text": "Major" }, "Safari → app switch"],
+            ["QA-05", "Deferred deep link (not installed → installed)", "onDeeplinkResponse fires on first launch", { "pill": "tier-1", "text": "Blocker" }, "Test Console + Test Device"],
+            ["QA-06", "Custom URI scheme (external browser)", "Router branches correctly", { "pill": "tier-2", "text": "Major" }, "adb shell am start"],
+            ["QA-07", "Background ↔ foreground transition", "No duplicate session fires", { "pill": "tier-2", "text": "Major" }, "Adjust Logs"],
+            ["QA-08", "Airplane mode → back online", "Events queue then send exactly once", { "pill": "tier-2", "text": "Major" }, "Charles"],
+            ["QA-09", "SKAN postback (Apple Test Mode)", "coarse value [low|medium|high] mapped correctly", { "pill": "tier-1", "text": "Blocker" }, "xcrun simctl + Apple Console"],
+            ["QA-10", "Cost data received (UAC/AAP)", "cost_amount shows up in the Adjust dashboard", { "pill": "tier-3", "text": "Minor" }, "Adjust > Cost Data"],
+            ["QA-11", "in_app_purchase revenue event", "revenue + currency correct", { "pill": "tier-1", "text": "Blocker" }, "StoreKit Test"],
+            ["QA-12", "Uninstall + Reinstall", "Reattribution classified correctly", { "pill": "tier-2", "text": "Major" }, "Adjust > Reattribution"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-troubleshoot",
+      "ix": "§4",
+      "title": "Troubleshooting / pitfalls",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "danger",
+          "title": "install event fires twice",
+          "html": "Happens when Adjust.appDidLaunch is called from both Application and AppDelegate. Consolidate to a single call in the Application class; ActivityLifecycleCallbacks can still be registered, but keep SDK initialization separate from it."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "iOS attribution shows up as organic only",
+          "html": "1) Check whether the ATT prompt was called after SDK initialization. 2) If <code>attConsentWaitingInterval</code> is too short, installs get permanently locked to noIDFA before the user responds — set it to 120 seconds to give a proper response window. 3) Verify the LinkMe domain matches the click URL used by each network."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Deferred deep link doesn't fire on first launch",
+          "html": "Android: the Play Install Referrer API dependency may be missing — add <code>com.android.installreferrer:installreferrer:2.2</code>. iOS: verify that Universal Links' <code>apple-app-site-association</code> is served over HTTPS with Content-Type=application/json."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Using a production token in sandbox by mistake",
+          "html": "Separate environments at build time via <code>BuildConfig.DEBUG</code> or <code>#if DEBUG</code>. Using a sandbox token in production still delivers raw events to Adjust, but attribution never fires."
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-handoff",
+      "ix": "§5",
+      "title": "Handoff checklist",
+      "content": [
+        { "type": "paragraph", "html": "Before QA Lead → Growth PM handoff, confirm:" },
+        {
+          "type": "list",
+          "items": [
+            "Download 1 day of raw export from the Adjust dashboard and verify debug traffic is separated",
+            "SKAN postback receiving endpoint registered (<code>skadnetwork.adjust.com</code>) and partner re-direct is ON",
+            "user_id key consistency confirmed with 2nd-party analytics tools (Firebase / Amplitude, etc.)",
+            "Adjust → BigQuery / S3 export pipeline sync confirmed"
+          ]
+        }
+      ]
+    }
+  ]
+}

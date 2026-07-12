@@ -1,3 +1,4 @@
+"use client";
 import React from 'react';
 import { IA, displayGroupNumber, displayItemNumber } from '@/store/useDataStore';
 import { copyToClipboard } from '@/utils/toast';
@@ -117,7 +118,10 @@ function hl(code, lang) {
             /* ---------- 1-1 (Full quality) ---------- */
             function page_1_1() {
               return `
-          <div class="page-eyebrow">1 Foundation · 1-1</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div class="page-eyebrow">1 Foundation · 1-1</div>
+            <a href="/en/guide/dev-collaboration" class="btn ghost" style="font-size:12px;text-decoration:none;">English</a>
+          </div>
           <h1 class="page-title">개발자 협업 가이드 및 테크니컬 PRD</h1>
           <p class="page-deck">MMP(Adjust) SDK 초기화 스펙, 딥링크 라우팅 로직, 그리고 릴리즈 전 QA 시나리오를 단일 문서로 통합한 개발 협업 표준. 본 문서가 그대로 PRD가 되도록 작성됨.</p>
 
@@ -792,15 +796,29 @@ function hl(code, lang) {
             // 등록되지 않은 페이지는 기존 PAGE_RENDERERS 함수를 사용 (점진 마이그레이션).
             const DATA_BASED_PAGES = new Set(["1-1"]);
 
-            async function loadPageData(id) {
-              if (PAGE_DATA_CACHE[id]) return PAGE_DATA_CACHE[id];
-              try {
-                const res = await fetch(`./content/pages/${id}.json`, {
-                  cache: "no-cache",
-                });
+            // locale="en"이면 {id}.en.json을 우선 fetch, 없으면(404/네트워크 오류) 한글 {id}.json으로
+            // 폴백 — 아직 번역 안 된 페이지도 안전. 캐시 키는 locale별로 분리.
+            async function loadPageData(id, locale = "ko") {
+              const cacheKey = `${id}:${locale}`;
+              if (PAGE_DATA_CACHE[cacheKey]) return PAGE_DATA_CACHE[cacheKey];
+              const fetchJson = async (path) => {
+                const res = await fetch(path, { cache: "no-cache" });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                PAGE_DATA_CACHE[id] = data;
+                return res.json();
+              };
+              try {
+                let data;
+                if (locale === "en") {
+                  try {
+                    data = await fetchJson(`/content/pages/${id}.en.json`);
+                  } catch (e) {
+                    console.warn(`[content] ${id}.en.json 로드 실패, ko로 폴백:`, e.message);
+                    data = await fetchJson(`/content/pages/${id}.json`);
+                  }
+                } else {
+                  data = await fetchJson(`/content/pages/${id}.json`);
+                }
+                PAGE_DATA_CACHE[cacheKey] = data;
                 return data;
               } catch (e) {
                 console.warn(`[content] ${id}.json 로드 실패:`, e.message);
@@ -896,12 +914,15 @@ function hl(code, lang) {
                 .join("");
             }
 
-            async function renderPageFromData(id) {
-              const data = await loadPageData(id);
+            async function renderPageFromData(id, locale = "ko") {
+              const data = await loadPageData(id, locale);
               if (!data) return null;
               const meta = findMeta(id);
               if (!meta) return null;
               return pageShell(meta, {
+                locale,
+                title: data.title,
+                eyebrow: data.eyebrow,
                 deck: data.deck || meta.desc,
                 chips: renderChips(data.chips),
                 summary: data.summary || "",
@@ -921,19 +942,28 @@ function findMeta(id) {
 
             function pageShell(meta, opts) {
               const group = IA.find((g) => g.items.some((it) => it.id === meta.id));
+              // locale="en": 데이터 기반(§ EN 변형) 페이지만 opts.title/opts.eyebrow로 IA(한글) 오버라이드.
+              // 나머지 14개 하드코딩 페이지는 opts.locale을 안 넘기므로(default "ko") 동작 불변.
+              const locale = opts.locale || "ko";
+              const pageTitle = opts.title || meta.title;
+              const L = {
+                toc: locale === "en" ? "Contents" : "목차",
+                summary: locale === "en" ? "Summary" : "핵심 요약",
+                lastUpdated: locale === "en" ? "Last updated" : "최종 업데이트",
+              };
               const tocAside = `
           <aside class="toc">
             ${opts.tocFilters ? `<div class="toc-filters">${opts.tocFilters}</div>` : ""}
-            <div class="toc-title">목차</div>
+            <div class="toc-title">${L.toc}</div>
             ${(opts.toc || []).map((t) => `<a href="#${t.id}">${escapeHtml(t.title)}</a>`).join("")}
           </aside>`;
               const footer = `
           <div class="page-footer">
-            <span>${displayItemNumber(meta.id)}. ${escapeHtml(meta.title)}</span>
-            <span>최종 업데이트 · 2026-05-22</span>
+            <span>${displayItemNumber(meta.id)}. ${escapeHtml(pageTitle)}</span>
+            <span>${L.lastUpdated} · 2026-05-22</span>
           </div>`;
               const summary = opts.summary
-                ? `<div class="summary"><div class="summary-label">핵심 요약</div><p>${opts.summary}</p></div>`
+                ? `<div class="summary"><div class="summary-label">${L.summary}</div><p>${opts.summary}</p></div>`
                 : "";
 
               // 분석 도구(5-x): 압축 sticky 바 + eyebrow/deck 생략
@@ -960,9 +990,12 @@ function findMeta(id) {
               }
 
               // SOP 문서(1-x~4-x): 현행 구조 유지
+              const eyebrow = opts.eyebrow
+                ? escapeHtml(opts.eyebrow)
+                : `${displayGroupNumber(group.id)} ${escapeHtml(group.title)} · ${displayItemNumber(meta.id)}`;
               return `
-          <div class="page-eyebrow">${displayGroupNumber(group.id)} ${escapeHtml(group.title)} · ${displayItemNumber(meta.id)}</div>
-          <h1 class="page-title">${escapeHtml(meta.title)}</h1>
+          <div class="page-eyebrow">${eyebrow}</div>
+          <h1 class="page-title">${escapeHtml(pageTitle)}</h1>
           <p class="page-deck">${opts.deck || escapeHtml(meta.desc)}</p>
           <div class="meta-row">${opts.chips || ""}</div>
           <div class="with-toc">
@@ -3028,7 +3061,70 @@ function bindSortableTables(root) {
   };
 }
 
-export default function SopContent({ routeId }) {
+// locale="en" 전용 경로 — DATA_BASED_PAGES(JSON) 페이지만 지원. 나머지 14개 하드코딩
+// page_N_N() 함수는 EN 변형이 없으므로 이 컴포넌트로 오지 않는다(§ EN pilot, 1-1 한정).
+// 비동기 fetch(loadPageData)라 useMemo 동기 계산 불가 → useState+useEffect로 분리,
+// 기존 locale="ko" 동기 경로(아래 SopContent 본체)는 이 분기 밖이라 완전 불변.
+function SopContentEn({ routeId }) {
+  const containerRef = React.useRef(null);
+  const [html, setHtml] = React.useState(null);
+  const [notFoundPage, setNotFoundPage] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    // routeId 변경 시 이전 페이지 잔상 제거 후 재로드(§ setState-in-effect는 의도된 리셋).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHtml(null);
+    setNotFoundPage(false);
+    if (!DATA_BASED_PAGES.has(routeId)) {
+      setNotFoundPage(true);
+      return undefined;
+    }
+    resetSopUid();
+    renderPageFromData(routeId, "en").then((result) => {
+      if (cancelled) return;
+      if (result) setHtml(result);
+      else setNotFoundPage(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [routeId]);
+
+  React.useEffect(() => {
+    const root = containerRef.current;
+    if (!root || !html) return undefined;
+    const cleanups = [bindCopyButtons(root), bindSortableTables(root)];
+    return () => cleanups.forEach((fn) => fn && fn());
+  }, [html]);
+
+  if (notFoundPage) {
+    return (
+      <div style={{ padding: "2rem" }}>
+        <h2>Not available yet</h2>
+        <p>This guide ({routeId}) isn&apos;t available in English yet.</p>
+      </div>
+    );
+  }
+  if (!html) return null;
+  return (
+    <div
+      ref={containerRef}
+      className="tab-pane active"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+export default function SopContent({ routeId, locale = "ko" }) {
+  // locale은 라우트(page.js)가 리터럴로 고정 전달 — 같은 컴포넌트 인스턴스에서 안 바뀜.
+  // 훅 호출 전 분기이므로 rules-of-hooks 위반 없음(ko 경로는 기존 훅·렌더와 byte-동일).
+  if (locale === "en") return <SopContentEn routeId={routeId} />;
+
+  return <SopContentKo routeId={routeId} />;
+}
+
+function SopContentKo({ routeId }) {
   const containerRef = React.useRef(null);
   const renderFn = PAGE_RENDERERS_MAP[routeId];
 

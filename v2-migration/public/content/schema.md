@@ -7,11 +7,17 @@
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
 | `id` | string | ✓ | 페이지 ID (예: `"1-1"`). 파일명과 일치해야 함 |
+| `title` | string | – | 페이지 제목(H1). 생략 시 IA의 `meta.title`(한글) 사용. EN 변형(`{id}.en.json`)은 필수(안 그러면 h1이 한글로 남음) |
+| `eyebrow` | string | – | 제목 위 브레드크럼형 라벨(예: `"1 Foundation · 1-1"`). 생략 시 IA 그룹 제목(한글) 자동 조합. EN 변형은 명시 권장 |
 | `deck` | string | ✓ | 페이지 제목 아래 한 줄 설명 (HTML 허용) |
 | `chips` | array | – | 메타 정보 칩 배열 |
 | `summary` | string | – | 핵심 요약 블록 본문 (HTML 허용) |
 | `toc` | array | – | 우측 목차 항목 배열 |
 | `body` | array | ✓ | 본문 섹션 배열 |
+
+## 영문(EN) 변형 파일
+
+`content/pages/{id}.en.json`(같은 디렉토리, `.en` 접미사)로 번역본을 둘 수 있다. `loadPageData(id, "en")`이 `.en.json`을 우선 fetch하고, 없으면(404) `{id}.json`(한글)으로 폴백한다 — 아직 번역 안 된 페이지도 깨지지 않는다. `title`/`eyebrow`는 IA(한글)에서 자동 유도되므로 EN 파일에 반드시 명시할 것. `code` 블록의 실제 코드/설정값은 번역하지 않고 주석만 번역한다.
 
 ## chips 항목
 
