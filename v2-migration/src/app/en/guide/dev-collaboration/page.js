@@ -1,0 +1,34 @@
+import SopContent from "@/components/sops/SopContent";
+import { SITE_URL } from "@/lib/routeMap";
+
+// EN pilot — mirrors the KR route (/guide/dev-collaboration, routeId "1-1") using the
+// JSON-data-based SopContent path (public/content/pages/1-1.en.json). Only "1-1" has an
+// EN JSON variant right now (§ SOP EN pilot) — the other 14 guides stay KR-only for now.
+export async function generateMetadata() {
+  const title = "Developer Collaboration Guide & Technical PRD | Growth Opt Playbook";
+  const description =
+    "MMP (Adjust) SDK initialization, deep-link routing, and pre-release QA checklist unified into one developer collaboration standard.";
+  const canonical = `${SITE_URL}/en/guide/dev-collaboration`;
+  return {
+    title,
+    description,
+    alternates: {
+      canonical,
+      languages: { ko: `${SITE_URL}/guide/dev-collaboration`, en: canonical },
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      locale: "en_US",
+    },
+  };
+}
+
+export default function EnDevCollaborationPage() {
+  return (
+    <article className="content" id="content" aria-live="polite">
+      <SopContent routeId="1-1" locale="en" />
+    </article>
+  );
+}
