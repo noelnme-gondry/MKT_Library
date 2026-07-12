@@ -72,3 +72,5 @@ The catch is that plotting a response curve and estimating marginal efficiency b
 Uploaded data is processed entirely in your browser and never sent to a server, so there's no risk in putting your media spend or revenue numbers anywhere external. No sign-up or payment required — just upload a CSV and get started.
 
 One last important point: an allocation plan is ultimately a data-driven "estimate." Rather than moving everything at once based on the output, we recommend shifting gradually and confirming with actual performance, as described above.
+
+If you're curious what this same marginal-utility view looks like mapped onto ROAS instead of CPA, check out our [ROAS improvement post](/en/blog/roas-improvement).

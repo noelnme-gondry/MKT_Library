@@ -1,0 +1,33 @@
+<svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="640" height="360" fill="#ffffff"/>
+
+  <!-- baseline -->
+  <line x1="80" y1="300" x2="600" y2="300" stroke="#9CA3AF" stroke-width="1.5"/>
+
+  <!-- 평균선 300% -->
+  <line x1="80" y1="170" x2="600" y2="170" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="598" y="163" fill="#64748B" font-size="12.5" text-anchor="end">전체 평균 300%</text>
+
+  <!-- A채널 480% -->
+  <rect x="118" y="92" width="64" height="208" fill="#3B82F6"/>
+  <text x="150" y="82" fill="#1D4ED8" font-size="15" font-weight="700" text-anchor="middle">480%</text>
+  <text x="150" y="320" fill="#334155" font-size="13.5" font-weight="600" text-anchor="middle">A채널</text>
+
+  <!-- B채널 320% -->
+  <rect x="248" y="161" width="64" height="139" fill="#3B82F6"/>
+  <text x="280" y="151" fill="#1D4ED8" font-size="15" font-weight="700" text-anchor="middle">320%</text>
+  <text x="280" y="320" fill="#334155" font-size="13.5" font-weight="600" text-anchor="middle">B채널</text>
+
+  <!-- C채널 150% (문제) -->
+  <rect x="378" y="235" width="64" height="65" fill="#EF4444"/>
+  <text x="410" y="225" fill="#DC2626" font-size="15" font-weight="700" text-anchor="middle">150%</text>
+  <text x="410" y="320" fill="#334155" font-size="13.5" font-weight="600" text-anchor="middle">C채널</text>
+
+  <!-- D채널 250% -->
+  <rect x="508" y="192" width="64" height="108" fill="#3B82F6"/>
+  <text x="540" y="182" fill="#1D4ED8" font-size="15" font-weight="700" text-anchor="middle">250%</text>
+  <text x="540" y="320" fill="#334155" font-size="13.5" font-weight="600" text-anchor="middle">D채널</text>
+
+  <!-- caption -->
+  <text x="320" y="348" fill="#6B7280" font-size="12.5" text-anchor="middle">평균 300% 뒤에 이런 격차가 숨어 있어요. 손댈 곳은 '전체'가 아니라 C채널이에요.</text>
+</svg>
