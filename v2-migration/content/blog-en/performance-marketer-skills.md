@@ -42,7 +42,7 @@ This is where the real work of a performance marketer begins — not just readin
 
 The core questions are: how should budget be split across channels? Can I safely put more into this channel, or is it already saturated? Did CPA rise because a channel got worse, or because the mix of spend shifted?
 
-Surprisingly few people know this layer well, which makes it the layer where people actually differentiate themselves. This is where concepts like marginal utility in [budget allocation](/blog/marketing-budget-allocation), the reallocation lens in [ROAS improvement](/blog/roas-improvement), and [CPA decomposition](/blog/cpa-reduction) live.
+Surprisingly few people know this layer well, which makes it the layer where people actually differentiate themselves. This is where concepts like marginal utility in [budget allocation](/en/blog/marketing-budget-allocation), the reallocation lens in [ROAS improvement](/en/blog/roas-improvement), and [CPA decomposition](/en/blog/cpa-reduction) live.
 
 **What to build here:** the difference between average and marginal (the next won you spend), the concept of saturation and response curves, and decomposing why performance went up or down.
 
@@ -52,7 +52,7 @@ The top layer. This is the level where you can look at an 800% ROAS on a dashboa
 
 This comes last because you can't even think to ask the question without the layers below it. You need to have handled the numbers directly and gotten a few budget calls wrong before "can I actually trust this number?" starts to occur to you.
 
-[Incrementality measurement](/blog/incrementality-measurement), [A/B experiment design](/blog/ab-testing), and [distinguishing correlation from causation](/blog/correlation-vs-causation) all belong here. Reach this layer, and you go from someone who "reads" data to someone who "verifies" it.
+[Incrementality measurement](/en/blog/incrementality-measurement), [A/B experiment design](/en/blog/ab-testing), and [distinguishing correlation from causation](/en/blog/correlation-vs-causation) all belong here. Reach this layer, and you go from someone who "reads" data to someone who "verifies" it.
 
 ## Remember tools by function, not by name
 

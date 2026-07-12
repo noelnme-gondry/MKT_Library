@@ -44,7 +44,7 @@ Frequency went up and CTR went down. The fact that these two moved together only
 
 Something else could have changed during the same window. To actually confirm causation, there's really one way: **hold everything else constant and change only the creative**, then compare. If CTR recovers after you switch to a new creative, that's when you can say fatigue was the real cause.
 
-Observational data only gets you this far — confirming it requires a comparison. If this distinction feels fuzzy, see our post on [correlation vs. causation](/blog/correlation-vs-causation).
+Observational data only gets you this far — confirming it requires a comparison. If this distinction feels fuzzy, see our post on [correlation vs. causation](/en/blog/correlation-vs-causation).
 
 ## So when should you actually refresh it
 
@@ -60,7 +60,7 @@ One more thing. When the fatigue signal shows up, the answer isn't always "new c
 
 The root reason frequency is climbing might be that **your audience is too narrow, and everyone who was going to see it already has.** In that case, even a brand-new creative just repeats the same problem a few days later — you're still showing it to the same people.
 
-So creative refresh and audience expansion need to be considered together. We'll pick up exactly which one is the answer in [narrow vs. broad targeting](/blog/audience-broad-vs-narrow).
+So creative refresh and audience expansion need to be considered together. We'll pick up exactly which one is the answer in [narrow vs. broad targeting](/en/blog/audience-broad-vs-narrow).
 
 ## Try this today
 

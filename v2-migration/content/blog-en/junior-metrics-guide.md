@@ -38,13 +38,13 @@ Looking at CTR and CVR together reveals something interesting. Good clicks but n
 
 This is the ad spend behind a single conversion — the number that comes up most often in day-to-day conversations.
 
-Here's something important to know: **a rising CPA doesn't automatically mean something got worse.** Even if every channel's own CPA stays flat, simply shifting budget toward a more expensive channel will push the overall blended CPA up. If you skip that breakdown and jump straight to overhauling creative, you're wasting effort. We covered this in more detail in [how to lower CPA](/blog/cpa-reduction).
+Here's something important to know: **a rising CPA doesn't automatically mean something got worse.** Even if every channel's own CPA stays flat, simply shifting budget toward a more expensive channel will push the overall blended CPA up. If you skip that breakdown and jump straight to overhauling creative, you're wasting effort. We covered this in more detail in [how to lower CPA](/en/blog/cpa-reduction).
 
 ## 4. ROAS — "Is this actually profitable?"
 
 This is revenue divided by ad spend, and it's the number that finally tells you whether things went well or badly.
 
-One caveat here too: ROAS is based on revenue, so it ignores margin. A ROAS of 300% can still lose you money if your cost of goods is high. And the ROAS your dashboard shows also includes **conversions that would have happened anyway, even without the ad**. Filtering that out is what [incrementality measurement](/blog/incrementality-measurement) does — a great topic to dig into once you're more comfortable with the basics.
+One caveat here too: ROAS is based on revenue, so it ignores margin. A ROAS of 300% can still lose you money if your cost of goods is high. And the ROAS your dashboard shows also includes **conversions that would have happened anyway, even without the ad**. Filtering that out is what [incrementality measurement](/en/blog/incrementality-measurement) does — a great topic to dig into once you're more comfortable with the basics.
 
 ## Real skill shows up when you read all four together
 
@@ -64,7 +64,7 @@ One last, and probably the most important, habit. Notice the ROAS box in the dia
 
 The CPA of a campaign with 3 conversions is nearly meaningless — one more conversion the next day can swing the number wildly. Not knowing this leads to a familiar mistake: killing a campaign because "it's inefficient," when in reality it was just noise from a small sample.
 
-Few junior marketers grasp this. **Being able to say "it's too early to tell" is itself a skill** — arguably a more advanced one than reading the metrics themselves. Forcing a conclusion out of numbers that aren't there yet is the riskiest move you can make. We covered how to judge whether your sample is big enough in our [A/B testing post](/blog/ab-testing).
+Few junior marketers grasp this. **Being able to say "it's too early to tell" is itself a skill** — arguably a more advanced one than reading the metrics themselves. Forcing a conclusion out of numbers that aren't there yet is the riskiest move you can make. We covered how to judge whether your sample is big enough in our [A/B testing post](/en/blog/ab-testing).
 
 ## Try this today
 
@@ -76,4 +76,4 @@ That's what you should work on this week. Do just that, and you've already start
 
 Metrics are meant to be read, not memorized. Know the question each one answers, read all four together, and defer judgment when the numbers are thin. Get comfortable with just these three habits, and you can pick up every other metric one at a time, whenever you actually need it.
 
-If you want to see the broader metric chain (all the way to installs, LTV, and CAC), continue on to our [performance marketing metrics post](/blog/performance-marketing-metrics).
+If you want to see the broader metric chain (all the way to installs, LTV, and CAC), continue on to our [performance marketing metrics post](/en/blog/performance-marketing-metrics).

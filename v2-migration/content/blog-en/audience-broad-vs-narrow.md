@@ -28,7 +28,7 @@ This is where things fall apart most often in practice — a narrow target that'
 
 ![A diagram showing that at a daily budget of $150, impressions land reasonably on a narrow target, but raising the daily budget to $1,500 on the same narrow target causes impressions to pile up excessively, spiking frequency.](/blog-assets-en/audience-broad-vs-narrow/budget-audience-fit.svg)
 
-The reason is simple. If the audience size stays the same but the budget goes up, that extra money gets spent **showing the ad more often to the same people.** Frequency spikes. And once frequency spikes, [creative fatigue](/blog/creative-fatigue) arrives fast — CTR drops, CPM rises, and CPA collapses.
+The reason is simple. If the audience size stays the same but the budget goes up, that extra money gets spent **showing the ad more often to the same people.** Frequency spikes. And once frequency spikes, [creative fatigue](/en/blog/creative-fatigue) arrives fast — CTR drops, CPM rises, and CPA collapses.
 
 So here's a principle: **audience size should scale with budget.** If you're raising budget, either widen the audience alongside it or rotate creative more frequently. Raise the budget and leave everything else unchanged, and it breaks almost every time.
 
@@ -48,7 +48,7 @@ One thing worth flagging directly. Very narrow targets — retargeting being the
 
 These are people who already visited your site. A good chunk of them **would have come back anyway, even without seeing the ad.** The ad is just stamping a receipt on a conversion that was already happening. That's why retargeting CPA tends to look better than the actual incremental impact it delivered.
 
-To filter this out, you need [incrementality measurement](/blog/incrementality-measurement). The narrower the target, the bigger this distortion tends to be — so it's worth second-guessing the instinct to say "CPA looks great, let's pour more into this."
+To filter this out, you need [incrementality measurement](/en/blog/incrementality-measurement). The narrower the target, the bigger this distortion tends to be — so it's worth second-guessing the instinct to say "CPA looks great, let's pour more into this."
 
 ## The answer isn't one or the other — it's a mix
 
@@ -56,7 +56,7 @@ In practice, this is usually how it plays out.
 
 You build scale on broad targeting, and pull efficiency from narrow targets (retargeting, lookalikes). It's not a matter of picking one — it's a matter of **what ratio you blend them in.**
 
-And that ratio isn't fixed. As budget grows, the broad side needs to carry more weight; as an audience exhausts, you need to open up new targets. Ultimately, the job comes down to checking whether each target is currently saturated or not, and [reallocating budget](/blog/marketing-budget-allocation) accordingly.
+And that ratio isn't fixed. As budget grows, the broad side needs to carry more weight; as an audience exhausts, you need to open up new targets. Ultimately, the job comes down to checking whether each target is currently saturated or not, and [reallocating budget](/en/blog/marketing-budget-allocation) accordingly.
 
 ## Try this today
 
@@ -68,4 +68,4 @@ If there's a narrow target where frequency keeps climbing, that's the one about 
 
 Narrow versus broad isn't a matter of preference. Decide based on what frequency looks like right now, whether you're about to raise budget, and whether you have enough data. And it's worth second-guessing a narrow target's great-looking CPA, at least once.
 
-Figuring out whether a CPA collapse is really about targeting, creative, or budget allocation is a separate question — pick that up in [how to lower CPA](/blog/cpa-reduction).
+Figuring out whether a CPA collapse is really about targeting, creative, or budget allocation is a separate question — pick that up in [how to lower CPA](/en/blog/cpa-reduction).

@@ -25,6 +25,15 @@ function readDir(locale) {
   }
 }
 
+// EN 글 렌더 HTML의 내부 블로그 링크(`/blog/<slug>`)를 `/en/blog/<slug>`로 재작성.
+// 원고는 항상 KR 경로(`/blog/<slug>`)만 쓰면 되고, locale 접두사는 렌더러가 붙임 —
+// "EN 파일에 /en/blog/ 직접 타이핑" 수동 규칙을 없애 재발(PR #303) 구조적으로 차단.
+// 이미 /en/blog/로 쓰여 있어도 문자열 "href=\"/blog/"가 안 나타나 이중치환 없음.
+function localizeInternalLinks(html, locale) {
+  if (locale !== "en") return html;
+  return html.replace(/(href=")\/blog\//g, "$1/en/blog/");
+}
+
 function parseFile(fileName, locale) {
   const filePath = path.join(BLOG_DIRS[locale], fileName);
   const raw = fs.readFileSync(filePath, "utf8");
@@ -39,7 +48,7 @@ function parseFile(fileName, locale) {
     tags: Array.isArray(data.tags) ? data.tags : [],
     ogImage: data.ogImage || "",
     draft: data.draft === true,
-    html: marked.parse(content || ""),
+    html: localizeInternalLinks(marked.parse(content || ""), locale),
   };
 }
 

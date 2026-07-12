@@ -46,7 +46,7 @@ This is the step people miss most often.
 
 A higher blended CPA doesn't necessarily mean the channels got worse. **Even if each channel's own CPA stayed exactly the same, simply shifting budget share toward a more expensive channel** will push the overall average up. This is called the mix effect.
 
-If that's what happened, overhauling your creative? Wasted effort — the channel was fine. The problem was allocation. We covered how to split a rising CPA into an allocation component and an efficiency component in [how to lower CPA](/blog/cpa-reduction).
+If that's what happened, overhauling your creative? Wasted effort — the channel was fine. The problem was allocation. We covered how to split a rising CPA into an allocation component and an efficiency component in [how to lower CPA](/en/blog/cpa-reduction).
 
 If you're running automated bidding, be especially suspicious of this — the algorithm may have shifted budget on its own, changing the mix underneath you.
 
@@ -56,11 +56,11 @@ You've split things apart and confirmed a specific channel's efficiency genuinel
 
 ![A symptom-to-suspect mapping table. Rising CPM points to more competition, too-narrow targeting, or a frequency spike. Falling CTR points to creative fatigue, a weaker hook, or mismatched targeting. Falling conversion rate points to landing page, checkout, pricing, or tracking issues. If every metric looks normal but CPA is still bad, suspect allocation shifts, saturation, or external factors.](/blog-assets-en/ad-performance-drop/symptom-map.svg)
 
-**CTR dropped** → Look at your creative. But first, check whether frequency rose alongside it. If frequency also went up, [creative fatigue](/blog/creative-fatigue) is likely. If frequency stayed flat and only CTR dropped, it's probably something else — increased competition or a targeting change.
+**CTR dropped** → Look at your creative. But first, check whether frequency rose alongside it. If frequency also went up, [creative fatigue](/en/blog/creative-fatigue) is likely. If frequency stayed flat and only CTR dropped, it's probably something else — increased competition or a targeting change.
 
 **Conversion rate dropped** → It's outside the ad itself. Landing page, checkout flow, pricing, inventory. Changing creative will never fix this.
 
-**CPM rose** → Your cost per impression jumped. Either competition intensified, or your targeting is too narrow and you're bidding against the same people over and over. Time to check your [audience size](/blog/audience-broad-vs-narrow).
+**CPM rose** → Your cost per impression jumped. Either competition intensified, or your targeting is too narrow and you're bidding against the same people over and over. Time to check your [audience size](/en/blog/audience-broad-vs-narrow).
 
 **Everything looks normal but CPA is still bad** → Look between channels, not inside one. Allocation shifted, you've hit saturation, or it's a seasonal factor.
 
@@ -68,7 +68,7 @@ You've split things apart and confirmed a specific channel's efficiency genuinel
 
 By this point, you usually land on an "ah, this is it" moment. But take one more beat before you act.
 
-Multiple things can change at the same time. Your creative was aging, a competitor launched a promo, and the season ended — all at once. Observation alone can't tell you how much each one actually contributed. Timing overlapping doesn't mean it's the cause. (This is exactly why it matters not to mix up [correlation and causation](/blog/correlation-vs-causation).)
+Multiple things can change at the same time. Your creative was aging, a competitor launched a promo, and the season ended — all at once. Observation alone can't tell you how much each one actually contributed. Timing overlapping doesn't mean it's the cause. (This is exactly why it matters not to mix up [correlation and causation](/en/blog/correlation-vs-causation).)
 
 So when you take action, **change one thing at a time.** If you swap creative, widen targeting, and cut budget all at once, even if things recover you'll never know what actually worked. Next time this happens, you'll be back to square one.
 
