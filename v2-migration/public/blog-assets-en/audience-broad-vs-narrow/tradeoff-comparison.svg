@@ -1,0 +1,43 @@
+<svg viewBox="0 0 700 400" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="700" height="400" fill="#ffffff"/>
+
+  <!-- left/right headers -->
+  <rect x="50" y="26" width="270" height="44" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="185" y="54" fill="#1D4ED8" font-size="15" font-weight="700" text-anchor="middle">Narrow Targeting</text>
+  <rect x="380" y="26" width="270" height="44" rx="10" fill="#ECFDF5" stroke="#A7F3D0"/>
+  <text x="515" y="54" fill="#047857" font-size="15" font-weight="700" text-anchor="middle">Broad Targeting</text>
+
+  <!-- row 1: reach -->
+  <text x="350" y="102" fill="#64748B" font-size="12.5" font-weight="600" text-anchor="middle">Reach</text>
+  <rect x="230" y="112" width="80" height="26" rx="5" fill="#93C5FD"/>
+  <text x="222" y="130" fill="#475569" font-size="12" text-anchor="end">Small</text>
+  <rect x="390" y="112" width="200" height="26" rx="5" fill="#6EE7B7"/>
+  <text x="598" y="130" fill="#475569" font-size="12" text-anchor="start">Large</text>
+
+  <!-- row 2: CPM -->
+  <text x="350" y="176" fill="#64748B" font-size="12.5" font-weight="600" text-anchor="middle">CPM</text>
+  <rect x="150" y="186" width="160" height="26" rx="5" fill="#93C5FD"/>
+  <text x="142" y="204" fill="#DC2626" font-size="12" font-weight="600" text-anchor="end">Expensive</text>
+  <rect x="390" y="186" width="90" height="26" rx="5" fill="#6EE7B7"/>
+  <text x="488" y="204" fill="#059669" font-size="12" font-weight="600" text-anchor="start">Cheap</text>
+
+  <!-- row 3: conversion rate -->
+  <text x="350" y="250" fill="#64748B" font-size="12.5" font-weight="600" text-anchor="middle">Conversion Rate</text>
+  <rect x="140" y="260" width="170" height="26" rx="5" fill="#93C5FD"/>
+  <text x="132" y="278" fill="#059669" font-size="12" font-weight="600" text-anchor="end">High</text>
+  <rect x="390" y="260" width="100" height="26" rx="5" fill="#6EE7B7"/>
+  <text x="498" y="278" fill="#DC2626" font-size="12" font-weight="600" text-anchor="start">Low</text>
+
+  <!-- row 4: audience exhaustion speed -->
+  <text x="350" y="324" fill="#64748B" font-size="12.5" font-weight="600" text-anchor="middle">Audience Exhaustion</text>
+  <rect x="150" y="334" width="160" height="26" rx="5" fill="#93C5FD"/>
+  <text x="142" y="352" fill="#DC2626" font-size="12" font-weight="600" text-anchor="end">Fast</text>
+  <rect x="390" y="334" width="80" height="26" rx="5" fill="#6EE7B7"/>
+  <text x="478" y="352" fill="#059669" font-size="12" font-weight="600" text-anchor="start">Slow</text>
+
+  <!-- center line -->
+  <line x1="350" y1="86" x2="350" y2="370" stroke="#E2E8F0" stroke-width="1.4"/>
+
+  <!-- caption -->
+  <text x="350" y="390" fill="#6B7280" font-size="12.5" text-anchor="middle">Neither side is the right answer. CPA is the result of these four factors interacting.</text>
+</svg>

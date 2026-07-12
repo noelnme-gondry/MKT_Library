@@ -1,0 +1,45 @@
+<svg viewBox="0 0 720 420" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="720" height="420" fill="#ffffff"/>
+
+  <!-- axes -->
+  <line x1="80" y1="310" x2="620" y2="310" stroke="#9CA3AF" stroke-width="1.5"/>
+  <line x1="80" y1="70" x2="80" y2="310" stroke="#9CA3AF" stroke-width="1.5"/>
+  <line x1="620" y1="70" x2="620" y2="310" stroke="#9CA3AF" stroke-width="1.5"/>
+
+  <text x="72" y="62" fill="#2563EB" font-size="12" text-anchor="end" font-weight="600">CTR</text>
+  <text x="628" y="62" fill="#EA580C" font-size="11" text-anchor="start" font-weight="600">Frequency</text>
+
+  <!-- x-axis labels -->
+  <text x="125" y="332" fill="#64748B" font-size="12" text-anchor="middle">Week 1</text>
+  <text x="240" y="332" fill="#64748B" font-size="12" text-anchor="middle">Week 2</text>
+  <text x="355" y="332" fill="#64748B" font-size="12" text-anchor="middle">Week 3</text>
+  <text x="470" y="332" fill="#64748B" font-size="12" text-anchor="middle">Week 4</text>
+  <text x="585" y="332" fill="#64748B" font-size="12" text-anchor="middle">Week 5</text>
+
+  <!-- crossover shading -->
+  <rect x="355" y="70" width="265" height="240" fill="#FEF3C7" opacity="0.35"/>
+  <line x1="355" y1="70" x2="355" y2="310" stroke="#D97706" stroke-width="1.6" stroke-dasharray="6 5"/>
+  <text x="487" y="92" fill="#B45309" font-size="13" font-weight="700" text-anchor="middle">Fatigue Zone</text>
+
+  <!-- frequency (orange, rising) -->
+  <polyline points="125,268 240,242 355,206 470,166 585,128" fill="none" stroke="#EA580C" stroke-width="2.8"/>
+  <g fill="#EA580C">
+    <circle cx="125" cy="268" r="4.5"/><circle cx="240" cy="242" r="4.5"/><circle cx="355" cy="206" r="4.5"/><circle cx="470" cy="166" r="4.5"/><circle cx="585" cy="128" r="4.5"/>
+  </g>
+
+  <!-- CTR (blue, falling) -->
+  <polyline points="125,128 240,136 355,172 470,220 585,262" fill="none" stroke="#2563EB" stroke-width="2.8"/>
+  <g fill="#2563EB">
+    <circle cx="125" cy="128" r="4.5"/><circle cx="240" cy="136" r="4.5"/><circle cx="355" cy="172" r="4.5"/><circle cx="470" cy="220" r="4.5"/><circle cx="585" cy="262" r="4.5"/>
+  </g>
+
+  <!-- legend -->
+  <line x1="160" y1="358" x2="192" y2="358" stroke="#2563EB" stroke-width="2.8"/>
+  <text x="200" y="363" fill="#475569" font-size="12.5">CTR (down)</text>
+  <line x1="330" y1="358" x2="362" y2="358" stroke="#EA580C" stroke-width="2.8"/>
+  <text x="370" y="363" fill="#475569" font-size="12.5">Frequency (up)</text>
+
+  <!-- caption -->
+  <text x="350" y="392" fill="#6B7280" font-size="12.5" text-anchor="middle">Frequency keeps climbing while the response cools off (CTR down).</text>
+  <text x="350" y="410" fill="#6B7280" font-size="12.5" text-anchor="middle">This "scissors" shape is the fatigue signal.</text>
+</svg>
