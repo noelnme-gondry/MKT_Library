@@ -794,7 +794,7 @@ function hl(code, lang) {
             const PAGE_DATA_CACHE = {};
             // 이 Set에 등록된 페이지 ID는 JSON 데이터 기반으로 렌더.
             // 등록되지 않은 페이지는 기존 PAGE_RENDERERS 함수를 사용 (점진 마이그레이션).
-            const DATA_BASED_PAGES = new Set(["1-1"]);
+            const DATA_BASED_PAGES = new Set(["1-1", "8-1"]);
 
             // locale="en"이면 {id}.en.json을 우선 fetch, 없으면(404/네트워크 오류) 한글 {id}.json으로
             // 폴백 — 아직 번역 안 된 페이지도 안전. 캐시 키는 locale별로 분리.
