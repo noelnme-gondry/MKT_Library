@@ -3,7 +3,7 @@ title: "A/B 테스트 방법: 우연을 걷어내고 판정하기"
 description: "무작위 배정·표본 크기·통계적 유의성부터 열에 아홉이 당하는 조기 종료(peeking) 함정까지, A/B 테스트 실무를 정리했어요."
 date: "2026-07-09"
 slug: "ab-testing"
-keywords: "A/B 테스트, AB test, 통계적 유의성, 검정력, 표본 크기, 조기 종료, peeking, 전환율 최적화, CRO, 랜딩페이지 실험"
+keywords: "A/B 테스트, AB test, 통계적 유의성, 검정력, 표본 크기, 조기 종료, peeking, 전환율 최적화, CRO, 랜딩페이지 실험, 무작위 배정, AB 테스트 방법, 실험 설계, 그로스 마케팅"
 tags: ["실험 분석", "퍼포먼스 마케팅"]
 draft: false
 ---

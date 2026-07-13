@@ -3,7 +3,7 @@ title: "퍼포먼스 마케팅 지표, 따로 외우지 말고 '연결해서' �
 description: "CPI·CPA·ROAS·LTV:CAC를 따로 외우지 말고 하나의 사슬로 이어 읽으면 성과가 어디서 새는지 보입니다. 주니어 마케터용 지표 기초 가이드."
 date: "2026-07-09"
 slug: "performance-marketing-metrics"
-keywords: "퍼포먼스 마케팅 지표, CPI, CPA, ROAS, LTV, CAC, LTV:CAC, 마케팅 지표 기초, 주니어 마케터"
+keywords: "퍼포먼스 마케팅 지표, CPI, CPA, ROAS, LTV, CAC, LTV:CAC, 마케팅 지표 기초, 주니어 마케터, 앱 마케팅 지표, UA 마케팅, 마케팅 지표 계산법"
 tags: ["지표 기초", "퍼포먼스 마케팅"]
 draft: false
 ---
