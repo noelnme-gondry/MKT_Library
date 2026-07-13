@@ -1,5 +1,6 @@
 import { resolveSlugToId, idToPath, SITE_URL } from "@/lib/routeMap";
 import { findMeta } from "@/store/useDataStore";
+import { buildPageKeywords } from "@/lib/pageKeywords";
 import PageClient from "./PageClient";
 
 export async function generateMetadata({ params }) {
@@ -18,10 +19,12 @@ export async function generateMetadata({ params }) {
     ? `${meta.title} — ${meta.group?.desc || ""}`.trim()
     : meta?.group?.desc;
   const canonical = `${SITE_URL}${idToPath(routeId)}`;
+  const keywords = buildPageKeywords(meta);
 
   return {
     title,
     description,
+    keywords,
     alternates: { canonical },
     openGraph: { title, description, url: canonical },
   };

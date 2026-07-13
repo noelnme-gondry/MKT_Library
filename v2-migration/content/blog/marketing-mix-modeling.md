@@ -3,7 +3,7 @@ title: "MMM이란: 어트리뷰션 방법론에서 벗어나 채널 기여 재�
 description: "쿠키·iOS 추적 제한 시대의 채널 기여 측정법, 마케팅 믹스 모델링(MMM). 회귀·adstock·포화·기여 분해와 한계를 정리했어요."
 date: "2026-07-09"
 slug: "marketing-mix-modeling"
-keywords: "마케팅 믹스 모델링, MMM, adstock, 포화, 기여 분해, 카니발라이제이션, 다중공선성, 마케팅 예측"
+keywords: "마케팅 믹스 모델링, MMM, adstock, 포화, 기여 분해, 카니발라이제이션, 다중공선성, 마케팅 예측, 채널 기여도 분석, 어트리뷰션 모델, 마케팅 데이터 분석 툴"
 tags: ["MMM", "퍼포먼스 마케팅"]
 draft: false
 ---

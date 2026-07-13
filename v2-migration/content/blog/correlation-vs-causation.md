@@ -3,7 +3,7 @@ title: "상관관계 vs 인과관계: 헷갈리면 돈 잃어요"
 description: "상관과 인과의 차이를 아이스크림·익사 예시로 정리. 교란변수·역인과가 왜 착각을 부르는지, 인과 확인엔 왜 실험이 필요한지까지."
 date: "2026-07-09"
 slug: "correlation-vs-causation"
-keywords: "상관관계, 인과관계, correlation vs causation, 교란변수, confounder, 역인과, 스퓨리어스 상관, 마케팅 분석, 실험"
+keywords: "상관관계, 인과관계, correlation vs causation, 교란변수, confounder, 역인과, 스퓨리어스 상관, 마케팅 분석, 실험, 인과추론 마케팅, 통계적 사고, 데이터 분석 오류"
 tags: ["분석 방법론", "퍼포먼스 마케팅"]
 draft: false
 ---

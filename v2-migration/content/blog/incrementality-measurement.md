@@ -3,7 +3,7 @@ title: "증분성 측정: 그 전환, 광고가 만든 걸까요?"
 description: "대시보드 ROAS는 반쯤만 믿어야 합니다. 광고가 진짜 만든 성과만 재는 증분성 측정과 홀드아웃 실험 3가지를 정리했어요."
 date: "2026-07-09"
 slug: "incrementality-measurement"
-keywords: "증분성 측정, incrementality, 홀드아웃 실험, 이중차분, DiD, iROAS, 어트리뷰션, conversion lift"
+keywords: "증분성 측정, incrementality, 홀드아웃 실험, 이중차분, DiD, iROAS, 어트리뷰션, conversion lift, 증분 측정, 인과추론 마케팅, 홀드아웃 테스트, 마케팅 실험 설계"
 tags: ["증분 분석", "퍼포먼스 마케팅"]
 draft: false
 ---

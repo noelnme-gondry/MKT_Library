@@ -3,7 +3,7 @@ title: "CPA가 올랐다고 소재부터 갈아엎지 마세요"
 description: "CPA 상승을 믹스효과와 효율효과로 나눠 진짜 원인을 찾는 법을, 8,000원·12,000원 채널 예시와 함께 정리했습니다."
 date: "2026-07-12"
 slug: "cpa-reduction"
-keywords: "CPA 상승, 믹스효과, 효율효과, CPA 낮추는 법, 캠페인 성과 변동, 예산 배분"
+keywords: "CPA 상승, 믹스효과, 효율효과, CPA 낮추는 법, 캠페인 성과 변동, 예산 배분, CPA 분석, CPA 상승 원인, 채널별 CPA, 성과 변동 진단"
 tags: ["CPA", "문제 진단"]
 draft: false
 ---

@@ -13,7 +13,7 @@ export const metadata = {
     template: "%s | Growth Opt Playbook",
   },
   description: "캠페인 CSV만 올리면 성과·예산 배분·A/B 테스트를 분석하는 무료 퍼포먼스 마케팅 도구 모음", // 53자
-  keywords: "퍼포먼스 마케팅, 마케팅 데이터 분석, 마케팅 분석툴, 데이터 분석, 콘텐츠 마케팅, 구글 애널리틱스, GA4, SEO, 검색엔진최적화, ROAS, 그로스 해킹, CRM 마케팅, 데이터 드리븐, 마케팅 대시보드, 마케팅 예산 배분, MMM, 마케팅 믹스 모델링, 퍼포먼스 마케팅 SOP",
+  keywords: "퍼포먼스 마케팅, 마케팅 데이터 분석, 마케팅 분석툴, 데이터 분석, 콘텐츠 마케팅, 구글 애널리틱스, GA4, SEO, 검색엔진최적화, ROAS, 그로스 해킹, CRM 마케팅, 데이터 드리븐, 마케팅 대시보드, 마케팅 예산 배분, MMM, 마케팅 믹스 모델링, 퍼포먼스 마케팅 SOP, CPA 분석, ROAS 분석, CTR 개선, 광고 소재 분석, 소재 피로도, 타겟팅 전략, 오디언스 분석, 광고 최적화, 캠페인 최적화, 자동입찰, 머신러닝 광고, 마케팅 데이터 분석 툴, 노코드 데이터 분석, CSV 분석 도구, 무료 마케팅 툴, 마케팅 대시보드 무료, 퍼포먼스 마케터 취업, 퍼포먼스 마케터 실무, 그로스 마케팅, A/B 테스트, 증분 측정, 인과추론 마케팅, 통계적 유의성, 홀드아웃 테스트, 메타 광고, 구글 애즈, 앱 마케팅, UA 마케팅, 모바일 앱 마케팅",
   authors: [{ name: "Growth Opt Playbook" }],
   robots: {
     index: true,
@@ -97,6 +97,7 @@ export default function RootLayout({ children }) {
                   operatingSystem: "Web",
                   offers: { "@type": "Offer", price: "0", priceCurrency: "KRW" },
                   description: "GA4 세팅·ROAS 개선·MMM·예산배분 등 퍼포먼스 마케팅 실무 대시보드와 SOP 가이드.",
+                  keywords: "퍼포먼스 마케팅, 마케팅 데이터 분석, ROAS, CPA, MMM, 마케팅 예산 배분, A/B 테스트, 증분 측정, 마케팅 대시보드 무료",
                 },
               ],
             }),

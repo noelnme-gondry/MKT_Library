@@ -3,7 +3,7 @@ title: "ROAS 떨어졌다고 예산부터 줄이면, 십중팔구 손해예요"
 description: "ROAS가 떨어졌을 때 예산부터 줄이면 손해예요. 채널별 격차를 쪼개고, '다음 1원'의 효율(한계 ROAS)로 재배분하는 순서를 예시와 함께 정리했습니다."
 date: "2026-07-12"
 slug: "roas-improvement"
-keywords: "ROAS 개선, 한계 ROAS, ROAS 하락, 채널별 ROAS, 재배분, 포화, 퍼포먼스 마케팅"
+keywords: "ROAS 개선, 한계 ROAS, ROAS 하락, 채널별 ROAS, 재배분, 포화, 퍼포먼스 마케팅, ROAS 분석, 광고 효율 개선, 예산 재배분 전략"
 tags: ["ROAS", "예산 배분"]
 draft: false
 ---
