@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
 
 // 데이터 준비를 어려워하는 유저를 1:1 DM 상담으로 유도하는 비차단 사이드 팝업.
@@ -148,6 +149,25 @@ export default function DmNudge() {
         </svg>
         인스타그램 DM으로 문의 →
       </a>
+      {/* 덜 강조된 자기서비스 탈출구 — DM 대신 직접 가이드로. */}
+      <Link
+        href="/guide/csv-data-prep"
+        onClick={() => {
+          if (typeof window !== "undefined" && typeof window.gtag === "function") {
+            window.gtag("event", "dm_guide_open", { from });
+          }
+        }}
+        style={{
+          display: "block",
+          marginTop: "8px",
+          textAlign: "center",
+          fontSize: "11.5px",
+          color: "var(--text-muted)",
+          textDecoration: "none",
+        }}
+      >
+        먼저 데이터 준비 가이드 보기 →
+      </Link>
     </div>
   );
 }
