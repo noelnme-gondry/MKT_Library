@@ -1,0 +1,32 @@
+<svg viewBox="0 0 780 460" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="780" height="460" fill="#ffffff"/>
+
+  <text x="390" y="32" fill="#334155" font-size="15" font-weight="700" text-anchor="middle">Three things machines can't do, no matter how smart the algorithm gets</text>
+
+  <!-- Card 1 -->
+  <rect x="40" y="58" width="700" height="116" rx="12" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <circle cx="84" cy="105" r="21" fill="#EFF6FF"/>
+  <text x="84" y="112" fill="#2563EB" font-size="19" font-weight="700" text-anchor="middle">1</text>
+  <text x="124" y="90" fill="#334155" font-size="15" font-weight="700">Deciding what to optimize for</text>
+  <text x="124" y="115" fill="#64748B" font-size="13">Machines optimize whatever goal you give them — perfectly, mechanically.</text>
+  <text x="124" y="136" fill="#64748B" font-size="13">But they don't know if purchase is really the right goal to chase,</text>
+  <text x="124" y="157" fill="#64748B" font-size="13">versus first payment, repeat purchase, or retention instead.</text>
+
+  <!-- Card 2 -->
+  <rect x="40" y="190" width="700" height="116" rx="12" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <circle cx="84" cy="237" r="21" fill="#EFF6FF"/>
+  <text x="84" y="244" fill="#2563EB" font-size="19" font-weight="700" text-anchor="middle">2</text>
+  <text x="124" y="222" fill="#334155" font-size="15" font-weight="700">Verifying its own results</text>
+  <text x="124" y="247" fill="#64748B" font-size="13">The algorithm reports "I generated this conversion." But it never checks</text>
+  <text x="124" y="268" fill="#64748B" font-size="13">whether that person would have bought anyway, ad or no ad.</text>
+  <text x="124" y="289" fill="#64748B" font-size="13">That verification has to happen outside the platform.</text>
+
+  <!-- Card 3 -->
+  <rect x="40" y="322" width="700" height="116" rx="12" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <circle cx="84" cy="369" r="21" fill="#EFF6FF"/>
+  <text x="84" y="376" fill="#2563EB" font-size="19" font-weight="700" text-anchor="middle">3</text>
+  <text x="124" y="354" fill="#334155" font-size="15" font-weight="700">Knowing context outside the data</text>
+  <text x="124" y="379" fill="#64748B" font-size="13">Inventory running low next week. A competitor launching tomorrow.</text>
+  <text x="124" y="400" fill="#64748B" font-size="13">This segment converts well but costs a fortune in support tickets.</text>
+  <text x="124" y="421" fill="#64748B" font-size="13">None of that shows up in the ad account — but it changes the decision.</text>
+</svg>
