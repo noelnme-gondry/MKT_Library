@@ -3,7 +3,7 @@ title: "Ad Performance Suddenly Dropped? Here's Where to Look First"
 description: "Don't reach for creative changes when ad performance suddenly drops. A 4-step diagnosis order — check tracking, split by channel, separate mix from efficiency, trace the funnel — with a symptom map."
 date: "2026-07-12"
 slug: "ad-performance-drop"
-keywords: "ad performance drop, CPA spike, ad diagnosis order, mix effect, funnel diagnosis"
+keywords: "ad performance drop, CPA spike, ad diagnosis order, mix effect, funnel diagnosis, why did CPA suddenly increase, ad tracking issue"
 tags: ["Troubleshooting", "CPA"]
 draft: false
 ---

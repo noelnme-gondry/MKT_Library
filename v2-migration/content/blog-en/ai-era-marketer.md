@@ -3,7 +3,7 @@ title: "The Algorithm Does Everything Now — So What's Left for the Marketer?"
 description: "Auto-bidding and AI are said to replace marketers, but what machines took over and what's still yours are different things. Here's what machines structurally can't do."
 date: "2026-07-13"
 slug: "ai-era-marketer"
-keywords: "AI in marketing, marketing automation, marketer skills, machine learning ads, future of performance marketing, auto-bidding"
+keywords: "AI in marketing, marketing automation, marketer skills, machine learning ads, future of performance marketing, auto-bidding, will AI replace marketers, skills for marketers in the AI era"
 tags: ["AI", "Career"]
 draft: false
 ---

@@ -3,7 +3,7 @@ title: "What Is MMM: Measuring Channel Contribution Beyond Attribution Models"
 description: "Marketing Mix Modeling (MMM), the channel-contribution method built for a world of cookie loss and iOS tracking limits. Regression, adstock, saturation, contribution decomposition, and where it breaks down."
 date: "2026-07-09"
 slug: "marketing-mix-modeling"
-keywords: "marketing mix modeling, MMM, adstock, saturation, contribution decomposition, cannibalization, multicollinearity, marketing forecasting"
+keywords: "marketing mix modeling, MMM, adstock, saturation, contribution decomposition, cannibalization, multicollinearity, marketing forecasting, MMM vs attribution, post-iOS14 measurement"
 tags: ["MMM", "Performance Marketing"]
 draft: false
 ---
