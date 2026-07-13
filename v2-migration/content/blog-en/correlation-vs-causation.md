@@ -3,7 +3,7 @@ title: "Correlation vs. Causation: Confuse Them and You Lose Money"
 description: "The difference between correlation and causation, explained through ice cream and drowning. Why confounders and reverse causation create illusions, and why an experiment is the only way to confirm causation."
 date: "2026-07-09"
 slug: "correlation-vs-causation"
-keywords: "correlation, causation, correlation vs causation, confounder, reverse causation, spurious correlation, marketing analysis, experimentation"
+keywords: "correlation, causation, correlation vs causation, confounder, reverse causation, spurious correlation, marketing analysis, experimentation, correlation does not imply causation, confounding variable example"
 tags: ["Analysis Methodology", "Performance Marketing"]
 draft: false
 ---
