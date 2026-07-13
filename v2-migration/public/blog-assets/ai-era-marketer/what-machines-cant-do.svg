@@ -1,0 +1,29 @@
+<svg viewBox="0 0 720 400" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="720" height="400" fill="#ffffff"/>
+
+  <text x="360" y="32" fill="#334155" font-size="15" font-weight="700" text-anchor="middle">알고리즘이 아무리 좋아져도 구조적으로 못 하는 것</text>
+
+  <!-- 카드 1 -->
+  <rect x="40" y="58" width="640" height="94" rx="12" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <circle cx="84" cy="105" r="21" fill="#EFF6FF"/>
+  <text x="84" y="112" fill="#2563EB" font-size="19" font-weight="700" text-anchor="middle">1</text>
+  <text x="124" y="90" fill="#334155" font-size="15" font-weight="700">목표를 정하는 일</text>
+  <text x="124" y="115" fill="#64748B" font-size="13">기계는 '주어진 목표'를 최적화해요. 구매를 목표로 주면 구매를 최적화하죠.</text>
+  <text x="124" y="136" fill="#64748B" font-size="13">근데 지금 우리가 최적화해야 할 게 구매인지 첫 결제인지 재구매인지는 안 알려줘요.</text>
+
+  <!-- 카드 2 -->
+  <rect x="40" y="164" width="640" height="94" rx="12" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <circle cx="84" cy="211" r="21" fill="#EFF6FF"/>
+  <text x="84" y="218" fill="#2563EB" font-size="19" font-weight="700" text-anchor="middle">2</text>
+  <text x="124" y="196" fill="#334155" font-size="15" font-weight="700">자기 성과를 검증하는 일</text>
+  <text x="124" y="221" fill="#64748B" font-size="13">알고리즘은 "내가 만든 전환"이라고 보고해요. 그런데 광고를 안 봤어도</text>
+  <text x="124" y="242" fill="#64748B" font-size="13">살 사람이었는지는 자기가 판단하지 않아요. 그 검증은 밖에서 해야 해요.</text>
+
+  <!-- 카드 3 -->
+  <rect x="40" y="270" width="640" height="94" rx="12" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <circle cx="84" cy="317" r="21" fill="#EFF6FF"/>
+  <text x="84" y="324" fill="#2563EB" font-size="19" font-weight="700" text-anchor="middle">3</text>
+  <text x="124" y="302" fill="#334155" font-size="15" font-weight="700">데이터 밖 맥락을 아는 일</text>
+  <text x="124" y="327" fill="#64748B" font-size="13">재고가 곧 떨어진다, 경쟁사가 내일 신제품을 낸다, 이 유저층은 CS 비용이 크다.</text>
+  <text x="124" y="348" fill="#64748B" font-size="13">계정 데이터에 안 찍히는 것들이 결정을 바꿔요.</text>
+</svg>

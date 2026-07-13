@@ -1,0 +1,51 @@
+<svg viewBox="0 0 720 440" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="720" height="440" fill="#ffffff"/>
+
+  <text x="360" y="32" fill="#B91C1C" font-size="15" font-weight="700" text-anchor="middle">학습이 영원히 안 끝나는 악순환</text>
+
+  <!-- 원형 배치 5노드 -->
+  <!-- 1 상단 -->
+  <rect x="270" y="56" width="180" height="58" rx="10" fill="#FEF2F2" stroke="#FECACA"/>
+  <text x="360" y="80" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">타겟이 좁다 · 예산을</text>
+  <text x="360" y="100" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">광고세트로 잘게 쪼갬</text>
+
+  <!-- 2 우측 -->
+  <rect x="524" y="152" width="172" height="58" rx="10" fill="#FEF2F2" stroke="#FECACA"/>
+  <text x="610" y="176" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">전환이 50건에</text>
+  <text x="610" y="196" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">못 미침</text>
+
+  <!-- 3 우하단 -->
+  <rect x="452" y="290" width="176" height="58" rx="10" fill="#FEF2F2" stroke="#FECACA"/>
+  <text x="540" y="314" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">학습 미완료 상태로</text>
+  <text x="540" y="334" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">계속 머무름</text>
+
+  <!-- 4 좌하단 -->
+  <rect x="92" y="290" width="176" height="58" rx="10" fill="#FEF2F2" stroke="#FECACA"/>
+  <text x="180" y="314" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">효율이 안 나오니</text>
+  <text x="180" y="334" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">또 손을 댐</text>
+
+  <!-- 5 좌측 -->
+  <rect x="24" y="152" width="172" height="58" rx="10" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.6"/>
+  <text x="110" y="176" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">학습 리셋</text>
+  <text x="110" y="196" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">→ 처음부터 다시</text>
+
+  <!-- 화살표 (시계방향) -->
+  <g stroke="#DC2626" stroke-width="2" fill="none">
+    <path d="M 452 90 C 500 96, 530 120, 552 148"/>
+    <path d="M 608 212 C 604 244, 590 272, 570 288"/>
+    <path d="M 450 322 C 400 332, 320 332, 270 322"/>
+    <path d="M 148 288 C 126 268, 112 244, 108 214"/>
+    <path d="M 112 150 C 130 118, 170 92, 266 84"/>
+  </g>
+  <g fill="#DC2626">
+    <polygon points="546,140 558,152 542,152"/>
+    <polygon points="576,282 566,296 564,280"/>
+    <polygon points="278,316 264,324 278,330"/>
+    <polygon points="102,220 110,206 118,220"/>
+    <polygon points="258,78 272,86 258,92"/>
+  </g>
+
+  <!-- 탈출구 -->
+  <rect x="196" y="376" width="328" height="48" rx="10" fill="#ECFDF5" stroke="#059669" stroke-width="1.6"/>
+  <text x="360" y="405" fill="#047857" font-size="13" font-weight="700" text-anchor="middle">탈출: 광고세트를 합치고, 타겟을 넓히고, 그냥 둔다</text>
+</svg>

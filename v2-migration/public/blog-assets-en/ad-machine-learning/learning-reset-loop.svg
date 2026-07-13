@@ -1,0 +1,51 @@
+<svg viewBox="0 0 880 460" xmlns="http://www.w3.org/2000/svg" font-family="'Inter','Helvetica Neue',Arial,sans-serif">
+  <rect x="0" y="0" width="880" height="460" fill="#ffffff"/>
+
+  <text x="440" y="32" fill="#B91C1C" font-size="15" font-weight="700" text-anchor="middle">The loop where learning never finishes</text>
+
+  <!-- 5-node circular layout -->
+  <!-- 1 top -->
+  <rect x="310" y="53" width="260" height="64" rx="10" fill="#FEF2F2" stroke="#FECACA"/>
+  <text x="440" y="77" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">Audience too narrow, budget</text>
+  <text x="440" y="97" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">split across too many ad sets</text>
+
+  <!-- 2 right -->
+  <rect x="560" y="149" width="260" height="64" rx="10" fill="#FEF2F2" stroke="#FECACA"/>
+  <text x="690" y="173" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">Conversions fall</text>
+  <text x="690" y="193" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">short of 50</text>
+
+  <!-- 3 bottom-right -->
+  <rect x="490" y="287" width="260" height="64" rx="10" fill="#FEF2F2" stroke="#FECACA"/>
+  <text x="620" y="311" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">Stuck in "learning</text>
+  <text x="620" y="331" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">limited" status</text>
+
+  <!-- 4 bottom-left -->
+  <rect x="130" y="287" width="260" height="64" rx="10" fill="#FEF2F2" stroke="#FECACA"/>
+  <text x="260" y="311" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">Efficiency looks bad,</text>
+  <text x="260" y="331" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">so you tweak it again</text>
+
+  <!-- 5 left -->
+  <rect x="15" y="149" width="260" height="64" rx="10" fill="#FEE2E2" stroke="#DC2626" stroke-width="1.6"/>
+  <text x="145" y="173" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">Learning resets</text>
+  <text x="145" y="193" fill="#B91C1C" font-size="13" font-weight="700" text-anchor="middle">&#8594; back to square one</text>
+
+  <!-- Arrows (clockwise) -->
+  <g stroke="#DC2626" stroke-width="2" fill="none">
+    <path d="M 555,108 C 590,118, 600,132, 605,148"/>
+    <path d="M 640,213 C 636,244, 650,266, 662,283"/>
+    <path d="M 490,328 C 440,340, 350,340, 397,328"/>
+    <path d="M 148,287 C 122,266, 106,242, 108,216"/>
+    <path d="M 205,150 C 235,106, 285,76, 330,60"/>
+  </g>
+  <g fill="#DC2626">
+    <polygon points="600,138 615,150 599,155"/>
+    <polygon points="656,270 668,286 649,284"/>
+    <polygon points="401,318 388,327 401,336"/>
+    <polygon points="100,206 116,212 103,222"/>
+    <polygon points="320,70 335,58 322,52"/>
+  </g>
+
+  <!-- Escape route -->
+  <rect x="160" y="396" width="560" height="52" rx="10" fill="#ECFDF5" stroke="#059669" stroke-width="1.6"/>
+  <text x="440" y="428" fill="#047857" font-size="13" font-weight="700" text-anchor="middle">Escape: merge ad sets, widen the audience, and just leave it alone</text>
+</svg>
