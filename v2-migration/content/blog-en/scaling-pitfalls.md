@@ -32,7 +32,7 @@ If your audience size stays the same but your budget keeps growing, that extra m
 
 ![A domino chain: rising budget leads to rising frequency, rising frequency leads to falling CTR from creative fatigue, falling CTR leads to rising CPM, and it all ends in a sharply rising CPA. The chain is marked to show it needs to be broken between the frequency and CTR links.](/blog-assets-en/scaling-pitfalls/scaling-domino.svg)
 
-Budget goes up → frequency goes up → people who've seen the same creative repeatedly stop responding, so [CTR drops](/blog/creative-fatigue) → with lower response, the platform has no reason to keep your cost-per-impression low, so CPM rises → CPA falls apart.
+Budget goes up → frequency goes up → people who've seen the same creative repeatedly stop responding, so [CTR drops](/en/blog/creative-fatigue) → with lower response, the platform has no reason to keep your cost-per-impression low, so CPM rises → CPA falls apart.
 
 That's why when scaling breaks, several metrics usually get worse **at the same time.** If only one metric worsened, it's more likely something else entirely.
 
@@ -40,7 +40,7 @@ That's why when scaling breaks, several metrics usually get worse **at the same 
 
 This is where the fix comes in. When you raise budget, **don't raise it by itself.** A few things need to move together with it.
 
-**Widen your targeting at the same time.** This gives the money somewhere new to go. If budget doubles but the audience stays the same, frequency doubles too. We covered which direction to widen in [our audience size post](/blog/audience-broad-vs-narrow).
+**Widen your targeting at the same time.** This gives the money somewhere new to go. If budget doubles but the audience stays the same, frequency doubles too. We covered which direction to widen in [our audience size post](/en/blog/audience-broad-vs-narrow).
 
 **Prep multiple creatives.** Rising frequency is somewhat unavoidable, but with several creatives in rotation, the same person sees something different each time, which delays fatigue.
 
@@ -52,7 +52,7 @@ Here's a mindset shift. Instead of forcing more money into an already-saturated 
 
 The thing to focus on isn't the average — it's the "next dollar." Channel A might have the best average ROAS at 480%, but if it's saturated, the efficiency of the next chunk of budget you add is much lower. Meanwhile, Channel B might have a lower average but sit in a zone with room to grow — so that same money earns more there.
 
-This marginal-utility view is the core of scaling. We went into this in more depth in our [budget allocation post](/blog/marketing-budget-allocation) and our [ROAS improvement post](/blog/roas-improvement).
+This marginal-utility view is the core of scaling. We went into this in more depth in our [budget allocation post](/en/blog/marketing-budget-allocation) and our [ROAS improvement post](/en/blog/roas-improvement).
 
 ## Being honest: was it really a scaling problem?
 
@@ -60,7 +60,7 @@ CPA went up, and you'd also raised the budget. So it must be scaling, right? **N
 
 Competition could have intensified at the same time, the season could have ended, or the creative could have simply aged out. Budget going up and CPA going up happening together only tells you there's a correlation. To actually attribute it to scaling, you'd need to see whether CPA comes back down when you roll the budget back.
 
-If you want to be sure, there's a way to test it: raise the budget in only some regions or some campaigns, and leave the rest unchanged. The difference between the two is the scaling effect. This kind of [holdout method](/blog/incrementality-measurement) can separate what pure observation can't.
+If you want to be sure, there's a way to test it: raise the budget in only some regions or some campaigns, and leave the rest unchanged. The difference between the two is the scaling effect. This kind of [holdout method](/en/blog/incrementality-measurement) can separate what pure observation can't.
 
 ## What to do today
 
@@ -76,4 +76,4 @@ Scaling breaks not because the campaign got worse, but because you crossed the p
 
 If manually calculating how much room each channel still has feels tedious, try uploading your media report CSV to the saturation diagnosis in our free tool. It shows you exactly where you sit on the response curve. Everything you upload is processed in your browser only — nothing gets sent to a server.
 
-If you raised the budget and things already broke, work backward with [our drop-diagnosis order](/blog/ad-performance-drop) to narrow down the cause first.
+If you raised the budget and things already broke, work backward with [our drop-diagnosis order](/en/blog/ad-performance-drop) to narrow down the cause first.

@@ -1,0 +1,36 @@
+<svg viewBox="0 0 680 380" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="680" height="380" fill="#ffffff"/>
+
+  <!-- baseline -->
+  <line x1="60" y1="320" x2="620" y2="320" stroke="#9CA3AF" stroke-width="1.5"/>
+
+  <!-- connectors -->
+  <g stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="5 4">
+    <line x1="180" y1="103" x2="230" y2="103"/>
+    <line x1="320" y1="84" x2="370" y2="84"/>
+    <line x1="460" y1="60" x2="510" y2="60"/>
+  </g>
+
+  <!-- 지난달 CPA 9,200 -->
+  <rect x="90" y="103" width="90" height="217" fill="#CBD5E1"/>
+  <text x="135" y="95" fill="#475569" font-size="14" font-weight="700" text-anchor="middle">9,200원</text>
+  <text x="135" y="340" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">지난달 CPA</text>
+
+  <!-- 믹스효과 +800 -->
+  <rect x="230" y="84" width="90" height="19" fill="#3B82F6"/>
+  <text x="275" y="76" fill="#1D4ED8" font-size="14" font-weight="700" text-anchor="middle">+800원</text>
+  <text x="275" y="340" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">믹스효과</text>
+
+  <!-- 효율효과 +1,000 -->
+  <rect x="370" y="60" width="90" height="24" fill="#EF4444"/>
+  <text x="415" y="52" fill="#DC2626" font-size="14" font-weight="700" text-anchor="middle">+1,000원</text>
+  <text x="415" y="340" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">효율효과</text>
+
+  <!-- 이번달 CPA 11,000 -->
+  <rect x="510" y="60" width="90" height="260" fill="#64748B"/>
+  <text x="555" y="52" fill="#334155" font-size="14" font-weight="700" text-anchor="middle">11,000원</text>
+  <text x="555" y="340" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">이번달 CPA</text>
+
+  <!-- caption -->
+  <text x="340" y="366" fill="#6B7280" font-size="12.5" text-anchor="middle">1,800원 오른 것 중 800원은 배분(믹스) 탓, 1,000원은 진짜 효율 탓이에요.</text>
+</svg>

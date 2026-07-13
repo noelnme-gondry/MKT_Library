@@ -62,3 +62,5 @@ The core idea is treating metrics as a connected chain. Each metric immediately 
 The catch is that calculating all of this separately in a spreadsheet every time is a hassle. If you'd rather see these metrics lined up on one screen, upload the raw file you already have saved to our free [operations dashboard](/dashboard). It shows CPI, CPA, ROAS, and LTV:CAC together on one screen, so you can immediately see which link is leaking. Uploaded data is processed entirely in your browser and never leaves it, so there's no risk in putting your media spend or revenue numbers anywhere external.
 
 And don't forget what we said earlier: a benchmark like LTV:CAC of 3:1 varies by industry. Your own data's trend is a far more accurate compass than someone else's benchmark.
+
+If a number suddenly spikes somewhere in this chain, we've laid out where to look first, step by step, in our [drop-diagnosis order post](/en/blog/ad-performance-drop).

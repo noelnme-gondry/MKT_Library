@@ -76,7 +76,7 @@ This isn't meant to scare you with the numbers — quite the opposite. It's exac
 
 Incrementality is usually a small difference, so with a small sample it often doesn't register statistically. When a result comes back "not significant," that means "we haven't seen enough to be sure yet" — not "there's no effect." Conflating the two leads you to prematurely kill a perfectly good channel.
 
-Either grow your sample or your time window, and if it still doesn't register, "hold judgment" is often the right answer. There are methods (like MMM) that use observational data to quickly estimate direction, but the principle is that confirmation comes from a holdout experiment. "Association" and "causation" are different things.
+Either grow your sample or your time window, and if it still doesn't register, "hold judgment" is often the right answer. There are methods (like [marketing mix modeling](/en/blog/marketing-mix-modeling)) that use observational data to quickly estimate direction, but the principle is that confirmation comes from a holdout experiment. "Association" and "causation" are different things.
 
 ## Try this today
 
