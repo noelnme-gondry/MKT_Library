@@ -13,8 +13,8 @@ import LocaleAutoRedirect from "@/components/LocaleAutoRedirect";
 const LANDING_COPY = {
   ko: {
     eyebrow: "Growth Opt Playbook",
-    title: "무엇을 하시겠어요?",
-    deck: "운영 표준 가이드를 보거나, 내 운영 데이터를 올려 바로 분석하세요. 원하는 쪽을 고르면 그 안에서만 메뉴가 열립니다.",
+    title: "무엇이 궁금하세요?",
+    deck: "질문을 고르면 그 도구로 바로 들어갑니다. 데이터가 없어도 예시로 먼저 보고, 준비되면 내 데이터로 분석하세요. 모든 분석 도구 무료.",
     localeSwitchLabel: "English",
     guide: {
       step: "가이드",
@@ -50,8 +50,8 @@ const LANDING_COPY = {
   },
   en: {
     eyebrow: "Growth Opt Playbook",
-    title: "What would you like to do?",
-    deck: "Browse the standard operating playbooks, or upload your own campaign data to analyze it right away. Pick a track and the menu opens just for that.",
+    title: "What are you curious about?",
+    deck: "Pick a question and jump straight into the tool. No data yet? See a live example first, then analyze your own. All analysis tools are free.",
     localeSwitchLabel: "한국어",
     guide: {
       step: "Guides",
@@ -96,6 +96,42 @@ const CONTENT_GROUP_IDS = new Set(CONTENT_SECTION ? CONTENT_SECTION.groups : [])
 
 const GROUP_ICONS = { "05": "📊", "06": "🎨", "07": "🧪", "09": "✍️" };
 
+// 홈 1층에 도구를 "질문"으로 노출 — 유저가 자기 궁금증으로 도구를 고르게(선택성↑)
+// + 궁금해서 더 누르게(호기심 훅). 실제 도구 이름은 카드 desc에 함께 노출(식별 유지).
+// 키=라우트 id(§4.1 불변). 훅 없는 신규 도구는 자동으로 도구명+설명으로 폴백.
+const TOOL_HOOKS = {
+  ko: {
+    "5-2": "우리 운영, 지금 잘 돌고 있나?",
+    "5-21": "이번 주 성과, 대체 뭐 때문에 움직였지?",
+    "5-22": "잘 나오던 캠페인, 왜 갑자기 CPA가 올랐지?",
+    "5-3": "예산, 어디에 더 써야 이득일까?",
+    "5-6": "어떤 소재가 성과를 끌어올리고 있나?",
+    "5-4": "A안과 B안, 진짜 차이가 있는 걸까?",
+    "5-23": "이 광고가 진짜로 만든 몫은 얼마일까?",
+    "5-18": "광고를 늘리면 성과는 얼마나 늘까?",
+    "5-20": "유저를 붙잡는 '아하 순간'은 언제일까?",
+  },
+  en: {
+    "5-2": "Is our operation running healthy right now?",
+    "5-21": "What actually moved this week's performance?",
+    "5-22": "That winning campaign — why did CPA suddenly jump?",
+    "5-3": "Where should the next dollar of budget go?",
+    "5-6": "Which creatives are actually lifting performance?",
+    "5-4": "Version A vs B — is the difference real?",
+    "5-23": "How much did this ad truly create on its own?",
+    "5-18": "If we spend more, how much will performance grow?",
+    "5-20": "When is the 'aha moment' that keeps users hooked?",
+  },
+};
+
+function findMeta(id) {
+  for (const group of IA) {
+    const item = group.items.find((i) => i.id === id);
+    if (item) return item;
+  }
+  return null;
+}
+
 function escapeHtml(unsafe) {
   if (!unsafe) return "";
   return String(unsafe)
@@ -106,15 +142,16 @@ function escapeHtml(unsafe) {
     .replace(/'/g, "&#039;");
 }
 
-/* ──────────────────────────── STEP 1 ──────────────────────────── */
+/* ──────────────────────────── STEP 1 (홈) ──────────────────────────── */
+// 재구성: 추상적 3-트랙 게이트(유저가 안 눌러 이탈)를 제거하고, 분석 도구를 홈에서
+// 바로 "질문형 카드"로 노출 → 한 번 클릭에 도구+라이브 데모 진입(선택성·호기심↑).
+// 가이드·콘텐츠는 보조 카드로 강등(트랙 유지), 블로그·소셜은 그대로.
 function LandingHome({ onTrack, locale }) {
   const router = useRouter();
   const L = LANDING_COPY[locale] || LANDING_COPY.ko;
+  const H = TOOL_HOOKS[locale] || TOOL_HOOKS.ko;
+  const opsGroups = IA.filter((g) => OPS_GROUP_IDS.has(g.id));
   const totalGuides = IA.filter((g) => GUIDE_GROUP_IDS.has(g.id)).reduce(
-    (a, g) => a + g.items.length,
-    0
-  );
-  const totalTools = IA.filter((g) => OPS_GROUP_IDS.has(g.id)).reduce(
     (a, g) => a + g.items.length,
     0
   );
@@ -128,6 +165,8 @@ function LandingHome({ onTrack, locale }) {
     setLocalePref(next);
     router.push(next === "en" ? "/en" : "/");
   };
+  const goTool = (id) => router.push(idToSlug[id] || "/");
+  const ctaLabel = locale === "en" ? "See a live example →" : "예시로 바로 보기 →";
 
   return (
     <>
@@ -153,14 +192,62 @@ function LandingHome({ onTrack, locale }) {
       <h1 className="page-title">{L.title}</h1>
       <p className="page-deck">{L.deck}</p>
 
+      {/* 1층 — 질문형 분석 도구(바로 도구+라이브 데모). 그룹 헤더로 가벼운 구조만. */}
+      {opsGroups.map((g) => (
+        <section key={g.id} className="block" style={{ marginTop: "1.2rem" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              marginBottom: "10px",
+            }}
+          >
+            <span style={{ fontSize: "18px" }}>{GROUP_ICONS[g.id] || "📦"}</span>
+            <h2
+              className="section-title"
+              style={{ margin: 0, border: "none", padding: 0 }}
+            >
+              {g.title}
+            </h2>
+          </div>
+          <div className="phase-grid">
+            {g.items.map((item) => {
+              const meta = findMeta(item.id);
+              if (!meta) return null;
+              const hook = H[item.id];
+              const sub = hook
+                ? meta.title + (meta.desc ? ` · ${meta.desc}` : "")
+                : meta.desc || "";
+              return (
+                <a
+                  key={item.id}
+                  className="phase-card phase-card-tool"
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    goTool(item.id);
+                  }}
+                  style={{ cursor: "pointer", textDecoration: "none" }}
+                >
+                  <div className="phase-card-title">{hook || meta.title}</div>
+                  <div className="phase-card-desc">{sub}</div>
+                  <div className="phase-card-cta">{ctaLabel}</div>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+
+      {/* 2층 — 가이드·콘텐츠 진입(보조). 트랙 선택 유지, 시각 위계는 낮춤. */}
       <div
         className="phase-grid"
         style={{
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
           marginTop: "1.6rem",
         }}
       >
-        {/* 가이드 카드 */}
         <div
           className="phase-card"
           style={{ cursor: "pointer" }}
@@ -178,27 +265,6 @@ function LandingHome({ onTrack, locale }) {
           <div className="phase-card-cta">{L.guide.cta}</div>
         </div>
 
-        {/* 분석 카드 */}
-        <div
-          className="phase-card phase-card-tool"
-          style={{ cursor: "pointer" }}
-          onClick={() => onTrack("analyze")}
-        >
-          <div className="phase-card-head">
-            <span className="phase-card-step">{L.analyze.step}</span>
-            <span className="phase-card-tag">{L.analyze.tag}</span>
-          </div>
-          <div className="phase-card-title">{L.analyze.title}</div>
-          <div className="phase-card-desc">{L.analyze.desc}</div>
-          <div className="phase-card-foot">
-            <span className="phase-card-meta tnum">
-              {totalTools}{L.analyze.metaSuffix}
-            </span>
-          </div>
-          <div className="phase-card-cta">{L.analyze.cta}</div>
-        </div>
-
-        {/* 컨텐츠 분석 카드 — 퍼포먼스 엔진을 콘텐츠 마케터 언어로 리라벨 */}
         {totalContent > 0 && (
           <div
             className="phase-card phase-card-tool"
@@ -221,8 +287,7 @@ function LandingHome({ onTrack, locale }) {
         )}
       </div>
 
-      {/* 블로그 진입 — 트랙 3카드와 다른 성격(읽을거리)이라 4번째 동급 카드가 아닌
-          풀폭 가로 배너로 아래에 길게 배치(시각 위계 구분 + 통일감). /blog로 이동. */}
+      {/* 블로그 진입 — 읽을거리라 풀폭 가로 배너로 아래에 배치. /blog로 이동. */}
       <Link
         href={locale === "en" ? "/en/blog" : "/blog"}
         className="phase-card"
@@ -335,101 +400,7 @@ function LandingGuide({ onBack, onNavigate, locale }) {
   );
 }
 
-/* ──────────────────────────── STEP 2b ──────────────────────────── */
-function LandingAnalyze({ onBack, onNavigate, locale }) {
-  const opsGroups = IA.filter((g) => OPS_GROUP_IDS.has(g.id));
-  const L = LANDING_COPY[locale] || LANDING_COPY.ko;
-
-  const findMeta = (id) => {
-    for (const group of IA) {
-      const item = group.items.find((i) => i.id === id);
-      if (item) return item;
-    }
-    return null;
-  };
-
-  return (
-    <>
-      <button
-        className="landing-back-btn"
-        onClick={onBack}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "6px",
-          background: "var(--bg-2)",
-          border: "1px solid var(--border)",
-          color: "var(--text-2)",
-          borderRadius: "9px",
-          padding: "7px 13px",
-          fontSize: "12.5px",
-          cursor: "pointer",
-          marginBottom: "1.2rem",
-        }}
-      >
-        {L.back}
-      </button>
-      <div className="page-eyebrow">마케팅 분석 · 대시보드</div>
-      <h1 className="page-title">무엇을 분석하시겠어요?</h1>
-      <p className="page-deck">
-        목표를 고르면 맞는 도구로 바로 들어갑니다.{" "}
-        <strong>모든 분석 도구를 무료</strong>로 사용할 수 있습니다.
-      </p>
-
-      {opsGroups.map((g) => (
-        <section key={g.id} className="block" style={{ marginTop: "1rem" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              marginBottom: "10px",
-            }}
-          >
-            <span style={{ fontSize: "18px" }}>
-              {GROUP_ICONS[g.id] || "📦"}
-            </span>
-            <h2
-              className="section-title"
-              style={{ margin: 0, border: "none", padding: 0 }}
-            >
-              {g.title}
-            </h2>
-          </div>
-          {g.subtitle && (
-            <p className="muted" style={{ margin: "-4px 0 12px" }}>
-              {g.subtitle}
-            </p>
-          )}
-          <div className="phase-grid">
-            {g.items.map((item) => {
-              const meta = findMeta(item.id);
-              if (!meta) return null;
-              return (
-                <a
-                  key={item.id}
-                  className="phase-card"
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onNavigate(item.id);
-                  }}
-                  style={{ cursor: "pointer", textDecoration: "none" }}
-                >
-                  <div className="phase-card-title">{meta.title}</div>
-                  <div className="phase-card-desc">{meta.desc || ""}</div>
-                  <div className="phase-card-cta">바로 사용 →</div>
-                </a>
-              );
-            })}
-          </div>
-        </section>
-      ))}
-    </>
-  );
-}
-
-/* ──────────────────────────── STEP 2c (컨텐츠) ──────────────────────────── */
+/* ──────────────────────────── STEP 2b (컨텐츠) ──────────────────────────── */
 function LandingContent({ onBack, onNavigate, locale }) {
   const contentGroups = IA.filter((g) => CONTENT_GROUP_IDS.has(g.id));
   const L = LANDING_COPY[locale] || LANDING_COPY.ko;
@@ -523,7 +494,7 @@ function LandingContent({ onBack, onNavigate, locale }) {
 // 트랙(LandingGuide/Analyze/Content)은 IA 원본 한글 데이터 그대로, 뒤로가기
 // 버튼 라벨만 locale 분기.
 export default function LandingPage({ locale = "ko" }) {
-  const [track, setTrack] = useState(null); // null = home, "guide", "analyze", "content"
+  const [track, setTrack] = useState(null); // null = home, "guide", "content"
   const router = useRouter();
 
   const handleNavigate = (routeId) => {
@@ -535,15 +506,6 @@ export default function LandingPage({ locale = "ko" }) {
   if (track === "guide") {
     return (
       <LandingGuide
-        onBack={() => setTrack(null)}
-        onNavigate={handleNavigate}
-        locale={locale}
-      />
-    );
-  }
-  if (track === "analyze") {
-    return (
-      <LandingAnalyze
         onBack={() => setTrack(null)}
         onNavigate={handleNavigate}
         locale={locale}

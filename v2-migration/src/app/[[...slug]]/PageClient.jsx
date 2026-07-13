@@ -9,6 +9,7 @@ import GlobalModals from "@/components/GlobalModals";
 import SopContent from "@/components/sops/SopContent";
 import LandingPage from "@/components/LandingPage";
 import MobileToolNudge from "@/components/MobileToolNudge";
+import DmNudge from "@/components/DmNudge";
 
 // 도구는 무겁고(Chart.js·XLSX·PapaParse) 라우트별로 하나만 필요 → next/dynamic으로
 // 코드 분할. 정적 import 시 홈 포함 모든 경로가 앱 전체 JS(~1MB)를 최초 로드해
@@ -91,6 +92,8 @@ export default function PageClient({ params }) {
           </article>
         </main>
       </div>
+      {/* 데이터 준비 DM 유도 사이드 팝업: 도구(5-x·9-x)에서만, 데모 후 스크롤 시 우하단 */}
+      {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DmNudge />}
       <GlobalModals />
     </>
   );
