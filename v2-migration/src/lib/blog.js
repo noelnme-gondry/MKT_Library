@@ -34,6 +34,34 @@ function localizeInternalLinks(html, locale) {
   return html.replace(/(href=")\/blog\//g, "$1/en/blog/");
 }
 
+// ── 카테고리 정리(§UX) ─────────────────────────────────────────────────
+// 난잡한 원본 태그(21종·대부분 count 1)를 6개 상위 카테고리로 통합. frontmatter는
+// 불변 — 여기가 taxonomy SSOT라 파싱 시점에 매핑(되돌리기 쉬움, 글 내용 무관).
+// 매핑 없는 태그는 그대로 통과, "퍼포먼스 마케팅"(거의 전 글)은 분류 기능 상실이라 제외.
+const TAG_CATEGORY = {
+  "예산 배분": "예산·효율", CPA: "예산·효율", ROAS: "예산·효율", 스케일업: "예산·효율", 포화: "예산·효율",
+  "마케팅 지표": "측정·분석", "지표 기초": "측정·분석", "분석 방법론": "측정·분석", "실험 분석": "측정·분석", "증분 분석": "측정·분석", MMM: "측정·분석", "문제 진단": "측정·분석",
+  "광고 소재": "소재·크리에이티브", "소재 피로도": "소재·크리에이티브",
+  타겟팅: "타겟·오디언스", "오디언스 전략": "타겟·오디언스",
+  AI: "AI·자동화", 머신러닝: "AI·자동화", 자동화: "AI·자동화",
+  커리어: "커리어·성장", "주니어 마케터": "커리어·성장",
+};
+const TAG_DROP = new Set(["퍼포먼스 마케팅"]);
+
+function consolidateTags(rawTags) {
+  const out = [];
+  const seen = new Set();
+  for (const t of rawTags) {
+    if (!t || TAG_DROP.has(t)) continue;
+    const cat = TAG_CATEGORY[t] || t; // 매핑 없으면 원본 유지(EN 태그 등)
+    if (!seen.has(cat)) {
+      seen.add(cat);
+      out.push(cat);
+    }
+  }
+  return out;
+}
+
 function parseFile(fileName, locale) {
   const filePath = path.join(BLOG_DIRS[locale], fileName);
   const raw = fs.readFileSync(filePath, "utf8");
@@ -45,7 +73,7 @@ function parseFile(fileName, locale) {
     description: data.description || "",
     date: data.date || "",
     keywords: data.keywords || "",
-    tags: Array.isArray(data.tags) ? data.tags : [],
+    tags: consolidateTags(Array.isArray(data.tags) ? data.tags : []),
     ogImage: data.ogImage || "",
     draft: data.draft === true,
     html: localizeInternalLinks(marked.parse(content || ""), locale),
