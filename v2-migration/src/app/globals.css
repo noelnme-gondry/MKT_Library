@@ -372,11 +372,18 @@
         color: var(--text-secondary);
         font-family: var(--font-mono);
         letter-spacing: 0.02em;
-        flex-wrap: wrap;
+        /* 줌·너비 변화에도 한 줄 유지(줄바꿈 대신 중간 크럼 truncate) — 예전 wrap은
+           확대 시 브랜드/크럼이 2줄로 깨져 topbar 높이가 튀었음. */
+        flex-wrap: nowrap;
         min-width: 0;
+        overflow: hidden;
       }
       .breadcrumb .sep {
         color: var(--text-muted);
+        flex-shrink: 0;
+      }
+      /* 브랜드(로고+이름)는 항상 온전히 — 줄어들지 않음. */
+      .breadcrumb .brand-crumb {
         flex-shrink: 0;
       }
       .breadcrumb .current {
@@ -408,6 +415,9 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        /* 액션(EN·테마·⌘K·CSV)은 항상 우측 한 줄 고정 — 브레드크럼이 대신 truncate. */
+        flex-shrink: 0;
+        white-space: nowrap;
       }
       /* 분석 도구(5-x) 압축 sticky 바 — eyebrow/deck 대체 */
       .page-sticky-bar {
