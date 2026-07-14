@@ -1,9 +1,9 @@
-// 운영 대시보드(5-2/9-7) 결론 카드용 WoW 판정 — 렌더층 헬퍼(골든 대상 아님).
-// ScorecardTab의 WoW 집계(최근 w일 vs 직전 w일)와 동일한 aggregator 프리미티브를
-// 재사용해 "효율이 좋아지는 중/나빠지는 중/큰 변화 없음"을 평어로 판정한다.
-// 수학 엔진 불변 — dashboardAggregator의 순수 함수만 소비(§8 날조 금지: 데이터
-// 부족하면 insufficient로 정직 처리).
-import { getMonFilteredRows, aggregateByKey, effectiveDenomBasis, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+// 운영 대시보드(5-2/9-7) 결론 카드 + 다운로드 — 도구가 "계산한" 인사이트만 준다
+// (업로드 원천 데이터 되돌려주기 금지). WoW 최근 vs 직전 기간의 증감을 CPA·CPI·
+// CTR·CVR·ROAS·리텐션·이익까지 파생지표 전부 포함해 판정+표로 제공.
+// 렌더층 헬퍼(골든 아님) — dashboardAggregator 순수함수만 소비. 데이터 부족·컬럼
+// 미매핑이면 정직하게 생략(§8 날조 금지). WoW는 5-2류 시계열 전용 판정.
+import { getMonFilteredRows, aggregateByKey, effectiveDenomBasis, computeWeightedRetention, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 
 const SIG = 0.05; // 유의미한 변화 임계(±5%)
 
@@ -11,19 +11,14 @@ function pct(cur, prev) {
   if (prev == null || prev === 0 || cur == null) return null;
   return (cur - prev) / prev;
 }
-
 function arrow(d) {
-  if (d == null) return "";
-  return d > 0 ? "▲" : d < 0 ? "▼" : "—";
+  return d == null ? "" : d > 0 ? "▲" : d < 0 ? "▼" : "—";
 }
-
 function fmtPctDelta(d) {
   if (d == null) return "—";
-  const s = (Math.abs(d) * 100).toFixed(1);
-  return `${d > 0 ? "+" : d < 0 ? "−" : ""}${s}%`;
+  return `${d > 0 ? "+" : d < 0 ? "−" : ""}${(Math.abs(d) * 100).toFixed(1)}%`;
 }
 
-// csvData·filterState·denomBasis·displayCurrency는 store에서 그대로 주입.
 export function buildDashboardVerdict({
   csvData,
   filterState = {},
@@ -35,39 +30,42 @@ export function buildDashboardVerdict({
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const fc = (v) => (v == null ? "—" : fmtCurrencyPrecise(v, displayCurrency));
 
-  if (!csvData || !csvData.raw || csvData.raw.length === 0) {
-    return { insufficient: true };
-  }
+  if (!csvData || !csvData.raw || csvData.raw.length === 0) return { insufficient: true };
 
   const rows = getMonFilteredRows(csvData, filterState);
-  const daily = aggregateByKey(rows, "date", [
-    "cost", "impressions", "clicks", "installs", "actions", "revenue_d7",
-  ]).sort((a, b) => (a._key > b._key ? 1 : -1));
+  const daily = aggregateByKey(rows, "date", ["cost"]) // 날짜 목록만 필요
+    .map((d) => d._key)
+    .sort();
 
   const w = windowDays;
-  const recentRows = daily.slice(-w);
-  const prevRows = daily.slice(-2 * w, -w);
+  if (daily.length < 2) return { insufficient: true, days: daily.length, windowDays: w };
+  const recentDates = new Set(daily.slice(-w));
+  const prevDates = new Set(daily.slice(-2 * w, -w));
+  if (recentDates.size === 0 || prevDates.size === 0) return { insufficient: true, days: daily.length, windowDays: w };
 
-  // 최소 2주(직전 비교주)치 없으면 정직하게 판정 생략.
-  if (recentRows.length === 0 || prevRows.length === 0) {
-    return { insufficient: true, days: daily.length, windowDays: w };
-  }
+  const recentRaw = rows.filter((r) => recentDates.has(r.date));
+  const prevRaw = rows.filter((r) => prevDates.has(r.date));
 
   const mapped = new Set(Object.values(csvData.mapping || {}));
   const basis = effectiveDenomBasis(csvData, denomBasis);
-  const sum = (arr, k) => arr.reduce((s, d) => s + (d[k] || 0), 0);
+  const sum = (arr, k) => arr.reduce((s, r) => s + (Number(r[k]) || 0), 0);
   const agg = (arr) => {
-    const cost = sum(arr, "cost"), inst = sum(arr, "installs"), act = sum(arr, "actions"), rev = sum(arr, "revenue_d7");
+    const cost = sum(arr, "cost"), imp = sum(arr, "impressions"), clk = sum(arr, "clicks");
+    const inst = sum(arr, "installs"), act = sum(arr, "actions"), rev = sum(arr, "revenue_d7");
     return {
-      cost, inst, act, rev,
+      cost, imp, clk, inst, act, rev,
       cpi: inst > 0 ? cost / inst : null,
       cpa: act > 0 ? cost / act : null,
+      ctr: imp > 0 ? clk / imp : null,
+      cvr: clk > 0 ? inst / clk : null,
       roas: cost > 0 && rev > 0 ? rev / cost : null,
+      profit: mapped.has("revenue_d7") ? rev - cost : null,
+      ret: computeWeightedRetention(arr, 7, basis).rate,
     };
   };
-  const R = agg(recentRows), P = agg(prevRows);
+  const R = agg(recentRaw), P = agg(prevRaw);
 
-  // 핵심 효율 지표: 분모 기준 따라 CPA(actions) 우선, 없으면 CPI(installs).
+  // 핵심 효율 지표(tone 판정용): 분모 기준 따라 CPA 우선, 없으면 CPI.
   const useCpa = basis === "actions" && mapped.has("actions");
   const effKey = useCpa ? "cpa" : mapped.has("installs") ? "cpi" : null;
   const effLabel = useCpa ? tr("전환당 비용(CPA)", "cost per action (CPA)") : tr("설치당 비용(CPI)", "cost per install (CPI)");
@@ -79,8 +77,6 @@ export function buildDashboardVerdict({
   const dCost = pct(R.cost, P.cost);
   const dRoas = mapped.has("revenue_d7") ? pct(R.roas, P.roas) : null;
 
-  // tone: 효율(비용/성과)이 좋아졌나. eff↓(비용 하락)=개선, eff↑=악화.
-  // 매출 있으면 ROAS↑도 개선 신호로 함께 본다.
   let tone = "neutral";
   const effImproved = dEff != null && dEff <= -SIG;
   const effWorsened = dEff != null && dEff >= SIG;
@@ -89,7 +85,6 @@ export function buildDashboardVerdict({
   if (effImproved || (roasImproved && !effWorsened)) tone = "good";
   else if (effWorsened || (roasWorsened && !effImproved)) tone = "bad";
 
-  // 헤드라인 — 통계용어 없이 평어.
   const period = tr(`최근 ${w}일`, `last ${w} days`);
   let headline;
   if (tone === "good") {
@@ -109,7 +104,6 @@ export function buildDashboardVerdict({
     );
   }
 
-  // 다음 액션 불릿.
   const points = [];
   if (dCost != null && Math.abs(dCost) >= SIG) {
     points.push({
@@ -119,53 +113,59 @@ export function buildDashboardVerdict({
       ),
     });
   }
-  if (tone === "good") {
-    points.push({ cls: "good", text: tr("증액 여력 점검: 예산 배분(5-3)에서 한계효율이 살아있는 채널을 확인하세요.", "Room to scale: check Budget Allocation (5-3) for channels with headroom.") });
-  } else if (tone === "bad") {
-    points.push({ cls: "bad", text: tr("이상 감지 탭에서 급변한 날·채널을 먼저 확인하세요.", "Start with the Anomaly tab to find the day/channel that spiked.") });
-  }
+  if (tone === "good") points.push({ cls: "good", text: tr("증액 여력 점검: 예산 배분(5-3)에서 한계효율이 살아있는 채널을 확인하세요.", "Room to scale: check Budget Allocation (5-3) for channels with headroom.") });
+  else if (tone === "bad") points.push({ cls: "bad", text: tr("이상 감지 탭에서 급변한 날·채널을 먼저 확인하세요.", "Start with the Anomaly tab to find the day/channel that spiked.") });
 
-  // 핵심 수치 스트립.
-  const stats = [
-    { label: tr("지출", "Spend"), value: `${fc(P.cost)} → ${fc(R.cost)} (${fmtPctDelta(dCost)})` },
-    { label: convLabel, value: `${Math.round(P[convKey]).toLocaleString()} → ${Math.round(R[convKey]).toLocaleString()} (${fmtPctDelta(dConv)})` },
-  ];
-  if (effKey) stats.push({ label: effLabel, value: `${fc(P[effKey])} → ${fc(R[effKey])} (${fmtPctDelta(dEff)})` });
-  if (dRoas != null) stats.push({ label: "ROAS", value: `${P.roas != null ? (P.roas * 100).toFixed(0) + "%" : "—"} → ${R.roas != null ? (R.roas * 100).toFixed(0) + "%" : "—"} (${fmtPctDelta(dRoas)})` });
+  // 지표 표(직전→최근, WoW). 컬럼 매핑된 것만(정직). type=값 포맷 방식.
+  const asPctStr = (v) => (v == null ? "—" : (v * 100).toFixed(2) + "%");
+  const asRoasStr = (v) => (v == null ? "—" : (v * 100).toFixed(0) + "%");
+  const asInt = (v) => (v == null ? "—" : Math.round(v).toLocaleString());
+  const M = [
+    { key: "cost", label: tr("지출", "Spend"), fmt: fc, csv: (v) => v },
+    mapped.has("impressions") && { key: "imp", label: tr("노출", "Impressions"), fmt: asInt, csv: (v) => Math.round(v) },
+    mapped.has("clicks") && { key: "clk", label: tr("클릭", "Clicks"), fmt: asInt, csv: (v) => Math.round(v) },
+    mapped.has("installs") && { key: "inst", label: tr("설치", "Installs"), fmt: asInt, csv: (v) => Math.round(v) },
+    mapped.has("actions") && { key: "act", label: tr("전환", "Actions"), fmt: asInt, csv: (v) => Math.round(v) },
+    mapped.has("installs") && { key: "cpi", label: "CPI", fmt: fc, csv: (v) => v },
+    mapped.has("actions") && { key: "cpa", label: "CPA", fmt: fc, csv: (v) => v },
+    mapped.has("impressions") && mapped.has("clicks") && { key: "ctr", label: "CTR", fmt: asPctStr, csv: asPctStr },
+    mapped.has("clicks") && mapped.has("installs") && { key: "cvr", label: "CVR", fmt: asPctStr, csv: asPctStr },
+    mapped.has("revenue_d7") && { key: "roas", label: "ROAS", fmt: asRoasStr, csv: asRoasStr },
+    mapped.has("revenue_d7") && { key: "rev", label: tr("매출(D7)", "Revenue (D7)"), fmt: fc, csv: (v) => v },
+    mapped.has("revenue_d7") && { key: "profit", label: tr("이익", "Profit"), fmt: fc, csv: (v) => v },
+    mapped.has("ret_d7") && { key: "ret", label: tr("리텐션(D7)", "Retention (D7)"), fmt: asPctStr, csv: asPctStr },
+  ].filter(Boolean);
 
-  // 다운로드 페이로드 — 핵심 요약 CSV/텍스트(BOM+CRLF §7).
-  const rowsForExport = [
-    { metric: tr("지출", "Spend"), prev: P.cost, recent: R.cost, wow: dCost },
-    { metric: convLabel, prev: P[convKey], recent: R[convKey], wow: dConv },
-  ];
-  if (effKey) rowsForExport.push({ metric: effLabel, prev: P[effKey], recent: R[effKey], wow: dEff });
-  if (dRoas != null) rowsForExport.push({ metric: "ROAS", prev: P.roas, recent: R.roas, wow: dRoas });
+  const metricRows = M.map((m) => ({ ...m, prev: P[m.key], recent: R[m.key], wow: pct(R[m.key], P[m.key]) }));
 
-  const q = (s) => (/[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g, '""')}"` : String(s));
-  const csvHeader = tr("지표,직전,최근,WoW", "Metric,Prior,Recent,WoW");
+  // 카드 상단 스트립 = 핵심 4~5개만(지출·전환·효율·ROAS). 나머지는 다운로드로.
+  const stripKeys = ["cost", convKey, effKey, "roas"].filter(Boolean);
+  const stats = stripKeys
+    .map((k) => metricRows.find((m) => m.key === k))
+    .filter(Boolean)
+    .map((m) => ({ label: m.label, value: `${m.fmt(m.prev)} → ${m.fmt(m.recent)} (${fmtPctDelta(m.wow)})` }));
+
+  // 다운로드 — 계산된 인사이트만(BOM+CRLF §7). 원천 업로드 데이터는 주지 않는다.
+  const qc = (s) => (/[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g, '""')}"` : String(s));
+  const csvHead = tr("지표,직전,최근,증감(WoW %)", "Metric,Prior,Recent,Change (WoW %)");
   const csv =
     "﻿" +
-    [csvHeader, ...rowsForExport.map((r) => [q(r.metric), r.prev ?? "", r.recent ?? "", r.wow == null ? "" : (r.wow * 100).toFixed(1) + "%"].join(","))].join("\r\n") +
+    [
+      csvHead,
+      ...metricRows.map((m) =>
+        [qc(m.label), m.prev == null ? "" : m.csv(m.prev), m.recent == null ? "" : m.csv(m.recent), m.wow == null ? "" : (m.wow * 100).toFixed(1) + "%"].join(",")
+      ),
+    ].join("\r\n") +
     "\r\n";
 
   const text =
     tr(`# 운영 대시보드 핵심 요약 (${period})\n\n`, `# Operations Dashboard Summary (${period})\n\n`) +
     `${headline}\n\n` +
-    tr("## 핵심 지표 (직전 → 최근, WoW)\n", "## Key metrics (prior → recent, WoW)\n") +
-    rowsForExport
-      .map((r) => `- ${r.metric}: ${arrow(r.wow)} ${fmtPctDelta(r.wow)}`)
-      .join("\n") +
+    tr("## 지표 증감 (직전 → 최근, WoW)\n", "## Metric change (prior → recent, WoW)\n") +
+    metricRows.map((m) => `- ${m.label}: ${m.fmt(m.prev)} → ${m.fmt(m.recent)}  (${arrow(m.wow)} ${fmtPctDelta(m.wow)})`).join("\n") +
     "\n\n" +
     points.map((p) => `- ${p.text}`).join("\n") +
     "\n";
 
-  return {
-    insufficient: false,
-    tone,
-    headline,
-    points,
-    stats,
-    export: { csv, text },
-    windowDays: w,
-  };
+  return { insufficient: false, tone, headline, points, stats, metricRows, export: { csv, text }, windowDays: w };
 }

@@ -340,7 +340,7 @@ index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상�
 - **`ds/ResultActionCard`**: 5-3 `alloc-verdict-card` 승격 — props `tone(good/bad/neutral)·headline(평어)·points[]·stats[]·download(node)`. 결과 최상단 항상 노출(claude-ux §0 "결론 먼저").
 - **`ds/DownloadHub`**: "⬇ 결과 받기 ▾" 단일 드롭다운(items=[{label,desc,icon,onSelect}], 바깥클릭/ESC 닫힘). 흩어진 다운로드 집결. 실제 다운로드는 공용 `utils/download.js`(`downloadCsv`/`downloadText`, BOM+CRLF §7) + 기존 `downloadChartAsPNG` 주입.
 - **판정 엔진은 도구별 렌더 유틸**(골든 아님, 공용 아님): 5-2=`utils/dashboardVerdict.js`(`buildDashboardVerdict` — WoW 최근 vs 직전). **WoW는 5-2류 시계열 대시보드 전용** — MMM(5-18=기여/최적예산)·Aha(5-20=최적 윈도우)·PVM(5-21=top-mover)은 각자 자연스러운 "결론"을 계산해 같은 `ResultActionCard`에 꽂는다(공용은 카드 셸·허브·download.js뿐, 판정 로직은 도구별).
-- **다운로드는 요약+원천 둘 다**(요약 4행만 주면 부실): `utils/dashboardExport.js`(`buildDashboardExports` — 일별·채널별·캠페인별 집계+파생지표 CSV, 미매핑 차원은 null). DownloadHub items에 요약(CSV/텍스트)+원천(일별/채널/캠페인) 나열. 원천 = 차트 재현 가능한 데이터. 단위 테스트로 tone 분기·BOM/CRLF·파생컬럼·차원 게이트 검증.
+- **다운로드는 "계산한 인사이트"만 — 업로드 원천 데이터 되돌려주기 금지**(UX 무가치): 일별/채널별/캠페인별 raw dump는 사용자가 이미 가진 것. 대신 도구가 **계산한** WoW 증감표(지출·노출·클릭·설치·전환 + 파생 CPA·CPI·CTR·CVR·ROAS·매출·이익·**리텐션 D7**)를 리치하게 준다. 미매핑 지표는 표에서 제외(정직 §8). 리텐션은 raw 윈도우 행에서 `computeWeightedRetention`(일별 합산 아님). DownloadHub items=요약표(CSV)+요약문서(텍스트) 2개. 단위 테스트로 tone 분기·BOM/CRLF·파생행·미매핑 게이트 검증.
 
 ---
 
