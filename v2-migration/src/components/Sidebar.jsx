@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore, IA, SECTIONS, displayGroupNumberShort, displayItemNumberShort } from "@/store/useDataStore";
-import { idToSlug, resolveSlugToId, hasEnVersion } from "@/lib/routeMap";
+import { idToSlug, resolvePathToId, hasEnVersion } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle, trSectionLabel } from "@/lib/enNavCopy";
 
 const SIDEBAR_COPY = {
@@ -34,8 +34,7 @@ export default function Sidebar({ locale = "ko" }) {
   // Active id is derived from the URL (SSOT) so highlight is correct even before
   // the page-level store-sync effect runs (avoids a first-paint race).
   const pathname = usePathname();
-  const currentRouteId =
-    resolveSlugToId((pathname || "/").split("/").filter(Boolean)) ?? "home";
+  const currentRouteId = resolvePathToId(pathname) ?? "home";
   const setCmdkOpen = useAppStore((state) => state.setCmdkOpen);
 
   // Keep track of collapsed states

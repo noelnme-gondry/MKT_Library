@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import Papa from "papaparse";
+import { SECTION_LABEL_EN } from "@/lib/enNavCopy";
 
 // ── Group-scoped CSV state (Phase 6.3) ──────────────────────────────────────
 // Tools with a similar data-grain SHARE one CSV slice; different-grain tools get
@@ -244,22 +245,25 @@ export function findMeta(itemId) {
   return null;
 }
 
-// "가이드 1" / "분석 2" — 섹션 내 그룹 순번(1-based).
-export function displayGroupNumber(groupId) {
+// "가이드 1" / "분석 2" — 섹션 내 그룹 순번(1-based). locale="en"이면 section.label을
+// SECTION_LABEL_EN(enNavCopy.js)으로 오버레이(Header breadcrumb EN 대응 — 없으면 KR 폴백).
+export function displayGroupNumber(groupId, locale = "ko") {
   const section = findGroupSection(groupId);
   if (!section) return groupId;
-  return `${section.label} ${section.groups.indexOf(groupId) + 1}`;
+  const label = locale === "en" ? SECTION_LABEL_EN[section.id] || section.label : section.label;
+  return `${label} ${section.groups.indexOf(groupId) + 1}`;
 }
 
 // "가이드 1-1" / "분석 2-3" — 섹션 내 그룹 순번-그룹 내 항목 순번.
-export function displayItemNumber(itemId) {
+export function displayItemNumber(itemId, locale = "ko") {
   const meta = findMeta(itemId);
   if (!meta) return itemId;
   const section = findGroupSection(meta.group.id);
   if (!section) return itemId;
+  const label = locale === "en" ? SECTION_LABEL_EN[section.id] || section.label : section.label;
   const groupNum = section.groups.indexOf(meta.group.id) + 1;
   const itemNum = meta.group.items.findIndex((it) => it.id === itemId) + 1;
-  return `${section.label} ${groupNum}-${itemNum}`;
+  return `${label} ${groupNum}-${itemNum}`;
 }
 
 // 사이드바용 짧은 번호(라벨 없음) — 섹션 헤더가 이미 라벨을 보여주므로 그룹/항목

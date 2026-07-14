@@ -177,6 +177,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
         chartScope="5-2:seg-charts"
         metricScope="5-2:viz-kpi"
         title={tr("커스텀 차트", "Custom charts")}
+        locale={locale}
       />
     </div>
   );

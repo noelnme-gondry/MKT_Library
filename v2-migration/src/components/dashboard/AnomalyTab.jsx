@@ -318,7 +318,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
           setAnomalyCfgOpen(false);
         }}
       />
-      <CustomChartsSection sectionNo="2" chartScope="5-2:anomaly-charts" metricScope="5-2:viz-kpi" title={tr("커스텀 차트", "Custom Charts")} />
+      <CustomChartsSection sectionNo="2" chartScope="5-2:anomaly-charts" metricScope="5-2:viz-kpi" title={tr("커스텀 차트", "Custom Charts")} locale={locale} />
     </div>
   );
 }

@@ -372,7 +372,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
         </div>
 
       </section>
-      <CustomChartsSection sectionNo="2" chartScope="5-2:pacing-charts" metricScope="5-2:viz-kpi" title={T.customChartsTitle} />
+      <CustomChartsSection sectionNo="2" chartScope="5-2:pacing-charts" metricScope="5-2:viz-kpi" title={T.customChartsTitle} locale={locale} />
     </div>
   );
 }

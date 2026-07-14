@@ -225,7 +225,7 @@ export default function DashboardFilterBar({ locale = "ko" }) {
 
     {/* 토글 바 — 기준(설치/가입) + 표시 통화(₩/$). BasisCurrencyToggleBar로 분리(5-2 밖 효율
         도구 3개도 재사용 — 이전엔 이 토글이 5-2 전용이라 다른 도구는 강제로 설치 기준만 됐음). */}
-    <BasisCurrencyToggleBar />
+    <BasisCurrencyToggleBar locale={locale} />
     </>
   );
 }

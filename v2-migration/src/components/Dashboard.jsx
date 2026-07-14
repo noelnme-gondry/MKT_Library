@@ -171,7 +171,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
               </>
             )}
           </div>
-          {showResults && <DashboardFilterBar />}
+          {showResults && <DashboardFilterBar locale={locale} />}
         </div>
 
         {!hasData && (

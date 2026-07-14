@@ -1232,7 +1232,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             </p>
           }
           toc={[{ id: "s-filter", title: tr("분석 단위", "Analysis unit") }]}
-          stickyFilter={<BasisCurrencyToggleBar />}
+          stickyFilter={<BasisCurrencyToggleBar locale={locale} />}
         >
         <section className="block" id="s-filter">
           <h2 className="section-title"><span className="ix">§1</span>{tr("최적화 목표 + 분석 단위 + 필터", "Optimization goal + analysis unit + filters")}</h2>
@@ -1521,7 +1521,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             </p>
           }
           toc={[{ id: "s-verify", title: tr("검증", "Verify") }]}
-          stickyFilter={<BasisCurrencyToggleBar />}
+          stickyFilter={<BasisCurrencyToggleBar locale={locale} />}
         >
         <section className="block" id="s-verify">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "8px" }}>
@@ -1905,7 +1905,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   ];
   const step3StickyFilter = (
     <>
-      <BasisCurrencyToggleBar />
+      <BasisCurrencyToggleBar locale={locale} />
       {/* ★2 요약칩 → 드롭다운+적용 (토글 칩 바로 아래). draft라 적용 전엔 결과 불변. */}
       <AllocQuickFilterBar
         applied={{ objective, unitField, countries: selectedCountries, channels: selectedChannelsFilter, platform: platformFilter }}

@@ -1602,7 +1602,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   // 5-18 전용 dropzone (표준 CsvUploader/DataFeatureMatrix 미사용 — 단일 generic CSV → colMap).
   const mmmDropzone = (
     <>
-      <CsvGuide toolId="5-18" onDownloadTemplate={downloadMmmTemplate} />
+      <CsvGuide toolId="5-18" onDownloadTemplate={downloadMmmTemplate} locale={locale} />
       <div
         className="csv-dropzone"
         onDragOver={(e) => e.preventDefault()}
@@ -1622,7 +1622,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         <input type="file" accept=".csv,text/csv" style={{ display: "none" }} ref={mmmFileRef}
           onChange={(e) => { if (e.target.files?.[0]) handleMmmFile(e.target.files[0]); e.target.value = null; }} />
       </div>
-      <DemoLoadButton onLoad={handleLoadDemo} />
+      <DemoLoadButton onLoad={handleLoadDemo} locale={locale} />
     </>
   );
 
@@ -1767,7 +1767,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       {!panelEmpty && (
         <div className="page-sticky-bar">
           <div className="page-sticky-row1">{controlBar()}</div>
-          <BasisCurrencyToggleBar />
+          <BasisCurrencyToggleBar locale={locale} />
         </div>
       )}
       {renderTabs()}

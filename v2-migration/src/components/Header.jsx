@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore, findMeta, displayGroupNumber, displayItemNumber } from "@/store/useDataStore";
-import { resolveSlugToId } from "@/lib/routeMap";
+import { resolvePathToId } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 
 const HEADER_COPY = {
@@ -40,8 +40,7 @@ export default function Header({ locale = "ko" }) {
   const resetCsv = () => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" });
   // Breadcrumb sourced from the URL (SSOT) → correct on deep-link + back/forward.
   const pathname = usePathname();
-  const currentRouteId =
-    resolveSlugToId((pathname || "/").split("/").filter(Boolean)) ?? "home";
+  const currentRouteId = resolvePathToId(pathname) ?? "home";
 
   // Apply theme to body tag + localStorage persistence (원본 initTheme/toggleTheme 동일 로직)
   useEffect(() => {
@@ -80,11 +79,11 @@ export default function Header({ locale = "ko" }) {
               title={trGroupTitle(meta.group.id, locale, meta.group.title)}
               style={{ color: "var(--text-secondary)", cursor: "default" }}
             >
-              {displayGroupNumber(meta.group.id)} · {trGroupTitle(meta.group.id, locale, meta.group.title)}
+              {displayGroupNumber(meta.group.id, locale)} · {trGroupTitle(meta.group.id, locale, meta.group.title)}
             </span>
             <span className="sep">/</span>
             <span className="current">
-              {displayItemNumber(meta.id)} · {trItemTitle(meta.id, locale, meta.title)}
+              {displayItemNumber(meta.id, locale)} · {trItemTitle(meta.id, locale, meta.title)}
             </span>
           </>
         ) : (

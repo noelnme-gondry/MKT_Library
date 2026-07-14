@@ -429,7 +429,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
           setFunnelCfgOpen(false);
         }}
       />
-      <CustomChartsSection sectionNo="6" chartScope="5-2:funnel-charts" metricScope="5-2:viz-kpi" title={tr("커스텀 차트", "Custom charts")} />
+      <CustomChartsSection sectionNo="6" chartScope="5-2:funnel-charts" metricScope="5-2:viz-kpi" title={tr("커스텀 차트", "Custom charts")} locale={locale} />
     </div>
   );
 }
