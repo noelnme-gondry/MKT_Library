@@ -335,6 +335,12 @@ index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상�
 ### 12.24 블로그 (SEO 마케팅 컬럼, `/blog`)
 `routeMap`(도구 라우팅) **밖**의 fs 기반 MD 파이프라인 — 도구/SOP와 독립. **글 발행 = `v2-migration/content/blog/<slug>.md` 파일 추가**(frontmatter: `title`≤40·`description`≤80·`date`(ISO)·`slug`·`keywords`·`tags`·`draft`·`ogImage`; `_TEMPLATE.md` 복사, `_`프리픽스·`draft:true`는 미발행). `src/lib/blog.js`(`getAllPosts`/`getPostBySlug`, **server 전용** — gray-matter+marked, 클라이언트 import 금지). 라우트 `app/blog/page.js`(목록·빈상태)·`app/blog/[slug]/page.js`(`generateStaticParams`+`generateMetadata` canonical/OG article). **SEO 연동**: `sitemap.js`·`rss.xml/route.js`가 `getAllPosts`로 글을 직접 포함(routeMap 밖이라 SSOT 파생 안 됨 — 블로그는 fs가 SSOT). 타이포 `globals.css` `.blog-prose`. Sidebar에 `/blog` Link 1개. **SOP(JSON)는 MD 이관 안 함** — 렌더 HTML이 SEO 대상이라 소스 형식은 SEO 무관(불필요 리스크).
 
+### 12.27 결론 카드 + 다운로드 허브 공용화 (전 도구 리텐션 강화, 2026-07)
+도구마다 흩어진 "결론/헤드라인" UI와 PNG/CSV/텍스트 다운로드 버튼을 공용 2개로 통일(디자인시스템 §12.21 연장, 5-2부터 순차 채택). 전부 render층(골든 불변).
+- **`ds/ResultActionCard`**: 5-3 `alloc-verdict-card` 승격 — props `tone(good/bad/neutral)·headline(평어)·points[]·stats[]·download(node)`. 결과 최상단 항상 노출(claude-ux §0 "결론 먼저").
+- **`ds/DownloadHub`**: "⬇ 결과 받기 ▾" 단일 드롭다운(items=[{label,desc,icon,onSelect}], 바깥클릭/ESC 닫힘). 흩어진 다운로드 집결. 실제 다운로드는 공용 `utils/download.js`(`downloadCsv`/`downloadText`, BOM+CRLF §7) + 기존 `downloadChartAsPNG` 주입.
+- **판정 엔진은 도구별 렌더 유틸**(골든 아님): 5-2=`utils/dashboardVerdict.js`(`buildDashboardVerdict` — dashboardAggregator 순수함수 재사용, WoW 최근 vs 직전, 데이터 부족 시 `insufficient` 정직 처리 §8). 단위 테스트 `*.test.js`로 tone 분기·BOM/CRLF 검증.
+
 ---
 
 ## 13. 참고 파일

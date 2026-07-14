@@ -1,0 +1,107 @@
+"use client";
+import React, { useState, useRef, useEffect } from "react";
+
+// 결과 다운로드 허브 — 도구마다 흩어져 있던 PNG/CSV/텍스트 다운로드 버튼을
+// 눈에 잘 띄는 단일 드롭다운("⬇ 결과 받기 ▾")으로 통일한다(디자인시스템 §1).
+// 순수 표시 컴포넌트 — 실제 다운로드 로직(downloadChartAsPNG·downloadCsv 등)은
+// 각 도구가 items[].onSelect로 주입한다(엔진·유틸 불변).
+//
+// items: [{ label, desc?, icon?, onSelect }]  (onSelect 없거나 disabled면 비활성)
+export default function DownloadHub({
+  items = [],
+  label = "결과 받기",
+  align = "left",
+  className = "",
+  buttonStyle,
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const usable = items.filter((it) => it && it.onSelect);
+
+  // 바깥 클릭 / ESC로 닫기.
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  if (usable.length === 0) return null;
+
+  return (
+    <div ref={wrapRef} className={className} style={{ position: "relative", display: "inline-block" }}>
+      <button
+        type="button"
+        className="ab-pill"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        style={{ fontWeight: 600, ...buttonStyle }}
+      >
+        ⬇ {label} ▾
+      </button>
+      {open && (
+        <div
+          role="menu"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            [align === "right" ? "right" : "left"]: 0,
+            minWidth: "220px",
+            zIndex: 50,
+            background: "var(--bg-1)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius, 10px)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
+            padding: "6px",
+          }}
+        >
+          {usable.map((it, i) => (
+            <button
+              key={i}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                it.onSelect();
+              }}
+              style={{
+                display: "block",
+                width: "100%",
+                textAlign: "left",
+                background: "transparent",
+                border: "none",
+                borderRadius: "6px",
+                padding: "8px 10px",
+                cursor: "pointer",
+                color: "var(--text-secondary)",
+                fontSize: "13px",
+                lineHeight: 1.4,
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.background = "var(--surface-hover, rgba(255,255,255,0.05))")}
+              onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+                {it.icon ? `${it.icon} ` : ""}{it.label}
+              </span>
+              {it.desc && (
+                <span style={{ display: "block", fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
+                  {it.desc}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
 import CsvUploader from "@/components/CsvUploader";
@@ -14,6 +14,10 @@ import LtvTab from "@/components/dashboard/LtvTab";
 import CohortTab from "@/components/dashboard/CohortTab";
 import FunnelTab from "@/components/dashboard/FunnelTab";
 import SegmentTab from "@/components/dashboard/SegmentTab";
+import ResultActionCard from "@/components/ds/ResultActionCard";
+import DownloadHub from "@/components/ds/DownloadHub";
+import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
+import { downloadCsv, downloadText } from "@/utils/download";
 import { FileText, ChevronRight } from "lucide-react";
 
 const TOC_MAP = {
@@ -122,6 +126,9 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   const csvData = useAppStore((state) => state.csvData);
   const dashboardTab = useAppStore((state) => state.dashboardTab);
   const setDashboardTab = useAppStore((state) => state.setDashboardTab);
+  const dashboardFilter = useAppStore((state) => state.dashboardFilter);
+  const denomBasis = useAppStore((state) => state.denomBasis);
+  const displayCurrency = useAppStore((state) => state.displayCurrency);
   // #4 분석 게이트: 업로드·자동매핑만으로는 바로 분석하지 않는다. 사용자가
   // CsvUploader의 "분석하기"를 눌러 매핑을 확정해야(그룹 sig 저장) 결과가 열림.
   // 매핑을 바꾸면 sig가 달라져 다시 false → 결과 자동 숨김(faithful isToolAnalyzed).
@@ -144,6 +151,13 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
     ? (isContent ? CONTENT_TOC_MAP_EN : TOC_MAP_EN)
     : (isContent ? CONTENT_TOC_MAP : TOC_MAP);
   const currentToc = showResults ? tocMap[activeTab] || [] : [];
+
+  // 결론 카드 판정(WoW) — 결과가 열린 뒤에만 계산. dashboardAggregator 순수함수
+  // 재사용(엔진 불변), 데이터 부족하면 insufficient로 카드 미노출(§8 정직).
+  const verdict = useMemo(() => {
+    if (!showResults) return null;
+    return buildDashboardVerdict({ csvData, filterState: dashboardFilter, denomBasis, displayCurrency, locale });
+  }, [showResults, csvData, dashboardFilter, denomBasis, displayCurrency, locale]);
 
   return (
     <div className="section active" style={{ display: "flex", width: "100%", height: "100%" }}>
@@ -237,6 +251,27 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         {/* Tabs & Content */}
         {showResults && (
           <div className="dashboard-content">
+            {/* 결론 카드 — "결론 먼저"(claude-ux §0). 탭 위에 항상 노출, 어느 탭을
+                보든 최근 성과 요약·다음 액션·결과 받기를 한 곳에서. */}
+            {verdict && !verdict.insufficient && (
+              <ResultActionCard
+                tone={verdict.tone}
+                title={tr("결론 — 최근 성과 요약", "Conclusion — recent performance")}
+                headline={verdict.headline}
+                points={verdict.points}
+                stats={verdict.stats}
+                download={
+                  <DownloadHub
+                    label={tr("결과 받기", "Download")}
+                    align="right"
+                    items={[
+                      { icon: "📄", label: tr("핵심 요약 (CSV)", "Summary (CSV)"), desc: tr("직전 대비 최근 지표 표", "Recent vs. prior metric table"), onSelect: () => downloadCsv(verdict.export.csv, isContent ? "content_dashboard_summary" : "dashboard_summary") },
+                      { icon: "📝", label: tr("핵심 요약 (텍스트)", "Summary (text)"), desc: tr("결론·지표·다음 액션 문서", "Conclusion, metrics, next actions"), onSelect: () => downloadText(verdict.export.text, isContent ? "content_dashboard_summary" : "dashboard_summary") },
+                    ]}
+                  />
+                }
+              />
+            )}
             <MonEventMarkerUI locale={locale} />
             <DashboardTabs domain={domain} locale={locale} />
 
