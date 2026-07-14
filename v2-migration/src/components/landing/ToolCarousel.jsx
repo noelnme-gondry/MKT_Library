@@ -25,15 +25,22 @@ export default function ToolCarousel({ cards, title, onPick, ctaLabel, liveCardI
     const el = scrollRef.current;
     if (!el) return;
     drag.current = { down: true, startX: e.clientX, startLeft: el.scrollLeft, moved: false };
+    el.style.cursor = "grabbing";
+    el.style.scrollBehavior = "auto"; // 드래그 중엔 즉시 반영(smooth 끊김 방지)
   };
   const onMove = (e) => {
     if (!drag.current.down) return;
+    e.preventDefault();
     const el = scrollRef.current;
     const dx = e.clientX - drag.current.startX;
     if (Math.abs(dx) > 4) drag.current.moved = true;
     el.scrollLeft = drag.current.startLeft - dx;
   };
-  const endDrag = () => { drag.current.down = false; };
+  const endDrag = () => {
+    const el = scrollRef.current;
+    drag.current.down = false;
+    if (el) { el.style.cursor = "grab"; el.style.scrollBehavior = ""; }
+  };
   // 드래그로 스크롤한 뒤엔 카드 클릭(도구 진입)을 막는다.
   const guardedPick = (id) => { if (drag.current.moved) { drag.current.moved = false; return; } onPick(id); };
 
@@ -60,13 +67,16 @@ export default function ToolCarousel({ cards, title, onPick, ctaLabel, liveCardI
           display: "flex",
           gap: "20px",
           overflowX: "auto",
-          scrollSnapType: "x mandatory",
+          // scroll-snap mandatory는 드래그를 매 프레임 카드 경계로 잡아채 "뚝뚝" 끊김 →
+          // 제거하고 자유 스크롤(밀리는 느낌). 화살표는 scrollBy smooth로 부드럽게.
           // 위: 호버로 카드가 떠올라도 안 잘리게 여유. 아래: 스크롤바 자리.
           paddingTop: "12px",
           paddingBottom: "12px",
           scrollbarWidth: "none",
           cursor: "grab",
           userSelect: "none",
+          scrollBehavior: "smooth",
+          WebkitOverflowScrolling: "touch",
         }}
       >
         {cards.map((c) => (
