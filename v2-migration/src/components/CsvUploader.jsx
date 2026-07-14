@@ -106,6 +106,12 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   const T = CSV_COPY[locale] || CSV_COPY.ko;
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
+  const clearCsvGroup = useAppStore((s) => s.clearCsvGroup);
+  // Group-scoped "user explicitly cleared this" flag — see clearCsvGroup in
+  // the store. Prevents the mount-once demo-autoload effect below from
+  // silently refilling data the user just cleared, since tools remount this
+  // component across their hasData/analyzed JSX branches (§bugfix).
+  const manuallyCleared = useAppStore((s) => s.csvClearedByGroup[TOOL_GROUP[toolId] || "efficiency"]);
   const setGroupAnalyzed = useAppStore((s) => s.setGroupAnalyzed);
   // 분석하기 클릭 시 광고 인터스티셜 게이트(adFree면 즉시 실행). 데모 자동로드는 게이트 없이 직접.
   const requestAd = useAppStore((s) => s.requestAd);
@@ -222,7 +228,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   };
 
   const handleReset = () => {
-    setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" });
+    clearCsvGroup();
     setPreviewOpen(true);
   };
 
@@ -243,11 +249,16 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   // 첫 진입(데이터 없음) 시 샘플 데이터를 자동 로드해 빈 업로드 화면 대신 라이브
   // 분석 화면을 즉시 보여준다(SEO·첫인상 개선). 마운트 1회만 — 사용자가 CSV 변경으로
   // 명시적으로 비우면 재자동로드 없음(의도된 빈 드롭존 유지).
+  // §bugfix: 도구가 hasData/analyzed 상태에 따라 이 컴포넌트를 3개의 서로 다른 JSX
+  // 분기에 렌더하므로("!hasData"/"!analyzed"/analyzed details), 데이터를 지우는 순간
+  // 분기가 바뀌어 이 컴포넌트가 리마운트된다 — 마운트 1회 조건만으로는 리마운트마다
+  // 다시 조건이 참이 돼(데이터 없음) 즉시 데모를 재로드, "Change CSV" 클릭이 무효화됨.
+  // manuallyCleared(store, 그룹 스코프)로 리마운트 여부와 무관하게 억제.
   useEffect(() => {
     // 마운트 1회성 초기 로드(다중 setState 의도적 — 데모 데이터+게이트+프리뷰 상태를
     // 한 번에 세팅, 루프·반복 트리거 아님).
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!hasFile) handleLoadDemo();
+    if (!hasFile && !manuallyCleared) handleLoadDemo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

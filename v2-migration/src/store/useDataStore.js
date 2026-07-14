@@ -393,7 +393,35 @@ export const useAppStore = create(persist((set, get) => ({
       state.analyzedByGroup[g] && state.analyzedByGroup[g] !== nextSig
         ? { ...state.analyzedByGroup, [g]: null }
         : state.analyzedByGroup;
-    return { csvGroups: { ...state.csvGroups, [g]: data }, csvData: data, analyzedByGroup };
+    // Any non-empty write (real upload or explicit demo load) clears the
+    // manual-clear flag below — it only needs to suppress auto-demo-reload
+    // while the group is genuinely empty.
+    const hasRows = !!(data && data.raw && data.raw.length > 0);
+    const csvClearedByGroup = hasRows
+      ? { ...state.csvClearedByGroup, [g]: false }
+      : state.csvClearedByGroup;
+    return { csvGroups: { ...state.csvGroups, [g]: data }, csvData: data, analyzedByGroup, csvClearedByGroup };
+  }),
+  // Non-persisted, session-scoped: which groups the user explicitly emptied
+  // (Header's "Change CSV" / CsvUploader's own reset), so CsvUploader's
+  // mount-once demo-autoload effect doesn't silently refill it. Needed because
+  // tools render CsvUploader in 3 different JSX branches keyed on
+  // hasData/analyzed state — clearing data flips branches, which REMOUNTS
+  // CsvUploader (fresh component instance) and its "if empty, load demo"
+  // mount effect re-fires before the user can see the empty dropzone or drop
+  // their own file, making "Change CSV" look like it does nothing (§bugfix).
+  csvClearedByGroup: {},
+  // Clears the ACTIVE group's slice + marks it manually-cleared (see above).
+  // Header.jsx and CsvUploader.jsx's own reset button both call this instead
+  // of setCsvData(EMPTY_SLICE()) directly.
+  clearCsvGroup: () => set((state) => {
+    const g = groupForRoute(state.currentRouteId);
+    return {
+      csvGroups: { ...state.csvGroups, [g]: EMPTY_SLICE() },
+      csvData: EMPTY_SLICE(),
+      analyzedByGroup: { ...state.analyzedByGroup, [g]: null },
+      csvClearedByGroup: { ...state.csvClearedByGroup, [g]: true },
+    };
   }),
 
   // ── Analyze gate (single source, §12.5 / #4/#5) ────────────────────────────

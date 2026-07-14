@@ -35,9 +35,9 @@ export default function Header({ locale = "ko" }) {
   // 현재 활성 그룹(효율/소재/실험/응답/aha)의 csvData — 전역 헤더에서 파일명 노출 +
   // 어느 도구에서든 동일하게 초기화 가능하게(§ 그룹 스코프 csvData 미러).
   const csvData = useAppStore((state) => state.csvData);
-  const setCsvData = useAppStore((state) => state.setCsvData);
+  const clearCsvGroup = useAppStore((state) => state.clearCsvGroup);
   const hasCsv = !!(csvData && csvData.raw && csvData.raw.length > 0);
-  const resetCsv = () => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" });
+  const resetCsv = () => clearCsvGroup();
   // Breadcrumb sourced from the URL (SSOT) → correct on deep-link + back/forward.
   const pathname = usePathname();
   const currentRouteId = resolvePathToId(pathname) ?? "home";

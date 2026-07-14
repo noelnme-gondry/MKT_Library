@@ -314,15 +314,20 @@ function buildAha() {
     const eng = clamp01(0.5 + rnd() * 1.0); // skewed toward some engaged
     const matches = Math.max(0, round(eng * 12 * (0.6 + rnd() + 0.5))); // 0..~18
     const messages = Math.max(0, round(eng * 40 * (0.5 + rnd() + 0.5))); // 0..~60
-    const profile = rnd() + 0.5 > (0.35 + eng * 0.3) ? 1 : 0;
-    const boost = rnd() + 0.5 > 0.75 ? 1 : 0; // ~25% use boost, weakly tied
-    // conversion: strong on messages≥~20 & matches≥~5, weak boost
+    // profile/boost were binary flags (0/1) — a threshold sweep over a 2-value
+    // column collapses to a single k, so the P/R scatter rendered as one dot
+    // instead of a curve (§bugfix, user-reported). Made count-style like
+    // matches/messages so every action has multiple k levels to sweep over.
+    const profile = Math.max(0, round(eng * 5 * (0.4 + rnd() + 0.3))); // 0..~8 edits
+    const boost = Math.max(0, round(eng * 3 * (0.3 + rnd() + 0.3))); // 0..~5 uses
+    // conversion: all 4 actions given real (but differentiated) weight — none
+    // reduced to near-pure noise, so no event's curve looks degenerate.
     const score =
-      (messages >= 20 ? 0.45 : messages * 0.012) +
-      (matches >= 5 ? 0.28 : matches * 0.03) +
-      profile * 0.08 +
-      boost * 0.03 +
-      rnd() * 0.18;
+      (messages >= 20 ? 0.40 : messages * 0.011) +
+      (matches >= 5 ? 0.25 : matches * 0.028) +
+      (profile >= 3 ? 0.16 : profile * 0.035) +
+      (boost >= 2 ? 0.11 : boost * 0.035) +
+      rnd() * 0.16;
     const converted = score > 0.55 ? 1 : 0;
     raw.push({
       user_id: `u${10000 + u}`,
