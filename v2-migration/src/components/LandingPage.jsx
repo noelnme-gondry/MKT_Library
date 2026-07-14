@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IA, SECTIONS } from "@/store/useDataStore";
-import { idToSlug } from "@/lib/routeMap";
+import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { setLocalePref } from "@/lib/localePref";
 import LocaleAutoRedirect from "@/components/LocaleAutoRedirect";
 
@@ -176,7 +176,9 @@ function LandingHome({ onTrack, locale }) {
     setLocalePref(next);
     router.push(next === "en" ? "/en" : "/");
   };
-  const goTool = (id) => router.push(idToSlug[id] || "/");
+  // 번역된 도구만 /en 유지, 미번역은 KR로(Sidebar.navHref와 동일 규칙 — §plan).
+  const goTool = (id) =>
+    router.push(locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/");
   const ctaLabel = locale === "en" ? "See a live example →" : "예시로 바로 보기 →";
 
   return (
