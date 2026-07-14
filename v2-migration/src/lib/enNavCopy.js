@@ -17,6 +17,11 @@ export const ITEM_TITLE_EN = {
   "5-23": "Incrementality Analysis",
   "5-18": "Marketing Response Analysis (MMM)",
   "5-20": "Find Your Aha-Moment",
+  "9-1": "Content Element Analysis",
+  "9-2": "Killer Content Finder",
+  "9-3": "Content Traffic Variance",
+  "9-6": "Content Freshness",
+  "9-7": "Content Operations Dashboard",
 };
 
 // 사이드바 최상단 섹션(SECTIONS) 라벨 — 전부 UI 껍데기라 3개뿐, 항상 번역.

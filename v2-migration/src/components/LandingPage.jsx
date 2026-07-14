@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IA, SECTIONS } from "@/store/useDataStore";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
+import { trItemTitle } from "@/lib/enNavCopy";
 import LocaleAutoRedirect from "@/components/LocaleAutoRedirect";
 import ProductPreview from "@/components/landing/ProductPreview";
 import ToolCarousel from "@/components/landing/ToolCarousel";
@@ -135,6 +136,11 @@ const TOOL_HOOKS = {
     "5-23": "How much did this ad truly create on its own?",
     "5-18": "If we spend more, how much will performance grow?",
     "5-20": "When is the 'aha moment' that keeps users hooked?",
+    "9-1": "Which content elements actually drive views/CTR?",
+    "9-2": "Which content turns readers into subscribers?",
+    "9-3": "What moved your traffic — and which source drove it?",
+    "9-6": "Which content is still fresh, and when to refresh?",
+    "9-7": "Is our content operation healthy right now?",
   },
 };
 
@@ -187,8 +193,8 @@ function LandingHome({ locale }) {
         return {
           id: it.id,
           eyebrow: g.title,
-          headline: H[it.id] || meta.title,
-          mockTitle: meta.title,
+          headline: H[it.id] || trItemTitle(it.id, locale, meta.title),
+          mockTitle: trItemTitle(it.id, locale, meta.title),
         };
       })
       .filter(Boolean)
