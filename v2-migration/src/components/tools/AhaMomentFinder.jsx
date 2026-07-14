@@ -6,7 +6,7 @@ import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { AHA_STATS, ahaCoverageBuckets } from "@/utils/ahaMath";
 import { downloadChartAsPNG, CHART_THEME } from "@/utils/chartUtils";
-import { idToSlug } from "@/lib/routeMap";
+import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
@@ -14,6 +14,92 @@ import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import { buildDemoCsv } from "@/utils/demoData";
 import AhaColumnMapper, { ahaAutoMapColumns } from "@/components/tools/AhaColumnMapper";
 import { resolveAhaCopy } from "@/utils/contentDomain";
+
+// EN 번역팩 — domain(performance/content)별 AHA_COPY(ko)를 locale="en"일 때만 오버레이.
+// contentDomain.js(SSOT, 5-20/9-2 공용)는 절대 불변 — 여기서 로컬 병합만 수행(CampaignPvm.jsx 패턴과 동일).
+const AHA_COPY_EN = {
+  performance: {
+    demoGroup: "aha",
+    guideToolId: "5-20",
+    missingTarget: "1 target (0/1)",
+    missingFeature: "1+ leading behavior (feature) columns",
+    heroQ: "Which early action leads users to stick?",
+    heroSub:
+      "Among the actions users take right after signup, we found the one with the strongest signal for reaching the target (\"sticking\").",
+    statAll: "All users",
+    statTarget: "Users who reached target",
+    statRate: "Average target rate",
+    leadPhrase: (winHtml, actionHtml, k, liftHtml) =>
+      `Users who did <strong>${actionHtml}</strong> at least <strong>${k} times</strong> within <strong>${winHtml}</strong> of signup are <strong>${liftHtml}</strong> as likely as average to reach the target.`,
+    causationTitle: "Association, not causation",
+    causationBody:
+      "Users who are already highly engaged tend to do everything more (a common cause), so we can't conclude a specific action \"causes\" the target. This tool only narrows down hypotheses (suspects).",
+    kanbanTitle: "Candidate actions by signal strength",
+    kanbanHeadStrong: (total, nS) =>
+      `${nS} of ${total} candidates are strong Aha signals — try the green-column actions first in onboarding/experiments.`,
+    drillTitle: "Selected action in detail",
+    drillHeadline: (winHtml, actionHtml, k, support, pPct, rPct) =>
+      `Of the <strong>${support} users</strong> who did <strong>${actionHtml}</strong> at least <strong>${k} times</strong> within <strong>${winHtml}</strong> of signup, <strong>${pPct}%</strong> reached the target, and this action covers <strong>${rPct}%</strong> of all users who reached target.`,
+    metricQAll: "How often do all users do this action?",
+    metricQPrecision: "Does meeting this condition predict reaching target?",
+    metricAPrecision: (p) => `${p}% reached target`,
+    metricQRecall: "How much of the target group does this capture?",
+    docTitle: "Aha-Moment Finder — Detailed Explanation",
+    docSummary:
+      'Finds the **early actions** users commonly take right before "sticking" (reaching the target). It automatically searches the data for rules like "users who did a specific action K+ times within N days of signup are more likely to reach the target."',
+    docWhy:
+      'Knowing the Aha-moment lets you steer onboarding, push notifications, and recommendations toward that action to lift the target rate. Example: if "invite 3 friends within 7 days" is the Aha-moment, design onboarding that strongly nudges new users toward inviting up to 3 friends.',
+    docDataLine: (cache) =>
+      `- ${cache.n.toLocaleString()} total users · ${Math.round(cache.baseRate * cache.n).toLocaleString()} reached target · average target rate (base rate) ${(cache.baseRate * 100).toFixed(1)}%`,
+    docLimit:
+      "These results are all **association**, not **causation**. Users who are already highly engaged tend to do everything more (a common cause), so we can't conclude a specific action \"causes\" the target. This tool's role is to **narrow down hypotheses (suspects)** — confirmation must come from a **holdout experiment (5-4 Experiment Analysis)**. Prioritize experiments with actions in the strong-signal column.",
+    docFileStem: "aha_moment",
+  },
+  content: {
+    demoGroup: "content_aha",
+    guideToolId: "9-2",
+    missingTarget: "1 conversion flag (subscribed, 0/1)",
+    missingFeature: "1+ consumed content (feature) columns",
+    heroQ: "Which content converts readers into subscribers?",
+    heroSub:
+      "Among the content readers consumed early on, we found the one with the strongest signal for \"subscription conversion.\"",
+    statAll: "All readers",
+    statTarget: "Readers who converted",
+    statRate: "Average conversion rate",
+    leadPhrase: (winHtml, actionHtml, k, liftHtml) =>
+      `Readers who viewed <strong>${actionHtml}</strong> at least <strong>${k} times</strong> within <strong>${winHtml}</strong> of their first visit are <strong>${liftHtml}</strong> as likely as average to subscribe.`,
+    causationTitle: "Association, not causation",
+    causationBody:
+      "Readers who are already highly interested tend to consume a lot of content overall (a common cause), so we can't conclude a specific piece of content \"causes\" subscription. This tool only narrows down hypotheses (killer-content candidates).",
+    kanbanTitle: "Candidate content by signal strength",
+    kanbanHeadStrong: (total, nS) =>
+      `${nS} of ${total} candidates are strong conversion signals — try the green-column content first in recommendations, email, and curated entry points.`,
+    drillTitle: "Selected content in detail",
+    drillHeadline: (winHtml, actionHtml, k, support, pPct, rPct) =>
+      `Of the <strong>${support} readers</strong> who viewed <strong>${actionHtml}</strong> at least <strong>${k} times</strong> within <strong>${winHtml}</strong> of their first visit, <strong>${pPct}%</strong> subscribed, and this content covers <strong>${rPct}%</strong> of all subscribers.`,
+    metricQAll: "How often do all readers view this content?",
+    metricQPrecision: "Does viewing this content predict subscribing?",
+    metricAPrecision: (p) => `${p}% subscribed`,
+    metricQRecall: "How much of the subscriber group does this capture?",
+    docTitle: "Killer Content & Loyal Reader Finder — Detailed Explanation",
+    docSummary:
+      'Finds the **content** readers commonly consume right before "subscription conversion" (signup, recurring subscription, repeat visit). It automatically searches the data for rules like "readers who viewed specific content K+ times within N days of their first visit are more likely to subscribe."',
+    docWhy:
+      'Knowing the Aha-Content (killer content) lets you steer recommendations, email, and curation toward that content to lift conversion. Example: if "[GA4 Setup Guide]" is the killer content, design onboarding curation that strongly exposes new readers to that article.',
+    docDataLine: (cache) =>
+      `- ${cache.n.toLocaleString()} total readers · ${Math.round(cache.baseRate * cache.n).toLocaleString()} converted · average conversion rate (base rate) ${(cache.baseRate * 100).toFixed(1)}%`,
+    docLimit:
+      "These results are all **association**, not **causation**. Readers who are already highly interested tend to consume a lot of content overall (a common cause), so we can't conclude a specific piece of content \"causes\" subscription. This tool's role is to **narrow down hypotheses (killer-content candidates)** — confirmation must come from an **A/B test or holdout experiment (5-4)**. Prioritize experiments with content in the strong-signal column.",
+    docFileStem: "killer_content",
+  },
+};
+
+function localizeAhaCopy(domain, locale) {
+  const ko = resolveAhaCopy(domain);
+  if (locale !== "en") return ko;
+  const en = AHA_COPY_EN[domain] || AHA_COPY_EN.performance;
+  return { ...ko, ...en };
+}
 
 function escapeHtml(str) {
   if (str == null) return "";
@@ -320,7 +406,8 @@ function computeAhaCache(rows, colMap, minSupport, holdoutOn) {
 
 export default function AhaMomentFinder({ domain = "performance", locale = "ko" } = {}) {
   // 도메인 라벨팩(§contentDomain): performance=기존 문구(출력 불변) / content=콘텐츠 번역.
-  const C = resolveAhaCopy(domain);
+  // locale="en"이면 AHA_COPY_EN 오버레이(§contentDomain SSOT는 불변, 로컬 병합만).
+  const C = localizeAhaCopy(domain, locale);
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const router = useRouter();
   const csvData = useAppStore((state) => state.csvData);
@@ -1015,10 +1102,18 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 <p style={{ margin: ".25rem 0 0" }}>{C.causationBody}</p>
                 <p style={{ margin: ".25rem 0 0" }}>{tr("확정은", "Confirm it with a")}{" "}
                   <a
-                    href={idToSlug["5-4"] || "/tools/experiment-analysis"}
+                    href={
+                      locale === "en" && hasEnVersion("5-4")
+                        ? `/en${idToSlug["5-4"] || ""}`
+                        : idToSlug["5-4"] || "/tools/experiment-analysis"
+                    }
                     onClick={(e) => {
                       e.preventDefault();
-                      router.push(idToSlug["5-4"] || "/tools/experiment-analysis");
+                      router.push(
+                        locale === "en" && hasEnVersion("5-4")
+                          ? `/en${idToSlug["5-4"] || ""}`
+                          : idToSlug["5-4"] || "/tools/experiment-analysis"
+                      );
                     }}
                     style={{ color: "#adc6ff", textDecoration: "underline", cursor: "pointer" }}
                   >

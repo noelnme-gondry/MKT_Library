@@ -2,7 +2,27 @@
 import React, { useState } from "react";
 import { useAppStore } from "@/store/useDataStore";
 
-export default function MonEventMarkerUI() {
+const COPY = {
+  ko: {
+    title: "📌 주요 이벤트 마커",
+    hint: "(캠페인 런칭·프로모션·매체 이슈 등 — 새로고침 시 초기화)",
+    labelPlaceholder: "라벨 (예: 신규 프로모션 시작)",
+    addBtn: "+ 마커 추가",
+    deleteBtn: "삭제",
+    empty: "등록된 마커가 없습니다. 날짜와 라벨을 입력해 추가하세요.",
+  },
+  en: {
+    title: "📌 Key event markers",
+    hint: "(campaign launches, promos, media issues, etc. — resets on refresh)",
+    labelPlaceholder: "Label (e.g. New promo starts)",
+    addBtn: "+ Add marker",
+    deleteBtn: "Delete",
+    empty: "No markers yet. Enter a date and label to add one.",
+  },
+};
+
+export default function MonEventMarkerUI({ locale = "ko" }) {
+  const T = COPY[locale] || COPY.ko;
   const eventMarkers = useAppStore((state) => state.eventMarkers);
   const addEventMarker = useAppStore((state) => state.addEventMarker);
   const removeEventMarker = useAppStore((state) => state.removeEventMarker);
@@ -40,9 +60,9 @@ export default function MonEventMarkerUI() {
           marginBottom: "8px",
         }}
       >
-        📌 주요 이벤트 마커{" "}
+        {T.title}{" "}
         <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>
-          (캠페인 런칭·프로모션·매체 이슈 등 — 새로고침 시 초기화)
+          {T.hint}
         </span>
       </div>
       <div
@@ -56,6 +76,7 @@ export default function MonEventMarkerUI() {
       >
         <input
           type="date"
+          lang={locale === "en" ? "en" : "ko"}
           value={date}
           onChange={(e) => setDate(e.target.value)}
           style={{
@@ -69,7 +90,7 @@ export default function MonEventMarkerUI() {
         />
         <input
           type="text"
-          placeholder="라벨 (예: 신규 프로모션 시작)"
+          placeholder={T.labelPlaceholder}
           maxLength={40}
           value={label}
           onChange={(e) => setLabel(e.target.value)}
@@ -86,7 +107,7 @@ export default function MonEventMarkerUI() {
           }}
         />
         <button className="ab-pill" type="button" onClick={handleAdd}>
-          + 마커 추가
+          {T.addBtn}
         </button>
       </div>
       {sortedMarkers.length > 0 ? (
@@ -126,14 +147,14 @@ export default function MonEventMarkerUI() {
                 style={{ padding: "2px 8px", fontSize: "10.5px" }}
                 onClick={() => removeEventMarker(m.id)}
               >
-                삭제
+                {T.deleteBtn}
               </button>
             </li>
           ))}
         </ul>
       ) : (
         <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: 0 }}>
-          등록된 마커가 없습니다. 날짜와 라벨을 입력해 추가하세요.
+          {T.empty}
         </p>
       )}
     </div>

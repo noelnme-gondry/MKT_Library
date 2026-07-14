@@ -8,6 +8,150 @@ import { downloadChartAsPNG } from "@/utils/chartUtils";
 import CsvUploader from "@/components/CsvUploader";
 import Chart from "chart.js/auto";
 
+// EN 번역팩 — domain(performance/content)별 CREATIVE_COPY(ko)를 locale="en"일 때만 오버레이.
+// contentDomain.js(SSOT, 5-6/9-6 공용)는 절대 불변 — 여기서 로컬 병합만 수행 (CampaignPvm.jsx PVM_COPY_EN 패턴 동일).
+const CREATIVE_COPY_EN = {
+  performance: {
+    uploaderToolId: "5-6",
+    entity: "creative",
+    noDataDesc: "Upload creative performance data to analyze fatigue and concepts.",
+    heroTitle: "Which creatives are winning, and when should you swap them?",
+    heroSub:
+      "For each creative (video, image, etc.), see what's working, why it's working, and when it's time to replace it — all in one place.",
+    heroJourney: [
+      ["🏆", "Which creatives are winning", "Win-rate · swap velocity · lifespan"],
+      ["🔍", "Which attributes drive performance", "Effect by hook type, format, etc."],
+      ["🔋", "Is any creative fatigued right now", "Fatigue diagnosis · swap timing recommendation"],
+      ["🧪", "What should we test next", "Candidate recommendations based on combination performance"],
+    ],
+    heroCausationBody:
+      "Effects of creative attributes (hook, format, etc.) are estimated using impression-weighted least squares (WLS) and multiple-testing correction (BH). This decomposition includes selection bias from the platform's delivery algorithm, so it should be read as correlation, not causal effect — final confirmation is recommended via the experiment tool (5-4).",
+    healthTitle: "Operational Health (Win-rate · Velocity · Lifecycle)",
+    healthDescPre: "Three questions to check if creative operations are healthy — how often new creatives ",
+    healthDescS1: "win (Win-rate)",
+    healthDescS2: "get swapped (Velocity)",
+    healthDescS3: "survive (Lifecycle)",
+    statCtrLabel: "Share of creatives with good clicks (CTR Win-rate)",
+    statCtrTitle: "Share of creatives that beat the median CTR of other creatives",
+    statCvrLabel: "Share of creatives with good conversion (CVR Win-rate)",
+    statCvrTitle: "Share of creatives that beat the median CVR of other creatives",
+    statSpendLabel: "Spend share on winning creatives",
+    statSpendHint: "Spend share on CTR-winning creatives",
+    statVelLabel: "New creatives launched per week (Velocity)",
+    statVelTitle: "Average number of newly appearing creatives per week",
+    statLifeLabel: "Average lifespan of a creative",
+    statFatLabel: "Share of fatigued creatives (Fatigue)",
+    statFatTitle: "Share of creatives diagnosed as fatigued (declining performance)",
+    healthCalloutT1: "If well below 50%, creative planning hit-rate is low — diversify concepts (see §9 next-test recommendations).",
+    healthCalloutS2: "New creatives launched per week",
+    healthCalloutT2: " — if too low, you can't keep up with fatiguing creatives (benchmark: 20–30% of active creatives / week).",
+    healthCalloutS3: "Spend share on winning creatives",
+    healthCalloutT3: " — if low, budget isn't flowing to your best creatives.",
+    metricsTitle: "Creative Performance Table",
+    metricsDesc: "See raw metrics like impressions, clicks, installs alongside computed efficiency metrics like CTR, CVR, cost per install. Hover over abbreviations for definitions.",
+    filterActiveLabel: "Concept Matrix filter applied:",
+    colCreativeId: "Creative ID",
+    decomposeDescPre: "How creative attributes like hook type, message concept, and format ",
+    decomposeBiasSource: "platform algorithm",
+    decomposeUnavailBody: "Missing creative attribute column mapping (hook_type, format, etc.) or insufficient rows (need 30+).",
+    fatigueTitle: "Creative Fatigue Diagnosis (Fatigue Detection)",
+    fatigueDesc: (total, count) => `${total} creatives analyzed · ${count} fatigued`,
+    fatiguedBadge: "Fatigued",
+    fatigueEmpty: "No fatigued creatives detected (healthy)",
+    fatigueAlertTitle: "Fatigue Alert (Ad Fatigue Alert)",
+    fatigueAlertDesc: (total, alertNow) => `${total} creatives analyzed · ${alertNow} alerting now`,
+    fatigueAlertEmpty: (minDays) => `No analyzable creatives (running period under ${minDays} days)`,
+    plannerTitle: "Swap Schedule Recommendation (Auto-Planner)",
+    plannerDesc: "Enter how many new creatives you can produce per week, and we'll automatically assign the most urgently fatigued creatives to swap weeks.",
+    plannerVelocityLabel: "New creatives supplied per week",
+    plannerStatUrgentLabel: "Urgent swaps needed",
+    plannerStatUrgentTitle: "Number of creatives classified as alerting now or at imminent risk",
+    plannerStatWeeksTitle: "Time needed to swap all urgent creatives at the current supply rate",
+    plannerStatRecLabel: "Recommended weekly swap rate",
+    plannerStatRecTitle: "New creatives needed per week to clear the urgent backlog within 1 week",
+    plannerUndersupplyBody: (u, v, r) =>
+      `There are ${u} creatives needing urgent swap, but the current weekly supply (${v}) can't clear them within 1 week. Increase supply to ${r}+/week or delay swapping lower-urgency creatives.`,
+    plannerOkBody: (v) => `Current supply (${v}/week) is enough to clear the urgent backlog.`,
+    plannerGanttTitle: (weeks) => `Swap Timeline (Gantt) — next ${weeks} weeks`,
+    plannerFootnote: "Swap order is [alerting now first → soonest to reach risk → highest fatigue score], allocated to weeks at the entered per-week rate.",
+    plannerEmpty: "No creatives need swapping.",
+    matrixDesc1: "Cross two creative attributes to see at a glance which combinations are proven and which need more testing. Click a cell to filter §3's performance table to that combination.",
+  },
+  content: {
+    uploaderToolId: "9-6",
+    entity: "content",
+    noDataDesc: "Upload content performance data to analyze freshness decline and response decay.",
+    heroTitle: "Which content is resonating, and when should you publish new content?",
+    heroSub:
+      "For each piece of content (article, video, post, etc.), see what's working, why it's working, and when it's time to publish something new — all in one place.",
+    heroJourney: [
+      ["🏆", "Which content is resonating", "Win-rate · publishing pace · lifespan"],
+      ["🔍", "Which attributes drive performance", "Effect by hook type, format, etc."],
+      ["🔋", "Is any content losing freshness right now", "Freshness decline diagnosis · republish timing recommendation"],
+      ["🧪", "What should we test next", "Candidate recommendations based on combination performance"],
+    ],
+    heroCausationBody:
+      "Effects of content attributes (hook type, format, etc.) are estimated using impression-weighted least squares (WLS) and multiple-testing correction (BH). This decomposition includes selection bias from the delivery/recommendation algorithm, so it should be read as correlation, not causal effect — final confirmation is recommended via the experiment tool (5-4).",
+    healthTitle: "Content Operational Health (Win-rate · Publishing Pace · Lifecycle)",
+    healthDescPre: "Three questions to check if content operations are healthy — how often new content ",
+    healthDescS1: "resonates (Win-rate)",
+    healthDescS2: "gets published (Velocity)",
+    healthDescS3: "survives (Lifecycle)",
+    statCtrLabel: "Share of content with good clicks (CTR Win-rate)",
+    statCtrTitle: "Share of content that beats the median CTR of other content",
+    statCvrLabel: "Share of content with good conversion (CVR Win-rate)",
+    statCvrTitle: "Share of content that beats the median CVR of other content",
+    statSpendLabel: "Spend share on winning content",
+    statSpendHint: "Spend share on CTR-leading content",
+    statVelLabel: "New content published per week (Velocity)",
+    statVelTitle: "Average number of newly published content pieces per week",
+    statLifeLabel: "Average lifespan of a piece of content",
+    statFatLabel: "Share of content losing freshness (Freshness)",
+    statFatTitle: "Share of content diagnosed as aging (declining response)",
+    healthCalloutT1: "If well below 50%, content planning hit-rate is low — diversify concepts (see §9 next-test recommendations).",
+    healthCalloutS2: "New content published per week",
+    healthCalloutT2: " — if too low, you can't keep up with content losing freshness (benchmark: 20–30% of active content / week).",
+    healthCalloutS3: "Spend share on winning content",
+    healthCalloutT3: " — if low, budget isn't flowing to your best content.",
+    metricsTitle: "Content Performance Table",
+    metricsDesc: "See raw metrics like impressions, clicks, conversions alongside computed efficiency metrics like CTR, CVR, cost per conversion. Hover over abbreviations for definitions.",
+    filterActiveLabel: "Concept Matrix filter applied:",
+    colCreativeId: "Content ID",
+    decomposeDescPre: "How content attributes like hook type, message angle, and format ",
+    decomposeBiasSource: "delivery/recommendation algorithm",
+    decomposeUnavailBody: "Missing content attribute column mapping (hook_type, format, etc.) or insufficient rows (need 30+).",
+    fatigueTitle: "Content Freshness Decline Diagnosis (Response Decay Detection)",
+    fatigueDesc: (total, count) => `${total} pieces analyzed · ${count} losing freshness`,
+    fatiguedBadge: "Aging",
+    fatigueEmpty: "No content losing freshness detected (healthy)",
+    fatigueAlertTitle: "Freshness Decline Alert (Content Fatigue Alert)",
+    fatigueAlertDesc: (total, alertNow) => `${total} pieces analyzed · ${alertNow} alerting now`,
+    fatigueAlertEmpty: (minDays) => `No analyzable content (publishing period under ${minDays} days)`,
+    plannerTitle: "Publishing Schedule Recommendation (Auto-Planner)",
+    plannerDesc: "Enter how many new pieces you can produce per week, and we'll automatically assign the most urgently aging content to republish weeks.",
+    plannerVelocityLabel: "New content published per week",
+    plannerStatUrgentLabel: "Urgent republish needed",
+    plannerStatUrgentTitle: "Number of content pieces classified as alerting now or at imminent risk",
+    plannerStatWeeksTitle: "Time needed to swap all urgent content at the current publishing rate",
+    plannerStatRecLabel: "Recommended weekly publishing rate",
+    plannerStatRecTitle: "New content needed per week to clear the urgent backlog within 1 week",
+    plannerUndersupplyBody: (u, v, r) =>
+      `There are ${u} pieces needing urgent republish, but the current weekly publishing rate (${v}) can't clear them within 1 week. Increase to ${r}+/week or delay republishing lower-urgency content.`,
+    plannerOkBody: (v) => `Current publishing rate (${v}/week) is enough to clear the urgent backlog.`,
+    plannerGanttTitle: (weeks) => `Publishing Timeline (Gantt) — next ${weeks} weeks`,
+    plannerFootnote: "Publishing order is [alerting now first → soonest to reach risk → highest freshness-decline score], allocated to weeks at the entered per-week rate.",
+    plannerEmpty: "No content needs republishing.",
+    matrixDesc1: "Cross two content attributes to see at a glance which combinations are proven and which need more testing. Click a cell to filter §3's performance table to that combination.",
+  },
+};
+
+function localizeCreativeCopy(domain, locale) {
+  const ko = resolveCreativeCopy(domain);
+  if (locale !== "en") return ko;
+  const en = CREATIVE_COPY_EN[domain] || CREATIVE_COPY_EN.performance;
+  return { ...ko, ...en };
+}
+
 // 소재 분석 설정 (index.html CREATIVE_CONFIG 이식 — 순수 config, 엔진에 파라미터로 주입)
 const CREATIVE_CONFIG = {
   version: "1.0.0",
@@ -330,7 +474,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
   // CREATIVE_COPY[domain]은 모듈 상수라 매 렌더 동일 참조. performance=기존 문자열
   // 그대로(byte-동일), content=콘텐츠 도메인 라벨. 엔진·CSV 필드명은 불변(§12.21).
   // locale은 domain과 독립 축 — domain(퍼포먼스/콘텐츠 리라벨)과 절대 혼용하지 말 것.
-  const C = resolveCreativeCopy(domain);
+  const C = localizeCreativeCopy(domain, locale);
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const decMetaAll = buildDecomposeMeta(locale);
   const csvData = useAppStore((state) => state.csvData);

@@ -731,6 +731,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     return (
       <div className="tab-pane active" id="tab-pvm">
         <ToolPageShell
+          locale={locale}
           title={C.title}
           chips={<span className="chip warning"><span className="dot"></span>{tr("CSV 업로드 대기", "Waiting for CSV upload")}</span>}
           summary={
@@ -1128,6 +1129,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   return (
     <div className="tab-pane active" id="tab-pvm">
       <ToolPageShell
+        locale={locale}
         title={C.title}
         chips={<span className="chip"><span className="dot"></span>{C.chipMain}</span>}
         summary={

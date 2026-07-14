@@ -167,7 +167,7 @@ function LandingHome({ onTrack, locale }) {
     0
   );
   const totalContent = IA.filter((g) => CONTENT_GROUP_IDS.has(g.id)).reduce(
-    (a, g) => a + g.items.length,
+    (a, g) => a + g.items.filter((it) => !it.hidden).length,
     0
   );
 
@@ -501,7 +501,7 @@ function LandingContent({ onBack, onNavigate, locale }) {
             </h2>
           </div>
           <div className="phase-grid">
-            {g.items.map((item) => {
+            {g.items.filter((it) => !it.hidden).map((item) => {
               const meta = findMeta(item.id);
               if (!meta) return null;
               return (

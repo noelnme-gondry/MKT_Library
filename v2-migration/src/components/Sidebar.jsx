@@ -134,7 +134,7 @@ export default function Sidebar({ locale = "ko" }) {
                         </svg>
                       </div>
                       <div className="nav-items">
-                        {group.items.map((it) => (
+                        {group.items.filter((it) => !it.hidden).map((it) => (
                           <Link
                             key={it.id}
                             href={navHref(it.id)}

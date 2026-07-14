@@ -53,10 +53,10 @@ export default function FunnelTab({ locale = "ko" } = {}) {
     const rows = getMonFilteredRows(csvData, dashboardFilter);
     const mapping = csvData.mapping || {};
     const mk = new Set(Object.values(mapping));
-    const c = buildFunnelData(rows, mk, { unitField, cvrStep, weekdayAdj });
+    const c = buildFunnelData(rows, mk, { unitField, cvrStep, weekdayAdj }, locale);
     if (!c.rows.length) return { hasData: false, mappedKeys: mk };
     return { cache: c, hasData: true, mappedKeys: mk };
-  }, [csvData, dashboardFilter, unitField, cvrStep, weekdayAdj]);
+  }, [csvData, dashboardFilter, unitField, cvrStep, weekdayAdj, locale]);
 
   const adjOn = weekdayAdj && cache && cache.weekdayAdjOk;
 

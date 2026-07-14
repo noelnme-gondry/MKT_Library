@@ -11,7 +11,13 @@ import React from "react";
  *
  * 순수 프레젠테이션 컴포넌트: store 구독·비즈니스 로직 없음.
  */
-export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children }) {
+const COPY = {
+  ko: { summaryLabel: "핵심 요약", toc: "목차" },
+  en: { summaryLabel: "Summary", toc: "Contents" },
+};
+
+export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko" }) {
+  const T = COPY[locale] || COPY.ko;
   const tocItems = toc || [];
   const hasToc = tocItems.length > 0;
 
@@ -32,7 +38,7 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
         {/* Summary callout — .summary/.summary-label (globals.css, MarketingEfficiency.jsx 패턴 재사용) */}
         {summary && (
           <div className="summary">
-            <div className="summary-label">핵심 요약</div>
+            <div className="summary-label">{T.summaryLabel}</div>
             {summary}
           </div>
         )}
@@ -65,7 +71,7 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
               marginBottom: "4px",
             }}
           >
-            목차
+            {T.toc}
           </div>
           {tocItems.map((item) => (
             <a

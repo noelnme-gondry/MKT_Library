@@ -237,7 +237,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         {/* Tabs & Content */}
         {showResults && (
           <div className="dashboard-content">
-            <MonEventMarkerUI />
+            <MonEventMarkerUI locale={locale} />
             <DashboardTabs domain={domain} locale={locale} />
 
             <div className="tab-content" style={{ marginTop: "1rem" }}>

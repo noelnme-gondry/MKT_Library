@@ -3,8 +3,9 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore, findMeta, displayGroupNumber, displayItemNumber } from "@/store/useDataStore";
-import { resolvePathToId } from "@/lib/routeMap";
+import { resolvePathToId, hasEnVersion, idToPath } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
+import { setLocalePref } from "@/lib/localePref";
 
 const HEADER_COPY = {
   ko: {
@@ -15,6 +16,8 @@ const HEADER_COPY = {
     themeAria: "테마 전환",
     themeTitle: "테마 전환 (라이트/다크)",
     quickNav: "빠른 이동",
+    localeSwitch: "🌐 EN",
+    localeSwitchTitle: "영어 페이지로 (번역된 페이지만 지원)",
   },
   en: {
     breadcrumbAria: "Breadcrumb",
@@ -24,6 +27,8 @@ const HEADER_COPY = {
     themeAria: "Toggle theme",
     themeTitle: "Toggle theme (light/dark)",
     quickNav: "Quick nav",
+    localeSwitch: "🌐 한국어",
+    localeSwitchTitle: "Switch to the Korean page",
   },
 };
 
@@ -41,6 +46,15 @@ export default function Header({ locale = "ko" }) {
   // Breadcrumb sourced from the URL (SSOT) → correct on deep-link + back/forward.
   const pathname = usePathname();
   const currentRouteId = resolvePathToId(pathname) ?? "home";
+  // KR<->EN 페이지 전환 — 현재 페이지 기준(홈 아니어도 항상 이 경로 유지). EN→KR은
+  // 늘 있음(KR이 항상 완성본). KR→EN은 번역된 페이지일 때만, 없으면 /en 홈 폴백.
+  const switchHref =
+    locale === "en"
+      ? idToPath(currentRouteId)
+      : hasEnVersion(currentRouteId)
+        ? `/en${idToPath(currentRouteId) === "/" ? "" : idToPath(currentRouteId)}`
+        : "/en";
+  const switchLocale = locale === "en" ? "ko" : "en";
 
   // Apply theme to body tag + localStorage persistence (원본 initTheme/toggleTheme 동일 로직)
   useEffect(() => {
@@ -110,6 +124,15 @@ export default function Header({ locale = "ko" }) {
             </button>
           </span>
         )}
+        <Link
+          href={switchHref}
+          className="btn ghost"
+          title={T.localeSwitchTitle}
+          onClick={() => setLocalePref(switchLocale)}
+          style={{ fontSize: "11.5px", textDecoration: "none" }}
+        >
+          {T.localeSwitch}
+        </Link>
         <button
           className="btn ghost"
           id="theme-toggle"
