@@ -654,7 +654,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
           setLtvCfgOpen(false);
         }}
       />
-      <CustomChartsSection sectionNo="5" chartScope="5-2:ltv-charts" metricScope="5-2:viz-kpi" title={T.customChartsTitle} />
+      <CustomChartsSection sectionNo="5" chartScope="5-2:ltv-charts" metricScope="5-2:viz-kpi" title={T.customChartsTitle} locale={locale} />
     </div>
   );
 }

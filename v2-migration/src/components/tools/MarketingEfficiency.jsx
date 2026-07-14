@@ -437,7 +437,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
           </details>
 
           {/* 기준(설치/가입)·통화 토글 — 이전엔 5-2에만 있어 이 도구는 강제로 설치 기준이었음. */}
-          <BasisCurrencyToggleBar />
+          <BasisCurrencyToggleBar locale={locale} />
         </>
       }
     >

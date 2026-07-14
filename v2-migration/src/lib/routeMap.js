@@ -68,6 +68,19 @@ export function resolveSlugToId(slugArr) {
   return slugToId[key] ?? null;
 }
 
+// pathname (from usePathname(), e.g. "/en/tools/budget-allocation") -> id, or
+// null. Strips a leading "en" segment first — Header/Sidebar derive their
+// active-route id straight from the URL (not the store) and were resolving
+// "en/dashboard" as a whole, which never matches any KR slug and silently
+// fell back to "home" (breadcrumb collapsed to generic "Overview", sidebar
+// active-highlight broken) on every /en/* page. Use this instead of manual
+// split+resolveSlugToId in any component that reads usePathname() directly.
+export function resolvePathToId(pathname) {
+  const segs = (pathname || "/").split("/").filter(Boolean);
+  if (segs[0] === "en") segs.shift();
+  return resolveSlugToId(segs);
+}
+
 // id -> path string (falls back to home).
 export function idToPath(id) {
   return idToSlug[id] || "/";

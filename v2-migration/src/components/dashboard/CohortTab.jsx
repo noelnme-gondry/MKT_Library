@@ -376,7 +376,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
           setCohortCfgOpen(false);
         }}
       />
-      <CustomChartsSection sectionNo="4" chartScope="5-2:cohort-charts" metricScope="5-2:viz-kpi" title={tr("커스텀 차트", "Custom Charts")} />
+      <CustomChartsSection sectionNo="4" chartScope="5-2:cohort-charts" metricScope="5-2:viz-kpi" title={tr("커스텀 차트", "Custom Charts")} locale={locale} />
     </div>
   );
 }

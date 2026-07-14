@@ -341,7 +341,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
   return (
     <div className="tab-pane active" id="tab-scorecard">
       {/* 예산 배분 진단·CTA는 마케팅 전용(콘텐츠엔 예산배분 도구가 없음) → content 제외. */}
-      {!isContent && <BudgetHealthCard />}
+      {!isContent && <BudgetHealthCard locale={locale} />}
       <section className="block" id="s-score">
         <h2 className="section-title"><span className="ix">§1</span>{T.kpiTitle(windowDays)}</h2>
         <div className="ab-pillgroup" style={{ display: "flex", alignItems: "center" }}>
