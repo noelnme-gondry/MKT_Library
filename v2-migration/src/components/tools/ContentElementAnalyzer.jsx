@@ -72,6 +72,7 @@ function downloadCoefCsv(rows) {
 export default function ContentElementAnalyzer() {
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
+  const demoDisabled = useAppStore((s) => s.demoDisabled);
   const requestAd = useAppStore((s) => s.requestAd);
   const fileRef = useRef(null);
   const chartRef = useRef(null);
@@ -102,7 +103,7 @@ export default function ContentElementAnalyzer() {
   // 첫 진입 시 데모 자동 로드(다른 도구와 동일 첫인상 패턴).
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!hasData) handleLoadDemo();
+    if (!hasData && !demoDisabled) handleLoadDemo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

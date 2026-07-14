@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
+import StartGate from "@/components/StartGate";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
 import DmNudge from "@/components/DmNudge";
@@ -52,6 +53,7 @@ export default function PageClient({ params }) {
           <article className="content" id="content" aria-live="polite">
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge locale="en" />}
 
+            {routeId === "start-gate" && <StartGate locale="en" />}
             {routeId === "5-2" && <Dashboard locale="en" />}
             {routeId === "5-3" && <BudgetAllocation locale="en" />}
             {routeId === "5-21" && <CampaignPvm locale="en" />}

@@ -919,6 +919,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const [cannibChannel, setCannibChannel] = useState(null);
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
+  const demoDisabled = useAppStore((state) => state.demoDisabled);
   const requestAd = useAppStore((state) => state.requestAd);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const currencySym = CURRENCY_SYMBOLS[displayCurrency] || "$";
@@ -990,7 +991,7 @@ export default function MarketingResponse({ locale = "ko" }) {
 
   // 첫 진입(데이터 없음) 시 샘플 데이터 자동 로드(CsvUploader와 동일 패턴, SEO·첫인상).
   useEffect(() => {
-    if (!hasData) handleLoadDemo();
+    if (!hasData && !demoDisabled) handleLoadDemo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const colMapSig = mmmColMap ? JSON.stringify(mmmColMap) : "";

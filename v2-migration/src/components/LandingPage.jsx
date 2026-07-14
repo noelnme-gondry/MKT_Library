@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { IA, SECTIONS } from "@/store/useDataStore";
+import { IA, SECTIONS, useAppStore } from "@/store/useDataStore";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { trItemTitle } from "@/lib/enNavCopy";
 import LocaleAutoRedirect from "@/components/LocaleAutoRedirect";
@@ -158,6 +158,7 @@ function findMeta(id) {
 // 가이드·콘텐츠는 보조 카드로 강등(트랙 유지), 블로그·소셜은 그대로.
 function LandingHome({ locale }) {
   const router = useRouter();
+  const setDemoDisabled = useAppStore((s) => s.setDemoDisabled);
   const L = LANDING_COPY[locale] || LANDING_COPY.ko;
   const H = TOOL_HOOKS[locale] || TOOL_HOOKS.ko;
   // 데이터 가이드(그룹 08)는 상단 도구 그리드에서 제외 → 맨 밑에 약하게(§요구:
@@ -216,10 +217,10 @@ function LandingHome({ locale }) {
           {hero.sub}
         </p>
         <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
-          <button type="button" className="btn primary" style={{ fontSize: "14px", padding: "12px 22px" }} onClick={() => { fireGa("landing_cta", { action: "analyze" }); goTool("5-2"); }}>
+          <button type="button" className="btn primary" style={{ fontSize: "14px", padding: "12px 22px" }} onClick={() => { fireGa("landing_cta", { action: "analyze" }); router.push(locale === "en" ? "/en/start" : "/start"); }}>
             {hero.ctaPrimary} →
           </button>
-          <button type="button" className="btn ghost" style={{ fontSize: "14px", padding: "12px 22px" }} onClick={() => { fireGa("landing_cta", { action: "demo" }); goTool("5-2"); }}>
+          <button type="button" className="btn ghost" style={{ fontSize: "14px", padding: "12px 22px" }} onClick={() => { fireGa("landing_cta", { action: "demo" }); setDemoDisabled(false); goTool("5-2"); }}>
             ▶ {hero.ctaDemo}
           </button>
         </div>

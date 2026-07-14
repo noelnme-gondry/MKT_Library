@@ -49,6 +49,7 @@ v2-migration/
 | `/content/element-analysis` | 9-1 | tools/ContentElementAnalyzer.jsx (요소 중요도, regMath 신규 UI) |
 | `/content/killer-content` | 9-2 | tools/KillerContentFinder.jsx → AhaMomentFinder domain="content" |
 | `/guide` | guide-index | GuideIndex.jsx (SOP 목록, 블로그처럼 자체 주소) |
+| `/start` | start-gate | StartGate.jsx (내 데이터로 시작 게이트 — 데모 off·도구 선택) |
 | `/guide/<kebab>` | 1-x~4-x | sops/SopContent.jsx (SOP) |
 
 **Content Analytics(9-x)**: 퍼포먼스 엔진을 콘텐츠 도메인 라벨로 리라벨. 라벨팩 SSOT=`utils/contentDomain.js`. CSV 격리 그룹 `content_*`. PageClient 폴백 가드 `!startsWith("9-")`(SopContent 누수 차단). **콘텐츠는 SECTIONS `analysis`로 흡수**(별도 카테고리 제거, 사이드바 자동 반영). slug `/content/*`는 SEO·북마크 보존.
