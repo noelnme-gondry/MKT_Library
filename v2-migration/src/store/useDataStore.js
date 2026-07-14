@@ -311,6 +311,11 @@ export function persistMigrate(persistedState, version) {
 }
 
 export const useAppStore = create(persist((set, get) => ({
+  // 데모 안내 모달 — 세션당 1회만(휘발, persist 대상 아님). 첫 도구 진입 시 데모
+  // 데이터임을 알리고 우상단 CSV 변경 버튼을 안내.
+  demoNoticeSeen: false,
+  setDemoNoticeSeen: () => set({ demoNoticeSeen: true }),
+
   // Navigation State
   currentRouteId: "home",
   // On route change, swap the csvData mirror to the newly-active group's slice

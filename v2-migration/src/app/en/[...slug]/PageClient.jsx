@@ -6,8 +6,8 @@ import dynamic from "next/dynamic";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
-import GuideIndex from "@/components/GuideIndex";
 import MobileToolNudge from "@/components/MobileToolNudge";
+import DemoNoticeModal from "@/components/DemoNoticeModal";
 import DmNudge from "@/components/DmNudge";
 
 // 번역 완료된 도구만 실제로 렌더(routeMap EN_READY_TOOL_IDS 게이트 통과 후).
@@ -52,7 +52,6 @@ export default function PageClient({ params }) {
           <article className="content" id="content" aria-live="polite">
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge locale="en" />}
 
-            {routeId === "guide-index" && <GuideIndex locale="en" />}
             {routeId === "5-2" && <Dashboard locale="en" />}
             {routeId === "5-3" && <BudgetAllocation locale="en" />}
             {routeId === "5-21" && <CampaignPvm locale="en" />}
@@ -65,6 +64,7 @@ export default function PageClient({ params }) {
           </article>
         </main>
       </div>
+      {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DemoNoticeModal locale="en" />}
       {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DmNudge locale="en" />}
       <GlobalModals locale="en" />
     </>

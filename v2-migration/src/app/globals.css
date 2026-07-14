@@ -159,15 +159,12 @@
       .app.is-home .sidebar {
         display: none;
       }
-      /* 랜딩(첫 화면)에서도 테마 토글·⌘K는 노출 — 바는 투명, breadcrumb만 숨김 */
+      /* 랜딩(첫 화면)에서도 브랜드(좌)+액션(우) 그대로 — 바만 투명. 브랜드는 전
+         페이지 공통 노출(홈은 트레일링 크럼 없이 브랜드만, Header에서 처리). */
       .app.is-home .topbar {
         background: transparent;
         backdrop-filter: none;
         border-bottom: none;
-        justify-content: flex-end;
-      }
-      .app.is-home .breadcrumb {
-        display: none;
       }
 
       /* ----- Sidebar ----- */

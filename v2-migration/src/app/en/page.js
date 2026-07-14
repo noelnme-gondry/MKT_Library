@@ -1,12 +1,13 @@
-import EnLandingHeader from "@/components/EnLandingHeader";
+import Sidebar from "@/components/Sidebar";
+import Header from "@/components/Header";
+import GlobalModals from "@/components/GlobalModals";
 import LandingPage from "@/components/LandingPage";
 import { SITE_URL } from "@/lib/routeMap";
 
-// EN 랜딩("/en") — /blog와 마찬가지로 메인 앱 셸(Sidebar) 없는 독립 라우트.
-// NOTE: 셸을 app/en/layout.js로 분리하지 않고 이 page.js에 인라인한다 — /en/blog가
-// 이미 자기 layout.js(en/blog/layout.js, 부모는 root layout.js뿐)를 갖고 있어서
-// en/layout.js를 새로 만들면 Next 중첩 레이아웃 규칙상 /en/blog에도 이 셸이 겹쳐
-// 씌워져 헤더/래퍼가 중복 렌더된다. page.js 인라인이면 /en 단일 라우트에만 적용된다.
+// EN 랜딩("/en") — KR 홈(app/[[...slug]] home)과 **동일한 셸**로 통일(브랜드·헤더
+// 액션·is-home 스타일 일치). 예전엔 EnLandingHeader(브랜드만·EN토글 없음)를 써 KR과
+// 구조가 달랐던 버그 수정. 셸을 en/layout.js로 빼지 않고 page.js에 인라인하는 이유는
+// 그대로(중첩 레이아웃이 /en/blog에 겹쳐 씌워지는 것 방지).
 export async function generateMetadata() {
   const title = "Growth Opt Playbook | Marketing Data Analysis Tools";
   const description =
@@ -28,12 +29,16 @@ export async function generateMetadata() {
 export default function EnHomePage() {
   return (
     <>
-      <EnLandingHeader />
-      <main className="main">
-        <article className="content" id="content" aria-live="polite">
-          <LandingPage locale="en" />
-        </article>
-      </main>
+      <div className="app is-home">
+        <Sidebar locale="en" />
+        <main className="main">
+          <Header locale="en" />
+          <article className="content" id="content" aria-live="polite">
+            <LandingPage locale="en" />
+          </article>
+        </main>
+      </div>
+      <GlobalModals locale="en" />
     </>
   );
 }
