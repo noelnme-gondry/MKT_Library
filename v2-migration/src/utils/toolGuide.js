@@ -268,6 +268,141 @@ export const TOOL_GUIDE = {
 // EN 번역본 — EN_READY_TOOL_IDS(routeMap.js)에 맞춰 번역된 id만 추가.
 // 없는 id는 getToolGuide가 KR로 폴백(콘텐츠 자체가 없느니 KR이라도 보여주는 게 나음).
 export const TOOL_GUIDE_EN = {
+  "5-2": {
+    when: "Upload your campaign data to see scorecards, pacing, anomaly detection, LTV, cohorts, and funnels at a glance.",
+    grain: "1 row = 1 day × (channel/campaign/creative etc.) performance",
+    needs: [
+      { col: "date", label: "Date", why: "Axis for time series, pacing, anomaly detection", required: true },
+      { col: "cost", label: "Cost", why: "Numerator for CPI/CPA and other KPIs", required: true },
+      { col: "installs or actions", label: "Installs or signups", why: "Denominator (conversion) for KPIs — at least one required", required: true },
+      { col: "channel · campaign · platform · country", label: "Dimensions", why: "Break down by channel/OS/country", required: false },
+      { col: "impressions · clicks", label: "Impressions · clicks", why: "Funnel calculations (CTR/CVR/CPC)", required: false },
+      { col: "revenue_d7 · ret_d7 · pu_d7", label: "Revenue · retention · payers (Dn)", why: "LTV, ROAS maturity, cohorts", required: false },
+    ],
+    prep: [
+      "Thousand separators in number columns are fine (handled automatically).",
+      "Cohort metrics like revenue_d7 are cumulative '7 days since install' values — don't mix with calendar-daily numbers.",
+      "More columns unlock more tabs (optional columns = more features).",
+    ],
+    example: "date,channel,cost,impressions,clicks,installs,revenue_d7\n2024-01-01,Google UAC,850000,420000,9800,720,5400000\n2024-01-01,Meta AAP,610000,510000,7200,540,3900000\n2024-01-02,Google UAC,880000,430000,10100,735,5600000",
+  },
+  "5-21": {
+    when: "Decompose a performance change into volume, efficiency, and mix effects with zero residual (why did CPA go up?).",
+    grain: "1 row = 1 day × channel × campaign × creative (finest grain)",
+    needs: [
+      { col: "date", label: "Date", why: "Period comparison (before vs. after)", required: true },
+      { col: "spend(=cost)", label: "Ad spend", why: "Basis for the volume/efficiency decomposition", required: true },
+      { col: "channel", label: "Channel", why: "Decomposition unit", required: true },
+      { col: "installs or actions", label: "Conversions", why: "Efficiency (CPA) calculation", required: true },
+      { col: "campaign_name · creative_id", label: "Campaign · creative", why: "Drill-down (channel → campaign → creative)", required: false },
+    ],
+    prep: ["The finer the grain (creative/daily), the more accurate the decomposition identity.", "Shares the efficiency CSV (5-2/5-3/5-22)."],
+    example: "date,channel,campaign_name,creative_id,spend,installs\n2024-01-01,Meta AAP,Prospecting,cr_101,320000,240\n2024-01-01,Meta AAP,Retargeting,cr_102,180000,160\n2024-01-02,Meta AAP,Prospecting,cr_101,340000,255",
+  },
+  "5-22": {
+    when: "Diagnose whether a channel/campaign is already saturated (more spend = worse efficiency) or still has room, via marginal vs. average efficiency.",
+    grain: "1 row = 1 day × channel (or campaign) performance",
+    needs: [
+      { col: "date", label: "Date", why: "Recent spend point, curve fitting", required: true },
+      { col: "cost", label: "Ad spend", why: "X-axis of the saturation curve", required: true },
+      { col: "channel or campaign_name", label: "Channel/campaign", why: "Diagnosis unit", required: true },
+      { col: "installs or actions", label: "Conversions", why: "Efficiency (CPA) calculation", required: true },
+      { col: "revenue_d7", label: "Revenue", why: "ROAS-based saturation (optional)", required: false },
+    ],
+    prep: ["Shares the same efficiency CSV as 5-2/5-3 — upload once and sibling tools pick it up."],
+    example: "date,channel,cost,installs,revenue_d7\n2024-01-01,Google UAC,850000,720,5400000\n2024-01-02,Google UAC,880000,735,5600000\n2024-01-03,Google UAC,920000,742,5700000",
+  },
+  "5-6": {
+    when: "Analyze creative performance, fatigue, and which attributes (hook, format, message) actually drive results — and tells you when to swap a creative.",
+    grain: "1 row = 1 day × creative",
+    needs: [
+      { col: "creative_id", label: "Creative ID", why: "Key for creative-level aggregation", required: true },
+      { col: "date", label: "Date", why: "Fatigue (performance decay over time)", required: true },
+      { col: "impressions · clicks · installs", label: "Impressions · clicks · installs", why: "CTR/CVR and win-rate calculations", required: true },
+      { col: "spend", label: "Ad spend", why: "CPA and efficiency", required: true },
+      { col: "message_angle · format · hook_type…", label: "Creative attributes", why: "Attribute-level effect (WLS) and combination matrix", required: false },
+    ],
+    prep: [
+      "Add attribute columns (message/format/hook) to unlock the 'which attribute works' breakdown and combination table.",
+      "The combination table only shows as 'validated' once a combination has 5+ creatives.",
+    ],
+    example: "creative_id,date,channel,impressions,clicks,installs,spend,message_angle,format\ncr_001,2024-02-01,Meta AAP,52000,1600,210,610000,social_proof,UGC\ncr_002,2024-02-01,TikTok,48000,1900,180,540000,discount,playable",
+  },
+  "5-4": {
+    when: "Design an A/B test (sample size calculation), and judge which variant statistically won from a results CSV.",
+    grain: "1 row = 1 group (arm) aggregate",
+    needs: [
+      { col: "numerator", label: "Conversions (numerator)", why: "Conversion count for the group", required: true },
+      { col: "denominator", label: "Group size / base (denominator)", why: "Group size (conversion rate = numerator/denominator)", required: true },
+      { col: "is_control", label: "Is control", why: "Control vs. test distinction", required: true },
+      { col: "arm_id", label: "Variant group", why: "Multi-variant testing (Variant A/B/C…)", required: false },
+    ],
+    prep: [
+      "Upload one aggregated row per group (not one row per user).",
+      "For holdout incrementality (the ad's own value), use the separate 'Incrementality' tool instead.",
+    ],
+    example: "arm_id,is_control,numerator,denominator\nControl,1,400,8000\nVariant A,0,496,8000",
+  },
+  "5-20": {
+    when: "Find the 'aha-moment' — which early action, done how many times within how many days, predicts a user sticking around (converting).",
+    grain: "1 row = 1 user",
+    needs: [
+      { col: "user_id", label: "User ID", why: "User-level identifier", required: true },
+      { col: "converted(0/1)", label: "Converted (target)", why: "Marks users who stuck / converted", required: true },
+      { col: "action columns (counts)", label: "Early actions", why: "Predictive power of each candidate action (F1/lift)", required: true },
+    ],
+    prep: [
+      "Action columns should be counts 'within the first N days' (e.g. messages sent within 7 days).",
+      "The conversion column is 0/1 — 1 means stuck/goal achieved.",
+    ],
+    example: "user_id,converted,matches_first_7d,messages_sent_7d,profile_completed\nu10001,1,8,32,1\nu10002,0,1,4,0\nu10003,1,12,45,1",
+  },
+  "5-23:suppression": {
+    when: "Compare an exposed group vs. a randomized holdout group (ads suppressed) over the same period to see the true incremental lift from ads. The most reliable of the 3 methods.",
+    grain: "1 row = 1 group (can also be split by region/date)",
+    needs: [
+      { col: "holdout_group", label: "Exposed/holdout", why: "Distinguishes exposed (saw ads) vs. holdout (ads suppressed) group", required: true },
+      { col: "numerator", label: "Conversions", why: "Conversion count for the group", required: true },
+      { col: "denominator", label: "Group size", why: "Group size (conversion rate = numerator/size)", required: true },
+      { col: "date", label: "Date", why: "Adding this gives a daily conversion-rate trend chart (exposed vs. holdout)", required: false },
+      { col: "spend", label: "Ad spend", why: "Exposed group's cost → iROAS, incremental CPA", required: false },
+      { col: "revenue_d7", label: "Revenue", why: "Exposed group's revenue → iROAS", required: false },
+    ],
+    prep: [
+      "Must be a randomized split to be interpreted causally.",
+      "Upload results aggregated by geo holdout, user (ghost ads), or audience holdout.",
+      "Add date with multiple rows per day to also get a conversion-rate time series.",
+    ],
+    example: "date,holdout_group,numerator,denominator,spend,revenue_d7\n2024-05-01,exposed,516,8600,1548000,16512000\n2024-05-01,holdout,378,8600,0,12096000\n2024-05-02,exposed,529,8700,1566000,16928000",
+  },
+  "5-23:on": {
+    when: "Compare before vs. after the moment you turned on an ad/campaign that wasn't running, to see the lift from turning it on.",
+    grain: "1 row = 1 day",
+    needs: [
+      { col: "date", label: "Date", why: "Time axis for the before/after comparison", required: true },
+      { col: "conversions or other metric", label: "Performance metric", why: "Measures how much it rose after turning on", required: true },
+      { col: "group", label: "Group (treatment/control)", why: "Adding a control group removes seasonality/trend via DiD", required: false },
+    ],
+    prep: [
+      "You pick the turn-on date (cutoff) on screen.",
+      "Adding a control group (one that didn't change) removes seasonality/trend for more accuracy (DiD). Don't claim causation without randomization.",
+    ],
+    example: "date,group,conversions\n2024-04-01,treatment,100\n2024-04-01,control,90\n2024-05-20,treatment,155\n2024-05-20,control,92",
+  },
+  "5-23:off": {
+    when: "Compare before vs. after the moment you turned off an ad/campaign that was running, to see what was lost.",
+    grain: "1 row = 1 day",
+    needs: [
+      { col: "date", label: "Date", why: "Time axis for the before/after comparison", required: true },
+      { col: "conversions or other metric", label: "Performance metric", why: "Measures how much it dropped after turning off", required: true },
+      { col: "group", label: "Group (treatment/control)", why: "Adding a control group removes seasonality/trend via DiD", required: false },
+    ],
+    prep: [
+      "You pick the turn-off date (cutoff) on screen.",
+      "Adding a control group removes seasonality/trend for more accuracy (DiD). Don't claim causation without randomization.",
+    ],
+    example: "date,group,conversions\n2024-04-01,treatment,200\n2024-04-01,control,180\n2024-05-20,treatment,120\n2024-05-20,control,182",
+  },
   "5-3": {
     when: "Estimate a response curve per channel/campaign to simulate where the next dollar of budget pays off best.",
     grain: "1 row = 1 day × channel (or campaign) performance",

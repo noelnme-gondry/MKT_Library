@@ -12,7 +12,8 @@ import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 // 지표 뷰 설정 scope — §1 전체 리텐션 곡선 표의 지표 컬럼 표시/순서.
 const COHORT_TABLE_SCOPE = "5-2:cohort-table";
 
-export default function CohortTab() {
+export default function CohortTab({ locale = "ko" } = {}) {
+  const tr = (ko, en) => (locale === "en" ? en : ko);
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   // 전역 분모 기준(설치/가입) 구독 — index.html MON_DENOM_STATE 이식(§12.18).
@@ -122,7 +123,7 @@ export default function CohortTab() {
       data: {
         labels,
         datasets: [{
-          label: "전체 리텐션 (%)",
+          label: tr("전체 리텐션 (%)", "Overall Retention (%)"),
           data,
           borderColor: CHART_THEME.primary,
           backgroundColor: "rgba(173,198,255,0.2)",
@@ -150,7 +151,7 @@ export default function CohortTab() {
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [hasData, wrc, isDarkMode]);
+  }, [hasData, wrc, isDarkMode, locale]);
 
   // Segment Charts
   useEffect(() => {
@@ -204,12 +205,15 @@ export default function CohortTab() {
     return (
       <div className="tab-pane active" id="tab-cohort">
         <section className="block" id="s-retention">
-          <h2 className="section-title"><span className="ix">§1</span>리텐션 곡선</h2>
+          <h2 className="section-title"><span className="ix">§1</span>{tr("리텐션 곡선", "Retention Curve")}</h2>
           <div className="callout warn">
             <div className="ico">!</div>
             <div className="body">
-              <strong>리텐션 데이터 없음</strong>
-              <p>효율 CSV에 <code>ret_d30</code>, <code>ret_d90</code> 등 Retention(Dn) 컬럼을 매핑하세요.</p>
+              <strong>{tr("리텐션 데이터 없음", "No retention data")}</strong>
+              <p>{tr(
+                <>효율 CSV에 <code>ret_d30</code>, <code>ret_d90</code> 등 Retention(Dn) 컬럼을 매핑하세요.</>,
+                <>Map Retention(Dn) columns like <code>ret_d30</code>, <code>ret_d90</code> in the efficiency CSV.</>
+              )}</p>
             </div>
           </div>
         </section>
@@ -218,9 +222,9 @@ export default function CohortTab() {
   }
 
   const fmtPct = (v) => (v == null ? "—" : (v * 100).toFixed(1) + "%");
-  const anchorLabel = wrc.anchor === "actions" ? "가입(액션)" : "설치";
-  const survLabel = wrc.anchor === "actions" ? "잔존 가입자 수" : "잔존 유저 수";
-  
+  const anchorLabel = wrc.anchor === "actions" ? tr("가입(액션)", "Signup (Action)") : tr("설치", "Install");
+  const survLabel = wrc.anchor === "actions" ? tr("잔존 가입자 수", "Retained Signups") : tr("잔존 유저 수", "Retained Users");
+
   const renderSegmentChart = (sk, label) => {
     return (
       <div key={sk} style={{ marginBottom: "20px" }}>
@@ -238,7 +242,7 @@ export default function CohortTab() {
 
   // §1 리텐션 표 지표 컬럼 — 첫 컬럼 '구간'은 고정, 나머지만 표시/순서 토글(값 불변).
   const cohortCols = [
-    { k: "rate", label: "잔존율", render: (p) => fmtPct(p.retentionRate) },
+    { k: "rate", label: tr("잔존율", "Retention Rate"), render: (p) => fmtPct(p.retentionRate) },
     { k: "survivors", label: survLabel, render: (p) => (p.survivors || 0).toLocaleString() },
   ];
   const orderedCohortCols = applyMetricView(cohortCols, cohortTableCfg, (col) => col.k);
@@ -246,34 +250,37 @@ export default function CohortTab() {
   return (
     <div className="tab-pane active" id="tab-cohort">
       <section className="block" id="s-retention">
-        <h2 className="section-title"><span className="ix">§1</span>전체 리텐션 곡선</h2>
-        
+        <h2 className="section-title"><span className="ix">§1</span>{tr("전체 리텐션 곡선", "Overall Retention Curve")}</h2>
+
         {canActions && canInstalls && (
           <div className="ab-pillgroup" style={{ marginBottom: "10px" }}>
-            <span className="ab-pillgroup-label">리텐션 기준</span>
-            <button className={`ab-pill ${wrc.anchor !== "actions" ? "active" : ""}`} onClick={() => setDenomBasis("installs")}>설치 기준</button>
-            <button className={`ab-pill ${wrc.anchor === "actions" ? "active" : ""}`} onClick={() => setDenomBasis("actions")}>가입(액션) 기준</button>
+            <span className="ab-pillgroup-label">{tr("리텐션 기준", "Retention basis")}</span>
+            <button className={`ab-pill ${wrc.anchor !== "actions" ? "active" : ""}`} onClick={() => setDenomBasis("installs")}>{tr("설치 기준", "By Install")}</button>
+            <button className={`ab-pill ${wrc.anchor === "actions" ? "active" : ""}`} onClick={() => setDenomBasis("actions")}>{tr("가입(액션) 기준", "By Signup (Action)")}</button>
           </div>
         )}
 
         <div className="ab-pillgroup" style={{ marginBottom: "10px" }}>
-          <span className="ab-pillgroup-label" title="아직 D일이 지나지 않은(미마감) 최근 코호트는 잔존율을 왜곡시킵니다. '마감만'은 오늘 기준 D일이 지난 코호트만 분자·분모 양쪽에서 집계.">코호트 마감</span>
-          <button className={`ab-pill ${!matureCohortOnly ? "active" : ""}`} onClick={() => setMatureCohortOnly(false)}>전체 포함</button>
-          <button className={`ab-pill ${matureCohortOnly ? "active" : ""}`} onClick={() => setMatureCohortOnly(true)}>마감된 코호트만</button>
+          <span className="ab-pillgroup-label" title={tr(
+            "아직 D일이 지나지 않은(미마감) 최근 코호트는 잔존율을 왜곡시킵니다. '마감만'은 오늘 기준 D일이 지난 코호트만 분자·분모 양쪽에서 집계.",
+            "Recent cohorts that haven't yet reached day D (immature) distort the retention rate. \"Matured only\" aggregates both numerator and denominator using only cohorts that have passed day D as of today."
+          )}>{tr("코호트 마감", "Cohort maturity")}</span>
+          <button className={`ab-pill ${!matureCohortOnly ? "active" : ""}`} onClick={() => setMatureCohortOnly(false)}>{tr("전체 포함", "Include All")}</button>
+          <button className={`ab-pill ${matureCohortOnly ? "active" : ""}`} onClick={() => setMatureCohortOnly(true)}>{tr("마감된 코호트만", "Matured Only")}</button>
         </div>
 
         <div className="chart-container" style={{ height: "220px" }}>
           <canvas id="wide-ret-curve" ref={chartRef}></canvas>
         </div>
-        
+
         <div style={{ display: "flex", justifyContent: "flex-end", margin: "14px 0 -6px" }}>
-          <button className="ab-pill" onClick={() => setCohortCfgOpen(true)} title="표시할 지표 컬럼과 순서 편집">⚙ 컬럼 편집</button>
+          <button className="ab-pill" onClick={() => setCohortCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("⚙ 컬럼 편집", "⚙ Edit columns")}</button>
         </div>
         <div className="table-wrap" style={{ marginTop: "14px" }}>
           <table className="data" style={{ fontSize: "12px" }}>
             <thead>
               <tr>
-                <th style={{ textAlign: "left" }}>구간</th>
+                <th style={{ textAlign: "left" }}>{tr("구간", "Period")}</th>
                 {orderedCohortCols.map((col) => <th key={col.k} style={{ textAlign: "right" }}>{col.label}</th>)}
               </tr>
             </thead>
@@ -290,18 +297,24 @@ export default function CohortTab() {
           </table>
         </div>
         {orderedCohortCols.length === 0 && (
-          <p className="muted" style={{ fontSize: "12px" }}>표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.</p>
+          <p className="muted" style={{ fontSize: "12px" }}>{tr("표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.", "No metric columns are shown. Re-enable them in ⚙ Edit columns.")}</p>
         )}
         <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>
-          {survLabel} = Σ(잔존 인원) ÷ Σ({anchorLabel} 모수). <code>ret_dN</code>이 <strong>0~1 비율</strong>이면 ×모수로 인원 환산, <strong>자연수면 인원수</strong> 그대로 합산합니다(코호트 크기 가중 — 단순평균 아님). 기준 토글은 모수({anchorLabel})를 바꿉니다.
+          {tr(
+            <>{survLabel} = Σ(잔존 인원) ÷ Σ({anchorLabel} 모수). <code>ret_dN</code>이 <strong>0~1 비율</strong>이면 ×모수로 인원 환산, <strong>자연수면 인원수</strong> 그대로 합산합니다(코호트 크기 가중 — 단순평균 아님). 기준 토글은 모수({anchorLabel})를 바꿉니다.</>,
+            <>{survLabel} = Σ(retained users) ÷ Σ(base of {anchorLabel}). If <code>ret_dN</code> is a <strong>0–1 rate</strong>, it&apos;s converted to a headcount (× base); if it&apos;s a <strong>whole number</strong>, it&apos;s summed as a headcount directly (weighted by cohort size — not a simple average). The basis toggle changes the base ({anchorLabel}).</>
+          )}
         </p>
         {wrc.wholePctWarn && (
           <div className="callout warn" style={{ marginTop: "8px" }}>
             <div className="ico">!</div>
             <div className="body">
-              <strong>리텐션 값이 1을 넘습니다(예: 30, 50)</strong>
+              <strong>{tr("리텐션 값이 1을 넘습니다(예: 30, 50)", "Retention values exceed 1 (e.g. 30, 50)")}</strong>
               <p style={{ margin: ".25rem 0 0", fontSize: "11.5px" }}>
-                정수 퍼센트(30=30%)가 아니라 <strong>잔존 인원수</strong>로 해석했습니다. 비율로 넣으려면 0~1(0.3·0.5)로, 인원수면 그대로 두세요.
+                {tr(
+                  <>정수 퍼센트(30=30%)가 아니라 <strong>잔존 인원수</strong>로 해석했습니다. 비율로 넣으려면 0~1(0.3·0.5)로, 인원수면 그대로 두세요.</>,
+                  <>These were interpreted as <strong>retained headcount</strong>, not whole-number percentages (30=30%). Use 0–1 (0.3, 0.5) for rates, or leave as-is for headcounts.</>
+                )}
               </p>
             </div>
           </div>
@@ -310,26 +323,29 @@ export default function CohortTab() {
 
       {Object.keys(wrc.bySegment).length > 0 && (
         <section className="block" id="s-ret-segment">
-          <h2 className="section-title"><span className="ix">§2</span>세그먼트별 리텐션</h2>
-          {renderSegmentChart("channel", "채널")}
-          {renderSegmentChart("country", "국가")}
-          {renderSegmentChart("platform", "플랫폼")}
+          <h2 className="section-title"><span className="ix">§2</span>{tr("세그먼트별 리텐션", "Retention by Segment")}</h2>
+          {renderSegmentChart("channel", tr("채널", "Channel"))}
+          {renderSegmentChart("country", tr("국가", "Country"))}
+          {renderSegmentChart("platform", tr("플랫폼", "Platform"))}
         </section>
       )}
 
       {wrc.pwr && horizons.length > 0 && (
         <section className="block" id="s-ret-predict">
-          <h2 className="section-title"><span className="ix">§3</span>리텐션 예측</h2>
+          <h2 className="section-title"><span className="ix">§3</span>{tr("리텐션 예측", "Retention Forecast")}</h2>
           <p className="muted" style={{ fontSize: "12px" }}>
-            관측된 Dn 데이터로 power-law 커브를 적합해 미관측 구간을 외삽합니다. 참고값으로만 사용하세요.
+            {tr(
+              "관측된 Dn 데이터로 power-law 커브를 적합해 미관측 구간을 외삽합니다. 참고값으로만 사용하세요.",
+              "Fits a power-law curve to the observed Dn data to extrapolate unobserved periods. Use as a reference value only."
+            )}
           </p>
           <div className="table-wrap" style={{ marginTop: "8px" }}>
             <table className="data" style={{ fontSize: "12px" }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: "left" }}>구간</th>
-                  <th style={{ textAlign: "right" }}>예측 잔존율</th>
-                  <th style={{ textAlign: "right" }}>방법</th>
+                  <th style={{ textAlign: "left" }}>{tr("구간", "Period")}</th>
+                  <th style={{ textAlign: "right" }}>{tr("예측 잔존율", "Predicted Retention")}</th>
+                  <th style={{ textAlign: "right" }}>{tr("방법", "Method")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -339,7 +355,7 @@ export default function CohortTab() {
                     <tr key={d}>
                       <td className="tnum">D{d}</td>
                       <td className="tnum" style={{ color: "var(--accent)", textAlign: "right" }}>{fmtPct(Math.min(1, Math.max(0, pred)))}</td>
-                      <td className="tnum" style={{ color: "var(--text-muted)", fontSize: "11px", textAlign: "right" }}>Power fit 외삽</td>
+                      <td className="tnum" style={{ color: "var(--text-muted)", fontSize: "11px", textAlign: "right" }}>{tr("Power fit 외삽", "Power fit extrapolation")}</td>
                     </tr>
                   );
                 })}
@@ -351,7 +367,7 @@ export default function CohortTab() {
       <MetricConfigPanel
         open={cohortCfgOpen}
         onClose={() => setCohortCfgOpen(false)}
-        title="전체 리텐션 곡선 표 — 컬럼 편집"
+        title={tr("전체 리텐션 곡선 표 — 컬럼 편집", "Overall retention curve table — Edit columns")}
         items={cohortCols.map((col) => ({ key: col.k, label: col.label }))}
         config={cohortTableCfg}
         onSave={(next) => {
@@ -360,7 +376,7 @@ export default function CohortTab() {
           setCohortCfgOpen(false);
         }}
       />
-      <CustomChartsSection sectionNo="4" chartScope="5-2:cohort-charts" metricScope="5-2:viz-kpi" title="커스텀 차트" />
+      <CustomChartsSection sectionNo="4" chartScope="5-2:cohort-charts" metricScope="5-2:viz-kpi" title={tr("커스텀 차트", "Custom Charts")} />
     </div>
   );
 }

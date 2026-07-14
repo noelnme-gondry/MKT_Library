@@ -24,13 +24,20 @@ function downloadCsv(fileName, text) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
-const METHODS = [
+const METHODS_KO = [
   { key: "suppression", label: "① 통제군 (동시 비교)", tip: "★★★ 가장 신뢰 높음" },
   { key: "on", label: "② 신규 켜기 (전후)", tip: "★★ 준실험" },
   { key: "off", label: "③ 종료 (전후)", tip: "★★ 준실험" },
 ];
+const METHODS_EN = [
+  { key: "suppression", label: "① Control group (concurrent)", tip: "★★★ Highest confidence" },
+  { key: "on", label: "② New launch (pre/post)", tip: "★★ Quasi-experiment" },
+  { key: "off", label: "③ Shutdown (pre/post)", tip: "★★ Quasi-experiment" },
+];
 
-export default function Incrementality() {
+export default function Incrementality({ locale = "ko" } = {}) {
+  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const METHODS = locale === "en" ? METHODS_EN : METHODS_KO;
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
   const currency = useAppStore((s) => s.displayCurrency);
@@ -67,16 +74,21 @@ export default function Incrementality() {
     <div className="tab-pane active" id="tab-incr">
       {/* 히어로 (claude-ux §1 여정=질문) */}
       <section className="block" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px", marginBottom: "16px" }}>
-        <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>광고를 켠 것(혹은 끈 것)이 진짜 얼마를 만들었나?</h2>
+        <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>{tr("광고를 켠 것(혹은 끈 것)이 진짜 얼마를 만들었나?", "How much did turning ads on (or off) actually create?")}</h2>
         <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6, maxWidth: "680px" }}>
-          어트리뷰션과 달리, <strong>광고가 없었어도 어차피 일어났을 전환</strong>을 빼고 순수 증분만 봅니다. 3가지 방법 중 상황에 맞는 걸 고르세요.
+          {tr(<>어트리뷰션과 달리, <strong>광고가 없었어도 어차피 일어났을 전환</strong>을 빼고 순수 증분만 봅니다. 3가지 방법 중 상황에 맞는 걸 고르세요.</>,
+            <>Unlike attribution, this excludes <strong>conversions that would have happened anyway without ads</strong> and shows pure incrementality. Pick whichever of the 3 methods fits your situation.</>)}
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "10px", marginTop: "14px" }}>
-          {[
+          {(locale === "en" ? [
+            ["🧪", "Control group (suppression)", "Randomly block ads for a subset → compare exposed vs unexposed concurrently. Cleanest."],
+            ["🟢", "New launch (on)", "Compare before/after turning on something new → the lift it created."],
+            ["🔴", "Shutdown (off)", "Compare before/after turning off something running → the drop from stopping it."],
+          ] : [
             ["🧪", "통제군 (suppression)", "일부를 무작위로 광고 차단 → 노출 vs 미노출 동시 비교. 가장 깨끗."],
             ["🟢", "신규 켜기 (on)", "안 하던 걸 켠 시점 전후 비교 → 켠 것이 만든 상승분."],
             ["🔴", "종료 (off)", "켜뒀던 걸 끈 시점 전후 비교 → 끄면서 잃은 하락분."],
-          ].map(([ic, t, d], i) => (
+          ]).map(([ic, t, d], i) => (
             <div key={i} style={{ background: "var(--surface-container-lowest)", border: "1px solid var(--border)", borderRadius: "10px", padding: "11px 13px" }}>
               <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-primary)" }}>{ic} {t}</div>
               <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "4px", lineHeight: 1.5 }}>{d}</div>
@@ -94,69 +106,71 @@ export default function Incrementality() {
         ))}
       </div>
       <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "0 0 16px", lineHeight: 1.6 }}>
-        {method === "suppression" && "같은 기간, 무작위로 광고를 차단한 홀드아웃 그룹 vs 노출 그룹을 비교합니다. 무작위 분할이면 인과 신뢰가 가장 높습니다."}
-        {method === "on" && "안 하던 광고/캠페인을 켠 시점(cutoff) 전후를 비교합니다. 대조군을 넣으면 계절·추세를 제거(DiD)합니다."}
-        {method === "off" && "켜뒀던 광고/캠페인을 끈 시점(cutoff) 전후를 비교해 끄면서 잃은 성과를 봅니다. 대조군 있으면 DiD 권장."}
+        {method === "suppression" && tr("같은 기간, 무작위로 광고를 차단한 홀드아웃 그룹 vs 노출 그룹을 비교합니다. 무작위 분할이면 인과 신뢰가 가장 높습니다.", "Compares a holdout group (ads randomly blocked) vs an exposed group over the same period. Random assignment gives the highest causal confidence.")}
+        {method === "on" && tr("안 하던 광고/캠페인을 켠 시점(cutoff) 전후를 비교합니다. 대조군을 넣으면 계절·추세를 제거(DiD)합니다.", "Compares before/after the moment (cutoff) you turned on an ad/campaign that wasn't running. Adding a control group removes seasonality/trend (DiD).")}
+        {method === "off" && tr("켜뒀던 광고/캠페인을 끈 시점(cutoff) 전후를 비교해 끄면서 잃은 성과를 봅니다. 대조군 있으면 DiD 권장.", "Compares before/after the moment (cutoff) you turned off a running ad/campaign to see what was lost. A control group + DiD is recommended.")}
       </p>
 
       {!hasData ? (
-        <UploadPanel method={method} fileRef={fileRef} handleFile={handleFile} loadDemo={loadDemo} />
+        <UploadPanel method={method} fileRef={fileRef} handleFile={handleFile} loadDemo={loadDemo} locale={locale} />
       ) : (
         <div>
           {isDemo && (
             <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
               <div>
-                <strong>🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다</strong>
-                <p style={{ margin: "0.25rem 0 0" }}>실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.</p>
+                <strong>{tr("🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다", "🧪 You're currently viewing sample (example) data")}</strong>
+                <p style={{ margin: "0.25rem 0 0" }}>{tr("실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.", "This isn't your real data, and nothing is sent to any server. Upload your own CSV to replace it instantly.")}</p>
               </div>
-              <button className="ab-button" onClick={resetCsv}>📁 내 CSV 업로드하기</button>
+              <button className="ab-button" onClick={resetCsv}>{tr("📁 내 CSV 업로드하기", "📁 Upload my CSV")}</button>
             </div>
           )}
           <div className="file-state" style={{ marginBottom: "12px" }}>
             <div className="meta-text">
               <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
-              {isDemo ? <strong>샘플 데이터로 미리보기 중</strong> : <strong>{csvData.fileName}</strong>}
-              <span className="csv-loaded-stats tnum">{csvData.raw.length.toLocaleString()}행{isDemo ? " · 실제 데이터 아님" : ""}</span>
+              {isDemo ? <strong>{tr("샘플 데이터로 미리보기 중", "Previewing with sample data")}</strong> : <strong>{csvData.fileName}</strong>}
+              <span className="csv-loaded-stats tnum">{csvData.raw.length.toLocaleString()}{tr("행", " rows")}{isDemo ? tr(" · 실제 데이터 아님", " · not real data") : ""}</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>통화</span>
+              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{tr("통화", "Currency")}</span>
               <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setDisplayCurrency("KRW")}>₩</button>
               <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setDisplayCurrency("USD")}>$</button>
-              {!isDemo && <button className="ab-pill csv-change-btn" onClick={resetCsv}>⟳ CSV 변경</button>}
+              {!isDemo && <button className="ab-pill csv-change-btn" onClick={resetCsv}>{tr("⟳ CSV 변경", "⟳ Change CSV")}</button>}
             </div>
           </div>
           {method === "suppression"
-            ? <SuppressionView csvData={csvData} currency={currency} />
-            : <PrePostView csvData={csvData} direction={method} currency={currency} />}
+            ? <SuppressionView csvData={csvData} currency={currency} locale={locale} />
+            : <PrePostView csvData={csvData} direction={method} currency={currency} locale={locale} />}
         </div>
       )}
     </div>
   );
 }
 
-function UploadPanel({ method, fileRef, handleFile, loadDemo }) {
+function UploadPanel({ method, fileRef, handleFile, loadDemo, locale = "ko" }) {
+  const tr = (ko, en) => (locale === "en" ? en : ko);
   const isSup = method === "suppression";
   const tmpl = isSup
     ? { name: "template_incr_suppression.csv", text: "date,holdout_group,numerator,denominator,spend,revenue_d7\r\n2024-05-01,exposed,516,8600,1548000,16512000\r\n2024-05-01,holdout,378,8600,0,12096000\r\n" }
     : { name: `template_incr_prepost.csv`, text: "date,group,conversions\r\n2024-04-01,treatment,100\r\n2024-04-01,control,90\r\n2024-05-20,treatment,155\r\n2024-05-20,control,92\r\n" };
   return (
     <>
-      <CsvGuide toolId={`5-23:${method}`} onDownloadTemplate={() => downloadCsv(tmpl.name, tmpl.text)} />
+      <CsvGuide toolId={`5-23:${method}`} onDownloadTemplate={() => downloadCsv(tmpl.name, tmpl.text)} locale={locale} />
       <div className="csv-dropzone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]); }} onClick={() => fileRef.current?.click()} style={{ cursor: "pointer" }}>
         <div className="csv-drop-icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         </div>
-        <div className="csv-drop-text">CSV 파일 드래그 & 드롭</div>
-        <div className="csv-drop-sub">또는 클릭하여 파일 선택</div>
+        <div className="csv-drop-text">{tr("CSV 파일 드래그 & 드롭", "Drag & drop CSV file")}</div>
+        <div className="csv-drop-sub">{tr("또는 클릭하여 파일 선택", "or click to select a file")}</div>
         <input type="file" accept=".csv,text/csv" style={{ display: "none" }} ref={fileRef} onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); e.target.value = null; }} />
       </div>
-      <DemoLoadButton onLoad={loadDemo} />
+      <DemoLoadButton onLoad={loadDemo} locale={locale} />
     </>
   );
 }
 
 /* ── ① 통제군 (suppression) ── */
-function SuppressionView({ csvData, currency }) {
+function SuppressionView({ csvData, currency, locale = "ko" }) {
+  const tr = (ko, en) => (locale === "en" ? en : ko);
   // 날짜별 그룹 집계 (전환율·모수·비용·매출)
   const series = useMemo(() => {
     const rows = getMappedRows(csvData);
@@ -249,7 +263,7 @@ function SuppressionView({ csvData, currency }) {
       id: "holdoutMarkers",
       afterDatasetsDraw(chart) {
         const { ctx: c, chartArea, scales } = chart; const x = scales.x; if (!x) return;
-        [[sIdx, "홀드아웃 시작"], [eIdx, "홀드아웃 종료"]].forEach(([i, lab]) => {
+        [[sIdx, tr("홀드아웃 시작", "Holdout start")], [eIdx, tr("홀드아웃 종료", "Holdout end")]].forEach(([i, lab]) => {
           if (i == null || i < 0) return;
           const px = x.getPixelForValue(i);
           c.save();
@@ -264,15 +278,15 @@ function SuppressionView({ csvData, currency }) {
     chartInst.current = new Chart(ctx, {
       type: "line",
       data: { labels, datasets: [
-        { label: "노출 그룹(광고 봄)", data: expRate, borderColor: "#22c55e", backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, tension: 0.15 },
-        { label: "홀드아웃(광고 차단)", data: holdRate, borderColor: getCssVar("--text-muted"), backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, borderDash: [5, 4], tension: 0.15 },
+        { label: tr("노출 그룹(광고 봄)", "Exposed group (saw ads)"), data: expRate, borderColor: "#22c55e", backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, tension: 0.15 },
+        { label: tr("홀드아웃(광고 차단)", "Holdout (ads blocked)"), data: holdRate, borderColor: getCssVar("--text-muted"), backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, borderDash: [5, 4], tension: 0.15 },
       ] },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { labels: { color: CHART_THEME.text } }, tooltip: { callbacks: { label: (cx) => `${cx.dataset.label}: ${cx.parsed.y != null ? cx.parsed.y.toFixed(2) + "%" : "—"}` } } },
         scales: {
           x: { ticks: { color: CHART_THEME.muted, autoSkip: true, maxTicksLimit: 10 }, grid: { color: getCssVar("--border") } },
-          y: { ticks: { color: CHART_THEME.muted, callback: (v) => v + "%" }, grid: { color: getCssVar("--border") }, title: { display: true, text: "전환율", color: CHART_THEME.muted } },
+          y: { ticks: { color: CHART_THEME.muted, callback: (v) => v + "%" }, grid: { color: getCssVar("--border") }, title: { display: true, text: tr("전환율", "Conversion rate"), color: CHART_THEME.muted } },
         },
       },
       plugins: [markerPlugin],
@@ -281,7 +295,7 @@ function SuppressionView({ csvData, currency }) {
     return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
   }, [series, start, end]);
 
-  if (totals.cDen <= 0 || totals.tDen <= 0) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>노출(exposed)·홀드아웃(holdout) 양쪽 데이터가 필요합니다</strong><p>holdout_group 컬럼에 두 그룹이 모두 있어야 증분을 계산합니다.</p></div></div>;
+  if (totals.cDen <= 0 || totals.tDen <= 0) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("노출(exposed)·홀드아웃(holdout) 양쪽 데이터가 필요합니다", "Both exposed and holdout data are required")}</strong><p>{tr("holdout_group 컬럼에 두 그룹이 모두 있어야 증분을 계산합니다.", "The holdout_group column must contain both groups to calculate incrementality.")}</p></div></div>;
 
   const r = win?.incr;
   const inc = r ? Math.round(r.incrementalConv) : 0;
@@ -289,57 +303,58 @@ function SuppressionView({ csvData, currency }) {
 
   return (
     <section className="block">
-      <h2 className="section-title"><span className="ix">§1</span>증분 결과 (홀드아웃 기간)</h2>
+      <h2 className="section-title"><span className="ix">§1</span>{tr("증분 결과 (홀드아웃 기간)", "Incrementality result (holdout period)")}</h2>
 
       {series && (
         <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "flex-end", marginBottom: "12px" }}>
-          <Field label="홀드아웃 시작일"><select className="map-select" value={start} onChange={(e) => setWinStart(e.target.value)}>{series.labels.map((d) => <option key={d} value={d}>{d}</option>)}</select></Field>
-          <Field label="홀드아웃 종료일"><select className="map-select" value={end} onChange={(e) => setWinEnd(e.target.value)}>{series.labels.map((d) => <option key={d} value={d}>{d}</option>)}</select></Field>
-          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>이 기간에만 광고를 차단했다고 보고 증분을 계산합니다.</span>
+          <Field label={tr("홀드아웃 시작일", "Holdout start date")}><select className="map-select" value={start} onChange={(e) => setWinStart(e.target.value)}>{series.labels.map((d) => <option key={d} value={d}>{d}</option>)}</select></Field>
+          <Field label={tr("홀드아웃 종료일", "Holdout end date")}><select className="map-select" value={end} onChange={(e) => setWinEnd(e.target.value)}>{series.labels.map((d) => <option key={d} value={d}>{d}</option>)}</select></Field>
+          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{tr("이 기간에만 광고를 차단했다고 보고 증분을 계산합니다.", "Incrementality is calculated assuming ads were blocked only during this period.")}</span>
         </div>
       )}
 
       {series && win?.hasPre && (
         <div className={`callout ${win.balanced ? "ok" : "warn"}`} style={{ marginBottom: "10px" }}><div className="ico">{win.balanced ? "✓" : "!"}</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
-          <strong>그룹 균형 확인 (홀드아웃 전):</strong> 노출 {fmtPct(win.preExp, 2, { asRatio: false })} vs 홀드아웃 {fmtPct(win.preHold, 2, { asRatio: false })} — 차이 {fmtPct(win.preDiff, 2, { asRatio: false })}p. {win.balanced ? "시작 전엔 거의 같음 → 두 그룹이 비교 가능(균형)했다는 증거." : "시작 전부터 차이가 큼 → 그룹 균형이 의심되어 증분이 왜곡될 수 있음."}
+          <strong>{tr("그룹 균형 확인 (홀드아웃 전):", "Group balance check (before holdout):")}</strong> {tr("노출", "Exposed")} {fmtPct(win.preExp, 2, { asRatio: false })} {tr("vs 홀드아웃", "vs holdout")} {fmtPct(win.preHold, 2, { asRatio: false })} — {tr("차이", "difference")} {fmtPct(win.preDiff, 2, { asRatio: false })}p. {win.balanced ? tr("시작 전엔 거의 같음 → 두 그룹이 비교 가능(균형)했다는 증거.", "Nearly identical before the start → evidence the two groups were comparable (balanced).") : tr("시작 전부터 차이가 큼 → 그룹 균형이 의심되어 증분이 왜곡될 수 있음.", "Already a large gap before the start → group balance is questionable and incrementality may be distorted.")}
         </p></div></div>
       )}
 
       {r && (
         <div className="alloc-card" style={{ borderLeft: `3px solid ${positive ? "#22c55e" : "#ef4444"}` }}>
           <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-            <Stat label="홀드아웃 전환율" value={fmtPct(r.cRate)} hint={`${fmtNum(win.cN)}/${fmtNum(win.cD)}`} />
-            <Stat label="노출 전환율" value={fmtPct(r.tRate)} hint={`${fmtNum(win.tN)}/${fmtNum(win.tD)}`} />
-            <Stat label="상대 Lift" value={r.liftRel != null ? fmtPct(r.liftRel) : "—"} color={positive ? "#22c55e" : "#ef4444"} />
-            <Stat label="증분 전환" value={fmtNum(inc)} hint="광고가 새로 만든 전환" />
-            {r.cpia != null && <Stat label="증분 전환당 비용" value={fmtCurrency(r.cpia, { currency })} />}
-            {r.iroas != null && <Stat label="iROAS" value={`${r.iroas.toFixed(2)}×`} color={r.iroas >= 1 ? "#22c55e" : "#ef4444"} hint="증분 매출/광고비" />}
+            <Stat label={tr("홀드아웃 전환율", "Holdout conversion rate")} value={fmtPct(r.cRate)} hint={`${fmtNum(win.cN)}/${fmtNum(win.cD)}`} />
+            <Stat label={tr("노출 전환율", "Exposed conversion rate")} value={fmtPct(r.tRate)} hint={`${fmtNum(win.tN)}/${fmtNum(win.tD)}`} />
+            <Stat label={tr("상대 Lift", "Relative lift")} value={r.liftRel != null ? fmtPct(r.liftRel) : "—"} color={positive ? "#22c55e" : "#ef4444"} />
+            <Stat label={tr("증분 전환", "Incremental conversions")} value={fmtNum(inc)} hint={tr("광고가 새로 만든 전환", "Conversions newly created by ads")} />
+            {r.cpia != null && <Stat label={tr("증분 전환당 비용", "Cost per incremental conversion")} value={fmtCurrency(r.cpia, { currency })} />}
+            {r.iroas != null && <Stat label="iROAS" value={`${r.iroas.toFixed(2)}×`} color={r.iroas >= 1 ? "#22c55e" : "#ef4444"} hint={tr("증분 매출/광고비", "Incremental revenue / ad spend")} />}
           </div>
         </div>
       )}
 
       {series && (
         <div style={{ marginTop: "14px" }}>
-          <h3 style={{ fontSize: "13px", margin: "0 0 6px", color: "var(--text-secondary)" }}>날짜별 전환율 — 노출 vs 홀드아웃</h3>
-          <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "0 0 8px" }}>홀드아웃 기간(주황 세로선 사이)에만 두 선이 벌어져야 정상 — 그 간격이 광고 증분. 기간 밖은 거의 겹쳐야 그룹이 균형입니다.</p>
+          <h3 style={{ fontSize: "13px", margin: "0 0 6px", color: "var(--text-secondary)" }}>{tr("날짜별 전환율 — 노출 vs 홀드아웃", "Conversion rate by date — exposed vs holdout")}</h3>
+          <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "0 0 8px" }}>{tr("홀드아웃 기간(주황 세로선 사이)에만 두 선이 벌어져야 정상 — 그 간격이 광고 증분. 기간 밖은 거의 겹쳐야 그룹이 균형입니다.", "The two lines should only diverge during the holdout period (between the orange vertical lines) — that gap is the ad incrementality. Outside that period they should nearly overlap if the groups are balanced.")}</p>
           <div className="chart-container" style={{ height: "300px" }}><canvas id="incr-suppression-chart"></canvas></div>
         </div>
       )}
 
       {r && (
         <div className="callout" style={{ marginTop: "14px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
-          <strong>쉽게 말하면:</strong> 홀드아웃 기간에 광고를 안 본 그룹도 자연 전환이 있습니다. 그 몫을 뺀 <strong>증분 전환 {fmtNum(inc)}건</strong>이 광고가 실제로 만든 값입니다.{r.iroas != null && <> iROAS {r.iroas.toFixed(2)}× — {r.iroas >= 1 ? "광고비보다 증분 매출이 큼(이득)." : "증분 기준 광고비가 매출보다 큼."}</>}
+          <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(<>홀드아웃 기간에 광고를 안 본 그룹도 자연 전환이 있습니다. 그 몫을 뺀 <strong>증분 전환 {fmtNum(inc)}건</strong>이 광고가 실제로 만든 값입니다.</>, <>Even the group that didn&apos;t see ads during the holdout period had some natural conversions. Subtracting that, <strong>{fmtNum(inc)} incremental conversions</strong> is what ads actually created.</>)}{r.iroas != null && <> iROAS {r.iroas.toFixed(2)}× — {r.iroas >= 1 ? tr("광고비보다 증분 매출이 큼(이득).", "Incremental revenue exceeds ad spend (profitable).") : tr("증분 기준 광고비가 매출보다 큼.", "Ad spend exceeds incremental revenue.")}</>}
         </p></div></div>
       )}
       <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "11.5px", lineHeight: 1.6 }}>
-        <strong>정직하게:</strong> 홀드아웃이 <strong>무작위 분할</strong>이고, 홀드아웃 前 두 그룹이 균형(위 확인)일 때만 인과로 해석됩니다. 표본이 적으면 신뢰도가 떨어집니다.
+        <strong>{tr("정직하게:", "To be honest:")}</strong> {tr(<>홀드아웃이 <strong>무작위 분할</strong>이고, 홀드아웃 前 두 그룹이 균형(위 확인)일 때만 인과로 해석됩니다. 표본이 적으면 신뢰도가 떨어집니다.</>, <>This can only be interpreted causally if the holdout is a <strong>random split</strong> and the two groups were balanced before the holdout (see above). Confidence drops with a small sample.</>)}
       </p></div></div>
     </section>
   );
 }
 
 /* ── ②③ 전후 비교 (pre/post) ── */
-function PrePostView({ csvData, direction, currency }) {
+function PrePostView({ csvData, direction, currency, locale = "ko" }) {
+  const tr = (ko, en) => (locale === "en" ? en : ko);
   const headers = csvData.headers || [];
   // 컬럼 자동 감지
   const dateCol = useMemo(() => headers.find((h) => (csvData.raw || []).slice(0, 5).some((r) => looksDate(r[h]))) || headers[0], [headers, csvData.raw]);
@@ -400,8 +415,8 @@ function PrePostView({ csvData, direction, currency }) {
         labels,
         datasets: [
           { label: metricCol, data: vals, borderColor: getCssVar("--primary"), backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, tension: 0.15 },
-          { label: "cutoff 이전 평균", data: labels.map((_, i) => (i < cutoffIdx ? preMean : null)), borderColor: getCssVar("--text-muted"), borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5 },
-          { label: "cutoff 이후 평균", data: labels.map((_, i) => (i >= cutoffIdx ? postMean : null)), borderColor: direction === "off" ? "#ef4444" : "#22c55e", borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5 },
+          { label: tr("cutoff 이전 평균", "Pre-cutoff average"), data: labels.map((_, i) => (i < cutoffIdx ? preMean : null)), borderColor: getCssVar("--text-muted"), borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5 },
+          { label: tr("cutoff 이후 평균", "Post-cutoff average"), data: labels.map((_, i) => (i >= cutoffIdx ? postMean : null)), borderColor: direction === "off" ? "#ef4444" : "#22c55e", borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5 },
         ],
       },
       options: {
@@ -420,7 +435,7 @@ function PrePostView({ csvData, direction, currency }) {
     return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
   }, [csvData.raw, metricCol, groupCol, effCutoff, dateCol, result, direction]);
 
-  if (!numericCols.length) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>성과 지표(숫자) 컬럼이 필요합니다</strong><p>date + 숫자 지표 컬럼이 있는 CSV를 올리세요.</p></div></div>;
+  if (!numericCols.length) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("성과 지표(숫자) 컬럼이 필요합니다", "A performance metric (numeric) column is required")}</strong><p>{tr("date + 숫자 지표 컬럼이 있는 CSV를 올리세요.", "Upload a CSV with a date column plus a numeric metric column.")}</p></div></div>;
 
   const r = result;
   const delta = r?.delta;
@@ -433,14 +448,14 @@ function PrePostView({ csvData, direction, currency }) {
   return (
     <>
       <section className="block" style={{ marginBottom: "12px" }}>
-        <h2 className="section-title"><span className="ix">§1</span>비교 설정</h2>
+        <h2 className="section-title"><span className="ix">§1</span>{tr("비교 설정", "Comparison settings")}</h2>
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "flex-end" }}>
-          <Field label="성과 지표"><select className="map-select" value={metricCol} onChange={(e) => setMetricCol(e.target.value)}>{numericCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
-          <Field label={`전환 시점 (${direction === "off" ? "끈" : "켠"} 날)`}><select className="map-select" value={effCutoff} onChange={(e) => setCutoff(e.target.value)}>{dates.map((d) => <option key={d} value={d}>{d}</option>)}</select></Field>
+          <Field label={tr("성과 지표", "Performance metric")}><select className="map-select" value={metricCol} onChange={(e) => setMetricCol(e.target.value)}>{numericCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
+          <Field label={tr(`전환 시점 (${direction === "off" ? "끈" : "켠"} 날)`, `Cutoff date (day turned ${direction === "off" ? "off" : "on"})`)}><select className="map-select" value={effCutoff} onChange={(e) => setCutoff(e.target.value)}>{dates.map((d) => <option key={d} value={d}>{d}</option>)}</select></Field>
           {groupCols.length > 0 && (
             <>
-              <Field label="그룹 컬럼 (대조군)"><select className="map-select" value={groupCol} onChange={(e) => setGroupCol(e.target.value)}><option value="">(없음)</option>{groupCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
-              <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}><input type="checkbox" checked={useDiD} onChange={(e) => setUseDiD(e.target.checked)} disabled={!groupCol} /> DiD (대조군으로 계절·추세 제거)</label>
+              <Field label={tr("그룹 컬럼 (대조군)", "Group column (control)")}><select className="map-select" value={groupCol} onChange={(e) => setGroupCol(e.target.value)}><option value="">{tr("(없음)", "(none)")}</option>{groupCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
+              <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}><input type="checkbox" checked={useDiD} onChange={(e) => setUseDiD(e.target.checked)} disabled={!groupCol} /> {tr("DiD (대조군으로 계절·추세 제거)", "DiD (remove seasonality/trend via control group)")}</label>
             </>
           )}
         </div>
@@ -448,22 +463,28 @@ function PrePostView({ csvData, direction, currency }) {
 
       {r && (
         <section className="block">
-          <h2 className="section-title"><span className="ix">§2</span>{lost ? "종료 임팩트 (잃은 성과)" : "신규 임팩트 (얻은 성과)"}</h2>
+          <h2 className="section-title"><span className="ix">§2</span>{lost ? tr("종료 임팩트 (잃은 성과)", "Shutdown impact (performance lost)") : tr("신규 임팩트 (얻은 성과)", "New-launch impact (performance gained)")}</h2>
           <div className="alloc-card" style={{ borderLeft: `3px solid ${good ? "#22c55e" : "#fbbf24"}`, marginBottom: "12px" }}>
             <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-              <Stat label="전환 전 평균(일)" value={fmtNum(r.preMean, 1)} />
-              <Stat label="전환 후 평균(일)" value={fmtNum(r.postMean, 1)} />
-              <Stat label={isDiD ? "순효과 Δ (DiD)" : "변화 Δ(일)"} value={(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} color={good ? "#22c55e" : "#ef4444"} hint={isDiD ? "대조군 변화 제거" : (r.deltaPct != null ? fmtPct(r.deltaPct) : "")} />
-              <Stat label={lost ? "총 손실(기간)" : "총 증분(기간)"} value={(r.incrementalTotal >= 0 ? "+" : "") + fmtNum(r.incrementalTotal, 0)} hint="반사실 대비 합계" />
-              <Stat label="유의성" value={sigP != null ? (sigP < 0.05 ? `유의 (p=${sigP.toFixed(4)})` : `비유의 (p=${sigP.toFixed(3)})`) : "—"} />
+              <Stat label={tr("전환 전 평균(일)", "Pre-cutoff daily average")} value={fmtNum(r.preMean, 1)} />
+              <Stat label={tr("전환 후 평균(일)", "Post-cutoff daily average")} value={fmtNum(r.postMean, 1)} />
+              <Stat label={isDiD ? tr("순효과 Δ (DiD)", "Net effect Δ (DiD)") : tr("변화 Δ(일)", "Change Δ (daily)")} value={(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} color={good ? "#22c55e" : "#ef4444"} hint={isDiD ? tr("대조군 변화 제거", "Control group change removed") : (r.deltaPct != null ? fmtPct(r.deltaPct) : "")} />
+              <Stat label={lost ? tr("총 손실(기간)", "Total loss (period)") : tr("총 증분(기간)", "Total incremental (period)")} value={(r.incrementalTotal >= 0 ? "+" : "") + fmtNum(r.incrementalTotal, 0)} hint={tr("반사실 대비 합계", "Total vs. counterfactual")} />
+              <Stat label={tr("유의성", "Significance")} value={sigP != null ? (sigP < 0.05 ? tr(`유의 (p=${sigP.toFixed(4)})`, `Significant (p=${sigP.toFixed(4)})`) : tr(`비유의 (p=${sigP.toFixed(3)})`, `Not significant (p=${sigP.toFixed(3)})`)) : "—"} />
             </div>
           </div>
           <div className="chart-container" style={{ height: "320px" }}><canvas id="incr-prepost-chart"></canvas></div>
           <div className="callout" style={{ marginTop: "10px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
-            <strong>쉽게 말하면:</strong> 전환 시점 {lost ? "끈" : "켠"} 뒤 하루 평균이 {fmtNum(r.preMean, 1)} → {fmtNum(r.postMean, 1)}로 {(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} {effVal >= 0 ? "올랐" : "떨어졌"}습니다. {lost ? "이 하락분이 그걸 끄면서 잃은 성과" : "이 상승분이 새로 켜서 얻은 성과"}입니다.{isDiD && " (대조군의 자연 변화를 뺀 순효과)"}
+            <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(
+              <>전환 시점 {lost ? "끈" : "켠"} 뒤 하루 평균이 {fmtNum(r.preMean, 1)} → {fmtNum(r.postMean, 1)}로 {(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} {effVal >= 0 ? "올랐" : "떨어졌"}습니다. {lost ? "이 하락분이 그걸 끄면서 잃은 성과" : "이 상승분이 새로 켜서 얻은 성과"}입니다.{isDiD && " (대조군의 자연 변화를 뺀 순효과)"}</>,
+              <>After the day it was turned {lost ? "off" : "on"}, the daily average went from {fmtNum(r.preMean, 1)} to {fmtNum(r.postMean, 1)}, {effVal >= 0 ? "up" : "down"} by {(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)}. {lost ? "This drop is the performance lost from turning it off" : "This rise is the performance gained from turning it on"}.{isDiD && " (net effect after removing the control group's natural change)"}</>
+            )}
           </p></div></div>
           <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "11.5px", lineHeight: 1.6 }}>
-            <strong>정직하게:</strong> 단순 전후 비교는 그 사이 계절·프로모션·시장 변화가 섞일 수 있습니다. {isDiD ? "대조군 DiD로 공통 추세는 제거했지만," : "대조군(변하지 않은 그룹)을 넣어 DiD로 보정하면 더 정확합니다."} 무작위 실험이 아니면 인과를 단정하지 마세요.
+            <strong>{tr("정직하게:", "To be honest:")}</strong> {tr(
+              <>단순 전후 비교는 그 사이 계절·프로모션·시장 변화가 섞일 수 있습니다. {isDiD ? "대조군 DiD로 공통 추세는 제거했지만," : "대조군(변하지 않은 그룹)을 넣어 DiD로 보정하면 더 정확합니다."} 무작위 실험이 아니면 인과를 단정하지 마세요.</>,
+              <>A simple before/after comparison can mix in seasonality, promotions, or market changes over that time. {isDiD ? "DiD with a control group removes common trend, but" : "Adding a control group (a group that didn&apos;t change) and correcting with DiD would be more accurate."} If it wasn&apos;t a randomized experiment, don&apos;t assert causality.</>
+            )}
           </p></div></div>
         </section>
       )}

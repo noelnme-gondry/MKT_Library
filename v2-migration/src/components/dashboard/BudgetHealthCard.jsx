@@ -2,7 +2,30 @@
 import React, { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/store/useDataStore";
-import { idToSlug } from "@/lib/routeMap";
+import { idToSlug, hasEnVersion } from "@/lib/routeMap";
+
+const BUDGET_HEALTH_COPY = {
+  ko: {
+    title: "예산 배분 이상 탐지",
+    body: (days, count, potential) => (
+      <>
+        최근 {days}일 기준 <strong>{count}개 캠페인</strong>이 세그먼트 내 효율 구간을 초과합니다. 재배분 여지 약 <strong>{potential}</strong>.
+      </>
+    ),
+    hint: "캠페인별 상세 배분 계획·시나리오는 예산 배분에서 확인하세요.",
+    cta: "📊 예산 배분에서 보기 →",
+  },
+  en: {
+    title: "Budget allocation anomaly detected",
+    body: (days, count, potential) => (
+      <>
+        Over the last {days} days, <strong>{count} campaign(s)</strong> exceed the segment&apos;s efficiency band. Reallocation potential ≈ <strong>{potential}</strong>.
+      </>
+    ),
+    hint: "See Budget Allocation for the campaign-level plan and scenarios.",
+    cta: "📊 View in Budget Allocation →",
+  },
+};
 
 const BUDGET_HEALTH_RULES = {
   minCostShare: 0.05,
@@ -21,7 +44,8 @@ function calcCprWeightedAllocPure(campaigns) {
   return out;
 }
 
-export default function BudgetHealthCard() {
+export default function BudgetHealthCard({ locale = "ko" }) {
+  const T = BUDGET_HEALTH_COPY[locale] || BUDGET_HEALTH_COPY.ko;
   const csvData = useAppStore((state) => state.csvData);
   const router = useRouter();
 
@@ -117,24 +141,24 @@ export default function BudgetHealthCard() {
   if (!health.hasData || !health.flagCount) return null;
 
   const potential = Math.round(health.totalReallocPotential).toLocaleString();
+  const targetHref =
+    locale === "en" && hasEnVersion("5-3") ? `/en${idToSlug["5-3"] || ""}` : idToSlug["5-3"];
 
   return (
     <div className="callout warning" style={{ marginBottom: "1.25rem" }} id="budget-health-card">
       <div className="ico">💰</div>
       <div className="body">
-        <strong>예산 배분 이상 탐지</strong>
-        <p>
-          최근 {health.recentDays}일 기준 <strong>{health.flagCount}개 캠페인</strong>이 세그먼트 내 효율 구간을 초과합니다. 재배분 여지 약 <strong>{potential}</strong>.
-        </p>
+        <strong>{T.title}</strong>
+        <p>{T.body(health.recentDays, health.flagCount, potential)}</p>
         <p style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-          캠페인별 상세 배분 계획·시나리오는 예산 배분에서 확인하세요.
+          {T.hint}
         </p>
         <button
           className="btn primary"
           style={{ marginTop: "0.5rem" }}
-          onClick={() => router.push(idToSlug["5-3"])}
+          onClick={() => router.push(targetHref)}
         >
-          📊 예산 배분에서 보기 →
+          {T.cta}
         </button>
       </div>
     </div>

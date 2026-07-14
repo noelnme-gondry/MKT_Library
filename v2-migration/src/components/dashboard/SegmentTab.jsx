@@ -5,7 +5,8 @@ import { getMonFilteredRows, fmtCurrencyPrecise } from "@/utils/dashboardAggrega
 import { segmentMetricValue, buildSegmentGrid } from "@/utils/segmentMath";
 import CustomChartsSection from "./CustomChartsSection";
 
-export default function SegmentTab() {
+export default function SegmentTab({ locale = "ko" } = {}) {
+  const tr = (ko, en) => (locale === "en" ? en : ko);
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
@@ -16,15 +17,15 @@ export default function SegmentTab() {
 
   const { grid, rowKeys, colKeys, hasData, availFields, mappedKeys } = useMemo(() => {
     if (!csvData || !csvData.raw || csvData.raw.length === 0) return { hasData: false, availFields: [] };
-    
+
     const rows = getMonFilteredRows(csvData, dashboardFilter);
     const mapping = csvData.mapping || {};
-    
+
     const _availFields = [
-      { k: "country", l: "국가" },
-      { k: "channel", l: "채널" },
+      { k: "country", l: tr("국가", "Country") },
+      { k: "channel", l: tr("채널", "Channel") },
       { k: "platform", l: "OS" },
-      { k: "campaign_name", l: "캠페인" }
+      { k: "campaign_name", l: tr("캠페인", "Campaign") }
     ];
     
     const hasField = (k) => Object.values(mapping).includes(k);
@@ -40,7 +41,7 @@ export default function SegmentTab() {
     const { grid: _grid, rows: _rowKeys, cols: _colKeys } = buildSegmentGrid(rows, rowAxis, colAxis);
 
     return { hasData: true, grid: _grid, rowKeys: _rowKeys, colKeys: _colKeys, availFields: _availFields, mappedKeys: _mappedKeys, hasField };
-  }, [csvData, dashboardFilter, rowAxis, colAxis]);
+  }, [csvData, dashboardFilter, rowAxis, colAxis, locale]);
 
   const METRICS = {
     cpi: { label: "CPI", better: "low", val: c => segmentMetricValue(c, "cpi"), fmt: c => { const v = segmentMetricValue(c, "cpi"); return v != null ? fmtCurrencyPrecise(v, displayCurrency) : "—"; } },
@@ -53,7 +54,7 @@ export default function SegmentTab() {
   };
 
   const renderMatrix = (renderMetric) => {
-    if (!grid || !rowKeys.length) return <p className="muted">데이터 없음</p>;
+    if (!grid || !rowKeys.length) return <p className="muted">{tr("데이터 없음", "No data")}</p>;
     
     const met = METRICS[renderMetric];
     const vals = [];
@@ -109,7 +110,7 @@ export default function SegmentTab() {
           </table>
         </div>
         <p className="muted" style={{ marginTop: "8px", fontSize: "11px" }}>
-          셀 하단 작은 숫자는 해당 조합의 비용(규모). 진한 초록=상대적으로 우수, 빨강=열위. {met.better === "none" ? "(Cost는 규모 지표라 색 없음)" : ""}
+          {tr("셀 하단 작은 숫자는 해당 조합의 비용(규모). 진한 초록=상대적으로 우수, 빨강=열위.", "The small number under each cell is that combination's cost (scale). Deep green = relatively strong, red = weak.")} {met.better === "none" ? tr("(Cost는 규모 지표라 색 없음)", "(Cost is a scale metric, so no color)") : ""}
         </p>
       </>
     );
@@ -119,8 +120,8 @@ export default function SegmentTab() {
     return (
       <div className="tab-pane active" id="tab-segment">
         <section className="block" id="s-matrix">
-          <h2 className="section-title"><span className="ix">§1</span>세그먼트 효율 매트릭스</h2>
-          <p className="muted">데이터 없음</p>
+          <h2 className="section-title"><span className="ix">§1</span>{tr("세그먼트 효율 매트릭스", "Segment efficiency matrix")}</h2>
+          <p className="muted">{tr("데이터 없음", "No data")}</p>
         </section>
       </div>
     );
@@ -129,10 +130,10 @@ export default function SegmentTab() {
   return (
     <div className="tab-pane active" id="tab-segment">
       <section className="block" id="s-matrix">
-        <h2 className="section-title"><span className="ix">§1</span>세그먼트 효율 매트릭스</h2>
-        
+        <h2 className="section-title"><span className="ix">§1</span>{tr("세그먼트 효율 매트릭스", "Segment efficiency matrix")}</h2>
+
         <div className="ab-pillgroup">
-          <span className="ab-pillgroup-label">행 축</span>
+          <span className="ab-pillgroup-label">{tr("행 축", "Row axis")}</span>
           {availFields.map(f => {
             const ok = !!csvData.mapping && Object.values(csvData.mapping).includes(f.k);
             return (
@@ -144,7 +145,7 @@ export default function SegmentTab() {
         </div>
 
         <div className="ab-pillgroup">
-          <span className="ab-pillgroup-label">열 축</span>
+          <span className="ab-pillgroup-label">{tr("열 축", "Column axis")}</span>
           {availFields.map(f => {
             const ok = !!csvData.mapping && Object.values(csvData.mapping).includes(f.k);
             return (
@@ -156,7 +157,7 @@ export default function SegmentTab() {
         </div>
 
         <div className="ab-pillgroup">
-          <span className="ab-pillgroup-label">지표</span>
+          <span className="ab-pillgroup-label">{tr("지표", "Metric")}</span>
           {Object.entries(METRICS).filter(([k]) => k !== "cost").map(([k, v]) => (
             <button key={k} className={`ab-pill ${metric === k ? "active" : ""}`} onClick={() => setMetric(k)}>
               {v.label}
@@ -166,7 +167,7 @@ export default function SegmentTab() {
 
         {renderMatrix(metric)}
 
-        <h3 style={{ fontSize: "13px", fontWeight: "600", margin: "20px 0 8px", color: "var(--text-muted)" }}>Cost 분배 (고정)</h3>
+        <h3 style={{ fontSize: "13px", fontWeight: "600", margin: "20px 0 8px", color: "var(--text-muted)" }}>{tr("Cost 분배 (고정)", "Cost distribution (fixed)")}</h3>
         {renderMatrix("cost")}
 
       </section>
@@ -175,7 +176,7 @@ export default function SegmentTab() {
         sectionNo="2"
         chartScope="5-2:seg-charts"
         metricScope="5-2:viz-kpi"
-        title="커스텀 차트"
+        title={tr("커스텀 차트", "Custom charts")}
       />
     </div>
   );

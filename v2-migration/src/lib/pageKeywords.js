@@ -32,8 +32,15 @@ export const ITEM_KEYWORDS = {
 export const PAGE_KEYWORDS_BASE_EN = "performance marketing, marketing data analytics, free marketing tools, data-driven marketing";
 
 export const ITEM_KEYWORDS_EN = {
+  "5-2": "operations dashboard, free marketing dashboard, campaign scorecard, pacing analysis, anomaly detection, cohort analysis, funnel analysis",
+  "5-21": "campaign performance variance, PVM decomposition, mix effect, efficiency effect, CPA increase cause, performance variance diagnosis",
+  "5-22": "campaign saturation, marginal CPA, marginal ROAS, response curve, campaign optimization, budget scale-up",
   "5-3": "marketing budget allocation, budget allocation simulator, marginal utility, channel budget optimization, budget reallocation",
+  "5-6": "creative analysis, ad creative analysis, creative fatigue, CTR improvement, ad creative, forest plot",
+  "5-4": "A/B test, AB testing, experiment analysis, statistical significance, sample size, conversion rate optimization",
+  "5-23": "incrementality analysis, incrementality, holdout test, causal inference marketing, pre-post analysis, iROAS",
   "5-18": "marketing response analysis, MMM, marketing mix modeling, regression analysis, channel contribution analysis, cannibalization diagnosis",
+  "5-20": "aha-moment, aha moment finder, retention leading indicator, growth marketing, product growth",
 };
 
 // SOP 가이드 (01~04, 08) — 그룹(group) 단위.

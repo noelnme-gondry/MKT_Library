@@ -3,9 +3,32 @@ import React, { useMemo, useState, useRef, useEffect } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import BasisCurrencyToggleBar from "./BasisCurrencyToggleBar";
 
+const FILTER_BAR_COPY = {
+  ko: {
+    filterTitle: "필터",
+    start: "시작",
+    end: "종료",
+    country: "국가",
+    channel: "채널",
+    reset: "초기화",
+    all: (n) => `전체 (${n})`,
+    selectedCount: (n) => `${n}개 선택됨`,
+  },
+  en: {
+    filterTitle: "Filters",
+    start: "Start",
+    end: "End",
+    country: "Country",
+    channel: "Channel",
+    reset: "Reset",
+    all: (n) => `All (${n})`,
+    selectedCount: (n) => `${n} selected`,
+  },
+};
+
 // 다중 선택 드롭다운(체크박스) — index.html mon-multisel 이식.
 // value=null → 전체(필터 미적용). value=Set → 선택 항목만.
-function MultiSelect({ label, options, selected, onChange }) {
+function MultiSelect({ label, options, selected, onChange, T }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -19,7 +42,7 @@ function MultiSelect({ label, options, selected, onChange }) {
   }, [open]);
 
   const isAll = selected == null || selected.size === 0;
-  const btnLabel = isAll ? `전체 (${options.length})` : `${selected.size}개 선택됨`;
+  const btnLabel = isAll ? T.all(options.length) : T.selectedCount(selected.size);
 
   const toggle = (val) => {
     // selected===null은 "전체 선택" 의미 — 여기서 빈 Set으로 시작하면 클릭한 항목
@@ -63,7 +86,8 @@ function MultiSelect({ label, options, selected, onChange }) {
   );
 }
 
-export default function DashboardFilterBar() {
+export default function DashboardFilterBar({ locale = "ko" }) {
+  const T = FILTER_BAR_COPY[locale] || FILTER_BAR_COPY.ko;
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const setDashboardFilter = useAppStore((state) => state.setDashboardFilter);
@@ -123,7 +147,7 @@ export default function DashboardFilterBar() {
     <div className="mon-filter-bar">
       <div className="mon-filter-inner">
         <span className="mon-filter-title">
-          필터
+          {T.filterTitle}
           {activeCount > 0 && (
             <span
               className="mon-filter-badge"
@@ -137,7 +161,7 @@ export default function DashboardFilterBar() {
         {dates.length > 0 && (
           <>
             <label className="mon-filter-item">
-              <span className="mon-filter-label">시작</span>
+              <span className="mon-filter-label">{T.start}</span>
               <input
                 type="date"
                 className="mon-filter-input"
@@ -148,7 +172,7 @@ export default function DashboardFilterBar() {
               />
             </label>
             <label className="mon-filter-item">
-              <span className="mon-filter-label">종료</span>
+              <span className="mon-filter-label">{T.end}</span>
               <input
                 type="date"
                 className="mon-filter-input"
@@ -167,30 +191,33 @@ export default function DashboardFilterBar() {
             options={platforms}
             selected={dashboardFilter.platforms && dashboardFilter.platforms.size > 0 ? dashboardFilter.platforms : null}
             onChange={(set) => setDashboardFilter({ platforms: set || new Set() })}
+            T={T}
           />
         )}
 
         {countries.length > 0 && (
           <MultiSelect
-            label="국가"
+            label={T.country}
             options={countries}
             selected={dashboardFilter.countries && dashboardFilter.countries.size > 0 ? dashboardFilter.countries : null}
             onChange={(set) => setDashboardFilter({ countries: set || new Set() })}
+            T={T}
           />
         )}
 
         {channels.length > 0 && (
           <MultiSelect
-            label="채널"
+            label={T.channel}
             options={channels}
             selected={dashboardFilter.channels && dashboardFilter.channels.size > 0 ? dashboardFilter.channels : null}
             onChange={(set) => setDashboardFilter({ channels: set || new Set() })}
+            T={T}
           />
         )}
 
         {activeCount > 0 && (
           <button className="copy-btn mon-filter-reset" onClick={handleReset} style={{ padding: "4px 8px", fontSize: "11px" }}>
-            초기화
+            {T.reset}
           </button>
         )}
       </div>

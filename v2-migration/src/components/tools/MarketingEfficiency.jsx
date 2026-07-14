@@ -23,11 +23,13 @@ import ToolPageShell from "@/components/ToolPageShell";
 
 // 우측 TOC — legacy page_5_22() 목차와 동일 (§0 요약/§1 순위/§2 응답곡선).
 // 실제 렌더되는 section id(analyzed 분기 하위)만 포함 — 없는 앵커 추가 금지.
-const SAT_TOC = [
-  { id: "s-sat-summary", title: "요약" },
-  { id: "s-sat", title: "포화도 순위" },
-  { id: "s-sat-curve", title: "응답곡선" },
-];
+function buildSatToc(tr) {
+  return [
+    { id: "s-sat-summary", title: tr("요약", "Summary") },
+    { id: "s-sat", title: tr("포화도 순위", "Saturation ranking") },
+    { id: "s-sat-curve", title: tr("응답곡선", "Response curve") },
+  ];
+}
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
@@ -65,6 +67,28 @@ function satToolTemplateFields(toolId) {
   });
 }
 
+// satVerdictMeta(엔진 util, src/utils/satMath.js)는 라벨을 한글 하드코딩 반환 —
+// 엔진 파일은 불변 대상이라 여기서 컴포넌트 레벨로 감싸 locale 번역만 얹는다.
+function trVerdictMeta(meta, tr) {
+  const map = {
+    "포화": tr("포화", "Saturated"),
+    "여유": tr("여유", "Headroom"),
+    "적정": tr("적정", "Steady"),
+    "—": "—",
+  };
+  const adviceMap = {
+    "증액 위험": tr("증액 위험", "Risk if increased"),
+    "증액 기회": tr("증액 기회", "Opportunity to increase"),
+    "현상 유지": tr("현상 유지", "Maintain"),
+    "분석 불가": tr("분석 불가", "Cannot analyze"),
+  };
+  return {
+    ...meta,
+    label: map[meta.label] ?? meta.label,
+    advice: adviceMap[meta.advice] ?? meta.advice,
+  };
+}
+
 function downloadSatTemplateCsv(toolId) {
   const fields = satToolTemplateFields(toolId);
   // revenue_d7 옵션도 헤더에 노출(ROAS 진단용) — 표준 필드에 존재하면 canonical 헤더 사용
@@ -82,17 +106,8 @@ function downloadSatTemplateCsv(toolId) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
-function escapeHtml(str) {
-  if (!str) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-export default function MarketingEfficiency() {
+export default function MarketingEfficiency({ locale = "ko" } = {}) {
+  const tr = (ko, en) => (locale === "en" ? en : ko);
   const csvData = useAppStore((state) => state.csvData);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
   // 전역 분모 기준(설치/가입) 구독 — 포화도 metricField를 basis 따라 installs↔actions 전환(§12.18/#3).
@@ -196,8 +211,8 @@ export default function MarketingEfficiency() {
     const primary = getCssVar("--primary") || "#7aa2f7";
     const text = getCssVar("--text-muted") || "#9ca3af";
     const grid = getCssVar("--border") || "#2a2a2a";
-    const obsLabel = isRoas ? "일별 관측 (Cost vs ROAS)" : "일별 관측 (Cost vs CPA)";
-    const yTitle = isRoas ? "ROAS (Revenue/Cost, 높을수록 좋음)" : "CPA (Cost/결과, 낮을수록 좋음)";
+    const obsLabel = isRoas ? tr("일별 관측 (Cost vs ROAS)", "Daily observations (Cost vs ROAS)") : tr("일별 관측 (Cost vs CPA)", "Daily observations (Cost vs CPA)");
+    const yTitle = isRoas ? tr("ROAS (Revenue/Cost, 높을수록 좋음)", "ROAS (Revenue/Cost, higher is better)") : tr("CPA (Cost/결과, 낮을수록 좋음)", "CPA (Cost/result, lower is better)");
 
     if (chartInstance.current) {
       chartInstance.current.destroy();
@@ -218,7 +233,7 @@ export default function MarketingEfficiency() {
             showLine: false,
           },
           {
-            label: `적합 ${sel.modelType} (R²=${sel.r2 != null ? sel.r2.toFixed(2) : "—"})`,
+            label: `${tr("적합", "Fit")} ${sel.modelType} (R²=${sel.r2 != null ? sel.r2.toFixed(2) : "—"})`,
             data: curve,
             borderColor: primary,
             backgroundColor: "transparent",
@@ -230,7 +245,7 @@ export default function MarketingEfficiency() {
             cubicInterpolationMode: "monotone",
           },
           {
-            label: "현 지출점",
+            label: tr("현 지출점", "Current spend point"),
             data: marker,
             borderColor: "#f59e0b",
             borderDash: [5, 4],
@@ -251,7 +266,7 @@ export default function MarketingEfficiency() {
         },
         scales: {
           x: {
-            title: { display: true, text: "일 Cost", color: text },
+            title: { display: true, text: tr("일 Cost", "Daily cost"), color: text },
             ticks: { color: text },
             grid: { color: grid },
           },
@@ -271,27 +286,37 @@ export default function MarketingEfficiency() {
       }
     };
     // isDarkMode dep: re-evaluate getCssVar theme colors on light/dark toggle
-  }, [okRows, satState.selected, effectiveMetric, hasData, analyzed, isDarkMode]);
+  }, [okRows, satState.selected, effectiveMetric, hasData, analyzed, isDarkMode, locale]);
 
   if (!hasData) {
     return (
       <div className="tab-pane active" id="tab-sat">
         <ToolPageShell
-          title="마케팅 효율 진단 (Saturation)"
-          summary={<p>효율 CSV(일별 채널·캠페인 비용/결과) 한 번 업로드로 채널별 한계 CPA/ROAS를 진단합니다 — 증액하면 효율이 꺾이는지 판정합니다. 5-3 예산 배분과 같은 효율 CSV를 공유합니다.</p>}
+          title={tr("마케팅 효율 진단 (Saturation)", "Marketing Efficiency Diagnosis (Saturation)")}
+          summary={<p>{tr(
+            "효율 CSV(일별 채널·캠페인 비용/결과) 한 번 업로드로 채널별 한계 CPA/ROAS를 진단합니다 — 증액하면 효율이 꺾이는지 판정합니다. 5-3 예산 배분과 같은 효율 CSV를 공유합니다.",
+            "Upload an efficiency CSV once (daily channel/campaign cost and results) to diagnose each channel's marginal CPA/ROAS — this determines whether increasing spend will hurt efficiency. Shares the same efficiency CSV with 5-3 Budget Allocation."
+          )}</p>}
         >
           <section className="block" id="s-prep">
-            <h2 className="section-title">데이터 준비</h2>
+            <h2 className="section-title">{tr("데이터 준비", "Data preparation")}</h2>
             <div className="callout warning">
               <div className="ico">!</div>
               <div className="body">
-                <strong>CSV 업로드 대기</strong>
+                <strong>{tr("CSV 업로드 대기", "Waiting for CSV upload")}</strong>
                 <p>
-                  효율 CSV(일별 채널·캠페인 비용/결과) 한 번 업로드로 채널별 포화도를 진단합니다.
-                  5-3 예산 배분과 같은 효율 CSV를 공유합니다.
+                  {tr(
+                    "효율 CSV(일별 채널·캠페인 비용/결과) 한 번 업로드로 채널별 포화도를 진단합니다.",
+                    "Upload an efficiency CSV once (daily channel/campaign cost and results) to diagnose each channel's saturation."
+                  )}
+                  {" "}
+                  {tr(
+                    "5-3 예산 배분과 같은 효율 CSV를 공유합니다.",
+                    "Shares the same efficiency CSV with 5-3 Budget Allocation."
+                  )}
                 </p>
                 <div style={{ marginTop: "1rem" }}>
-                  <CsvUploader toolId="5-22" />
+                  <CsvUploader toolId="5-22" locale={locale} />
                 </div>
               </div>
             </div>
@@ -303,31 +328,46 @@ export default function MarketingEfficiency() {
 
   // --- Rendering Helpers ---
   const isRoas = effectiveMetric === "roas";
-  const grainLabel = effectiveGrain === "campaign" ? "캠페인" : "채널";
+  const grainLabel = effectiveGrain === "campaign" ? tr("캠페인", "campaign") : tr("채널", "channel");
   const metricLabel = isRoas ? "ROAS" : "CPA";
   const sat = okRows.filter((r) => satActiveVerdict(r, effectiveMetric) === "saturated");
   const scale = okRows.filter((r) => satActiveVerdict(r, effectiveMetric) === "scale");
 
   const fmtRoas = (v) => (v == null || !isFinite(v) ? "—" : `${v.toFixed(2)}x`);
-  
+
   let advice = "";
   if (!okRows.length) {
-    advice = `분석 가능한 ${grainLabel}이 없습니다. 각 ${grainLabel}에 최소 ${SAT_CONFIG.minPoints}개 이상의 일별 관측(비용·결과 >0)이 필요합니다.`;
+    advice = tr(
+      `분석 가능한 ${grainLabel}이 없습니다. 각 ${grainLabel}에 최소 ${SAT_CONFIG.minPoints}개 이상의 일별 관측(비용·결과 >0)이 필요합니다.`,
+      `No analyzable ${grainLabel}s found. Each ${grainLabel} needs at least ${SAT_CONFIG.minPoints} daily observations (cost and results > 0).`
+    );
   } else if (sat.length && scale.length) {
-    advice = `${sat.slice(0, 2).map(r => r.name).join(", ")}는 이미 포화 — 추가 예산은 ${scale.slice(0, 2).map(r => r.name).join(", ")} 쪽으로 옮기면 같은 돈으로 ${isRoas ? "더 높은 매출" : "더 많은 결과"}를 기대할 수 있습니다.`;
+    advice = tr(
+      `${sat.slice(0, 2).map(r => r.name).join(", ")}는 이미 포화 — 추가 예산은 ${scale.slice(0, 2).map(r => r.name).join(", ")} 쪽으로 옮기면 같은 돈으로 ${isRoas ? "더 높은 매출" : "더 많은 결과"}를 기대할 수 있습니다.`,
+      `${sat.slice(0, 2).map(r => r.name).join(", ")} ${sat.length > 1 ? "are" : "is"} already saturated — shifting extra budget to ${scale.slice(0, 2).map(r => r.name).join(", ")} could get you ${isRoas ? "more revenue" : "more results"} for the same money.`
+    );
   } else if (sat.length) {
-    advice = `${sat.slice(0, 3).map(r => r.name).join(", ")}는 ${metricLabel} 기준 포화 상태 — 증액 시 효율이 빠르게 나빠집니다. 증액보다 소재·타겟 개선이 우선입니다.`;
+    advice = tr(
+      `${sat.slice(0, 3).map(r => r.name).join(", ")}는 ${metricLabel} 기준 포화 상태 — 증액 시 효율이 빠르게 나빠집니다. 증액보다 소재·타겟 개선이 우선입니다.`,
+      `${sat.slice(0, 3).map(r => r.name).join(", ")} ${sat.length > 1 ? "are" : "is"} saturated on ${metricLabel} — efficiency will drop quickly with more spend. Prioritize creative/targeting improvements over increasing budget.`
+    );
   } else if (scale.length) {
-    advice = `${scale.slice(0, 3).map(r => r.name).join(", ")}는 아직 여유 구간 — 증액하면 효율이 오히려 개선될 여지가 있습니다.`;
+    advice = tr(
+      `${scale.slice(0, 3).map(r => r.name).join(", ")}는 아직 여유 구간 — 증액하면 효율이 오히려 개선될 여지가 있습니다.`,
+      `${scale.slice(0, 3).map(r => r.name).join(", ")} still ${scale.length > 1 ? "have" : "has"} headroom — increasing spend could actually improve efficiency.`
+    );
   } else {
-    advice = `모든 ${grainLabel}이 선형(적정) 구간 — 현 배분을 크게 흔들 근거는 약합니다.`;
+    advice = tr(
+      `모든 ${grainLabel}이 선형(적정) 구간 — 현 배분을 크게 흔들 근거는 약합니다.`,
+      `All ${grainLabel}s are in the linear (steady) zone — there's little evidence to justify a major reallocation.`
+    );
   }
 
-  let head = "대부분 적정 구간";
+  let head = tr("대부분 적정 구간", "Mostly in the steady zone");
   if (sat.length || scale.length) {
     const parts = [];
-    if (sat.length) parts.push(`<span style="color:#f87171;">포화 ${sat.length}개</span> (증액 위험)`);
-    if (scale.length) parts.push(`<span style="color:#22c55e;">여유 ${scale.length}개</span> (증액 기회)`);
+    if (sat.length) parts.push(`<span style="color:#f87171;">${tr(`포화 ${sat.length}개`, `${sat.length} saturated`)}</span> (${tr("증액 위험", "risk if you increase")})`);
+    if (scale.length) parts.push(`<span style="color:#22c55e;">${tr(`여유 ${scale.length}개`, `${scale.length} with headroom`)}</span> (${tr("증액 기회", "opportunity to increase")})`);
     head = parts.join(" · ");
   }
 
@@ -336,7 +376,7 @@ export default function MarketingEfficiency() {
   const selName = satState.selected || okRows[0]?.name || "curve";
   const handlePngDownload = () => {
     if (!chartRef.current) {
-      showToast({ variant: "warn", title: "차트를 찾을 수 없음", body: "sat-curve-chart" });
+      showToast({ variant: "warn", title: tr("차트를 찾을 수 없음", "Chart not found"), body: "sat-curve-chart" });
       return;
     }
     const safeName = String(selName).replace(/[^a-zA-Z0-9가-힣_-]/g, "_");
@@ -345,22 +385,31 @@ export default function MarketingEfficiency() {
 
   return (
     <ToolPageShell
-      title="마케팅 효율 진단 (Saturation)"
+      title={tr("마케팅 효율 진단 (Saturation)", "Marketing Efficiency Diagnosis (Saturation)")}
       chips={<span className="chip"><span className="dot"></span>{csvData?.fileName || ""}</span>}
       summary={
         <>
           <p>
-            각 채널·캠페인의 비용↔효율 산점도를 곡선 적합해 <strong>현재 지출점의 한계 효율</strong>을 평균과 비교합니다. 한계가 평균보다 나쁘면 <strong style={{ color: "#f87171" }}>포화(증액 위험)</strong>, 좋으면 <strong style={{ color: "#22c55e" }}>여유(증액 기회)</strong>입니다.
+            {tr("각 채널·캠페인의 비용↔효율 산점도를 곡선 적합해 ", "We curve-fit each channel/campaign's cost-vs-efficiency scatter to estimate ")}
+            <strong>{tr("현재 지출점의 한계 효율", "the marginal efficiency at the current spend point")}</strong>
+            {tr("을 평균과 비교합니다. 한계가 평균보다 나쁘면 ", " and compare it to the average. If marginal is worse than average, it's ")}
+            <strong style={{ color: "#f87171" }}>{tr("포화(증액 위험)", "saturated (risk if you increase)")}</strong>
+            {tr(", 좋으면 ", ", if better it's ")}
+            <strong style={{ color: "#22c55e" }}>{tr("여유(증액 기회)", "has headroom (opportunity to increase)")}</strong>
+            {tr("입니다.", ".")}
           </p>
           <details style={{ marginTop: "6px", fontSize: "11.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
-            <summary>⚠️ 해석 참고</summary>
+            <summary>{tr("⚠️ 해석 참고", "⚠️ Interpretation notes")}</summary>
             <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
-              포화지수 = 한계 CPA ÷ 평균 CPA(ROAS는 평균 ÷ 한계). 1보다 크면 다음 1원이 평균보다 비싸다는 뜻. 관측 범위 밖 외삽은 불안정하므로, 지출 변동이 거의 없는 채널의 곡선은 신뢰도가 낮습니다.
+              {tr(
+                "포화지수 = 한계 CPA ÷ 평균 CPA(ROAS는 평균 ÷ 한계). 1보다 크면 다음 1원이 평균보다 비싸다는 뜻. 관측 범위 밖 외삽은 불안정하므로, 지출 변동이 거의 없는 채널의 곡선은 신뢰도가 낮습니다.",
+                "Saturation index = marginal CPA ÷ average CPA (for ROAS, average ÷ marginal). Above 1 means the next dollar costs more than average. Extrapolation beyond the observed range is unstable, so curves for channels with little spend variation are less reliable."
+              )}
             </div>
           </details>
         </>
       }
-      toc={analyzed && okRows.length ? SAT_TOC : undefined}
+      toc={analyzed && okRows.length ? buildSatToc(tr) : undefined}
       stickyFilter={
         <>
           {/* 🗂 데이터·매핑 (펼쳐서 변경) — index page_5_22 details 이식.
@@ -368,16 +417,19 @@ export default function MarketingEfficiency() {
               고정 노출(§7 재발 — 예전엔 children에 있어 스크롤하면 사라짐). */}
           <details className="block" style={{ padding: "13px 16px" }} open={!analyzed}>
             <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: analyzed ? "var(--text-muted)" : "var(--primary, #adc6ff)" }}>
-              🗂 데이터·매핑 {analyzed ? "(분석 완료 — 펼쳐서 변경)" : "(매핑 확인 후 분석)"}
+              {tr("🗂 데이터·매핑", "🗂 Data & mapping")} {analyzed ? tr("(분석 완료 — 펼쳐서 변경)", "(analysis complete — expand to change)") : tr("(매핑 확인 후 분석)", "(check mapping, then analyze)")}
             </summary>
             <div style={{ marginTop: "10px" }}>
-              <CsvUploader toolId="5-22" />
+              <CsvUploader toolId="5-22" locale={locale} />
               <div style={{ marginTop: "10px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-                <button className="ab-pill" onClick={() => downloadSatTemplateCsv("5-22")} title="이 도구가 쓰는 컬럼만 빈 헤더 CSV로 내려받기 (BOM+CRLF)">
-                  ⬇ 템플릿 CSV (이 도구)
+                <button className="ab-pill" onClick={() => downloadSatTemplateCsv("5-22")} title={tr("이 도구가 쓰는 컬럼만 빈 헤더 CSV로 내려받기 (BOM+CRLF)", "Download a blank-header CSV with only the columns this tool uses (BOM+CRLF)")}>
+                  {tr("⬇ 템플릿 CSV (이 도구)", "⬇ Template CSV (this tool)")}
                 </button>
                 <span style={{ fontSize: "10.5px", color: "var(--text-muted)" }}>
-                  효율 CSV는 5-2·5-3와 공유합니다. 통합 템플릿은 5-3 예산 배분에서도 받을 수 있습니다.
+                  {tr(
+                    "효율 CSV는 5-2·5-3와 공유합니다. 통합 템플릿은 5-3 예산 배분에서도 받을 수 있습니다.",
+                    "The efficiency CSV is shared with 5-2 and 5-3. You can also get the combined template from 5-3 Budget Allocation."
+                  )}
                 </span>
               </div>
               {/* 분석 게이트 버튼은 CsvUploader가 단독 소유(§12.5/#5) — 위 CsvUploader의 "데이터 분석하기"/"↻ 다시 분석"이 store 그룹 게이트를 세팅. 중복 버튼 제거. */}
@@ -394,15 +446,18 @@ export default function MarketingEfficiency() {
           <div className="callout" style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
             <div className="ico">▶</div>
             <div className="body">
-              <strong>분석 대기 중</strong>
-              <p style={{ margin: "4px 0 0" }}>위 &quot;데이터·매핑&quot;에서 컬럼 매핑을 확인한 뒤 <strong>▶ 분석하기</strong>를 누르면 포화도 진단 결과가 나타납니다.</p>
+              <strong>{tr("분석 대기 중", "Waiting to analyze")}</strong>
+              <p style={{ margin: "4px 0 0" }}>{tr(
+                <>위 &quot;데이터·매핑&quot;에서 컬럼 매핑을 확인한 뒤 <strong>▶ 분석하기</strong>를 누르면 포화도 진단 결과가 나타납니다.</>,
+                <>Check the column mapping in &quot;Data &amp; mapping&quot; above, then click <strong>▶ Analyze</strong> to see the saturation diagnosis.</>
+              )}</p>
             </div>
           </div>
         </section>
       ) : (
       <>
       <section className="block" id="s-sat-summary">
-        <h2 className="section-title"><span className="ix">§0</span>한눈에 보기</h2>
+        <h2 className="section-title"><span className="ix">§0</span>{tr("한눈에 보기", "At a glance")}</h2>
         {okRows.length ? (
           <>
             <div style={{ fontSize: "15px", fontWeight: "600", marginBottom: "6px" }} dangerouslySetInnerHTML={{ __html: head }} />
@@ -417,45 +472,45 @@ export default function MarketingEfficiency() {
       </section>
 
       <section className="block" id="s-sat">
-        <h2 className="section-title"><span className="ix">§1</span>포화도 순위</h2>
-        
+        <h2 className="section-title"><span className="ix">§1</span>{tr("포화도 순위", "Saturation ranking")}</h2>
+
         <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "center", marginBottom: "14px" }}>
           <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>분석 단위</span>
+            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{tr("분석 단위", "Analysis unit")}</span>
             <button
               className="ab-pill"
               style={effectiveGrain === "channel" ? activeStyle : {}}
               onClick={() => setSatState(s => ({...s, grain: "channel", selected: null}))}
             >
-              채널
+              {tr("채널", "Channel")}
             </button>
             <button
               className="ab-pill"
               disabled={!hasCampaign}
-              title={!hasCampaign ? "캠페인명(campaign_name) 컬럼을 매핑하면 활성화" : ""}
+              title={!hasCampaign ? tr("캠페인명(campaign_name) 컬럼을 매핑하면 활성화", "Enable by mapping the campaign name (campaign_name) column") : ""}
               style={{ ...(effectiveGrain === "campaign" ? activeStyle : {}), opacity: !hasCampaign ? 0.4 : 1, cursor: !hasCampaign ? "not-allowed" : "pointer" }}
               onClick={() => setSatState(s => ({...s, grain: "campaign", selected: null}))}
             >
-              캠페인
+              {tr("캠페인", "Campaign")}
             </button>
           </div>
           <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>효율 기준</span>
+            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{tr("효율 기준", "Efficiency metric")}</span>
             <button
               className="ab-pill"
               style={effectiveMetric === "cpa" ? activeStyle : {}}
               onClick={() => setSatState(s => ({...s, metric: "cpa"}))}
             >
-              CPA (낮을수록 좋음)
+              {tr("CPA (낮을수록 좋음)", "CPA (lower is better)")}
             </button>
             <button
               className="ab-pill"
               disabled={!revField}
-              title={!revField ? "매출(revenue) 컬럼을 매핑하면 활성화" : ""}
+              title={!revField ? tr("매출(revenue) 컬럼을 매핑하면 활성화", "Enable by mapping the revenue column") : ""}
               style={{ ...(effectiveMetric === "roas" ? activeStyle : {}), opacity: !revField ? 0.4 : 1, cursor: !revField ? "not-allowed" : "pointer" }}
               onClick={() => setSatState(s => ({...s, metric: "roas"}))}
             >
-              ROAS (높을수록 좋음)
+              {tr("ROAS (높을수록 좋음)", "ROAS (higher is better)")}
             </button>
           </div>
         </div>
@@ -466,32 +521,32 @@ export default function MarketingEfficiency() {
               <thead>
                 <tr>
                   <th className="tnum">#</th>
-                  <th>{effectiveGrain === "campaign" ? "캠페인" : "채널"}</th>
-                  <th>적합 모델</th>
-                  <th className="tnum">최근 일예산</th>
+                  <th>{effectiveGrain === "campaign" ? tr("캠페인", "Campaign") : tr("채널", "Channel")}</th>
+                  <th>{tr("적합 모델", "Fitted model")}</th>
+                  <th className="tnum">{tr("최근 일예산", "Recent daily budget")}</th>
                   {isRoas ? (
-                    <><th className="tnum">평균 ROAS</th><th className="tnum">한계 ROAS</th></>
+                    <><th className="tnum">{tr("평균 ROAS", "Avg ROAS")}</th><th className="tnum">{tr("한계 ROAS", "Marginal ROAS")}</th></>
                   ) : (
-                    <><th className="tnum">평균 CPA</th><th className="tnum">한계 CPA</th></>
+                    <><th className="tnum">{tr("평균 CPA", "Avg CPA")}</th><th className="tnum">{tr("한계 CPA", "Marginal CPA")}</th></>
                   )}
-                  <th className="tnum" title="한계효율 ÷ 평균효율. 1보다 크면 다음 1원이 평균보다 비쌈">포화지수</th>
-                  <th>판정</th>
+                  <th className="tnum" title={tr("한계효율 ÷ 평균효율. 1보다 크면 다음 1원이 평균보다 비쌈", "Marginal efficiency ÷ average efficiency. Above 1 means the next dollar costs more than average")}>{tr("포화지수", "Saturation index")}</th>
+                  <th>{tr("판정", "Verdict")}</th>
                 </tr>
               </thead>
               <tbody>
                 {okRows.map((r, i) => {
                   const v = satActiveVerdict(r, effectiveMetric);
-                  const vm = satVerdictMeta(v);
+                  const vm = trVerdictMeta(satVerdictMeta(v), tr);
                   const idx = satActiveIndex(r, effectiveMetric);
                   const idxStr = idx == null || !isFinite(idx) || idx === 1e9 ? "∞" : `${idx.toFixed(2)}x`;
                   const sel = satState.selected === r.name || (!satState.selected && i === 0);
-                  
+
                   return (
-                    <tr 
-                      key={r.name} 
+                    <tr
+                      key={r.name}
                       onClick={() => setSatState(s => ({...s, selected: r.name}))}
                       style={{ cursor: "pointer", background: sel ? "rgba(122,162,247,0.08)" : "transparent" }}
-                      title="클릭 → 응답곡선 보기"
+                      title={tr("클릭 → 응답곡선 보기", "Click → view response curve")}
                     >
                       <td className="tnum" style={{ color: "var(--text-muted)" }}>{i + 1}</td>
                       <td><strong>{r.name}</strong></td>
@@ -528,20 +583,20 @@ export default function MarketingEfficiency() {
         {badRows.length > 0 && (
           <details style={{ marginTop: "10px" }}>
             <summary style={{ cursor: "pointer", fontSize: "11.5px", color: "var(--text-muted)" }}>
-              ⚠ 분석 제외 {badRows.length}개 — 보기
+              {tr(`⚠ 분석 제외 ${badRows.length}개 — 보기`, `⚠ ${badRows.length} excluded from analysis — view`)}
             </summary>
             <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "6px", lineHeight: 1.7 }}>
               {badRows.map((r, i) => {
                 const why =
                   r.reason === "insufficient"
-                    ? `관측 ${r.raw || r.n || 0}개 (최소 ${SAT_CONFIG.minPoints} 필요)`
+                    ? tr(`관측 ${r.raw || r.n || 0}개 (최소 ${SAT_CONFIG.minPoints} 필요)`, `${r.raw || r.n || 0} observations (needs at least ${SAT_CONFIG.minPoints})`)
                     : r.reason === "out_of_range"
-                      ? "곡선이 현 지출점에서 음수/비정상"
+                      ? tr("곡선이 현 지출점에서 음수/비정상", "Curve is negative/abnormal at the current spend point")
                       : r.reason === "nofit"
-                        ? "곡선 적합 실패"
+                        ? tr("곡선 적합 실패", "Curve fitting failed")
                         : effectiveMetric === "roas"
-                          ? "매출 데이터 없음"
-                          : "분석 불가";
+                          ? tr("매출 데이터 없음", "No revenue data")
+                          : tr("분석 불가", "Cannot analyze");
                 return <div key={i}>• <strong>{r.name}</strong> — {why}</div>;
               })}
             </div>
@@ -553,22 +608,28 @@ export default function MarketingEfficiency() {
         <section className="block" id="s-sat-curve">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <h2 className="section-title" style={{ marginBottom: 0 }}>
-              <span className="ix">§2</span>응답곡선 — {selName}
+              <span className="ix">§2</span>{tr("응답곡선", "Response curve")} — {selName}
             </h2>
             <button
               className="ab-pill"
               onClick={handlePngDownload}
-              title="이 차트를 PNG로 다운로드 (테마 배경 합성)"
+              title={tr("이 차트를 PNG로 다운로드 (테마 배경 합성)", "Download this chart as PNG (composited with theme background)")}
             >
-              ⬇ PNG
+              {tr("⬇ PNG", "⬇ PNG")}
             </button>
           </div>
           <p className="muted" style={{ fontSize: "12px", marginTop: "6px" }}>
-            위 표에서 행을 클릭하면 해당 {grainLabel}의 곡선으로 바뀝니다. 점=일별 관측(비용 vs {metricLabel}), 선=적합 곡선, 주황 점선=현 지출점.
+            {tr(
+              `위 표에서 행을 클릭하면 해당 ${grainLabel}의 곡선으로 바뀝니다. 점=일별 관측(비용 vs ${metricLabel}), 선=적합 곡선, 주황 점선=현 지출점.`,
+              `Click a row above to switch to that ${grainLabel}'s curve. Dots = daily observations (cost vs ${metricLabel}), line = fitted curve, orange dashed line = current spend point.`
+            )}
           </p>
           {isRoas && (
             <p className="muted" style={{ fontSize: "11.5px", marginTop: "2px", color: "var(--text-muted)" }}>
-              ⚠ ROAS 곡선은 CPA 적합 곡선을 매출/결과 비율로 역변환한 값입니다(직접 적합 아님). 매출 데이터가 희소하거나 결과당 매출 변동이 크면 곡선 신뢰도가 낮아질 수 있습니다.
+              {tr(
+                "⚠ ROAS 곡선은 CPA 적합 곡선을 매출/결과 비율로 역변환한 값입니다(직접 적합 아님). 매출 데이터가 희소하거나 결과당 매출 변동이 크면 곡선 신뢰도가 낮아질 수 있습니다.",
+                "⚠ The ROAS curve is derived by inverting the fitted CPA curve using the revenue/result ratio (not fitted directly). If revenue data is sparse or revenue-per-result varies a lot, the curve's reliability may be lower."
+              )}
             </p>
           )}
           <div className="chart-container" style={{ height: "300px" }}>

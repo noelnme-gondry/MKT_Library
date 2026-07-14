@@ -45,6 +45,36 @@ const TOC_MAP = {
   segment: [{ id: "s-matrix", title: "세그먼트" }],
 };
 
+// EN 버전 — id는 동일(앵커 href), title만 번역.
+const TOC_MAP_EN = {
+  viz: [
+    { id: "s-cohort", title: "Cohort" },
+    { id: "s-kpi", title: "KPI Summary" },
+    { id: "s-charts", title: "Charts" },
+  ],
+  scorecard: [{ id: "s-score", title: "Scorecard" }],
+  pacing: [{ id: "s-pace", title: "Pacing" }],
+  anomaly: [{ id: "s-anom", title: "Anomaly Detection" }],
+  ltv: [
+    { id: "s-ctl", title: "Analysis Unit" },
+    { id: "s-table", title: "LTV:CAC Table" },
+    { id: "s-mat", title: "ROAS Maturity" },
+  ],
+  cohort: [
+    { id: "s-retention", title: "Retention Curve" },
+    { id: "s-ret-segment", title: "By Segment" },
+    { id: "s-ret-predict", title: "Forecast" },
+  ],
+  funnel: [
+    { id: "s-funnel-wow", title: "Week-over-Week" },
+    { id: "s-funnel-ctl", title: "Stage Selector" },
+    { id: "s-funnel-trend", title: "Time-series Drops" },
+    { id: "s-funnel-seg", title: "Segment Ranking" },
+    { id: "s-funnel", title: "Full Funnel Table" },
+  ],
+  segment: [{ id: "s-matrix", title: "Segment" }],
+};
+
 // 콘텐츠 대시보드(9-7)는 3탭만 노출 — 결제·예산·매출 전제 탭(pacing·ltv·cohort·
 // funnel·segment)은 콘텐츠 데이터로 의미가 없어 제외(§정직성).
 const CONTENT_TABS = ["viz", "scorecard", "anomaly"];
@@ -56,10 +86,37 @@ const CONTENT_TOC_MAP = {
   scorecard: [{ id: "s-score", title: "스코어카드" }],
   anomaly: [{ id: "s-anom", title: "이상 감지" }],
 };
+const CONTENT_TOC_MAP_EN = {
+  viz: [
+    { id: "s-kpi", title: "KPI Summary" },
+    { id: "s-charts", title: "Charts" },
+  ],
+  scorecard: [{ id: "s-score", title: "Scorecard" }],
+  anomaly: [{ id: "s-anom", title: "Anomaly Detection" }],
+};
 
-export default function Dashboard({ domain = "performance" } = {}) {
+// Dashboard.jsx 전용 EN 카피 — resolveDashCopy(contentDomain.js)는 domain(퍼포먼스/
+// 콘텐츠) 리라벨 축이라 건드리지 않고, locale 축은 여기서 로컬 오버라이드한다.
+const EN_DASH_COPY = {
+  performance: {
+    pageTitle: "Operations Dashboard",
+    noDataIntro:
+      "Upload a daily campaign report CSV to summarize performance and visualize key metrics.",
+    uploadDesc: "Upload a marketing performance CSV to generate the operations dashboard.",
+  },
+  content: {
+    pageTitle: "Content Operations Dashboard",
+    noDataIntro:
+      "Upload a content performance CSV (traffic source, impressions, clicks, visits, etc.) to summarize traffic and visualize key metrics.",
+    uploadDesc: "Upload a content performance CSV to generate the content operations dashboard.",
+  },
+};
+
+export default function Dashboard({ domain = "performance", locale = "ko" } = {}) {
   const C = resolveDashCopy(domain);
   const isContent = domain === "content";
+  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const enC = EN_DASH_COPY[domain] || EN_DASH_COPY.performance;
   // 콘텐츠판은 9-7 CSV 슬라이스·게이트를, 기본판은 5-2를 사용.
   const toolId = isContent ? "9-7" : "5-2";
   const csvData = useAppStore((state) => state.csvData);
@@ -83,7 +140,9 @@ export default function Dashboard({ domain = "performance" } = {}) {
   const hasData = csvData && csvData.raw.length > 0;
   // 결과(탭·차트·TOC)는 데이터가 있고 + 분석이 확정된 뒤에만 렌더.
   const showResults = hasData && analyzed;
-  const tocMap = isContent ? CONTENT_TOC_MAP : TOC_MAP;
+  const tocMap = locale === "en"
+    ? (isContent ? CONTENT_TOC_MAP_EN : TOC_MAP_EN)
+    : (isContent ? CONTENT_TOC_MAP : TOC_MAP);
   const currentToc = showResults ? tocMap[activeTab] || [] : [];
 
   return (
@@ -98,7 +157,7 @@ export default function Dashboard({ domain = "performance" } = {}) {
             아래 top:48px)에 고정. */}
         <div className="page-sticky-bar">
           <div className="page-sticky-row1">
-            <span className="page-sticky-title">{C.pageTitle}</span>
+            <span className="page-sticky-title">{tr(C.pageTitle, enC.pageTitle)}</span>
             {hasData && (
               <>
                 <span className="chip" style={{ display: "inline-flex", alignItems: "center" }}>
@@ -107,7 +166,7 @@ export default function Dashboard({ domain = "performance" } = {}) {
                 </span>
                 <span className="chip ok" style={{ display: "inline-flex", alignItems: "center" }}>
                   <span className="dot"></span>
-                  {csvData.raw.length.toLocaleString()}행
+                  {csvData.raw.length.toLocaleString()}{tr("행", " rows")}
                 </span>
               </>
             )}
@@ -117,7 +176,7 @@ export default function Dashboard({ domain = "performance" } = {}) {
 
         {!hasData && (
           <p style={{ color: "var(--text-secondary)", margin: "1rem 0 2rem", fontSize: "13px" }}>
-            {C.noDataIntro}
+            {tr(C.noDataIntro, enC.noDataIntro)}
           </p>
         )}
 
@@ -128,16 +187,16 @@ export default function Dashboard({ domain = "performance" } = {}) {
             ③ 데이터 有 · 분석 완료: 매핑을 접어(details) 결과에 집중. */}
         {!hasData ? (
           <div className="block">
-            <h2 className="section-title">데이터 업로드</h2>
-            <p className="card-desc" style={{ marginBottom: "1rem" }}>{C.uploadDesc}</p>
-            <CsvUploader toolId={toolId} />
+            <h2 className="section-title">{tr("데이터 업로드", "Upload Data")}</h2>
+            <p className="card-desc" style={{ marginBottom: "1rem" }}>{tr(C.uploadDesc, enC.uploadDesc)}</p>
+            <CsvUploader toolId={toolId} locale={locale} />
           </div>
         ) : !analyzed ? (
           <div className="block" style={{ padding: "12px", margin: "0 0 16px", borderRadius: "var(--radius-lg)", background: "rgba(255,255,255,0.01)" }}>
             <div style={{ marginBottom: "8px", fontSize: "11px", color: "var(--text-muted)" }}>
-              🔒 업로드 데이터는 브라우저 메모리에서만 안전하게 유지됩니다.
+              {tr("🔒 업로드 데이터는 브라우저 메모리에서만 안전하게 유지됩니다.", "🔒 Uploaded data stays safely in your browser memory only.")}
             </div>
-            <CsvUploader toolId={toolId} />
+            <CsvUploader toolId={toolId} locale={locale} />
           </div>
         ) : (
           <details
@@ -147,13 +206,13 @@ export default function Dashboard({ domain = "performance" } = {}) {
             style={{ padding: "8px 12px", margin: "0 0 16px", borderRadius: "var(--radius-lg)", background: "rgba(255,255,255,0.01)" }}
           >
             <summary style={{ cursor: "pointer", fontSize: "13px", fontWeight: "700", color: "var(--primary, #adc6ff)", outline: "none", display: "flex", alignItems: "center" }}>
-              <span style={{ marginRight: "6px" }}>⚙</span> 데이터 매핑 설정 {mappingOpen ? "(접기)" : "(펼치기)"}
+              <span style={{ marginRight: "6px" }}>⚙</span> {tr("데이터 매핑 설정", "Data Mapping Settings")} {mappingOpen ? tr("(접기)", "(collapse)") : tr("(펼치기)", "(expand)")}
             </summary>
             <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px dashed var(--border-subtle)" }}>
               <div style={{ marginBottom: "6px", fontSize: "11px", color: "var(--text-muted)" }}>
-                🔒 업로드 데이터는 브라우저 메모리에서만 안전하게 유지됩니다.
+                {tr("🔒 업로드 데이터는 브라우저 메모리에서만 안전하게 유지됩니다.", "🔒 Uploaded data stays safely in your browser memory only.")}
               </div>
-              <CsvUploader toolId={toolId} />
+              <CsvUploader toolId={toolId} locale={locale} />
             </div>
           </details>
         )}
@@ -164,13 +223,13 @@ export default function Dashboard({ domain = "performance" } = {}) {
         {hasData && !analyzed && (
           <div className="card" style={{ marginTop: "1rem", textAlign: "center", padding: "2.5rem 1rem" }}>
             <div style={{ fontSize: "28px", marginBottom: "0.75rem" }}>🗂</div>
-            <h3 style={{ margin: "0 0 0.5rem", fontSize: "15px", fontWeight: "700" }}>분석 대기 중</h3>
+            <h3 style={{ margin: "0 0 0.5rem", fontSize: "15px", fontWeight: "700" }}>{tr("분석 대기 중", "Waiting for Analysis")}</h3>
             <p style={{ color: "var(--text-muted)", fontSize: "13px", margin: 0, lineHeight: 1.6 }}>
-              위에서 컬럼 매핑이 올바른지 확인한 뒤
+              {tr("위에서 컬럼 매핑이 올바른지 확인한 뒤", "After confirming the column mapping above,")}
               <br />
-              <strong>&quot;데이터 분석하기&quot;</strong>를 눌러 대시보드를 생성하세요.
+              {tr(<><strong>&quot;데이터 분석하기&quot;</strong>를 눌러 대시보드를 생성하세요.</>, <>click <strong>&quot;Analyze Data&quot;</strong> to generate the dashboard.</>)}
               <br />
-              <span style={{ fontSize: "11.5px" }}>매핑을 바꾸면 결과가 숨겨지고 다시 분석해야 합니다.</span>
+              <span style={{ fontSize: "11.5px" }}>{tr("매핑을 바꾸면 결과가 숨겨지고 다시 분석해야 합니다.", "Changing the mapping hides the results until you re-analyze.")}</span>
             </p>
           </div>
         )}
@@ -179,22 +238,22 @@ export default function Dashboard({ domain = "performance" } = {}) {
         {showResults && (
           <div className="dashboard-content">
             <MonEventMarkerUI />
-            <DashboardTabs domain={domain} />
+            <DashboardTabs domain={domain} locale={locale} />
 
             <div className="tab-content" style={{ marginTop: "1rem" }}>
-              {activeTab === "viz" && <VizTab domain={domain} />}
-              {activeTab === "scorecard" && <ScorecardTab domain={domain} />}
-              {activeTab === "anomaly" && <AnomalyTab domain={domain} />}
+              {activeTab === "viz" && <VizTab domain={domain} locale={locale} />}
+              {activeTab === "scorecard" && <ScorecardTab domain={domain} locale={locale} />}
+              {activeTab === "anomaly" && <AnomalyTab domain={domain} locale={locale} />}
               {/* 콘텐츠 대시보드는 아래 마케팅 전용 탭(결제·예산·매출 전제)을 노출하지 않음. */}
-              {!isContent && activeTab === "pacing" && <PacingTab />}
-              {!isContent && activeTab === "ltv" && <LtvTab />}
-              {!isContent && activeTab === "cohort" && <CohortTab />}
-              {!isContent && activeTab === "funnel" && <FunnelTab />}
-              {!isContent && activeTab === "segment" && <SegmentTab />}
+              {!isContent && activeTab === "pacing" && <PacingTab locale={locale} />}
+              {!isContent && activeTab === "ltv" && <LtvTab locale={locale} />}
+              {!isContent && activeTab === "cohort" && <CohortTab locale={locale} />}
+              {!isContent && activeTab === "funnel" && <FunnelTab locale={locale} />}
+              {!isContent && activeTab === "segment" && <SegmentTab locale={locale} />}
               {!["viz", "scorecard", "pacing", "anomaly", "ltv", "cohort", "funnel", "segment"].includes(activeTab) && (
                 <div className="card">
                   <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "2rem 0" }}>
-                    [{activeTab}] 탭은 현재 마이그레이션 중입니다...
+                    {tr(`[${activeTab}] 탭은 현재 마이그레이션 중입니다...`, `The [${activeTab}] tab is currently being migrated...`)}
                   </p>
                 </div>
               )}
@@ -217,7 +276,7 @@ export default function Dashboard({ domain = "performance" } = {}) {
           gap: "8px"
         }}>
           <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>
-            목차
+            {tr("목차", "Contents")}
           </div>
           {currentToc.map((item) => (
             <a 

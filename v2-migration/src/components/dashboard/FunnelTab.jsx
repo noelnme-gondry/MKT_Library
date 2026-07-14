@@ -12,6 +12,13 @@ import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 // 지표 뷰 설정 scope — §5 전체 퍼널 단계 표의 지표 컬럼 표시/순서.
 const FUNNEL_TABLE_SCOPE = "5-2:funnel-table";
 
+// funnelMath.js FUNNEL_FIELD_LABEL(ko 고정)의 EN 대응 — 엔진은 불변, 표시만 로컬 override.
+const FUNNEL_FIELD_LABEL_EN = {
+  channel: "Channel",
+  country: "Country",
+  platform: "OS",
+};
+
 const fmtPct = (v) => (v == null ? "—" : (v * 100).toFixed(2) + "%");
 const fmtDelta = (d) => {
   if (d == null) return <span style={{ color: "var(--text-muted)" }}>—</span>;
@@ -22,7 +29,9 @@ const fmtDelta = (d) => {
   );
 };
 
-export default function FunnelTab() {
+export default function FunnelTab({ locale = "ko" } = {}) {
+  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const fieldLabel = (key) => (locale === "en" ? FUNNEL_FIELD_LABEL_EN[key] : FUNNEL_FIELD_LABEL[key]) || key;
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
@@ -64,7 +73,7 @@ export default function FunnelTab() {
     const mean = cache.dailyMean != null ? +(cache.dailyMean * 100).toFixed(2) : null;
     const ptColors = daily.map((x) => ((adjOn ? x.lowAdj : x.low) ? "#f87171" : "#adc6ff"));
     const ptR = daily.map((x) => ((adjOn ? x.lowAdj : x.low) ? 4 : 2));
-    const lbl = `${cache.selLabel || "선택 단계"} CVR(%)${adjOn ? " (요일보정)" : ""}`;
+    const lbl = `${cache.selLabel || tr("선택 단계", "Selected stage")} CVR(%)${adjOn ? tr(" (요일보정)", " (weekday-adj)") : ""}`;
 
     const ds = [
       {
@@ -81,7 +90,7 @@ export default function FunnelTab() {
     ];
     if (mean != null)
       ds.push({
-        label: "평균",
+        label: tr("평균", "Average"),
         data: daily.map(() => mean),
         borderColor: "#fbbf24",
         borderDash: [5, 4],
@@ -110,14 +119,14 @@ export default function FunnelTab() {
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [hasData, cache, adjOn, isDarkMode]);
+  }, [hasData, cache, adjOn, isDarkMode, locale]);
 
   if (!hasData) {
     return (
       <div className="tab-pane active" id="tab-funnel">
         <section className="block" id="s-funnel-wow">
-          <h2 className="section-title"><span className="ix">§1</span>퍼널 진단</h2>
-          <p className="muted">데이터 없음</p>
+          <h2 className="section-title"><span className="ix">§1</span>{tr("퍼널 진단", "Funnel diagnosis")}</h2>
+          <p className="muted">{tr("데이터 없음", "No data")}</p>
         </section>
       </div>
     );
@@ -125,11 +134,11 @@ export default function FunnelTab() {
 
   const c = cache;
   const bd = c.wowBiggestDrop;
-  const rangeStr = c.wowRange ? `${c.wowRange.from} ~ ${c.wowRange.to}` : "최근 주";
+  const rangeStr = c.wowRange ? `${c.wowRange.from} ~ ${c.wowRange.to}` : tr("최근 주", "recent week");
   const lows = adjOn ? (c.daily || []).filter((x) => x.lowAdj) : (c.daily || []).filter((x) => x.low);
-  const selLbl = c.selLabel || "선택 단계";
+  const selLbl = c.selLabel || tr("선택 단계", "Selected stage");
 
-  const unitPills = [["_all", "전체"], ["channel", "채널"], ["country", "국가"], ["platform", "OS"]];
+  const unitPills = [["_all", tr("전체", "All")], ["channel", tr("채널", "Channel")], ["country", tr("국가", "Country")], ["platform", "OS"]];
 
   // §5 전체 퍼널 단계 표 지표 컬럼(데이터 주도) — 단계별 건수 + 단계간 CVR.
   // 첫 컬럼 '단위'는 행 헤더라 고정, 나머지 지표 컬럼만 표시/순서 토글(render/값 불변).
@@ -151,7 +160,7 @@ export default function FunnelTab() {
           return (
             <>
               {fmtPct(step.cvr)}
-              {step.drop != null && <span style={{ color: "var(--text-muted)", fontSize: "10px" }}> (이탈 {(step.drop * 100).toFixed(0)}%)</span>}
+              {step.drop != null && <span style={{ color: "var(--text-muted)", fontSize: "10px" }}> ({tr("이탈", "drop")} {(step.drop * 100).toFixed(0)}%)</span>}
             </>
           );
         },
@@ -166,36 +175,46 @@ export default function FunnelTab() {
       <section className="block" id="s-funnel-wow">
         {!c.wow ? (
           <>
-            <h2 className="section-title"><span className="ix">§1</span>주간 변화</h2>
+            <h2 className="section-title"><span className="ix">§1</span>{tr("주간 변화", "Weekly change")}</h2>
             <p className="muted" style={{ fontSize: "12px" }}>
-              날짜 컬럼을 매핑하면 <strong>최근 주 vs 지난 주</strong> 단계별 전환율 변화를 볼 수 있습니다.
+              {tr(
+                <>날짜 컬럼을 매핑하면 <strong>최근 주 vs 지난 주</strong> 단계별 전환율 변화를 볼 수 있습니다.</>,
+                <>Map a date column to see <strong>this week vs last week</strong> stage-by-stage conversion changes.</>
+              )}
             </p>
           </>
         ) : (
           <>
-            <h2 className="section-title"><span className="ix">§1</span>주간 변화 — 지난 주 대비</h2>
+            <h2 className="section-title"><span className="ix">§1</span>{tr("주간 변화 — 지난 주 대비", "Weekly change — vs last week")}</h2>
             <p className="muted" style={{ fontSize: "12px", margin: "-4px 0 10px" }}>
-              이번 주({rangeStr}) 단계별 전환율을 직전 주와 비교합니다. (최근 7개 영업일 vs 직전 7개)
+              {tr(
+                `이번 주(${rangeStr}) 단계별 전환율을 직전 주와 비교합니다. (최근 7개 영업일 vs 직전 7개)`,
+                `Compares this week's (${rangeStr}) stage conversion rates to the prior week. (last 7 business days vs prior 7)`
+              )}
             </p>
             {bd && bd.delta != null && bd.delta < 0 ? (
               <div className="callout warning">
                 <div className="ico">!</div>
                 <div className="body">
                   <p style={{ margin: 0, fontSize: "13px" }}>
-                    <strong>{bd.label}</strong> 전환율이 지난 주 대비 가장 많이 떨어졌습니다 — {fmtDelta(bd.delta)}{" "}
-                    <span style={{ color: "var(--text-muted)" }}>({fmtPct(bd.cvrLast)} → {fmtPct(bd.cvrThis)})</span>
+                    {tr(
+                      <><strong>{bd.label}</strong> 전환율이 지난 주 대비 가장 많이 떨어졌습니다 — {fmtDelta(bd.delta)}{" "}
+                      <span style={{ color: "var(--text-muted)" }}>({fmtPct(bd.cvrLast)} → {fmtPct(bd.cvrThis)})</span></>,
+                      <><strong>{bd.label}</strong> dropped the most vs last week — {fmtDelta(bd.delta)}{" "}
+                      <span style={{ color: "var(--text-muted)" }}>({fmtPct(bd.cvrLast)} → {fmtPct(bd.cvrThis)})</span></>
+                    )}
                   </p>
                 </div>
               </div>
             ) : (
               <div className="callout ok">
                 <div className="ico">✓</div>
-                <div className="body"><p style={{ margin: 0, fontSize: "13px" }}>지난 주 대비 전환율이 하락한 단계가 없습니다.</p></div>
+                <div className="body"><p style={{ margin: 0, fontSize: "13px" }}>{tr("지난 주 대비 전환율이 하락한 단계가 없습니다.", "No stage dropped in conversion rate vs last week.")}</p></div>
               </div>
             )}
             <div className="table-wrap" style={{ marginTop: "10px" }}>
               <table className="data" style={{ fontSize: "11.5px" }}>
-                <thead><tr><th>전환 단계</th><th>지난 주</th><th>이번 주</th><th>변화</th></tr></thead>
+                <thead><tr><th>{tr("전환 단계", "Stage")}</th><th>{tr("지난 주", "Last week")}</th><th>{tr("이번 주", "This week")}</th><th>{tr("변화", "Change")}</th></tr></thead>
                 <tbody>
                   {c.wow.map((w) => (
                     <tr key={w.i} style={bd && w.i === bd.i && w.delta != null && w.delta < 0 ? { background: "rgba(248,113,113,0.06)" } : {}}>
@@ -215,7 +234,7 @@ export default function FunnelTab() {
       {/* §2 컨트롤: 전환 단계 · 분리 단위 · 요일 보정 */}
       <section className="block" id="s-funnel-ctl" style={{ padding: "12px 16px" }}>
         <div className="ab-pillgroup" style={{ marginBottom: "8px" }}>
-          <span className="ab-pillgroup-label">전환 단계</span>
+          <span className="ab-pillgroup-label">{tr("전환 단계", "Conversion stage")}</span>
           {(c.trans || []).map((t) => (
             <button key={t.i} className={`ab-pill ${c.selStep === t.i ? "active" : ""}`} onClick={() => setCvrStep(t.i)}>
               {t.label}
@@ -223,7 +242,7 @@ export default function FunnelTab() {
           ))}
         </div>
         <div className="ab-pillgroup" style={{ marginBottom: "8px" }}>
-          <span className="ab-pillgroup-label">분리 단위</span>
+          <span className="ab-pillgroup-label">{tr("분리 단위", "Split by")}</span>
           {unitPills.map(([k, l]) => {
             const av = k === "_all" || mappedKeys.has(k);
             return (
@@ -234,30 +253,36 @@ export default function FunnelTab() {
           })}
         </div>
         <div className="ab-pillgroup" style={{ margin: 0 }}>
-          <span className="ab-pillgroup-label">§3 요일</span>
+          <span className="ab-pillgroup-label">§3 {tr("요일", "Weekday")}</span>
           {c.weekdayAdjOk ? (
             <button className={`ab-pill ${adjOn ? "active" : ""}`} onClick={() => setWeekdayAdj((v) => !v)}>
-              요일 보정 {adjOn ? "ON" : "OFF"}
+              {tr("요일 보정", "Weekday adj.")} {adjOn ? "ON" : "OFF"}
             </button>
           ) : (
-            <button className="ab-pill disabled" disabled title="평일·주말 각 3일 이상 필요">요일 보정 🔒</button>
+            <button className="ab-pill disabled" disabled title={tr("평일·주말 각 3일 이상 필요", "Needs 3+ weekday and 3+ weekend days")}>{tr("요일 보정", "Weekday adj.")} 🔒</button>
           )}
         </div>
         <p className="muted" style={{ fontSize: "11px", margin: "8px 0 0" }}>
-          아래 추이·세그먼트·랭킹은 선택한 <strong>전환 단계({selLbl})</strong> 기준입니다.
+          {tr(
+            <>아래 추이·세그먼트·랭킹은 선택한 <strong>전환 단계({selLbl})</strong> 기준입니다.</>,
+            <>The trend, segment, and ranking below are based on the selected <strong>conversion stage ({selLbl})</strong>.</>
+          )}
         </p>
       </section>
 
       {/* §3 시계열 추이 + 평균 대비 저조일 */}
       {(c.daily || []).filter((x) => x.cvr != null).length >= 3 && (
         <section className="block" id="s-funnel-trend" style={{ marginTop: "24px" }}>
-          <h2 className="section-title"><span className="ix">§3</span>{selLbl} CVR 추이{adjOn ? " (요일 보정)" : ""}</h2>
+          <h2 className="section-title"><span className="ix">§3</span>{selLbl} CVR {tr("추이", "trend")}{adjOn ? tr(" (요일 보정)", " (weekday-adj)") : ""}</h2>
           {adjOn && c.weekdayProfile && (
             <div className="callout" style={{ margin: "0 0 8px", padding: "8px 12px" }}>
               <div className="ico">i</div>
               <div className="body">
                 <p style={{ margin: 0, fontSize: "12px" }}>
-                  💡 요일(평일/주말) 보정됨 — 같은 요일끼리 비교한 결과입니다. 평일 평균 {(c.weekdayProfile.weekday * 100).toFixed(1)}% / 주말 평균 {(c.weekdayProfile.weekend * 100).toFixed(1)}%.
+                  {tr(
+                    `💡 요일(평일/주말) 보정됨 — 같은 요일끼리 비교한 결과입니다. 평일 평균 ${(c.weekdayProfile.weekday * 100).toFixed(1)}% / 주말 평균 ${(c.weekdayProfile.weekend * 100).toFixed(1)}%.`,
+                    `💡 Weekday-adjusted (weekday/weekend) — compares same-type days. Weekday avg ${(c.weekdayProfile.weekday * 100).toFixed(1)}% / weekend avg ${(c.weekdayProfile.weekend * 100).toFixed(1)}%.`
+                  )}
                 </p>
               </div>
             </div>
@@ -270,10 +295,13 @@ export default function FunnelTab() {
               <div className="ico">!</div>
               <div className="body">
                 <p style={{ margin: "0 0 4px", fontSize: "12px" }}>
-                  <strong>평균보다 유독 낮았던 날 (−1σ 이하{adjOn ? ", 요일 보정 후" : ""})</strong>
+                  <strong>{tr(`평균보다 유독 낮았던 날 (−1σ 이하${adjOn ? ", 요일 보정 후" : ""})`, `Days notably below average (−1σ or lower${adjOn ? ", after weekday adj." : ""})`)}</strong>
                 </p>
                 <p className="muted" style={{ margin: "0 0 6px", fontSize: "11px" }}>
-                  기간 전체 평균과 비교한 것으로, 전날보다는 올랐지만 여전히 평균보다 낮은 날도 포함됩니다.
+                  {tr(
+                    "기간 전체 평균과 비교한 것으로, 전날보다는 올랐지만 여전히 평균보다 낮은 날도 포함됩니다.",
+                    "Compared against the full-period average — includes days that rose vs the prior day but were still below average."
+                  )}
                 </p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                   {lows.map((x) => {
@@ -288,8 +316,8 @@ export default function FunnelTab() {
                         {x.date} · {cv != null ? (cv * 100).toFixed(1) : "—"}%{" "}
                         <span style={{ opacity: 0.7 }}>({dp != null && dp < 0 ? "" : "+"}{dp != null ? (dp * 100).toFixed(0) : "—"}%)</span>
                         {vsPrevUp != null && (
-                          <span style={{ opacity: 0.7, marginLeft: "4px" }} title="전날 대비">
-                            {vsPrevUp ? "↑전일比" : "↓전일比"}
+                          <span style={{ opacity: 0.7, marginLeft: "4px" }} title={tr("전날 대비", "vs prior day")}>
+                            {vsPrevUp ? tr("↑전일比", "↑ vs prev") : tr("↓전일比", "↓ vs prev")}
                           </span>
                         )}
                       </span>
@@ -299,7 +327,7 @@ export default function FunnelTab() {
               </div>
             </div>
           ) : (
-            <p className="muted" style={{ marginTop: "8px", fontSize: "12px" }}>평균보다 −1σ 이상 낮았던 날은 없습니다. CVR이 안정적입니다.</p>
+            <p className="muted" style={{ marginTop: "8px", fontSize: "12px" }}>{tr("평균보다 −1σ 이상 낮았던 날은 없습니다. CVR이 안정적입니다.", "No days fell −1σ or more below average. CVR is stable.")}</p>
           )}
         </section>
       )}
@@ -307,15 +335,18 @@ export default function FunnelTab() {
       {/* §4 세그먼트 랭킹 */}
       {c.segRank && (
         <section className="block" id="s-funnel-seg" style={{ marginTop: "24px" }}>
-          <h2 className="section-title"><span className="ix">§4</span>{FUNNEL_FIELD_LABEL[c.segRank.field] || c.segRank.field}별 {selLbl} CVR — 평균 대비</h2>
+          <h2 className="section-title"><span className="ix">§4</span>{tr(`${fieldLabel(c.segRank.field) || c.segRank.field}별 ${selLbl} CVR`, `${selLbl} CVR by ${fieldLabel(c.segRank.field) || c.segRank.field}`)} — {tr("평균 대비", "vs average")}</h2>
           <p className="muted" style={{ fontSize: "12px", margin: "-4px 0 10px" }}>
-            평균({fmtPct(c.segRank.avg)}) 대비 높은/낮은 {FUNNEL_FIELD_LABEL[c.segRank.field] || c.segRank.field}. 분모 볼륨이 충분한 세그먼트만 표시합니다.
+            {tr(
+              `평균(${fmtPct(c.segRank.avg)}) 대비 높은/낮은 ${fieldLabel(c.segRank.field) || c.segRank.field}. 분모 볼륨이 충분한 세그먼트만 표시합니다.`,
+              `${fieldLabel(c.segRank.field) || c.segRank.field} above/below the average (${fmtPct(c.segRank.avg)}). Only segments with sufficient denominator volume are shown.`
+            )}
           </p>
           <div className="table-wrap">
             <table className="data" style={{ fontSize: "11.5px" }}>
-              <thead><tr><th>{FUNNEL_FIELD_LABEL[c.segRank.field] || c.segRank.field}</th><th>{selLbl} CVR</th><th>평균 대비</th><th>분모 볼륨</th></tr></thead>
+              <thead><tr><th>{fieldLabel(c.segRank.field) || c.segRank.field}</th><th>{selLbl} CVR</th><th>{tr("평균 대비", "vs average")}</th><th>{tr("분모 볼륨", "Denom. volume")}</th></tr></thead>
               <tbody>
-                <tr><td colSpan="4" style={{ fontWeight: 700, color: "#34d399", fontSize: "11px", paddingTop: "8px" }}>▲ 잘 전환되는 {FUNNEL_FIELD_LABEL[c.segRank.field] || c.segRank.field}</td></tr>
+                <tr><td colSpan="4" style={{ fontWeight: 700, color: "#34d399", fontSize: "11px", paddingTop: "8px" }}>{tr(`▲ 잘 전환되는 ${fieldLabel(c.segRank.field) || c.segRank.field}`, `▲ Best-converting ${fieldLabel(c.segRank.field) || c.segRank.field}`)}</td></tr>
                 {c.segRank.best.map((x) => {
                   const dev = c.segRank.avg > 0 ? (x.cvr - c.segRank.avg) / c.segRank.avg : 0;
                   return (
@@ -327,7 +358,7 @@ export default function FunnelTab() {
                     </tr>
                   );
                 })}
-                <tr><td colSpan="4" style={{ fontWeight: 700, color: "#f87171", fontSize: "11px", paddingTop: "8px" }}>▼ 전환이 낮은 {FUNNEL_FIELD_LABEL[c.segRank.field] || c.segRank.field}</td></tr>
+                <tr><td colSpan="4" style={{ fontWeight: 700, color: "#f87171", fontSize: "11px", paddingTop: "8px" }}>{tr(`▼ 전환이 낮은 ${fieldLabel(c.segRank.field) || c.segRank.field}`, `▼ Lowest-converting ${fieldLabel(c.segRank.field) || c.segRank.field}`)}</td></tr>
                 {c.segRank.worst.map((x) => {
                   const dev = c.segRank.avg > 0 ? (x.cvr - c.segRank.avg) / c.segRank.avg : 0;
                   return (
@@ -348,14 +379,14 @@ export default function FunnelTab() {
       {/* §5 전체 퍼널 단계 표 */}
       <section className="block" id="s-funnel" style={{ marginTop: "24px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2 className="section-title"><span className="ix">§5</span>전체 퍼널 단계 표</h2>
-          <button className="ab-pill" onClick={() => setFunnelCfgOpen(true)} title="표시할 지표 컬럼과 순서 편집">⚙ 컬럼 편집</button>
+          <h2 className="section-title"><span className="ix">§5</span>{tr("전체 퍼널 단계 표", "Full funnel stage table")}</h2>
+          <button className="ab-pill" onClick={() => setFunnelCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>⚙ {tr("컬럼 편집", "Edit columns")}</button>
         </div>
         <div className="table-wrap">
           <table className="data" style={{ fontSize: "11.5px" }}>
             <thead>
               <tr>
-                <th>단위</th>
+                <th>{tr("단위", "Unit")}</th>
                 {orderedFunnelCols.map((col) => <th key={col.k}>{col.label}</th>)}
               </tr>
             </thead>
@@ -372,13 +403,16 @@ export default function FunnelTab() {
           </table>
         </div>
         {orderedFunnelCols.length === 0 && (
-          <p className="muted" style={{ fontSize: "12px" }}>표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.</p>
+          <p className="muted" style={{ fontSize: "12px" }}>{tr("표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.", "No metric columns to display. Re-enable one via ⚙ Edit columns.")}</p>
         )}
         <div className="callout" style={{ marginTop: "10px" }}>
           <div className="ico">i</div>
           <div className="body">
             <p style={{ margin: 0, fontSize: "12px" }}>
-              ◆ = 선택한 전환 단계. 노출→클릭(CTR)은 보통 97~99% 이탈이 정상이므로 병목 판단에서 제외하고, <strong>클릭→설치 / 설치→액션</strong> 같은 후속 단계로 진단하세요.
+              {tr(
+                <>◆ = 선택한 전환 단계. 노출→클릭(CTR)은 보통 97~99% 이탈이 정상이므로 병목 판단에서 제외하고, <strong>클릭→설치 / 설치→액션</strong> 같은 후속 단계로 진단하세요.</>,
+                <>◆ = selected conversion stage. Impression→Click (CTR) typically drops 97–99% normally, so exclude it from bottleneck judgment and diagnose later stages like <strong>Click→Install / Install→Action</strong> instead.</>
+              )}
             </p>
           </div>
         </div>
@@ -386,7 +420,7 @@ export default function FunnelTab() {
       <MetricConfigPanel
         open={funnelCfgOpen}
         onClose={() => setFunnelCfgOpen(false)}
-        title="전체 퍼널 단계 표 — 컬럼 편집"
+        title={tr("전체 퍼널 단계 표 — 컬럼 편집", "Full funnel stage table — Edit columns")}
         items={funnelCols.map((col) => ({ key: col.k, label: col.label }))}
         config={funnelTableCfg}
         onSave={(next) => {
@@ -395,7 +429,7 @@ export default function FunnelTab() {
           setFunnelCfgOpen(false);
         }}
       />
-      <CustomChartsSection sectionNo="6" chartScope="5-2:funnel-charts" metricScope="5-2:viz-kpi" title="커스텀 차트" />
+      <CustomChartsSection sectionNo="6" chartScope="5-2:funnel-charts" metricScope="5-2:viz-kpi" title={tr("커스텀 차트", "Custom charts")} />
     </div>
   );
 }

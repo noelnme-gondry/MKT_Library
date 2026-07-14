@@ -16,8 +16,66 @@ const SCORECARD_SCOPE = "5-2:scorecard";
 // 커스텀 지표 정의는 운영 대시보드(Viz KPI)와 공유 — 한 번 만들면 양쪽에 나타남.
 const KPI_METRIC_SCOPE = "5-2:viz-kpi";
 
-export default function ScorecardTab({ domain = "performance" } = {}) {
+// 정적 UI 카피(ko/en) — domain 리라벨(C.scLabels 등)과는 별개 축.
+const SCORE_COPY = {
+  ko: {
+    periodLabel: "기간",
+    days: (d) => `${d}일`,
+    customMetric: "＋ 커스텀 지표",
+    customMetricTitle: "데이터 컬럼으로 나만의 지표 만들기",
+    reset: "초기화",
+    resetTitle: "전체 표시·기본 순서·기본 크기",
+    editDone: "완료",
+    edit: "✏️ 편집",
+    editTitle: "카드를 그 자리에서 드래그·표시/숨김·크기 편집",
+    editHint: "⠿ 드래그로 이동 · 👁 표시/숨김. 변경은 자동 저장됩니다.",
+    noPrevData: "직전 데이터 없음",
+    wow: (arrow, pct) => `${arrow} ${pct}% WoW`,
+    kpiTitle: (w) => `핵심 KPI (최근 ${w}일)`,
+    profit: "이익",
+    profitMargin: "이익률",
+    scFootnote: (w) => `WoW = 최근 ${w}일 vs 직전 ${w}일. 색은 지표 성격 반영(비용 상승 지표↓·성과 지표↑ = 초록). 비용은 중립(규모). 카드 클릭 시 일별 상세.`,
+    dailyDetailTitle: (w, label, n) => `일별 상세 — ${label} (최근 ${n}일)`,
+    legendHint: (w) => `🟠 비교주(직전 ${w}일) / 🔵 목표주(최근 ${w}일) · 카드 재클릭 시 닫힘`,
+    insufficientData: (n) => `⚠ 데이터가 충분하지 않습니다 (${n}일). 있는 만큼 표시합니다.`,
+    pngBtn: "⬇ PNG",
+    noData: "데이터 없음",
+  },
+  en: {
+    periodLabel: "Period",
+    days: (d) => `${d}d`,
+    customMetric: "＋ Custom metric",
+    customMetricTitle: "Build your own metric from data columns",
+    reset: "Reset",
+    resetTitle: "Show all · default order · default size",
+    editDone: "Done",
+    edit: "✏️ Edit",
+    editTitle: "Drag to reorder · show/hide · resize cards in place",
+    editHint: "⠿ Drag to move · 👁 show/hide. Changes save automatically.",
+    noPrevData: "No prior data",
+    wow: (arrow, pct) => `${arrow} ${pct}% WoW`,
+    kpiTitle: (w) => `Key KPIs (last ${w} days)`,
+    profit: "Profit",
+    profitMargin: "Profit Margin",
+    scFootnote: (w) => `WoW = last ${w}d vs prior ${w}d. Color reflects metric direction (cost-type ↓ / performance-type ↑ = green). Cost is neutral (scale). Click a card for daily detail.`,
+    dailyDetailTitle: (w, label, n) => `Daily detail — ${label} (last ${n} days)`,
+    legendHint: (w) => `🟠 Comparison week (prior ${w}d) / 🔵 Target week (last ${w}d) · click card again to close`,
+    insufficientData: (n) => `⚠ Not enough data (${n} days). Showing what's available.`,
+    pngBtn: "⬇ PNG",
+    noData: "No data",
+  },
+};
+
+// domain 라벨(C.scLabels)의 영문 대응 — content/performance 공통 키만(값·계산 불변, 표시명만).
+const SC_LABELS_EN = {
+  cost: "Cost", inst: "Installs", cpi: "CPI", act: "Actions", cpa: "CPA",
+  cvr: "CVR", ctr: "CTR", roas: "ROAS",
+};
+
+export default function ScorecardTab({ domain = "performance", locale = "ko" } = {}) {
   const C = resolveDashCopy(domain);
+  const T = SCORE_COPY[locale] || SCORE_COPY.ko;
+  const scLabel = (k) => (locale === "en" ? (SC_LABELS_EN[k] || C.scLabels[k] || k) : C.scLabels[k]);
   const isContent = domain === "content";
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
@@ -81,7 +139,7 @@ export default function ScorecardTab({ domain = "performance" } = {}) {
     const hasRev = mapped.has("revenue_d7");
 
     // 기본 지표 카드 — chartable=일별 상세 차트 지원.
-    const L = C.scLabels;
+    const L = { cost: scLabel("cost"), inst: scLabel("inst"), cpi: scLabel("cpi"), act: scLabel("act"), cpa: scLabel("cpa"), cvr: scLabel("cvr"), ctr: scLabel("ctr"), roas: scLabel("roas") };
     const base = [
       { k: "cost", label: L.cost, val: recent.cost, prev: prev.cost, fmt: fmtCurrency, better: "none", chartable: true },
       mapped.has("installs") && { k: "inst", label: L.inst, val: recent.inst, prev: prev.inst, fmt: v => Math.round(v).toLocaleString(), better: "high", chartable: true },
@@ -96,8 +154,8 @@ export default function ScorecardTab({ domain = "performance" } = {}) {
     // 프리셋(이익·이익률) — 매출 있을 때. 일별 상세 차트 지원.
     const presets = [];
     if (hasRev) {
-      presets.push({ k: "profit", label: "이익", val: recent.revenue - recent.cost, prev: prev.revenue - prev.cost, fmt: fmtCurrency, better: "high", chartable: true });
-      presets.push({ k: "profitMargin", label: "이익률", val: recent.revenue ? (recent.revenue - recent.cost) / recent.revenue : null, prev: prev.revenue ? (prev.revenue - prev.cost) / prev.revenue : null, fmt: v => v != null ? (v * 100).toFixed(1) + "%" : "—", better: "high", chartable: true });
+      presets.push({ k: "profit", label: T.profit, val: recent.revenue - recent.cost, prev: prev.revenue - prev.cost, fmt: fmtCurrency, better: "high", chartable: true });
+      presets.push({ k: "profitMargin", label: T.profitMargin, val: recent.revenue ? (recent.revenue - recent.cost) / recent.revenue : null, prev: prev.revenue ? (prev.revenue - prev.cost) / prev.revenue : null, fmt: v => v != null ? (v * 100).toFixed(1) + "%" : "—", better: "high", chartable: true });
     }
     // 커스텀 지표(공유 스코프) — recent/prev 각각 compute해 값+WoW. 일별 상세 차트 지원(seriesVal에서 def 재조회).
     const customCards = (customMetrics || []).map((def) => {
@@ -106,23 +164,24 @@ export default function ScorecardTab({ domain = "performance" } = {}) {
     });
 
     return [...base, ...presets, ...customCards];
-  }, [hasData, recent, prev, mapping, displayCurrency, customMetrics, C]);
+  }, [hasData, recent, prev, mapping, displayCurrency, customMetrics, C, T, locale]);
 
   // 커스텀 지표 빌더 피연산자 = 실제 매핑된 컬럼만.
   const builderFields = useMemo(() => {
     const entries = Object.entries((csvData && csvData.mapping) || {});
     const set = new Set(entries.map(([, v]) => v));
     const headerFor = (k) => (entries.find(([, v]) => v === k) || [])[0] || "";
+    const isEn = locale === "en";
     return [
-      { key: "cost", label: "비용", header: headerFor("cost") },
-      set.has("impressions") && { key: "impressions", label: "노출수", header: headerFor("impressions") },
-      set.has("clicks") && { key: "clicks", label: "클릭수", header: headerFor("clicks") },
-      set.has("installs") && { key: "installs", label: "설치수", header: headerFor("installs") },
-      set.has("actions") && { key: "actions", label: "액션/가입", header: headerFor("actions") },
-      set.has("revenue_d7") && { key: "revenue", label: "매출(D7)", header: headerFor("revenue_d7") },
-      set.has("pu_d7") && { key: "purchases", label: "결제건수(D7)", header: headerFor("pu_d7") },
+      { key: "cost", label: isEn ? "Cost" : "비용", header: headerFor("cost") },
+      set.has("impressions") && { key: "impressions", label: isEn ? "Impressions" : "노출수", header: headerFor("impressions") },
+      set.has("clicks") && { key: "clicks", label: isEn ? "Clicks" : "클릭수", header: headerFor("clicks") },
+      set.has("installs") && { key: "installs", label: isEn ? "Installs" : "설치수", header: headerFor("installs") },
+      set.has("actions") && { key: "actions", label: isEn ? "Actions/Signups" : "액션/가입", header: headerFor("actions") },
+      set.has("revenue_d7") && { key: "revenue", label: isEn ? "Revenue (D7)" : "매출(D7)", header: headerFor("revenue_d7") },
+      set.has("pu_d7") && { key: "purchases", label: isEn ? "Purchases (D7)" : "결제건수(D7)", header: headerFor("pu_d7") },
     ].filter(Boolean);
-  }, [csvData]);
+  }, [csvData, locale]);
 
   // 유저 지표 뷰 설정(표시/순서) 적용 — 후보(cards)에 hidden/order 반영(§Phase B).
   // scopeCfg 미설정(기본)이면 cards 원순서 그대로(byte-동일).
@@ -150,7 +209,7 @@ export default function ScorecardTab({ domain = "performance" } = {}) {
           <div className="ab-stat-label">{c.label}</div>
           <div className="ab-stat-value tnum">{c.fmt(c.val)}</div>
           <div className={`ab-stat-hint ${cls}`}>
-            {d == null ? "직전 데이터 없음" : `${arrow} ${Math.abs(d * 100).toFixed(1)}% WoW`}
+            {d == null ? T.noPrevData : T.wow(arrow, Math.abs(d * 100).toFixed(1))}
           </div>
         </div>
       ),
@@ -276,7 +335,7 @@ export default function ScorecardTab({ domain = "performance" } = {}) {
   }, [hasData, daily, selectedMetric, windowDays, isDarkMode, customMetrics]);
 
   if (!hasData) {
-    return <div className="tab-pane active"><p className="muted">데이터 없음</p></div>;
+    return <div className="tab-pane active"><p className="muted">{T.noData}</p></div>;
   }
 
   return (
@@ -284,30 +343,30 @@ export default function ScorecardTab({ domain = "performance" } = {}) {
       {/* 예산 배분 진단·CTA는 마케팅 전용(콘텐츠엔 예산배분 도구가 없음) → content 제외. */}
       {!isContent && <BudgetHealthCard />}
       <section className="block" id="s-score">
-        <h2 className="section-title"><span className="ix">§1</span>핵심 KPI (최근 {windowDays}일)</h2>
+        <h2 className="section-title"><span className="ix">§1</span>{T.kpiTitle(windowDays)}</h2>
         <div className="ab-pillgroup" style={{ display: "flex", alignItems: "center" }}>
-          <span className="ab-pillgroup-label">기간</span>
+          <span className="ab-pillgroup-label">{T.periodLabel}</span>
           {[7, 14, 28].map(d => (
             <button key={d} className={`ab-pill ${windowDays === d ? "active" : ""}`} onClick={() => setWindowDays(d)}>
-              {d}일
+              {T.days(d)}
             </button>
           ))}
-          <button className="ab-pill" onClick={() => setBuilderOpen(true)} style={{ marginLeft: "auto" }} title="데이터 컬럼으로 나만의 지표 만들기">
-            ＋ 커스텀 지표
+          <button className="ab-pill" onClick={() => setBuilderOpen(true)} style={{ marginLeft: "auto" }} title={T.customMetricTitle}>
+            {T.customMetric}
           </button>
           {editMode ? (
             <>
-              <button className="ab-pill" onClick={() => resetViewConfig(SCORECARD_SCOPE)} title="전체 표시·기본 순서·기본 크기">초기화</button>
-              <button className="ab-pill active" onClick={() => setEditMode(false)} style={{ fontWeight: 700 }}>완료</button>
+              <button className="ab-pill" onClick={() => resetViewConfig(SCORECARD_SCOPE)} title={T.resetTitle}>{T.reset}</button>
+              <button className="ab-pill active" onClick={() => setEditMode(false)} style={{ fontWeight: 700 }}>{T.editDone}</button>
             </>
           ) : (
-            <button className="ab-pill" onClick={() => setEditMode(true)} title="카드를 그 자리에서 드래그·표시/숨김·크기 편집">
-              ✏️ 편집
+            <button className="ab-pill" onClick={() => setEditMode(true)} title={T.editTitle}>
+              {T.edit}
             </button>
           )}
         </div>
         {editMode && (
-          <p className="muted" style={{ fontSize: "11px", margin: "8px 0 0" }}>⠿ 드래그로 이동 · 👁 표시/숨김. 변경은 자동 저장됩니다.</p>
+          <p className="muted" style={{ fontSize: "11px", margin: "8px 0 0" }}>{T.editHint}</p>
         )}
 
         <div style={{ marginTop: "10px" }}>
@@ -320,7 +379,7 @@ export default function ScorecardTab({ domain = "performance" } = {}) {
           />
         </div>
         <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>
-          {C.scFootnote(windowDays)}
+          {locale === "en" ? T.scFootnote(windowDays) : C.scFootnote(windowDays)}
         </p>
       </section>
 
@@ -338,14 +397,14 @@ export default function ScorecardTab({ domain = "performance" } = {}) {
       {selectedMetric && (
         <section className="block" id="s-score-daily" style={{ paddingTop: "8px" }}>
           <h3 style={{ fontSize: "13px", fontWeight: "600", margin: "0 0 8px", color: "var(--text-muted)" }}>
-            일별 상세 — {cards.find(c => c.k === selectedMetric)?.label || selectedMetric} (최근 {Math.min(daily.length, 2 * windowDays)}일)
+            {T.dailyDetailTitle(windowDays, cards.find(c => c.k === selectedMetric)?.label || selectedMetric, Math.min(daily.length, 2 * windowDays))}
           </h3>
           <p className="muted" style={{ fontSize: "11px", margin: "0 0 8px" }}>
-            🟠 비교주(직전 {windowDays}일) / 🔵 목표주(최근 {windowDays}일) · 카드 재클릭 시 닫힘
+            {T.legendHint(windowDays)}
           </p>
           {daily.slice(-2 * windowDays).length < 2 * windowDays && (
             <p className="muted" style={{ fontSize: "11px", margin: "4px 0 0" }}>
-              ⚠ 데이터가 충분하지 않습니다 ({daily.slice(-2 * windowDays).length}일). 있는 만큼 표시합니다.
+              {T.insufficientData(daily.slice(-2 * windowDays).length)}
             </p>
           )}
           {daily.slice(-2 * windowDays).length >= 2 && (
@@ -358,7 +417,7 @@ export default function ScorecardTab({ domain = "performance" } = {}) {
             style={{ marginTop: "8px" }}
             onClick={() => downloadChartAsPNG(chartRef.current, "scorecard_daily")}
           >
-            ⬇ PNG
+            {T.pngBtn}
           </button>
         </section>
       )}
