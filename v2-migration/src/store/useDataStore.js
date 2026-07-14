@@ -232,8 +232,9 @@ export const IA = [
 // p4.groups에 존재하지 않는 "10" 그룹을 참조하던 죽은 참조·왜곡 모두 제거.
 export const SECTIONS = [
   { id: "guide", label: "가이드", groups: ["01", "02", "03", "04"] },
-  { id: "analysis", label: "분석", groups: ["08", "05", "06", "07"] },
-  { id: "content", label: "콘텐츠 분석", groups: ["09"] },
+  // 콘텐츠(09)를 분석 섹션으로 흡수 — 별도 "콘텐츠 분석" 카테고리 제거(사이드바·
+  // 브레드크럼 자동 반영). slug(/content/*)는 SEO·북마크 보존 위해 그대로 둠.
+  { id: "analysis", label: "분석", groups: ["08", "05", "06", "07", "09"] },
 ];
 
 export function findGroupSection(groupId) {

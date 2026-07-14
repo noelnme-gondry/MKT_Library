@@ -48,9 +48,11 @@ v2-migration/
 | `/tools/aha-moment` | 5-20 | tools/AhaMomentFinder.jsx (Aha) |
 | `/content/element-analysis` | 9-1 | tools/ContentElementAnalyzer.jsx (요소 중요도, regMath 신규 UI) |
 | `/content/killer-content` | 9-2 | tools/KillerContentFinder.jsx → AhaMomentFinder domain="content" |
+| `/guide` | guide-index | GuideIndex.jsx (SOP 목록, 블로그처럼 자체 주소) |
 | `/guide/<kebab>` | 1-x~4-x | sops/SopContent.jsx (SOP) |
 
-**Content Analytics(9-x)**: 퍼포먼스 엔진을 콘텐츠 도메인 라벨로 리라벨한 신규 대분류(SECTIONS `content`). 라벨팩 SSOT=`utils/contentDomain.js`(AHA_COPY 도메인별 카피·ELEMENT_COPY). CSV 격리 그룹 `content_attr`(9-1)·`content_aha`(9-2). PageClient 폴백 가드에 `!startsWith("9-")` 추가(SopContent 누수 차단). LandingPage 3번째 트랙 `content`.
+**Content Analytics(9-x)**: 퍼포먼스 엔진을 콘텐츠 도메인 라벨로 리라벨. 라벨팩 SSOT=`utils/contentDomain.js`. CSV 격리 그룹 `content_*`. PageClient 폴백 가드 `!startsWith("9-")`(SopContent 누수 차단). **콘텐츠는 SECTIONS `analysis`로 흡수**(별도 카테고리 제거, 사이드바 자동 반영). slug `/content/*`는 SEO·북마크 보존.
+**가이드 인덱스**: `/guide`=`guide-index`(routeMap) → PageClient(KR·EN) 분기 → `GuideIndex.jsx`. 랜딩 무주소 track(guide/content) 제거 → 뒤로가기 정상.
 
 ## 3. 도메인 매핑 (도구 UI ↔ 순수 엔진)
 | 도구 (UI) | 엔진 (수학, utils/) | 비고 |
