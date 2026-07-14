@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IA, SECTIONS } from "@/store/useDataStore";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
-import { setLocalePref } from "@/lib/localePref";
 import LocaleAutoRedirect from "@/components/LocaleAutoRedirect";
+import ProductPreview from "@/components/landing/ProductPreview";
+import ToolCarousel from "@/components/landing/ToolCarousel";
 
 // 랜딩 화면 전용 EN 카피 — 앱 전체 번역은 범위 밖(§1), 이 랜딩 히어로/3카드/블로그
 // 배너/소셜 행만 locale 분기. LandingGuide/Analyze/Content 하위 트랙은 IA 원본
@@ -15,6 +15,15 @@ const LANDING_COPY = {
     eyebrow: "Growth Opt Playbook",
     title: "무엇이 궁금하세요?",
     deck: "질문을 고르면 그 도구로 바로 들어갑니다. 데이터가 없어도 예시로 먼저 보고, 준비되면 내 데이터로 분석하세요. 모든 분석 도구 무료.",
+    hero: {
+      title: "Excel로 못 푸는 마케팅 분석,\n브라우저에서 바로.",
+      sub: "증분·MMM·포화도·성과 변동 — 손으로 못 푸는 분석을 CSV 한 장으로. 설치·로그인 없이, 데이터는 100% 브라우저에서만 처리됩니다.",
+      ctaPrimary: "내 데이터로 분석 시작",
+      ctaDemo: "데모 먼저 보기",
+      privacy: "🔒 서버 전송 0 · 브라우저 메모리에서만 처리",
+      previewCaption: "실제 운영 대시보드 미리보기 (샘플 데이터)",
+      carouselTitle: "궁금한 것부터 골라보세요",
+    },
     localeSwitchLabel: "English",
     guide: {
       step: "가이드",
@@ -52,6 +61,15 @@ const LANDING_COPY = {
     eyebrow: "Growth Opt Playbook",
     title: "What are you curious about?",
     deck: "Pick a question and jump straight into the tool. No data yet? See a live example first, then analyze your own. All analysis tools are free.",
+    hero: {
+      title: "Marketing analysis Excel can't do —\nright in your browser.",
+      sub: "Incrementality, MMM, saturation, performance shifts — analyses you can't do by hand, from a single CSV. No install, no login; your data stays 100% in the browser.",
+      ctaPrimary: "Analyze my data",
+      ctaDemo: "See a live demo",
+      privacy: "🔒 Nothing sent to any server · processed in browser memory only",
+      previewCaption: "Live operations dashboard preview (sample data)",
+      carouselTitle: "Start with whatever you're curious about",
+    },
     localeSwitchLabel: "한국어",
     guide: {
       step: "Guides",
@@ -89,12 +107,8 @@ const LANDING_COPY = {
 
 const GUIDE_SECTION = SECTIONS.find((s) => s.id === "guide");
 const ANALYSIS_SECTION = SECTIONS.find((s) => s.id === "analysis");
-const CONTENT_SECTION = SECTIONS.find((s) => s.id === "content");
 const GUIDE_GROUP_IDS = new Set(GUIDE_SECTION.groups);
 const OPS_GROUP_IDS = new Set(ANALYSIS_SECTION.groups);
-const CONTENT_GROUP_IDS = new Set(CONTENT_SECTION ? CONTENT_SECTION.groups : []);
-
-const GROUP_ICONS = { "05": "📊", "06": "🎨", "07": "🧪", "09": "✍️" };
 
 // 홈 1층에 도구를 "질문"으로 노출 — 유저가 자기 궁금증으로 도구를 고르게(선택성↑)
 // + 궁금해서 더 누르게(호기심 훅). 실제 도구 이름은 카드 desc에 함께 노출(식별 유지).
@@ -132,21 +146,11 @@ function findMeta(id) {
   return null;
 }
 
-function escapeHtml(unsafe) {
-  if (!unsafe) return "";
-  return String(unsafe)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
 /* ──────────────────────────── STEP 1 (홈) ──────────────────────────── */
 // 재구성: 추상적 3-트랙 게이트(유저가 안 눌러 이탈)를 제거하고, 분석 도구를 홈에서
 // 바로 "질문형 카드"로 노출 → 한 번 클릭에 도구+라이브 데모 진입(선택성·호기심↑).
 // 가이드·콘텐츠는 보조 카드로 강등(트랙 유지), 블로그·소셜은 그대로.
-function LandingHome({ onTrack, locale }) {
+function LandingHome({ locale }) {
   const router = useRouter();
   const L = LANDING_COPY[locale] || LANDING_COPY.ko;
   const H = TOOL_HOOKS[locale] || TOOL_HOOKS.ko;
@@ -166,166 +170,99 @@ function LandingHome({ onTrack, locale }) {
     (a, g) => a + g.items.length,
     0
   );
-  const totalContent = IA.filter((g) => CONTENT_GROUP_IDS.has(g.id)).reduce(
-    (a, g) => a + g.items.filter((it) => !it.hidden).length,
-    0
-  );
-
-  const handleLocaleSwitch = () => {
-    const next = locale === "en" ? "ko" : "en";
-    setLocalePref(next);
-    router.push(next === "en" ? "/en" : "/");
-  };
   // 번역된 도구만 /en 유지, 미번역은 KR로(Sidebar.navHref와 동일 규칙 — §plan).
   const goTool = (id) =>
     router.push(locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/");
   const ctaLabel = locale === "en" ? "See a live example →" : "예시로 바로 보기 →";
+  const hero = L.hero || {};
+
+  // 캐러셀 카드 = 분석 도구(콘텐츠 09 포함, SECTIONS.analysis에 흡수됨)를 "질문"으로
+  // 평탄화(그룹 제목=eyebrow, 훅=헤드라인). opsGroups가 09를 이미 포함.
+  const carouselCards = opsGroups.flatMap((g) =>
+    g.items
+      .filter((it) => !it.hidden)
+      .map((it) => {
+        const meta = findMeta(it.id);
+        if (!meta) return null;
+        return {
+          id: it.id,
+          eyebrow: g.title,
+          headline: H[it.id] || meta.title,
+          mockTitle: meta.title,
+        };
+      })
+      .filter(Boolean)
+  );
+  const pickTool = (id) => { fireGa("landing_tool_pick", { tool: id }); goTool(id); };
 
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "12px",
-        }}
-      >
-        <div className="page-eyebrow">{L.eyebrow}</div>
-        <button
-          type="button"
-          onClick={handleLocaleSwitch}
-          className="btn ghost"
-          style={{ fontSize: "12px" }}
-        >
-          {L.localeSwitchLabel}
-        </button>
-      </div>
+      {/* 브랜드(로고+이름)는 전역 Header 좌상단으로 이동, 언어 전환도 Header EN 토글로
+          일원화 — 랜딩 자체 eyebrow/English 버튼(중복) 제거. */}
       {locale !== "en" && <LocaleAutoRedirect />}
-      <h1 className="page-title">{L.title}</h1>
-      <p className="page-deck">{L.deck}</p>
 
-      {/* 1층 — 질문형 분석 도구(바로 도구+라이브 데모). 그룹 헤더로 가벼운 구조만. */}
-      {opsGroups.map((g) => (
-        <section key={g.id} className="block" style={{ marginTop: "1.2rem" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              marginBottom: "10px",
-            }}
-          >
-            <span style={{ fontSize: "18px" }}>{GROUP_ICONS[g.id] || "📦"}</span>
-            <h2
-              className="section-title"
-              style={{ margin: 0, border: "none", padding: 0 }}
-            >
-              {g.title}
-            </h2>
-          </div>
-          <div className="phase-grid">
-            {g.items.map((item) => {
-              const meta = findMeta(item.id);
-              if (!meta) return null;
-              const hook = H[item.id];
-              const sub = hook
-                ? meta.title + (meta.desc ? ` · ${meta.desc}` : "")
-                : meta.desc || "";
-              return (
-                <a
-                  key={item.id}
-                  className="phase-card phase-card-tool"
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    goTool(item.id);
-                  }}
-                  style={{ cursor: "pointer", textDecoration: "none" }}
-                >
-                  <div className="phase-card-title">{hook || meta.title}</div>
-                  <div className="phase-card-desc">{sub}</div>
-                  <div className="phase-card-cta">{ctaLabel}</div>
-                </a>
-              );
-            })}
-          </div>
-        </section>
-      ))}
-
-      {/* 2층 — 가이드·콘텐츠 진입(보조). 트랙 선택 유지, 시각 위계는 낮춤. */}
-      <div
-        className="phase-grid"
-        style={{
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          marginTop: "1.6rem",
-        }}
-      >
-        <div
-          className="phase-card"
-          style={{ cursor: "pointer" }}
-          onClick={() => onTrack("guide")}
-        >
-          <div className="phase-card-head">
-            <span className="phase-card-step">{L.guide.step}</span>
-            <span className="phase-card-tag">{L.guide.tag}</span>
-          </div>
-          <div className="phase-card-title">{L.guide.title}</div>
-          <div className="phase-card-desc">{L.guide.desc}</div>
-          <div className="phase-card-foot">
-            <span className="phase-card-meta tnum">{totalGuides}{L.guide.metaSuffix}</span>
-          </div>
-          <div className="phase-card-cta">{L.guide.cta}</div>
+      {/* ── 히어로 (Semrush형 전환 히어로) ── */}
+      <section style={{ textAlign: "center", padding: "1.5rem 0 0.5rem", maxWidth: "780px", margin: "0 auto" }}>
+        <h1 className="page-title" style={{ fontSize: "clamp(28px, 5vw, 46px)", lineHeight: 1.2, whiteSpace: "pre-line", marginBottom: "1rem" }}>
+          {hero.title}
+        </h1>
+        <p className="page-deck" style={{ fontSize: "15px", maxWidth: "620px", margin: "0 auto 1.4rem" }}>
+          {hero.sub}
+        </p>
+        <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+          <button type="button" className="btn primary" style={{ fontSize: "14px", padding: "12px 22px" }} onClick={() => { fireGa("landing_cta", { action: "analyze" }); goTool("5-2"); }}>
+            {hero.ctaPrimary} →
+          </button>
+          <button type="button" className="btn ghost" style={{ fontSize: "14px", padding: "12px 22px" }} onClick={() => { fireGa("landing_cta", { action: "demo" }); goTool("5-2"); }}>
+            ▶ {hero.ctaDemo}
+          </button>
         </div>
+        <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "14px" }}>{hero.privacy}</div>
+      </section>
 
-        {totalContent > 0 && (
-          <div
-            className="phase-card phase-card-tool"
-            style={{ cursor: "pointer" }}
-            onClick={() => onTrack("content")}
-          >
-            <div className="phase-card-head">
-              <span className="phase-card-step">{L.content.step}</span>
-              <span className="phase-card-tag">{L.content.tag}</span>
-            </div>
-            <div className="phase-card-title">{L.content.title}</div>
-            <div className="phase-card-desc">{L.content.desc}</div>
-            <div className="phase-card-foot">
-              <span className="phase-card-meta tnum">
-                {totalContent}{L.content.metaSuffix}
-              </span>
-            </div>
-            <div className="phase-card-cta">{L.content.cta}</div>
-          </div>
-        )}
+      {/* ── 라이브 제품 미리보기(시연 슬롯 — 여러 도구 로테이션, 나중 mp4 교체 가능) ── */}
+      <div style={{ marginTop: "1.6rem" }}>
+        <ProductPreview locale={locale} />
       </div>
 
-      {/* 블로그 진입 — 읽을거리라 풀폭 가로 배너로 아래에 배치. /blog로 이동. */}
-      <Link
-        href={locale === "en" ? "/en/blog" : "/blog"}
-        className="phase-card"
+      {/* ── 질문 캐러셀(도구 진입) ── */}
+      <ToolCarousel
+        cards={carouselCards}
+        title={hero.carouselTitle}
+        onPick={pickTool}
+        ctaLabel={ctaLabel}
+        liveCardId="5-2"
+        locale={locale}
+      />
+
+      {/* ── 블로그 | SOP 나란히(읽을거리·문서 2대장). 각자 자체 주소(/blog · /guide). ── */}
+      <div
         style={{
-          display: "flex",
-          alignItems: "center",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           gap: "16px",
-          marginTop: "1.1rem",
-          textDecoration: "none",
-          cursor: "pointer",
+          marginTop: "2.5rem",
         }}
       >
-        <span style={{ fontSize: "30px", lineHeight: 1 }}>📝</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="phase-card-title" style={{ marginBottom: "3px" }}>
-            {L.blogBanner.title}
+        <Link href={locale === "en" ? "/en/blog" : "/blog"} className="home-hub-card" style={{ textDecoration: "none" }}>
+          <div className="home-hub-icon" style={{ background: "linear-gradient(135deg,#a78bfa33,#4cd7f622)" }}>📝</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="phase-card-title" style={{ marginBottom: "4px" }}>{L.blogBanner.title}</div>
+            <div className="phase-card-desc" style={{ margin: 0 }}>{L.blogBanner.desc}</div>
           </div>
-          <div className="phase-card-desc" style={{ margin: 0 }}>
-            {L.blogBanner.desc}
+          <span className="phase-card-cta" style={{ margin: 0, whiteSpace: "nowrap" }}>{L.blogBanner.cta}</span>
+        </Link>
+
+        <Link href={locale === "en" ? "/en/guide" : "/guide"} className="home-hub-card" style={{ textDecoration: "none" }}>
+          <div className="home-hub-icon" style={{ background: "linear-gradient(135deg,#adc6ff33,#4ade8022)" }}>📘</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="phase-card-title" style={{ marginBottom: "4px" }}>{L.guide.title}</div>
+            <div className="phase-card-desc" style={{ margin: 0 }}>{L.guide.desc}</div>
+            <div className="phase-card-meta tnum" style={{ marginTop: "6px", color: "var(--text-muted)", fontSize: "11.5px" }}>{totalGuides}{L.guide.metaSuffix}</div>
           </div>
-        </div>
-        <span className="phase-card-cta" style={{ whiteSpace: "nowrap", margin: 0 }}>
-          {L.blogBanner.cta}
-        </span>
-      </Link>
+          <span className="phase-card-cta" style={{ margin: 0, whiteSpace: "nowrap" }}>{L.guide.cta}</span>
+        </Link>
+      </div>
 
       {/* 데이터 준비 가이드 — 상단이 아닌 맨 밑에 약하게(자기서비스 탈출구). */}
       {dataGuideItem && (
@@ -375,190 +312,9 @@ function LandingHome({ onTrack, locale }) {
   );
 }
 
-/* ──────────────────────────── STEP 2a ──────────────────────────── */
-function LandingGuide({ onBack, onNavigate, locale }) {
-  // 가이드 섹션(01~04)을 병렬로 나열 — 예전엔 셋업/운영/운영후분석 3단계로
-  // 불균등하게 묶었으나, 그룹당 1카드로 펼쳐 순서만 참고하게 함(강제 단계 아님).
-  const guideGroups = IA.filter((g) => GUIDE_SECTION.groups.includes(g.id));
-  const L = LANDING_COPY[locale] || LANDING_COPY.ko;
-
-  return (
-    <>
-      <button
-        className="landing-back-btn"
-        onClick={onBack}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "6px",
-          background: "var(--bg-2)",
-          border: "1px solid var(--border)",
-          color: "var(--text-2)",
-          borderRadius: "9px",
-          padding: "7px 13px",
-          fontSize: "12.5px",
-          cursor: "pointer",
-          marginBottom: "1.2rem",
-        }}
-      >
-        {L.back}
-      </button>
-      <div className="page-eyebrow">운영 가이드</div>
-      <h1 className="page-title">어느 가이드를 보시겠어요?</h1>
-      <p className="page-deck">
-        셋업 → 운영 → 소재 → 운영 후 분석, 참고할 순서대로 나열했습니다.
-      </p>
-      <div className="phase-grid" style={{ marginTop: "1.4rem" }}>
-        {guideGroups.map((g, idx) => (
-          <a
-            key={g.id}
-            className="phase-card"
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              onNavigate(g.items[0].id);
-            }}
-            style={{ cursor: "pointer", textDecoration: "none" }}
-          >
-            <div className="phase-card-head">
-              <span className="phase-card-step">STEP {idx + 1}</span>
-            </div>
-            <div className="phase-card-title">{g.title}</div>
-            <div className="phase-card-desc">{g.desc}</div>
-            <div className="phase-card-foot">
-              <span className="phase-card-meta">
-                {g.items.map((it) => it.title).join(" / ")}
-              </span>
-              <span className="phase-card-meta tnum">{g.items.length}개 항목</span>
-            </div>
-            <div className="phase-card-cta">시작하기 →</div>
-          </a>
-        ))}
-      </div>
-    </>
-  );
-}
-
-/* ──────────────────────────── STEP 2b (컨텐츠) ──────────────────────────── */
-function LandingContent({ onBack, onNavigate, locale }) {
-  const contentGroups = IA.filter((g) => CONTENT_GROUP_IDS.has(g.id));
-  const L = LANDING_COPY[locale] || LANDING_COPY.ko;
-
-  const findMeta = (id) => {
-    for (const group of IA) {
-      const item = group.items.find((i) => i.id === id);
-      if (item) return item;
-    }
-    return null;
-  };
-
-  return (
-    <>
-      <button
-        className="landing-back-btn"
-        onClick={onBack}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "6px",
-          background: "var(--bg-2)",
-          border: "1px solid var(--border)",
-          color: "var(--text-2)",
-          borderRadius: "9px",
-          padding: "7px 13px",
-          fontSize: "12.5px",
-          cursor: "pointer",
-          marginBottom: "1.2rem",
-        }}
-      >
-        {L.back}
-      </button>
-      <div className="page-eyebrow">컨텐츠 성과 분석</div>
-      <h1 className="page-title">무엇을 알고 싶으세요?</h1>
-      <p className="page-deck">
-        블로그·SNS·뉴스레터 콘텐츠 성과 CSV를 올리면 바로 분석합니다.{" "}
-        <strong>모든 도구를 무료</strong>로 사용할 수 있습니다.
-      </p>
-
-      {contentGroups.map((g) => (
-        <section key={g.id} className="block" style={{ marginTop: "1rem" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              marginBottom: "10px",
-            }}
-          >
-            <span style={{ fontSize: "18px" }}>
-              {GROUP_ICONS[g.id] || "📦"}
-            </span>
-            <h2
-              className="section-title"
-              style={{ margin: 0, border: "none", padding: 0 }}
-            >
-              {g.title}
-            </h2>
-          </div>
-          <div className="phase-grid">
-            {g.items.filter((it) => !it.hidden).map((item) => {
-              const meta = findMeta(item.id);
-              if (!meta) return null;
-              return (
-                <a
-                  key={item.id}
-                  className="phase-card"
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onNavigate(item.id);
-                  }}
-                  style={{ cursor: "pointer", textDecoration: "none" }}
-                >
-                  <div className="phase-card-title">{meta.title}</div>
-                  <div className="phase-card-desc">{meta.desc || ""}</div>
-                  <div className="phase-card-cta">바로 사용 →</div>
-                </a>
-              );
-            })}
-          </div>
-        </section>
-      ))}
-    </>
-  );
-}
-
 /* ──────────────────────────── MAIN ──────────────────────────── */
-// locale: "ko"(default, "/") | "en"("/en"). 랜딩 화면만 번역 대상(§1) — 하위
-// 트랙(LandingGuide/Analyze/Content)은 IA 원본 한글 데이터 그대로, 뒤로가기
-// 버튼 라벨만 locale 분기.
+// locale: "ko"(default, "/") | "en"("/en"). 홈은 단일 화면(무주소 게이트 트랙 제거 —
+// 가이드는 /guide 라우트, 콘텐츠는 분석에 흡수). 뒤로가기 정상.
 export default function LandingPage({ locale = "ko" }) {
-  const [track, setTrack] = useState(null); // null = home, "guide", "content"
-  const router = useRouter();
-
-  const handleNavigate = (routeId) => {
-    // Client-side nav → preserves the module-level Zustand store (csvData etc.).
-    // The catch-all page effect then mirrors the resolved id into the store.
-    router.push(idToSlug[routeId] || "/");
-  };
-
-  if (track === "guide") {
-    return (
-      <LandingGuide
-        onBack={() => setTrack(null)}
-        onNavigate={handleNavigate}
-        locale={locale}
-      />
-    );
-  }
-  if (track === "content") {
-    return (
-      <LandingContent
-        onBack={() => setTrack(null)}
-        onNavigate={handleNavigate}
-        locale={locale}
-      />
-    );
-  }
-  return <LandingHome onTrack={setTrack} locale={locale} />;
+  return <LandingHome locale={locale} />;
 }

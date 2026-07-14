@@ -41,6 +41,8 @@ describe("LandingPage render smoke", () => {
   it("with-data mounts", () => {
     seedWithData();
     expect(() => render(<LandingPage />)).not.toThrow();
-    expect(document.querySelector(".phase-grid")).toBeTruthy();
+    // 재구성된 홈: 질문 캐러셀 + 블로그|SOP 허브 카드.
+    expect(document.querySelector(".carousel-track")).toBeTruthy();
+    expect(document.querySelector(".home-hub-card")).toBeTruthy();
   });
 });

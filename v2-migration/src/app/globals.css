@@ -695,6 +695,61 @@
       .btn.ghost {
         background: transparent;
       }
+      /* 랜딩 캐러셀 ←/→ 원형 버튼(Semrush 히어로 참조) */
+      .carousel-arrow {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: 1.5px solid var(--border-stronger, var(--border));
+        background: transparent;
+        color: var(--text-primary);
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .carousel-arrow:hover {
+        background: var(--surface-container);
+        border-color: var(--primary, #adc6ff);
+      }
+      /* 캐러셀 트랙 스크롤바 숨김(가로 스크롤 UX) */
+      .carousel-track::-webkit-scrollbar {
+        display: none;
+      }
+      /* 홈 하단 블로그 | SOP 나란히 카드 */
+      .home-hub-card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 20px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface-container-low, rgba(173, 198, 255, 0.04));
+        cursor: pointer;
+        transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+      }
+      .home-hub-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+        border-color: var(--primary, #adc6ff);
+      }
+      .home-hub-icon {
+        flex-shrink: 0;
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+      }
+      /* 가이드 인덱스 항목 hover */
+      .guide-index-item:hover {
+        background: var(--surface-container, rgba(255, 255, 255, 0.05));
+        color: var(--text-primary) !important;
+      }
       .btn .kbd {
         font-family: var(--font-mono);
         font-size: 10px;

@@ -43,6 +43,9 @@ export const ROUTES = [
   { id: "4-2", slug: "/guide/cohort-retention", component: "SopContent" },
   { id: "4-3", slug: "/guide/cannibalization-analysis", component: "SopContent" },
   { id: "8-1", slug: "/guide/csv-data-prep", component: "SopContent" },
+  // 가이드 인덱스(블로그처럼 목록 페이지 — 자체 주소 `/guide`). 개별 가이드
+  // `/guide/*`와 다른 정확 slug라 충돌 없음(slugToId 키 "guide" vs "guide/xxx").
+  { id: "guide-index", slug: "/guide", component: "GuideIndex" },
   // ── Legacy id aliases (redirect-only; share 5-4's slug; excluded from sitemap) ──
   { id: "5-7", slug: "/tools/experiment-analysis", component: "AbTestHoldout", legacy: true },
   { id: "5-15", slug: "/tools/experiment-analysis", component: "AbTestHoldout", legacy: true },
@@ -96,7 +99,8 @@ export const EN_READY_TOOL_IDS = new Set([
 ]);
 
 export function hasEnVersion(id) {
-  return id === "home" || EN_READY_TOOL_IDS.has(id);
+  // guide-index는 목록 페이지(라벨만 번역) — EN 지원. 개별 가이드는 여전히 KR.
+  return id === "home" || id === "guide-index" || EN_READY_TOOL_IDS.has(id);
 }
 
 // { ko, en } absolute URL pair for hreflang alternates.languages, or null
