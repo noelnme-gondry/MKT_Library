@@ -10,18 +10,19 @@ import { fmtCurrency, fmtNum, fmtPct } from "@/utils/format";
 import { CHART_THEME, getCssVar } from "@/utils/chartUtils";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
+import ResultActionCard from "@/components/ds/ResultActionCard";
+import DownloadHub from "@/components/ds/DownloadHub";
+import { downloadCsv as dlCsv, downloadText } from "@/utils/download";
 import { buildIncrSuppressionDemo, buildIncrPrepostDemo } from "@/utils/demoData";
 
 const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : NaN; };
 const looksDate = (v) => /^\d{4}[-/]\d{1,2}([-/]\d{1,2})?/.test(String(v || "").trim());
 
-function downloadCsv(fileName, text) {
-  const blob = new Blob(["﻿" + text], { type: "text/csv;charset=utf-8" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = fileName;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+// CSV 셀 이스케이프(콤마·따옴표 §7).
+const qc = (s) => (/[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g, '""')}"` : String(s));
+// 라벨-값 2열 요약 CSV(BOM+CRLF §7). rows=[[label,value],...]
+function buildSummaryCsv(header, rows) {
+  return "﻿" + [header, ...rows.map((r) => r.map(qc).join(","))].join("\r\n") + "\r\n";
 }
 
 const METHODS_KO = [
@@ -150,11 +151,11 @@ function UploadPanel({ method, fileRef, handleFile, loadDemo, locale = "ko" }) {
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const isSup = method === "suppression";
   const tmpl = isSup
-    ? { name: "template_incr_suppression.csv", text: "date,holdout_group,numerator,denominator,spend,revenue_d7\r\n2024-05-01,exposed,516,8600,1548000,16512000\r\n2024-05-01,holdout,378,8600,0,12096000\r\n" }
-    : { name: `template_incr_prepost.csv`, text: "date,group,conversions\r\n2024-04-01,treatment,100\r\n2024-04-01,control,90\r\n2024-05-20,treatment,155\r\n2024-05-20,control,92\r\n" };
+    ? { base: "template_incr_suppression", text: "date,holdout_group,numerator,denominator,spend,revenue_d7\r\n2024-05-01,exposed,516,8600,1548000,16512000\r\n2024-05-01,holdout,378,8600,0,12096000\r\n" }
+    : { base: "template_incr_prepost", text: "date,group,conversions\r\n2024-04-01,treatment,100\r\n2024-04-01,control,90\r\n2024-05-20,treatment,155\r\n2024-05-20,control,92\r\n" };
   return (
     <>
-      <CsvGuide toolId={`5-23:${method}`} onDownloadTemplate={() => downloadCsv(tmpl.name, tmpl.text)} locale={locale} />
+      <CsvGuide toolId={`5-23:${method}`} onDownloadTemplate={() => dlCsv("﻿" + tmpl.text, tmpl.base)} locale={locale} />
       <div className="csv-dropzone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]); }} onClick={() => fileRef.current?.click()} style={{ cursor: "pointer" }}>
         <div className="csv-drop-icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
@@ -301,9 +302,71 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
   const inc = r ? Math.round(r.incrementalConv) : 0;
   const positive = r ? r.incrementalConv > 0 : false;
 
+  // 결론 카드 props + 다운로드(계산된 인사이트만). 엔진 결과 재사용.
+  const card = r && (() => {
+    const headline = positive
+      ? tr(
+          `광고가 실제로 만든 증분 전환은 ${fmtNum(inc)}건입니다${r.iroas != null ? ` (iROAS ${r.iroas.toFixed(2)}×)` : ""}.`,
+          `Ads actually created ${fmtNum(inc)} incremental conversions${r.iroas != null ? ` (iROAS ${r.iroas.toFixed(2)}×)` : ""}.`
+        )
+      : tr(
+          "홀드아웃 대비 증분이 0 이하입니다 — 이 기간 광고의 순증분 효과가 확인되지 않습니다.",
+          "Incrementality vs. holdout is zero or below — no net incremental ad effect is confirmed for this period."
+        );
+    const points = [];
+    if (win.balanced === false) points.push({ cls: "bad", text: tr("홀드아웃 前 두 그룹이 이미 벌어져 있어 균형이 의심됩니다 — 증분이 왜곡됐을 수 있습니다.", "The two groups already differed before the holdout — balance is questionable and incrementality may be distorted.") });
+    else if (win.balanced) points.push({ cls: "good", text: tr("홀드아웃 前 두 그룹이 균형이라 비교가 타당합니다.", "The groups were balanced before the holdout, so the comparison is valid.") });
+    if (r.iroas != null) points.push({ text: r.iroas >= 1 ? tr("증분 매출이 광고비보다 큽니다(이득) — 유지·확대 검토.", "Incremental revenue exceeds ad spend (profitable) — consider keeping/scaling.") : tr("증분 기준 광고비가 매출보다 큽니다 — 효율 재점검.", "Ad spend exceeds incremental revenue — re-check efficiency.") });
+    points.push({ cls: "muted", text: tr("무작위 분할이 아니면 인과로 단정하지 마세요.", "Don't assert causality unless this was a random split.") });
+    const stats = [
+      { label: tr("증분 전환", "Incremental conv."), value: fmtNum(inc) },
+      { label: tr("상대 Lift", "Relative lift"), value: r.liftRel != null ? fmtPct(r.liftRel) : "—" },
+    ];
+    if (r.cpia != null) stats.push({ label: tr("증분 전환당 비용", "Cost/incr. conv."), value: fmtCurrency(r.cpia, { currency }) });
+    if (r.iroas != null) stats.push({ label: "iROAS", value: `${r.iroas.toFixed(2)}×` });
+
+    const csvRows = [
+      [tr("홀드아웃 전환율", "Holdout conversion rate"), fmtPct(r.cRate)],
+      [tr("노출 전환율", "Exposed conversion rate"), fmtPct(r.tRate)],
+      [tr("상대 Lift", "Relative lift"), r.liftRel != null ? fmtPct(r.liftRel) : "—"],
+      [tr("증분 전환", "Incremental conversions"), inc],
+      [tr("증분 전환당 비용", "Cost per incremental conversion"), r.cpia != null ? fmtCurrency(r.cpia, { currency }) : "—"],
+      ["iROAS", r.iroas != null ? `${r.iroas.toFixed(2)}×` : "—"],
+      [tr("홀드아웃 기간", "Holdout period"), `${start} ~ ${end}`],
+      [tr("그룹 균형(홀드아웃 前)", "Group balance (pre-holdout)"), win.balanced == null ? "—" : win.balanced ? tr("균형", "balanced") : tr("불균형 의심", "imbalance suspected")],
+    ];
+    const csv = buildSummaryCsv(tr("지표,값", "Metric,Value"), csvRows);
+    const text =
+      tr("# 증분 분석 — 통제군(홀드아웃) 요약\n\n", "# Incrementality — Control-group (holdout) summary\n\n") +
+      `${headline}\n\n` +
+      csvRows.map(([k, v]) => `- ${k}: ${v}`).join("\n") + "\n\n" +
+      points.map((p) => `- ${p.text}`).join("\n") + "\n";
+    return { tone: positive ? "good" : "bad", headline, points, stats, csv, text };
+  })();
+
   return (
     <section className="block">
       <h2 className="section-title"><span className="ix">§1</span>{tr("증분 결과 (홀드아웃 기간)", "Incrementality result (holdout period)")}</h2>
+
+      {card && (
+        <ResultActionCard
+          tone={card.tone}
+          title={tr("결론 — 광고가 만든 순증분", "Conclusion — net incremental from ads")}
+          headline={card.headline}
+          points={card.points}
+          stats={card.stats}
+          download={
+            <DownloadHub
+              label={tr("결과 받기", "Download")}
+              align="right"
+              items={[
+                { icon: "📄", label: tr("증분 요약 (CSV)", "Summary (CSV)"), desc: tr("전환율·Lift·증분·iROAS", "Rates, lift, incremental, iROAS"), onSelect: () => dlCsv(card.csv, "incrementality_suppression") },
+                { icon: "📝", label: tr("증분 요약 (텍스트)", "Summary (text)"), desc: tr("결론·지표·주의", "Conclusion, metrics, caveats"), onSelect: () => downloadText(card.text, "incrementality_suppression") },
+              ]}
+            />
+          }
+        />
+      )}
 
       {series && (
         <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "flex-end", marginBottom: "12px" }}>
@@ -445,6 +508,46 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
   const good = lost ? effVal < 0 : effVal > 0; // on: 상승=좋음, off: 하락=원인확인
   const sigP = r?.sig?.pValue ?? r?.sig?.p;
 
+  // 결론 카드 props + 다운로드(계산된 인사이트). 엔진 결과 재사용.
+  const card = r && (() => {
+    const sig = sigP != null && sigP < 0.05;
+    const headline = lost
+      ? tr(
+          `끈 뒤 하루 평균이 ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} 변했습니다 — 종료로 잃은(되돌릴 수 있는) 성과입니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`,
+          `After turning it off, the daily average changed by ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} — performance lost (recoverable) from the shutdown${isDiD ? " (control's natural change removed)" : ""}.`
+        )
+      : tr(
+          `켠 뒤 하루 평균이 ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} 변했습니다 — 새로 얻은 성과입니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`,
+          `After turning it on, the daily average changed by ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} — performance gained from the launch${isDiD ? " (control's natural change removed)" : ""}.`
+        );
+    const points = [];
+    points.push({ cls: sig ? "good" : "muted", text: sig ? tr(`통계적으로 유의합니다 (p=${sigP.toFixed(4)}).`, `Statistically significant (p=${sigP.toFixed(4)}).`) : tr(`아직 통계적으로 유의하지 않습니다 (p=${sigP != null ? sigP.toFixed(3) : "—"}) — 표본을 더 모으세요.`, `Not statistically significant yet (p=${sigP != null ? sigP.toFixed(3) : "—"}) — gather more data.`) });
+    if (!isDiD) points.push({ cls: "muted", text: tr("대조군을 넣어 DiD로 보정하면 계절·추세 영향을 줄일 수 있습니다.", "Adding a control group (DiD) reduces seasonality/trend effects.") });
+    points.push({ cls: "muted", text: tr("무작위 실험이 아니면 인과를 단정하지 마세요.", "Don't assert causality unless this was a randomized experiment.") });
+    const stats = [
+      { label: tr("전환 전 평균(일)", "Pre avg (daily)"), value: fmtNum(r.preMean, 1) },
+      { label: tr("전환 후 평균(일)", "Post avg (daily)"), value: fmtNum(r.postMean, 1) },
+      { label: isDiD ? tr("순효과 Δ (DiD)", "Net Δ (DiD)") : tr("변화 Δ(일)", "Change Δ (daily)"), value: (effVal >= 0 ? "+" : "") + fmtNum(effVal, 1) },
+      { label: lost ? tr("총 손실(기간)", "Total loss") : tr("총 증분(기간)", "Total incremental"), value: (r.incrementalTotal >= 0 ? "+" : "") + fmtNum(r.incrementalTotal, 0) },
+    ];
+    const csvRows = [
+      [tr("전환 전 평균(일)", "Pre-cutoff daily average"), fmtNum(r.preMean, 1)],
+      [tr("전환 후 평균(일)", "Post-cutoff daily average"), fmtNum(r.postMean, 1)],
+      [isDiD ? tr("순효과 Δ (DiD)", "Net effect Δ (DiD)") : tr("변화 Δ(일)", "Change Δ (daily)"), (effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)],
+      [lost ? tr("총 손실(기간)", "Total loss (period)") : tr("총 증분(기간)", "Total incremental (period)"), (r.incrementalTotal >= 0 ? "+" : "") + fmtNum(r.incrementalTotal, 0)],
+      [tr("유의성 p", "Significance p"), sigP != null ? sigP.toFixed(4) : "—"],
+      [tr("전환 시점", "Cutoff date"), effCutoff],
+      [tr("방법", "Method"), isDiD ? "DiD" : (lost ? tr("종료 전후", "Shutdown pre/post") : tr("신규 전후", "Launch pre/post"))],
+    ];
+    const csv = buildSummaryCsv(tr("지표,값", "Metric,Value"), csvRows);
+    const text =
+      (lost ? tr("# 증분 분석 — 종료(전후) 요약\n\n", "# Incrementality — Shutdown (pre/post) summary\n\n") : tr("# 증분 분석 — 신규 켜기(전후) 요약\n\n", "# Incrementality — New launch (pre/post) summary\n\n")) +
+      `${headline}\n\n` +
+      csvRows.map(([k, v]) => `- ${k}: ${v}`).join("\n") + "\n\n" +
+      points.map((p) => `- ${p.text}`).join("\n") + "\n";
+    return { tone: good ? "good" : "bad", headline, points, stats, csv, text };
+  })();
+
   return (
     <>
       <section className="block" style={{ marginBottom: "12px" }}>
@@ -464,6 +567,25 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
       {r && (
         <section className="block">
           <h2 className="section-title"><span className="ix">§2</span>{lost ? tr("종료 임팩트 (잃은 성과)", "Shutdown impact (performance lost)") : tr("신규 임팩트 (얻은 성과)", "New-launch impact (performance gained)")}</h2>
+          {card && (
+            <ResultActionCard
+              tone={card.tone}
+              title={lost ? tr("결론 — 종료로 잃은 성과", "Conclusion — performance lost from shutdown") : tr("결론 — 신규로 얻은 성과", "Conclusion — performance gained from launch")}
+              headline={card.headline}
+              points={card.points}
+              stats={card.stats}
+              download={
+                <DownloadHub
+                  label={tr("결과 받기", "Download")}
+                  align="right"
+                  items={[
+                    { icon: "📄", label: tr("증분 요약 (CSV)", "Summary (CSV)"), desc: tr("전후 평균·Δ·유의성", "Pre/post avg, Δ, significance"), onSelect: () => dlCsv(card.csv, lost ? "incrementality_shutdown" : "incrementality_launch") },
+                    { icon: "📝", label: tr("증분 요약 (텍스트)", "Summary (text)"), desc: tr("결론·지표·주의", "Conclusion, metrics, caveats"), onSelect: () => downloadText(card.text, lost ? "incrementality_shutdown" : "incrementality_launch") },
+                  ]}
+                />
+              }
+            />
+          )}
           <div className="alloc-card" style={{ borderLeft: `3px solid ${good ? "#22c55e" : "#fbbf24"}`, marginBottom: "12px" }}>
             <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
               <Stat label={tr("전환 전 평균(일)", "Pre-cutoff daily average")} value={fmtNum(r.preMean, 1)} />
