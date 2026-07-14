@@ -10,6 +10,8 @@ import LiveMiniChart from "./LiveMiniChart";
 export default function ToolCarousel({ cards, title, onPick, ctaLabel, liveCardId = "5-2", locale = "ko" }) {
   const scrollRef = useRef(null);
   const tr = (ko, en) => (locale === "en" ? en : ko);
+  // 마우스 드래그 좌우 스크롤 상태(드래그 후 클릭 오발화 방지 위해 moved 추적).
+  const drag = useRef({ down: false, startX: 0, startLeft: 0, moved: false });
 
   const scrollByCards = (dir) => {
     const el = scrollRef.current;
@@ -18,6 +20,22 @@ export default function ToolCarousel({ cards, title, onPick, ctaLabel, liveCardI
     const step = card ? card.offsetWidth + 20 : 360;
     el.scrollBy({ left: dir * step, behavior: "smooth" });
   };
+
+  const onDown = (e) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    drag.current = { down: true, startX: e.clientX, startLeft: el.scrollLeft, moved: false };
+  };
+  const onMove = (e) => {
+    if (!drag.current.down) return;
+    const el = scrollRef.current;
+    const dx = e.clientX - drag.current.startX;
+    if (Math.abs(dx) > 4) drag.current.moved = true;
+    el.scrollLeft = drag.current.startLeft - dx;
+  };
+  const endDrag = () => { drag.current.down = false; };
+  // 드래그로 스크롤한 뒤엔 카드 클릭(도구 진입)을 막는다.
+  const guardedPick = (id) => { if (drag.current.moved) { drag.current.moved = false; return; } onPick(id); };
 
   return (
     <section style={{ marginTop: "2.5rem" }}>
@@ -34,13 +52,21 @@ export default function ToolCarousel({ cards, title, onPick, ctaLabel, liveCardI
       <div
         ref={scrollRef}
         className="carousel-track"
+        onMouseDown={onDown}
+        onMouseMove={onMove}
+        onMouseUp={endDrag}
+        onMouseLeave={endDrag}
         style={{
           display: "flex",
           gap: "20px",
           overflowX: "auto",
           scrollSnapType: "x mandatory",
-          paddingBottom: "8px",
+          // 위: 호버로 카드가 떠올라도 안 잘리게 여유. 아래: 스크롤바 자리.
+          paddingTop: "12px",
+          paddingBottom: "12px",
           scrollbarWidth: "none",
+          cursor: "grab",
+          userSelect: "none",
         }}
       >
         {cards.map((c) => (
@@ -48,7 +74,8 @@ export default function ToolCarousel({ cards, title, onPick, ctaLabel, liveCardI
             key={c.id}
             data-carousel-card
             type="button"
-            onClick={() => onPick(c.id)}
+            onClick={() => guardedPick(c.id)}
+            draggable={false}
             style={{
               scrollSnapAlign: "start",
               flex: "0 0 auto",

@@ -202,8 +202,10 @@ function LandingHome({ onTrack, locale }) {
   const ctaLabel = locale === "en" ? "See a live example →" : "예시로 바로 보기 →";
   const hero = L.hero || {};
 
-  // 캐러셀 카드 = ops 도구를 "질문"으로 평탄화(그룹 제목=eyebrow, 훅=헤드라인).
-  const carouselCards = opsGroups.flatMap((g) =>
+  // 캐러셀 카드 = ops + 콘텐츠 도구를 "질문"으로 평탄화(그룹 제목=eyebrow, 훅=헤드라인).
+  // 콘텐츠 분석도 마케팅 분석 슬라이드에 함께 노출(별도 트랙 제거 방향).
+  const contentGroups = IA.filter((g) => CONTENT_GROUP_IDS.has(g.id));
+  const carouselCards = [...opsGroups, ...contentGroups].flatMap((g) =>
     g.items
       .filter((it) => !it.hidden)
       .map((it) => {
@@ -261,9 +263,9 @@ function LandingHome({ onTrack, locale }) {
         <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "14px" }}>{hero.privacy}</div>
       </section>
 
-      {/* ── 라이브 제품 미리보기(시연 슬롯 — 나중 mp4 교체 가능) ── */}
+      {/* ── 라이브 제품 미리보기(시연 슬롯 — 여러 도구 로테이션, 나중 mp4 교체 가능) ── */}
       <div style={{ marginTop: "1.6rem" }}>
-        <ProductPreview locale={locale} caption={hero.previewCaption} />
+        <ProductPreview locale={locale} />
       </div>
 
       {/* ── 질문 캐러셀(도구 진입) ── */}

@@ -139,7 +139,7 @@ function KpiLine() {
   );
 }
 
-const MOCKS = {
+export const MOCKS = {
   kpiLine: KpiLine,
   bars: BarsCluster,
   curve: ResponseCurve,
@@ -161,6 +161,12 @@ export const TOOL_MOCK_TYPE = {
   "5-23": "diverge",
   "5-18": "stacked",
   "5-20": "heat",
+  // 콘텐츠 분석(9-x) — 퍼포먼스 엔진 리라벨(§12.23)이라 차트 성격 동일 매핑.
+  "9-1": "scatter",
+  "9-2": "heat",
+  "9-3": "bars",
+  "9-6": "scatter",
+  "9-7": "kpiLine",
 };
 
 // 흰 앱 프레임 + 제목 + 미니 차트(참조 이미지의 카드 안 스크린샷 느낌).

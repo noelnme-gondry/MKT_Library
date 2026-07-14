@@ -1,85 +1,57 @@
 "use client";
-import React, { useEffect, useRef } from "react";
-import Chart from "chart.js/auto";
+import React, { useEffect, useState } from "react";
+import { MOCKS } from "./ToolCardMock";
 
-// 라이브 제품 미리보기(랜딩 히어로 "시연" 슬롯, 옵션 2). 브라우저 창 프레임 안에
-// 실제 Chart.js 차트를 결정론 데모 데이터로 렌더 → 정지 이미지 아닌 "움직이는 제품".
-// 전역 store 비침습(자체 데이터). 나중에 실제 mp4가 생기면 videoSrc prop으로 즉시
-// 교체(같은 프레임). pointer-events:none으로 미리보기 오작동 방지.
-const TREND = [42, 55, 49, 63, 58, 72, 68, 85, 79, 94, 88, 103];
-const CH_LABELS = ["Google", "Meta", "TikTok", "Apple"];
-const CH_COST = [92, 74, 51, 33];
+// 라이브 제품 미리보기(랜딩 히어로 시연 슬롯). 여러 도구의 미니 화면을 2.8초마다
+// 순서대로 전환(제목도 함께 바뀜) — "이 사이트로 이런 것들을 본다"를 한 프레임에서
+// 보여줌. SVG 목업(결정론, Math.random 금지 §3)·전역 store 비침습. 나중에 실제
+// mp4가 생기면 videoSrc prop으로 즉시 교체(같은 프레임).
+const SCENES_KO = [
+  { title: "운영 대시보드", type: "kpiLine", kpi: true },
+  { title: "MMM 기여 분석", type: "stacked" },
+  { title: "캠페인 포화도", type: "curve" },
+  { title: "증분 분석", type: "diverge" },
+  { title: "예산 배분", type: "alloc" },
+  { title: "소재 분석", type: "scatter" },
+];
+const SCENES_EN = [
+  { title: "Operations dashboard", type: "kpiLine", kpi: true },
+  { title: "MMM contribution", type: "stacked" },
+  { title: "Campaign saturation", type: "curve" },
+  { title: "Incrementality", type: "diverge" },
+  { title: "Budget allocation", type: "alloc" },
+  { title: "Creative analysis", type: "scatter" },
+];
 const KPIS = [
-  { label: "전환", value: "3,412", delta: "+12.4%", up: true },
-  { label: "CPA", value: "₩8,240", delta: "−6.1%", up: true },
-  { label: "ROAS", value: "214%", delta: "+8.0%", up: true },
+  { label: "전환", labelEn: "Conv.", value: "3,412", delta: "+12.4%" },
+  { label: "CPA", labelEn: "CPA", value: "₩8,240", delta: "−6.1%" },
+  { label: "ROAS", labelEn: "ROAS", value: "214%", delta: "+8.0%" },
 ];
 
-export default function ProductPreview({ videoSrc = null, poster = null, caption, locale = "ko" }) {
+export default function ProductPreview({ videoSrc = null, poster = null, locale = "ko" }) {
   const tr = (ko, en) => (locale === "en" ? en : ko);
-  const lineRef = useRef(null);
-  const barRef = useRef(null);
-  const lineInst = useRef(null);
-  const barInst = useRef(null);
+  const scenes = locale === "en" ? SCENES_EN : SCENES_KO;
+  const [idx, setIdx] = useState(0);
+  const [shown, setShown] = useState(true);
 
   useEffect(() => {
-    if (videoSrc) return; // 비디오 모드면 차트 안 그림
-    if (lineRef.current) {
-      if (lineInst.current) lineInst.current.destroy();
-      lineInst.current = new Chart(lineRef.current.getContext("2d"), {
-        type: "line",
-        data: {
-          labels: TREND.map((_, i) => `${i + 1}`),
-          datasets: [{
-            data: TREND,
-            borderColor: "#adc6ff",
-            backgroundColor: "rgba(173,198,255,0.12)",
-            fill: true,
-            tension: 0.35,
-            pointRadius: 0,
-            borderWidth: 2.5,
-          }],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false, animation: { duration: 900 },
-          plugins: { legend: { display: false }, tooltip: { enabled: false } },
-          scales: { x: { display: false }, y: { display: false, beginAtZero: true } },
-        },
-      });
-      requestAnimationFrame(() => lineInst.current && lineInst.current.resize());
-    }
-    if (barRef.current) {
-      if (barInst.current) barInst.current.destroy();
-      barInst.current = new Chart(barRef.current.getContext("2d"), {
-        type: "bar",
-        data: {
-          labels: CH_LABELS,
-          datasets: [{
-            data: CH_COST,
-            backgroundColor: ["#adc6ff", "#4cd7f6", "#4ade80", "#fbbf24"],
-            borderRadius: 4,
-          }],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false, animation: { duration: 900 },
-          plugins: { legend: { display: false }, tooltip: { enabled: false } },
-          scales: {
-            x: { grid: { display: false }, ticks: { color: "#9CA3AF", font: { size: 10 } } },
-            y: { display: false, beginAtZero: true },
-          },
-        },
-      });
-      requestAnimationFrame(() => barInst.current && barInst.current.resize());
-    }
-    return () => {
-      if (lineInst.current) { lineInst.current.destroy(); lineInst.current = null; }
-      if (barInst.current) { barInst.current.destroy(); barInst.current = null; }
-    };
-  }, [videoSrc]);
+    if (videoSrc) return;
+    const t = setInterval(() => {
+      // 페이드 아웃 → 씬 교체 → 페이드 인
+      setShown(false);
+      setTimeout(() => {
+        setIdx((i) => (i + 1) % scenes.length);
+        setShown(true);
+      }, 260);
+    }, 2800);
+    return () => clearInterval(t);
+  }, [videoSrc, scenes.length]);
+
+  const scene = scenes[idx];
+  const Mock = MOCKS[scene.type] || MOCKS.kpiLine;
 
   return (
     <div style={{ maxWidth: "920px", margin: "0 auto" }}>
-      {/* 브라우저 창 프레임 */}
       <div
         style={{
           borderRadius: "14px",
@@ -89,47 +61,47 @@ export default function ProductPreview({ videoSrc = null, poster = null, caption
           background: "var(--bg-1)",
         }}
       >
-        {/* 타이틀바 */}
+        {/* 타이틀바 — 도구 이름이 씬 따라 바뀜 */}
         <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 12px", borderBottom: "1px solid var(--border-subtle, var(--border))", background: "var(--surface-container-lowest, rgba(255,255,255,0.02))" }}>
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f56" }} />
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ffbd2e" }} />
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#27c93f" }} />
           <span style={{ marginLeft: "10px", fontSize: "11px", color: "var(--text-muted)", fontFamily: "JetBrains Mono, monospace" }}>
-            growthoptplaybook.com · {tr("운영 대시보드", "Operations Dashboard")}
+            growthoptplaybook.com · <span style={{ color: "var(--text-secondary)", transition: "opacity 0.25s", opacity: shown ? 1 : 0 }}>{scene.title}</span>
           </span>
         </div>
 
-        {/* 본문 — 비디오 있으면 비디오, 없으면 라이브 차트 목업 */}
         {videoSrc ? (
           <video src={videoSrc} poster={poster || undefined} autoPlay muted loop playsInline style={{ width: "100%", display: "block" }} />
         ) : (
-          <div style={{ padding: "16px", pointerEvents: "none" }}>
-            {/* KPI 타일 */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", marginBottom: "12px" }}>
-              {KPIS.map((k, i) => (
-                <div key={i} style={{ background: "var(--surface-container-lowest, rgba(255,255,255,0.03))", border: "1px solid var(--border-subtle, var(--border))", borderRadius: "10px", padding: "10px 12px" }}>
-                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{k.label}</div>
-                  <div style={{ fontSize: "18px", fontWeight: 700, color: "var(--text-primary)", fontFamily: "JetBrains Mono, monospace" }}>{k.value}</div>
-                  <div style={{ fontSize: "11px", color: k.up ? "#4ade80" : "#f0917e", fontWeight: 600 }}>{k.delta}</div>
+          <div style={{ padding: "16px", pointerEvents: "none", minHeight: "300px" }}>
+            <div style={{ transition: "opacity 0.25s", opacity: shown ? 1 : 0 }}>
+              {scene.kpi && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", marginBottom: "12px" }}>
+                  {KPIS.map((k, i) => (
+                    <div key={i} style={{ background: "var(--surface-container-lowest, rgba(255,255,255,0.03))", border: "1px solid var(--border-subtle, var(--border))", borderRadius: "10px", padding: "10px 12px" }}>
+                      <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>{tr(k.label, k.labelEn)}</div>
+                      <div style={{ fontSize: "18px", fontWeight: 700, color: "var(--text-primary)", fontFamily: "JetBrains Mono, monospace" }}>{k.value}</div>
+                      <div style={{ fontSize: "11px", color: "#4ade80", fontWeight: 600 }}>{k.delta}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            {/* 차트 2개 */}
-            <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: "12px" }}>
-              <div style={{ background: "var(--surface-container-lowest, rgba(255,255,255,0.03))", border: "1px solid var(--border-subtle, var(--border))", borderRadius: "10px", padding: "12px", height: "180px" }}>
-                <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "6px" }}>{tr("전환 추이", "Conversion trend")}</div>
-                <div style={{ height: "140px", position: "relative" }}><canvas ref={lineRef}></canvas></div>
-              </div>
-              <div style={{ background: "var(--surface-container-lowest, rgba(255,255,255,0.03))", border: "1px solid var(--border-subtle, var(--border))", borderRadius: "10px", padding: "12px", height: "180px" }}>
-                <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "6px" }}>{tr("채널별 지출", "Spend by channel")}</div>
-                <div style={{ height: "140px", position: "relative" }}><canvas ref={barRef}></canvas></div>
+              )}
+              <div style={{ background: "var(--surface-container-lowest, rgba(255,255,255,0.03))", border: "1px solid var(--border-subtle, var(--border))", borderRadius: "10px", padding: "14px", height: scene.kpi ? "196px" : "268px" }}>
+                <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "8px" }}>{scene.title}</div>
+                <div style={{ height: scene.kpi ? "150px" : "220px" }}><Mock /></div>
               </div>
             </div>
           </div>
         )}
       </div>
-      {caption && (
-        <p style={{ textAlign: "center", fontSize: "12px", color: "var(--text-muted)", marginTop: "10px" }}>{caption}</p>
+      {/* 씬 인디케이터 (점) */}
+      {!videoSrc && (
+        <div style={{ display: "flex", gap: "6px", justifyContent: "center", marginTop: "12px" }}>
+          {scenes.map((s, i) => (
+            <span key={i} style={{ width: i === idx ? 18 : 6, height: 6, borderRadius: "3px", background: i === idx ? "var(--primary, #adc6ff)" : "var(--border-stronger, var(--border))", transition: "width 0.25s, background 0.25s" }} />
+          ))}
+        </div>
       )}
     </div>
   );
