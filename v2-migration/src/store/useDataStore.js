@@ -494,6 +494,10 @@ export const useAppStore = create(persist((set, get) => ({
   dashboardTab: "viz", // viz, scorecard, pacing, anomaly, ltv, cohort, funnel, segment
   setDashboardTab: (tab) => set({ dashboardTab: tab }),
 
+  // WoW 비교 기간(일) — 결론 카드·스코어카드가 공유(토글 연동). 휘발(세션 UI).
+  dashWindowDays: 7, // 7 | 14 | 28
+  setDashWindowDays: (d) => set({ dashWindowDays: d }),
+
   dashboardFilter: {
     dateStart: null,
     dateEnd: null,

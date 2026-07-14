@@ -1,0 +1,36 @@
+// 공용 파일 다운로드 헬퍼 — 도구마다 재정의하던 blob 다운로드 로직을 단일화한다
+// (DownloadHub와 짝). CSV는 항상 BOM+CRLF+charset=utf-8(§7 Excel 한 행 뭉침·한글
+// 깨짐 방지). 표시/입출력 헬퍼라 utils에 둠(수학 아님).
+
+function triggerDownload(blob, fileName) {
+  if (typeof document === "undefined") return false;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return true;
+}
+
+// 날짜 접미 파일명(YYYY-MM-DD). Date.now 금지 규칙과 무관(다운로드는 사용자 액션
+// 시점 표기 목적 — 결정론 골든 대상 아님).
+function withDate(base, ext) {
+  const ts = new Date().toISOString().slice(0, 10);
+  return `${base}_${ts}.${ext}`;
+}
+
+// CSV 문자열(이미 BOM/CRLF 포함 가능)을 그대로 저장. 호출자가 BOM을 안 넣었어도
+// 안전하게 저장되도록 charset 지정.
+export function downloadCsv(csvString, baseName = "export") {
+  const blob = new Blob([csvString], { type: "text/csv;charset=utf-8" });
+  return triggerDownload(blob, withDate(baseName, "csv"));
+}
+
+// 마크다운/텍스트 문서 저장(claude-ux §6 "상세 문서 받기" 탈출구용).
+export function downloadText(textString, baseName = "summary", ext = "md") {
+  const blob = new Blob([textString], { type: "text/plain;charset=utf-8" });
+  return triggerDownload(blob, withDate(baseName, ext));
+}
