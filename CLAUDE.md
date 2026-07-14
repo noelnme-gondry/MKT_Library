@@ -341,6 +341,8 @@ index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상�
 - **`ds/DownloadHub`**: "⬇ 결과 받기 ▾" 단일 드롭다운(items=[{label,desc,icon,onSelect}], 바깥클릭/ESC 닫힘). 흩어진 다운로드 집결. 실제 다운로드는 공용 `utils/download.js`(`downloadCsv`/`downloadText`, BOM+CRLF §7) + 기존 `downloadChartAsPNG` 주입.
 - **판정 엔진은 도구별 렌더 유틸**(골든 아님, 공용 아님): 5-2=`utils/dashboardVerdict.js`(`buildDashboardVerdict` — WoW 최근 vs 직전). **WoW는 5-2류 시계열 대시보드 전용** — MMM(5-18=기여/최적예산)·Aha(5-20=최적 윈도우)·PVM(5-21=top-mover)은 각자 자연스러운 "결론"을 계산해 같은 `ResultActionCard`에 꽂는다(공용은 카드 셸·허브·download.js뿐, 판정 로직은 도구별).
 - **다운로드는 "계산한 인사이트"만 — 업로드 원천 데이터 되돌려주기 금지**(UX 무가치): 일별/채널별/캠페인별 raw dump는 사용자가 이미 가진 것. 대신 도구가 **계산한** WoW 증감표(지출·노출·클릭·설치·전환 + 파생 CPA·CPI·CTR·CVR·ROAS·매출·이익·**리텐션 D7**)를 리치하게 준다. 미매핑 지표는 표에서 제외(정직 §8). 리텐션은 raw 윈도우 행에서 `computeWeightedRetention`(일별 합산 아님). DownloadHub items=요약표(CSV)+요약문서(텍스트) 2개. 단위 테스트로 tone 분기·BOM/CRLF·파생행·미매핑 게이트 검증.
+- **WoW 기간 토글 연동**(5-2): store `dashWindowDays`(7/14/28, 휘발) 공유 → 결론카드 pill(`controls` 슬롯)+스코어카드 토글 양방향 동기화.
+- **채택 현황**(갭 큰 순): 5-2 ✅ · 5-23 증분 ✅(통제군·전후 두 뷰 각 결론카드, csv=엔진결과 요약·인과 단정 금지 §8 유지). 다음: 5-22→5-20→5-6→5-21→5-18(각 도구 결론은 tool-specific 렌더 유틸, EN=`tr` 필수). 로컬 `downloadCsv` 재정의는 채택 시 공용 `download.js`로 교체.
 
 ---
 
