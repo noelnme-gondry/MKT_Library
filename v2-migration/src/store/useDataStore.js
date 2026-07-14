@@ -316,6 +316,12 @@ export const useAppStore = create(persist((set, get) => ({
   demoNoticeSeen: false,
   setDemoNoticeSeen: () => set({ demoNoticeSeen: true }),
 
+  // "내 데이터로 분석 시작"(게이트) 선택 시 true → 전 도구 데모 자동로드 억제(빈
+  // 업로드 화면 유지). 휘발(세션 한정) — 새로고침 시 리셋(첫인상 데모 복원). "데모
+  // 보기"류 명시 로드는 false로 되돌림.
+  demoDisabled: false,
+  setDemoDisabled: (v) => set({ demoDisabled: !!v }),
+
   // Navigation State
   currentRouteId: "home",
   // On route change, swap the csvData mirror to the newly-active group's slice
@@ -430,6 +436,27 @@ export const useAppStore = create(persist((set, get) => ({
       csvData: EMPTY_SLICE(),
       analyzedByGroup: { ...state.analyzedByGroup, [g]: null },
       csvClearedByGroup: { ...state.csvClearedByGroup, [g]: true },
+    };
+  }),
+
+  // "내 데이터로 시작"(StartGate) 진입 — 데모 자동로드 억제 + 이미 로드된 데모
+  // 슬라이스(fileName "demo_")만 비운다(실제 업로드는 보존). csvData 미러도 활성
+  // 그룹 기준으로 갱신. 세션 한정(demoDisabled 휘발).
+  startMyData: () => set((state) => {
+    const groups = { ...state.csvGroups };
+    const analyzed = { ...state.analyzedByGroup };
+    for (const k of Object.keys(groups)) {
+      const slice = groups[k];
+      if (slice && slice.fileName && slice.fileName.startsWith("demo")) {
+        groups[k] = EMPTY_SLICE();
+        analyzed[k] = null;
+      }
+    }
+    return {
+      demoDisabled: true,
+      csvGroups: groups,
+      analyzedByGroup: analyzed,
+      csvData: groups[groupForRoute(state.currentRouteId)] || EMPTY_SLICE(),
     };
   }),
 

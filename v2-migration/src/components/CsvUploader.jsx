@@ -112,6 +112,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   // silently refilling data the user just cleared, since tools remount this
   // component across their hasData/analyzed JSX branches (§bugfix).
   const manuallyCleared = useAppStore((s) => s.csvClearedByGroup[TOOL_GROUP[toolId] || "efficiency"]);
+  const demoDisabled = useAppStore((s) => s.demoDisabled);
   const setGroupAnalyzed = useAppStore((s) => s.setGroupAnalyzed);
   // 분석하기 클릭 시 광고 인터스티셜 게이트(adFree면 즉시 실행). 데모 자동로드는 게이트 없이 직접.
   const requestAd = useAppStore((s) => s.requestAd);
@@ -258,7 +259,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     // 마운트 1회성 초기 로드(다중 setState 의도적 — 데모 데이터+게이트+프리뷰 상태를
     // 한 번에 세팅, 루프·반복 트리거 아님).
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!hasFile && !manuallyCleared) handleLoadDemo();
+    if (!hasFile && !manuallyCleared && !demoDisabled) handleLoadDemo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

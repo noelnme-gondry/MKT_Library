@@ -8,6 +8,7 @@ import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
 import SopContent from "@/components/sops/SopContent";
 import GuideIndex from "@/components/GuideIndex";
+import StartGate from "@/components/StartGate";
 import LandingPage from "@/components/LandingPage";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
@@ -68,6 +69,7 @@ export default function PageClient({ params }) {
             {/* 라우팅: URL에서 해석한 routeId 기준 직접 디스패치 (스토어 비의존 → 첫 페인트 플래시 없음) */}
             {routeId === "home" && <LandingPage />}
             {routeId === "guide-index" && <GuideIndex />}
+            {routeId === "start-gate" && <StartGate />}
 
             {routeId === "5-2" && <Dashboard />}
             {routeId === "5-3" && <BudgetAllocation />}
@@ -89,6 +91,7 @@ export default function PageClient({ params }) {
                 9-x 콘텐츠 도구가 이 폴백으로 새어 SopContent로 렌더되던 함정 차단(§plan). */}
             {routeId !== "home" &&
              routeId !== "guide-index" &&
+             routeId !== "start-gate" &&
              !routeId.startsWith("5-") &&
              !routeId.startsWith("9-") && (
               <SopContent routeId={routeId} />

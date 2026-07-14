@@ -41,6 +41,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
   const METHODS = locale === "en" ? METHODS_EN : METHODS_KO;
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
+  const demoDisabled = useAppStore((s) => s.demoDisabled);
   const currency = useAppStore((s) => s.displayCurrency);
   const setDisplayCurrency = useAppStore((s) => s.setDisplayCurrency);
   const [method, setMethod] = useState("suppression");
@@ -67,7 +68,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
 
   // 첫 진입(데이터 없음) 시 샘플 데이터 자동 로드(CsvUploader와 동일 패턴, SEO·첫인상).
   useEffect(() => {
-    if (!hasData) loadDemo();
+    if (!hasData && !demoDisabled) loadDemo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

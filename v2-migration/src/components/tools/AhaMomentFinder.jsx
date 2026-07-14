@@ -412,6 +412,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const router = useRouter();
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
+  const demoDisabled = useAppStore((state) => state.demoDisabled);
   const requestAd = useAppStore((state) => state.requestAd);
   const ahaFileRef = useRef(null);
   const [isParsing, setIsParsing] = useState(false);
@@ -462,7 +463,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   useEffect(() => {
     // 마운트 1회성 초기 로드(다중 setState 의도적 — 데모 데이터+게이트 상태 세팅).
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!hasData) handleLoadDemo();
+    if (!hasData && !demoDisabled) handleLoadDemo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
