@@ -1,4 +1,4 @@
-import { resolveSlugToId, idToPath, SITE_URL } from "@/lib/routeMap";
+import { resolveSlugToId, idToPath, SITE_URL, enAlternates } from "@/lib/routeMap";
 import { findMeta } from "@/store/useDataStore";
 import { buildPageKeywords } from "@/lib/pageKeywords";
 import PageClient from "./PageClient";
@@ -9,7 +9,13 @@ export async function generateMetadata({ params }) {
   if (!routeId || routeId === "home") {
     // 홈은 자기 자신을 canonical로 명시(루트). layout에서 canonical을 제거해 자식
     // 누수를 막았으므로 홈은 여기서 선언.
-    return { alternates: { canonical: `${SITE_URL}/` } };
+    const homeLangs = enAlternates("home");
+    return {
+      alternates: {
+        canonical: `${SITE_URL}/`,
+        ...(homeLangs ? { languages: homeLangs } : {}),
+      },
+    };
   }
 
   const meta = findMeta(routeId);
@@ -23,12 +29,13 @@ export async function generateMetadata({ params }) {
       : meta?.group?.desc);
   const canonical = `${SITE_URL}${idToPath(routeId)}`;
   const keywords = buildPageKeywords(meta);
+  const langs = enAlternates(routeId);
 
   return {
     title,
     description,
     keywords,
-    alternates: { canonical },
+    alternates: { canonical, ...(langs ? { languages: langs } : {}) },
     openGraph: { title, description, url: canonical },
   };
 }

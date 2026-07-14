@@ -120,6 +120,10 @@ export const IA = [
         seoTitle: "예산, 어디에 더 써야 ROAS 오를까? 무료 배분 시뮬레이터",
         seoDescription:
           "채널별 CPR·ROAS 곡선을 학습해 예산을 어디에 더 태워야 할지 그리디 알고리즘으로 계산. CSV 업로드만으로 바로 확인하는 무료 예산 배분 도구.",
+        titleEn: "Budget Allocation Simulator",
+        seoTitleEn: "Where Should Your Next Ad Dollar Go? Free Budget Allocation Simulator",
+        seoDescriptionEn:
+          "Learns a CPR/ROAS response curve per channel and calculates where to shift spend using a greedy algorithm. Free budget allocation tool — just upload a CSV.",
       },
     ],
   },
@@ -144,6 +148,10 @@ export const IA = [
         seoTitle: "MMM 분석: 광고비, 어디서 벌고 어디서 잃는지 분해",
         seoDescription:
           "마케팅 믹스 모델(MMM)로 채널 간 카니발라이제이션·기여도·미래 성과를 회귀 분석. CSV 업로드로 바로 실행하는 무료 MMM 분석 도구.",
+        titleEn: "Marketing Response Analysis (MMM)",
+        seoTitleEn: "MMM Analysis: See Where Your Ad Spend Wins and Cannibalizes",
+        seoDescriptionEn:
+          "Run marketing mix modeling (MMM) to decompose cross-channel cannibalization, contribution, and future performance via regression. Free MMM tool — upload a CSV and run it instantly.",
       },
       { id: "5-20", title: "핵심 가치 발굴 (Aha-moment)" },
     ],
