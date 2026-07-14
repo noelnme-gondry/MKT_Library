@@ -85,10 +85,17 @@ export const FUNNEL_FIELD_LABEL = {
   platform: "OS",
 };
 
+// 단계명(라벨) 사전 — locale 없거나 "ko"면 기존 문자열과 byte-동일(§순수엔진 골든 불변).
+const STAGE_LABELS = {
+  ko: { impr: "노출", clk: "클릭", inst: "설치", act: "액션" },
+  en: { impr: "Impressions", clk: "Clicks", inst: "Installs", act: "Actions" },
+};
+
 // index.html buildFunnelCache 순수 이식. rows = 표준키로 매핑된 필터 후 행.
 // mappedKeys = Set(표준키). state = { unitField, cvrStep, weekdayAdj }.
 // 반환: stages/trans/selStep/rows/overall + wow/daily/segRank/weekday.
-export function buildFunnelData(rows, mappedKeys, state) {
+export function buildFunnelData(rows, mappedKeys, state, locale = "ko") {
+  const L = STAGE_LABELS[locale] || STAGE_LABELS.ko;
   const blank = () => ({ impr: 0, clk: 0, inst: 0, act: 0, rev: 0 });
   const add = (b, r) => {
     b.impr += Number(r.impressions) || 0;
@@ -98,10 +105,10 @@ export function buildFunnelData(rows, mappedKeys, state) {
     b.rev += Number(r.revenue_d7) || 0;
   };
   const stageDefs = [
-    { key: "impr", label: "노출", on: mappedKeys.has("impressions") },
-    { key: "clk", label: "클릭", on: mappedKeys.has("clicks") },
-    { key: "inst", label: "설치", on: mappedKeys.has("installs") },
-    { key: "act", label: "액션", on: mappedKeys.has("actions") },
+    { key: "impr", label: L.impr, on: mappedKeys.has("impressions") },
+    { key: "clk", label: L.clk, on: mappedKeys.has("clicks") },
+    { key: "inst", label: L.inst, on: mappedKeys.has("installs") },
+    { key: "act", label: L.act, on: mappedKeys.has("actions") },
   ].filter((s) => s.on);
 
   const trans = [];

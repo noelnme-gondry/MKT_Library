@@ -1155,6 +1155,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     return (
       <div className="tab-pane active" id="tab-alloc">
         <ToolPageShell
+          locale={locale}
           title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
           chips={
             <span className="chip warning">
@@ -1220,6 +1221,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     return (
       <div className="tab-pane active" id="tab-alloc">
         <ToolPageShell
+          locale={locale}
           title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
           chips={
             <span className="chip">
@@ -1506,6 +1508,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     return (
       <div className="tab-pane active" id="tab-alloc">
         <ToolPageShell
+          locale={locale}
           title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
           chips={
             <span className="chip">
@@ -1920,6 +1923,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   return (
     <div className="tab-pane active" id="tab-alloc">
       <ToolPageShell
+        locale={locale}
         title={tr("예산 배분 시뮬레이터", "Budget Allocation Simulator")}
         chips={
           <span className="chip">

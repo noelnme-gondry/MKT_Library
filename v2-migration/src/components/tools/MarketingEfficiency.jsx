@@ -292,6 +292,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
     return (
       <div className="tab-pane active" id="tab-sat">
         <ToolPageShell
+          locale={locale}
           title={tr("마케팅 효율 진단 (Saturation)", "Marketing Efficiency Diagnosis (Saturation)")}
           summary={<p>{tr(
             "효율 CSV(일별 채널·캠페인 비용/결과) 한 번 업로드로 채널별 한계 CPA/ROAS를 진단합니다 — 증액하면 효율이 꺾이는지 판정합니다. 5-3 예산 배분과 같은 효율 CSV를 공유합니다.",
@@ -385,6 +386,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
 
   return (
     <ToolPageShell
+      locale={locale}
       title={tr("마케팅 효율 진단 (Saturation)", "Marketing Efficiency Diagnosis (Saturation)")}
       chips={<span className="chip"><span className="dot"></span>{csvData?.fileName || ""}</span>}
       summary={

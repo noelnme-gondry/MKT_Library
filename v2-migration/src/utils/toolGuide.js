@@ -433,6 +433,89 @@ export const TOOL_GUIDE_EN = {
     ],
     example: "week,signups,google_spend,meta_spend,tiktok_spend\n2024-01-01,3800,32000000,22000000,8000000\n2024-01-08,4100,35000000,24000000,9500000\n2024-01-15,3950,31000000,21000000,7800000",
   },
+  "9-1": {
+    when: "Upload production attributes (title number/length, emoji, thumbnail tone, etc.) and performance (CTR, views) across multiple pieces of content to find which elements are significantly associated with performance via multivariate regression.",
+    grain: "1 row = 1 piece of content",
+    needs: [
+      { col: "Performance metric (CTR, views, etc.)", label: "Performance (dependent variable)", why: "The outcome being explained — a single number", required: true },
+      { col: "Production attribute columns (0/1 or numeric)", label: "Content elements (independent variables)", why: "Estimates each element's contribution (coefficient, significance)", required: true },
+      { col: "post_id, title, etc.", label: "Content identifier", why: "Row identification (not used in analysis, include if available)", required: false },
+    ],
+    prep: [
+      "Enter yes/no attributes as 0/1, and length/count attributes as numbers.",
+      "The result shows 'association', not causation — there's confounding since skilled creators tend to use several elements together.",
+      "Confirm with an A/B test (change only one content element) before acting on it.",
+    ],
+    example: "post_id,title_has_number,title_len,has_emoji,thumbnail_bright,ctr\np1001,1,42,0,1,3.9\np1002,0,58,1,0,2.1",
+  },
+  "9-2": {
+    when: "Find the 'Aha-Content' (killer content) that leads readers who consumed it to subscribe, sign up, or return, using F1 and Lift.",
+    grain: "1 row = 1 reader",
+    needs: [
+      { col: "reader_id", label: "Reader ID", why: "Identifies each reader", required: true },
+      { col: "subscribed(0/1)", label: "Conversion (target)", why: "Marks readers who subscribed/signed up/returned", required: true },
+      { col: "Content consumption columns (count)", label: "Content consumed", why: "Each piece's predictive power for conversion (F1/Lift)", required: true },
+    ],
+    prep: [
+      "Enter consumption columns as 'number of views of that content within N days of first visit' (e.g., views within 7 days).",
+      "Conversion column is 0/1 — 1 means subscribed/signed up/returned.",
+      "The result is association, not causation — highly interested readers naturally read more and also subscribe more.",
+    ],
+    example: "reader_id,subscribed,ga4guide_d7,casestudy_d7,pricing_d7\nr10001,1,3,4,1\nr10002,0,0,1,0\nr10003,1,2,5,0",
+  },
+  "9-3": {
+    when: "Decompose changes in traffic (visits, PV) into traffic source, category, and content — with zero residual (why did cost per visit go up? which traffic source drove it?).",
+    grain: "1 row = 1 day × traffic source × category × content (finest)",
+    needs: [
+      { col: "date", label: "Date", why: "Period comparison (before vs. after)", required: true },
+      { col: "traffic_source(=channel)", label: "Traffic source", why: "Decomposition unit (organic, social, search, newsletter, ...)", required: true },
+      { col: "spend(=cost)", label: "Production/distribution cost", why: "Numerator for cost-per-visit", required: true },
+      { col: "traffic(=installs/actions)", label: "Traffic (visits, PV)", why: "Denominator for cost-per-visit — a single outcome metric", required: true },
+      { col: "category · content_id", label: "Category, content", why: "Drill-down (traffic source → category → content)", required: false },
+      { col: "impressions · clicks", label: "Impressions, clicks", why: "Per-content CTR comparison (§4)", required: false },
+    ],
+    prep: [
+      "The finer the grain (per-content, per-day), the more accurate the decomposition identity.",
+      "Map only one outcome metric — traffic (visits/PV) — the metric toggle is hidden automatically.",
+      "The result is 'association', not causation — only the arithmetic decomposition itself is exact.",
+    ],
+    example: "date,traffic_source,category,content_id,cost,traffic\n2024-01-08,organic,tutorial,tut_101,96000,820\n2024-01-08,social,case study,case_201,168000,410\n2024-01-15,social,case study,case_201,246000,650",
+  },
+  "9-6": {
+    when: "Analyze per-content response, freshness (does response cool off over time), and attribute effects (which hooks/formats perform well), and flag when to publish new content or swap it out.",
+    grain: "1 row = 1 day × content (creative)",
+    needs: [
+      { col: "creative_id", label: "Content ID", why: "Key for per-content aggregation", required: true },
+      { col: "date", label: "Date", why: "Detects freshness (response decay over time)", required: true },
+      { col: "impressions · clicks · installs", label: "Impressions, clicks, conversions", why: "Computes CTR/CVR and win rate", required: true },
+      { col: "spend", label: "Production/distribution cost", why: "Cost per conversion, efficiency", required: true },
+      { col: "message_angle · format · hook_type ...", label: "Content attributes", why: "Per-attribute effect (WLS), combination matrix", required: false },
+    ],
+    prep: [
+      "Adding attribute columns (angle, format, hook) unlocks the 'which trait works' breakdown and combination table.",
+      "The combination table only shows as 'verified' when each combination has 5+ pieces of content.",
+      "The result is association, not causation — confirm with an experiment (5-4) before acting on it.",
+    ],
+    example: "creative_id,date,channel,impressions,clicks,installs,spend,message_angle,format\npost_001,2024-02-01,Blog,52000,1600,210,540000,Informational guide,Article\npost_002,2024-02-01,YouTube,48000,1900,180,480000,Case study,Video",
+  },
+  "9-7": {
+    when: "Summarize content operation performance on one screen — visualize daily traffic trend and traffic-source share, cost-per-visit (Visualize), compare recent performance to the prior period (Scorecard), and automatically flag days where traffic or response rate spikes (Anomaly Detection).",
+    grain: "1 row = 1 day × traffic source (× category · content)",
+    needs: [
+      { col: "date", label: "Date", why: "Axis for daily trend, period comparison, anomaly detection", required: true },
+      { col: "cost(=production/distribution cost)", label: "Cost", why: "Cost per visit, share calculation", required: true },
+      { col: "visits(=installs)", label: "Visits, traffic", why: "Core performance metric (visits, sessions, PV)", required: true },
+      { col: "traffic_source(=channel)", label: "Traffic source", why: "Per-source share, cost-per-visit comparison", required: false },
+      { col: "impressions · clicks", label: "Impressions, clicks", why: "Response rate (CTR), clicks-per-impression analysis", required: false },
+      { col: "subscribers(=actions)", label: "Subscriptions, conversions", why: "Cost per subscription, conversion metric", required: false },
+    ],
+    prep: [
+      "Revenue/payment/ROAS columns aren't needed — the content dashboard centers on traffic and response rate (those metrics aren't shown).",
+      "Map visits (traffic) as the core metric and impressions/clicks/subscriptions as supporting ones to fill all 3 tabs.",
+      "With 2+ weeks of data, the scorecard (WoW) and anomaly detection work meaningfully.",
+    ],
+    example: "date,traffic_source,content_cost,impressions,clicks,visits,subscribers\n2024-01-08,Organic search,126000,58000,2600,1740,104\n2024-01-08,Social,216000,74000,2200,1020,31\n2024-01-15,Newsletter,99000,41000,2870,1980,218",
+  },
 };
 
 export function getToolGuide(toolId, locale = "ko") {
