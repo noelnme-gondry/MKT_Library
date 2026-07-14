@@ -9,6 +9,33 @@ import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import CustomChartBuilder from "@/components/ds/CustomChartBuilder";
 
+const CUSTOM_CHARTS_COPY = {
+  ko: {
+    addChart: "＋ 커스텀 차트",
+    addChartTitle: "모양·행·값을 골라 나만의 차트 만들기",
+    editCharts: "⚙ 차트 편집",
+    editChartsTitle: "표시할 차트와 순서 편집",
+    noData: "데이터를 업로드하면 커스텀 차트를 만들 수 있습니다.",
+    empty: (
+      <>아직 만든 차트가 없습니다. <strong>＋ 커스텀 차트</strong>로 모양·행·값을 골라 추가하세요. 커스텀 지표도 값으로 쓸 수 있어요.</>
+    ),
+    allHidden: "표시할 차트가 없습니다. ⚙ 차트 편집에서 다시 켜세요.",
+    configTitleSuffix: "— 차트 편집",
+  },
+  en: {
+    addChart: "＋ Custom chart",
+    addChartTitle: "Pick a shape, rows, and value to build your own chart",
+    editCharts: "⚙ Edit charts",
+    editChartsTitle: "Edit which charts show and their order",
+    noData: "Upload data to build custom charts.",
+    empty: (
+      <>No charts yet. Click <strong>＋ Custom chart</strong> to pick a shape, rows, and value. Custom metrics can be used as values too.</>
+    ),
+    allHidden: "No charts are visible. Turn them back on in ⚙ Edit charts.",
+    configTitleSuffix: "— Edit charts",
+  },
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CustomChartsSection — 재사용 커스텀 차트 영역 (Phase C 확대)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -21,9 +48,12 @@ import CustomChartBuilder from "@/components/ds/CustomChartBuilder";
 //  chartScope   customCharts·viewConfig 키(예 "5-2:seg-charts")
 //  metricScope  값 옵션에 포함할 커스텀 지표 스코프(예 "5-2:viz-kpi") — 공유
 //  title        섹션 제목
+//  locale       "ko" | "en"
 export default function CustomChartsSection({
-  sectionNo = "＋", chartScope, metricScope, title = "커스텀 차트",
+  sectionNo = "＋", chartScope, metricScope, title, locale = "ko",
 }) {
+  const T = CUSTOM_CHARTS_COPY[locale] || CUSTOM_CHARTS_COPY.ko;
+  const sectionTitle = title || (locale === "en" ? "Custom charts" : "커스텀 차트");
   const csvData = useAppStore((s) => s.csvData);
   const dashboardFilter = useAppStore((s) => s.dashboardFilter);
   const selectedCohort = useAppStore((s) => s.selectedCohort);
@@ -81,21 +111,21 @@ export default function CustomChartsSection({
   return (
     <section className="block">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <h2 className="section-title"><span className="ix">§{sectionNo}</span>{title}</h2>
+        <h2 className="section-title"><span className="ix">§{sectionNo}</span>{sectionTitle}</h2>
         <div style={{ display: "flex", gap: "6px" }}>
-          <button className="ab-pill" onClick={() => setBuilderOpen(true)} title="모양·행·값을 골라 나만의 차트 만들기">＋ 커스텀 차트</button>
+          <button className="ab-pill" onClick={() => setBuilderOpen(true)} title={T.addChartTitle}>{T.addChart}</button>
           {chartMetas.length > 0 && (
-            <button className="ab-pill" onClick={() => setCfgOpen(true)} title="표시할 차트와 순서 편집">⚙ 차트 편집</button>
+            <button className="ab-pill" onClick={() => setCfgOpen(true)} title={T.editChartsTitle}>{T.editCharts}</button>
           )}
         </div>
       </div>
 
       {!hasData ? (
-        <p className="muted" style={{ fontSize: "12px" }}>데이터를 업로드하면 커스텀 차트를 만들 수 있습니다.</p>
+        <p className="muted" style={{ fontSize: "12px" }}>{T.noData}</p>
       ) : chartMetas.length === 0 ? (
-        <p className="muted" style={{ fontSize: "12px" }}>아직 만든 차트가 없습니다. <strong>＋ 커스텀 차트</strong>로 모양·행·값을 골라 추가하세요. 커스텀 지표도 값으로 쓸 수 있어요.</p>
+        <p className="muted" style={{ fontSize: "12px" }}>{T.empty}</p>
       ) : orderedCharts.length === 0 ? (
-        <p className="muted" style={{ fontSize: "12px" }}>표시할 차트가 없습니다. ⚙ 차트 편집에서 다시 켜세요.</p>
+        <p className="muted" style={{ fontSize: "12px" }}>{T.allHidden}</p>
       ) : (
         <div className="chart-grid cols-2">
           {orderedCharts.map((c) => (
@@ -120,7 +150,7 @@ export default function CustomChartsSection({
       <MetricConfigPanel
         open={cfgOpen}
         onClose={() => setCfgOpen(false)}
-        title={`${title} — 차트 편집`}
+        title={`${sectionTitle} ${T.configTitleSuffix}`}
         items={chartMetas.map((c) => ({ key: c.k, label: c.title }))}
         config={chartCfg}
         onSave={(next) => {

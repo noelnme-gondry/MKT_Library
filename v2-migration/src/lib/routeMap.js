@@ -78,7 +78,9 @@ export function idToPath(id) {
 // Add an id here ONLY after its component + shared shell strings are done —
 // this gates /en/[[...slug]] dispatch, hreflang emission, and sitemap EN URLs
 // so untranslated tools never get a thin/half-Korean page indexed.
-export const EN_READY_TOOL_IDS = new Set(["5-3", "5-18"]);
+export const EN_READY_TOOL_IDS = new Set([
+  "5-2", "5-3", "5-4", "5-6", "5-18", "5-20", "5-21", "5-22", "5-23",
+]);
 
 export function hasEnVersion(id) {
   return id === "home" || EN_READY_TOOL_IDS.has(id);

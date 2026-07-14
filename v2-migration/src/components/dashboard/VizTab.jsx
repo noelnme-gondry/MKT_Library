@@ -19,6 +19,145 @@ import { copyToClipboard } from "@/utils/toast";
 const VIZ_KPI_SCOPE = "5-2:viz-kpi";
 const VIZ_CHART_SCOPE = "5-2:viz-charts";
 
+// locale 카피(§ domain 리라벨과 별도 축 — C=resolveDashCopy는 domain 전용, 이 T는
+// 이 컴포넌트 하드코딩 문자열의 ko/en만 담당. contentDomain.js는 건드리지 않음).
+const VIZ_COPY = {
+  ko: {
+    funnelTitle: "전환 퍼널",
+    funnelSubActions: "노출 → 클릭 → 설치 → 가입 → 결제(D7) 단계별 절대 건수 (로그 스케일)",
+    funnelSubInstalls: "노출 → 클릭 → 설치 → 결제(D7) 단계별 절대 건수 (로그 스케일)",
+    funnelLabelsActions: ["노출", "클릭", "설치", "가입", "결제 (D7)"],
+    funnelLabelsInstalls: ["노출", "클릭", "설치", "결제 (D7)"],
+    cohortTitle: "채널별 코호트 매출 증가 (D0 → D7 → D14)",
+    cohortSub: "라인 · 채널별 누적 ARPU 증가 곡선",
+    cumArpuAxis: "누적 ARPU",
+    addMetric: "＋ 커스텀 지표",
+    addMetricTitle: "데이터 컬럼으로 나만의 지표 만들기",
+    reset: "초기화",
+    resetTitle: "전체 표시·기본 순서·기본 크기",
+    done: "완료",
+    edit: "✏️ 편집",
+    editTitle: "카드를 그 자리에서 드래그·표시/숨김·크기 편집",
+    editHint: "⠿ 드래그로 이동 · 👁 표시/숨김. 변경은 자동 저장됩니다.",
+    noKpi: "표시할 KPI가 없습니다.",
+    addChart: "＋ 커스텀 차트",
+    addChartTitle: "모양·행·값을 골라 나만의 차트 만들기",
+    editChart: "⚙ 차트 편집",
+    editChartTitle: "표시할 차트와 순서 편집",
+    noChart: "표시할 차트가 없습니다. ⚙ 차트 편집에서 다시 켜세요.",
+    cohortSectionTitle: "코호트 시점",
+    cohortDesc: (d) => `매출/결제/잔존율은 선택된 코호트(D${d}) 기준으로 계산됩니다. 단일 지표(CPI/CTR/CVR/비용/설치)는 코호트 무관.`,
+    kpiSectionTitle: "KPI 요약",
+    chartSectionTitle: "차트 시각화",
+    alertTitle: "D7 ROAS가 권장 벤치마크(15%) 미달입니다.",
+    alertBody: (pct) => `현재 ${pct}% — UAC/AAP 캠페인의 입찰 단계·에셋 다양성·매체별 카니발 비중 진단이 필요합니다.`,
+    purchasesLabel: (d) => `구매자 수 (D${d})`,
+    purchasesDelta: (d) => `pu_d${d} 합산`,
+    purchaseRateLabel: (d) => `구매율 (D${d})`,
+    purchaseRateDelta: (basis) => `구매자 수 / ${basis}`,
+    cppLabel: (d) => `CPP (D${d})`,
+    cppDelta: "cost / 구매자 수",
+    revenueLabel: (d) => `총 매출 (D${d})`,
+    revenueDelta: "cohort revenue 합산",
+    roasLabel: (d) => `ROAS (D${d})`,
+    roasDelta: "revenue / cost",
+    shareCopyLabel: "공유 복사",
+    shareCopyText: (d, disp) => `현재 D${d} ROAS는 ${disp} 입니다.`,
+    arpuLabel: (d) => `ARPU (D${d})`,
+    arpuDelta: (basis) => `revenue / ${basis}`,
+    arppuLabel: (d) => `ARPPU (D${d})`,
+    arppuDelta: "revenue / 구매자 수",
+    retentionLabel: (d) => `잔존율 평균 (D${d})`,
+    retentionDelta: "행별 평균",
+    profitLabel: (d) => `이익 (D${d})`,
+    profitDelta: "매출 − 비용",
+    profitMarginLabel: (d) => `이익률 (D${d})`,
+    profitMarginDelta: "(매출−비용) / 매출",
+    customMetricDelta: "커스텀 지표",
+    fieldCost: "비용",
+    fieldImpr: "노출수",
+    fieldClicks: "클릭수",
+    fieldInstalls: "설치수",
+    fieldActions: "액션/가입",
+    fieldRevenue: (d) => `매출(D${d})`,
+    fieldPurchases: (d) => `결제건수(D${d})`,
+    chartEditPanelTitle: "차트 시각화 — 차트 편집",
+    basisInstalls: "installs",
+    basisActions: "actions",
+    costLabel: "비용",
+    countLabel: "건수",
+    signupsWord: "가입",
+    installsWord: "설치",
+  },
+  en: {
+    funnelTitle: "Conversion Funnel",
+    funnelSubActions: "Impressions → Clicks → Installs → Signups → Purchase(D7) absolute counts (log scale)",
+    funnelSubInstalls: "Impressions → Clicks → Installs → Purchase(D7) absolute counts (log scale)",
+    funnelLabelsActions: ["Impr", "Clicks", "Installs", "Signups", "Purchase (D7)"],
+    funnelLabelsInstalls: ["Impr", "Clicks", "Installs", "Purchase (D7)"],
+    cohortTitle: "Cohort Revenue Growth by Channel (D0 → D7 → D14)",
+    cohortSub: "Line · Cumulative ARPU growth curve by channel",
+    cumArpuAxis: "Cumulative ARPU",
+    addMetric: "＋ Custom metric",
+    addMetricTitle: "Build your own metric from data columns",
+    reset: "Reset",
+    resetTitle: "Show all · default order · default size",
+    done: "Done",
+    edit: "✏️ Edit",
+    editTitle: "Drag to reorder, show/hide, resize cards in place",
+    editHint: "⠿ Drag to move · 👁 show/hide. Changes save automatically.",
+    noKpi: "No KPIs to display.",
+    addChart: "＋ Custom chart",
+    addChartTitle: "Pick a shape, rows, and values to build your own chart",
+    editChart: "⚙ Edit charts",
+    editChartTitle: "Edit which charts are shown and their order",
+    noChart: "No charts to display. Re-enable them in ⚙ Edit charts.",
+    cohortSectionTitle: "Cohort point",
+    cohortDesc: (d) => `Revenue/purchases/retention are calculated for the selected cohort (D${d}). Single metrics (CPI/CTR/CVR/cost/installs) are cohort-independent.`,
+    kpiSectionTitle: "KPI Summary",
+    chartSectionTitle: "Chart Visualization",
+    alertTitle: "D7 ROAS is below the recommended benchmark (15%).",
+    alertBody: (pct) => `Currently ${pct}% — review UAC/AAP campaign bidding stage, asset diversity, and cannibalization by channel.`,
+    purchasesLabel: (d) => `Purchasers (D${d})`,
+    purchasesDelta: (d) => `Sum of pu_d${d}`,
+    purchaseRateLabel: (d) => `Purchase rate (D${d})`,
+    purchaseRateDelta: (basis) => `Purchasers / ${basis}`,
+    cppLabel: (d) => `CPP (D${d})`,
+    cppDelta: "cost / purchasers",
+    revenueLabel: (d) => `Total revenue (D${d})`,
+    revenueDelta: "Sum of cohort revenue",
+    roasLabel: (d) => `ROAS (D${d})`,
+    roasDelta: "revenue / cost",
+    shareCopyLabel: "Copy",
+    shareCopyText: (d, disp) => `Current D${d} ROAS is ${disp}.`,
+    arpuLabel: (d) => `ARPU (D${d})`,
+    arpuDelta: (basis) => `revenue / ${basis}`,
+    arppuLabel: (d) => `ARPPU (D${d})`,
+    arppuDelta: "revenue / purchasers",
+    retentionLabel: (d) => `Avg retention (D${d})`,
+    retentionDelta: "Average by row",
+    profitLabel: (d) => `Profit (D${d})`,
+    profitDelta: "revenue − cost",
+    profitMarginLabel: (d) => `Profit margin (D${d})`,
+    profitMarginDelta: "(revenue − cost) / revenue",
+    customMetricDelta: "Custom metric",
+    fieldCost: "Cost",
+    fieldImpr: "Impressions",
+    fieldClicks: "Clicks",
+    fieldInstalls: "Installs",
+    fieldActions: "Actions/Signups",
+    fieldRevenue: (d) => `Revenue(D${d})`,
+    fieldPurchases: (d) => `Purchases(D${d})`,
+    chartEditPanelTitle: "Chart Visualization — Edit charts",
+    basisInstalls: "installs",
+    basisActions: "actions",
+    costLabel: "Cost",
+    countLabel: "Count",
+    signupsWord: "signups",
+    installsWord: "installs",
+  },
+};
+
 // 차트에 이벤트 마커 세로선 + 라벨을 그리는 Chart.js 플러그인(§12.18 event marker draw).
 // category x축(날짜 라벨)에서 marker.date에 매칭되는 x 픽셀에 점선을 그림.
 function makeEventMarkerPlugin(markers) {
@@ -58,8 +197,9 @@ function makeEventMarkerPlugin(markers) {
   };
 }
 
-export default function VizTab({ domain = "performance" } = {}) {
+export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const C = resolveDashCopy(domain);
+  const T = VIZ_COPY[locale] || VIZ_COPY.ko;
   const isContent = domain === "content";
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
@@ -172,8 +312,8 @@ export default function VizTab({ domain = "performance" } = {}) {
     { k: "ts", title: C.tsTitle(effBasis), sub: C.tsSub(effBasis), full: false },
     { k: "donut", title: C.donutTitle, sub: C.donutSub, full: false },
     { k: "cpi", title: C.cpiTitle(acqLabel), sub: C.cpiSub(effBasis), full: false },
-    { k: "funnel", title: "전환 퍼널", sub: `${effBasis === "actions" ? "노출 → 클릭 → 설치 → 가입 → 결제(D7)" : "노출 → 클릭 → 설치 → 결제(D7)"} 단계별 절대 건수 (로그 스케일)`, full: false },
-    { k: "cohort", title: "채널별 코호트 매출 증가 (D0 → D7 → D14)", sub: "라인 · 채널별 누적 ARPU 증가 곡선", full: true },
+    { k: "funnel", title: T.funnelTitle, sub: effBasis === "actions" ? T.funnelSubActions : T.funnelSubInstalls, full: false },
+    { k: "cohort", title: T.cohortTitle, sub: T.cohortSub, full: true },
   ];
   const chartMeta = isContent ? chartMetaBase.filter((c) => ["ts", "donut", "cpi"].includes(c.k)) : chartMetaBase;
   // 커스텀 차트 메타를 기본 5종 뒤에 붙여 표시/순서 편집 대상에 포함.
@@ -204,7 +344,7 @@ export default function VizTab({ domain = "performance" } = {}) {
           labels: dailyAgg.map((d) => d._key),
           datasets: [
             {
-              label: "비용",
+              label: T.costLabel,
               data: dailyAgg.map((d) => d.cost),
               yAxisID: "y",
               borderColor: CHART_THEME.primary,
@@ -234,7 +374,7 @@ export default function VizTab({ domain = "performance" } = {}) {
             y: {
               ...chartCommonOpts().scales.y,
               position: "left",
-              title: { display: true, text: "비용", color: CHART_THEME.muted, font: { size: 10 } },
+              title: { display: true, text: T.costLabel, color: CHART_THEME.muted, font: { size: 10 } },
             },
             y1: {
               ...chartCommonOpts().scales.y,
@@ -309,8 +449,8 @@ export default function VizTab({ domain = "performance" } = {}) {
     // 4) Funnel Bar Chart — 기준이 '가입'이면 가입 단계 추가(설치 4단계 vs 가입 5단계)
     if (canvasRefs.current.funnel) {
       const funnelLabels = effBasis === "actions"
-        ? ["노출", "클릭", "설치", "가입", "결제 (D7)"]
-        : ["노출", "클릭", "설치", "결제 (D7)"];
+        ? T.funnelLabelsActions
+        : T.funnelLabelsInstalls;
       const funnelData = effBasis === "actions"
         ? [totals.impressions, totals.clicks, totals.installs, totals.actions, totals.pu_d7]
         : [totals.impressions, totals.clicks, totals.installs, totals.pu_d7];
@@ -322,7 +462,7 @@ export default function VizTab({ domain = "performance" } = {}) {
         data: {
           labels: funnelLabels,
           datasets: [{
-            label: "건수",
+            label: T.countLabel,
             data: funnelData,
             backgroundColor: funnelColors,
             borderRadius: 4,
@@ -373,7 +513,7 @@ export default function VizTab({ domain = "performance" } = {}) {
             x: { ...chartCommonOpts().scales.x },
             y: {
               ...chartCommonOpts().scales.y,
-              title: { display: true, text: "누적 ARPU", color: CHART_THEME.muted, font: { size: 10 } },
+              title: { display: true, text: T.cumArpuAxis, color: CHART_THEME.muted, font: { size: 10 } },
             },
           },
         },
@@ -406,7 +546,7 @@ export default function VizTab({ domain = "performance" } = {}) {
     // 변경, filteredRows=데이터 변경 시 재생성. customChartDefs/buildCustomChartConfig는
     // 매 렌더 새 참조지만 위 sig가 실질 변경을 모두 커버(매 렌더 재실행 방지).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dailyAgg, byChannel, totals, preparedMarkers, effBasis, acqLabel, trendOutcomeLabel, visibleChartKeys, customChartSig, filteredRows]);
+  }, [dailyAgg, byChannel, totals, preparedMarkers, effBasis, acqLabel, trendOutcomeLabel, visibleChartKeys, customChartSig, filteredRows, locale]);
 
   // KPI 카드(데이터 주도) — 표시/순서 설정 적용. node=기존 카드 JSX 유지(값·계산 불변).
   const kpiCards = [
@@ -422,45 +562,45 @@ export default function VizTab({ domain = "performance" } = {}) {
     { k: "acq", label: acqLabel, node: (
       <div key="acq" className="kpi-card"><div className="label">{acqLabel}</div><div className="value tnum">{formatNumber(kpi.cpi, { decimals: 2 })}</div><div className="delta">{C.acqDelta(effBasis)}</div></div>
     ) },
-    { k: "purchases", label: "구매자 수", node: (
-      <div key="purchases" className="kpi-card"><div className="label">구매자 수 (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.purchases)}</div><div className="delta">pu_d{kpi.cohort} 합산</div></div>
+    { k: "purchases", label: T.purchasesLabel(kpi.cohort), node: (
+      <div key="purchases" className="kpi-card"><div className="label">{T.purchasesLabel(kpi.cohort)}</div><div className="value tnum">{formatNumber(kpi.purchases)}</div><div className="delta">{T.purchasesDelta(kpi.cohort)}</div></div>
     ) },
-    { k: "purchaseRate", label: "구매율", node: (
-      <div key="purchaseRate" className="kpi-card"><div className="label">구매율 (D{kpi.cohort})</div><div className="value tnum">{formatPercent(kpi.purchaseRate)}</div><div className="delta">구매자 수 / {effBasis === "actions" ? "가입" : "설치"}</div></div>
+    { k: "purchaseRate", label: T.purchaseRateLabel(kpi.cohort), node: (
+      <div key="purchaseRate" className="kpi-card"><div className="label">{T.purchaseRateLabel(kpi.cohort)}</div><div className="value tnum">{formatPercent(kpi.purchaseRate)}</div><div className="delta">{T.purchaseRateDelta(effBasis === "actions" ? T.signupsWord : T.installsWord)}</div></div>
     ) },
-    { k: "cpp", label: "CPP", node: (
-      <div key="cpp" className="kpi-card"><div className="label">CPP (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.cpp, { decimals: 2 })}</div><div className="delta">cost / 구매자 수</div></div>
+    { k: "cpp", label: T.cppLabel(kpi.cohort), node: (
+      <div key="cpp" className="kpi-card"><div className="label">{T.cppLabel(kpi.cohort)}</div><div className="value tnum">{formatNumber(kpi.cpp, { decimals: 2 })}</div><div className="delta">{T.cppDelta}</div></div>
     ) },
-    { k: "revenue", label: "총 매출", node: (
-      <div key="revenue" className="kpi-card"><div className="label">총 매출 (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.revenue)}</div><div className="delta">cohort revenue 합산</div></div>
+    { k: "revenue", label: T.revenueLabel(kpi.cohort), node: (
+      <div key="revenue" className="kpi-card"><div className="label">{T.revenueLabel(kpi.cohort)}</div><div className="value tnum">{formatNumber(kpi.revenue)}</div><div className="delta">{T.revenueDelta}</div></div>
     ) },
-    { k: "roas", label: "ROAS", node: (
+    { k: "roas", label: T.roasLabel(kpi.cohort), node: (
       <div key="roas" className="kpi-card" style={{ position: "relative" }}>
-        <div className="label">ROAS (D{kpi.cohort})</div>
+        <div className="label">{T.roasLabel(kpi.cohort)}</div>
         <div className="value tnum">{formatPercent(kpi.roas)}</div>
         <div className="delta" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.25rem" }}>
-          <span>revenue / cost</span>
+          <span>{T.roasDelta}</span>
           {d7Display && (
             <button
               className="share-btn"
-              onClick={() => copyToClipboard(`현재 D${kpi.cohort} ROAS는 ${d7Display} 입니다.`)}
+              onClick={() => copyToClipboard(T.shareCopyText(kpi.cohort, d7Display))}
               style={{ padding: "1px 5px", fontSize: "9.5px", height: "16px", lineHeight: "1", borderRadius: "3px", marginLeft: "auto", background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-subtle)", display: "inline-flex", alignItems: "center", gap: "3px", color: "var(--text-secondary)", cursor: "pointer", whiteSpace: "nowrap" }}
             >
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-              공유 복사
+              {T.shareCopyLabel}
             </button>
           )}
         </div>
       </div>
     ) },
-    { k: "arpu", label: "ARPU", node: (
-      <div key="arpu" className="kpi-card"><div className="label">ARPU (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.arpu, { decimals: 2 })}</div><div className="delta">revenue / {effBasis === "actions" ? "actions" : "installs"}</div></div>
+    { k: "arpu", label: T.arpuLabel(kpi.cohort), node: (
+      <div key="arpu" className="kpi-card"><div className="label">{T.arpuLabel(kpi.cohort)}</div><div className="value tnum">{formatNumber(kpi.arpu, { decimals: 2 })}</div><div className="delta">{T.arpuDelta(effBasis === "actions" ? "actions" : "installs")}</div></div>
     ) },
-    { k: "arppu", label: "ARPPU", node: (
-      <div key="arppu" className="kpi-card"><div className="label">ARPPU (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.arppu, { decimals: 2 })}</div><div className="delta">revenue / 구매자 수</div></div>
+    { k: "arppu", label: T.arppuLabel(kpi.cohort), node: (
+      <div key="arppu" className="kpi-card"><div className="label">{T.arppuLabel(kpi.cohort)}</div><div className="value tnum">{formatNumber(kpi.arppu, { decimals: 2 })}</div><div className="delta">{T.arppuDelta}</div></div>
     ) },
-    { k: "retention", label: "잔존율 평균", node: (
-      <div key="retention" className="kpi-card"><div className="label">잔존율 평균 (D{kpi.cohort})</div><div className="value tnum">{formatPercent(kpi.retentionAvg)}</div><div className="delta">행별 평균</div></div>
+    { k: "retention", label: T.retentionLabel(kpi.cohort), node: (
+      <div key="retention" className="kpi-card"><div className="label">{T.retentionLabel(kpi.cohort)}</div><div className="value tnum">{formatPercent(kpi.retentionAvg)}</div><div className="delta">{T.retentionDelta}</div></div>
     ) },
   ];
   // 커스텀/프리셋 지표가 읽는 집계객체 — kpi가 이미 base 합계(cost·impressions·…·
@@ -470,23 +610,23 @@ export default function VizTab({ domain = "performance" } = {}) {
   // 빌더 피연산자 = 실제 매핑된 컬럼만(오타 불가). 라벨 옆에 실제 CSV 헤더 표기.
   // (mappingEntries·mappedKeys·headerFor·hasRev·hasPu는 위 공용 블록에서 계산됨)
   const builderFields = [
-    { key: "cost", label: "비용", header: headerFor("cost") },
-    mappedKeys.has("impressions") && { key: "impressions", label: "노출수", header: headerFor("impressions") },
-    mappedKeys.has("clicks") && { key: "clicks", label: "클릭수", header: headerFor("clicks") },
-    mappedKeys.has("installs") && { key: "installs", label: "설치수", header: headerFor("installs") },
-    mappedKeys.has("actions") && { key: "actions", label: "액션/가입", header: headerFor("actions") },
-    hasRev && { key: "revenue", label: `매출(D${kpi.cohort})`, header: headerFor(`revenue_d${kpi.cohort}`) },
-    hasPu && { key: "purchases", label: `결제건수(D${kpi.cohort})`, header: headerFor(`pu_d${kpi.cohort}`) },
+    { key: "cost", label: T.fieldCost, header: headerFor("cost") },
+    mappedKeys.has("impressions") && { key: "impressions", label: T.fieldImpr, header: headerFor("impressions") },
+    mappedKeys.has("clicks") && { key: "clicks", label: T.fieldClicks, header: headerFor("clicks") },
+    mappedKeys.has("installs") && { key: "installs", label: T.fieldInstalls, header: headerFor("installs") },
+    mappedKeys.has("actions") && { key: "actions", label: T.fieldActions, header: headerFor("actions") },
+    hasRev && { key: "revenue", label: T.fieldRevenue(kpi.cohort), header: headerFor(`revenue_d${kpi.cohort}`) },
+    hasPu && { key: "purchases", label: T.fieldPurchases(kpi.cohort), header: headerFor(`pu_d${kpi.cohort}`) },
   ].filter(Boolean);
 
   // 프리셋 지표(이익·이익률) — 매출 데이터 있을 때만 후보로. kpi에 이미 계산됨.
   const presetCards = [];
   if (hasRev) {
-    presetCards.push({ k: "profit", label: "이익", node: (
-      <div key="profit" className="kpi-card"><div className="label">이익 (D{kpi.cohort})</div><div className="value tnum">{formatNumber(kpi.profit)}</div><div className="delta">매출 − 비용</div></div>
+    presetCards.push({ k: "profit", label: T.profitLabel(kpi.cohort), node: (
+      <div key="profit" className="kpi-card"><div className="label">{T.profitLabel(kpi.cohort)}</div><div className="value tnum">{formatNumber(kpi.profit)}</div><div className="delta">{T.profitDelta}</div></div>
     ) });
-    presetCards.push({ k: "profitMargin", label: "이익률", node: (
-      <div key="profitMargin" className="kpi-card"><div className="label">이익률 (D{kpi.cohort})</div><div className="value tnum">{formatPercent(kpi.profitMargin)}</div><div className="delta">(매출−비용) / 매출</div></div>
+    presetCards.push({ k: "profitMargin", label: T.profitMarginLabel(kpi.cohort), node: (
+      <div key="profitMargin" className="kpi-card"><div className="label">{T.profitMarginLabel(kpi.cohort)}</div><div className="value tnum">{formatPercent(kpi.profitMargin)}</div><div className="delta">{T.profitMarginDelta}</div></div>
     ) });
   }
 
@@ -494,7 +634,7 @@ export default function VizTab({ domain = "performance" } = {}) {
   const customCards = (customMetrics || []).map((def) => {
     const val = customMetricToDescriptor(def).compute(agg);
     return { k: def.id, label: def.name, node: (
-      <div key={def.id} className="kpi-card"><div className="label">{def.name}</div><div className="value tnum">{val == null ? "—" : formatNumber(val, { decimals: 2 })}</div><div className="delta">커스텀 지표</div></div>
+      <div key={def.id} className="kpi-card"><div className="label">{def.name}</div><div className="value tnum">{val == null ? "—" : formatNumber(val, { decimals: 2 })}</div><div className="delta">{T.customMetricDelta}</div></div>
     ) };
   });
 
@@ -518,8 +658,8 @@ export default function VizTab({ domain = "performance" } = {}) {
         <aside className="alert-banner" role="alert">
           <div className="alert-icon">⚠</div>
           <div className="alert-body">
-            <strong>D7 ROAS가 권장 벤치마크(15%) 미달입니다.</strong>
-            현재 {d7RoasNormalized.toFixed(2)}% — UAC/AAP 캠페인의 입찰 단계·에셋 다양성·매체별 카니발 비중 진단이 필요합니다.
+            <strong>{T.alertTitle}</strong>
+            {T.alertBody(d7RoasNormalized.toFixed(2))}
           </div>
         </aside>
       )}
@@ -527,37 +667,37 @@ export default function VizTab({ domain = "performance" } = {}) {
       {/* Cohort Toggle — 콘텐츠는 매출/결제/잔존율(코호트 지표)이 없어 제외(§정직성). */}
       {!isContent && (
       <section className="block" id="s-cohort">
-        <h2 className="section-title"><span className="ix">§1</span>코호트 시점</h2>
+        <h2 className="section-title"><span className="ix">§1</span>{T.cohortSectionTitle}</h2>
         <div className="cohort-toggle" id="cohort-toggle" style={{ marginBottom: "1rem" }}>
           <button data-cohort="0" className={selectedCohort === 0 ? "active" : ""} onClick={() => setSelectedCohort(0)}>D0</button>
           <button data-cohort="7" className={selectedCohort === 7 ? "active" : ""} onClick={() => setSelectedCohort(7)}>D7</button>
           <button data-cohort="14" className={selectedCohort === 14 ? "active" : ""} onClick={() => setSelectedCohort(14)}>D14</button>
         </div>
-        <p>매출/결제/잔존율은 선택된 코호트(D{kpi.cohort}) 기준으로 계산됩니다. 단일 지표(CPI/CTR/CVR/비용/설치)는 코호트 무관.</p>
+        <p>{T.cohortDesc(kpi.cohort)}</p>
       </section>
       )}
 
       {/* KPI Summary */}
       <section className="block" id="s-kpi">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2 className="section-title"><span className="ix">§2</span>KPI 요약</h2>
+          <h2 className="section-title"><span className="ix">§2</span>{T.kpiSectionTitle}</h2>
           <div style={{ display: "flex", gap: "6px" }}>
-            <button className="ab-pill" onClick={() => setBuilderOpen(true)} title="데이터 컬럼으로 나만의 지표 만들기">＋ 커스텀 지표</button>
+            <button className="ab-pill" onClick={() => setBuilderOpen(true)} title={T.addMetricTitle}>{T.addMetric}</button>
             {kpiEditMode ? (
               <>
-                <button className="ab-pill" onClick={() => resetViewConfig(VIZ_KPI_SCOPE)} title="전체 표시·기본 순서·기본 크기">초기화</button>
-                <button className="ab-pill active" onClick={() => setKpiEditMode(false)} style={{ fontWeight: 700 }}>완료</button>
+                <button className="ab-pill" onClick={() => resetViewConfig(VIZ_KPI_SCOPE)} title={T.resetTitle}>{T.reset}</button>
+                <button className="ab-pill active" onClick={() => setKpiEditMode(false)} style={{ fontWeight: 700 }}>{T.done}</button>
               </>
             ) : (
-              <button className="ab-pill" onClick={() => setKpiEditMode(true)} title="카드를 그 자리에서 드래그·표시/숨김·크기 편집">✏️ 편집</button>
+              <button className="ab-pill" onClick={() => setKpiEditMode(true)} title={T.editTitle}>{T.edit}</button>
             )}
           </div>
         </div>
         {kpiEditMode && (
-          <p className="muted" style={{ fontSize: "11px", margin: "0 0 8px" }}>⠿ 드래그로 이동 · 👁 표시/숨김. 변경은 자동 저장됩니다.</p>
+          <p className="muted" style={{ fontSize: "11px", margin: "0 0 8px" }}>{T.editHint}</p>
         )}
         {allKpiCards.length === 0 ? (
-          <p className="muted" style={{ fontSize: "12px" }}>표시할 KPI가 없습니다.</p>
+          <p className="muted" style={{ fontSize: "12px" }}>{T.noKpi}</p>
         ) : (
           <InlineCardEditor
             items={allKpiCards}
@@ -572,10 +712,10 @@ export default function VizTab({ domain = "performance" } = {}) {
       {/* Charts Grid */}
       <section className="block" id="s-charts">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2 className="section-title"><span className="ix">§3</span>차트 시각화</h2>
+          <h2 className="section-title"><span className="ix">§3</span>{T.chartSectionTitle}</h2>
           <div style={{ display: "flex", gap: "6px" }}>
-            <button className="ab-pill" onClick={() => setChartBuilderOpen(true)} title="모양·행·값을 골라 나만의 차트 만들기">＋ 커스텀 차트</button>
-            <button className="ab-pill" onClick={() => setChartCfgOpen(true)} title="표시할 차트와 순서 편집">⚙ 차트 편집</button>
+            <button className="ab-pill" onClick={() => setChartBuilderOpen(true)} title={T.addChartTitle}>{T.addChart}</button>
+            <button className="ab-pill" onClick={() => setChartCfgOpen(true)} title={T.editChartTitle}>{T.editChart}</button>
           </div>
         </div>
         <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>{C.chartsDesc}</p>
@@ -585,7 +725,7 @@ export default function VizTab({ domain = "performance" } = {}) {
             store.eventMarkers를 preparedMarkers로 구독해 세로선만 오버레이. */}
 
         {orderedCharts.length === 0 ? (
-          <p className="muted" style={{ fontSize: "12px" }}>표시할 차트가 없습니다. ⚙ 차트 편집에서 다시 켜세요.</p>
+          <p className="muted" style={{ fontSize: "12px" }}>{T.noChart}</p>
         ) : (
           <div className="chart-grid cols-2">
             {orderedCharts.map((c) => (
@@ -612,7 +752,7 @@ export default function VizTab({ domain = "performance" } = {}) {
       <MetricConfigPanel
         open={chartCfgOpen}
         onClose={() => setChartCfgOpen(false)}
-        title="차트 시각화 — 차트 편집"
+        title={T.chartEditPanelTitle}
         items={[...chartMeta, ...customChartMetas].map((c) => ({ key: c.k, label: c.title }))}
         config={chartCfg}
         onSave={(next) => saveScope(VIZ_CHART_SCOPE, next, setChartCfgOpen)}

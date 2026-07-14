@@ -14,8 +14,23 @@ import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 // 지표 뷰 설정 scope — 이상탐지 표의 지표 컬럼 표시/순서.
 const ANOMALY_TABLE_SCOPE = "5-2:anomaly-table";
 
-export default function AnomalyTab({ domain = "performance" } = {}) {
+// EN 지표 라벨 — contentDomain.js(C.anLabels)는 ko 전용이라 로컬로 병행 유지(§domain 로직 불변).
+const AN_LABELS_EN = {
+  performance: {
+    cost: "Cost", impressions: "Impressions", clicks: "Clicks", installs: "Installs",
+    actions: "Actions", cpm: "CPM", ctr: "CTR", cpi: "CPI", cvr: "CVR",
+    cpa: "CPA", roas: "ROAS",
+  },
+  content: {
+    cost: "Cost", impressions: "Impressions", clicks: "Clicks", installs: "Visits",
+    actions: "Subscriptions", cpm: "CPM", ctr: "CTR", cpi: "Cost/Visit", cvr: "CVR",
+    cpa: "Cost/Subscription", roas: "ROAS",
+  },
+};
+
+export default function AnomalyTab({ domain = "performance", locale = "ko" } = {}) {
   const C = resolveDashCopy(domain);
+  const tr = (ko, en) => (locale === "en" ? en : ko);
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
@@ -44,7 +59,7 @@ export default function AnomalyTab({ domain = "performance" } = {}) {
     const mapped = new Set(Object.values(csvData.mapping || {}));
 
     // 지표 순서: 비용,노출,클릭,설치,액션,CPM,CTR,CPI,CVR,CPA,ROAS(고정)
-    const AL = C.anLabels;
+    const AL = locale === "en" ? (AN_LABELS_EN[domain] || AN_LABELS_EN.performance) : C.anLabels;
     const mOpts = [
       ["cost", AL.cost],
       ["impressions", AL.impressions],
@@ -112,7 +127,7 @@ export default function AnomalyTab({ domain = "performance" } = {}) {
       seriesVals: sVals,
       flags: _flags
     };
-  }, [csvData, dashboardFilter, metric, win, zThresh, dowAdjust, C]);
+  }, [csvData, dashboardFilter, metric, win, zThresh, dowAdjust, C, domain, locale]);
 
   const formatValue = (v) => {
     if (v == null) return "—";
@@ -181,8 +196,8 @@ export default function AnomalyTab({ domain = "performance" } = {}) {
     return (
       <div className="tab-pane active" id="tab-anomaly">
         <section className="block" id="s-anom">
-          <h2 className="section-title"><span className="ix">§1</span>이상 감지</h2>
-          <p className="muted">데이터가 없습니다.</p>
+          <h2 className="section-title"><span className="ix">§1</span>{tr("이상 감지", "Anomaly Detection")}</h2>
+          <p className="muted">{tr("데이터가 없습니다.", "No data available.")}</p>
         </section>
       </div>
     );
@@ -190,20 +205,20 @@ export default function AnomalyTab({ domain = "performance" } = {}) {
 
   // 이상탐지 표 지표 컬럼 — 첫 컬럼 '날짜'는 고정, 나머지만 표시/순서 토글(값 불변).
   const anomalyCols = [
-    { k: "value", label: "값", render: (a) => <strong>{formatValue(a.value)}</strong> },
-    { k: "mean", label: `기준 평균(${win}일)`, render: (a) => formatValue(a.mean) },
+    { k: "value", label: tr("값", "Value"), render: (a) => <strong>{formatValue(a.value)}</strong> },
+    { k: "mean", label: tr(`기준 평균(${win}일)`, `Baseline avg (${win}d)`), render: (a) => formatValue(a.mean) },
     { k: "z", label: "z-score", cellClass: (a) => (Math.abs(a.z) >= 3 ? "neg" : ""), render: (a) => `${a.z > 0 ? "+" : ""}${a.z.toFixed(2)}` },
-    { k: "dir", label: "방향", render: (a) => (a.z > 0 ? <span style={{ color: "#fbbf24" }}>▲ 급등</span> : <span style={{ color: "#f87171" }}>▼ 급락</span>) },
+    { k: "dir", label: tr("방향", "Direction"), render: (a) => (a.z > 0 ? <span style={{ color: "#fbbf24" }}>{tr("▲ 급등", "▲ Spike")}</span> : <span style={{ color: "#f87171" }}>{tr("▼ 급락", "▼ Drop")}</span>) },
   ];
   const orderedAnomalyCols = applyMetricView(anomalyCols, anomalyTableCfg, (col) => col.k);
 
   return (
     <div className="tab-pane active" id="tab-anomaly">
       <section className="block" id="s-anom">
-        <h2 className="section-title"><span className="ix">§1</span>이상 감지</h2>
-        
+        <h2 className="section-title"><span className="ix">§1</span>{tr("이상 감지", "Anomaly Detection")}</h2>
+
         <div className="ab-pillgroup">
-          <span className="ab-pillgroup-label">지표</span>
+          <span className="ab-pillgroup-label">{tr("지표", "Metric")}</span>
           {metricOpts.map(([k, l]) => (
             <button key={k} className={`ab-pill ${metric === k ? "active" : ""}`} onClick={() => setMetric(k)}>
               {l}
@@ -212,24 +227,27 @@ export default function AnomalyTab({ domain = "performance" } = {}) {
         </div>
 
         <div className="ab-pillgroup">
-          <span className="ab-pillgroup-label">민감도(z)</span>
+          <span className="ab-pillgroup-label">{tr("민감도(z)", "Sensitivity (z)")}</span>
           {[2, 2.5, 3].map(zz => (
             <button key={zz} className={`ab-pill ${zThresh === zz ? "active" : ""}`} onClick={() => setZThresh(zz)}>
               {zz}σ
             </button>
           ))}
-          <span className="ab-pillgroup-label" style={{ marginLeft: "8px" }}>기준 윈도우</span>
+          <span className="ab-pillgroup-label" style={{ marginLeft: "8px" }}>{tr("기준 윈도우", "Baseline window")}</span>
           {[7, 14, 28].map(w => (
             <button key={w} className={`ab-pill ${win === w ? "active" : ""}`} onClick={() => setWin(w)}>
-              {w}일
+              {tr(`${w}일`, `${w}d`)}
             </button>
           ))}
           <span
             className="ab-pillgroup-label"
             style={{ marginLeft: "8px" }}
-            title="요일별 효과(주말 노출↑·평일 CTR↓ 등)를 기대값에 반영해, 요일 특성으로 인한 거짓 이상탐지를 줄입니다."
+            title={tr(
+              "요일별 효과(주말 노출↑·평일 CTR↓ 등)를 기대값에 반영해, 요일 특성으로 인한 거짓 이상탐지를 줄입니다.",
+              "Reflects day-of-week effects (e.g. higher weekend impressions, lower weekday CTR) in the expected value, reducing false anomalies caused by weekly patterns."
+            )}
           >
-            요일 보정
+            {tr("요일 보정", "Day-of-week adjustment")}
           </span>
           <button className={`ab-pill ${!dowAdjust ? "active" : ""}`} onClick={() => setDowAdjust(false)}>
             OFF
@@ -241,7 +259,7 @@ export default function AnomalyTab({ domain = "performance" } = {}) {
 
         <div className="alloc-card" style={{ margin: "10px 0" }}>
           <div className="cann-card-header">
-            <div className="alloc-card-title">시계열 + 이상 표기</div>
+            <div className="alloc-card-title">{tr("시계열 + 이상 표기", "Time series + anomaly markers")}</div>
             <button className="ab-pill" data-pngdownload="anomaly-chart" data-pngname="anomaly">⬇ PNG</button>
           </div>
           <div className="chart-container" style={{ height: "260px" }}>
@@ -252,13 +270,13 @@ export default function AnomalyTab({ domain = "performance" } = {}) {
         {anomalies.length ? (
           <>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "6px" }}>
-              <button className="ab-pill" onClick={() => setAnomalyCfgOpen(true)} title="표시할 지표 컬럼과 순서 편집">⚙ 컬럼 편집</button>
+              <button className="ab-pill" onClick={() => setAnomalyCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("⚙ 컬럼 편집", "⚙ Edit columns")}</button>
             </div>
             <div className="table-wrap">
               <table className="data" style={{ fontSize: "11.5px" }}>
                 <thead>
                   <tr>
-                    <th>날짜</th>
+                    <th>{tr("날짜", "Date")}</th>
                     {orderedAnomalyCols.map((col) => <th key={col.k}>{col.label}</th>)}
                   </tr>
                 </thead>
@@ -275,15 +293,15 @@ export default function AnomalyTab({ domain = "performance" } = {}) {
               </table>
             </div>
             {orderedAnomalyCols.length === 0 && (
-              <p className="muted" style={{ fontSize: "12px" }}>표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.</p>
+              <p className="muted" style={{ fontSize: "12px" }}>{tr("표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.", "No metric columns are shown. Re-enable them in ⚙ Edit columns.")}</p>
             )}
           </>
         ) : (
           <div className="callout ok">
             <div className="ico">✓</div>
             <div className="body">
-              <strong>이상 없음</strong>
-              <p>현재 지표·민감도 기준 |z|≥{zThresh} 이상치가 감지되지 않았습니다.</p>
+              <strong>{tr("이상 없음", "No anomalies")}</strong>
+              <p>{tr(`현재 지표·민감도 기준 |z|≥${zThresh} 이상치가 감지되지 않았습니다.`, `No anomalies (|z|≥${zThresh}) detected for the current metric and sensitivity.`)}</p>
             </div>
           </div>
         )}
@@ -291,7 +309,7 @@ export default function AnomalyTab({ domain = "performance" } = {}) {
       <MetricConfigPanel
         open={anomalyCfgOpen}
         onClose={() => setAnomalyCfgOpen(false)}
-        title="이상탐지 표 — 컬럼 편집"
+        title={tr("이상탐지 표 — 컬럼 편집", "Anomaly detection table — Edit columns")}
         items={anomalyCols.map((col) => ({ key: col.k, label: col.label }))}
         config={anomalyTableCfg}
         onSave={(next) => {
@@ -300,7 +318,7 @@ export default function AnomalyTab({ domain = "performance" } = {}) {
           setAnomalyCfgOpen(false);
         }}
       />
-      <CustomChartsSection sectionNo="2" chartScope="5-2:anomaly-charts" metricScope="5-2:viz-kpi" title="커스텀 차트" />
+      <CustomChartsSection sectionNo="2" chartScope="5-2:anomaly-charts" metricScope="5-2:viz-kpi" title={tr("커스텀 차트", "Custom Charts")} />
     </div>
   );
 }

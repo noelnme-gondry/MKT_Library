@@ -111,9 +111,30 @@ export const IA = [
     title: "운영 & 성과 분석",
     desc: "실제 운영한 캠페인 데이터를 업로드해 대시보드로 시각화하고, 성과 변동·포화도·예산 배분까지 한 CSV로 이어서 분석.",
     items: [
-      { id: "5-2", title: "운영 대시보드 (스코어카드·페이싱·차트)" },
-      { id: "5-21", title: "캠페인 성과 변동 (PVM 분해)" },
-      { id: "5-22", title: "캠페인 포화도 진단 (한계 효율)" },
+      {
+        id: "5-2",
+        title: "운영 대시보드 (스코어카드·페이싱·차트)",
+        titleEn: "Operations Dashboard (Scorecard · Pacing · Charts)",
+        seoTitleEn: "Free Ops Dashboard: Scorecard, Pacing, Anomalies, Cohorts",
+        seoDescriptionEn:
+          "Upload your campaign CSV to see scorecards, budget pacing, anomaly detection, LTV, cohorts, and funnels in one dashboard — free, client-side only.",
+      },
+      {
+        id: "5-21",
+        title: "캠페인 성과 변동 (PVM 분해)",
+        titleEn: "Campaign Performance Variance (PVM Decomposition)",
+        seoTitleEn: "Why Did Performance Change? Free PVM Decomposition Tool",
+        seoDescriptionEn:
+          "Decompose a performance shift into volume, efficiency, and mix effects with zero residual (Bennet decomposition). Free, upload a CSV to run it instantly.",
+      },
+      {
+        id: "5-22",
+        title: "캠페인 포화도 진단 (한계 효율)",
+        titleEn: "Campaign Saturation Diagnosis (Marginal Efficiency)",
+        seoTitleEn: "Is This Campaign Saturated? Free Marginal Efficiency Diagnosis",
+        seoDescriptionEn:
+          "Compares marginal vs. average CPA/ROAS to tell you whether a channel or campaign is saturated or still has room to scale. Free, CSV-based.",
+      },
       {
         id: "5-3",
         title: "예산 배분 시뮬레이터",
@@ -132,9 +153,30 @@ export const IA = [
     title: "소재·실험",
     desc: "소재 성과·피로도 진단과 A/B·홀드아웃 실험 판독.",
     items: [
-      { id: "5-6", title: "소재 분석 (지표·피로도·포레스트)" },
-      { id: "5-4", title: "실험 분석 (A/B 테스트)" },
-      { id: "5-23", title: "증분 분석 (홀드아웃·전후 비교)" },
+      {
+        id: "5-6",
+        title: "소재 분석 (지표·피로도·포레스트)",
+        titleEn: "Creative Analysis (Metrics · Fatigue · Forest Plot)",
+        seoTitleEn: "Which Creative Should You Replace? Free Fatigue Analysis",
+        seoDescriptionEn:
+          "Analyze creative performance, fatigue over time, and which attributes (hook, format, message) actually drive results. Free, upload a creative-level CSV.",
+      },
+      {
+        id: "5-4",
+        title: "실험 분석 (A/B 테스트)",
+        titleEn: "Experiment Analysis (A/B Test)",
+        seoTitleEn: "Is A vs B Really Different? Free A/B Test Significance Calculator",
+        seoDescriptionEn:
+          "Design your sample size and judge whether your A/B test result is statistically significant. Free, no signup — paste your numbers or upload a CSV.",
+      },
+      {
+        id: "5-23",
+        title: "증분 분석 (홀드아웃·전후 비교)",
+        titleEn: "Incrementality Analysis (Holdout · Pre/Post)",
+        seoTitleEn: "How Much Did Your Ads Really Cause? Free Incrementality Testing",
+        seoDescriptionEn:
+          "Measure true incremental lift with holdout tests, on/off comparisons, or DiD pre/post analysis — not just correlation. Free, CSV-based.",
+      },
     ],
   },
   {
@@ -153,7 +195,14 @@ export const IA = [
         seoDescriptionEn:
           "Run marketing mix modeling (MMM) to decompose cross-channel cannibalization, contribution, and future performance via regression. Free MMM tool — upload a CSV and run it instantly.",
       },
-      { id: "5-20", title: "핵심 가치 발굴 (Aha-moment)" },
+      {
+        id: "5-20",
+        title: "핵심 가치 발굴 (Aha-moment)",
+        titleEn: "Find Your Aha-Moment",
+        seoTitleEn: "What Makes Users Stick? Free Aha-Moment Finder",
+        seoDescriptionEn:
+          "Find which early actions, done how many times within how many days, predict retention (F1/lift grid search). Free, upload an event-level CSV.",
+      },
     ],
   },
   // ── Content Analytics — 퍼포먼스 엔진(regMath·ahaMath)을 콘텐츠 도메인으로
