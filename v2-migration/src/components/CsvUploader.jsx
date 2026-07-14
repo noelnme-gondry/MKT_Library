@@ -17,7 +17,93 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
-export default function CsvUploader({ toolId }) {
+// 셸 카피만 번역(드롭존·배너·버튼·미리보기 텍스트). STANDARD_FIELDS 필드 라벨(비용·노출수
+// 등, csvConstants.js 210여 개)은 별도 백로그 — 공수가 자릿수 다름(§plan).
+const CSV_COPY = {
+  ko: {
+    emptyCsv: "CSV 파일이 비어 있거나 올바르지 않습니다.",
+    parseError: "CSV 파싱 중 오류 발생: ",
+    dropTitle: "CSV 파일 드래그 & 드롭",
+    dropSub: "또는 클릭하여 파일 선택",
+    demoBannerTitle: "🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다",
+    demoBannerDesc: "실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.",
+    demoBannerBtn: "📁 내 CSV 업로드하기",
+    previewingDemo: "샘플 데이터로 미리보기 중",
+    rowsCols: (rows, cols, demo) => `${rows.toLocaleString()}행 · ${cols}컬럼${demo ? " · 실제 데이터 아님" : ""}`,
+    changeCsvTitle: "이 도구의 CSV를 제거하고 다른 파일 업로드",
+    changeCsvBtn: "⟳ CSV 변경",
+    missingTitle: "⚠ 이 도구가 필요로 하는 필수 컬럼이 매핑되지 않았습니다",
+    missingLabel: "필수: ",
+    oneOfSuffix: (joined) => `(${joined} 중 1)`,
+    okTitle: "✓ 필수 컬럼 매핑 완료.",
+    okDesc: "아래 도구를 사용할 수 있습니다.",
+    mappingHeader: "📋 CSV 컬럼 → 표준 필드 매핑",
+    mappingSummaryPrefix: (total) => `전체 ${total}컬럼 · 옵션 매핑 `,
+    mappingHint: "자동 + 수동. 드롭다운으로 변경 시 즉시 반영.",
+    colHeaderCsv: "CSV 컬럼",
+    colHeaderStd: "표준 필드",
+    colHeaderStatus: "상태",
+    ignoreOption: "(사용 안 함)",
+    outOfScopeSuffix: " (이 도구 미사용)",
+    unmapped: "사용 안 함",
+    mapped: "매핑됨",
+    previewTitle: "🔎 데이터 미리보기",
+    previewUsingMapped: "매핑된 컬럼",
+    previewAll: "전체 컬럼",
+    previewRows: (shown, total) => `상위 ${shown}행 / 총 ${total.toLocaleString()}행`,
+    collapse: "▾ 접기",
+    expand: "▸ 펼치기",
+    analyzedBadge: "✓ 분석 완료",
+    analyzedHint: '매핑을 바꾸면 결과가 숨겨지고 다시 "분석하기"를 눌러야 합니다.',
+    reanalyzeBtn: "↻ 다시 분석",
+    checkMapping: "⚠ 매핑 확인 필요",
+    checkMappingHint: '매핑이 올바른지 확인 후 "분석하기"를 클릭하여 분석을 시작하세요.',
+    analyzeBtn: "데이터 분석하기",
+  },
+  en: {
+    emptyCsv: "This CSV file is empty or invalid.",
+    parseError: "Error parsing CSV: ",
+    dropTitle: "Drag & drop a CSV file",
+    dropSub: "or click to choose a file",
+    demoBannerTitle: "🧪 You're viewing sample data",
+    demoBannerDesc: "This isn't your real data and nothing is sent to a server. Upload your own CSV to replace it instantly.",
+    demoBannerBtn: "📁 Upload my CSV",
+    previewingDemo: "Previewing sample data",
+    rowsCols: (rows, cols, demo) => `${rows.toLocaleString()} rows · ${cols} cols${demo ? " · not real data" : ""}`,
+    changeCsvTitle: "Remove this tool's CSV and upload another file",
+    changeCsvBtn: "⟳ Change CSV",
+    missingTitle: "⚠ Required columns for this tool aren't mapped yet",
+    missingLabel: "Required: ",
+    oneOfSuffix: (joined) => `(1 of ${joined})`,
+    okTitle: "✓ All required columns mapped.",
+    okDesc: "You can use the tool below.",
+    mappingHeader: "📋 CSV column → standard field mapping",
+    mappingSummaryPrefix: (total) => `${total} columns total · optional mapped `,
+    mappingHint: "Auto + manual. Changing a dropdown applies instantly.",
+    colHeaderCsv: "CSV column",
+    colHeaderStd: "Standard field",
+    colHeaderStatus: "Status",
+    ignoreOption: "(unused)",
+    outOfScopeSuffix: " (not used by this tool)",
+    unmapped: "Unused",
+    mapped: "Mapped",
+    previewTitle: "🔎 Data preview",
+    previewUsingMapped: "Mapped columns",
+    previewAll: "All columns",
+    previewRows: (shown, total) => `top ${shown} rows / ${total.toLocaleString()} total`,
+    collapse: "▾ Collapse",
+    expand: "▸ Expand",
+    analyzedBadge: "✓ Analysis done",
+    analyzedHint: 'Changing the mapping hides results until you click "Analyze" again.',
+    reanalyzeBtn: "↻ Re-analyze",
+    checkMapping: "⚠ Check mapping",
+    checkMappingHint: 'Confirm the mapping is correct, then click "Analyze" to start.',
+    analyzeBtn: "Analyze data",
+  },
+};
+
+export default function CsvUploader({ toolId, locale = "ko" }) {
+  const T = CSV_COPY[locale] || CSV_COPY.ko;
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
   const setGroupAnalyzed = useAppStore((s) => s.setGroupAnalyzed);
@@ -67,7 +153,7 @@ export default function CsvUploader({ toolId }) {
       skipEmptyLines: true,
       complete: (results) => {
         if (!results.data || results.data.length === 0) {
-          setErrorMsg("CSV 파일이 비어 있거나 올바르지 않습니다.");
+          setErrorMsg(T.emptyCsv);
           return;
         }
 
@@ -117,7 +203,7 @@ export default function CsvUploader({ toolId }) {
         setPreviewOpen(true);
       },
       error: (err) => {
-        setErrorMsg("CSV 파싱 중 오류 발생: " + err.message);
+        setErrorMsg(T.parseError + err.message);
       },
     });
   };
@@ -189,7 +275,7 @@ export default function CsvUploader({ toolId }) {
     const labels = reqs.map((r) => {
       if (typeof r === "string") return STANDARD_FIELDS[r]?.label || r;
       if (r.oneOf)
-        return `(${r.oneOf.map((k) => STANDARD_FIELDS[k]?.label || k).join(" / ")} 중 1)`;
+        return T.oneOfSuffix(r.oneOf.map((k) => STANDARD_FIELDS[k]?.label || k).join(" / "));
       return "?";
     });
 
@@ -239,7 +325,7 @@ export default function CsvUploader({ toolId }) {
   if (!hasFile) {
     return (
       <div>
-        <CsvGuide toolId={toolId} />
+        <CsvGuide toolId={toolId} locale={locale} />
         <div
           className={`csv-dropzone ${isDragging ? "dragover" : ""}`}
           onDragOver={handleDragOver}
@@ -254,8 +340,8 @@ export default function CsvUploader({ toolId }) {
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
           </div>
-          <div className="csv-drop-text">CSV 파일 드래그 & 드롭</div>
-          <div className="csv-drop-sub">또는 클릭하여 파일 선택</div>
+          <div className="csv-drop-text">{T.dropTitle}</div>
+          <div className="csv-drop-sub">{T.dropSub}</div>
           <input
             type="file"
             accept=".csv,text/csv"
@@ -264,7 +350,7 @@ export default function CsvUploader({ toolId }) {
             onChange={handleFileChange}
           />
         </div>
-        <DemoLoadButton onLoad={handleLoadDemo} />
+        <DemoLoadButton onLoad={handleLoadDemo} locale={locale} />
         {errorMsg && <div style={{ color: "var(--danger)", marginTop: "10px", fontSize: "12px" }}>{errorMsg}</div>}
       </div>
     );
@@ -280,63 +366,63 @@ export default function CsvUploader({ toolId }) {
       {isDemo && (
         <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <div>
-            <strong>🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다</strong>
-            <p style={{ margin: "0.25rem 0 0" }}>실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.</p>
+            <strong>{T.demoBannerTitle}</strong>
+            <p style={{ margin: "0.25rem 0 0" }}>{T.demoBannerDesc}</p>
           </div>
-          <button className="ab-button" onClick={handleReset}>📁 내 CSV 업로드하기</button>
+          <button className="ab-button" onClick={handleReset}>{T.demoBannerBtn}</button>
         </div>
       )}
-      <CsvGuide toolId={toolId} />
+      <CsvGuide toolId={toolId} locale={locale} />
       <div className="file-state">
         <div className="meta-text">
           <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
           {isDemo ? (
-            <strong>샘플 데이터로 미리보기 중</strong>
+            <strong>{T.previewingDemo}</strong>
           ) : (
             <strong>{csvData.fileName}</strong>
           )}
           <span className="csv-loaded-stats tnum">
-            {csvData.raw.length.toLocaleString()}행 · {csvData.headers.length}컬럼{isDemo ? " · 실제 데이터 아님" : ""}
+            {T.rowsCols(csvData.raw.length, csvData.headers.length, isDemo)}
           </span>
         </div>
         {!isDemo && (
-          <button className="ab-pill csv-change-btn" title="이 도구의 CSV를 제거하고 다른 파일 업로드" onClick={handleReset}>
-            ⟳ CSV 변경
+          <button className="ab-pill csv-change-btn" title={T.changeCsvTitle} onClick={handleReset}>
+            {T.changeCsvBtn}
           </button>
         )}
       </div>
 
       {missing.length > 0 ? (
         <div className="required-banner">
-          <strong>⚠ 이 도구가 필요로 하는 필수 컬럼이 매핑되지 않았습니다</strong>
+          <strong>{T.missingTitle}</strong>
           <p style={{ margin: "0.25rem 0 0" }}>
-            필수: {reqLabels.map((l, i) => (
+            {T.missingLabel}{reqLabels.map((l, i) => (
               <span key={i}><code className="inline">{l}</code>{i < reqLabels.length - 1 ? ", " : ""}</span>
             ))}
           </p>
         </div>
       ) : (
         <div className="required-banner ok">
-          <strong>✓ 필수 컬럼 매핑 완료.</strong>
-          <p style={{ margin: "0.25rem 0 0" }}>아래 도구를 사용할 수 있습니다.</p>
+          <strong>{T.okTitle}</strong>
+          <p style={{ margin: "0.25rem 0 0" }}>{T.okDesc}</p>
         </div>
       )}
 
       <div className="csv-mapping-block">
         <div className="csv-mapping-header">
           <div>
-            <strong style={{ fontSize: "14px", color: "var(--primary, #adc6ff)" }}>📋 CSV 컬럼 → 표준 필드 매핑</strong>
+            <strong style={{ fontSize: "14px", color: "var(--primary, #adc6ff)" }}>{T.mappingHeader}</strong>
             <span style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "8px" }}>
-              전체 {csvData.headers.length}컬럼 · 옵션 매핑 <strong style={{ color: "var(--text-primary)" }}>{mappedOptCount}/{totalOptCount}</strong>
+              {T.mappingSummaryPrefix(csvData.headers.length)}<strong style={{ color: "var(--text-primary)" }}>{mappedOptCount}/{totalOptCount}</strong>
             </span>
           </div>
-          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>자동 + 수동. 드롭다운으로 변경 시 즉시 반영.</span>
+          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.mappingHint}</span>
         </div>
         <div className="mapping-grid">
-          <div className="mapping-header">CSV 컬럼</div>
+          <div className="mapping-header">{T.colHeaderCsv}</div>
           <div></div>
-          <div className="mapping-header">표준 필드</div>
-          <div className="mapping-header" style={{ textAlign: "right" }}>상태</div>
+          <div className="mapping-header">{T.colHeaderStd}</div>
+          <div className="mapping-header" style={{ textAlign: "right" }}>{T.colHeaderStatus}</div>
           
           {csvData.headers.map((h) => {
             const sel = csvData.mapping[h] || "__ignore__";
@@ -353,10 +439,10 @@ export default function CsvUploader({ toolId }) {
                   value={sel}
                   onChange={(e) => handleMappingChange(h, e.target.value)}
                 >
-                  <option value="__ignore__">(사용 안 함)</option>
+                  <option value="__ignore__">{T.ignoreOption}</option>
                   {outOfScope && (
                     <option value={sel}>
-                      {STANDARD_FIELDS[sel].label} (이 도구 미사용)
+                      {STANDARD_FIELDS[sel].label}{T.outOfScopeSuffix}
                     </option>
                   )}
                   {Object.entries(fieldGroups).map(([gr, fs]) => (
@@ -368,7 +454,7 @@ export default function CsvUploader({ toolId }) {
                   ))}
                 </select>
                 <div className={`map-status ${isUnmapped ? "" : "ok"}`}>
-                  {isUnmapped ? "사용 안 함" : "매핑됨"}
+                  {isUnmapped ? T.unmapped : T.mapped}
                 </div>
               </React.Fragment>
             );
@@ -382,9 +468,9 @@ export default function CsvUploader({ toolId }) {
         <div className="csv-preview-block" style={{ marginTop: "12px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px", marginBottom: "6px" }}>
             <div>
-              <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>🔎 데이터 미리보기</strong>
+              <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>{T.previewTitle}</strong>
               <span style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "8px" }}>
-                {preview.usingMapped ? "매핑된 컬럼" : "전체 컬럼"} · 상위 {preview.rows.length}행 / 총 {preview.totalRows.toLocaleString()}행
+                {preview.usingMapped ? T.previewUsingMapped : T.previewAll} · {T.previewRows(preview.rows.length, preview.totalRows)}
               </span>
             </div>
             <button
@@ -392,7 +478,7 @@ export default function CsvUploader({ toolId }) {
               style={{ fontSize: "11px" }}
               onClick={() => setPreviewOpen((o) => !o)}
             >
-              {previewOpen ? "▾ 접기" : "▸ 펼치기"}
+              {previewOpen ? T.collapse : T.expand}
             </button>
           </div>
           {previewOpen && (
@@ -436,15 +522,15 @@ export default function CsvUploader({ toolId }) {
       {missing.length === 0 && (
         isAnalyzed ? (
           <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: 600 }}>✓ 분석 완료</span>
-            <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>매핑을 바꾸면 결과가 숨겨지고 다시 &quot;분석하기&quot;를 눌러야 합니다.</span>
-            <button className="ab-pill" onClick={() => requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); })} style={{ marginLeft: "auto" }}>↻ 다시 분석</button>
+            <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: 600 }}>{T.analyzedBadge}</span>
+            <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{T.analyzedHint}</span>
+            <button className="ab-pill" onClick={() => requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); })} style={{ marginLeft: "auto" }}>{T.reanalyzeBtn}</button>
           </div>
         ) : (
           <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <span style={{ color: "var(--danger)", fontSize: "12px", fontWeight: 600 }}>⚠ 매핑 확인 필요</span>
-            <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>매핑이 올바른지 확인 후 &quot;분석하기&quot;를 클릭하여 분석을 시작하세요.</span>
-            <button className="ab-button" onClick={() => requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); })} style={{ marginLeft: "auto" }}>데이터 분석하기</button>
+            <span style={{ color: "var(--danger)", fontSize: "12px", fontWeight: 600 }}>{T.checkMapping}</span>
+            <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{T.checkMappingHint}</span>
+            <button className="ab-button" onClick={() => requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); })} style={{ marginLeft: "auto" }}>{T.analyzeBtn}</button>
           </div>
         )
       )}

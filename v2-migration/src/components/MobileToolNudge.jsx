@@ -8,7 +8,29 @@ import { useAppStore } from "@/store/useDataStore";
 // (새로고침하면 다시 보임).
 const MOBILE_QUERY = "(max-width: 768px)";
 
-export default function MobileToolNudge() {
+const COPY = {
+  ko: {
+    text: (
+      <>
+        📱 이 도구는 PC 화면에 최적화돼 있어요. 지금 화면에서도 쓸 수 있지만, 표·차트는
+        <span style={{ color: "var(--text-primary)" }}> 넓은 화면</span>이 더 편해요.
+      </>
+    ),
+    dismissAria: "안내 닫기",
+  },
+  en: {
+    text: (
+      <>
+        📱 This tool is optimized for desktop. It still works here, but tables and charts
+        are easier to read on a <span style={{ color: "var(--text-primary)" }}>wider screen</span>.
+      </>
+    ),
+    dismissAria: "Dismiss notice",
+  },
+};
+
+export default function MobileToolNudge({ locale = "ko" }) {
+  const T = COPY[locale] || COPY.ko;
   // SSR과 동일하게 false로 시작(hydration mismatch 회피) 후 마운트 시 실제 값 반영.
   const [isMobile, setIsMobile] = useState(false);
   const dismissed = useAppStore((state) => state.mobileNudgeDismissed);
@@ -53,14 +75,11 @@ export default function MobileToolNudge() {
         lineHeight: 1.5,
       }}
     >
-      <span style={{ flex: 1 }}>
-        📱 이 도구는 PC 화면에 최적화돼 있어요. 지금 화면에서도 쓸 수 있지만, 표·차트는
-        <span style={{ color: "var(--text-primary)" }}> 넓은 화면</span>이 더 편해요.
-      </span>
+      <span style={{ flex: 1 }}>{T.text}</span>
       <button
         type="button"
         onClick={dismissMobileNudge}
-        aria-label="안내 닫기"
+        aria-label={T.dismissAria}
         style={{
           background: "transparent",
           border: "none",

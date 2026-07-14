@@ -72,3 +72,25 @@ export function resolveSlugToId(slugArr) {
 export function idToPath(id) {
   return idToSlug[id] || "/";
 }
+
+// ── EN i18n rollout registry ──────────────────────────────────────────────
+// Tool ids with a fully-translated EN page (component honors locale="en").
+// Add an id here ONLY after its component + shared shell strings are done —
+// this gates /en/[[...slug]] dispatch, hreflang emission, and sitemap EN URLs
+// so untranslated tools never get a thin/half-Korean page indexed.
+export const EN_READY_TOOL_IDS = new Set(["5-3", "5-18"]);
+
+export function hasEnVersion(id) {
+  return id === "home" || EN_READY_TOOL_IDS.has(id);
+}
+
+// { ko, en } absolute URL pair for hreflang alternates.languages, or null
+// when no EN version exists yet (caller should omit the languages key).
+export function enAlternates(routeId) {
+  if (!hasEnVersion(routeId)) return null;
+  const path = idToPath(routeId);
+  return {
+    ko: `${SITE_URL}${path}`,
+    en: `${SITE_URL}/en${path === "/" ? "" : path}`,
+  };
+}

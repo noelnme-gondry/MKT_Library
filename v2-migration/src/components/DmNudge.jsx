@@ -13,7 +13,29 @@ const FALLBACK_MS = 15000; // 짧은 페이지 폴백(스크롤 없이도 결국
 // 필요하면 https://ig.me/m/gondry__workshop 로 교체 가능.
 const IG_DM_URL = "https://www.instagram.com/gondry__workshop/";
 
-export default function DmNudge() {
+const COPY = {
+  ko: {
+    aria: "데이터 준비 문의",
+    close: "닫기",
+    title: "데이터 준비가 막막하신가요?",
+    body: "지금 화면은 예시 데이터예요. 어떤 데이터를 어디서 어떻게 뽑아야 할지 1:1로 도와드릴게요.",
+    cta: "인스타그램 DM으로 문의 →",
+    guide: "먼저 데이터 준비 가이드 보기 →",
+    guideHref: "/guide/csv-data-prep",
+  },
+  en: {
+    aria: "Ask about data prep",
+    close: "Close",
+    title: "Not sure how to prep your data?",
+    body: "This screen is sample data. We'll help you figure out exactly what data to pull and from where, 1:1.",
+    cta: "Ask via Instagram DM →",
+    guide: "See the data prep guide first →",
+    guideHref: "/en/guide/csv-data-prep",
+  },
+};
+
+export default function DmNudge({ locale = "ko" }) {
+  const T = COPY[locale] || COPY.ko;
   const dismissed = useAppStore((s) => s.dmNudgeDismissed);
   const dismiss = useAppStore((s) => s.dismissDmNudge);
   const from = useAppStore((s) => s.currentRouteId);
@@ -65,7 +87,7 @@ export default function DmNudge() {
   return (
     <div
       role="complementary"
-      aria-label="데이터 준비 문의"
+      aria-label={T.aria}
       data-dm-nudge
       style={{
         position: "fixed",
@@ -86,7 +108,7 @@ export default function DmNudge() {
       <button
         type="button"
         onClick={dismiss}
-        aria-label="닫기"
+        aria-label={T.close}
         style={{
           position: "absolute",
           top: "8px",
@@ -111,7 +133,7 @@ export default function DmNudge() {
           paddingRight: "16px",
         }}
       >
-        데이터 준비가 막막하신가요?
+        {T.title}
       </div>
       <div
         style={{
@@ -121,8 +143,7 @@ export default function DmNudge() {
           marginBottom: "11px",
         }}
       >
-        지금 화면은 예시 데이터예요. 어떤 데이터를 어디서 어떻게 뽑아야 할지 1:1로
-        도와드릴게요.
+        {T.body}
       </div>
       <a
         href={IG_DM_URL}
@@ -147,11 +168,11 @@ export default function DmNudge() {
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
         </svg>
-        인스타그램 DM으로 문의 →
+        {T.cta}
       </a>
       {/* 덜 강조된 자기서비스 탈출구 — DM 대신 직접 가이드로. */}
       <Link
-        href="/guide/csv-data-prep"
+        href={T.guideHref}
         onClick={() => {
           if (typeof window !== "undefined" && typeof window.gtag === "function") {
             window.gtag("event", "dm_guide_open", { from });
@@ -166,7 +187,7 @@ export default function DmNudge() {
           textDecoration: "none",
         }}
       >
-        먼저 데이터 준비 가이드 보기 →
+        {T.guide}
       </Link>
     </div>
   );

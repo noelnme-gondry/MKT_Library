@@ -1,4 +1,4 @@
-import { ROUTES, SITE_URL } from "@/lib/routeMap";
+import { ROUTES, SITE_URL, EN_READY_TOOL_IDS, idToPath } from "@/lib/routeMap";
 import { getAllPosts, getAllTags } from "@/lib/blog";
 
 const BASE = SITE_URL; // matches layout.js canonical/openGraph
@@ -67,5 +67,14 @@ export default function sitemap() {
     { url: `${BASE}/en/guide/csv-data-prep`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
   ];
 
-  return [...routeEntries, ...blogEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries];
+  // EN 도구(routeMap EN_READY_TOOL_IDS, §plan) — 번역 완료된 도구만. 새 도구가
+  // 레지스트리에 추가되는 순간 이 목록도 자동으로 늘어남(하드코딩 없음).
+  const enToolEntries = [...EN_READY_TOOL_IDS].map((id) => ({
+    url: `${BASE}/en${idToPath(id)}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly",
+    priority: 0.8,
+  }));
+
+  return [...routeEntries, ...blogEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enToolEntries];
 }

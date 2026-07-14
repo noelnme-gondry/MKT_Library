@@ -265,6 +265,42 @@ export const TOOL_GUIDE = {
   },
 };
 
-export function getToolGuide(toolId) {
+// EN 번역본 — EN_READY_TOOL_IDS(routeMap.js)에 맞춰 번역된 id만 추가.
+// 없는 id는 getToolGuide가 KR로 폴백(콘텐츠 자체가 없느니 KR이라도 보여주는 게 나음).
+export const TOOL_GUIDE_EN = {
+  "5-3": {
+    when: "Estimate a response curve per channel/campaign to simulate where the next dollar of budget pays off best.",
+    grain: "1 row = 1 day × channel (or campaign) performance",
+    needs: [
+      { col: "date", label: "Date", why: "Time point needed to fit the curve", required: true },
+      { col: "cost", label: "Ad spend", why: "X-axis of the response curve", required: true },
+      { col: "channel or campaign_name", label: "Channel/campaign", why: "Allocation unit", required: true },
+      { col: "installs or actions", label: "Conversions", why: "Y-axis of the response curve", required: true },
+      { col: "revenue_d7", label: "Revenue", why: "ROAS-based allocation & post-reallocation revenue estimate", required: false },
+    ],
+    prep: [
+      "Spend needs to vary across days for the curve to fit — a flat daily budget produces no curve.",
+      "Mixed countries get forced to a single country automatically (prevents cross-country contamination).",
+    ],
+    example: "date,channel,cost,installs,revenue_d7\n2024-01-01,Google UAC,850000,720,5400000\n2024-01-01,Meta AAP,610000,540,3900000\n2024-01-02,TikTok,430000,510,2600000",
+  },
+  "5-18": {
+    when: "Run MMM (marketing mix modeling), regression, and forecasting on weekly channel spend + performance to see contribution and optimal budget.",
+    grain: "1 row = 1 week",
+    needs: [
+      { col: "week", label: "Week", why: "Time axis (adstock · seasonality)", required: true },
+      { col: "signups/reactivations (reg/react)", label: "Performance metric (dependent)", why: "The outcome being explained", required: true },
+      { col: "per-channel spend (google/meta/…)", label: "Channel spend", why: "Input for each channel's contribution breakdown", required: true },
+    ],
+    prep: [
+      "After upload, drag columns into their 'role' (week · performance · channel spend).",
+      "Needs spend variation per channel and 6+ months of history for a stable estimate.",
+    ],
+    example: "week,signups,google_spend,meta_spend,tiktok_spend\n2024-01-01,3800,32000000,22000000,8000000\n2024-01-08,4100,35000000,24000000,9500000\n2024-01-15,3950,31000000,21000000,7800000",
+  },
+};
+
+export function getToolGuide(toolId, locale = "ko") {
+  if (locale === "en" && TOOL_GUIDE_EN[toolId]) return TOOL_GUIDE_EN[toolId];
   return TOOL_GUIDE[toolId] || null;
 }

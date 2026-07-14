@@ -1,7 +1,13 @@
 "use client";
 import { useAppStore } from "@/store/useDataStore";
 
-export default function GlobalModals() {
+const COPY = {
+  ko: { placeholder: "도구·가이드 이동 또는 명령 실행…", move: "이동", run: "실행", close: "닫기" },
+  en: { placeholder: "Jump to a tool/guide or run a command…", move: "move", run: "run", close: "close" },
+};
+
+export default function GlobalModals({ locale = "ko" }) {
+  const T = COPY[locale] || COPY.ko;
   const isCmdkOpen = useAppStore((state) => state.isCmdkOpen);
   const setCmdkOpen = useAppStore((state) => state.setCmdkOpen);
 
@@ -20,7 +26,7 @@ export default function GlobalModals() {
             <input 
               id="cmdk-input" 
               type="text" 
-              placeholder="도구·가이드 이동 또는 명령 실행…" 
+              placeholder={T.placeholder}
               autoComplete="off" 
               spellCheck="false" 
             />
@@ -30,9 +36,9 @@ export default function GlobalModals() {
              {/* 검색 결과 렌더링 영역 */}
           </div>
           <div className="cmdk-foot">
-            <span><kbd>↑</kbd><kbd>↓</kbd> 이동</span>
-            <span><kbd>↵</kbd> 실행</span>
-            <span onClick={() => setCmdkOpen(false)} style={{cursor: 'pointer'}}><kbd>esc</kbd> 닫기</span>
+            <span><kbd>↑</kbd><kbd>↓</kbd> {T.move}</span>
+            <span><kbd>↵</kbd> {T.run}</span>
+            <span onClick={() => setCmdkOpen(false)} style={{cursor: 'pointer'}}><kbd>esc</kbd> {T.close}</span>
           </div>
         </div>
       </div>

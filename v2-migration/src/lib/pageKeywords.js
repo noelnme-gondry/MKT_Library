@@ -27,6 +27,15 @@ export const ITEM_KEYWORDS = {
   "9-7": "콘텐츠 운영 대시보드, 콘텐츠 스코어카드, 콘텐츠 이상탐지",
 };
 
+// EN 버전 — EN_READY_TOOL_IDS(routeMap.js)에 있는 항목만. 없으면 buildPageKeywords가
+// 조용히 빈 문자열로 폴백(KR 키워드를 EN 페이지에 새는 대신 base만 노출).
+export const PAGE_KEYWORDS_BASE_EN = "performance marketing, marketing data analytics, free marketing tools, data-driven marketing";
+
+export const ITEM_KEYWORDS_EN = {
+  "5-3": "marketing budget allocation, budget allocation simulator, marginal utility, channel budget optimization, budget reallocation",
+  "5-18": "marketing response analysis, MMM, marketing mix modeling, regression analysis, channel contribution analysis, cannibalization diagnosis",
+};
+
 // SOP 가이드 (01~04, 08) — 그룹(group) 단위.
 export const GROUP_KEYWORDS = {
   "01": "MMP 연동, 이벤트 택소노미, 매체 포스트백, iOS 프라이버시, ATT, SKAN, 앱 마케팅 인프라",
@@ -38,7 +47,15 @@ export const GROUP_KEYWORDS = {
 
 // meta = findMeta(routeId) 결과({ id, title, group }). 도구/SOP 페이지 keywords 문자열을
 // 조립(중복 제거, 콤마 구분). 매핑이 없는 페이지(홈 등)는 base만 반환.
-export function buildPageKeywords(meta) {
+export function buildPageKeywords(meta, locale = "ko") {
+  if (locale === "en") {
+    const specificEn = (meta && ITEM_KEYWORDS_EN[meta.id]) || "";
+    const allEn = `${PAGE_KEYWORDS_BASE_EN}, ${specificEn}`
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean);
+    return Array.from(new Set(allEn)).join(", ");
+  }
   const specific = (meta && (ITEM_KEYWORDS[meta.id] || GROUP_KEYWORDS[meta.group?.id])) || "";
   const all = `${PAGE_KEYWORDS_BASE}, ${specific}`
     .split(",")

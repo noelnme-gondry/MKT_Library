@@ -7,9 +7,53 @@ import { hasToolTemplate, downloadTemplateCsv, TEMPLATE_FAMILY } from "@/compone
 // (avoid hidden-affordance trap): an always-visible 1-line summary + a prominent
 // button that opens a modal with the full "when / why each column / prep / example".
 // Sits ABOVE the dropzone. Used by CsvUploader + custom dropzones (5-18/5-20/holdout).
-export default function CsvGuide({ toolId, onDownloadTemplate }) {
+const GUIDE_COPY = {
+  ko: {
+    need: "필요: ",
+    openBtn: "📖 어떤 데이터가 왜 필요한가요?",
+    modalTitle: "이 도구에 올릴 데이터 안내",
+    close: "닫기",
+    whenHeading: "언제 쓰나요?",
+    colsHeading: "어떤 컬럼이 왜 필요한가요?",
+    colCol: "컬럼",
+    colWhat: "무엇",
+    colWhy: "왜 필요",
+    colRequired: "필수",
+    prepHeading: "준비 팁",
+    exampleHeading: "이렇게 생긴 파일이면 됩니다 (예시)",
+    exampleFoot: "첫 줄 = 컬럼 이름(헤더), 그 아래 = 실제 데이터 한 줄씩.",
+    templateBtn: "⬇ 템플릿 CSV 받기",
+    toolTemplateBtn: "⬇ 이 도구 템플릿",
+    unifiedTemplateBtn: "⬇ 통합 템플릿",
+    unifiedTemplateTitle: "효율·예산 도구(5-2/5-3/5-21/5-22) 공통 통합 템플릿",
+    confirm: "확인",
+  },
+  en: {
+    need: "Needs: ",
+    openBtn: "📖 What data is needed and why?",
+    modalTitle: "Data guide for this tool",
+    close: "Close",
+    whenHeading: "When do you use this?",
+    colsHeading: "Which columns are needed and why?",
+    colCol: "Column",
+    colWhat: "What",
+    colWhy: "Why needed",
+    colRequired: "Required",
+    prepHeading: "Prep tips",
+    exampleHeading: "A file shaped like this works (example)",
+    exampleFoot: "First row = column names (header), each row below = one real data row.",
+    templateBtn: "⬇ Download template CSV",
+    toolTemplateBtn: "⬇ This tool's template",
+    unifiedTemplateBtn: "⬇ Unified template",
+    unifiedTemplateTitle: "Shared template for efficiency/budget tools (5-2/5-3/5-21/5-22)",
+    confirm: "OK",
+  },
+};
+
+export default function CsvGuide({ toolId, onDownloadTemplate, locale = "ko" }) {
   const [open, setOpen] = useState(false);
-  const guide = getToolGuide(toolId);
+  const T = GUIDE_COPY[locale] || GUIDE_COPY.ko;
+  const guide = getToolGuide(toolId, locale);
   if (!guide) return null;
 
   const reqCols = guide.needs.filter((n) => n.required).map((n) => n.label).join(" · ");
@@ -19,10 +63,10 @@ export default function CsvGuide({ toolId, onDownloadTemplate }) {
       <div className="csv-guide-summary">
         <div className="csv-guide-line">
           <span className="csv-guide-when">{guide.when}</span>
-          {reqCols && <span className="csv-guide-need">필요: {reqCols}</span>}
+          {reqCols && <span className="csv-guide-need">{T.need}{reqCols}</span>}
         </div>
         <button type="button" className="csv-guide-btn" onClick={() => setOpen(true)}>
-          📖 어떤 데이터가 왜 필요한가요?
+          {T.openBtn}
         </button>
       </div>
 
@@ -30,27 +74,27 @@ export default function CsvGuide({ toolId, onDownloadTemplate }) {
         <div className="csv-guide-overlay" onClick={() => setOpen(false)}>
           <div className="csv-guide-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <div className="csv-guide-modal-head">
-              <strong>이 도구에 올릴 데이터 안내</strong>
-              <button type="button" className="csv-guide-close" onClick={() => setOpen(false)} aria-label="닫기">✕</button>
+              <strong>{T.modalTitle}</strong>
+              <button type="button" className="csv-guide-close" onClick={() => setOpen(false)} aria-label={T.close}>✕</button>
             </div>
 
             <div className="csv-guide-modal-body">
               <section>
-                <h4>언제 쓰나요?</h4>
+                <h4>{T.whenHeading}</h4>
                 <p>{guide.when}</p>
                 {guide.grain && <p className="csv-guide-grain">📄 {guide.grain}</p>}
               </section>
 
               <section>
-                <h4>어떤 컬럼이 왜 필요한가요?</h4>
+                <h4>{T.colsHeading}</h4>
                 <div className="table-wrap">
                   <table className="data">
                     <thead>
                       <tr>
-                        <th style={{ textAlign: "left" }}>컬럼</th>
-                        <th style={{ textAlign: "left" }}>무엇</th>
-                        <th style={{ textAlign: "left" }}>왜 필요</th>
-                        <th style={{ textAlign: "center" }}>필수</th>
+                        <th style={{ textAlign: "left" }}>{T.colCol}</th>
+                        <th style={{ textAlign: "left" }}>{T.colWhat}</th>
+                        <th style={{ textAlign: "left" }}>{T.colWhy}</th>
+                        <th style={{ textAlign: "center" }}>{T.colRequired}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -69,7 +113,7 @@ export default function CsvGuide({ toolId, onDownloadTemplate }) {
 
               {guide.prep && guide.prep.length > 0 && (
                 <section>
-                  <h4>준비 팁</h4>
+                  <h4>{T.prepHeading}</h4>
                   <ul className="csv-guide-prep">
                     {guide.prep.map((p, i) => <li key={i}>{p}</li>)}
                   </ul>
@@ -82,7 +126,7 @@ export default function CsvGuide({ toolId, onDownloadTemplate }) {
                 const body = lines.slice(1).map((l) => l.split(","));
                 return (
                   <section>
-                    <h4>이렇게 생긴 파일이면 됩니다 (예시)</h4>
+                    <h4>{T.exampleHeading}</h4>
                     <div className="table-wrap">
                       <table className="data csv-guide-example-table">
                         <thead><tr>{head.map((h, i) => <th key={i} style={{ textAlign: "left", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
@@ -91,7 +135,7 @@ export default function CsvGuide({ toolId, onDownloadTemplate }) {
                         ))}</tbody>
                       </table>
                     </div>
-                    <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0" }}>첫 줄 = 컬럼 이름(헤더), 그 아래 = 실제 데이터 한 줄씩.</p>
+                    <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0" }}>{T.exampleFoot}</p>
                   </section>
                 );
               })()}
@@ -101,16 +145,16 @@ export default function CsvGuide({ toolId, onDownloadTemplate }) {
               {/* 템플릿 다운로드 — 도구 자체 제공(onDownloadTemplate) 우선, 없으면 효율패밀리
                   표준필드로 자동 생성(구 DataFeatureMatrix 통합 템플릿 이식). */}
               {onDownloadTemplate ? (
-                <button type="button" className="ab-pill" onClick={onDownloadTemplate}>⬇ 템플릿 CSV 받기</button>
+                <button type="button" className="ab-pill" onClick={onDownloadTemplate}>{T.templateBtn}</button>
               ) : hasToolTemplate(toolId) && (
                 <>
-                  <button type="button" className="ab-pill" onClick={() => downloadTemplateCsv(toolId, "tool")}>⬇ 이 도구 템플릿</button>
+                  <button type="button" className="ab-pill" onClick={() => downloadTemplateCsv(toolId, "tool")}>{T.toolTemplateBtn}</button>
                   {TEMPLATE_FAMILY.includes(toolId) && (
-                    <button type="button" className="ab-pill" title="효율·예산 도구(5-2/5-3/5-21/5-22) 공통 통합 템플릿" onClick={() => downloadTemplateCsv(toolId, "unified")}>⬇ 통합 템플릿</button>
+                    <button type="button" className="ab-pill" title={T.unifiedTemplateTitle} onClick={() => downloadTemplateCsv(toolId, "unified")}>{T.unifiedTemplateBtn}</button>
                   )}
                 </>
               )}
-              <button type="button" className="ab-button" onClick={() => setOpen(false)}>확인</button>
+              <button type="button" className="ab-button" onClick={() => setOpen(false)}>{T.confirm}</button>
             </div>
           </div>
         </div>

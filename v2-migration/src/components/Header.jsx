@@ -4,8 +4,31 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore, findMeta, displayGroupNumber, displayItemNumber } from "@/store/useDataStore";
 import { resolveSlugToId } from "@/lib/routeMap";
+import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 
-export default function Header() {
+const HEADER_COPY = {
+  ko: {
+    breadcrumbAria: "페이지 경로",
+    overview: "Overview",
+    csvChangeTitle: "현재 CSV를 지우고 다시 업로드 (이 CSV를 공유하는 모든 도구에 적용)",
+    csvChangeBtn: "🔄 CSV 변경",
+    themeAria: "테마 전환",
+    themeTitle: "테마 전환 (라이트/다크)",
+    quickNav: "빠른 이동",
+  },
+  en: {
+    breadcrumbAria: "Breadcrumb",
+    overview: "Overview",
+    csvChangeTitle: "Clear current CSV and re-upload (applies to every tool sharing this data)",
+    csvChangeBtn: "🔄 Change CSV",
+    themeAria: "Toggle theme",
+    themeTitle: "Toggle theme (light/dark)",
+    quickNav: "Quick nav",
+  },
+};
+
+export default function Header({ locale = "ko" }) {
+  const T = HEADER_COPY[locale] || HEADER_COPY.ko;
   const isDarkMode = useAppStore((state) => state.isDarkMode);
   const toggleTheme = useAppStore((state) => state.toggleTheme);
   const setCmdkOpen = useAppStore((state) => state.setCmdkOpen);
@@ -47,27 +70,27 @@ export default function Header() {
 
   return (
     <header className="topbar" role="banner">
-      <nav className="breadcrumb" aria-label="페이지 경로">
-        <Link href="/" className="crumb-link" style={{ textDecoration: "none", color: "inherit" }}>Library</Link>
+      <nav className="breadcrumb" aria-label={T.breadcrumbAria}>
+        <Link href={locale === "en" ? "/en" : "/"} className="crumb-link" style={{ textDecoration: "none", color: "inherit" }}>Library</Link>
         {meta ? (
           <>
             <span className="sep">/</span>
             <span
               className="current"
-              title={meta.group.title}
+              title={trGroupTitle(meta.group.id, locale, meta.group.title)}
               style={{ color: "var(--text-secondary)", cursor: "default" }}
             >
-              {displayGroupNumber(meta.group.id)} · {meta.group.title}
+              {displayGroupNumber(meta.group.id)} · {trGroupTitle(meta.group.id, locale, meta.group.title)}
             </span>
             <span className="sep">/</span>
             <span className="current">
-              {displayItemNumber(meta.id)} · {meta.title}
+              {displayItemNumber(meta.id)} · {trItemTitle(meta.id, locale, meta.title)}
             </span>
           </>
         ) : (
           <>
             <span className="sep">/</span>
-            <span className="current">Overview</span>
+            <span className="current">{T.overview}</span>
           </>
         )}
       </nav>
@@ -80,11 +103,11 @@ export default function Header() {
             <button
               className="btn ghost"
               type="button"
-              title="현재 CSV를 지우고 다시 업로드 (이 CSV를 공유하는 모든 도구에 적용)"
+              title={T.csvChangeTitle}
               onClick={resetCsv}
               style={{ fontSize: "11.5px" }}
             >
-              🔄 CSV 변경
+              {T.csvChangeBtn}
             </button>
           </span>
         )}
@@ -92,8 +115,8 @@ export default function Header() {
           className="btn ghost"
           id="theme-toggle"
           type="button"
-          aria-label="테마 전환"
-          title="테마 전환 (라이트/다크)"
+          aria-label={T.themeAria}
+          title={T.themeTitle}
           onClick={toggleTheme}
         >
           {/* 원본 로직: 다크모드일 때 sun 아이콘 보여주고(클릭→라이트로), 라이트모드일 때 moon 아이콘 */}
@@ -124,7 +147,7 @@ export default function Header() {
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <span>빠른 이동</span>
+          <span>{T.quickNav}</span>
           <span className="kbd">⌘K</span>
         </button>
       </div>

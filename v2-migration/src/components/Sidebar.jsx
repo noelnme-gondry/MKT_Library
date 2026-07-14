@@ -4,9 +4,33 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore, IA, SECTIONS, displayGroupNumberShort, displayItemNumberShort } from "@/store/useDataStore";
-import { idToSlug, resolveSlugToId } from "@/lib/routeMap";
+import { idToSlug, resolveSlugToId, hasEnVersion } from "@/lib/routeMap";
+import { trGroupTitle, trItemTitle, trSectionLabel } from "@/lib/enNavCopy";
 
-export default function Sidebar() {
+const SIDEBAR_COPY = {
+  ko: {
+    searchPlaceholder: "가이드·파라미터·코드 검색…",
+    blog: "블로그",
+    youtube: "유튜브",
+    instagram: "인스타",
+    facebook: "페북",
+    survey: "설문",
+  },
+  en: {
+    searchPlaceholder: "Search guides, params, code…",
+    blog: "Blog",
+    youtube: "YouTube",
+    instagram: "Instagram",
+    facebook: "Facebook",
+    survey: "Survey",
+  },
+};
+
+export default function Sidebar({ locale = "ko" }) {
+  const T = SIDEBAR_COPY[locale] || SIDEBAR_COPY.ko;
+  // 번역된 항목만 /en 유지, 나머지는 KR 페이지로(반쪽 번역 노출 방지 — §plan).
+  const navHref = (id) =>
+    locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/";
   // Active id is derived from the URL (SSOT) so highlight is correct even before
   // the page-level store-sync effect runs (avoids a first-paint race).
   const pathname = usePathname();
@@ -36,7 +60,7 @@ export default function Sidebar() {
   return (
     <aside className="sidebar" id="sidebar">
       <Link
-        href="/"
+        href={locale === "en" ? "/en" : "/"}
         className="brand"
         id="brand"
         style={{ cursor: "pointer", textDecoration: "none", color: "inherit" }}
@@ -53,7 +77,7 @@ export default function Sidebar() {
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-        <input type="text" placeholder="가이드·파라미터·코드 검색…" readOnly />
+        <input type="text" placeholder={T.searchPlaceholder} readOnly />
         <kbd>⌘K</kbd>
       </div>
 
@@ -82,7 +106,7 @@ export default function Sidebar() {
                 aria-expanded={!isSectionCollapsed}
               >
                 <span className="phase-header-left">
-                  <span className="phase-tag">{section.label}</span>
+                  <span className="phase-tag">{trSectionLabel(section.id, locale, section.label)}</span>
                 </span>
                 <svg className="phase-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="6 9 12 15 18 9"></polyline>
@@ -104,7 +128,7 @@ export default function Sidebar() {
                       >
                         <span className="nav-group-title">
                           <span className="nav-group-index">{displayGroupNumberShort(group.id)}</span>
-                          <span>{group.title}</span>
+                          <span>{trGroupTitle(group.id, locale, group.title)}</span>
                         </span>
                         <svg className="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="6 9 12 15 18 9"></polyline>
@@ -114,12 +138,12 @@ export default function Sidebar() {
                         {group.items.map((it) => (
                           <Link
                             key={it.id}
-                            href={idToSlug[it.id] || "/"}
+                            href={navHref(it.id)}
                             className={`nav-item ${it.id === currentRouteId ? "active" : ""}`}
                             data-route={it.id}
                           >
                             <span className="ix tnum">{displayItemNumberShort(it.id)}</span>
-                            <span>{it.title}</span>
+                            <span>{trItemTitle(it.id, locale, it.title)}</span>
                           </Link>
                         ))}
                       </div>
@@ -136,17 +160,17 @@ export default function Sidebar() {
           동일한 헤더 스타일로 통일(단, 하위 도구 트리가 없어 헤더 자체가 /blog 링크). */}
       <section className="phase-section" data-section="blog">
         <Link
-          href="/blog"
+          href={locale === "en" ? "/en/blog" : "/blog"}
           className="phase-header"
-          aria-current={(pathname || "").startsWith("/blog") ? "page" : undefined}
+          aria-current={(pathname || "").includes("/blog") ? "page" : undefined}
           style={{
             textDecoration: "none",
             color: "inherit",
-            background: (pathname || "").startsWith("/blog") ? "var(--bg-2)" : undefined,
+            background: (pathname || "").includes("/blog") ? "var(--bg-2)" : undefined,
           }}
         >
           <span className="phase-header-left">
-            <span className="phase-tag">블로그</span>
+            <span className="phase-tag">{T.blog}</span>
           </span>
           <span style={{ fontSize: "13px", opacity: 0.6 }}>→</span>
         </Link>
@@ -155,19 +179,19 @@ export default function Sidebar() {
       <div className="sidebar-social">
         <a className="ss-btn ss-youtube" href="https://youtube.com/channel/UCvRcpOHOqvSHQPNbgZdPNUw/" target="_blank" rel="noopener noreferrer" title="유튜브">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.11-2.12C19.44 3.5 12 3.5 12 3.5s-7.44 0-9.39.58A3 3 0 0 0 .5 6.2 31.6 31.6 0 0 0 0 12a31.6 31.6 0 0 0 .5 5.8 3 3 0 0 0 2.11 2.12C4.56 20.5 12 20.5 12 20.5s7.44 0 9.39-.58a3 3 0 0 0 2.11-2.12A31.6 31.6 0 0 0 24 12a31.6 31.6 0 0 0-.5-5.8ZM9.6 15.6V8.4L15.8 12Z"/></svg>
-          <span>유튜브</span>
+          <span>{T.youtube}</span>
         </a>
-        <a className="ss-btn ss-instagram" href="https://www.instagram.com/gondry__workshop/" target="_blank" rel="noopener noreferrer" title="인스타그램">
+        <a className="ss-btn ss-instagram" href="https://www.instagram.com/gondry__workshop/" target="_blank" rel="noopener noreferrer" title={T.instagram}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2c3.2 0 3.6 0 4.85.07 1.17.06 1.97.24 2.43.42a4.9 4.9 0 0 1 1.77 1.15 4.9 4.9 0 0 1 1.15 1.77c.18.46.36 1.26.42 2.43.06 1.25.07 1.65.07 4.85s0 3.6-.07 4.85c-.06 1.17-.24 1.97-.42 2.43a4.9 4.9 0 0 1-1.15 1.77 4.9 4.9 0 0 1-1.77 1.15c-.46.18-1.26.36-2.43.42-1.25.06-1.65.07-4.85.07s-3.6 0-4.85-.07c-1.17-.06-1.97-.24-2.43-.42a4.9 4.9 0 0 1-1.77-1.15 4.9 4.9 0 0 1-1.15-1.77c-.18-.46-.36-1.26-.42-2.43C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.85c.06-1.17.24-1.97.42-2.43A4.9 4.9 0 0 1 3.84 3c.53-.5 1.12-.9 1.77-1.15.46-.18 1.26-.36 2.43-.42C9.29 1.37 9.69 2.2 12 2.2Zm0 1.8c-3.15 0-3.52 0-4.75.06-.96.05-1.48.2-1.82.34a3.1 3.1 0 0 0-1.15.75 3.1 3.1 0 0 0-.75 1.15c-.14.34-.29.86-.34 1.82-.06 1.23-.06 1.6-.06 4.75s0 3.52.06 4.75c.05.96.2 1.48.34 1.82.16.42.38.79.75 1.15.36.36.73.6 1.15.75.34.14.86.29 1.82.34 1.23.06 1.6.06 4.75.06s3.52 0 4.75-.06c.96-.05 1.48-.2 1.82-.34.42-.16.79-.38 1.15-.75.36-.36.6-.73.75-1.15.14-.34.29-.86.34-1.82.06-1.23.06-1.6.06-4.75s0-3.52-.06-4.75c-.05-.96-.2-1.48-.34-1.82a3.1 3.1 0 0 0-.75-1.15 3.1 3.1 0 0 0-1.15-.75c-.34-.14-.86-.29-1.82-.34C15.52 4 15.15 4 12 4Zm0 3.05a4.95 4.95 0 1 1 0 9.9 4.95 4.95 0 0 1 0-9.9Zm0 1.8a3.15 3.15 0 1 0 0 6.3 3.15 3.15 0 0 0 0-6.3Zm5.3-3.4a1.15 1.15 0 1 1 0 2.3 1.15 1.15 0 0 1 0-2.3Z"/></svg>
-          <span>인스타</span>
+          <span>{T.instagram}</span>
         </a>
-        <a className="ss-btn ss-facebook" href="https://www.facebook.com/profile.php?id=61591483650900" target="_blank" rel="noopener noreferrer" title="페이스북">
+        <a className="ss-btn ss-facebook" href="https://www.facebook.com/profile.php?id=61591483650900" target="_blank" rel="noopener noreferrer" title={T.facebook}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12.06C22 6.51 17.52 2 12 2S2 6.51 2 12.06c0 5.01 3.66 9.16 8.44 9.94v-7.03H7.9v-2.91h2.54V9.79c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.23.2 2.23.2v2.75h-1.26c-1.24 0-1.63.78-1.63 1.58v1.89h2.78l-.44 2.91h-2.34V22c4.78-.78 8.44-4.93 8.44-9.94Z"/></svg>
-          <span>페북</span>
+          <span>{T.facebook}</span>
         </a>
-        <a className="ss-btn ss-feedback" href="https://forms.gle/vxTfmt6HmxwNnWb99" target="_blank" rel="noopener noreferrer" title="1분 설문">
+        <a className="ss-btn ss-feedback" href="https://forms.gle/vxTfmt6HmxwNnWb99" target="_blank" rel="noopener noreferrer" title={T.survey}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
-          <span>설문</span>
+          <span>{T.survey}</span>
         </a>
       </div>
     </aside>
