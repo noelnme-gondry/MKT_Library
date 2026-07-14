@@ -84,12 +84,13 @@ export default function Header({ locale = "ko" }) {
   return (
     <header className="topbar" role="banner">
       <nav className="breadcrumb" aria-label={T.breadcrumbAria}>
-        {/* 브랜드: 로고 + 이름을 좌상단에 붙여 고정(전 페이지 공통, 홈 링크 겸용). */}
-        <Link href={locale === "en" ? "/en" : "/"} className="crumb-link brand-crumb" style={{ textDecoration: "none", color: "inherit", display: "inline-flex", alignItems: "center", gap: "7px" }}>
-          <img src="/favicon.svg" alt="" width="18" height="18" style={{ display: "block" }} />
+        {/* 브랜드: 로고 마크(GO) + 이름을 좌상단에 고정(전 페이지·KR/EN 공통, 홈 링크). */}
+        <Link href={locale === "en" ? "/en" : "/"} className="crumb-link brand-crumb" style={{ textDecoration: "none", color: "inherit", display: "inline-flex", alignItems: "center", gap: "8px" }}>
+          <span className="brand-mark" style={{ width: "26px", height: "26px", fontSize: "12px" }}>GO</span>
           <span style={{ fontWeight: 700 }}>Growth Opt Playbook</span>
         </Link>
-        {meta ? (
+        {/* 트레일링 크럼은 도구/문서 페이지에서만(홈은 브랜드만). */}
+        {meta && (
           <>
             <span className="sep">/</span>
             <span
@@ -103,11 +104,6 @@ export default function Header({ locale = "ko" }) {
             <span className="current">
               {displayItemNumber(meta.id, locale)} · {trItemTitle(meta.id, locale, meta.title)}
             </span>
-          </>
-        ) : (
-          <>
-            <span className="sep">/</span>
-            <span className="current">{T.overview}</span>
           </>
         )}
       </nav>
