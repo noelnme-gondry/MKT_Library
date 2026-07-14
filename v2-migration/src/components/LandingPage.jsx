@@ -6,6 +6,8 @@ import { IA, SECTIONS } from "@/store/useDataStore";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { setLocalePref } from "@/lib/localePref";
 import LocaleAutoRedirect from "@/components/LocaleAutoRedirect";
+import ProductPreview from "@/components/landing/ProductPreview";
+import ToolCarousel from "@/components/landing/ToolCarousel";
 
 // 랜딩 화면 전용 EN 카피 — 앱 전체 번역은 범위 밖(§1), 이 랜딩 히어로/3카드/블로그
 // 배너/소셜 행만 locale 분기. LandingGuide/Analyze/Content 하위 트랙은 IA 원본
@@ -15,6 +17,15 @@ const LANDING_COPY = {
     eyebrow: "Growth Opt Playbook",
     title: "무엇이 궁금하세요?",
     deck: "질문을 고르면 그 도구로 바로 들어갑니다. 데이터가 없어도 예시로 먼저 보고, 준비되면 내 데이터로 분석하세요. 모든 분석 도구 무료.",
+    hero: {
+      title: "Excel로 못 푸는 마케팅 분석,\n브라우저에서 바로.",
+      sub: "증분·MMM·포화도·성과 변동 — 손으로 못 푸는 분석을 CSV 한 장으로. 설치·로그인 없이, 데이터는 100% 브라우저에서만 처리됩니다.",
+      ctaPrimary: "내 데이터로 분석 시작",
+      ctaDemo: "데모 먼저 보기",
+      privacy: "🔒 서버 전송 0 · 브라우저 메모리에서만 처리",
+      previewCaption: "실제 운영 대시보드 미리보기 (샘플 데이터)",
+      carouselTitle: "궁금한 것부터 골라보세요",
+    },
     localeSwitchLabel: "English",
     guide: {
       step: "가이드",
@@ -52,6 +63,15 @@ const LANDING_COPY = {
     eyebrow: "Growth Opt Playbook",
     title: "What are you curious about?",
     deck: "Pick a question and jump straight into the tool. No data yet? See a live example first, then analyze your own. All analysis tools are free.",
+    hero: {
+      title: "Marketing analysis Excel can't do —\nright in your browser.",
+      sub: "Incrementality, MMM, saturation, performance shifts — analyses you can't do by hand, from a single CSV. No install, no login; your data stays 100% in the browser.",
+      ctaPrimary: "Analyze my data",
+      ctaDemo: "See a live demo",
+      privacy: "🔒 Nothing sent to any server · processed in browser memory only",
+      previewCaption: "Live operations dashboard preview (sample data)",
+      carouselTitle: "Start with whatever you're curious about",
+    },
     localeSwitchLabel: "한국어",
     guide: {
       step: "Guides",
@@ -180,6 +200,25 @@ function LandingHome({ onTrack, locale }) {
   const goTool = (id) =>
     router.push(locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/");
   const ctaLabel = locale === "en" ? "See a live example →" : "예시로 바로 보기 →";
+  const hero = L.hero || {};
+
+  // 캐러셀 카드 = ops 도구를 "질문"으로 평탄화(그룹 제목=eyebrow, 훅=헤드라인).
+  const carouselCards = opsGroups.flatMap((g) =>
+    g.items
+      .filter((it) => !it.hidden)
+      .map((it) => {
+        const meta = findMeta(it.id);
+        if (!meta) return null;
+        return {
+          id: it.id,
+          eyebrow: g.title,
+          headline: H[it.id] || meta.title,
+          mockTitle: meta.title,
+        };
+      })
+      .filter(Boolean)
+  );
+  const pickTool = (id) => { fireGa("landing_tool_pick", { tool: id }); goTool(id); };
 
   return (
     <>
@@ -202,56 +241,40 @@ function LandingHome({ onTrack, locale }) {
         </button>
       </div>
       {locale !== "en" && <LocaleAutoRedirect />}
-      <h1 className="page-title">{L.title}</h1>
-      <p className="page-deck">{L.deck}</p>
 
-      {/* 1층 — 질문형 분석 도구(바로 도구+라이브 데모). 그룹 헤더로 가벼운 구조만. */}
-      {opsGroups.map((g) => (
-        <section key={g.id} className="block" style={{ marginTop: "1.2rem" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              marginBottom: "10px",
-            }}
-          >
-            <span style={{ fontSize: "18px" }}>{GROUP_ICONS[g.id] || "📦"}</span>
-            <h2
-              className="section-title"
-              style={{ margin: 0, border: "none", padding: 0 }}
-            >
-              {g.title}
-            </h2>
-          </div>
-          <div className="phase-grid">
-            {g.items.map((item) => {
-              const meta = findMeta(item.id);
-              if (!meta) return null;
-              const hook = H[item.id];
-              const sub = hook
-                ? meta.title + (meta.desc ? ` · ${meta.desc}` : "")
-                : meta.desc || "";
-              return (
-                <a
-                  key={item.id}
-                  className="phase-card phase-card-tool"
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    goTool(item.id);
-                  }}
-                  style={{ cursor: "pointer", textDecoration: "none" }}
-                >
-                  <div className="phase-card-title">{hook || meta.title}</div>
-                  <div className="phase-card-desc">{sub}</div>
-                  <div className="phase-card-cta">{ctaLabel}</div>
-                </a>
-              );
-            })}
-          </div>
-        </section>
-      ))}
+      {/* ── 히어로 (Semrush형 전환 히어로) ── */}
+      <section style={{ textAlign: "center", padding: "1.5rem 0 0.5rem", maxWidth: "780px", margin: "0 auto" }}>
+        <h1 className="page-title" style={{ fontSize: "clamp(28px, 5vw, 46px)", lineHeight: 1.2, whiteSpace: "pre-line", marginBottom: "1rem" }}>
+          {hero.title}
+        </h1>
+        <p className="page-deck" style={{ fontSize: "15px", maxWidth: "620px", margin: "0 auto 1.4rem" }}>
+          {hero.sub}
+        </p>
+        <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+          <button type="button" className="btn primary" style={{ fontSize: "14px", padding: "12px 22px" }} onClick={() => { fireGa("landing_cta", { action: "analyze" }); goTool("5-2"); }}>
+            {hero.ctaPrimary} →
+          </button>
+          <button type="button" className="btn ghost" style={{ fontSize: "14px", padding: "12px 22px" }} onClick={() => { fireGa("landing_cta", { action: "demo" }); goTool("5-2"); }}>
+            ▶ {hero.ctaDemo}
+          </button>
+        </div>
+        <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "14px" }}>{hero.privacy}</div>
+      </section>
+
+      {/* ── 라이브 제품 미리보기(시연 슬롯 — 나중 mp4 교체 가능) ── */}
+      <div style={{ marginTop: "1.6rem" }}>
+        <ProductPreview locale={locale} caption={hero.previewCaption} />
+      </div>
+
+      {/* ── 질문 캐러셀(도구 진입) ── */}
+      <ToolCarousel
+        cards={carouselCards}
+        title={hero.carouselTitle}
+        onPick={pickTool}
+        ctaLabel={ctaLabel}
+        liveCardId="5-2"
+        locale={locale}
+      />
 
       {/* 2층 — 가이드·콘텐츠 진입(보조). 트랙 선택 유지, 시각 위계는 낮춤. */}
       <div

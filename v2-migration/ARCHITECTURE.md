@@ -20,7 +20,8 @@ v2-migration/
 │  │  └─ useDataStore.js    # ★ SSOT: Zustand — IA·csvGroups(스코프)·csvData(미러)·TOOL_GROUP·필터·currentRouteId·테마·adGate/adFree(광고 §12.26)
 │  ├─ utils/                # ★ 순수 통계엔진 (ESM, 수학 불변, vitest 골든) + 데이터층 + 추출 math(funnel/segment/anomaly/pacing/cohort/incr)
 │  └─ components/
-│     ├─ ds/            # ★ 디자인시스템 공용(design-system-baseline.md): DataTable·CsvGuide·AnalyzingOverlay(분석/파싱 로딩)
+│     ├─ ds/            # ★ 디자인시스템 공용(design-system-baseline.md): DataTable·CsvGuide·AnalyzingOverlay·ResultActionCard(결론카드)·DownloadHub(다운로드 드롭다운, §12.27)
+│     ├─ landing/       # 랜딩 히어로 조각: ProductPreview(라이브 제품 미리보기·mp4 교체가능)·ToolCarousel(질문 슬라이드)·ToolCardMock(SVG 목업)·LiveMiniChart
 │     ├─ GaPageviews.jsx     # SPA 라우트 변경 시 GA4 page_view(usePathname, 최초 로드 제외)
 │     ├─ AdInterstitial.jsx·AdFreeInit.jsx # 분석하기 전면광고 모달(store adGate·requestAd/closeAd) + 광고제외 비밀 URL(?adfree=토큰). §12.26
 │     ├─ Sidebar/Header/LandingPage/CsvUploader/GlobalModals/Dashboard.jsx  # 셸
