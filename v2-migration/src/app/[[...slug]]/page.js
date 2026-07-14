@@ -13,11 +13,14 @@ export async function generateMetadata({ params }) {
   }
 
   const meta = findMeta(routeId);
-  const title = meta?.title || routeId;
-  // 항목 제목을 앞세워 그룹 내 페이지끼리 description 중복 방지(중복 설명=SEO 감점).
-  const description = meta?.title
-    ? `${meta.title} — ${meta.group?.desc || ""}`.trim()
-    : meta?.group?.desc;
+  const title = meta?.seoTitle || meta?.title || routeId;
+  // seoTitle/seoDescription: SERP 클릭 유도용 결과지향 문구(선택적 오버라이드).
+  // 없으면 기존 방식(항목 제목 + 그룹 desc, 중복 설명 방지)으로 폴백.
+  const description =
+    meta?.seoDescription ||
+    (meta?.title
+      ? `${meta.title} — ${meta.group?.desc || ""}`.trim()
+      : meta?.group?.desc);
   const canonical = `${SITE_URL}${idToPath(routeId)}`;
   const keywords = buildPageKeywords(meta);
 
