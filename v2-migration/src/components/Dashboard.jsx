@@ -17,6 +17,7 @@ import SegmentTab from "@/components/dashboard/SegmentTab";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
+import { buildDashboardExports } from "@/utils/dashboardExport";
 import { downloadCsv, downloadText } from "@/utils/download";
 import { FileText, ChevronRight } from "lucide-react";
 
@@ -159,6 +160,12 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
     return buildDashboardVerdict({ csvData, filterState: dashboardFilter, denomBasis, displayCurrency, locale });
   }, [showResults, csvData, dashboardFilter, denomBasis, displayCurrency, locale]);
 
+  // 차트 원천 데이터 export(일별·채널별·캠페인별 집계+파생지표) — 요약과 별도.
+  const exports = useMemo(() => {
+    if (!showResults) return null;
+    return buildDashboardExports({ csvData, filterState: dashboardFilter, locale });
+  }, [showResults, csvData, dashboardFilter, locale]);
+
   return (
     <div className="section active" style={{ display: "flex", width: "100%", height: "100%" }}>
       
@@ -266,8 +273,11 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                     align="right"
                     items={[
                       { icon: "📄", label: tr("핵심 요약 (CSV)", "Summary (CSV)"), desc: tr("직전 대비 최근 지표 표", "Recent vs. prior metric table"), onSelect: () => downloadCsv(verdict.export.csv, isContent ? "content_dashboard_summary" : "dashboard_summary") },
+                      exports?.daily && { icon: "📊", label: tr("일별 데이터 (CSV)", "Daily data (CSV)"), desc: tr("추이·차트 원천 (날짜별 지표+파생)", "Trend/chart source (per-day metrics + derived)"), onSelect: () => downloadCsv(exports.daily, isContent ? "content_dashboard_daily" : "dashboard_daily") },
+                      exports?.byChannel && { icon: "🧩", label: tr(isContent ? "유입경로별 (CSV)" : "채널별 (CSV)", isContent ? "By source (CSV)" : "By channel (CSV)"), desc: tr("채널 비중·비교 차트 원천", "Channel share/comparison source"), onSelect: () => downloadCsv(exports.byChannel, isContent ? "content_dashboard_by_source" : "dashboard_by_channel") },
+                      exports?.byCampaign && { icon: "🗂", label: tr("캠페인별 (CSV)", "By campaign (CSV)"), desc: tr("캠페인 단위 집계+파생지표", "Per-campaign totals + derived"), onSelect: () => downloadCsv(exports.byCampaign, isContent ? "content_dashboard_by_campaign" : "dashboard_by_campaign") },
                       { icon: "📝", label: tr("핵심 요약 (텍스트)", "Summary (text)"), desc: tr("결론·지표·다음 액션 문서", "Conclusion, metrics, next actions"), onSelect: () => downloadText(verdict.export.text, isContent ? "content_dashboard_summary" : "dashboard_summary") },
-                    ]}
+                    ].filter(Boolean)}
                   />
                 }
               />
