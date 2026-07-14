@@ -129,6 +129,8 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const denomBasis = useAppStore((state) => state.denomBasis);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const dashWindowDays = useAppStore((state) => state.dashWindowDays);
+  const setDashWindowDays = useAppStore((state) => state.setDashWindowDays);
   // #4 분석 게이트: 업로드·자동매핑만으로는 바로 분석하지 않는다. 사용자가
   // CsvUploader의 "분석하기"를 눌러 매핑을 확정해야(그룹 sig 저장) 결과가 열림.
   // 매핑을 바꾸면 sig가 달라져 다시 false → 결과 자동 숨김(faithful isToolAnalyzed).
@@ -156,8 +158,8 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   // 재사용(엔진 불변), 데이터 부족하면 insufficient로 카드 미노출(§8 정직).
   const verdict = useMemo(() => {
     if (!showResults) return null;
-    return buildDashboardVerdict({ csvData, filterState: dashboardFilter, denomBasis, displayCurrency, locale });
-  }, [showResults, csvData, dashboardFilter, denomBasis, displayCurrency, locale]);
+    return buildDashboardVerdict({ csvData, filterState: dashboardFilter, denomBasis, displayCurrency, windowDays: dashWindowDays, locale });
+  }, [showResults, csvData, dashboardFilter, denomBasis, displayCurrency, dashWindowDays, locale]);
 
   return (
     <div className="section active" style={{ display: "flex", width: "100%", height: "100%" }}>
@@ -260,6 +262,20 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 headline={verdict.headline}
                 points={verdict.points}
                 stats={verdict.stats}
+                controls={
+                  <div className="ab-pillgroup" style={{ display: "inline-flex", alignItems: "center" }}>
+                    <span className="ab-pillgroup-label">{tr("비교", "Window")}</span>
+                    {[7, 14, 28].map((d) => (
+                      <button
+                        key={d}
+                        className={`ab-pill ${dashWindowDays === d ? "active" : ""}`}
+                        onClick={() => setDashWindowDays(d)}
+                      >
+                        {tr(`${d}일`, `${d}d`)}
+                      </button>
+                    ))}
+                  </div>
+                }
                 download={
                   <DownloadHub
                     label={tr("결과 받기", "Download")}

@@ -89,7 +89,9 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
   const addCustomMetric = useAppStore((state) => state.addCustomMetric);
   const removeCustomMetric = useAppStore((state) => state.removeCustomMetric);
   const updateCustomMetric = useAppStore((state) => state.updateCustomMetric);
-  const [windowDays, setWindowDays] = useState(7);
+  // WoW 기간은 store 공유(결론 카드와 연동). setWindowDays는 store 세터로 대체.
+  const windowDays = useAppStore((state) => state.dashWindowDays);
+  const setWindowDays = useAppStore((state) => state.setDashWindowDays);
   const [selectedMetric, setSelectedMetric] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);

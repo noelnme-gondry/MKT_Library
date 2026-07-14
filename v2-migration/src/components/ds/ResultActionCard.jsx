@@ -33,6 +33,7 @@ export default function ResultActionCard({
   points = [],
   stats = [],
   download = null,
+  controls = null,
   children,
   style,
 }) {
@@ -61,7 +62,12 @@ export default function ResultActionCard({
             </div>
           )}
         </div>
-        {download && <div style={{ flexShrink: 0 }}>{download}</div>}
+        {(controls || download) && (
+          <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+            {controls}
+            {download}
+          </div>
+        )}
       </div>
 
       {points.length > 0 && (
