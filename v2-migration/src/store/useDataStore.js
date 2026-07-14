@@ -259,6 +259,11 @@ export const useAppStore = create(persist((set, get) => ({
   mobileNudgeDismissed: false,
   dismissMobileNudge: () => set({ mobileNudgeDismissed: true }),
 
+  // DM 상담 유도 사이드 팝업(도구 내부, 라이브 데모 후 스크롤 시 우하단) — 세션 한정
+  // dismiss. mobileNudgeDismissed와 동일: persist 미포함 → 새로고침 시 리셋, 매 세션 재노출.
+  dmNudgeDismissed: false,
+  dismissDmNudge: () => set({ dmNudgeDismissed: true }),
+
   // ── 광고 인터스티셜 게이트 + 광고 제외(ad-free) ──────────────────────────
   // 분석하기 클릭 시 광고 모달을 띄우고, 닫으면 실제 분석을 실행. adFree면 즉시 실행.
   // adGate는 휘발(비영속): open=모달 표시, pending=닫을 때 실행할 콜백, seq=열 때마다
