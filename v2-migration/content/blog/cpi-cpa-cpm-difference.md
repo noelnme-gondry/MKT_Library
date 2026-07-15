@@ -1,0 +1,53 @@
+---
+title: "CPI·CPA·CPM·CPC 차이, 헷갈리면 예산 샌다"
+description: "CPM·CPC·CPI·CPA가 각각 뭘 재는 지표인지, 언제 어떤 걸 기준으로 봐야 하는지 정리했습니다."
+date: "2026-07-15"
+slug: "cpi-cpa-cpm-difference"
+keywords: "CPI CPA 차이, CPM CPC, CPI CPA CPM CPC, 광고 지표 차이, CPM 뜻, CPC 뜻, CPI 뜻, CPA 뜻, 마케팅 비용 지표"
+tags: ["기초", "지표"]
+draft: true
+---
+
+<!-- 초안(draft) — 발행 전 사람 손질 필요. 실제 예시 수치 보강할 것. -->
+
+CPM, CPC, CPI, CPA. 다 "얼마 든다"는 지표인데 재는 대상이 달라요. 이걸 섞으면 "싸다/비싸다"를 잘못 판단해요. 하나씩 정리할게요.
+
+## 퍼널 단계별로 붙는 비용이에요
+
+각 지표는 퍼널의 다른 단계에 붙어요.
+
+- **CPM** (Cost Per Mille) — 노출 1,000회당 비용. 매체에 지불하는 원가에 가까워요.
+- **CPC** (Cost Per Click) — 클릭 1회당 비용. CPM ÷ CTR로 연결돼요.
+- **CPI** (Cost Per Install) — 설치 1건당 비용. 앱 마케팅의 대표 지표.
+- **CPA** (Cost Per Action) — 원하는 행동(가입·구매) 1건당 비용. 진짜 성과에 가장 가까워요.
+
+뒤로 갈수록 "돈 되는 행동"에 가까워요. 그래서 **CPA가 낮은 게 궁극 목표**지만, 앞 단계 지표들이 원인을 알려줘요.
+
+## 왜 다 봐야 하냐면
+
+CPA만 보면 "왜 나쁜지"를 몰라요. 분해해보면 원인이 잡혀요.
+
+CPA = CPM ÷ (CTR × CVR × 설치→행동 전환율) … 대략 이런 사슬이에요.
+
+CPA가 높을 때:
+
+- CPM이 높다 → 매체 경쟁·타겟이 비쌈
+- CTR이 낮다 → [소재](/tools/creative-analysis)나 타겟 문제
+- CVR이 낮다 → 랜딩·[퍼널](/blog/funnel-dropoff-analysis) 문제
+
+즉 CPA는 결과, CPM·CTR·CVR은 원인이에요. 결과만 보고 소재를 갈지 타겟을 바꿀지 못 정해요.
+
+## 뭘 기준으로 최적화하냐면
+
+목표부터 정하세요.
+
+- 인지도 캠페인 → CPM·도달 기준
+- 트래픽 → CPC 기준
+- 앱 설치 → CPI 기준
+- 매출·가입 → CPA(또는 [ROAS](/blog/roas-improvement)) 기준
+
+초반 지표(CPI)로 최적화하면 "싸게 깔았는데 아무도 안 사는" 유저를 대량으로 데려올 수 있어요. 가능하면 **돈 되는 행동(CPA) 기준**으로 내려가세요.
+
+## 정직하게
+
+CPI가 싸다고 좋은 게 아니에요. 그 유저가 [남고(리텐션)](/blog/cohort-analysis-guide) 사는지(LTV)까지 봐야 진짜 효율이에요. 앞단 지표는 진단용, 판단은 뒷단(CPA·LTV)으로.
