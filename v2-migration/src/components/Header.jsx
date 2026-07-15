@@ -46,10 +46,16 @@ export default function Header({ locale = "ko" }) {
   // Breadcrumb sourced from the URL (SSOT) → correct on deep-link + back/forward.
   const pathname = usePathname();
   const currentRouteId = resolvePathToId(pathname) ?? "home";
+  // 블로그는 routeMap 밖(fs 기반)이라 id 해석이 "home"으로 떨어짐 → 경로로 직접 감지해
+  // 브레드크럼("블로그")·언어전환(/blog↔/en/blog)을 도구와 동일한 공용 Header에서 처리.
+  const cleanPath = (pathname || "/").replace(/^\/en(?=\/|$)/, "") || "/";
+  const isBlog = cleanPath === "/blog" || cleanPath.startsWith("/blog/");
+  const blogHref = locale === "en" ? "/en/blog" : "/blog";
   // KR<->EN 페이지 전환 — 현재 페이지 기준(홈 아니어도 항상 이 경로 유지). EN→KR은
   // 늘 있음(KR이 항상 완성본). KR→EN은 번역된 페이지일 때만, 없으면 /en 홈 폴백.
-  const switchHref =
-    locale === "en"
+  const switchHref = isBlog
+    ? (locale === "en" ? cleanPath : `/en${cleanPath}`)
+    : locale === "en"
       ? idToPath(currentRouteId)
       : hasEnVersion(currentRouteId)
         ? `/en${idToPath(currentRouteId) === "/" ? "" : idToPath(currentRouteId)}`
@@ -89,8 +95,17 @@ export default function Header({ locale = "ko" }) {
           <span className="brand-mark" style={{ width: "26px", height: "26px", fontSize: "12px" }}>GO</span>
           <span style={{ fontWeight: 700 }}>Growth Opt Playbook</span>
         </Link>
+        {/* 블로그는 브랜드 + "블로그" 크럼. */}
+        {isBlog && (
+          <>
+            <span className="sep">/</span>
+            <Link href={blogHref} className="current" style={{ textDecoration: "none", color: "var(--text-secondary)" }}>
+              {locale === "en" ? "Blog" : "블로그"}
+            </Link>
+          </>
+        )}
         {/* 트레일링 크럼은 도구/문서 페이지에서만(홈은 브랜드만). */}
-        {meta && (
+        {!isBlog && meta && (
           <>
             <span className="sep">/</span>
             <span
