@@ -3,8 +3,9 @@
 // 번역 완료된 그룹/항목만 추가 (§routeMap EN_READY_TOOL_IDS와 함께 확장).
 export const GROUP_TITLE_EN = {
   "05": "Operations & Performance",
-  "06": "Creative & Experiments",
+  "06": "Experiment Analysis",
   "07": "Attribution & Value",
+  "09": "Creative & Content Analysis",
 };
 
 export const ITEM_TITLE_EN = {
@@ -12,7 +13,6 @@ export const ITEM_TITLE_EN = {
   "5-21": "Campaign Performance Variance (PVM)",
   "5-22": "Campaign Saturation Diagnosis",
   "5-3": "Budget Allocation Simulator",
-  "5-6": "Creative Analysis",
   "5-4": "Experiment Analysis (A/B Test)",
   "5-23": "Incrementality Analysis",
   "5-18": "Marketing Response Analysis (MMM)",
@@ -20,7 +20,7 @@ export const ITEM_TITLE_EN = {
   "9-1": "Content Element Analysis",
   "9-2": "Killer Content Finder",
   "9-3": "Content Traffic Variance",
-  "9-6": "Content Freshness",
+  "9-6": "Creative Analysis",
   "9-7": "Content Operations Dashboard",
 };
 

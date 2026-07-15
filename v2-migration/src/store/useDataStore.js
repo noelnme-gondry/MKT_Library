@@ -13,6 +13,9 @@ import { SECTION_LABEL_EN } from "@/lib/enNavCopy";
 // as currentRouteId — but they're harmless to keep here.
 export const TOOL_GROUP = {
   "5-2": "efficiency", "5-21": "efficiency", "5-22": "efficiency", "5-3": "efficiency",
+  // 5-6(소재 분석)은 9-6으로 통합됨(중복 제거). route 5-6은 폐기됐지만 CreativeAnalyzer
+  // domain=performance의 uploaderToolId가 여전히 "5-6"이라(csvGuide·demo 게이트 키)
+  // creative 그룹 별칭으로 남겨둔다 — 9-6과 같은 creative 슬라이스로 정렬.
   "5-6": "creative",
   "5-4": "experiment", "5-7": "experiment", "5-15": "experiment",
   "5-18": "response",
@@ -23,7 +26,7 @@ export const TOOL_GROUP = {
   "9-1": "content_attr", // 콘텐츠 요소 분석기 (regMath 재사용)
   "9-2": "content_aha",  // 킬러 콘텐츠·충성 독자 발굴 (ahaMath 재사용)
   "9-3": "content_traffic", // 콘텐츠 트래픽 변동 탐지 (pvmMath 재사용) — grain(유입경로×기간×트래픽) 상이 → 전용 슬라이스
-  "9-6": "content_freshness", // 콘텐츠 수명주기·신선도 진단 (creativeMath 재사용) — grain(콘텐츠×일) 전용 슬라이스
+  "9-6": "creative", // 소재 분석 (구 5-6 통합, creativeMath) — 퍼포먼스 도메인으로 전환, creative 슬라이스 공유
   "9-7": "content_dashboard", // 콘텐츠 운영 대시보드 (dashboardAggregator 재사용) — grain(일×유입경로×콘텐츠) 전용 슬라이스
 };
 
@@ -151,17 +154,9 @@ export const IA = [
   },
   {
     id: "06",
-    title: "소재·실험",
-    desc: "소재 성과·피로도 진단과 A/B·홀드아웃 실험 판독.",
+    title: "실험 설계 분석",
+    desc: "A/B·홀드아웃 실험 설계와 판독, 증분(광고가 실제 만든 몫) 측정.",
     items: [
-      {
-        id: "5-6",
-        title: "소재 분석 (지표·피로도·포레스트)",
-        titleEn: "Creative Analysis (Metrics · Fatigue · Forest Plot)",
-        seoTitleEn: "Which Creative Should You Replace? Free Fatigue Analysis",
-        seoDescriptionEn:
-          "Analyze creative performance, fatigue over time, and which attributes (hook, format, message) actually drive results. Free, upload a creative-level CSV.",
-      },
       {
         id: "5-4",
         title: "실험 분석 (A/B 테스트)",
@@ -210,16 +205,23 @@ export const IA = [
   // 리라벨. 내부 id(9-x)는 불변(§4.1), 표시번호는 SECTIONS 위치로 계산. 파일럿 2종. ──
   {
     id: "09",
-    title: "콘텐츠 분석",
-    desc: "콘텐츠 성과 CSV로 어떤 제작 요소가 성과를 끌어올리는지, 어떤 콘텐츠가 구독 전환을 만드는지 진단.",
-    // hidden: true — 아직 미완성 판단(§요청 2026-07-14), 홈·사이드바 노출 목록에서
-    // 제외(Sidebar.jsx/LandingPage.jsx가 필터). 라우팅·findMeta는 그대로 살아있어
-    // 기존 직접 링크는 안 깨짐 — "삭제"가 아니라 "숨김".
+    title: "소재·콘텐츠 분석",
+    desc: "소재(크리에이티브) 성과·피로도 진단과, 콘텐츠 성과 CSV로 어떤 제작 요소가 성과를 끌어올리는지 진단.",
+    // 소재 분석(9-6, 구 5-6 통합)이 이 섹션의 대표 도구 — 퍼포먼스 소재 분석과 콘텐츠
+    // 도메인 도구(요소 분석기 등)를 같은 섹션에 둔다. 9-2/9-3/9-7은 아직 미완성이라
+    // hidden(라우팅·findMeta는 살아있어 직접 링크는 안 깨짐 — "삭제"가 아니라 "숨김").
     items: [
+      {
+        id: "9-6",
+        title: "소재 분석 (지표·피로도·포레스트)",
+        titleEn: "Creative Analysis (Metrics · Fatigue · Forest Plot)",
+        seoTitleEn: "Which Creative Should You Replace? Free Fatigue Analysis",
+        seoDescriptionEn:
+          "Analyze creative performance, fatigue over time, and which attributes (hook, format, message) actually drive results. Free, upload a creative-level CSV.",
+      },
       { id: "9-1", title: "콘텐츠 요소 분석기 (요소별 성과 기여)" },
       { id: "9-2", title: "킬러 콘텐츠·충성 독자 발굴 (전환 동인)", hidden: true },
       { id: "9-3", title: "콘텐츠 트래픽 변동 탐지 (유입·카테고리·콘텐츠별)", hidden: true },
-      { id: "9-6", title: "콘텐츠 수명주기·신선도 진단 (반응 감쇠·발행 페이스)" },
       { id: "9-7", title: "콘텐츠 운영 대시보드 (트래픽·스코어카드·이상탐지)", hidden: true },
     ],
   },

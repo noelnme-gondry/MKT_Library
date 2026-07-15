@@ -15,7 +15,6 @@ export const ITEM_KEYWORDS = {
   "5-21": "캠페인 성과 변동, PVM 분해, 믹스효과, 효율효과, CPA 상승 원인, 성과 변동 진단",
   "5-22": "캠페인 포화도, 한계 CPA, 한계 ROAS, 응답곡선, 캠페인 최적화, 예산 스케일업",
   "5-3": "마케팅 예산 배분, 예산 배분 시뮬레이터, 한계효용, 채널 예산 최적화, 예산 재배분",
-  "5-6": "소재 분석, 광고 소재 분석, 소재 피로도, CTR 개선, 광고 크리에이티브, 포레스트 플롯",
   "5-4": "A/B 테스트, AB test, 실험 분석, 통계적 유의성, 표본 크기, 전환율 최적화",
   "5-23": "증분 분석, incrementality, 홀드아웃 테스트, 인과추론 마케팅, 전후 비교 분석, iROAS",
   "5-18": "마케팅 반응 분석, MMM, 마케팅 믹스 모델링, 회귀분석, 채널 기여도 분석, 카니발리제이션 진단",
@@ -23,7 +22,7 @@ export const ITEM_KEYWORDS = {
   "9-1": "콘텐츠 요소 분석, 콘텐츠 성과 기여, 콘텐츠 마케팅 분석",
   "9-2": "킬러 콘텐츠, 충성 독자 발굴, 구독 전환 분석, 콘텐츠 마케팅",
   "9-3": "콘텐츠 트래픽 변동, 유입경로 분석, 콘텐츠 카테고리 분석",
-  "9-6": "콘텐츠 신선도, 콘텐츠 수명주기, 반응 감쇠 분석, 발행 페이스",
+  "9-6": "소재 분석, 광고 소재 분석, 소재 피로도, CTR 개선, 광고 크리에이티브, 포레스트 플롯",
   "9-7": "콘텐츠 운영 대시보드, 콘텐츠 스코어카드, 콘텐츠 이상탐지",
 };
 
@@ -36,7 +35,7 @@ export const ITEM_KEYWORDS_EN = {
   "5-21": "campaign performance variance, PVM decomposition, mix effect, efficiency effect, CPA increase cause, performance variance diagnosis",
   "5-22": "campaign saturation, marginal CPA, marginal ROAS, response curve, campaign optimization, budget scale-up",
   "5-3": "marketing budget allocation, budget allocation simulator, marginal utility, channel budget optimization, budget reallocation",
-  "5-6": "creative analysis, ad creative analysis, creative fatigue, CTR improvement, ad creative, forest plot",
+  "9-6": "creative analysis, ad creative analysis, creative fatigue, CTR improvement, ad creative, forest plot",
   "5-4": "A/B test, AB testing, experiment analysis, statistical significance, sample size, conversion rate optimization",
   "5-23": "incrementality analysis, incrementality, holdout test, causal inference marketing, pre-post analysis, iROAS",
   "5-18": "marketing response analysis, MMM, marketing mix modeling, regression analysis, channel contribution analysis, cannibalization diagnosis",
