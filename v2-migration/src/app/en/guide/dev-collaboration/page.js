@@ -10,7 +10,8 @@ export async function generateMetadata() {
     "MMP (Adjust) SDK initialization, deep-link routing, and pre-release QA checklist unified into one developer collaboration standard.";
   const canonical = `${SITE_URL}/en/guide/dev-collaboration`;
   return {
-    title,
+    // absolute: title이 이미 브랜드 접미사 포함 — layout.js template 중복 적용 방지.
+    title: { absolute: title },
     description,
     alternates: {
       canonical,

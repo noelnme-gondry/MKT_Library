@@ -14,7 +14,9 @@ export async function generateMetadata() {
     "Upload your campaign CSV to instantly analyze performance, budget allocation, and A/B tests — a free performance marketing toolkit.";
   const canonical = `${SITE_URL}/en`;
   return {
-    title,
+    // absolute: 이 페이지 title이 이미 브랜드 접미사를 포함하므로 layout.js의
+    // title.template("%s | Growth Opt Playbook") 재적용을 막아 중복 방지.
+    title: { absolute: title },
     description,
     alternates: { canonical, languages: { ko: `${SITE_URL}/`, en: canonical } },
     openGraph: {

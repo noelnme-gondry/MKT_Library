@@ -2,7 +2,9 @@ import { SITE_URL } from "@/lib/routeMap";
 
 // 자기 자신을 canonical로(layout canonical 제거로 홈 누수 방지, GSC 대체페이지 이슈).
 export const metadata = {
-  title: "개인정보처리방침 | Growth Opt Playbook",
+  // absolute: title이 이미 브랜드 접미사 포함 — layout.js title.template("%s | Growth
+  // Opt Playbook") 중복 적용 방지.
+  title: { absolute: "개인정보처리방침 | Growth Opt Playbook" },
   alternates: { canonical: `${SITE_URL}/privacy` },
   openGraph: { url: `${SITE_URL}/privacy` },
 };

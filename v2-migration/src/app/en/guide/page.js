@@ -10,7 +10,8 @@ export async function generateMetadata() {
     "Step-by-step performance marketing standard operating procedures — setup, campaign ops, creative, and post-launch analysis.";
   const canonical = `${SITE_URL}/en/guide`;
   return {
-    title,
+    // absolute: title이 이미 브랜드 접미사 포함 — layout.js template 중복 적용 방지.
+    title: { absolute: title },
     description,
     alternates: { canonical, languages: { ko: `${SITE_URL}/guide`, en: canonical } },
     openGraph: { title, description, url: canonical, locale: "en_US" },
