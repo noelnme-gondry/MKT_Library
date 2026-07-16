@@ -17,7 +17,8 @@ export const ROUTES = [
   { id: "5-3", slug: "/tools/budget-allocation", component: "BudgetAllocation" },
   { id: "5-21", slug: "/tools/campaign-variance", component: "CampaignPvm" },
   { id: "5-22", slug: "/tools/campaign-saturation", component: "MarketingEfficiency" },
-  { id: "5-6", slug: "/tools/creative-analysis", component: "CreativeAnalyzer" },
+  // 5-6(소재 분석)은 9-6으로 통합됨(중복 제거). /tools/creative-analysis는
+  // next.config.mjs redirects()로 /content/freshness(9-6)로 301 리다이렉트.
   { id: "5-4", slug: "/tools/experiment-analysis", component: "AbTestHoldout" },
   { id: "5-18", slug: "/tools/marketing-response", component: "MarketingResponse" },
   { id: "5-20", slug: "/tools/aha-moment", component: "AhaMomentFinder" },
@@ -26,7 +27,9 @@ export const ROUTES = [
   { id: "9-1", slug: "/content/element-analysis", component: "ContentElementAnalyzer" },
   { id: "9-2", slug: "/content/killer-content", component: "KillerContentFinder" },
   { id: "9-3", slug: "/content/traffic-variance", component: "ContentTrafficVariance" },
-  { id: "9-6", slug: "/content/freshness", component: "ContentFreshness" },
+  // 9-6 = 소재 분석(구 5-6 통합, CreativeAnalyzer domain=performance). slug은 콘텐츠
+  // 라우팅 계열 유지(§4.1 id 불변). /tools/creative-analysis는 여기로 redirect.
+  { id: "9-6", slug: "/content/freshness", component: "CreativeAnalyzer" },
   { id: "9-7", slug: "/content/dashboard", component: "ContentDashboard" },
   { id: "1-1", slug: "/guide/dev-collaboration", component: "SopContent" },
   { id: "1-2", slug: "/guide/event-taxonomy", component: "SopContent" },
@@ -97,7 +100,8 @@ export function idToPath(id) {
 // this gates /en/[[...slug]] dispatch, hreflang emission, and sitemap EN URLs
 // so untranslated tools never get a thin/half-Korean page indexed.
 export const EN_READY_TOOL_IDS = new Set([
-  "5-2", "5-3", "5-4", "5-6", "5-18", "5-20", "5-21", "5-22", "5-23",
+  // 5-6(소재 분석)은 9-6으로 통합 — EN 지원도 9-6으로 이관.
+  "5-2", "5-3", "5-4", "9-6", "5-18", "5-20", "5-21", "5-22", "5-23",
 ]);
 
 export function hasEnVersion(id) {

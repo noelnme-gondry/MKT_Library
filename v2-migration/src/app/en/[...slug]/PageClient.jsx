@@ -19,7 +19,7 @@ const Dashboard = dyn(() => import("@/components/Dashboard"));
 const BudgetAllocation = dyn(() => import("@/components/tools/BudgetAllocation"));
 const CampaignPvm = dyn(() => import("@/components/tools/CampaignPvm"));
 const MarketingEfficiency = dyn(() => import("@/components/tools/MarketingEfficiency"));
-const CreativeAnalyzer = dyn(() => import("@/components/tools/CreativeAnalyzer"));
+const ContentFreshness = dyn(() => import("@/components/tools/ContentFreshness"));
 const AbTestHoldout = dyn(() => import("@/components/tools/AbTestHoldout"));
 const MarketingResponse = dyn(() => import("@/components/tools/MarketingResponse"));
 const AhaMomentFinder = dyn(() => import("@/components/tools/AhaMomentFinder"));
@@ -58,7 +58,7 @@ export default function PageClient({ params }) {
             {routeId === "5-3" && <BudgetAllocation locale="en" />}
             {routeId === "5-21" && <CampaignPvm locale="en" />}
             {routeId === "5-22" && <MarketingEfficiency locale="en" />}
-            {routeId === "5-6" && <CreativeAnalyzer locale="en" />}
+            {routeId === "9-6" && <ContentFreshness locale="en" />}
             {routeId === "5-4" && <AbTestHoldout locale="en" />}
             {routeId === "5-18" && <MarketingResponse locale="en" />}
             {routeId === "5-20" && <AhaMomentFinder locale="en" />}

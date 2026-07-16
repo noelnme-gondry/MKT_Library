@@ -10,7 +10,8 @@ export async function generateMetadata() {
     "How CSV upload and auto column-mapping works across every analysis tool, and how to fix common mapping errors.";
   const canonical = `${SITE_URL}/en/guide/csv-data-prep`;
   return {
-    title,
+    // absolute: title이 이미 브랜드 접미사 포함 — layout.js template 중복 적용 방지.
+    title: { absolute: title },
     description,
     alternates: {
       canonical,

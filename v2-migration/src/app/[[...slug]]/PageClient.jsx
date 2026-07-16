@@ -21,7 +21,6 @@ const dyn = (loader) => dynamic(loader, { loading: () => <div style={{ padding: 
 const Dashboard = dyn(() => import("@/components/Dashboard"));
 const BudgetAllocation = dyn(() => import("@/components/tools/BudgetAllocation"));
 const CampaignPvm = dyn(() => import("@/components/tools/CampaignPvm"));
-const CreativeAnalyzer = dyn(() => import("@/components/tools/CreativeAnalyzer"));
 const AbTestHoldout = dyn(() => import("@/components/tools/AbTestHoldout"));
 const MarketingResponse = dyn(() => import("@/components/tools/MarketingResponse"));
 const AhaMomentFinder = dyn(() => import("@/components/tools/AhaMomentFinder"));
@@ -75,7 +74,6 @@ export default function PageClient({ params }) {
             {routeId === "5-3" && <BudgetAllocation />}
             {routeId === "5-21" && <CampaignPvm />}
             {routeId === "5-22" && <MarketingEfficiency />}
-            {routeId === "5-6" && <CreativeAnalyzer />}
             {routeId === "5-4" && <AbTestHoldout />}
             {routeId === "5-18" && <MarketingResponse />}
             {routeId === "5-20" && <AhaMomentFinder />}

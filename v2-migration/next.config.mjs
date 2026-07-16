@@ -4,6 +4,22 @@ const nextConfig = {
   // 공개 클라이언트 앱 특성상 못 막지만, "내 사이트를 남의 iframe에 띄워 자기 것인 양"
   // 하는 벡터는 frame-ancestors 'self'로 원천 차단. full CSP는 GTM/AdSense 인라인
   // 스크립트를 깨뜨릴 수 있어 프레임 통제만 적용.
+  // 5-6(소재 분석) → 9-6 통합에 따른 구 URL 보존. /tools/creative-analysis(구 5-6)는
+  // 이제 9-6이 서빙(같은 slug 재사용이 아니라, 9-6은 /content/freshness에 있으므로 301).
+  async redirects() {
+    return [
+      {
+        source: "/tools/creative-analysis",
+        destination: "/content/freshness",
+        permanent: true,
+      },
+      {
+        source: "/en/tools/creative-analysis",
+        destination: "/en/content/freshness",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
