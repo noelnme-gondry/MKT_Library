@@ -24,7 +24,7 @@ Let's go through it in this order.
 
 The first thing to suspect is the data itself. Skipping this step is how people waste hours chasing a ghost.
 
-**Tracking might be broken.** If there was a dev deployment, the conversion pixel could have been dropped. In this case, actual performance is fine — the number just isn't being captured. If you pause ads here, you're killing a perfectly healthy campaign.
+**Tracking might be broken.** If there was a dev deployment, the conversion pixel could have been dropped. In this case, actual performance is fine — the number just isn't being captured. If you pause ads here, you're killing a perfectly healthy campaign. (If you're on GA4, some of what looks like broken tracking is just how GA4 counts by default → [Why your GA4 numbers look wrong](/blog/ga4-data-traps))
 
 **The data might not be fully in yet.** Conversion lag or reporting delay can leave the last few days looking thin. Looking at yesterday's half-loaded numbers this morning and concluding "we're doomed" is a classic illusion.
 
