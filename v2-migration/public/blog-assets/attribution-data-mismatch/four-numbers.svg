@@ -1,0 +1,33 @@
+<svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif">
+  <rect x="0" y="0" width="640" height="360" fill="#ffffff"/>
+
+  <text x="320" y="32" fill="#334155" font-size="16" font-weight="700" text-anchor="middle">같은 주의 '전환 수', 어디서 보느냐에 따라</text>
+
+  <line x1="80" y1="290" x2="600" y2="290" stroke="#9CA3AF" stroke-width="1.5"/>
+
+  <!-- 매체 대시보드 120 -->
+  <rect x="110" y="98" width="70" height="192" fill="#3B82F6"/>
+  <text x="145" y="88" fill="#1D4ED8" font-size="15" font-weight="700" text-anchor="middle">120건</text>
+  <text x="145" y="312" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">매체 대시보드</text>
+  <text x="145" y="330" fill="#64748B" font-size="11.5" text-anchor="middle">뷰스루 포함·자기 기준</text>
+
+  <!-- 결제 DB 100 -->
+  <rect x="240" y="130" width="70" height="160" fill="#334155"/>
+  <text x="275" y="120" fill="#334155" font-size="15" font-weight="700" text-anchor="middle">100건</text>
+  <text x="275" y="312" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">자체 결제 DB</text>
+  <text x="275" y="330" fill="#64748B" font-size="11.5" text-anchor="middle">실제 일어난 전환</text>
+
+  <!-- MMP 85 -->
+  <rect x="370" y="154" width="70" height="136" fill="#60A5FA"/>
+  <text x="405" y="144" fill="#2563EB" font-size="15" font-weight="700" text-anchor="middle">85건</text>
+  <text x="405" y="312" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">MMP</text>
+  <text x="405" y="330" fill="#64748B" font-size="11.5" text-anchor="middle">크로스매체 라스트터치</text>
+
+  <!-- GA4 70 -->
+  <rect x="500" y="178" width="70" height="112" fill="#93C5FD"/>
+  <text x="535" y="168" fill="#2563EB" font-size="15" font-weight="700" text-anchor="middle">70건</text>
+  <text x="535" y="312" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">GA4</text>
+  <text x="535" y="330" fill="#64748B" font-size="11.5" text-anchor="middle">클릭 기반·다른 윈도우</text>
+
+  <text x="320" y="352" fill="#6B7280" font-size="12.5" text-anchor="middle">넷 다 자기 규칙으로는 맞는 숫자예요. 규칙이 다를 뿐이죠.</text>
+</svg>
