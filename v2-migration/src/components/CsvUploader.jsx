@@ -2,10 +2,11 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import Papa from "papaparse";
 import { useAppStore, TOOL_GROUP } from "@/store/useDataStore";
-import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
+import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS, autoMapHeaders } from "@/utils/csvConstants";
 import { buildDemoCsv } from "@/utils/demoData";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
+import GoogleSheetConnect from "@/components/GoogleSheetConnect";
 
 function escapeHtml(str) {
   if (!str) return "";
@@ -166,38 +167,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
 
         const headers = results.meta.fields || [];
         const raw = results.data;
-        
-        // Auto-mapping logic
-        const mapping = {};
-        const availableStandardKeys = Object.keys(STANDARD_FIELDS);
-        
-        headers.forEach((header) => {
-          const hLow = header.toLowerCase().trim();
-          let matched = null;
-          
-          for (const sKey of availableStandardKeys) {
-            const def = STANDARD_FIELDS[sKey];
-            if (sKey.toLowerCase() === hLow) {
-              matched = sKey;
-              break;
-            }
-            if (def.aliases) {
-              const hasAlias = def.aliases.some((alias) => {
-                const a = alias.toLowerCase();
-                return hLow === a || hLow === a.replace(/_/g, "") || hLow.replace(/_/g, "") === a;
-              });
-              if (hasAlias) {
-                matched = sKey;
-                break;
-              }
-            }
-          }
-          if (matched) {
-            mapping[header] = matched;
-          } else {
-            mapping[header] = "__ignore__";
-          }
-        });
+        const mapping = autoMapHeaders(headers);
 
         setCsvData({
           raw,
@@ -213,6 +183,16 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         setErrorMsg(T.parseError + err.message);
       },
     });
+  };
+
+  // 구글 시트 로드 완료 콜백 — GoogleSheetConnect가 {headers, raw, fileName}을 CSV
+  // 업로드와 동일한 모양으로 넘겨줌(sheetValuesToTable, §googleSheets.js). 자동매핑도
+  // CSV 경로와 같은 함수(autoMapHeaders) 재사용 — 이후 파이프라인은 CSV/시트 구분 없음.
+  const handleSheetLoaded = ({ headers, raw, fileName }) => {
+    setErrorMsg("");
+    const mapping = autoMapHeaders(headers);
+    setCsvData({ raw, headers, mapping, fileName });
+    setPreviewOpen(true);
   };
 
   const handleMappingChange = (header, value) => {
@@ -362,6 +342,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
             onChange={handleFileChange}
           />
         </div>
+        <GoogleSheetConnect onLoaded={handleSheetLoaded} onError={setErrorMsg} locale={locale} />
         <DemoLoadButton onLoad={handleLoadDemo} locale={locale} />
         {errorMsg && <div style={{ color: "var(--danger)", marginTop: "10px", fontSize: "12px" }}>{errorMsg}</div>}
       </div>

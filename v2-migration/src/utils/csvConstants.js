@@ -1331,3 +1331,37 @@ export const TOOL_OPTIONAL_FIELDS = {
                 { key: "actions", unlocks: "구독당 비용·전환수 분석 (방문과 별도)" },
               ],
             };
+
+// CSV 헤더 배열 → {header: 표준필드키|"__ignore__"} 자동매핑. CsvUploader의 CSV 업로드
+// 경로와 구글 시트 임포트 경로가 동일 로직을 공유하도록 추출(원래 CsvUploader.jsx
+// processFile 내부에 있던 걸 이관 — 로직 변경 없음, 재사용을 위한 위치 이동만).
+export function autoMapHeaders(headers) {
+  const mapping = {};
+  const availableStandardKeys = Object.keys(STANDARD_FIELDS);
+
+  headers.forEach((header) => {
+    const hLow = header.toLowerCase().trim();
+    let matched = null;
+
+    for (const sKey of availableStandardKeys) {
+      const def = STANDARD_FIELDS[sKey];
+      if (sKey.toLowerCase() === hLow) {
+        matched = sKey;
+        break;
+      }
+      if (def.aliases) {
+        const hasAlias = def.aliases.some((alias) => {
+          const a = alias.toLowerCase();
+          return hLow === a || hLow === a.replace(/_/g, "") || hLow.replace(/_/g, "") === a;
+        });
+        if (hasAlias) {
+          matched = sKey;
+          break;
+        }
+      }
+    }
+    mapping[header] = matched || "__ignore__";
+  });
+
+  return mapping;
+}
