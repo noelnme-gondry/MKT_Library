@@ -1886,6 +1886,53 @@
         letter-spacing: 0.04em;
         text-transform: uppercase;
       }
+      /* 사이드바 시각 위계(§UX 개선) — "분석"(실제 제품·도구)이 메인, 가이드는 그
+         다음, 블로그·템플릿·용어사전은 보조 리소스. 전에는 전부 같은 .phase-tag라
+         구분이 안 됐음. */
+      .phase-section--primary {
+        border-top: none;
+        margin-top: -0.25rem;
+        padding-bottom: 0.5rem;
+      }
+      .phase-section--primary > .phase-header {
+        background: rgba(173, 198, 255, 0.08);
+      }
+      .phase-section--primary > .phase-header:hover {
+        background: rgba(173, 198, 255, 0.14);
+      }
+      .phase-tag--primary {
+        font-size: 13px;
+        font-weight: 700;
+        padding: 4px 10px;
+        background: var(--primary);
+        color: var(--surface-base, #0b0d12);
+        border-color: var(--primary);
+      }
+      .phase-section--resource {
+        padding: 0.1rem 0;
+      }
+      .phase-section--resource > .phase-header {
+        padding: 0.4rem 0.5rem;
+      }
+      .phase-tag--muted {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-muted);
+        background: transparent;
+        border-color: transparent;
+        padding: 2px 0;
+        letter-spacing: 0;
+      }
+      /* 보조 리소스 그룹(블로그·템플릿·용어사전) 앞에 작은 구분 라벨 */
+      .sidebar-resource-label {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 0.6rem 0.75rem 0.2rem;
+        opacity: 0.7;
+      }
 
       /* ========== Chart 컨테이너 ========== */
       .chart-grid {

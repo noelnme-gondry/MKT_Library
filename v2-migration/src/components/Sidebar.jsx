@@ -17,12 +17,14 @@ const SIDEBAR_COPY = {
     instagram: "인스타",
     facebook: "페북",
     survey: "설문",
+    resourceLabel: "더 알아보기",
   },
   en: {
     searchPlaceholder: "Search guides, params, code…",
     blog: "Blog",
     templates: "CSV Templates",
     glossary: "Glossary",
+    resourceLabel: "More",
     youtube: "YouTube",
     instagram: "Instagram",
     facebook: "Facebook",
@@ -85,21 +87,27 @@ export default function Sidebar({ locale = "ko" }) {
       </div>
 
       <nav id="nav" data-rendered="1">
-        {SECTIONS.map((section) => {
+        {/* §UX 개선: "분석"(실제 도구)이 메인 제품이라 렌더 순서상 먼저 보여주고
+            시각적으로도 강조(phase-tag--primary). SECTIONS 데이터 자체의 순서는
+            안 건드림(번호 계산이 section.groups.indexOf 기반이라 순서 무관하지만,
+            다른 소비처(LandingPage 등)에 예기치 않은 영향 안 주려고 렌더링에서만 정렬). */}
+        {[...SECTIONS].sort((a, b) => (a.id === "analysis" ? -1 : b.id === "analysis" ? 1 : 0)).map((section) => {
+          const isPrimarySection = section.id === "analysis";
           const sectionGroups = IA.filter((g) => section.groups.includes(g.id));
           const sectionHasActive = sectionGroups.some((g) =>
             g.items.some((it) => it.id === currentRouteId)
           );
 
-          // If it hasn't been explicitly toggled, use the derived state
+          // If it hasn't been explicitly toggled, use the derived state. 분석
+          // 섹션은 메인 제품이라 홈에서도 기본 펼침(다른 섹션은 기존 로직 유지).
           const isSectionCollapsed = collapsedSections[section.id] !== undefined
             ? collapsedSections[section.id]
-            : !sectionHasActive;
+            : isPrimarySection ? false : !sectionHasActive;
 
           return (
             <section
               key={section.id}
-              className={`phase-section ${isSectionCollapsed ? "collapsed" : ""}`}
+              className={`phase-section ${isPrimarySection ? "phase-section--primary" : ""} ${isSectionCollapsed ? "collapsed" : ""}`}
               data-section={section.id}
             >
               <button
@@ -109,7 +117,7 @@ export default function Sidebar({ locale = "ko" }) {
                 aria-expanded={!isSectionCollapsed}
               >
                 <span className="phase-header-left">
-                  <span className="phase-tag">{trSectionLabel(section.id, locale, section.label)}</span>
+                  <span className={`phase-tag ${isPrimarySection ? "phase-tag--primary" : ""}`}>{trSectionLabel(section.id, locale, section.label)}</span>
                 </span>
                 <svg className="phase-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="6 9 12 15 18 9"></polyline>
@@ -159,9 +167,10 @@ export default function Sidebar({ locale = "ko" }) {
         })}
       </nav>
 
-      {/* 블로그는 tool 라우팅(routeMap/IA) 밖 — fs 기반 독립 섹션. 다른 섹션(phase-section)과
-          동일한 헤더 스타일로 통일(단, 하위 도구 트리가 없어 헤더 자체가 /blog 링크). */}
-      <section className="phase-section" data-section="blog">
+      {/* 블로그·템플릿·용어사전 = routeMap/IA 밖 보조 리소스(§UX 개선: "분석" 도구와
+          시각적으로 경쟁하지 않도록 muted 톤 + 한 묶음으로 그룹핑, 작은 라벨로 구분). */}
+      <div className="sidebar-resource-label">{T.resourceLabel}</div>
+      <section className="phase-section phase-section--resource" data-section="resources">
         <Link
           href={locale === "en" ? "/en/blog" : "/blog"}
           className="phase-header"
@@ -173,14 +182,10 @@ export default function Sidebar({ locale = "ko" }) {
           }}
         >
           <span className="phase-header-left">
-            <span className="phase-tag">{T.blog}</span>
+            <span className="phase-tag phase-tag--muted">{T.blog}</span>
           </span>
           <span style={{ fontSize: "13px", opacity: 0.6 }}>→</span>
         </Link>
-      </section>
-
-      {/* CSV 템플릿 다운로드 — 블로그와 동일하게 routeMap 밖 독립 페이지(EN 미번역, KR만). */}
-      <section className="phase-section" data-section="templates">
         <Link
           href="/templates"
           className="phase-header"
@@ -192,14 +197,10 @@ export default function Sidebar({ locale = "ko" }) {
           }}
         >
           <span className="phase-header-left">
-            <span className="phase-tag">{T.templates}</span>
+            <span className="phase-tag phase-tag--muted">{T.templates}</span>
           </span>
           <span style={{ fontSize: "13px", opacity: 0.6 }}>→</span>
         </Link>
-      </section>
-
-      {/* 용어사전 — 블로그·템플릿과 동일 패턴(routeMap 밖, EN 미번역). */}
-      <section className="phase-section" data-section="glossary">
         <Link
           href="/glossary"
           className="phase-header"
@@ -211,7 +212,7 @@ export default function Sidebar({ locale = "ko" }) {
           }}
         >
           <span className="phase-header-left">
-            <span className="phase-tag">{T.glossary}</span>
+            <span className="phase-tag phase-tag--muted">{T.glossary}</span>
           </span>
           <span style={{ fontSize: "13px", opacity: 0.6 }}>→</span>
         </Link>
