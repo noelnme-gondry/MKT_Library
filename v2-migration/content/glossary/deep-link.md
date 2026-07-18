@@ -5,6 +5,7 @@ description: "딥링크란 앱을 그냥 실행하는 게 아니라 특정 콘�
 date: "2026-07-18"
 slug: "deep-link"
 keywords: "딥링크, 딥링크란, Deep Link, 디퍼드 딥링크, Deferred Deep Link, 앱 딥링크"
+category: "트래킹·기술"
 draft: false
 ---
 

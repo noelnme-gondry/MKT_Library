@@ -5,6 +5,7 @@ description: "eCPI(Estimated CPI)란 SKAdNetwork 등 개별 유저를 추적할 
 date: "2026-07-18"
 slug: "ecpi"
 keywords: "eCPI, eCPI란, Estimated CPI, SKAN CPI, 추정 CPI, iOS 설치당 비용"
+category: "기초 지표"
 draft: false
 ---
 

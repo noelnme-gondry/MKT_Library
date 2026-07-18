@@ -6,6 +6,7 @@ date: "2026-07-18"
 slug: "multicollinearity"
 keywords: "다중공선성, 다중공선성이란, Multicollinearity, VIF, MMM 다중공선성, 회귀분석 공선성"
 relatedPosts: ["marketing-mix-modeling"]
+category: "측정·분석 방법론"
 draft: false
 ---
 

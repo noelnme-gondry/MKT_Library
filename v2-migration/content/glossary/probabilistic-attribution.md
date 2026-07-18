@@ -6,6 +6,7 @@ date: "2026-07-18"
 slug: "probabilistic-attribution"
 keywords: "확률적 매칭, Probabilistic Attribution, 핑거프린팅, Fingerprinting, IDFA 없는 어트리뷰션, iOS 어트리뷰션"
 relatedPosts: ["attribution-data-mismatch"]
+category: "트래킹·기술"
 draft: false
 ---
 

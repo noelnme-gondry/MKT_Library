@@ -2,52 +2,51 @@ import { getAllTerms, getAllCategories } from "@/lib/glossary";
 import { SITE_URL } from "@/lib/routeMap";
 import GlossaryFilterList from "@/components/GlossaryFilterList";
 
-// 용어사전 목록 — 블로그·템플릿과 동일하게 routeMap 밖 독립 페이지(§12.24 패턴).
+// EN 용어사전 목록 — /glossary(KR)의 EN 미러(§en-blog-translation-strategy와 동일 방식).
 export async function generateMetadata() {
-  const title = "마케팅 용어사전";
-  const description = "퍼포먼스 마케팅·앱 분석 니치 용어를 한 문장 정의부터 실무 맥락까지 정리한 용어사전입니다.";
-  const canonical = `${SITE_URL}/glossary`;
+  const title = "Marketing Glossary";
+  const description = "Performance marketing and app analytics terms defined in one sentence, with practical context.";
+  const canonical = `${SITE_URL}/en/glossary`;
   return {
     title,
     description,
-    alternates: { canonical, languages: { ko: canonical, en: `${SITE_URL}/en/glossary` } },
+    alternates: { canonical, languages: { ko: `${SITE_URL}/glossary`, en: canonical } },
     openGraph: { title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] },
   };
 }
 
-// DefinedTermSet — 용어사전에 맞는 schema.org 타입(일반 Article보다 정확한 구조화 데이터).
 function buildGlossaryJsonLd(terms) {
   return {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "DefinedTermSet",
-        "@id": `${SITE_URL}/glossary#glossary`,
-        url: `${SITE_URL}/glossary`,
-        name: "Growth Opt Playbook 용어사전",
-        description: "퍼포먼스 마케팅·앱 분석 니치 용어 정의 모음",
-        inLanguage: "ko-KR",
+        "@id": `${SITE_URL}/en/glossary#glossary`,
+        url: `${SITE_URL}/en/glossary`,
+        name: "Growth Opt Playbook Glossary",
+        description: "Performance marketing and app analytics term definitions",
+        inLanguage: "en-US",
         hasDefinedTerm: terms.map((t) => ({
           "@type": "DefinedTerm",
           name: t.term,
           description: t.shortDef,
-          url: `${SITE_URL}/glossary/${t.slug}`,
+          url: `${SITE_URL}/en/glossary/${t.slug}`,
         })),
       },
       {
         "@type": "BreadcrumbList",
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "홈", item: `${SITE_URL}/` },
-          { "@type": "ListItem", position: 2, name: "용어사전", item: `${SITE_URL}/glossary` },
+          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+          { "@type": "ListItem", position: 2, name: "Glossary", item: `${SITE_URL}/en/glossary` },
         ],
       },
     ],
   };
 }
 
-export default function GlossaryIndexPage() {
-  const terms = getAllTerms();
-  const categories = getAllCategories();
+export default function EnGlossaryIndexPage() {
+  const terms = getAllTerms("en");
+  const categories = getAllCategories("en");
 
   return (
     <div className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
@@ -57,10 +56,10 @@ export default function GlossaryIndexPage() {
       />
       <header style={{ marginBottom: "1.5rem" }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
-          마케팅 용어사전
+          Marketing Glossary
         </h1>
         <p style={{ marginTop: "0.5rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-          퍼포먼스 마케팅·앱 분석에서 자주 나오지만 정작 어디서도 짧게 정의해주지 않는 용어들을 모았습니다.
+          Terms that come up constantly in performance marketing and app analytics, but rarely get defined anywhere concisely.
         </p>
       </header>
 
@@ -76,12 +75,12 @@ export default function GlossaryIndexPage() {
           }}
         >
           <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.4rem" }}>
-            아직 등록된 용어가 없습니다
+            No terms yet
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>곧 채워집니다.</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Check back soon.</div>
         </div>
       ) : (
-        <GlossaryFilterList terms={terms} categories={categories} locale="ko" glossaryPath="/glossary" />
+        <GlossaryFilterList terms={terms} categories={categories} locale="en" glossaryPath="/en/glossary" />
       )}
     </div>
   );

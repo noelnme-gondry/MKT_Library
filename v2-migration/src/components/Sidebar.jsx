@@ -202,7 +202,7 @@ export default function Sidebar({ locale = "ko" }) {
           <span style={{ fontSize: "13px", opacity: 0.6 }}>→</span>
         </Link>
         <Link
-          href="/glossary"
+          href={locale === "en" ? "/en/glossary" : "/glossary"}
           className="phase-header"
           aria-current={(pathname || "").includes("/glossary") ? "page" : undefined}
           style={{

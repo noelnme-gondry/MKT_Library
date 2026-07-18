@@ -6,6 +6,7 @@ date: "2026-07-18"
 slug: "uplift"
 keywords: "업리프트, Uplift, 업리프트란, 인크리멘탈리티, 증분 효과, 홀드아웃 테스트, 순수 증가분"
 relatedPosts: ["incrementality-measurement"]
+category: "측정·분석 방법론"
 draft: false
 ---
 
