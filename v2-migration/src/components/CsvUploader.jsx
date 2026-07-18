@@ -267,6 +267,9 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   const hasFile = csvData && csvData.headers && csvData.headers.length > 0;
   const isDemo = !!(csvData && csvData.fileName && csvData.fileName.startsWith("demo_"));
   const isSheetSourced = !!(csvData && csvData.sheetUrl);
+  // GoogleSheetConnect가 실제로 렌더되는지(=API 키 설정됨) — 그때만 데모버튼 앞에
+  // 가변 높이 형제가 끼어드니 여백 모디파이어 적용. 미설정 배포는 기존 spacing 그대로.
+  const hasSheetImport = !!process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
 
   // 첫 진입(데이터 없음) 시 샘플 데이터를 자동 로드해 빈 업로드 화면 대신 라이브
   // 분석 화면을 즉시 보여준다(SEO·첫인상 개선). 마운트 1회만 — 사용자가 CSV 변경으로
@@ -384,7 +387,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           />
         </div>
         <GoogleSheetConnect onLoaded={handleSheetLoaded} onError={setErrorMsg} locale={locale} />
-        <DemoLoadButton onLoad={handleLoadDemo} locale={locale} />
+        <DemoLoadButton onLoad={handleLoadDemo} locale={locale} className={hasSheetImport ? "demo-load-row--spaced" : ""} />
         {errorMsg && <div style={{ color: "var(--danger)", marginTop: "10px", fontSize: "12px" }}>{errorMsg}</div>}
       </div>
     );

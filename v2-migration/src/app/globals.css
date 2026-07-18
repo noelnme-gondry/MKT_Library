@@ -3817,6 +3817,12 @@ body:not(.light-mode) .moon-icon {
   font-size: 11px;
   color: var(--text-muted);
 }
+/* CsvUploader가 드롭존과 데모버튼 사이에 GoogleSheetConnect를 끼워넣는 경로 전용
+   (§google-sheets 겹침 버그) — 기본 음수 마진은 "드롭존 바로 아래" 전제라 그 사이에
+   가변 높이 형제가 끼면 위 요소와 겹침. 이 클래스가 있을 땐 양수 여백으로 재정의. */
+.demo-load-row.demo-load-row--spaced {
+  margin-top: 0.75rem;
+}
 
 /* ── CsvGuide (design-system baseline §1.4) — 업로드 설명 하이브리드 ── */
 .csv-guide { margin-bottom: 14px; }
