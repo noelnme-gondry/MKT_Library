@@ -11,7 +11,7 @@ import { SITE_URL } from "@/lib/routeMap";
 export async function generateMetadata() {
   const title = "Growth Opt Playbook | Marketing Data Analysis Tools";
   const description =
-    "Upload your campaign CSV to instantly analyze performance, budget allocation, and A/B tests — a free performance marketing toolkit.";
+    "Upload a campaign CSV or connect a Google Sheet to instantly analyze performance, budget allocation, and A/B tests — a free performance marketing toolkit.";
   const canonical = `${SITE_URL}/en`;
   return {
     // absolute: 이 페이지 title이 이미 브랜드 접미사를 포함하므로 layout.js의
