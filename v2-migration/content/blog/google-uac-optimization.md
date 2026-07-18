@@ -5,10 +5,8 @@ date: "2026-07-15"
 slug: "google-uac-optimization"
 keywords: "Google UAC, 구글 앱 캠페인, UAC 최적화, App Campaign, UAC 입찰, tCPA tROAS, 앱 설치 광고, 구글 앱 광고 세팅"
 tags: ["UAC", "UA"]
-draft: true
+draft: false
 ---
-
-<!-- 초안(draft) — 발행 전 사람 손질 필요. 최신 Google Ads UI·정책 확인 후 보강할 것. -->
 
 Google UAC(App Campaign)는 지면·타겟·입찰을 대부분 알고리즘이 정해요. "그럼 마케터는 뭐 하냐"는 질문이 나오죠. 통제할 수 있는 레버가 분명히 있어요. 그걸 아는 게 UAC 운영이에요.
 

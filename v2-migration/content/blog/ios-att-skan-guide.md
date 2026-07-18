@@ -5,10 +5,8 @@ date: "2026-07-15"
 slug: "ios-att-skan-guide"
 keywords: "ATT, SKAN, SKAdNetwork, iOS 프라이버시, 앱 추적 투명성, iOS14 마케팅, 앱 어트리뷰션, 컨버전 밸류, 개인정보 광고"
 tags: ["측정", "iOS"]
-draft: true
+draft: false
 ---
-
-<!-- 초안(draft) — 발행 전 사람 손질 필요. 최신 SKAN 버전·정책 확인 후 보강할 것. -->
 
 iOS에서 "추적을 허용하시겠어요?" 팝업(ATT) 이후로 앱 광고 측정이 통째로 바뀌었어요. 유저별 정밀 추적이 어려워지고, 애플의 SKAdNetwork(SKAN)라는 제한된 집계 프레임으로 성과를 봐야 해요. 이걸 모르면 "iOS 성과가 왜 이렇게 부실하지?"에서 막혀요.
 
@@ -34,6 +32,10 @@ SKAN은 애플이 주는 대안이에요. 특징이 셋이에요.
 - [MMM](/tools/marketing-response)처럼 유저 식별 없이 집계 데이터로 채널 기여를 보는 방법의 가치가 커졌어요.
 
 세부 대응은 [iOS 프라이버시·ATT·SKAN 가이드](/guide/ios-privacy-att-skan)에 있어요.
+
+## 다음 세대: AdAttributionKit
+
+애플은 WWDC에서 SKAdNetwork의 후속인 **AdAttributionKit(AAK)**을 공개했어요. 아직은 SKAN 4가 업계 표준으로 더 널리 쓰이지만, 장기적으로는 이쪽으로 옮겨갈 방향이라는 것 정도는 알아두면 좋아요. 세부 마이그레이션 시점은 매체·MMP 공지를 따라가세요.
 
 ## 정직하게
 
