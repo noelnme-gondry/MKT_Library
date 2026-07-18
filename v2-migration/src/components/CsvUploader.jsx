@@ -6,7 +6,7 @@ import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS, autoMapHea
 import { buildDemoCsv } from "@/utils/demoData";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
-import GoogleSheetConnect from "@/components/GoogleSheetConnect";
+import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "@/components/GoogleSheetConnect";
 
 function escapeHtml(str) {
   if (!str) return "";
@@ -33,6 +33,11 @@ const CSV_COPY = {
     rowsCols: (rows, cols, demo) => `${rows.toLocaleString()}행 · ${cols}컬럼${demo ? " · 실제 데이터 아님" : ""}`,
     changeCsvTitle: "이 도구의 CSV를 제거하고 다른 파일 업로드",
     changeCsvBtn: "⟳ CSV 변경",
+    sheetConnectedLabel: "구글 시트 연동됨",
+    refreshSheetBtn: "🔄 최신 데이터 불러오기",
+    refreshingSheet: "불러오는 중…",
+    changeSheetBtn: "🔗 시트 변경",
+    switchToCsvBtn: "📁 CSV 업로드로 전환",
     missingTitle: "⚠ 이 도구가 필요로 하는 필수 컬럼이 매핑되지 않았습니다",
     missingLabel: "필수: ",
     oneOfSuffix: (joined) => `(${joined} 중 1)`,
@@ -73,6 +78,11 @@ const CSV_COPY = {
     rowsCols: (rows, cols, demo) => `${rows.toLocaleString()} rows · ${cols} cols${demo ? " · not real data" : ""}`,
     changeCsvTitle: "Remove this tool's CSV and upload another file",
     changeCsvBtn: "⟳ Change CSV",
+    sheetConnectedLabel: "Connected to Google Sheets",
+    refreshSheetBtn: "🔄 Fetch latest data",
+    refreshingSheet: "Fetching…",
+    changeSheetBtn: "🔗 Change sheet",
+    switchToCsvBtn: "📁 Switch to CSV upload",
     missingTitle: "⚠ Required columns for this tool aren't mapped yet",
     missingLabel: "Required: ",
     oneOfSuffix: (joined) => `(1 of ${joined})`,
@@ -127,6 +137,10 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   // Preview table is auto-shown while mapping and collapsed after analysis.
   // User can re-expand it manually anytime (independent of gate state).
   const [previewOpen, setPreviewOpen] = useState(true);
+  // 구글 시트 연동 상태(§sheet refresh/change UX). refreshingSheet=재조회 중,
+  // sheetChangeOpen=hasFile 화면에서 "시트 변경" 눌러 URL 폼을 다시 펼친 상태.
+  const [refreshingSheet, setRefreshingSheet] = useState(false);
+  const [sheetChangeOpen, setSheetChangeOpen] = useState(false);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -185,14 +199,40 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     });
   };
 
-  // 구글 시트 로드 완료 콜백 — GoogleSheetConnect가 {headers, raw, fileName}을 CSV
-  // 업로드와 동일한 모양으로 넘겨줌(sheetValuesToTable, §googleSheets.js). 자동매핑도
+  // 구글 시트 로드 완료 콜백 — GoogleSheetConnect가 {headers, raw, fileName, sheetUrl}을
+  // CSV 업로드와 동일한 모양으로 넘겨줌(sheetValuesToTable, §googleSheets.js). 자동매핑도
   // CSV 경로와 같은 함수(autoMapHeaders) 재사용 — 이후 파이프라인은 CSV/시트 구분 없음.
-  const handleSheetLoaded = ({ headers, raw, fileName }) => {
+  // sheetUrl을 csvData에 같이 저장해두면(§setCsvData는 매번 전체 치환이라 CSV 경로에선
+  // 자연히 undefined) "최신 데이터 불러오기"가 재입력 없이 같은 URL로 재조회 가능해짐.
+  const handleSheetLoaded = ({ headers, raw, fileName, sheetUrl }) => {
     setErrorMsg("");
     const mapping = autoMapHeaders(headers);
-    setCsvData({ raw, headers, mapping, fileName });
+    setCsvData({ raw, headers, mapping, fileName, sheetUrl });
     setPreviewOpen(true);
+    setSheetChangeOpen(false);
+  };
+
+  // "🔄 최신 데이터 불러오기" — 저장해둔 sheetUrl로 재조회, URL 재입력 없음. 매핑은
+  // 새 헤더 기준으로 다시 자동매핑(시트에 컬럼이 추가/삭제됐을 수 있어 기존 매핑을
+  // 그대로 끌고 가면 어긋날 수 있음 — 새 CSV 재업로드와 동일 취급이 제일 안전).
+  const handleRefreshSheet = async () => {
+    if (!csvData?.sheetUrl) return;
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
+    if (!apiKey) return;
+    setErrorMsg("");
+    setRefreshingSheet(true);
+    try {
+      const result = await fetchSheetTable(apiKey, csvData.sheetUrl);
+      if (result.error) {
+        setErrorMsg(sheetErrorMessage(result.error, locale));
+      } else {
+        handleSheetLoaded(result);
+      }
+    } catch {
+      setErrorMsg(sheetErrorMessage("fetch", locale));
+    } finally {
+      setRefreshingSheet(false);
+    }
   };
 
   const handleMappingChange = (header, value) => {
@@ -226,6 +266,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
 
   const hasFile = csvData && csvData.headers && csvData.headers.length > 0;
   const isDemo = !!(csvData && csvData.fileName && csvData.fileName.startsWith("demo_"));
+  const isSheetSourced = !!(csvData && csvData.sheetUrl);
 
   // 첫 진입(데이터 없음) 시 샘플 데이터를 자동 로드해 빈 업로드 화면 대신 라이브
   // 분석 화면을 즉시 보여준다(SEO·첫인상 개선). 마운트 1회만 — 사용자가 CSV 변경으로
@@ -378,12 +419,55 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
             {T.rowsCols(csvData.raw.length, csvData.headers.length, isDemo)}
           </span>
         </div>
-        {!isDemo && (
+        {!isDemo && !isSheetSourced && (
           <button className="ab-pill csv-change-btn" title={T.changeCsvTitle} onClick={handleReset}>
             {T.changeCsvBtn}
           </button>
         )}
       </div>
+
+      {/* 구글 시트 연동 상태 UX(§요청): 시트에서 온 데이터는 CSV와 다르게, "재조회"와
+          "다른 시트로 교체"를 한 번의 재업로드 없이 바로 할 수 있어야 함. CSV 업로드로
+          되돌아갈 길도 항상 열어둠(전환 자유도). */}
+      {!isDemo && isSheetSourced && (
+        <div style={{ marginBottom: "10px" }}>
+          {sheetChangeOpen ? (
+            <GoogleSheetConnect
+              initialOpen
+              onLoaded={handleSheetLoaded}
+              onError={setErrorMsg}
+              onCancel={() => setSheetChangeOpen(false)}
+              locale={locale}
+            />
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>🔗 {T.sheetConnectedLabel}</span>
+              <button
+                type="button"
+                className="ab-pill"
+                disabled={refreshingSheet}
+                onClick={handleRefreshSheet}
+              >
+                {refreshingSheet ? T.refreshingSheet : T.refreshSheetBtn}
+              </button>
+              <button type="button" className="ab-pill" onClick={() => setSheetChangeOpen(true)}>
+                {T.changeSheetBtn}
+              </button>
+              <button type="button" className="ab-pill" onClick={() => fileInputRef.current?.click()}>
+                {T.switchToCsvBtn}
+              </button>
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                style={{ display: "none" }}
+                ref={fileInputRef}
+                onChange={handleFileChange}
+              />
+            </div>
+          )}
+        </div>
+      )}
+      {errorMsg && <div style={{ color: "var(--danger)", marginBottom: "10px", fontSize: "12px" }}>{errorMsg}</div>}
 
       {missing.length > 0 ? (
         <div className="required-banner">

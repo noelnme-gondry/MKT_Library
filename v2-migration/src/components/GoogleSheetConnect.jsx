@@ -45,7 +45,18 @@ const COPY = {
   },
 };
 
-async function fetchSheetTable(apiKey, url) {
+// 에러코드 → 사람이 읽을 메시지. handleSubmit과 CsvUploader.jsx의 "최신 데이터
+// 불러오기"(재조회)가 동일 메시지를 쓰도록 공유(export).
+export function sheetErrorMessage(code, locale = "ko") {
+  const T = COPY[locale] || COPY.ko;
+  if (code === "invalid_url") return T.errInvalidUrl;
+  if (code === "forbidden") return T.errForbidden;
+  if (code === "empty") return T.errEmpty;
+  return T.errFetch;
+}
+
+// export: CsvUploader.jsx가 "최신 데이터 불러오기"(같은 URL 재조회)에 재사용한다.
+export async function fetchSheetTable(apiKey, url) {
   const parsed = parseGoogleSheetUrl(url);
   if (!parsed) return { error: "invalid_url" };
 
@@ -71,13 +82,19 @@ async function fetchSheetTable(apiKey, url) {
     headers: cols,
     raw,
     fileName: `구글시트 — ${meta.properties?.title || parsed.spreadsheetId}`,
+    // csvData에 실어 보관 — "최신 데이터 불러오기"가 유저에게 다시 안 물어보고
+    // 같은 URL로 재조회할 수 있게(§CsvUploader.jsx handleRefreshSheet).
+    sheetUrl: url,
   };
 }
 
-export default function GoogleSheetConnect({ onLoaded, onError, locale = "ko" }) {
+// initialOpen/onCancel: CsvUploader.jsx가 데이터 연동 후 상태에서 "시트 변경" 버튼으로
+// 이 폼을 다시 열 때 사용(그때는 취소 시 pill 버튼이 아니라 부모의 3버튼 뷰로 돌아가야
+// 하므로 onCancel로 위임 — 기본 사용처(빈 드롭존)는 그냥 내부 open 상태로 닫힘).
+export default function GoogleSheetConnect({ onLoaded, onError, onCancel, initialOpen = false, locale = "ko" }) {
   const T = COPY[locale] || COPY.ko;
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
@@ -96,21 +113,15 @@ export default function GoogleSheetConnect({ onLoaded, onError, locale = "ko" })
     setLoading(true);
     try {
       const result = await fetchSheetTable(apiKey, url);
-      if (result.error === "invalid_url") {
-        onError?.(T.errInvalidUrl);
-      } else if (result.error === "forbidden") {
-        onError?.(T.errForbidden);
-      } else if (result.error === "fetch") {
-        onError?.(T.errFetch);
-      } else if (result.error === "empty") {
-        onError?.(T.errEmpty);
+      if (result.error) {
+        onError?.(sheetErrorMessage(result.error, locale));
       } else {
         onLoaded?.(result);
         setOpen(false);
         setUrl("");
       }
     } catch {
-      onError?.(T.errFetch);
+      onError?.(sheetErrorMessage("fetch", locale));
     } finally {
       setLoading(false);
     }
@@ -164,9 +175,10 @@ export default function GoogleSheetConnect({ onLoaded, onError, locale = "ko" })
           className="ab-pill"
           disabled={loading}
           onClick={() => {
-            setOpen(false);
             setUrl("");
             onError?.("");
+            if (onCancel) onCancel();
+            else setOpen(false);
           }}
         >
           {T.cancelBtn}
