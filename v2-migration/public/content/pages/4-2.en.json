@@ -1,0 +1,99 @@
+{
+  "$schema": "../schema.md",
+  "id": "4-2",
+  "eyebrow": "4 Analysis · 4-2",
+  "title": "Cohort-Based Retention Guide",
+  "deck": "A cohort is the group of users who installed at the same time. Use per-cohort retention curves and cumulative ARPU to project LTV and judge a campaign's true value.",
+  "chips": [
+    { "label": "Analysis unit · daily/weekly cohorts" },
+    { "label": "LTV projection · 12 months", "variant": "ok" }
+  ],
+  "summary": "Cohort analysis proceeds in 3 steps: (1) diagnose the retention curve's shape, (2) project the cumulative ARPU curve, (3) compare LTV by channel. Two cohorts with identical D7 retention can differ 2× in D30 ARPU — never judge on retention alone.",
+  "toc": [
+    { "id": "s-def", "title": "Cohort definitions" },
+    { "id": "s-curve", "title": "Retention curve" },
+    { "id": "s-ltv", "title": "LTV projection model" },
+    { "id": "s-trouble", "title": "Troubleshooting" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-def",
+      "ix": "§1",
+      "title": "Cohort definitions & split criteria",
+      "content": [
+        {
+          "type": "list",
+          "items": [
+            "<strong>Time cohorts</strong>: daily/weekly install date. Weekly analysis carries less noise.",
+            "<strong>Channel cohorts</strong>: per network, per campaign. Same-day installs still differ in retention/ARPU by channel.",
+            "<strong>First-action cohorts</strong>: split by whether a key event (e.g. add_to_cart) fired within the first 24 hours."
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-curve",
+      "ix": "§2",
+      "title": "Retention curve (D+N retention)",
+      "content": [
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Day", "type": "number" },
+            { "label": "Commerce avg", "type": "string" },
+            { "label": "Games avg", "type": "string" },
+            { "label": "Social avg", "type": "string" }
+          ],
+          "rows": [
+            ["D1", "32%", "38%", "45%"],
+            ["D3", "22%", "27%", "33%"],
+            ["D7", "17%", "20%", "26%"],
+            ["D14", "12%", "15%", "20%"],
+            ["D30", "8%", "10%", "15%"],
+            ["D60", "5%", "7%", "11%"],
+            ["D90", "4%", "5%", "9%"]
+          ]
+        },
+        { "type": "paragraph", "html": "Retention curves usually follow <strong>power-law decay</strong>. Fit <code class=\"inline\">retention(t) = a × t^(-b)</code> to project future points. R² ≥ 0.95 indicates a trustworthy projection." }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-ltv",
+      "ix": "§3",
+      "title": "LTV projection model",
+      "content": [
+        { "type": "paragraph", "html": "LTV = cumulative ARPU × retention adjustment. D90/D365 can be projected from D7-era data." },
+        {
+          "type": "code",
+          "lang": "json",
+          "label": "LTV projection input (example)",
+          "code": "{\n  \"cohort_install_date\": \"2026-04-01\",\n  \"channel\": \"Meta\",\n  \"campaign\": \"AAP-iOS-KR-Purchase\",\n  \"observed\": {\n    \"d1_arpu\":  0.15,\n    \"d3_arpu\":  0.38,\n    \"d7_arpu\":  0.62,\n    \"d14_arpu\": 0.95,\n    \"d30_arpu\": 1.40\n  },\n  \"predicted\": {\n    \"d90_arpu_low\":   2.10,\n    \"d90_arpu_mid\":   2.50,\n    \"d90_arpu_high\":  3.05,\n    \"d365_arpu_mid\":  4.20,\n    \"ltv_confidence\": 0.87\n  }\n}"
+        },
+        { "type": "paragraph", "html": "The D7→D90 ARPU multiplier varies by category: commerce ≈ 4.0, games ≈ 6.0, subscription SaaS ≈ 8.0. Use these multipliers for quick LTV estimates." }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-trouble",
+      "ix": "§4",
+      "title": "Troubleshooting",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "danger",
+          "title": "Similar D7 retention across channels, but 2× D30 ARPU gap",
+          "html": "Traffic quality differs on that channel. Never judge by D7 retention alone. Also compare ARPPU (revenue per paying user) and payment conversion — check whether one channel brings in more high-value payers."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "The cohort data matrix is too sparse (small campaigns)",
+          "html": "Under 50 installs/day, noise dominates. Aggregate by week or by network. But never merge OSes — iOS and Android retention patterns are fundamentally different."
+        }
+      ]
+    }
+  ]
+}

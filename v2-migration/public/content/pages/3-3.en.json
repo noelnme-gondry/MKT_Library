@@ -1,0 +1,108 @@
+{
+  "$schema": "../schema.md",
+  "id": "3-3",
+  "eyebrow": "3 Creative · 3-3",
+  "title": "The 3-Second Hook Framework",
+  "deck": "80% of the decision to watch an ad happens in the first 3 seconds. Four proven hook patterns and a first-frame checklist can as much as double video CTR.",
+  "chips": [
+    { "label": "Audience · Creative PMs" },
+    { "label": "4 hook patterns", "variant": "ok" }
+  ],
+  "summary": "The 3-second hook is the design of the first 3 seconds that stops the scroll. Pick one of four patterns — UGC-style, problem-statement, result-first, or social-proof citation — and build the first frame around it.",
+  "toc": [
+    { "id": "s-patterns", "title": "The 4 hook patterns" },
+    { "id": "s-checklist", "title": "First-frame checklist" },
+    { "id": "s-measure", "title": "How to measure" },
+    { "id": "s-trouble", "title": "Troubleshooting" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-patterns",
+      "ix": "§1",
+      "title": "The 4 proven hook patterns",
+      "content": [
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Pattern", "type": "string" },
+            { "label": "Structure", "type": "string" },
+            { "label": "Best categories", "type": "string" },
+            { "label": "Avg CTR lift", "type": "string" }
+          ],
+          "rows": [
+            ["1. UGC-style (Talking Head)", "A person speaks straight to camera in direct address", "Commerce, fintech, health", "+45–80%"],
+            ["2. Problem statement", "Show the target's pain point via captions + skit", "Utility, SaaS", "+30–60%"],
+            ["3. Result-first", "Put the Before/After or end result in the first cut", "Diet, education, beauty", "+50–100%"],
+            ["4. Social-proof citation", "Reviews/ratings/press captures shown with captions", "Any category needing trust", "+25–40%"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-checklist",
+      "ix": "§2",
+      "title": "First-frame checklist",
+      "content": [
+        { "type": "paragraph", "html": "All 7 must be visible in the video's 0-second still (first frame = thumbnail):" },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "A human face or strong visual impact (plain UI screens don't work)",
+            "One line of large caption text (4–6 words)",
+            "Captions placed inside the network's safe zone",
+            "High-saturation color (brand color + 1 complementary accent)",
+            "The message reads with sound off (muted autoplay is the default)",
+            "At least one motion element moving against the scroll direction",
+            "Designed to not instantly read as an ad (feels like content; avoid \"ad copy\" tone)"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-measure",
+      "ix": "§3",
+      "title": "How to measure",
+      "content": [
+        {
+          "type": "list",
+          "items": [
+            "<strong>Hook Rate</strong> = 3-second views / impressions — varies by network, ~25–35% average on TikTok",
+            "<strong>Hold Rate</strong> = 50% completes / 3-second views — how well the mid-section delivers",
+            "<strong>CTR</strong> = clicks / impressions — the final decision metric",
+            "Monitor all three weekly in the network's video analytics report. Replace any video with Hook Rate under 25% immediately."
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-trouble",
+      "ix": "§4",
+      "title": "Troubleshooting",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Hook Rate is high but CTR is low",
+          "html": "The hook pulls people in but the message/CTA is weak. Strengthen the core value proposition mid-video and end with a clear CTA (install-prompt screen) in the last 3 seconds."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "UGC-style credibility problems",
+          "html": "If it reads as a professional actor, effectiveness drops ~30%. Use real user interviews or micro-influencers. Deliberately lowering the production quality can make it feel like a \"real video\"."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Hook rotation cadence",
+          "html": "Running the same hook for 3+ weeks causes creative fatigue — CTR drops 30%+. Keep 3 variants of the same concept and rotate every 2 weeks."
+        }
+      ]
+    }
+  ]
+}

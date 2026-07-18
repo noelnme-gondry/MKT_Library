@@ -1,0 +1,154 @@
+{
+  "$schema": "../schema.md",
+  "id": "1-3",
+  "eyebrow": "1 Foundation · 1-3",
+  "title": "Network Postback Integration Manual",
+  "deck": "Standardizes partner integration between Adjust and the networks (Meta/Google/TikTok/Apple). One misconfigured postback can wreck a network's machine-learning optimization — every integration goes LIVE only after passing this procedure.",
+  "chips": [
+    { "label": "Owner · Growth Ops" },
+    { "label": "7 network integrations" }
+  ],
+  "summary": "A postback is the channel through which the MMP (Adjust) delivers attribution results back to each ad network. Every network goes through three steps: (1) partner activation, (2) postback mapping, (3) macro verification. Meta/TikTok are SAN (Self-Attributing Networks); Google/Apple run a SAN+S2S hybrid by default.",
+  "toc": [
+    { "id": "s-overview", "title": "Postback overview" },
+    { "id": "s-partners", "title": "Integration type by network" },
+    { "id": "s-setup", "title": "Adjust partner setup" },
+    { "id": "s-macros", "title": "URL macro spec" },
+    { "id": "s-trouble", "title": "Troubleshooting" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-overview",
+      "ix": "§1",
+      "title": "Postback overview",
+      "content": [
+        {
+          "type": "list",
+          "items": [
+            "<strong>Install Postback</strong> — sent to the network on each new install. The core learning signal for ML optimization.",
+            "<strong>In-App Event Postback</strong> — sent when in-app events (signup, purchase, etc.) fire. Required for tCPA/tROAS bidding."
+          ]
+        },
+        { "type": "paragraph", "html": "For SAN networks, Adjust doesn't issue click URLs — the network supplies its own click/view data to the MMP. Meta, Google, TikTok, Snap, X, and Apple Search Ads are the main examples." }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-partners",
+      "ix": "§2",
+      "title": "Integration type by network",
+      "content": [
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Network", "type": "string" },
+            { "label": "Type", "type": "string" },
+            { "label": "Attribution window", "type": "string" },
+            { "label": "Cost ingestion", "type": "string" },
+            { "label": "Notes", "type": "string" }
+          ],
+          "rows": [
+            ["Meta Ads", { "pill": "tier-1", "text": "SAN" }, "1d click / 1d view", "Automatic", "AEM priority list of 8 events required"],
+            ["Google Ads (UAC)", { "pill": "tier-1", "text": "SAN" }, "30d click / 1d engaged-view", "Automatic", "Firebase link required; gbraid/wbraid auto-collected"],
+            ["TikTok", { "pill": "tier-1", "text": "SAN" }, "7d click / 1d view", "Automatic", "Separate SKAN postback channel for iOS"],
+            ["Apple Search Ads", { "pill": "tier-2", "text": "S2S" }, "30d click", "Automatic (ASA API)", "Map ASA campaign IDs to the App Token"],
+            ["Moloco", { "pill": "tier-2", "text": "S2S" }, "7d click", "Manual (file)", "Disabling probabilistic matching recommended"],
+            ["LINE Ads", { "pill": "tier-3", "text": "Click URL" }, "7d click", "Manual", "JP/TW markets only"],
+            ["AppLovin", { "pill": "tier-1", "text": "SAN" }, "7d click", "Automatic", "Verify MAX bidding vs Direct separately"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-setup",
+      "ix": "§3",
+      "title": "Adjust partner setup (common procedure)",
+      "content": [
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "Adjust dashboard → the app → open <code class=\"inline\">Partner Setup</code>",
+            "Search the partner → click <code class=\"inline\">+ Add Partner</code>",
+            "Enter credentials (Meta = Pixel ID, Google = Linker ID, TikTok = Advertiser ID)",
+            "<strong>Sending Settings</strong>: send only Install + Tier-1 in-app events",
+            "Fire install/events from a sandbox test device → confirm receipt in the network dashboard (up to 24h delay)",
+            "Switch to Production after verification"
+          ]
+        },
+        { "type": "subheading", "title": "3.1 Meta · Aggregated Event Measurement (AEM)" },
+        { "type": "paragraph", "html": "On iOS 14.5+, AEM allows at most 8 events. Place the highest business-value events at the top. Enable value optimization only on revenue-bearing events." },
+        {
+          "type": "code",
+          "lang": "json",
+          "label": "Meta AEM Priority Map",
+          "code": "{\n  \"app_id\": \"fb_app_1234567890\",\n  \"events\": [\n    { \"priority\": 1, \"event_name\": \"purchase\",          \"value_optimization\": true  },\n    { \"priority\": 2, \"event_name\": \"subscribe\",         \"value_optimization\": true  },\n    { \"priority\": 3, \"event_name\": \"begin_checkout\",    \"value_optimization\": false },\n    { \"priority\": 4, \"event_name\": \"add_to_cart\",       \"value_optimization\": false },\n    { \"priority\": 5, \"event_name\": \"complete_tutorial\", \"value_optimization\": false },\n    { \"priority\": 6, \"event_name\": \"sign_up\",           \"value_optimization\": false },\n    { \"priority\": 7, \"event_name\": \"level_achieved\",    \"value_optimization\": false },\n    { \"priority\": 8, \"event_name\": \"session_start\",     \"value_optimization\": false }\n  ]\n}"
+        },
+        { "type": "subheading", "title": "3.2 Google Ads · Firebase link" },
+        { "type": "paragraph", "html": "UAC requires a Firebase connection. Either mirror Adjust events into GA4, or send Adjust → Google Ads directly. Direct sending loses less data and is the primary recommendation." },
+        {
+          "type": "code",
+          "lang": "bash",
+          "label": "Google Conversion Linker mapping",
+          "code": "# Found on the Google Ads partner page in the Adjust dashboard\n# Linker ID example: aw-123456789\n# Conversion Labels are issued per event:\n#   install:   AbCdEf1234-aw-installs\n#   purchase:  XyZ789-aw-purchase\n# Match 1:1 in Adjust → Partner Setup → Google Ads → Conversion Mapping"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-macros",
+      "ix": "§4",
+      "title": "URL macro spec",
+      "content": [
+        { "type": "paragraph", "html": "Non-SAN networks (Moloco, LINE, etc.) require Adjust macros embedded in the click URL. The network substitutes each macro with its own value at click time." },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Macro", "type": "string" },
+            { "label": "Adjust parameter", "type": "string" },
+            { "label": "Purpose", "type": "string" }
+          ],
+          "rows": [
+            ["{campaign_id}", "campaign_id", "Campaign identifier. Matches the network campaign ID 1:1"],
+            ["{campaign_name}", "campaign", "Campaign name (URL-encode non-ASCII/whitespace)"],
+            ["{adgroup_name}", "adgroup", "Ad group / targeting unit"],
+            ["{creative_name}", "creative", "Creative unit (for A/B testing)"],
+            ["{idfa}", "idfa", "iOS advertising identifier (when ATT authorized)"],
+            ["{gps_adid}", "gps_adid", "Android Google Play Services ADID"],
+            ["{cost}", "cost_amount", "Cost per click/impression"],
+            ["{click_id}", "click_id", "Network's unique click ID"],
+            ["{deeplink}", "deeplink", "Deep link URL (URL-encoded)"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-trouble",
+      "ix": "§5",
+      "title": "Troubleshooting",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "danger",
+          "title": "Installs report as 0 in the network dashboard",
+          "html": "1) Check the Install Postback toggle in Adjust → Partner Setup. 2) Never issue a separate click URL to a SAN network — double tracking misclassifies traffic as organic. 3) Confirm a Sandbox token isn't being used in Production."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Cost data shows 0 in the Adjust dashboard",
+          "html": "Per-network Cost API integration is a separate opt-in. Adjust → App Setup → Cost Data → register each network's API key. Meta = System User Access Token, Google = Ads API auth. Initial sync takes 24–48 hours."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Probabilistic matching share is high",
+          "html": "When iOS 14.5+ users decline ATT, IDFA is masked and deterministic matching is impossible. Adjust falls back to IP+UA fingerprinting, but networks like Moloco don't trust it. Run those networks on a single SKAdNetwork channel instead."
+        }
+      ]
+    }
+  ]
+}

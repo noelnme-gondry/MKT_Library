@@ -24,6 +24,10 @@ const AbTestHoldout = dyn(() => import("@/components/tools/AbTestHoldout"));
 const MarketingResponse = dyn(() => import("@/components/tools/MarketingResponse"));
 const AhaMomentFinder = dyn(() => import("@/components/tools/AhaMomentFinder"));
 const Incrementality = dyn(() => import("@/components/tools/Incrementality"));
+const ContentElementAnalyzer = dyn(() => import("@/components/tools/ContentElementAnalyzer"));
+// EN 가이드(1-x~4-x, EN_READY_GUIDE_IDS) — {id}.en.json 기반 SopContent EN 경로.
+// 1-1·8-1은 리터럴 라우트가 우선이라 여기로 안 오지만, 방어적으로 함께 커버.
+const SopContent = dyn(() => import("@/components/sops/SopContent"));
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId, hasEnVersion, idToPath } from "@/lib/routeMap";
@@ -63,6 +67,8 @@ export default function PageClient({ params }) {
             {routeId === "5-18" && <MarketingResponse locale="en" />}
             {routeId === "5-20" && <AhaMomentFinder locale="en" />}
             {routeId === "5-23" && <Incrementality locale="en" />}
+            {routeId === "9-1" && <ContentElementAnalyzer locale="en" />}
+            {/^[1-4]-|^8-/.test(routeId) && <SopContent routeId={routeId} locale="en" />}
           </article>
         </main>
       </div>

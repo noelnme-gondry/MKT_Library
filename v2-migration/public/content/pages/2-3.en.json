@@ -1,0 +1,115 @@
+{
+  "$schema": "../schema.md",
+  "id": "2-3",
+  "eyebrow": "2 Campaign · 2-3",
+  "title": "Apple Search Ads (ASA) Operations Manual",
+  "deck": "ASA is the only keyword ad surfaced in App Store search results. With ~70% of iOS users discovering apps through App Store search, ASA is a must-run channel for iOS marketing.",
+  "chips": [
+    { "label": "Channel · Apple Search Ads" },
+    { "label": "Cost-Per-Tap bidding", "variant": "ok" },
+    { "label": "iOS only", "variant": "warning" }
+  ],
+  "summary": "Run ASA as four separated campaign types (Search Match, Search Keywords, Discovery, Brand). Brand is a defensive campaign protecting your own name, Discovery mines new keywords, Search Keywords is manually optimized, Search Match is auto-matching — keeping them separate keeps each KPI clean.",
+  "toc": [
+    { "id": "s-structure", "title": "4-campaign structure" },
+    { "id": "s-keyword", "title": "Keyword grouping" },
+    { "id": "s-bid", "title": "Bidding strategy" },
+    { "id": "s-trouble", "title": "Troubleshooting" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-structure",
+      "ix": "§1",
+      "title": "4-campaign structure (required)",
+      "content": [
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Campaign", "type": "string" },
+            { "label": "Keywords", "type": "string" },
+            { "label": "Search Match", "type": "string" },
+            { "label": "Purpose", "type": "string" },
+            { "label": "Suggested daily budget", "type": "string" }
+          ],
+          "rows": [
+            ["1. Brand", "Your brand terms only", "OFF", "Defend brand keywords (block competitor intrusion)", "$20–$50"],
+            ["2. Competitor", "Competitor brand terms", "OFF", "Intercept competitor searchers", "$50–$100"],
+            ["3. Generic", "Category keywords", "OFF", "Manually optimized core keywords", "$100–$500"],
+            ["4. Discovery", "(none)", "ON", "Apple auto-matches → mine new keywords", "$30–$100"]
+          ]
+        },
+        { "type": "paragraph", "html": "Keywords that accumulate meaningful clicks in Discovery get promoted into the Generic campaign for direct bidding. Discovery is the mining channel; Generic is the operating channel." }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-keyword",
+      "ix": "§2",
+      "title": "Keyword grouping",
+      "content": [
+        { "type": "paragraph", "html": "Group keywords by intent at the ad-group level. Keywords in the same group share one CPI/CPA target." },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Ad Group", "type": "string" },
+            { "label": "Example keywords", "type": "string" },
+            { "label": "Match Type", "type": "string" },
+            { "label": "Target CPI", "type": "string" }
+          ],
+          "rows": [
+            ["Brand-Exact", "myapp, myapp app", "Exact", "$0.50"],
+            ["Brand-Broad", "myapp download", "Broad", "$0.80"],
+            ["Competitor", "competitor1, competitor2", "Exact", "$2.50"],
+            ["Generic-High", "shopping app, online mall", "Exact", "$3.00"],
+            ["Generic-Mid", "clothes shopping, fashion app", "Broad", "$2.00"],
+            ["Generic-Long-tail", "winter coat shopping, best puffer jackets", "Broad", "$1.50"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-bid",
+      "ix": "§3",
+      "title": "Bidding strategy",
+      "content": [
+        {
+          "type": "list",
+          "items": [
+            "<strong>Cost-Per-Tap (CPT)</strong>: ASA charges per tap. CPI = CPT / Tap-Through-Rate (TTR)",
+            "<strong>Max CPT bid</strong>: start at 1.2–1.5× Apple's suggested bid → adjust after ~7 days",
+            "<strong>CPA Goal</strong>: campaign-level option. Can auto-bid against Adjust-connected in-app events",
+            "<strong>Scheduling</strong>: ASA runs 24/7 by default. No per-hour off switch — only bid up/down adjustments"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-trouble",
+      "ix": "§4",
+      "title": "Troubleshooting",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "danger",
+          "title": "Brand campaign reports 0 installs",
+          "html": "1) Confirm the ASA Attribution API key is registered (Adjust → ASA Partner). 2) Verify the Brand keyword exactly matches your app name. 3) If your app ranks organic #1 for the search, Apple may auto-suppress the ad entirely."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Discovery burns budget with no installs",
+          "html": "Search Match is matching overly broad keywords. Extract clicked keywords from the Adjust keyword report → add them as Negative Keywords. Block all category-irrelevant broad terms (e.g. just \"game\")."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Using CPP (Custom Product Pages)",
+          "html": "On iOS 15+, you can show different screenshots/copy per keyword. CPP variants attach at the ASA ad-group level. A variant matching the keyword improves TTR by 30–50% on average."
+        }
+      ]
+    }
+  ]
+}

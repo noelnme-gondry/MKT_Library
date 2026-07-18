@@ -1,0 +1,116 @@
+{
+  "$schema": "../schema.md",
+  "id": "2-2",
+  "eyebrow": "2 Campaign · 2-2",
+  "title": "Meta Advantage+ App (AAP) Optimization",
+  "deck": "Meta AAP mandates OS-split operation, with a separate SKAN-channel campaign for iOS. Meta's default attribution is 7d click + 1d view; evaluate iOS 14.5+ traffic on a reduced 1d click basis so it lines up with other networks.",
+  "chips": [
+    { "label": "Channel · Meta Ads" },
+    { "label": "Default · 7d click + 1d view", "variant": "ok" },
+    { "label": "OS split required", "variant": "warning" }
+  ],
+  "summary": "AAP (Advantage+ App Campaigns) is Meta's automated campaign type. Ad-set-level fine control is limited and campaign-level optimization is enforced. Meta's default attribution is 7-day click + 1-day view; the standard practice is to report on a reduced 1d_click basis so numbers are comparable with the MMP and other networks. iOS uses the AEM 8-event priority list; Android sends the full in-app event set.",
+  "toc": [
+    { "id": "s-structure", "title": "Campaign structure" },
+    { "id": "s-setup", "title": "AAP setup steps" },
+    { "id": "s-bid", "title": "Attribution & bidding" },
+    { "id": "s-trouble", "title": "Troubleshooting" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-structure",
+      "ix": "§1",
+      "title": "Campaign structure",
+      "content": [
+        { "type": "paragraph", "html": "Split on three axes: OS × country × optimization goal. iOS additionally gets a dedicated SKAN campaign." },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Campaign", "type": "string" },
+            { "label": "OS", "type": "string" },
+            { "label": "Optimization goal", "type": "string" },
+            { "label": "Suggested daily budget", "type": "string" },
+            { "label": "Notes", "type": "string" }
+          ],
+          "rows": [
+            ["AAP-iOS-KR-Install", "iOS", "App Install", "$50+", "Targets ATT-authorized users"],
+            ["AAP-iOS-KR-Purchase-SKAN", "iOS", "Purchase (SKAN)", "$100+", "SKAN single channel only"],
+            ["AAP-AOS-KR-Install", "Android", "App Install", "$50+", "New-user learning"],
+            ["AAP-AOS-KR-Purchase-VBO", "Android", "Value-Based (Purchase)", "$100+", "VBO enabled"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-setup",
+      "ix": "§2",
+      "title": "AAP setup steps",
+      "content": [
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "Meta Ads Manager → <code class=\"inline\">Create campaign</code> → objective: <strong>App Promotion</strong>",
+            "Campaign type: select <code class=\"inline\">Advantage+ App Campaign</code> (not Manual App Ads)",
+            "Select the app → confirm the App ID registered in Adjust",
+            "Choose the optimization event (Install / In-App Event / Value)",
+            "Budget: campaign-level daily budget recommended. ABO (Ad-Set Budget Optimization) is disabled in AAP",
+            "Audience: automatic (Advantage+ Audience). Only exclusions are manual — exclude purchasers from the last 30 days",
+            "Creative: upload up to 50 assets. Meta auto-generates combinations"
+          ]
+        },
+        {
+          "type": "code",
+          "lang": "json",
+          "label": "AEM event priority (Meta Events Manager)",
+          "code": "{\n  \"app_id\": \"fb_app_1234567890\",\n  \"aem_priority\": [\n    \"purchase\",\n    \"subscribe\",\n    \"begin_checkout\",\n    \"add_to_cart\",\n    \"complete_registration\",\n    \"complete_tutorial\",\n    \"level_achieved\",\n    \"session_start\"\n  ],\n  \"value_optimization_events\": [\"purchase\", \"subscribe\"]\n}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-bid",
+      "ix": "§3",
+      "title": "Attribution & bidding",
+      "content": [
+        {
+          "type": "list",
+          "items": [
+            "<strong>Attribution window (Meta default)</strong>: <code class=\"inline\">7-day click + 1-day view</code>. iOS 14.5+ ATT-declined traffic is automatically limited to the SKAN postback window (0–2 days).",
+            "<strong>Operating recommendation (cross-network comparison)</strong>: evaluate on reduced <code class=\"inline\">1-day click</code> when reporting, so numbers align with Google/TikTok. Expect 1d_click to report roughly 30–40% lower than Meta's default 7d_click.",
+            "<strong>Bid strategy</strong>: escalate Highest Volume (auto) → Cost Cap → Bid Cap in stages. Run Highest Volume for the first 7 days to accelerate learning.",
+            "<strong>VBO (Value Optimization)</strong>: revenue-based bidding. Enable after purchases stabilize at 50+/day."
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-trouble",
+      "ix": "§4",
+      "title": "Troubleshooting",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "danger",
+          "title": "iOS campaign installs suddenly drop in reporting",
+          "html": "Likely SKAN postback delay or a recent AEM priority change. Check the AEM Priority change history in Meta Events Manager — a change resets learning and can blank out reporting for up to 28 days."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Revenue is inconsistent in a VBO campaign",
+          "html": "Confirm revenue sending is enabled for the purchase event in Adjust → Meta Partner. AEM's value_optimization toggle must be ON. On iOS, only revenue captured within the SKAN postback window (0–2 days) feeds the signal."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Advantage+ vs regular campaigns — how to choose",
+          "html": "Under ~$100/day budget or with a narrow audience (e.g. a specific profession), use regular App Ads. With $100+/day and a mass audience, use AAP — it fills its learning volume faster."
+        }
+      ]
+    }
+  ]
+}

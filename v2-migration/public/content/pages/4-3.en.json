@@ -1,0 +1,181 @@
+{
+  "$schema": "../schema.md",
+  "id": "4-3",
+  "eyebrow": "4 Analysis · 4-3",
+  "title": "Organic vs Paid Cannibalization Analysis",
+  "deck": "Some installs attributed to paid ads would have arrived organically anyway. Without measuring and correcting for this, ROAS is overestimated.",
+  "chips": [
+    { "label": "Methods · GeoX / Holdout" },
+    { "label": "Run quarterly", "variant": "ok" }
+  ],
+  "summary": "Cannibalization is paid advertising eating into organic installs. The two standard ways to measure true incremental installs are (1) Geo Holdout experiments and (2) Causal Impact modeling. Large ad channels need an incrementality measurement once a quarter.",
+  "toc": [
+    { "id": "s-def", "title": "Cannibalization model" },
+    { "id": "s-geox", "title": "GeoX experiments" },
+    { "id": "s-holdout", "title": "Holdout experiments" },
+    { "id": "s-adj", "title": "Result adjustment" },
+    { "id": "s-trouble", "title": "Troubleshooting" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-def",
+      "ix": "§1",
+      "title": "Cannibalization measurement model",
+      "content": [
+        { "type": "paragraph", "html": "The share of observed paid installs that is truly incremental: <code class=\"inline\">iROAS = incremental_revenue / cost</code>. The wider the gap between regular ROAS and iROAS, the higher the cannibalization share." },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Metric", "type": "string" },
+            { "label": "Definition", "type": "string" },
+            { "label": "How measured", "type": "string" }
+          ],
+          "rows": [
+            ["Apparent ROAS", "ROAS from network attribution", "Regular Adjust reports"],
+            ["Incremental ROAS", "Only revenue that wouldn't exist without the ad", "GeoX or Holdout"],
+            ["Carbon Tax", "Cannibalization share", "1 - (iROAS / ROAS)"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-geox",
+      "ix": "§2",
+      "title": "GeoX (Geographic Experiment)",
+      "content": [
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "Split countries/regions into two groups (Treatment / Control), matched on population and revenue share.",
+            "Treatment keeps ads running as usual; Control turns the network/campaign OFF.",
+            "Run 2–4 weeks, then measure the install/revenue gap between groups.",
+            "<code class=\"inline\">incremental = treatment - control_baseline</code>"
+          ]
+        },
+        {
+          "type": "code",
+          "lang": "json",
+          "label": "GeoX design example (Meta campaign)",
+          "code": "{\n  \"experiment_name\": \"meta_aap_geox_2026_q2\",\n  \"duration_days\": 28,\n  \"treatment_geo\": [\"KR-Seoul\", \"KR-Busan\", \"KR-Incheon\"],\n  \"control_geo\":   [\"KR-Daegu\", \"KR-Daejeon\", \"KR-Gwangju\"],\n  \"metric_primary\":   \"d7_revenue_per_user\",\n  \"metric_secondary\": \"install_count\",\n  \"min_detectable_lift\": 0.05,\n  \"alpha\": 0.05,\n  \"power\": 0.80\n}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-holdout",
+      "ix": "§3",
+      "title": "Holdout (Audience / User Holdout)",
+      "content": [
+        { "type": "paragraph", "html": "Where GeoX turns ads off by region, Holdout excludes a share of <strong>users</strong> from ad exposure. It's the fallback when GeoX is impossible in single-region operations (e.g. Korea only). Meta, Google, and TikTok all offer campaign-level holdouts." },
+        { "type": "subheading", "title": "3.1 Holdout options by network" },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Network", "type": "string" },
+            { "label": "Feature name", "type": "string" },
+            { "label": "Holdout share", "type": "string" },
+            { "label": "Analysis unit", "type": "string" }
+          ],
+          "rows": [
+            ["Meta", "Conversion Lift / Brand Lift", "10% / 20% / 30%", "User level (FB ID)"],
+            ["Google", "Conversion Lift Study", "10% / 50%", "Google account level"],
+            ["TikTok", "Lift Studies", "10%–50% flexible", "Advertising ID level"],
+            ["AppLovin", "Incrementality Test", "Campaign-level OFF", "Geo + device ID"]
+          ]
+        },
+        { "type": "subheading", "title": "3.2 Experiment design — power & duration" },
+        { "type": "paragraph", "html": "A holdout group that's too small can't reach statistical significance. In general:" },
+        {
+          "type": "list",
+          "items": [
+            "<strong>Minimum holdout size</strong>: at ~1,000 installs/day, a holdout share of 30%+ is recommended",
+            "<strong>Duration</strong>: at least 4 weeks (to remove day-of-week effects) — observe through D14 revenue",
+            "<strong>Significance</strong>: α = 0.05, power = 0.80, MDE (Minimum Detectable Effect) = 5%",
+            "Use each network's built-in power calculators (Meta Conversion Lift, Google Lift Study)"
+          ]
+        },
+        {
+          "type": "code",
+          "lang": "json",
+          "label": "Holdout design example (Meta Conversion Lift)",
+          "code": "{\n  \"study_name\": \"meta_aap_holdout_2026_q2\",\n  \"objective\": \"incremental_purchase\",\n  \"test_groups\": [\n    { \"name\": \"test\",    \"split\": 0.70, \"exposure\": \"ads_on\"  },\n    { \"name\": \"control\", \"split\": 0.30, \"exposure\": \"ads_off\" }\n  ],\n  \"duration_days\": 28,\n  \"primary_metric\":   \"d7_revenue_per_user\",\n  \"secondary_metric\": \"purchase_count\",\n  \"minimum_detectable_lift\": 0.05,\n  \"alpha\": 0.05,\n  \"expected_p_value_threshold\": 0.05\n}"
+        },
+        { "type": "subheading", "title": "3.3 GeoX vs Holdout — how to choose" },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Condition", "type": "string" },
+            { "label": "Recommended", "type": "string" },
+            { "label": "Why", "type": "string" }
+          ],
+          "rows": [
+            ["Single country/region operation", "Holdout", "GeoX can't split regions"],
+            ["Multi-country + brand awareness campaigns", "GeoX", "User-level exposure leaks"],
+            ["Large campaigns, 5000+ installs/day", "Holdout", "User-level power is sufficient"],
+            ["Small campaigns under 1000 installs/day", "GeoX or Causal Impact", "Holdout lacks power"],
+            ["Brands with heavy TV/OOH offline media", "GeoX", "Offline exposure contaminates user level"],
+            ["Goal is per-network incremental comparison", "Holdout", "Simultaneous per-network experiments possible"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-adj",
+      "ix": "§4",
+      "title": "Result adjustment (attribution adjustment)",
+      "content": [
+        {
+          "type": "list",
+          "items": [
+            "Compute iROAS / ROAS per network (the Lift Factor)",
+            "Multiply every network's ROAS by its Lift Factor before comparing (raw ROAS isn't comparable across networks)",
+            "Typical industry Lift Factors: Meta UA ≈ 0.7–0.8, Google UAC ≈ 0.6–0.75, ASA Brand ≈ 0.3–0.5 (brand terms cannibalize heavily)",
+            "Re-measure Lift Factors every 6 months — traffic quality and market conditions shift"
+          ]
+        },
+        {
+          "type": "code",
+          "lang": "json",
+          "label": "Per-network Lift Factor application",
+          "code": "{\n  \"as_of\": \"2026-05-01\",\n  \"media_lift_factors\": {\n    \"Meta_UA\":     { \"apparent_roas\": 1.85, \"lift\": 0.75, \"iroas\": 1.39 },\n    \"Google_UAC\":  { \"apparent_roas\": 2.10, \"lift\": 0.68, \"iroas\": 1.43 },\n    \"TikTok\":      { \"apparent_roas\": 1.60, \"lift\": 0.82, \"iroas\": 1.31 },\n    \"ASA_Brand\":   { \"apparent_roas\": 4.20, \"lift\": 0.35, \"iroas\": 1.47 },\n    \"ASA_Generic\": { \"apparent_roas\": 1.95, \"lift\": 0.78, \"iroas\": 1.52 }\n  },\n  \"decision\": \"Scale ASA_Generic first; hold ASA_Brand at current share\"\n}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-trouble",
+      "ix": "§5",
+      "title": "Troubleshooting",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "danger",
+          "title": "Organic in the Control group is also affected",
+          "html": "Brand awareness campaigns leak into other regions (TV, out-of-home). GeoX only isolates digital channels. Mass brand campaigns need a separate holdout window (nationwide OFF)."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Results are at noise level",
+          "html": "Below roughly 5,000 installs/week or $50,000+/week revenue, significance is hard to reach. For small campaigns use Causal Impact (time-series modeling) instead of GeoX."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Revenue in the holdout group is normal",
+          "html": "Don't misread this — turning ads off doesn't zero out revenue. Organic, returning users, and other networks keep baseline revenue flowing. The true effect is the gap: <code class=\"inline\">incremental = test_revenue − control_revenue</code>."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "How to feed lift results back into bidding",
+          "html": "Reallocate budget by iROAS. Never fully kill a low-Lift-Factor network (e.g. ASA Brand at 0.35) — brand keywords also block competitor intrusion, a value beyond ROI. Adjust the share instead."
+        }
+      ]
+    }
+  ]
+}

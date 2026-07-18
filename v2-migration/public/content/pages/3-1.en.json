@@ -1,0 +1,121 @@
+{
+  "$schema": "../schema.md",
+  "id": "3-1",
+  "eyebrow": "3 Creative · 3-1",
+  "title": "App Store Optimization (ASO) Basics",
+  "deck": "ASO is a free traffic channel that's hard to measure. Operate it on three axes: (1) metadata optimization, (2) visual A/B testing, (3) a keyword scorecard.",
+  "chips": [
+    { "label": "Channel · App Store + Play Store" },
+    { "label": "Tools · App Store Connect / Play Console", "variant": "ok" }
+  ],
+  "summary": "ASO's core metric is Conversion Rate (impression→install) = Install / Impression. ~25% is decent, 35%+ is excellent. Metadata earns keyword impressions; screenshots and the icon decide click→install conversion.",
+  "toc": [
+    { "id": "s-meta", "title": "Metadata optimization" },
+    { "id": "s-ab", "title": "Screenshot A/B testing" },
+    { "id": "s-keyword", "title": "Keyword scorecard" },
+    { "id": "s-trouble", "title": "Troubleshooting" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-meta",
+      "ix": "§1",
+      "title": "Metadata optimization",
+      "content": [
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Field", "type": "string" },
+            { "label": "iOS (App Store)", "type": "string" },
+            { "label": "Android (Play)", "type": "string" },
+            { "label": "Optimization rule", "type": "string" }
+          ],
+          "rows": [
+            ["App name", "30 chars", "30 chars", "1 core keyword + brand. e.g. 'OO Shop – Fashion Shopping'"],
+            ["Subtitle / short description", "30 chars (subtitle)", "80 chars", "High search weight on iOS. On Android, low search weight but affects conversion"],
+            ["Keyword field", "100 chars (comma)", "-", "iOS only. Comma-separated, no spaces. Mixed languages allowed"],
+            ["Description", "4000 chars", "4000 chars", "Very high search weight on Android. Put core keywords in the first 3 lines"],
+            ["Promotional text", "170 chars", "-", "iOS only. Changeable without an app update — use for seasonal messaging"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-ab",
+      "ix": "§2",
+      "title": "Screenshot A/B testing",
+      "content": [
+        {
+          "type": "list",
+          "items": [
+            "<strong>iOS</strong>: use Product Page Optimization (PPO). Up to 3 variants, 50/50/50 traffic split, allow 14–30 days for significance.",
+            "<strong>Android</strong>: Play Console Store Listing Experiments. Up to 4 variants, test one field at a time.",
+            "<strong>Test priority</strong>: icon → first screenshot → video preview → remaining screenshots. The first screenshot has the largest conversion impact (35%+)."
+          ]
+        },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Test hypothesis", "type": "string" },
+            { "label": "Variant A", "type": "string" },
+            { "label": "Variant B", "type": "string" },
+            { "label": "Expected effect", "type": "string" }
+          ],
+          "rows": [
+            ["First-screenshot copy", "Feature-led (FEATURE)", "Benefit-led (BENEFIT)", "CVR +10–15%"],
+            ["Icon color", "Brand color", "High-saturation accent", "CVR +5–8%"],
+            ["Screenshot layout", "Single screen", "Carousel storytelling", "CVR +8–12%"],
+            ["First 3s of video", "UI transitions", "User review quote", "CVR +15–20%"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-keyword",
+      "ix": "§3",
+      "title": "Keyword scorecard (difficulty × volume)",
+      "content": [
+        { "type": "paragraph", "html": "Prioritize keywords by the ratio of <strong>Search Score</strong> (volume) to <strong>Difficulty Score</strong> (competition): <code class=\"inline\">Priority = Search Score / Difficulty Score</code>. Attack keywords with Priority ≥ 1.5 first." },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Keyword", "type": "string" },
+            { "label": "Search Score", "type": "number" },
+            { "label": "Difficulty", "type": "number" },
+            { "label": "Priority", "type": "number" },
+            { "label": "Strategy", "type": "string" }
+          ],
+          "rows": [
+            ["shopping app", "75", "82", "0.91", "Brand campaign + subtitle"],
+            ["clothes shopping", "68", "45", "1.51", { "pill": "tier-1", "text": "Priority target" }],
+            ["winter coat", "55", "30", "1.83", { "pill": "tier-1", "text": "Priority target" }],
+            ["fashion mall", "72", "78", "0.92", "Long-term build"],
+            ["women's fashion app", "48", "35", "1.37", "Review further"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-trouble",
+      "ix": "§4",
+      "title": "Troubleshooting",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "danger",
+          "title": "PPO results aren't statistically significant",
+          "html": "Under ~1,000 daily impressions, significance can take 60+ days. Test bigger swings (a completely different concept), or use ASA to force traffic volume during the test."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Keyword rankings suddenly drop",
+          "html": "Possible causes: a new competitor, an Apple/Google algorithm update (roughly quarterly), or a spike in negative reviews. Below a 4.2-star rating, search weighting is penalized. Prioritize review replies + bug fixes."
+        }
+      ]
+    }
+  ]
+}

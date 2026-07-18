@@ -1,0 +1,150 @@
+{
+  "$schema": "../schema.md",
+  "id": "1-4",
+  "eyebrow": "1 Foundation · 1-4",
+  "title": "iOS Privacy Playbook (ATT & SKAN)",
+  "deck": "Raise the ATT prompt authorization rate and design a SKAdNetwork 4.0 Conversion Value schema around your business KPIs. A 0.1pp difference in ATT opt-in translates directly into 5–10% of iOS CPI.",
+  "chips": [
+    { "label": "Owner · Growth + Product" },
+    { "label": "SKAN 4.0 ready", "variant": "ok" },
+    { "label": "iOS 14.5+ required", "variant": "warning" }
+  ],
+  "summary": "ATT (App Tracking Transparency) is the system prompt asking consent to use the IDFA; when declined, attribution downgrades to the single SKAdNetwork (SKAN) channel. SKAN 4.0 sends a Coarse (low/medium/high) + Fine (0–63) value at three windows (0–2 / 3–7 / 8–35 days). This guide covers (1) ATT prompt optimization, (2) SKAN CV schema design, (3) Adjust mapping setup.",
+  "toc": [
+    { "id": "s-att", "title": "ATT prompt design" },
+    { "id": "s-skan", "title": "SKAN 4.0 schema" },
+    { "id": "s-cvmap", "title": "Conversion Value mapping" },
+    { "id": "s-adjust", "title": "Adjust setup" },
+    { "id": "s-trouble", "title": "Troubleshooting" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-att",
+      "ix": "§1",
+      "title": "ATT prompt design",
+      "content": [
+        { "type": "paragraph", "html": "Industry-average ATT authorization rates: games ~28%, commerce ~35%, fintech ~42% (as of 2025). Three levers to raise it:" },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "<strong>Insert a pre-prompt (explainer dialog)</strong> — right before the system prompt, explain \"why we ask\" on your own screen. Users intending to decline get filtered at the pre-prompt, lowering the system prompt's decline rate.",
+            "<strong>Delay the call</strong> — not on first launch, but after value is perceived (right after onboarding completes, before first purchase, right after push opt-in). A 30–60 second delay is recommended.",
+            "<strong>NSUserTrackingUsageDescription copy</strong> — the ATT description in Info.plist. Use user-benefit framing (\"more relevant content recommendations\") instead of \"personalized ads\"."
+          ]
+        },
+        {
+          "type": "code",
+          "lang": "swift",
+          "label": "Pre-prompt + ATT call flow",
+          "code": "import AppTrackingTransparency\nimport AdjustSdk\n\nfunc showATTFlow(from vc: UIViewController) {\n    // 1. Check the value-perception moment (e.g. onboarding done)\n    guard OnboardingState.shared.isCompleted else { return }\n\n    // 2. Show the pre-prompt\n    let pre = PrePromptViewController(\n        title: \"Consent for personalized recommendations\",\n        body: \"If you choose 'Allow' on the next screen, we can recommend content that better matches your interests.\",\n        primaryAction: \"Continue\",\n        secondaryAction: \"Skip for now\"\n    )\n    pre.onPrimary = { requestSystemATT() }\n    pre.onSecondary = { /* queue retry after 7 days */ }\n    vc.present(pre, animated: true)\n}\n\nfunc requestSystemATT() {\n    ATTrackingManager.requestTrackingAuthorization { status in\n        // The Adjust SDK receives the result automatically\n        Analytics.track(\"att_response\", [\n            \"status\": status.rawValue,\n            \"is_authorized\": status == .authorized\n        ])\n    }\n}"
+        },
+        {
+          "type": "code",
+          "lang": "json",
+          "label": "Info.plist · recommended copy",
+          "code": "{\n  \"NSUserTrackingUsageDescription\":\n    \"We use activity data to recommend content and offers that better match your interests.\"\n}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-skan",
+      "ix": "§2",
+      "title": "SKAdNetwork 4.0 schema",
+      "content": [
+        { "type": "paragraph", "html": "Key changes in SKAN 4.0:" },
+        {
+          "type": "list",
+          "items": [
+            "<strong>3-postback windows</strong>: one postback each at 0–2 / 3–7 / 8–35 days after install",
+            "<strong>Coarse Conversion Value</strong>: 3 levels — <code class=\"inline\">low</code> / <code class=\"inline\">medium</code> / <code class=\"inline\">high</code> — so low-traffic campaigns still collect signal",
+            "<strong>Fine Conversion Value</strong>: 0–63 (6 bits) — only campaigns with sufficient traffic qualify",
+            "<strong>Hierarchical Source ID</strong>: campaign/ad-group/creative-level signal (2-digit → 4-digit)"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-cvmap",
+      "ix": "§3",
+      "title": "Conversion Value mapping (commerce app example)",
+      "content": [
+        { "type": "paragraph", "html": "Map cumulative revenue + key-event occurrence combinations into 64 slots. Fine's 64 levels apply only in the day 0–2 window; days 3–7 and 8–35 get only Coarse's 3 levels." },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Fine CV", "type": "number" },
+            { "label": "Condition", "type": "string" },
+            { "label": "Coarse", "type": "string" },
+            { "label": "Business meaning", "type": "string" }
+          ],
+          "rows": [
+            ["0", "install only", { "pill": "", "text": "low" }, "Install only"],
+            ["1", "session_start ≥ 2", { "pill": "", "text": "low" }, "Revisit"],
+            ["5", "add_to_cart ×1", { "pill": "", "text": "low" }, "Engagement start"],
+            ["10", "add_to_cart ≥ 2 OR begin_checkout", { "pill": "tier-2", "text": "medium" }, "High engagement"],
+            ["20", "purchase ×1 · revenue < $5", { "pill": "tier-2", "text": "medium" }, "Low-value purchase"],
+            ["30", "purchase ×1 · revenue $5–$20", { "pill": "tier-2", "text": "medium" }, "Mid-value purchase"],
+            ["45", "purchase ×1 · revenue $20–$50", { "pill": "tier-1", "text": "high" }, "High-value purchase"],
+            ["55", "purchase ≥ 2 OR revenue ≥ $50", { "pill": "tier-1", "text": "high" }, "Loyal purchaser"],
+            ["63", "subscribe (monthly)", { "pill": "tier-1", "text": "high" }, "Subscription conversion"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-adjust",
+      "ix": "§4",
+      "title": "Adjust SKAN setup",
+      "content": [
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "Adjust dashboard → App Setup → SKAdNetwork → <code class=\"inline\">Enable SKAN 4.0</code>",
+            "<strong>Conversion Value Schema</strong>: choose the Revenue + Events combination mode",
+            "Map Coarse tiers per event (per table §3 above)",
+            "Enable SKAN channels per network: separate toggles for Meta/Google/TikTok/AppLovin",
+            "Verify postback firing in Test Mode via Apple Console (xcrun simctl)"
+          ]
+        },
+        {
+          "type": "code",
+          "lang": "swift",
+          "label": "SKAN CV update (delegated to Adjust)",
+          "code": "class SKANDelegateHandler: NSObject, AdjustDelegate {\n    static let shared = SKANDelegateHandler()\n\n    func adjustConversionValueUpdated(_ conversionValue: NSNumber?) {\n        // Adjust computes the conversion value and calls this automatically\n        guard let cv = conversionValue?.intValue else { return }\n        Analytics.track(\"skan_cv_updated\", [\n            \"fine_value\": cv,\n            \"coarse_tier\": cv < 10 ? \"low\" : cv < 45 ? \"medium\" : \"high\"\n        ])\n    }\n}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-trouble",
+      "ix": "§5",
+      "title": "Troubleshooting",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "danger",
+          "title": "The ATT prompt doesn't appear",
+          "html": "1) <code class=\"inline\">NSUserTrackingUsageDescription</code> missing from Info.plist. 2) Device below iOS 14.5. 3) User already responded (reset via Settings → Privacy → Tracking, then retest). 4) Adjust SDK initialization must complete before the ATT call."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "SKAN postbacks don't arrive",
+          "html": "1) Confirm every network's SKAdNetwork identifier (.skadnetworkidentifier) is registered in Info.plist — usually 30–50 entries. 2) Adjust handles network redirects automatically, but each network must enable its SKAN channel separately. 3) Normal postback delay range: 0–24 hours."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "CV distribution is skewed (mostly 0)",
+          "html": "The CV mapping is set too tight. Lower revenue thresholds, or expand mid-tier slots so events alone can raise CV. Campaigns below Apple's privacy threshold (~25 installs/day) get CV masked to NULL — merge small campaigns and run them together."
+        }
+      ]
+    }
+  ]
+}

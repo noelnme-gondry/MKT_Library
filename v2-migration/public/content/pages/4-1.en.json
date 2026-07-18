@@ -1,0 +1,116 @@
+{
+  "$schema": "../schema.md",
+  "id": "4-1",
+  "eyebrow": "4 Analysis · 4-1",
+  "title": "Core App Marketing KPI Analysis",
+  "deck": "Unify the definitions of CPI/CPA/ARPU/ROAS and judge campaign performance against country/OS/category benchmarks. Absolute numbers without a benchmark are meaningless.",
+  "chips": [
+    { "label": "Measurement basis · MMP attribution" },
+    { "label": "Benchmarks · 2026 Q1", "variant": "ok" }
+  ],
+  "summary": "Measure KPIs in 5 layers: (1) efficiency (CPI/CPC), (2) conversion (CPA/CVR), (3) value (ARPU/ARPPU), (4) payback (ROAS), (5) durability (LTV/Retention). Never judge on a single metric — monitor all five together.",
+  "toc": [
+    { "id": "s-defs", "title": "Metric definitions" },
+    { "id": "s-bench", "title": "Benchmark table" },
+    { "id": "s-analysis", "title": "Analysis methodology" },
+    { "id": "s-trouble", "title": "Troubleshooting" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-defs",
+      "ix": "§1",
+      "title": "Metric definitions (SSOT)",
+      "content": [
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Metric", "type": "string" },
+            { "label": "Definition", "type": "string" },
+            { "label": "Formula", "type": "string" },
+            { "label": "Measurement timing", "type": "string" }
+          ],
+          "rows": [
+            ["CPI", "Cost per install", "cost / installs", "Per campaign, daily"],
+            ["CPC", "Cost per click", "cost / clicks", "Per campaign, daily"],
+            ["CPA", "Cost per action", "cost / conversions", "Typically D7 basis"],
+            ["CTR", "Impression→click rate", "clicks / impressions", "Network report basis"],
+            ["IPM", "Installs per 1000 impressions", "(installs / impressions) × 1000", "Used on TikTok etc."],
+            ["ARPU", "Avg revenue per user", "revenue / installs", "At D7 / D30"],
+            ["ARPPU", "Avg revenue per paying user", "revenue / paying_users", "Per cohort"],
+            ["ROAS", "Revenue vs ad cost", "revenue / cost", "D7 / D30 / D90"],
+            ["LTV", "User lifetime value (predicted)", "cumulative ARPU × retention curve", "12-month projection"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-bench",
+      "ix": "§2",
+      "title": "Industry benchmarks (2026 Q1)",
+      "content": [
+        { "type": "paragraph", "html": "USD basis, Adjust + AppsFlyer aggregate data. Standard deviations across category/country/OS are large — treat as reference only." },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Country/OS", "type": "string" },
+            { "label": "Category", "type": "string" },
+            { "label": "CPI", "type": "string" },
+            { "label": "D7 ROAS", "type": "string" },
+            { "label": "D7 retention", "type": "string" }
+          ],
+          "rows": [
+            ["KR iOS", "Commerce", "$3.20 – $4.80", "12% – 25%", "22% – 30%"],
+            ["KR iOS", "Games", "$4.50 – $7.00", "8% – 18%", "18% – 25%"],
+            ["KR AOS", "Commerce", "$1.80 – $3.20", "10% – 22%", "19% – 27%"],
+            ["KR AOS", "Games", "$2.50 – $4.50", "6% – 15%", "15% – 22%"],
+            ["JP iOS", "Commerce", "$4.80 – $7.50", "15% – 30%", "25% – 33%"],
+            ["JP iOS", "Games", "$6.00 – $9.50", "12% – 22%", "22% – 30%"],
+            ["US iOS", "Commerce", "$4.50 – $6.80", "10% – 20%", "20% – 28%"],
+            ["US iOS", "Games", "$5.50 – $9.00", "10% – 22%", "18% – 26%"],
+            ["US AOS", "Commerce", "$2.50 – $4.20", "8% – 18%", "17% – 24%"],
+            ["SEA AOS", "Commerce", "$0.60 – $1.50", "6% – 12%", "12% – 20%"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-analysis",
+      "ix": "§3",
+      "title": "Analysis methodology",
+      "content": [
+        {
+          "type": "list",
+          "items": [
+            "<strong>Step 1: efficiency</strong> — confirm CPI/CPC is within ±30% of benchmark. If not, review campaign structure or bidding.",
+            "<strong>Step 2: quality</strong> — within the same campaign, D7 retention should be ≥70% of benchmark. Below that, suspect network traffic quality gaps or a missing deferred deep link.",
+            "<strong>Step 3: payback</strong> — D7 ROAS ≥30% of the break-even LTV/CAC = 1.0 level means learning is on track. At 50%+, bids can go up.",
+            "<strong>Forbidden pattern</strong>: judging campaigns by CPI alone → budget drifts to low-quality-traffic networks. Always co-evaluate with D7 ROAS."
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-trouble",
+      "ix": "§4",
+      "title": "Troubleshooting",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "danger",
+          "title": "Network dashboard and Adjust differ by 30%+",
+          "html": "1) Attribution window mismatch (Meta 1d_click vs Adjust 7d_click). 2) SKAN postback delays land iOS installs on D-2~D-3. 3) Missing cost-data sync. Use Adjust numbers as the SSOT for all analysis."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "ARPU is good but ROAS is bad",
+          "html": "You're catching high-value users but acquisition is too expensive. 1) Lower bids −10%. 2) Try the same LTV group on cheaper networks. 3) Narrow the Lookalike seed for tighter targeting."
+        }
+      ]
+    }
+  ]
+}

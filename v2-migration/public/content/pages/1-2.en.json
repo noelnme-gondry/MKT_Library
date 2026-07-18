@@ -1,0 +1,176 @@
+{
+  "$schema": "../schema.md",
+  "id": "1-2",
+  "eyebrow": "1 Foundation · 1-2",
+  "title": "In-App Event Taxonomy Spec",
+  "deck": "The event spec that defines your core business funnel as a single source of truth (SSOT). It underpins network optimization signals, cohort analysis, and LTV validation — <strong>name, parameters, and firing timing</strong> are all standardized.",
+  "chips": [
+    { "label": "Owner · Growth + Product" },
+    { "label": "Naming · snake_case" },
+    { "label": "12 Tier-1 events", "variant": "warning" }
+  ],
+  "summary": "This taxonomy compresses a <strong>7-stage funnel (Install → Activate → Convert → Retain → Refer → Monetize → Reactivate)</strong> into 12 Tier-1 events. Every event enforces <code class=\"inline\">snake_case</code> naming, lowercase English, and a verb+noun or noun+state structure. Tier-1 events feed network optimization signals (UAC/AAP/ASA tCPA) and SKAN Conversion Value mapping — changing them arbitrarily discards campaign learning data and forces retraining.",
+  "toc": [
+    { "id": "s-principles", "title": "Naming principles" },
+    { "id": "s-master", "title": "Event master list" },
+    { "id": "s-params", "title": "Standard parameter spec" },
+    { "id": "s-payload", "title": "Reference payload" },
+    { "id": "s-versioning", "title": "Versioning & governance" },
+    { "id": "s-pitfalls", "title": "Troubleshooting" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-principles",
+      "ix": "§1",
+      "title": "Naming principles",
+      "content": [
+        {
+          "type": "list",
+          "items": [
+            "<strong>snake_case enforced</strong>: <code class=\"inline\">addToCart</code> (✗) → <code class=\"inline\">add_to_cart</code> (✓). No mixing camel/Pascal/kebab case",
+            "<strong>Verb+noun or noun+state</strong>: prefer <code class=\"inline\">product_view</code> over <code class=\"inline\">view_product</code> (GA4-standard alignment)",
+            "<strong>Avoid reserved event names</strong>: <code class=\"inline\">session_start</code>, <code class=\"inline\">first_open</code>, <code class=\"inline\">in_app_purchase</code> and other Adjust/Firebase reserved names can't be self-defined. Send revenue through a <code class=\"inline\">purchase</code> event so Adjust's <code class=\"inline\">in_app_purchase</code> maps automatically",
+            "<strong>Max length 40 chars</strong>, parameter keys 25, values 100",
+            "<strong>Absolutely no PII</strong>: never send email, phone, name, address, or device_token directly. If needed, hash (SHA-256) + salt before sending",
+            "<strong>currency is ISO 4217</strong> 3-letter (KRW, USD, JPY). Don't normalize revenue to a single currency client-side — always send the currency parameter alongside"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-master",
+      "ix": "§2",
+      "title": "Event master list",
+      "content": [
+        { "type": "paragraph", "html": "Click a column header to sort. Tier-1 events are the core signals used for network optimization." },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Event Name", "type": "string" },
+            { "label": "Funnel Stage", "type": "string" },
+            { "label": "Trigger", "type": "string" },
+            { "label": "Required Params", "type": "string" },
+            { "label": "Tier", "type": "string" },
+            { "label": "Source", "type": "string" }
+          ],
+          "rows": [
+            ["session_start", "Lifecycle", "App enters foreground", "platform, app_version, network_type", { "pill": "tier-1", "text": "Tier-1" }, "auto"],
+            ["sign_up", "Acquisition", "Signup completed", "method(email|kakao|apple), user_grade", { "pill": "tier-1", "text": "Tier-1" }, "manual"],
+            ["login", "Lifecycle", "Returning user login", "method, days_since_last_login", { "pill": "tier-2", "text": "Tier-2" }, "manual"],
+            ["onboarding_complete", "Activation", "Last onboarding step finished", "duration_sec, skipped(bool)", { "pill": "tier-1", "text": "Tier-1" }, "manual"],
+            ["product_view", "Funnel", "Product detail viewed", "product_id, category, price, currency", { "pill": "tier-2", "text": "Tier-2" }, "manual"],
+            ["add_to_cart", "Funnel", "Added to cart", "product_id, quantity, price", { "pill": "tier-1", "text": "Tier-1" }, "manual"],
+            ["begin_checkout", "Funnel", "Checkout screen entered", "cart_value, item_count", { "pill": "tier-1", "text": "Tier-1" }, "manual"],
+            ["purchase", "Revenue", "Payment completed (transaction)", "transaction_id, revenue, currency, payment_method", { "pill": "tier-1", "text": "Tier-1" }, "manual"],
+            ["subscribe", "Revenue", "Subscription started (incl. trial)", "plan_id, trial(bool), revenue", { "pill": "tier-1", "text": "Tier-1" }, "manual"],
+            ["refund", "Revenue", "Refund processed", "transaction_id, refund_amount", { "pill": "tier-2", "text": "Tier-2" }, "server"],
+            ["share", "Engagement", "External share action", "channel(km|fb|link), content_type", { "pill": "tier-3", "text": "Tier-3" }, "manual"],
+            ["push_open", "Re-engagement", "Push notification opened", "campaign_id, segment", { "pill": "tier-2", "text": "Tier-2" }, "manual"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-params",
+      "ix": "§3",
+      "title": "Standard parameter spec",
+      "content": [
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Parameter", "type": "string" },
+            { "label": "Type", "type": "string" },
+            { "label": "Example", "type": "string" },
+            { "label": "Required", "type": "string" },
+            { "label": "Description", "type": "string" }
+          ],
+          "rows": [
+            ["transaction_id", "string", "tx_20260525_a91b3", "Yes (purchase)", "Unique payment transaction ID. Dedup key against duplicate sends"],
+            ["revenue", "decimal(10,2)", "29900.00", "Yes (purchase)", "Revenue incl. VAT. Negative values only for refunds"],
+            ["currency", "string(3)", "KRW", "Yes (purchase)", "ISO 4217 currency code"],
+            ["product_id", "string", "sku_88421", "Yes (commerce)", "Internal SKU. Catalog matching key"],
+            ["category", "string", "outerwear", "No", "L1 category. Slash-separated down to L2 allowed"],
+            ["quantity", "integer", "2", "Yes (cart)", "Quantity. Integer ≥ 1"],
+            ["price", "decimal(10,2)", "14950.00", "Yes (cart)", "Unit price. revenue = price × quantity"],
+            ["payment_method", "string", "card_visa", "Yes (purchase)", "card_* / kakaopay / naverpay / applepay / googlepay"],
+            ["user_grade", "string", "vip", "No", "4 levels: guest / new / regular / vip"],
+            ["screen", "string", "home_main", "No", "Screen name at firing time. Screen names managed in a separate dictionary"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-payload",
+      "ix": "§4",
+      "title": "Reference payload",
+      "content": [
+        { "type": "paragraph", "html": "All client SDKs serialize into the JSON structure below and map it onto Adjust's <code class=\"inline\">ADJEvent / AdjustEvent</code>. Server-side sends deliver the same payload to the S2S endpoint." },
+        {
+          "type": "code",
+          "lang": "json",
+          "label": "Event Payload · purchase",
+          "code": "{\n  \"event_token\": \"p4q7zx\",\n  \"event_name\": \"purchase\",\n  \"timestamp_ms\": 1779360000000,\n  \"user\": {\n    \"user_id_hashed\": \"sha256:8a7d...e1c2\",\n    \"user_grade\": \"regular\",\n    \"is_logged_in\": true\n  },\n  \"params\": {\n    \"transaction_id\": \"tx_20260525_a91b3\",\n    \"revenue\": 29900.00,\n    \"currency\": \"KRW\",\n    \"payment_method\": \"kakaopay\",\n    \"item_count\": 2,\n    \"products\": [\n      { \"product_id\": \"sku_88421\", \"category\": \"outerwear\", \"price\": 14950.00, \"quantity\": 2 }\n    ],\n    \"screen\": \"checkout_complete\"\n  },\n  \"context\": {\n    \"platform\": \"android\",\n    \"app_version\": \"4.12.0\",\n    \"network_type\": \"wifi\",\n    \"ab_variant\": \"ckt_v3_B\"\n  }\n}"
+        },
+        { "type": "subheading", "title": "4.1 Adjust mapping (Kotlin)" },
+        {
+          "type": "code",
+          "lang": "kotlin",
+          "label": "TaxonomyMapper.kt",
+          "code": "fun trackPurchase(tx: Transaction) {\n    val event = AdjustEvent(\"p4q7zx\").apply {\n        setRevenue(tx.revenue, tx.currency)\n        setOrderId(tx.id)                      // dedup key\n        addCallbackParameter(\"payment_method\", tx.method)\n        addCallbackParameter(\"item_count\", tx.items.size.toString())\n        addPartnerParameter(\"ab_variant\", tx.abVariant)\n    }\n    Adjust.trackEvent(event)\n}"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-versioning",
+      "ix": "§5",
+      "title": "Versioning & governance",
+      "content": [
+        {
+          "type": "list",
+          "items": [
+            "<strong>v{major}.{minor}</strong> format. Adding/removing a Tier-1 event bumps major; adding a parameter bumps minor",
+            "<strong>Deprecation policy</strong>: keep a 60-day dual-write window, then stop sending the old event. Network optimization models need retraining on the new event",
+            "<strong>Change requests</strong> go only through the Taxonomy Change Request template in the Notion DB. Requires sign-off from Growth Lead + Data Eng + iOS/Android Leads"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-pitfalls",
+      "ix": "§6",
+      "title": "Troubleshooting / pitfalls",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "danger",
+          "title": "Revenue always reports as 0 in network dashboards",
+          "html": "1) currency missing before the <code class=\"inline\">setRevenue</code> call. 2) The event token isn't checked as a <strong>Revenue Event</strong> in the Adjust dashboard. 3) FX conversion missing when client currency and network reporting currency differ. Recommend unifying every network's reporting currency to a single KRW or USD."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Duplicate purchase events inflate ROAS",
+          "html": "StoreKit/Play Billing payment callbacks retry and re-send the same transaction. Force-map <code class=\"inline\">transaction_id</code> to Adjust's <code class=\"inline\">orderId</code> and delegate dedup to the SDK. Also gate the client so the event only fires after server-side receipt validation completes."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "A UAC tCPA campaign never exits the learning phase",
+          "html": "With fewer than ~30 Tier-1 event firings per week, machine learning can't converge. If volume is short, temporarily switch the conversion definition to an upper-funnel event (<code class=\"inline\">purchase</code> → <code class=\"inline\">add_to_cart</code> or <code class=\"inline\">begin_checkout</code>) to build learning volume, then switch back."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "PII leaked into a parameter",
+          "html": "Emails/phone numbers sneak into product_id, or free-text lands in search_keyword. Before release, scan Adjust raw exports with regex filters (<code class=\"inline\">@</code>, 010, +). If found, hash or remove the parameter immediately and start the network-side data deletion process."
+        }
+      ]
+    }
+  ]
+}
