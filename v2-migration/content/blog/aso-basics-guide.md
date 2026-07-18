@@ -5,10 +5,8 @@ date: "2026-07-15"
 slug: "aso-basics-guide"
 keywords: "ASO, 앱스토어 최적화, ASO 기초, 앱 키워드 최적화, 앱스토어 전환율, 앱 아이콘 스크린샷, 앱 순위, 오가닉 설치"
 tags: ["ASO", "기초"]
-draft: true
+draft: false
 ---
-
-<!-- 초안(draft) — 발행 전 사람 손질 필요. 스토어별 정책·사례 보강할 것. -->
 
 광고로만 설치를 사면 CPI 부담이 계속 커져요. ASO(App Store Optimization, 앱스토어 최적화)는 **오가닉 설치를 늘려 그 부담을 낮추는** 작업이에요. 크게 두 축이에요: 발견되기(노출)와 설치되기(전환).
 

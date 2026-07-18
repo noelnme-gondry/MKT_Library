@@ -5,10 +5,8 @@ date: "2026-07-15"
 slug: "apple-search-ads-guide"
 keywords: "Apple Search Ads, ASA, 애플 서치 애즈, ASA 세팅, 앱스토어 검색 광고, ASA 키워드, 검색 광고 앱, iOS 앱 광고"
 tags: ["ASA", "UA"]
-draft: true
+draft: false
 ---
-
-<!-- 초안(draft) — 발행 전 사람 손질 필요. 최신 ASA UI·정책 확인 후 보강할 것. -->
 
 Apple Search Ads(ASA)는 앱스토어 검색 결과 최상단에 뜨는 광고예요. **이미 검색해서 의도가 뚜렷한 유저**를 잡기 때문에 전환율이 높은 편이에요. 대신 구조를 모르고 켜면 브랜드 키워드에만 돈을 쓰고 끝나요.
 
