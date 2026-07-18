@@ -1,5 +1,6 @@
 import { ROUTES, SITE_URL, EN_READY_TOOL_IDS, idToPath } from "@/lib/routeMap";
 import { getAllPosts, getAllTags } from "@/lib/blog";
+import { getAllTerms } from "@/lib/glossary";
 
 const BASE = SITE_URL; // matches layout.js canonical/openGraph
 
@@ -43,6 +44,23 @@ export default function sitemap() {
     })),
   ];
 
+  // CSV 템플릿 다운로드("/templates") — 블로그와 동일하게 routeMap 밖 독립 페이지.
+  const templateEntries = [
+    { url: `${BASE}/templates`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
+  ];
+
+  // 용어사전("/glossary") — 목록 + 발행 항목별. 블로그와 동일 패턴.
+  const glossaryTerms = getAllTerms();
+  const glossaryEntries = [
+    { url: `${BASE}/glossary`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.6 },
+    ...glossaryTerms.map((t) => ({
+      url: `${BASE}/glossary/${t.slug}`,
+      lastModified: t.date ? new Date(t.date) : new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5,
+    })),
+  ];
+
   // EN 랜딩("/en") — routeMap 밖의 별도 literal 라우트(§en-landing-page). id 불변
   // 규칙상 ROUTES에 추가하지 않고 여기서 직접 추가(EN 블로그와 동일 방식).
   const enLandingEntries = [
@@ -76,5 +94,5 @@ export default function sitemap() {
     priority: 0.8,
   }));
 
-  return [...routeEntries, ...blogEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enToolEntries];
+  return [...routeEntries, ...blogEntries, ...templateEntries, ...glossaryEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enToolEntries];
 }

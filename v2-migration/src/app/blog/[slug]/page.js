@@ -23,6 +23,8 @@ export async function generateMetadata({ params }) {
     description: post.description,
     url: canonical,
     publishedTime: post.date || undefined,
+    // images 미지정 시 opengraph-image.js(파일 컨벤션, 글별 동적 카드)가 자동 주입 —
+    // 여기서 fallback을 강제로 넣으면 그 메커니즘을 덮어써 전 글이 정적 카드로 통일됨.
     ...(post.ogImage ? { images: [post.ogImage] } : {}),
   };
   return {
@@ -69,6 +71,18 @@ function buildPostJsonLd(post, canonical) {
     logo: { "@type": "ImageObject", url: `${SITE_URL}/og-card.png` },
   };
   const images = extractImages(post.html);
+  const faqNode = post.faq.length
+    ? [
+        {
+          "@type": "FAQPage",
+          mainEntity: post.faq.map((item) => ({
+            "@type": "Question",
+            name: item.q,
+            acceptedAnswer: { "@type": "Answer", text: item.a },
+          })),
+        },
+      ]
+    : [];
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -94,6 +108,7 @@ function buildPostJsonLd(post, canonical) {
           { "@type": "ListItem", position: 3, name: post.title, item: canonical },
         ],
       },
+      ...faqNode,
     ],
   };
 }
@@ -133,6 +148,18 @@ export default async function BlogPostPage({ params }) {
       </header>
 
       <article className="blog-prose" dangerouslySetInnerHTML={{ __html: post.html }} />
+
+      {post.faq.length > 0 && (
+        <section className="blog-faq" aria-label="자주 묻는 질문">
+          <h2>자주 묻는 질문</h2>
+          {post.faq.map((item, i) => (
+            <details key={i} className="blog-faq-item">
+              <summary>{item.q}</summary>
+              <div className="blog-faq-item-answer">{item.a}</div>
+            </details>
+          ))}
+        </section>
+      )}
     </div>
   );
 }
