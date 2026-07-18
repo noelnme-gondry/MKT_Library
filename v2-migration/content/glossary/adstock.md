@@ -6,6 +6,7 @@ date: "2026-07-18"
 slug: "adstock"
 keywords: "애드스톡, Adstock 뜻, 애드스톡이란, 광고 잔존효과, MMM 애드스톡, 광고 이월효과"
 relatedPosts: ["marketing-mix-modeling"]
+category: "예산·최적화"
 draft: false
 ---
 

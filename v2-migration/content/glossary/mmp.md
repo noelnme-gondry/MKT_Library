@@ -6,6 +6,7 @@ date: "2026-07-18"
 slug: "mmp"
 keywords: "MMP, MMP란, Mobile Measurement Partner, 모바일 어트리뷰션 툴, 앱 마케팅 측정 솔루션"
 relatedPosts: ["attribution-data-mismatch"]
+category: "트래킹·기술"
 draft: false
 ---
 

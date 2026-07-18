@@ -6,6 +6,7 @@ date: "2026-07-18"
 slug: "click-injection"
 keywords: "클릭 인젝션, Click Injection, 클릭 인젝션이란, 광고 어뷰징, 어트리뷰션 부정클릭, 라스트클릭 어뷰징"
 relatedPosts: ["marketing-mix-modeling", "attribution-data-mismatch"]
+category: "트래킹·기술"
 draft: false
 ---
 

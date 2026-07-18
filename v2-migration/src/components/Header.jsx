@@ -53,11 +53,13 @@ export default function Header({ locale = "ko" }) {
   const blogHref = locale === "en" ? "/en/blog" : "/blog";
   // CSV 템플릿도 블로그와 동일하게 routeMap 밖(§templates). EN 미번역이라 항상 KR로.
   const isTemplates = cleanPath === "/templates";
-  // 용어사전도 동일 패턴(§glossary). EN 미번역.
+  // 용어사전도 동일 패턴(§glossary) — 이제 EN 있음(content/glossary-en), 블로그처럼
+  // /glossary↔/en/glossary 전환.
   const isGlossary = cleanPath === "/glossary" || cleanPath.startsWith("/glossary/");
+  const glossaryHref = locale === "en" ? "/en/glossary" : "/glossary";
   // KR<->EN 페이지 전환 — 현재 페이지 기준(홈 아니어도 항상 이 경로 유지). EN→KR은
   // 늘 있음(KR이 항상 완성본). KR→EN은 번역된 페이지일 때만, 없으면 /en 홈 폴백.
-  const switchHref = isBlog
+  const switchHref = isBlog || isGlossary
     ? (locale === "en" ? cleanPath : `/en${cleanPath}`)
     : locale === "en"
       ? idToPath(currentRouteId)
@@ -119,8 +121,8 @@ export default function Header({ locale = "ko" }) {
         {isGlossary && (
           <>
             <span className="sep">/</span>
-            <Link href="/glossary" className="current" style={{ textDecoration: "none", color: "var(--text-secondary)" }}>
-              용어사전
+            <Link href={glossaryHref} className="current" style={{ textDecoration: "none", color: "var(--text-secondary)" }}>
+              {locale === "en" ? "Glossary" : "용어사전"}
             </Link>
           </>
         )}

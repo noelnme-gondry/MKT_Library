@@ -85,6 +85,18 @@ export default function sitemap() {
     { url: `${BASE}/en/guide/csv-data-prep`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
   ];
 
+  // EN 용어사전(content/glossary-en) — 목록 + 발행 항목별.
+  const enGlossaryTerms = getAllTerms("en");
+  const enGlossaryEntries = [
+    { url: `${BASE}/en/glossary`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.6 },
+    ...enGlossaryTerms.map((t) => ({
+      url: `${BASE}/en/glossary/${t.slug}`,
+      lastModified: t.date ? new Date(t.date) : new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5,
+    })),
+  ];
+
   // EN 도구(routeMap EN_READY_TOOL_IDS, §plan) — 번역 완료된 도구만. 새 도구가
   // 레지스트리에 추가되는 순간 이 목록도 자동으로 늘어남(하드코딩 없음).
   const enToolEntries = [...EN_READY_TOOL_IDS].map((id) => ({
@@ -94,5 +106,5 @@ export default function sitemap() {
     priority: 0.8,
   }));
 
-  return [...routeEntries, ...blogEntries, ...templateEntries, ...glossaryEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enToolEntries];
+  return [...routeEntries, ...blogEntries, ...templateEntries, ...glossaryEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enGlossaryEntries, ...enToolEntries];
 }

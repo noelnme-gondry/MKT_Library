@@ -1,0 +1,27 @@
+---
+term: "CTR (Click-Through Rate)"
+shortDef: "노출된 광고 중 실제로 클릭된 비율 — 클릭 수 ÷ 노출 수"
+description: "CTR(Click-Through Rate, 클릭률)이란 광고가 노출된 횟수 중 실제로 클릭된 비율입니다. 소재가 얼마나 스크롤을 멈추게 하는지를 보여줘요."
+date: "2026-07-18"
+slug: "ctr"
+keywords: "CTR, CTR 뜻, CTR이란, Click-Through Rate, 클릭률, 클릭율 계산"
+category: "기초 지표"
+relatedPosts: ["ctr-improvement"]
+draft: false
+---
+
+## 한 줄로
+
+**CTR(Click-Through Rate, 클릭률)**은 광고가 노출된 횟수 중 실제로 클릭된 비율이에요. **클릭 수 ÷ 노출 수**로 계산해요.
+
+## 왜 중요한가
+
+CTR은 소재·타겟·지면이 "봤는데 끌렸는지"를 보여주는 지표예요. 원인은 크게 소재(가장 영향 큼)·타겟팅·지면 세 가지로 나뉘어요.
+
+## 조심할 것
+
+CTR이 높다고 성과가 좋은 게 아니에요. 낚시성 소재는 CTR은 높아도 [CVR](/glossary/cvr)이 바닥이라 결국 CPA가 나빠져요. CTR은 중간 지표일 뿐, 최종 판단은 전환·매출로 하세요.
+
+## 더 깊게 보려면
+
+CTR이 낮을 때 소재·타겟·지면 중 뭐부터 손봐야 하는지는 [CTR 개선 글](/blog/ctr-improvement)에서 다룹니다.
