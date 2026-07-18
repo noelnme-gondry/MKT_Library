@@ -1,4 +1,4 @@
-import { ROUTES, SITE_URL, EN_READY_TOOL_IDS, idToPath } from "@/lib/routeMap";
+import { ROUTES, SITE_URL, EN_READY_TOOL_IDS, EN_READY_GUIDE_IDS, idToPath } from "@/lib/routeMap";
 import { getAllPosts, getAllTags } from "@/lib/blog";
 import { getAllTerms } from "@/lib/glossary";
 
@@ -79,11 +79,14 @@ export default function sitemap() {
     })),
   ];
 
-  // EN 가이드(§ SOP EN pilot, 1-1·8-1) — routeMap 밖의 별도 literal 라우트, EN 랜딩과 동일 방식.
-  const enGuideEntries = [
-    { url: `${BASE}/en/guide/dev-collaboration`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-    { url: `${BASE}/en/guide/csv-data-prep`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
-  ];
+  // EN 가이드(EN_READY_GUIDE_IDS 레지스트리 파생 — {id}.en.json 번역 완료분만).
+  // 새 가이드 번역 시 레지스트리에 추가하면 여기도 자동 반영(하드코딩 표류 방지).
+  const enGuideEntries = [...EN_READY_GUIDE_IDS].map((id) => ({
+    url: `${BASE}/en${idToPath(id)}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly",
+    priority: 0.6,
+  }));
 
   // EN 용어사전(content/glossary-en) — 목록 + 발행 항목별.
   const enGlossaryTerms = getAllTerms("en");

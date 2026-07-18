@@ -1,0 +1,102 @@
+{
+  "$schema": "../schema.md",
+  "id": "2-4",
+  "eyebrow": "2 Campaign · 2-4",
+  "title": "App Retargeting & Re-engagement",
+  "deck": "Retargeting drives existing users back and revives dormant ones. The keys are (1) precise audience segmentation, (2) deferred deep links landing users on the exact screen, (3) personalized copy.",
+  "chips": [
+    { "label": "Channel · Meta/Google retargeting" },
+    { "label": "Customer List + Lookalike", "variant": "ok" },
+    { "label": "Deferred deep link required", "variant": "warning" }
+  ],
+  "summary": "Run user acquisition (UA) and retargeting (RT) as separate campaigns. RT builds Lookalikes from LTV-validated high-value seeds and reaches 7–30-day dormant users with personalized messaging. Every RT ad click must route through a deferred deep link straight to the last screen the user saw.",
+  "toc": [
+    { "id": "s-audience", "title": "Audience segmentation" },
+    { "id": "s-deeplink", "title": "Deferred deep links" },
+    { "id": "s-seed", "title": "Lookalike seed design" },
+    { "id": "s-trouble", "title": "Troubleshooting" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-audience",
+      "ix": "§1",
+      "title": "Audience segmentation",
+      "content": [
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Segment", "type": "string" },
+            { "label": "Definition", "type": "string" },
+            { "label": "Target message", "type": "string" },
+            { "label": "Expected ROAS", "type": "string" }
+          ],
+          "rows": [
+            ["Cart Abandoner", "add_to_cart, no purchase within 24h", "Cart items + free-shipping coupon", "8.0x"],
+            ["First Purchase", "1 purchase, no repurchase for 14 days", "5% off the second purchase", "5.5x"],
+            ["VIP Dormant", "purchase ≥ 3, inactive last 30 days", "New-arrival curation + personalized picks", "12.0x"],
+            ["7d Inactive", "no session_start for 7 days, install < 30d", "New items in recently viewed categories", "3.2x"],
+            ["30d Inactive", "30 days inactive, non-paying", "Comeback coupon + seasonal bestsellers", "2.0x"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-deeplink",
+      "ix": "§2",
+      "title": "Deferred deep links",
+      "content": [
+        { "type": "paragraph", "html": "Retargeting ad click → users without the app go via the store, then route to the original ad URL on first launch. Uses the DeeplinkRouter from guide 1-1." },
+        {
+          "type": "code",
+          "lang": "http",
+          "label": "Adjust retargeting URL example",
+          "code": "https://app.adjust.com/{tracker_token}?\n  campaign=rt_cart_abandoner_2026_05\n  &adgroup=meta_lookalike_1p\n  &creative=video_cart_v3\n  &deeplink=myapp%3A%2F%2Fcart%3Fpromo%3DFREESHIP\n  &fallback=https%3A%2F%2Fwww.example.com%2Fcart\n  &reengagement_window=30"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-seed",
+      "ix": "§3",
+      "title": "Lookalike seed design",
+      "content": [
+        {
+          "type": "list",
+          "items": [
+            "<strong>Primary seed: VIP purchasers</strong> — purchase 3+ or top-10% LTV. Build the network Lookalike at 1%.",
+            "<strong>Secondary seed: high engagement</strong> — D7 retention held + 5+ sessions/day. Use when the primary seed is too small.",
+            "<strong>Forbidden seeds</strong>: plain installers or signup-only users — you get a Lookalike that only resembles \"people likely to click ads\", with cheap CPI but below-average LTV."
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-trouble",
+      "ix": "§4",
+      "title": "Troubleshooting",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "danger",
+          "title": "Retargeting and UA hit the same users and cannibalize",
+          "html": "Always add a Customer List (installers) exclusion to UA campaigns. Meta: Audience Suppression option; Google: handle via the campaign's Negative Audience."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Deferred deep link doesn't fire on first launch",
+          "html": "See guide 1-1 §4. Android depends on the Install Referrer API; iOS requires LinkMe or Universal Link domain verification."
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Customer List match rate is low (under 40% on Meta)",
+          "html": "Normalization was skipped before hashing emails/phone numbers. Lowercase, strip whitespace, unify country codes (+82 etc.), then SHA-256. Meta accepts only hashes, never raw values."
+        }
+      ]
+    }
+  ]
+}

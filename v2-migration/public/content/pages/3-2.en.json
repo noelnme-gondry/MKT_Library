@@ -1,0 +1,110 @@
+{
+  "$schema": "../schema.md",
+  "id": "3-2",
+  "eyebrow": "3 Creative · 3-2",
+  "title": "Ad Creative Specs by Network",
+  "deck": "Creatives that violate a network's spec either don't serve or get auto-cropped, cutting off the core message. This doc standardizes the size matrix, the 5MB playable constraint, and video safe zones.",
+  "chips": [
+    { "label": "Audience · Designers/Marketers" },
+    { "label": "5 networks covered", "variant": "ok" }
+  ],
+  "summary": "Every network's creative specs change yearly. This guide is current as of May 2026 — re-verify quarterly. Playables enforce the IAB Mobile RB Standard (5MB); place key text inside each network's safe zone (top/bottom ~15%).",
+  "toc": [
+    { "id": "s-matrix", "title": "Size matrix" },
+    { "id": "s-playable", "title": "Playable guide" },
+    { "id": "s-safe", "title": "Video safe zones" },
+    { "id": "s-trouble", "title": "Troubleshooting" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-matrix",
+      "ix": "§1",
+      "title": "Size matrix by network",
+      "content": [
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Network", "type": "string" },
+            { "label": "Format", "type": "string" },
+            { "label": "Ratio", "type": "string" },
+            { "label": "Min resolution", "type": "string" },
+            { "label": "Size limit", "type": "string" }
+          ],
+          "rows": [
+            ["Meta", "Feed image", "1:1", "1080×1080", "30MB"],
+            ["Meta", "Story video", "9:16", "1080×1920", "4GB / 15–60s"],
+            ["Meta", "Reels video", "9:16", "1080×1920", "4GB / up to 90s"],
+            ["TikTok", "In-Feed video", "9:16", "720×1280", "500MB / 9–60s"],
+            ["TikTok", "Spark Ads", "9:16", "720×1280", "500MB"],
+            ["Google", "App Install video", "16:9 / 9:16 / 1:1", "480p+", "1GB / 10–30s"],
+            ["Google", "App Install image", "1.91:1 / 1:1 / 4:5", "600px+", "5MB"],
+            ["Snap", "Snap Ads", "9:16", "1080×1920", "1GB / 3–180s"],
+            ["AppLovin", "Playable", "9:16 / 1:1", "640×1136", "5MB (IAB)"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-playable",
+      "ix": "§2",
+      "title": "Playable guide",
+      "content": [
+        {
+          "type": "list",
+          "items": [
+            "<strong>5MB hard limit</strong>: HTML5 + JS + images combined. Use WebP/AVIF; fall back to system fonts",
+            "<strong>Load within 1.5 seconds</strong>: networks reject playables that take too long to first interaction",
+            "<strong>3 required elements</strong>: (1) a clear action cue within the first second, (2) a simulation of core gameplay/features, (3) a closing CTA (install button)",
+            "<strong>iframe isolation</strong>: network SDKs run playables inside an iframe — no external domain calls. Inline every resource as base64"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-safe",
+      "ix": "§3",
+      "title": "Video safe zones",
+      "content": [
+        { "type": "paragraph", "html": "9:16 vertical video gets covered by each network's UI overlays (like button, username, CTA). Keep key text inside the safe zone." },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Network", "type": "string" },
+            { "label": "Top margin", "type": "string" },
+            { "label": "Bottom margin", "type": "string" },
+            { "label": "Side margins", "type": "string" }
+          ],
+          "rows": [
+            ["TikTok", "Top 14%", "Bottom 35% (CTA + username)", "Sides 10%"],
+            ["Meta Reels", "Top 12%", "Bottom 30%", "Left 10% / Right 25% (action buttons)"],
+            ["YouTube Shorts", "Top 10%", "Bottom 25%", "Sides 8%"],
+            ["Snapchat", "Top 18%", "Bottom 20%", "Sides 8%"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-trouble",
+      "ix": "§4",
+      "title": "Troubleshooting",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "danger",
+          "title": "Playable rejected in network review",
+          "html": "1) Over 5MB (measured after GZIP decompression). 2) External domain calls (api.example.com etc.) — inline everything. 3) Auto-redirects or auto-clicks — the CTA must follow an explicit user action."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Key video info gets covered (TikTok)",
+          "html": "The bottom-35% safe zone wasn't respected. Place captions/pricing/CTA text in the middle or upper half. For multi-country creatives, set safe zones based on the longest-text language."
+        }
+      ]
+    }
+  ]
+}

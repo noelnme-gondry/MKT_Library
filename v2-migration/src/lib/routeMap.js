@@ -101,12 +101,23 @@ export function idToPath(id) {
 // so untranslated tools never get a thin/half-Korean page indexed.
 export const EN_READY_TOOL_IDS = new Set([
   // 5-6(소재 분석)은 9-6으로 통합 — EN 지원도 9-6으로 이관.
-  "5-2", "5-3", "5-4", "9-6", "5-18", "5-20", "5-21", "5-22", "5-23",
+  "5-2", "5-3", "5-4", "9-6", "9-1", "5-18", "5-20", "5-21", "5-22", "5-23",
+]);
+
+// EN 번역 완료된 SOP 가이드({id}.en.json 존재 + SopContent DATA_BASED_PAGES 등록).
+// 1-1·8-1은 리터럴 라우트(/en/guide/dev-collaboration 등)가 우선 서빙하지만, 사이드바·
+// GuideIndex의 EN 링크 게이트(hasEnVersion)를 위해 여기에도 포함.
+export const EN_READY_GUIDE_IDS = new Set([
+  "1-1", "1-2", "1-3", "1-4",
+  "2-1", "2-2", "2-3", "2-4",
+  "3-1", "3-2", "3-3",
+  "4-1", "4-2", "4-3",
+  "8-1",
 ]);
 
 export function hasEnVersion(id) {
-  // guide-index·start-gate는 UI 셸(라벨만 번역) — EN 지원. 개별 가이드는 여전히 KR.
-  return id === "home" || id === "guide-index" || id === "start-gate" || EN_READY_TOOL_IDS.has(id);
+  // guide-index·start-gate는 UI 셸(라벨만 번역) — EN 지원. 개별 가이드는 EN_READY_GUIDE_IDS로 게이트.
+  return id === "home" || id === "guide-index" || id === "start-gate" || EN_READY_TOOL_IDS.has(id) || EN_READY_GUIDE_IDS.has(id);
 }
 
 // { ko, en } absolute URL pair for hreflang alternates.languages, or null

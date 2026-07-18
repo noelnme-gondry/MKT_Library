@@ -1,0 +1,121 @@
+{
+  "$schema": "../schema.md",
+  "id": "2-1",
+  "eyebrow": "2 Campaign · 2-1",
+  "title": "Google App Campaigns (UAC) Guide",
+  "deck": "UAC is a black-box campaign where machine learning decides bidding, targeting, and creative combinations. The operator's three levers are (1) campaign structure, (2) bid-stage progression, (3) asset group diversity.",
+  "chips": [
+    { "label": "Channel · Google Ads" },
+    { "label": "Bidding · tCPI/tCPA/tROAS", "variant": "ok" },
+    { "label": "Learning phase ≥ 7 days", "variant": "warning" }
+  ],
+  "summary": "UAC splits into Install campaigns (I) and In-app Action campaigns (II/III). New apps start with I, move to II (tCPA) after securing 30+ installs/day, and graduate to III (tROAS) once revenue signal stabilizes. Safe bid changes: at most once a week, within ±20%.",
+  "toc": [
+    { "id": "s-structure", "title": "Campaign structure" },
+    { "id": "s-bid", "title": "Bid strategy stages" },
+    { "id": "s-asset", "title": "Asset group rules" },
+    { "id": "s-trouble", "title": "Troubleshooting" }
+  ],
+  "body": [
+    {
+      "type": "section",
+      "id": "s-structure",
+      "ix": "§1",
+      "title": "Campaign structure (OS × country × stage)",
+      "content": [
+        { "type": "paragraph", "html": "UAC learns per campaign, so splitting = splitting the learning. Too granular starves learning volume; too merged adds optimization noise. Baseline split: always separate <strong>iOS / Android</strong> and <strong>country</strong>, but <strong>bundle similar countries</strong> (US+CA, JP+TW, etc.)." },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Campaign type", "type": "string" },
+            { "label": "Bid option", "type": "string" },
+            { "label": "Conversion definition", "type": "string" },
+            { "label": "Min daily conversions", "type": "number" },
+            { "label": "Recommended timing", "type": "string" }
+          ],
+          "rows": [
+            ["UAC for Install (UAC-I)", "tCPI", "Install", "10", "Launch ~ Day 30"],
+            ["UAC for In-app Action (UAC-II)", "tCPA", "Tier-1 event (sign_up etc.)", "10", "After Day 30"],
+            ["UAC for ROAS (UAC-III)", "tROAS", "Revenue", "30", "After monthly revenue stabilizes"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-bid",
+      "ix": "§2",
+      "title": "Bid strategy — staged progression",
+      "content": [
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "<strong>Phase 1 · tCPI (Day 1–30)</strong> — set the initial target CPI at 1.3–1.5× market average (to accelerate learning). After reaching 30+ installs/day, step it down by −10% at a time.",
+            "<strong>Phase 2 · tCPA (Day 30–60)</strong> — designate a Tier-1 in-app event (sign_up, purchase, etc.) as the conversion. Initialize CPA = CPI × (inverse of install→event CVR).",
+            "<strong>Phase 3 · tROAS (Day 60+)</strong> — enter after D7 or D30 revenue stabilizes. Start the ROAS target around LTV/CAC = 1.0 and raise +10% weekly."
+          ]
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "Learning Phase",
+          "html": "After any bid change, the campaign is learning for at least 7 days + 50 conversions. Changing again during that window restarts the ML and craters cost efficiency. Change at most ±20% at a time."
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-asset",
+      "ix": "§3",
+      "title": "Asset group rules (creative diversity)",
+      "content": [
+        { "type": "paragraph", "html": "UAC auto-combines assets into ads. Low diversity = weak learning signal. Run 2–3 asset groups per campaign, each enforcing these minimums:" },
+        {
+          "type": "table",
+          "headers": [
+            { "label": "Asset type", "type": "string" },
+            { "label": "Minimum", "type": "number" },
+            { "label": "Recommended", "type": "number" },
+            { "label": "Spec", "type": "string" }
+          ],
+          "rows": [
+            ["Headline (Text)", "5", "10", "≤30 chars; networks auto-truncate"],
+            ["Description (Text)", "5", "10", "≤90 chars"],
+            ["Image", "3", "8", "1200×628 + 1200×1200 + 1200×1500"],
+            ["Landscape video", "1", "3", "16:9, 15–30s, MP4"],
+            ["Portrait video", "1", "3", "9:16, 15–30s (YouTube Shorts placement)"],
+            ["Square video", "1", "2", "1:1, 15–30s"],
+            ["HTML5 (optional)", "0", "1", "300×250 or 320×480 interstitial"]
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "id": "s-trouble",
+      "ix": "§4",
+      "title": "Troubleshooting",
+      "content": [
+        {
+          "type": "callout",
+          "variant": "danger",
+          "title": "The campaign never exits the learning phase",
+          "html": "Under 10 conversions/day, learning can't converge. 1) Move the conversion definition one funnel step up (purchase → add_to_cart). 2) Temporarily raise the bid +30%. 3) Merge countries/OS into one campaign — you can re-split after learning completes."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "A tROAS campaign reports 0 revenue",
+          "html": "Check the revenue-sending toggle for the purchase event in Adjust → Google Ads partner. Without a Firebase connection revenue can't flow — switch to Adjust direct-send mode."
+        },
+        {
+          "type": "callout",
+          "variant": "warn",
+          "title": "iOS campaign installs report only via SKAN",
+          "html": "This is normal. All iOS 14.5+ users who declined ATT are classified into the SKAN channel; total installs = deterministic + probabilistic + SKAN summed in the Adjust dashboard."
+        }
+      ]
+    }
+  ]
+}

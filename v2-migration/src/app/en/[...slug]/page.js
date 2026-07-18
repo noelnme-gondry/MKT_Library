@@ -1,7 +1,24 @@
-import { resolveSlugToId, idToPath, SITE_URL, hasEnVersion, enAlternates } from "@/lib/routeMap";
+import fs from "fs";
+import path from "path";
+import { resolveSlugToId, idToPath, SITE_URL, hasEnVersion, enAlternates, EN_READY_GUIDE_IDS } from "@/lib/routeMap";
 import { findMeta } from "@/store/useDataStore";
+import { ITEM_TITLE_EN } from "@/lib/enNavCopy";
 import { buildPageKeywords } from "@/lib/pageKeywords";
 import PageClient from "./PageClient";
+
+// EN 가이드({id}.en.json)의 title/deck을 메타데이터로 재사용 — generateMetadata는
+// 서버 전용이라 fs 직접 읽기 가능(public/은 그대로 정적 서빙, 여기선 빌드타임 참조만).
+function readEnGuideMeta(routeId) {
+  try {
+    const p = path.join(process.cwd(), "public", "content", "pages", `${routeId}.en.json`);
+    const data = JSON.parse(fs.readFileSync(p, "utf8"));
+    // deck은 HTML을 포함할 수 있어 태그 제거 후 description으로.
+    const deck = String(data.deck || "").replace(/<[^>]+>/g, "");
+    return { title: data.title || null, description: deck || null };
+  } catch {
+    return { title: null, description: null };
+  }
+}
 
 // KR [[...slug]]/page.js의 EN 미러. 이 트리는 EN_READY_TOOL_IDS에 있는 도구만
 // 실제로 렌더하고(§plan), 나머지는 PageClient가 런타임에 KR로 redirect한다 —
@@ -12,8 +29,9 @@ export async function generateMetadata({ params }) {
   if (!routeId || !hasEnVersion(routeId)) return {};
 
   const meta = findMeta(routeId);
-  const title = meta?.seoTitleEn || meta?.titleEn || meta?.title || routeId;
-  const description = meta?.seoDescriptionEn || meta?.seoDescription || meta?.title;
+  const guideMeta = EN_READY_GUIDE_IDS.has(routeId) ? readEnGuideMeta(routeId) : { title: null, description: null };
+  const title = meta?.seoTitleEn || meta?.titleEn || guideMeta.title || ITEM_TITLE_EN[routeId] || meta?.title || routeId;
+  const description = meta?.seoDescriptionEn || guideMeta.description || meta?.seoDescription || meta?.title;
   const canonical = `${SITE_URL}/en${idToPath(routeId)}`;
   const keywords = buildPageKeywords(meta, "en");
   const langs = enAlternates(routeId);

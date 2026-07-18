@@ -3,7 +3,7 @@ import React from "react";
 import Link from "next/link";
 import { IA, SECTIONS } from "@/store/useDataStore";
 import { idToPath, hasEnVersion } from "@/lib/routeMap";
-import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
+import { trGroupTitle, trGroupDesc, trItemTitle } from "@/lib/enNavCopy";
 
 // 가이드 인덱스 — 블로그(`/blog`)처럼 자체 주소(`/guide`)를 갖는 SOP 목록 페이지.
 // 예전엔 랜딩 track 상태(무주소)로만 떠서 뒤로가기가 깨졌음 → 실제 라우트로 승격.
@@ -50,7 +50,7 @@ export default function GuideIndex({ locale = "ko" }) {
                 <span style={{ fontSize: "18px" }}>{STEP_ICONS[idx] || "📘"}</span>
                 <div className="phase-card-title" style={{ margin: 0 }}>{gTitle}</div>
               </div>
-              {g.desc && <div className="phase-card-desc" style={{ margin: 0 }}>{g.desc}</div>}
+              {g.desc && <div className="phase-card-desc" style={{ margin: 0 }}>{trGroupDesc(g.id, locale, g.desc)}</div>}
               <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "2px" }}>
                 {items.map((it) => (
                   <Link
