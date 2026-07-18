@@ -43,6 +43,11 @@ export default function sitemap() {
     })),
   ];
 
+  // CSV 템플릿 다운로드("/templates") — 블로그와 동일하게 routeMap 밖 독립 페이지.
+  const templateEntries = [
+    { url: `${BASE}/templates`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
+  ];
+
   // EN 랜딩("/en") — routeMap 밖의 별도 literal 라우트(§en-landing-page). id 불변
   // 규칙상 ROUTES에 추가하지 않고 여기서 직접 추가(EN 블로그와 동일 방식).
   const enLandingEntries = [
@@ -76,5 +81,5 @@ export default function sitemap() {
     priority: 0.8,
   }));
 
-  return [...routeEntries, ...blogEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enToolEntries];
+  return [...routeEntries, ...blogEntries, ...templateEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enToolEntries];
 }

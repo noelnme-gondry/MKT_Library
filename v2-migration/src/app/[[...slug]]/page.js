@@ -36,7 +36,7 @@ export async function generateMetadata({ params }) {
     description,
     keywords,
     alternates: { canonical, ...(langs ? { languages: langs } : {}) },
-    openGraph: { title, description, url: canonical },
+    openGraph: { title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] },
   };
 }
 

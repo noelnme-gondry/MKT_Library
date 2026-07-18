@@ -51,6 +51,8 @@ export default function Header({ locale = "ko" }) {
   const cleanPath = (pathname || "/").replace(/^\/en(?=\/|$)/, "") || "/";
   const isBlog = cleanPath === "/blog" || cleanPath.startsWith("/blog/");
   const blogHref = locale === "en" ? "/en/blog" : "/blog";
+  // CSV 템플릿도 블로그와 동일하게 routeMap 밖(§templates). EN 미번역이라 항상 KR로.
+  const isTemplates = cleanPath === "/templates";
   // KR<->EN 페이지 전환 — 현재 페이지 기준(홈 아니어도 항상 이 경로 유지). EN→KR은
   // 늘 있음(KR이 항상 완성본). KR→EN은 번역된 페이지일 때만, 없으면 /en 홈 폴백.
   const switchHref = isBlog
@@ -104,8 +106,16 @@ export default function Header({ locale = "ko" }) {
             </Link>
           </>
         )}
+        {isTemplates && (
+          <>
+            <span className="sep">/</span>
+            <span className="current" style={{ color: "var(--text-secondary)" }}>
+              CSV 템플릿
+            </span>
+          </>
+        )}
         {/* 트레일링 크럼은 도구/문서 페이지에서만(홈은 브랜드만). */}
-        {!isBlog && meta && (
+        {!isBlog && !isTemplates && meta && (
           <>
             <span className="sep">/</span>
             <span

@@ -11,6 +11,7 @@ const SIDEBAR_COPY = {
   ko: {
     searchPlaceholder: "가이드·파라미터·코드 검색…",
     blog: "블로그",
+    templates: "CSV 템플릿",
     youtube: "유튜브",
     instagram: "인스타",
     facebook: "페북",
@@ -19,6 +20,7 @@ const SIDEBAR_COPY = {
   en: {
     searchPlaceholder: "Search guides, params, code…",
     blog: "Blog",
+    templates: "CSV Templates",
     youtube: "YouTube",
     instagram: "Instagram",
     facebook: "Facebook",
@@ -170,6 +172,25 @@ export default function Sidebar({ locale = "ko" }) {
         >
           <span className="phase-header-left">
             <span className="phase-tag">{T.blog}</span>
+          </span>
+          <span style={{ fontSize: "13px", opacity: 0.6 }}>→</span>
+        </Link>
+      </section>
+
+      {/* CSV 템플릿 다운로드 — 블로그와 동일하게 routeMap 밖 독립 페이지(EN 미번역, KR만). */}
+      <section className="phase-section" data-section="templates">
+        <Link
+          href="/templates"
+          className="phase-header"
+          aria-current={(pathname || "").includes("/templates") ? "page" : undefined}
+          style={{
+            textDecoration: "none",
+            color: "inherit",
+            background: (pathname || "").includes("/templates") ? "var(--bg-2)" : undefined,
+          }}
+        >
+          <span className="phase-header-left">
+            <span className="phase-tag">{T.templates}</span>
           </span>
           <span style={{ fontSize: "13px", opacity: 0.6 }}>→</span>
         </Link>

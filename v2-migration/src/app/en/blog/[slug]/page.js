@@ -24,6 +24,7 @@ export async function generateMetadata({ params }) {
     description: post.description,
     url: canonical,
     publishedTime: post.date || undefined,
+    // images 미지정 시 opengraph-image.js(파일 컨벤션, 글별 동적 카드)가 자동 주입.
     ...(post.ogImage ? { images: [post.ogImage] } : {}),
   };
   return {
@@ -66,6 +67,18 @@ function buildPostJsonLd(post, canonical) {
     logo: { "@type": "ImageObject", url: `${SITE_URL}/og-card.png` },
   };
   const images = extractImages(post.html);
+  const faqNode = post.faq.length
+    ? [
+        {
+          "@type": "FAQPage",
+          mainEntity: post.faq.map((item) => ({
+            "@type": "Question",
+            name: item.q,
+            acceptedAnswer: { "@type": "Answer", text: item.a },
+          })),
+        },
+      ]
+    : [];
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -91,6 +104,7 @@ function buildPostJsonLd(post, canonical) {
           { "@type": "ListItem", position: 3, name: post.title, item: canonical },
         ],
       },
+      ...faqNode,
     ],
   };
 }
@@ -125,6 +139,18 @@ export default async function EnBlogPostPage({ params }) {
       </header>
 
       <article className="blog-prose" dangerouslySetInnerHTML={{ __html: post.html }} />
+
+      {post.faq.length > 0 && (
+        <section className="blog-faq" aria-label="Frequently asked questions">
+          <h2>Frequently asked questions</h2>
+          {post.faq.map((item, i) => (
+            <details key={i} className="blog-faq-item">
+              <summary>{item.q}</summary>
+              <div className="blog-faq-item-answer">{item.a}</div>
+            </details>
+          ))}
+        </section>
+      )}
     </div>
   );
 }

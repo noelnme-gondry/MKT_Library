@@ -75,6 +75,10 @@ function parseFile(fileName, locale) {
     keywords: data.keywords || "",
     tags: consolidateTags(Array.isArray(data.tags) ? data.tags : []),
     ogImage: data.ogImage || "",
+    // FAQPage 구조화 데이터 + 화면 아코디언 공용 소스. [{q,a}], q/a 둘 다 없는 항목은 방어적으로 제외.
+    faq: Array.isArray(data.faq)
+      ? data.faq.filter((item) => item && item.q && item.a)
+      : [],
     draft: data.draft === true,
     html: localizeInternalLinks(marked.parse(content || ""), locale),
   };

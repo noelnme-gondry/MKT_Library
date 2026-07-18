@@ -14,7 +14,7 @@ export async function generateMetadata() {
     title: { absolute: title },
     description,
     alternates: { canonical, languages: { ko: `${SITE_URL}/guide`, en: canonical } },
-    openGraph: { title, description, url: canonical, locale: "en_US" },
+    openGraph: { title, description, url: canonical, locale: "en_US", images: [`${SITE_URL}/og-card.png`] },
   };
 }
 

@@ -4119,3 +4119,53 @@ body:not(.light-mode) .moon-icon {
   margin: 20px auto;
   border-radius: var(--radius-lg);
 }
+
+/* 블로그 FAQ 아코디언 — FAQPage JSON-LD와 짝(§blog faq frontmatter). */
+.blog-faq {
+  margin: 2.5rem 0 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+}
+.blog-faq h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  margin: 0 0 0.9rem;
+}
+.blog-faq-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  margin-bottom: 0.6rem;
+  background: var(--surface-container-lowest);
+}
+.blog-faq-item > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.85rem 1rem;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.blog-faq-item > summary::-webkit-details-marker {
+  display: none;
+}
+.blog-faq-item > summary::after {
+  content: "+";
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.blog-faq-item[open] > summary::after {
+  content: "−";
+}
+.blog-faq-item-answer {
+  padding: 0 1rem 0.9rem;
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}

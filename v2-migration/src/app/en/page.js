@@ -24,6 +24,7 @@ export async function generateMetadata() {
       description,
       url: canonical,
       locale: "en_US",
+      images: [`${SITE_URL}/og-card.png`],
     },
   };
 }
