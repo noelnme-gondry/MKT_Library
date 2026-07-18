@@ -131,7 +131,7 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, initia
     return (
       <button
         type="button"
-        className="ab-pill"
+        className="sheet-connect-btn"
         style={{ marginTop: "10px" }}
         onClick={() => {
           setOpen(true);
