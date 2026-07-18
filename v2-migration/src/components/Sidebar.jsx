@@ -12,6 +12,7 @@ const SIDEBAR_COPY = {
     searchPlaceholder: "가이드·파라미터·코드 검색…",
     blog: "블로그",
     templates: "CSV 템플릿",
+    glossary: "용어사전",
     youtube: "유튜브",
     instagram: "인스타",
     facebook: "페북",
@@ -21,6 +22,7 @@ const SIDEBAR_COPY = {
     searchPlaceholder: "Search guides, params, code…",
     blog: "Blog",
     templates: "CSV Templates",
+    glossary: "Glossary",
     youtube: "YouTube",
     instagram: "Instagram",
     facebook: "Facebook",
@@ -191,6 +193,25 @@ export default function Sidebar({ locale = "ko" }) {
         >
           <span className="phase-header-left">
             <span className="phase-tag">{T.templates}</span>
+          </span>
+          <span style={{ fontSize: "13px", opacity: 0.6 }}>→</span>
+        </Link>
+      </section>
+
+      {/* 용어사전 — 블로그·템플릿과 동일 패턴(routeMap 밖, EN 미번역). */}
+      <section className="phase-section" data-section="glossary">
+        <Link
+          href="/glossary"
+          className="phase-header"
+          aria-current={(pathname || "").includes("/glossary") ? "page" : undefined}
+          style={{
+            textDecoration: "none",
+            color: "inherit",
+            background: (pathname || "").includes("/glossary") ? "var(--bg-2)" : undefined,
+          }}
+        >
+          <span className="phase-header-left">
+            <span className="phase-tag">{T.glossary}</span>
           </span>
           <span style={{ fontSize: "13px", opacity: 0.6 }}>→</span>
         </Link>
