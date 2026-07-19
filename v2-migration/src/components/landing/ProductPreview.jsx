@@ -118,6 +118,16 @@ export default function ProductPreview({ videoSrc = null, poster = null, locale 
         ) : (
           <div style={{ padding: "16px", pointerEvents: "none", minHeight: "312px" }}>
             <div style={{ transition: "opacity 0.25s", opacity: shown ? 1 : 0, display: "flex", flexDirection: "column", gap: "12px" }}>
+              {/* 필터 바 — 실제 도구의 sticky 컨트롤바 축소판(기간·채널·통화 pill) */}
+              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                {(locale === "en" ? ["Last 28d · daily", "All channels", "KRW ₩"] : ["최근 28일 · 일별", "전체 채널", "₩ 원화"]).map((p, i) => (
+                  <span key={i} style={{ fontSize: "10.5px", fontWeight: 600, padding: "3px 10px", borderRadius: "999px", border: "1px solid var(--border-subtle, var(--border))", color: "var(--text-secondary)", background: "var(--surface-container-lowest, rgba(255,255,255,0.03))" }}>
+                    {p} {i < 2 ? "▾" : ""}
+                  </span>
+                ))}
+                <span style={{ flex: 1 }} />
+                <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>{locale === "en" ? "sample data" : "샘플 데이터"}</span>
+              </div>
               {/* 상단 KPI 스트립 */}
               {scene.kpis && (
                 <div style={{ display: "flex", gap: "10px" }}>{scene.kpis.map(kpiTile)}</div>
