@@ -6,7 +6,8 @@
 // 파라미터화의 유일한 예외 — 소스 컴포넌트가 없어 엔진 위 신규 UI).
 //
 // 통계적 정직성(§8): 관측 속성 회귀는 교락이 심함 → "연관"이지 "인과" 아님.
-// OLS가 산출하지 않는 값("확률 85%" 등)은 만들지 않는다. 유의성은 two-sided p.
+// OLS가 산출하지 않는 값("확률 85%" 등)은 만들지 않는다. 유의성은 HC3 robust
+// two-sided p에 BH 다중검정 보정을 적용한다.
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import Papa from "papaparse";
 import Chart from "chart.js/auto";
@@ -49,6 +50,7 @@ const EA_COPY = {
     errNoVariance: "고른 요소가 전부 같은 값이라 성과와의 관계를 추정할 수 없습니다. 값이 변하는 요소를 넣어주세요.",
     errTooFewRows: (n, k) => `데이터 행이 요소 수 대비 너무 적습니다(행 ${n} · 변수 ${k}). 콘텐츠 편수를 늘리거나 요소 수를 줄이세요.`,
     errSingular: "요소들이 서로 너무 비슷(공선성)해 각 요소의 몫을 분리할 수 없습니다. 겹치는 요소를 하나만 남겨보세요.",
+    errHighLeverage: "선택한 요소가 너무 적은 콘텐츠에만 나타나 강건한 불확실성을 계산할 수 없습니다. 해당 요소가 있는 콘텐츠와 없는 콘텐츠를 각각 2개 이상 확보하거나 희소 요소를 빼주세요.",
     heroQ: C.heroQ,
     heroSub: C.heroSub,
     topSigLabel: "🏆 가장 강한 요소",
@@ -56,7 +58,7 @@ const EA_COPY = {
     causationTitle: "연관이지 인과 아님",
     causationBody: C.causationBody,
     forestTitle: "어떤 요소가 성과와 연관됐나",
-    ciLegendLabel: "95% 신뢰구간",
+    ciLegendLabel: "HC3 95% 신뢰구간",
     coefLegendLabel: "계수(추정 효과)",
     axisTitle: (outcome) => `${outcome} 변화 (계수)`,
     tipSig: " (유의)",
@@ -68,15 +70,16 @@ const EA_COPY = {
     thElement: "요소",
     thCoef: "계수",
     thCoefTip: "추정 효과(계수)",
-    thSeTip: "표준오차",
-    thTTip: "t = 계수/SE (연관 강도)",
-    thPTip: "two-sided p-value",
-    thCiTip: "95% 신뢰구간",
+    thSeTip: "이분산에 강건한 HC3 표준오차",
+    thTTip: "t = 계수/HC3 SE (연관 강도)",
+    thRawPTip: "HC3 two-sided 원 p-value",
+    thPTip: "BH 보정 two-sided p-value",
+    thCiTip: "HC3 pointwise 95% 신뢰구간",
     thVerdict: "판정",
     sigUp: "유의 ↑",
     sigDown: "유의 ↓",
     ns: "무유의",
-    tableFootnote: '중요도 순서는 연관 강도(|t|) 기준입니다(단위가 다른 요소도 공정 비교). 계수는 각 요소의 원단위 효과 — 있음/없음(0/1) 요소는 "있을 때 vs 없을 때", 숫자 요소는 "1 증가 시" 성과 변화입니다.',
+    tableFootnote: '표준오차·신뢰구간은 이분산에 강건한 HC3, 판정은 BH 보정 p값 기준입니다. 신뢰구간은 요소별 pointwise 구간입니다. 계수는 각 요소의 원단위 연관 — 있음/없음(0/1)은 "있을 때 vs 없을 때", 숫자는 "1 증가 시" 성과 변화입니다.',
   },
   en: {
     dataPrep: "Prepare your data",
@@ -104,6 +107,7 @@ const EA_COPY = {
     errNoVariance: "Every selected element has the same value in every row, so its relationship with the outcome can't be estimated. Add elements whose values vary.",
     errTooFewRows: (n, k) => `Too few rows for the number of elements (rows ${n} · variables ${k}). Add more content pieces or drop some elements.`,
     errSingular: "The elements are too similar to each other (collinearity) to separate their contributions. Keep only one of any overlapping pair.",
+    errHighLeverage: "A selected element appears in too few content pieces to estimate robust uncertainty. Add at least two pieces with and without that element, or remove the sparse element.",
     heroQ: "Which production elements drive performance?",
     heroSub: "Puts your content pieces' production attributes and outcomes (CTR, views) side by side, and uses multivariate regression to isolate the elements significantly associated with performance.",
     topSigLabel: "🏆 Strongest element",
@@ -111,7 +115,7 @@ const EA_COPY = {
     causationTitle: "Association, not causation",
     causationBody: "These results are <strong>associations</strong>, not <strong>causation</strong>. Skilled creators tend to use several good elements together (confounding), so changing one element in isolation may behave differently. Confirm with an <strong>A/B test</strong> that changes exactly one element.",
     forestTitle: "Which elements are associated with the outcome",
-    ciLegendLabel: "95% confidence interval",
+    ciLegendLabel: "HC3 95% confidence interval",
     coefLegendLabel: "Coefficient (estimated effect)",
     axisTitle: (outcome) => `Change in ${outcome} (coefficient)`,
     tipSig: " (significant)",
@@ -123,15 +127,16 @@ const EA_COPY = {
     thElement: "Element",
     thCoef: "Coef",
     thCoefTip: "Estimated effect (coefficient)",
-    thSeTip: "Standard error",
-    thTTip: "t = coef/SE (association strength)",
-    thPTip: "two-sided p-value",
-    thCiTip: "95% confidence interval",
+    thSeTip: "HC3 heteroskedasticity-robust standard error",
+    thTTip: "t = coef/HC3 SE (association strength)",
+    thRawPTip: "Raw HC3 two-sided p-value",
+    thPTip: "BH-adjusted two-sided p-value",
+    thCiTip: "Pointwise HC3 95% confidence interval",
     thVerdict: "Verdict",
     sigUp: "Sig ↑",
     sigDown: "Sig ↓",
     ns: "n.s.",
-    tableFootnote: "Importance order is by association strength (|t|), which compares fairly across units. Coefficients are each element's raw-unit effect — for yes/no (0/1) elements it's \"present vs absent\"; for numeric elements it's the outcome change per +1.",
+    tableFootnote: "SEs and pointwise intervals use heteroskedasticity-robust HC3; decisions use BH-adjusted p-values. Coefficients are raw-unit associations — present vs absent for 0/1 elements, or the outcome change per +1 for numeric elements.",
   },
 };
 
@@ -167,12 +172,12 @@ function analyzeSig(outcome, features, fileName) {
 /* 결과 CSV(BOM+CRLF, §7) — 검증 가능성(§9). */
 function downloadCoefCsv(rows) {
   const q = (s) => { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-  const head = ["element", "coefficient", "std_error", "t_value", "p_two_sided", "ci_low", "ci_high", "significant_5pct"];
+  const head = ["element", "coefficient", "hc3_std_error", "hc3_t_value", "p_raw_two_sided_hc3", "p_bh_adjusted", "hc3_ci_low", "hc3_ci_high", "significant_bh_5pct"];
   const lines = [head.join(",")];
   for (const r of rows) {
     lines.push([
       r.name, r.coef.toFixed(5), r.se.toFixed(5), r.t.toFixed(3),
-      r.p.toFixed(5), r.ciLo.toFixed(5), r.ciHi.toFixed(5), r.sig ? "1" : "0",
+      r.rawP.toFixed(5), r.p.toFixed(5), r.ciLo.toFixed(5), r.ciHi.toFixed(5), r.sig ? "1" : "0",
     ].map(q).join(","));
   }
   const content = "﻿" + lines.join("\r\n");
@@ -274,7 +279,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
     let res;
     try { res = REG_STATS.ols(X, y); } catch { return { error: "singular", dropped }; }
-    if (!res || !isFinite(res.R2) || res.se.some((s) => !isFinite(s))) return { error: "singular", dropped };
+    if (!res || res.regularized || !isFinite(res.R2) || res.se.some((s) => !isFinite(s))) return { error: "singular", dropped };
+    if (!res.hc3Valid) return { error: "high-leverage", dropped, maxLeverage: res.maxLeverage };
 
     const isBinaryFeature = (f) => {
       const set = new Set(csvData.raw.map((r) => num(r[f])).filter(isFinite));
@@ -282,19 +288,28 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
     };
     const rows = useFeatures.map((f, j) => {
       const idx = j + 1; // 절편이 0
-      const p2 = Math.min(1, 2 * res.pval[idx]); // two-sided
+      const p2 = res.hc3Pval[idx]; // REG_STATS.tSF가 이미 two-sided p-value 반환.
       return {
         name: f,
         coef: res.beta[idx],
-        se: res.se[idx],
-        t: res.tval[idx],
+        se: res.hc3Se[idx],
+        t: res.hc3Tval[idx],
         p: p2,
-        ciLo: res.ci[idx][0],
-        ciHi: res.ci[idx][1],
-        sig: p2 < 0.05,
+        rawP: p2,
+        ciLo: res.hc3Ci[idx][0],
+        ciHi: res.hc3Ci[idx][1],
+        sig: false,
         binary: isBinaryFeature(f),
       };
     });
+    // 여러 요소를 동시에 훑으므로 BH FDR 보정값을 판정에 사용(raw p도 보존).
+    const byP = [...rows].sort((a, b) => a.rawP - b.rawP);
+    let nextAdjusted = 1;
+    for (let rank = byP.length - 1; rank >= 0; rank--) {
+      nextAdjusted = Math.min(nextAdjusted, (byP[rank].rawP * byP.length) / (rank + 1));
+      byP[rank].p = Math.min(1, nextAdjusted);
+      byP[rank].sig = byP[rank].p < 0.05;
+    }
     // 중요도 = 연관 강도(|t|) 내림차순 — 단위 무관 비교(§honesty: effect-size 아님).
     rows.sort((a, b) => Math.abs(b.t) - Math.abs(a.t));
     return {
@@ -355,7 +370,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               label: (ctx) => {
                 const r = rows[ctx.dataIndex];
                 if (!r) return "";
-                return `${r.name}: ${TT.tipCoef} ${r.coef.toFixed(3)} · 95%CI [${r.ciLo.toFixed(3)}, ${r.ciHi.toFixed(3)}] · p=${r.p.toFixed(3)}${r.sig ? TT.tipSig : TT.tipNs}`;
+                return `${r.name}: ${TT.tipCoef} ${r.coef.toFixed(3)} · 95%CI [${r.ciLo.toFixed(3)}, ${r.ciHi.toFixed(3)}] · BH p=${r.p.toFixed(3)}${r.sig ? TT.tipSig : TT.tipNs}`;
               },
             },
           },
@@ -467,6 +482,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               {fit.error === "no-variance" && T.errNoVariance}
               {fit.error === "too-few-rows" && T.errTooFewRows(fit.n || 0, fit.k || 0)}
               {fit.error === "singular" && T.errSingular}
+              {fit.error === "high-leverage" && T.errHighLeverage}
             </p>
           </div>
         </section>
@@ -499,7 +515,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                   )}
                 </div>
                 <div style={{ fontSize: "10.5px", color: MUTED, marginTop: "6px", opacity: 0.85 }} title="two-sided p-value">
-                  p={topSig.p.toFixed(3)} · 95%CI [{topSig.ciLo.toFixed(3)}, {topSig.ciHi.toFixed(3)}]
+                  BH p={topSig.p.toFixed(3)} · 95%CI [{topSig.ciLo.toFixed(3)}, {topSig.ciHi.toFixed(3)}]
                 </div>
               </div>
             ) : (
@@ -521,9 +537,9 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
             <h2 className="section-title"><span className="ix">§1</span>{T.forestTitle}</h2>
             <p className="muted" style={{ fontSize: "11.5px", margin: "2px 0 8px" }}>
               {locale === "en" ? (
-                <>Dot = estimated effect (coefficient), bar = 95% CI. <span style={{ color: "#22c55e" }}>Green</span> = significantly ↑ · <span style={{ color: "#f87171" }}>red</span> = significantly ↓ · <span style={{ color: "#94a3b8" }}>gray</span> = not significant (interval crosses 0). Ordered by association strength (|t|).</>
+                <>Dot = estimated association, bar = pointwise HC3 95% CI. <span style={{ color: "#22c55e" }}>Green</span> / <span style={{ color: "#f87171" }}>red</span> = BH p&lt;.05 · <span style={{ color: "#94a3b8" }}>gray</span> = BH p≥.05. Ordered by robust association strength (|t|).</>
               ) : (
-                <>점 = 추정 효과(계수), 막대 = 95% 신뢰구간. <span style={{ color: "#22c55e" }}>초록</span>=유의하게 성과↑ · <span style={{ color: "#f87171" }}>빨강</span>=유의하게 성과↓ · <span style={{ color: "#94a3b8" }}>회색</span>=무유의(구간이 0을 지남). 위에서부터 연관이 강한 순(|t|).</>
+                <>점 = 추정 연관(계수), 막대 = 요소별 HC3 95% 신뢰구간. <span style={{ color: "#22c55e" }}>초록</span>/<span style={{ color: "#f87171" }}>빨강</span>=BH p&lt;.05 · <span style={{ color: "#94a3b8" }}>회색</span>=BH p≥.05. 위에서부터 강건한 연관이 큰 순(|t|).</>
               )}
             </p>
             <div className="chart-container" style={{ height: `${Math.max(160, fit.rows.length * 42 + 70)}px` }}>
@@ -552,7 +568,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                       <th style={{ textAlign: "right" }} title={T.thCoefTip}>{T.thCoef}</th>
                       <th style={{ textAlign: "right" }} title={T.thSeTip}>SE</th>
                       <th style={{ textAlign: "right" }} title={T.thTTip}>t</th>
-                      <th style={{ textAlign: "right" }} title={T.thPTip}>p</th>
+                      <th style={{ textAlign: "right" }} title={T.thRawPTip}>raw p</th>
+                      <th style={{ textAlign: "right" }} title={T.thPTip}>BH p</th>
                       <th style={{ textAlign: "right" }} title={T.thCiTip}>95% CI</th>
                       <th style={{ textAlign: "center" }}>{T.thVerdict}</th>
                     </tr>
@@ -564,6 +581,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                         <td className="tnum" style={{ textAlign: "right", color: r.sig ? (r.coef >= 0 ? "#22c55e" : "#f87171") : undefined }}>{r.coef.toFixed(3)}</td>
                         <td className="tnum" style={{ textAlign: "right" }}>{r.se.toFixed(3)}</td>
                         <td className="tnum" style={{ textAlign: "right" }}>{r.t.toFixed(2)}</td>
+                        <td className="tnum" style={{ textAlign: "right" }}>{r.rawP.toFixed(3)}</td>
                         <td className="tnum" style={{ textAlign: "right" }}>{r.p.toFixed(3)}</td>
                         <td className="tnum" style={{ textAlign: "right" }}>[{r.ciLo.toFixed(2)}, {r.ciHi.toFixed(2)}]</td>
                         <td style={{ textAlign: "center" }}>{r.sig ? (r.coef >= 0 ? T.sigUp : T.sigDown) : T.ns}</td>

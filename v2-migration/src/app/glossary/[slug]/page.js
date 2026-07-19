@@ -16,7 +16,7 @@ export async function generateMetadata({ params }) {
 
   const canonical = `${SITE_URL}/glossary/${term.slug}`;
   const enTerm = getTermBySlug(slug, "en");
-  const languages = { ko: canonical, ...(enTerm ? { en: `${SITE_URL}/en/glossary/${slug}` } : {}) };
+  const languages = { ko: canonical, ...(enTerm ? { en: `${SITE_URL}/en/glossary/${slug}` } : {}), "x-default": canonical };
   return {
     title: `${term.term} 뜻 — 용어사전`,
     description: term.description,
@@ -67,21 +67,22 @@ export default async function GlossaryTermPage({ params }) {
   const relatedPosts = term.relatedPosts.map((s) => getPostBySlug(s)).filter(Boolean);
 
   return (
-    <div className="page-inner" style={{ maxWidth: 760, margin: "0 auto", padding: "2rem 1.5rem" }}>
+    <div className="content-article glossary-article">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildTermJsonLd(term, canonical)) }}
       />
-      <Link href="/glossary" style={{ fontSize: 13, color: "var(--text-muted)", textDecoration: "none" }}>
+      <Link href="/glossary" className="content-article__back">
         ← 용어사전
       </Link>
 
-      <header style={{ margin: "1rem 0 1.75rem", paddingBottom: "1.25rem", borderBottom: "1px solid var(--border-subtle)" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em", lineHeight: 1.3 }}>
+      <header className="content-article__header">
+        <span className="content-article__type">GLOSSARY · {term.category}</span>
+        <h1>
           {term.term}
         </h1>
         {term.shortDef && (
-          <p style={{ marginTop: "0.6rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
+          <p className="content-article__dek">
             {term.shortDef}
           </p>
         )}

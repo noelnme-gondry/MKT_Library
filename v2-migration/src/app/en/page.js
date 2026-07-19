@@ -34,9 +34,9 @@ export default function EnHomePage() {
     <>
       <div className="app is-home">
         <Sidebar locale="en" />
-        <main className="main">
+        <main className="main" id="main-content">
           <Header locale="en" />
-          <article className="content" id="content" aria-live="polite">
+          <article className="content" id="content">
             <LandingPage locale="en" />
           </article>
         </main>

@@ -13,7 +13,7 @@ export async function generateMetadata() {
   return {
     title,
     description,
-    alternates: { canonical, languages: { ko: `${SITE_URL}/blog`, en: canonical } },
+    alternates: { canonical, languages: { ko: `${SITE_URL}/blog`, en: canonical, "x-default": `${SITE_URL}/blog` } },
     openGraph: { title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] },
   };
 }
@@ -33,7 +33,7 @@ function buildBlogListJsonLd(posts) {
         "@type": "Blog",
         "@id": `${SITE_URL}/en/blog#blog`,
         url: `${SITE_URL}/en/blog`,
-        name: "Growth Ops Playbook Blog",
+        name: "Growth Opt Playbook Blog",
         description: "Performance marketing and data analysis insights",
         inLanguage: "en-US",
         blogPost: posts.slice(0, 20).map((p) => ({
@@ -41,13 +41,14 @@ function buildBlogListJsonLd(posts) {
           headline: p.title,
           description: p.description,
           datePublished: p.date || undefined,
+          dateModified: p.updated || p.date || undefined,
           url: `${SITE_URL}/en/blog/${p.slug}`,
         })),
       },
       {
         "@type": "BreadcrumbList",
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/en` },
           { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/en/blog` },
         ],
       },
@@ -90,15 +91,15 @@ export default function EnBlogIndexPage() {
         </div>
       ) : (
         <div className="content-list">
-          {posts.map((post) => (
+          {posts.map((post, index) => (
             <Link
               key={post.slug}
               href={`/en/blog/${post.slug}`}
-              className="card"
+              className={`card content-card${index === 0 ? " is-featured" : ""}`}
               style={{ display: "block", textDecoration: "none" }}
             >
               <div className="card-meta" style={{ marginBottom: "0.4rem" }}>
-                {fmtDate(post.date)}
+                {index === 0 && <span className="content-card__featured">EDITOR&apos;S PICK</span>}{fmtDate(post.date)}
               </div>
               <div className="card-title">{post.title}</div>
               {post.description && <div className="card-desc">{post.description}</div>}

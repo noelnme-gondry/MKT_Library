@@ -72,19 +72,19 @@ export default function Sidebar({ locale = "ko" }) {
       >
         <div className="brand-mark">GO</div>
         <div>
-          <div className="brand-name">Growth Ops</div>
+          <div className="brand-name">Growth Opt</div>
           <div className="brand-sub">Playbook</div>
         </div>
       </Link>
 
-      <div className="sidebar-search" onClick={() => setCmdkOpen(true)}>
+      <button type="button" className="sidebar-search" onClick={() => setCmdkOpen(true)} aria-label={T.searchPlaceholder}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-        <input type="text" placeholder={T.searchPlaceholder} readOnly />
+        <span>{T.searchPlaceholder}</span>
         <kbd>⌘K</kbd>
-      </div>
+      </button>
 
       <nav id="nav" data-rendered="1">
         {/* §UX 개선: "분석"(실제 도구)이 메인 제품이라 렌더 순서상 먼저 보여주고
@@ -133,9 +133,11 @@ export default function Sidebar({ locale = "ko" }) {
 
                   return (
                     <div key={group.id} className={`nav-group ${isGroupCollapsed ? "collapsed" : ""}`} data-group={group.id}>
-                      <div
+                      <button
+                        type="button"
                         className="nav-group-header"
                         onClick={() => toggleGroup(group.id, isGroupCollapsed)}
+                        aria-expanded={!isGroupCollapsed}
                       >
                         <span className="nav-group-title">
                           <span className="nav-group-index">{displayGroupNumberShort(group.id)}</span>
@@ -144,7 +146,7 @@ export default function Sidebar({ locale = "ko" }) {
                         <svg className="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="6 9 12 15 18 9"></polyline>
                         </svg>
-                      </div>
+                      </button>
                       <div className="nav-items">
                         {group.items.filter((it) => !it.hidden).map((it) => (
                           <Link

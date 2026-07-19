@@ -9,6 +9,7 @@ import CsvUploader from "@/components/CsvUploader";
 import AnalysisEligibilityList from "@/components/data-import/AnalysisEligibilityList";
 import { ANALYSIS_CONTRACTS, evaluateEligibility, rankRecommendedAnalyses } from "@/lib/analysis-router/evaluateEligibility";
 import { trackProductEvent } from "@/lib/analytics";
+import { prepareDatasetForTool } from "@/lib/data-import/prepareDatasetForTool";
 
 // "내 데이터로 분석 시작" 진입 게이트 — 데모 없이 어떤 분석부터 할지 고르는 페이지.
 // 진입 시 demoDisabled=true(세션) → 어느 도구로 가도 데모 자동로드 없이 빈 업로드
@@ -25,6 +26,7 @@ const COPY = {
     deck: "사용 중인 CSV 또는 Google Sheets를 그대로 가져오세요. 먼저 데이터 구조를 진단한 뒤 가능한 분석을 추천합니다.",
     demoLink: "먼저 예시(데모)로 둘러볼래요 →",
     open: "이 분석 시작 →",
+    browseAll: "데이터 없이 전체 도구부터 둘러보기",
   },
   en: {
     eyebrow: "Start with your data",
@@ -32,6 +34,7 @@ const COPY = {
     deck: "Bring your CSV or Google Sheet as-is. We’ll profile it first, then recommend analyses that fit.",
     demoLink: "I'd rather browse the demo first →",
     open: "Start this →",
+    browseAll: "Browse every tool without data",
   },
 };
 
@@ -41,6 +44,7 @@ export default function StartGate({ locale = "ko" }) {
   const setDemoDisabled = useAppStore((s) => s.setDemoDisabled);
   const startMyData = useAppStore((s) => s.startMyData);
   const csvData = useAppStore((s) => s.csvData);
+  const handoffCsvToRoute = useAppStore((s) => s.handoffCsvToRoute);
   const isAnalyzed = useAppStore((s) => s.isGroupAnalyzed("start-gate"));
 
   // 진입 = 내 데이터 의도 → 데모 자동로드 억제 + 이미 로드된 데모 슬라이스 비움.
@@ -59,6 +63,8 @@ export default function StartGate({ locale = "ko" }) {
   };
   const openRecommended = (id) => {
     trackProductEvent("analysis_recommended", { tool_id: id, source: "start" });
+    const prepared = prepareDatasetForTool({ raw: csvData.raw, headers: csvData.headers, toolId: id, source: csvData.fileName || "dataset" });
+    handoffCsvToRoute(id, prepared);
     goTool(id);
   };
 
@@ -81,8 +87,10 @@ export default function StartGate({ locale = "ko" }) {
         />
       )}
 
-      {!isAnalyzed && groups.map((g) => (
-        <section key={g.id} className="block" style={{ marginTop: "1.2rem" }}>
+      {!isAnalyzed && <details className="start-tool-browser">
+        <summary>{C.browseAll}</summary>
+        {groups.map((g) => (
+        <section key={g.id} className="block">
           <h2 className="section-title" style={{ margin: "0 0 10px", border: "none", padding: 0 }}>
             {trGroupTitle(g.id, locale, g.title)}
           </h2>
@@ -102,7 +110,8 @@ export default function StartGate({ locale = "ko" }) {
             ))}
           </div>
         </section>
-      ))}
+        ))}
+      </details>}
 
       <div style={{ marginTop: "1.6rem", textAlign: "center" }}>
         <button type="button" onClick={goDemo} className="btn ghost" style={{ fontSize: "13px" }}>

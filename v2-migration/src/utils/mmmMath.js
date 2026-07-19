@@ -2577,8 +2577,9 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   p: pArr ? pArr[j + 1] : null,
                 })),
               );
-              const bandLabel =
-                bandMode === "pred" ? "예측구간(개별 주)" : "신뢰구간(평균 추세)";
+              const bandLabel = bandMode === "pred"
+                ? "과거 잔차 참고 범위(개별 주)"
+                : "과거 잔차 참고 범위(평균 추세)";
               return {
                 model,
                 lam,
@@ -2635,4 +2636,3 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               "Holidays",
               "Regime(steps)",
             ]; // 비매체 드라이버 (baseline 포함 토글 대상)
-

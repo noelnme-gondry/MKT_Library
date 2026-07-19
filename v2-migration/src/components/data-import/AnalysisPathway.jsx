@@ -7,8 +7,6 @@ import { prepareDatasetForTool } from "@/lib/data-import/prepareDatasetForTool";
 import { evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
 import { buildPvmQuickSummary } from "@/lib/analysis-results/pvmQuickSummary";
 
-const CARD_STYLE = { border: "1px solid var(--border)", borderRadius: "10px", padding: "12px", background: "var(--surface-container-lowest)" };
-
 export default function AnalysisPathway({ csvData, locale = "ko" }) {
   const router = useRouter();
   const handoffCsvToRoute = useAppStore((state) => state.handoffCsvToRoute);
@@ -31,11 +29,12 @@ export default function AnalysisPathway({ csvData, locale = "ko" }) {
     if (plan.data) handoffCsvToRoute(plan.id, plan.data);
     router.push(idToSlug[plan.id]);
   };
-  return <section className="block" aria-label={locale === "en" ? "Next analyses" : "다음 분석"}>
+  return <section className="block analysis-pathway" aria-label={locale === "en" ? "Next analyses" : "다음 분석"}>
     <h2 className="section-title" style={{ marginBottom: "5px" }}>{locale === "en" ? "Next answers from this analysis" : "이 결과에서 바로 이어서 볼 답"}</h2>
     <p className="muted" style={{ marginTop: 0, fontSize: "12px" }}>{locale === "en" ? "Open a detail view without uploading the same file again. Data stays in this browser." : "같은 파일을 다시 올리지 않고 상세 분석으로 이어집니다. 데이터는 이 브라우저 안에만 남습니다."}</p>
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "10px" }}>
-      {plans.map((plan) => <div key={plan.id} style={{ ...CARD_STYLE, opacity: plan.ready ? 1 : 0.68 }}>
+    <div className="analysis-pathway__grid">
+      {plans.map((plan, index) => <div key={plan.id} className={`analysis-pathway__item${plan.ready ? " is-ready" : ""}`}>
+        <span className="analysis-pathway__index">0{index + 1}</span>
         <strong style={{ display: "block", fontSize: "13px" }}>{plan.ready ? "✓ " : "○ "}{plan.title}</strong>
         <p style={{ fontSize: "11.5px", color: "var(--text-muted)", lineHeight: 1.55, minHeight: "54px" }}>{plan.body}</p>
         <button className="ab-pill" disabled={!plan.ready} onClick={() => open(plan)}>{plan.ready ? plan.action : (locale === "en" ? "Data needed" : "데이터 보완 필요")}</button>

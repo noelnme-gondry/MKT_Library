@@ -1090,7 +1090,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                   }}
                 />
                 <div style={{ fontSize: "10.5px", color: MUTED, marginTop: "6px", opacity: 0.85 }} title={tr("통계 원값(전문가용): 홀드아웃 F1 = 정밀도·재현율 조화평균", "Raw statistic (expert): holdout F1 = harmonic mean of precision and recall")}>
-                  {tr("예측 정확도(F1)", "Accuracy (F1)")} {topAction.holdout.F1.toFixed(2)} · {tr("신뢰도", "confidence")} {confidenceDots(topAction.holdout.F1)}
+                  {tr("예측력(F1)", "Predictive strength (F1)")} {topAction.holdout.F1.toFixed(2)} · {tr("예측력 표시", "predictive strength")} {confidenceDots(topAction.holdout.F1)}
                 </div>
               </div>
             ) : (

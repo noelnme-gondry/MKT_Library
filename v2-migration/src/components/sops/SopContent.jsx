@@ -921,8 +921,7 @@ function hl(code, lang) {
                 .join("");
             }
 
-            async function renderPageFromData(id, locale = "ko") {
-              const data = await loadPageData(id, locale);
+            function renderPageData(id, locale, data) {
               if (!data) return null;
               const meta = findMeta(id);
               if (!meta) return null;
@@ -936,6 +935,11 @@ function hl(code, lang) {
                 toc: data.toc || [],
                 body: renderSections(data.body || []),
               });
+            }
+
+            async function renderPageFromData(id, locale = "ko") {
+              const data = await loadPageData(id, locale);
+              return renderPageData(id, locale, data);
             }
 
             /* ---------- Common page wrapper ---------- */
@@ -3072,9 +3076,15 @@ function bindSortableTables(root) {
 // page_N_N() 함수는 EN 변형이 없으므로 이 컴포넌트로 오지 않는다(§ EN pilot, 1-1 한정).
 // 비동기 fetch(loadPageData)라 useMemo 동기 계산 불가 → useState+useEffect로 분리,
 // 기존 locale="ko" 동기 경로(아래 SopContent 본체)는 이 분기 밖이라 완전 불변.
-function SopContentEn({ routeId }) {
+function initialEnHtml(routeId, initialData) {
+  if (!initialData || !DATA_BASED_PAGES.has(routeId)) return null;
+  resetSopUid();
+  return renderPageData(routeId, "en", initialData);
+}
+
+function SopContentEn({ routeId, initialData = null }) {
   const containerRef = React.useRef(null);
-  const [html, setHtml] = React.useState(null);
+  const [html, setHtml] = React.useState(() => initialEnHtml(routeId, initialData));
   const [notFoundPage, setNotFoundPage] = React.useState(false);
 
   React.useEffect(() => {
@@ -3087,6 +3097,10 @@ function SopContentEn({ routeId }) {
       setNotFoundPage(true);
       return undefined;
     }
+    if (initialData) {
+      setHtml(initialEnHtml(routeId, initialData));
+      return undefined;
+    }
     resetSopUid();
     renderPageFromData(routeId, "en").then((result) => {
       if (cancelled) return;
@@ -3096,7 +3110,7 @@ function SopContentEn({ routeId }) {
     return () => {
       cancelled = true;
     };
-  }, [routeId]);
+  }, [initialData, routeId]);
 
   React.useEffect(() => {
     const root = containerRef.current;
@@ -3123,10 +3137,10 @@ function SopContentEn({ routeId }) {
   );
 }
 
-export default function SopContent({ routeId, locale = "ko" }) {
+export default function SopContent({ routeId, locale = "ko", initialData = null }) {
   // locale은 라우트(page.js)가 리터럴로 고정 전달 — 같은 컴포넌트 인스턴스에서 안 바뀜.
   // 훅 호출 전 분기이므로 rules-of-hooks 위반 없음(ko 경로는 기존 훅·렌더와 byte-동일).
-  if (locale === "en") return <SopContentEn routeId={routeId} />;
+  if (locale === "en") return <SopContentEn routeId={routeId} initialData={initialData} />;
 
   return <SopContentKo routeId={routeId} />;
 }

@@ -22,14 +22,14 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
   const hasToc = tocItems.length > 0;
 
   return (
-    <div style={{ display: "flex", width: "100%", height: "100%" }}>
+    <div className={`tool-page-shell${hasToc ? " has-toc" : ""}`}>
       {/* Main Content Area */}
-      <div style={{ flex: 1, minWidth: 0, paddingRight: hasToc ? "220px" : "0" }}>
+      <div className="tool-page-shell__main">
         {/* Sticky title bar — legacy page-sticky-bar/page-sticky-row1/page-sticky-title
             (index.html pageShell 5-x 분기, CLAUDE.md §4.1) */}
         <div className="page-sticky-bar">
           <div className="page-sticky-row1">
-            <span className="page-sticky-title">{title}</span>
+            <h1 className="page-sticky-title">{title}</h1>
             {chips}
           </div>
           {stickyFilter}
@@ -48,38 +48,15 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
 
       {/* Floating Table of Contents (Right Side) — Dashboard.jsx 우측 TOC aside와 동일 마크업/포지셔닝 */}
       {hasToc && (
-        <aside
-          style={{
-            position: "fixed",
-            top: "100px",
-            right: "24px",
-            width: "180px",
-            borderLeft: "1px solid var(--border-subtle)",
-            paddingLeft: "16px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "8px",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: "700",
-              color: "var(--text-muted)",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              marginBottom: "4px",
-            }}
-          >
+        <aside className="tool-page-shell__toc">
+          <div className="tool-page-shell__toc-label">
             {T.toc}
           </div>
           {tocItems.map((item) => (
             <a
               key={item.id}
               href={`#${item.id}`}
-              style={{ fontSize: "12px", color: "var(--text-2)", textDecoration: "none", transition: "color 0.2s" }}
-              onMouseOver={(e) => (e.target.style.color = "var(--text-1)")}
-              onMouseOut={(e) => (e.target.style.color = "var(--text-2)")}
+              className="tool-page-shell__toc-link"
             >
               {item.title}
             </a>

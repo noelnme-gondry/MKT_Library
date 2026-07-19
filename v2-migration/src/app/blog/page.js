@@ -11,7 +11,7 @@ export async function generateMetadata() {
   return {
     title,
     description,
-    alternates: { canonical },
+    alternates: { canonical, languages: { ko: canonical, en: `${SITE_URL}/en/blog`, "x-default": canonical } },
     openGraph: { title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] },
   };
 }
@@ -40,6 +40,7 @@ function buildBlogListJsonLd(posts) {
           headline: p.title,
           description: p.description,
           datePublished: p.date || undefined,
+          dateModified: p.updated || p.date || undefined,
           url: `${SITE_URL}/blog/${p.slug}`,
         })),
       },
@@ -107,15 +108,15 @@ export default function BlogIndexPage() {
         </div>
       ) : (
         <div className="content-list">
-          {posts.map((post) => (
+          {posts.map((post, index) => (
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="card"
+              className={`card content-card${index === 0 ? " is-featured" : ""}`}
               style={{ display: "block", textDecoration: "none" }}
             >
               <div className="card-meta" style={{ marginBottom: "0.4rem" }}>
-                {fmtDate(post.date)}
+                {index === 0 && <span className="content-card__featured">이번 주 추천</span>}{fmtDate(post.date)}
               </div>
               <div className="card-title">{post.title}</div>
               {post.description && <div className="card-desc">{post.description}</div>}

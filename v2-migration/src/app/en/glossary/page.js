@@ -11,7 +11,7 @@ export async function generateMetadata() {
   return {
     title,
     description,
-    alternates: { canonical, languages: { ko: `${SITE_URL}/glossary`, en: canonical } },
+    alternates: { canonical, languages: { ko: `${SITE_URL}/glossary`, en: canonical, "x-default": `${SITE_URL}/glossary` } },
     openGraph: { title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] },
   };
 }
@@ -37,7 +37,7 @@ function buildGlossaryJsonLd(terms) {
       {
         "@type": "BreadcrumbList",
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/en` },
           { "@type": "ListItem", position: 2, name: "Glossary", item: `${SITE_URL}/en/glossary` },
         ],
       },

@@ -10,6 +10,7 @@ import StartGate from "@/components/StartGate";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
 import DmNudge from "@/components/DmNudge";
+import ToolIntro from "@/components/ToolIntro";
 
 // 번역 완료된 도구만 실제로 렌더(routeMap EN_READY_TOOL_IDS 게이트 통과 후).
 // 여기 케이스는 미리 준비해도 안전 — hasEnVersion()이 registry에 없는 id는
@@ -28,11 +29,12 @@ const ContentElementAnalyzer = dyn(() => import("@/components/tools/ContentEleme
 // EN 가이드(1-x~4-x, EN_READY_GUIDE_IDS) — {id}.en.json 기반 SopContent EN 경로.
 // 1-1·8-1은 리터럴 라우트가 우선이라 여기로 안 오지만, 방어적으로 함께 커버.
 const SopContent = dyn(() => import("@/components/sops/SopContent"));
+const CUSTOM_TOOL_INTRO_IDS = new Set(["5-4", "5-18", "5-20", "5-23", "9-1", "9-6"]);
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId, hasEnVersion, idToPath } from "@/lib/routeMap";
 
-export default function PageClient({ params }) {
+export default function PageClient({ params, initialSopData = null }) {
   const { slug } = use(params);
   const routeId = resolveSlugToId(slug);
 
@@ -50,12 +52,13 @@ export default function PageClient({ params }) {
 
   return (
     <>
-      <div className="app">
+      <div className={`app ${routeId.startsWith("5-") || routeId.startsWith("9-") ? "is-analysis" : ""}`}>
         <Sidebar locale="en" />
-        <main className="main">
+        <main className="main" id="main-content">
           <Header locale="en" />
-          <article className="content" id="content" aria-live="polite">
+          <article className="content" id="content">
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge locale="en" />}
+            {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} locale="en" />}
 
             {routeId === "start-gate" && <StartGate locale="en" />}
             {routeId === "5-2" && <Dashboard locale="en" />}
@@ -68,7 +71,7 @@ export default function PageClient({ params }) {
             {routeId === "5-20" && <AhaMomentFinder locale="en" />}
             {routeId === "5-23" && <Incrementality locale="en" />}
             {routeId === "9-1" && <ContentElementAnalyzer locale="en" />}
-            {/^[1-4]-|^8-/.test(routeId) && <SopContent routeId={routeId} locale="en" />}
+            {/^[1-4]-|^8-/.test(routeId) && <SopContent routeId={routeId} locale="en" initialData={initialSopData} />}
           </article>
         </main>
       </div>

@@ -17,7 +17,7 @@ export async function generateMetadata({ params }) {
 
   const canonical = `${SITE_URL}/en/glossary/${term.slug}`;
   const koTerm = getTermBySlug(slug, "ko");
-  const languages = { en: canonical, ...(koTerm ? { ko: `${SITE_URL}/glossary/${slug}` } : {}) };
+  const languages = { en: canonical, ...(koTerm ? { ko: `${SITE_URL}/glossary/${slug}` } : {}), "x-default": koTerm ? `${SITE_URL}/glossary/${slug}` : canonical };
   return {
     title: `What is ${term.term}? — Glossary`,
     description: term.description,
@@ -48,7 +48,7 @@ function buildTermJsonLd(term, canonical) {
       {
         "@type": "BreadcrumbList",
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/en` },
           { "@type": "ListItem", position: 2, name: "Glossary", item: `${SITE_URL}/en/glossary` },
           { "@type": "ListItem", position: 3, name: term.term, item: canonical },
         ],
@@ -66,21 +66,22 @@ export default async function EnGlossaryTermPage({ params }) {
   const relatedPosts = term.relatedPosts.map((s) => getPostBySlug(s, "en")).filter(Boolean);
 
   return (
-    <div className="page-inner" style={{ maxWidth: 760, margin: "0 auto", padding: "2rem 1.5rem" }}>
+    <div className="content-article glossary-article">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildTermJsonLd(term, canonical)) }}
       />
-      <Link href="/en/glossary" style={{ fontSize: 13, color: "var(--text-muted)", textDecoration: "none" }}>
+      <Link href="/en/glossary" className="content-article__back">
         ← Glossary
       </Link>
 
-      <header style={{ margin: "1rem 0 1.75rem", paddingBottom: "1.25rem", borderBottom: "1px solid var(--border-subtle)" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em", lineHeight: 1.3 }}>
+      <header className="content-article__header">
+        <span className="content-article__type">GLOSSARY · {term.category}</span>
+        <h1>
           {term.term}
         </h1>
         {term.shortDef && (
-          <p style={{ marginTop: "0.6rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
+          <p className="content-article__dek">
             {term.shortDef}
           </p>
         )}

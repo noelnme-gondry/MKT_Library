@@ -4,12 +4,16 @@
 // locale: "ko"(기본, content/blog) | "en"(content/blog-en) — 같은 slug로 KR/EN 짝 파일 매칭.
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "node:url";
 import matter from "gray-matter";
 import { marked } from "marked";
+import { localizedHref } from "@/lib/localizedHref";
+import { primaryToolForContent, relatedGlossaryForPost } from "@/lib/contentToolRegistry";
 
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const BLOG_DIRS = {
-  ko: path.join(process.cwd(), "content", "blog"),
-  en: path.join(process.cwd(), "content", "blog-en"),
+  ko: path.resolve(MODULE_DIR, "../../content/blog"),
+  en: path.resolve(MODULE_DIR, "../../content/blog-en"),
 };
 
 // 자체 작성 신뢰 MD라 위험은 낮지만, 방어적으로 기본 옵션만 사용(raw HTML 통과를
@@ -31,7 +35,11 @@ function readDir(locale) {
 // 이미 /en/blog/로 쓰여 있어도 문자열 "href=\"/blog/"가 안 나타나 이중치환 없음.
 function localizeInternalLinks(html, locale) {
   if (locale !== "en") return html;
-  return html.replace(/(href=")\/blog\//g, "$1/en/blog/");
+  return html.replace(/href="(\/[^"#]+)(#[^"]*)?"/g, (_, href, hash = "") => `href="${localizedHref(href, locale)}${hash}"`);
+}
+
+function normalizeArticleHeadings(html) {
+  return html.replace(/<h1([^>]*)>/g, "<h2$1>").replace(/<\/h1>/g, "</h2>");
 }
 
 // ── 카테고리 정리(§UX) ─────────────────────────────────────────────────
@@ -72,18 +80,21 @@ function parseFile(fileName, locale) {
     title: data.title || slug,
     description: data.description || "",
     date: data.date || "",
+    updated: data.updated || data.date || "",
     keywords: data.keywords || "",
     tags: consolidateTags(Array.isArray(data.tags) ? data.tags : []),
     ogImage: data.ogImage || "",
-    primaryTool: data.primaryTool || "",
+    primaryTool: data.primaryTool || primaryToolForContent(slug, "blog"),
     template: data.template || "",
-    relatedGlossary: Array.isArray(data.relatedGlossary) ? data.relatedGlossary : [],
+    relatedGlossary: Array.isArray(data.relatedGlossary) && data.relatedGlossary.length
+      ? data.relatedGlossary
+      : relatedGlossaryForPost(slug),
     // FAQPage 구조화 데이터 + 화면 아코디언 공용 소스. [{q,a}], q/a 둘 다 없는 항목은 방어적으로 제외.
     faq: Array.isArray(data.faq)
       ? data.faq.filter((item) => item && item.q && item.a)
       : [],
     draft: data.draft === true,
-    html: localizeInternalLinks(marked.parse(content || ""), locale),
+    html: normalizeArticleHeadings(localizeInternalLinks(marked.parse(content || ""), locale)),
   };
 }
 
@@ -110,6 +121,14 @@ export function tagSlug(tag) {
   return String(tag).trim().replace(/\s+/g, "-");
 }
 
+function decodedTagSlug(slug) {
+  try {
+    return decodeURIComponent(String(slug));
+  } catch {
+    return String(slug);
+  }
+}
+
 // 전체 태그 목록 [{ tag, slug, count }] — 글 많은 순, 동률이면 가나다.
 export function getAllTags(locale = "ko") {
   const counts = new Map();
@@ -126,11 +145,13 @@ export function getAllTags(locale = "ko") {
 
 // 특정 태그(slug 기준)의 글 목록. getAllPosts 정렬 승계. 없으면 [].
 export function getPostsByTag(slug, locale = "ko") {
-  return getAllPosts(locale).filter((p) => p.tags.some((t) => tagSlug(t) === slug));
+  const normalized = decodedTagSlug(slug);
+  return getAllPosts(locale).filter((p) => p.tags.some((t) => tagSlug(t) === normalized));
 }
 
 // slug → 원본 태그 라벨(표시용). 없으면 slug 그대로.
 export function tagLabelFromSlug(slug, locale = "ko") {
-  const found = getAllTags(locale).find((t) => t.slug === slug);
-  return found ? found.tag : slug;
+  const normalized = decodedTagSlug(slug);
+  const found = getAllTags(locale).find((t) => t.slug === normalized);
+  return found ? found.tag : normalized;
 }

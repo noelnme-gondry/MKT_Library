@@ -25,12 +25,12 @@ export const ROUTES = [
   { id: "5-23", slug: "/tools/incrementality", component: "Incrementality" },
   // ── Content Analytics (콘텐츠 도메인 — 엔진 재사용) ──
   { id: "9-1", slug: "/content/element-analysis", component: "ContentElementAnalyzer" },
-  { id: "9-2", slug: "/content/killer-content", component: "KillerContentFinder" },
-  { id: "9-3", slug: "/content/traffic-variance", component: "ContentTrafficVariance" },
+  { id: "9-2", slug: "/content/killer-content", component: "KillerContentFinder", publication: "preview" },
+  { id: "9-3", slug: "/content/traffic-variance", component: "ContentTrafficVariance", publication: "preview" },
   // 9-6 = 소재 분석(구 5-6 통합, CreativeAnalyzer domain=performance). slug은 콘텐츠
   // 라우팅 계열 유지(§4.1 id 불변). /tools/creative-analysis는 여기로 redirect.
   { id: "9-6", slug: "/content/freshness", component: "CreativeAnalyzer" },
-  { id: "9-7", slug: "/content/dashboard", component: "ContentDashboard" },
+  { id: "9-7", slug: "/content/dashboard", component: "ContentDashboard", publication: "preview" },
   { id: "1-1", slug: "/guide/dev-collaboration", component: "SopContent" },
   { id: "1-2", slug: "/guide/event-taxonomy", component: "SopContent" },
   { id: "1-3", slug: "/guide/postback-integration", component: "SopContent" },
@@ -94,6 +94,11 @@ export function idToPath(id) {
   return idToSlug[id] || "/";
 }
 
+export function isRoutePublished(routeOrId) {
+  const route = typeof routeOrId === "string" ? ROUTES.find((item) => item.id === routeOrId && !item.legacy) : routeOrId;
+  return Boolean(route && !route.legacy && route.publication !== "preview");
+}
+
 // ── EN i18n rollout registry ──────────────────────────────────────────────
 // Tool ids with a fully-translated EN page (component honors locale="en").
 // Add an id here ONLY after its component + shared shell strings are done —
@@ -128,5 +133,6 @@ export function enAlternates(routeId) {
   return {
     ko: `${SITE_URL}${path}`,
     en: `${SITE_URL}/en${path === "/" ? "" : path}`,
+    "x-default": `${SITE_URL}${path}`,
   };
 }

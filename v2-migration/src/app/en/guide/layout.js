@@ -11,7 +11,7 @@ export default function EnGuideLayout({ children }) {
     <>
       <div className="app">
         <Sidebar locale="en" />
-        <main className="main">
+        <main className="main" id="main-content">
           <Header locale="en" />
           {children}
         </main>

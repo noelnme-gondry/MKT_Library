@@ -16,16 +16,6 @@ import { toolFieldKeys } from "@/lib/data-import/prepareDatasetForTool";
 import { trackProductEvent } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
 
-function escapeHtml(str) {
-  if (!str) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
 // 셸 카피만 번역(드롭존·배너·버튼·미리보기 텍스트). STANDARD_FIELDS 필드 라벨(비용·노출수
 // 등, csvConstants.js 210여 개)은 별도 백로그 — 공수가 자릿수 다름(§plan).
 const CSV_COPY = {
@@ -34,6 +24,8 @@ const CSV_COPY = {
     parseError: "CSV 파싱 중 오류 발생: ",
     dropTitle: "CSV 파일 드래그 & 드롭",
     dropSub: "또는 클릭하여 파일 선택",
+    importing: "CSV 구조를 읽는 중…",
+    importSuccess: (name, rows, cols) => `${name} 업로드 완료. ${rows.toLocaleString()}행, ${cols}컬럼을 읽었습니다. 컬럼 매핑을 확인하세요.`,
     demoBannerTitle: "🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다",
     demoBannerDesc: "실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.",
     demoBannerBtn: "📁 내 CSV 업로드하기",
@@ -83,6 +75,8 @@ const CSV_COPY = {
     parseError: "Error parsing CSV: ",
     dropTitle: "Drag & drop a CSV file",
     dropSub: "or click to choose a file",
+    importing: "Reading CSV structure…",
+    importSuccess: (name, rows, cols) => `${name} uploaded. Read ${rows.toLocaleString()} rows and ${cols} columns. Review the column mapping next.`,
     demoBannerTitle: "🧪 You're viewing sample data",
     demoBannerDesc: "This isn't your real data and nothing is sent to a server. Upload your own CSV to replace it instantly.",
     demoBannerBtn: "📁 Upload my CSV",
@@ -154,6 +148,8 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   const isAnalyzed = useAppStore((s) => s.isGroupAnalyzed(toolId));
   const fileInputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importAnnouncement, setImportAnnouncement] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   // Preview table is auto-shown while mapping and collapsed after analysis.
   // User can re-expand it manually anytime (independent of gate state).
@@ -191,40 +187,51 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
 
   const processFile = (file) => {
     setErrorMsg("");
+    setImportAnnouncement("");
+    setIsImporting(true);
     trackProductEvent("data_import_start", { tool_id: toolId, source: "csv" });
     Papa.parse(file, {
+      worker: true,
       skipEmptyLines: true,
       complete: async (results) => {
-        if (!results.data || results.data.length === 0) {
-          setErrorMsg(T.emptyCsv);
-          return;
-        }
-        const { headers, raw } = tableToRecords(results.data);
-        if (!headers.length || !raw.length) {
-          setErrorMsg(T.emptyCsv);
-          return;
-        }
-        const insights = buildImportInsights(headers, raw, toolId);
-        const recipe = await getTransformRecipe(headers).catch(() => null);
-        const mapping = recipe?.mapping && Object.keys(recipe.mapping).every((header) => headers.includes(header)) ? recipe.mapping : insights.selections;
-        const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
+        try {
+          if (!results.data || results.data.length === 0) {
+            setErrorMsg(T.emptyCsv);
+            return;
+          }
+          const { headers, raw } = tableToRecords(results.data);
+          if (!headers.length || !raw.length) {
+            setErrorMsg(T.emptyCsv);
+            return;
+          }
+          const insights = buildImportInsights(headers, raw, toolId);
+          const recipe = await getTransformRecipe(headers).catch(() => null);
+          const mapping = recipe?.mapping && Object.keys(recipe.mapping).every((header) => headers.includes(header)) ? recipe.mapping : insights.selections;
+          const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
 
-        setCsvData({
-          raw,
-          headers,
-          mapping,
-          fileName: file.name,
-          importInsights: { ...insights, recipeApplied: !!recipe },
-          canonicalData,
-        });
-        trackProductEvent("data_import_success", { tool_id: toolId, source: "csv", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
-        trackProductEvent("data_profile_completed", { tool_id: toolId, source: "csv", column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length });
-        // New file → gate auto-resets in the store (sig change); re-open preview
-        // so the user maps with data context.
-        setPreviewOpen(true);
+          setCsvData({
+            raw,
+            headers,
+            mapping,
+            fileName: file.name,
+            importInsights: { ...insights, recipeApplied: !!recipe },
+            canonicalData,
+          });
+          setImportAnnouncement(T.importSuccess(file.name, raw.length, headers.length));
+          trackProductEvent("data_import_success", { tool_id: toolId, source: "csv", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
+          trackProductEvent("data_profile_completed", { tool_id: toolId, source: "csv", column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length });
+          // New file → gate auto-resets in the store (sig change); re-open preview
+          // so the user maps with data context.
+          setPreviewOpen(true);
+        } catch (error) {
+          setErrorMsg(`${T.parseError}${error.message}`);
+        } finally {
+          setIsImporting(false);
+        }
       },
       error: (err) => {
         setErrorMsg(T.parseError + err.message);
+        setIsImporting(false);
       },
     });
   };
@@ -240,6 +247,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     const mapping = insights.selections;
     const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
     setCsvData({ raw, headers, mapping, fileName, sheetUrl, importInsights: insights, canonicalData });
+    setImportAnnouncement(T.importSuccess(fileName, raw.length, headers.length));
     trackProductEvent("data_import_success", { tool_id: toolId, source: "google_sheets", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
     trackProductEvent("data_profile_completed", { tool_id: toolId, source: "google_sheets", column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length });
     setPreviewOpen(true);
@@ -283,6 +291,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
 
   const handleReset = () => {
     clearCsvGroup();
+    setImportAnnouncement("");
     setPreviewOpen(true);
   };
 
@@ -371,7 +380,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     }
 
     return { missing: missingKeys, reqLabels: labels, fieldGroups: groups, allowKeys: allowed };
-  }, [toolId, csvData.mapping]);
+  }, [toolId, csvData.mapping, T]);
 
   // --- Data preview (#6): first ~8 rows × MAPPED columns so the user maps with
   // context. Ignored columns are dropped; each header shows its standard-field
@@ -394,13 +403,19 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   if (!hasFile) {
     return (
       <div>
+        {/* Keep this as the first child in both render branches so React
+            preserves one live region while upload state changes. */}
+        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
         <CsvGuide toolId={toolId} locale={locale} />
-        <div
+        <button
+          type="button"
           className={`csv-dropzone ${isDragging ? "dragover" : ""}`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
+          disabled={isImporting}
+          aria-busy={isImporting}
         >
           <div className="csv-drop-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -409,19 +424,13 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
           </div>
-          <div className="csv-drop-text">{T.dropTitle}</div>
+          <div className="csv-drop-text">{isImporting ? T.importing : T.dropTitle}</div>
           <div className="csv-drop-sub">{T.dropSub}</div>
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            style={{ display: "none" }}
-            ref={fileInputRef}
-            onChange={handleFileChange}
-          />
-        </div>
+        </button>
+        <input type="file" accept=".csv,text/csv" hidden ref={fileInputRef} onChange={handleFileChange} />
         <GoogleSheetConnect onLoaded={handleSheetLoaded} onError={setErrorMsg} locale={locale} />
         <DemoLoadButton onLoad={handleLoadDemo} locale={locale} className={hasSheetImport ? "demo-load-row--spaced" : ""} />
-        {errorMsg && <div style={{ color: "var(--danger)", marginTop: "10px", fontSize: "12px" }}>{errorMsg}</div>}
+        {errorMsg && <div role="alert" style={{ color: "var(--danger)", marginTop: "10px", fontSize: "12px" }}>{errorMsg}</div>}
       </div>
     );
   }
@@ -450,6 +459,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
 
   return (
     <div>
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
       {isDemo && (
         <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <div>
@@ -520,7 +530,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           )}
         </div>
       )}
-      {errorMsg && <div style={{ color: "var(--danger)", marginBottom: "10px", fontSize: "12px" }}>{errorMsg}</div>}
+      {errorMsg && <div role="alert" style={{ color: "var(--danger)", marginBottom: "10px", fontSize: "12px" }}>{errorMsg}</div>}
 
       {missing.length > 0 ? (
         <div className="required-banner">
@@ -630,10 +640,10 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
                       const stdLabel = sel && sel !== "__ignore__" ? STANDARD_FIELDS[sel]?.label : null;
                       return (
                         <th key={h} title={stdLabel ? `${h} → ${stdLabel}` : h} style={{ whiteSpace: "nowrap" }}>
-                          {escapeHtml(h)}
+                          {h}
                           {stdLabel && (
                             <span style={{ display: "block", fontSize: "10px", fontWeight: 400, color: "var(--primary, #adc6ff)" }}>
-                              → {escapeHtml(stdLabel)}
+                              → {stdLabel}
                             </span>
                           )}
                         </th>
@@ -646,7 +656,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
                     <tr key={ri}>
                       {preview.cols.map((h) => (
                         <td key={h} style={{ whiteSpace: "nowrap", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {escapeHtml(row[h] != null ? String(row[h]) : "")}
+                          {row[h] != null ? String(row[h]) : ""}
                         </td>
                       ))}
                     </tr>

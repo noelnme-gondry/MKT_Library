@@ -11,7 +11,7 @@ export default function BlogLayout({ children }) {
     <>
       <div className="app">
         <Sidebar />
-        <main className="main">
+        <main className="main" id="main-content">
           <Header />
           {children}
         </main>

@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useId } from "react";
 
 // 표준 결론·액션 카드 — "결론 먼저, 근거는 접어서"(claude-ux §0)의 1층.
 // 5-3 예산배분의 alloc-verdict-card 패턴을 디자인시스템 공용으로 승격한 것.
@@ -15,15 +15,9 @@ import React from "react";
 //   download : node (DownloadHub 등)  — 우상단 배치
 //   children : 카드 하단 추가 콘텐츠(선택)
 const TONE = {
-  good: { border: "#5ad19a", icon: "✅" },
-  bad: { border: "#f0917e", icon: "⚠️" },
-  neutral: { border: "var(--primary, #adc6ff)", icon: "📌" },
-};
-
-const LINE_COLOR = {
-  bad: "#f0917e",
-  good: "#5ad19a",
-  muted: "var(--text-muted)",
+  good: { icon: "↗" },
+  bad: { icon: "!" },
+  neutral: { icon: "→" },
 };
 
 export default function ResultActionCard({
@@ -38,32 +32,23 @@ export default function ResultActionCard({
   style,
 }) {
   const t = TONE[tone] || TONE.neutral;
+  const headingId = useId();
   return (
-    <div
-      className={`result-action-card ${tone}`}
-      style={{
-        background: "var(--bg-1)",
-        border: "1px solid var(--border)",
-        borderLeft: `3px solid ${t.border}`,
-        borderRadius: "var(--radius, 12px)",
-        padding: "16px 18px",
-        marginBottom: "1rem",
-        ...style,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "6px" }}>
-            {t.icon} {title}
+    <section className={`result-action-card ${tone}`} style={style} aria-labelledby={headline ? headingId : undefined} aria-label={!headline && typeof title === "string" ? title : undefined}>
+      <div className="result-action-card__head">
+        <span className="result-action-card__signal" aria-hidden>{t.icon}</span>
+        <div className="result-action-card__copy">
+          <div className="result-action-card__label">
+            {title}
           </div>
           {headline && (
-            <div style={{ fontSize: "14px", lineHeight: 1.6, color: "var(--text-primary)", fontWeight: 600 }}>
+            <h2 id={headingId} className="result-action-card__headline">
               {headline}
-            </div>
+            </h2>
           )}
         </div>
         {(controls || download) && (
-          <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+          <div className="result-action-card__controls">
             {controls}
             {download}
           </div>
@@ -71,9 +56,9 @@ export default function ResultActionCard({
       </div>
 
       {points.length > 0 && (
-        <ul style={{ margin: "10px 0 0", paddingLeft: "18px", fontSize: "13px", lineHeight: 1.6 }}>
+        <ul className="result-action-card__points">
           {points.map((p, i) => (
-            <li key={i} style={{ color: LINE_COLOR[p.cls] || "var(--text-secondary)" }}>
+            <li key={i} className={p.cls || ""}>
               {p.text}
             </li>
           ))}
@@ -81,28 +66,17 @@ export default function ResultActionCard({
       )}
 
       {stats.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "18px",
-            marginTop: "12px",
-            paddingTop: "10px",
-            borderTop: "1px dashed var(--border-subtle, var(--border))",
-            fontSize: "12px",
-            color: "var(--text-muted)",
-          }}
-        >
+        <div className="result-action-card__stats">
           {stats.map((s, i) => (
             <div key={i}>
               {s.label}{" "}
-              <strong style={{ color: "var(--text-primary)" }}>{s.value}</strong>
+              <strong>{s.value}</strong>
             </div>
           ))}
         </div>
       )}
 
       {children}
-    </div>
+    </section>
   );
 }

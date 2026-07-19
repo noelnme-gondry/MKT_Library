@@ -1,11 +1,12 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore, findMeta, displayGroupNumber, displayItemNumber } from "@/store/useDataStore";
-import { resolvePathToId, hasEnVersion, idToPath } from "@/lib/routeMap";
+import { resolvePathToId } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 import { setLocalePref } from "@/lib/localePref";
+import { englishSwitchHref } from "@/lib/localizedHref";
 
 const HEADER_COPY = {
   ko: {
@@ -59,35 +60,28 @@ export default function Header({ locale = "ko" }) {
   const glossaryHref = locale === "en" ? "/en/glossary" : "/glossary";
   // KR<->EN 페이지 전환 — 현재 페이지 기준(홈 아니어도 항상 이 경로 유지). EN→KR은
   // 늘 있음(KR이 항상 완성본). KR→EN은 번역된 페이지일 때만, 없으면 /en 홈 폴백.
-  const switchHref = isBlog || isGlossary
-    ? (locale === "en" ? cleanPath : `/en${cleanPath}`)
-    : locale === "en"
-      ? idToPath(currentRouteId)
-      : hasEnVersion(currentRouteId)
-        ? `/en${idToPath(currentRouteId) === "/" ? "" : idToPath(currentRouteId)}`
-        : "/en";
+  const switchHref = locale === "en" ? cleanPath : englishSwitchHref(pathname);
   const switchLocale = locale === "en" ? "ko" : "en";
+  const hasRestoredTheme = useRef(false);
 
-  // Apply theme to body tag + localStorage persistence (원본 initTheme/toggleTheme 동일 로직)
+  // The first inline body script already applies the stored class before paint.
+  // Synchronize Zustand once, then keep DOM/storage/canvas charts aligned.
   useEffect(() => {
-    if (isDarkMode) {
-      document.body.classList.remove("light-mode");
-    } else {
-      document.body.classList.add("light-mode");
-    }
-    localStorage.setItem("mkt-library-theme", isDarkMode ? "dark" : "light");
-  }, [isDarkMode]);
-
-  // On mount: restore saved theme from localStorage. 기본값=라이트모드(store 초기값) —
-  // 명시적으로 저장된 dark 선택만 복원, 시스템 설정으로 임의 전환하지 않음(새로고침마다
-  // 라이트모드가 dark로 되돌아가던 버그 원인 — Gondry 피드백).
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("mkt-library-theme");
-    if (savedTheme === "dark" && !isDarkMode) {
-      toggleTheme(); // switch to dark
-    }
+    const shouldBeDark = localStorage.getItem("mkt-library-theme") === "dark";
+    document.body.classList.toggle("light-mode", !shouldBeDark);
+    if (useAppStore.getState().isDarkMode !== shouldBeDark) toggleTheme();
+    hasRestoredTheme.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => {
+    if (!hasRestoredTheme.current) return;
+    const currentDark = useAppStore.getState().isDarkMode;
+    document.body.classList.toggle("light-mode", !currentDark);
+    localStorage.setItem("mkt-library-theme", currentDark ? "dark" : "light");
+    Promise.all([import("chart.js/auto"), import("@/utils/chartUtils")]).then(([chartModule, themeModule]) => {
+      themeModule.refreshMountedChartThemes(chartModule.default);
+    });
+  }, [isDarkMode]);
 
   // 브레드크럼: 홈이면 "Library / Overview", 도구/문서 페이지면 3단계
   // (Library / {그룹번호 · 그룹명} / {항목번호 · 항목명}) — 원본 setBreadcrumb 동일.
@@ -99,7 +93,7 @@ export default function Header({ locale = "ko" }) {
         {/* 브랜드: 로고 마크(GO) + 이름을 좌상단에 고정(전 페이지·KR/EN 공통, 홈 링크). */}
         <Link href={locale === "en" ? "/en" : "/"} className="crumb-link brand-crumb" style={{ textDecoration: "none", color: "inherit", display: "inline-flex", alignItems: "center", gap: "8px" }}>
           <span className="brand-mark" style={{ width: "26px", height: "26px", fontSize: "12px" }}>GO</span>
-          <span style={{ fontWeight: 700 }}>Growth Opt Playbook</span>
+          <span className="brand-crumb__label" style={{ fontWeight: 700 }}>Growth Opt Playbook</span>
         </Link>
         {/* 블로그는 브랜드 + "블로그" 크럼. */}
         {isBlog && (
@@ -146,7 +140,7 @@ export default function Header({ locale = "ko" }) {
       </nav>
       <div className="topbar-actions">
         {hasCsv && (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11.5px", color: "var(--text-muted)", marginRight: "4px" }}>
+          <span className="header-csv" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11.5px", color: "var(--text-muted)", marginRight: "4px" }}>
             <span className="chip" title={csvData.fileName}>
               <span className="dot"></span>{csvData.fileName || "data.csv"}
             </span>
@@ -163,7 +157,7 @@ export default function Header({ locale = "ko" }) {
         )}
         <Link
           href={switchHref}
-          className="btn ghost"
+          className="btn ghost header-locale"
           title={T.localeSwitchTitle}
           onClick={() => setLocalePref(switchLocale)}
           style={{ fontSize: "11.5px", textDecoration: "none" }}
@@ -198,8 +192,9 @@ export default function Header({ locale = "ko" }) {
           )}
         </button>
         <button
-          className="btn ghost"
+          className="btn ghost header-cmdk"
           type="button"
+          aria-label={T.quickNav}
           onClick={() => setCmdkOpen(true)}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

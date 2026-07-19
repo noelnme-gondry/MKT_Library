@@ -2,7 +2,7 @@
 
 > 목적: 지금까지 도구별로 복붙·표류하던 UI 규약을 **재사용 컴포넌트/유틸로 뽑아 전 도구·미래 도구가 강제로 상속**하게 한다. (사용자 결정 2026-07, 세션 대화)
 >
-> 원칙: **엔진(`*Math.js`) 불변 · 렌더층만 · claude-ux 준수 · 골든 byte-동일**. 채택은 도구 1개씩 검증(`test:all`+`lint`+`build`)하며 순차.
+> 원칙: **결론 먼저 · 근거 둘째 · 방법론 마지막 · 엔진은 순수함수 · 골든 검증**. 신규 화면은 아래 공용 구조를 상속한다.
 
 ---
 
@@ -39,12 +39,26 @@
 - 렌더: 업로드 박스 위 **1줄 요약**(when + 핵심 컬럼) + 버튼 `📖 어떤 데이터가 왜 필요한가요?` → **모달**(when·컬럼별 why 표·준비팁·예시·템플릿 다운로드).
 - CsvUploader + 커스텀 드롭존(5-18·5-20·홀드아웃) 공통 삽입.
 
-### 1.5 툴 골격 — `src/components/ds/ToolShell.jsx`
-- 슬롯: `hero`(질문형 제목+평어+칩), `breadcrumb`, `filters`(sticky 필터/토글 바), `upload`(CsvGuide+CsvUploader), `body`.
-- 브레드크럼: `IA` 그룹 → 도구명 자동(라우트 id 기반). claude-ux 결론-먼저 hero 패턴 내장.
+### 1.5 툴 제목 골격 — `ToolPageShell.jsx` **또는** `ToolIntro.jsx`
+- 두 컴포넌트는 대안이며 한 페이지에서 동시에 쓰지 않는다. 둘 다 그 페이지의 유일한 `h1`을 소유한다.
+- `ToolPageShell`: 도구 내부의 compact sticky title·summary·본문·우측 TOC를 담당한다. 전역 sidebar/header와 CSV uploader는 담당하지 않는다.
+- `ToolIntro`: 아직 `ToolPageShell`로 이관하지 않은 커스텀 도구에 라우터가 한 번 삽입한다. **무슨 질문에 답하는가 → 무엇을 받는가 → 어떤 데이터로 시작하는가**를 평어로 설명한다. MMM·회귀 같은 전문 방법명은 결과 이해에 필요할 때만 Advanced Lab과 세부 설명에 둔다.
+- 업로드 전에는 입력 계약과 샘플/템플릿을, 분석 후에는 결과를 먼저 보여준다. 같은 데이터를 쓰는 도구는 `StartGate`의 `?tool=<id>` handoff와 group snapshot을 재사용한다.
 
-### 1.6 차트 — 기존 `chartUtils.js`/`CHART_THEME` 유지 + 강제
+### 1.6 결과 골격 — `src/components/ds/ResultActionCard.jsx`
+- Decision Tape 4단: **결론 → 수치 근거 → 지금 할 행동 → 다음 분석**.
+- 제목은 실제 `h2`, 전체는 이름 있는 `section` landmark다. 상태는 색만으로 표현하지 않고 문장·라벨을 병기한다.
+- 후속 분석 링크는 장식이 아니라 현재 결과의 미해결 질문을 이어받아야 한다(PVM→소재 피로도/포화도, MMM→실험/예산 배분 등).
+
+### 1.7 차트 — `chartUtils.js`/`CHART_THEME` 강제
 - `chartCommonOpts()` 미적용 도구 정리. 하드코딩 hex/rgba 금지 → `getCssVar`/`CHART_THEME`.
+- 테마 전환은 `refreshMountedChartThemes()`로 마운트된 Chart.js 인스턴스까지 즉시 동기화한다.
+
+### 1.8 Operator Desk 시각 언어
+- 다크: graphite 작업대 + chartreuse/cobalt 신호. 라이트: warm paper + cobalt 신호.
+- body=`DM Sans`, display=`Space Grotesk`, 데이터=`JetBrains Mono`(`next/font` 변수).
+- 랜딩 목업은 동일 카드 재배치가 아니라 실제 제품의 4개 상태(주간 브리핑·PVM·소재 피로·MMM)를 순환한다.
+- 저대비 opacity로 상태를 표시하지 않는다. 모바일에서도 Cmd-K/Footer/templates로 전체 IA에 접근할 수 있어야 한다.
 
 ---
 
@@ -64,21 +78,23 @@
 
 ---
 
-## 3. 실행 단계 (검증 게이트: 매 단계 test:all+lint+build GREEN)
+## 3. 채택 상태 (검증 게이트: 매 단계 test:all+lint+build GREEN)
 
-- **P1 기반 (adoption 0, 순수 추가)**: `format.js` + 전역 통화 store + DataTable + CsvGuide/TOOL_GUIDE + ToolShell 스캐폴드 + 골든(format).
-- **P2 채택**: 도구 1개씩 → format/통화/DataTable/CsvGuide 적용, 각 도구 검증 후 커밋. 순서: 5-2 대시보드 → 5-3 → 5-22 → 5-21 → 5-6 → 5-4 → 5-18 → 5-20.
-- **P3 홀드아웃 신규 도구**: 프리미티브 위에 신설 + `incrPrePostMath` 골든 + 5-4 홀드아웃 제거.
-- **P4 규약 명문화**: CLAUDE.md §5/§12 + ARCHITECTURE에 "신규 도구는 ds/* 프리미티브 필수" 규칙(§15).
+- **채택됨**: `format.js`, 전역 통화, DataTable, CsvGuide/TOOL_GUIDE, ToolPageShell/ToolIntro, ResultActionCard, DownloadHub, 공용 chart theme.
+- **채택됨**: 운영 대시보드·예산·포화·PVM·소재·A/B·증분·MMM/회귀·Aha·콘텐츠 분석 라우트.
+- **채택됨**: 랜딩·블로그·글로서리·가이드·StartGate에 Operator Desk 내비게이션/타입/CTA 계층.
+- **남은 원칙**: 새 도구나 신규 결과 탭은 기존 공용 컴포넌트를 확장하고, 예외가 필요하면 이 문서에 이유와 새 계약을 먼저 기록한다.
 
 ---
 
 ## 4. 미래 도구 강제 규약 (P4에서 CLAUDE.md 반영)
 
 신규 분석 도구는 반드시:
-1. `<ToolShell>`로 감싸기 (hero+breadcrumb+filters+upload 슬롯).
+1. `<ToolPageShell>`로 감싸거나 라우터의 `<ToolIntro>` 대상에 등록한다. 둘을 함께 쓰거나 자체 `h1`을 추가하지 않는다.
 2. 표는 `<DataTable>` (직접 `<table>` 금지).
 3. 숫자·통화·%는 `format.js` 유틸만 (수동 포맷 금지) + 전역 `currency` 구독.
 4. CSV 업로드부에 `TOOL_GUIDE[id]` 작성 → `<CsvGuide>` 자동.
 5. 차트는 `chartCommonOpts()`+`CHART_THEME` (하드코딩 색 금지).
 6. 엔진은 순수 `*Math.js` + 골든 테스트.
+7. 결과는 `<ResultActionCard>`로 결론·근거·행동·다음 분석을 제공한다.
+8. KR/EN route metadata·UI copy·정적 링크를 함께 추가하고 `contentRegistry.test.js`의 공개 범위 계약을 지킨다.

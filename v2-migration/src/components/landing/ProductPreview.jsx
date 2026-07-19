@@ -1,152 +1,97 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { MOCKS } from "./ToolCardMock";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
-// 각 장면은 실제 도구가 답하는 질문·결론·다음 조치를 축약해 보여 준다.
-// 자동 전환은 제품 범위를 보여 주고, 임의의 장식성 차트가 되지 않게 모든 장면에
-// 운영 문맥과 의사결정 문장을 넣는다.
 const SCENES = [
   {
-    title: { ko: "W29 운영 리포트", en: "W29 operating review" },
-    type: "kpiLine",
-    kpis: [
-      { l: { ko: "전환", en: "Conv." }, v: "3,412", d: "+12.4%", up: true },
-      { l: { ko: "CPA", en: "CPA" }, v: "₩8,240", d: "−6.1%", up: true },
-      { l: { ko: "ROAS", en: "ROAS" }, v: "214%", d: "+8.0%", up: true },
+    href: "/dashboard",
+    short: { ko: "주간 브리핑", en: "Weekly brief" },
+    title: { ko: "이번 주는 효율이 좋아졌지만, Google 증액 전 검증이 필요합니다.", en: "Efficiency improved this week, but validate Google before scaling." },
+    state: { ko: "관찰 후 증액", en: "Validate, then scale" }, tone: "watch",
+    metrics: [["CPA", "₩8,240", "−6.1%"], ["ROAS", "214%", "+8.0%"], [{ ko: "전환", en: "Conversions" }, "3,412", "+12.4%"]],
+    evidence: [
+      [{ ko: "Meta 효율", en: "Meta efficiency" }, 78, { ko: "CPA −₩540", en: "CPA −₩540" }, "good"],
+      [{ ko: "Google 여력", en: "Google headroom" }, 62, "+₩300k", "accent"],
+      [{ ko: "소재 상태", en: "Creative health" }, 34, { ko: "2건 교체", en: "2 swaps" }, "bad"],
     ],
-    chartLabel: { ko: "최근 7일 전환 추이", en: "Conversion trend · last 7 days" },
-    side: [
-      { l: { ko: "가장 큰 변화", en: "Largest change" }, v: "Meta · CPA −₩540", c: "#4ade80" },
-      { l: { ko: "오늘 확인", en: "Check today" }, v: { ko: "소재 교체 2건", en: "2 creative swaps" }, c: "#fbbf24" },
-      { l: { ko: "다음 조치", en: "Next action" }, v: { ko: "Google +₩300k 검토", en: "Review Google +₩300k" }, c: "#adc6ff" },
-    ],
+    actions: [{ ko: "Google 예산 +₩300k 소규모 실험", en: "Run a +₩300k Google budget test" }, { ko: "UGC_07·12 소재 교체", en: "Replace UGC_07 and UGC_12" }, { ko: "48시간 뒤 CPA 재확인", en: "Recheck CPA after 48 hours" }],
   },
   {
-    title: { ko: "성과 변동 분해", en: "Performance variance" },
-    type: "diverge",
-    kpis: [
-      { l: { ko: "지난주 CPA", en: "Prior CPA" }, v: "₩8,240", d: "기준", up: true },
-      { l: { ko: "이번주 CPA", en: "Current CPA" }, v: "₩9,030", d: "+9.6%", up: false },
-      { l: { ko: "가장 큰 기여", en: "Top contributor" }, v: "Meta", d: "+₩510", up: false },
-    ],
-    chartLabel: { ko: "CPA 변화의 기여도", en: "Contribution to CPA change" },
-    chip: { t: { ko: "원인 확인 필요", en: "Needs review" }, tone: "warn" },
-    side: [
-      { l: { ko: "채널", en: "Channel" }, v: { ko: "Meta · +₩510", en: "Meta · +₩510" }, c: "#f87171" },
-      { l: { ko: "캠페인", en: "Campaign" }, v: { ko: "신규유입 · +₩380", en: "Prospecting · +₩380" }, c: "#fbbf24" },
-      { l: { ko: "다음 조치", en: "Next action" }, v: { ko: "소재·타겟 확인", en: "Review creative & audience" }, c: "#adc6ff" },
-    ],
+    href: "/tools/campaign-variance",
+    short: { ko: "변동 원인", en: "Variance" },
+    title: { ko: "CPA 상승분 ₩790 중 ₩510은 Meta의 효율 저하에서 왔습니다.", en: "₩510 of the ₩790 CPA increase came from Meta efficiency loss." },
+    state: { ko: "원인 특정", en: "Driver isolated" }, tone: "bad",
+    metrics: [[{ ko: "지난주 CPA", en: "Prior CPA" }, "₩8,240", "BASE"], [{ ko: "이번주 CPA", en: "Current CPA" }, "₩9,030", "+9.6%"], [{ ko: "설명된 변화", en: "Explained" }, "100%", { ko: "잔차 0", en: "no residual" }]],
+    evidence: [["Meta", 82, "+₩510", "bad"], [{ ko: "신규유입 캠페인", en: "Prospecting" }, 61, "+₩380", "watch"], ["Google", 27, "−₩100", "good"]],
+    actions: [{ ko: "Meta 신규유입 소재·타겟 확인", en: "Review Meta prospecting creative and audience" }, { ko: "배분 변화와 효율 변화를 분리", en: "Separate mix change from efficiency change" }, { ko: "문제 캠페인만 단계적으로 감액", en: "Reduce only the affected campaign" }],
   },
   {
-    title: { ko: "소재 피로도", en: "Creative fatigue" },
-    type: "scatter",
-    kpis: [
-      { l: { ko: "분석 소재", en: "Creatives" }, v: "48", d: { ko: "최근 28일", en: "last 28d" }, up: true },
-      { l: { ko: "즉시 교체", en: "Replace now" }, v: "2", d: { ko: "우선순위 높음", en: "high priority" }, up: false },
-      { l: { ko: "권장 제작", en: "Recommended" }, v: "4/주", d: { ko: "교체 속도", en: "swap velocity" }, up: true },
-    ],
-    chartLabel: { ko: "성과와 피로도", en: "Performance vs. fatigue" },
-    chip: { t: { ko: "교체 일정 생성됨", en: "Swap plan ready" }, tone: "warn" },
-    side: [
-      { l: { ko: "교체 1순위", en: "First to swap" }, v: "UGC_07", c: "#f87171" },
-      { l: { ko: "피로 신호", en: "Fatigue signal" }, v: { ko: "CTR −31%", en: "CTR −31%" }, c: "#fbbf24" },
-      { l: { ko: "다음 제작", en: "Next production" }, v: { ko: "후킹 A/B", en: "Hook A/B" }, c: "#4ade80" },
-    ],
+    href: "/content/freshness",
+    short: { ko: "소재 피로", en: "Creative fatigue" },
+    title: { ko: "48개 중 2개는 지금 교체하고, 이번 주 4개를 새로 제작하세요.", en: "Replace 2 of 48 creatives now and produce 4 new variants this week." },
+    state: { ko: "교체 큐 생성", en: "Swap queue ready" }, tone: "watch",
+    metrics: [[{ ko: "분석 소재", en: "Creatives" }, "48", "28D"], [{ ko: "즉시 교체", en: "Replace now" }, "2", { ko: "긴급", en: "urgent" }], [{ ko: "권장 제작", en: "Produce" }, "4/주", { ko: "속도", en: "velocity" }]],
+    evidence: [["UGC_07", 88, "CTR −31%", "bad"], ["STATIC_12", 71, "CPA +24%", "watch"], ["UGC_03", 26, { ko: "유지", en: "keep" }, "good"]],
+    actions: [{ ko: "UGC_07 오늘 교체", en: "Replace UGC_07 today" }, { ko: "후킹 문구 A/B 2종 제작", en: "Produce 2 hook-message variants" }, { ko: "다음 주 교체 속도 재계산", en: "Recalculate swap velocity next week" }],
   },
   {
-    title: { ko: "예산 여력 진단", en: "Budget headroom" },
-    type: "curve",
-    kpis: [
-      { l: { ko: "현재 일예산", en: "Daily spend" }, v: "₩1.2M", d: { ko: "Google", en: "Google" }, up: true },
-      { l: { ko: "한계 CPA", en: "Marginal CPA" }, v: "₩9,100", d: { ko: "목표 내", en: "within target" }, up: true },
-      { l: { ko: "증액 여력", en: "Headroom" }, v: "+₩300k", d: { ko: "테스트 권장", en: "test recommended" }, up: true },
-    ],
-    chartLabel: { ko: "지출 대비 반응 곡선", en: "Spend-response curve" },
-    chip: { t: { ko: "증액 가능", en: "Can scale" }, tone: "good" },
-    side: [
-      { l: "Google UAC", v: { ko: "여유 있음", en: "headroom" }, c: "#4ade80" },
-      { l: "Meta", v: { ko: "관찰", en: "monitor" }, c: "#fbbf24" },
-      { l: { ko: "다음 조치", en: "Next action" }, v: { ko: "+₩300k 실험", en: "Test +₩300k" }, c: "#adc6ff" },
-    ],
+    href: "/tools/marketing-response",
+    short: { ko: "MMM·예측", en: "MMM & forecast" },
+    title: { ko: "Google은 아직 성장 여력이 있고, Meta는 현재 수준을 유지하는 편이 낫습니다.", en: "Google still has growth headroom; hold Meta at its current level." },
+    state: { ko: "예산 시나리오", en: "Budget scenario" }, tone: "good",
+    metrics: [[{ ko: "예측 증분", en: "Forecast lift" }, "+9.8%", { ko: "4주", en: "4 weeks" }], [{ ko: "권장 이동", en: "Budget move" }, "+₩8.4M", "Google"], [{ ko: "시나리오 범위", en: "Scenario spread" }, "±3.1%", { ko: "참고값", en: "reference" }]],
+    evidence: [["Google UAC", 79, { ko: "증액", en: "scale" }, "good"], ["Meta", 53, { ko: "유지", en: "hold" }, "watch"], ["TikTok", 31, { ko: "학습 부족", en: "low data" }, "muted"]],
+    actions: [{ ko: "Google +10% 시나리오 실행", en: "Run the Google +10% scenario" }, { ko: "Meta는 기준 예산 유지", en: "Hold Meta at baseline spend" }, { ko: "홀드아웃으로 인과효과 확인", en: "Validate causality with a holdout" }],
   },
 ];
 
 export default function ProductPreview({ videoSrc = null, poster = null, locale = "ko" }) {
-  const tr = (o) => (typeof o === "string" ? o : locale === "en" ? o.en : o.ko);
-  const [idx, setIdx] = useState(0);
-  const [shown, setShown] = useState(true);
+  const tr = (value) => typeof value === "string" ? value : locale === "en" ? value.en : value.ko;
+  const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const timeoutRef = useRef(null);
+  const scene = SCENES[index];
+  const selectScene = useCallback((next) => {
+    setVisible(false);
+    window.clearTimeout(timeoutRef.current);
+    timeoutRef.current = window.setTimeout(() => { setIndex(next); setVisible(true); }, 180);
+  }, []);
   useEffect(() => {
-    if (videoSrc) return;
-    const timer = setInterval(() => {
-      setShown(false);
-      setTimeout(() => { setIdx((current) => (current + 1) % SCENES.length); setShown(true); }, 220);
-    }, 4200);
-    return () => clearInterval(timer);
-  }, [videoSrc]);
-  const scene = SCENES[idx];
-  const Mock = MOCKS[scene.type] || MOCKS.kpiLine;
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncMotion = () => setReduceMotion(media.matches);
+    syncMotion();
+    media.addEventListener?.("change", syncMotion);
+    return () => media.removeEventListener?.("change", syncMotion);
+  }, []);
+  useEffect(() => () => window.clearTimeout(timeoutRef.current), []);
+  useEffect(() => {
+    if (videoSrc || reduceMotion || isPaused) return undefined;
+    const timer = window.setInterval(() => selectScene((index + 1) % SCENES.length), 5200);
+    return () => { window.clearInterval(timer); window.clearTimeout(timeoutRef.current); };
+  }, [index, isPaused, reduceMotion, videoSrc, selectScene]);
 
-  const kpiTile = (k, i) => (
-    <div key={i} style={{ flex: 1, background: "var(--surface-container-lowest, rgba(255,255,255,0.03))", border: "1px solid var(--border-subtle, var(--border))", borderRadius: "10px", padding: "9px 12px" }}>
-      <div style={{ fontSize: "10.5px", color: "var(--text-muted)" }}>{tr(k.l)}</div>
-      <div style={{ fontSize: "17px", fontWeight: 700, color: "var(--text-primary)", fontFamily: "JetBrains Mono, monospace", lineHeight: 1.2 }}>{k.v}</div>
-      <div style={{ fontSize: "10.5px", color: k.up ? "#4ade80" : "#f0917e", fontWeight: 600 }}>{tr(k.d)}</div>
-    </div>
-  );
-
-  return (
-    <div style={{ maxWidth: "920px", margin: "0 auto" }}>
-      <div style={{ borderRadius: "8px", border: "1px solid var(--border)", overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.22)", background: "var(--bg-1)" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 14px", borderBottom: "1px solid var(--border-subtle, var(--border))", background: "var(--surface-container-lowest, rgba(255,255,255,0.02))" }}>
-          <span style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", color: "var(--text-secondary)", fontFamily: "JetBrains Mono, monospace" }}>{tr(scene.title)}</span>
-          <span style={{ fontSize: "10px", color: "var(--text-muted)", fontFamily: "JetBrains Mono, monospace" }}>{locale === "en" ? "REFRESHED 09:00 KST" : "09:00 KST 기준"}</span>
-        </div>
-
-        {videoSrc ? (
-          <video src={videoSrc} poster={poster || undefined} autoPlay muted loop playsInline style={{ width: "100%", display: "block" }} />
-        ) : (
-          <div style={{ padding: "16px", pointerEvents: "none", minHeight: "312px" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", opacity: shown ? 1 : 0, transition: "opacity 0.22s ease" }}>
-              {/* 상단 KPI 스트립 */}
-              {scene.kpis && (
-                <div style={{ display: "flex", gap: "10px" }}>{scene.kpis.map(kpiTile)}</div>
-              )}
-              {/* 본문: 차트 + (선택) 사이드 요약 */}
-              <div style={{ display: "grid", gridTemplateColumns: scene.side ? "1.7fr 1fr" : "1fr", gap: "12px" }}>
-                <div style={{ background: "var(--surface-container-lowest, rgba(255,255,255,0.03))", border: "1px solid var(--border-subtle, var(--border))", borderRadius: "10px", padding: "12px", height: scene.kpis ? "196px" : "240px", position: "relative" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-                    <span style={{ fontSize: "11.5px", fontWeight: 700, color: "var(--text-secondary)" }}>{tr(scene.chartLabel)}</span>
-                    {scene.chip && (
-                      <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 8px", borderRadius: "999px", color: scene.chip.tone === "good" ? "#166534" : "#92400e", background: scene.chip.tone === "good" ? "#bbf7d0" : "#fde68a" }}>{tr(scene.chip.t)}</span>
-                    )}
-                  </div>
-                  <div style={{ height: scene.kpis ? "150px" : "196px" }}><Mock /></div>
-                </div>
-
-                {scene.side && (
-                  <div style={{ background: "var(--surface-container-lowest, rgba(255,255,255,0.03))", border: "1px solid var(--border-subtle, var(--border))", borderRadius: "10px", padding: "12px", height: scene.kpis ? "196px" : "240px", display: "flex", flexDirection: "column", gap: "10px" }}>
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)" }}>{locale === "en" ? "Breakdown" : "요약"}</span>
-                    {scene.side.map((s, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "7px", fontSize: "12px", color: "var(--text-secondary)", minWidth: 0 }}>
-                          {s.c && <span style={{ width: 9, height: 9, borderRadius: "3px", background: s.c, flexShrink: 0 }} />}
-                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tr(s.l)}</span>
-                        </span>
-                        <span style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-primary)", fontFamily: "JetBrains Mono, monospace" }}>{tr(s.v)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+  if (videoSrc) return <video className="operator-preview__video" src={videoSrc} poster={poster || undefined} autoPlay muted loop playsInline />;
+  return <div
+    className="operator-preview"
+    onMouseEnter={() => setIsPaused(true)}
+    onMouseLeave={() => setIsPaused(false)}
+    onFocusCapture={() => setIsPaused(true)}
+    onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setIsPaused(false); }}
+  >
+    <nav className="operator-preview__nav" aria-label={locale === "en" ? "Product examples" : "제품 기능 예시"}>
+      <div className="operator-preview__brand"><span>GO</span><b>{locale === "en" ? "Decision desk" : "의사결정 데스크"}</b></div>
+      {SCENES.map((item, itemIndex) => <button key={item.short.en} type="button" className={itemIndex === index ? "active" : ""} onClick={() => selectScene(itemIndex)} aria-pressed={itemIndex === index}><span>0{itemIndex + 1}</span>{tr(item.short)}</button>)}
+      <small>{locale === "en" ? "RAW DATA STAYS LOCAL" : "원본 데이터는 브라우저 안에"}</small>
+    </nav>
+    <div className={`operator-preview__body${visible ? " is-visible" : ""}`}>
+      <header className="operator-preview__head"><div><span>{tr(scene.short)} · W29</span><h2>{tr(scene.title)}</h2></div><em className={scene.tone}>{tr(scene.state)}</em></header>
+      <div className="operator-preview__metrics">{scene.metrics.map(([label, value, delta]) => <div key={tr(label)}><span>{tr(label)}</span><strong>{value}</strong><small>{tr(delta)}</small></div>)}</div>
+      <div className="operator-preview__workarea">
+        <section className="operator-preview__evidence"><div className="operator-preview__section-head"><b>{locale === "en" ? "Decision evidence" : "판단 근거"}</b><span>{locale === "en" ? "relative contribution" : "상대 기여도"}</span></div>{scene.evidence.map(([label, width, value, tone]) => <div className="operator-preview__bar" key={tr(label)}><div><span>{tr(label)}</span><strong>{tr(value)}</strong></div><i><b className={tone} style={{ width: `${width}%` }}></b></i></div>)}</section>
+        <section className="operator-preview__queue"><div className="operator-preview__section-head"><b>{locale === "en" ? "Action queue" : "실행 큐"}</b><span>{locale === "en" ? "ordered" : "순서대로"}</span></div><ol>{scene.actions.map((action, actionIndex) => <li key={tr(action)}><span>{actionIndex + 1}</span><p>{tr(action)}</p></li>)}</ol><Link href={`${locale === "en" ? "/en" : ""}${scene.href}`}>{locale === "en" ? "Open detailed analysis" : "상세 분석 열기"}<span>→</span></Link></section>
       </div>
-      {!videoSrc && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "12px" }}>
-        {SCENES.map((item, i) => <button key={item.title.en} type="button" aria-label={tr(item.title)} onClick={() => { setShown(false); setTimeout(() => { setIdx(i); setShown(true); }, 180); }} style={{ width: i === idx ? "auto" : 8, height: 8, padding: i === idx ? "0 8px" : 0, border: "none", borderRadius: 8, background: i === idx ? "var(--primary)" : "var(--border-stronger, var(--border))", color: "var(--bg-1)", cursor: "pointer", fontSize: 0 }}>
-          {i === idx ? tr(item.title) : ""}
-        </button>)}
-      </div>}
     </div>
-  );
+  </div>;
 }

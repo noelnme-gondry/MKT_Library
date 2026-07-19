@@ -86,7 +86,18 @@ export const REG_STATS = (() => {
         for (let j = 0; j < 2 * n; j++) A[r][j] -= f * A[c][j];
       }
     }
-    return A.map((r) => r.slice(n));
+    const inverse = A.map((r) => r.slice(n));
+    const identity = mul(M, inverse);
+    let maxError = 0;
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        const error = Math.abs(identity[i][j] - (i === j ? 1 : 0));
+        if (!isFinite(error)) throw new Error("역행렬 수치 검증 실패");
+        maxError = Math.max(maxError, error);
+      }
+    }
+    if (maxError > 1e-6) throw new Error("역행렬 수치 검증 실패 — 변수 스케일 또는 공선성을 확인하세요");
+    return inverse;
   }
   function gammaln(x) {
     const c = [
@@ -165,9 +176,11 @@ export const REG_STATS = (() => {
       XtX = mul(Xt, X),
       Xty = matVec(Xt, y);
     let XtXi;
+    let regularized = false;
     try {
       XtXi = inv(XtX);
     } catch (e) {
+      regularized = true;
       for (let i = 0; i < k; i++) XtX[i][i] += 1e-8 * (XtX[i][i] || 1);
       XtXi = inv(XtX);
     }
@@ -186,6 +199,32 @@ export const REG_STATS = (() => {
     const pval = tval.map((t) => tSF(Math.abs(t), df));
     const tc = tinv(0.05, df);
     const ci = beta.map((b, j) => [b - tc * se[j], b + tc * se[j]]);
+    // HC3 heteroskedasticity-consistent covariance. Content/creative metrics
+    // frequently have variance that grows with impressions, so classical OLS
+    // SE can overstate significance even when coefficients themselves are fine.
+    const leverages = X.map((row, i) =>
+      row.reduce(
+        (sum, xj, j) => sum + xj * XtXi[j].reduce((inner, value, col) => inner + value * X[i][col], 0),
+        0,
+      ),
+    );
+    const maxLeverage = Math.max(...leverages);
+    const hc3Valid = leverages.every((value) => Number.isFinite(value) && 1 - value > 1e-6);
+    const meat = Array.from({ length: k }, () => Array(k).fill(0));
+    if (hc3Valid) {
+      for (let i = 0; i < n; i++) {
+        const scaledResidual = resid[i] / (1 - leverages[i]);
+        const weight = scaledResidual * scaledResidual;
+        for (let row = 0; row < k; row++) {
+          for (let col = 0; col < k; col++) meat[row][col] += weight * X[i][row] * X[i][col];
+        }
+      }
+    }
+    const hc3Cov = hc3Valid ? mul(mul(XtXi, meat), XtXi) : null;
+    const hc3Se = hc3Valid ? beta.map((_, j) => Math.sqrt(Math.max(0, hc3Cov[j][j]))) : beta.map(() => NaN);
+    const hc3Tval = hc3Valid ? beta.map((value, j) => (hc3Se[j] > 0 ? value / hc3Se[j] : 0)) : beta.map(() => NaN);
+    const hc3Pval = hc3Valid ? hc3Tval.map((value) => tSF(Math.abs(value), df)) : beta.map(() => NaN);
+    const hc3Ci = hc3Valid ? beta.map((value, j) => [value - tc * hc3Se[j], value + tc * hc3Se[j]]) : beta.map(() => [NaN, NaN]);
     const F = (TSS - RSS) / (k - 1) / sigma2,
       Fp = betai(df / 2, (k - 1) / 2, df / (df + (k - 1) * F));
     return {
@@ -207,6 +246,13 @@ export const REG_STATS = (() => {
       F,
       Fp,
       XtXi, // 예측 밴드 leverage 계산용 (additive — 기존 호출부 무영향)
+      regularized,
+      hc3Se,
+      hc3Tval,
+      hc3Pval,
+      hc3Ci,
+      hc3Valid,
+      maxLeverage,
     };
   }
   function r2of(X, y) {

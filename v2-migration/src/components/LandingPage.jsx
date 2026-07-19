@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { IA, SECTIONS, useAppStore } from "@/store/useDataStore";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { trItemTitle } from "@/lib/enNavCopy";
-import LocaleAutoRedirect from "@/components/LocaleAutoRedirect";
 import ProductPreview from "@/components/landing/ProductPreview";
 import ToolCarousel from "@/components/landing/ToolCarousel";
 
@@ -20,12 +19,13 @@ const LANDING_COPY = {
       title: "성과가 움직인 이유를",
       titleTools: "이번 주 운영 브리핑에서 바로 확인하고",
       titleAccent: "다음 조치까지 정합니다.",
-      sub: "캠페인 CSV 한 파일로 성과 변동, 예산 여력, 소재 교체 우선순위를 같은 흐름에서 확인하세요. 원본 데이터는 브라우저 밖으로 나가지 않습니다.",
+      sub: "일별 캠페인 CSV로 성과 변동과 예산 여력을 보고, 소재 ID가 있으면 소재 단계까지 내려갑니다. 구조가 다른 MMM·실험 분석은 필요한 컬럼을 먼저 알려줍니다.",
       ctaPrimary: "내 데이터로 분석 시작",
       ctaDemo: "데모 먼저 보기",
       privacy: "🔒 서버 전송 0 · 브라우저 메모리에서만 처리",
-      previewCaption: "LIVE OPERATING BRIEF · 주간 결론과 다음 조치",
+      previewCaption: "PRODUCT SAMPLE · 주간 결론과 다음 조치 예시",
       carouselTitle: "다음 질문도 같은 데이터에서 이어서 확인하세요",
+      lab: { eyebrow: "ADVANCED ANALYSIS LAB", title: "MMM·회귀·미래 예측도 같은 도구 안에서", desc: "주간 운영을 넘어 채널별 기여도, 광고비 반응곡선, 예산 시나리오별 미래 성과를 분석합니다. 관측 데이터의 한계와 외삽 위험도 결과와 함께 설명합니다.", cta: "마케팅 반응 분석 열기", items: ["채널별 기여 분해", "다변량 회귀", "4주 미래 예측"] },
     },
     localeSwitchLabel: "English",
     guide: {
@@ -68,12 +68,13 @@ const LANDING_COPY = {
       title: "Know why performance moved,",
       titleTools: "review it in this week’s operating brief, then",
       titleAccent: "decide the next action.",
-      sub: "Use one campaign CSV to review performance shifts, budget headroom, and creative replacement priority in one connected flow. Raw data never leaves your browser.",
+      sub: "Use a daily campaign CSV for performance shifts and budget headroom, then drill to creative when an ID is present. For MMM or experiments, we show the exact additional columns you need.",
       ctaPrimary: "Analyze my data",
       ctaDemo: "See a live demo",
       privacy: "🔒 Nothing sent to any server · processed in browser memory only",
-      previewCaption: "LIVE OPERATING BRIEF · weekly decisions and next actions",
+      previewCaption: "PRODUCT SAMPLE · weekly decisions and next actions",
       carouselTitle: "Continue with the next question from the same data",
+      lab: { eyebrow: "ADVANCED ANALYSIS LAB", title: "MMM, regression, and forecasting — in the same workflow", desc: "Go beyond weekly operations to estimate channel contribution, spend-response curves, and future performance by budget scenario, with observational limits and extrapolation risk shown beside the result.", cta: "Open marketing response analysis", items: ["Channel contribution", "Multivariate regression", "4-week forecast"] },
     },
     localeSwitchLabel: "한국어",
     guide: {
@@ -127,7 +128,7 @@ const TOOL_HOOKS = {
     "9-6": "지금 성과 좋은 소재, 언제쯤 교체해야 할까?",
     "5-4": "A안과 B안, 진짜 차이가 있는 걸까?",
     "5-23": "자연 유입 빼고, 광고가 순수하게 만든 성과는?",
-    "5-18": "우리 광고비, 어디서 벌고 어디서 갉아먹을까?",
+    "5-18": "예산을 바꾸면 다음 4주 성과는 얼마나 달라질까?",
     "5-20": "유저를 붙잡는 '아하 순간'은 언제일까?",
   },
   en: {
@@ -188,6 +189,7 @@ function LandingHome({ locale }) {
 
   // 캐러셀 카드 = 분석 도구(콘텐츠 09 포함, SECTIONS.analysis에 흡수됨)를 "질문"으로
   // 평탄화(그룹 제목=eyebrow, 훅=헤드라인). opsGroups가 09를 이미 포함.
+  const featuredOrder = ["5-2", "5-21", "9-6", "5-18", "5-22", "5-3", "5-4", "5-23", "5-20", "9-1"];
   const carouselCards = opsGroups.flatMap((g) =>
     g.items
       .filter((it) => !it.hidden)
@@ -199,18 +201,17 @@ function LandingHome({ locale }) {
           eyebrow: g.title,
           headline: H[it.id] || trItemTitle(it.id, locale, meta.title),
           mockTitle: trItemTitle(it.id, locale, meta.title),
+          href: locale === "en" && hasEnVersion(it.id) ? `/en${idToSlug[it.id] || ""}` : idToSlug[it.id] || "/",
         };
       })
       .filter(Boolean)
-  );
-  const pickTool = (id) => { fireGa("landing_tool_pick", { tool: id }); goTool(id); };
+  ).sort((a, b) => featuredOrder.indexOf(a.id) - featuredOrder.indexOf(b.id));
+  const pickTool = (id) => { fireGa("landing_tool_pick", { tool: id }); };
 
   return (
-    <main className="landing-shell">
+    <div className="landing-shell">
       {/* 브랜드(로고+이름)는 전역 Header 좌상단으로 이동, 언어 전환도 Header EN 토글로
           일원화 — 랜딩 자체 eyebrow/English 버튼(중복) 제거. */}
-      {locale !== "en" && <LocaleAutoRedirect />}
-
       {/* ── 히어로 (Semrush형 전환 히어로) ── */}
       <section className="landing-hero">
         <div className="landing-hero__signal"><span></span>{locale === "en" ? "WEEKLY DECISION SYSTEM" : "WEEKLY DECISION SYSTEM · 주간 운영 판단"}</div>
@@ -231,9 +232,9 @@ function LandingHome({ locale }) {
           {hero.sub}
         </p>
         <div className="landing-hero__actions">
-          <button type="button" className="btn primary landing-hero__primary" onClick={() => { fireGa("landing_cta", { action: "analyze" }); router.push(locale === "en" ? "/en/start" : "/start"); }}>
+          <Link href={locale === "en" ? "/en/start" : "/start"} className="btn primary landing-hero__primary" onClick={() => fireGa("landing_cta", { action: "analyze" })}>
             {hero.ctaPrimary} →
-          </button>
+          </Link>
           <button type="button" className="btn ghost landing-hero__secondary" onClick={() => { fireGa("landing_cta", { action: "demo" }); setDemoDisabled(false); goTool("5-2"); }}>
             ▶ {hero.ctaDemo}
           </button>
@@ -243,8 +244,22 @@ function LandingHome({ locale }) {
 
       {/* ── 라이브 제품 미리보기(시연 슬롯 — 여러 도구 로테이션, 나중 mp4 교체 가능) ── */}
       <section className="landing-preview-stage" aria-label={hero.previewCaption}>
-        <div className="landing-preview-stage__bar"><span>{hero.previewCaption}</span><span className="landing-preview-stage__status">● {locale === "en" ? "UPDATED TODAY" : "오늘 업데이트"}</span></div>
+        <div className="landing-preview-stage__bar"><span>{hero.previewCaption}</span><span className="landing-preview-stage__status">● {locale === "en" ? "SAMPLE DATA" : "샘플 데이터"}</span></div>
         <ProductPreview locale={locale} />
+      </section>
+
+      <section className="landing-advanced-lab">
+        <div>
+          <span>{hero.lab.eyebrow}</span>
+          <h2>{hero.lab.title}</h2>
+          <p>{hero.lab.desc}</p>
+          <Link href={locale === "en" ? "/en/tools/marketing-response" : "/tools/marketing-response"} className="btn primary" onClick={() => fireGa("landing_tool_pick", { tool: "5-18" })}>{hero.lab.cta} →</Link>
+        </div>
+        <div className="landing-advanced-lab__model" aria-hidden="true">
+          <span>MODEL / 5-18</span>
+          {hero.lab.items.map((item, index) => <div key={item}><i>0{index + 1}</i><b>{item}</b><em>{index === 0 ? "42.8%" : index === 1 ? "R² .81" : "+9.8%"}</em></div>)}
+          <small>{locale === "en" ? "association ≠ causation · validate with holdout" : "연관 ≠ 인과 · 홀드아웃으로 최종 확인"}</small>
+        </div>
       </section>
 
       {/* ── 질문 캐러셀(도구 진입) ── */}
@@ -282,13 +297,9 @@ function LandingHome({ locale }) {
       {/* 데이터 준비 가이드 — 상단이 아닌 맨 밑에 약하게(자기서비스 탈출구). */}
       {dataGuideItem && (
         <div style={{ marginTop: "1.4rem", textAlign: "center" }}>
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              fireGa("data_guide_open", { from: "landing" });
-              goTool(dataGuideItem.id);
-            }}
+          <Link
+            href={locale === "en" && hasEnVersion(dataGuideItem.id) ? `/en${idToSlug[dataGuideItem.id] || ""}` : idToSlug[dataGuideItem.id] || "/"}
+            onClick={() => fireGa("data_guide_open", { from: "landing" })}
             style={{
               fontSize: "12.5px",
               color: "var(--text-muted)",
@@ -301,7 +312,7 @@ function LandingHome({ locale }) {
               ? "New to preparing data? See the CSV prep & column-mapping guide"
               : "데이터 준비가 처음이라면 — CSV 준비 & 컬럼 매핑 가이드"}{" "}
             →
-          </a>
+          </Link>
         </div>
       )}
 
@@ -323,7 +334,7 @@ function LandingHome({ locale }) {
           <span>{L.social.feedback}</span>
         </a>
       </div>
-    </main>
+    </div>
   );
 }
 

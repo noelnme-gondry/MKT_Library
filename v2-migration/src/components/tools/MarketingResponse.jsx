@@ -572,15 +572,16 @@ function buildForecastCsv(fc, target, locale = "ko") {
     [tx("# 모델", "# Model"), fc.model],
     [tx("# adstock_lambda(광고잔효 λ)", "# adstock_lambda (carryover λ)"), fc.lam],
     [tx("# R2(모델 적합도·1에 가까울수록 잘맞음)", "# R2 (model fit · closer to 1 = better)"), fc.r2],
-    [tx("# sigma_resid(평균 오차폭)", "# sigma_resid (average error width)"), fc.sigma],
+    [tx("# sigma_resid(과거 잔차 표준편차)", "# sigma_resid (historical residual standard deviation)"), fc.sigma],
     [tx("# 과거 데이터 행수", "# Historical rows"), fc.n],
     [tx("# 예측 기간(행)", "# Forecast horizon (rows)"), fc.horizon],
     [
-      tx("# 밴드 종류(95%)", "# Band type (95%)"),
-      fc.bandLabel +
-        (fc.bandMode === "mean"
-          ? tx(" — 평균 추세 범위(좁음, t·σ·√leverage)", " — average-trend range (narrow, t·σ·√leverage)")
-          : tx(" — 개별 주 범위(넓음, t·σ·√(1+leverage), 노이즈 포함)", " — individual-week range (wide, t·σ·√(1+leverage), includes noise)")),
+      tx("# 참고 범위 종류", "# Reference-range type"),
+      fc.isRidge
+        ? tx("릿지 모델 과거 잔차 참고 범위 — ±1.96×잔차 σ, 확률 보장 아님", "Ridge historical-residual reference — ±1.96×residual σ, not probability-calibrated")
+        : fc.bandMode === "mean"
+          ? tx("과거 잔차 기반 평균 추세 참고 범위 — t·σ·√leverage, 확률 보장 아님", "Historical-residual average-trend reference — t·σ·√leverage, not probability-calibrated")
+          : tx("과거 잔차 기반 개별 주 참고 범위 — t·σ·√(1+leverage), 확률 보장 아님", "Historical-residual individual-week reference — t·σ·√(1+leverage), not probability-calibrated"),
     ],
     [
       tx("# 주의", "# Note"),
@@ -634,7 +635,7 @@ function buildForecastCsv(fc, target, locale = "ko") {
     "# 5) adstock (carryover) = this week's spend + λ × last week's adstock — the cumulative value of ad effect carrying into next week.",
     "# 6) ln_channel = LN(1 + adstock) — a transform where extra effect shrinks the more you spend (diminishing returns).",
     "# 7) The sum of all ingredients is that week's forecast value.",
-    "# * Lower/upper bound (95%) is the error range around the forecast (future only).",
+    "# * Lower/upper columns are historical-residual reference bounds (future only), not calibrated 95% confidence or prediction intervals.",
     "# * The adstock λ references the 'adstock_lambda' cell in the metadata above (B" + lamRow + ").",
   ] : [
     "# 1) 위 '기본값(Intercept)'에서 출발합니다.",
@@ -644,7 +645,7 @@ function buildForecastCsv(fc, target, locale = "ko") {
     "# 5) adstock(광고잔효) = 이번 주 지출 + λ × 지난주 adstock — 광고 효과가 다음 주로 이어지는 누적값입니다.",
     "# 6) ln_채널 = LN(1 + adstock) — 많이 쓸수록 추가 효과가 줄어드는(수확체감) 변환.",
     "# 7) 모든 재료를 더한 합이 그 주의 예측값입니다.",
-    "# ※ 하한/상한(95%)은 예측값을 중심으로 한 오차 범위입니다 (미래만).",
+    "# ※ 하한/상한은 과거 잔차를 예측값 주변에 적용한 참고 범위입니다(미래만). 보정된 95% 신뢰·예측구간이 아닙니다.",
     "# ※ adstock λ는 위 메타의 'adstock_lambda' 셀(B" + lamRow + ")을 참조합니다.",
   ]).forEach((s) => L.push([s].map(csvQ).join(",")));
   L.push("");
@@ -669,8 +670,8 @@ function buildForecastCsv(fc, target, locale = "ko") {
     "segment",
     tx("actual(실측)", "actual"),
     tx("fitted_or_forecast(예측·수식)", "fitted_or_forecast"),
-    tx("lo95(하한)", "lo95"),
-    tx("hi95(상한)", "hi95"),
+    tx("residual_reference_low(참고하한)", "residual_reference_low"),
+    tx("residual_reference_high(참고상한)", "residual_reference_high"),
     ...fc.names,
     ...chansLn.map((k) => "adstock_" + fc.chans[k].label),
     ...fc.chans.map((ch) => "spend_" + ch.label),
@@ -913,7 +914,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const [satHidden, setSatHidden] = useState({}); // 수확체감 곡선 채널별 표시 토글 { [chKey]: true=숨김 }
   const [spikeNotes, setSpikeNotes] = useState({}); // §5.5 튀는 구간 메모 { [target|week]: note }
   const [fcHorizon, setFcHorizon] = useState(13);
-  const [fcBand, setFcBand] = useState("mean"); // mean | pred
+  const fcBand = "mean"; // 현재 엔진은 mean/pred를 구분하지 못해 참고용 잔차 범위만 노출.
   const [fcBudget, setFcBudget] = useState({}); // {chKey: 주 평균 예산} — 미입력 채널은 최근평균
   const [fcStepOff, setFcStepOff] = useState({}); // {stepKey: 켜둘 미래 기간 N} — 빈값=지속
   const [cannibChannel, setCannibChannel] = useState(null);
@@ -2480,7 +2481,7 @@ export default function MarketingResponse({ locale = "ko" }) {
             <section className="block" id="s-forecast">
               <h2 className="section-title">{tx("📈 회귀 · 미래 예측", "📈 Regression · Forecast")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx("· ②와 같은 모델로 과거 적합 + 미래 예산 시나리오 외삽", "· same model as ② — historical fit + future budget-scenario extrapolation")}</span></h2>
               <p style={{ fontSize: "12px", color: MUTED, marginBottom: "12px", lineHeight: 1.55 }}>
-                {tx("①·②와", "Uses the")} <strong>{tx("같은 CSV·매핑", "same CSV/mapping")}</strong>{tx("을 그대로 씁니다(타깃·플랫폼 토글은 상단 breadcrumb에서). 아래 채널별 예산을 미래로 연장하면 그 시나리오의", " as ①·② (target/platform toggles are in the breadcrumb above). Extend the per-channel budgets below into the future to forecast that scenario's")} {mmm.target === "Regs" ? tx("가입", "signups") : mmm.target === "React" ? tx("재활성", "reactivation") : tx("성과", "performance")}{tx("을 예측합니다 — 회색=실측·파란선=모델/예측·음영=95% 밴드.", " — gray=actual · blue line=model/forecast · shaded=95% band.")}
+                {tx("①·②와", "Uses the")} <strong>{tx("같은 CSV·매핑", "same CSV/mapping")}</strong>{tx("을 그대로 씁니다(타깃·플랫폼 토글은 상단 breadcrumb에서). 아래 채널별 예산을 미래로 연장하면 그 시나리오의", " as ①·② (target/platform toggles are in the breadcrumb above). Extend the per-channel budgets below into the future to forecast that scenario's")} {mmm.target === "Regs" ? tx("가입", "signups") : mmm.target === "React" ? tx("재활성", "reactivation") : tx("성과", "performance")}{tx("을 예측합니다 — 회색=실측·파란선=모델/예측·음영=과거 잔차 기반 참고 범위(인과·확률 보장 아님).", " — gray=actual · blue line=model/forecast · shading=a reference range based on historical residuals, not a causal or probabilistic guarantee.")}
               </p>
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "12px", alignItems: "center" }}>
                 <div className="ab-pillgroup">
@@ -2489,9 +2490,8 @@ export default function MarketingResponse({ locale = "ko" }) {
                   <button className={`ab-pill ${decompModel === "ridge" ? "active" : ""}`} onClick={() => setDecompModel("ridge")}>Ridge</button>
                 </div>
                 <div className="ab-pillgroup">
-                  <span className="ab-pillgroup-label">{tx("밴드", "Band")}</span>
-                  <button className={`ab-pill ${fcBand === "mean" ? "active" : ""}`} onClick={() => setFcBand("mean")}>{tx("신뢰구간", "Confidence")}</button>
-                  <button className={`ab-pill ${fcBand === "pred" ? "active" : ""}`} onClick={() => setFcBand("pred")}>{tx("예측구간", "Prediction")}</button>
+                  <span className="ab-pillgroup-label">{tx("범위", "Range")}</span>
+                  <span className="ab-pill active">{tx("참고용 잔차 범위", "Residual reference")}</span>
                 </div>
                 <label style={{ fontSize: "12px", color: MUTED }}>
                   {tx("예측 기간(주):", "Forecast horizon (wk):")}{" "}
@@ -2518,7 +2518,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                   </div>
                   <div className="chart-container" style={{ height: "300px", marginBottom: "12px" }}><canvas ref={forecastRef}></canvas></div>
                   <p style={{ fontSize: "11px", color: MUTED, marginBottom: "10px" }}>
-                    {forecast.bandLabel} · {tx("채널별 미래 예산을 수정하면 그 시나리오로 즉시 재예측됩니다(주 평균). 실제 배분·시나리오는 5-3 예산 배분 시뮬레이터를 사용하세요.", "Editing per-channel future budgets instantly re-forecasts that scenario (weekly average). For actual allocation/scenarios, use the Budget Allocation simulator (5-3).")}
+                    {tx("과거 잔차 기반 참고 범위", "Historical-residual reference range")} · {tx("채널별 미래 예산을 수정하면 그 시나리오로 즉시 재예측됩니다(주 평균). 실제 배분·시나리오는 5-3 예산 배분 시뮬레이터를 사용하세요.", "Editing per-channel future budgets instantly re-forecasts that scenario (weekly average). For actual allocation/scenarios, use the Budget Allocation simulator (5-3).")}
                   </p>
 
                   {/* ── 채널별 미래 예산 편집 (수정 시 즉시 재예측) ── */}

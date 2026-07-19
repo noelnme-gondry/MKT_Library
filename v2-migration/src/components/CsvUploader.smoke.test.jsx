@@ -5,7 +5,7 @@
 // TOOL_REQUIRED/OPTIONAL_FIELDS to render the dropzone (no data) or the mapping
 // grid + required-columns table (data present). Both branches must mount.
 import { describe, it, expect, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import CsvUploader from "@/components/CsvUploader";
 
@@ -16,6 +16,8 @@ function seedNoData() {
     currentRouteId: "5-2",
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    demoDisabled: false,
+    csvClearedByGroup: {},
   });
 }
 
@@ -45,5 +47,13 @@ describe("CsvUploader render smoke", () => {
     seedWithData();
     expect(() => render(<CsvUploader toolId="5-2" />)).not.toThrow();
     expect(document.querySelector(".mapping-grid")).toBeTruthy();
+  });
+  it("keeps one live status node across upload branch transition", () => {
+    useAppStore.setState({ demoDisabled: true, csvClearedByGroup: { efficiency: true } });
+    const { container } = render(<CsvUploader toolId="5-2" />);
+    const statusBefore = container.querySelector('[role="status"]');
+    expect(statusBefore).toBeTruthy();
+    act(() => seedWithData());
+    expect(container.querySelector('[role="status"]')).toBe(statusBefore);
   });
 });

@@ -1,5 +1,6 @@
 import SopContent from "@/components/sops/SopContent";
 import { SITE_URL } from "@/lib/routeMap";
+import { readSopData } from "@/lib/sopData";
 
 // EN pilot — mirrors the KR route (/guide/dev-collaboration, routeId "1-1") using the
 // JSON-data-based SopContent path (public/content/pages/1-1.en.json). Only "1-1" has an
@@ -28,9 +29,10 @@ export async function generateMetadata() {
 }
 
 export default function EnDevCollaborationPage() {
+  const initialData = readSopData("1-1", "en");
   return (
-    <article className="content" id="content" aria-live="polite">
-      <SopContent routeId="1-1" locale="en" />
+    <article className="content" id="content">
+      <SopContent routeId="1-1" locale="en" initialData={initialData} />
     </article>
   );
 }

@@ -219,7 +219,13 @@ export const IA = [
         seoDescriptionEn:
           "Analyze creative performance, fatigue over time, and which attributes (hook, format, message) actually drive results. Free, upload a creative-level CSV.",
       },
-      { id: "9-1", title: "콘텐츠 요소 분석기 (요소별 성과 기여)" },
+      {
+        id: "9-1",
+        title: "콘텐츠 요소 분석기 (요소별 성과 기여)",
+        titleEn: "Content Element Analyzer (Performance Contribution)",
+        seoTitleEn: "Which Content Elements Drive Results? Free Regression Analyzer",
+        seoDescriptionEn: "Estimate how hooks, formats, lengths, and message angles relate to content performance with regression controls and clear evidence limits. Free, browser-only CSV analysis.",
+      },
       { id: "9-2", title: "킬러 콘텐츠·충성 독자 발굴 (전환 동인)", hidden: true },
       { id: "9-3", title: "콘텐츠 트래픽 변동 탐지 (유입·카테고리·콘텐츠별)", hidden: true },
       { id: "9-7", title: "콘텐츠 운영 대시보드 (트래픽·스코어카드·이상탐지)", hidden: true },
