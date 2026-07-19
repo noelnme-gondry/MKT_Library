@@ -3,7 +3,7 @@ title: "Your CPA Went Up — Don't Rip Out Your Creative Yet"
 description: "When CPA spikes, splitting the rise into mix effect and efficiency effect shows you the real cause — walked through with a $8/$12 channel example."
 date: "2026-07-12"
 slug: "cpa-reduction"
-keywords: "CPA increase, mix effect, efficiency effect, lower CPA, campaign performance variance, budget allocation, CPA increase causes, channel mix effect"
+keywords: "CPA increase, mix effect, efficiency effect, lower CPA, campaign performance variance, budget allocation, CPA increase causes, channel mix effect, how to lower CPA, why is CPA high, cost per acquisition reduction"
 tags: ["CPA", "Diagnosis"]
 draft: false
 ---

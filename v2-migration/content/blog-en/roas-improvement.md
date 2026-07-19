@@ -3,7 +3,7 @@ title: "ROAS Dropped? Cutting Budget Is Usually the Wrong Move"
 description: "Cutting budget the moment ROAS drops usually backfires. Here's how to split the channel-level gap and reallocate based on marginal ROAS — the efficiency of the 'next won' — with examples."
 date: "2026-07-12"
 slug: "roas-improvement"
-keywords: "ROAS improvement, marginal ROAS, ROAS decline, ROAS by channel, budget reallocation, saturation, performance marketing, how to improve ROAS, why did ROAS drop"
+keywords: "ROAS improvement, marginal ROAS, ROAS decline, ROAS by channel, budget reallocation, saturation, performance marketing, how to improve ROAS, why did ROAS drop, how to increase ROAS, why is ROAS low, ad profitability improvement"
 tags: ["ROAS", "Budget Allocation"]
 draft: false
 ---

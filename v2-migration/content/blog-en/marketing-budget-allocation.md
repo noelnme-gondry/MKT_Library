@@ -3,7 +3,7 @@ title: "Marketing Budget Allocation: Why Dumping Money into Your 'Most Efficient
 description: "Why does pouring budget into your most efficient channel lose you money? The trap of average efficiency, and how to split channel budgets using 'marginal utility,' explained with practical examples."
 date: "2026-07-09"
 slug: "marketing-budget-allocation"
-keywords: "marketing budget allocation, marginal utility, marginal CPA, response curve, channel budget optimization, performance marketing, ROAS, how to allocate ad budget across channels, diminishing returns marketing"
+keywords: "marketing budget allocation, marginal utility, marginal CPA, response curve, channel budget optimization, performance marketing, ROAS, how to allocate ad budget across channels, diminishing returns marketing, how to plan ad budget, budget allocation methods, channel budget planning"
 tags: ["Budget Allocation", "Performance Marketing"]
 draft: false
 ---

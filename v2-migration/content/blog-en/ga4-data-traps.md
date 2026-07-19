@@ -3,7 +3,7 @@ title: "Why Your GA4 Numbers Look Wrong (They're Not Broken — Just Counted Dif
 description: "GA4 sessions run lower than UA and yesterday's conversions keep changing — not bugs, but session definitions, processing lag, thresholds, and attribution."
 date: "2026-07-17"
 slug: "ga4-data-traps"
-keywords: "GA4, GA4 sessions, GA4 conversion count changing, data threshold, processing lag, attribution, unassigned traffic, UA vs GA4, Reporting Identity"
+keywords: "GA4, GA4 sessions, GA4 conversion count changing, data threshold, processing lag, attribution, unassigned traffic, UA vs GA4, Reporting Identity, GA4 numbers don't match, GA4 data discrepancy, GA4 counting method, GA4 session count difference"
 tags: ["Analytics Methodology", "Performance Marketing"]
 draft: false
 ---

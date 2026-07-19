@@ -3,7 +3,7 @@ title: "When to Refresh Ad Creative — Judge by Signal, Not by Gut"
 description: "Stop timing creative swaps by feel. When CTR and frequency pull apart into a 'scissors' shape, that's your fatigue signal — plus how to tell fatigue from other causes."
 date: "2026-07-12"
 slug: "creative-fatigue"
-keywords: "creative fatigue, ad fatigue, CTR, frequency, ad creative rotation, when to refresh creative, CTR and frequency relationship, signs of ad fatigue"
+keywords: "creative fatigue, ad fatigue, CTR, frequency, ad creative rotation, when to refresh creative, CTR and frequency relationship, signs of ad fatigue, creative rotation schedule, ad frequency management, creative lifespan"
 tags: ["Creative Fatigue", "Ad Creative"]
 draft: false
 ---
