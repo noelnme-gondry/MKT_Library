@@ -1,9 +1,10 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { MOCKS } from "./ToolCardMock";
 
-// 홈의 샘플은 전시용 UI가 아니라 실제 주간 운영 리포트처럼 읽혀야 한다.
-// 한 장의 고정된 시나리오로 "무슨 일이 있었고, 오늘 뭘 할지"를 보여 준다.
+// 각 장면은 실제 도구가 답하는 질문·결론·다음 조치를 축약해 보여 준다.
+// 자동 전환은 제품 범위를 보여 주고, 임의의 장식성 차트가 되지 않게 모든 장면에
+// 운영 문맥과 의사결정 문장을 넣는다.
 const SCENES = [
   {
     title: { ko: "W29 운영 리포트", en: "W29 operating review" },
@@ -20,11 +21,69 @@ const SCENES = [
       { l: { ko: "다음 조치", en: "Next action" }, v: { ko: "Google +₩300k 검토", en: "Review Google +₩300k" }, c: "#adc6ff" },
     ],
   },
+  {
+    title: { ko: "성과 변동 분해", en: "Performance variance" },
+    type: "diverge",
+    kpis: [
+      { l: { ko: "지난주 CPA", en: "Prior CPA" }, v: "₩8,240", d: "기준", up: true },
+      { l: { ko: "이번주 CPA", en: "Current CPA" }, v: "₩9,030", d: "+9.6%", up: false },
+      { l: { ko: "가장 큰 기여", en: "Top contributor" }, v: "Meta", d: "+₩510", up: false },
+    ],
+    chartLabel: { ko: "CPA 변화의 기여도", en: "Contribution to CPA change" },
+    chip: { t: { ko: "원인 확인 필요", en: "Needs review" }, tone: "warn" },
+    side: [
+      { l: { ko: "채널", en: "Channel" }, v: { ko: "Meta · +₩510", en: "Meta · +₩510" }, c: "#f87171" },
+      { l: { ko: "캠페인", en: "Campaign" }, v: { ko: "신규유입 · +₩380", en: "Prospecting · +₩380" }, c: "#fbbf24" },
+      { l: { ko: "다음 조치", en: "Next action" }, v: { ko: "소재·타겟 확인", en: "Review creative & audience" }, c: "#adc6ff" },
+    ],
+  },
+  {
+    title: { ko: "소재 피로도", en: "Creative fatigue" },
+    type: "scatter",
+    kpis: [
+      { l: { ko: "분석 소재", en: "Creatives" }, v: "48", d: { ko: "최근 28일", en: "last 28d" }, up: true },
+      { l: { ko: "즉시 교체", en: "Replace now" }, v: "2", d: { ko: "우선순위 높음", en: "high priority" }, up: false },
+      { l: { ko: "권장 제작", en: "Recommended" }, v: "4/주", d: { ko: "교체 속도", en: "swap velocity" }, up: true },
+    ],
+    chartLabel: { ko: "성과와 피로도", en: "Performance vs. fatigue" },
+    chip: { t: { ko: "교체 일정 생성됨", en: "Swap plan ready" }, tone: "warn" },
+    side: [
+      { l: { ko: "교체 1순위", en: "First to swap" }, v: "UGC_07", c: "#f87171" },
+      { l: { ko: "피로 신호", en: "Fatigue signal" }, v: { ko: "CTR −31%", en: "CTR −31%" }, c: "#fbbf24" },
+      { l: { ko: "다음 제작", en: "Next production" }, v: { ko: "후킹 A/B", en: "Hook A/B" }, c: "#4ade80" },
+    ],
+  },
+  {
+    title: { ko: "예산 여력 진단", en: "Budget headroom" },
+    type: "curve",
+    kpis: [
+      { l: { ko: "현재 일예산", en: "Daily spend" }, v: "₩1.2M", d: { ko: "Google", en: "Google" }, up: true },
+      { l: { ko: "한계 CPA", en: "Marginal CPA" }, v: "₩9,100", d: { ko: "목표 내", en: "within target" }, up: true },
+      { l: { ko: "증액 여력", en: "Headroom" }, v: "+₩300k", d: { ko: "테스트 권장", en: "test recommended" }, up: true },
+    ],
+    chartLabel: { ko: "지출 대비 반응 곡선", en: "Spend-response curve" },
+    chip: { t: { ko: "증액 가능", en: "Can scale" }, tone: "good" },
+    side: [
+      { l: "Google UAC", v: { ko: "여유 있음", en: "headroom" }, c: "#4ade80" },
+      { l: "Meta", v: { ko: "관찰", en: "monitor" }, c: "#fbbf24" },
+      { l: { ko: "다음 조치", en: "Next action" }, v: { ko: "+₩300k 실험", en: "Test +₩300k" }, c: "#adc6ff" },
+    ],
+  },
 ];
 
 export default function ProductPreview({ videoSrc = null, poster = null, locale = "ko" }) {
   const tr = (o) => (typeof o === "string" ? o : locale === "en" ? o.en : o.ko);
-  const scene = SCENES[0];
+  const [idx, setIdx] = useState(0);
+  const [shown, setShown] = useState(true);
+  useEffect(() => {
+    if (videoSrc) return;
+    const timer = setInterval(() => {
+      setShown(false);
+      setTimeout(() => { setIdx((current) => (current + 1) % SCENES.length); setShown(true); }, 220);
+    }, 4200);
+    return () => clearInterval(timer);
+  }, [videoSrc]);
+  const scene = SCENES[idx];
   const Mock = MOCKS[scene.type] || MOCKS.kpiLine;
 
   const kpiTile = (k, i) => (
@@ -47,7 +106,7 @@ export default function ProductPreview({ videoSrc = null, poster = null, locale 
           <video src={videoSrc} poster={poster || undefined} autoPlay muted loop playsInline style={{ width: "100%", display: "block" }} />
         ) : (
           <div style={{ padding: "16px", pointerEvents: "none", minHeight: "312px" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", opacity: shown ? 1 : 0, transition: "opacity 0.22s ease" }}>
               {/* 상단 KPI 스트립 */}
               {scene.kpis && (
                 <div style={{ display: "flex", gap: "10px" }}>{scene.kpis.map(kpiTile)}</div>
@@ -83,6 +142,11 @@ export default function ProductPreview({ videoSrc = null, poster = null, locale 
           </div>
         )}
       </div>
+      {!videoSrc && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "12px" }}>
+        {SCENES.map((item, i) => <button key={item.title.en} type="button" aria-label={tr(item.title)} onClick={() => { setShown(false); setTimeout(() => { setIdx(i); setShown(true); }, 180); }} style={{ width: i === idx ? "auto" : 8, height: 8, padding: i === idx ? "0 8px" : 0, border: "none", borderRadius: 8, background: i === idx ? "var(--primary)" : "var(--border-stronger, var(--border))", color: "var(--bg-1)", cursor: "pointer", fontSize: 0 }}>
+          {i === idx ? tr(item.title) : ""}
+        </button>)}
+      </div>}
     </div>
   );
 }
