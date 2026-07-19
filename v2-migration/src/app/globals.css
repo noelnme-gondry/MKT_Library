@@ -4844,10 +4844,12 @@ body.light-mode .operator-preview__queue > a { color: #fff; }
   background: var(--surface-container-lowest);
   box-shadow: 0 22px 48px rgba(0,0,0,.16);
 }
-.mmm-preview__topline,
-.mmm-preview__toolbar,
-.mmm-preview__table > div,
-.mmm-preview__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.landing-advanced-lab__model > div { display: block; min-height: 0; border-top: 0; margin-top: 0; }
+.landing-advanced-lab__model > div:first-of-type { margin-top: 0; }
+.landing-advanced-lab__model .mmm-preview__topline,
+.landing-advanced-lab__model .mmm-preview__toolbar,
+.landing-advanced-lab__model .mmm-preview__table > div,
+.landing-advanced-lab__model .mmm-preview__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .mmm-preview__topline { padding-bottom: 14px; border-bottom: 1px solid var(--border-subtle); }
 .mmm-preview__topline > div { display: grid; gap: 5px; }
 .mmm-preview__topline span { color: var(--text-muted); font: 520 8px var(--font-mono); letter-spacing: .1em; }
@@ -4858,14 +4860,14 @@ body.light-mode .operator-preview__queue > a { color: #fff; }
 .mmm-preview__legend { display: inline-flex; align-items: center; gap: 5px; }
 .mmm-preview__legend i { width: 15px; height: 2px; display: inline-block; background: var(--chart-primary); }
 .mmm-preview__legend i + i { margin-left: 5px; background: var(--primary); }
-.mmm-preview__chart { height: 132px; padding: 8px 0 0; border-bottom: 1px solid var(--border-subtle); }
+.landing-advanced-lab__model .mmm-preview__chart { display: block; height: 132px; padding: 8px 0 0; border-bottom: 1px solid var(--border-subtle); }
 .mmm-preview__chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .mmm-grid { fill: none; stroke: var(--border-subtle); stroke-width: 1; }
 .mmm-bars { fill: color-mix(in srgb, var(--chart-primary) 18%, transparent); }
 .mmm-observed, .mmm-model { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .mmm-observed { stroke: var(--chart-primary); stroke-width: 2.4; }
 .mmm-model { stroke: var(--primary); stroke-width: 1.5; stroke-dasharray: 4 4; }
-.mmm-preview__table { display: grid; gap: 0; padding: 8px 0 5px; }
+.landing-advanced-lab__model .mmm-preview__table { display: grid; gap: 0; padding: 8px 0 5px; }
 .mmm-preview__table > div { min-height: 25px; border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 9px; }
 .mmm-preview__table > div:first-child { min-height: 24px; color: var(--text-muted); font: 520 8px var(--font-mono); }
 .mmm-preview__table > div:first-child b { font-weight: 520; }

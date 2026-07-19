@@ -84,7 +84,7 @@ function parseFile(fileName, locale) {
     seoAnswer: seo?.answer || data.description || "",
     searchIntent: seo?.intent || "",
     date: data.date || "",
-    updated: data.updated || data.date || "",
+    updated: seo?.updated || data.updated || data.date || "",
     keywords: data.keywords || "",
     tags: consolidateTags(Array.isArray(data.tags) ? data.tags : []),
     ogImage: data.ogImage || "",

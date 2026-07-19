@@ -1,6 +1,6 @@
 ---
-title: "Ad Performance Suddenly Dropped? Here's Where to Look First"
-description: "Don't reach for creative changes when ad performance suddenly drops. A 4-step diagnosis order — check tracking, split by channel, separate mix from efficiency, trace the funnel — with a symptom map."
+title: "Ad Performance Cut in Half? Touching Creative First Means Missing the Cause"
+description: "When performance tanks, blaming creative first hides the real cause. A 4-step route — verify the numbers, split by channel, mix vs. efficiency, trace the funnel — plus the signals to distrust when performance suddenly improves."
 date: "2026-07-12"
 slug: "ad-performance-drop"
 keywords: "ad performance drop, CPA spike, ad diagnosis order, mix effect, funnel diagnosis, why did CPA suddenly increase, ad tracking issue"
@@ -8,7 +8,7 @@ tags: ["Troubleshooting", "CPA"]
 draft: false
 ---
 
-You open the dashboard Monday morning and CPA has spiked. Your stomach drops. The most dangerous thing to do right now is act first — swap the creative, pause the campaign, cut the budget. If you touch something without knowing the cause, it won't actually get fixed, and you'll never know what worked. Today let's map out **the order to check things in** when performance suddenly craters.
+You open the dashboard Monday morning, CPA has doubled, and your hand reaches for the creative swap. But a sudden drop is more often caused by measurement or budget mix than creative. This post gives you a 4-step checking route, starting with what you can verify in 10 minutes without spending a won. Touch things before you know the cause, and you fix nothing — and never learn what worked.
 
 ## Diagnosis isn't about finding the culprit — it's about narrowing the scope
 

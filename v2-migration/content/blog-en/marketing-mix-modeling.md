@@ -1,6 +1,6 @@
 ---
-title: "What Is MMM: Measuring Channel Contribution Beyond Attribution Models"
-description: "Marketing Mix Modeling (MMM), the channel-contribution method built for a world of cookie loss and iOS tracking limits. Regression, adstock, saturation, contribution decomposition, and where it breaks down."
+title: "When Last-Click Only Praises Brand Search — Measuring Channel Contribution with MMM"
+description: "Last-click credits whichever channel stood last in line — which is why brand search ROAS always looks heroic. How MMM back-calculates each channel's real contribution from aggregate data (regression, adstock, saturation), and where its limits are."
 date: "2026-07-09"
 slug: "marketing-mix-modeling"
 keywords: "marketing mix modeling, MMM, adstock, saturation, contribution decomposition, cannibalization, multicollinearity, marketing forecasting, MMM vs attribution, post-iOS14 measurement"
@@ -8,9 +8,9 @@ tags: ["MMM", "Performance Marketing"]
 draft: false
 ---
 
-# What Is MMM: Measuring Channel Contribution Beyond Attribution Models
+# When Last-Click Only Praises Brand Search — Measuring Channel Contribution with MMM
 
-Doesn't something feel off when you look at performance these days? What your MMP reports as conversions doesn't always match the direction your business is actually moving, and the SKAN data iOS hands you sometimes spits out absurdly high numbers. With one person seeing dozens of ads across multiple channels in a single day, is analyzing performance with LTA (Last Touch Attribution) even the right call anymore? And multi-touch attribution doesn't hand you a clean, unambiguous answer either.
+Ever raised budget on brand search because its ROAS looked outstanding — and watched total revenue stay flat? Last-click praises only the channel that stood **last** in the journey; the credit earned by channels that created demand upstream all flows to the final click. When one person sees dozens of ads across channels in a single day, judging performance with last-touch attribution alone stops making sense. Multi-touch attribution does not always deliver a clear answer either.
 
 That's why Marketing Mix Modeling (MMM) is having a resurgence. Today I'll lay out plainly what it is, what it answers, and how far you should trust it. Oh, and I'll also show you how to actually do it.
 
