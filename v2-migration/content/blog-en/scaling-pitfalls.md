@@ -3,7 +3,7 @@ title: "You Raised the Budget on a Winning Campaign — Why Did It Break?"
 description: "Raising the budget on a winning campaign and watching CPA climb usually means you've hit the flat part of the response curve — saturation. Here's how to break the budget-up → frequency-up → CTR-down → CPA-up domino."
 date: "2026-07-12"
 slug: "scaling-pitfalls"
-keywords: "budget scaling, saturation, response curve, frequency increase, rising CPA, marginal utility, why CPA increases when scaling budget, campaign saturation point"
+keywords: "budget scaling, saturation, response curve, frequency increase, rising CPA, marginal utility, why CPA increases when scaling budget, campaign saturation point, performance drops after budget increase, how to scale campaigns, campaign scaling strategy"
 tags: ["Budget Allocation", "Scaling"]
 draft: false
 ---

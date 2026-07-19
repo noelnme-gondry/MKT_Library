@@ -3,7 +3,7 @@ title: "The Only 4 Metrics a Junior Marketer Needs to Learn First"
 description: "Skip memorizing the full glossary. Here are the 4 metrics — CTR, CVR, CPA, ROAS — a junior performance marketer should actually watch, and how to read them together."
 date: "2026-07-11"
 slug: "junior-metrics-guide"
-keywords: "performance marketing metrics, CTR, conversion rate, CPA, ROAS, junior marketer, how to read marketing metrics, metrics every marketer should know, entry level performance marketing"
+keywords: "performance marketing metrics, CTR, conversion rate, CPA, ROAS, junior marketer, how to read marketing metrics, metrics every marketer should know, entry level performance marketing, marketing metrics for beginners, basic marketing metrics, marketing KPIs, ad terminology basics"
 tags: ["Marketing Metrics", "Junior Marketer"]
 draft: false
 ---

@@ -3,7 +3,7 @@ title: "Ad Platform Says 120, GA Says 70 — Which Number Do You Trust?"
 description: "Meta, GA4, MMP, and your order DB all report different conversion counts — because of attribution windows, view-through, credit date, and last-touch overlap."
 date: "2026-07-17"
 slug: "attribution-data-mismatch"
-keywords: "attribution window, ad platform vs GA4 numbers, view-through conversion, MMP, last-touch, cross-network double counting, source of truth, order DB, iOS modeled conversions, incrementality test"
+keywords: "attribution window, ad platform vs GA4 numbers, view-through conversion, MMP, last-touch, cross-network double counting, source of truth, order DB, iOS modeled conversions, incrementality test, conversion numbers don't match, platform vs GA4 conversions, what is attribution"
 tags: ["Analytics Methodology", "Performance Marketing"]
 draft: false
 ---
