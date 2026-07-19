@@ -8,7 +8,9 @@ import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "@/components/GoogleSheetConnect";
 import { findMappingConflicts, scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates";
+import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { trackProductEvent } from "@/lib/analytics";
+import DataQualityReport from "@/components/data-import/DataQualityReport";
 
 function escapeHtml(str) {
   if (!str) return "";
@@ -205,6 +207,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         const raw = results.data;
         const insights = buildImportInsights(headers, raw, toolId);
         const mapping = insights.selections;
+        const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
 
         setCsvData({
           raw,
@@ -212,8 +215,10 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           mapping,
           fileName: file.name,
           importInsights: insights,
+          canonicalData,
         });
         trackProductEvent("data_import_success", { tool_id: toolId, source: "csv", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
+        trackProductEvent("data_profile_completed", { tool_id: toolId, source: "csv", column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length });
         // New file → gate auto-resets in the store (sig change); re-open preview
         // so the user maps with data context.
         setPreviewOpen(true);
@@ -233,8 +238,10 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     setErrorMsg("");
     const insights = buildImportInsights(headers, raw, toolId);
     const mapping = insights.selections;
-    setCsvData({ raw, headers, mapping, fileName, sheetUrl, importInsights: insights });
+    const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
+    setCsvData({ raw, headers, mapping, fileName, sheetUrl, importInsights: insights, canonicalData });
     trackProductEvent("data_import_success", { tool_id: toolId, source: "google_sheets", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
+    trackProductEvent("data_profile_completed", { tool_id: toolId, source: "google_sheets", column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length });
     setPreviewOpen(true);
     setSheetChangeOpen(false);
   };
@@ -263,12 +270,11 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   };
 
   const handleMappingChange = (header, value) => {
+    const mapping = { ...csvData.mapping, [header]: value };
     setCsvData({
       ...csvData,
-      mapping: {
-        ...csvData.mapping,
-        [header]: value
-      }
+      mapping,
+      canonicalData: buildCanonicalDataset({ raw: csvData.raw, headers: csvData.headers, mapping }),
     });
     // Mapping edit changes the sig → store gate auto-resets. Re-open preview so
     // the user re-checks the columns before pressing 분석하기 again.
@@ -286,7 +292,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     setErrorMsg("");
     const group = TOOL_GROUP[toolId] || "efficiency";
     const demo = buildDemoCsv(group);
-    setCsvData(demo);
+    setCsvData({ ...demo, canonicalData: buildCanonicalDataset(demo) });
     setGroupAnalyzed(toolId);
     setPreviewOpen(false);
   };
@@ -529,6 +535,8 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           <p style={{ margin: "0.25rem 0 0" }}>{T.okDesc}</p>
         </div>
       )}
+
+      {csvData.canonicalData && <DataQualityReport canonicalData={csvData.canonicalData} locale={locale} />}
 
       <div className="csv-mapping-block">
         <div className="csv-mapping-header">

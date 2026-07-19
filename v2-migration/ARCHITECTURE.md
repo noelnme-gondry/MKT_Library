@@ -72,6 +72,7 @@ v2-migration/
 | AbTestHoldout 증분 | `incrMath.js`(홀드아웃 증분)·abTestMath.js | readout/incr 추출 |
 | (공통) | `chartUtils.js`·`testFixtures.js`(seededNoise)·`format.js`(fmtCurrency/Pct/Num·§7 콤마)·`toolGuide.js`(TOOL_GUIDE) | 차트·픽스처·표시포맷 SSOT·업로드 설명 |
 | (데이터 임포트) | `lib/data-import/*` + `csvConstants.js` | 컬럼 프로파일·정규화·도구 범위 기반 매핑 후보/충돌, 기존 `autoMapHeaders` 호환 래퍼 |
+| (분석 Router) | `lib/analysis-router/evaluateEligibility.js` | 도구별 필수 개념·행수·기간 계약으로 가능/주의/불가 판정 및 추천 우선순위 |
 | (지표 정의) | `metrics/metricRegistry.js` (BASE_FIELDS·DERIVED_METRICS·getMetricRegistry·computeMetrics) | ★ 파생지표 SSOT(ctr·cpc·roas… + 프리셋 profit·profitMargin 서술자). `calculateKPIs`가 소비. 커스텀 지표 병합 지점. 스펙: `../docs/custom-metrics-data-config-spec.md` |
 | (커스텀 지표) | `metrics/customMetric.js` (CUSTOM_OPS·defToTerms·evalTerms·customMetricCompute·customMetricToDescriptor·isValidCustomMetricDef) | 유저가 실제 컬럼/숫자를 N항 좌→우로 조립(eval 없음, 순수·결정론). def.terms[]. UI=`ds/CustomMetricBuilder.jsx`(항 추가·컬럼/숫자 토글·라이브 미리보기, body portal). 소비: VizTab KPI·**ScorecardTab**(정의 스코프 `5-2:viz-kpi` 공유 — 한번 만들면 양쪽) |
 | (커스텀 차트) | `metrics/chartBuilder.js`(CHART_TYPES·groupAggByDim·buildChartSeries 순수 집계) + `customChartConfig.js`(buildCustomChartConfig·buildChartFieldOptions·DIM_CANDIDATES, 컴포넌트층) | 유저가 "모양+행+값"로 차트 생성, 값=base/파생/커스텀 지표. UI=`ds/CustomChartBuilder.jsx`. 재사용 영역=`dashboard/CustomChartsSection.jsx`(자체 Chart.js 관리, 탭에 1줄 삽입 — VizTab §3·Segment·Funnel·Cohort·LTV·Pacing·Anomaly 탭. scope `5-2:<tab>-charts`, metricScope `5-2:viz-kpi` 공유) |
@@ -81,7 +82,7 @@ v2-migration/
 - **전역 상태 = `src/store/useDataStore.js` (Zustand)**: `currentRouteId`(URL 미러) · `dashboardFilter` · `isDarkMode` · `isCmdkOpen` · `IA`·`PHASES` · **`TOOL_GROUP`·`groupForRoute`** · **`viewConfig`**(지표 표시/순서, scope별).
 - **persist(Phase B/C)**: `persist` 미들웨어로 **`viewConfig`+`customMetrics`만** localStorage 저장(`partialize=persistPartialize`, name `mkt_view_config`). 원본 CSV·필터 Set은 **절대 저장 X**(§2.2). 서버/테스트엔 `noopStorage` 폴백. `customMetrics`={scope→조립정의[]}·`customCharts`={scope→차트정의[]}, add/remove 액션.
 - **CSV 그룹 스코프 상태(Phase 6.3)**: `csvGroups`{efficiency·creative·experiment·response·aha} 슬라이스. `csvData`=활성 그룹 **미러**(`setCurrentRouteId`가 라우트 변경 시 스왑, `setCsvData`가 활성 그룹+미러 기록). 효율 family(5-2·5-21·5-22·5-3) 공유, 나머진 격리. **소비자는 `s.csvData`만 읽으면 끝**(미러라 무변경).
-- **데이터 파이프라인**: 업로드(`CsvUploader.jsx`, PapaParse+프로파일·도구 스코프 자동매핑) → `csvData` → **`dashboardAggregator.js:getMappedRows(csvData)`** (raw행 → 표준키 행; **cost↔spend 별칭 채움 §7**) → 도구별 엔진 입력 구성 → 순수엔진 → 렌더. `importInsights`는 브라우저 메모리만 사용하며 원본 CSV와 함께 영속화하지 않는다.
+- **데이터 파이프라인**: 업로드(`CsvUploader.jsx`, PapaParse+프로파일·도구 스코프 자동매핑) → `csvData` + `canonicalData`(정규화된 공통 레코드, 신규 소비자용) → **`dashboardAggregator.js:getMappedRows(csvData)`** (기존 엔진 호환 raw행 → 표준키 행; **cost↔spend 별칭 채움 §7**) → 도구별 엔진 입력 구성 → 순수엔진 → 렌더. `importInsights`·`canonicalData`는 브라우저 메모리만 사용하며 원본 CSV와 함께 영속화하지 않는다.
 - **함정**: 효율 CSV 비용=`cost`키, PVM/creative 엔진은 `spend` 읽음 → getMappedRows가 양쪽 채움. creative 등 하위 grain CSV, 분해 안 하는 도구(5-22·5-3)에선 (그룹×날짜) **sum 후 점 생성**(satBuildPoints·buildByChannel).
 - **CSV 상태 스코프(Phase 6.3 예정)**: TOOL_GROUP 기반 — 효율 CSV family(5-2·5-21·5-22·5-3) 공유, 이질 도구는 별도 슬라이스.
 
