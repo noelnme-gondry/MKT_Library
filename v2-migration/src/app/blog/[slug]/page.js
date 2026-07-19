@@ -139,7 +139,13 @@ export default async function BlogPostPage({ params }) {
         <h1>
           {post.title}
         </h1>
-        {post.description && <p className="content-article__dek">{post.description}</p>}
+        {!post.seoAnswer && post.description && <p className="content-article__dek">{post.description}</p>}
+        {post.seoAnswer && (
+          <aside className="content-answer" aria-label="검색 질문에 대한 짧은 답">
+            <span className="content-answer__label">{post.searchIntent || "검색 질문에 대한 짧은 답"}</span>
+            <p>{post.seoAnswer}</p>
+          </aside>
+        )}
         <div className="content-article__meta">
           <span className="content-article__byline">Growth Opt Playbook 편집</span>
           <span>{fmtDate(post.date)}</span>

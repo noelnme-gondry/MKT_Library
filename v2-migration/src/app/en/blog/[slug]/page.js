@@ -135,7 +135,13 @@ export default async function EnBlogPostPage({ params }) {
         <h1>
           {post.title}
         </h1>
-        {post.description && <p className="content-article__dek">{post.description}</p>}
+        {!post.seoAnswer && post.description && <p className="content-article__dek">{post.description}</p>}
+        {post.seoAnswer && (
+          <aside className="content-answer" aria-label="Short answer to the search question">
+            <span className="content-answer__label">{post.searchIntent || "Short answer"}</span>
+            <p>{post.seoAnswer}</p>
+          </aside>
+        )}
         <div className="content-article__meta">
           <span className="content-article__byline">Growth Opt Playbook Editorial</span>
           <span>{fmtDate(post.date)}</span>

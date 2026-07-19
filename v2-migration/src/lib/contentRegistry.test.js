@@ -8,6 +8,7 @@ import {
 } from "./contentToolRegistry";
 import { EN_BLOG_SLUGS, EN_GLOSSARY_SLUGS, localizedHref } from "./localizedHref";
 import { isRoutePublished } from "./routeMap";
+import { publishedBlogSeoSlugs } from "./blogSeo";
 
 const sorted = (values) => [...values].sort();
 
@@ -34,6 +35,13 @@ describe("editorial SEO registries", () => {
   it("keeps locale registries identical to the translated content on disk", () => {
     expect(sorted(EN_BLOG_SLUGS)).toEqual(sorted(getAllPosts("en").map((post) => post.slug)));
     expect(sorted(EN_GLOSSARY_SLUGS)).toEqual(sorted(getAllTerms("en").map((term) => term.slug)));
+  });
+
+  it("keeps search titles/answers complete for every published blog", () => {
+    expect(sorted(publishedBlogSeoSlugs("ko"))).toEqual(sorted(getAllPosts("ko").map((post) => post.slug)));
+    expect(sorted(publishedBlogSeoSlugs("en"))).toEqual(sorted(getAllPosts("en").map((post) => post.slug)));
+    expect(getAllPosts("ko").every((post) => post.seoAnswer && post.searchIntent)).toBe(true);
+    expect(getAllPosts("en").every((post) => post.seoAnswer && post.searchIntent)).toBe(true);
   });
 
   it("does not invent an English URL for untranslated content", () => {

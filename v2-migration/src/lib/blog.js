@@ -9,6 +9,7 @@ import matter from "gray-matter";
 import { marked } from "marked";
 import { localizedHref } from "@/lib/localizedHref";
 import { primaryToolForContent, relatedGlossaryForPost } from "@/lib/contentToolRegistry";
+import { getBlogSeo } from "@/lib/blogSeo";
 
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const BLOG_DIRS = {
@@ -75,10 +76,13 @@ function parseFile(fileName, locale) {
   const raw = fs.readFileSync(filePath, "utf8");
   const { data, content } = matter(raw);
   const slug = data.slug || fileName.replace(/\.md$/, "");
+  const seo = getBlogSeo(locale, slug, data);
   return {
     slug,
-    title: data.title || slug,
-    description: data.description || "",
+    title: seo?.title || data.title || slug,
+    description: seo?.description || data.description || "",
+    seoAnswer: seo?.answer || data.description || "",
+    searchIntent: seo?.intent || "",
     date: data.date || "",
     updated: data.updated || data.date || "",
     keywords: data.keywords || "",
