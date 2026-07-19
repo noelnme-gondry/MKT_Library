@@ -155,7 +155,9 @@ function pvmColor(v) {
 function buildPvmCache(csvData, state) {
   const locale = state.locale;
   const tr = (ko, en) => (locale === "en" ? en : ko);
-  const rows = getMonFilteredRows(csvData, state.dashboardFilter);
+  // 대시보드 공유 CSV는 비용 표준키가 cost, PVM 전용 업로드는 spend일 수 있다.
+  // 동일한 통화량을 뜻하는 이 경로에서만 spend 보조값을 만들며 원본·매핑은 건드리지 않는다.
+  const rows = getMonFilteredRows(csvData, state.dashboardFilter).map((row) => ({ ...row, spend: Number(row.spend ?? row.cost) || 0 }));
   const mapped = new Set(
     Object.values(csvData?.mapping || {}).filter((v) => v && v !== "__ignore__"),
   );

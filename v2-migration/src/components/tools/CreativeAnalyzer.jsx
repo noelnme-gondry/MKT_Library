@@ -2,10 +2,12 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { CREATIVE_FATIGUE, CREATIVE_STATS } from "@/utils/creativeMath";
+import { CREATIVE_CONFIG } from "@/utils/creativeConfig";
 import { resolveCreativeCopy } from "@/utils/contentDomain";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { downloadChartAsPNG } from "@/utils/chartUtils";
 import CsvUploader from "@/components/CsvUploader";
+import ResultActionCard from "@/components/ds/ResultActionCard";
 import Chart from "chart.js/auto";
 
 // EN 번역팩 — domain(performance/content)별 CREATIVE_COPY(ko)를 locale="en"일 때만 오버레이.
@@ -153,42 +155,6 @@ function localizeCreativeCopy(domain, locale) {
 }
 
 // 소재 분석 설정 (index.html CREATIVE_CONFIG 이식 — 순수 config, 엔진에 파라미터로 주입)
-const CREATIVE_CONFIG = {
-  version: "1.0.0",
-  seed: 42,
-  decimalPlaces: 4,
-  minImpressions: 1000,
-  minNCell: 5,
-  decompose: {
-    // index.html: ctr/cpa/roas. v2는 B1이 추가한 cvr까지 계산(회귀 방지) — 토글은 결과 있는 것만 노출.
-    metrics: ["ctr", "cvr", "cpa", "roas"],
-    controls: ["channel", "iso_week"],
-    method: "wls",
-    vifThreshold: 5.0,
-    vifDropPriority: ["duration_bucket", "has_text_overlay"],
-    alpha: 0.05,
-    multipleTesting: "bh",
-  },
-  fatigue: { decayWindow: 7, dropPct: 0.2 },
-  fatigueAlert: {
-    minDays: 7,
-    trendWindow: 14,
-    ctrWeight: 0.45,
-    freqWeight: 0.35,
-    cpmWeight: 0.2,
-    alertScore: 0.5,
-    horizonDays: 30,
-  },
-  autoPlanner: {
-    defaultWeeklyVelocity: 3,
-    urgentDays: 7,
-    soonDays: 21,
-  },
-  matrix: { rows: "message_angle", cols: "format" },
-  bayes: { priorA: 1, priorB: 1, gridN: 2000, promoteProb: 0.95, killProb: 0.05 },
-  test: { exploreRatio: 0.3, batchSize: 6, power: 0.8, alpha: 0.05 },
-};
-
 // Concept Matrix 셀 status → 색·라벨 (index.html renderCreativeMatrix 이식)
 const MATRIX_STATUS_COLOR = {
   validated: "rgba(34,197,94,0.20)",
@@ -835,6 +801,20 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
     .sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
     .slice(0, 30);
   const alertNowN = (fatigueAlerts || []).filter((a) => a.alert).length;
+  const fatigueTone = alertNowN > 0 || (autoPlan && autoPlan.isUndersupplied) ? "bad" : fatiguedCount > 0 ? "neutral" : "good";
+  const fatigueHeadline = alertNowN > 0
+    ? tr(`지금 교체가 필요한 소재가 ${alertNowN}개입니다. 이번 주 교체 계획부터 확정하세요.`, `${alertNowN} creatives need replacement now. Lock this week's swap plan first.`)
+    : fatiguedCount > 0
+      ? tr(`피로 신호가 있는 소재가 ${fatiguedCount}개입니다. 교체 시점을 미리 잡아 두세요.`, `${fatiguedCount} creatives show fatigue signals. Plan their replacements before they become urgent.`)
+      : tr("현재 즉시 교체 경고는 없습니다. 성과 좋은 소재의 특징을 다음 제작에 재사용하세요.", "There are no immediate replacement alerts. Reuse what is working in the next creative batch.");
+  const fatiguePoints = [
+    autoPlan?.isUndersupplied
+      ? { cls: "bad", text: tr(`현재 제작 속도(${weeklyVelocity}개/주)로는 긴급 교체 물량을 제때 처리하기 어렵습니다. 최소 ${autoPlan.recommendedWeeklyVelocity}개/주를 권장합니다.`, `At ${weeklyVelocity}/week, you cannot clear urgent replacements in time. Target at least ${autoPlan.recommendedWeeklyVelocity}/week.`) }
+      : { cls: fatigueTone === "good" ? "good" : "muted", text: tr("교체 순서는 ‘지금 경고 → 위험 임박 → 피로 점수’ 기준으로 아래 일정에 정렬했습니다.", "The schedule below orders swaps by alert now, then risk soon, then fatigue score.") },
+    analysis.nextTest?.length
+      ? { text: tr(`다음 제작 실험 후보 ${analysis.nextTest.length}개를 제안했습니다. 성과가 좋았던 조합을 반복하기보다 검증 가능한 한 가지 변수만 바꿔 보세요.`, `${analysis.nextTest.length} next-test candidates are ready. Change one testable variable rather than blindly repeating the best combination.`) }
+      : null,
+  ].filter(Boolean);
 
   return (
     <div className="tab-pane active" id="tab-creative">
@@ -880,6 +860,18 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           </div>
         </details>
       </section>
+
+      <ResultActionCard
+        tone={fatigueTone}
+        title={tr("결론 — 소재 교체와 다음 제작", "Conclusion — creative swaps and next production")}
+        headline={fatigueHeadline}
+        points={fatiguePoints}
+        stats={[
+          { label: tr("즉시 교체", "Replace now"), value: `${alertNowN}${tr("개", "")}` },
+          { label: tr("피로 신호", "Fatigue signals"), value: `${fatiguedCount}${tr("개", "")}` },
+          { label: tr("권장 제작 속도", "Recommended production"), value: autoPlan ? `${autoPlan.recommendedWeeklyVelocity}${tr("개/주", "/wk")}` : "—" },
+        ]}
+      />
 
       <details className="block" id="s-prep" style={{ padding: "13px 16px" }}>
         <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: "var(--text-muted)", outline: "none" }}>{tr("🗂 데이터 매핑 설정 (펼쳐서 변경)", "🗂 Data mapping settings (expand to change)")}</summary>

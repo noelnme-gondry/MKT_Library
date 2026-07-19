@@ -12,6 +12,7 @@ import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { tableToRecords } from "@/lib/data-import/detectHeaderRow";
 import { detectDatasetSignature } from "@/lib/data-import/detectDatasetSignature";
 import { getTransformRecipe, saveTransformRecipe } from "@/lib/data-import/localHistory";
+import { toolFieldKeys } from "@/lib/data-import/prepareDatasetForTool";
 import { trackProductEvent } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
 
@@ -127,16 +128,6 @@ const CSV_COPY = {
     wideWarning: "This looks like a period-as-columns report. Confirm the date and value columns before transforming it.",
   },
 };
-
-function toolFieldKeys(toolId) {
-  const keys = new Set();
-  (TOOL_REQUIRED_FIELDS[toolId] || []).forEach((field) => {
-    if (typeof field === "string") keys.add(field);
-    field?.oneOf?.forEach((key) => keys.add(key));
-  });
-  (TOOL_OPTIONAL_FIELDS[toolId] || []).forEach(({ key }) => keys.add(key));
-  return [...keys];
-}
 
 function buildImportInsights(headers, raw, toolId) {
   const result = scoreMappingCandidates({ headers, rows: raw, allowedKeys: toolFieldKeys(toolId), fields: STANDARD_FIELDS });

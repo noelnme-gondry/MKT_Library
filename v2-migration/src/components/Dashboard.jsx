@@ -20,6 +20,7 @@ import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
 import { downloadCsv, downloadText } from "@/utils/download";
 import { FileText, ChevronRight } from "lucide-react";
 import AnalysisHistory from "@/components/data-import/AnalysisHistory";
+import AnalysisPathway from "@/components/data-import/AnalysisPathway";
 
 const TOC_MAP = {
   viz: [
@@ -290,6 +291,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 }
               />
               <AnalysisHistory toolId={toolId} summary={{ headline: verdict.headline, tone: verdict.tone, stats: verdict.stats }} locale={locale} />
+              <AnalysisPathway csvData={csvData} locale={locale} />
               </>
             )}
             <MonEventMarkerUI locale={locale} />

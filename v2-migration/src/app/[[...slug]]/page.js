@@ -41,5 +41,28 @@ export async function generateMetadata({ params }) {
 }
 
 export default function Page({ params }) {
-  return <PageClient params={params} />;
+  return <PageWithStructuredData params={params} />;
+}
+
+async function PageWithStructuredData({ params }) {
+  const { slug } = await params;
+  const routeId = resolveSlugToId(slug);
+  const meta = routeId ? findMeta(routeId) : null;
+  const isTool = Boolean(routeId && (routeId.startsWith("5-") || routeId.startsWith("9-")));
+  const structuredData = isTool && meta ? {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: meta.seoTitle || meta.title,
+    description: meta.seoDescription || meta.group?.desc,
+    url: `${SITE_URL}${idToPath(routeId)}`,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    isAccessibleForFree: true,
+    inLanguage: "ko-KR",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "KRW" },
+  } : null;
+  return <>
+    {structuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />}
+    <PageClient params={params} />
+  </>;
 }

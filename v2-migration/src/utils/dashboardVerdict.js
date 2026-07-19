@@ -4,6 +4,8 @@
 // 렌더층 헬퍼(골든 아님) — dashboardAggregator 순수함수만 소비. 데이터 부족·컬럼
 // 미매핑이면 정직하게 생략(§8 날조 금지). WoW는 5-2류 시계열 전용 판정.
 import { getMonFilteredRows, aggregateByKey, effectiveDenomBasis, computeWeightedRetention, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { buildCreativeQuickSummary } from "@/lib/analysis-results/creativeQuickSummary";
+import { buildPvmQuickSummary } from "@/lib/analysis-results/pvmQuickSummary";
 
 const SIG = 0.05; // 유의미한 변화 임계(±5%)
 
@@ -98,6 +100,8 @@ export function buildDashboardVerdict({
     const newRows = recentRaw.filter((row) => row.creative_id && !previous.has(row.creative_id));
     if (newRows.length) newCreativeSignal = { count: new Set(newRows.map((row) => row.creative_id)).size, cost: sum(newRows, "cost"), result: sum(newRows, convKey) };
   }
+  const creativeSummary = mapped.has("creative_id") ? buildCreativeQuickSummary(csvData) : null;
+  const pvmSummary = buildPvmQuickSummary({ csvData, dashboardFilter: filterState, denomBasis });
 
   let tone = "neutral";
   const effImproved = dEff != null && dEff <= -SIG;
@@ -146,6 +150,20 @@ export function buildDashboardVerdict({
   }
   if (newCreativeSignal) {
     points.push({ text: tr(`신규 소재 ${newCreativeSignal.count}개가 최근 기간에 추가되어 ${convLabel} ${newCreativeSignal.result.toLocaleString()}건을 만들었습니다. 소재 분석에서 피로도·교체 우선순위를 확인하세요.`, `${newCreativeSignal.count} new creatives appeared in the recent period and produced ${newCreativeSignal.result.toLocaleString()} ${convLabel}. Check Creative Analysis for fatigue and replacement priority.`) });
+  }
+  if (creativeSummary?.available) {
+    points.push({ cls: creativeSummary.alertNowCount ? "bad" : creativeSummary.fatiguedCount ? "muted" : "good", text: tr(
+      creativeSummary.alertNowCount ? `소재 피로도: 즉시 교체 경고 ${creativeSummary.alertNowCount}개, 피로 신호 ${creativeSummary.fatiguedCount}개입니다. 소재 분석에서 교체 일정을 확인하세요.` : creativeSummary.fatiguedCount ? `소재 피로도: 피로 신호 ${creativeSummary.fatiguedCount}개가 있습니다. 소재 분석에서 교체 우선순위를 확인하세요.` : `소재 피로도: 현재 즉시 교체 경고는 없습니다. 소재 분석에서 다음 테스트 후보를 확인하세요.`,
+      creativeSummary.alertNowCount ? `Creative fatigue: ${creativeSummary.alertNowCount} immediate replacement alert(s), ${creativeSummary.fatiguedCount} fatigue signal(s). Check the swap schedule in Creative Analysis.` : creativeSummary.fatiguedCount ? `Creative fatigue: ${creativeSummary.fatiguedCount} fatigue signal(s). Check replacement priority in Creative Analysis.` : `Creative fatigue: no immediate replacement alerts. Check next-test candidates in Creative Analysis.`
+    ) });
+  }
+  if (pvmSummary.available) {
+    const deltaSign = pvmSummary.delta >= 0 ? "+" : "−";
+    const driverSign = pvmSummary.driver.contribution >= 0 ? "+" : "−";
+    points.push({ cls: pvmSummary.delta > 0 ? "bad" : "good", text: tr(
+      `성과 변동 분해: ${pvmSummary.metric} ${fc(pvmSummary.prior)} → ${fc(pvmSummary.current)} (${deltaSign}${fc(Math.abs(pvmSummary.delta))}). 가장 큰 기여는 ${pvmSummary.driver.key}의 ${driverSign}${fc(Math.abs(pvmSummary.driver.contribution))}입니다.`,
+      `Performance variance: ${pvmSummary.metric} ${fc(pvmSummary.prior)} → ${fc(pvmSummary.current)} (${deltaSign}${fc(Math.abs(pvmSummary.delta))}). The largest contribution is ${pvmSummary.driver.key} at ${driverSign}${fc(Math.abs(pvmSummary.driver.contribution))}.`
+    ) });
   }
   if (tone === "good") points.push({ cls: "good", text: tr("증액 여력 점검: 예산 배분(5-3)에서 한계효율이 살아있는 채널을 확인하세요.", "Room to scale: check Budget Allocation (5-3) for channels with headroom.") });
   else if (tone === "bad") points.push({ cls: "bad", text: tr("이상 감지 탭에서 급변한 날·채널을 먼저 확인하세요.", "Start with the Anomaly tab to find the day/channel that spiked.") });
@@ -201,5 +219,5 @@ export function buildDashboardVerdict({
     points.map((p) => `- ${p.text}`).join("\n") +
     "\n";
 
-  return { insufficient: false, tone, headline, points, stats, metricRows, primaryDriver, newCreativeSignal, export: { csv, text }, windowDays: w };
+  return { insufficient: false, tone, headline, points, stats, metricRows, primaryDriver, newCreativeSignal, creativeSummary, pvmSummary, export: { csv, text }, windowDays: w };
 }
