@@ -10,6 +10,7 @@ v2-migration/
 │  ├─ app/
 │  │  ├─ [[...slug]]/page.js # ★ Path 라우팅 dispatch (URL→routeMap→컴포넌트) + not-found.js
 │  │  ├─ blog/page.js·[slug]/page.js # 블로그(SEO 마케팅 컬럼) — fs MD 파이프라인, routeMap 밖
+│  │  ├─ glossary/page.js·[slug]/page.js # 용어사전 — DefinedTerm JSON-LD + fs MD 파이프라인, routeMap 밖
 │  │  ├─ sitemap.js·rss.xml/route.js # SEO: routeMap ROUTES + getAllPosts(블로그) 파생
 │  │  ├─ layout.js          # <head>·SEO 메타(SITE_URL)·GTM/GA4/AdSense·naver·rss alternate + <GaPageviews/>(SPA page_view)
 │  │  ├─ ../../next.config.mjs # 보안헤더(X-Frame-Options·CSP frame-ancestors·nosniff·Referrer-Policy)
@@ -21,7 +22,8 @@ v2-migration/
 │  ├─ utils/                # ★ 순수 통계엔진 (ESM, 수학 불변, vitest 골든) + 데이터층 + 추출 math(funnel/segment/anomaly/pacing/cohort/incr)
 │  └─ components/
 │     ├─ ds/            # ★ 디자인시스템 공용(design-system-baseline.md): DataTable·CsvGuide·AnalyzingOverlay·ResultActionCard(결론카드)·DownloadHub(다운로드 드롭다운, §12.27)
-│     ├─ landing/       # 랜딩 히어로 조각: ProductPreview(라이브 제품 미리보기·mp4 교체가능)·ToolCarousel(질문 슬라이드)·ToolCardMock(SVG 목업)·LiveMiniChart
+│     ├─ landing/       # 랜딩: ProductPreview(주간 운영 브리핑 4장면 순환·mp4 교체가능)·ToolCarousel(질문 슬라이드)·ToolCardMock(SVG 목업)·LiveMiniChart
+│     ├─ seo/           # SearchTopicHub(검색 질문→도구 허브)·ContentActionPanel(글/용어→도구 전환 CTA)
 │     ├─ GaPageviews.jsx     # SPA 라우트 변경 시 GA4 page_view(usePathname, 최초 로드 제외)
 │     ├─ AdInterstitial.jsx·AdFreeInit.jsx # 분석하기 전면광고 모달(store adGate·requestAd/closeAd) + 광고제외 비밀 URL(?adfree=토큰). §12.26
 │     ├─ Sidebar/Header/LandingPage/CsvUploader/GlobalModals/Dashboard.jsx  # 셸
@@ -91,6 +93,11 @@ v2-migration/
 - **Obsidian Flux 토큰**: `:root { --bg-1·--text-muted·--border·--primary... }`. **다크/라이트 = `body.light-mode` 오버라이드**(토큰 값 스왑).
 - 공용 클래스 전역: `.chart-container`·`.callout`·`.block`·`.ab-pill`·`.cmdk-*`·`.toast-*`·`.pvm-*` 등. 차트 색은 `CHART_THEME` getter(하드코딩 hex 금지).
 - 일회성 컴포넌트 스타일만 `*.module.css`.
+
+## 5.1 콘텐츠 SEO·전환 경로
+- **목록(`/blog`, `/glossary`, `/en/*`)**: 페이지별 canonical·hreflang·Blog/DefinedTermSet JSON-LD, 검색 의도 중심 `<title>`/description. `SearchTopicHub`가 “CPA 상승·CTR 하락·예산 증액·주간 점검” 질문을 실제 도구 URL로 연결한다.
+- **상세(`/blog/[slug]`, `/glossary/[slug]`, `/en/*`)**: BlogPosting/DefinedTerm JSON-LD + BreadcrumbList. `ContentActionPanel`은 글의 `primaryTool`을 우선 사용하고, 용어는 slug 기반으로 예산·변동·소재·대시보드 도구를 제안한다. 이 CTA는 서버 렌더 Link라 검색·JS 미실행 환경에서도 크롤 가능하다.
+- **디자인 표면**: `LandingPage`는 주간 운영 브리핑→같은 데이터의 다음 질문→학습/가이드 출구 순서. `Footer`는 분석·학습·정책의 내부 링크 허브. 전역 표현은 `globals.css`의 `landing-*`·`content-*`·`site-footer*` 클래스로 관리한다.
 
 ## 6. 테스트 & 린트 (배포 게이트)
 - vitest **2 프로젝트**: `npm test`=golden(node, `src/utils/*.test.js`, 순수엔진 골든 22파일) · `npm run test:smoke`=jsdom 컴포넌트 마운트(`*.smoke.test.jsx`) · `npm run test:all`=둘 다(**42파일·202 GREEN**). 골든=index `runXxxTests` verbatim(tolerance 완화 금지). 스모크 목킹은 `vitest.smoke.setup.js`(chart.js/next-navigation/ResizeObserver/matchMedia/canvas).

@@ -2,28 +2,35 @@ import Link from "next/link";
 
 const TOPICS = {
   ko: [
-    { href: "/dashboard", title: "마케팅 대시보드", desc: "이번 주 CPA·ROAS·예산 속도를 한 번에 확인" },
-    { href: "/tools/campaign-variance", title: "CPA 상승 원인 분석", desc: "채널·캠페인·소재가 실제로 움직인 금액 분해" },
-    { href: "/content/freshness", title: "광고 소재 피로도", desc: "교체가 필요한 소재와 다음 제작 우선순위" },
-    { href: "/tools/budget-allocation", title: "광고 예산 배분", desc: "다음 예산을 어디로 옮길지 시뮬레이션" },
+    { href: "/tools/campaign-variance", kicker: "CPA가 올랐을 때", title: "무엇이 성과를 바꿨는지 확인", desc: "채널·캠페인·소재별 기여도를 나눠 원인부터 좁힙니다.", cta: "성과 변동 분석하기" },
+    { href: "/content/freshness", kicker: "CTR이 떨어졌을 때", title: "소재 피로도와 교체 우선순위", desc: "교체할 소재와 다음 제작 가설을 정리합니다.", cta: "소재 피로도 분석하기" },
+    { href: "/tools/budget-allocation", kicker: "예산을 늘리기 전", title: "어디에 더 써야 하는지", desc: "한계 CPA와 여력을 기준으로 다음 예산을 시뮬레이션합니다.", cta: "예산 배분 계산하기" },
+    { href: "/dashboard", kicker: "매주 운영 점검", title: "CPA·ROAS·예산 속도 한눈에", desc: "CSV 한 파일로 주간 상태와 이상 신호를 확인합니다.", cta: "운영 대시보드 열기" },
   ],
   en: [
-    { href: "/en/dashboard", title: "Marketing operations dashboard", desc: "Review weekly CPA, ROAS, and budget pacing" },
-    { href: "/en/tools/campaign-variance", title: "Why did CPA change?", desc: "Decompose the amount moved by channel, campaign, and creative" },
-    { href: "/en/content/freshness", title: "Creative fatigue analysis", desc: "Find creatives to replace and what to produce next" },
-    { href: "/en/tools/budget-allocation", title: "Marketing budget allocation", desc: "Simulate where the next budget should move" },
+    { href: "/en/tools/campaign-variance", kicker: "When CPA rises", title: "See what actually moved performance", desc: "Narrow the cause with channel, campaign, and creative contributions.", cta: "Analyze performance change" },
+    { href: "/en/content/freshness", kicker: "When CTR falls", title: "Find creative fatigue and swap priority", desc: "Identify what to replace and what to produce next.", cta: "Analyze creative fatigue" },
+    { href: "/en/tools/budget-allocation", kicker: "Before increasing spend", title: "Know where the next dollar belongs", desc: "Simulate the next budget move with marginal CPA and headroom.", cta: "Plan budget allocation" },
+    { href: "/en/dashboard", kicker: "Weekly operating review", title: "Review CPA, ROAS, and pacing together", desc: "Use one CSV to check the weekly operating state and anomalies.", cta: "Open operations dashboard" },
   ],
 };
 
-export default function SearchTopicHub({ locale = "ko" }) {
+export default function SearchTopicHub({ locale = "ko", compact = false }) {
   const isEn = locale === "en";
-  return <section className="block" style={{ margin: "0 0 1.75rem", padding: "16px" }} aria-label={isEn ? "Popular marketing analysis tasks" : "자주 찾는 마케팅 분석"}>
-    <h2 className="section-title" style={{ margin: "0 0 5px", fontSize: "18px" }}>{isEn ? "Start with a real marketing question" : "실무에서 바로 찾는 분석"}</h2>
-    <p style={{ margin: "0 0 12px", color: "var(--text-muted)", fontSize: "13px", lineHeight: 1.6 }}>{isEn ? "Read the guide, then use the matching free tool with your own data." : "글과 용어를 읽은 뒤, 같은 주제를 내 데이터로 바로 확인할 수 있습니다."}</p>
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "8px" }}>
-      {TOPICS[isEn ? "en" : "ko"].map((topic) => <Link key={topic.href} href={topic.href} style={{ textDecoration: "none", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "10px", background: "var(--surface-container-lowest)" }}>
-        <strong style={{ color: "var(--text-primary)", display: "block", fontSize: "13px" }}>{topic.title}</strong>
-        <span style={{ color: "var(--text-muted)", display: "block", marginTop: "3px", fontSize: "11.5px", lineHeight: 1.45 }}>{topic.desc}</span>
+  const topics = compact ? TOPICS[isEn ? "en" : "ko"].slice(0, 3) : TOPICS[isEn ? "en" : "ko"];
+  return <section className={`search-topic-hub${compact ? " is-compact" : ""}`} aria-label={isEn ? "Marketing analysis tools by task" : "업무별 마케팅 분석 도구"}>
+    <div className="search-topic-hub__intro">
+      <span className="search-topic-hub__eyebrow">{isEn ? "FROM READING TO DECISION" : "읽은 뒤 바로 실행"}</span>
+      <h2>{isEn ? "Turn this question into a decision" : "지금 읽는 문제를 내 데이터로 확인하세요"}</h2>
+      <p>{isEn ? "Every guide and definition leads to a matching free analysis tool. No sign-up; raw data stays in your browser." : "글과 용어의 다음 단계는 도구 실행입니다. 회원가입 없이, 원본 데이터는 브라우저 안에서만 처리합니다."}</p>
+    </div>
+    <div className="search-topic-hub__grid">
+      {topics.map((topic, index) => <Link key={topic.href} href={topic.href} className="search-topic-hub__card">
+        <span className="search-topic-hub__index">0{index + 1}</span>
+        <span className="search-topic-hub__kicker">{topic.kicker}</span>
+        <strong>{topic.title}</strong>
+        <span className="search-topic-hub__desc">{topic.desc}</span>
+        <span className="search-topic-hub__cta">{topic.cta} <b aria-hidden>→</b></span>
       </Link>)}
     </div>
   </section>;

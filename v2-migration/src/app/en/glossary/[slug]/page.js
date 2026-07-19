@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAllTerms, getTermBySlug } from "@/lib/glossary";
 import { getPostBySlug } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
+import ContentActionPanel from "@/components/seo/ContentActionPanel";
 
 // EN 용어 상세 — /glossary/[slug]/page.js(KR)의 EN 미러.
 export function generateStaticParams() {
@@ -86,6 +87,8 @@ export default async function EnGlossaryTermPage({ params }) {
       </header>
 
       <article className="blog-prose" dangerouslySetInnerHTML={{ __html: term.html }} />
+
+      <ContentActionPanel locale="en" term={term} />
 
       {relatedPosts.length > 0 && (
         <div style={{ marginTop: "2rem", display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>

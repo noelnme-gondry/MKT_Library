@@ -1,5 +1,12 @@
+import { fileURLToPath } from "node:url";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // 상위 작업공간에도 lockfile이 있어 Turbopack이 /Users/gondry를 루트로 추론하던 경고를
+  // 방지. 이 앱의 의존성·파일 추적 범위를 v2-migration으로 고정한다.
+  turbopack: {
+    root: fileURLToPath(new URL(".", import.meta.url)),
+  },
   // 보안 헤더 — iframe 도용(클릭재킹)·MIME 스니핑·레퍼러 유출 방지. 코드 복사 자체는
   // 공개 클라이언트 앱 특성상 못 막지만, "내 사이트를 남의 iframe에 띄워 자기 것인 양"
   // 하는 벡터는 frame-ancestors 'self'로 원천 차단. full CSP는 GTM/AdSense 인라인

@@ -17,15 +17,15 @@ const LANDING_COPY = {
     title: "무엇이 궁금하세요?",
     deck: "질문을 고르면 그 도구로 바로 들어갑니다. 데이터가 없어도 예시로 먼저 보고, 준비되면 내 데이터로 분석하세요. 모든 분석 도구 무료.",
     hero: {
-      title: "이번 주 성과,",
-      titleTools: "어디서 바뀌었고 · 오늘 무엇을 바꿔야 할까",
-      titleAccent: "데이터로 답합니다.",
-      sub: "캠페인 CSV 한 파일로 성과 변동, 예산 여력, 소재 교체 우선순위를 확인하세요. 회원가입 없이 바로 시작하고, 원본 데이터는 브라우저 밖으로 나가지 않습니다.",
+      title: "성과가 움직인 이유를",
+      titleTools: "이번 주 운영 브리핑에서 바로 확인하고",
+      titleAccent: "다음 조치까지 정합니다.",
+      sub: "캠페인 CSV 한 파일로 성과 변동, 예산 여력, 소재 교체 우선순위를 같은 흐름에서 확인하세요. 원본 데이터는 브라우저 밖으로 나가지 않습니다.",
       ctaPrimary: "내 데이터로 분석 시작",
       ctaDemo: "데모 먼저 보기",
       privacy: "🔒 서버 전송 0 · 브라우저 메모리에서만 처리",
-      previewCaption: "샘플: 주간 운영 리포트에서 바로 읽는 결론과 조치",
-      carouselTitle: "지금 필요한 답부터 확인하세요",
+      previewCaption: "LIVE OPERATING BRIEF · 주간 결론과 다음 조치",
+      carouselTitle: "다음 질문도 같은 데이터에서 이어서 확인하세요",
     },
     localeSwitchLabel: "English",
     guide: {
@@ -65,15 +65,15 @@ const LANDING_COPY = {
     title: "What are you curious about?",
     deck: "Pick a question and jump straight into the tool. No data yet? See a live example first, then analyze your own. All analysis tools are free.",
     hero: {
-      title: "This week's performance:",
-      titleTools: "what changed · what to do next",
-      titleAccent: "answered with your data.",
-      sub: "Use one campaign CSV to identify performance shifts, budget headroom, and creative replacement priority. Start without a login; raw data never leaves your browser.",
+      title: "Know why performance moved,",
+      titleTools: "review it in this week’s operating brief, then",
+      titleAccent: "decide the next action.",
+      sub: "Use one campaign CSV to review performance shifts, budget headroom, and creative replacement priority in one connected flow. Raw data never leaves your browser.",
       ctaPrimary: "Analyze my data",
       ctaDemo: "See a live demo",
       privacy: "🔒 Nothing sent to any server · processed in browser memory only",
-      previewCaption: "Sample: a weekly operating review with decisions, not just charts",
-      carouselTitle: "Start with the answer you need now",
+      previewCaption: "LIVE OPERATING BRIEF · weekly decisions and next actions",
+      carouselTitle: "Continue with the next question from the same data",
     },
     localeSwitchLabel: "한국어",
     guide: {
@@ -206,44 +206,46 @@ function LandingHome({ locale }) {
   const pickTool = (id) => { fireGa("landing_tool_pick", { tool: id }); goTool(id); };
 
   return (
-    <>
+    <main className="landing-shell">
       {/* 브랜드(로고+이름)는 전역 Header 좌상단으로 이동, 언어 전환도 Header EN 토글로
           일원화 — 랜딩 자체 eyebrow/English 버튼(중복) 제거. */}
       {locale !== "en" && <LocaleAutoRedirect />}
 
       {/* ── 히어로 (Semrush형 전환 히어로) ── */}
-      <section style={{ textAlign: "center", padding: "1.5rem 0 0.5rem", maxWidth: "780px", margin: "0 auto" }}>
-        <h1 className="page-title" style={{ fontSize: "clamp(28px, 5vw, 46px)", lineHeight: 1.2, whiteSpace: "pre-line", marginBottom: "1rem" }}>
+      <section className="landing-hero">
+        <div className="landing-hero__signal"><span></span>{locale === "en" ? "WEEKLY DECISION SYSTEM" : "WEEKLY DECISION SYSTEM · 주간 운영 판단"}</div>
+        <h1 className="page-title landing-hero__title">
           {hero.title}
           {/* 기능 예시는 제목과 확연히 다른 층위로: 작게·뮤트·괄호. 자체 줄 차지. */}
           {hero.titleTools && (
-            <span style={{ display: "block", fontSize: "0.5em", fontWeight: 500, color: "var(--text-muted)", lineHeight: 1.4, margin: "4px 0 2px" }}>
+            <span className="landing-hero__subtitle">
               {hero.titleTools}
             </span>
           )}
           {/* "전부 무료."는 한 덩어리 — 줄 중간에서 끊기지 않게 자체 줄 + nowrap */}
           {hero.titleAccent && (
-            <span style={{ display: "block", color: "var(--primary)", whiteSpace: "nowrap" }}>{hero.titleAccent}</span>
+            <span className="landing-hero__accent">{hero.titleAccent}</span>
           )}
         </h1>
-        <p className="page-deck" style={{ fontSize: "15px", maxWidth: "620px", margin: "0 auto 1.4rem" }}>
+        <p className="landing-hero__deck">
           {hero.sub}
         </p>
-        <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
-          <button type="button" className="btn primary" style={{ fontSize: "14px", padding: "12px 22px" }} onClick={() => { fireGa("landing_cta", { action: "analyze" }); router.push(locale === "en" ? "/en/start" : "/start"); }}>
+        <div className="landing-hero__actions">
+          <button type="button" className="btn primary landing-hero__primary" onClick={() => { fireGa("landing_cta", { action: "analyze" }); router.push(locale === "en" ? "/en/start" : "/start"); }}>
             {hero.ctaPrimary} →
           </button>
-          <button type="button" className="btn ghost" style={{ fontSize: "14px", padding: "12px 22px" }} onClick={() => { fireGa("landing_cta", { action: "demo" }); setDemoDisabled(false); goTool("5-2"); }}>
+          <button type="button" className="btn ghost landing-hero__secondary" onClick={() => { fireGa("landing_cta", { action: "demo" }); setDemoDisabled(false); goTool("5-2"); }}>
             ▶ {hero.ctaDemo}
           </button>
         </div>
-        <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "14px" }}>{hero.privacy}</div>
+        <div className="landing-hero__privacy">{hero.privacy}</div>
       </section>
 
       {/* ── 라이브 제품 미리보기(시연 슬롯 — 여러 도구 로테이션, 나중 mp4 교체 가능) ── */}
-      <div style={{ marginTop: "1.6rem" }}>
+      <section className="landing-preview-stage" aria-label={hero.previewCaption}>
+        <div className="landing-preview-stage__bar"><span>{hero.previewCaption}</span><span className="landing-preview-stage__status">● {locale === "en" ? "UPDATED TODAY" : "오늘 업데이트"}</span></div>
         <ProductPreview locale={locale} />
-      </div>
+      </section>
 
       {/* ── 질문 캐러셀(도구 진입) ── */}
       <ToolCarousel
@@ -256,33 +258,26 @@ function LandingHome({ locale }) {
       />
 
       {/* ── 블로그 | SOP 나란히(읽을거리·문서 2대장). 각자 자체 주소(/blog · /guide). ── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: "16px",
-          marginTop: "2.5rem",
-        }}
-      >
-        <Link href={locale === "en" ? "/en/blog" : "/blog"} className="home-hub-card" style={{ textDecoration: "none" }}>
-          <div className="home-hub-icon" style={{ background: "linear-gradient(135deg,#a78bfa33,#4cd7f622)" }}>📝</div>
+      <section className="landing-exit-grid" aria-label={locale === "en" ? "Keep learning or prepare data" : "더 알아보거나 데이터 준비하기"}>
+        <Link href={locale === "en" ? "/en/blog" : "/blog"} className="home-hub-card landing-exit-card">
+          <div className="landing-exit-card__index">01</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="phase-card-title" style={{ marginBottom: "4px" }}>{L.blogBanner.title}</div>
-            <div className="phase-card-desc" style={{ margin: 0 }}>{L.blogBanner.desc}</div>
+            <div className="landing-exit-card__title">{L.blogBanner.title}</div>
+            <div className="landing-exit-card__desc">{L.blogBanner.desc}</div>
           </div>
-          <span className="phase-card-cta" style={{ margin: 0, whiteSpace: "nowrap" }}>{L.blogBanner.cta}</span>
+          <span className="landing-exit-card__cta">{L.blogBanner.cta}</span>
         </Link>
 
-        <Link href={locale === "en" ? "/en/guide" : "/guide"} className="home-hub-card" style={{ textDecoration: "none" }}>
-          <div className="home-hub-icon" style={{ background: "linear-gradient(135deg,#adc6ff33,#4ade8022)" }}>📘</div>
+        <Link href={locale === "en" ? "/en/guide" : "/guide"} className="home-hub-card landing-exit-card">
+          <div className="landing-exit-card__index">02</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="phase-card-title" style={{ marginBottom: "4px" }}>{L.guide.title}</div>
-            <div className="phase-card-desc" style={{ margin: 0 }}>{L.guide.desc}</div>
-            <div className="phase-card-meta tnum" style={{ marginTop: "6px", color: "var(--text-muted)", fontSize: "11.5px" }}>{totalGuides}{L.guide.metaSuffix}</div>
+            <div className="landing-exit-card__title">{L.guide.title}</div>
+            <div className="landing-exit-card__desc">{L.guide.desc}</div>
+            <div className="landing-exit-card__meta tnum">{totalGuides}{L.guide.metaSuffix}</div>
           </div>
-          <span className="phase-card-cta" style={{ margin: 0, whiteSpace: "nowrap" }}>{L.guide.cta}</span>
+          <span className="landing-exit-card__cta">{L.guide.cta}</span>
         </Link>
-      </div>
+      </section>
 
       {/* 데이터 준비 가이드 — 상단이 아닌 맨 밑에 약하게(자기서비스 탈출구). */}
       {dataGuideItem && (
@@ -328,7 +323,7 @@ function LandingHome({ locale }) {
           <span>{L.social.feedback}</span>
         </a>
       </div>
-    </>
+    </main>
   );
 }
 

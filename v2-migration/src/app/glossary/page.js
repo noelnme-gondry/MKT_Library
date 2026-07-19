@@ -5,8 +5,8 @@ import SearchTopicHub from "@/components/seo/SearchTopicHub";
 
 // 용어사전 목록 — 블로그·템플릿과 동일하게 routeMap 밖 독립 페이지(§12.24 패턴).
 export async function generateMetadata() {
-  const title = "마케팅 용어사전";
-  const description = "퍼포먼스 마케팅·앱 분석 니치 용어를 한 문장 정의부터 실무 맥락까지 정리한 용어사전입니다.";
+  const title = "퍼포먼스 마케팅 용어사전 | CPA·ROAS·CTR 뜻과 실무 활용";
+  const description = "CPA, ROAS, CTR, LTV, 어트리뷰션 등 퍼포먼스 마케팅 핵심 용어를 한 줄 정의·계산식·실무 맥락으로 설명하고 관련 분석 도구로 연결합니다.";
   const canonical = `${SITE_URL}/glossary`;
   return {
     title,
@@ -51,18 +51,16 @@ export default function GlossaryIndexPage() {
   const categories = getAllCategories();
 
   return (
-    <div className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
+    <div className="content-index">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildGlossaryJsonLd(terms)) }}
       />
-      <header style={{ marginBottom: "1.5rem" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
-          마케팅 용어사전
-        </h1>
-        <p style={{ marginTop: "0.5rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-          퍼포먼스 마케팅·앱 분석에서 자주 나오지만 정작 어디서도 짧게 정의해주지 않는 용어들을 모았습니다.
-        </p>
+      <header className="content-index__hero">
+        <span className="content-index__eyebrow">PERFORMANCE MARKETING GLOSSARY</span>
+        <h1>검색한 용어를<br />운영 판단으로 연결합니다</h1>
+        <p>CPA·ROAS·CTR·LTV부터 어트리뷰션과 증분 측정까지. 뜻과 계산식에서 멈추지 않고, 어느 데이터를 봐야 하는지까지 정리합니다.</p>
+        <span className="content-index__meta">{terms.length} TERMS · DEFINITION → PRACTICE</span>
       </header>
       <SearchTopicHub />
 

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAllTerms, getTermBySlug } from "@/lib/glossary";
 import { getPostBySlug } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
+import ContentActionPanel from "@/components/seo/ContentActionPanel";
 
 export function generateStaticParams() {
   return getAllTerms().map((t) => ({ slug: t.slug }));
@@ -87,6 +88,8 @@ export default async function GlossaryTermPage({ params }) {
       </header>
 
       <article className="blog-prose" dangerouslySetInnerHTML={{ __html: term.html }} />
+
+      <ContentActionPanel term={term} />
 
       {relatedPosts.length > 0 && (
         <div style={{ marginTop: "2rem", display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
