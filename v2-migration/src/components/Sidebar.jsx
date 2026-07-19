@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useAppStore, IA, SECTIONS, displayGroupNumberShort, displayItemNumberShort } from "@/store/useDataStore";
 import { idToSlug, resolvePathToId, hasEnVersion } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle, trSectionLabel } from "@/lib/enNavCopy";
+import BrandMark from "@/components/BrandMark";
 
 const SIDEBAR_COPY = {
   ko: {
@@ -70,7 +71,7 @@ export default function Sidebar({ locale = "ko" }) {
         id="brand"
         style={{ cursor: "pointer", textDecoration: "none", color: "inherit" }}
       >
-        <div className="brand-mark">GO</div>
+        <BrandMark label="Growth Opt Playbook" />
         <div>
           <div className="brand-name">Growth Opt</div>
           <div className="brand-sub">Playbook</div>

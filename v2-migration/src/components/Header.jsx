@@ -7,6 +7,7 @@ import { resolvePathToId } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 import { setLocalePref } from "@/lib/localePref";
 import { englishSwitchHref } from "@/lib/localizedHref";
+import BrandMark from "@/components/BrandMark";
 
 const HEADER_COPY = {
   ko: {
@@ -92,7 +93,7 @@ export default function Header({ locale = "ko" }) {
       <nav className="breadcrumb" aria-label={T.breadcrumbAria}>
         {/* 브랜드: 로고 마크(GO) + 이름을 좌상단에 고정(전 페이지·KR/EN 공통, 홈 링크). */}
         <Link href={locale === "en" ? "/en" : "/"} className="crumb-link brand-crumb" style={{ textDecoration: "none", color: "inherit", display: "inline-flex", alignItems: "center", gap: "8px" }}>
-          <span className="brand-mark" style={{ width: "26px", height: "26px", fontSize: "12px" }}>GO</span>
+          <BrandMark size={26} label="Growth Opt Playbook" />
           <span className="brand-crumb__label" style={{ fontWeight: 700 }}>Growth Opt Playbook</span>
         </Link>
         {/* 블로그는 브랜드 + "블로그" 크럼. */}
