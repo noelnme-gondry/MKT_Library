@@ -3,7 +3,7 @@ title: "Performance Marketing Metrics: Stop Memorizing Them, Read Them as a Chai
 description: "Instead of memorizing CPI, CPA, ROAS, and LTV:CAC separately, read them as one connected chain and you'll see exactly where performance is leaking. A metrics primer for junior marketers."
 date: "2026-07-09"
 slug: "performance-marketing-metrics"
-keywords: "performance marketing metrics, CPI, CPA, ROAS, LTV, CAC, LTV:CAC, marketing metrics basics, junior marketer, how metrics connect, LTV to CAC ratio explained, CPM, CPC, CPI vs CPA, ad cost metrics"
+keywords: "performance marketing metrics, CPI, CPA, ROAS, LTV, CAC, LTV:CAC, marketing metrics basics, junior marketer, how metrics connect, LTV to CAC ratio explained, CPM, CPC, CPI vs CPA, ad cost metrics, marketing metrics list, how to read ad metrics, CPM vs CPC"
 tags: ["Metrics Basics", "Performance Marketing"]
 draft: false
 faq:

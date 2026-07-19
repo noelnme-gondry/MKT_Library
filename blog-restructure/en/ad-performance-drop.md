@@ -1,9 +1,9 @@
 ---
 title: "Ad Performance Cut in Half? Touching Creative First Means Missing the Cause"
-description: "When performance tanks, blaming creative first hides the real cause. A 4-step route — verify the numbers, split by channel, mix vs. efficiency, trace the funnel — plus the signals to distrust on days performance suddenly *improves*."
+description: "When performance tanks, blaming creative first hides the real cause. A 4-step ad performance analysis route — verify the numbers, split by channel, mix vs. efficiency, trace the funnel — plus the signals to distrust on days performance suddenly *improves*."
 date: "2026-07-12"
 slug: "ad-performance-drop"
-keywords: "ad performance drop, CPA spike, ad diagnosis order, mix effect, funnel diagnosis, why did CPA suddenly increase, ad tracking issue, sudden performance improvement, campaign anomaly detection, campaign monitoring"
+keywords: "ad performance drop, CPA spike, ad diagnosis order, mix effect, funnel diagnosis, why did CPA suddenly increase, ad tracking issue, sudden performance improvement, campaign anomaly detection, campaign monitoring, ad performance analysis, why ad performance dropped, causes of CPA increase, ad performance troubleshooting"
 tags: ["Troubleshooting", "CPA"]
 draft: false
 ---
@@ -92,6 +92,6 @@ Under pressure, people skip steps. With your heart racing, you'll reach for the 
 
 ## Wrapping up
 
-Diagnosing a sudden drop isn't about catching a culprit — it's about narrowing the scope. Is the number real → what collapsed → allocation or efficiency → where in the funnel. Follow this order and most drops get resolved within half a day.
+Ad performance analysis, in the end, isn't about catching a culprit — it's about narrowing the scope. Is the number real → what collapsed → allocation or efficiency → where in the funnel. Follow this order and most drops get resolved within half a day.
 
 And when you fix something, fix one thing at a time. That's how you catch it even faster next time.
