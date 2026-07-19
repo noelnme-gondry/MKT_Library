@@ -3,7 +3,7 @@ title: "포스트백 연동, 매체마다 왜 이렇게 다른가"
 description: "MMP가 매체에 전환 데이터를 전달하는 포스트백 연동 방식(SAN vs S2S)과, 설치·비용이 0으로 보고되는 흔한 원인을 정리했습니다."
 date: "2026-07-18"
 slug: "postback-integration-guide"
-keywords: "포스트백 연동, postback, SAN 매체, 매체 어트리뷰션 연동, MMP 파트너 셋업, 설치 0 보고, 코스트 데이터 연동"
+keywords: "포스트백 연동, postback, SAN 매체, 매체 어트리뷰션 연동, MMP 파트너 셋업, 설치 0 보고, 코스트 데이터 연동, MMP 포스트백 설정, S2S 연동, 전환 데이터 연동"
 tags: ["측정", "기초"]
 draft: false
 ---

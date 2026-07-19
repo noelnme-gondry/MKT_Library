@@ -3,7 +3,7 @@ title: "리타겟팅, 신규 획득이랑 같이 돌리면 왜 망하나"
 description: "리타겟팅·재참여 캠페인을 신규 획득(UA)과 분리해야 하는 이유, 오디언스 세분화, 디퍼드 딥링크가 왜 필수인지 정리했습니다."
 date: "2026-07-18"
 slug: "retargeting-reengagement-guide"
-keywords: "리타겟팅, Re-engagement, 재참여 캠페인, 휴면 유저 부활, 리타겟팅 오디언스, 디퍼드 딥링크, Lookalike 시드, 유저 세그먼트"
+keywords: "리타겟팅, Re-engagement, 재참여 캠페인, 휴면 유저 부활, 리타겟팅 오디언스, 디퍼드 딥링크, Lookalike 시드, 유저 세그먼트, 리타겟팅 전략, 휴면 유저 마케팅, 앱 리타겟팅"
 tags: ["UA", "그로스"]
 draft: false
 ---

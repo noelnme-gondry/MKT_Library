@@ -3,7 +3,7 @@ title: "GA4 숫자가 이상한 이유 — 버그가 아니라 원래 그렇게 
 description: "GA4 세션이 UA보다 적게 나오고 어제 전환 수가 계속 바뀌는 이유 — 세션 정의·집계 지연·데이터 임계값·어트리뷰션 차이 때문입니다."
 date: "2026-07-17"
 slug: "ga4-data-traps"
-keywords: "GA4, GA4 세션, GA4 전환수 변동, 데이터 임계값, threshold, 집계 지연, 어트리뷰션, unassigned, UA vs GA4, 보고 ID, Reporting Identity"
+keywords: "GA4, GA4 세션, GA4 전환수 변동, 데이터 임계값, threshold, 집계 지연, 어트리뷰션, unassigned, UA vs GA4, 보고 ID, Reporting Identity, GA4 숫자 다른 이유, GA4 데이터 오류, GA4 집계 방식, GA4 세션 수 차이"
 tags: ["분석 방법론", "퍼포먼스 마케팅"]
 draft: false
 ---

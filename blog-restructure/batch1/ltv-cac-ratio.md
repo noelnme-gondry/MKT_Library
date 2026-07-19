@@ -3,7 +3,7 @@ title: "LTV:CAC 3:1이면 안심? 그 계산, 대부분 틀리게 하고 있어�
 description: "LTV:CAC 3:1이라는 기준선보다 중요한 건 그 숫자가 맞게 계산됐느냐예요. 분모 정의, 매출 vs 마진, 채널 구분 — 흔히 틀리는 세 지점과 계산법, 페이백 기간까지 같이 보는 법을 정리했어요."
 date: "2026-07-15"
 slug: "ltv-cac-ratio"
-keywords: "LTV, CAC, LTV CAC, LTV 계산법, CAC 계산, 고객 생애 가치, 고객 획득 비용, LTV CAC 비율, LTV CAC 3:1, 페이백 기간, 유닛 이코노믹스"
+keywords: "LTV, CAC, LTV CAC, LTV 계산법, CAC 계산, 고객 생애 가치, 고객 획득 비용, LTV CAC 비율, LTV CAC 3:1, 페이백 기간, 유닛 이코노믹스, LTV 뜻, CAC 뜻, LTV CAC 계산, LTV 계산 방법"
 tags: ["분석", "예산"]
 draft: false
 ---
