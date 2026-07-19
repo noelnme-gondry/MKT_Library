@@ -19,14 +19,15 @@ const LANDING_COPY = {
       title: "성과가 움직인 이유를",
       titleTools: "이번 주 데이터로 확인하고",
       titleAccent: "다음 한 가지를 정합니다",
-      sub: "캠페인 CSV를 올리면 변동 원인·예산 여력·소재 신호를 한 번에 정리합니다. MMM과 실험 분석은 필요한 데이터부터 안내합니다.",
+      sub: "캠페인 CSV를 올리면 변동 원인·예산 여력·소재 신호를 한 번에 정리합니다.",
+      subDetail: "MMM과 실험 분석은 필요한 데이터부터 안내합니다.",
       ctaPrimary: "내 자료 올리고 무료 분석 시작",
       ctaDemo: "샘플로 먼저 보기",
       freeNote: "무료로 바로 시작 · 가입 없음 · 데이터는 브라우저에서만 처리",
       privacy: "🔒 서버 전송 0",
       previewCaption: "실제 화면 예시 · 주간 결론과 다음 조치",
       carouselTitle: "다음 질문도 같은 데이터에서 이어서 확인하세요",
-      lab: { eyebrow: "ADVANCED ANALYSIS LAB", title: "MMM·회귀·미래 예측도 같은 도구 안에서", desc: "주간 운영을 넘어 채널별 기여도, 광고비 반응곡선, 예산 시나리오별 미래 성과를 분석합니다. 관측 데이터의 한계와 외삽 위험도 결과와 함께 설명합니다.", cta: "마케팅 반응 분석 열기", items: ["채널별 기여 분해", "다변량 회귀", "4주 미래 예측"] },
+      lab: { eyebrow: "ADVANCED ANALYSIS LAB", titleLead: "MMM·회귀·미래 예측", titleRest: "도 같은 도구 안에서", desc: "주간 운영을 넘어 채널별 기여도, 광고비 반응곡선, 예산 시나리오별 미래 성과를 분석합니다. 관측 데이터의 한계와 외삽 위험도 결과와 함께 설명합니다.", cta: "마케팅 반응 분석 열기", items: ["채널별 기여 분해", "다변량 회귀", "4주 미래 예측"] },
     },
     localeSwitchLabel: "English",
     guide: {
@@ -69,14 +70,15 @@ const LANDING_COPY = {
       title: "Know why performance moved,",
       titleTools: "read this week’s data, then",
       titleAccent: "choose the next move",
-      sub: "Upload a campaign CSV to see performance drivers, budget headroom, and creative signals in one pass. MMM and experiments show the exact data they need.",
+      sub: "Upload a campaign CSV to see performance drivers, budget headroom, and creative signals in one pass.",
+      subDetail: "MMM and experiments show the exact data they need.",
       ctaPrimary: "Upload data · analyze free",
       ctaDemo: "Try a sample first",
       freeNote: "Free to start · no signup · your data stays in browser memory",
       privacy: "🔒 Nothing sent to any server",
       previewCaption: "Live product view · weekly decisions and next actions",
       carouselTitle: "Continue with the next question from the same data",
-      lab: { eyebrow: "ADVANCED ANALYSIS LAB", title: "MMM, regression, and forecasting — in the same workflow", desc: "Go beyond weekly operations to estimate channel contribution, spend-response curves, and future performance by budget scenario, with observational limits and extrapolation risk shown beside the result.", cta: "Open marketing response analysis", items: ["Channel contribution", "Multivariate regression", "4-week forecast"] },
+      lab: { eyebrow: "ADVANCED ANALYSIS LAB", titleLead: "MMM, regression, and forecasting", titleRest: "in the same workflow", desc: "Go beyond weekly operations to estimate channel contribution, spend-response curves, and future performance by budget scenario, with observational limits and extrapolation risk shown beside the result.", cta: "Open marketing response analysis", items: ["Channel contribution", "Multivariate regression", "4-week forecast"] },
     },
     localeSwitchLabel: "한국어",
     guide: {
@@ -231,7 +233,8 @@ function LandingHome({ locale }) {
           )}
         </h1>
         <p className="landing-hero__deck">
-          {hero.sub}
+          <span>{hero.sub}</span>
+          {hero.subDetail && <span>{hero.subDetail}</span>}
         </p>
         <div className="landing-hero__actions">
           <Link href={locale === "en" ? "/en/start" : "/start"} className="btn primary landing-hero__primary" onClick={() => fireGa("landing_cta", { action: "analyze" })}>
@@ -254,7 +257,7 @@ function LandingHome({ locale }) {
       <section className="landing-advanced-lab">
         <div>
           <span>{hero.lab.eyebrow}</span>
-          <h2>{hero.lab.title}</h2>
+          <h2><span className="lab-title__accent">{hero.lab.titleLead}</span> {hero.lab.titleRest}</h2>
           <p>{hero.lab.desc}</p>
           <Link href={locale === "en" ? "/en/tools/marketing-response" : "/tools/marketing-response"} className="btn primary" onClick={() => fireGa("landing_tool_pick", { tool: "5-18" })}>{hero.lab.cta} →</Link>
         </div>
@@ -276,10 +279,10 @@ function LandingHome({ locale }) {
             </svg>
           </div>
           <div className="mmm-preview__table">
-            <div><span>{locale === "en" ? "Channel contribution" : "채널 기여도"}</span><b>{locale === "en" ? "Share" : "기여 비중"}</b></div>
-            <div><i className="mmm-dot mmm-dot--blue"></i><span>Paid social</span><strong>42.8%</strong></div>
-            <div><i className="mmm-dot mmm-dot--green"></i><span>Search</span><strong>31.4%</strong></div>
-            <div><i className="mmm-dot mmm-dot--amber"></i><span>{locale === "en" ? "Organic / baseline" : "오가닉·기준선"}</span><strong>25.8%</strong></div>
+            <div className="mmm-preview__table-head"><span>{locale === "en" ? "Channel contribution" : "채널 기여도"}</span><b>{locale === "en" ? "Share" : "기여 비중"}</b></div>
+            <div className="mmm-preview__channel-row"><i className="mmm-dot mmm-dot--blue"></i><span>Paid social</span><strong>42.8%</strong></div>
+            <div className="mmm-preview__channel-row"><i className="mmm-dot mmm-dot--green"></i><span>Search</span><strong>31.4%</strong></div>
+            <div className="mmm-preview__channel-row"><i className="mmm-dot mmm-dot--amber"></i><span>{locale === "en" ? "Organic / baseline" : "오가닉·기준선"}</span><strong>25.8%</strong></div>
           </div>
           <div className="mmm-preview__footer"><span>{locale === "en" ? "Next 4 weeks forecast" : "다음 4주 예측"}</span><b>+9.8%</b><small>{locale === "en" ? "association ≠ causation · holdout recommended" : "연관 ≠ 인과 · 홀드아웃 검증 권장"}</small></div>
         </div>
