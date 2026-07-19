@@ -6,6 +6,17 @@ slug: "performance-marketing-metrics"
 keywords: "performance marketing metrics, CPI, CPA, ROAS, LTV, CAC, LTV:CAC, marketing metrics basics, junior marketer, how metrics connect, LTV to CAC ratio explained, CPM, CPC, CPI vs CPA, ad cost metrics"
 tags: ["Metrics Basics", "Performance Marketing"]
 draft: false
+faq:
+  - q: "What's the difference between CPM, CPC, CPI, and CPA?"
+    a: "They're costs attached to different funnel stages. CPM is cost per 1,000 impressions, CPC per click, CPI per install, CPA per action (signup/purchase). The further right, the closer to revenue; the earlier metrics are diagnostics that tell you why."
+  - q: "What's the difference between ROAS and LTV:CAC?"
+    a: "The ratio structure is the same (both reduce to revenue : ad spend), but they tally revenue over different windows. ROAS counts revenue in a fixed window (Day 0, 7, 14, etc.), while LTV accounts for repurchases — the total revenue a user generates over their whole lifetime. LTV:CAC is the longer-horizon directional metric."
+  - q: "CPA is low but ROAS won't come up — what's wrong?"
+    a: "You're generating conversions cheaply, so the problem isn't upstream in the ad — it's the average order value after the conversion. Suspect either too few purchases, or purchases at too low a price point."
+  - q: "What if CPA and ROAS look good but LTV:CAC is bad?"
+    a: "First purchases are coming in fine, but repurchase isn't following. That's a retention problem, not an acquisition problem — look at the product experience or the repurchase cycle."
+  - q: "In what order should I read the metrics?"
+    a: "Stand the chain up — ad spend → CPI (install) → CPA (action) → ROAS (short-term revenue) → LTV:CAC (long-term value) — and find which cell is flashing red first. That cell is where the real cause sits."
 ---
 
 CPI, CPA, ROAS, LTV, CAC… open a report and the acronyms pour out. You know what each one means, but "so what should I actually look at right now?" doesn't jump out at you. Today I'll show you how to read these metrics as one connected chain instead of memorizing them separately. Read them this way, and when a number spikes, you'll immediately know where to look.
