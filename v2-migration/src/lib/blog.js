@@ -4,12 +4,17 @@
 // locale: "ko"(기본, content/blog) | "en"(content/blog-en) — 같은 slug로 KR/EN 짝 파일 매칭.
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "node:url";
 import matter from "gray-matter";
 import { marked } from "marked";
+import { localizedHref } from "@/lib/localizedHref";
+import { primaryToolForContent, relatedGlossaryForPost } from "@/lib/contentToolRegistry";
+import { getBlogSeo } from "@/lib/blogSeo";
 
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const BLOG_DIRS = {
-  ko: path.join(process.cwd(), "content", "blog"),
-  en: path.join(process.cwd(), "content", "blog-en"),
+  ko: path.resolve(MODULE_DIR, "../../content/blog"),
+  en: path.resolve(MODULE_DIR, "../../content/blog-en"),
 };
 
 // 자체 작성 신뢰 MD라 위험은 낮지만, 방어적으로 기본 옵션만 사용(raw HTML 통과를
@@ -31,7 +36,11 @@ function readDir(locale) {
 // 이미 /en/blog/로 쓰여 있어도 문자열 "href=\"/blog/"가 안 나타나 이중치환 없음.
 function localizeInternalLinks(html, locale) {
   if (locale !== "en") return html;
-  return html.replace(/(href=")\/blog\//g, "$1/en/blog/");
+  return html.replace(/href="(\/[^"#]+)(#[^"]*)?"/g, (_, href, hash = "") => `href="${localizedHref(href, locale)}${hash}"`);
+}
+
+function normalizeArticleHeadings(html) {
+  return html.replace(/<h1([^>]*)>/g, "<h2$1>").replace(/<\/h1>/g, "</h2>");
 }
 
 // ── 카테고리 정리(§UX) ─────────────────────────────────────────────────
@@ -39,21 +48,29 @@ function localizeInternalLinks(html, locale) {
 // 불변 — 여기가 taxonomy SSOT라 파싱 시점에 매핑(되돌리기 쉬움, 글 내용 무관).
 // 매핑 없는 태그는 그대로 통과, "퍼포먼스 마케팅"(거의 전 글)은 분류 기능 상실이라 제외.
 const TAG_CATEGORY = {
-  "예산 배분": "예산·효율", CPA: "예산·효율", ROAS: "예산·효율", 스케일업: "예산·효율", 포화: "예산·효율",
-  "마케팅 지표": "측정·분석", "지표 기초": "측정·분석", "분석 방법론": "측정·분석", "실험 분석": "측정·분석", "증분 분석": "측정·분석", MMM: "측정·분석", "문제 진단": "측정·분석",
-  "광고 소재": "소재·크리에이티브", "소재 피로도": "소재·크리에이티브",
-  타겟팅: "타겟·오디언스", "오디언스 전략": "타겟·오디언스",
-  AI: "AI·자동화", 머신러닝: "AI·자동화", 자동화: "AI·자동화",
-  커리어: "커리어·성장", "주니어 마케터": "커리어·성장",
+  "예산 배분": "예산·효율", 예산: "예산·효율", CPA: "예산·효율", ROAS: "예산·효율", 스케일업: "예산·효율", 포화: "예산·효율",
+  "마케팅 지표": "측정·분석", "지표 기초": "측정·분석", 지표: "측정·분석", 기초: "측정·분석", 측정: "측정·분석", 분석: "측정·분석", "분석 방법론": "측정·분석", "실험 분석": "측정·분석", "증분 분석": "측정·분석", 증분: "측정·분석", MMM: "측정·분석", "문제 진단": "측정·분석", 모니터링: "측정·분석",
+  소재: "소재·크리에이티브", "광고 소재": "소재·크리에이티브", "소재 피로도": "소재·크리에이티브",
+  UA: "매체·운영", UAC: "매체·운영", ASA: "매체·운영", ASO: "매체·운영", iOS: "매체·운영",
+  타겟팅: "타겟·퍼널", "오디언스 전략": "타겟·퍼널", "타겟·오디언스": "타겟·퍼널", 전환율: "타겟·퍼널",
+  AI: "성장·커리어", 머신러닝: "성장·커리어", 자동화: "성장·커리어", 커리어: "성장·커리어", "주니어 마케터": "성장·커리어", 그로스: "성장·커리어", 리텐션: "성장·커리어",
 };
-const TAG_DROP = new Set(["퍼포먼스 마케팅"]);
+const TAG_CATEGORY_EN = {
+  "Budget Allocation": "Budget & efficiency", Scaling: "Budget & efficiency", CPA: "Budget & efficiency", ROAS: "Budget & efficiency",
+  "Marketing Metrics": "Measurement & analysis", "Metrics Basics": "Measurement & analysis", "Analysis Methodology": "Measurement & analysis", "Analytics Methodology": "Measurement & analysis", "Experiment Analysis": "Measurement & analysis", "Incrementality Analysis": "Measurement & analysis", MMM: "Measurement & analysis", Diagnosis: "Measurement & analysis", Troubleshooting: "Measurement & analysis",
+  "Creative Fatigue": "Creative", "Ad Creative": "Creative",
+  Targeting: "Targeting & funnel", "Audience Strategy": "Targeting & funnel",
+  AI: "Growth & career", Automation: "Growth & career", "Machine Learning": "Growth & career", Career: "Growth & career", "Junior Marketer": "Growth & career",
+};
+const TAG_DROP = new Set(["퍼포먼스 마케팅", "마케팅", "Performance Marketing"]);
 
-function consolidateTags(rawTags) {
+function consolidateTags(rawTags, locale) {
+  const categoryMap = locale === "en" ? TAG_CATEGORY_EN : TAG_CATEGORY;
   const out = [];
   const seen = new Set();
   for (const t of rawTags) {
     if (!t || TAG_DROP.has(t)) continue;
-    const cat = TAG_CATEGORY[t] || t; // 매핑 없으면 원본 유지(EN 태그 등)
+    const cat = categoryMap[t] || t;
     if (!seen.has(cat)) {
       seen.add(cat);
       out.push(cat);
@@ -67,20 +84,29 @@ function parseFile(fileName, locale) {
   const raw = fs.readFileSync(filePath, "utf8");
   const { data, content } = matter(raw);
   const slug = data.slug || fileName.replace(/\.md$/, "");
+  const seo = getBlogSeo(locale, slug, data);
   return {
     slug,
-    title: data.title || slug,
-    description: data.description || "",
+    title: seo?.title || data.title || slug,
+    description: seo?.description || data.description || "",
+    seoAnswer: seo?.answer || data.description || "",
+    searchIntent: seo?.intent || "",
     date: data.date || "",
+    updated: seo?.updated || data.updated || data.date || "",
     keywords: data.keywords || "",
-    tags: consolidateTags(Array.isArray(data.tags) ? data.tags : []),
+    tags: consolidateTags(Array.isArray(data.tags) ? data.tags : [], locale),
     ogImage: data.ogImage || "",
+    primaryTool: data.primaryTool || primaryToolForContent(slug, "blog"),
+    template: data.template || "",
+    relatedGlossary: Array.isArray(data.relatedGlossary) && data.relatedGlossary.length
+      ? data.relatedGlossary
+      : relatedGlossaryForPost(slug),
     // FAQPage 구조화 데이터 + 화면 아코디언 공용 소스. [{q,a}], q/a 둘 다 없는 항목은 방어적으로 제외.
     faq: Array.isArray(data.faq)
       ? data.faq.filter((item) => item && item.q && item.a)
       : [],
     draft: data.draft === true,
-    html: localizeInternalLinks(marked.parse(content || ""), locale),
+    html: normalizeArticleHeadings(localizeInternalLinks(marked.parse(content || ""), locale)),
   };
 }
 
@@ -107,6 +133,14 @@ export function tagSlug(tag) {
   return String(tag).trim().replace(/\s+/g, "-");
 }
 
+function decodedTagSlug(slug) {
+  try {
+    return decodeURIComponent(String(slug));
+  } catch {
+    return String(slug);
+  }
+}
+
 // 전체 태그 목록 [{ tag, slug, count }] — 글 많은 순, 동률이면 가나다.
 export function getAllTags(locale = "ko") {
   const counts = new Map();
@@ -123,11 +157,13 @@ export function getAllTags(locale = "ko") {
 
 // 특정 태그(slug 기준)의 글 목록. getAllPosts 정렬 승계. 없으면 [].
 export function getPostsByTag(slug, locale = "ko") {
-  return getAllPosts(locale).filter((p) => p.tags.some((t) => tagSlug(t) === slug));
+  const normalized = decodedTagSlug(slug);
+  return getAllPosts(locale).filter((p) => p.tags.some((t) => tagSlug(t) === normalized));
 }
 
 // slug → 원본 태그 라벨(표시용). 없으면 slug 그대로.
 export function tagLabelFromSlug(slug, locale = "ko") {
-  const found = getAllTags(locale).find((t) => t.slug === slug);
-  return found ? found.tag : slug;
+  const normalized = decodedTagSlug(slug);
+  const found = getAllTags(locale).find((t) => t.slug === normalized);
+  return found ? found.tag : normalized;
 }

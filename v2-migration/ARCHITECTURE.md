@@ -10,18 +10,23 @@ v2-migration/
 │  ├─ app/
 │  │  ├─ [[...slug]]/page.js # ★ Path 라우팅 dispatch (URL→routeMap→컴포넌트) + not-found.js
 │  │  ├─ blog/page.js·[slug]/page.js # 블로그(SEO 마케팅 컬럼) — fs MD 파이프라인, routeMap 밖
-│  │  ├─ sitemap.js·rss.xml/route.js # SEO: routeMap ROUTES + getAllPosts(블로그) 파생
-│  │  ├─ layout.js          # <head>·SEO 메타(SITE_URL)·GTM/GA4/AdSense·naver·rss alternate + <GaPageviews/>(SPA page_view)
+│  │  ├─ glossary/page.js·[slug]/page.js # 용어사전 — DefinedTerm JSON-LD + fs MD 파이프라인, routeMap 밖
+│  │  ├─ sitemap.js·rss.xml/route.js # SEO: 공개 routeMap + 발행 글/태그/용어 파생(초안·내부 라우트 제외)
+│  │  ├─ og-card.png/route.js # 전역 동적 OG 카드(실제 제품 UI·소셜 CTR 표면)
+│  │  ├─ en/layout.js·DocumentLanguage.jsx # EN 클라이언트 문서 언어 동기화
+│  │  ├─ layout.js          # 폰트·SEO 메타(SITE_URL)·GTM/GA4/AdSense·초기 테마·<GaPageviews/>
 │  │  ├─ ../../next.config.mjs # 보안헤더(X-Frame-Options·CSP frame-ancestors·nosniff·Referrer-Policy)
 │  │  ├─ globals.css        # ★ 전 디자인 시스템 (Obsidian Flux 토큰·다크/라이트·전 클래스)
 │  │  └─ page.module.css    # 랜딩 일부 스코프 스타일
-│  ├─ lib/routeMap.js·blog.js # routeMap=slug↔id SSOT(id 불변, §4.1) / blog.js=fs MD 로더(server 전용, gray-matter+marked, content/blog/*.md 읽음)
+│  ├─ lib/               # routeMap(slug↔id)·routeSeo(메타)·localizedHref·sopData(SSR)·blog/glossary(fs MD)·contentToolRegistry(전환 SSOT)
 │  ├─ store/
 │  │  └─ useDataStore.js    # ★ SSOT: Zustand — IA·csvGroups(스코프)·csvData(미러)·TOOL_GROUP·필터·currentRouteId·테마·adGate/adFree(광고 §12.26)
 │  ├─ utils/                # ★ 순수 통계엔진 (ESM, 수학 불변, vitest 골든) + 데이터층 + 추출 math(funnel/segment/anomaly/pacing/cohort/incr)
 │  └─ components/
-│     ├─ ds/            # ★ 디자인시스템 공용(design-system-baseline.md): DataTable·CsvGuide·AnalyzingOverlay·ResultActionCard(결론카드)·DownloadHub(다운로드 드롭다운, §12.27)
-│     ├─ landing/       # 랜딩 히어로 조각: ProductPreview(라이브 제품 미리보기·mp4 교체가능)·ToolCarousel(질문 슬라이드)·ToolCardMock(SVG 목업)·LiveMiniChart
+│     ├─ ds/            # ★ 데이터 UI 공용: DataTable·CsvGuide·AnalyzingOverlay·ResultActionCard(Decision Tape)·DownloadHub
+│     ├─ landing/       # 랜딩: ProductPreview(실제 제품 4장면 순환)·ToolCarousel(도구별 실제 결과 미니어처)
+│     ├─ seo/           # SearchTopicHub(검색 질문→도구 허브)·ContentActionPanel(글/용어→도구 전환 CTA)
+│     ├─ ToolPageShell.jsx·ToolIntro.jsx # 분석 셸 + 질문/산출물/진입 데이터 소개
 │     ├─ GaPageviews.jsx     # SPA 라우트 변경 시 GA4 page_view(usePathname, 최초 로드 제외)
 │     ├─ AdInterstitial.jsx·AdFreeInit.jsx # 분석하기 전면광고 모달(store adGate·requestAd/closeAd) + 광고제외 비밀 URL(?adfree=토큰). §12.26
 │     ├─ Sidebar/Header/LandingPage/CsvUploader/GlobalModals/Dashboard.jsx  # 셸
@@ -64,14 +69,15 @@ v2-migration/
 | CreativeAnalyzer.jsx | `creativeMath.js` (CREATIVE_MATH/FATIGUE/STATS) | WLS·피로도 |
 | AbTestHoldout.jsx | `abTestMath.js` (STATS) | z-test·bayesian·powerCurve (A/B만) |
 | Incrementality.jsx (5-23) | `incrMath.js`(통제군 INCR_MATH)+`incrPrePostMath.js`(전후 on/off·DiD·Welch) | 3방법 탭·CSV 그룹 독립 |
-| MarketingResponse.jsx | `mmmMath.js`(MMM 기여분해+`mmmForecast` §7 미래예측)+`regMath.js`(mmmOls)+`responseCannibRank.js` | ①진단·②기여분해·③회귀예측 3탭, 단일 CSV/colMap. ③예측=`mmmForecast`(②계수 외삽+95%밴드). `regForecastMath`=날짜포맷 헬퍼뿐, `regLabMath`=테스트 전용(앱 미사용) |
+| MarketingResponse.jsx | `mmmMath.js`(MMM 기여분해+`mmmForecast` §7 미래예측)+`regMath.js`(mmmOls)+`responseCannibRank.js` | ①진단·②기여분해·③회귀예측 3탭, 단일 CSV/colMap. ③예측=`mmmForecast`; 밴드는 인과·예측 CI가 아닌 **과거 잔차 참고 범위**로 표시. `regForecastMath`=날짜포맷 헬퍼, `regLabMath`=테스트 전용 |
 | AhaMomentFinder.jsx | `ahaMath.js` (AHA_STATS) | gridSearch·F1/Lift. `domain` prop(§contentDomain)로 5-20(perf)·9-2(content) 공용 |
-| ContentElementAnalyzer.jsx (9-1) | `regMath.js` (REG_STATS.ols) | 콘텐츠 요소 다변량 회귀·중요도(|t| 랭킹)·forest plot. 신규 UI(엔진 재사용) |
+| ContentElementAnalyzer.jsx (9-1) | `regMath.js` (REG_STATS.ols) | 콘텐츠 요소 다변량 회귀·HC3 robust SE·BH 다중검정·forest plot. regularized/역행렬 검증 실패 시 추론 거부 |
 | KillerContentFinder.jsx (9-2) | `ahaMath.js` (AHA_STATS) | AhaMomentFinder domain="content" 얇은 래퍼 |
 | dashboard/* (5-2) | `dashboardAggregator.js`(getMappedRows·KPI)·`ltvMath.js`·`funnelMath.js`·`segmentMath.js`·`anomalyMath.js`·`pacingMath.js`·`cohortMath.js`·`responseMath.js`(CANNIBAL_STATS) | 탭별 순수 math 추출 끝(골든 커버) |
 | AbTestHoldout 증분 | `incrMath.js`(홀드아웃 증분)·abTestMath.js | readout/incr 추출 |
 | (공통) | `chartUtils.js`·`testFixtures.js`(seededNoise)·`format.js`(fmtCurrency/Pct/Num·§7 콤마)·`toolGuide.js`(TOOL_GUIDE) | 차트·픽스처·표시포맷 SSOT·업로드 설명 |
-| (필드 정의) | `csvConstants.js` (STANDARD_FIELDS·TOOL_REQUIRED/OPTIONAL_FIELDS) | 매핑 스키마 |
+| (데이터 임포트) | `lib/data-import/*` + `csvConstants.js` | 컬럼 프로파일·정규화·도구 범위 기반 매핑 후보/충돌, 기존 `autoMapHeaders` 호환 래퍼 |
+| (분석 Router) | `lib/analysis-router/evaluateEligibility.js` | 도구별 필수 개념·행수·기간 계약으로 가능/주의/불가 판정 및 추천 우선순위 |
 | (지표 정의) | `metrics/metricRegistry.js` (BASE_FIELDS·DERIVED_METRICS·getMetricRegistry·computeMetrics) | ★ 파생지표 SSOT(ctr·cpc·roas… + 프리셋 profit·profitMargin 서술자). `calculateKPIs`가 소비. 커스텀 지표 병합 지점. 스펙: `../docs/custom-metrics-data-config-spec.md` |
 | (커스텀 지표) | `metrics/customMetric.js` (CUSTOM_OPS·defToTerms·evalTerms·customMetricCompute·customMetricToDescriptor·isValidCustomMetricDef) | 유저가 실제 컬럼/숫자를 N항 좌→우로 조립(eval 없음, 순수·결정론). def.terms[]. UI=`ds/CustomMetricBuilder.jsx`(항 추가·컬럼/숫자 토글·라이브 미리보기, body portal). 소비: VizTab KPI·**ScorecardTab**(정의 스코프 `5-2:viz-kpi` 공유 — 한번 만들면 양쪽) |
 | (커스텀 차트) | `metrics/chartBuilder.js`(CHART_TYPES·groupAggByDim·buildChartSeries 순수 집계) + `customChartConfig.js`(buildCustomChartConfig·buildChartFieldOptions·DIM_CANDIDATES, 컴포넌트층) | 유저가 "모양+행+값"로 차트 생성, 값=base/파생/커스텀 지표. UI=`ds/CustomChartBuilder.jsx`. 재사용 영역=`dashboard/CustomChartsSection.jsx`(자체 Chart.js 관리, 탭에 1줄 삽입 — VizTab §3·Segment·Funnel·Cohort·LTV·Pacing·Anomaly 탭. scope `5-2:<tab>-charts`, metricScope `5-2:viz-kpi` 공유) |
@@ -81,18 +87,30 @@ v2-migration/
 - **전역 상태 = `src/store/useDataStore.js` (Zustand)**: `currentRouteId`(URL 미러) · `dashboardFilter` · `isDarkMode` · `isCmdkOpen` · `IA`·`PHASES` · **`TOOL_GROUP`·`groupForRoute`** · **`viewConfig`**(지표 표시/순서, scope별).
 - **persist(Phase B/C)**: `persist` 미들웨어로 **`viewConfig`+`customMetrics`만** localStorage 저장(`partialize=persistPartialize`, name `mkt_view_config`). 원본 CSV·필터 Set은 **절대 저장 X**(§2.2). 서버/테스트엔 `noopStorage` 폴백. `customMetrics`={scope→조립정의[]}·`customCharts`={scope→차트정의[]}, add/remove 액션.
 - **CSV 그룹 스코프 상태(Phase 6.3)**: `csvGroups`{efficiency·creative·experiment·response·aha} 슬라이스. `csvData`=활성 그룹 **미러**(`setCurrentRouteId`가 라우트 변경 시 스왑, `setCsvData`가 활성 그룹+미러 기록). 효율 family(5-2·5-21·5-22·5-3) 공유, 나머진 격리. **소비자는 `s.csvData`만 읽으면 끝**(미러라 무변경).
-- **데이터 파이프라인**: 업로드(`CsvUploader.jsx`, PapaParse+자동매핑) → `csvData` → **`dashboardAggregator.js:getMappedRows(csvData)`** (raw행 → 표준키 행; **cost↔spend 별칭 채움 §7**) → 도구별 엔진 입력 구성 → 순수엔진 → 렌더.
+- **데이터 파이프라인**: 업로드(`CsvUploader.jsx`, PapaParse+프로파일·도구 스코프 자동매핑) → `csvData` + `canonicalData`(정규화된 공통 레코드, 신규 소비자용) → **`dashboardAggregator.js:getMappedRows(csvData)`** (기존 엔진 호환 raw행 → 표준키 행; **cost↔spend 별칭 채움 §7**) → 도구별 엔진 입력 구성 → 순수엔진 → 렌더. `importInsights`·`canonicalData`는 브라우저 메모리만 사용하며 원본 CSV와 함께 영속화하지 않는다.
 - **함정**: 효율 CSV 비용=`cost`키, PVM/creative 엔진은 `spend` 읽음 → getMappedRows가 양쪽 채움. creative 등 하위 grain CSV, 분해 안 하는 도구(5-22·5-3)에선 (그룹×날짜) **sum 후 점 생성**(satBuildPoints·buildByChannel).
 - **CSV 상태 스코프(Phase 6.3 예정)**: TOOL_GROUP 기반 — 효율 CSV family(5-2·5-21·5-22·5-3) 공유, 이질 도구는 별도 슬라이스.
 
 ## 5. 글로벌 스타일 (CSS/테마)
 - **`src/app/globals.css`** — 전 디자인 시스템, 단일 파일. **CSS Modules로 쪼개지 말 것**(토큰 스코핑 불가).
-- **Obsidian Flux 토큰**: `:root { --bg-1·--text-muted·--border·--primary... }`. **다크/라이트 = `body.light-mode` 오버라이드**(토큰 값 스왑).
+- **Operator Desk 방향**: 결론 먼저 → 근거 → 방법론 순서. 다크=graphite+chartreuse/cobalt, 라이트=warm paper+cobalt. 기술 용어는 랜딩 전면이 아니라 Advanced Lab/세부 결과에 둔다.
+- **타입 시스템**: DM Sans(body) + Space Grotesk(display) + JetBrains Mono(data). `next/font` 변수만 사용해 외부 폰트 로드와 레이아웃 점프를 줄인다.
+- **토큰**: `:root { --bg-1·--text-muted·--border·--primary... }`. **다크/라이트 = `body.light-mode` 오버라이드**. `layout.js` 초기 스크립트가 저장 테마를 첫 페인트 전에 반영하고 `refreshMountedChartThemes()`가 이미 마운트된 canvas도 갱신한다.
 - 공용 클래스 전역: `.chart-container`·`.callout`·`.block`·`.ab-pill`·`.cmdk-*`·`.toast-*`·`.pvm-*` 등. 차트 색은 `CHART_THEME` getter(하드코딩 hex 금지).
-- 일회성 컴포넌트 스타일만 `*.module.css`.
+- 분석 페이지 제목은 `ToolPageShell` **또는** 라우터가 주입하는 `ToolIntro` 중 하나만 사용한다(유일 `h1`). 최종 결과는 `ResultActionCard`의 Decision Tape(결론·근거·다음 행동·연결 분석)를 공용 계약으로 사용한다.
+- 접근성 계약: 실제 `h1/h2`, `tablist/tab/tabpanel`, Cmd-K combobox/listbox, async CSV 상태/오류 live semantics, `:focus-visible` 유지.
+
+## 5.1 콘텐츠 SEO·전환 경로
+- **공개 범위 SSOT**: `routeMap.isRoutePublished()` + `getAllPosts/getAllTerms`. preview/내부 route와 `draft:true` 콘텐츠는 `noindex`이고 sitemap/RSS/탐색 허브에서 제외한다.
+- **메타 SSOT**: `routeSeo.js`가 route별 intent title/description/keywords/canonical/hreflang(`ko`·`en`·`x-default`)을 생성. EN SOP도 `sopData.js`를 통해 서버 HTML에 실제 제목·본문을 포함한다.
+- **목록(`/blog`, `/glossary`, `/en/*`)**: canonical·hreflang·CollectionPage/Blog/DefinedTermSet JSON-LD. `SearchTopicHub`가 검색 질문을 실제 분석 URL로 연결한다.
+- **상세**: BlogPosting/DefinedTerm + BreadcrumbList, 작성 주체·발행/수정일·관련 용어를 명시한다. 글별 OG는 `/blog/[slug]/opengraph-image`, 없으면 `/og-card.png`를 사용한다.
+- **전환 SSOT**: `contentToolRegistry.js`에 **발행 글/용어 → 정확한 도구**, 발행 글 → 관련 용어를 명시한다. 키워드 추측 폴백은 신규 콘텐츠의 안전망일 뿐이며 `contentRegistry.test.js`가 모든 발행 콘텐츠의 누락·죽은 route·잘못된 EN 연결·한글 tag decode를 막는다.
+- **사용 흐름**: 검색 랜딩 → 문제 설명 → 관련 용어/증거 → `ContentActionPanel` → `/start?tool=<id>` 또는 직접 도구 → CSV 분석 → Decision Tape → 다음 분석. Footer/Cmd-K/templates가 데스크톱·모바일 공통 탈출구다.
 
 ## 6. 테스트 & 린트 (배포 게이트)
-- vitest **2 프로젝트**: `npm test`=golden(node, `src/utils/*.test.js`, 순수엔진 골든 22파일) · `npm run test:smoke`=jsdom 컴포넌트 마운트(`*.smoke.test.jsx`) · `npm run test:all`=둘 다(**42파일·202 GREEN**). 골든=index `runXxxTests` verbatim(tolerance 완화 금지). 스모크 목킹은 `vitest.smoke.setup.js`(chart.js/next-navigation/ResizeObserver/matchMedia/canvas).
+- vitest **2 프로젝트**: `npm test`=golden(node, 통계·데이터·SEO registry), `npm run test:smoke`=jsdom 컴포넌트 마운트, `npm run test:all`=둘 다. 골든 tolerance 완화 금지. 스모크 목킹은 `vitest.smoke.setup.js`(chart.js/next-navigation/ResizeObserver/matchMedia/canvas).
+- 통계 진실성 회귀 게이트: A/B 저전환·백만 표본 beta posterior, Holm 정확값/판정 반전, 회귀 역행렬 항등식, HC3 SE, BH export 의미를 포함한다.
 - `npm run lint` = eslint(0 errors) · `npx next build`(컴파일 게이트). 추가 렌더 검증은 preview 라이브.
 
 ## 7. 내비게이션 팁
@@ -101,5 +119,6 @@ v2-migration/
 - **대시보드(5-2) 탭 고칠 땐 → `src/components/dashboard/<Tab>.jsx`**.
 - **전역 상태·IA·라우트 → `src/store/useDataStore.js`**.
 - **색/테마/레이아웃 → `src/app/globals.css`** (토큰은 `:root`+`body.light-mode`).
-- **CSV 매핑/필드 스키마 → `src/utils/csvConstants.js` + `src/components/CsvUploader.jsx`**.
+- **CSV 매핑/필드 스키마 → `src/utils/csvConstants.js` + `src/lib/data-import/*` + `src/components/CsvUploader.jsx`**.
+- **퍼널 이벤트 → `src/lib/analytics.js`**: 허용된 구조 메타데이터만 GA4로 보내며 파일명·원본 행·실제 지표값은 금지.
 - **데이터 엔진에 안 들어감 → `getMappedRows`(dashboardAggregator.js) + 표준키/별칭 확인**.

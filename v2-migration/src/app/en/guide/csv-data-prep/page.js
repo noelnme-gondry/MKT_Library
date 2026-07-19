@@ -1,5 +1,6 @@
 import SopContent from "@/components/sops/SopContent";
 import { SITE_URL } from "@/lib/routeMap";
+import { readSopData } from "@/lib/sopData";
 
 // Second EN guide pilot (batch 2) — mirrors the KR route (/guide/csv-data-prep, routeId
 // "8-1") using the JSON-data-based SopContent path (public/content/pages/8-1.en.json).
@@ -28,9 +29,10 @@ export async function generateMetadata() {
 }
 
 export default function EnCsvDataPrepPage() {
+  const initialData = readSopData("8-1", "en");
   return (
-    <article className="content" id="content" aria-live="polite">
-      <SopContent routeId="8-1" locale="en" />
+    <article className="content" id="content">
+      <SopContent routeId="8-1" locale="en" initialData={initialData} />
     </article>
   );
 }

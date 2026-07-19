@@ -1,7 +1,19 @@
 "use client";
 import React, { useRef } from "react";
-import ToolCardMock, { TOOL_MOCK_TYPE } from "./ToolCardMock";
-import LiveMiniChart from "./LiveMiniChart";
+import Link from "next/link";
+
+const TOOL_CARD_SAMPLE = {
+  "5-2": { label: ["Weekly brief", "주간 브리핑"], value: "CPA ₩8,240", delta: "−6.1%", rows: [["ROAS", 78, "214%"], ["Pacing", 61, "94%"], ["Anomaly", 18, "1 alert"]] },
+  "5-21": { label: ["Variance explained", "변동 설명"], value: "+₩790", delta: "100%", rows: [["Meta rate", 82, "+₩510"], ["Mix", 51, "+₩380"], ["Google", 20, "−₩100"]] },
+  "5-22": { label: ["Scale headroom", "증액 여력"], value: "+18%", delta: "Google", rows: [["Google", 76, "room"], ["Meta", 36, "hold"], ["TikTok", 18, "low data"]] },
+  "5-3": { label: ["Budget move", "예산 이동"], value: "+₩8.4M", delta: "Google", rows: [["Google", 82, "+10%"], ["Meta", 43, "hold"], ["TikTok", 24, "−6%"]] },
+  "5-4": { label: ["Experiment readout", "실험 판독"], value: "B +8.2%", delta: "p=.018", rows: [["Power", 84, "84%"], ["95% CI", 64, "+1.4–15%"], ["SRM", 12, "clear"]] },
+  "5-23": { label: ["Incremental lift", "순증분 효과"], value: "+12.4%", delta: "+1,284", rows: [["Treatment", 74, "+18%"], ["Control", 39, "+5.6%"], ["CI", 58, "7–18%"]] },
+  "5-18": { label: ["MMM scenario", "MMM 시나리오"], value: "+9.8%", delta: "4 weeks", rows: [["Model fit", 81, "R² .81"], ["Google", 72, "scale"], ["Meta", 46, "hold"]] },
+  "5-20": { label: ["Aha signal", "Aha 신호"], value: "2.3× lift", delta: "3 days", rows: [["Onboarding ×2", 83, "F1 .68"], ["Search ×1", 54, "1.7×"], ["Share ×1", 31, "1.2×"]] },
+  "9-6": { label: ["Creative queue", "소재 교체 큐"], value: "2 replace", delta: "4 / week", rows: [["UGC_07", 88, "CTR −31%"], ["STATIC_12", 70, "CPA +24%"], ["UGC_03", 24, "keep"]] },
+  "9-1": { label: ["Element effect", "요소별 효과"], value: "+14.2%", delta: "Hook A", rows: [["Hook A", 79, "+14.2%"], ["Short form", 58, "+8.1%"], ["CTA end", 25, "unclear"]] },
+};
 
 // 랜딩 질문 캐러셀(Semrush 히어로 참조) — 도구를 "질문 카드"로 가로 슬라이드.
 // 카드: 카테고리 eyebrow + 볼드 질문 헤드라인 + "+" + 제품 목업. 클릭 → 해당
@@ -42,15 +54,23 @@ export default function ToolCarousel({ cards, title, onPick, ctaLabel, liveCardI
     if (el) { el.style.cursor = "grab"; el.style.scrollBehavior = ""; }
   };
   // 드래그로 스크롤한 뒤엔 카드 클릭(도구 진입)을 막는다.
-  const guardedPick = (id) => { if (drag.current.moved) { drag.current.moved = false; return; } onPick(id); };
+  const guardedPick = (event, id) => {
+    if (drag.current.moved) {
+      event.preventDefault();
+      drag.current.moved = false;
+      return;
+    }
+    onPick(id);
+  };
 
   return (
-    <section style={{ marginTop: "2.5rem" }}>
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "16px", marginBottom: "16px" }}>
-        <h2 className="section-title" style={{ margin: 0, border: "none", padding: 0, maxWidth: "560px", lineHeight: 1.25 }}>
+    <section className="landing-tool-rail">
+      <div className="landing-tool-rail__head">
+        <div><span className="landing-tool-rail__eyebrow">{tr("NEXT QUESTION", "NEXT QUESTION")}</span>
+        <h2 className="landing-tool-rail__title">
           {title}
-        </h2>
-        <div style={{ display: "flex", gap: "10px", flexShrink: 0 }}>
+        </h2></div>
+        <div className="landing-tool-rail__controls">
           <button type="button" aria-label={tr("이전", "Previous")} onClick={() => scrollByCards(-1)} className="carousel-arrow">←</button>
           <button type="button" aria-label={tr("다음", "Next")} onClick={() => scrollByCards(1)} className="carousel-arrow">→</button>
         </div>
@@ -64,14 +84,10 @@ export default function ToolCarousel({ cards, title, onPick, ctaLabel, liveCardI
         onMouseUp={endDrag}
         onMouseLeave={endDrag}
         style={{
-          display: "flex",
-          gap: "20px",
-          overflowX: "auto",
           // scroll-snap mandatory는 드래그를 매 프레임 카드 경계로 잡아채 "뚝뚝" 끊김 →
           // 제거하고 자유 스크롤(밀리는 느낌). 화살표는 scrollBy smooth로 부드럽게.
           // 위: 호버로 카드가 떠올라도 안 잘리게 여유. 아래: 스크롤바 자리.
-          paddingTop: "12px",
-          paddingBottom: "12px",
+          padding: "12px 2px 16px",
           scrollbarWidth: "none",
           cursor: "grab",
           userSelect: "none",
@@ -79,53 +95,40 @@ export default function ToolCarousel({ cards, title, onPick, ctaLabel, liveCardI
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {cards.map((c) => (
-          <button
+        {cards.map((c) => {
+          const sample = TOOL_CARD_SAMPLE[c.id] || TOOL_CARD_SAMPLE["5-2"];
+          return (
+          <Link
             key={c.id}
             data-carousel-card
-            type="button"
-            onClick={() => guardedPick(c.id)}
+            href={c.href}
+            onClick={(event) => guardedPick(event, c.id)}
             draggable={false}
-            style={{
-              scrollSnapAlign: "start",
-              flex: "0 0 auto",
-              width: "360px",
-              maxWidth: "82vw",
-              textAlign: "left",
-              cursor: "pointer",
-              border: "1px solid var(--border)",
-              borderRadius: "16px",
-              padding: "20px 20px 22px",
-              background: "var(--surface-container-low, rgba(173,198,255,0.05))",
-              display: "flex",
-              flexDirection: "column",
-              gap: "14px",
-              transition: "transform 0.15s, box-shadow 0.15s, border-color 0.15s",
-            }}
-            onMouseOver={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.18)"; e.currentTarget.style.borderColor = "var(--primary, #adc6ff)"; }}
-            onMouseOut={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "var(--border)"; }}
+            className="landing-tool-card"
           >
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px" }}>
+            <div className="landing-tool-card__head">
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-muted)" }}>
+                <div className="landing-tool-card__eyebrow">
                   {c.eyebrow}
                 </div>
-                <div style={{ fontSize: "17px", fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.3, marginTop: "6px" }}>
+                <div className="landing-tool-card__question">
                   {c.headline}
                 </div>
               </div>
-              <span aria-hidden style={{ flexShrink: 0, width: 30, height: 30, borderRadius: "50%", border: "1.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "17px", color: "var(--text-secondary)" }}>+</span>
+              <span aria-hidden className="landing-tool-card__plus">+</span>
             </div>
 
-            <div style={{ height: "168px" }}>
-              {c.id === liveCardId
-                ? <LiveMiniChart title={c.mockTitle} />
-                : <ToolCardMock type={TOOL_MOCK_TYPE[c.id] || "kpiLine"} title={c.mockTitle} />}
+            <div className="landing-tool-card__visual">
+              <div className="tool-card-sample__head"><span>{sample.label[locale === "en" ? 0 : 1]}</span><em>{c.id === liveCardId ? "SAMPLE" : c.id}</em></div>
+              <div className="tool-card-sample__result"><strong>{sample.value}</strong><small>{sample.delta}</small></div>
+              <div className="tool-card-sample__rows">
+                {sample.rows.map(([label, width, value]) => <div key={label}><span><b>{label}</b><em>{value}</em></span><i><b style={{ width: `${width}%` }}></b></i></div>)}
+              </div>
             </div>
 
-            <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--primary, #adc6ff)" }}>{ctaLabel}</div>
-          </button>
-        ))}
+            <div className="landing-tool-card__cta">{ctaLabel}<span aria-hidden>→</span></div>
+          </Link>
+        );})}
       </div>
     </section>
   );

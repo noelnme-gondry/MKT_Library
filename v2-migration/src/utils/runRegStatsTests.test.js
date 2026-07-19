@@ -54,21 +54,47 @@ describe("runRegStatsTests (golden port)", () => {
   });
 
   it("T5 · 완전공선 ridge fallback", () => {
-    let ridgeOk = true;
-    try {
-      REG_STATS.ols(
-        [
-          [1, 2, 4],
-          [1, 3, 6],
-          [1, 4, 8],
-          [1, 5, 10],
-        ],
-        [1, 2, 3, 4],
-      );
-    } catch (e) {
-      ridgeOk = false;
-    }
-    expect(ridgeOk).toBe(true);
+    const fit = REG_STATS.ols(
+      [
+        [1, 2, 4],
+        [1, 3, 6],
+        [1, 4, 8],
+        [1, 5, 10],
+      ],
+      [1, 2, 3, 4],
+    );
+    expect(fit.regularized).toBe(true);
+  });
+
+  it("T5b · large-scale near-collinearity is marked regularized or rejected", () => {
+    const X = Array.from({ length: 40 }, (_, index) => {
+      const x = 1_000_000 + index * 10_000;
+      return [1, x, 2 * x + (index % 2 ? 1e-4 : -1e-4)];
+    });
+    const y = X.map((row, index) => 3 + 0.4 * row[1] + (index % 3) * 0.01);
+    let fit = null;
+    try { fit = REG_STATS.ols(X, y); } catch { fit = null; }
+    expect(fit === null || fit.regularized).toBe(true);
+  });
+
+  it("T5c · HC3 inference is finite on a well-conditioned heteroskedastic sample", () => {
+    const X = Array.from({ length: 60 }, (_, index) => [1, index + 1]);
+    const y = X.map((row, index) => 2 + 1.5 * row[1] + ((index % 5) - 2) * row[1] * 0.03);
+    const fit = REG_STATS.ols(X, y);
+    expect(fit.regularized).toBe(false);
+    expect(fit.hc3Se.every(Number.isFinite)).toBe(true);
+    expect(fit.hc3Pval.every((value) => value >= 0 && value <= 1)).toBe(true);
+    expect(fit.hc3Valid).toBe(true);
+  });
+
+  it("T5d · singleton binary feature rejects HC3 inference", () => {
+    const X = Array.from({ length: 30 }, (_, index) => [1, index === 29 ? 1 : 0]);
+    const y = X.map((row, index) => 0.01 * index + (row[1] ? 100 : 0));
+    const fit = REG_STATS.ols(X, y);
+    expect(fit.regularized).toBe(false);
+    expect(fit.maxLeverage).toBeGreaterThan(0.999999);
+    expect(fit.hc3Valid).toBe(false);
+    expect(fit.hc3Pval.every(Number.isNaN)).toBe(true);
   });
 
   it("T6 · 결정론", () => {

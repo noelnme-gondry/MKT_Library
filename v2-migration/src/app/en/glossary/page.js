@@ -1,16 +1,17 @@
 import { getAllTerms, getAllCategories } from "@/lib/glossary";
 import { SITE_URL } from "@/lib/routeMap";
 import GlossaryFilterList from "@/components/GlossaryFilterList";
+import SearchTopicHub from "@/components/seo/SearchTopicHub";
 
 // EN 용어사전 목록 — /glossary(KR)의 EN 미러(§en-blog-translation-strategy와 동일 방식).
 export async function generateMetadata() {
-  const title = "Marketing Glossary";
-  const description = "Performance marketing and app analytics terms defined in one sentence, with practical context.";
+  const title = "Performance Marketing Glossary | CPA, ROAS, CTR & More";
+  const description = "Clear definitions, formulas, and practical context for CPA, ROAS, CTR, LTV, attribution, and other performance marketing terms — with matching free tools.";
   const canonical = `${SITE_URL}/en/glossary`;
   return {
     title,
     description,
-    alternates: { canonical, languages: { ko: `${SITE_URL}/glossary`, en: canonical } },
+    alternates: { canonical, languages: { ko: `${SITE_URL}/glossary`, en: canonical, "x-default": `${SITE_URL}/glossary` } },
     openGraph: { title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] },
   };
 }
@@ -36,7 +37,7 @@ function buildGlossaryJsonLd(terms) {
       {
         "@type": "BreadcrumbList",
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/en` },
           { "@type": "ListItem", position: 2, name: "Glossary", item: `${SITE_URL}/en/glossary` },
         ],
       },
@@ -49,19 +50,18 @@ export default function EnGlossaryIndexPage() {
   const categories = getAllCategories("en");
 
   return (
-    <div className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
+    <div className="content-index">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildGlossaryJsonLd(terms)) }}
       />
-      <header style={{ marginBottom: "1.5rem" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
-          Marketing Glossary
-        </h1>
-        <p style={{ marginTop: "0.5rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-          Terms that come up constantly in performance marketing and app analytics, but rarely get defined anywhere concisely.
-        </p>
+      <header className="content-index__hero">
+        <span className="content-index__eyebrow">PERFORMANCE MARKETING GLOSSARY</span>
+        <h1>Turn a searched term<br />into an operating decision.</h1>
+        <p>From CPA, ROAS, CTR, and LTV to attribution and incrementality — definitions, formulas, and the data to review next.</p>
+        <span className="content-index__meta">{terms.length} TERMS · DEFINITION → PRACTICE</span>
       </header>
+      <SearchTopicHub locale="en" />
 
       {terms.length === 0 ? (
         <div

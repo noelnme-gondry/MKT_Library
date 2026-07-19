@@ -32,7 +32,7 @@ CPA = CPM ÷ (CTR × CVR × 설치→행동 전환율) … 대략 이런 사슬�
 CPA가 높을 때:
 
 - CPM이 높다 → 매체 경쟁·타겟이 비쌈
-- CTR이 낮다 → [소재](/tools/creative-analysis)나 타겟 문제
+- CTR이 낮다 → [소재](/content/freshness)나 타겟 문제
 - CVR이 낮다 → 랜딩·[퍼널](/blog/funnel-dropoff-analysis) 문제
 
 즉 CPA는 결과, CPM·CTR·CVR은 원인이에요. 결과만 보고 소재를 갈지 타겟을 바꿀지 못 정해요.

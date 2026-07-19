@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
+import ContentActionPanel from "@/components/seo/ContentActionPanel";
 
 // EN 글 상세 — KR /blog/[slug]/page.js 미러(getAllPosts/getPostBySlug locale="en").
 // hreflang: 같은 slug의 KR 파일이 있으면 alternates.languages로 상호 연결(§ blog-en 전략).
@@ -16,7 +17,7 @@ export async function generateMetadata({ params }) {
 
   const canonical = `${SITE_URL}/en/blog/${post.slug}`;
   const koPost = getPostBySlug(slug, "ko");
-  const languages = { en: canonical, ...(koPost ? { ko: `${SITE_URL}/blog/${slug}` } : {}) };
+  const languages = { en: canonical, ...(koPost ? { ko: `${SITE_URL}/blog/${slug}` } : {}), "x-default": koPost ? `${SITE_URL}/blog/${slug}` : canonical };
 
   const og = {
     type: "article",
@@ -24,6 +25,7 @@ export async function generateMetadata({ params }) {
     description: post.description,
     url: canonical,
     publishedTime: post.date || undefined,
+    modifiedTime: post.updated || post.date || undefined,
     // images 미지정 시 opengraph-image.js(파일 컨벤션, 글별 동적 카드)가 자동 주입.
     ...(post.ogImage ? { images: [post.ogImage] } : {}),
   };
@@ -62,11 +64,12 @@ function extractImages(html) {
 function buildPostJsonLd(post, canonical) {
   const publisher = {
     "@type": "Organization",
-    name: "Growth Ops Playbook",
+    name: "Growth Opt Playbook",
     url: `${SITE_URL}/`,
-    logo: { "@type": "ImageObject", url: `${SITE_URL}/og-card.png` },
+    logo: { "@type": "ImageObject", url: `${SITE_URL}/favicon.svg` },
   };
   const images = extractImages(post.html);
+  const articleImages = images.length ? images : [`${canonical}/opengraph-image`];
   const faqNode = post.faq.length
     ? [
         {
@@ -87,19 +90,20 @@ function buildPostJsonLd(post, canonical) {
         headline: post.title,
         description: post.description,
         datePublished: post.date || undefined,
-        dateModified: post.date || undefined,
+        dateModified: post.updated || post.date || undefined,
         author: publisher,
         publisher,
         mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
         url: canonical,
         inLanguage: "en-US",
+        articleSection: post.tags,
         ...(post.keywords ? { keywords: post.keywords } : {}),
-        ...(images.length ? { image: images } : {}),
+        image: articleImages,
       },
       {
         "@type": "BreadcrumbList",
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/en` },
           { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/en/blog` },
           { "@type": "ListItem", position: 3, name: post.title, item: canonical },
         ],
@@ -117,21 +121,31 @@ export default async function EnBlogPostPage({ params }) {
   const canonical = `${SITE_URL}/en/blog/${post.slug}`;
 
   return (
-    <div className="page-inner" style={{ maxWidth: 760, margin: "0 auto", padding: "2rem 1.5rem" }}>
+    <div className="content-article">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildPostJsonLd(post, canonical)) }}
       />
-      <Link href="/en/blog" style={{ fontSize: 13, color: "var(--text-muted)", textDecoration: "none" }}>
+      <Link href="/en/blog" className="content-article__back">
         ← Blog
       </Link>
 
-      <header style={{ margin: "1rem 0 1.75rem", paddingBottom: "1.25rem", borderBottom: "1px solid var(--border-subtle)" }}>
-        <h1 style={{ fontSize: 30, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em", lineHeight: 1.25 }}>
+      <header className="content-article__header">
+        <span className="content-article__type">FIELD NOTE</span>
+        <h1>
           {post.title}
         </h1>
-        <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.75rem", flexWrap: "wrap", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-muted)" }}>
+        {!post.seoAnswer && post.description && <p className="content-article__dek">{post.description}</p>}
+        {post.seoAnswer && (
+          <aside className="content-answer" aria-label="Short answer to the search question">
+            <span className="content-answer__label">{post.searchIntent || "Short answer"}</span>
+            <p>{post.seoAnswer}</p>
+          </aside>
+        )}
+        <div className="content-article__meta">
+          <span className="content-article__byline">Growth Opt Playbook Editorial</span>
           <span>{fmtDate(post.date)}</span>
+          {post.updated && post.updated !== post.date && <span>Updated {fmtDate(post.updated)}</span>}
           {post.tags.map((t) => (
             <span key={t}>#{t}</span>
           ))}
@@ -139,6 +153,15 @@ export default async function EnBlogPostPage({ params }) {
       </header>
 
       <article className="blog-prose" dangerouslySetInnerHTML={{ __html: post.html }} />
+
+      <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} />
+
+      {post.relatedGlossary.length > 0 && (
+        <nav className="content-related-links" aria-label="Related glossary terms">
+          <span>Related terms</span>
+          {post.relatedGlossary.map((slug) => <Link key={slug} href={`/en/glossary/${slug}`}>{slug}</Link>)}
+        </nav>
+      )}
 
       {post.faq.length > 0 && (
         <section className="blog-faq" aria-label="Frequently asked questions">

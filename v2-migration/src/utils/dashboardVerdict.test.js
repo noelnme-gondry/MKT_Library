@@ -81,4 +81,13 @@ describe("buildDashboardVerdict", () => {
     expect(keys).not.toContain("roas");
     expect(keys).not.toContain("ret");
   });
+
+  it("관측상 가장 큰 채널 변화를 인과 단정 없이 제시", () => {
+    const csv = makeCsv({ recentInstalls: 10, prevInstalls: 20 });
+    csv.raw.forEach((row, index) => { row.channel = index < 7 ? "Meta" : "Google"; });
+    csv.mapping.channel = "channel";
+    const v = buildDashboardVerdict({ csvData: csv });
+    expect(v.primaryDriver).toBeTruthy();
+    expect(v.points.some((point) => point.text.includes("관측상 가장 크게 움직인 곳"))).toBe(true);
+  });
 });

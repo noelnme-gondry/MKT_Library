@@ -1,4 +1,4 @@
-import { ROUTES, SITE_URL } from "@/lib/routeMap";
+import { ROUTES, SITE_URL, isRoutePublished } from "@/lib/routeMap";
 import { findMeta } from "@/store/useDataStore";
 import { getAllPosts } from "@/lib/blog";
 
@@ -24,15 +24,18 @@ function stripTags(s) {
 }
 
 export const dynamic = "force-static";
+const PRODUCT_PUB_DATE = new Date("2026-07-20T00:00:00Z").toUTCString();
 
 export function GET() {
-  const now = new Date().toUTCString();
+  const posts = getAllPosts();
+  const latestContentDate = posts.map((post) => post.updated || post.date).filter(Boolean).sort().at(-1);
+  const lastBuildDate = latestContentDate ? new Date(latestContentDate).toUTCString() : PRODUCT_PUB_DATE;
 
   // 블로그 글이 RSS의 본령 — 발행 글을 먼저(최신순), 그 아래 도구 페이지.
-  const blogItems = getAllPosts()
+  const blogItems = posts
     .map((p) => {
       const link = `${SITE_URL}/blog/${p.slug}`;
-      const pub = p.date ? new Date(p.date).toUTCString() : now;
+      const pub = p.date ? new Date(p.date).toUTCString() : PRODUCT_PUB_DATE;
       return `    <item>
       <title>${xmlEscape(stripTags(p.title))}</title>
       <link>${xmlEscape(link)}</link>
@@ -45,7 +48,7 @@ export function GET() {
 
   const seen = new Set();
   const toolItems = ROUTES.filter((r) => {
-    if (r.legacy || r.slug === "/" || seen.has(r.slug)) return false;
+    if (!isRoutePublished(r) || r.slug === "/" || seen.has(r.slug)) return false;
     seen.add(r.slug);
     return !!findMeta(r.id);
   })
@@ -61,7 +64,7 @@ export function GET() {
       <link>${xmlEscape(link)}</link>
       <description>${xmlEscape(desc)}</description>
       <guid isPermaLink="true">${xmlEscape(link)}</guid>
-      <pubDate>${now}</pubDate>
+      <pubDate>${PRODUCT_PUB_DATE}</pubDate>
     </item>`;
     })
     .join("\n");
@@ -75,7 +78,7 @@ export function GET() {
     <link>${xmlEscape(SITE_URL + "/")}</link>
     <description>${xmlEscape(CHANNEL_DESC)}</description>
     <language>ko-KR</language>
-    <lastBuildDate>${now}</lastBuildDate>
+    <lastBuildDate>${lastBuildDate}</lastBuildDate>
 ${items}
   </channel>
 </rss>`;

@@ -5,13 +5,14 @@ export const metadata = {
   // absolute: title이 이미 브랜드 접미사 포함 — layout.js title.template("%s | Growth
   // Opt Playbook") 중복 적용 방지.
   title: { absolute: "이용약관 | Growth Opt Playbook" },
+  description: "Growth Opt Playbook 무료 마케팅 분석 도구와 실무 가이드의 이용 조건, 데이터 처리 방식과 책임 범위입니다.",
   alternates: { canonical: `${SITE_URL}/terms` },
   openGraph: { url: `${SITE_URL}/terms` },
 };
 
 export default function TermsPage() {
   return (
-    <main style={{ maxWidth: "720px", margin: "0 auto", padding: "48px 20px", lineHeight: 1.7 }}>
+    <main id="main-content" style={{ maxWidth: "720px", margin: "0 auto", padding: "48px 20px", lineHeight: 1.7 }}>
       <h1 style={{ fontSize: "24px", marginBottom: "24px" }}>이용약관</h1>
       <p>
         본 서비스(Growth Opt Playbook)는 퍼포먼스 마케팅 SOP 문서와 CSV 기반 분석 도구를

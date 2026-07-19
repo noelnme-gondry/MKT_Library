@@ -1,14 +1,14 @@
 ---
-title: "Apple Search Ads 시작하기, 구조부터"
-description: "Apple Search Ads(ASA)의 캠페인 구조와 키워드 매치 타입, 초기 세팅 순서를 정리했습니다."
+title: "Apple Search Ads, 캠페인 왜 4개로 쪼개나 — 구조부터"
+description: "ASA를 캠페인 하나로 뭉쳐 돌리면 브랜드 키워드만 돈을 쓰고 끝나요. 브랜드·경쟁사·카테고리·디스커버리로 나누는 이유와 매치 타입, 검색어 발굴→승격 루프까지 초기 세팅 순서를 정리했어요."
 date: "2026-07-15"
 slug: "apple-search-ads-guide"
-keywords: "Apple Search Ads, ASA, 애플 서치 애즈, ASA 세팅, 앱스토어 검색 광고, ASA 키워드, 검색 광고 앱, iOS 앱 광고"
+keywords: "Apple Search Ads, ASA, 애플 서치 애즈, ASA 세팅, ASA 캠페인 구조, 앱스토어 검색 광고, ASA 키워드, 검색 광고 앱, iOS 앱 광고"
 tags: ["ASA", "UA"]
 draft: false
 ---
 
-Apple Search Ads(ASA)는 앱스토어 검색 결과 최상단에 뜨는 광고예요. **이미 검색해서 의도가 뚜렷한 유저**를 잡기 때문에 전환율이 높은 편이에요. 대신 구조를 모르고 켜면 브랜드 키워드에만 돈을 쓰고 끝나요.
+Apple Search Ads(ASA)를 캠페인 하나로 뭉쳐 켜면, 며칠 뒤 리포트엔 브랜드 키워드만 돈을 쓰고 있어요. 어차피 우리 앱을 검색해서 들어올 사람들이죠. ASA는 앱스토어 검색 최상단에 뜨는 광고라 **의도가 뚜렷한 유저**를 잡는 전환율 높은 채널이지만, 그 값을 하려면 캠페인을 목적별로 4개로 쪼개는 구조부터 잡아야 해요. 왜 나누는지, 뭐부터 세팅하는지 순서대로 볼게요.
 
 ## 캠페인 구조
 

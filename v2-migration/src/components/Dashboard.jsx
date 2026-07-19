@@ -19,6 +19,8 @@ import DownloadHub from "@/components/ds/DownloadHub";
 import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
 import { downloadCsv, downloadText } from "@/utils/download";
 import { FileText, ChevronRight } from "lucide-react";
+import AnalysisHistory from "@/components/data-import/AnalysisHistory";
+import AnalysisPathway from "@/components/data-import/AnalysisPathway";
 
 const TOC_MAP = {
   viz: [
@@ -162,10 +164,10 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   }, [showResults, csvData, dashboardFilter, denomBasis, displayCurrency, dashWindowDays, locale]);
 
   return (
-    <div className="section active" style={{ display: "flex", width: "100%", height: "100%" }}>
+    <div className={`section active dashboard-shell${showResults ? " has-results" : ""}`}>
       
       {/* Main Content Area */}
-      <div style={{ flex: 1, minWidth: 0, paddingRight: showResults ? "220px" : "0" }}>
+      <div className="dashboard-shell__main">
         {/* 압축 sticky 타이틀 바 — 다른 5-x 도구(ToolPageShell)와 동일한
             .page-sticky-bar/row1/title 클래스로 통일(§디자인시스템). 필터도
             같은 박스 안에 이어 붙여 한 도구 셸처럼 보이게(제목만 박스 밖에
@@ -173,7 +175,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             아래 top:48px)에 고정. */}
         <div className="page-sticky-bar">
           <div className="page-sticky-row1">
-            <span className="page-sticky-title">{tr(C.pageTitle, enC.pageTitle)}</span>
+            <h1 className="page-sticky-title">{tr(C.pageTitle, enC.pageTitle)}</h1>
             {hasData && (
               <>
                 <span className="chip" style={{ display: "inline-flex", alignItems: "center" }}>
@@ -256,6 +258,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             {/* 결론 카드 — "결론 먼저"(claude-ux §0). 탭 위에 항상 노출, 어느 탭을
                 보든 최근 성과 요약·다음 액션·결과 받기를 한 곳에서. */}
             {verdict && !verdict.insufficient && (
+              <>
               <ResultActionCard
                 tone={verdict.tone}
                 title={tr("결론 — 최근 성과 요약", "Conclusion — recent performance")}
@@ -287,11 +290,14 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                   />
                 }
               />
+              <AnalysisHistory toolId={toolId} summary={{ headline: verdict.headline, tone: verdict.tone, stats: verdict.stats }} locale={locale} />
+              <AnalysisPathway csvData={csvData} locale={locale} />
+              </>
             )}
             <MonEventMarkerUI locale={locale} />
             <DashboardTabs domain={domain} locale={locale} />
 
-            <div className="tab-content" style={{ marginTop: "1rem" }}>
+            <div id="dashboard-tabpanel" className="tab-content" role="tabpanel" aria-labelledby={`dashboard-tab-${activeTab}`} tabIndex={0} style={{ marginTop: "1rem" }}>
               {activeTab === "viz" && <VizTab domain={domain} locale={locale} />}
               {activeTab === "scorecard" && <ScorecardTab domain={domain} locale={locale} />}
               {activeTab === "anomaly" && <AnomalyTab domain={domain} locale={locale} />}
@@ -315,27 +321,15 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
 
       {/* Floating Table of Contents (Right Side) — 결과가 열린 뒤에만(섹션 앵커 존재). */}
       {showResults && (
-        <aside style={{
-          position: "fixed",
-          top: "100px",
-          right: "24px",
-          width: "180px",
-          borderLeft: "1px solid var(--border-subtle)",
-          paddingLeft: "16px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "8px"
-        }}>
-          <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>
+        <aside className="tool-page-shell__toc dashboard-shell__toc">
+          <div className="tool-page-shell__toc-label">
             {tr("목차", "Contents")}
           </div>
           {currentToc.map((item) => (
             <a 
               key={item.id} 
               href={`#${item.id}`}
-              style={{ fontSize: "12px", color: "var(--text-2)", textDecoration: "none", transition: "color 0.2s" }}
-              onMouseOver={(e) => e.target.style.color = "var(--text-1)"}
-              onMouseOut={(e) => e.target.style.color = "var(--text-2)"}
+              className="tool-page-shell__toc-link"
             >
               {item.title}
             </a>

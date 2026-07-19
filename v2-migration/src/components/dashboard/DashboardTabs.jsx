@@ -46,13 +46,26 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
   if (!hasData) return null;
 
   const groups = domain === "content" ? CONTENT_TAB_GROUPS : MON_TAB_GROUPS;
+  const tabIds = groups.flatMap((group) => group.tabs);
+  const onTabKeyDown = (event, tabId) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const current = tabIds.indexOf(tabId);
+    const next = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? tabIds.length - 1
+        : (current + (event.key === "ArrowRight" ? 1 : -1) + tabIds.length) % tabIds.length;
+    setDashboardTab(tabIds[next]);
+    window.requestAnimationFrame(() => document.querySelector(`[data-dashboard-tab="${tabIds[next]}"]`)?.focus());
+  };
 
   return (
-    <div className="mon-sticky-bar" style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center", margin: "2px 0 16px 0" }}>
+    <div className="mon-sticky-bar dashboard-tabs" role="tablist" aria-label={locale === "en" ? "Dashboard views" : "대시보드 보기"}>
       {groups.map((group, gIdx) => (
         <React.Fragment key={group.label}>
-          <div style={{ display: "inline-flex", alignItems: "center", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "3px 6px", gap: "2px" }}>
-            <span style={{ fontSize: "10.5px", color: "var(--text-muted)", fontWeight: "700", marginRight: "6px", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "4px" }}>
+          <div className="dashboard-tabs__group">
+            <span className="dashboard-tabs__label">
               {group.icon} {locale === "en" ? group.labelEn : group.label}
             </span>
             {group.tabs.map((tabId) => {
@@ -61,9 +74,17 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
               return (
                 <button
                   key={tabId}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls="dashboard-tabpanel"
+                  id={`dashboard-tab-${tabId}`}
+                  tabIndex={isActive ? 0 : -1}
+                  data-dashboard-tab={tabId}
                   className={`ab-pill ${isActive ? "active" : ""}`}
                   onClick={() => setDashboardTab(tabId)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: "4px", margin: "2px", cursor: "pointer" }}
+                  onKeyDown={(event) => onTabKeyDown(event, tabId)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
                 >
                   {info.icon} {locale === "en" ? info.labelEn : info.label}
                 </button>
@@ -71,7 +92,7 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
             })}
           </div>
           {gIdx < groups.length - 1 && (
-            <span style={{ color: "var(--border-stronger)", alignSelf: "center", fontSize: "16px", margin: "0 4px" }}>|</span>
+            <span className="dashboard-tabs__divider">/</span>
           )}
         </React.Fragment>
       ))}

@@ -4,7 +4,7 @@ import { getAllPosts, getPostBySlug } from "@/lib/blog";
 // EN 글별 SNS 공유 카드 — KR opengraph-image.js 미러. 영문이라 구글폰트 서브셋 fetch 불필요(system sans-serif).
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "Growth Ops Playbook";
+export const alt = "Growth Opt Playbook";
 
 export function generateStaticParams() {
   return getAllPosts("en").map((p) => ({ slug: p.slug }));
@@ -13,9 +13,9 @@ export function generateStaticParams() {
 export default async function Image({ params }) {
   const { slug } = await params;
   const post = getPostBySlug(slug, "en");
-  const title = post?.title || "Growth Ops Playbook";
+  const title = post?.title || "Growth Opt Playbook";
   const desc = post?.description || "";
-  const brand = "Growth Ops Playbook";
+  const brand = "Growth Opt Playbook";
   const domain = "growthoptplaybook.com";
 
   return new ImageResponse(

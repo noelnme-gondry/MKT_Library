@@ -1,16 +1,17 @@
 import Link from "next/link";
 import { getAllPosts, getAllTags } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
+import SearchTopicHub from "@/components/seo/SearchTopicHub";
 
 export async function generateMetadata() {
-  const title = "블로그";
+  const title = "퍼포먼스 마케팅 실무 블로그 | CPA·ROAS·예산 분석";
   const description =
-    "퍼포먼스 마케팅·데이터 분석 인사이트. 캠페인 최적화, 예산 배분, A/B 테스트, MMM 실무 노하우를 정리합니다.";
+    "CPA 하락, ROAS 개선, 광고 예산 배분, 소재 피로도, A/B 테스트를 실무 순서와 무료 분석 도구로 연결하는 퍼포먼스 마케팅 블로그입니다.";
   const canonical = `${SITE_URL}/blog`;
   return {
     title,
     description,
-    alternates: { canonical },
+    alternates: { canonical, languages: { ko: canonical, en: `${SITE_URL}/en/blog`, "x-default": canonical } },
     openGraph: { title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] },
   };
 }
@@ -39,6 +40,7 @@ function buildBlogListJsonLd(posts) {
           headline: p.title,
           description: p.description,
           datePublished: p.date || undefined,
+          dateModified: p.updated || p.date || undefined,
           url: `${SITE_URL}/blog/${p.slug}`,
         })),
       },
@@ -58,19 +60,18 @@ export default function BlogIndexPage() {
   const tags = getAllTags();
 
   return (
-    <div className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
+    <div className="content-index">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildBlogListJsonLd(posts)) }}
       />
-      <header style={{ marginBottom: "1.5rem" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
-          블로그
-        </h1>
-        <p style={{ marginTop: "0.5rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-          퍼포먼스 마케팅과 데이터 분석 인사이트를 정리합니다.
-        </p>
+      <header className="content-index__hero">
+        <span className="content-index__eyebrow">PERFORMANCE MARKETING FIELD NOTES</span>
+        <h1>광고 성과 문제를<br />다음 조치로 바꾸는 실무 노트</h1>
+        <p>CPA·ROAS·예산·소재·측정 문제를 원인부터 좁히는 글입니다. 읽은 다음에는 같은 질문을 무료 도구에서 내 데이터로 확인할 수 있습니다.</p>
+        <span className="content-index__meta">{posts.length} ARTICLES · UPDATED FOR OPERATORS</span>
       </header>
+      <SearchTopicHub />
 
       {tags.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "1.75rem" }}>
@@ -106,16 +107,16 @@ export default function BlogIndexPage() {
           </div>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
-          {posts.map((post) => (
+        <div className="content-list">
+          {posts.map((post, index) => (
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="card"
+              className={`card content-card${index === 0 ? " is-featured" : ""}`}
               style={{ display: "block", textDecoration: "none" }}
             >
               <div className="card-meta" style={{ marginBottom: "0.4rem" }}>
-                {fmtDate(post.date)}
+                {index === 0 && <span className="content-card__featured">이번 주 추천</span>}{fmtDate(post.date)}
               </div>
               <div className="card-title">{post.title}</div>
               {post.description && <div className="card-desc">{post.description}</div>}

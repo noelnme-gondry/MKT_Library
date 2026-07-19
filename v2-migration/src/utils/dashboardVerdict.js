@@ -4,6 +4,8 @@
 // 렌더층 헬퍼(골든 아님) — dashboardAggregator 순수함수만 소비. 데이터 부족·컬럼
 // 미매핑이면 정직하게 생략(§8 날조 금지). WoW는 5-2류 시계열 전용 판정.
 import { getMonFilteredRows, aggregateByKey, effectiveDenomBasis, computeWeightedRetention, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { buildCreativeQuickSummary } from "@/lib/analysis-results/creativeQuickSummary";
+import { buildPvmQuickSummary } from "@/lib/analysis-results/pvmQuickSummary";
 
 const SIG = 0.05; // 유의미한 변화 임계(±5%)
 
@@ -77,6 +79,30 @@ export function buildDashboardVerdict({
   const dCost = pct(R.cost, P.cost);
   const dRoas = mapped.has("revenue_d7") ? pct(R.roas, P.roas) : null;
 
+  // "원인"을 인과처럼 단정하지 않고, 관측상 가장 크게 움직인 채널·신규 소재를
+  // 바로 제시한다. 정확한 비용효율 귀속은 PVM 도구의 무잔차 분해로 이어진다.
+  const byChannel = new Map();
+  for (const [period, periodRows] of [["prev", prevRaw], ["recent", recentRaw]]) {
+    periodRows.forEach((row) => {
+      const key = row.channel || tr("미지정 채널", "Unspecified channel");
+      const item = byChannel.get(key) || { key, prev: { cost: 0, result: 0 }, recent: { cost: 0, result: 0 } };
+      item[period].cost += Number(row.cost) || 0;
+      item[period].result += Number(row[convKey]) || 0;
+      byChannel.set(key, item);
+    });
+  }
+  const primaryDriver = [...byChannel.values()]
+    .map((item) => ({ ...item, costDelta: item.recent.cost - item.prev.cost, resultDelta: item.recent.result - item.prev.result }))
+    .sort((a, b) => Math.abs(b.costDelta) - Math.abs(a.costDelta))[0] || null;
+  let newCreativeSignal = null;
+  if (mapped.has("creative_id")) {
+    const previous = new Set(prevRaw.map((row) => row.creative_id).filter(Boolean));
+    const newRows = recentRaw.filter((row) => row.creative_id && !previous.has(row.creative_id));
+    if (newRows.length) newCreativeSignal = { count: new Set(newRows.map((row) => row.creative_id)).size, cost: sum(newRows, "cost"), result: sum(newRows, convKey) };
+  }
+  const creativeSummary = mapped.has("creative_id") ? buildCreativeQuickSummary(csvData) : null;
+  const pvmSummary = buildPvmQuickSummary({ csvData, dashboardFilter: filterState, denomBasis });
+
   let tone = "neutral";
   const effImproved = dEff != null && dEff <= -SIG;
   const effWorsened = dEff != null && dEff >= SIG;
@@ -112,6 +138,32 @@ export function buildDashboardVerdict({
         `Spend ${dCost > 0 ? "rose" : "fell"} ${fmtPctDelta(dCost)} (${fc(P.cost)} → ${fc(R.cost)}).`
       ),
     });
+  }
+  if (primaryDriver && Math.abs(primaryDriver.costDelta) > 0) {
+    points.push({
+      cls: primaryDriver.costDelta > 0 && tone === "bad" ? "bad" : "muted",
+      text: tr(
+        `관측상 가장 크게 움직인 곳은 ${primaryDriver.key}: 지출 ${fc(primaryDriver.prev.cost)} → ${fc(primaryDriver.recent.cost)} (${primaryDriver.costDelta >= 0 ? "+" : "−"}${fc(Math.abs(primaryDriver.costDelta))}), ${convLabel} ${primaryDriver.resultDelta >= 0 ? "+" : "−"}${Math.abs(primaryDriver.resultDelta).toLocaleString()}건입니다. 원인 확정은 성과 변동 분석에서 확인하세요.`,
+        `The largest observed mover is ${primaryDriver.key}: spend ${fc(primaryDriver.prev.cost)} → ${fc(primaryDriver.recent.cost)} (${primaryDriver.costDelta >= 0 ? "+" : "−"}${fc(Math.abs(primaryDriver.costDelta))}), with ${convLabel} ${primaryDriver.resultDelta >= 0 ? "+" : "−"}${Math.abs(primaryDriver.resultDelta).toLocaleString()}. Confirm attribution in Campaign Variance.`
+      ),
+    });
+  }
+  if (newCreativeSignal) {
+    points.push({ text: tr(`신규 소재 ${newCreativeSignal.count}개가 최근 기간에 추가되어 ${convLabel} ${newCreativeSignal.result.toLocaleString()}건을 만들었습니다. 소재 분석에서 피로도·교체 우선순위를 확인하세요.`, `${newCreativeSignal.count} new creatives appeared in the recent period and produced ${newCreativeSignal.result.toLocaleString()} ${convLabel}. Check Creative Analysis for fatigue and replacement priority.`) });
+  }
+  if (creativeSummary?.available) {
+    points.push({ cls: creativeSummary.alertNowCount ? "bad" : creativeSummary.fatiguedCount ? "muted" : "good", text: tr(
+      creativeSummary.alertNowCount ? `소재 피로도: 즉시 교체 경고 ${creativeSummary.alertNowCount}개, 피로 신호 ${creativeSummary.fatiguedCount}개입니다. 소재 분석에서 교체 일정을 확인하세요.` : creativeSummary.fatiguedCount ? `소재 피로도: 피로 신호 ${creativeSummary.fatiguedCount}개가 있습니다. 소재 분석에서 교체 우선순위를 확인하세요.` : `소재 피로도: 현재 즉시 교체 경고는 없습니다. 소재 분석에서 다음 테스트 후보를 확인하세요.`,
+      creativeSummary.alertNowCount ? `Creative fatigue: ${creativeSummary.alertNowCount} immediate replacement alert(s), ${creativeSummary.fatiguedCount} fatigue signal(s). Check the swap schedule in Creative Analysis.` : creativeSummary.fatiguedCount ? `Creative fatigue: ${creativeSummary.fatiguedCount} fatigue signal(s). Check replacement priority in Creative Analysis.` : `Creative fatigue: no immediate replacement alerts. Check next-test candidates in Creative Analysis.`
+    ) });
+  }
+  if (pvmSummary.available) {
+    const deltaSign = pvmSummary.delta >= 0 ? "+" : "−";
+    const driverSign = pvmSummary.driver.contribution >= 0 ? "+" : "−";
+    points.push({ cls: pvmSummary.delta > 0 ? "bad" : "good", text: tr(
+      `성과 변동 분해: ${pvmSummary.metric} ${fc(pvmSummary.prior)} → ${fc(pvmSummary.current)} (${deltaSign}${fc(Math.abs(pvmSummary.delta))}). 가장 큰 기여는 ${pvmSummary.driver.key}의 ${driverSign}${fc(Math.abs(pvmSummary.driver.contribution))}입니다.`,
+      `Performance variance: ${pvmSummary.metric} ${fc(pvmSummary.prior)} → ${fc(pvmSummary.current)} (${deltaSign}${fc(Math.abs(pvmSummary.delta))}). The largest contribution is ${pvmSummary.driver.key} at ${driverSign}${fc(Math.abs(pvmSummary.driver.contribution))}.`
+    ) });
   }
   if (tone === "good") points.push({ cls: "good", text: tr("증액 여력 점검: 예산 배분(5-3)에서 한계효율이 살아있는 채널을 확인하세요.", "Room to scale: check Budget Allocation (5-3) for channels with headroom.") });
   else if (tone === "bad") points.push({ cls: "bad", text: tr("이상 감지 탭에서 급변한 날·채널을 먼저 확인하세요.", "Start with the Anomaly tab to find the day/channel that spiked.") });
@@ -167,5 +219,5 @@ export function buildDashboardVerdict({
     points.map((p) => `- ${p.text}`).join("\n") +
     "\n";
 
-  return { insufficient: false, tone, headline, points, stats, metricRows, export: { csv, text }, windowDays: w };
+  return { insufficient: false, tone, headline, points, stats, metricRows, primaryDriver, newCreativeSignal, creativeSummary, pvmSummary, export: { csv, text }, windowDays: w };
 }

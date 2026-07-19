@@ -155,7 +155,15 @@ function pvmColor(v) {
 function buildPvmCache(csvData, state) {
   const locale = state.locale;
   const tr = (ko, en) => (locale === "en" ? en : ko);
-  const rows = getMonFilteredRows(csvData, state.dashboardFilter);
+  // 대시보드 공유 CSV는 비용 표준키가 cost, PVM 전용 업로드는 spend일 수 있다.
+  // 동일한 통화량을 뜻하는 이 경로에서만 spend 보조값을 만들며 원본·매핑은 건드리지 않는다.
+  const rows = getMonFilteredRows(csvData, state.dashboardFilter).map((row) => ({
+    ...row,
+    spend: Number(row.spend ?? row.cost) || 0,
+    // 대시보드의 사람이 읽는 campaign_name도 PVM 계층 키로 안전하게 쓴다.
+    // 캠페인 ID가 있으면 ID가 우선이며, 소재가 없는 CSV는 여기서 캠페인 단계까지 끝난다.
+    campaign_id: row.campaign_id ?? row.campaign_name,
+  }));
   const mapped = new Set(
     Object.values(csvData?.mapping || {}).filter((v) => v && v !== "__ignore__"),
   );
@@ -168,7 +176,7 @@ function buildPvmCache(csvData, state) {
   let metric = state.metric === "cpi" ? "cpi" : state.metric === "cpa" ? "cpa" : effBasis === "installs" ? "cpi" : "cpa";
   if (!bothMetricsMapped) metric = hasInstalls ? "cpi" : "cpa";
   const resultField = metric === "cpi" ? "installs" : "actions";
-  const campaignMapped = mapped.has("campaign_id");
+  const campaignMapped = mapped.has("campaign_id") || mapped.has("campaign_name");
   const creativeMapped = mapped.has("creative_id");
   const ctrMapped = mapped.has("impressions") && mapped.has("clicks");
   const weekBasis = state.weekBasis === "rolling7" ? "rolling7" : "calendar";

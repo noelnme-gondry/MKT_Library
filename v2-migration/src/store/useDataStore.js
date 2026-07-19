@@ -219,7 +219,13 @@ export const IA = [
         seoDescriptionEn:
           "Analyze creative performance, fatigue over time, and which attributes (hook, format, message) actually drive results. Free, upload a creative-level CSV.",
       },
-      { id: "9-1", title: "콘텐츠 요소 분석기 (요소별 성과 기여)" },
+      {
+        id: "9-1",
+        title: "콘텐츠 요소 분석기 (요소별 성과 기여)",
+        titleEn: "Content Element Analyzer (Performance Contribution)",
+        seoTitleEn: "Which Content Elements Drive Results? Free Regression Analyzer",
+        seoDescriptionEn: "Estimate how hooks, formats, lengths, and message angles relate to content performance with regression controls and clear evidence limits. Free, browser-only CSV analysis.",
+      },
       { id: "9-2", title: "킬러 콘텐츠·충성 독자 발굴 (전환 동인)", hidden: true },
       { id: "9-3", title: "콘텐츠 트래픽 변동 탐지 (유입·카테고리·콘텐츠별)", hidden: true },
       { id: "9-7", title: "콘텐츠 운영 대시보드 (트래픽·스코어카드·이상탐지)", hidden: true },
@@ -418,6 +424,17 @@ export const useAppStore = create(persist((set, get) => ({
       ? { ...state.csvClearedByGroup, [g]: false }
       : state.csvClearedByGroup;
     return { csvGroups: { ...state.csvGroups, [g]: data }, csvData: data, analyzedByGroup, csvClearedByGroup };
+  }),
+  // 결과 허브에서 "같은 데이터로 상세 분석"을 고르면 대상 그룹에만 재매핑된 사본을
+  // 넣는다. 원본은 브라우저 메모리에만 있고, 대상 도구를 바로 열 수 있게 gate도 확인한다.
+  handoffCsvToRoute: (routeId, data) => set((state) => {
+    const g = groupForRoute(routeId);
+    const sig = computeAnalyzeSig(data);
+    return {
+      csvGroups: { ...state.csvGroups, [g]: data },
+      analyzedByGroup: { ...state.analyzedByGroup, [g]: sig },
+      csvClearedByGroup: { ...state.csvClearedByGroup, [g]: false },
+    };
   }),
   // Non-persisted, session-scoped: which groups the user explicitly emptied
   // (Header's "Change CSV" / CsvUploader's own reset), so CsvUploader's

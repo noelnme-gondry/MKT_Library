@@ -1,9 +1,14 @@
 import "./globals.css";
 import Script from "next/script";
+import { DM_Sans, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import Footer from "@/components/Footer";
 import GaPageviews from "@/components/GaPageviews";
 import AdInterstitial from "@/components/AdInterstitial";
 import AdFreeInit from "@/components/AdFreeInit";
+
+const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk", display: "swap" });
+const jetBrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono", display: "swap" });
 
 export const metadata = {
   // GSC "페이지 제목 40자 이내·설명 80자 이내" 경고 해소 + 유저가 한눈에 "뭐 하는
@@ -51,23 +56,22 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="ko" className="dark">
+    <html lang="ko" suppressHydrationWarning className={`${dmSans.variable} ${spaceGrotesk.variable} ${jetBrainsMono.variable} dark`}>
       <head>
-        <meta name="theme-color" content="#121315" />
+        <meta name="theme-color" content="#11141b" />
         <meta name="naver-site-verification" content="c4cc3586f416c84363563356e79f834ca11544a7" />
         <link rel="alternate" type="application/rss+xml" title="Growth Opt Playbook" href="/rss.xml" />
         {/* 구글 검색결과 파비콘은 data-URI를 못 읽음 → 크롤 가능한 파일 URL(/favicon.svg)로 제공.
             SVG 파비콘은 구글·모던 브라우저 지원. apple-touch-icon은 iOS 홈화면·공유용. */}
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="apple-touch-icon" href="/favicon.svg" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
         {/* PapaParse·Chart.js·XLSX는 v2에서 npm 모듈로 직접 import(파일별 import) — index.html 시절
             CDN <Script beforeInteractive> 태그는 미사용·불필요(App Router에서 "script tag while rendering"
             콘솔 에러 유발)라 제거. Supabase는 전체 무료 전환으로 미사용(TODO(B2B) 재도입 시 layout에 재추가). */}
       </head>
-      <body>
+      <body suppressHydrationWarning>
+        <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('mkt-library-theme')!=='dark')document.body.classList.add('light-mode')}catch(e){document.body.classList.add('light-mode')}" }} />
+        <a className="skip-link" href="#main-content">본문으로 바로가기</a>
         {/* 구조화 데이터 (JSON-LD) — 검색엔진이 사이트·조직을 인식(SEO). SSR로 초기 HTML에 포함. */}
         <script
           type="application/ld+json"
@@ -88,16 +92,7 @@ export default function RootLayout({ children }) {
                   "@id": "https://growthoptplaybook.com/#org",
                   name: "Growth Opt Playbook",
                   url: "https://growthoptplaybook.com/",
-                  logo: "https://growthoptplaybook.com/og-card.png",
-                },
-                {
-                  "@type": "SoftwareApplication",
-                  name: "Growth Opt Playbook",
-                  applicationCategory: "BusinessApplication",
-                  operatingSystem: "Web",
-                  offers: { "@type": "Offer", price: "0", priceCurrency: "KRW" },
-                  description: "GA4 세팅·ROAS 개선·MMM·예산배분 등 퍼포먼스 마케팅 실무 대시보드와 SOP 가이드.",
-                  keywords: "퍼포먼스 마케팅, 마케팅 데이터 분석, ROAS, CPA, MMM, 마케팅 예산 배분, A/B 테스트, 증분 측정, 마케팅 대시보드 무료",
+                  logo: "https://growthoptplaybook.com/favicon.svg",
                 },
               ],
             }),

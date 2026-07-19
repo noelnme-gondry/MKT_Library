@@ -2,10 +2,12 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { CREATIVE_FATIGUE, CREATIVE_STATS } from "@/utils/creativeMath";
+import { CREATIVE_CONFIG } from "@/utils/creativeConfig";
 import { resolveCreativeCopy } from "@/utils/contentDomain";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { downloadChartAsPNG } from "@/utils/chartUtils";
 import CsvUploader from "@/components/CsvUploader";
+import ResultActionCard from "@/components/ds/ResultActionCard";
 import Chart from "chart.js/auto";
 
 // EN 번역팩 — domain(performance/content)별 CREATIVE_COPY(ko)를 locale="en"일 때만 오버레이.
@@ -153,42 +155,6 @@ function localizeCreativeCopy(domain, locale) {
 }
 
 // 소재 분석 설정 (index.html CREATIVE_CONFIG 이식 — 순수 config, 엔진에 파라미터로 주입)
-const CREATIVE_CONFIG = {
-  version: "1.0.0",
-  seed: 42,
-  decimalPlaces: 4,
-  minImpressions: 1000,
-  minNCell: 5,
-  decompose: {
-    // index.html: ctr/cpa/roas. v2는 B1이 추가한 cvr까지 계산(회귀 방지) — 토글은 결과 있는 것만 노출.
-    metrics: ["ctr", "cvr", "cpa", "roas"],
-    controls: ["channel", "iso_week"],
-    method: "wls",
-    vifThreshold: 5.0,
-    vifDropPriority: ["duration_bucket", "has_text_overlay"],
-    alpha: 0.05,
-    multipleTesting: "bh",
-  },
-  fatigue: { decayWindow: 7, dropPct: 0.2 },
-  fatigueAlert: {
-    minDays: 7,
-    trendWindow: 14,
-    ctrWeight: 0.45,
-    freqWeight: 0.35,
-    cpmWeight: 0.2,
-    alertScore: 0.5,
-    horizonDays: 30,
-  },
-  autoPlanner: {
-    defaultWeeklyVelocity: 3,
-    urgentDays: 7,
-    soonDays: 21,
-  },
-  matrix: { rows: "message_angle", cols: "format" },
-  bayes: { priorA: 1, priorB: 1, gridN: 2000, promoteProb: 0.95, killProb: 0.05 },
-  test: { exploreRatio: 0.3, batchSize: 6, power: 0.8, alpha: 0.05 },
-};
-
 // Concept Matrix 셀 status → 색·라벨 (index.html renderCreativeMatrix 이식)
 const MATRIX_STATUS_COLOR = {
   validated: "rgba(34,197,94,0.20)",
@@ -197,8 +163,8 @@ const MATRIX_STATUS_COLOR = {
   empty: "rgba(255,255,255,0.03)",
 };
 const MATRIX_STATUS_LABEL = {
-  ko: { validated: "검증", promising: "유망", insufficient: "부족", empty: "미관측" },
-  en: { validated: "Validated", promising: "Promising", insufficient: "Insufficient", empty: "Unobserved" },
+  ko: { validated: "충분히 관측", promising: "유망", insufficient: "부족", empty: "미관측" },
+  en: { validated: "Enough data", promising: "Promising", insufficient: "Insufficient", empty: "Unobserved" },
 };
 
 // Next-Test 유형 아이콘·라벨 (index.html renderCreativeNextTest 이식)
@@ -835,6 +801,20 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
     .sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
     .slice(0, 30);
   const alertNowN = (fatigueAlerts || []).filter((a) => a.alert).length;
+  const fatigueTone = alertNowN > 0 || (autoPlan && autoPlan.isUndersupplied) ? "bad" : fatiguedCount > 0 ? "neutral" : "good";
+  const fatigueHeadline = alertNowN > 0
+    ? tr(`지금 교체가 필요한 소재가 ${alertNowN}개입니다. 이번 주 교체 계획부터 확정하세요.`, `${alertNowN} creatives need replacement now. Lock this week's swap plan first.`)
+    : fatiguedCount > 0
+      ? tr(`피로 신호가 있는 소재가 ${fatiguedCount}개입니다. 교체 시점을 미리 잡아 두세요.`, `${fatiguedCount} creatives show fatigue signals. Plan their replacements before they become urgent.`)
+      : tr("현재 즉시 교체 경고는 없습니다. 성과 좋은 소재의 특징을 다음 제작에 재사용하세요.", "There are no immediate replacement alerts. Reuse what is working in the next creative batch.");
+  const fatiguePoints = [
+    autoPlan?.isUndersupplied
+      ? { cls: "bad", text: tr(`현재 제작 속도(${weeklyVelocity}개/주)로는 긴급 교체 물량을 제때 처리하기 어렵습니다. 최소 ${autoPlan.recommendedWeeklyVelocity}개/주를 권장합니다.`, `At ${weeklyVelocity}/week, you cannot clear urgent replacements in time. Target at least ${autoPlan.recommendedWeeklyVelocity}/week.`) }
+      : { cls: fatigueTone === "good" ? "good" : "muted", text: tr("교체 순서는 ‘지금 경고 → 위험 임박 → 피로 점수’ 기준으로 아래 일정에 정렬했습니다.", "The schedule below orders swaps by alert now, then risk soon, then fatigue score.") },
+    analysis.nextTest?.length
+      ? { text: tr(`다음 제작 실험 후보 ${analysis.nextTest.length}개를 제안했습니다. 성과가 좋았던 조합을 반복하기보다 검증 가능한 한 가지 변수만 바꿔 보세요.`, `${analysis.nextTest.length} next-test candidates are ready. Change one testable variable rather than blindly repeating the best combination.`) }
+      : null,
+  ].filter(Boolean);
 
   return (
     <div className="tab-pane active" id="tab-creative">
@@ -881,6 +861,18 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         </details>
       </section>
 
+      <ResultActionCard
+        tone={fatigueTone}
+        title={tr("결론 — 소재 교체와 다음 제작", "Conclusion — creative swaps and next production")}
+        headline={fatigueHeadline}
+        points={fatiguePoints}
+        stats={[
+          { label: tr("즉시 교체", "Replace now"), value: `${alertNowN}${tr("개", "")}` },
+          { label: tr("피로 신호", "Fatigue signals"), value: `${fatiguedCount}${tr("개", "")}` },
+          { label: tr("권장 제작 속도", "Recommended production"), value: autoPlan ? `${autoPlan.recommendedWeeklyVelocity}${tr("개/주", "/wk")}` : "—" },
+        ]}
+      />
+
       <details className="block" id="s-prep" style={{ padding: "13px 16px" }}>
         <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: "var(--text-muted)", outline: "none" }}>{tr("🗂 데이터 매핑 설정 (펼쳐서 변경)", "🗂 Data mapping settings (expand to change)")}</summary>
         <div style={{ marginTop: "10px" }}>
@@ -889,7 +881,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       </details>
 
       <section className="block" id="s-validation">
-        <h2 className="section-title"><span className="ix">§1</span>{tr("검증", "Validation")}</h2>
+        <h2 className="section-title"><span className="ix">§1</span>{tr("관측 충분성", "Data sufficiency")}</h2>
         {hasValidationIssues ? (
           <div className="callout warning">
             <div className="ico">!</div>
@@ -1106,7 +1098,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                         <th title={tr(`기준값 대비 ${decMeta.desc} 변화량`, `Change in ${decMeta.desc} vs. the reference value`)}>{tr("영향력", "Effect")} (β, {decMeta.axisUnit})</th>
                         <th title={tr("계수를 표준오차로 나눈 표준화 통계량", "Coefficient divided by standard error")}>z-value</th>
                         <th title={tr("여러 속성을 동시에 검정할 때 보정한 유의확률", "P-value adjusted for testing multiple attributes at once")}>{tr("보정된 유의확률 (BH-adj p)", "Adjusted p-value (BH-adj p)")}</th>
-                        <th title={tr("이 범위 안에 실제 효과가 있을 가능성이 95%", "95% probability the true effect falls in this range")}>{tr("신뢰구간 (95% CI)", "Confidence interval (95% CI)")}</th>
+                        <th title={tr("같은 방식으로 표본을 반복 수집할 때 계산된 구간의 95%가 실제 계수를 포함하도록 만든 범위", "A range constructed so 95% of intervals from repeated samples would contain the true coefficient")}>{tr("신뢰구간 (95% CI)", "Confidence interval (95% CI)")}</th>
                         <th title={tr("표본 수", "Sample size")}>N</th>
                       </tr>
                     </thead>
@@ -1217,7 +1209,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                 <th>{tr("수명(일)", "Lifespan (days)")}</th>
                 <th>Fatigue Score</th>
                 <th>{tr("최근 CTR 추세", "Recent CTR trend")}</th>
-                <th>{tr("최근 노출 추세", "Recent frequency trend")}</th>
+                <th>{tr("최근 노출량 추세", "Recent impression trend")}</th>
                 <th>{tr("최근 CPM 추세", "Recent CPM trend")}</th>
                 <th>ETA</th>
               </tr>
@@ -1351,7 +1343,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           <>
             <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>{C.matrixDesc1}</p>
             <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>
-              {tr("셀 상태:", "Cell status:")} <span style={{ background: MATRIX_STATUS_COLOR.validated, padding: "2px 8px", borderRadius: "4px" }} title={tr("충분한 데이터로 효과가 확인된 조합", "Combination confirmed effective with sufficient data")}>{tr("검증", "Validated")}</span> ·{" "}
+              {tr("셀 상태:", "Cell status:")} <span style={{ background: MATRIX_STATUS_COLOR.validated, padding: "2px 8px", borderRadius: "4px" }} title={tr("효과가 검증됐다는 뜻이 아니라 판단에 필요한 관측량이 충분한 조합", "Enough observations to evaluate; this does not mean the effect is validated")}>{tr("충분히 관측", "Enough data")}</span> ·{" "}
               <span style={{ background: MATRIX_STATUS_COLOR.promising, padding: "2px 8px", borderRadius: "4px" }} title={tr("좋아 보이지만 아직 데이터가 적어 확정하기 어려운 조합", "Looks promising but too little data to confirm yet")}>{tr("유망", "Promising")}</span> ·{" "}
               <span style={{ background: MATRIX_STATUS_COLOR.insufficient, padding: "2px 8px", borderRadius: "4px" }} title={tr("시도는 했지만 판단하기엔 데이터가 너무 적은 조합", "Tried, but too little data to judge")}>{tr("데이터 부족", "Insufficient data")}</span> ·{" "}
               <span style={{ background: MATRIX_STATUS_COLOR.empty, padding: "2px 8px", borderRadius: "4px" }} title={tr("아직 한 번도 시도하지 않은 조합 — 다음 테스트 후보", "Never tried yet — candidate for the next test")}>{tr("미관측 (탐색 후보)", "Unobserved (explore candidate)")}</span>
@@ -1469,7 +1461,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             <p className="muted" style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "8px" }}>{tr("⚠ 이 추천은 실제 운영 데이터를 관찰해서 만든 가설입니다. 확정은 실험 분석 도구(5-4)에서 A/B 테스트로 검증하는 것을 권장합니다.", "⚠ This recommendation is a hypothesis derived from observing live operating data. Confirm it with an A/B test in the experiment analysis tool (5-4).")}</p>
           </>
         ) : (
-          <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>{tr("추천할 다음 테스트가 없습니다 (모든 조합이 검증되었거나 데이터가 부족합니다).", "No test recommendations available (all combinations are validated or there isn't enough data).")}</p>
+          <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px" }}>{tr("추천할 다음 테스트가 없습니다 (모든 조합이 충분히 관측되었거나 데이터가 부족합니다).", "No test recommendations available (all combinations have enough observations or there isn't enough data).")}</p>
         )}
       </section>
     </div>

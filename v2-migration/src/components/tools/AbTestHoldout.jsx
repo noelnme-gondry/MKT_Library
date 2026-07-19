@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { STATS } from "@/utils/abTestMath";
-import { CREATIVE_STATS } from "@/utils/creativeMath";
 import CsvUploader from "@/components/CsvUploader";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import DataTable from "@/components/ds/DataTable";
@@ -159,7 +158,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
     if (!nA || !nB || !(xA >= 0) || !(xB >= 0) || xA > nA || xB > nB)
       return { invalid: true };
     const freq = STATS.twoPropZTest(nA, xA, nB, xB);
-    // bayesianAB uses Math.random internally (engine behavior — not touched here)
+    // 결정론적 Beta posterior grid 적분 — 같은 입력은 항상 같은 결과.
     const bayes = STATS.bayesianAB({ nA, xA, nB, xB, sims: 10000 });
     return { freq, bayes };
   }, [mode, testType, anNa, anXa, anNb, anXb]);
@@ -247,7 +246,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
       const arms = [...armMap.values()].filter((a) => a.n > 0);
       if (arms.length >= 2) {
         if (!arms.some((a) => a.isControl)) arms[0].isControl = true;
-        mass = STATS.massReadout(arms, CREATIVE_STATS);
+        mass = STATS.massReadout(arms);
       }
     }
 
@@ -549,14 +548,14 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                             <div className="ab-stat"><div className="ab-stat-label">z-score</div><div className="ab-stat-value tnum">{freq.z.toFixed(3)}</div></div>
                             <div className="ab-stat"><div className="ab-stat-label">p-value</div><div className="ab-stat-value tnum">{freq.pValue.toFixed(4)} <PvBadge p={freq.pValue} locale={locale} /></div></div>
                             <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("절대 차이 95% CI", "Absolute difference 95% CI")}</div><div className="ab-stat-value tnum">[ {(freq.ciLow95 * 100).toFixed(2)}% , {(freq.ciHigh95 * 100).toFixed(2)}% ]</div></div>
-                            <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("판정", "Verdict")}</div><div className="ab-stat-value" style={{ color: verdictColor(freq.pValue, liftPositive), fontWeight: 700 }}>{freq.pValue < 0.05 ? (liftPositive ? tr("유의미한 개선 (Ship)", "Significant improvement (Ship)") : tr("유의미한 악화 (Kill)", "Significant decline (Kill)")) : tr("비유의 (Inconclusive)", "Not significant (Inconclusive)")}</div></div>
+                            <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("판정", "Verdict")}</div><div className="ab-stat-value" style={{ color: verdictColor(freq.pValue, liftPositive), fontWeight: 700 }}>{freq.pValue < 0.05 ? (liftPositive ? tr("통계적 개선 — 실질 효과 확인", "Statistical improvement — check practical effect") : tr("통계적 악화 — 실질 효과 확인", "Statistical decline — check practical effect")) : tr("비유의 (Inconclusive)", "Not significant (Inconclusive)")}</div></div>
                           </div>
                         </div>
                         <div className="ab-result-block">
                           <div className="ab-result-block-title">Bayesian · Beta-Binomial</div>
                           <div className="ab-stats-grid">
                             <div className="ab-stat"><div className="ab-stat-label">P(B &gt; A)</div><div className="ab-stat-value tnum">{(bayes.probBWins * 100).toFixed(2)}%</div></div>
-                            <div className="ab-stat"><div className="ab-stat-label">{tr("기대 Lift", "Expected lift")}</div><div className="ab-stat-value tnum">{(bayes.expectedLift * 100).toFixed(2)}%</div></div>
+                            <div className="ab-stat"><div className="ab-stat-label">{tr("사후평균 Lift", "Posterior-mean lift")}</div><div className="ab-stat-value tnum">{(bayes.expectedLift * 100).toFixed(2)}%</div></div>
                             <div className="ab-stat"><div className="ab-stat-label">A 95% CI</div><div className="ab-stat-value tnum">[ {(bayes.ciA[0] * 100).toFixed(2)} , {(bayes.ciA[1] * 100).toFixed(2)} ]</div></div>
                             <div className="ab-stat"><div className="ab-stat-label">B 95% CI</div><div className="ab-stat-value tnum">[ {(bayes.ciB[0] * 100).toFixed(2)} , {(bayes.ciB[1] * 100).toFixed(2)} ]</div></div>
                             <div className="ab-stat" style={{ gridColumn: "1 / -1" }}><div className="ab-stat-label">{tr("의사결정 권고", "Recommended decision")}</div><div className="ab-stat-value">{winner}</div></div>
@@ -706,7 +705,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
               <li><strong>Binary (CVR) · z-test</strong>: <code className="inline">z = (p̂_B - p̂_A) / √(p̄(1-p̄)(1/n_A + 1/n_B))</code>. {tr("p-value < α 시 귀무가설 기각.", "Reject the null hypothesis when p-value < α.")}</li>
               <li><strong>Binary · Sample Size</strong>: <code className="inline">n = 2 × (z_α/2 + z_β)² × p̄(1-p̄) / δ²</code></li>
               <li><strong>Continuous · Welch</strong>: <code className="inline">z = (μ̂_B - μ̂_A) / √(s_A²/n_A + s_B²/n_B)</code>. {tr("n > 30 per arm일 때 정확.", "Accurate when n > 30 per arm.")}</li>
-              <li><strong>Bayesian</strong>: {tr("Binary 전용. 사전 Beta(1,1). 사후 Beta(1+x, 1+n-x). Monte Carlo 10,000 sim.", "Binary only. Prior Beta(1,1). Posterior Beta(1+x, 1+n-x). Monte Carlo, 10,000 sims.")}</li>
+              <li><strong>Bayesian</strong>: {tr("Binary 전용. 사전 Beta(1,1), 사후 Beta(1+x, 1+n-x)를 결정론적 수치계산(정확 유한합·정규근사·적응형 적분)으로 비교합니다.", "Binary only. Beta(1+x, 1+n-x) posteriors under a Beta(1,1) prior are compared deterministically using an exact finite sum, normal approximation, or adaptive integration.")}</li>
               <li><strong>{tr("예산 계산", "Budget calculation")}</strong>: <code className="inline">Total Budget = n_per_arm × (CPR_A + CPR_B)</code>.</li>
               <li><strong>{tr("파워 커브", "Power curve")}</strong>: {tr("sample size 기준으로 역산(이분 탐색)하여 탐지 가능한 최소 MDE 도출.", "Derived by inverting sample size (binary search) to find the minimum detectable MDE.")}</li>
             </ul>
@@ -756,17 +755,17 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                         <div className="ab-stat"><div className="ab-stat-label">{tr("절대차 95% CI", "Absolute difference 95% CI")}</div><div className="ab-stat-value tnum">[ {(s.ciLow95 * 100).toFixed(2)}% , {(s.ciHigh95 * 100).toFixed(2)}% ]</div></div>
                       </div>
                       <div style={{ marginTop: "12px", fontWeight: 700, color: verdictColor(s.pValue, liftPositive) }}>
-                        {s.pValue < 0.05 ? (liftPositive ? tr("✓ 유의미한 개선 (Ship 후보)", "✓ Significant improvement (Ship candidate)") : tr("✗ 유의미한 악화 (Kill)", "✗ Significant decline (Kill)")) : tr("— 비유의 (Inconclusive — 더 많은 데이터 필요)", "— Not significant (Inconclusive — need more data)")}
+                        {s.pValue < 0.05 ? (liftPositive ? tr("✓ 통계적 개선 — 효과 크기·MDE 확인", "✓ Statistical improvement — check effect size and MDE") : tr("✗ 통계적 악화 — 효과 크기·MDE 확인", "✗ Statistical decline — check effect size and MDE")) : tr("— 비유의 (Inconclusive — 더 많은 데이터 필요)", "— Not significant (Inconclusive — need more data)")}
                       </div>
                       <div className="callout" style={{ marginTop: "10px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
                         {tr(
                           <><strong>쉽게 말하면:</strong> Test안이 Control보다 전환율이 <strong>{s.liftRel >= 0 ? "+" : ""}{(s.liftRel * 100).toFixed(1)}%</strong> {s.liftRel >= 0 ? "높습니다" : "낮습니다"}.
-                          {" "}<strong>p-value {s.pValue.toFixed(4)}</strong> = 이 차이가 순전히 우연일 확률 {(s.pValue * 100).toFixed(2)}%.
-                          {s.pValue < 0.05 ? " 0.05(5%)보다 작으니, 우연이 아닌 진짜 차이로 볼 수 있어요." : " 0.05(5%)보다 크니 아직 우연일 수 있어요 — 표본을 더 모으세요."}
+                          {" "}<strong>p-value {s.pValue.toFixed(4)}</strong> = 실제 차이가 없다고 가정할 때, 지금만큼 극단적인 데이터가 나올 확률입니다.
+                          {s.pValue < 0.05 ? " 사전에 정한 단일 지표 기준으로 0.05보다 작아 통계적 차이 후보입니다. 효과 크기·신뢰구간도 함께 확인하세요." : " 0.05보다 커서 현재 표본만으로 차이를 확정할 수 없습니다."}
                           {" "}괄호 안 z·CI는 통계 원값(전문가용)입니다.</>,
                           <><strong>In plain terms:</strong> Test&apos;s conversion rate is <strong>{s.liftRel >= 0 ? "+" : ""}{(s.liftRel * 100).toFixed(1)}%</strong> {s.liftRel >= 0 ? "higher" : "lower"} than Control.
-                          {" "}<strong>p-value {s.pValue.toFixed(4)}</strong> = the probability this difference is pure chance is {(s.pValue * 100).toFixed(2)}%.
-                          {s.pValue < 0.05 ? " That's below 0.05 (5%), so it can be treated as a real difference, not chance." : " That's above 0.05 (5%), so it could still be chance — collect more samples."}
+                          {" "}<strong>p-value {s.pValue.toFixed(4)}</strong> is the chance of seeing data this extreme if there were no real difference.
+                          {s.pValue < 0.05 ? " For one pre-specified metric it is below 0.05, making this a statistical-difference candidate; check effect size and the interval too." : " It is above 0.05, so this sample does not establish a difference."}
                           {" "}The z and CI in parentheses are the raw statistics (for experts).</>,
                         )}
                       </p></div></div>
@@ -786,6 +785,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                       <>Control: <strong>{readoutData.mass.control.name}</strong> (n={readoutData.mass.control.n.toLocaleString()}, conversion rate {((readoutData.mass.control.x / readoutData.mass.control.n) * 100).toFixed(2)}%)</>,
                     )}
                   </p>
+                  <p className="muted" style={{ fontSize: "11px", margin: "0 0 10px" }}>{tr("여러 변형의 판정에는 Holm 보정 p-value를 사용합니다. 표의 95% CI는 각 비교의 pointwise 구간이라 다중비교 보정 구간은 아닙니다.", "Significance uses Holm-adjusted p-values across variants. The 95% CIs are pointwise for each comparison, not multiplicity-adjusted intervals.")}</p>
                   <DataTable
                     rows={readoutData.mass.rows}
                     rowKey={(r, i) => i}
@@ -795,7 +795,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                       { key: "rate", label: tr("전환율", "Conv. rate"), align: "right", fmt: (v) => (v * 100).toFixed(2) + "%" },
                       { key: "liftRel", label: tr("대조군 대비 Lift", "Lift vs control"), align: "right", fmt: (_, r) => r.isControl ? "—" : <span style={{ color: r.liftRel >= 0 ? undefined : "#ef4444" }}>{(r.liftRel * 100).toFixed(2)}%</span> },
                       { key: "z", label: "z", align: "right", fmt: (_, r) => r.isControl ? "—" : r.z.toFixed(3) },
-                      { key: "pValue", label: "p-value", align: "right", fmt: (_, r) => r.isControl ? "—" : r.pValue.toFixed(4) },
+                      { key: "pValue", label: "Holm p-value", align: "right", fmt: (_, r) => r.isControl ? "—" : r.pValue.toFixed(4) },
                       { key: "ci", label: tr("95% CI (절대차)", "95% CI (abs. diff.)"), align: "right", fmt: (_, r) => r.isControl ? "—" : `[${(r.ciLow95 * 100).toFixed(2)}%, ${(r.ciHigh95 * 100).toFixed(2)}%]` },
                       { key: "probBWins", label: "P(B>A)", align: "right", fmt: (_, r) => r.isControl ? "—" : isNaN(r.probBWins) ? "—" : (r.probBWins * 100).toFixed(1) + "%" },
                       { key: "sigv", label: tr("유의성", "Significance"), align: "left", fmt: (_, r) => r.isControl ? <span className="pill tier-3">{tr("대조군", "Control")}</span> : r.pValue < 0.01 ? <span className="pill tier-1">p &lt; 0.01</span> : r.pValue < 0.05 ? <span className="pill tier-2">p &lt; 0.05</span> : <span className="pill tier-3">{tr("비유의", "Not sig.")}</span> },

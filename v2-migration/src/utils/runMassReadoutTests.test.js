@@ -1,17 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { STATS } from "./abTestMath";
-import { CREATIVE_STATS } from "./creativeMath";
 
-// Golden test port of runMassReadoutTests (index.html ~19780-19915).
-// Same inputs, same expected values, same tolerances — verbatim.
-//
-// index.html's massReadout(arms) closes over the global CREATIVE_STATS and
-// calls CREATIVE_STATS.betaProbGreater(control.x, control.n, a.x, a.n) with the
-// default gridN = CREATIVE_CONFIG.bayes.gridN (=2000) and priorA=priorB=1.
-// In v2 massReadout(arms, CREATIVE_STATS) takes the stats object as a param;
-// betaProbGreater keeps index's verbatim signature (xA,nA,xB,nB, gridN=2000)
-// with priors from the module constant, so a 4-arg call is byte-identical to index.
-const massReadout = (arms) => STATS.massReadout(arms, CREATIVE_STATS);
+// Golden scenarios plus v2 statistical-integrity regressions.
+const massReadout = (arms) => STATS.massReadout(arms);
 
 describe("runMassReadoutTests (golden parity)", () => {
   it("T1 · 명확한 positive → sig+lift+probBWins", () => {
@@ -99,5 +90,50 @@ describe("runMassReadoutTests (golden parity)", () => {
       STATS.powerCurve({ baseline: 0.05, alpha: 0.05, power: 0.8 }),
     );
     expect(c1).toBe(c2);
+  });
+
+  it("T8 · 다중 변형은 Holm 보정 p-value를 판정에 사용", () => {
+    const result = massReadout([
+      { name: "control", n: 5000, x: 250, isControl: true },
+      { name: "v1", n: 5000, x: 285, isControl: false },
+      { name: "v2", n: 5000, x: 275, isControl: false },
+      { name: "v3", n: 5000, x: 260, isControl: false },
+    ]);
+    const variants = result.rows.filter((row) => !row.isControl);
+    expect(variants.every((row) => row.pValue >= row.rawPValue)).toBe(true);
+    const byRaw = [...variants].sort((a, b) => a.rawPValue - b.rawPValue);
+    let prior = 0;
+    byRaw.forEach((row, index) => {
+      const expected = Math.min(1, Math.max(prior, row.rawPValue * (byRaw.length - index)));
+      expect(row.pValue).toBeCloseTo(expected, 12);
+      prior = expected;
+    });
+  });
+
+  it("T9 · raw p<.05 하나만으로 다중 변형 유의를 선언하지 않음", () => {
+    const result = massReadout([
+      { name: "control", n: 5000, x: 250, isControl: true },
+      { name: "borderline", n: 5000, x: 295, isControl: false },
+      { name: "v2", n: 5000, x: 260, isControl: false },
+      { name: "v3", n: 5000, x: 255, isControl: false },
+    ]);
+    const borderline = result.rows.find((row) => row.name === "borderline");
+    expect(borderline.rawPValue).toBeLessThan(0.05);
+    expect(borderline.pValue).toBeGreaterThanOrEqual(0.05);
+    expect(borderline.sig).toBe(false);
+  });
+
+  it.each([
+    { xA: 1000, xB: 1200, minimum: 0.999 },
+    { xA: 100, xB: 150, minimum: 0.99 },
+  ])("T10 · 백만 표본 저전환에서도 posterior 방향을 보존 ($xA→$xB)", ({ xA, xB, minimum }) => {
+    const result = massReadout([
+      { name: "control", n: 1_000_000, x: xA, isControl: true },
+      { name: "variant", n: 1_000_000, x: xB, isControl: false },
+    ]);
+    const variant = result.rows.find((row) => !row.isControl);
+    const direct = STATS.bayesianAB({ nA: 1_000_000, xA, nB: 1_000_000, xB });
+    expect(variant.probBWins).toBeGreaterThan(minimum);
+    expect(variant.probBWins).toBeCloseTo(direct.probBWins, 12);
   });
 });

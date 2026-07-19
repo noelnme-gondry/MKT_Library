@@ -121,38 +121,141 @@ export const STATS = (() => {
     return { pA, pB, liftAbs, liftRel, z, pValue, ciLow95, ciHigh95 };
   }
 
-  function randGamma(shape) {
-    if (shape < 1) {
-      const u = Math.random();
-      return randGamma(shape + 1) * Math.pow(u, 1 / shape);
+  function logGamma(z) {
+    const coefficients = [
+      0.9999999999998099, 676.5203681218851, -1259.1392167224028,
+      771.3234287776531, -176.6150291621406, 12.507343278686905,
+      -0.13857109526572012, 9.984369578019572e-6, 1.5056327351493116e-7,
+    ];
+    if (z < 0.5) return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - logGamma(1 - z);
+    const shifted = z - 1;
+    let series = coefficients[0];
+    for (let i = 1; i < coefficients.length; i++) series += coefficients[i] / (shifted + i);
+    const t = shifted + 7.5;
+    return 0.5 * Math.log(2 * Math.PI) + (shifted + 0.5) * Math.log(t) - t + Math.log(series);
+  }
+
+  const logBeta = (a, b) => logGamma(a) + logGamma(b) - logGamma(a + b);
+
+  function betaContinuedFraction(a, b, x) {
+    const fpMin = 1e-300;
+    const qab = a + b;
+    const qap = a + 1;
+    const qam = a - 1;
+    let c = 1;
+    let d = 1 - (qab * x) / qap;
+    if (Math.abs(d) < fpMin) d = fpMin;
+    d = 1 / d;
+    let h = d;
+    for (let m = 1; m <= 240; m++) {
+      const m2 = 2 * m;
+      let aa = (m * (b - m) * x) / ((qam + m2) * (a + m2));
+      d = 1 + aa * d;
+      if (Math.abs(d) < fpMin) d = fpMin;
+      c = 1 + aa / c;
+      if (Math.abs(c) < fpMin) c = fpMin;
+      d = 1 / d;
+      h *= d * c;
+      aa = (-(a + m) * (qab + m) * x) / ((a + m2) * (qap + m2));
+      d = 1 + aa * d;
+      if (Math.abs(d) < fpMin) d = fpMin;
+      c = 1 + aa / c;
+      if (Math.abs(c) < fpMin) c = fpMin;
+      d = 1 / d;
+      const delta = d * c;
+      h *= delta;
+      if (Math.abs(delta - 1) < 3e-12) break;
     }
-    const d = shape - 1 / 3;
-    const c = 1 / Math.sqrt(9 * d);
-    while (true) {
-      let x, v;
-      do {
-        x = randNormal();
-        v = 1 + c * x;
-      } while (v <= 0);
-      v = v * v * v;
-      const u = Math.random();
-      if (u < 1 - 0.0331 * x * x * x * x) return d * v;
-      if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v)))
-        return d * v;
+    return h;
+  }
+
+  function betaCdf(x, a, b) {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    const logFront = a * Math.log(x) + b * Math.log1p(-x) - logBeta(a, b);
+    const front = Math.exp(logFront);
+    const value = x < (a + 1) / (a + b + 2)
+      ? (front * betaContinuedFraction(a, b, x)) / a
+      : 1 - (front * betaContinuedFraction(b, a, 1 - x)) / b;
+    return Math.min(1, Math.max(0, value));
+  }
+
+  function betaQuantile(probability, a, b) {
+    if (probability <= 0) return 0;
+    if (probability >= 1) return 1;
+    let lo = 0;
+    let hi = 1;
+    for (let i = 0; i < 72; i++) {
+      const mid = (lo + hi) / 2;
+      if (betaCdf(mid, a, b) < probability) lo = mid;
+      else hi = mid;
     }
+    return (lo + hi) / 2;
   }
-  function randNormal() {
-    let u = 0,
-      v = 0;
-    while (u === 0) u = Math.random();
-    while (v === 0) v = Math.random();
-    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+
+  function logAddExp(a, b) {
+    if (a === -Infinity) return b;
+    const hi = Math.max(a, b);
+    return hi + Math.log1p(Math.exp(Math.min(a, b) - hi));
   }
-  function randBeta(alpha, beta) {
-    const x = randGamma(alpha);
-    const y = randGamma(beta);
-    return x / (x + y);
+
+  // Exact finite sum for integer Beta shapes (Cook, 2005). The recurrence
+  // avoids repeatedly subtracting very large log-gamma values.
+  function betaGreaterInteger(aX, bX, aY, bY) {
+    let logTerm = logBeta(aY, bX + bY) - logBeta(aY, bY);
+    let logSum = -Infinity;
+    for (let i = 0; i < aX; i++) {
+      logSum = logAddExp(logSum, logTerm);
+      if (i + 1 < aX) {
+        logTerm += Math.log(aY + i) + Math.log(bX + i)
+          - Math.log(aY + bX + bY + i) - Math.log(i + 1);
+      }
+    }
+    return Math.min(1, Math.max(0, Math.exp(logSum)));
   }
+
+  function betaGreaterAdaptive(aB, bB, aA, bA, gridN) {
+    const tail = 1e-8;
+    const lo = Math.min(betaQuantile(tail, aA, bA), betaQuantile(tail, aB, bB));
+    const hi = Math.max(betaQuantile(1 - tail, aA, bA), betaQuantile(1 - tail, aB, bB));
+    const width = Math.max(1e-15, hi - lo);
+    let maxLog = -Infinity;
+    const points = new Array(gridN);
+    for (let i = 0; i < gridN; i++) {
+      const x = lo + ((i + 0.5) / gridN) * width;
+      const logWeight = (aB - 1) * Math.log(x) + (bB - 1) * Math.log1p(-x) - logBeta(aB, bB);
+      points[i] = [x, logWeight];
+      if (logWeight > maxLog) maxLog = logWeight;
+    }
+    let numerator = 0;
+    let denominator = 0;
+    for (const [x, logWeight] of points) {
+      const weight = Math.exp(logWeight - maxLog);
+      numerator += weight * betaCdf(x, aA, bA);
+      denominator += weight;
+    }
+    return denominator > 0 ? numerator / denominator : 0.5;
+  }
+
+  function betaProbGreater(aB, bB, aA, bA, gridN) {
+    const shapes = [aB, bB, aA, bA];
+    if (shapes.every((value) => Number.isInteger(value) && value > 0)) {
+      const candidates = [
+        { count: aB, run: () => betaGreaterInteger(aB, bB, aA, bA) },
+        { count: aA, run: () => 1 - betaGreaterInteger(aA, bA, aB, bB) },
+        { count: bA, run: () => betaGreaterInteger(bA, aA, bB, aB) },
+        { count: bB, run: () => 1 - betaGreaterInteger(bB, aB, bA, aA) },
+      ].sort((left, right) => left.count - right.count);
+      if (candidates[0].count <= 50000) return Math.min(1, Math.max(0, candidates[0].run()));
+    }
+    const meanA = aA / (aA + bA);
+    const meanB = aB / (aB + bB);
+    const varA = (aA * bA) / ((aA + bA) ** 2 * (aA + bA + 1));
+    const varB = (aB * bB) / ((aB + bB) ** 2 * (aB + bB + 1));
+    if (Math.min(...shapes) > 80) return normalCDF((meanB - meanA) / Math.sqrt(varA + varB));
+    return betaGreaterAdaptive(aB, bB, aA, bA, gridN);
+  }
+
   function bayesianAB({
     nA,
     xA,
@@ -166,31 +269,18 @@ export const STATS = (() => {
       bA = priorBeta + (nA - xA);
     const aB = priorAlpha + xB,
       bB = priorBeta + (nB - xB);
-    let winB = 0,
-      sumLift = 0;
-    const samplesA = [],
-      samplesB = [];
-    for (let i = 0; i < sims; i++) {
-      const pA = randBeta(aA, bA);
-      const pB = randBeta(aB, bB);
-      if (pB > pA) winB++;
-      sumLift += pA > 0 ? (pB - pA) / pA : 0;
-      samplesA.push(pA);
-      samplesB.push(pB);
-    }
-    samplesA.sort((a, b) => a - b);
-    samplesB.sort((a, b) => a - b);
+    const gridN = Math.max(800, Math.min(4000, Math.round(sims / 5)));
+    const meanA = aA / (aA + bA);
+    const meanB = aB / (aB + bB);
+    const probBWins = betaProbGreater(aB, bB, aA, bA, gridN);
     return {
-      probBWins: winB / sims,
-      expectedLift: sumLift / sims,
-      ciA: [
-        samplesA[Math.floor(sims * 0.025)],
-        samplesA[Math.floor(sims * 0.975)],
-      ],
-      ciB: [
-        samplesB[Math.floor(sims * 0.025)],
-        samplesB[Math.floor(sims * 0.975)],
-      ],
+      probBWins: Math.min(1, Math.max(0, probBWins)),
+      // Posterior-mean ratio is finite even when the control has zero observed
+      // conversions. E[B/A] itself can diverge under the default Beta(1,1)
+      // prior, which would create an impressive-looking but meaningless lift.
+      expectedLift: meanA > 0 ? meanB / meanA - 1 : null,
+      ciA: [betaQuantile(0.025, aA, bA), betaQuantile(0.975, aA, bA)],
+      ciB: [betaQuantile(0.025, aB, bB), betaQuantile(0.975, aB, bB)],
     };
   }
 
@@ -256,7 +346,7 @@ export const STATS = (() => {
     return { costA, costB, total: costA + costB, cprA, cprB: cprBuse };
   }
 
-  function massReadout(arms, CREATIVE_STATS) {
+  function massReadout(arms) {
     const control = arms.find((a) => a.isControl) || arms[0];
     if (!control || !control.n || control.n <= 0)
       return { control: null, rows: [] };
@@ -271,6 +361,7 @@ export const STATS = (() => {
           liftRel: 0,
           z: 0,
           pValue: 1,
+          rawPValue: 1,
           ciLow95: 0,
           ciHigh95: 0,
           probBWins: 0.5,
@@ -278,10 +369,16 @@ export const STATS = (() => {
         };
       }
       const freq = twoPropZTest(control.n, control.x, a.n, a.x);
-      const probBWins =
-        typeof CREATIVE_STATS !== "undefined"
-          ? CREATIVE_STATS.betaProbGreater(control.x, control.n, a.x, a.n)
-          : NaN;
+      // Reuse the same posterior engine as the two-arm readout. The legacy
+      // creative grid integrates over all of [0,1] and collapses sparse,
+      // million-row posteriors into one bin, which can reverse the verdict.
+      const probBWins = betaProbGreater(
+        a.x + 1,
+        a.n - a.x + 1,
+        control.x + 1,
+        control.n - control.x + 1,
+        2000,
+      );
       return {
         name: a.name,
         n: a.n,
@@ -291,11 +388,20 @@ export const STATS = (() => {
         liftRel: freq.liftRel,
         z: freq.z,
         pValue: freq.pValue,
+        rawPValue: freq.pValue,
         ciLow95: freq.ciLow95,
         ciHigh95: freq.ciHigh95,
         probBWins,
         sig: freq.pValue < 0.05,
       };
+    });
+    const variants = rows.filter((row) => !row.isControl).sort((a, b) => a.rawPValue - b.rawPValue);
+    let previousAdjusted = 0;
+    variants.forEach((row, index) => {
+      const adjusted = Math.min(1, Math.max(previousAdjusted, row.rawPValue * (variants.length - index)));
+      row.pValue = adjusted;
+      row.sig = adjusted < 0.05;
+      previousAdjusted = adjusted;
     });
     return { control, rows };
   }

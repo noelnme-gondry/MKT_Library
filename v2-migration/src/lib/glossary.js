@@ -5,12 +5,16 @@
 // (content/glossary-en) — 같은 slug로 KR/EN 짝 파일 매칭(blog.js와 동일 규약).
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "node:url";
 import matter from "gray-matter";
 import { marked } from "marked";
+import { localizedHref } from "@/lib/localizedHref";
+import { primaryToolForContent } from "@/lib/contentToolRegistry";
 
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const GLOSSARY_DIRS = {
-  ko: path.join(process.cwd(), "content", "glossary"),
-  en: path.join(process.cwd(), "content", "glossary-en"),
+  ko: path.resolve(MODULE_DIR, "../../content/glossary"),
+  en: path.resolve(MODULE_DIR, "../../content/glossary-en"),
 };
 
 marked.setOptions({ gfm: true, breaks: false });
@@ -19,9 +23,7 @@ marked.setOptions({ gfm: true, breaks: false });
 // localizeInternalLinks와 동일 패턴(PR #303 재발 방지). 원고는 항상 KR 경로만 쓰면 됨.
 function localizeInternalLinks(html, locale) {
   if (locale !== "en") return html;
-  return html
-    .replace(/(href=")\/glossary\//g, "$1/en/glossary/")
-    .replace(/(href=")\/blog\//g, "$1/en/blog/");
+  return html.replace(/href="(\/[^"#]+)(#[^"]*)?"/g, (_, href, hash = "") => `href="${localizedHref(href, locale)}${hash}"`);
 }
 
 function readDir(locale) {
@@ -48,6 +50,7 @@ function parseFile(fileName, locale) {
     category: data.category || (locale === "en" ? "Other" : "기타"),
     // 이 용어를 더 깊게 다루는 기존 블로그 글 slug 배열(있으면 상세 페이지에 링크).
     relatedPosts: Array.isArray(data.relatedPosts) ? data.relatedPosts : [],
+    primaryTool: data.primaryTool || primaryToolForContent(slug, "glossary"),
     draft: data.draft === true,
     html: localizeInternalLinks(marked.parse(content || ""), locale),
   };

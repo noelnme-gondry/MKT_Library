@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { IA, SECTIONS, useAppStore } from "@/store/useDataStore";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { trItemTitle } from "@/lib/enNavCopy";
-import LocaleAutoRedirect from "@/components/LocaleAutoRedirect";
 import ProductPreview from "@/components/landing/ProductPreview";
 import ToolCarousel from "@/components/landing/ToolCarousel";
 
@@ -17,15 +16,18 @@ const LANDING_COPY = {
     title: "무엇이 궁금하세요?",
     deck: "질문을 고르면 그 도구로 바로 들어갑니다. 데이터가 없어도 예시로 먼저 보고, 준비되면 내 데이터로 분석하세요. 모든 분석 도구 무료.",
     hero: {
-      title: "정확한 마케팅 분석,",
-      titleTools: "(증분 · MMM · 포화도 · 성과 변동)",
-      titleAccent: "전부 무료.",
-      sub: "통계 엔진이 신뢰구간까지 계산하고, 애매한 숫자엔 판단을 보류하는 정확한 분석. 설치·로그인·결제 전부 없음. CSV 업로드나 구글 시트 연동이면 끝, 데이터는 100% 브라우저에서만 처리됩니다.",
-      ctaPrimary: "내 데이터로 분석 시작",
-      ctaDemo: "데모 먼저 보기",
-      privacy: "🔒 서버 전송 0 · 브라우저 메모리에서만 처리",
-      previewCaption: "실제 운영 대시보드 미리보기 (샘플 데이터)",
-      carouselTitle: "궁금한 것부터 골라보세요",
+      title: "성과가 움직인 이유를",
+      titleTools: "이번 주 데이터로 확인하고",
+      titleAccent: "다음 한 가지를 정합니다",
+      sub: "캠페인 CSV를 올리면 변동 원인·예산 여력·소재 신호를 한 번에 정리합니다.",
+      subDetail: "MMM과 실험 분석은 필요한 데이터부터 안내합니다.",
+      ctaPrimary: "내 자료 올리고 무료 분석 시작",
+      ctaDemo: "샘플로 먼저 보기",
+      freeNote: "무료로 바로 시작 · 가입 없음 · 데이터는 브라우저에서만 처리",
+      privacy: "🔒 서버 전송 0",
+      previewCaption: "실제 화면 예시 · 주간 결론과 다음 조치",
+      carouselTitle: "다음 질문도 같은 데이터에서 이어서 확인하세요",
+      lab: { eyebrow: "ADVANCED ANALYSIS LAB", titleLead: "MMM·회귀·미래 예측", titleRest: "도 같은 도구 안에서", desc: "주간 운영을 넘어 채널별 기여도, 광고비 반응곡선, 예산 시나리오별 미래 성과를 분석합니다. 관측 데이터의 한계와 외삽 위험도 결과와 함께 설명합니다.", cta: "마케팅 반응 분석 열기", items: ["채널별 기여 분해", "다변량 회귀", "4주 미래 예측"] },
     },
     localeSwitchLabel: "English",
     guide: {
@@ -65,15 +67,18 @@ const LANDING_COPY = {
     title: "What are you curious about?",
     deck: "Pick a question and jump straight into the tool. No data yet? See a live example first, then analyze your own. All analysis tools are free.",
     hero: {
-      title: "Accurate marketing analysis,",
-      titleTools: "(incrementality · MMM · saturation · performance shifts)",
-      titleAccent: "all free.",
-      sub: "A statistics engine that computes confidence intervals and holds judgment when the numbers are ambiguous. No install, no login, no payment. Upload a CSV or connect a Google Sheet — your data is processed 100% in your browser.",
-      ctaPrimary: "Analyze my data",
-      ctaDemo: "See a live demo",
-      privacy: "🔒 Nothing sent to any server · processed in browser memory only",
-      previewCaption: "Live operations dashboard preview (sample data)",
-      carouselTitle: "Start with whatever you're curious about",
+      title: "Know why performance moved,",
+      titleTools: "read this week’s data, then",
+      titleAccent: "choose the next move",
+      sub: "Upload a campaign CSV to see performance drivers, budget headroom, and creative signals in one pass.",
+      subDetail: "MMM and experiments show the exact data they need.",
+      ctaPrimary: "Upload data · analyze free",
+      ctaDemo: "Try a sample first",
+      freeNote: "Free to start · no signup · your data stays in browser memory",
+      privacy: "🔒 Nothing sent to any server",
+      previewCaption: "Live product view · weekly decisions and next actions",
+      carouselTitle: "Continue with the next question from the same data",
+      lab: { eyebrow: "ADVANCED ANALYSIS LAB", titleLead: "MMM, regression, and forecasting", titleRest: "in the same workflow", desc: "Go beyond weekly operations to estimate channel contribution, spend-response curves, and future performance by budget scenario, with observational limits and extrapolation risk shown beside the result.", cta: "Open marketing response analysis", items: ["Channel contribution", "Multivariate regression", "4-week forecast"] },
     },
     localeSwitchLabel: "한국어",
     guide: {
@@ -127,7 +132,7 @@ const TOOL_HOOKS = {
     "9-6": "지금 성과 좋은 소재, 언제쯤 교체해야 할까?",
     "5-4": "A안과 B안, 진짜 차이가 있는 걸까?",
     "5-23": "자연 유입 빼고, 광고가 순수하게 만든 성과는?",
-    "5-18": "우리 광고비, 어디서 벌고 어디서 갉아먹을까?",
+    "5-18": "예산을 바꾸면 다음 4주 성과는 얼마나 달라질까?",
     "5-20": "유저를 붙잡는 '아하 순간'은 언제일까?",
   },
   en: {
@@ -188,6 +193,7 @@ function LandingHome({ locale }) {
 
   // 캐러셀 카드 = 분석 도구(콘텐츠 09 포함, SECTIONS.analysis에 흡수됨)를 "질문"으로
   // 평탄화(그룹 제목=eyebrow, 훅=헤드라인). opsGroups가 09를 이미 포함.
+  const featuredOrder = ["5-2", "5-21", "9-6", "5-18", "5-22", "5-3", "5-4", "5-23", "5-20", "9-1"];
   const carouselCards = opsGroups.flatMap((g) =>
     g.items
       .filter((it) => !it.hidden)
@@ -199,51 +205,88 @@ function LandingHome({ locale }) {
           eyebrow: g.title,
           headline: H[it.id] || trItemTitle(it.id, locale, meta.title),
           mockTitle: trItemTitle(it.id, locale, meta.title),
+          href: locale === "en" && hasEnVersion(it.id) ? `/en${idToSlug[it.id] || ""}` : idToSlug[it.id] || "/",
         };
       })
       .filter(Boolean)
-  );
-  const pickTool = (id) => { fireGa("landing_tool_pick", { tool: id }); goTool(id); };
+  ).sort((a, b) => featuredOrder.indexOf(a.id) - featuredOrder.indexOf(b.id));
+  const pickTool = (id) => { fireGa("landing_tool_pick", { tool: id }); };
 
   return (
-    <>
+    <div className="landing-shell">
       {/* 브랜드(로고+이름)는 전역 Header 좌상단으로 이동, 언어 전환도 Header EN 토글로
           일원화 — 랜딩 자체 eyebrow/English 버튼(중복) 제거. */}
-      {locale !== "en" && <LocaleAutoRedirect />}
-
       {/* ── 히어로 (Semrush형 전환 히어로) ── */}
-      <section style={{ textAlign: "center", padding: "1.5rem 0 0.5rem", maxWidth: "780px", margin: "0 auto" }}>
-        <h1 className="page-title" style={{ fontSize: "clamp(28px, 5vw, 46px)", lineHeight: 1.2, whiteSpace: "pre-line", marginBottom: "1rem" }}>
+      <section className="landing-hero">
+        <div className="landing-hero__signal"><span></span>{locale === "en" ? "WEEKLY DECISION SYSTEM" : "WEEKLY DECISION SYSTEM · 주간 운영 판단"}</div>
+        <h1 className="page-title landing-hero__title">
           {hero.title}
           {/* 기능 예시는 제목과 확연히 다른 층위로: 작게·뮤트·괄호. 자체 줄 차지. */}
           {hero.titleTools && (
-            <span style={{ display: "block", fontSize: "0.5em", fontWeight: 500, color: "var(--text-muted)", lineHeight: 1.4, margin: "4px 0 2px" }}>
+            <span className="landing-hero__subtitle">
               {hero.titleTools}
             </span>
           )}
           {/* "전부 무료."는 한 덩어리 — 줄 중간에서 끊기지 않게 자체 줄 + nowrap */}
           {hero.titleAccent && (
-            <span style={{ display: "block", color: "var(--primary)", whiteSpace: "nowrap" }}>{hero.titleAccent}</span>
+            <span className="landing-hero__accent">{hero.titleAccent}<i className="landing-hero__punctuation">.</i></span>
           )}
         </h1>
-        <p className="page-deck" style={{ fontSize: "15px", maxWidth: "620px", margin: "0 auto 1.4rem" }}>
-          {hero.sub}
+        <p className="landing-hero__deck">
+          <span>{hero.sub}</span>
+          {hero.subDetail && <span>{hero.subDetail}</span>}
         </p>
-        <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
-          <button type="button" className="btn primary" style={{ fontSize: "14px", padding: "12px 22px" }} onClick={() => { fireGa("landing_cta", { action: "analyze" }); router.push(locale === "en" ? "/en/start" : "/start"); }}>
+        <div className="landing-hero__actions">
+          <Link href={locale === "en" ? "/en/start" : "/start"} className="btn primary landing-hero__primary" onClick={() => fireGa("landing_cta", { action: "analyze" })}>
             {hero.ctaPrimary} →
-          </button>
-          <button type="button" className="btn ghost" style={{ fontSize: "14px", padding: "12px 22px" }} onClick={() => { fireGa("landing_cta", { action: "demo" }); setDemoDisabled(false); goTool("5-2"); }}>
+          </Link>
+          <button type="button" className="btn ghost landing-hero__secondary" onClick={() => { fireGa("landing_cta", { action: "demo" }); setDemoDisabled(false); goTool("5-2"); }}>
             ▶ {hero.ctaDemo}
           </button>
         </div>
-        <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "14px" }}>{hero.privacy}</div>
+        <div className="landing-hero__privacy">{hero.privacy}</div>
+        <div className="landing-hero__free">{hero.freeNote}</div>
       </section>
 
       {/* ── 라이브 제품 미리보기(시연 슬롯 — 여러 도구 로테이션, 나중 mp4 교체 가능) ── */}
-      <div style={{ marginTop: "1.6rem" }}>
+      <section className="landing-preview-stage" aria-label={hero.previewCaption}>
+        <div className="landing-preview-stage__bar"><span>{hero.previewCaption}</span><span className="landing-preview-stage__status">● {locale === "en" ? "SAMPLE DATA" : "샘플 데이터"}</span></div>
         <ProductPreview locale={locale} />
-      </div>
+      </section>
+
+      <section className="landing-advanced-lab">
+        <div>
+          <span>{hero.lab.eyebrow}</span>
+          <h2><span className="lab-title__accent">{hero.lab.titleLead}</span> {hero.lab.titleRest}</h2>
+          <p>{hero.lab.desc}</p>
+          <Link href={locale === "en" ? "/en/tools/marketing-response" : "/tools/marketing-response"} className="btn primary" onClick={() => fireGa("landing_tool_pick", { tool: "5-18" })}>{hero.lab.cta} →</Link>
+        </div>
+        <div className="landing-advanced-lab__model" aria-label={locale === "en" ? "Marketing response model preview" : "마케팅 반응 모델 미리보기"}>
+          <div className="mmm-preview__topline">
+            <div><span>MARKETING RESPONSE / 5-18</span><b>{locale === "en" ? "Weekly model" : "주간 모델"}</b></div>
+            <em className="mmm-preview__fit">R² 0.81 <i>GOOD FIT</i></em>
+          </div>
+          <div className="mmm-preview__toolbar">
+            <span>{locale === "en" ? "12 weeks · spend → outcome" : "최근 12주 · 비용 → 결과"}</span>
+            <span className="mmm-preview__legend"><i></i>{locale === "en" ? "Observed" : "실측"}<i></i>{locale === "en" ? "Model" : "모형"}</span>
+          </div>
+          <div className="mmm-preview__chart" aria-hidden="true">
+            <svg viewBox="0 0 520 132" preserveAspectRatio="none" focusable="false">
+              <path className="mmm-grid" d="M0 22H520M0 55H520M0 88H520M0 121H520" />
+              <path className="mmm-bars" d="M18 121V86h21v35zm39 0V70h21v51zm39 0V97h21v24zm39 0V57h21v64zm39 0V75h21v46zm39 0V42h21v79zm39 0V83h21v38zm39 0V64h21v57zm39 0V91h21v30zm39 0V51h21v70zm39 0V73h21v48zm39 0V34h21v87z" />
+              <path className="mmm-observed" d="M18 83C42 79 50 66 78 71S105 96 135 56s44 18 62 11 35-31 55-18 31 37 52 16 39 1 55-9 41 12 59-2 29-21 45-20 29 5 42 1" />
+              <path className="mmm-model" d="M18 80C42 77 57 72 78 70s38 4 57-2 40-2 62-5 35-5 55-3 37-2 52-4 37 0 55-1 42-3 59-5 38 1 60-2 38-4 59-4" />
+            </svg>
+          </div>
+          <div className="mmm-preview__table">
+            <div className="mmm-preview__table-head"><span>{locale === "en" ? "Channel contribution" : "채널 기여도"}</span><b>{locale === "en" ? "Share" : "기여 비중"}</b></div>
+            <div className="mmm-preview__channel-row"><i className="mmm-dot mmm-dot--blue"></i><span>Paid social</span><strong>42.8%</strong></div>
+            <div className="mmm-preview__channel-row"><i className="mmm-dot mmm-dot--green"></i><span>Search</span><strong>31.4%</strong></div>
+            <div className="mmm-preview__channel-row"><i className="mmm-dot mmm-dot--amber"></i><span>{locale === "en" ? "Organic / baseline" : "오가닉·기준선"}</span><strong>25.8%</strong></div>
+          </div>
+          <div className="mmm-preview__footer"><span>{locale === "en" ? "Next 4 weeks forecast" : "다음 4주 예측"}</span><b>+9.8%</b><small>{locale === "en" ? "association ≠ causation · holdout recommended" : "연관 ≠ 인과 · 홀드아웃 검증 권장"}</small></div>
+        </div>
+      </section>
 
       {/* ── 질문 캐러셀(도구 진입) ── */}
       <ToolCarousel
@@ -256,44 +299,33 @@ function LandingHome({ locale }) {
       />
 
       {/* ── 블로그 | SOP 나란히(읽을거리·문서 2대장). 각자 자체 주소(/blog · /guide). ── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: "16px",
-          marginTop: "2.5rem",
-        }}
-      >
-        <Link href={locale === "en" ? "/en/blog" : "/blog"} className="home-hub-card" style={{ textDecoration: "none" }}>
-          <div className="home-hub-icon" style={{ background: "linear-gradient(135deg,#a78bfa33,#4cd7f622)" }}>📝</div>
+      <section className="landing-exit-grid" aria-label={locale === "en" ? "Keep learning or prepare data" : "더 알아보거나 데이터 준비하기"}>
+        <Link href={locale === "en" ? "/en/blog" : "/blog"} className="home-hub-card landing-exit-card">
+          <div className="landing-exit-card__index">01</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="phase-card-title" style={{ marginBottom: "4px" }}>{L.blogBanner.title}</div>
-            <div className="phase-card-desc" style={{ margin: 0 }}>{L.blogBanner.desc}</div>
+            <div className="landing-exit-card__title">{L.blogBanner.title}</div>
+            <div className="landing-exit-card__desc">{L.blogBanner.desc}</div>
           </div>
-          <span className="phase-card-cta" style={{ margin: 0, whiteSpace: "nowrap" }}>{L.blogBanner.cta}</span>
+          <span className="landing-exit-card__cta">{L.blogBanner.cta}</span>
         </Link>
 
-        <Link href={locale === "en" ? "/en/guide" : "/guide"} className="home-hub-card" style={{ textDecoration: "none" }}>
-          <div className="home-hub-icon" style={{ background: "linear-gradient(135deg,#adc6ff33,#4ade8022)" }}>📘</div>
+        <Link href={locale === "en" ? "/en/guide" : "/guide"} className="home-hub-card landing-exit-card">
+          <div className="landing-exit-card__index">02</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="phase-card-title" style={{ marginBottom: "4px" }}>{L.guide.title}</div>
-            <div className="phase-card-desc" style={{ margin: 0 }}>{L.guide.desc}</div>
-            <div className="phase-card-meta tnum" style={{ marginTop: "6px", color: "var(--text-muted)", fontSize: "11.5px" }}>{totalGuides}{L.guide.metaSuffix}</div>
+            <div className="landing-exit-card__title">{L.guide.title}</div>
+            <div className="landing-exit-card__desc">{L.guide.desc}</div>
+            <div className="landing-exit-card__meta tnum">{totalGuides}{L.guide.metaSuffix}</div>
           </div>
-          <span className="phase-card-cta" style={{ margin: 0, whiteSpace: "nowrap" }}>{L.guide.cta}</span>
+          <span className="landing-exit-card__cta">{L.guide.cta}</span>
         </Link>
-      </div>
+      </section>
 
       {/* 데이터 준비 가이드 — 상단이 아닌 맨 밑에 약하게(자기서비스 탈출구). */}
       {dataGuideItem && (
         <div style={{ marginTop: "1.4rem", textAlign: "center" }}>
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              fireGa("data_guide_open", { from: "landing" });
-              goTool(dataGuideItem.id);
-            }}
+          <Link
+            href={locale === "en" && hasEnVersion(dataGuideItem.id) ? `/en${idToSlug[dataGuideItem.id] || ""}` : idToSlug[dataGuideItem.id] || "/"}
+            onClick={() => fireGa("data_guide_open", { from: "landing" })}
             style={{
               fontSize: "12.5px",
               color: "var(--text-muted)",
@@ -306,7 +338,7 @@ function LandingHome({ locale }) {
               ? "New to preparing data? See the CSV prep & column-mapping guide"
               : "데이터 준비가 처음이라면 — CSV 준비 & 컬럼 매핑 가이드"}{" "}
             →
-          </a>
+          </Link>
         </div>
       )}
 
@@ -328,7 +360,7 @@ function LandingHome({ locale }) {
           <span>{L.social.feedback}</span>
         </a>
       </div>
-    </>
+    </div>
   );
 }
 

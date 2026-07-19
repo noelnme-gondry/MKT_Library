@@ -1,6 +1,7 @@
-import { resolveSlugToId, idToPath, SITE_URL, enAlternates } from "@/lib/routeMap";
+import { resolveSlugToId, idToPath, SITE_URL, enAlternates, isRoutePublished } from "@/lib/routeMap";
 import { findMeta } from "@/store/useDataStore";
 import { buildPageKeywords } from "@/lib/pageKeywords";
+import { getRouteSeo } from "@/lib/routeSeo";
 import PageClient from "./PageClient";
 
 export async function generateMetadata({ params }) {
@@ -19,11 +20,12 @@ export async function generateMetadata({ params }) {
   }
 
   const meta = findMeta(routeId);
-  const title = meta?.seoTitle || meta?.title || routeId;
+  const routeSeo = getRouteSeo(routeId, "ko");
+  const title = routeSeo?.title || meta?.seoTitle || meta?.title || routeId;
   // seoTitle/seoDescription: SERP 클릭 유도용 결과지향 문구(선택적 오버라이드).
   // 없으면 기존 방식(항목 제목 + 그룹 desc, 중복 설명 방지)으로 폴백.
   const description =
-    meta?.seoDescription ||
+    routeSeo?.description || meta?.seoDescription ||
     (meta?.title
       ? `${meta.title} — ${meta.group?.desc || ""}`.trim()
       : meta?.group?.desc);
@@ -35,11 +37,35 @@ export async function generateMetadata({ params }) {
     title,
     description,
     keywords,
+    ...(!isRoutePublished(routeId) ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical, ...(langs ? { languages: langs } : {}) },
     openGraph: { title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] },
   };
 }
 
 export default function Page({ params }) {
-  return <PageClient params={params} />;
+  return <PageWithStructuredData params={params} />;
+}
+
+async function PageWithStructuredData({ params }) {
+  const { slug } = await params;
+  const routeId = resolveSlugToId(slug);
+  const meta = routeId ? findMeta(routeId) : null;
+  const isTool = Boolean(routeId && (routeId.startsWith("5-") || routeId.startsWith("9-")));
+  const structuredData = isTool && meta ? {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: meta.seoTitle || meta.title,
+    description: meta.seoDescription || meta.group?.desc,
+    url: `${SITE_URL}${idToPath(routeId)}`,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    isAccessibleForFree: true,
+    inLanguage: "ko-KR",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "KRW" },
+  } : null;
+  return <>
+    {structuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />}
+    <PageClient params={params} />
+  </>;
 }

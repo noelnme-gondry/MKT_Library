@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug, tagSlug } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
+import ContentActionPanel from "@/components/seo/ContentActionPanel";
 
 // 발행 글만 정적 생성. 0편이면 빈 배열(라우트 미생성) — 빌드 정상 통과.
 export function generateStaticParams() {
@@ -16,13 +17,14 @@ export async function generateMetadata({ params }) {
   const canonical = `${SITE_URL}/blog/${post.slug}`;
   // EN 짝 파일 있으면 hreflang으로 상호 연결(§blog-en-translation-strategy) — EN은 KR 목록/내비 비노출, 링크로만 도달.
   const enPost = getPostBySlug(slug, "en");
-  const languages = { ko: canonical, ...(enPost ? { en: `${SITE_URL}/en/blog/${slug}` } : {}) };
+  const languages = { ko: canonical, ...(enPost ? { en: `${SITE_URL}/en/blog/${slug}` } : {}), "x-default": canonical };
   const og = {
     type: "article",
     title: post.title,
     description: post.description,
     url: canonical,
     publishedTime: post.date || undefined,
+    modifiedTime: post.updated || post.date || undefined,
     // images 미지정 시 opengraph-image.js(파일 컨벤션, 글별 동적 카드)가 자동 주입 —
     // 여기서 fallback을 강제로 넣으면 그 메커니즘을 덮어써 전 글이 정적 카드로 통일됨.
     ...(post.ogImage ? { images: [post.ogImage] } : {}),
@@ -68,9 +70,10 @@ function buildPostJsonLd(post, canonical) {
     "@type": "Organization",
     name: "Growth Opt Playbook",
     url: `${SITE_URL}/`,
-    logo: { "@type": "ImageObject", url: `${SITE_URL}/og-card.png` },
+    logo: { "@type": "ImageObject", url: `${SITE_URL}/favicon.svg` },
   };
   const images = extractImages(post.html);
+  const articleImages = images.length ? images : [`${canonical}/opengraph-image`];
   const faqNode = post.faq.length
     ? [
         {
@@ -91,14 +94,15 @@ function buildPostJsonLd(post, canonical) {
         headline: post.title,
         description: post.description,
         datePublished: post.date || undefined,
-        dateModified: post.date || undefined,
+        dateModified: post.updated || post.date || undefined,
         author: publisher,
         publisher,
         mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
         url: canonical,
         inLanguage: "ko-KR",
+        articleSection: post.tags,
         ...(post.keywords ? { keywords: post.keywords } : {}),
-        ...(images.length ? { image: images } : {}),
+        image: articleImages,
       },
       {
         "@type": "BreadcrumbList",
@@ -121,24 +125,31 @@ export default async function BlogPostPage({ params }) {
   const canonical = `${SITE_URL}/blog/${post.slug}`;
 
   return (
-    <div className="page-inner" style={{ maxWidth: 760, margin: "0 auto", padding: "2rem 1.5rem" }}>
+    <div className="content-article">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildPostJsonLd(post, canonical)) }}
       />
-      <Link
-        href="/blog"
-        style={{ fontSize: 13, color: "var(--text-muted)", textDecoration: "none" }}
-      >
+      <Link href="/blog" className="content-article__back">
         ← 블로그
       </Link>
 
-      <header style={{ margin: "1rem 0 1.75rem", paddingBottom: "1.25rem", borderBottom: "1px solid var(--border-subtle)" }}>
-        <h1 style={{ fontSize: 30, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em", lineHeight: 1.25 }}>
+      <header className="content-article__header">
+        <span className="content-article__type">FIELD NOTE</span>
+        <h1>
           {post.title}
         </h1>
-        <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.75rem", flexWrap: "wrap", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-muted)" }}>
+        {!post.seoAnswer && post.description && <p className="content-article__dek">{post.description}</p>}
+        {post.seoAnswer && (
+          <aside className="content-answer" aria-label="검색 질문에 대한 짧은 답">
+            <span className="content-answer__label">{post.searchIntent || "검색 질문에 대한 짧은 답"}</span>
+            <p>{post.seoAnswer}</p>
+          </aside>
+        )}
+        <div className="content-article__meta">
+          <span className="content-article__byline">Growth Opt Playbook 편집</span>
           <span>{fmtDate(post.date)}</span>
+          {post.updated && post.updated !== post.date && <span>업데이트 {fmtDate(post.updated)}</span>}
           {post.tags.map((t) => (
             <Link key={t} href={`/blog/tag/${tagSlug(t)}`} style={{ color: "inherit", textDecoration: "none" }}>
               #{t}
@@ -148,6 +159,15 @@ export default async function BlogPostPage({ params }) {
       </header>
 
       <article className="blog-prose" dangerouslySetInnerHTML={{ __html: post.html }} />
+
+      <ContentActionPanel toolId={post.primaryTool} post={post} />
+
+      {post.relatedGlossary.length > 0 && (
+        <nav className="content-related-links" aria-label="관련 용어">
+          <span>관련 용어</span>
+          {post.relatedGlossary.map((slug) => <Link key={slug} href={`/glossary/${slug}`}>{slug}</Link>)}
+        </nav>
+      )}
 
       {post.faq.length > 0 && (
         <section className="blog-faq" aria-label="자주 묻는 질문">

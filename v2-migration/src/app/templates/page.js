@@ -1,4 +1,4 @@
-import { SITE_URL } from "@/lib/routeMap";
+import { SITE_URL, isRoutePublished } from "@/lib/routeMap";
 import TemplateDownloadCard from "@/components/TemplateDownloadCard";
 
 // CSV 템플릿 다운로드 랜딩 — routeMap 밖 독립 페이지(/blog·/guide와 동일 패턴, §12.24).
@@ -153,8 +153,11 @@ function buildJsonLd() {
 }
 
 export default function TemplatesPage() {
+  const publishedGroups = GROUPS
+    .map((group) => ({ ...group, items: group.items.filter((item) => isRoutePublished(item.toolId)) }))
+    .filter((group) => group.items.length > 0);
   return (
-    <div className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
+    <main id="main-content" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd()) }}
@@ -170,7 +173,7 @@ export default function TemplatesPage() {
         </p>
       </header>
 
-      {GROUPS.map((group) => (
+      {publishedGroups.map((group) => (
         <section key={group.heading} style={{ marginBottom: "2.25rem" }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.35rem" }}>
             {group.heading}
@@ -202,6 +205,6 @@ export default function TemplatesPage() {
           </details>
         ))}
       </section>
-    </div>
+    </main>
   );
 }

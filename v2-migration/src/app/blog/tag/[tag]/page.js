@@ -20,6 +20,7 @@ export async function generateMetadata({ params }) {
     title,
     description,
     alternates: { canonical },
+    ...(posts.length < 2 ? { robots: { index: false, follow: true } } : {}),
     openGraph: { title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] },
   };
 }
@@ -38,25 +39,22 @@ export default async function BlogTagPage({ params }) {
   const label = tagLabelFromSlug(tag);
 
   return (
-    <div className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
-      <Link href="/blog" style={{ fontSize: 13, color: "var(--text-muted)", textDecoration: "none" }}>
+    <div className="content-index content-index--tag">
+      <Link href="/blog" className="content-article__back">
         ← 블로그 전체
       </Link>
-      <header style={{ margin: "1rem 0 2rem" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
-          #{label}
-        </h1>
-        <p style={{ marginTop: "0.5rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-          &lsquo;{label}&rsquo; 태그의 글 {posts.length}편
-        </p>
+      <header className="content-index__hero content-index__hero--compact">
+        <span className="content-index__eyebrow">TOPIC COLLECTION</span>
+        <h1>#{label}</h1>
+        <p>&lsquo;{label}&rsquo;에 관한 실무 글 {posts.length}편을 한곳에 모았습니다.</p>
       </header>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+      <div className="content-list">
         {posts.map((post) => (
           <Link
             key={post.slug}
             href={`/blog/${post.slug}`}
-            className="card"
+            className="card content-card"
             style={{ display: "block", textDecoration: "none" }}
           >
             <div className="card-meta" style={{ marginBottom: "0.4rem" }}>{fmtDate(post.date)}</div>

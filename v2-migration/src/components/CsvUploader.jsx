@@ -2,21 +2,19 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import Papa from "papaparse";
 import { useAppStore, TOOL_GROUP } from "@/store/useDataStore";
-import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS, autoMapHeaders } from "@/utils/csvConstants";
+import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
 import { buildDemoCsv } from "@/utils/demoData";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "@/components/GoogleSheetConnect";
-
-function escapeHtml(str) {
-  if (!str) return "";
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+import { findMappingConflicts, scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates";
+import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
+import { tableToRecords } from "@/lib/data-import/detectHeaderRow";
+import { detectDatasetSignature } from "@/lib/data-import/detectDatasetSignature";
+import { getTransformRecipe, saveTransformRecipe } from "@/lib/data-import/localHistory";
+import { toolFieldKeys } from "@/lib/data-import/prepareDatasetForTool";
+import { trackProductEvent } from "@/lib/analytics";
+import DataQualityReport from "@/components/data-import/DataQualityReport";
 
 // 셸 카피만 번역(드롭존·배너·버튼·미리보기 텍스트). STANDARD_FIELDS 필드 라벨(비용·노출수
 // 등, csvConstants.js 210여 개)은 별도 백로그 — 공수가 자릿수 다름(§plan).
@@ -26,6 +24,8 @@ const CSV_COPY = {
     parseError: "CSV 파싱 중 오류 발생: ",
     dropTitle: "CSV 파일 드래그 & 드롭",
     dropSub: "또는 클릭하여 파일 선택",
+    importing: "CSV 구조를 읽는 중…",
+    importSuccess: (name, rows, cols) => `${name} 업로드 완료. ${rows.toLocaleString()}행, ${cols}컬럼을 읽었습니다. 컬럼 매핑을 확인하세요.`,
     demoBannerTitle: "🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다",
     demoBannerDesc: "실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.",
     demoBannerBtn: "📁 내 CSV 업로드하기",
@@ -65,12 +65,18 @@ const CSV_COPY = {
     checkMapping: "⚠ 매핑 확인 필요",
     checkMappingHint: '매핑이 올바른지 확인 후 "분석하기"를 클릭하여 분석을 시작하세요.',
     analyzeBtn: "데이터 분석하기",
+    recognitionSummary: (mapped, total, review, conflicts) => `${total}개 컬럼 중 ${mapped}개 자동 인식${review ? ` · 확인 권장 ${review}개` : ""}${conflicts ? ` · 충돌 ${conflicts}건` : ""}`,
+    recognitionHint: "확실한 항목은 자동 적용했고, 낮은 신뢰도나 충돌 항목만 확인해 주세요.",
+    signatureSummary: (source, grain) => `데이터 형태 추정: ${source} · ${grain}`,
+    wideWarning: "기간이 열로 펼쳐진 형식입니다. 자동 변환 전 날짜·값 컬럼을 확인해 주세요.",
   },
   en: {
     emptyCsv: "This CSV file is empty or invalid.",
     parseError: "Error parsing CSV: ",
     dropTitle: "Drag & drop a CSV file",
     dropSub: "or click to choose a file",
+    importing: "Reading CSV structure…",
+    importSuccess: (name, rows, cols) => `${name} uploaded. Read ${rows.toLocaleString()} rows and ${cols} columns. Review the column mapping next.`,
     demoBannerTitle: "🧪 You're viewing sample data",
     demoBannerDesc: "This isn't your real data and nothing is sent to a server. Upload your own CSV to replace it instantly.",
     demoBannerBtn: "📁 Upload my CSV",
@@ -110,8 +116,17 @@ const CSV_COPY = {
     checkMapping: "⚠ Check mapping",
     checkMappingHint: 'Confirm the mapping is correct, then click "Analyze" to start.',
     analyzeBtn: "Analyze data",
+    recognitionSummary: (mapped, total, review, conflicts) => `${mapped} of ${total} columns recognized${review ? ` · ${review} need review` : ""}${conflicts ? ` · ${conflicts} conflicts` : ""}`,
+    recognitionHint: "High-confidence fields are applied automatically; review only uncertain or conflicting fields.",
+    signatureSummary: (source, grain) => `Detected shape: ${source} · ${grain}`,
+    wideWarning: "This looks like a period-as-columns report. Confirm the date and value columns before transforming it.",
   },
 };
+
+function buildImportInsights(headers, raw, toolId) {
+  const result = scoreMappingCandidates({ headers, rows: raw, allowedKeys: toolFieldKeys(toolId), fields: STANDARD_FIELDS });
+  return { profiles: result.profiles, candidates: result.candidates, conflicts: result.conflicts, selections: result.selections, signature: detectDatasetSignature(headers, raw) };
+}
 
 export default function CsvUploader({ toolId, locale = "ko" }) {
   const T = CSV_COPY[locale] || CSV_COPY.ko;
@@ -133,6 +148,8 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   const isAnalyzed = useAppStore((s) => s.isGroupAnalyzed(toolId));
   const fileInputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importAnnouncement, setImportAnnouncement] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   // Preview table is auto-shown while mapping and collapsed after analysis.
   // User can re-expand it manually anytime (independent of gate state).
@@ -170,31 +187,51 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
 
   const processFile = (file) => {
     setErrorMsg("");
+    setImportAnnouncement("");
+    setIsImporting(true);
+    trackProductEvent("data_import_start", { tool_id: toolId, source: "csv" });
     Papa.parse(file, {
-      header: true,
+      worker: true,
       skipEmptyLines: true,
-      complete: (results) => {
-        if (!results.data || results.data.length === 0) {
-          setErrorMsg(T.emptyCsv);
-          return;
+      complete: async (results) => {
+        try {
+          if (!results.data || results.data.length === 0) {
+            setErrorMsg(T.emptyCsv);
+            return;
+          }
+          const { headers, raw } = tableToRecords(results.data);
+          if (!headers.length || !raw.length) {
+            setErrorMsg(T.emptyCsv);
+            return;
+          }
+          const insights = buildImportInsights(headers, raw, toolId);
+          const recipe = await getTransformRecipe(headers).catch(() => null);
+          const mapping = recipe?.mapping && Object.keys(recipe.mapping).every((header) => headers.includes(header)) ? recipe.mapping : insights.selections;
+          const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
+
+          setCsvData({
+            raw,
+            headers,
+            mapping,
+            fileName: file.name,
+            importInsights: { ...insights, recipeApplied: !!recipe },
+            canonicalData,
+          });
+          setImportAnnouncement(T.importSuccess(file.name, raw.length, headers.length));
+          trackProductEvent("data_import_success", { tool_id: toolId, source: "csv", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
+          trackProductEvent("data_profile_completed", { tool_id: toolId, source: "csv", column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length });
+          // New file → gate auto-resets in the store (sig change); re-open preview
+          // so the user maps with data context.
+          setPreviewOpen(true);
+        } catch (error) {
+          setErrorMsg(`${T.parseError}${error.message}`);
+        } finally {
+          setIsImporting(false);
         }
-
-        const headers = results.meta.fields || [];
-        const raw = results.data;
-        const mapping = autoMapHeaders(headers);
-
-        setCsvData({
-          raw,
-          headers,
-          mapping,
-          fileName: file.name,
-        });
-        // New file → gate auto-resets in the store (sig change); re-open preview
-        // so the user maps with data context.
-        setPreviewOpen(true);
       },
       error: (err) => {
         setErrorMsg(T.parseError + err.message);
+        setIsImporting(false);
       },
     });
   };
@@ -206,8 +243,13 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   // 자연히 undefined) "최신 데이터 불러오기"가 재입력 없이 같은 URL로 재조회 가능해짐.
   const handleSheetLoaded = ({ headers, raw, fileName, sheetUrl }) => {
     setErrorMsg("");
-    const mapping = autoMapHeaders(headers);
-    setCsvData({ raw, headers, mapping, fileName, sheetUrl });
+    const insights = buildImportInsights(headers, raw, toolId);
+    const mapping = insights.selections;
+    const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
+    setCsvData({ raw, headers, mapping, fileName, sheetUrl, importInsights: insights, canonicalData });
+    setImportAnnouncement(T.importSuccess(fileName, raw.length, headers.length));
+    trackProductEvent("data_import_success", { tool_id: toolId, source: "google_sheets", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
+    trackProductEvent("data_profile_completed", { tool_id: toolId, source: "google_sheets", column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length });
     setPreviewOpen(true);
     setSheetChangeOpen(false);
   };
@@ -236,12 +278,11 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   };
 
   const handleMappingChange = (header, value) => {
+    const mapping = { ...csvData.mapping, [header]: value };
     setCsvData({
       ...csvData,
-      mapping: {
-        ...csvData.mapping,
-        [header]: value
-      }
+      mapping,
+      canonicalData: buildCanonicalDataset({ raw: csvData.raw, headers: csvData.headers, mapping }),
     });
     // Mapping edit changes the sig → store gate auto-resets. Re-open preview so
     // the user re-checks the columns before pressing 분석하기 again.
@@ -250,6 +291,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
 
   const handleReset = () => {
     clearCsvGroup();
+    setImportAnnouncement("");
     setPreviewOpen(true);
   };
 
@@ -259,7 +301,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     setErrorMsg("");
     const group = TOOL_GROUP[toolId] || "efficiency";
     const demo = buildDemoCsv(group);
-    setCsvData(demo);
+    setCsvData({ ...demo, canonicalData: buildCanonicalDataset(demo) });
     setGroupAnalyzed(toolId);
     setPreviewOpen(false);
   };
@@ -338,7 +380,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     }
 
     return { missing: missingKeys, reqLabels: labels, fieldGroups: groups, allowKeys: allowed };
-  }, [toolId, csvData.mapping]);
+  }, [toolId, csvData.mapping, T]);
 
   // --- Data preview (#6): first ~8 rows × MAPPED columns so the user maps with
   // context. Ignored columns are dropped; each header shows its standard-field
@@ -361,13 +403,19 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   if (!hasFile) {
     return (
       <div>
+        {/* Keep this as the first child in both render branches so React
+            preserves one live region while upload state changes. */}
+        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
         <CsvGuide toolId={toolId} locale={locale} />
-        <div
+        <button
+          type="button"
           className={`csv-dropzone ${isDragging ? "dragover" : ""}`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
+          disabled={isImporting}
+          aria-busy={isImporting}
         >
           <div className="csv-drop-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -376,19 +424,13 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
           </div>
-          <div className="csv-drop-text">{T.dropTitle}</div>
+          <div className="csv-drop-text">{isImporting ? T.importing : T.dropTitle}</div>
           <div className="csv-drop-sub">{T.dropSub}</div>
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            style={{ display: "none" }}
-            ref={fileInputRef}
-            onChange={handleFileChange}
-          />
-        </div>
+        </button>
+        <input type="file" accept=".csv,text/csv" hidden ref={fileInputRef} onChange={handleFileChange} />
         <GoogleSheetConnect onLoaded={handleSheetLoaded} onError={setErrorMsg} locale={locale} />
         <DemoLoadButton onLoad={handleLoadDemo} locale={locale} className={hasSheetImport ? "demo-load-row--spaced" : ""} />
-        {errorMsg && <div style={{ color: "var(--danger)", marginTop: "10px", fontSize: "12px" }}>{errorMsg}</div>}
+        {errorMsg && <div role="alert" style={{ color: "var(--danger)", marginTop: "10px", fontSize: "12px" }}>{errorMsg}</div>}
       </div>
     );
   }
@@ -397,9 +439,27 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     (o) => csvData.mapping && csvData.mapping !== "__ignore__" && Object.values(csvData.mapping).includes(o.key)
   ).length;
   const totalOptCount = (TOOL_OPTIONAL_FIELDS[toolId] || []).length;
+  const importInsights = csvData.importInsights;
+  const datasetSignature = importInsights?.signature;
+  const candidateByHeader = importInsights?.candidates || {};
+  const mappingConflicts = findMappingConflicts(csvData.mapping);
+  const mappedCount = Object.values(csvData.mapping || {}).filter((value) => value && value !== "__ignore__").length;
+  const needsReview = csvData.headers.filter((header) => {
+    const top = candidateByHeader[header]?.[0];
+    return top && top.confidence >= 0.6 && top.confidence < 0.9;
+  }).length;
+  const confirmAnalysis = () => {
+    const confidenceBucket = needsReview || mappingConflicts.length ? "review" : "high";
+    const event = { tool_id: toolId, source: isSheetSourced ? "google_sheets" : "csv", mapped_count: mappedCount, confidence_bucket: confidenceBucket, conflict_count: mappingConflicts.length, missing_required_count: missing.length };
+    trackProductEvent("mapping_confirmed", event);
+    trackProductEvent("analysis_started", event);
+    saveTransformRecipe({ headers: csvData.headers, mapping: csvData.mapping, source: isSheetSourced ? "google_sheets" : "csv" }).catch(() => {});
+    requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); });
+  };
 
   return (
     <div>
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
       {isDemo && (
         <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <div>
@@ -470,7 +530,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           )}
         </div>
       )}
-      {errorMsg && <div style={{ color: "var(--danger)", marginBottom: "10px", fontSize: "12px" }}>{errorMsg}</div>}
+      {errorMsg && <div role="alert" style={{ color: "var(--danger)", marginBottom: "10px", fontSize: "12px" }}>{errorMsg}</div>}
 
       {missing.length > 0 ? (
         <div className="required-banner">
@@ -488,6 +548,8 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         </div>
       )}
 
+      {csvData.canonicalData && <DataQualityReport canonicalData={csvData.canonicalData} locale={locale} />}
+
       <div className="csv-mapping-block">
         <div className="csv-mapping-header">
           <div>
@@ -498,6 +560,13 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           </div>
           <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.mappingHint}</span>
         </div>
+        {importInsights && (
+          <div style={{ margin: "0 0 10px", fontSize: "12px", color: mappingConflicts.length ? "var(--danger)" : "var(--text-secondary)" }}>
+            <strong>{T.recognitionSummary(mappedCount, csvData.headers.length, needsReview, mappingConflicts.length)}</strong>
+            <span style={{ color: "var(--text-muted)", marginLeft: "6px" }}>{T.recognitionHint}</span>
+            {datasetSignature && <div style={{ color: "var(--text-muted)", marginTop: "4px" }}>{T.signatureSummary(datasetSignature.source, datasetSignature.grain)}{datasetSignature.needsWideToLong ? ` · ⚠ ${T.wideWarning}` : ""}</div>}
+          </div>
+        )}
         <div className="mapping-grid">
           <div className="mapping-header">{T.colHeaderCsv}</div>
           <div></div>
@@ -571,10 +640,10 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
                       const stdLabel = sel && sel !== "__ignore__" ? STANDARD_FIELDS[sel]?.label : null;
                       return (
                         <th key={h} title={stdLabel ? `${h} → ${stdLabel}` : h} style={{ whiteSpace: "nowrap" }}>
-                          {escapeHtml(h)}
+                          {h}
                           {stdLabel && (
                             <span style={{ display: "block", fontSize: "10px", fontWeight: 400, color: "var(--primary, #adc6ff)" }}>
-                              → {escapeHtml(stdLabel)}
+                              → {stdLabel}
                             </span>
                           )}
                         </th>
@@ -587,7 +656,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
                     <tr key={ri}>
                       {preview.cols.map((h) => (
                         <td key={h} style={{ whiteSpace: "nowrap", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {escapeHtml(row[h] != null ? String(row[h]) : "")}
+                          {row[h] != null ? String(row[h]) : ""}
                         </td>
                       ))}
                     </tr>
@@ -604,13 +673,13 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: 600 }}>{T.analyzedBadge}</span>
             <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{T.analyzedHint}</span>
-            <button className="ab-pill" onClick={() => requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); })} style={{ marginLeft: "auto" }}>{T.reanalyzeBtn}</button>
+            <button className="ab-pill" onClick={confirmAnalysis} style={{ marginLeft: "auto" }}>{T.reanalyzeBtn}</button>
           </div>
         ) : (
           <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ color: "var(--danger)", fontSize: "12px", fontWeight: 600 }}>{T.checkMapping}</span>
             <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{T.checkMappingHint}</span>
-            <button className="ab-button" onClick={() => requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); })} style={{ marginLeft: "auto" }}>{T.analyzeBtn}</button>
+            <button className="ab-button" onClick={confirmAnalysis} style={{ marginLeft: "auto" }}>{T.analyzeBtn}</button>
           </div>
         )
       )}

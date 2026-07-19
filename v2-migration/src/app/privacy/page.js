@@ -5,13 +5,14 @@ export const metadata = {
   // absolute: title이 이미 브랜드 접미사 포함 — layout.js title.template("%s | Growth
   // Opt Playbook") 중복 적용 방지.
   title: { absolute: "개인정보처리방침 | Growth Opt Playbook" },
+  description: "Growth Opt Playbook의 브라우저 내 CSV 처리, 분석 도구 이용 통계와 광고 관련 개인정보 처리 기준입니다.",
   alternates: { canonical: `${SITE_URL}/privacy` },
   openGraph: { url: `${SITE_URL}/privacy` },
 };
 
 export default function PrivacyPage() {
   return (
-    <main style={{ maxWidth: "720px", margin: "0 auto", padding: "48px 20px", lineHeight: 1.7 }}>
+    <main id="main-content" style={{ maxWidth: "720px", margin: "0 auto", padding: "48px 20px", lineHeight: 1.7 }}>
       <h1 style={{ fontSize: "24px", marginBottom: "24px" }}>개인정보처리방침</h1>
       <p>
         본 서비스(Growth Opt Playbook)는 사용자가 업로드하는 CSV 등 운영 데이터를
