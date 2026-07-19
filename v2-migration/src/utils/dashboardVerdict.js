@@ -77,6 +77,28 @@ export function buildDashboardVerdict({
   const dCost = pct(R.cost, P.cost);
   const dRoas = mapped.has("revenue_d7") ? pct(R.roas, P.roas) : null;
 
+  // "원인"을 인과처럼 단정하지 않고, 관측상 가장 크게 움직인 채널·신규 소재를
+  // 바로 제시한다. 정확한 비용효율 귀속은 PVM 도구의 무잔차 분해로 이어진다.
+  const byChannel = new Map();
+  for (const [period, periodRows] of [["prev", prevRaw], ["recent", recentRaw]]) {
+    periodRows.forEach((row) => {
+      const key = row.channel || tr("미지정 채널", "Unspecified channel");
+      const item = byChannel.get(key) || { key, prev: { cost: 0, result: 0 }, recent: { cost: 0, result: 0 } };
+      item[period].cost += Number(row.cost) || 0;
+      item[period].result += Number(row[convKey]) || 0;
+      byChannel.set(key, item);
+    });
+  }
+  const primaryDriver = [...byChannel.values()]
+    .map((item) => ({ ...item, costDelta: item.recent.cost - item.prev.cost, resultDelta: item.recent.result - item.prev.result }))
+    .sort((a, b) => Math.abs(b.costDelta) - Math.abs(a.costDelta))[0] || null;
+  let newCreativeSignal = null;
+  if (mapped.has("creative_id")) {
+    const previous = new Set(prevRaw.map((row) => row.creative_id).filter(Boolean));
+    const newRows = recentRaw.filter((row) => row.creative_id && !previous.has(row.creative_id));
+    if (newRows.length) newCreativeSignal = { count: new Set(newRows.map((row) => row.creative_id)).size, cost: sum(newRows, "cost"), result: sum(newRows, convKey) };
+  }
+
   let tone = "neutral";
   const effImproved = dEff != null && dEff <= -SIG;
   const effWorsened = dEff != null && dEff >= SIG;
@@ -112,6 +134,18 @@ export function buildDashboardVerdict({
         `Spend ${dCost > 0 ? "rose" : "fell"} ${fmtPctDelta(dCost)} (${fc(P.cost)} → ${fc(R.cost)}).`
       ),
     });
+  }
+  if (primaryDriver && Math.abs(primaryDriver.costDelta) > 0) {
+    points.push({
+      cls: primaryDriver.costDelta > 0 && tone === "bad" ? "bad" : "muted",
+      text: tr(
+        `관측상 가장 크게 움직인 곳은 ${primaryDriver.key}: 지출 ${fc(primaryDriver.prev.cost)} → ${fc(primaryDriver.recent.cost)} (${primaryDriver.costDelta >= 0 ? "+" : "−"}${fc(Math.abs(primaryDriver.costDelta))}), ${convLabel} ${primaryDriver.resultDelta >= 0 ? "+" : "−"}${Math.abs(primaryDriver.resultDelta).toLocaleString()}건입니다. 원인 확정은 성과 변동 분석에서 확인하세요.`,
+        `The largest observed mover is ${primaryDriver.key}: spend ${fc(primaryDriver.prev.cost)} → ${fc(primaryDriver.recent.cost)} (${primaryDriver.costDelta >= 0 ? "+" : "−"}${fc(Math.abs(primaryDriver.costDelta))}), with ${convLabel} ${primaryDriver.resultDelta >= 0 ? "+" : "−"}${Math.abs(primaryDriver.resultDelta).toLocaleString()}. Confirm attribution in Campaign Variance.`
+      ),
+    });
+  }
+  if (newCreativeSignal) {
+    points.push({ text: tr(`신규 소재 ${newCreativeSignal.count}개가 최근 기간에 추가되어 ${convLabel} ${newCreativeSignal.result.toLocaleString()}건을 만들었습니다. 소재 분석에서 피로도·교체 우선순위를 확인하세요.`, `${newCreativeSignal.count} new creatives appeared in the recent period and produced ${newCreativeSignal.result.toLocaleString()} ${convLabel}. Check Creative Analysis for fatigue and replacement priority.`) });
   }
   if (tone === "good") points.push({ cls: "good", text: tr("증액 여력 점검: 예산 배분(5-3)에서 한계효율이 살아있는 채널을 확인하세요.", "Room to scale: check Budget Allocation (5-3) for channels with headroom.") });
   else if (tone === "bad") points.push({ cls: "bad", text: tr("이상 감지 탭에서 급변한 날·채널을 먼저 확인하세요.", "Start with the Anomaly tab to find the day/channel that spiked.") });
@@ -167,5 +201,5 @@ export function buildDashboardVerdict({
     points.map((p) => `- ${p.text}`).join("\n") +
     "\n";
 
-  return { insufficient: false, tone, headline, points, stats, metricRows, export: { csv, text }, windowDays: w };
+  return { insufficient: false, tone, headline, points, stats, metricRows, primaryDriver, newCreativeSignal, export: { csv, text }, windowDays: w };
 }

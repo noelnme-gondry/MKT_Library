@@ -9,6 +9,9 @@ import CsvGuide from "@/components/ds/CsvGuide";
 import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "@/components/GoogleSheetConnect";
 import { findMappingConflicts, scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
+import { tableToRecords } from "@/lib/data-import/detectHeaderRow";
+import { detectDatasetSignature } from "@/lib/data-import/detectDatasetSignature";
+import { getTransformRecipe, saveTransformRecipe } from "@/lib/data-import/localHistory";
 import { trackProductEvent } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
 
@@ -71,6 +74,8 @@ const CSV_COPY = {
     analyzeBtn: "데이터 분석하기",
     recognitionSummary: (mapped, total, review, conflicts) => `${total}개 컬럼 중 ${mapped}개 자동 인식${review ? ` · 확인 권장 ${review}개` : ""}${conflicts ? ` · 충돌 ${conflicts}건` : ""}`,
     recognitionHint: "확실한 항목은 자동 적용했고, 낮은 신뢰도나 충돌 항목만 확인해 주세요.",
+    signatureSummary: (source, grain) => `데이터 형태 추정: ${source} · ${grain}`,
+    wideWarning: "기간이 열로 펼쳐진 형식입니다. 자동 변환 전 날짜·값 컬럼을 확인해 주세요.",
   },
   en: {
     emptyCsv: "This CSV file is empty or invalid.",
@@ -118,6 +123,8 @@ const CSV_COPY = {
     analyzeBtn: "Analyze data",
     recognitionSummary: (mapped, total, review, conflicts) => `${mapped} of ${total} columns recognized${review ? ` · ${review} need review` : ""}${conflicts ? ` · ${conflicts} conflicts` : ""}`,
     recognitionHint: "High-confidence fields are applied automatically; review only uncertain or conflicting fields.",
+    signatureSummary: (source, grain) => `Detected shape: ${source} · ${grain}`,
+    wideWarning: "This looks like a period-as-columns report. Confirm the date and value columns before transforming it.",
   },
 };
 
@@ -133,7 +140,7 @@ function toolFieldKeys(toolId) {
 
 function buildImportInsights(headers, raw, toolId) {
   const result = scoreMappingCandidates({ headers, rows: raw, allowedKeys: toolFieldKeys(toolId), fields: STANDARD_FIELDS });
-  return { profiles: result.profiles, candidates: result.candidates, conflicts: result.conflicts, selections: result.selections };
+  return { profiles: result.profiles, candidates: result.candidates, conflicts: result.conflicts, selections: result.selections, signature: detectDatasetSignature(headers, raw) };
 }
 
 export default function CsvUploader({ toolId, locale = "ko" }) {
@@ -195,18 +202,20 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     setErrorMsg("");
     trackProductEvent("data_import_start", { tool_id: toolId, source: "csv" });
     Papa.parse(file, {
-      header: true,
       skipEmptyLines: true,
-      complete: (results) => {
+      complete: async (results) => {
         if (!results.data || results.data.length === 0) {
           setErrorMsg(T.emptyCsv);
           return;
         }
-
-        const headers = results.meta.fields || [];
-        const raw = results.data;
+        const { headers, raw } = tableToRecords(results.data);
+        if (!headers.length || !raw.length) {
+          setErrorMsg(T.emptyCsv);
+          return;
+        }
         const insights = buildImportInsights(headers, raw, toolId);
-        const mapping = insights.selections;
+        const recipe = await getTransformRecipe(headers).catch(() => null);
+        const mapping = recipe?.mapping && Object.keys(recipe.mapping).every((header) => headers.includes(header)) ? recipe.mapping : insights.selections;
         const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
 
         setCsvData({
@@ -214,7 +223,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           headers,
           mapping,
           fileName: file.name,
-          importInsights: insights,
+          importInsights: { ...insights, recipeApplied: !!recipe },
           canonicalData,
         });
         trackProductEvent("data_import_success", { tool_id: toolId, source: "csv", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
@@ -431,6 +440,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   ).length;
   const totalOptCount = (TOOL_OPTIONAL_FIELDS[toolId] || []).length;
   const importInsights = csvData.importInsights;
+  const datasetSignature = importInsights?.signature;
   const candidateByHeader = importInsights?.candidates || {};
   const mappingConflicts = findMappingConflicts(csvData.mapping);
   const mappedCount = Object.values(csvData.mapping || {}).filter((value) => value && value !== "__ignore__").length;
@@ -443,6 +453,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     const event = { tool_id: toolId, source: isSheetSourced ? "google_sheets" : "csv", mapped_count: mappedCount, confidence_bucket: confidenceBucket, conflict_count: mappingConflicts.length, missing_required_count: missing.length };
     trackProductEvent("mapping_confirmed", event);
     trackProductEvent("analysis_started", event);
+    saveTransformRecipe({ headers: csvData.headers, mapping: csvData.mapping, source: isSheetSourced ? "google_sheets" : "csv" }).catch(() => {});
     requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); });
   };
 
@@ -552,6 +563,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           <div style={{ margin: "0 0 10px", fontSize: "12px", color: mappingConflicts.length ? "var(--danger)" : "var(--text-secondary)" }}>
             <strong>{T.recognitionSummary(mappedCount, csvData.headers.length, needsReview, mappingConflicts.length)}</strong>
             <span style={{ color: "var(--text-muted)", marginLeft: "6px" }}>{T.recognitionHint}</span>
+            {datasetSignature && <div style={{ color: "var(--text-muted)", marginTop: "4px" }}>{T.signatureSummary(datasetSignature.source, datasetSignature.grain)}{datasetSignature.needsWideToLong ? ` · ⚠ ${T.wideWarning}` : ""}</div>}
           </div>
         )}
         <div className="mapping-grid">

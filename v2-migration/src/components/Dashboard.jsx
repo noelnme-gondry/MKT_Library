@@ -19,6 +19,7 @@ import DownloadHub from "@/components/ds/DownloadHub";
 import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
 import { downloadCsv, downloadText } from "@/utils/download";
 import { FileText, ChevronRight } from "lucide-react";
+import AnalysisHistory from "@/components/data-import/AnalysisHistory";
 
 const TOC_MAP = {
   viz: [
@@ -256,6 +257,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             {/* 결론 카드 — "결론 먼저"(claude-ux §0). 탭 위에 항상 노출, 어느 탭을
                 보든 최근 성과 요약·다음 액션·결과 받기를 한 곳에서. */}
             {verdict && !verdict.insufficient && (
+              <>
               <ResultActionCard
                 tone={verdict.tone}
                 title={tr("결론 — 최근 성과 요약", "Conclusion — recent performance")}
@@ -287,6 +289,8 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                   />
                 }
               />
+              <AnalysisHistory toolId={toolId} summary={{ headline: verdict.headline, tone: verdict.tone, stats: verdict.stats }} locale={locale} />
+              </>
             )}
             <MonEventMarkerUI locale={locale} />
             <DashboardTabs domain={domain} locale={locale} />

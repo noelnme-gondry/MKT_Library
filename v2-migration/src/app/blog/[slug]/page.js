@@ -1,7 +1,8 @@
+import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug, tagSlug } from "@/lib/blog";
-import { SITE_URL } from "@/lib/routeMap";
+import { SITE_URL, idToSlug } from "@/lib/routeMap";
 
 // 발행 글만 정적 생성. 0편이면 빈 배열(라우트 미생성) — 빌드 정상 통과.
 export function generateStaticParams() {
@@ -148,6 +149,20 @@ export default async function BlogPostPage({ params }) {
       </header>
 
       <article className="blog-prose" dangerouslySetInnerHTML={{ __html: post.html }} />
+
+      {post.primaryTool && idToSlug[post.primaryTool] && (
+        <aside className="callout" style={{ marginTop: "2rem" }}>
+          <div className="ico">→</div><div className="body"><strong>이 글의 내용을 내 데이터로 확인해보세요.</strong><br />
+          <Link href={idToSlug[post.primaryTool]} style={{ color: "var(--primary)", fontWeight: 700 }}>관련 분석 도구 열기</Link>
+          {post.template && <span style={{ color: "var(--text-muted)", marginLeft: 8 }}>· 권장 템플릿: {post.template}</span>}</div>
+        </aside>
+      )}
+
+      {post.relatedGlossary.length > 0 && (
+        <p style={{ marginTop: "1rem", fontSize: 13, color: "var(--text-muted)" }}>
+          관련 용어: {post.relatedGlossary.map((slug, index) => <React.Fragment key={slug}>{index > 0 && " · "}<Link href={`/glossary/${slug}`}>{slug}</Link></React.Fragment>)}
+        </p>
+      )}
 
       {post.faq.length > 0 && (
         <section className="blog-faq" aria-label="자주 묻는 질문">

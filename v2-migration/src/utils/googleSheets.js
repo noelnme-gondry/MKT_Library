@@ -18,23 +18,13 @@ export function parseGoogleSheetUrl(url) {
 // Sheets API values.get 응답(2차원 배열, 첫 행=헤더)을 PapaParse({header:true}) 출력과
 // 동일한 모양으로 변환. 빈 셀(짧은 행)은 빈 문자열로 채워 컬럼 수를 행마다 맞춘다.
 // 완전 빈 행(모든 셀 공백)은 건너뛴다(§7 CSV skipEmptyLines와 동일 동작).
+import { tableToRecords } from "@/lib/data-import/detectHeaderRow";
+
 export function sheetValuesToTable(values) {
   if (!Array.isArray(values) || values.length === 0) {
     return { headers: [], raw: [] };
   }
-  const headers = (values[0] || []).map((h) => String(h ?? "").trim());
-  const raw = [];
-  for (let i = 1; i < values.length; i++) {
-    const row = values[i] || [];
-    const isBlank = row.every((cell) => String(cell ?? "").trim() === "");
-    if (isBlank) continue;
-    const obj = {};
-    headers.forEach((h, ci) => {
-      obj[h] = row[ci] != null ? String(row[ci]) : "";
-    });
-    raw.push(obj);
-  }
-  return { headers, raw };
+  return tableToRecords(values);
 }
 
 // 시트 탭이 여러 개일 때 gid로 실제 시트 이름을 찾아 A1 range 문자열을 만든다.

@@ -15,6 +15,9 @@ keywords: "퍼포먼스 마케팅, ROAS, 예산 배분"  # (필수) SEO 키워�
 tags: ["마케팅", "분석"]              # (선택) 태그 배열. 목록 카드에 배지로 표시
 draft: true                           # (선택) true면 미발행(빌드/목록/사이트맵 제외). 발행하려면 false 또는 삭제
 ogImage: "/blog-assets/example-post/og.png"  # (선택) SNS 공유 카드 이미지. public 기준 절대경로(권장 1200x630). 없으면 "" 또는 삭제
+primaryTool: "5-22"                 # (선택) 글 하단에 연결할 분석 도구 내부 id
+template: "efficiency"              # (선택) 권장 데이터 템플릿 이름
+relatedGlossary: ["roas"]           # (선택) 함께 볼 용어 slug
 # faq: (선택) 자주 묻는 질문 목록 — 있으면 본문 하단에 아코디언으로 표시 + 구글 FAQPage
 #   구조화 데이터로 자동 삽입(리치 스니펫 노출 후보). 정의/가이드성 글에 우선 적용 권장.
 #   q/a 둘 다 없는 항목은 자동 무시됨.
