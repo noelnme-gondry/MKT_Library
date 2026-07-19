@@ -181,7 +181,7 @@ export default function Sidebar({ locale = "ko" }) {
           style={{
             textDecoration: "none",
             color: "inherit",
-            background: (pathname || "").includes("/blog") ? "var(--bg-2)" : undefined,
+            background: (pathname || "").includes("/blog") ? "rgba(255,255,255,.08)" : undefined,
           }}
         >
           <span className="phase-header-left">
@@ -196,7 +196,7 @@ export default function Sidebar({ locale = "ko" }) {
           style={{
             textDecoration: "none",
             color: "inherit",
-            background: (pathname || "").includes("/templates") ? "var(--bg-2)" : undefined,
+            background: (pathname || "").includes("/templates") ? "rgba(255,255,255,.08)" : undefined,
           }}
         >
           <span className="phase-header-left">
@@ -211,7 +211,7 @@ export default function Sidebar({ locale = "ko" }) {
           style={{
             textDecoration: "none",
             color: "inherit",
-            background: (pathname || "").includes("/glossary") ? "var(--bg-2)" : undefined,
+            background: (pathname || "").includes("/glossary") ? "rgba(255,255,255,.08)" : undefined,
           }}
         >
           <span className="phase-header-left">

@@ -4941,7 +4941,9 @@ body.light-mode .content-card__featured { color: #fff; }
 .glossary-card .card-desc { margin-top: 8px; font-size: 12px; line-height: 1.55; }
 .glossary-browser__empty { grid-column: 1 / -1; padding: 38px; border: 1px dashed var(--border); border-radius: 9px; color: var(--text-muted); text-align: center; }
 .site-footer { background: #10131a; border-top-color: rgba(255,255,255,.09); }
-.site-footer--app { padding-left: var(--sidebar-width); }
+/* 앱 셸에선 footer를 .app과 flush로 — 기본 margin-top:4rem가 라이트 모드에서
+   .app(사이드바 밴드)↔footer 사이에 밝은 여백을 만들어 하단이 "끊겨" 보였음. */
+.site-footer--app { padding-left: var(--sidebar-width); margin-top: 0; }
 .site-footer__inner { max-width: 1240px; padding-top: 48px; padding-bottom: 48px; }
 .site-footer__brand > a, .site-footer__column strong { color: #f5f6f0; }
 .site-footer__brand p, .site-footer__column a { color: #7f8898; }
