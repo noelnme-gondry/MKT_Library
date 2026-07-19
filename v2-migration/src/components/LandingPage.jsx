@@ -18,11 +18,12 @@ const LANDING_COPY = {
     hero: {
       title: "성과가 움직인 이유를",
       titleTools: "이번 주 데이터로 확인하고",
-      titleAccent: "다음 한 가지를 정합니다.",
+      titleAccent: "다음 한 가지를 정합니다",
       sub: "캠페인 CSV를 올리면 변동 원인·예산 여력·소재 신호를 한 번에 정리합니다. MMM과 실험 분석은 필요한 데이터부터 안내합니다.",
-      ctaPrimary: "내 데이터로 분석 시작",
-      ctaDemo: "데모 먼저 보기",
-      privacy: "🔒 서버 전송 0 · 브라우저 메모리에서만 처리",
+      ctaPrimary: "내 자료 올리고 무료 분석 시작",
+      ctaDemo: "샘플로 먼저 보기",
+      freeNote: "무료로 바로 시작 · 가입 없음 · 데이터는 브라우저에서만 처리",
+      privacy: "🔒 서버 전송 0",
       previewCaption: "실제 화면 예시 · 주간 결론과 다음 조치",
       carouselTitle: "다음 질문도 같은 데이터에서 이어서 확인하세요",
       lab: { eyebrow: "ADVANCED ANALYSIS LAB", title: "MMM·회귀·미래 예측도 같은 도구 안에서", desc: "주간 운영을 넘어 채널별 기여도, 광고비 반응곡선, 예산 시나리오별 미래 성과를 분석합니다. 관측 데이터의 한계와 외삽 위험도 결과와 함께 설명합니다.", cta: "마케팅 반응 분석 열기", items: ["채널별 기여 분해", "다변량 회귀", "4주 미래 예측"] },
@@ -67,11 +68,12 @@ const LANDING_COPY = {
     hero: {
       title: "Know why performance moved,",
       titleTools: "read this week’s data, then",
-      titleAccent: "choose the next move.",
+      titleAccent: "choose the next move",
       sub: "Upload a campaign CSV to see performance drivers, budget headroom, and creative signals in one pass. MMM and experiments show the exact data they need.",
-      ctaPrimary: "Analyze my data",
-      ctaDemo: "See a live demo",
-      privacy: "🔒 Nothing sent to any server · processed in browser memory only",
+      ctaPrimary: "Upload data · analyze free",
+      ctaDemo: "Try a sample first",
+      freeNote: "Free to start · no signup · your data stays in browser memory",
+      privacy: "🔒 Nothing sent to any server",
       previewCaption: "Live product view · weekly decisions and next actions",
       carouselTitle: "Continue with the next question from the same data",
       lab: { eyebrow: "ADVANCED ANALYSIS LAB", title: "MMM, regression, and forecasting — in the same workflow", desc: "Go beyond weekly operations to estimate channel contribution, spend-response curves, and future performance by budget scenario, with observational limits and extrapolation risk shown beside the result.", cta: "Open marketing response analysis", items: ["Channel contribution", "Multivariate regression", "4-week forecast"] },
@@ -225,7 +227,7 @@ function LandingHome({ locale }) {
           )}
           {/* "전부 무료."는 한 덩어리 — 줄 중간에서 끊기지 않게 자체 줄 + nowrap */}
           {hero.titleAccent && (
-            <span className="landing-hero__accent">{hero.titleAccent}</span>
+            <span className="landing-hero__accent">{hero.titleAccent}<i className="landing-hero__punctuation">.</i></span>
           )}
         </h1>
         <p className="landing-hero__deck">
@@ -240,6 +242,7 @@ function LandingHome({ locale }) {
           </button>
         </div>
         <div className="landing-hero__privacy">{hero.privacy}</div>
+        <div className="landing-hero__free">{hero.freeNote}</div>
       </section>
 
       {/* ── 라이브 제품 미리보기(시연 슬롯 — 여러 도구 로테이션, 나중 mp4 교체 가능) ── */}
