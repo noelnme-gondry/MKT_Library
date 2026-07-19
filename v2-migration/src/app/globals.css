@@ -4456,6 +4456,21 @@ h1, h2, h3, .page-title, .page-sticky-title, .section-title, .brand-name { font-
 
 /* App shell */
 .app { grid-template-columns: var(--sidebar-width) minmax(0,1fr); }
+/* sticky 100vh 사이드바 아래로 .app 배경이 드러나며 좌하단이 "끊겨" 보이던 문제 제거 —
+   사이드바 컬럼(좌측 --sidebar-width)을 사이드바 실색(#10131a)+경계선으로 .app 전체
+   높이만큼 항상 채운다. 사이드바가 보이는 데스크톱(≥761px)·비홈에서만 적용. */
+@media (min-width: 761px) {
+  .app:not(.is-home) {
+    background: linear-gradient(
+      to right,
+      #10131a 0,
+      #10131a calc(var(--sidebar-width) - 1px),
+      rgba(255,255,255,.09) calc(var(--sidebar-width) - 1px),
+      rgba(255,255,255,.09) var(--sidebar-width),
+      transparent var(--sidebar-width)
+    );
+  }
+}
 .sidebar {
   padding: 22px 14px 16px;
   background: #10131a;
