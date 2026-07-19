@@ -255,10 +255,30 @@ function LandingHome({ locale }) {
           <p>{hero.lab.desc}</p>
           <Link href={locale === "en" ? "/en/tools/marketing-response" : "/tools/marketing-response"} className="btn primary" onClick={() => fireGa("landing_tool_pick", { tool: "5-18" })}>{hero.lab.cta} →</Link>
         </div>
-        <div className="landing-advanced-lab__model" aria-hidden="true">
-          <span>MODEL / 5-18</span>
-          {hero.lab.items.map((item, index) => <div key={item}><i>0{index + 1}</i><b>{item}</b><em>{index === 0 ? "42.8%" : index === 1 ? "R² .81" : "+9.8%"}</em></div>)}
-          <small>{locale === "en" ? "association ≠ causation · validate with holdout" : "연관 ≠ 인과 · 홀드아웃으로 최종 확인"}</small>
+        <div className="landing-advanced-lab__model" aria-label={locale === "en" ? "Marketing response model preview" : "마케팅 반응 모델 미리보기"}>
+          <div className="mmm-preview__topline">
+            <div><span>MARKETING RESPONSE / 5-18</span><b>{locale === "en" ? "Weekly model" : "주간 모델"}</b></div>
+            <em className="mmm-preview__fit">R² 0.81 <i>GOOD FIT</i></em>
+          </div>
+          <div className="mmm-preview__toolbar">
+            <span>{locale === "en" ? "12 weeks · spend → outcome" : "최근 12주 · 비용 → 결과"}</span>
+            <span className="mmm-preview__legend"><i></i>{locale === "en" ? "Observed" : "실측"}<i></i>{locale === "en" ? "Model" : "모형"}</span>
+          </div>
+          <div className="mmm-preview__chart" aria-hidden="true">
+            <svg viewBox="0 0 520 132" preserveAspectRatio="none" focusable="false">
+              <path className="mmm-grid" d="M0 22H520M0 55H520M0 88H520M0 121H520" />
+              <path className="mmm-bars" d="M18 121V86h21v35zm39 0V70h21v51zm39 0V97h21v24zm39 0V57h21v64zm39 0V75h21v46zm39 0V42h21v79zm39 0V83h21v38zm39 0V64h21v57zm39 0V91h21v30zm39 0V51h21v70zm39 0V73h21v48zm39 0V34h21v87z" />
+              <path className="mmm-observed" d="M18 83C42 79 50 66 78 71S105 96 135 56s44 18 62 11 35-31 55-18 31 37 52 16 39 1 55-9 41 12 59-2 29-21 45-20 29 5 42 1" />
+              <path className="mmm-model" d="M18 80C42 77 57 72 78 70s38 4 57-2 40-2 62-5 35-5 55-3 37-2 52-4 37 0 55-1 42-3 59-5 38 1 60-2 38-4 59-4" />
+            </svg>
+          </div>
+          <div className="mmm-preview__table">
+            <div><span>{locale === "en" ? "Channel contribution" : "채널 기여도"}</span><b>{locale === "en" ? "Share" : "기여 비중"}</b></div>
+            <div><i className="mmm-dot mmm-dot--blue"></i><span>Paid social</span><strong>42.8%</strong></div>
+            <div><i className="mmm-dot mmm-dot--green"></i><span>Search</span><strong>31.4%</strong></div>
+            <div><i className="mmm-dot mmm-dot--amber"></i><span>{locale === "en" ? "Organic / baseline" : "오가닉·기준선"}</span><strong>25.8%</strong></div>
+          </div>
+          <div className="mmm-preview__footer"><span>{locale === "en" ? "Next 4 weeks forecast" : "다음 4주 예측"}</span><b>+9.8%</b><small>{locale === "en" ? "association ≠ causation · holdout recommended" : "연관 ≠ 인과 · 홀드아웃 검증 권장"}</small></div>
         </div>
       </section>
 
