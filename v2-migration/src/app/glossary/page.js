@@ -1,6 +1,7 @@
 import { getAllTerms, getAllCategories } from "@/lib/glossary";
 import { SITE_URL } from "@/lib/routeMap";
 import GlossaryFilterList from "@/components/GlossaryFilterList";
+import SearchTopicHub from "@/components/seo/SearchTopicHub";
 
 // 용어사전 목록 — 블로그·템플릿과 동일하게 routeMap 밖 독립 페이지(§12.24 패턴).
 export async function generateMetadata() {
@@ -63,6 +64,7 @@ export default function GlossaryIndexPage() {
           퍼포먼스 마케팅·앱 분석에서 자주 나오지만 정작 어디서도 짧게 정의해주지 않는 용어들을 모았습니다.
         </p>
       </header>
+      <SearchTopicHub />
 
       {terms.length === 0 ? (
         <div

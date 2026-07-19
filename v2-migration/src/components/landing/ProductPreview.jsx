@@ -1,95 +1,30 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { MOCKS } from "./ToolCardMock";
 
-// 라이브 제품 미리보기(랜딩 히어로 시연 슬롯). 여러 도구의 "미니 앱 화면"을 2.8초마다
-// 순서대로 전환 — 그래픽 하나만 딸랑이 아니라 KPI 스트립 + 차트 + 사이드 요약까지
-// 실제 도구 화면처럼 구성. SVG 목업(결정론 §3)·전역 store 비침습. 나중에 실제 mp4가
-// 생기면 videoSrc prop으로 즉시 교체(같은 프레임).
+// 홈의 샘플은 전시용 UI가 아니라 실제 주간 운영 리포트처럼 읽혀야 한다.
+// 한 장의 고정된 시나리오로 "무슨 일이 있었고, 오늘 뭘 할지"를 보여 준다.
 const SCENES = [
   {
-    title: { ko: "운영 대시보드", en: "Operations dashboard" },
+    title: { ko: "W29 운영 리포트", en: "W29 operating review" },
     type: "kpiLine",
     kpis: [
       { l: { ko: "전환", en: "Conv." }, v: "3,412", d: "+12.4%", up: true },
       { l: { ko: "CPA", en: "CPA" }, v: "₩8,240", d: "−6.1%", up: true },
       { l: { ko: "ROAS", en: "ROAS" }, v: "214%", d: "+8.0%", up: true },
     ],
-    chartLabel: { ko: "전환 추이 (최근 7일)", en: "Conversion trend (7d)" },
-  },
-  {
-    title: { ko: "MMM 기여 분석", en: "MMM contribution" },
-    type: "stacked",
-    chartLabel: { ko: "주차별 채널 기여", en: "Weekly channel contribution" },
+    chartLabel: { ko: "최근 7일 전환 추이", en: "Conversion trend · last 7 days" },
     side: [
-      { l: "Google UAC", v: "42%", c: "#adc6ff" },
-      { l: "Meta", v: "31%", c: "#a78bfa" },
-      { l: "TikTok", v: "18%", c: "#4cd7f6" },
-      { l: { ko: "기타", en: "Others" }, v: "9%", c: "#94a3b8" },
-    ],
-  },
-  {
-    title: { ko: "캠페인 포화도", en: "Campaign saturation" },
-    type: "curve",
-    chartLabel: { ko: "지출 대비 반응 곡선", en: "Spend-response curve" },
-    chip: { t: { ko: "여유 있음 · 증액 가능", en: "Headroom · can scale" }, tone: "good" },
-    side: [
-      { l: { ko: "현재 일예산", en: "Daily budget" }, v: "₩1.2M" },
-      { l: { ko: "한계 CPA", en: "Marginal CPA" }, v: "₩9,100" },
-      { l: { ko: "포화 지수", en: "Sat. index" }, v: "0.71" },
-    ],
-  },
-  {
-    title: { ko: "증분 분석", en: "Incrementality" },
-    type: "diverge",
-    chartLabel: { ko: "노출 vs 홀드아웃", en: "Exposed vs holdout" },
-    kpis: [
-      { l: { ko: "증분 전환", en: "Incremental" }, v: "+486", d: { ko: "순증", en: "net" }, up: true },
-      { l: "iROAS", v: "1.8×", d: { ko: "이득", en: "profit" }, up: true },
-    ],
-  },
-  {
-    title: { ko: "예산 배분", en: "Budget allocation" },
-    type: "alloc",
-    chartLabel: { ko: "채널별 최적 배분", en: "Optimal split by channel" },
-    side: [
-      { l: "Google", v: "38%", c: "#adc6ff" },
-      { l: "Meta", v: "27%", c: "#4cd7f6" },
-      { l: "TikTok", v: "21%", c: "#4ade80" },
-      { l: "ASA", v: "14%", c: "#fbbf24" },
-    ],
-  },
-  {
-    title: { ko: "소재 분석", en: "Creative analysis" },
-    type: "scatter",
-    chartLabel: { ko: "성과 vs 피로도", en: "Performance vs fatigue" },
-    chip: { t: { ko: "교체 임박 2건", en: "2 need refresh" }, tone: "warn" },
-    side: [
-      { l: { ko: "베스트 CTR", en: "Best CTR" }, v: "4.9%" },
-      { l: { ko: "평균 CTR", en: "Avg CTR" }, v: "2.6%" },
-      { l: { ko: "분석 소재", en: "Creatives" }, v: "48" },
+      { l: { ko: "가장 큰 변화", en: "Largest change" }, v: "Meta · CPA −₩540", c: "#4ade80" },
+      { l: { ko: "오늘 확인", en: "Check today" }, v: { ko: "소재 교체 2건", en: "2 creative swaps" }, c: "#fbbf24" },
+      { l: { ko: "다음 조치", en: "Next action" }, v: { ko: "Google +₩300k 검토", en: "Review Google +₩300k" }, c: "#adc6ff" },
     ],
   },
 ];
 
 export default function ProductPreview({ videoSrc = null, poster = null, locale = "ko" }) {
   const tr = (o) => (typeof o === "string" ? o : locale === "en" ? o.en : o.ko);
-  const [idx, setIdx] = useState(0);
-  const [shown, setShown] = useState(true);
-
-  useEffect(() => {
-    if (videoSrc) return;
-    const t = setInterval(() => {
-      setShown(false);
-      setTimeout(() => {
-        setIdx((i) => (i + 1) % SCENES.length);
-        setShown(true);
-      }, 260);
-    }, 2800);
-    return () => clearInterval(t);
-  }, [videoSrc]);
-
-  const scene = SCENES[idx];
+  const scene = SCENES[0];
   const Mock = MOCKS[scene.type] || MOCKS.kpiLine;
 
   const kpiTile = (k, i) => (
@@ -102,22 +37,17 @@ export default function ProductPreview({ videoSrc = null, poster = null, locale 
 
   return (
     <div style={{ maxWidth: "920px", margin: "0 auto" }}>
-      <div style={{ borderRadius: "14px", border: "1px solid var(--border)", overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.28)", background: "var(--bg-1)" }}>
-        {/* 타이틀바 */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 12px", borderBottom: "1px solid var(--border-subtle, var(--border))", background: "var(--surface-container-lowest, rgba(255,255,255,0.02))" }}>
-          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ff5f56" }} />
-          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ffbd2e" }} />
-          <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#27c93f" }} />
-          <span style={{ marginLeft: "10px", fontSize: "11px", color: "var(--text-muted)", fontFamily: "JetBrains Mono, monospace" }}>
-            growthoptplaybook.com · <span style={{ color: "var(--text-secondary)", transition: "opacity 0.25s", opacity: shown ? 1 : 0 }}>{tr(scene.title)}</span>
-          </span>
+      <div style={{ borderRadius: "8px", border: "1px solid var(--border)", overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.22)", background: "var(--bg-1)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 14px", borderBottom: "1px solid var(--border-subtle, var(--border))", background: "var(--surface-container-lowest, rgba(255,255,255,0.02))" }}>
+          <span style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", color: "var(--text-secondary)", fontFamily: "JetBrains Mono, monospace" }}>{tr(scene.title)}</span>
+          <span style={{ fontSize: "10px", color: "var(--text-muted)", fontFamily: "JetBrains Mono, monospace" }}>{locale === "en" ? "REFRESHED 09:00 KST" : "09:00 KST 기준"}</span>
         </div>
 
         {videoSrc ? (
           <video src={videoSrc} poster={poster || undefined} autoPlay muted loop playsInline style={{ width: "100%", display: "block" }} />
         ) : (
           <div style={{ padding: "16px", pointerEvents: "none", minHeight: "312px" }}>
-            <div style={{ transition: "opacity 0.25s", opacity: shown ? 1 : 0, display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {/* 상단 KPI 스트립 */}
               {scene.kpis && (
                 <div style={{ display: "flex", gap: "10px" }}>{scene.kpis.map(kpiTile)}</div>
@@ -143,7 +73,7 @@ export default function ProductPreview({ videoSrc = null, poster = null, locale 
                           {s.c && <span style={{ width: 9, height: 9, borderRadius: "3px", background: s.c, flexShrink: 0 }} />}
                           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tr(s.l)}</span>
                         </span>
-                        <span style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-primary)", fontFamily: "JetBrains Mono, monospace" }}>{s.v}</span>
+                        <span style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-primary)", fontFamily: "JetBrains Mono, monospace" }}>{tr(s.v)}</span>
                       </div>
                     ))}
                   </div>
@@ -153,15 +83,6 @@ export default function ProductPreview({ videoSrc = null, poster = null, locale 
           </div>
         )}
       </div>
-      {/* 씬 인디케이터 */}
-      {!videoSrc && (
-        <div style={{ display: "flex", gap: "6px", justifyContent: "center", marginTop: "12px" }}>
-          {SCENES.map((s, i) => (
-            <button key={i} type="button" aria-label={tr(s.title)} onClick={() => { setShown(false); setTimeout(() => { setIdx(i); setShown(true); }, 200); }}
-              style={{ width: i === idx ? 20 : 7, height: 7, padding: 0, border: "none", borderRadius: "4px", cursor: "pointer", background: i === idx ? "var(--primary, #adc6ff)" : "var(--border-stronger, var(--border))", transition: "width 0.25s, background 0.25s" }} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

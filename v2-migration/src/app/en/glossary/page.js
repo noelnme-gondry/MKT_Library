@@ -1,6 +1,7 @@
 import { getAllTerms, getAllCategories } from "@/lib/glossary";
 import { SITE_URL } from "@/lib/routeMap";
 import GlossaryFilterList from "@/components/GlossaryFilterList";
+import SearchTopicHub from "@/components/seo/SearchTopicHub";
 
 // EN 용어사전 목록 — /glossary(KR)의 EN 미러(§en-blog-translation-strategy와 동일 방식).
 export async function generateMetadata() {
@@ -62,6 +63,7 @@ export default function EnGlossaryIndexPage() {
           Terms that come up constantly in performance marketing and app analytics, but rarely get defined anywhere concisely.
         </p>
       </header>
+      <SearchTopicHub locale="en" />
 
       {terms.length === 0 ? (
         <div

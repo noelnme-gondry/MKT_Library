@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getAllPosts, getAllTags } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
+import SearchTopicHub from "@/components/seo/SearchTopicHub";
 
 export async function generateMetadata() {
   const title = "블로그";
@@ -71,6 +72,7 @@ export default function BlogIndexPage() {
           퍼포먼스 마케팅과 데이터 분석 인사이트를 정리합니다.
         </p>
       </header>
+      <SearchTopicHub />
 
       {tags.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "1.75rem" }}>
