@@ -17,7 +17,8 @@ const LANDING_COPY = {
     title: "무엇이 궁금하세요?",
     deck: "질문을 고르면 그 도구로 바로 들어갑니다. 데이터가 없어도 예시로 먼저 보고, 준비되면 내 데이터로 분석하세요. 모든 분석 도구 무료.",
     hero: {
-      title: "정확한 마케팅 분석,\n증분 · MMM · 포화도 · 성과 변동 — ",
+      title: "정확한 마케팅 분석,",
+      titleTools: "(증분 · MMM · 포화도 · 성과 변동)",
       titleAccent: "전부 무료.",
       sub: "통계 엔진이 신뢰구간까지 계산하고, 애매한 숫자엔 판단을 보류하는 정확한 분석. 설치·로그인·결제 전부 없음. CSV 업로드나 구글 시트 연동이면 끝, 데이터는 100% 브라우저에서만 처리됩니다.",
       ctaPrimary: "내 데이터로 분석 시작",
@@ -64,7 +65,8 @@ const LANDING_COPY = {
     title: "What are you curious about?",
     deck: "Pick a question and jump straight into the tool. No data yet? See a live example first, then analyze your own. All analysis tools are free.",
     hero: {
-      title: "Accurate marketing analysis,\nincrementality · MMM · saturation · performance shifts — ",
+      title: "Accurate marketing analysis,",
+      titleTools: "(incrementality · MMM · saturation · performance shifts)",
       titleAccent: "all free.",
       sub: "A statistics engine that computes confidence intervals and holds judgment when the numbers are ambiguous. No install, no login, no payment. Upload a CSV or connect a Google Sheet — your data is processed 100% in your browser.",
       ctaPrimary: "Analyze my data",
@@ -213,7 +215,16 @@ function LandingHome({ locale }) {
       <section style={{ textAlign: "center", padding: "1.5rem 0 0.5rem", maxWidth: "780px", margin: "0 auto" }}>
         <h1 className="page-title" style={{ fontSize: "clamp(28px, 5vw, 46px)", lineHeight: 1.2, whiteSpace: "pre-line", marginBottom: "1rem" }}>
           {hero.title}
-          {hero.titleAccent && <span style={{ color: "var(--primary)" }}>{hero.titleAccent}</span>}
+          {/* 기능 예시는 제목과 확연히 다른 층위로: 작게·뮤트·괄호. 자체 줄 차지. */}
+          {hero.titleTools && (
+            <span style={{ display: "block", fontSize: "0.5em", fontWeight: 500, color: "var(--text-muted)", lineHeight: 1.4, margin: "4px 0 2px" }}>
+              {hero.titleTools}
+            </span>
+          )}
+          {/* "전부 무료."는 한 덩어리 — 줄 중간에서 끊기지 않게 자체 줄 + nowrap */}
+          {hero.titleAccent && (
+            <span style={{ display: "block", color: "var(--primary)", whiteSpace: "nowrap" }}>{hero.titleAccent}</span>
+          )}
         </h1>
         <p className="page-deck" style={{ fontSize: "15px", maxWidth: "620px", margin: "0 auto 1.4rem" }}>
           {hero.sub}
