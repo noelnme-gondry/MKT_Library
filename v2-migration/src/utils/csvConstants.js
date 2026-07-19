@@ -1,7 +1,9 @@
+import { scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates";
+
 export const STANDARD_FIELDS = {
               date: {
                 label: "날짜",
-                aliases: ["dt", "날짜", "event_date", "day"],
+                aliases: ["dt", "날짜", "일자", "event_date", "day"],
                 type: "date",
                 required: true,
                 group: "디멘션",
@@ -38,7 +40,7 @@ export const STANDARD_FIELDS = {
               },
               cost: {
                 label: "비용",
-                aliases: ["spend", "비용", "광고비"],
+                aliases: ["spend", "비용", "광고비", "소진액", "집행액", "amount spent", "media cost"],
                 type: "number",
                 required: true,
                 group: "단일 지표",
@@ -1335,33 +1337,6 @@ export const TOOL_OPTIONAL_FIELDS = {
 // CSV 헤더 배열 → {header: 표준필드키|"__ignore__"} 자동매핑. CsvUploader의 CSV 업로드
 // 경로와 구글 시트 임포트 경로가 동일 로직을 공유하도록 추출(원래 CsvUploader.jsx
 // processFile 내부에 있던 걸 이관 — 로직 변경 없음, 재사용을 위한 위치 이동만).
-export function autoMapHeaders(headers) {
-  const mapping = {};
-  const availableStandardKeys = Object.keys(STANDARD_FIELDS);
-
-  headers.forEach((header) => {
-    const hLow = header.toLowerCase().trim();
-    let matched = null;
-
-    for (const sKey of availableStandardKeys) {
-      const def = STANDARD_FIELDS[sKey];
-      if (sKey.toLowerCase() === hLow) {
-        matched = sKey;
-        break;
-      }
-      if (def.aliases) {
-        const hasAlias = def.aliases.some((alias) => {
-          const a = alias.toLowerCase();
-          return hLow === a || hLow === a.replace(/_/g, "") || hLow.replace(/_/g, "") === a;
-        });
-        if (hasAlias) {
-          matched = sKey;
-          break;
-        }
-      }
-    }
-    mapping[header] = matched || "__ignore__";
-  });
-
-  return mapping;
+export function autoMapHeaders(headers, rows = [], allowedKeys) {
+  return scoreMappingCandidates({ headers, rows, allowedKeys, fields: STANDARD_FIELDS }).selections;
 }

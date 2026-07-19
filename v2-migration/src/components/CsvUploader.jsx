@@ -2,11 +2,13 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import Papa from "papaparse";
 import { useAppStore, TOOL_GROUP } from "@/store/useDataStore";
-import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS, autoMapHeaders } from "@/utils/csvConstants";
+import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
 import { buildDemoCsv } from "@/utils/demoData";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "@/components/GoogleSheetConnect";
+import { findMappingConflicts, scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates";
+import { trackProductEvent } from "@/lib/analytics";
 
 function escapeHtml(str) {
   if (!str) return "";
@@ -65,6 +67,8 @@ const CSV_COPY = {
     checkMapping: "⚠ 매핑 확인 필요",
     checkMappingHint: '매핑이 올바른지 확인 후 "분석하기"를 클릭하여 분석을 시작하세요.',
     analyzeBtn: "데이터 분석하기",
+    recognitionSummary: (mapped, total, review, conflicts) => `${total}개 컬럼 중 ${mapped}개 자동 인식${review ? ` · 확인 권장 ${review}개` : ""}${conflicts ? ` · 충돌 ${conflicts}건` : ""}`,
+    recognitionHint: "확실한 항목은 자동 적용했고, 낮은 신뢰도나 충돌 항목만 확인해 주세요.",
   },
   en: {
     emptyCsv: "This CSV file is empty or invalid.",
@@ -110,8 +114,25 @@ const CSV_COPY = {
     checkMapping: "⚠ Check mapping",
     checkMappingHint: 'Confirm the mapping is correct, then click "Analyze" to start.',
     analyzeBtn: "Analyze data",
+    recognitionSummary: (mapped, total, review, conflicts) => `${mapped} of ${total} columns recognized${review ? ` · ${review} need review` : ""}${conflicts ? ` · ${conflicts} conflicts` : ""}`,
+    recognitionHint: "High-confidence fields are applied automatically; review only uncertain or conflicting fields.",
   },
 };
+
+function toolFieldKeys(toolId) {
+  const keys = new Set();
+  (TOOL_REQUIRED_FIELDS[toolId] || []).forEach((field) => {
+    if (typeof field === "string") keys.add(field);
+    field?.oneOf?.forEach((key) => keys.add(key));
+  });
+  (TOOL_OPTIONAL_FIELDS[toolId] || []).forEach(({ key }) => keys.add(key));
+  return [...keys];
+}
+
+function buildImportInsights(headers, raw, toolId) {
+  const result = scoreMappingCandidates({ headers, rows: raw, allowedKeys: toolFieldKeys(toolId), fields: STANDARD_FIELDS });
+  return { profiles: result.profiles, candidates: result.candidates, conflicts: result.conflicts, selections: result.selections };
+}
 
 export default function CsvUploader({ toolId, locale = "ko" }) {
   const T = CSV_COPY[locale] || CSV_COPY.ko;
@@ -170,6 +191,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
 
   const processFile = (file) => {
     setErrorMsg("");
+    trackProductEvent("data_import_start", { tool_id: toolId, source: "csv" });
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -181,14 +203,17 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
 
         const headers = results.meta.fields || [];
         const raw = results.data;
-        const mapping = autoMapHeaders(headers);
+        const insights = buildImportInsights(headers, raw, toolId);
+        const mapping = insights.selections;
 
         setCsvData({
           raw,
           headers,
           mapping,
           fileName: file.name,
+          importInsights: insights,
         });
+        trackProductEvent("data_import_success", { tool_id: toolId, source: "csv", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
         // New file → gate auto-resets in the store (sig change); re-open preview
         // so the user maps with data context.
         setPreviewOpen(true);
@@ -206,8 +231,10 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   // 자연히 undefined) "최신 데이터 불러오기"가 재입력 없이 같은 URL로 재조회 가능해짐.
   const handleSheetLoaded = ({ headers, raw, fileName, sheetUrl }) => {
     setErrorMsg("");
-    const mapping = autoMapHeaders(headers);
-    setCsvData({ raw, headers, mapping, fileName, sheetUrl });
+    const insights = buildImportInsights(headers, raw, toolId);
+    const mapping = insights.selections;
+    setCsvData({ raw, headers, mapping, fileName, sheetUrl, importInsights: insights });
+    trackProductEvent("data_import_success", { tool_id: toolId, source: "google_sheets", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
     setPreviewOpen(true);
     setSheetChangeOpen(false);
   };
@@ -397,6 +424,21 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     (o) => csvData.mapping && csvData.mapping !== "__ignore__" && Object.values(csvData.mapping).includes(o.key)
   ).length;
   const totalOptCount = (TOOL_OPTIONAL_FIELDS[toolId] || []).length;
+  const importInsights = csvData.importInsights;
+  const candidateByHeader = importInsights?.candidates || {};
+  const mappingConflicts = findMappingConflicts(csvData.mapping);
+  const mappedCount = Object.values(csvData.mapping || {}).filter((value) => value && value !== "__ignore__").length;
+  const needsReview = csvData.headers.filter((header) => {
+    const top = candidateByHeader[header]?.[0];
+    return top && top.confidence >= 0.6 && top.confidence < 0.9;
+  }).length;
+  const confirmAnalysis = () => {
+    const confidenceBucket = needsReview || mappingConflicts.length ? "review" : "high";
+    const event = { tool_id: toolId, source: isSheetSourced ? "google_sheets" : "csv", mapped_count: mappedCount, confidence_bucket: confidenceBucket, conflict_count: mappingConflicts.length, missing_required_count: missing.length };
+    trackProductEvent("mapping_confirmed", event);
+    trackProductEvent("analysis_started", event);
+    requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); });
+  };
 
   return (
     <div>
@@ -498,6 +540,12 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           </div>
           <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.mappingHint}</span>
         </div>
+        {importInsights && (
+          <div style={{ margin: "0 0 10px", fontSize: "12px", color: mappingConflicts.length ? "var(--danger)" : "var(--text-secondary)" }}>
+            <strong>{T.recognitionSummary(mappedCount, csvData.headers.length, needsReview, mappingConflicts.length)}</strong>
+            <span style={{ color: "var(--text-muted)", marginLeft: "6px" }}>{T.recognitionHint}</span>
+          </div>
+        )}
         <div className="mapping-grid">
           <div className="mapping-header">{T.colHeaderCsv}</div>
           <div></div>
@@ -604,13 +652,13 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: 600 }}>{T.analyzedBadge}</span>
             <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{T.analyzedHint}</span>
-            <button className="ab-pill" onClick={() => requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); })} style={{ marginLeft: "auto" }}>{T.reanalyzeBtn}</button>
+            <button className="ab-pill" onClick={confirmAnalysis} style={{ marginLeft: "auto" }}>{T.reanalyzeBtn}</button>
           </div>
         ) : (
           <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ color: "var(--danger)", fontSize: "12px", fontWeight: 600 }}>{T.checkMapping}</span>
             <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{T.checkMappingHint}</span>
-            <button className="ab-button" onClick={() => requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); })} style={{ marginLeft: "auto" }}>{T.analyzeBtn}</button>
+            <button className="ab-button" onClick={confirmAnalysis} style={{ marginLeft: "auto" }}>{T.analyzeBtn}</button>
           </div>
         )
       )}
