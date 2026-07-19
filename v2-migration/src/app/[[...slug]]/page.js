@@ -51,7 +51,7 @@ async function PageWithStructuredData({ params }) {
   const isTool = Boolean(routeId && (routeId.startsWith("5-") || routeId.startsWith("9-")));
   const structuredData = isTool && meta ? {
     "@context": "https://schema.org",
-    "@type": "WebApplication",
+    "@type": "SoftwareApplication",
     name: meta.seoTitle || meta.title,
     description: meta.seoDescription || meta.group?.desc,
     url: `${SITE_URL}${idToPath(routeId)}`,

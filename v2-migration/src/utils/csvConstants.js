@@ -1036,6 +1036,7 @@ export const TOOL_OPTIONAL_FIELDS = {
               "5-2": [
                 { key: "channel", unlocks: "채널별 비중·시계열 분석" },
                 { key: "campaign_name", unlocks: "캠페인 단위 분석" },
+                { key: "creative_id", unlocks: "소재별 성과 변동·피로도 분석 연결" },
                 { key: "platform", unlocks: "OS 분포 시각화" },
                 { key: "country", unlocks: "🗺 세그먼트 탭 — 국가 차원 분석" },
                 {

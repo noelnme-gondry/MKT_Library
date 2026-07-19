@@ -46,5 +46,28 @@ export async function generateMetadata({ params }) {
 }
 
 export default function Page({ params }) {
-  return <PageClient params={params} />;
+  return <PageWithStructuredData params={params} />;
+}
+
+async function PageWithStructuredData({ params }) {
+  const { slug } = await params;
+  const routeId = resolveSlugToId(slug);
+  const meta = routeId ? findMeta(routeId) : null;
+  const isTool = Boolean(routeId && (routeId.startsWith("5-") || routeId.startsWith("9-")) && hasEnVersion(routeId));
+  const structuredData = isTool && meta ? {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: meta.seoTitleEn || meta.titleEn || meta.title,
+    description: meta.seoDescriptionEn || meta.seoDescription || meta.group?.desc,
+    url: `${SITE_URL}/en${idToPath(routeId)}`,
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    isAccessibleForFree: true,
+    inLanguage: "en",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  } : null;
+  return <>
+    {structuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />}
+    <PageClient params={params} />
+  </>;
 }
