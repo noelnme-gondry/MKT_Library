@@ -54,4 +54,10 @@ describe("editorial SEO registries", () => {
       expect(getPostsByTag(encodeURIComponent(tag.slug), "ko").length).toBe(tag.count);
     }
   });
+
+  it("consolidates Korean blog navigation into six parent categories", () => {
+    expect(sorted(getAllTags("ko").map((tag) => tag.tag))).toEqual(sorted([
+      "측정·분석", "예산·효율", "소재·크리에이티브", "매체·운영", "타겟·퍼널", "성장·커리어",
+    ]));
+  });
 });
