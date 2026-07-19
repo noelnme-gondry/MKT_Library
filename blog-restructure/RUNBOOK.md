@@ -65,8 +65,10 @@
 - 전 35편 슬러그·date 불변 확인 ✓ / batch 내 삭제슬러그 링크 0건 ✓
 - 전량 적용 + 3편 삭제 + EN 3편 상태로 `npm run build` GREEN ✓
 - EN #2의 cohort·funnel 링크는 EN 글 부재로 `/en/glossary/retention`·`/en/glossary/funnel`로 대체 적용됨
-- EN #2의 FAQ 항목은 KR 최종본에 FAQ 섹션이 없어(본문 흡수) KR 패리티 우선으로 미적용 —
-  차후 KR에 FAQ가 생기면 en-mirror-patches.md #2의 FAQ 항목을 그때 반영
+- EN #2의 FAQ 항목: KR batch1은 FAQ를 **frontmatter `faq:` 키**로 보유(본문 헤딩 아님 —
+  blog.js:79가 배열 파싱·렌더). EN 현행 파일엔 `faq:` 키 자체가 없어(원래 FAQ 없는 구조)
+  미적용 유지. 차후 EN에 `faq:` 키를 도입하면 en-mirror-patches.md #2의 영문 FAQ 항목을
+  첫 항목으로 추가
 - relatedPosts는 존재하지 않는 슬러그를 조용히 스킵(glossary/[slug]/page.js) — 크래시 없음
 - sitemap·rss는 getAllPosts 파생이라 추가·삭제 자동 반영
 
