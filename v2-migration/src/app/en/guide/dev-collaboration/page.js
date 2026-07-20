@@ -16,7 +16,7 @@ export async function generateMetadata() {
     description,
     alternates: {
       canonical,
-      languages: { ko: `${SITE_URL}/guide/dev-collaboration`, en: canonical },
+      languages: { ko: `${SITE_URL}/guide/dev-collaboration`, en: canonical, "x-default": `${SITE_URL}/guide/dev-collaboration` },
     },
     openGraph: {
       title,

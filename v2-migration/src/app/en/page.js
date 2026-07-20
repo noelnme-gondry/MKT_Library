@@ -18,7 +18,7 @@ export async function generateMetadata() {
     // title.template("%s | Growth Opt Playbook") 재적용을 막아 중복 방지.
     title: { absolute: title },
     description,
-    alternates: { canonical, languages: { ko: `${SITE_URL}/`, en: canonical } },
+    alternates: { canonical, languages: { ko: `${SITE_URL}/`, en: canonical, "x-default": `${SITE_URL}/` } },
     openGraph: {
       title,
       description,
