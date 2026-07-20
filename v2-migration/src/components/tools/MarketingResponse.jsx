@@ -2484,6 +2484,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                       <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "10px" }}>
                         <div className="stat-card"><div className="lbl">{tx("평균 오차(RMSE)", "Average error (RMSE)")}</div><div className="val">±{decomp.rmse}{tx("명", "")}</div></div>
                         <div className="stat-card"><div className="lbl">{tx("평균 오차율(MAPE)", "Average error rate (MAPE)")}</div><div className="val">{decomp.mape}%</div></div>
+                        {mmm.run.backtest && <div className="stat-card"><div className="lbl">{tx("시간순 OOS MAPE", "Time-ordered OOS MAPE")}</div><div className="val">{mmm.run.backtest.mape.toFixed(1)}%</div></div>}
                         <div className="stat-card"><div className="lbl">{tx("전체 기간 평균", "Full-period average")}</div><div className="val">{fmtInt(decomp.baseline)}</div></div>
                       </div>
                       <p className="muted" style={{ fontSize: "11px", marginBottom: "6px" }}>{tx('실제(회색)와 모델(파랑)이 가까울수록 잘 맞은 거예요. 점선(시즌·추세 등)은 광고와 무관한 부분만 뽑아낸 흐름이라 시간에 따라 움직여요 — "전체 기간 평균"(고정값)과는 다른 선입니다.', 'The closer actual (gray) and model (blue) are, the better the fit. The dashed line (season/trend etc.) is the ad-unrelated portion only and moves over time — different from the fixed "full-period average" line.')}</p>

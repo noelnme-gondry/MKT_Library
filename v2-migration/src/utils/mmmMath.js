@@ -2725,7 +2725,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               return { beta, fitted, resid, sigma: Math.sqrt(sigma2) || yScale, sd, r2 };
             }
 
-            export function mmmBayesianRun(panel, cfg, targetName) {
+            export function mmmBayesianRun(panel, cfg, targetName, withBacktest = true) {
               const controls = _mmmBayesControlFeatures(panel, cfg);
               const params = _mmmBayesChannelParams(panel, cfg, targetName, controls);
               const names = controls.names.slice();
@@ -2821,6 +2821,23 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               const variances = groupNames.map((g) => _mean(weeks.map((w) => (w.contrib[g] || 0) ** 2)));
               const totalVariance = variances.reduce((s, v) => s + v, 0) || 1;
               const rows = groupNames.map((driver, i) => ({ driver, r2_share: variances[i] / totalVariance, pct: (variances[i] / totalVariance) * 100 }));
+              let backtest = null;
+              // 마지막 20%(최소 8주)는 학습에서 빼고, 당시 실제 지출을 넣어 순방향 예측한다.
+              // 하이퍼파라미터 선택까지 train 안에서만 하므로 in-sample R²와 분리된 현실 점검이다.
+              if (withBacktest && panel.week.length >= 48) {
+                const cut = Math.floor(panel.week.length * 0.8);
+                const slicePanel = (end) => ({ ...panel, week: panel.week.slice(0, end), ch: Object.fromEntries(Object.entries(panel.ch).map(([k, v]) => [k, v.slice(0, end)])), dummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([k, v]) => [k, v.slice(0, end)])), steps: Object.fromEntries(Object.entries(panel.steps || {}).map(([k, v]) => [k, v.slice(0, end)])), targets: Object.fromEntries(Object.entries(panel.targets).map(([k, v]) => [k, v.slice(0, end)])) });
+                const train = slicePanel(cut);
+                const held = mmmBayesianRun(train, cfg, targetName, false);
+                const h = panel.week.length - cut;
+                const spend = Object.fromEntries(Object.entries(panel.ch).map(([k, v]) => [k, v.slice(cut)]));
+                const fc = held && mmmBayesianForecast(held, train, spend, h);
+                const actualHold = panel.targets[targetName].slice(cut);
+                if (fc?.predFut?.length === actualHold.length) {
+                  const err = actualHold.map((v, i) => v - fc.predFut[i]);
+                  backtest = { n: h, rmse: Math.sqrt(_mean(err.map((v) => v * v))), mape: _mean(err.map((v, i) => Math.abs(actualHold[i]) > 1e-9 ? Math.abs(v / actualHold[i]) * 100 : 0)) };
+                }
+              }
               return {
                 engine: "bayesian",
                 methodLabel: "Bayesian MMM (Meridian-inspired)",
@@ -2842,6 +2859,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 vif: [],
                 collinear_pairs: [],
                 elasticities: [],
+                backtest,
               };
             }
 
