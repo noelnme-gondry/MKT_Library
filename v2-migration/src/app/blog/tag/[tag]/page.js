@@ -20,7 +20,8 @@ export async function generateMetadata({ params }) {
     title,
     description,
     alternates: { canonical },
-    ...(posts.length < 2 ? { robots: { index: false, follow: true } } : {}),
+    // 고유 해설 없는 1~2편 태그는 검색 가치가 낮다. 3편 이상 컬렉션만 색인한다.
+    ...(posts.length < 3 ? { robots: { index: false, follow: true } } : {}),
     openGraph: { title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] },
   };
 }

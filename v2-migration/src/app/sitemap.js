@@ -41,7 +41,8 @@ export default function sitemap() {
       priority: 0.7,
     })),
     // 태그 랜딩(롱테일 SEO 허브) — 발행 글의 태그마다 1페이지.
-    ...getAllTags().filter((t) => t.count >= 2).map((t) => ({
+    // 태그 페이지의 색인 기준과 동일: 최소 3편이어야 sitemap에 넣는다.
+    ...getAllTags().filter((t) => t.count >= 3).map((t) => ({
       url: `${BASE}/blog/tag/${t.slug}`,
       lastModified: latestDate(getPostsByTagSafe(t.slug, posts)),
       changeFrequency: "weekly",
