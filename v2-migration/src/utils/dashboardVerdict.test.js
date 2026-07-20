@@ -82,12 +82,13 @@ describe("buildDashboardVerdict", () => {
     expect(keys).not.toContain("ret");
   });
 
-  it("관측상 가장 큰 채널 변화를 인과 단정 없이 제시", () => {
+  it("가장 큰 관측 변화를 항상 표시할 핵심 인사이트로 분리", () => {
     const csv = makeCsv({ recentInstalls: 10, prevInstalls: 20 });
     csv.raw.forEach((row, index) => { row.channel = index < 7 ? "Meta" : "Google"; });
     csv.mapping.channel = "channel";
     const v = buildDashboardVerdict({ csvData: csv });
     expect(v.primaryDriver).toBeTruthy();
-    expect(v.points.some((point) => point.text.includes("관측상 가장 크게 움직인 곳"))).toBe(true);
+    expect(v.keyPoints.some((point) => point.kind === "largest-observed-change")).toBe(true);
+    expect(v.points.some((point) => point.text.includes("가장 크게 변한 곳"))).toBe(true);
   });
 });
