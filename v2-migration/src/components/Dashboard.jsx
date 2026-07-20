@@ -264,6 +264,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 title={tr("결론 — 최근 성과 요약", "Conclusion — recent performance")}
                 headline={verdict.headline}
                 points={verdict.points}
+                collapsePointsAfter={1}
                 stats={verdict.stats}
                 controls={
                   <div className="ab-pillgroup" style={{ display: "inline-flex", alignItems: "center" }}>

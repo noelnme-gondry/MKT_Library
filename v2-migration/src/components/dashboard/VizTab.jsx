@@ -18,6 +18,9 @@ import { copyToClipboard } from "@/utils/toast";
 // 지표 뷰 설정 scope(도구:표면) — 운영 대시보드 자체(Viz 탭)의 KPI 카드·차트.
 const VIZ_KPI_SCOPE = "5-2:viz-kpi";
 const VIZ_CHART_SCOPE = "5-2:viz-charts";
+// 첫 화면은 의사결정에 바로 쓰는 5개만. 나머지 진단 지표는 "편집"에서 켠다.
+// 사용자가 저장한 설정이 있으면 그 설정이 이 기본값보다 항상 우선한다.
+const DEFAULT_KPI_HIDDEN = ["ctr", "purchaseRate", "cpp", "revenue", "arpu", "arppu", "retention", "profit", "profitMargin"];
 
 // locale 카피(§ domain 리라벨과 별도 축 — C=resolveDashCopy는 domain 전용, 이 T는
 // 이 컴포넌트 하드코딩 문자열의 ko/en만 담당. contentDomain.js는 건드리지 않음).
@@ -208,7 +211,13 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const denomBasis = useAppStore((state) => state.denomBasis);
   const eventMarkers = useAppStore((state) => state.eventMarkers);
   // 지표 뷰 설정(표시/순서) — KPI 카드·차트 각각 독립 scope.
-  const kpiCfg = useAppStore((state) => state.viewConfig[VIZ_KPI_SCOPE]);
+  const storedKpiCfg = useAppStore((state) => state.viewConfig[VIZ_KPI_SCOPE]);
+  // 기존 빈 설정은 예전 "전부 표시" 기본값이다. compact-v1을 명시한 사용자의
+  // 편집 결과만 존중해, 업데이트 직후에도 새 기본 위계가 실제로 적용되게 한다.
+  const hasCustomKpiView = storedKpiCfg?.preset === "compact-v1";
+  const kpiCfg = hasCustomKpiView
+    ? { hidden: [], order: [], ...storedKpiCfg }
+    : { hidden: DEFAULT_KPI_HIDDEN, order: [] };
   const chartCfg = useAppStore((state) => state.viewConfig[VIZ_CHART_SCOPE]);
   const setViewConfig = useAppStore((state) => state.setViewConfig);
   const resetViewConfig = useAppStore((state) => state.resetViewConfig);
@@ -696,6 +705,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
         {kpiEditMode && (
           <p className="muted" style={{ fontSize: "11px", margin: "0 0 8px" }}>{T.editHint}</p>
         )}
+        {!kpiEditMode && <p className="kpi-grid__hint">핵심 5개만 표시 중 · 나머지 지표는 편집에서 켤 수 있습니다.</p>}
         {allKpiCards.length === 0 ? (
           <p className="muted" style={{ fontSize: "12px" }}>{T.noKpi}</p>
         ) : (
@@ -703,8 +713,8 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
             items={allKpiCards}
             config={kpiCfg}
             editMode={kpiEditMode}
-            onPatch={(p) => setViewConfig(VIZ_KPI_SCOPE, p)}
-            gridClassName="kpi-grid"
+            onPatch={(p) => setViewConfig(VIZ_KPI_SCOPE, { ...p, preset: "compact-v1" })}
+            gridClassName="kpi-grid kpi-grid--overview"
           />
         )}
       </section>
