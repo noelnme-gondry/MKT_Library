@@ -1,11 +1,18 @@
+import Link from "next/link";
+import { idToSlug } from "@/lib/routeMap";
+
 const INTRO = {
   "5-4": {
     ko: ["실험 분석", "두 안의 차이가 우연인지, 다음 실험 결정을 내려도 되는지 확인합니다."],
     en: ["Experiment analysis", "Check whether the difference is more than chance and whether the next experiment decision is justified."],
   },
   "5-18": {
-    ko: ["마케팅 반응 분석", "잠식 진단에서 채널 기여도, 다변량 회귀와 예산 시나리오 예측까지 한 흐름으로 봅니다."],
-    en: ["Marketing response analysis", "Move from cannibalization diagnosis to channel contribution, multivariate regression, and budget-scenario forecasting."],
+    ko: ["광고 카니발라이제이션 진단", "유료 광고가 오가닉 성과를 잠식하는지 먼저 점검하고, 의심 채널의 기여도·회귀·예산 시나리오를 한 흐름으로 봅니다."],
+    en: ["Ad cannibalization diagnosis", "Check whether paid ads may displace organic outcomes, then review suspect-channel contribution, regression, and budget scenarios in one flow."],
+  },
+  "5-3": {
+    ko: ["마케팅 예산 배분", "채널별 한계 효율과 지출 여력으로 다음 예산을 어디에 늘리고 줄일지 시뮬레이션합니다."],
+    en: ["Marketing budget allocation", "Use channel-level marginal efficiency and headroom to simulate where the next budget should increase or decrease."],
   },
   "5-20": {
     ko: ["핵심 가치 발굴", "어떤 초기 행동을 며칠 안에 몇 번 한 유저가 장기 가치로 이어지는지 찾습니다."],
@@ -25,8 +32,20 @@ const INTRO = {
   },
 };
 
+const TOOL_CROSS_LINK = {
+  "5-18": {
+    ko: { label: "다음 조치", toolId: "5-3", cta: "잠식 의심 채널 예산 시뮬레이션" },
+    en: { label: "Next step", toolId: "5-3", cta: "Simulate suspect-channel budget moves" },
+  },
+  "5-3": {
+    ko: { label: "예산 이동 전", toolId: "5-18", cta: "광고 잠식 먼저 점검" },
+    en: { label: "Before moving budget", toolId: "5-18", cta: "Check ad cannibalization first" },
+  },
+};
+
 export default function ToolIntro({ toolId, locale = "ko" }) {
   const copy = INTRO[toolId]?.[locale === "en" ? "en" : "ko"];
+  const crossLink = TOOL_CROSS_LINK[toolId]?.[locale === "en" ? "en" : "ko"];
   if (!copy) return null;
   return <header className="tool-context-header">
     <div className="tool-context-header__meta"><span>ANALYSIS / {toolId}</span><em>{locale === "en" ? "LOCAL DATA" : "브라우저 내 분석"}</em></div>
@@ -39,5 +58,9 @@ export default function ToolIntro({ toolId, locale = "ko" }) {
       <i aria-hidden>→</i>
       <span>03 {locale === "en" ? "Decide" : "다음 조치"}</span>
     </div>
+    {crossLink && <div className="tool-context-header__next">
+      <span>{crossLink.label}</span>
+      <Link href={`${locale === "en" ? "/en" : ""}${idToSlug[crossLink.toolId]}`}>{crossLink.cta} <b aria-hidden>→</b></Link>
+    </div>}
   </header>;
 }

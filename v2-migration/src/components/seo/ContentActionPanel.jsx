@@ -8,7 +8,7 @@ const TOOL_COPY = {
     en: { label: "Operations dashboard", title: "Check this in this week’s data", desc: "Review CPA, ROAS, budget pacing, and anomaly signals in one place.", cta: "Review my operations" },
   },
   "5-3": {
-    ko: { label: "예산 배분", title: "다음 예산 이동을 숫자로 비교하세요", desc: "현재 효율과 한계 CPA를 기준으로 증액·감액 후보를 시뮬레이션합니다.", cta: "예산 배분 계산하기" },
+    ko: { label: "예산 배분", title: "다음 예산, 어디로 옮길지 계산하세요", desc: "현재 효율과 한계 CPA를 기준으로 증액·감액 후보를 시뮬레이션합니다.", cta: "예산 배분 계산하기" },
     en: { label: "Budget allocation", title: "Compare the next budget move with data", desc: "Simulate scale-up and pull-back candidates from current efficiency and marginal CPA.", cta: "Plan budget allocation" },
   },
   "5-21": {
@@ -16,7 +16,7 @@ const TOOL_COPY = {
     en: { label: "Performance variance", title: "See where the CPA change started", desc: "Break down channel, campaign, and creative contributions to focus the investigation.", cta: "Analyze performance change" },
   },
   "5-18": {
-    ko: { label: "MMM·회귀·예측", title: "채널 기여도와 다음 4주를 함께 모델링하세요", desc: "다변량 회귀로 광고비 반응을 추정하고 예산 시나리오별 성과를 과거 잔차 참고 범위와 함께 비교합니다.", cta: "마케팅 반응 분석하기" },
+    ko: { label: "광고 카니발라이제이션", title: "광고가 오가닉을 잠식하는지 먼저 확인하세요", desc: "유료 광고와 오가닉의 관계를 네 가지 신호로 점검해, 예산을 다시 볼 채널을 좁힙니다.", cta: "카니발라이제이션 진단하기" },
     en: { label: "MMM, regression & forecast", title: "Model channel contribution and the next four weeks", desc: "Estimate spend response with multivariate regression and compare budget scenarios with a historical-residual reference range.", cta: "Open marketing response analysis" },
   },
   "5-22": {
@@ -41,12 +41,24 @@ const TOOL_COPY = {
   },
 };
 
+const RELATED_TOOL = {
+  "5-18": {
+    ko: { toolId: "5-3", cta: "예산 배분 시뮬레이션" },
+    en: { toolId: "5-3", cta: "Plan budget allocation" },
+  },
+  "5-3": {
+    ko: { toolId: "5-18", cta: "광고 잠식 먼저 점검" },
+    en: { toolId: "5-18", cta: "Check ad cannibalization first" },
+  },
+};
+
 export default function ContentActionPanel({ locale = "ko", toolId, term, post }) {
   const content = term || post;
   const contentType = term ? "glossary" : "blog";
   const candidate = toolId || content?.primaryTool || primaryToolForContent(content?.slug, contentType);
   const resolvedTool = TOOL_COPY[candidate] ? candidate : "5-2";
   const copy = TOOL_COPY[resolvedTool][locale === "en" ? "en" : "ko"];
+  const related = RELATED_TOOL[resolvedTool]?.[locale === "en" ? "en" : "ko"];
   const href = `${locale === "en" ? "/en" : ""}${idToSlug[resolvedTool]}`;
   return <aside className="content-action-panel">
     <div>
@@ -54,6 +66,9 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post }
       <h2>{copy.title}</h2>
       <p>{copy.desc}</p>
     </div>
-    <Link href={href} className="content-action-panel__cta">{copy.cta} <span aria-hidden>→</span></Link>
+    <div className="content-action-panel__links">
+      <Link href={href} className="content-action-panel__cta">{copy.cta} <span aria-hidden>→</span></Link>
+      {related && <Link href={`${locale === "en" ? "/en" : ""}${idToSlug[related.toolId]}`} className="content-action-panel__secondary">{related.cta} <span aria-hidden>→</span></Link>}
+    </div>
   </aside>;
 }
