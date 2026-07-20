@@ -45,7 +45,7 @@ describe("editorial SEO registries", () => {
   });
 
   it("does not invent an English URL for untranslated content", () => {
-    expect(localizedHref("/blog/ctr-improvement", "en")).toBe("/blog/ctr-improvement");
+    expect(localizedHref("/blog/adjust-vs-appsflyer", "en")).toBe("/blog/adjust-vs-appsflyer");
     expect(localizedHref("/blog/ab-testing", "en")).toBe("/en/blog/ab-testing");
   });
 

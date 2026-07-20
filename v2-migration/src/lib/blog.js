@@ -56,11 +56,12 @@ const TAG_CATEGORY = {
   AI: "성장·커리어", 머신러닝: "성장·커리어", 자동화: "성장·커리어", 커리어: "성장·커리어", "주니어 마케터": "성장·커리어", 그로스: "성장·커리어", 리텐션: "성장·커리어",
 };
 const TAG_CATEGORY_EN = {
-  "Budget Allocation": "Budget & efficiency", Scaling: "Budget & efficiency", CPA: "Budget & efficiency", ROAS: "Budget & efficiency",
-  "Marketing Metrics": "Measurement & analysis", "Metrics Basics": "Measurement & analysis", "Analysis Methodology": "Measurement & analysis", "Analytics Methodology": "Measurement & analysis", "Experiment Analysis": "Measurement & analysis", "Incrementality Analysis": "Measurement & analysis", MMM: "Measurement & analysis", Diagnosis: "Measurement & analysis", Troubleshooting: "Measurement & analysis",
+  "Budget Allocation": "Budget & efficiency", Scaling: "Budget & efficiency", CPA: "Budget & efficiency", ROAS: "Budget & efficiency", Saturation: "Budget & efficiency",
+  "Marketing Metrics": "Measurement & analysis", "Metrics Basics": "Measurement & analysis", Analysis: "Measurement & analysis", Measurement: "Measurement & analysis", Monitoring: "Measurement & analysis", "Analysis Methodology": "Measurement & analysis", "Analytics Methodology": "Measurement & analysis", "Experiment Analysis": "Measurement & analysis", "Incrementality Analysis": "Measurement & analysis", MMM: "Measurement & analysis", Diagnosis: "Measurement & analysis", Troubleshooting: "Measurement & analysis",
   "Creative Fatigue": "Creative", "Ad Creative": "Creative",
-  Targeting: "Targeting & funnel", "Audience Strategy": "Targeting & funnel",
-  AI: "Growth & career", Automation: "Growth & career", "Machine Learning": "Growth & career", Career: "Growth & career", "Junior Marketer": "Growth & career",
+  UA: "Media & operations", UAC: "Media & operations", ASA: "Media & operations", ASO: "Media & operations", iOS: "Media & operations",
+  Targeting: "Targeting & funnel", "Audience Strategy": "Targeting & funnel", "Conversion Rate": "Targeting & funnel",
+  AI: "Growth & career", Automation: "Growth & career", "Machine Learning": "Growth & career", Career: "Growth & career", "Junior Marketer": "Growth & career", Growth: "Growth & career", Retention: "Growth & career",
 };
 const TAG_DROP = new Set(["퍼포먼스 마케팅", "마케팅", "Performance Marketing"]);
 
