@@ -18,6 +18,7 @@ import { buildDemoCsv } from "@/utils/demoData";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import { ELEMENT_COPY as C } from "@/utils/contentDomain";
+import { trackProductEvent } from "@/lib/analytics";
 
 const MUTED = "var(--text-muted)";
 
@@ -206,6 +207,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const [outcome, setOutcome] = useState(null);
   const [features, setFeatures] = useState([]);
   const [analyzedSig, setAnalyzedSig] = useState(null);
+  const analysisEventRef = useRef(null);
   const [seededKey, setSeededKey] = useState(null);
 
   const handleFile = (file) => {
@@ -252,6 +254,10 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   }
 
   const analyzed = analyzedSig != null && analyzedSig === analyzeSig(outcome, features, fileName);
+  const runElementAnalysis = () => {
+    trackProductEvent("analysis_started", { tool_id: "9-1", source: isDemo ? "demo" : "csv", row_count: csvData?.raw?.length || 0, analysis_type: "content_elements" });
+    requestAd(() => setAnalyzedSig(analyzeSig(outcome, features, fileName)));
+  };
 
   // ── 회귀 적합 (REG_STATS.ols) ──────────────────────────────────────────────
   const fit = useMemo(() => {
@@ -317,6 +323,20 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       R2: res.R2, adjR2: res.adjR2, intercept: res.beta[0], outcome,
     };
   }, [hasData, csvData, outcome, features]);
+
+  useEffect(() => {
+    if (!analyzed) return;
+    const signature = analyzedSig;
+    if (analysisEventRef.current === signature) return;
+    analysisEventRef.current = signature;
+    trackProductEvent("analysis_completed", {
+      tool_id: "9-1",
+      source: isDemo ? "demo" : "csv",
+      row_count: csvData?.raw?.length || 0,
+      analysis_type: "content_elements",
+      result_state: fit && !fit.error ? "ready" : "insufficient",
+    });
+  }, [analyzed, analyzedSig, fit, isDemo, csvData?.raw?.length]);
 
   // ── Forest plot ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -464,12 +484,12 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: 600 }}>{T.analyzedBadge}</span>
             <span style={{ color: MUTED, fontSize: "11px" }}>{T.analyzedHint}</span>
-            <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={() => requestAd(() => setAnalyzedSig(analyzeSig(outcome, features, fileName)))}>{T.reanalyzeBtn}</button>
+            <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={runElementAnalysis}>{T.reanalyzeBtn}</button>
           </div>
         ) : (
           <div style={{ marginTop: "12px", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ fontSize: "12.5px", color: "var(--text-1)" }}>✅ {T.readyMsg} <strong>{T.readyStrong}</strong></div>
-            <button className="ab-pill" style={{ background: "#7aa2f7", color: "#0b0d12", fontWeight: 700, borderColor: "#7aa2f7", fontSize: "13px", padding: "8px 18px" }} onClick={() => requestAd(() => setAnalyzedSig(analyzeSig(outcome, features, fileName)))}>{T.analyzeBtn}</button>
+            <button className="ab-pill" style={{ background: "#7aa2f7", color: "#0b0d12", fontWeight: 700, borderColor: "#7aa2f7", fontSize: "13px", padding: "8px 18px" }} onClick={runElementAnalysis}>{T.analyzeBtn}</button>
           </div>
         )}
       </section>

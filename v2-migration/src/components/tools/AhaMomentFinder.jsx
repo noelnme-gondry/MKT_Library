@@ -14,6 +14,7 @@ import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import { buildDemoCsv } from "@/utils/demoData";
 import AhaColumnMapper, { ahaAutoMapColumns } from "@/components/tools/AhaColumnMapper";
 import { resolveAhaCopy } from "@/utils/contentDomain";
+import { trackProductEvent } from "@/lib/analytics";
 
 // EN 번역팩 — domain(performance/content)별 AHA_COPY(ko)를 locale="en"일 때만 오버레이.
 // contentDomain.js(SSOT, 5-20/9-2 공용)는 절대 불변 — 여기서 로컬 병합만 수행(CampaignPvm.jsx 패턴과 동일).
@@ -455,6 +456,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const [activeSeg, setActiveSeg] = useState(null);
   // 분석 게이트: 마지막으로 "분석하기"를 눌렀을 때의 매핑 시그니처
   const [analyzedSig, setAnalyzedSig] = useState(null);
+  const analysisEventRef = useRef(null);
 
   const hasData = csvData?.raw?.length > 0;
   const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
@@ -497,6 +499,10 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
 
   // 현재 매핑 시그니처가 분석된 시그니처와 일치할 때만 결과 노출 (게이트)
   const analyzed = analyzedSig != null && analyzedSig === ahaAnalyzeSig(colMap, fileName);
+  const runAhaAnalysis = () => {
+    trackProductEvent("analysis_started", { tool_id: C.guideToolId, source: isDemo ? "demo" : "csv", row_count: csvData?.raw?.length || 0, analysis_type: "aha" });
+    requestAd(() => setAnalyzedSig(ahaAnalyzeSig(colMap, fileName)));
+  };
 
   // 세그먼트 차원(성별·플랫폼 등)별 값 목록 — 분석 후에만 raw 1패스 순회(매핑 편집 중엔
   // 미실행, §7 큰데이터 멈춤 방지). 값이 너무 많은(>20) 컬럼은 세그먼트로 부적합 → 잘라 표기.
@@ -917,6 +923,21 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
     };
   }, [hasData, analyzed, kSweep, drillResult]);
 
+  const analysisResultState = cache.results?.length > 0 ? "ready" : "insufficient";
+  useEffect(() => {
+    if (!analyzed) return;
+    const signature = `${analyzedSig}|${activeSeg?.col || ""}|${activeSeg?.value || ""}`;
+    if (analysisEventRef.current === signature) return;
+    analysisEventRef.current = signature;
+    trackProductEvent("analysis_completed", {
+      tool_id: C.guideToolId,
+      source: isDemo ? "demo" : "csv",
+      row_count: csvData?.raw?.length || 0,
+      analysis_type: "aha",
+      result_state: analysisResultState,
+    });
+  }, [analyzed, analyzedSig, activeSeg, analysisResultState, C.guideToolId, isDemo, csvData?.raw?.length]);
+
   if (!hasData) {
     return (
       <div className="tab-pane active" id="tab-aha">
@@ -1044,12 +1065,12 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: 600 }}>✓ {tr("분석 완료", "Analysis complete")}</span>
             <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr('매핑을 바꾸면 결과가 숨겨지고 다시 "분석하기"를 눌러야 합니다.', 'Changing the mapping hides results until you click "Analyze" again.')}</span>
-            <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={() => requestAd(() => setAnalyzedSig(ahaAnalyzeSig(colMap, fileName)))}>↻ {tr("다시 분석", "Re-analyze")}</button>
+            <button className="ab-pill" style={{ marginLeft: "auto" }} onClick={runAhaAnalysis}>↻ {tr("다시 분석", "Re-analyze")}</button>
           </div>
         ) : (
           <div style={{ marginTop: "12px", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ fontSize: "12.5px", color: "var(--text-1)" }}>✅ {tr("필수 역할 매핑 완료.", "Required roles are mapped.")} <strong>{tr("매핑이 맞는지 확인한 뒤 분석을 실행하세요.", "Confirm the mapping looks right, then run the analysis.")}</strong></div>
-            <button className="ab-pill" style={{ background: "#7aa2f7", color: "#0b0d12", fontWeight: 700, borderColor: "#7aa2f7", fontSize: "13px", padding: "8px 18px" }} onClick={() => requestAd(() => setAnalyzedSig(ahaAnalyzeSig(colMap, fileName)))}>▶ {tr("분석하기", "Analyze")}</button>
+            <button className="ab-pill" style={{ background: "#7aa2f7", color: "#0b0d12", fontWeight: 700, borderColor: "#7aa2f7", fontSize: "13px", padding: "8px 18px" }} onClick={runAhaAnalysis}>▶ {tr("분석하기", "Analyze")}</button>
           </div>
         )}
       </section>

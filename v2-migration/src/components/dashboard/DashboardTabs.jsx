@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { useAppStore } from "@/store/useDataStore";
+import { trackProductEvent } from "@/lib/analytics";
 import { 
   Monitor, 
   TrendingUp, 
@@ -45,6 +46,11 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
   const csvData = useAppStore((state) => state.csvData);
 
   const hasData = csvData && csvData.raw.length > 0;
+  const toolId = domain === "content" ? "9-7" : "5-2";
+  const selectTab = (tabId) => {
+    setDashboardTab(tabId);
+    trackProductEvent("dashboard_tab_view", { tool_id: toolId, tab_name: tabId });
+  };
   if (!hasData) return null;
 
   const groups = domain === "content" ? CONTENT_TAB_GROUPS : MON_TAB_GROUPS;
@@ -58,7 +64,7 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
       : event.key === "End"
         ? tabIds.length - 1
         : (current + (event.key === "ArrowRight" ? 1 : -1) + tabIds.length) % tabIds.length;
-    setDashboardTab(tabIds[next]);
+    selectTab(tabIds[next]);
     window.requestAnimationFrame(() => document.querySelector(`[data-dashboard-tab="${tabIds[next]}"]`)?.focus());
   };
 
@@ -84,7 +90,7 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
                   tabIndex={isActive ? 0 : -1}
                   data-dashboard-tab={tabId}
                   className={`ab-pill ${isActive ? "active" : ""}`}
-                  onClick={() => setDashboardTab(tabId)}
+                  onClick={() => selectTab(tabId)}
                   onKeyDown={(event) => onTabKeyDown(event, tabId)}
                   style={{ display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
                 >

@@ -126,7 +126,7 @@ export default function RootLayout({ children }) {
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'G-DK12TNR0GW');
+            gtag('config', 'G-DK12TNR0GW', { send_page_view: false });
           `}
         </Script>
 

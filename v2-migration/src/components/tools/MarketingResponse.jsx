@@ -32,6 +32,7 @@ import {
   CANNIBAL_RANK,
 } from "@/utils/responseCannibRank";
 import CsvUploader from "@/components/CsvUploader";
+import { trackProductEvent } from "@/lib/analytics";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
@@ -1091,9 +1092,11 @@ export default function MarketingResponse({ locale = "ko" }) {
   const [mmmColMap, setMmmColMap] = useState(null);
   const [mmmAnalyzedSig, setMmmAnalyzedSig] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const analysisEventRef = useRef(null);
   // 분석하기: 무거운 mmm useMemo가 커밋 렌더에서 동기 실행되므로, 로딩 오버레이를 먼저
   // 페인트(더블 rAF)한 뒤 시그니처를 커밋 → "멈춤" 대신 "분석 중" 표시(§7 성능).
   const runMmmAnalyze = (sig) => {
+    trackProductEvent("analysis_started", { tool_id: "5-18", source: isDemo ? "demo" : "csv", row_count: csvData?.raw?.length || 0, analysis_type: "mmm" });
     setIsAnalyzing(true);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -1224,6 +1227,20 @@ export default function MarketingResponse({ locale = "ko" }) {
       return { empty: true, reason: tx("분석 오류: ", "Analysis error: ") + msg };
     }
   }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, effPlatformFilter]);
+
+  useEffect(() => {
+    if (!mmmAnalyzed) return;
+    const signature = `${mmmAnalyzedSig}|${target}|${effPlatformFilter}`;
+    if (analysisEventRef.current === signature) return;
+    analysisEventRef.current = signature;
+    trackProductEvent("analysis_completed", {
+      tool_id: "5-18",
+      source: isDemo ? "demo" : "csv",
+      row_count: csvData?.raw?.length || 0,
+      analysis_type: "mmm",
+      result_state: mmm?.empty ? "insufficient" : "ready",
+    });
+  }, [mmmAnalyzed, mmmAnalyzedSig, target, effPlatformFilter, mmm?.empty, isDemo, csvData?.raw?.length]);
 
   const decomp = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "mmm") return null;
