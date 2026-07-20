@@ -48,6 +48,7 @@ describe("runMmmMethTests (golden port)", () => {
     const run = mmmBayesianRun(panel, { ...MMM_METH_CONFIG, steps: {} }, "Regs");
     expect(run?.engine).toBe("bayesian");
     expect(Object.keys(run.saturationByChannel)).toEqual(["google_roi", "meta"]);
+    expect(run.groupNames).toContain("Performance");
     expect(Number.isFinite(run.saturationByChannel.google_roi.responseAt(3000))).toBe(true);
     const decomp = mmmBayesianWeeklyDecomp(run);
     expect(decomp?.weeks).toHaveLength(n);

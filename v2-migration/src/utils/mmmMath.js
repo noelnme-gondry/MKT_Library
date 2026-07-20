@@ -2635,6 +2635,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               "Seasonality",
               "Holidays",
               "Regime(steps)",
+              "Holidays & Events",
+              "Regime change",
             ]; // 비매체 드라이버 (baseline 포함 토글 대상)
 
             // -----------------------------------------------------------------
@@ -2743,16 +2745,23 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               const mediaIndices = new Set(channelMeta.map((_, i) => 1 + controls.names.length + i));
               const posterior = _mmmBayesianLinear(X, panel.targets[targetName], mediaIndices);
               if (!posterior) return null;
-              const groupNames = ["Trend", "Seasonality", "Holidays", "Regime(steps)", ...channelMeta.map((ch) => ch.label)];
+              // 회사 MMM 대시보드처럼 채널별이 아니라 의사결정 단위로 묶는다.
+              // MmmColumnMapper의 kind=brand는 Brand, 나머지 매체는 Performance.
+              const mediaGroups = [];
+              if (channelMeta.some((ch) => ch.kind !== "brand")) mediaGroups.push("Performance");
+              if (channelMeta.some((ch) => ch.kind === "brand")) mediaGroups.push("Brand");
+              const groupNames = ["Trend", "Seasonality", "Holidays & Events", "Regime change", ...mediaGroups];
               const groupFor = (name) => {
                 if (name === "trend") return "Trend";
                 if (/^(sin|cos)_/.test(name)) return "Seasonality";
-                if (name === "lny" || name === "chuseok" || name.startsWith("d_")) return "Holidays";
+                if (name === "lny" || name === "chuseok" || name.startsWith("d_")) return "Holidays & Events";
                 if (name.startsWith("media_")) {
                   const key = name.slice(6);
-                  return (channelMeta.find((ch) => ch.key === key) || {}).label || key;
+                  return (channelMeta.find((ch) => ch.key === key) || {}).kind === "brand"
+                    ? "Brand"
+                    : "Performance";
                 }
-                return "Regime(steps)";
+                return "Regime change";
               };
               const weeks = panel.week.map((week, t) => {
                 const contrib = {};
