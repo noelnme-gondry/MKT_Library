@@ -53,6 +53,12 @@ describe("runMmmMethTests (golden port)", () => {
     const decomp = mmmBayesianWeeklyDecomp(run);
     expect(decomp?.weeks).toHaveLength(n);
     expect(Number.isFinite(decomp?.rmse)).toBe(true);
+    // 표준화는 추정 안정성 전용. 표시 기여 합은 원 단위 fitted와 일치해야 한다.
+    expect(Math.max(...run.weeks.map((w) => Math.abs(
+      w.baseline + Object.values(w.contrib).reduce((sum, value) => sum + value, 0) - w.fitted,
+    )))).toBeLessThan(0.02);
+    // 절편까지 합친 장기 추세는 감소해도 '음수 광고/기준선'이 아닌 자연수요 레벨이다.
+    expect(run.weeks.every((w) => w.contrib.Trend > 0)).toBe(true);
   });
 
   it("T1-T8 MMM methodology pipeline matches index.html", () => {

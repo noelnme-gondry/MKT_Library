@@ -890,15 +890,15 @@ function mmmStageDefs(locale) {
 function mmmBucketMeta(locale) {
   if (locale === "en") {
     return {
-      base: { label: "Base demand", tone: "#94a3b8" },
-      trend: { label: "Long-term trend", tone: "#38bdf8" },
+      base: { label: "Seasonality", tone: "#94a3b8" },
+      trend: { label: "Base demand · trend", tone: "#38bdf8" },
       event: { label: "Events · regime change", tone: "#f59e0b" },
       media: { label: "Ad effect", tone: "#8b7ff0" },
     };
   }
   return {
-    base: { label: "기본 수요", tone: "#94a3b8" },
-    trend: { label: "장기 추세", tone: "#38bdf8" },
+    base: { label: "계절 요인", tone: "#94a3b8" },
+    trend: { label: "기본 수요·추세", tone: "#38bdf8" },
     event: { label: "이벤트·구조변화", tone: "#f59e0b" },
     media: { label: "광고 효과", tone: "#8b7ff0" },
   };
@@ -906,7 +906,7 @@ function mmmBucketMeta(locale) {
 // 아래→위 쌓는 순서. base(=baseline+계절)는 절대 밴드로 별도 처리, 나머지는 그 위 누적.
 const MMM_BUCKET_ORDER = ["base", "trend", "event", "media"];
 function decompBucketOf(g) {
-  if (g === "Seasonality") return "base"; // 계절은 기본 수요에 흡수(§유저: baseline+계절=기본 수요)
+  if (g === "Seasonality") return "base";
   if (g === "Trend") return "trend";
   if (g === "Holidays" || g === "Regime(steps)") return "event";
   return MMM_NONMEDIA_GROUPS.includes(g) ? "event" : "media";
@@ -2161,8 +2161,8 @@ export default function MarketingResponse({ locale = "ko" }) {
           {stage === "mmm" && (() => {
             const shRows = (mmm.run.shapley?.rows || []).slice().sort((a, b) => b.r2_share - a.r2_share);
             const PLAIN_DRV = locale === "en"
-              ? { Trend: "Time trend", Seasonality: "Season", Holidays: "Holidays/events", "Regime(steps)": "Regime change", Regime: "Regime change", baseline: "Baseline" }
-              : { Trend: "시간 추세", Seasonality: "시즌·계절", Holidays: "휴일·이벤트", "Holidays & Events": "휴일·이벤트", "Regime(steps)": "구조 변화", "Regime change": "구조 변화", Performance: "마케팅", Brand: "브랜딩", Regime: "구조 변화", baseline: "기본값" };
+              ? { Trend: "Base demand · trend", Seasonality: "Season", Holidays: "Holidays/events", "Regime(steps)": "Regime change", Regime: "Regime change", baseline: "Baseline" }
+              : { Trend: "기본 수요·추세", Seasonality: "시즌·계절", Holidays: "휴일·이벤트", "Holidays & Events": "휴일·이벤트", "Regime(steps)": "구조 변화", "Regime change": "구조 변화", Performance: "마케팅", Brand: "브랜딩", Regime: "구조 변화", baseline: "기본값" };
             const plainDrv = (nm) => PLAIN_DRV[nm] || nm;
             const isMediaDrv = (nm) => !MMM_NONMEDIA_GROUPS.includes(nm) && nm !== "baseline";
             const tgtKo = mmm.target === "Regs" ? tx("가입", "signups") : mmm.target === "React" ? tx("재활성", "reactivation") : mmm.target;
@@ -2285,7 +2285,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                         <h3 className="section-title" style={{ fontSize: "13.5px", margin: 0 }}>{tx("매주 성과는 무엇으로 이뤄졌나", "What made up each week's performance")} <span style={{ fontSize: "11px", color: MUTED, fontWeight: 400 }}>{tx("· 자동 분류한 그룹별 기여", "· automatically classified contribution groups")}</span></h3>
                       </div>
                       <p className="muted" style={{ fontSize: "11px", marginBottom: "6px", lineHeight: 1.5 }}>
-                        {tx("채널은 직접 노출하지 않고", "Channels are not shown directly. Instead,")} <b>{tx("마케팅·브랜딩", "Performance and Brand")}</b>{tx("으로 자동 묶습니다. 휴일·이벤트, 시즌·계절, 구조 변화, 시간 추세는 각각 독립 패널이라 0 아래의 음수 기여도 가려지지 않아요.", ", Holidays & Events, Seasonality, Regime change, and Trend each get their own panel, so negative contribution is never hidden.")}
+                        {tx("채널은 직접 노출하지 않고", "Channels are not shown directly. Instead,")} <b>{tx("마케팅·브랜딩", "Performance and Brand")}</b>{tx("으로 자동 묶습니다. 기본 수요·추세는 양수 레벨이 오르내리는 값이고, 휴일·이벤트·시즌·계절·구조 변화는 기준선 대비 음수도 표시합니다.", ", Performance and Brand. Base demand · trend is a positive level that rises or falls; Holidays & Events, Seasonality, and Regime change can be negative versus that level.")}
                       </p>
                       {negAlert && (
                         <div style={{ display: "flex", gap: "8px", alignItems: "flex-start", padding: "9px 12px", marginBottom: "8px", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.4)", borderRadius: "8px" }}>

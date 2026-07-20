@@ -2745,6 +2745,14 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               const mediaIndices = new Set(channelMeta.map((_, i) => 1 + controls.names.length + i));
               const posterior = _mmmBayesianLinear(X, panel.targets[targetName], mediaIndices);
               if (!posterior) return null;
+              // 추정은 표준화 공간에서 안정적으로 하되, 화면 기여는 원 단위 절대기여로
+              // 되돌린다. 평균 중심화 X를 그대로 쓰면 양수 매체 효과도 저지출 주에
+              // 음수처럼 보여 "광고가 성과를 깎았다"는 잘못된 해석을 만든다.
+              const absoluteBeta = names.map((_, j) => posterior.beta[j + 1] / colScale[j]);
+              const absoluteIntercept = posterior.beta[0] - absoluteBeta.reduce(
+                (sum, beta, j) => sum + beta * colMean[j],
+                0,
+              );
               // 회사 MMM 대시보드처럼 채널별이 아니라 의사결정 단위로 묶는다.
               // MmmColumnMapper의 kind=brand는 Brand, 나머지 매체는 Performance.
               const mediaGroups = [];
@@ -2766,13 +2774,17 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               const weeks = panel.week.map((week, t) => {
                 const contrib = {};
                 groupNames.forEach((g) => (contrib[g] = 0));
+                // 장기 추세는 회귀절편과 한 덩어리인 자연수요 레벨이다. 절편을
+                // 별도 상수로 두면 추세가 하락할 때 '음수 기여'처럼 읽히므로,
+                // 절편을 Trend에 넣어 양수 레벨이 낮아지는 모습으로 표현한다.
+                contrib.Trend = absoluteIntercept;
                 names.forEach((name, j) => {
-                  contrib[groupFor(name)] += posterior.beta[j + 1] * X[t][j + 1];
+                  contrib[groupFor(name)] += absoluteBeta[j] * Xraw[t][j];
                 });
                 return {
                   week,
                   actual: panel.targets[targetName][t],
-                  baseline: +posterior.beta[0].toFixed(2),
+                  baseline: 0,
                   fitted: +posterior.fitted[t].toFixed(2),
                   residual: +posterior.resid[t].toFixed(2),
                   contrib,
@@ -2786,7 +2798,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 const raw = panel.ch[ch.key];
                 const recentMean = _mean(raw.filter((v) => v > 0).slice(-12)) || 0;
                 const p = params[ch.key];
-                const beta = posterior.beta[j + 1] / colScale[j];
+                const beta = absoluteBeta[j];
                 const sd = posterior.sd[j + 1] / colScale[j];
                 const responseAt = (spend) => beta * mmmHill(mmmAdstock([spend], p.alpha)[0], p.ec, p.slope);
                 const marginalAt = (spend) => {
@@ -2818,6 +2830,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 featureScales: colScale,
                 standardizedX: X,
                 channelMeta,
+                absoluteBeta,
+                absoluteIntercept,
                 posterior,
                 weeks,
                 groupNames,
@@ -2854,7 +2868,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 model: "bayesian",
                 level: true,
                 lambda: null,
-                baseline: +_mean(run.weeks.map((w) => w.baseline)).toFixed(1),
+                // UI의 '전체 기간 평균'은 회귀절편이 아니라 실제 성과 평균.
+                baseline: +meanActual.toFixed(1),
                 weeks: run.weeks,
                 groupNames: run.groupNames,
                 meanContrib: Object.fromEntries(
