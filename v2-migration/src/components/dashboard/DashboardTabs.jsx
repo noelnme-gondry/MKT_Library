@@ -11,11 +11,12 @@ import {
   Filter,
   Grid,
   Clock,
-  Target
+  Target,
+  CalendarDays
 } from "lucide-react";
 
 const MON_TAB_GROUPS = [
-  { label: "모니터링", labelEn: "Monitoring", icon: <Monitor size={14} />, tabs: ["viz", "scorecard", "pacing", "anomaly"] },
+  { label: "모니터링", labelEn: "Monitoring", icon: <Monitor size={14} />, tabs: ["viz", "scorecard", "seasonality", "pacing", "anomaly"] },
   { label: "장기 가치", labelEn: "Long-term Value", icon: <TrendingUp size={14} />, tabs: ["ltv", "cohort"] },
   { label: "효율 진단", labelEn: "Efficiency Diagnosis", icon: <Target size={14} />, tabs: ["funnel", "segment"] },
 ];
@@ -25,6 +26,7 @@ const TABS_INFO = {
   scorecard: { label: "스코어카드", labelEn: "Scorecard", icon: <Grid size={13} /> },
   pacing: { label: "페이싱", labelEn: "Pacing", icon: <Clock size={13} /> },
   anomaly: { label: "이상탐지", labelEn: "Anomaly Detection", icon: <Activity size={13} /> },
+  seasonality: { label: "시즈널리티", labelEn: "Seasonality", icon: <CalendarDays size={13} /> },
   ltv: { label: "LTV & ROAS", labelEn: "LTV & ROAS", icon: <LineChart size={13} /> },
   cohort: { label: "코호트 분석", labelEn: "Cohort Analysis", icon: <Users size={13} /> },
   funnel: { label: "퍼널 진단", labelEn: "Funnel Diagnosis", icon: <Filter size={13} /> },

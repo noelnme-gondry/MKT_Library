@@ -14,6 +14,7 @@ import LtvTab from "@/components/dashboard/LtvTab";
 import CohortTab from "@/components/dashboard/CohortTab";
 import FunnelTab from "@/components/dashboard/FunnelTab";
 import SegmentTab from "@/components/dashboard/SegmentTab";
+import SeasonalityTab from "@/components/dashboard/SeasonalityTab";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
@@ -31,6 +32,7 @@ const TOC_MAP = {
   scorecard: [{ id: "s-score", title: "스코어카드" }],
   pacing: [{ id: "s-pace", title: "페이싱" }],
   anomaly: [{ id: "s-anom", title: "이상 감지" }],
+  seasonality: [{ id: "s-seasonality", title: "시즈널리티" }],
   ltv: [
     { id: "s-ctl", title: "분석 단위" },
     { id: "s-table", title: "LTV:CAC 표" },
@@ -61,6 +63,7 @@ const TOC_MAP_EN = {
   scorecard: [{ id: "s-score", title: "Scorecard" }],
   pacing: [{ id: "s-pace", title: "Pacing" }],
   anomaly: [{ id: "s-anom", title: "Anomaly Detection" }],
+  seasonality: [{ id: "s-seasonality", title: "Seasonality" }],
   ltv: [
     { id: "s-ctl", title: "Analysis Unit" },
     { id: "s-table", title: "LTV:CAC Table" },
@@ -302,13 +305,14 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
               {activeTab === "viz" && <VizTab domain={domain} locale={locale} />}
               {activeTab === "scorecard" && <ScorecardTab domain={domain} locale={locale} />}
               {activeTab === "anomaly" && <AnomalyTab domain={domain} locale={locale} />}
+              {!isContent && activeTab === "seasonality" && <SeasonalityTab locale={locale} />}
               {/* 콘텐츠 대시보드는 아래 마케팅 전용 탭(결제·예산·매출 전제)을 노출하지 않음. */}
               {!isContent && activeTab === "pacing" && <PacingTab locale={locale} />}
               {!isContent && activeTab === "ltv" && <LtvTab locale={locale} />}
               {!isContent && activeTab === "cohort" && <CohortTab locale={locale} />}
               {!isContent && activeTab === "funnel" && <FunnelTab locale={locale} />}
               {!isContent && activeTab === "segment" && <SegmentTab locale={locale} />}
-              {!["viz", "scorecard", "pacing", "anomaly", "ltv", "cohort", "funnel", "segment"].includes(activeTab) && (
+              {!["viz", "scorecard", "seasonality", "pacing", "anomaly", "ltv", "cohort", "funnel", "segment"].includes(activeTab) && (
                 <div className="card">
                   <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "2rem 0" }}>
                     {tr(`[${activeTab}] 탭은 현재 마이그레이션 중입니다...`, `The [${activeTab}] tab is currently being migrated...`)}
