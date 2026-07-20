@@ -210,6 +210,11 @@ function fmtInt(v) {
   return Math.round(v).toLocaleString();
 }
 
+function fmtOne(v) {
+  if (v == null || !isFinite(v)) return "—";
+  return Number(v).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
 // 천단위 콤마 입력(§7 `type=number`는 콤마 불가 · §12.14 라이브 콤마+커서 보존 포트). type=text로
 // 표시=콤마, 읽기=콤마 strip. onCommit(number|null) — 빈칸이면 null(부모가 기본값 복귀).
 function CommaNumberInput({ value, onCommit, style, placeholder }) {
@@ -486,22 +491,22 @@ function buildMmmGuideDoc(mmm, targetKo, locale = "ko") {
   L.push(`## 수학·통계 상세 (전문가용)`);
   L.push("");
   L.push(`### 1. Adstock (광고 잔효)`);
-  L.push(`광고 효과는 집행한 주에만 나타나지 않고 다음 주로 이어집니다(잔향). adstockₜ = spendₜ + λ·adstockₜ₋₁ 형태의 기하 감쇠로 이월을 모델링합니다. λ(0~1)는 **rolling-origin out-of-sample CV**로 선택 — 여러 λ 후보로 "아직 안 본 미래 주"를 예측했을 때 RMSE가 가장 작은 값을 씁니다(in-sample 과적합 방지). 현재 best λ = ${run.best_lambda ?? "—"}.`);
+  L.push(`광고 효과는 집행한 주에만 나타나지 않고 다음 주로 이어집니다(잔향). adstockₜ = spendₜ + λ·adstockₜ₋₁ 형태의 기하 감쇠를 후보 λ별로 만들고, 비매체 요인을 걷어낸 성과와 가장 잘 맞는 변환을 채널별로 고릅니다.`);
   L.push("");
   L.push(`### 2. Saturation (수확체감)`);
-  L.push(`같은 채널도 많이 쓸수록 1달러당 효과가 줄어듭니다. ln(1+adstock) 변환으로 로그-오목(concave) 반응곡선을 만들어, 지출이 커질수록 한계효과가 감소하도록 합니다. "+$1k당 N명"은 현재 지출점에서의 국소 기울기(β/(1+지출)×1000)이며 지출이 클수록 작아집니다.`);
+  L.push(`같은 채널도 많이 쓸수록 1달러당 효과가 줄어듭니다. Hill 곡선 ` + "`adstock^s/(ec^s + adstock^s)`" + `으로 반응을 만들며, 지출이 커질수록 한계효과가 감소합니다. "+$1k당 N명"은 현재 지출점의 국소 기울기입니다.`);
   L.push("");
-  L.push(`### 3. 회귀 적합 + HAC`);
-  L.push(`ln(${targetKo}) = Σβᵢ·ln(1+adstockᵢ) + 추세 + 계절(Fourier) + 휴일·구조변화 더미 + 오차. 시계열 잔차의 자기상관·이분산을 감안해 **HAC(Newey-West) 표준오차**로 유의성을 보수적으로 평가합니다. 채널끼리 지출이 겹치면 계수가 불안정해지므로 **VIF>10** 항목은 "식별 실패"로 표시합니다.`);
+  L.push(`### 3. Bayesian posterior`);
+  L.push(`${targetKo} = 절편 + Σβᵢ·Hill(adstockᵢ) + 추세 + 계절(Fourier) + 휴일·구조변화 + 오차를 약한 Gaussian prior로 추정합니다. 각 채널의 β와 불확실성을 posterior로 계산하며, **P(효과>0) 80% 이상** 채널만 예산 추천에 포함합니다.`);
   L.push("");
-  L.push(`### 4. 탄력성 (Elasticity)`);
-  L.push(`log-log 회귀 계수 β는 "지출 1%↑ → 성과 β%↑"로 읽는 탄력성입니다(예: 0.3이면 지출 10%↑ → 약 3%↑). 95% 신뢰구간이 0을 넘지 않아야 통계적으로 유의합니다.`);
+  L.push(`### 4. 효과 신뢰도`);
+  L.push(`p값·VIF는 제거했습니다. 이 화면의 "효과 양수 확률"은 posterior에서 β>0일 확률이고, 90% credible interval은 효과 크기의 불확실성 범위입니다.`);
   L.push("");
-  L.push(`### 5. Shapley R² 분해`);
-  L.push(`각 드라이버가 성과 변동(R²)을 몇 % 설명하는지 **공정하게** 나눕니다. 모델에 변수를 넣는 순서를 바꾸면 누가 공을 가져갈지 달라지므로, 가능한 모든 투입 순서(부분집합)의 기여를 평균낸 Shapley 값을 씁니다(LMG 방식). 모든 몫의 합 = 전체 R². 지출 비중을 그대로 기여도로 쓰는 단순 점유율 분해는 로그·수확체감 때문에 틀리므로 금지합니다.`);
+  L.push(`### 5. 기여 변동`);
+  L.push(`각 드라이버의 주별 기여가 posterior 예측에서 흔들린 크기를 비교합니다. 인과 확정이나 OLS Shapley R²가 아닙니다.`);
   L.push("");
   L.push(`### 6. 주별 기여 분해 (decomposition)`);
-  L.push(`매주 실제값을 baseline(비매체 기저) + 각 드라이버 기여로 쪼갭니다. OLS(중심화)는 평균 대비 ± 변동을, Ridge(정규화)는 매체 0일 때 기준의 절대 기여를 봅니다. RMSE·MAPE로 모델이 실제를 얼마나 잘 따라갔는지 확인하고, 잔차가 평소의 2σ를 넘는 주는 "튀는 구간"으로 표시해 원인을 기록하게 합니다.`);
+  L.push(`매주 실제값을 기본 수요·추세, 계절, 휴일·구조변화, 매체 절대기여로 쪼갭니다. 양수 매체 계수는 저지출 주에도 음수가 되지 않도록 원 단위 반응값으로 표시합니다. RMSE·MAPE로 실제 적합도를 확인합니다.`);
   L.push("");
   if (run.shapley && run.shapley.rows && run.shapley.rows.length) {
     L.push(`## 현재 데이터 설명력 비중 (Shapley R², total R²=${run.shapley.total})`);
@@ -536,22 +541,22 @@ function buildMmmGuideDocEn(mmm, targetLabel) {
   L.push(`## Math & statistics detail (for specialists)`);
   L.push("");
   L.push(`### 1. Adstock (ad carryover)`);
-  L.push(`Ad effects don't only appear in the week they run — they carry over into following weeks. We model this carryover with geometric decay of the form adstockₜ = spendₜ + λ·adstockₜ₋₁. λ (0–1) is chosen via **rolling-origin out-of-sample CV** — among candidate λ values, we pick the one with the lowest RMSE when predicting "future weeks not yet seen" (prevents in-sample overfitting). Current best λ = ${run.best_lambda ?? "—"}.`);
+  L.push(`Ad effects carry into later weeks. We build geometric adstock candidates, adstockₜ = spendₜ + λ·adstockₜ₋₁, then choose each channel's transformation by fit after accounting for non-media drivers.`);
   L.push("");
   L.push(`### 2. Saturation (diminishing returns)`);
-  L.push(`Even the same channel yields less per dollar the more you spend. The ln(1+adstock) transform creates a log-concave response curve so the marginal effect shrinks as spend grows. "+N per $1k" is the local slope at the current spend point (β/(1+spend)×1000), and it gets smaller as spend increases.`);
+  L.push(`Even the same channel yields less per dollar as spend grows. A Hill response curve makes marginal effect shrink at higher spend. "+N per $1k" is the local slope at current spend.`);
   L.push("");
-  L.push(`### 3. Regression fit + HAC`);
-  L.push(`ln(${targetLabel}) = Σβᵢ·ln(1+adstockᵢ) + trend + seasonality (Fourier) + holiday/regime-change dummies + error. Given time-series residual autocorrelation/heteroskedasticity, significance is conservatively assessed with **HAC (Newey-West) standard errors**. When channel spend overlaps, coefficients become unstable, so items with **VIF>10** are flagged as "not identified."`);
+  L.push(`### 3. Bayesian posterior`);
+  L.push(`${targetLabel} = intercept + Σβᵢ·Hill(adstockᵢ) + trend + seasonality + holiday/regime change + error. A weak Gaussian prior stabilizes the estimate. Only channels with posterior P(effect > 0) ≥80% enter budget recommendations.`);
   L.push("");
-  L.push(`### 4. Elasticity`);
-  L.push(`The log-log regression coefficient β is an elasticity read as "spend +1% → performance +β%" (e.g. 0.3 means spend +10% → roughly +3%). It's statistically significant only if the 95% CI doesn't cross zero.`);
+  L.push(`### 4. Effect confidence`);
+  L.push(`Legacy OLS p-values and VIF do not apply. P(effect > 0) is posterior probability; the 90% credible interval is the uncertainty range for effect size.`);
   L.push("");
-  L.push(`### 5. Shapley R² decomposition`);
-  L.push(`Splits, **fairly**, how many % of performance variance (R²) each driver explains. Since the order variables enter the model changes who "gets credit," we average the contribution over all possible input orderings (subsets) — the Shapley value (LMG method). The sum of all shares = total R². A naive share-of-spend decomposition is banned as incorrect, because of the log transform and diminishing returns.`);
+  L.push(`### 5. Contribution variation`);
+  L.push(`Compares how much each driver's weekly contribution moves in posterior prediction. It is not causal proof or OLS Shapley R².`);
   L.push("");
   L.push(`### 6. Weekly contribution decomposition`);
-  L.push(`Splits each week's actual value into a baseline (non-media base) plus each driver's contribution. OLS (centered) shows ± swings around the average; Ridge (regularized) shows absolute contribution against a zero-media baseline. RMSE/MAPE show how well the model tracked reality, and weeks where the residual exceeds 2σ of normal are flagged as "spikes" so a cause can be recorded.`);
+  L.push(`Splits each week into base demand/trend, seasonality, holidays/regime change, and absolute media contribution. Positive media effects remain positive at low spend. RMSE/MAPE measure fit to actuals.`);
   L.push("");
   if (run.shapley && run.shapley.rows && run.shapley.rows.length) {
     L.push(`## Current-data share of explained variance (Shapley R², total R²=${run.shapley.total})`);
@@ -1044,6 +1049,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const cvRef = useRef(null);
   const shapleyRef = useRef(null);
   const satRef = useRef(null);
+  const efficiencyRef = useRef(null);
   const fitRef = useRef(null);
   const decompRef = useRef(null);
   const forecastRef = useRef(null);
@@ -1309,15 +1315,61 @@ export default function MarketingResponse({ locale = "ko" }) {
           });
           const satOpts = chartBase();
           satOpts.plugins.legend = { display: false }; // 커스텀 HTML 범례(채널 토글) 사용
-          satOpts.plugins.tooltip = { ...satOpts.plugins.tooltip, callbacks: { label: (c) => `${c.dataset.label}: ${Math.round(c.parsed.y).toLocaleString()}${tx("명", "")} @ ${currencySym}${Math.round(convAmt(c.parsed.x) / 1000)}k` } };
-          satOpts.scales.x = { type: "linear", ticks: { color: mutedColS, font: { size: 10 }, callback: (v) => currencySym + Math.round(convAmt(v) / 1000) + "k" }, grid: { display: false } };
-          satOpts.scales.y = { ticks: { color: mutedColS, font: { size: 10 }, callback: (v) => Math.round(v).toLocaleString() }, grid: { color: CHART_THEME.grid } };
+          satOpts.plugins.tooltip = { ...satOpts.plugins.tooltip, callbacks: { label: (c) => `${c.dataset.label}: ${fmtOne(c.parsed.y)}${tx("명", "")} @ ${currencySym}${fmtOne(convAmt(c.parsed.x))}` } };
+          satOpts.scales.x = { type: "linear", ticks: { color: mutedColS, font: { size: 10 }, callback: (v) => currencySym + fmtOne(convAmt(v)) }, grid: { display: false } };
+          satOpts.scales.y = { ticks: { color: mutedColS, font: { size: 10 }, callback: (v) => fmtOne(v) }, grid: { color: CHART_THEME.grid } };
           inst.push(
             new Chart(satRef.current.getContext("2d"), {
               data: { datasets: lineDs },
               options: satOpts,
             }),
           );
+        }
+      }
+      // 목표가 전환이면 CPA, 매출이면 ROAS. 수확체감 반응곡선을 비용 효율 언어로
+      // 다시 읽어 예산을 늘릴수록 왜 CPR이 오르고 ROAS가 내려가는지 보여준다.
+      if (efficiencyRef.current && run.saturationByChannel) {
+        const themeVarE = (n) => (typeof document !== "undefined" ? getComputedStyle(document.body).getPropertyValue(n).trim() : "") || "";
+        const mutedColE = themeVarE("--text-muted") || CHART_THEME.muted;
+        const chs = Object.entries(run.saturationByChannel);
+        if (chs.length) {
+          const isRoas = mmm.target === "Revenue";
+          const maxSpend = Math.max(...chs.map(([, s]) => s.recentMean || 0)) * 1.6 || 40000;
+          const grid = Array.from({ length: 41 }, (_, i) => (i / 40) * maxSpend);
+          const metricAt = (s, spend) => {
+            const result = s.responseAt(spend);
+            if (!(spend > 0) || !(result > 0)) return null;
+            return isRoas ? result / spend : spend / result;
+          };
+          const datasets = chs.map(([key, s], i) => {
+            const col = MMM_MEDIA_PALETTE[i % MMM_MEDIA_PALETTE.length];
+            let curIdx = -1;
+            if (s.recentMean > 0) {
+              let best = Infinity;
+              grid.forEach((x, gi) => { const d = Math.abs(x - s.recentMean); if (d < best) { best = d; curIdx = gi; } });
+            }
+            return {
+              type: "line",
+              label: s.label,
+              data: grid.map((x) => ({ x, y: metricAt(s, x) })),
+              borderColor: col,
+              borderDash: s.posteriorPositive < 0.8 ? [5, 4] : [],
+              borderWidth: 1.75,
+              tension: 0.3,
+              pointRadius: grid.map((_, gi) => (gi === curIdx ? 4.5 : 0)),
+              pointBackgroundColor: col,
+              pointBorderColor: mutedColE,
+              pointBorderWidth: 1.5,
+              hidden: !!satHidden[key],
+              spanGaps: false,
+            };
+          });
+          const opts = chartBase();
+          opts.plugins.legend = { display: false };
+          opts.plugins.tooltip = { ...opts.plugins.tooltip, callbacks: { label: (c) => `${c.dataset.label}: ${isRoas ? "" : currencySym}${fmtOne(c.parsed.y)}${isRoas ? "x" : ""}` } };
+          opts.scales.x = { type: "linear", ticks: { color: mutedColE, font: { size: 10 }, callback: (v) => currencySym + fmtOne(convAmt(v)) }, grid: { display: false } };
+          opts.scales.y = { ticks: { color: mutedColE, font: { size: 10 }, callback: (v) => `${isRoas ? "" : currencySym}${fmtOne(v)}${isRoas ? "x" : ""}` }, grid: { color: CHART_THEME.grid } };
+          inst.push(new Chart(efficiencyRef.current.getContext("2d"), { data: { datasets }, options: opts }));
         }
       }
       // "baseline" 필드는 회귀절편(전체 기간 평균) 단일 상수라 원래 평평함 — 시즌·추세는 그 위에
@@ -1720,7 +1772,7 @@ export default function MarketingResponse({ locale = "ko" }) {
             <span className="ab-pillgroup-label">{tx("타깃", "Target")}</span>
             {availTargets.map((t) => (
               <button key={t} className={`ab-pill ${effectiveTarget === t ? "active" : ""}`} onClick={() => setTarget(t)}>
-                {t === "Regs" ? tx("가입(Reg)", "Signups (Reg)") : t === "React" ? tx("재활성(React)", "Reactivation (React)") : "Reg+React"}
+                {t === "Regs" ? tx("가입(Reg)", "Signups (Reg)") : t === "React" ? tx("재활성(React)", "Reactivation (React)") : t === "Revenue" ? tx("매출(Revenue)", "Revenue") : "Reg+React"}
               </button>
             ))}
           </div>
@@ -2395,6 +2447,21 @@ export default function MarketingResponse({ locale = "ko" }) {
                     </table>
                   </div>
                   <StatHead title={tx("② Bayesian 효과 신뢰도", "② Bayesian effect confidence")} hint={tx("기존 OLS p값·VIF 표는 Bayesian 엔진과 맞지 않아 제거했습니다. 양수 확률이 80% 이상인 채널만 예산 추천에 씁니다.", "The legacy OLS p-value/VIF tables do not apply to the Bayesian engine. Only channels with at least 80% posterior probability of a positive effect are used for budget recommendations.")} />
+                  <div className="table-wrap" style={{ marginBottom: "12px" }}>
+                    <table className="data" style={{ fontSize: "11.5px" }}>
+                      <thead><tr><th>{tx("채널", "Channel")}</th><th>{tx("효과 양수 확률", "P(effect > 0)")}</th><th>{tx("효과 크기", "Effect size")}</th><th>{tx("90% 신뢰구간", "90% credible interval")}</th><th>{tx("예산 추천", "Budget use")}</th></tr></thead>
+                      <tbody>{Object.values(mmm.run.saturationByChannel || {}).map((s) => {
+                        const useBudget = s.posteriorPositive >= 0.8 && s.currentMarginal > 0;
+                        return <tr key={s.key}>
+                          <td><strong>{s.label}</strong></td>
+                          <td className="tnum" style={{ color: useBudget ? NEG : MUTED }}>{fmtOne(s.posteriorPositive * 100)}%</td>
+                          <td className="tnum">{fmtOne(s.ln_coef)}</td>
+                          <td className="tnum">[{fmtOne(s.ci?.[0])}, {fmtOne(s.ci?.[1])}]</td>
+                          <td style={{ color: useBudget ? NEG : MUTED, fontWeight: 600 }}>{useBudget ? tx("포함", "Included") : tx("보류", "Hold")}</td>
+                        </tr>;
+                      })}</tbody>
+                    </table>
+                  </div>
                   <StatHead title={tx("③ posterior 기여 변동", "③ Posterior contribution variation")} hint={tx("각 드라이버가 posterior 예측에서 차지하는 기여 변동을 비교합니다. 인과 확정이나 OLS Shapley R²는 아닙니다.", "Compares each driver's contribution variation in the posterior prediction; it is not causal proof or OLS Shapley R².")} />
                   <div className="chart-container" style={{ height: "200px", marginBottom: "8px" }}><canvas ref={shapleyRef}></canvas></div>
                   <StatHead title={tx("④ 수확체감 — 더 쓰면 효과가 얼마나 꺾이나", "④ Diminishing returns — how much does effect fall as you spend more")} hint={tx("곡선이 평평해질수록 1달러당 효과가 줄어요(수확체감). ● = 지금 지출 위치. 이미 꺾인 뒤에 있으면 증액 효율이 낮다는 뜻. 점선 = 음수(노이즈).", "The flatter the curve, the less each dollar returns (diminishing returns). ● = current spend point. If it's already past the bend, added spend is less efficient. Dashed = negative (noise).")} />
@@ -2417,7 +2484,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                     <div>
                       <div className="table-wrap">
                         <table className="data" style={{ fontSize: "11px" }}>
-                          <thead><tr><th>{tx("채널", "Channel")}</th><th>{tx("현 지출", "Current spend")}<br />+{currencySym}{Math.round(convAmt(1000) / 1000).toLocaleString()}k{tx("당", "")}</th><th>{currencySym}{Math.round(convAmt(10000) / 1000).toLocaleString()}k{tx("당", "")}</th><th>{currencySym}{Math.round(convAmt(35000) / 1000).toLocaleString()}k{tx("당", "")}</th><th>{currencySym}{Math.round(convAmt(60000) / 1000).toLocaleString()}k{tx("당", "")}</th></tr></thead>
+                          <thead><tr><th>{tx("채널", "Channel")}</th><th>{tx("현 지출", "Current spend")}<br />+{currencySym}{fmtOne(convAmt(1000))}{tx("당", "")}</th><th>{currencySym}{fmtOne(convAmt(10000))}{tx("당", "")}</th><th>{currencySym}{fmtOne(convAmt(35000))}{tx("당", "")}</th><th>{currencySym}{fmtOne(convAmt(60000))}{tx("당", "")}</th></tr></thead>
                           <tbody>
                             {(() => {
                               const sbc = mmm.run.saturationByChannel || {};
@@ -2426,14 +2493,14 @@ export default function MarketingResponse({ locale = "ko" }) {
                               // marginal_kpi_per_1k는 "원본 통화 +1000 늘렸을 때"의 실제 증가
                               // 인원 — 실물량이라 통화 토글로 나누면 안 됨(그 헤더 텍스트만
                               // convAmt로 환산해서 "+1000이 표시통화로 얼마인지" 보여줌).
-                              const cell = (v) => (v == null ? "—" : `${v >= 0 ? "+" : ""}${v}${tx("명", "")}`);
+                              const cell = (v) => (v == null ? "—" : `${v >= 0 ? "+" : ""}${fmtOne(v)}${tx("명", "")}`);
                               return keys.map((k) => {
                               const s = sbc[k], neg = s.posteriorPositive < 0.8;
                                 const curMarg = s.recentMean > 0 ? +s.currentMarginal.toFixed(1) : null;
                                 return (
                                   <tr key={k} style={neg ? { opacity: 0.55 } : undefined}>
                                     <td><strong>{s.label}</strong>{neg ? <span style={{ fontSize: "9px", color: "#fbbf24" }}> {tx("음수=노이즈", "negative=noise")}</span> : ""}</td>
-                                    <td className="tnum" style={{ color: "#adc6ff" }}>{curMarg == null ? "—" : cell(curMarg)}{curMarg != null && <span style={{ fontSize: "9px", color: MUTED }}><br />@{currencySym}{(convAmt(s.recentMean) / 1000).toFixed(1)}k</span>}</td>
+                                    <td className="tnum" style={{ color: "#adc6ff" }}>{curMarg == null ? "—" : cell(curMarg)}{curMarg != null && <span style={{ fontSize: "9px", color: MUTED }}><br />@{currencySym}{fmtOne(convAmt(s.recentMean))}</span>}</td>
                                     <td className="tnum">{cell(s.marginalAt(10000) * 1000)}</td>
                                     <td className="tnum">{cell(s.marginalAt(35000) * 1000)}</td>
                                     <td className="tnum">{cell(s.marginalAt(60000) * 1000)}</td>
@@ -2444,26 +2511,28 @@ export default function MarketingResponse({ locale = "ko" }) {
                           </tbody>
                         </table>
                       </div>
+                      <StatHead title={mmm.target === "Revenue" ? tx("⑤ ROAS 곡선", "⑤ ROAS curve") : tx("⑤ CPA 곡선", "⑤ CPA curve")} hint={mmm.target === "Revenue" ? tx("지출이 늘수록 같은 광고비가 만드는 매출 비율(ROAS)이 어떻게 변하는지 봅니다. 양수 효과 채널만 해석하세요.", "Shows how revenue return per spend changes as spend grows. Interpret positive-effect channels only.") : tx("지출이 늘수록 결과 1건을 만드는 비용(CPA)이 어떻게 변하는지 봅니다. 양수 효과 채널만 해석하세요.", "Shows how cost per result changes as spend grows. Interpret positive-effect channels only.")} />
+                      <div className="chart-container" style={{ height: "280px", minHeight: "280px", marginBottom: "12px" }}><canvas ref={efficiencyRef}></canvas></div>
                       <p className="muted" style={{ fontSize: "10.5px", marginTop: "4px" }}>
                         <strong>{tx('"+$1k당 N명"', '"+N per $1k"')}</strong> = {tx("그 지출 수준에서 1,000달러 더 쓸 때 늘어나는 결과(지출↑일수록 작아짐).", "the extra result from spending $1,000 more at that spend level (shrinks as spend rises).")} <strong>{tx("음수 채널은 노이즈", "Negative channels are noise")}</strong>. {tx("절대 인원은 holdout, 효율(CPR)은 비용 대비 따로.", "Absolute count needs a holdout; efficiency (CPR) is separate, relative to cost.")}
                       </p>
                     </div>
                   </div>
-                  {/* 채널별 탄력성·판정 요약 표 */}
+                  {/* 채널별 Bayesian 효과 요약 */}
                   <p style={{ fontSize: "12px", margin: "14px 0 4px" }}>{tx("채널별 효과 요약", "Per-channel effect summary")}</p>
                   <div className="table-wrap">
                     <table className="data" style={{ fontSize: "11.5px" }}>
-                      <thead><tr><th>{tx("채널", "Channel")}</th><th title={tx("지출 +10% 시 결과 탄력성", "Result elasticity at spend +10%")}>{tx("지출 +10%", "Spend +10%")}</th><th>{tx("+$1,000당", "+$1,000")}</th><th>{tx("판정", "Verdict")}</th><th>{tx("신뢰도", "Confidence")}</th></tr></thead>
+                      <thead><tr><th>{tx("채널", "Channel")}</th><th>{tx("현재 지출", "Current spend")}</th><th>{tx("추가 지출 효과", "Marginal effect")}</th><th>{tx("양수 확률", "P(positive)")}</th><th>{tx("판정", "Verdict")}</th></tr></thead>
                       <tbody>
-                        {mmm.effects.map((e) => {
-                          const vm = VERDICT_META[locale][e.verdict] || VERDICT_META[locale].uncertain;
+                        {Object.values(mmm.run.saturationByChannel || {}).map((s) => {
+                          const useBudget = s.posteriorPositive >= 0.8 && s.currentMarginal > 0;
                           return (
-                            <tr key={e.key} style={e.sparse ? { opacity: 0.55 } : undefined}>
-                              <td><strong>{e.label}</strong></td>
-                              <td className="tnum" style={{ color: e.elas >= 0 ? NEG : POS }}>{e.elas >= 0 ? "+" : ""}{(e.elas * 10).toFixed(1)}%</td>
-                              <td className="tnum">{e.weeklyPer1k == null ? "—" : Math.round(e.weeklyPer1k).toLocaleString() + tx("명", "")}</td>
-                              <td style={{ color: vm.color, fontWeight: 600 }}>{vm.txt}</td>
-                              <td style={{ letterSpacing: "1px" }}>{pDots(e.p)}</td>
+                            <tr key={s.key} style={useBudget ? undefined : { opacity: 0.6 }}>
+                              <td><strong>{s.label}</strong></td>
+                              <td className="tnum">{currencySym}{fmtOne(convAmt(s.recentMean))}</td>
+                              <td className="tnum">{s.currentMarginal == null ? "—" : `${s.currentMarginal >= 0 ? "+" : ""}${fmtOne(s.currentMarginal)}${tx("명", "")}/${currencySym}${fmtOne(convAmt(1000))}`}</td>
+                              <td className="tnum">{fmtOne(s.posteriorPositive * 100)}%</td>
+                              <td style={{ color: useBudget ? NEG : MUTED, fontWeight: 600 }}>{useBudget ? tx("예산 추천", "Recommended") : tx("보류", "Hold")}</td>
                             </tr>
                           );
                         })}

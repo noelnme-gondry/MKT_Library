@@ -3021,6 +3021,8 @@
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-xl);
         flex-wrap: wrap;
+        min-height: 38px;
+        overflow: visible;
       }
       .ab-pillgroup-label {
         font-family: var(--font-mono);
@@ -3031,6 +3033,11 @@
         padding: 0 0.4rem;
       }
       .ab-pill {
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        line-height: 1.2;
         background: transparent;
         border: 1px solid transparent;
         color: var(--text-secondary);

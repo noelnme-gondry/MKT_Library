@@ -5,7 +5,7 @@ import { _mmmParseDate } from "@/utils/regForecastMath";
 /* index.html의 5-18 DnD colMap(§12.20류 이관) — mmmGuessRole/mmmAutoMapPartial/
  * mmmColMapRoles/mmmGetPanelFromColMap을 React 네이티브 HTML5 DnD로 포팅.
  * colMap: { [header]: { role, kind?, plat? } }
- * role: week|date|reg|react|channel|dummy|step|platform|ignore */
+ * role: week|date|reg|react|revenue|channel|dummy|step|platform|ignore */
 
 function looksDate(v) {
   return /^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(String(v).trim());
@@ -36,6 +36,7 @@ function guessRole(col, rows) {
   else if (/날짜|date/.test(name)) role = "date";
   else if (isBin && /step|구조변화|regime|레짐|shutdown|중단|종료|launch|런칭/.test(name)) role = "step";
   else if (isBin) role = "dummy";
+  else if (isNum && /revenue|매출|sales|gmv|payment|결제금액/.test(name)) role = "revenue";
   else if (isNum && /reg|가입|등록|signup|sign_up|install/.test(name)) role = "reg";
   else if (isNum && /react|재활성|reactiv|resurrect|win.?back|winback/.test(name)) role = "react";
   else if (isNum && /cost|spend|비용|지출|budget|imp|click|ch_|채널|brand/.test(name)) role = "channel";
@@ -61,7 +62,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
         else once[role] = true;
       }
       out[h] = { role, kind: g.kind };
-      if (["reg", "react", "channel"].includes(role)) out[h].plat = guessPlat(h);
+      if (["reg", "react", "revenue", "channel"].includes(role)) out[h].plat = guessPlat(h);
       continue;
     }
     // partial: 강한 키워드만. isNum·isBin·isDateCol 판정 후 reg/react/channel/date만.
@@ -75,13 +76,18 @@ export function autoGuessColMap(headers, rows, partial = true) {
     let role = "ignore";
     if (isDateCol) role = "date"; // 날짜는 분석 무영향(표시/예측용)이라 자동 배치
     else if (!derivedRe.test(name) && isNum && !isBin) {
-      if (/reg|가입|등록|signup|sign_up|install/.test(name)) role = "reg";
+      if (/revenue|매출|sales|gmv|payment|결제금액/.test(name)) role = "revenue";
+      else if (/reg|가입|등록|signup|sign_up|install/.test(name)) role = "reg";
       else if (/react|재활성|reactiv|resurrect|win.?back|winback/.test(name)) role = "react";
       else if (/spend|cost|비용|지출|budget|brand/.test(name)) role = "channel";
     }
+    if (role === "ignore" && !isNum && /platform|os|플랫폼|기기|device/.test(name)) {
+      role = once.platform ? "ignore" : "platform";
+      once.platform = true;
+    }
     if (role === "date") { if (once.date) role = "ignore"; else once.date = true; }
     out[h] = { role, kind };
-    if (["reg", "react", "channel"].includes(role)) out[h].plat = guessPlat(h);
+    if (["reg", "react", "revenue", "channel"].includes(role)) out[h].plat = guessPlat(h);
   }
   return out;
 }
@@ -96,7 +102,7 @@ function sanKey(name, used) {
 }
 
 function colMapRoles(headers, colMap) {
-  const out = { week: [], date: null, reg: [], react: [], platform: null, channels: [], dummies: [], steps: [] };
+  const out = { week: [], date: null, reg: [], react: [], revenue: [], platform: null, channels: [], dummies: [], steps: [] };
   const used = new Set();
   for (const h of headers || []) {
     const def = colMap[h] || {};
@@ -105,6 +111,7 @@ function colMapRoles(headers, colMap) {
     else if (r === "date" && !out.date) out.date = h;
     else if (r === "reg") out.reg.push({ header: h, plat });
     else if (r === "react") out.react.push({ header: h, plat });
+    else if (r === "revenue") out.revenue.push({ header: h, plat });
     else if (r === "platform" && !out.platform) out.platform = h;
     else if (r === "channel") out.channels.push({ header: h, key: sanKey(h, used), label: h, kind: def.kind === "brand" ? "brand" : "perf", plat });
     else if (r === "dummy") out.dummies.push({ header: h, key: sanKey(h, used), label: h, plat });
@@ -117,7 +124,7 @@ export function colMapMissing(headers, colMap) {
   if (!colMap) return ["채널·타깃 매핑"];
   const r = colMapRoles(headers, colMap);
   const miss = [];
-  if (!r.reg.length && !r.react.length) miss.push("가입 또는 재활성(타깃) 1개");
+  if (!r.reg.length && !r.react.length && !r.revenue.length) miss.push("가입·재활성·매출 중 타깃 1개");
   if (!r.channels.length) miss.push("채널 spend 1개 이상");
   return miss;
 }
@@ -128,7 +135,7 @@ export function mmmPlatformTags(headers, colMap) {
   const r = colMapRoles(headers, colMap);
   if (r.platform) return []; // 행 필터(단일 컬럼) 모드는 태그 토글 대상 아님 — 값 자체가 플랫폼
   const set = new Set();
-  [...r.reg, ...r.react, ...r.channels].forEach((x) => {
+  [...r.reg, ...r.react, ...r.revenue, ...r.channels].forEach((x) => {
     if (x.plat && x.plat !== "common") set.add(x.plat);
   });
   return [...set];
@@ -188,9 +195,10 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all") {
     const arrs = cs.map((c) => num(c.header, false));
     return baseRows.map((_, i) => arrs.reduce((s, a) => s + (a[i] || 0), 0));
   };
-  const regA = sumCols(r.reg), reactA = sumCols(r.react);
+  const regA = sumCols(r.reg), reactA = sumCols(r.react), revenueA = sumCols(r.revenue);
   if (regA) panel.targets.Regs = regA;
   if (reactA) panel.targets.React = reactA;
+  if (revenueA) panel.targets.Revenue = revenueA;
   const order = week.map((_, i) => i).sort((a, b) => week[a] - week[b]);
   const re = (arr) => order.map((i) => arr[i]);
   panel.week = re(panel.week);
@@ -229,6 +237,7 @@ const ZONES = [
   ["date", "📅 날짜 · 1개 (표시용)", false, false],
   ["reg", "🎯 가입 Regs", false, true],
   ["react", "🎯 재활성 React", false, true],
+  ["revenue", "💰 매출 Revenue", false, true],
   ["channel", "📈 채널 spend (여러 개 · perf/brand · 플랫폼)", true, true],
   ["dummy", "🔢 더미/이벤트 (0·1, 여러 개)", false, false],
   ["step", "📐 구조변화 step (0·1, 선택)", false, false],
