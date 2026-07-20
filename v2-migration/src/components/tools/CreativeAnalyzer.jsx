@@ -445,6 +445,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
   const decMetaAll = buildDecomposeMeta(locale);
   const csvData = useAppStore((state) => state.csvData);
   const [metric, setMetric] = useState("ctr");
+  const [activeProblem, setActiveProblem] = useState("swaps");
   // §8 Concept Matrix 셀 클릭 → §2 성과표 필터 (index CREATIVE_STATE.selectedCell)
   const [selectedCell, setSelectedCell] = useState(null); // {row, col} | null
   // §7 Auto-Planner: 주당 신규 소재 공급량 + Gantt 표시 주수
@@ -815,6 +816,12 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       ? { text: tr(`다음 제작 실험 후보 ${analysis.nextTest.length}개를 제안했습니다. 성과가 좋았던 조합을 반복하기보다 검증 가능한 한 가지 변수만 바꿔 보세요.`, `${analysis.nextTest.length} next-test candidates are ready. Change one testable variable rather than blindly repeating the best combination.`) }
       : null,
   ].filter(Boolean);
+  const problemChoices = [
+    { id: "swaps", icon: "↻", label: tr("교체 필요", "Needs swapping"), count: alertNowN, desc: tr("이번 주 빼야 할 소재", "Creatives to remove this week") },
+    { id: "production", icon: "✦", label: tr("새 소재 제작", "Next production"), count: nextTest?.length || 0, desc: tr("다음 실험 후보", "Next test candidates") },
+    { id: "drivers", icon: "⌁", label: tr("성과가 바뀐 이유", "What changed performance"), count: effRows.length, desc: tr("속성별 관측 신호", "Observed attribute signals") },
+    { id: "operations", icon: "◫", label: tr("운영 병목", "Operating bottleneck"), count: health?.fatiguedN || 0, desc: tr("제작 속도·수명·집행", "Velocity · lifecycle · delivery") },
+  ];
 
   return (
     <div className="tab-pane active" id="tab-creative">
@@ -872,6 +879,55 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           { label: tr("권장 제작 속도", "Recommended production"), value: autoPlan ? `${autoPlan.recommendedWeeklyVelocity}${tr("개/주", "/wk")}` : "—" },
         ]}
       />
+
+      <section className="creative-control-room" aria-label={tr("소재 운영 실행 패널", "Creative operations action panel")}>
+        <div className="creative-control-room__head">
+          <div>
+            <span className="creative-control-room__eyebrow">{tr("THIS WEEK'S CONTROL ROOM", "THIS WEEK'S CONTROL ROOM")}</span>
+            <h2>{tr("지금 해결할 문제", "Choose the problem to solve")}</h2>
+          </div>
+          <p>{tr("한 가지 문제를 고르면 필요한 실행 정보만 먼저 보여줍니다.", "Choose one problem to see only the action information you need first.")}</p>
+        </div>
+        <div className="creative-control-room__choices" role="tablist" aria-label={tr("소재 운영 문제", "Creative operations problem") }>
+          {problemChoices.map((item) => (
+            <button key={item.id} type="button" role="tab" aria-selected={activeProblem === item.id} className={activeProblem === item.id ? "is-active" : ""} onClick={() => setActiveProblem(item.id)}>
+              <span className="creative-control-room__icon" aria-hidden>{item.icon}</span>
+              <span><strong>{item.label}</strong><small>{item.desc}</small></span>
+              <b>{item.count}</b>
+            </button>
+          ))}
+        </div>
+
+        <div className="creative-control-room__panel" role="tabpanel">
+          {activeProblem === "swaps" && (
+            <>
+              <div className="creative-control-room__panel-title">
+                <div><span>{tr("01 · 이번 주 교체 큐", "01 · This week's swap queue")}</span><h3>{alertNowN ? tr(`오늘 교체 ${alertNowN}개부터 확정하세요`, `Lock ${alertNowN} immediate swap(s) first`) : tr("즉시 교체 경고는 없습니다", "No immediate swap alert")}</h3></div>
+                {autoPlan && <strong className={autoPlan.isUndersupplied ? "is-danger" : ""}>{tr(`제작 필요 ${autoPlan.recommendedWeeklyVelocity}개/주`, `Need ${autoPlan.recommendedWeeklyVelocity}/wk`)}</strong>}
+              </div>
+              {alertRows.length ? <ol className="creative-control-room__queue">{alertRows.slice(0, 5).map((item, index) => <li key={item.creative_id}><b>#{index + 1}</b><code>{String(item.creative_id).slice(0, 24)}</code><span>{item.alert ? tr("오늘 교체", "Swap now") : item.etaDays != null ? tr(`${item.etaDays}일 내 점검`, `Review in ${item.etaDays}d`) : tr("추세 관찰", "Monitor trend")}</span><small>{tr(`CTR ${fmtPctDay(item.ctrTrendPctPerDay, locale)} · 피로 ${item.score == null ? "—" : (item.score * 100).toFixed(0) + "%"}`, `CTR ${fmtPctDay(item.ctrTrendPctPerDay, locale)} · fatigue ${item.score == null ? "—" : (item.score * 100).toFixed(0) + "%"}`)}</small></li>)}</ol> : <p className="creative-control-room__empty">{tr("교체 큐가 비어 있습니다. 성과 좋은 소재의 변형 제작을 준비하세요.", "Swap queue is empty. Prepare variants of winning creatives.")}</p>}
+            </>
+          )}
+          {activeProblem === "production" && (
+            <>
+              <div className="creative-control-room__panel-title"><div><span>{tr("02 · 다음 제작 브리프", "02 · Next production briefs")}</span><h3>{tr("한 번에 한 변수만 바꾸세요", "Change one variable at a time")}</h3></div><strong>{tr(`${nextTest?.length || 0}개 후보`, `${nextTest?.length || 0} candidates`)}</strong></div>
+              {nextTest?.length ? <div className="creative-control-room__briefs">{nextTest.slice(0, 3).map((item, index) => <article key={`${item.type}-${index}`}><span>{NEXT_TEST_ICON[item.type]} {(NEXT_TEST_LABEL[locale] || NEXT_TEST_LABEL.ko)[item.type]}</span><h4>{item.cell}</h4><p>{item.rationale}</p><small>{tr("성공 판단 표본", "Sample to judge")}: {item.sampleSize ? item.sampleSize.toLocaleString() : "—"}</small></article>)}</div> : <p className="creative-control-room__empty">{tr("제작 추천을 만들기엔 속성 조합 데이터가 부족합니다. hook_type·format 매핑을 확인하세요.", "Attribute-combination data is insufficient. Check hook_type and format mapping.")}</p>}
+            </>
+          )}
+          {activeProblem === "drivers" && (
+            <>
+              <div className="creative-control-room__panel-title"><div><span>{tr("03 · 성과 변화 신호", "03 · Performance-change signals")}</span><h3>{tr(`${decMeta.desc}에 크게 연결된 속성`, `Attributes most associated with ${decMeta.desc}`)}</h3></div><strong>{tr("관측 상관", "Observational")}</strong></div>
+              {effRows.length ? <div className="creative-control-room__briefs">{effRows.slice(0, 3).map((item, index) => <article key={`${item.factor}-${item.level}-${index}`}><span>{item.factor}</span><h4>{item.level}</h4><p>{tr(`기준 대비 ${decMeta.fmtVal(item.coef)} · 보정 p=${fmtNum(item.pAdj)}`, `${decMeta.fmtVal(item.coef)} vs baseline · adjusted p=${fmtNum(item.pAdj)}`)}</p><small>{tr("확정 전 A/B 검증 필요", "Validate with an A/B test before deciding")}</small></article>)}</div> : <p className="creative-control-room__empty">{tr("통계적으로 읽을 수 있는 속성 신호가 없습니다. 데이터 30행 이상과 속성 매핑이 필요합니다.", "No readable attribute signal. Map attributes and provide at least 30 rows.")}</p>}
+            </>
+          )}
+          {activeProblem === "operations" && health && (
+            <>
+              <div className="creative-control-room__panel-title"><div><span>{tr("04 · 운영 병목", "04 · Operating bottleneck")}</span><h3>{autoPlan?.isUndersupplied ? tr("제작 공급이 교체 수요를 못 따라갑니다", "Production supply cannot keep up with swaps") : tr("운영 속도와 집행 상태를 점검하세요", "Check velocity and delivery")}</h3></div><strong>{tr(`${health.weeksN}주 기준`, `${health.weeksN} weeks`)}</strong></div>
+              <div className="creative-control-room__ops"><div><span>{tr("신규 제작 속도", "New creative velocity")}</span><strong>{health.avgPerWeek.toFixed(1)}{tr("개/주", "/wk")}</strong><small>{tr("피로 소재를 대체할 수 있는가", "Can it replace fatigued creative?")}</small></div><div><span>{tr("평균 수명", "Average lifespan")}</span><strong>{health.avgLife != null ? `${health.avgLife.toFixed(0)}${tr("일", "d")}` : "—"}</strong><small>{tr("교체 계획의 기준선", "Baseline for swap timing")}</small></div><div><span>{tr("승자 지출 비중", "Winner spend share")}</span><strong>{pctOf(health.winnerSpend, health.totalSpend)}</strong><small>{tr("잘 되는 소재에 예산이 가는가", "Is spend reaching winners?")}</small></div></div>
+            </>
+          )}
+        </div>
+      </section>
 
       <details className="block" id="s-prep" style={{ padding: "13px 16px" }}>
         <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: "var(--text-muted)", outline: "none" }}>{tr("🗂 데이터 매핑 설정 (펼쳐서 변경)", "🗂 Data mapping settings (expand to change)")}</summary>
