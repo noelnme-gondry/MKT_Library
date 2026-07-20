@@ -25,6 +25,13 @@ export function getIsoWeek(date) {
   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
+export function getIsoWeekYear(date) {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  return d.getUTCFullYear();
+}
+
 /** 입력 date 컬럼의 실제 grain을 판별한다. date/week/month 헤더명에 기대지 않는다. */
 export function detectCalendarGrain(rows) {
   const parsed = (rows || []).map((row) => periodOf(row.date)).filter(Boolean);
@@ -57,7 +64,7 @@ export function buildCalendarSeasonality(rows, { metric = "installs", grain = "m
     const source = periodOf(row.date);
     const value = Number(row[metric]);
     if (!source || !Number.isFinite(value)) continue;
-    const year = source.year;
+    const year = source.sourceGrain === "day" && grain === "week" ? getIsoWeekYear(source.date) : source.year;
     const bucket = source.sourceGrain === "day" && grain === "week" ? getIsoWeek(source.date) : source.bucket;
     const key = `${year}:${bucket}`;
     const item = periods.get(key) || { year, bucket, value: 0 };
@@ -106,5 +113,6 @@ export function buildCalendarSeasonality(rows, { metric = "installs", grain = "m
     })
     .sort((a, b) => a.bucket - b.bucket);
 
-  return { sufficient: true, years, points, seasonal, grain, detrend, yearMean, sourceGrain };
+  const coverage = Object.fromEntries([...byYear.entries()].map(([year, list]) => [year, list.length]));
+  return { sufficient: true, years, points, seasonal, grain, detrend, yearMean, sourceGrain, coverage };
 }

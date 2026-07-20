@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCalendarSeasonality, detectCalendarGrain, getIsoWeek } from "./seasonalityMath";
+import { buildCalendarSeasonality, detectCalendarGrain, getIsoWeek, getIsoWeekYear } from "./seasonalityMath";
 
 describe("calendar seasonality", () => {
   it("같은 월을 연도별로 묶고 연간 평균 대비 인덱스를 계산한다", () => {
@@ -31,6 +31,7 @@ describe("calendar seasonality", () => {
 
   it("ISO 주차를 반환한다", () => {
     expect(getIsoWeek(new Date("2024-01-04T12:00:00Z"))).toBe(1);
+    expect(getIsoWeekYear(new Date("2024-12-30T12:00:00Z"))).toBe(2025);
   });
 
   it("일·주·월 입력 단위를 값으로 자동 판별한다", () => {

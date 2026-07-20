@@ -37,6 +37,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
   // 집계는 이 탭이 열렸을 때만 실행된다. 업로드·매핑 편집 화면에서는 호출되지 않아
   // 대용량 CSV의 입력 반응성을 해치지 않는다.
   const rows = getMonFilteredRows(csvData, dashboardFilter);
+  const countriesInResult = [...new Set(rows.map((row) => String(row.country || "").trim()).filter(Boolean))];
   const sourceGrain = detectCalendarGrain(rows);
   const availableGrains = sourceGrain === "day" ? ["month", "week"] : sourceGrain === "week" ? ["week"] : sourceGrain === "month" ? ["month"] : [];
   const activeGrain = availableGrains.includes(grain) ? grain : availableGrains[0] || grain;
@@ -118,6 +119,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
             : sourceGrain === "month"
               ? (locale === "en" ? "Monthly input detected · weekly view needs daily or weekly source data." : "월별 데이터 인식 · 주별 보기는 일별 또는 주별 원본이 필요합니다.")
               : (locale === "en" ? "Could not identify the date frequency." : "날짜 입력 단위를 인식하지 못했습니다.")}</p>
+        {countriesInResult.length > 1 && <div className="seasonality-empty" style={{ marginTop: "9px", textAlign: "left" }}>{locale === "en" ? `Multiple countries (${countriesInResult.join(", ")}) are mixed. Select one country in the top filter before interpreting a national seasonal pattern.` : `국가 ${countriesInResult.join(", ")}가 섞여 있습니다. 국가별 계절성을 해석하려면 상단 필터에서 한 국가만 선택하세요.`}</div>}
 
         <div className="seasonality-mode">
           <div><strong>{locale === "en" ? "Remove trend" : "추세 제외"}</strong><span>{detrend ? (locale === "en" ? "On · pattern index" : "켬 · 패턴 인덱스") : (locale === "en" ? "Off · actual values" : "끔 · 실제값")}</span></div>
@@ -132,6 +134,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
               <span>{result.years.join(" · ")} {locale === "en" ? "comparison" : "비교"}</span>
               <strong>{bucketLabel(strongest.bucket, activeGrain, locale)} {strongest.delta >= 0 ? "+" : ""}{strongest.delta.toFixed(1)}%</strong>
               <span>{locale === "en" ? "largest recurring deviation from the yearly baseline" : "연간 기준 대비 가장 큰 반복 차이"}</span>
+              <span>{locale === "en" ? `coverage: ${result.years.map((year) => `${year} ${result.coverage?.[year] || 0}`).join(" · ")}` : `관측 구간: ${result.years.map((year) => `${year} ${result.coverage?.[year] || 0}${activeGrain === "week" ? "주" : "개월"}`).join(" · ")}`}</span>
             </div>
             <div className="seasonality-grid">
               <article className="chart-container seasonality-chart"><h3>{detrend ? (locale === "en" ? "Trend-adjusted pattern by year" : "추세 제외 후 연도별 패턴") : (locale === "en" ? "Actual values by year" : "연도별 실제값")}</h3><canvas ref={overlayRef} /></article>

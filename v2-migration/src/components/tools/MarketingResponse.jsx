@@ -2601,7 +2601,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                       ))}</tbody>
                     </table>
                   </div>
-                  <StatHead title={tx("② Bayesian 효과 신뢰도", "② Bayesian effect confidence")} hint={tx("기존 OLS p값·VIF 표는 Bayesian 엔진과 맞지 않아 제거했습니다. 양수 확률이 80% 이상인 채널만 예산 추천에 씁니다.", "The legacy OLS p-value/VIF tables do not apply to the Bayesian engine. Only channels with at least 80% posterior probability of a positive effect are used for budget recommendations.")} />
+                  <StatHead title={tx("② Bayesian 효과 신뢰도", "② Bayesian effect confidence")} hint={tx("양수 확률은 이 데이터에서 선택된 adstock·포화 파라미터를 고정한 조건부 posterior입니다. 80% 이상은 추천 후보일 뿐, holdout 검증 전 인과·증분 확정이 아닙니다.", "Positive probability is conditional on the adstock/saturation parameters selected from this data. ≥80% is a recommendation candidate, not causal or incremental proof before holdout validation.")} />
                   <div className="table-wrap" style={{ marginBottom: "12px" }}>
                     <table className="data" style={{ fontSize: "11.5px" }}>
                       <thead><tr><th>{tx("채널", "Channel")}</th><th>{tx("효과 양수 확률", "P(effect > 0)")}</th><th>{tx("효과 크기", "Effect size")}</th><th>{tx("90% 신뢰구간", "90% credible interval")}</th><th>{tx("예산 추천", "Budget use")}</th></tr></thead>

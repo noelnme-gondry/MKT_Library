@@ -178,11 +178,20 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all") {
     return isNaN(n) ? (allowNaN ? NaN : 0) : n;
   });
   const weekC = r.week[0] || null;
-  const week = weekC ? num(weekC.header, false) : baseRows.map((_, i) => i + 1);
+  // 날짜를 parseFloat하면 2025-01-06 → 2025가 되어 같은 해 모든 주가 동률이 된다.
+  // 시간순 정렬은 원본 date/week 값을 파싱해 하고, MMM 내부 t는 항상 1…N으로 정규화한다.
+  const timeHeader = r.date || weekC?.header || null;
+  const timeValue = (row, index) => {
+    const raw = timeHeader ? row[timeHeader] : null;
+    const parsed = _mmmParseDate(raw);
+    if (parsed) return parsed.getTime();
+    const numeric = Number(String(raw ?? "").replace(/[^0-9.\-]/g, ""));
+    return Number.isFinite(numeric) ? numeric : index;
+  };
   // 표시 라벨: 매핑된 날짜 컬럼(2025-01-06 등) 우선, 없으면 주차 컬럼 원본값. 둘 다 없으면 null(→인덱스 폴백).
   const labelC = r.date || (weekC ? weekC.header : null);
   const weekLabelRaw = labelC ? baseRows.map((row) => row[labelC]) : null;
-  const panel = { week, ch: {}, dummy: {}, steps: {}, targets: {} };
+  const panel = { week: baseRows.map((_, i) => i + 1), ch: {}, dummy: {}, steps: {}, targets: {} };
   const chans = r.channels.filter(inPlat);
   for (const ch of chans) panel.ch[ch.key] = num(ch.header, true);
   for (const d of r.dummies) panel.dummy[d.key] = num(d.header, false);
@@ -199,9 +208,9 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all") {
   if (regA) panel.targets.Regs = regA;
   if (reactA) panel.targets.React = reactA;
   if (revenueA) panel.targets.Revenue = revenueA;
-  const order = week.map((_, i) => i).sort((a, b) => week[a] - week[b]);
+  const order = baseRows.map((_, i) => i).sort((a, b) => timeValue(baseRows[a], a) - timeValue(baseRows[b], b) || a - b);
   const re = (arr) => order.map((i) => arr[i]);
-  panel.week = re(panel.week);
+  panel.week = order.map((_, i) => i + 1);
   if (weekLabelRaw) panel.weekLabel = re(weekLabelRaw);
   for (const k in panel.ch) panel.ch[k] = re(panel.ch[k]);
   for (const k in panel.dummy) panel.dummy[k] = re(panel.dummy[k]);

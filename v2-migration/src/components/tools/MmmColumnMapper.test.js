@@ -16,4 +16,17 @@ describe("MMM column mapping", () => {
     expect(panel.targets.Revenue).toEqual([100]);
     expect(panel.ch.c_google_spend).toEqual([20]);
   });
+
+  it("sorts date-like week inputs chronologically instead of parseFloat year ties", () => {
+    const headers = ["week", "regs", "google_spend"];
+    const rows = [
+      { week: "2025-02-03", regs: "20", google_spend: "200" },
+      { week: "2025-01-06", regs: "10", google_spend: "100" },
+    ];
+    const map = { week: { role: "week" }, regs: { role: "reg" }, google_spend: { role: "channel", kind: "perf", plat: "common" } };
+    const panel = buildPanelFromColMap(headers, rows, map).panel;
+    expect(panel.weekLabel).toEqual(["2025-01-06", "2025-02-03"]);
+    expect(panel.targets.Regs).toEqual([10, 20]);
+    expect(panel.week).toEqual([1, 2]);
+  });
 });
