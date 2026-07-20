@@ -44,4 +44,20 @@ describe("calendar seasonality", () => {
     const rows = [{ date: "2024-W01", installs: 100 }, { date: "2025-W01", installs: 110 }];
     expect(buildCalendarSeasonality(rows, { grain: "month" }).reason).toBe("grain_not_supported");
   });
+
+  it("CPI·CPA·ROAS는 행별 비율 평균 대신 같은 기간 분자·분모 합계로 계산한다", () => {
+    const rows = [
+      { date: "2024-01-02", cost: 100, installs: 1, actions: 1, revenue_d7: 80 },
+      { date: "2024-01-03", cost: 900, installs: 100, actions: 100, revenue_d7: 720 },
+      { date: "2024-02-02", cost: 200, installs: 2, actions: 2, revenue_d7: 160 },
+      { date: "2024-02-03", cost: 800, installs: 80, actions: 80, revenue_d7: 640 },
+      { date: "2025-01-02", cost: 100, installs: 1, actions: 1, revenue_d7: 80 },
+      { date: "2025-02-02", cost: 100, installs: 1, actions: 1, revenue_d7: 80 },
+    ];
+    const cpi = buildCalendarSeasonality(rows, { metric: { numerator: "cost", denominator: "installs" }, grain: "month" });
+    const roas = buildCalendarSeasonality(rows, { metric: { numerator: "revenue_d7", denominator: "cost" }, grain: "month" });
+    expect(cpi.points.find((point) => point.year === 2024 && point.bucket === 1).value).toBeCloseTo(1000 / 101, 8);
+    expect(cpi.points.find((point) => point.year === 2024 && point.bucket === 1).value).not.toBeCloseTo(54.5, 1);
+    expect(roas.points.find((point) => point.year === 2024 && point.bucket === 1).value).toBeCloseTo(0.8, 8);
+  });
 });

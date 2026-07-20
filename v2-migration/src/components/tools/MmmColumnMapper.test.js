@@ -29,4 +29,34 @@ describe("MMM column mapping", () => {
     expect(panel.targets.Regs).toEqual([10, 20]);
     expect(panel.week).toEqual([1, 2]);
   });
+
+  it("pivots long weekly channel spend without summing repeated weekly targets", () => {
+    const headers = ["date", "channel", "spend", "regs"];
+    const rows = [
+      { date: "2025-01-13", channel: "Google", spend: "200", regs: "12" },
+      { date: "2025-01-06", channel: "Meta", spend: "50", regs: "10" },
+      { date: "2025-01-06", channel: "Google", spend: "100", regs: "10" },
+      { date: "2025-01-13", channel: "Meta", spend: "40", regs: "12" },
+    ];
+    const map = autoGuessColMap(headers, rows);
+    const panel = buildPanelFromColMap(headers, rows, map).panel;
+    expect(panel.weekLabel).toEqual(["2025-01-06", "2025-01-13"]);
+    expect(panel.targets.Regs).toEqual([10, 12]);
+    expect(panel.channels.map((channel) => channel.label)).toEqual(["MMM spend · Google", "MMM spend · Meta"]);
+    expect(panel.ch.c_mmm_spend_google).toEqual([100, 200]);
+    expect(panel.ch.c_mmm_spend_meta).toEqual([50, 40]);
+  });
+
+  it("auto-detects explicit week labels before pivoting long-format MMM", () => {
+    const headers = ["week", "media", "cost", "revenue"];
+    const rows = [
+      { week: "2025-W02", media: "Google", cost: "200", revenue: "500" },
+      { week: "2025-W01", media: "Google", cost: "100", revenue: "400" },
+    ];
+    const map = autoGuessColMap(headers, rows);
+    expect(map.week.role).toBe("week");
+    const panel = buildPanelFromColMap(headers, rows, map).panel;
+    expect(panel.weekLabel).toEqual(["2025-W01", "2025-W02"]);
+    expect(panel.targets.Revenue).toEqual([400, 500]);
+  });
 });

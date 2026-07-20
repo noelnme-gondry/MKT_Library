@@ -60,19 +60,28 @@ export function buildCalendarSeasonality(rows, { metric = "installs", grain = "m
   const permittedGrains = sourceGrain === "day" ? ["month", "week"] : sourceGrain === "week" ? ["week"] : sourceGrain === "month" ? ["month"] : [];
   if (!permittedGrains.includes(grain)) return { sufficient: false, years: [], timeline: [], sourceGrain, reason: "grain_not_supported" };
   const periods = new Map();
+  const ratio = metric && typeof metric === "object" && metric.numerator && metric.denominator ? metric : null;
   for (const row of rows || []) {
     const source = periodOf(row.date);
-    const value = Number(row[metric]);
-    if (!source || !Number.isFinite(value)) continue;
+    const value = ratio ? null : Number(row[metric]);
+    const numerator = ratio ? Number(row[ratio.numerator]) : null;
+    const denominator = ratio ? Number(row[ratio.denominator]) : null;
+    if (!source || (ratio ? !Number.isFinite(numerator) || !Number.isFinite(denominator) : !Number.isFinite(value))) continue;
     const year = source.sourceGrain === "day" && grain === "week" ? getIsoWeekYear(source.date) : source.year;
     const bucket = source.sourceGrain === "day" && grain === "week" ? getIsoWeek(source.date) : source.bucket;
     const key = `${year}:${bucket}`;
-    const item = periods.get(key) || { year, bucket, value: 0 };
-    item.value += value;
+    const item = periods.get(key) || { year, bucket, value: 0, numerator: 0, denominator: 0 };
+    if (ratio) {
+      // CPI/CPA/ROAS는 row별 비율의 평균이 아니다. 같은 달력 구간의 분자·분모를
+      // 먼저 합산한 뒤 한 번만 나눠, 채널/캠페인 행 수가 결과를 왜곡하지 않게 한다.
+      item.numerator += numerator;
+      item.denominator += denominator;
+      item.value = item.denominator > 0 ? item.numerator / item.denominator : null;
+    } else item.value += value;
     periods.set(key, item);
   }
 
-  const timeline = [...periods.values()].sort((a, b) => a.year - b.year || a.bucket - b.bucket);
+  const timeline = [...periods.values()].filter((item) => Number.isFinite(item.value)).sort((a, b) => a.year - b.year || a.bucket - b.bucket);
   const years = [...new Set(timeline.map((d) => d.year))];
   if (years.length < 2 || timeline.length < (grain === "week" ? 16 : 4)) {
     return { sufficient: false, years, timeline, sourceGrain, reason: "need_more_history" };

@@ -13,6 +13,9 @@ const METRICS = [
   { key: "cost", ko: "지출", en: "Spend", kind: "currency" },
   { key: "clicks", ko: "클릭", en: "Clicks", kind: "count" },
   { key: "impressions", ko: "노출", en: "Impressions", kind: "count" },
+  { key: "cpi", ko: "CPI", en: "CPI", kind: "currency", ratio: { numerator: "cost", denominator: "installs" } },
+  { key: "cpa", ko: "CPA", en: "CPA", kind: "currency", ratio: { numerator: "cost", denominator: "actions" } },
+  { key: "roas", ko: "ROAS", en: "ROAS", kind: "percent", ratio: { numerator: "revenue_d7", denominator: "cost" } },
 ];
 
 const MONTHS_KO = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
@@ -24,7 +27,9 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const mappedKeys = useMemo(() => new Set(Object.values(csvData?.mapping || {})), [csvData]);
-  const availableMetrics = METRICS.filter((metric) => mappedKeys.has(metric.key));
+  const availableMetrics = METRICS.filter((metric) => metric.ratio
+    ? mappedKeys.has(metric.ratio.numerator) && mappedKeys.has(metric.ratio.denominator)
+    : mappedKeys.has(metric.key));
   const [metric, setMetric] = useState("installs");
   const [grain, setGrain] = useState("month");
   const [detrend, setDetrend] = useState(false);
@@ -41,7 +46,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
   const sourceGrain = detectCalendarGrain(rows);
   const availableGrains = sourceGrain === "day" ? ["month", "week"] : sourceGrain === "week" ? ["week"] : sourceGrain === "month" ? ["month"] : [];
   const activeGrain = availableGrains.includes(grain) ? grain : availableGrains[0] || grain;
-  const result = buildCalendarSeasonality(rows, { metric: selectedMetricKey, grain: activeGrain, detrend });
+  const result = buildCalendarSeasonality(rows, { metric: selected?.ratio || selectedMetricKey, grain: activeGrain, detrend });
 
   useEffect(() => {
     Object.values(chartsRef.current).forEach((chart) => chart?.destroy());
@@ -51,7 +56,9 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
     const common = chartCommonOpts();
     const tickFormat = (value) => {
       if (detrend) return `${Number(value).toFixed(1)}%`;
-      return selected?.kind === "currency" ? fmtCurrencyPrecise(Number(value), displayCurrency) : Math.round(Number(value)).toLocaleString();
+      if (selected?.kind === "currency") return fmtCurrencyPrecise(Number(value), displayCurrency);
+      if (selected?.kind === "percent") return `${(Number(value) * 100).toFixed(1)}%`;
+      return Math.round(Number(value)).toLocaleString();
     };
     const overlayDatasets = result.years.map((year, index) => ({
       label: String(year),
