@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
-import { buildCalendarSeasonality } from "@/utils/seasonalityMath";
+import { buildCalendarSeasonality, detectCalendarGrain } from "@/utils/seasonalityMath";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 
 const METRICS = [
@@ -36,13 +36,17 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
   const selected = METRICS.find((item) => item.key === selectedMetricKey);
   // 집계는 이 탭이 열렸을 때만 실행된다. 업로드·매핑 편집 화면에서는 호출되지 않아
   // 대용량 CSV의 입력 반응성을 해치지 않는다.
-  const result = buildCalendarSeasonality(getMonFilteredRows(csvData, dashboardFilter), { metric: selectedMetricKey, grain, detrend });
+  const rows = getMonFilteredRows(csvData, dashboardFilter);
+  const sourceGrain = detectCalendarGrain(rows);
+  const availableGrains = sourceGrain === "day" ? ["month", "week"] : sourceGrain === "week" ? ["week"] : sourceGrain === "month" ? ["month"] : [];
+  const activeGrain = availableGrains.includes(grain) ? grain : availableGrains[0] || grain;
+  const result = buildCalendarSeasonality(rows, { metric: selectedMetricKey, grain: activeGrain, detrend });
 
   useEffect(() => {
     Object.values(chartsRef.current).forEach((chart) => chart?.destroy());
     chartsRef.current = {};
     if (!result.sufficient || !overlayRef.current || !indexRef.current) return undefined;
-    const labels = result.seasonal.map((item) => bucketLabel(item.bucket, grain, locale));
+    const labels = result.seasonal.map((item) => bucketLabel(item.bucket, activeGrain, locale));
     const common = chartCommonOpts();
     const tickFormat = (value) => {
       if (detrend) return `${Number(value).toFixed(1)}%`;
@@ -54,7 +58,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
       borderColor: CHART_THEME.colors[index % CHART_THEME.colors.length],
       backgroundColor: CHART_THEME.colors[index % CHART_THEME.colors.length],
       borderWidth: 2,
-      pointRadius: grain === "week" ? 0 : 2.5,
+      pointRadius: activeGrain === "week" ? 0 : 2.5,
       spanGaps: true,
       tension: 0.24,
     }));
@@ -84,7 +88,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
     });
     window.requestAnimationFrame(() => Object.values(chartsRef.current).forEach((chart) => chart?.resize()));
     return () => Object.values(chartsRef.current).forEach((chart) => chart?.destroy());
-  }, [result, grain, detrend, locale, displayCurrency, selected?.kind]);
+  }, [result, activeGrain, detrend, locale, displayCurrency, selected?.kind]);
 
   if (!availableMetrics.length) return <p className="muted">날짜와 설치·가입·매출·지출 중 하나를 매핑하면 시즈널리티를 볼 수 있습니다.</p>;
 
@@ -95,17 +99,25 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
         <div className="seasonality-heading">
           <div>
             <h2 className="section-title"><span className="ix">§</span>{locale === "en" ? "Calendar seasonality" : "캘린더 시즈널리티"}</h2>
-            <p className="seasonality-sub">{locale === "en" ? "Compare the same calendar week or month across years. Existing country, OS, channel and date filters apply." : "연도별 같은 주·월을 비교합니다. 상단의 국가·OS·채널·기간 필터가 그대로 적용됩니다."}</p>
+            <p className="seasonality-sub">{locale === "en" ? "Input frequency is detected automatically. Existing country, OS, channel and date filters apply." : "입력 단위를 자동 인식합니다. 상단의 국가·OS·채널·기간 필터가 그대로 적용됩니다."}</p>
           </div>
           <div className="seasonality-controls">
             <select value={selected?.key || ""} onChange={(event) => setMetric(event.target.value)} aria-label="시즈널리티 지표">
               {availableMetrics.map((item) => <option key={item.key} value={item.key}>{locale === "en" ? item.en : item.ko}</option>)}
             </select>
             <div className="ab-pillgroup" aria-label="시즈널리티 단위">
-              {["month", "week"].map((value) => <button key={value} className={`ab-pill ${grain === value ? "active" : ""}`} onClick={() => setGrain(value)}>{value === "month" ? (locale === "en" ? "Monthly" : "월별") : (locale === "en" ? "Weekly" : "주별")}</button>)}
+              {["month", "week"].map((value) => <button key={value} disabled={!availableGrains.includes(value)} className={`ab-pill ${activeGrain === value ? "active" : ""}`} onClick={() => setGrain(value)} title={!availableGrains.includes(value) ? (locale === "en" ? "Not available for this input frequency" : "입력 단위상 정확히 집계할 수 없습니다") : undefined}>{value === "month" ? (locale === "en" ? "Monthly" : "월별") : (locale === "en" ? "Weekly" : "주별")}</button>)}
             </div>
           </div>
         </div>
+
+        <p className="seasonality-source-note">{sourceGrain === "day"
+          ? (locale === "en" ? "Daily input detected · weekly and monthly views available." : "일별 데이터 인식 · 주별과 월별 모두 볼 수 있습니다.")
+          : sourceGrain === "week"
+            ? (locale === "en" ? "Weekly input detected · monthly view is disabled because weeks can cross calendar months." : "주별 데이터 인식 · 주가 월 경계를 넘을 수 있어 월별 보기는 비활성화했습니다.")
+            : sourceGrain === "month"
+              ? (locale === "en" ? "Monthly input detected · weekly view needs daily or weekly source data." : "월별 데이터 인식 · 주별 보기는 일별 또는 주별 원본이 필요합니다.")
+              : (locale === "en" ? "Could not identify the date frequency." : "날짜 입력 단위를 인식하지 못했습니다.")}</p>
 
         <div className="seasonality-mode">
           <div><strong>{locale === "en" ? "Remove trend" : "추세 제외"}</strong><span>{detrend ? (locale === "en" ? "On · pattern index" : "켬 · 패턴 인덱스") : (locale === "en" ? "Off · actual values" : "끔 · 실제값")}</span></div>
@@ -113,12 +125,12 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
         </div>
 
         {!result.sufficient ? (
-          <div className="seasonality-empty">{locale === "en" ? `Need at least two calendar years and more ${grain === "week" ? "weekly" : "monthly"} observations. Current years: ${result.years.join(", ") || "—"}.` : `최소 2개 연도와 충분한 ${grain === "week" ? "주별" : "월별"} 관측이 필요합니다. 현재 연도: ${result.years.join(", ") || "—"}.`}</div>
+          <div className="seasonality-empty">{result.reason === "grain_not_supported" ? (locale === "en" ? "This calendar view is not defensible for the detected input frequency." : "현재 입력 단위에서는 이 달력 보기를 정확히 만들 수 없습니다.") : (locale === "en" ? `Need at least two calendar years and more ${activeGrain === "week" ? "weekly" : "monthly"} observations. Current years: ${result.years.join(", ") || "—"}.` : `최소 2개 연도와 충분한 ${activeGrain === "week" ? "주별" : "월별"} 관측이 필요합니다. 현재 연도: ${result.years.join(", ") || "—"}.`)}</div>
         ) : (
           <>
             <div className="seasonality-summary">
               <span>{result.years.join(" · ")} {locale === "en" ? "comparison" : "비교"}</span>
-              <strong>{bucketLabel(strongest.bucket, grain, locale)} {strongest.delta >= 0 ? "+" : ""}{strongest.delta.toFixed(1)}%</strong>
+              <strong>{bucketLabel(strongest.bucket, activeGrain, locale)} {strongest.delta >= 0 ? "+" : ""}{strongest.delta.toFixed(1)}%</strong>
               <span>{locale === "en" ? "largest recurring deviation from the yearly baseline" : "연간 기준 대비 가장 큰 반복 차이"}</span>
             </div>
             <div className="seasonality-grid">
@@ -128,12 +140,12 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
             <div className="seasonality-heatmap" aria-label="연도별 시즈널리티 히트맵">
               <div className="seasonality-heatmap__title">{locale === "en" ? "Year × calendar period" : "연도 × 달력 구간"}</div>
               <div className="seasonality-heatmap__body" style={{ "--season-columns": result.seasonal.length }}>
-                <span />{result.seasonal.map((item) => <span key={item.bucket} className="seasonality-heatmap__label">{bucketLabel(item.bucket, grain, locale)}</span>)}
+                <span />{result.seasonal.map((item) => <span key={item.bucket} className="seasonality-heatmap__label">{bucketLabel(item.bucket, activeGrain, locale)}</span>)}
                 {result.years.map((year) => <React.Fragment key={year}><strong>{year}</strong>{result.seasonal.map((item) => {
                   const point = result.points.find((candidate) => candidate.year === year && candidate.bucket === item.bucket);
                   const delta = point ? point.index - 100 : null;
                   const color = delta == null ? "transparent" : delta >= 0 ? `color-mix(in srgb, var(--success) ${Math.min(78, 14 + Math.abs(delta))}%, var(--surface-container-low))` : `color-mix(in srgb, var(--danger) ${Math.min(78, 14 + Math.abs(delta))}%, var(--surface-container-low))`;
-                  return <span key={item.bucket} title={point ? `${year} · ${bucketLabel(item.bucket, grain, locale)}: ${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—"} className="seasonality-heatmap__cell" style={{ background: color }}>{point ? `${delta >= 0 ? "+" : ""}${delta.toFixed(0)}` : "—"}</span>;
+                  return <span key={item.bucket} title={point ? `${year} · ${bucketLabel(item.bucket, activeGrain, locale)}: ${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—"} className="seasonality-heatmap__cell" style={{ background: color }}>{point ? `${delta >= 0 ? "+" : ""}${delta.toFixed(0)}` : "—"}</span>;
                 })}</React.Fragment>)}
               </div>
             </div>
