@@ -1234,7 +1234,9 @@ export default function MarketingResponse({ locale = "ko" }) {
 
   // 채널별 카니발 + §4.5 랭킹/전역 종합 (index buildMmmMethCache byTarget 오케스트레이션 포트)
   const cannib = useMemo(() => {
-    if (!mmm || mmm.empty || stage !== "diagnose") return null;
+    // 분석 패키지는 어느 단계에서 받아도 4검증을 모두 포함해야 한다. 화면은
+    // diagnose 단계에서만 렌더하지만 결과 캐시는 분석 완료 뒤 유지한다.
+    if (!mmm || mmm.empty) return null;
     try {
       const { panel, cfg, target: t } = mmm;
       const elas = mmmElasticities(panel, cfg, t, cfg.defaultLam);
@@ -1264,7 +1266,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     } catch (e) {
       return null;
     }
-  }, [mmm, stage]);
+  }, [mmm]);
 
   // ── §1 매크로 사실 + 자동 흡수(공선) + §2 naive-model audit (모델 독립) ──
   const diag = useMemo(() => {
