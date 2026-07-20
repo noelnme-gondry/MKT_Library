@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Papa from "papaparse";
 import Chart from "chart.js/auto";
+import * as XLSX from "xlsx";
 import { useAppStore } from "@/store/useDataStore";
 import {
   MMM_METH_CONFIG,
@@ -268,6 +269,89 @@ function csvDownload(name, lines) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, 0);
+}
+
+// 현재 필터·타깃 기준을 하나의 감사 가능한 분석 패키지로 내보낸다. 원본은 브라우저 안에서만
+// 워크북으로 변환되고 서버 전송은 없다. 각 시트는 그래프용 long-format과 해석 안내를 함께 둔다.
+function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, colMap, locale, currency }) {
+  if (!mmm || mmm.empty) return;
+  const tx = (ko, en) => (locale === "en" ? en : ko);
+  const wb = XLSX.utils.book_new();
+  const add = (name, rows) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), name);
+  const run = mmm.run;
+  const generated = new Date().toISOString();
+  add("00_Index", [
+    [tx("MMM 분석 패키지", "MMM analysis package")],
+    [tx("생성 시각", "Generated"), generated],
+    [tx("타깃", "Target"), mmm.target],
+    [tx("통화", "Currency"), currency],
+    [tx("모델", "Model"), run.methodLabel],
+    [tx("기간", "Periods"), mmm.panel.week.length],
+    [],
+    [tx("시트", "Sheet"), tx("무엇을 확인하나", "What it contains")],
+    ["01_Input", tx("분석에 사용한 원본·매핑", "Source rows and mapping")],
+    ["02_STL", tx("추세·계절성·잔차", "Trend, seasonality, residual")],
+    ["03_Cannibal", tx("4개 잠식 검증의 채널별 결과", "Per-channel four-check cannibal evidence")],
+    ["04_Model", tx("Bayesian 모델·적합도·채널 파라미터", "Bayesian model, fit, channel parameters")],
+    ["05_WeeklyContribution", tx("주별 그룹 기여", "Weekly group contribution")],
+    ["06_ChannelEffect", tx("양수확률·신뢰구간·한계효과", "Probability, interval, marginal effect")],
+    ["07_ResponseData", tx("지출별 기여·CPA/ROAS 그래프용", "Spend response and CPA/ROAS chart data")],
+    ["08_Forecast", tx("기준 예측·참고구간", "Baseline forecast and reference interval")],
+    ["09_Glossary", tx("모델·지표 해석과 한계", "Model, metric definitions, limitations")],
+  ]);
+  const headers = csvData?.headers || [];
+  add("01_Input", [
+    [tx("컬럼", "Column"), tx("매핑", "Mapping")],
+    ...headers.map((h) => [h, JSON.stringify(colMap?.[h] || { role: "ignore" })]),
+    [],
+    headers,
+    ...(csvData?.raw || []).map((row) => headers.map((h) => row[h] ?? "")),
+  ]);
+  add("02_STL", trend?.stl ? [
+    ["week", "actual", "trend", "seasonality", "residual"],
+    ...mmm.panel.week.map((w, i) => [mmm.panel.weekLabel?.[i] || w, mmm.panel.targets[mmm.target][i], trend.stl.trend?.[i], trend.stl.seasonal?.[i], trend.stl.residual?.[i]]),
+  ] : [[tx("STL 결과", "STL result")], [tx("이 패키지는 시계열 점검 단계에서 다운로드하면 STL 원자료를 포함합니다.", "Download from the time-series step to include STL source data.")]]);
+  add("03_Cannibal", cannib?.cannibRank ? [
+    ["channel", "verdict", "eligible", "active_weeks", "precedence_vote", "detrend_vote", "net_vote", "lag_p", "lag_coef", "notes"],
+    ...cannib.cannibRank.map((r) => {
+      const c = cannib.cannibByChannel?.[r.key] || {};
+      return [r.label, c.verdict, r.eligible, r.nActive, c.precedence?.vote, c.detrend_corr?.vote, c.net_incrementality?.vote, c.granger?.spend_to_organic?.p, c.granger?.spend_to_organic?.coefSum, c.power_gate?.reasons?.join(" | ") || ""];
+    }),
+  ] : [[tx("카니발 결과", "Cannibal result")], [tx("카니발 진단 단계에서 다운로드하면 4검증 원자료를 포함합니다.", "Download from the cannibalization step to include four-check evidence.")]]);
+  add("04_Model", [
+    ["model", run.methodLabel], ["R2", run.posterior?.r2], ["sigma", run.posterior?.sigma], ["target", mmm.target], [],
+    ["channel", "adstock_alpha", "half_saturation", "hill_slope", "posterior_positive_probability"],
+    ...Object.values(run.saturationByChannel || {}).map((s) => [s.label, s.params.alpha, s.params.ec, s.params.slope, s.posteriorPositive]),
+  ]);
+  add("05_WeeklyContribution", decomp?.weeks ? [
+    ["week", "actual", "fitted", "residual", "baseline", ...decomp.groupNames],
+    ...decomp.weeks.map((w) => [w.week, w.actual, w.fitted, w.residual, w.baseline, ...decomp.groupNames.map((g) => w.contrib[g] || 0)]),
+  ] : [[tx("주별 기여", "Weekly contribution")], [tx("기여 분해 결과가 없습니다.", "Contribution result unavailable.")]]);
+  add("06_ChannelEffect", [
+    ["channel", "posterior_positive_probability", "effect_size", "ci_low", "ci_high", "recent_spend", "marginal_per_1000"],
+    ...Object.values(run.saturationByChannel || {}).map((s) => [s.label, s.posteriorPositive, s.ln_coef, s.ci?.[0], s.ci?.[1], s.recentMean, s.currentMarginal]),
+  ]);
+  const grid = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5];
+  const responseRows = [["channel", "spend", "incremental_contribution", mmm.target === "Revenue" ? "ROAS" : "CPA"]];
+  Object.values(run.saturationByChannel || {}).forEach((s) => grid.forEach((mult) => {
+    const spend = (s.recentMean || 1) * mult, result = s.responseAt(spend);
+    responseRows.push([s.label, spend, result, spend > 0 && result > 0 ? (mmm.target === "Revenue" ? result / spend : spend / result) : null]);
+  }));
+  add("07_ResponseData", responseRows);
+  add("08_Forecast", forecast ? [
+    ["period", "actual", "fitted_or_forecast", "lower", "upper"],
+    ...forecast.labels.map((label, i) => [label, forecast.actual?.[i] ?? null, forecast.fittedHist?.[i] ?? forecast.predFut?.[i - forecast.splitAt] ?? null, forecast.lo?.[i - forecast.splitAt] ?? null, forecast.hi?.[i - forecast.splitAt] ?? null]),
+  ] : [[tx("예측", "Forecast")], [tx("예측 결과가 없습니다.", "Forecast unavailable.")]]);
+  add("09_Glossary", [
+    [tx("항목", "Term"), tx("설명", "Description")],
+    ["Bayesian MMM", tx("약한 Gaussian prior를 둔 browser Bayesian 선형 posterior. 관측 데이터의 연관 모델이며 인과 확정이 아닙니다.", "Browser Bayesian posterior with weak Gaussian prior. Observational association, not causal proof.")],
+    ["P(effect > 0)", tx("채널 효과가 양수일 posterior 확률. 80% 이상만 예산 추천에 씁니다.", "Posterior probability channel effect is positive. Budget recommendation threshold: 80%.")],
+    ["Adstock", tx("광고 효과의 다음 주 이월.", "Carryover of ad effect into later weeks.")],
+    ["Hill saturation", tx("지출이 커질수록 추가 효과가 줄어드는 반응 곡선.", "Response curve with diminishing marginal return.")],
+    ["STL", tx("성과를 장기추세·계절성·잔차로 나누는 시계열 분해.", "Time-series decomposition into trend, seasonality, residual.")],
+    ["Cannibalization", tx("유료 광고가 기존 오가닉 성과를 대체했을 가능성. 4개 관측 검증은 확정이 아니며 holdout이 필요합니다.", "Possibility paid ads replace organic outcome. Four observational checks require holdout for confirmation.")],
+  ]);
+  XLSX.writeFile(wb, `MMM_analysis_package_${mmm.target}_${_today()}.xlsx`);
 }
 // 엑셀 열 문자(0→A). index colL 이식.
 function csvColL(n) {
@@ -873,20 +957,22 @@ function buildCannibSeriesCsv(panel, target) {
   return lines;
 }
 
-// index.html MMM_STAGE_DEFS 이식 — 3단계 카드 탭(진단/기여/회귀·예측). 구 forecast(TF)는 lab에 흡수.
+// MMM 흐름: 시계열 점검 → 카니발 → 기여 → 예측.
 // locale-aware — 함수로 감싸 ko/en 두 세트를 제공(§12.20 렌더층 다국어 패턴).
 function mmmStageDefs(locale) {
   if (locale === "en") {
     return [
-      { id: "diagnose", no: "① Cannibalization", title: "Cannibalization diagnosis", icon: "🔬", desc: "Is paid advertising eating into organic traffic that would have come for free? — checked per channel." },
-      { id: "mmm", no: "② Contribution", title: "MMM contribution breakdown", icon: "🧩", desc: "What actually moved our performance? Where should the next budget go?" },
-      { id: "lab", no: "③ Forecast", title: "Regression · Forecast", icon: "📈", desc: "If things stay the same, or if you change the budget, how will the next few weeks look?" },
+      { id: "trend", no: "① Time series", title: "STL trend check", icon: "〰", desc: "Separate natural trend, seasonality, and irregular weeks before judging ad effects." },
+      { id: "diagnose", no: "② Cannibalization", title: "Cannibalization diagnosis", icon: "🔬", desc: "Is paid advertising eating into organic traffic that would have come for free? — checked per channel." },
+      { id: "mmm", no: "③ Contribution", title: "MMM contribution breakdown", icon: "🧩", desc: "What actually moved performance? Where should the next budget go?" },
+      { id: "lab", no: "④ Forecast", title: "Regression · Forecast", icon: "📈", desc: "If things stay the same, or if you change the budget, how will the next weeks look?" },
     ];
   }
   return [
-    { id: "diagnose", no: "① 잠식 진단", title: "카니발 진단", icon: "🔬", desc: "유료 광고가 공짜로 들어올 오가닉 유입을 갉아먹고 있나? — 채널별로 점검합니다." },
-    { id: "mmm", no: "② 기여 분해", title: "MMM 기여 분해", icon: "🧩", desc: "무엇이 우리 성과를 실제로 움직였나? 다음 예산은 어디에 써야 하나?" },
-    { id: "lab", no: "③ 미래 예측", title: "회귀 · 미래 예측", icon: "📈", desc: "이대로 가면, 또는 예산을 바꾸면 다음 몇 주 성과는 어떻게 될까?" },
+    { id: "trend", no: "① 시계열 점검", title: "STL 추세 분석", icon: "〰", desc: "광고 판단 전에 자연 추세·계절성·이상 주차를 분리합니다." },
+    { id: "diagnose", no: "② 잠식 진단", title: "카니발 진단", icon: "🔬", desc: "유료 광고가 공짜로 들어올 오가닉 유입을 갉아먹고 있나? — 채널별로 점검합니다." },
+    { id: "mmm", no: "③ 기여 분해", title: "MMM 기여 분해", icon: "🧩", desc: "무엇이 우리 성과를 실제로 움직였나? 다음 예산은 어디에 써야 하나?" },
+    { id: "lab", no: "④ 미래 예측", title: "회귀 · 미래 예측", icon: "📈", desc: "이대로 가면, 또는 예산을 바꾸면 다음 몇 주 성과는 어떻게 될까?" },
   ];
 }
 
@@ -942,7 +1028,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   // ③ lab이 mmmForecast(②계수) §7 미래예측을 렌더(stage==="lab"). 셋 다 shared mmmColMap 사용.
   const tx = (ko, en) => (locale === "en" ? en : ko); // 인라인 텍스트 로컬라이즈 헬퍼(§12.20 v2 i18n 패턴)
   const bucketMeta = mmmBucketMeta(locale);
-  const [stage, setStage] = useState("diagnose"); // diagnose | mmm | lab
+  const [stage, setStage] = useState("trend"); // trend | diagnose | mmm | lab
   const [target, setTarget] = useState("Regs");
   const decompModel = "bayesian";
   const [decompGrouped, setDecompGrouped] = useState(true); // §5.5 true=4버킷 묶음 / false=광고 개별채널
@@ -952,6 +1038,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const [fcBudget, setFcBudget] = useState({}); // {chKey: 주 평균 예산} — 미입력 채널은 최근평균
   const [fcStepOff, setFcStepOff] = useState({}); // {stepKey: 켜둘 미래 기간 N} — 빈값=지속
   const [cannibChannel, setCannibChannel] = useState(null);
+  const [cannibQuestion, setCannibQuestion] = useState("precedence");
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
   const demoDisabled = useAppStore((state) => state.demoDisabled);
@@ -1137,7 +1224,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   }, [mmm, stage, fcHorizon, fcBudget]);
 
   const trend = useMemo(() => {
-    if (!mmm || mmm.empty || stage !== "diagnose") return null;
+    if (!mmm || mmm.empty || !["trend", "diagnose"].includes(stage)) return null;
     try {
       return mmmTrendExistence(mmm.panel, mmm.cfg, mmm.target);
     } catch (e) {
@@ -1554,7 +1641,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   // Stage ① trend chart (STL trend + actual)
   useEffect(() => {
     const inst = [];
-    if (stage === "diagnose" && trend && trendRef.current && mmm && !mmm.empty) {
+    if (["trend", "diagnose"].includes(stage) && trend && trendRef.current && mmm && !mmm.empty) {
       const y = mmm.panel.targets[mmm.target];
       const labels = mmm.panel.weekLabel || y.map((_, i) => i + 1);
       inst.push(
@@ -1574,7 +1661,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     return () => inst.forEach((c) => c && c.destroy());
   }, [stage, trend, mmm]);
 
-  // Stage ① §4 채널 상세 — 임펄스 응답(IRF): 지출 1SD 충격 → 타깃 반응 곡선
+  // Stage ① 카니발 4검증 — 선택한 질문 하나의 근거 차트만 렌더.
   useEffect(() => {
     const inst = [];
     if (
@@ -1588,9 +1675,10 @@ export default function MarketingResponse({ locale = "ko" }) {
       try {
         const y = mmm.panel.targets[mmm.target] || [];
         const spend = mmm.panel.ch[activeCannibCh] || [];
-        const irf = mmmIRF(y, spend, { horizon: 12 });
-        if (irf) {
-          const labels = irf.irf.map((_, i) => (i === 0 ? tx("충격", "Shock") : tx(`+${i}주`, `+${i}wk`)));
+        const labels = mmm.panel.weekLabel || y.map((_, i) => i + 1);
+        const cn = activeCn;
+        if (cannibQuestion === "precedence") {
+          const p25 = cn?.precedence?.p25 ?? 0;
           inst.push(
             new Chart(irfRef.current.getContext("2d"), {
               type: "line",
@@ -1598,32 +1686,59 @@ export default function MarketingResponse({ locale = "ko" }) {
                 labels,
                 datasets: [
                   {
-                    label: tx("주별 반응", "Weekly response"),
-                    data: irf.irf,
-                    borderColor: "#7aa2f7",
-                    pointRadius: 0,
-                    tension: 0.25,
+                    label: tx("성과", "Outcome"), data: y, borderColor: "#7aa2f7", pointRadius: spend.map((v) => v <= p25 ? 3 : 0), pointBackgroundColor: "#f59e0b", tension: 0.2,
                   },
                   {
-                    label: tx("누적 반응", "Cumulative response"),
-                    data: irf.cum,
-                    borderColor: "#e0af68",
-                    borderDash: [5, 4],
-                    pointRadius: 0,
-                    tension: 0.2,
+                    label: tx("지출", "Spend"), data: spend, borderColor: "#94a3b8", borderDash: [5, 4], pointRadius: 0, tension: 0.2, yAxisID: "spend",
                   },
                 ],
               },
-              options: chartBase(),
+              options: { ...chartBase(), scales: { ...chartBase().scales, spend: { position: "right", ticks: { color: CHART_THEME.muted, callback: (v) => currencySym + fmtInt(v) }, grid: { drawOnChartArea: false } } } },
             }),
           );
+        } else if (cannibQuestion === "detrend") {
+          const residual = (a) => {
+            const n = a.length, xm = (n - 1) / 2, ym = a.reduce((s, v) => s + v, 0) / Math.max(1, n);
+            let num = 0, den = 0;
+            a.forEach((v, i) => { num += (i - xm) * (v - ym); den += (i - xm) ** 2; });
+            const slope = den ? num / den : 0;
+            return a.map((v, i) => v - (ym + slope * (i - xm)));
+          };
+          const logSpend = spend.map((v) => Math.log1p(v));
+          const rs = residual(logSpend), ry = residual(y);
+          const ds = logSpend.slice(1).map((v, i) => v - logSpend[i]);
+          const dy = y.slice(1).map((v, i) => v - y[i]);
+          inst.push(new Chart(irfRef.current.getContext("2d"), {
+            type: "scatter",
+            data: { datasets: [
+              { label: tx("추세 제거 후", "Detrended"), data: rs.map((x, i) => ({ x, y: ry[i] })), backgroundColor: "#7aa2f7", pointRadius: 3 },
+              { label: tx("전주 대비 변화", "Weekly change"), data: ds.map((x, i) => ({ x, y: dy[i] })), backgroundColor: "#e0af68", pointRadius: 3 },
+            ] },
+            options: { ...chartBase(), scales: { x: { type: "linear", ticks: { color: CHART_THEME.muted }, grid: { color: CHART_THEME.grid } }, y: { ticks: { color: CHART_THEME.muted }, grid: { color: CHART_THEME.grid } } } },
+          }));
+        } else if (cannibQuestion === "net") {
+          const net = cn?.net_incrementality || {};
+          const lo = net.ci_lo ?? 0, hi = net.ci_hi ?? 0, coef = net.net_elasticity ?? 0;
+          const whisker = { id: "netWhisker", afterDatasetsDraw(chart) { const { ctx, scales } = chart; const y = scales.y.getPixelForValue(0); ctx.save(); ctx.strokeStyle = "#e0af68"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(scales.x.getPixelForValue(lo), y); ctx.lineTo(scales.x.getPixelForValue(hi), y); ctx.stroke(); ctx.restore(); } };
+          inst.push(new Chart(irfRef.current.getContext("2d"), {
+            type: "bar", data: { labels: [tx("순증분 효과", "Net incremental effect")], datasets: [{ label: tx("점추정", "Point estimate"), data: [coef], backgroundColor: coef >= 0 ? "#22c55e" : "#f87171", borderRadius: 4 }] },
+            options: { ...chartBase(), indexAxis: "y", plugins: { ...chartBase().plugins, tooltip: { callbacks: { label: () => `${tx("효과", "Effect")}: ${fmtOne(coef)} · CI [${fmtOne(lo)}, ${fmtOne(hi)}]` } } }, scales: { x: { ticks: { color: CHART_THEME.muted }, grid: { color: CHART_THEME.grid } }, y: { ticks: { color: CHART_THEME.muted }, grid: { display: false } } } }, plugins: [whisker],
+          }));
+        } else {
+          const irf = mmmIRF(y, spend, { horizon: 12 });
+          if (irf) inst.push(new Chart(irfRef.current.getContext("2d"), {
+            type: "line", data: { labels: irf.irf.map((_, i) => (i === 0 ? tx("충격", "Shock") : tx(`+${i}주`, `+${i}wk`))), datasets: [
+              { label: tx("주별 반응", "Weekly response"), data: irf.irf, borderColor: "#7aa2f7", pointRadius: 0, tension: 0.25 },
+              { label: tx("누적 반응", "Cumulative response"), data: irf.cum, borderColor: "#e0af68", borderDash: [5, 4], pointRadius: 0, tension: 0.2 },
+            ] }, options: chartBase(),
+          }));
         }
       } catch (e) {
-        /* IRF 데이터 부족(n<24) — 차트 생략 */
+        /* 데이터 부족 시 근거 차트 생략 */
       }
     }
     return () => inst.forEach((c) => c && c.destroy());
-  }, [stage, mmm, cannib, activeCannibCh]);
+  }, [stage, mmm, cannib, activeCannibCh, activeCn, cannibQuestion, currencySym]);
 
   // Stage ① simple-cannib chart 없음 (통계 카드만) — 잔차 산점도는 디퍼
 
@@ -1750,7 +1865,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const platformTags = hasData && mmmColMap ? mmmPlatformTags(csvData.headers, mmmColMap) : [];
 
   // 브레드크럼 = 현재 위치 + 타깃/플랫폼 토글을 한 바(bar)에 좌측 정렬로 병합(토글이 곧 breadcrumb).
-  const stageKo = stage === "mmm" ? tx("기여 분해", "Contribution") : stage === "lab" ? tx("회귀·미래예측", "Regression · Forecast") : tx("잠식 진단", "Cannibalization");
+  const stageKo = stage === "trend" ? tx("시계열 점검", "Time series") : stage === "mmm" ? tx("기여 분해", "Contribution") : stage === "lab" ? tx("회귀·미래예측", "Regression · Forecast") : tx("잠식 진단", "Cannibalization");
   const demoBanner = isDemo && (
     <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
       <div>
@@ -1800,6 +1915,14 @@ export default function MarketingResponse({ locale = "ko" }) {
             ))}
             {segmentSel.truncated && <span style={{ fontSize: "10.5px", color: "#f59e0b" }}>{tx("⚠ 상위 20개만", "⚠ Top 20 only")}</span>}
           </div>
+        )}
+        {mmm && !mmm.empty && (
+          <button className="ab-pill" onClick={() => {
+            const packageDecomp = mmmBayesianWeeklyDecomp(mmm.run);
+            const packageTrend = trend || mmmTrendExistence(mmm.panel, mmm.cfg, mmm.target);
+            const packageForecast = mmmBayesianForecast(mmm.run, mmm.panel, null, 13);
+            downloadMmmWorkbook({ mmm, cannib, decomp: packageDecomp, trend: packageTrend, forecast: packageForecast, csvData, colMap: mmmColMap, locale, currency: displayCurrency });
+          }}>{tx("⬇ 분석 패키지", "⬇ Analysis package")}</button>
         )}
       </div>
     </div>
@@ -1864,6 +1987,25 @@ export default function MarketingResponse({ locale = "ko" }) {
           {/* ③ LAB(회귀·미래예측)은 아래 §7 forecast 블록에서 렌더(mmmForecast 기반, stage==="lab"). */}
 
           {/* ── STAGE ① DIAGNOSE (MMM panel) ── */}
+          {stage === "trend" && (
+            <section className="block" id="s-trend">
+              <h2 className="section-title">{tx("광고 전에: 자연 추세·계절성을 먼저 분리합니다", "Before ads: separate natural trend and seasonality")}</h2>
+              <p className="muted" style={{ fontSize: "12px", marginBottom: "10px" }}>{tx("STL은 성과를 추세·계절성·불규칙 요인으로 나눕니다. 여기서 보인 추세는 카니발과 MMM이 광고 효과를 과대해석하지 않도록 하는 사전 점검입니다.", "STL separates outcome into trend, seasonality, and irregular movement. It is a pre-check so cannibalization and MMM do not over-credit ads.")}</p>
+              {trend ? <>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "10px" }}>
+                  <div className="stat-card"><div className="lbl">STL</div><div className="val">{trend.stl_pct >= 0 ? "+" : ""}{fmtOne(trend.stl_pct)}%</div></div>
+                  <div className="stat-card"><div className="lbl">Mann-Kendall</div><div className="val">p={fmtOne(trend.mk_deseason?.[1])}</div></div>
+                  <div className="stat-card"><div className="lbl">{tx("판정", "Verdict")}</div><div className="val" style={{ fontSize: "13px" }}>{trend.verdict}</div></div>
+                </div>
+                <div className="chart-container" style={{ height: "280px" }}><canvas ref={trendRef}></canvas></div>
+                <Card style={{ marginTop: "12px", fontSize: "12px", lineHeight: 1.55 }}>
+                  {tx("다음 단계에서 카니발 4검증을 보세요. 그중 ②는 이 시간 추세를 다시 걷어낸 뒤 광고와 성과의 관계를 확인합니다.", "Continue to the four cannibalization checks. Check ② removes this time trend again before comparing spend and outcome.")}
+                  <button className="ab-pill active" style={{ marginLeft: "10px" }} onClick={() => setStage("diagnose")}>{tx("카니발 진단으로", "Open cannibalization")}</button>
+                </Card>
+              </> : <p className="muted">{tx("추세 분석을 계산할 수 없습니다.", "Trend analysis is unavailable.")}</p>}
+            </section>
+          )}
+
           {stage === "diagnose" && (
             <>
               {/* ── 메인: 판정별 3버킷 칸반(그룹핑) + 짧은 평어 헤드라인 ── 통계는 아래 아코디언 ── */}
@@ -1956,15 +2098,15 @@ export default function MarketingResponse({ locale = "ko" }) {
                     ? tx("네 방향으로 따져봐도 뚜렷한 잠식 신호가 없어요.", "Checking all four angles, there's no clear cannibalization signal.")
                     : tx("데이터가 부족하거나 채널끼리 지출이 겹쳐(공선) 판정하기 어려워요.", "Data is insufficient, or channels' spend overlaps (collinear), making a verdict hard.");
                 const voteView = (v) => v === "FOR" ? { t: tx("괜찮음", "OK"), c: "#22c55e" } : v === "AGAINST" ? { t: tx("잠식 신호", "Cannibalization signal"), c: "#f87171" } : { t: tx("판단 보류", "Withheld"), c: MUTED };
-                const signal = (num, q, help, v, tech) => {
+                const signal = (key, num, q, help, v, tech) => {
                   const vv = voteView(v);
                   return (
-                    <div style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px" }}>
+                    <button onClick={() => setCannibQuestion(key)} style={{ background: cannibQuestion === key ? "rgba(122,162,247,0.10)" : "var(--bg-2)", border: `1px solid ${cannibQuestion === key ? "rgba(122,162,247,0.65)" : "var(--border)"}`, borderRadius: "10px", padding: "12px 14px", textAlign: "left", color: "inherit", cursor: "pointer", minHeight: "142px" }}>
                       <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.4, minHeight: "34px" }}>{num} {q}</div>
                       <div style={{ fontSize: "15px", fontWeight: 700, color: vv.c, margin: "8px 0 4px" }}>{vv.t}</div>
                       <div style={{ fontSize: "11px", color: MUTED, lineHeight: 1.5 }}>{help}</div>
                       <div style={{ fontSize: "10px", color: MUTED, marginTop: "6px", opacity: 0.8 }} title={tx("통계 원값(전문가용)", "Raw statistics (for specialists)")}>{tech}</div>
-                    </div>
+                    </button>
                   );
                 };
                 return (
@@ -1982,34 +2124,18 @@ export default function MarketingResponse({ locale = "ko" }) {
                         {tx('ⓘ 데이터가 적거나 지출 변동이 작아 ③을 신뢰하기 어려워요 — 이럴 땐 "문제 없음"으로 단정하지 않고 보류합니다.', 'ⓘ Data is limited or spend barely varies, so ③ can\'t be trusted — in that case we withhold rather than assert "no issue."')}
                       </div>
                     )}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "10px" }}>
-                      {signal("①", tx("광고를 늘리기 전에 오가닉이 이미 줄고 있었나?", "Was organic already declining before ad spend rose?"), tx("이미 줄고 있었다면 하락은 광고 탓이 아닐 수 있어요.", "If it was already falling, the decline may not be ads' fault."), p.vote, tx(`저지출 구간 기울기 ${p.kpi_slope_per_wk}/주 (p=${p.slope_p}) · 누적 ${p.kpi_change_over_window_pct}%`, `Low-spend window slope ${p.kpi_slope_per_wk}/wk (p=${p.slope_p}) · cumulative ${p.kpi_change_over_window_pct}%`))}
-                      {signal("②", tx("시즌·추세를 걷어내도 광고 늘 때 오가닉이 줄어드나?", "After removing season/trend, does organic still fall when ads rise?"), tx("걷어내도 반대로 움직이면 잠식 의심.", "If it still moves opposite even after removal, cannibalization is suspected."), d.vote, tx(`탈추세 상관 ${d.detrended} · 1차차분 ${d.first_diff} (원상관 ${d.raw})`, `Detrended corr ${d.detrended} · first-diff ${d.first_diff} (raw ${d.raw})`))}
-                      {signal("③", tx("광고를 늘리면 (잠식 빼고도) 전체 성과가 순증가하나?", "Does total performance net-increase when ads rise (even after cannibalization)?"), tx("순증가면 방어 양호.", "A net increase means good defense."), ni.vote, tx(`순증분 탄력성 ${isFinite(ni.net_elasticity) ? ni.net_elasticity : "—"} · p=${isFinite(ni.p) ? ni.p : "—"}${ni.ci_lo != null ? ` · CI[${ni.ci_lo}, ${ni.ci_hi}]` : ""}`, `Net-incremental elasticity ${isFinite(ni.net_elasticity) ? ni.net_elasticity : "—"} · p=${isFinite(ni.p) ? ni.p : "—"}${ni.ci_lo != null ? ` · CI[${ni.ci_lo}, ${ni.ci_hi}]` : ""}`))}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "10px" }}>
+                      {signal("precedence", "①", tx("광고를 늘리기 전에 성과가 이미 줄고 있었나?", "Was outcome already declining before ad spend rose?"), tx("저지출 주의 시간 흐름을 봅니다. 이미 줄었다면 광고 탓으로 단정 못 해요.", "Checks the time path in low-spend weeks. A prior decline cannot be blamed on ads."), p.vote, tx(`저지출 기울기 ${p.kpi_slope_per_wk}/주 · ${p.kpi_change_over_window_pct}%`, `Low-spend slope ${p.kpi_slope_per_wk}/wk · ${p.kpi_change_over_window_pct}%`))}
+                      {signal("detrend", "②", tx("추세·계절을 걷어내도 광고와 성과가 반대로 움직이나?", "After removing trend, do spend and outcome still move opposite?"), tx("시간 착시를 제거한 잔차와 전주 대비 변화를 함께 봅니다.", "Compares detrended residuals and week-over-week changes."), d.vote, tx(`잔차 상관 ${d.detrended} · 차분 상관 ${d.first_diff}`, `Residual corr ${d.detrended} · diff corr ${d.first_diff}`))}
+                      {signal("net", "③", tx("광고를 늘리면 전체 성과는 순증가하나?", "Does more spend net-increase total outcome?"), tx("점추정과 신뢰구간이 0보다 어느 쪽에 있는지 봅니다.", "Checks point estimate and confidence interval against zero."), ni.vote, tx(`순증분 ${isFinite(ni.net_elasticity) ? ni.net_elasticity : "—"} · CI[${ni.ci_lo ?? "—"}, ${ni.ci_hi ?? "—"}]`, `Net effect ${isFinite(ni.net_elasticity) ? ni.net_elasticity : "—"} · CI[${ni.ci_lo ?? "—"}, ${ni.ci_hi ?? "—"}]`))}
+                      {signal("lag", "④", tx("광고비가 몇 주 뒤 성과를 끌어내리나?", "Does spend pull outcome down weeks later?"), tx("광고 충격 뒤의 주별·누적 반응을 봅니다.", "Shows weekly and cumulative response after a spend shock."), cn.granger_cannibal ? "AGAINST" : cn.granger_help ? "FOR" : "ABSTAIN", g ? tx(`시차 ${g.spend_to_organic.lag}주 · p=${g.spend_to_organic.p}`, `Lag ${g.spend_to_organic.lag}wk · p=${g.spend_to_organic.p}`) : tx("데이터 부족", "Insufficient data"))}
                     </div>
-                    {/* ④ 그랜저 — 시차 (①~③은 같은 주만 봄) */}
-                    <div style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px", marginTop: "10px" }}>
-                      <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)" }}>{tx("④ 광고비가 몇 주 뒤에 오가닉을 끌어내리나?", "④ Does spend pull organic down a few weeks later?")} <span style={{ color: MUTED, fontWeight: 400 }}>{tx("(①~③은 같은 주만 봐요 · 이건 시차 효과)", "(①–③ only look at the same week · this is the lagged effect)")}</span></div>
-                      {g ? (
-                        <>
-                          <div style={{ fontSize: "15px", fontWeight: 700, margin: "8px 0 4px", color: cn.granger_cannibal ? "#f87171" : cn.granger_help ? "#22c55e" : MUTED }}>
-                            {cn.granger_cannibal ? tx("몇 주 뒤 끌어내리는 신호 있음", "Signal of pulling down a few weeks later") : cn.granger_help ? tx("몇 주 뒤 밀어올리는 신호", "Signal of lifting a few weeks later") : tx("시차 신호 없음", "No lagged signal")}
-                          </div>
-                          <div style={{ fontSize: "11px", color: MUTED, lineHeight: 1.5 }}>
-                            {cn.granger_cannibal ? tx("광고비 과거값이 오가닉의 이후 하락을 설명 → 잠식 의심으로 반영.", "Spend's past values explain organic's later decline → reflected as suspected cannibalization.") : cn.granger_help ? tx("광고비 과거값이 오가닉의 이후 상승을 설명.", "Spend's past values explain organic's later rise.") : tx("광고비가 이후 오가닉 변화를 설명하지 못함.", "Spend doesn't explain organic's later change.")}
-                            {cn.pacing ? tx(" · ↩ 오가닉이 약할 때 예산을 올린 흔적(페이싱)이 있어, 음의 관계를 잠식으로 단정하긴 어려워요.", " · ↩ There's a sign of raising budget when organic was weak (pacing), so the negative relationship can't be confidently called cannibalization.") : ""}
-                          </div>
-                          <div style={{ fontSize: "10px", color: MUTED, marginTop: "6px", opacity: 0.8 }} title={tx("Granger F-검정(전문가용)", "Granger F-test (for specialists)")}>{tx(`시차 ${g.spend_to_organic.lag}주 · F=${g.spend_to_organic.F} · p=${g.spend_to_organic.p}`, `Lag ${g.spend_to_organic.lag}wk · F=${g.spend_to_organic.F} · p=${g.spend_to_organic.p}`)}</div>
-                        </>
-                      ) : (
-                        <div style={{ fontSize: "11px", color: MUTED, marginTop: "6px" }}>{tx("데이터가 부족해 시차 분석은 생략했어요.", "Data is too limited, so the lagged analysis was skipped.")}</div>
-                      )}
-                    </div>
-                    {/* ⑤ IRF */}
                     <div style={{ marginTop: "12px" }}>
-                      <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-1)" }}>{tx(`지출을 한 번 늘리면, 이후 몇 주간 ${mmm.target === "Regs" ? "가입" : "성과"}이(가) 어떻게 반응하나`, `If spend rises once, how does ${mmm.target === "Regs" ? "signups" : "performance"} respond over the following weeks`)}</div>
-                      <div style={{ fontSize: "11px", color: MUTED, margin: "2px 0 4px" }}>{tx("아래로 내려가면 시차 잠식, 위로 올라가면 시차 증분.", "A dip below zero = lagged cannibalization; a rise = lagged incrementality.")} <span title={tx("충격반응함수(Impulse Response)", "Impulse response function")}>{tx("(전문: 임펄스 응답)", "(technical: impulse response)")}</span></div>
-                      <div className="chart-container" style={{ height: "200px" }}><canvas ref={irfRef}></canvas></div>
+                      <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-1)", marginBottom: "3px" }}>
+                        {cannibQuestion === "precedence" ? tx("① 저지출 주의 성과·지출 흐름", "① Outcome and spend in low-spend weeks") : cannibQuestion === "detrend" ? tx("② 추세 제거·전주 대비 관계", "② Detrended and week-over-week relationship") : cannibQuestion === "net" ? tx("③ 순증분 효과와 신뢰구간", "③ Net incremental effect and interval") : tx("④ 지출 충격 뒤 시차 반응", "④ Lagged response after a spend shock")}
+                      </div>
+                      <p className="muted" style={{ fontSize: "11px", margin: "0 0 5px" }}>{cannibQuestion === "lag" ? tx("아래면 시차 잠식, 위면 시차 증분 신호입니다.", "Below zero suggests lagged cannibalization; above zero suggests incremental response.") : tx("선택한 검증의 원자료를 직접 확인하세요. 단일 차트가 최종 인과 증명은 아닙니다.", "Inspect source evidence for the selected test. One chart is not causal proof.")}</p>
+                      <div className="chart-container" style={{ height: "250px" }}><canvas ref={irfRef}></canvas></div>
                     </div>
                   </section>
                 );
