@@ -206,6 +206,39 @@ function ContributionGroupPanel({ label, values, labels, color, locale }) {
   return <div className="chart-container" style={{ height: "190px", minHeight: "190px" }}><canvas ref={ref}></canvas></div>;
 }
 
+// ③ 순증분 검정은 막대차트보다 "0 포함 여부"가 판단 핵심이다. 점추정·구간·판정을
+// 한 줄에 고정해, 녹색 막대가 오류인지 효과인지 혼동되지 않게 한다.
+function NetEffectEvidence({ net, locale }) {
+  const tx = (ko, en) => (locale === "en" ? en : ko);
+  const coef = Number(net?.net_elasticity);
+  const lo = Number(net?.ci_lo);
+  const hi = Number(net?.ci_hi);
+  if (![coef, lo, hi].every(Number.isFinite)) return <Card style={{ fontSize: "12px", color: MUTED }}>{tx("순증분 효과를 추정할 데이터가 부족합니다.", "Not enough data to estimate net incremental effect.")}</Card>;
+  const min = Math.min(lo, 0, coef) - Math.max(0.03, Math.abs(hi - lo) * 0.12);
+  const max = Math.max(hi, 0, coef) + Math.max(0.03, Math.abs(hi - lo) * 0.12);
+  const pos = (v) => `${((v - min) / Math.max(1e-9, max - min)) * 100}%`;
+  const isPositive = lo > 0;
+  const isNegative = hi < 0;
+  const verdict = isPositive
+    ? tx("0을 넘지 않음: 광고 증액 뒤 전체 성과가 늘어날 가능성이 높습니다.", "Interval stays above 0: additional spend likely lifts total outcome.")
+    : isNegative
+      ? tx("0을 넘지 않음: 광고 증액이 전체 성과를 깎을 가능성이 있습니다.", "Interval stays below 0: additional spend may reduce total outcome.")
+      : tx("0을 포함함: 순증가·순감소 어느 쪽도 확정할 수 없습니다. 이 결과는 보류입니다.", "Interval includes 0: neither net lift nor decline is established. Treat as inconclusive.");
+  const tone = isPositive ? NEG : isNegative ? POS : "#f59e0b";
+  return <Card style={{ padding: "14px 16px" }}>
+    <div style={{ display: "flex", gap: "18px", alignItems: "baseline", flexWrap: "wrap" }}>
+      <div><div className="lbl">{tx("점추정", "Point estimate")}</div><div style={{ fontSize: "24px", fontWeight: 750, color: tone }}>{coef >= 0 ? "+" : ""}{fmtOne(coef)}%</div></div>
+      <div><div className="lbl">{tx("95% 신뢰구간", "95% confidence interval")}</div><div style={{ fontSize: "16px", fontWeight: 650 }}>[{fmtOne(lo)}%, {fmtOne(hi)}%]</div></div>
+    </div>
+    <div style={{ position: "relative", height: "48px", margin: "14px 8px 4px", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ position: "absolute", left: pos(0), top: "0", bottom: "0", borderLeft: "1px dashed var(--text-muted)" }}><span style={{ position: "absolute", top: "28px", left: "-4px", fontSize: "10px", color: MUTED }}>0</span></div>
+      <div style={{ position: "absolute", left: pos(lo), width: `calc(${pos(hi)} - ${pos(lo)})`, top: "18px", height: "5px", borderRadius: "4px", background: tone }}></div>
+      <div style={{ position: "absolute", left: pos(coef), top: "11px", width: "18px", height: "18px", marginLeft: "-9px", borderRadius: "50%", background: tone, border: "3px solid var(--bg-2)", boxShadow: "0 0 0 1px var(--border)" }} title={tx("점추정", "Point estimate")}></div>
+    </div>
+    <p style={{ fontSize: "11.5px", color: "var(--text-1)", margin: "12px 0 0", lineHeight: 1.5 }}><strong style={{ color: tone }}>{verdict}</strong> {tx("값은 ‘이 채널 지출 1% 증가 시 전체 성과가 몇 % 움직였는가’입니다.", "Value means expected % change in total outcome for a 1% spend increase in this channel.")}</p>
+  </Card>;
+}
+
 function fmtInt(v) {
   if (v == null || !isFinite(v)) return "—";
   return Math.round(v).toLocaleString();
@@ -1719,13 +1752,7 @@ export default function MarketingResponse({ locale = "ko" }) {
             options: { ...chartBase(), scales: { x: { type: "linear", ticks: { color: CHART_THEME.muted }, grid: { color: CHART_THEME.grid } }, y: { ticks: { color: CHART_THEME.muted }, grid: { color: CHART_THEME.grid } } } },
           }));
         } else if (cannibQuestion === "net") {
-          const net = cn?.net_incrementality || {};
-          const lo = net.ci_lo ?? 0, hi = net.ci_hi ?? 0, coef = net.net_elasticity ?? 0;
-          const whisker = { id: "netWhisker", afterDatasetsDraw(chart) { const { ctx, scales } = chart; const y = scales.y.getPixelForValue(0); ctx.save(); ctx.strokeStyle = "#e0af68"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(scales.x.getPixelForValue(lo), y); ctx.lineTo(scales.x.getPixelForValue(hi), y); ctx.stroke(); ctx.restore(); } };
-          inst.push(new Chart(irfRef.current.getContext("2d"), {
-            type: "bar", data: { labels: [tx("순증분 효과", "Net incremental effect")], datasets: [{ label: tx("점추정", "Point estimate"), data: [coef], backgroundColor: coef >= 0 ? "#22c55e" : "#f87171", borderRadius: 4 }] },
-            options: { ...chartBase(), indexAxis: "y", plugins: { ...chartBase().plugins, tooltip: { callbacks: { label: () => `${tx("효과", "Effect")}: ${fmtOne(coef)} · CI [${fmtOne(lo)}, ${fmtOne(hi)}]` } } }, scales: { x: { ticks: { color: CHART_THEME.muted }, grid: { color: CHART_THEME.grid } }, y: { ticks: { color: CHART_THEME.muted }, grid: { display: false } } } }, plugins: [whisker],
-          }));
+          // JSX NetEffectEvidence가 0 기준·신뢰구간·판정을 더 명확하게 표시한다.
         } else {
           const irf = mmmIRF(y, spend, { horizon: 12 });
           if (irf) inst.push(new Chart(irfRef.current.getContext("2d"), {
@@ -2136,8 +2163,8 @@ export default function MarketingResponse({ locale = "ko" }) {
                       <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-1)", marginBottom: "3px" }}>
                         {cannibQuestion === "precedence" ? tx("① 저지출 주의 성과·지출 흐름", "① Outcome and spend in low-spend weeks") : cannibQuestion === "detrend" ? tx("② 추세 제거·전주 대비 관계", "② Detrended and week-over-week relationship") : cannibQuestion === "net" ? tx("③ 순증분 효과와 신뢰구간", "③ Net incremental effect and interval") : tx("④ 지출 충격 뒤 시차 반응", "④ Lagged response after a spend shock")}
                       </div>
-                      <p className="muted" style={{ fontSize: "11px", margin: "0 0 5px" }}>{cannibQuestion === "lag" ? tx("아래면 시차 잠식, 위면 시차 증분 신호입니다.", "Below zero suggests lagged cannibalization; above zero suggests incremental response.") : tx("선택한 검증의 원자료를 직접 확인하세요. 단일 차트가 최종 인과 증명은 아닙니다.", "Inspect source evidence for the selected test. One chart is not causal proof.")}</p>
-                      <div className="chart-container" style={{ height: "250px" }}><canvas ref={irfRef}></canvas></div>
+                      <p className="muted" style={{ fontSize: "11px", margin: "0 0 5px" }}>{cannibQuestion === "net" ? tx("초록 막대가 아니라 순증분 탄력성의 점추정과 신뢰구간입니다. 0을 포함하면 결론은 보류합니다.", "This is a net-elasticity estimate and interval, not a green success bar. If it includes 0, verdict is withheld.") : cannibQuestion === "lag" ? tx("아래면 시차 잠식, 위면 시차 증분 신호입니다.", "Below zero suggests lagged cannibalization; above zero suggests incremental response.") : tx("선택한 검증의 원자료를 직접 확인하세요. 단일 차트가 최종 인과 증명은 아닙니다.", "Inspect source evidence for the selected test. One chart is not causal proof.")}</p>
+                      {cannibQuestion === "net" ? <NetEffectEvidence net={ni} locale={locale} /> : <div className="chart-container" style={{ height: "250px" }}><canvas ref={irfRef}></canvas></div>}
                     </div>
                   </section>
                 );
