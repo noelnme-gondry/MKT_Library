@@ -11,9 +11,10 @@ import React, { useId } from "react";
 //   title    : 카드 제목(기본 "결론")
 //   headline : 한 줄 평어 결론(string | node)  — 통계용어 없이
 //   points   : [{ text, cls? }]  다음 액션/설명 불릿 (cls: "bad"|"good"|"muted")
-//   stats    : [{ label, value }]  핵심 수치 스트립
+//   stats    : [{ label, value, detail? }]  핵심 수치 스트립
 //   download : node (DownloadHub 등)  — 우상단 배치
 //   children : 카드 하단 추가 콘텐츠(선택)
+//   collapsePointsAfter : 첫 N개 근거만 펼쳐 보이고 나머지는 details에 둔다.
 const TONE = {
   good: { icon: "↗" },
   bad: { icon: "!" },
@@ -30,9 +31,12 @@ export default function ResultActionCard({
   controls = null,
   children,
   style,
+  collapsePointsAfter = null,
 }) {
   const t = TONE[tone] || TONE.neutral;
   const headingId = useId();
+  const visiblePoints = collapsePointsAfter == null ? points : points.slice(0, collapsePointsAfter);
+  const hiddenPoints = collapsePointsAfter == null ? [] : points.slice(collapsePointsAfter);
   return (
     <section className={`result-action-card ${tone}`} style={style} aria-labelledby={headline ? headingId : undefined} aria-label={!headline && typeof title === "string" ? title : undefined}>
       <div className="result-action-card__head">
@@ -55,14 +59,25 @@ export default function ResultActionCard({
         )}
       </div>
 
-      {points.length > 0 && (
+      {visiblePoints.length > 0 && (
         <ul className="result-action-card__points">
-          {points.map((p, i) => (
+          {visiblePoints.map((p, i) => (
             <li key={i} className={p.cls || ""}>
               {p.text}
             </li>
           ))}
         </ul>
+      )}
+
+      {hiddenPoints.length > 0 && (
+        <details className="result-action-card__details">
+          <summary>근거 {hiddenPoints.length}개 더 보기</summary>
+          <ul className="result-action-card__points result-action-card__points--nested">
+            {hiddenPoints.map((p, i) => (
+              <li key={i} className={p.cls || ""}>{p.text}</li>
+            ))}
+          </ul>
+        </details>
       )}
 
       {stats.length > 0 && (
@@ -71,6 +86,7 @@ export default function ResultActionCard({
             <div key={i}>
               {s.label}{" "}
               <strong>{s.value}</strong>
+              {s.detail && <small>{s.detail}</small>}
             </div>
           ))}
         </div>

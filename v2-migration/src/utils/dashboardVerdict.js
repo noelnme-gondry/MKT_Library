@@ -115,18 +115,18 @@ export function buildDashboardVerdict({
   let headline;
   if (tone === "good") {
     headline = tr(
-      `${period}, ${convLabel}은 ${fmtPctDelta(dConv)}, ${effLabel}은 ${fmtPctDelta(dEff)} — 효율이 좋아지는 중입니다. 잘 되는 곳에 예산을 더 실을 여지가 있습니다.`,
-      `Over the ${period}, ${convLabel} ${fmtPctDelta(dConv)} and ${effLabel} ${fmtPctDelta(dEff)} — efficiency is improving. Consider putting more budget where it's working.`
+      `${period}: ${effLabel} ${fmtPctDelta(dEff)}. 효율 개선 중입니다.`,
+      `Over the ${period}: ${effLabel} ${fmtPctDelta(dEff)} — efficiency is improving.`
     );
   } else if (tone === "bad") {
     headline = tr(
-      `${period}, ${effLabel}이 ${fmtPctDelta(dEff)}로 올랐습니다 — 효율이 나빠지는 중입니다. 어디서 비용이 새는지 아래 탭에서 점검하세요.`,
-      `Over the ${period}, ${effLabel} rose ${fmtPctDelta(dEff)} — efficiency is worsening. Check the tabs below to see where cost is leaking.`
+      `${period}: ${effLabel} ${fmtPctDelta(dEff)}. 효율 악화 중입니다.`,
+      `Over the ${period}: ${effLabel} ${fmtPctDelta(dEff)} — efficiency is worsening.`
     );
   } else {
     headline = tr(
-      `${period} 효율은 직전 기간과 큰 차이가 없습니다(${effLabel} ${fmtPctDelta(dEff)}). 현 상태 유지 중 — 세부 탭에서 채널·소재별 변화를 확인하세요.`,
-      `Over the ${period}, efficiency is roughly flat vs. the prior period (${effLabel} ${fmtPctDelta(dEff)}). Holding steady — check the tabs for channel/creative-level shifts.`
+      `${period}: ${effLabel} ${fmtPctDelta(dEff)}. 큰 변화 없습니다.`,
+      `Over the ${period}: ${effLabel} ${fmtPctDelta(dEff)} — efficiency is roughly flat.`
     );
   }
 
@@ -195,7 +195,11 @@ export function buildDashboardVerdict({
   const stats = stripKeys
     .map((k) => metricRows.find((m) => m.key === k))
     .filter(Boolean)
-    .map((m) => ({ label: m.label, value: `${m.fmt(m.prev)} → ${m.fmt(m.recent)} (${fmtPctDelta(m.wow)})` }));
+    .map((m) => ({
+      label: m.label,
+      value: m.fmt(m.recent),
+      detail: tr(`직전 ${m.fmt(m.prev)} · ${fmtPctDelta(m.wow)}`, `Prior ${m.fmt(m.prev)} · ${fmtPctDelta(m.wow)}`),
+    }));
 
   // 다운로드 — 계산된 인사이트만(BOM+CRLF §7). 원천 업로드 데이터는 주지 않는다.
   const qc = (s) => (/[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g, '""')}"` : String(s));

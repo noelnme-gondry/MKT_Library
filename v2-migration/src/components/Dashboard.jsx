@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
 import CsvUploader from "@/components/CsvUploader";
@@ -14,9 +14,11 @@ import LtvTab from "@/components/dashboard/LtvTab";
 import CohortTab from "@/components/dashboard/CohortTab";
 import FunnelTab from "@/components/dashboard/FunnelTab";
 import SegmentTab from "@/components/dashboard/SegmentTab";
+import SeasonalityTab from "@/components/dashboard/SeasonalityTab";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
+import { trackProductEvent } from "@/lib/analytics";
 import { downloadCsv, downloadText } from "@/utils/download";
 import { FileText, ChevronRight } from "lucide-react";
 import AnalysisHistory from "@/components/data-import/AnalysisHistory";
@@ -31,6 +33,7 @@ const TOC_MAP = {
   scorecard: [{ id: "s-score", title: "스코어카드" }],
   pacing: [{ id: "s-pace", title: "페이싱" }],
   anomaly: [{ id: "s-anom", title: "이상 감지" }],
+  seasonality: [{ id: "s-seasonality", title: "시즈널리티" }],
   ltv: [
     { id: "s-ctl", title: "분석 단위" },
     { id: "s-table", title: "LTV:CAC 표" },
@@ -61,6 +64,7 @@ const TOC_MAP_EN = {
   scorecard: [{ id: "s-score", title: "Scorecard" }],
   pacing: [{ id: "s-pace", title: "Pacing" }],
   anomaly: [{ id: "s-anom", title: "Anomaly Detection" }],
+  seasonality: [{ id: "s-seasonality", title: "Seasonality" }],
   ltv: [
     { id: "s-ctl", title: "Analysis Unit" },
     { id: "s-table", title: "LTV:CAC Table" },
@@ -147,6 +151,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   // 분석 완료 후 접힌 "데이터 매핑 설정" details — native <details>는 열림/닫힘 상태를
   // React가 자동으로 모르므로 controlled로 추적(라벨 펼치기/접기 동기화, §CLAUDE 12.20류 렌더층 패턴).
   const [mappingOpen, setMappingOpen] = useState(false);
+  const analysisEventRef = useRef(null);
 
   const hasData = csvData && csvData.raw.length > 0;
   // 결과(탭·차트·TOC)는 데이터가 있고 + 분석이 확정된 뒤에만 렌더.
@@ -162,6 +167,20 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
     if (!showResults) return null;
     return buildDashboardVerdict({ csvData, filterState: dashboardFilter, denomBasis, displayCurrency, windowDays: dashWindowDays, locale });
   }, [showResults, csvData, dashboardFilter, denomBasis, displayCurrency, dashWindowDays, locale]);
+
+  useEffect(() => {
+    if (!showResults) return;
+    const signature = `${toolId}|${csvData?.fileName || ""}|${csvData?.raw?.length || 0}`;
+    if (analysisEventRef.current === signature) return;
+    analysisEventRef.current = signature;
+    trackProductEvent("analysis_completed", {
+      tool_id: toolId,
+      source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+      row_count: csvData?.raw?.length || 0,
+      result_state: verdict?.insufficient ? "insufficient" : "ready",
+      locale,
+    });
+  }, [showResults, toolId, csvData?.fileName, csvData?.raw?.length, verdict?.insufficient, locale]);
 
   return (
     <div className={`section active dashboard-shell${showResults ? " has-results" : ""}`}>
@@ -264,6 +283,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 title={tr("결론 — 최근 성과 요약", "Conclusion — recent performance")}
                 headline={verdict.headline}
                 points={verdict.points}
+                collapsePointsAfter={1}
                 stats={verdict.stats}
                 controls={
                   <div className="ab-pillgroup" style={{ display: "inline-flex", alignItems: "center" }}>
@@ -281,11 +301,12 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 }
                 download={
                   <DownloadHub
+                    toolId={toolId}
                     label={tr("결과 받기", "Download")}
                     align="right"
                     items={[
-                      { icon: "📄", label: tr("성과 요약표 (CSV)", "Performance summary (CSV)"), desc: tr("전 지표 증감(WoW)+CPA·CPI·ROAS·리텐션", "All metrics WoW + CPA/CPI/ROAS/retention"), onSelect: () => downloadCsv(verdict.export.csv, isContent ? "content_dashboard_summary" : "dashboard_summary") },
-                      { icon: "📝", label: tr("성과 요약 문서 (텍스트)", "Performance summary (text)"), desc: tr("결론·지표 증감·다음 액션", "Conclusion, metric changes, next actions"), onSelect: () => downloadText(verdict.export.text, isContent ? "content_dashboard_summary" : "dashboard_summary") },
+                      { icon: "📄", analyticsType: "csv", label: tr("성과 요약표 (CSV)", "Performance summary (CSV)"), desc: tr("전 지표 증감(WoW)+CPA·CPI·ROAS·리텐션", "All metrics WoW + CPA/CPI/ROAS/retention"), onSelect: () => downloadCsv(verdict.export.csv, isContent ? "content_dashboard_summary" : "dashboard_summary") },
+                      { icon: "📝", analyticsType: "text", label: tr("성과 요약 문서 (텍스트)", "Performance summary (text)"), desc: tr("결론·지표 증감·다음 액션", "Conclusion, metric changes, next actions"), onSelect: () => downloadText(verdict.export.text, isContent ? "content_dashboard_summary" : "dashboard_summary") },
                     ]}
                   />
                 }
@@ -301,13 +322,14 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
               {activeTab === "viz" && <VizTab domain={domain} locale={locale} />}
               {activeTab === "scorecard" && <ScorecardTab domain={domain} locale={locale} />}
               {activeTab === "anomaly" && <AnomalyTab domain={domain} locale={locale} />}
+              {!isContent && activeTab === "seasonality" && <SeasonalityTab locale={locale} />}
               {/* 콘텐츠 대시보드는 아래 마케팅 전용 탭(결제·예산·매출 전제)을 노출하지 않음. */}
               {!isContent && activeTab === "pacing" && <PacingTab locale={locale} />}
               {!isContent && activeTab === "ltv" && <LtvTab locale={locale} />}
               {!isContent && activeTab === "cohort" && <CohortTab locale={locale} />}
               {!isContent && activeTab === "funnel" && <FunnelTab locale={locale} />}
               {!isContent && activeTab === "segment" && <SegmentTab locale={locale} />}
-              {!["viz", "scorecard", "pacing", "anomaly", "ltv", "cohort", "funnel", "segment"].includes(activeTab) && (
+              {!["viz", "scorecard", "seasonality", "pacing", "anomaly", "ltv", "cohort", "funnel", "segment"].includes(activeTab) && (
                 <div className="card">
                   <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "2rem 0" }}>
                     {tr(`[${activeTab}] 탭은 현재 마이그레이션 중입니다...`, `The [${activeTab}] tab is currently being migrated...`)}

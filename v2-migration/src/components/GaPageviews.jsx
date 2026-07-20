@@ -1,21 +1,21 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { resolvePathToId } from "@/lib/routeMap";
+import { trackProductEvent } from "@/lib/analytics";
 
-// SPA(App Router) 라우트 변경 시 GA4 page_view 전송. next/link 소프트 내비는 페이지
-// 리로드가 없어 layout의 gtag('config')가 최초 1회만 발화 → 인앱 링크로 이동한 딥
-// 페이지(/content/* 등)가 GA에 "추적 안 됨"으로 보이던 문제 해결. 최초 로드는 config가
-// 이미 page_view를 보내므로 건너뛰고, 이후 경로 변경만 수동 전송(초기 중복 방지).
+// SPA(App Router) page_view SSOT. layout의 config는 send_page_view:false라서,
+// 최초 진입과 history 변경 모두 여기서 정확히 한 번 보낸다. GA enhanced measurement나
+// GTM의 별도 history trigger까지 켜면 다시 중복되므로 이 경로만 유지한다.
 const GA_ID = "G-DK12TNR0GW";
 
 export default function GaPageviews() {
   const pathname = usePathname();
-  const isFirst = useRef(true);
+  const lastPagePath = useRef(null);
+  const lastToolPath = useRef(null);
   useEffect(() => {
-    if (isFirst.current) {
-      isFirst.current = false;
-      return;
-    }
+    if (lastPagePath.current === pathname) return;
+    lastPagePath.current = pathname;
     if (typeof window === "undefined" || typeof window.gtag !== "function") return;
     window.gtag("event", "page_view", {
       page_path: pathname,
@@ -23,6 +23,15 @@ export default function GaPageviews() {
       page_title: typeof document !== "undefined" ? document.title : undefined,
       send_to: GA_ID,
     });
+  }, [pathname]);
+
+  // page_view는 페이지 단위, tool_view는 제품 퍼널 단위다. 최초 진입도 기록하되
+  // 같은 history path를 Strict Mode/재렌더로 중복 기록하지 않는다.
+  useEffect(() => {
+    const toolId = resolvePathToId(pathname);
+    if (!toolId || !/^(5|9)-/.test(toolId) || lastToolPath.current === pathname) return;
+    lastToolPath.current = pathname;
+    trackProductEvent("tool_view", { tool_id: toolId, source: "route" });
   }, [pathname]);
   return null;
 }

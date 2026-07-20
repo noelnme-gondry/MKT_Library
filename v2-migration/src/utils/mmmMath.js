@@ -2635,4 +2635,326 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               "Seasonality",
               "Holidays",
               "Regime(steps)",
+              "Holidays & Events",
+              "Regime change",
             ]; // 비매체 드라이버 (baseline 포함 토글 대상)
+
+            // -----------------------------------------------------------------
+            // Browser Bayesian MMM (Meridian-inspired)
+            // -----------------------------------------------------------------
+            // Meridian itself runs NUTS in Python.  The public web tool must keep
+            // source CSV in the browser, so this is a conjugate Bayesian linear
+            // posterior conditional on empirically selected channel transforms.
+            // It deliberately exposes posterior uncertainty instead of pretending
+            // that a point-estimate OLS/Ridge decomposition is causal certainty.
+            export function mmmHill(x, ec, slope) {
+              if (!(x > 0) || !(ec > 0) || !(slope > 0)) return 0;
+              const z = Math.pow(x / ec, slope);
+              return z / (1 + z);
+            }
+
+            function _mmmQuantile(values, p) {
+              const a = values.filter((v) => isFinite(v)).slice().sort((a, b) => a - b);
+              if (!a.length) return 1;
+              return a[Math.min(a.length - 1, Math.max(0, Math.round((a.length - 1) * p)))];
+            }
+
+            function _mmmBayesControlFeatures(panel, cfg) {
+              const built = mmmBuildFeatures(panel, cfg, 0, true);
+              const keep = built.names
+                .map((name, i) => (!name.startsWith("ln_") ? i : -1))
+                .filter((i) => i >= 0);
+              return {
+                names: keep.map((i) => built.names[i]),
+                X: built.X.map((row) => keep.map((i) => row[i])),
+              };
+            }
+
+            function _mmmBayesChannelParams(panel, cfg, targetName, controls) {
+              const y = panel.targets[targetName];
+              const base = mmmOls(_designConst(controls.X), y);
+              const residual = base ? base.resid : y.map((v) => v - _mean(y));
+              const grid = cfg.adstockGrid || [0, 0.2, 0.4, 0.6, 0.8];
+              const params = {};
+              for (const ch of _mmmChans(panel)) {
+                const raw = panel.ch[ch.key];
+                if (!raw) continue;
+                let best = null;
+                for (const alpha of grid) {
+                  const ad = mmmAdstock(raw, alpha);
+                  const ec = _mmmQuantile(ad.filter((v) => v > 0), 0.6);
+                  const slope = 0.8; // concave default: stable budget optimization
+                  const h = ad.map((v) => mmmHill(v, ec, slope));
+                  const score = CANNIBAL_STATS.pearson(h, residual);
+                  if (!best || score > best.score) best = { alpha, ec, slope, score };
+                }
+                params[ch.key] = best || { alpha: 0, ec: 1, slope: 0.8, score: 0 };
+              }
+              return params;
+            }
+
+            // Gaussian-prior posterior.  Prior precision is intentionally modest:
+            // it stabilizes collinear channels without silently forcing an effect.
+            function _mmmBayesianLinear(X, y, mediaIndices) {
+              const n = X.length;
+              if (!n || !X[0]?.length) return null;
+              const p = X[0].length;
+              const yScale = Math.sqrt(_mean(y.map((v) => (v - _mean(y)) ** 2))) || 1;
+              const precision = Array.from({ length: p }, (_, j) =>
+                j === 0 ? 1e-8 : mediaIndices.has(j) ? 4 : 0.15,
+              );
+              const priorMean = Array(p).fill(0);
+              const augX = X.map((r) => r.slice());
+              const augY = y.slice();
+              for (let j = 0; j < p; j++) {
+                if (!(precision[j] > 0)) continue;
+                const row = Array(p).fill(0);
+                row[j] = Math.sqrt(precision[j]);
+                augX.push(row);
+                augY.push(Math.sqrt(precision[j]) * priorMean[j]);
+              }
+              const fit = mmmOls(augX, augY);
+              if (!fit) return null;
+              const beta = fit.beta;
+              const fitted = X.map((r) => r.reduce((s, v, j) => s + v * beta[j], 0));
+              const resid = y.map((v, i) => v - fitted[i]);
+              const sigma2 = resid.reduce((s, e) => s + e * e, 0) / Math.max(1, n - p);
+              const sd = beta.map((_, j) => Math.sqrt(Math.max(0, sigma2 * fit.XtXinv[j][j])));
+              const r2Den = y.reduce((s, v) => s + (v - _mean(y)) ** 2, 0);
+              const r2 = r2Den > 0 ? 1 - resid.reduce((s, e) => s + e * e, 0) / r2Den : 0;
+              return { beta, fitted, resid, sigma: Math.sqrt(sigma2) || yScale, sd, r2 };
+            }
+
+            export function mmmBayesianRun(panel, cfg, targetName, withBacktest = true) {
+              const controls = _mmmBayesControlFeatures(panel, cfg);
+              const params = _mmmBayesChannelParams(panel, cfg, targetName, controls);
+              const names = controls.names.slice();
+              const cols = controls.X.length ? controls.X[0].map((_, j) => controls.X.map((r) => r[j])) : [];
+              const channelMeta = _mmmChans(panel).filter((ch) => panel.ch[ch.key] && params[ch.key]);
+              for (const ch of channelMeta) {
+                const p = params[ch.key];
+                names.push("media_" + ch.key);
+                cols.push(mmmAdstock(panel.ch[ch.key], p.alpha).map((v) => mmmHill(v, p.ec, p.slope)));
+              }
+              const Xraw = panel.week.map((_, i) => cols.map((c) => c[i]));
+              const colMean = names.map((_, j) => _mean(Xraw.map((r) => r[j])));
+              const colScale = names.map((_, j) =>
+                Math.sqrt(_mean(Xraw.map((r) => (r[j] - colMean[j]) ** 2))) || 1,
+              );
+              const X = Xraw.map((r) => [1, ...r.map((v, j) => (v - colMean[j]) / colScale[j])]);
+              const mediaIndices = new Set(channelMeta.map((_, i) => 1 + controls.names.length + i));
+              const posterior = _mmmBayesianLinear(X, panel.targets[targetName], mediaIndices);
+              if (!posterior) return null;
+              // 추정은 표준화 공간에서 안정적으로 하되, 화면 기여는 원 단위 절대기여로
+              // 되돌린다. 평균 중심화 X를 그대로 쓰면 양수 매체 효과도 저지출 주에
+              // 음수처럼 보여 "광고가 성과를 깎았다"는 잘못된 해석을 만든다.
+              const absoluteBeta = names.map((_, j) => posterior.beta[j + 1] / colScale[j]);
+              const absoluteIntercept = posterior.beta[0] - absoluteBeta.reduce(
+                (sum, beta, j) => sum + beta * colMean[j],
+                0,
+              );
+              // 회사 MMM 대시보드처럼 채널별이 아니라 의사결정 단위로 묶는다.
+              // MmmColumnMapper의 kind=brand는 Brand, 나머지 매체는 Performance.
+              const mediaGroups = [];
+              if (channelMeta.some((ch) => ch.kind !== "brand")) mediaGroups.push("Performance");
+              if (channelMeta.some((ch) => ch.kind === "brand")) mediaGroups.push("Brand");
+              const groupNames = ["Trend", "Seasonality", "Holidays & Events", "Regime change", ...mediaGroups];
+              const groupFor = (name) => {
+                if (name === "trend") return "Trend";
+                if (/^(sin|cos)_/.test(name)) return "Seasonality";
+                if (name === "lny" || name === "chuseok" || name.startsWith("d_")) return "Holidays & Events";
+                if (name.startsWith("media_")) {
+                  const key = name.slice(6);
+                  return (channelMeta.find((ch) => ch.key === key) || {}).kind === "brand"
+                    ? "Brand"
+                    : "Performance";
+                }
+                return "Regime change";
+              };
+              const weeks = panel.week.map((week, t) => {
+                const contrib = {};
+                groupNames.forEach((g) => (contrib[g] = 0));
+                // 장기 추세는 회귀절편과 한 덩어리인 자연수요 레벨이다. 절편을
+                // 별도 상수로 두면 추세가 하락할 때 '음수 기여'처럼 읽히므로,
+                // 절편을 Trend에 넣어 양수 레벨이 낮아지는 모습으로 표현한다.
+                contrib.Trend = absoluteIntercept;
+                names.forEach((name, j) => {
+                  contrib[groupFor(name)] += absoluteBeta[j] * Xraw[t][j];
+                });
+                return {
+                  week,
+                  actual: panel.targets[targetName][t],
+                  baseline: 0,
+                  fitted: +posterior.fitted[t].toFixed(2),
+                  residual: +posterior.resid[t].toFixed(2),
+                  contrib,
+                  lo: +(posterior.fitted[t] - 1.645 * posterior.sigma).toFixed(2),
+                  hi: +(posterior.fitted[t] + 1.645 * posterior.sigma).toFixed(2),
+                };
+              });
+              const saturationByChannel = {};
+              channelMeta.forEach((ch) => {
+                const j = names.indexOf("media_" + ch.key);
+                const raw = panel.ch[ch.key];
+                const recentMean = _mean(raw.filter((v) => v > 0).slice(-12)) || 0;
+                const p = params[ch.key];
+                const beta = absoluteBeta[j];
+                const sd = posterior.sd[j + 1] / colScale[j];
+                const responseAt = (spend) => beta * mmmHill(mmmAdstock([spend], p.alpha)[0], p.ec, p.slope);
+                const marginalAt = (spend) => {
+                  const h = Math.max(1, spend * 0.001);
+                  return (responseAt(spend + h) - responseAt(Math.max(0, spend - h))) / (2 * h);
+                };
+                saturationByChannel[ch.key] = {
+                  key: ch.key,
+                  label: ch.label,
+                  ln_coef: beta,
+                  ci: [beta - 1.645 * sd, beta + 1.645 * sd],
+                  posteriorPositive: sd > 0 ? 0.5 * (1 + (beta / sd) / Math.sqrt(1 + (beta / sd) ** 2)) : beta > 0 ? 1 : 0,
+                  recentMean,
+                  params: p,
+                  responseAt,
+                  marginalAt,
+                  currentMarginal: marginalAt(recentMean) * 1000,
+                };
+              });
+              const variances = groupNames.map((g) => _mean(weeks.map((w) => (w.contrib[g] || 0) ** 2)));
+              const totalVariance = variances.reduce((s, v) => s + v, 0) || 1;
+              const rows = groupNames.map((driver, i) => ({ driver, r2_share: variances[i] / totalVariance, pct: (variances[i] / totalVariance) * 100 }));
+              let backtest = null;
+              // 마지막 20%(최소 8주)는 학습에서 빼고, 당시 실제 지출을 넣어 순방향 예측한다.
+              // 하이퍼파라미터 선택까지 train 안에서만 하므로 in-sample R²와 분리된 현실 점검이다.
+              if (withBacktest && panel.week.length >= 48) {
+                const cut = Math.floor(panel.week.length * 0.8);
+                const slicePanel = (end) => ({ ...panel, week: panel.week.slice(0, end), ch: Object.fromEntries(Object.entries(panel.ch).map(([k, v]) => [k, v.slice(0, end)])), dummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([k, v]) => [k, v.slice(0, end)])), steps: Object.fromEntries(Object.entries(panel.steps || {}).map(([k, v]) => [k, v.slice(0, end)])), targets: Object.fromEntries(Object.entries(panel.targets).map(([k, v]) => [k, v.slice(0, end)])) });
+                const train = slicePanel(cut);
+                const held = mmmBayesianRun(train, cfg, targetName, false);
+                const h = panel.week.length - cut;
+                const spend = Object.fromEntries(Object.entries(panel.ch).map(([k, v]) => [k, v.slice(cut)]));
+                const fc = held && mmmBayesianForecast(held, train, spend, h);
+                const actualHold = panel.targets[targetName].slice(cut);
+                if (fc?.predFut?.length === actualHold.length) {
+                  const err = actualHold.map((v, i) => v - fc.predFut[i]);
+                  backtest = { n: h, rmse: Math.sqrt(_mean(err.map((v) => v * v))), mape: _mean(err.map((v, i) => Math.abs(actualHold[i]) > 1e-9 ? Math.abs(v / actualHold[i]) * 100 : 0)) };
+                }
+              }
+              return {
+                engine: "bayesian",
+                methodLabel: "Bayesian MMM (Meridian-inspired)",
+                params,
+                names,
+                featureMeans: colMean,
+                featureScales: colScale,
+                standardizedX: X,
+                channelMeta,
+                absoluteBeta,
+                absoluteIntercept,
+                posterior,
+                weeks,
+                groupNames,
+                saturationByChannel,
+                shapley: { rows, total: 1 }, // backwards-compatible consumer shape; this is contribution variance, not Shapley R².
+                best_lambda: null,
+                cv_rmse: {},
+                vif: [],
+                collinear_pairs: [],
+                elasticities: [],
+                backtest,
+              };
+            }
+
+            export function mmmBayesianWeeklyDecomp(run) {
+              if (!run || run.engine !== "bayesian") return null;
+              const actual = run.weeks.map((w) => w.actual);
+              const resid = run.weeks.map((w) => w.residual);
+              const meanActual = _mean(actual);
+              const mape = _mean(
+                run.weeks.map((w) =>
+                  Math.abs(w.actual) > 1e-9 ? Math.abs(w.residual / w.actual) * 100 : 0,
+                ),
+              );
+              const driverStats = run.groupNames.map((name) => {
+                const values = run.weeks.map((w) => w.contrib[name] || 0);
+                return {
+                  name,
+                  avg: _mean(values),
+                  swing: Math.sqrt(_mean(values.map((v) => v * v))),
+                  media: !MMM_NONMEDIA_GROUPS.includes(name),
+                };
+              });
+              return {
+                model: "bayesian",
+                level: true,
+                lambda: null,
+                // UI의 '전체 기간 평균'은 회귀절편이 아니라 실제 성과 평균.
+                baseline: +meanActual.toFixed(1),
+                weeks: run.weeks,
+                groupNames: run.groupNames,
+                meanContrib: Object.fromEntries(
+                  run.groupNames.map((g) => [g, _mean(run.weeks.map((w) => w.contrib[g] || 0))]),
+                ),
+                rmse: +Math.sqrt(_mean(resid.map((e) => e * e))).toFixed(1),
+                mape: +mape.toFixed(1),
+                driverStats,
+                spikes: [],
+                credibleLevel: 0.9,
+                r2: +run.posterior.r2.toFixed(4),
+              };
+            }
+
+            export function mmmBayesianForecast(run, panel, futureSpend, horizon) {
+              if (!run || run.engine !== "bayesian") return null;
+              const H = Math.max(1, Math.min(52, horizon || 13));
+              const n = run.weeks.length;
+              const state = {};
+              run.channelMeta.forEach((ch) => {
+                const p = run.params[ch.key];
+                state[ch.key] = mmmAdstock(panel.ch[ch.key], p.alpha).at(-1) || 0;
+              });
+              const predFut = [];
+              for (let h = 0; h < H; h++) {
+                const row = run.standardizedX[n - 1].slice();
+                run.channelMeta.forEach((ch) => {
+                  const p = run.params[ch.key];
+                  const spend = futureSpend?.[ch.key]?.[h] ?? run.saturationByChannel[ch.key].recentMean;
+                  state[ch.key] = Math.max(0, spend || 0) + p.alpha * state[ch.key];
+                  const j = run.names.indexOf("media_" + ch.key);
+                  const raw = mmmHill(state[ch.key], p.ec, p.slope);
+                  row[j + 1] = (raw - run.featureMeans[j]) / run.featureScales[j];
+                });
+                predFut.push(run.posterior.beta.reduce((sum, b, j) => sum + b * row[j], 0));
+              }
+              const labels = panel.dateLabel?.length === n
+                ? Array.from({ length: H }, (_, i) => `+${i + 1}`)
+                : Array.from({ length: H }, (_, i) => `+${i + 1}`);
+              return {
+                model: "bayesian",
+                isBayesian: true,
+                sigma: run.posterior.sigma,
+                r2: +run.posterior.r2.toFixed(4),
+                actual: run.weeks.map((w) => w.actual),
+                fittedHist: run.weeks.map((w) => w.fitted),
+                predFut,
+                lo: predFut.map((v) => v - 1.645 * run.posterior.sigma),
+                hi: predFut.map((v) => v + 1.645 * run.posterior.sigma),
+                labels: [...run.weeks.map((w) => w.week), ...labels],
+                futLabels: labels,
+                splitAt: n,
+                names: run.names,
+                beta: run.posterior.beta.slice(1),
+                intercept: run.posterior.beta[0],
+                chans: run.channelMeta,
+                recentMean: Object.fromEntries(
+                  run.channelMeta.map((ch) => [ch.key, run.saturationByChannel[ch.key].recentMean]),
+                ),
+                futSpendByKey: Object.fromEntries(
+                  run.channelMeta.map((ch) => [
+                    ch.key,
+                    Array.from({ length: H }, (_, i) =>
+                      futureSpend?.[ch.key]?.[i] ?? run.saturationByChannel[ch.key].recentMean,
+                    ),
+                  ]),
+                ),
+                steps: [],
+              };
+            }

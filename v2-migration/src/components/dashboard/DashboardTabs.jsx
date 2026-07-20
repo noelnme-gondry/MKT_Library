@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { useAppStore } from "@/store/useDataStore";
+import { trackProductEvent } from "@/lib/analytics";
 import { 
   Monitor, 
   TrendingUp, 
@@ -11,11 +12,12 @@ import {
   Filter,
   Grid,
   Clock,
-  Target
+  Target,
+  CalendarDays
 } from "lucide-react";
 
 const MON_TAB_GROUPS = [
-  { label: "모니터링", labelEn: "Monitoring", icon: <Monitor size={14} />, tabs: ["viz", "scorecard", "pacing", "anomaly"] },
+  { label: "모니터링", labelEn: "Monitoring", icon: <Monitor size={14} />, tabs: ["viz", "scorecard", "seasonality", "pacing", "anomaly"] },
   { label: "장기 가치", labelEn: "Long-term Value", icon: <TrendingUp size={14} />, tabs: ["ltv", "cohort"] },
   { label: "효율 진단", labelEn: "Efficiency Diagnosis", icon: <Target size={14} />, tabs: ["funnel", "segment"] },
 ];
@@ -25,6 +27,7 @@ const TABS_INFO = {
   scorecard: { label: "스코어카드", labelEn: "Scorecard", icon: <Grid size={13} /> },
   pacing: { label: "페이싱", labelEn: "Pacing", icon: <Clock size={13} /> },
   anomaly: { label: "이상탐지", labelEn: "Anomaly Detection", icon: <Activity size={13} /> },
+  seasonality: { label: "시즈널리티", labelEn: "Seasonality", icon: <CalendarDays size={13} /> },
   ltv: { label: "LTV & ROAS", labelEn: "LTV & ROAS", icon: <LineChart size={13} /> },
   cohort: { label: "코호트 분석", labelEn: "Cohort Analysis", icon: <Users size={13} /> },
   funnel: { label: "퍼널 진단", labelEn: "Funnel Diagnosis", icon: <Filter size={13} /> },
@@ -43,6 +46,11 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
   const csvData = useAppStore((state) => state.csvData);
 
   const hasData = csvData && csvData.raw.length > 0;
+  const toolId = domain === "content" ? "9-7" : "5-2";
+  const selectTab = (tabId) => {
+    setDashboardTab(tabId);
+    trackProductEvent("dashboard_tab_view", { tool_id: toolId, tab_name: tabId });
+  };
   if (!hasData) return null;
 
   const groups = domain === "content" ? CONTENT_TAB_GROUPS : MON_TAB_GROUPS;
@@ -56,7 +64,7 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
       : event.key === "End"
         ? tabIds.length - 1
         : (current + (event.key === "ArrowRight" ? 1 : -1) + tabIds.length) % tabIds.length;
-    setDashboardTab(tabIds[next]);
+    selectTab(tabIds[next]);
     window.requestAnimationFrame(() => document.querySelector(`[data-dashboard-tab="${tabIds[next]}"]`)?.focus());
   };
 
@@ -82,7 +90,7 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
                   tabIndex={isActive ? 0 : -1}
                   data-dashboard-tab={tabId}
                   className={`ab-pill ${isActive ? "active" : ""}`}
-                  onClick={() => setDashboardTab(tabId)}
+                  onClick={() => selectTab(tabId)}
                   onKeyDown={(event) => onTabKeyDown(event, tabId)}
                   style={{ display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
                 >

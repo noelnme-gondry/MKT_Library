@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
+import { trackProductEvent } from "@/lib/analytics";
 
 // 결과 다운로드 허브 — 도구마다 흩어져 있던 PNG/CSV/텍스트 다운로드 버튼을
 // 눈에 잘 띄는 단일 드롭다운("⬇ 결과 받기 ▾")으로 통일한다(디자인시스템 §1).
@@ -13,6 +14,7 @@ export default function DownloadHub({
   align = "left",
   className = "",
   buttonStyle,
+  toolId,
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -72,6 +74,7 @@ export default function DownloadHub({
               role="menuitem"
               onClick={() => {
                 setOpen(false);
+                trackProductEvent("result_downloaded", { tool_id: toolId, source: "export", download_type: it.analyticsType || "other" });
                 it.onSelect();
               }}
               style={{

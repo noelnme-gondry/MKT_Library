@@ -87,15 +87,16 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("분석하기");
   });
 
-  it("renders diagnose→MMM panel (§1 macro/audit, §4.5 ranking) after analyze without throwing", async () => {
+  it("renders trend→diagnose panel (§1 macro/audit, §4.5 ranking) after analyze without throwing", async () => {
     seedWithData();
     const { container } = render(<MarketingResponse />);
     expect(() => enterMmmAndAnalyze(container)).not.toThrow();
     await flushRaf();
+    clickByText(container, "카니발 진단");
     expect(document.body.textContent).toContain("데이터 위생");
   });
 
-  it("renders the 회귀·미래 예측 (lab) stage without throwing (3-tab, forecast merged)", async () => {
+  it("renders the 회귀·미래 예측 (lab) stage without throwing", async () => {
     seedWithData();
     const { container } = render(<MarketingResponse />);
     expect(() => enterMmmAndAnalyze(container)).not.toThrow();
