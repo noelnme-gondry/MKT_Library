@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getAllPosts } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
 import SearchTopicHub from "@/components/seo/SearchTopicHub";
+import NewsletterSignup from "@/components/seo/NewsletterSignup";
 
 // EN 블로그 목록 — KR /blog/page.js 미러. content/blog-en에서 읽음(getAllPosts("en")).
 // 태그 랜딩은 EN 미구현(§12.24 최소 범위) — 목록에 태그 텍스트만 표시, 링크 없음.
@@ -72,6 +73,7 @@ export default function EnBlogIndexPage() {
         <span className="content-index__meta">{posts.length} ARTICLES · BUILT FOR OPERATORS</span>
       </header>
       <SearchTopicHub locale="en" />
+      <NewsletterSignup locale="en" placement="index" />
 
       {posts.length === 0 ? (
         <div

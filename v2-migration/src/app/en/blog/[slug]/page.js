@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
+import NewsletterSignup from "@/components/seo/NewsletterSignup";
 
 // EN 글 상세 — KR /blog/[slug]/page.js 미러(getAllPosts/getPostBySlug locale="en").
 // hreflang: 같은 slug의 KR 파일이 있으면 alternates.languages로 상호 연결(§ blog-en 전략).
@@ -155,6 +156,8 @@ export default async function EnBlogPostPage({ params }) {
       <article className="blog-prose" dangerouslySetInnerHTML={{ __html: post.html }} />
 
       <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} />
+
+      <NewsletterSignup locale="en" placement="post" />
 
       {post.relatedGlossary.length > 0 && (
         <nav className="content-related-links" aria-label="Related glossary terms">

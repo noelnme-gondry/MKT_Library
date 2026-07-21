@@ -4255,6 +4255,37 @@ body:not(.light-mode) .moon-icon {
   color: var(--text-secondary);
 }
 
+/* 블로그 전용 Buttondown 구독. 도구·SOP 경로에는 렌더하지 않는다. */
+.newsletter-signup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, .9fr);
+  gap: 1.5rem;
+  align-items: center;
+  margin: 2.25rem 0;
+  padding: 1.35rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, var(--surface-container-lowest)), var(--surface-container-lowest));
+}
+.newsletter-signup__eyebrow { color: var(--primary); font: 700 10px var(--font-mono); letter-spacing: .1em; }
+.newsletter-signup h2 { margin: .45rem 0 .35rem; color: var(--text-primary); font: 650 21px/1.25 var(--font-display); letter-spacing: -.035em; }
+.newsletter-signup__copy p { max-width: 52ch; margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.65; }
+.newsletter-signup__form { display: grid; gap: .65rem; }
+.newsletter-signup__email { display: flex; min-width: 0; }
+.newsletter-signup__email input { min-width: 0; flex: 1; height: 42px; padding: 0 .8rem; border: 1px solid var(--border); border-radius: var(--radius-default) 0 0 var(--radius-default); background: var(--bg-1); color: var(--text-primary); font: 13px var(--font-sans); }
+.newsletter-signup__email button { min-width: 84px; border: 1px solid var(--primary); border-radius: 0 var(--radius-default) var(--radius-default) 0; background: var(--primary); color: white; cursor: pointer; font: 650 13px var(--font-sans); }
+.newsletter-signup__email button:hover { filter: brightness(1.06); }
+.newsletter-signup__consent { display: flex; align-items: flex-start; gap: .5rem; color: var(--text-muted); cursor: pointer; font-size: 11.5px; line-height: 1.5; }
+.newsletter-signup__consent input { margin: .2rem 0 0; accent-color: var(--primary); }
+.newsletter-signup__privacy, .newsletter-signup__success { margin: 0; font-size: 11.5px; }
+.newsletter-signup__privacy a { color: var(--text-muted); text-decoration: underline; text-underline-offset: 2px; }
+.newsletter-signup__success { color: var(--success); font-weight: 600; }
+.newsletter-signup__frame { width: 0; height: 0; border: 0; visibility: hidden; }
+@media (max-width: 680px) {
+  .newsletter-signup { grid-template-columns: 1fr; padding: 1.1rem; }
+  .newsletter-signup h2 { font-size: 19px; }
+}
+
 /* Product landing + search conversion surfaces */
 .landing-shell { max-width: 1180px; margin: 0 auto; padding: 1.25rem 1.5rem 0; }
 .landing-hero { position: relative; max-width: 850px; margin: 0 auto; padding: clamp(2.4rem, 7vw, 5.75rem) 0 2rem; text-align: center; }
