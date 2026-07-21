@@ -14,6 +14,13 @@ const nextConfig = {
   // 5-6(소재 분석) → 9-6 통합에 따른 구 URL 보존. /tools/creative-analysis(구 5-6)는
   // 이제 9-6이 서빙(같은 slug 재사용이 아니라, 9-6은 /content/freshness에 있으므로 301).
   async redirects() {
+    // 예산 4편(예산배분·ROAS개선·포화신호·스케일업)을 한계 지표 필라 1편으로 통합 →
+    // 구 URL 링크주스 승계(ko·en 각 4건). 필라: /blog/budget-marginal-efficiency.
+    const budgetPillar = ["marketing-budget-allocation", "roas-improvement", "campaign-saturation-signals", "scaling-pitfalls"];
+    const budgetRedirects = budgetPillar.flatMap((slug) => [
+      { source: `/blog/${slug}`, destination: "/blog/budget-marginal-efficiency", permanent: true },
+      { source: `/en/blog/${slug}`, destination: "/en/blog/budget-marginal-efficiency", permanent: true },
+    ]);
     return [
       {
         source: "/tools/creative-analysis",
@@ -25,6 +32,7 @@ const nextConfig = {
         destination: "/en/content/freshness",
         permanent: true,
       },
+      ...budgetRedirects,
     ];
   },
   async headers() {

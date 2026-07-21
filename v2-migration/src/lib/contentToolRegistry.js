@@ -12,8 +12,8 @@ const BLOG_PRIMARY_TOOL = {
   "aso-basics-guide": "9-6",
   "attribution-data-mismatch": "5-23",
   "audience-broad-vs-narrow": "5-4",
+  "budget-marginal-efficiency": "5-3",
   "campaign-anomaly-detection": "5-21",
-  "campaign-saturation-signals": "5-22",
   "cannibalization-organic-paid": "5-18",
   "cohort-analysis-guide": "5-2",
   "correlation-vs-causation": "5-23",
@@ -31,15 +31,12 @@ const BLOG_PRIMARY_TOOL = {
   "ios-att-skan-guide": "5-2",
   "junior-metrics-guide": "5-2",
   "ltv-cac-ratio": "5-2",
-  "marketing-budget-allocation": "5-3",
   "marketing-mix-modeling": "5-18",
   "meta-advantage-plus-guide": "9-6",
   "performance-marketer-skills": "5-2",
   "performance-marketing-metrics": "5-2",
   "postback-integration-guide": "5-2",
   "retargeting-reengagement-guide": "5-22",
-  "roas-improvement": "5-3",
-  "scaling-pitfalls": "5-22",
 };
 
 const GLOSSARY_PRIMARY_TOOL = {
@@ -81,8 +78,8 @@ const BLOG_RELATED_GLOSSARY = {
   "aso-basics-guide": ["cvr", "deep-link"],
   "attribution-data-mismatch": ["mmp", "probabilistic-attribution"],
   "audience-broad-vs-narrow": ["cpm", "cvr"],
+  "budget-marginal-efficiency": ["marginal-cpa", "response-curve", "roas"],
   "campaign-anomaly-detection": ["cpa", "roas"],
-  "campaign-saturation-signals": ["marginal-cpa", "response-curve"],
   "cannibalization-organic-paid": ["cannibalization", "incrementality"],
   "cohort-analysis-guide": ["cohort", "retention", "ltv"],
   "correlation-vs-causation": ["multicollinearity", "incrementality"],
@@ -100,15 +97,12 @@ const BLOG_RELATED_GLOSSARY = {
   "ios-att-skan-guide": ["probabilistic-attribution", "mmp"],
   "junior-metrics-guide": ["cpa", "cpi", "roas"],
   "ltv-cac-ratio": ["ltv", "cac", "roas"],
-  "marketing-budget-allocation": ["marginal-cpa", "response-curve", "roas"],
   "marketing-mix-modeling": ["adstock", "multicollinearity", "response-curve"],
   "meta-advantage-plus-guide": ["cpm", "cvr"],
   "performance-marketer-skills": ["cpa", "roas"],
   "performance-marketing-metrics": ["cpa", "cpi", "roas"],
   "postback-integration-guide": ["mmp", "deep-link"],
   "retargeting-reengagement-guide": ["cpm", "cvr"],
-  "roas-improvement": ["roas", "ltv"],
-  "scaling-pitfalls": ["marginal-cpa", "response-curve"],
 };
 
 export function primaryToolForContent(slug, type = "blog") {

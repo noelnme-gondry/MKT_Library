@@ -104,13 +104,16 @@ export function getMonFilteredRows(csvData, filterState) {
   if (f.dateEnd) rows = rows.filter((r) => r.date <= f.dateEnd);
   
   if (f.platforms && f.platforms.size > 0)
-    rows = rows.filter((r) => f.platforms.has(String(r.platform || "")));
+    rows = rows.filter((r) => f.platforms.has(String(r.platform || "").trim()));
   
   if (f.countries && f.countries.size > 0)
     rows = rows.filter((r) => f.countries.has(String(r.country || "").trim()));
   
   if (f.channels && f.channels.size > 0)
     rows = rows.filter((r) => f.channels.has(String(r.channel || "").trim()));
+
+  if (f.sources && f.sources.size > 0)
+    rows = rows.filter((r) => f.sources.has(String(r.source || "").trim()));
 
   return rows;
 }
