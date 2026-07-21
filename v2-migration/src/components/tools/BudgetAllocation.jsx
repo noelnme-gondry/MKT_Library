@@ -355,6 +355,15 @@ function AllocQuickFilterBar({ applied, filterOptions, objectives, onApply, loca
 export default function BudgetAllocation({ locale = "ko" } = {}) {
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const objI18n = locale === "en" ? ALLOC_OBJECTIVES_EN : ALLOC_OBJECTIVES;
+  // 축 라벨 렌더층 로컬라이즈 — getAxisLabels(엔진, §2.1 불변)가 한국어 접미를 붙이므로
+  // EN일 때만 알려진 접미 문자열을 영어로 치환(엔진·골든 불변, 표시층만).
+  const localizeAxisLabels = (labels) => (locale !== "en" ? labels : {
+    x: (labels.x || "").replace("· 정규화 (0~1)", "· normalized (0–1)"),
+    y: (labels.y || "")
+      .replace("Revenue / Cost, 높을수록 긍정", "Revenue / Cost, higher is better")
+      .replace("Cost / 결과, 낮을수록 긍정", "Cost / result, lower is better")
+      .replace("· 정규화 (0~1)", "· normalized (0–1)"),
+  });
   const csvData = useAppStore((state) => state.csvData);
   // 전역 분모 기준(설치/가입) — 효율 계열 도구(5-2/5-21/5-22/5-3)가 공유(§12.18).
   const denomBasis = useAppStore((state) => state.denomBasis);
@@ -835,7 +844,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     const ctx = verifyChartRef.current.getContext("2d");
     if (verifyChartInstance.current) verifyChartInstance.current.destroy();
 
-    const axisLabels = ALLOC_MATH.getAxisLabels(nmode, getCostMetricLabel(effectiveMetric), isRoas);
+    const axisLabels = localizeAxisLabels(ALLOC_MATH.getAxisLabels(nmode, getCostMetricLabel(effectiveMetric), isRoas));
     const rawTooltip = nmode === "raw";
 
     verifyChartInstance.current = new Chart(ctx, {
@@ -920,7 +929,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     }
 
     const isRoas = effectiveMetric === "revenue_d7";
-    const axisLabels = ALLOC_MATH.getAxisLabels(nmode, getCostMetricLabel(effectiveMetric), isRoas);
+    const axisLabels = localizeAxisLabels(ALLOC_MATH.getAxisLabels(nmode, getCostMetricLabel(effectiveMetric), isRoas));
     const yLabel = axisLabels.y;
     const xLabel = axisLabels.x;
     // 정규화 뷰(minmax/robust/log)면 tooltip은 정규화 값 그대로 표시(스케일 왜곡 방지).
