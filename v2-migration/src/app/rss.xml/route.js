@@ -1,5 +1,4 @@
-import { ROUTES, SITE_URL, isRoutePublished } from "@/lib/routeMap";
-import { findMeta } from "@/store/useDataStore";
+import { SITE_URL } from "@/lib/routeMap";
 import { getAllPosts } from "@/lib/blog";
 
 // Next 16 route handler → /rss.xml. 네이버 서치어드바이저 RSS 제출용.
@@ -18,6 +17,10 @@ function xmlEscape(s) {
     .replace(/'/g, "&apos;");
 }
 
+function cdata(s) {
+  return `<![CDATA[${String(s ?? "").replace(/]]>/g, "]]]]><![CDATA[>")}]]>`;
+}
+
 // 태그(<strong> 등) 제거 — IA desc/title은 평문이지만 방어적으로 스트립.
 function stripTags(s) {
   return String(s ?? "").replace(/<[^>]*>/g, "").trim();
@@ -31,7 +34,8 @@ export function GET() {
   const latestContentDate = posts.map((post) => post.updated || post.date).filter(Boolean).sort().at(-1);
   const lastBuildDate = latestContentDate ? new Date(latestContentDate).toUTCString() : PRODUCT_PUB_DATE;
 
-  // 블로그 글이 RSS의 본령 — 발행 글을 먼저(최신순), 그 아래 도구 페이지.
+  // RSS는 블로그 본문 전체를 피드로 제공한다. 요약만 있는 도구 페이지는 sitemap으로
+  // 발견시키고 RSS에 섞지 않는다. 네이버는 RSS item 본문 전체 공개를 권장한다.
   const blogItems = posts
     .map((p) => {
       const link = `${SITE_URL}/blog/${p.slug}`;
@@ -39,40 +43,18 @@ export function GET() {
       return `    <item>
       <title>${xmlEscape(stripTags(p.title))}</title>
       <link>${xmlEscape(link)}</link>
-      <description>${xmlEscape(stripTags(p.description))}</description>
+      <description>${cdata(p.rssHtml)}</description>
+      <content:encoded>${cdata(p.rssHtml)}</content:encoded>
       <guid isPermaLink="true">${xmlEscape(link)}</guid>
       <pubDate>${pub}</pubDate>
     </item>`;
     })
     .join("\n");
 
-  const seen = new Set();
-  const toolItems = ROUTES.filter((r) => {
-    if (!isRoutePublished(r) || r.slug === "/" || seen.has(r.slug)) return false;
-    seen.add(r.slug);
-    return !!findMeta(r.id);
-  })
-    .map((r) => {
-      const meta = findMeta(r.id);
-      const title = stripTags(meta?.title || r.id);
-      const desc = stripTags(
-        meta?.title ? `${meta.title} — ${meta.group?.desc || ""}` : meta?.group?.desc || "",
-      );
-      const link = SITE_URL + r.slug;
-      return `    <item>
-      <title>${xmlEscape(title)}</title>
-      <link>${xmlEscape(link)}</link>
-      <description>${xmlEscape(desc)}</description>
-      <guid isPermaLink="true">${xmlEscape(link)}</guid>
-      <pubDate>${PRODUCT_PUB_DATE}</pubDate>
-    </item>`;
-    })
-    .join("\n");
-
-  const items = [blogItems, toolItems].filter(Boolean).join("\n");
+  const items = blogItems;
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>${xmlEscape(CHANNEL_TITLE)}</title>
     <link>${xmlEscape(SITE_URL + "/")}</link>
