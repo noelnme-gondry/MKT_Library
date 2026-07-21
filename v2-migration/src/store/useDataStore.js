@@ -537,6 +537,7 @@ export const useAppStore = create(persist((set, get) => ({
     platforms: new Set(),
     countries: new Set(),
     channels: new Set(),
+    sources: new Set(),
   },
   setDashboardFilter: (filterUpdate) => set((state) => ({
     dashboardFilter: { ...state.dashboardFilter, ...filterUpdate }

@@ -47,6 +47,28 @@ export function detectCalendarGrain(rows) {
   return "day";
 }
 
+/**
+ * 한 날짜 값을 현재 grain 기준 달력 구간으로 주석(연도·버킷·ISO 라벨·월).
+ * buildCalendarSeasonality가 쓰는 것과 동일한 버킷 규칙을 재사용한다 —
+ * 다운로드 ISO 뷰·숫자 검증용 표시 헬퍼(수학 아님, 골든 무관).
+ */
+export function annotateCalendarPeriod(dateValue, grain = "week") {
+  const source = periodOf(dateValue);
+  if (!source) return null;
+  const isDayWeek = source.sourceGrain === "day" && grain === "week";
+  const year = isDayWeek ? getIsoWeekYear(source.date) : source.year;
+  const bucket = isDayWeek ? getIsoWeek(source.date) : source.bucket;
+  const month = source.sourceGrain === "day" ? source.date.getUTCMonth() + 1 : source.sourceGrain === "month" ? source.bucket : null;
+  const pad = String(bucket).padStart(2, "0");
+  return {
+    sourceGrain: source.sourceGrain,
+    year,
+    bucket,
+    month,
+    isoLabel: grain === "week" ? `${year}-W${pad}` : `${year}-${pad}`,
+  };
+}
+
 function movingMean(values, radius) {
   return values.map((_, i) => {
     const slice = values.slice(Math.max(0, i - radius), Math.min(values.length, i + radius + 1));

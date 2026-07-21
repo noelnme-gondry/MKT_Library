@@ -10,6 +10,7 @@ const FILTER_BAR_COPY = {
     end: "종료",
     country: "국가",
     channel: "채널",
+    source: "소스",
     reset: "초기화",
     all: (n) => `전체 (${n})`,
     selectedCount: (n) => `${n}개 선택됨`,
@@ -20,6 +21,7 @@ const FILTER_BAR_COPY = {
     end: "End",
     country: "Country",
     channel: "Channel",
+    source: "Source",
     reset: "Reset",
     all: (n) => `All (${n})`,
     selectedCount: (n) => `${n} selected`,
@@ -92,9 +94,9 @@ export default function DashboardFilterBar({ locale = "ko" }) {
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const setDashboardFilter = useAppStore((state) => state.setDashboardFilter);
 
-  const { dates, platforms, countries, channels, hasInstalls, hasActions } = useMemo(() => {
+  const { dates, platforms, countries, channels, sources, hasInstalls, hasActions } = useMemo(() => {
     if (!csvData || !csvData.raw || csvData.raw.length === 0)
-      return { dates: [], platforms: [], countries: [], channels: [], hasInstalls: false, hasActions: false };
+      return { dates: [], platforms: [], countries: [], channels: [], sources: [], hasInstalls: false, hasActions: false };
 
     const rows = csvData.raw;
     const mapping = csvData.mapping || {};
@@ -104,22 +106,26 @@ export default function DashboardFilterBar({ locale = "ko" }) {
     const hasPlatform = mapped.has("platform");
     const hasCountry = mapped.has("country");
     const hasChannel = mapped.has("channel");
+    const hasSource = mapped.has("source");
 
     // origHeader → standardKey 역맵으로 원본 헤더 조회
     const orig = (std) => Object.keys(mapping).find((k) => mapping[k] === std);
-    const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort();
+    // 옵션 값은 반드시 trim — getMonFilteredRows가 국가·채널·소스를 trim해서 비교하므로
+    // 여기서 공백을 안 지우면 " Paid" 옵션이 "Paid"와 안 맞아 선택해도 0행이 되는 버그(paid=0).
+    const uniq = (arr) => [...new Set(arr.map((v) => String(v ?? "").trim()).filter(Boolean))].sort();
 
     return {
-      dates: hasDate ? uniq(rows.map((r) => r[orig("date")])) : [],
-      platforms: hasPlatform ? uniq(rows.map((r) => String(r[orig("platform")] || ""))) : [],
-      countries: hasCountry ? uniq(rows.map((r) => String(r[orig("country")] || ""))) : [],
-      channels: hasChannel ? uniq(rows.map((r) => String(r[orig("channel")] || ""))) : [],
+      dates: hasDate ? [...new Set(rows.map((r) => r[orig("date")]).filter(Boolean))].sort() : [],
+      platforms: hasPlatform ? uniq(rows.map((r) => r[orig("platform")])) : [],
+      countries: hasCountry ? uniq(rows.map((r) => r[orig("country")])) : [],
+      channels: hasChannel ? uniq(rows.map((r) => r[orig("channel")])) : [],
+      sources: hasSource ? uniq(rows.map((r) => r[orig("source")])) : [],
       hasInstalls: mapped.has("installs"),
       hasActions: mapped.has("actions"),
     };
   }, [csvData]);
 
-  if (!dates.length && !platforms.length && !countries.length && !channels.length && !hasInstalls && !hasActions)
+  if (!dates.length && !platforms.length && !countries.length && !channels.length && !sources.length && !hasInstalls && !hasActions)
     return null;
 
   const minDate = dates[0] || "";
@@ -131,6 +137,7 @@ export default function DashboardFilterBar({ locale = "ko" }) {
   if (dashboardFilter.platforms && dashboardFilter.platforms.size > 0) activeCount++;
   if (dashboardFilter.countries && dashboardFilter.countries.size > 0) activeCount++;
   if (dashboardFilter.channels && dashboardFilter.channels.size > 0) activeCount++;
+  if (dashboardFilter.sources && dashboardFilter.sources.size > 0) activeCount++;
 
   const handleReset = () => {
     setDashboardFilter({
@@ -139,6 +146,7 @@ export default function DashboardFilterBar({ locale = "ko" }) {
       platforms: new Set(),
       countries: new Set(),
       channels: new Set(),
+      sources: new Set(),
     });
   };
 
@@ -211,6 +219,16 @@ export default function DashboardFilterBar({ locale = "ko" }) {
             options={channels}
             selected={dashboardFilter.channels && dashboardFilter.channels.size > 0 ? dashboardFilter.channels : null}
             onChange={(set) => setDashboardFilter({ channels: set || new Set() })}
+            T={T}
+          />
+        )}
+
+        {sources.length > 0 && (
+          <MultiSelect
+            label={T.source}
+            options={sources}
+            selected={dashboardFilter.sources && dashboardFilter.sources.size > 0 ? dashboardFilter.sources : null}
+            onChange={(set) => setDashboardFilter({ sources: set || new Set() })}
             T={T}
           />
         )}

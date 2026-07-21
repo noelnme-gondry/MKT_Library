@@ -29,6 +29,25 @@ describe("data import foundation", () => {
     expect(result.candidates.성과.every((candidate) => ["date", "cost", "installs"].includes(candidate.field))).toBe(true);
   });
 
+  it("maps organic/paid columns to `source` by value, even under a `source` header", () => {
+    // channel owns the "source" header alias (google/meta media), but a column whose
+    // VALUES are organic/paid must win to `source` via valueVocabulary.
+    const srcRows = [
+      { source: "Paid", 구분: "페이드" },
+      { source: "Organic", 구분: "오가닉" },
+      { source: "paid", 구분: "페이드" },
+    ];
+    const result = scoreMappingCandidates({ headers: ["source", "구분"], rows: srcRows, allowedKeys: ["channel", "source"], fields: STANDARD_FIELDS });
+    expect(result.selections.source).toBe("source");
+    expect(result.selections.구분).toBe("source");
+  });
+
+  it("keeps a `source` header as channel when its values are media names (not organic/paid)", () => {
+    const chRows = [{ source: "Google" }, { source: "Meta" }, { source: "TikTok" }];
+    const result = scoreMappingCandidates({ headers: ["source"], rows: chRows, allowedKeys: ["channel", "source"], fields: STANDARD_FIELDS });
+    expect(result.selections.source).toBe("channel");
+  });
+
   it("reports duplicate automatic assignments as conflicts", () => {
     const result = scoreMappingCandidates({ headers: ["광고비", "소진액"], rows: [{ 광고비: "100", 소진액: "200" }], allowedKeys: ["cost"], fields: STANDARD_FIELDS });
     expect(result.conflicts).toEqual([{ field: "cost", headers: ["광고비", "소진액"] }]);

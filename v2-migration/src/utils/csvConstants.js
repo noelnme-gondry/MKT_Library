@@ -38,6 +38,22 @@ export const STANDARD_FIELDS = {
                 required: false,
                 group: "디멘션",
               },
+              source: {
+                // 광고 여부(오가닉 vs 페이드) 구분. 헤더명이 아니라 값(organic/paid…)으로
+                // 판별한다 — valueVocabulary가 있으면 scoreMappingCandidates가 컬럼 값의
+                // 상당수가 이 어휘에 들면 강하게 매핑한다. "source" 헤더 별칭은 channel이
+                // 이미 갖고 있어(구글/메타 같은 매체) 여기엔 넣지 않는다 — 값 기반으로만.
+                label: "소스(광고/오가닉)",
+                aliases: ["media_source", "utm_source", "traffic_source", "매체구분", "유입구분", "광고구분", "소스구분", "organicpaid", "paidorganic"],
+                type: "enum",
+                required: false,
+                group: "디멘션",
+                valueVocabulary: [
+                  "organic", "paid", "오가닉", "페이드", "owned", "earned",
+                  "유료", "무료", "자연", "자연유입", "광고", "비광고",
+                  "nonpaid", "non-paid", "unpaid", "paidmedia", "organictraffic",
+                ],
+              },
               cost: {
                 label: "비용",
                 aliases: ["spend", "비용", "광고비", "소진액", "집행액", "amount spent", "media cost"],
@@ -1034,6 +1050,7 @@ export const TOOL_OPTIONAL_FIELDS = {
                 { key: "date", unlocks: "기간 표기 (선택)" },
               ],
               "5-2": [
+                { key: "source", unlocks: "광고/오가닉(소스) 필터 — 유료·자연 유입 분리" },
                 { key: "channel", unlocks: "채널별 비중·시계열 분석" },
                 { key: "campaign_name", unlocks: "캠페인 단위 분석" },
                 { key: "creative_id", unlocks: "소재별 성과 변동·피로도 분석 연결" },
@@ -1328,6 +1345,7 @@ export const TOOL_OPTIONAL_FIELDS = {
               // 9-7 콘텐츠 운영 대시보드 — 트래픽 중심 옵션. 매출·결제·리텐션(revenue/
               // pu/ret) 컬럼은 콘텐츠 데이터에 없어 노출하지 않음(§정직성, 날조 금지).
               "9-7": [
+                { key: "source", unlocks: "광고/오가닉(소스) 필터 — 유료·자연 유입 분리" },
                 { key: "channel", unlocks: "유입경로별 비중·방문당 비용 비교" },
                 { key: "campaign_name", unlocks: "카테고리 단위 분석" },
                 { key: "platform", unlocks: "디바이스(모바일/데스크톱) 분포" },

@@ -4713,6 +4713,9 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .seasonality-heatmap__label { overflow: hidden; color: var(--text-muted); font: 500 9px var(--font-mono); text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .seasonality-heatmap__body > strong { color: var(--text-secondary); font: 600 10px var(--font-mono); }
 .seasonality-heatmap__cell { min-height: 28px; padding: 3px; border-radius: 3px; color: var(--text-primary); font: 600 9px var(--font-mono); text-align: center; line-height: 22px; }
+.seasonality-verify { margin-top: 10px; padding: 13px; }
+.seasonality-verify h3 { margin: 0 0 4px; color: var(--text-secondary); font-size: 12px; font-weight: 650; }
+.seasonality-verify__note { max-width: 820px; margin: 0 0 10px; color: var(--text-muted); font-size: 11px; line-height: 1.6; }
 .seasonality-note { margin-top: 10px; color: var(--text-muted); font-size: 11px; }
 .seasonality-note summary { width: fit-content; cursor: pointer; }
 .seasonality-note p { max-width: 760px; margin: 7px 0 0; line-height: 1.6; }
