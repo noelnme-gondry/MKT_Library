@@ -14,8 +14,8 @@ export const EN_BLOG_SLUGS = new Set([
   "aso-basics-guide",
   "attribution-data-mismatch",
   "audience-broad-vs-narrow",
-  "budget-marginal-efficiency",
   "campaign-anomaly-detection",
+  "campaign-saturation-signals",
   "cannibalization-organic-paid",
   "cohort-analysis-guide",
   "correlation-vs-causation",
@@ -33,12 +33,15 @@ export const EN_BLOG_SLUGS = new Set([
   "ios-att-skan-guide",
   "junior-metrics-guide",
   "ltv-cac-ratio",
+  "marketing-budget-allocation",
   "marketing-mix-modeling",
   "meta-advantage-plus-guide",
   "performance-marketer-skills",
   "performance-marketing-metrics",
   "postback-integration-guide",
   "retargeting-reengagement-guide",
+  "roas-improvement",
+  "scaling-pitfalls",
 ]);
 
 export const EN_GLOSSARY_SLUGS = new Set([

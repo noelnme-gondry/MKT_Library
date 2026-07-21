@@ -6,7 +6,7 @@ date: "2026-07-18"
 slug: "response-curve"
 keywords: "response curve, response curve meaning, diminishing returns curve, budget response curve"
 category: "Budget & Optimization"
-relatedPosts: ["budget-marginal-efficiency"]
+relatedPosts: ["marketing-budget-allocation", "campaign-saturation-signals"]
 draft: false
 ---
 

@@ -6,7 +6,7 @@ date: "2026-07-18"
 slug: "roas"
 keywords: "ROAS, ROAS 뜻, ROAS란, Return On Ad Spend, 광고비 대비 매출, ROAS 계산"
 category: "기초 지표"
-relatedPosts: ["budget-marginal-efficiency"]
+relatedPosts: ["roas-improvement"]
 draft: false
 ---
 

@@ -5,7 +5,7 @@ date: "2026-07-21"
 slug: "budget-marginal-efficiency"
 keywords: "광고 예산 배분, 마케팅 예산 분배, 예산 증액 기준, 예산 삭감 우선순위, 광고 예산 줄일 때, 예산 스케일업, 한계 ROAS, 한계 CPA, 한계효율"
 tags: ["예산 배분", "스케일업"]
-draft: false
+draft: true
 ---
 
 **결론부터 (3줄)**
