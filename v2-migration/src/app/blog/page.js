@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getAllPosts, getAllTags } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
 import SearchTopicHub from "@/components/seo/SearchTopicHub";
+import NewsletterSignup from "@/components/seo/NewsletterSignup";
 
 export async function generateMetadata() {
   const title = "퍼포먼스 마케팅 실무 블로그 | CPA·ROAS·예산 분석";
@@ -72,6 +73,7 @@ export default function BlogIndexPage() {
         <span className="content-index__meta">{posts.length} ARTICLES · UPDATED FOR OPERATORS</span>
       </header>
       <SearchTopicHub />
+      <NewsletterSignup placement="index" />
 
       {tags.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "1.75rem" }}>

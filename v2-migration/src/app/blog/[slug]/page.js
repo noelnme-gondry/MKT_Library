@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug, tagSlug } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
+import NewsletterSignup from "@/components/seo/NewsletterSignup";
 
 // 발행 글만 정적 생성. 0편이면 빈 배열(라우트 미생성) — 빌드 정상 통과.
 export function generateStaticParams() {
@@ -161,6 +162,8 @@ export default async function BlogPostPage({ params }) {
       <article className="blog-prose" dangerouslySetInnerHTML={{ __html: post.html }} />
 
       <ContentActionPanel toolId={post.primaryTool} post={post} />
+
+      <NewsletterSignup placement="post" />
 
       {post.relatedGlossary.length > 0 && (
         <nav className="content-related-links" aria-label="관련 용어">
