@@ -3,8 +3,6 @@ import Script from "next/script";
 import { DM_Sans, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import Footer from "@/components/Footer";
 import GaPageviews from "@/components/GaPageviews";
-import AdInterstitial from "@/components/AdInterstitial";
-import AdFreeInit from "@/components/AdFreeInit";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk", display: "swap" });
@@ -130,12 +128,7 @@ export default function RootLayout({ children }) {
           `}
         </Script>
 
-        {/* AdSense */}
-        <Script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3073450406371629" crossOrigin="anonymous" strategy="afterInteractive" />
-
         <GaPageviews />
-        <AdFreeInit />
-        <AdInterstitial />
         {children}
         <Footer />
       </body>
