@@ -6,7 +6,7 @@ date: "2026-07-18"
 slug: "roas"
 keywords: "ROAS, ROAS meaning, Return On Ad Spend, ROAS calculation"
 category: "Basic Metrics"
-relatedPosts: ["roas-improvement"]
+relatedPosts: ["budget-marginal-efficiency"]
 draft: false
 ---
 

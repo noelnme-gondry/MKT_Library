@@ -6,7 +6,7 @@ date: "2026-07-18"
 slug: "response-curve"
 keywords: "응답곡선, 응답곡선 뜻, Response Curve, 반응곡선, 수확체감, 예산 응답곡선"
 category: "예산·최적화"
-relatedPosts: ["marketing-budget-allocation", "campaign-saturation-signals"]
+relatedPosts: ["budget-marginal-efficiency"]
 draft: false
 ---
 
