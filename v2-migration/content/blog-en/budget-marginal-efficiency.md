@@ -5,7 +5,7 @@ date: "2026-07-21"
 slug: "budget-marginal-efficiency"
 keywords: "marketing budget allocation, ad budget reallocation, when to scale ad budget, budget cut priorities, marginal ROAS, marginal CPA, response curve"
 tags: ["Budget Allocation", "Scaling"]
-draft: true
+draft: false
 ---
 
 **The short version (3 lines)**
