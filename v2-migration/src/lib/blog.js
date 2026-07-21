@@ -106,6 +106,9 @@ function parseFile(fileName, locale) {
       ? data.faq.filter((item) => item && item.q && item.a)
       : [],
     draft: data.draft === true,
+    // RSS는 요약이 아니라 본문 전체를 제공해야 한다. Naver Search Advisor의 RSS
+    // 가이드에 맞춰 렌더된 HTML을 별도 필드로 보관한다(화면 html과 같은 원문).
+    rssHtml: normalizeArticleHeadings(localizeInternalLinks(marked.parse(content || ""), locale)),
     html: normalizeArticleHeadings(localizeInternalLinks(marked.parse(content || ""), locale)),
   };
 }
