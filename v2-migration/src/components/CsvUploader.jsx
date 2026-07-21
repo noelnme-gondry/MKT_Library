@@ -140,7 +140,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   const manuallyCleared = useAppStore((s) => s.csvClearedByGroup[TOOL_GROUP[toolId] || "efficiency"]);
   const demoDisabled = useAppStore((s) => s.demoDisabled);
   const setGroupAnalyzed = useAppStore((s) => s.setGroupAnalyzed);
-  // 분석하기 클릭 시 광고 인터스티셜 게이트(adFree면 즉시 실행). 데모 자동로드는 게이트 없이 직접.
+  // 분석하기 클릭 공용 래퍼. 분석은 즉시 실행하고 데모 자동로드도 직접 실행한다.
   const requestAd = useAppStore((s) => s.requestAd);
   // Single-source analyze gate (store, group-scoped §12.5). Reading the whole
   // store here (not a memoized selector) so the boolean recomputes on any

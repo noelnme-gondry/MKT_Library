@@ -23,7 +23,6 @@ function seedNoData() {
     currentRouteId: "5-18",
     csvGroups: { ...useAppStore.getState().csvGroups, response: EMPTY_CSV },
     csvData: EMPTY_CSV,
-    adFree: true, // 분석하기 광고 인터스티셜 우회(테스트는 분석 결과를 바로 검증)
   });
 }
 
@@ -43,7 +42,6 @@ function seedWithData() {
     currentRouteId: "5-18",
     csvGroups: { ...useAppStore.getState().csvGroups, response: slice },
     csvData: slice,
-    adFree: true, // 분석하기 광고 인터스티셜 우회(테스트는 분석 결과를 바로 검증)
   });
 }
 

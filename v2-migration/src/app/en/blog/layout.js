@@ -3,10 +3,12 @@
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import GlobalModals from "@/components/GlobalModals";
+import Script from "next/script";
 
 export default function EnBlogLayout({ children }) {
   return (
     <>
+      <Script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3073450406371629" crossOrigin="anonymous" strategy="afterInteractive" />
       <div className="app">
         <Sidebar locale="en" />
         <main className="main" id="main-content">
