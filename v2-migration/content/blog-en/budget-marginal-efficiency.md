@@ -46,11 +46,11 @@ Just as scaling breaks in the flat zone, cutting doesn't simply rewind the curve
 
 The [Budget Allocation Simulator](/tools/budget-allocation) is marginal-efficiency based, so it shows where to add and where to pull in a single view. Demo data auto-loads, so increases and reallocations you can judge straight from it.
 
-![Budget Allocation Simulator — trendline verification. Per-channel ROAS vs spend scatter with a response curve to read the marginal efficiency of the next dollar.](/blog-assets/budget-marginal-efficiency/trendline.png)
+![Budget Allocation Simulator — trendline verification. Per-channel ROAS vs spend scatter with a response curve to read the marginal efficiency of the next dollar.](/blog-assets/budget-marginal-efficiency/trendline-en.png)
 
 > ⚠️ **One honest caveat.** This simulator assumes budget moves are **reversible**. Asymmetry #3 (reversibility) is **not** in the model. In reality, pulling then re-adding may **not** restore performance — creative fatigue accumulates and learning resets in the meantime. So for cut order, don't trust the reallocation output alone; pair it with [Incrementality Analysis](/tools/incrementality) to see "how much actually disappears if I pull this channel."
 
-![Incrementality — daily conversion rate for the exposed group vs the holdout (ads off) group. The gap between the two lines is the incremental lift ads actually produced.](/blog-assets/budget-marginal-efficiency/incrementality.png)
+![Incrementality — daily conversion rate for the exposed group vs the holdout (ads off) group. The gap between the two lines is the incremental lift ads actually produced.](/blog-assets/budget-marginal-efficiency/incrementality-en.png)
 
 ## Try it on your own data
 
