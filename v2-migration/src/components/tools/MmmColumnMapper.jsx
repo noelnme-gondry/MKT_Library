@@ -124,12 +124,13 @@ function colMapRoles(headers, colMap) {
   return out;
 }
 
-export function colMapMissing(headers, colMap) {
-  if (!colMap) return ["채널·타깃 매핑"];
+export function colMapMissing(headers, colMap, locale = "ko") {
+  const tr = (ko, en) => (locale === "en" ? en : ko);
+  if (!colMap) return [tr("채널·타깃 매핑", "channel & target mapping")];
   const r = colMapRoles(headers, colMap);
   const miss = [];
-  if (!r.reg.length && !r.react.length && !r.revenue.length) miss.push("가입·재활성·매출 중 타깃 1개");
-  if (!r.channels.length) miss.push("채널 spend 1개 이상");
+  if (!r.reg.length && !r.react.length && !r.revenue.length) miss.push(tr("가입·재활성·매출 중 타깃 1개", "1 target among regs/reactivation/revenue"));
+  if (!r.channels.length) miss.push(tr("채널 spend 1개 이상", "1+ channel spend"));
   return miss;
 }
 
@@ -231,7 +232,7 @@ function pivotLongFormat(headers, rows, colMap) {
 
 // colMap → MMM panel (index mmmGetPanelFromColMap 이식). platform: "all"|"android"|"ios" —
 // 컬럼 태그 모드면 plat 일치(+공통) 컬럼만 선택, 플랫폼 단일 컬럼(행필터) 모드면 그 값으로 행 필터.
-export function buildPanelFromColMap(headers, rows, colMap, platform = "all") {
+export function buildPanelFromColMap(headers, rows, colMap, platform = "all", locale = "ko") {
   const pivoted = pivotLongFormat(headers, rows, colMap);
   if (pivoted) return buildPanelFromColMap(pivoted.headers, pivoted.rows, pivoted.colMap, platform);
   const r = colMapRoles(headers, colMap);
@@ -309,22 +310,24 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all") {
       panel.granularity = { days: md || 7, unit: md >= 28 ? "monthly" : md >= 5 ? "weekly" : "daily" };
     }
   }
-  return { panel, roles: r, missing: colMapMissing(headers, colMap) };
+  return { panel, roles: r, missing: colMapMissing(headers, colMap, locale) };
 }
 
+// [role, koLabel, enLabel, withKind, withPlat] — 라벨은 렌더에서 tr(ko,en)로 선택.
 const ZONES = [
-  ["week", "🗓 주차(t) · 1개 (없으면 행순서)", false, false],
-  ["date", "📅 날짜 · 1개 (표시용)", false, false],
-  ["reg", "🎯 가입 Regs", false, true],
-  ["react", "🎯 재활성 React", false, true],
-  ["revenue", "💰 매출 Revenue", false, true],
-  ["channel", "📈 채널 spend (여러 개 · perf/brand · 플랫폼)", true, true],
-  ["dummy", "🔢 더미/이벤트 (0·1, 여러 개)", false, false],
-  ["step", "📐 구조변화 step (0·1, 선택)", false, false],
-  ["platform", "🔀 세그먼트/플랫폼 단일 컬럼 (선택 · 성별·플랫폼·국가 등 값별로 나눠보기)", false, false],
+  ["week", "🗓 주차(t) · 1개 (없으면 행순서)", "🗓 Week (t) · 1 (row order if absent)", false, false],
+  ["date", "📅 날짜 · 1개 (표시용)", "📅 Date · 1 (for display)", false, false],
+  ["reg", "🎯 가입 Regs", "🎯 Regs", false, true],
+  ["react", "🎯 재활성 React", "🎯 Reactivation", false, true],
+  ["revenue", "💰 매출 Revenue", "💰 Revenue", false, true],
+  ["channel", "📈 채널 spend (여러 개 · perf/brand · 플랫폼)", "📈 Channel spend (many · perf/brand · platform)", true, true],
+  ["dummy", "🔢 더미/이벤트 (0·1, 여러 개)", "🔢 Dummy/event (0/1, many)", false, false],
+  ["step", "📐 구조변화 step (0·1, 선택)", "📐 Structural step (0/1, optional)", false, false],
+  ["platform", "🔀 세그먼트/플랫폼 단일 컬럼 (선택 · 성별·플랫폼·국가 등 값별로 나눠보기)", "🔀 Segment/platform single column (optional · split by gender/platform/country, etc.)", false, false],
 ];
 
-export default function MmmColumnMapper({ headers, rows, colMap, onChange }) {
+export default function MmmColumnMapper({ headers, rows, colMap, onChange, locale = "ko" }) {
+  const tr = (ko, en) => (locale === "en" ? en : ko);
   const [dragCol, setDragCol] = useState(null);
   const cm = colMap || {};
 
@@ -363,7 +366,7 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange }) {
         )}
         {withPlat && (
           <select value={def.plat || "common"} onChange={(e) => setField(col, "plat", e.target.value)} style={{ fontSize: "11px" }}>
-            <option value="common">공통</option>
+            <option value="common">{tr("공통", "Common")}</option>
             <option value="android">Android</option>
             <option value="ios">iOS</option>
           </select>
@@ -383,26 +386,26 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange }) {
       <div>
         {inRole(role).length
           ? inRole(role).map((c) => <Chip key={c} col={c} withKind={withKind} withPlat={withPlat} />)
-          : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>여기로 드래그</span>}
+          : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("여기로 드래그", "Drag here")}</span>}
       </div>
     </div>
   );
 
   const tray = (headers || []).filter((h) => (cm[h]?.role || "ignore") === "ignore");
-  const missing = colMapMissing(headers, cm);
+  const missing = colMapMissing(headers, cm, locale);
 
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
         <p className="muted" style={{ fontSize: "12px", margin: 0 }}>
-          컬럼을 역할 영역으로 드래그하세요. 칩을 끌어 언제든 수정 가능합니다.
+          {tr("컬럼을 역할 영역으로 드래그하세요. 칩을 끌어 언제든 수정 가능합니다.", "Drag columns onto a role zone. Drag chips to adjust anytime.")}
         </p>
         <button
           type="button"
           className="ab-pill"
           onClick={() => onChange(autoGuessColMap(headers, rows, false))}
         >
-          🪄 전부 자동 추정
+          {tr("🪄 전부 자동 추정", "🪄 Auto-map all")}
         </button>
       </div>
       <div
@@ -410,20 +413,20 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange }) {
         onDrop={(e) => { e.preventDefault(); if (dragCol) setRole(dragCol, "ignore"); setDragCol(null); }}
         style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "8px", marginBottom: "10px" }}
       >
-        <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>📦 컬럼 (미지정 — 드래그해서 배치)</div>
+        <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>{tr("📦 컬럼 (미지정 — 드래그해서 배치)", "📦 Columns (unassigned — drag to place)")}</div>
         <div>
-          {tray.length ? tray.map((h) => <Chip key={h} col={h} withKind={false} withPlat={false} />) : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>모두 배치됨</span>}
+          {tray.length ? tray.map((h) => <Chip key={h} col={h} withKind={false} withPlat={false} />) : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("모두 배치됨", "All placed")}</span>}
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-        {ZONES.map(([role, label, withKind, withPlat]) => (
-          <Zone key={role} role={role} label={label} withKind={withKind} withPlat={withPlat} />
+        {ZONES.map(([role, koLabel, enLabel, withKind, withPlat]) => (
+          <Zone key={role} role={role} label={tr(koLabel, enLabel)} withKind={withKind} withPlat={withPlat} />
         ))}
       </div>
       {missing.length > 0 && (
         <div className="callout warning" style={{ marginTop: "10px" }}>
           <div className="ico">!</div>
-          <div className="body"><strong>필수 역할이 비어 있습니다</strong><p>{missing.join(", ")}</p></div>
+          <div className="body"><strong>{tr("필수 역할이 비어 있습니다", "Required roles are empty")}</strong><p>{missing.join(", ")}</p></div>
         </div>
       )}
     </div>

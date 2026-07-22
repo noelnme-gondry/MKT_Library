@@ -1050,7 +1050,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               </>
             )}
           </p>
-          <AhaColumnMapper headers={headers} rows={csvData.raw} colMap={colMap} onChange={setColMap} />
+          <AhaColumnMapper headers={headers} rows={csvData.raw} colMap={colMap} onChange={setColMap} locale={locale} />
         </details>
         {missing.length > 0 ? (
           <div className="required-banner" style={{ marginTop: "12px" }}>

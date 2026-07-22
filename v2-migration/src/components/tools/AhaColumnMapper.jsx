@@ -60,7 +60,7 @@ export function ahaAutoMapColumns(headers, rows) {
   return out;
 }
 
-function FeatureChip({ col, cm, setRole, setField, setDragCol }) {
+function FeatureChip({ col, cm, setRole, setField, setDragCol, tr = (ko) => ko }) {
   const def = cm[col] || { action: col, window: Infinity };
   const wv = winValue(def.window);
   return (
@@ -75,7 +75,7 @@ function FeatureChip({ col, cm, setRole, setField, setDragCol }) {
         type="text"
         value={def.action || col}
         onChange={(e) => setField(col, "action", e.target.value.trim() || col)}
-        title="액션명(같은 이름끼리 윈도우별로 묶임)"
+        title={tr("액션명(같은 이름끼리 윈도우별로 묶임)", "Action name (same names are grouped per window)")}
         style={{ width: "72px", fontSize: "11px" }}
         className="map-select"
       />
@@ -90,8 +90,8 @@ function FeatureChip({ col, cm, setRole, setField, setDragCol }) {
         style={{ fontSize: "11px" }}
       >
         {WINDOW_PRESETS.map((w) => <option key={w} value={w}>D{w}</option>)}
-        <option value="all">전체</option>
-        <option value="custom">Dn 직접입력</option>
+        <option value="all">{tr("전체", "All")}</option>
+        <option value="custom">{tr("Dn 직접입력", "Dn custom")}</option>
       </select>
       {wv === "custom" && (
         <input
@@ -104,7 +104,7 @@ function FeatureChip({ col, cm, setRole, setField, setDragCol }) {
             setField(col, "window", isFinite(n) && n > 0 ? n : 1);
           }}
           placeholder="N"
-          title="윈도우 일수 직접 입력"
+          title={tr("윈도우 일수 직접 입력", "Enter window days directly")}
           style={{ width: "44px", fontSize: "11px" }}
           className="map-select"
         />
@@ -128,7 +128,7 @@ function SimpleChip({ col, setRole, setDragCol }) {
   );
 }
 
-function Zone({ role, label, single, feature, cols, cm, setRole, setField, dragCol, setDragCol }) {
+function Zone({ role, label, single, feature, cols, cm, setRole, setField, dragCol, setDragCol, tr = (ko) => ko }) {
   return (
     <div
       onDragOver={(e) => e.preventDefault()}
@@ -139,18 +139,19 @@ function Zone({ role, label, single, feature, cols, cm, setRole, setField, dragC
       <div>
         {cols.length
           ? cols.map((c) => (feature
-              ? <FeatureChip key={c} col={c} cm={cm} setRole={setRole} setField={setField} setDragCol={setDragCol} />
+              ? <FeatureChip key={c} col={c} cm={cm} setRole={setRole} setField={setField} setDragCol={setDragCol} tr={tr} />
               : <SimpleChip key={c} col={c} setRole={setRole} setDragCol={setDragCol} />))
-          : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>여기로 드래그</span>}
+          : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("여기로 드래그", "Drag here")}</span>}
       </div>
       {single && cols.length > 1 && (
-        <div style={{ fontSize: "10.5px", color: "#f59e0b", marginTop: "4px" }}>⚠ 1개만 사용됩니다(나중에 놓은 컬럼 우선)</div>
+        <div style={{ fontSize: "10.5px", color: "#f59e0b", marginTop: "4px" }}>{tr("⚠ 1개만 사용됩니다(나중에 놓은 컬럼 우선)", "⚠ Only one is used (last dropped column wins)")}</div>
       )}
     </div>
   );
 }
 
-export default function AhaColumnMapper({ headers, rows, colMap, onChange }) {
+export default function AhaColumnMapper({ headers, rows, colMap, onChange, locale = "ko" }) {
+  const tr = (ko, en) => (locale === "en" ? en : ko);
   const [dragCol, setDragCol] = useState(null);
   const cm = colMap || {};
 
@@ -178,8 +179,8 @@ export default function AhaColumnMapper({ headers, rows, colMap, onChange }) {
   const featureCols = inRole("feature");
   const segmentCols = inRole("segment");
   const missing = [];
-  if (!targetCols.length) missing.push("타겟(target, 0/1) 1개");
-  if (!featureCols.length) missing.push("선행 행동(feature) 1개 이상");
+  if (!targetCols.length) missing.push(tr("타겟(target, 0/1) 1개", "1 target (0/1)"));
+  if (!featureCols.length) missing.push(tr("선행 행동(feature) 1개 이상", "1+ preceding action (feature)"));
 
   // 매핑 완전 초기화(전부 미지정 트레이로) — 실수로 잘못 매핑했을 때 처음부터 다시.
   const clearAll = () => onChange({});
@@ -224,14 +225,14 @@ export default function AhaColumnMapper({ headers, rows, colMap, onChange }) {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "8px" }}>
         <p className="muted" style={{ fontSize: "12px", margin: 0 }}>
-          컬럼을 역할 영역으로 드래그하세요. 칩을 끌어 언제든 수정 가능합니다. 헤더가 <code className="inline">{"{action}_d{N}"}</code> 형태면 액션·윈도우가 자동 파싱됩니다.
+          {tr("컬럼을 역할 영역으로 드래그하세요. 칩을 끌어 언제든 수정 가능합니다. 헤더가 ", "Drag columns onto a role zone. Drag chips to adjust anytime. If a header looks like ")}<code className="inline">{"{action}_d{N}"}</code>{tr(" 형태면 액션·윈도우가 자동 파싱됩니다.", ", the action and window are parsed automatically.")}
         </p>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-          <button type="button" className="ab-pill" onClick={() => onChange(ahaAutoMapColumns(headers, rows))}>🪄 전부 자동 추정</button>
-          <button type="button" className="ab-pill" onClick={mapAllAsFeature} title="타겟·id 제외 모든 컬럼을 선행 행동(feature)으로 일괄 배치">🏃 전체 이벤트 매핑</button>
-          <button type="button" className="ab-pill" onClick={() => mapWindowEvents(1)} disabled={!d1Count} title="헤더가 D1로 파싱되는 컬럼만 선행 행동으로 자동 매핑(다른 건 그대로)">D1 이벤트 매핑{d1Count ? ` (${d1Count})` : ""}</button>
-          <button type="button" className="ab-pill" onClick={() => mapWindowEvents(7)} disabled={!d7Count} title="헤더가 D7로 파싱되는 컬럼만 선행 행동으로 자동 매핑(다른 건 그대로)">D7 이벤트 매핑{d7Count ? ` (${d7Count})` : ""}</button>
-          <button type="button" className="ab-pill" onClick={clearAll} title="전체 매핑을 초기화하고 처음부터 다시">🗑 전체 해제</button>
+          <button type="button" className="ab-pill" onClick={() => onChange(ahaAutoMapColumns(headers, rows))}>{tr("🪄 전부 자동 추정", "🪄 Auto-map all")}</button>
+          <button type="button" className="ab-pill" onClick={mapAllAsFeature} title={tr("타겟·id 제외 모든 컬럼을 선행 행동(feature)으로 일괄 배치", "Place every column except target/id as a preceding action (feature)")}>{tr("🏃 전체 이벤트 매핑", "🏃 Map all events")}</button>
+          <button type="button" className="ab-pill" onClick={() => mapWindowEvents(1)} disabled={!d1Count} title={tr("헤더가 D1로 파싱되는 컬럼만 선행 행동으로 자동 매핑(다른 건 그대로)", "Auto-map only columns whose header parses to D1 (leave others as-is)")}>{tr("D1 이벤트 매핑", "Map D1 events")}{d1Count ? ` (${d1Count})` : ""}</button>
+          <button type="button" className="ab-pill" onClick={() => mapWindowEvents(7)} disabled={!d7Count} title={tr("헤더가 D7로 파싱되는 컬럼만 선행 행동으로 자동 매핑(다른 건 그대로)", "Auto-map only columns whose header parses to D7 (leave others as-is)")}>{tr("D7 이벤트 매핑", "Map D7 events")}{d7Count ? ` (${d7Count})` : ""}</button>
+          <button type="button" className="ab-pill" onClick={clearAll} title={tr("전체 매핑을 초기화하고 처음부터 다시", "Reset all mappings and start over")}>{tr("🗑 전체 해제", "🗑 Clear all")}</button>
         </div>
       </div>
       <div
@@ -239,27 +240,27 @@ export default function AhaColumnMapper({ headers, rows, colMap, onChange }) {
         onDrop={(e) => { e.preventDefault(); if (dragCol) setRole(dragCol, "ignore"); setDragCol(null); }}
         style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "8px", marginBottom: "10px" }}
       >
-        <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>📦 컬럼 (미지정 — 드래그해서 배치)</div>
+        <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>{tr("📦 컬럼 (미지정 — 드래그해서 배치)", "📦 Columns (unassigned — drag to place)")}</div>
         <div>
           {tray.length
             ? tray.map((h) => <SimpleChip key={h} col={h} setRole={setRole} setDragCol={setDragCol} />)
-            : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>모두 배치됨</span>}
+            : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("모두 배치됨", "All placed")}</span>}
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-        <Zone role="target" label="🎯 타겟(target, 0/1) · 1개" single cols={targetCols} cm={cm} setRole={setRole} setField={setField} dragCol={dragCol} setDragCol={setDragCol} />
-        <Zone role="id" label="🆔 user_id (미사용, 있으면 여기로)" single cols={idCols} cm={cm} setRole={setRole} setField={setField} dragCol={dragCol} setDragCol={setDragCol} />
+        <Zone role="target" label={tr("🎯 타겟(target, 0/1) · 1개", "🎯 Target (0/1) · 1")} single cols={targetCols} cm={cm} setRole={setRole} setField={setField} dragCol={dragCol} setDragCol={setDragCol} tr={tr} />
+        <Zone role="id" label={tr("🆔 user_id (미사용, 있으면 여기로)", "🆔 user_id (unused; drop here if present)")} single cols={idCols} cm={cm} setRole={setRole} setField={setField} dragCol={dragCol} setDragCol={setDragCol} tr={tr} />
       </div>
       <div style={{ marginTop: "10px" }}>
-        <Zone role="feature" label="🏃 선행 행동(feature) · 여러 개 · 액션명+윈도우(D1/D7/Dn) 개별 지정" feature cols={featureCols} cm={cm} setRole={setRole} setField={setField} dragCol={dragCol} setDragCol={setDragCol} />
+        <Zone role="feature" label={tr("🏃 선행 행동(feature) · 여러 개 · 액션명+윈도우(D1/D7/Dn) 개별 지정", "🏃 Preceding actions (feature) · many · set action name + window (D1/D7/Dn) each")} feature cols={featureCols} cm={cm} setRole={setRole} setField={setField} dragCol={dragCol} setDragCol={setDragCol} tr={tr} />
       </div>
       <div style={{ marginTop: "10px" }}>
-        <Zone role="segment" label="🔀 세그먼트(나눠보기) · 선택 · 성별·플랫폼·국가 등 값별로 결과를 나눠 봅니다" cols={segmentCols} cm={cm} setRole={setRole} setField={setField} dragCol={dragCol} setDragCol={setDragCol} />
+        <Zone role="segment" label={tr("🔀 세그먼트(나눠보기) · 선택 · 성별·플랫폼·국가 등 값별로 결과를 나눠 봅니다", "🔀 Segment (split view) · optional · split results by gender/platform/country, etc.")} cols={segmentCols} cm={cm} setRole={setRole} setField={setField} dragCol={dragCol} setDragCol={setDragCol} tr={tr} />
       </div>
       {missing.length > 0 && (
         <div className="callout warning" style={{ marginTop: "10px" }}>
           <div className="ico">!</div>
-          <div className="body"><strong>필수 역할이 비어 있습니다</strong><p>{missing.join(", ")}</p></div>
+          <div className="body"><strong>{tr("필수 역할이 비어 있습니다", "Required roles are empty")}</strong><p>{missing.join(", ")}</p></div>
         </div>
       )}
     </div>

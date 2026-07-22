@@ -1189,7 +1189,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     try {
       // colMap(PRIMARY) → 패널. 미완성이면 매핑 안내(패널 empty).
       if (!mmmColMap) return { empty: true, reason: tx("컬럼 역할을 매핑하세요 (주차·가입/재활성·채널 spend).", "Map column roles (week · signup/reactivation · channel spend).") };
-      const built = buildPanelFromColMap(csvData.headers, csvData.raw, mmmColMap, effPlatformFilter);
+      const built = buildPanelFromColMap(csvData.headers, csvData.raw, mmmColMap, effPlatformFilter, locale);
       if (built.missing.length) return { empty: true, reason: tx("필수 역할 미지정: ", "Required role not set: ") + built.missing.join(", ") };
       const panel = trimToActive(built.panel);
       const cfg = { ...MMM_METH_CONFIG, absorbed: new Set() };
@@ -1894,6 +1894,7 @@ export default function MarketingResponse({ locale = "ko" }) {
           rows={csvData.raw}
           colMap={mmmColMap || autoGuessColMap(csvData.headers, csvData.raw)}
           onChange={setMmmColMap}
+          locale={locale}
         />
         {ready && (
           <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px" }}>
