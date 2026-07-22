@@ -16,8 +16,8 @@ import {
   Users,
 } from "lucide-react";
 
-// 긴 탭 나열 대신, 분석 범위와 분리된 "어떤 화면을 볼지" 단일 선택으로 둔다.
-// 옵션 그룹은 탐색 보조일 뿐 필터/분석값에는 영향을 주지 않는다.
+// 운영 대시보드의 공통 뷰 전환. 분석 범위 필터와 함께 상단 sticky 바에 두어,
+// 어느 결과 탭을 스크롤 중이든 즉시 다른 분석 뷰로 이동할 수 있게 한다.
 const MON_TAB_GROUPS = [
   { label: "모니터링", labelEn: "Monitoring", icon: <Monitor size={14} />, tabs: ["viz", "scorecard", "seasonality", "pacing", "anomaly"] },
   { label: "장기 가치", labelEn: "Long-term Value", icon: <TrendingUp size={14} />, tabs: ["ltv", "cohort"] },
@@ -77,7 +77,7 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
   };
 
   return (
-    <div className="mon-sticky-bar dashboard-tabs" role="tablist" aria-label={locale === "en" ? "Dashboard views" : "대시보드 보기"}>
+    <nav className="dashboard-tabs" role="tablist" aria-label={locale === "en" ? "Dashboard views" : "대시보드 보기"}>
       {groups.map((group, groupIndex) => (
         <React.Fragment key={group.label}>
           <div className="dashboard-tabs__group">
@@ -110,6 +110,6 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
           {groupIndex < groups.length - 1 && <span className="dashboard-tabs__divider">/</span>}
         </React.Fragment>
       ))}
-    </div>
+    </nav>
   );
 }
