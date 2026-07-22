@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { CREATIVE_FATIGUE, CREATIVE_STATS } from "@/utils/creativeMath";
 import { CREATIVE_CONFIG } from "@/utils/creativeConfig";
@@ -441,7 +441,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
   // 그대로(byte-동일), content=콘텐츠 도메인 라벨. 엔진·CSV 필드명은 불변(§12.21).
   // locale은 domain과 독립 축 — domain(퍼포먼스/콘텐츠 리라벨)과 절대 혼용하지 말 것.
   const C = localizeCreativeCopy(domain, locale);
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   // 엔진(creativeMath, §2.1 불변)이 반환하는 한국어 진단 문자열(dropped·diag.error)을
   // EN일 때만 렌더층에서 치환. 엣지(다중공선·특이행렬·데이터부족)에서만 노출.
   const localizeEngineMsg = (s) => (locale !== "en" ? s : String(s ?? "")
@@ -451,7 +451,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
     .replace("데이터 부족", "Insufficient data")
     .replace("추정 불가", "Cannot estimate")
     .replace("행렬 특이값", "Singular matrix"));
-  const decMetaAll = buildDecomposeMeta(locale);
+  const decMetaAll = useMemo(() => buildDecomposeMeta(locale), [locale]);
   const csvData = useAppStore((state) => state.csvData);
   const [metric, setMetric] = useState("ctr");
   const [activeProblem, setActiveProblem] = useState("swaps");
@@ -583,7 +583,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       nextTest,
       snapshotHash,
     };
-  }, [csvData, hasData, locale]);
+  }, [csvData, hasData, locale, tr]);
 
   // §7 Auto-Planner: weeklyVelocity(state)만 바뀌면 재계산 — 무거운 analysis는 재실행 X
   const autoPlan = useMemo(() => {
@@ -752,7 +752,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       if (currentCharts["fatigue"]) currentCharts["fatigue"].destroy();
       if (currentCharts["concept"]) currentCharts["concept"].destroy();
     };
-  }, [analysis, hasData, curMetricKey, curDecompose, locale]);
+  }, [analysis, hasData, curMetricKey, curDecompose, locale, decMetaAll, tr]);
 
   if (!hasData) {
     return (

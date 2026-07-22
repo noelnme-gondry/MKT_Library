@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import Chart from "chart.js/auto";
 import { ALLOC_MATH } from "@/utils/allocationMath";
@@ -108,7 +108,7 @@ function downloadSatTemplateCsv(toolId) {
 }
 
 export default function MarketingEfficiency({ locale = "ko" } = {}) {
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const csvData = useAppStore((state) => state.csvData);
   const isDarkMode = useAppStore((state) => state.isDarkMode);
   // 전역 분모 기준(설치/가입) 구독 — 포화도 metricField를 basis 따라 installs↔actions 전환(§12.18/#3).
@@ -287,7 +287,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       }
     };
     // isDarkMode dep: re-evaluate getCssVar theme colors on light/dark toggle
-  }, [okRows, satState.selected, effectiveMetric, hasData, analyzed, isDarkMode, locale]);
+  }, [okRows, satState.selected, effectiveMetric, hasData, analyzed, isDarkMode, locale, tr]);
 
   if (!hasData) {
     return (

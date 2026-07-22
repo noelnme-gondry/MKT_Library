@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import CustomChartsSection from "./CustomChartsSection";
@@ -30,7 +30,7 @@ const fmtDelta = (d) => {
 };
 
 export default function FunnelTab({ locale = "ko" } = {}) {
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const fieldLabel = (key) => (locale === "en" ? FUNNEL_FIELD_LABEL_EN[key] : FUNNEL_FIELD_LABEL[key]) || key;
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
@@ -119,7 +119,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [hasData, cache, adjOn, isDarkMode, locale]);
+  }, [hasData, cache, adjOn, isDarkMode, locale, tr]);
 
   if (!hasData) {
     return (

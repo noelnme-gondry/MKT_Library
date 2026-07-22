@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
@@ -75,7 +75,7 @@ const SC_LABELS_EN = {
 export default function ScorecardTab({ domain = "performance", locale = "ko" } = {}) {
   const C = resolveDashCopy(domain);
   const T = SCORE_COPY[locale] || SCORE_COPY.ko;
-  const scLabel = (k) => (locale === "en" ? (SC_LABELS_EN[k] || C.scLabels[k] || k) : C.scLabels[k]);
+  const scLabel = useCallback((k) => (locale === "en" ? (SC_LABELS_EN[k] || C.scLabels[k] || k) : C.scLabels[k]), [locale, C]);
   const isContent = domain === "content";
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
@@ -166,7 +166,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
     });
 
     return [...base, ...presets, ...customCards];
-  }, [hasData, recent, prev, mapping, displayCurrency, customMetrics, C, T, locale]);
+  }, [hasData, recent, prev, mapping, displayCurrency, customMetrics, T, scLabel]);
 
   // 커스텀 지표 빌더 피연산자 = 실제 매핑된 컬럼만.
   const builderFields = useMemo(() => {
@@ -227,7 +227,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
     }
   }, [orderedCards, selectedMetric]);
 
-  const seriesVal = (d, sel) => {
+  const seriesVal = useCallback((d, sel) => {
     switch (sel) {
       case "cost": return d.cost;
       case "inst": return d.installs;
@@ -247,7 +247,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
         return customMetricToDescriptor(def).compute(row);
       }
     }
-  };
+  }, [customMetrics]);
 
   useEffect(() => {
     if (!hasData || !selectedMetric || !chartRef.current) return;
@@ -334,7 +334,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [hasData, daily, selectedMetric, windowDays, isDarkMode, customMetrics]);
+  }, [hasData, daily, selectedMetric, windowDays, isDarkMode, customMetrics, seriesVal]);
 
   if (!hasData) {
     return <div className="tab-pane active"><p className="muted">{T.noData}</p></div>;

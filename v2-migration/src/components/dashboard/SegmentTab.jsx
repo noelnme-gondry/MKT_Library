@@ -1,12 +1,12 @@
 "use client";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { segmentMetricValue, buildSegmentGrid } from "@/utils/segmentMath";
 import CustomChartsSection from "./CustomChartsSection";
 
 export default function SegmentTab({ locale = "ko" } = {}) {
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   // 엔진(segmentMath)이 빈 값에 붙이는 "(미지정)"·"전체" 그룹 라벨 렌더층 로컬라이즈.
   const luLabel = (k) => (k === "(미지정)" ? tr("(미지정)", "(unspecified)") : k === "전체" ? tr("전체", "All") : k);
   const csvData = useAppStore((state) => state.csvData);
@@ -43,7 +43,7 @@ export default function SegmentTab({ locale = "ko" } = {}) {
     const { grid: _grid, rows: _rowKeys, cols: _colKeys } = buildSegmentGrid(rows, rowAxis, colAxis);
 
     return { hasData: true, grid: _grid, rowKeys: _rowKeys, colKeys: _colKeys, availFields: _availFields, mappedKeys: _mappedKeys, hasField };
-  }, [csvData, dashboardFilter, rowAxis, colAxis, locale]);
+  }, [csvData, dashboardFilter, rowAxis, colAxis, tr]);
 
   const METRICS = {
     cpi: { label: "CPI", better: "low", val: c => segmentMetricValue(c, "cpi"), fmt: c => { const v = segmentMetricValue(c, "cpi"); return v != null ? fmtCurrencyPrecise(v, displayCurrency) : "—"; } },

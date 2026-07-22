@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import Chart from "chart.js/auto";
@@ -409,7 +409,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   // 도메인 라벨팩(§contentDomain): performance=기존 문구(출력 불변) / content=콘텐츠 번역.
   // locale="en"이면 AHA_COPY_EN 오버레이(§contentDomain SSOT는 불변, 로컬 병합만).
   const C = localizeAhaCopy(domain, locale);
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const router = useRouter();
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
@@ -850,7 +850,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
         chartInstance.current = null;
       }
     };
-  }, [hasData, analyzed, sortedResults, bucketsByAction, actionColorMap, selectedActions, minSupport, holdoutOn]);
+  }, [hasData, analyzed, sortedResults, bucketsByAction, actionColorMap, selectedActions, minSupport, holdoutOn, locale, tr]);
 
   // 선택된 행동의 k-스윕 곡선(§"300회 vs 100회 vs 50회면 어느 정도?").
   useEffect(() => {
@@ -921,7 +921,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
         sweepChartInstance.current = null;
       }
     };
-  }, [hasData, analyzed, kSweep, drillResult]);
+  }, [hasData, analyzed, kSweep, drillResult, locale, tr]);
 
   const analysisResultState = cache.results?.length > 0 ? "ready" : "insufficient";
   useEffect(() => {

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { ALLOC_MATH } from "@/utils/allocationMath";
@@ -285,7 +285,7 @@ function toggleInSet(prev, value, allValues) {
 // 시그 비교 → 바뀌었으면 재검증(Step2), 안 바뀌었으면 그대로 유지(★1). 컴포넌트라
 // step3 재진입마다 draft가 현재 applied 값으로 리셋(effect 불필요).
 function AllocQuickFilterBar({ applied, filterOptions, objectives, onApply, locale = "ko" }) {
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const toSel = (v) => (v == null ? "__all__" : [...v][0] || "__all__");
   const [objective, setObjective] = useState(applied.objective);
   const [unitField, setUnitField] = useState(applied.unitField);
@@ -354,17 +354,17 @@ function AllocQuickFilterBar({ applied, filterOptions, objectives, onApply, loca
 
 
 export default function BudgetAllocation({ locale = "ko" } = {}) {
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const objI18n = locale === "en" ? ALLOC_OBJECTIVES_EN : ALLOC_OBJECTIVES;
   // 축 라벨 렌더층 로컬라이즈 — getAxisLabels(엔진, §2.1 불변)가 한국어 접미를 붙이므로
   // EN일 때만 알려진 접미 문자열을 영어로 치환(엔진·골든 불변, 표시층만).
-  const localizeAxisLabels = (labels) => (locale !== "en" ? labels : {
+  const localizeAxisLabels = useCallback((labels) => (locale !== "en" ? labels : {
     x: (labels.x || "").replace("· 정규화 (0~1)", "· normalized (0–1)"),
     y: (labels.y || "")
       .replace("Revenue / Cost, 높을수록 긍정", "Revenue / Cost, higher is better")
       .replace("Cost / 결과, 낮을수록 긍정", "Cost / result, lower is better")
       .replace("· 정규화 (0~1)", "· normalized (0–1)"),
-  });
+  }), [locale]);
   const csvData = useAppStore((state) => state.csvData);
   // 전역 분모 기준(설치/가입) — 효율 계열 도구(5-2/5-21/5-22/5-3)가 공유(§12.18).
   const denomBasis = useAppStore((state) => state.denomBasis);
@@ -785,7 +785,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       }
     }
     return { insufficient: false, lines };
-  }, [allocation.items, effectiveMetric, historyByCh, recentDays, currency]);
+  }, [allocation.items, effectiveMetric, historyByCh, recentDays, currency, tr]);
 
   // What-if 시나리오 데이터
   const scenarios = useMemo(() => {
@@ -902,7 +902,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         verifyChartInstance.current = null;
       }
     };
-  }, [step, hasData, byChannel, effectiveVerifyGroup, adv, groupModels, hidePoints, normalizeMode, effectiveMetric]);
+  }, [step, hasData, byChannel, effectiveVerifyGroup, adv, groupModels, hidePoints, normalizeMode, effectiveMetric, localizeAxisLabels]);
 
   useEffect(() => {
     if (step !== 3 || !hasData || !chartRef.current) return;
@@ -994,7 +994,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         chartInstance.current.destroy();
       }
     };
-  }, [step, hasData, rows, unitField, effectiveMetric, recentDays, adv, hidePoints, chartChannels, normalizeMode]);
+  }, [step, hasData, rows, unitField, effectiveMetric, recentDays, adv, hidePoints, chartChannels, normalizeMode, localizeAxisLabels]);
 
   // What-if 시나리오 차트 (예산 배수 → 예상 결과수 곡선). index.html renderAllocScenarioChart 이식.
   useEffect(() => {
@@ -1078,7 +1078,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         scenarioChartInstance.current = null;
       }
     };
-  }, [step, simMode, scenarios, effectiveMetric, currency]);
+  }, [step, simMode, scenarios, effectiveMetric, currency, locale, tr]);
 
   // §4 추천 배분 비중 — 단일 가로 스택 바 Chart.js(indexAxis:'y') 차트. index.html §4 alloc-bar 이식(CSS flexbox → canvas).
   // 채널별 weight(%) 세그먼트를 하나의 category("배분")에 쌓아 legacy와 동일한 "한 줄 막대 + 범례" 모양 유지.
@@ -1159,7 +1159,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         barChartInstance.current = null;
       }
     };
-  }, [step, hasData, allocation.items, dailyBudget]);
+  }, [step, hasData, allocation.items, dailyBudget, tr]);
 
   if (!hasData) {
     return (

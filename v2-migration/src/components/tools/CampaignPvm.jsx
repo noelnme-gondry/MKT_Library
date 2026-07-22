@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { PVM_MATH } from "@/utils/pvmMath";
@@ -398,7 +398,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   // 도메인 카피팩(라벨만) — performance=기존 문자열 byte-동일, content=콘텐츠 번역.
   // locale="en"일 때만 PVM_COPY_EN으로 오버레이(별도 축, domain 로직과 독립).
   const C = localizePvmCopy(domain, locale);
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const csvData = useAppStore((state) => state.csvData);
   const denomBasis = useAppStore((state) => state.denomBasis);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
@@ -445,7 +445,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     } catch (e) {
       return { insufficientData: true, message: tr("분석 중 오류: ", "Analysis error: ") + e.message };
     }
-  }, [hasData, csvData, metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale]);
+  }, [hasData, csvData, metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale, tr]);
 
   const ready = cache && !cache.insufficientData;
 
@@ -466,7 +466,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       arr = [...top, merged];
     }
     return arr;
-  }, [ready, cache, locale]);
+  }, [ready, cache, tr]);
 
   useEffect(() => {
     if (!ready || !byChannelChart.length) return;
@@ -627,7 +627,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       if (waterfallChart) waterfallChart.destroy();
       if (trendChart) trendChart.destroy();
     };
-  }, [ready, cache, byChannelChart, currency, C, locale]);
+  }, [ready, cache, byChannelChart, currency, C, locale, tr]);
 
   // 진단(💡) 플로팅 툴팁 — index.html #pvm-float-tip 이식(document 위임, 스크롤 시 숨김)
   useEffect(() => {
