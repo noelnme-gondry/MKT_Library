@@ -260,7 +260,7 @@ function NetEffectEvidence({ net, locale }) {
 // Prior는 기본 MMM을 대체하는 숨은 설정이 아니라, 어떤 외부 근거를 썼는지
 // 결과 화면에서 추적·비교할 수 있는 별도 레이어다. 아직 근거가 없으면 이 카드도
 // 조용히 기본 모델만 보여 준다. 실제 prior 추정은 원자료 검증을 거친 뒤에만 켠다.
-function MmmEvidenceLedger({ locale, priorView, onPriorView, evidence, onEvidence, onLoadDemo, appliedPriorCount = 0, countryCandidates = [] }) {
+function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, evidence, onEvidence, onLoadDemo, appliedPriorCount = 0, countryCandidates = [] }) {
   const tx = (ko, en) => (locale === "en" ? en : ko);
   const experimentRef = useRef(null);
   const countryRef = useRef(null);
@@ -282,11 +282,7 @@ function MmmEvidenceLedger({ locale, priorView, onPriorView, evidence, onEvidenc
   };
   const hasExperiment = !!evidence.experiment;
   const hasCountry = !!evidence.country;
-  const views = [
-    { id: "base", label: tx("기본 데이터만", "Base data") },
-    ...(hasExperiment ? [{ id: "experiment", label: tx("실험 근거", "Experiment evidence") }] : []),
-    ...(hasCountry ? [{ id: "country", label: tx("추천 국가 세트", "Recommended markets") }] : []),
-  ];
+  const hasSelection = selectedEvidence.experiment || selectedEvidence.country;
   return (
     <section className="mmm-evidence-ledger" aria-label={tx("근거 보정", "Evidence calibration")}>
       <div className="mmm-evidence-ledger__topline">
@@ -300,25 +296,30 @@ function MmmEvidenceLedger({ locale, priorView, onPriorView, evidence, onEvidenc
         </button>
       </div>
 
-      <div className="mmm-evidence-ledger__views" role="tablist" aria-label={tx("모델 보기", "Model view")}>
-        {views.map((view) => (
-          <button key={view.id} role="tab" aria-selected={priorView === view.id}
-            className={`mmm-evidence-ledger__view ${priorView === view.id ? "is-active" : ""}`}
-            onClick={() => onPriorView(view.id)}>{view.label}</button>
-        ))}
+      <div className="mmm-evidence-ledger__views" aria-label={tx("적용할 근거", "Evidence to apply")}>
+        {hasExperiment && <button type="button" aria-pressed={selectedEvidence.experiment} className={`mmm-evidence-ledger__view ${selectedEvidence.experiment ? "is-active" : ""}`} onClick={() => onToggleEvidence("experiment")}>
+          <span aria-hidden>{selectedEvidence.experiment ? "☑" : "☐"}</span> {tx("실험 근거 사용", "Use experiment evidence")}
+        </button>}
+        {hasCountry && <button type="button" aria-pressed={selectedEvidence.country} className={`mmm-evidence-ledger__view ${selectedEvidence.country ? "is-active" : ""}`} onClick={() => onToggleEvidence("country")}>
+          <span aria-hidden>{selectedEvidence.country ? "☑" : "☐"}</span> {tx("추천 국가 세트 사용", "Use recommended markets")}
+        </button>}
         {!hasExperiment && !hasCountry && <span className="mmm-evidence-ledger__base-note">{tx("현재: 기본 MMM", "Current: base MMM")}</span>}
       </div>
 
-      {priorView !== "base" && (
+      {hasSelection && (
         <div className="mmm-evidence-ledger__pending">
           <strong>{appliedPriorCount ? tx(`${appliedPriorCount}개 채널 prior가 현재 모델에 적용되었습니다.`, `${appliedPriorCount} channel priors are applied to this model.`) : tx("적용 가능한 prior를 찾지 못했습니다.", "No applicable prior was found.")}</strong>
           <span>{appliedPriorCount ? tx("참고 국가의 매체 효과만 약하게 반영했습니다. 국가별 baseline·추세·계절성은 이식하지 않습니다.", "Only media effects are weakly borrowed; country baseline, trend, and seasonality are not transferred.") : tx("KPI·채널 헤더가 타깃 데이터와 같은지 확인하세요. 현재 수치는 기본 MMM 결과입니다.", "Check that KPI and channel headers match the target data. The figures shown remain the base MMM.")}</span>
         </div>
       )}
-      {priorView === "country" && countryCandidates.length > 0 && (
+      {selectedEvidence.country && countryCandidates.length > 0 && (
         <div className="mmm-evidence-ledger__pending">
           <strong>{tx(`추천 조합: ${countryCandidates[0].country} · 타깃 시장 마지막 12주 검증`, `Recommended set: ${countryCandidates[0].country} · target final-12-week validation`)}</strong>
           <span>{countryCandidates.slice(0, 5).map((c, i) => `${i + 1}. ${c.country} · RMSE ${Math.round(c.rmse).toLocaleString()} · 복잡도 반영 ${Math.round(c.score).toLocaleString()}`).join("   ")}</span>
+          {countryCandidates[0].backtest && <details style={{ marginTop: "10px" }}>
+            <summary>{tx("최근 12주 실제값과 모델 예측 보기", "View actual vs model prediction for the last 12 weeks")}</summary>
+            <div className="table-wrap" style={{ marginTop: "8px" }}><table className="data" style={{ fontSize: "11px" }}><thead><tr><th>{tx("주", "Week")}</th><th>{tx("실제", "Actual")}</th><th>{tx("모델 예측", "Model")}</th><th>{tx("차이", "Gap")}</th></tr></thead><tbody>{countryCandidates[0].backtest.actual.map((actual, index) => <tr key={index}><td>{countryCandidates[0].backtest.labels[index]}</td><td className="tnum">{fmtInt(actual)}</td><td className="tnum">{fmtInt(countryCandidates[0].backtest.predicted[index])}</td><td className="tnum">{fmtInt(countryCandidates[0].backtest.predicted[index] - actual)}</td></tr>)}</tbody></table></div>
+          </details>}
         </div>
       )}
 
@@ -1172,6 +1173,42 @@ function chartBase() {
   };
 }
 
+function sliceMmmPanel(panel, end) {
+  return {
+    ...panel,
+    week: panel.week.slice(0, end),
+    weekLabel: panel.weekLabel?.slice(0, end),
+    ch: Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, values.slice(0, end)])),
+    dummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(0, end)])),
+    steps: Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(0, end)])),
+    targets: Object.fromEntries(Object.entries(panel.targets).map(([key, values]) => [key, values.slice(0, end)])),
+  };
+}
+
+// 최근 12주는 학습에서 빼고, 그 당시 실제 지출만 넣어 예측한다. 전체 기간을 다시
+// 맞춘 fitted 값이 아니라, 미래 예측 직전 확인해야 하는 진짜 out-of-sample 검증이다.
+function buildMmmRecentBacktest(mmm) {
+  const panel = mmm?.panel;
+  const target = mmm?.target;
+  const n = panel?.week?.length || 0;
+  const holdout = Math.min(12, n - 24);
+  if (!panel || !target || holdout < 8) return null;
+  const train = sliceMmmPanel(panel, n - holdout);
+  const run = mmmBayesianRun(train, mmm.cfg, target, true, { mediaPriors: mmm.mediaPriors || {} });
+  const futureSpend = Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, values.slice(-holdout)]));
+  const forecast = run && mmmBayesianForecast(run, train, futureSpend, holdout);
+  const actual = panel.targets[target].slice(-holdout);
+  if (!forecast?.predFut || forecast.predFut.length !== actual.length) return null;
+  const absErrors = actual.map((value, index) => Math.abs(value - forecast.predFut[index]));
+  return {
+    labels: (panel.weekLabel || panel.week).slice(-holdout),
+    actual,
+    predicted: forecast.predFut,
+    rmse: Math.sqrt(absErrors.reduce((sum, value) => sum + value ** 2, 0) / actual.length),
+    mae: absErrors.reduce((sum, value) => sum + value, 0) / actual.length,
+  };
+}
+
 export default function MarketingResponse({ locale = "ko" }) {
   // 3단계(index MMM_STAGE_DEFS): diagnose | mmm | lab. 구 "forecast" 스테이지는 lab에 흡수 —
   // ③ lab이 mmmForecast(②계수) §7 미래예측을 렌더(stage==="lab"). 셋 다 shared mmmColMap 사용.
@@ -1190,7 +1227,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const [cannibQuestion, setCannibQuestion] = useState("precedence");
   // 기본 결과는 기존 MMM 그대로. prior 관련 데이터가 실제로 있을 때만 결과 탭 후보가 추가된다.
   // 원자료는 이 컴포넌트 메모리에만 두며 서버로 보내지 않는다.
-  const [priorView, setPriorView] = useState("base");
+  const [selectedEvidence, setSelectedEvidence] = useState({ experiment: false, country: false });
   const [priorEvidence, setPriorEvidence] = useState({ experiment: null, country: null });
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
@@ -1239,7 +1276,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       const guess = autoGuessColMap(csvData.headers, csvData.raw);
       setMmmColMap(guess);
       setMmmAnalyzedSig(demoPending.current ? JSON.stringify(guess) : null);
-      setPriorView("base");
+      setSelectedEvidence({ experiment: false, country: false });
       setPriorEvidence({ experiment: null, country: null });
       demoPending.current = false;
       prevCsvSig.current = csvSig;
@@ -1279,7 +1316,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         headers: demo.country.headers,
       },
     });
-    setPriorView("base");
+    setSelectedEvidence({ experiment: false, country: false });
   };
 
   // 첫 진입(데이터 없음) 시 샘플 데이터 자동 로드(CsvUploader와 동일 패턴, SEO·첫인상).
@@ -1348,7 +1385,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       // 성공한 경우만 약한 precision으로 참고한다.
       const mediaPriors = {};
       let countryCandidates = [];
-      const experiment = priorView === "experiment" ? priorEvidence.experiment : null;
+      const experiment = selectedEvidence.experiment ? priorEvidence.experiment : null;
       if (experiment?.raw?.length && experiment.headers?.length) {
         const targetHeader = mmmTargetHeader(experiment.headers, t);
         const stateHeader = experiment.headers.find((h) => /treatment_state|state|on.?off|상태/i.test(String(h)));
@@ -1395,7 +1432,7 @@ export default function MarketingResponse({ locale = "ko" }) {
           });
         }
       }
-      const source = priorView === "country" ? priorEvidence.country : null;
+      const source = selectedEvidence.country ? priorEvidence.country : null;
       if (source?.raw?.length && source.headers?.length) {
         const countryHeader = source.headers.find((h) => /(^|[_\s])(country|market)([_\s]|$)|국가|시장/i.test(String(h)));
         const countries = countryHeader ? [...new Set(source.raw.map((row) => String(row[countryHeader] || "").trim()).filter(Boolean))] : [];
@@ -1413,7 +1450,7 @@ export default function MarketingResponse({ locale = "ko" }) {
             if (isFinite(s.ln_coef)) prior[s.key] = { mean: s.ln_coef, precision: 0.35 };
           });
           if (!Object.keys(prior).length) return;
-          const holdout = Math.min(12, Math.floor(panel.week.length * 0.2));
+          const holdout = Math.min(12, panel.week.length - 24);
           if (holdout < 8) return;
           const train = slicePanel(panel, panel.week.length - holdout);
           const fit = mmmBayesianRun(train, cfg, t, false, { mediaPriors: prior });
@@ -1421,7 +1458,12 @@ export default function MarketingResponse({ locale = "ko" }) {
           const forecast = fit && mmmBayesianForecast(fit, train, futureSpend, holdout);
           const actual = panel.targets[t].slice(-holdout);
           const rmse = forecast?.predFut?.length === actual.length ? Math.sqrt(actual.reduce((sum, value, index) => sum + (value - forecast.predFut[index]) ** 2, 0) / actual.length) : Infinity;
-          candidatePriors.push({ country, prior, rmse });
+          const backtest = forecast?.predFut?.length === actual.length ? {
+            labels: (panel.weekLabel || panel.week).slice(-holdout),
+            actual,
+            predicted: forecast.predFut,
+          } : null;
+          candidatePriors.push({ country, prior, rmse, backtest });
         });
         candidatePriors.sort((a, b) => a.rmse - b.rmse);
         const top = candidatePriors.slice(0, 4);
@@ -1430,14 +1472,19 @@ export default function MarketingResponse({ locale = "ko" }) {
           const combined = {};
           members.forEach(({ prior }) => Object.entries(prior).forEach(([key, value]) => (combined[key] ||= []).push(value.mean)));
           const prior = Object.fromEntries(Object.entries(combined).map(([key, values]) => [key, { mean: values.reduce((sum, value) => sum + value, 0) / values.length, precision: Math.min(1.2, 0.35 * values.length) }]));
-          const holdout = Math.min(12, Math.floor(panel.week.length * 0.2));
+          const holdout = Math.min(12, panel.week.length - 24);
           const train = slicePanel(panel, panel.week.length - holdout);
           const fit = mmmBayesianRun(train, cfg, t, false, { mediaPriors: prior });
           const fc = fit && mmmBayesianForecast(fit, train, Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, values.slice(-holdout)])), holdout);
           const actual = panel.targets[t].slice(-holdout);
           const rmse = fc?.predFut?.length === actual.length ? Math.sqrt(actual.reduce((sum, value, index) => sum + (value - fc.predFut[index]) ** 2, 0) / actual.length) : Infinity;
           // 복잡도 패널티: 아주 작은 오차 차이로 국가 수가 늘지 않게 한다.
-          return { country: members.map((m) => m.country).join(" + "), prior, rmse, score: rmse * (1 + 0.015 * (members.length - 1)) };
+          const backtest = fc?.predFut?.length === actual.length ? {
+            labels: (panel.weekLabel || panel.week).slice(-holdout),
+            actual,
+            predicted: fc.predFut,
+          } : null;
+          return { country: members.map((m) => m.country).join(" + "), prior, rmse, score: rmse * (1 + 0.015 * (members.length - 1)), backtest };
         };
         top.forEach((a, i) => {
           sets.push(scoreSet([a]));
@@ -1468,7 +1515,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       }
       return { empty: true, reason: tx("분석 오류: ", "Analysis error: ") + msg };
     }
-  }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, effPlatformFilter, locale, tx, priorView, priorEvidence]);
+  }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence]);
 
   useEffect(() => {
     if (!mmmAnalyzed) return;
@@ -1521,6 +1568,15 @@ export default function MarketingResponse({ locale = "ko" }) {
       return null;
     }
   }, [mmm, stage, fcHorizon, fcBudget]);
+
+  const recentBacktest = useMemo(() => {
+    if (!mmm || mmm.empty || stage !== "lab") return null;
+    try {
+      return buildMmmRecentBacktest(mmm);
+    } catch {
+      return null;
+    }
+  }, [mmm, stage]);
 
   const trend = useMemo(() => {
     if (!mmm || mmm.empty || !["trend", "diagnose"].includes(stage)) return null;
@@ -2724,15 +2780,15 @@ export default function MarketingResponse({ locale = "ko" }) {
             <>
               <MmmEvidenceLedger
                 locale={locale}
-                priorView={priorView}
-                onPriorView={setPriorView}
+                selectedEvidence={selectedEvidence}
+                onToggleEvidence={(kind) => setSelectedEvidence((current) => ({ ...current, [kind]: !current[kind] }))}
                 evidence={priorEvidence}
                 onEvidence={setPriorEvidence}
                 onLoadDemo={handleLoadPriorDemo}
                 appliedPriorCount={Object.keys(mmm.mediaPriors || {}).length}
                 countryCandidates={mmm.countryCandidates || []}
               />
-              {priorView !== "base" && (
+              {(selectedEvidence.experiment || selectedEvidence.country) && (
                 <div className="callout" style={{ marginBottom: "12px" }}>
                   <div className="ico">i</div><div className="body"><strong>{Object.keys(mmm.mediaPriors || {}).length ? tx(`${tgtKo}에는 ${Object.keys(mmm.mediaPriors).length}개 채널 prior 적용`, `${Object.keys(mmm.mediaPriors).length} channel priors applied to ${tgtKo}`) : tx(`${tgtKo}에 일치하는 prior 없음`, `No matching prior for ${tgtKo}`)}</strong><p>{Object.keys(mmm.mediaPriors || {}).length ? tx("같은 KPI 정의와 단위를 가진 근거만 반영했습니다.", "Only evidence with the same KPI definition and units is applied.") : tx("이 목표에는 기본 MMM만 사용합니다.", "This target continues to use the base MMM.")}</p></div>
                 </div>
@@ -3093,6 +3149,15 @@ export default function MarketingResponse({ locale = "ko" }) {
               </div>
               {forecast ? (
                 <>
+                  {recentBacktest && (
+                    <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "baseline" }}>
+                        <div><strong>{tx("미래 예측 전 최근 12주 검증", "Last-12-week check before forecasting")}</strong><p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED }}>{tx("최근 12주는 학습에서 제외한 뒤, 당시 실제 지출을 넣어 모델이 예측한 값입니다. 실제값을 미리 본 맞춤값이 아닙니다.", "The last 12 weeks were excluded from training, then predicted using their actual spend. This is not an in-sample fitted value.")}</p></div>
+                        <span className="ab-pill">RMSE {fmtInt(recentBacktest.rmse)} · MAE {fmtInt(recentBacktest.mae)}</span>
+                      </div>
+                      <div className="table-wrap" style={{ marginTop: "10px" }}><table className="data" style={{ fontSize: "11px" }}><thead><tr><th>{tx("주", "Week")}</th><th>{tx("실제", "Actual")}</th><th>{tx("모델 예측", "Model prediction")}</th><th>{tx("차이", "Gap")}</th></tr></thead><tbody>{recentBacktest.actual.map((actual, index) => <tr key={index}><td>{recentBacktest.labels[index]}</td><td className="tnum">{fmtInt(actual)}</td><td className="tnum">{fmtInt(recentBacktest.predicted[index])}</td><td className="tnum">{fmtInt(recentBacktest.predicted[index] - actual)}</td></tr>)}</tbody></table></div>
+                    </Card>
+                  )}
                   <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "12px" }}>
                     {(() => {
                       const futAvg = forecast.predFut.reduce((a, b) => a + b, 0) / forecast.predFut.length;
