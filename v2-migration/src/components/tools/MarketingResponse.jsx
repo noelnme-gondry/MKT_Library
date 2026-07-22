@@ -1338,6 +1338,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         const targetHeader = experiment.headers.find((h) => /signups?|registrations?|가입|revenue|매출|reactiv/i.test(String(h)));
         const stateHeader = experiment.headers.find((h) => /treatment_state|state|on.?off|상태/i.test(String(h)));
         const armHeader = experiment.headers.find((h) => /(^|[_\s])arm|group|treatment.*control|처리군|대조군/i.test(String(h)));
+        const periodHeader = experiment.headers.find((h) => /post|pre|period|phase|사전|사후|기간/i.test(String(h)));
         const spends = experiment.headers.filter((h) => /spend|cost|비용|지출/i.test(String(h)));
         if (targetHeader && spends.length) {
           spends.forEach((spendHeader) => {
@@ -1349,14 +1350,22 @@ export default function MarketingResponse({ locale = "ko" }) {
               const treated = experiment.raw.filter((row) => /treat|처리/i.test(String(row[armHeader] || "")));
               const control = experiment.raw.filter((row) => /control|대조/i.test(String(row[armHeader] || "")));
               if (treated.length >= 4 && control.length >= 4) {
-                effect = treated.reduce((sum, row) => sum + parse(row[targetHeader]), 0) / treated.length - control.reduce((sum, row) => sum + parse(row[targetHeader]), 0) / control.length;
-                n = Math.min(treated.length, control.length);
+                const mean = (rows) => rows.reduce((sum, row) => sum + parse(row[targetHeader]), 0) / Math.max(1, rows.length);
+                const tPost = treated.filter((row) => /post|after|사후/i.test(String(row[periodHeader] || "")));
+                const tPre = treated.filter((row) => /pre|before|사전/i.test(String(row[periodHeader] || "")));
+                const cPost = control.filter((row) => /post|after|사후/i.test(String(row[periodHeader] || "")));
+                const cPre = control.filter((row) => /pre|before|사전/i.test(String(row[periodHeader] || "")));
+                effect = tPost.length && tPre.length && cPost.length && cPre.length ? (mean(tPost) - mean(tPre)) - (mean(cPost) - mean(cPre)) : mean(treated) - mean(control);
+                n = periodHeader && tPost.length && tPre.length && cPost.length && cPre.length ? Math.min(tPost.length, tPre.length, cPost.length, cPre.length) : Math.min(treated.length, control.length);
               }
             } else if (stateHeader) {
               const on = experiment.raw.filter((row) => /^(on|treat|1)$/i.test(String(row[stateHeader] || "").trim()));
               const off = experiment.raw.filter((row) => /^(off|control|0)$/i.test(String(row[stateHeader] || "").trim()));
               if (on.length >= 4 && off.length >= 4) {
-                effect = on.reduce((sum, row) => sum + parse(row[targetHeader]), 0) / on.length - off.reduce((sum, row) => sum + parse(row[targetHeader]), 0) / off.length;
+                const ordered = experiment.raw.map((row, i) => ({ row, i })).sort((a, b) => String(a.row.week || a.row.date || a.i).localeCompare(String(b.row.week || b.row.date || b.i)));
+                const X = ordered.map(({ row }, i) => [1, i, Math.sin((2 * Math.PI * i) / 52), Math.cos((2 * Math.PI * i) / 52), /^(on|treat|1)$/i.test(String(row[stateHeader] || "").trim()) ? 1 : 0]);
+                const fit = mmmOls(X, ordered.map(({ row }) => parse(row[targetHeader])));
+                effect = fit ? fit.beta[4] : on.reduce((sum, row) => sum + parse(row[targetHeader]), 0) / on.length - off.reduce((sum, row) => sum + parse(row[targetHeader]), 0) / off.length;
                 n = Math.min(on.length, off.length);
               }
             }
