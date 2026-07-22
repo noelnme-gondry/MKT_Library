@@ -257,13 +257,27 @@ function NetEffectEvidence({ net, locale }) {
   </Card>;
 }
 
-function MmmBacktestChart({ labels, actual, variants, locale }) {
+function MmmBacktestChart({ labels, actual, variants, locale, validationStartIndex = null }) {
   const ref = useRef(null);
   useEffect(() => {
     if (!ref.current || !actual?.length) return undefined;
     const css = getComputedStyle(document.body);
     const muted = css.getPropertyValue("--text-muted").trim() || "#64748b";
     const grid = css.getPropertyValue("--border").trim() || "#e2e8f0";
+    const splitPlugin = validationStartIndex == null ? null : {
+      id: "validationBoundary",
+      afterDraw(instance) {
+        const x = instance.scales.x.getPixelForValue(validationStartIndex);
+        const { ctx, chartArea } = instance;
+        ctx.save();
+        ctx.strokeStyle = "#f59e0b";
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(x, chartArea.top); ctx.lineTo(x, chartArea.bottom); ctx.stroke();
+        ctx.setLineDash([]); ctx.fillStyle = "#b45309"; ctx.font = "10px sans-serif";
+        ctx.fillText(locale === "en" ? "validation starts" : "검증 시작", Math.min(x + 5, chartArea.right - 66), chartArea.top + 12);
+        ctx.restore();
+      },
+    };
     const chart = new Chart(ref.current.getContext("2d"), {
       type: "line",
       data: {
@@ -272,7 +286,7 @@ function MmmBacktestChart({ labels, actual, variants, locale }) {
           { label: locale === "en" ? "Actual" : "실제", data: actual, borderColor: "#475569", borderWidth: 2.5, pointRadius: 2.5, tension: 0.18 },
           ...variants.map((series, index) => ({ label: series.label, data: series.predicted, borderColor: series.color || MMM_MEDIA_PALETTE[index % MMM_MEDIA_PALETTE.length], borderDash: series.dash || [5, 3], borderWidth: series.recommended ? 2.5 : 1.4, pointRadius: 0, tension: 0.18 })),
         ],
-      },
+      }, plugins: splitPlugin ? [splitPlugin] : [],
       options: {
         ...chartBase(),
         plugins: { ...chartBase().plugins, legend: { position: "bottom", labels: { color: muted, boxWidth: 12, font: { size: 10 } } } },
@@ -281,7 +295,7 @@ function MmmBacktestChart({ labels, actual, variants, locale }) {
     });
     requestAnimationFrame(() => chart.resize());
     return () => chart.destroy();
-  }, [labels, actual, variants, locale]);
+  }, [labels, actual, variants, locale, validationStartIndex]);
   return <div className="chart-container" style={{ height: "270px", minHeight: "270px", marginTop: "10px" }}><canvas ref={ref}></canvas></div>;
 }
 
@@ -1210,8 +1224,8 @@ function sliceMmmPanel(panel, end) {
   };
 }
 
-// 최근 12주는 학습에서 빼고, 그 당시 실제 지출만 넣어 예측한다. 전체 기간을 다시
-// 맞춘 fitted 값이 아니라, 미래 예측 직전 확인해야 하는 진짜 out-of-sample 검증이다.
+// 최근 24주 맥락에서 앞 12주는 학습 구간의 모델 적합, 뒤 12주는 학습에서 뺀
+// out-of-sample 예측을 잇는다. 미래 예측 전 두 구간을 구분해 보는 검증 화면이다.
 function buildMmmRecentBacktest(mmm) {
   const panel = mmm?.panel;
   const target = mmm?.target;
@@ -1222,14 +1236,18 @@ function buildMmmRecentBacktest(mmm) {
   const run = mmmBayesianRun(train, mmm.cfg, target, true, { mediaPriors: mmm.mediaPriors || {} });
   const futureSpend = Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, values.slice(-holdout)]));
   const forecast = run && mmmBayesianForecast(run, train, futureSpend, holdout);
-  const actual = panel.targets[target].slice(-holdout);
-  if (!forecast?.predFut || forecast.predFut.length !== actual.length) return null;
-  const absErrors = actual.map((value, index) => Math.abs(value - forecast.predFut[index]));
+  const validationActual = panel.targets[target].slice(-holdout);
+  if (!forecast?.predFut || forecast.predFut.length !== validationActual.length) return null;
+  const contextTrain = Math.min(12, forecast.fittedHist.length);
+  const actual = panel.targets[target].slice(-(contextTrain + holdout));
+  const predicted = [...forecast.fittedHist.slice(-contextTrain), ...forecast.predFut];
+  const absErrors = validationActual.map((value, index) => Math.abs(value - forecast.predFut[index]));
   return {
-    labels: (panel.weekLabel || panel.week).slice(-holdout),
+    labels: (panel.weekLabel || panel.week).slice(-(contextTrain + holdout)),
     actual,
-    predicted: forecast.predFut,
-    rmse: Math.sqrt(absErrors.reduce((sum, value) => sum + value ** 2, 0) / actual.length),
+    predicted,
+    validationStartIndex: contextTrain,
+    rmse: Math.sqrt(absErrors.reduce((sum, value) => sum + value ** 2, 0) / validationActual.length),
     mae: absErrors.reduce((sum, value) => sum + value, 0) / actual.length,
   };
 }
@@ -3193,10 +3211,11 @@ export default function MarketingResponse({ locale = "ko" }) {
                   {recentBacktest && (
                     <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "baseline" }}>
-                        <div><strong>{tx("미래 예측 전 최근 12주 검증", "Last-12-week check before forecasting")}</strong><p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED }}>{tx("최근 12주는 학습에서 제외한 뒤, 당시 실제 지출을 넣어 모델이 예측한 값입니다. 실제값을 미리 본 맞춤값이 아닙니다.", "The last 12 weeks were excluded from training, then predicted using their actual spend. This is not an in-sample fitted value.")}</p></div>
+                        <div><strong>{tx("미래 예측 전 최근 24주 검증", "Last-24-week check before forecasting")}</strong><p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED }}>{tx("앞 12주는 모델이 학습 구간을 얼마나 따라갔는지, 뒤 12주는 학습에서 제외한 뒤 당시 실제 지출로 예측한 값입니다.", "The first 12 weeks show training fit; the last 12 were excluded from training and predicted using their actual spend.")}</p></div>
                         <span className="ab-pill">RMSE {fmtInt(recentBacktest.rmse)} · MAE {fmtInt(recentBacktest.mae)}</span>
                       </div>
-                      <MmmBacktestChart locale={locale} labels={recentBacktest.labels} actual={recentBacktest.actual} variants={[{ label: tx("모델 예측", "Model prediction"), predicted: recentBacktest.predicted, color: "#2563eb", dash: [] }]} />
+                      <div style={{ display: "flex", gap: "6px", marginTop: "10px", flexWrap: "wrap" }}><span className="ab-pill">{tx("앞 12주: 학습 구간 적합", "First 12: training fit")}</span><span className="ab-pill" style={{ borderColor: "#f59e0b", color: "#b45309" }}>{tx("뒤 12주: 학습 제외 검증", "Last 12: held-out validation")}</span></div>
+                      <MmmBacktestChart locale={locale} labels={recentBacktest.labels} actual={recentBacktest.actual} validationStartIndex={recentBacktest.validationStartIndex} variants={[{ label: tx("모델 적합·예측", "Model fit · prediction"), predicted: recentBacktest.predicted, color: "#2563eb", dash: [] }]} />
                     </Card>
                   )}
                   <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "12px" }}>
