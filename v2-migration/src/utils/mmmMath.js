@@ -649,6 +649,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               bayesMaxProfileCandidates: 48,
               bayesMaxTotalProfileFits: 480,
               bayesMaxPriorProfileFits: 240,
+              intervalCalibrationMinN: 8,
+              intervalCalibrationCoverage: 0.9,
               cvMinTrain: 40,
               defaultLam: 0.6, // cannibalization net elasticity용
               // 국가·연도와 무관한 고정 주차를 실제 명절처럼 넣지 않는다. 레거시
@@ -750,6 +752,46 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             export function _pstd(a) {
               const m = _mean(a);
               return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / a.length);
+            }
+
+            function _mmmInterpolatedQuantile(values, probability) {
+              const finite = values.filter(Number.isFinite).slice().sort((a, b) => a - b);
+              if (!finite.length) return null;
+              const position = Math.max(0, Math.min(finite.length - 1, probability * (finite.length - 1)));
+              const lower = Math.floor(position), upper = Math.ceil(position);
+              return finite[lower] + (finite[upper] - finite[lower]) * (position - lower);
+            }
+
+            // 최근 시간순 holdout에서 실제로 발생한 비대칭 잔차를 미래 구간에 반영한다.
+            // MCMC posterior가 아니므로, 표본 부족 시 기존 조건부 Gaussian 구간을 유지한다.
+            export function mmmBuildIntervalCalibration(actual, predicted, nominalCoverage = MMM_METH_CONFIG.intervalCalibrationCoverage) {
+              const pairs = (actual || []).map((value, index) => ({ value, predicted: predicted?.[index] }))
+                .filter((item) => Number.isFinite(item.value) && Number.isFinite(item.predicted));
+              const minN = MMM_METH_CONFIG.intervalCalibrationMinN;
+              if (pairs.length < minN) return { enabled: false, n: pairs.length, reason: "insufficient-time-ordered-holdout" };
+              const residuals = pairs.map((item) => item.value - item.predicted);
+              const tail = (1 - nominalCoverage) / 2;
+              const lowerResidual = _mmmInterpolatedQuantile(residuals, tail);
+              const upperResidual = _mmmInterpolatedQuantile(residuals, 1 - tail);
+              if (!Number.isFinite(lowerResidual) || !Number.isFinite(upperResidual)) return { enabled: false, n: pairs.length, reason: "invalid-holdout-residual" };
+              return {
+                enabled: true,
+                n: pairs.length,
+                nominalCoverage,
+                lowerResidual,
+                upperResidual,
+                empiricalCoverage: residuals.filter((value) => value >= lowerResidual && value <= upperResidual).length / residuals.length,
+                method: "time-ordered-holdout-residual-quantiles",
+              };
+            }
+
+            export function mmmApplyIntervalCalibration(point, conditionalLo, conditionalHi, calibration) {
+              if (!calibration?.enabled) return { lo: conditionalLo, hi: conditionalHi, calibrated: false };
+              return {
+                lo: Math.min(conditionalLo, point + calibration.lowerResidual),
+                hi: Math.max(conditionalHi, point + calibration.upperResidual),
+                calibrated: true,
+              };
             }
 
             export function mmmChannelCoverage(panel, cfg) {
@@ -862,6 +904,12 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   t.map((tt) => (tt - tm) / ts),
                 );
               }
+              (cfg.baselineKnots || []).forEach((knot) => {
+                const value = Number(knot);
+                if (!Number.isFinite(value)) return;
+                const scale = _pstd(t) || 1;
+                push(`baseline_knot_${value}`, t.map((tt) => Math.max(0, (tt - value) / scale)));
+              });
               const X = [];
               for (let i = 0; i < n; i++) X.push(cols.map((c) => c[i]));
               // 랭크 결손 열 드롭(상수=전부-0 채널[예: ASA-Android] · 완전공선) → 다운스트림 mmmOls/fitAR1 특이행렬 방지.
@@ -3019,12 +3067,81 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               return result;
             }
 
+            function _mmmBayesBaselineSelection(panel, cfg, targetName, options = {}) {
+              const n = panel.week?.length || 0;
+              if (!options.enableBaselineSelection || n < 78 || cfg.baselineKnots?.length) return { cfg, selection: null };
+              const controls = _mmmBayesControlFeatures(panel, cfg);
+              const params = _mmmBayesChannelParams(panel, cfg, targetName, controls);
+              const candidates = [[], [panel.week[Math.floor(n * 0.5)]], [panel.week[Math.floor(n / 3)], panel.week[Math.floor((n * 2) / 3)]]];
+              const evaluated = candidates.map((knots) => {
+                const candidateCfg = { ...cfg, baselineKnots: knots };
+                const built = _mmmBayesControlFeatures(panel, candidateCfg);
+                const names = built.names.slice();
+                const cols = built.X.length ? built.X[0].map((_, j) => built.X.map((row) => row[j])) : [];
+                const channels = _mmmChans(panel).filter((ch) => panel.ch[ch.key] && params[ch.key]);
+                channels.forEach((ch) => {
+                  const p = params[ch.key];
+                  names.push("media_" + ch.key);
+                  cols.push(mmmAdstock(panel.ch[ch.key], p.alpha).map((value) => mmmHill(value, p.ec, p.slope)));
+                });
+                const fit = _mmmBayesFitColumns(names, cols, channels, panel.targets[targetName], options);
+                if (!fit) return { knots, bic: Infinity };
+                const sse = fit.posterior.resid.reduce((sum, value) => sum + value ** 2, 0);
+                return { knots, bic: n * Math.log(Math.max(sse / Math.max(1, n), 1e-12)) + (names.length + 1) * Math.log(Math.max(2, n)) };
+              }).sort((a, b) => a.bic - b.bic);
+              const base = evaluated.find((item) => item.knots.length === 0);
+              const best = evaluated[0];
+              const selected = !!(base && best && Number.isFinite(base.bic) && Number.isFinite(best.bic) && base.bic - best.bic >= 6 && best.knots.length);
+              return {
+                cfg: selected ? { ...cfg, baselineKnots: best.knots } : cfg,
+                selection: { enabled: true, candidateCount: evaluated.length, selected, selectedKnots: selected ? best.knots : [], baseBic: base?.bic ?? null, bestBic: best?.bic ?? null, reason: selected ? "material-bic-improvement" : "base-retained" },
+              };
+            }
+
+            function _mmmBayesJointTransformCheck(panel, cfg, targetName, controls, channelMeta, params, uncertainty, options = {}) {
+              const eligible = channelMeta
+                .filter((ch) => (uncertainty[ch.key]?.models || []).length > 1)
+                .sort((a, b) => (uncertainty[a.key]?.topWeight || 1) - (uncertainty[b.key]?.topWeight || 1))
+                .slice(0, 2);
+              if (eligible.length < 2) return { enabled: false, reason: "fewer-than-two-uncertain-channels" };
+              const modelSets = eligible.map((ch) => (uncertainty[ch.key].models || []).slice().sort((a, b) => b.weight - a.weight).slice(0, 2));
+              const combinations = [];
+              modelSets[0].forEach((first) => modelSets[1].forEach((second) => combinations.push([first, second])));
+              const evaluated = combinations.map((choice) => {
+                const choiceByKey = Object.fromEntries(eligible.map((ch, index) => [ch.key, choice[index]]));
+                const names = controls.names.slice();
+                const cols = controls.X.length ? controls.X[0].map((_, j) => controls.X.map((row) => row[j])) : [];
+                channelMeta.forEach((ch) => {
+                  const p = choiceByKey[ch.key] || params[ch.key];
+                  names.push("media_" + ch.key);
+                  cols.push(mmmAdstock(panel.ch[ch.key], p.alpha).map((value) => mmmHill(value, p.ec, p.slope)));
+                });
+                const fit = _mmmBayesFitColumns(names, cols, channelMeta, panel.targets[targetName], options);
+                if (!fit) return { choice, bic: Infinity };
+                const sse = fit.posterior.resid.reduce((sum, value) => sum + value ** 2, 0);
+                return { choice, bic: panel.week.length * Math.log(Math.max(sse / Math.max(1, panel.week.length), 1e-12)) + (names.length + 1) * Math.log(Math.max(2, panel.week.length)) };
+              }).sort((a, b) => a.bic - b.bic);
+              return {
+                enabled: true,
+                channels: eligible.map((ch) => ch.key),
+                candidateCount: combinations.length,
+                evaluatedCount: evaluated.filter((item) => Number.isFinite(item.bic)).length,
+                selectedBic: evaluated[0]?.bic ?? null,
+                baselineBic: evaluated.find((item) => item.choice.every((model, index) => model === modelSets[index][0]))?.bic ?? null,
+                selected: evaluated[0]?.choice?.map((model) => ({ alpha: model.alpha, ec: model.ec, slope: model.slope })) || [],
+                appliedToCoefficients: false,
+                note: "limited-joint-diagnostic",
+              };
+            }
+
             export function mmmBayesianRun(panel, cfg, targetName, withBacktest = true, options = {}) {
               const targetSeries = panel.targets?.[targetName];
               if (!targetSeries?.length || targetSeries.some((value) => !Number.isFinite(value))) return null;
               if (_mmmChans(panel).some((channel) => panel.ch[channel.key]?.some((value) => !Number.isFinite(value)))) return null;
-              const controls = _mmmBayesControlFeatures(panel, cfg);
-              const selectedParams = _mmmBayesChannelParams(panel, cfg, targetName, controls);
+              const baseline = _mmmBayesBaselineSelection(panel, cfg, targetName, options);
+              const effectiveCfg = baseline.cfg;
+              const controls = _mmmBayesControlFeatures(panel, effectiveCfg);
+              const selectedParams = _mmmBayesChannelParams(panel, effectiveCfg, targetName, controls);
               // 참고시장 계수를 타깃과 같은 feature 단위로 추정할 때는 타깃이
               // 선택한 alpha/ec/slope를 명시적으로 고정한다. 각 참고시장이 자체
               // 변환을 고른 뒤 계수 숫자만 전이하면 서로 다른 Hill 단위를 같은
@@ -3054,7 +3171,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               // 변환 불확실성을 평균내어 표시한다.
               const transformUncertainty = options.skipTransformUncertainty
                 ? {}
-                : _mmmBayesTransformUncertainty(panel, cfg, names, cols, channelMeta, { ...options, targetName, channelParams: params });
+                : _mmmBayesTransformUncertainty(panel, effectiveCfg, names, cols, channelMeta, { ...options, targetName, channelParams: params });
+              const jointTransform = options.skipTransformUncertainty
+                ? { enabled: false, reason: "transform-uncertainty-skipped" }
+                : _mmmBayesJointTransformCheck(panel, effectiveCfg, targetName, controls, channelMeta, params, transformUncertainty, options);
               // 회사 MMM 대시보드처럼 채널별이 아니라 의사결정 단위로 묶는다.
               // MmmColumnMapper의 kind=brand는 Brand, 나머지 매체는 Performance.
               const mediaGroups = [];
@@ -3100,7 +3220,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 };
               });
               const saturationByChannel = {};
-              const channelCoverage = mmmChannelCoverage(panel, cfg);
+              const channelCoverage = mmmChannelCoverage(panel, effectiveCfg);
               channelMeta.forEach((ch) => {
                 const j = names.indexOf("media_" + ch.key);
                 const raw = panel.ch[ch.key];
@@ -3255,13 +3375,14 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 ];
               });
               let backtest = null;
+              let intervalCalibration = null;
               // 마지막 20%(최소 8주)는 학습에서 빼고, 당시 실제 지출을 넣어 순방향 예측한다.
               // 하이퍼파라미터 선택까지 train 안에서만 하므로 in-sample R²와 분리된 현실 점검이다.
               if (withBacktest && panel.week.length >= 48) {
                 const cut = Math.floor(panel.week.length * 0.8);
                 const slicePanel = (end) => ({ ...panel, week: panel.week.slice(0, end), ch: Object.fromEntries(Object.entries(panel.ch).map(([k, v]) => [k, v.slice(0, end)])), dummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([k, v]) => [k, v.slice(0, end)])), steps: Object.fromEntries(Object.entries(panel.steps || {}).map(([k, v]) => [k, v.slice(0, end)])), targets: Object.fromEntries(Object.entries(panel.targets).map(([k, v]) => [k, v.slice(0, end)])) });
                 const train = slicePanel(cut);
-                const held = mmmBayesianRun(train, cfg, targetName, false, { ...options, skipTransformUncertainty: true });
+                const held = mmmBayesianRun(train, effectiveCfg, targetName, false, { ...options, skipTransformUncertainty: true });
                 const h = panel.week.length - cut;
                 const spend = Object.fromEntries(Object.entries(panel.ch).map(([k, v]) => [k, v.slice(cut)]));
                 const fc = held && mmmBayesianForecast(held, train, spend, h, {
@@ -3272,12 +3393,14 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 if (fc?.predFut?.length === actualHold.length) {
                   const err = actualHold.map((v, i) => v - fc.predFut[i]);
                   const absErr = err.map(Math.abs);
+                  intervalCalibration = mmmBuildIntervalCalibration(actualHold, fc.predFut);
                   backtest = {
                     n: h,
                     rmse: Math.sqrt(_mean(err.map((v) => v * v))),
                     mape: _mean(err.map((v, i) => Math.abs(actualHold[i]) > 1e-9 ? Math.abs(v / actualHold[i]) * 100 : 0)),
                     wmape: absErr.reduce((sum, value) => sum + value, 0) / Math.max(1e-9, actualHold.reduce((sum, value) => sum + Math.abs(value), 0)) * 100,
                     calibratedPriorCount: held.posterior.calibratedPriorCount || 0,
+                    intervalCalibration,
                   };
                 }
               }
@@ -3306,6 +3429,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 identification,
                 elasticities: [],
                 backtest,
+                intervalCalibration,
+                baselineSelection: baseline.selection,
+                effectiveCfg,
+                jointTransform,
                 appliedMediaPriors: options.mediaPriors || {},
               };
             }
@@ -3397,7 +3524,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 identification: run.identification || null,
                 fittedMean: _mean(fitted),
                 oos: run.backtest || null,
-                intervalScope: "Conditional Gaussian empirical-Bayes predictive reference interval, conditional on the representative transform",
+                intervalCalibration: run.intervalCalibration || null,
+                intervalScope: run.intervalCalibration?.enabled
+                  ? "Conditional Gaussian interval widened by time-ordered holdout residual calibration"
+                  : "Conditional Gaussian empirical-Bayes predictive reference interval, conditional on the representative transform",
                 samplingDiagnostic: null,
               };
             }
@@ -3458,8 +3588,14 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 const predictionSd = Math.sqrt(Math.max(0, run.posterior.sigma2 * (1 + quad)));
                 futureRows.push(row);
                 predFut.push(prediction);
-                lo.push(prediction - 1.645 * predictionSd);
-                hi.push(prediction + 1.645 * predictionSd);
+                const calibrated = mmmApplyIntervalCalibration(
+                  prediction,
+                  prediction - 1.645 * predictionSd,
+                  prediction + 1.645 * predictionSd,
+                  run.intervalCalibration,
+                );
+                lo.push(calibrated.lo);
+                hi.push(calibrated.hi);
               }
               let labels = Array.from({ length: H }, (_, i) => `+${i + 1}`);
               if (panel.dates?.length === n && panel.granularity?.days) {
@@ -3484,7 +3620,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 predFut,
                 lo,
                 hi,
-                intervalLabel: "90% conditional Gaussian predictive reference interval (representative transform)",
+                intervalLabel: run.intervalCalibration?.enabled
+                  ? "90% predictive reference interval (conditional Gaussian + time-ordered holdout residual calibration)"
+                  : "90% conditional Gaussian predictive reference interval (representative transform)",
+                intervalCalibration: run.intervalCalibration || null,
                 histLabels: historicalLabels,
                 labels: [...historicalLabels, ...labels],
                 futLabels: labels,

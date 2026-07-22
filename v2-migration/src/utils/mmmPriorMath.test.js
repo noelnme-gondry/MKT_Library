@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { buildExperimentMediaPrior, buildExperimentMediaPriorDetailed, mmmRollingOrigins, summarizeRollingErrors } from "./mmmPriorMath";
+import { buildExperimentMediaPrior, buildExperimentMediaPriorDetailed, mmmRollingOrigins, summarizeRollingErrors, mmmPriorMroiAtSpend, mmmMroiToCoefficientPrior } from "./mmmPriorMath";
 
 describe("MMM experiment prior calibration", () => {
+  it("converts a transformed-feature coefficient prior to mROI and back at a spend operating point", () => {
+    const params = { alpha: 0.4, ec: 120, slope: 1.1 };
+    const prior = { mean: 2, se: 0.5, ci90: [1.2, 2.8] };
+    const mroi = mmmPriorMroiAtSpend(prior, params, 250);
+    expect(mroi).not.toBeNull();
+    expect(mroi.mean).toBeGreaterThan(0);
+    expect(mroi.ci90[0]).toBeLessThan(mroi.mean);
+    const converted = mmmMroiToCoefficientPrior(mroi, params, 250);
+    expect(converted.mean).toBeCloseTo(prior.mean, 10);
+    expect(converted.se).toBeCloseTo(prior.se, 10);
+  });
+
   it("converts On/Off effect and transformed treatment intensity into a finite CI-based prior", () => {
     let adstock = 0;
     const rows = Array.from({ length: 36 }, (_, i) => {

@@ -26,9 +26,24 @@ import {
   mmmDetectCollinear,
   mmmResolveAbsorb,
   mmmChannelCoverage,
+  mmmBuildIntervalCalibration,
+  mmmApplyIntervalCalibration,
 } from "./mmmMath.js";
 
 describe("runMmmMethTests (golden port)", () => {
+  it("calibrates only from a sufficiently long chronological holdout and preserves asymmetric tails", () => {
+    expect(mmmBuildIntervalCalibration([10, 20, 30], [9, 19, 29]).enabled).toBe(false);
+    const calibration = mmmBuildIntervalCalibration(
+      Array.from({ length: 8 }, (_, i) => 100 + i * 2 + (i % 3 === 0 ? 8 : -2)),
+      Array.from({ length: 8 }, (_, i) => 100 + i * 2),
+    );
+    expect(calibration.enabled).toBe(true);
+    expect(calibration.upperResidual).toBeGreaterThan(calibration.lowerResidual);
+    const interval = mmmApplyIntervalCalibration(100, 90, 110, calibration);
+    expect(interval.calibrated).toBe(true);
+    expect(interval.lo).toBeLessThanOrEqual(90);
+    expect(interval.hi).toBeGreaterThanOrEqual(110);
+  });
   it("builds one browser empirical-Bayes fit for contributions and response curves", () => {
     const n = 64;
     const week = Array.from({ length: n }, (_, i) => i + 1);
