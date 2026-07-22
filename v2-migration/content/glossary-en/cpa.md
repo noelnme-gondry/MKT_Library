@@ -6,7 +6,7 @@ date: "2026-07-18"
 slug: "cpa"
 keywords: "CPA, CPA meaning, Cost Per Action, cost per action calculation"
 category: "Basic Metrics"
-relatedPosts: ["cpi-cpa-cpm-difference", "cpa-reduction"]
+relatedPosts: ["cpi-cpa-cpm-difference", "ad-performance-diagnosis"]
 draft: false
 ---
 
@@ -24,4 +24,4 @@ CPA is a downstream result. The upstream metrics — CPM, CTR, CVR — usually e
 
 ## Go deeper
 
-Where to look first when CPA spikes is covered in [Lowering CPA](/blog/cpa-reduction).
+Where to look first when CPA spikes is covered in [Ad Performance Diagnosis](/blog/ad-performance-diagnosis).

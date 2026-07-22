@@ -4,7 +4,7 @@ const KO_TITLES = {
   "ab-testing": "A/B 테스트 방법: 표본 크기·유의성·판정 기준",
   "ad-creative-specs-guide": "광고 소재 규격 가이드: 매체별 사이즈·세이프존",
   "ad-machine-learning": "광고 머신러닝 학습 단계: CPA 급등 원인과 운영 방법",
-  "ad-performance-drop": "광고 성과가 반토막 났을 때, 소재부터 만지면 원인 놓쳐요",
+  "ad-performance-diagnosis": "광고 성과 하락 원인: CPA·CTR 떨어질 때 4단계 진단",
   "aha-moment-retention": "Aha Moment 찾는 법: 초기 행동과 리텐션 분석",
   "ai-era-marketer": "AI 시대 퍼포먼스 마케터 역량: 자동화 이후에도 남는 일",
   "apple-search-ads-guide": "Apple Search Ads, 캠페인 왜 4개로 쪼개나 — 구조부터",
@@ -16,10 +16,7 @@ const KO_TITLES = {
   "cannibalization-organic-paid": "광고 카니발라이제이션이란? 유료·오가닉 잠식 측정",
   "cohort-analysis-guide": "리텐션 30%라는데 매출은 왜 안 오를까 — 코호트로 쪼개면 보여요",
   "correlation-vs-causation": "상관관계와 인과관계 차이: 마케팅 실험으로 검증하기",
-  "cpa-reduction": "CPA 낮추는 방법: 소재·퍼널·예산 원인별 진단",
   "cpi-cpa-cpm-difference": "CPI·CPA·CPM·CPC 차이: 광고 지표 계산과 선택 기준",
-  "creative-fatigue": "광고 소재 피로도 진단: 교체 시점과 CTR 하락 신호",
-  "ctr-improvement": "같은 소재인데 CTR이 반토막 — 소재 말고 여기가 문제일 수 있어요",
   "cvr-optimization": "전환율(CVR) 개선 방법: 퍼널별 이탈 원인 점검",
   "event-taxonomy-guide": "이벤트 택소노미 설계: GA4·MMP 전환 데이터 이름 규칙",
   "funnel-dropoff-analysis": "전환 퍼널 어디서 새는지 찾는 법",
@@ -41,14 +38,12 @@ const KO_TITLES = {
 const EN_TITLES = {
   "ab-testing": "A/B Testing: Sample Size, Significance, and Decision Rules",
   "ad-machine-learning": "Ad Machine Learning: Why CPA Spikes and How to Operate",
-  "ad-performance-drop": "Ad Performance Cut in Half? Touching Creative First Means Missing the Cause",
+  "ad-performance-diagnosis": "Ad Performance Drop: Diagnose CPA and CTR in 4 Steps",
   "ai-era-marketer": "The AI-Era Performance Marketer: Skills That Still Matter",
   "attribution-data-mismatch": "Attribution Data Mismatch: Comparing Media, GA4, and MMP Conversions",
   "audience-broad-vs-narrow": "Broad vs Narrow Targeting: How to Choose an Ad Audience",
   "budget-marginal-efficiency": "Cut, Scale, or Reallocate Budget? The One Metric — Marginal ROAS & CPA",
   "correlation-vs-causation": "Correlation vs Causation in Marketing: How Experiments Verify Lift",
-  "cpa-reduction": "How to Lower CPA: Diagnose Creative, Funnel, and Budget Causes",
-  "creative-fatigue": "Creative Fatigue: CTR Drop Signals and When to Refresh Ads",
   "ga4-data-traps": "GA4 Data Traps: Seven Aggregation Rules Behind Different Numbers",
   "incrementality-measurement": "Incrementality Measurement: Validate Ad Lift with Holdouts and DiD",
   "junior-metrics-guide": "Performance Marketing Metrics: CTR, CVR, CPA, and ROAS Explained",
@@ -62,7 +57,6 @@ const EN_TITLES = {
   "cannibalization-organic-paid": "What Is Ad Cannibalization? Measuring Paid vs Organic Overlap",
   "cohort-analysis-guide": "Cohort Analysis: Reading Retention Curves and the Average Trap",
   "cpi-cpa-cpm-difference": "CPI vs CPA vs CPM vs CPC: Ad Metric Math and Which to Choose",
-  "ctr-improvement": "How to Improve CTR: Placement, Frequency, and Creative Causes",
   "cvr-optimization": "How to Improve Conversion Rate (CVR): Diagnose Drop-off by Funnel",
   "event-taxonomy-guide": "Event Taxonomy Design: Naming Rules for GA4 and MMP Conversions",
   "funnel-dropoff-analysis": "How to Find Where Your Conversion Funnel Leaks",
@@ -78,11 +72,11 @@ const EN_TITLES = {
 
 const TITLES = { ko: KO_TITLES, en: EN_TITLES };
 const UPDATED_TODAY = new Set([
-  "ad-performance-drop", "apple-search-ads-guide", "aso-basics-guide", "cohort-analysis-guide",
-  "ctr-improvement", "funnel-dropoff-analysis", "google-uac-optimization", "ios-att-skan-guide",
+  "ad-performance-diagnosis", "apple-search-ads-guide", "aso-basics-guide", "cohort-analysis-guide",
+  "funnel-dropoff-analysis", "google-uac-optimization", "ios-att-skan-guide",
   "ltv-cac-ratio", "marketing-mix-modeling", "performance-marketer-skills", "performance-marketing-metrics",
 ]);
-const UPDATED_TODAY_EN = new Set(["ad-performance-drop", "marketing-mix-modeling"]);
+const UPDATED_TODAY_EN = new Set(["ad-performance-diagnosis", "marketing-mix-modeling"]);
 
 export function getBlogSeo(locale, slug, source = {}) {
   const title = TITLES[locale]?.[slug];

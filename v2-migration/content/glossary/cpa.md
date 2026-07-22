@@ -6,7 +6,7 @@ date: "2026-07-18"
 slug: "cpa"
 keywords: "CPA, CPA 뜻, CPA란, Cost Per Action, 전환당 비용, 행동당 비용, CPA 계산"
 category: "기초 지표"
-relatedPosts: ["cpi-cpa-cpm-difference", "cpa-reduction"]
+relatedPosts: ["cpi-cpa-cpm-difference", "ad-performance-diagnosis"]
 draft: false
 ---
 
@@ -24,4 +24,4 @@ CPA는 결과예요. 원인은 앞 단계 지표(CPM·CTR·CVR)를 뜯어보면 
 
 ## 더 깊게 보려면
 
-CPA가 높을 때 어디부터 뜯어봐야 하는지는 [CPA 낮추는 법 글](/blog/cpa-reduction)에서 다룹니다.
+CPA가 높을 때 어디부터 뜯어봐야 하는지는 [광고 성과 하락 진단 글](/blog/ad-performance-diagnosis)에서 다룹니다.

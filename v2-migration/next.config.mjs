@@ -21,6 +21,12 @@ const nextConfig = {
       { source: `/blog/${slug}`, destination: "/blog/budget-marginal-efficiency", permanent: true },
       { source: `/en/blog/${slug}`, destination: "/en/blog/budget-marginal-efficiency", permanent: true },
     ]);
+    // 성과 하락·CPA·CTR·소재 피로도 4편을 단일 진단 필라로 통합 → 구 URL 링크주스 승계.
+    const diagnosisPillar = ["ad-performance-drop", "cpa-reduction", "ctr-improvement", "creative-fatigue"];
+    const diagnosisRedirects = diagnosisPillar.flatMap((slug) => [
+      { source: `/blog/${slug}`, destination: "/blog/ad-performance-diagnosis", permanent: true },
+      { source: `/en/blog/${slug}`, destination: "/en/blog/ad-performance-diagnosis", permanent: true },
+    ]);
     return [
       {
         source: "/tools/creative-analysis",
@@ -33,6 +39,7 @@ const nextConfig = {
         permanent: true,
       },
       ...budgetRedirects,
+      ...diagnosisRedirects,
     ];
   },
   async headers() {

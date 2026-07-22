@@ -42,7 +42,7 @@ draft: false
 
 핵심 질문은 이거예요. 예산을 채널별로 어떻게 나눌까? 이 채널에 더 부어도 될까, 아니면 이미 포화됐을까? CPA가 올랐는데 채널이 나빠진 건가 배분이 바뀐 건가?
 
-이 층을 아는 사람이 의외로 적어요. 그래서 여기가 차별화 구간이에요. [예산 배분](/blog/marketing-budget-allocation)의 한계효용, [ROAS 개선](/blog/roas-improvement)의 재배분 관점, [CPA 분해](/blog/cpa-reduction) 같은 게 여기 속해요.
+이 층을 아는 사람이 의외로 적어요. 그래서 여기가 차별화 구간이에요. [한계 지표 예산 운영](/blog/budget-marginal-efficiency)의 한계효용과 [광고 성과 하락 진단](/blog/ad-performance-diagnosis)의 믹스효과 같은 게 여기 속해요.
 
 **여기서 익힐 것:** 평균과 한계(다음 1원)의 차이, 포화·응답곡선 개념, 상승·하락 원인 분해.
 

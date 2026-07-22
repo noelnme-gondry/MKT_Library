@@ -88,7 +88,7 @@ One more thing worth knowing.
 
 Turn on Campaign Budget Optimization (automatic allocation) and the algorithm shifts budget between ad sets on its own. Convenient, but it comes with a side effect. **When overall CPA rises, it's hard to tell whether the channel got worse, or the algorithm just shifted budget into a pricier set.**
 
-This is the mix effect we covered in [how to lower CPA](/en/blog/cpa-reduction). Even if each channel's own CPA stays flat, the blended average rises if the mix shifts. With automatic allocation on, this mix shifts **regardless of your intent.**
+This is the mix effect covered in [ad performance diagnosis](/blog/ad-performance-diagnosis). Even if each channel's own CPA stays flat, the blended average rises if the mix shifts. With automatic allocation on, this mix shifts **regardless of your intent.**
 
 So even with auto-bidding, get in the habit of splitting any rise into mix effect versus efficiency effect. Leave it to "the algorithm will handle it" and you won't be able to explain why things got worse later.
 

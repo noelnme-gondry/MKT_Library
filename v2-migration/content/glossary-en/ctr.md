@@ -6,7 +6,7 @@ date: "2026-07-18"
 slug: "ctr"
 keywords: "CTR, CTR meaning, Click-Through Rate, click through rate calculation"
 category: "Basic Metrics"
-relatedPosts: ["ctr-improvement"]
+relatedPosts: ["ad-performance-diagnosis"]
 draft: false
 ---
 
@@ -24,4 +24,4 @@ A high CTR isn't automatically good. Clickbait creative can pull a high CTR whil
 
 ## Go deeper
 
-What to fix first when CTR is low — creative, targeting, or placement — is covered in [Improving CTR](/blog/ctr-improvement).
+What to fix first when CTR is low — creative, targeting, or placement — is covered in [Ad Performance Diagnosis](/blog/ad-performance-diagnosis).

@@ -63,4 +63,4 @@ The catch is that calculating all of this separately in a spreadsheet every time
 
 And don't forget what we said earlier: a benchmark like LTV:CAC of 3:1 varies by industry. Your own data's trend is a far more accurate compass than someone else's benchmark.
 
-If a number suddenly spikes somewhere in this chain, we've laid out where to look first, step by step, in our [drop-diagnosis order post](/en/blog/ad-performance-drop).
+If a number suddenly spikes somewhere in this chain, we've laid out where to look first, step by step, in our [ad performance diagnosis](/blog/ad-performance-diagnosis).

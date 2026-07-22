@@ -6,7 +6,7 @@ date: "2026-07-18"
 slug: "cpc"
 keywords: "CPC, CPC meaning, Cost Per Click, cost per click calculation"
 category: "Basic Metrics"
-relatedPosts: ["cpi-cpa-cpm-difference", "ctr-improvement"]
+relatedPosts: ["cpi-cpa-cpm-difference", "ad-performance-diagnosis"]
 draft: false
 ---
 
@@ -20,4 +20,4 @@ At the same CPM, higher [CTR](/glossary/ctr) means lower CPC. So when CPC rises,
 
 ## Go deeper
 
-What to do when CTR is low is covered in [Improving CTR](/blog/ctr-improvement).
+What to do when CTR is low is covered in [Ad Performance Diagnosis](/blog/ad-performance-diagnosis).
