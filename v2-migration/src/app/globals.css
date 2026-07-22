@@ -1760,6 +1760,10 @@
         background: rgba(247, 185, 85, 0.05);
       }
       .map-status {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 4px;
         font-family: var(--font-mono);
         font-size: 11px;
         text-align: right;
@@ -1773,6 +1777,28 @@
       }
       .map-status.warn {
         color: #f7b955;
+      }
+      .map-status.confirmed, .map-status.manual {
+        color: #5ad19a;
+      }
+      .map-status.review {
+        color: #f7b955;
+      }
+      .map-status.must_confirm, .map-status.conflict {
+        color: var(--danger);
+      }
+      .map-select.must_confirm, .map-select.conflict {
+        border-color: color-mix(in srgb,var(--danger) 58%,var(--border));
+        background: color-mix(in srgb,var(--danger) 6%,var(--surface-container));
+      }
+      .map-status-confirm {
+        padding: 2px 5px;
+        border: 1px solid currentColor;
+        border-radius: 4px;
+        background: transparent;
+        color: inherit;
+        font: 700 9px var(--font-mono);
+        cursor: pointer;
       }
 
       .required-banner {
