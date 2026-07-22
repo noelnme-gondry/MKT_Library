@@ -142,6 +142,8 @@ const LTV_COPY = {
 
 export default function LtvTab({ locale = "ko" } = {}) {
   const T = LTV_COPY[locale] || LTV_COPY.ko;
+  // 엔진(ltvMath·cohortMath)이 붙이는 "전체"·"(미지정)" 그룹 라벨 렌더층 로컬라이즈.
+  const luLabel = (k) => (k === "(미지정)" ? (locale === "en" ? "(unspecified)" : "(미지정)") : k === "전체" ? (locale === "en" ? "All" : "전체") : k);
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const denomBasis = useAppStore((state) => state.denomBasis);
@@ -250,7 +252,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
       });
 
       return {
-        label: r.unit.slice(0, 20),
+        label: luLabel(r.unit).slice(0, 20),
         data: pts.map(p => p.y),
         borderColor: color,
         backgroundColor: color,
@@ -414,7 +416,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
             <tbody>
               {rows.slice(0, 60).map((r, i) => (
                 <tr key={i}>
-                  <td><strong>{String(r.unit).slice(0, 28)}</strong></td>
+                  <td><strong>{luLabel(String(r.unit)).slice(0, 28)}</strong></td>
                   {orderedLtvCols.map((c) => (
                     <td
                       key={c.k}
@@ -534,7 +536,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
                   };
                   return (
                     <tr key={ui}>
-                      <td><strong>{String(u.unit).slice(0, 24)}</strong></td>
+                      <td><strong>{luLabel(String(u.unit)).slice(0, 24)}</strong></td>
                       <td className="tnum">{fmtCur(u.cost)}</td>
                       {showCols.map((d) => <td key={d} className="tnum">{fmtCell(d)}</td>)}
                       <td className="tnum">{mat != null ? mat.toFixed(2) + "×" : "—"}</td>

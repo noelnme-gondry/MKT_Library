@@ -442,6 +442,15 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
   // locale은 domain과 독립 축 — domain(퍼포먼스/콘텐츠 리라벨)과 절대 혼용하지 말 것.
   const C = localizeCreativeCopy(domain, locale);
   const tr = (ko, en) => (locale === "en" ? en : ko);
+  // 엔진(creativeMath, §2.1 불변)이 반환하는 한국어 진단 문자열(dropped·diag.error)을
+  // EN일 때만 렌더층에서 치환. 엣지(다중공선·특이행렬·데이터부족)에서만 노출.
+  const localizeEngineMsg = (s) => (locale !== "en" ? s : String(s ?? "")
+    .replace("데이터 부족 (<30 row)", "Insufficient data (<30 rows)")
+    .replace("campaign_id와 완전 공선 — 분산 0", "perfectly collinear with campaign_id — zero variance")
+    .replace("행렬 특이값 — control 매핑 부족", "Singular matrix — insufficient control mapping")
+    .replace("데이터 부족", "Insufficient data")
+    .replace("추정 불가", "Cannot estimate")
+    .replace("행렬 특이값", "Singular matrix"));
   const decMetaAll = buildDecomposeMeta(locale);
   const csvData = useAppStore((state) => state.csvData);
   const [metric, setMetric] = useState("ctr");
@@ -1123,8 +1132,8 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             </div>
             <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "-6px" }}>
               {tr("분석에 쓰인 행 수(n)", "Rows used in analysis (n)")}={curDecompose?.diag?.n || 0} · <span title={tr("모델이 데이터를 얼마나 잘 설명하는지 (0~1, 높을수록 설명력 높음)", "How well the model explains the data (0~1, higher = better fit)")}>{tr("설명력(R²)", "Explanatory power (R²)")}</span>={fmtNum(curDecompose?.diag?.R2)}
-              {(curDecompose?.dropped || []).length ? tr(` · 제외(다중공선성): ${curDecompose.dropped.join(", ")}`, ` · Dropped (multicollinearity): ${curDecompose.dropped.join(", ")}`) : ""}
-              {curDecompose?.diag?.error ? tr(` · 추정 불가: ${curDecompose.diag.error}`, ` · Cannot estimate: ${curDecompose.diag.error}`) : ""}
+              {(curDecompose?.dropped || []).length ? tr(` · 제외(다중공선성): ${curDecompose.dropped.map(localizeEngineMsg).join(", ")}`, ` · Dropped (multicollinearity): ${curDecompose.dropped.map(localizeEngineMsg).join(", ")}`) : ""}
+              {curDecompose?.diag?.error ? tr(` · 추정 불가: ${localizeEngineMsg(curDecompose.diag.error)}`, ` · Cannot estimate: ${localizeEngineMsg(curDecompose.diag.error)}`) : ""}
             </p>
             {effRows.length ? (
               <>

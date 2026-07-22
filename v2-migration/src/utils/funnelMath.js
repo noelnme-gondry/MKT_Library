@@ -96,6 +96,9 @@ const STAGE_LABELS = {
 // 반환: stages/trans/selStep/rows/overall + wow/daily/segRank/weekday.
 export function buildFunnelData(rows, mappedKeys, state, locale = "ko") {
   const L = STAGE_LABELS[locale] || STAGE_LABELS.ko;
+  // 그룹 라벨(전체·미지정)도 locale로 — ko 기본은 기존과 byte-동일(골든 불변).
+  const LBL_ALL = locale === "en" ? "All" : "전체";
+  const LBL_NONE = locale === "en" ? "(unspecified)" : "(미지정)";
   const blank = () => ({ impr: 0, clk: 0, inst: 0, act: 0, rev: 0 });
   const add = (b, r) => {
     b.impr += Number(r.impressions) || 0;
@@ -137,7 +140,7 @@ export function buildFunnelData(rows, mappedKeys, state, locale = "ko") {
   const agg = new Map();
   for (const r of rows) {
     add(overall, r);
-    const k = unit === "_all" ? "전체" : String(r[unit] ?? "").trim() || "(미지정)";
+    const k = unit === "_all" ? LBL_ALL : String(r[unit] ?? "").trim() || LBL_NONE;
     if (!agg.has(k)) agg.set(k, { unit: k, ...blank() });
     add(agg.get(k), r);
   }
@@ -230,7 +233,7 @@ export function buildFunnelData(rows, mappedKeys, state, locale = "ko") {
   if (segField && selT) {
     const smap = new Map();
     for (const r of rows) {
-      const k = String(r[segField] ?? "").trim() || "(미지정)";
+      const k = String(r[segField] ?? "").trim() || LBL_NONE;
       if (!smap.has(k)) smap.set(k, { seg: k, ...blank() });
       add(smap.get(k), r);
     }

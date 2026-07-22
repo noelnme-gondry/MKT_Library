@@ -7,6 +7,8 @@ import CustomChartsSection from "./CustomChartsSection";
 
 export default function SegmentTab({ locale = "ko" } = {}) {
   const tr = (ko, en) => (locale === "en" ? en : ko);
+  // 엔진(segmentMath)이 빈 값에 붙이는 "(미지정)"·"전체" 그룹 라벨 렌더층 로컬라이즈.
+  const luLabel = (k) => (k === "(미지정)" ? tr("(미지정)", "(unspecified)") : k === "전체" ? tr("전체", "All") : k);
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
@@ -85,13 +87,13 @@ export default function SegmentTab({ locale = "ko" } = {}) {
             <thead>
               <tr>
                 <th>{availFields.find(f => f.k === rowAxis)?.l} ↓ \ {availFields.find(f => f.k === colAxis)?.l} →</th>
-                {colKeys.map(ck => <th key={ck}>{ck.slice(0, 16)}</th>)}
+                {colKeys.map(ck => <th key={ck}>{luLabel(ck).slice(0, 16)}</th>)}
               </tr>
             </thead>
             <tbody>
               {grid.map((row, i) => (
                 <tr key={rowKeys[i]}>
-                  <th>{rowKeys[i].slice(0, 20)}</th>
+                  <th>{luLabel(rowKeys[i]).slice(0, 20)}</th>
                   {row.map((cell, ci) => {
                     if (!cell) return <td key={ci} className="tnum">—</td>;
                     const v = met.val(cell);
