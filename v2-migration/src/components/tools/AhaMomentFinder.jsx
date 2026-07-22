@@ -981,12 +981,11 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
     <div className="tab-pane active" id="tab-aha">
       <AnalyzingOverlay show={isParsing} title={tr("데이터 불러오는 중…", "Loading data…")} sub={tr("큰 파일은 몇 초 걸릴 수 있어요", "Large files may take a few seconds")} />
       <AnalyzingOverlay show={isAnalyzing} title={tr("분석 중…", "Analyzing…")} sub={tr(`${(csvData?.raw?.length || 0).toLocaleString()}행 계산 중`, `Computing ${(csvData?.raw?.length || 0).toLocaleString()} rows`)} />
-      {/* ── 나눠보기(세그먼트) 브레드크럼 — 상단 sticky(스크롤해도 붙어있음). 매핑에서 segment
-          role 준 컬럼 값별로 전체 결과를 재계산(단일 토글). 분석 후 세그먼트 있을 때만 노출. ── */}
+      {/* 세그먼트는 이 결과에만 적용되는 로컬 제어다. 전역 sticky 헤드 대신 결과 직전에서 고른다. */}
       {segMeta.length > 0 && (
-        <div className="page-sticky-bar" id="s-aha-segment">
-          <div className="page-sticky-row1">
-            <span className="page-sticky-title" style={{ fontSize: "13px" }}>🔀 {tr("나눠보기", "Break down")}</span>
+        <section className="analysis-local-controls" id="s-aha-segment" aria-label={tr("결과 나눠보기", "Break down results")}>
+          <div className="analysis-local-controls__inner">
+            <span className="analysis-local-controls__label">{tr("결과 나눠보기", "Break down results")}</span>
             <button className={`ab-pill ${validSeg == null ? "active" : ""}`} onClick={() => setActiveSeg(null)} title={tr("전체 데이터로 분석", "Analyze the whole dataset")}>{tr("전체", "All")}</button>
             {segMeta.map((s) => (
               <React.Fragment key={s.col}>
@@ -1011,7 +1010,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               </span>
             )}
           </div>
-        </div>
+        </section>
       )}
       {isDemo && (
         <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>

@@ -24,20 +24,10 @@ export default function BasisCurrencyToggleBar({ locale = "ko" } = {}) {
   const hasActions = mapped.has("actions");
 
   return (
-    <div className="mon-filter-bar" style={{ marginTop: "6px" }}>
-      <div className="mon-filter-inner">
-        <span className="mon-filter-title">{tr("토글", "Toggles")}</span>
+    <>
         {(hasInstalls || hasActions) && (
-          <div className="mon-filter-item" style={{ alignItems: "center", gap: "4px" }}>
-            <span
-              className="mon-filter-label"
-              title={tr(
-                "CPI/CPA·CVR·ARPU·리텐션·LTV·퍼널의 분모를 설치/가입 중 무엇으로 볼지 — 이 CSV를 공유하는 도구 전체에 적용",
-                "Which denominator (installs/actions) to use for CPI/CPA·CVR·ARPU·retention·LTV·funnel — applies across all tools sharing this CSV"
-              )}
-            >
-              {tr("기준", "Basis")}
-            </span>
+          <div className="analysis-control-group">
+            <span className="analysis-control-group__label">{tr("성과 기준", "Performance basis")}</span>
             <button
               className={`ab-pill ${effectiveDenomBasis(csvData, denomBasis) !== "actions" ? "active" : ""} ${!hasInstalls ? "disabled" : ""}`}
               disabled={!hasInstalls}
@@ -54,16 +44,8 @@ export default function BasisCurrencyToggleBar({ locale = "ko" } = {}) {
             </button>
           </div>
         )}
-        <div className="mon-filter-item" style={{ alignItems: "center", gap: "4px" }}>
-          <span
-            className="mon-filter-label"
-            title={tr(
-              "표시 통화 단위만 전환(값 변환 아님 — CSV 통화 그대로). 모든 탭·차트·표에 적용.",
-              "Switches only the displayed currency unit (no value conversion — CSV values stay as-is). Applies to all tabs, charts, and tables."
-            )}
-          >
-            {tr("통화", "Currency")}
-          </span>
+        <div className="analysis-control-group">
+          <span className="analysis-control-group__label">{tr("표시 통화", "Display currency")}</span>
           <button
             className={`ab-pill ${displayCurrency === "KRW" ? "active" : ""}`}
             onClick={() => setDisplayCurrency("KRW")}
@@ -77,7 +59,6 @@ export default function BasisCurrencyToggleBar({ locale = "ko" } = {}) {
             {tr("달러 $", "USD $")}
           </button>
         </div>
-      </div>
-    </div>
+    </>
   );
 }

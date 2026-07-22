@@ -39,6 +39,7 @@ import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import { buildDemoCsv } from "@/utils/demoData";
 import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, mmmPlatformTags, mmmSegmentValues } from "@/components/tools/MmmColumnMapper";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
+import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import { CURRENCY_SYMBOLS, convertCurrency } from "@/utils/format";
 
 /* ============================================================================
@@ -2016,7 +2017,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       {!panelEmpty && (
         <div className="page-sticky-bar">
           <div className="page-sticky-row1">{controlBar()}</div>
-          <BasisCurrencyToggleBar locale={locale} />
+          <AnalysisControlBar title={tx("표시 기준", "Display settings")} hint={tx("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} /></AnalysisControlBar>
         </div>
       )}
       {renderTabs()}
