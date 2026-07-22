@@ -245,7 +245,7 @@ function NetEffectEvidence({ net, locale }) {
 // Prior는 기본 MMM을 대체하는 숨은 설정이 아니라, 어떤 외부 근거를 썼는지
 // 결과 화면에서 추적·비교할 수 있는 별도 레이어다. 아직 근거가 없으면 이 카드도
 // 조용히 기본 모델만 보여 준다. 실제 prior 추정은 원자료 검증을 거친 뒤에만 켠다.
-function MmmEvidenceLedger({ locale, priorView, onPriorView, evidence, onEvidence, onLoadDemo }) {
+function MmmEvidenceLedger({ locale, priorView, onPriorView, evidence, onEvidence, onLoadDemo, appliedPriorCount = 0 }) {
   const tx = (ko, en) => (locale === "en" ? en : ko);
   const experimentRef = useRef(null);
   const countryRef = useRef(null);
@@ -261,7 +261,7 @@ function MmmEvidenceLedger({ locale, priorView, onPriorView, evidence, onEvidenc
         const countries = countryHeader
           ? [...new Set(data.map((row) => String(row[countryHeader] || "").trim()).filter(Boolean))].slice(0, 50)
           : [];
-        onEvidence((current) => ({ ...current, [kind]: { name: file.name, rows: data.length, countries } }));
+        onEvidence((current) => ({ ...current, [kind]: { name: file.name, rows: data.length, countries, raw: data, headers } }));
       },
     });
   };
@@ -296,8 +296,8 @@ function MmmEvidenceLedger({ locale, priorView, onPriorView, evidence, onEvidenc
 
       {priorView !== "base" && (
         <div className="mmm-evidence-ledger__pending">
-          <strong>{tx("근거 보정 결과를 준비 중입니다.", "Evidence-calibrated results are being prepared.")}</strong>
-          <span>{tx("업로드된 원자료의 설계·기간·KPI 일치 여부를 검증한 뒤에만 prior를 적용합니다. 현재 수치는 기본 MMM 결과입니다.", "A prior is applied only after validating design, timing, and KPI alignment in the uploaded source data. The figures currently shown are from the base MMM.")}</span>
+          <strong>{appliedPriorCount ? tx(`${appliedPriorCount}개 채널 prior가 현재 모델에 적용되었습니다.`, `${appliedPriorCount} channel priors are applied to this model.`) : tx("적용 가능한 prior를 찾지 못했습니다.", "No applicable prior was found.")}</strong>
+          <span>{appliedPriorCount ? tx("참고 국가의 매체 효과만 약하게 반영했습니다. 국가별 baseline·추세·계절성은 이식하지 않습니다.", "Only media effects are weakly borrowed; country baseline, trend, and seasonality are not transferred.") : tx("KPI·채널 헤더가 타깃 데이터와 같은지 확인하세요. 현재 수치는 기본 MMM 결과입니다.", "Check that KPI and channel headers match the target data. The figures shown remain the base MMM.")}</span>
         </div>
       )}
 
@@ -315,7 +315,7 @@ function MmmEvidenceLedger({ locale, priorView, onPriorView, evidence, onEvidenc
           </div>
           <div className="mmm-evidence-ledger__rule">
             <strong>{tx("선택 원칙", "Selection rule")}</strong>
-            <span>{tx("모든 국가를 합치지 않습니다. 개별 적격성 → 최대 2~3개 조합 → 한국 마지막 12주 백테스트 순서로, 가장 단순한 충분성 세트 하나만 추천합니다.", "Markets are not pooled blindly. The flow is individual eligibility → combinations of up to 2–3 → target-market final-12-week backtest, then one simplest sufficient set is recommended.")}</span>
+            <span>{tx("모든 국가를 합치지 않습니다. 개별 적격성 → 최대 2~3개 조합 → 타깃 시장의 마지막 12주 백테스트 순서로, 가장 단순한 충분성 세트 하나만 추천합니다.", "Markets are not pooled blindly. The flow is individual eligibility → combinations of up to 2–3 → target-market final-12-week backtest, then one simplest sufficient set is recommended.")}</span>
           </div>
           {!hasExperiment && !hasCountry && (
             <button className="mmm-evidence-ledger__demo" onClick={onLoadDemo}>
@@ -1245,11 +1245,13 @@ export default function MarketingResponse({ locale = "ko" }) {
   const handleLoadPriorDemo = () => {
     const demo = buildMmmPriorDemo();
     setPriorEvidence({
-      experiment: { name: demo.experiment.fileName, rows: demo.experiment.raw.length, countries: ["KR"] },
+      experiment: { name: demo.experiment.fileName, rows: demo.experiment.raw.length, countries: ["KR"], raw: demo.experiment.raw, headers: demo.experiment.headers },
       country: {
         name: demo.country.fileName,
         rows: demo.country.raw.length,
         countries: [...new Set(demo.country.raw.map((row) => row.country))],
+        raw: demo.country.raw,
+        headers: demo.country.headers,
       },
     });
     setPriorView("base");
@@ -1316,10 +1318,53 @@ export default function MarketingResponse({ locale = "ko" }) {
       // 자동 흡수(공선쌍) — index와 동일 순서: resolve → cfg.absorbed 세팅 → run/effects/decomp가 반영.
       const absorb = mmmResolveAbsorb(panel, cfg);
       cfg.absorbed = absorb.absorbed;
-      const run = mmmBayesianRun(panel, cfg, t);
+      // 국가 prior: 동일 포맷의 참고 시장을 각각 적합한 뒤 매체 β만 평균낸다.
+      // baseline·추세·계절성은 절대 이식하지 않으며, country 컬럼별 개별 모델이
+      // 성공한 경우만 약한 precision으로 참고한다.
+      const mediaPriors = {};
+      const source = priorView === "country" ? priorEvidence.country : null;
+      if (source?.raw?.length && source.headers?.length) {
+        const countryHeader = source.headers.find((h) => /(^|[_\s])(country|market)([_\s]|$)|국가|시장/i.test(String(h)));
+        const countries = countryHeader ? [...new Set(source.raw.map((row) => String(row[countryHeader] || "").trim()).filter(Boolean))] : [];
+        const slicePanel = (input, end) => ({ ...input, week: input.week.slice(0, end), ch: Object.fromEntries(Object.entries(input.ch).map(([key, values]) => [key, values.slice(0, end)])), dummy: Object.fromEntries(Object.entries(input.dummy || {}).map(([key, values]) => [key, values.slice(0, end)])), steps: Object.fromEntries(Object.entries(input.steps || {}).map(([key, values]) => [key, values.slice(0, end)])), targets: Object.fromEntries(Object.entries(input.targets).map(([key, values]) => [key, values.slice(0, end)])) });
+        const candidatePriors = [];
+        countries.forEach((country) => {
+          const ref = buildPanelFromColMap(source.headers, source.raw.filter((row) => String(row[countryHeader]).trim() === country), mmmColMap, "all", locale);
+          if (ref.missing.length) return;
+          const refPanel = trimToActive(ref.panel);
+          const refTarget = pickTarget(refPanel, t);
+          const refRun = mmmBayesianRun(refPanel, { ...MMM_METH_CONFIG, absorbed: new Set() }, refTarget, false);
+          const prior = {};
+          Object.values(refRun?.saturationByChannel || {}).forEach((s) => {
+            if (isFinite(s.ln_coef)) prior[s.key] = { mean: s.ln_coef, precision: 0.35 };
+          });
+          if (!Object.keys(prior).length) return;
+          const holdout = Math.min(12, Math.floor(panel.week.length * 0.2));
+          if (holdout < 8) return;
+          const train = slicePanel(panel, panel.week.length - holdout);
+          const fit = mmmBayesianRun(train, cfg, t, false, { mediaPriors: prior });
+          const futureSpend = Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, values.slice(-holdout)]));
+          const forecast = fit && mmmBayesianForecast(fit, train, futureSpend, holdout);
+          const actual = panel.targets[t].slice(-holdout);
+          const rmse = forecast?.predFut?.length === actual.length ? Math.sqrt(actual.reduce((sum, value, index) => sum + (value - forecast.predFut[index]) ** 2, 0) / actual.length) : Infinity;
+          candidatePriors.push({ country, prior, rmse });
+        });
+        candidatePriors.sort((a, b) => a.rmse - b.rmse);
+        const best = candidatePriors.slice(0, 3);
+        // 더 많은 국가가 자동으로 유리해지지 않도록, 상위 후보의 평균 prior를 쓸 때도
+        // 최대 3개로 제한하고, 이후 화면에는 이 세트만 추천한다.
+        const byKey = {};
+        best.forEach(({ prior }) => {
+          Object.entries(prior).forEach(([key, value]) => (byKey[key] ||= []).push(value.mean));
+        });
+        Object.entries(byKey).forEach(([key, values]) => {
+          mediaPriors[key] = { mean: values.reduce((sum, value) => sum + value, 0) / values.length, precision: Math.min(1.2, 0.35 * values.length) };
+        });
+      }
+      const run = mmmBayesianRun(panel, cfg, t, true, { mediaPriors });
       if (!run) throw new Error("Bayesian posterior estimate failed");
       const effects = [];
-      return { empty: false, panel, cfg, derived, target: t, validate, run, effects, absorb };
+      return { empty: false, panel, cfg, derived, target: t, validate, run, effects, absorb, mediaPriors };
     } catch (e) {
       // null-fit(특이행렬)은 대개 채널 공선성(예산이 함께 움직임)·기간 부족 → 정직한 도메인 메시지 (§8)
       const msg = String(e && e.message || "");
@@ -1334,7 +1379,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       }
       return { empty: true, reason: tx("분석 오류: ", "Analysis error: ") + msg };
     }
-  }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, effPlatformFilter, locale, tx]);
+  }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, effPlatformFilter, locale, tx, priorView, priorEvidence]);
 
   useEffect(() => {
     if (!mmmAnalyzed) return;
@@ -2595,6 +2640,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                 evidence={priorEvidence}
                 onEvidence={setPriorEvidence}
                 onLoadDemo={handleLoadPriorDemo}
+                appliedPriorCount={Object.keys(mmm.mediaPriors || {}).length}
               />
               {/* ── 메인: 평어 헤드라인 ── */}
               <Card style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
