@@ -962,6 +962,59 @@ export function buildExperimentMediaPrior(rows, options = {}) {
   return buildExperimentMediaPriorDetailed(rows, options).prior;
 }
 
+// 실험 prior의 계수 단위(변환 노출 1단위당 KPI)를 현재 주간 spend의
+// 원화/달러 단위 한계효과(mROI 또는 mCPA 개선)로 읽어주는 표시층 변환이다.
+// 모델의 prior 자체는 기존처럼 변환 feature 계수 공간에 유지한다.
+export function mmmPriorMroiAtSpend(prior, params, weeklySpend) {
+  if (!prior || !params || !Number.isFinite(prior.mean) || !(params.ec > 0) || !(params.slope > 0)) return null;
+  const alpha = Math.max(0, Math.min(0.95, Number(params.alpha) || 0));
+  const spend = Math.max(0, Number(weeklySpend) || 0);
+  const adstock = spend / Math.max(0.05, 1 - alpha);
+  const exponent = params.slope;
+  const ecPow = Math.pow(params.ec, exponent);
+  const xPow = Math.pow(Math.max(adstock, 1e-12), exponent);
+  const denominator = Math.pow(ecPow + xPow, 2);
+  const hillDerivative = denominator > 0
+    ? exponent * ecPow * Math.pow(Math.max(adstock, 1e-12), exponent - 1) / denominator
+    : 0;
+  const transformDerivative = hillDerivative / Math.max(0.05, 1 - alpha);
+  if (!(transformDerivative > 0) || !Number.isFinite(transformDerivative)) return null;
+  const ci = Array.isArray(prior.ci90) && prior.ci90.length === 2
+    ? prior.ci90.slice().sort((a, b) => a - b).map((value) => value * transformDerivative)
+    : [prior.mean - 1.645 * (prior.se || 0), prior.mean + 1.645 * (prior.se || 0)].map((value) => value * transformDerivative).sort((a, b) => a - b);
+  return {
+    mean: prior.mean * transformDerivative,
+    se: Number.isFinite(prior.se) ? prior.se * transformDerivative : null,
+    ci90: ci,
+    transformDerivative,
+    weeklySpend: spend,
+    unit: "outcome-per-spend",
+    label: "mROI at current weekly spend",
+  };
+}
+
+// 반대로 실험에서 직접 얻은 mROI를 모델의 변환 feature 계수 prior로
+// 넣어야 할 때 사용하는 1차 단위 변환. 변환 미분은 현재 spend에서 고정한다.
+export function mmmMroiToCoefficientPrior(mroi, params, weeklySpend) {
+  if (!mroi || !params || !Number.isFinite(mroi.mean)) return null;
+  const basis = mmmPriorMroiAtSpend({ mean: 1, se: 0, ci90: [1, 1] }, params, weeklySpend);
+  if (!basis?.transformDerivative) return null;
+  const derivative = basis.transformDerivative;
+  const se = Number.isFinite(mroi.se) ? Math.abs(mroi.se / derivative) : null;
+  const mean = mroi.mean / derivative;
+  const variance = se != null ? se ** 2 : null;
+  return {
+    mean,
+    se,
+    variance,
+    precision: variance > 0 ? 1 / variance : null,
+    ci90: Array.isArray(mroi.ci90) ? mroi.ci90.map((value) => value / derivative).sort((a, b) => a - b) : null,
+    source: "mroi-at-spend-delta-method",
+    transformDerivative: derivative,
+    weeklySpend: Number(weeklySpend) || 0,
+  };
+}
+
 // 최근 한 번의 holdout 운에 기대지 않도록, 12주 창을 과거로 이동시켜 반복 검증한다.
 export function mmmRollingOrigins(n, { holdout = 12, minTrain = 24, stride = 12, maxFolds = 3 } = {}) {
   const starts = [];

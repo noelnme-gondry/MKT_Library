@@ -44,7 +44,7 @@ import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBa
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact } from "@/utils/format";
 import { buildMmmWeeklyPerformance } from "@/utils/mmmWeeklyPerformance";
-import { buildExperimentMediaPriorDetailed, mmmRollingOrigins, summarizeRollingErrors } from "@/utils/mmmPriorMath";
+import { buildExperimentMediaPriorDetailed, mmmRollingOrigins, summarizeRollingErrors, mmmPriorMroiAtSpend } from "@/utils/mmmPriorMath";
 import {
   planCountryReferenceFits,
   buildCountryTransferPrior,
@@ -987,6 +987,18 @@ function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, evidenc
           <span>{tx("실험 KPI가 메인 MMM의 같은 주 Y를 그대로 복제하면 같은 성과가 prior와 likelihood에 두 번 들어갑니다. 정확히 일치하는 national On/Off 재사용은 자동 보류하고, 일부 기간 중첩이나 Geo 근거는 진단에 표시하므로 독립 수집 여부를 확인하세요.", "If the experiment KPI simply duplicates the main MMM outcome for the same weeks, the same outcome enters both the prior and likelihood. Exact national On/Off reuse is blocked automatically; partial overlap and Geo evidence are disclosed in diagnostics so you can confirm whether collection was independent.")}</span>
         </div>
       )}
+      {selectedEvidence.experiment && experimentPriorDiagnostics.some((item) => item?.mean != null && item?.transformParams) && (
+        <div className="mmm-evidence-ledger__pending">
+          <strong>{tx("실험 prior의 현재 지출점 mROI", "Experiment-prior mROI at current spend")}</strong>
+          <span>{experimentPriorDiagnostics.filter((item) => item?.mean != null && item?.transformParams).map((item) => {
+            const mroi = mmmPriorMroiAtSpend(item, item.transformParams, item.targetWeeklySpend);
+            if (!mroi) return null;
+            const fmt = (value) => formatValue ? formatValue(value, { decimals: 2 }) : Number(value).toFixed(2);
+            return `${item.channel || item.key}: ${fmt(mroi.mean)} [${fmt(mroi.ci90[0])}, ${fmt(mroi.ci90[1])}] / wk spend ${fmt(mroi.weeklySpend)}`;
+          }).filter(Boolean).join("   ")}</span>
+          <small>{tx("현재 MMM 변환 단위의 계수 prior를 주간 spend 단위 한계효과로 읽은 표시값입니다. 별도의 ROI posterior를 추가 샘플링한 값은 아닙니다.", "This reads the coefficient prior in the current MMM transform units as a marginal effect per weekly spend. It is not a separately sampled ROI posterior.")}</small>
+        </div>
+      )}
       {selectedEvidence.country && countryCandidates.length > 0 && (
         <div className="mmm-evidence-ledger__pending">
           <strong>{countryPlan?.validationReason === "insufficient-validation-folds"
@@ -1261,6 +1273,7 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
   add("04_Model", [
     ["model", run.methodLabel], ["R2", run.posterior?.r2], ["sigma", run.posterior?.sigma], ["target", mmm.target], [],
     ["weeks_per_parameter", identification.weeksPerParameter], ["max_media_correlation", identification.maxMediaCorrelation], ["high_collinearity", identification.highCollinearity], ["budget_eligible", identification.budgetEligible], [],
+    ["baseline_selection", JSON.stringify(run.baselineSelection || null)], ["joint_transform_check", JSON.stringify(run.jointTransform || null)],
     ["channel", "adstock_alpha", "half_saturation", "hill_slope", "evaluated_transform_candidates", "total_transform_candidates", "candidate_search_capped", "prior_locked_transform", "effective_transform_candidates", "top_transform_weight", "posterior_positive_probability"],
     ...Object.values(run.saturationByChannel || {}).map((s) => [s.label, s.params.alpha, s.params.ec, s.params.slope, s.transformUncertainty?.candidateCount, s.transformUncertainty?.totalCandidateCount, s.transformUncertainty?.candidateSearchCapped, !!s.transformUncertainty?.priorLockedTransform, s.transformUncertainty?.effectiveCandidateCount, s.transformUncertainty?.topWeight, s.posteriorPositive]),
   ]);
@@ -1307,6 +1320,9 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     ["negative_natural_demand_share", health.negativeBaselineShare, tx("자연수요 추정이 0 미만인 주의 비율", "Share of weeks with estimated natural demand below zero")],
     ["max_abs_prior_shift_sd", health.priorShifts?.length ? Math.max(...health.priorShifts.map((item) => Math.abs(item.shiftZ || 0))) : null, tx("prior 평균에서 posterior가 이동한 최대 표준편차", "Largest posterior shift from prior mean, in prior SDs")],
     ["sampling_diagnostic", "not_applicable", tx("조건부 Gaussian 근사라 MCMC chain을 샘플링하지 않아 R-hat·ESS가 적용되지 않습니다.", "R-hat and ESS do not apply because this conditional Gaussian approximation does not sample MCMC chains.")],
+    ["interval_calibration", JSON.stringify(health.intervalCalibration || null), tx("시간순 holdout 잔차로 보수 보정한 경우의 메타데이터", "Metadata for conservative time-ordered holdout residual calibration")],
+    ["baseline_selection", JSON.stringify(run.baselineSelection || null), tx("78주 이상에서 0/1/2 knot BIC 후보 비교", "0/1/2-knot BIC candidates when history is at least 78 weeks")],
+    ["joint_transform_check", JSON.stringify(run.jointTransform || null), tx("불확실성이 큰 최대 2개 채널의 제한적 조합 진단", "Bounded combination diagnostic for up to two uncertain channels")],
     ["country_validation_mode", mmm.countryValidationMode || "none", tx("as-of-earliest-fold는 가장 이른 학습 cutoff에서 타깃 변환·Y 스케일·참고국 근거를 고정해 이후 정보 누수를 막는다는 뜻입니다. 같은 rolling folds가 후보 선택에 쓰이므로 최종 독립 OOS는 아닙니다.", "As-of-earliest-fold locks target transforms, Y scale, and reference evidence at the earliest training cutoff to prevent later-information leakage. The same rolling folds tune candidate selection, so they are not a final independent OOS score.")],
     [],
     ["health_flag", "severity", "localized_message"],
@@ -1579,10 +1595,16 @@ function buildMmmGuideDoc(mmm, targetKo, locale = "ko") {
   L.push(`### 4. 효과 신뢰도`);
   L.push(`효과 판정에서 legacy OLS p값은 제거했습니다. VIF와 채널 상관은 효과 확률이 아니라 식별·예산 보류 진단으로 유지합니다. 이 화면의 "효과 양수 확률"은 후보별 posterior를 BIC 가중 평균한 β>0 확률입니다. 90% 구간은 profile posterior 정규 혼합 CDF의 5%·95% 분위수를 직접 풀어 계산합니다. 다만 모든 채널 조합을 함께 샘플링한 joint MCMC posterior는 아닙니다.`);
   L.push("");
-  L.push(`### 5. 기여 변동`);
+  L.push(`### 5. 제한적 baseline·joint 보정`);
+  L.push(`데이터가 78주 이상이면 baseline knot 0·1·2개 후보를 비교하고, BIC가 최소 6 이상 개선될 때만 knot을 적용합니다. 개선이 작거나 불안정하면 기본 추세를 유지합니다. 변환 상호작용은 불확실성이 큰 최대 2개 채널의 상위 후보를 최대 4개 조합으로만 추가 점검합니다. 이는 브라우저 계산량과 과적합을 통제하기 위한 제한이며, 전체 채널 joint posterior를 의미하지 않습니다.`);
+  L.push("");
+  L.push(`### 6. 실험 prior의 mROI 읽기`);
+  L.push(`실험 prior는 변환 feature 계수 단위로 적용되지만, 화면에서는 현재 주간 spend 운용점에서 Hill 곡선의 미분을 곱해 "추가 spend 1단위당 기대 KPI"인 mROI로도 표시합니다. 이 값은 기존 prior를 별도 샘플링한 ROI posterior가 아니며, Fieller·jackknife로 계산된 실험 불확실성을 변환한 참고값입니다.`);
+  L.push("");
+  L.push(`### 7. 기여 변동`);
   L.push(`각 드라이버의 주별 기여값 제곱평균을 전체 합으로 나눈 RMS 기여 크기 비중입니다. 인과 확정·설명된 R² 배분·Shapley 값이 아닙니다.`);
   L.push("");
-  L.push(`### 6. 주별 기여 분해 (decomposition)`);
+  L.push(`### 8. 주별 기여 분해 (decomposition)`);
   L.push(`매주 실제값을 기본 수요·추세, 계절, 휴일·구조변화, 매체 절대기여로 쪼갭니다. 양수 매체 계수는 저지출 주에도 음수가 되지 않도록 원 단위 반응값으로 표시합니다. RMSE·MAPE로 실제 적합도를 확인합니다.`);
   L.push("");
   if (run.shapley && run.shapley.rows && run.shapley.rows.length) {
@@ -1630,10 +1652,16 @@ function buildMmmGuideDocEn(mmm, targetLabel) {
   L.push(`### 4. Effect confidence`);
   L.push(`Legacy OLS p-values are not used for effect decisions. VIF and media correlation remain as identification and budget-hold diagnostics, not effect probabilities. P(effect > 0) is BIC-weighted across candidate posteriors. The 90% interval directly solves the 5th and 95th percentiles of the profile-posterior normal-mixture CDF, but it is not a jointly sampled all-channel MCMC posterior.`);
   L.push("");
-  L.push(`### 5. Contribution variation`);
+  L.push(`### 5. Limited baseline and joint-transform checks`);
+  L.push(`With at least 78 weeks, the model compares 0-, 1-, and 2-knot baseline candidates and applies a knot only when BIC improves by at least 6. Otherwise it keeps the base trend. For transform interaction, only the two most uncertain channels are checked across at most four combinations of their top candidates. This controls browser cost and overfitting; it is not a full all-channel joint posterior.`);
+  L.push("");
+  L.push(`### 6. Reading experiment-prior mROI`);
+  L.push(`Experiment priors remain applied in transformed-feature coefficient units. The UI also multiplies the coefficient prior by the Hill derivative at the current weekly spend to show marginal KPI per added spend (mROI). This is a transformed display of the existing prior uncertainty, not a separately sampled ROI posterior.`);
+  L.push("");
+  L.push(`### 7. Contribution variation`);
   L.push(`RMS contribution-magnitude share divides each driver's mean squared weekly contribution by the total. It is not causal attribution, allocated explained R², or a Shapley value.`);
   L.push("");
-  L.push(`### 6. Weekly contribution decomposition`);
+  L.push(`### 8. Weekly contribution decomposition`);
   L.push(`Splits each week into base demand/trend, seasonality, holidays/regime change, and absolute media contribution. Positive media effects remain positive at low spend. RMSE/MAPE measure fit to actuals.`);
   L.push("");
   if (run.shapley && run.shapley.rows && run.shapley.rows.length) {
@@ -2504,7 +2532,7 @@ export default function MarketingResponse({ locale = "ko" }) {
             const prior = priorResult?.prior;
             if (prior) {
               mergeMediaPrior(mediaPriors, key, { ...prior, source: "experiment" });
-              experimentPriorDiagnostics.push({ channel: channel.label, key, experimentType: experimentType.type, experimentTypeSource: experimentType.source, normalizationMode, ...prior, ...(priorResult?.diagnostic || {}) });
+              experimentPriorDiagnostics.push({ channel: channel.label, key, experimentType: experimentType.type, experimentTypeSource: experimentType.source, normalizationMode, transformParams: channel.params, targetWeeklySpend: channel.recentMean, ...prior, ...(priorResult?.diagnostic || {}) });
             } else {
               const diagnostic = priorResult?.diagnostic || {};
               experimentPriorDiagnostics.push({
@@ -2876,7 +2904,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       // A selected country prior was tuned against the target rolling folds, so
       // the run's internal split would no longer be an untouched OOS estimate.
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
-      const run = mmmBayesianRun(panel, cfg, t, !isCountryPriorTuned && !hasExternalPrior, { mediaPriors });
+      const run = mmmBayesianRun(panel, cfg, t, !isCountryPriorTuned && !hasExternalPrior, { mediaPriors, enableBaselineSelection: true });
       if (!run) throw new Error("Bayesian posterior estimate failed");
       const health = mmmBayesianHealth(run);
       const effects = [];
@@ -4327,7 +4355,13 @@ export default function MarketingResponse({ locale = "ko" }) {
                     <div className="stat-card"><div className="lbl">{tx("최대 prior 이동", "Largest prior shift")}</div><div className="val">{Number.isFinite(maxPriorShift) ? `${maxPriorShift.toFixed(1)} SD` : tx("prior 없음", "No prior")}</div></div>
                     {Number.isFinite(identification.weeksPerParameter) && <div className="stat-card"><div className="lbl">{tx("파라미터당 주", "Weeks per parameter")}</div><div className="val">{identification.weeksPerParameter.toFixed(1)}</div></div>}
                     {Number.isFinite(identification.maxMediaCorrelation) && <div className="stat-card"><div className="lbl">{tx("최대 매체 관련 상관", "Max media-linked correlation")}</div><div className="val">{identification.maxMediaCorrelation.toFixed(2)}</div></div>}
+                    {mmm.run.baselineSelection?.enabled && <div className="stat-card"><div className="lbl">{tx("Baseline 후보", "Baseline candidates")}</div><div className="val">{mmm.run.baselineSelection.selected ? tx("Knot 적용", "Knot selected") : tx("기본 유지", "Base retained")}</div></div>}
+                    {mmm.run.jointTransform?.enabled && <div className="stat-card"><div className="lbl">{tx("제한적 joint 점검", "Limited joint check")}</div><div className="val">{mmm.run.jointTransform.evaluatedCount}/{mmm.run.jointTransform.candidateCount}</div></div>}
                   </div>
+                  {(mmm.run.baselineSelection?.enabled || mmm.run.jointTransform?.enabled) && <p className="muted" style={{ fontSize: "11px", lineHeight: 1.5, margin: "8px 0 0" }}>
+                    {mmm.run.baselineSelection?.enabled ? tx(`Baseline은 78주 이상 데이터에서 0·1·2개 knot 후보를 비교했으며, BIC가 ${mmm.run.baselineSelection.selected ? "충분히 개선되어 적용" : "충분히 개선되지 않아 기본 추세 유지"}되었습니다.`, `With at least 78 weeks, baseline compared 0/1/2-knot candidates; the base trend was ${mmm.run.baselineSelection.selected ? "replaced because BIC improved materially" : "retained because improvement was not material"}.`) : ""}
+                    {mmm.run.jointTransform?.enabled ? ` ${tx(`변환 불확실성이 큰 ${mmm.run.jointTransform.channels.length}개 채널만 최대 ${mmm.run.jointTransform.candidateCount}개 조합을 점검했습니다. 이 결과는 계수를 자동 교체하지 않고 변환 상호작용 진단으로만 사용합니다.`, `Only ${mmm.run.jointTransform.channels.length} channels with the most transform uncertainty were checked across at most ${mmm.run.jointTransform.candidateCount} combinations. This is a diagnostic and does not automatically replace coefficients.`)}` : ""}
+                  </p>}
                   {health.flags?.length > 0 ? (
                     <div className="callout warn" style={{ margin: "10px 0 0" }}>
                       <div className="ico">!</div><div className="body"><strong>{tx(`모델 경고 ${health.flags.length}건`, `${health.flags.length} model warnings`)}</strong>
