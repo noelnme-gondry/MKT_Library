@@ -14,6 +14,9 @@ __pycache__/
 *.pyc
 
 # 로컬 디버그 잔재 (index.html brace-tracking·patch 작업물). 커밋 금지 (CLAUDE.md §2.6)
+.legacy-local/
+# `.legacy-local/`은 이전 디버그·데이터·외부 방법론 보관함이다. 앱 소스가 아니며
+# 에이전트가 참조·검색·편집·커밋하지 않는다.
 *.patch
 .Rhistory
 brace_levels.txt
