@@ -10,4 +10,23 @@ describe("buildDataQualityReport", () => {
     expect(report).toMatchObject({ grade: "caution", periodCount: 1 });
     expect(report.issues).toHaveLength(2);
   });
+
+  it("profiles gaps, missingness, zero values, and outliers without changing source rows", () => {
+    const report = buildDataQualityReport({
+      records: [
+        { date: "2026-07-01", dimensions: {}, metrics: { cost: 10, installs: 0 } },
+        { date: "2026-07-02", dimensions: {}, metrics: { cost: null, installs: 0 } },
+        { date: "2026-07-10", dimensions: {}, metrics: { cost: 12, installs: 0 } },
+        { date: "2026-07-11", dimensions: {}, metrics: { cost: 13, installs: 0 } },
+        { date: "2026-07-12", dimensions: {}, metrics: { cost: 14, installs: 0 } },
+        { date: "2026-07-13", dimensions: {}, metrics: { cost: 1000, installs: 0 } },
+        { date: "2026-07-14", dimensions: {}, metrics: { cost: null, installs: 0 } },
+      ],
+      summary: {},
+    }, { metricKeys: ["cost", "installs"] });
+    expect(report.periodStats.gapCount).toBe(1);
+    expect(report.metricStats.cost.missingRate).toBeCloseTo(2 / 7);
+    expect(report.metricStats.installs.zeroRate).toBe(1);
+    expect(report.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(["period_gaps", "high_missing_rate", "all_zero_metric", "outliers"]));
+  });
 });
