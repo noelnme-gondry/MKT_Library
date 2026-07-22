@@ -2700,7 +2700,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
 
             // Gaussian-prior posterior.  Prior precision is intentionally modest:
             // it stabilizes collinear channels without silently forcing an effect.
-            function _mmmBayesianLinear(X, y, mediaIndices) {
+            function _mmmBayesianLinear(X, y, mediaIndices, mediaPriors = {}) {
               const n = X.length;
               if (!n || !X[0]?.length) return null;
               const p = X[0].length;
@@ -2709,6 +2709,14 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 j === 0 ? 1e-8 : mediaIndices.has(j) ? 4 : 0.15,
               );
               const priorMean = Array(p).fill(0);
+              // 외부 실험·참고 시장 근거는 매체 계수에만 적용한다. 추세·계절·국가
+              // 고유 baseline을 다른 시장에서 가져오지 않도록 제어변수 prior는 그대로 둔다.
+              for (const [idx, prior] of Object.entries(mediaPriors || {})) {
+                const j = Number(idx);
+                if (!mediaIndices.has(j) || !prior) continue;
+                if (isFinite(prior.mean)) priorMean[j] = prior.mean;
+                if (isFinite(prior.precision) && prior.precision > 0) precision[j] = prior.precision;
+              }
               const augX = X.map((r) => r.slice());
               const augY = y.slice();
               for (let j = 0; j < p; j++) {
@@ -2730,7 +2738,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               return { beta, fitted, resid, sigma: Math.sqrt(sigma2) || yScale, sd, r2 };
             }
 
-            export function mmmBayesianRun(panel, cfg, targetName, withBacktest = true) {
+            export function mmmBayesianRun(panel, cfg, targetName, withBacktest = true, options = {}) {
               const controls = _mmmBayesControlFeatures(panel, cfg);
               const params = _mmmBayesChannelParams(panel, cfg, targetName, controls);
               const names = controls.names.slice();
@@ -2748,7 +2756,18 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               );
               const X = Xraw.map((r) => [1, ...r.map((v, j) => (v - colMean[j]) / colScale[j])]);
               const mediaIndices = new Set(channelMeta.map((_, i) => 1 + controls.names.length + i));
-              const posterior = _mmmBayesianLinear(X, panel.targets[targetName], mediaIndices);
+              const mediaPriors = {};
+              for (const ch of channelMeta) {
+                const j = names.indexOf("media_" + ch.key);
+                const prior = options.mediaPriors?.[ch.key];
+                if (!prior) continue;
+                // 외부 모델의 원단위 β를 현재 표준화 설계행렬의 β로 변환한다.
+                mediaPriors[j + 1] = {
+                  mean: isFinite(prior.mean) ? prior.mean * colScale[j] : 0,
+                  precision: prior.precision,
+                };
+              }
+              const posterior = _mmmBayesianLinear(X, panel.targets[targetName], mediaIndices, mediaPriors);
               if (!posterior) return null;
               // 추정은 표준화 공간에서 안정적으로 하되, 화면 기여는 원 단위 절대기여로
               // 되돌린다. 평균 중심화 X를 그대로 쓰면 양수 매체 효과도 저지출 주에
@@ -2865,6 +2884,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 collinear_pairs: [],
                 elasticities: [],
                 backtest,
+                appliedMediaPriors: options.mediaPriors || {},
               };
             }
 

@@ -61,6 +61,19 @@ describe("runMmmMethTests (golden port)", () => {
     expect(run.weeks.every((w) => w.contrib.Trend > 0)).toBe(true);
   });
 
+  it("applies an external media prior only to the matched channel", () => {
+    const n = 52;
+    const panel = {
+      week: Array.from({ length: n }, (_, i) => i + 1),
+      ch: { google_roi: Array.from({ length: n }, (_, i) => 1200 + i * 40), meta: Array.from({ length: n }, (_, i) => 900 + (i % 7) * 80) },
+      targets: { Regs: Array.from({ length: n }, (_, i) => 3000 + i * 14) },
+      channels: [{ key: "google_roi", label: "Google", kind: "perf" }, { key: "meta", label: "Meta", kind: "perf" }],
+    };
+    const run = mmmBayesianRun(panel, { ...MMM_METH_CONFIG, steps: {} }, "Regs", false, { mediaPriors: { meta: { mean: 55, precision: 0.8 } } });
+    expect(run.appliedMediaPriors.meta).toEqual({ mean: 55, precision: 0.8 });
+    expect(run.appliedMediaPriors.google_roi).toBeUndefined();
+  });
+
   it("T1-T8 MMM methodology pipeline matches index.html", () => {
     const rng = _mmrLcg(77);
     const n = 104;
