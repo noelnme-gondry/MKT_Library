@@ -1322,6 +1322,44 @@ export default function MarketingResponse({ locale = "ko" }) {
       // baseline·추세·계절성은 절대 이식하지 않으며, country 컬럼별 개별 모델이
       // 성공한 경우만 약한 precision으로 참고한다.
       const mediaPriors = {};
+      const experiment = priorView === "experiment" ? priorEvidence.experiment : null;
+      if (experiment?.raw?.length && experiment.headers?.length) {
+        const targetHeader = experiment.headers.find((h) => /signups?|registrations?|가입|revenue|매출|reactiv/i.test(String(h)));
+        const stateHeader = experiment.headers.find((h) => /treatment_state|state|on.?off|상태/i.test(String(h)));
+        const armHeader = experiment.headers.find((h) => /(^|[_\s])arm|group|treatment.*control|처리군|대조군/i.test(String(h)));
+        const spends = experiment.headers.filter((h) => /spend|cost|비용|지출/i.test(String(h)));
+        if (targetHeader && spends.length) {
+          spends.forEach((spendHeader) => {
+            const parse = (v) => Number(String(v ?? "").replace(/[^0-9.\-]/g, "")) || 0;
+            const key = mmmSanKey(spendHeader);
+            let effect = null;
+            let n = 0;
+            if (armHeader) {
+              const treated = experiment.raw.filter((row) => /treat|처리/i.test(String(row[armHeader] || "")));
+              const control = experiment.raw.filter((row) => /control|대조/i.test(String(row[armHeader] || "")));
+              if (treated.length >= 4 && control.length >= 4) {
+                effect = treated.reduce((sum, row) => sum + parse(row[targetHeader]), 0) / treated.length - control.reduce((sum, row) => sum + parse(row[targetHeader]), 0) / control.length;
+                n = Math.min(treated.length, control.length);
+              }
+            } else if (stateHeader) {
+              const on = experiment.raw.filter((row) => /^(on|treat|1)$/i.test(String(row[stateHeader] || "").trim()));
+              const off = experiment.raw.filter((row) => /^(off|control|0)$/i.test(String(row[stateHeader] || "").trim()));
+              if (on.length >= 4 && off.length >= 4) {
+                effect = on.reduce((sum, row) => sum + parse(row[targetHeader]), 0) / on.length - off.reduce((sum, row) => sum + parse(row[targetHeader]), 0) / off.length;
+                n = Math.min(on.length, off.length);
+              }
+            }
+            const baseRun = mmmBayesianRun(panel, cfg, t, false);
+            const channel = Object.values(baseRun?.saturationByChannel || {}).find((item) => item.key === key);
+            const avgSpend = experiment.raw.reduce((sum, row) => sum + parse(row[spendHeader]), 0) / experiment.raw.length;
+            if (channel && effect != null && avgSpend > 0) {
+              const p = channel.params;
+              const transformed = Math.max(0.05, Math.pow(avgSpend / p.ec, p.slope) / (1 + Math.pow(avgSpend / p.ec, p.slope)));
+              mediaPriors[key] = { mean: effect / transformed, precision: Math.min(1.2, 0.12 * n) };
+            }
+          });
+        }
+      }
       const source = priorView === "country" ? priorEvidence.country : null;
       if (source?.raw?.length && source.headers?.length) {
         const countryHeader = source.headers.find((h) => /(^|[_\s])(country|market)([_\s]|$)|국가|시장/i.test(String(h)));
