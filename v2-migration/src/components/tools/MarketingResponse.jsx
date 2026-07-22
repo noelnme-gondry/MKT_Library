@@ -242,6 +242,87 @@ function NetEffectEvidence({ net, locale }) {
   </Card>;
 }
 
+// Prior는 기본 MMM을 대체하는 숨은 설정이 아니라, 어떤 외부 근거를 썼는지
+// 결과 화면에서 추적·비교할 수 있는 별도 레이어다. 아직 근거가 없으면 이 카드도
+// 조용히 기본 모델만 보여 준다. 실제 prior 추정은 원자료 검증을 거친 뒤에만 켠다.
+function MmmEvidenceLedger({ locale, priorView, onPriorView, evidence, onEvidence }) {
+  const tx = (ko, en) => (locale === "en" ? en : ko);
+  const experimentRef = useRef(null);
+  const countryRef = useRef(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const parseEvidence = (file, kind) => {
+    if (!file) return;
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: ({ data, meta }) => {
+        const headers = meta.fields || [];
+        const countryHeader = headers.find((h) => /(^|[_\s])(country|market)([_\s]|$)|국가|시장/i.test(String(h)));
+        const countries = countryHeader
+          ? [...new Set(data.map((row) => String(row[countryHeader] || "").trim()).filter(Boolean))].slice(0, 50)
+          : [];
+        onEvidence((current) => ({ ...current, [kind]: { name: file.name, rows: data.length, countries } }));
+      },
+    });
+  };
+  const hasExperiment = !!evidence.experiment;
+  const hasCountry = !!evidence.country;
+  const views = [
+    { id: "base", label: tx("기본 데이터만", "Base data") },
+    ...(hasExperiment ? [{ id: "experiment", label: tx("실험 근거", "Experiment evidence") }] : []),
+    ...(hasCountry ? [{ id: "country", label: tx("추천 국가 세트", "Recommended markets") }] : []),
+  ];
+  return (
+    <section className="mmm-evidence-ledger" aria-label={tx("근거 보정", "Evidence calibration")}>
+      <div className="mmm-evidence-ledger__topline">
+        <div>
+          <span className="mmm-evidence-ledger__eyebrow">{tx("MODEL EVIDENCE", "MODEL EVIDENCE")}</span>
+          <h2>{tx("결론의 근거를 분리해서 봅니다", "Keep the evidence behind the conclusion visible")}</h2>
+          <p>{tx("근거가 없으면 지금의 기본 MMM만 사용합니다. 실험·국가 데이터는 선택적으로 추가하고, 적용 전후를 같은 화면에서 비교합니다.", "Without added evidence, this remains the current base MMM. Experiment and market data are optional and are compared beside the base model.")}</p>
+        </div>
+        <button className="ab-pill" onClick={() => setIsOpen((open) => !open)} aria-expanded={isOpen}>
+          {isOpen ? tx("근거 설정 닫기", "Close evidence setup") : tx("근거 데이터 추가", "Add evidence")}
+        </button>
+      </div>
+
+      <div className="mmm-evidence-ledger__views" role="tablist" aria-label={tx("모델 보기", "Model view")}>
+        {views.map((view) => (
+          <button key={view.id} role="tab" aria-selected={priorView === view.id}
+            className={`mmm-evidence-ledger__view ${priorView === view.id ? "is-active" : ""}`}
+            onClick={() => onPriorView(view.id)}>{view.label}</button>
+        ))}
+        {!hasExperiment && !hasCountry && <span className="mmm-evidence-ledger__base-note">{tx("현재: 기본 MMM", "Current: base MMM")}</span>}
+      </div>
+
+      {priorView !== "base" && (
+        <div className="mmm-evidence-ledger__pending">
+          <strong>{tx("근거 보정 결과를 준비 중입니다.", "Evidence-calibrated results are being prepared.")}</strong>
+          <span>{tx("업로드된 원자료의 설계·기간·KPI 일치 여부를 검증한 뒤에만 prior를 적용합니다. 현재 수치는 기본 MMM 결과입니다.", "A prior is applied only after validating design, timing, and KPI alignment in the uploaded source data. The figures currently shown are from the base MMM.")}</span>
+        </div>
+      )}
+
+      {isOpen && (
+        <div className="mmm-evidence-ledger__setup">
+          <div className="mmm-evidence-ledger__source">
+            <div className="mmm-evidence-ledger__source-head"><span>01</span><div><strong>{tx("홀드아웃 원자료", "Holdout source data")}</strong><p>{tx("On/Off 또는 Geo 실험의 기간·처리군·대조군·KPI·spend를 올립니다.", "Upload time period, treatment/control, KPI, and spend for an On/Off or geo experiment.")}</p></div></div>
+            {hasExperiment ? <div className="mmm-evidence-ledger__file"><b>{evidence.experiment.name}</b><span>{evidence.experiment.rows.toLocaleString()}{tx("행 업로드됨", " rows imported")}</span></div> : <button className="ab-button" onClick={() => experimentRef.current?.click()}>{tx("실험 원자료 선택", "Choose experiment data")}</button>}
+            <input ref={experimentRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => { parseEvidence(e.target.files?.[0], "experiment"); e.target.value = null; }} />
+          </div>
+          <div className="mmm-evidence-ledger__source">
+            <div className="mmm-evidence-ledger__source-head"><span>02</span><div><strong>{tx("참고 국가 MMM 데이터", "Reference-market MMM data")}</strong><p>{tx("타깃 국가와 같은 KPI·채널 포맷을 사용하고, 여러 국가라면 <code>country</code> 컬럼을 포함합니다.", "Use the target market's KPI/channel format; include a <code>country</code> column for multiple markets.")}</p></div></div>
+            {hasCountry ? <div className="mmm-evidence-ledger__file"><b>{evidence.country.name}</b><span>{evidence.country.countries.length ? evidence.country.countries.join(" · ") : tx("country 컬럼을 찾지 못함", "No country column found")}</span></div> : <button className="ab-button" onClick={() => countryRef.current?.click()}>{tx("국가 데이터 선택", "Choose market data")}</button>}
+            <input ref={countryRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => { parseEvidence(e.target.files?.[0], "country"); e.target.value = null; }} />
+          </div>
+          <div className="mmm-evidence-ledger__rule">
+            <strong>{tx("선택 원칙", "Selection rule")}</strong>
+            <span>{tx("모든 국가를 합치지 않습니다. 개별 적격성 → 최대 2~3개 조합 → 한국 마지막 12주 백테스트 순서로, 가장 단순한 충분성 세트 하나만 추천합니다.", "Markets are not pooled blindly. The flow is individual eligibility → combinations of up to 2–3 → target-market final-12-week backtest, then one simplest sufficient set is recommended.")}</span>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function fmtInt(v) {
   if (v == null || !isFinite(v)) return "—";
   return Math.round(v).toLocaleString();
@@ -1075,6 +1156,10 @@ export default function MarketingResponse({ locale = "ko" }) {
   const [fcStepOff, setFcStepOff] = useState({}); // {stepKey: 켜둘 미래 기간 N} — 빈값=지속
   const [cannibChannel, setCannibChannel] = useState(null);
   const [cannibQuestion, setCannibQuestion] = useState("precedence");
+  // 기본 결과는 기존 MMM 그대로. prior 관련 데이터가 실제로 있을 때만 결과 탭 후보가 추가된다.
+  // 원자료는 이 컴포넌트 메모리에만 두며 서버로 보내지 않는다.
+  const [priorView, setPriorView] = useState("base");
+  const [priorEvidence, setPriorEvidence] = useState({ experiment: null, country: null });
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
   const demoDisabled = useAppStore((state) => state.demoDisabled);
@@ -1122,6 +1207,8 @@ export default function MarketingResponse({ locale = "ko" }) {
       const guess = autoGuessColMap(csvData.headers, csvData.raw);
       setMmmColMap(guess);
       setMmmAnalyzedSig(demoPending.current ? JSON.stringify(guess) : null);
+      setPriorView("base");
+      setPriorEvidence({ experiment: null, country: null });
       demoPending.current = false;
       prevCsvSig.current = csvSig;
     } else if (!hasData && prevCsvSig.current !== null) {
@@ -2482,6 +2569,13 @@ export default function MarketingResponse({ locale = "ko" }) {
               : [];
             return (
             <>
+              <MmmEvidenceLedger
+                locale={locale}
+                priorView={priorView}
+                onPriorView={setPriorView}
+                evidence={priorEvidence}
+                onEvidence={setPriorEvidence}
+              />
               {/* ── 메인: 평어 헤드라인 ── */}
               <Card style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                 <Badge color="#7aa2f7">{tx("기여 분해", "Contribution")}</Badge>
