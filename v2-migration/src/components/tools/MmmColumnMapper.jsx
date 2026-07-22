@@ -37,6 +37,8 @@ function guessRole(col, rows) {
   else if (isBin && /step|구조변화|regime|레짐|shutdown|중단|종료|launch|런칭/.test(name)) role = "step";
   else if (isBin) role = "dummy";
   else if (isNum && /revenue|매출|sales|gmv|payment|결제금액/.test(name)) role = "revenue";
+  else if (isNum && /purchaser|buyer|구매자|결제자/.test(name)) role = "purchasers";
+  else if (isNum && /traffic|total.?visit|총.?유입|방문자|sessions?/.test(name)) role = "traffic";
   else if (isNum && /reg|가입|등록|signup|sign_up|install/.test(name)) role = "reg";
   else if (isNum && /react|재활성|reactiv|resurrect|win.?back|winback/.test(name)) role = "react";
   else if (isNum && /cost|spend|비용|지출|budget|imp|click|ch_|채널|brand/.test(name)) role = "channel";
@@ -81,6 +83,8 @@ export function autoGuessColMap(headers, rows, partial = true) {
     }
     else if (!derivedRe.test(name) && isNum && !isBin) {
       if (/revenue|매출|sales|gmv|payment|결제금액/.test(name)) role = "revenue";
+      else if (/purchaser|buyer|구매자|결제자/.test(name)) role = "purchasers";
+      else if (/traffic|total.?visit|총.?유입|방문자|sessions?/.test(name)) role = "traffic";
       else if (/reg|가입|등록|signup|sign_up|install/.test(name)) role = "reg";
       else if (/react|재활성|reactiv|resurrect|win.?back|winback/.test(name)) role = "react";
       else if (/spend|cost|비용|지출|budget|brand/.test(name)) role = "channel";
@@ -106,7 +110,7 @@ function sanKey(name, used) {
 }
 
 function colMapRoles(headers, colMap) {
-  const out = { week: [], date: null, reg: [], react: [], revenue: [], platform: null, channels: [], dummies: [], steps: [] };
+  const out = { week: [], date: null, reg: [], react: [], traffic: [], purchasers: [], revenue: [], platform: null, channels: [], dummies: [], steps: [] };
   const used = new Set();
   for (const h of headers || []) {
     const def = colMap[h] || {};
@@ -115,6 +119,8 @@ function colMapRoles(headers, colMap) {
     else if (r === "date" && !out.date) out.date = h;
     else if (r === "reg") out.reg.push({ header: h, plat });
     else if (r === "react") out.react.push({ header: h, plat });
+    else if (r === "traffic") out.traffic.push({ header: h, plat });
+    else if (r === "purchasers") out.purchasers.push({ header: h, plat });
     else if (r === "revenue") out.revenue.push({ header: h, plat });
     else if (r === "platform" && !out.platform) out.platform = h;
     else if (r === "channel") out.channels.push({ header: h, key: sanKey(h, used), label: h, kind: def.kind === "brand" ? "brand" : "perf", plat });
@@ -129,7 +135,7 @@ export function colMapMissing(headers, colMap, locale = "ko") {
   if (!colMap) return [tr("채널·타깃 매핑", "channel & target mapping")];
   const r = colMapRoles(headers, colMap);
   const miss = [];
-  if (!r.reg.length && !r.react.length && !r.revenue.length) miss.push(tr("가입·재활성·매출 중 타깃 1개", "1 target among regs/reactivation/revenue"));
+  if (!r.reg.length && !r.react.length && !r.traffic.length && !r.purchasers.length && !r.revenue.length) miss.push(tr("유입·가입·재유입·구매자·매출 중 타깃 1개", "1 target among traffic/regs/reactivation/purchasers/revenue"));
   if (!r.channels.length) miss.push(tr("채널 spend 1개 이상", "1+ channel spend"));
   return miss;
 }
@@ -251,6 +257,27 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   // 날짜를 parseFloat하면 2025-01-06 → 2025가 되어 같은 해 모든 주가 동률이 된다.
   // 시간순 정렬은 원본 date/week 값을 파싱해 하고, MMM 내부 t는 항상 1…N으로 정규화한다.
   const timeHeader = r.date || weekC?.header || null;
+  // 일자별 패널은 사용자가 주차로 전처리할 필요 없이 월요일 시작 주간으로 자동 합산한다.
+  // KPI·지출은 합계, 0/1 이벤트는 해당 주에 한 번이라도 발생하면 1로 보존한다.
+  if (r.date && baseRows.length) {
+    const groups = new Map();
+    for (const row of baseRows) {
+      const d = _mmmParseDate(row[r.date]);
+      if (!d) { groups.set(`raw:${groups.size}`, { ...row }); continue; }
+      const monday = new Date(d); monday.setHours(0, 0, 0, 0); monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+      const key = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
+      const item = groups.get(key) || { ...row, [r.date]: key };
+      if (groups.has(key)) {
+        for (const h of headers) {
+          if (h === r.date) continue;
+          const value = Number(String(row[h] ?? "").replace(/[^0-9.\-]/g, ""));
+          if (Number.isFinite(value)) item[h] = (Number(item[h]) || 0) + value;
+        }
+      }
+      groups.set(key, item);
+    }
+    baseRows = [...groups.values()];
+  }
   const timeValue = (row, index) => {
     const raw = timeHeader ? row[timeHeader] : null;
     const weekly = String(raw ?? "").trim().match(/^(\d{4})\s*(?:-|\/|\.)?\s*(?:W|week\s*|주\s*)(\d{1,2})(?:주차?)?$/i);
@@ -276,9 +303,11 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
     const arrs = cs.map((c) => num(c.header, false));
     return baseRows.map((_, i) => arrs.reduce((s, a) => s + (a[i] || 0), 0));
   };
-  const regA = sumCols(r.reg), reactA = sumCols(r.react), revenueA = sumCols(r.revenue);
+  const regA = sumCols(r.reg), reactA = sumCols(r.react), trafficA = sumCols(r.traffic), purchasersA = sumCols(r.purchasers), revenueA = sumCols(r.revenue);
   if (regA) panel.targets.Regs = regA;
   if (reactA) panel.targets.React = reactA;
+  if (trafficA) panel.targets.Traffic = trafficA;
+  if (purchasersA) panel.targets.Purchasers = purchasersA;
   if (revenueA) panel.targets.Revenue = revenueA;
   const order = baseRows.map((_, i) => i).sort((a, b) => timeValue(baseRows[a], a) - timeValue(baseRows[b], b) || a - b);
   const re = (arr) => order.map((i) => arr[i]);
@@ -290,6 +319,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   for (const k in panel.targets) panel.targets[k] = re(panel.targets[k]);
   if (panel.targets.Regs && panel.targets.React) {
     panel.targets.RR = panel.week.map((_, i) => panel.targets.Regs[i] + panel.targets.React[i]);
+    if (!panel.targets.Traffic) panel.targets.Traffic = panel.targets.RR.slice();
   }
   // deriveWide와 동일한 패널 형태로 — 엔진(mmmChannelEffects/decomp)·렌더가 참조.
   panel.channels = chans.map((c) => ({ key: c.key, label: c.label, kind: c.kind }));
@@ -319,6 +349,8 @@ const ZONES = [
   ["date", "📅 날짜 · 1개 (표시용)", "📅 Date · 1 (for display)", false, false],
   ["reg", "🎯 가입 Regs", "🎯 Regs", false, true],
   ["react", "🎯 재활성 React", "🎯 Reactivation", false, true],
+  ["traffic", "🎯 총유입 Traffic", "🎯 Total traffic", false, true],
+  ["purchasers", "🛍 구매자 Purchasers", "🛍 Purchasers", false, true],
   ["revenue", "💰 매출 Revenue", "💰 Revenue", false, true],
   ["channel", "📈 채널 spend (여러 개 · perf/brand · 플랫폼)", "📈 Channel spend (many · perf/brand · platform)", true, true],
   ["dummy", "🔢 더미/이벤트 (0·1, 여러 개)", "🔢 Dummy/event (0/1, many)", false, false],

@@ -317,6 +317,10 @@ function MmmEvidenceLedger({ locale, priorView, onPriorView, evidence, onEvidenc
             <strong>{tx("선택 원칙", "Selection rule")}</strong>
             <span>{tx("모든 국가를 합치지 않습니다. 개별 적격성 → 최대 2~3개 조합 → 타깃 시장의 마지막 12주 백테스트 순서로, 가장 단순한 충분성 세트 하나만 추천합니다.", "Markets are not pooled blindly. The flow is individual eligibility → combinations of up to 2–3 → target-market final-12-week backtest, then one simplest sufficient set is recommended.")}</span>
           </div>
+          <div className="mmm-evidence-ledger__rule">
+            <strong>{tx("Y 매핑", "Y mapping")}</strong>
+            <span>{tx("타깃 KPI와 정의·단위가 같은 Y에만 prior를 반영합니다. 예를 들어 가입만 매핑되면 매출·구매자·총유입 결과에는 prior가 적용되지 않으며, 그 상태가 결과 화면에 표시됩니다.", "A prior is applied only to a target KPI with matching definition and units. If only registrations are mapped, revenue, purchasers, and traffic remain unadjusted; the result screen will state that status.")}</span>
+          </div>
           {!hasExperiment && !hasCountry && (
             <button className="mmm-evidence-ledger__demo" onClick={onLoadDemo}>
               <span>✦</span>
