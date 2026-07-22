@@ -73,6 +73,7 @@ describe("Dashboard render smoke", () => {
       useAppStore.setState({ dashboardTab: tab });
       expect(() => render(<Dashboard />)).not.toThrow();
       expect(document.querySelector(".dashboard-content")).toBeTruthy();
+      expect(document.querySelector(".dashboard-tabs")?.closest(".page-sticky-bar")).toBeTruthy();
     });
   }
 });

@@ -208,7 +208,12 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
               </>
             )}
           </div>
-          {showResults && <DashboardFilterBar locale={locale} />}
+          {showResults && (
+            <>
+              <DashboardFilterBar locale={locale} />
+              <DashboardTabs domain={domain} locale={locale} />
+            </>
+          )}
         </div>
 
         {!hasData && (
@@ -315,7 +320,6 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
               </>
             )}
             <MonEventMarkerUI locale={locale} />
-            <DashboardTabs domain={domain} locale={locale} />
 
             <div id="dashboard-tabpanel" className="tab-content" role="tabpanel" aria-labelledby={`dashboard-tab-${activeTab}`} tabIndex={0} style={{ marginTop: "1rem" }}>
               {activeTab === "viz" && <VizTab domain={domain} locale={locale} />}
