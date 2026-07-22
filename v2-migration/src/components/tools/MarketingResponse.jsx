@@ -1423,7 +1423,13 @@ export default function MarketingResponse({ locale = "ko" }) {
           // 복잡도 패널티: 아주 작은 오차 차이로 국가 수가 늘지 않게 한다.
           return { country: members.map((m) => m.country).join(" + "), prior, rmse, score: rmse * (1 + 0.015 * (members.length - 1)) };
         };
-        top.forEach((a, i) => { sets.push(scoreSet([a])); top.slice(i + 1).forEach((b) => sets.push(scoreSet([a, b]))); });
+        top.forEach((a, i) => {
+          sets.push(scoreSet([a]));
+          top.slice(i + 1).forEach((b, j) => {
+            sets.push(scoreSet([a, b]));
+            top.slice(i + j + 2).forEach((c) => sets.push(scoreSet([a, b, c])));
+          });
+        });
         sets.sort((a, b) => a.score - b.score);
         countryCandidates = sets;
         Object.assign(mediaPriors, sets[0]?.prior || {});
