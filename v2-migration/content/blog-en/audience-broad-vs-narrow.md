@@ -28,7 +28,7 @@ This is where things fall apart most often in practice — a narrow target that'
 
 ![A diagram showing that at a daily budget of $150, impressions land reasonably on a narrow target, but raising the daily budget to $1,500 on the same narrow target causes impressions to pile up excessively, spiking frequency.](/blog-assets-en/audience-broad-vs-narrow/budget-audience-fit.svg)
 
-The reason is simple. If the audience size stays the same but the budget goes up, that extra money gets spent **showing the ad more often to the same people.** Frequency spikes. And once frequency spikes, [creative fatigue](/en/blog/creative-fatigue) arrives fast — CTR drops, CPM rises, and CPA collapses.
+The reason is simple. If the audience size stays the same but the budget goes up, that extra money gets spent **showing the ad more often to the same people.** Frequency spikes. And once frequency spikes, [creative fatigue](/blog/ad-performance-diagnosis) arrives fast — CTR drops, CPM rises, and CPA collapses.
 
 So here's a principle: **audience size should scale with budget.** If you're raising budget, either widen the audience alongside it or rotate creative more frequently. Raise the budget and leave everything else unchanged, and it breaks almost every time.
 
@@ -68,4 +68,4 @@ If there's a narrow target where frequency keeps climbing, that's the one about 
 
 Narrow versus broad isn't a matter of preference. Decide based on what frequency looks like right now, whether you're about to raise budget, and whether you have enough data. And it's worth second-guessing a narrow target's great-looking CPA, at least once.
 
-Figuring out whether a CPA collapse is really about targeting, creative, or budget allocation is a separate question — pick that up in [how to lower CPA](/en/blog/cpa-reduction).
+Figuring out whether a CPA collapse is really about targeting, creative, or budget allocation is a separate question — pick that up in [ad performance diagnosis](/blog/ad-performance-diagnosis).

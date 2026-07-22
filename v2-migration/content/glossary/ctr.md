@@ -6,7 +6,7 @@ date: "2026-07-18"
 slug: "ctr"
 keywords: "CTR, CTR 뜻, CTR이란, Click-Through Rate, 클릭률, 클릭율 계산"
 category: "기초 지표"
-relatedPosts: ["ctr-improvement"]
+relatedPosts: ["ad-performance-diagnosis"]
 draft: false
 ---
 
@@ -30,4 +30,4 @@ CTR 개선 실험에서는 클릭 수가 적은 소재의 큰 등락을 과신�
 
 ## 더 깊게 보려면
 
-CTR이 낮을 때 소재·타겟·지면 중 뭐부터 손봐야 하는지는 [CTR 개선 글](/blog/ctr-improvement)에서 다룹니다.
+CTR이 낮을 때 소재·타겟·지면 중 뭐부터 손봐야 하는지는 [광고 성과 하락 진단 글](/blog/ad-performance-diagnosis)에서 다룹니다.

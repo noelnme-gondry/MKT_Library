@@ -42,7 +42,7 @@ This is where the real work of a performance marketer begins — not just readin
 
 The core questions are: how should budget be split across channels? Can I safely put more into this channel, or is it already saturated? Did CPA rise because a channel got worse, or because the mix of spend shifted?
 
-Surprisingly few people know this layer well, which makes it the layer where people actually differentiate themselves. This is where concepts like marginal utility in [budget allocation](/en/blog/marketing-budget-allocation), the reallocation lens in [ROAS improvement](/en/blog/roas-improvement), and [CPA decomposition](/en/blog/cpa-reduction) live.
+Surprisingly few people know this layer well, which makes it the layer where people actually differentiate themselves. This is where concepts like marginal utility in [marginal-efficiency budget operations](/blog/budget-marginal-efficiency) and the mix effect in [ad performance diagnosis](/blog/ad-performance-diagnosis) live.
 
 **What to build here:** the difference between average and marginal (the next won you spend), the concept of saturation and response curves, and decomposing why performance went up or down.
 

@@ -38,7 +38,7 @@ Looking at CTR and CVR together reveals something interesting. Good clicks but n
 
 This is the ad spend behind a single conversion — the number that comes up most often in day-to-day conversations.
 
-Here's something important to know: **a rising CPA doesn't automatically mean something got worse.** Even if every channel's own CPA stays flat, simply shifting budget toward a more expensive channel will push the overall blended CPA up. If you skip that breakdown and jump straight to overhauling creative, you're wasting effort. We covered this in more detail in [how to lower CPA](/en/blog/cpa-reduction).
+Here's something important to know: **a rising CPA doesn't automatically mean something got worse.** Even if every channel's own CPA stays flat, simply shifting budget toward a more expensive channel will push the overall blended CPA up. If you skip that breakdown and jump straight to overhauling creative, you're wasting effort. We covered this in more detail in [ad performance diagnosis](/blog/ad-performance-diagnosis).
 
 ## 4. ROAS — "Is this actually profitable?"
 

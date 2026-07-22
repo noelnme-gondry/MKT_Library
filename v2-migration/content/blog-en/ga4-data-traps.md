@@ -52,7 +52,7 @@ Second, never compare absolute session/user counts across tools. Only compare tr
 
 Third, if numbers don't match across screens, suspect thresholds and processing lag before blaming your setup. Those two cover most cases.
 
-One more thing — a genuinely sudden number swing is a separate issue. That's not a definition difference; it could be creative fatigue, competitive bidding, or an actual tracking failure. In that case, work through the [diagnosis order for a sudden performance drop](/blog/ad-performance-drop).
+One more thing — a genuinely sudden number swing is a separate issue. That's not a definition difference; it could be creative fatigue, competitive bidding, or an actual tracking failure. In that case, work through the [ad performance diagnosis](/blog/ad-performance-diagnosis).
 
 ## Do this today
 

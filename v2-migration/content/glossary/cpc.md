@@ -6,7 +6,7 @@ date: "2026-07-18"
 slug: "cpc"
 keywords: "CPC, CPC 뜻, CPC란, Cost Per Click, 클릭당 비용, CPC 계산"
 category: "기초 지표"
-relatedPosts: ["cpi-cpa-cpm-difference", "ctr-improvement"]
+relatedPosts: ["cpi-cpa-cpm-difference", "ad-performance-diagnosis"]
 draft: false
 ---
 
@@ -26,4 +26,4 @@ CPC가 낮아도 클릭 뒤 전환이 나쁘면 좋은 효율이 아닙니다. �
 
 ## 더 깊게 보려면
 
-CTR이 낮을 때 뭘 손봐야 하는지는 [CTR 개선 글](/blog/ctr-improvement)에서 다룹니다.
+CTR이 낮을 때 뭘 손봐야 하는지는 [광고 성과 하락 진단 글](/blog/ad-performance-diagnosis)에서 다룹니다.

@@ -28,7 +28,7 @@ Ranking in search is pointless if nobody installs. The conversion rate from impr
 - **Screenshot flow**: put the core value in the first two or three. Most users decide by then.
 - **Rating and reviews**: a low star rating filters you out no matter how good everything above is. Rating management is ASO too.
 
-This is the same principle as [CTR and CVR in ad creative](/blog/ctr-improvement): the chain of "see → get pulled in → act."
+This is the same principle as [CTR and CVR diagnosis](/blog/ad-performance-diagnosis): the chain of "see → get pulled in → act."
 
 ## 3. Relationship with paid
 
