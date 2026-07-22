@@ -1,8 +1,8 @@
 // Golden test port of index.html `runMmmMethTests` (index.html 24525-24860).
 // Verifies the v2 MMM math engine against the same inputs/expected values/tolerances.
 //
-// STATUS: the MMM methodology engine (mmmMath) has NOT been ported to v2 yet.
-// This file imports the required symbols so the missing-module failure is explicit.
+// STATUS: active v2 MMM methodology regression suite. It preserves legacy golden
+// checks and adds browser empirical-Bayes prior/forecast safeguards.
 import { describe, it, expect } from "vitest";
 import { _mmrLcg } from "./testFixtures.js";
 import {
@@ -12,6 +12,8 @@ import {
   mmmRunMmm,
   mmmBayesianRun,
   mmmBayesianWeeklyDecomp,
+  mmmBayesianForecast,
+  mmmBayesianHealth,
   mmmTrendExistence,
   mmmCannibalization,
   mmmGranger,
@@ -23,10 +25,11 @@ import {
   mmmMacroFacts,
   mmmDetectCollinear,
   mmmResolveAbsorb,
+  mmmChannelCoverage,
 } from "./mmmMath.js";
 
 describe("runMmmMethTests (golden port)", () => {
-  it("builds one browser Bayesian posterior for contributions and response curves", () => {
+  it("builds one browser empirical-Bayes fit for contributions and response curves", () => {
     const n = 64;
     const week = Array.from({ length: n }, (_, i) => i + 1);
     const spend = week.map((t) => 2500 + (t % 9) * 1100);
@@ -61,7 +64,7 @@ describe("runMmmMethTests (golden port)", () => {
     expect(run.weeks.every((w) => w.contrib.Trend > 0)).toBe(true);
   });
 
-  it("marginalizes Bayesian channel confidence over carryover and saturation candidates", () => {
+  it("profile-averages empirical-Bayes channel confidence over carryover and saturation candidates", () => {
     const n = 56;
     const week = Array.from({ length: n }, (_, i) => i + 1);
     const spend = week.map((t) => 900 + ((t * 13) % 17) * 460);
@@ -84,8 +87,49 @@ describe("runMmmMethTests (golden port)", () => {
     expect(effect.transformUncertainty.effectiveCandidateCount).toBeLessThanOrEqual(8);
     expect(effect.transformUncertainty.topWeight).toBeGreaterThan(0);
     expect(effect.ci.every(Number.isFinite)).toBe(true);
+    const incremental = effect.incrementalAt(effect.recentMean, 1000);
+    expect(incremental.ci.every(Number.isFinite)).toBe(true);
+    expect(incremental.ci[0]).toBeLessThanOrEqual(incremental.mean);
+    expect(incremental.mean).toBeLessThanOrEqual(incremental.ci[1]);
     expect(effect.posteriorPositive).toBeGreaterThanOrEqual(0);
     expect(effect.posteriorPositive).toBeLessThanOrEqual(1);
+  });
+
+  it("can refit a reference market on the target market's exact transform units", () => {
+    const n = 52;
+    const panel = {
+      week: Array.from({ length: n }, (_, index) => index + 1),
+      ch: { meta: Array.from({ length: n }, (_, index) => 500 + ((index * 11) % 17) * 80) },
+      targets: { Regs: Array.from({ length: n }, (_, index) => 1000 + index * 3 + ((index * 11) % 17) * 5) },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+    };
+    const fixed = { alpha: 0.7, ec: 975, slope: 1.4 };
+    const run = mmmBayesianRun(panel, { ...MMM_METH_CONFIG, steps: {} }, "Regs", false, {
+      channelParams: { meta: fixed },
+      skipTransformUncertainty: true,
+    });
+    expect(run.params.meta).toMatchObject({ ...fixed, fixedFromTarget: true });
+    expect(run.saturationByChannel.meta.params).toMatchObject(fixed);
+  });
+
+  it("blocks sustained-spend extrapolation even when raw weekly spend stays below its historical max", () => {
+    const n = 64;
+    const spend = Array.from({ length: n }, (_, index) => index % 2 === 0 ? 100 : 0);
+    const panel = {
+      week: Array.from({ length: n }, (_, index) => index + 1),
+      ch: { meta: spend },
+      targets: { Regs: spend.map((value, index) => 1000 + value * 0.4 + index) },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+    };
+    const run = mmmBayesianRun(panel, { ...MMM_METH_CONFIG, steps: {} }, "Regs", false, {
+      channelParams: { meta: { alpha: 0.8, ec: 100, slope: 1 } },
+      skipTransformUncertainty: true,
+    });
+    const effect = run.saturationByChannel.meta;
+    expect(effect.recentMean + 40).toBeLessThanOrEqual(effect.coverage.observedMax);
+    expect(effect.observedSustainableSpendMax).toBeLessThan(effect.coverage.observedMax);
+    expect(effect.isIncrementInObservedRange(effect.recentMean, 40)).toBe(false);
+    expect(effect.observedRangeProfileWeight).toBe(1);
   });
 
   it("applies an external media prior only to the matched channel", () => {
@@ -99,6 +143,200 @@ describe("runMmmMethTests (golden port)", () => {
     const run = mmmBayesianRun(panel, { ...MMM_METH_CONFIG, steps: {} }, "Regs", false, { mediaPriors: { meta: { mean: 55, precision: 0.8 } } });
     expect(run.appliedMediaPriors.meta).toEqual({ mean: 55, precision: 0.8 });
     expect(run.appliedMediaPriors.google_roi).toBeUndefined();
+    expect(run.saturationByChannel.meta.transformUncertainty.priorLockedTransform).toBe(true);
+    expect(run.saturationByChannel.meta.transformUncertainty.candidateCount).toBe(1);
+  });
+
+  it("preserves calibrated prior strength when the KPI unit is rescaled", () => {
+    const n = 52;
+    const spend = Array.from({ length: n }, (_, i) => 700 + ((i * 11) % 13) * 120);
+    const target = spend.map((value, i) => 1200 + 45 * (value / (value + 900)) + ((i % 4) - 1.5) * 8);
+    const panel = {
+      week: Array.from({ length: n }, (_, i) => i + 1),
+      ch: { meta: spend },
+      targets: { Regs: target },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+    };
+    const cfg = { ...MMM_METH_CONFIG, steps: {}, adstockGrid: [0], bayesHalfSaturationQuantiles: [0.6], bayesHillSlopeGrid: [1] };
+    const prior = { meta: { mean: 60, precision: 1 / (20 ** 2) } };
+    const original = mmmBayesianRun(panel, cfg, "Regs", false, { mediaPriors: prior });
+    const scale = 1000;
+    const rescaled = mmmBayesianRun({
+      ...panel,
+      targets: { Regs: target.map((value) => value * scale) },
+    }, cfg, "Regs", false, { mediaPriors: { meta: { mean: 60 * scale, precision: 1 / ((20 * scale) ** 2) } } });
+    const a = original.saturationByChannel.meta;
+    const b = rescaled.saturationByChannel.meta;
+    expect(b.ln_coef / scale).toBeCloseTo(a.ln_coef, 5);
+    expect(b.posteriorPositive).toBeCloseTo(a.posteriorPositive, 5);
+    expect(rescaled.posterior.calibratedPriorCount).toBe(1);
+    expect(original.posterior.priorScaleConverged).toBe(true);
+    expect(original.posterior.priorScaleIterations).toBeLessThanOrEqual(6);
+  });
+
+  it("uses steady-state carryover in response curves and advances future controls", () => {
+    const n = 64;
+    const week = Array.from({ length: n }, (_, i) => i + 1);
+    const spend = week.map((t) => 800 + ((t * 7) % 13) * 90);
+    const promo = week.map((t) => (t % 9 === 0 ? 1 : 0));
+    const target = spend.map((value, i) => 2500 + i * 11 + 180 * Math.sin((2 * Math.PI * (i + 1)) / 52.18) + value * 0.04 + 120 * promo[i]);
+    const panel = {
+      week,
+      dateLabel: week.map((t) => `2025-W${String(t).padStart(2, "0")}`),
+      ch: { meta: spend },
+      dummy: { promo },
+      useDummies: true,
+      targets: { Regs: target },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+    };
+    const cfg = {
+      ...MMM_METH_CONFIG,
+      steps: {},
+      adstockGrid: [0.6],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+    };
+    const run = mmmBayesianRun(panel, cfg, "Regs", false);
+    const effect = run.saturationByChannel.meta;
+    const steady = 1000 / (1 - 0.6);
+    const expected = effect.ln_coef * (steady / (steady + effect.params.ec));
+    expect(effect.responseAt(1000)).toBeCloseTo(expected, 8);
+
+    const forecast = mmmBayesianForecast(run, panel, { meta: Array(4).fill(1000) }, 4);
+    const withKnownPromo = mmmBayesianForecast(run, panel, { meta: Array(4).fill(1000) }, 4, { futureDummy: { promo: [1, 0, 0, 0] } });
+    const trendIndex = run.names.indexOf("trend") + 1;
+    const sinIndex = run.names.indexOf("sin_0") + 1;
+    expect(forecast.futureRows[0][trendIndex]).not.toBeCloseTo(run.standardizedX.at(-1)[trendIndex], 10);
+    expect(forecast.futureRows[0][sinIndex]).not.toBeCloseTo(run.standardizedX.at(-1)[sinIndex], 10);
+    expect(new Set(forecast.lo.map((value, i) => +(forecast.hi[i] - value).toFixed(6))).size).toBeGreaterThan(1);
+    expect(withKnownPromo.predFut[0]).not.toBeCloseTo(forecast.predFut[0], 6);
+    expect(forecast.horizon).toBe(4);
+    expect(forecast.histLabels[0]).toBe("2025-W01");
+  });
+
+  it("keeps calibrated priors in forward validation and exposes analytical health checks", () => {
+    const n = 64;
+    const spend = Array.from({ length: n }, (_, i) => 1000 + ((i * 5) % 11) * 75);
+    const panel = {
+      week: Array.from({ length: n }, (_, i) => i + 1),
+      ch: { meta: spend },
+      targets: { Regs: spend.map((value, i) => 1800 + value * 0.08 + i * 3) },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+    };
+    const cfg = { ...MMM_METH_CONFIG, steps: {}, adstockGrid: [0], bayesHalfSaturationQuantiles: [0.6], bayesHillSlopeGrid: [1] };
+    const run = mmmBayesianRun(panel, cfg, "Regs", true, { mediaPriors: { meta: { mean: 90, precision: 1 / (20 ** 2) } } });
+    expect(run.backtest?.calibratedPriorCount).toBe(1);
+    const health = mmmBayesianHealth(run);
+    expect(health?.samplingDiagnostic).toBeNull();
+    expect(health?.intervalScope).toContain("Conditional Gaussian");
+    expect(health?.wmape).toBeGreaterThanOrEqual(0);
+    expect(health?.identification?.parameterCount).toBeGreaterThan(1);
+  });
+
+  it("withholds budget recommendations when channels are not separately identifiable", () => {
+    const n = 64;
+    const spend = Array.from({ length: n }, (_, i) => 800 + ((i * 7) % 13) * 90);
+    const panel = {
+      week: Array.from({ length: n }, (_, i) => i + 1),
+      ch: { meta: spend, google: spend.slice() },
+      targets: { Regs: spend.map((value, i) => 2000 + value * 0.1 + i * 2) },
+      channels: [
+        { key: "meta", label: "Meta", kind: "perf" },
+        { key: "google", label: "Google", kind: "perf" },
+      ],
+    };
+    const cfg = { ...MMM_METH_CONFIG, adstockGrid: [0], bayesHalfSaturationQuantiles: [0.6], bayesHillSlopeGrid: [1] };
+    const run = mmmBayesianRun(panel, cfg, "Regs", false);
+    expect(run.identification.highCollinearity).toBe(true);
+    expect(run.identification.budgetEligible).toBe(false);
+    expect(run.collinear_pairs[0].corr).toBe(1);
+    expect(run.saturationByChannel.meta.budgetEligible).toBe(false);
+  });
+
+  it("withholds per-channel budget use for sparse, constant, or recently inactive spend", () => {
+    const n = 64;
+    const sparseSpend = Array.from({ length: n }, (_, index) => index >= 46 && index < 56 ? 500 + index * 20 : 0);
+    const constantSpend = Array(n).fill(1000);
+    const coverage = mmmChannelCoverage({
+      week: Array.from({ length: n }, (_, index) => index + 1),
+      ch: { sparse: sparseSpend, constant: constantSpend },
+      channels: [
+        { key: "sparse", label: "Sparse", kind: "perf" },
+        { key: "constant", label: "Constant", kind: "perf" },
+      ],
+    }, MMM_METH_CONFIG);
+    expect(coverage.sparse.sparse).toBe(true);
+    expect(coverage.sparse.trailingZero).toBe(true);
+    expect(coverage.constant.constantSpend).toBe(true);
+    expect(coverage.sparse.observedMax).toBe(Math.max(...sparseSpend));
+    expect(Number.isFinite(coverage.sparse.observedP95)).toBe(true);
+
+    const panel = {
+      week: Array.from({ length: n }, (_, index) => index + 1),
+      ch: { sparse: sparseSpend },
+      targets: { Regs: sparseSpend.map((value, index) => 2000 + value * 0.2 + index * 4) },
+      channels: [{ key: "sparse", label: "Sparse", kind: "perf" }],
+    };
+    const run = mmmBayesianRun(panel, { ...MMM_METH_CONFIG, steps: {}, adstockGrid: [0], bayesHalfSaturationQuantiles: [0.6], bayesHillSlopeGrid: [1] }, "Regs", false);
+    expect(run.saturationByChannel.sparse.budgetEligible).toBe(false);
+    expect(run.saturationByChannel.sparse.budgetGateReasons).toContain("sparse-active-weeks");
+    expect(run.saturationByChannel.sparse.budgetGateReasons).toContain("recently-inactive");
+    expect(run.saturationByChannel.sparse.isIncrementInObservedRange(500, 100)).toBe(true);
+    expect(run.saturationByChannel.sparse.isIncrementInObservedRange(coverage.sparse.observedMax, 1)).toBe(false);
+  });
+
+  it("does not invent an RR audit by summing incompatible multi-Y targets", () => {
+    const panel = {
+      week: Array.from({ length: 24 }, (_, i) => i + 1),
+      ch: { meta: Array.from({ length: 24 }, (_, i) => 100 + i) },
+      targets: {
+        Traffic: Array.from({ length: 24 }, (_, i) => 1000 + i),
+        Revenue: Array.from({ length: 24 }, (_, i) => 100000 + i * 100),
+      },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+    };
+    expect(mmmAudit(panel, MMM_METH_CONFIG)).toBeNull();
+  });
+
+  it("blocks missing calendar weeks and only blocks missing values for the selected Y", () => {
+    const panel = {
+      week: [1, 2, 3],
+      calendarGaps: { count: 1, gaps: [{ after: "2025-01-06", before: "2025-01-20", missingWeeks: 1 }] },
+      ch: { meta: [100, 120, 130] },
+      targets: { Regs: [10, 12, 13], Revenue: [1000, NaN, 1300] },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+    };
+    const regs = mmmValidate(panel, "en", "Regs");
+    expect(regs.issues.some((message) => message.includes("calendar week"))).toBe(true);
+    expect(regs.issues.some((message) => message.includes("Revenue"))).toBe(false);
+    expect(regs.warnings.some((message) => message.includes("Revenue"))).toBe(true);
+    const revenue = mmmValidate({ ...panel, calendarGaps: { count: 0, gaps: [] } }, "en", "Revenue");
+    expect(revenue.issues.some((message) => message.includes("Revenue"))).toBe(true);
+    const mappedDiagnostics = mmmValidate({
+      ...panel,
+      calendarGaps: { count: 0, gaps: [] },
+      timeDiagnostics: {
+        issues: [{ messageKo: "중복 주차", messageEn: "Duplicate week" }],
+        warnings: [{ messageKo: "경계 주 제외", messageEn: "Boundary week excluded" }],
+      },
+    }, "en", "Regs");
+    expect(mappedDiagnostics.issues).toContain("Duplicate week");
+    expect(mappedDiagnostics.warnings).toContain("Boundary week excluded");
+    expect(mappedDiagnostics.issues.every((message) => typeof message === "string")).toBe(true);
+  });
+
+  it("blocks negative spend and non-binary weekly event/regime inputs", () => {
+    const validation = mmmValidate({
+      week: [1, 2, 3],
+      ch: { meta: [100, -10, 120] },
+      dummy: { promo: [0, 2, 1] },
+      steps: { launch: [0, 0.5, 1] },
+      targets: { Regs: [10, 12, 13] },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+    }, "en", "Regs");
+    expect(validation.issues.some((message) => message.includes("negative spend"))).toBe(true);
+    expect(validation.issues.some((message) => message.includes("Event 'promo'") && message.includes("0 or 1"))).toBe(true);
+    expect(validation.issues.some((message) => message.includes("Regime 'launch'") && message.includes("0 or 1"))).toBe(true);
   });
 
   it("T1-T8 MMM methodology pipeline matches index.html", () => {
@@ -339,8 +577,18 @@ describe("runMmmMethTests (golden port)", () => {
         cnFl.flight_transitions >= 4,
     ).toBe(true);
 
-    // T7 audit r2 유효
-    const au = mmmAudit(panel, cfg);
+    // T7 audit는 Regs+React composite가 있을 때만 유효(다른 Y 임의합산 금지)
+    expect(mmmAudit(panel, cfg)).toBeNull();
+    const react = panel.targets.Regs.map((value, i) => value * 0.2 + (i % 3));
+    const auditPanel = {
+      ...panel,
+      targets: {
+        ...panel.targets,
+        React: react,
+        RR: panel.targets.Regs.map((value, i) => value + react[i]),
+      },
+    };
+    const au = mmmAudit(auditPanel, cfg);
     expect(au.r2 > 0 && au.r2 < 1).toBe(true);
 
     // T8 결정론
@@ -399,8 +647,9 @@ describe("runMmmMethTests (golden port)", () => {
     expect(Math.abs(pairs[0].corr)).toBeGreaterThanOrEqual(0.9);
     // 기본 흡수 = step
     const r1 = mmmResolveAbsorb(panel, cfg);
-    expect(r1.absorbed.has("LineOff")).toBe(true);
-    expect(r1.notices[0].side).toBe("step");
+    expect(r1.absorbed.size).toBe(0);
+    expect(r1.notices[0].side).toBe("none");
+    expect(r1.notices[0].dropped).toBeNull();
     // choice=channel → 채널 흡수
     const r2 = mmmResolveAbsorb(panel, cfg, { "s__LineOff": "channel" });
     expect(r2.absorbed.has("s")).toBe(true);
