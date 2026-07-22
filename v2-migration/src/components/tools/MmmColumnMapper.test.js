@@ -59,4 +59,19 @@ describe("MMM column mapping", () => {
     expect(panel.weekLabel).toEqual(["2025-W01", "2025-W02"]);
     expect(panel.targets.Revenue).toEqual([400, 500]);
   });
+
+  it("aggregates daily values to weeks, keeps event flags binary, and exposes all mapped targets", () => {
+    const headers = ["date", "traffic", "regs", "react", "purchasers", "revenue", "meta_spend", "promo"];
+    const rows = [
+      { date: "2025-01-06", traffic: "30", regs: "10", react: "4", purchasers: "3", revenue: "100", meta_spend: "20", promo: "0" },
+      { date: "2025-01-07", traffic: "35", regs: "11", react: "5", purchasers: "4", revenue: "120", meta_spend: "25", promo: "1" },
+      { date: "2025-01-08", traffic: "32", regs: "12", react: "3", purchasers: "2", revenue: "90", meta_spend: "18", promo: "1" },
+    ];
+    const map = { date: { role: "date" }, traffic: { role: "traffic" }, regs: { role: "reg" }, react: { role: "react" }, purchasers: { role: "purchasers" }, revenue: { role: "revenue" }, meta_spend: { role: "channel", kind: "perf", plat: "common" }, promo: { role: "dummy" } };
+    const panel = buildPanelFromColMap(headers, rows, map).panel;
+    expect(panel.week).toEqual([1]);
+    expect(panel.targets).toMatchObject({ Traffic: [97], Regs: [33], React: [12], Purchasers: [9], Revenue: [310] });
+    expect(panel.ch.c_meta_spend).toEqual([63]);
+    expect(panel.dummy.c_promo).toEqual([1]);
+  });
 });
