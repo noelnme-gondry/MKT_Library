@@ -2785,7 +2785,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 if (j < 0 || !prior) continue;
                 mediaPriors[j + 1] = {
                   mean: isFinite(prior.mean) ? prior.mean * colScale[j] : 0,
-                  precision: prior.precision,
+                  // prior는 원래 media feature 단위의 Normal(mean, variance)다.
+                  // 회귀는 표준화 feature로 적합하므로 Var(β_std)=Var(β_raw)×scale²,
+                  // 즉 precision은 scale²로 나눠야 실험 CI의 강도가 변하지 않는다.
+                  precision: isFinite(prior.precision) ? prior.precision / Math.max(1e-12, colScale[j] ** 2) : prior.precision,
                 };
               }
               const posterior = _mmmBayesianLinear(X, y, mediaIndices, mediaPriors);
@@ -2828,10 +2831,11 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 const beta = profile.reduce((sum, item) => sum + item.weight * item.beta, 0);
                 const variance = Math.max(0, profile.reduce((sum, item) => sum + item.weight * (item.sd ** 2 + item.beta ** 2), 0) - beta ** 2);
                 const sd = Math.sqrt(variance);
-                const posteriorPositive = profile.reduce(
+                // 가중합의 부동소수점 오차로 1.0000000000000002처럼 확률 범위를 벗어나지 않게 한다.
+                const posteriorPositive = Math.min(1, Math.max(0, profile.reduce(
                   (sum, item) => sum + item.weight * (item.sd > 0 ? mmmNormCdf(item.beta / item.sd) : item.beta > 0 ? 1 : 0),
                   0,
-                );
+                )));
                 const top = profile.reduce((best, item) => item.weight > best.weight ? item : best, profile[0]);
                 result[ch.key] = {
                   beta,
@@ -2864,7 +2868,12 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               // 추정은 표준화 공간에서 안정적으로 하되, 화면 기여는 원 단위 절대기여로
               // 되돌린다. 평균 중심화 X를 그대로 쓰면 양수 매체 효과도 저지출 주에
               // 음수처럼 보여 "광고가 성과를 깎았다"는 잘못된 해석을 만든다.
-              const transformUncertainty = _mmmBayesTransformUncertainty(panel, cfg, names, cols, channelMeta, { ...options, targetName });
+              // 반복 백테스트는 후보 prior를 여러 번 비교하므로, 효과 CI가 필요 없는
+              // 선택 단계에서는 profile posterior 재적합을 생략한다. 최종 결과만 전체
+              // 변환 불확실성을 평균내어 표시한다.
+              const transformUncertainty = options.skipTransformUncertainty
+                ? {}
+                : _mmmBayesTransformUncertainty(panel, cfg, names, cols, channelMeta, { ...options, targetName });
               // 회사 MMM 대시보드처럼 채널별이 아니라 의사결정 단위로 묶는다.
               // MmmColumnMapper의 kind=brand는 Brand, 나머지 매체는 Performance.
               const mediaGroups = [];

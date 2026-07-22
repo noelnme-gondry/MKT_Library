@@ -42,6 +42,7 @@ import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBa
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact } from "@/utils/format";
 import { buildMmmWeeklyPerformance } from "@/utils/mmmWeeklyPerformance";
+import { buildExperimentMediaPrior, mmmRollingOrigins, summarizeRollingErrors } from "@/utils/mmmPriorMath";
 
 /* ============================================================================
  * MarketingResponse (5-18) — MOCK → REAL 와이어링
@@ -127,6 +128,25 @@ const MMM_TARGET_HEADER_PATTERNS = {
 function mmmTargetHeader(headers, target) {
   const pattern = MMM_TARGET_HEADER_PATTERNS[target];
   return pattern ? (headers || []).find((header) => pattern.test(String(header))) : null;
+}
+
+// 독립 근거는 Normal prior의 precision 가중 결합으로 합친다. 국가 prior가 실험
+// prior를 덮어쓰면 안 되며, 둘 중 하나가 불확실할수록 자동으로 영향이 작아진다.
+function mergeMediaPrior(priors, key, next) {
+  if (!next || !isFinite(next.mean) || !(next.precision > 0)) return;
+  const current = priors[key];
+  if (!current) {
+    priors[key] = next;
+    return;
+  }
+  const precision = current.precision + next.precision;
+  priors[key] = {
+    ...next,
+    mean: (current.mean * current.precision + next.mean * next.precision) / precision,
+    precision,
+    variance: 1 / precision,
+    sources: [...(current.sources || [current.source || "prior"]), ...(next.sources || [next.source || "prior"])],
+  };
 }
 
 // 신뢰도 dots — p값 → ●●● / ●●○ / ●○○ / ○○○
@@ -302,7 +322,7 @@ function MmmBacktestChart({ labels, actual, variants, locale, validationStartInd
 // Prior는 기본 MMM을 대체하는 숨은 설정이 아니라, 어떤 외부 근거를 썼는지
 // 결과 화면에서 추적·비교할 수 있는 별도 레이어다. 아직 근거가 없으면 이 카드도
 // 조용히 기본 모델만 보여 준다. 실제 prior 추정은 원자료 검증을 거친 뒤에만 켠다.
-function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, evidence, onEvidence, onLoadDemo, appliedPriorCount = 0, countryCandidates = [], countryBacktests = null }) {
+function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, evidence, onEvidence, onLoadDemo, appliedPriorCount = 0, experimentPriorDiagnostics = [], countryCandidates = [], countryBacktests = null }) {
   const tx = (ko, en) => (locale === "en" ? en : ko);
   const experimentRef = useRef(null);
   const countryRef = useRef(null);
@@ -356,9 +376,15 @@ function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, evidenc
       )}
       {selectedEvidence.country && countryCandidates.length > 0 && (
         <div className="mmm-evidence-ledger__pending">
-          <strong>{tx(`추천 조합: ${countryCandidates[0].country} · 타깃 시장 마지막 12주 검증`, `Recommended set: ${countryCandidates[0].country} · target final-12-week validation`)}</strong>
-          <span>{countryCandidates.slice(0, 5).map((c, i) => `${i + 1}. ${c.country} · RMSE ${Math.round(c.rmse).toLocaleString()} · 복잡도 반영 ${Math.round(c.score).toLocaleString()}`).join("   ")}</span>
+          <strong>{tx(`추천: ${countryCandidates[0].country} · ${countryCandidates[0].folds || 1}회 rolling 12주 검증`, `Recommended: ${countryCandidates[0].country} · ${countryCandidates[0].folds || 1} rolling 12-week validations`)}</strong>
+          <span>{countryCandidates.slice(0, 5).map((c, i) => `${i + 1}. ${c.country} · 평균 RMSE ${Math.round(c.meanRmse || c.rmse).toLocaleString()} · 변동 ${Math.round(c.sdRmse || 0).toLocaleString()} · 복잡도 반영 ${Math.round(c.score).toLocaleString()}`).join("   ")}</span>
           {countryBacktests && <MmmBacktestChart locale={locale} labels={countryBacktests.labels} actual={countryBacktests.actual} variants={countryBacktests.variants} />}
+        </div>
+      )}
+      {selectedEvidence.experiment && experimentPriorDiagnostics.length > 0 && (
+        <div className="mmm-evidence-ledger__pending">
+          <strong>{tx("실험 Prior · 효과 CI와 실제 처리 강도 반영", "Experiment prior · effect CI and actual treatment intensity applied")}</strong>
+          <span>{experimentPriorDiagnostics.map((item) => `${item.channel} · ${item.design} · 90% CI ${item.ci90.map((value) => Number(value).toFixed(2)).join(" ~ ")} · ${item.ciMethod}`).join("   ")}</span>
         </div>
       )}
 
@@ -376,7 +402,7 @@ function MmmEvidenceLedger({ locale, selectedEvidence, onToggleEvidence, evidenc
           </div>
           <div className="mmm-evidence-ledger__rule">
             <strong>{tx("선택 원칙", "Selection rule")}</strong>
-            <span>{tx("모든 국가를 합치지 않습니다. 개별 적격성 → 최대 2~3개 조합 → 타깃 시장의 마지막 12주 백테스트 순서로, 가장 단순한 충분성 세트 하나만 추천합니다.", "Markets are not pooled blindly. The flow is individual eligibility → combinations of up to 2–3 → target-market final-12-week backtest, then one simplest sufficient set is recommended.")}</span>
+            <span>{tx("모든 국가를 합치지 않습니다. 개별 적격성 → 최대 2~3개 조합 → 타깃 시장의 반복 rolling 12주 백테스트 순서로 기본 MMM까지 함께 비교하고, 가장 단순한 충분성 세트 하나만 추천합니다.", "Markets are not pooled blindly. The flow is individual eligibility → combinations of up to 2–3 → repeated rolling target-market 12-week backtests against the base MMM, then one simplest sufficient set is recommended.")}</span>
           </div>
           <div className="mmm-evidence-ledger__rule">
             <strong>{tx("Y 매핑", "Y mapping")}</strong>
@@ -1427,6 +1453,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       // baseline·추세·계절성은 절대 이식하지 않으며, country 컬럼별 개별 모델이
       // 성공한 경우만 약한 precision으로 참고한다.
       const mediaPriors = {};
+      const experimentPriorDiagnostics = [];
       let countryCandidates = [];
       let countryBacktests = null;
       const experiment = selectedEvidence.experiment ? priorEvidence.experiment : null;
@@ -1435,43 +1462,27 @@ export default function MarketingResponse({ locale = "ko" }) {
         const stateHeader = experiment.headers.find((h) => /treatment_state|state|on.?off|상태/i.test(String(h)));
         const armHeader = experiment.headers.find((h) => /(^|[_\s])arm|group|treatment.*control|처리군|대조군/i.test(String(h)));
         const periodHeader = experiment.headers.find((h) => /post|pre|period|phase|사전|사후|기간/i.test(String(h)));
+        const timeHeader = experiment.headers.find((h) => /(^|[_\s])(date|week|time)([_\s]|$)|날짜|주차|기간/i.test(String(h)));
+        const geoHeader = experiment.headers.find((h) => /(^|[_\s])(geo|region|location)([_\s]|$)|지역|권역/i.test(String(h)));
         const spends = experiment.headers.filter((h) => /spend|cost|비용|지출/i.test(String(h)));
         if (targetHeader && spends.length) {
+          const baseRun = mmmBayesianRun(panel, cfg, t, false, { skipTransformUncertainty: true });
           spends.forEach((spendHeader) => {
-            const parse = (v) => Number(String(v ?? "").replace(/[^0-9.\-]/g, "")) || 0;
             const key = mmmSanKey(spendHeader);
-            let effect = null;
-            let n = 0;
-            if (armHeader) {
-              const treated = experiment.raw.filter((row) => /treat|처리/i.test(String(row[armHeader] || "")));
-              const control = experiment.raw.filter((row) => /control|대조/i.test(String(row[armHeader] || "")));
-              if (treated.length >= 4 && control.length >= 4) {
-                const mean = (rows) => rows.reduce((sum, row) => sum + parse(row[targetHeader]), 0) / Math.max(1, rows.length);
-                const tPost = treated.filter((row) => /post|after|사후/i.test(String(row[periodHeader] || "")));
-                const tPre = treated.filter((row) => /pre|before|사전/i.test(String(row[periodHeader] || "")));
-                const cPost = control.filter((row) => /post|after|사후/i.test(String(row[periodHeader] || "")));
-                const cPre = control.filter((row) => /pre|before|사전/i.test(String(row[periodHeader] || "")));
-                effect = tPost.length && tPre.length && cPost.length && cPre.length ? (mean(tPost) - mean(tPre)) - (mean(cPost) - mean(cPre)) : mean(treated) - mean(control);
-                n = periodHeader && tPost.length && tPre.length && cPost.length && cPre.length ? Math.min(tPost.length, tPre.length, cPost.length, cPre.length) : Math.min(treated.length, control.length);
-              }
-            } else if (stateHeader) {
-              const on = experiment.raw.filter((row) => /^(on|treat|1)$/i.test(String(row[stateHeader] || "").trim()));
-              const off = experiment.raw.filter((row) => /^(off|control|0)$/i.test(String(row[stateHeader] || "").trim()));
-              if (on.length >= 4 && off.length >= 4) {
-                const ordered = experiment.raw.map((row, i) => ({ row, i })).sort((a, b) => String(a.row.week || a.row.date || a.i).localeCompare(String(b.row.week || b.row.date || b.i)));
-                const X = ordered.map(({ row }, i) => [1, i, Math.sin((2 * Math.PI * i) / 52), Math.cos((2 * Math.PI * i) / 52), /^(on|treat|1)$/i.test(String(row[stateHeader] || "").trim()) ? 1 : 0]);
-                const fit = mmmOls(X, ordered.map(({ row }) => parse(row[targetHeader])));
-                effect = fit ? fit.beta[4] : on.reduce((sum, row) => sum + parse(row[targetHeader]), 0) / on.length - off.reduce((sum, row) => sum + parse(row[targetHeader]), 0) / off.length;
-                n = Math.min(on.length, off.length);
-              }
-            }
-            const baseRun = mmmBayesianRun(panel, cfg, t, false);
             const channel = Object.values(baseRun?.saturationByChannel || {}).find((item) => item.key === key);
-            const avgSpend = experiment.raw.reduce((sum, row) => sum + parse(row[spendHeader]), 0) / experiment.raw.length;
-            if (channel && effect != null && avgSpend > 0) {
-              const p = channel.params;
-              const transformed = Math.max(0.05, Math.pow(avgSpend / p.ec, p.slope) / (1 + Math.pow(avgSpend / p.ec, p.slope)));
-              mediaPriors[key] = { mean: effect / transformed, precision: Math.min(1.2, 0.12 * n) };
+            const prior = channel && buildExperimentMediaPrior(experiment.raw, {
+              targetHeader,
+              spendHeader,
+              stateHeader,
+              armHeader,
+              periodHeader,
+              timeHeader,
+              geoHeader,
+              params: channel.params,
+            });
+            if (prior) {
+              mergeMediaPrior(mediaPriors, key, { ...prior, source: "experiment" });
+              experimentPriorDiagnostics.push({ channel: channel.label, key, ...prior });
             }
           });
         }
@@ -1481,14 +1492,49 @@ export default function MarketingResponse({ locale = "ko" }) {
         const countryHeader = source.headers.find((h) => /(^|[_\s])(country|market)([_\s]|$)|국가|시장/i.test(String(h)));
         const countries = countryHeader ? [...new Set(source.raw.map((row) => String(row[countryHeader] || "").trim()).filter(Boolean))] : [];
         const slicePanel = (input, end) => ({ ...input, week: input.week.slice(0, end), ch: Object.fromEntries(Object.entries(input.ch).map(([key, values]) => [key, values.slice(0, end)])), dummy: Object.fromEntries(Object.entries(input.dummy || {}).map(([key, values]) => [key, values.slice(0, end)])), steps: Object.fromEntries(Object.entries(input.steps || {}).map(([key, values]) => [key, values.slice(0, end)])), targets: Object.fromEntries(Object.entries(input.targets).map(([key, values]) => [key, values.slice(0, end)])) });
-        const candidatePriors = [];
-        const holdout = Math.min(12, panel.week.length - 24);
-        const actual = holdout >= 8 ? panel.targets[t].slice(-holdout) : [];
-        const labels = holdout >= 8 ? (panel.weekLabel || panel.week).slice(-holdout) : [];
-        const trainBase = holdout >= 8 ? slicePanel(panel, panel.week.length - holdout) : null;
-        const futureSpendBase = holdout >= 8 ? Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, values.slice(-holdout)])) : null;
-        const baselineFit = trainBase && mmmBayesianRun(trainBase, cfg, t, false);
-        const baselineForecast = baselineFit && mmmBayesianForecast(baselineFit, trainBase, futureSpendBase, holdout);
+        // ① 최근 12주로 후보를 빠르게 줄인 뒤 ② 최대 세 번의 rolling-origin 검증으로
+        // 기본 MMM까지 함께 비교한다. 한 번의 holdout 우연이나 국가 수 과다를 막는다.
+        const validationFolds = mmmRollingOrigins(panel.week.length, { holdout: 12, minTrain: 24, stride: 8, maxFolds: 3 });
+        const latestFold = validationFolds[0] || null;
+        const evalCache = new Map();
+        // 실험 prior를 켠 상태에서는 기본 MMM·국가 후보 모두 같은 실험 근거를 포함해
+        // 검증한다. 그래야 "실험만"과 "실험+국가" 중 실제로 더 나은 쪽을 고른다.
+        const fixedPriors = {};
+        Object.entries(mediaPriors).forEach(([key, prior]) => mergeMediaPrior(fixedPriors, key, prior));
+        const priorSignature = (prior) => Object.entries(prior || {}).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => `${key}:${Number(value.mean).toPrecision(9)}:${Number(value.precision).toPrecision(9)}`).join("|");
+        const evaluatePrior = (countryPrior, complexity = 1, folds = validationFolds) => {
+          const prior = {};
+          Object.entries(fixedPriors).forEach(([key, value]) => mergeMediaPrior(prior, key, value));
+          Object.entries(countryPrior || {}).forEach(([key, value]) => mergeMediaPrior(prior, key, value));
+          const key = `${priorSignature(prior)}|${folds.map((fold) => fold.cut).join(",")}`;
+          let result = evalCache.get(key);
+          if (!result) {
+            const outcomes = folds.map(({ cut, holdout }) => {
+              const train = slicePanel(panel, cut);
+              const futureSpend = Object.fromEntries(Object.entries(panel.ch).map(([channel, values]) => [channel, values.slice(cut, cut + holdout)]));
+              const fit = mmmBayesianRun(train, cfg, t, false, { mediaPriors: prior, skipTransformUncertainty: true });
+              const forecast = fit && mmmBayesianForecast(fit, train, futureSpend, holdout);
+              const actual = panel.targets[t].slice(cut, cut + holdout);
+              const rmse = forecast?.predFut?.length === actual.length
+                ? Math.sqrt(actual.reduce((sum, value, index) => sum + (value - forecast.predFut[index]) ** 2, 0) / actual.length)
+                : Infinity;
+              return {
+                cut,
+                holdout,
+                rmse,
+                labels: (panel.weekLabel || panel.week).slice(cut, cut + holdout),
+                actual,
+                predicted: forecast?.predFut || [],
+              };
+            });
+            result = { outcomes, summary: summarizeRollingErrors(outcomes.map((outcome) => outcome.rmse), 1) };
+            evalCache.set(key, result);
+          }
+          const summary = result.summary && summarizeRollingErrors(result.outcomes.map((outcome) => outcome.rmse), complexity);
+          const latest = result.outcomes[0] || null;
+          return summary ? { ...summary, rmse: latest?.rmse ?? Infinity, backtest: latest, foldRmses: result.outcomes.map((outcome) => outcome.rmse) } : null;
+        };
+        const preliminary = [];
         countries.forEach((country) => {
           const ref = buildPanelFromColMap(source.headers, source.raw.filter((row) => String(row[countryHeader]).trim() === country), mmmColMap, "all", locale);
           if (ref.missing.length) return;
@@ -1498,67 +1544,63 @@ export default function MarketingResponse({ locale = "ko" }) {
           const refRun = mmmBayesianRun(refPanel, { ...MMM_METH_CONFIG, absorbed: new Set() }, t, false);
           const prior = {};
           Object.values(refRun?.saturationByChannel || {}).forEach((s) => {
-            if (isFinite(s.ln_coef)) prior[s.key] = { mean: s.ln_coef, precision: 0.35 };
+            const se = (s.ci?.[1] - s.ci?.[0]) / (2 * 1.645);
+            if (isFinite(s.ln_coef) && isFinite(se) && se > 0) prior[s.key] = { mean: s.ln_coef, precision: 1 / (se ** 2), variance: se ** 2, source: "country" };
           });
           if (!Object.keys(prior).length) return;
-          if (holdout < 8) return;
-          const train = slicePanel(panel, panel.week.length - holdout);
-          const fit = mmmBayesianRun(train, cfg, t, false, { mediaPriors: prior });
-          const futureSpend = Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, values.slice(-holdout)]));
-          const forecast = fit && mmmBayesianForecast(fit, train, futureSpend, holdout);
-          const rmse = forecast?.predFut?.length === actual.length ? Math.sqrt(actual.reduce((sum, value, index) => sum + (value - forecast.predFut[index]) ** 2, 0) / actual.length) : Infinity;
-          const backtest = forecast?.predFut?.length === actual.length ? {
-            labels: (panel.weekLabel || panel.week).slice(-holdout),
-            actual,
-            predicted: forecast.predFut,
-          } : null;
-          candidatePriors.push({ country, prior, rmse, backtest });
+          const recent = latestFold && evaluatePrior(prior, 1, [latestFold]);
+          if (recent) preliminary.push({ country, prior, ...recent });
         });
-        candidatePriors.sort((a, b) => a.rmse - b.rmse);
-        const top = candidatePriors.slice(0, 4);
+        preliminary.sort((a, b) => a.score - b.score);
+        const candidatePriors = preliminary.slice(0, 4).map((candidate) => {
+          const rolling = evaluatePrior(candidate.prior, 1);
+          return rolling ? { country: candidate.country, prior: candidate.prior, ...rolling } : null;
+        }).filter(Boolean);
+        candidatePriors.sort((a, b) => a.score - b.score);
+        const top = candidatePriors;
         const sets = [];
         const scoreSet = (members) => {
-          const combined = {};
-          members.forEach(({ prior }) => Object.entries(prior).forEach(([key, value]) => (combined[key] ||= []).push(value.mean)));
-          const prior = Object.fromEntries(Object.entries(combined).map(([key, values]) => [key, { mean: values.reduce((sum, value) => sum + value, 0) / values.length, precision: Math.min(1.2, 0.35 * values.length) }]));
-          const train = slicePanel(panel, panel.week.length - holdout);
-          const fit = mmmBayesianRun(train, cfg, t, false, { mediaPriors: prior });
-          const fc = fit && mmmBayesianForecast(fit, train, Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, values.slice(-holdout)])), holdout);
-          const rmse = fc?.predFut?.length === actual.length ? Math.sqrt(actual.reduce((sum, value, index) => sum + (value - fc.predFut[index]) ** 2, 0) / actual.length) : Infinity;
-          // 복잡도 패널티: 아주 작은 오차 차이로 국가 수가 늘지 않게 한다.
-          const backtest = fc?.predFut?.length === actual.length ? {
-            labels: (panel.weekLabel || panel.week).slice(-holdout),
-            actual,
-            predicted: fc.predFut,
-          } : null;
-          return { country: members.map((m) => m.country).join(" + "), prior, rmse, score: rmse * (1 + 0.015 * (members.length - 1)), backtest };
+          const prior = {};
+          members.forEach(({ prior: memberPrior }) => Object.entries(memberPrior).forEach(([key, value]) => mergeMediaPrior(prior, key, value)));
+          const rolling = evaluatePrior(prior, members.length);
+          return rolling ? { country: members.map((member) => member.country).join(" + "), prior, ...rolling } : null;
         };
         top.forEach((a, i) => {
-          sets.push(scoreSet([a]));
+          const single = scoreSet([a]);
+          if (single) sets.push(single);
           top.slice(i + 1).forEach((b, j) => {
-            sets.push(scoreSet([a, b]));
-            top.slice(i + j + 2).forEach((c) => sets.push(scoreSet([a, b, c])));
+            const pair = scoreSet([a, b]);
+            if (pair) sets.push(pair);
+            top.slice(i + j + 2).forEach((c) => {
+              const triple = scoreSet([a, b, c]);
+              if (triple) sets.push(triple);
+            });
           });
         });
-        sets.sort((a, b) => a.score - b.score);
-        countryCandidates = sets;
-        if (baselineForecast?.predFut?.length === actual.length && sets[0]?.backtest) {
+        const baseline = evaluatePrior({}, 1);
+        const ranked = [
+          ...(baseline ? [{ country: tx("기본 MMM", "Base MMM"), prior: {}, isBaseline: true, ...baseline }] : []),
+          ...sets,
+        ].sort((a, b) => a.score - b.score);
+        countryCandidates = ranked;
+        const selectedCountrySet = ranked[0] && !ranked[0].isBaseline ? ranked[0] : null;
+        if (baseline?.backtest && selectedCountrySet?.backtest) {
           countryBacktests = {
-            labels,
-            actual,
+            labels: baseline.backtest.labels,
+            actual: baseline.backtest.actual,
             variants: [
-              { label: tx("기본 모델(국가 미적용)", "Base model (no market prior)"), predicted: baselineForecast.predFut, color: "#94a3b8", dash: [2, 3] },
+              { label: tx("기본 모델(국가 미적용)", "Base model (no market prior)"), predicted: baseline.backtest.predicted, color: "#94a3b8", dash: [2, 3] },
               ...candidatePriors.filter((candidate) => candidate.backtest).map((candidate) => ({ label: candidate.country, predicted: candidate.backtest.predicted })),
-              { label: tx(`추천 세트: ${sets[0].country}`, `Recommended: ${sets[0].country}`), predicted: sets[0].backtest.predicted, color: "#2563eb", dash: [], recommended: true },
+              { label: tx(`추천 세트: ${selectedCountrySet.country}`, `Recommended: ${selectedCountrySet.country}`), predicted: selectedCountrySet.backtest.predicted, color: "#2563eb", dash: [], recommended: true },
             ],
           };
         }
-        Object.assign(mediaPriors, sets[0]?.prior || {});
+        if (selectedCountrySet) Object.entries(selectedCountrySet.prior).forEach(([key, prior]) => mergeMediaPrior(mediaPriors, key, prior));
       }
       const run = mmmBayesianRun(panel, cfg, t, true, { mediaPriors });
       if (!run) throw new Error("Bayesian posterior estimate failed");
       const effects = [];
-      return { empty: false, panel, cfg, derived, target: t, validate, run, effects, absorb, mediaPriors, countryCandidates, countryBacktests };
+      return { empty: false, panel, cfg, derived, target: t, validate, run, effects, absorb, mediaPriors, experimentPriorDiagnostics, countryCandidates, countryBacktests };
     } catch (e) {
       // null-fit(특이행렬)은 대개 채널 공선성(예산이 함께 움직임)·기간 부족 → 정직한 도메인 메시지 (§8)
       const msg = String(e && e.message || "");
@@ -2844,6 +2886,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                 onEvidence={setPriorEvidence}
                 onLoadDemo={handleLoadPriorDemo}
                 appliedPriorCount={Object.keys(mmm.mediaPriors || {}).length}
+                experimentPriorDiagnostics={mmm.experimentPriorDiagnostics || []}
                 countryCandidates={mmm.countryCandidates || []}
                 countryBacktests={mmm.countryBacktests}
               />
