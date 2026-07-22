@@ -11,6 +11,7 @@ import { assessMappingConfidence, findMappingConflicts, scoreMappingCandidates }
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { tableToRecords } from "@/lib/data-import/detectHeaderRow";
 import { detectDatasetSignature } from "@/lib/data-import/detectDatasetSignature";
+import { wideToLong } from "@/lib/data-import/wideToLong";
 import { getTransformRecipe, saveTransformRecipe } from "@/lib/data-import/localHistory";
 import { toolFieldKeys } from "@/lib/data-import/prepareDatasetForTool";
 import { trackProductEvent } from "@/lib/analytics";
@@ -21,11 +22,11 @@ import { ANALYSIS_CONTRACTS, evaluateEligibility } from "@/lib/analysis-router/e
 // 등, csvConstants.js 210여 개)은 별도 백로그 — 공수가 자릿수 다름(§plan).
 const CSV_COPY = {
   ko: {
-    emptyCsv: "CSV 파일이 비어 있거나 올바르지 않습니다.",
-    parseError: "CSV 파싱 중 오류 발생: ",
-    dropTitle: "CSV 파일 드래그 & 드롭",
+    emptyCsv: "파일이 비어 있거나 올바르지 않습니다.",
+    parseError: "파일을 읽는 중 오류 발생: ",
+    dropTitle: "CSV 또는 XLSX 파일 드래그 & 드롭",
     dropSub: "또는 클릭하여 파일 선택",
-    importing: "CSV 구조를 읽는 중…",
+    importing: "파일 구조를 읽는 중…",
     importSuccess: (name, rows, cols) => `${name} 업로드 완료. ${rows.toLocaleString()}행, ${cols}컬럼을 읽었습니다. 컬럼 매핑을 확인하세요.`,
     demoBannerTitle: "🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다",
     demoBannerDesc: "실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.",
@@ -80,14 +81,22 @@ const CSV_COPY = {
     mappingBlockedConflict: "같은 표준 필드에 여러 CSV 컬럼이 선택됐습니다. 하나만 남겨 주세요.",
     mappingBlockedConfirm: "'확인 필요' 상태인 필수 컬럼을 확인해 주세요.",
     signatureSummary: (source, grain) => `데이터 형태 추정: ${source} · ${grain}`,
-    wideWarning: "기간이 열로 펼쳐진 형식입니다. 자동 변환 전 날짜·값 컬럼을 확인해 주세요.",
+    wideWarning: "기간이 열로 펼쳐진 형식입니다. 날짜 열을 행으로 바꾼 뒤 값의 의미를 직접 매핑해 주세요.",
+    wideTransformTitle: "날짜 열 전개형 보고서를 찾았습니다",
+    wideTransformDesc: (count) => `${count}개의 날짜 열을 행으로 바꿉니다. 원래의 차원 컬럼은 유지하고, 기간별 숫자는 “기간별 값”으로 만듭니다. 비용·성과·매출 중 무엇인지 추정하지 않습니다.`,
+    wideTransformBtn: "날짜 열을 행으로 변환",
+    cancelImportBtn: "다른 파일 선택",
+    workbookTitle: "가져올 시트를 선택하세요",
+    workbookDesc: (count) => `${count}개의 데이터 시트를 찾았습니다. 한 번에 하나의 시트만 불러와 데이터가 섞이지 않도록 합니다.`,
+    workbookSelectLabel: "시트",
+    workbookImportBtn: "선택한 시트 불러오기",
   },
   en: {
-    emptyCsv: "This CSV file is empty or invalid.",
-    parseError: "Error parsing CSV: ",
-    dropTitle: "Drag & drop a CSV file",
+    emptyCsv: "This file is empty or invalid.",
+    parseError: "Error reading file: ",
+    dropTitle: "Drag & drop a CSV or XLSX file",
     dropSub: "or click to choose a file",
-    importing: "Reading CSV structure…",
+    importing: "Reading file structure…",
     importSuccess: (name, rows, cols) => `${name} uploaded. Read ${rows.toLocaleString()} rows and ${cols} columns. Review the column mapping next.`,
     demoBannerTitle: "🧪 You're viewing sample data",
     demoBannerDesc: "This isn't your real data and nothing is sent to a server. Upload your own CSV to replace it instantly.",
@@ -142,7 +151,15 @@ const CSV_COPY = {
     mappingBlockedConflict: "Multiple CSV columns are assigned to the same standard field. Keep only one.",
     mappingBlockedConfirm: "Confirm every required column marked “Confirmation needed.”",
     signatureSummary: (source, grain) => `Detected shape: ${source} · ${grain}`,
-    wideWarning: "This looks like a period-as-columns report. Confirm the date and value columns before transforming it.",
+    wideWarning: "This is a period-as-columns report. Convert date columns to rows, then map the value meaning yourself.",
+    wideTransformTitle: "Date-column report detected",
+    wideTransformDesc: (count) => `This will turn ${count} date columns into rows. Dimension columns stay intact and each period number becomes “Period value.” We do not guess whether it means cost, outcome, or revenue.`,
+    wideTransformBtn: "Convert date columns to rows",
+    cancelImportBtn: "Choose another file",
+    workbookTitle: "Choose a worksheet to import",
+    workbookDesc: (count) => `Found ${count} data worksheets. Import one at a time so data from different sheets never gets mixed.`,
+    workbookSelectLabel: "Worksheet",
+    workbookImportBtn: "Import selected worksheet",
   },
 };
 
@@ -182,6 +199,11 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   const [refreshingSheet, setRefreshingSheet] = useState(false);
   const [sheetChangeOpen, setSheetChangeOpen] = useState(false);
   const [confirmedHeaders, setConfirmedHeaders] = useState(() => new Set());
+  // XLSX는 여러 시트가 흔하므로 임의로 합치지 않는다. 먼저 사용자가 하나를 선택하게
+  // 하고, 날짜 열 전개형도 변환 전에 의미를 확인할 수 있도록 별도 대기 상태로 둔다.
+  const [pendingWorkbook, setPendingWorkbook] = useState(null);
+  const [selectedWorkbookSheet, setSelectedWorkbookSheet] = useState("");
+  const [pendingWideImport, setPendingWideImport] = useState(null);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -209,11 +231,69 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     e.target.value = null;
   };
 
-  const processFile = (file) => {
+  const applyImportedTable = async ({ headers, raw, fileName, source, worksheetName = null }) => {
+    if (!headers.length || !raw.length) {
+      setErrorMsg(T.emptyCsv);
+      return;
+    }
+    const insights = buildImportInsights(headers, raw, toolId);
+    if (insights.signature.needsWideToLong) {
+      setPendingWideImport({ headers, raw, fileName, source, worksheetName, insights });
+      return;
+    }
+    const recipe = await getTransformRecipe(headers).catch(() => null);
+    const mapping = recipe?.mapping && Object.keys(recipe.mapping).every((header) => headers.includes(header)) ? recipe.mapping : insights.selections;
+    const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
+    const displayName = worksheetName ? `${fileName} · ${worksheetName}` : fileName;
+
+    setCsvData({
+      raw,
+      headers,
+      mapping,
+      fileName: displayName,
+      importSource: source,
+      worksheetName,
+      importInsights: { ...insights, recipeApplied: !!recipe },
+      canonicalData,
+    });
+    setConfirmedHeaders(new Set());
+    setImportAnnouncement(T.importSuccess(displayName, raw.length, headers.length));
+    trackProductEvent("data_import_success", { tool_id: toolId, source, column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
+    trackProductEvent("data_profile_completed", { tool_id: toolId, source, column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length });
+    setPreviewOpen(true);
+  };
+
+  const processFile = async (file) => {
     setErrorMsg("");
     setImportAnnouncement("");
     setIsImporting(true);
-    trackProductEvent("data_import_start", { tool_id: toolId, source: "csv" });
+    const isWorkbook = /\.xlsx?$/i.test(file.name);
+    const source = isWorkbook ? "xlsx" : "csv";
+    trackProductEvent("data_import_start", { tool_id: toolId, source });
+    if (isWorkbook) {
+      try {
+        const XLSX = await import("xlsx");
+        const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+        const sheets = workbook.SheetNames.map((name) => {
+          const table = XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: "", blankrows: false });
+          const records = tableToRecords(table);
+          return { name, ...records };
+        }).filter((sheet) => sheet.headers.length > 0 && sheet.raw.length > 0);
+        if (!sheets.length) {
+          setErrorMsg(T.emptyCsv);
+        } else if (sheets.length === 1) {
+          await applyImportedTable({ ...sheets[0], fileName: file.name, source, worksheetName: sheets[0].name });
+        } else {
+          setPendingWorkbook({ fileName: file.name, source, sheets });
+          setSelectedWorkbookSheet(sheets[0].name);
+        }
+      } catch (error) {
+        setErrorMsg(`${T.parseError}${error.message}`);
+      } finally {
+        setIsImporting(false);
+      }
+      return;
+    }
     Papa.parse(file, {
       worker: true,
       skipEmptyLines: true,
@@ -228,26 +308,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
             setErrorMsg(T.emptyCsv);
             return;
           }
-          const insights = buildImportInsights(headers, raw, toolId);
-          const recipe = await getTransformRecipe(headers).catch(() => null);
-          const mapping = recipe?.mapping && Object.keys(recipe.mapping).every((header) => headers.includes(header)) ? recipe.mapping : insights.selections;
-          const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
-
-          setCsvData({
-            raw,
-            headers,
-            mapping,
-            fileName: file.name,
-            importInsights: { ...insights, recipeApplied: !!recipe },
-            canonicalData,
-          });
-          setConfirmedHeaders(new Set());
-          setImportAnnouncement(T.importSuccess(file.name, raw.length, headers.length));
-          trackProductEvent("data_import_success", { tool_id: toolId, source: "csv", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
-          trackProductEvent("data_profile_completed", { tool_id: toolId, source: "csv", column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length });
-          // New file → gate auto-resets in the store (sig change); re-open preview
-          // so the user maps with data context.
-          setPreviewOpen(true);
+          await applyImportedTable({ headers, raw, fileName: file.name, source });
         } catch (error) {
           setErrorMsg(`${T.parseError}${error.message}`);
         } finally {
@@ -259,6 +320,48 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         setIsImporting(false);
       },
     });
+  };
+
+  const handleWorkbookImport = async () => {
+    const sheet = pendingWorkbook?.sheets.find((item) => item.name === selectedWorkbookSheet);
+    if (!sheet || !pendingWorkbook) return;
+    setErrorMsg("");
+    setIsImporting(true);
+    try {
+      await applyImportedTable({ ...sheet, fileName: pendingWorkbook.fileName, source: pendingWorkbook.source, worksheetName: sheet.name });
+      setPendingWorkbook(null);
+    } catch (error) {
+      setErrorMsg(`${T.parseError}${error.message}`);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleWideTransform = async () => {
+    if (!pendingWideImport) return;
+    setErrorMsg("");
+    setIsImporting(true);
+    try {
+      const transformed = wideToLong(pendingWideImport);
+      setPendingWideImport(null);
+      await applyImportedTable({
+        ...transformed,
+        fileName: pendingWideImport.fileName,
+        source: pendingWideImport.source,
+        worksheetName: pendingWideImport.worksheetName,
+      });
+    } catch (error) {
+      setErrorMsg(`${T.parseError}${error.message}`);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const cancelPendingImport = () => {
+    setPendingWorkbook(null);
+    setPendingWideImport(null);
+    setSelectedWorkbookSheet("");
+    setErrorMsg("");
   };
 
   // 구글 시트 로드 완료 콜백 — GoogleSheetConnect가 {headers, raw, fileName, sheetUrl}을
@@ -441,6 +544,33 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
             preserves one live region while upload state changes. */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
         <CsvGuide toolId={toolId} locale={locale} />
+        {pendingWorkbook ? (
+          <section className="required-banner" style={{ borderLeftColor: "var(--primary)" }}>
+            <strong>{T.workbookTitle}</strong>
+            <p style={{ margin: "0.35rem 0 0.8rem" }}>{T.workbookDesc(pendingWorkbook.sheets.length)}</p>
+            <label style={{ display: "grid", gap: "5px", maxWidth: "440px", fontSize: "12px" }}>
+              <span>{T.workbookSelectLabel}</span>
+              <select value={selectedWorkbookSheet} onChange={(event) => setSelectedWorkbookSheet(event.target.value)}>
+                {pendingWorkbook.sheets.map((sheet) => <option key={sheet.name} value={sheet.name}>{sheet.name} · {sheet.raw.length.toLocaleString()}행</option>)}
+              </select>
+            </label>
+            <div style={{ display: "flex", gap: "8px", marginTop: "12px", flexWrap: "wrap" }}>
+              <button className="ab-button" onClick={handleWorkbookImport} disabled={isImporting}>{T.workbookImportBtn}</button>
+              <button className="ab-pill" onClick={cancelPendingImport}>{T.cancelImportBtn}</button>
+            </div>
+          </section>
+        ) : pendingWideImport ? (
+          <section className="required-banner" style={{ borderLeftColor: "#e0af68" }}>
+            <strong>{T.wideTransformTitle}</strong>
+            <p style={{ margin: "0.35rem 0 0.8rem" }}>{T.wideTransformDesc(pendingWideImport.insights.signature.evidence.periodColumns)}</p>
+            <p className="muted" style={{ margin: "0 0 12px", fontSize: "11px" }}>{T.wideWarning}</p>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button className="ab-button" onClick={handleWideTransform} disabled={isImporting}>{T.wideTransformBtn}</button>
+              <button className="ab-pill" onClick={cancelPendingImport}>{T.cancelImportBtn}</button>
+            </div>
+          </section>
+        ) : (
+          <>
         <button
           type="button"
           className={`csv-dropzone ${isDragging ? "dragover" : ""}`}
@@ -461,9 +591,11 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           <div className="csv-drop-text">{isImporting ? T.importing : T.dropTitle}</div>
           <div className="csv-drop-sub">{T.dropSub}</div>
         </button>
-        <input type="file" accept=".csv,text/csv" hidden ref={fileInputRef} onChange={handleFileChange} />
+        <input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden ref={fileInputRef} onChange={handleFileChange} />
         <GoogleSheetConnect onLoaded={handleSheetLoaded} onError={setErrorMsg} locale={locale} />
         <DemoLoadButton onLoad={handleLoadDemo} locale={locale} className={hasSheetImport ? "demo-load-row--spaced" : ""} />
+          </>
+        )}
         {errorMsg && <div role="alert" style={{ color: "var(--danger)", marginTop: "10px", fontSize: "12px" }}>{errorMsg}</div>}
       </div>
     );
