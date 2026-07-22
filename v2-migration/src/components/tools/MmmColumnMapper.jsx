@@ -271,9 +271,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
         for (const h of headers) {
           if (h === r.date) continue;
           const value = Number(String(row[h] ?? "").replace(/[^0-9.\-]/g, ""));
-          if (!Number.isFinite(value)) continue;
-          const isBinary = r.dummies.some((d) => d.header === h) || r.steps.some((s) => s.header === h);
-          item[h] = isBinary ? Math.max(Number(item[h]) || 0, value > 0 ? 1 : 0) : (Number(item[h]) || 0) + value;
+          if (Number.isFinite(value)) item[h] = (Number(item[h]) || 0) + value;
         }
       }
       groups.set(key, item);
