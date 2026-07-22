@@ -2140,7 +2140,7 @@ export default function MarketingResponse({ locale = "ko" }) {
             <span className="ab-pillgroup-label">{tx("타깃", "Target")}</span>
             {availTargets.map((t) => (
               <button key={t} className={`ab-pill ${effectiveTarget === t ? "active" : ""}`} onClick={() => setTarget(t)}>
-                {t === "Regs" ? tx("가입(Reg)", "Signups (Reg)") : t === "React" ? tx("재활성(React)", "Reactivation (React)") : t === "Revenue" ? tx("매출(Revenue)", "Revenue") : "Reg+React"}
+                {t === "Traffic" ? tx("총유입", "Traffic") : t === "Regs" ? tx("가입", "Signups") : t === "React" ? tx("재유입", "Reactivation") : t === "Purchasers" ? tx("구매자", "Purchasers") : t === "Revenue" ? tx("매출", "Revenue") : tx("가입+재유입", "Signups + Reactivation")}
               </button>
             ))}
           </div>
@@ -2684,6 +2684,11 @@ export default function MarketingResponse({ locale = "ko" }) {
                 onLoadDemo={handleLoadPriorDemo}
                 appliedPriorCount={Object.keys(mmm.mediaPriors || {}).length}
               />
+              {priorView !== "base" && (
+                <div className="callout" style={{ marginBottom: "12px" }}>
+                  <div className="ico">i</div><div className="body"><strong>{Object.keys(mmm.mediaPriors || {}).length ? tx(`${tgtKo}에는 ${Object.keys(mmm.mediaPriors).length}개 채널 prior 적용`, `${Object.keys(mmm.mediaPriors).length} channel priors applied to ${tgtKo}`) : tx(`${tgtKo}에 일치하는 prior 없음`, `No matching prior for ${tgtKo}`)}</strong><p>{Object.keys(mmm.mediaPriors || {}).length ? tx("같은 KPI 정의와 단위를 가진 근거만 반영했습니다.", "Only evidence with the same KPI definition and units is applied.") : tx("이 목표에는 기본 MMM만 사용합니다.", "This target continues to use the base MMM.")}</p></div>
+                </div>
+              )}
               {/* ── 메인: 평어 헤드라인 ── */}
               <Card style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                 <Badge color="#7aa2f7">{tx("기여 분해", "Contribution")}</Badge>
