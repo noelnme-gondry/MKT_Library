@@ -3,9 +3,15 @@ import { buildDataQualityReport } from "@/lib/data-import/buildDataQualityReport
 
 export const ANALYSIS_CONTRACTS = {
   "5-2": { minRows: 1, minPeriods: 1, priority: 1 },
-  "5-21": { minRows: 8, minPeriods: 2, priority: 2 },
-  "5-22": { minRows: 20, minPeriods: 8, priority: 3 },
-  "5-3": { minRows: 8, minPeriods: 2, priority: 4 },
+  // PVM은 비교할 두 기간이 필요하다. 2주는 차단 기준, 각 채널의 8일 미만 관측은
+  // 원인 순위가 흔들릴 수 있어 주의로만 낮춘다.
+  "5-21": { minRows: 8, minPeriods: 14, minEntityActivePeriods: 8, entityFields: ["channel"], spendKeys: ["spend"], resultKeys: ["installs", "actions"], priority: 2 },
+  // 응답곡선은 채널/캠페인별 지출 수준이 달라져야 한다. 수가 적거나 지출 변동이
+  // 거의 없으면 절대 CPR 결과는 열되 한계효율 결론에는 주의 표시를 한다.
+  "5-22": { minRows: 20, minPeriods: 8, minEntityActivePeriods: 6, minEntitySpendCv: 0.05, entityFields: ["channel", "campaign_name"], spendKeys: ["cost"], resultKeys: ["installs", "actions"], priority: 3 },
+  // 예산 배분은 단일 채널이면 배분 비교 자체가 불가능하다. 다만 현재 성과 읽기는
+  // 유효하므로 차단 대신 주의로 남긴다.
+  "5-3": { minRows: 8, minPeriods: 7, minEntities: 2, minEntityActivePeriods: 4, minEntitySpendCv: 0.03, entityFields: ["channel", "campaign_name"], spendKeys: ["cost"], resultKeys: ["installs", "actions"], priority: 4 },
   "5-4": { minRows: 2, minPeriods: 0, priority: 5 },
   // MMM은 12~51주를 탐색용으로 열어 두되, 예산 의사결정에 쓸 만한 상태는 52주부터다.
   "5-18": { minRows: 12, minPeriods: 12, decisionMinPeriods: 52, minDecisionActivePeriods: 26, priority: 6 },
@@ -69,6 +75,53 @@ function evaluateMmmConfidence(records, quality, contract) {
   return { tier, details, mediaKeys, activeMedia, sparseMedia, collinearPairs };
 }
 
+function firstFiniteMetric(record, keys = []) {
+  return keys.map((key) => record.metrics?.[key]).find(Number.isFinite) ?? 0;
+}
+
+function coefficientOfVariation(values = []) {
+  if (!values.length) return null;
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  if (!mean) return null;
+  const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
+  return Math.sqrt(variance) / Math.abs(mean);
+}
+
+// 어떤 분석이든 "행이 N개"보다 "각 비교 단위가 며칠 실제 운영됐는가"가 더 중요하다.
+// 같은 날짜의 세부 행은 먼저 합쳐, creative가 많은 채널이 과대표집계되지 않게 한다.
+function evaluateEntityCoverage(records, contract) {
+  if (!contract.entityFields?.length) return { entities: [], details: [] };
+  const entityField = contract.entityFields.find((field) => records.some((record) => record.dimensions?.[field]));
+  if (!entityField) return { entities: [], details: [] };
+  const byEntity = new Map();
+  records.forEach((record) => {
+    const entity = record.dimensions?.[entityField];
+    if (!entity || !record.date) return;
+    if (!byEntity.has(entity)) byEntity.set(entity, new Map());
+    const byPeriod = byEntity.get(entity);
+    const current = byPeriod.get(record.date) || { spend: 0, results: 0 };
+    current.spend += firstFiniteMetric(record, contract.spendKeys);
+    current.results += firstFiniteMetric(record, contract.resultKeys);
+    byPeriod.set(record.date, current);
+  });
+  const entities = [...byEntity.entries()].map(([entity, periods]) => {
+    const values = [...periods.values()];
+    return {
+      entity,
+      periodCount: periods.size,
+      activePeriodCount: values.filter((value) => value.spend > 0 && value.results > 0).length,
+      spendCv: coefficientOfVariation(values.map((value) => value.spend).filter((value) => value > 0)),
+    };
+  });
+  const details = [];
+  if (contract.minEntities && entities.length < contract.minEntities) details.push(`비교 가능한 ${entityField}이 ${contract.minEntities}개 미만입니다.`);
+  const sparse = entities.filter((item) => item.activePeriodCount < contract.minEntityActivePeriods);
+  if (sparse.length) details.push(`운영 관측이 ${contract.minEntityActivePeriods}기간 미만인 ${entityField}: ${sparse.map((item) => item.entity).join(", ")}`);
+  const lowVariation = entities.filter((item) => item.spendCv != null && item.spendCv < contract.minEntitySpendCv);
+  if (lowVariation.length) details.push(`지출 변동이 너무 작은 ${entityField}: ${lowVariation.map((item) => item.entity).join(", ")}`);
+  return { entityField, entities, details };
+}
+
 function qualityDetails(quality) {
   const messages = {
     missing_date: "날짜가 비어 있는 행이 있습니다.",
@@ -109,6 +162,8 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId }) {
     confidenceTier = mmm.tier;
     details.push(...mmm.details);
   }
+  const entityCoverage = !isBlocked ? evaluateEntityCoverage(records, contract) : { entities: [], details: [] };
+  if (!isBlocked) details.push(...entityCoverage.details);
   if (!isBlocked) details.push(...qualityDetails(quality));
   const hasCaution = details.length > 0;
   const status = isBlocked ? "blocked" : hasCaution ? "caution" : "ready";
@@ -122,6 +177,7 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId }) {
     priority: contract.priority,
     confidenceTier,
     quality,
+    entityCoverage,
   };
 }
 
