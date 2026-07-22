@@ -21,7 +21,7 @@ function EligibilityCard({ result, getTitle, onOpen, locale, isRecommended = fal
   const isBlocked = result.status === "blocked";
   const reason = isBlocked
     ? (locale === "en" ? "Required columns, usable values, or the minimum sample is missing." : result.reasons[0])
-    : T.clear;
+    : result.recommendationReason || T.clear;
   const confidenceLabel = result.confidenceTier && result.confidenceTier !== "standard" ? T[result.confidenceTier] : null;
   const detail = result.reasonDetails?.join(" ");
   return <article className={`eligibility-card ${result.status}`}>

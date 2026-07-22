@@ -10,6 +10,7 @@ import AnalysisEligibilityList from "@/components/data-import/AnalysisEligibilit
 import { ANALYSIS_CONTRACTS, evaluateEligibility, rankRecommendedAnalyses } from "@/lib/analysis-router/evaluateEligibility";
 import { trackProductEvent } from "@/lib/analytics";
 import { prepareDatasetForTool } from "@/lib/data-import/prepareDatasetForTool";
+import { buildRouterDiagnosis } from "@/lib/analysis-router/buildRouterDiagnosis";
 
 // "내 데이터로 분석 시작" 진입 게이트 — 데모 없이 어떤 분석부터 할지 고르는 페이지.
 // 진입 시 demoDisabled=true(세션) → 어느 도구로 가도 데모 자동로드 없이 빈 업로드
@@ -55,7 +56,8 @@ export default function StartGate({ locale = "ko" }) {
   const groups = IA.filter((g) => OPS_GROUP_IDS.has(g.id) && g.id !== DATA_GUIDE_GROUP);
   const goTool = (id) => router.push(locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/");
   const goDemo = () => { setDemoDisabled(false); router.push(locale === "en" ? "/en/dashboard" : "/dashboard"); };
-  const eligibility = useMemo(() => ROUTER_TOOL_IDS.map((toolId) => evaluateEligibility({ toolId, mapping: csvData.mapping, canonicalData: csvData.canonicalData })), [csvData.mapping, csvData.canonicalData]);
+  const diagnosis = useMemo(() => buildRouterDiagnosis({ canonicalData: csvData.canonicalData, mapping: csvData.mapping, locale }), [csvData.mapping, csvData.canonicalData, locale]);
+  const eligibility = useMemo(() => ROUTER_TOOL_IDS.map((toolId) => evaluateEligibility({ toolId, mapping: csvData.mapping, canonicalData: csvData.canonicalData, diagnosis })), [csvData.mapping, csvData.canonicalData, diagnosis]);
   const recommended = rankRecommendedAnalyses(eligibility);
   const getTitle = (id) => {
     const meta = IA.flatMap((group) => group.items).find((item) => item.id === id);
