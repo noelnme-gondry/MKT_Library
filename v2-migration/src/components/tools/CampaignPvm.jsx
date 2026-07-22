@@ -1167,7 +1167,9 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           <button className="ab-pill" title={tr("이 분석의 모든 표·비교 데이터를 CSV로 내려받기", "Download all tables and comparison data from this analysis as CSV")} disabled={!ready} onClick={downloadPvmCsv}>{tr("⬇ 결과 다운받기", "⬇ Download results")}</button>
         </div>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "10px", marginTop: "1rem" }}>
+        <div className="analysis-local-controls" aria-label={tr("비교 조건", "Comparison settings")} style={{ marginTop: "1rem" }}>
+        <div className="analysis-local-controls__inner">
+          <span className="analysis-local-controls__label">{tr("비교 조건", "Comparison settings")}</span>
           {bothMetricsMapped !== false && (
             <div className="ab-pillgroup">
               <span className="ab-pillgroup-label">{tr("지표", "Metric")}</span>
@@ -1198,6 +1200,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               );
             })}
           </div>
+        </div>
         </div>
 
         {periodCaption && (

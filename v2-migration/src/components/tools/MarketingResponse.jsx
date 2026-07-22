@@ -39,6 +39,7 @@ import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import { buildDemoCsv } from "@/utils/demoData";
 import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, mmmPlatformTags, mmmSegmentValues } from "@/components/tools/MmmColumnMapper";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
+import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import { CURRENCY_SYMBOLS, convertCurrency } from "@/utils/format";
 
 /* ============================================================================
@@ -1882,10 +1883,15 @@ export default function MarketingResponse({ locale = "ko" }) {
             onClick={() => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" })}>{isDemo ? tx("📁 내 CSV 업로드", "📁 Upload my CSV") : tx("⟳ CSV 변경", "⟳ Change CSV")}</button>
         </div>
         {!isDemo && (
-          <div className="ab-pillgroup" style={{ marginTop: "8px" }} title={tx("채널 spend·매출 등 이 CSV의 금액 컬럼이 어느 통화로 기록됐는지. 표시 통화 토글(₩/$)이 다르면 고정 환율로 실제 환산해서 보여줍니다.", "Which currency this CSV's amount columns (channel spend, revenue, etc.) are recorded in. If different from the display-currency toggle (₩/$), it converts at a fixed rate.")}>
-            <span className="ab-pillgroup-label">{tx("이 CSV 금액 통화", "This CSV's currency")}</span>
-            <button className={`ab-pill ${sourceCurrency === "KRW" ? "active" : ""}`} onClick={() => setCsvData({ ...csvData, currency: "KRW" })}>{tx("원 ₩", "KRW ₩")}</button>
-            <button className={`ab-pill ${sourceCurrency === "USD" ? "active" : ""}`} onClick={() => setCsvData({ ...csvData, currency: "USD" })}>{tx("달러 $", "USD $")}</button>
+          <div className="analysis-local-controls" style={{ marginTop: "8px" }}>
+            <div className="analysis-local-controls__inner">
+              <span className="analysis-local-controls__label">{tx("CSV 금액 통화", "CSV amount currency")}</span>
+              <span className="muted" style={{ fontSize: "11px" }}>{tx("표시 통화와 다르면 고정 환율로 환산합니다.", "Uses a fixed exchange rate when it differs from display currency.")}</span>
+              <div className="ab-pillgroup" style={{ margin: 0 }}>
+                <button className={`ab-pill ${sourceCurrency === "KRW" ? "active" : ""}`} onClick={() => setCsvData({ ...csvData, currency: "KRW" })}>{tx("원 ₩", "KRW ₩")}</button>
+                <button className={`ab-pill ${sourceCurrency === "USD" ? "active" : ""}`} onClick={() => setCsvData({ ...csvData, currency: "USD" })}>{tx("달러 $", "USD $")}</button>
+              </div>
+            </div>
           </div>
         )}
         <h3 style={{ fontSize: "14px", margin: "12px 0 8px", color: "var(--primary, #adc6ff)" }}>{tx("🗂 컬럼 역할 매핑 (드래그로 지정)", "🗂 Map column roles (assign by dragging)")}</h3>
@@ -1923,11 +1929,10 @@ export default function MarketingResponse({ locale = "ko" }) {
     </div>
   );
   const controlBar = () => (
-    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-      <span style={{ fontSize: "12px", color: MUTED, whiteSpace: "nowrap" }}>
+    <div className="analysis-local-controls__inner">
+      <span className="analysis-local-controls__label">
         {tx("마케팅 반응 분석", "Marketing Response Analysis")} <span style={{ margin: "0 4px" }}>·</span> <strong style={{ color: "var(--text-1)" }}>{stageKo}</strong>
       </span>
-      <span style={{ color: "var(--border-strong, #444)", fontSize: "12px" }}>|</span>
       <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
         {availTargets.length > 1 && (
           <div className="ab-pillgroup" style={{ margin: 0 }}>
@@ -2016,7 +2021,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       {!panelEmpty && (
         <div className="page-sticky-bar">
           <div className="page-sticky-row1">{controlBar()}</div>
-          <BasisCurrencyToggleBar locale={locale} />
+          <AnalysisControlBar title={tx("표시 기준", "Display settings")} hint={tx("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} /></AnalysisControlBar>
         </div>
       )}
       {renderTabs()}

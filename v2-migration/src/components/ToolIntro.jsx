@@ -47,20 +47,12 @@ export default function ToolIntro({ toolId, locale = "ko" }) {
   const copy = INTRO[toolId]?.[locale === "en" ? "en" : "ko"];
   const crossLink = TOOL_CROSS_LINK[toolId]?.[locale === "en" ? "en" : "ko"];
   if (!copy) return null;
-  return <header className="tool-context-header">
-    <div className="tool-context-header__meta"><span>ANALYSIS / {toolId}</span><em>{locale === "en" ? "LOCAL DATA" : "브라우저 내 분석"}</em></div>
-    <h1>{copy[0]}</h1>
-    <p>{copy[1]}</p>
-    <div className="tool-context-header__flow" aria-label={locale === "en" ? "Analysis flow" : "분석 흐름"}>
-      <span>01 {locale === "en" ? "Prepare" : "데이터 준비"}</span>
-      <i aria-hidden>→</i>
-      <span>02 {locale === "en" ? "Read evidence" : "근거 확인"}</span>
-      <i aria-hidden>→</i>
-      <span>03 {locale === "en" ? "Decide" : "다음 조치"}</span>
-    </div>
+  return <aside className="tool-context-header" aria-label={locale === "en" ? "About this tool" : "도구 안내"}>
+    <div className="tool-context-header__meta"><em>{locale === "en" ? "BROWSER-ONLY ANALYSIS" : "브라우저 내 분석"}</em></div>
+    <p><strong>{copy[0]}</strong> — {copy[1]}</p>
     {crossLink && <div className="tool-context-header__next">
       <span>{crossLink.label}</span>
       <Link href={`${locale === "en" ? "/en" : ""}${idToSlug[crossLink.toolId]}`}>{crossLink.cta} <b aria-hidden>→</b></Link>
     </div>}
-  </header>;
+  </aside>;
 }

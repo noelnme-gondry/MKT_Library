@@ -19,6 +19,7 @@ import {
 import { effectiveDenomBasis, getMappedRows } from "@/utils/dashboardAggregator";
 import { TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
+import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import ToolPageShell from "@/components/ToolPageShell";
 
 // 우측 TOC — legacy page_5_22() 목차와 동일 (§0 요약/§1 순위/§2 응답곡선).
@@ -412,37 +413,23 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
         </>
       }
       toc={analyzed && okRows.length ? buildSatToc(tr) : undefined}
-      stickyFilter={
-        <>
-          {/* 🗂 데이터·매핑 (펼쳐서 변경) — index page_5_22 details 이식.
-              stickyFilter 슬롯(page-sticky-bar 내부, sticky top:48)에 배치해 스크롤 중에도
-              고정 노출(§7 재발 — 예전엔 children에 있어 스크롤하면 사라짐). */}
-          <details className="block" style={{ padding: "13px 16px" }} open={!analyzed}>
-            <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: analyzed ? "var(--text-muted)" : "var(--primary, #adc6ff)" }}>
-              {tr("🗂 데이터·매핑", "🗂 Data & mapping")} {analyzed ? tr("(분석 완료 — 펼쳐서 변경)", "(analysis complete — expand to change)") : tr("(매핑 확인 후 분석)", "(check mapping, then analyze)")}
-            </summary>
-            <div style={{ marginTop: "10px" }}>
-              <CsvUploader toolId="5-22" locale={locale} />
-              <div style={{ marginTop: "10px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-                <button className="ab-pill" onClick={() => downloadSatTemplateCsv("5-22")} title={tr("이 도구가 쓰는 컬럼만 빈 헤더 CSV로 내려받기 (BOM+CRLF)", "Download a blank-header CSV with only the columns this tool uses (BOM+CRLF)")}>
-                  {tr("⬇ 템플릿 CSV (이 도구)", "⬇ Template CSV (this tool)")}
-                </button>
-                <span style={{ fontSize: "10.5px", color: "var(--text-muted)" }}>
-                  {tr(
-                    "효율 CSV는 5-2·5-3와 공유합니다. 통합 템플릿은 5-3 예산 배분에서도 받을 수 있습니다.",
-                    "The efficiency CSV is shared with 5-2 and 5-3. You can also get the combined template from 5-3 Budget Allocation."
-                  )}
-                </span>
-              </div>
-              {/* 분석 게이트 버튼은 CsvUploader가 단독 소유(§12.5/#5) — 위 CsvUploader의 "데이터 분석하기"/"↻ 다시 분석"이 store 그룹 게이트를 세팅. 중복 버튼 제거. */}
-            </div>
-          </details>
-
-          {/* 기준(설치/가입)·통화 토글 — 이전엔 5-2에만 있어 이 도구는 강제로 설치 기준이었음. */}
-          <BasisCurrencyToggleBar locale={locale} />
-        </>
-      }
+      stickyFilter={<AnalysisControlBar title={tr("표시 기준", "Display settings")} hint={tr("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} /></AnalysisControlBar>}
     >
+      {/* 데이터 매핑은 결과 범위 제어와 다른 작업이다. sticky 헤드 밖에서 필요할 때만 연다. */}
+      <details className="block analysis-data-mapping" open={!analyzed}>
+        <summary>
+          {tr("데이터·매핑", "Data & mapping")} {analyzed ? tr("— 변경하기", "— change") : tr("— 확인 후 분석", "— check before analysis")}
+        </summary>
+        <div className="analysis-data-mapping__body">
+          <CsvUploader toolId="5-22" locale={locale} />
+          <div className="analysis-data-mapping__footer">
+            <button className="ab-pill" onClick={() => downloadSatTemplateCsv("5-22")}>
+              {tr("템플릿 CSV 받기", "Download template CSV")}
+            </button>
+            <span>{tr("효율 CSV는 대시보드·예산 배분과 공유합니다.", "This efficiency CSV is shared with Dashboard and Budget Allocation.")}</span>
+          </div>
+        </div>
+      </details>
       {!analyzed ? (
         <section className="block" id="s-sat-gate">
           <div className="callout" style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>

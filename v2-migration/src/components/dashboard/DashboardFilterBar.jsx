@@ -1,7 +1,8 @@
 "use client";
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect, useId } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import BasisCurrencyToggleBar from "./BasisCurrencyToggleBar";
+import AnalysisControlBar from "./AnalysisControlBar";
 
 const FILTER_BAR_COPY = {
   ko: {
@@ -33,6 +34,7 @@ const FILTER_BAR_COPY = {
 function MultiSelect({ label, options, selected, onChange, T }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const listId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -65,13 +67,16 @@ function MultiSelect({ label, options, selected, onChange, T }) {
           className="mon-multisel-btn"
           type="button"
           onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-haspopup="listbox"
         >
-          {btnLabel} ∨
+          {btnLabel} <span aria-hidden="true">{open ? "⌃" : "⌄"}</span>
         </button>
         {open && (
-          <div className="mon-multisel-list">
+          <div className="mon-multisel-list" id={listId} role="listbox" aria-label={label} aria-multiselectable="true">
             {options.map((o) => (
-              <label key={o}>
+              <label key={o} role="option" aria-selected={isAll || selected.has(o)}>
                 <input
                   type="checkbox"
                   value={o}
@@ -151,20 +156,11 @@ export default function DashboardFilterBar({ locale = "ko" }) {
   };
 
   return (
-    <>
-    <div className="mon-filter-bar">
-      <div className="mon-filter-inner">
-        <span className="mon-filter-title">
-          {T.filterTitle}
-          {activeCount > 0 && (
-            <span
-              className="mon-filter-badge"
-              style={{ marginLeft: "6px", background: "var(--accent)", color: "#000", padding: "2px 6px", borderRadius: "10px", fontSize: "10px" }}
-            >
-              {activeCount}
-            </span>
-          )}
-        </span>
+    <AnalysisControlBar
+      title={locale === "en" ? "Analysis scope" : "분석 범위"}
+      activeCount={activeCount}
+      hint={locale === "en" ? "Applies to this shared CSV" : "공유 CSV를 쓰는 도구에 적용"}
+    >
 
         {dates.length > 0 && (
           <>
@@ -195,7 +191,7 @@ export default function DashboardFilterBar({ locale = "ko" }) {
 
         {platforms.length > 0 && (
           <MultiSelect
-            label="Platform"
+            label={locale === "en" ? "Platform" : "플랫폼"}
             options={platforms}
             selected={dashboardFilter.platforms && dashboardFilter.platforms.size > 0 ? dashboardFilter.platforms : null}
             onChange={(set) => setDashboardFilter({ platforms: set || new Set() })}
@@ -238,12 +234,7 @@ export default function DashboardFilterBar({ locale = "ko" }) {
             {T.reset}
           </button>
         )}
-      </div>
-    </div>
-
-    {/* 토글 바 — 기준(설치/가입) + 표시 통화(₩/$). BasisCurrencyToggleBar로 분리(5-2 밖 효율
-        도구 3개도 재사용 — 이전엔 이 토글이 5-2 전용이라 다른 도구는 강제로 설치 기준만 됐음). */}
-    <BasisCurrencyToggleBar locale={locale} />
-    </>
+      <BasisCurrencyToggleBar locale={locale} />
+    </AnalysisControlBar>
   );
 }

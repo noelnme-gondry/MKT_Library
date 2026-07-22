@@ -6,6 +6,7 @@ import { ALLOC_MATH } from "@/utils/allocationMath";
 import { getMappedRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import CsvUploader from "@/components/CsvUploader";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
+import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import ToolPageShell from "@/components/ToolPageShell";
 import { chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { showToast } from "@/utils/toast";
@@ -1243,10 +1244,10 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             </p>
           }
           toc={[{ id: "s-filter", title: tr("분석 단위", "Analysis unit") }]}
-          stickyFilter={<BasisCurrencyToggleBar locale={locale} />}
+          stickyFilter={<AnalysisControlBar title={tr("표시 기준", "Display settings")} hint={tr("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} /></AnalysisControlBar>}
         >
         <section className="block" id="s-filter">
-          <h2 className="section-title"><span className="ix">§1</span>{tr("최적화 목표 + 분석 단위 + 필터", "Optimization goal + analysis unit + filters")}</h2>
+          <h2 className="section-title"><span className="ix">§1</span>{tr("분석 조건", "Analysis settings")}</h2>
           <p className="muted" style={{ fontSize: "12px" }}>
             {tr(
               "최적화 목표를 먼저 선택하고, 분석 단위와 국가/채널/OS 필터를 정한 뒤 '적용'을 누르면 산점도·추세선·예산 분배가 계산됩니다.",
@@ -1254,9 +1255,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             )}
           </p>
           <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "12px", marginTop: "12px" }}>
-            {/* 1) 최적화 목표 */}
+            {/* 우선 결정: 최적화 목표 */}
             <div style={{ marginBottom: "14px" }}>
-              <span className="ab-pillgroup-label">1️⃣ {tr("최적화 목표 (필수)", "Optimization goal (required)")}</span>
+              <span className="ab-pillgroup-label">{tr("최적화 목표", "Optimization goal")}</span>
               <p className="muted" style={{ fontSize: "11px", margin: "2px 0 0" }}>
                 {tr("전역 기준이", "The global basis is")} <strong>{effBasis === "actions" ? tr("가입(Action · CPA)", "signup (Action · CPA)") : tr("설치(Install · CPI)", "install (Install · CPI)")}</strong>{" "}
                 {tr(
@@ -1286,18 +1287,18 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
                 })}
               </div>
             </div>
-            {/* 2) 분석 단위 */}
+            {/* 결과를 읽는 단위 */}
             <div style={{ marginBottom: "14px" }}>
-              <span className="ab-pillgroup-label">2️⃣ {tr("분석 단위 (Scatter Point)", "Analysis unit (scatter point)")}</span>
+              <span className="ab-pillgroup-label">{tr("결과를 볼 단위", "Result level")}</span>
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "4px" }}>
                 {unitOpts.map((o) => (
                   <button key={o.v} className={`ab-pill ${unitField === o.v ? "active" : ""}`} title={o.desc} onClick={() => changeUnit(o.v)}>{o.label}</button>
                 ))}
               </div>
             </div>
-            {/* 3) 국가 / 채널 / OS 필터 */}
+            {/* 데이터 범위 */}
             <div style={{ marginBottom: "10px" }}>
-              <span className="ab-pillgroup-label">3️⃣ {tr("국가 · 채널 · OS 필터", "Country · channel · OS filters")}</span>
+              <span className="ab-pillgroup-label">{tr("분석 범위", "Analysis scope")}</span>
             </div>
             <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "12px" }}>
               {filterOptions.hasCountry && (
@@ -1381,8 +1382,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
   // 고급 추세선 컨트롤 패널 (가중치·이상치 방법/강도·정규화·외삽 Cap·포인트 토글). Step 2/3 공유.
   const advancedPanel = (
-    <div style={{ marginBottom: "1rem", borderTop: "1px solid var(--border)", paddingTop: "0.75rem" }}>
-      <button className="ab-pill" onClick={() => setAdvancedOpen((v) => !v)}>
+    <div className="analysis-advanced-controls">
+      <button className="ab-pill" aria-expanded={advancedOpen} onClick={() => setAdvancedOpen((v) => !v)}>
         {advancedOpen ? tr("▲ 상세 설정 닫기", "▲ Close advanced settings") : tr("▼ 상세 설정 (가중치·이상치·정규화·외삽·표시)", "▼ Advanced settings (weighting · outliers · normalization · extrapolation · display)")}
       </button>
       {advancedOpen && (
@@ -1533,7 +1534,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             </p>
           }
           toc={[{ id: "s-verify", title: tr("검증", "Verify") }]}
-          stickyFilter={<BasisCurrencyToggleBar locale={locale} />}
+          stickyFilter={<AnalysisControlBar title={tr("표시 기준", "Display settings")} hint={tr("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} /></AnalysisControlBar>}
         >
         <section className="block" id="s-verify">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "8px" }}>
@@ -1917,7 +1918,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   ];
   const step3StickyFilter = (
     <>
-      <BasisCurrencyToggleBar locale={locale} />
+      <AnalysisControlBar title={tr("표시 기준", "Display settings")} hint={tr("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} /></AnalysisControlBar>
       {/* ★2 요약칩 → 드롭다운+적용 (토글 칩 바로 아래). draft라 적용 전엔 결과 불변. */}
       <AllocQuickFilterBar
         applied={{ objective, unitField, countries: selectedCountries, channels: selectedChannelsFilter, platform: platformFilter }}

@@ -370,19 +370,20 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
               <button className={`ab-tab ${mode === "threshold" ? "active" : ""}`} onClick={() => setMode("threshold")}>{tr("③ 신뢰수준 가이드", "③ Confidence level guide")}</button>
             </div>
 
-            <div className="ab-pillgroup" style={{ marginTop: "10px" }}>
-              <span className="ab-pillgroup-label">{tr("테스트 유형", "Test type")}</span>
-              <button className={`ab-pill ${testType === "binary" ? "active" : ""}`} onClick={() => setTestType("binary")}>{tr("Binary · CVR (전환율)", "Binary · CVR (conversion rate)")}</button>
-              <button className={`ab-pill ${testType === "continuous" ? "active" : ""}`} onClick={() => setTestType("continuous")}>Continuous · CPR / ARPPU / Revenue</button>
-            </div>
-
-            {/* 이 도구는 CSV 없이 수동 계산이라 효율 패밀리의 "토글 기준" 필터줄이
-                없음 — 통화 표시가 실제 쓰이는(§2 예산·평균값) 이 자리에 단독 토글.
-                다른 페이지와 달리 중복 아님(이 페이지엔 이거 하나뿐). */}
-            <div className="ab-pillgroup" style={{ marginTop: "10px" }}>
-              <span className="ab-pillgroup-label">{tr("통화", "Currency")}</span>
-              <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setDisplayCurrency("KRW")}>₩ KRW</button>
-              <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setDisplayCurrency("USD")}>$ USD</button>
+            <div className="analysis-local-controls" aria-label={tr("실험 조건", "Experiment settings")}>
+              <div className="analysis-local-controls__inner">
+                <span className="analysis-local-controls__label">{tr("실험 조건", "Experiment settings")}</span>
+                <div className="ab-pillgroup" style={{ margin: 0 }}>
+                  <span className="ab-pillgroup-label">{tr("테스트 유형", "Test type")}</span>
+                  <button className={`ab-pill ${testType === "binary" ? "active" : ""}`} onClick={() => setTestType("binary")}>{tr("전환율", "Conversion rate")}</button>
+                  <button className={`ab-pill ${testType === "continuous" ? "active" : ""}`} onClick={() => setTestType("continuous")}>{tr("평균값 (CPR·ARPPU·매출)", "Average value")}</button>
+                </div>
+                <div className="ab-pillgroup" style={{ margin: 0 }}>
+                  <span className="ab-pillgroup-label">{tr("통화", "Currency")}</span>
+                  <button className={`ab-pill ${currency === "KRW" ? "active" : ""}`} onClick={() => setDisplayCurrency("KRW")}>₩ KRW</button>
+                  <button className={`ab-pill ${currency === "USD" ? "active" : ""}`} onClick={() => setDisplayCurrency("USD")}>$ USD</button>
+                </div>
+              </div>
             </div>
 
           </section>
