@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect, useId } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import BasisCurrencyToggleBar from "./BasisCurrencyToggleBar";
 import AnalysisControlBar from "./AnalysisControlBar";
@@ -34,6 +34,7 @@ const FILTER_BAR_COPY = {
 function MultiSelect({ label, options, selected, onChange, T }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const listId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -66,13 +67,16 @@ function MultiSelect({ label, options, selected, onChange, T }) {
           className="mon-multisel-btn"
           type="button"
           onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-haspopup="listbox"
         >
-          {btnLabel} ∨
+          {btnLabel} <span aria-hidden="true">{open ? "⌃" : "⌄"}</span>
         </button>
         {open && (
-          <div className="mon-multisel-list">
+          <div className="mon-multisel-list" id={listId} role="listbox" aria-label={label} aria-multiselectable="true">
             {options.map((o) => (
-              <label key={o}>
+              <label key={o} role="option" aria-selected={isAll || selected.has(o)}>
                 <input
                   type="checkbox"
                   value={o}
