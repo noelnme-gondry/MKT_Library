@@ -4656,6 +4656,8 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .analysis-data-mapping > summary { color: var(--text-primary); cursor: pointer; font-size: 12px; font-weight: 700; }
 .analysis-data-mapping__body { margin-top: 12px; }
 .analysis-data-mapping__footer { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-top: 10px; color: var(--text-muted); font-size: 10.5px; }
+.analysis-advanced-controls { margin-bottom: 1rem; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-container-lowest); }
+.analysis-advanced-controls > div { padding-top: 2px; }
 @media (min-width: 980px) { .analysis-control-bar__hint { display: inline; } }
 @media (max-width: 720px) { .analysis-control-bar { display: block; } .analysis-control-bar__heading { margin-bottom: 7px; } .analysis-control-bar__controls { gap: 7px 10px; } .analysis-control-bar .mon-filter-reset { margin-left: 0; } .analysis-local-controls { padding: 9px; } }
 .tool-page-shell__toc { position: fixed; z-index: 7; top: 104px; right: 22px; width: 170px; display: flex; flex-direction: column; gap: 3px; padding: 12px 0 12px 14px; border-left: 1px solid var(--border); }

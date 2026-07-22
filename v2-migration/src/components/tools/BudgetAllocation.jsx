@@ -1382,8 +1382,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
   // 고급 추세선 컨트롤 패널 (가중치·이상치 방법/강도·정규화·외삽 Cap·포인트 토글). Step 2/3 공유.
   const advancedPanel = (
-    <div style={{ marginBottom: "1rem", borderTop: "1px solid var(--border)", paddingTop: "0.75rem" }}>
-      <button className="ab-pill" onClick={() => setAdvancedOpen((v) => !v)}>
+    <div className="analysis-advanced-controls">
+      <button className="ab-pill" aria-expanded={advancedOpen} onClick={() => setAdvancedOpen((v) => !v)}>
         {advancedOpen ? tr("▲ 상세 설정 닫기", "▲ Close advanced settings") : tr("▼ 상세 설정 (가중치·이상치·정규화·외삽·표시)", "▼ Advanced settings (weighting · outliers · normalization · extrapolation · display)")}
       </button>
       {advancedOpen && (

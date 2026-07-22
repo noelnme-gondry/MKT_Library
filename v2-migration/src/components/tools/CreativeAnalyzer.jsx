@@ -1097,7 +1097,9 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                 )}
               </div>
             </details>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "14px" }}>
+            <div className="analysis-local-controls" aria-label={tr("속성 효과 분석 조건", "Attribute-effect analysis settings")}>
+              <div className="analysis-local-controls__inner">
+                <span className="analysis-local-controls__label">{tr("분석 조건", "Analysis settings")}</span>
               <div className="ab-pillgroup">
                 <span className="ab-pillgroup-label">{tr("분석 기준 지표", "Metric analyzed")}</span>
                 <button className={`ab-pill ${curMetricKey === "ctr" ? "active" : ""}`} onClick={() => setMetric("ctr")}>CTR</button>
@@ -1128,6 +1130,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                 >
                   ROAS
                 </button>
+              </div>
               </div>
             </div>
             <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "-6px" }}>
