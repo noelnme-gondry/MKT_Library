@@ -509,8 +509,8 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
   ] : [[tx("카니발 결과", "Cannibal result")], [tx("카니발 진단 단계에서 다운로드하면 4검증 원자료를 포함합니다.", "Download from the cannibalization step to include four-check evidence.")]]);
   add("04_Model", [
     ["model", run.methodLabel], ["R2", run.posterior?.r2], ["sigma", run.posterior?.sigma], ["target", mmm.target], [],
-    ["channel", "adstock_alpha", "half_saturation", "hill_slope", "posterior_positive_probability"],
-    ...Object.values(run.saturationByChannel || {}).map((s) => [s.label, s.params.alpha, s.params.ec, s.params.slope, s.posteriorPositive]),
+    ["channel", "adstock_alpha", "half_saturation", "hill_slope", "transform_candidate_count", "effective_transform_candidates", "top_transform_weight", "posterior_positive_probability"],
+    ...Object.values(run.saturationByChannel || {}).map((s) => [s.label, s.params.alpha, s.params.ec, s.params.slope, s.transformUncertainty?.candidateCount, s.transformUncertainty?.effectiveCandidateCount, s.transformUncertainty?.topWeight, s.posteriorPositive]),
   ]);
   add("05_WeeklyContribution", decomp?.weeks ? [
     ["week", "actual", "fitted", "residual", "baseline", ...decomp.groupNames],
@@ -3069,7 +3069,7 @@ export default function MarketingResponse({ locale = "ko" }) {
               <details className="block" onToggle={onAccordionToggle}>
                 <summary style={{ cursor: "pointer", fontSize: "13px", fontWeight: 600, color: "var(--primary, #adc6ff)", padding: "4px 0" }}>{tx("이 숫자들은 어떻게 나왔나요? — 계산 과정 자세히 보기", "How were these numbers computed? — see the calculation in detail")}</summary>
                 <div style={{ marginTop: "12px" }}>
-                  <StatHead title={tx("① 채널별 광고 여운·포화", "① Per-channel carryover and saturation")} hint={tx("채널마다 광고 효과가 남는 길이와 포화되는 지출점이 다르다고 두고, 데이터에서 가장 설명력 있는 변환을 고릅니다.", "Each channel has its own carryover and saturation point, selected from the transformation that best explains the data.")} />
+                  <StatHead title={tx("① 채널별 광고 여운·포화", "① Per-channel carryover and saturation")} hint={tx("채널별 α × 반포화점 × Hill 기울기 후보를 비교합니다. 이 표는 기본 기여·예측에 쓰는 후보를 보여 주고, 아래 효과 신뢰도는 모든 후보의 차이까지 반영합니다.", "Each channel compares α × half-saturation × Hill-slope candidates. This table shows the candidate used for base contribution and forecast; the effect confidence below also reflects variation across all candidates.")} />
                   <div className="table-wrap" style={{ marginBottom: "12px" }}>
                     <table className="data" style={{ fontSize: "11.5px" }}>
                       <thead><tr><th>{tx("채널", "Channel")}</th><th>{tx("잔효 α", "Carryover α")}</th><th>{tx("반포화 지출점", "Half-saturation")}</th><th>{tx("포화 곡선", "Hill slope")}</th><th>{tx("효과가 양수일 확률", "P(effect > 0)")}</th></tr></thead>
@@ -3078,14 +3078,14 @@ export default function MarketingResponse({ locale = "ko" }) {
                       ))}</tbody>
                     </table>
                   </div>
-                  <StatHead title={tx("② Bayesian 효과 신뢰도", "② Bayesian effect confidence")} hint={tx("양수 확률은 이 데이터에서 선택된 adstock·포화 파라미터를 고정한 조건부 posterior입니다. 80% 이상은 추천 후보일 뿐, holdout 검증 전 인과·증분 확정이 아닙니다.", "Positive probability is conditional on the adstock/saturation parameters selected from this data. ≥80% is a recommendation candidate, not causal or incremental proof before holdout validation.")} />
+                  <StatHead title={tx("② Bayesian 효과 신뢰도", "② Bayesian effect confidence")} hint={tx("각 채널의 adstock α·반포화점·Hill 기울기 후보를 각각 다시 적합한 뒤, 후보별 posterior를 가중 평균한 값입니다. 후보마다 결론이 달라지면 확률은 낮아지고 구간은 넓어집니다. 80% 이상도 holdout 검증 전 인과·증분 확정은 아닙니다.", "Each channel's adstock α, half-saturation, and Hill-slope candidates are refit and their posteriors are model-averaged. If candidates disagree, probability falls and the interval widens. Even ≥80% is not causal or incremental proof before holdout validation.")} />
                   <div className="table-wrap" style={{ marginBottom: "12px" }}>
                     <table className="data" style={{ fontSize: "11.5px" }}>
                       <thead><tr><th>{tx("채널", "Channel")}</th><th>{tx("효과 양수 확률", "P(effect > 0)")}</th><th>{tx("효과 크기", "Effect size")}</th><th>{tx("90% 신뢰구간", "90% credible interval")}</th><th>{tx("예산 추천", "Budget use")}</th></tr></thead>
                       <tbody>{Object.values(mmm.run.saturationByChannel || {}).map((s) => {
                         const useBudget = s.posteriorPositive >= 0.8 && s.currentMarginal > 0;
                         return <tr key={s.key}>
-                          <td><strong>{s.label}</strong></td>
+                          <td title={s.transformUncertainty ? tx(`변환 후보 ${s.transformUncertainty.candidateCount}개 · 가중 유효 후보 ${s.transformUncertainty.effectiveCandidateCount.toFixed(1)}개`, `${s.transformUncertainty.candidateCount} transform candidates · ${s.transformUncertainty.effectiveCandidateCount.toFixed(1)} effective candidates`) : undefined}><strong>{s.label}</strong></td>
                           <td className="tnum" style={{ color: useBudget ? NEG : MUTED }}>{fmtOne(s.posteriorPositive * 100)}%</td>
                           <td className="tnum">{fmtOne(s.ln_coef)}</td>
                           <td className="tnum">[{fmtOne(s.ci?.[0])}, {fmtOne(s.ci?.[1])}]</td>
