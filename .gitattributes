@@ -6,3 +6,6 @@
 #   git config merge.ours.driver true
 # (등록 안 하면 이 라인은 무시되고 일반 머지로 동작.)
 CLAUDE.md merge=ours
+
+# Generated manuals are binary artifacts; avoid line-based diffs/checks.
+*.pdf binary

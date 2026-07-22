@@ -237,7 +237,7 @@ function buildExperiment() {
 // channels regardless of true effect (root cause of "everything looks like
 // cannibalization" in the old demo).
 function buildResponse() {
-  const headers = ["week", "signups", "google_spend", "meta_spend", "tiktok_spend", "brand_spend"];
+  const headers = ["week", "country", "signups", "google_spend", "meta_spend", "tiktok_spend", "brand_spend"];
   const nWeeks = 104;
   // channel: spend generator + response coefficient + adstock decay + saturation half-point.
   // sign: +1 = genuine lift (organic-friendly), -1 = genuine cannibalization (subtracts organic).
@@ -268,7 +268,9 @@ function buildResponse() {
   const adstock = {}; chans.forEach((c) => { adstock[c.key] = 0; });
   for (let w = 0; w < nWeeks; w++) {
     const weekStr = new Date(start + w * 7 * 86400000).toISOString().slice(0, 10);
-    const row = { week: weekStr };
+    // 데모에서만 KR을 명시한다. 실제 모델은 특정 국가를 기본값으로 가정하지
+    // 않으며, 이 값은 국가 prior self-reference 제외 gate를 체험하기 위한 입력이다.
+    const row = { week: weekStr, country: "KR" };
     let contrib = 0;
     for (const c of chans) {
       // spend: base * (trend) * (seasonal) * noise
@@ -299,9 +301,8 @@ function buildResponse() {
 }
 
 // ── MMM prior evidence (5-18) ──────────────────────────────────────────────
-// 기여 분해의 "근거 보정" UX를 위한 원자료 세트. 아직 prior 엔진이 이 데이터를
-// 적합하지는 않지만, On/Off 반복 구간과 여러 참고 국가의 country 컬럼을 실제 형식으로
-// 제공해 업로드·매핑·후속 검증 흐름을 데모에서도 점검할 수 있게 한다.
+// 기여 분해의 "근거 보정" UX와 prior 엔진을 함께 검증하는 원자료 세트.
+// On/Off 반복 구간과 여러 참고 국가의 country 컬럼을 실제 형식으로 제공한다.
 export function buildMmmPriorDemo() {
   const base = buildResponse();
   const marketRows = [];
@@ -311,7 +312,7 @@ export function buildMmmPriorDemo() {
     base.raw.forEach((row, weekIndex) => {
       const seasonalShift = 1 + 0.035 * Math.sin((weekIndex / 52) * 2 * Math.PI + ci);
       const copy = { week: row.week, country };
-      base.headers.slice(1).forEach((header) => {
+      base.headers.filter((header) => header !== "week" && header !== "country").forEach((header) => {
         const value = Number(row[header]) || 0;
         const isSpend = header.endsWith("_spend");
         const variance = isSpend ? 1 + noise() * 0.12 : 1 + noise() * 0.05;

@@ -637,21 +637,28 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             };
 
             export const MMM_METH_CONFIG = {
-              version: "1.0.0",
+              version: "1.1.0",
               seasonalityPeriods: [52.18, 13.04], // annual + quarterly (각 sin+cos pair)
               adstockGrid: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
-              // Bayesian 효과 신뢰도는 한 변환을 고정하지 않는다. 채널별 α × 반포화점 ×
+              // Empirical-Bayes 효과 신뢰도는 한 변환을 고정하지 않는다. 채널별 α × 반포화점 ×
               // Hill 기울기 후보의 profile posterior를 평균내되, 계산량은 주간 MMM에 맞춘다.
               bayesHalfSaturationQuantiles: [0.4, 0.6, 0.8],
               bayesHillSlopeGrid: [0.6, 0.8, 1.0, 1.4],
+              // profile 재적합은 브라우저 메인 스레드에서 실행되므로 채널 수에 따라
+              // 균등한 후보 부분집합을 사용해 전체 적합 수를 제한한다.
+              bayesMaxProfileCandidates: 48,
+              bayesMaxTotalProfileFits: 480,
+              bayesMaxPriorProfileFits: 240,
               cvMinTrain: 40,
               defaultLam: 0.6, // cannibalization net elasticity용
-              lunarWeeks: {
-                seollal: [5, 6, 56, 57, 111, 112],
-                chuseok: [38, 39, 92, 93],
-              },
-              steps: { post_step: 42, line_off: 55 }, // 영구 step (week>=from_week)
-              foldIntoRegime: ["google_cbua"], // 구조변화와 공선 → 레짐 흡수, 단독해석 금지
+              // 국가·연도와 무관한 고정 주차를 실제 명절처럼 넣지 않는다. 레거시
+              // 재현이 꼭 필요한 호출부만 useConfiguredLunarWeeks와 lunarWeeks를
+              // 함께 명시하며, 앱 기본 입력은 사용자가 매핑한 이벤트 더미만 쓴다.
+              useConfiguredLunarWeeks: false,
+              // 구조변화는 데이터에 매핑된 step만 사용한다. 특정 서비스의 42/55주
+              // 전환점을 모든 국가에 자동 주입하던 레거시 기본값은 제거했다.
+              steps: {},
+              foldIntoRegime: [], // 자동 삭제 금지; 공선은 진단·budget gate로 처리
               combinedGoogle: ["google_roi", "google_cbua"], // G_Total (sheet/precedence/detrend)
               vifThreshold: 10,
               sparseMinWeeks: 20, // 비-0 주가 이 미만이면 "데이터 부족" (계수 신뢰 불가)
@@ -750,15 +757,25 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               for (const ch of _mmmChans(panel)) {
                 if (!panel.ch[ch.key]) continue;
                 const arr = panel.ch[ch.key];
-                const nonzero = arr.filter((v) => v > 0 && isFinite(v)).length;
-                const trailingZero = arr.length > 8 && arr.slice(-8).every((v) => !v);
+                const finite = arr.filter((v) => isFinite(v));
+                const ordered = [...finite].sort((a, b) => a - b);
+                const nonzero = finite.filter((v) => v > 0).length;
+                const trailingZero = arr.length >= 8 && arr.slice(-8).every((v) => !(v > 0));
+                const min = finite.length ? Math.min(...finite) : 0;
+                const max = finite.length ? Math.max(...finite) : 0;
+                const scale = finite.length ? finite.reduce((sum, value) => sum + Math.abs(value), 0) / finite.length : 0;
+                const constantSpend = finite.length > 0 && max - min <= Math.max(1e-8, scale * 1e-6);
                 out[ch.key] = {
                   label: ch.label,
                   nonzero,
                   total: arr.length,
                   coverage: nonzero / arr.length,
                   trailingZero,
+                  constantSpend,
                   sparse: nonzero < (cfg.sparseMinWeeks || 20),
+                  observedMin: min,
+                  observedMax: max,
+                  observedP95: ordered.length ? ordered[Math.min(ordered.length - 1, Math.floor((ordered.length - 1) * 0.95))] : 0,
                 };
               }
               return out;
@@ -801,7 +818,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               // 흡수(공선) 집합: cfg.absorbed = 다중공선으로 제거할 컬럼 키(채널 key 또는 step 이름). 기본은 step 흡수(캠페인 유지).
               const absorbed = cfg.absorbed || new Set(cfg.foldIntoRegime || []);
               // 휴일/이벤트: 사용자가 매핑한 더미(panel.useDummies)가 있으면 그것을 모델에 포함(실제 이벤트 신호 — liveness 등).
-              // 없으면 도구 기본 cfg.lunarWeeks(주차번호 가정). → legacy/골든 패널(useDummies 미설정)은 byte-동일.
+              // 고정 주차 명절은 국가·연도에 따라 틀릴 수 있으므로 명시적으로
+              // useConfiguredLunarWeeks=true인 레거시 재현에서만 사용한다.
               if (
                 panel.useDummies &&
                 panel.dummy &&
@@ -811,7 +829,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   if (absorbed.has("d_" + nm)) continue;
                   push("d_" + nm, arr);
                 }
-              } else {
+              } else if (cfg.useConfiguredLunarWeeks && cfg.lunarWeeks) {
                 const seol = new Set(cfg.lunarWeeks.seollal),
                   chu = new Set(cfg.lunarWeeks.chuseok);
                 push(
@@ -991,9 +1009,17 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               };
             }
 
-            export function mmmValidate(panel, locale = "ko") {
+            export function mmmValidate(panel, locale = "ko", targetName = null) {
               const isEn = locale === "en";
               const rep = { n_weeks: panel.week.length, issues: [], warnings: [] };
+              // 매퍼가 원본 날짜/주차 key에서 먼저 찾은 invalid·중복·gap·partial
+              // 진단을 내부 t=1…N 정규화 뒤에도 보존한다.
+              const diagnosticMessage = (item) => {
+                if (typeof item === "string") return item;
+                return isEn ? item?.messageEn : item?.messageKo;
+              };
+              if (panel.timeDiagnostics?.issues?.length) rep.issues.push(...panel.timeDiagnostics.issues.map(diagnosticMessage).filter(Boolean));
+              if (panel.timeDiagnostics?.warnings?.length) rep.warnings.push(...panel.timeDiagnostics.warnings.map(diagnosticMessage).filter(Boolean));
               // 주 인덱스 비연속: 개별 나열(@1..@126 폭주) 대신 1건으로 요약. Week 컬럼이 1,2,3..이 아니면(날짜/연도) 흔함 — 행 순서(t)로 분석하므로 경고 수준.
               let nonContig = 0;
               for (let i = 1; i < panel.week.length; i++)
@@ -1002,18 +1028,39 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 rep.warnings.push(
                   isEn ? `Week index is not consecutive (${nonContig} gaps) — the Week column may contain dates/years. Analysis uses row order (t=1…N).` : `주 인덱스가 1씩 증가하지 않음(${nonContig}곳) — Week 컬럼이 날짜/연도일 수 있음. 분석은 행 순서(t=1…N)로 진행.`,
                 );
-              for (const [nm, arr] of Object.entries(panel.targets))
-                if (arr.some((v) => v <= 0 || isNaN(v)))
-                  rep.warnings.push(isEn ? `Target '${nm}' contains non-positive or missing values` : `target '${nm}' 비양수/결측 존재`);
+              if (panel.calendarGaps?.count > 0) {
+                rep.issues.push(
+                  isEn
+                    ? `${panel.calendarGaps.count} calendar week(s) are missing. Add explicit rows with the correct weekly KPI/spend; carryover and seasonality must not compress time gaps.`
+                    : `달력 주차 ${panel.calendarGaps.count}개가 비어 있습니다. 해당 주의 실제 KPI·지출 행을 추가하세요. 잔효·계절 모델은 빈 시간을 압축해 계산하면 안 됩니다.`,
+                );
+              }
+              for (const [nm, arr] of Object.entries(panel.targets)) {
+                const missing = arr.filter((value) => !Number.isFinite(value)).length;
+                if (missing) {
+                  const message = isEn
+                    ? `Target '${nm}' has ${missing} missing week(s). Supply the actual weekly value; missing outcomes are not treated as zero.`
+                    : `target '${nm}'에 결측 주차가 ${missing}개 있습니다. 실제 주간 값을 채우세요. 결측 성과는 0으로 처리하지 않습니다.`;
+                  if (!targetName || nm === targetName) rep.issues.push(message);
+                  else rep.warnings.push(message);
+                } else if (arr.some((value) => value <= 0)) {
+                  rep.warnings.push(isEn ? `Target '${nm}' contains non-positive values` : `target '${nm}' 비양수 값 존재`);
+                }
+              }
               for (const ch of _mmmChans(panel)) {
                 if (!panel.ch[ch.key]) continue;
                 const arr = panel.ch[ch.key],
                   nz = arr.filter((v) => v > 0).length,
-                  nMiss = arr.filter((v) => isNaN(v) || v == null).length;
+                  nMiss = arr.filter((v) => isNaN(v) || v == null).length,
+                  nNegative = arr.filter((v) => Number.isFinite(v) && v < 0).length;
                 rep[`nonzero::${ch.key}`] = `${nz}/${arr.length}`;
                 if (nMiss)
-                  rep.warnings.push(
-                    isEn ? `Channel '${ch.key}': ${nMiss} missing (NaN) — imputed in features` : `channel '${ch.key}': ${nMiss} 결측(NaN) — features에서 대치`,
+                  rep.issues.push(
+                    isEn ? `Channel '${ch.key}' has ${nMiss} missing week(s). Enter zero only when there was truly no spend; otherwise supply the actual value.` : `channel '${ch.key}'에 결측 주차가 ${nMiss}개 있습니다. 실제 무집행일 때만 0을 넣고, 그 외에는 실제 지출을 채우세요.`,
+                  );
+                if (nNegative)
+                  rep.issues.push(
+                    isEn ? `Channel '${ch.key}' has ${nNegative} negative spend week(s). Spend must be zero or positive; negative values are not treated as no-spend.` : `channel '${ch.key}'에 음수 지출 주차가 ${nNegative}개 있습니다. 지출은 0 이상이어야 하며, 음수를 무집행으로 처리하지 않습니다.`,
                   );
                 if (nz === 0)
                   rep.warnings.push(isEn ? `Channel '${ch.key}' is all zero — not identifiable` : `channel '${ch.key}' 전부 0 → 식별 불가`);
@@ -1022,15 +1069,28 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                     isEn ? `Channel '${ch.key}': last 6 weeks are zero — check missing vs. true zero` : `channel '${ch.key}': 마지막 6주 0 — 결측-vs-진짜0 확인`,
                   );
               }
+              for (const [kind, series] of [["event", panel.dummy || {}], ["regime", panel.steps || {}]]) {
+                for (const [key, values] of Object.entries(series)) {
+                  const invalid = values.filter((value) => !Number.isFinite(value) || (value !== 0 && value !== 1)).length;
+                  if (invalid) rep.issues.push(
+                    isEn
+                      ? `${kind === "event" ? "Event" : "Regime"} '${key}' has ${invalid} non-binary week(s). Map weekly indicators as exactly 0 or 1.`
+                      : `${kind === "event" ? "이벤트" : "구조변화"} '${key}'에 0/1이 아닌 주차가 ${invalid}개 있습니다. 주간 지표는 정확히 0 또는 1로 입력하세요.`,
+                  );
+                }
+              }
               return rep;
             }
 
             export function mmmAudit(panel, cfg) {
-              const RR =
-                panel.targets.RR ||
-                panel.week.map((_, i) =>
-                  Object.values(panel.targets).reduce((s, a) => s + a[i], 0),
-                );
+              // 이 진단은 가입+재유입(RR) 전용이다. Traffic·Purchasers·Revenue 등
+              // 단위가 다른 다중 Y를 임의로 더해 가짜 composite를 만들지 않는다.
+              const RR = panel.targets.RR || (
+                panel.targets.Regs && panel.targets.React
+                  ? panel.week.map((_, i) => panel.targets.Regs[i] + panel.targets.React[i])
+                  : null
+              );
+              if (!RR) return null;
               const sd = mmmSheetDesign(panel, cfg, false);
               const olsN = mmmFitNamed(sd.X, sd.names, RR, cfg, false);
               const hacN = mmmFitNamed(sd.X, sd.names, RR, cfg, true);
@@ -1134,7 +1194,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             }
 
             // 감지된 공선쌍 + 사용자 선택(choice: {`ch__step`:"step"|"channel"}) → 흡수할 컬럼 Set + 노티스.
-            // index는 MMM_METH_STATE.absorbChoice를 읽지만 v2는 순수성 유지 위해 choice를 인자로 받음(기본 step 흡수).
+            // 선택이 없을 때 실제 confounder를 임의로 지우지 않는다. 둘 다 남기고 식별
+            // 경고·예산 gate로 처리하며, 명시적으로 선택한 경우에만 한쪽을 흡수한다.
             export function mmmResolveAbsorb(panel, cfg, choice) {
               const pairs = mmmDetectCollinear(panel, cfg);
               const absorbed = new Set();
@@ -1142,10 +1203,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               choice = choice || {};
               for (const p of pairs) {
                 const key = `${p.channel}__${p.step}`;
-                const side = choice[key] || "step"; // 기본: step 흡수(캠페인 유지)
-                const dropped = side === "step" ? p.step : p.channel;
-                const kept = side === "step" ? p.channelLabel : p.step;
-                absorbed.add(dropped);
+                const side = choice[key] || "none";
+                const dropped = side === "step" ? p.step : side === "channel" ? p.channel : null;
+                const kept = side === "step" ? p.channelLabel : side === "channel" ? p.step : null;
+                if (dropped) absorbed.add(dropped);
                 notices.push({
                   key,
                   channel: p.channel,
@@ -2649,11 +2710,12 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             ]; // 비매체 드라이버 (baseline 포함 토글 대상)
 
             // -----------------------------------------------------------------
-            // Browser Bayesian MMM (Meridian-inspired)
+            // Browser empirical-Bayes MMM (Meridian-inspired)
             // -----------------------------------------------------------------
             // Meridian itself runs NUTS in Python.  The public web tool must keep
-            // source CSV in the browser, so this is a conjugate Bayesian linear
-            // posterior conditional on empirically selected channel transforms.
+            // source CSV in the browser, so this is a conditional Gaussian
+            // empirical-Bayes approximation: residual sigma² is plug-in estimated
+            // and channel transforms are profile-weighted rather than jointly sampled.
             // It deliberately exposes posterior uncertainty instead of pretending
             // that a point-estimate OLS/Ridge decomposition is causal certainty.
             export function mmmHill(x, ec, slope) {
@@ -2717,51 +2779,95 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 let best = null;
                 for (const candidate of _mmmBayesTransformCandidates(raw, cfg)) {
                   const score = CANNIBAL_STATS.pearson(candidate.values, residual);
-                  if (!best || score > best.score) best = { alpha: candidate.alpha, ec: candidate.ec, slope: candidate.slope, score };
+                  const selectionScore = Math.abs(score);
+                  // 변환의 설명력은 부호가 아니라 |상관|/SSE로 고른다. signed r의
+                  // 최댓값을 쓰면 실제 음의 관계에서 가장 약한 후보를 대표값으로
+                  // 택해 효과를 0 쪽으로 편향시킨다. 부호 판단은 이후 계수 posterior가 한다.
+                  if (!best || selectionScore > best.selectionScore) best = { alpha: candidate.alpha, ec: candidate.ec, slope: candidate.slope, score, selectionScore };
                 }
-                params[ch.key] = best || { alpha: 0, ec: 1, slope: 0.8, score: 0 };
+                params[ch.key] = best || { alpha: 0, ec: 1, slope: 0.8, score: 0, selectionScore: 0 };
               }
               return params;
             }
 
-            // Gaussian-prior posterior.  Prior precision is intentionally modest:
-            // it stabilizes collinear channels without silently forcing an effect.
+            // Gaussian-prior posterior. 기본 penalty는 약한 regularization이고, 외부
+            // 실험 prior의 precision은 실제 계수 단위(1 / variance)다. Gaussian
+            // likelihood의 SSE 목적함수에서는 sigma² / priorVariance로 변환해야 하므로
+            // residual scale을 먼저 추정한 뒤 한 번 갱신한다.
             function _mmmBayesianLinear(X, y, mediaIndices, mediaPriors = {}) {
               const n = X.length;
               if (!n || !X[0]?.length) return null;
               const p = X[0].length;
               const yScale = Math.sqrt(_mean(y.map((v) => (v - _mean(y)) ** 2))) || 1;
-              const precision = Array.from({ length: p }, (_, j) =>
+              const defaultPenalty = Array.from({ length: p }, (_, j) =>
                 j === 0 ? 1e-8 : mediaIndices.has(j) ? 4 : 0.15,
               );
               const priorMean = Array(p).fill(0);
+              const calibratedPrecision = {};
               // 외부 실험·참고 시장 근거는 매체 계수에만 적용한다. 추세·계절·국가
               // 고유 baseline을 다른 시장에서 가져오지 않도록 제어변수 prior는 그대로 둔다.
               for (const [idx, prior] of Object.entries(mediaPriors || {})) {
                 const j = Number(idx);
                 if (!mediaIndices.has(j) || !prior) continue;
                 if (isFinite(prior.mean)) priorMean[j] = prior.mean;
-                if (isFinite(prior.precision) && prior.precision > 0) precision[j] = prior.precision;
+                if (isFinite(prior.precision) && prior.precision > 0) calibratedPrecision[j] = prior.precision;
               }
-              const augX = X.map((r) => r.slice());
-              const augY = y.slice();
-              for (let j = 0; j < p; j++) {
-                if (!(precision[j] > 0)) continue;
-                const row = Array(p).fill(0);
-                row[j] = Math.sqrt(precision[j]);
-                augX.push(row);
-                augY.push(Math.sqrt(precision[j]) * priorMean[j]);
+              const fitWithPenalty = (penalty) => {
+                const augX = X.map((r) => r.slice());
+                const augY = y.slice();
+                for (let j = 0; j < p; j++) {
+                  if (!(penalty[j] > 0)) continue;
+                  const row = Array(p).fill(0);
+                  row[j] = Math.sqrt(penalty[j]);
+                  augX.push(row);
+                  augY.push(Math.sqrt(penalty[j]) * priorMean[j]);
+                }
+                const fit = mmmOls(augX, augY);
+                if (!fit) return null;
+                const fitted = X.map((row) => row.reduce((sum, value, j) => sum + value * fit.beta[j], 0));
+                const resid = y.map((value, i) => value - fitted[i]);
+                const sigma2 = Math.max(
+                  yScale ** 2 * 1e-8,
+                  resid.reduce((sum, value) => sum + value * value, 0) / Math.max(1, n - p),
+                );
+                return { fit, fitted, resid, sigma2 };
+              };
+              const provisional = fitWithPenalty(defaultPenalty);
+              if (!provisional) return null;
+              let sigma2ForPrior = provisional.sigma2;
+              let result = provisional;
+              let priorScaleIterations = 0;
+              let priorScaleConverged = !Object.keys(calibratedPrecision).length;
+              // prior penalty와 residual sigma²가 서로 의존하므로 고정점까지 반복한다.
+              // 이 과정을 통해 outcome 단위를 바꿔도 동일한 상대 prior 강도를 유지한다.
+              for (let iteration = 0; !priorScaleConverged && iteration < 6; iteration++) {
+                const penalty = defaultPenalty.slice();
+                Object.entries(calibratedPrecision).forEach(([idx, precision]) => {
+                  penalty[Number(idx)] = sigma2ForPrior * precision;
+                });
+                const next = fitWithPenalty(penalty);
+                if (!next) return null;
+                priorScaleIterations = iteration + 1;
+                const relativeChange = Math.abs(next.sigma2 - sigma2ForPrior) / Math.max(1e-12, sigma2ForPrior);
+                result = next;
+                sigma2ForPrior = next.sigma2;
+                if (relativeChange <= 1e-5) {
+                  priorScaleConverged = true;
+                  break;
+                }
               }
-              const fit = mmmOls(augX, augY);
-              if (!fit) return null;
+              const { fit, fitted, resid, sigma2 } = result;
               const beta = fit.beta;
-              const fitted = X.map((r) => r.reduce((s, v, j) => s + v * beta[j], 0));
-              const resid = y.map((v, i) => v - fitted[i]);
-              const sigma2 = resid.reduce((s, e) => s + e * e, 0) / Math.max(1, n - p);
               const sd = beta.map((_, j) => Math.sqrt(Math.max(0, sigma2 * fit.XtXinv[j][j])));
               const r2Den = y.reduce((s, v) => s + (v - _mean(y)) ** 2, 0);
               const r2 = r2Den > 0 ? 1 - resid.reduce((s, e) => s + e * e, 0) / r2Den : 0;
-              return { beta, fitted, resid, sigma: Math.sqrt(sigma2) || yScale, sd, r2 };
+              return {
+                beta, fitted, resid, sigma: Math.sqrt(sigma2) || yScale, sigma2, sd, r2,
+                XtXinv: fit.XtXinv,
+                calibratedPriorCount: Object.keys(calibratedPrecision).length,
+                priorScaleIterations,
+                priorScaleConverged,
+              };
             }
 
             function _mmmBayesFitColumns(names, cols, channelMeta, y, options = {}) {
@@ -2804,14 +2910,72 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             // 한 번 고른 변환만 믿으면 adstock·포화 가정이 효과 구간에서 사라진다.
             // 각 채널을 제외한 변환은 그대로 둔 profile 모델들을 다시 적합하고,
             // BIC 근사 가중치로 계수 posterior를 섞어 그 불확실성을 효과 신뢰도에 넣는다.
+            function _mmmNormalMixtureQuantile(profile, probability) {
+              if (!profile.length) return NaN;
+              let low = Math.min(...profile.map((item) => item.beta - 8 * Math.max(item.sd, 1e-9)));
+              let high = Math.max(...profile.map((item) => item.beta + 8 * Math.max(item.sd, 1e-9)));
+              for (let iteration = 0; iteration < 80; iteration++) {
+                const middle = (low + high) / 2;
+                const cdf = profile.reduce((sum, item) =>
+                  sum + item.weight * (item.sd > 0 ? mmmNormCdf((middle - item.beta) / item.sd) : middle >= item.beta ? 1 : 0),
+                0);
+                if (cdf < probability) low = middle;
+                else high = middle;
+              }
+              return (low + high) / 2;
+            }
+
             function _mmmBayesTransformUncertainty(panel, cfg, names, cols, channelMeta, options = {}) {
               const y = panel.targets[options.targetName];
               const result = {};
+              const profiledChannelCount = Math.max(1, channelMeta.filter((channel) => !options.mediaPriors?.[channel.key]).length);
               for (const ch of channelMeta) {
                 const colIndex = names.indexOf("media_" + ch.key);
                 if (colIndex < 0 || !panel.ch[ch.key]) continue;
                 const profile = [];
-                for (const candidate of _mmmBayesTransformCandidates(panel.ch[ch.key], cfg)) {
+                const allCandidates = _mmmBayesTransformCandidates(panel.ch[ch.key], cfg);
+                // 실험/국가 prior의 mean·variance는 타깃의 대표 변환 단위로 보정돼
+                // 있다. 다른 alpha/ec/slope에 같은 숫자를 재사용하면 처리강도가 달라져
+                // prior 단위가 깨지므로, 근거가 있는 채널은 그 대표 변환에 고정한다.
+                if (options.mediaPriors?.[ch.key]) {
+                  const fit = _mmmBayesFitColumns(names, cols, channelMeta, y, options);
+                  const params = options.channelParams?.[ch.key];
+                  if (fit && params) {
+                    const beta = fit.absoluteBeta[colIndex];
+                    const sd = fit.posterior.sd[colIndex + 1] / fit.colScale[colIndex];
+                    result[ch.key] = {
+                      beta,
+                      sd,
+                      ci: [beta - 1.645 * sd, beta + 1.645 * sd],
+                      posteriorPositive: sd > 0 ? mmmNormCdf(beta / sd) : beta > 0 ? 1 : 0,
+                      candidateCount: 1,
+                      totalCandidateCount: allCandidates.length,
+                      candidateSearchCapped: allCandidates.length > 1,
+                      priorLockedTransform: true,
+                      effectiveCandidateCount: 1,
+                      topWeight: 1,
+                      models: [{ ...params, beta, sd, weight: 1 }],
+                    };
+                  }
+                  continue;
+                }
+                const totalFitBudget = Object.keys(options.mediaPriors || {}).length
+                  ? (cfg.bayesMaxPriorProfileFits || cfg.bayesMaxTotalProfileFits || Infinity)
+                  : (cfg.bayesMaxTotalProfileFits || Infinity);
+                const totalFitShare = Math.max(
+                  1,
+                  Math.floor(totalFitBudget / profiledChannelCount),
+                );
+                const perChannelCap = Math.max(
+                  1,
+                  Math.min(cfg.bayesMaxProfileCandidates || allCandidates.length, totalFitShare),
+                );
+                const candidates = allCandidates.length <= perChannelCap
+                  ? allCandidates
+                  : Array.from({ length: perChannelCap }, (_, index) =>
+                    allCandidates[Math.round((index * (allCandidates.length - 1)) / Math.max(1, perChannelCap - 1))],
+                  );
+                for (const candidate of candidates) {
                   const candidateCols = cols.slice();
                   candidateCols[colIndex] = candidate.values;
                   const fit = _mmmBayesFitColumns(names, candidateCols, channelMeta, y, options);
@@ -2840,9 +3004,13 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 result[ch.key] = {
                   beta,
                   sd,
-                  ci: [beta - 1.645 * sd, beta + 1.645 * sd],
+                  // 혼합분포를 정규 한 개로 근사하지 않고 profile posterior CDF의
+                  // 5%·95% 분위수를 직접 풀어 비대칭·다봉 후보 불확실성을 보존한다.
+                  ci: [_mmmNormalMixtureQuantile(profile, 0.05), _mmmNormalMixtureQuantile(profile, 0.95)],
                   posteriorPositive,
                   candidateCount: profile.length,
+                  totalCandidateCount: allCandidates.length,
+                  candidateSearchCapped: allCandidates.length > candidates.length,
                   effectiveCandidateCount: 1 / profile.reduce((sum, item) => sum + item.weight ** 2, 0),
                   topWeight: top.weight,
                   models: profile.map(({ alpha, ec, slope, beta: effect, sd: effectSd, weight }) => ({ alpha, ec, slope, beta: effect, sd: effectSd, weight })),
@@ -2852,8 +3020,21 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             }
 
             export function mmmBayesianRun(panel, cfg, targetName, withBacktest = true, options = {}) {
+              const targetSeries = panel.targets?.[targetName];
+              if (!targetSeries?.length || targetSeries.some((value) => !Number.isFinite(value))) return null;
+              if (_mmmChans(panel).some((channel) => panel.ch[channel.key]?.some((value) => !Number.isFinite(value)))) return null;
               const controls = _mmmBayesControlFeatures(panel, cfg);
-              const params = _mmmBayesChannelParams(panel, cfg, targetName, controls);
+              const selectedParams = _mmmBayesChannelParams(panel, cfg, targetName, controls);
+              // 참고시장 계수를 타깃과 같은 feature 단위로 추정할 때는 타깃이
+              // 선택한 alpha/ec/slope를 명시적으로 고정한다. 각 참고시장이 자체
+              // 변환을 고른 뒤 계수 숫자만 전이하면 서로 다른 Hill 단위를 같은
+              // 효과처럼 취급하게 되므로 허용하지 않는다.
+              const params = Object.fromEntries(Object.entries(selectedParams).map(([key, value]) => {
+                const fixed = options.channelParams?.[key];
+                return [key, fixed && Number.isFinite(fixed.alpha) && fixed.ec > 0 && fixed.slope > 0
+                  ? { ...fixed, fixedFromTarget: true }
+                  : value];
+              }));
               const names = controls.names.slice();
               const cols = controls.X.length ? controls.X[0].map((_, j) => controls.X.map((r) => r[j])) : [];
               const channelMeta = _mmmChans(panel).filter((ch) => panel.ch[ch.key] && params[ch.key]);
@@ -2862,7 +3043,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 names.push("media_" + ch.key);
                 cols.push(mmmAdstock(panel.ch[ch.key], p.alpha).map((v) => mmmHill(v, p.ec, p.slope)));
               }
-              const fitted = _mmmBayesFitColumns(names, cols, channelMeta, panel.targets[targetName], options);
+              const fitted = _mmmBayesFitColumns(names, cols, channelMeta, targetSeries, options);
               if (!fitted) return null;
               const { Xraw, colMean, colScale, X, posterior, absoluteBeta, absoluteIntercept } = fitted;
               // 추정은 표준화 공간에서 안정적으로 하되, 화면 기여는 원 단위 절대기여로
@@ -2873,7 +3054,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               // 변환 불확실성을 평균내어 표시한다.
               const transformUncertainty = options.skipTransformUncertainty
                 ? {}
-                : _mmmBayesTransformUncertainty(panel, cfg, names, cols, channelMeta, { ...options, targetName });
+                : _mmmBayesTransformUncertainty(panel, cfg, names, cols, channelMeta, { ...options, targetName, channelParams: params });
               // 회사 MMM 대시보드처럼 채널별이 아니라 의사결정 단위로 묶는다.
               // MmmColumnMapper의 kind=brand는 Brand, 나머지 매체는 Performance.
               const mediaGroups = [];
@@ -2892,6 +3073,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 }
                 return "Regime change";
               };
+              const predictiveSd = (row) => {
+                const quad = row.reduce((sum, value, i) => sum + value * row.reduce((inner, other, j) => inner + posterior.XtXinv[i][j] * other, 0), 0);
+                return Math.sqrt(Math.max(0, posterior.sigma2 * (1 + quad)));
+              };
               const weeks = panel.week.map((week, t) => {
                 const contrib = {};
                 groupNames.forEach((g) => (contrib[g] = 0));
@@ -2902,6 +3087,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 names.forEach((name, j) => {
                   contrib[groupFor(name)] += absoluteBeta[j] * Xraw[t][j];
                 });
+                const predictionSd = predictiveSd(X[t]);
                 return {
                   week,
                   actual: panel.targets[targetName][t],
@@ -2909,30 +3095,85 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   fitted: +posterior.fitted[t].toFixed(2),
                   residual: +posterior.resid[t].toFixed(2),
                   contrib,
-                  lo: +(posterior.fitted[t] - 1.645 * posterior.sigma).toFixed(2),
-                  hi: +(posterior.fitted[t] + 1.645 * posterior.sigma).toFixed(2),
+                  lo: +(posterior.fitted[t] - 1.645 * predictionSd).toFixed(2),
+                  hi: +(posterior.fitted[t] + 1.645 * predictionSd).toFixed(2),
                 };
               });
               const saturationByChannel = {};
+              const channelCoverage = mmmChannelCoverage(panel, cfg);
               channelMeta.forEach((ch) => {
                 const j = names.indexOf("media_" + ch.key);
                 const raw = panel.ch[ch.key];
-                const recentMean = _mean(raw.filter((v) => v > 0).slice(-12)) || 0;
+                // 최근 12개 달력 주 평균. 집행 주만 골라 평균내면 flight형 채널의
+                // 현재 예산과 한계효용을 과대평가한다.
+                const recentWindow = raw.slice(-12).filter(Number.isFinite);
+                const recentMean = recentWindow.length ? _mean(recentWindow) : 0;
                 const p = params[ch.key];
                 const conditionalBeta = absoluteBeta[j];
                 const conditionalSd = posterior.sd[j + 1] / colScale[j];
                 const uncertainty = transformUncertainty[ch.key];
-                const models = uncertainty?.models || [{ alpha: p.alpha, ec: p.ec, slope: p.slope, beta: conditionalBeta, sd: conditionalSd, weight: 1 }];
+                const models = (uncertainty?.models || [{ alpha: p.alpha, ec: p.ec, slope: p.slope, beta: conditionalBeta, sd: conditionalSd, weight: 1 }]).map((model) => ({
+                  ...model,
+                  historicalAdstockMax: mmmAdstock(raw, model.alpha).reduce((maximum, value) => Number.isFinite(value) ? Math.max(maximum, value) : maximum, 0),
+                }));
                 const beta = uncertainty?.beta ?? conditionalBeta;
                 const sd = uncertainty?.sd ?? conditionalSd;
-                const responseAt = (spend) => models.reduce(
-                  (sum, model) => sum + model.weight * model.beta * mmmHill(mmmAdstock([spend], model.alpha)[0], model.ec, model.slope),
-                  0,
-                );
+                // 반응곡선의 x축은 "한 주만 집행"이 아니라 지속 가능한 주간 예산 수준이다.
+                // 기하 adstock의 정상상태 spend/(1-alpha)를 써야 alpha가 곡선·marginal에 반영된다.
+                const responseAt = (spend) => models.reduce((sum, model) => {
+                  const steadyAdstock = Math.max(0, spend) / Math.max(0.05, 1 - Math.min(0.95, model.alpha));
+                  return sum + model.weight * model.beta * mmmHill(steadyAdstock, model.ec, model.slope);
+                }, 0);
                 const marginalAt = (spend) => {
                   const h = Math.max(1, spend * 0.001);
-                  return (responseAt(spend + h) - responseAt(Math.max(0, spend - h))) / (2 * h);
+                  const lower = Math.max(0, spend - h);
+                  const upper = spend + h;
+                  return (responseAt(upper) - responseAt(lower)) / Math.max(1e-9, upper - lower);
                 };
+                // 지속 주간 예산을 step만큼 올렸을 때의 KPI 증분 posterior. 각
+                // profile 후보의 β 평균·SD를 같은 Hill 차분으로 변환한 뒤 혼합 CDF
+                // 분위수를 풀어, 변환 후보가 엇갈릴 때 한계효과 구간도 넓어진다.
+                const incrementalAt = (spend, step = 1000) => {
+                  const safeSpend = Math.max(0, Number(spend) || 0);
+                  const safeStep = Math.max(0, Number(step) || 0);
+                  const profile = models.map((model) => {
+                    const denominator = Math.max(0.05, 1 - Math.min(0.95, model.alpha));
+                    const before = mmmHill(safeSpend / denominator, model.ec, model.slope);
+                    const after = mmmHill((safeSpend + safeStep) / denominator, model.ec, model.slope);
+                    const factor = after - before;
+                    return {
+                      beta: model.beta * factor,
+                      sd: Math.abs(factor) * Math.max(0, model.sd || 0),
+                      weight: model.weight,
+                    };
+                  });
+                  const mean = profile.reduce((sum, item) => sum + item.weight * item.beta, 0);
+                  const positiveProbability = Math.min(1, Math.max(0, profile.reduce(
+                    (sum, item) => sum + item.weight * (item.sd > 0 ? mmmNormCdf(item.beta / item.sd) : item.beta > 0 ? 1 : 0),
+                    0,
+                  )));
+                  return {
+                    mean,
+                    ci: [_mmmNormalMixtureQuantile(profile, 0.05), _mmmNormalMixtureQuantile(profile, 0.95)],
+                    positiveProbability,
+                    step: safeStep,
+                  };
+                };
+                // 반응곡선은 지속 주간 spend의 정상상태 adstock을 사용하므로 raw
+                // 주간 spend max만으로 외삽을 판정하면 flight형 채널을 잘못 통과시킨다.
+                // BIC weight 상위 후보를 누적 95%까지 포함하고, 각 후보의 과거 adstock
+                // 최대를 지속 주간 spend ceiling으로 역변환한 값 중 최솟값을 쓴다.
+                const rangeModels = [];
+                let rangeModelWeight = 0;
+                [...models].sort((a, b) => b.weight - a.weight).forEach((model) => {
+                  if (rangeModelWeight >= 0.95 && rangeModels.length) return;
+                  rangeModels.push(model);
+                  rangeModelWeight += model.weight;
+                });
+                const observedSustainableSpendMax = rangeModels.length
+                  ? Math.min(...rangeModels.map((model) => model.historicalAdstockMax * Math.max(0.05, 1 - Math.min(0.95, model.alpha))))
+                  : 0;
+                const coverage = channelCoverage[ch.key] || {};
                 saturationByChannel[ch.key] = {
                   key: ch.key,
                   label: ch.label,
@@ -2943,17 +3184,76 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   params: p,
                   transformUncertainty: uncertainty ? {
                     candidateCount: uncertainty.candidateCount,
+                    totalCandidateCount: uncertainty.totalCandidateCount,
+                    candidateSearchCapped: uncertainty.candidateSearchCapped,
+                    priorLockedTransform: uncertainty.priorLockedTransform || false,
                     effectiveCandidateCount: uncertainty.effectiveCandidateCount,
                     topWeight: uncertainty.topWeight,
                   } : null,
                   responseAt,
                   marginalAt,
+                  incrementalAt,
+                  isIncrementInObservedRange: (spend, step = 0) => {
+                    const upper = Math.max(0, Number(spend) || 0) + Math.max(0, Number(step) || 0);
+                    return Number.isFinite(observedSustainableSpendMax)
+                      && upper <= observedSustainableSpendMax + Math.max(1e-8, Math.abs(observedSustainableSpendMax) * 1e-9);
+                  },
+                  observedSustainableSpendMax,
+                  observedRangeProfileWeight: Math.min(1, rangeModelWeight),
                   currentMarginal: marginalAt(recentMean) * 1000,
+                  coverage,
                 };
               });
               const variances = groupNames.map((g) => _mean(weeks.map((w) => (w.contrib[g] || 0) ** 2)));
               const totalVariance = variances.reduce((s, v) => s + v, 0) || 1;
               const rows = groupNames.map((driver, i) => ({ driver, r2_share: variances[i] / totalVariance, pct: (variances[i] / totalVariance) * 100 }));
+              const vifs = CREATIVE_MATH.vif(X);
+              const vifByName = names.map((name, j) => ({
+                var: name,
+                vif: Number.isFinite(vifs[j + 1]) ? +vifs[j + 1].toFixed(3) : null,
+              })).sort((a, b) => (b.vif || 0) - (a.vif || 0));
+              const collinearPairs = [];
+              for (let i = 0; i < names.length; i++) {
+                for (let j = i + 1; j < names.length; j++) {
+                  if (!names[i].startsWith("media_") && !names[j].startsWith("media_")) continue;
+                  const corr = CANNIBAL_STATS.pearson(cols[i], cols[j]);
+                  if (Math.abs(corr) >= 0.85) collinearPairs.push({ a: names[i], b: names[j], corr: +corr.toFixed(3) });
+                }
+              }
+              collinearPairs.sort((a, b) => Math.abs(b.corr) - Math.abs(a.corr));
+              const parameterCount = names.length + 1;
+              const weeksPerParameter = panel.week.length / Math.max(1, parameterCount);
+              const maxMediaVif = Math.max(0, ...vifByName.filter((item) => item.var.startsWith("media_")).map((item) => item.vif || 0));
+              const maxMediaCorrelation = Math.max(0, ...collinearPairs.map((pair) => Math.abs(pair.corr)));
+              const identification = {
+                observations: panel.week.length,
+                parameterCount,
+                weeksPerParameter,
+                maxMediaVif,
+                maxMediaCorrelation,
+                highCollinearity: maxMediaVif >= 10 || maxMediaCorrelation >= 0.9,
+                lowInformation: weeksPerParameter < 8 || panel.week.length < 52,
+                priorScaleConverged: posterior.calibratedPriorCount === 0 || posterior.priorScaleConverged,
+              };
+              identification.budgetEligible = !identification.highCollinearity
+                && !identification.lowInformation
+                && identification.priorScaleConverged;
+              Object.values(saturationByChannel).forEach((effect) => {
+                effect.budgetEligible = identification.budgetEligible
+                  && effect.posteriorPositive >= 0.8
+                  && !effect.coverage?.sparse
+                  && !effect.coverage?.constantSpend
+                  && !effect.coverage?.trailingZero;
+                effect.budgetGateReasons = [
+                  ...(identification.highCollinearity ? ["high-collinearity"] : []),
+                  ...(identification.lowInformation ? ["low-information"] : []),
+                  ...(!identification.priorScaleConverged ? ["prior-scale-nonconvergence"] : []),
+                  ...(effect.posteriorPositive < 0.8 ? ["low-positive-probability"] : []),
+                  ...(effect.coverage?.sparse ? ["sparse-active-weeks"] : []),
+                  ...(effect.coverage?.constantSpend ? ["constant-spend"] : []),
+                  ...(effect.coverage?.trailingZero ? ["recently-inactive"] : []),
+                ];
+              });
               let backtest = null;
               // 마지막 20%(최소 8주)는 학습에서 빼고, 당시 실제 지출을 넣어 순방향 예측한다.
               // 하이퍼파라미터 선택까지 train 안에서만 하므로 in-sample R²와 분리된 현실 점검이다.
@@ -2961,23 +3261,35 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 const cut = Math.floor(panel.week.length * 0.8);
                 const slicePanel = (end) => ({ ...panel, week: panel.week.slice(0, end), ch: Object.fromEntries(Object.entries(panel.ch).map(([k, v]) => [k, v.slice(0, end)])), dummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([k, v]) => [k, v.slice(0, end)])), steps: Object.fromEntries(Object.entries(panel.steps || {}).map(([k, v]) => [k, v.slice(0, end)])), targets: Object.fromEntries(Object.entries(panel.targets).map(([k, v]) => [k, v.slice(0, end)])) });
                 const train = slicePanel(cut);
-                const held = mmmBayesianRun(train, cfg, targetName, false);
+                const held = mmmBayesianRun(train, cfg, targetName, false, { ...options, skipTransformUncertainty: true });
                 const h = panel.week.length - cut;
                 const spend = Object.fromEntries(Object.entries(panel.ch).map(([k, v]) => [k, v.slice(cut)]));
-                const fc = held && mmmBayesianForecast(held, train, spend, h);
+                const fc = held && mmmBayesianForecast(held, train, spend, h, {
+                  futureDummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(cut)])),
+                  futureSteps: Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(cut)])),
+                });
                 const actualHold = panel.targets[targetName].slice(cut);
                 if (fc?.predFut?.length === actualHold.length) {
                   const err = actualHold.map((v, i) => v - fc.predFut[i]);
-                  backtest = { n: h, rmse: Math.sqrt(_mean(err.map((v) => v * v))), mape: _mean(err.map((v, i) => Math.abs(actualHold[i]) > 1e-9 ? Math.abs(v / actualHold[i]) * 100 : 0)) };
+                  const absErr = err.map(Math.abs);
+                  backtest = {
+                    n: h,
+                    rmse: Math.sqrt(_mean(err.map((v) => v * v))),
+                    mape: _mean(err.map((v, i) => Math.abs(actualHold[i]) > 1e-9 ? Math.abs(v / actualHold[i]) * 100 : 0)),
+                    wmape: absErr.reduce((sum, value) => sum + value, 0) / Math.max(1e-9, actualHold.reduce((sum, value) => sum + Math.abs(value), 0)) * 100,
+                    calibratedPriorCount: held.posterior.calibratedPriorCount || 0,
+                  };
                 }
               }
               return {
                 engine: "bayesian",
-                methodLabel: "Bayesian MMM (Meridian-inspired)",
+                methodLabel: "Browser empirical-Bayes MMM (conditional Gaussian approximation)",
                 params,
                 names,
                 featureMeans: colMean,
                 featureScales: colScale,
+                rawFeatureHistory: Xraw,
+                seasonalityPeriods: cfg.seasonalityPeriods,
                 standardizedX: X,
                 channelMeta,
                 absoluteBeta,
@@ -2989,8 +3301,9 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 shapley: { rows, total: 1 }, // backwards-compatible consumer shape; this is contribution variance, not Shapley R².
                 best_lambda: null,
                 cv_rmse: {},
-                vif: [],
-                collinear_pairs: [],
+                vif: vifByName,
+                collinear_pairs: collinearPairs,
+                identification,
                 elasticities: [],
                 backtest,
                 appliedMediaPriors: options.mediaPriors || {},
@@ -3036,43 +3349,147 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               };
             }
 
-            export function mmmBayesianForecast(run, panel, futureSpend, horizon) {
+            // Meridian의 post-modeling health checks 중 MCMC 전용 R-hat/trace를 제외하고,
+            // 현재 empirical-Bayes 조건부 Gaussian 근사에서 계산 가능한 항목만 제공한다.
+            export function mmmBayesianHealth(run) {
+              if (!run || run.engine !== "bayesian" || !run.weeks?.length) return null;
+              const actual = run.weeks.map((week) => week.actual);
+              const fitted = run.weeks.map((week) => week.fitted);
+              const residual = run.weeks.map((week) => week.residual);
+              const absErr = residual.map(Math.abs);
+              const wmape = absErr.reduce((sum, value) => sum + value, 0) / Math.max(1e-9, actual.reduce((sum, value) => sum + Math.abs(value), 0)) * 100;
+              const coverage90 = run.weeks.filter((week) => week.actual >= week.lo && week.actual <= week.hi).length / run.weeks.length;
+              const residualAcf1 = residual.length > 2
+                ? CANNIBAL_STATS.pearson(residual.slice(1), residual.slice(0, -1))
+                : 0;
+              const naturalGroups = run.groupNames.filter((name) => MMM_NONMEDIA_GROUPS.includes(name));
+              const naturalDemand = run.weeks.map((week) => week.baseline + naturalGroups.reduce((sum, name) => sum + (week.contrib[name] || 0), 0));
+              const negativeBaselineShare = naturalDemand.filter((value) => value < 0).length / naturalDemand.length;
+              const priorShifts = Object.entries(run.appliedMediaPriors || {}).map(([key, prior]) => {
+                const posterior = run.saturationByChannel?.[key];
+                const priorSd = prior?.precision > 0 ? 1 / Math.sqrt(prior.precision) : null;
+                const shiftZ = posterior && priorSd > 0 ? (posterior.ln_coef - prior.mean) / priorSd : null;
+                return {
+                  key,
+                  label: posterior?.label || key,
+                  priorMean: prior?.mean,
+                  priorSd,
+                  posteriorMean: posterior?.ln_coef,
+                  shiftZ,
+                };
+              });
+              const flags = [];
+              if (Math.abs(residualAcf1) >= 0.3) flags.push({ key: "residualAcf", severity: "warn" });
+              if (coverage90 < 0.75 || coverage90 > 0.98) flags.push({ key: "coverage", severity: "warn" });
+              if (negativeBaselineShare > 0) flags.push({ key: "negativeBaseline", severity: negativeBaselineShare > 0.05 ? "fail" : "warn" });
+              if (priorShifts.some((item) => Math.abs(item.shiftZ) > 2)) flags.push({ key: "priorShift", severity: "warn" });
+              if (run.posterior.calibratedPriorCount > 0 && !run.posterior.priorScaleConverged) flags.push({ key: "priorScale", severity: "warn" });
+              if (run.identification?.highCollinearity) flags.push({ key: "identification", severity: "fail" });
+              else if (run.identification?.lowInformation) flags.push({ key: "information", severity: "warn" });
+              return {
+                r2: run.posterior.r2,
+                wmape,
+                coverage90,
+                residualAcf1,
+                negativeBaselineShare,
+                priorShifts,
+                flags,
+                identification: run.identification || null,
+                fittedMean: _mean(fitted),
+                oos: run.backtest || null,
+                intervalScope: "Conditional Gaussian empirical-Bayes predictive reference interval, conditional on the representative transform",
+                samplingDiagnostic: null,
+              };
+            }
+
+            export function mmmBayesianForecast(run, panel, futureSpend, horizon, options = {}) {
               if (!run || run.engine !== "bayesian") return null;
               const H = Math.max(1, Math.min(52, horizon || 13));
               const n = run.weeks.length;
+              const lastWeek = Number(panel.week?.[n - 1]);
+              const futureWeeks = Array.from({ length: H }, (_, h) =>
+                (Number.isFinite(lastWeek) ? lastWeek : n) + h + 1,
+              );
               const state = {};
               run.channelMeta.forEach((ch) => {
                 const p = run.params[ch.key];
                 state[ch.key] = mmmAdstock(panel.ch[ch.key], p.alpha).at(-1) || 0;
               });
               const predFut = [];
+              const futureRows = [];
+              const lo = [];
+              const hi = [];
+              const lastRaw = run.rawFeatureHistory?.[n - 1] || [];
+              const previousRaw = run.rawFeatureHistory?.[Math.max(0, n - 2)] || lastRaw;
               for (let h = 0; h < H; h++) {
-                const row = run.standardizedX[n - 1].slice();
+                const rawRow = run.names.map((name, j) => {
+                  const seasonal = name.match(/^(sin|cos)_(\d+)$/);
+                  if (seasonal) {
+                    const period = run.seasonalityPeriods?.[Number(seasonal[2])];
+                    const angle = period > 0 ? (2 * Math.PI * futureWeeks[h]) / period : 0;
+                    return seasonal[1] === "sin" ? Math.sin(angle) : Math.cos(angle);
+                  }
+                  if (name === "trend") {
+                    const delta = (lastRaw[j] || 0) - (previousRaw[j] || 0);
+                    return (lastRaw[j] || 0) + delta * (h + 1);
+                  }
+                  // 미래 이벤트는 사용자가 별도 시나리오를 주지 않는 한 0. 구조변화
+                  // step은 마지막 상태가 지속된다고 가정한다.
+                  if (name.startsWith("d_")) {
+                    const key = name.slice(2);
+                    return options.futureDummy?.[key]?.[h] ?? 0;
+                  }
+                  if (name === "lny" || name === "chuseok") return options.futureDummy?.[name]?.[h] ?? 0;
+                  if (options.futureSteps?.[name]) return options.futureSteps[name][h] ?? (lastRaw[j] || 0);
+                  return lastRaw[j] || 0;
+                });
                 run.channelMeta.forEach((ch) => {
                   const p = run.params[ch.key];
                   const spend = futureSpend?.[ch.key]?.[h] ?? run.saturationByChannel[ch.key].recentMean;
                   state[ch.key] = Math.max(0, spend || 0) + p.alpha * state[ch.key];
                   const j = run.names.indexOf("media_" + ch.key);
-                  const raw = mmmHill(state[ch.key], p.ec, p.slope);
-                  row[j + 1] = (raw - run.featureMeans[j]) / run.featureScales[j];
+                  rawRow[j] = mmmHill(state[ch.key], p.ec, p.slope);
                 });
-                predFut.push(run.posterior.beta.reduce((sum, b, j) => sum + b * row[j], 0));
+                const row = [1, ...rawRow.map((value, j) => (value - run.featureMeans[j]) / run.featureScales[j])];
+                const prediction = run.posterior.beta.reduce((sum, beta, j) => sum + beta * row[j], 0);
+                const quad = row.reduce((sum, value, i) =>
+                  sum + value * row.reduce((inner, other, j) => inner + run.posterior.XtXinv[i][j] * other, 0),
+                0);
+                const predictionSd = Math.sqrt(Math.max(0, run.posterior.sigma2 * (1 + quad)));
+                futureRows.push(row);
+                predFut.push(prediction);
+                lo.push(prediction - 1.645 * predictionSd);
+                hi.push(prediction + 1.645 * predictionSd);
               }
-              const labels = panel.dateLabel?.length === n
-                ? Array.from({ length: H }, (_, i) => `+${i + 1}`)
-                : Array.from({ length: H }, (_, i) => `+${i + 1}`);
+              let labels = Array.from({ length: H }, (_, i) => `+${i + 1}`);
+              if (panel.dates?.length === n && panel.granularity?.days) {
+                const lastDate = panel.dates[n - 1];
+                if (lastDate instanceof Date && !Number.isNaN(lastDate.getTime())) {
+                  labels = Array.from({ length: H }, (_, i) =>
+                    _mmmFmtDate(new Date(lastDate.getTime() + (i + 1) * panel.granularity.days * 86400000), panel.granularity),
+                  );
+                }
+              }
+              const historicalLabels = panel.dateLabel?.length === n
+                ? panel.dateLabel.slice()
+                : run.weeks.map((week) => week.week);
               return {
                 model: "bayesian",
                 isBayesian: true,
+                horizon: H,
                 sigma: run.posterior.sigma,
                 r2: +run.posterior.r2.toFixed(4),
                 actual: run.weeks.map((w) => w.actual),
                 fittedHist: run.weeks.map((w) => w.fitted),
                 predFut,
-                lo: predFut.map((v) => v - 1.645 * run.posterior.sigma),
-                hi: predFut.map((v) => v + 1.645 * run.posterior.sigma),
-                labels: [...run.weeks.map((w) => w.week), ...labels],
+                lo,
+                hi,
+                intervalLabel: "90% conditional Gaussian predictive reference interval (representative transform)",
+                histLabels: historicalLabels,
+                labels: [...historicalLabels, ...labels],
                 futLabels: labels,
+                futWeek: futureWeeks,
+                futureRows,
                 splitAt: n,
                 names: run.names,
                 beta: run.posterior.beta.slice(1),
@@ -3089,6 +3506,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                     ),
                   ]),
                 ),
-                steps: [],
+                steps: run.names
+                  .filter((name) => !name.startsWith("media_") && name !== "trend" && !/^(sin|cos)_/.test(name) && name !== "lny" && name !== "chuseok" && !name.startsWith("d_"))
+                  .map((key) => ({ key, kind: "step", label: key, lastOn: (lastRaw[run.names.indexOf(key)] || 0) > 0.5 })),
               };
             }
