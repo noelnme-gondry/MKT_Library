@@ -7,7 +7,7 @@ describe("detectDatasetSignature", () => {
     expect(signature).toMatchObject({ source: "meta_ads", shape: "long", grain: "creative_daily", needsWideToLong: false });
   });
 
-  it("flags a period-column report without silently transforming it", () => {
+  it("flags a date-column report that can be transformed after confirmation", () => {
     const signature = detectDatasetSignature(["Campaign", "2026-07-01", "2026-07-08"], [{ Campaign: "A", "2026-07-01": "10", "2026-07-08": "12" }]);
     expect(signature).toMatchObject({ shape: "wide", needsWideToLong: true, grain: "campaign_summary" });
   });

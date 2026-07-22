@@ -1,3 +1,5 @@
+import { getWidePeriodColumns } from "./wideToLong";
+
 // 헤더·행 형태만으로 데이터 출처/그레인을 보수적으로 추정한다.
 // 확정 판정이 아니므로 UI는 항상 "추정"이라고 표시하고, 라우터의 보조 신호로만 쓴다.
 const hasAny = (headers, words) => words.some((word) => headers.some((header) => header.includes(word)));
@@ -10,7 +12,7 @@ export function detectDatasetSignature(headers = [], rows = []) {
   const hasGa4 = hasAny(normalized, ["event name", "event_count", "active users", "screen class"]);
   const hasMeta = hasAny(normalized, ["amount spent", "reach", "link clicks", "ad set"]);
   const hasGoogleAds = hasAny(normalized, ["cost", "impr.", "clicks", "campaign"]);
-  const periodColumns = normalized.filter((header) => /^(20\d{2}[-/.]|\d{1,2}[-/.]\d{1,2}|week\s*\d+)/.test(header)).length;
+  const periodColumns = getWidePeriodColumns(headers).length;
   const firstRowsFilled = rows.slice(0, 10).map((row) => Object.values(row || {}).filter((value) => String(value || "").trim()).length);
   const avgFilled = firstRowsFilled.length ? firstRowsFilled.reduce((sum, value) => sum + value, 0) / firstRowsFilled.length : 0;
 
