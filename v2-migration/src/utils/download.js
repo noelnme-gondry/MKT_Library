@@ -29,6 +29,11 @@ export function downloadCsv(csvString, baseName = "export") {
   return triggerDownload(blob, withDate(baseName, "csv"));
 }
 
+export function downloadXlsx(arrayBuffer, baseName = "export") {
+  const blob = new Blob([arrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  return triggerDownload(blob, withDate(baseName, "xlsx"));
+}
+
 // 마크다운/텍스트 문서 저장(claude-ux §6 "상세 문서 받기" 탈출구용).
 export function downloadText(textString, baseName = "summary", ext = "md") {
   const blob = new Blob([textString], { type: "text/plain;charset=utf-8" });

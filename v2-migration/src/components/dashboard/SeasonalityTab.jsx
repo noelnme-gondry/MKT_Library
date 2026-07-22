@@ -3,10 +3,12 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
-import { buildCalendarSeasonality, detectCalendarGrain, annotateCalendarPeriod } from "@/utils/seasonalityMath";
+import { buildCalendarSeasonality, detectCalendarGrain } from "@/utils/seasonalityMath";
+import { buildGraphSheetRows, buildRawIsoRows, classifySeasonalitySource } from "@/utils/seasonalityExport";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import DownloadHub from "@/components/ds/DownloadHub";
-import { downloadCsv } from "@/utils/download";
+import { downloadXlsx } from "@/utils/download";
+import * as XLSX from "xlsx";
 
 const METRICS = [
   { key: "installs", ko: "설치", en: "Installs", kind: "count" },
@@ -19,17 +21,6 @@ const METRICS = [
   { key: "cpa", ko: "CPA", en: "CPA", kind: "currency", ratio: { numerator: "cost", denominator: "actions" } },
   { key: "roas", ko: "ROAS", en: "ROAS", kind: "percent", ratio: { numerator: "revenue_d7", denominator: "cost" } },
 ];
-
-// CSV 셀 이스케이프 + BOM/CRLF 조립(§7 Excel 한 행 뭉침·한글 깨짐 방지).
-const csvCell = (value) => {
-  const text = value == null ? "" : String(value);
-  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-};
-const buildCsv = (columns, rows) => {
-  const header = columns.map((col) => csvCell(col.header)).join(",");
-  const body = rows.map((row) => columns.map((col) => csvCell(col.get(row))).join(",")).join("\r\n");
-  return `﻿${header}\r\n${body}`;
-};
 
 const MONTHS_KO = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
 const monthLabel = (bucket, locale) => locale === "en" ? new Intl.DateTimeFormat("en", { month: "short" }).format(new Date(Date.UTC(2024, bucket - 1, 1))) : MONTHS_KO[bucket - 1];
@@ -160,84 +151,55 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
 
   const strongest = result.sufficient ? [...result.seasonal].sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))[0] : null;
 
-  // 시즈널리티 데이터 다운로드(§7 BOM+CRLF). 3종:
-  //  A) 원본 ISO 뷰 — 필터 적용된 매핑 행 + ISO주/월 주석(숫자 검증용).
-  //  B) ISO × 소스·채널 집계 — 같은 ISO 뷰에서 spend·지표를 소스/채널별 합산(광고/오가닉 비교).
-  //  C) 그래프 데이터 — 연도×구간 실제값·추세선(이동평균)·인덱스 + 시즈널 평균(차트 재현·검증).
-  const dimKeys = ["source", "channel", "campaign_name", "country", "platform"].filter((key) => mappedKeys.has(key));
-  const metricKeys = ["cost", "impressions", "clicks", "installs", "actions", "revenue_d7", "pu_d7", "ret_d7"].filter((key) => mappedKeys.has(key));
-  const isoBucketHeader = activeGrain === "week" ? "iso_week" : "month_no";
+  // 한 번의 XLSX 다운로드에 원본·Total/Paid/Organic·채널 그래프 데이터를 모두 담는다.
   const buildDownloadItems = () => {
-    if (!result.sufficient) return [];
-    const annotated = rows.map((row) => ({ row, p: annotateCalendarPeriod(row.date, activeGrain) })).filter((item) => item.p);
-    const items = [];
-
-    // A) 원본 ISO 뷰
-    const colsA = [
-      { header: "iso_period", get: (r) => r.p.isoLabel },
-      { header: "iso_year", get: (r) => r.p.year },
-      { header: isoBucketHeader, get: (r) => r.p.bucket },
-      { header: "month", get: (r) => r.p.month },
-      { header: "date", get: (r) => r.row.date },
-      ...dimKeys.map((key) => ({ header: key, get: (r) => r.row[key] })),
-      ...metricKeys.map((key) => ({ header: key, get: (r) => r.row[key] })),
+    if (!result.sufficient || !csvData?.raw?.length) return [];
+    const createWorkbook = () => {
+    const rawIsoRows = buildRawIsoRows({ raw: csvData.raw, headers: csvData.headers || [], mapping: csvData.mapping || {}, grain: activeGrain });
+    const seriesDefinitions = [
+      { key: "total", label: locale === "en" ? "Total" : "전체", rows },
+      { key: "paid", label: "Paid", rows: rows.filter((row) => classifySeasonalitySource(row.source) === "paid") },
+      { key: "organic", label: "Organic", rows: rows.filter((row) => classifySeasonalitySource(row.source) === "organic") },
     ];
-    items.push({
-      label: locale === "en" ? "Raw + ISO view (CSV)" : "원본 + ISO 뷰 (CSV)",
-      desc: locale === "en" ? "Filtered rows with ISO week/month · number verification" : "필터 적용 행 + ISO주/월 · 숫자 검증용",
-      icon: "🧾",
-      onSelect: () => downloadCsv(buildCsv(colsA, annotated), "seasonality_raw_iso"),
+    const graphSheets = seriesDefinitions.map((definition) => ({
+      ...definition,
+      result: buildCalendarSeasonality(definition.rows, { metric: selected?.ratio || selectedMetricKey, grain: activeGrain, detrend }),
+    }));
+    const channelKeys = [...new Set(rows.map((row) => String(row.channel || "").trim()).filter(Boolean))].sort();
+    const channelRows = channelKeys.flatMap((channel) => {
+      const channelResult = buildCalendarSeasonality(rows.filter((row) => String(row.channel || "").trim() === channel), { metric: selected?.ratio || selectedMetricKey, grain: activeGrain, detrend });
+      return channelResult.sufficient ? buildGraphSheetRows(channelResult, `channel:${channel}`, channel, activeGrain, (bucket, currentGrain) => bucketLabel(bucket, currentGrain, locale)) : [];
     });
-
-    // B) ISO × 소스·채널 집계
-    const aggMap = new Map();
-    for (const { row, p } of annotated) {
-      const source = String(row.source ?? "").trim() || "(none)";
-      const channel = String(row.channel ?? "").trim() || "(none)";
-      const key = `${p.isoLabel}│${source}│${channel}`;
-      let agg = aggMap.get(key);
-      if (!agg) { agg = { isoLabel: p.isoLabel, year: p.year, bucket: p.bucket, source, channel }; metricKeys.forEach((mk) => (agg[mk] = 0)); aggMap.set(key, agg); }
-      metricKeys.forEach((mk) => { const v = Number(row[mk]); if (Number.isFinite(v)) agg[mk] += v; });
-    }
-    const aggRows = [...aggMap.values()].sort((a, b) => a.year - b.year || a.bucket - b.bucket || a.source.localeCompare(b.source) || a.channel.localeCompare(b.channel));
-    const colsB = [
-      { header: "iso_period", get: (r) => r.isoLabel },
-      { header: "iso_year", get: (r) => r.year },
-      { header: isoBucketHeader, get: (r) => r.bucket },
-      { header: "source", get: (r) => r.source },
-      { header: "channel", get: (r) => r.channel },
-      ...metricKeys.map((key) => ({ header: `${key}_sum`, get: (r) => r[key] })),
-    ];
-    if (dimKeys.includes("source") || dimKeys.includes("channel")) {
-      items.push({
-        label: locale === "en" ? "ISO × source/channel (CSV)" : "ISO × 소스·채널 집계 (CSV)",
-        desc: locale === "en" ? "Spend & metrics summed per ISO period by source/channel" : "같은 ISO 뷰에서 spend·지표를 소스/채널별 합산",
-        icon: "📊",
-        onSelect: () => downloadCsv(buildCsv(colsB, aggRows), "seasonality_iso_by_source_channel"),
-      });
-    }
-
-    // C) 그래프 데이터
-    const seasonalByBucket = new Map(result.seasonal.map((item) => [item.bucket, item]));
-    const colsC = [
-      { header: "year", get: (p) => p.year },
-      { header: "bucket", get: (p) => p.bucket },
-      { header: "bucket_label", get: (p) => bucketLabel(p.bucket, activeGrain, locale) },
-      { header: "actual_value", get: (p) => p.value },
-      { header: "trend_baseline_moving_avg", get: (p) => (p.trend == null ? "" : Number(p.trend).toFixed(4)) },
-      { header: "detrend_index_pct", get: (p) => (p.trend > 0 ? (p.value / p.trend * 100).toFixed(2) : "") },
-      { header: "year_mean", get: (p) => { const m = result.yearMean?.get(p.year); return m == null ? "" : Number(m).toFixed(4); } },
-      { header: "yearmean_index_pct", get: (p) => { const m = result.yearMean?.get(p.year); return m > 0 ? (p.value / m * 100).toFixed(2) : ""; } },
-      { header: "seasonal_index_current_mode", get: (p) => { const s = seasonalByBucket.get(p.bucket); return s ? s.index.toFixed(2) : ""; } },
-      { header: "seasonal_delta_pct_current_mode", get: (p) => { const s = seasonalByBucket.get(p.bucket); return s ? s.delta.toFixed(2) : ""; } },
-    ];
-    items.push({
-      label: locale === "en" ? "Chart data (CSV)" : "그래프 데이터 (CSV)",
-      desc: locale === "en" ? "Year × period value, trend baseline & indices" : "연도×구간 값·추세선·인덱스 (차트 재현)",
-      icon: "📈",
-      onSelect: () => downloadCsv(buildCsv(colsC, result.points), "seasonality_chart_data"),
+    const workbook = XLSX.utils.book_new();
+    const appendSheet = (name, sheetRows) => XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(sheetRows), name.slice(0, 31));
+    appendSheet("raw_iso", rawIsoRows);
+    graphSheets.forEach((sheet) => {
+      const sheetRows = sheet.result.sufficient
+        ? buildGraphSheetRows(sheet.result, sheet.key, sheet.label, activeGrain, (bucket, currentGrain) => bucketLabel(bucket, currentGrain, locale))
+        : [{ series: sheet.key, series_label: sheet.label, status: "not_available", reason: "source data insufficient" }];
+      appendSheet(`calendar_${sheet.key}`, sheetRows);
     });
-    return items;
+    if (channelRows.length) appendSheet("calendar_channel", channelRows);
+    appendSheet("export_info", [
+      { field: "metric", value: selectedMetricKey },
+      { field: "grain", value: activeGrain },
+      { field: "trend_removed", value: detrend ? "true" : "false" },
+      { field: "raw_rows", value: csvData.raw.length },
+      { field: "graph_rows", value: rows.length },
+      { field: "date_filter", value: `${dashboardFilter.dateStart || ""}..${dashboardFilter.dateEnd || ""}` },
+      { field: "source_filter", value: [...(dashboardFilter.sources || [])].join(" | ") },
+      { field: "country_filter", value: [...(dashboardFilter.countries || [])].join(" | ") },
+      { field: "platform_filter", value: [...(dashboardFilter.platforms || [])].join(" | ") },
+      { field: "channel_filter", value: [...(dashboardFilter.channels || [])].join(" | ") },
+    ]);
+    return XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    };
+    return [{
+      label: locale === "en" ? "Complete workbook (XLSX)" : "전체 데이터 한 번에 받기 (XLSX)",
+      desc: locale === "en" ? "Raw + ISO, Total/Paid/Organic and channel chart data" : "원본 + ISO, 전체/Paid/Organic 및 채널별 그래프 데이터",
+      icon: "📊",
+      onSelect: () => downloadXlsx(createWorkbook(), "calendar_seasonality_export"),
+    }];
   };
   const downloadItems = buildDownloadItems();
 
@@ -317,8 +279,8 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
             ? " — (1) sum the metric per calendar period (day input is grouped into ISO weeks or calendar months; ratio metrics like CPI/CPA/ROAS sum numerator & denominator first, then divide once). (2) Build a centred moving-average trend over the chronological timeline (radius 6 weeks → 13-point window, or 2 months → 5-point window). (3) Index = value ÷ trend × 100. The 'verification' chart above plots the actual line against this trend line so you can see exactly what was divided out."
             : " — (1) 지표를 달력 구간별로 합산합니다(일별 입력은 ISO주 또는 달력 월로 묶고, CPI/CPA/ROAS 같은 비율은 분자·분모를 먼저 합산한 뒤 한 번만 나눕니다). (2) 시간순 타임라인에 중앙 이동평균 추세선을 만듭니다(주=반경 6→13개 창, 월=반경 2→5개 창). (3) 인덱스 = 값 ÷ 추세선 × 100. 위 ‘검증’ 차트가 실제값 선과 이 추세선을 함께 그려 무엇을 걷어냈는지 보여줍니다."}</p>
           <p><strong>{locale === "en" ? "Download" : "데이터 받기"}</strong>{locale === "en"
-            ? " — 'Raw + ISO view' is your filtered rows annotated with ISO week/month for number checking; 'ISO × source/channel' sums spend & metrics per ISO period by source/channel; 'Chart data' has the value, trend baseline and indices behind every chart above."
-            : " — ‘원본 + ISO 뷰’는 필터가 적용된 원본 행에 ISO주/월을 붙인 검증용 파일이고, ‘ISO × 소스·채널’은 같은 ISO 뷰에서 spend·지표를 소스/채널별로 합산합니다. ‘그래프 데이터’는 위 차트들의 값·추세선·인덱스를 그대로 담습니다."}</p>
+            ? " — One XLSX contains the complete raw file with ISO annotations, separate Total/Paid/Organic chart sheets, channel-level chart data, and an export_info sheet with filters and method settings."
+            : " — XLSX 한 파일에 업로드 원본 전체 + ISO 주석, 전체/Paid/Organic 그래프 시트, 채널별 그래프 데이터, 적용 필터·계산 설정이 함께 들어갑니다."}</p>
         </details>
       </section>
     </div>
