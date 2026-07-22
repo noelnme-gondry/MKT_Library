@@ -114,6 +114,21 @@ function pickTarget(panel, preferred) {
   return avail[0] || "Regs";
 }
 
+// Prior 원자료의 Y는 현재 MMM에서 고른 목표와 의미가 정확히 같을 때만 쓴다.
+// "첫 번째 KPI 컬럼"으로 폴백하면 가입 근거가 매출 모델에 섞일 수 있으므로 금지한다.
+const MMM_TARGET_HEADER_PATTERNS = {
+  Traffic: /traffic|total.?visit|total.?user|총.?유입|방문자|sessions?/i,
+  Regs: /signups?|registrations?|가입|등록/i,
+  React: /reactiv|재유입|재활성/i,
+  Purchasers: /purchaser|buyer|구매자|결제자/i,
+  Revenue: /revenue|sales|gmv|매출|결제금액|payment/i,
+};
+
+function mmmTargetHeader(headers, target) {
+  const pattern = MMM_TARGET_HEADER_PATTERNS[target];
+  return pattern ? (headers || []).find((header) => pattern.test(String(header))) : null;
+}
+
 // 신뢰도 dots — p값 → ●●● / ●●○ / ●○○ / ○○○
 function pDots(p) {
   if (p == null || !isFinite(p)) return "○○○";
@@ -302,8 +317,8 @@ function MmmEvidenceLedger({ locale, priorView, onPriorView, evidence, onEvidenc
       )}
       {priorView === "country" && countryCandidates.length > 0 && (
         <div className="mmm-evidence-ledger__pending">
-          <strong>{tx("참고 국가 적격성 · 타깃 시장 마지막 12주 검증", "Reference-market eligibility · target final-12-week validation")}</strong>
-          <span>{countryCandidates.slice(0, 5).map((c, i) => `${i + 1}. ${c.country} · RMSE ${Math.round(c.rmse).toLocaleString()}`).join("   ")}</span>
+          <strong>{tx(`추천 조합: ${countryCandidates[0].country} · 타깃 시장 마지막 12주 검증`, `Recommended set: ${countryCandidates[0].country} · target final-12-week validation`)}</strong>
+          <span>{countryCandidates.slice(0, 5).map((c, i) => `${i + 1}. ${c.country} · RMSE ${Math.round(c.rmse).toLocaleString()} · 복잡도 반영 ${Math.round(c.score).toLocaleString()}`).join("   ")}</span>
         </div>
       )}
 
@@ -1335,7 +1350,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       let countryCandidates = [];
       const experiment = priorView === "experiment" ? priorEvidence.experiment : null;
       if (experiment?.raw?.length && experiment.headers?.length) {
-        const targetHeader = experiment.headers.find((h) => /signups?|registrations?|가입|revenue|매출|reactiv/i.test(String(h)));
+        const targetHeader = mmmTargetHeader(experiment.headers, t);
         const stateHeader = experiment.headers.find((h) => /treatment_state|state|on.?off|상태/i.test(String(h)));
         const armHeader = experiment.headers.find((h) => /(^|[_\s])arm|group|treatment.*control|처리군|대조군/i.test(String(h)));
         const periodHeader = experiment.headers.find((h) => /post|pre|period|phase|사전|사후|기간/i.test(String(h)));
@@ -1390,8 +1405,9 @@ export default function MarketingResponse({ locale = "ko" }) {
           const ref = buildPanelFromColMap(source.headers, source.raw.filter((row) => String(row[countryHeader]).trim() === country), mmmColMap, "all", locale);
           if (ref.missing.length) return;
           const refPanel = trimToActive(ref.panel);
-          const refTarget = pickTarget(refPanel, t);
-          const refRun = mmmBayesianRun(refPanel, { ...MMM_METH_CONFIG, absorbed: new Set() }, refTarget, false);
+          // 참고국에 같은 Y가 없으면 다른 목표(예: 가입)를 대신 쓰지 않는다.
+          if (!Object.prototype.hasOwnProperty.call(refPanel.targets, t)) return;
+          const refRun = mmmBayesianRun(refPanel, { ...MMM_METH_CONFIG, absorbed: new Set() }, t, false);
           const prior = {};
           Object.values(refRun?.saturationByChannel || {}).forEach((s) => {
             if (isFinite(s.ln_coef)) prior[s.key] = { mean: s.ln_coef, precision: 0.35 };
