@@ -135,7 +135,7 @@ function qualityDetails(quality) {
   return quality.issues.map((issue) => messages[issue.code]).filter(Boolean);
 }
 
-export function evaluateEligibility({ mapping = {}, canonicalData, toolId }) {
+export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagnosis }) {
   const contract = ANALYSIS_CONTRACTS[toolId] || { minRows: 1, minPeriods: 0, priority: 99 };
   const records = canonicalData?.records || [];
   const mapped = new Set(Object.values(mapping).filter((field) => field && field !== "__ignore__"));
@@ -167,6 +167,7 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId }) {
   if (!isBlocked) details.push(...qualityDetails(quality));
   const hasCaution = details.length > 0;
   const status = isBlocked ? "blocked" : hasCaution ? "caution" : "ready";
+  const recommendation = diagnosis?.byTool?.[toolId] || null;
   return {
     toolId,
     status,
@@ -178,12 +179,14 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId }) {
     confidenceTier,
     quality,
     entityCoverage,
+    recommendationScore: recommendation?.score || 0,
+    recommendationReason: recommendation?.reason || null,
   };
 }
 
 export function rankRecommendedAnalyses(results = []) {
   return [...results].filter((result) => result.status !== "blocked").sort((a, b) => {
     const statusOrder = { ready: 0, caution: 1 };
-    return statusOrder[a.status] - statusOrder[b.status] || a.priority - b.priority;
+    return statusOrder[a.status] - statusOrder[b.status] || b.recommendationScore - a.recommendationScore || a.priority - b.priority;
   });
 }

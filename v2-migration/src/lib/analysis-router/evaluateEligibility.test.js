@@ -46,6 +46,14 @@ describe("analysis eligibility", () => {
     expect(rankRecommendedAnalyses([{ status: "caution", priority: 1 }, { status: "ready", priority: 4 }])[0].status).toBe("ready");
   });
 
+  it("uses a data-backed recommendation score within the same readiness tier", () => {
+    const ranked = rankRecommendedAnalyses([
+      { status: "ready", priority: 1, recommendationScore: 0 },
+      { status: "ready", priority: 4, recommendationScore: 100 },
+    ]);
+    expect(ranked[0].recommendationScore).toBe(100);
+  });
+
   it("keeps 12-week MMM open for exploration, not budget decisions", () => {
     const result = evaluateEligibility({
       toolId: "5-18",
