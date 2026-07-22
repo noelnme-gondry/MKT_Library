@@ -36,7 +36,7 @@ import { trackProductEvent } from "@/lib/analytics";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
-import { buildDemoCsv } from "@/utils/demoData";
+import { buildDemoCsv, buildMmmPriorDemo } from "@/utils/demoData";
 import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, mmmPlatformTags, mmmSegmentValues } from "@/components/tools/MmmColumnMapper";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
@@ -245,7 +245,7 @@ function NetEffectEvidence({ net, locale }) {
 // Prior는 기본 MMM을 대체하는 숨은 설정이 아니라, 어떤 외부 근거를 썼는지
 // 결과 화면에서 추적·비교할 수 있는 별도 레이어다. 아직 근거가 없으면 이 카드도
 // 조용히 기본 모델만 보여 준다. 실제 prior 추정은 원자료 검증을 거친 뒤에만 켠다.
-function MmmEvidenceLedger({ locale, priorView, onPriorView, evidence, onEvidence }) {
+function MmmEvidenceLedger({ locale, priorView, onPriorView, evidence, onEvidence, onLoadDemo }) {
   const tx = (ko, en) => (locale === "en" ? en : ko);
   const experimentRef = useRef(null);
   const countryRef = useRef(null);
@@ -317,6 +317,13 @@ function MmmEvidenceLedger({ locale, priorView, onPriorView, evidence, onEvidenc
             <strong>{tx("선택 원칙", "Selection rule")}</strong>
             <span>{tx("모든 국가를 합치지 않습니다. 개별 적격성 → 최대 2~3개 조합 → 한국 마지막 12주 백테스트 순서로, 가장 단순한 충분성 세트 하나만 추천합니다.", "Markets are not pooled blindly. The flow is individual eligibility → combinations of up to 2–3 → target-market final-12-week backtest, then one simplest sufficient set is recommended.")}</span>
           </div>
+          {!hasExperiment && !hasCountry && (
+            <button className="mmm-evidence-ledger__demo" onClick={onLoadDemo}>
+              <span>✦</span>
+              <strong>{tx("데모 근거 데이터 불러오기", "Load demo evidence data")}</strong>
+              <small>{tx("반복 On/Off 홀드아웃 + JP·TW·SG·US 참고 국가", "Repeated On/Off holdout + JP · TW · SG · US reference markets")}</small>
+            </button>
+          )}
         </div>
       )}
     </section>
@@ -1234,6 +1241,18 @@ export default function MarketingResponse({ locale = "ko" }) {
   const handleLoadDemo = () => {
     demoPending.current = true;
     setCsvData(buildDemoCsv("response"));
+  };
+  const handleLoadPriorDemo = () => {
+    const demo = buildMmmPriorDemo();
+    setPriorEvidence({
+      experiment: { name: demo.experiment.fileName, rows: demo.experiment.raw.length, countries: ["KR"] },
+      country: {
+        name: demo.country.fileName,
+        rows: demo.country.raw.length,
+        countries: [...new Set(demo.country.raw.map((row) => row.country))],
+      },
+    });
+    setPriorView("base");
   };
 
   // 첫 진입(데이터 없음) 시 샘플 데이터 자동 로드(CsvUploader와 동일 패턴, SEO·첫인상).
@@ -2575,6 +2594,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                 onPriorView={setPriorView}
                 evidence={priorEvidence}
                 onEvidence={setPriorEvidence}
+                onLoadDemo={handleLoadPriorDemo}
               />
               {/* ── 메인: 평어 헤드라인 ── */}
               <Card style={{ marginBottom: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>

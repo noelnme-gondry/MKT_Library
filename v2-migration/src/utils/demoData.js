@@ -298,6 +298,62 @@ function buildResponse() {
   return { raw, headers, mapping: {}, fileName: "demo_response.csv", currency: "USD" };
 }
 
+// ── MMM prior evidence (5-18) ──────────────────────────────────────────────
+// 기여 분해의 "근거 보정" UX를 위한 원자료 세트. 아직 prior 엔진이 이 데이터를
+// 적합하지는 않지만, On/Off 반복 구간과 여러 참고 국가의 country 컬럼을 실제 형식으로
+// 제공해 업로드·매핑·후속 검증 흐름을 데모에서도 점검할 수 있게 한다.
+export function buildMmmPriorDemo() {
+  const base = buildResponse();
+  const marketRows = [];
+  const multipliers = { JP: 1.16, TW: 0.78, SG: 0.55, US: 1.42 };
+  Object.entries(multipliers).forEach(([country, multiplier], ci) => {
+    const noise = seededNoise(610 + ci * 29);
+    base.raw.forEach((row, weekIndex) => {
+      const seasonalShift = 1 + 0.035 * Math.sin((weekIndex / 52) * 2 * Math.PI + ci);
+      const copy = { week: row.week, country };
+      base.headers.slice(1).forEach((header) => {
+        const value = Number(row[header]) || 0;
+        const isSpend = header.endsWith("_spend");
+        const variance = isSpend ? 1 + noise() * 0.12 : 1 + noise() * 0.05;
+        copy[header] = Math.round(value * multiplier * seasonalShift * variance);
+      });
+      marketRows.push(copy);
+    });
+  });
+
+  const holdoutRows = [];
+  const holdoutNoise = seededNoise(1701);
+  base.raw.slice(60, 84).forEach((row, i) => {
+    const isOn = (i >= 6 && i < 12) || (i >= 18 && i < 24);
+    const spend = isOn ? Math.round(22000 * (1 + holdoutNoise() * 0.12)) : 0;
+    const signups = Math.round(5200 + (isOn ? 520 : 0) + 260 * Math.sin((i / 12) * Math.PI) + holdoutNoise() * 160);
+    holdoutRows.push({
+      week: row.week,
+      experiment_type: "on_off",
+      treatment_state: isOn ? "on" : "off",
+      geo: "KR_national",
+      arm: "treatment",
+      meta_spend: spend,
+      signups,
+    });
+  });
+
+  return {
+    experiment: {
+      raw: holdoutRows,
+      headers: ["week", "experiment_type", "treatment_state", "geo", "arm", "meta_spend", "signups"],
+      fileName: "demo_mmm_holdout_on_off.csv",
+      currency: "USD",
+    },
+    country: {
+      raw: marketRows,
+      headers: ["week", "country", ...base.headers.slice(1)],
+      fileName: "demo_mmm_reference_markets.csv",
+      currency: "USD",
+    },
+  };
+}
+
 // ── aha (5-20) ──────────────────────────────────────────────────────────────
 // 5-20 auto-detects: id (header has user/id), target (binary 0/1), features
 // (other numeric cols). convert prob rises with matches/messages, weak for boost.

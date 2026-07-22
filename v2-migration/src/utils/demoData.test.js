@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildDemoCsv } from "./demoData";
+import { buildDemoCsv, buildMmmPriorDemo } from "./demoData";
 import { getMappedRows } from "./dashboardAggregator";
 import { satBuildPoints, SAT_MATH } from "./satMath";
 import { AHA_STATS } from "./ahaMath";
@@ -103,6 +103,14 @@ describe("demo sanity", () => {
     const sign = d.raw.map((r) => r.signups);
     expect(Math.max(...sign)).toBeGreaterThan(Math.min(...sign) * 1.2);
     expect(d.headers).toContain("google_spend");
+  });
+
+  it("MMM prior evidence: exposes repeated on/off periods and named markets", () => {
+    const demo = buildMmmPriorDemo();
+    expect(demo.experiment.raw.some((row) => row.treatment_state === "on")).toBe(true);
+    expect(demo.experiment.raw.some((row) => row.treatment_state === "off")).toBe(true);
+    expect(new Set(demo.country.raw.map((row) => row.country))).toEqual(new Set(["JP", "TW", "SG", "US"]));
+    expect(demo.country.headers).toContain("country");
   });
 
   it("aha: converted correlates with messages (gridSearch finds signal)", () => {
