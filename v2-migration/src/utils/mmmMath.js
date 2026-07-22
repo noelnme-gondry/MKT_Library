@@ -987,7 +987,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               };
             }
 
-            export function mmmValidate(panel) {
+            export function mmmValidate(panel, locale = "ko") {
+              const isEn = locale === "en";
               const rep = { n_weeks: panel.week.length, issues: [], warnings: [] };
               // 주 인덱스 비연속: 개별 나열(@1..@126 폭주) 대신 1건으로 요약. Week 컬럼이 1,2,3..이 아니면(날짜/연도) 흔함 — 행 순서(t)로 분석하므로 경고 수준.
               let nonContig = 0;
@@ -995,11 +996,11 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 if (panel.week[i] - panel.week[i - 1] !== 1) nonContig++;
               if (nonContig > 0)
                 rep.warnings.push(
-                  `주 인덱스가 1씩 증가하지 않음(${nonContig}곳) — Week 컬럼이 날짜/연도일 수 있음. 분석은 행 순서(t=1…N)로 진행.`,
+                  isEn ? `Week index is not consecutive (${nonContig} gaps) — the Week column may contain dates/years. Analysis uses row order (t=1…N).` : `주 인덱스가 1씩 증가하지 않음(${nonContig}곳) — Week 컬럼이 날짜/연도일 수 있음. 분석은 행 순서(t=1…N)로 진행.`,
                 );
               for (const [nm, arr] of Object.entries(panel.targets))
                 if (arr.some((v) => v <= 0 || isNaN(v)))
-                  rep.warnings.push(`target '${nm}' 비양수/결측 존재`);
+                  rep.warnings.push(isEn ? `Target '${nm}' contains non-positive or missing values` : `target '${nm}' 비양수/결측 존재`);
               for (const ch of _mmmChans(panel)) {
                 if (!panel.ch[ch.key]) continue;
                 const arr = panel.ch[ch.key],
@@ -1008,13 +1009,13 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 rep[`nonzero::${ch.key}`] = `${nz}/${arr.length}`;
                 if (nMiss)
                   rep.warnings.push(
-                    `channel '${ch.key}': ${nMiss} 결측(NaN) — features에서 대치`,
+                    isEn ? `Channel '${ch.key}': ${nMiss} missing (NaN) — imputed in features` : `channel '${ch.key}': ${nMiss} 결측(NaN) — features에서 대치`,
                   );
                 if (nz === 0)
-                  rep.warnings.push(`channel '${ch.key}' 전부 0 → 식별 불가`);
+                  rep.warnings.push(isEn ? `Channel '${ch.key}' is all zero — not identifiable` : `channel '${ch.key}' 전부 0 → 식별 불가`);
                 if (arr.length > 6 && arr.slice(-6).every((v) => v === 0) && nz > 6)
                   rep.warnings.push(
-                    `channel '${ch.key}': 마지막 6주 0 — 결측-vs-진짜0 확인`,
+                    isEn ? `Channel '${ch.key}': last 6 weeks are zero — check missing vs. true zero` : `channel '${ch.key}': 마지막 6주 0 — 결측-vs-진짜0 확인`,
                   );
               }
               return rep;
@@ -1157,7 +1158,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
 
             // 모델-독립 매크로 사실 — YoY 2024 vs 2025 (spend·target). dates: 주별 정렬 Date 배열.
             // index mmmMacroFacts 이식(순수). 24/25 둘 다 없으면 {} 반환.
-            export function mmmMacroFacts(panel, cfg, dates) {
+            export function mmmMacroFacts(panel, cfg, dates, locale = "ko") {
+              const isEn = locale === "en";
               const out = {};
               if (!dates || !dates.length) return out;
               const years = dates.map((d) => d.getUTCFullYear());
@@ -1178,7 +1180,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 chKeys.reduce((s, k) => s + (panel.ch[k][i] || 0), 0),
               );
               const tp = yoy(totalPaid);
-              if (tp != null) out["전체유료 spend YoY %"] = tp;
+              if (tp != null) out[isEn ? "Total paid spend YoY %" : "전체유료 spend YoY %"] = tp;
               for (const ch of _mmmChans(panel)) {
                 if (!panel.ch[ch.key]) continue;
                 const v = yoy(panel.ch[ch.key]);
@@ -1191,7 +1193,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               return out;
             }
 
-            export function mmmTrendExistence(panel, cfg, targetName) {
+            export function mmmTrendExistence(panel, cfg, targetName, locale = "ko") {
+              const isEn = locale === "en";
               const y = panel.targets[targetName];
               const stl = stlWeekly(y, 52);
               const deseason = y.map((v, i) => v - stl.seasonal[i]);
@@ -1223,12 +1226,12 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               const ts = adf.p < 0.05 && kp.p >= 0.05;
               let verdict;
               if (assumptionFreeNo)
-                verdict = "NO robust trend — fitted t-coefficient는 artifact";
+                verdict = isEn ? "NO robust trend — fitted t-coefficient is an artifact" : "NO robust trend — fitted t-coefficient는 artifact";
               else if (organic && ts)
                 verdict =
-                  "trend EXISTS (trend-stationary, not spurious); media 제거 후에도 organic 잔존";
+                  isEn ? "Trend EXISTS (trend-stationary, not spurious); organic remains after removing media" : "trend EXISTS (trend-stationary, not spurious); media 제거 후에도 organic 잔존";
               else
-                verdict = "mixed — trend는 있으나 작음/부분적으로 media-confounded";
+                verdict = isEn ? "Mixed — trend is small or partly media-confounded" : "mixed — trend는 있으나 작음/부분적으로 media-confounded";
               return {
                 target: targetName,
                 stl_pct: stlPct,
@@ -1631,7 +1634,9 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               targetName,
               netElasticity,
               channelKey,
+              locale = "ko",
             ) {
+              const isEn = locale === "en";
               const R = MMM_CANNIB_RULES;
               const y = panel.targets[targetName],
                 t = panel.week,
@@ -1639,7 +1644,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               const chMeta = channelKey
                 ? _mmmChans(panel).find((c) => c.key === channelKey) || {}
                 : {};
-              const chLabel = channelKey ? chMeta.label || channelKey : "전체 유료";
+              const chLabel = channelKey ? chMeta.label || channelKey : (isEn ? "Total paid" : "전체 유료");
               const isBrand = channelKey
                 ? mmmIsBrandIntercept(chLabel, chMeta.kind)
                 : false;
@@ -1773,7 +1778,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               const gateReasons = [];
               if (Math.abs(spendTimeCorr) >= R.gateSpendTimeCorr)
                 gateReasons.push(
-                  `spend↔시간 공선 |r|=${Math.abs(spendTimeCorr).toFixed(2)} ≥ ${R.gateSpendTimeCorr}`,
+                  isEn ? `Spend↔time collinear |r|=${Math.abs(spendTimeCorr).toFixed(2)} ≥ ${R.gateSpendTimeCorr}` : `spend↔시간 공선 |r|=${Math.abs(spendTimeCorr).toFixed(2)} ≥ ${R.gateSpendTimeCorr}`,
                 );
               const vif = netElasticity.vif;
               if (isFinite(vif) && vif >= R.gateVif)
@@ -1785,7 +1790,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 ciHi - ciLo >= R.gateCiMult * Math.abs(coef)
               )
                 gateReasons.push(
-                  `③ CI폭 ${(ciHi - ciLo).toFixed(3)} ≥ ${R.gateCiMult}×|점추정|`,
+                  isEn ? `③ CI width ${(ciHi - ciLo).toFixed(3)} ≥ ${R.gateCiMult}×|point estimate|` : `③ CI폭 ${(ciHi - ciLo).toFixed(3)} ≥ ${R.gateCiMult}×|점추정|`,
                 );
               if (n < R.gateMinN) gateReasons.push(`n=${n} < ${R.gateMinN}`);
               const powerGateBlocked = gateReasons.length > 0;
@@ -1816,24 +1821,23 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               let verdict, verdictClass;
               if (votes.AGAINST >= 1) {
                 verdictClass = "cannibal";
-                verdict = "LEAN CANNIBAL — 카니발 우려, holdout 1순위";
+                verdict = isEn ? "LEAN CANNIBAL — cannibalization concern; holdout is first priority" : "LEAN CANNIBAL — 카니발 우려, holdout 1순위";
               } else if (
                 !powerGateBlocked &&
                 votes.FOR >= forBar &&
                 votes.AGAINST === 0
               ) {
                 verdictClass = "ok";
-                verdict =
-                  "관측상 적색신호 없음 (잠정 OK) — 방어 가능성 높음, 단 결정적 확인은 geo holdout";
+                verdict = isEn ? "No red flags observed (provisional OK) — likely defensible; confirm with a geo holdout" : "관측상 적색신호 없음 (잠정 OK) — 방어 가능성 높음, 단 결정적 확인은 geo holdout";
               } else {
                 verdictClass = "inconclusive";
-                verdict = "INCONCLUSIVE — 증거 부족, holdout 필요";
+                verdict = isEn ? "INCONCLUSIVE — insufficient evidence; holdout needed" : "INCONCLUSIVE — 증거 부족, holdout 필요";
               }
               // 그랜저 시차 잠식이 유의하면 비-카니발 판정을 LEAN CANNIBAL로 격상 (동시점이 놓친 신호 — 보수적으로 우려만 ↑)
               // 단, 산발(flighted) 집행이면 그랜저 단독으로 격상 금지(on/off 버스트가 시차 신호를 왜곡 — 매칭 on/off/holdout 필요).
               if (grangerCannibal && verdictClass !== "cannibal" && !flighted) {
                 verdictClass = "cannibal";
-                verdict = `LEAN CANNIBAL — 그랜저 시차 인과(광고비→오가닉↓, lag ${gr.spend_to_organic.lag}), holdout 1순위`;
+                verdict = isEn ? `LEAN CANNIBAL — lagged Granger signal (spend→organic↓, lag ${gr.spend_to_organic.lag}); holdout is first priority` : `LEAN CANNIBAL — 그랜저 시차 인과(광고비→오가닉↓, lag ${gr.spend_to_organic.lag}), holdout 1순위`;
               }
 
               return {
@@ -1841,7 +1845,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 detrend_corr: detrend,
                 net_incrementality: net,
                 votes,
-                vote_summary: `FOR ${votes.FOR} · AGAINST ${votes.AGAINST} · ABSTAIN ${votes.ABSTAIN}`,
+                vote_summary: isEn ? `FOR ${votes.FOR} · AGAINST ${votes.AGAINST} · ABSTAIN ${votes.ABSTAIN}` : `FOR ${votes.FOR} · AGAINST ${votes.AGAINST} · ABSTAIN ${votes.ABSTAIN}`,
                 power_gate: { blocked: powerGateBlocked, reasons: gateReasons },
                 spend_time_corr: +spendTimeCorr.toFixed(3),
                 flighted,
@@ -2402,6 +2406,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               horizon,
               stepOff,
               bandMode,
+              locale = "ko",
             ) {
               model = model || "ols";
               bandMode = bandMode || "mean"; // mean=신뢰구간(평균 추세·좁음, t·σ·√h) / pred=예측구간(개별 주·넓음, t·σ·√(1+h))
@@ -2578,8 +2583,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 })),
               );
               const bandLabel = bandMode === "pred"
-                ? "과거 잔차 참고 범위(개별 주)"
-                : "과거 잔차 참고 범위(평균 추세)";
+                ? (locale === "en" ? "Historical residual reference band (individual week)" : "과거 잔차 참고 범위(개별 주)")
+                : (locale === "en" ? "Historical residual reference band (mean trend)" : "과거 잔차 참고 범위(평균 추세)");
               return {
                 model,
                 lam,
