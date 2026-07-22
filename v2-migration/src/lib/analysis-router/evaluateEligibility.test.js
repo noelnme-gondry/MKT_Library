@@ -24,6 +24,12 @@ function mmmData(weeks) {
   };
 }
 
+function efficiencyPanel(days, rowsForDay) {
+  return {
+    records: Array.from({ length: days }, (_, day) => rowsForDay(day)).flat(),
+  };
+}
+
 describe("analysis eligibility", () => {
   it("blocks a tool when required concepts are missing", () => {
     const result = evaluateEligibility({ toolId: "5-2", mapping: { Date: "date", Spend: "cost" }, canonicalData });
@@ -57,5 +63,29 @@ describe("analysis eligibility", () => {
       canonicalData: mmmData(52),
     });
     expect(result).toMatchObject({ status: "ready", confidenceTier: "decision" });
+  });
+
+  it("warns when PVM channel coverage does not span enough active dates", () => {
+    const result = evaluateEligibility({
+      toolId: "5-21",
+      mapping: { Date: "date", Spend: "spend", Channel: "channel", Installs: "installs" },
+      canonicalData: efficiencyPanel(14, (day) => [{
+        date: isoDay(day), dimensions: { channel: "Google" }, metrics: { spend: day < 7 ? 100 : 0, installs: day < 7 ? 10 : 0 },
+      }]),
+    });
+    expect(result).toMatchObject({ status: "caution" });
+    expect(result.reasonDetails.join(" ")).toContain("운영 관측이 8기간 미만");
+  });
+
+  it("warns when saturation data has no meaningful spend variation", () => {
+    const result = evaluateEligibility({
+      toolId: "5-22",
+      mapping: { Date: "date", Cost: "cost", Channel: "channel", Installs: "installs" },
+      canonicalData: efficiencyPanel(10, (day) => ["Google", "Meta"].map((channel) => ({
+        date: isoDay(day), dimensions: { channel }, metrics: { cost: 100, installs: 10 + (day % 2) },
+      }))),
+    });
+    expect(result).toMatchObject({ status: "caution" });
+    expect(result.reasonDetails.join(" ")).toContain("지출 변동이 너무 작은");
   });
 });
