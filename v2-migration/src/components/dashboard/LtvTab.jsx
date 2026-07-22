@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import CustomChartsSection from "./CustomChartsSection";
@@ -143,7 +143,7 @@ const LTV_COPY = {
 export default function LtvTab({ locale = "ko" } = {}) {
   const T = LTV_COPY[locale] || LTV_COPY.ko;
   // 엔진(ltvMath·cohortMath)이 붙이는 "전체"·"(미지정)" 그룹 라벨 렌더층 로컬라이즈.
-  const luLabel = (k) => (k === "(미지정)" ? (locale === "en" ? "(unspecified)" : "(미지정)") : k === "전체" ? (locale === "en" ? "All" : "전체") : k);
+  const luLabel = useCallback((k) => (k === "(미지정)" ? (locale === "en" ? "(unspecified)" : "(미지정)") : k === "전체" ? (locale === "en" ? "All" : "전체") : k), [locale]);
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const denomBasis = useAppStore((state) => state.denomBasis);
@@ -298,7 +298,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [hasData, rows, displayCurrency, isDarkMode]);
+  }, [hasData, rows, displayCurrency, isDarkMode, luLabel]);
 
   if (!hasData) {
     return <div className="tab-pane active" id="tab-ltv"><p className="muted">{T.noData}</p></div>;

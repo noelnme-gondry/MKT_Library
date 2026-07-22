@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import Papa from "papaparse";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
@@ -172,7 +172,7 @@ function UploadPanel({ method, fileRef, handleFile, loadDemo, locale = "ko" }) {
 
 /* ── ① 통제군 (suppression) ── */
 function SuppressionView({ csvData, currency, locale = "ko" }) {
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   // 날짜별 그룹 집계 (전환율·모수·비용·매출)
   const series = useMemo(() => {
     const rows = getMappedRows(csvData);
@@ -295,7 +295,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
     });
     requestAnimationFrame(() => chartInst.current && chartInst.current.resize());
     return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
-  }, [series, start, end]);
+  }, [series, start, end, tr]);
 
   if (totals.cDen <= 0 || totals.tDen <= 0) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("노출(exposed)·홀드아웃(holdout) 양쪽 데이터가 필요합니다", "Both exposed and holdout data are required")}</strong><p>{tr("holdout_group 컬럼에 두 그룹이 모두 있어야 증분을 계산합니다.", "The holdout_group column must contain both groups to calculate incrementality.")}</p></div></div>;
 
@@ -419,8 +419,8 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
 
 /* ── ②③ 전후 비교 (pre/post) ── */
 function PrePostView({ csvData, direction, currency, locale = "ko" }) {
-  const tr = (ko, en) => (locale === "en" ? en : ko);
-  const headers = csvData.headers || [];
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
+  const headers = useMemo(() => csvData.headers || [], [csvData.headers]);
   // 컬럼 자동 감지
   const dateCol = useMemo(() => headers.find((h) => (csvData.raw || []).slice(0, 5).some((r) => looksDate(r[h]))) || headers[0], [headers, csvData.raw]);
   const numericCols = useMemo(() => headers.filter((h) => h !== dateCol && (csvData.raw || []).slice(0, 8).some((r) => Number.isFinite(Number(r[h])) && String(r[h]).trim() !== "")), [headers, dateCol, csvData.raw]);
@@ -498,7 +498,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
     });
     requestAnimationFrame(() => chartInst.current && chartInst.current.resize());
     return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
-  }, [csvData.raw, metricCol, groupCol, effCutoff, dateCol, result, direction]);
+  }, [csvData.raw, metricCol, groupCol, effCutoff, dateCol, result, direction, tr]);
 
   if (!numericCols.length) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("성과 지표(숫자) 컬럼이 필요합니다", "A performance metric (numeric) column is required")}</strong><p>{tr("date + 숫자 지표 컬럼이 있는 CSV를 올리세요.", "Upload a CSV with a date column plus a numeric metric column.")}</p></div></div>;
 

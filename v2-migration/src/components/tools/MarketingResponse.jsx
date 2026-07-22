@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Papa from "papaparse";
 import Chart from "chart.js/auto";
 import * as XLSX from "xlsx";
@@ -1062,7 +1062,7 @@ function chartBase() {
 export default function MarketingResponse({ locale = "ko" }) {
   // 3단계(index MMM_STAGE_DEFS): diagnose | mmm | lab. 구 "forecast" 스테이지는 lab에 흡수 —
   // ③ lab이 mmmForecast(②계수) §7 미래예측을 렌더(stage==="lab"). 셋 다 shared mmmColMap 사용.
-  const tx = (ko, en) => (locale === "en" ? en : ko); // 인라인 텍스트 로컬라이즈 헬퍼(§12.20 v2 i18n 패턴)
+  const tx = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]); // 인라인 텍스트 로컬라이즈 헬퍼(§12.20 v2 i18n 패턴)
   const bucketMeta = mmmBucketMeta(locale);
   const [stage, setStage] = useState("trend"); // trend | diagnose | mmm | lab
   const [target, setTarget] = useState("Regs");
@@ -1228,7 +1228,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       }
       return { empty: true, reason: tx("분석 오류: ", "Analysis error: ") + msg };
     }
-  }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, effPlatformFilter, locale]);
+  }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, effPlatformFilter, locale, tx]);
 
   useEffect(() => {
     if (!mmmAnalyzed) return;
@@ -1251,7 +1251,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     } catch (e) {
       return null;
     }
-  }, [mmm, stage, decompModel]);
+  }, [mmm, stage]);
 
   // 해당 기간의 실제 주별 지출을 모델 곡선에 대입한 채널별 평균 성과.
   // 전체 타깃을 채널마다 복제하지 않고, 채널별 예측 기여만 보여준다.
@@ -1657,7 +1657,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     // convAmt는 sourceCurrency/displayCurrency로만 결정되는 순수 파생 함수라 그
     // 둘을 deps에 넣는 것으로 충분(함수 레퍼런스 자체는 deps에 안 넣음, §매 렌더 재생성).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, mmm, decomp, spikeNotes, decompGrouped, satHidden, currencySym, sourceCurrency, displayCurrency]);
+  }, [stage, mmm, decomp, spikeNotes, decompGrouped, satHidden, currencySym, sourceCurrency, displayCurrency, tx]);
 
   // Stage ③ forecast chart
   useEffect(() => {
@@ -1697,7 +1697,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       );
     }
     return () => inst.forEach((c) => c && c.destroy());
-  }, [stage, forecast]);
+  }, [stage, forecast, tx]);
 
   // Stage ① trend chart (STL trend + actual)
   useEffect(() => {
@@ -1720,7 +1720,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       );
     }
     return () => inst.forEach((c) => c && c.destroy());
-  }, [stage, trend, mmm]);
+  }, [stage, trend, mmm, tx]);
 
   // Stage ① 카니발 4검증 — 선택한 질문 하나의 근거 차트만 렌더.
   useEffect(() => {
@@ -1793,7 +1793,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       }
     }
     return () => inst.forEach((c) => c && c.destroy());
-  }, [stage, mmm, cannib, activeCannibCh, activeCn, cannibQuestion, currencySym]);
+  }, [stage, mmm, cannib, activeCannibCh, activeCn, cannibQuestion, currencySym, tx]);
 
   // Stage ① simple-cannib chart 없음 (통계 카드만) — 잔차 산점도는 디퍼
 

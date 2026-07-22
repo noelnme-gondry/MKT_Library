@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import CustomChartsSection from "./CustomChartsSection";
@@ -13,7 +13,7 @@ import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 const COHORT_TABLE_SCOPE = "5-2:cohort-table";
 
 export default function CohortTab({ locale = "ko" } = {}) {
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   // 전역 분모 기준(설치/가입) 구독 — index.html MON_DENOM_STATE 이식(§12.18).
@@ -151,17 +151,18 @@ export default function CohortTab({ locale = "ko" } = {}) {
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [hasData, wrc, isDarkMode, locale]);
+  }, [hasData, wrc, isDarkMode, locale, tr]);
 
   // Segment Charts
   useEffect(() => {
     if (!hasData || !wrc.bySegment) return;
     const PALETTE = ["#7aa2f7", "#9ece6a", "#e0af68", "#f7768e", "#bb9af7", "#2ac3de", "#ff9e64", "#73daca", "#c0caf5", "#a9b1d6", "#db4b4b", "#41a6b5"];
     
+    const segmentChartInstances = segmentChartInstancesRef.current;
     Object.keys(wrc.bySegment).forEach(sk => {
       const canvas = segmentChartRefs.current[sk];
       if (!canvas) return;
-      if (segmentChartInstancesRef.current[sk]) segmentChartInstancesRef.current[sk].destroy();
+      if (segmentChartInstances[sk]) segmentChartInstances[sk].destroy();
       
       const groups = Object.keys(wrc.bySegment[sk]);
       const datasets = groups.map((g, gi) => {
@@ -180,7 +181,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
         };
       });
 
-      segmentChartInstancesRef.current[sk] = new Chart(canvas.getContext("2d"), {
+      segmentChartInstances[sk] = new Chart(canvas.getContext("2d"), {
         type: "line",
         data: { labels: wrc.retDays.map(d => `D${d}`), datasets },
         options: {
@@ -197,9 +198,9 @@ export default function CohortTab({ locale = "ko" } = {}) {
     });
 
     return () => {
-      Object.values(segmentChartInstancesRef.current).forEach(c => c && c.destroy());
+      Object.values(segmentChartInstances).forEach(c => c && c.destroy());
     };
-  }, [hasData, wrc, isDarkMode]);
+  }, [hasData, wrc, isDarkMode, tr]);
 
   if (!hasData) {
     return (

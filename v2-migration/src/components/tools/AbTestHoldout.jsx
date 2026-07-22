@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { STATS } from "@/utils/abTestMath";
@@ -51,7 +51,7 @@ const isTruthy = (v) =>
 
 /* p-value 배지 (index.html tier-1/2/3 → 색상 span으로) */
 function PvBadge({ p, locale = "ko" }) {
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   if (!isFinite(p)) return <span style={{ color: "var(--text-muted)" }}>—</span>;
   if (p < 0.01)
     return <span className="pill tier-1" style={{ color: "#22c55e" }}>p &lt; 0.01</span>;
@@ -67,7 +67,7 @@ function verdictColor(p, liftPositive) {
 }
 
 export default function AbTestHoldout({ locale = "ko" } = {}) {
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const [activeTab, setActiveTab] = useState("design");
   const [mode, setMode] = useState("plan");
   const [testType, setTestType] = useState("binary");
@@ -278,7 +278,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
     return () => {
       if (abChartRef.current) { abChartRef.current.destroy(); abChartRef.current = null; }
     };
-  }, [activeTab, readoutData, locale]);
+  }, [activeTab, readoutData, locale, tr]);
 
   // ============================================================
   //  Power curve chart (§4)
@@ -334,7 +334,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
     return () => {
       if (powerChartRef.current) { powerChartRef.current.destroy(); powerChartRef.current = null; }
     };
-  }, [activeTab, mode, pcBaseline, pcAlpha, pcPower, locale]);
+  }, [activeTab, mode, pcBaseline, pcAlpha, pcPower, locale, tr]);
 
   return (
     <div className="tab-pane active" id="tab-ab">

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
@@ -129,12 +129,12 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
     };
   }, [csvData, dashboardFilter, metric, win, zThresh, dowAdjust, C, domain, locale]);
 
-  const formatValue = (v) => {
+  const formatValue = useCallback((v) => {
     if (v == null) return "—";
     if (["cvr", "ctr", "roas"].includes(metric)) return (v * 100).toFixed(2) + "%";
     if (["cost", "cpi", "cpm", "cpa"].includes(metric)) return fmtCurrency(v, { currency: displayCurrency });
     return Math.round(v).toLocaleString();
-  };
+  }, [metric, displayCurrency]);
 
   useEffect(() => {
     if (!hasData || !metricOpts.length || !dailyData.length || !chartRef.current) return;
@@ -190,7 +190,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [hasData, dailyData, seriesVals, flags, metric, metricOpts, isDarkMode]);
+  }, [hasData, dailyData, seriesVals, flags, metric, metricOpts, isDarkMode, formatValue]);
 
   if (!hasData || metricOpts.length === 0) {
     return (
