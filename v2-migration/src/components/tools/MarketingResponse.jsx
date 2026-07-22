@@ -1194,7 +1194,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       const panel = trimToActive(built.panel);
       const cfg = { ...MMM_METH_CONFIG, absorbed: new Set() };
       const t = pickTarget(panel, target);
-      const validate = mmmValidate(panel);
+      const validate = mmmValidate(panel, locale);
       const derived = {
         orientation: "colmap",
         target: t,
@@ -1226,7 +1226,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       }
       return { empty: true, reason: tx("분석 오류: ", "Analysis error: ") + msg };
     }
-  }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, effPlatformFilter]);
+  }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, effPlatformFilter, locale]);
 
   useEffect(() => {
     if (!mmmAnalyzed) return;
@@ -1276,11 +1276,11 @@ export default function MarketingResponse({ locale = "ko" }) {
   const trend = useMemo(() => {
     if (!mmm || mmm.empty || !["trend", "diagnose"].includes(stage)) return null;
     try {
-      return mmmTrendExistence(mmm.panel, mmm.cfg, mmm.target);
+      return mmmTrendExistence(mmm.panel, mmm.cfg, mmm.target, locale);
     } catch (e) {
       return null;
     }
-  }, [mmm, stage]);
+  }, [mmm, stage, locale]);
 
   // 채널별 카니발 + §4.5 랭킹/전역 종합 (index buildMmmMethCache byTarget 오케스트레이션 포트)
   const cannib = useMemo(() => {
@@ -1298,7 +1298,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         const net = e
           ? { coef: e.coef, ci_lo: e.ci_lo, ci_hi: e.ci_hi, p: e.p }
           : { coef: 0, ci_lo: -1, ci_hi: 1, p: 1 };
-        const cn = mmmCannibalization(panel, cfg, t, net, c.key);
+        const cn = mmmCannibalization(panel, cfg, t, net, c.key, locale);
         cannibByChannel[c.key] = cn;
         cannChannels.push(c.key);
         return { channel: c, verdict: cn };
@@ -1316,7 +1316,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     } catch (e) {
       return null;
     }
-  }, [mmm]);
+  }, [mmm, locale]);
 
   // ── §1 매크로 사실 + 자동 흡수(공선) + §2 naive-model audit (모델 독립) ──
   const diag = useMemo(() => {
@@ -1329,7 +1329,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         return isNaN(t) ? null : new Date(t);
       });
       const validDates = dates.every(Boolean) && dates.length === panel.week.length;
-      const macro = validDates ? mmmMacroFacts(panel, cfg, dates) : {};
+      const macro = validDates ? mmmMacroFacts(panel, cfg, dates, locale) : {};
       // 자동 흡수는 mmm useMemo에서 이미 cfg.absorbed에 반영됨 — 여기선 노티스 표시용으로 재사용.
       const absorb = mmm.absorb || { absorbed: new Set(), notices: [] };
       // naive-model audit (RR 필요 — Regs+React 둘 다 있어야 의미). throw 가드.
@@ -1343,7 +1343,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     } catch (e) {
       return null;
     }
-  }, [mmm, stage]);
+  }, [mmm, stage, locale]);
 
   // target 사용 가능 목록 (setState-in-effect 회피: 선택은 파생값으로 클램프, mmm.target이 실제 사용 타깃)
   const availTargets = mmm && !mmm.empty ? mmm.derived.availableTargets : [];
@@ -1966,7 +1966,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         {mmm && !mmm.empty && (
           <button className="ab-pill" onClick={() => {
             const packageDecomp = mmmBayesianWeeklyDecomp(mmm.run);
-            const packageTrend = trend || mmmTrendExistence(mmm.panel, mmm.cfg, mmm.target);
+            const packageTrend = trend || mmmTrendExistence(mmm.panel, mmm.cfg, mmm.target, locale);
             const packageForecast = mmmBayesianForecast(mmm.run, mmm.panel, null, 13);
             downloadMmmWorkbook({ mmm, cannib, decomp: packageDecomp, trend: packageTrend, forecast: packageForecast, csvData, colMap: mmmColMap, locale, currency: displayCurrency });
           }}>{tx("⬇ 분석 패키지", "⬇ Analysis package")}</button>
