@@ -2,6 +2,9 @@ import { profileColumns } from "./profileColumns";
 
 const clamp = (value) => Math.max(0, Math.min(1, value));
 const compact = (value) => String(value || "").toLowerCase().trim().replace(/[\s_-]/g, "");
+const AUTO_CONFIRM_THRESHOLD = 0.9;
+const REVIEW_THRESHOLD = 0.6;
+const AMBIGUITY_MARGIN = 0.12;
 
 function headerScore(header, key, aliases = []) {
   const normalized = compact(header);
@@ -78,15 +81,42 @@ export function scoreMappingCandidates({ headers = [], rows = [], allowedKeys, f
 
   const selections = Object.fromEntries(headers.map((header) => {
     const top = byHeader[header][0];
-    return [header, top && top.confidence >= 0.6 ? top.field : "__ignore__"];
+    return [header, top && top.confidence >= REVIEW_THRESHOLD ? top.field : "__ignore__"];
   }));
   const conflicts = findMappingConflicts(selections);
+  const assessments = assessMappingConfidence({ selections, candidates: byHeader });
 
-  return { profiles, candidates: byHeader, selections, conflicts };
+  return { profiles, candidates: byHeader, selections, conflicts, assessments };
 }
 
 export function findMappingConflicts(selections = {}) {
   return [...new Set(Object.values(selections).filter((field) => field && field !== "__ignore__"))]
     .map((field) => ({ field, headers: Object.entries(selections).filter(([, selected]) => selected === field).map(([header]) => header) }))
     .filter((conflict) => conflict.headers.length > 1);
+}
+
+// 자동 매핑 결과를 "확정/확인 권장/반드시 확인"으로 분리한다. 사용자가 드롭다운을
+// 바꾼 항목은 자동 추측이 아니라 명시적 선택이므로 수동 확인 완료로 처리한다.
+export function assessMappingConfidence({ selections = {}, candidates = {}, initialSelections = {}, confirmedHeaders = new Set() } = {}) {
+  const conflicts = findMappingConflicts(selections);
+  const conflictHeaders = new Set(conflicts.flatMap((conflict) => conflict.headers));
+  return Object.entries(selections).map(([header, field]) => {
+    if (!field || field === "__ignore__") return { header, field, state: "ignored", confidence: 0, reasons: [] };
+    const headerCandidates = candidates[header] || [];
+    const selected = headerCandidates.find((candidate) => candidate.field === field);
+    const top = headerCandidates[0];
+    const runnerUp = headerCandidates.find((candidate) => candidate.field !== field);
+    const wasManuallyChanged = initialSelections[header] != null && initialSelections[header] !== field;
+    if (conflictHeaders.has(header)) return { header, field, state: "conflict", confidence: selected?.confidence ?? 0, reasons: selected?.reasons || [] };
+    if (confirmedHeaders.has(header)) return { header, field, state: "manual", confidence: selected?.confidence ?? 1, reasons: selected?.reasons || [] };
+    if (wasManuallyChanged || !selected) return { header, field, state: "manual", confidence: selected?.confidence ?? 1, reasons: selected?.reasons || [] };
+    const isAmbiguous = runnerUp && Math.abs(selected.confidence - runnerUp.confidence) < AMBIGUITY_MARGIN;
+    if (selected === top && selected.confidence >= AUTO_CONFIRM_THRESHOLD && !isAmbiguous) {
+      return { header, field, state: "confirmed", confidence: selected.confidence, reasons: selected.reasons };
+    }
+    if (selected.confidence >= REVIEW_THRESHOLD && !isAmbiguous) {
+      return { header, field, state: "review", confidence: selected.confidence, reasons: selected.reasons };
+    }
+    return { header, field, state: "must_confirm", confidence: selected.confidence, reasons: selected.reasons };
+  });
 }

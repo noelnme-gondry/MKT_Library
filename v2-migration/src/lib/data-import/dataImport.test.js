@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { normalizeDateValue, normalizeNumericValue } from "./normalizeValues";
 import { profileColumns } from "./profileColumns";
-import { scoreMappingCandidates } from "./scoreMappingCandidates";
+import { assessMappingConfidence, scoreMappingCandidates } from "./scoreMappingCandidates";
 import { STANDARD_FIELDS } from "@/utils/csvConstants";
 
 describe("data import foundation", () => {
@@ -51,5 +51,30 @@ describe("data import foundation", () => {
   it("reports duplicate automatic assignments as conflicts", () => {
     const result = scoreMappingCandidates({ headers: ["광고비", "소진액"], rows: [{ 광고비: "100", 소진액: "200" }], allowedKeys: ["cost"], fields: STANDARD_FIELDS });
     expect(result.conflicts).toEqual([{ field: "cost", headers: ["광고비", "소진액"] }]);
+  });
+
+  it("separates confirmed, review, must-confirm, and conflicting mappings", () => {
+    const candidates = {
+      일자: [{ field: "date", confidence: 0.94, reasons: ["header + type"] }],
+      성과: [{ field: "installs", confidence: 0.7, reasons: ["similar"] }, { field: "actions", confidence: 0.65, reasons: ["similar"] }],
+      광고비: [{ field: "cost", confidence: 0.91, reasons: ["header + type"] }],
+      소진액: [{ field: "cost", confidence: 0.91, reasons: ["header + type"] }],
+    };
+    const assessments = assessMappingConfidence({
+      selections: { 일자: "date", 성과: "installs", 광고비: "cost", 소진액: "cost" },
+      candidates,
+    });
+    expect(Object.fromEntries(assessments.map((item) => [item.header, item.state]))).toMatchObject({
+      일자: "confirmed", 성과: "must_confirm", 광고비: "conflict", 소진액: "conflict",
+    });
+  });
+
+  it("treats a dropdown change as explicit manual confirmation", () => {
+    const [assessment] = assessMappingConfidence({
+      selections: { 성과: "actions" },
+      initialSelections: { 성과: "installs" },
+      candidates: { 성과: [{ field: "installs", confidence: 0.7, reasons: [] }, { field: "actions", confidence: 0.65, reasons: [] }] },
+    });
+    expect(assessment.state).toBe("manual");
   });
 });

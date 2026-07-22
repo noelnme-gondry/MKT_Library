@@ -7,7 +7,7 @@ import { buildDemoCsv } from "@/utils/demoData";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "@/components/GoogleSheetConnect";
-import { findMappingConflicts, scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates";
+import { assessMappingConfidence, findMappingConflicts, scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { tableToRecords } from "@/lib/data-import/detectHeaderRow";
 import { detectDatasetSignature } from "@/lib/data-import/detectDatasetSignature";
@@ -70,6 +70,15 @@ const CSV_COPY = {
     analyzeBtn: "데이터 분석하기",
     recognitionSummary: (mapped, total, review, conflicts) => `${total}개 컬럼 중 ${mapped}개 자동 인식${review ? ` · 확인 권장 ${review}개` : ""}${conflicts ? ` · 충돌 ${conflicts}건` : ""}`,
     recognitionHint: "확실한 항목은 자동 적용했고, 낮은 신뢰도나 충돌 항목만 확인해 주세요.",
+    mappingConfirmed: "자동 확정",
+    mappingReview: "확인 권장",
+    mappingMustConfirm: "확인 필요",
+    mappingManual: "수동 확인",
+    mappingConflict: "중복 선택",
+    mappingConfirmBtn: "확인",
+    mappingBlockedTitle: "⚠ 필수 매핑을 확인해야 분석을 시작할 수 있습니다",
+    mappingBlockedConflict: "같은 표준 필드에 여러 CSV 컬럼이 선택됐습니다. 하나만 남겨 주세요.",
+    mappingBlockedConfirm: "'확인 필요' 상태인 필수 컬럼을 확인해 주세요.",
     signatureSummary: (source, grain) => `데이터 형태 추정: ${source} · ${grain}`,
     wideWarning: "기간이 열로 펼쳐진 형식입니다. 자동 변환 전 날짜·값 컬럼을 확인해 주세요.",
   },
@@ -123,6 +132,15 @@ const CSV_COPY = {
     analyzeBtn: "Analyze data",
     recognitionSummary: (mapped, total, review, conflicts) => `${mapped} of ${total} columns recognized${review ? ` · ${review} need review` : ""}${conflicts ? ` · ${conflicts} conflicts` : ""}`,
     recognitionHint: "High-confidence fields are applied automatically; review only uncertain or conflicting fields.",
+    mappingConfirmed: "Auto-confirmed",
+    mappingReview: "Review suggested",
+    mappingMustConfirm: "Confirmation needed",
+    mappingManual: "Manually confirmed",
+    mappingConflict: "Duplicate selection",
+    mappingConfirmBtn: "Confirm",
+    mappingBlockedTitle: "⚠ Confirm required mappings before analysis",
+    mappingBlockedConflict: "Multiple CSV columns are assigned to the same standard field. Keep only one.",
+    mappingBlockedConfirm: "Confirm every required column marked “Confirmation needed.”",
     signatureSummary: (source, grain) => `Detected shape: ${source} · ${grain}`,
     wideWarning: "This looks like a period-as-columns report. Confirm the date and value columns before transforming it.",
   },
@@ -163,6 +181,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   // sheetChangeOpen=hasFile 화면에서 "시트 변경" 눌러 URL 폼을 다시 펼친 상태.
   const [refreshingSheet, setRefreshingSheet] = useState(false);
   const [sheetChangeOpen, setSheetChangeOpen] = useState(false);
+  const [confirmedHeaders, setConfirmedHeaders] = useState(() => new Set());
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -222,6 +241,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
             importInsights: { ...insights, recipeApplied: !!recipe },
             canonicalData,
           });
+          setConfirmedHeaders(new Set());
           setImportAnnouncement(T.importSuccess(file.name, raw.length, headers.length));
           trackProductEvent("data_import_success", { tool_id: toolId, source: "csv", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
           trackProductEvent("data_profile_completed", { tool_id: toolId, source: "csv", column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length });
@@ -252,6 +272,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     const mapping = insights.selections;
     const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
     setCsvData({ raw, headers, mapping, fileName, sheetUrl, importInsights: insights, canonicalData });
+    setConfirmedHeaders(new Set());
     setImportAnnouncement(T.importSuccess(fileName, raw.length, headers.length));
     trackProductEvent("data_import_success", { tool_id: toolId, source: "google_sheets", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
     trackProductEvent("data_profile_completed", { tool_id: toolId, source: "google_sheets", column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length });
@@ -289,6 +310,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
       mapping,
       canonicalData: buildCanonicalDataset({ raw: csvData.raw, headers: csvData.headers, mapping }),
     });
+    setConfirmedHeaders((previous) => new Set([...previous, header]));
     // Mapping edit changes the sig → store gate auto-resets. Re-open preview so
     // the user re-checks the columns before pressing 분석하기 again.
     setPreviewOpen(true);
@@ -455,12 +477,19 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   const datasetSignature = importInsights?.signature;
   const candidateByHeader = importInsights?.candidates || {};
   const mappingConflicts = findMappingConflicts(csvData.mapping);
+  const mappingAssessments = assessMappingConfidence({
+    selections: csvData.mapping,
+    candidates: candidateByHeader,
+    initialSelections: importInsights?.selections || {},
+    confirmedHeaders,
+  });
+  const assessmentByHeader = Object.fromEntries(mappingAssessments.map((assessment) => [assessment.header, assessment]));
+  const requiredFieldKeys = new Set((TOOL_REQUIRED_FIELDS[toolId] || []).flatMap((field) => typeof field === "string" ? [field] : field?.oneOf || []));
+  const hasRequiredMustConfirm = mappingAssessments.some((assessment) => assessment.state === "must_confirm" && requiredFieldKeys.has(assessment.field));
   const mappedCount = Object.values(csvData.mapping || {}).filter((value) => value && value !== "__ignore__").length;
-  const needsReview = csvData.headers.filter((header) => {
-    const top = candidateByHeader[header]?.[0];
-    return top && top.confidence >= 0.6 && top.confidence < 0.9;
-  }).length;
-  const analysisBlocked = missing.length === 0 && dataEligibility?.status === "blocked";
+  const needsReview = mappingAssessments.filter((assessment) => assessment.state === "review" || assessment.state === "must_confirm").length;
+  const mappingBlocked = mappingConflicts.length > 0 || hasRequiredMustConfirm;
+  const analysisBlocked = missing.length === 0 && (dataEligibility?.status === "blocked" || mappingBlocked);
   const confirmAnalysis = () => {
     if (analysisBlocked) return;
     const confidenceBucket = needsReview || mappingConflicts.length ? "review" : "high";
@@ -470,6 +499,15 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     saveTransformRecipe({ headers: csvData.headers, mapping: csvData.mapping, source: isSheetSourced ? "google_sheets" : "csv" }).catch(() => {});
     requestAd(() => { setGroupAnalyzed(toolId); setPreviewOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); });
   };
+  const mappingStatusLabel = {
+    confirmed: T.mappingConfirmed,
+    review: T.mappingReview,
+    must_confirm: T.mappingMustConfirm,
+    manual: T.mappingManual,
+    conflict: T.mappingConflict,
+    ignored: T.unmapped,
+  };
+  const confirmHeader = (header) => setConfirmedHeaders((previous) => new Set([...previous, header]));
 
   return (
     <div>
@@ -557,8 +595,10 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         </div>
       ) : analysisBlocked ? (
         <div className="required-banner">
-          <strong>{T.dataBlockedTitle}</strong>
-          <p style={{ margin: "0.25rem 0 0" }}>{dataEligibility.reasons[0] || T.dataBlockedHint}</p>
+          <strong>{mappingBlocked ? T.mappingBlockedTitle : T.dataBlockedTitle}</strong>
+          <p style={{ margin: "0.25rem 0 0" }}>
+            {mappingConflicts.length ? T.mappingBlockedConflict : hasRequiredMustConfirm ? T.mappingBlockedConfirm : dataEligibility?.reasons[0] || T.dataBlockedHint}
+          </p>
         </div>
       ) : (
         <div className="required-banner ok">
@@ -595,6 +635,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           {csvData.headers.map((h) => {
             const sel = csvData.mapping[h] || "__ignore__";
             const isUnmapped = sel === "__ignore__";
+            const assessment = assessmentByHeader[h] || { state: "ignored", reasons: [] };
             
             const outOfScope = !isUnmapped && STANDARD_FIELDS[sel] && allowKeys.size > 0 && !allowKeys.has(sel);
 
@@ -603,7 +644,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
                 <div className="map-csv-col" title={h}>{h}</div>
                 <div className="map-arrow">→</div>
                 <select 
-                  className={`map-select ${isUnmapped ? "unmapped" : "auto"}`}
+                  className={`map-select ${isUnmapped ? "unmapped" : "auto"} ${assessment.state}`}
                   value={sel}
                   onChange={(e) => handleMappingChange(h, e.target.value)}
                 >
@@ -621,8 +662,14 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
                     </optgroup>
                   ))}
                 </select>
-                <div className={`map-status ${isUnmapped ? "" : "ok"}`}>
-                  {isUnmapped ? T.unmapped : T.mapped}
+                <div className={`map-status ${assessment.state}`}>
+                  {mappingStatusLabel[assessment.state]}
+                  {!isUnmapped && assessment.reasons.length > 0 && (
+                    <span className="data-confidence-hint" role="img" tabIndex={0} aria-label={T.colHeaderStatus} data-tooltip={assessment.reasons.join(" · ")}>ⓘ</span>
+                  )}
+                  {assessment.state === "must_confirm" && (
+                    <button type="button" className="map-status-confirm" onClick={() => confirmHeader(h)}>{T.mappingConfirmBtn}</button>
+                  )}
                 </div>
               </React.Fragment>
             );
