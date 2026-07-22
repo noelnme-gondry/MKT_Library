@@ -15,6 +15,7 @@ import { getTransformRecipe, saveTransformRecipe } from "@/lib/data-import/local
 import { toolFieldKeys } from "@/lib/data-import/prepareDatasetForTool";
 import { trackProductEvent } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
+import { ANALYSIS_CONTRACTS, evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
 
 // 셸 카피만 번역(드롭존·배너·버튼·미리보기 텍스트). STANDARD_FIELDS 필드 라벨(비용·노출수
 // 등, csvConstants.js 210여 개)은 별도 백로그 — 공수가 자릿수 다름(§plan).
@@ -40,6 +41,8 @@ const CSV_COPY = {
     switchToCsvBtn: "📁 CSV 업로드로 전환",
     missingTitle: "⚠ 이 도구가 필요로 하는 필수 컬럼이 매핑되지 않았습니다",
     missingLabel: "필수: ",
+    dataBlockedTitle: "⚠ 현재 데이터로는 이 분석을 시작할 수 없습니다",
+    dataBlockedHint: "아래 부족한 조건을 채운 뒤 다시 분석해 주세요.",
     oneOfSuffix: (joined) => `(${joined} 중 1)`,
     okTitle: "✓ 필수 컬럼 매핑 완료.",
     okDesc: "아래 도구를 사용할 수 있습니다.",
@@ -91,6 +94,8 @@ const CSV_COPY = {
     switchToCsvBtn: "📁 Switch to CSV upload",
     missingTitle: "⚠ Required columns for this tool aren't mapped yet",
     missingLabel: "Required: ",
+    dataBlockedTitle: "⚠ This analysis cannot start with the current data",
+    dataBlockedHint: "Meet the missing condition below, then analyze again.",
     oneOfSuffix: (joined) => `(1 of ${joined})`,
     okTitle: "✓ All required columns mapped.",
     okDesc: "You can use the tool below.",
@@ -400,6 +405,13 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     };
   }, [csvData.headers, csvData.mapping, csvData.raw]);
 
+  // 각 도구에 직접 들어와도 StartGate와 같은 데이터 계약을 적용한다. 등록되지 않은
+  // 도구는 기존 필수 컬럼 게이트를 그대로 사용한다.
+  const dataEligibility = useMemo(() => {
+    if (!ANALYSIS_CONTRACTS[toolId] || !csvData.canonicalData) return null;
+    return evaluateEligibility({ toolId, mapping: csvData.mapping, canonicalData: csvData.canonicalData });
+  }, [toolId, csvData.mapping, csvData.canonicalData]);
+
   if (!hasFile) {
     return (
       <div>
@@ -448,7 +460,9 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     const top = candidateByHeader[header]?.[0];
     return top && top.confidence >= 0.6 && top.confidence < 0.9;
   }).length;
+  const analysisBlocked = missing.length === 0 && dataEligibility?.status === "blocked";
   const confirmAnalysis = () => {
+    if (analysisBlocked) return;
     const confidenceBucket = needsReview || mappingConflicts.length ? "review" : "high";
     const event = { tool_id: toolId, source: isSheetSourced ? "google_sheets" : "csv", mapped_count: mappedCount, confidence_bucket: confidenceBucket, conflict_count: mappingConflicts.length, missing_required_count: missing.length };
     trackProductEvent("mapping_confirmed", event);
@@ -541,6 +555,11 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
             ))}
           </p>
         </div>
+      ) : analysisBlocked ? (
+        <div className="required-banner">
+          <strong>{T.dataBlockedTitle}</strong>
+          <p style={{ margin: "0.25rem 0 0" }}>{dataEligibility.reasons[0] || T.dataBlockedHint}</p>
+        </div>
       ) : (
         <div className="required-banner ok">
           <strong>{T.okTitle}</strong>
@@ -548,7 +567,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         </div>
       )}
 
-      {csvData.canonicalData && <DataQualityReport canonicalData={csvData.canonicalData} locale={locale} />}
+      {csvData.canonicalData && <DataQualityReport canonicalData={csvData.canonicalData} metricKeys={Object.values(csvData.mapping || {}).filter((key) => key && key !== "__ignore__")} eligibility={dataEligibility} locale={locale} />}
 
       <div className="csv-mapping-block">
         <div className="csv-mapping-header">
@@ -668,7 +687,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         </div>
       )}
 
-      {missing.length === 0 && (
+      {missing.length === 0 && !analysisBlocked && (
         isAnalyzed ? (
           <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: 600 }}>{T.analyzedBadge}</span>
