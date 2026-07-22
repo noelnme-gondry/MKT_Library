@@ -61,6 +61,33 @@ describe("runMmmMethTests (golden port)", () => {
     expect(run.weeks.every((w) => w.contrib.Trend > 0)).toBe(true);
   });
 
+  it("marginalizes Bayesian channel confidence over carryover and saturation candidates", () => {
+    const n = 56;
+    const week = Array.from({ length: n }, (_, i) => i + 1);
+    const spend = week.map((t) => 900 + ((t * 13) % 17) * 460);
+    const target = spend.map((value, i) => 4200 + 1600 * (value / (value + 4200)) + (i % 5) * 30);
+    const run = mmmBayesianRun({
+      week,
+      ch: { google_roi: spend },
+      targets: { Regs: target },
+      channels: [{ key: "google_roi", label: "Google", kind: "perf" }],
+    }, {
+      ...MMM_METH_CONFIG,
+      steps: {},
+      adstockGrid: [0, 0.4],
+      bayesHalfSaturationQuantiles: [0.4, 0.8],
+      bayesHillSlopeGrid: [0.6, 1.2],
+    }, "Regs", false);
+    const effect = run.saturationByChannel.google_roi;
+    expect(effect.transformUncertainty.candidateCount).toBe(8);
+    expect(effect.transformUncertainty.effectiveCandidateCount).toBeGreaterThanOrEqual(1);
+    expect(effect.transformUncertainty.effectiveCandidateCount).toBeLessThanOrEqual(8);
+    expect(effect.transformUncertainty.topWeight).toBeGreaterThan(0);
+    expect(effect.ci.every(Number.isFinite)).toBe(true);
+    expect(effect.posteriorPositive).toBeGreaterThanOrEqual(0);
+    expect(effect.posteriorPositive).toBeLessThanOrEqual(1);
+  });
+
   it("applies an external media prior only to the matched channel", () => {
     const n = 52;
     const panel = {

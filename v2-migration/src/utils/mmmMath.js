@@ -640,6 +640,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               version: "1.0.0",
               seasonalityPeriods: [52.18, 13.04], // annual + quarterly (각 sin+cos pair)
               adstockGrid: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
+              // Bayesian 효과 신뢰도는 한 변환을 고정하지 않는다. 채널별 α × 반포화점 ×
+              // Hill 기울기 후보의 profile posterior를 평균내되, 계산량은 주간 MMM에 맞춘다.
+              bayesHalfSaturationQuantiles: [0.4, 0.6, 0.8],
+              bayesHillSlopeGrid: [0.6, 0.8, 1.0, 1.4],
               cvMinTrain: 40,
               defaultLam: 0.6, // cannibalization net elasticity용
               lunarWeeks: {
@@ -2675,23 +2679,45 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               };
             }
 
+            function _mmmBayesTransformCandidates(raw, cfg) {
+              const alphas = cfg.adstockGrid || [0, 0.2, 0.4, 0.6, 0.8];
+              const quantiles = cfg.bayesHalfSaturationQuantiles || [0.4, 0.6, 0.8];
+              const slopes = cfg.bayesHillSlopeGrid || [0.6, 0.8, 1, 1.4];
+              const seen = new Set();
+              const candidates = [];
+              for (const alpha of alphas) {
+                const ad = mmmAdstock(raw, alpha);
+                const positive = ad.filter((v) => v > 0 && isFinite(v));
+                if (!positive.length) continue;
+                for (const q of quantiles) {
+                  const ec = _mmmQuantile(positive, q);
+                  for (const slope of slopes) {
+                    const key = `${alpha}|${ec}|${slope}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    const values = ad.map((v) => mmmHill(v, ec, slope));
+                    const mean = _mean(values);
+                    const variance = _mean(values.map((v) => (v - mean) ** 2));
+                    if (!(variance > 1e-12)) continue;
+                    candidates.push({ alpha, ec, slope, values });
+                  }
+                }
+              }
+              return candidates;
+            }
+
             function _mmmBayesChannelParams(panel, cfg, targetName, controls) {
               const y = panel.targets[targetName];
               const base = mmmOls(_designConst(controls.X), y);
               const residual = base ? base.resid : y.map((v) => v - _mean(y));
-              const grid = cfg.adstockGrid || [0, 0.2, 0.4, 0.6, 0.8];
               const params = {};
               for (const ch of _mmmChans(panel)) {
                 const raw = panel.ch[ch.key];
                 if (!raw) continue;
                 let best = null;
-                for (const alpha of grid) {
-                  const ad = mmmAdstock(raw, alpha);
-                  const ec = _mmmQuantile(ad.filter((v) => v > 0), 0.6);
-                  const slope = 0.8; // concave default: stable budget optimization
-                  const h = ad.map((v) => mmmHill(v, ec, slope));
-                  const score = CANNIBAL_STATS.pearson(h, residual);
-                  if (!best || score > best.score) best = { alpha, ec, slope, score };
+                for (const candidate of _mmmBayesTransformCandidates(raw, cfg)) {
+                  const score = CANNIBAL_STATS.pearson(candidate.values, residual);
+                  if (!best || score > best.score) best = { alpha: candidate.alpha, ec: candidate.ec, slope: candidate.slope, score };
                 }
                 params[ch.key] = best || { alpha: 0, ec: 1, slope: 0.8, score: 0 };
               }
@@ -2738,6 +2764,89 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               return { beta, fitted, resid, sigma: Math.sqrt(sigma2) || yScale, sd, r2 };
             }
 
+            function _mmmBayesFitColumns(names, cols, channelMeta, y, options = {}) {
+              if (!cols.length || !cols[0]?.length) return null;
+              const Xraw = y.map((_, i) => cols.map((column) => column[i]));
+              const colMean = names.map((_, j) => _mean(Xraw.map((row) => row[j])));
+              const colScale = names.map((_, j) =>
+                Math.sqrt(_mean(Xraw.map((row) => (row[j] - colMean[j]) ** 2))) || 1,
+              );
+              const X = Xraw.map((row) => [1, ...row.map((v, j) => (v - colMean[j]) / colScale[j])]);
+              const mediaIndices = new Set(
+                channelMeta
+                  .map((ch) => names.indexOf("media_" + ch.key))
+                  .filter((j) => j >= 0)
+                  .map((j) => j + 1),
+              );
+              const mediaPriors = {};
+              for (const ch of channelMeta) {
+                const j = names.indexOf("media_" + ch.key);
+                const prior = options.mediaPriors?.[ch.key];
+                if (j < 0 || !prior) continue;
+                mediaPriors[j + 1] = {
+                  mean: isFinite(prior.mean) ? prior.mean * colScale[j] : 0,
+                  precision: prior.precision,
+                };
+              }
+              const posterior = _mmmBayesianLinear(X, y, mediaIndices, mediaPriors);
+              if (!posterior) return null;
+              const absoluteBeta = names.map((_, j) => posterior.beta[j + 1] / colScale[j]);
+              const absoluteIntercept = posterior.beta[0] - absoluteBeta.reduce(
+                (sum, beta, j) => sum + beta * colMean[j],
+                0,
+              );
+              return { Xraw, colMean, colScale, X, posterior, absoluteBeta, absoluteIntercept };
+            }
+
+            // 한 번 고른 변환만 믿으면 adstock·포화 가정이 효과 구간에서 사라진다.
+            // 각 채널을 제외한 변환은 그대로 둔 profile 모델들을 다시 적합하고,
+            // BIC 근사 가중치로 계수 posterior를 섞어 그 불확실성을 효과 신뢰도에 넣는다.
+            function _mmmBayesTransformUncertainty(panel, cfg, names, cols, channelMeta, options = {}) {
+              const y = panel.targets[options.targetName];
+              const result = {};
+              for (const ch of channelMeta) {
+                const colIndex = names.indexOf("media_" + ch.key);
+                if (colIndex < 0 || !panel.ch[ch.key]) continue;
+                const profile = [];
+                for (const candidate of _mmmBayesTransformCandidates(panel.ch[ch.key], cfg)) {
+                  const candidateCols = cols.slice();
+                  candidateCols[colIndex] = candidate.values;
+                  const fit = _mmmBayesFitColumns(names, candidateCols, channelMeta, y, options);
+                  if (!fit) continue;
+                  const beta = fit.absoluteBeta[colIndex];
+                  const sd = fit.posterior.sd[colIndex + 1] / fit.colScale[colIndex];
+                  const sse = fit.posterior.resid.reduce((sum, value) => sum + value * value, 0);
+                  const bic = y.length * Math.log(Math.max(sse / Math.max(1, y.length), 1e-12)) + names.length * Math.log(Math.max(2, y.length));
+                  if (!isFinite(beta) || !isFinite(sd) || !isFinite(bic)) continue;
+                  profile.push({ alpha: candidate.alpha, ec: candidate.ec, slope: candidate.slope, beta, sd, bic });
+                }
+                if (!profile.length) continue;
+                const minBic = Math.min(...profile.map((item) => item.bic));
+                const rawWeights = profile.map((item) => Math.exp(-0.5 * Math.min(700, item.bic - minBic)));
+                const weightSum = rawWeights.reduce((sum, weight) => sum + weight, 0) || 1;
+                profile.forEach((item, index) => { item.weight = rawWeights[index] / weightSum; });
+                const beta = profile.reduce((sum, item) => sum + item.weight * item.beta, 0);
+                const variance = Math.max(0, profile.reduce((sum, item) => sum + item.weight * (item.sd ** 2 + item.beta ** 2), 0) - beta ** 2);
+                const sd = Math.sqrt(variance);
+                const posteriorPositive = profile.reduce(
+                  (sum, item) => sum + item.weight * (item.sd > 0 ? mmmNormCdf(item.beta / item.sd) : item.beta > 0 ? 1 : 0),
+                  0,
+                );
+                const top = profile.reduce((best, item) => item.weight > best.weight ? item : best, profile[0]);
+                result[ch.key] = {
+                  beta,
+                  sd,
+                  ci: [beta - 1.645 * sd, beta + 1.645 * sd],
+                  posteriorPositive,
+                  candidateCount: profile.length,
+                  effectiveCandidateCount: 1 / profile.reduce((sum, item) => sum + item.weight ** 2, 0),
+                  topWeight: top.weight,
+                  models: profile.map(({ alpha, ec, slope, beta: effect, sd: effectSd, weight }) => ({ alpha, ec, slope, beta: effect, sd: effectSd, weight })),
+                };
+              }
+              return result;
+            }
+
             export function mmmBayesianRun(panel, cfg, targetName, withBacktest = true, options = {}) {
               const controls = _mmmBayesControlFeatures(panel, cfg);
               const params = _mmmBayesChannelParams(panel, cfg, targetName, controls);
@@ -2749,34 +2858,13 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 names.push("media_" + ch.key);
                 cols.push(mmmAdstock(panel.ch[ch.key], p.alpha).map((v) => mmmHill(v, p.ec, p.slope)));
               }
-              const Xraw = panel.week.map((_, i) => cols.map((c) => c[i]));
-              const colMean = names.map((_, j) => _mean(Xraw.map((r) => r[j])));
-              const colScale = names.map((_, j) =>
-                Math.sqrt(_mean(Xraw.map((r) => (r[j] - colMean[j]) ** 2))) || 1,
-              );
-              const X = Xraw.map((r) => [1, ...r.map((v, j) => (v - colMean[j]) / colScale[j])]);
-              const mediaIndices = new Set(channelMeta.map((_, i) => 1 + controls.names.length + i));
-              const mediaPriors = {};
-              for (const ch of channelMeta) {
-                const j = names.indexOf("media_" + ch.key);
-                const prior = options.mediaPriors?.[ch.key];
-                if (!prior) continue;
-                // 외부 모델의 원단위 β를 현재 표준화 설계행렬의 β로 변환한다.
-                mediaPriors[j + 1] = {
-                  mean: isFinite(prior.mean) ? prior.mean * colScale[j] : 0,
-                  precision: prior.precision,
-                };
-              }
-              const posterior = _mmmBayesianLinear(X, panel.targets[targetName], mediaIndices, mediaPriors);
-              if (!posterior) return null;
+              const fitted = _mmmBayesFitColumns(names, cols, channelMeta, panel.targets[targetName], options);
+              if (!fitted) return null;
+              const { Xraw, colMean, colScale, X, posterior, absoluteBeta, absoluteIntercept } = fitted;
               // 추정은 표준화 공간에서 안정적으로 하되, 화면 기여는 원 단위 절대기여로
               // 되돌린다. 평균 중심화 X를 그대로 쓰면 양수 매체 효과도 저지출 주에
               // 음수처럼 보여 "광고가 성과를 깎았다"는 잘못된 해석을 만든다.
-              const absoluteBeta = names.map((_, j) => posterior.beta[j + 1] / colScale[j]);
-              const absoluteIntercept = posterior.beta[0] - absoluteBeta.reduce(
-                (sum, beta, j) => sum + beta * colMean[j],
-                0,
-              );
+              const transformUncertainty = _mmmBayesTransformUncertainty(panel, cfg, names, cols, channelMeta, { ...options, targetName });
               // 회사 MMM 대시보드처럼 채널별이 아니라 의사결정 단위로 묶는다.
               // MmmColumnMapper의 kind=brand는 Brand, 나머지 매체는 Performance.
               const mediaGroups = [];
@@ -2822,9 +2910,16 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 const raw = panel.ch[ch.key];
                 const recentMean = _mean(raw.filter((v) => v > 0).slice(-12)) || 0;
                 const p = params[ch.key];
-                const beta = absoluteBeta[j];
-                const sd = posterior.sd[j + 1] / colScale[j];
-                const responseAt = (spend) => beta * mmmHill(mmmAdstock([spend], p.alpha)[0], p.ec, p.slope);
+                const conditionalBeta = absoluteBeta[j];
+                const conditionalSd = posterior.sd[j + 1] / colScale[j];
+                const uncertainty = transformUncertainty[ch.key];
+                const models = uncertainty?.models || [{ alpha: p.alpha, ec: p.ec, slope: p.slope, beta: conditionalBeta, sd: conditionalSd, weight: 1 }];
+                const beta = uncertainty?.beta ?? conditionalBeta;
+                const sd = uncertainty?.sd ?? conditionalSd;
+                const responseAt = (spend) => models.reduce(
+                  (sum, model) => sum + model.weight * model.beta * mmmHill(mmmAdstock([spend], model.alpha)[0], model.ec, model.slope),
+                  0,
+                );
                 const marginalAt = (spend) => {
                   const h = Math.max(1, spend * 0.001);
                   return (responseAt(spend + h) - responseAt(Math.max(0, spend - h))) / (2 * h);
@@ -2833,10 +2928,15 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   key: ch.key,
                   label: ch.label,
                   ln_coef: beta,
-                  ci: [beta - 1.645 * sd, beta + 1.645 * sd],
-                  posteriorPositive: sd > 0 ? 0.5 * (1 + (beta / sd) / Math.sqrt(1 + (beta / sd) ** 2)) : beta > 0 ? 1 : 0,
+                  ci: uncertainty?.ci || [beta - 1.645 * sd, beta + 1.645 * sd],
+                  posteriorPositive: uncertainty?.posteriorPositive ?? (sd > 0 ? mmmNormCdf(beta / sd) : beta > 0 ? 1 : 0),
                   recentMean,
                   params: p,
+                  transformUncertainty: uncertainty ? {
+                    candidateCount: uncertainty.candidateCount,
+                    effectiveCandidateCount: uncertainty.effectiveCandidateCount,
+                    topWeight: uncertainty.topWeight,
+                  } : null,
                   responseAt,
                   marginalAt,
                   currentMarginal: marginalAt(recentMean) * 1000,
