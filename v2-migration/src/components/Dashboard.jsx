@@ -317,7 +317,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             <MonEventMarkerUI locale={locale} />
             <DashboardTabs domain={domain} locale={locale} />
 
-            <div id="dashboard-tabpanel" className="tab-content" role="tabpanel" aria-labelledby={`dashboard-tab-${activeTab}`} tabIndex={0} style={{ marginTop: "1rem" }}>
+            <div id="dashboard-tabpanel" className="tab-content" role="tabpanel" aria-labelledby="dashboard-view-select" tabIndex={0} style={{ marginTop: "1rem" }}>
               {activeTab === "viz" && <VizTab domain={domain} locale={locale} />}
               {activeTab === "scorecard" && <ScorecardTab domain={domain} locale={locale} />}
               {activeTab === "anomaly" && <AnomalyTab domain={domain} locale={locale} />}
