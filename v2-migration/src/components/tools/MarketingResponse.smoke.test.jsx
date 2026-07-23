@@ -35,6 +35,7 @@ import MarketingResponse, {
   mmmNormalizeExperimentLongMedia,
   mmmNormalizeGeoWideEvidence,
   mmmResolveExperimentType,
+  mmmSumOsForecasts,
   mmmTargetHeader,
   trimToActive,
 } from "@/components/tools/MarketingResponse";
@@ -140,6 +141,27 @@ describe("MarketingResponse render smoke", () => {
   it("mounts without throwing in the no-data state", () => {
     expect(() => render(<MarketingResponse />)).not.toThrow();
     expect(document.body.querySelector("*")).toBeTruthy();
+  });
+
+  it("defines Total forecast as the exact weekly sum of Android and iOS forecasts", () => {
+    const android = {
+      actual: [100, 120, 140], fittedHist: [98, 121, 139], predFut: [150, 160], baselineFut: [110, 115], lo: [130, 140], hi: [170, 180],
+      histLabels: ["W1", "W2", "W3"], futLabels: ["W4", "W5"], chans: [{ key: "android_cost" }], recentMean: { android_cost: 10 }, futSpendByKey: { android_cost: [10, 10] },
+    };
+    const ios = {
+      actual: [40, 50, 60], fittedHist: [42, 48, 61], predFut: [70, 80], baselineFut: [55, 60], lo: [60, 70], hi: [80, 90],
+      histLabels: ["W1", "W2", "W3"], futLabels: ["W4", "W5"], chans: [{ key: "ios_cost" }], recentMean: { ios_cost: 20 }, futSpendByKey: { ios_cost: [20, 20] },
+    };
+    expect(mmmSumOsForecasts([android, ios])).toMatchObject({
+      isAdditiveTotal: true,
+      actual: [140, 170, 200],
+      fittedHist: [140, 169, 200],
+      predFut: [220, 240],
+      baselineFut: [165, 175],
+      lo: [190, 210],
+      hi: [250, 270],
+      futLabels: ["W4", "W5"],
+    });
   });
 
   it("parses formatted experiment values before deriving traffic", () => {
