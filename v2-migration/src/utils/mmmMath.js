@@ -2841,10 +2841,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 let best = null;
                 for (const candidate of _mmmBayesTransformCandidates(raw, cfg)) {
                   const score = CANNIBAL_STATS.pearson(candidate.values, residual);
-                  const selectionScore = Math.abs(score);
-                  // 변환의 설명력은 부호가 아니라 |상관|/SSE로 고른다. signed r의
-                  // 최댓값을 쓰면 실제 음의 관계에서 가장 약한 후보를 대표값으로
-                  // 택해 효과를 0 쪽으로 편향시킨다. 부호 판단은 이후 계수 posterior가 한다.
+                  // 매체 효과는 0 이상으로 제약한다. 음의 관계를 가장 잘 설명하는
+                  // 변환을 택하면 이후 비음수 적합에서 계수가 0으로 막히므로, 양의
+                  // 매체 반응을 가장 잘 설명하는 후보만 고른다.
+                  const selectionScore = Math.max(0, score);
                   if (!best || selectionScore > best.selectionScore) best = { alpha: candidate.alpha, ec: candidate.ec, slope: candidate.slope, score, selectionScore };
                 }
                 params[ch.key] = best || { alpha: 0, ec: 1, slope: 0.8, score: 0, selectionScore: 0 };
@@ -2856,6 +2856,33 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             // 실험 prior의 precision은 실제 계수 단위(1 / variance)다. Gaussian
             // likelihood의 SSE 목적함수에서는 sigma² / priorVariance로 변환해야 하므로
             // residual scale을 먼저 추정한 뒤 한 번 갱신한다.
+            // 매체는 실제 집행 수준의 기여(0-spend 대비 level)로 해석하므로, 매체
+            // 계수만 0 이상으로 제한한다. 이벤트·계절성·추세는 실제로 성과를 낮출 수
+            // 있어 이 제약을 적용하지 않는다.
+            function _mmmNonNegativeMediaFit(X, y, mediaIndices, initialBeta) {
+              const beta = initialBeta.map((value, index) => mediaIndices.has(index) ? Math.max(0, value) : value);
+              const residual = y.map((value, rowIndex) => value - X[rowIndex].reduce((sum, feature, index) => sum + feature * beta[index], 0));
+              for (let iteration = 0; iteration < 600; iteration++) {
+                let maxChange = 0;
+                for (let column = 0; column < beta.length; column++) {
+                  let numerator = 0, denominator = 0;
+                  for (let row = 0; row < X.length; row++) {
+                    const value = X[row][column];
+                    residual[row] += value * beta[column];
+                    numerator += value * residual[row];
+                    denominator += value * value;
+                  }
+                  const unconstrained = denominator > 1e-12 ? numerator / denominator : beta[column];
+                  const next = mediaIndices.has(column) ? Math.max(0, unconstrained) : unconstrained;
+                  maxChange = Math.max(maxChange, Math.abs(next - beta[column]));
+                  beta[column] = next;
+                  for (let row = 0; row < X.length; row++) residual[row] -= X[row][column] * next;
+                }
+                if (maxChange < 1e-8) break;
+              }
+              return beta;
+            }
+
             function _mmmBayesianLinear(X, y, mediaIndices, mediaPriors = {}) {
               const n = X.length;
               if (!n || !X[0]?.length) return null;
@@ -2884,15 +2911,16 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   augX.push(row);
                   augY.push(Math.sqrt(penalty[j]) * priorMean[j]);
                 }
-                const fit = mmmOls(augX, augY);
-                if (!fit) return null;
-                const fitted = X.map((row) => row.reduce((sum, value, j) => sum + value * fit.beta[j], 0));
+                const unconstrainedFit = mmmOls(augX, augY);
+                if (!unconstrainedFit) return null;
+                const beta = _mmmNonNegativeMediaFit(augX, augY, mediaIndices, unconstrainedFit.beta);
+                const fitted = X.map((row) => row.reduce((sum, value, j) => sum + value * beta[j], 0));
                 const resid = y.map((value, i) => value - fitted[i]);
                 const sigma2 = Math.max(
                   yScale ** 2 * 1e-8,
                   resid.reduce((sum, value) => sum + value * value, 0) / Math.max(1, n - p),
                 );
-                return { fit, fitted, resid, sigma2 };
+                return { fit: { ...unconstrainedFit, beta }, fitted, resid, sigma2 };
               };
               const provisional = fitWithPenalty(defaultPenalty);
               if (!provisional) return null;
