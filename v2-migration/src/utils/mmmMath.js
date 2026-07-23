@@ -2793,7 +2793,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             }
 
             function _mmmBayesControlFeatures(panel, cfg) {
-              const built = mmmBuildFeatures(panel, cfg, 0, true);
+              const built = mmmBuildFeatures(panel, cfg, 0, cfg.includeTrend !== false);
               const keep = built.names
                 .map((name, i) => (!name.startsWith("ln_") ? i : -1))
                 .filter((i) => i >= 0);
@@ -3448,6 +3448,207 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 effectiveCfg,
                 jointTransform,
                 appliedMediaPriors: options.mediaPriors || {},
+              };
+            }
+
+            function _mmmSliceWindowPanel(panel, start, end) {
+              const sliceSeries = (series = {}) => Object.fromEntries(
+                Object.entries(series).map(([key, values]) => [key, values.slice(start, end)]),
+              );
+              return {
+                ...panel,
+                week: panel.week.slice(start, end),
+                weekLabel: panel.weekLabel?.slice(start, end),
+                dateLabel: panel.dateLabel?.slice(start, end),
+                dates: panel.dates?.slice(start, end),
+                ch: sliceSeries(panel.ch),
+                dummy: sliceSeries(panel.dummy),
+                steps: sliceSeries(panel.steps),
+                targets: sliceSeries(panel.targets),
+              };
+            }
+
+            // Cost 회귀의 학습 창과 계절성 정보 창을 분리한다. 계절성은 당시까지
+            // 누적된 전체 이력에서만 추출하고, 최근 Cost 회귀는 이 seasonal offset을
+            // 뺀 목표를 적합한다. 이 방식은 holdout의 실제값을 계절성에 쓰지 않는다.
+            export function mmmForecastGlobalBaseline(panel, targetName, periods = []) {
+              const y = panel?.targets?.[targetName];
+              const t = panel?.week;
+              if (!y?.length || !t?.length || y.length !== t.length || y.some((value) => !Number.isFinite(value))) return null;
+              const meanT = _mean(t), sdT = _pstd(t) || 1;
+              const X = t.map((week) => [
+                1,
+                (week - meanT) / sdT,
+                ...periods.flatMap((period) => [Math.sin(2 * Math.PI * week / period), Math.cos(2 * Math.PI * week / period)]),
+              ]);
+              const fit = mmmOls(X, y);
+              if (!fit?.beta?.every(Number.isFinite)) return null;
+              const offsetAt = (week) => periods.reduce((sum, period, index) => {
+                const betaIndex = 2 + index * 2;
+                return sum + fit.beta[betaIndex] * Math.sin(2 * Math.PI * week / period) + fit.beta[betaIndex + 1] * Math.cos(2 * Math.PI * week / period);
+              }, 0);
+              const trendOffsetAt = (week) => fit.beta[1] * ((week - meanT) / sdT);
+              return { periods: periods.slice(), beta: fit.beta.slice(), offsetAt, trendOffsetAt };
+            }
+
+            export function mmmForecastGlobalSeasonality(panel, targetName, periods = []) {
+              if (!periods.length) return null;
+              return mmmForecastGlobalBaseline(panel, targetName, periods);
+            }
+
+            export function mmmForecastSeasonalAdjustedPanel(panel, targetName, seasonalModel) {
+              if (!seasonalModel?.offsetAt) return panel;
+              const target = panel?.targets?.[targetName];
+              if (!target?.length) return panel;
+              return {
+                ...panel,
+                targets: {
+                  ...panel.targets,
+                  [targetName]: target.map((value, index) => value - seasonalModel.offsetAt(panel.week[index])),
+                },
+              };
+            }
+
+            export function mmmForecastRestoreSeasonality(forecast, panel, seasonalModel) {
+              if (!forecast || !seasonalModel?.offsetAt) return forecast;
+              const histOffset = (panel?.week || []).map((week) => seasonalModel.offsetAt(week));
+              const futureOffset = (forecast.futWeek || []).map((week) => seasonalModel.offsetAt(week));
+              const plus = (values, offsets) => values?.map((value, index) => value + (offsets[index] || 0));
+              return {
+                ...forecast,
+                actual: plus(forecast.actual, histOffset),
+                fittedHist: plus(forecast.fittedHist, histOffset),
+                predFut: plus(forecast.predFut, futureOffset),
+                lo: plus(forecast.lo, futureOffset),
+                hi: plus(forecast.hi, futureOffset),
+                baselineFut: plus(forecast.baselineFut, futureOffset),
+              };
+            }
+
+            // 최근 운영 체계가 과거와 다를 때 전체 기간을 모두 쓰면 Cost 반응이
+            // 희석된다. 후보 window와 계절성 복잡도를 시간순 12주 holdout으로
+            // 비교해, 가장 낮은 pooled wMAPE 조합만 최종 적합에 넘긴다.
+            // 이 선택용 적합은 브라우저 응답성을 위해 작은 변환 grid를 쓴다.
+            // 최종 선택 조합은 원래의 전체 transform grid로 다시 적합한다.
+            export function mmmForecastRollingSelection(panel, cfg, targetName, options = {}) {
+              const n = panel?.week?.length || 0;
+              const horizon = Math.max(4, Math.min(26, options.horizon || 12));
+              const minFolds = Math.max(2, options.minFolds || 2);
+              const maxFolds = Math.max(minFolds, options.maxFolds || 3);
+              const maxWindow = n - horizon * minFolds;
+              const defaultWindows = [...new Set([24, 30, 36, 42, 48, 54, 60, 72, 84, 104, 130, 156, maxWindow])];
+              const candidateWindows = (options.candidateWindows || defaultWindows)
+                .filter((window) => Number.isInteger(window) && window >= 16 && window + horizon * minFolds <= n);
+              if (!panel?.targets?.[targetName]?.length || !_mmmChans(panel).length || !candidateWindows.length) {
+                return { enabled: false, reason: "insufficient-history", horizon, candidates: [] };
+              }
+              const specs = [{ id: "cost-trend", seasonalityPeriods: [], seasonalityScope: "none", minWindow: 16, minHistory: 0 }];
+              if (n >= 52) {
+                specs.push({ id: "cost-trend-quarter", seasonalityPeriods: [13.04], seasonalityScope: "recent", minWindow: 52, minHistory: 0 });
+                specs.push({ id: "cost-trend-global-quarter", seasonalityPeriods: [13.04], seasonalityScope: "global", minWindow: 16, minHistory: 39 });
+              }
+              // 연간 Fourier는 최소 2회 반복된 주기가 있어야 holdout으로 검증할
+              // 여지가 있다. 75주처럼 1회 남짓인 입력에는 후보로도 넣지 않는다.
+              if (n >= (options.annualMinWeeks || 104)) {
+                specs.push({ id: "cost-trend-year-quarter", seasonalityPeriods: [52.18, 13.04], seasonalityScope: "recent", minWindow: options.annualMinWeeks || 104, minHistory: 0 });
+                specs.push({ id: "cost-trend-global-year-quarter", seasonalityPeriods: [52.18, 13.04], seasonalityScope: "global", minWindow: 16, minHistory: options.annualMinWeeks || 104 });
+              }
+              const selectionCfg = {
+                ...cfg,
+                adstockGrid: options.adstockGrid || [0, 0.4, 0.7],
+                bayesHalfSaturationQuantiles: options.bayesHalfSaturationQuantiles || [0.6],
+                bayesHillSlopeGrid: options.bayesHillSlopeGrid || [1],
+                baselineKnots: [],
+              };
+              const candidates = [];
+              for (const spec of specs) {
+                const trendOptions = [{ trendScope: "recent", trendWindow: null }, ...[24, 36, "all"].map((trendWindow) => ({ trendScope: "global", trendWindow }))];
+                for (const trendOption of trendOptions) for (const window of candidateWindows) {
+                  if (window < spec.minWindow) continue;
+                  const outcomes = [];
+                  for (let fold = maxFolds; fold >= 1; fold--) {
+                    const holdoutEnd = n - (fold - 1) * horizon;
+                    const holdoutStart = holdoutEnd - horizon;
+                    const trainStart = holdoutStart - window;
+                    if (trainStart < 0 || holdoutStart < spec.minHistory) continue;
+                    const rawTrain = _mmmSliceWindowPanel(panel, trainStart, holdoutStart);
+                    const held = _mmmSliceWindowPanel(panel, holdoutStart, holdoutEnd);
+                    const seasonalModel = spec.seasonalityScope === "global"
+                      ? mmmForecastGlobalSeasonality(_mmmSliceWindowPanel(panel, 0, holdoutStart), targetName, spec.seasonalityPeriods)
+                      : null;
+                    if (spec.seasonalityScope === "global" && !seasonalModel) continue;
+                    const trendStart = trendOption.trendWindow === "all" ? 0 : Math.max(0, holdoutStart - (trendOption.trendWindow || 0));
+                    const trendModel = trendOption.trendScope === "global"
+                      ? mmmForecastGlobalBaseline(_mmmSliceWindowPanel(panel, trendStart, holdoutStart), targetName, [])
+                      : null;
+                    if (trendOption.trendScope === "global" && !trendModel) continue;
+                    const offsetAt = (week) => (seasonalModel?.offsetAt(week) || 0) + (trendModel?.trendOffsetAt(week) || 0);
+                    const train = (seasonalModel || trendModel)
+                      ? { ...rawTrain, targets: { ...rawTrain.targets, [targetName]: rawTrain.targets[targetName].map((value, index) => value - offsetAt(rawTrain.week[index])) } }
+                      : rawTrain;
+                    const fitCfg = {
+                      ...selectionCfg,
+                      seasonalityPeriods: spec.seasonalityScope === "recent" ? spec.seasonalityPeriods : [],
+                      includeTrend: trendOption.trendScope !== "global",
+                    };
+                    const fit = mmmBayesianRun(train, fitCfg, targetName, false, {
+                      skipTransformUncertainty: true,
+                      enableBaselineSelection: false,
+                    });
+                    const forecast = fit && mmmBayesianForecast(fit, train, held.ch, horizon, {
+                      futureDummy: held.dummy,
+                      futureSteps: held.steps,
+                      clampScenario: false,
+                      trendDamping: 0,
+                    });
+                    const actual = held.targets[targetName];
+                    const predicted = (seasonalModel || trendModel)
+                      ? forecast?.predFut?.map((value, index) => value + offsetAt(held.week[index]))
+                      : forecast?.predFut;
+                    if (!predicted?.length || predicted.length !== actual?.length || !predicted.every(Number.isFinite)) continue;
+                    const recent = train.targets[targetName].slice(-Math.min(8, train.targets[targetName].length));
+                    const persistence = recent.reduce((sum, value) => sum + value, 0) / Math.max(1, recent.length);
+                    outcomes.push({ actual, predicted, persistence: Array(horizon).fill(persistence) });
+                  }
+                  if (outcomes.length < minFolds) continue;
+                  const actualAbs = outcomes.flatMap((item) => item.actual.map((value) => Math.abs(value)));
+                  const modelAbsError = outcomes.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.predicted[index])));
+                  const persistenceAbsError = outcomes.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.persistence[index])));
+                  const denominator = actualAbs.reduce((sum, value) => sum + value, 0);
+                  if (!(denominator > 0)) continue;
+                  const foldWmape = (item) => item.actual.reduce((sum, value, index) => sum + Math.abs(value - item.predicted[index]), 0)
+                    / Math.max(1e-9, item.actual.reduce((sum, value) => sum + Math.abs(value), 0)) * 100;
+                  const persistenceFoldWmape = (item) => item.actual.reduce((sum, value, index) => sum + Math.abs(value - item.persistence[index]), 0)
+                    / Math.max(1e-9, item.actual.reduce((sum, value) => sum + Math.abs(value), 0)) * 100;
+                  const modelFold = outcomes.map(foldWmape);
+                  const baselineFold = outcomes.map(persistenceFoldWmape);
+                  candidates.push({
+                    window,
+                    spec: spec.id,
+                    seasonalityPeriods: spec.seasonalityPeriods,
+                    seasonalityScope: spec.seasonalityScope,
+                    trendScope: trendOption.trendScope,
+                    trendWindow: trendOption.trendWindow,
+                    folds: outcomes.length,
+                    wmape: modelAbsError.reduce((sum, value) => sum + value, 0) / denominator * 100,
+                    persistenceWmape: persistenceAbsError.reduce((sum, value) => sum + value, 0) / denominator * 100,
+                    foldWins: modelFold.filter((value, index) => value < baselineFold[index]).length,
+                    latestWmape: modelFold.at(-1),
+                    latestPersistenceWmape: baselineFold.at(-1),
+                  });
+                }
+              }
+              candidates.sort((a, b) => a.wmape - b.wmape || b.foldWins - a.foldWins || a.window - b.window);
+              const selected = candidates[0] || null;
+              return {
+                enabled: !!selected,
+                reason: selected ? null : "no-valid-time-ordered-fit",
+                horizon,
+                candidates,
+                selected,
+                decisionEligible: !!selected
+                  && selected.wmape <= selected.persistenceWmape
+                  && selected.foldWins >= Math.ceil(selected.folds / 2),
               };
             }
 
