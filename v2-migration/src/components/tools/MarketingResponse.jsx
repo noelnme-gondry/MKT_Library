@@ -16,6 +16,7 @@ import {
   mmmForecastRollingSelection,
   mmmForecastGlobalBaseline,
   mmmForecastGlobalSeasonality,
+  mmmForecastDampedTrendOffset,
   mmmForecastRestoreSeasonality,
   mmmTrendExistence,
   mmmElasticities,
@@ -2237,8 +2238,10 @@ function buildForecastModelForSelection(sourcePanel, sourceCfg, target, selected
     ? mmmForecastGlobalBaseline(sliceMmmPanel(sourcePanel, sourcePanel.week.length, trendStart), target, [])
     : null;
   if ((selected.seasonalityScope === "global" && !seasonalModel) || (selected.trendScope === "global" && !trendModel)) return { rawPanel, panel: null, cfg: null, run: null };
+  const lastWeek = rawPanel.week.at(-1);
   const offsetModel = seasonalModel || trendModel ? {
     offsetAt: (week) => (seasonalModel?.offsetAt(week) || 0) + (trendModel?.trendOffsetAt(week) || 0),
+    futureOffsetAt: (week) => (seasonalModel?.offsetAt(week) || 0) + mmmForecastDampedTrendOffset(trendModel, lastWeek, week),
   } : null;
   const panel = offsetModel
     ? { ...rawPanel, targets: { ...rawPanel.targets, [target]: rawPanel.targets[target].map((value, index) => value - offsetModel.offsetAt(rawPanel.week[index])) } }

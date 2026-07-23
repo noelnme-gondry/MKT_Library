@@ -15,6 +15,7 @@ import {
   mmmBayesianForecast,
   mmmForecastRollingSelection,
   mmmForecastGlobalSeasonality,
+  mmmForecastDampedTrendOffset,
   mmmForecastSeasonalAdjustedPanel,
   mmmForecastRestoreSeasonality,
   mmmBayesianHealth,
@@ -76,6 +77,20 @@ describe("runMmmMethTests (golden port)", () => {
     }, panel, seasonal);
     expect(restored.actual[12]).toBeCloseTo(target[12], 6);
     expect(restored.predFut.every(Number.isFinite)).toBe(true);
+  });
+
+  it("damps a global trend after the final observed week instead of extending a shock linearly", () => {
+    const trend = { trendOffsetAt: (week) => -568 * week };
+    const linearChange = trend.trendOffsetAt(87) - trend.trendOffsetAt(75);
+    const dampedChange = mmmForecastDampedTrendOffset(trend, 75, 87) - trend.trendOffsetAt(75);
+    expect(dampedChange).toBeCloseTo(linearChange * 0.25, 8);
+    const restored = mmmForecastRestoreSeasonality({
+      actual: [100], fittedHist: [100], predFut: [100], lo: [90], hi: [110], baselineFut: [100], futWeek: [87],
+    }, { week: [75] }, {
+      offsetAt: trend.trendOffsetAt,
+      futureOffsetAt: (week) => mmmForecastDampedTrendOffset(trend, 75, week),
+    });
+    expect(restored.predFut[0]).toBeCloseTo(100 + mmmForecastDampedTrendOffset(trend, 75, 87), 8);
   });
 
   it("calibrates only from a sufficiently long chronological holdout and preserves asymmetric tails", () => {
