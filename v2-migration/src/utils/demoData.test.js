@@ -5,6 +5,7 @@ import { satBuildPoints, SAT_MATH } from "./satMath";
 import { AHA_STATS } from "./ahaMath";
 import { CREATIVE_STATS } from "./creativeMath";
 import { INCR_MATH } from "./incrMath";
+import { MMM_METH_CONFIG, mmmBayesianHealth, mmmBayesianRun, mmmResolveAbsorb } from "./mmmMath";
 
 describe("demo sanity", () => {
   it("efficiency: retention < 설치·가입 both (리텐션 ≤ 100% 어느 분모든)", () => {
@@ -103,6 +104,31 @@ describe("demo sanity", () => {
     const sign = d.raw.map((r) => r.signups);
     expect(Math.max(...sign)).toBeGreaterThan(Math.min(...sign) * 1.2);
     expect(d.headers).toContain("google_spend");
+  });
+
+  it("response: MMM demo has identifiable spend variation and non-negative absolute media contribution", () => {
+    const d = buildDemoCsv("response");
+    const channelKeys = d.headers.filter((header) => header.endsWith("_spend"));
+    const panel = {
+      week: d.raw.map((_, index) => index + 1),
+      ch: Object.fromEntries(channelKeys.map((key) => [key, d.raw.map((row) => Number(row[key]) || 0)])),
+      channels: channelKeys.map((key) => ({ key, label: key, kind: "perf" })),
+      targets: { Regs: d.raw.map((row) => Number(row.signups) || 0) },
+      dummy: {}, steps: {},
+    };
+    const cfg = { ...MMM_METH_CONFIG, absorbed: new Set() };
+    cfg.absorbed = mmmResolveAbsorb(panel, cfg).absorbed;
+    const run = mmmBayesianRun(panel, cfg, "Regs", true, { enableBaselineSelection: true });
+    const health = mmmBayesianHealth(run);
+    const mediaNames = new Set(run.channelMeta.map((channel) => channel.label));
+    const mediaContribution = run.weeks.map((week) => Object.entries(week.contrib)
+      .filter(([name]) => mediaNames.has(name))
+      .reduce((sum, [, value]) => sum + value, 0));
+    expect(run.identification.highCollinearity).toBe(false);
+    expect(run.identification.budgetEligible).toBe(true);
+    expect(run.identification.maxMediaVif).toBeLessThan(10);
+    expect(mediaContribution.every((value) => value >= -1e-8)).toBe(true);
+    expect(health.negativeBaselineShare).toBe(0);
   });
 
   it("MMM prior evidence: exposes repeated on/off periods and named markets", () => {
