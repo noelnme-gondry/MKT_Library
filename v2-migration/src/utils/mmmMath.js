@@ -656,6 +656,13 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               seasonalityMinHistory: 96,
               seasonalityBicThreshold: 6,
               seasonalityComplexityTolerance: 2,
+              // 분해 후보가 full-history BIC만 낮추고 순방향에서 붕괴하는 것을
+              // 막기 위한 보조 게이트. 한 번의 holdout이 아니라 3개 rolling
+              // fold의 평균 WMAPE를 비교하며, 자료가 짧으면 자동 생략한다.
+              seasonalityRollingHorizon: 12,
+              seasonalityRollingMinTrain: 52,
+              seasonalityRollingMaxFolds: 3,
+              seasonalityRollingMaxDegradation: 2,
               seasonalityMinLagCorrelation: 0.15,
               adstockGrid: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
               // Empirical-Bayes 효과 신뢰도는 한 변환을 고정하지 않는다. 채널별 α × 반포화점 ×
@@ -3298,6 +3305,67 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               return { ...fit, names, sse, bic, seasonal };
             }
 
+            function _mmmBayesSeasonalityRollingEvidence(panel, cfg, targetName, specs, options = {}) {
+              const n = panel.week?.length || 0;
+              const horizon = Math.max(8, Math.min(cfg.seasonalityRollingHorizon || 12, Math.floor(n / 5)));
+              const minTrain = Math.max(52, cfg.seasonalityRollingMinTrain || 52);
+              const maxFolds = Math.max(2, cfg.seasonalityRollingMaxFolds || 3);
+              if (options.enableSeasonalityRollingStability === false || n < minTrain + horizon) return new Map();
+              const cuts = [];
+              for (let cut = n - horizon; cut >= minTrain && cuts.length < maxFolds; cut -= horizon) cuts.push(cut);
+              if (cuts.length < 2) return new Map();
+              const result = new Map();
+              specs.forEach((spec) => {
+                const foldWmapes = [];
+                cuts.forEach((cut) => {
+                  const train = _mmmBayesSlicePanel(panel, cut);
+                  const fit = mmmBayesianRun(train, {
+                    ...cfg,
+                    seasonalityPeriods: spec.periods,
+                  }, targetName, false, {
+                    ...options,
+                    enableSeasonalitySelection: false,
+                    enableBaselineSelection: false,
+                    enableMediaPenaltySelection: false,
+                    skipTransformUncertainty: true,
+                  });
+                  if (!fit) return;
+                  const horizonPanel = {
+                    ...panel,
+                    week: panel.week.slice(cut, cut + horizon),
+                    ch: Object.fromEntries(Object.entries(panel.ch || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)])),
+                    dummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)])),
+                    steps: Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)])),
+                    external: Object.fromEntries(Object.entries(panel.external || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)])),
+                  };
+                  const forecast = mmmBayesianForecast(fit, train, horizonPanel.ch, horizon, {
+                    futureDummy: horizonPanel.dummy,
+                    futureSteps: horizonPanel.steps,
+                    futureExternal: horizonPanel.external,
+                  });
+                  const actual = panel.targets?.[targetName]?.slice(cut, cut + horizon) || [];
+                  if (forecast?.predFut?.length !== actual.length || !actual.length) return;
+                  const denominator = actual.reduce((sum, value) => sum + Math.abs(value), 0);
+                  if (!(denominator > 1e-9)) return;
+                  const wmape = actual.reduce((sum, value, index) => sum + Math.abs(value - forecast.predFut[index]), 0) / denominator * 100;
+                  if (Number.isFinite(wmape)) foldWmapes.push(wmape);
+                });
+                if (foldWmapes.length >= 2) {
+                  const mean = _mean(foldWmapes);
+                  const variance = foldWmapes.length > 1
+                    ? _mean(foldWmapes.map((value) => (value - mean) ** 2))
+                    : 0;
+                  result.set(spec.id, {
+                    foldWmapes,
+                    meanWmape: mean,
+                    standardError: Math.sqrt(variance / foldWmapes.length),
+                    folds: foldWmapes.length,
+                  });
+                }
+              });
+              return result;
+            }
+
             // 계절성은 장기 구조이고 Cost 반응은 단기 예측 변수다. 따라서 최근
             // 12주 오차로 계절성 존폐를 고르지 않는다. Brand/Performance로 집계한
             // 매체·이벤트·추세를 통제한 전체 이력에서 연간 파형의 BIC 개선과
@@ -3329,11 +3397,16 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               // 채널 단위 설계행렬의 BIC로 다시 확인한다. 두 단계가 달라야
               // 특정 채널 flight가 계절성을 독점하지 않으면서도 최종 분해의
               // 채널 구조를 반영할 수 있다.
-              const shortlist = groupedAnnualCandidates.filter((item) => item.bic <= groupedBest.bic + (cfg.seasonalityComplexityTolerance ?? 2));
+              // 집계 패널은 검출용으로만 사용한다. 후보를 집계 BIC 차이로 먼저
+              // 잘라내면, 원래 채널을 복원했을 때 순위가 뒤집힌 후보가 final
+              // BIC를 받지 못하고 기본 후보로 선택될 수 있다. 주간 데이터 규모가
+              // 작고 후보 수가 4개뿐인 이 단계에서는 모든 후보를 동일한 최종
+              // 설계행렬로 재평가한다.
+              const finalCandidates = evaluated;
               const finalNeutralControls = _mmmBayesControlFeatures(panel, neutralCfg);
               const finalChannelParams = _mmmBayesChannelParams(panel, neutralCfg, targetName, finalNeutralControls);
               const finalBicById = new Map();
-              shortlist.forEach((item) => {
+              finalCandidates.forEach((item) => {
                 const fit = _mmmBayesSeasonalityCandidateFit(panel, cfg, targetName, item.periods, finalChannelParams, options);
                 if (fit) finalBicById.set(item.id, fit.bic);
               });
@@ -3351,8 +3424,25 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 : null;
               const seasonalRms = best.seasonal.length ? Math.sqrt(_mean(best.seasonal.map((value) => value ** 2))) : 0;
               const bicImprovement = none.bic - groupedBest.bic;
-              const finalBicImprovement = Number.isFinite(best.finalBic) ? none.bic - best.finalBic : null;
+              const finalNoneBic = finalBicById.get(none.id);
+              const finalBicImprovement = Number.isFinite(best.finalBic) && Number.isFinite(finalNoneBic)
+                ? finalNoneBic - best.finalBic
+                : null;
               const relativeSseImprovement = none.sse > 1e-12 ? (none.sse - groupedBest.sse) / none.sse : 0;
+              const rollingEvidence = _mmmBayesSeasonalityRollingEvidence(panel, cfg, targetName, evaluated, options);
+              const noneRolling = rollingEvidence.get(none.id);
+              const rollingMaxDegradation = Math.max(0, cfg.seasonalityRollingMaxDegradation ?? 2);
+              const hasExternalControls = Object.keys(panel.external || {}).length > 0;
+              const marketBlindSelection = hasExternalControls && options.enableSeasonalityControlStability !== false
+                ? mmmBayesianSeasonalitySelection({ ...panel, external: {}, externalDefs: [] }, cfg, targetName, {
+                  ...options,
+                  enableSeasonalityControlStability: false,
+                  enableSeasonalityRollingStability: false,
+                })
+                : null;
+              const controlConsensus = marketBlindSelection
+                ? marketBlindSelection.selected?.id === best.id
+                : true;
               const evidence = {
                 minHistory,
                 observedWeeks: n,
@@ -3363,6 +3453,14 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 bicImprovement,
                 finalBicImprovement,
                 relativeSseImprovement,
+                rollingMaxDegradation,
+                rolling: Object.fromEntries([...rollingEvidence.entries()].map(([id, item]) => [id, {
+                  meanWmape: item.meanWmape,
+                  standardError: item.standardError,
+                  folds: item.folds,
+                }])),
+                controlConsensus,
+                marketBlindSelected: marketBlindSelection?.selected?.id || null,
                 // 계절성 선택은 분해용이다. 최근 holdout을 통과시키는 대신,
                 // 집계 매체를 통제한 전체 이력에서 구조적 BIC 개선과 동일한
                 // 연간 파형의 재현성을 요구한다. 미래 예측은 별도 rolling
@@ -3373,10 +3471,15 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   && seasonalRms >= Math.max(1, _mean(selectionPanel.targets[targetName]) * 0.005),
               };
               const eligible = evidence.detected
-                ? annualCandidates
+                ? annualCandidates.filter((item) => {
+                  if (marketBlindSelection && item.id !== marketBlindSelection.selected?.id) return false;
+                  if (!noneRolling || !rollingEvidence.has(item.id)) return true;
+                  return rollingEvidence.get(item.id).meanWmape <= noneRolling.meanWmape + rollingMaxDegradation;
+                })
                 : [none];
-              const bestEligible = eligible.reduce((winner, item) => (Number.isFinite(item.finalBic) ? item.finalBic : item.bic) < (Number.isFinite(winner.finalBic) ? winner.finalBic : winner.bic) ? item : winner, eligible[0]);
-              const selected = eligible
+              const safeEligible = eligible.length ? eligible : [none];
+              const bestEligible = safeEligible.reduce((winner, item) => (Number.isFinite(item.finalBic) ? item.finalBic : item.bic) < (Number.isFinite(winner.finalBic) ? winner.finalBic : winner.bic) ? item : winner, safeEligible[0]);
+              const selected = safeEligible
                 .filter((item) => (Number.isFinite(item.finalBic) ? item.finalBic : item.bic) <= (Number.isFinite(bestEligible.finalBic) ? bestEligible.finalBic : bestEligible.bic) + (cfg.seasonalityComplexityTolerance ?? 2))
                 .sort((a, b) => a.periods.length - b.periods.length || String(a.id).localeCompare(String(b.id)))[0];
               const publicCandidates = evaluated.map(({ residuals, seasonal, ...item }) => ({
@@ -3384,6 +3487,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 deltaBicVsNone: none.bic - item.bic,
                 finalBic: finalBicById.get(item.id) ?? null,
                 finalDeltaBicVsNone: finalBicById.has(item.id) ? none.bic - finalBicById.get(item.id) : null,
+                rollingWmape: rollingEvidence.get(item.id)?.meanWmape ?? null,
+                rollingFolds: rollingEvidence.get(item.id)?.folds ?? 0,
               }));
               return {
                 enabled: true,

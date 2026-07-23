@@ -356,7 +356,9 @@ describe("runMmmMethTests (golden port)", () => {
       ch: { perf, brand },
       targets: { Regs: target },
       channels: [{ key: "perf", label: "Performance", kind: "perf" }, { key: "brand", label: "Brand", kind: "brand" }],
-      dummy: {}, steps: {}, external: {},
+      dummy: {}, steps: {},
+      external: { market: week.map((value) => 1000 + ((value * 23) % 17) * 21) },
+      externalDefs: [{ key: "market", label: "Market" }],
     };
     const selection = mmmBayesianSeasonalitySelection(panel, cfg, "Regs", { skipTransformUncertainty: true });
     expect(selection.enabled).toBe(true);
@@ -364,6 +366,9 @@ describe("runMmmMethTests (golden port)", () => {
     expect(selection.evidence.detected).toBe(true);
     expect(selection.evidence.seasonalLagCorrelation).toBeGreaterThan(0.75);
     expect(selection.selected.id).toBe("annual-3");
+    expect(selection.evidence.controlConsensus).toBe(true);
+    expect(selection.candidates.every((candidate) => Number.isFinite(candidate.finalBic))).toBe(true);
+    expect(selection.evidence.finalBicImprovement).toBeGreaterThan(0);
   });
 
   it("does not manufacture business seasonality from trend and irregular noise", () => {
