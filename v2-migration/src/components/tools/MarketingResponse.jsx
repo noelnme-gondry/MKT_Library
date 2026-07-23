@@ -4095,7 +4095,10 @@ export default function MarketingResponse({ locale = "ko" }) {
     // 매핑 중에는 헤더 역할만 확인한다. 전체 일→주 집계는 `분석하기` 뒤 mmm
     // useMemo에서 한 번만 수행해 대용량 CSV 드래그가 매 렌더마다 멈추지 않게 한다.
     const missing = mmmColMap ? colMapMissing(csvData.headers, mmmColMap, locale) : [tx("매핑", "mapping")];
-    const ready = mmmColMap && missing.length === 0;
+    // 지출 단위를 모르는데 분석을 허용하면 숫자가 다른 통화로 오해될 수 있다. 원본
+    // 통화는 매핑 단계에서 한 번만 선택하고, 선택 후 표시 통화 토글로 환산한다.
+    const currencyMissing = !isDemo && !selectedSourceCurrency;
+    const ready = mmmColMap && missing.length === 0 && !currencyMissing;
     return (
       <section className="block" id="s-prep">
         <div className="file-state">
@@ -4217,14 +4220,6 @@ export default function MarketingResponse({ locale = "ko" }) {
             {segmentSel.truncated && <span style={{ fontSize: "10.5px", color: "#f59e0b" }}>{tx("⚠ 상위 20개만", "⚠ Top 20 only")}</span>}
           </div>
         )}
-        {!isDemo && (
-          <div className="ab-pillgroup" style={{ margin: 0 }}>
-            <span className="ab-pillgroup-label" title={tx("원본 CSV에 적힌 금액의 통화입니다. 표시 통화 토글과 다릅니다.", "The currency of values in the original CSV. This differs from the display-currency toggle.")}>{tx("원본 통화", "Source currency")}</span>
-            <button className={`ab-pill ${selectedSourceCurrency === "KRW" ? "active" : ""}`} onClick={() => setMmmSourceCurrency("KRW")}>KRW ₩</button>
-            <button className={`ab-pill ${selectedSourceCurrency === "USD" ? "active" : ""}`} onClick={() => setMmmSourceCurrency("USD")}>USD $</button>
-            {!selectedSourceCurrency && <span style={{ color: "#b45309", fontSize: "10.5px" }}>{tx("선택 필요", "choose")}</span>}
-          </div>
-        )}
         {mmm && !mmm.empty && (
           <button className="ab-pill" onClick={() => {
             const packageDecomp = mmmBayesianWeeklyDecomp(mmm.run);
@@ -4278,7 +4273,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       {(!panelEmpty || availTargets.length > 0) && (
         <div className="page-sticky-bar">
           <div className="page-sticky-row1">{controlBar()}</div>
-          <AnalysisControlBar title={tx("표시 기준", "Display settings")} hint={tx("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} /></AnalysisControlBar>
+          {(isDemo || selectedSourceCurrency) && <AnalysisControlBar title={tx("표시 기준", "Display settings")} hint={tx("공유 CSV 도구에 적용", "Applies to shared CSV tools")}><BasisCurrencyToggleBar locale={locale} /></AnalysisControlBar>}
         </div>
       )}
       {renderTabs()}
