@@ -174,7 +174,9 @@ describe("runMmmMethTests (golden port)", () => {
       seasonalityPeriods: [],
       baselineKnots: [],
     }, "Regs");
-    expect(run.saturationByChannel.meta.responseAt(1000)).toBeGreaterThanOrEqual(0);
+    const effect = run.saturationByChannel.meta;
+    expect(effect.ln_coef).toBeGreaterThanOrEqual(0);
+    expect([0, 500, 1000, 5000, 20000].every((spend) => effect.responseAt(spend) >= -1e-8)).toBe(true);
     expect(run.weeks.every((item) => item.contrib.Performance >= -1e-8)).toBe(true);
   });
 
