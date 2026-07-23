@@ -564,6 +564,19 @@ describe("MarketingResponse render smoke", () => {
     expect(footerManual?.getAttribute("href")).toBe("/manuals/mmm-model-manual-ko.pdf");
   });
 
+  it("re-normalizes the RMS contribution share after excluding base demand and trend", async () => {
+    seedWithData();
+    const { container } = render(<MarketingResponse />);
+    enterMmmAndAnalyze(container);
+    await flushRaf();
+    clickByText(container, "기여 분해");
+    const exclude = Array.from(container.querySelectorAll("button")).find((button) => button.textContent === "제외");
+    expect(exclude).toBeTruthy();
+    fireEvent.click(exclude);
+    expect(exclude?.className).toContain("active");
+    expect(document.body.textContent).toContain("기본 수요·추세를 분모와 표시에서 제외");
+  });
+
   it("renders the 회귀·미래 예측 (lab) stage without throwing", async () => {
     seedWithData();
     const { container } = render(<MarketingResponse />);

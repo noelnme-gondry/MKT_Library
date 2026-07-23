@@ -2485,6 +2485,9 @@ export default function MarketingResponse({ locale = "ko" }) {
   const [target, setTarget] = useState("Regs");
   const decompModel = "bayesian";
   const [decompGrouped, setDecompGrouped] = useState(true); // §5.5 true=4버킷 묶음 / false=광고 개별채널
+  // RMS 비중에서 기본 수요·추세가 너무 큰 경우, 나머지 동인끼리의 상대 크기를
+  // 볼 수 있게 한다. 모델·원본 기여값은 바꾸지 않고 이 표시용 분모만 전환한다.
+  const [includeBaseDemandInShare, setIncludeBaseDemandInShare] = useState(true);
   const [satHidden, setSatHidden] = useState({}); // 수확체감 곡선 채널별 표시 토글 { [chKey]: true=숨김 }
   const [spikeNotes, setSpikeNotes] = useState({}); // §5.5 튀는 구간 메모 { [target|week]: note }
   const [fcHorizon, setFcHorizon] = useState(13);
@@ -3545,7 +3548,13 @@ export default function MarketingResponse({ locale = "ko" }) {
       // RMS contribution-magnitude share (horizontal bar). The engine keeps the
       // legacy `shapley` key for compatibility, but this is not Shapley/R² allocation.
       if (shapleyRef.current && run.shapley?.rows?.length) {
-        const rows = [...run.shapley.rows].sort((a, b) => b.r2_share - a.r2_share);
+        const sourceRows = includeBaseDemandInShare
+          ? run.shapley.rows
+          : run.shapley.rows.filter((row) => !["Trend", "기본 수요", "baseline"].includes(row.driver));
+        const total = sourceRows.reduce((sum, row) => sum + (row.r2_share || 0), 0);
+        const rows = sourceRows
+          .map((row) => ({ ...row, r2_share: total > 0 ? row.r2_share / total : 0, pct: total > 0 ? row.r2_share / total * 100 : 0 }))
+          .sort((a, b) => b.r2_share - a.r2_share);
         inst.push(
           new Chart(shapleyRef.current.getContext("2d"), {
             type: "bar",
@@ -3809,7 +3818,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     // convAmt는 sourceCurrency/displayCurrency로만 결정되는 순수 파생 함수라 그
     // 둘을 deps에 넣는 것으로 충분(함수 레퍼런스 자체는 deps에 안 넣음, §매 렌더 재생성).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, mmm, decomp, spikeNotes, decompGrouped, satHidden, currencySym, sourceCurrency, displayCurrency, tx]);
+  }, [stage, mmm, decomp, spikeNotes, decompGrouped, includeBaseDemandInShare, satHidden, currencySym, sourceCurrency, displayCurrency, tx]);
 
   // Stage ③ forecast chart
   useEffect(() => {
@@ -4664,7 +4673,13 @@ export default function MarketingResponse({ locale = "ko" }) {
 
           {/* ── STAGE ② MMM ── */}
           {stage === "mmm" && (() => {
-            const shRows = (mmm.run.shapley?.rows || []).slice().sort((a, b) => b.r2_share - a.r2_share);
+            const isBaseDemandDriver = (driver) => ["Trend", "기본 수요", "baseline"].includes(driver);
+            const rawShRows = mmm.run.shapley?.rows || [];
+            const visibleShRows = includeBaseDemandInShare ? rawShRows : rawShRows.filter((row) => !isBaseDemandDriver(row.driver));
+            const visibleShTotal = visibleShRows.reduce((sum, row) => sum + (row.r2_share || 0), 0);
+            const shRows = visibleShRows
+              .map((row) => ({ ...row, pct: visibleShTotal > 0 ? row.r2_share / visibleShTotal * 100 : 0 }))
+              .sort((a, b) => b.r2_share - a.r2_share);
             const PLAIN_DRV = locale === "en"
               ? { "기본 수요": "Base demand", Trend: "Base demand · trend", Seasonality: "Season", Holidays: "Holidays/events", "Holidays & Events": "Holidays/events", "Regime(steps)": "Regime change", "Regime change": "Regime change", Performance: "Performance marketing", Brand: "Brand", Regime: "Regime change", baseline: "Baseline" }
               : { Trend: "기본 수요·추세", Seasonality: "시즌·계절", Holidays: "휴일·이벤트", "Holidays & Events": "휴일·이벤트", "Regime(steps)": "구조 변화", "Regime change": "구조 변화", Performance: "마케팅", Brand: "브랜딩", Regime: "구조 변화", baseline: "기본값" };
@@ -4820,7 +4835,14 @@ export default function MarketingResponse({ locale = "ko" }) {
 
               {/* ── 메인: 무엇이 성과를 움직였나 — RMS 기여 크기 비중 ── */}
               <section className="block">
-                <h2 className="section-title">{tx("무엇이 성과를 움직였나", "What moved performance")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx("· RMS 기여 크기 비중", "· RMS contribution-magnitude share")}</span></h2>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+                  <h2 className="section-title" style={{ margin: 0 }}>{tx("무엇이 성과를 움직였나", "What moved performance")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx("· RMS 기여 크기 비중", "· RMS contribution-magnitude share")}</span></h2>
+                  <div className="ab-pillgroup" style={{ margin: 0 }} aria-label={tx("기본 수요·추세 포함 여부", "Include base demand and trend")}>
+                    <span className="ab-pillgroup-label">{tx("기본 수요·추세", "Base demand · trend")}</span>
+                    <button type="button" className={`ab-pill ${includeBaseDemandInShare ? "active" : ""}`} onClick={() => setIncludeBaseDemandInShare(true)}>{tx("포함", "Include")}</button>
+                    <button type="button" className={`ab-pill ${!includeBaseDemandInShare ? "active" : ""}`} onClick={() => setIncludeBaseDemandInShare(false)}>{tx("제외", "Exclude")}</button>
+                  </div>
+                </div>
                 {shRows.length ? (
                   // 단일 grid — 라벨 열 폭을 전 행 공유(max-content)해 가장 긴 변수명에 맞춰 정렬, 막대 시작점 일치.
                   <div style={{ display: "grid", gridTemplateColumns: "max-content 1fr 44px", alignItems: "center", columnGap: "10px", rowGap: "8px", marginTop: "6px" }}>
@@ -4835,7 +4857,9 @@ export default function MarketingResponse({ locale = "ko" }) {
                     ))}
                   </div>
                 ) : <p className="muted" style={{ fontSize: "12px" }}>{tx("계산할 수 없어요.", "Can't compute this.")}</p>}
-                    <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>{tx("각 드라이버의 주별 기여값 제곱평균을 전체 합으로 나눈 크기 비중입니다. 인과 기여율이나 Shapley R²가 아니며, 진한 보라 = 광고 채널입니다.", "Each share is the driver's mean squared weekly contribution divided by the total. It is not causal attribution or Shapley R². Dark purple = ad channels.")}</p>
+                    <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>{includeBaseDemandInShare
+                      ? tx("각 드라이버의 주별 기여값 제곱평균을 전체 합으로 나눈 크기 비중입니다. 인과 기여율이나 Shapley R²가 아니며, 진한 보라 = 광고 채널입니다.", "Each share is the driver's mean squared weekly contribution divided by the total. It is not causal attribution or Shapley R². Dark purple = ad channels.")
+                      : tx("기본 수요·추세를 분모와 표시에서 제외하고, 남은 드라이버만 다시 100%로 정규화했습니다. 모델과 원본 기여값은 바뀌지 않습니다.", "Base demand · trend is removed from both the display and denominator; remaining drivers are re-normalized to 100%. The model and raw contributions do not change.")}</p>
               </section>
 
               {/* ── 메인: 다음 예산은 여기로 (액션 카드) ── */}
