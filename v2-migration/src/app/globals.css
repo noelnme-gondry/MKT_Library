@@ -4636,8 +4636,13 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .kpi-grid--overview .kpi-card--explorer.is-selected { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 7%, var(--surface-container-lowest)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent); }
 .kpi-card__select-state { min-height: 14px; color: var(--primary); font: 700 9px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
 .kpi-card--explorer .value { margin-top: 3px; font-size: clamp(17px, 1.45vw, 23px); }
-.kpi-sparkline { width: 100%; height: 31px; margin: 7px 0 4px; overflow: visible; }
-.kpi-sparkline polyline { fill: none; stroke: var(--primary); stroke-width: 2.6; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+.kpi-sparkline { width: 100%; height: 42px; margin: 7px 0 4px; overflow: visible; color: var(--primary); }
+.kpi-sparkline polygon { fill: color-mix(in srgb, currentColor 13%, transparent); stroke: none; }
+.kpi-sparkline polyline { fill: none; stroke: currentColor; stroke-width: 2.8; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+.kpi-sparkline circle { fill: var(--surface-container-lowest); stroke: currentColor; stroke-width: 2.2; vector-effect: non-scaling-stroke; }
+.kpi-sparkline.is-warning { color: #ff7878; }
+.kpi-sparkline.is-improving { color: var(--secondary); }
+.kpi-sparkline.is-neutral { color: var(--text-muted); }
 .kpi-grid--overview .kpi-card--explorer .delta { display: block; margin-top: 0; font-weight: 700; }
 .kpi-card__note { display: block; margin-top: 3px; overflow: hidden; color: var(--text-muted); font: 10px/1.35 var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
 .dashboard-explorer { padding: 18px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-container-lowest); }
@@ -4649,6 +4654,10 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .dashboard-explorer__interpretation { margin: 12px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.65; }
 .dashboard-explorer__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 14px; }
 .dashboard-explorer__empty { display: grid; min-height: 160px; place-items: center; padding: 18px; border: 1px dashed var(--border); border-radius: 8px; color: var(--text-muted); font-size: 13px; line-height: 1.65; text-align: center; }
+.custom-scorecard { display: flex; min-height: 220px; flex-direction: column; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--border-subtle); border-radius: 9px; background: color-mix(in srgb, var(--primary) 4%, var(--surface-container-lowest)); text-align: center; }
+.custom-scorecard > span { color: var(--text-muted); font: 650 10px var(--font-mono); letter-spacing: .07em; text-transform: uppercase; }
+.custom-scorecard > strong { color: var(--text-primary); font: 700 clamp(30px,4vw,48px) var(--font-display); letter-spacing: -.055em; }
+.custom-scorecard > small { color: var(--text-muted); font-size: 11px; }
 
 /* Tool and dashboard shells */
 .tool-context-header { margin: 0 0 16px; padding: 0 0 12px; border-bottom: 1px solid var(--border-subtle); }

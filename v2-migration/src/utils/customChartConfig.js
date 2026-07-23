@@ -29,7 +29,7 @@ export function buildChartFieldOptions(mapping, customMetrics) {
   const metricOptions = [
     ...BASE_FIELDS.filter((f) => f.id !== "denom" && availAggKeys.has(f.id)).map((f) => ({ key: f.id, label: f.label })),
     ...DERIVED_METRICS.filter((m) => m.deps.every((d) => availAggKeys.has(d))).map((m) => ({ key: m.id, label: m.label })),
-    ...cms.map((m) => ({ key: m.id, label: m.name })),
+    ...cms.map((m) => ({ key: m.id, label: m.name, unit: m.unit || "number" })),
   ];
   const resolveMetricCompute = (key) => {
     if (METRIC_BY_ID[key]) return METRIC_BY_ID[key].compute;
@@ -39,7 +39,34 @@ export function buildChartFieldOptions(mapping, customMetrics) {
   };
   const dimLabelOf = (k) => DIM_CANDIDATES.find((d) => d.key === k)?.label || k;
   const metricLabelOf = (k) => metricOptions.find((m) => m.key === k)?.label || k;
-  return { availDims, metricOptions, resolveMetricCompute, dimLabelOf, metricLabelOf };
+  const metricUnitOf = (k) => metricOptions.find((m) => m.key === k)?.unit
+    || METRIC_BY_ID[k]?.unit
+    || "number";
+  return { availDims, metricOptions, resolveMetricCompute, dimLabelOf, metricLabelOf, metricUnitOf };
+}
+
+// 스코어카드는 차원별 분할 없이 현재 필터 전체를 한 번 집계해 단일 실제값을 보여준다.
+// 차트용 시리즈와 같은 groupAggByDim/metric compute 경로를 써 수치 SSOT를 유지한다.
+export function buildCustomScorecardModel(def, rows, opts) {
+  const { cohort = 7, denomBasis = "installs", resolveMetricCompute, metricLabelOf, metricUnitOf } = opts || {};
+  const whole = groupAggByDim(rows, "__scorecard_all__", cohort, denomBasis)[0];
+  const compute = resolveMetricCompute ? resolveMetricCompute(def.metric) : null;
+  const value = whole && typeof compute === "function" ? compute(whole.agg) : null;
+  return {
+    label: metricLabelOf ? metricLabelOf(def.metric) : def.metric,
+    unit: metricUnitOf ? metricUnitOf(def.metric) : "number",
+    value: value == null || !isFinite(value) ? null : value,
+  };
+}
+
+export function formatCustomScorecardValue(model, currency = "KRW", locale = "ko") {
+  if (!model || model.value == null || !isFinite(model.value)) return "—";
+  if (model.unit === "ratio") return `${(model.value * 100).toLocaleString(locale === "ko" ? "ko-KR" : "en-US", { maximumFractionDigits: 2 })}%`;
+  if (model.unit === "currency") {
+    const symbol = currency === "USD" ? "$" : "₩";
+    return `${symbol}${Number(model.value).toLocaleString(locale === "ko" ? "ko-KR" : "en-US", { maximumFractionDigits: 2 })}`;
+  }
+  return Number(model.value).toLocaleString(locale === "ko" ? "ko-KR" : "en-US", { maximumFractionDigits: 2 });
 }
 
 // def={type,dim,metric,name} · rows=표준키 매핑 행 · opts={cohort,denomBasis,

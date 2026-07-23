@@ -37,13 +37,15 @@ export default function CustomChartBuilder({
 
   const dimLabel = (k) => dims.find((d) => d.key === k)?.label || k;
   const metricLabel = (k) => metrics.find((m) => m.key === k)?.label || k;
-  const canBuild = dims.length > 0 && metrics.length > 0;
-  const valid = canBuild && name.trim() && dim && metric;
+  const isScorecard = type === "scorecard";
+  const hasMetrics = metrics.length > 0;
+  const canBuild = hasMetrics && (isScorecard || dims.length > 0);
+  const valid = canBuild && name.trim() && (isScorecard || dim) && metric;
   const sel = { padding: "7px 9px", borderRadius: "6px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", color: "var(--text-primary)", fontSize: "13px", width: "100%" };
 
   const create = () => {
     if (!valid) return;
-    onCreate?.({ name: name.trim(), type, dim, metric });
+    onCreate?.({ name: name.trim(), type, dim: isScorecard ? "" : dim, metric });
     setName("");
   };
 
@@ -62,8 +64,8 @@ export default function CustomChartBuilder({
           <button className="ab-pill" onClick={onClose} aria-label="닫기" style={{ padding: "2px 8px" }}>✕</button>
         </div>
 
-        {!canBuild ? (
-          <p className="muted" style={{ fontSize: "12px" }}>차트를 만들려면 차원(채널·국가 등)과 지표가 데이터에 있어야 합니다. CSV를 업로드·매핑하세요.</p>
+        {!hasMetrics ? (
+          <p className="muted" style={{ fontSize: "12px" }}>차트를 만들려면 계산 가능한 지표가 데이터에 있어야 합니다. CSV를 업로드·매핑하세요.</p>
         ) : (
           <>
             <p className="muted" style={{ fontSize: "11px", margin: "0 0 14px" }}>
@@ -86,14 +88,14 @@ export default function CustomChartBuilder({
             </div>
 
             <div style={{ display: "flex", gap: "10px", marginBottom: "14px", flexWrap: "wrap" }}>
-              <label style={{ display: "flex", flexDirection: "column", gap: "3px", flex: 1, minWidth: "140px" }}>
+              {!isScorecard && <label style={{ display: "flex", flexDirection: "column", gap: "3px", flex: 1, minWidth: "140px" }}>
                 <span className="muted" style={{ fontSize: "10.5px" }}>2. 행 (차원)</span>
                 <select value={dim} onChange={(e) => setDim(e.target.value)} style={sel}>
                   {dims.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
                 </select>
-              </label>
+              </label>}
               <label style={{ display: "flex", flexDirection: "column", gap: "3px", flex: 1, minWidth: "140px" }}>
-                <span className="muted" style={{ fontSize: "10.5px" }}>3. 값 (지표)</span>
+                <span className="muted" style={{ fontSize: "10.5px" }}>{isScorecard ? "2" : "3"}. 값 (지표)</span>
                 <select value={metric} onChange={(e) => setMetric(e.target.value)} style={sel}>
                   {metrics.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
                 </select>
@@ -101,12 +103,12 @@ export default function CustomChartBuilder({
             </div>
 
             <label style={{ display: "flex", flexDirection: "column", gap: "3px", marginBottom: "14px" }}>
-              <span className="muted" style={{ fontSize: "10.5px" }}>4. 차트 이름</span>
+              <span className="muted" style={{ fontSize: "10.5px" }}>{isScorecard ? "3" : "4"}. 차트 이름</span>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="예: 채널별 ROAS" style={sel} />
             </label>
 
             <div style={{ padding: "9px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-2, transparent)", marginBottom: "12px", fontSize: "12px", color: "var(--text-primary)" }}>
-              <strong>{name.trim() || "새 차트"}</strong> — {CHART_TYPES.find((t) => t.id === type)?.label} · {dimLabel(dim)}별 {metricLabel(metric)}
+              <strong>{name.trim() || "새 차트"}</strong> — {CHART_TYPES.find((t) => t.id === type)?.label} · {isScorecard ? metricLabel(metric) : `${dimLabel(dim)}별 ${metricLabel(metric)}`}
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
@@ -124,7 +126,7 @@ export default function CustomChartBuilder({
                 <div key={c.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 8px", borderRadius: "6px", border: "1px solid var(--border)" }}>
                   <span style={{ fontSize: "12.5px", color: "var(--text-primary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     <strong>{c.name}</strong>
-                    <span className="muted" style={{ marginLeft: "6px", fontSize: "11px" }}>{CHART_TYPES.find((t) => t.id === c.type)?.label} · {dimLabel(c.dim)}별 {metricLabel(c.metric)}</span>
+                    <span className="muted" style={{ marginLeft: "6px", fontSize: "11px" }}>{CHART_TYPES.find((t) => t.id === c.type)?.label} · {c.type === "scorecard" ? metricLabel(c.metric) : `${dimLabel(c.dim)}별 ${metricLabel(c.metric)}`}</span>
                   </span>
                   <button className="ab-pill" onClick={() => onDelete?.(c.id)} title="삭제" style={{ padding: "2px 8px" }}>🗑</button>
                 </div>

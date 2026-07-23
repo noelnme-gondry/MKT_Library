@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeWeightedRetention, calculateKPIs } from "./dashboardAggregator.js";
+import { buildRetentionCurve, computeWeightedRetention, calculateKPIs } from "./dashboardAggregator.js";
 
 // Golden test for computeWeightedRetention (SSOT 가중 리텐션) — index.html §7 이식.
 // 검증: (a) 비율컬럼 모수가중 (b) 인원수컬럼 Σret (c) 정수퍼센트 hasWholePct 경고
@@ -71,6 +71,14 @@ describe("computeWeightedRetention (golden)", () => {
     expect(byAct.denom).toBe(100);
     expect(byInst.survivors).toBe(60); // 0.2*100 + 0.4*100
     expect(byAct.survivors).toBe(30); // 0.2*50 + 0.4*50
+  });
+
+  it("T6 · 코호트 곡선 D0는 정의상 100%, D7/D14는 모수 가중", () => {
+    const rows = [
+      { installs: 900, ret_d7: 0.1, ret_d14: 0.05 },
+      { installs: 100, ret_d7: 0.5, ret_d14: 0.25 },
+    ];
+    expect(buildRetentionCurve(rows, "installs", [0, 7, 14])).toEqual([1, 0.14, 0.07]);
   });
 
   it("T7 · calculateKPIs.retentionAvg는 SSOT 재사용 (≤1, 인원수 컬럼도 폭주 안 함)", () => {

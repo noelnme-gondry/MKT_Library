@@ -5,9 +5,11 @@
 // 차원(dim) 값별로 base 필드를 합산 → group agg. 값 계산(지표 compute)은 호출부가
 // registry/custom 지표로 적용(여기선 순수 집계까지만 — 결정론·테스트 용이).
 //
-// 지원 차트 모양: bar(세로막대)·hbar(가로막대)·line(선)·pie·doughnut — 렌더는 VizTab.
+// 지원 차트 모양: scorecard(단일값)·bar(세로막대)·hbar(가로막대)·line(선)·
+// pie·doughnut — 렌더는 VizTab/CustomChartsSection.
 
 export const CHART_TYPES = [
+  { id: "scorecard", label: "스코어카드", icon: "▣" },
   { id: "bar", label: "세로 막대", icon: "▮" },
   { id: "hbar", label: "가로 막대", icon: "▬" },
   { id: "line", label: "선", icon: "📈" },
