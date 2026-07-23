@@ -14,6 +14,7 @@ import {
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
   mmmForecastRollingSelection,
+  mmmForecastScenarioEligibility,
   mmmForecastGlobalBaseline,
   mmmForecastGlobalSeasonality,
   mmmForecastDampedTrendOffset,
@@ -1164,9 +1165,23 @@ function fmtOne(v) {
   return Number(v).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
+function forecastScenarioReasonLabel(reason, tx) {
+  const labels = {
+    "fewer-than-three-holdouts": tx("12주 학습 제외 검증이 3회 미만입니다", "Fewer than three 12-week holdouts are available"),
+    "does-not-beat-persistence": tx("단순 최근 평균 기준선을 이기지 못했습니다", "It does not beat the recent-average baseline"),
+    "wins-too-few-holdouts": tx("검증 구간 승리 횟수가 부족합니다", "It wins too few holdouts"),
+    "forecast-validation": tx("rolling 검증 적격성이 확인되지 않았습니다", "Rolling validation eligibility is unavailable"),
+    "high-collinearity": tx("최근 Cost 창에서 채널 예산이 함께 움직여 분리되지 않습니다", "Channel budgets move together in the recent Cost window"),
+    "low-information": tx("최근 Cost 창의 독립적인 지출 변동이 부족합니다", "The recent Cost window lacks independent spend variation"),
+    "scenario-identification": tx("채널별 Cost 시나리오 식별 조건을 충족하지 못했습니다", "Channel-level Cost scenario identification is not met"),
+    "missing-model": tx("예측 회귀 모델을 만들지 못했습니다", "The forecast regression model is unavailable"),
+  };
+  return labels[reason] || String(reason);
+}
+
 // 천단위 콤마 입력(§7 `type=number`는 콤마 불가 · §12.14 라이브 콤마+커서 보존 포트). type=text로
 // 표시=콤마, 읽기=콤마 strip. onCommit(number|null) — 빈칸이면 null(부모가 기본값 복귀).
-function CommaNumberInput({ value, onCommit, style, placeholder }) {
+function CommaNumberInput({ value, onCommit, style, placeholder, disabled = false }) {
   const ref = useRef(null);
   const focusedRef = useRef(false);
   const fmt = (n) => (n == null || n === "" || !isFinite(n) ? "" : Number(n).toLocaleString());
@@ -1187,10 +1202,10 @@ function CommaNumberInput({ value, onCommit, style, placeholder }) {
     });
   };
   return (
-    <input ref={ref} type="text" inputMode="numeric" value={txt} placeholder={placeholder}
+    <input ref={ref} type="text" inputMode="numeric" value={txt} placeholder={placeholder} disabled={disabled}
       onFocus={() => { focusedRef.current = true; }}
       onBlur={() => { focusedRef.current = false; setTxt(fmt(value)); }}
-      onChange={handle} style={style} />
+      onChange={handle} style={{ ...style, opacity: disabled ? 0.6 : 1, cursor: disabled ? "not-allowed" : undefined }} />
   );
 }
 
@@ -3363,19 +3378,30 @@ export default function MarketingResponse({ locale = "ko" }) {
     }
   }, [mmm, stage, effPlatformFilter, csvData, mmmColMap, target, locale, segmentSel, mmmWeekStart]);
 
+  // 이 판정은 Stage ④ 예측 회귀에만 적용한다. MMM 기여 분해·이벤트/step(P0)와
+  // 분리해, 기본 예측은 유지하고 식별되지 않은 Cost 변경 입력만 막는다.
+  const forecastScenario = useMemo(() => {
+    if (!forecastModel) return { eligible: false, reasons: ["missing-model"] };
+    return mmmForecastScenarioEligibility(
+      forecastModel.isAdditiveTotal ? forecastModel.components : [forecastModel],
+    );
+  }, [forecastModel]);
+
   const forecast = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "lab" || !forecastModel) return null;
     try {
       if (forecastModel.isAdditiveTotal) {
-        const components = forecastModel.components.map((model) => runForecastScenario(model, fcHorizon, fcBudget, fcStepOff));
+        const scenarioBudget = forecastScenario.eligible ? fcBudget : {};
+        const components = forecastModel.components.map((model) => runForecastScenario(model, fcHorizon, scenarioBudget, fcStepOff));
         return mmmSumOsForecasts(components);
       }
       if (!forecastModel.run || !forecastModel.panel) return null;
       // fcBudget: 채널별 주 평균 예산(명시 채널만 H개로 채움) → 미입력은 mmmForecast가 최근평균 사용.
       const chans = _mmmChans(forecastModel.panel).filter((ch) => forecastModel.panel.ch[ch.key]);
       const futureSpend = {};
+      const scenarioBudget = forecastScenario.eligible ? fcBudget : {};
       chans.forEach((ch) => {
-        const b = fcBudget[ch.key];
+        const b = scenarioBudget[ch.key];
         if (b != null && isFinite(b)) futureSpend[ch.key] = Array(fcHorizon).fill(b);
       });
       const hasBudget = Object.keys(futureSpend).length > 0;
@@ -3399,7 +3425,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     } catch (e) {
       return null;
     }
-  }, [mmm, stage, forecastModel, fcHorizon, fcBudget, fcStepOff]);
+  }, [mmm, stage, forecastModel, forecastScenario.eligible, fcHorizon, fcBudget, fcStepOff]);
 
   const recentBacktest = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "lab" || !forecastModel) return null;
@@ -5268,10 +5294,18 @@ export default function MarketingResponse({ locale = "ko" }) {
                         <p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
                           {tx(`Cost 최근 ${selected.window}주 · ${seasonLabel} · ${trendLabel}${eventAdjustedLabel ? ` · ${eventAdjustedLabel}` : ""} · 12주 holdout ${selected.folds}회 · rolling wMAPE ${selected.wmape.toFixed(1)}% (기준선 ${selected.persistenceWmape.toFixed(1)}%) · 기준선 승리 ${selected.foldWins}/${selected.folds}회`, `Cost recent ${selected.window} weeks · ${seasonLabel} · ${trendLabel}${eventAdjustedLabel ? ` · ${eventAdjustedLabel}` : ""} · ${selected.folds} rolling 12-week holdouts · rolling wMAPE ${selected.wmape.toFixed(1)}% (baseline ${selected.persistenceWmape.toFixed(1)}%) · beats baseline ${selected.foldWins}/${selected.folds} times`)}
                         </p>
-                        {!forecast.rollingSelection.decisionEligible && <p style={{ margin: "6px 0 0", color: "#b45309", fontSize: "11.5px" }}>{tx("Cost 회귀가 기준선을 안정적으로 이기지 못했습니다. 예산 변경 수치는 진단용으로만 보세요.", "Cost regression does not beat the baseline consistently. Treat budget scenarios as diagnostic only.")}</p>}
+                        {!forecast.rollingSelection.decisionEligible && <p style={{ margin: "6px 0 0", color: "#b45309", fontSize: "11.5px" }}>{tx(`Cost 변경 판정 보류: ${(forecast.rollingSelection.decisionReasons || []).map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ") || "rolling 검증 적격성 미충족"}`, `Cost scenario decision paused: ${(forecast.rollingSelection.decisionReasons || []).map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ") || "rolling validation is not eligible"}`)}</p>}
                       </Card>
                     );
                   })()}
+                  {!forecastScenario.eligible && (
+                    <div className="callout warn" style={{ marginBottom: "12px" }}>
+                      <div className="ico">!</div><div className="body">
+                        <strong>{tx("기본 12주 예측은 제공하지만, 채널별 Cost 변경은 잠금", "Base 12-week forecast is available; channel Cost changes are locked")}</strong>
+                        <p>{tx(`현재 예산표의 변경값은 예측에 반영하지 않습니다. ${forecastScenario.reasons.map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ")} — 이 상태에서 광고 OFF·증액을 인과효과로 해석할 수 없습니다.`, `Budget-table edits are not applied to the forecast. ${forecastScenario.reasons.map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ")} — do not interpret ad-off or spend increases as causal in this state.`)}</p>
+                      </div>
+                    </div>
+                  )}
                   {forecast.scenarioWarnings?.length > 0 && (
                     <div className="callout warn" style={{ marginBottom: "12px" }}>
                       <div className="ico">!</div><div className="body">
@@ -5286,13 +5320,18 @@ export default function MarketingResponse({ locale = "ko" }) {
                   )}
                   {forecast.baselineFut?.length > 0 && (
                     <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
-                      <strong>{tx("광고비 0 기준선(비매체 기준 수요)", "Zero-media baseline (non-media demand)")}</strong>
+                      <strong>{forecastScenario.eligible
+                        ? tx("광고비 0 기준선(비매체 기준 수요)", "Zero-media baseline (non-media demand)")
+                        : tx("비매체 기준 수요(참고값)", "Non-media demand (reference only)")}</strong>
                       <p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
-                        {tx("광고비를 0으로 놓았을 때 모델이 남기는 추정치입니다. 이 값은 증분 효과의 증명이 아니며, 기준선이 최근 실측보다 지나치게 낮으면 광고 OFF 효과를 식별할 수 없다는 뜻입니다.", "The model estimate left after setting media features to zero. It is not proof of incrementality; a baseline far below recent actuals means the ad-off effect is not identified from this data.")}
+                        {forecastScenario.eligible
+                          ? tx("광고비를 0으로 놓았을 때 모델이 남기는 추정치입니다. 이 값은 증분 효과의 증명이 아니며, 기준선이 최근 실측보다 지나치게 낮으면 광고 OFF 효과를 식별할 수 없다는 뜻입니다.", "The model estimate left after setting media features to zero. It is not proof of incrementality; a baseline far below recent actuals means the ad-off effect is not identified from this data.")
+                          : tx("기준선은 표시하지만, 현재 데이터로 광고 OFF 효과는 추정 불가입니다. 음의 기준선이 생기는 경우에는 0으로만 제한해 비현실적인 organic 수치를 만들지 않습니다.", "The baseline is shown, but ad-off impact is not estimable from the current data. A negative restored baseline is only floored at zero to avoid an impossible organic value.")}
                       </p>
                       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
                         <span className="ab-pill">{tx("기준선 평균", "Baseline avg")} {targetValueLabel(forecast.baselineFut.reduce((s, v) => s + v, 0) / forecast.baselineFut.length, { perWeek: true })}</span>
                         <span className="ab-pill">{tx("현재 시나리오 평균", "Scenario avg")} {targetValueLabel(forecast.predFut.reduce((s, v) => s + v, 0) / forecast.predFut.length, { perWeek: true })}</span>
+                        {forecast.baselineFloorApplied > 0 && <span className="ab-pill" style={{ borderColor: "#f59e0b", color: "#b45309" }}>{tx(`기준선 0 하한 ${forecast.baselineFloorApplied}주 적용`, `0 floor applied for ${forecast.baselineFloorApplied} week(s)`)}</span>}
                       </div>
                     </Card>
                   )}
@@ -5345,7 +5384,9 @@ export default function MarketingResponse({ locale = "ko" }) {
                     <div>
                       <h3 style={{ fontSize: "13px", margin: "10px 0 6px" }}>
                         {tx("채널별 미래 예산 (주 평균)", "Future budget per channel (weekly average)")}{" "}
-                        <span style={{ fontSize: "11px", color: MUTED, fontWeight: 400 }}>{tx("— 기본값 = 최근 8주 평균. 수정하면 즉시 재예측.", "— default = recent 8-week average. Edit to re-forecast instantly.")}</span>
+                        <span style={{ fontSize: "11px", color: MUTED, fontWeight: 400 }}>{forecastScenario.eligible
+                          ? tx("— 기본값 = 최근 8주 평균. 수정하면 즉시 재예측.", "— default = recent 8-week average. Edit to re-forecast instantly.")
+                          : tx("— rolling 검증/식별성 미충족으로 입력 잠김. 기본 예측만 표시합니다.", "— locked because rolling validation/identification is not met. Showing base forecast only.")}</span>
                       </h3>
                       <div className="table-wrap">
                         <table className="data" style={{ fontSize: "12px" }}>
@@ -5353,7 +5394,9 @@ export default function MarketingResponse({ locale = "ko" }) {
                           <tbody>
                             {forecast.chans.map((ch) => {
                               const rec = forecast.recentMean[ch.key] || 0;
-                              const cur = fcBudget[ch.key];
+                              // 잠긴 상태에서는 저장된 과거 입력값도 표시·계산에 쓰지 않는다.
+                              // 표의 숫자와 실제 기본 예측이 어긋나는 것을 막는다.
+                              const cur = forecastScenario.eligible ? fcBudget[ch.key] : null;
                               const sourceValue = cur != null && isFinite(cur) ? cur : rec;
                               const val = Math.round(convertCurrency(sourceValue, sourceCurrency, displayCurrency));
                               return (
@@ -5363,6 +5406,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                                   <td>
                                     <CommaNumberInput
                                       value={val}
+                                      disabled={!forecastScenario.eligible}
                                       onCommit={(n) => setFcBudget((prev) => {
                                         const next = { ...prev };
                                         if (n == null) delete next[ch.key];

@@ -16,6 +16,7 @@ import {
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
   mmmForecastRollingSelection,
+  mmmForecastScenarioEligibility,
   mmmForecastGlobalBaseline,
   mmmForecastGlobalSeasonality,
   mmmForecastDampedTrendOffset,
@@ -58,10 +59,26 @@ describe("runMmmMethTests (golden port)", () => {
       steps: {},
     }, "Regs");
     expect(selection.enabled).toBe(true);
-    expect(selection.selected.folds).toBeGreaterThanOrEqual(2);
+    expect(selection.selected.folds).toBe(3);
+    expect(selection.decisionMinFolds).toBe(3);
     expect(selection.selected.wmape).toBeLessThanOrEqual(selection.selected.persistenceWmape);
     expect(selection.candidates.some((item) => item.spec === "cost-trend-year-quarter")).toBe(false);
     expect(selection.candidates.every((item) => item.window <= 51)).toBe(true);
+  });
+
+  it("keeps short-history forecasts but withholds channel Cost scenarios until three holdouts", () => {
+    const selection = {
+      decisionEligible: false,
+      decisionReasons: ["fewer-than-three-holdouts"],
+    };
+    expect(mmmForecastScenarioEligibility([{ selection, run: { identification: {} } }])).toEqual({
+      eligible: false,
+      reasons: ["fewer-than-three-holdouts"],
+    });
+    expect(mmmForecastScenarioEligibility([{
+      selection: { decisionEligible: true, decisionReasons: [] },
+      run: { identification: { highCollinearity: true, lowInformation: false } },
+    }])).toEqual({ eligible: false, reasons: ["high-collinearity"] });
   });
 
   it("fits full-history seasonality separately and restores it after recent Cost forecast", () => {
@@ -94,6 +111,8 @@ describe("runMmmMethTests (golden port)", () => {
       futureOffsetAt: (week) => mmmForecastDampedTrendOffset(trend, 75, week),
     });
     expect(restored.predFut[0]).toBeCloseTo(100 + mmmForecastDampedTrendOffset(trend, 75, 87), 8);
+    expect(restored.baselineFut[0]).toBe(0);
+    expect(restored.baselineFloorApplied).toBe(1);
   });
 
   it("estimates forecast trend after removing event and step level shifts", () => {
