@@ -11,6 +11,7 @@ import {
   mmmSelectAdstock,
   mmmRunMmm,
   mmmBayesianRun,
+  mmmBayesianMediaPenaltySelection,
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
   mmmForecastRollingSelection,
@@ -178,6 +179,42 @@ describe("runMmmMethTests (golden port)", () => {
     expect(effect.ln_coef).toBeGreaterThanOrEqual(0);
     expect([0, 500, 1000, 5000, 20000].every((spend) => effect.responseAt(spend) >= -1e-8)).toBe(true);
     expect(run.weeks.every((item) => item.contrib.Performance >= -1e-8)).toBe(true);
+  });
+
+  it("chooses media regularization from chronological holdouts instead of a fixed shrinkage", () => {
+    const n = 88;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const spend = week.map((value) => 300 + ((value * 37) % 17) * 180);
+    const target = spend.map((value, index) => 2500 + value * 1.4 + (index % 4) * 12);
+    const cfg = {
+      ...MMM_METH_CONFIG,
+      steps: {},
+      includeTrend: false,
+      seasonalityPeriods: [],
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+      mediaPenaltyCandidates: [0.05, 4],
+      mediaPenaltyMinTrain: 52,
+      mediaPenaltyHoldoutWeeks: 12,
+      mediaPenaltyMaxFolds: 3,
+    };
+    const panel = {
+      week,
+      ch: { meta: spend },
+      targets: { Regs: target },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+      dummy: {}, steps: {},
+    };
+    const selection = mmmBayesianMediaPenaltySelection(panel, cfg, "Regs", { skipTransformUncertainty: true });
+    expect(selection.enabled).toBe(true);
+    expect(selection.selected.folds).toBe(3);
+    expect(selection.candidates).toHaveLength(2);
+    expect([0.05, 4]).toContain(selection.cfg.mediaPenalty);
+    expect(selection.selected.wmape).toBeLessThanOrEqual(selection.selected.bestWmape + selection.selected.tolerance);
+    const run = mmmBayesianRun(panel, cfg, "Regs", false, { skipTransformUncertainty: true });
+    expect(run.mediaPenaltySelection.enabled).toBe(true);
+    expect(run.effectiveCfg.mediaPenalty).toBe(selection.cfg.mediaPenalty);
   });
 
   it("keeps baseline knots in natural trend and exposes regime change only for mapped steps", () => {
