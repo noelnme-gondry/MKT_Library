@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMmmWeeklyPerformance } from "./mmmWeeklyPerformance";
+import { buildMmmCollinearityGroupedPerformance, buildMmmWeeklyPerformance } from "./mmmWeeklyPerformance";
 
 describe("buildMmmWeeklyPerformance", () => {
   it("기간 전체의 주 평균 지출·예측 성과·CPR을 채널별로 집계한다", () => {
@@ -23,5 +23,26 @@ describe("buildMmmWeeklyPerformance", () => {
       { google: { key: "google", responseAt: () => 0 } },
     );
     expect(rows[0].predictedCpr).toBeNull();
+  });
+
+  it("높은 상관으로 연결된 채널은 표시용 묶음으로 합산하고 나머지는 개별로 남긴다", () => {
+    const panel = { week: [1, 2, 3, 4], ch: { snap: [100, 0, 100, 0], tiktok: [50, 50, 0, 0], search: [0, 100, 0, 100] } };
+    const rows = [
+      { key: "snap", label: "Snap", activeWeeks: 2, avgWeeklySpend: 50, avgWeeklyPredicted: 5, predictedCpr: 10 },
+      { key: "tiktok", label: "TikTok", activeWeeks: 2, avgWeeklySpend: 25, avgWeeklyPredicted: 2.5, predictedCpr: 10 },
+      { key: "search", label: "Search", activeWeeks: 2, avgWeeklySpend: 50, avgWeeklyPredicted: 10, predictedCpr: 5 },
+    ];
+
+    const grouped = buildMmmCollinearityGroupedPerformance(panel, rows, [
+      { a: "media_snap", b: "media_tiktok", corr: 0.92 },
+      { a: "media_snap", b: "media_search", corr: 0.84 },
+    ]);
+
+    expect(grouped).toHaveLength(2);
+    expect(grouped.find((row) => row.key === "search")).toEqual(rows[2]);
+    expect(grouped.find((row) => row.isCollinearityGroup)).toMatchObject({
+      label: "Snap + TikTok", activeWeeks: 3, avgWeeklySpend: 75,
+      avgWeeklyPredicted: 7.5, predictedCpr: 10, maxCorrelation: 0.92,
+    });
   });
 });
