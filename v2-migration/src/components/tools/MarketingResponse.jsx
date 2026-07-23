@@ -787,6 +787,49 @@ function ContributionGroupPanel({ label, values, labels, color, locale, formatVa
   return <div className="chart-container" style={{ height: "190px", minHeight: "190px" }}><canvas ref={ref}></canvas></div>;
 }
 
+// 공선성 경고에서 선택한 두 채널의 실제 입력 시계열을 비교한다. 채널 역할이 비용이면
+// 소진액, 노출수면 노출수를 그대로 보여줘 서로 다른 단위를 비용으로 오해하지 않게 한다.
+function CollinearPairInputChart({ labels, pair, locale }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!ref.current || !pair?.series?.length) return undefined;
+    const css = getComputedStyle(document.body);
+    const muted = css.getPropertyValue("--text-muted").trim() || "#718096";
+    const grid = css.getPropertyValue("--border").trim() || "rgba(148,163,184,.25)";
+    const chart = new Chart(ref.current.getContext("2d"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: pair.series.map((channel, index) => ({
+          label: channel.label,
+          data: channel.values,
+          borderColor: index === 0 ? "#f59e0b" : "#7F77DD",
+          backgroundColor: index === 0 ? "rgba(245,158,11,.12)" : "rgba(127,119,221,.12)",
+          borderWidth: 2,
+          pointRadius: 1.5,
+          pointHoverRadius: 4,
+          tension: 0.16,
+        })),
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: muted } },
+          tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${(ctx.parsed.y || 0).toLocaleString()}` } },
+        },
+        scales: {
+          x: { ticks: { color: muted, autoSkip: true, maxTicksLimit: 12, maxRotation: 0 }, grid: { display: false } },
+          y: { ticks: { color: muted, callback: (value) => Number(value).toLocaleString() }, grid: { color: grid } },
+        },
+      },
+    });
+    requestAnimationFrame(() => chart.resize());
+    return () => chart.destroy();
+  }, [labels, pair, locale]);
+  return <div className="chart-container" style={{ height: "250px", minHeight: "250px" }}><canvas ref={ref}></canvas></div>;
+}
+
 // ③ 순증분 검정은 막대차트보다 "0 포함 여부"가 판단 핵심이다. 점추정·구간·판정을
 // 한 줄에 고정해, 녹색 막대가 오류인지 효과인지 혼동되지 않게 한다.
 function NetEffectEvidence({ net, locale }) {
@@ -1232,6 +1275,23 @@ function csvDownload(name, lines) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, 0);
+}
+
+// “매주 성과는 무엇으로 이뤄졌나”의 보이는 그룹 막대와 같은 값을 wide 형식으로
+// 내보낸다. Excel에서 첫 열을 가로축으로, 원하는 그룹 열을 계열로 바로 선택할 수 있다.
+function buildContributionGroupCsv(decomp, weekLabels, groupPanels) {
+  if (!decomp?.weeks?.length || !groupPanels?.length) return [];
+  const valueFor = (week, key) => key === "기본 수요" ? week.baseline : week.contrib?.[key] || 0;
+  return [
+    ["주차", "실제 성과", "모델 예측", "모델 오차", ...groupPanels.map((group) => group.label)].map(csvQ).join(","),
+    ...decomp.weeks.map((week, index) => [
+      weekLabels?.[index] || week.week,
+      csvNum(week.actual, 6),
+      csvNum(week.fitted, 6),
+      csvNum(week.residual, 6),
+      ...groupPanels.map((group) => csvNum(valueFor(week, group.key), 6)),
+    ].map(csvQ).join(",")),
+  ];
 }
 
 // 현재 필터·타깃 기준을 하나의 감사 가능한 분석 패키지로 내보낸다. 원본은 브라우저 안에서만
@@ -2514,6 +2574,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const [fcStepOff, setFcStepOff] = useState({}); // {stepKey: 켜둘 미래 기간 N} — 빈값=지속
   const [cannibChannel, setCannibChannel] = useState(null);
   const [cannibQuestion, setCannibQuestion] = useState("precedence");
+  const [selectedCollinearPairKey, setSelectedCollinearPairKey] = useState(null);
   // 기본 결과는 기존 MMM 그대로. prior 관련 데이터가 실제로 있을 때만 결과 탭 후보가 추가된다.
   // 원자료는 이 컴포넌트 메모리에만 두며 서버로 보내지 않는다.
   const [selectedEvidence, setSelectedEvidence] = useState({ experiment: false, country: false });
@@ -4769,6 +4830,22 @@ export default function MarketingResponse({ locale = "ko" }) {
             const identification = mmm.run.identification || {};
             const unresolvedCollinearity = (mmm.absorb?.notices || []).some((notice) => !notice.dropped);
             const budgetEligible = identification.budgetEligible !== false && !unresolvedCollinearity;
+            const collinearPairKey = (pair) => `${pair.a}|${pair.b}`;
+            const highCollinearPairs = (mmm.run.collinear_pairs || [])
+              .filter((pair) => pair.a?.startsWith("media_") && pair.b?.startsWith("media_") && Math.abs(pair.corr) >= 0.9);
+            const collinearPairDetail = (pair) => {
+              if (!pair) return null;
+              const channelKey = (featureName) => featureName.replace(/^media_/, "");
+              const keys = [channelKey(pair.a), channelKey(pair.b)];
+              const series = keys.map((key) => ({
+                key,
+                label: mmm.panel.channels?.find((channel) => channel.key === key)?.label || key,
+                values: mmm.panel.ch?.[key] || [],
+              }));
+              const isImpression = keys.every((key) => /impressions?$/i.test(key));
+              return { ...pair, key: collinearPairKey(pair), series, unitLabel: isImpression ? tx("노출수", "impressions") : tx("소진액", "spend") };
+            };
+            const selectedCollinearPair = collinearPairDetail(highCollinearPairs.find((pair) => collinearPairKey(pair) === selectedCollinearPairKey));
             const maxPriorShift = health?.priorShifts?.length
               ? Math.max(...health.priorShifts.map((item) => Math.abs(item.shiftZ || 0)))
               : null;
@@ -4802,7 +4879,7 @@ export default function MarketingResponse({ locale = "ko" }) {
               ? [
                   { key: "기본 수요", values: decomp.weeks.map((w) => w.baseline) },
                   ...decomp.groupNames.map((key) => ({ key, values: decomp.weeks.map((w) => w.contrib[key] || 0) })),
-                ].filter((g) => g.values.some((v) => Math.abs(v) > 1e-8))
+                ].filter((g) => g.values.some((v) => Math.abs(v) > 1e-8)).map((g) => ({ ...g, label: plainDrv(g.key) }))
               : [];
             return (
             <>
@@ -4846,6 +4923,45 @@ export default function MarketingResponse({ locale = "ko" }) {
                     {mmm.run.mediaPenaltySelection?.enabled && <div className="stat-card"><div className="lbl">{tx("매체 규제 자동선택", "Media regularization")}</div><div className="val">{mmm.run.mediaPenaltySelection.selected.mediaPenalty.toFixed(2)}</div></div>}
                     {mmm.run.jointTransform?.enabled && <div className="stat-card"><div className="lbl">{tx("제한적 joint 점검", "Limited joint check")}</div><div className="val">{mmm.run.jointTransform.evaluatedCount}/{mmm.run.jointTransform.candidateCount}</div></div>}
                   </div>
+                  {highCollinearPairs.length > 0 && (
+                    <div style={{ marginTop: "10px" }}>
+                      <button
+                        className="ab-pill"
+                        style={{ color: "#b45309", borderColor: "rgba(245,158,11,.65)", background: "rgba(245,158,11,.10)" }}
+                        title={tx("강하게 함께 움직이는 채널 쌍의 주별 입력값을 확인합니다.", "Inspect weekly inputs for channel pairs that move strongly together.")}
+                        onClick={() => setSelectedCollinearPairKey((current) => current ? null : collinearPairKey(highCollinearPairs[0]))}
+                      >
+                        ⚠ {tx(`채널 쌍 상관 경고 ${highCollinearPairs.length}건 보기`, `View ${highCollinearPairs.length} correlated channel pair${highCollinearPairs.length > 1 ? "s" : ""}`)}
+                      </button>
+                    </div>
+                  )}
+                  {selectedCollinearPair && (
+                    <Card style={{ marginTop: "10px", borderColor: "rgba(245,158,11,.45)", background: "rgba(245,158,11,.045)" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+                        <div>
+                          <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>⚠ {tx("함께 움직이는 채널 입력값", "Channel inputs moving together")}</div>
+                          <p className="muted" style={{ fontSize: "11.5px", margin: "4px 0 0", lineHeight: 1.5 }}>
+                            {tx(`${selectedCollinearPair.series[0].label} · ${selectedCollinearPair.series[1].label}의 상관은 ${selectedCollinearPair.corr.toFixed(2)}입니다. 두 값을 따로 나눠 기여를 정하기 어려울 수 있습니다.`, `${selectedCollinearPair.series[0].label} · ${selectedCollinearPair.series[1].label} have correlation ${selectedCollinearPair.corr.toFixed(2)}. Separating their contributions can be difficult.`)}
+                          </p>
+                        </div>
+                        <button className="ab-pill" onClick={() => setSelectedCollinearPairKey(null)}>{tx("닫기", "Close")}</button>
+                      </div>
+                      {highCollinearPairs.length > 1 && (
+                        <div className="ab-pillgroup" style={{ marginTop: "10px" }}>
+                          {highCollinearPairs.map((pair) => {
+                            const detail = collinearPairDetail(pair);
+                            return <button key={detail.key} className={`ab-pill ${detail.key === selectedCollinearPair.key ? "active" : ""}`} onClick={() => setSelectedCollinearPairKey(detail.key)}>{detail.series[0].label} · {detail.series[1].label}</button>;
+                          })}
+                        </div>
+                      )}
+                      <p className="muted" style={{ fontSize: "11px", margin: "10px 0 0" }}>
+                        {selectedCollinearPair.unitLabel === tx("노출수", "impressions")
+                          ? tx("이 CSV에서 두 채널은 소진액이 아닌 노출수로 매핑되어 있습니다. 따라서 아래에는 실제 모델 입력값인 노출수를 표시합니다.", "These channels are mapped as impressions, not spend, in this CSV. The chart shows the actual model input: impressions.")
+                          : tx("아래는 두 채널에 매핑된 주별 소진액입니다.", "The chart below shows the weekly spend mapped to the two channels.")}
+                      </p>
+                      <CollinearPairInputChart labels={mmm.panel.weekLabel || mmm.panel.week} pair={selectedCollinearPair} locale={locale} />
+                    </Card>
+                  )}
                   {(mmm.run.baselineSelection?.enabled || Array.isArray(mmm.run.seasonalityPeriods) || mmm.run.mediaPenaltySelection?.enabled || mmm.run.jointTransform?.enabled) && <p className="muted" style={{ fontSize: "11px", lineHeight: 1.5, margin: "8px 0 0" }}>
                     {mmm.run.baselineSelection?.enabled ? tx(`Baseline은 78주 이상 데이터에서 0·1·2개 knot 후보를 비교했으며, BIC가 ${mmm.run.baselineSelection.selected ? "충분히 개선되어 적용" : "충분히 개선되지 않아 기본 추세 유지"}되었습니다.`, `With at least 78 weeks, baseline compared 0/1/2-knot candidates; the base trend was ${mmm.run.baselineSelection.selected ? "replaced because BIC improved materially" : "retained because improvement was not material"}.`) : ""}
                     {mmm.run.seasonalitySelection?.enabled ? ` ${mmm.run.seasonalitySelection.evidence?.detected
@@ -5018,6 +5134,16 @@ export default function MarketingResponse({ locale = "ko" }) {
                       <div className="chart-container" style={{ height: "240px", marginBottom: "12px" }}><canvas ref={fitRef}></canvas></div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", marginBottom: "6px" }}>
                         <h3 className="section-title" style={{ fontSize: "13.5px", margin: 0 }}>{tx("매주 성과는 무엇으로 이뤄졌나", "What made up each week's performance")} <span style={{ fontSize: "11px", color: MUTED, fontWeight: 400 }}>{tx("· 자동 분류한 그룹별 기여", "· automatically classified contribution groups")}</span></h3>
+                        <button
+                          className="ab-pill"
+                          title={tx("차트와 같은 주별 그룹 기여값을 내려받아 Excel에서 차트를 만들 수 있습니다.", "Download the weekly group values behind this chart for Excel.")}
+                          onClick={() => {
+                            csvDownload(`mmm_weekly_group_contribution_${mmm.target}_${_today()}.csv`, buildContributionGroupCsv(decomp, mmm.panel.weekLabel, groupPanels));
+                            trackProductEvent("result_downloaded", { tool_id: "5-18", source: "weekly_group_contribution", download_type: "csv", locale });
+                          }}
+                        >
+                          {tx("⬇ 차트 데이터 CSV", "⬇ Chart data CSV")}
+                        </button>
                       </div>
                       <p className="muted" style={{ fontSize: "11px", marginBottom: "6px", lineHeight: 1.5 }}>
                         {tx("채널은 직접 노출하지 않고", "Channels are not shown directly. Instead,")} <b>{tx("마케팅·브랜딩", "Performance and Brand")}</b>{tx("으로 자동 묶습니다. 기본 수요·추세는 양수 레벨이 오르내리는 값이고, 휴일·이벤트·시즌·계절·구조 변화는 기준선 대비 음수도 표시합니다.", ", Performance and Brand. Base demand · trend is a positive level that rises or falls; Holidays & Events, Seasonality, and Regime change can be negative versus that level.")}
@@ -5035,9 +5161,9 @@ export default function MarketingResponse({ locale = "ko" }) {
                       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         {groupPanels.map((group) => (
                           <section key={group.key} style={{ borderTop: "1px solid var(--border)", paddingTop: "8px" }}>
-                            <h4 style={{ margin: "0 0 3px", fontSize: "12px", color: "var(--text-1)" }}>{plainDrv(group.key)}</h4>
+                            <h4 style={{ margin: "0 0 3px", fontSize: "12px", color: "var(--text-1)" }}>{group.label}</h4>
                             <ContributionGroupPanel
-                              label={plainDrv(group.key)}
+                              label={group.label}
                               values={group.values}
                               labels={decomp.weeks.map((w, i) => mmm.panel.weekLabel?.[i] || w.week)}
                               color={groupPanelPalette[group.key] || "#85B7EB"}
