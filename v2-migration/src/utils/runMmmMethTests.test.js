@@ -182,6 +182,31 @@ describe("runMmmMethTests (golden port)", () => {
     expect(run.weeks.every((item) => item.contrib.Performance >= -1e-8)).toBe(true);
   });
 
+  it("keeps industry demand separate from media and advances it only as an MMM control", () => {
+    const n = 60;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const spend = week.map((value) => 500 + ((value * 7) % 9) * 80);
+    const market = week.map((value) => 900 + ((value * 11) % 13) * 120);
+    const target = week.map((_, index) => 2400 + spend[index] * 0.5 + market[index] * 1.8);
+    const cfg = { ...MMM_METH_CONFIG, includeTrend: false, seasonalityPeriods: [], adstockGrid: [0], bayesHalfSaturationQuantiles: [0.6], bayesHillSlopeGrid: [1] };
+    const panel = {
+      week,
+      ch: { meta: spend },
+      external: { dating_market: market },
+      externalDefs: [{ key: "dating_market", label: "Dating market downloads" }],
+      targets: { Regs: target },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+      dummy: {}, steps: {},
+    };
+    const run = mmmBayesianRun(panel, cfg, "Regs", false, { skipTransformUncertainty: true, enableMediaPenaltySelection: false, enableSeasonalitySelection: false });
+    expect(run.groupNames).toContain("Industry Trend");
+    expect(run.names).toContain("industry_dating_market");
+    expect(run.weeks.some((item) => Math.abs(item.contrib["Industry Trend"]) > 1e-6)).toBe(true);
+    const forecast = mmmBayesianForecast(run, panel, { meta: [1000] }, 1, { futureExternal: { dating_market: [1600] } });
+    const held = mmmBayesianForecast(run, panel, { meta: [1000] }, 1, { futureExternal: { dating_market: [market.at(-1)] } });
+    expect(forecast.predFut[0]).not.toBeCloseTo(held.predFut[0], 6);
+  });
+
   it("chooses media regularization from chronological holdouts instead of a fixed shrinkage", () => {
     const n = 88;
     const week = Array.from({ length: n }, (_, index) => index + 1);

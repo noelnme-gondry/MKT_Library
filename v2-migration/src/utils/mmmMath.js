@@ -911,6 +911,12 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 if (absorbed.has(nm)) continue;
                 push(nm, arr);
               }
+              // 시장 전체의 외생 수요 지수. 매체 지출이 아닌 별도 control이므로
+              // adstock·Hill 변환을 적용하지 않고, Industry Trend로 분해한다.
+              for (const [nm, arr] of Object.entries(panel.external || {})) {
+                if (absorbed.has("industry_" + nm)) continue;
+                push("industry_" + nm, arr);
+              }
               const sparse = cfg.excludeSparse
                 ? mmmSparseChannels(panel, cfg)
                 : new Set();
@@ -2792,6 +2798,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               "Regime(steps)",
               "Holidays & Events",
               "Regime change",
+              "Industry Trend",
             ]; // 비매체 드라이버 (baseline 포함 토글 대상)
 
             // -----------------------------------------------------------------
@@ -3178,6 +3185,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 ch: Object.fromEntries(Object.entries(panel.ch || {}).map(([key, values]) => [key, values.slice(0, end)])),
                 dummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(0, end)])),
                 steps: Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(0, end)])),
+                external: Object.fromEntries(Object.entries(panel.external || {}).map(([key, values]) => [key, values.slice(0, end)])),
                 targets: Object.fromEntries(Object.entries(panel.targets || {}).map(([key, values]) => [key, values.slice(0, end)])),
                 weekLabel: panel.weekLabel?.slice(0, end),
                 dateLabel: panel.dateLabel?.slice(0, end),
@@ -3220,7 +3228,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   const spend = Object.fromEntries(Object.entries(panel.ch || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
                   const futureDummy = Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
                   const futureSteps = Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
-                  const forecast = run && mmmBayesianForecast(run, train, spend, horizon, { futureDummy, futureSteps });
+                  const futureExternal = Object.fromEntries(Object.entries(panel.external || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
+                  const forecast = run && mmmBayesianForecast(run, train, spend, horizon, { futureDummy, futureSteps, futureExternal });
                   const actual = panel.targets?.[targetName]?.slice(cut, cut + horizon) || [];
                   if (forecast?.predFut?.length !== actual.length || !actual.length) continue;
                   const absoluteError = actual.reduce((sum, value, index) => sum + Math.abs(value - forecast.predFut[index]), 0);
@@ -3278,7 +3287,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   const spend = Object.fromEntries(Object.entries(panel.ch || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
                   const futureDummy = Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
                   const futureSteps = Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
-                  const forecast = run && mmmBayesianForecast(run, train, spend, horizon, { futureDummy, futureSteps });
+                  const futureExternal = Object.fromEntries(Object.entries(panel.external || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
+                  const forecast = run && mmmBayesianForecast(run, train, spend, horizon, { futureDummy, futureSteps, futureExternal });
                   const actual = panel.targets?.[targetName]?.slice(cut, cut + horizon) || [];
                   if (forecast?.predFut?.length !== actual.length || !actual.length) continue;
                   const absError = actual.reduce((sum, value, index) => sum + Math.abs(value - forecast.predFut[index]), 0);
@@ -3346,6 +3356,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               const targetSeries = panel.targets?.[targetName];
               if (!targetSeries?.length || targetSeries.some((value) => !Number.isFinite(value))) return null;
               if (_mmmChans(panel).some((channel) => panel.ch[channel.key]?.some((value) => !Number.isFinite(value)))) return null;
+              if (Object.values(panel.external || {}).some((series) => series.some((value) => !Number.isFinite(value)))) return null;
               const baseline = _mmmBayesBaselineSelection(panel, cfg, targetName, options);
               const seasonalitySelection = mmmBayesianSeasonalitySelection(panel, baseline.cfg, targetName, options);
               const penaltySelection = mmmBayesianMediaPenaltySelection(panel, seasonalitySelection.cfg, targetName, options);
@@ -3399,11 +3410,13 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               // baseline knot은 자연 추세의 굴절점이지 step이 아니므로 구조 변화로
               // 묶으면 안 된다.
               const stepNames = new Set(Object.keys(panel.steps || {}).filter((key) => names.includes(key)));
-              const groupNames = ["Trend", "Seasonality", "Holidays & Events", ...(stepNames.size ? ["Regime change"] : []), ...mediaGroups];
+              const industryNames = new Set(Object.keys(panel.external || {}).map((key) => "industry_" + key).filter((key) => names.includes(key)));
+              const groupNames = ["Trend", "Seasonality", "Holidays & Events", ...(stepNames.size ? ["Regime change"] : []), ...(industryNames.size ? ["Industry Trend"] : []), ...mediaGroups];
               const groupFor = (name) => {
                 if (name === "trend" || name.startsWith("baseline_knot_")) return "Trend";
                 if (/^(sin|cos)_/.test(name)) return "Seasonality";
                 if (name === "lny" || name === "chuseok" || name.startsWith("d_")) return "Holidays & Events";
+                if (industryNames.has(name)) return "Industry Trend";
                 if (name.startsWith("media_")) {
                   const key = name.slice(6);
                   return (channelMeta.find((ch) => ch.key === key) || {}).kind === "brand"
@@ -3613,6 +3626,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 const fc = held && mmmBayesianForecast(held, train, spend, h, {
                   futureDummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(cut)])),
                   futureSteps: Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(cut)])),
+                  futureExternal: Object.fromEntries(Object.entries(panel.external || {}).map(([key, values]) => [key, values.slice(cut)])),
                 });
                 const actualHold = panel.targets[targetName].slice(cut);
                 if (fc?.predFut?.length === actualHold.length) {
@@ -3677,6 +3691,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 ch: sliceSeries(panel.ch),
                 dummy: sliceSeries(panel.dummy),
                 steps: sliceSeries(panel.steps),
+                external: sliceSeries(panel.external),
                 targets: sliceSeries(panel.targets),
               };
             }
@@ -4074,6 +4089,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   // Unknown future holiday dates must default to OFF.
                   if (name === "lny" || name === "chuseok") return options.futureDummy?.[name]?.[h] ?? 0;
                   if (options.futureSteps?.[name]) return options.futureSteps[name][h] ?? (lastRaw[j] || 0);
+                  if (name.startsWith("industry_")) {
+                    const key = name.slice("industry_".length);
+                    return options.futureExternal?.[key]?.[h] ?? (lastRaw[j] || 0);
+                  }
                   return lastRaw[j] || 0;
                 });
                 run.channelMeta.forEach((ch) => {

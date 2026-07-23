@@ -6,7 +6,7 @@ import { mmmExcelSerialDateTimestamp, mmmParseNumericValue } from "@/utils/mmmIn
 /* index.html의 5-18 DnD colMap(§12.20류 이관) — mmmGuessRole/mmmAutoMapPartial/
  * mmmColMapRoles/mmmGetPanelFromColMap을 React 네이티브 HTML5 DnD로 포팅.
  * colMap: { [header]: { role, kind?, plat? } }
- * role: week|date|reg|react|revenue|channel|dummy|step|platform|ignore */
+ * role: week|date|reg|react|revenue|channel|dummy|step|external|platform|ignore */
 
 const MMM_DAY_MS = 86400000;
 
@@ -128,6 +128,7 @@ function guessRole(col, rows) {
   else if (isNum && /revenue|매출|sales|gmv|payment|결제금액/.test(name)) role = "revenue";
   else if (isNum && /purchaser|buyer|구매자|결제자/.test(name)) role = "purchasers";
   else if (isNum && /traffic|total.?visit|총.?유입|방문자|sessions?/.test(name)) role = "traffic";
+  else if (isNum && /industry|market|category|업계|시장.?수요|카테고리.?수요/.test(name)) role = "external";
   else if (isNum && /reg|가입|등록|signup|sign_up|install/.test(name)) role = "reg";
   else if (isNum && /react|재활성|reactiv|resurrect|win.?back|winback/.test(name)) role = "react";
   else if (isNum && /cost|spend|비용|지출|budget|imp|click|ch_|채널|brand/.test(name)) role = "channel";
@@ -153,7 +154,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
         else once[role] = true;
       }
       out[h] = { role, kind: g.kind };
-      if (["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step"].includes(role)) out[h].plat = guessPlat(h);
+      if (["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external"].includes(role)) out[h].plat = guessPlat(h);
       continue;
     }
     // partial: 강한 키워드만. isNum·isBin·isDateCol 판정 후 reg/react/channel/date만.
@@ -178,6 +179,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
       else if (/revenue|매출|sales|gmv|payment|결제금액/.test(name)) role = "revenue";
       else if (/purchaser|buyer|구매자|결제자/.test(name)) role = "purchasers";
       else if (/traffic|total.?visit|총.?유입|방문자|sessions?/.test(name)) role = "traffic";
+      else if (/industry|market|category|업계|시장.?수요|카테고리.?수요/.test(name)) role = "external";
       else if (/reg|가입|등록|signup|sign_up|install/.test(name)) role = "reg";
       else if (/react|재활성|reactiv|resurrect|win.?back|winback/.test(name)) role = "react";
       else if (/spend|cost|비용|지출|budget|brand/.test(name)) role = "channel";
@@ -188,7 +190,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
     }
     if (role === "date") { if (once.date) role = "ignore"; else once.date = true; }
     out[h] = { role, kind };
-    if (["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step"].includes(role)) out[h].plat = guessPlat(h);
+    if (["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external"].includes(role)) out[h].plat = guessPlat(h);
   }
   return out;
 }
@@ -206,7 +208,7 @@ function sanKey(name, used) {
 }
 
 function colMapRoles(headers, colMap) {
-  const out = { week: [], date: null, reg: [], react: [], traffic: [], purchasers: [], revenue: [], platform: null, channels: [], dummies: [], steps: [] };
+  const out = { week: [], date: null, reg: [], react: [], traffic: [], purchasers: [], revenue: [], platform: null, channels: [], dummies: [], steps: [], externals: [] };
   const used = new Set();
   for (const h of headers || []) {
     const def = colMap[h] || {};
@@ -226,6 +228,7 @@ function colMapRoles(headers, colMap) {
     else if (r === "channel") out.channels.push({ header: h, key: sanKey(h, used), label: h, kind: def.kind === "brand" ? "brand" : "perf", plat });
     else if (r === "dummy") out.dummies.push({ header: h, key: sanKey(h, used), label: h, plat });
     else if (r === "step") out.steps.push({ header: h, key: sanKey(h, used), label: h, plat });
+    else if (r === "external") out.externals.push({ header: h, key: sanKey(h, used), label: h, plat });
   }
   return out;
 }
@@ -251,7 +254,7 @@ export function mmmPlatformTags(headers, colMap) {
   const r = colMapRoles(headers, colMap);
   if (r.platform) return []; // 행 필터(단일 컬럼) 모드는 태그 토글 대상 아님 — 값 자체가 플랫폼
   const set = new Set();
-  [...r.reg, ...r.react, ...r.traffic, ...r.purchasers, ...r.revenue, ...r.channels].forEach((x) => {
+  [...r.reg, ...r.react, ...r.traffic, ...r.purchasers, ...r.revenue, ...r.channels, ...r.externals].forEach((x) => {
     if (x.plat && x.plat !== "common") set.add(x.plat);
   });
   return [...set];
@@ -319,11 +322,12 @@ function pivotLongFormat(headers, rows, colMap) {
   const targetHeaders = new Set([
     ...roles.reg, ...roles.react, ...roles.traffic, ...roles.purchasers, ...roles.revenue,
   ].map((item) => item.header));
+  const externalHeaders = new Set(roles.externals.map((item) => item.header));
   const binaryHeaders = new Map([
     ...roles.dummies.map((item) => [item.header, "dummy"]),
     ...roles.steps.map((item) => [item.header, "step"]),
   ]);
-  const repeatedHeaders = new Set([...targetHeaders, ...binaryHeaders.keys()]);
+  const repeatedHeaders = new Set([...targetHeaders, ...externalHeaders, ...binaryHeaders.keys()]);
   const isBlank = (value) => value == null || String(value).trim() === "";
   const canonicalRepeated = (header, value) => {
     if (binaryHeaders.has(header)) return mmmParseBinaryIndicator(value, binaryHeaders.get(header));
@@ -457,12 +461,15 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
     const additiveHeaders = new Set([
       ...r.reg, ...r.react, ...r.traffic, ...r.purchasers, ...r.revenue, ...r.channels,
     ].map((item) => item.header));
+    // 업계 지수는 일자/플랫폼 행에 반복될 수 있는 level control이다. KPI·spend처럼
+    // 합산하면 주간 시장 규모가 행 수만큼 부풀므로 유효값 평균으로 묶는다.
+    const externalHeaders = new Set(r.externals.map((item) => item.header));
     const binaryRoles = new Map([
       ...r.dummies.map((item) => [item.header, "dummy"]),
       ...r.steps.map((item) => [item.header, "step"]),
     ]);
     const binaryHeaders = new Set(binaryRoles.keys());
-    const modelHeaders = new Set([...additiveHeaders, ...binaryHeaders]);
+    const modelHeaders = new Set([...additiveHeaders, ...externalHeaders, ...binaryHeaders]);
     const numericValue = (value) => {
       if (value == null || String(value).trim() === "") return NaN;
       const parsed = mmmParseNumericValue(value);
@@ -496,6 +503,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
         Object.defineProperty(item, "__mmmDailyKeys", { value: new Set(), enumerable: false, configurable: true });
         Object.defineProperty(item, "__mmmInvalidBinary", { value: new Set(), enumerable: false, configurable: true });
         Object.defineProperty(item, "__mmmStepStates", { value: new Map(), enumerable: false, configurable: true });
+        Object.defineProperty(item, "__mmmExternalCounts", { value: new Map(), enumerable: false, configurable: true });
         item[timeHeader] = normalizedTime;
         for (const header of modelHeaders) {
           if (binaryHeaders.has(header)) {
@@ -507,6 +515,11 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
             continue;
           }
           const value = numericValue(row[header]);
+          if (externalHeaders.has(header)) {
+            item[header] = Number.isFinite(value) ? value : "";
+            if (Number.isFinite(value)) item.__mmmExternalCounts.set(header, 1);
+            continue;
+          }
           item[header] = Number.isFinite(value) ? value : "";
           if (!Number.isFinite(value)) item.__mmmMissingAdditive.add(header);
         }
@@ -533,6 +546,14 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
             continue;
           }
           const value = numericValue(row[header]);
+          if (externalHeaders.has(header)) {
+            if (!Number.isFinite(value)) continue;
+            const current = numericValue(item[header]);
+            const count = item.__mmmExternalCounts.get(header) || 0;
+            item[header] = Number.isFinite(current) && count > 0 ? (current * count + value) / (count + 1) : value;
+            item.__mmmExternalCounts.set(header, count + 1);
+            continue;
+          }
           if (!Number.isFinite(value)) {
             item.__mmmMissingAdditive.add(header);
             continue;
@@ -634,6 +655,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
       delete item.__mmmDailyKeys;
       delete item.__mmmInvalidBinary;
       delete item.__mmmStepStates;
+      delete item.__mmmExternalCounts;
       return item;
     });
   } else if (timeHeader && baseRows.length) {
@@ -654,13 +676,15 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   // 표시 라벨: 매핑된 날짜 컬럼(2025-01-06 등) 우선, 없으면 주차 컬럼 원본값. 둘 다 없으면 null(→인덱스 폴백).
   const labelC = r.date || (weekC ? weekC.header : null);
   const weekLabelRaw = labelC ? baseRows.map((row) => row[labelC]) : null;
-  const panel = { week: baseRows.map((_, i) => i + 1), ch: {}, dummy: {}, steps: {}, targets: {} };
+  const panel = { week: baseRows.map((_, i) => i + 1), ch: {}, dummy: {}, steps: {}, external: {}, targets: {} };
   const chans = r.channels.filter((channel) => inPlat(channel) && !isAmbiguousOtherCost(channel));
   const dummies = r.dummies.filter(inPlat);
   const steps = r.steps.filter(inPlat);
+  const externals = r.externals.filter(inPlat);
   for (const ch of chans) panel.ch[ch.key] = num(ch.header, true);
   for (const d of dummies) panel.dummy[d.key] = baseRows.map((row) => mmmParseBinaryIndicator(row[d.header], "dummy"));
   for (const s of steps) panel.steps[s.key] = baseRows.map((row) => mmmParseBinaryIndicator(row[s.header], "step"));
+  for (const external of externals) panel.external[external.key] = num(external.header, true);
   // 종속(타깃): 플랫폼 일치 컬럼을 index별 벡터 합산 — Total이면 Android+iOS 합(이전엔 pick=1개만
   // 골라 Total인데 한 OS 값만 나오던 버그). X(채널)는 이미 filter라 대칭.
   const sumCols = (list) => {
@@ -685,6 +709,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   for (const k in panel.ch) panel.ch[k] = re(panel.ch[k]);
   for (const k in panel.dummy) panel.dummy[k] = re(panel.dummy[k]);
   for (const k in panel.steps) panel.steps[k] = re(panel.steps[k]);
+  for (const k in panel.external) panel.external[k] = re(panel.external[k]);
   for (const k in panel.targets) panel.targets[k] = re(panel.targets[k]);
   if (panel.targets.Regs && panel.targets.React) {
     panel.targets.RR = panel.week.map((_, i) => panel.targets.Regs[i] + panel.targets.React[i]);
@@ -694,6 +719,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   panel.channels = chans.map((c) => ({ key: c.key, label: c.label, kind: c.kind }));
   panel.dummyDefs = dummies.map((d) => ({ key: d.key, label: d.label }));
   panel.stepDefs = steps.map((s) => ({ key: s.key, label: s.label }));
+  panel.externalDefs = externals.map((external) => ({ key: external.key, label: external.label }));
   panel.useDummies = dummies.length > 0;
   // 차트·예측 라벨: mmmForecast/차트는 panel.dateLabel·dates·granularity를 읽음(weekLabel 아님) →
   // 매핑된 주차/날짜 라벨을 그 이름들로도 노출해야 x축·미래라벨이 실제 날짜(t 인덱스 아님)로 나옴.
@@ -755,6 +781,7 @@ const ZONES = [
   ["purchasers", "🛍 구매자 Purchasers", "🛍 Purchasers", false, true],
   ["revenue", "💰 매출 Revenue", "💰 Revenue", false, true],
   ["channel", "📈 채널 spend (여러 개 · perf/brand · 플랫폼)", "📈 Channel spend (many · perf/brand · platform)", true, true],
+  ["external", "📊 업계 수요 지수 (MMM 전용 · 여러 개 · 플랫폼)", "📊 Industry-demand index (MMM only · many · platform)", false, true],
   ["dummy", "🔢 더미/이벤트 (0·1 · true/false · yes/no · on/off)", "🔢 Dummy/event (0/1 · true/false · yes/no · on/off)", false, true],
   ["step", "📐 구조변화 step (0·1 · pre/post · before/after)", "📐 Structural step (0/1 · pre/post · before/after)", false, true],
   ["platform", "🔀 세그먼트/플랫폼 단일 컬럼 (선택 · 성별·플랫폼·국가 등 값별로 나눠보기)", "🔀 Segment/platform single column (optional · split by gender/platform/country, etc.)", false, false],
@@ -775,7 +802,7 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
       }
     }
     const prev = next[col] || {};
-    next[col] = { ...prev, role, plat: ["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step"].includes(role) ? prev.plat || guessPlat(col) : prev.plat };
+    next[col] = { ...prev, role, plat: ["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external"].includes(role) ? prev.plat || guessPlat(col) : prev.plat };
     onChange(next);
   };
   const setField = (col, field, value) => {
