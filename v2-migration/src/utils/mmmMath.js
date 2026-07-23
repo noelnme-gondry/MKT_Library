@@ -3496,6 +3496,17 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               return mmmForecastGlobalBaseline(panel, targetName, periods);
             }
 
+            // 구조변화가 섞인 최근 추세를 미래에 직선으로 연장하면 iOS delist/reopen
+            // 같은 일회성 충격이 12주 내내 증폭된다. 마지막 관측 수준에 고정한 뒤
+            // 변화분만 감쇠해 이어 간다. 기본값은 mmmBayesianForecast의 추세 감쇠와 같다.
+            export function mmmForecastDampedTrendOffset(trendModel, lastWeek, week, damping = 0.25) {
+              if (!trendModel?.trendOffsetAt || !Number.isFinite(lastWeek)) return 0;
+              const anchor = trendModel.trendOffsetAt(lastWeek);
+              const target = trendModel.trendOffsetAt(week);
+              const weight = Number.isFinite(damping) ? Math.max(0, Math.min(1, damping)) : 0.25;
+              return anchor + (target - anchor) * weight;
+            }
+
             export function mmmForecastSeasonalAdjustedPanel(panel, targetName, seasonalModel) {
               if (!seasonalModel?.offsetAt) return panel;
               const target = panel?.targets?.[targetName];
@@ -3512,7 +3523,9 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             export function mmmForecastRestoreSeasonality(forecast, panel, seasonalModel) {
               if (!forecast || !seasonalModel?.offsetAt) return forecast;
               const histOffset = (panel?.week || []).map((week) => seasonalModel.offsetAt(week));
-              const futureOffset = (forecast.futWeek || []).map((week) => seasonalModel.offsetAt(week));
+              const futureOffset = (forecast.futWeek || []).map((week, index) =>
+                seasonalModel.futureOffsetAt ? seasonalModel.futureOffsetAt(week, index) : seasonalModel.offsetAt(week),
+              );
               const plus = (values, offsets) => values?.map((value, index) => value + (offsets[index] || 0));
               return {
                 ...forecast,
@@ -3582,7 +3595,9 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                       ? mmmForecastGlobalBaseline(_mmmSliceWindowPanel(panel, trendStart, holdoutStart), targetName, [])
                       : null;
                     if (trendOption.trendScope === "global" && !trendModel) continue;
+                    const trainLastWeek = rawTrain.week.at(-1);
                     const offsetAt = (week) => (seasonalModel?.offsetAt(week) || 0) + (trendModel?.trendOffsetAt(week) || 0);
+                    const futureOffsetAt = (week) => (seasonalModel?.offsetAt(week) || 0) + mmmForecastDampedTrendOffset(trendModel, trainLastWeek, week);
                     const train = (seasonalModel || trendModel)
                       ? { ...rawTrain, targets: { ...rawTrain.targets, [targetName]: rawTrain.targets[targetName].map((value, index) => value - offsetAt(rawTrain.week[index])) } }
                       : rawTrain;
@@ -3603,7 +3618,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                     });
                     const actual = held.targets[targetName];
                     const predicted = (seasonalModel || trendModel)
-                      ? forecast?.predFut?.map((value, index) => value + offsetAt(held.week[index]))
+                      ? forecast?.predFut?.map((value, index) => value + futureOffsetAt(held.week[index]))
                       : forecast?.predFut;
                     if (!predicted?.length || predicted.length !== actual?.length || !predicted.every(Number.isFinite)) continue;
                     const recent = train.targets[targetName].slice(-Math.min(8, train.targets[targetName].length));
