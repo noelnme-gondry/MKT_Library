@@ -19,6 +19,7 @@ import MarketingResponse, {
   MMM_EXPERIMENT_GEO_WIDE_TEMPLATE_CSV,
   MMM_EXPERIMENT_ONOFF_TEMPLATE_CSV,
   MMM_TEMPLATE_CSV,
+  buildForecastCsv,
   buildForecastOnlyModelFromPanel,
   buildForecastRecentBacktest,
   mmmDerivedTrafficValue,
@@ -192,6 +193,38 @@ describe("MarketingResponse render smoke", () => {
       hi: [250, 270],
       futLabels: ["W4", "W5"],
     });
+  });
+
+  it("exports Empirical-Bayes forecast as live spend → adstock → Hill formulas", () => {
+    const model = (platform, offset = 0) => ({
+      platform,
+      target: "Regs",
+      names: ["trend", `media_${platform}_cost`],
+      beta: [2, 8],
+      intercept: 100,
+      featureMeans: [1, 0.5],
+      featureScales: [1, 0.25],
+      rawFeatureHistory: [[0, 0.4], [1, 0.5]],
+      futureRawFeatures: [[2, 0.6]],
+      params: { [`${platform}_cost`]: { alpha: 0.4, ec: 100, slope: 1.2 } },
+      chans: [{ key: `${platform}_cost`, label: `${platform}_cost` }],
+      histSpendByKey: { [`${platform}_cost`]: [100, 120] },
+      futSpendByKey: { [`${platform}_cost`]: [140] },
+      histLabels: ["W1", "W2"], futLabels: ["W3"], actual: [100 + offset, 110 + offset],
+      historyOffset: [0, 0], futureOffset: [0], futureMargins: [12],
+    });
+    const lines = buildForecastCsv({
+      isBayesian: true,
+      isAdditiveTotal: true,
+      model: "android-ios-additive",
+      excelModels: [model("android"), model("ios", 20)],
+    }, "Regs", "ko", "USD", "USD");
+    const csv = lines.join("\n");
+    expect(csv).toContain("adstock_android_cost");
+    expect(csv).toContain("hill_android_cost");
+    expect(csv).toContain("ln1p_adstock_android_cost_audit");
+    expect(csv).toContain("Total = Android + iOS");
+    expect(csv).toContain("^$D$");
   });
 
   it("parses formatted experiment values before deriving traffic", () => {
