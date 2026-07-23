@@ -3,6 +3,11 @@ import { CANNIBAL_STATS } from "./responseMath.js";
 import { mmmOls, REG_STATS, REG_TRANSFORMS } from "./regMath.js";
 import { _Z975, mmmNormCdf, chi2Cdf, studentTp, studentTcrit } from "./statPrimitives.js";
 import { _mmmFmtDate } from "./regForecastMath.js";
+import {
+  buildObservedYearShapes,
+  classifyBusinessSeasonality,
+  compareObservedYearShapes,
+} from "./mmmBusinessSeasonality.js";
 
             export const MMR_MATH = {
               // 기하 adstock: a_t = x_t + θ·a_{t-1}
@@ -663,6 +668,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               seasonalityRollingMinTrain: 52,
               seasonalityRollingMaxFolds: 3,
               seasonalityRollingMaxDegradation: 2,
+              seasonalityObservedRecurrenceRequired: true,
               seasonalityMinLagCorrelation: 0.15,
               adstockGrid: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
               // Empirical-Bayes 효과 신뢰도는 한 변환을 고정하지 않는다. 채널별 α × 반포화점 ×
@@ -3406,9 +3412,13 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               const finalNeutralControls = _mmmBayesControlFeatures(panel, neutralCfg);
               const finalChannelParams = _mmmBayesChannelParams(panel, neutralCfg, targetName, finalNeutralControls);
               const finalBicById = new Map();
+              let finalNoneFit = null;
               finalCandidates.forEach((item) => {
                 const fit = _mmmBayesSeasonalityCandidateFit(panel, cfg, targetName, item.periods, finalChannelParams, options);
-                if (fit) finalBicById.set(item.id, fit.bic);
+                if (fit) {
+                  finalBicById.set(item.id, fit.bic);
+                  if (item.id === none.id) finalNoneFit = fit;
+                }
               });
               const annualCandidates = groupedAnnualCandidates.map((item) => ({
                 ...item,
@@ -3443,6 +3453,14 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               const controlConsensus = marketBlindSelection
                 ? marketBlindSelection.selected?.id === best.id
                 : true;
+              const observedRecurrence = Array.isArray(panel.dateLabel) && finalNoneFit
+                ? compareObservedYearShapes(buildObservedYearShapes(panel.dateLabel, finalNoneFit.posterior.resid))
+                : { available: false, reason: "date-labels-unavailable" };
+              const observedConfidence = classifyBusinessSeasonality(observedRecurrence, n);
+              const observedRecurrenceGate = !cfg.seasonalityObservedRecurrenceRequired
+                || !observedRecurrence.available
+                || observedConfidence.level === "moderate"
+                || observedConfidence.level === "strong";
               const evidence = {
                 minHistory,
                 observedWeeks: n,
@@ -3461,6 +3479,9 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 }])),
                 controlConsensus,
                 marketBlindSelected: marketBlindSelection?.selected?.id || null,
+                observedRecurrence,
+                observedConfidence,
+                observedRecurrenceGate,
                 // 계절성 선택은 분해용이다. 최근 holdout을 통과시키는 대신,
                 // 집계 매체를 통제한 전체 이력에서 구조적 BIC 개선과 동일한
                 // 연간 파형의 재현성을 요구한다. 미래 예측은 별도 rolling
@@ -3468,7 +3489,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 detected: bicImprovement >= (cfg.seasonalityBicThreshold || 6)
                   && Number.isFinite(seasonalLagCorrelation)
                   && seasonalLagCorrelation >= 0.75
-                  && seasonalRms >= Math.max(1, _mean(selectionPanel.targets[targetName]) * 0.005),
+                  && seasonalRms >= Math.max(1, _mean(selectionPanel.targets[targetName]) * 0.005)
+                  && observedRecurrenceGate,
               };
               const eligible = evidence.detected
                 ? annualCandidates.filter((item) => {
