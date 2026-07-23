@@ -2090,10 +2090,7 @@ function sliceMmmPanel(panel, end, start = 0) {
   };
 }
 
-function buildForecastOnlyModelFromPanel(sourcePanel, sourceCfg, target) {
-  const selection = mmmForecastRollingSelection(sourcePanel, sourceCfg, target);
-  const selected = selection.selected;
-  if (!selected) return { selection, panel: null, cfg: null, run: null };
+function buildForecastModelForSelection(sourcePanel, sourceCfg, target, selected) {
   const rawPanel = sliceMmmPanel(sourcePanel, sourcePanel.week.length, Math.max(0, sourcePanel.week.length - selected.window));
   const seasonalModel = selected.seasonalityScope === "global"
     ? mmmForecastGlobalSeasonality(sourcePanel, target, selected.seasonalityPeriods)
@@ -2102,7 +2099,7 @@ function buildForecastOnlyModelFromPanel(sourcePanel, sourceCfg, target) {
   const trendModel = selected.trendScope === "global"
     ? mmmForecastGlobalBaseline(sliceMmmPanel(sourcePanel, sourcePanel.week.length, trendStart), target, [])
     : null;
-  if ((selected.seasonalityScope === "global" && !seasonalModel) || (selected.trendScope === "global" && !trendModel)) return { selection, rawPanel, panel: null, cfg: null, run: null };
+  if ((selected.seasonalityScope === "global" && !seasonalModel) || (selected.trendScope === "global" && !trendModel)) return { rawPanel, panel: null, cfg: null, run: null };
   const offsetModel = seasonalModel || trendModel ? {
     offsetAt: (week) => (seasonalModel?.offsetAt(week) || 0) + (trendModel?.trendOffsetAt(week) || 0),
   } : null;
@@ -2119,7 +2116,14 @@ function buildForecastOnlyModelFromPanel(sourcePanel, sourceCfg, target) {
     skipTransformUncertainty: true,
     enableBaselineSelection: false,
   });
-  return { selection, rawPanel, panel, cfg, run, seasonalModel: offsetModel };
+  return { rawPanel, panel, cfg, run, seasonalModel: offsetModel };
+}
+
+export function buildForecastOnlyModelFromPanel(sourcePanel, sourceCfg, target) {
+  const selection = mmmForecastRollingSelection(sourcePanel, sourceCfg, target);
+  const selected = selection.selected;
+  if (!selected) return { selection, sourcePanel, sourceCfg, target, panel: null, cfg: null, run: null };
+  return { ...buildForecastModelForSelection(sourcePanel, sourceCfg, target, selected), selection, sourcePanel, sourceCfg, target };
 }
 
 function buildForecastOnlyModel(mmm) {
@@ -2252,64 +2256,49 @@ function runForecastScenario(model, horizon, budgets, stepOff) {
   };
 }
 
-function restoreForecastBacktest(backtest, rawPanel, target, seasonalModel) {
-  if (!backtest || !seasonalModel?.offsetAt) return backtest;
-  const length = backtest.actual.length;
-  const actual = rawPanel.targets[target].slice(-length);
-  const offsets = rawPanel.week.slice(-length).map((week) => seasonalModel.offsetAt(week));
-  const predicted = backtest.predicted.map((value, index) => value + offsets[index]);
-  const validationActual = actual.slice(backtest.validationStartIndex);
-  const validationPredicted = predicted.slice(backtest.validationStartIndex);
+// 선택된 Cost 창이 30주처럼 짧아도, 최근 24주 검증은 전체 이력에서 마지막
+// 12주를 완전히 빼고 같은 선택 사양으로 다시 적합한다. 짧은 Cost 창 때문에
+// 검증 카드를 숨기던 기존 동작을 없애면서 holdout의 실제값은 학습에 섞지 않는다.
+export function buildForecastRecentBacktest(model) {
+  const sourcePanel = model?.sourcePanel;
+  const target = model?.target;
+  const n = sourcePanel?.week?.length || 0;
+  const holdout = 12;
+  if (!model?.sourceCfg || !target || n < 36) return null;
+  const trainSource = sliceMmmPanel(sourcePanel, n - holdout);
+  const trainModel = model.selection?.selected
+    ? buildForecastModelForSelection(trainSource, model.sourceCfg, target, model.selection.selected)
+    : null;
+  if (!trainModel.run || !trainModel.panel) return null;
+  const futureSpend = Object.fromEntries(Object.entries(sourcePanel.ch).map(([key, values]) => [key, values.slice(-holdout)]));
+  const futureDummy = Object.fromEntries(Object.entries(sourcePanel.dummy || {}).map(([key, values]) => [key, values.slice(-holdout)]));
+  const futureSteps = Object.fromEntries(Object.entries(sourcePanel.steps || {}).map(([key, values]) => [key, values.slice(-holdout)]));
+  const result = mmmBayesianForecast(trainModel.run, trainModel.panel, futureSpend, holdout, {
+    futureDummy,
+    futureSteps,
+    clampScenario: false,
+    trendDamping: 0,
+  });
+  const restored = mmmForecastRestoreSeasonality(result, trainModel.panel, trainModel.seasonalModel);
+  if (!restored?.predFut || restored.predFut.length !== holdout) return null;
+  const contextLength = 12;
+  const actual = [
+    ...sourcePanel.targets[target].slice(-(holdout + contextLength), -holdout),
+    ...sourcePanel.targets[target].slice(-holdout),
+  ];
+  const predicted = [...restored.fittedHist.slice(-contextLength), ...restored.predFut];
+  const validationActual = actual.slice(contextLength);
+  const validationPredicted = predicted.slice(contextLength);
   const absErrors = validationActual.map((value, index) => Math.abs(value - validationPredicted[index]));
   const actualTotal = validationActual.reduce((sum, value) => sum + Math.abs(value), 0);
   const wmape = actualTotal > 0 ? absErrors.reduce((sum, value) => sum + value, 0) / actualTotal * 100 : null;
   return {
-    ...backtest,
+    labels: (sourcePanel.weekLabel || sourcePanel.week).slice(-(holdout + contextLength)),
     actual,
     predicted,
-    rmse: Math.sqrt(absErrors.reduce((sum, value) => sum + value ** 2, 0) / validationActual.length),
-    mae: absErrors.reduce((sum, value) => sum + value, 0) / validationActual.length,
-    wmape,
-    reliable: Number.isFinite(wmape) && wmape <= 30,
-  };
-}
-
-// 최근 24주 맥락에서 앞 12주는 학습 구간의 모델 적합, 뒤 12주는 학습에서 뺀
-// out-of-sample 예측을 잇는다. 미래 예측 전 두 구간을 구분해 보는 검증 화면이다.
-function buildMmmRecentBacktest(mmm) {
-  // 외부 prior는 최종 전체 패널의 대표 transform 단위로 보정된다. 이를 다른
-  // train-only transform에 그대로 넣으면 단위가 달라지므로 base MMM에서만
-  // recent OOS를 제공한다. 실험 근거는 자체 holdout CI로, 국가 근거는 아래
-  // country-only rolling 검증으로 평가한다.
-  if (mmm?.isCountryPriorTuned || Object.keys(mmm?.mediaPriors || {}).length > 0) return null;
-  const panel = mmm?.panel;
-  const target = mmm?.target;
-  const n = panel?.week?.length || 0;
-  const holdout = Math.min(12, n - 24);
-  if (!panel || !target || holdout < 8) return null;
-  const train = sliceMmmPanel(panel, n - holdout);
-  const run = mmmBayesianRun(train, mmm.cfg, target, false, { mediaPriors: mmm.mediaPriors || {}, skipTransformUncertainty: true });
-  const futureSpend = Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, values.slice(-holdout)]));
-  const futureDummy = Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(-holdout)]));
-  const futureSteps = Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(-holdout)]));
-  // Backtest must score the real holdout spend, even when it falls outside the
-  // train range. Clamping here would hide extrapolation risk and understate error.
-  const forecast = run && mmmBayesianForecast(run, train, futureSpend, holdout, { futureDummy, futureSteps, clampScenario: false, trendDamping: 0 });
-  const validationActual = panel.targets[target].slice(-holdout);
-  if (!forecast?.predFut || forecast.predFut.length !== validationActual.length) return null;
-  const contextTrain = Math.min(12, forecast.fittedHist.length);
-  const actual = panel.targets[target].slice(-(contextTrain + holdout));
-  const predicted = [...forecast.fittedHist.slice(-contextTrain), ...forecast.predFut];
-  const absErrors = validationActual.map((value, index) => Math.abs(value - forecast.predFut[index]));
-  const actualTotal = validationActual.reduce((sum, value) => sum + Math.abs(value), 0);
-  const wmape = actualTotal > 0 ? absErrors.reduce((sum, value) => sum + value, 0) / actualTotal * 100 : null;
-  return {
-    labels: (panel.weekLabel || panel.week).slice(-(contextTrain + holdout)),
-    actual,
-    predicted,
-    validationStartIndex: contextTrain,
-    rmse: Math.sqrt(absErrors.reduce((sum, value) => sum + value ** 2, 0) / validationActual.length),
-    mae: absErrors.reduce((sum, value) => sum + value, 0) / validationActual.length,
+    validationStartIndex: contextLength,
+    rmse: Math.sqrt(absErrors.reduce((sum, value) => sum + value ** 2, 0) / holdout),
+    mae: absErrors.reduce((sum, value) => sum + value, 0) / holdout,
     wmape,
     reliable: Number.isFinite(wmape) && wmape <= 30,
   };
@@ -3222,16 +3211,11 @@ export default function MarketingResponse({ locale = "ko" }) {
     if (!mmm || mmm.empty || stage !== "lab" || !forecastModel) return null;
     try {
       if (forecastModel.isAdditiveTotal) {
-        const components = forecastModel.components.map((model) => {
-          if (!model.run || !model.panel) return null;
-          const result = buildMmmRecentBacktest({ ...mmm, panel: model.panel, cfg: model.cfg, run: model.run, target: model.target, mediaPriors: {} });
-          return restoreForecastBacktest(result, model.rawPanel, model.target, model.seasonalModel);
-        });
+        const components = forecastModel.components.map((model) => buildForecastRecentBacktest(model));
         return mmmSumOsBacktests(components);
       }
       if (!forecastModel.run || !forecastModel.panel) return null;
-      const result = buildMmmRecentBacktest({ ...mmm, panel: forecastModel.panel, cfg: forecastModel.cfg, run: forecastModel.run, mediaPriors: {} });
-      return restoreForecastBacktest(result, forecastModel.rawPanel, mmm.target, forecastModel.seasonalModel);
+      return buildForecastRecentBacktest(forecastModel);
     } catch {
       return null;
     }
