@@ -1278,6 +1278,7 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
   add("04_Model", [
     ["model", run.methodLabel], ["R2", run.posterior?.r2], ["sigma", run.posterior?.sigma], ["target", mmm.target], [],
     ["weeks_per_parameter", identification.weeksPerParameter], ["max_media_correlation", identification.maxMediaCorrelation], ["high_collinearity", identification.highCollinearity], ["budget_eligible", identification.budgetEligible], [],
+    ["industry_controls", JSON.stringify(mmm.panel.externalDefs || [])],
     ["baseline_selection", JSON.stringify(run.baselineSelection || null)], ["seasonality_selection", JSON.stringify(run.seasonalitySelection || null)], ["media_penalty_selection", JSON.stringify(run.mediaPenaltySelection || null)], ["joint_transform_check", JSON.stringify(run.jointTransform || null)],
     ["channel", "adstock_alpha", "half_saturation", "hill_slope", "evaluated_transform_candidates", "total_transform_candidates", "candidate_search_capped", "prior_locked_transform", "effective_transform_candidates", "top_transform_weight", "posterior_positive_probability"],
     ...Object.values(run.saturationByChannel || {}).map((s) => [s.label, s.params.alpha, s.params.ec, s.params.slope, s.transformUncertainty?.candidateCount, s.transformUncertainty?.totalCandidateCount, s.transformUncertainty?.candidateSearchCapped, !!s.transformUncertainty?.priorLockedTransform, s.transformUncertainty?.effectiveCandidateCount, s.transformUncertainty?.topWeight, s.posteriorPositive]),
@@ -2175,6 +2176,7 @@ function mmmBucketMeta(locale) {
       base: { label: "Seasonality", tone: "#94a3b8" },
       trend: { label: "Base demand · trend", tone: "#38bdf8" },
       event: { label: "Events · regime change", tone: "#f59e0b" },
+      industry: { label: "Industry trend", tone: "#a78bfa" },
       media: { label: "Ad effect", tone: "#8b7ff0" },
     };
   }
@@ -2182,14 +2184,16 @@ function mmmBucketMeta(locale) {
     base: { label: "계절 요인", tone: "#94a3b8" },
     trend: { label: "기본 수요·추세", tone: "#38bdf8" },
     event: { label: "이벤트·구조변화", tone: "#f59e0b" },
+    industry: { label: "업계 현황", tone: "#a78bfa" },
     media: { label: "광고 효과", tone: "#8b7ff0" },
   };
 }
 // 아래→위 쌓는 순서. base(=baseline+계절)는 절대 밴드로 별도 처리, 나머지는 그 위 누적.
-const MMM_BUCKET_ORDER = ["base", "trend", "event", "media"];
+const MMM_BUCKET_ORDER = ["base", "trend", "event", "industry", "media"];
 function decompBucketOf(g) {
   if (g === "Seasonality") return "base";
   if (g === "Trend") return "trend";
+  if (g === "Industry Trend") return "industry";
   if (g === "Holidays" || g === "Regime(steps)") return "event";
   return MMM_NONMEDIA_GROUPS.includes(g) ? "event" : "media";
 }
@@ -3727,6 +3731,8 @@ export default function MarketingResponse({ locale = "ko" }) {
         bars.push({ label: bucketMeta.base.label, data: decomp.weeks.map((w, t) => w.baseline + bucketSeries("base")[t]), tone: bucketMeta.base.tone });
         bars.push({ label: bucketMeta.trend.label, data: bucketSeries("trend"), tone: bucketMeta.trend.tone });
         bars.push({ label: bucketMeta.event.label, data: bucketSeries("event"), tone: bucketMeta.event.tone });
+        const industrySeries = bucketSeries("industry");
+        if (industrySeries.some((value) => Math.abs(value) > 1e-8)) bars.push({ label: bucketMeta.industry.label, data: industrySeries, tone: bucketMeta.industry.tone });
         if (decompGrouped) {
           bars.push({ label: bucketMeta.media.label, data: bucketSeries("media"), tone: bucketMeta.media.tone });
         } else {
@@ -4676,8 +4682,8 @@ export default function MarketingResponse({ locale = "ko" }) {
               .map((row) => ({ ...row, pct: visibleShTotal > 0 ? row.r2_share / visibleShTotal * 100 : 0 }))
               .sort((a, b) => b.r2_share - a.r2_share);
             const PLAIN_DRV = locale === "en"
-              ? { "기본 수요": "Base demand", Trend: "Base demand · trend", Seasonality: "Season", Holidays: "Holidays/events", "Holidays & Events": "Holidays/events", "Regime(steps)": "Regime change", "Regime change": "Regime change", Performance: "Performance marketing", Brand: "Brand", Regime: "Regime change", baseline: "Baseline" }
-              : { Trend: "기본 수요·추세", Seasonality: "시즌·계절", Holidays: "휴일·이벤트", "Holidays & Events": "휴일·이벤트", "Regime(steps)": "구조 변화", "Regime change": "구조 변화", Performance: "마케팅", Brand: "브랜딩", Regime: "구조 변화", baseline: "기본값" };
+              ? { "기본 수요": "Base demand", Trend: "Base demand · trend", Seasonality: "Season", Holidays: "Holidays/events", "Holidays & Events": "Holidays/events", "Regime(steps)": "Regime change", "Regime change": "Regime change", "Industry Trend": "Industry trend", Performance: "Performance marketing", Brand: "Brand", Regime: "Regime change", baseline: "Baseline" }
+              : { Trend: "기본 수요·추세", Seasonality: "시즌·계절", Holidays: "휴일·이벤트", "Holidays & Events": "휴일·이벤트", "Regime(steps)": "구조 변화", "Regime change": "구조 변화", "Industry Trend": "업계 현황", Performance: "마케팅", Brand: "브랜딩", Regime: "구조 변화", baseline: "기본값" };
             const plainDrv = (nm) => PLAIN_DRV[nm] || nm;
             const isMediaDrv = (nm) => !MMM_NONMEDIA_GROUPS.includes(nm) && nm !== "baseline";
             const tgtKo = mmmTargetDisplay(mmm.target, locale);
@@ -4690,7 +4696,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                 )
               : tx("기여 분해 결과를 계산할 수 없어요.", "Can't compute the contribution breakdown.");
             const maxPct = Math.max(0.0001, ...shRows.map((r) => r.pct || 0));
-            const barColor = (nm) => isMediaDrv(nm) ? "#7F77DD" : nm === "Seasonality" ? "#5DCAA5" : nm === "baseline" ? "var(--border-strong)" : "#85B7EB";
+            const barColor = (nm) => isMediaDrv(nm) ? "#7F77DD" : nm === "Seasonality" ? "#5DCAA5" : nm === "Industry Trend" ? "#a78bfa" : nm === "baseline" ? "var(--border-strong)" : "#85B7EB";
             const sat = mmm.run.saturationByChannel || {};
             const spendLabel = (amount) => {
               const displayAmount = convAmt(amount);
@@ -4756,6 +4762,7 @@ export default function MarketingResponse({ locale = "ko" }) {
               Seasonality: "#f4d877",
               "Holidays & Events": "#f4b366",
               "Regime change": "#bda593",
+              "Industry Trend": "#a78bfa",
               Performance: "#df8392",
               Brand: "#d5df8e",
             };
