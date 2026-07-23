@@ -10,6 +10,7 @@ import {
 import {
   MMM_METH_CONFIG,
   mmmBayesianRun,
+  mmmBuildFeatures,
 } from "./mmmMath.js";
 
 const csvPath = process.env.MMM_CSV_PATH;
@@ -73,6 +74,90 @@ function groupedMediaPanel(panel) {
       { key: "__brand", label: "Brand", kind: "brand" },
       { key: "__performance", label: "Performance", kind: "perf" },
     ],
+  };
+}
+
+function pearson(left, right) {
+  const pairs = left.map((value, index) => [value, right[index]])
+    .filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b));
+  if (pairs.length < 3) return null;
+  const meanA = pairs.reduce((sum, [a]) => sum + a, 0) / pairs.length;
+  const meanB = pairs.reduce((sum, [, b]) => sum + b, 0) / pairs.length;
+  const numerator = pairs.reduce((sum, [a, b]) => sum + (a - meanA) * (b - meanB), 0);
+  const denominator = Math.sqrt(
+    pairs.reduce((sum, [a]) => sum + (a - meanA) ** 2, 0)
+    * pairs.reduce((sum, [, b]) => sum + (b - meanB) ** 2, 0),
+  );
+  return denominator > 1e-12 ? numerator / denominator : null;
+}
+
+function omitPanelRows(panel, omitted) {
+  const keep = panel.week.map((_, index) => index).filter((index) => !omitted.has(index));
+  const pick = (values) => keep.map((index) => values[index]);
+  return {
+    ...panel,
+    week: pick(panel.week),
+    dateLabel: pick(panel.dateLabel),
+    ch: Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, pick(values)])),
+    targets: Object.fromEntries(Object.entries(panel.targets).map(([key, values]) => [key, pick(values)])),
+    dummy: Object.fromEntries(Object.entries(panel.dummy).map(([key, values]) => [key, pick(values)])),
+    external: Object.fromEntries(Object.entries(panel.external).map(([key, values]) => [key, pick(values)])),
+  };
+}
+
+function fixedSeasonalityRun(panel, candidate) {
+  return mmmBayesianRun(panel, {
+    ...MMM_METH_CONFIG,
+    seasonalityPeriods: candidate.periods,
+    seasonalityBasis: candidate.seasonalityBasis || null,
+    seasonalityPenaltyProfile: candidate.seasonalityPenaltyProfile || null,
+  }, "RR", false, {
+    skipTransformUncertainty: true,
+    enableSeasonalitySelection: false,
+    enableBaselineSelection: false,
+    enableMediaPenaltySelection: false,
+  });
+}
+
+function fixedSeasonalityDiagnostics(panel, candidate) {
+  const run = fixedSeasonalityRun(panel, candidate);
+  const seasonal = run.weeks.map((week) => Number(week.contrib?.Seasonality) || 0);
+  const residual = run.weeks.map((week) => Number(week.residual) || 0);
+  const rmse = Math.sqrt(residual.reduce((sum, value) => sum + value ** 2, 0) / residual.length);
+  const blockCorrelations = [];
+  for (let start = 0; start < panel.week.length; start += 4) {
+    const omitted = new Set(Array.from({ length: 4 }, (_, offset) => start + offset).filter((index) => index < panel.week.length));
+    const reducedPanel = omitPanelRows(panel, omitted);
+    const reducedRun = fixedSeasonalityRun(reducedPanel, candidate);
+    const reducedSeasonal = reducedRun.weeks.map((week) => Number(week.contrib?.Seasonality) || 0);
+    const fullKept = seasonal.filter((_, index) => !omitted.has(index));
+    const correlation = pearson(fullKept, reducedSeasonal);
+    if (Number.isFinite(correlation)) blockCorrelations.push(correlation);
+  }
+  const firstYear = seasonal.slice(0, 52);
+  const turningPoints = firstYear.reduce((count, value, index) => {
+    if (index === 0 || index === firstYear.length - 1) return count;
+    const before = value - firstYear[index - 1];
+    const after = firstYear[index + 1] - value;
+    return count + (before * after < 0 ? 1 : 0);
+  }, 0);
+  const extrema = firstYear.map((value, index) => {
+    const before = firstYear[(index - 1 + firstYear.length) % firstYear.length];
+    const after = firstYear[(index + 1) % firstYear.length];
+    if (value > before && value > after) return { week: index + 1, value, type: "peak" };
+    if (value < before && value < after) return { week: index + 1, value, type: "trough" };
+    return null;
+  }).filter(Boolean);
+  return {
+    r2: run.posterior?.r2,
+    rmse,
+    residualAcf1: pearson(residual.slice(1), residual.slice(0, -1)),
+    blockShapeCorrelation: blockCorrelations.reduce((sum, value) => sum + value, 0) / blockCorrelations.length,
+    blockShapeWorst: Math.min(...blockCorrelations),
+    peakWeek: firstYear.indexOf(Math.max(...firstYear)) + 1,
+    troughWeek: firstYear.indexOf(Math.min(...firstYear)) + 1,
+    turningPoints,
+    extrema,
   };
 }
 
@@ -154,6 +239,30 @@ describe("business seasonality diagnostics", () => {
     expect(run.seasonalityPeriods.length).toBeGreaterThan(0);
   });
 
+  it("builds a continuous cyclic business-seasonality basis", () => {
+    const panel = {
+      week: Array.from({ length: 105 }, (_, index) => index + 1),
+      ch: {},
+      channels: [],
+      targets: { RR: Array(105).fill(1) },
+      dummy: {},
+      steps: {},
+      external: {},
+    };
+    const built = mmmBuildFeatures(panel, {
+      ...MMM_METH_CONFIG,
+      seasonalityPeriods: [52.18],
+      seasonalityBasis: { type: "cyclic-rbf", knots: 8 },
+      baselineKnots: [],
+    }, 0, false);
+    const seasonalNames = built.names.filter((name) => name.startsWith("season_rbf_"));
+    expect(seasonalNames).toHaveLength(7);
+    seasonalNames.forEach((name) => {
+      const index = built.names.indexOf(name);
+      expect(Math.abs(built.X[0][index] - built.X[52][index])).toBeLessThan(0.04);
+    });
+  });
+
   it.skipIf(!csvPath)("reports observed RR year-to-year recurrence from the provided CSV", () => {
     const panel = parseRealCsv(csvPath);
     const variants = [
@@ -174,12 +283,23 @@ describe("business seasonality diagnostics", () => {
     const productionRun = mmmBayesianRun(panel, MMM_METH_CONFIG, "RR", false, {
       skipTransformUncertainty: true,
     });
+    const fixedCandidates = Object.fromEntries(MMM_METH_CONFIG.seasonalityCandidates.map((candidate) => [
+      candidate.id,
+      fixedSeasonalityDiagnostics(panel, candidate),
+    ]));
     console.log(JSON.stringify({
       observedWeeks: panel.week.length,
       variants: results,
+      fixedCandidates,
       productionSelection: {
         seasonalityPeriods: productionRun.seasonalityPeriods,
         selected: productionRun.seasonalitySelection?.selected?.id,
+        candidates: productionRun.seasonalitySelection?.candidates?.map((candidate) => ({
+          id: candidate.id,
+          finalBic: candidate.finalBic,
+          rollingWmape: candidate.rollingWmape,
+          rollingFolds: candidate.rollingFolds,
+        })),
         r2: productionRun.posterior?.r2,
         rmse: Math.sqrt(productionRun.weeks.reduce((sum, week) => sum + (Number(week.residual) || 0) ** 2, 0) / productionRun.weeks.length),
         observedConfidence: productionRun.seasonalitySelection?.evidence?.observedConfidence,
@@ -189,7 +309,7 @@ describe("business seasonality diagnostics", () => {
     expect(Object.keys(results)).toHaveLength(5);
     expect(results.full.evidence.available).toBe(true);
     expect(productionRun.seasonalityPeriods.length).toBeGreaterThan(0);
-    expect(productionRun.seasonalitySelection?.selected?.id).toBe("annual-4");
+    expect(productionRun.seasonalitySelection?.selected?.id).toBe("business-harmonic-shrink");
     expect(productionRun.seasonalitySelection?.evidence?.observedRecurrenceScale).toBeCloseTo(0.5, 6);
   });
 });

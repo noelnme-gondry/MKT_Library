@@ -642,7 +642,7 @@ import {
             };
 
             export const MMM_METH_CONFIG = {
-              version: "1.4.0",
+              version: "1.5.0",
               // 기본은 연간 1차 조화파만 둔다. 과거의 13주 파형을 무조건 반복하면
               // 매체·이벤트 변동까지 계절성으로 흡수할 수 있으므로, 더 복잡한 모양은
               // rolling holdout에서 이길 때만 아래 후보에서 선택한다.
@@ -653,6 +653,9 @@ import {
                 { id: "annual-2", periods: [52.18, 26.09] },
                 { id: "annual-3", periods: [52.18, 26.09, 17.39] },
                 { id: "annual-4", periods: [52.18, 26.09, 17.39, 13.04] },
+                { id: "business-harmonic-shrink", periods: [52.18, 26.09, 17.39, 13.04], seasonalityPenaltyProfile: "harmonic-order" },
+                { id: "business-smooth-6", periods: [52.18], seasonalityBasis: { type: "cyclic-rbf", knots: 6 } },
+                { id: "business-smooth-8", periods: [52.18], seasonalityBasis: { type: "cyclic-rbf", knots: 8 } },
               ],
               // 연간 계절성의 존재 여부는 최근 12주 예측 오차로 결정하지 않는다.
               // 두 번째 연간 주기의 대부분을 관측한 전체 이력에서 구조적
@@ -926,16 +929,37 @@ import {
                 names.push(nm);
                 cols.push(arr);
               };
-              cfg.seasonalityPeriods.forEach((P, i) => {
-                push(
-                  `sin_${i}`,
-                  t.map((tt) => Math.sin((2 * Math.PI * tt) / P)),
-                );
-                push(
-                  `cos_${i}`,
-                  t.map((tt) => Math.cos((2 * Math.PI * tt) / P)),
-                );
-              });
+              if (cfg.seasonalityBasis?.type === "cyclic-rbf") {
+                const knots = Math.max(4, Math.min(12, Math.round(cfg.seasonalityBasis.knots || 6)));
+                const period = cfg.seasonalityPeriods?.[0] || 52.18;
+                const bandwidth = 0.85 / knots;
+                for (let knot = 0; knot < knots - 1; knot++) {
+                  const center = knot / knots;
+                  const basisMean = _mean(Array.from({ length: 52 }, (_, index) => {
+                    const phase = index / 52;
+                    const rawDistance = Math.abs(phase - center);
+                    const distance = Math.min(rawDistance, 1 - rawDistance);
+                    return Math.exp(-0.5 * (distance / bandwidth) ** 2);
+                  }));
+                  push(`season_rbf_${knot}`, t.map((tt) => {
+                    const phase = ((((tt - 1) % period) + period) % period) / period;
+                    const rawDistance = Math.abs(phase - center);
+                    const distance = Math.min(rawDistance, 1 - rawDistance);
+                    return Math.exp(-0.5 * (distance / bandwidth) ** 2) - basisMean;
+                  }));
+                }
+              } else {
+                cfg.seasonalityPeriods.forEach((P, i) => {
+                  push(
+                    `sin_${i}`,
+                    t.map((tt) => Math.sin((2 * Math.PI * tt) / P)),
+                  );
+                  push(
+                    `cos_${i}`,
+                    t.map((tt) => Math.cos((2 * Math.PI * tt) / P)),
+                  );
+                });
+              }
               // 흡수(공선) 집합: cfg.absorbed = 다중공선으로 제거할 컬럼 키(채널 key 또는 step 이름). 기본은 step 흡수(캠페인 유지).
               const absorbed = cfg.absorbed || new Set(cfg.foldIntoRegime || []);
               // 휴일/이벤트: 사용자가 매핑한 더미(panel.useDummies)가 있으면 그것을 모델에 포함(실제 이벤트 신호 — liveness 등).
@@ -2129,7 +2153,7 @@ import {
             export function mmmShapleyGroups(names, channels) {
               // 휴일=lny/chuseok 또는 매핑 더미(d_*). Regime=cfg.steps + 사용자 매핑 step(나머지 비-계절/추세/휴일/채널).
               // 골든(lny/chuseok·post_step/line_off·ln_*)은 그룹 멤버십·순서 동일 → byte-동일.
-              const isSeason = (n) => /^(sin|cos)_/.test(n),
+              const isSeason = (n) => /^(sin|cos)_/.test(n) || n.startsWith("season_rbf_"),
                 isHol = (n) => n === "lny" || n === "chuseok" || n.startsWith("d_"),
                 isCh = (n) => n.startsWith("ln_");
               const colsWhere = (pred) =>
@@ -2984,9 +3008,14 @@ import {
               const controlPenalty = Number.isFinite(options.controlPenalty)
                 ? Math.max(0, options.controlPenalty)
                 : 0.15;
-              const defaultPenalty = Array.from({ length: p }, (_, j) =>
-                j === 0 ? 1e-8 : mediaIndices.has(j) ? mediaPenalty : controlPenalty * (options.seasonalityIndices?.has(j) ? (options.seasonalityPenaltyMultiplier || 1) : 1),
-              );
+              const defaultPenalty = Array.from({ length: p }, (_, j) => {
+                if (j === 0) return 1e-8;
+                if (mediaIndices.has(j)) return mediaPenalty;
+                const seasonalMultiplier = options.seasonalityIndices?.has(j)
+                  ? (options.seasonalityPenaltyMultiplier || 1) * (options.seasonalityPenaltyByIndex?.[j] || 1)
+                  : 1;
+                return controlPenalty * seasonalMultiplier;
+              });
               const priorMean = Array(p).fill(0);
               const calibratedPrecision = {};
               // 외부 실험·참고 시장 근거는 매체 계수에만 적용한다. 추세·계절·국가
@@ -3084,11 +3113,19 @@ import {
                 };
               }
               const seasonalityIndices = new Set(names
-                .map((name, index) => /^(sin|cos)_/.test(name) ? index + 1 : null)
+                .map((name, index) => (/^(sin|cos)_/.test(name) || name.startsWith("season_rbf_")) ? index + 1 : null)
                 .filter((index) => index !== null));
+              const seasonalityPenaltyByIndex = {};
+              if (options.seasonalityPenaltyProfile === "harmonic-order") {
+                names.forEach((name, index) => {
+                  const match = name.match(/^(?:sin|cos)_(\d+)$/);
+                  if (match) seasonalityPenaltyByIndex[index + 1] = (Number(match[1]) + 1) ** 2;
+                });
+              }
               const posterior = _mmmBayesianLinear(X, y, mediaIndices, mediaPriors, {
                 ...options,
                 seasonalityIndices,
+                seasonalityPenaltyByIndex,
               });
               if (!posterior) return null;
               const absoluteBeta = names.map((_, j) => posterior.beta[j + 1] / colScale[j]);
@@ -3286,8 +3323,14 @@ import {
               };
             }
 
-            function _mmmBayesSeasonalityCandidateFit(panel, cfg, targetName, periods, channelParams, options = {}) {
-              const candidateCfg = { ...cfg, baselineKnots: [], seasonalityPeriods: periods.slice() };
+            function _mmmBayesSeasonalityCandidateFit(panel, cfg, targetName, periods, channelParams, options = {}, seasonalityBasis = null, seasonalityPenaltyProfile = null) {
+              const candidateCfg = {
+                ...cfg,
+                baselineKnots: [],
+                seasonalityPeriods: periods.slice(),
+                seasonalityBasis,
+                seasonalityPenaltyProfile,
+              };
               const built = _mmmBayesControlFeatures(panel, candidateCfg);
               const names = built.names.slice();
               const cols = built.X.length ? built.X[0].map((_, index) => built.X.map((row) => row[index])) : [];
@@ -3308,12 +3351,13 @@ import {
                 ...options,
                 mediaPenalty: cfg.mediaPenalty,
                 controlPenalty: cfg.controlPenalty,
+                seasonalityPenaltyProfile: candidateCfg.seasonalityPenaltyProfile,
               });
               if (!fit) return null;
               const sse = fit.posterior.resid.reduce((sum, value) => sum + value ** 2, 0);
               const bic = y.length * Math.log(Math.max(sse / Math.max(1, y.length), 1e-12))
                 + (names.length + 1) * Math.log(Math.max(2, y.length));
-              const seasonalNames = new Set(names.filter((name) => /^(sin|cos)_/.test(name)));
+              const seasonalNames = new Set(names.filter((name) => /^(sin|cos)_/.test(name) || name.startsWith("season_rbf_")));
               const seasonal = y.map((_, rowIndex) => names.reduce((sum, name, columnIndex) => (
                 seasonalNames.has(name) ? sum + (fit.absoluteBeta[columnIndex] || 0) * cols[columnIndex][rowIndex] : sum
               ), 0));
@@ -3337,6 +3381,8 @@ import {
                   const fit = mmmBayesianRun(train, {
                     ...cfg,
                     seasonalityPeriods: spec.periods,
+                    seasonalityBasis: spec.seasonalityBasis || null,
+                    seasonalityPenaltyProfile: spec.seasonalityPenaltyProfile || null,
                   }, targetName, false, {
                     ...options,
                     enableSeasonalitySelection: false,
@@ -3401,7 +3447,16 @@ import {
               const neutralControls = _mmmBayesControlFeatures(selectionPanel, neutralCfg);
               const channelParams = _mmmBayesChannelParams(selectionPanel, neutralCfg, targetName, neutralControls);
               const evaluated = specs.map((spec) => {
-                const fit = _mmmBayesSeasonalityCandidateFit(selectionPanel, cfg, targetName, spec.periods, channelParams, options);
+                const fit = _mmmBayesSeasonalityCandidateFit(
+                  selectionPanel,
+                  cfg,
+                  targetName,
+                  spec.periods,
+                  channelParams,
+                  options,
+                  spec.seasonalityBasis || null,
+                  spec.seasonalityPenaltyProfile || null,
+                );
                 return fit ? { ...spec, bic: fit.bic, sse: fit.sse, residuals: fit.posterior.resid, seasonal: fit.seasonal || [] } : null;
               }).filter(Boolean);
               const none = evaluated.find((item) => item.periods.length === 0);
@@ -3423,7 +3478,16 @@ import {
               const finalBicById = new Map();
               let finalNoneFit = null;
               finalCandidates.forEach((item) => {
-                const fit = _mmmBayesSeasonalityCandidateFit(panel, cfg, targetName, item.periods, finalChannelParams, options);
+                const fit = _mmmBayesSeasonalityCandidateFit(
+                  panel,
+                  cfg,
+                  targetName,
+                  item.periods,
+                  finalChannelParams,
+                  options,
+                  item.seasonalityBasis || null,
+                  item.seasonalityPenaltyProfile || null,
+                );
                 if (fit) {
                   finalBicById.set(item.id, fit.bic);
                   if (item.id === none.id) finalNoneFit = fit;
@@ -3459,8 +3523,15 @@ import {
                   enableSeasonalityRollingStability: false,
                 })
                 : null;
+              const sameSeasonalityFamily = (left, right) => {
+                if (!left || !right || left.periods?.length !== right.periods?.length) return false;
+                const samePeriods = left.periods.every((period, index) => Math.abs(period - right.periods[index]) < 1e-6);
+                const leftBasis = left.seasonalityBasis?.type || "fourier";
+                const rightBasis = right.seasonalityBasis?.type || "fourier";
+                return samePeriods && leftBasis === rightBasis;
+              };
               const controlConsensus = marketBlindSelection
-                ? marketBlindSelection.selected?.id === best.id
+                ? sameSeasonalityFamily(marketBlindSelection.selected, best)
                 : true;
               const observedRecurrence = Array.isArray(panel.dateLabel) && finalNoneFit
                 ? compareObservedYearShapes(buildObservedYearShapes(panel.dateLabel, finalNoneFit.posterior.resid))
@@ -3506,7 +3577,7 @@ import {
               };
               const eligible = evidence.detected
                 ? annualCandidates.filter((item) => {
-                  if (marketBlindSelection && item.id !== marketBlindSelection.selected?.id) return false;
+                  if (marketBlindSelection && !sameSeasonalityFamily(item, marketBlindSelection.selected)) return false;
                   if (!noneRolling || !rollingEvidence.has(item.id)) return true;
                   return rollingEvidence.get(item.id).meanWmape <= noneRolling.meanWmape + rollingMaxDegradation;
                 })
@@ -3515,7 +3586,14 @@ import {
               const bestEligible = safeEligible.reduce((winner, item) => (Number.isFinite(item.finalBic) ? item.finalBic : item.bic) < (Number.isFinite(winner.finalBic) ? winner.finalBic : winner.bic) ? item : winner, safeEligible[0]);
               const selected = safeEligible
                 .filter((item) => (Number.isFinite(item.finalBic) ? item.finalBic : item.bic) <= (Number.isFinite(bestEligible.finalBic) ? bestEligible.finalBic : bestEligible.bic) + (cfg.seasonalityComplexityTolerance ?? 2))
-                .sort((a, b) => a.periods.length - b.periods.length || String(a.id).localeCompare(String(b.id)))[0];
+                .sort((a, b) => {
+                  const complexity = a.periods.length - b.periods.length;
+                  if (complexity) return complexity;
+                  const rollingA = rollingEvidence.get(a.id)?.meanWmape ?? Infinity;
+                  const rollingB = rollingEvidence.get(b.id)?.meanWmape ?? Infinity;
+                  if (Math.abs(rollingA - rollingB) > 1e-9) return rollingA - rollingB;
+                  return String(a.id).localeCompare(String(b.id));
+                })[0];
               const publicCandidates = evaluated.map(({ residuals, seasonal, ...item }) => ({
                 ...item,
                 deltaBicVsNone: none.bic - item.bic,
@@ -3529,6 +3607,8 @@ import {
                 cfg: {
                   ...cfg,
                   seasonalityPeriods: selected.periods.slice(),
+                  seasonalityBasis: selected.seasonalityBasis || null,
+                  seasonalityPenaltyProfile: selected.seasonalityPenaltyProfile || null,
                   seasonalityAmplitudeScale: evidence.observedRecurrenceScale,
                   seasonalityPenaltyMultiplier: evidence.observedRecurrencePenaltyMultiplier,
                 },
@@ -3659,6 +3739,7 @@ import {
                 mediaPenalty: effectiveCfg.mediaPenalty,
                 controlPenalty: effectiveCfg.controlPenalty,
                 seasonalityPenaltyMultiplier: effectiveCfg.seasonalityPenaltyMultiplier || 1,
+                seasonalityPenaltyProfile: effectiveCfg.seasonalityPenaltyProfile || null,
               };
               const controls = _mmmBayesControlFeatures(panel, effectiveCfg);
               const selectedParams = _mmmBayesChannelParams(panel, effectiveCfg, targetName, controls);
@@ -3708,7 +3789,7 @@ import {
               const groupNames = ["Trend", "Seasonality", "Holidays & Events", ...(stepNames.size ? ["Regime change"] : []), ...(industryNames.size ? ["Industry Trend"] : []), ...mediaGroups];
               const groupFor = (name) => {
                 if (name === "trend" || name.startsWith("baseline_knot_")) return "Trend";
-                if (/^(sin|cos)_/.test(name)) return "Seasonality";
+                if (/^(sin|cos)_/.test(name) || name.startsWith("season_rbf_")) return "Seasonality";
                 if (name === "lny" || name === "chuseok" || name.startsWith("d_")) return "Holidays & Events";
                 if (industryNames.has(name)) return "Industry Trend";
                 if (name.startsWith("media_")) {
@@ -3947,6 +4028,7 @@ import {
                 rawFeatureHistory: Xraw,
                 externalTransforms: controls.externalTransforms || {},
                 seasonalityPeriods: effectiveCfg.seasonalityPeriods,
+                seasonalityBasis: effectiveCfg.seasonalityBasis || null,
                 standardizedX: X,
                 channelMeta,
                 absoluteBeta,
@@ -4406,6 +4488,23 @@ import {
                     const period = run.seasonalityPeriods?.[Number(seasonal[2])];
                     const angle = period > 0 ? (2 * Math.PI * futureWeeks[h]) / period : 0;
                     return seasonal[1] === "sin" ? Math.sin(angle) : Math.cos(angle);
+                  }
+                  const cyclicRbf = name.match(/^season_rbf_(\d+)$/);
+                  if (cyclicRbf) {
+                    const knots = Math.max(4, Math.min(12, Math.round(run.seasonalityBasis?.knots || 6)));
+                    const period = run.seasonalityPeriods?.[0] || 52.18;
+                    const center = Number(cyclicRbf[1]) / knots;
+                    const phase = ((((futureWeeks[h] - 1) % period) + period) % period) / period;
+                    const rawDistance = Math.abs(phase - center);
+                    const distance = Math.min(rawDistance, 1 - rawDistance);
+                    const bandwidth = 0.85 / knots;
+                    const basisMean = _mean(Array.from({ length: 52 }, (_, index) => {
+                      const samplePhase = index / 52;
+                      const sampleRawDistance = Math.abs(samplePhase - center);
+                      const sampleDistance = Math.min(sampleRawDistance, 1 - sampleRawDistance);
+                      return Math.exp(-0.5 * (sampleDistance / bandwidth) ** 2);
+                    }));
+                    return Math.exp(-0.5 * (distance / bandwidth) ** 2) - basisMean;
                   }
                   if (name === "trend") {
                     const delta = (lastRaw[j] || 0) - (previousRaw[j] || 0);
