@@ -13,6 +13,7 @@ import {
   mmmBayesianHealth,
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
+  mmmForecastRollingSelection,
   mmmTrendExistence,
   mmmElasticities,
   mmmCannibalization,
@@ -2068,18 +2069,31 @@ function chartBase() {
   };
 }
 
-function sliceMmmPanel(panel, end) {
+function sliceMmmPanel(panel, end, start = 0) {
   return {
     ...panel,
-    week: panel.week.slice(0, end),
-    weekLabel: panel.weekLabel?.slice(0, end),
-    dateLabel: panel.dateLabel?.slice(0, end),
-    dates: panel.dates?.slice(0, end),
-    ch: Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, values.slice(0, end)])),
-    dummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(0, end)])),
-    steps: Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(0, end)])),
-    targets: Object.fromEntries(Object.entries(panel.targets).map(([key, values]) => [key, values.slice(0, end)])),
+    week: panel.week.slice(start, end),
+    weekLabel: panel.weekLabel?.slice(start, end),
+    dateLabel: panel.dateLabel?.slice(start, end),
+    dates: panel.dates?.slice(start, end),
+    ch: Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, values.slice(start, end)])),
+    dummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(start, end)])),
+    steps: Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(start, end)])),
+    targets: Object.fromEntries(Object.entries(panel.targets).map(([key, values]) => [key, values.slice(start, end)])),
   };
+}
+
+function buildForecastOnlyModel(mmm) {
+  const selection = mmmForecastRollingSelection(mmm.panel, mmm.cfg, mmm.target);
+  const selected = selection.selected;
+  if (!selected) return { selection, panel: null, cfg: null, run: null };
+  const panel = sliceMmmPanel(mmm.panel, mmm.panel.week.length, Math.max(0, mmm.panel.week.length - selected.window));
+  const cfg = { ...mmm.cfg, seasonalityPeriods: selected.seasonalityPeriods, baselineKnots: [] };
+  const run = mmmBayesianRun(panel, cfg, mmm.target, false, {
+    skipTransformUncertainty: true,
+    enableBaselineSelection: false,
+  });
+  return { selection, panel, cfg, run };
 }
 
 // 최근 24주 맥락에서 앞 12주는 학습 구간의 모델 적합, 뒤 12주는 학습에서 뺀
@@ -2961,11 +2975,22 @@ export default function MarketingResponse({ locale = "ko" }) {
     return buildMmmWeeklyPerformance(mmm.panel, mmm.run.saturationByChannel);
   }, [mmm, stage]);
 
-  const forecast = useMemo(() => {
+  // 미래예측은 MMM 기여 분석과 별도 적합한다. 전체 기간 MMM은 장기 기여 해석에
+  // 남기고, 예측 회귀만 최근 window·계절성 후보를 rolling holdout으로 선택한다.
+  const forecastModel = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "lab") return null;
     try {
+      return buildForecastOnlyModel(mmm);
+    } catch {
+      return null;
+    }
+  }, [mmm, stage]);
+
+  const forecast = useMemo(() => {
+    if (!mmm || mmm.empty || stage !== "lab" || !forecastModel?.run || !forecastModel.panel) return null;
+    try {
       // fcBudget: 채널별 주 평균 예산(명시 채널만 H개로 채움) → 미입력은 mmmForecast가 최근평균 사용.
-      const chans = _mmmChans(mmm.panel).filter((ch) => mmm.panel.ch[ch.key]);
+      const chans = _mmmChans(forecastModel.panel).filter((ch) => forecastModel.panel.ch[ch.key]);
       const futureSpend = {};
       chans.forEach((ch) => {
         const b = fcBudget[ch.key];
@@ -2974,31 +2999,32 @@ export default function MarketingResponse({ locale = "ko" }) {
       const hasBudget = Object.keys(futureSpend).length > 0;
       const futureSteps = {};
       Object.entries(fcStepOff).forEach(([key, keepWeeks]) => {
-        const rawIndex = mmm.run.names.indexOf(key);
+        const rawIndex = forecastModel.run.names.indexOf(key);
         if (rawIndex < 0 || !Number.isFinite(keepWeeks)) return;
-        const lastValue = mmm.run.rawFeatureHistory?.at(-1)?.[rawIndex] || 0;
+        const lastValue = forecastModel.run.rawFeatureHistory?.at(-1)?.[rawIndex] || 0;
         futureSteps[key] = Array.from({ length: fcHorizon }, (_, index) => index < keepWeeks ? lastValue : 0);
       });
-      return mmmBayesianForecast(
-        mmm.run,
-        mmm.panel,
+      const result = mmmBayesianForecast(
+        forecastModel.run,
+        forecastModel.panel,
         hasBudget ? futureSpend : null,
         fcHorizon,
         { futureSteps },
       );
+      return result && { ...result, rollingSelection: forecastModel.selection, modelWindow: forecastModel.panel.week.length };
     } catch (e) {
       return null;
     }
-  }, [mmm, stage, fcHorizon, fcBudget, fcStepOff]);
+  }, [mmm, stage, forecastModel, fcHorizon, fcBudget, fcStepOff]);
 
   const recentBacktest = useMemo(() => {
-    if (!mmm || mmm.empty || stage !== "lab") return null;
+    if (!mmm || mmm.empty || stage !== "lab" || !forecastModel?.run || !forecastModel.panel) return null;
     try {
-      return buildMmmRecentBacktest(mmm);
+      return buildMmmRecentBacktest({ ...mmm, panel: forecastModel.panel, cfg: forecastModel.cfg, run: forecastModel.run, mediaPriors: {} });
     } catch {
       return null;
     }
-  }, [mmm, stage]);
+  }, [mmm, stage, forecastModel]);
 
   const trend = useMemo(() => {
     if (!mmm || mmm.empty || !["trend", "diagnose"].includes(stage)) return null;
@@ -4746,9 +4772,9 @@ export default function MarketingResponse({ locale = "ko" }) {
           {/* ── STAGE ③ LAB — 회귀·미래예측(②와 같은 MMM 모델 계수로 과거 적합 + 미래 외삽) ── */}
           {stage === "lab" && (
             <section className="block" id="s-forecast">
-              <h2 className="section-title">{tx("📈 회귀 · 미래 예측", "📈 Regression · Forecast")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx("· ②와 같은 모델로 과거 적합 + 미래 예산 시나리오 외삽", "· same model as ② — historical fit + future budget-scenario extrapolation")}</span></h2>
+              <h2 className="section-title">{tx("📈 예측 전용 회귀 · 미래 예측", "📈 Forecast regression · future prediction")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx("· MMM 기여 분석과 별도 모델", "· separate from MMM contribution model")}</span></h2>
               <p style={{ fontSize: "12px", color: MUTED, marginBottom: "12px", lineHeight: 1.55 }}>
-                {tx("①·②와", "Uses the")} <strong>{tx("같은 CSV·매핑", "same CSV/mapping")}</strong>{tx(`을 그대로 씁니다(타깃·플랫폼 토글은 상단 breadcrumb에서). 아래 채널별 예산을 미래로 연장하면 선택한 목표(${mmmTargetDisplay(mmm.target, locale)})를 예측합니다 — 회색=실측·파란선=모델/예측·음영=모수·잔차 불확실성을 반영한 참고 범위(인과 보장 아님).`, ` as ①·② (target/platform toggles are in the breadcrumb above). Extend the per-channel budgets below to forecast the selected target (${mmmTargetDisplay(mmm.target, locale)}) — gray=actual · blue=model/forecast · shading=reference range reflecting parameter and residual uncertainty, not a causal guarantee.`)}
+                {tx("같은 CSV·매핑을 쓰되, MMM은 전체 기간 기여도를 유지하고 예측 회귀만 최근 학습 window·계절성을 12주 rolling 검증으로 고릅니다. ", "Uses the same CSV/mapping, but keeps MMM on full-history contribution analysis and selects only the forecast regression's recent window and seasonality with rolling 12-week validation. ")}{tx(`아래 채널별 예산을 미래로 연장하면 선택한 목표(${mmmTargetDisplay(mmm.target, locale)})를 예측합니다 — 회색=실측·파란선=모델/예측·음영=모수·잔차 불확실성을 반영한 참고 범위(인과 보장 아님).`, `Extend the channel budgets below to forecast the selected target (${mmmTargetDisplay(mmm.target, locale)}) — gray=actual · blue=model/forecast · shading=reference range reflecting parameter and residual uncertainty, not a causal guarantee.`)}
               </p>
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "12px", alignItems: "center" }}>
                 <div className="ab-pillgroup">
@@ -4766,6 +4792,23 @@ export default function MarketingResponse({ locale = "ko" }) {
               </div>
               {forecast ? (
                 <>
+                  {forecast.rollingSelection?.selected && (() => {
+                    const selected = forecast.rollingSelection.selected;
+                    const seasonLabel = selected.spec === "cost-trend"
+                      ? tx("Cost + 추세", "Cost + trend")
+                      : selected.spec === "cost-trend-quarter"
+                        ? tx("Cost + 추세 + 분기 계절성", "Cost + trend + quarterly seasonality")
+                        : tx("Cost + 추세 + 연간·분기 계절성", "Cost + trend + annual/quarterly seasonality");
+                    return (
+                      <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
+                        <strong>{tx("자동 선택된 예측 회귀", "Auto-selected forecast regression")}</strong>
+                        <p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
+                          {tx(`최근 ${selected.window}주 · ${seasonLabel} · 12주 holdout ${selected.folds}회 · rolling wMAPE ${selected.wmape.toFixed(1)}% (기준선 ${selected.persistenceWmape.toFixed(1)}%) · 기준선 승리 ${selected.foldWins}/${selected.folds}회`, `Recent ${selected.window} weeks · ${seasonLabel} · ${selected.folds} rolling 12-week holdouts · rolling wMAPE ${selected.wmape.toFixed(1)}% (baseline ${selected.persistenceWmape.toFixed(1)}%) · beats baseline ${selected.foldWins}/${selected.folds} times`)}
+                        </p>
+                        {!forecast.rollingSelection.decisionEligible && <p style={{ margin: "6px 0 0", color: "#b45309", fontSize: "11.5px" }}>{tx("Cost 회귀가 기준선을 안정적으로 이기지 못했습니다. 예산 변경 수치는 진단용으로만 보세요.", "Cost regression does not beat the baseline consistently. Treat budget scenarios as diagnostic only.")}</p>}
+                      </Card>
+                    );
+                  })()}
                   {forecast.scenarioWarnings?.length > 0 && (
                     <div className="callout warn" style={{ marginBottom: "12px" }}>
                       <div className="ico">!</div><div className="body">

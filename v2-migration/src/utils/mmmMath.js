@@ -3451,6 +3451,119 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               };
             }
 
+            function _mmmSliceWindowPanel(panel, start, end) {
+              const sliceSeries = (series = {}) => Object.fromEntries(
+                Object.entries(series).map(([key, values]) => [key, values.slice(start, end)]),
+              );
+              return {
+                ...panel,
+                week: panel.week.slice(start, end),
+                weekLabel: panel.weekLabel?.slice(start, end),
+                dateLabel: panel.dateLabel?.slice(start, end),
+                dates: panel.dates?.slice(start, end),
+                ch: sliceSeries(panel.ch),
+                dummy: sliceSeries(panel.dummy),
+                steps: sliceSeries(panel.steps),
+                targets: sliceSeries(panel.targets),
+              };
+            }
+
+            // 최근 운영 체계가 과거와 다를 때 전체 기간을 모두 쓰면 Cost 반응이
+            // 희석된다. 후보 window와 계절성 복잡도를 시간순 12주 holdout으로
+            // 비교해, 가장 낮은 pooled wMAPE 조합만 최종 적합에 넘긴다.
+            // 이 선택용 적합은 브라우저 응답성을 위해 작은 변환 grid를 쓴다.
+            // 최종 선택 조합은 원래의 전체 transform grid로 다시 적합한다.
+            export function mmmForecastRollingSelection(panel, cfg, targetName, options = {}) {
+              const n = panel?.week?.length || 0;
+              const horizon = Math.max(4, Math.min(26, options.horizon || 12));
+              const minFolds = Math.max(2, options.minFolds || 2);
+              const maxFolds = Math.max(minFolds, options.maxFolds || 3);
+              const maxWindow = n - horizon * minFolds;
+              const defaultWindows = [...new Set([24, 30, 36, 42, 48, 54, 60, 72, 84, 104, 130, 156, maxWindow])];
+              const candidateWindows = (options.candidateWindows || defaultWindows)
+                .filter((window) => Number.isInteger(window) && window >= 16 && window + horizon * minFolds <= n);
+              if (!panel?.targets?.[targetName]?.length || !_mmmChans(panel).length || !candidateWindows.length) {
+                return { enabled: false, reason: "insufficient-history", horizon, candidates: [] };
+              }
+              const specs = [{ id: "cost-trend", seasonalityPeriods: [], minWindow: 16 }];
+              if (n >= 52) specs.push({ id: "cost-trend-quarter", seasonalityPeriods: [13.04], minWindow: 52 });
+              // 연간 Fourier는 최소 2회 반복된 주기가 있어야 holdout으로 검증할
+              // 여지가 있다. 75주처럼 1회 남짓인 입력에는 후보로도 넣지 않는다.
+              if (n >= (options.annualMinWeeks || 104)) specs.push({ id: "cost-trend-year-quarter", seasonalityPeriods: [52.18, 13.04], minWindow: options.annualMinWeeks || 104 });
+              const selectionCfg = {
+                ...cfg,
+                adstockGrid: options.adstockGrid || [0, 0.4, 0.7],
+                bayesHalfSaturationQuantiles: options.bayesHalfSaturationQuantiles || [0.6],
+                bayesHillSlopeGrid: options.bayesHillSlopeGrid || [1],
+                baselineKnots: [],
+              };
+              const candidates = [];
+              for (const spec of specs) {
+                for (const window of candidateWindows) {
+                  if (window < spec.minWindow) continue;
+                  const outcomes = [];
+                  for (let fold = maxFolds; fold >= 1; fold--) {
+                    const holdoutEnd = n - (fold - 1) * horizon;
+                    const holdoutStart = holdoutEnd - horizon;
+                    const trainStart = holdoutStart - window;
+                    if (trainStart < 0) continue;
+                    const train = _mmmSliceWindowPanel(panel, trainStart, holdoutStart);
+                    const held = _mmmSliceWindowPanel(panel, holdoutStart, holdoutEnd);
+                    const fit = mmmBayesianRun(train, { ...selectionCfg, seasonalityPeriods: spec.seasonalityPeriods }, targetName, false, {
+                      skipTransformUncertainty: true,
+                      enableBaselineSelection: false,
+                    });
+                    const forecast = fit && mmmBayesianForecast(fit, train, held.ch, horizon, {
+                      futureDummy: held.dummy,
+                      futureSteps: held.steps,
+                      clampScenario: false,
+                      trendDamping: 0,
+                    });
+                    const actual = held.targets[targetName];
+                    if (!forecast?.predFut?.length || forecast.predFut.length !== actual?.length || !forecast.predFut.every(Number.isFinite)) continue;
+                    const recent = train.targets[targetName].slice(-Math.min(8, train.targets[targetName].length));
+                    const persistence = recent.reduce((sum, value) => sum + value, 0) / Math.max(1, recent.length);
+                    outcomes.push({ actual, predicted: forecast.predFut, persistence: Array(horizon).fill(persistence) });
+                  }
+                  if (outcomes.length < minFolds) continue;
+                  const actualAbs = outcomes.flatMap((item) => item.actual.map((value) => Math.abs(value)));
+                  const modelAbsError = outcomes.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.predicted[index])));
+                  const persistenceAbsError = outcomes.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.persistence[index])));
+                  const denominator = actualAbs.reduce((sum, value) => sum + value, 0);
+                  if (!(denominator > 0)) continue;
+                  const foldWmape = (item) => item.actual.reduce((sum, value, index) => sum + Math.abs(value - item.predicted[index]), 0)
+                    / Math.max(1e-9, item.actual.reduce((sum, value) => sum + Math.abs(value), 0)) * 100;
+                  const persistenceFoldWmape = (item) => item.actual.reduce((sum, value, index) => sum + Math.abs(value - item.persistence[index]), 0)
+                    / Math.max(1e-9, item.actual.reduce((sum, value) => sum + Math.abs(value), 0)) * 100;
+                  const modelFold = outcomes.map(foldWmape);
+                  const baselineFold = outcomes.map(persistenceFoldWmape);
+                  candidates.push({
+                    window,
+                    spec: spec.id,
+                    seasonalityPeriods: spec.seasonalityPeriods,
+                    folds: outcomes.length,
+                    wmape: modelAbsError.reduce((sum, value) => sum + value, 0) / denominator * 100,
+                    persistenceWmape: persistenceAbsError.reduce((sum, value) => sum + value, 0) / denominator * 100,
+                    foldWins: modelFold.filter((value, index) => value < baselineFold[index]).length,
+                    latestWmape: modelFold.at(-1),
+                    latestPersistenceWmape: baselineFold.at(-1),
+                  });
+                }
+              }
+              candidates.sort((a, b) => a.wmape - b.wmape || b.foldWins - a.foldWins || a.window - b.window);
+              const selected = candidates[0] || null;
+              return {
+                enabled: !!selected,
+                reason: selected ? null : "no-valid-time-ordered-fit",
+                horizon,
+                candidates,
+                selected,
+                decisionEligible: !!selected
+                  && selected.wmape <= selected.persistenceWmape
+                  && selected.foldWins >= Math.ceil(selected.folds / 2),
+              };
+            }
+
             export function mmmBayesianWeeklyDecomp(run) {
               if (!run || run.engine !== "bayesian") return null;
               const actual = run.weeks.map((w) => w.actual);

@@ -13,6 +13,7 @@ import {
   mmmBayesianRun,
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
+  mmmForecastRollingSelection,
   mmmBayesianHealth,
   mmmTrendExistence,
   mmmCannibalization,
@@ -31,6 +32,31 @@ import {
 } from "./mmmMath.js";
 
 describe("runMmmMethTests (golden port)", () => {
+  it("selects recent Cost window by rolling holdout and excludes annual seasonality before two cycles", () => {
+    const n = 75;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const meta = week.map((_, index) => 800 + ((index * 17) % 11) * 230);
+    const google = week.map((_, index) => 600 + ((index * 7) % 13) * 180);
+    const target = week.map((_, index) => 3000 + meta[index] * 1.8 + google[index] * 0.9 + index * 9);
+    const panel = {
+      week,
+      ch: { meta, google },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }, { key: "google", label: "Google", kind: "perf" }],
+      targets: { Regs: target },
+      dummy: {},
+      steps: {},
+    };
+    const selection = mmmForecastRollingSelection(panel, {
+      ...MMM_METH_CONFIG,
+      steps: {},
+    }, "Regs");
+    expect(selection.enabled).toBe(true);
+    expect(selection.selected.folds).toBeGreaterThanOrEqual(2);
+    expect(selection.selected.wmape).toBeLessThanOrEqual(selection.selected.persistenceWmape);
+    expect(selection.candidates.some((item) => item.spec === "cost-trend-year-quarter")).toBe(false);
+    expect(selection.candidates.every((item) => item.window <= 51)).toBe(true);
+  });
+
   it("calibrates only from a sufficiently long chronological holdout and preserves asymmetric tails", () => {
     expect(mmmBuildIntervalCalibration([10, 20, 30], [9, 19, 29]).enabled).toBe(false);
     const calibration = mmmBuildIntervalCalibration(
