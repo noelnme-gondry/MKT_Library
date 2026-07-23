@@ -122,7 +122,7 @@ describe("business seasonality diagnostics", () => {
     expect(classifyBusinessSeasonality(evidence, 80).reason).toBe("insufficient-history");
   });
 
-  it("uses observed recurrence as the production gate when calendar dates exist", () => {
+  it("uses observed recurrence as a soft production penalty when calendar dates exist", () => {
     const dateLabel = sundayLabels(104);
     const panel = {
       week: dateLabel.map((_, index) => index + 1),
@@ -150,6 +150,7 @@ describe("business seasonality diagnostics", () => {
     });
     expect(run.seasonalitySelection.evidence.observedRecurrenceGate).toBe(true);
     expect(run.seasonalitySelection.evidence.observedConfidence.level).toBe("moderate");
+    expect(run.seasonalitySelection.evidence.observedRecurrencePenaltyMultiplier).toBeCloseTo(1, 6);
     expect(run.seasonalityPeriods.length).toBeGreaterThan(0);
   });
 
@@ -187,7 +188,8 @@ describe("business seasonality diagnostics", () => {
     }, null, 2));
     expect(Object.keys(results)).toHaveLength(5);
     expect(results.full.evidence.available).toBe(true);
-    expect(productionRun.seasonalityPeriods).toEqual([]);
-    expect(productionRun.seasonalitySelection?.selected?.id).toBe("none");
+    expect(productionRun.seasonalityPeriods.length).toBeGreaterThan(0);
+    expect(productionRun.seasonalitySelection?.selected?.id).toBe("annual-4");
+    expect(productionRun.seasonalitySelection?.evidence?.observedRecurrenceScale).toBeCloseTo(0.5, 6);
   });
 });

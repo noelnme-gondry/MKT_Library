@@ -668,7 +668,10 @@ import {
               seasonalityRollingMinTrain: 52,
               seasonalityRollingMaxFolds: 3,
               seasonalityRollingMaxDegradation: 2,
-              seasonalityObservedRecurrenceRequired: true,
+              // 실제 연도 반복성은 hard gate가 아니라 계절성 강도를 줄이는
+              // soft evidence로 사용한다. 반복성이 약해도 사업 계절성을 완전히
+              // 버리지 않고, 불확실할수록 분해 기여를 보수적으로 축소한다.
+              seasonalityObservedRecurrenceRequired: false,
               seasonalityMinLagCorrelation: 0.15,
               adstockGrid: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
               // Empirical-Bayes 효과 신뢰도는 한 변환을 고정하지 않는다. 채널별 α × 반포화점 ×
@@ -2982,7 +2985,7 @@ import {
                 ? Math.max(0, options.controlPenalty)
                 : 0.15;
               const defaultPenalty = Array.from({ length: p }, (_, j) =>
-                j === 0 ? 1e-8 : mediaIndices.has(j) ? mediaPenalty : controlPenalty,
+                j === 0 ? 1e-8 : mediaIndices.has(j) ? mediaPenalty : controlPenalty * (options.seasonalityIndices?.has(j) ? (options.seasonalityPenaltyMultiplier || 1) : 1),
               );
               const priorMean = Array(p).fill(0);
               const calibratedPrecision = {};
@@ -3080,7 +3083,13 @@ import {
                   precision: isFinite(prior.precision) ? prior.precision / Math.max(1e-12, colScale[j] ** 2) : prior.precision,
                 };
               }
-              const posterior = _mmmBayesianLinear(X, y, mediaIndices, mediaPriors, options);
+              const seasonalityIndices = new Set(names
+                .map((name, index) => /^(sin|cos)_/.test(name) ? index + 1 : null)
+                .filter((index) => index !== null));
+              const posterior = _mmmBayesianLinear(X, y, mediaIndices, mediaPriors, {
+                ...options,
+                seasonalityIndices,
+              });
               if (!posterior) return null;
               const absoluteBeta = names.map((_, j) => posterior.beta[j + 1] / colScale[j]);
               const absoluteIntercept = posterior.beta[0] - absoluteBeta.reduce(
@@ -3457,10 +3466,12 @@ import {
                 ? compareObservedYearShapes(buildObservedYearShapes(panel.dateLabel, finalNoneFit.posterior.resid))
                 : { available: false, reason: "date-labels-unavailable" };
               const observedConfidence = classifyBusinessSeasonality(observedRecurrence, n);
-              const observedRecurrenceGate = !cfg.seasonalityObservedRecurrenceRequired
-                || !observedRecurrence.available
+              const observedRecurrenceGate = !observedRecurrence.available
                 || observedConfidence.level === "moderate"
                 || observedConfidence.level === "strong";
+              const observedRecurrenceScale = observedRecurrence.available
+                ? Math.max(0.5, Math.min(1, 0.5 + 0.5 * Math.max(0, Number(observedRecurrence.observedYearCorrelation) || 0)))
+                : 1;
               const evidence = {
                 minHistory,
                 observedWeeks: n,
@@ -3482,6 +3493,8 @@ import {
                 observedRecurrence,
                 observedConfidence,
                 observedRecurrenceGate,
+                observedRecurrenceScale,
+                observedRecurrencePenaltyMultiplier: 1 / observedRecurrenceScale,
                 // 계절성 선택은 분해용이다. 최근 holdout을 통과시키는 대신,
                 // 집계 매체를 통제한 전체 이력에서 구조적 BIC 개선과 동일한
                 // 연간 파형의 재현성을 요구한다. 미래 예측은 별도 rolling
@@ -3489,8 +3502,7 @@ import {
                 detected: bicImprovement >= (cfg.seasonalityBicThreshold || 6)
                   && Number.isFinite(seasonalLagCorrelation)
                   && seasonalLagCorrelation >= 0.75
-                  && seasonalRms >= Math.max(1, _mean(selectionPanel.targets[targetName]) * 0.005)
-                  && observedRecurrenceGate,
+                  && seasonalRms >= Math.max(1, _mean(selectionPanel.targets[targetName]) * 0.005),
               };
               const eligible = evidence.detected
                 ? annualCandidates.filter((item) => {
@@ -3514,7 +3526,12 @@ import {
               }));
               return {
                 enabled: true,
-                cfg: { ...cfg, seasonalityPeriods: selected.periods.slice() },
+                cfg: {
+                  ...cfg,
+                  seasonalityPeriods: selected.periods.slice(),
+                  seasonalityAmplitudeScale: evidence.observedRecurrenceScale,
+                  seasonalityPenaltyMultiplier: evidence.observedRecurrencePenaltyMultiplier,
+                },
                 selected: {
                   ...publicCandidates.find((item) => item.id === selected.id),
                   bestBic: Number.isFinite(bestEligible.finalBic) ? bestEligible.finalBic : bestEligible.bic,
@@ -3641,6 +3658,7 @@ import {
                 ...options,
                 mediaPenalty: effectiveCfg.mediaPenalty,
                 controlPenalty: effectiveCfg.controlPenalty,
+                seasonalityPenaltyMultiplier: effectiveCfg.seasonalityPenaltyMultiplier || 1,
               };
               const controls = _mmmBayesControlFeatures(panel, effectiveCfg);
               const selectedParams = _mmmBayesChannelParams(panel, effectiveCfg, targetName, controls);
