@@ -47,14 +47,17 @@ function mappedTimeKey(value) {
   return parsed ? { kind: "date", value: parsed.getTime(), source: "calendar-date" } : null;
 }
 
-function mondayTimestamp(timestamp) {
+function weekStartTimestamp(timestamp, weekStart) {
   const date = new Date(timestamp);
   date.setUTCHours(0, 0, 0, 0);
-  date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+  const daysSinceStart = weekStart === "sunday"
+    ? date.getUTCDay()
+    : (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - daysSinceStart);
   return date.getTime();
 }
 
-function formatMonday(timestamp) {
+function formatWeekStart(timestamp) {
   const date = new Date(timestamp);
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }
@@ -399,9 +402,10 @@ function pivotLongFormat(headers, rows, colMap) {
 
 // colMap → MMM panel (index mmmGetPanelFromColMap 이식). platform: "all"|"android"|"ios" —
 // 컬럼 태그 모드면 plat 일치(+공통) 컬럼만 선택, 플랫폼 단일 컬럼(행필터) 모드면 그 값으로 행 필터.
-export function buildPanelFromColMap(headers, rows, colMap, platform = "all", locale = "ko", inheritedDiagnostics = null) {
+export function buildPanelFromColMap(headers, rows, colMap, platform = "all", locale = "ko", inheritedDiagnostics = null, options = {}) {
   const pivoted = pivotLongFormat(headers, rows, colMap);
-  if (pivoted) return buildPanelFromColMap(pivoted.headers, pivoted.rows, pivoted.colMap, platform, locale, pivoted.diagnostics);
+  if (pivoted) return buildPanelFromColMap(pivoted.headers, pivoted.rows, pivoted.colMap, platform, locale, pivoted.diagnostics, options);
+  const weekStart = options.weekStart === "sunday" ? "sunday" : "monday";
   const r = colMapRoles(headers, colMap);
   const tagMode = !r.platform && mmmPlatformTags(headers, colMap).length > 0;
   const P = platform === "all" ? null : platform;
@@ -431,6 +435,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
     boundaryIncompletePlatformWeeks: 0,
     mixedPlatformCadence: false,
     platformCoverage: null,
+    weekStart,
     issues: [],
     warnings: [],
   };
@@ -444,7 +449,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   // 날짜를 parseFloat하면 2025-01-06 → 2025가 되어 같은 해 모든 주가 동률이 된다.
   // 시간순 정렬은 원본 date/week 값을 파싱해 하고, MMM 내부 t는 항상 1…N으로 정규화한다.
   const timeHeader = r.date || weekC?.header || null;
-  // 일자별 패널은 월요일 시작 주간으로 합산한다. 단일 platform 컬럼의 Total도
+  // 일자별 패널은 사용자가 고른 일요일/월요일 시작 주간으로 합산한다. 단일 platform 컬럼의 Total도
   // 같은 주 Android/iOS 행을 한 주로 합친다. KPI·지출은 합계, 이벤트는
   // 해당 주 발생 여부(max)다. step은 발생 이벤트가 아니라 regime 상태이므로
   // 주 안에서 0/1이 섞이면 NaN으로 남겨 경계 주를 차단한다.
@@ -473,8 +478,11 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
         else timeDiagnostics.unparseableTimeRows += 1;
         return;
       }
-      const periodValue = parsedTime.kind === "date" ? mondayTimestamp(parsedTime.value) : parsedTime.value;
-      const normalizedTime = parsedTime.kind === "date" ? formatMonday(periodValue) : String(periodValue);
+      // ISO week는 이미 주 단위 입력이며 항상 ISO 월요일 라벨을 유지한다. 일자형
+      // 원자료만 일요일 시작 또는 월요일 시작으로 다시 묶는다.
+      const shouldRegroupDate = parsedTime.kind === "date" && parsedTime.source !== "iso-week";
+      const periodValue = shouldRegroupDate ? weekStartTimestamp(parsedTime.value, weekStart) : parsedTime.value;
+      const normalizedTime = parsedTime.kind === "date" ? formatWeekStart(periodValue) : String(periodValue);
       const key = `${parsedTime.kind}:${periodValue}`;
       let item = groups.get(key);
       if (!item) {
@@ -690,6 +698,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   // 차트·예측 라벨: mmmForecast/차트는 panel.dateLabel·dates·granularity를 읽음(weekLabel 아님) →
   // 매핑된 주차/날짜 라벨을 그 이름들로도 노출해야 x축·미래라벨이 실제 날짜(t 인덱스 아님)로 나옴.
   panel.dateLabel = panel.weekLabel || null;
+  panel.weekStart = weekStart;
   const canonicalTimes = (panel.weekLabel || []).map(mappedTimeKey);
   if (canonicalTimes.length && canonicalTimes.every(Boolean)) {
     const kinds = new Set(canonicalTimes.map((item) => item.kind));

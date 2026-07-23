@@ -2347,8 +2347,8 @@ function mmmSumOsBacktests(parts) {
   };
 }
 
-function buildOsForecastComponent(headers, rows, colMap, platform, target, locale) {
-  const built = buildPanelFromColMap(headers, rows, colMap, platform, locale);
+function buildOsForecastComponent(headers, rows, colMap, platform, target, locale, weekStart) {
+  const built = buildPanelFromColMap(headers, rows, colMap, platform, locale, null, { weekStart });
   if (built.missing.length) return { platform, reason: `missing: ${built.missing.join(", ")}` };
   const panel = trimToActive(built.panel);
   const resolvedTarget = pickTarget(panel, target);
@@ -2519,6 +2519,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   // 주차/날짜/가입/재활성/채널(perf·brand)/더미/step 역할로 드래그 → 모든 분석(진단·MMM·시뮬)
   // 이 이 하나의 패널을 공유. 표준필드(DataFeatureMatrix) 경로 미사용.
   const [mmmColMap, setMmmColMap] = useState(null);
+  const [mmmWeekStart, setMmmWeekStart] = useState("monday");
   const [mmmAnalyzedSig, setMmmAnalyzedSig] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const analysisEventRef = useRef(null);
@@ -2551,6 +2552,8 @@ export default function MarketingResponse({ locale = "ko" }) {
 
   // CSV 로드 시 colMap 자동 초기화(이름 기반 부분 추정 — reg/react/채널만, 나머지는 트레이).
   const csvSig = hasData ? `${csvData.fileName}|${(csvData.headers || []).join(",")}` : "";
+  const colMapSig = mmmColMap ? JSON.stringify(mmmColMap) : "";
+  const mmmAnalysisSig = `${colMapSig}\u001fweek-start:${mmmWeekStart}`;
   const prevCsvSig = useRef(null);
   // Set by the demo button so the auto-guessed colMap is also auto-confirmed
   // (analyze gate opened) — results render instantly, matching other tools.
@@ -2559,7 +2562,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     if (hasData && prevCsvSig.current !== csvSig) {
       const guess = autoGuessColMap(csvData.headers, csvData.raw);
       setMmmColMap(guess);
-      setMmmAnalyzedSig(demoPending.current ? JSON.stringify(guess) : null);
+      setMmmAnalyzedSig(demoPending.current ? `${JSON.stringify(guess)}\u001fweek-start:${mmmWeekStart}` : null);
       setSelectedEvidence({ experiment: false, country: false });
       setPriorEvidence({ experiment: null, country: null });
       demoPending.current = false;
@@ -2569,7 +2572,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       setMmmAnalyzedSig(null);
       prevCsvSig.current = null;
     }
-  }, [hasData, csvSig, csvData.headers, csvData.raw]);
+  }, [hasData, csvSig, csvData.headers, csvData.raw, mmmWeekStart]);
 
   // 파일 업로드(자체 dropzone — 5-18은 표준 CsvUploader/DataFeatureMatrix 미사용).
   const mmmFileRef = useRef(null);
@@ -2609,8 +2612,13 @@ export default function MarketingResponse({ locale = "ko" }) {
     if (!hasData && !demoDisabled) handleLoadDemo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const colMapSig = mmmColMap ? JSON.stringify(mmmColMap) : "";
-  const mmmAnalyzed = mmmAnalyzedSig != null && mmmAnalyzedSig === colMapSig;
+  const mmmAnalyzed = mmmAnalyzedSig != null && mmmAnalyzedSig === mmmAnalysisSig;
+  const changeMmmWeekStart = (weekStart) => {
+    if (weekStart === mmmWeekStart) return;
+    const shouldReanalyze = mmmAnalyzed;
+    setMmmWeekStart(weekStart);
+    if (shouldReanalyze) deferMmmUpdate(() => setMmmAnalyzedSig(`${colMapSig}\u001fweek-start:${weekStart}`));
+  };
 
   // 단일 컬럼 세그먼트(platform role) 모드 — 그 컬럼 고유값(성별·플랫폼·국가 등) pill 토글.
   // 태그 모드(mmmPlatformTags)와 상호배타(buildPanelFromColMap: r.platform 있으면 태그 무시).
@@ -2658,7 +2666,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       ].join("\u001e");
       const cachedResult = mmmCachedResult(csvData.raw, resultCacheKey);
       if (cachedResult) return cachedResult;
-      const built = buildPanelFromColMap(csvData.headers, csvData.raw, mmmColMap, effPlatformFilter, locale);
+      const built = buildPanelFromColMap(csvData.headers, csvData.raw, mmmColMap, effPlatformFilter, locale, null, { weekStart: mmmWeekStart });
       if (built.missing.length) return { empty: true, reason: tx("필수 역할 미지정: ", "Required role not set: ") + built.missing.join(", ") };
       const panel = trimToActive(built.panel);
       const cfg = { ...MMM_METH_CONFIG, absorbed: new Set() };
@@ -3067,7 +3075,7 @@ export default function MarketingResponse({ locale = "ko" }) {
           return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
         };
         const fitReferenceEvidence = (referenceRowsForFit, transformParams, targetScalePanel) => {
-          const ref = buildPanelFromColMap(source.headers, referenceRowsForFit, mmmColMap, effPlatformFilter, locale);
+          const ref = buildPanelFromColMap(source.headers, referenceRowsForFit, mmmColMap, effPlatformFilter, locale, null, { weekStart: mmmWeekStart });
           if (ref.missing.length) return { error: "mapping-mismatch", detail: ref.missing.join(", ") };
           const refPanel = trimToActive(ref.panel);
           if (!Object.prototype.hasOwnProperty.call(refPanel.targets, t)) return { error: "missing-target", detail: t };
@@ -3288,7 +3296,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       }
       return { empty: true, reason: tx("분석 오류: ", "Analysis error: ") + msg };
     }
-  }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, mmmAnalyzedSig, colMapSig, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence]);
+  }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, mmmAnalyzedSig, colMapSig, mmmWeekStart, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence]);
 
   useEffect(() => {
     if (!mmmAnalyzed) return;
@@ -3335,7 +3343,7 @@ export default function MarketingResponse({ locale = "ko" }) {
           return { isAdditiveTotal: true, components: [], reason: "Android와 iOS가 각각 매핑되어야 Total 합산 예측을 만들 수 있습니다." };
         }
         const components = ["android", "ios"].map((platform) =>
-          buildOsForecastComponent(csvData.headers, csvData.raw, mmmColMap, platform, target, locale),
+          buildOsForecastComponent(csvData.headers, csvData.raw, mmmColMap, platform, target, locale, mmmWeekStart),
         );
         if (components.some((component) => !component.run || !component.panel)) {
           return { isAdditiveTotal: true, components, reason: components.find((component) => !component.run || !component.panel)?.reason || "OS forecast model unavailable" };
@@ -3346,7 +3354,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     } catch {
       return null;
     }
-  }, [mmm, stage, effPlatformFilter, csvData, mmmColMap, target, locale, segmentSel]);
+  }, [mmm, stage, effPlatformFilter, csvData, mmmColMap, target, locale, segmentSel, mmmWeekStart]);
 
   const forecast = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "lab" || !forecastModel) return null;
@@ -4104,6 +4112,16 @@ export default function MarketingResponse({ locale = "ko" }) {
             </div>
           </div>
         )}
+        <div className="analysis-local-controls" style={{ marginTop: "8px" }}>
+          <div className="analysis-local-controls__inner">
+            <span className="analysis-local-controls__label">{tx("일별 데이터 주 묶음", "Daily-data week grouping")}</span>
+            <span className="muted" style={{ fontSize: "11px" }}>{tx("날짜 컬럼을 매핑한 일별 CSV에만 적용됩니다. 기존 주별 CSV는 바뀌지 않습니다.", "Applies only to daily CSVs with a mapped date column; already-weekly CSVs are unchanged.")}</span>
+            <div className="ab-pillgroup" style={{ margin: 0 }}>
+              <button className={`ab-pill ${mmmWeekStart === "sunday" ? "active" : ""}`} onClick={() => changeMmmWeekStart("sunday")}>{tx("일요일 시작 (일~토)", "Sunday start (Sun–Sat)")}</button>
+              <button className={`ab-pill ${mmmWeekStart === "monday" ? "active" : ""}`} onClick={() => changeMmmWeekStart("monday")}>{tx("월요일 시작 (월~일)", "Monday start (Mon–Sun)")}</button>
+            </div>
+          </div>
+        </div>
         <h3 style={{ fontSize: "14px", margin: "12px 0 8px", color: "var(--primary, #adc6ff)" }}>{tx("🗂 컬럼 역할 매핑 (드래그로 지정)", "🗂 Map column roles (assign by dragging)")}</h3>
         <MmmColumnMapper
           headers={csvData.headers}
@@ -4116,7 +4134,7 @@ export default function MarketingResponse({ locale = "ko" }) {
           <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px" }}>
             <span style={{ fontSize: "12.5px", color: "var(--text-1)" }}>{tx("✅ 필수 역할 매핑 완료.", "✅ Required roles mapped.")} <strong>{tx("매핑이 맞는지 확인한 뒤 분석을 실행하세요.", "Check that the mapping is correct, then run the analysis.")}</strong> <span style={{ color: "var(--text-muted)" }}>{tx("(매핑만으로 자동 분석하지 않습니다.)", "(Mapping alone doesn't auto-run the analysis.)")}</span></span>
             <button className="ab-button" style={{ marginLeft: "auto" }}
-              onClick={() => requestAd(() => runMmmAnalyze(colMapSig))}>{tx("▶ 분석하기", "▶ Analyze")}</button>
+              onClick={() => requestAd(() => runMmmAnalyze(mmmAnalysisSig))}>{tx("▶ 분석하기", "▶ Analyze")}</button>
           </div>
         )}
       </section>
