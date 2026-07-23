@@ -5205,11 +5205,14 @@ export default function MarketingResponse({ locale = "ko" }) {
                         ? tx("전체 이력 추세", "full-history trend")
                         : tx(`최근 ${selected.trendWindow}주 추세`, `recent ${selected.trendWindow}-week trend`)
                       : tx("Cost 학습창 내 추세", "trend within Cost window");
+                    const eventAdjustedLabel = selected.trendEventControls > 0
+                      ? tx(`이벤트·step ${selected.trendEventControls}개 효과 제거 후`, `after controlling ${selected.trendEventControls} event/step effect(s)`)
+                      : null;
                     return (
                       <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
                         <strong>{tx("자동 선택된 예측 회귀", "Auto-selected forecast regression")}</strong>
                         <p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
-                          {tx(`Cost 최근 ${selected.window}주 · ${seasonLabel} · ${trendLabel} · 12주 holdout ${selected.folds}회 · rolling wMAPE ${selected.wmape.toFixed(1)}% (기준선 ${selected.persistenceWmape.toFixed(1)}%) · 기준선 승리 ${selected.foldWins}/${selected.folds}회`, `Cost recent ${selected.window} weeks · ${seasonLabel} · ${trendLabel} · ${selected.folds} rolling 12-week holdouts · rolling wMAPE ${selected.wmape.toFixed(1)}% (baseline ${selected.persistenceWmape.toFixed(1)}%) · beats baseline ${selected.foldWins}/${selected.folds} times`)}
+                          {tx(`Cost 최근 ${selected.window}주 · ${seasonLabel} · ${trendLabel}${eventAdjustedLabel ? ` · ${eventAdjustedLabel}` : ""} · 12주 holdout ${selected.folds}회 · rolling wMAPE ${selected.wmape.toFixed(1)}% (기준선 ${selected.persistenceWmape.toFixed(1)}%) · 기준선 승리 ${selected.foldWins}/${selected.folds}회`, `Cost recent ${selected.window} weeks · ${seasonLabel} · ${trendLabel}${eventAdjustedLabel ? ` · ${eventAdjustedLabel}` : ""} · ${selected.folds} rolling 12-week holdouts · rolling wMAPE ${selected.wmape.toFixed(1)}% (baseline ${selected.persistenceWmape.toFixed(1)}%) · beats baseline ${selected.foldWins}/${selected.folds} times`)}
                         </p>
                         {!forecast.rollingSelection.decisionEligible && <p style={{ margin: "6px 0 0", color: "#b45309", fontSize: "11.5px" }}>{tx("Cost 회귀가 기준선을 안정적으로 이기지 못했습니다. 예산 변경 수치는 진단용으로만 보세요.", "Cost regression does not beat the baseline consistently. Treat budget scenarios as diagnostic only.")}</p>}
                       </Card>
