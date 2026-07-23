@@ -11,7 +11,7 @@
 // into roles, then "분석하기" gates the analysis. autoGuessColMap seeds roles by
 // name (week→week, Regs→reg, *_spend→channel). Channels must vary INDEPENDENTLY
 // so the OLS panel is non-singular. Deterministic — NO Math.random (harness §3).
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, fireEvent, act } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import MarketingResponse, {
@@ -540,6 +540,21 @@ describe("MarketingResponse render smoke", () => {
     // Primary mapper + analyze gate should render (not the analysis yet).
     expect(document.body.textContent).toContain("컬럼 역할 매핑");
     expect(document.body.textContent).toContain("분석하기");
+  });
+
+  it("keeps the current scroll position when MMM analysis starts", async () => {
+    seedWithData();
+    const originalScrollTo = window.scrollTo;
+    const scrollTo = vi.fn();
+    window.scrollTo = scrollTo;
+    try {
+      const { container } = render(<MarketingResponse />);
+      enterMmmAndAnalyze(container);
+      await flushRaf();
+      expect(scrollTo).not.toHaveBeenCalled();
+    } finally {
+      window.scrollTo = originalScrollTo;
+    }
   });
 
   it("keeps the analyze button visible and explains the block when source currency is unselected", () => {
