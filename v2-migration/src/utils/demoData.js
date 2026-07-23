@@ -250,10 +250,13 @@ function buildResponse() {
   // 1000배 큰 값(수천만 달러)이 들어있어 "다음 예산은 여기로" 한계효과가 전부
   // 0으로 언더플로우되던 버그 수정(사용자 리포트).
   const chans = [
-    { key: "google_spend", coef: 0.85, sign: 1,  lambda: 0.4, half: 40000, base: 30000, amp: 0.5, steep: true },
-    { key: "meta_spend",   coef: 0.60, sign: 1,  lambda: 0.5, half: 30000, base: 22000, amp: 0.6, flighted: true },
-    { key: "tiktok_spend", coef: 0.85, sign: -1, lambda: 0.3, half: 18000, base: 8000,  amp: 1.1 },
-    { key: "brand_spend",  coef: 1.10, sign: 1,  lambda: 0.6, half: 12000, base: 6000,  amp: 0.3, steep: true },
+    // 각 채널은 서로 다른 운용 주기·phase·성장률을 갖는다. 모든 채널을 함께
+    // 우상향시키면 데모조차 VIF가 폭증해 "예산 추천 보류"만 보여주게 된다.
+    // 이 파형은 실제 MMM의 식별 조건(독립적인 지출 변동)을 체험하기 위한 것.
+    { key: "google_spend", coef: 0.85, sign: 1,  lambda: 0.4, half: 40000, base: 30000, amp: 0.5, trendRate: 0.65, wave: 0.42, period: 17, phase: 0.4 },
+    { key: "meta_spend",   coef: 0.60, sign: 1,  lambda: 0.5, half: 30000, base: 22000, amp: 0.6, trendRate: 0.15, wave: 0.38, period: 13, phase: 2.2, flighted: true },
+    { key: "tiktok_spend", coef: 0.85, sign: -1, lambda: 0.3, half: 18000, base: 8000,  amp: 1.1, trendRate: 0.35, wave: 0.55, period: 11, phase: 4.1 },
+    { key: "brand_spend",  coef: 1.10, sign: 1,  lambda: 0.6, half: 12000, base: 6000,  amp: 0.3, trendRate: 0.1, wave: 0.6, period: 23, phase: 1.5 },
   ];
   // meta_spend only fires in 3 short bursts (9 weeks total) → <12 active weeks
   // → fails the eligibility gate (MIN_ACTIVE=12) on purpose, landing it in "애매함".
@@ -274,10 +277,11 @@ function buildResponse() {
     let contrib = 0;
     for (const c of chans) {
       // spend: base * (trend) * (seasonal) * noise
-      const trend = c.steep ? 1 + (w / nWeeks) * 2.2 : 1 + (w / nWeeks) * 0.6;
-      const noiseAmp = c.steep ? 0.1 : 0.35;
+      const trend = 1 + (w / nWeeks) * c.trendRate;
+      const noiseAmp = c.flighted ? 0.2 : 0.16;
       const seasonal = 1 + c.amp * 0.3 * Math.sin((w / 52) * 2 * Math.PI);
-      let spend = Math.max(0, c.base * trend * seasonal * (1 + rndSpend[c.key]() * noiseAmp));
+      const operatingWave = 1 + c.wave * Math.sin((w / c.period) * 2 * Math.PI + c.phase);
+      let spend = Math.max(0, c.base * trend * seasonal * operatingWave * (1 + rndSpend[c.key]() * noiseAmp));
       if (c.flighted && !inBurst(w)) spend = 0;
       row[c.key] = round(spend);
       // adstock carryover
