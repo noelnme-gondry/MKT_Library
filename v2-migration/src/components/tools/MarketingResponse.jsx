@@ -49,7 +49,7 @@ import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, colMapMissing, 
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact } from "@/utils/format";
-import { buildMmmWeeklyPerformance } from "@/utils/mmmWeeklyPerformance";
+import { buildMmmCollinearityGroupedPerformance, buildMmmWeeklyPerformance } from "@/utils/mmmWeeklyPerformance";
 import { buildExperimentMediaPriorDetailed, mmmRollingOrigins, summarizeRollingErrors, mmmPriorMroiAtSpend } from "@/utils/mmmPriorMath";
 import {
   planCountryReferenceFits,
@@ -2575,6 +2575,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const [cannibChannel, setCannibChannel] = useState(null);
   const [cannibQuestion, setCannibQuestion] = useState("precedence");
   const [selectedCollinearPairKey, setSelectedCollinearPairKey] = useState(null);
+  const [weeklyPerformanceView, setWeeklyPerformanceView] = useState("individual");
   // 기본 결과는 기존 MMM 그대로. prior 관련 데이터가 실제로 있을 때만 결과 탭 후보가 추가된다.
   // 원자료는 이 컴포넌트 메모리에만 두며 서버로 보내지 않는다.
   const [selectedEvidence, setSelectedEvidence] = useState({ experiment: false, country: false });
@@ -3410,6 +3411,10 @@ export default function MarketingResponse({ locale = "ko" }) {
     if (!mmm || mmm.empty || stage !== "mmm") return [];
     return buildMmmWeeklyPerformance(mmm.panel, mmm.run.saturationByChannel);
   }, [mmm, stage]);
+  const groupedWeeklyChannelPerformance = useMemo(() => {
+    if (!mmm || mmm.empty || stage !== "mmm") return [];
+    return buildMmmCollinearityGroupedPerformance(mmm.panel, weeklyChannelPerformance, mmm.run.collinear_pairs);
+  }, [mmm, stage, weeklyChannelPerformance]);
 
   // 미래예측은 MMM 기여 분석과 별도 적합한다. 전체 기간 MMM은 장기 기여 해석에
   // 남기고, 예측 회귀만 최근 window·계절성 후보를 rolling holdout으로 선택한다.
@@ -4881,6 +4886,10 @@ export default function MarketingResponse({ locale = "ko" }) {
                   ...decomp.groupNames.map((key) => ({ key, values: decomp.weeks.map((w) => w.contrib[key] || 0) })),
                 ].filter((g) => g.values.some((v) => Math.abs(v) > 1e-8)).map((g) => ({ ...g, label: plainDrv(g.key) }))
               : [];
+            const hasCollinearityGroups = groupedWeeklyChannelPerformance.some((row) => row.isCollinearityGroup);
+            const displayedWeeklyChannelPerformance = weeklyPerformanceView === "grouped" && hasCollinearityGroups
+              ? groupedWeeklyChannelPerformance
+              : weeklyChannelPerformance;
             return (
             <>
               <MmmEvidenceLedger
@@ -5064,17 +5073,29 @@ export default function MarketingResponse({ locale = "ko" }) {
               )}
 
               {/* 기간 전체에서 실제로 집행된 주만 평균낸 채널별 모델 성과 — 상세 아코디언 밖에 고정. */}
-              {weeklyChannelPerformance.length > 0 && (
+              {displayedWeeklyChannelPerformance.length > 0 && (
                 <section className="block mmm-weekly-performance" id="s-mmm-weekly-performance">
                   <div className="mmm-weekly-performance__head">
                     <div>
                       <h2 className="section-title">{tx("채널별 주 평균 성과", "Average weekly channel performance")}</h2>
                       <p>{tx(
-                        "해당 기간 실제 집행액을 MMM 곡선에 넣어 계산한 채널별 평균입니다. 지출이 없던 채널은 제외합니다.",
-                        "Each row applies the period's actual spend to the MMM curve. Channels without spend are excluded.",
+                        weeklyPerformanceView === "grouped" && hasCollinearityGroups
+                          ? "상관이 높은 채널은 하나의 묶음으로 합산해 표시합니다. 모델을 다시 계산한 결과가 아니라, 개별 추정을 더 보수적으로 읽기 위한 보기 방식입니다."
+                          : "해당 기간 실제 집행액을 MMM 곡선에 넣어 계산한 채널별 평균입니다. 지출이 없던 채널은 제외합니다.",
+                        weeklyPerformanceView === "grouped" && hasCollinearityGroups
+                          ? "Highly correlated channels are summed into one viewing group. This does not refit the model; it is a more conservative way to read individual estimates."
+                          : "Each row applies the period's actual spend to the MMM curve. Channels without spend are excluded.",
                       )}</p>
                     </div>
-                    <span className="mmm-weekly-performance__note">{tx("모델 예측치", "Model estimate")}</span>
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                      {hasCollinearityGroups && (
+                        <div className="ab-pillgroup" aria-label={tx("공선 채널 보기 전환", "Collinear-channel view")}>
+                          <button className={`ab-pill ${weeklyPerformanceView === "individual" ? "active" : ""}`} onClick={() => setWeeklyPerformanceView("individual")}>{tx("개별 보기", "Individual")}</button>
+                          <button className={`ab-pill ${weeklyPerformanceView === "grouped" ? "active" : ""}`} onClick={() => setWeeklyPerformanceView("grouped")}>{tx("상관 채널 묶음", "Correlated groups")}</button>
+                        </div>
+                      )}
+                      <span className="mmm-weekly-performance__note">{tx("모델 예측치", "Model estimate")}</span>
+                    </div>
                   </div>
                   <div className="table-wrap">
                     <table className="data mmm-data-table">
@@ -5088,13 +5109,16 @@ export default function MarketingResponse({ locale = "ko" }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {weeklyChannelPerformance.map((row) => {
+                        {displayedWeeklyChannelPerformance.map((row) => {
                           const efficiency = mmm.target === "Revenue"
                             ? row.avgWeeklySpend > 0 && row.avgWeeklyPredicted > 0 ? row.avgWeeklyPredicted / row.avgWeeklySpend : null
                             : row.predictedCpr;
                           return (
                             <tr key={row.key} style={row.posteriorPositive != null && row.posteriorPositive < 0.8 ? { opacity: 0.62 } : undefined}>
-                              <td><strong>{row.label}</strong></td>
+                              <td>
+                                <strong>{row.label}</strong>
+                                {row.isCollinearityGroup && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>⚠ {tx(`최대 상관 ${row.maxCorrelation.toFixed(2)} · ${row.members.length}개 채널 합산`, `max corr. ${row.maxCorrelation.toFixed(2)} · ${row.members.length} channels summed`)}</div>}
+                              </td>
                               <td className="tnum">{row.activeWeeks}{tx("주", " wk")}</td>
                               <td className="tnum">{spendLabel(row.avgWeeklySpend)}</td>
                               <td className="tnum">{row.avgWeeklyPredicted > 0 ? targetValueLabel(row.avgWeeklyPredicted) : "—"}</td>
