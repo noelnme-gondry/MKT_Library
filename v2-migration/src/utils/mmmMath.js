@@ -1125,6 +1125,20 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                       ? `${kind === "event" ? "Event" : "Regime"} '${key}' has ${invalid} non-binary week(s). Map weekly indicators as exactly 0 or 1.`
                       : `${kind === "event" ? "이벤트" : "구조변화"} '${key}'에 0/1이 아닌 주차가 ${invalid}개 있습니다. 주간 지표는 정확히 0 또는 1로 입력하세요.`,
                   );
+                  // step은 전환 뒤의 "상태"를 뜻한다. 한 주짜리 재오픈/런칭
+                  // 표식은 지속 효과를 식별하지 못하므로 event dummy가 맞다.
+                  // 여기서는 사용자의 명시 매핑을 바꾸지 않고, 잘못된 해석만
+                  // 막을 수 있도록 강한 경고를 남긴다.
+                  if (kind === "regime" && !invalid) {
+                    const onWeeks = values.filter((value) => value === 1).length;
+                    if (onWeeks < 2 || values.length - onWeeks < 2) {
+                      rep.warnings.push(
+                        isEn
+                          ? `Regime '${key}' has only ${onWeeks} on-week(s). A regime must be a persistent 0/1 state; map a one-week marker as an event dummy, or provide the post-change state for every week.`
+                          : `구조변화 '${key}'의 ON 주차가 ${onWeeks}주뿐입니다. 구조변화는 전환 후 유지되는 0/1 상태여야 합니다. 1주 표식은 이벤트 더미로 매핑하거나, 전환 후 모든 주의 상태값을 입력하세요.`,
+                      );
+                    }
+                  }
                 }
               }
               return rep;
