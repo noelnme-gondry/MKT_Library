@@ -11,6 +11,7 @@ import {
   MMM_METH_CONFIG,
   mmmBayesianRun,
   mmmBuildFeatures,
+  mmmSeasonalityRegularizationDecision,
 } from "./mmmMath.js";
 
 const csvPath = process.env.MMM_CSV_PATH;
@@ -111,6 +112,7 @@ function fixedSeasonalityRun(panel, candidate) {
     seasonalityPeriods: candidate.periods,
     seasonalityBasis: candidate.seasonalityBasis || null,
     seasonalityPenaltyProfile: candidate.seasonalityPenaltyProfile || null,
+    seasonalityPenaltyStrength: candidate.seasonalityPenaltyStrength || 0,
   }, "RR", false, {
     skipTransformUncertainty: true,
     enableSeasonalitySelection: false,
@@ -207,7 +209,7 @@ describe("business seasonality diagnostics", () => {
     expect(classifyBusinessSeasonality(evidence, 80).reason).toBe("insufficient-history");
   });
 
-  it("uses observed recurrence as a soft production penalty when calendar dates exist", () => {
+  it("reports observed recurrence without forcing a production penalty", () => {
     const dateLabel = sundayLabels(104);
     const panel = {
       week: dateLabel.map((_, index) => index + 1),
@@ -236,6 +238,7 @@ describe("business seasonality diagnostics", () => {
     expect(run.seasonalitySelection.evidence.observedRecurrenceGate).toBe(true);
     expect(run.seasonalitySelection.evidence.observedConfidence.level).toBe("moderate");
     expect(run.seasonalitySelection.evidence.observedRecurrencePenaltyMultiplier).toBeCloseTo(1, 6);
+    expect(run.seasonalitySelection.cfg.seasonalityPenaltyMultiplier).toBe(1);
     expect(run.seasonalityPeriods.length).toBeGreaterThan(0);
   });
 
@@ -261,6 +264,30 @@ describe("business seasonality diagnostics", () => {
       const index = built.names.indexOf(name);
       expect(Math.abs(built.X[0][index] - built.X[52][index])).toBeLessThan(0.04);
     });
+  });
+
+  it("rejects a regularization win that is smaller than fold uncertainty", () => {
+    const base = { id: "annual-4" };
+    const candidate = { id: "shrink", seasonalityPenaltyProfile: "harmonic-order" };
+    const rolling = new Map([
+      [base.id, { meanWmape: 2, foldWmapes: [1.8, 2.2, 2] }],
+      [candidate.id, { meanWmape: 1.96, foldWmapes: [1.7, 2.25, 1.93] }],
+    ]);
+    const decision = mmmSeasonalityRegularizationDecision(base, [candidate], rolling, 0.05);
+    expect(decision.selected.id).toBe("annual-4");
+    expect(decision.evidence.accepted).toBe(false);
+  });
+
+  it("accepts a predeclared regularization candidate when every fold improves materially", () => {
+    const base = { id: "annual-4" };
+    const candidate = { id: "shrink", seasonalityPenaltyProfile: "harmonic-order" };
+    const rolling = new Map([
+      [base.id, { meanWmape: 2, foldWmapes: [2, 2, 2] }],
+      [candidate.id, { meanWmape: 1.8, foldWmapes: [1.8, 1.8, 1.8] }],
+    ]);
+    const decision = mmmSeasonalityRegularizationDecision(base, [candidate], rolling, 0.05);
+    expect(decision.selected.id).toBe("shrink");
+    expect(decision.evidence.accepted).toBe(true);
   });
 
   it.skipIf(!csvPath)("reports observed RR year-to-year recurrence from the provided CSV", () => {
@@ -304,12 +331,14 @@ describe("business seasonality diagnostics", () => {
         rmse: Math.sqrt(productionRun.weeks.reduce((sum, week) => sum + (Number(week.residual) || 0) ** 2, 0) / productionRun.weeks.length),
         observedConfidence: productionRun.seasonalitySelection?.evidence?.observedConfidence,
         observedRecurrenceGate: productionRun.seasonalitySelection?.evidence?.observedRecurrenceGate,
+        regularizationSelection: productionRun.seasonalitySelection?.evidence?.regularizationSelection,
       },
     }, null, 2));
     expect(Object.keys(results)).toHaveLength(5);
     expect(results.full.evidence.available).toBe(true);
     expect(productionRun.seasonalityPeriods.length).toBeGreaterThan(0);
-    expect(productionRun.seasonalitySelection?.selected?.id).toBe("business-harmonic-shrink");
+    expect(productionRun.seasonalitySelection?.selected?.id).toBe("annual-4");
+    expect(productionRun.seasonalitySelection?.evidence?.regularizationSelection?.accepted).toBe(false);
     expect(productionRun.seasonalitySelection?.evidence?.observedRecurrenceScale).toBeCloseTo(0.5, 6);
-  });
+  }, 15000);
 });
