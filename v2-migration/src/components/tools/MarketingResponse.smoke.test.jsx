@@ -19,6 +19,8 @@ import MarketingResponse, {
   MMM_EXPERIMENT_GEO_WIDE_TEMPLATE_CSV,
   MMM_EXPERIMENT_ONOFF_TEMPLATE_CSV,
   MMM_TEMPLATE_CSV,
+  buildForecastOnlyModelFromPanel,
+  buildForecastRecentBacktest,
   mmmDerivedTrafficValue,
   mmmComposeEvidenceTarget,
   mmmDetectTargetCountry,
@@ -39,6 +41,8 @@ import MarketingResponse, {
   mmmTargetHeader,
   trimToActive,
 } from "@/components/tools/MarketingResponse";
+import { autoGuessColMap, buildPanelFromColMap } from "@/components/tools/MmmColumnMapper";
+import { MMM_METH_CONFIG, mmmResolveAbsorb } from "@/utils/mmmMath";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -71,6 +75,32 @@ function seedWithData() {
     raw.push({ week: w + 1, Regs: regs, g_spend: gCost, m_spend: mCost });
   }
   const slice = { raw, headers, mapping: {}, fileName: "response.csv" };
+  useAppStore.setState({
+    currentRouteId: "5-18",
+    csvGroups: { ...useAppStore.getState().csvGroups, response: slice },
+    csvData: slice,
+  });
+}
+
+function seedWithOsForecastData() {
+  const headers = ["week", "android_regs", "ios_regs", "google_android_cost", "meta_android_cost", "asa_ios_cost", "meta_ios_cost"];
+  const raw = Array.from({ length: 56 }, (_, index) => {
+    const week = index + 1;
+    const googleAndroid = 90000 + (week % 7) * 9000 + (week % 3) * 4000;
+    const metaAndroid = 70000 + (week % 5) * 11000 + (week % 4) * 2500;
+    const asaIos = 60000 + (week % 6) * 8500 + (week % 4) * 2200;
+    const metaIos = 50000 + (week % 5) * 7500 + (week % 3) * 3300;
+    return {
+      week,
+      android_regs: Math.round(3800 + googleAndroid / 38 + metaAndroid / 55 + week * 9),
+      ios_regs: Math.round(2600 + asaIos / 42 + metaIos / 58 + week * 7),
+      google_android_cost: googleAndroid,
+      meta_android_cost: metaAndroid,
+      asa_ios_cost: asaIos,
+      meta_ios_cost: metaIos,
+    };
+  });
+  const slice = { raw, headers, mapping: {}, fileName: "response_os_forecast.csv" };
   useAppStore.setState({
     currentRouteId: "5-18",
     csvGroups: { ...useAppStore.getState().csvGroups, response: slice },
@@ -519,5 +549,33 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent.length).toBeGreaterThan(0);
     const footerManual = container.querySelector('[data-mmm-manual-placement="footer"] a');
     expect(footerManual?.getAttribute("href")).toBe("/manuals/mmm-model-manual-ko.pdf");
+  });
+
+  it("keeps the last-24-week backtest for short iOS Cost windows and additive Total", async () => {
+    seedWithOsForecastData();
+    const slice = useAppStore.getState().csvData;
+    const map = autoGuessColMap(slice.headers, slice.raw);
+    const built = buildPanelFromColMap(slice.headers, slice.raw, map, "ios");
+    const panel = trimToActive(built.panel);
+    const cfg = { ...MMM_METH_CONFIG, absorbed: new Set() };
+    cfg.absorbed = mmmResolveAbsorb(panel, cfg).absorbed;
+    const directModel = buildForecastOnlyModelFromPanel(panel, cfg, "Regs");
+    expect(directModel.run).toBeTruthy();
+    const directBacktest = buildForecastRecentBacktest(directModel);
+    expect(directBacktest).toBeTruthy();
+    const { container } = render(<MarketingResponse />);
+    enterMmmAndAnalyze(container);
+    await flushRaf();
+    clickByText(container, "회귀 · 미래 예측");
+    await flushRaf();
+    const iosTab = Array.from(container.querySelectorAll("button")).find((button) => button.textContent.trim() === "iOS");
+    expect(iosTab).toBeTruthy();
+    fireEvent.click(iosTab);
+    await flushRaf();
+    expect(document.body.textContent).toContain("미래 예측 전 최근 24주 검증");
+    clickByText(container, "Total");
+    await flushRaf();
+    expect(document.body.textContent).toContain("Total 예측 = Android 예측 + iOS 예측");
+    expect(document.body.textContent).toContain("미래 예측 전 최근 24주 검증");
   });
 });
