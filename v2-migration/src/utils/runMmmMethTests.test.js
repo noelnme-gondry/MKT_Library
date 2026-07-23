@@ -332,6 +332,68 @@ describe("runMmmMethTests (golden port)", () => {
     expect(run.seasonalitySelection.reason).toMatch(/^full-history-recurrence/);
   });
 
+  it("detects a business-shaped annual pattern from 96+ weeks using grouped media controls", () => {
+    const n = 100;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const perf = week.map((value) => 600 + ((value * 17) % 9) * 160);
+    const brand = week.map((value) => 420 + ((value * 29) % 7) * 130);
+    const target = week.map((value, index) => 4000
+      + 520 * Math.sin((2 * Math.PI * value) / 52.18)
+      + 300 * Math.cos((4 * Math.PI * value) / 52.18)
+      + 180 * Math.sin((6 * Math.PI * value) / 52.18)
+      + perf[index] * 0.8 + brand[index] * 0.4);
+    const cfg = {
+      ...MMM_METH_CONFIG,
+      steps: {},
+      seasonalityMinHistory: 96,
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+      mediaPenaltyCandidates: [0.5],
+    };
+    const panel = {
+      week,
+      ch: { perf, brand },
+      targets: { Regs: target },
+      channels: [{ key: "perf", label: "Performance", kind: "perf" }, { key: "brand", label: "Brand", kind: "brand" }],
+      dummy: {}, steps: {}, external: {},
+    };
+    const selection = mmmBayesianSeasonalitySelection(panel, cfg, "Regs", { skipTransformUncertainty: true });
+    expect(selection.enabled).toBe(true);
+    expect(selection.evidence.minHistory).toBe(96);
+    expect(selection.evidence.detected).toBe(true);
+    expect(selection.evidence.seasonalLagCorrelation).toBeGreaterThan(0.75);
+    expect(selection.selected.id).toBe("annual-3");
+  });
+
+  it("does not manufacture business seasonality from trend and irregular noise", () => {
+    const n = 100;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const perf = week.map((value) => 500 + ((value * 19) % 11) * 170);
+    const brand = week.map((value) => 350 + ((value * 31) % 13) * 115);
+    const target = week.map((value, index) => 4000 + value * 7 + perf[index] * 0.7 + brand[index] * 0.35 + (((value * 47) % 19) - 9) * 42);
+    const cfg = {
+      ...MMM_METH_CONFIG,
+      steps: {},
+      seasonalityMinHistory: 96,
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+      mediaPenaltyCandidates: [0.5],
+    };
+    const panel = {
+      week,
+      ch: { perf, brand },
+      targets: { Regs: target },
+      channels: [{ key: "perf", label: "Performance", kind: "perf" }, { key: "brand", label: "Brand", kind: "brand" }],
+      dummy: {}, steps: {}, external: {},
+    };
+    const selection = mmmBayesianSeasonalitySelection(panel, cfg, "Regs", { skipTransformUncertainty: true });
+    expect(selection.enabled).toBe(true);
+    expect(selection.evidence.detected).toBe(false);
+    expect(selection.selected.id).toBe("none");
+  });
+
   it("keeps configured annual seasonality before two complete yearly cycles", () => {
     const n = 80;
     const week = Array.from({ length: n }, (_, index) => index + 1);
