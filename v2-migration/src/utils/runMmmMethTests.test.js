@@ -12,6 +12,7 @@ import {
   mmmRunMmm,
   mmmBayesianRun,
   mmmBayesianMediaPenaltySelection,
+  mmmBayesianSeasonalitySelection,
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
   mmmForecastRollingSelection,
@@ -215,6 +216,38 @@ describe("runMmmMethTests (golden port)", () => {
     const run = mmmBayesianRun(panel, cfg, "Regs", false, { skipTransformUncertainty: true });
     expect(run.mediaPenaltySelection.enabled).toBe(true);
     expect(run.effectiveCfg.mediaPenalty).toBe(selection.cfg.mediaPenalty);
+  });
+
+  it("selects the smoothest seasonal shape that survives chronological holdouts", () => {
+    const n = 104;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const target = week.map((value) => 4000
+      + 360 * Math.sin((2 * Math.PI * value) / 52.18)
+      + 180 * Math.cos((4 * Math.PI * value) / 52.18));
+    const cfg = {
+      ...MMM_METH_CONFIG,
+      steps: {},
+      includeTrend: false,
+      adstockGrid: [0],
+      seasonalityMinHistory: 78,
+      seasonalityMinTrain: 52,
+      seasonalityHoldoutWeeks: 12,
+      seasonalityMaxFolds: 3,
+      seasonalityCandidates: [
+        { id: "none", periods: [] },
+        { id: "annual-1", periods: [52.18] },
+        { id: "annual-2", periods: [52.18, 26.09] },
+        { id: "annual-4", periods: [52.18, 26.09, 17.39, 13.04] },
+      ],
+    };
+    const panel = { week, ch: {}, targets: { Regs: target }, channels: [], dummy: {}, steps: {} };
+    const selection = mmmBayesianSeasonalitySelection(panel, cfg, "Regs", { skipTransformUncertainty: true });
+    expect(selection.enabled).toBe(true);
+    expect(selection.selected.folds).toBe(3);
+    expect(selection.selected.id).toBe("annual-2");
+    const run = mmmBayesianRun(panel, cfg, "Regs", false, { skipTransformUncertainty: true });
+    expect(run.seasonalitySelection.selected.id).toBe("annual-2");
+    expect(run.seasonalityPeriods).toEqual([52.18, 26.09]);
   });
 
   it("keeps baseline knots in natural trend and exposes regime change only for mapped steps", () => {
