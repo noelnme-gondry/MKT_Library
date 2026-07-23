@@ -3593,12 +3593,9 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                     const key = name.slice(2);
                     return options.futureDummy?.[key]?.[h] ?? 0;
                   }
-                  // lny is a lagged-target control, not an event dummy. Setting it to
-                  // zero at the forecast boundary creates an artificial level jump
-                  // (often tens of thousands of installs). Carry the last observed
-                  // value unless the caller supplies an explicit future path.
-                  if (name === "lny") return options.futureDummy?.[name]?.[h] ?? (lastRaw[j] || 0);
-                  if (name === "chuseok") return options.futureDummy?.[name]?.[h] ?? 0;
+                  // lny/chuseok are lunar-holiday dummies, not lagged outcomes.
+                  // Unknown future holiday dates must default to OFF.
+                  if (name === "lny" || name === "chuseok") return options.futureDummy?.[name]?.[h] ?? 0;
                   if (options.futureSteps?.[name]) return options.futureSteps[name][h] ?? (lastRaw[j] || 0);
                   return lastRaw[j] || 0;
                 });

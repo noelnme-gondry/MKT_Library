@@ -2109,6 +2109,8 @@ function buildMmmRecentBacktest(mmm) {
   const actual = panel.targets[target].slice(-(contextTrain + holdout));
   const predicted = [...forecast.fittedHist.slice(-contextTrain), ...forecast.predFut];
   const absErrors = validationActual.map((value, index) => Math.abs(value - forecast.predFut[index]));
+  const actualTotal = validationActual.reduce((sum, value) => sum + Math.abs(value), 0);
+  const wmape = actualTotal > 0 ? absErrors.reduce((sum, value) => sum + value, 0) / actualTotal * 100 : null;
   return {
     labels: (panel.weekLabel || panel.week).slice(-(contextTrain + holdout)),
     actual,
@@ -2116,6 +2118,8 @@ function buildMmmRecentBacktest(mmm) {
     validationStartIndex: contextTrain,
     rmse: Math.sqrt(absErrors.reduce((sum, value) => sum + value ** 2, 0) / validationActual.length),
     mae: absErrors.reduce((sum, value) => sum + value, 0) / validationActual.length,
+    wmape,
+    reliable: Number.isFinite(wmape) && wmape <= 30,
   };
 }
 
@@ -4790,8 +4794,9 @@ export default function MarketingResponse({ locale = "ko" }) {
                     <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "baseline" }}>
                         <div><strong>{tx("미래 예측 전 최근 24주 검증", "Last-24-week check before forecasting")}</strong><p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED }}>{tx("앞 12주는 모델이 학습 구간을 얼마나 따라갔는지, 뒤 12주는 학습에서 제외한 뒤 당시 실제 지출로 예측한 값입니다.", "The first 12 weeks show training fit; the last 12 were excluded from training and predicted using their actual spend.")}</p></div>
-                        <span className="ab-pill">RMSE {targetValueLabel(recentBacktest.rmse)} · MAE {targetValueLabel(recentBacktest.mae)}</span>
+                        <span className="ab-pill" style={!recentBacktest.reliable ? { borderColor: "#ef4444", color: "#b91c1c" } : undefined}>RMSE {targetValueLabel(recentBacktest.rmse)} · MAE {targetValueLabel(recentBacktest.mae)} · wMAPE {Number.isFinite(recentBacktest.wmape) ? `${recentBacktest.wmape.toFixed(1)}%` : "—"}</span>
                       </div>
+                      {!recentBacktest.reliable && <div className="callout warn" style={{ marginTop: "10px" }}><div className="ico">!</div><div className="body"><strong>{tx("현재 데이터에서는 12주 예측을 신뢰할 수 없습니다", "The 12-week forecast is not reliable for this data")}</strong><p>{tx("검증 구간 wMAPE가 30%를 초과했습니다. 아래 예산 변경 시나리오는 의사결정에 사용하지 말고, 먼저 캠페인 OFF/증액 홀드아웃으로 확인하세요.", "Holdout wMAPE exceeds 30%. Do not use the budget-change scenarios for decisions until a campaign OFF/incrementality holdout confirms them.")}</p></div></div>}
                       <div style={{ display: "flex", gap: "6px", marginTop: "10px", flexWrap: "wrap" }}><span className="ab-pill">{tx("앞 12주: 학습 구간 적합", "First 12: training fit")}</span><span className="ab-pill" style={{ borderColor: "#f59e0b", color: "#b45309" }}>{tx("뒤 12주: 학습 제외 검증", "Last 12: held-out validation")}</span></div>
                       <MmmBacktestChart locale={locale} labels={recentBacktest.labels} actual={recentBacktest.actual} validationStartIndex={recentBacktest.validationStartIndex} variants={[{ label: tx("모델 적합·예측", "Model fit · prediction"), predicted: recentBacktest.predicted, color: "#2563eb", dash: [] }]} formatValue={targetValueLabel} />
                     </Card>

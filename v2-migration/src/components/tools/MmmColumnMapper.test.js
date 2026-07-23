@@ -26,6 +26,30 @@ describe("MMM column mapping", () => {
     expect(panel.ch.c_ios_meta_spend).toEqual([1_200_000, 2_400_000]);
   });
 
+  it("scopes OS-specific spend and steps while excluding ambiguous other cost", () => {
+    const headers = ["week", "android_regs", "ios_regs", "android_cost", "ios_cost", "other_cost", "android_launch_step", "ios_delist_step", "global_event"];
+    const rows = [
+      { week: "2025-W01", android_regs: "100", ios_regs: "80", android_cost: "20", ios_cost: "30", other_cost: "9", android_launch_step: "1", ios_delist_step: "0", global_event: "0" },
+      { week: "2025-W02", android_regs: "110", ios_regs: "70", android_cost: "25", ios_cost: "35", other_cost: "11", android_launch_step: "1", ios_delist_step: "1", global_event: "1" },
+    ];
+    const map = {
+      week: { role: "week" },
+      android_regs: { role: "reg", plat: "android" }, ios_regs: { role: "reg", plat: "ios" },
+      android_cost: { role: "channel", plat: "android" }, ios_cost: { role: "channel", plat: "ios" }, other_cost: { role: "channel", plat: "common" },
+      android_launch_step: { role: "step", plat: "android" }, ios_delist_step: { role: "step", plat: "ios" }, global_event: { role: "dummy", plat: "common" },
+    };
+    const android = buildPanelFromColMap(headers, rows, map, "android").panel;
+    expect(Object.keys(android.ch)).toEqual(["c_android_cost"]);
+    expect(Object.keys(android.steps)).toEqual(["c_android_launch_step"]);
+    expect(Object.keys(android.dummy)).toEqual(["c_global_event"]);
+    expect(android.targets.Regs).toEqual([100, 110]);
+    const ios = buildPanelFromColMap(headers, rows, map, "ios").panel;
+    expect(Object.keys(ios.ch)).toEqual(["c_ios_cost"]);
+    expect(Object.keys(ios.steps)).toEqual(["c_ios_delist_step"]);
+    expect(ios.targets.Regs).toEqual([80, 70]);
+    expect(autoGuessColMap(["week", "ios_reopen_step"], [{ week: "2025-W01", ios_reopen_step: "1" }], false).ios_reopen_step).toMatchObject({ role: "step", plat: "ios" });
+  });
+
   it("auto-detects row OS and Revenue, then filters the panel", () => {
     const headers = ["week", "os", "revenue", "google_spend"];
     const rows = [
