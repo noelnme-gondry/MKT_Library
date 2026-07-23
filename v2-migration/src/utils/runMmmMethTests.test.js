@@ -354,6 +354,18 @@ describe("runMmmMethTests (golden port)", () => {
     expect(validation.issues.some((message) => message.includes("Regime 'launch'") && message.includes("0 or 1"))).toBe(true);
   });
 
+  it("warns when a one-week marker is incorrectly mapped as a persistent regime", () => {
+    const report = mmmValidate({
+      week: [1, 2, 3, 4, 5, 6],
+      targets: { Regs: [10, 11, 12, 13, 14, 15] },
+      ch: { meta: [1, 2, 3, 4, 5, 6] },
+      channels: [{ key: "meta", label: "Meta" }],
+      dummy: {},
+      steps: { ios_reopen: [0, 0, 0, 1, 0, 0] },
+    });
+    expect(report.warnings.some((message) => message.includes("구조변화 'ios_reopen'의 ON 주차가 1주뿐"))).toBe(true);
+  });
+
   it("T1-T8 MMM methodology pipeline matches index.html", () => {
     const rng = _mmrLcg(77);
     const n = 104;

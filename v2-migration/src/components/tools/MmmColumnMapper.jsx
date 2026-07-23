@@ -207,7 +207,11 @@ function colMapRoles(headers, colMap) {
   const used = new Set();
   for (const h of headers || []) {
     const def = colMap[h] || {};
-    const r = def.role, plat = def.plat || "common";
+    // 이전 저장 매핑에는 dummy/step의 plat이 없었다. 이 경우 common으로
+    // 처리하면 `ios_Delist` 같은 iOS 구조변화가 Android 패널에도 들어간다.
+    // 명시 태그가 최우선이고, 없을 때만 헤더명에서 OS를 복구한다. 따라서
+    // 기존 사용자의 저장 매핑도 다시 드래그하지 않아도 OS별 패널이 분리된다.
+    const r = def.role, plat = def.plat || guessPlat(h);
     if (r === "week") out.week.push({ header: h, plat });
     else if (r === "date" && !out.date) out.date = h;
     else if (r === "reg") out.reg.push({ header: h, plat });

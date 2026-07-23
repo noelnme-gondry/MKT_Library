@@ -36,7 +36,8 @@ describe("MMM column mapping", () => {
       week: { role: "week" },
       android_regs: { role: "reg", plat: "android" }, ios_regs: { role: "reg", plat: "ios" },
       android_cost: { role: "channel", plat: "android" }, ios_cost: { role: "channel", plat: "ios" }, other_cost: { role: "channel", plat: "common" },
-      android_launch_step: { role: "step", plat: "android" }, ios_delist_step: { role: "step", plat: "ios" }, global_event: { role: "dummy", plat: "common" },
+      // legacy 저장 매핑처럼 step의 plat이 없어도 헤더의 OS 태그를 복구해야 한다.
+      android_launch_step: { role: "step" }, ios_delist_step: { role: "step" }, global_event: { role: "dummy", plat: "common" },
     };
     const android = buildPanelFromColMap(headers, rows, map, "android").panel;
     expect(Object.keys(android.ch)).toEqual(["c_android_cost"]);
