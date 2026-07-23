@@ -3,7 +3,8 @@ import React, { useEffect, useRef, useMemo, useState } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
-import { getMonFilteredRows, aggregateByKey, calculateKPIs, effectiveDenomBasis } from "@/utils/dashboardAggregator";
+import { getMonFilteredRows, aggregateByKey, calculateKPIs, effectiveDenomBasis, fmtCurrencyCompact, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { convertCurrency } from "@/utils/format";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
@@ -161,6 +162,47 @@ const VIZ_COPY = {
   },
 };
 
+// resolveDashCopy는 도메인(퍼포먼스/콘텐츠)만 바꾸는 한글 팩이다. /en 경로에서는
+// 이 화면의 제목·차트 설명·카드 라벨도 함께 영어로 바꿔야 한다.
+const VIZ_DASH_COPY_EN = {
+  performance: {
+    acqLabel: (basis) => basis === "actions" ? "CPA" : "CPI",
+    trendOutcome: (basis) => basis === "actions" ? "Actions" : "Installs",
+    tsTitle: (basis) => `Daily Cost & ${basis === "actions" ? "Actions" : "Installs"}`,
+    tsSub: (basis) => `Line · left: cost / right: ${basis === "actions" ? "actions" : "installs"}`,
+    donutTitle: "Cost Share by Channel",
+    donutSub: "Donut · total cost",
+    cpiTitle: (acq) => `${acq} by Channel`,
+    cpiSub: (basis) => `Horizontal bar · cost / ${basis === "actions" ? "actions" : "installs"}`,
+    kpiCostLabel: "Total Cost",
+    kpiCostDelta: "Total cost",
+    kpiCtrLabel: "CTR",
+    kpiCtrDelta: "clicks / impressions",
+    kpiOutcomeLabel: (basis) => basis === "actions" ? "Total Actions" : "Total Installs",
+    kpiOutcomeDelta: (basis) => `Total ${basis === "actions" ? "actions" : "installs"}`,
+    acqDelta: (basis) => `cost / ${basis === "actions" ? "actions" : "installs"}`,
+    chartsDesc: "Uploaded data is rendered as time series, channel share, acquisition-cost comparison, funnel, and cohort revenue charts. Use Edit charts to change visibility and order.",
+  },
+  content: {
+    acqLabel: (basis) => basis === "actions" ? "Cost per Subscription" : "Cost per Visit",
+    trendOutcome: (basis) => basis === "actions" ? "Subscriptions" : "Visits",
+    tsTitle: (basis) => `Daily Cost & ${basis === "actions" ? "Subscriptions" : "Visits"}`,
+    tsSub: (basis) => `Line · left: cost / right: ${basis === "actions" ? "subscriptions" : "visits"}`,
+    donutTitle: "Cost Share by Source",
+    donutSub: "Donut · total cost",
+    cpiTitle: (acq) => `${acq} by Source`,
+    cpiSub: (basis) => `Horizontal bar · cost / ${basis === "actions" ? "subscriptions" : "visits"}`,
+    kpiCostLabel: "Total Cost",
+    kpiCostDelta: "Total cost",
+    kpiCtrLabel: "Engagement rate (CTR)",
+    kpiCtrDelta: "clicks / impressions",
+    kpiOutcomeLabel: (basis) => basis === "actions" ? "Total Subscriptions" : "Total Visits",
+    kpiOutcomeDelta: (basis) => `Total ${basis === "actions" ? "subscriptions" : "visits"}`,
+    acqDelta: (basis) => `cost / ${basis === "actions" ? "subscriptions" : "visits"}`,
+    chartsDesc: "Uploaded data is rendered as daily traffic, source share, and cost-per-visit charts. Use Edit charts to change visibility and order.",
+  },
+};
+
 // 차트에 이벤트 마커 세로선 + 라벨을 그리는 Chart.js 플러그인(§12.18 event marker draw).
 // category x축(날짜 라벨)에서 marker.date에 매칭되는 x 픽셀에 점선을 그림.
 function makeEventMarkerPlugin(markers) {
@@ -202,9 +244,11 @@ function makeEventMarkerPlugin(markers) {
 
 export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const C = resolveDashCopy(domain);
+  const D = locale === "en" ? VIZ_DASH_COPY_EN[domain] || VIZ_DASH_COPY_EN.performance : C;
   const T = VIZ_COPY[locale] || VIZ_COPY.ko;
   const isContent = domain === "content";
   const csvData = useAppStore((state) => state.csvData);
+  const displayCurrency = useAppStore((state) => state.displayCurrency);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const selectedCohort = useAppStore((state) => state.selectedCohort);
   const setSelectedCohort = useAppStore((state) => state.setSelectedCohort);
@@ -281,8 +325,12 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
 
   // 도메인 라벨(effBasis 소비하는 C 메서드 호출은 데이터 메모 뒤에 둠 — 메모 앞에서
   // 불투명 호출로 effBasis를 소비하면 React Compiler가 메모 보존을 못 함).
-  const acqLabel = C.acqLabel(effBasis);
-  const trendOutcomeLabel = C.trendOutcome(effBasis);
+  const sourceCurrency = ["KRW", "USD"].includes(csvData?.currency) ? csvData.currency : displayCurrency;
+  const currencyValue = (value) => convertCurrency(Number(value), sourceCurrency, displayCurrency);
+  const compactCurrency = (value) => fmtCurrencyCompact(currencyValue(value), displayCurrency, locale);
+  const preciseCurrency = (value) => fmtCurrencyPrecise(currencyValue(value), displayCurrency);
+  const acqLabel = D.acqLabel(effBasis);
+  const trendOutcomeLabel = D.trendOutcome(effBasis);
 
   // 이벤트 마커를 일별 차트 라벨(_key = YYYY-MM-DD)에 매칭할 형태로 준비.
   const preparedMarkers = useMemo(
@@ -318,9 +366,9 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   // 차트 메타(plain const — React Compiler가 자동 메모이즈). 콘텐츠는 매출/결제 전제
   // 차트(퍼널·코호트 매출)를 제외하고 트래픽 차트 3종만 노출(§정직성).
   const chartMetaBase = [
-    { k: "ts", title: C.tsTitle(effBasis), sub: C.tsSub(effBasis), full: false },
-    { k: "donut", title: C.donutTitle, sub: C.donutSub, full: false },
-    { k: "cpi", title: C.cpiTitle(acqLabel), sub: C.cpiSub(effBasis), full: false },
+    { k: "ts", title: D.tsTitle(effBasis), sub: D.tsSub(effBasis), full: false },
+    { k: "donut", title: D.donutTitle, sub: D.donutSub, full: false },
+    { k: "cpi", title: D.cpiTitle(acqLabel), sub: D.cpiSub(effBasis), full: false },
     { k: "funnel", title: T.funnelTitle, sub: effBasis === "actions" ? T.funnelSubActions : T.funnelSubInstalls, full: false },
     { k: "cohort", title: T.cohortTitle, sub: T.cohortSub, full: true },
   ];
@@ -559,17 +607,17 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
 
   // KPI 카드(데이터 주도) — 표시/순서 설정 적용. node=기존 카드 JSX 유지(값·계산 불변).
   const kpiCards = [
-    { k: "cost", label: C.kpiCostLabel, node: (
-      <div key="cost" className="kpi-card"><div className="label">{C.kpiCostLabel}</div><div className="value tnum">{formatNumber(kpi.cost)}</div><div className="delta">{C.kpiCostDelta}</div></div>
+    { k: "cost", label: D.kpiCostLabel, node: (
+      <div key="cost" className="kpi-card"><div className="label">{D.kpiCostLabel}</div><div className="value tnum">{compactCurrency(kpi.cost)}</div><div className="delta">{D.kpiCostDelta}</div></div>
     ) },
-    { k: "ctr", label: C.kpiCtrLabel, node: (
-      <div key="ctr" className="kpi-card"><div className="label">{C.kpiCtrLabel}</div><div className="value tnum">{formatPercent(kpi.ctr)}</div><div className="delta">{C.kpiCtrDelta}</div></div>
+    { k: "ctr", label: D.kpiCtrLabel, node: (
+      <div key="ctr" className="kpi-card"><div className="label">{D.kpiCtrLabel}</div><div className="value tnum">{formatPercent(kpi.ctr)}</div><div className="delta">{D.kpiCtrDelta}</div></div>
     ) },
-    { k: "outcome", label: C.kpiOutcomeLabel(effBasis), node: (
-      <div key="outcome" className="kpi-card"><div className="label">{C.kpiOutcomeLabel(effBasis)}</div><div className="value tnum">{formatNumber(effBasis === "actions" ? kpi.actions : kpi.installs)}</div><div className="delta">{C.kpiOutcomeDelta(effBasis)}</div></div>
+    { k: "outcome", label: D.kpiOutcomeLabel(effBasis), node: (
+      <div key="outcome" className="kpi-card"><div className="label">{D.kpiOutcomeLabel(effBasis)}</div><div className="value tnum">{formatNumber(effBasis === "actions" ? kpi.actions : kpi.installs)}</div><div className="delta">{D.kpiOutcomeDelta(effBasis)}</div></div>
     ) },
     { k: "acq", label: acqLabel, node: (
-      <div key="acq" className="kpi-card"><div className="label">{acqLabel}</div><div className="value tnum">{formatNumber(kpi.cpi, { decimals: 2 })}</div><div className="delta">{C.acqDelta(effBasis)}</div></div>
+      <div key="acq" className="kpi-card"><div className="label">{acqLabel}</div><div className="value tnum">{preciseCurrency(kpi.cpi)}</div><div className="delta">{D.acqDelta(effBasis)}</div></div>
     ) },
     { k: "purchases", label: T.purchasesLabel(kpi.cohort), node: (
       <div key="purchases" className="kpi-card"><div className="label">{T.purchasesLabel(kpi.cohort)}</div><div className="value tnum">{formatNumber(kpi.purchases)}</div><div className="delta">{T.purchasesDelta(kpi.cohort)}</div></div>
@@ -578,10 +626,10 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       <div key="purchaseRate" className="kpi-card"><div className="label">{T.purchaseRateLabel(kpi.cohort)}</div><div className="value tnum">{formatPercent(kpi.purchaseRate)}</div><div className="delta">{T.purchaseRateDelta(effBasis === "actions" ? T.signupsWord : T.installsWord)}</div></div>
     ) },
     { k: "cpp", label: T.cppLabel(kpi.cohort), node: (
-      <div key="cpp" className="kpi-card"><div className="label">{T.cppLabel(kpi.cohort)}</div><div className="value tnum">{formatNumber(kpi.cpp, { decimals: 2 })}</div><div className="delta">{T.cppDelta}</div></div>
+      <div key="cpp" className="kpi-card"><div className="label">{T.cppLabel(kpi.cohort)}</div><div className="value tnum">{preciseCurrency(kpi.cpp)}</div><div className="delta">{T.cppDelta}</div></div>
     ) },
     { k: "revenue", label: T.revenueLabel(kpi.cohort), node: (
-      <div key="revenue" className="kpi-card"><div className="label">{T.revenueLabel(kpi.cohort)}</div><div className="value tnum">{formatNumber(kpi.revenue)}</div><div className="delta">{T.revenueDelta}</div></div>
+      <div key="revenue" className="kpi-card"><div className="label">{T.revenueLabel(kpi.cohort)}</div><div className="value tnum">{compactCurrency(kpi.revenue)}</div><div className="delta">{T.revenueDelta}</div></div>
     ) },
     { k: "roas", label: T.roasLabel(kpi.cohort), node: (
       <div key="roas" className="kpi-card" style={{ position: "relative" }}>
@@ -603,10 +651,10 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       </div>
     ) },
     { k: "arpu", label: T.arpuLabel(kpi.cohort), node: (
-      <div key="arpu" className="kpi-card"><div className="label">{T.arpuLabel(kpi.cohort)}</div><div className="value tnum">{formatNumber(kpi.arpu, { decimals: 2 })}</div><div className="delta">{T.arpuDelta(effBasis === "actions" ? "actions" : "installs")}</div></div>
+      <div key="arpu" className="kpi-card"><div className="label">{T.arpuLabel(kpi.cohort)}</div><div className="value tnum">{preciseCurrency(kpi.arpu)}</div><div className="delta">{T.arpuDelta(effBasis === "actions" ? "actions" : "installs")}</div></div>
     ) },
     { k: "arppu", label: T.arppuLabel(kpi.cohort), node: (
-      <div key="arppu" className="kpi-card"><div className="label">{T.arppuLabel(kpi.cohort)}</div><div className="value tnum">{formatNumber(kpi.arppu, { decimals: 2 })}</div><div className="delta">{T.arppuDelta}</div></div>
+      <div key="arppu" className="kpi-card"><div className="label">{T.arppuLabel(kpi.cohort)}</div><div className="value tnum">{preciseCurrency(kpi.arppu)}</div><div className="delta">{T.arppuDelta}</div></div>
     ) },
     { k: "retention", label: T.retentionLabel(kpi.cohort), node: (
       <div key="retention" className="kpi-card"><div className="label">{T.retentionLabel(kpi.cohort)}</div><div className="value tnum">{formatPercent(kpi.retentionAvg)}</div><div className="delta">{T.retentionDelta}</div></div>
@@ -632,7 +680,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const presetCards = [];
   if (hasRev) {
     presetCards.push({ k: "profit", label: T.profitLabel(kpi.cohort), node: (
-      <div key="profit" className="kpi-card"><div className="label">{T.profitLabel(kpi.cohort)}</div><div className="value tnum">{formatNumber(kpi.profit)}</div><div className="delta">{T.profitDelta}</div></div>
+      <div key="profit" className="kpi-card"><div className="label">{T.profitLabel(kpi.cohort)}</div><div className="value tnum">{compactCurrency(kpi.profit)}</div><div className="delta">{T.profitDelta}</div></div>
     ) });
     presetCards.push({ k: "profitMargin", label: T.profitMarginLabel(kpi.cohort), node: (
       <div key="profitMargin" className="kpi-card"><div className="label">{T.profitMarginLabel(kpi.cohort)}</div><div className="value tnum">{formatPercent(kpi.profitMargin)}</div><div className="delta">{T.profitMarginDelta}</div></div>
@@ -705,7 +753,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
         {kpiEditMode && (
           <p className="muted" style={{ fontSize: "11px", margin: "0 0 8px" }}>{T.editHint}</p>
         )}
-        {!kpiEditMode && <p className="kpi-grid__hint">핵심 5개만 표시 중 · 나머지 지표는 편집에서 켤 수 있습니다.</p>}
+        {!kpiEditMode && <p className="kpi-grid__hint">{locale === "en" ? "Showing the five core KPIs. Enable the rest in Edit." : "핵심 5개만 표시 중 · 나머지 지표는 편집에서 켤 수 있습니다."}</p>}
         {allKpiCards.length === 0 ? (
           <p className="muted" style={{ fontSize: "12px" }}>{T.noKpi}</p>
         ) : (
@@ -728,7 +776,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
             <button className="ab-pill" onClick={() => setChartCfgOpen(true)} title={T.editChartTitle}>{T.editChart}</button>
           </div>
         </div>
-        <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>{C.chartsDesc}</p>
+        <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>{D.chartsDesc}</p>
 
         {/* 이벤트 마커 입력 UI는 여기가 아니라 Dashboard.jsx에서 탭 콘텐츠 위에
             <MonEventMarkerUI/>로 렌더됨(전 탭 공통 상단 1곳). 여기 시계열 차트는

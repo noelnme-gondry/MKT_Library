@@ -781,7 +781,7 @@ const ZONES = [
   ["purchasers", "🛍 구매자 Purchasers", "🛍 Purchasers", false, true],
   ["revenue", "💰 매출 Revenue", "💰 Revenue", false, true],
   ["channel", "📈 채널 spend (여러 개 · perf/brand · 플랫폼)", "📈 Channel spend (many · perf/brand · platform)", true, true],
-  ["external", "📊 업계 수요 지수 (MMM 전용 · 여러 개 · 플랫폼)", "📊 Industry-demand index (MMM only · many · platform)", false, true],
+  ["external", "📊 업계 수요 지수 (MMM 전용 · 상대 변화로 변환 · 여러 개 · 플랫폼)", "📊 Industry-demand index (MMM only · converted to relative change · many · platform)", false, true],
   ["dummy", "🔢 더미/이벤트 (0·1 · true/false · yes/no · on/off)", "🔢 Dummy/event (0/1 · true/false · yes/no · on/off)", false, true],
   ["step", "📐 구조변화 step (0·1 · pre/post · before/after)", "📐 Structural step (0/1 · pre/post · before/after)", false, true],
   ["platform", "🔀 세그먼트/플랫폼 단일 컬럼 (선택 · 성별·플랫폼·국가 등 값별로 나눠보기)", "🔀 Segment/platform single column (optional · split by gender/platform/country, etc.)", false, false],

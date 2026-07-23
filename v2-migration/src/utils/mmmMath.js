@@ -861,11 +861,47 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               return s;
             }
 
+            // 업계 installs/매출 같은 외부 level은 우리 KPI와 단위가 다르다. 원시
+            // level을 그대로 회귀·기여 분해에 넣으면 "업황이 1만 명을 만들었다"처럼
+            // 기준선 레벨을 외부 변수에 잘못 귀속한다. 기하평균 대비 log 변화율로
+            // 바꿔 평균 0의 시장 수요 지수로만 사용한다. 따라서 기여는 시장 절대
+            // 규모가 아니라, 시장이 평소보다 움직인 만큼 우리 KPI가 변한 추정치다.
+            export function mmmExternalRelativeIndex(values, reference = null) {
+              const finite = (values || []).filter((value) => Number.isFinite(value));
+              const positive = finite.filter((value) => value > 0);
+              if (!finite.length) return { values: (values || []).slice(), reference: null, mode: "empty" };
+              if (positive.length === finite.length) {
+                const logReference = Number.isFinite(reference) && reference > 0
+                  ? Math.log(reference)
+                  : positive.reduce((sum, value) => sum + Math.log(value), 0) / positive.length;
+                const ref = Math.exp(logReference);
+                return {
+                  values: values.map((value) => Number.isFinite(value) && value > 0 ? Math.log(value) - logReference : NaN),
+                  reference: ref,
+                  mode: "log-relative",
+                };
+              }
+              const mean = Number.isFinite(reference) ? reference : finite.reduce((sum, value) => sum + value, 0) / finite.length;
+              const scale = Math.max(1e-9, Math.abs(mean));
+              return {
+                values: values.map((value) => Number.isFinite(value) ? (value - mean) / scale : NaN),
+                reference: mean,
+                mode: "linear-relative",
+              };
+            }
+
+            function _mmmExternalIndexValue(value, transform) {
+              if (!Number.isFinite(value) || !transform || !Number.isFinite(transform.reference)) return NaN;
+              if (transform.mode === "log-relative") return value > 0 ? Math.log(value / transform.reference) : NaN;
+              return (value - transform.reference) / Math.max(1e-9, Math.abs(transform.reference));
+            }
+
             export function mmmBuildFeatures(panel, cfg, lam, withTrend = true) {
               const t = panel.week,
                 n = t.length,
                 cols = [],
                 names = [];
+              const externalTransforms = {};
               const push = (nm, arr) => {
                 names.push(nm);
                 cols.push(arr);
@@ -911,11 +947,13 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 if (absorbed.has(nm)) continue;
                 push(nm, arr);
               }
-              // 시장 전체의 외생 수요 지수. 매체 지출이 아닌 별도 control이므로
-              // adstock·Hill 변환을 적용하지 않고, Industry Trend로 분해한다.
+              // 시장 전체 외생 수요는 기준 대비 상대 변화 지수로만 쓴다. 매체
+              // 지출이 아니므로 adstock·Hill 변환은 적용하지 않는다.
               for (const [nm, arr] of Object.entries(panel.external || {})) {
                 if (absorbed.has("industry_" + nm)) continue;
-                push("industry_" + nm, arr);
+                const indexed = mmmExternalRelativeIndex(arr);
+                externalTransforms[nm] = { reference: indexed.reference, mode: indexed.mode };
+                push("industry_" + nm, indexed.values);
               }
               const sparse = cfg.excludeSparse
                 ? mmmSparseChannels(panel, cfg)
@@ -944,11 +982,12 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               // 랭크 결손 열 드롭(상수=전부-0 채널[예: ASA-Android] · 완전공선) → 다운스트림 mmmOls/fitAR1 특이행렬 방지.
               // 절편 포함 Gram-Schmidt 기준. Tinder/골든은 redundant 없어 전 열 유지 → byte-동일.
               const keep = _nonRedundantCols(X, names);
-              if (keep.length === names.length) return { X, names };
+              if (keep.length === names.length) return { X, names, externalTransforms };
               return {
                 X: X.map((r) => keep.map((j) => r[j])),
                 names: keep.map((j) => names[j]),
                 dropped: names.filter((_, j) => !keep.includes(j)),
+                externalTransforms,
               };
             }
 
@@ -2830,6 +2869,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               return {
                 names: keep.map((i) => built.names[i]),
                 X: built.X.map((row) => keep.map((i) => row[i])),
+                externalTransforms: built.externalTransforms || {},
               };
             }
 
@@ -3651,6 +3691,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 featureMeans: colMean,
                 featureScales: colScale,
                 rawFeatureHistory: Xraw,
+                externalTransforms: controls.externalTransforms || {},
                 seasonalityPeriods: effectiveCfg.seasonalityPeriods,
                 standardizedX: X,
                 channelMeta,
@@ -4132,7 +4173,12 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   if (options.futureSteps?.[name]) return options.futureSteps[name][h] ?? (lastRaw[j] || 0);
                   if (name.startsWith("industry_")) {
                     const key = name.slice("industry_".length);
-                    return options.futureExternal?.[key]?.[h] ?? (lastRaw[j] || 0);
+                    const supplied = options.futureExternal?.[key]?.[h];
+                    if (Number.isFinite(supplied)) {
+                      const transformed = _mmmExternalIndexValue(supplied, run.externalTransforms?.[key]);
+                      return Number.isFinite(transformed) ? transformed : (lastRaw[j] || 0);
+                    }
+                    return lastRaw[j] || 0;
                   }
                   return lastRaw[j] || 0;
                 });
