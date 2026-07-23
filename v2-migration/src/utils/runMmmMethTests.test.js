@@ -157,6 +157,27 @@ describe("runMmmMethTests (golden port)", () => {
     expect(run.weeks.every((w) => w.contrib.Trend > 0)).toBe(true);
   });
 
+  it("keeps actual-spend media contribution at zero or above instead of showing a negative delta", () => {
+    const n = 48;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const spend = week.map((value) => 400 + value * 35);
+    const target = spend.map((value) => 12000 - value * 2);
+    const run = mmmBayesianRun({
+      week,
+      ch: { meta: spend },
+      targets: { Regs: target },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+      dummy: {}, steps: {},
+    }, {
+      ...MMM_METH_CONFIG,
+      includeTrend: false,
+      seasonalityPeriods: [],
+      baselineKnots: [],
+    }, "Regs");
+    expect(run.saturationByChannel.meta.responseAt(1000)).toBeGreaterThanOrEqual(0);
+    expect(run.weeks.every((item) => item.contrib.Performance >= -1e-8)).toBe(true);
+  });
+
   it("profile-averages empirical-Bayes channel confidence over carryover and saturation candidates", () => {
     const n = 56;
     const week = Array.from({ length: n }, (_, i) => i + 1);
