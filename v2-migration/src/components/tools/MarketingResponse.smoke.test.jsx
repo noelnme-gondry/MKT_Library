@@ -527,12 +527,13 @@ describe("MarketingResponse render smoke", () => {
     unmount();
 
     seedNoData();
-    const english = render(<MarketingResponse locale="en" />).container;
-    const enLink = Array.from(english.querySelectorAll("a")).find((link) => link.textContent.includes("View the MMM manual"));
+    const englishRender = render(<MarketingResponse locale="en" />);
+    const enLink = Array.from(englishRender.container.querySelectorAll("a")).find((link) => link.textContent.includes("View the MMM manual"));
     expect(enLink?.getAttribute("href")).toBe("/manuals/mmm-model-manual-en.pdf");
     expect(enLink?.getAttribute("download")).toBe("growth-opt-mmm-model-manual-en.pdf");
     expect(enLink?.textContent).toContain("View the MMM manual");
-  });
+    englishRender.unmount();
+  }, 10_000);
 
   it("shows the colMap mapper + analyze gate by default (MMM primary) with a valid CSV", () => {
     seedWithData();

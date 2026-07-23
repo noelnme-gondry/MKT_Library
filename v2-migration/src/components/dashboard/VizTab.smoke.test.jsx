@@ -6,7 +6,7 @@
 // states. Mocks (chart.js/auto, next/navigation) + ResizeObserver/matchMedia/
 // canvas live in vitest.smoke.setup.js (auto-loaded by the smoke project).
 import { describe, it, expect, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import VizTab from "@/components/dashboard/VizTab";
 
@@ -63,6 +63,15 @@ describe("VizTab render smoke", () => {
     seedWithData();
     expect(() => render(<VizTab />)).not.toThrow();
     expect(document.getElementById("tab-viz")).toBeTruthy();
+  });
+
+  it("connects a KPI card to the single explorer chart without inventing retention data", () => {
+    seedWithData();
+    render(<VizTab />);
+    expect(screen.getByText("리텐션 데이터 필요")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /CPI/i }));
+    expect(screen.getByText("CPI 추이")).toBeTruthy();
+    expect(screen.getByText("PVM으로 원인 보기")).toBeTruthy();
   });
 
   // #11 이벤트 마커 — store.eventMarkers 시딩이 시계열 차트(makeEventMarkerPlugin)
