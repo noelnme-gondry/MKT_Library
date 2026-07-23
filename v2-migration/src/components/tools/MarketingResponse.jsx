@@ -1682,12 +1682,149 @@ function buildMmmGuideDocEn(mmm, targetLabel) {
   return L.join("\n");
 }
 
+function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, displayCurrency) {
+  const tx = (ko, en) => (locale === "en" ? en : ko);
+  const models = (fc.excelModels || []).filter((model) => model?.names?.length);
+  if (!models.length) return null;
+  const lines = [];
+  const push = (row) => lines.push(row.map(csvQ).join(","));
+  push([tx("# 도구", "# Tool"), "Empirical-Bayes MMM Forecast (5-18) · live Excel formulas"]);
+  push([tx("# 대상", "# Target"), `${mmmTargetDisplay(target, locale)} (${target})`]);
+  push([tx("# 원본 통화", "# Source currency"), sourceCurrency]);
+  push([tx("# 화면 표시 통화", "# Display currency"), displayCurrency]);
+  push([tx("# 사용법", "# How to use"), tx("spend를 수정하면 adstock → Hill 수확체감 변환 → 예측이 전부 즉시 재계산됩니다. 현재 Empirical-Bayes 모델은 log가 아니라 Hill 변환을 사용합니다.", "Edit spend and adstock → Hill saturation transform → forecast recalculate immediately. The current Empirical-Bayes model uses Hill saturation, not a log transform.")]);
+  push([tx("# 참고 범위", "# Reference interval"), tx("상·하한은 현재 모수·잔차 기준 폭을 유지한 채 예측값 변화에 연동됩니다.", "Upper/lower bounds move with the recalculated forecast while retaining the current parameter/residual margin.")]);
+
+  const tables = [];
+  models.forEach((model) => {
+    lines.push("");
+    push([tx("# 모델", "# Model"), `${model.platform} · ${model.target}`]);
+    push([tx("# 계수·표준화 파라미터 (수정하면 아래 예측도 반영)", "# Coefficients and standardization (edits flow into forecast)")]);
+    push(["term", "coefficient", "feature_mean", "feature_scale"]);
+    const interceptRow = lines.length + 1;
+    push(["(Intercept)", csvNum(model.intercept, 10), "", ""]);
+    const featureRows = {};
+    model.names.forEach((name, index) => {
+      featureRows[name] = lines.length + 1;
+      push([name, csvNum(model.beta[index], 10), csvNum(model.featureMeans[index], 10), csvNum(model.featureScales[index] || 1, 10)]);
+    });
+    lines.push("");
+    push([tx("# 채널 변환 파라미터", "# Channel transform parameters")]);
+    push(["channel", "adstock_alpha", "hill_ec", "hill_slope"]);
+    const channelRows = {};
+    (model.chans || []).forEach((channel) => {
+      const params = model.params[channel.key] || {};
+      channelRows[channel.key] = lines.length + 1;
+      push([channel.key, csvNum(params.alpha, 10), csvNum(params.ec, 10), csvNum(params.slope, 10)]);
+    });
+    lines.push("");
+    push([tx("# 시계열 — spend 수정 → adstock → Hill → 예측 자동 연쇄", "# Time series — edit spend → adstock → Hill → forecast live chain")]);
+    const featureStart = 7;
+    const adstockStart = featureStart + model.names.length;
+    const hillStart = adstockStart + model.chans.length;
+    const logStart = hillStart + model.chans.length;
+    const spendStart = logStart + model.chans.length;
+    const featureCol = (index) => csvColL(featureStart + index);
+    const adstockCol = (index) => csvColL(adstockStart + index);
+    const hillCol = (index) => csvColL(hillStart + index);
+    const logCol = (index) => csvColL(logStart + index);
+    const spendCol = (index) => csvColL(spendStart + index);
+    push([
+      "t", "period", "segment", "actual", "fitted_or_forecast_live", "lower_live", "upper_live",
+      ...model.names,
+      ...model.chans.map((channel) => `adstock_${channel.key}`),
+      ...model.chans.map((channel) => `hill_${channel.key}`),
+      ...model.chans.map((channel) => `ln1p_adstock_${channel.key}_audit`),
+      ...model.chans.map((channel) => `spend_${channel.key}_${sourceCurrency}`),
+    ]);
+    const tableStart = lines.length + 1;
+    const historyLength = model.histLabels.length;
+    const horizon = model.futLabels.length;
+    for (let index = 0; index < historyLength + horizon; index++) {
+      const rowNumber = lines.length + 1;
+      const isHistory = index < historyLength;
+      const futureIndex = index - historyLength;
+      const rawFeatures = isHistory ? model.rawFeatureHistory[index] || [] : model.futureRawFeatures[futureIndex] || [];
+      const offset = isHistory ? model.historyOffset[index] || 0 : model.futureOffset[futureIndex] || 0;
+      const values = model.names.map((name, featureIndex) => {
+        const channelIndex = model.chans.findIndex((channel) => name === `media_${channel.key}`);
+        return channelIndex >= 0 ? `=${hillCol(channelIndex)}${rowNumber}` : csvNum(rawFeatures[featureIndex], 10);
+      });
+      const adstock = model.chans.map((channel, channelIndex) => {
+        const paramRow = channelRows[channel.key];
+        return index === 0
+          ? `=${spendCol(channelIndex)}${rowNumber}`
+          : `=${spendCol(channelIndex)}${rowNumber}+$B$${paramRow}*${adstockCol(channelIndex)}${rowNumber - 1}`;
+      });
+      const hill = model.chans.map((channel, channelIndex) => {
+        const paramRow = channelRows[channel.key];
+        const ad = `${adstockCol(channelIndex)}${rowNumber}`;
+        return `=${ad}^$D$${paramRow}/($C$${paramRow}^$D$${paramRow}+${ad}^$D$${paramRow})`;
+      });
+      const logs = model.chans.map((_, channelIndex) => `=LN(1+${adstockCol(channelIndex)}${rowNumber})`);
+      const spend = model.chans.map((channel) => csvNum(
+        isHistory ? model.histSpendByKey[channel.key]?.[index] : model.futSpendByKey[channel.key]?.[futureIndex],
+        10,
+      ));
+      const prediction = "=$B$" + interceptRow + model.names.map((name, featureIndex) => {
+        const featureRow = featureRows[name];
+        return `+$B$${featureRow}*((${featureCol(featureIndex)}${rowNumber}-$C$${featureRow})/$D$${featureRow})`;
+      }).join("") + (offset ? `+${csvNum(offset, 10)}` : "");
+      const margin = isHistory ? null : model.futureMargins[futureIndex] || 0;
+      push([
+        index + 1,
+        isHistory ? model.histLabels[index] : model.futLabels[futureIndex],
+        isHistory ? "history" : "forecast",
+        isHistory ? csvNum(model.actual[index], 10) : "",
+        prediction,
+        margin == null ? "" : `=E${rowNumber}-${csvNum(margin, 10)}`,
+        margin == null ? "" : `=E${rowNumber}+${csvNum(margin, 10)}`,
+        ...values,
+        ...adstock,
+        ...hill,
+        ...logs,
+        ...spend,
+      ]);
+    }
+    tables.push({ model, tableStart, historyLength, horizon });
+  });
+
+  if (fc.isAdditiveTotal && tables.length === 2) {
+    const historyLength = Math.min(...tables.map((table) => table.historyLength));
+    const horizon = Math.min(...tables.map((table) => table.horizon));
+    lines.push("");
+    push([tx("# Total = Android + iOS (아래도 모두 수식)", "# Total = Android + iOS (all formulas below)")]);
+    push(["period", "segment", "actual_total", "prediction_total_live", "lower_total_live", "upper_total_live"]);
+    for (let index = 0; index < historyLength + horizon; index++) {
+      const isHistory = index < historyLength;
+      const refs = tables.map((table) => {
+        const row = isHistory
+          ? table.tableStart + (table.historyLength - historyLength) + index
+          : table.tableStart + table.historyLength + (index - historyLength);
+        return { actual: `D${row}`, prediction: `E${row}`, lower: `F${row}`, upper: `G${row}` };
+      });
+      const label = isHistory ? tables[0].model.histLabels.at(-(historyLength - index)) : tables[0].model.futLabels[index - historyLength];
+      push([
+        label,
+        isHistory ? "history" : "forecast",
+        isHistory ? `=${refs.map((ref) => ref.actual).join("+")}` : "",
+        `=${refs.map((ref) => ref.prediction).join("+")}`,
+        isHistory ? "" : `=${refs.map((ref) => ref.lower).join("+")}`,
+        isHistory ? "" : `=${refs.map((ref) => ref.upper).join("+")}`,
+      ]);
+    }
+  }
+  return lines;
+}
+
 /* ── §7 살아있는 수식 예측 CSV (index downloadMmmForecastCsv 이식) ──
- * spend 칸을 바꾸면 adstock→ln→예측이 엑셀 수식으로 자동 연쇄 계산.  */
-function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KRW", displayCurrency = sourceCurrency) {
+ * spend 칸을 바꾸면 adstock→변환→예측이 엑셀에서 자동 연쇄 계산.  */
+export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KRW", displayCurrency = sourceCurrency) {
   const tx = (ko, en) => (locale === "en" ? en : ko);
   const tKo = mmmTargetDisplay(target, locale);
   if (fc.isBayesian) {
+    const liveCsv = buildBayesianForecastCsv(fc, target, locale, sourceCurrency, displayCurrency);
+    if (liveCsv) return liveCsv;
     const rows = [
       [tx("# 도구", "# Tool"), "Empirical-Bayes MMM Forecast (5-18)"],
       [tx("# 대상", "# Target"), `${tKo} (${target})`],
@@ -2176,6 +2313,7 @@ export function mmmSumOsForecasts(parts) {
     futSpendByKey: Object.assign({}, ...valid.map((part) => part.futSpendByKey || {})),
     scenarioWarnings: valid.flatMap((part) => part.scenarioWarnings || []),
     steps: valid.flatMap((part) => part.steps || []),
+    excelModels: valid.flatMap((part) => part.excelModels || []),
     components: valid,
   };
 }
@@ -2219,6 +2357,35 @@ function buildOsForecastComponent(headers, rows, colMap, platform, target, local
   return { ...model, platform, target: resolvedTarget, sourcePanel: panel };
 }
 
+function buildForecastExcelModel(model, rawForecast, restoredForecast) {
+  if (!model?.run || !rawForecast || !restoredForecast) return null;
+  const historyOffset = (model.panel.week || []).map((week) => model.seasonalModel?.offsetAt?.(week) || 0);
+  const futureOffset = (rawForecast.predFut || []).map((value, index) => (restoredForecast.predFut?.[index] ?? value) - value);
+  return {
+    platform: model.platform || "model",
+    target: model.target,
+    names: rawForecast.names || [],
+    beta: rawForecast.beta || [],
+    intercept: rawForecast.intercept,
+    featureMeans: model.run.featureMeans || [],
+    featureScales: model.run.featureScales || [],
+    rawFeatureHistory: model.run.rawFeatureHistory || [],
+    futureRawFeatures: (rawForecast.futureRows || []).map((row) => row.slice(1).map((value, index) =>
+      value * (model.run.featureScales?.[index] || 1) + (model.run.featureMeans?.[index] || 0),
+    )),
+    params: model.run.params || {},
+    chans: rawForecast.chans || [],
+    histSpendByKey: model.panel.ch || {},
+    futSpendByKey: rawForecast.futSpendByKey || {},
+    histLabels: rawForecast.histLabels || [],
+    futLabels: rawForecast.futLabels || [],
+    actual: restoredForecast.actual || [],
+    historyOffset,
+    futureOffset,
+    futureMargins: (rawForecast.hi || []).map((value, index) => Math.max(0, value - (rawForecast.predFut?.[index] || 0))),
+  };
+}
+
 function runForecastScenario(model, horizon, budgets, stepOff) {
   if (!model?.run || !model?.panel) return null;
   const chans = _mmmChans(model.panel).filter((ch) => model.panel.ch[ch.key]);
@@ -2246,6 +2413,7 @@ function runForecastScenario(model, horizon, budgets, stepOff) {
   );
   const restored = mmmForecastRestoreSeasonality(result, model.panel, model.seasonalModel);
   if (!restored) return null;
+  const excelModel = buildForecastExcelModel(model, result, restored);
   return {
     ...restored,
     rollingSelection: model.selection,
@@ -2253,6 +2421,7 @@ function runForecastScenario(model, horizon, budgets, stepOff) {
     platform: model.platform,
     scenarioWarnings: (restored.scenarioWarnings || []).map((warning) => ({ ...warning, key: `${model.platform}::${warning.key}` })),
     steps: (restored.steps || []).map((step) => ({ ...step, key: `${model.platform}::${step.key}`, label: `${model.platform} · ${step.label}` })),
+    excelModels: excelModel ? [excelModel] : [],
   };
 }
 
@@ -2329,6 +2498,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const demoDisabled = useAppStore((state) => state.demoDisabled);
   const requestAd = useAppStore((state) => state.requestAd);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const setDisplayCurrency = useAppStore((state) => state.setDisplayCurrency);
   const currencySym = CURRENCY_SYMBOLS[displayCurrency] || "$";
   // 원본 CSV 통화(업로드 시 지정, 기본 KRW) — 표시 토글과 다르면 실제 배율 변환.
   // §전에는 토글이 라벨만 바꾸고 숫자는 그대로였음(예: $35k → ₩35k, 오해 유발).
@@ -3201,7 +3371,8 @@ export default function MarketingResponse({ locale = "ko" }) {
         { futureSteps },
       );
       const restored = mmmForecastRestoreSeasonality(result, forecastModel.panel, forecastModel.seasonalModel);
-      return restored && { ...restored, rollingSelection: forecastModel.selection, modelWindow: forecastModel.panel.week.length };
+      const excelModel = restored && buildForecastExcelModel(forecastModel, result, restored);
+      return restored && { ...restored, rollingSelection: forecastModel.selection, modelWindow: forecastModel.panel.week.length, excelModels: excelModel ? [excelModel] : [] };
     } catch (e) {
       return null;
     }
@@ -3915,10 +4086,10 @@ export default function MarketingResponse({ locale = "ko" }) {
           <div className="analysis-local-controls" style={{ marginTop: "8px" }}>
             <div className="analysis-local-controls__inner">
               <span className="analysis-local-controls__label">{tx("CSV 금액 통화", "CSV amount currency")}</span>
-              <span className="muted" style={{ fontSize: "11px" }}>{tx("표시 통화와 다르면 고정 환율로 환산합니다.", "Uses a fixed exchange rate when it differs from display currency.")}</span>
+              <span className="muted" style={{ fontSize: "11px" }}>{tx("원본 단위입니다. 선택하면 화면 표시도 같은 통화로 맞춥니다.", "This is the source unit. Selecting it also aligns the display currency.")}</span>
               <div className="ab-pillgroup" style={{ margin: 0 }}>
-                <button className={`ab-pill ${sourceCurrency === "KRW" ? "active" : ""}`} onClick={() => setCsvData({ ...csvData, currency: "KRW" })}>{tx("원 ₩", "KRW ₩")}</button>
-                <button className={`ab-pill ${sourceCurrency === "USD" ? "active" : ""}`} onClick={() => setCsvData({ ...csvData, currency: "USD" })}>{tx("달러 $", "USD $")}</button>
+                <button className={`ab-pill ${sourceCurrency === "KRW" ? "active" : ""}`} onClick={() => { setCsvData({ ...csvData, currency: "KRW" }); setDisplayCurrency("KRW"); }}>{tx("원 ₩", "KRW ₩")}</button>
+                <button className={`ab-pill ${sourceCurrency === "USD" ? "active" : ""}`} onClick={() => { setCsvData({ ...csvData, currency: "USD" }); setDisplayCurrency("USD"); }}>{tx("달러 $", "USD $")}</button>
               </div>
             </div>
           </div>
@@ -5088,10 +5259,10 @@ export default function MarketingResponse({ locale = "ko" }) {
                     <button
                       className="ab-pill"
                       style={{ background: "#7aa2f7", color: "#0b0d12", fontWeight: 700, borderColor: "#7aa2f7" }}
-                      title={tx("표준화 계수·실측·예측·근사 90% 범위·미래 채널 spend의 고정 스냅샷", "Fixed snapshot of standardized coefficients, actuals, forecasts, approximate 90% ranges, and future channel spend")}
+                      title={tx("채널 spend를 수정하면 adstock·Hill 변환·예측이 연쇄 재계산되는 엑셀 수식 CSV", "Excel-formula CSV: editing channel spend recalculates adstock, Hill transforms, and forecasts")}
                       onClick={() => csvDownload(`mmm_forecast_${mmm.target}_${forecast.model}_${_today()}.csv`, buildForecastCsv(forecast, mmm.target, locale, sourceCurrency, displayCurrency))}
                     >
-                      {tx("⬇ 전체 예측 CSV (계수·실측·예측)", "⬇ Full forecast CSV (coefficients/actual/forecast)")}
+                      {tx("⬇ 살아있는 예측 CSV (수식·실측·예측)", "⬇ Live forecast CSV (formulas/actual/forecast)")}
                     </button>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", alignItems: "start" }}>
