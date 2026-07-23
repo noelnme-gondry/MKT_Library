@@ -2100,7 +2100,9 @@ function buildMmmRecentBacktest(mmm) {
   const futureSpend = Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, values.slice(-holdout)]));
   const futureDummy = Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(-holdout)]));
   const futureSteps = Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(-holdout)]));
-  const forecast = run && mmmBayesianForecast(run, train, futureSpend, holdout, { futureDummy, futureSteps });
+  // Backtest must score the real holdout spend, even when it falls outside the
+  // train range. Clamping here would hide extrapolation risk and understate error.
+  const forecast = run && mmmBayesianForecast(run, train, futureSpend, holdout, { futureDummy, futureSteps, clampScenario: false, trendDamping: 0 });
   const validationActual = panel.targets[target].slice(-holdout);
   if (!forecast?.predFut || forecast.predFut.length !== validationActual.length) return null;
   const contextTrain = Math.min(12, forecast.fittedHist.length);
@@ -4760,6 +4762,30 @@ export default function MarketingResponse({ locale = "ko" }) {
               </div>
               {forecast ? (
                 <>
+                  {forecast.scenarioWarnings?.length > 0 && (
+                    <div className="callout warn" style={{ marginBottom: "12px" }}>
+                      <div className="ico">!</div><div className="body">
+                        <strong>{forecast.scenarioWarnings.some((w) => w.type === "negative-media-effect")
+                          ? tx("음의 광고효과 또는 관측 범위 밖 예산 — OFF 시나리오를 인과효과로 해석하지 마세요", "Negative media effect or out-of-range budget — do not interpret OFF as causal")
+                          : tx("관측 범위 밖 예산 — 범위 내로 제한해 계산했습니다", "Budget outside observed range — constrained to the observed range")}</strong>
+                        <p>{forecast.scenarioWarnings.map((w) => w.type === "negative-media-effect"
+                          ? `${w.key}: 음의 광고효과 계수(${Number(w.coefficient).toFixed(3)}) — OFF 증분효과 추정 불가`
+                          : `${w.key}: ${spendValueLabel(w.requested)} (관측 ${spendValueLabel(w.min)}–${spendValueLabel(w.max)})`).join(" · ")}</p>
+                      </div>
+                    </div>
+                  )}
+                  {forecast.baselineFut?.length > 0 && (
+                    <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
+                      <strong>{tx("광고비 0 기준선(비매체 기준 수요)", "Zero-media baseline (non-media demand)")}</strong>
+                      <p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
+                        {tx("광고비를 0으로 놓았을 때 모델이 남기는 추정치입니다. 이 값은 증분 효과의 증명이 아니며, 기준선이 최근 실측보다 지나치게 낮으면 광고 OFF 효과를 식별할 수 없다는 뜻입니다.", "The model estimate left after setting media features to zero. It is not proof of incrementality; a baseline far below recent actuals means the ad-off effect is not identified from this data.")}
+                      </p>
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
+                        <span className="ab-pill">{tx("기준선 평균", "Baseline avg")} {targetValueLabel(forecast.baselineFut.reduce((s, v) => s + v, 0) / forecast.baselineFut.length, { perWeek: true })}</span>
+                        <span className="ab-pill">{tx("현재 시나리오 평균", "Scenario avg")} {targetValueLabel(forecast.predFut.reduce((s, v) => s + v, 0) / forecast.predFut.length, { perWeek: true })}</span>
+                      </div>
+                    </Card>
+                  )}
                   {recentBacktest && (
                     <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "baseline" }}>

@@ -3536,6 +3536,24 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               if (!run || run.engine !== "bayesian") return null;
               const H = Math.max(1, Math.min(52, horizon || 13));
               const n = run.weeks.length;
+              const spendRanges = Object.fromEntries(run.channelMeta.map((ch) => {
+                const values = (panel.ch?.[ch.key] || []).filter(Number.isFinite);
+                const min = values.length ? Math.min(...values) : 0;
+                const max = values.length ? Math.max(...values) : 0;
+                const requested = futureSpend?.[ch.key]?.[0];
+                return [ch.key, { min, max, requested: Number.isFinite(requested) ? requested : null, outOfRange: Number.isFinite(requested) && (requested < min || requested > max) }];
+              }));
+              const scenarioWarnings = Object.entries(spendRanges)
+                .filter(([, range]) => range.outOfRange)
+                .map(([key, range]) => ({ key, type: "outside-observed-spend-range", ...range }));
+              run.channelMeta.forEach((ch) => {
+                const mediaIndex = run.names.indexOf("media_" + ch.key);
+                const coefficient = mediaIndex >= 0 ? run.posterior.beta[mediaIndex + 1] : null;
+                if (Number.isFinite(coefficient) && coefficient < 0) {
+                  scenarioWarnings.push({ key: ch.key, type: "negative-media-effect", coefficient });
+                }
+              });
+              const clampScenario = options.clampScenario !== false;
               const lastWeek = Number(panel.week?.[n - 1]);
               const futureWeeks = Array.from({ length: H }, (_, h) =>
                 (Number.isFinite(lastWeek) ? lastWeek : n) + h + 1,
@@ -3546,6 +3564,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 state[ch.key] = mmmAdstock(panel.ch[ch.key], p.alpha).at(-1) || 0;
               });
               const predFut = [];
+              const baselineFut = [];
+              const mediaContributionFut = [];
               const futureRows = [];
               const lo = [];
               const hi = [];
@@ -3561,7 +3581,11 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   }
                   if (name === "trend") {
                     const delta = (lastRaw[j] || 0) - (previousRaw[j] || 0);
-                    return (lastRaw[j] || 0) + delta * (h + 1);
+                    // A one-week shock must not be extrapolated linearly for 12
+                    // weeks. Damp the continuation; callers can set 0 to hold
+                    // the last trend value or 1 for the legacy behavior.
+                    const damping = Number.isFinite(options.trendDamping) ? Math.max(0, Math.min(1, options.trendDamping)) : 0.25;
+                    return (lastRaw[j] || 0) + delta * (h + 1) * damping;
                   }
                   // 미래 이벤트는 사용자가 별도 시나리오를 주지 않는 한 0. 구조변화
                   // step은 마지막 상태가 지속된다고 가정한다.
@@ -3569,19 +3593,37 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                     const key = name.slice(2);
                     return options.futureDummy?.[key]?.[h] ?? 0;
                   }
-                  if (name === "lny" || name === "chuseok") return options.futureDummy?.[name]?.[h] ?? 0;
+                  // lny is a lagged-target control, not an event dummy. Setting it to
+                  // zero at the forecast boundary creates an artificial level jump
+                  // (often tens of thousands of installs). Carry the last observed
+                  // value unless the caller supplies an explicit future path.
+                  if (name === "lny") return options.futureDummy?.[name]?.[h] ?? (lastRaw[j] || 0);
+                  if (name === "chuseok") return options.futureDummy?.[name]?.[h] ?? 0;
                   if (options.futureSteps?.[name]) return options.futureSteps[name][h] ?? (lastRaw[j] || 0);
                   return lastRaw[j] || 0;
                 });
                 run.channelMeta.forEach((ch) => {
                   const p = run.params[ch.key];
-                  const spend = futureSpend?.[ch.key]?.[h] ?? run.saturationByChannel[ch.key].recentMean;
+                  const requestedSpend = futureSpend?.[ch.key]?.[h] ?? run.saturationByChannel[ch.key].recentMean;
+                  const range = spendRanges[ch.key];
+                  const spend = clampScenario && range
+                    ? Math.min(range.max, Math.max(range.min, requestedSpend || 0))
+                    : requestedSpend;
                   state[ch.key] = Math.max(0, spend || 0) + p.alpha * state[ch.key];
                   const j = run.names.indexOf("media_" + ch.key);
                   rawRow[j] = mmmHill(state[ch.key], p.ec, p.slope);
                 });
                 const row = [1, ...rawRow.map((value, j) => (value - run.featureMeans[j]) / run.featureScales[j])];
                 const prediction = run.posterior.beta.reduce((sum, beta, j) => sum + beta * row[j], 0);
+                const noMediaRow = rawRow.slice();
+                run.channelMeta.forEach((ch) => {
+                  const mediaIndex = run.names.indexOf("media_" + ch.key);
+                  if (mediaIndex >= 0) noMediaRow[mediaIndex] = 0;
+                });
+                const baselineRow = [1, ...noMediaRow.map((value, j) => (value - run.featureMeans[j]) / run.featureScales[j])];
+                const baseline = Math.max(0, run.posterior.beta.reduce((sum, beta, j) => sum + beta * baselineRow[j], 0));
+                baselineFut.push(baseline);
+                mediaContributionFut.push(prediction - baseline);
                 const quad = row.reduce((sum, value, i) =>
                   sum + value * row.reduce((inner, other, j) => inner + run.posterior.XtXinv[i][j] * other, 0),
                 0);
@@ -3624,6 +3666,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   ? "90% predictive reference interval (conditional Gaussian + time-ordered holdout residual calibration)"
                   : "90% conditional Gaussian predictive reference interval (representative transform)",
                 intervalCalibration: run.intervalCalibration || null,
+                spendRanges,
+                scenarioWarnings,
+                baselineFut,
+                mediaContributionFut,
                 histLabels: historicalLabels,
                 labels: [...historicalLabels, ...labels],
                 futLabels: labels,
@@ -3641,7 +3687,11 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   run.channelMeta.map((ch) => [
                     ch.key,
                     Array.from({ length: H }, (_, i) =>
-                      futureSpend?.[ch.key]?.[i] ?? run.saturationByChannel[ch.key].recentMean,
+                      (() => {
+                        const requested = futureSpend?.[ch.key]?.[i] ?? run.saturationByChannel[ch.key].recentMean;
+                        const range = spendRanges[ch.key];
+                        return clampScenario && range ? Math.min(range.max, Math.max(range.min, requested || 0)) : requested;
+                      })(),
                     ),
                   ]),
                 ),
