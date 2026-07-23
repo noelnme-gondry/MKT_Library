@@ -3786,6 +3786,11 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 seasonalModel.futureOffsetAt ? seasonalModel.futureOffsetAt(week, index) : seasonalModel.offsetAt(week),
               );
               const plus = (values, offsets) => values?.map((value, index) => value + (offsets[index] || 0));
+              // Cost=0 기준선은 수요의 하한이다. 계절성·추세를 다시 더하는 과정에서
+              // 음수가 되면 "음의 organic"을 만들지 않고 0으로만 제한한다. 예측값 자체는
+              // 건드리지 않아 이벤트/구조변화(P0)의 효과를 이 함수에서 재해석하지 않는다.
+              const restoredBaseline = plus(forecast.baselineFut, futureOffset);
+              const baselineFloorApplied = restoredBaseline?.filter((value) => Number.isFinite(value) && value < 0).length || 0;
               return {
                 ...forecast,
                 actual: plus(forecast.actual, histOffset),
@@ -3793,7 +3798,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 predFut: plus(forecast.predFut, futureOffset),
                 lo: plus(forecast.lo, futureOffset),
                 hi: plus(forecast.hi, futureOffset),
-                baselineFut: plus(forecast.baselineFut, futureOffset),
+                baselineFut: restoredBaseline?.map((value) => Number.isFinite(value) ? Math.max(0, value) : value),
+                baselineFloorApplied: (forecast.baselineFloorApplied || 0) + baselineFloorApplied,
               };
             }
 
@@ -3805,8 +3811,16 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             export function mmmForecastRollingSelection(panel, cfg, targetName, options = {}) {
               const n = panel?.week?.length || 0;
               const horizon = Math.max(4, Math.min(26, options.horizon || 12));
-              const minFolds = Math.max(2, options.minFolds || 2);
-              const maxFolds = Math.max(minFolds, options.maxFolds || 3);
+              // 75주 원자료처럼 가능한 경우 12주 독립 holdout 3회를 기본으로 쓴다.
+              // 짧은 이력은 2회로만 후보를 만들되, Cost 변경 시나리오의 의사결정
+              // 자격은 주지 않는다. 단순 최근 1회 적합이 과대평가되는 것을 막는다.
+              const feasibleFolds = Math.floor((n - 16) / horizon);
+              const decisionMinFolds = Math.max(3, options.decisionMinFolds || 3);
+              const minFolds = Math.max(2, Math.min(
+                options.minFolds == null ? decisionMinFolds : options.minFolds,
+                feasibleFolds,
+              ));
+              const maxFolds = Math.max(minFolds, Math.min(options.maxFolds || decisionMinFolds, feasibleFolds));
               const maxWindow = n - horizon * minFolds;
               const defaultWindows = [...new Set([24, 30, 36, 42, 48, 54, 60, 72, 84, 104, 130, 156, maxWindow])];
               const candidateWindows = (options.candidateWindows || defaultWindows)
@@ -3917,16 +3931,43 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               }
               candidates.sort((a, b) => a.wmape - b.wmape || b.foldWins - a.foldWins || a.window - b.window);
               const selected = candidates[0] || null;
+              const decisionReasons = [];
+              if (selected) {
+                if (selected.folds < decisionMinFolds) decisionReasons.push("fewer-than-three-holdouts");
+                if (selected.wmape > selected.persistenceWmape) decisionReasons.push("does-not-beat-persistence");
+                if (selected.foldWins < Math.ceil(selected.folds / 2)) decisionReasons.push("wins-too-few-holdouts");
+              }
               return {
                 enabled: !!selected,
                 reason: selected ? null : "no-valid-time-ordered-fit",
                 horizon,
+                feasibleFolds: Math.max(0, feasibleFolds),
+                decisionMinFolds,
                 candidates,
                 selected,
-                decisionEligible: !!selected
-                  && selected.wmape <= selected.persistenceWmape
-                  && selected.foldWins >= Math.ceil(selected.folds / 2),
+                decisionReasons,
+                decisionEligible: !!selected && decisionReasons.length === 0,
               };
+            }
+
+            // 전체 MMM 기여 분석의 적격성과 분리된, "예측 회귀에서 Cost만 바꿔도 되는가"
+            // 판정이다. 기본 예측은 계속 제공하되, 독립 holdout 또는 최근 창 내 채널
+            // 식별이 부족하면 단일 채널 OFF/증액 입력만 잠근다.
+            export function mmmForecastScenarioEligibility(models) {
+              const items = (Array.isArray(models) ? models : [models]).filter(Boolean);
+              if (!items.length) return { eligible: false, reasons: ["missing-model"] };
+              const reasons = [];
+              for (const model of items) {
+                const selection = model.selection || model.rollingSelection;
+                if (!selection?.decisionEligible) {
+                  (selection?.decisionReasons?.length ? selection.decisionReasons : ["forecast-validation"]).forEach((reason) => reasons.push(reason));
+                }
+                const identification = model.run?.identification;
+                if (identification?.highCollinearity) reasons.push("high-collinearity");
+                if (identification?.lowInformation) reasons.push("low-information");
+                if (identification?.budgetEligible === false && !identification?.highCollinearity && !identification?.lowInformation) reasons.push("scenario-identification");
+              }
+              return { eligible: reasons.length === 0, reasons: [...new Set(reasons)] };
             }
 
             export function mmmBayesianWeeklyDecomp(run) {
