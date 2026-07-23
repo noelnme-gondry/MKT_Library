@@ -637,8 +637,22 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             };
 
             export const MMM_METH_CONFIG = {
-              version: "1.1.0",
-              seasonalityPeriods: [52.18, 13.04], // annual + quarterly (각 sin+cos pair)
+              version: "1.2.0",
+              // 기본은 연간 1차 조화파만 둔다. 과거의 13주 파형을 무조건 반복하면
+              // 매체·이벤트 변동까지 계절성으로 흡수할 수 있으므로, 더 복잡한 모양은
+              // rolling holdout에서 이길 때만 아래 후보에서 선택한다.
+              seasonalityPeriods: [52.18],
+              seasonalityCandidates: [
+                { id: "none", periods: [] },
+                { id: "annual-1", periods: [52.18] },
+                { id: "annual-2", periods: [52.18, 26.09] },
+                { id: "annual-3", periods: [52.18, 26.09, 17.39] },
+                { id: "annual-4", periods: [52.18, 26.09, 17.39, 13.04] },
+              ],
+              seasonalityMinHistory: 78,
+              seasonalityMinTrain: 52,
+              seasonalityMaxFolds: 3,
+              seasonalityHoldoutWeeks: 12,
               adstockGrid: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
               // Empirical-Bayes 효과 신뢰도는 한 변환을 고정하지 않는다. 채널별 α × 반포화점 ×
               // Hill 기울기 후보의 profile posterior를 평균내되, 계산량은 주간 MMM에 맞춘다.
@@ -3178,6 +3192,62 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               return ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
             }
 
+            // 이벤트·step은 같은 회귀의 별도 제어변수로 유지한 채, 연간 계절성의
+            // 매끄러움만 선택한다. 즉 이벤트 스파이크를 매년 반복되는 계절성으로
+            // 먼저 빼 버리지 않으며, 13주 주기를 기본값으로 강제하지 않는다.
+            export function mmmBayesianSeasonalitySelection(panel, cfg, targetName, options = {}) {
+              const n = panel.week?.length || 0;
+              const horizon = Math.max(4, Math.min(cfg.seasonalityHoldoutWeeks || 12, Math.floor(n / 3)));
+              const minTrain = Math.max(24, cfg.seasonalityMinTrain || 52);
+              const specs = (cfg.seasonalityCandidates || []).filter((spec) => Array.isArray(spec.periods));
+              if (options.enableSeasonalitySelection === false || n < Math.max(cfg.seasonalityMinHistory || 78, minTrain + horizon) || !specs.length) {
+                return { enabled: false, cfg, selected: null, candidates: [], reason: "insufficient-history-or-disabled" };
+              }
+              const cuts = [];
+              for (let cut = n - horizon; cut >= minTrain && cuts.length < (cfg.seasonalityMaxFolds || 3); cut -= horizon) cuts.push(cut);
+              if (cuts.length < 2) return { enabled: false, cfg, selected: null, candidates: [], reason: "fewer-than-two-folds" };
+              const evaluated = specs.map((spec) => {
+                const foldWmapes = [];
+                for (const cut of cuts) {
+                  const train = _mmmBayesSlicePanel(panel, cut);
+                  const run = mmmBayesianRun(train, { ...cfg, seasonalityPeriods: spec.periods }, targetName, false, {
+                    ...options,
+                    enableSeasonalitySelection: false,
+                    enableMediaPenaltySelection: false,
+                    enableBaselineSelection: false,
+                    skipTransformUncertainty: true,
+                  });
+                  const spend = Object.fromEntries(Object.entries(panel.ch || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
+                  const futureDummy = Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
+                  const futureSteps = Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
+                  const forecast = run && mmmBayesianForecast(run, train, spend, horizon, { futureDummy, futureSteps });
+                  const actual = panel.targets?.[targetName]?.slice(cut, cut + horizon) || [];
+                  if (forecast?.predFut?.length !== actual.length || !actual.length) continue;
+                  const absoluteError = actual.reduce((sum, value, index) => sum + Math.abs(value - forecast.predFut[index]), 0);
+                  const absoluteActual = actual.reduce((sum, value) => sum + Math.abs(value), 0);
+                  if (absoluteActual > 1e-9) foldWmapes.push(absoluteError / absoluteActual * 100);
+                }
+                const wmape = foldWmapes.length ? foldWmapes.reduce((sum, value) => sum + value, 0) / foldWmapes.length : Infinity;
+                const variance = foldWmapes.length > 1
+                  ? foldWmapes.reduce((sum, value) => sum + (value - wmape) ** 2, 0) / (foldWmapes.length - 1)
+                  : 0;
+                return { ...spec, foldWmapes, wmape, medianWmape: _mmmMedian(foldWmapes), standardError: Math.sqrt(variance / Math.max(1, foldWmapes.length)) };
+              }).filter((item) => item.foldWmapes.length === cuts.length);
+              if (!evaluated.length) return { enabled: false, cfg, selected: null, candidates: [], reason: "fold-fit-failed" };
+              const best = evaluated.reduce((winner, item) => item.wmape < winner.wmape ? item : winner, evaluated[0]);
+              const tolerance = Math.max(0.25, best.standardError || 0);
+              const selected = evaluated
+                .filter((item) => item.wmape <= best.wmape + tolerance)
+                .sort((a, b) => a.periods.length - b.periods.length || String(a.id).localeCompare(String(b.id)))[0];
+              return {
+                enabled: true,
+                cfg: { ...cfg, seasonalityPeriods: selected.periods.slice() },
+                selected: { ...selected, bestWmape: best.wmape, tolerance, folds: cuts.length },
+                candidates: evaluated,
+                reason: selected.id === best.id ? "lowest-rolling-wmape" : "one-standard-error-smoother-seasonality",
+              };
+            }
+
             // 매체 prior의 세기는 기여 크기를 맞추기 위한 손잡이가 아니라 예측 성능을
             // 위한 hyperparameter다. 마지막 한 구간만 보면 우연한 이벤트를 따라갈 수
             // 있으므로, 과거의 서로 다른 12주 구간을 모두 당시 정보만으로 예측한다.
@@ -3277,7 +3347,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               if (!targetSeries?.length || targetSeries.some((value) => !Number.isFinite(value))) return null;
               if (_mmmChans(panel).some((channel) => panel.ch[channel.key]?.some((value) => !Number.isFinite(value)))) return null;
               const baseline = _mmmBayesBaselineSelection(panel, cfg, targetName, options);
-              const penaltySelection = mmmBayesianMediaPenaltySelection(panel, baseline.cfg, targetName, options);
+              const seasonalitySelection = mmmBayesianSeasonalitySelection(panel, baseline.cfg, targetName, options);
+              const penaltySelection = mmmBayesianMediaPenaltySelection(panel, seasonalitySelection.cfg, targetName, options);
               const effectiveCfg = penaltySelection.cfg;
               const fitOptions = {
                 ...options,
@@ -3566,7 +3637,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 featureMeans: colMean,
                 featureScales: colScale,
                 rawFeatureHistory: Xraw,
-                seasonalityPeriods: cfg.seasonalityPeriods,
+                seasonalityPeriods: effectiveCfg.seasonalityPeriods,
                 standardizedX: X,
                 channelMeta,
                 absoluteBeta,
@@ -3585,6 +3656,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 backtest,
                 intervalCalibration,
                 baselineSelection: baseline.selection,
+                seasonalitySelection,
                 mediaPenaltySelection: penaltySelection,
                 effectiveCfg,
                 jointTransform,
