@@ -3471,24 +3471,55 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             // Cost 회귀의 학습 창과 계절성 정보 창을 분리한다. 계절성은 당시까지
             // 누적된 전체 이력에서만 추출하고, 최근 Cost 회귀는 이 seasonal offset을
             // 뺀 목표를 적합한다. 이 방식은 holdout의 실제값을 계절성에 쓰지 않는다.
+            // 추세를 원자료에 바로 맞추면 delist/reopen 같은 구조변화의 수직 이동이
+            // 기울기에 섞여 미래 하락·상승으로 잘못 연장된다. 이벤트·step을 같은
+            // 회귀의 통제변수로 넣고, 그 효과를 조건부로 제거한 추세/계절성만 반환한다.
+            function _mmmForecastEventControls(panel, length) {
+              const controls = [];
+              for (const [kind, series] of [["event", panel?.dummy || {}], ["step", panel?.steps || {}]]) {
+                for (const [key, source] of Object.entries(series)) {
+                  if (!Array.isArray(source) || source.length !== length || !source.every(Number.isFinite)) continue;
+                  const min = Math.min(...source), max = Math.max(...source);
+                  if (min === max) continue;
+                  controls.push({ key: `${kind}:${key}`, values: source.slice() });
+                }
+              }
+              return controls;
+            }
+
             export function mmmForecastGlobalBaseline(panel, targetName, periods = []) {
               const y = panel?.targets?.[targetName];
               const t = panel?.week;
               if (!y?.length || !t?.length || y.length !== t.length || y.some((value) => !Number.isFinite(value))) return null;
               const meanT = _mean(t), sdT = _pstd(t) || 1;
-              const X = t.map((week) => [
-                1,
+              const controls = _mmmForecastEventControls(panel, y.length);
+              const names = [
+                "trend",
+                ...periods.flatMap((_, index) => [`sin:${index}`, `cos:${index}`]),
+                ...controls.map((control) => control.key),
+              ];
+              const rawX = t.map((week, rowIndex) => [
                 (week - meanT) / sdT,
                 ...periods.flatMap((period) => [Math.sin(2 * Math.PI * week / period), Math.cos(2 * Math.PI * week / period)]),
+                ...controls.map((control) => control.values[rowIndex]),
               ]);
+              const keep = _nonRedundantCols(rawX, names);
+              const keptNames = keep.map((index) => names[index]);
+              const X = rawX.map((row) => [1, ...keep.map((index) => row[index])]);
               const fit = mmmOls(X, y);
               if (!fit?.beta?.every(Number.isFinite)) return null;
+              const betaFor = (name) => {
+                const index = keptNames.indexOf(name);
+                return index >= 0 ? fit.beta[index + 1] : 0;
+              };
               const offsetAt = (week) => periods.reduce((sum, period, index) => {
-                const betaIndex = 2 + index * 2;
-                return sum + fit.beta[betaIndex] * Math.sin(2 * Math.PI * week / period) + fit.beta[betaIndex + 1] * Math.cos(2 * Math.PI * week / period);
+                return sum + betaFor(`sin:${index}`) * Math.sin(2 * Math.PI * week / period) + betaFor(`cos:${index}`) * Math.cos(2 * Math.PI * week / period);
               }, 0);
-              const trendOffsetAt = (week) => fit.beta[1] * ((week - meanT) / sdT);
-              return { periods: periods.slice(), beta: fit.beta.slice(), offsetAt, trendOffsetAt };
+              const trendOffsetAt = (week) => betaFor("trend") * ((week - meanT) / sdT);
+              return {
+                periods: periods.slice(), beta: fit.beta.slice(), offsetAt, trendOffsetAt,
+                eventControls: keptNames.filter((name) => name.startsWith("event:") || name.startsWith("step:")),
+              };
             }
 
             export function mmmForecastGlobalSeasonality(panel, targetName, periods = []) {
@@ -3579,6 +3610,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 for (const trendOption of trendOptions) for (const window of candidateWindows) {
                   if (window < spec.minWindow) continue;
                   const outcomes = [];
+                  let trendEventControls = 0;
                   for (let fold = maxFolds; fold >= 1; fold--) {
                     const holdoutEnd = n - (fold - 1) * horizon;
                     const holdoutStart = holdoutEnd - horizon;
@@ -3595,6 +3627,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                       ? mmmForecastGlobalBaseline(_mmmSliceWindowPanel(panel, trendStart, holdoutStart), targetName, [])
                       : null;
                     if (trendOption.trendScope === "global" && !trendModel) continue;
+                    trendEventControls = Math.max(trendEventControls, trendModel?.eventControls?.length || seasonalModel?.eventControls?.length || 0);
                     const trainLastWeek = rawTrain.week.at(-1);
                     const offsetAt = (week) => (seasonalModel?.offsetAt(week) || 0) + (trendModel?.trendOffsetAt(week) || 0);
                     const futureOffsetAt = (week) => (seasonalModel?.offsetAt(week) || 0) + mmmForecastDampedTrendOffset(trendModel, trainLastWeek, week);
@@ -3644,6 +3677,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                     seasonalityScope: spec.seasonalityScope,
                     trendScope: trendOption.trendScope,
                     trendWindow: trendOption.trendWindow,
+                    trendEventControls,
                     folds: outcomes.length,
                     wmape: modelAbsError.reduce((sum, value) => sum + value, 0) / denominator * 100,
                     persistenceWmape: persistenceAbsError.reduce((sum, value) => sum + value, 0) / denominator * 100,

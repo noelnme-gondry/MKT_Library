@@ -14,6 +14,7 @@ import {
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
   mmmForecastRollingSelection,
+  mmmForecastGlobalBaseline,
   mmmForecastGlobalSeasonality,
   mmmForecastDampedTrendOffset,
   mmmForecastSeasonalAdjustedPanel,
@@ -91,6 +92,21 @@ describe("runMmmMethTests (golden port)", () => {
       futureOffsetAt: (week) => mmmForecastDampedTrendOffset(trend, 75, week),
     });
     expect(restored.predFut[0]).toBeCloseTo(100 + mmmForecastDampedTrendOffset(trend, 75, 87), 8);
+  });
+
+  it("estimates forecast trend after removing event and step level shifts", () => {
+    const week = Array.from({ length: 75 }, (_, index) => index + 1);
+    const delist = week.map((value) => value >= 40 ? 1 : 0);
+    const target = week.map((value, index) => 5000 + value * 10 - delist[index] * 1200);
+    const eventAdjusted = mmmForecastGlobalBaseline({
+      week, targets: { Regs: target }, ch: {}, dummy: {}, steps: { ios_delist: delist },
+    }, "Regs", []);
+    const raw = mmmForecastGlobalBaseline({
+      week, targets: { Regs: target }, ch: {}, dummy: {}, steps: {},
+    }, "Regs", []);
+    expect(eventAdjusted?.eventControls).toEqual(["step:ios_delist"]);
+    expect(eventAdjusted.trendOffsetAt(75) - eventAdjusted.trendOffsetAt(63)).toBeCloseTo(120, 6);
+    expect(raw.trendOffsetAt(75) - raw.trendOffsetAt(63)).toBeLessThan(0);
   });
 
   it("calibrates only from a sufficiently long chronological holdout and preserves asymmetric tails", () => {
