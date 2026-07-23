@@ -652,6 +652,15 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               intervalCalibrationMinN: 8,
               intervalCalibrationCoverage: 0.9,
               cvMinTrain: 40,
+              // 매체 계수만 고정값으로 더 세게 누르면 실제 매체 신호도 0으로
+              // 수축할 수 있다. 아래 후보 중 시간 순서 holdout 오차가 가장 낮은
+              // 값을 선택하되, 차이가 작으면 더 보수적인(큰) penalty를 유지한다.
+              mediaPenalty: 4,
+              controlPenalty: 0.15,
+              mediaPenaltyCandidates: [0.15, 0.5, 1, 2, 4],
+              mediaPenaltyMinTrain: 52,
+              mediaPenaltyMaxFolds: 3,
+              mediaPenaltyHoldoutWeeks: 12,
               defaultLam: 0.6, // cannibalization net elasticity용
               // 국가·연도와 무관한 고정 주차를 실제 명절처럼 넣지 않는다. 레거시
               // 재현이 꼭 필요한 호출부만 useConfiguredLunarWeeks와 lunarWeeks를
@@ -2883,13 +2892,19 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               return beta;
             }
 
-            function _mmmBayesianLinear(X, y, mediaIndices, mediaPriors = {}) {
+            function _mmmBayesianLinear(X, y, mediaIndices, mediaPriors = {}, options = {}) {
               const n = X.length;
               if (!n || !X[0]?.length) return null;
               const p = X[0].length;
               const yScale = Math.sqrt(_mean(y.map((v) => (v - _mean(y)) ** 2))) || 1;
+              const mediaPenalty = Number.isFinite(options.mediaPenalty)
+                ? Math.max(0, options.mediaPenalty)
+                : 4;
+              const controlPenalty = Number.isFinite(options.controlPenalty)
+                ? Math.max(0, options.controlPenalty)
+                : 0.15;
               const defaultPenalty = Array.from({ length: p }, (_, j) =>
-                j === 0 ? 1e-8 : mediaIndices.has(j) ? 4 : 0.15,
+                j === 0 ? 1e-8 : mediaIndices.has(j) ? mediaPenalty : controlPenalty,
               );
               const priorMean = Array(p).fill(0);
               const calibratedPrecision = {};
@@ -2987,7 +3002,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   precision: isFinite(prior.precision) ? prior.precision / Math.max(1e-12, colScale[j] ** 2) : prior.precision,
                 };
               }
-              const posterior = _mmmBayesianLinear(X, y, mediaIndices, mediaPriors);
+              const posterior = _mmmBayesianLinear(X, y, mediaIndices, mediaPriors, options);
               if (!posterior) return null;
               const absoluteBeta = names.map((_, j) => posterior.beta[j + 1] / colScale[j]);
               const absoluteIntercept = posterior.beta[0] - absoluteBeta.reduce(
@@ -3142,6 +3157,85 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               };
             }
 
+            function _mmmBayesSlicePanel(panel, end) {
+              return {
+                ...panel,
+                week: panel.week.slice(0, end),
+                ch: Object.fromEntries(Object.entries(panel.ch || {}).map(([key, values]) => [key, values.slice(0, end)])),
+                dummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(0, end)])),
+                steps: Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(0, end)])),
+                targets: Object.fromEntries(Object.entries(panel.targets || {}).map(([key, values]) => [key, values.slice(0, end)])),
+                weekLabel: panel.weekLabel?.slice(0, end),
+                dateLabel: panel.dateLabel?.slice(0, end),
+                dates: panel.dates?.slice(0, end),
+              };
+            }
+
+            function _mmmMedian(values) {
+              const ordered = values.filter(Number.isFinite).slice().sort((a, b) => a - b);
+              if (!ordered.length) return Infinity;
+              const middle = Math.floor(ordered.length / 2);
+              return ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
+            }
+
+            // 매체 prior의 세기는 기여 크기를 맞추기 위한 손잡이가 아니라 예측 성능을
+            // 위한 hyperparameter다. 마지막 한 구간만 보면 우연한 이벤트를 따라갈 수
+            // 있으므로, 과거의 서로 다른 12주 구간을 모두 당시 정보만으로 예측한다.
+            // 최저 오차와 사실상 동률이면 더 큰 penalty를 고르는 one-standard-error
+            // 규칙으로 과도한 매체 귀속을 방지한다.
+            export function mmmBayesianMediaPenaltySelection(panel, cfg, targetName, options = {}) {
+              const n = panel.week?.length || 0;
+              const horizon = Math.max(4, Math.min(cfg.mediaPenaltyHoldoutWeeks || 12, Math.floor(n / 3)));
+              const minTrain = Math.max(24, cfg.mediaPenaltyMinTrain || 52);
+              const candidates = [...new Set((cfg.mediaPenaltyCandidates || [cfg.mediaPenalty ?? 4])
+                .filter((value) => Number.isFinite(value) && value >= 0))].sort((a, b) => a - b);
+              if (options.enableMediaPenaltySelection === false || !candidates.length || n < minTrain + horizon) {
+                return { enabled: false, cfg, selected: null, candidates: [], reason: "insufficient-history-or-disabled" };
+              }
+              const cuts = [];
+              for (let cut = n - horizon; cut >= minTrain && cuts.length < (cfg.mediaPenaltyMaxFolds || 3); cut -= horizon) cuts.push(cut);
+              if (!cuts.length) return { enabled: false, cfg, selected: null, candidates: [], reason: "no-valid-fold" };
+              const evaluated = candidates.map((mediaPenalty) => {
+                const foldWmapes = [];
+                for (const cut of cuts) {
+                  const train = _mmmBayesSlicePanel(panel, cut);
+                  const run = mmmBayesianRun(train, { ...cfg, mediaPenalty }, targetName, false, {
+                    ...options,
+                    enableMediaPenaltySelection: false,
+                    enableBaselineSelection: false,
+                    skipTransformUncertainty: true,
+                  });
+                  const spend = Object.fromEntries(Object.entries(panel.ch || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
+                  const futureDummy = Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
+                  const futureSteps = Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
+                  const forecast = run && mmmBayesianForecast(run, train, spend, horizon, { futureDummy, futureSteps });
+                  const actual = panel.targets?.[targetName]?.slice(cut, cut + horizon) || [];
+                  if (forecast?.predFut?.length !== actual.length || !actual.length) continue;
+                  const absError = actual.reduce((sum, value, index) => sum + Math.abs(value - forecast.predFut[index]), 0);
+                  const actualSum = actual.reduce((sum, value) => sum + Math.abs(value), 0);
+                  if (actualSum > 1e-9) foldWmapes.push(absError / actualSum * 100);
+                }
+                const mean = foldWmapes.length ? foldWmapes.reduce((sum, value) => sum + value, 0) / foldWmapes.length : Infinity;
+                const variance = foldWmapes.length > 1
+                  ? foldWmapes.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (foldWmapes.length - 1)
+                  : 0;
+                return { mediaPenalty, foldWmapes, wmape: mean, medianWmape: _mmmMedian(foldWmapes), standardError: Math.sqrt(variance / Math.max(1, foldWmapes.length)) };
+              }).filter((item) => item.foldWmapes.length === cuts.length);
+              if (!evaluated.length) return { enabled: false, cfg, selected: null, candidates: [], reason: "fold-fit-failed" };
+              const best = evaluated.reduce((winner, item) => item.wmape < winner.wmape ? item : winner, evaluated[0]);
+              const tolerance = Math.max(0.25, best.standardError || 0);
+              const selected = evaluated
+                .filter((item) => item.wmape <= best.wmape + tolerance)
+                .sort((a, b) => b.mediaPenalty - a.mediaPenalty)[0];
+              return {
+                enabled: true,
+                cfg: { ...cfg, mediaPenalty: selected.mediaPenalty },
+                selected: { ...selected, bestWmape: best.wmape, tolerance, folds: cuts.length },
+                candidates: evaluated,
+                reason: selected.mediaPenalty === best.mediaPenalty ? "lowest-rolling-wmape" : "one-standard-error-more-conservative",
+              };
+            }
+
             function _mmmBayesJointTransformCheck(panel, cfg, targetName, controls, channelMeta, params, uncertainty, options = {}) {
               const eligible = channelMeta
                 .filter((ch) => (uncertainty[ch.key]?.models || []).length > 1)
@@ -3183,7 +3277,13 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               if (!targetSeries?.length || targetSeries.some((value) => !Number.isFinite(value))) return null;
               if (_mmmChans(panel).some((channel) => panel.ch[channel.key]?.some((value) => !Number.isFinite(value)))) return null;
               const baseline = _mmmBayesBaselineSelection(panel, cfg, targetName, options);
-              const effectiveCfg = baseline.cfg;
+              const penaltySelection = mmmBayesianMediaPenaltySelection(panel, baseline.cfg, targetName, options);
+              const effectiveCfg = penaltySelection.cfg;
+              const fitOptions = {
+                ...options,
+                mediaPenalty: effectiveCfg.mediaPenalty,
+                controlPenalty: effectiveCfg.controlPenalty,
+              };
               const controls = _mmmBayesControlFeatures(panel, effectiveCfg);
               const selectedParams = _mmmBayesChannelParams(panel, effectiveCfg, targetName, controls);
               // 참고시장 계수를 타깃과 같은 feature 단위로 추정할 때는 타깃이
@@ -3204,7 +3304,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 names.push("media_" + ch.key);
                 cols.push(mmmAdstock(panel.ch[ch.key], p.alpha).map((v) => mmmHill(v, p.ec, p.slope)));
               }
-              const fitted = _mmmBayesFitColumns(names, cols, channelMeta, targetSeries, options);
+              const fitted = _mmmBayesFitColumns(names, cols, channelMeta, targetSeries, fitOptions);
               if (!fitted) return null;
               const { Xraw, colMean, colScale, X, posterior, absoluteBeta, absoluteIntercept } = fitted;
               // 추정은 표준화 공간에서 안정적으로 하되, 화면 기여는 원 단위 절대기여로
@@ -3215,10 +3315,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               // 변환 불확실성을 평균내어 표시한다.
               const transformUncertainty = options.skipTransformUncertainty
                 ? {}
-                : _mmmBayesTransformUncertainty(panel, effectiveCfg, names, cols, channelMeta, { ...options, targetName, channelParams: params });
+                : _mmmBayesTransformUncertainty(panel, effectiveCfg, names, cols, channelMeta, { ...fitOptions, targetName, channelParams: params });
               const jointTransform = options.skipTransformUncertainty
                 ? { enabled: false, reason: "transform-uncertainty-skipped" }
-                : _mmmBayesJointTransformCheck(panel, effectiveCfg, targetName, controls, channelMeta, params, transformUncertainty, options);
+                : _mmmBayesJointTransformCheck(panel, effectiveCfg, targetName, controls, channelMeta, params, transformUncertainty, fitOptions);
               // 회사 MMM 대시보드처럼 채널별이 아니라 의사결정 단위로 묶는다.
               // MmmColumnMapper의 kind=brand는 Brand, 나머지 매체는 Performance.
               const mediaGroups = [];
@@ -3433,9 +3533,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               // 하이퍼파라미터 선택까지 train 안에서만 하므로 in-sample R²와 분리된 현실 점검이다.
               if (withBacktest && panel.week.length >= 48) {
                 const cut = Math.floor(panel.week.length * 0.8);
-                const slicePanel = (end) => ({ ...panel, week: panel.week.slice(0, end), ch: Object.fromEntries(Object.entries(panel.ch).map(([k, v]) => [k, v.slice(0, end)])), dummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([k, v]) => [k, v.slice(0, end)])), steps: Object.fromEntries(Object.entries(panel.steps || {}).map(([k, v]) => [k, v.slice(0, end)])), targets: Object.fromEntries(Object.entries(panel.targets).map(([k, v]) => [k, v.slice(0, end)])) });
-                const train = slicePanel(cut);
-                const held = mmmBayesianRun(train, effectiveCfg, targetName, false, { ...options, skipTransformUncertainty: true });
+                const train = _mmmBayesSlicePanel(panel, cut);
+                // 전체기간에서 선택한 규제를 holdout 학습에 재사용하지 않는다.
+                // 당시 train 구간에서 같은 rolling 선택을 다시 수행해 누수를 막는다.
+                const held = mmmBayesianRun(train, cfg, targetName, false, { ...options, skipTransformUncertainty: true });
                 const h = panel.week.length - cut;
                 const spend = Object.fromEntries(Object.entries(panel.ch).map(([k, v]) => [k, v.slice(cut)]));
                 const fc = held && mmmBayesianForecast(held, train, spend, h, {
@@ -3484,6 +3585,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 backtest,
                 intervalCalibration,
                 baselineSelection: baseline.selection,
+                mediaPenaltySelection: penaltySelection,
                 effectiveCfg,
                 jointTransform,
                 appliedMediaPriors: options.mediaPriors || {},
