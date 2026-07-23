@@ -14,6 +14,9 @@ import {
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
   mmmForecastRollingSelection,
+  mmmForecastGlobalSeasonality,
+  mmmForecastSeasonalAdjustedPanel,
+  mmmForecastRestoreSeasonality,
   mmmBayesianHealth,
   mmmTrendExistence,
   mmmCannibalization,
@@ -55,6 +58,24 @@ describe("runMmmMethTests (golden port)", () => {
     expect(selection.selected.wmape).toBeLessThanOrEqual(selection.selected.persistenceWmape);
     expect(selection.candidates.some((item) => item.spec === "cost-trend-year-quarter")).toBe(false);
     expect(selection.candidates.every((item) => item.window <= 51)).toBe(true);
+  });
+
+  it("fits full-history seasonality separately and restores it after recent Cost forecast", () => {
+    const week = Array.from({ length: 52 }, (_, index) => index + 1);
+    const target = week.map((value) => 1000 + value * 4 + 120 * Math.sin(2 * Math.PI * value / 13.04));
+    const panel = { week, targets: { Regs: target }, ch: {}, dummy: {}, steps: {} };
+    const seasonal = mmmForecastGlobalSeasonality(panel, "Regs", [13.04]);
+    const adjusted = mmmForecastSeasonalAdjustedPanel(panel, "Regs", seasonal);
+    expect(seasonal?.offsetAt(13)).toBeCloseTo(120 * Math.sin(2 * Math.PI * 13 / 13.04), 3);
+    expect(adjusted.targets.Regs[12]).toBeCloseTo(1052, 2);
+    const restored = mmmForecastRestoreSeasonality({
+      actual: adjusted.targets.Regs,
+      fittedHist: adjusted.targets.Regs,
+      predFut: [1200, 1204], lo: [1180, 1184], hi: [1220, 1224], baselineFut: [1200, 1204],
+      futWeek: [53, 54],
+    }, panel, seasonal);
+    expect(restored.actual[12]).toBeCloseTo(target[12], 6);
+    expect(restored.predFut.every(Number.isFinite)).toBe(true);
   });
 
   it("calibrates only from a sufficiently long chronological holdout and preserves asymmetric tails", () => {
