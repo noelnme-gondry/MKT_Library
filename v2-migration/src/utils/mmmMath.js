@@ -637,7 +637,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             };
 
             export const MMM_METH_CONFIG = {
-              version: "1.2.0",
+              version: "1.3.0",
               // 기본은 연간 1차 조화파만 둔다. 과거의 13주 파형을 무조건 반복하면
               // 매체·이벤트 변동까지 계절성으로 흡수할 수 있으므로, 더 복잡한 모양은
               // rolling holdout에서 이길 때만 아래 후보에서 선택한다.
@@ -649,10 +649,13 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 { id: "annual-3", periods: [52.18, 26.09, 17.39] },
                 { id: "annual-4", periods: [52.18, 26.09, 17.39, 13.04] },
               ],
-              seasonalityMinHistory: 78,
-              seasonalityMinTrain: 52,
-              seasonalityMaxFolds: 3,
-              seasonalityHoldoutWeeks: 12,
+              // 연간 계절성의 존재 여부는 최근 12주 예측 오차로 결정하지 않는다.
+              // 두 번의 연간 주기를 관측한 뒤 전체 이력에서 반복성과 BIC를 확인한다.
+              // 104주 미만은 연간 1차 기본값을 유지하되 "자동 판정 전"으로 표시한다.
+              seasonalityMinHistory: 104,
+              seasonalityBicThreshold: 6,
+              seasonalityComplexityTolerance: 2,
+              seasonalityMinLagCorrelation: 0.15,
               adstockGrid: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
               // Empirical-Bayes 효과 신뢰도는 한 변환을 고정하지 않는다. 채널별 α × 반포화점 ×
               // Hill 기울기 후보의 profile posterior를 평균내되, 계산량은 주간 MMM에 맞춘다.
@@ -3240,60 +3243,99 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               return ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
             }
 
-            // 이벤트·step은 같은 회귀의 별도 제어변수로 유지한 채, 연간 계절성의
-            // 매끄러움만 선택한다. 즉 이벤트 스파이크를 매년 반복되는 계절성으로
-            // 먼저 빼 버리지 않으며, 13주 주기를 기본값으로 강제하지 않는다.
+            function _mmmBayesSeasonalityCandidateFit(panel, cfg, targetName, periods, channelParams, options = {}) {
+              const candidateCfg = { ...cfg, baselineKnots: [], seasonalityPeriods: periods.slice() };
+              const built = _mmmBayesControlFeatures(panel, candidateCfg);
+              const names = built.names.slice();
+              const cols = built.X.length ? built.X[0].map((_, index) => built.X.map((row) => row[index])) : [];
+              const channels = _mmmChans(panel).filter((channel) => panel.ch[channel.key] && channelParams[channel.key]);
+              channels.forEach((channel) => {
+                const params = channelParams[channel.key];
+                names.push("media_" + channel.key);
+                cols.push(mmmAdstock(panel.ch[channel.key], params.alpha).map((value) => mmmHill(value, params.ec, params.slope)));
+              });
+              const y = panel.targets[targetName];
+              if (!names.length) {
+                const mean = _mean(y);
+                const resid = y.map((value) => value - mean);
+                const sse = resid.reduce((sum, value) => sum + value ** 2, 0);
+                return { names, posterior: { fitted: y.map(() => mean), resid }, sse, bic: y.length * Math.log(Math.max(sse / Math.max(1, y.length), 1e-12)) + Math.log(Math.max(2, y.length)) };
+              }
+              const fit = _mmmBayesFitColumns(names, cols, channels, y, {
+                ...options,
+                mediaPenalty: cfg.mediaPenalty,
+                controlPenalty: cfg.controlPenalty,
+              });
+              if (!fit) return null;
+              const sse = fit.posterior.resid.reduce((sum, value) => sum + value ** 2, 0);
+              const bic = y.length * Math.log(Math.max(sse / Math.max(1, y.length), 1e-12))
+                + (names.length + 1) * Math.log(Math.max(2, y.length));
+              return { ...fit, names, sse, bic };
+            }
+
+            // 계절성은 장기 구조이고 Cost 반응은 단기 예측 변수다. 따라서 최근
+            // 12주 오차로 계절성 존폐를 고르지 않는다. 이벤트·step·추세·외부지수와
+            // 고정된 매체 변환을 통제한 전체 이력에서 52주 반복성과 BIC 개선을 먼저
+            // 확인한다. 반복성이 확인된 뒤에만 annual-1~4의 복잡도를 비교한다.
             export function mmmBayesianSeasonalitySelection(panel, cfg, targetName, options = {}) {
               const n = panel.week?.length || 0;
-              const horizon = Math.max(4, Math.min(cfg.seasonalityHoldoutWeeks || 12, Math.floor(n / 3)));
-              const minTrain = Math.max(24, cfg.seasonalityMinTrain || 52);
               const specs = (cfg.seasonalityCandidates || []).filter((spec) => Array.isArray(spec.periods));
-              if (options.enableSeasonalitySelection === false || n < Math.max(cfg.seasonalityMinHistory || 78, minTrain + horizon) || !specs.length) {
+              const minHistory = Math.max(104, cfg.seasonalityMinHistory || 104);
+              if (options.enableSeasonalitySelection === false || n < minHistory || !specs.length) {
                 return { enabled: false, cfg, selected: null, candidates: [], reason: "insufficient-history-or-disabled" };
               }
-              const cuts = [];
-              for (let cut = n - horizon; cut >= minTrain && cuts.length < (cfg.seasonalityMaxFolds || 3); cut -= horizon) cuts.push(cut);
-              if (cuts.length < 2) return { enabled: false, cfg, selected: null, candidates: [], reason: "fewer-than-two-folds" };
+              const neutralCfg = { ...cfg, baselineKnots: [], seasonalityPeriods: [] };
+              const neutralControls = _mmmBayesControlFeatures(panel, neutralCfg);
+              const channelParams = _mmmBayesChannelParams(panel, neutralCfg, targetName, neutralControls);
               const evaluated = specs.map((spec) => {
-                const foldWmapes = [];
-                for (const cut of cuts) {
-                  const train = _mmmBayesSlicePanel(panel, cut);
-                  const run = mmmBayesianRun(train, { ...cfg, seasonalityPeriods: spec.periods }, targetName, false, {
-                    ...options,
-                    enableSeasonalitySelection: false,
-                    enableMediaPenaltySelection: false,
-                    enableBaselineSelection: false,
-                    skipTransformUncertainty: true,
-                  });
-                  const spend = Object.fromEntries(Object.entries(panel.ch || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
-                  const futureDummy = Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
-                  const futureSteps = Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
-                  const futureExternal = Object.fromEntries(Object.entries(panel.external || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)]));
-                  const forecast = run && mmmBayesianForecast(run, train, spend, horizon, { futureDummy, futureSteps, futureExternal });
-                  const actual = panel.targets?.[targetName]?.slice(cut, cut + horizon) || [];
-                  if (forecast?.predFut?.length !== actual.length || !actual.length) continue;
-                  const absoluteError = actual.reduce((sum, value, index) => sum + Math.abs(value - forecast.predFut[index]), 0);
-                  const absoluteActual = actual.reduce((sum, value) => sum + Math.abs(value), 0);
-                  if (absoluteActual > 1e-9) foldWmapes.push(absoluteError / absoluteActual * 100);
-                }
-                const wmape = foldWmapes.length ? foldWmapes.reduce((sum, value) => sum + value, 0) / foldWmapes.length : Infinity;
-                const variance = foldWmapes.length > 1
-                  ? foldWmapes.reduce((sum, value) => sum + (value - wmape) ** 2, 0) / (foldWmapes.length - 1)
-                  : 0;
-                return { ...spec, foldWmapes, wmape, medianWmape: _mmmMedian(foldWmapes), standardError: Math.sqrt(variance / Math.max(1, foldWmapes.length)) };
-              }).filter((item) => item.foldWmapes.length === cuts.length);
-              if (!evaluated.length) return { enabled: false, cfg, selected: null, candidates: [], reason: "fold-fit-failed" };
-              const best = evaluated.reduce((winner, item) => item.wmape < winner.wmape ? item : winner, evaluated[0]);
-              const tolerance = Math.max(0.25, best.standardError || 0);
-              const selected = evaluated
-                .filter((item) => item.wmape <= best.wmape + tolerance)
+                const fit = _mmmBayesSeasonalityCandidateFit(panel, cfg, targetName, spec.periods, channelParams, options);
+                return fit ? { ...spec, bic: fit.bic, sse: fit.sse, residuals: fit.posterior.resid } : null;
+              }).filter(Boolean);
+              const none = evaluated.find((item) => item.periods.length === 0);
+              const annualOne = evaluated.find((item) => item.periods.length === 1 && Math.abs(item.periods[0] - 52.18) < 1);
+              if (!none || !annualOne) return { enabled: false, cfg, selected: null, candidates: evaluated, reason: "required-candidate-fit-failed" };
+              const lag = Math.max(1, Math.round(annualOne.periods[0]));
+              const lagCorrelation = none.residuals.length > lag
+                ? CANNIBAL_STATS.pearson(none.residuals.slice(lag), none.residuals.slice(0, -lag))
+                : null;
+              const bicImprovement = none.bic - annualOne.bic;
+              const relativeSseImprovement = none.sse > 1e-12 ? (none.sse - annualOne.sse) / none.sse : 0;
+              const evidence = {
+                minHistory,
+                observedWeeks: n,
+                lagWeeks: lag,
+                lagCorrelation,
+                bicImprovement,
+                relativeSseImprovement,
+                detected: bicImprovement >= (cfg.seasonalityBicThreshold || 6)
+                  && Number.isFinite(lagCorrelation)
+                  && lagCorrelation >= (cfg.seasonalityMinLagCorrelation ?? 0.15),
+              };
+              const eligible = evidence.detected
+                ? evaluated.filter((item) => item.periods.length > 0)
+                : [none];
+              const best = eligible.reduce((winner, item) => item.bic < winner.bic ? item : winner, eligible[0]);
+              const selected = eligible
+                .filter((item) => item.bic <= best.bic + (cfg.seasonalityComplexityTolerance ?? 2))
                 .sort((a, b) => a.periods.length - b.periods.length || String(a.id).localeCompare(String(b.id)))[0];
+              const publicCandidates = evaluated.map(({ residuals, ...item }) => ({
+                ...item,
+                deltaBicVsNone: none.bic - item.bic,
+              }));
               return {
                 enabled: true,
                 cfg: { ...cfg, seasonalityPeriods: selected.periods.slice() },
-                selected: { ...selected, bestWmape: best.wmape, tolerance, folds: cuts.length },
-                candidates: evaluated,
-                reason: selected.id === best.id ? "lowest-rolling-wmape" : "one-standard-error-smoother-seasonality",
+                selected: {
+                  ...publicCandidates.find((item) => item.id === selected.id),
+                  bestBic: best.bic,
+                  complexityTolerance: cfg.seasonalityComplexityTolerance ?? 2,
+                  evidence,
+                },
+                candidates: publicCandidates,
+                evidence,
+                reason: evidence.detected
+                  ? (selected.id === best.id ? "full-history-recurrence-and-lowest-bic" : "full-history-recurrence-smoother-bic-tie")
+                  : "full-history-recurrence-not-detected",
               };
             }
 
@@ -3397,9 +3439,13 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               if (!targetSeries?.length || targetSeries.some((value) => !Number.isFinite(value))) return null;
               if (_mmmChans(panel).some((channel) => panel.ch[channel.key]?.some((value) => !Number.isFinite(value)))) return null;
               if (Object.values(panel.external || {}).some((series) => series.some((value) => !Number.isFinite(value)))) return null;
-              const baseline = _mmmBayesBaselineSelection(panel, cfg, targetName, options);
-              const seasonalitySelection = mmmBayesianSeasonalitySelection(panel, baseline.cfg, targetName, options);
-              const penaltySelection = mmmBayesianMediaPenaltySelection(panel, seasonalitySelection.cfg, targetName, options);
+              // 장기 계절성을 먼저 전체 이력에서 확정한다. Baseline knot을 먼저
+              // 고르면 저주파 굴절이 연간 파형을 흡수할 수 있으므로, knot은 확정된
+              // 계절성을 유지한 상태에서만 비교한다. 최근 12주 rolling은 이후 매체
+              // 규제 선택에만 사용한다.
+              const seasonalitySelection = mmmBayesianSeasonalitySelection(panel, cfg, targetName, options);
+              const baseline = _mmmBayesBaselineSelection(panel, seasonalitySelection.cfg, targetName, options);
+              const penaltySelection = mmmBayesianMediaPenaltySelection(panel, baseline.cfg, targetName, options);
               const effectiveCfg = penaltySelection.cfg;
               const fitOptions = {
                 ...options,
