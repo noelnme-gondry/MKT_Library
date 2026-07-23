@@ -75,7 +75,7 @@ function seedWithData() {
     const regs = Math.round(gCost / 5000 + mCost / 4200);
     raw.push({ week: w + 1, Regs: regs, g_spend: gCost, m_spend: mCost });
   }
-  const slice = { raw, headers, mapping: {}, fileName: "response.csv" };
+  const slice = { raw, headers, mapping: {}, fileName: "response.csv", currency: "USD" };
   useAppStore.setState({
     currentRouteId: "5-18",
     csvGroups: { ...useAppStore.getState().csvGroups, response: slice },
@@ -101,7 +101,7 @@ function seedWithOsForecastData() {
       meta_ios_cost: metaIos,
     };
   });
-  const slice = { raw, headers, mapping: {}, fileName: "response_os_forecast.csv" };
+  const slice = { raw, headers, mapping: {}, fileName: "response_os_forecast.csv", currency: "USD" };
   useAppStore.setState({
     currentRouteId: "5-18",
     csvGroups: { ...useAppStore.getState().csvGroups, response: slice },
@@ -118,7 +118,7 @@ function seedWithCalendarGap() {
     const date = new Date(start + calendarWeek * 7 * 86400000).toISOString().slice(0, 10);
     raw.push({ date, Regs: 100 + w * 3, g_spend: 50000 + (w % 4) * 8000 });
   }
-  const slice = { raw, headers, mapping: {}, fileName: "response_gap.csv" };
+  const slice = { raw, headers, mapping: {}, fileName: "response_gap.csv", currency: "USD" };
   useAppStore.setState({
     currentRouteId: "5-18",
     csvGroups: { ...useAppStore.getState().csvGroups, response: slice },
@@ -134,7 +134,7 @@ function seedWithOneInvalidTarget() {
     Revenue: week === 9 ? "" : 1000000 + week * 25000,
     g_spend: 50000 + (week % 5) * 7000,
   }));
-  const slice = { raw, headers, mapping: {}, fileName: "response_multi_y.csv" };
+  const slice = { raw, headers, mapping: {}, fileName: "response_multi_y.csv", currency: "USD" };
   useAppStore.setState({
     currentRouteId: "5-18",
     csvGroups: { ...useAppStore.getState().csvGroups, response: slice },

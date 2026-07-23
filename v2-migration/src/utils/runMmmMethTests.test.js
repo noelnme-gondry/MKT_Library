@@ -180,6 +180,26 @@ describe("runMmmMethTests (golden port)", () => {
     expect(run.weeks.every((item) => item.contrib.Performance >= -1e-8)).toBe(true);
   });
 
+  it("keeps baseline knots in natural trend and exposes regime change only for mapped steps", () => {
+    const n = 60;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const spend = week.map((value) => 800 + (value % 9) * 120);
+    const run = mmmBayesianRun({
+      week,
+      ch: { meta: spend },
+      targets: { Regs: week.map((value) => 4000 + value * 20 + (value > 30 ? (value - 30) * 18 : 0) + spend[value - 1] * 0.2) },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+      dummy: {},
+      steps: {},
+    }, {
+      ...MMM_METH_CONFIG,
+      baselineKnots: [30],
+      seasonalityPeriods: [],
+    }, "Regs", false, { skipTransformUncertainty: true });
+    expect(run.groupNames).not.toContain("Regime change");
+    expect(run.weeks.every((item) => item.contrib["Regime change"] == null && Number.isFinite(item.contrib.Trend))).toBe(true);
+  });
+
   it("profile-averages empirical-Bayes channel confidence over carryover and saturation candidates", () => {
     const n = 56;
     const week = Array.from({ length: n }, (_, i) => i + 1);

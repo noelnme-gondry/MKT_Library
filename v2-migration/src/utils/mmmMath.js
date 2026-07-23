@@ -3224,9 +3224,13 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               const mediaGroups = [];
               if (channelMeta.some((ch) => ch.kind !== "brand")) mediaGroups.push("Performance");
               if (channelMeta.some((ch) => ch.kind === "brand")) mediaGroups.push("Brand");
-              const groupNames = ["Trend", "Seasonality", "Holidays & Events", "Regime change", ...mediaGroups];
+              // 구조 변화는 사용자가 `step`으로 명시 매핑한 컬럼만 해당한다.
+              // baseline knot은 자연 추세의 굴절점이지 step이 아니므로 구조 변화로
+              // 묶으면 안 된다.
+              const stepNames = new Set(Object.keys(panel.steps || {}).filter((key) => names.includes(key)));
+              const groupNames = ["Trend", "Seasonality", "Holidays & Events", ...(stepNames.size ? ["Regime change"] : []), ...mediaGroups];
               const groupFor = (name) => {
-                if (name === "trend") return "Trend";
+                if (name === "trend" || name.startsWith("baseline_knot_")) return "Trend";
                 if (/^(sin|cos)_/.test(name)) return "Seasonality";
                 if (name === "lny" || name === "chuseok" || name.startsWith("d_")) return "Holidays & Events";
                 if (name.startsWith("media_")) {
@@ -3235,7 +3239,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                     ? "Brand"
                     : "Performance";
                 }
-                return "Regime change";
+                if (stepNames.has(name)) return "Regime change";
+                // 알려지지 않은 제어변수는 step으로 임의 해석하지 않고 자연 기준선에
+                // 남긴다. 따라서 매핑하지 않은 step이 화면에 생기지 않는다.
+                return "Trend";
               };
               const predictiveSd = (row) => {
                 const quad = row.reduce((sum, value, i) => sum + value * row.reduce((inner, other, j) => inner + posterior.XtXinv[i][j] * other, 0), 0);
@@ -3988,8 +3995,10 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                     ),
                   ]),
                 ),
-                steps: run.names
-                  .filter((name) => !name.startsWith("media_") && name !== "trend" && !/^(sin|cos)_/.test(name) && name !== "lny" && name !== "chuseok" && !name.startsWith("d_"))
+                // 미래 제어 UI도 실제 step 매핑만 노출한다. baseline knot·계절성 같은
+                // 내부 feature를 구조 변화로 잘못 표시하지 않는다.
+                steps: Object.keys(panel.steps || {})
+                  .filter((name) => run.names.includes(name))
                   .map((key) => ({ key, kind: "step", label: key, lastOn: (lastRaw[run.names.indexOf(key)] || 0) > 0.5 })),
               };
             }
