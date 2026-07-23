@@ -1229,7 +1229,7 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
   const health = mmm.health || mmmBayesianHealth(run);
   const identification = run.identification || {};
   const generated = new Date().toISOString();
-  const sourceCurrency = csvData?.currency || "KRW";
+  const sourceCurrency = csvData?.currency || currency || "KRW";
   const marginalStepSource = sourceCurrency === "KRW" ? 1_000_000 : 1_000;
   add("00_Index", [
     [tx("MMM 분석 패키지", "MMM analysis package")],
@@ -2500,12 +2500,17 @@ export default function MarketingResponse({ locale = "ko" }) {
   const displayCurrency = useAppStore((state) => state.displayCurrency);
   const setDisplayCurrency = useAppStore((state) => state.setDisplayCurrency);
   const currencySym = CURRENCY_SYMBOLS[displayCurrency] || "$";
-  // 원본 CSV 통화(업로드 시 지정, 기본 KRW) — 표시 토글과 다르면 실제 배율 변환.
-  // §전에는 토글이 라벨만 바꾸고 숫자는 그대로였음(예: $35k → ₩35k, 오해 유발).
-  const sourceCurrency = csvData?.currency || "KRW";
-  const convAmt = (v) => convertCurrency(v, sourceCurrency, displayCurrency);
+  // 숫자만 있는 CSV는 USD/KRW를 안전하게 추론할 수 없다. 미선택인데 KRW로
+  // 가정해 환산하면 $16,772를 $12처럼 망가뜨리므로, 선택 전에는 환산하지 않는다.
+  const selectedSourceCurrency = ["KRW", "USD"].includes(csvData?.currency) ? csvData.currency : null;
+  const sourceCurrency = selectedSourceCurrency || displayCurrency;
+  const convAmt = (v) => selectedSourceCurrency ? convertCurrency(v, sourceCurrency, displayCurrency) : Number(v);
   const hasData = csvData?.raw?.length > 0;
   const isDemo = !!(csvData?.fileName && csvData.fileName.startsWith("demo_"));
+  const setMmmSourceCurrency = (currency) => {
+    setCsvData({ ...csvData, currency });
+    setDisplayCurrency(currency);
+  };
 
   // 5-18 = colMap DnD가 PRIMARY 매퍼(index.html page_5_18 이식). 단일 generic CSV를
   // 주차/날짜/가입/재활성/채널(perf·brand)/더미/step 역할로 드래그 → 모든 분석(진단·MMM·시뮬)
@@ -4085,11 +4090,13 @@ export default function MarketingResponse({ locale = "ko" }) {
         {!isDemo && (
           <div className="analysis-local-controls" style={{ marginTop: "8px" }}>
             <div className="analysis-local-controls__inner">
-              <span className="analysis-local-controls__label">{tx("CSV 금액 통화", "CSV amount currency")}</span>
-              <span className="muted" style={{ fontSize: "11px" }}>{tx("원본 단위입니다. 선택하면 화면 표시도 같은 통화로 맞춥니다.", "This is the source unit. Selecting it also aligns the display currency.")}</span>
+              <span className="analysis-local-controls__label">{tx("원본 CSV 통화", "Source CSV currency")}</span>
+              <span className="muted" style={{ fontSize: "11px" }}>{selectedSourceCurrency
+                ? tx("원본 단위입니다. 선택하면 화면 표시도 같은 통화로 맞춥니다.", "This is the source unit. Selecting it also aligns the display currency.")
+                : tx("⚠ 숫자만으로 통화를 알 수 없어 환산하지 않습니다. 반드시 선택하세요.", "⚠ Currency cannot be inferred from bare numbers, so no conversion is applied. Select it first.")}</span>
               <div className="ab-pillgroup" style={{ margin: 0 }}>
-                <button className={`ab-pill ${sourceCurrency === "KRW" ? "active" : ""}`} onClick={() => { setCsvData({ ...csvData, currency: "KRW" }); setDisplayCurrency("KRW"); }}>{tx("원 ₩", "KRW ₩")}</button>
-                <button className={`ab-pill ${sourceCurrency === "USD" ? "active" : ""}`} onClick={() => { setCsvData({ ...csvData, currency: "USD" }); setDisplayCurrency("USD"); }}>{tx("달러 $", "USD $")}</button>
+                <button className={`ab-pill ${selectedSourceCurrency === "KRW" ? "active" : ""}`} onClick={() => setMmmSourceCurrency("KRW")}>{tx("원 ₩", "KRW ₩")}</button>
+                <button className={`ab-pill ${selectedSourceCurrency === "USD" ? "active" : ""}`} onClick={() => setMmmSourceCurrency("USD")}>{tx("달러 $", "USD $")}</button>
               </div>
             </div>
           </div>
@@ -4178,6 +4185,14 @@ export default function MarketingResponse({ locale = "ko" }) {
               </button>
             ))}
             {segmentSel.truncated && <span style={{ fontSize: "10.5px", color: "#f59e0b" }}>{tx("⚠ 상위 20개만", "⚠ Top 20 only")}</span>}
+          </div>
+        )}
+        {!isDemo && (
+          <div className="ab-pillgroup" style={{ margin: 0 }}>
+            <span className="ab-pillgroup-label" title={tx("원본 CSV에 적힌 금액의 통화입니다. 표시 통화 토글과 다릅니다.", "The currency of values in the original CSV. This differs from the display-currency toggle.")}>{tx("원본 통화", "Source currency")}</span>
+            <button className={`ab-pill ${selectedSourceCurrency === "KRW" ? "active" : ""}`} onClick={() => setMmmSourceCurrency("KRW")}>KRW ₩</button>
+            <button className={`ab-pill ${selectedSourceCurrency === "USD" ? "active" : ""}`} onClick={() => setMmmSourceCurrency("USD")}>USD $</button>
+            {!selectedSourceCurrency && <span style={{ color: "#b45309", fontSize: "10.5px" }}>{tx("선택 필요", "choose")}</span>}
           </div>
         )}
         {mmm && !mmm.empty && (
