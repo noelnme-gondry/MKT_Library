@@ -2534,14 +2534,13 @@ export default function MarketingResponse({ locale = "ko" }) {
   // 타깃·플랫폼·prior를 처음 전환할 때도 수백 회 profile/rolling fit이 필요할 수
   // 있다. 오버레이를 두 프레임 먼저 그린 뒤 상태를 커밋해 첫 클릭이 멈춘 것처럼
   // 보이지 않게 한다. 같은 조합 재방문은 위 WeakMap 캐시에서 즉시 반환된다.
-  const deferMmmUpdate = useCallback((update, { scrollTop = false } = {}) => {
+  const deferMmmUpdate = useCallback((update) => {
     const transition = ++analysisTransitionRef.current;
     setIsAnalyzing(true);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (transition !== analysisTransitionRef.current) return;
         update();
-        if (scrollTop) window.scrollTo({ top: 0, behavior: "smooth" });
         requestAnimationFrame(() => {
           if (transition === analysisTransitionRef.current) setIsAnalyzing(false);
         });
@@ -2550,9 +2549,10 @@ export default function MarketingResponse({ locale = "ko" }) {
   }, []);
   // 분석하기: 무거운 mmm useMemo가 커밋 렌더에서 동기 실행되므로, 로딩 오버레이를 먼저
   // 페인트(더블 rAF)한 뒤 시그니처를 커밋 → "멈춤" 대신 "분석 중" 표시(§7 성능).
+  // 분석 시작은 현재 매핑 위치에서 하는 행동이므로 스크롤을 강제로 옮기지 않는다.
   const runMmmAnalyze = (sig) => {
     trackProductEvent("analysis_started", { tool_id: "5-18", source: isDemo ? "demo" : "csv", row_count: csvData?.raw?.length || 0, analysis_type: "mmm" });
-    deferMmmUpdate(() => setMmmAnalyzedSig(sig), { scrollTop: true });
+    deferMmmUpdate(() => setMmmAnalyzedSig(sig));
   };
   // 플랫폼 필터(Total/Android/iOS) — colMap 헤더 태그(_android/_ios) 기준. 태그 없으면 토글 자체 숨김.
   const [platformFilter, setPlatformFilter] = useState("all"); // all | android | ios
