@@ -150,7 +150,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
         else once[role] = true;
       }
       out[h] = { role, kind: g.kind };
-      if (["reg", "react", "traffic", "purchasers", "revenue", "channel"].includes(role)) out[h].plat = guessPlat(h);
+      if (["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step"].includes(role)) out[h].plat = guessPlat(h);
       continue;
     }
     // partial: 강한 키워드만. isNum·isBin·isDateCol 판정 후 reg/react/channel/date만.
@@ -185,7 +185,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
     }
     if (role === "date") { if (once.date) role = "ignore"; else once.date = true; }
     out[h] = { role, kind };
-    if (["reg", "react", "traffic", "purchasers", "revenue", "channel"].includes(role)) out[h].plat = guessPlat(h);
+    if (["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step"].includes(role)) out[h].plat = guessPlat(h);
   }
   return out;
 }
@@ -402,6 +402,10 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   const tagMode = !r.platform && mmmPlatformTags(headers, colMap).length > 0;
   const P = platform === "all" ? null : platform;
   const inPlat = (x) => !tagMode || !P || x.plat === P || x.plat === "common";
+  // OS가 분리된 회귀에서는 귀속을 알 수 없는 `other_cost`를 매체 효과로
+  // 추정하면 Android/iOS 계수가 왜곡된다. 사용자가 명시적으로 채널로
+  // 매핑했더라도 이 패널에서는 제외한다.
+  const isAmbiguousOtherCost = (x) => /(^|[_\s])(other|etc|misc|기타)([_\s]|$)/i.test(String(x.header || x.label || ""));
   let baseRows = rows || [];
   if (r.platform && P) baseRows = baseRows.filter((row) => String(row[r.platform]) === P);
   const expectedSegments = r.platform
@@ -639,10 +643,12 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   const labelC = r.date || (weekC ? weekC.header : null);
   const weekLabelRaw = labelC ? baseRows.map((row) => row[labelC]) : null;
   const panel = { week: baseRows.map((_, i) => i + 1), ch: {}, dummy: {}, steps: {}, targets: {} };
-  const chans = r.channels.filter(inPlat);
+  const chans = r.channels.filter((channel) => inPlat(channel) && !isAmbiguousOtherCost(channel));
+  const dummies = r.dummies.filter(inPlat);
+  const steps = r.steps.filter(inPlat);
   for (const ch of chans) panel.ch[ch.key] = num(ch.header, true);
-  for (const d of r.dummies) panel.dummy[d.key] = baseRows.map((row) => mmmParseBinaryIndicator(row[d.header], "dummy"));
-  for (const s of r.steps) panel.steps[s.key] = baseRows.map((row) => mmmParseBinaryIndicator(row[s.header], "step"));
+  for (const d of dummies) panel.dummy[d.key] = baseRows.map((row) => mmmParseBinaryIndicator(row[d.header], "dummy"));
+  for (const s of steps) panel.steps[s.key] = baseRows.map((row) => mmmParseBinaryIndicator(row[s.header], "step"));
   // 종속(타깃): 플랫폼 일치 컬럼을 index별 벡터 합산 — Total이면 Android+iOS 합(이전엔 pick=1개만
   // 골라 Total인데 한 OS 값만 나오던 버그). X(채널)는 이미 filter라 대칭.
   const sumCols = (list) => {
@@ -674,9 +680,9 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   }
   // deriveWide와 동일한 패널 형태로 — 엔진(mmmChannelEffects/decomp)·렌더가 참조.
   panel.channels = chans.map((c) => ({ key: c.key, label: c.label, kind: c.kind }));
-  panel.dummyDefs = r.dummies.map((d) => ({ key: d.key, label: d.label }));
-  panel.stepDefs = r.steps.map((s) => ({ key: s.key, label: s.label }));
-  panel.useDummies = r.dummies.length > 0;
+  panel.dummyDefs = dummies.map((d) => ({ key: d.key, label: d.label }));
+  panel.stepDefs = steps.map((s) => ({ key: s.key, label: s.label }));
+  panel.useDummies = dummies.length > 0;
   // 차트·예측 라벨: mmmForecast/차트는 panel.dateLabel·dates·granularity를 읽음(weekLabel 아님) →
   // 매핑된 주차/날짜 라벨을 그 이름들로도 노출해야 x축·미래라벨이 실제 날짜(t 인덱스 아님)로 나옴.
   panel.dateLabel = panel.weekLabel || null;
@@ -736,8 +742,8 @@ const ZONES = [
   ["purchasers", "🛍 구매자 Purchasers", "🛍 Purchasers", false, true],
   ["revenue", "💰 매출 Revenue", "💰 Revenue", false, true],
   ["channel", "📈 채널 spend (여러 개 · perf/brand · 플랫폼)", "📈 Channel spend (many · perf/brand · platform)", true, true],
-  ["dummy", "🔢 더미/이벤트 (0·1 · true/false · yes/no · on/off)", "🔢 Dummy/event (0/1 · true/false · yes/no · on/off)", false, false],
-  ["step", "📐 구조변화 step (0·1 · pre/post · before/after)", "📐 Structural step (0/1 · pre/post · before/after)", false, false],
+  ["dummy", "🔢 더미/이벤트 (0·1 · true/false · yes/no · on/off)", "🔢 Dummy/event (0/1 · true/false · yes/no · on/off)", false, true],
+  ["step", "📐 구조변화 step (0·1 · pre/post · before/after)", "📐 Structural step (0/1 · pre/post · before/after)", false, true],
   ["platform", "🔀 세그먼트/플랫폼 단일 컬럼 (선택 · 성별·플랫폼·국가 등 값별로 나눠보기)", "🔀 Segment/platform single column (optional · split by gender/platform/country, etc.)", false, false],
 ];
 
@@ -754,7 +760,7 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
       }
     }
     const prev = next[col] || {};
-    next[col] = { ...prev, role, plat: ["reg", "react", "traffic", "purchasers", "revenue", "channel"].includes(role) ? prev.plat || guessPlat(col) : prev.plat };
+    next[col] = { ...prev, role, plat: ["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step"].includes(role) ? prev.plat || guessPlat(col) : prev.plat };
     onChange(next);
   };
   const setField = (col, field, value) => {

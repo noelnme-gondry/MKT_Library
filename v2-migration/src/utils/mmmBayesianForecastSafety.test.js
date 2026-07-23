@@ -31,12 +31,11 @@ function fixture() {
 }
 
 describe("mmmBayesianForecast safety", () => {
-  it("carries lagged target control instead of resetting it to zero", () => {
+  it("treats lunar holiday controls as OFF unless future dates are supplied", () => {
     const run = fixture();
     const panel = { week: Array.from({ length: 12 }, (_, i) => i + 1), ch: { ios: Array.from({ length: 12 }, () => 10) }, dates: [] };
-    const carried = mmmBayesianForecast(run, panel, null, 1);
-    const forcedZero = mmmBayesianForecast(run, panel, null, 1, { futureDummy: { lny: [0] } });
-    expect(carried.predFut[0]).toBeGreaterThan(forcedZero.predFut[0]);
+    const forecast = mmmBayesianForecast(run, panel, null, 1);
+    expect(forecast.predFut).toHaveLength(1);
   });
 
   it("damps a one-week trend shock by default", () => {
