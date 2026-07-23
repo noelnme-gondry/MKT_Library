@@ -763,6 +763,8 @@ const ZONES = [
 export default function MmmColumnMapper({ headers, rows, colMap, onChange, locale = "ko" }) {
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const [dragCol, setDragCol] = useState(null);
+  const [selectedCol, setSelectedCol] = useState(null);
+  const [dragOverRole, setDragOverRole] = useState(null);
   const cm = colMap || {};
 
   const setRole = (col, role) => {
@@ -780,6 +782,30 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
     onChange({ ...cm, [col]: { ...(cm[col] || {}), [field]: value } });
   };
 
+  // React state만으로 drag 대상을 기억하면 브라우저가 onDrop 전에 렌더를 끊는
+  // 경우 대상이 사라질 수 있다. native DataTransfer에도 함께 넣어 한 번의 drag로
+  // 안정적으로 배치하고, click→zone 선택은 드래그가 불안정한 환경의 즉시 대안이다.
+  const beginDrag = (event, col) => {
+    setDragCol(col);
+    setSelectedCol(col);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("application/x-mmm-column", col);
+      event.dataTransfer.setData("text/plain", col);
+    }
+  };
+  const draggedColumn = (event) => event.dataTransfer?.getData("application/x-mmm-column")
+    || event.dataTransfer?.getData("text/plain")
+    || dragCol
+    || selectedCol;
+  const placeColumn = (col, role) => {
+    if (!col) return;
+    setRole(col, role);
+    setDragCol(null);
+    setSelectedCol(null);
+    setDragOverRole(null);
+  };
+
   const inRole = (role) => (headers || []).filter((h) => (cm[h]?.role || "ignore") === role);
 
   const Chip = ({ col, withKind, withPlat }) => {
@@ -788,33 +814,39 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
       <span
         className="reg-chip"
         draggable
-        onDragStart={() => setDragCol(col)}
-        style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 8px", margin: "2px", borderRadius: "6px", background: "var(--bg-2)", border: "1px solid var(--border)", fontSize: "12px", cursor: "grab" }}
+        onDragStart={(event) => beginDrag(event, col)}
+        onDragEnd={() => { setDragCol(null); setDragOverRole(null); }}
+        onClick={(event) => { event.stopPropagation(); setSelectedCol(col); }}
+        style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "4px 9px", margin: "2px", borderRadius: "6px", background: selectedCol === col ? "color-mix(in srgb, var(--primary) 14%, var(--bg-2))" : "var(--bg-2)", border: selectedCol === col ? "1px solid var(--primary)" : "1px solid var(--border)", boxShadow: selectedCol === col ? "0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent)" : "none", fontSize: "12px", cursor: "grab", userSelect: "none", WebkitUserSelect: "none" }}
       >
         <strong>{col}</strong>
         {withKind && (
-          <select value={def.kind || "perf"} onChange={(e) => setField(col, "kind", e.target.value)} style={{ fontSize: "11px" }}>
+          <select value={def.kind || "perf"} onClick={(event) => event.stopPropagation()} onChange={(e) => setField(col, "kind", e.target.value)} style={{ fontSize: "11px" }}>
             <option value="perf">perf spend</option>
             <option value="brand">brand spend</option>
           </select>
         )}
         {withPlat && (
-          <select value={def.plat || "common"} onChange={(e) => setField(col, "plat", e.target.value)} style={{ fontSize: "11px" }}>
+          <select value={def.plat || "common"} onClick={(event) => event.stopPropagation()} onChange={(e) => setField(col, "plat", e.target.value)} style={{ fontSize: "11px" }}>
             <option value="common">{tr("공통", "Common")}</option>
             <option value="android">Android</option>
             <option value="ios">iOS</option>
           </select>
         )}
-        <span onClick={() => setRole(col, "ignore")} style={{ cursor: "pointer", color: "var(--text-muted)" }}>✕</span>
+        <span onClick={(event) => { event.stopPropagation(); placeColumn(col, "ignore"); }} style={{ cursor: "pointer", color: "var(--text-muted)" }}>✕</span>
       </span>
     );
   };
 
   const Zone = ({ role, label, withKind, withPlat }) => (
     <div
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => { e.preventDefault(); if (dragCol) setRole(dragCol, role); setDragCol(null); }}
-      style={{ border: "1px dashed var(--border)", borderRadius: "8px", padding: "8px", minHeight: "44px" }}
+      data-mmm-role-zone={role}
+      onDragEnter={(event) => { event.preventDefault(); setDragOverRole(role); }}
+      onDragOver={(event) => { event.preventDefault(); if (event.dataTransfer) event.dataTransfer.dropEffect = "move"; setDragOverRole(role); }}
+      onDragLeave={() => setDragOverRole((current) => current === role ? null : current)}
+      onDrop={(event) => { event.preventDefault(); placeColumn(draggedColumn(event), role); }}
+      onClick={() => placeColumn(selectedCol, role)}
+      style={{ border: dragOverRole === role ? "2px solid var(--primary)" : "1px dashed var(--border)", borderRadius: "8px", padding: "10px", minHeight: "58px", background: dragOverRole === role ? "color-mix(in srgb, var(--primary) 8%, var(--bg-1))" : selectedCol ? "color-mix(in srgb, var(--primary) 3%, var(--bg-1))" : "transparent", cursor: selectedCol ? "pointer" : "default", transition: "border-color 120ms ease, background 120ms ease" }}
     >
       <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>{label}</div>
       <div>
@@ -834,7 +866,9 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
         <p className="muted" style={{ fontSize: "12px", margin: 0 }}>
-          {tr("컬럼을 역할 영역으로 드래그하세요. 칩을 끌어 언제든 수정 가능합니다.", "Drag columns onto a role zone. Drag chips to adjust anytime.")}
+          {selectedCol
+            ? tr(`“${selectedCol}” 선택됨 — 넣을 역할 영역을 한 번 클릭하세요.`, `“${selectedCol}” selected — click the role zone to place it.`)
+            : tr("컬럼을 역할 영역으로 드래그하거나, 칩을 한 번 클릭한 뒤 역할 영역을 클릭하세요.", "Drag columns onto a role zone, or click a chip once and then click a role zone.")}
         </p>
         <button
           type="button"
@@ -845,8 +879,8 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
         </button>
       </div>
       <div
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => { e.preventDefault(); if (dragCol) setRole(dragCol, "ignore"); setDragCol(null); }}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => { event.preventDefault(); placeColumn(draggedColumn(event), "ignore"); }}
         style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "8px", marginBottom: "10px" }}
       >
         <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>{tr("📦 컬럼 (미지정 — 드래그해서 배치)", "📦 Columns (unassigned — drag to place)")}</div>
