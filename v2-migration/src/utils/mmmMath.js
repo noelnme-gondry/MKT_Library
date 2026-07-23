@@ -3031,7 +3031,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   const fit = _mmmBayesFitColumns(names, cols, channelMeta, y, options);
                   const params = options.channelParams?.[ch.key];
                   if (fit && params) {
-                    const beta = fit.absoluteBeta[colIndex];
+                    // Profile/출력 경로도 매체 절대기여의 비음수 제약을 유지한다.
+                    const beta = Math.max(0, fit.absoluteBeta[colIndex]);
                     const sd = fit.posterior.sd[colIndex + 1] / fit.colScale[colIndex];
                     result[ch.key] = {
                       beta,
@@ -3070,7 +3071,8 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   candidateCols[colIndex] = candidate.values;
                   const fit = _mmmBayesFitColumns(names, candidateCols, channelMeta, y, options);
                   if (!fit) continue;
-                  const beta = fit.absoluteBeta[colIndex];
+                  // Profile/출력 경로도 매체 절대기여의 비음수 제약을 유지한다.
+                  const beta = Math.max(0, fit.absoluteBeta[colIndex]);
                   const sd = fit.posterior.sd[colIndex + 1] / fit.colScale[colIndex];
                   const sse = fit.posterior.resid.reduce((sum, value) => sum + value * value, 0);
                   const bic = y.length * Math.log(Math.max(sse / Math.max(1, y.length), 1e-12)) + names.length * Math.log(Math.max(2, y.length));
@@ -3276,9 +3278,11 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 const uncertainty = transformUncertainty[ch.key];
                 const models = (uncertainty?.models || [{ alpha: p.alpha, ec: p.ec, slope: p.slope, beta: conditionalBeta, sd: conditionalSd, weight: 1 }]).map((model) => ({
                   ...model,
+                  // 외부 prior·profile 평균도 0-spend 대비 절대기여 계약을 지킨다.
+                  beta: Math.max(0, Number(model.beta) || 0),
                   historicalAdstockMax: mmmAdstock(raw, model.alpha).reduce((maximum, value) => Number.isFinite(value) ? Math.max(maximum, value) : maximum, 0),
                 }));
-                const beta = uncertainty?.beta ?? conditionalBeta;
+                const beta = Math.max(0, uncertainty?.beta ?? conditionalBeta);
                 const sd = uncertainty?.sd ?? conditionalSd;
                 // 반응곡선의 x축은 "한 주만 집행"이 아니라 지속 가능한 주간 예산 수준이다.
                 // 기하 adstock의 정상상태 spend/(1-alpha)를 써야 alpha가 곡선·marginal에 반영된다.
