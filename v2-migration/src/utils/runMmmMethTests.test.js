@@ -5,6 +5,7 @@
 // checks and adds browser empirical-Bayes prior/forecast safeguards.
 import { describe, it, expect } from "vitest";
 import { _mmrLcg } from "./testFixtures.js";
+import { buildDemoCsv } from "./demoData.js";
 import {
   MMM_METH_CONFIG,
   mmmExternalRelativeIndex,
@@ -275,7 +276,7 @@ describe("runMmmMethTests (golden port)", () => {
     expect(run.effectiveCfg.mediaPenalty).toBe(selection.cfg.mediaPenalty);
   });
 
-  it("selects the smoothest seasonal shape that survives chronological holdouts", () => {
+  it("detects annual recurrence from full history instead of recent 12-week holdouts", () => {
     const n = 104;
     const week = Array.from({ length: n }, (_, index) => index + 1);
     const target = week.map((value) => 4000
@@ -286,10 +287,7 @@ describe("runMmmMethTests (golden port)", () => {
       steps: {},
       includeTrend: false,
       adstockGrid: [0],
-      seasonalityMinHistory: 78,
-      seasonalityMinTrain: 52,
-      seasonalityHoldoutWeeks: 12,
-      seasonalityMaxFolds: 3,
+      seasonalityMinHistory: 104,
       seasonalityCandidates: [
         { id: "none", periods: [] },
         { id: "annual-1", periods: [52.18] },
@@ -300,11 +298,85 @@ describe("runMmmMethTests (golden port)", () => {
     const panel = { week, ch: {}, targets: { Regs: target }, channels: [], dummy: {}, steps: {} };
     const selection = mmmBayesianSeasonalitySelection(panel, cfg, "Regs", { skipTransformUncertainty: true });
     expect(selection.enabled).toBe(true);
-    expect(selection.selected.folds).toBe(3);
+    expect(selection.evidence.detected).toBe(true);
+    expect(selection.evidence.observedWeeks).toBe(104);
+    expect(selection.evidence.lagWeeks).toBe(52);
+    expect(selection.evidence.bicImprovement).toBeGreaterThan(6);
     expect(selection.selected.id).toBe("annual-2");
+    expect(selection.candidates.every((candidate) => Number.isFinite(candidate.bic))).toBe(true);
+    expect(selection.candidates.every((candidate) => candidate.foldWmapes == null)).toBe(true);
     const run = mmmBayesianRun(panel, cfg, "Regs", false, { skipTransformUncertainty: true });
     expect(run.seasonalitySelection.selected.id).toBe("annual-2");
     expect(run.seasonalityPeriods).toEqual([52.18, 26.09]);
+  });
+
+  it("does not let a baseline knot erase a detected annual recurrence", () => {
+    const n = 104;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const target = week.map((value) => 5000
+      + value * 8
+      + (value > 58 ? (value - 58) * 4 : 0)
+      + 720 * Math.sin((2 * Math.PI * value) / 52.18));
+    const cfg = {
+      ...MMM_METH_CONFIG,
+      steps: {},
+      includeTrend: true,
+      baselineMinHistory: 78,
+      seasonalityMinHistory: 104,
+      adstockGrid: [0],
+    };
+    const panel = { week, ch: {}, targets: { Regs: target }, channels: [], dummy: {}, steps: {} };
+    const run = mmmBayesianRun(panel, cfg, "Regs", false, { skipTransformUncertainty: true });
+    expect(run.seasonalitySelection.evidence.detected).toBe(true);
+    expect(run.seasonalityPeriods.length).toBeGreaterThan(0);
+    expect(run.seasonalitySelection.reason).toMatch(/^full-history-recurrence/);
+  });
+
+  it("keeps configured annual seasonality before two complete yearly cycles", () => {
+    const n = 80;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const cfg = {
+      ...MMM_METH_CONFIG,
+      steps: {},
+      seasonalityPeriods: [52.18],
+      seasonalityMinHistory: 104,
+    };
+    const panel = {
+      week,
+      ch: {},
+      targets: { Regs: week.map((value) => 4000 + 300 * Math.sin((2 * Math.PI * value) / 52.18)) },
+      channels: [],
+      dummy: {},
+      steps: {},
+    };
+    const selection = mmmBayesianSeasonalitySelection(panel, cfg, "Regs", { skipTransformUncertainty: true });
+    expect(selection.enabled).toBe(false);
+    expect(selection.cfg.seasonalityPeriods).toEqual([52.18]);
+    expect(selection.reason).toBe("insufficient-history-or-disabled");
+  });
+
+  it("retains the response demo's annual demand cycle when media spend is also seasonal", () => {
+    const demo = buildDemoCsv("response");
+    const keys = ["google_spend", "meta_spend", "tiktok_spend", "brand_spend"];
+    const panel = {
+      week: demo.raw.map((_, index) => index + 1),
+      ch: Object.fromEntries(keys.map((key) => [key, demo.raw.map((row) => Number(row[key]))])),
+      targets: { Regs: demo.raw.map((row) => Number(row.signups)) },
+      channels: keys.map((key) => ({ key, label: key, kind: "perf" })),
+      dummy: {},
+      steps: {},
+      external: {},
+    };
+    const selection = mmmBayesianSeasonalitySelection(panel, {
+      ...MMM_METH_CONFIG,
+      steps: {},
+      baselineKnots: [],
+      seasonalityMinHistory: 104,
+    }, "Regs", { skipTransformUncertainty: true });
+    expect(selection.enabled).toBe(true);
+    expect(selection.evidence.detected).toBe(true);
+    expect(selection.selected.id).not.toBe("none");
+    expect(selection.cfg.seasonalityPeriods.length).toBeGreaterThan(0);
   });
 
   it("keeps baseline knots in natural trend and exposes regime change only for mapped steps", () => {
