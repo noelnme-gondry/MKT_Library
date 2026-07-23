@@ -79,6 +79,22 @@ describe("MMM column mapping", () => {
     expect(panel.week).toEqual([1, 2]);
   });
 
+  it("groups daily MMM input by the selected Sunday or Monday week start", () => {
+    const headers = ["date", "regs", "spend"];
+    const map = { date: { role: "date" }, regs: { role: "reg" }, spend: { role: "channel", kind: "perf", plat: "common" } };
+    const rows = Array.from({ length: 14 }, (_, day) => ({
+      date: new Date(Date.UTC(2025, 0, 5 + day)).toISOString().slice(0, 10),
+      regs: "10", spend: "20",
+    }));
+    const sunday = buildPanelFromColMap(headers, rows, map, "all", "ko", null, { weekStart: "sunday" }).panel;
+    const monday = buildPanelFromColMap(headers, rows, map, "all", "ko", null, { weekStart: "monday" }).panel;
+    expect(sunday.weekLabel).toEqual(["2025-01-05", "2025-01-12"]);
+    expect(sunday.targets.Regs).toEqual([70, 70]);
+    expect(monday.weekLabel).toEqual(["2025-01-06"]);
+    expect(monday.targets.Regs).toEqual([70]);
+    expect(monday.timeDiagnostics.boundaryPartialWeeks).toBe(2);
+  });
+
   it("records missing calendar weeks instead of compressing adstock time silently", () => {
     const headers = ["date", "regs", "meta_spend"];
     const rows = [
