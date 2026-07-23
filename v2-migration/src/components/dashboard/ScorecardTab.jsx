@@ -3,7 +3,8 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
-import { getMonFilteredRows, aggregateByKey, fmtCurrencyPrecise, effectiveDenomBasis } from "@/utils/dashboardAggregator";
+import { getMonFilteredRows, aggregateByKey, fmtCurrencyCompact, fmtCurrencyPrecise, effectiveDenomBasis } from "@/utils/dashboardAggregator";
+import { convertCurrency } from "@/utils/format";
 import { chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
@@ -136,14 +137,17 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
 
   const cards = useMemo(() => {
     if (!hasData) return [];
-    const fmtCurrency = (v) => fmtCurrencyPrecise(v, displayCurrency);
+    const sourceCurrency = ["KRW", "USD"].includes(csvData?.currency) ? csvData.currency : displayCurrency;
+    const currencyValue = (v) => convertCurrency(v, sourceCurrency, displayCurrency);
+    const fmtCurrency = (v) => fmtCurrencyPrecise(currencyValue(v), displayCurrency);
+    const fmtCurrencyCard = (v) => fmtCurrencyCompact(currencyValue(v), displayCurrency, locale);
     const mapped = new Set(Object.values(mapping));
     const hasRev = mapped.has("revenue_d7");
 
     // 기본 지표 카드 — chartable=일별 상세 차트 지원.
     const L = { cost: scLabel("cost"), inst: scLabel("inst"), cpi: scLabel("cpi"), act: scLabel("act"), cpa: scLabel("cpa"), cvr: scLabel("cvr"), ctr: scLabel("ctr"), roas: scLabel("roas") };
     const base = [
-      { k: "cost", label: L.cost, val: recent.cost, prev: prev.cost, fmt: fmtCurrency, better: "none", chartable: true },
+      { k: "cost", label: L.cost, val: recent.cost, prev: prev.cost, fmt: fmtCurrencyCard, better: "none", chartable: true },
       mapped.has("installs") && { k: "inst", label: L.inst, val: recent.inst, prev: prev.inst, fmt: v => Math.round(v).toLocaleString(), better: "high", chartable: true },
       mapped.has("installs") && { k: "cpi", label: L.cpi, val: recent.cpi, prev: prev.cpi, fmt: v => v != null ? fmtCurrency(v) : "—", better: "low", chartable: true },
       mapped.has("actions") && { k: "act", label: L.act, val: recent.act, prev: prev.act, fmt: v => Math.round(v).toLocaleString(), better: "high", chartable: true },
@@ -156,7 +160,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
     // 프리셋(이익·이익률) — 매출 있을 때. 일별 상세 차트 지원.
     const presets = [];
     if (hasRev) {
-      presets.push({ k: "profit", label: T.profit, val: recent.revenue - recent.cost, prev: prev.revenue - prev.cost, fmt: fmtCurrency, better: "high", chartable: true });
+      presets.push({ k: "profit", label: T.profit, val: recent.revenue - recent.cost, prev: prev.revenue - prev.cost, fmt: fmtCurrencyCard, better: "high", chartable: true });
       presets.push({ k: "profitMargin", label: T.profitMargin, val: recent.revenue ? (recent.revenue - recent.cost) / recent.revenue : null, prev: prev.revenue ? (prev.revenue - prev.cost) / prev.revenue : null, fmt: v => v != null ? (v * 100).toFixed(1) + "%" : "—", better: "high", chartable: true });
     }
     // 커스텀 지표(공유 스코프) — recent/prev 각각 compute해 값+WoW. 일별 상세 차트 지원(seriesVal에서 def 재조회).
@@ -166,7 +170,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
     });
 
     return [...base, ...presets, ...customCards];
-  }, [hasData, recent, prev, mapping, displayCurrency, customMetrics, T, scLabel]);
+  }, [hasData, recent, prev, mapping, displayCurrency, csvData, locale, customMetrics, T, scLabel]);
 
   // 커스텀 지표 빌더 피연산자 = 실제 매핑된 컬럼만.
   const builderFields = useMemo(() => {

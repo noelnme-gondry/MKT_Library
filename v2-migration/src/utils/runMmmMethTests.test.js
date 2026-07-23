@@ -7,6 +7,7 @@ import { describe, it, expect } from "vitest";
 import { _mmrLcg } from "./testFixtures.js";
 import {
   MMM_METH_CONFIG,
+  mmmExternalRelativeIndex,
   mmmValidate,
   mmmSelectAdstock,
   mmmRunMmm,
@@ -206,7 +207,8 @@ describe("runMmmMethTests (golden port)", () => {
     const week = Array.from({ length: n }, (_, index) => index + 1);
     const spend = week.map((value) => 500 + ((value * 7) % 9) * 80);
     const market = week.map((value) => 900 + ((value * 11) % 13) * 120);
-    const target = week.map((_, index) => 2400 + spend[index] * 0.5 + market[index] * 1.8);
+    const marketReference = Math.exp(market.reduce((sum, value) => sum + Math.log(value), 0) / market.length);
+    const target = week.map((_, index) => 4200 + spend[index] * 0.5 + Math.log(market[index] / marketReference) * 1800);
     const cfg = { ...MMM_METH_CONFIG, includeTrend: false, seasonalityPeriods: [], adstockGrid: [0], bayesHalfSaturationQuantiles: [0.6], bayesHillSlopeGrid: [1] };
     const panel = {
       week,
@@ -221,9 +223,20 @@ describe("runMmmMethTests (golden port)", () => {
     expect(run.groupNames).toContain("Industry Trend");
     expect(run.names).toContain("industry_dating_market");
     expect(run.weeks.some((item) => Math.abs(item.contrib["Industry Trend"]) > 1e-6)).toBe(true);
+    expect(Math.abs(run.weeks.reduce((sum, item) => sum + item.contrib["Industry Trend"], 0) / n)).toBeLessThan(1e-6);
     const forecast = mmmBayesianForecast(run, panel, { meta: [1000] }, 1, { futureExternal: { dating_market: [1600] } });
     const held = mmmBayesianForecast(run, panel, { meta: [1000] }, 1, { futureExternal: { dating_market: [market.at(-1)] } });
     expect(forecast.predFut[0]).not.toBeCloseTo(held.predFut[0], 6);
+  });
+
+  it("uses industry inputs as scale-invariant relative market demand, not raw installs", () => {
+    const base = [100, 110, 90, 130, 120];
+    const scaled = base.map((value) => value * 1000);
+    const first = mmmExternalRelativeIndex(base);
+    const second = mmmExternalRelativeIndex(scaled);
+    expect(first.mode).toBe("log-relative");
+    expect(first.values.reduce((sum, value) => sum + value, 0) / first.values.length).toBeCloseTo(0, 12);
+    first.values.forEach((value, index) => expect(value).toBeCloseTo(second.values[index], 12));
   });
 
   it("chooses media regularization from chronological holdouts instead of a fixed shrinkage", () => {

@@ -169,6 +169,8 @@ export default function DashboardFilterBar({ locale = "ko" }) {
               <input
                 type="date"
                 className="mon-filter-input"
+                lang={locale === "en" ? "en-US" : "ko-KR"}
+                aria-label={T.start}
                 value={dashboardFilter.dateStart || ""}
                 min={minDate}
                 max={maxDate}
@@ -180,6 +182,8 @@ export default function DashboardFilterBar({ locale = "ko" }) {
               <input
                 type="date"
                 className="mon-filter-input"
+                lang={locale === "en" ? "en-US" : "ko-KR"}
+                aria-label={T.end}
                 value={dashboardFilter.dateEnd || ""}
                 min={minDate}
                 max={maxDate}
