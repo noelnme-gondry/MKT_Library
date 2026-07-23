@@ -1,9 +1,11 @@
 "use client";
-import React, { useEffect, useRef, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
-import { getMonFilteredRows, aggregateByKey, calculateKPIs, effectiveDenomBasis, fmtCurrencyCompact, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { getMonFilteredRows, aggregateByKey, calculateKPIs, computeWeightedRetention, effectiveDenomBasis, fmtCurrencyCompact, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { useRouter } from "next/navigation";
+import { idToPath } from "@/lib/routeMap";
 import { convertCurrency } from "@/utils/format";
 import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
@@ -14,14 +16,13 @@ import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import InlineCardEditor from "@/components/ds/InlineCardEditor";
 import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
 import CustomChartBuilder from "@/components/ds/CustomChartBuilder";
-import { copyToClipboard } from "@/utils/toast";
 
 // 지표 뷰 설정 scope(도구:표면) — 운영 대시보드 자체(Viz 탭)의 KPI 카드·차트.
 const VIZ_KPI_SCOPE = "5-2:viz-kpi";
 const VIZ_CHART_SCOPE = "5-2:viz-charts";
 // 첫 화면은 의사결정에 바로 쓰는 5개만. 나머지 진단 지표는 "편집"에서 켠다.
 // 사용자가 저장한 설정이 있으면 그 설정이 이 기본값보다 항상 우선한다.
-const DEFAULT_KPI_HIDDEN = ["ctr", "purchaseRate", "cpp", "revenue", "arpu", "arppu", "retention", "profit", "profitMargin"];
+const DEFAULT_KPI_HIDDEN = ["ctr", "purchaseRate", "cpp", "revenue", "arpu", "arppu", "retention", "profit", "profitMargin", "purchases"];
 
 // locale 카피(§ domain 리라벨과 별도 축 — C=resolveDashCopy는 domain 전용, 이 T는
 // 이 컴포넌트 하드코딩 문자열의 ko/en만 담당. contentDomain.js는 건드리지 않음).
@@ -243,6 +244,7 @@ function makeEventMarkerPlugin(markers) {
 }
 
 export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
+  const router = useRouter();
   const C = resolveDashCopy(domain);
   const D = locale === "en" ? VIZ_DASH_COPY_EN[domain] || VIZ_DASH_COPY_EN.performance : C;
   const T = VIZ_COPY[locale] || VIZ_COPY.ko;
@@ -259,9 +261,6 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   // 기존 빈 설정은 예전 "전부 표시" 기본값이다. compact-v1을 명시한 사용자의
   // 편집 결과만 존중해, 업데이트 직후에도 새 기본 위계가 실제로 적용되게 한다.
   const hasCustomKpiView = storedKpiCfg?.preset === "compact-v1";
-  const kpiCfg = hasCustomKpiView
-    ? { hidden: [], order: [], ...storedKpiCfg }
-    : { hidden: DEFAULT_KPI_HIDDEN, order: [] };
   const chartCfg = useAppStore((state) => state.viewConfig[VIZ_CHART_SCOPE]);
   const setViewConfig = useAppStore((state) => state.setViewConfig);
   const resetViewConfig = useAppStore((state) => state.resetViewConfig);
@@ -277,6 +276,10 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const [chartCfgOpen, setChartCfgOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [chartBuilderOpen, setChartBuilderOpen] = useState(false);
+  // null일 때만 데이터에서 첫 선택을 정한다. 사용자가 고른 카드는 필터 변경 뒤에도 유지한다.
+  const [selectedMetric, setSelectedMetric] = useState(null);
+  const detailCanvasRef = useRef(null);
+  const detailChartRef = useRef(null);
 
   // Canvas 요소 refs — 차트 표시/순서가 동적이라 key→element 맵으로 보관(callback ref).
   // 숨긴 차트는 canvas가 unmount되며 React가 null로 세팅 → 생성 effect가 건너뜀.
@@ -295,7 +298,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const effBasis = effectiveDenomBasis(csvData, denomBasis);
 
   // 1. Data Aggregation (useMemo)
-  const { filteredRows, dailyAgg, byChannel, totals, kpi, d7RoasNormalized, d7Display } = useMemo(() => {
+  const { filteredRows, dailyAgg, byChannel, totals, kpi, d7RoasNormalized } = useMemo(() => {
     const fRows = getMonFilteredRows(csvData, dashboardFilter);
     const dAgg = aggregateByKey(fRows, "date", ["cost", "installs", "actions", "revenue_d7", "clicks"]).sort(
       (a, b) => (a._key > b._key ? 1 : -1)
@@ -317,10 +320,9 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
     );
     const k = calculateKPIs(fRows, selectedCohort, effBasis);
     const d7Kpi = t.cost ? t.revenue_d7 / t.cost : null;
-    const d7Display = d7Kpi ? (d7Kpi * 100).toFixed(2) + "%" : "";
     const roasNorm = k.roas == null ? null : k.roas > 1 ? k.roas : k.roas * 100;
 
-    return { filteredRows: fRows, dailyAgg: dAgg, byChannel: chAgg, totals: t, kpi: k, d7RoasNormalized: roasNorm, d7Display };
+    return { filteredRows: fRows, dailyAgg: dAgg, byChannel: chAgg, totals: t, kpi: k, d7RoasNormalized: roasNorm };
   }, [csvData, dashboardFilter, selectedCohort, effBasis]);
 
   // 도메인 라벨(effBasis 소비하는 C 메서드 호출은 데이터 메모 뒤에 둠 — 메모 앞에서
@@ -356,6 +358,65 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const headerFor = (stdKey) => (mappingEntries.find(([, v]) => v === stdKey) || [])[0] || "";
   const hasRev = [...mappedKeys].some((k) => /^revenue_d/.test(k));
   const hasPu = [...mappedKeys].some((k) => /^pu_d/.test(k));
+  const hasRetention = [...mappedKeys].some((k) => /^ret_d/.test(k));
+  const valueMetricKey = hasRev ? "roas" : "ctr";
+  // 첫 화면의 5개는 비용·성과량·획득비용·가치·리텐션. 리텐션 원자료가 없을 때도
+  // 카드 슬롯은 유지하되 0%를 만들지 않는다. 편집 상태에서는 기존 모든 KPI를 쓸 수 있다.
+  const kpiCfg = hasCustomKpiView
+    ? { hidden: [], order: [], ...storedKpiCfg }
+    : {
+      hidden: DEFAULT_KPI_HIDDEN.filter((key) =>
+        !["cost", "outcome", "acq", valueMetricKey, "retention"].includes(key)
+      ),
+      order: ["cost", "outcome", "acq", valueMetricKey, "retention"],
+    };
+
+  const dailyKpis = useMemo(() => {
+    const byDate = new Map();
+    for (const row of filteredRows) {
+      if (!row.date) continue;
+      const key = String(row.date);
+      if (!byDate.has(key)) byDate.set(key, []);
+      byDate.get(key).push(row);
+    }
+    return Array.from(byDate, ([date, rows]) => ({ date, kpi: calculateKPIs(rows, selectedCohort, effBasis) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [filteredRows, selectedCohort, effBasis]);
+
+  const metricValue = useCallback((metric, valueKpi) => {
+    if (!valueKpi) return null;
+    if (metric === "outcome") return effBasis === "actions" ? valueKpi.actions : valueKpi.installs;
+    if (metric === "acq") return valueKpi.cpi;
+    if (metric === "retention") return valueKpi.retentionAvg;
+    return valueKpi[metric] ?? null;
+  }, [effBasis]);
+
+  const metricTrend = (metric) => {
+    const values = dailyKpis.map((d) => metricValue(metric, d.kpi)).filter((v) => Number.isFinite(v));
+    if (values.length < 4) return { change: null, status: "— 데이터 필요", note: "기간 비교를 위한 날짜 데이터가 부족합니다." };
+    const split = Math.floor(values.length / 2);
+    const before = values.slice(0, split).reduce((sum, v) => sum + v, 0) / split;
+    const after = values.slice(split).reduce((sum, v) => sum + v, 0) / (values.length - split);
+    const change = before ? (after - before) / Math.abs(before) : null;
+    if (change == null || !Number.isFinite(change)) return { change: null, status: "— 데이터 필요", note: "비교 기준값이 없습니다." };
+    const higherIsBetter = ["outcome", "roas", "ctr", "retention"].includes(metric);
+    const direction = higherIsBetter ? change : -change;
+    const status = Math.abs(change) < 0.03 ? "✓ 안정" : direction > 0 ? "↗ 개선" : "▲ 주의";
+    const directionText = change > 0 ? "상승" : "하락";
+    return { change, status, note: `최근 ${dailyKpis.length}일 ${Math.abs(change * 100).toFixed(1)}% ${directionText} 추세` };
+  };
+
+  const recommendedMetric = useMemo(() => {
+    const candidates = ["acq", "retention", valueMetricKey, "outcome", "cost"];
+    const attention = candidates
+      .map((key) => ({ key, trend: metricTrend(key) }))
+      .filter(({ trend }) => trend.change != null)
+      .map(({ key, trend }) => ({ key, severity: ["outcome", "roas", "ctr", "retention"].includes(key) ? -trend.change : trend.change }))
+      .sort((a, b) => b.severity - a.severity);
+    return attention[0]?.key || "acq";
+  // metricTrend only reads memoized dailyKpis + stable render values.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dailyKpis, valueMetricKey, effBasis]);
 
   // 커스텀 차트 차원/값 옵션·해석기(공용 헬퍼 — CustomChartsSection과 DRY).
   const { availDims, metricOptions, resolveMetricCompute, dimLabelOf, metricLabelOf } =
@@ -379,8 +440,68 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
     title: def.name,
     sub: `${CHART_TYPES.find((t) => t.id === def.type)?.label || def.type} · ${dimLabelOf(def.dim)}별 ${metricLabelOf(def.metric)}`,
   }));
-  const orderedCharts = applyMetricView([...chartMeta, ...customChartMetas], chartCfg, (c) => c.k);
+  // 기본 차트 5종은 카드 선택형 큰 차트로 통합했다. 차트 설정은 사용자가 만든
+  // 별도 차트의 표시/순서만 관리하므로 KPI 카드 설정과 독립성을 유지한다.
+  const orderedCharts = applyMetricView(customChartMetas, chartCfg, (c) => c.k);
   const visibleChartKeys = orderedCharts.map((c) => c.k).join(",");
+  const activeMetric = selectedMetric || recommendedMetric;
+  const activeTrend = metricTrend(activeMetric);
+  const activeMetricLabel = activeMetric === "outcome"
+    ? D.kpiOutcomeLabel(effBasis)
+    : activeMetric === "acq"
+      ? acqLabel
+      : activeMetric === "retention"
+        ? T.retentionLabel(selectedCohort)
+        : activeMetric === "roas"
+          ? T.roasLabel(selectedCohort)
+          : activeMetric === "ctr"
+            ? D.kpiCtrLabel
+            : activeMetric === "cost"
+              ? D.kpiCostLabel
+              : (customMetrics || []).find((metric) => metric.id === activeMetric)?.name || activeMetric;
+
+  const detailSeries = useMemo(() => {
+    if (activeMetric === "retention") {
+      return {
+        labels: ["D0", "D7", "D14"],
+        datasets: [{
+          label: locale === "en" ? "Weighted retention" : "가중 리텐션",
+          data: [0, 7, 14].map((day) => computeWeightedRetention(filteredRows, day, effBasis).rate),
+          borderColor: CHART_THEME.primary, backgroundColor: "rgba(173,198,255,0.08)", borderWidth: 2.5, pointRadius: 4, tension: 0.28, fill: false,
+        }],
+      };
+    }
+    if ((customMetrics || []).some((metric) => metric.id === activeMetric)) return null;
+    const dates = Array.from(new Set(filteredRows.map((row) => String(row.date || "")).filter(Boolean))).sort();
+    const channels = Array.from(new Set(filteredRows.map((row) => String(row.channel || "").trim()).filter(Boolean))).sort();
+    const rowsFor = (date, channel) => filteredRows.filter((row) => String(row.date) === date && (!channel || String(row.channel || "").trim() === channel));
+    const valuesFor = (channel) => dates.map((date) => metricValue(activeMetric, calculateKPIs(rowsFor(date, channel), selectedCohort, effBasis)));
+    return {
+      labels: dates,
+      datasets: [
+        { label: locale === "en" ? "Total" : "전체", data: valuesFor(null), borderColor: CHART_THEME.primary, backgroundColor: "rgba(173,198,255,0.08)", borderWidth: 2.5, pointRadius: 2, tension: 0.28, fill: false },
+        ...channels.slice(0, 6).map((channel, index) => ({ label: channel, data: valuesFor(channel), borderColor: CHART_THEME.series[index % CHART_THEME.series.length], borderWidth: 1.5, pointRadius: 0, tension: 0.28, fill: false })),
+      ],
+    };
+  }, [activeMetric, customMetrics, filteredRows, selectedCohort, effBasis, locale, metricValue]);
+
+  useEffect(() => {
+    if (detailChartRef.current) detailChartRef.current.destroy();
+    const canvas = detailCanvasRef.current;
+    if (!canvas || !activeMetric || !detailSeries) return undefined;
+    detailChartRef.current = new Chart(canvas.getContext("2d"), {
+      type: "line",
+      plugins: [makeEventMarkerPlugin(preparedMarkers)],
+      data: detailSeries,
+      options: {
+        ...chartCommonOpts(),
+        plugins: { ...chartCommonOpts().plugins, legend: { ...chartCommonOpts().plugins.legend, labels: { color: CHART_THEME.text, usePointStyle: true } } },
+        scales: { ...chartCommonOpts().scales, y: { ...chartCommonOpts().scales.y, title: { display: true, text: activeMetricLabel, color: CHART_THEME.muted, font: { size: 10 } } } },
+      },
+    });
+    requestAnimationFrame(() => detailChartRef.current?.resize());
+    return () => detailChartRef.current?.destroy();
+  }, [activeMetric, activeMetricLabel, detailSeries, preparedMarkers]);
 
   // 3. Chart Rendering Effect
   useEffect(() => {
@@ -605,20 +726,34 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dailyAgg, byChannel, totals, preparedMarkers, effBasis, acqLabel, trendOutcomeLabel, visibleChartKeys, customChartSig, filteredRows, locale]);
 
-  // KPI 카드(데이터 주도) — 표시/순서 설정 적용. node=기존 카드 JSX 유지(값·계산 불변).
+  // KPI 카드는 빠른 스캔용 미니 차트이자 아래 탐색 차트의 지표 선택기다. PVM 결과를
+  // 여기서 재계산하지 않으므로 원인 대신 관찰 가능한 추세만 보여준다.
+  const explorerCard = (key, label, value, { unavailable = false } = {}) => {
+    const trend = metricTrend(key);
+    const sparkValues = dailyKpis.map((d) => metricValue(key, d.kpi)).filter((v) => Number.isFinite(v));
+    const max = Math.max(...sparkValues.map(Math.abs), 0);
+    const points = sparkValues.length > 1
+      ? sparkValues.map((v, index) => `${(index / (sparkValues.length - 1)) * 100},${28 - ((Math.abs(v) / max) * 24 || 0)}`).join(" ")
+      : "0,28 100,28";
+    const isSelected = activeMetric === key;
+    return (
+      <button key={key} type="button" className={`kpi-card kpi-card--explorer${isSelected ? " is-selected" : ""}`} aria-pressed={isSelected} onClick={() => setSelectedMetric(key)}>
+        <span className="kpi-card__select-state">{isSelected ? (locale === "en" ? "Selected" : "선택됨") : ""}</span>
+        <span className="label">{label}</span>
+        <strong className="value tnum">{unavailable ? (locale === "en" ? "Data needed" : "리텐션 데이터 필요") : value}</strong>
+        <svg className="kpi-sparkline" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polyline points={points} /></svg>
+        <span className={`delta ${trend.status === "▲ 주의" ? "down" : ""}`}>{unavailable ? "— 데이터 필요" : trend.status}</span>
+        <span className="kpi-card__note">{unavailable ? "ret_dN 컬럼을 매핑하세요" : trend.note}</span>
+      </button>
+    );
+  };
+
+  // KPI 카드(데이터 주도) — 표시/순서 설정 적용.
   const kpiCards = [
-    { k: "cost", label: D.kpiCostLabel, node: (
-      <div key="cost" className="kpi-card"><div className="label">{D.kpiCostLabel}</div><div className="value tnum">{compactCurrency(kpi.cost)}</div><div className="delta">{D.kpiCostDelta}</div></div>
-    ) },
-    { k: "ctr", label: D.kpiCtrLabel, node: (
-      <div key="ctr" className="kpi-card"><div className="label">{D.kpiCtrLabel}</div><div className="value tnum">{formatPercent(kpi.ctr)}</div><div className="delta">{D.kpiCtrDelta}</div></div>
-    ) },
-    { k: "outcome", label: D.kpiOutcomeLabel(effBasis), node: (
-      <div key="outcome" className="kpi-card"><div className="label">{D.kpiOutcomeLabel(effBasis)}</div><div className="value tnum">{formatNumber(effBasis === "actions" ? kpi.actions : kpi.installs)}</div><div className="delta">{D.kpiOutcomeDelta(effBasis)}</div></div>
-    ) },
-    { k: "acq", label: acqLabel, node: (
-      <div key="acq" className="kpi-card"><div className="label">{acqLabel}</div><div className="value tnum">{preciseCurrency(kpi.cpi)}</div><div className="delta">{D.acqDelta(effBasis)}</div></div>
-    ) },
+    { k: "cost", label: D.kpiCostLabel, node: explorerCard("cost", D.kpiCostLabel, compactCurrency(kpi.cost)) },
+    { k: "ctr", label: D.kpiCtrLabel, node: explorerCard("ctr", D.kpiCtrLabel, formatPercent(kpi.ctr)) },
+    { k: "outcome", label: D.kpiOutcomeLabel(effBasis), node: explorerCard("outcome", D.kpiOutcomeLabel(effBasis), formatNumber(effBasis === "actions" ? kpi.actions : kpi.installs)) },
+    { k: "acq", label: acqLabel, node: explorerCard("acq", acqLabel, preciseCurrency(kpi.cpi)) },
     { k: "purchases", label: T.purchasesLabel(kpi.cohort), node: (
       <div key="purchases" className="kpi-card"><div className="label">{T.purchasesLabel(kpi.cohort)}</div><div className="value tnum">{formatNumber(kpi.purchases)}</div><div className="delta">{T.purchasesDelta(kpi.cohort)}</div></div>
     ) },
@@ -631,34 +766,14 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
     { k: "revenue", label: T.revenueLabel(kpi.cohort), node: (
       <div key="revenue" className="kpi-card"><div className="label">{T.revenueLabel(kpi.cohort)}</div><div className="value tnum">{compactCurrency(kpi.revenue)}</div><div className="delta">{T.revenueDelta}</div></div>
     ) },
-    { k: "roas", label: T.roasLabel(kpi.cohort), node: (
-      <div key="roas" className="kpi-card" style={{ position: "relative" }}>
-        <div className="label">{T.roasLabel(kpi.cohort)}</div>
-        <div className="value tnum">{formatPercent(kpi.roas)}</div>
-        <div className="delta" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.25rem" }}>
-          <span>{T.roasDelta}</span>
-          {d7Display && (
-            <button
-              className="share-btn"
-              onClick={() => copyToClipboard(T.shareCopyText(kpi.cohort, d7Display))}
-              style={{ padding: "1px 5px", fontSize: "9.5px", height: "16px", lineHeight: "1", borderRadius: "3px", marginLeft: "auto", background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-subtle)", display: "inline-flex", alignItems: "center", gap: "3px", color: "var(--text-secondary)", cursor: "pointer", whiteSpace: "nowrap" }}
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-              {T.shareCopyLabel}
-            </button>
-          )}
-        </div>
-      </div>
-    ) },
+    { k: "roas", label: T.roasLabel(kpi.cohort), node: explorerCard("roas", T.roasLabel(kpi.cohort), formatPercent(kpi.roas)) },
     { k: "arpu", label: T.arpuLabel(kpi.cohort), node: (
       <div key="arpu" className="kpi-card"><div className="label">{T.arpuLabel(kpi.cohort)}</div><div className="value tnum">{preciseCurrency(kpi.arpu)}</div><div className="delta">{T.arpuDelta(effBasis === "actions" ? "actions" : "installs")}</div></div>
     ) },
     { k: "arppu", label: T.arppuLabel(kpi.cohort), node: (
       <div key="arppu" className="kpi-card"><div className="label">{T.arppuLabel(kpi.cohort)}</div><div className="value tnum">{preciseCurrency(kpi.arppu)}</div><div className="delta">{T.arppuDelta}</div></div>
     ) },
-    { k: "retention", label: T.retentionLabel(kpi.cohort), node: (
-      <div key="retention" className="kpi-card"><div className="label">{T.retentionLabel(kpi.cohort)}</div><div className="value tnum">{formatPercent(kpi.retentionAvg)}</div><div className="delta">{T.retentionDelta}</div></div>
-    ) },
+    { k: "retention", label: T.retentionLabel(kpi.cohort), node: explorerCard("retention", T.retentionLabel(kpi.cohort), formatPercent(kpi.retentionAvg), { unavailable: !hasRetention }) },
   ];
   // 커스텀/프리셋 지표가 읽는 집계객체 — kpi가 이미 base 합계(cost·impressions·…·
   // revenue·purchases·denom)를 보유(calculateKPIs=metricRegistry 소비).
@@ -707,6 +822,17 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
     else setViewConfig(scope, next);
     setOpen(false);
   };
+  const goToTool = (id) => router.push(`${locale === "en" ? "/en" : ""}${idToPath(id)}`);
+  const isCustomActive = (customMetrics || []).some((metric) => metric.id === activeMetric);
+  const actionButtons = activeMetric === "acq"
+    ? [["PVM으로 원인 보기", "5-21"], ["포화도 확인", "5-22"], ["예산 배분 시뮬레이션", "5-3"]]
+    : activeMetric === "outcome"
+      ? [["채널별 변화 보기", "5-21"]]
+      : activeMetric === "roas"
+        ? [["LTV & ROAS 보기", "5-2"], ["예산 배분", "5-3"]]
+        : activeMetric === "retention"
+          ? [["코호트 상세 보기", "5-2"]]
+          : [];
 
   return (
     <div className="tab-pane active" id="tab-viz">
@@ -767,16 +893,42 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
         )}
       </section>
 
-      {/* Charts Grid */}
-      <section className="block" id="s-charts">
+      {/* 선택 KPI 탐색 — 카드와 하나의 큰 실제 차트를 1:1로 연결한다. */}
+      <section className="block dashboard-explorer" id="s-charts">
+        <div className="dashboard-explorer__head">
+          <div>
+            <span className="dashboard-explorer__eyebrow">{locale === "en" ? "Selected KPI" : "선택됨"}</span>
+            <h2 className="section-title">{activeMetricLabel} {locale === "en" ? "trend" : "추이"}</h2>
+          </div>
+          <span className="dashboard-explorer__status">{activeTrend.status}</span>
+        </div>
+        {isCustomActive ? (
+          <div className="dashboard-explorer__empty">커스텀 KPI는 현재 합계값 계산만 지원합니다. 날짜별 같은 식을 재계산하는 어댑터를 검증한 뒤 추이 차트에 추가할 수 있습니다.</div>
+        ) : (
+          <>
+            <div className="chart-canvas-wrap dashboard-explorer__canvas"><canvas ref={detailCanvasRef}></canvas></div>
+            <p className="dashboard-explorer__interpretation">
+              {activeTrend.change == null
+                ? "기간 비교를 위한 날짜 데이터가 부족합니다."
+                : `최근 ${dailyKpis.length}일 ${activeMetricLabel}가 ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "상승" : "하락"}했습니다. 채널별 선은 관찰값이며, 원인 판단은 PVM 분석에서 확인하세요.`}
+            </p>
+          </>
+        )}
+        <div className="dashboard-explorer__actions">
+          {actionButtons.length ? actionButtons.map(([label, id]) => <button key={id} type="button" className="ab-pill" onClick={() => goToTool(id)}>{label}</button>) : <span className="muted">{activeMetric === "cost" || activeMetric === "ctr" ? "원인 모델이 없는 지표입니다. 채널별 관찰값만 표시합니다." : "데이터 매핑을 확인하세요."}</span>}
+        </div>
+      </section>
+
+      {/* 사용자가 만든 보조 차트 — KPI 탐색 차트와 별도 설정을 유지한다. */}
+      <section className="block" id="s-custom-charts">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2 className="section-title"><span className="ix">§3</span>{T.chartSectionTitle}</h2>
+          <h2 className="section-title"><span className="ix">§3</span>{locale === "en" ? "Custom charts" : "보조 차트"}</h2>
           <div style={{ display: "flex", gap: "6px" }}>
             <button className="ab-pill" onClick={() => setChartBuilderOpen(true)} title={T.addChartTitle}>{T.addChart}</button>
             <button className="ab-pill" onClick={() => setChartCfgOpen(true)} title={T.editChartTitle}>{T.editChart}</button>
           </div>
         </div>
-        <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>{D.chartsDesc}</p>
+        <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>{locale === "en" ? "Create additional charts without changing the KPI explorer above." : "위 KPI 탐색 차트와 별개로, 원하는 보조 차트를 만들고 표시 순서를 관리합니다."}</p>
 
         {/* 이벤트 마커 입력 UI는 여기가 아니라 Dashboard.jsx에서 탭 콘텐츠 위에
             <MonEventMarkerUI/>로 렌더됨(전 탭 공통 상단 1곳). 여기 시계열 차트는
@@ -811,7 +963,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
         open={chartCfgOpen}
         onClose={() => setChartCfgOpen(false)}
         title={T.chartEditPanelTitle}
-        items={[...chartMeta, ...customChartMetas].map((c) => ({ key: c.k, label: c.title }))}
+        items={customChartMetas.map((c) => ({ key: c.k, label: c.title }))}
         config={chartCfg}
         onSave={(next) => saveScope(VIZ_CHART_SCOPE, next, setChartCfgOpen)}
       />
