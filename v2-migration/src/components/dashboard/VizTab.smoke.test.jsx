@@ -47,6 +47,7 @@ function seedNoData() {
     currentRouteId: "5-2",
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    customCharts: {},
   });
 }
 
@@ -72,6 +73,19 @@ describe("VizTab render smoke", () => {
     fireEvent.click(screen.getByRole("button", { name: /CPI/i }));
     expect(screen.getByText("CPI 추이")).toBeTruthy();
     expect(screen.getByText("PVM으로 원인 보기")).toBeTruthy();
+  });
+
+  it("keeps the ready-made charts and renders a custom scorecard", () => {
+    seedWithData();
+    useAppStore.setState({
+      customCharts: {
+        "5-2:viz-charts": [{ id: "score-1", name: "현재 비용", type: "scorecard", dim: "", metric: "cost" }],
+      },
+    });
+    render(<VizTab />);
+    expect(screen.getByText("일별 비용·설치 추이")).toBeTruthy();
+    expect(screen.getByText("현재 비용")).toBeTruthy();
+    expect(screen.getByText("현재 필터 기준 전체값")).toBeTruthy();
   });
 
   // #11 이벤트 마커 — store.eventMarkers 시딩이 시계열 차트(makeEventMarkerPlugin)

@@ -49,7 +49,7 @@ describe("chartBuilder · buildChartSeries", () => {
     const s = buildChartSeries(groups, METRIC_BY_ID.cost.compute, { topN: 1 });
     expect(s.labels).toHaveLength(1);
   });
-  it("CHART_TYPES 5종", () => {
-    expect(CHART_TYPES.map((t) => t.id)).toEqual(["bar", "hbar", "line", "pie", "doughnut"]);
+  it("CHART_TYPES 6종", () => {
+    expect(CHART_TYPES.map((t) => t.id)).toEqual(["scorecard", "bar", "hbar", "line", "pie", "doughnut"]);
   });
 });

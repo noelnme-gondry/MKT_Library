@@ -4,10 +4,11 @@ import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { CHART_TYPES } from "@/utils/metrics/chartBuilder";
-import { buildCustomChartConfig, buildChartFieldOptions } from "@/utils/customChartConfig";
+import { buildCustomChartConfig, buildChartFieldOptions, buildCustomScorecardModel, formatCustomScorecardValue } from "@/utils/customChartConfig";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import CustomChartBuilder from "@/components/ds/CustomChartBuilder";
+import { convertCurrency } from "@/utils/format";
 
 const CUSTOM_CHARTS_COPY = {
   ko: {
@@ -58,6 +59,7 @@ export default function CustomChartsSection({
   const dashboardFilter = useAppStore((s) => s.dashboardFilter);
   const selectedCohort = useAppStore((s) => s.selectedCohort);
   const denomBasis = useAppStore((s) => s.denomBasis);
+  const displayCurrency = useAppStore((s) => s.displayCurrency);
   const isDarkMode = useAppStore((s) => s.isDarkMode);
   const customMetrics = useAppStore((s) => s.customMetrics[metricScope]);
   const customCharts = useAppStore((s) => s.customCharts[chartScope]);
@@ -78,14 +80,14 @@ export default function CustomChartsSection({
   const filteredRows = useMemo(() => getMonFilteredRows(csvData, dashboardFilter), [csvData, dashboardFilter]);
   const hasData = !!(csvData && csvData.raw && csvData.raw.length);
 
-  const { availDims, metricOptions, resolveMetricCompute, dimLabelOf, metricLabelOf } =
+  const { availDims, metricOptions, resolveMetricCompute, dimLabelOf, metricLabelOf, metricUnitOf } =
     buildChartFieldOptions(csvData && csvData.mapping, customMetrics);
 
   const chartDefs = customCharts || [];
   const chartMetas = chartDefs.map((def) => ({
     k: def.id,
     title: def.name,
-    sub: `${CHART_TYPES.find((t) => t.id === def.type)?.label || def.type} · ${dimLabelOf(def.dim)}별 ${metricLabelOf(def.metric)}`,
+    sub: `${CHART_TYPES.find((t) => t.id === def.type)?.label || def.type} · ${def.type === "scorecard" ? metricLabelOf(def.metric) : `${dimLabelOf(def.dim)}별 ${metricLabelOf(def.metric)}`}`,
   }));
   const orderedCharts = applyMetricView(chartMetas, chartCfg, (c) => c.k);
   const visibleKeys = orderedCharts.map((c) => c.k).join(",");
@@ -95,6 +97,7 @@ export default function CustomChartsSection({
     const instances = chartsRef.current;
     Object.keys(instances).forEach((k) => { if (instances[k]) instances[k].destroy(); delete instances[k]; });
     for (const def of chartDefs) {
+      if (def.type === "scorecard") continue;
       const el = canvasRefs.current[def.id];
       if (!el) continue;
       instances[def.id] = new Chart(el.getContext("2d"), buildCustomChartConfig(def, filteredRows, {
@@ -107,6 +110,27 @@ export default function CustomChartsSection({
     // sig/visibleKeys/filteredRows가 실질 변경을 커버(정의·데이터·표시·테마).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig, visibleKeys, filteredRows, isDarkMode]);
+
+  const chartById = new Map(chartDefs.map((def) => [def.id, def]));
+  const scorecardFor = (key) => {
+    const def = chartById.get(key);
+    if (!def || def.type !== "scorecard") return null;
+    return buildCustomScorecardModel(def, filteredRows, {
+      cohort: selectedCohort,
+      denomBasis: effBasis,
+      resolveMetricCompute,
+      metricLabelOf,
+      metricUnitOf,
+    });
+  };
+  const sourceCurrency = ["KRW", "USD"].includes(csvData?.currency) ? csvData.currency : displayCurrency;
+  const formatScorecard = (model) => formatCustomScorecardValue(
+    model?.unit === "currency" && model.value != null
+      ? { ...model, value: convertCurrency(Number(model.value), sourceCurrency, displayCurrency) }
+      : model,
+    displayCurrency,
+    locale,
+  );
 
   return (
     <section className="block">
@@ -132,7 +156,15 @@ export default function CustomChartsSection({
             <div key={c.k} className="chart-card">
               <div className="chart-title">{c.title}</div>
               <div className="chart-sub">{c.sub}</div>
-              <div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={setCanvasRef(c.k)}></canvas></div>
+              {scorecardFor(c.k) ? (
+                <div className="custom-scorecard">
+                  <span>{scorecardFor(c.k).label}</span>
+                  <strong className="tnum">{formatScorecard(scorecardFor(c.k))}</strong>
+                  <small>{locale === "en" ? "Current filtered total" : "현재 필터 기준 전체값"}</small>
+                </div>
+              ) : (
+                <div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={setCanvasRef(c.k)}></canvas></div>
+              )}
             </div>
           ))}
         </div>

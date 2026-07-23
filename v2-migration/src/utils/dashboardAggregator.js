@@ -84,6 +84,12 @@ export function computeWeightedRetention(rows, day, basis) {
   return { rate, survivors: Math.round(num), denom, isRate, hasWholePct };
 }
 
+// 코호트 곡선용 SSOT. D0는 시작 모수 자체라 정의상 100%이며, 이후 시점만
+// computeWeightedRetention으로 모수 가중 집계한다.
+export function buildRetentionCurve(rows, basis, days = [0, 7, 14]) {
+  return days.map((day) => day === 0 ? 1 : computeWeightedRetention(rows, day, basis).rate);
+}
+
 /**
  * 데이터를 표준 키로 매핑하여 반환합니다.
  */

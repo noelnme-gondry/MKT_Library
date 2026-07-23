@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef, useMemo, useState } from "react"
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
-import { getMonFilteredRows, aggregateByKey, calculateKPIs, computeWeightedRetention, effectiveDenomBasis, fmtCurrencyCompact, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { getMonFilteredRows, aggregateByKey, buildRetentionCurve, calculateKPIs, effectiveDenomBasis, fmtCurrencyCompact, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
 import { useRouter } from "next/navigation";
 import { idToPath } from "@/lib/routeMap";
 import { convertCurrency } from "@/utils/format";
@@ -11,7 +11,7 @@ import { CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
 import { CHART_TYPES } from "@/utils/metrics/chartBuilder";
-import { buildCustomChartConfig, buildChartFieldOptions } from "@/utils/customChartConfig";
+import { buildCustomChartConfig, buildChartFieldOptions, buildCustomScorecardModel, formatCustomScorecardValue } from "@/utils/customChartConfig";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import InlineCardEditor from "@/components/ds/InlineCardEditor";
 import CustomMetricBuilder from "@/components/ds/CustomMetricBuilder";
@@ -72,8 +72,8 @@ const VIZ_COPY = {
     arpuDelta: (basis) => `revenue / ${basis}`,
     arppuLabel: (d) => `ARPPU (D${d})`,
     arppuDelta: "revenue / 구매자 수",
-    retentionLabel: (d) => `잔존율 평균 (D${d})`,
-    retentionDelta: "행별 평균",
+    retentionLabel: (d) => `잔존율 (D${d})`,
+    retentionDelta: "코호트 규모 가중",
     profitLabel: (d) => `이익 (D${d})`,
     profitDelta: "매출 − 비용",
     profitMarginLabel: (d) => `이익률 (D${d})`,
@@ -139,8 +139,8 @@ const VIZ_COPY = {
     arpuDelta: (basis) => `revenue / ${basis}`,
     arppuLabel: (d) => `ARPPU (D${d})`,
     arppuDelta: "revenue / purchasers",
-    retentionLabel: (d) => `Avg retention (D${d})`,
-    retentionDelta: "Average by row",
+    retentionLabel: (d) => `Retention (D${d})`,
+    retentionDelta: "Weighted by cohort size",
     profitLabel: (d) => `Profit (D${d})`,
     profitDelta: "revenue − cost",
     profitMarginLabel: (d) => `Profit margin (D${d})`,
@@ -419,7 +419,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   }, [dailyKpis, valueMetricKey, effBasis]);
 
   // 커스텀 차트 차원/값 옵션·해석기(공용 헬퍼 — CustomChartsSection과 DRY).
-  const { availDims, metricOptions, resolveMetricCompute, dimLabelOf, metricLabelOf } =
+  const { availDims, metricOptions, resolveMetricCompute, dimLabelOf, metricLabelOf, metricUnitOf } =
     buildChartFieldOptions(csvData && csvData.mapping, customMetrics);
   const customChartDefs = customCharts || [];
   const customChartSig = JSON.stringify(customChartDefs) + "|" + JSON.stringify(customMetrics || []) + "|" + selectedCohort;
@@ -438,11 +438,11 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const customChartMetas = customChartDefs.map((def) => ({
     k: def.id, custom: true, full: false,
     title: def.name,
-    sub: `${CHART_TYPES.find((t) => t.id === def.type)?.label || def.type} · ${dimLabelOf(def.dim)}별 ${metricLabelOf(def.metric)}`,
+    sub: `${CHART_TYPES.find((t) => t.id === def.type)?.label || def.type} · ${def.type === "scorecard" ? metricLabelOf(def.metric) : `${dimLabelOf(def.dim)}별 ${metricLabelOf(def.metric)}`}`,
   }));
-  // 기본 차트 5종은 카드 선택형 큰 차트로 통합했다. 차트 설정은 사용자가 만든
-  // 별도 차트의 표시/순서만 관리하므로 KPI 카드 설정과 독립성을 유지한다.
-  const orderedCharts = applyMetricView(customChartMetas, chartCfg, (c) => c.k);
+  // 기본 차트는 즉시 제공하고, 기본·커스텀 모두 같은 편집 패널에서 표시/숨김·순서를
+  // 관리한다. 위 KPI 탐색 차트와 설정 scope는 분리되어 서로 덮어쓰지 않는다.
+  const orderedCharts = applyMetricView([...chartMeta, ...customChartMetas], chartCfg, (c) => c.k);
   const visibleChartKeys = orderedCharts.map((c) => c.k).join(",");
   const activeMetric = selectedMetric || recommendedMetric;
   const activeTrend = metricTrend(activeMetric);
@@ -465,8 +465,10 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       return {
         labels: ["D0", "D7", "D14"],
         datasets: [{
-          label: locale === "en" ? "Weighted retention" : "가중 리텐션",
-          data: [0, 7, 14].map((day) => computeWeightedRetention(filteredRows, day, effBasis).rate),
+          label: locale === "en" ? "Retention" : "리텐션",
+          // D0는 코호트 시작 모수 자체이므로 정의상 100%. D7/D14만 원자료를 모수
+          // 가중 집계한다(행 단순평균은 작은 코호트를 과대반영하므로 금지).
+          data: buildRetentionCurve(filteredRows, effBasis, [0, 7, 14]),
           borderColor: CHART_THEME.primary, backgroundColor: "rgba(173,198,255,0.08)", borderWidth: 2.5, pointRadius: 4, tension: 0.28, fill: false,
         }],
       };
@@ -495,8 +497,27 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       data: detailSeries,
       options: {
         ...chartCommonOpts(),
-        plugins: { ...chartCommonOpts().plugins, legend: { ...chartCommonOpts().plugins.legend, labels: { color: CHART_THEME.text, usePointStyle: true } } },
-        scales: { ...chartCommonOpts().scales, y: { ...chartCommonOpts().scales.y, title: { display: true, text: activeMetricLabel, color: CHART_THEME.muted, font: { size: 10 } } } },
+        plugins: {
+          ...chartCommonOpts().plugins,
+          legend: { ...chartCommonOpts().plugins.legend, labels: { color: CHART_THEME.text, usePointStyle: true } },
+          tooltip: activeMetric === "retention"
+            ? {
+              ...chartCommonOpts().plugins.tooltip,
+              callbacks: { label: (context) => `${context.dataset.label}: ${(Number(context.parsed.y) * 100).toFixed(1)}%` },
+            }
+            : chartCommonOpts().plugins.tooltip,
+        },
+        scales: {
+          ...chartCommonOpts().scales,
+          y: {
+            ...chartCommonOpts().scales.y,
+            max: activeMetric === "retention" ? 1 : undefined,
+            ticks: activeMetric === "retention"
+              ? { ...chartCommonOpts().scales.y.ticks, callback: (value) => `${Math.round(Number(value) * 100)}%` }
+              : chartCommonOpts().scales.y.ticks,
+            title: { display: true, text: activeMetricLabel, color: CHART_THEME.muted, font: { size: 10 } },
+          },
+        },
       },
     });
     requestAnimationFrame(() => detailChartRef.current?.resize());
@@ -701,6 +722,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
     // 6) 커스텀 차트 — 표시 중인 것만(숨김/삭제 시 canvas 없음 → skip). 유저가 만든
     //    "모양+행+값"으로 차원별 집계·지표 계산해 렌더. 커스텀 지표 열도 값으로 사용.
     for (const def of customChartDefs) {
+      if (def.type === "scorecard") continue;
       const el = canvasRefs.current[def.id];
       if (!el) continue;
       instances[def.id] = new Chart(el.getContext("2d"), buildCustomChartConfig(def, filteredRows, {
@@ -730,18 +752,30 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   // 여기서 재계산하지 않으므로 원인 대신 관찰 가능한 추세만 보여준다.
   const explorerCard = (key, label, value, { unavailable = false } = {}) => {
     const trend = metricTrend(key);
-    const sparkValues = dailyKpis.map((d) => metricValue(key, d.kpi)).filter((v) => Number.isFinite(v));
-    const max = Math.max(...sparkValues.map(Math.abs), 0);
+    // 카드 안에서는 최근 28개 시점의 "모양"을 읽는다. 절대값/max 방식은 값이
+    // 1,300→1,360처럼 움직일 때 선이 위쪽에 눌려 거의 평평해 보이므로, 카드별
+    // min-max로 세로 범위를 정규화한다. 정확한 값·축 비교는 아래 큰 차트가 담당한다.
+    const sparkValues = dailyKpis.map((d) => metricValue(key, d.kpi)).filter((v) => Number.isFinite(v)).slice(-28);
+    const min = sparkValues.length ? Math.min(...sparkValues) : 0;
+    const max = sparkValues.length ? Math.max(...sparkValues) : 0;
+    const range = max - min;
+    const sparkY = (v) => range ? 25 - ((v - min) / range) * 19 : 15;
     const points = sparkValues.length > 1
-      ? sparkValues.map((v, index) => `${(index / (sparkValues.length - 1)) * 100},${28 - ((Math.abs(v) / max) * 24 || 0)}`).join(" ")
-      : "0,28 100,28";
+      ? sparkValues.map((v, index) => `${(index / (sparkValues.length - 1)) * 100},${sparkY(v)}`).join(" ")
+      : "0,15 100,15";
+    const lastY = sparkValues.length ? sparkY(sparkValues[sparkValues.length - 1]) : 15;
     const isSelected = activeMetric === key;
+    const tone = unavailable ? "neutral" : trend.status === "▲ 주의" ? "warning" : trend.status === "↗ 개선" ? "improving" : "stable";
     return (
       <button key={key} type="button" className={`kpi-card kpi-card--explorer${isSelected ? " is-selected" : ""}`} aria-pressed={isSelected} onClick={() => setSelectedMetric(key)}>
         <span className="kpi-card__select-state">{isSelected ? (locale === "en" ? "Selected" : "선택됨") : ""}</span>
         <span className="label">{label}</span>
         <strong className="value tnum">{unavailable ? (locale === "en" ? "Data needed" : "리텐션 데이터 필요") : value}</strong>
-        <svg className="kpi-sparkline" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polyline points={points} /></svg>
+        <svg className={`kpi-sparkline is-${tone}`} viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+          <polygon points={`0,30 ${points} 100,30`} />
+          <polyline points={points} />
+          <circle cx="100" cy={lastY} r="2.5" />
+        </svg>
         <span className={`delta ${trend.status === "▲ 주의" ? "down" : ""}`}>{unavailable ? "— 데이터 필요" : trend.status}</span>
         <span className="kpi-card__note">{unavailable ? "ret_dN 컬럼을 매핑하세요" : trend.note}</span>
       </button>
@@ -824,6 +858,23 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   };
   const goToTool = (id) => router.push(`${locale === "en" ? "/en" : ""}${idToPath(id)}`);
   const isCustomActive = (customMetrics || []).some((metric) => metric.id === activeMetric);
+  const customChartById = new Map(customChartDefs.map((def) => [def.id, def]));
+  const customScorecardFor = (key) => {
+    const def = customChartById.get(key);
+    if (!def || def.type !== "scorecard") return null;
+    return buildCustomScorecardModel(def, filteredRows, {
+      cohort: selectedCohort,
+      denomBasis: effBasis,
+      resolveMetricCompute,
+      metricLabelOf,
+      metricUnitOf,
+    });
+  };
+  const formatCustomScorecard = (model) => formatCustomScorecardValue(
+    model?.unit === "currency" && model.value != null ? { ...model, value: currencyValue(model.value) } : model,
+    displayCurrency,
+    locale,
+  );
   const actionButtons = activeMetric === "acq"
     ? [["PVM으로 원인 보기", "5-21"], ["포화도 확인", "5-22"], ["예산 배분 시뮬레이션", "5-3"]]
     : activeMetric === "outcome"
@@ -910,7 +961,9 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
             <p className="dashboard-explorer__interpretation">
               {activeTrend.change == null
                 ? "기간 비교를 위한 날짜 데이터가 부족합니다."
-                : `최근 ${dailyKpis.length}일 ${activeMetricLabel}가 ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "상승" : "하락"}했습니다. 채널별 선은 관찰값이며, 원인 판단은 PVM 분석에서 확인하세요.`}
+                : activeMetric === "retention"
+                  ? `최근 ${dailyKpis.length}일 ${activeMetricLabel}가 ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "상승" : "하락"}했습니다. D0는 100%이며, D7·D14는 코호트 규모로 가중한 잔존율입니다.`
+                  : `최근 ${dailyKpis.length}일 ${activeMetricLabel}가 ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "상승" : "하락"}했습니다. 채널별 선은 관찰값이며, 원인 판단은 PVM 분석에서 확인하세요.`}
             </p>
           </>
         )}
@@ -919,7 +972,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
         </div>
       </section>
 
-      {/* 사용자가 만든 보조 차트 — KPI 탐색 차트와 별도 설정을 유지한다. */}
+      {/* 기본+사용자 보조 차트 — KPI 탐색 차트와 별도 설정을 유지한다. */}
       <section className="block" id="s-custom-charts">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h2 className="section-title"><span className="ix">§3</span>{locale === "en" ? "Custom charts" : "보조 차트"}</h2>
@@ -928,7 +981,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
             <button className="ab-pill" onClick={() => setChartCfgOpen(true)} title={T.editChartTitle}>{T.editChart}</button>
           </div>
         </div>
-        <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>{locale === "en" ? "Create additional charts without changing the KPI explorer above." : "위 KPI 탐색 차트와 별개로, 원하는 보조 차트를 만들고 표시 순서를 관리합니다."}</p>
+        <p style={{ color: "var(--text-secondary)", fontSize: "13px" }}>{locale === "en" ? "Use the ready-made charts or add your own, then edit visibility and order." : "기본 차트를 바로 사용하거나 새 차트를 추가하고, 표시 여부와 순서를 편집할 수 있습니다."}</p>
 
         {/* 이벤트 마커 입력 UI는 여기가 아니라 Dashboard.jsx에서 탭 콘텐츠 위에
             <MonEventMarkerUI/>로 렌더됨(전 탭 공통 상단 1곳). 여기 시계열 차트는
@@ -942,7 +995,15 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
               <div key={c.k} className="chart-card" style={c.full ? { gridColumn: "1 / -1" } : undefined}>
                 <div className="chart-title">{c.title}</div>
                 <div className="chart-sub">{c.sub}</div>
-                <div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={setCanvasRef(c.k)}></canvas></div>
+                {customScorecardFor(c.k) ? (
+                  <div className="custom-scorecard">
+                    <span>{customScorecardFor(c.k).label}</span>
+                    <strong className="tnum">{formatCustomScorecard(customScorecardFor(c.k))}</strong>
+                    <small>{locale === "en" ? "Current filtered total" : "현재 필터 기준 전체값"}</small>
+                  </div>
+                ) : (
+                  <div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={setCanvasRef(c.k)}></canvas></div>
+                )}
               </div>
             ))}
           </div>
@@ -963,7 +1024,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
         open={chartCfgOpen}
         onClose={() => setChartCfgOpen(false)}
         title={T.chartEditPanelTitle}
-        items={customChartMetas.map((c) => ({ key: c.k, label: c.title }))}
+        items={[...chartMeta, ...customChartMetas].map((c) => ({ key: c.k, label: c.title }))}
         config={chartCfg}
         onSave={(next) => saveScope(VIZ_CHART_SCOPE, next, setChartCfgOpen)}
       />
