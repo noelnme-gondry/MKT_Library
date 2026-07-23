@@ -542,6 +542,22 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("분석하기");
   });
 
+  it("keeps the analyze button visible and explains the block when source currency is unselected", () => {
+    seedWithData();
+    const slice = useAppStore.getState().csvData;
+    const noCurrency = { ...slice };
+    delete noCurrency.currency;
+    useAppStore.setState({
+      csvGroups: { ...useAppStore.getState().csvGroups, response: noCurrency },
+      csvData: noCurrency,
+    });
+    const { container } = render(<MarketingResponse />);
+    const analyze = Array.from(container.querySelectorAll("button")).find((button) => button.textContent.includes("분석하기"));
+    expect(analyze).toBeTruthy();
+    expect(analyze?.disabled).toBe(true);
+    expect(document.body.textContent).toContain("원본 CSV 통화만 선택하면 분석할 수 있습니다");
+  });
+
   it("renders trend→diagnose panel (§1 macro/audit, §4.5 ranking) after analyze without throwing", async () => {
     seedWithData();
     const { container } = render(<MarketingResponse />);

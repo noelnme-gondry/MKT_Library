@@ -4104,7 +4104,8 @@ export default function MarketingResponse({ locale = "ko" }) {
     // 지출 단위를 모르는데 분석을 허용하면 숫자가 다른 통화로 오해될 수 있다. 원본
     // 통화는 매핑 단계에서 한 번만 선택하고, 선택 후 표시 통화 토글로 환산한다.
     const currencyMissing = !isDemo && !selectedSourceCurrency;
-    const ready = mmmColMap && missing.length === 0 && !currencyMissing;
+    const mappingReady = !!mmmColMap && missing.length === 0;
+    const canAnalyze = mappingReady && !currencyMissing;
     return (
       <section className="block" id="s-prep">
         <div className="file-state">
@@ -4148,10 +4149,15 @@ export default function MarketingResponse({ locale = "ko" }) {
           onChange={setMmmColMap}
           locale={locale}
         />
-        {ready && (
-          <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px" }}>
-            <span style={{ fontSize: "12.5px", color: "var(--text-1)" }}>{tx("✅ 필수 역할 매핑 완료.", "✅ Required roles mapped.")} <strong>{tx("매핑이 맞는지 확인한 뒤 분석을 실행하세요.", "Check that the mapping is correct, then run the analysis.")}</strong> <span style={{ color: "var(--text-muted)" }}>{tx("(매핑만으로 자동 분석하지 않습니다.)", "(Mapping alone doesn't auto-run the analysis.)")}</span></span>
-            <button className="ab-button" style={{ marginLeft: "auto" }}
+        {mappingReady && (
+          <div data-mmm-analysis-gate style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", background: canAnalyze ? "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))" : "linear-gradient(135deg,rgba(245,158,11,0.12),rgba(245,158,11,0.03))", border: `1px solid ${canAnalyze ? "rgba(122,162,247,0.3)" : "rgba(245,158,11,0.4)"}`, borderRadius: "10px", padding: "14px 16px" }}>
+            <span style={{ fontSize: "12.5px", color: "var(--text-1)" }}>
+              {canAnalyze
+                ? <>{tx("✅ 필수 역할 매핑 완료.", "✅ Required roles mapped.")} <strong>{tx("매핑이 맞는지 확인한 뒤 분석을 실행하세요.", "Check that the mapping is correct, then run the analysis.")}</strong> <span style={{ color: "var(--text-muted)" }}>{tx("(매핑만으로 자동 분석하지 않습니다.)", "(Mapping alone doesn't auto-run the analysis.)")}</span></>
+                : <>{tx("⚠ 필수 역할 매핑 완료. 원본 CSV 통화만 선택하면 분석할 수 있습니다.", "⚠ Required roles mapped. Select the source CSV currency to run the analysis.")} <strong>{tx("위에서 원 ₩ 또는 달러 $를 선택하세요.", "Choose KRW ₩ or USD $ above.")}</strong></>}
+            </span>
+            <button className="ab-button" style={{ marginLeft: "auto" }} disabled={!canAnalyze}
+              title={canAnalyze ? undefined : tx("원본 CSV 통화를 선택하면 분석할 수 있습니다.", "Select the source CSV currency to run the analysis.")}
               onClick={() => requestAd(() => runMmmAnalyze(mmmAnalysisSig))}>{tx("▶ 분석하기", "▶ Analyze")}</button>
           </div>
         )}
