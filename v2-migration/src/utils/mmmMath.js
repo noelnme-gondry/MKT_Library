@@ -3,6 +3,11 @@ import { CANNIBAL_STATS } from "./responseMath.js";
 import { mmmOls, REG_STATS, REG_TRANSFORMS } from "./regMath.js";
 import { _Z975, mmmNormCdf, chi2Cdf, studentTp, studentTcrit } from "./statPrimitives.js";
 import { _mmmFmtDate } from "./regForecastMath.js";
+import {
+  buildObservedYearShapes,
+  classifyBusinessSeasonality,
+  compareObservedYearShapes,
+} from "./mmmBusinessSeasonality.js";
 
             export const MMR_MATH = {
               // 기하 adstock: a_t = x_t + θ·a_{t-1}
@@ -637,7 +642,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             };
 
             export const MMM_METH_CONFIG = {
-              version: "1.3.0",
+              version: "1.5.1",
               // 기본은 연간 1차 조화파만 둔다. 과거의 13주 파형을 무조건 반복하면
               // 매체·이벤트 변동까지 계절성으로 흡수할 수 있으므로, 더 복잡한 모양은
               // rolling holdout에서 이길 때만 아래 후보에서 선택한다.
@@ -648,13 +653,32 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 { id: "annual-2", periods: [52.18, 26.09] },
                 { id: "annual-3", periods: [52.18, 26.09, 17.39] },
                 { id: "annual-4", periods: [52.18, 26.09, 17.39, 13.04] },
+                { id: "business-harmonic-shrink-25", periods: [52.18, 26.09, 17.39, 13.04], seasonalityPenaltyProfile: "harmonic-order", seasonalityPenaltyStrength: 0.25 },
+                { id: "business-harmonic-shrink-50", periods: [52.18, 26.09, 17.39, 13.04], seasonalityPenaltyProfile: "harmonic-order", seasonalityPenaltyStrength: 0.5 },
+                { id: "business-harmonic-shrink-100", periods: [52.18, 26.09, 17.39, 13.04], seasonalityPenaltyProfile: "harmonic-order", seasonalityPenaltyStrength: 1 },
+                { id: "business-harmonic-shrink-200", periods: [52.18, 26.09, 17.39, 13.04], seasonalityPenaltyProfile: "harmonic-order", seasonalityPenaltyStrength: 2 },
+                { id: "business-smooth-6", periods: [52.18], seasonalityBasis: { type: "cyclic-rbf", knots: 6 } },
+                { id: "business-smooth-8", periods: [52.18], seasonalityBasis: { type: "cyclic-rbf", knots: 8 } },
               ],
               // 연간 계절성의 존재 여부는 최근 12주 예측 오차로 결정하지 않는다.
-              // 두 번의 연간 주기를 관측한 뒤 전체 이력에서 반복성과 BIC를 확인한다.
-              // 104주 미만은 연간 1차 기본값을 유지하되 "자동 판정 전"으로 표시한다.
-              seasonalityMinHistory: 104,
+              // 두 번째 연간 주기의 대부분을 관측한 전체 이력에서 구조적
+              // 계절성을 비교한다. 정확히 104주를 채우지 못한 경계 주간도
+              // 사용할 수 있도록 실무 최소값은 96주로 둔다.
+              seasonalityMinHistory: 96,
               seasonalityBicThreshold: 6,
               seasonalityComplexityTolerance: 2,
+              // 분해 후보가 full-history BIC만 낮추고 순방향에서 붕괴하는 것을
+              // 막기 위한 보조 게이트. 한 번의 holdout이 아니라 3개 rolling
+              // fold의 평균 WMAPE를 비교하며, 자료가 짧으면 자동 생략한다.
+              seasonalityRollingHorizon: 12,
+              seasonalityRollingMinTrain: 52,
+              seasonalityRollingMaxFolds: 3,
+              seasonalityRollingMaxDegradation: 2,
+              seasonalityRegularizationMinImprovement: 0.05,
+              // 실제 연도 반복성은 강제 삭제나 수동 계수 조정에 쓰지 않고
+              // 진단값으로만 표시한다. 규제는 아래 고정 후보 그리드가 rolling
+              // 개선의 오차범위를 넘을 때만 자동 적용한다.
+              seasonalityObservedRecurrenceRequired: false,
               seasonalityMinLagCorrelation: 0.15,
               adstockGrid: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
               // Empirical-Bayes 효과 신뢰도는 한 변환을 고정하지 않는다. 채널별 α × 반포화점 ×
@@ -909,16 +933,37 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 names.push(nm);
                 cols.push(arr);
               };
-              cfg.seasonalityPeriods.forEach((P, i) => {
-                push(
-                  `sin_${i}`,
-                  t.map((tt) => Math.sin((2 * Math.PI * tt) / P)),
-                );
-                push(
-                  `cos_${i}`,
-                  t.map((tt) => Math.cos((2 * Math.PI * tt) / P)),
-                );
-              });
+              if (cfg.seasonalityBasis?.type === "cyclic-rbf") {
+                const knots = Math.max(4, Math.min(12, Math.round(cfg.seasonalityBasis.knots || 6)));
+                const period = cfg.seasonalityPeriods?.[0] || 52.18;
+                const bandwidth = 0.85 / knots;
+                for (let knot = 0; knot < knots - 1; knot++) {
+                  const center = knot / knots;
+                  const basisMean = _mean(Array.from({ length: 52 }, (_, index) => {
+                    const phase = index / 52;
+                    const rawDistance = Math.abs(phase - center);
+                    const distance = Math.min(rawDistance, 1 - rawDistance);
+                    return Math.exp(-0.5 * (distance / bandwidth) ** 2);
+                  }));
+                  push(`season_rbf_${knot}`, t.map((tt) => {
+                    const phase = ((((tt - 1) % period) + period) % period) / period;
+                    const rawDistance = Math.abs(phase - center);
+                    const distance = Math.min(rawDistance, 1 - rawDistance);
+                    return Math.exp(-0.5 * (distance / bandwidth) ** 2) - basisMean;
+                  }));
+                }
+              } else {
+                cfg.seasonalityPeriods.forEach((P, i) => {
+                  push(
+                    `sin_${i}`,
+                    t.map((tt) => Math.sin((2 * Math.PI * tt) / P)),
+                  );
+                  push(
+                    `cos_${i}`,
+                    t.map((tt) => Math.cos((2 * Math.PI * tt) / P)),
+                  );
+                });
+              }
               // 흡수(공선) 집합: cfg.absorbed = 다중공선으로 제거할 컬럼 키(채널 key 또는 step 이름). 기본은 step 흡수(캠페인 유지).
               const absorbed = cfg.absorbed || new Set(cfg.foldIntoRegime || []);
               // 휴일/이벤트: 사용자가 매핑한 더미(panel.useDummies)가 있으면 그것을 모델에 포함(실제 이벤트 신호 — liveness 등).
@@ -2112,7 +2157,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
             export function mmmShapleyGroups(names, channels) {
               // 휴일=lny/chuseok 또는 매핑 더미(d_*). Regime=cfg.steps + 사용자 매핑 step(나머지 비-계절/추세/휴일/채널).
               // 골든(lny/chuseok·post_step/line_off·ln_*)은 그룹 멤버십·순서 동일 → byte-동일.
-              const isSeason = (n) => /^(sin|cos)_/.test(n),
+              const isSeason = (n) => /^(sin|cos)_/.test(n) || n.startsWith("season_rbf_"),
                 isHol = (n) => n === "lny" || n === "chuseok" || n.startsWith("d_"),
                 isCh = (n) => n.startsWith("ln_");
               const colsWhere = (pred) =>
@@ -2967,9 +3012,14 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               const controlPenalty = Number.isFinite(options.controlPenalty)
                 ? Math.max(0, options.controlPenalty)
                 : 0.15;
-              const defaultPenalty = Array.from({ length: p }, (_, j) =>
-                j === 0 ? 1e-8 : mediaIndices.has(j) ? mediaPenalty : controlPenalty,
-              );
+              const defaultPenalty = Array.from({ length: p }, (_, j) => {
+                if (j === 0) return 1e-8;
+                if (mediaIndices.has(j)) return mediaPenalty;
+                const seasonalMultiplier = options.seasonalityIndices?.has(j)
+                  ? (options.seasonalityPenaltyMultiplier || 1) * (options.seasonalityPenaltyByIndex?.[j] || 1)
+                  : 1;
+                return controlPenalty * seasonalMultiplier;
+              });
               const priorMean = Array(p).fill(0);
               const calibratedPrecision = {};
               // 외부 실험·참고 시장 근거는 매체 계수에만 적용한다. 추세·계절·국가
@@ -3066,7 +3116,25 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                   precision: isFinite(prior.precision) ? prior.precision / Math.max(1e-12, colScale[j] ** 2) : prior.precision,
                 };
               }
-              const posterior = _mmmBayesianLinear(X, y, mediaIndices, mediaPriors, options);
+              const seasonalityIndices = new Set(names
+                .map((name, index) => (/^(sin|cos)_/.test(name) || name.startsWith("season_rbf_")) ? index + 1 : null)
+                .filter((index) => index !== null));
+              const seasonalityPenaltyByIndex = {};
+              if (options.seasonalityPenaltyProfile === "harmonic-order") {
+                const strength = Math.max(0, Number(options.seasonalityPenaltyStrength) || 0);
+                names.forEach((name, index) => {
+                  const match = name.match(/^(?:sin|cos)_(\d+)$/);
+                  if (match) {
+                    const order = Number(match[1]) + 1;
+                    seasonalityPenaltyByIndex[index + 1] = 1 + strength * (order ** 2 - 1);
+                  }
+                });
+              }
+              const posterior = _mmmBayesianLinear(X, y, mediaIndices, mediaPriors, {
+                ...options,
+                seasonalityIndices,
+                seasonalityPenaltyByIndex,
+              });
               if (!posterior) return null;
               const absoluteBeta = names.map((_, j) => posterior.beta[j + 1] / colScale[j]);
               const absoluteIntercept = posterior.beta[0] - absoluteBeta.reduce(
@@ -3243,8 +3311,83 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               return ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
             }
 
-            function _mmmBayesSeasonalityCandidateFit(panel, cfg, targetName, periods, channelParams, options = {}) {
-              const candidateCfg = { ...cfg, baselineKnots: [], seasonalityPeriods: periods.slice() };
+            // 계절성 선택 단계에서는 매체별 flight가 연간 파형을 대신 설명하지
+            // 않도록 Brand/Performance 의사결정 단위로만 집계한다. 최종 MMM은
+            // 원래 채널 단위로 다시 적합하므로 채널별 기여도는 손실되지 않는다.
+            function _mmmSeasonalitySelectionPanel(panel) {
+              const channels = _mmmChans(panel).filter((channel) => panel.ch?.[channel.key]);
+              const groups = new Map();
+              channels.forEach((channel) => {
+                const key = channel.kind === "brand" ? "__season_brand" : "__season_performance";
+                if (!groups.has(key)) groups.set(key, { key, label: channel.kind === "brand" ? "Brand" : "Performance", kind: channel.kind, values: new Array(panel.week.length).fill(0) });
+                const values = groups.get(key).values;
+                panel.ch[channel.key].forEach((value, index) => { values[index] += Number.isFinite(value) ? value : 0; });
+              });
+              if (groups.size <= 1 || !panel.week?.length) return panel;
+              return {
+                ...panel,
+                ch: Object.fromEntries([...groups.values()].map((group) => [group.key, group.values])),
+                channels: [...groups.values()].map(({ key, label, kind }) => ({ key, label, kind })),
+              };
+            }
+
+            export function mmmSeasonalityRegularizationDecision(base, candidates, rollingEvidence, minimumImprovement = 0.05) {
+              const regularized = (candidates || []).filter((item) => item?.seasonalityPenaltyProfile);
+              const rollingFamily = [base, ...regularized]
+                .filter((item) => item && Number.isFinite(rollingEvidence.get(item.id)?.meanWmape))
+                .sort((a, b) => rollingEvidence.get(a.id).meanWmape - rollingEvidence.get(b.id).meanWmape);
+              const winner = rollingFamily[0] || null;
+              const fallback = {
+                enabled: !!(base && regularized.length),
+                baseId: base?.id || null,
+                candidateId: winner?.id || null,
+                meanImprovement: 0,
+                standardError: null,
+                requiredImprovement: Math.max(0, minimumImprovement),
+                accepted: false,
+                reason: "no-comparable-rolling-candidate",
+              };
+              if (!base || !winner?.seasonalityPenaltyProfile) return { selected: base || winner, evidence: fallback };
+              const baseFolds = rollingEvidence.get(base.id)?.foldWmapes || [];
+              const candidateFolds = rollingEvidence.get(winner.id)?.foldWmapes || [];
+              const pairedCount = Math.min(baseFolds.length, candidateFolds.length);
+              const improvements = Array.from({ length: pairedCount }, (_, index) => baseFolds[index] - candidateFolds[index])
+                .filter(Number.isFinite);
+              const meanImprovement = improvements.length ? _mean(improvements) : 0;
+              const variance = improvements.length > 1
+                ? improvements.reduce((sum, value) => sum + (value - meanImprovement) ** 2, 0) / (improvements.length - 1)
+                : Infinity;
+              const standardError = Number.isFinite(variance) ? Math.sqrt(variance / improvements.length) : null;
+              const requiredImprovement = Math.max(
+                0,
+                minimumImprovement,
+                Number.isFinite(standardError) ? standardError : Infinity,
+              );
+              const accepted = improvements.length >= 3 && meanImprovement >= requiredImprovement;
+              return {
+                selected: accepted ? winner : base,
+                evidence: {
+                  enabled: true,
+                  baseId: base.id,
+                  candidateId: winner.id,
+                  meanImprovement,
+                  standardError,
+                  requiredImprovement,
+                  accepted,
+                  reason: accepted ? "paired-rolling-improvement-clears-uncertainty" : "paired-rolling-improvement-too-small",
+                },
+              };
+            }
+
+            function _mmmBayesSeasonalityCandidateFit(panel, cfg, targetName, periods, channelParams, options = {}, seasonalityBasis = null, seasonalityPenaltyProfile = null, seasonalityPenaltyStrength = 0) {
+              const candidateCfg = {
+                ...cfg,
+                baselineKnots: [],
+                seasonalityPeriods: periods.slice(),
+                seasonalityBasis,
+                seasonalityPenaltyProfile,
+                seasonalityPenaltyStrength,
+              };
               const built = _mmmBayesControlFeatures(panel, candidateCfg);
               const names = built.names.slice();
               const cols = built.X.length ? built.X[0].map((_, index) => built.X.map((row) => row[index])) : [];
@@ -3265,77 +3408,297 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 ...options,
                 mediaPenalty: cfg.mediaPenalty,
                 controlPenalty: cfg.controlPenalty,
+                seasonalityPenaltyProfile: candidateCfg.seasonalityPenaltyProfile,
+                seasonalityPenaltyStrength: candidateCfg.seasonalityPenaltyStrength,
               });
               if (!fit) return null;
               const sse = fit.posterior.resid.reduce((sum, value) => sum + value ** 2, 0);
               const bic = y.length * Math.log(Math.max(sse / Math.max(1, y.length), 1e-12))
                 + (names.length + 1) * Math.log(Math.max(2, y.length));
-              return { ...fit, names, sse, bic };
+              const seasonalNames = new Set(names.filter((name) => /^(sin|cos)_/.test(name) || name.startsWith("season_rbf_")));
+              const seasonal = y.map((_, rowIndex) => names.reduce((sum, name, columnIndex) => (
+                seasonalNames.has(name) ? sum + (fit.absoluteBeta[columnIndex] || 0) * cols[columnIndex][rowIndex] : sum
+              ), 0));
+              return { ...fit, names, sse, bic, seasonal };
+            }
+
+            function _mmmBayesSeasonalityRollingEvidence(panel, cfg, targetName, specs, options = {}) {
+              const n = panel.week?.length || 0;
+              const horizon = Math.max(8, Math.min(cfg.seasonalityRollingHorizon || 12, Math.floor(n / 5)));
+              const minTrain = Math.max(52, cfg.seasonalityRollingMinTrain || 52);
+              const maxFolds = Math.max(2, cfg.seasonalityRollingMaxFolds || 3);
+              if (options.enableSeasonalityRollingStability === false || n < minTrain + horizon) return new Map();
+              const cuts = [];
+              for (let cut = n - horizon; cut >= minTrain && cuts.length < maxFolds; cut -= horizon) cuts.push(cut);
+              if (cuts.length < 2) return new Map();
+              const result = new Map();
+              specs.forEach((spec) => {
+                const foldWmapes = [];
+                cuts.forEach((cut) => {
+                  const train = _mmmBayesSlicePanel(panel, cut);
+                  const fit = mmmBayesianRun(train, {
+                    ...cfg,
+                    seasonalityPeriods: spec.periods,
+                    seasonalityBasis: spec.seasonalityBasis || null,
+                    seasonalityPenaltyProfile: spec.seasonalityPenaltyProfile || null,
+                    seasonalityPenaltyStrength: spec.seasonalityPenaltyStrength || 0,
+                  }, targetName, false, {
+                    ...options,
+                    enableSeasonalitySelection: false,
+                    enableBaselineSelection: false,
+                    enableMediaPenaltySelection: false,
+                    skipTransformUncertainty: true,
+                  });
+                  if (!fit) return;
+                  const horizonPanel = {
+                    ...panel,
+                    week: panel.week.slice(cut, cut + horizon),
+                    ch: Object.fromEntries(Object.entries(panel.ch || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)])),
+                    dummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)])),
+                    steps: Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)])),
+                    external: Object.fromEntries(Object.entries(panel.external || {}).map(([key, values]) => [key, values.slice(cut, cut + horizon)])),
+                  };
+                  const forecast = mmmBayesianForecast(fit, train, horizonPanel.ch, horizon, {
+                    futureDummy: horizonPanel.dummy,
+                    futureSteps: horizonPanel.steps,
+                    futureExternal: horizonPanel.external,
+                  });
+                  const actual = panel.targets?.[targetName]?.slice(cut, cut + horizon) || [];
+                  if (forecast?.predFut?.length !== actual.length || !actual.length) return;
+                  const denominator = actual.reduce((sum, value) => sum + Math.abs(value), 0);
+                  if (!(denominator > 1e-9)) return;
+                  const wmape = actual.reduce((sum, value, index) => sum + Math.abs(value - forecast.predFut[index]), 0) / denominator * 100;
+                  if (Number.isFinite(wmape)) foldWmapes.push(wmape);
+                });
+                if (foldWmapes.length >= 2) {
+                  const mean = _mean(foldWmapes);
+                  const variance = foldWmapes.length > 1
+                    ? _mean(foldWmapes.map((value) => (value - mean) ** 2))
+                    : 0;
+                  result.set(spec.id, {
+                    foldWmapes,
+                    meanWmape: mean,
+                    standardError: Math.sqrt(variance / foldWmapes.length),
+                    folds: foldWmapes.length,
+                  });
+                }
+              });
+              return result;
             }
 
             // 계절성은 장기 구조이고 Cost 반응은 단기 예측 변수다. 따라서 최근
-            // 12주 오차로 계절성 존폐를 고르지 않는다. 이벤트·step·추세·외부지수와
-            // 고정된 매체 변환을 통제한 전체 이력에서 52주 반복성과 BIC 개선을 먼저
-            // 확인한다. 반복성이 확인된 뒤에만 annual-1~4의 복잡도를 비교한다.
+            // 12주 오차로 계절성 존폐를 고르지 않는다. Brand/Performance로 집계한
+            // 매체·이벤트·추세를 통제한 전체 이력에서 연간 파형의 BIC 개선과
+            // 52주 간 파형 안정성을 먼저 확인한 뒤 annual-1~4의 복잡도를 비교한다.
             export function mmmBayesianSeasonalitySelection(panel, cfg, targetName, options = {}) {
               const n = panel.week?.length || 0;
               const specs = (cfg.seasonalityCandidates || []).filter((spec) => Array.isArray(spec.periods));
-              const minHistory = Math.max(104, cfg.seasonalityMinHistory || 104);
+              const configuredMinHistory = cfg.seasonalityMinHistory || 104;
+              // 96주는 두 번째 연간 주기의 대부분을 관측한 실무 최소치다. 기존
+              // 104주 계약은 `seasonalityMinHistory: 104`를 명시한 호출에서
+              // 그대로 유지된다.
+              const minHistory = Math.max(96, configuredMinHistory);
               if (options.enableSeasonalitySelection === false || n < minHistory || !specs.length) {
                 return { enabled: false, cfg, selected: null, candidates: [], reason: "insufficient-history-or-disabled" };
               }
+              const selectionPanel = _mmmSeasonalitySelectionPanel(panel);
               const neutralCfg = { ...cfg, baselineKnots: [], seasonalityPeriods: [] };
-              const neutralControls = _mmmBayesControlFeatures(panel, neutralCfg);
-              const channelParams = _mmmBayesChannelParams(panel, neutralCfg, targetName, neutralControls);
+              const neutralControls = _mmmBayesControlFeatures(selectionPanel, neutralCfg);
+              const channelParams = _mmmBayesChannelParams(selectionPanel, neutralCfg, targetName, neutralControls);
               const evaluated = specs.map((spec) => {
-                const fit = _mmmBayesSeasonalityCandidateFit(panel, cfg, targetName, spec.periods, channelParams, options);
-                return fit ? { ...spec, bic: fit.bic, sse: fit.sse, residuals: fit.posterior.resid } : null;
+                const fit = _mmmBayesSeasonalityCandidateFit(
+                  selectionPanel,
+                  cfg,
+                  targetName,
+                  spec.periods,
+                  channelParams,
+                  options,
+                  spec.seasonalityBasis || null,
+                  spec.seasonalityPenaltyProfile || null,
+                  spec.seasonalityPenaltyStrength || 0,
+                );
+                return fit ? { ...spec, bic: fit.bic, sse: fit.sse, residuals: fit.posterior.resid, seasonal: fit.seasonal || [] } : null;
               }).filter(Boolean);
               const none = evaluated.find((item) => item.periods.length === 0);
-              const annualOne = evaluated.find((item) => item.periods.length === 1 && Math.abs(item.periods[0] - 52.18) < 1);
-              if (!none || !annualOne) return { enabled: false, cfg, selected: null, candidates: evaluated, reason: "required-candidate-fit-failed" };
-              const lag = Math.max(1, Math.round(annualOne.periods[0]));
+              const groupedAnnualCandidates = evaluated.filter((item) => item.periods.length > 0);
+              if (!none || !groupedAnnualCandidates.length) return { enabled: false, cfg, selected: null, candidates: evaluated, reason: "required-candidate-fit-failed" };
+              const groupedBest = groupedAnnualCandidates.reduce((winner, item) => item.bic < winner.bic ? item : winner, groupedAnnualCandidates[0]);
+              // 검출은 집계 패널로 보수적으로 하고, 최종 후보 간 우열은 실제
+              // 채널 단위 설계행렬의 BIC로 다시 확인한다. 두 단계가 달라야
+              // 특정 채널 flight가 계절성을 독점하지 않으면서도 최종 분해의
+              // 채널 구조를 반영할 수 있다.
+              // 집계 패널은 검출용으로만 사용한다. 후보를 집계 BIC 차이로 먼저
+              // 잘라내면, 원래 채널을 복원했을 때 순위가 뒤집힌 후보가 final
+              // BIC를 받지 못하고 기본 후보로 선택될 수 있다. 주간 데이터 규모가
+              // 작고 후보 수가 4개뿐인 이 단계에서는 모든 후보를 동일한 최종
+              // 설계행렬로 재평가한다.
+              const finalCandidates = evaluated;
+              const finalNeutralControls = _mmmBayesControlFeatures(panel, neutralCfg);
+              const finalChannelParams = _mmmBayesChannelParams(panel, neutralCfg, targetName, finalNeutralControls);
+              const finalBicById = new Map();
+              let finalNoneFit = null;
+              finalCandidates.forEach((item) => {
+                const fit = _mmmBayesSeasonalityCandidateFit(
+                  panel,
+                  cfg,
+                  targetName,
+                  item.periods,
+                  finalChannelParams,
+                  options,
+                  item.seasonalityBasis || null,
+                  item.seasonalityPenaltyProfile || null,
+                  item.seasonalityPenaltyStrength || 0,
+                );
+                if (fit) {
+                  finalBicById.set(item.id, fit.bic);
+                  if (item.id === none.id) finalNoneFit = fit;
+                }
+              });
+              const annualCandidates = groupedAnnualCandidates.map((item) => ({
+                ...item,
+                finalBic: finalBicById.get(item.id) ?? null,
+              }));
+              const best = annualCandidates.reduce((winner, item) => (Number.isFinite(item.finalBic) ? item.finalBic : item.bic) < (Number.isFinite(winner.finalBic) ? winner.finalBic : winner.bic) ? item : winner, annualCandidates[0]);
+              const lag = 52;
               const lagCorrelation = none.residuals.length > lag
                 ? CANNIBAL_STATS.pearson(none.residuals.slice(lag), none.residuals.slice(0, -lag))
                 : null;
-              const bicImprovement = none.bic - annualOne.bic;
-              const relativeSseImprovement = none.sse > 1e-12 ? (none.sse - annualOne.sse) / none.sse : 0;
+              const seasonalLagCorrelation = best.seasonal.length > lag
+                ? CANNIBAL_STATS.pearson(best.seasonal.slice(lag), best.seasonal.slice(0, -lag))
+                : null;
+              const seasonalRms = best.seasonal.length ? Math.sqrt(_mean(best.seasonal.map((value) => value ** 2))) : 0;
+              const bicImprovement = none.bic - groupedBest.bic;
+              const finalNoneBic = finalBicById.get(none.id);
+              const finalBicImprovement = Number.isFinite(best.finalBic) && Number.isFinite(finalNoneBic)
+                ? finalNoneBic - best.finalBic
+                : null;
+              const relativeSseImprovement = none.sse > 1e-12 ? (none.sse - groupedBest.sse) / none.sse : 0;
+              const rollingEvidence = _mmmBayesSeasonalityRollingEvidence(panel, cfg, targetName, evaluated, options);
+              const noneRolling = rollingEvidence.get(none.id);
+              const rollingMaxDegradation = Math.max(0, cfg.seasonalityRollingMaxDegradation ?? 2);
+              const hasExternalControls = Object.keys(panel.external || {}).length > 0;
+              const marketBlindSelection = hasExternalControls && options.enableSeasonalityControlStability !== false
+                ? mmmBayesianSeasonalitySelection({ ...panel, external: {}, externalDefs: [] }, cfg, targetName, {
+                  ...options,
+                  enableSeasonalityControlStability: false,
+                  enableSeasonalityRollingStability: false,
+                })
+                : null;
+              const sameSeasonalityFamily = (left, right) => {
+                if (!left || !right || left.periods?.length !== right.periods?.length) return false;
+                const samePeriods = left.periods.every((period, index) => Math.abs(period - right.periods[index]) < 1e-6);
+                const leftBasis = left.seasonalityBasis?.type || "fourier";
+                const rightBasis = right.seasonalityBasis?.type || "fourier";
+                return samePeriods && leftBasis === rightBasis;
+              };
+              const controlConsensus = marketBlindSelection
+                ? sameSeasonalityFamily(marketBlindSelection.selected, best)
+                : true;
+              const observedRecurrence = Array.isArray(panel.dateLabel) && finalNoneFit
+                ? compareObservedYearShapes(buildObservedYearShapes(panel.dateLabel, finalNoneFit.posterior.resid))
+                : { available: false, reason: "date-labels-unavailable" };
+              const observedConfidence = classifyBusinessSeasonality(observedRecurrence, n);
+              const observedRecurrenceGate = !observedRecurrence.available
+                || observedConfidence.level === "moderate"
+                || observedConfidence.level === "strong";
+              const observedRecurrenceScale = observedRecurrence.available
+                ? Math.max(0.5, Math.min(1, 0.5 + 0.5 * Math.max(0, Number(observedRecurrence.observedYearCorrelation) || 0)))
+                : 1;
               const evidence = {
                 minHistory,
                 observedWeeks: n,
                 lagWeeks: lag,
                 lagCorrelation,
+                seasonalLagCorrelation,
+                seasonalRms,
                 bicImprovement,
+                finalBicImprovement,
                 relativeSseImprovement,
+                rollingMaxDegradation,
+                rolling: Object.fromEntries([...rollingEvidence.entries()].map(([id, item]) => [id, {
+                  meanWmape: item.meanWmape,
+                  standardError: item.standardError,
+                  folds: item.folds,
+                }])),
+                controlConsensus,
+                marketBlindSelected: marketBlindSelection?.selected?.id || null,
+                observedRecurrence,
+                observedConfidence,
+                observedRecurrenceGate,
+                observedRecurrenceScale,
+                observedRecurrencePenaltyMultiplier: 1 / observedRecurrenceScale,
+                // 계절성 선택은 분해용이다. 최근 holdout을 통과시키는 대신,
+                // 집계 매체를 통제한 전체 이력에서 구조적 BIC 개선과 동일한
+                // 연간 파형의 재현성을 요구한다. 미래 예측은 별도 rolling
+                // 선택을 사용한다.
                 detected: bicImprovement >= (cfg.seasonalityBicThreshold || 6)
-                  && Number.isFinite(lagCorrelation)
-                  && lagCorrelation >= (cfg.seasonalityMinLagCorrelation ?? 0.15),
+                  && Number.isFinite(seasonalLagCorrelation)
+                  && seasonalLagCorrelation >= 0.75
+                  && seasonalRms >= Math.max(1, _mean(selectionPanel.targets[targetName]) * 0.005),
               };
               const eligible = evidence.detected
-                ? evaluated.filter((item) => item.periods.length > 0)
+                ? annualCandidates.filter((item) => {
+                  if (marketBlindSelection && !sameSeasonalityFamily(item, marketBlindSelection.selected)) return false;
+                  if (!noneRolling || !rollingEvidence.has(item.id)) return true;
+                  return rollingEvidence.get(item.id).meanWmape <= noneRolling.meanWmape + rollingMaxDegradation;
+                })
                 : [none];
-              const best = eligible.reduce((winner, item) => item.bic < winner.bic ? item : winner, eligible[0]);
-              const selected = eligible
-                .filter((item) => item.bic <= best.bic + (cfg.seasonalityComplexityTolerance ?? 2))
-                .sort((a, b) => a.periods.length - b.periods.length || String(a.id).localeCompare(String(b.id)))[0];
-              const publicCandidates = evaluated.map(({ residuals, ...item }) => ({
+              const safeEligible = eligible.length ? eligible : [none];
+              const bestEligible = safeEligible.reduce((winner, item) => (Number.isFinite(item.finalBic) ? item.finalBic : item.bic) < (Number.isFinite(winner.finalBic) ? winner.finalBic : winner.bic) ? item : winner, safeEligible[0]);
+              const bicShortlist = safeEligible
+                .filter((item) => (Number.isFinite(item.finalBic) ? item.finalBic : item.bic) <= (Number.isFinite(bestEligible.finalBic) ? bestEligible.finalBic : bestEligible.bic) + (cfg.seasonalityComplexityTolerance ?? 2));
+              const defaultSelected = bicShortlist
+                .slice()
+                .sort((a, b) => {
+                  const complexity = a.periods.length - b.periods.length;
+                  if (complexity) return complexity;
+                  return String(a.id).localeCompare(String(b.id));
+                })[0];
+              const unregularizedBase = bicShortlist.find((item) =>
+                !item.seasonalityPenaltyProfile && sameSeasonalityFamily(item, bestEligible),
+              );
+              const regularizedFamily = bicShortlist.filter((item) =>
+                item.seasonalityPenaltyProfile && sameSeasonalityFamily(item, bestEligible),
+              );
+              const regularizationDecision = mmmSeasonalityRegularizationDecision(
+                unregularizedBase,
+                regularizedFamily,
+                rollingEvidence,
+                cfg.seasonalityRegularizationMinImprovement ?? 0.05,
+              );
+              const regularizationSelection = regularizationDecision.evidence;
+              evidence.regularizationSelection = regularizationSelection;
+              const selected = regularizationDecision.selected || defaultSelected;
+              const publicCandidates = evaluated.map(({ residuals, seasonal, ...item }) => ({
                 ...item,
                 deltaBicVsNone: none.bic - item.bic,
+                finalBic: finalBicById.get(item.id) ?? null,
+                finalDeltaBicVsNone: finalBicById.has(item.id) ? none.bic - finalBicById.get(item.id) : null,
+                rollingWmape: rollingEvidence.get(item.id)?.meanWmape ?? null,
+                rollingFolds: rollingEvidence.get(item.id)?.folds ?? 0,
               }));
               return {
                 enabled: true,
-                cfg: { ...cfg, seasonalityPeriods: selected.periods.slice() },
+                cfg: {
+                  ...cfg,
+                  seasonalityPeriods: selected.periods.slice(),
+                  seasonalityBasis: selected.seasonalityBasis || null,
+                  seasonalityPenaltyProfile: selected.seasonalityPenaltyProfile || null,
+                  seasonalityPenaltyStrength: selected.seasonalityPenaltyStrength || 0,
+                  seasonalityAmplitudeScale: evidence.observedRecurrenceScale,
+                  seasonalityPenaltyMultiplier: 1,
+                },
                 selected: {
                   ...publicCandidates.find((item) => item.id === selected.id),
-                  bestBic: best.bic,
+                  bestBic: Number.isFinite(bestEligible.finalBic) ? bestEligible.finalBic : bestEligible.bic,
                   complexityTolerance: cfg.seasonalityComplexityTolerance ?? 2,
                   evidence,
                 },
                 candidates: publicCandidates,
                 evidence,
                 reason: evidence.detected
-                  ? (selected.id === best.id ? "full-history-recurrence-and-lowest-bic" : "full-history-recurrence-smoother-bic-tie")
-                  : "full-history-recurrence-not-detected",
+                  ? (selected.id === bestEligible.id ? "full-history-recurrence-business-structure-and-lowest-bic" : "full-history-recurrence-business-structure-smoother-bic-tie")
+                  : "full-history-recurrence-business-structure-not-detected",
               };
             }
 
@@ -3451,6 +3814,9 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 ...options,
                 mediaPenalty: effectiveCfg.mediaPenalty,
                 controlPenalty: effectiveCfg.controlPenalty,
+                seasonalityPenaltyMultiplier: effectiveCfg.seasonalityPenaltyMultiplier || 1,
+                seasonalityPenaltyProfile: effectiveCfg.seasonalityPenaltyProfile || null,
+                seasonalityPenaltyStrength: effectiveCfg.seasonalityPenaltyStrength || 0,
               };
               const controls = _mmmBayesControlFeatures(panel, effectiveCfg);
               const selectedParams = _mmmBayesChannelParams(panel, effectiveCfg, targetName, controls);
@@ -3500,7 +3866,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
               const groupNames = ["Trend", "Seasonality", "Holidays & Events", ...(stepNames.size ? ["Regime change"] : []), ...(industryNames.size ? ["Industry Trend"] : []), ...mediaGroups];
               const groupFor = (name) => {
                 if (name === "trend" || name.startsWith("baseline_knot_")) return "Trend";
-                if (/^(sin|cos)_/.test(name)) return "Seasonality";
+                if (/^(sin|cos)_/.test(name) || name.startsWith("season_rbf_")) return "Seasonality";
                 if (name === "lny" || name === "chuseok" || name.startsWith("d_")) return "Holidays & Events";
                 if (industryNames.has(name)) return "Industry Trend";
                 if (name.startsWith("media_")) {
@@ -3739,6 +4105,7 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                 rawFeatureHistory: Xraw,
                 externalTransforms: controls.externalTransforms || {},
                 seasonalityPeriods: effectiveCfg.seasonalityPeriods,
+                seasonalityBasis: effectiveCfg.seasonalityBasis || null,
                 standardizedX: X,
                 channelMeta,
                 absoluteBeta,
@@ -4198,6 +4565,23 @@ import { _mmmFmtDate } from "./regForecastMath.js";
                     const period = run.seasonalityPeriods?.[Number(seasonal[2])];
                     const angle = period > 0 ? (2 * Math.PI * futureWeeks[h]) / period : 0;
                     return seasonal[1] === "sin" ? Math.sin(angle) : Math.cos(angle);
+                  }
+                  const cyclicRbf = name.match(/^season_rbf_(\d+)$/);
+                  if (cyclicRbf) {
+                    const knots = Math.max(4, Math.min(12, Math.round(run.seasonalityBasis?.knots || 6)));
+                    const period = run.seasonalityPeriods?.[0] || 52.18;
+                    const center = Number(cyclicRbf[1]) / knots;
+                    const phase = ((((futureWeeks[h] - 1) % period) + period) % period) / period;
+                    const rawDistance = Math.abs(phase - center);
+                    const distance = Math.min(rawDistance, 1 - rawDistance);
+                    const bandwidth = 0.85 / knots;
+                    const basisMean = _mean(Array.from({ length: 52 }, (_, index) => {
+                      const samplePhase = index / 52;
+                      const sampleRawDistance = Math.abs(samplePhase - center);
+                      const sampleDistance = Math.min(sampleRawDistance, 1 - sampleRawDistance);
+                      return Math.exp(-0.5 * (sampleDistance / bandwidth) ** 2);
+                    }));
+                    return Math.exp(-0.5 * (distance / bandwidth) ** 2) - basisMean;
                   }
                   if (name === "trend") {
                     const delta = (lastRaw[j] || 0) - (previousRaw[j] || 0);
