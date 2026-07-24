@@ -597,13 +597,9 @@ describe("MarketingResponse render smoke", () => {
     enterMmmAndAnalyze(container);
     await flushRaf();
     clickByText(container, "기여 분해");
-    expect(document.body.textContent).toContain("Classic MMM");
-    expect(document.body.textContent).toContain("Bayesian-like MMM");
-    const bayesianLikeToggle = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent.includes("Bayesian-like MMM"));
-    expect(bayesianLikeToggle).toBeTruthy();
-    fireEvent.click(bayesianLikeToggle);
-    expect(bayesianLikeToggle?.className).toContain("active");
+    expect(document.body.textContent).toContain("PR #401 MMM");
+    expect(document.body.textContent).toContain("엔진 v1.2.0");
+    expect(document.body.textContent).not.toContain("Bayesian-like MMM");
     expect(document.body.textContent).toContain("RMS 기여 크기 비중");
     expect(document.body.textContent).toContain("모델 건강");
     expect(document.body.textContent).toContain("R-hat");
