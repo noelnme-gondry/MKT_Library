@@ -3440,6 +3440,25 @@ export default function MarketingResponse({ locale = "ko" }) {
     }
   }, [mmm, stage]);
 
+  // 모델 적합은 항상 전체 이력으로 한 번만 한다. 이 범위는 재학습 조건이 아니라
+  // 결과를 읽는 창이다. 따라서 아래 모든 날짜 기반 뷰는 같은 주 구간을 공유한다.
+  const contributionFilterDates = useMemo(() => (mmm && !mmm.empty
+    ? mmm.run.weeks.map((week, index) => {
+      const raw = isoDateFromLabel(mmm.panel.dateLabel?.[index] || mmm.panel.weekLabel?.[index]);
+      return { index, label: String(mmm.panel.weekLabel?.[index] || week.week), start: weekBoundaryDate(raw, mmmWeekStart, "start"), end: weekBoundaryDate(raw, mmmWeekStart, "end") };
+    }).filter((item) => item.start && item.end)
+    : []), [mmm, mmmWeekStart]);
+  const contributionViewRange = useMemo(() => {
+    if (!mmm || mmm.empty || !contributionFilterDates.length) return { start: 0, end: mmm?.run?.weeks?.length || 0 };
+    const visible = contributionFilterDates.filter((item) => (!contributionViewStart || item.start >= contributionViewStart) && (!contributionViewEnd || item.end <= contributionViewEnd));
+    return visible.length ? { start: visible[0].index, end: visible.at(-1).index + 1 } : { start: 0, end: 0 };
+  }, [mmm, contributionFilterDates, contributionViewStart, contributionViewEnd]);
+  const displayedDecomp = useMemo(() => {
+    if (!decomp || !mmm?.run) return decomp;
+    try { return mmmBayesianWeeklyDecomp(sliceMmmRun(mmm.run, contributionViewRange.start, contributionViewRange.end)); } catch { return null; }
+  }, [decomp, mmm, contributionViewRange]);
+  const displayedMmmPanel = useMemo(() => mmm?.panel ? sliceMmmPanel(mmm.panel, contributionViewRange.end, contributionViewRange.start) : null, [mmm, contributionViewRange]);
+
   // 고상관 연결요소는 실제로 합친 입력으로 한 번 더 적합한다. 개별 보기에는
   // 그룹 총기여를 원래 신호·지출 비중으로 보수 배분한 참고값을 남긴다.
   const collinearityGroupRefit = useMemo(() => {
@@ -3668,6 +3687,8 @@ export default function MarketingResponse({ locale = "ko" }) {
     const inst = [];
     if (stage === "mmm" && mmm && !mmm.empty) {
       const run = mmm.run;
+      const dateViewDecomp = displayedDecomp;
+      const dateViewPanel = displayedMmmPanel;
       // Bayesian engine selects a carryover parameter per channel; the legacy
       // single-λ CV chart is only meaningful for the old point-estimate engine.
       if (cvRef.current && run.cv_rmse && Object.keys(run.cv_rmse).length) {
@@ -3826,21 +3847,21 @@ export default function MarketingResponse({ locale = "ko" }) {
       // "baseline" 필드는 회귀절편(전체 기간 평균) 단일 상수라 원래 평평함 — 시즌·추세는 그 위에
       // 별도 contrib로 얹힘. 그래서 이 필드만 그리면 "왜 안 움직이나" 혼란(§ 실사용 피드백) →
       // 두 차트 모두 baseline+비매체(시즌·추세·휴일·구조변화) 합산 시계열을 같이 씀.
-      const nonMediaGroupsAll = decomp ? decomp.groupNames.filter((g) => MMM_NONMEDIA_GROUPS.includes(g)) : [];
-      const nonMediaSeries = decomp
-        ? decomp.weeks.map((w) => w.baseline + nonMediaGroupsAll.reduce((s, g) => s + (w.contrib[g] || 0), 0))
+      const nonMediaGroupsAll = dateViewDecomp ? dateViewDecomp.groupNames.filter((g) => MMM_NONMEDIA_GROUPS.includes(g)) : [];
+      const nonMediaSeries = dateViewDecomp
+        ? dateViewDecomp.weeks.map((w) => w.baseline + nonMediaGroupsAll.reduce((s, g) => s + (w.contrib[g] || 0), 0))
         : [];
       // Fit chart (actual vs fitted vs 시즌·추세 등)
-      if (fitRef.current && decomp) {
-        const labels = decomp.weeks.map((w, i) => mmm.panel.weekLabel?.[i] || w.week);
+      if (fitRef.current && dateViewDecomp) {
+        const labels = dateViewDecomp.weeks.map((w, i) => dateViewPanel?.weekLabel?.[i] || w.week);
         inst.push(
           new Chart(fitRef.current.getContext("2d"), {
             type: "line",
             data: {
               labels,
               datasets: [
-                { label: tx("실제", "Actual"), data: decomp.weeks.map((w) => w.actual), borderColor: CHART_THEME.muted, pointRadius: 0, tension: 0.2 },
-                { label: tx("모델", "Model"), data: decomp.weeks.map((w) => w.fitted), borderColor: "#7aa2f7", pointRadius: 0, tension: 0.2 },
+                { label: tx("실제", "Actual"), data: dateViewDecomp.weeks.map((w) => w.actual), borderColor: CHART_THEME.muted, pointRadius: 0, tension: 0.2 },
+                { label: tx("모델", "Model"), data: dateViewDecomp.weeks.map((w) => w.fitted), borderColor: "#7aa2f7", pointRadius: 0, tension: 0.2 },
                 { label: tx("시즌·추세 등(비매체)", "Season/trend etc. (non-media)"), data: nonMediaSeries, borderColor: "#e0af68", borderDash: [5, 4], pointRadius: 0, tension: 0.2 },
               ],
             },
@@ -3856,22 +3877,22 @@ export default function MarketingResponse({ locale = "ko" }) {
       // Decomp stacked area — 기준선(기본 수요) 위에 버킷/채널을 누적. 맨 위 누적선 = 모델(fitted).
       // 그룹모드: 4버킷(기본·시즌추세·이벤트·광고). 개별모드: 비매체 버킷 + 광고를 채널별로 각각 누적.
       // 어느 모드든 모든 밴드를 기준선 위로 쌓아 최상단이 모델선과 일치(=아래 텍스트의 "모델"과 sum 일치).
-      if (decompRef.current && decomp) {
-        const labels = decomp.weeks.map((w, i) => mmm.panel.weekLabel?.[i] || w.week);
+      if (decompRef.current && dateViewDecomp) {
+        const labels = dateViewDecomp.weeks.map((w, i) => dateViewPanel?.weekLabel?.[i] || w.week);
         // 테마 토큰은 body.light-mode에 재정의됨 → documentElement가 아니라 body에서 읽어야 라이트 반영.
         const themeVar = (n) => (typeof document !== "undefined" ? getComputedStyle(document.body).getPropertyValue(n).trim() : "") || "";
         const textCol = themeVar("--text-1") || CHART_THEME.text;
         const mutedCol = themeVar("--text-muted") || CHART_THEME.muted;
         // 버킷별 주간 합 시계열
         const bucketSeries = (bucket) =>
-          decomp.weeks.map((w) =>
-            decomp.groupNames.reduce((s, g) => (decompBucketOf(g) === bucket ? s + (w.contrib[g] || 0) : s), 0),
+          dateViewDecomp.weeks.map((w) =>
+            dateViewDecomp.groupNames.reduce((s, g) => (decompBucketOf(g) === bucket ? s + (w.contrib[g] || 0) : s), 0),
           );
         // area+누적선 방식은 밴드가 음수일 때 선이 역행해 다른 밴드를 침범(§유저 피드백: "쭉 꺼지는 게 카니발?").
         // stacked bar로 전환 — Chart.js는 양/음수를 0선 기준 위/아래로 각자 독립 누적해 절대 안 꼬임.
         // 기본 수요 = baseline(상수) + 계절(Seasonality) 흡수.
         const bars = [];
-        bars.push({ label: bucketMeta.base.label, data: decomp.weeks.map((w, t) => w.baseline + bucketSeries("base")[t]), tone: bucketMeta.base.tone });
+        bars.push({ label: bucketMeta.base.label, data: dateViewDecomp.weeks.map((w, t) => w.baseline + bucketSeries("base")[t]), tone: bucketMeta.base.tone });
         bars.push({ label: bucketMeta.trend.label, data: bucketSeries("trend"), tone: bucketMeta.trend.tone });
         bars.push({ label: bucketMeta.event.label, data: bucketSeries("event"), tone: bucketMeta.event.tone });
         const industrySeries = bucketSeries("industry");
@@ -3879,9 +3900,9 @@ export default function MarketingResponse({ locale = "ko" }) {
         if (decompGrouped) {
           bars.push({ label: bucketMeta.media.label, data: bucketSeries("media"), tone: bucketMeta.media.tone });
         } else {
-          const mediaGroups = decomp.groupNames.filter((g) => decompBucketOf(g) === "media");
+          const mediaGroups = dateViewDecomp.groupNames.filter((g) => decompBucketOf(g) === "media");
           mediaGroups.forEach((g, i) => {
-            bars.push({ label: g, data: decomp.weeks.map((w) => w.contrib[g] || 0), tone: MMM_MEDIA_PALETTE[i % MMM_MEDIA_PALETTE.length] });
+            bars.push({ label: g, data: dateViewDecomp.weeks.map((w) => w.contrib[g] || 0), tone: MMM_MEDIA_PALETTE[i % MMM_MEDIA_PALETTE.length] });
           });
         }
         const datasets = bars.map((b) => ({
@@ -3897,7 +3918,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         datasets.push({
           type: "line",
           label: tx("실제", "Actual"),
-          data: decomp.weeks.map((w) => w.actual),
+          data: dateViewDecomp.weeks.map((w) => w.actual),
           borderColor: textCol,
           backgroundColor: "transparent",
           borderDash: [4, 3],
@@ -3920,7 +3941,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         decompOpts.scales.x = { ...decompOpts.scales.x, stacked: true, ticks: { ...decompOpts.scales.x.ticks, color: mutedCol, autoSkip: true, maxTicksLimit: 12, maxRotation: 0 } };
         decompOpts.scales.y = { ...decompOpts.scales.y, stacked: true, ticks: { ...decompOpts.scales.y.ticks, color: mutedCol, callback: (v) => targetValueLabel(v) } };
         // 메모 남긴 튀는 주 → 세로 점선 + 번호 뱃지(글씨 겹침 방지, 실제 메모는 아래 표에 동일 번호로).
-        const notedSpikes = (decomp.spikes || []).filter((s) => (spikeNotes[`${mmm.target}|${s.week}`] || "").trim());
+        const notedSpikes = (dateViewDecomp.spikes || []).filter((s) => (spikeNotes[`${mmm.target}|${s.week}`] || "").trim());
         const numOf = (s) => notedSpikes.findIndex((n) => n.week === s.week) + 1;
         const spikeLinePlugin = {
           id: "spikeLines",
@@ -3967,7 +3988,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     // convAmt는 sourceCurrency/displayCurrency로만 결정되는 순수 파생 함수라 그
     // 둘을 deps에 넣는 것으로 충분(함수 레퍼런스 자체는 deps에 안 넣음, §매 렌더 재생성).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, mmm, decomp, spikeNotes, decompGrouped, includeBaseDemandInShare, satHidden, currencySym, sourceCurrency, displayCurrency, tx]);
+  }, [stage, mmm, displayedDecomp, displayedMmmPanel, spikeNotes, decompGrouped, includeBaseDemandInShare, satHidden, currencySym, sourceCurrency, displayCurrency, tx]);
 
   // Stage ③ forecast chart
   useEffect(() => {
@@ -4311,22 +4332,6 @@ export default function MarketingResponse({ locale = "ko" }) {
   const effectiveTarget = mmm && !mmm.empty ? mmm.target : target;
   // 태그(_android/_ios) 있는 컬럼이 매핑돼 있을 때만 플랫폼 토글 노출(단일 플랫폼 컬럼 없는 wide 데이터용).
   const platformTags = hasData && mmmColMap ? mmmPlatformTags(csvData.headers, mmmColMap) : [];
-  const contributionFilterDates = useMemo(() => (mmm && !mmm.empty
-    ? mmm.run.weeks.map((week, index) => {
-      const raw = isoDateFromLabel(mmm.panel.dateLabel?.[index] || mmm.panel.weekLabel?.[index]);
-      return {
-        index,
-        start: weekBoundaryDate(raw, mmmWeekStart, "start"),
-        end: weekBoundaryDate(raw, mmmWeekStart, "end"),
-      };
-    }).filter((item) => item.start && item.end)
-    : []), [mmm, mmmWeekStart]);
-  const contributionViewRange = useMemo(() => {
-    if (!mmm || mmm.empty || !contributionFilterDates.length) return { start: 0, end: mmm?.run?.weeks?.length || 0 };
-    const visible = contributionFilterDates.filter((item) => (!contributionViewStart || item.start >= contributionViewStart) && (!contributionViewEnd || item.end <= contributionViewEnd));
-    if (!visible.length) return { start: 0, end: 0 };
-    return { start: visible[0].index, end: visible.at(-1).index + 1 };
-  }, [mmm, contributionFilterDates, contributionViewStart, contributionViewEnd]);
 
   // 브레드크럼 = 현재 위치 + 타깃/플랫폼 토글을 한 바(bar)에 좌측 정렬로 병합(토글이 곧 breadcrumb).
   const stageKo = stage === "trend" ? tx("시계열 점검", "Time series") : stage === "mmm" ? tx("기여 분해", "Contribution") : stage === "lab" ? tx("회귀·미래예측", "Regression · Forecast") : tx("잠식 진단", "Cannibalization");
@@ -4857,8 +4862,11 @@ export default function MarketingResponse({ locale = "ko" }) {
 
           {/* ── STAGE ② MMM ── */}
           {stage === "mmm" && (() => {
+            const dateScopedDecomp = displayedDecomp || decomp;
             const isBaseDemandDriver = (driver) => ["Trend", "기본 수요", "baseline"].includes(driver);
-            const rawShRows = mmm.run.shapley?.rows || [];
+            const dateDriverStats = dateScopedDecomp?.driverStats || [];
+            const dateDriverTotal = dateDriverStats.reduce((sum, row) => sum + (row.swing || 0) ** 2, 0) || 1;
+            const rawShRows = dateDriverStats.map((row) => ({ ...row, driver: row.name, r2_share: (row.swing || 0) ** 2 / dateDriverTotal }));
             const visibleShRows = includeBaseDemandInShare ? rawShRows : rawShRows.filter((row) => !isBaseDemandDriver(row.driver));
             const visibleShTotal = visibleShRows.reduce((sum, row) => sum + (row.r2_share || 0), 0);
             const shRows = visibleShRows
@@ -4940,6 +4948,7 @@ export default function MarketingResponse({ locale = "ko" }) {
               ? Math.max(...health.priorShifts.map((item) => Math.abs(item.shiftZ || 0)))
               : null;
             const contributionIndexes = decomp?.weeks.map((_, index) => index).slice(contributionViewRange.start, contributionViewRange.end) || [];
+            const contributionLabels = contributionIndexes.map((index) => String(mmm.panel.weekLabel?.[index] || decomp?.weeks[index]?.week || index + 1));
             const viewedDecomp = decomp ? {
               ...decomp,
               weeks: contributionIndexes.map((index) => decomp.weeks[index]),
@@ -5280,13 +5289,13 @@ export default function MarketingResponse({ locale = "ko" }) {
                     <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
                     <span className="ab-pill active">Empirical-Bayes MMM</span>
                   </div>
-                  {decomp ? (
+                  {dateScopedDecomp ? (
                     <>
                       <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "10px" }}>
-                        <div className="stat-card"><div className="lbl">{tx("평균 오차(RMSE)", "Average error (RMSE)")}</div><div className="val">±{targetValueLabel(decomp.rmse)}</div></div>
-                        <div className="stat-card"><div className="lbl">{tx("평균 오차율(MAPE)", "Average error rate (MAPE)")}</div><div className="val">{decomp.mape}%</div></div>
+                        <div className="stat-card"><div className="lbl">{tx("평균 오차(RMSE)", "Average error (RMSE)")}</div><div className="val">±{targetValueLabel(dateScopedDecomp.rmse)}</div></div>
+                        <div className="stat-card"><div className="lbl">{tx("평균 오차율(MAPE)", "Average error rate (MAPE)")}</div><div className="val">{dateScopedDecomp.mape}%</div></div>
                         {mmm.run.backtest && <div className="stat-card"><div className="lbl">{tx("시간순 OOS MAPE", "Time-ordered OOS MAPE")}</div><div className="val">{mmm.run.backtest.mape.toFixed(1)}%</div></div>}
-                        <div className="stat-card"><div className="lbl">{tx("전체 기간 평균", "Full-period average")}</div><div className="val">{targetValueLabel(decomp.baseline)}</div></div>
+                        <div className="stat-card"><div className="lbl">{tx("선택 기간 평균", "Selected-period average")}</div><div className="val">{targetValueLabel(dateScopedDecomp.baseline)}</div></div>
                       </div>
                       <p className="muted" style={{ fontSize: "11px", marginBottom: "6px" }}>{tx('실제(회색)와 모델(파랑)이 가까울수록 잘 맞은 거예요. 점선(시즌·추세 등)은 광고와 무관한 부분만 뽑아낸 흐름이라 시간에 따라 움직여요 — "전체 기간 평균"(고정값)과는 다른 선입니다.', 'The closer actual (gray) and model (blue) are, the better the fit. The dashed line (season/trend etc.) is the ad-unrelated portion only and moves over time — different from the fixed "full-period average" line.')}</p>
                       <div className="chart-container" style={{ height: "240px", marginBottom: "12px" }}><canvas ref={fitRef}></canvas></div>
@@ -5296,7 +5305,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                           className="ab-pill"
                           title={tx("차트와 같은 주별 그룹 기여값을 내려받아 Excel에서 차트를 만들 수 있습니다.", "Download the weekly group values behind this chart for Excel.")}
                           onClick={() => {
-                            csvDownload(`mmm_weekly_group_contribution_${mmm.target}_${_today()}.csv`, buildContributionGroupCsv(viewedDecomp, contributionIndexes.map(({ label }) => label), groupPanels));
+                            csvDownload(`mmm_weekly_group_contribution_${mmm.target}_${_today()}.csv`, buildContributionGroupCsv(viewedDecomp, contributionLabels, groupPanels));
                             trackProductEvent("result_downloaded", { tool_id: "5-18", source: "weekly_group_contribution", download_type: "csv", locale });
                           }}
                         >
@@ -5323,7 +5332,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                             <ContributionGroupPanel
                               label={group.label}
                               values={group.values}
-                              labels={contributionIndexes.map(({ label }) => label)}
+                              labels={contributionLabels}
                               color={groupPanelPalette[group.key] || "#85B7EB"}
                               locale={locale}
                               formatValue={targetValueLabel}
@@ -5333,29 +5342,29 @@ export default function MarketingResponse({ locale = "ko" }) {
                       </div>
                       <div className="table-wrap" style={{ marginTop: "12px" }}>
                         <table className="data mmm-data-table">
-                          <thead><tr><th>{tx("성장 요인", "Driver")}</th><th>{decomp.level ? tx("평균 기여", "Average contribution") : tx("주별 변동", "Weekly swing")}</th><th>{tx("광고 변수", "Ad variable")}</th></tr></thead>
+                          <thead><tr><th>{tx("성장 요인", "Driver")}</th><th>{dateScopedDecomp.level ? tx("평균 기여", "Average contribution") : tx("주별 변동", "Weekly swing")}</th><th>{tx("광고 변수", "Ad variable")}</th></tr></thead>
                           <tbody>
-                            {decomp.driverStats.map((d) => (
+                            {dateScopedDecomp.driverStats.map((d) => (
                               <tr key={d.name}>
                                 <td><strong>{plainDrv(d.name)}</strong></td>
-                                <td className="tnum mmm-data-table__metric">{decomp.level ? targetValueLabel(d.avg, { sign: true }) : `±${targetValueLabel(d.swing, { perWeek: true })}`}</td>
+                                <td className="tnum mmm-data-table__metric">{dateScopedDecomp.level ? targetValueLabel(d.avg, { sign: true }) : `±${targetValueLabel(d.swing, { perWeek: true })}`}</td>
                                 <td><span className={`mmm-data-table__tag ${d.media ? "is-media" : ""}`}>{d.media ? tx("광고", "Ad") : tx("비광고", "Non-ad")}</span></td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
-                      {decomp.spikes && decomp.spikes.length > 0 && (
+                      {dateScopedDecomp.spikes && dateScopedDecomp.spikes.length > 0 && (
                         <>
                           <h3 className="section-title" style={{ fontSize: "13.5px", marginTop: "16px" }}>{tx("🔎 튀는 구간", "🔎 Spikes")} <span style={{ fontSize: "11px", color: MUTED, fontWeight: 400 }}>{tx("· 평소와 다르게 크게 벗어난 주 (메모 남기면 위 그래프에 번호로 표시)", "· weeks that deviate unusually far from normal (add a note to number them on the chart above)")}</span></h3>
                           <div className="table-wrap">
                             <table className="data" style={{ fontSize: "11.5px" }}>
                               <thead><tr><th>{tx("기간", "Period")}</th><th>{tx("기준선 대비", "vs. baseline")}</th><th>{tx("자동 진단", "Auto diagnosis")}</th><th>{tx("메모 (원인 기록)", "Note (record cause)")}</th></tr></thead>
                               <tbody>
-                                {decomp.spikes.map((s) => {
-                                  const lbl = mmm.panel.weekLabel && s.i != null ? mmm.panel.weekLabel[s.i] : null;
+                                {dateScopedDecomp.spikes.map((s) => {
+                                  const lbl = displayedMmmPanel?.weekLabel && s.i != null ? displayedMmmPanel.weekLabel[s.i] : null;
                                   const noteKey = `${mmm.target}|${s.week}`;
-                                  const noteNum = decomp.spikes.filter((n) => (spikeNotes[`${mmm.target}|${n.week}`] || "").trim()).findIndex((n) => n.week === s.week) + 1;
+                                  const noteNum = dateScopedDecomp.spikes.filter((n) => (spikeNotes[`${mmm.target}|${n.week}`] || "").trim()).findIndex((n) => n.week === s.week) + 1;
                                   const clsLabel = s.cls === "channel"
                                     ? { txt: tx("채널 스파크", "Channel spike"), color: "#7aa2f7" }
                                     : s.cls === "baseline"
