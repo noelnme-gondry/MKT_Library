@@ -1,5 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { buildMmmCollinearityGroupedPerformance, buildMmmWeeklyPerformance } from "./mmmWeeklyPerformance";
+import {
+  buildMmmCollinearityGroupedPerformance,
+  buildMmmWeeklyPerformance,
+  sliceMmmChannelContributions,
+} from "./mmmWeeklyPerformance";
+
+describe("sliceMmmChannelContributions", () => {
+  it("기간 필터 뒤 total을 화면 구간의 weekly 값으로 다시 계산한다", () => {
+    const sliced = sliceMmmChannelContributions({
+      search: {
+        key: "search",
+        weeklyMean: [10, 20, 30, 40],
+        weeklyLow: [5, 10, 15, 20],
+        weeklyHigh: [15, 30, 45, 60],
+        totalMean: 100,
+        totalLow: 50,
+        totalHigh: 150,
+      },
+    }, 1, 3);
+
+    expect(sliced.search).toMatchObject({
+      weeklyMean: [20, 30],
+      weeklyLow: [10, 15],
+      weeklyHigh: [30, 45],
+      totalMean: 50,
+      totalLow: 25,
+      totalHigh: 75,
+    });
+  });
+});
 
 describe("buildMmmWeeklyPerformance", () => {
   it("기간 전체의 주 평균 지출·예측 성과·CPR을 채널별로 집계한다", () => {
@@ -15,7 +44,9 @@ describe("buildMmmWeeklyPerformance", () => {
     );
 
     expect(rows[0]).toMatchObject({
-      key: "meta", label: "Meta", activeWeeks: 3, avgWeeklySpend: 100,
+      key: "meta", label: "Meta", activeWeeks: 3, totalSpend: 400,
+      totalPredicted: 45, totalPredictedLow: 30, totalPredictedHigh: 60,
+      avgWeeklySpend: 100,
       avgWeeklyPredicted: 11.25, avgWeeklyPredictedLow: 7.5,
       avgWeeklyPredictedHigh: 15, posteriorPositive: 0.9,
     });
@@ -47,6 +78,7 @@ describe("buildMmmWeeklyPerformance", () => {
     expect(grouped.find((row) => row.key === "search")).toEqual(rows[2]);
     expect(grouped.find((row) => row.isCollinearityGroup)).toMatchObject({
       label: "Snap + TikTok", activeWeeks: 3, avgWeeklySpend: 75,
+      totalSpend: 300, totalPredicted: 30,
       avgWeeklyPredicted: 7.5, predictedCpr: 10, maxCorrelation: 0.92,
       isGroupRefit: false,
     });
@@ -71,6 +103,8 @@ describe("buildMmmWeeklyPerformance", () => {
     expect(grouped).toHaveLength(1);
     expect(grouped[0]).toMatchObject({
       isGroupRefit: true,
+      totalSpend: 200,
+      totalPredicted: 30,
       avgWeeklySpend: 100,
       avgWeeklyPredicted: 15,
       avgWeeklyPredictedLow: 10,

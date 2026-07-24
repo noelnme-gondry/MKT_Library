@@ -1,6 +1,24 @@
 // MMM 렌더층용: 주간 기여분해와 동일한 채널별 counterfactual 기여를 집계한다.
 // 0-spend 주의 carryover도 기여에 포함하므로 반응곡선에 당주 지출을 다시 넣는
 // 별도 계산과 달리 표·분해 그래프·CSV의 합계가 항상 같은 원천을 사용한다.
+export function sliceMmmChannelContributions(channelContributions = {}, start = 0, end = Infinity) {
+  const slice = (values) => Array.isArray(values) ? values.slice(start, end) : [];
+  return Object.fromEntries(Object.entries(channelContributions).map(([key, value]) => {
+    const weeklyMean = slice(value.weeklyMean);
+    const weeklyLow = slice(value.weeklyLow);
+    const weeklyHigh = slice(value.weeklyHigh);
+    return [key, {
+      ...value,
+      weeklyMean,
+      weeklyLow,
+      weeklyHigh,
+      totalMean: weeklyMean.reduce((sum, item) => sum + (Number(item) || 0), 0),
+      totalLow: weeklyLow.reduce((sum, item) => sum + (Number(item) || 0), 0),
+      totalHigh: weeklyHigh.reduce((sum, item) => sum + (Number(item) || 0), 0),
+    }];
+  }));
+}
+
 export function buildMmmWeeklyPerformance(panel, channelContributions = {}) {
   if (!panel?.ch || !panel?.week?.length) return [];
   const weekCount = panel.week.length;
@@ -28,8 +46,12 @@ export function buildMmmWeeklyPerformance(panel, channelContributions = {}) {
         key: channel.key,
         label: channel.label || channel.key,
         activeWeeks,
+        totalSpend,
+        totalPredicted,
         avgWeeklySpend: totalSpend / weekCount,
         avgWeeklyPredicted: totalPredicted / weekCount,
+        totalPredictedLow: Number.isFinite(channel.totalLow) ? Math.max(0, channel.totalLow) : null,
+        totalPredictedHigh: Number.isFinite(channel.totalHigh) ? Math.max(0, channel.totalHigh) : null,
         avgWeeklyPredictedLow: Number.isFinite(channel.totalLow) ? Math.max(0, channel.totalLow) / weekCount : null,
         avgWeeklyPredictedHigh: Number.isFinite(channel.totalHigh) ? Math.max(0, channel.totalHigh) / weekCount : null,
         predictedCpr,
@@ -70,8 +92,12 @@ export function buildMmmCollinearityGroupedPerformance(panel, rows = [], colline
         label: group.label,
         members,
         activeWeeks,
+        totalSpend,
+        totalPredicted,
         avgWeeklySpend: totalSpend / panel.week.length,
         avgWeeklyPredicted: totalPredicted / panel.week.length,
+        totalPredictedLow: Number.isFinite(contribution.totalLow) ? contribution.totalLow : null,
+        totalPredictedHigh: Number.isFinite(contribution.totalHigh) ? contribution.totalHigh : null,
         avgWeeklyPredictedLow: Number.isFinite(contribution.totalLow) ? contribution.totalLow / panel.week.length : null,
         avgWeeklyPredictedHigh: Number.isFinite(contribution.totalHigh) ? contribution.totalHigh / panel.week.length : null,
         predictedCpr: totalPredicted > 0 ? totalSpend / totalPredicted : null,
@@ -137,6 +163,8 @@ export function buildMmmCollinearityGroupedPerformance(panel, rows = [], colline
       label: members.map((row) => row.label).join(" + "),
       members,
       activeWeeks,
+      totalSpend,
+      totalPredicted,
       avgWeeklySpend: totalSpend / weekCount,
       avgWeeklyPredicted: totalPredicted / weekCount,
       predictedCpr: totalPredicted > 0 ? totalSpend / totalPredicted : null,
