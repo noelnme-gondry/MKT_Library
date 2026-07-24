@@ -590,7 +590,7 @@ describe("MarketingResponse render smoke", () => {
     await flushRaf();
     clickByText(container, "기여 분해");
     expect(document.body.textContent).toContain("RMS 기여 크기 비중");
-    expect(document.body.textContent).toContain("모델 건강 진단");
+    expect(document.body.textContent).toContain("모델 건강");
     expect(document.body.textContent).toContain("R-hat");
     const footerManual = container.querySelector('[data-mmm-manual-placement="footer"] a');
     expect(footerManual?.getAttribute("href")).toBe("/manuals/mmm-model-manual-ko.pdf");

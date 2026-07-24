@@ -2308,6 +2308,33 @@ function sliceMmmPanel(panel, end, start = 0) {
   };
 }
 
+function sliceMmmRun(run, start, end) {
+  if (!run) return run;
+  const sliceSeries = (value) => Array.isArray(value) ? value.slice(start, end) : value;
+  const channelContributions = Object.fromEntries(Object.entries(run.channelContributions || {}).map(([key, value]) => [key, {
+    ...value,
+    weeklyMean: sliceSeries(value.weeklyMean),
+    weeklyLow: sliceSeries(value.weeklyLow),
+    weeklyHigh: sliceSeries(value.weeklyHigh),
+  }]));
+  return { ...run, weeks: (run.weeks || []).slice(start, end), channelContributions };
+}
+
+function isoDateFromLabel(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? match[0] : null;
+}
+
+function weekBoundaryDate(isoDate, weekStart, boundary) {
+  if (!isoDate) return null;
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  if (!Number.isFinite(date.getTime())) return null;
+  const startDay = weekStart === "sunday" ? 0 : 1;
+  const offset = (date.getUTCDay() - startDay + 7) % 7;
+  date.setUTCDate(date.getUTCDate() - offset + (boundary === "end" ? 6 : 0));
+  return date.toISOString().slice(0, 10);
+}
+
 function buildForecastModelForSelection(sourcePanel, sourceCfg, target, selected) {
   const rawPanel = sliceMmmPanel(sourcePanel, sourcePanel.week.length, Math.max(0, sourcePanel.week.length - selected.window));
   const seasonalModel = selected.seasonalityScope === "global"
@@ -4283,9 +4310,22 @@ export default function MarketingResponse({ locale = "ko" }) {
   const effectiveTarget = mmm && !mmm.empty ? mmm.target : target;
   // 태그(_android/_ios) 있는 컬럼이 매핑돼 있을 때만 플랫폼 토글 노출(단일 플랫폼 컬럼 없는 wide 데이터용).
   const platformTags = hasData && mmmColMap ? mmmPlatformTags(csvData.headers, mmmColMap) : [];
-  const contributionFilterDates = mmm && !mmm.empty
-    ? mmm.run.weeks.map((week, index) => String(mmm.panel.weekLabel?.[index] || week.week))
-    : [];
+  const contributionFilterDates = useMemo(() => (mmm && !mmm.empty
+    ? mmm.run.weeks.map((week, index) => {
+      const raw = isoDateFromLabel(mmm.panel.dateLabel?.[index] || mmm.panel.weekLabel?.[index]);
+      return {
+        index,
+        start: weekBoundaryDate(raw, mmmWeekStart, "start"),
+        end: weekBoundaryDate(raw, mmmWeekStart, "end"),
+      };
+    }).filter((item) => item.start && item.end)
+    : []), [mmm, mmmWeekStart]);
+  const contributionViewRange = useMemo(() => {
+    if (!mmm || mmm.empty || !contributionFilterDates.length) return { start: 0, end: mmm?.run?.weeks?.length || 0 };
+    const visible = contributionFilterDates.filter((item) => (!contributionViewStart || item.start >= contributionViewStart) && (!contributionViewEnd || item.end <= contributionViewEnd));
+    if (!visible.length) return { start: 0, end: 0 };
+    return { start: visible[0].index, end: visible.at(-1).index + 1 };
+  }, [mmm, contributionFilterDates, contributionViewStart, contributionViewEnd]);
 
   // 브레드크럼 = 현재 위치 + 타깃/플랫폼 토글을 한 바(bar)에 좌측 정렬로 병합(토글이 곧 breadcrumb).
   const stageKo = stage === "trend" ? tx("시계열 점검", "Time series") : stage === "mmm" ? tx("기여 분해", "Contribution") : stage === "lab" ? tx("회귀·미래예측", "Regression · Forecast") : tx("잠식 진단", "Cannibalization");
@@ -4352,24 +4392,19 @@ export default function MarketingResponse({ locale = "ko" }) {
         )}
         {contributionFilterDates.length > 0 && stage === "mmm" && (
           <div className="ab-pillgroup" style={{ margin: 0 }}>
-            <span className="ab-pillgroup-label">{tx("기여 표시 기간", "Contribution period")}</span>
-            <select value={contributionViewStart} onChange={(event) => {
-              const nextStart = event.target.value;
+            <span className="ab-pillgroup-label">📅 {tx("표시 기간", "View period")}</span>
+            <input type="date" value={contributionViewStart} min={contributionFilterDates[0]?.start} max={contributionFilterDates.at(-1)?.start} step="7" onChange={(event) => {
+              const nextStart = weekBoundaryDate(event.target.value, mmmWeekStart, "start") || "";
               setContributionViewStart(nextStart);
               if (contributionViewEnd && nextStart && nextStart > contributionViewEnd) setContributionViewEnd("");
-            }} aria-label={tx("기여 표시 시작일", "Contribution view start date")}>
-              <option value="">{tx("전체", "All")}</option>
-              {contributionFilterDates.map((date) => <option key={`top-start-${date}`} value={date}>{date}</option>)}
-            </select>
+            }} aria-label={tx("기여 표시 시작일", "Contribution view start date")} title={tx(`${mmmWeekStart === "monday" ? "월요일" : "일요일"}만 선택됩니다.`, `Only ${mmmWeekStart === "monday" ? "Mondays" : "Sundays"} are accepted.`)} />
             <span className="muted" style={{ fontSize: "11px" }}>~</span>
-            <select value={contributionViewEnd} onChange={(event) => {
-              const nextEnd = event.target.value;
+            <input type="date" value={contributionViewEnd} min={contributionFilterDates[0]?.end} max={contributionFilterDates.at(-1)?.end} step="7" onChange={(event) => {
+              const nextEnd = weekBoundaryDate(event.target.value, mmmWeekStart, "end") || "";
               setContributionViewEnd(nextEnd);
               if (contributionViewStart && nextEnd && nextEnd < contributionViewStart) setContributionViewStart("");
-            }} aria-label={tx("기여 표시 종료일", "Contribution view end date")}>
-              <option value="">{tx("전체", "All")}</option>
-              {contributionFilterDates.map((date) => <option key={`top-end-${date}`} value={date}>{date}</option>)}
-            </select>
+            }} aria-label={tx("기여 표시 종료일", "Contribution view end date")} title={tx(`${mmmWeekStart === "monday" ? "일요일" : "토요일"}만 선택됩니다.`, `Only ${mmmWeekStart === "monday" ? "Sundays" : "Saturdays"} are accepted.`)} />
+            {(contributionViewStart || contributionViewEnd) && <button className="ab-pill" onClick={() => { setContributionViewStart(""); setContributionViewEnd(""); }}>{tx("전체", "All")}</button>}
             <span title={tx("학습은 전체 데이터를 사용합니다. 이 필터는 다시 학습하지 않고, 그 결과 중 선택한 날짜만 보여줍니다.", "The model is trained on all data. This filter only limits dates shown from the fitted result.")} style={{ color: MUTED, cursor: "help", fontSize: "14px" }}>ⓘ</span>
           </div>
         )}
@@ -4903,15 +4938,16 @@ export default function MarketingResponse({ locale = "ko" }) {
             const maxPriorShift = health?.priorShifts?.length
               ? Math.max(...health.priorShifts.map((item) => Math.abs(item.shiftZ || 0)))
               : null;
-            const contributionDates = decomp?.weeks.map((week, index) => String(mmm.panel.weekLabel?.[index] || week.week)) || [];
-            const contributionIndexes = contributionDates.map((label, index) => ({ label, index })).filter(({ label }) => (
-              (!contributionViewStart || label >= contributionViewStart)
-              && (!contributionViewEnd || label <= contributionViewEnd)
-            ));
+            const contributionIndexes = decomp?.weeks.map((_, index) => index).slice(contributionViewRange.start, contributionViewRange.end) || [];
             const viewedDecomp = decomp ? {
               ...decomp,
-              weeks: contributionIndexes.map(({ index }) => decomp.weeks[index]),
+              weeks: contributionIndexes.map((index) => decomp.weeks[index]),
             } : null;
+            const viewedRun = sliceMmmRun(mmm.run, contributionViewRange.start, contributionViewRange.end);
+            const viewedPanel = sliceMmmPanel(mmm.panel, contributionViewRange.end, contributionViewRange.start);
+            const viewedWeeklyChannelPerformance = buildMmmWeeklyPerformance(viewedPanel, {
+              ...viewedRun.channelContributions,
+            });
             // 음(−) 기여 알림 — 어떤 버킷이 특정 주에 성과를 크게 끌어내렸나. baseline(기본 수요)은 상수라 제외.
             const negAlert = (() => {
               if (!viewedDecomp || !viewedDecomp.weeks?.length) return null;
@@ -4946,8 +4982,8 @@ export default function MarketingResponse({ locale = "ko" }) {
               : [];
             const hasCollinearityGroups = groupedWeeklyChannelPerformance.some((row) => row.isCollinearityGroup);
             const displayedWeeklyChannelPerformance = weeklyPerformanceView === "grouped" && hasCollinearityGroups
-              ? groupedWeeklyChannelPerformance
-              : weeklyChannelPerformance;
+              ? buildMmmCollinearityGroupedPerformance(viewedPanel, viewedWeeklyChannelPerformance, mmm.run.collinear_pairs, 0.9, collinearityGroupRefit)
+              : viewedWeeklyChannelPerformance;
             const seasonalityEvidence = mmm.run.seasonalitySelection?.evidence;
             const seasonalityValidationText = mmm.run.seasonalitySelection?.enabled
               ? seasonalityEvidence?.detectionMode === "rolling-rescue"
@@ -4994,8 +5030,8 @@ export default function MarketingResponse({ locale = "ko" }) {
               )}
               {health && (
                 <section className="block" aria-label={tx("모델 건강 진단", "Model health diagnostics")}>
-                  <h2 className="section-title">{tx("모델 건강 진단", "Model health diagnostics")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx("· 적합도만이 아니라 오차·잔차·식별을 함께 확인", "· check error, residuals, and identification—not fit alone")}</span></h2>
-                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  <h2 className="section-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>{tx("모델 건강", "Model health")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx(`예측 오차 ${Number.isFinite(health.oos?.wmape) ? `${health.oos.wmape.toFixed(1)}%` : "—"} · 경고 ${health.flags?.length || 0}건`, `Forecast error ${Number.isFinite(health.oos?.wmape) ? `${health.oos.wmape.toFixed(1)}%` : "—"} · ${health.flags?.length || 0} warnings`)}</span><span title={tx(`전문: 전체 wMAPE·시간순 검증 오차·잔차 상관·VIF·채널 상관·계절성 후보·사전분포 이동을 함께 점검합니다.\n쉬운 말: 전체 예측은 맞아도 함께 움직이는 채널은 각자 몫을 정확히 나누기 어렵습니다. 이 값들은 전체 학습 기간 기준입니다.`, `Technical: checks fit error, time-ordered validation, residual correlation, VIF, channel correlation, seasonality candidates, and prior shifts.\nPlain: even a good overall forecast cannot cleanly separate channels that move together. These checks use the full training period.`)} style={{ cursor: "help", color: "var(--primary, #adc6ff)", fontSize: "17px" }}>ⓘ</span></h2>
+                  <div style={{ display: "none", gap: "10px", flexWrap: "wrap" }}>
                     <div className="stat-card"><div className="lbl">{tx("전체 wMAPE", "In-sample wMAPE")}</div><div className="val">{Number.isFinite(health.wmape) ? `${health.wmape.toFixed(1)}%` : "—"}</div></div>
                     <div className="stat-card"><div className="lbl">{tx("시간순 OOS wMAPE", "Time-ordered OOS wMAPE")}</div><div className="val">{Number.isFinite(health.oos?.wmape) ? `${health.oos.wmape.toFixed(1)}%` : "—"}</div></div>
                     <div className="stat-card"><div className="lbl">{tx("90% 범위 포함률", "90% interval coverage")}</div><div className="val">{Number.isFinite(health.coverage90) ? `${(health.coverage90 * 100).toFixed(0)}%` : "—"}</div></div>
@@ -5013,7 +5049,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                     {mmm.run.businessContributionPrior?.enabled && <div className="stat-card"><div className="lbl">{tx("비즈니스 기여 prior", "Business contribution prior")}</div><div className="val">{Math.round(mmm.run.businessContributionPrior.meanShare * 100)}% ± {Math.round(mmm.run.businessContributionPrior.shareSd * 100)}%p</div></div>}
                     {mmm.run.jointTransform?.enabled && <div className="stat-card"><div className="lbl">{tx("결합 변환 posterior", "Joint transform posterior")}</div><div className="val">{mmm.run.jointTransform.evaluatedCount}/{mmm.run.jointTransform.candidateCount}</div></div>}
                   </div>
-                  {(mmm.run.baselineSelection?.enabled || Array.isArray(mmm.run.seasonalityPeriods) || mmm.run.mediaPenaltySelection?.enabled || mmm.run.jointTransform?.enabled) && <details style={{ margin: "8px 0 0" }}>
+                  {(mmm.run.baselineSelection?.enabled || Array.isArray(mmm.run.seasonalityPeriods) || mmm.run.mediaPenaltySelection?.enabled || mmm.run.jointTransform?.enabled) && <details style={{ display: "none", margin: "8px 0 0" }}>
                     <summary className="muted" style={{ fontSize: "11px", cursor: "pointer" }}>ⓘ {tx("자동 검증 상세", "Automatic validation details")}</summary>
                     <p className="muted" style={{ fontSize: "11px", lineHeight: 1.5, margin: "6px 0 0" }}>
                     {mmm.run.baselineSelection?.enabled ? tx(`Baseline은 78주 이상 데이터에서 0·1·2개 knot 후보를 비교했으며, BIC가 ${mmm.run.baselineSelection.selected ? "충분히 개선되어 적용" : "충분히 개선되지 않아 기본 추세 유지"}되었습니다.`, `With at least 78 weeks, baseline compared 0/1/2-knot candidates; the base trend was ${mmm.run.baselineSelection.selected ? "replaced because BIC improved materially" : "retained because improvement was not material"}.`) : ""}
@@ -5023,15 +5059,15 @@ export default function MarketingResponse({ locale = "ko" }) {
                     </p>
                   </details>}
                   {health.flags?.length > 0 ? (
-                    <div className="callout warn" style={{ margin: "10px 0 0" }}>
-                      <div className="ico">!</div><div className="body"><strong>{tx(`모델 경고 ${health.flags.length}건`, `${health.flags.length} model warnings`)}</strong>
-                        <ul style={{ margin: "6px 0 0", paddingLeft: "18px", fontSize: "11.5px", lineHeight: 1.55 }}>
+                    <div className="callout warn" title={health.flags.map((flag) => mmmHealthFlagMessage(flag.key, locale)).join("\n")} style={{ margin: "10px 0 0", padding: "8px 10px" }}>
+                      <div className="ico">!</div><div className="body"><strong>{tx(`모델 경고 ${health.flags.length}건 · 자세한 내용은 아이콘에 마우스를 올리세요`, `${health.flags.length} model warnings · hover the icon for details`)}</strong>
+                        <ul style={{ display: "none", margin: "6px 0 0", paddingLeft: "18px", fontSize: "11.5px", lineHeight: 1.55 }}>
                           {health.flags.map((flag) => <li key={`${flag.key}-${flag.severity}`}><b>{flag.severity === "fail" ? tx("주의", "High") : tx("점검", "Check")}</b> · {mmmHealthFlagMessage(flag.key, locale)}</li>)}
                         </ul>
                       </div>
                     </div>
                   ) : <p style={{ margin: "10px 0 0", color: "#22c55e", fontSize: "11.5px" }}>{tx("현재 자동 건강 진단에서 추가 경고가 발견되지 않았습니다.", "No additional warnings were found by the automated health checks.")}</p>}
-                  <p className="muted" style={{ fontSize: "11px", lineHeight: 1.55, margin: "10px 0 0" }}>
+                  <p className="muted" style={{ display: "none", fontSize: "11px", lineHeight: 1.55, margin: "10px 0 0" }}>
                     {tx("이 모델은 Gaussian posterior를 행렬식으로 계산하고 MCMC chain을 샘플링하지 않으므로 R-hat·ESS는 적용되지 않습니다. 이는 Meridian의 NUTS 샘플링 진단과 같은 검사가 아닙니다.", "This model computes a Gaussian posterior analytically and does not sample MCMC chains, so R-hat and ESS do not apply. This is not the same diagnostic as Meridian's NUTS sampling checks.")}
                     {mmm.countryValidationMode === "as-of-earliest-fold" ? ` ${tx("국가 prior 후보 검증은 가장 이른 학습 cutoff의 타깃 변환·Y 스케일·참고국 근거를 모든 fold에 고정합니다. 이후 정보 누수는 막지만, 같은 folds로 후보를 골랐으므로 최종 독립 OOS는 아닙니다.", "Country-prior candidate checks lock target transforms, Y scale, and reference evidence from the earliest training cutoff across every fold. This prevents later-information leakage, but the folds also select the candidate and are therefore not a final independent OOS score.")}` : ""}
                     {mmm.countryPlan?.capped ? ` ${tx(`브라우저 안정성을 위해 ${mmm.countryPlan.totalCountries}개 중 최대 ${mmm.countryPlan.maxReferenceFits}개 참고 국가만 1차 적합했습니다.`, `For browser stability, first-stage fits were capped at ${mmm.countryPlan.maxReferenceFits} of ${mmm.countryPlan.totalCountries} reference markets.`)}` : ""}
