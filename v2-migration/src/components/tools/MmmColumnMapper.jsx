@@ -137,8 +137,9 @@ function guessRole(col, rows) {
   return { role, kind };
 }
 
-// 부분 자동 매핑(index.html mmmAutoMapPartial 이식) — reg/react/채널 spend만 강한 키워드로 배치,
-// 나머지(week·더미·플랫폼·impression/click·파생컬럼 등)는 전부 트레이(ignore)에 남겨 사용자가 직접 드래그.
+// 부분 자동 매핑(index.html mmmAutoMapPartial 이식) — 타깃과 명시 매체 열을 강한 키워드로 배치.
+// `performance_*_impressions`처럼 헤더는 노출수여도 실제 값이 지출인 운영 CSV가 있으므로,
+// brand/performance 접두사가 있는 media delivery 열은 누락시키지 않는다.
 // partial=false(🪄 전부 자동 추정)면 guessRole 전체 휴리스틱(catch-all 포함) 사용.
 export function autoGuessColMap(headers, rows, partial = true) {
   const derivedRe = /^\s*(ln|log|sin|cos)\s*[\(_]|^\s*(ln|log|sin|cos)\b|description/i;
@@ -168,6 +169,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
     const isDateCol = vals.length > 0 && (hasDateHeader || hasDateText) && vals.filter(looksDate).length >= vals.length * 0.7;
     const kind = /brand|브랜드/.test(name) ? "brand" : "perf";
     const isExplicitSpend = /(^|[_\s])(spend|cost|budget)([_\s]|$)|(?:spend|cost|budget)$|비용|지출|예산/i.test(name);
+    const isExplicitMediaDelivery = /^(brand|performance)[_\s].*(impressions?|spend|cost|budget|clicks?)$/i.test(name);
     let role = "ignore";
     if (/^(week|t|wk)$/.test(name) || /week|주차|주인덱스/.test(name)) {
       role = once.week ? "ignore" : "week";
@@ -176,6 +178,8 @@ export function autoGuessColMap(headers, rows, partial = true) {
     else if (isDateCol) role = "date"; // 날짜는 분석 무영향(표시/예측용)이라 자동 배치
     else if (!derivedRe.test(name) && isNum && !isBin) {
       if (isExplicitSpend) role = "channel";
+      else if (isExplicitMediaDelivery) role = "channel";
+      else if (/^rr$|^total[_\s-]*(reg|registration|signup).*(react|reactivation)$/i.test(name)) role = "reg";
       else if (/revenue|매출|sales|gmv|payment|결제금액/.test(name)) role = "revenue";
       else if (/purchaser|buyer|구매자|결제자/.test(name)) role = "purchasers";
       else if (/traffic|total.?visit|총.?유입|방문자|sessions?/.test(name)) role = "traffic";

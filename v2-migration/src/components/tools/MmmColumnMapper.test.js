@@ -13,6 +13,27 @@ describe("MMM column mapping", () => {
     expect(partial.revenue.role).toBe("revenue");
   });
 
+  it("keeps Prism-style RR and performance delivery columns in partial auto mapping", () => {
+    const headers = ["Week of", "RR", "brand_tiktok_impressions", "performance_meta_impressions", "performance_tiktok_impressions"];
+    const rows = [
+      { "Week of": "2022-01-03", RR: "65,621", brand_tiktok_impressions: "12,000", performance_meta_impressions: "4,500", performance_tiktok_impressions: "7,000" },
+      { "Week of": "2022-01-10", RR: "58,710", brand_tiktok_impressions: "10,000", performance_meta_impressions: "5,000", performance_tiktok_impressions: "6,500" },
+    ];
+    const map = autoGuessColMap(headers, rows);
+    expect(map["Week of"].role).toBe("week");
+    expect(map.RR.role).toBe("reg");
+    expect(map.brand_tiktok_impressions).toMatchObject({ role: "channel", kind: "brand" });
+    expect(map.performance_meta_impressions).toMatchObject({ role: "channel", kind: "perf" });
+    expect(map.performance_tiktok_impressions).toMatchObject({ role: "channel", kind: "perf" });
+    const panel = buildPanelFromColMap(headers, rows, map).panel;
+    expect(panel.targets.Regs).toEqual([65_621, 58_710]);
+    expect(panel.channels.map((channel) => channel.label)).toEqual([
+      "brand_tiktok_impressions",
+      "performance_meta_impressions",
+      "performance_tiktok_impressions",
+    ]);
+  });
+
   it("recognizes iOS-prefixed media symmetrically and preserves scientific notation", () => {
     const headers = ["week", "regs", "ios_meta_spend"];
     const rows = [
