@@ -831,6 +831,58 @@ function CollinearPairInputChart({ labels, pair, locale }) {
   return <div className="chart-container" style={{ height: "250px", minHeight: "250px" }}><canvas ref={ref}></canvas></div>;
 }
 
+// 각 채널의 절대 단위(소진액·노출수)가 달라도 flight 시점은 비교할 수 있게,
+// 채널별 최댓값을 100으로 맞춘 calendar heat-lane이다. 진한 세로 띠가 여러
+// 행에 겹치면 해당 주에 여러 채널이 동시에 강하게 집행된 것이다.
+function ChannelSpendTimeline({ labels, channels, locale }) {
+  const tx = (ko, en) => (locale === "en" ? en : ko);
+  const activeChannels = channels.filter((channel) => channel.values.some((value) => Number(value) > 0));
+  if (!activeChannels.length) return null;
+  const maxByKey = Object.fromEntries(activeChannels.map((channel) => [channel.key, Math.max(0, ...channel.values.map((value) => Number(value) || 0))]));
+  const activeByWeek = labels.map((_, index) => activeChannels.filter((channel) => {
+    const maximum = maxByKey[channel.key] || 1;
+    return (Number(channel.values[index]) || 0) / maximum >= 0.1;
+  }).length);
+  const overlapWeeks = activeByWeek.filter((count) => count >= 2).length;
+  const timelineWidth = Math.max(720, labels.length * 6);
+  const labelIndexes = new Set([0, Math.floor((labels.length - 1) / 2), labels.length - 1]);
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", margin: "8px 0 10px" }}>
+        <strong style={{ fontSize: "12px", color: "var(--text-1)" }}>{tx("집행 동시 주", "Overlapping active weeks")}</strong>
+        <span style={{ fontSize: "18px", fontWeight: 720, color: "#7F77DD" }}>{overlapWeeks}{tx("주", " wk")}</span>
+        <span className="muted" style={{ fontSize: "10.5px" }}>{tx("두 채널 이상이 각 채널의 최대 집행 강도 10% 이상인 주", "Weeks where 2+ channels reach at least 10% of their own peak")}</span>
+      </div>
+      <div style={{ overflowX: "auto", paddingBottom: "3px" }}>
+        <div style={{ minWidth: timelineWidth + "px", display: "grid", gridTemplateColumns: "168px 1fr", gap: "6px 10px", alignItems: "center" }}>
+          <span className="muted" style={{ fontSize: "10px" }}>{tx("채널", "Channel")}</span>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(" + labels.length + ", minmax(3px, 1fr))", gap: "1px", height: "15px", alignItems: "end" }}>
+            {labels.map((label, index) => <span key={String(label) + "-" + index} style={{ fontSize: "9px", color: "var(--text-muted)", overflow: "visible", whiteSpace: "nowrap", transform: "translateX(-2px)" }}>{labelIndexes.has(index) ? String(label) : ""}</span>)}
+          </div>
+          {activeChannels.map((channel, channelIndex) => {
+            const maximum = maxByKey[channel.key] || 1;
+            const hue = channelIndex % 2 ? "127,119,221" : "93,202,165";
+            return <React.Fragment key={channel.key}>
+              <span title={channel.label} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "11px", color: "var(--text-1)" }}>{channel.label}</span>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(" + labels.length + ", minmax(3px, 1fr))", gap: "1px", height: "18px" }}>
+                {channel.values.map((rawValue, index) => {
+                  const value = Math.max(0, Number(rawValue) || 0);
+                  const intensity = Math.min(1, value / maximum);
+                  return <span key={index} title={String(labels[index]) + " · " + channel.label + ": " + value.toLocaleString()} style={{ minWidth: "3px", borderRadius: "1px", background: intensity > 0 ? "rgba(" + hue + ", " + (0.12 + intensity * 0.78) + ")" : "var(--bg-1)" }} />;
+                })}
+              </div>
+            </React.Fragment>;
+          })}
+        </div>
+      </div>
+      <p className="muted" style={{ fontSize: "10.5px", lineHeight: 1.45, margin: "10px 0 0" }}>{tx(
+        "색이 진할수록 그 채널이 자기 최대 집행 수준에 가까웠다는 뜻입니다. 이 표는 같은 시점에 집행했는지 확인하는 용도이며, 채널 효과나 예산 효율을 뜻하지 않습니다.",
+        "Darker cells mean a channel was closer to its own peak input. Use this to inspect timing overlap, not channel effect or budget efficiency.",
+      )}</p>
+    </div>
+  );
+}
+
 // ③ 순증분 검정은 막대차트보다 "0 포함 여부"가 판단 핵심이다. 점추정·구간·판정을
 // 한 줄에 고정해, 녹색 막대가 오류인지 효과인지 혼동되지 않게 한다.
 function NetEffectEvidence({ net, locale }) {
@@ -2641,6 +2693,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const [cannibQuestion, setCannibQuestion] = useState("precedence");
   const [selectedCollinearPairKey, setSelectedCollinearPairKey] = useState(null);
   const [weeklyPerformanceView, setWeeklyPerformanceView] = useState("individual");
+  const [spendTimelineKind, setSpendTimelineKind] = useState("brand");
   const [contributionViewStart, setContributionViewStart] = useState("");
   const [contributionViewEnd, setContributionViewEnd] = useState("");
   // 기본 결과는 기존 MMM 그대로. prior 관련 데이터가 실제로 있을 때만 결과 탭 후보가 추가된다.
@@ -5008,6 +5061,11 @@ export default function MarketingResponse({ locale = "ko" }) {
             const viewedWeeklyChannelPerformance = buildMmmWeeklyPerformance(viewedPanel, {
               ...viewedRun.channelContributions,
             });
+            const spendTimelineKinds = ["brand", "perf"].filter((kind) => viewedPanel.channels?.some((channel) => channel.kind === kind));
+            const effectiveSpendTimelineKind = spendTimelineKinds.includes(spendTimelineKind) ? spendTimelineKind : spendTimelineKinds[0];
+            const spendTimelineChannels = (viewedPanel.channels || [])
+              .filter((channel) => channel.kind === effectiveSpendTimelineKind)
+              .map((channel) => ({ ...channel, values: viewedPanel.ch?.[channel.key] || [] }));
             // 음(−) 기여 알림 — 어떤 버킷이 특정 주에 성과를 크게 끌어내렸나. baseline(기본 수요)은 상수라 제외.
             const negAlert = (() => {
               if (!viewedDecomp || !viewedDecomp.weeks?.length) return null;
@@ -5302,6 +5360,26 @@ export default function MarketingResponse({ locale = "ko" }) {
                     "표와 주간 기여분해는 같은 기여값을 사용하며 광고 잔효가 남은 무집행 주도 포함합니다. 상관 채널의 묶음 값은 재학습 결과이고, 개별 값은 참고 배분이므로 홀드아웃으로 확인하세요.",
                     "The table and weekly decomposition use the same contributions, including carryover in zero-spend weeks. Correlated-group values are refit estimates; individual values are reference allocations and should be confirmed with a holdout.",
                   )}</p>
+                  {spendTimelineKinds.length > 0 && (
+                    <Card style={{ marginTop: "12px", padding: "14px 16px", borderColor: "rgba(127,119,221,.34)", background: "linear-gradient(90deg, rgba(127,119,221,.07), transparent 44%)" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+                        <div>
+                          <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>{tx("집행 시점 비교", "Spend timing overlap")}</div>
+                          <p className="muted" style={{ fontSize: "11px", margin: "4px 0 0", lineHeight: 1.45 }}>{tx(
+                            "같이 켜진 브랜드·퍼포먼스 채널을 찾습니다. 채널별 절대 규모 대신 각자의 최대 집행 대비 강도를 맞춰 비교합니다.",
+                            "Find channels that were active together. Compare intensity relative to each channel's own peak, not absolute scale.",
+                          )}</p>
+                        </div>
+                        {spendTimelineKinds.length > 1 && (
+                          <div className="ab-pillgroup" aria-label={tx("집행 시점 채널군", "Spend timing channel group")}>
+                            <button className={"ab-pill " + (effectiveSpendTimelineKind === "brand" ? "active" : "")} onClick={() => setSpendTimelineKind("brand")}>{tx("브랜딩", "Brand")}</button>
+                            <button className={"ab-pill " + (effectiveSpendTimelineKind === "perf" ? "active" : "")} onClick={() => setSpendTimelineKind("perf")}>{tx("퍼포먼스", "Performance")}</button>
+                          </div>
+                        )}
+                      </div>
+                      <ChannelSpendTimeline labels={viewedPanel.weekLabel || viewedPanel.week} channels={spendTimelineChannels} locale={locale} />
+                    </Card>
+                  )}
                   {selectedCollinearPair && (
                     <Card style={{ marginTop: "10px", borderColor: "rgba(245,158,11,.45)", background: "rgba(245,158,11,.045)" }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
