@@ -419,6 +419,8 @@ describe("runMmmMethTests (golden port)", () => {
       includeTrend: true,
       baselineMinHistory: 78,
       seasonalityMinHistory: 104,
+      // 이 검증은 강제 포함 정책이 아닌, 자동 감지기의 재현성만 확인한다.
+      requireSeasonality: false,
       adstockGrid: [0],
     };
     const panel = { week, ch: {}, targets: { Regs: target }, channels: [], dummy: {}, steps: {} };
@@ -442,6 +444,8 @@ describe("runMmmMethTests (golden port)", () => {
       ...MMM_METH_CONFIG,
       steps: {},
       seasonalityMinHistory: 96,
+      // 이 검증은 강제 포함 정책이 아닌, 자동 감지기의 계절성 포착만 확인한다.
+      requireSeasonality: false,
       adstockGrid: [0],
       bayesHalfSaturationQuantiles: [0.6],
       bayesHillSlopeGrid: [1],
@@ -500,6 +504,8 @@ describe("runMmmMethTests (golden port)", () => {
       ...MMM_METH_CONFIG,
       steps: {},
       seasonalityMinHistory: 96,
+      // 이 검증은 강제 포함 정책이 아닌, 자동 감지기의 거짓 양성 방지만 확인한다.
+      requireSeasonality: false,
       adstockGrid: [0],
       bayesHalfSaturationQuantiles: [0.6],
       bayesHillSlopeGrid: [1],
@@ -1221,5 +1227,12 @@ describe("runMmmMethTests (golden port)", () => {
     expect(decision.eligible.map((item) => item.id)).not.toContain("too-weak-oos");
     expect(decision.bestRolling.id).toBe("forecast-only");
     expect(decision.bestBic.id).toBe("joint-structural");
+  });
+
+  it("keeps seasonality and industry controls mandatory in the product MMM configuration", () => {
+    expect(MMM_METH_CONFIG.requireSeasonality).toBe(true);
+    expect(MMM_METH_CONFIG.requireIndustryControls).toBe(true);
+    expect(MMM_METH_CONFIG.jointStructureSeasonalityIds).not.toContain("none");
+    expect(MMM_METH_CONFIG.jointStructureSeasonalityIds.length).toBeGreaterThan(0);
   });
 });

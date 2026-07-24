@@ -642,7 +642,7 @@ import {
             };
 
             export const MMM_METH_CONFIG = {
-              version: "1.6.1",
+              version: "1.6.2",
               // 기본은 연간 1차 조화파만 둔다. 과거의 13주 파형을 무조건 반복하면
               // 매체·이벤트 변동까지 계절성으로 흡수할 수 있으므로, 더 복잡한 모양은
               // rolling holdout에서 이길 때만 아래 후보에서 선택한다.
@@ -715,10 +715,13 @@ import {
               businessContributionPriorShare: 0.3,
               businessContributionPriorSd: 0.25,
               // 추세·계절·업계·광고를 순서대로 확정하지 않고, 모든 요소가 들어간
-              // 완성 모델을 같은 시간순 구간에서 비교한다. 후보의 trend knot은
-              // 각 학습 fold 안에서만 자동 생성해 미래 정보 누수를 막는다.
+              // 완성 모델을 같은 시간순 구간에서 비교한다. 계절성과 업계 지표는
+              // 비즈니스 해석의 필수 축이므로 자동 탐색이 제외하지 않는다. 대신
+              // 계절성의 형태와 추세의 굴곡만 시간순 검증으로 선택한다.
+              requireSeasonality: true,
+              requireIndustryControls: true,
               jointStructureTrendFamilies: [0, 1, 2],
-              jointStructureSeasonalityIds: ["none", "annual-1", "annual-4", "business-smooth-8"],
+              jointStructureSeasonalityIds: ["annual-1", "annual-4", "business-smooth-8"],
               jointStructureMinTrain: 96,
               jointStructureHorizon: 12,
               jointStructureMaxFolds: 3,
@@ -3464,7 +3467,7 @@ import {
             function _mmmJointStructureSpecs(panel, cfg) {
               const trendFamilies = [...new Set((cfg.jointStructureTrendFamilies || [0, 1, 2])
                 .map((value) => Math.max(0, Math.min(2, Math.round(value)))))];
-              const seasonalityIds = new Set(cfg.jointStructureSeasonalityIds || ["none", "annual-1", "annual-4", "business-smooth-8"]);
+              const seasonalityIds = new Set(cfg.jointStructureSeasonalityIds || ["annual-1", "annual-4", "business-smooth-8"]);
               const seasonality = (cfg.seasonalityCandidates || [])
                 .filter((spec) => seasonalityIds.has(spec.id) && Array.isArray(spec.periods));
               if (!seasonality.length) {
@@ -3476,7 +3479,9 @@ import {
                   seasonalityPenaltyStrength: cfg.seasonalityPenaltyStrength || 0,
                 });
               }
-              const industryModes = Object.keys(panel.external || {}).length ? [true, false] : [true];
+              const industryModes = Object.keys(panel.external || {}).length
+                ? (cfg.requireIndustryControls === true ? [true] : [true, false])
+                : [true];
               const specs = [];
               trendFamilies.forEach((trendKnotCount) => {
                 seasonality.forEach((season) => {
@@ -4077,20 +4082,22 @@ import {
                 detected: bicDetected || rollingRescue.accepted,
               };
               const rollingRescueTolerance = Math.max(0, cfg.seasonalityRollingRescueTolerance ?? 0.01);
-              const eligible = rollingRescue.accepted
-                ? annualCandidates.filter((item) => {
+              const eligible = cfg.requireSeasonality === true
+                ? annualCandidates
+                : rollingRescue.accepted
+                  ? annualCandidates.filter((item) => {
                   const rolling = rollingEvidence.get(item.id);
                   if (!rolling || rolling.meanWmape > rollingRescue.selectedWmape + rollingRescueTolerance) return false;
                   if (marketBlindSelection && !sameAnnualBasisFamily(item, marketBlindSelection.selected)) return false;
                   return true;
                 })
-                : evidence.detected
-                  ? annualCandidates.filter((item) => {
-                  if (marketBlindSelection && !sameSeasonalityFamily(item, marketBlindSelection.selected)) return false;
-                  if (!noneRolling || !rollingEvidence.has(item.id)) return true;
-                  return rollingEvidence.get(item.id).meanWmape <= noneRolling.meanWmape + rollingMaxDegradation;
-                })
-                : [none];
+                  : evidence.detected
+                    ? annualCandidates.filter((item) => {
+                    if (marketBlindSelection && !sameSeasonalityFamily(item, marketBlindSelection.selected)) return false;
+                    if (!noneRolling || !rollingEvidence.has(item.id)) return true;
+                    return rollingEvidence.get(item.id).meanWmape <= noneRolling.meanWmape + rollingMaxDegradation;
+                  })
+                    : [none];
               const safeEligible = eligible.length ? eligible : [none];
               const bestEligible = rollingRescue.accepted && rollingRescue.selected
                 ? safeEligible.find((item) => item.id === rollingRescue.selected.id) || safeEligible[0]
@@ -4149,7 +4156,9 @@ import {
                 },
                 candidates: publicCandidates,
                 evidence,
-                reason: evidence.detected
+                reason: cfg.requireSeasonality === true
+                  ? "business-seasonality-required-best-annual-structure"
+                  : evidence.detected
                   ? (evidence.detectionMode === "rolling-rescue"
                     ? "rolling-validated-business-seasonality-restored"
                     : selected.id === bestEligible.id ? "full-history-recurrence-business-structure-and-lowest-bic" : "full-history-recurrence-business-structure-smoother-bic-tie")
