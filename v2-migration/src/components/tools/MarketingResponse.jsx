@@ -4262,6 +4262,9 @@ export default function MarketingResponse({ locale = "ko" }) {
   const effectiveTarget = mmm && !mmm.empty ? mmm.target : target;
   // 태그(_android/_ios) 있는 컬럼이 매핑돼 있을 때만 플랫폼 토글 노출(단일 플랫폼 컬럼 없는 wide 데이터용).
   const platformTags = hasData && mmmColMap ? mmmPlatformTags(csvData.headers, mmmColMap) : [];
+  const contributionFilterDates = mmm && !mmm.empty
+    ? mmm.run.weeks.map((week, index) => String(mmm.panel.weekLabel?.[index] || week.week))
+    : [];
 
   // 브레드크럼 = 현재 위치 + 타깃/플랫폼 토글을 한 바(bar)에 좌측 정렬로 병합(토글이 곧 breadcrumb).
   const stageKo = stage === "trend" ? tx("시계열 점검", "Time series") : stage === "mmm" ? tx("기여 분해", "Contribution") : stage === "lab" ? tx("회귀·미래예측", "Regression · Forecast") : tx("잠식 진단", "Cannibalization");
@@ -4324,6 +4327,29 @@ export default function MarketingResponse({ locale = "ko" }) {
               </button>
             ))}
             {segmentSel.truncated && <span style={{ fontSize: "10.5px", color: "#f59e0b" }}>{tx("⚠ 상위 20개만", "⚠ Top 20 only")}</span>}
+          </div>
+        )}
+        {contributionFilterDates.length > 0 && stage === "mmm" && (
+          <div className="ab-pillgroup" style={{ margin: 0 }}>
+            <span className="ab-pillgroup-label">{tx("기여 표시 기간", "Contribution period")}</span>
+            <select value={contributionViewStart} onChange={(event) => {
+              const nextStart = event.target.value;
+              setContributionViewStart(nextStart);
+              if (contributionViewEnd && nextStart && nextStart > contributionViewEnd) setContributionViewEnd("");
+            }} aria-label={tx("기여 표시 시작일", "Contribution view start date")}>
+              <option value="">{tx("전체", "All")}</option>
+              {contributionFilterDates.map((date) => <option key={`top-start-${date}`} value={date}>{date}</option>)}
+            </select>
+            <span className="muted" style={{ fontSize: "11px" }}>~</span>
+            <select value={contributionViewEnd} onChange={(event) => {
+              const nextEnd = event.target.value;
+              setContributionViewEnd(nextEnd);
+              if (contributionViewStart && nextEnd && nextEnd < contributionViewStart) setContributionViewStart("");
+            }} aria-label={tx("기여 표시 종료일", "Contribution view end date")}>
+              <option value="">{tx("전체", "All")}</option>
+              {contributionFilterDates.map((date) => <option key={`top-end-${date}`} value={date}>{date}</option>)}
+            </select>
+            <span title={tx("학습은 전체 데이터를 사용합니다. 이 필터는 다시 학습하지 않고, 그 결과 중 선택한 날짜만 보여줍니다.", "The model is trained on all data. This filter only limits dates shown from the fitted result.")} style={{ color: MUTED, cursor: "help", fontSize: "14px" }}>ⓘ</span>
           </div>
         )}
         {mmm && !mmm.empty && (
@@ -5170,19 +5196,6 @@ export default function MarketingResponse({ locale = "ko" }) {
                       <div className="chart-container" style={{ height: "240px", marginBottom: "12px" }}><canvas ref={fitRef}></canvas></div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", marginBottom: "6px" }}>
                         <h3 className="section-title" style={{ fontSize: "13.5px", margin: 0 }}>{tx("매주 성과는 무엇으로 이뤄졌나", "What made up each week's performance")} <span style={{ fontSize: "11px", color: MUTED, fontWeight: 400 }}>{tx("· 자동 분류한 그룹별 기여", "· automatically classified contribution groups")}</span></h3>
-                        <div style={{ display: "flex", alignItems: "center", gap: "5px", flexWrap: "wrap" }}>
-                          <span className="muted" style={{ fontSize: "11px" }}>{tx("표시 기간", "View period")}</span>
-                          <select value={contributionViewStart} onChange={(event) => setContributionViewStart(event.target.value)} aria-label={tx("표시 시작일", "View start date")}>
-                            <option value="">{tx("시작", "Start")}</option>
-                            {contributionDates.map((date) => <option key={`start-${date}`} value={date}>{date}</option>)}
-                          </select>
-                          <span className="muted">~</span>
-                          <select value={contributionViewEnd} onChange={(event) => setContributionViewEnd(event.target.value)} aria-label={tx("표시 종료일", "View end date")}>
-                            <option value="">{tx("종료", "End")}</option>
-                            {contributionDates.map((date) => <option key={`end-${date}`} value={date}>{date}</option>)}
-                          </select>
-                          <span title={tx("학습은 전체 데이터를 사용합니다. 여기서는 그 학습 결과 중 선택한 날짜만 보여줍니다.", "The model is trained on all data. This filter only limits the dates shown from that fitted result.")} style={{ color: MUTED, cursor: "help", fontSize: "14px" }}>ⓘ</span>
-                        </div>
                         <button
                           className="ab-pill"
                           title={tx("차트와 같은 주별 그룹 기여값을 내려받아 Excel에서 차트를 만들 수 있습니다.", "Download the weekly group values behind this chart for Excel.")}
