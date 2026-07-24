@@ -445,6 +445,19 @@ delta[f]
 - fold 승패
 - aggregate 채택·보류 사유
 
+### 5.6 Trend shape 민감도 두 모델
+
+Classic은 같은 최종 공동 회귀를 쓰되 추세 모양 선택 단계만 분리해 둘 다 캐시한다.
+
+| 모델 | shape 선택 데이터 | 최종 scale |
+|---|---|---|
+| `cost-protected` | RR + 비매체 통제 + raw paid Cost nuisance | 광고·업황·계절·이벤트와 공동 추정 |
+| `raw-rr` | RR 원본과 trend basis만 사용 | 광고·업황·계절·이벤트와 공동 추정 |
+
+두 모델 모두 52/78/104주 smoothing과 0/1/2개 꺾임을 rolling-origin
+one-standard-error rule로 선택한다. `raw-rr`은 저주파 광고 신호까지 Trend에
+흡수할 수 있으므로 공식 대체값이 아니라 Trend sink 민감도 비교값이다.
+
 ---
 
 ## 6. 코드 구조 변경
@@ -603,12 +616,23 @@ UI 기본 문구:
 
 채널별 숫자는 `독립 Decomp 결과`가 아니라 `상위 그룹 내부 귀속`이라고 명시한다.
 
+Classic 그룹 내부 귀속은 집계 Hill 총량을 각 채널의 adstock carryover stock
+비중으로 나누는 Aumann-Shapley 경로 배분이다. 매주 채널 합은 그룹 Decomp와
+일치하지만 채널별 독립 반응곡선이나 한계효용을 식별한 값은 아니다.
+
 ### 8.3 Penalty UI
 
 Media penalty 조정 UI와 자동 선택 카피는 제거한다. 모델 토글 옆에는
 `Media penalty 0`을 고정 표시한다. 완전 중단 구간이 있으면 `Blackout prior 적용`
 또는 `Blackout 감지 · prior 보류`를 함께 표시하고, export provenance에도 판정 근거와
 제외 기간을 기록한다.
+
+### 8.4 임시 pre-PR #415 채널합 비교
+
+비교 토글은 과거 채널 성과표의 `responseAt(당주 raw Cost)` 재대입 로직을
+복원한다. 이 모드에서 Decomp Performance·Branding은 해당 채널값의 직접 합이다.
+무집행 주 carryover를 0으로 두고 공동 covariance를 다시 배분하지 않으므로
+`comparison only`로 표시하며 예산·증분성과 판단에는 사용하지 않는다.
 
 ---
 
