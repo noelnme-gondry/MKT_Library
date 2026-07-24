@@ -2708,6 +2708,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const [includeBaseDemandInShare, setIncludeBaseDemandInShare] = useState(true);
   const [satHidden, setSatHidden] = useState({}); // 수확체감 곡선 채널별 표시 토글 { [chKey]: true=숨김 }
   const [saturationCurveView, setSaturationCurveView] = useState("channel");
+  const [isHealthWarningOpen, setIsHealthWarningOpen] = useState(false);
   const [spikeNotes, setSpikeNotes] = useState({}); // §5.5 튀는 구간 메모 { [target|week]: note }
   const [fcHorizon, setFcHorizon] = useState(13);
   const [fcBudget, setFcBudget] = useState({}); // {chKey: 주 평균 예산} — 미입력 채널은 최근평균
@@ -5207,11 +5208,37 @@ export default function MarketingResponse({ locale = "ko" }) {
                     </p>
                   </details>}
                   {health.flags?.length > 0 ? (
-                    <div className="callout warn" title={health.flags.map((flag) => mmmHealthFlagMessage(flag.key, locale)).join("\n")} style={{ margin: "10px 0 0", padding: "8px 10px" }}>
-                      <div className="ico">!</div><div className="body"><strong>{tx(`모델 경고 ${health.flags.length}건 · 자세한 내용은 아이콘에 마우스를 올리세요`, `${health.flags.length} model warnings · hover the icon for details`)}</strong>
-                        <ul style={{ display: "none", margin: "6px 0 0", paddingLeft: "18px", fontSize: "11.5px", lineHeight: 1.55 }}>
-                          {health.flags.map((flag) => <li key={`${flag.key}-${flag.severity}`}><b>{flag.severity === "fail" ? tx("주의", "High") : tx("점검", "Check")}</b> · {mmmHealthFlagMessage(flag.key, locale)}</li>)}
-                        </ul>
+                    <div
+                      className="callout warn mmm-health-warning"
+                      style={{ margin: "10px 0 0", padding: "8px 10px" }}
+                      onMouseEnter={() => setIsHealthWarningOpen(true)}
+                      onMouseLeave={() => setIsHealthWarningOpen(false)}
+                      onBlur={(event) => {
+                        if (!event.currentTarget.contains(event.relatedTarget)) setIsHealthWarningOpen(false);
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className="mmm-health-warning__button"
+                        aria-expanded={isHealthWarningOpen}
+                        aria-controls="mmm-health-warning-detail"
+                        onFocus={() => setIsHealthWarningOpen(true)}
+                        onClick={() => setIsHealthWarningOpen((current) => !current)}
+                        title={tx("모델 경고 자세히 보기", "Show model warning details")}
+                      >
+                        !
+                      </button>
+                      <div className="body">
+                        <strong>{tx(`모델 경고 ${health.flags.length}건`, `${health.flags.length} model warnings`)}</strong>
+                        <span className="mmm-health-warning__hint">{tx("아이콘을 누르거나 올리면 상세 내용이 열립니다.", "Click or hover the icon to see details.")}</span>
+                        {isHealthWarningOpen && (
+                          <div id="mmm-health-warning-detail" className="mmm-health-warning__detail" role="status">
+                            <ul>
+                              {health.flags.map((flag) => <li key={`${flag.key}-${flag.severity}`}><b>{flag.severity === "fail" ? tx("주의", "High") : tx("점검", "Check")}</b> · {mmmHealthFlagMessage(flag.key, locale)}</li>)}
+                            </ul>
+                            <p>{tx("쉽게 말하면: 함께 움직이는 채널은 각 채널의 성과를 정확히 따로 나누기 어렵다는 뜻입니다.", "Plainly: when channels move together, it is harder to separate each channel's individual performance precisely.")}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : <p style={{ margin: "10px 0 0", color: "#22c55e", fontSize: "11.5px" }}>{tx("현재 자동 건강 진단에서 추가 경고가 발견되지 않았습니다.", "No additional warnings were found by the automated health checks.")}</p>}
