@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoGuessColMap, buildPanelFromColMap, colMapMissing, mmmPlatformTags, mmmSegmentValues } from "./MmmColumnMapper";
+import { autoGuessColMap, buildPanelFromColMap, colMapMissing, isOperationalDeliveryCostHeader, mmmPlatformTags, mmmSegmentValues } from "./MmmColumnMapper";
 import { mmmValidate } from "@/utils/mmmMath";
 
 describe("MMM column mapping", () => {
@@ -34,6 +34,14 @@ describe("MMM column mapping", () => {
       "performance_meta_impressions",
       "performance_tiktok_impressions",
     ]);
+    expect(panel.channelValueSemantics).toBe("cost");
+    expect(panel.channelCostHeaders).toEqual([
+      "brand_tiktok_impressions",
+      "performance_meta_impressions",
+      "performance_tiktok_impressions",
+    ]);
+    expect(isOperationalDeliveryCostHeader("performance_meta_impressions")).toBe(true);
+    expect(isOperationalDeliveryCostHeader("performance_meta_clicks")).toBe(false);
   });
 
   it("recognizes iOS-prefixed media symmetrically and preserves scientific notation", () => {

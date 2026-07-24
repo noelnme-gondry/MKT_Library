@@ -83,6 +83,13 @@ function guessPlat(name) {
   return "common";
 }
 
+// Prism 운영 CSV에서는 `brand_*_impressions`/`performance_*_impressions`가
+// 노출량이 아니라 비용을 담는다. MMM의 channel 입력은 항상 비용 축으로
+// 해석하되, 이 헤더 패턴을 별도로 기록해 CPA/기여 계산에서 의미가 보존되게 한다.
+export function isOperationalDeliveryCostHeader(header) {
+  return /^(brand|performance)[_\s].*impressions?$/i.test(String(header ?? "").trim());
+}
+
 // Total KPI에는 Android/iOS 업계 지표를 각각 회귀식에 넣지 않는다. 같은 시장
 // 지표의 플랫폼별 level을 먼저 합쳐 하나의 Total level로 만든 뒤, MMM 엔진이
 // 그 합계의 상대 변화를 계산한다. 각각의 로그 변화량을 더하는 것은
@@ -229,7 +236,8 @@ export function autoGuessColMap(headers, rows, partial = true) {
     const isDateCol = vals.length > 0 && (hasDateHeader || hasDateText) && vals.filter(looksDate).length >= vals.length * 0.7;
     const kind = /brand|브랜드/.test(name) ? "brand" : "perf";
     const isExplicitSpend = /(^|[_\s])(spend|cost|budget)([_\s]|$)|(?:spend|cost|budget)$|비용|지출|예산/i.test(name);
-    const isExplicitMediaDelivery = /^(brand|performance)[_\s].*(impressions?|spend|cost|budget|clicks?)$/i.test(name);
+    const isExplicitMediaDelivery = isOperationalDeliveryCostHeader(name)
+      || /^(brand|performance)[_\s].*(spend|cost|budget|clicks?)$/i.test(name);
     const isExplicitEvent = /holiday|event|christmas|easter|new.?year|anzac|funeral|festival|ramadan|black.?friday|cyber.?monday|chuseok|seollal|lunar|record|(?:^|[_\s])day(?:$|[_\s])|공휴일|명절|이벤트|크리스마스|설날|추석/i.test(name);
     let role = "ignore";
     if (/^(week|t|wk)$/.test(name) || /week|주차|주인덱스/.test(name)) {
@@ -788,6 +796,10 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   }
   // deriveWide와 동일한 패널 형태로 — 엔진(mmmChannelEffects/decomp)·렌더가 참조.
   panel.channels = chans.map((c) => ({ key: c.key, label: c.label, kind: c.kind }));
+  panel.channelValueSemantics = "cost";
+  panel.channelCostHeaders = chans
+    .filter((channel) => isOperationalDeliveryCostHeader(channel.header))
+    .map((channel) => channel.header);
   panel.dummyDefs = dummies.map((d) => ({ key: d.key, label: d.label }));
   panel.stepDefs = steps.map((s) => ({ key: s.key, label: s.label }));
   panel.externalDefs = panelExternals.map((external) => ({
