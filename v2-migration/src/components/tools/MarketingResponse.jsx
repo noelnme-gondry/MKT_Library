@@ -13,6 +13,7 @@ import {
   mmmBuildAggregateMediaPanel,
   mmmClassicRun,
   mmmBayesianLikeRun,
+  mmmBlackoutCrossFitEvidence,
   mmmAggregateCrossCheck,
   mmmAggregateAdoptionGate,
   mmmBayesianCorrelatedGroupRefit,
@@ -1416,7 +1417,7 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     ["model", run.methodLabel], ["R2", run.posterior?.r2], ["sigma", run.posterior?.sigma], ["target", mmm.target], [],
     ["weeks_per_parameter", identification.weeksPerParameter], ["max_media_correlation", identification.maxMediaCorrelation], ["high_collinearity", identification.highCollinearity], ["budget_eligible", identification.budgetEligible], [],
     ["industry_controls", JSON.stringify(mmm.panel.externalDefs || [])],
-    ["baseline_selection", JSON.stringify(run.baselineSelection || null)], ["trend_flex_frozen", JSON.stringify(run.trendFlexFrozen || null)], ["trend_flex_selection", JSON.stringify(run.trendFlexSelection || null)], ["aggregate_rolling_backtest", JSON.stringify(run.aggregateRollingBacktest || null)], ["aggregate_adoption_gate", JSON.stringify(mmm.aggregateAdoptionGate || null)], ["seasonality_selection", JSON.stringify(run.seasonalitySelection || null)], ["media_penalty_selection", JSON.stringify(run.mediaPenaltySelection || null)], ["joint_structure_selection", JSON.stringify(run.jointStructureSelection || null)], ["joint_transform_check", JSON.stringify(run.jointTransform || null)],
+    ["baseline_selection", JSON.stringify(run.baselineSelection || null)], ["trend_flex_frozen", JSON.stringify(run.trendFlexFrozen || null)], ["trend_flex_selection", JSON.stringify(run.trendFlexSelection || null)], ["aggregate_rolling_backtest", JSON.stringify(run.aggregateRollingBacktest || null)], ["aggregate_adoption_gate", JSON.stringify(mmm.aggregateAdoptionGate || null)], ["seasonality_selection", JSON.stringify(run.seasonalitySelection || null)], ["media_penalty_selection", JSON.stringify(run.mediaPenaltySelection || null)], ["blackout_evidence", JSON.stringify(mmm.blackoutEvidence || null)], ["joint_structure_selection", JSON.stringify(run.jointStructureSelection || null)], ["joint_transform_check", JSON.stringify(run.jointTransform || null)],
     ["channel", "adstock_alpha", "half_saturation", "hill_slope", "evaluated_transform_candidates", "total_transform_candidates", "candidate_search_capped", "prior_locked_transform", "effective_transform_candidates", "top_transform_weight", "posterior_positive_probability"],
     ...Object.values(run.saturationByChannel || {}).map((s) => [s.label, s.params.alpha, s.params.ec, s.params.slope, s.transformUncertainty?.candidateCount, s.transformUncertainty?.totalCandidateCount, s.transformUncertainty?.candidateSearchCapped, !!s.transformUncertainty?.priorLockedTransform, s.transformUncertainty?.effectiveCandidateCount, s.transformUncertainty?.topWeight, s.posteriorPositive]),
   ]);
@@ -3525,16 +3526,36 @@ export default function MarketingResponse({ locale = "ko" }) {
         }
       }
       // A selected country prior was tuned against the target rolling folds, so
-      // the run's internal split would no longer be an untouched OOS estimate.
-      const hasExternalPrior = Object.keys(mediaPriors).length > 0;
       const dualModelCfg = {
         ...cfg,
+        mediaPenalty: 0,
+        mediaPenaltyCandidates: [0],
         jointStructureMinTrain: Math.max(104, Number(cfg.jointStructureMinTrain) || 96),
       };
-      const bayesianLikeRun = mmmBayesianLikeRun(panel, dualModelCfg, t, !isCountryPriorTuned && !hasExternalPrior, {
+      const blackoutEvidence = mmmBlackoutCrossFitEvidence(panel, dualModelCfg, t);
+      if (blackoutEvidence.applied && blackoutEvidence.prior && blackoutEvidence.candidateKey) {
+        mergeMediaPrior(mediaPriors, blackoutEvidence.candidateKey, blackoutEvidence.prior);
+      }
+      // A selected country/blackout prior was tuned against target outcomes, so
+      // the run's internal split would no longer be an untouched OOS estimate.
+      const hasExternalPrior = Object.keys(mediaPriors).length > 0;
+      const blackoutApplication = blackoutEvidence.applied ? blackoutEvidence.application : null;
+      const bayesianLikeCfg = blackoutApplication?.effectiveCfg
+        ? {
+            ...dualModelCfg,
+            ...blackoutApplication.effectiveCfg,
+            mediaPenalty: 0,
+            mediaPenaltyCandidates: [0],
+          }
+        : dualModelCfg;
+      const bayesianLikeRun = mmmBayesianLikeRun(panel, bayesianLikeCfg, t, !isCountryPriorTuned && !hasExternalPrior, {
         mediaPriors,
-        enableJointStructureSelection: true,
-        enableBaselineSelection: true,
+        enableJointStructureSelection: !blackoutApplication,
+        enableSeasonalitySelection: !blackoutApplication,
+        enableBaselineSelection: !blackoutApplication,
+        skipTransformUncertainty: Boolean(blackoutApplication),
+        channelParams: blackoutApplication?.channelParams,
+        fitRowMask: blackoutApplication?.fitRowMask,
       });
       const classicPanel = mmmBuildAggregateMediaPanel(panel);
       const classicRun = mmmClassicRun(panel, dualModelCfg, t, !isCountryPriorTuned && !hasExternalPrior, {
@@ -3587,6 +3608,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         countryValidationMode,
         countryPlan,
         isCountryPriorTuned,
+        blackoutEvidence,
       });
     } catch (e) {
       // null-fit(특이행렬)은 대개 채널 공선성(예산이 함께 움직임)·기간 부족 → 정직한 도메인 메시지 (§8)
@@ -4665,6 +4687,35 @@ export default function MarketingResponse({ locale = "ko" }) {
             >
               ⓘ
             </span>
+            <span
+              style={{ color: MUTED, fontSize: "10.5px" }}
+              title={tx(
+                "두 모델 모두 광고 계수에 별도 shrinkage penalty를 적용하지 않습니다. 식별이 약한 채널은 숫자를 억지로 낮추지 않고 넓은 구간·ABSTAIN으로 표시합니다.",
+                "Neither model applies a separate shrinkage penalty to media coefficients. Weakly identified channels are shown with wide intervals or ABSTAIN instead of being mechanically reduced.",
+              )}
+            >
+              Media penalty 0
+            </span>
+            {mmm.blackoutEvidence?.windows?.length > 0 && (
+              <span
+                style={{
+                  color: mmm.blackoutEvidence.applied ? "var(--success, #22c55e)" : MUTED,
+                  fontSize: "10.5px",
+                }}
+                title={tx(
+                  mmm.blackoutEvidence.applied
+                    ? `${mmm.blackoutEvidence.window.startLabel}~${mmm.blackoutEvidence.window.endLabel} 전체 미디어 중단과 재가동을 별도 검증 구간으로 사용했습니다. 이 구간은 최종 likelihood에서 제외되어 같은 RR을 prior와 적합에 중복 사용하지 않습니다.`
+                    : `${mmm.blackoutEvidence.window?.startLabel || ""}~${mmm.blackoutEvidence.window?.endLabel || ""} 전체 미디어 중단은 감지했지만, 재가동 후 후보 채널의 독립적인 양(+) 효과가 충분히 식별되지 않아 prior를 적용하지 않았습니다.`,
+                  mmm.blackoutEvidence.applied
+                    ? `The ${mmm.blackoutEvidence.window.startLabel}–${mmm.blackoutEvidence.window.endLabel} paid-media blackout and restart were used as a held-out evidence window. Those outcomes are excluded from the final likelihood to prevent prior/likelihood reuse.`
+                    : `A paid-media blackout was detected for ${mmm.blackoutEvidence.window?.startLabel || ""}–${mmm.blackoutEvidence.window?.endLabel || ""}, but the candidate channel's independent positive restart effect was not identified strongly enough, so no prior was applied.`,
+                )}
+              >
+                {mmm.blackoutEvidence.applied
+                  ? tx(`Blackout prior · ${mmm.blackoutEvidence.candidateKey}`, `Blackout prior · ${mmm.blackoutEvidence.candidateKey}`)
+                  : tx("Blackout 감지 · prior 보류", "Blackout detected · prior withheld")}
+              </span>
+            )}
             {mmm.classicRun?.trendFlexFrozen && (
               <span style={{ color: MUTED, fontSize: "10.5px" }} title={tx(
                 "52/78/104주 smoothing과 0/1/2개 꺾임을 rolling-origin CV로 비교했습니다. 전체 유료 Cost는 raw nuisance로 선택 단계에만 사용하고 최종 적합에서는 제거했습니다.",

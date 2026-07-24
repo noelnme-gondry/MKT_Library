@@ -10,6 +10,8 @@ import {
   mmmMultivarTruncatedSample,
   mmmAggregateCrossCheck,
   mmmAggregateAdoptionGate,
+  mmmBlackoutCrossFitEvidence,
+  mmmDetectBlackoutWindows,
   mmmTrendDirectionPlan,
 } from "./mmmMath";
 
@@ -230,7 +232,9 @@ describe("dual MMM engines", () => {
     expect(classic.channelMeta).toHaveLength(2);
     expect(classic.names.filter((name) => name.startsWith("media_"))).toHaveLength(2);
     expect(classic.names).not.toContain("paid_cost_total_nuisance");
+    expect(classic.effectiveCfg.mediaPenalty).toBe(0);
     expect(bayesianLike.modelVariant).toBe("bayesian-like");
+    expect(bayesianLike.effectiveCfg.mediaPenalty).toBe(0);
     expect(bayesianLike.posteriorApproximation.enabled).toBe(true);
     expect(bayesianLike.channelMeta).toHaveLength(4);
     bayesianLike.weeks.forEach((week) => {
@@ -241,5 +245,67 @@ describe("dual MMM engines", () => {
       expect(week.fitted).toBeCloseTo(sum, 8);
       expect(week.actual).toBeCloseTo(week.fitted + week.residual, 8);
     });
+  }, 30000);
+
+  it("detects an eligible paid-media blackout and restart deterministically", () => {
+    const panel = dualModelPanel(120);
+    Object.keys(panel.ch).forEach((key) => {
+      panel.ch[key] = panel.ch[key].map((value, index) =>
+        index >= 90 && index < 94 ? 0 : value,
+      );
+    });
+    const windows = mmmDetectBlackoutWindows(panel, {
+      minPreWeeks: 78,
+      minOffWeeks: 3,
+      postWeeks: 3,
+    });
+    expect(windows).toHaveLength(1);
+    expect(windows[0]).toEqual(expect.objectContaining({
+      start: 90,
+      end: 94,
+      restart: 94,
+      offWeeks: 4,
+      postWeeks: 3,
+    }));
+    expect(mmmDetectBlackoutWindows(panel, {
+      minPreWeeks: 78,
+      minOffWeeks: 3,
+      postWeeks: 3,
+    })).toEqual(windows);
+  });
+
+  it("uses held-out blackout outcomes only after the positive-effect gate passes", () => {
+    const panel = dualModelPanel(120);
+    Object.keys(panel.ch).forEach((key) => {
+      panel.ch[key] = panel.ch[key].map((value, index) =>
+        index >= 90 && index < 94 ? 0 : value,
+      );
+    });
+    panel.targets.Regs = panel.targets.Regs.map((value, index) =>
+      index >= 94 && index < 97 ? value + 3000 : value,
+    );
+    const config = {
+      ...MMM_METH_CONFIG,
+      trendDirectionFirst: false,
+      seasonalityPeriods: [],
+      seasonalityCandidates: [{ id: "none", periods: [] }],
+      jointStructureSeasonalityIds: ["none"],
+      jointStructureMinTrain: 104,
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+      mediaPenalty: 0,
+      mediaPenaltyCandidates: [0],
+      absorbed: new Set(),
+    };
+    const evidence = mmmBlackoutCrossFitEvidence(panel, config, "Regs");
+    expect(evidence.applied).toBe(true);
+    expect(evidence.prior).toEqual(expect.objectContaining({
+      source: "cross-fitted-blackout",
+      excludedFromLikelihood: true,
+    }));
+    expect(evidence.application.excludedRange).toEqual([90, 97]);
+    expect(evidence.application.fitRowMask.slice(90, 97)).toEqual(Array(7).fill(false));
+    expect(evidence.estimate.positiveProbability).toBeGreaterThanOrEqual(0.8);
   }, 30000);
 });
