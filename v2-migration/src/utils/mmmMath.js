@@ -886,7 +886,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
             };
 
             export const MMM_METH_CONFIG = {
-              version: "1.8.0",
+              version: "1.9.0",
               // 기본은 연간 1차 조화파만 둔다. 과거의 13주 파형을 무조건 반복하면
               // 매체·이벤트 변동까지 계절성으로 흡수할 수 있으므로, 더 복잡한 모양은
               // rolling holdout에서 이길 때만 아래 후보에서 선택한다.
@@ -5446,7 +5446,13 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               };
             }
 
-            function _mmmClassicFreezeFeatureSet(panel, cfg, trendDirectionPlan, externalReference = null) {
+            function _mmmClassicFreezeFeatureSet(
+              panel,
+              cfg,
+              trendDirectionPlan,
+              externalReference = null,
+              profile = "cost-protected",
+            ) {
               const controls = _mmmBayesControlFeatures(panel, {
                 ...cfg,
                 trendDirectionFirst: false,
@@ -5458,6 +5464,22 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               const cols = controls.X.length
                 ? controls.X[0].map((_, columnIndex) => controls.X.map((row) => row[columnIndex]))
                 : [];
+              if (profile === "raw-rr") {
+                const trendIndexes = names
+                  .map((name, index) => (
+                    name === "trend"
+                    || name.startsWith("trend_dir_")
+                    || name.startsWith("baseline_knot_")
+                      ? index
+                      : -1
+                  ))
+                  .filter((index) => index >= 0);
+                return {
+                  names: trendIndexes.map((index) => names[index]),
+                  cols: trendIndexes.map((index) => cols[index]),
+                  externalTransforms: {},
+                };
+              }
               if (externalReference) {
                 Object.entries(panel.external || {}).forEach(([key, values]) => {
                   const columnIndex = names.indexOf("industry_" + key);
@@ -5476,6 +5498,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
             }
 
             export function mmmClassicTrendFlexSelection(panel, cfg, targetName, options = {}) {
+              const profile = options.profile === "raw-rr" ? "raw-rr" : "cost-protected";
               const windows = [...new Set((options.smoothingWindows || [52, 78, 104])
                 .map((value) => Math.round(Number(value)))
                 .filter((value) => value >= 26))];
@@ -5510,7 +5533,13 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                       { smoothingWindowWeeks, knotCount },
                     ));
                     if (!candidatePlan?.enabled || candidatePlan.knots.length !== knotCount) break;
-                    const trainFeatures = _mmmClassicFreezeFeatureSet(train, cfg, candidatePlan);
+                    const trainFeatures = _mmmClassicFreezeFeatureSet(
+                      train,
+                      cfg,
+                      candidatePlan,
+                      null,
+                      profile,
+                    );
                     const fit = _mmmBayesFitColumns(
                       trainFeatures.names,
                       trainFeatures.cols,
@@ -5528,6 +5557,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                       cfg,
                       candidatePlan,
                       trainFeatures.externalTransforms,
+                      profile,
                     );
                     const foldColumnByName = new Map(foldFeatures.names.map((name, index) => [name, index]));
                     if (trainFeatures.names.some((name) => !foldColumnByName.has(name))) break;
@@ -5615,12 +5645,16 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               const dataHash = _mmmHashSeed(JSON.stringify({
                 week: panel.week,
                 target: panel.targets?.[targetName],
-                paidCostTotalNuisance: _mmmPaidCostTotal(panel),
-                external: panel.external,
-                dummy: panel.dummy,
-                steps: panel.steps,
+                profile,
+                ...(profile === "cost-protected" ? {
+                  paidCostTotalNuisance: _mmmPaidCostTotal(panel),
+                  external: panel.external,
+                  dummy: panel.dummy,
+                  steps: panel.steps,
+                } : {}),
               })).toString(16).padStart(8, "0");
               const trendFlexFrozen = _mmmDeepFreeze({
+                profile,
                 smoothingWindowWeeks: selected.smoothingWindowWeeks,
                 knotCount: selected.knotCount,
                 knotLocations: finalPlan.knots.slice(),
@@ -5631,14 +5665,17 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 meanWmape: selected.meanWmape,
                 standardError: selected.standardError,
                 selectedBy: "rolling-origin-one-standard-error-parsimony",
-                nuisance: {
-                  name: "paid_cost_total_nuisance",
-                  source: "raw-performance-plus-branding-cost",
-                  adstocked: false,
-                  hillTransformed: false,
-                  freezeOnly: true,
-                  includedInFinalFit: false,
-                },
+                nuisance: profile === "cost-protected" ? {
+                    name: "paid_cost_total_nuisance",
+                    source: "raw-performance-plus-branding-cost",
+                    adstocked: false,
+                    hillTransformed: false,
+                    freezeOnly: true,
+                    includedInFinalFit: false,
+                  } : null,
+                shapeSource: profile === "raw-rr"
+                  ? "raw-target-only"
+                  : "target-with-paid-cost-and-nonmedia-controls",
                 candidateWindows: windows.slice(),
                 candidateKnotCounts: knotCounts.slice(),
                 dataHash,
@@ -5659,8 +5696,9 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                   foldCount: cuts.length,
                   bestCandidateId: best.id,
                   eligibleCandidateIds: eligible.map((candidate) => candidate.id),
-                  nuisanceName: "paid_cost_total_nuisance",
-                  nuisanceUsedInFreezeOnly: true,
+                  profile,
+                  nuisanceName: profile === "cost-protected" ? "paid_cost_total_nuisance" : null,
+                  nuisanceUsedInFreezeOnly: profile === "cost-protected",
                 },
                 trendDirectionPlan: _mmmDeepFreeze(finalPlan),
                 trendFlexFrozen,
@@ -5744,9 +5782,132 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               };
             }
 
+            // Classic의 권한은 Performance/Branding 집계 Hill 총량까지다. 그룹 안
+            // 채널은 별도 회귀로 다시 "발견"하지 않고, 선형 adstock의 가산성을
+            // 이용해 해당 주 carryover stock 비중으로 총량을 정확히 나눈다.
+            // H(sum stock)는 비선형이지만 모든 채널을 0→현재 수준으로 같은 비율로
+            // 올리는 Aumann-Shapley 경로에서는 각 채널 몫이 stock 비중이 된다.
+            function _mmmClassicChannelAttribution(panel, aggregatePanel, run) {
+              const definitions = aggregatePanel.aggregateMediaDefinitions || [];
+              const sourceMeta = new Map(_mmmChans(panel).map((channel) => [channel.key, channel]));
+              const channelContributions = {};
+              const channelContribByWeek = panel.week.map(() => ({}));
+              const identity = [];
+              definitions.forEach((definition) => {
+                const aggregateContribution = run.channelContributions?.[definition.key];
+                const aggregateParams = run.params?.[definition.key];
+                if (!aggregateContribution || !aggregateParams) return;
+                const groupName = definition.kind === "brand" ? "Brand" : "Performance";
+                const members = definition.members.filter((key) => panel.ch?.[key] && sourceMeta.has(key));
+                if (!members.length) return;
+                const adstockByMember = Object.fromEntries(members.map((key) => [
+                  key,
+                  mmmAdstock(panel.ch[key], aggregateParams.alpha),
+                ]));
+                const historicalSpend = Object.fromEntries(members.map((key) => [
+                  key,
+                  panel.ch[key].reduce(
+                    (sum, value) => sum + Math.max(0, Number(value) || 0),
+                    0,
+                  ),
+                ]));
+                const historicalSpendTotal = Object.values(historicalSpend)
+                  .reduce((sum, value) => sum + value, 0);
+                const weekly = Object.fromEntries(members.map((key) => [key, {
+                  mean: [],
+                  low: [],
+                  high: [],
+                }]));
+                panel.week.forEach((_, weekIndex) => {
+                  const stockTotal = members.reduce(
+                    (sum, key) => sum + Math.max(0, Number(adstockByMember[key][weekIndex]) || 0),
+                    0,
+                  );
+                  const currentSpendTotal = members.reduce(
+                    (sum, key) => sum + Math.max(0, Number(panel.ch[key][weekIndex]) || 0),
+                    0,
+                  );
+                  const groupMean = Math.max(
+                    0,
+                    Number(run.weeks?.[weekIndex]?.contrib?.[groupName]) || 0,
+                  );
+                  const groupLow = Math.max(
+                    0,
+                    Number(aggregateContribution.weeklyLow?.[weekIndex]) || 0,
+                  );
+                  const groupHigh = Math.max(
+                    groupMean,
+                    Number(aggregateContribution.weeklyHigh?.[weekIndex]) || groupMean,
+                  );
+                  members.forEach((key) => {
+                    const share = stockTotal > 1e-12
+                      ? Math.max(0, Number(adstockByMember[key][weekIndex]) || 0) / stockTotal
+                      : currentSpendTotal > 1e-12
+                        ? Math.max(0, Number(panel.ch[key][weekIndex]) || 0) / currentSpendTotal
+                        : historicalSpendTotal > 1e-12
+                          ? historicalSpend[key] / historicalSpendTotal
+                          : 1 / members.length;
+                    weekly[key].mean.push(groupMean * share);
+                    weekly[key].low.push(groupLow * share);
+                    weekly[key].high.push(groupHigh * share);
+                    channelContribByWeek[weekIndex][key] = groupMean * share;
+                  });
+                  const allocated = members.reduce(
+                    (sum, key) => sum + channelContribByWeek[weekIndex][key],
+                    0,
+                  );
+                  identity.push(Math.abs(allocated - groupMean));
+                });
+                members.forEach((key) => {
+                  const meta = sourceMeta.get(key);
+                  const weeklyMean = weekly[key].mean;
+                  const weeklyLow = weekly[key].low;
+                  const weeklyHigh = weekly[key].high;
+                  channelContributions[key] = {
+                    key,
+                    label: meta.label || key,
+                    weeklyMean,
+                    weeklyLow,
+                    weeklyHigh,
+                    totalMean: weeklyMean.reduce((sum, value) => sum + value, 0),
+                    totalLow: weeklyLow.reduce((sum, value) => sum + value, 0),
+                    totalHigh: weeklyHigh.reduce((sum, value) => sum + value, 0),
+                    posteriorPositive: aggregateContribution.posteriorPositive,
+                    source: "classic-aggregate-aumann-shapley-allocation",
+                    allocationReliability: "group-total-by-construction",
+                    identificationVerdict: "GROUP ALLOCATION",
+                    identification: {
+                      verdict: "GROUP ALLOCATION",
+                      channelEffectIdentified: false,
+                      byConstruction: true,
+                      sharedGroupResponseCurve: true,
+                    },
+                    groupKey: definition.key,
+                    groupLabel: definition.label,
+                    aggregateAlpha: aggregateParams.alpha,
+                  };
+                });
+              });
+              return {
+                channelContributions,
+                weeks: run.weeks.map((week, weekIndex) => ({
+                  ...week,
+                  channelContrib: channelContribByWeek[weekIndex],
+                })),
+                audit: {
+                  enabled: Object.keys(channelContributions).length > 0,
+                  method: "aggregate-group-aumann-shapley-adstock-share",
+                  byConstruction: true,
+                  channelEffectsIdentified: false,
+                  maximumWeeklyIdentityError: identity.length ? Math.max(...identity) : null,
+                },
+              };
+            }
+
             export function mmmClassicRun(panel, cfg, targetName, withBacktest = true, options = {}) {
               const aggregatePanel = mmmBuildAggregateMediaPanel(panel);
               if (!aggregatePanel?.channels?.length) return null;
+              const trendProfile = options.trendProfile === "raw-rr" ? "raw-rr" : "cost-protected";
               const modelCfg = {
                 ...cfg,
                 mediaPenalty: 0,
@@ -5756,7 +5917,10 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 aggregatePanel,
                 modelCfg,
                 targetName,
-                options.trendFlexOptions || {},
+                {
+                  ...(options.trendFlexOptions || {}),
+                  profile: trendProfile,
+                },
               );
               const hasFrozenTrend = trendFlexSelection.enabled && trendFlexSelection.trendDirectionPlan;
               const run = mmmBayesianRun(
@@ -5794,7 +5958,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                   options,
                 )
                 : null;
-              const weeks = run.weeks.map((week) => ({
+              const aggregateWeeks = run.weeks.map((week) => ({
                 ...week,
                 baseline: run.absoluteIntercept,
                 contrib: {
@@ -5802,12 +5966,26 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                   Trend: (Number(week.contrib.Trend) || 0) - run.absoluteIntercept,
                 },
               }));
+              const attribution = _mmmClassicChannelAttribution(
+                panel,
+                aggregatePanel,
+                {
+                  ...run,
+                  weeks: aggregateWeeks,
+                },
+              );
               return {
                 ...run,
-                weeks,
+                weeks: attribution.weeks,
                 modelVariant: "classic",
-                methodLabel: "Classic MMM (aggregate Performance/Branding MAP decomposition)",
+                methodLabel: trendProfile === "raw-rr"
+                  ? "Classic MMM (raw-RR trend anchor, jointly scaled)"
+                  : "Classic MMM (cost-protected trend, aggregate Performance/Branding)",
+                trendProfile,
                 aggregateMediaDefinitions: aggregatePanel.aggregateMediaDefinitions,
+                aggregateChannelContributions: run.channelContributions,
+                channelContributions: attribution.channelContributions,
+                classicChannelAttribution: attribution.audit,
                 estimand: "additive-map-component",
                 interceptSeparated: true,
                 trendFlexSelection,
@@ -6152,6 +6330,122 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                   note: "Not full joint MCMC; selected adstock/Hill and structure are plug-in conditioned.",
                 },
                 interceptSeparated: true,
+              };
+            }
+
+            // PR #415 이전 채널 성과표의 계산을 비교용으로 복원한다. 당시 표는
+            // Decomp weekly contribution을 합산하지 않고, 지출이 있는 각 주의 raw
+            // Cost를 채널 responseAt 곡선에 다시 대입했다. 아래 adapter는 그 값을
+            // 채널 contribution SSOT로 승격하고 Performance/Brand를 직접 합산한다.
+            // 0-spend 주 carryover를 버리고 동시 채널 covariance도 재배분하지 않으므로
+            // production estimand가 아니라 명시적 임시 민감도 모델이다.
+            export function mmmLegacyResponseAtSumRun(run, panel) {
+              if (!run?.weeks?.length || !panel?.week?.length || !run?.saturationByChannel) return null;
+              const channelMeta = _mmmChans(panel).filter((channel) =>
+                panel.ch?.[channel.key] && run.saturationByChannel[channel.key],
+              );
+              if (!channelMeta.length) return null;
+              const channelContributions = Object.fromEntries(channelMeta.map((channel) => {
+                const curve = run.saturationByChannel[channel.key];
+                const coefficient = Math.max(0, Number(curve.ln_coef) || 0);
+                const lowRatio = coefficient > 1e-12
+                  ? Math.max(0, Number(curve.ci?.[0]) || 0) / coefficient
+                  : 0;
+                const highRatio = coefficient > 1e-12
+                  ? Math.max(0, Number(curve.ci?.[1]) || coefficient) / coefficient
+                  : 1;
+                const weeklyMean = panel.ch[channel.key].map((spend) =>
+                  Number(spend) > 0 ? Math.max(0, Number(curve.responseAt(Number(spend))) || 0) : 0,
+                );
+                const weeklyLow = weeklyMean.map((value) => value * lowRatio);
+                const weeklyHigh = weeklyMean.map((value) => value * Math.max(1, highRatio));
+                const source = run.channelContributions?.[channel.key] || {};
+                return [channel.key, {
+                  ...source,
+                  key: channel.key,
+                  label: channel.label || channel.key,
+                  weeklyMean,
+                  weeklyLow,
+                  weeklyHigh,
+                  totalMean: weeklyMean.reduce((sum, value) => sum + value, 0),
+                  totalLow: weeklyLow.reduce((sum, value) => sum + value, 0),
+                  totalHigh: weeklyHigh.reduce((sum, value) => sum + value, 0),
+                  source: "legacy-response-at-actual-spend",
+                  allocationReliability: "legacy-response-curve-reapplication",
+                  identificationVerdict: "COMPARISON ONLY",
+                  identification: {
+                    ...(source.identification || {}),
+                    verdict: "COMPARISON ONLY",
+                    decompReconciledByDirectSum: true,
+                    carryoverOnZeroSpendIncluded: false,
+                  },
+                }];
+              }));
+              const weeks = run.weeks.map((week, weekIndex) => {
+                const channelContrib = Object.fromEntries(channelMeta.map((channel) => [
+                  channel.key,
+                  channelContributions[channel.key].weeklyMean[weekIndex] || 0,
+                ]));
+                const performance = channelMeta
+                  .filter((channel) => channel.kind !== "brand")
+                  .reduce((sum, channel) => sum + channelContrib[channel.key], 0);
+                const brand = channelMeta
+                  .filter((channel) => channel.kind === "brand")
+                  .reduce((sum, channel) => sum + channelContrib[channel.key], 0);
+                const contrib = {
+                  ...week.contrib,
+                  ...(run.groupNames.includes("Performance") ? { Performance: performance } : {}),
+                  ...(run.groupNames.includes("Brand") ? { Brand: brand } : {}),
+                };
+                const fitted = (Number(week.baseline) || 0) + run.groupNames.reduce(
+                  (sum, group) => sum + (Number(contrib[group]) || 0),
+                  0,
+                );
+                const intervalHalfWidth = Math.max(
+                  0,
+                  ((Number(week.hi) || fitted) - (Number(week.lo) || fitted)) / 2,
+                );
+                return {
+                  ...week,
+                  fitted,
+                  residual: week.actual - fitted,
+                  lo: fitted - intervalHalfWidth,
+                  hi: fitted + intervalHalfWidth,
+                  contrib,
+                  channelContrib,
+                };
+              });
+              const yMean = _mean(weeks.map((week) => week.actual));
+              const denominator = weeks.reduce(
+                (sum, week) => sum + (week.actual - yMean) ** 2,
+                0,
+              );
+              const residualSum = weeks.reduce(
+                (sum, week) => sum + week.residual ** 2,
+                0,
+              );
+              return {
+                ...run,
+                modelVariant: "legacy-response-at-sum",
+                methodLabel: "Temporary pre-#415 responseAt(actual spend) channel-sum Decomp",
+                estimand: "legacy-active-week-response-curve-reapplication",
+                weeks,
+                channelContributions,
+                backtest: null,
+                posterior: {
+                  ...run.posterior,
+                  resid: weeks.map((week) => week.residual),
+                  r2: denominator > 0 ? 1 - residualSum / denominator : 0,
+                },
+                legacyProvenance: {
+                  temporary: true,
+                  sourceLogic: "pre-pr-415-buildMmmWeeklyPerformance",
+                  decompMediaEqualsDirectChannelSum: true,
+                  responseInput: "same-week-raw-cost",
+                  zeroSpendCarryoverIncluded: false,
+                  jointChannelCovarianceReconciled: false,
+                  warning: "Exploratory reapplication of fitted response curves; not an incremental or causal decomposition.",
+                },
               };
             }
 

@@ -5,6 +5,7 @@ import {
   mmmClassicRun,
   mmmClassicTrendFlexSelection,
   mmmBayesianLikeRun,
+  mmmLegacyResponseAtSumRun,
   mmmPosteriorCovariance,
   mmmTruncatedNormalMoments,
   mmmMultivarTruncatedSample,
@@ -229,10 +230,30 @@ describe("dual MMM engines", () => {
       draws: 500,
     });
     expect(classic.modelVariant).toBe("classic");
+    expect(classic.trendProfile).toBe("cost-protected");
     expect(classic.channelMeta).toHaveLength(2);
     expect(classic.names.filter((name) => name.startsWith("media_"))).toHaveLength(2);
     expect(classic.names).not.toContain("paid_cost_total_nuisance");
     expect(classic.effectiveCfg.mediaPenalty).toBe(0);
+    expect(Object.keys(classic.channelContributions)).toHaveLength(4);
+    expect(classic.classicChannelAttribution).toEqual(expect.objectContaining({
+      byConstruction: true,
+      channelEffectsIdentified: false,
+      maximumWeeklyIdentityError: expect.any(Number),
+    }));
+    expect(classic.classicChannelAttribution.maximumWeeklyIdentityError).toBeLessThan(1e-8);
+    classic.weeks.forEach((week) => {
+      const performanceChannels = panel.channels.filter((channel) => channel.kind !== "brand");
+      const brandChannels = panel.channels.filter((channel) => channel.kind === "brand");
+      expect(performanceChannels.reduce(
+        (sum, channel) => sum + (week.channelContrib[channel.key] || 0),
+        0,
+      )).toBeCloseTo(week.contrib.Performance, 8);
+      expect(brandChannels.reduce(
+        (sum, channel) => sum + (week.channelContrib[channel.key] || 0),
+        0,
+      )).toBeCloseTo(week.contrib.Brand, 8);
+    });
     expect(bayesianLike.modelVariant).toBe("bayesian-like");
     expect(bayesianLike.effectiveCfg.mediaPenalty).toBe(0);
     expect(bayesianLike.posteriorApproximation.enabled).toBe(true);
@@ -244,6 +265,86 @@ describe("dual MMM engines", () => {
       );
       expect(week.fitted).toBeCloseTo(sum, 8);
       expect(week.actual).toBeCloseTo(week.fitted + week.residual, 8);
+    });
+  }, 30000);
+
+  it("keeps raw-RR and cost-protected trend profiles as separate frozen models", () => {
+    const panel = dualModelPanel(208);
+    const config = {
+      ...MMM_METH_CONFIG,
+      trendDirectionFirst: false,
+      seasonalityPeriods: [],
+      seasonalityCandidates: [{ id: "none", periods: [] }],
+      jointStructureSeasonalityIds: ["none"],
+      jointStructureMinTrain: 104,
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+      absorbed: new Set(),
+    };
+    const protectedRun = mmmClassicRun(panel, config, "Regs", false, {
+      skipTransformUncertainty: true,
+      trendProfile: "cost-protected",
+    });
+    const rawRun = mmmClassicRun(panel, config, "Regs", false, {
+      skipTransformUncertainty: true,
+      trendProfile: "raw-rr",
+    });
+    expect(protectedRun.trendFlexFrozen.profile).toBe("cost-protected");
+    expect(protectedRun.trendFlexFrozen.nuisance).toEqual(expect.objectContaining({
+      name: "paid_cost_total_nuisance",
+      includedInFinalFit: false,
+    }));
+    expect(rawRun.trendFlexFrozen.profile).toBe("raw-rr");
+    expect(rawRun.trendFlexFrozen.nuisance).toBeNull();
+    expect(rawRun.trendFlexFrozen.shapeSource).toBe("raw-target-only");
+    expect(rawRun.trendFlexSelection.evidence.nuisanceUsedInFreezeOnly).toBe(false);
+    expect(rawRun.names).not.toContain("paid_cost_total_nuisance");
+  }, 30000);
+
+  it("reconciles the temporary pre-415 responseAt channel values into Decomp", () => {
+    const panel = dualModelPanel(80);
+    panel.ch.perfA[40] = 0;
+    const config = {
+      ...MMM_METH_CONFIG,
+      trendDirectionFirst: false,
+      seasonalityPeriods: [],
+      seasonalityCandidates: [{ id: "none", periods: [] }],
+      jointStructureSeasonalityIds: ["none"],
+      jointStructureTrendFamilies: [0],
+      adstockGrid: [0.4],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+      absorbed: new Set(),
+    };
+    const base = mmmBayesianLikeRun(panel, config, "Regs", false, {
+      skipTransformUncertainty: true,
+      enableJointStructureSelection: false,
+      enableBaselineSelection: false,
+      enableMediaPenaltySelection: false,
+      draws: 300,
+    });
+    const legacy = mmmLegacyResponseAtSumRun(base, panel);
+    expect(legacy.modelVariant).toBe("legacy-response-at-sum");
+    expect(legacy.legacyProvenance).toEqual(expect.objectContaining({
+      sourceLogic: "pre-pr-415-buildMmmWeeklyPerformance",
+      decompMediaEqualsDirectChannelSum: true,
+      zeroSpendCarryoverIncluded: false,
+    }));
+    expect(legacy.weeks[40].channelContrib.perfA).toBe(0);
+    legacy.weeks.forEach((week) => {
+      const performance = panel.channels.filter((channel) => channel.kind !== "brand")
+        .reduce((sum, channel) => sum + (week.channelContrib[channel.key] || 0), 0);
+      const brand = panel.channels.filter((channel) => channel.kind === "brand")
+        .reduce((sum, channel) => sum + (week.channelContrib[channel.key] || 0), 0);
+      expect(week.contrib.Performance).toBeCloseTo(performance, 10);
+      expect(week.contrib.Brand).toBeCloseTo(brand, 10);
+      const fitted = week.baseline + legacy.groupNames.reduce(
+        (sum, group) => sum + (week.contrib[group] || 0),
+        0,
+      );
+      expect(week.fitted).toBeCloseTo(fitted, 10);
+      expect(week.actual).toBeCloseTo(week.fitted + week.residual, 10);
     });
   }, 30000);
 
