@@ -395,6 +395,13 @@ describe("runMmmMethTests (golden port)", () => {
     const run = mmmBayesianRun(panel, cfg, "Regs", false, { skipTransformUncertainty: true });
     expect(run.seasonalitySelection.selected.id).toBe("annual-2");
     expect(run.seasonalityPeriods).toEqual([52.18, 26.09]);
+    const decomp = mmmBayesianWeeklyDecomp(run);
+    const seasonality = decomp.driverStats.find((driver) => driver.name === "Seasonality");
+    expect(seasonality.swing).toBeGreaterThan(100);
+    expect(seasonality.min).toBeLessThan(0);
+    expect(seasonality.max).toBeGreaterThan(0);
+    // 중심화된 계절성은 연간 부호 평균이 0에 가까워도 주별 기여가 사라진 것이 아니다.
+    expect(Math.abs(seasonality.avg)).toBeLessThan(seasonality.swing * 0.1);
   });
 
   it("does not let a baseline knot erase a detected annual recurrence", () => {
