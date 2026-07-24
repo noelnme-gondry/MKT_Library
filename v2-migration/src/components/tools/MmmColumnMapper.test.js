@@ -14,10 +14,10 @@ describe("MMM column mapping", () => {
   });
 
   it("keeps Prism-style RR and performance delivery columns in partial auto mapping", () => {
-    const headers = ["Week of", "RR", "brand_tiktok_impressions", "performance_meta_impressions", "performance_tiktok_impressions"];
+    const headers = ["Week of", "RR", "brand_tiktok_impressions", "performance_meta_impressions", "performance_tiktok_impressions", "Christmas", "cold april record"];
     const rows = [
-      { "Week of": "2022-01-03", RR: "65,621", brand_tiktok_impressions: "12,000", performance_meta_impressions: "4,500", performance_tiktok_impressions: "7,000" },
-      { "Week of": "2022-01-10", RR: "58,710", brand_tiktok_impressions: "10,000", performance_meta_impressions: "5,000", performance_tiktok_impressions: "6,500" },
+      { "Week of": "2022-01-03", RR: "65,621", brand_tiktok_impressions: "12,000", performance_meta_impressions: "4,500", performance_tiktok_impressions: "7,000", Christmas: "0", "cold april record": "1" },
+      { "Week of": "2022-01-10", RR: "58,710", brand_tiktok_impressions: "10,000", performance_meta_impressions: "5,000", performance_tiktok_impressions: "6,500", Christmas: "1", "cold april record": "0" },
     ];
     const map = autoGuessColMap(headers, rows);
     expect(map["Week of"].role).toBe("week");
@@ -25,6 +25,8 @@ describe("MMM column mapping", () => {
     expect(map.brand_tiktok_impressions).toMatchObject({ role: "channel", kind: "brand" });
     expect(map.performance_meta_impressions).toMatchObject({ role: "channel", kind: "perf" });
     expect(map.performance_tiktok_impressions).toMatchObject({ role: "channel", kind: "perf" });
+    expect(map.Christmas).toMatchObject({ role: "dummy" });
+    expect(map["cold april record"]).toMatchObject({ role: "dummy" });
     const panel = buildPanelFromColMap(headers, rows, map).panel;
     expect(panel.targets.Regs).toEqual([65_621, 58_710]);
     expect(panel.channels.map((channel) => channel.label)).toEqual([

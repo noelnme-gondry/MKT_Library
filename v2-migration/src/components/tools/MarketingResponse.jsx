@@ -101,6 +101,10 @@ function mmmStoreCachedResult(raw, key, result) {
   return result;
 }
 
+export function mmmCsvSourceChanged(previousSignature, nextSignature, previousRaw, nextRaw) {
+  return previousSignature !== nextSignature || previousRaw !== nextRaw;
+}
+
 // 브랜드 채널 판별(이름 기반) — index kind='brand' 휴리스틱
 function isBrandName(name) {
   return /brand|branded|검색|search.?ads|asa\b|apple.?search|브랜드/i.test(String(name || ""));
@@ -2783,11 +2787,15 @@ export default function MarketingResponse({ locale = "ko" }) {
   const colMapSig = mmmColMap ? JSON.stringify(mmmColMap) : "";
   const mmmAnalysisSig = `${colMapSig}\u001fweek-start:${mmmWeekStart}`;
   const prevCsvSig = useRef(null);
+  const prevCsvRaw = useRef(null);
   // Set by the demo button so the auto-guessed colMap is also auto-confirmed
   // (analyze gate opened) — results render instantly, matching other tools.
   const demoPending = useRef(false);
   useEffect(() => {
-    if (hasData && prevCsvSig.current !== csvSig) {
+    // 같은 파일명·헤더로 새 CSV를 다시 올려도 raw 배열은 새 객체다. 파일명만
+    // 비교하면 이전 수동 매핑이 새 데이터에 남아 계절·이벤트 역할이 달라질 수
+    // 있으므로, 실제 원자료가 바뀌면 항상 다시 추정하고 분석 게이트를 닫는다.
+    if (hasData && mmmCsvSourceChanged(prevCsvSig.current, csvSig, prevCsvRaw.current, csvData.raw)) {
       const guess = autoGuessColMap(csvData.headers, csvData.raw);
       setMmmColMap(guess);
       setMmmAnalyzedSig(demoPending.current ? `${JSON.stringify(guess)}\u001fweek-start:${mmmWeekStart}` : null);
@@ -2795,10 +2803,12 @@ export default function MarketingResponse({ locale = "ko" }) {
       setPriorEvidence({ experiment: null, country: null });
       demoPending.current = false;
       prevCsvSig.current = csvSig;
+      prevCsvRaw.current = csvData.raw;
     } else if (!hasData && prevCsvSig.current !== null) {
       setMmmColMap(null);
       setMmmAnalyzedSig(null);
       prevCsvSig.current = null;
+      prevCsvRaw.current = null;
     }
   }, [hasData, csvSig, csvData.headers, csvData.raw, mmmWeekStart]);
 

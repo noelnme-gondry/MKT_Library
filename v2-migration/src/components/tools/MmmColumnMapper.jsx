@@ -170,12 +170,14 @@ export function autoGuessColMap(headers, rows, partial = true) {
     const kind = /brand|브랜드/.test(name) ? "brand" : "perf";
     const isExplicitSpend = /(^|[_\s])(spend|cost|budget)([_\s]|$)|(?:spend|cost|budget)$|비용|지출|예산/i.test(name);
     const isExplicitMediaDelivery = /^(brand|performance)[_\s].*(impressions?|spend|cost|budget|clicks?)$/i.test(name);
+    const isExplicitEvent = /holiday|event|christmas|easter|new.?year|anzac|funeral|festival|ramadan|black.?friday|cyber.?monday|chuseok|seollal|lunar|record|(?:^|[_\s])day(?:$|[_\s])|공휴일|명절|이벤트|크리스마스|설날|추석/i.test(name);
     let role = "ignore";
     if (/^(week|t|wk)$/.test(name) || /week|주차|주인덱스/.test(name)) {
       role = once.week ? "ignore" : "week";
       once.week = true;
     }
     else if (isDateCol) role = "date"; // 날짜는 분석 무영향(표시/예측용)이라 자동 배치
+    else if (isBin && isExplicitEvent) role = "dummy";
     else if (!derivedRe.test(name) && isNum && !isBin) {
       if (isExplicitSpend) role = "channel";
       else if (isExplicitMediaDelivery) role = "channel";

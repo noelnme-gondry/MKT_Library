@@ -24,6 +24,7 @@ import MarketingResponse, {
   buildForecastRecentBacktest,
   mmmDerivedTrafficValue,
   mmmComposeEvidenceTarget,
+  mmmCsvSourceChanged,
   mmmDetectTargetCountry,
   mmmEvidenceNumber,
   mmmEvidencePlatformSlice,
@@ -167,6 +168,13 @@ async function flushRaf() {
 describe("MarketingResponse render smoke", () => {
   beforeEach(() => {
     seedNoData();
+  });
+
+  it("resets MMM mapping when the same-named CSV has a new raw source", () => {
+    const firstRaw = [{ week: "2025-01-06", RR: "100" }];
+    const secondRaw = [{ week: "2025-01-06", RR: "110" }];
+    expect(mmmCsvSourceChanged("same.csv|week,RR", "same.csv|week,RR", firstRaw, secondRaw)).toBe(true);
+    expect(mmmCsvSourceChanged("same.csv|week,RR", "same.csv|week,RR", firstRaw, firstRaw)).toBe(false);
   });
 
   it("mounts without throwing in the no-data state", () => {
