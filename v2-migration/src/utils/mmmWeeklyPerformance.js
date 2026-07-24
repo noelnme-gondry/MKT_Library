@@ -36,6 +36,8 @@ export function buildMmmWeeklyPerformance(panel, channelContributions = {}) {
         posteriorPositive: channel.posteriorPositive,
         source: channel.source || "observational",
         allocationReliability: channel.allocationReliability || "model-estimate",
+        identificationVerdict: channel.identificationVerdict || null,
+        identification: channel.identification || null,
         groupKey: channel.groupKey || null,
         groupLabel: channel.groupLabel || null,
         groupMaxCorrelation: channel.groupMaxCorrelation ?? null,

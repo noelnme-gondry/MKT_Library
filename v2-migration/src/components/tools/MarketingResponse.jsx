@@ -10,6 +10,11 @@ import {
   MMM_NONMEDIA_GROUPS,
   mmmValidate,
   mmmBayesianRun,
+  mmmBuildAggregateMediaPanel,
+  mmmClassicRun,
+  mmmBayesianLikeRun,
+  mmmAggregateCrossCheck,
+  mmmAggregateAdoptionGate,
   mmmBayesianCorrelatedGroupRefit,
   mmmBayesianHealth,
   mmmBayesianWeeklyDecomp,
@@ -2710,7 +2715,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const bucketMeta = mmmBucketMeta(locale);
   const [stage, setStage] = useState("trend"); // trend | diagnose | mmm | lab
   const [target, setTarget] = useState("Regs");
-  const decompModel = "bayesian";
+  const [mmmModelMode, setMmmModelMode] = useState("classic");
   const [decompGrouped, setDecompGrouped] = useState(true); // §5.5 true=4버킷 묶음 / false=광고 개별채널
   // RMS 비중에서 기본 수요·추세가 너무 큰 경우, 나머지 동인끼리의 상대 크기를
   // 볼 수 있게 한다. 모델·원본 기여값은 바꾸지 않고 이 표시용 분모만 전환한다.
@@ -2889,7 +2894,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const irfRef = useRef(null);
 
   // ── MMM 캐시 (buildMmmMethCache 축약) — 매핑·데이터·target·model 변경 시 재계산 ──
-  const mmm = useMemo(() => {
+  const mmmBundle = useMemo(() => {
     if (!hasData) return null;
     // 분석 게이트(index 분석하기): 매핑 확정 전엔 무거운 엔진(mmmRunMmm 등)을 돌리지 않음 —
     // 드래그 도중 반쯤 매핑된 colMap으로 엔진이 도는 것을 막고(성능·크래시 방지) 게이트 후에만 계산.
@@ -2899,6 +2904,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       if (!mmmColMap) return { empty: true, reason: tx("컬럼 역할을 매핑하세요 (날짜/주차 · 목표 Y · 채널 spend).", "Map column roles (date/week · target Y · channel spend).") };
       const resultCacheKey = [
         `meth:${MMM_METH_CONFIG.version}`,
+        "dual-mmm-v1",
         mmmAnalyzedSig,
         colMapSig,
         target,
@@ -3521,16 +3527,60 @@ export default function MarketingResponse({ locale = "ko" }) {
       // A selected country prior was tuned against the target rolling folds, so
       // the run's internal split would no longer be an untouched OOS estimate.
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
-      const run = mmmBayesianRun(panel, cfg, t, !isCountryPriorTuned && !hasExternalPrior, {
+      const bayesianLikeRun = mmmBayesianLikeRun(panel, cfg, t, !isCountryPriorTuned && !hasExternalPrior, {
         mediaPriors,
         enableJointStructureSelection: true,
         enableBaselineSelection: true,
-        enableBusinessContributionPrior: true,
       });
-      if (!run) throw new Error("Bayesian posterior estimate failed");
-      const health = mmmBayesianHealth(run);
+      const classicPanel = mmmBuildAggregateMediaPanel(panel);
+      const classicRun = mmmClassicRun(panel, cfg, t, !isCountryPriorTuned && !hasExternalPrior, {
+        enableJointStructureSelection: true,
+        enableBaselineSelection: true,
+      });
+      if (!classicRun || !bayesianLikeRun || !classicPanel) throw new Error("Dual MMM estimate failed");
+      const classicHealth = mmmBayesianHealth(classicRun);
+      const bayesianLikeHealth = mmmBayesianHealth(bayesianLikeRun);
+      const totalMediaContribution = (candidateRun) => candidateRun.weeks.reduce(
+        (sum, week) => sum + (Number(week.contrib.Performance) || 0) + (Number(week.contrib.Brand) || 0),
+        0,
+      );
+      const modelCrossCheck = mmmAggregateCrossCheck(
+        totalMediaContribution(bayesianLikeRun),
+        totalMediaContribution(classicRun),
+        0.15,
+      );
+      const aggregateAdoptionGate = mmmAggregateAdoptionGate(
+        classicRun.jointStructureSelection?.selected?.foldWmapes,
+        bayesianLikeRun.jointStructureSelection?.selected?.foldWmapes,
+      );
       const effects = [];
-      return mmmStoreCachedResult(csvData.raw, resultCacheKey, { empty: false, panel, cfg, derived, target: t, validate, run, health, effects, absorb, mediaPriors, experimentPriorDiagnostics, countryCandidates, countryIndividualCandidates, countryBacktests, countryValidationMode, countryPlan, isCountryPriorTuned });
+      return mmmStoreCachedResult(csvData.raw, resultCacheKey, {
+        empty: false,
+        panel,
+        classicPanel,
+        cfg,
+        derived,
+        target: t,
+        validate,
+        run: classicRun,
+        classicRun,
+        bayesianLikeRun,
+        health: classicHealth,
+        classicHealth,
+        bayesianLikeHealth,
+        modelCrossCheck,
+        aggregateAdoptionGate,
+        effects,
+        absorb,
+        mediaPriors,
+        experimentPriorDiagnostics,
+        countryCandidates,
+        countryIndividualCandidates,
+        countryBacktests,
+        countryValidationMode,
+        countryPlan,
+        isCountryPriorTuned,
+      });
     } catch (e) {
       // null-fit(특이행렬)은 대개 채널 공선성(예산이 함께 움직임)·기간 부족 → 정직한 도메인 메시지 (§8)
       const msg = String(e && e.message || "");
@@ -3546,6 +3596,18 @@ export default function MarketingResponse({ locale = "ko" }) {
       return { empty: true, reason: tx("분석 오류: ", "Analysis error: ") + msg };
     }
   }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, mmmAnalyzedSig, colMapSig, mmmWeekStart, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence]);
+
+  const mmm = useMemo(() => {
+    if (!mmmBundle || mmmBundle.empty) return mmmBundle;
+    const isBayesianLike = mmmModelMode === "bayesian-like";
+    return {
+      ...mmmBundle,
+      panel: isBayesianLike ? mmmBundle.panel : mmmBundle.classicPanel,
+      run: isBayesianLike ? mmmBundle.bayesianLikeRun : mmmBundle.classicRun,
+      health: isBayesianLike ? mmmBundle.bayesianLikeHealth : mmmBundle.classicHealth,
+      modelMode: mmmModelMode,
+    };
+  }, [mmmBundle, mmmModelMode]);
 
   useEffect(() => {
     if (!mmmAnalyzed) return;
@@ -3593,6 +3655,10 @@ export default function MarketingResponse({ locale = "ko" }) {
   // 그룹 총기여를 원래 신호·지출 비중으로 보수 배분한 참고값을 남긴다.
   const collinearityGroupRefit = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "mmm") return null;
+    // 신규 두 엔진은 기존 signal/spend 볼록배분을 사용하지 않는다.
+    // Classic은 이미 상위 2그룹이고, Bayesian-like는 full-covariance 식별 태그와
+    // 0~X posterior를 직접 사용한다.
+    if (["classic", "bayesian-like"].includes(mmm.run.modelVariant)) return null;
     return mmmBayesianCorrelatedGroupRefit(mmm.panel, mmm.run, mmm.target);
   }, [mmm, stage]);
   const displayedCollinearityGroupRefit = useMemo(() => sliceMmmCollinearityGroupRefit(
@@ -4560,6 +4626,56 @@ export default function MarketingResponse({ locale = "ko" }) {
             <span title={tx("학습은 전체 데이터를 사용합니다. 이 필터는 다시 학습하지 않고, 그 결과 중 선택한 날짜만 보여줍니다.", "The model is trained on all data. This filter only limits dates shown from the fitted result.")} style={{ color: MUTED, cursor: "help", fontSize: "14px" }}>ⓘ</span>
           </div>
         )}
+        {stage === "mmm" && mmm && !mmm.empty && (
+          <div className="ab-pillgroup" style={{ margin: 0 }}>
+            <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
+            <button
+              className={`ab-pill ${mmmModelMode === "classic" ? "active" : ""}`}
+              onClick={() => setMmmModelMode("classic")}
+              title={tx(
+                "Performance Cost 합과 Branding Cost 합을 각각 하나의 상위 변수로 적합한 가산 MAP Decomp입니다.",
+                "Additive MAP Decomp fitting aggregate Performance Cost and Branding Cost as two top-level variables.",
+              )}
+            >
+              Classic MMM
+            </button>
+            <button
+              className={`ab-pill ${mmmModelMode === "bayesian-like" ? "active" : ""}`}
+              onClick={() => setMmmModelMode("bayesian-like")}
+              title={tx(
+                "채널 공동 적합의 full covariance와 비음수 절단 Laplace posterior를 근사합니다. 풀 MCMC가 아닙니다.",
+                "Approximates full covariance and a non-negative truncated Laplace posterior for the joint channel fit. Not full MCMC.",
+              )}
+            >
+              Bayesian-like MMM
+            </button>
+            <span
+              title={tx(
+                "분석할 때 두 모델을 모두 계산해 캐시합니다. 토글은 재학습하지 않고 저장된 결과만 바꿉니다.",
+                "Both models are computed and cached during analysis. Toggling only switches cached results without refitting.",
+              )}
+              style={{ color: MUTED, cursor: "help", fontSize: "14px" }}
+            >
+              ⓘ
+            </span>
+            {mmm.modelCrossCheck?.verdict !== "consistent" && (
+              <span style={{ color: "#f59e0b", fontSize: "10.5px" }} title={tx(
+                `두 모델의 전체 미디어 기여 차이 ${(mmm.modelCrossCheck.relDiff * 100).toFixed(1)}%. 그룹 정의·포화 가정에 민감하므로 단일 값을 확정하지 마세요.`,
+                `Total media contribution differs by ${(mmm.modelCrossCheck.relDiff * 100).toFixed(1)}% across models. Do not treat either point estimate as definitive.`,
+              )}>
+                {tx("그룹 민감", "Group-sensitive")}
+              </span>
+            )}
+            {mmm.aggregateAdoptionGate?.verdict === "STRUCTURAL LOSS" && (
+              <span style={{ color: "#ef4444", fontSize: "10.5px" }} title={tx(
+                "동일 rolling fold에서 집계 모델이 채널 모델보다 반복적으로 열세였습니다. Classic 총량은 참고용이며 의사결정 등급으로 사용하지 마세요.",
+                "The aggregate model repeatedly underperformed the channel model on matching rolling folds. Treat Classic totals as reference-only, not decision-grade.",
+              )}>
+                STRUCTURAL LOSS
+              </span>
+            )}
+          </div>
+        )}
         {mmm && !mmm.empty && (
           <button className="ab-pill" onClick={() => {
             const packageDecomp = mmmBayesianWeeklyDecomp(mmm.run);
@@ -5414,6 +5530,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                           <th>{tx("평균 지출/주", "Avg. spend/wk")}</th>
                           <th>{tx(`예측 ${tgtKo}/주`, `Predicted ${tgtKo}/wk`)}</th>
                           <th>{mmm.target === "Revenue" ? tx("예측 ROAS", "Predicted ROAS") : tx("예측 CPR", "Predicted CPR")}</th>
+                          <th>{tx("식별", "Identification")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -5421,6 +5538,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                           const efficiency = mmm.target === "Revenue"
                             ? row.avgWeeklySpend > 0 && row.avgWeeklyPredicted > 0 ? row.avgWeeklyPredicted / row.avgWeeklySpend : null
                             : row.predictedCpr;
+                          const isUnidentified = ["ABSTAIN", "BOUNDARY/UNIDENTIFIED"].includes(row.identificationVerdict);
                           return (
                             <tr key={row.key} style={row.posteriorPositive != null && row.posteriorPositive < 0.8 ? { opacity: 0.62 } : undefined}>
                               <td>
@@ -5432,15 +5550,26 @@ export default function MarketingResponse({ locale = "ko" }) {
                               <td className="tnum">{row.activeWeeks}{tx("주", " wk")}</td>
                               <td className="tnum">{spendLabel(row.avgWeeklySpend)}</td>
                               <td className="tnum">
-                                {row.avgWeeklyPredicted > 0 ? targetValueLabel(row.avgWeeklyPredicted) : "—"}
-                                {Number.isFinite(row.avgWeeklyPredictedLow) && Number.isFinite(row.avgWeeklyPredictedHigh) && row.avgWeeklyPredicted > 0 && (
+                                {isUnidentified
+                                  ? `0–${targetValueLabel(row.avgWeeklyPredictedHigh || 0)}`
+                                  : row.avgWeeklyPredicted > 0 ? targetValueLabel(row.avgWeeklyPredicted) : "—"}
+                                {!isUnidentified && Number.isFinite(row.avgWeeklyPredictedLow) && Number.isFinite(row.avgWeeklyPredictedHigh) && row.avgWeeklyPredicted > 0 && (
                                   <div style={{ fontSize: "10px", color: MUTED, marginTop: "2px" }}>
                                     {targetValueLabel(row.avgWeeklyPredictedLow)}–{targetValueLabel(row.avgWeeklyPredictedHigh)}
                                   </div>
                                 )}
                               </td>
                               <td className="tnum mmm-data-table__metric">
-                                {efficiency == null ? "—" : mmm.target === "Revenue" ? `${fmtOne(efficiency)}x` : spendLabel(efficiency)}
+                                {isUnidentified
+                                  ? tx("보류", "Held")
+                                  : efficiency == null ? "—" : mmm.target === "Revenue" ? `${fmtOne(efficiency)}x` : spendLabel(efficiency)}
+                              </td>
+                              <td>
+                                <span className={`mmm-data-table__tag ${row.identificationVerdict === "IDENTIFIED" || mmm.run.modelVariant === "classic" ? "is-media" : ""}`}>
+                                  {mmm.run.modelVariant === "classic"
+                                    ? tx("상위 그룹", "Top-level group")
+                                    : row.identificationVerdict || tx("확인 불가", "Unavailable")}
+                                </span>
                               </td>
                             </tr>
                           );
@@ -5448,9 +5577,12 @@ export default function MarketingResponse({ locale = "ko" }) {
                       </tbody>
                     </table>
                   </div>
-                  <p className="mmm-weekly-performance__foot">{tx(
-                    "표와 주간 기여분해는 같은 기여값을 사용하며 광고 잔효가 남은 무집행 주도 포함합니다. 상관 채널의 묶음 값은 재학습 결과이고, 개별 값은 참고 배분이므로 홀드아웃으로 확인하세요.",
-                    "The table and weekly decomposition use the same contributions, including carryover in zero-spend weeks. Correlated-group values are refit estimates; individual values are reference allocations and should be confirmed with a holdout.",
+                  <p className="mmm-weekly-performance__foot">{mmm.run.modelVariant === "bayesian-like" ? tx(
+                    "표와 주간 기여분해는 같은 posterior 기여값을 사용합니다. ABSTAIN·BOUNDARY 채널은 0명이 아니라 0~상한 범위로 표시하며 CPA/ROAS 확정을 보류합니다.",
+                    "The table and weekly decomposition use the same posterior contributions. ABSTAIN/BOUNDARY channels are shown as a zero-to-upper-bound range, not zero effect, and CPA/ROAS is held.",
+                  ) : tx(
+                    "Classic MMM은 Performance·Branding 원시 Cost를 먼저 합산한 상위 그룹 총량입니다. 채널별 예산 배분 근거로 사용하지 마세요.",
+                    "Classic MMM first aggregates raw Performance and Branding Cost into top-level totals. Do not use it for channel-level budget allocation.",
                   )}</p>
                   {spendTimelineKinds.length > 0 && (
                     <Card style={{ marginTop: "12px", padding: "14px 16px", borderColor: "rgba(127,119,221,.34)", background: "linear-gradient(90deg, rgba(127,119,221,.07), transparent 44%)" }}>

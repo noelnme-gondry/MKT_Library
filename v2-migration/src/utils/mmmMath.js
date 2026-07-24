@@ -9,6 +9,250 @@ import {
   compareObservedYearShapes,
 } from "./mmmBusinessSeasonality.js";
 
+export function mmmInverseNormCdf(probability) {
+  const p = Math.max(1e-15, Math.min(1 - 1e-15, Number(probability)));
+  const a = [-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716, 2.506628277459239];
+  const b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572];
+  const c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783];
+  const d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
+  const low = 0.02425;
+  const high = 1 - low;
+  if (p < low) {
+    const q = Math.sqrt(-2 * Math.log(p));
+    return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5])
+      / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+  }
+  if (p > high) {
+    const q = Math.sqrt(-2 * Math.log(1 - p));
+    return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5])
+      / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+  }
+  const q = p - 0.5;
+  const r = q * q;
+  return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q
+    / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+}
+
+export function mmmTruncatedNormalMoments(mu, sigma) {
+  const mean = Number(mu) || 0;
+  const sd = Math.max(0, Number(sigma) || 0);
+  if (!(sd > 1e-12)) {
+    const point = Math.max(0, mean);
+    return { mean: point, variance: 0, q05: point, q95: point };
+  }
+  const alpha = -mean / sd;
+  const lowerCdf = mmmNormCdf(alpha);
+  const survival = Math.max(1e-15, 1 - lowerCdf);
+  const density = Math.exp(-0.5 * alpha * alpha) / Math.sqrt(2 * Math.PI);
+  const mills = alpha > 8
+    ? alpha + 1 / Math.max(alpha, 1e-12)
+    : density / survival;
+  const truncatedMean = mean + sd * mills;
+  const variance = Math.max(0, sd * sd * (1 + alpha * mills - mills * mills));
+  const quantile = (q) => mean + sd * mmmInverseNormCdf(lowerCdf + q * survival);
+  return {
+    mean: Math.max(0, truncatedMean),
+    variance,
+    q05: Math.max(0, quantile(0.05)),
+    q95: Math.max(0, quantile(0.95)),
+  };
+}
+
+function _mmmMatrixMultiply(left, right) {
+  return left.map((row) => right[0].map((_, column) =>
+    row.reduce((sum, value, index) => sum + value * right[index][column], 0),
+  ));
+}
+
+function _mmmMatrixTranspose(matrix) {
+  return matrix[0].map((_, column) => matrix.map((row) => row[column]));
+}
+
+export function mmmPosteriorCovariance(posterior, colScale, colMean = []) {
+  if (!posterior?.XtXinv?.length || !Array.isArray(colScale)) return null;
+  const featureCount = colScale.length;
+  if (posterior.XtXinv.length !== featureCount + 1) return null;
+  const covarianceStd = posterior.XtXinv.map((row) =>
+    row.map((value) => (Number(value) || 0) * (Number(posterior.sigma2) || 0)),
+  );
+  const transform = Array.from({ length: featureCount + 1 }, () => Array(featureCount + 1).fill(0));
+  transform[0][0] = 1;
+  for (let index = 0; index < featureCount; index++) {
+    const scale = Math.max(1e-12, Number(colScale[index]) || 1);
+    transform[0][index + 1] = -(Number(colMean[index]) || 0) / scale;
+    transform[index + 1][index + 1] = 1 / scale;
+  }
+  const sigmaRawFull = _mmmMatrixMultiply(
+    _mmmMatrixMultiply(transform, covarianceStd),
+    _mmmMatrixTranspose(transform),
+  );
+  const sourceMean = posterior.unconstrainedBeta || posterior.beta;
+  const muRawFull = transform.map((row) =>
+    row.reduce((sum, value, index) => sum + value * (Number(sourceMean?.[index]) || 0), 0),
+  );
+  return {
+    sigma2: posterior.sigma2,
+    sigmaRawFull,
+    muRawFull,
+    sigmaRaw: sigmaRawFull.slice(1).map((row) => row.slice(1)),
+    muRaw: muRawFull.slice(1),
+  };
+}
+
+function _mmmHashSeed(value) {
+  let hash = 2166136261;
+  const text = String(value ?? "");
+  for (let index = 0; index < text.length; index++) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function _mmmSeededRng(seed) {
+  let state = Number(seed) >>> 0;
+  return () => {
+    state += 0x6D2B79F5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function _mmmCholesky(matrix) {
+  const size = matrix.length;
+  const lower = Array.from({ length: size }, () => Array(size).fill(0));
+  for (let row = 0; row < size; row++) {
+    for (let column = 0; column <= row; column++) {
+      let value = Number(matrix[row]?.[column]) || 0;
+      for (let index = 0; index < column; index++) value -= lower[row][index] * lower[column][index];
+      if (row === column) {
+        if (value < -1e-8) return null;
+        lower[row][column] = Math.sqrt(Math.max(1e-12, value));
+      } else {
+        if (!(lower[column][column] > 1e-12)) return null;
+        lower[row][column] = value / lower[column][column];
+      }
+    }
+  }
+  return lower;
+}
+
+export function mmmMultivarTruncatedSample(muRaw, sigmaRaw, mediaIndices, seed, draws = 4000) {
+  const means = (muRaw || []).map((value) => Number(value) || 0);
+  if (!means.length || sigmaRaw?.length !== means.length) return [];
+  const lower = _mmmCholesky(sigmaRaw);
+  if (!lower) return [];
+  const constrained = new Set(mediaIndices || means.map((_, index) => index));
+  const rng = _mmmSeededRng(typeof seed === "number" ? seed : _mmmHashSeed(seed));
+  const count = Math.max(1, Math.round(draws));
+  const output = [];
+  for (let draw = 0; draw < count; draw++) {
+    const normals = [];
+    while (normals.length < means.length) {
+      const u1 = Math.max(1e-15, rng());
+      const u2 = rng();
+      const radius = Math.sqrt(-2 * Math.log(u1));
+      normals.push(radius * Math.cos(2 * Math.PI * u2));
+      if (normals.length < means.length) normals.push(radius * Math.sin(2 * Math.PI * u2));
+    }
+    output.push(means.map((mean, row) => {
+      const value = mean + lower[row].reduce((sum, coefficient, column) =>
+        sum + coefficient * normals[column], 0);
+      return constrained.has(row) ? Math.max(0, value) : value;
+    }));
+  }
+  return output;
+}
+
+function _mmmQuantileSorted(sorted, probability) {
+  if (!sorted.length) return 0;
+  const position = Math.max(0, Math.min(sorted.length - 1, (sorted.length - 1) * probability));
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+  const weight = position - lower;
+  return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+}
+
+export function mmmGroupContributionPosterior(sigmaRaw, muRaw, weightsByGroup, options = {}) {
+  const mediaIndices = options.mediaIndices || (muRaw || []).map((_, index) => index);
+  const draws = mmmMultivarTruncatedSample(
+    muRaw,
+    sigmaRaw,
+    mediaIndices,
+    options.seed || "mmm-group-posterior",
+    options.draws || 4000,
+  );
+  if (!draws.length) return null;
+  return Object.fromEntries(Object.entries(weightsByGroup || {}).map(([group, weights]) => {
+    const samples = draws.map((draw) => draw.reduce((sum, value, index) =>
+      sum + value * (Number(weights[index]) || 0), 0,
+    )).sort((left, right) => left - right);
+    const mean = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+    const variance = samples.reduce((sum, value) => sum + (value - mean) ** 2, 0) / Math.max(1, samples.length - 1);
+    return [group, {
+      mean,
+      variance,
+      ci95: [_mmmQuantileSorted(samples, 0.025), _mmmQuantileSorted(samples, 0.975)],
+    }];
+  }));
+}
+
+export function mmmAggregateCrossCheck(joint, aggregate, tolerance = 0.15) {
+  const jointValue = Number(joint) || 0;
+  const aggregateValue = Number(aggregate) || 0;
+  const relDiff = Math.abs(jointValue - aggregateValue)
+    / Math.max(Math.abs(jointValue), Math.abs(aggregateValue), 1e-12);
+  return {
+    relDiff,
+    verdict: relDiff <= tolerance ? "consistent" : "abstain-group-definition-sensitive",
+  };
+}
+
+export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
+  const aggregate = (aggregateFolds || []).map(Number);
+  const channel = (channelFolds || []).map(Number);
+  if (aggregate.length < 2 || aggregate.length !== channel.length
+    || aggregate.some((value) => !Number.isFinite(value))
+    || channel.some((value) => !Number.isFinite(value))) {
+    return {
+      verdict: "ABSTAIN",
+      reason: "insufficient-or-mismatched-folds",
+      foldCount: Math.min(aggregate.length, channel.length),
+      deltas: [],
+      meanDelta: null,
+      standardError: null,
+      aggregateLosses: null,
+    };
+  }
+  const deltas = aggregate.map((value, index) => value - channel[index]);
+  const meanDelta = deltas.reduce((sum, value) => sum + value, 0) / deltas.length;
+  const variance = deltas.reduce((sum, value) => sum + (value - meanDelta) ** 2, 0)
+    / Math.max(1, deltas.length - 1);
+  const standardError = Math.sqrt(variance / deltas.length);
+  const aggregateLosses = deltas.filter((value) => value > 0).length;
+  const isRepeatedLoss = aggregateLosses >= Math.ceil(deltas.length * 2 / 3);
+  const verdict = meanDelta <= standardError
+    ? "AGGREGATE ACCEPT"
+    : isRepeatedLoss
+      ? "STRUCTURAL LOSS"
+      : "ABSTAIN";
+  return {
+    verdict,
+    reason: verdict === "AGGREGATE ACCEPT"
+      ? "paired-one-standard-error-parsimony"
+      : verdict === "STRUCTURAL LOSS"
+        ? "aggregate-repeatedly-worse"
+        : "unstable-fold-comparison",
+    foldCount: deltas.length,
+    deltas,
+    meanDelta,
+    standardError,
+    aggregateLosses,
+  };
+}
+
             export const MMR_MATH = {
               // 기하 adstock: a_t = x_t + θ·a_{t-1}
               adstock(x, theta) {
@@ -3124,6 +3368,7 @@ import {
                 }
                 const unconstrainedFit = mmmOls(augX, augY);
                 if (!unconstrainedFit) return null;
+                const unconstrainedBeta = unconstrainedFit.beta.slice();
                 const beta = _mmmNonNegativeMediaFit(augX, augY, constrainedIndices, unconstrainedFit.beta);
                 const fitted = X.map((row) => row.reduce((sum, value, j) => sum + value * beta[j], 0));
                 const resid = y.map((value, i) => value - fitted[i]);
@@ -3131,7 +3376,7 @@ import {
                   yScale ** 2 * 1e-8,
                   resid.reduce((sum, value) => sum + value * value, 0) / Math.max(1, n - p),
                 );
-                return { fit: { ...unconstrainedFit, beta }, fitted, resid, sigma2 };
+                return { fit: { ...unconstrainedFit, beta }, unconstrainedBeta, fitted, resid, sigma2 };
               };
               const provisional = fitWithPenalty(defaultPenalty);
               if (!provisional) return null;
@@ -3157,13 +3402,13 @@ import {
                   break;
                 }
               }
-              const { fit, fitted, resid, sigma2 } = result;
+              const { fit, unconstrainedBeta, fitted, resid, sigma2 } = result;
               const beta = fit.beta;
               const sd = beta.map((_, j) => Math.sqrt(Math.max(0, sigma2 * fit.XtXinv[j][j])));
               const r2Den = y.reduce((s, v) => s + (v - _mean(y)) ** 2, 0);
               const r2 = r2Den > 0 ? 1 - resid.reduce((s, e) => s + e * e, 0) / r2Den : 0;
               return {
-                beta, fitted, resid, sigma: Math.sqrt(sigma2) || yScale, sigma2, sd, r2,
+                beta, unconstrainedBeta, fitted, resid, sigma: Math.sqrt(sigma2) || yScale, sigma2, sd, r2,
                 XtXinv: fit.XtXinv,
                 calibratedPriorCount: Object.keys(calibratedPrecision).length,
                 priorScaleIterations,
@@ -3234,7 +3479,8 @@ import {
                 (sum, beta, j) => sum + beta * colMean[j],
                 0,
               );
-              return { Xraw, colMean, colScale, X, posterior, absoluteBeta, absoluteIntercept };
+              const posteriorCovariance = mmmPosteriorCovariance(posterior, colScale, colMean);
+              return { Xraw, colMean, colScale, X, posterior, posteriorCovariance, absoluteBeta, absoluteIntercept };
             }
 
             function _mmmBusinessContributionPriors(panel, cfg, targetName, names, cols, channelMeta, options = {}) {
@@ -4747,7 +4993,7 @@ import {
                   jointPosteriorApplied: true,
                 };
               });
-              const { Xraw, colMean, colScale, X, posterior, absoluteBeta, absoluteIntercept } = fitted;
+              const { Xraw, colMean, colScale, X, posterior, posteriorCovariance, absoluteBeta, absoluteIntercept } = fitted;
               const channelContributions = _mmmBuildChannelContributions(
                 panel,
                 names,
@@ -5031,6 +5277,7 @@ import {
                 absoluteBeta,
                 absoluteIntercept,
                 posterior,
+                posteriorCovariance,
                 weeks,
                 groupNames,
                 saturationByChannel,
@@ -5070,6 +5317,351 @@ import {
                   channelCount: Object.keys(businessContributionPrior.priors || {}).length,
                 },
                 appliedMediaPriors: externalMediaPriors,
+              };
+            }
+
+            export function mmmBuildAggregateMediaPanel(panel) {
+              if (!panel?.week?.length) return null;
+              const sourceChannels = _mmmChans(panel);
+              const definitions = [
+                {
+                  key: "__performance_total",
+                  label: "Performance Cost",
+                  kind: "perf",
+                  members: sourceChannels.filter((channel) => channel.kind !== "brand"),
+                },
+                {
+                  key: "__branding_total",
+                  label: "Branding Cost",
+                  kind: "brand",
+                  members: sourceChannels.filter((channel) => channel.kind === "brand"),
+                },
+              ].filter((definition) => definition.members.length);
+              const ch = Object.fromEntries(definitions.map((definition) => [
+                definition.key,
+                panel.week.map((_, weekIndex) => definition.members.reduce(
+                  (sum, channel) => sum + Math.max(0, Number(panel.ch?.[channel.key]?.[weekIndex]) || 0),
+                  0,
+                )),
+              ]));
+              return {
+                ...panel,
+                ch,
+                channels: definitions.map(({ key, label, kind }) => ({ key, label, kind })),
+                aggregateMediaDefinitions: definitions.map((definition) => ({
+                  key: definition.key,
+                  label: definition.label,
+                  kind: definition.kind,
+                  members: definition.members.map((channel) => channel.key),
+                })),
+              };
+            }
+
+            export function mmmClassicRun(panel, cfg, targetName, withBacktest = true, options = {}) {
+              const aggregatePanel = mmmBuildAggregateMediaPanel(panel);
+              if (!aggregatePanel?.channels?.length) return null;
+              const run = mmmBayesianRun(
+                aggregatePanel,
+                {
+                  ...cfg,
+                  // 상위 Decomp는 채널별 결과를 본 뒤 추세 모양을 고르지 않는다.
+                  // 기존 rolling joint structure selector가 0/1/2 knot을 비교한다.
+                  trendDirectionFirst: false,
+                },
+                targetName,
+                withBacktest,
+                {
+                  ...options,
+                  mediaPriors: {},
+                  enableJointStructureSelection: true,
+                  enableBaselineSelection: true,
+                  enableBusinessContributionPrior: false,
+                },
+              );
+              if (!run) return null;
+              const weeks = run.weeks.map((week) => ({
+                ...week,
+                baseline: run.absoluteIntercept,
+                contrib: {
+                  ...week.contrib,
+                  Trend: (Number(week.contrib.Trend) || 0) - run.absoluteIntercept,
+                },
+              }));
+              return {
+                ...run,
+                weeks,
+                modelVariant: "classic",
+                methodLabel: "Classic MMM (aggregate Performance/Branding MAP decomposition)",
+                aggregateMediaDefinitions: aggregatePanel.aggregateMediaDefinitions,
+                estimand: "additive-map-component",
+                interceptSeparated: true,
+                trendFlexFrozen: run.jointStructureSelection?.selected ? {
+                  smoothingWindowWeeks: null,
+                  knotCount: run.jointStructureSelection.selected.trendKnotCount,
+                  knotLocations: run.jointStructureSelection.selected.selectedKnots?.slice() || [],
+                  basis: "piecewise-hinge",
+                  foldWmapes: run.jointStructureSelection.selected.foldWmapes?.slice() || [],
+                  meanWmape: run.jointStructureSelection.selected.meanWmape,
+                  standardError: run.jointStructureSelection.selected.standardError,
+                  selectedBy: "rolling-origin-joint-structure",
+                  frozen: true,
+                  limitation: "Current engine does not yet profile 52/78/104-week smoothing windows.",
+                } : null,
+              };
+            }
+
+            function _mmmBayesianLikePosterior(run, panel, targetName, options = {}) {
+              const covariance = run?.posteriorCovariance;
+              if (!covariance?.sigmaRawFull?.length) return null;
+              const media = run.channelMeta.map((channel) => {
+                const featureIndex = run.names.indexOf("media_" + channel.key);
+                return { channel, featureIndex };
+              }).filter((item) => item.featureIndex >= 0);
+              if (!media.length) return null;
+              const seedMaterial = [
+                targetName,
+                panel.week.length,
+                panel.weekLabel?.[0],
+                panel.weekLabel?.at(-1),
+                panel.targets?.[targetName]?.reduce((sum, value) => sum + (Number(value) || 0), 0),
+                ...media.map((item) => item.channel.key),
+              ].join("|");
+              const coefficientDraws = mmmMultivarTruncatedSample(
+                covariance.muRawFull,
+                covariance.sigmaRawFull,
+                media.map((item) => item.featureIndex + 1),
+                _mmmHashSeed(seedMaterial + "|posterior-mc"),
+                options.draws || 4000,
+              );
+              if (!coefficientDraws.length) return null;
+              const posteriorMeanCoefficients = covariance.muRawFull.map((_, coefficientIndex) =>
+                coefficientDraws.reduce((sum, draw) => sum + draw[coefficientIndex], 0) / coefficientDraws.length,
+              );
+              const coefficientPosterior = Object.fromEntries(media.map((item) => {
+                const coefficientIndex = item.featureIndex + 1;
+                const values = coefficientDraws.map((draw) => draw[coefficientIndex]).sort((left, right) => left - right);
+                const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+                const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / Math.max(1, values.length - 1);
+                return [item.channel.key, {
+                  mean,
+                  variance,
+                  q05: _mmmQuantileSorted(values, 0.05),
+                  q95: _mmmQuantileSorted(values, 0.95),
+                  positiveProbability: values.filter((value) => value > 1e-12).length / values.length,
+                  map: Math.max(0, Number(run.absoluteBeta[item.featureIndex]) || 0),
+                }];
+              }));
+              const vifByVariable = new Map((run.vif || []).map((item) => [item.var, item.vif]));
+              const channelIdentification = Object.fromEntries(media.map((item) => {
+                const posterior = coefficientPosterior[item.channel.key];
+                const vif = Number(vifByVariable.get("media_" + item.channel.key));
+                const width = posterior.q95 - posterior.q05;
+                const relativeWidth = width / Math.max(1e-12, Math.abs(posterior.mean));
+                const isBoundary = posterior.map <= 1e-12 && posterior.q95 > 1e-12;
+                const verdict = Number.isFinite(vif) && vif >= 10
+                  ? "ABSTAIN"
+                  : isBoundary
+                    ? "BOUNDARY/UNIDENTIFIED"
+                    : posterior.q05 <= 1e-12 && relativeWidth >= 2
+                      ? "ABSTAIN"
+                      : "IDENTIFIED";
+                return [item.channel.key, {
+                  mean: posterior.mean,
+                  ci90: [posterior.q05, posterior.q95],
+                  vif: Number.isFinite(vif) ? vif : null,
+                  relativeWidth,
+                  verdict,
+                }];
+              }));
+              const channelContributions = Object.fromEntries(media.map((item) => {
+                const coefficient = coefficientPosterior[item.channel.key];
+                const identification = channelIdentification[item.channel.key];
+                const feature = run.rawFeatureHistory.map((row) => Math.max(0, Number(row[item.featureIndex]) || 0));
+                const weeklyMean = feature.map((value) => value * coefficient.mean);
+                const weeklyLow = feature.map((value) => value * coefficient.q05);
+                const weeklyHigh = feature.map((value) => value * coefficient.q95);
+                const featureTotal = feature.reduce((sum, value) => sum + value, 0);
+                return [item.channel.key, {
+                  ...(run.channelContributions[item.channel.key] || {}),
+                  key: item.channel.key,
+                  label: item.channel.label || item.channel.key,
+                  weeklyMean,
+                  weeklyLow,
+                  weeklyHigh,
+                  totalMean: featureTotal * coefficient.mean,
+                  totalLow: featureTotal * coefficient.q05,
+                  totalHigh: featureTotal * coefficient.q95,
+                  posteriorPositive: coefficient.q95 > 0 ? 1 : 0,
+                  source: "bayesian-like-projected-orthant-laplace",
+                  allocationReliability: "conditional-posterior-approximation",
+                  boundaryPosteriorMean: coefficient.map <= 1e-12 && coefficient.q95 > 1e-12,
+                  identificationVerdict: identification.verdict,
+                  identification,
+                }];
+              }));
+              const groupSamples = {};
+              ["Performance", "Brand"].forEach((group) => {
+                groupSamples[group] = coefficientDraws.map((draw) => media.reduce((sum, item) => {
+                  const isBrand = item.channel.kind === "brand";
+                  if ((group === "Brand") !== isBrand) return sum;
+                  const featureTotal = run.rawFeatureHistory.reduce(
+                    (featureSum, row) => featureSum + Math.max(0, Number(row[item.featureIndex]) || 0),
+                    0,
+                  );
+                  return sum + draw[item.featureIndex + 1] * featureTotal;
+                }, 0)).sort((left, right) => left - right);
+              });
+              const groupPosterior = Object.fromEntries(Object.entries(groupSamples).map(([group, values]) => {
+                const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+                const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / Math.max(1, values.length - 1);
+                return [group, {
+                  mean,
+                  variance,
+                  ci95: [_mmmQuantileSorted(values, 0.025), _mmmQuantileSorted(values, 0.975)],
+                }];
+              }));
+              const stepNames = new Set(Object.keys(panel.steps || {}).filter((key) => run.names.includes(key)));
+              const industryNames = new Set(Object.keys(panel.external || {})
+                .map((key) => "industry_" + key)
+                .filter((key) => run.names.includes(key)));
+              const groupFor = (name) => {
+                if (name === "trend" || name.startsWith("baseline_knot_") || name.startsWith("trend_dir_")) return "Trend";
+                if (/^(sin|cos)_/.test(name) || name.startsWith("season_rbf_")) return "Seasonality";
+                if (name === "lny" || name === "chuseok" || name.startsWith("d_")) return "Holidays & Events";
+                if (industryNames.has(name)) return "Industry Trend";
+                if (stepNames.has(name)) return "Regime change";
+                return "Trend";
+              };
+              const weeks = run.weeks.map((week, weekIndex) => {
+                const contrib = Object.fromEntries(run.groupNames.map((group) => [group, 0]));
+                contrib.Trend = 0;
+                run.names.forEach((name, featureIndex) => {
+                  if (name.startsWith("media_")) return;
+                  contrib[groupFor(name)] += posteriorMeanCoefficients[featureIndex + 1]
+                    * (Number(run.rawFeatureHistory[weekIndex]?.[featureIndex]) || 0);
+                });
+                media.forEach((item) => {
+                  const value = channelContributions[item.channel.key]?.weeklyMean?.[weekIndex] || 0;
+                  contrib[item.channel.kind === "brand" ? "Brand" : "Performance"] += value;
+                });
+                const fitted = posteriorMeanCoefficients[0]
+                  + run.groupNames.reduce((sum, group) => sum + (Number(contrib[group]) || 0), 0);
+                const intervalHalfWidth = Math.max(0, ((Number(week.hi) || fitted) - (Number(week.lo) || fitted)) / 2);
+                return {
+                  ...week,
+                  baseline: posteriorMeanCoefficients[0],
+                  fitted,
+                  residual: week.actual - fitted,
+                  lo: fitted - intervalHalfWidth,
+                  hi: fitted + intervalHalfWidth,
+                  contrib,
+                  channelContrib: Object.fromEntries(media.map((item) => [
+                    item.channel.key,
+                    channelContributions[item.channel.key]?.weeklyMean?.[weekIndex] || 0,
+                  ])),
+                };
+              });
+              return {
+                coefficientPosterior,
+                channelIdentification,
+                groupPosterior,
+                posteriorMeanCoefficients,
+                channelContributions,
+                weeks,
+                draws: coefficientDraws.length,
+                seed: _mmmHashSeed(seedMaterial + "|posterior-mc"),
+                covarianceScope: "selected-transform-conditional-full-covariance",
+              };
+            }
+
+            export function mmmBayesianLikeRun(panel, cfg, targetName, withBacktest = true, options = {}) {
+              const mapRun = mmmBayesianRun(panel, cfg, targetName, withBacktest, {
+                ...options,
+                enableBusinessContributionPrior: false,
+              });
+              if (!mapRun) return null;
+              const approximation = _mmmBayesianLikePosterior(mapRun, panel, targetName, options);
+              if (!approximation) return {
+                ...mapRun,
+                modelVariant: "bayesian-like",
+                methodLabel: "Bayesian-like MMM (posterior approximation unavailable)",
+                posteriorApproximation: { enabled: false, reason: "covariance-or-factorization-failed" },
+              };
+              const actualMean = _mean(approximation.weeks.map((week) => week.actual));
+              const residualSse = approximation.weeks.reduce((sum, week) => sum + week.residual ** 2, 0);
+              const totalSse = approximation.weeks.reduce((sum, week) => sum + (week.actual - actualMean) ** 2, 0);
+              const posterior = {
+                ...mapRun.posterior,
+                fitted: approximation.weeks.map((week) => week.fitted),
+                resid: approximation.weeks.map((week) => week.residual),
+                r2: 1 - residualSse / Math.max(1e-12, totalSse),
+              };
+              const absoluteBeta = approximation.posteriorMeanCoefficients.slice(1);
+              const absoluteIntercept = approximation.posteriorMeanCoefficients[0];
+              const saturationByChannel = Object.fromEntries(mapRun.channelMeta.map((channel) => {
+                const previous = mapRun.saturationByChannel[channel.key] || {};
+                const coefficient = approximation.coefficientPosterior[channel.key];
+                const params = mapRun.params[channel.key];
+                if (!coefficient || !params) return [channel.key, previous];
+                const responseAt = (spend) => {
+                  const steadyAdstock = Math.max(0, Number(spend) || 0)
+                    / Math.max(0.05, 1 - Math.min(0.95, params.alpha));
+                  return coefficient.mean * mmmHill(steadyAdstock, params.ec, params.slope);
+                };
+                const marginalAt = (spend) => {
+                  const safeSpend = Math.max(0, Number(spend) || 0);
+                  const step = Math.max(1, safeSpend * 0.001);
+                  return (responseAt(safeSpend + step) - responseAt(Math.max(0, safeSpend - step)))
+                    / Math.max(1e-9, safeSpend + step - Math.max(0, safeSpend - step));
+                };
+                const incrementalAt = (spend, step = 1000) => {
+                  const safeSpend = Math.max(0, Number(spend) || 0);
+                  const safeStep = Math.max(0, Number(step) || 0);
+                  const denominator = Math.max(0.05, 1 - Math.min(0.95, params.alpha));
+                  const factor = mmmHill((safeSpend + safeStep) / denominator, params.ec, params.slope)
+                    - mmmHill(safeSpend / denominator, params.ec, params.slope);
+                  return {
+                    mean: coefficient.mean * factor,
+                    ci: [coefficient.q05 * factor, coefficient.q95 * factor],
+                    positiveProbability: coefficient.positiveProbability,
+                    step: safeStep,
+                  };
+                };
+                return [channel.key, {
+                  ...previous,
+                  ln_coef: coefficient.mean,
+                  ci: [coefficient.q05, coefficient.q95],
+                  posteriorPositive: coefficient.positiveProbability,
+                  responseAt,
+                  marginalAt,
+                  incrementalAt,
+                  currentMarginal: marginalAt(previous.recentMean || 0) * 1000,
+                }];
+              }));
+              return {
+                ...mapRun,
+                posterior,
+                absoluteBeta,
+                absoluteIntercept,
+                saturationByChannel,
+                modelVariant: "bayesian-like",
+                methodLabel: "Bayesian-like MMM (Gaussian/Laplace posterior, non-negative media)",
+                estimand: "additive-posterior-mean-component",
+                mapWeeks: mapRun.weeks,
+                weeks: approximation.weeks,
+                channelContributions: approximation.channelContributions,
+                posteriorApproximation: {
+                  enabled: true,
+                  conditionalOnSelectedTransforms: true,
+                  groupPosterior: approximation.groupPosterior,
+                  coefficientPosterior: approximation.coefficientPosterior,
+                  channelIdentification: approximation.channelIdentification,
+                  draws: approximation.draws,
+                  seed: approximation.seed,
+                  covarianceScope: approximation.covarianceScope,
+                  note: "Not full joint MCMC; selected adstock/Hill and structure are plug-in conditioned.",
+                },
+                interceptSeparated: true,
               };
             }
 
@@ -5146,7 +5738,7 @@ import {
                   enableSeasonalitySelection: false,
                   enableBaselineSelection: false,
                   enableMediaPenaltySelection: false,
-                  enableBusinessContributionPrior: true,
+                  enableBusinessContributionPrior: false,
                   skipTransformUncertainty: true,
                 },
               );
