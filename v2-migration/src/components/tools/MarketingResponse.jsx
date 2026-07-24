@@ -2409,6 +2409,28 @@ function withMmmViewSpend(saturationByChannel = {}, panel, isDateFiltered = fals
   }));
 }
 
+// Brand/Performance 전체 곡선은 구성 채널의 현재 집행 비중을 고정해 함께
+// 증감시키는 시나리오다. 새로 합산 채널을 재적합한 결과가 아니라, 개별 곡선을
+// 같은 mix로 합친 예산 의사결정용 보기임을 UI에서 분명히 밝힌다.
+function buildMmmSaturationCurveGroups(saturationByChannel = {}, channels = [], locale = "ko") {
+  const channelByKey = new Map((channels || []).map((channel) => [channel.key, channel]));
+  return ["brand", "perf"].map((kind) => {
+    const members = Object.values(saturationByChannel).filter((channel) => channelByKey.get(channel.key)?.kind === kind);
+    const recentMean = members.reduce((sum, channel) => sum + Math.max(0, Number(channel.recentMean) || 0), 0);
+    if (!members.length || !(recentMean > 0)) return null;
+    const weights = Object.fromEntries(members.map((channel) => [channel.key, Math.max(0, Number(channel.recentMean) || 0) / recentMean]));
+    return {
+      key: "group:" + kind,
+      label: locale === "en" ? (kind === "brand" ? "Brand total" : "Performance total") : (kind === "brand" ? "브랜딩 전체" : "퍼포먼스 전체"),
+      recentMean,
+      isGroup: true,
+      color: kind === "brand" ? "#d5df8e" : "#df8392",
+      members,
+      responseAt: (spend) => members.reduce((sum, channel) => sum + channel.responseAt(Math.max(0, spend) * weights[channel.key]), 0),
+    };
+  }).filter(Boolean);
+}
+
 function isoDateFromLabel(value) {
   const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return match ? match[0] : null;
@@ -2685,6 +2707,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   // 볼 수 있게 한다. 모델·원본 기여값은 바꾸지 않고 이 표시용 분모만 전환한다.
   const [includeBaseDemandInShare, setIncludeBaseDemandInShare] = useState(true);
   const [satHidden, setSatHidden] = useState({}); // 수확체감 곡선 채널별 표시 토글 { [chKey]: true=숨김 }
+  const [saturationCurveView, setSaturationCurveView] = useState("channel");
   const [spikeNotes, setSpikeNotes] = useState({}); // §5.5 튀는 구간 메모 { [target|week]: note }
   const [fcHorizon, setFcHorizon] = useState(13);
   const [fcBudget, setFcBudget] = useState({}); // {chKey: 주 평균 예산} — 미입력 채널은 최근평균
@@ -3565,6 +3588,12 @@ export default function MarketingResponse({ locale = "ko" }) {
     displayedMmmPanel,
     Boolean(contributionViewStart || contributionViewEnd),
   ), [mmm, displayedMmmPanel, contributionViewStart, contributionViewEnd]);
+  const displayedSaturationCurveSeries = useMemo(() => {
+    if (saturationCurveView === "group") {
+      return buildMmmSaturationCurveGroups(displayedSaturationByChannel, displayedMmmPanel?.channels, locale);
+    }
+    return Object.values(displayedSaturationByChannel).map((channel) => ({ ...channel, isGroup: false }));
+  }, [displayedSaturationByChannel, displayedMmmPanel, locale, saturationCurveView]);
 
   // 주간 기여분해와 동일한 채널별 기여 원천을 집계한다. 그룹 재적합이 있으면
   // 개별 보기 역시 그룹 총기여 안에서만 나뉘어 합계가 어긋나지 않는다.
@@ -3853,18 +3882,18 @@ export default function MarketingResponse({ locale = "ko" }) {
       // 반응 곡선 (per channel, y = 비음수 절대 기여 = 그 지출에서의 예상 기여).
       // 기존 한계응답(ln_coef/(1+x)) 곡선은 x→0에서 발산(1,000,000)해 판독 불가(§유저) →
       // 누적 반응 곡선으로 교체(단조·발산 없음, 평평해질수록 수확체감). 현재 지출 위치 점으로 표시.
-      if (satRef.current && Object.keys(displayedSaturationByChannel).length) {
+      if (satRef.current && displayedSaturationCurveSeries.length) {
         const themeVarS = (n) => (typeof document !== "undefined" ? getComputedStyle(document.body).getPropertyValue(n).trim() : "") || "";
         const mutedColS = themeVarS("--text-muted") || CHART_THEME.muted;
         const textColS = themeVarS("--text-1") || CHART_THEME.text;
-        const chs = Object.entries(displayedSaturationByChannel);
+        const chs = displayedSaturationCurveSeries;
         if (chs.length) {
-          const maxSpend = Math.max(...chs.map(([, s]) => s.recentMean || 0)) * 1.6 || 40000;
+          const maxSpend = Math.max(...chs.map((s) => s.recentMean || 0)) * 1.6 || 40000;
           const grid = Array.from({ length: 41 }, (_, i) => (i / 40) * maxSpend);
           const respAt = (s, x) => s.responseAt(x);
           // 현재 지출 위치(●)는 각 채널 선 위 데이터점으로 → 선을 숨기면 점도 같이 숨겨짐(별도 scatter 제거).
-          const lineDs = chs.map(([key, s], i) => {
-            const col = MMM_MEDIA_PALETTE[i % MMM_MEDIA_PALETTE.length];
+          const lineDs = chs.map((s, i) => {
+            const col = s.color || MMM_MEDIA_PALETTE[i % MMM_MEDIA_PALETTE.length];
             let curIdx = -1;
             if (s.recentMean > 0) {
               let best = Infinity;
@@ -3875,14 +3904,14 @@ export default function MarketingResponse({ locale = "ko" }) {
               label: s.label,
               data: grid.map((x) => ({ x, y: respAt(s, x) })),
               borderColor: col,
-              borderDash: s.posteriorPositive < 0.8 ? [5, 4] : [],
+              borderDash: !s.isGroup && s.posteriorPositive < 0.8 ? [5, 4] : [],
               borderWidth: 1.75,
               tension: 0.3,
               pointRadius: grid.map((_, gi) => (gi === curIdx ? 4.5 : 0)),
               pointBackgroundColor: col,
               pointBorderColor: textColS,
               pointBorderWidth: 1.5,
-              hidden: !!satHidden[key],
+              hidden: !s.isGroup && !!satHidden[s.key],
             };
           });
           const satOpts = chartBase();
@@ -3900,21 +3929,21 @@ export default function MarketingResponse({ locale = "ko" }) {
       }
       // 목표가 전환이면 CPA, 매출이면 ROAS. 수확체감 반응곡선을 비용 효율 언어로
       // 다시 읽어 예산을 늘릴수록 왜 CPR이 오르고 ROAS가 내려가는지 보여준다.
-      if (efficiencyRef.current && Object.keys(displayedSaturationByChannel).length) {
+      if (efficiencyRef.current && displayedSaturationCurveSeries.length) {
         const themeVarE = (n) => (typeof document !== "undefined" ? getComputedStyle(document.body).getPropertyValue(n).trim() : "") || "";
         const mutedColE = themeVarE("--text-muted") || CHART_THEME.muted;
-        const chs = Object.entries(displayedSaturationByChannel);
+        const chs = displayedSaturationCurveSeries;
         if (chs.length) {
           const isRoas = mmm.target === "Revenue";
-          const maxSpend = Math.max(...chs.map(([, s]) => s.recentMean || 0)) * 1.6 || 40000;
+          const maxSpend = Math.max(...chs.map((s) => s.recentMean || 0)) * 1.6 || 40000;
           const grid = Array.from({ length: 41 }, (_, i) => (i / 40) * maxSpend);
           const metricAt = (s, spend) => {
             const result = s.responseAt(spend);
             if (!(spend > 0) || !(result > 0)) return null;
             return isRoas ? result / spend : convAmt(spend / result);
           };
-          const datasets = chs.map(([key, s], i) => {
-            const col = MMM_MEDIA_PALETTE[i % MMM_MEDIA_PALETTE.length];
+          const datasets = chs.map((s, i) => {
+            const col = s.color || MMM_MEDIA_PALETTE[i % MMM_MEDIA_PALETTE.length];
             let curIdx = -1;
             if (s.recentMean > 0) {
               let best = Infinity;
@@ -3925,14 +3954,14 @@ export default function MarketingResponse({ locale = "ko" }) {
               label: s.label,
               data: grid.map((x) => ({ x, y: metricAt(s, x) })),
               borderColor: col,
-              borderDash: s.posteriorPositive < 0.8 ? [5, 4] : [],
+              borderDash: !s.isGroup && s.posteriorPositive < 0.8 ? [5, 4] : [],
               borderWidth: 1.75,
               tension: 0.3,
               pointRadius: grid.map((_, gi) => (gi === curIdx ? 4.5 : 0)),
               pointBackgroundColor: col,
               pointBorderColor: mutedColE,
               pointBorderWidth: 1.5,
-              hidden: !!satHidden[key],
+              hidden: !s.isGroup && !!satHidden[s.key],
               spanGaps: false,
             };
           });
@@ -4088,7 +4117,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     // convAmt는 sourceCurrency/displayCurrency로만 결정되는 순수 파생 함수라 그
     // 둘을 deps에 넣는 것으로 충분(함수 레퍼런스 자체는 deps에 안 넣음, §매 렌더 재생성).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, mmm, displayedDecomp, displayedMmmPanel, displayedSaturationByChannel, spikeNotes, decompGrouped, includeBaseDemandInShare, satHidden, currencySym, sourceCurrency, displayCurrency, tx]);
+  }, [stage, mmm, displayedDecomp, displayedMmmPanel, displayedSaturationByChannel, displayedSaturationCurveSeries, spikeNotes, decompGrouped, includeBaseDemandInShare, satHidden, currencySym, sourceCurrency, displayCurrency, tx]);
 
   // Stage ③ forecast chart
   useEffect(() => {
@@ -5577,20 +5606,36 @@ export default function MarketingResponse({ locale = "ko" }) {
                   <StatHead title={tx("③ RMS 기여 크기 비중", "③ RMS contribution-magnitude share")} hint={tx("각 드라이버의 주별 기여값 제곱평균을 전체 합으로 나눕니다. 인과 확정·설명된 R² 배분·Shapley 값이 아닙니다.", "Divides each driver's mean squared weekly contribution by the total. It is not causal attribution, allocated explained R², or a Shapley value.")} />
                   <div className="chart-container" style={{ height: "200px", marginBottom: "8px" }}><canvas ref={shapleyRef}></canvas></div>
                   <StatHead title={tx("④ 수확체감 — 더 쓰면 효과가 얼마나 꺾이나", "④ Diminishing returns — how much does effect fall as you spend more")} hint={tx("곡선이 평평해질수록 1달러당 효과가 줄어요(수확체감). ● = 지금 지출 위치. 이미 꺾인 뒤에 있으면 증액 효율이 낮다는 뜻. 점선 = 양수 효과의 확신이 낮아 예산 추천에서 보류한 채널입니다.", "The flatter the curve, the less each dollar returns (diminishing returns). ● = current spend point. If it's already past the bend, added spend is less efficient. Dashed = lower confidence in a positive effect, so the channel is held from budget recommendations.")} />
-                  {/* 커스텀 채널 토글 범례 — 클릭으로 곡선+현재지출점 함께 표시/숨김(§유저: 켠 채널 점만) */}
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
-                    {Object.entries(sat).map(([key, s], i) => {
-                      const col = MMM_MEDIA_PALETTE[i % MMM_MEDIA_PALETTE.length];
-                      const off = !!satHidden[key];
-                      return (
-                        <button key={key} onClick={() => setSatHidden((h) => ({ ...h, [key]: !h[key] }))}
-                          style={{ display: "inline-flex", alignItems: "center", gap: "5px", padding: "3px 9px", borderRadius: "6px", border: "1px solid var(--border)", background: off ? "transparent" : "var(--bg-1)", color: off ? MUTED : "var(--text-1)", fontSize: "10.5px", cursor: "pointer", opacity: off ? 0.5 : 1, textDecoration: off ? "line-through" : "none" }}>
-                          <span style={{ width: "9px", height: "9px", borderRadius: "2px", background: s.posteriorPositive < 0.8 ? "transparent" : col, outline: s.posteriorPositive < 0.8 ? `1px dashed ${col}` : "none", display: "inline-block" }}></span>
-                          {s.label}
-                        </button>
-                      );
-                    })}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", flexWrap: "wrap", marginBottom: "8px" }}>
+                    <div className="ab-pillgroup" aria-label={tx("반응곡선 보기", "Response-curve view")}>
+                      <span className="ab-pillgroup-label">{tx("보기", "View")}</span>
+                      <button className={"ab-pill " + (saturationCurveView === "channel" ? "active" : "")} onClick={() => setSaturationCurveView("channel")}>{tx("채널별", "Channels")}</button>
+                      <button className={"ab-pill " + (saturationCurveView === "group" ? "active" : "")} onClick={() => setSaturationCurveView("group")}>{tx("그룹별", "Groups")}</button>
+                    </div>
+                    {saturationCurveView === "group" && (
+                      <span className="muted" style={{ fontSize: "10.5px" }}>{tx("브랜딩 전체 · 퍼포먼스 전체", "Brand total · Performance total")}</span>
+                    )}
                   </div>
+                  {saturationCurveView === "channel" ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
+                      {Object.entries(sat).map(([key, s], i) => {
+                        const col = MMM_MEDIA_PALETTE[i % MMM_MEDIA_PALETTE.length];
+                        const off = !!satHidden[key];
+                        return (
+                          <button key={key} onClick={() => setSatHidden((h) => ({ ...h, [key]: !h[key] }))}
+                            style={{ display: "inline-flex", alignItems: "center", gap: "5px", padding: "3px 9px", borderRadius: "6px", border: "1px solid var(--border)", background: off ? "transparent" : "var(--bg-1)", color: off ? MUTED : "var(--text-1)", fontSize: "10.5px", cursor: "pointer", opacity: off ? 0.5 : 1, textDecoration: off ? "line-through" : "none" }}>
+                            <span style={{ width: "9px", height: "9px", borderRadius: "2px", background: s.posteriorPositive < 0.8 ? "transparent" : col, outline: s.posteriorPositive < 0.8 ? `1px dashed ${col}` : "none", display: "inline-block" }}></span>
+                            {s.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="muted" style={{ fontSize: "10.5px", margin: "0 0 8px", lineHeight: 1.45 }}>{tx(
+                      "각 그룹 안의 현재 채널별 집행 비중을 유지한 채 그룹 예산을 함께 늘리거나 줄인 시나리오입니다. 그룹을 하나의 새 채널로 재학습한 결과는 아닙니다.",
+                      "This scales a group's current channel mix up or down together. It is not a new MMM refit that treats the group as one channel.",
+                    )}</p>
+                  )}
                   <div>
                     <div className="chart-container" style={{ height: "340px", minHeight: "340px", marginBottom: "12px" }}><canvas ref={satRef}></canvas></div>
                     <div>
