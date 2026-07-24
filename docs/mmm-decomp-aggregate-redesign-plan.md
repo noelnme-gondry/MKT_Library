@@ -359,9 +359,12 @@ trendFlexFrozen
 - basis
 - Trend penalty multiplier
 
-### 5.3 Penalty falsification
+### 5.3 Penalty falsification과 운영값
 
-동일 Prism 파일과 동일 104주 집계 기간으로 다음 민감도 실험을 먼저 수행한다. **실험 모델은 신규 집계 2그룹 모델(`mmmBayesianDecompRun`)로 고정한다**(문제 C — deprecated 16채널 WIP에서 돌리지 않는다).
+아래 표는 원인 확인용 진단 실험으로 보존한다. **운영 모델은 Classic과
+Bayesian-like 모두 Media penalty를 `0`으로 강제**하고 자동 선택 후보도 `[0]`으로
+고정한다. 식별이 약한 채널은 coefficient를 임의 수축하지 않고 posterior 범위와
+`ABSTAIN`으로 표시한다.
 
 | 실험 | Trend penalty | Media penalty | 목적 |
 |---|---:|---:|---|
@@ -390,6 +393,16 @@ trendFlexFrozen
 
 - business-contribution prior
 - straight-trend reference prior
+
+단, 전체 유료 미디어가 3주 이상 사실상 0이 된 뒤 재가동된 자연실험은 다음
+cross-fit 계약을 모두 만족할 때만 Bayesian-like의 약한 채널 prior로 사용할 수 있다.
+
+- blackout 직전 데이터만으로 pilot 모델과 변환을 고정
+- blackout·재가동 outcome은 검증 전용으로 보류
+- 다른 재가동 채널의 pilot 예상 lift를 먼저 차감
+- 후보 채널의 양(+) 효과 확률이 80% 이상일 때만 prior 생성
+- prior 생성에 사용한 blackout·재가동 주는 최종 likelihood에서 제외
+- gate 실패 시 prior를 전달하지 않고 `ABSTAIN` 유지
 - flexible-trend reference prior
 
 외부 홀드아웃 실험이나 독립 참고시장처럼 타깃 데이터와 분리된 근거만 명시적 외부 prior 후보가 될 수 있다.
@@ -592,14 +605,10 @@ UI 기본 문구:
 
 ### 8.3 Penalty UI
 
-현재 media penalty가 prior precision에 덮여 실질적으로 작동하지 않는다면 해당 UI를 제거한다.
-
-유지하려면 다음 조건을 충족해야 한다.
-
-- 실제 최종 penalty에 반영
-- Trend·Media·Control의 적용값 동시 표시
-- 변경 전후 결과 민감도 표시
-- 자동 선택 근거와 rolling CV 결과 표시
+Media penalty 조정 UI와 자동 선택 카피는 제거한다. 모델 토글 옆에는
+`Media penalty 0`을 고정 표시한다. 완전 중단 구간이 있으면 `Blackout prior 적용`
+또는 `Blackout 감지 · prior 보류`를 함께 표시하고, export provenance에도 판정 근거와
+제외 기간을 기록한다.
 
 ---
 

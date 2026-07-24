@@ -886,7 +886,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
             };
 
             export const MMM_METH_CONFIG = {
-              version: "1.7.0",
+              version: "1.8.0",
               // 기본은 연간 1차 조화파만 둔다. 과거의 13주 파형을 무조건 반복하면
               // 매체·이벤트 변동까지 계절성으로 흡수할 수 있으므로, 더 복잡한 모양은
               // rolling holdout에서 이길 때만 아래 후보에서 선택한다.
@@ -944,12 +944,12 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               intervalCalibrationMinN: 8,
               intervalCalibrationCoverage: 0.9,
               cvMinTrain: 40,
-              // 매체 계수만 고정값으로 더 세게 누르면 실제 매체 신호도 0으로
-              // 수축할 수 있다. 아래 후보 중 시간 순서 holdout 오차가 가장 낮은
-              // 값을 선택하되, 차이가 작으면 더 보수적인(큰) penalty를 유지한다.
-              mediaPenalty: 4,
+              // 매체만 별도로 누르면 상시 집행 채널의 식별되지 않은 레벨이
+              // 무규제 절편으로 이동한다. Classic/Bayesian-like 모두 media
+              // penalty를 사용하지 않고, 불확실성은 posterior·식별 gate로 표시한다.
+              mediaPenalty: 0,
               controlPenalty: 0.15,
-              mediaPenaltyCandidates: [0.15, 0.5, 1, 2, 4],
+              mediaPenaltyCandidates: [0],
               mediaPenaltyMinTrain: 52,
               mediaPenaltyMaxFolds: 3,
               mediaPenaltyHoldoutWeeks: 12,
@@ -3336,7 +3336,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               ]);
               const mediaPenalty = Number.isFinite(options.mediaPenalty)
                 ? Math.max(0, options.mediaPenalty)
-                : 4;
+                : 0;
               const controlPenalty = Number.isFinite(options.controlPenalty)
                 ? Math.max(0, options.controlPenalty)
                 : 0.15;
@@ -3368,7 +3368,24 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                   augX.push(row);
                   augY.push(Math.sqrt(penalty[j]) * priorMean[j]);
                 }
-                const unconstrainedFit = mmmOls(augX, augY);
+                let unconstrainedFit = mmmOls(augX, augY);
+                let numericalStabilizerUsed = false;
+                // media penalty=0이어도 완전히 같은 두 채널은 X'X가 특이해 역행렬이
+                // 존재하지 않는다. 효과를 수축하려는 규제가 아니라 covariance를
+                // 계산하기 위한 machine-scale diagonal만 실패 시에 한해 추가한다.
+                // 결과 채널은 identification gate에서 계속 ABSTAIN 처리한다.
+                if (!unconstrainedFit) {
+                  const stabilizedX = augX.map((row) => row.slice());
+                  const stabilizedY = augY.slice();
+                  for (let j = 1; j < p; j++) {
+                    const row = Array(p).fill(0);
+                    row[j] = 1e-4;
+                    stabilizedX.push(row);
+                    stabilizedY.push(0);
+                  }
+                  unconstrainedFit = mmmOls(stabilizedX, stabilizedY);
+                  numericalStabilizerUsed = Boolean(unconstrainedFit);
+                }
                 if (!unconstrainedFit) return null;
                 const unconstrainedBeta = unconstrainedFit.beta.slice();
                 const beta = _mmmNonNegativeMediaFit(augX, augY, constrainedIndices, unconstrainedFit.beta);
@@ -3378,7 +3395,14 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                   yScale ** 2 * 1e-8,
                   resid.reduce((sum, value) => sum + value * value, 0) / Math.max(1, n - p),
                 );
-                return { fit: { ...unconstrainedFit, beta }, unconstrainedBeta, fitted, resid, sigma2 };
+                return {
+                  fit: { ...unconstrainedFit, beta },
+                  unconstrainedBeta,
+                  fitted,
+                  resid,
+                  sigma2,
+                  numericalStabilizerUsed,
+                };
               };
               const provisional = fitWithPenalty(defaultPenalty);
               if (!provisional) return null;
@@ -3415,15 +3439,23 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 calibratedPriorCount: Object.keys(calibratedPrecision).length,
                 priorScaleIterations,
                 priorScaleConverged,
+                numericalStabilizerUsed: result.numericalStabilizerUsed,
               };
             }
 
             function _mmmBayesFitColumns(names, cols, channelMeta, y, options = {}) {
               if (!cols.length || !cols[0]?.length) return null;
               const Xraw = y.map((_, i) => cols.map((column) => column[i]));
-              const colMean = names.map((_, j) => _mean(Xraw.map((row) => row[j])));
+              const hasFitRowMask = Array.isArray(options.fitRowMask);
+              const fitIndices = hasFitRowMask
+                ? options.fitRowMask
+                  .map((keep, index) => keep ? index : -1)
+                  .filter((index) => index >= 0 && index < Xraw.length)
+                : Array.from({ length: Xraw.length }, (_, index) => index);
+              if (hasFitRowMask && fitIndices.length <= names.length + 4) return null;
+              const colMean = names.map((_, j) => _mean(fitIndices.map((index) => Xraw[index][j])));
               const colScale = names.map((_, j) =>
-                Math.sqrt(_mean(Xraw.map((row) => (row[j] - colMean[j]) ** 2))) || 1,
+                Math.sqrt(_mean(fitIndices.map((index) => (Xraw[index][j] - colMean[j]) ** 2))) || 1,
               );
               const X = Xraw.map((row) => [1, ...row.map((v, j) => (v - colMean[j]) / colScale[j])]);
               const mediaIndices = new Set(
@@ -3469,13 +3501,30 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                   }
                 });
               }
-              const posterior = _mmmBayesianLinear(X, y, mediaIndices, mediaPriors, {
-                ...options,
-                seasonalityIndices,
-                seasonalityPenaltyByIndex,
-                nonNegativeControlIndices,
-              });
-              if (!posterior) return null;
+              const fittedPosterior = _mmmBayesianLinear(
+                fitIndices.map((index) => X[index]),
+                fitIndices.map((index) => y[index]),
+                mediaIndices,
+                mediaPriors,
+                {
+                  ...options,
+                  seasonalityIndices,
+                  seasonalityPenaltyByIndex,
+                  nonNegativeControlIndices,
+                },
+              );
+              if (!fittedPosterior) return null;
+              const fitted = X.map((row) => row.reduce(
+                (sum, value, index) => sum + value * fittedPosterior.beta[index],
+                0,
+              ));
+              const posterior = {
+                ...fittedPosterior,
+                fitted,
+                resid: y.map((value, index) => value - fitted[index]),
+                fitRowCount: fitIndices.length,
+                excludedRowCount: Xraw.length - fitIndices.length,
+              };
               const absoluteBeta = names.map((_, j) => posterior.beta[j + 1] / colScale[j]);
               const absoluteIntercept = posterior.beta[0] - absoluteBeta.reduce(
                 (sum, beta, j) => sum + beta * colMean[j],
@@ -4566,7 +4615,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               const n = panel.week?.length || 0;
               const horizon = Math.max(4, Math.min(cfg.mediaPenaltyHoldoutWeeks || 12, Math.floor(n / 3)));
               const minTrain = Math.max(24, cfg.mediaPenaltyMinTrain || 52);
-              const candidates = [...new Set((cfg.mediaPenaltyCandidates || [cfg.mediaPenalty ?? 4])
+              const candidates = [...new Set((cfg.mediaPenaltyCandidates || [cfg.mediaPenalty ?? 0])
                 .filter((value) => Number.isFinite(value) && value >= 0))].sort((a, b) => a - b);
               if (options.enableMediaPenaltySelection === false || !candidates.length || n < minTrain + horizon) {
                 return { enabled: false, cfg, selected: null, candidates: [], reason: "insufficient-history-or-disabled" };
@@ -5698,9 +5747,14 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
             export function mmmClassicRun(panel, cfg, targetName, withBacktest = true, options = {}) {
               const aggregatePanel = mmmBuildAggregateMediaPanel(panel);
               if (!aggregatePanel?.channels?.length) return null;
+              const modelCfg = {
+                ...cfg,
+                mediaPenalty: 0,
+                mediaPenaltyCandidates: [0],
+              };
               const trendFlexSelection = mmmClassicTrendFlexSelection(
                 aggregatePanel,
-                cfg,
+                modelCfg,
                 targetName,
                 options.trendFlexOptions || {},
               );
@@ -5708,7 +5762,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               const run = mmmBayesianRun(
                 aggregatePanel,
                 {
-                  ...cfg,
+                  ...modelCfg,
                   trendDirectionFirst: false,
                   ...(hasFrozenTrend ? {
                     trendDirectionPlan: trendFlexSelection.trendDirectionPlan,
@@ -5734,7 +5788,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               const aggregateRollingBacktest = withBacktest
                 ? _mmmClassicAggregateRollingBacktest(
                   aggregatePanel,
-                  cfg,
+                  modelCfg,
                   targetName,
                   trendFlexSelection,
                   options,
@@ -5991,13 +6045,18 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
             }
 
             export function mmmBayesianLikeRun(panel, cfg, targetName, withBacktest = true, options = {}) {
-              const mapRun = mmmBayesianRun(panel, cfg, targetName, false, {
+              const modelCfg = {
+                ...cfg,
+                mediaPenalty: 0,
+                mediaPenaltyCandidates: [0],
+              };
+              const mapRun = mmmBayesianRun(panel, modelCfg, targetName, false, {
                 ...options,
                 enableBusinessContributionPrior: false,
               });
               if (!mapRun) return null;
               const rollingBacktest = withBacktest
-                ? _mmmBayesianLikeRollingBacktest(panel, cfg, targetName, options)
+                ? _mmmBayesianLikeRollingBacktest(panel, modelCfg, targetName, options)
                 : null;
               const backtest = rollingBacktest ? {
                 n: rollingBacktest.folds * rollingBacktest.horizon,
@@ -6856,5 +6915,230 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 steps: Object.keys(panel.steps || {})
                   .filter((name) => run.names.includes(name))
                   .map((key) => ({ key, kind: "step", label: key, lastOn: (lastRaw[run.names.indexOf(key)] || 0) > 0.5 })),
+              };
+            }
+
+            export function mmmDetectBlackoutWindows(panel, options = {}) {
+              const channels = _mmmChans(panel).filter((channel) => panel.ch?.[channel.key]);
+              if (!panel?.week?.length || !channels.length) return [];
+              const totals = panel.week.map((_, weekIndex) => channels.reduce(
+                (sum, channel) => sum + Math.max(0, Number(panel.ch[channel.key][weekIndex]) || 0),
+                0,
+              ));
+              const positive = totals.filter((value) => value > 0).sort((left, right) => left - right);
+              if (!positive.length) return [];
+              const reference = _mmmMedian(positive);
+              const offShare = Math.max(0, Math.min(0.05, Number(options.offShare) || 0.005));
+              const restartShare = Math.max(offShare, Math.min(1, Number(options.restartShare) || 0.25));
+              const minOffWeeks = Math.max(2, Math.round(Number(options.minOffWeeks) || 3));
+              const minPreWeeks = Math.max(12, Math.round(Number(options.minPreWeeks) || 78));
+              const postWeeks = Math.max(2, Math.round(Number(options.postWeeks) || 3));
+              const offThreshold = Math.max(1e-9, reference * offShare);
+              const restartThreshold = reference * restartShare;
+              const windows = [];
+              let index = 0;
+              while (index < totals.length) {
+                if (totals[index] > offThreshold) {
+                  index += 1;
+                  continue;
+                }
+                const start = index;
+                while (index < totals.length && totals[index] <= offThreshold) index += 1;
+                const end = index;
+                if (end - start < minOffWeeks || start < minPreWeeks) continue;
+                let restart = end;
+                while (restart < totals.length && totals[restart] < restartThreshold) restart += 1;
+                const hasPostWindow = restart + postWeeks <= totals.length;
+                windows.push({
+                  start,
+                  end,
+                  restart: hasPostWindow ? restart : null,
+                  offWeeks: end - start,
+                  postWeeks: hasPostWindow ? postWeeks : 0,
+                  referenceSpend: reference,
+                  offThreshold,
+                  restartThreshold,
+                  startLabel: panel.dateLabel?.[start] || panel.weekLabel?.[start] || String(panel.week[start]),
+                  endLabel: panel.dateLabel?.[end - 1] || panel.weekLabel?.[end - 1] || String(panel.week[end - 1]),
+                  restartLabel: hasPostWindow
+                    ? panel.dateLabel?.[restart] || panel.weekLabel?.[restart] || String(panel.week[restart])
+                    : null,
+                });
+              }
+              return windows;
+            }
+
+            // 같은 MMM outcome을 prior와 likelihood에 중복 사용하지 않도록 blackout
+            // 직전까지만 적합하고, OFF·재개 outcome은 evidence 전용으로 남긴다.
+            // 모든 매체가 동시에 재개된 경우 다른 채널의 예상 lift를 먼저 차감하고,
+            // 잔여효과가 양수·충분히 정밀할 때만 always-on 후보 채널 prior를 만든다.
+            export function mmmBlackoutCrossFitEvidence(panel, cfg, targetName, options = {}) {
+              const windows = mmmDetectBlackoutWindows(panel, options);
+              if (!windows.length) {
+                return { enabled: true, applied: false, reason: "no-eligible-blackout", windows: [], prior: null };
+              }
+              const window = windows.at(-1);
+              if (window.restart == null) {
+                return { enabled: true, applied: false, reason: "missing-restart-window", windows, window, prior: null };
+              }
+              const trainEnd = Math.max(0, window.start - Math.max(1, Number(options.preBlackoutGapWeeks) || 1));
+              const train = _mmmBayesSlicePanel(panel, trainEnd);
+              const modelCfg = {
+                ...cfg,
+                mediaPenalty: 0,
+                mediaPenaltyCandidates: [0],
+              };
+              const pilot = mmmBayesianRun(train, modelCfg, targetName, false, {
+                mediaPriors: {},
+                enableBusinessContributionPrior: false,
+                enableMediaPenaltySelection: false,
+                skipTransformUncertainty: true,
+              });
+              if (!pilot) {
+                return { enabled: true, applied: false, reason: "pilot-fit-failed", windows, window, prior: null };
+              }
+              const horizonEnd = window.restart + window.postWeeks;
+              const horizon = horizonEnd - trainEnd;
+              const sliceFuture = (source = {}) => Object.fromEntries(
+                Object.entries(source).map(([key, values]) => [key, values.slice(trainEnd, horizonEnd)]),
+              );
+              const futureSpend = sliceFuture(panel.ch);
+              const forecastOptions = {
+                futureDummy: sliceFuture(panel.dummy),
+                futureSteps: sliceFuture(panel.steps),
+                futureExternal: sliceFuture(panel.external),
+                clampScenario: false,
+              };
+              const fullForecast = mmmBayesianForecast(pilot, train, futureSpend, horizon, forecastOptions);
+              if (!fullForecast?.predFut?.length) {
+                return { enabled: true, applied: false, reason: "pilot-forecast-failed", windows, window, prior: null };
+              }
+              const channels = pilot.channelMeta.filter((channel) => panel.ch?.[channel.key]);
+              const requestedChannelKey = options.channelKey;
+              const candidate = channels.find((channel) => channel.key === requestedChannelKey)
+                || channels
+                  .filter((channel) => channel.kind !== "brand")
+                  .map((channel) => {
+                    const values = panel.ch[channel.key].slice(0, trainEnd);
+                    const activeShare = values.filter((value) => Number(value) > 0).length / Math.max(1, values.length);
+                    const positive = values.filter((value) => Number(value) > 0).sort((left, right) => left - right);
+                    return {
+                      channel,
+                      activeShare,
+                      medianSpend: positive.length ? _mmmMedian(positive) : 0,
+                    };
+                  })
+                  .filter((item) => item.activeShare >= (Number(options.minimumActiveShare) || 0.8))
+                  .sort((left, right) =>
+                    right.activeShare - left.activeShare || right.medianSpend - left.medianSpend,
+                  )[0]?.channel;
+              if (!candidate) {
+                return { enabled: true, applied: false, reason: "no-always-on-candidate", windows, window, prior: null };
+              }
+              const offsetOf = (panelIndex) => panelIndex - trainEnd;
+              const actual = panel.targets[targetName].slice(trainEnd, horizonEnd);
+              const offIndexes = Array.from(
+                { length: window.end - window.start },
+                (_, index) => offsetOf(window.start + index),
+              );
+              const postIndexes = Array.from(
+                { length: window.postWeeks },
+                (_, index) => offsetOf(window.restart + index),
+              );
+              const offError = _mean(offIndexes.map((index) =>
+                actual[index] - fullForecast.predFut[index],
+              ));
+              const channelIncrement = {};
+              channels.forEach((channel) => {
+                const withoutSpend = {
+                  ...futureSpend,
+                  [channel.key]: new Array(horizon).fill(0),
+                };
+                const without = mmmBayesianForecast(
+                  pilot,
+                  train,
+                  withoutSpend,
+                  horizon,
+                  forecastOptions,
+                );
+                channelIncrement[channel.key] = fullForecast.predFut.map(
+                  (value, index) => value - (without?.predFut?.[index] || value),
+                );
+              });
+              const candidateFeatureIndex = pilot.names.indexOf("media_" + candidate.key);
+              const candidateBeta = candidateFeatureIndex >= 0
+                ? Number(pilot.absoluteBeta[candidateFeatureIndex])
+                : 0;
+              if (!(candidateBeta > 1e-12)) {
+                return {
+                  enabled: true, applied: false, reason: "candidate-pilot-boundary",
+                  windows, window, candidateKey: candidate.key, prior: null,
+                };
+              }
+              const weekly = postIndexes.map((index) => {
+                const totalLift = actual[index] - (fullForecast.baselineFut[index] + offError);
+                const otherLift = channels.reduce((sum, channel) =>
+                  channel.key === candidate.key ? sum : sum + channelIncrement[channel.key][index],
+                0);
+                return {
+                  panelIndex: trainEnd + index,
+                  label: panel.dateLabel?.[trainEnd + index] || panel.weekLabel?.[trainEnd + index],
+                  totalLift,
+                  otherLift,
+                  residualLift: totalLift - otherLift,
+                  featureLift: channelIncrement[candidate.key][index] / candidateBeta,
+                };
+              });
+              const denominator = weekly.reduce((sum, row) => sum + row.featureLift ** 2, 0);
+              if (!(denominator > 1e-12)) {
+                return {
+                  enabled: true, applied: false, reason: "weak-candidate-restart-exposure",
+                  windows, window, candidateKey: candidate.key, weekly, prior: null,
+                };
+              }
+              const mean = weekly.reduce(
+                (sum, row) => sum + row.featureLift * row.residualLift,
+                0,
+              ) / denominator;
+              const errors = weekly.map((row) => row.residualLift - mean * row.featureLift);
+              const residualSd = Math.sqrt(
+                errors.reduce((sum, value) => sum + value ** 2, 0)
+                / Math.max(1, errors.length - 1),
+              );
+              const rawSd = residualSd / Math.sqrt(denominator);
+              // 단일 blackout의 표준오차를 그대로 강한 prior로 쓰지 않는다.
+              const sd = Math.max(rawSd * 2, Math.abs(mean) * 0.75, 1);
+              const positiveProbability = mmmNormCdf(mean / sd);
+              const minimumPositiveProbability = Math.max(
+                0.5,
+                Math.min(0.99, Number(options.minimumPositiveProbability) || 0.8),
+              );
+              const applied = mean > 0 && positiveProbability >= minimumPositiveProbability;
+              const fitRowMask = panel.week.map(
+                (_, index) => index < window.start || index >= horizonEnd,
+              );
+              return {
+                enabled: true,
+                applied,
+                reason: applied ? "cross-fitted-blackout-prior" : "blackout-channel-effect-unidentified",
+                windows,
+                window,
+                candidateKey: candidate.key,
+                offError,
+                weekly,
+                estimate: { mean, sd, rawSd, positiveProbability },
+                application: applied ? {
+                  fitRowMask,
+                  effectiveCfg: pilot.effectiveCfg,
+                  channelParams: pilot.params,
+                  excludedRange: [window.start, horizonEnd],
+                } : null,
+                prior: applied ? {
+                  mean,
+                  precision: 1 / sd ** 2,
+                  source: "cross-fitted-blackout",
+                  eventWindow: [window.startLabel, window.endLabel],
+                  excludedFromLikelihood: true,
+                } : null,
               };
             }
