@@ -642,7 +642,7 @@ import {
             };
 
             export const MMM_METH_CONFIG = {
-              version: "1.6.0",
+              version: "1.6.1",
               // 기본은 연간 1차 조화파만 둔다. 과거의 13주 파형을 무조건 반복하면
               // 매체·이벤트 변동까지 계절성으로 흡수할 수 있으므로, 더 복잡한 모양은
               // rolling holdout에서 이길 때만 아래 후보에서 선택한다.
@@ -4961,6 +4961,8 @@ import {
                   name,
                   avg: _mean(values),
                   swing: Math.sqrt(_mean(values.map((v) => v * v))),
+                  min: values.length ? Math.min(...values) : 0,
+                  max: values.length ? Math.max(...values) : 0,
                   media: !MMM_NONMEDIA_GROUPS.includes(name),
                 };
               });

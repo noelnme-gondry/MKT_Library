@@ -4995,6 +4995,12 @@ export default function MarketingResponse({ locale = "ko" }) {
             const dateScopedDecomp = displayedDecomp || decomp;
             const isBaseDemandDriver = (driver) => ["Trend", "기본 수요", "baseline"].includes(driver);
             const dateDriverStats = dateScopedDecomp?.driverStats || [];
+            const seasonalityDriverStat = dateDriverStats.find((row) => row.name === "Seasonality") || null;
+            const isSeasonalitySelected = Boolean(mmm.run.seasonalityPeriods?.length);
+            const hasSeasonalityContribution = Boolean(
+              seasonalityDriverStat
+              && (Math.abs(seasonalityDriverStat.min || 0) > 1e-8 || Math.abs(seasonalityDriverStat.max || 0) > 1e-8),
+            );
             const dateDriverTotal = dateDriverStats.reduce((sum, row) => sum + (row.swing || 0) ** 2, 0) || 1;
             const rawShRows = dateDriverStats.map((row) => ({ ...row, driver: row.name, r2_share: (row.swing || 0) ** 2 / dateDriverTotal }));
             const visibleShRows = includeBaseDemandInShare ? rawShRows : rawShRows.filter((row) => !isBaseDemandDriver(row.driver));
@@ -5126,7 +5132,11 @@ export default function MarketingResponse({ locale = "ko" }) {
               ? [
                   { key: "기본 수요", values: viewedDecomp.weeks.map((w) => w.baseline) },
                   ...viewedDecomp.groupNames.map((key) => ({ key, values: viewedDecomp.weeks.map((w) => w.contrib[key] || 0) })),
-                ].filter((g) => g.values.some((v) => Math.abs(v) > 1e-8)).map((g) => ({ ...g, label: plainDrv(g.key) }))
+                ].filter((group) => (
+                  group.key === "Seasonality"
+                    ? isSeasonalitySelected
+                    : group.values.some((value) => Math.abs(value) > 1e-8)
+                )).map((g) => ({ ...g, label: plainDrv(g.key) }))
               : [];
             const hasCollinearityGroups = displayedCollinearityGroupRefit?.enabled
               || groupedWeeklyChannelPerformance.some((row) => row.isCollinearityGroup);
@@ -5500,6 +5510,32 @@ export default function MarketingResponse({ locale = "ko" }) {
                       <p className="muted" style={{ fontSize: "11px", marginBottom: "6px", lineHeight: 1.5 }}>
                         {tx("채널은 직접 노출하지 않고", "Channels are not shown directly. Instead,")} <b>{tx("마케팅·브랜딩", "Performance and Brand")}</b>{tx("으로 자동 묶습니다. 기본 수요·추세는 양수 레벨이 오르내리는 값이고, 휴일·이벤트·시즌·계절·구조 변화는 기준선 대비 음수도 표시합니다.", ", Performance and Brand. Base demand · trend is a positive level that rises or falls; Holidays & Events, Seasonality, and Regime change can be negative versus that level.")}
                       </p>
+                      {isSeasonalitySelected && seasonalityDriverStat && (
+                        <div
+                          className={`callout ${hasSeasonalityContribution ? "info" : "warn"}`}
+                          style={{ margin: "0 0 8px", padding: "8px 10px" }}
+                        >
+                          <div className="ico">~</div>
+                          <div className="body">
+                            <strong>
+                              {hasSeasonalityContribution
+                                ? tx(
+                                  `계절성 적용 중 · 주간 ${targetValueLabel(seasonalityDriverStat.min, { sign: true })} ~ ${targetValueLabel(seasonalityDriverStat.max, { sign: true })}`,
+                                  `Seasonality applied · weekly ${targetValueLabel(seasonalityDriverStat.min, { sign: true })} to ${targetValueLabel(seasonalityDriverStat.max, { sign: true })}`,
+                                )
+                                : tx("계절성 후보는 선택됐지만 주별 기여가 0입니다.", "A seasonality candidate was selected, but its weekly contribution is zero.")}
+                            </strong>
+                            <p>
+                              {hasSeasonalityContribution
+                                ? tx(
+                                  `플러스와 마이너스가 상쇄되는 연간 평균 대신, 평균적인 주별 변동 크기 ±${targetValueLabel(seasonalityDriverStat.swing, { perWeek: true })}로 표시합니다.`,
+                                  `Instead of an annual signed average that cancels to zero, the typical weekly movement is shown as ±${targetValueLabel(seasonalityDriverStat.swing, { perWeek: true })}.`,
+                                )
+                                : tx("이 상태에서는 계절성을 성과 기여로 해석하지 마세요. 분석을 다시 실행해 계산 경로를 확인해야 합니다.", "Do not interpret seasonality as a contribution in this state. Re-run the analysis to verify the calculation path.")}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                       {negAlert && (
                         <div style={{ display: "flex", gap: "8px", alignItems: "flex-start", padding: "9px 12px", marginBottom: "8px", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.4)", borderRadius: "8px" }}>
                           <span style={{ fontSize: "15px" }}>⚠️</span>
@@ -5527,15 +5563,22 @@ export default function MarketingResponse({ locale = "ko" }) {
                       </div>
                       <div className="table-wrap" style={{ marginTop: "12px" }}>
                         <table className="data mmm-data-table">
-                          <thead><tr><th>{tx("성장 요인", "Driver")}</th><th>{dateScopedDecomp.level ? tx("평균 기여", "Average contribution") : tx("주별 변동", "Weekly swing")}</th><th>{tx("광고 변수", "Ad variable")}</th></tr></thead>
+                          <thead><tr><th>{tx("성장 요인", "Driver")}</th><th>{dateScopedDecomp.level ? tx("평균 기여 / 주별 변동", "Average contribution / weekly movement") : tx("주별 변동", "Weekly swing")}</th><th>{tx("광고 변수", "Ad variable")}</th></tr></thead>
                           <tbody>
-                            {dateScopedDecomp.driverStats.map((d) => (
-                              <tr key={d.name}>
-                                <td><strong>{plainDrv(d.name)}</strong></td>
-                                <td className="tnum mmm-data-table__metric">{dateScopedDecomp.level ? targetValueLabel(d.avg, { sign: true }) : `±${targetValueLabel(d.swing, { perWeek: true })}`}</td>
-                                <td><span className={`mmm-data-table__tag ${d.media ? "is-media" : ""}`}>{d.media ? tx("광고", "Ad") : tx("비광고", "Non-ad")}</span></td>
-                              </tr>
-                            ))}
+                            {dateScopedDecomp.driverStats.map((d) => {
+                              const isCenteredDriver = ["Seasonality", "Holidays & Events", "Industry Trend"].includes(d.name);
+                              return (
+                                <tr key={d.name}>
+                                  <td><strong>{plainDrv(d.name)}</strong></td>
+                                  <td className="tnum mmm-data-table__metric">
+                                    {dateScopedDecomp.level && !isCenteredDriver
+                                      ? targetValueLabel(d.avg, { sign: true })
+                                      : `±${targetValueLabel(d.swing, { perWeek: true })}`}
+                                  </td>
+                                  <td><span className={`mmm-data-table__tag ${d.media ? "is-media" : ""}`}>{d.media ? tx("광고", "Ad") : tx("비광고", "Non-ad")}</span></td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
