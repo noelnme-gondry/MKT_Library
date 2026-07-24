@@ -74,7 +74,7 @@ describe("MMM column mapping", () => {
     expect(autoGuessColMap(["week", "ios_reopen_step"], [{ week: "2025-W01", ios_reopen_step: "1" }], false).ios_reopen_step).toMatchObject({ role: "step", plat: "ios" });
   });
 
-  it("maps OS-specific industry demand as a separate MMM external control", () => {
+  it("uses OS-specific industry demand for OS models and a summed control for Total", () => {
     const headers = ["week", "android_regs", "ios_regs", "android_cost", "ios_cost", "dating_market_downloads_android", "dating_market_downloads_ios"];
     const rows = [
       { week: "2025-W01", android_regs: "100", ios_regs: "80", android_cost: "20", ios_cost: "30", dating_market_downloads_android: "1000", dating_market_downloads_ios: "700" },
@@ -85,9 +85,17 @@ describe("MMM column mapping", () => {
     expect(map.dating_market_downloads_ios).toMatchObject({ role: "external", plat: "ios" });
     const android = buildPanelFromColMap(headers, rows, map, "android").panel;
     const ios = buildPanelFromColMap(headers, rows, map, "ios").panel;
+    const total = buildPanelFromColMap(headers, rows, map, "all").panel;
     expect(android.external.c_dating_market_downloads_android).toEqual([1000, 1100]);
     expect(ios.external.c_dating_market_downloads_ios).toEqual([700, 650]);
     expect(android.externalDefs[0].label).toBe("dating_market_downloads_android");
+    expect(total.external.c_dating_market_downloads_total).toEqual([1700, 1750]);
+    expect(total.externalDefs).toEqual([expect.objectContaining({
+      key: "c_dating_market_downloads_total",
+      label: "dating market downloads (Android + iOS)",
+      isPlatformAggregate: true,
+      sourceHeaders: ["dating_market_downloads_android", "dating_market_downloads_ios"],
+    })]);
   });
 
   it("auto-detects row OS and Revenue, then filters the panel", () => {

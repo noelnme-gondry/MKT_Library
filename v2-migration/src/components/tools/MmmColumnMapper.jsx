@@ -83,6 +83,66 @@ function guessPlat(name) {
   return "common";
 }
 
+// Total KPI에는 Android/iOS 업계 지표를 각각 회귀식에 넣지 않는다. 같은 시장
+// 지표의 플랫폼별 level을 먼저 합쳐 하나의 Total level로 만든 뒤, MMM 엔진이
+// 그 합계의 상대 변화를 계산한다. 각각의 로그 변화량을 더하는 것은
+// log(Android + iOS)의 변화량과 같지 않다.
+function externalMetricStem(header) {
+  return String(header ?? "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/(?:^|[_\s-])(?:android|aos|google[_\s-]?play|play[_\s-]?store|ios|iphone|ipad)(?=$|[_\s-])/g, "_")
+    .replace(/[^\p{L}\p{N}]+/gu, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function externalTotalLabel(externals) {
+  const source = String(externals[0]?.label ?? "").normalize("NFKC");
+  const withoutPlatform = source
+    .replace(/(?:^|[_\s-])(?:android|aos|google[_\s-]?play|play[_\s-]?store|ios|iphone|ipad)(?=$|[_\s-])/gi, "_")
+    .replace(/[_\s-]+/g, " ")
+    .trim();
+  return `${withoutPlatform || "Industry demand"} (Android + iOS)`;
+}
+
+function buildTotalExternalControls(externals, baseRows, num) {
+  const usedKeys = new Set(externals.map((external) => external.key));
+  const groups = new Map();
+  externals.forEach((external) => {
+    if (external.plat !== "android" && external.plat !== "ios") return;
+    const stem = externalMetricStem(external.header);
+    if (!stem) return;
+    const group = groups.get(stem) || {};
+    // 같은 platform/stem 지표가 여럿이면 무엇을 합칠지 알 수 없으므로 자동 합산하지 않는다.
+    if (!group[external.plat]) group[external.plat] = external;
+    else group[external.plat] = null;
+    groups.set(stem, group);
+  });
+  const paired = new Map();
+  groups.forEach((group, stem) => {
+    if (group.android && group.ios) paired.set(stem, [group.android, group.ios]);
+  });
+  const consumed = new Set([...paired.values()].flat().map((external) => external.key));
+  const defs = [];
+  const values = {};
+  externals.forEach((external) => {
+    if (consumed.has(external.key)) return;
+    defs.push(external);
+    values[external.key] = num(external.header, true);
+  });
+  paired.forEach((pair, stem) => {
+    const [android, ios] = pair;
+    const androidValues = num(android.header, true);
+    const iosValues = num(ios.header, true);
+    const key = sanKey(`${stem}_total`, usedKeys);
+    defs.push({ key, label: externalTotalLabel(pair), plat: "common", isPlatformAggregate: true, sourceHeaders: [android.header, ios.header] });
+    values[key] = baseRows.map((_, index) => Number.isFinite(androidValues[index]) && Number.isFinite(iosValues[index])
+      ? androidValues[index] + iosValues[index]
+      : NaN);
+  });
+  return { defs, values };
+}
+
 // 더미/step은 숫자 parser의 관대한 기호 제거를 쓰지 않는다. `foo`, 공란,
 // `2`를 0으로 바꾸면 mmmValidate가 잘못된 설계를 볼 수 없으므로, 문서화된
 // binary label만 정확히 0/1로 바꾸고 나머지는 NaN으로 보존한다.
@@ -690,7 +750,12 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   for (const ch of chans) panel.ch[ch.key] = num(ch.header, true);
   for (const d of dummies) panel.dummy[d.key] = baseRows.map((row) => mmmParseBinaryIndicator(row[d.header], "dummy"));
   for (const s of steps) panel.steps[s.key] = baseRows.map((row) => mmmParseBinaryIndicator(row[s.header], "step"));
-  for (const external of externals) panel.external[external.key] = num(external.header, true);
+  // Total KPI에서는 같은 업계 지표의 Android/iOS 값을 한 level로 합산한다.
+  // OS별 KPI 보기에서는 기존처럼 해당 OS 지표만 쓴다.
+  const totalExternal = !P ? buildTotalExternalControls(externals, baseRows, num) : null;
+  const panelExternals = totalExternal?.defs || externals;
+  if (totalExternal) Object.assign(panel.external, totalExternal.values);
+  else for (const external of externals) panel.external[external.key] = num(external.header, true);
   // 종속(타깃): 플랫폼 일치 컬럼을 index별 벡터 합산 — Total이면 Android+iOS 합(이전엔 pick=1개만
   // 골라 Total인데 한 OS 값만 나오던 버그). X(채널)는 이미 filter라 대칭.
   const sumCols = (list) => {
@@ -725,7 +790,12 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   panel.channels = chans.map((c) => ({ key: c.key, label: c.label, kind: c.kind }));
   panel.dummyDefs = dummies.map((d) => ({ key: d.key, label: d.label }));
   panel.stepDefs = steps.map((s) => ({ key: s.key, label: s.label }));
-  panel.externalDefs = externals.map((external) => ({ key: external.key, label: external.label }));
+  panel.externalDefs = panelExternals.map((external) => ({
+    key: external.key,
+    label: external.label,
+    isPlatformAggregate: Boolean(external.isPlatformAggregate),
+    sourceHeaders: external.sourceHeaders,
+  }));
   panel.useDummies = dummies.length > 0;
   // 차트·예측 라벨: mmmForecast/차트는 panel.dateLabel·dates·granularity를 읽음(weekLabel 아님) →
   // 매핑된 주차/날짜 라벨을 그 이름들로도 노출해야 x축·미래라벨이 실제 날짜(t 인덱스 아님)로 나옴.

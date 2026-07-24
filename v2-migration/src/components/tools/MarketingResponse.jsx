@@ -1411,7 +1411,7 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     ["model", run.methodLabel], ["R2", run.posterior?.r2], ["sigma", run.posterior?.sigma], ["target", mmm.target], [],
     ["weeks_per_parameter", identification.weeksPerParameter], ["max_media_correlation", identification.maxMediaCorrelation], ["high_collinearity", identification.highCollinearity], ["budget_eligible", identification.budgetEligible], [],
     ["industry_controls", JSON.stringify(mmm.panel.externalDefs || [])],
-    ["baseline_selection", JSON.stringify(run.baselineSelection || null)], ["seasonality_selection", JSON.stringify(run.seasonalitySelection || null)], ["media_penalty_selection", JSON.stringify(run.mediaPenaltySelection || null)], ["joint_transform_check", JSON.stringify(run.jointTransform || null)],
+    ["baseline_selection", JSON.stringify(run.baselineSelection || null)], ["seasonality_selection", JSON.stringify(run.seasonalitySelection || null)], ["media_penalty_selection", JSON.stringify(run.mediaPenaltySelection || null)], ["joint_structure_selection", JSON.stringify(run.jointStructureSelection || null)], ["joint_transform_check", JSON.stringify(run.jointTransform || null)],
     ["channel", "adstock_alpha", "half_saturation", "hill_slope", "evaluated_transform_candidates", "total_transform_candidates", "candidate_search_capped", "prior_locked_transform", "effective_transform_candidates", "top_transform_weight", "posterior_positive_probability"],
     ...Object.values(run.saturationByChannel || {}).map((s) => [s.label, s.params.alpha, s.params.ec, s.params.slope, s.transformUncertainty?.candidateCount, s.transformUncertainty?.totalCandidateCount, s.transformUncertainty?.candidateSearchCapped, !!s.transformUncertainty?.priorLockedTransform, s.transformUncertainty?.effectiveCandidateCount, s.transformUncertainty?.topWeight, s.posteriorPositive]),
   ]);
@@ -1445,6 +1445,7 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     ["P(effect > 0)", tx("채널 효과가 양수일 posterior 확률. 80% 이상이면서 기간·공선성 식별 gate도 통과해야 예산 추천에 씁니다.", "Posterior probability that the channel effect is positive. Budget use requires ≥80% plus the time-span and collinearity identification gates.")],
     ["Adstock", tx("광고 효과의 다음 주 이월.", "Carryover of ad effect into later weeks.")],
     ["Hill saturation", tx("지출이 커질수록 추가 효과가 줄어드는 반응 곡선.", "Response curve with diminishing marginal return.")],
+    ["Joint structure search", tx("추세·계절·업계·광고를 따로 순서대로 고르지 않고, 네 요소가 모두 들어간 완성 모델들을 같은 과거 구간에서 비교해 하나를 선택합니다.", "Selects one complete model by comparing trend, seasonality, industry, and media together across the same historical folds.")],
     ["STL", tx("성과를 장기추세·계절성·잔차로 나누는 시계열 분해.", "Time-series decomposition into trend, seasonality, residual.")],
     ["Cannibalization", tx("유료 광고가 기존 오가닉 성과를 대체했을 가능성. 4개 관측 검증은 확정이 아니며 holdout이 필요합니다.", "Possibility paid ads replace organic outcome. Four observational checks require holdout for confirmation.")],
     ["RMS contribution-magnitude share", tx("각 드라이버의 주별 기여값 제곱평균을 전체 합으로 나눈 크기 비중. Shapley R²나 인과 기여율이 아닙니다.", "Each driver's mean squared weekly contribution divided by the total. Not Shapley R² or causal attribution.")],
@@ -1459,7 +1460,8 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     ["max_abs_prior_shift_sd", health.priorShifts?.length ? Math.max(...health.priorShifts.map((item) => Math.abs(item.shiftZ || 0))) : null, tx("prior 평균에서 posterior가 이동한 최대 표준편차", "Largest posterior shift from prior mean, in prior SDs")],
     ["sampling_diagnostic", "not_applicable", tx("조건부 Gaussian 근사라 MCMC chain을 샘플링하지 않아 R-hat·ESS가 적용되지 않습니다.", "R-hat and ESS do not apply because this conditional Gaussian approximation does not sample MCMC chains.")],
     ["interval_calibration", JSON.stringify(health.intervalCalibration || null), tx("시간순 holdout 잔차로 보수 보정한 경우의 메타데이터", "Metadata for conservative time-ordered holdout residual calibration")],
-    ["baseline_selection", JSON.stringify(run.baselineSelection || null), tx("78주 이상에서 0/1/2 knot BIC 후보 비교", "0/1/2-knot BIC candidates when history is at least 78 weeks")],
+    ["joint_structure_selection", JSON.stringify(run.jointStructureSelection || null), tx("추세·계절·업계·모든 광고 채널이 함께 들어간 완성 모델의 시간순 비교", "Time-ordered comparison of complete models containing trend, seasonality, industry, and every media channel")],
+    ["baseline_selection", JSON.stringify(run.baselineSelection || null), tx("자동 구조 탐색이 선택한 직선 또는 1·2회 꺾임 추세", "Linear, one-knot, or two-knot trend selected by automatic structure search")],
     ["joint_transform_check", JSON.stringify(run.jointTransform || null), tx("불확실성이 큰 최대 2개 채널의 제한적 조합 진단", "Bounded combination diagnostic for up to two uncertain channels")],
     ["country_validation_mode", mmm.countryValidationMode || "none", tx("as-of-earliest-fold는 가장 이른 학습 cutoff에서 타깃 변환·Y 스케일·참고국 근거를 고정해 이후 정보 누수를 막는다는 뜻입니다. 같은 rolling folds가 후보 선택에 쓰이므로 최종 독립 OOS는 아닙니다.", "As-of-earliest-fold locks target transforms, Y scale, and reference evidence at the earliest training cutoff to prevent later-information leakage. The same rolling folds tune candidate selection, so they are not a final independent OOS score.")],
     [],
@@ -3518,6 +3520,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
       const run = mmmBayesianRun(panel, cfg, t, !isCountryPriorTuned && !hasExternalPrior, {
         mediaPriors,
+        enableJointStructureSelection: true,
         enableBaselineSelection: true,
         enableBusinessContributionPrior: true,
       });
@@ -5155,7 +5158,12 @@ export default function MarketingResponse({ locale = "ko" }) {
               : viewedWeeklyChannelPerformance;
             const seasonalityEvidence = mmm.run.seasonalitySelection?.evidence;
             const seasonalityValidationText = mmm.run.seasonalitySelection?.enabled
-              ? seasonalityEvidence?.detectionMode === "rolling-rescue"
+              ? seasonalityEvidence?.detectionMode === "joint-full-model-search"
+                ? tx(
+                  `${seasonalityEvidence.candidateCount}개 완성 모델에서 추세·계절·업계·모든 광고 채널을 함께 적합했습니다. ${seasonalityEvidence.folds}개 과거 구간 예측과 전체기간 설명력을 함께 비교해 ${mmm.run.seasonalitySelection.selected.id} 계절성을 선택했습니다.`,
+                  `${seasonalityEvidence.candidateCount} complete models jointly fit trend, seasonality, industry, and every media channel. ${mmm.run.seasonalitySelection.selected.id} seasonality was selected using ${seasonalityEvidence.folds} historical forecast folds plus full-history fit evidence.`,
+                )
+                : seasonalityEvidence?.detectionMode === "rolling-rescue"
                 ? tx(
                   `BIC만으로는 연간 파형이 탈락했지만, ${seasonalityEvidence.rollingRescue.folds}개 순방향 검증에서 오차가 ${Number(seasonalityEvidence.rollingRescue.noneWmape).toFixed(3)}% → ${Number(seasonalityEvidence.rollingRescue.selectedWmape).toFixed(3)}%로 ${Number(seasonalityEvidence.rollingRescue.relativeImprovement * 100).toFixed(1)}% 개선되어 계절성을 복원했습니다.`,
                   `BIC alone rejected the annual shape, but ${seasonalityEvidence.rollingRescue.folds} forward-validation folds improved error from ${Number(seasonalityEvidence.rollingRescue.noneWmape).toFixed(3)}% to ${Number(seasonalityEvidence.rollingRescue.selectedWmape).toFixed(3)}% (${Number(seasonalityEvidence.rollingRescue.relativeImprovement * 100).toFixed(1)}%), so seasonality was restored.`,
