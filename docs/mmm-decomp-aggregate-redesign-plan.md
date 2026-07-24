@@ -2,12 +2,12 @@
 
 작성 기준: 2026-07-24  
 대상: `v2-migration` MarketingResponse MMM  
-상태: 1차 구현 진행 — 핵심 엔진·동시 캐시·모델 토글 반영
+상태: 핵심 재설계 구현 완료 — 집계 엔진·동시 캐시·모델 토글·Trend freeze 반영
 
-> **1차 구현 범위**: Performance·Branding 원시 Cost 집계, 집계 후 Adstock·Hill,
+> **구현 범위**: Performance·Branding 원시 Cost 집계, 집계 후 Adstock·Hill,
 > same-data media prior 비활성화, 절편/순수 추세 분리, 동일 rolling fold 채택 게이트,
-> Classic/Bayesian-like 동시 계산·캐시 토글까지 반영했다. 명시적 `52/78/104주`
-> smoothing-window profile과 `paidCostTotalNuisance` 전용 freeze는 후속 단계다.
+> Classic/Bayesian-like 동시 계산·캐시 토글, 명시적 `52/78/104주 × 0/1/2개 꺾임`
+> profile, `paidCostTotalNuisance` 전용 freeze를 반영했다.
 
 > **동반 문서**: 본 계획은 *무엇을·어떤 순서로* 정한다. 불확실성·식별을 *어떻게 계산* 하는지(covariance·절단정규 메커니즘)는 `docs/mmm-bayesian-lookalike-spec.md`에 있다. §4.4·§7.3·§8.2가 요구하는 CI·`0~X`·경계판정은 그 문서 없이는 계산 불가 → **두 문서 병합 구현**(문제 A·F).
 
@@ -627,6 +627,22 @@ UI 기본 문구:
 | 전체 Cost | 12,462,582 |
 | 실제 RR | 5,296,514 |
 
+2026-07-25 구현 검증:
+
+| 항목 | 결과 |
+|---|---:|
+| 선택 smoothing window | 104주 |
+| 선택 꺾임 | 0개 |
+| 선택 방향 | 하락 |
+| Trend freeze WMAPE | 2.73% |
+| Classic aggregate rolling WMAPE | 3.20% |
+| Bayesian-like channel rolling WMAPE | 3.83% |
+| 동일 fold cut | 104 / 150 / 196주 |
+| 채택 게이트 | `AGGREGATE ACCEPT` |
+
+위 숫자는 특정 기여 총량에 맞춘 선택값이 아니라, 고정 Prism 파일에서 rolling-origin
+예측 검증으로 재현된 진단값이다.
+
 모든 결과에는 다음 provenance를 기록한다.
 
 - 파일명
@@ -824,11 +840,11 @@ PR 3~5는 PR 2 결과와 aggregate 채택 게이트를 확인한 뒤 진행한�
 - [ ] Cost 합산 이후 그룹 단위 Adstock·Hill을 적용한다.
 - [ ] Adstock의 선형성과 Hill의 비선형성을 문서·테스트에서 구분한다.
 - [ ] 집계 Hill을 채널별 미래 예산 배분 근거로 사용하지 않는다.
-- [ ] 추세 flexibility가 미디어 결과 확인 전에 rolling-origin CV로 고정된다.
-- [ ] smoothing window·꺾임 개수·위치·방향·basis가 `trendFlexFrozen`에 기록되고 이후 변경되지 않는다.
+- [x] 추세 flexibility가 미디어 결과 확인 전에 rolling-origin CV로 고정된다.
+- [x] smoothing window·꺾임 개수·위치·방향·basis가 `trendFlexFrozen`에 기록되고 이후 변경되지 않는다.
 - [ ] 상위 Decomp에서 same-data contribution/reference prior를 사용하지 않는다.
 - [ ] `trendPenalty ×4` 같은 비대칭 하드코딩이 없다.
-- [ ] 동일 fold에서 aggregate와 16채널 모델을 비교하고 one-standard-error 채택 판정을 기록한다.
+- [x] 동일 fold에서 aggregate와 16채널 모델을 비교하고 one-standard-error 채택 판정을 기록한다.
 - [ ] 절편과 순수 추세가 별도로 표시된다.
 - [ ] 채널 귀속 합계가 상위 그룹 총량과 주별·전체 모두 일치한다.
 - [ ] 식별되지 않은 채널은 0명으로 표시되지 않는다.

@@ -3,12 +3,14 @@ import {
   MMM_METH_CONFIG,
   mmmBuildAggregateMediaPanel,
   mmmClassicRun,
+  mmmClassicTrendFlexSelection,
   mmmBayesianLikeRun,
   mmmPosteriorCovariance,
   mmmTruncatedNormalMoments,
   mmmMultivarTruncatedSample,
   mmmAggregateCrossCheck,
   mmmAggregateAdoptionGate,
+  mmmTrendDirectionPlan,
 } from "./mmmMath";
 
 function dualModelPanel(length = 80) {
@@ -45,6 +47,20 @@ function dualModelPanel(length = 80) {
     stepDefs: [],
     useDummies: false,
     targets: { Regs: rr },
+  };
+}
+
+function slicePanel(panel, end) {
+  return {
+    ...panel,
+    week: panel.week.slice(0, end),
+    weekLabel: panel.weekLabel.slice(0, end),
+    dateLabel: panel.dateLabel.slice(0, end),
+    ch: Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [key, values.slice(0, end)])),
+    external: Object.fromEntries(Object.entries(panel.external).map(([key, values]) => [key, values.slice(0, end)])),
+    dummy: Object.fromEntries(Object.entries(panel.dummy).map(([key, values]) => [key, values.slice(0, end)])),
+    steps: Object.fromEntries(Object.entries(panel.steps).map(([key, values]) => [key, values.slice(0, end)])),
+    targets: Object.fromEntries(Object.entries(panel.targets).map(([key, values]) => [key, values.slice(0, end)])),
   };
 }
 
@@ -108,6 +124,80 @@ describe("dual MMM engines", () => {
     expect(mmmAggregateAdoptionGate([10], [9]).verdict).toBe("ABSTAIN");
   });
 
+  it("profiles and freezes 52/78/104-week trend flexibility with raw paid-cost nuisance", () => {
+    const panel = dualModelPanel(208);
+    const config = {
+      ...MMM_METH_CONFIG,
+      trendDirectionFirst: false,
+      seasonalityPeriods: [],
+      seasonalityCandidates: [{ id: "none", periods: [] }],
+      jointStructureSeasonalityIds: ["none"],
+      jointStructureMinTrain: 104,
+      jointStructureHorizon: 12,
+      jointStructureMaxFolds: 3,
+      absorbed: new Set(),
+    };
+    const selection = mmmClassicTrendFlexSelection(panel, config, "Regs");
+    expect(selection.enabled).toBe(true);
+    expect(selection.candidates).toHaveLength(9);
+    expect(mmmClassicTrendFlexSelection(panel, config, "Regs")).toEqual(selection);
+    expect([52, 78, 104]).toContain(selection.trendFlexFrozen.smoothingWindowWeeks);
+    expect([0, 1, 2]).toContain(selection.trendFlexFrozen.knotCount);
+    expect(selection.trendFlexFrozen.nuisance).toEqual(expect.objectContaining({
+      name: "paid_cost_total_nuisance",
+      adstocked: false,
+      hillTransformed: false,
+      freezeOnly: true,
+      includedInFinalFit: false,
+    }));
+    expect(Object.isFrozen(selection.trendFlexFrozen)).toBe(true);
+    expect(Object.isFrozen(selection.trendFlexFrozen.nuisance)).toBe(true);
+    expect(() => {
+      selection.trendFlexFrozen.knotCount = 99;
+    }).toThrow(TypeError);
+    const firstCandidate = selection.candidates[0];
+    const firstFold = firstCandidate.foldPlans[0];
+    const independentPlan = mmmTrendDirectionPlan(
+      slicePanel(panel, firstFold.cut),
+      "Regs",
+      {
+        smoothingWindowWeeks: firstCandidate.smoothingWindowWeeks,
+        knotCount: firstCandidate.knotCount,
+      },
+    );
+    expect(firstFold.knotLocations).toEqual(independentPlan.knots);
+    expect(firstFold.segmentDirections).toEqual(independentPlan.segments.map((segment) => segment.direction));
+    expect(independentPlan.smoothing.approximateWindowWeeks).toBe(firstCandidate.smoothingWindowWeeks);
+    const shiftedCostPanel = {
+      ...panel,
+      ch: Object.fromEntries(Object.entries(panel.ch).map(([key, values]) => [
+        key,
+        values.map((_, index) => values[(index + 17) % values.length]),
+      ])),
+    };
+    const shiftedCostSelection = mmmClassicTrendFlexSelection(shiftedCostPanel, config, "Regs");
+    expect(shiftedCostSelection.selected.foldWmapes).not.toEqual(selection.selected.foldWmapes);
+    const classic = mmmClassicRun(panel, config, "Regs", true, {
+      skipTransformUncertainty: true,
+      enableMediaPenaltySelection: false,
+    });
+    expect(classic.trendFlexFrozen).toEqual(selection.trendFlexFrozen);
+    expect(classic.aggregateRollingBacktest.foldWmapes).toHaveLength(3);
+    expect(classic.names).not.toContain("paid_cost_total_nuisance");
+    expect(classic.trendDirectionPlan.smoothing.requestedWindowWeeks)
+      .toBe(classic.trendFlexFrozen.smoothingWindowWeeks);
+    const bayesianLike = mmmBayesianLikeRun(panel, config, "Regs", true, {
+      skipTransformUncertainty: true,
+      enableMediaPenaltySelection: false,
+      draws: 200,
+    });
+    expect(bayesianLike.rollingBacktest.cuts).toEqual(classic.aggregateRollingBacktest.cuts);
+    expect(mmmAggregateAdoptionGate(
+      classic.aggregateRollingBacktest.foldWmapes,
+      bayesianLike.rollingBacktest.foldWmapes,
+    ).foldCount).toBe(3);
+  }, 30000);
+
   it("builds and keeps both model results separately", () => {
     const panel = dualModelPanel();
     const config = {
@@ -139,6 +229,7 @@ describe("dual MMM engines", () => {
     expect(classic.modelVariant).toBe("classic");
     expect(classic.channelMeta).toHaveLength(2);
     expect(classic.names.filter((name) => name.startsWith("media_"))).toHaveLength(2);
+    expect(classic.names).not.toContain("paid_cost_total_nuisance");
     expect(bayesianLike.modelVariant).toBe("bayesian-like");
     expect(bayesianLike.posteriorApproximation.enabled).toBe(true);
     expect(bayesianLike.channelMeta).toHaveLength(4);
