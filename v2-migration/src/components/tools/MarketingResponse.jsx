@@ -2769,6 +2769,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       // colMap(PRIMARY) → 패널. 미완성이면 매핑 안내(패널 empty).
       if (!mmmColMap) return { empty: true, reason: tx("컬럼 역할을 매핑하세요 (날짜/주차 · 목표 Y · 채널 spend).", "Map column roles (date/week · target Y · channel spend).") };
       const resultCacheKey = [
+        `meth:${MMM_METH_CONFIG.version}`,
         mmmAnalyzedSig,
         colMapSig,
         target,
