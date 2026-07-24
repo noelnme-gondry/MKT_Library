@@ -642,7 +642,7 @@ import {
             };
 
             export const MMM_METH_CONFIG = {
-              version: "1.6.2",
+              version: "1.7.0",
               // 기본은 연간 1차 조화파만 둔다. 과거의 13주 파형을 무조건 반복하면
               // 매체·이벤트 변동까지 계절성으로 흡수할 수 있으므로, 더 복잡한 모양은
               // rolling holdout에서 이길 때만 아래 후보에서 선택한다.
@@ -720,8 +720,14 @@ import {
               // 계절성의 형태와 추세의 굴곡만 시간순 검증으로 선택한다.
               requireSeasonality: true,
               requireIndustryControls: true,
+              // RR 원본의 저주파 곡선으로 추세의 꺾임과 상승/하락 방향만 먼저
+              // 정한다. 기여 숫자는 고정하지 않고, 방향 제약을 둔 추세·업계·
+              // 비즈니스 계절성·광고·이벤트를 같은 회귀에서 함께 추정한다.
+              trendDirectionFirst: true,
+              businessSeasonalityPeriods: [52.18],
+              businessSeasonalityBasis: { type: "cyclic-rbf", knots: 8 },
               jointStructureTrendFamilies: [0, 1, 2],
-              jointStructureSeasonalityIds: ["annual-1", "annual-4", "business-smooth-8"],
+              jointStructureSeasonalityIds: ["business-smooth-8"],
               jointStructureMinTrain: 96,
               jointStructureHorizon: 12,
               jointStructureMaxFolds: 3,
@@ -1041,14 +1047,28 @@ import {
                 push("ln_" + ch.key, mmmLnMedia(panel.ch[ch.key], lam));
               }
               if (withTrend) {
-                const tm = _mean(t),
-                  ts = _pstd(t) || 1;
-                push(
-                  "trend",
-                  t.map((tt) => (tt - tm) / ts),
-                );
+                const directionPlan = cfg.trendDirectionPlan;
+                if (directionPlan?.segments?.length) {
+                  const scale = _pstd(t) || 1;
+                  directionPlan.segments.forEach((segment, index) => {
+                    if (segment.direction === "flat") return;
+                    const start = Number(segment.start);
+                    const end = Number(segment.end);
+                    const sign = segment.direction === "down" ? -1 : 1;
+                    push(`trend_dir_${index}_${sign > 0 ? "up" : "down"}`, t.map((tt) =>
+                      sign * Math.max(0, Math.min(tt, end) - start) / scale,
+                    ));
+                  });
+                } else {
+                  const tm = _mean(t),
+                    ts = _pstd(t) || 1;
+                  push(
+                    "trend",
+                    t.map((tt) => (tt - tm) / ts),
+                  );
+                }
               }
-              (cfg.baselineKnots || []).forEach((knot) => {
+              (!cfg.trendDirectionPlan ? (cfg.baselineKnots || []) : []).forEach((knot) => {
                 const value = Number(knot);
                 if (!Number.isFinite(value)) return;
                 const scale = _pstd(t) || 1;
@@ -2970,11 +2990,39 @@ import {
                     const mean = _mean(values);
                     const variance = _mean(values.map((v) => (v - mean) ** 2));
                     if (!(variance > 1e-12)) continue;
-                    candidates.push({ alpha, ec, slope, values });
+                    candidates.push({ alpha, ec, slope, quantile: q, values });
                   }
                 }
               }
               return candidates;
+            }
+
+            // 방향 제약 모델에서는 광고 변환을 추세·계절·업계만 먼저 뺀 잔차로
+            // 고르지 않는다. 잔차 선선택은 광고와 함께 움직인 장기 신호를 광고
+            // 후보에서 미리 삭제하기 때문이다. 우선 중립적인 변환으로 모든 채널을
+            // 올린 뒤, 아래 full-model profile에서 다섯 요소를 함께 넣고 교체한다.
+            function _mmmBayesNeutralChannelParams(panel, cfg) {
+              const params = {};
+              for (const ch of _mmmChans(panel)) {
+                const raw = panel.ch[ch.key];
+                if (!raw) continue;
+                const candidates = _mmmBayesTransformCandidates(raw, cfg);
+                const neutral = candidates.reduce((best, candidate) => {
+                  const score = Math.abs(candidate.alpha - 0.4)
+                    + Math.abs((candidate.quantile ?? 0.6) - 0.6)
+                    + Math.abs(candidate.slope - 1) * 0.25;
+                  return !best || score < best.score ? { candidate, score } : best;
+                }, null)?.candidate;
+                params[ch.key] = neutral
+                  ? {
+                    alpha: neutral.alpha,
+                    ec: neutral.ec,
+                    slope: neutral.slope,
+                    selection: "neutral-before-joint-profile",
+                  }
+                  : { alpha: 0, ec: 1, slope: 1, selection: "no-variable-transform-candidate" };
+              }
+              return params;
             }
 
             function _mmmBayesChannelParams(panel, cfg, targetName, controls) {
@@ -3004,10 +3052,11 @@ import {
             // likelihood의 SSE 목적함수에서는 sigma² / priorVariance로 변환해야 하므로
             // residual scale을 먼저 추정한 뒤 한 번 갱신한다.
             // 매체는 실제 집행 수준의 기여(0-spend 대비 level)로 해석하므로, 매체
-            // 계수만 0 이상으로 제한한다. 이벤트·계절성·추세는 실제로 성과를 낮출 수
-            // 있어 이 제약을 적용하지 않는다.
-            function _mmmNonNegativeMediaFit(X, y, mediaIndices, initialBeta) {
-              const beta = initialBeta.map((value, index) => mediaIndices.has(index) ? Math.max(0, value) : value);
+            // 계수만 0 이상으로 제한한다. 방향 선결정 추세는 feature 자체에 상승(+)
+            // 또는 하락(-) 부호가 들어가므로 계수를 0 이상으로 제한해 그 방향만
+            // 보존한다. 이벤트·계절성·업계는 양·음 모두 허용한다.
+            function _mmmNonNegativeMediaFit(X, y, constrainedIndices, initialBeta) {
+              const beta = initialBeta.map((value, index) => constrainedIndices.has(index) ? Math.max(0, value) : value);
               const residual = y.map((value, rowIndex) => value - X[rowIndex].reduce((sum, feature, index) => sum + feature * beta[index], 0));
               for (let iteration = 0; iteration < 600; iteration++) {
                 let maxChange = 0;
@@ -3020,7 +3069,7 @@ import {
                     denominator += value * value;
                   }
                   const unconstrained = denominator > 1e-12 ? numerator / denominator : beta[column];
-                  const next = mediaIndices.has(column) ? Math.max(0, unconstrained) : unconstrained;
+                  const next = constrainedIndices.has(column) ? Math.max(0, unconstrained) : unconstrained;
                   maxChange = Math.max(maxChange, Math.abs(next - beta[column]));
                   beta[column] = next;
                   for (let row = 0; row < X.length; row++) residual[row] -= X[row][column] * next;
@@ -3035,6 +3084,10 @@ import {
               if (!n || !X[0]?.length) return null;
               const p = X[0].length;
               const yScale = Math.sqrt(_mean(y.map((v) => (v - _mean(y)) ** 2))) || 1;
+              const constrainedIndices = new Set([
+                ...mediaIndices,
+                ...(options.nonNegativeControlIndices || []),
+              ]);
               const mediaPenalty = Number.isFinite(options.mediaPenalty)
                 ? Math.max(0, options.mediaPenalty)
                 : 4;
@@ -3071,7 +3124,7 @@ import {
                 }
                 const unconstrainedFit = mmmOls(augX, augY);
                 if (!unconstrainedFit) return null;
-                const beta = _mmmNonNegativeMediaFit(augX, augY, mediaIndices, unconstrainedFit.beta);
+                const beta = _mmmNonNegativeMediaFit(augX, augY, constrainedIndices, unconstrainedFit.beta);
                 const fitted = X.map((row) => row.reduce((sum, value, j) => sum + value * beta[j], 0));
                 const resid = y.map((value, i) => value - fitted[i]);
                 const sigma2 = Math.max(
@@ -3155,6 +3208,9 @@ import {
               const seasonalityIndices = new Set(names
                 .map((name, index) => (/^(sin|cos)_/.test(name) || name.startsWith("season_rbf_")) ? index + 1 : null)
                 .filter((index) => index !== null));
+              const nonNegativeControlIndices = new Set(names
+                .map((name, index) => name.startsWith("trend_dir_") ? index + 1 : null)
+                .filter((index) => index !== null));
               const seasonalityPenaltyByIndex = {};
               if (options.seasonalityPenaltyProfile === "harmonic-order") {
                 const strength = Math.max(0, Number(options.seasonalityPenaltyStrength) || 0);
@@ -3170,6 +3226,7 @@ import {
                 ...options,
                 seasonalityIndices,
                 seasonalityPenaltyByIndex,
+                nonNegativeControlIndices,
               });
               if (!posterior) return null;
               const absoluteBeta = names.map((_, j) => posterior.beta[j + 1] / colScale[j]);
@@ -3448,6 +3505,79 @@ import {
               }
               pairs.sort((left, right) => left.sse - right.sse);
               return pairs[0]?.knots?.slice() || singles[0].knots.slice();
+            }
+
+            // 추세에서 먼저 고정하는 것은 숫자가 아니라 방향뿐이다. 최소 약 1.5년
+            // 범위를 보는 저주파 LOESS로 주간 광고 pulse와 연간 파형을 누른 뒤,
+            // 0·1·2회 꺾임 후보를 비교해 구간별 상승/하락만 정한다. 실제 기울기
+            // 크기는 이후 업계·계절·광고와 같은 회귀에서 다시 추정한다.
+            export function mmmTrendDirectionPlan(panel, targetName) {
+              const y = panel.targets?.[targetName] || [];
+              const weeks = panel.week || [];
+              const n = Math.min(y.length, weeks.length);
+              if (n < 26 || y.some((value) => !Number.isFinite(value))) {
+                return { enabled: false, reason: "insufficient-history", knots: [], segments: [], candidates: [] };
+              }
+              // 기존 stlWeekly의 phase sub-series는 4년 데이터에서 각 연도의 장기
+              // 레벨 차이까지 계절 성분으로 흡수해 trend를 평평하게 만들 수 있다.
+              // 방향 검출에는 연간보다 긴 이웃(약 78주)을 쓰는 직접 저주파 곡선이
+              // 더 안전하다. 숫자는 진단에만 쓰고 최종 기여에는 전이하지 않는다.
+              const directionBandwidth = Math.min(0.8, Math.max(0.3, 78 / n));
+              const smoothed = CANNIBAL_STATS.loess(
+                weeks.slice(0, n),
+                y.slice(0, n),
+                { bandwidth: directionBandwidth },
+              );
+              const trendPanel = { week: weeks.slice(0, n), targets: { [targetName]: smoothed.slice(0, n) } };
+              const directionTolerance = Math.max(1e-9, (_pstd(smoothed) || 0) / Math.max(1, n) * 0.1);
+              const knotSets = [
+                [],
+                mmmAutomaticTrendKnots(trendPanel, targetName, 1),
+                mmmAutomaticTrendKnots(trendPanel, targetName, 2),
+              ].filter((knots, index, list) => (
+                knots.length === index
+                && list.findIndex((other) => JSON.stringify(other) === JSON.stringify(knots)) === index
+              ));
+              const scale = _pstd(weeks) || 1;
+              const candidates = knotSets.map((knots) => {
+                const boundaries = [weeks[0], ...knots, weeks[n - 1]];
+                const X = weeks.slice(0, n).map((week) => boundaries.slice(0, -1).map((start, index) =>
+                  Math.max(0, Math.min(week, boundaries[index + 1]) - start) / scale,
+                ));
+                const fit = mmmOls(_designConst(X), smoothed.slice(0, n));
+                if (!fit) return null;
+                const sse = fit.resid.reduce((sum, value) => sum + value ** 2, 0);
+                const slopes = fit.beta.slice(1).map((value) => value / scale);
+                return {
+                  knots: knots.slice(),
+                  bic: n * Math.log(Math.max(sse / Math.max(1, n), 1e-12))
+                    + (slopes.length + 1) * Math.log(Math.max(2, n)),
+                  slopes,
+                  segments: slopes.map((slope, index) => ({
+                    start: boundaries[index],
+                    end: boundaries[index + 1],
+                    direction: Math.abs(slope) <= directionTolerance ? "flat" : slope < 0 ? "down" : "up",
+                    diagnosticSlope: slope,
+                  })),
+                };
+              }).filter(Boolean).sort((left, right) => left.bic - right.bic);
+              const selected = candidates[0] || null;
+              return selected ? {
+                enabled: true,
+                reason: "low-frequency-direction-bic",
+                smoothing: {
+                  method: "loess",
+                  approximateWindowWeeks: Math.ceil(directionBandwidth * n),
+                  flatSlopeTolerance: directionTolerance,
+                },
+                knots: selected.knots.slice(),
+                segments: selected.segments.map((segment) => ({ ...segment })),
+                candidates: candidates.map((candidate) => ({
+                  knots: candidate.knots.slice(),
+                  bic: candidate.bic,
+                  slopes: candidate.slopes.slice(),
+                })),
+              } : { enabled: false, reason: "fit-failed", knots: [], segments: [], candidates: [] };
             }
 
             function _mmmJointStructureFoldCuts(panel, cfg) {
@@ -4386,15 +4516,88 @@ import {
               if (!targetSeries?.length || targetSeries.some((value) => !Number.isFinite(value))) return null;
               if (_mmmChans(panel).some((channel) => panel.ch[channel.key]?.some((value) => !Number.isFinite(value)))) return null;
               if (Object.values(panel.external || {}).some((series) => series.some((value) => !Number.isFinite(value)))) return null;
-              // 자동 구조 탐색에서는 추세·계절·업계·광고가 모두 들어간 완성 모델을
-              // 같은 fold에서 비교한다. 선택 뒤에는 그 한 모델을 다시 적합해 전체
-              // 기여를 만든 다음, 광고 몫만 개별 채널로 분배한다.
-              const jointStructureSelection = mmmBayesianJointStructureSelection(panel, cfg, targetName, options);
+              // RR 원본 저주파 곡선에서 추세의 꺾임·방향만 먼저 고정한다. 기울기
+              // 숫자는 버리고, 방향 제약이 걸린 추세·업계·비즈니스 계절성·광고·
+              // 이벤트를 같은 레벨에서 한 번에 추정해 어느 한 요소가 장기 변화를
+              // 먼저 선점하지 않게 한다.
+              const trendDirectionPlan = cfg.trendDirectionFirst === true
+                ? mmmTrendDirectionPlan(panel, targetName)
+                : null;
+              const requestedBusinessBasis = cfg.businessSeasonalityBasis || { type: "cyclic-rbf", knots: 8 };
+              const historyAdaptiveBusinessBasis = requestedBusinessBasis.type === "cyclic-rbf"
+                ? {
+                  ...requestedBusinessBasis,
+                  // 2년 안팎 데이터에 8개 중심점을 모두 쓰면 계절성 자체보다
+                  // 파라미터 수가 식별력을 먼저 소모한다. 계절성은 유지하되 기간에
+                  // 맞춰 부드러움만 조정하고, 3년 이상이면 요청한 8개를 전부 쓴다.
+                  knots: panel.week.length >= 156
+                    ? requestedBusinessBasis.knots
+                    : panel.week.length >= 104
+                      ? Math.min(6, requestedBusinessBasis.knots)
+                      : Math.min(4, requestedBusinessBasis.knots),
+                }
+                : requestedBusinessBasis;
+              const directionCfg = trendDirectionPlan?.enabled ? {
+                ...cfg,
+                trendDirectionFirst: false,
+                trendDirectionPlan,
+                baselineKnots: [],
+                includeExternalControls: true,
+                seasonalityPeriods: (cfg.businessSeasonalityPeriods || [52.18]).slice(),
+                seasonalityBasis: historyAdaptiveBusinessBasis,
+                seasonalityPenaltyProfile: null,
+                seasonalityPenaltyStrength: 0,
+              } : cfg;
+              const jointStructureSelection = trendDirectionPlan?.enabled
+                ? { enabled: false, cfg: directionCfg, selected: null, candidates: [], reason: "trend-direction-first" }
+                : mmmBayesianJointStructureSelection(panel, cfg, targetName, options);
               let seasonalitySelection;
               let baseline;
               let penaltySelection;
               let effectiveCfg;
-              if (jointStructureSelection.enabled && jointStructureSelection.selected) {
+              if (trendDirectionPlan?.enabled) {
+                seasonalitySelection = {
+                  enabled: true,
+                  cfg: directionCfg,
+                  selected: {
+                    id: "business-pattern-mandatory",
+                    periods: directionCfg.seasonalityPeriods.slice(),
+                    seasonalityBasis: directionCfg.seasonalityBasis,
+                    evidence: { detectionMode: "trend-direction-first-joint-allocation" },
+                  },
+                  candidates: [{
+                    id: "business-pattern-mandatory",
+                    periods: directionCfg.seasonalityPeriods.slice(),
+                    seasonalityBasis: directionCfg.seasonalityBasis,
+                  }],
+                  evidence: {
+                    detectionMode: "trend-direction-first-joint-allocation",
+                    mandatory: true,
+                    industryMandatory: Object.keys(panel.external || {}).length > 0,
+                    trendDirectionOnly: true,
+                    trendDirectionPlan,
+                    allocationLevel: "joint",
+                  },
+                  reason: "business-seasonality-and-industry-mandatory",
+                };
+                baseline = {
+                  cfg: directionCfg,
+                  selection: {
+                    enabled: true,
+                    selected: trendDirectionPlan.knots.length > 0,
+                    selectedKnots: trendDirectionPlan.knots.slice(),
+                    directions: trendDirectionPlan.segments.map((segment) => segment.direction),
+                    reason: "stl-direction-fixed-magnitude-jointly-estimated",
+                  },
+                };
+                penaltySelection = mmmBayesianMediaPenaltySelection(
+                  panel,
+                  directionCfg,
+                  targetName,
+                  options,
+                );
+                effectiveCfg = penaltySelection.cfg;
+              } else if (jointStructureSelection.enabled && jointStructureSelection.selected) {
                 effectiveCfg = jointStructureSelection.cfg;
                 seasonalitySelection = {
                   enabled: true,
@@ -4442,7 +4645,9 @@ import {
                 seasonalityPenaltyStrength: effectiveCfg.seasonalityPenaltyStrength || 0,
               };
               const controls = _mmmBayesControlFeatures(panel, effectiveCfg);
-              const selectedParams = _mmmBayesChannelParams(panel, effectiveCfg, targetName, controls);
+              const selectedParams = trendDirectionPlan?.enabled
+                ? _mmmBayesNeutralChannelParams(panel, effectiveCfg)
+                : _mmmBayesChannelParams(panel, effectiveCfg, targetName, controls);
               // 참고시장 계수를 타깃과 같은 feature 단위로 추정할 때는 타깃이
               // 선택한 alpha/ec/slope를 명시적으로 고정한다. 각 참고시장이 자체
               // 변환을 고른 뒤 계수 숫자만 전이하면 서로 다른 Hill 단위를 같은
@@ -4479,18 +4684,59 @@ import {
               // prior는 모든 adstock·포화 후보에 같은 방식으로 다시 계산되어야
               // transform posterior가 사라지지 않는다.
               fitOptions.lockedMediaPriorKeys = new Set(Object.keys(externalMediaPriors));
-              const fitted = _mmmBayesFitColumns(names, cols, channelMeta, targetSeries, fitOptions);
+              // 추세 방향 외에는 어떤 숫자도 먼저 고정하지 않는다. 각 광고 변환
+              // 후보를 추세·계절·업계·이벤트·모든 광고가 들어간 완성 모델에 넣어
+              // profile하고, 그 안에서 가장 지지가 큰 잔효·포화 모양을 채택한다.
+              // 이 과정이 꺼지는 것은 반복 백테스트처럼 명시적으로 계산을 생략한
+              // 내부 호출뿐이며, 최종 사용자 모델에서는 항상 실행된다.
+              const transformUncertainty = options.skipTransformUncertainty
+                ? {}
+                : _mmmBayesTransformUncertainty(
+                  panel,
+                  effectiveCfg,
+                  names,
+                  cols,
+                  channelMeta,
+                  { ...fitOptions, targetName, channelParams: params },
+                );
+              if (!options.skipTransformUncertainty && trendDirectionPlan?.enabled) {
+                channelMeta.forEach((channel) => {
+                  if (_mmmPriorLocksTransform(fitOptions, channel.key)) return;
+                  const models = transformUncertainty[channel.key]?.models || [];
+                  const selected = models.reduce(
+                    (best, model) => !best || model.weight > best.weight ? model : best,
+                    null,
+                  );
+                  if (!selected || !Number.isFinite(selected.alpha) || !(selected.ec > 0) || !(selected.slope > 0)) return;
+                  params[channel.key] = {
+                    ...params[channel.key],
+                    alpha: selected.alpha,
+                    ec: selected.ec,
+                    slope: selected.slope,
+                    selection: "joint-full-model-profile",
+                    profileWeight: selected.weight,
+                  };
+                  const columnIndex = names.indexOf("media_" + channel.key);
+                  if (columnIndex >= 0) {
+                    cols[columnIndex] = mmmAdstock(panel.ch[channel.key], selected.alpha)
+                      .map((value) => mmmHill(value, selected.ec, selected.slope));
+                  }
+                });
+              }
+              const fitted = _mmmBayesFitColumns(
+                names,
+                cols,
+                channelMeta,
+                targetSeries,
+                fitOptions,
+              );
               if (!fitted) return null;
-              const { Xraw, colMean, colScale, X, posterior, absoluteBeta, absoluteIntercept } = fitted;
               // 추정은 표준화 공간에서 안정적으로 하되, 화면 기여는 원 단위 절대기여로
               // 되돌린다. 평균 중심화 X를 그대로 쓰면 양수 매체 효과도 저지출 주에
               // 음수처럼 보여 "광고가 성과를 깎았다"는 잘못된 해석을 만든다.
               // 반복 백테스트는 후보 prior를 여러 번 비교하므로, 효과 CI가 필요 없는
-              // 선택 단계에서는 profile posterior 재적합을 생략한다. 최종 결과만 전체
-              // 변환 불확실성을 평균내어 표시한다.
-              const transformUncertainty = options.skipTransformUncertainty
-                ? {}
-                : _mmmBayesTransformUncertainty(panel, effectiveCfg, names, cols, channelMeta, { ...fitOptions, targetName, channelParams: params });
+              // 선택 단계에서는 profile posterior 재적합을 생략한다. 최종 결과는 위
+              // full-model profile의 변환 불확실성을 그대로 표시한다.
               const jointTransform = options.skipTransformUncertainty
                 ? { enabled: false, reason: "transform-uncertainty-skipped" }
                 : _mmmBayesJointTransformCheck(panel, effectiveCfg, targetName, controls, channelMeta, params, transformUncertainty, fitOptions);
@@ -4501,6 +4747,7 @@ import {
                   jointPosteriorApplied: true,
                 };
               });
+              const { Xraw, colMean, colScale, X, posterior, absoluteBeta, absoluteIntercept } = fitted;
               const channelContributions = _mmmBuildChannelContributions(
                 panel,
                 names,
@@ -4526,7 +4773,7 @@ import {
               const industryNames = new Set(Object.keys(panel.external || {}).map((key) => "industry_" + key).filter((key) => names.includes(key)));
               const groupNames = ["Trend", "Seasonality", "Holidays & Events", ...(stepNames.size ? ["Regime change"] : []), ...(industryNames.size ? ["Industry Trend"] : []), ...mediaGroups];
               const groupFor = (name) => {
-                if (name === "trend" || name.startsWith("baseline_knot_")) return "Trend";
+                if (name === "trend" || name.startsWith("baseline_knot_") || name.startsWith("trend_dir_")) return "Trend";
                 if (/^(sin|cos)_/.test(name) || name.startsWith("season_rbf_")) return "Seasonality";
                 if (name === "lny" || name === "chuseok" || name.startsWith("d_")) return "Holidays & Events";
                 if (industryNames.has(name)) return "Industry Trend";
@@ -4684,21 +4931,24 @@ import {
               const variances = groupNames.map((g) => _mean(weeks.map((w) => (w.contrib[g] || 0) ** 2)));
               const totalVariance = variances.reduce((s, v) => s + v, 0) || 1;
               const rows = groupNames.map((driver, i) => ({ driver, r2_share: variances[i] / totalVariance, pct: (variances[i] / totalVariance) * 100 }));
-              const vifs = CREATIVE_MATH.vif(X);
-              const vifByName = names.map((name, j) => ({
+              const diagnosticNames = names;
+              const diagnosticCols = cols;
+              const diagnosticX = X;
+              const vifs = CREATIVE_MATH.vif(diagnosticX);
+              const vifByName = diagnosticNames.map((name, j) => ({
                 var: name,
                 vif: Number.isFinite(vifs[j + 1]) ? +vifs[j + 1].toFixed(3) : null,
               })).sort((a, b) => (b.vif || 0) - (a.vif || 0));
               const collinearPairs = [];
-              for (let i = 0; i < names.length; i++) {
-                for (let j = i + 1; j < names.length; j++) {
-                  if (!names[i].startsWith("media_") && !names[j].startsWith("media_")) continue;
-                  const corr = CANNIBAL_STATS.pearson(cols[i], cols[j]);
-                  if (Math.abs(corr) >= 0.85) collinearPairs.push({ a: names[i], b: names[j], corr: +corr.toFixed(3) });
+              for (let i = 0; i < diagnosticNames.length; i++) {
+                for (let j = i + 1; j < diagnosticNames.length; j++) {
+                  if (!diagnosticNames[i].startsWith("media_") && !diagnosticNames[j].startsWith("media_")) continue;
+                  const corr = CANNIBAL_STATS.pearson(diagnosticCols[i], diagnosticCols[j]);
+                  if (Math.abs(corr) >= 0.85) collinearPairs.push({ a: diagnosticNames[i], b: diagnosticNames[j], corr: +corr.toFixed(3) });
                 }
               }
               collinearPairs.sort((a, b) => Math.abs(b.corr) - Math.abs(a.corr));
-              const parameterCount = names.length + 1;
+              const parameterCount = diagnosticNames.length + 1;
               const weeksPerParameter = panel.week.length / Math.max(1, parameterCount);
               const maxMediaVif = Math.max(0, ...vifByName.filter((item) => item.var.startsWith("media_")).map((item) => item.vif || 0));
               const maxMediaCorrelation = Math.max(0, ...collinearPairs.map((pair) => Math.abs(pair.corr)));
@@ -4765,7 +5015,9 @@ import {
               }
               return {
                 engine: "bayesian",
-                methodLabel: "Browser empirical-Bayes MMM (conditional Gaussian approximation)",
+                methodLabel: trendDirectionPlan?.enabled
+                  ? "Direction-constrained empirical-Bayes MMM (joint allocation)"
+                  : "Browser empirical-Bayes MMM (conditional Gaussian approximation)",
                 params,
                 names,
                 featureMeans: colMean,
@@ -4797,6 +5049,18 @@ import {
                 mediaPenaltySelection: penaltySelection,
                 jointStructureSelection,
                 effectiveCfg,
+                trendDirectionPlan: trendDirectionPlan?.enabled ? {
+                  enabled: true,
+                  method: "low-frequency-direction-only-then-joint-allocation",
+                  smoothing: trendDirectionPlan.smoothing,
+                  knots: trendDirectionPlan.knots.slice(),
+                  segments: trendDirectionPlan.segments.map((segment) => ({ ...segment })),
+                  candidates: trendDirectionPlan.candidates.map((candidate) => ({
+                    knots: candidate.knots.slice(),
+                    bic: candidate.bic,
+                    slopes: candidate.slopes.slice(),
+                  })),
+                } : { enabled: false },
                 jointTransform,
                 businessContributionPrior: {
                   enabled: businessContributionPrior.enabled,
@@ -5442,7 +5706,7 @@ import {
                     }));
                     return Math.exp(-0.5 * (distance / bandwidth) ** 2) - basisMean;
                   }
-                  if (name === "trend") {
+                  if (name === "trend" || name.startsWith("trend_dir_")) {
                     const delta = (lastRaw[j] || 0) - (previousRaw[j] || 0);
                     // A one-week shock must not be extrapolated linearly for 12
                     // weeks. Damp the continuation; callers can set 0 to hold

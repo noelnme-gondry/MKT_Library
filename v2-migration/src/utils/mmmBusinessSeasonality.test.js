@@ -227,6 +227,8 @@ describe("business seasonality diagnostics", () => {
     const run = mmmBayesianRun(panel, {
       ...MMM_METH_CONFIG,
       steps: {},
+      // 이 검증은 production 2단계 순서가 아니라 기존 자동 반복성 진단을 확인한다.
+      trendDirectionFirst: false,
       seasonalityMinHistory: 96,
       adstockGrid: [0],
       bayesHalfSaturationQuantiles: [0.6],

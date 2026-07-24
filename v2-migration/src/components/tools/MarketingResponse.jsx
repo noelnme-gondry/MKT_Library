@@ -1445,7 +1445,7 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     ["P(effect > 0)", tx("채널 효과가 양수일 posterior 확률. 80% 이상이면서 기간·공선성 식별 gate도 통과해야 예산 추천에 씁니다.", "Posterior probability that the channel effect is positive. Budget use requires ≥80% plus the time-span and collinearity identification gates.")],
     ["Adstock", tx("광고 효과의 다음 주 이월.", "Carryover of ad effect into later weeks.")],
     ["Hill saturation", tx("지출이 커질수록 추가 효과가 줄어드는 반응 곡선.", "Response curve with diminishing marginal return.")],
-    ["Joint structure search", tx("추세·계절·업계·광고를 모두 반드시 넣고, 계절성의 형태와 추세 굴곡만 같은 과거 구간에서 비교해 선택합니다.", "Keeps trend, seasonality, industry, and media mandatory; only the seasonal shape and trend bends are selected across the same historical folds.")],
+    ["Direction-constrained joint allocation", tx("약 78주 저주파 곡선에서 추세의 꺾임과 상승·하락 방향만 먼저 정하고, 추세 크기·업계·비즈니스 계절성·광고 기여는 같은 회귀에서 함께 추정합니다.", "Fixes only low-frequency trend bends and up/down directions first, then jointly estimates trend magnitude, industry, business seasonality, and media.")],
     ["STL", tx("성과를 장기추세·계절성·잔차로 나누는 시계열 분해.", "Time-series decomposition into trend, seasonality, residual.")],
     ["Cannibalization", tx("유료 광고가 기존 오가닉 성과를 대체했을 가능성. 4개 관측 검증은 확정이 아니며 holdout이 필요합니다.", "Possibility paid ads replace organic outcome. Four observational checks require holdout for confirmation.")],
     ["RMS contribution-magnitude share", tx("각 드라이버의 주별 기여값 제곱평균을 전체 합으로 나눈 크기 비중. Shapley R²나 인과 기여율이 아닙니다.", "Each driver's mean squared weekly contribution divided by the total. Not Shapley R² or causal attribution.")],
@@ -1460,7 +1460,8 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     ["max_abs_prior_shift_sd", health.priorShifts?.length ? Math.max(...health.priorShifts.map((item) => Math.abs(item.shiftZ || 0))) : null, tx("prior 평균에서 posterior가 이동한 최대 표준편차", "Largest posterior shift from prior mean, in prior SDs")],
     ["sampling_diagnostic", "not_applicable", tx("조건부 Gaussian 근사라 MCMC chain을 샘플링하지 않아 R-hat·ESS가 적용되지 않습니다.", "R-hat and ESS do not apply because this conditional Gaussian approximation does not sample MCMC chains.")],
     ["interval_calibration", JSON.stringify(health.intervalCalibration || null), tx("시간순 holdout 잔차로 보수 보정한 경우의 메타데이터", "Metadata for conservative time-ordered holdout residual calibration")],
-    ["joint_structure_selection", JSON.stringify(run.jointStructureSelection || null), tx("추세·계절·업계·모든 광고 채널을 반드시 포함한 모델의 시간순 비교", "Time-ordered comparison of models that mandatorily include trend, seasonality, industry, and every media channel")],
+    ["trend_direction_plan", JSON.stringify(run.trendDirectionPlan || null), tx("저주파 곡선에서 먼저 고정한 추세 구간과 상승·하락 방향. 기여 숫자는 여기서 고정하지 않음", "Trend segments and directions fixed from the low-frequency curve; contribution magnitudes are not fixed here")],
+    ["joint_structure_selection", JSON.stringify(run.jointStructureSelection || null), tx("방향 고정 모델에서는 사용하지 않음", "Not used by the direction-constrained model")],
     ["baseline_selection", JSON.stringify(run.baselineSelection || null), tx("자동 구조 탐색이 선택한 직선 또는 1·2회 꺾임 추세", "Linear, one-knot, or two-knot trend selected by automatic structure search")],
     ["joint_transform_check", JSON.stringify(run.jointTransform || null), tx("불확실성이 큰 최대 2개 채널의 제한적 조합 진단", "Bounded combination diagnostic for up to two uncertain channels")],
     ["country_validation_mode", mmm.countryValidationMode || "none", tx("as-of-earliest-fold는 가장 이른 학습 cutoff에서 타깃 변환·Y 스케일·참고국 근거를 고정해 이후 정보 누수를 막는다는 뜻입니다. 같은 rolling folds가 후보 선택에 쓰이므로 최종 독립 OOS는 아닙니다.", "As-of-earliest-fold locks target transforms, Y scale, and reference evidence at the earliest training cutoff to prevent later-information leakage. The same rolling folds tune candidate selection, so they are not a final independent OOS score.")],
@@ -1729,14 +1730,14 @@ function buildMmmGuideDoc(mmm, targetKo, locale = "ko") {
   L.push(`### 2. Saturation (수확체감)`);
   L.push(`같은 채널도 많이 쓸수록 통화 1단위당 효과가 줄어듭니다. Hill 곡선 ` + "`adstock^s/(ec^s + adstock^s)`" + `으로 반응을 만들며, 지출이 커질수록 한계효과가 감소합니다. ${isRevenue ? '"추가 지출당 매출"' : '"증액 단위당 추가 인원"'}은 현재 지출점에서 실무 증액 단위를 더한 반응 차이입니다.`);
   L.push("");
-  L.push(`### 3. Empirical-Bayes 조건부 Gaussian 근사`);
-  L.push(`${targetKo} = 절편 + Σβᵢ·Hill(adstockᵢ) + 추세 + 계절(Fourier) + 휴일·구조변화 + 오차를 Gaussian prior로 추정합니다. 잔차 분산은 데이터에서 plug-in 추정하며, 그 값과 profile 변환 후보에 조건부인 분석 근사입니다. 완전 계층형 joint MCMC posterior가 아닙니다. 예산 추천은 **P(효과>0) 80% 이상**뿐 아니라 최소 기간·파라미터당 주 수·채널 공선성 식별 gate를 모두 통과해야 합니다.`);
+  L.push(`### 3. 추세 방향 제약 + Empirical-Bayes 공동 추정`);
+  L.push(`먼저 약 78주 범위를 보는 저주파 곡선에서 장기 추세의 꺾이는 위치와 구간별 상승·하락 방향만 정합니다. 이때 기울기 숫자나 기여 인원은 확정하지 않습니다. 다음으로 추세 크기 + 데이터 길이에 따라 4~8개 중심점을 쓰는 부드러운 비즈니스 계절성 + 업계 현황 + 휴일·구조변화 + Σβᵢ·Hill(adstockᵢ)을 같은 모델에서 함께 추정합니다. 따라서 업계나 계절이 장기 변화를 먼저 선점하지 않으며, 추세는 앞서 확인한 방향을 거슬러 적합되지 않습니다. 완전 계층형 joint MCMC posterior는 아닙니다.`);
   L.push("");
   L.push(`### 4. 효과 신뢰도`);
   L.push(`효과 판정에서 legacy OLS p값은 제거했습니다. VIF와 채널 상관은 효과 확률이 아니라 식별·예산 보류 진단으로 유지합니다. 이 화면의 "효과 양수 확률"은 후보별 posterior를 BIC 가중 평균한 β>0 확률입니다. 90% 구간은 profile posterior 정규 혼합 CDF의 5%·95% 분위수를 직접 풀어 계산합니다. 다만 모든 채널 조합을 함께 샘플링한 joint MCMC posterior는 아닙니다.`);
   L.push("");
-  L.push(`### 5. 제한적 baseline·joint 보정`);
-  L.push(`데이터가 78주 이상이면 baseline knot 0·1·2개 후보를 비교하고, BIC가 최소 6 이상 개선될 때만 knot을 적용합니다. 개선이 작거나 불안정하면 기본 추세를 유지합니다. 변환 상호작용은 불확실성이 큰 최대 2개 채널의 상위 후보를 최대 4개 조합으로만 추가 점검합니다. 이는 브라우저 계산량과 과적합을 통제하기 위한 제한이며, 전체 채널 joint posterior를 의미하지 않습니다.`);
+  L.push(`### 5. 추세 방향 선택`);
+  L.push(`약 78주 저주파 곡선으로 주간 광고 출렁임과 연간 파형을 누른 뒤 꺾임 0·1·2개 후보를 BIC로 비교합니다. 여기서는 구간별 상승·하락 방향만 가져오고 진단용 기울기 숫자는 버립니다. 최종 추세 크기는 업계·비즈니스 계절성·광고와 함께 다시 추정되므로, 방향은 안정적으로 유지하면서 기여 크기는 데이터 전체가 결정합니다.`);
   L.push("");
   L.push(`### 6. 실험 prior의 mROI 읽기`);
   L.push(`실험 prior는 변환 feature 계수 단위로 적용되지만, 화면에서는 현재 주간 spend 운용점에서 Hill 곡선의 미분을 곱해 "추가 spend 1단위당 기대 KPI"인 mROI로도 표시합니다. 이 값은 기존 prior를 별도 샘플링한 ROI posterior가 아니며, Fieller·jackknife로 계산된 실험 불확실성을 변환한 참고값입니다.`);
@@ -1786,14 +1787,14 @@ function buildMmmGuideDocEn(mmm, targetLabel) {
   L.push(`### 2. Saturation (diminishing returns)`);
   L.push(`Even the same channel yields less per currency unit as spend grows. A Hill response curve makes marginal effect shrink at higher spend. ${isRevenue ? '"incremental revenue per added spend"' : '"additional people per budget increment"'} is the response difference after adding the practical budget increment at current spend.`);
   L.push("");
-  L.push(`### 3. Empirical-Bayes conditional Gaussian approximation`);
-  L.push(`${targetLabel} = intercept + Σβᵢ·Hill(adstockᵢ) + trend + seasonality + holiday/regime change + error. Gaussian priors stabilize the estimate, while residual variance is plug-in estimated from the data. The analytical result is conditional on that estimate and the profile transform candidates; it is not a fully hierarchical joint MCMC posterior. Budget recommendations require P(effect > 0) ≥80% plus the minimum-history, weeks-per-parameter, and media-collinearity identification gates.`);
+  L.push(`### 3. Direction-constrained joint empirical-Bayes approximation`);
+  L.push(`The model first uses a roughly 78-week low-frequency curve to identify only the trend breakpoints and whether each segment rises or falls; it does not fix slope magnitudes or contribution counts. Trend magnitude, a smooth business-seasonality pattern with 4–8 centers depending on history length, industry movement, holidays/regime changes, and Σβᵢ·Hill(adstockᵢ) are then estimated together. Industry or seasonality therefore cannot pre-claim the long movement, while the fitted trend cannot reverse the identified direction.`);
   L.push("");
   L.push(`### 4. Effect confidence`);
   L.push(`Legacy OLS p-values are not used for effect decisions. VIF and media correlation remain as identification and budget-hold diagnostics, not effect probabilities. P(effect > 0) is BIC-weighted across candidate posteriors. The 90% interval directly solves the 5th and 95th percentiles of the profile-posterior normal-mixture CDF, but it is not a jointly sampled all-channel MCMC posterior.`);
   L.push("");
-  L.push(`### 5. Limited baseline and joint-transform checks`);
-  L.push(`With at least 78 weeks, the model compares 0-, 1-, and 2-knot baseline candidates and applies a knot only when BIC improves by at least 6. Otherwise it keeps the base trend. For transform interaction, only the two most uncertain channels are checked across at most four combinations of their top candidates. This controls browser cost and overfitting; it is not a full all-channel joint posterior.`);
+  L.push(`### 5. Trend-direction selection`);
+  L.push(`After suppressing weekly ad pulses and annual waves with a roughly 78-week low-frequency curve, the model compares zero-, one-, and two-breakpoint paths by BIC. It retains only each segment's rising/falling direction and discards the diagnostic slope magnitude. Final trend magnitudes are estimated jointly with industry, business seasonality, and media.`);
   L.push("");
   L.push(`### 6. Reading experiment-prior mROI`);
   L.push(`Experiment priors remain applied in transformed-feature coefficient units. The UI also multiplies the coefficient prior by the Hill derivative at the current weekly spend to show marginal KPI per added spend (mROI). This is a transformed display of the existing prior uncertainty, not a separately sampled ROI posterior.`);
@@ -1996,7 +1997,9 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
   });
   const featPlain = (nm) => {
     if (nm === "(Intercept)") return tx("기본값 — 모든 재료가 0일 때의 출발점", "Baseline — starting point when every ingredient is 0");
-    if (nm === "trend") return tx("시간 추세 (전반적으로 늘고 있나 줄고 있나)", "Time trend (is it generally rising or falling)");
+    if (nm === "trend" || nm.startsWith("trend_dir_")) return tx("방향을 고정하고 크기는 함께 추정한 시간 추세", "Direction-constrained time trend with jointly estimated magnitude");
+    if (nm.startsWith("season_rbf_")) return tx("공동 추정 비즈니스 계절 패턴", "Jointly estimated business-seasonality pattern");
+    if (nm.startsWith("industry_")) return tx("공동 추정 업계 현황 변화", "Jointly estimated industry-demand movement");
     if (/^(sin|cos)_0$/.test(nm)) return tx("계절 패턴 (1년 주기)", "Seasonal pattern (annual cycle)");
     if (/^(sin|cos)_/.test(nm)) return tx("계절 패턴 (보조 주기)", "Seasonal pattern (secondary cycle)");
     if (nm.startsWith("ln_"))
@@ -5158,7 +5161,12 @@ export default function MarketingResponse({ locale = "ko" }) {
               : viewedWeeklyChannelPerformance;
             const seasonalityEvidence = mmm.run.seasonalitySelection?.evidence;
             const seasonalityValidationText = mmm.run.seasonalitySelection?.enabled
-              ? seasonalityEvidence?.detectionMode === "joint-full-model-search"
+              ? seasonalityEvidence?.detectionMode === "trend-direction-first-joint-allocation"
+                ? tx(
+                  "약 78주 저주파 곡선에서는 추세의 꺾임과 상승·하락 방향만 정하고 크기는 고정하지 않았습니다. 추세·부드러운 비즈니스 계절성·업계 현황·이벤트·광고 기여를 같은 모델에서 함께 추정했습니다. 계절성 없음·일반 Fourier 연간 반복 후보는 사용하지 않습니다.",
+                  "The roughly 78-week low-frequency curve fixes only trend breakpoints and rising/falling directions, not magnitudes. Trend, smooth business seasonality, industry movement, events, and media are estimated together. No-season and generic annual Fourier candidates are not used.",
+                )
+                : seasonalityEvidence?.detectionMode === "joint-full-model-search"
                 ? tx(
                   `${seasonalityEvidence.candidateCount}개 완성 모델에서 추세·계절·업계·모든 광고 채널을 함께 적합했습니다. ${seasonalityEvidence.folds}개 과거 구간 예측과 전체기간 설명력을 함께 비교해 ${mmm.run.seasonalitySelection.selected.id} 계절성을 선택했습니다.`,
                   `${seasonalityEvidence.candidateCount} complete models jointly fit trend, seasonality, industry, and every media channel. ${mmm.run.seasonalitySelection.selected.id} seasonality was selected using ${seasonalityEvidence.folds} historical forecast folds plus full-history fit evidence.`,
