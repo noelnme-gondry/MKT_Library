@@ -2320,6 +2320,43 @@ function sliceMmmRun(run, start, end) {
   return { ...run, weeks: (run.weeks || []).slice(start, end), channelContributions };
 }
 
+// 상관 채널 묶음도 모델은 전체 이력으로 한 번만 다시 적합한다. 날짜 필터에서는
+// 그 적합 결과의 주별 기여만 잘라 합계를 다시 만들고, 전체 기간 총기여를 섞지 않는다.
+function sliceMmmCollinearityGroupRefit(groupRefit, start, end) {
+  if (!groupRefit?.enabled) return groupRefit;
+  const sliceContribution = (contribution = {}) => {
+    const weeklyMean = Array.isArray(contribution.weeklyMean) ? contribution.weeklyMean.slice(start, end) : [];
+    const weeklyLow = Array.isArray(contribution.weeklyLow) ? contribution.weeklyLow.slice(start, end) : [];
+    const weeklyHigh = Array.isArray(contribution.weeklyHigh) ? contribution.weeklyHigh.slice(start, end) : [];
+    return {
+      ...contribution,
+      weeklyMean,
+      weeklyLow,
+      weeklyHigh,
+      totalMean: weeklyMean.reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0),
+      totalLow: weeklyLow.reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0),
+      totalHigh: weeklyHigh.reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0),
+    };
+  };
+  return {
+    ...groupRefit,
+    groups: groupRefit.groups.map((group) => ({ ...group, contribution: sliceContribution(group.contribution) })),
+    individualContributions: Object.fromEntries(Object.entries(groupRefit.individualContributions || {}).map(([key, contribution]) => [key, sliceContribution(contribution)])),
+  };
+}
+
+// 반응 곡선의 모양은 전체 이력으로 학습한 계수를 유지한다. 다만 ● 현재 지출과
+// 한계효과 표의 기준점은 사용자가 고른 표시 기간의 달력 주 평균으로 바꾼다.
+function withMmmViewSpend(saturationByChannel = {}, panel, isDateFiltered = false) {
+  return Object.fromEntries(Object.entries(saturationByChannel).map(([key, channel]) => {
+    const allSpends = panel?.ch?.[key] || [];
+    // 필터가 없을 땐 기존 정의(최근 12개 달력 주 평균)를 보존한다.
+    const spends = (isDateFiltered ? allSpends : allSpends.slice(-12)).filter(Number.isFinite);
+    const recentMean = spends.length ? spends.reduce((sum, value) => sum + value, 0) / spends.length : 0;
+    return [key, { ...channel, recentMean, currentMarginal: channel.marginalAt(recentMean) * 1000 }];
+  }));
+}
+
 function isoDateFromLabel(value) {
   const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return match ? match[0] : null;
@@ -3465,6 +3502,16 @@ export default function MarketingResponse({ locale = "ko" }) {
     if (!mmm || mmm.empty || stage !== "mmm") return null;
     return mmmBayesianCorrelatedGroupRefit(mmm.panel, mmm.run, mmm.target);
   }, [mmm, stage]);
+  const displayedCollinearityGroupRefit = useMemo(() => sliceMmmCollinearityGroupRefit(
+    collinearityGroupRefit,
+    contributionViewRange.start,
+    contributionViewRange.end,
+  ), [collinearityGroupRefit, contributionViewRange]);
+  const displayedSaturationByChannel = useMemo(() => withMmmViewSpend(
+    mmm?.run?.saturationByChannel,
+    displayedMmmPanel,
+    Boolean(contributionViewStart || contributionViewEnd),
+  ), [mmm, displayedMmmPanel, contributionViewStart, contributionViewEnd]);
 
   // 주간 기여분해와 동일한 채널별 기여 원천을 집계한다. 그룹 재적합이 있으면
   // 개별 보기 역시 그룹 총기여 안에서만 나뉘어 합계가 어긋나지 않는다.
@@ -3753,11 +3800,11 @@ export default function MarketingResponse({ locale = "ko" }) {
       // 반응 곡선 (per channel, y = 비음수 절대 기여 = 그 지출에서의 예상 기여).
       // 기존 한계응답(ln_coef/(1+x)) 곡선은 x→0에서 발산(1,000,000)해 판독 불가(§유저) →
       // 누적 반응 곡선으로 교체(단조·발산 없음, 평평해질수록 수확체감). 현재 지출 위치 점으로 표시.
-      if (satRef.current && run.saturationByChannel) {
+      if (satRef.current && Object.keys(displayedSaturationByChannel).length) {
         const themeVarS = (n) => (typeof document !== "undefined" ? getComputedStyle(document.body).getPropertyValue(n).trim() : "") || "";
         const mutedColS = themeVarS("--text-muted") || CHART_THEME.muted;
         const textColS = themeVarS("--text-1") || CHART_THEME.text;
-        const chs = Object.entries(run.saturationByChannel);
+        const chs = Object.entries(displayedSaturationByChannel);
         if (chs.length) {
           const maxSpend = Math.max(...chs.map(([, s]) => s.recentMean || 0)) * 1.6 || 40000;
           const grid = Array.from({ length: 41 }, (_, i) => (i / 40) * maxSpend);
@@ -3800,10 +3847,10 @@ export default function MarketingResponse({ locale = "ko" }) {
       }
       // 목표가 전환이면 CPA, 매출이면 ROAS. 수확체감 반응곡선을 비용 효율 언어로
       // 다시 읽어 예산을 늘릴수록 왜 CPR이 오르고 ROAS가 내려가는지 보여준다.
-      if (efficiencyRef.current && run.saturationByChannel) {
+      if (efficiencyRef.current && Object.keys(displayedSaturationByChannel).length) {
         const themeVarE = (n) => (typeof document !== "undefined" ? getComputedStyle(document.body).getPropertyValue(n).trim() : "") || "";
         const mutedColE = themeVarE("--text-muted") || CHART_THEME.muted;
-        const chs = Object.entries(run.saturationByChannel);
+        const chs = Object.entries(displayedSaturationByChannel);
         if (chs.length) {
           const isRoas = mmm.target === "Revenue";
           const maxSpend = Math.max(...chs.map(([, s]) => s.recentMean || 0)) * 1.6 || 40000;
@@ -3988,7 +4035,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     // convAmt는 sourceCurrency/displayCurrency로만 결정되는 순수 파생 함수라 그
     // 둘을 deps에 넣는 것으로 충분(함수 레퍼런스 자체는 deps에 안 넣음, §매 렌더 재생성).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, mmm, displayedDecomp, displayedMmmPanel, spikeNotes, decompGrouped, includeBaseDemandInShare, satHidden, currencySym, sourceCurrency, displayCurrency, tx]);
+  }, [stage, mmm, displayedDecomp, displayedMmmPanel, displayedSaturationByChannel, spikeNotes, decompGrouped, includeBaseDemandInShare, satHidden, currencySym, sourceCurrency, displayCurrency, tx]);
 
   // Stage ③ forecast chart
   useEffect(() => {
@@ -4888,7 +4935,10 @@ export default function MarketingResponse({ locale = "ko" }) {
               : tx("기여 분해 결과를 계산할 수 없어요.", "Can't compute the contribution breakdown.");
             const maxPct = Math.max(0.0001, ...shRows.map((r) => r.pct || 0));
             const barColor = (nm) => isMediaDrv(nm) ? "#7F77DD" : nm === "Seasonality" ? "#5DCAA5" : nm === "Industry Trend" ? "#a78bfa" : nm === "baseline" ? "var(--border-strong)" : "#85B7EB";
-            const sat = mmm.run.saturationByChannel || {};
+            const sat = displayedSaturationByChannel;
+            const spendReferenceLabel = contributionViewStart || contributionViewEnd
+              ? tx("선택 기간 평균 지출", "Selected-period avg. spend")
+              : tx("최근 12주 평균 지출", "Last-12-week avg. spend");
             const spendLabel = (amount) => {
               const displayAmount = convAmt(amount);
               if (displayCurrency === "KRW") return `${fmtCompact(Math.round(displayAmount))}원`;
@@ -4990,9 +5040,10 @@ export default function MarketingResponse({ locale = "ko" }) {
                   ...viewedDecomp.groupNames.map((key) => ({ key, values: viewedDecomp.weeks.map((w) => w.contrib[key] || 0) })),
                 ].filter((g) => g.values.some((v) => Math.abs(v) > 1e-8)).map((g) => ({ ...g, label: plainDrv(g.key) }))
               : [];
-            const hasCollinearityGroups = groupedWeeklyChannelPerformance.some((row) => row.isCollinearityGroup);
+            const hasCollinearityGroups = displayedCollinearityGroupRefit?.enabled
+              || groupedWeeklyChannelPerformance.some((row) => row.isCollinearityGroup);
             const displayedWeeklyChannelPerformance = weeklyPerformanceView === "grouped" && hasCollinearityGroups
-              ? buildMmmCollinearityGroupedPerformance(viewedPanel, viewedWeeklyChannelPerformance, mmm.run.collinear_pairs, 0.9, collinearityGroupRefit)
+              ? buildMmmCollinearityGroupedPerformance(viewedPanel, viewedWeeklyChannelPerformance, mmm.run.collinear_pairs, 0.9, displayedCollinearityGroupRefit)
               : viewedWeeklyChannelPerformance;
             const seasonalityEvidence = mmm.run.seasonalitySelection?.evidence;
             const seasonalityValidationText = mmm.run.seasonalitySelection?.enabled
@@ -5146,7 +5197,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                         <span style={{ fontSize: "15px", fontWeight: 700, color: !isRankingAmbiguous && i === 0 ? "#7aa2f7" : MUTED, minWidth: "20px" }}>{isRankingAmbiguous ? "•" : i + 1}</span>
                         <span style={{ flex: 1, fontSize: "14px", fontWeight: !isRankingAmbiguous && i === 0 ? 700 : 400 }}>{s.label}</span>
                         <span style={{ fontSize: "14px", fontWeight: 600, color: "#22c55e" }}>{targetValueLabel(s.curMarg, { sign: true })} <small style={{ color: MUTED, fontWeight: 400 }}>[{targetValueLabel(s.marginalCi[0])} ~ {targetValueLabel(s.marginalCi[1])}]</small></span>
-                        <span style={{ fontSize: "12px", color: MUTED }}>{tx(`현 ${spendLabel(s.recentMean || 0)}/주`, `now ${spendLabel(s.recentMean || 0)}/wk`)}</span>
+                        <span style={{ fontSize: "12px", color: MUTED }}>{spendReferenceLabel} {spendLabel(s.recentMean || 0)}/주</span>
                       </div>
                     ))}
                   </div>
@@ -5169,17 +5220,17 @@ export default function MarketingResponse({ locale = "ko" }) {
                       <h2 className="section-title">{tx("채널별 주 평균 성과", "Average weekly channel performance")}</h2>
                       <p>{tx(
                         weeklyPerformanceView === "grouped" && hasCollinearityGroups
-                          ? (collinearityGroupRefit?.enabled
+                          ? (displayedCollinearityGroupRefit?.enabled
                             ? "상관이 높은 채널은 실제로 하나의 입력으로 다시 학습한 결과입니다."
                             : "상관이 높은 채널은 합산해서 보수적으로 표시합니다.")
-                          : (collinearityGroupRefit?.enabled
+                          : (displayedCollinearityGroupRefit?.enabled
                             ? "개별 값은 그룹 재학습 총기여 안에서 원래 신호와 지출 비중으로 나눈 참고값입니다."
                             : "주간 기여분해와 같은 채널별 기여를 기간 평균으로 표시합니다."),
                         weeklyPerformanceView === "grouped" && hasCollinearityGroups
-                          ? (collinearityGroupRefit?.enabled
+                          ? (displayedCollinearityGroupRefit?.enabled
                             ? "Highly correlated channels are actually refit as one combined input."
                             : "Highly correlated channels are summed for a conservative view.")
-                          : (collinearityGroupRefit?.enabled
+                          : (displayedCollinearityGroupRefit?.enabled
                             ? "Individual values are reference allocations of the refit group total using the original signal and spend shares."
                             : "The same channel contributions used in weekly decomposition are averaged over the period."),
                       )}</p>
@@ -5418,7 +5469,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                   <div className="table-wrap" style={{ marginBottom: "12px" }}>
                     <table className="data" style={{ fontSize: "11.5px" }}>
                       <thead><tr><th>{tx("채널", "Channel")}</th><th>{tx("잔효 α", "Carryover α")}</th><th>{tx("반포화 지출점", "Half-saturation")}</th><th>{tx("포화 곡선", "Hill slope")}</th><th>{tx("변환 탐색", "Transform search")}</th><th>{tx("효과가 양수일 확률", "P(effect > 0)")}</th></tr></thead>
-                      <tbody>{Object.values(mmm.run.saturationByChannel || {}).map((s) => (
+                      <tbody>{Object.values(sat).map((s) => (
                         <tr key={s.key}><td>{s.label}</td><td className="tnum">{s.params.alpha.toFixed(1)}</td><td className="tnum">{spendLabel(s.params.ec)}</td><td className="tnum">{s.params.slope.toFixed(1)}</td><td>{s.transformUncertainty?.priorLockedTransform
                           ? tx("외부 근거가 타깃 대표 변환 단위로 정렬되어 고정", "Fixed because external evidence is aligned to the target representative-transform units")
                           : tx(`${s.transformUncertainty?.candidateCount || 1}개 후보 평가`, `${s.transformUncertainty?.candidateCount || 1} candidates evaluated`)}</td><td className="tnum" style={{ color: s.posteriorPositive >= 0.8 ? NEG : MUTED }}>{(s.posteriorPositive * 100).toFixed(0)}%</td></tr>
@@ -5429,7 +5480,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                   <div className="table-wrap" style={{ marginBottom: "12px" }}>
                     <table className="data" style={{ fontSize: "11.5px" }}>
                       <thead><tr><th>{tx("채널", "Channel")}</th><th>{tx("효과 양수 확률", "P(effect > 0)")}</th><th>{tx("효과 크기", "Effect size")}</th><th>{tx("90% profile 혼합 구간", "90% profile-mixture interval")}</th><th>{tx("예산 추천", "Budget use")}</th></tr></thead>
-                      <tbody>{Object.values(mmm.run.saturationByChannel || {}).map((s) => {
+                      <tbody>{Object.values(sat).map((s) => {
                         const marginal = s.incrementalAt(s.recentMean, marginalStepSource);
                         const inObservedRange = s.isIncrementInObservedRange(s.recentMean, marginalStepSource);
                         const useBudget = budgetEligible && s.budgetEligible && inObservedRange && marginal.ci?.[0] > 0;
@@ -5450,7 +5501,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                   <StatHead title={tx("④ 수확체감 — 더 쓰면 효과가 얼마나 꺾이나", "④ Diminishing returns — how much does effect fall as you spend more")} hint={tx("곡선이 평평해질수록 1달러당 효과가 줄어요(수확체감). ● = 지금 지출 위치. 이미 꺾인 뒤에 있으면 증액 효율이 낮다는 뜻. 점선 = 양수 효과의 확신이 낮아 예산 추천에서 보류한 채널입니다.", "The flatter the curve, the less each dollar returns (diminishing returns). ● = current spend point. If it's already past the bend, added spend is less efficient. Dashed = lower confidence in a positive effect, so the channel is held from budget recommendations.")} />
                   {/* 커스텀 채널 토글 범례 — 클릭으로 곡선+현재지출점 함께 표시/숨김(§유저: 켠 채널 점만) */}
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
-                    {Object.entries(mmm.run.saturationByChannel || {}).map(([key, s], i) => {
+                    {Object.entries(sat).map(([key, s], i) => {
                       const col = MMM_MEDIA_PALETTE[i % MMM_MEDIA_PALETTE.length];
                       const off = !!satHidden[key];
                       return (
@@ -5467,10 +5518,10 @@ export default function MarketingResponse({ locale = "ko" }) {
                     <div>
                       <div className="table-wrap">
                         <table className="data mmm-data-table mmm-marginal-table">
-                          <thead><tr><th>{tx("채널", "Channel")}</th><th>{tx("최근 지출의 0.5배", "0.5× recent spend")}<small>{tx(`추가 ${marginalStepLabel}당`, `per +${marginalStepLabel}`)}</small></th><th>{tx("현재 지출", "Current spend")}<small>{tx(`추가 ${marginalStepLabel}당`, `per +${marginalStepLabel}`)}</small></th><th>{tx("최근 지출의 1.5배", "1.5× recent spend")}<small>{tx(`추가 ${marginalStepLabel}당`, `per +${marginalStepLabel}`)}</small></th></tr></thead>
+                          <thead><tr><th>{tx("채널", "Channel")}</th><th>{`0.5× ${spendReferenceLabel}`}<small>{tx(`추가 ${marginalStepLabel}당`, `per +${marginalStepLabel}`)}</small></th><th>{spendReferenceLabel}<small>{tx(`추가 ${marginalStepLabel}당`, `per +${marginalStepLabel}`)}</small></th><th>{`1.5× ${spendReferenceLabel}`}<small>{tx(`추가 ${marginalStepLabel}당`, `per +${marginalStepLabel}`)}</small></th></tr></thead>
                           <tbody>
                             {(() => {
-                              const sbc = mmm.run.saturationByChannel || {};
+                              const sbc = sat;
                               const keys = Object.keys(sbc);
                               if (!keys.length) return <tr><td colSpan="4" style={{ color: MUTED }}>—</td></tr>;
                               const cell = (v) => (v == null ? "—" : targetValueLabel(v, { decimals: 1, sign: true }));
@@ -5503,9 +5554,9 @@ export default function MarketingResponse({ locale = "ko" }) {
                   <p style={{ fontSize: "12px", margin: "14px 0 4px" }}>{tx("채널별 효과 요약", "Per-channel effect summary")}</p>
                   <div className="table-wrap">
                     <table className="data" style={{ fontSize: "11.5px" }}>
-                      <thead><tr><th>{tx("채널", "Channel")}</th><th>{tx("현재 지출", "Current spend")}</th><th>{tx("추가 지출 효과", "Marginal effect")}</th><th>{tx("양수 확률", "P(positive)")}</th><th>{tx("판정", "Verdict")}</th></tr></thead>
+                      <thead><tr><th>{tx("채널", "Channel")}</th><th>{spendReferenceLabel}</th><th>{tx("추가 지출 효과", "Marginal effect")}</th><th>{tx("양수 확률", "P(positive)")}</th><th>{tx("판정", "Verdict")}</th></tr></thead>
                       <tbody>
-                        {Object.values(mmm.run.saturationByChannel || {}).map((s) => {
+                        {Object.values(sat).map((s) => {
                           const marginal = s.incrementalAt(s.recentMean, marginalStepSource);
                           const inObservedRange = s.isIncrementInObservedRange(s.recentMean, marginalStepSource);
                           const useBudget = budgetEligible && s.budgetEligible && inObservedRange && marginal.ci?.[0] > 0;
