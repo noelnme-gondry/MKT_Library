@@ -5528,8 +5528,8 @@ export default function MarketingResponse({ locale = "ko" }) {
                             <p>
                               {hasSeasonalityContribution
                                 ? tx(
-                                  `플러스와 마이너스가 상쇄되는 연간 평균 대신, 평균적인 주별 변동 크기 ±${targetValueLabel(seasonalityDriverStat.swing, { perWeek: true })}로 표시합니다.`,
-                                  `Instead of an annual signed average that cancels to zero, the typical weekly movement is shown as ±${targetValueLabel(seasonalityDriverStat.swing, { perWeek: true })}.`,
+                                  "아래 차트와 CSV는 평균·절댓값 변환 없이 각 주의 플러스·마이너스 기여를 그대로 표시합니다.",
+                                  "The chart and CSV below preserve each week's positive or negative contribution without averaging or absolute-value conversion.",
                                 )
                                 : tx("이 상태에서는 계절성을 성과 기여로 해석하지 마세요. 분석을 다시 실행해 계산 경로를 확인해야 합니다.", "Do not interpret seasonality as a contribution in this state. Re-run the analysis to verify the calculation path.")}
                             </p>
@@ -5563,7 +5563,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                       </div>
                       <div className="table-wrap" style={{ marginTop: "12px" }}>
                         <table className="data mmm-data-table">
-                          <thead><tr><th>{tx("성장 요인", "Driver")}</th><th>{dateScopedDecomp.level ? tx("평균 기여 / 주별 변동", "Average contribution / weekly movement") : tx("주별 변동", "Weekly swing")}</th><th>{tx("광고 변수", "Ad variable")}</th></tr></thead>
+                          <thead><tr><th>{tx("성장 요인", "Driver")}</th><th>{dateScopedDecomp.level ? tx("기간 요약", "Period summary") : tx("주별 변동", "Weekly movement")}</th><th>{tx("광고 변수", "Ad variable")}</th></tr></thead>
                           <tbody>
                             {dateScopedDecomp.driverStats.map((d) => {
                               const isCenteredDriver = ["Seasonality", "Holidays & Events", "Industry Trend"].includes(d.name);
@@ -5571,9 +5571,11 @@ export default function MarketingResponse({ locale = "ko" }) {
                                 <tr key={d.name}>
                                   <td><strong>{plainDrv(d.name)}</strong></td>
                                   <td className="tnum mmm-data-table__metric">
-                                    {dateScopedDecomp.level && !isCenteredDriver
-                                      ? targetValueLabel(d.avg, { sign: true })
-                                      : `±${targetValueLabel(d.swing, { perWeek: true })}`}
+                                    {dateScopedDecomp.level && isCenteredDriver
+                                      ? `${tx("주별", "Weekly")} ${targetValueLabel(d.min, { sign: true })} ~ ${targetValueLabel(d.max, { sign: true })}`
+                                      : dateScopedDecomp.level
+                                        ? `${tx("주 평균", "Weekly avg.")} ${targetValueLabel(d.avg, { sign: true })}`
+                                        : `${targetValueLabel(d.min, { sign: true })} ~ ${targetValueLabel(d.max, { sign: true })}`}
                                   </td>
                                   <td><span className={`mmm-data-table__tag ${d.media ? "is-media" : ""}`}>{d.media ? tx("광고", "Ad") : tx("비광고", "Non-ad")}</span></td>
                                 </tr>
