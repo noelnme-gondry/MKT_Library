@@ -42,6 +42,7 @@ import {
   mmmBuildIntervalCalibration,
   mmmApplyIntervalCalibration,
   mmmAutomaticTrendKnots,
+  mmmTrendDirectionPlan,
   mmmJointStructureDecision,
 } from "./mmmMath.js";
 
@@ -337,6 +338,7 @@ describe("runMmmMethTests (golden port)", () => {
     const cfg = {
       ...MMM_METH_CONFIG,
       steps: {},
+      trendDirectionFirst: false,
       includeTrend: false,
       seasonalityPeriods: [],
       adstockGrid: [0],
@@ -374,6 +376,7 @@ describe("runMmmMethTests (golden port)", () => {
     const cfg = {
       ...MMM_METH_CONFIG,
       steps: {},
+      trendDirectionFirst: false,
       includeTrend: false,
       adstockGrid: [0],
       seasonalityMinHistory: 104,
@@ -421,6 +424,7 @@ describe("runMmmMethTests (golden port)", () => {
       seasonalityMinHistory: 104,
       // 이 검증은 강제 포함 정책이 아닌, 자동 감지기의 재현성만 확인한다.
       requireSeasonality: false,
+      trendDirectionFirst: false,
       adstockGrid: [0],
     };
     const panel = { week, ch: {}, targets: { Regs: target }, channels: [], dummy: {}, steps: {} };
@@ -719,6 +723,7 @@ describe("runMmmMethTests (golden port)", () => {
     const cfg = {
       ...MMM_METH_CONFIG,
       steps: {},
+      trendDirectionFirst: false,
       adstockGrid: [0.6],
       bayesHalfSaturationQuantiles: [0.6],
       bayesHillSlopeGrid: [1],
@@ -1232,7 +1237,64 @@ describe("runMmmMethTests (golden port)", () => {
   it("keeps seasonality and industry controls mandatory in the product MMM configuration", () => {
     expect(MMM_METH_CONFIG.requireSeasonality).toBe(true);
     expect(MMM_METH_CONFIG.requireIndustryControls).toBe(true);
+    expect(MMM_METH_CONFIG.trendDirectionFirst).toBe(true);
     expect(MMM_METH_CONFIG.jointStructureSeasonalityIds).not.toContain("none");
-    expect(MMM_METH_CONFIG.jointStructureSeasonalityIds.length).toBeGreaterThan(0);
+    expect(MMM_METH_CONFIG.jointStructureSeasonalityIds).toEqual(["business-smooth-8"]);
+  });
+
+  it("fixes only trend directions before jointly allocating trend, business seasonality, industry and media", () => {
+    const n = 120;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const industry = week.map((value) => 1000 - value * 1.4 + Math.sin(value / 11) * 25);
+    const media = week.map((value) => 500 + ((value * 17) % 13) * 70);
+    const target = week.map((value, index) =>
+      5000
+      + Math.max(0, value - 68) * -9
+      + 360 * Math.sin((2 * Math.PI * value) / 52.18)
+      + 0.8 * (industry[index] - 900)
+      + 0.45 * media[index],
+    );
+    const panel = {
+      week,
+      targets: { Regs: target },
+      external: { market: industry },
+      externalDefs: [{ key: "market", label: "Market demand" }],
+      ch: { media },
+      channels: [{ key: "media", label: "Media", kind: "perf" }],
+      dummy: {},
+      steps: {},
+    };
+    const run = mmmBayesianRun(panel, {
+      ...MMM_METH_CONFIG,
+      steps: {},
+      adstockGrid: [0, 0.4],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+      bayesMaxProfileCandidates: 2,
+      bayesMaxTotalProfileFits: 2,
+      mediaPenaltyCandidates: [1],
+    }, "Regs", false, {
+      enableBaselineSelection: false,
+      enableMediaPenaltySelection: false,
+    });
+    const plan = mmmTrendDirectionPlan(panel, "Regs");
+    expect(plan.enabled).toBe(true);
+    expect(run?.trendDirectionPlan).toMatchObject({
+      enabled: true,
+      method: "low-frequency-direction-only-then-joint-allocation",
+    });
+    expect(run.trendDirectionPlan.segments.map((segment) => segment.direction))
+      .toEqual(plan.segments.map((segment) => segment.direction));
+    expect(run.names.some((name) => name.startsWith("season_rbf_"))).toBe(true);
+    expect(run.names.some((name) => name.startsWith("industry_"))).toBe(true);
+    expect(run.names.some((name) => /^(sin|cos)_/.test(name))).toBe(false);
+    expect(run.params.media.selection).toBe("joint-full-model-profile");
+    expect(run.names.filter((name) => name.startsWith("trend_dir_")).every((name) =>
+      run.posterior.beta[run.names.indexOf(name) + 1] >= -1e-10,
+    )).toBe(true);
+    expect(run.groupNames).toEqual(expect.arrayContaining(["Trend", "Seasonality", "Industry Trend", "Performance"]));
+    expect(run.weeks.every((item) => Math.abs(
+      item.fitted - (item.contrib.Trend + item.contrib.Seasonality + item.contrib["Industry Trend"] + item.contrib.Performance),
+    ) < 0.02)).toBe(true);
   });
 });
