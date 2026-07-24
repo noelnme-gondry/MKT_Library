@@ -714,6 +714,18 @@ import {
               // 총 기여 30%±25%p를 지출 비중으로 느슨하게 나눈 시작점이다.
               businessContributionPriorShare: 0.3,
               businessContributionPriorSd: 0.25,
+              // 추세·계절·업계·광고를 순서대로 확정하지 않고, 모든 요소가 들어간
+              // 완성 모델을 같은 시간순 구간에서 비교한다. 후보의 trend knot은
+              // 각 학습 fold 안에서만 자동 생성해 미래 정보 누수를 막는다.
+              jointStructureTrendFamilies: [0, 1, 2],
+              jointStructureSeasonalityIds: ["none", "annual-1", "annual-4", "business-smooth-8"],
+              jointStructureMinTrain: 96,
+              jointStructureHorizon: 12,
+              jointStructureMaxFolds: 3,
+              // 계절성·구조 변화는 단기 예측만으로 삭제하지 않는다. 최저 rolling
+              // WMAPE에서 2%p 이내인 완성 모델 중 full-history BIC로 최종 선택한다.
+              jointStructureRollingTolerance: 2,
+              jointStructureBicTieTolerance: 2,
               defaultLam: 0.6, // cannibalization net elasticity용
               // 국가·연도와 무관한 고정 주차를 실제 명절처럼 넣지 않는다. 레거시
               // 재현이 꼭 필요한 호출부만 useConfiguredLunarWeeks와 lunarWeeks를
@@ -1009,11 +1021,13 @@ import {
               }
               // 시장 전체 외생 수요는 기준 대비 상대 변화 지수로만 쓴다. 매체
               // 지출이 아니므로 adstock·Hill 변환은 적용하지 않는다.
-              for (const [nm, arr] of Object.entries(panel.external || {})) {
-                if (absorbed.has("industry_" + nm)) continue;
-                const indexed = mmmExternalRelativeIndex(arr);
-                externalTransforms[nm] = { reference: indexed.reference, mode: indexed.mode };
-                push("industry_" + nm, indexed.values);
+              if (cfg.includeExternalControls !== false) {
+                for (const [nm, arr] of Object.entries(panel.external || {})) {
+                  if (absorbed.has("industry_" + nm)) continue;
+                  const indexed = mmmExternalRelativeIndex(arr);
+                  externalTransforms[nm] = { reference: indexed.reference, mode: indexed.mode };
+                  push("industry_" + nm, indexed.values);
+                }
               }
               const sparse = cfg.excludeSparse
                 ? mmmSparseChannels(panel, cfg)
@@ -3384,6 +3398,279 @@ import {
               return ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
             }
 
+            // Trend 후보 생성은 기여를 먼저 배분하는 단계가 아니다. 관측 KPI 자체에서
+            // 꺾일 수 있는 위치만 제안하고, 실제 채택 여부는 계절·업계·광고가 모두
+            // 들어간 완성 모델의 순방향 검증에서 결정한다.
+            export function mmmAutomaticTrendKnots(panel, targetName, knotCount = 1) {
+              const y = panel.targets?.[targetName] || [];
+              const weeks = panel.week || [];
+              const n = Math.min(y.length, weeks.length);
+              const count = Math.max(0, Math.min(2, Math.round(knotCount)));
+              if (!count || n < 78) return [];
+              const minSegment = Math.max(26, Math.round(n * 0.15));
+              const available = n - minSegment * 2;
+              if (available < 1) return [];
+              const step = Math.max(4, Math.ceil(available / 12));
+              const grid = [];
+              for (let index = minSegment; index <= n - minSegment; index += step) {
+                if (Number.isFinite(weeks[index])) grid.push(Number(weeks[index]));
+              }
+              const weekMean = _mean(weeks);
+              const weekScale = _pstd(weeks) || 1;
+              const evaluate = (knots) => {
+                const X = weeks.map((week) => [
+                  (week - weekMean) / weekScale,
+                  ...knots.map((knot) => Math.max(0, (week - knot) / weekScale)),
+                ]);
+                const fit = mmmOls(_designConst(X), y);
+                const sse = fit?.resid?.reduce((sum, value) => sum + value ** 2, 0);
+                return Number.isFinite(sse) ? { knots, sse } : null;
+              };
+              const singles = grid.map((knot) => evaluate([knot]))
+                .filter(Boolean)
+                .sort((left, right) => left.sse - right.sse);
+              if (!singles.length) return [];
+              if (count === 1) return singles[0].knots.slice();
+              const pairs = [];
+              const topSingles = singles.slice(0, 8);
+              for (let left = 0; left < topSingles.length; left++) {
+                for (let right = left + 1; right < topSingles.length; right++) {
+                  const knots = [topSingles[left].knots[0], topSingles[right].knots[0]].sort((a, b) => a - b);
+                  const leftIndex = weeks.findIndex((week) => week >= knots[0]);
+                  const rightIndex = weeks.findIndex((week) => week >= knots[1]);
+                  if (leftIndex < minSegment || rightIndex - leftIndex < minSegment || n - rightIndex < minSegment) continue;
+                  const candidate = evaluate(knots);
+                  if (candidate) pairs.push(candidate);
+                }
+              }
+              pairs.sort((left, right) => left.sse - right.sse);
+              return pairs[0]?.knots?.slice() || singles[0].knots.slice();
+            }
+
+            function _mmmJointStructureFoldCuts(panel, cfg) {
+              const n = panel.week?.length || 0;
+              const horizon = Math.max(8, Math.min(cfg.jointStructureHorizon || 12, Math.floor(n / 5)));
+              const minTrain = Math.max(78, cfg.jointStructureMinTrain || 96);
+              const end = n - horizon;
+              const possible = Math.floor((end - minTrain) / horizon) + 1;
+              const foldCount = Math.max(0, Math.min(cfg.jointStructureMaxFolds || 3, possible));
+              if (foldCount < 2) return { horizon, cuts: [] };
+              const cuts = Array.from({ length: foldCount }, (_, index) =>
+                Math.round(minTrain + ((end - minTrain) * index) / Math.max(1, foldCount - 1)),
+              );
+              return { horizon, cuts: [...new Set(cuts)] };
+            }
+
+            function _mmmJointStructureSpecs(panel, cfg) {
+              const trendFamilies = [...new Set((cfg.jointStructureTrendFamilies || [0, 1, 2])
+                .map((value) => Math.max(0, Math.min(2, Math.round(value)))))];
+              const seasonalityIds = new Set(cfg.jointStructureSeasonalityIds || ["none", "annual-1", "annual-4", "business-smooth-8"]);
+              const seasonality = (cfg.seasonalityCandidates || [])
+                .filter((spec) => seasonalityIds.has(spec.id) && Array.isArray(spec.periods));
+              if (!seasonality.length) {
+                seasonality.push({
+                  id: "configured",
+                  periods: (cfg.seasonalityPeriods || []).slice(),
+                  seasonalityBasis: cfg.seasonalityBasis || null,
+                  seasonalityPenaltyProfile: cfg.seasonalityPenaltyProfile || null,
+                  seasonalityPenaltyStrength: cfg.seasonalityPenaltyStrength || 0,
+                });
+              }
+              const industryModes = Object.keys(panel.external || {}).length ? [true, false] : [true];
+              const specs = [];
+              trendFamilies.forEach((trendKnotCount) => {
+                seasonality.forEach((season) => {
+                  industryModes.forEach((includeExternalControls) => {
+                    specs.push({
+                      id: `trend-${trendKnotCount}|season-${season.id}|industry-${includeExternalControls ? "on" : "off"}`,
+                      trendKnotCount,
+                      season,
+                      includeExternalControls,
+                      complexity: trendKnotCount
+                        + (season.seasonalityBasis?.type === "cyclic-rbf"
+                          ? Math.max(3, Math.round(season.seasonalityBasis.knots || 6) - 1)
+                          : season.periods.length * 2)
+                        + (includeExternalControls ? Object.keys(panel.external || {}).length : 0),
+                    });
+                  });
+                });
+              });
+              return specs;
+            }
+
+            function _mmmJointCandidateCfg(panel, cfg, targetName, spec) {
+              return {
+                ...cfg,
+                baselineKnots: mmmAutomaticTrendKnots(panel, targetName, spec.trendKnotCount),
+                seasonalityPeriods: spec.season.periods.slice(),
+                seasonalityBasis: spec.season.seasonalityBasis || null,
+                seasonalityPenaltyProfile: spec.season.seasonalityPenaltyProfile || null,
+                seasonalityPenaltyStrength: spec.season.seasonalityPenaltyStrength || 0,
+                includeExternalControls: spec.includeExternalControls,
+              };
+            }
+
+            function _mmmJointCandidateRun(panel, cfg, targetName, spec, options) {
+              return mmmBayesianRun(panel, _mmmJointCandidateCfg(panel, cfg, targetName, spec), targetName, false, {
+                ...options,
+                enableJointStructureSelection: false,
+                enableSeasonalitySelection: false,
+                enableBaselineSelection: false,
+                enableMediaPenaltySelection: false,
+                skipTransformUncertainty: true,
+              });
+            }
+
+            export function mmmJointStructureDecision(candidates, config = {}) {
+              const valid = (candidates || []).filter((candidate) =>
+                Number.isFinite(candidate.meanWmape) && Number.isFinite(candidate.bic),
+              );
+              if (!valid.length) return { selected: null, eligible: [], reason: "no-valid-candidate" };
+              const bestRolling = valid.reduce((best, candidate) =>
+                candidate.meanWmape < best.meanWmape ? candidate : best,
+              valid[0]);
+              const rollingTolerance = Math.max(0, config.rollingTolerance ?? 2);
+              const eligible = valid.filter((candidate) =>
+                candidate.meanWmape <= bestRolling.meanWmape + rollingTolerance,
+              );
+              const bestBic = eligible.reduce((best, candidate) =>
+                candidate.bic < best.bic ? candidate : best,
+              eligible[0]);
+              const bicTieTolerance = Math.max(0, config.bicTieTolerance ?? 2);
+              const bicShortlist = eligible.filter((candidate) =>
+                candidate.bic <= bestBic.bic + bicTieTolerance,
+              );
+              const selected = bicShortlist.slice().sort((left, right) =>
+                (left.mediaShareRange || 0) - (right.mediaShareRange || 0)
+                || left.complexity - right.complexity
+                || left.meanWmape - right.meanWmape
+                || String(left.id).localeCompare(String(right.id)),
+              )[0];
+              return {
+                selected,
+                eligible,
+                bestRolling,
+                bestBic,
+                rollingTolerance,
+                bicTieTolerance,
+                reason: selected.id === bestRolling.id
+                  ? "best-forward-validation-and-full-model-evidence"
+                  : "full-model-bic-within-forward-validation-tolerance",
+              };
+            }
+
+            export function mmmBayesianJointStructureSelection(panel, cfg, targetName, options = {}) {
+              const { horizon, cuts } = _mmmJointStructureFoldCuts(panel, cfg);
+              const specs = _mmmJointStructureSpecs(panel, cfg);
+              if (options.enableJointStructureSelection !== true || cuts.length < 2 || !specs.length) {
+                return { enabled: false, cfg, selected: null, candidates: [], reason: "insufficient-history-or-disabled" };
+              }
+              const evaluated = [];
+              for (const spec of specs) {
+                const foldWmapes = [];
+                const mediaShares = [];
+                const searchShares = [];
+                for (const cut of cuts) {
+                  const train = _mmmBayesSlicePanel(panel, cut);
+                  const run = _mmmJointCandidateRun(train, cfg, targetName, spec, options);
+                  if (!run) continue;
+                  const spend = Object.fromEntries(Object.entries(panel.ch || {}).map(([key, values]) =>
+                    [key, values.slice(cut, cut + horizon)],
+                  ));
+                  const futureDummy = Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) =>
+                    [key, values.slice(cut, cut + horizon)],
+                  ));
+                  const futureSteps = Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) =>
+                    [key, values.slice(cut, cut + horizon)],
+                  ));
+                  const futureExternal = Object.fromEntries(Object.entries(panel.external || {}).map(([key, values]) =>
+                    [key, values.slice(cut, cut + horizon)],
+                  ));
+                  const forecast = mmmBayesianForecast(run, train, spend, horizon, {
+                    futureDummy,
+                    futureSteps,
+                    futureExternal,
+                  });
+                  const actual = panel.targets?.[targetName]?.slice(cut, cut + horizon) || [];
+                  const denominator = actual.reduce((sum, value) => sum + Math.abs(value), 0);
+                  if (forecast?.predFut?.length !== actual.length || !(denominator > 1e-9)) continue;
+                  foldWmapes.push(actual.reduce((sum, value, index) =>
+                    sum + Math.abs(value - forecast.predFut[index]), 0,
+                  ) / denominator * 100);
+                  const targetTotal = train.targets[targetName].reduce((sum, value) => sum + Math.abs(value), 0);
+                  const mediaTotal = Object.values(run.channelContributions || {})
+                    .reduce((sum, channel) => sum + channel.totalMean, 0);
+                  mediaShares.push(mediaTotal / Math.max(1e-9, targetTotal));
+                  const search = run.channelMeta.find((channel) => /search/i.test(channel.label || channel.key));
+                  searchShares.push(search
+                    ? run.channelContributions[search.key].totalMean / Math.max(1e-9, targetTotal)
+                    : 0);
+                }
+                if (foldWmapes.length !== cuts.length) continue;
+                const fullRun = _mmmJointCandidateRun(panel, cfg, targetName, spec, options);
+                if (!fullRun) continue;
+                const meanWmape = _mean(foldWmapes);
+                const variance = foldWmapes.length > 1
+                  ? foldWmapes.reduce((sum, value) => sum + (value - meanWmape) ** 2, 0) / (foldWmapes.length - 1)
+                  : 0;
+                const sse = fullRun.posterior.resid.reduce((sum, value) => sum + value ** 2, 0);
+                const parameterCount = fullRun.names.length + 1;
+                evaluated.push({
+                  ...spec,
+                  cfg: fullRun.effectiveCfg,
+                  foldWmapes,
+                  meanWmape,
+                  standardError: Math.sqrt(variance / foldWmapes.length),
+                  bic: panel.week.length * Math.log(Math.max(sse / Math.max(1, panel.week.length), 1e-12))
+                    + parameterCount * Math.log(Math.max(2, panel.week.length)),
+                  mediaShareMean: _mean(mediaShares),
+                  mediaShareRange: Math.max(...mediaShares) - Math.min(...mediaShares),
+                  searchShareMean: _mean(searchShares),
+                  searchShareRange: Math.max(...searchShares) - Math.min(...searchShares),
+                });
+              }
+              const decision = mmmJointStructureDecision(evaluated, {
+                rollingTolerance: cfg.jointStructureRollingTolerance ?? 2,
+                bicTieTolerance: cfg.jointStructureBicTieTolerance ?? 2,
+              });
+              const publicCandidate = (candidate) => candidate ? {
+                id: candidate.id,
+                trendKnotCount: candidate.trendKnotCount,
+                selectedKnots: candidate.cfg?.baselineKnots?.slice() || [],
+                seasonalityId: candidate.season.id,
+                seasonalityPeriods: candidate.season.periods.slice(),
+                seasonalityBasis: candidate.season.seasonalityBasis || null,
+                includeExternalControls: candidate.includeExternalControls,
+                foldWmapes: candidate.foldWmapes.slice(),
+                meanWmape: candidate.meanWmape,
+                standardError: candidate.standardError,
+                bic: candidate.bic,
+                mediaShareMean: candidate.mediaShareMean,
+                mediaShareRange: candidate.mediaShareRange,
+                searchShareMean: candidate.searchShareMean,
+                searchShareRange: candidate.searchShareRange,
+                complexity: candidate.complexity,
+              } : null;
+              return {
+                enabled: true,
+                cfg: decision.selected?.cfg || cfg,
+                selected: publicCandidate(decision.selected),
+                candidates: evaluated.map(publicCandidate),
+                evidence: {
+                  horizon,
+                  cuts: cuts.slice(),
+                  folds: cuts.length,
+                  candidateCount: evaluated.length,
+                  eligibleCount: decision.eligible.length,
+                  bestRolling: publicCandidate(decision.bestRolling),
+                  bestBic: publicCandidate(decision.bestBic),
+                  rollingTolerance: decision.rollingTolerance,
+                  bicTieTolerance: decision.bicTieTolerance,
+                },
+                reason: decision.reason,
+              };
+            }
+
             // 계절성 선택 단계에서는 매체별 flight가 연간 파형을 대신 설명하지
             // 않도록 Brand/Performance 의사결정 단위로만 집계한다. 최종 MMM은
             // 원래 채널 단위로 다시 적합하므로 채널별 기여도는 손실되지 않는다.
@@ -4090,14 +4377,53 @@ import {
               if (!targetSeries?.length || targetSeries.some((value) => !Number.isFinite(value))) return null;
               if (_mmmChans(panel).some((channel) => panel.ch[channel.key]?.some((value) => !Number.isFinite(value)))) return null;
               if (Object.values(panel.external || {}).some((series) => series.some((value) => !Number.isFinite(value)))) return null;
-              // 장기 계절성을 먼저 전체 이력에서 확정한다. Baseline knot을 먼저
-              // 고르면 저주파 굴절이 연간 파형을 흡수할 수 있으므로, knot은 확정된
-              // 계절성을 유지한 상태에서만 비교한다. 최근 12주 rolling은 이후 매체
-              // 규제 선택에만 사용한다.
-              const seasonalitySelection = mmmBayesianSeasonalitySelection(panel, cfg, targetName, options);
-              const baseline = _mmmBayesBaselineSelection(panel, seasonalitySelection.cfg, targetName, options);
-              const penaltySelection = mmmBayesianMediaPenaltySelection(panel, baseline.cfg, targetName, options);
-              const effectiveCfg = penaltySelection.cfg;
+              // 자동 구조 탐색에서는 추세·계절·업계·광고가 모두 들어간 완성 모델을
+              // 같은 fold에서 비교한다. 선택 뒤에는 그 한 모델을 다시 적합해 전체
+              // 기여를 만든 다음, 광고 몫만 개별 채널로 분배한다.
+              const jointStructureSelection = mmmBayesianJointStructureSelection(panel, cfg, targetName, options);
+              let seasonalitySelection;
+              let baseline;
+              let penaltySelection;
+              let effectiveCfg;
+              if (jointStructureSelection.enabled && jointStructureSelection.selected) {
+                effectiveCfg = jointStructureSelection.cfg;
+                seasonalitySelection = {
+                  enabled: true,
+                  cfg: effectiveCfg,
+                  selected: {
+                    id: jointStructureSelection.selected.seasonalityId,
+                    periods: jointStructureSelection.selected.seasonalityPeriods.slice(),
+                    seasonalityBasis: jointStructureSelection.selected.seasonalityBasis || null,
+                    evidence: { detectionMode: "joint-full-model-search" },
+                  },
+                  candidates: jointStructureSelection.candidates,
+                  evidence: jointStructureSelection.evidence,
+                  reason: "joint-full-model-search",
+                };
+                baseline = {
+                  cfg: effectiveCfg,
+                  selection: {
+                    enabled: true,
+                    candidateCount: new Set(jointStructureSelection.candidates.map((candidate) => candidate.trendKnotCount)).size,
+                    selected: jointStructureSelection.selected.selectedKnots.length > 0,
+                    selectedKnots: jointStructureSelection.selected.selectedKnots.slice(),
+                    reason: "joint-full-model-search",
+                  },
+                };
+                penaltySelection = {
+                  enabled: false,
+                  cfg: effectiveCfg,
+                  selected: null,
+                  candidates: [],
+                  reason: "media-estimated-inside-joint-models",
+                };
+              } else {
+                // 구 호출부와 짧은 데이터는 기존의 단계별 선택을 유지한다.
+                seasonalitySelection = mmmBayesianSeasonalitySelection(panel, cfg, targetName, options);
+                baseline = _mmmBayesBaselineSelection(panel, seasonalitySelection.cfg, targetName, options);
+                penaltySelection = mmmBayesianMediaPenaltySelection(panel, baseline.cfg, targetName, options);
+                effectiveCfg = penaltySelection.cfg;
+              }
               const fitOptions = {
                 ...options,
                 mediaPenalty: effectiveCfg.mediaPenalty,
@@ -4460,6 +4786,7 @@ import {
                 baselineSelection: baseline.selection,
                 seasonalitySelection,
                 mediaPenaltySelection: penaltySelection,
+                jointStructureSelection,
                 effectiveCfg,
                 jointTransform,
                 businessContributionPrior: {

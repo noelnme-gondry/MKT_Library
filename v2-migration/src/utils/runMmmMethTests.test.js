@@ -41,6 +41,8 @@ import {
   mmmChannelCoverage,
   mmmBuildIntervalCalibration,
   mmmApplyIntervalCalibration,
+  mmmAutomaticTrendKnots,
+  mmmJointStructureDecision,
 } from "./mmmMath.js";
 
 describe("runMmmMethTests (golden port)", () => {
@@ -1185,5 +1187,39 @@ describe("runMmmMethTests (golden port)", () => {
     const r2 = mmmResolveAbsorb(panel, cfg, { "s__LineOff": "channel" });
     expect(r2.absorbed.has("s")).toBe(true);
     expect(r2.notices[0].side).toBe("channel");
+  });
+
+  it("generates trend bends from each panel instead of fixed calendar dates", () => {
+    const week = Array.from({ length: 160 }, (_, index) => index + 1);
+    const target = week.map((value) =>
+      5000 - value * 2 - Math.max(0, value - 86) * 18 + Math.sin(value * 0.7) * 15,
+    );
+    const panel = { week, targets: { Regs: target } };
+    const knots = mmmAutomaticTrendKnots(panel, "Regs", 1);
+    expect(knots).toHaveLength(1);
+    expect(knots[0]).toBeGreaterThanOrEqual(78);
+    expect(knots[0]).toBeLessThanOrEqual(94);
+    expect(mmmAutomaticTrendKnots(panel, "Regs", 1)).toEqual(knots);
+    expect(mmmAutomaticTrendKnots({
+      week: week.slice(0, 70),
+      targets: { Regs: target.slice(0, 70) },
+    }, "Regs", 1)).toEqual([]);
+  });
+
+  it("chooses a complete joint model by forward tolerance, BIC and allocation stability", () => {
+    const candidates = [
+      { id: "forecast-only", meanWmape: 2, bic: 120, mediaShareRange: 0.03, complexity: 1 },
+      { id: "joint-structural", meanWmape: 2.4, bic: 100, mediaShareRange: 0.02, complexity: 4 },
+      { id: "joint-stable-tie", meanWmape: 2.5, bic: 101, mediaShareRange: 0.01, complexity: 4 },
+      { id: "too-weak-oos", meanWmape: 4.5, bic: 80, mediaShareRange: 0.001, complexity: 8 },
+    ];
+    const decision = mmmJointStructureDecision(candidates, {
+      rollingTolerance: 2,
+      bicTieTolerance: 2,
+    });
+    expect(decision.selected.id).toBe("joint-stable-tie");
+    expect(decision.eligible.map((item) => item.id)).not.toContain("too-weak-oos");
+    expect(decision.bestRolling.id).toBe("forecast-only");
+    expect(decision.bestBic.id).toBe("joint-structural");
   });
 });
