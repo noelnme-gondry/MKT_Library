@@ -1416,7 +1416,7 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     ["model", run.methodLabel], ["R2", run.posterior?.r2], ["sigma", run.posterior?.sigma], ["target", mmm.target], [],
     ["weeks_per_parameter", identification.weeksPerParameter], ["max_media_correlation", identification.maxMediaCorrelation], ["high_collinearity", identification.highCollinearity], ["budget_eligible", identification.budgetEligible], [],
     ["industry_controls", JSON.stringify(mmm.panel.externalDefs || [])],
-    ["baseline_selection", JSON.stringify(run.baselineSelection || null)], ["seasonality_selection", JSON.stringify(run.seasonalitySelection || null)], ["media_penalty_selection", JSON.stringify(run.mediaPenaltySelection || null)], ["joint_structure_selection", JSON.stringify(run.jointStructureSelection || null)], ["joint_transform_check", JSON.stringify(run.jointTransform || null)],
+    ["baseline_selection", JSON.stringify(run.baselineSelection || null)], ["trend_flex_frozen", JSON.stringify(run.trendFlexFrozen || null)], ["trend_flex_selection", JSON.stringify(run.trendFlexSelection || null)], ["aggregate_rolling_backtest", JSON.stringify(run.aggregateRollingBacktest || null)], ["aggregate_adoption_gate", JSON.stringify(mmm.aggregateAdoptionGate || null)], ["seasonality_selection", JSON.stringify(run.seasonalitySelection || null)], ["media_penalty_selection", JSON.stringify(run.mediaPenaltySelection || null)], ["joint_structure_selection", JSON.stringify(run.jointStructureSelection || null)], ["joint_transform_check", JSON.stringify(run.jointTransform || null)],
     ["channel", "adstock_alpha", "half_saturation", "hill_slope", "evaluated_transform_candidates", "total_transform_candidates", "candidate_search_capped", "prior_locked_transform", "effective_transform_candidates", "top_transform_weight", "posterior_positive_probability"],
     ...Object.values(run.saturationByChannel || {}).map((s) => [s.label, s.params.alpha, s.params.ec, s.params.slope, s.transformUncertainty?.candidateCount, s.transformUncertainty?.totalCandidateCount, s.transformUncertainty?.candidateSearchCapped, !!s.transformUncertainty?.priorLockedTransform, s.transformUncertainty?.effectiveCandidateCount, s.transformUncertainty?.topWeight, s.posteriorPositive]),
   ]);
@@ -3527,13 +3527,17 @@ export default function MarketingResponse({ locale = "ko" }) {
       // A selected country prior was tuned against the target rolling folds, so
       // the run's internal split would no longer be an untouched OOS estimate.
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
-      const bayesianLikeRun = mmmBayesianLikeRun(panel, cfg, t, !isCountryPriorTuned && !hasExternalPrior, {
+      const dualModelCfg = {
+        ...cfg,
+        jointStructureMinTrain: Math.max(104, Number(cfg.jointStructureMinTrain) || 96),
+      };
+      const bayesianLikeRun = mmmBayesianLikeRun(panel, dualModelCfg, t, !isCountryPriorTuned && !hasExternalPrior, {
         mediaPriors,
         enableJointStructureSelection: true,
         enableBaselineSelection: true,
       });
       const classicPanel = mmmBuildAggregateMediaPanel(panel);
-      const classicRun = mmmClassicRun(panel, cfg, t, !isCountryPriorTuned && !hasExternalPrior, {
+      const classicRun = mmmClassicRun(panel, dualModelCfg, t, !isCountryPriorTuned && !hasExternalPrior, {
         enableJointStructureSelection: true,
         enableBaselineSelection: true,
       });
@@ -3549,9 +3553,12 @@ export default function MarketingResponse({ locale = "ko" }) {
         totalMediaContribution(classicRun),
         0.15,
       );
+      const aggregateCuts = classicRun.aggregateRollingBacktest?.cuts || [];
+      const channelCuts = bayesianLikeRun.rollingBacktest?.cuts || [];
+      const hasMatchingAdoptionFolds = JSON.stringify(aggregateCuts) === JSON.stringify(channelCuts);
       const aggregateAdoptionGate = mmmAggregateAdoptionGate(
-        classicRun.jointStructureSelection?.selected?.foldWmapes,
-        bayesianLikeRun.jointStructureSelection?.selected?.foldWmapes,
+        hasMatchingAdoptionFolds ? classicRun.aggregateRollingBacktest?.foldWmapes : [],
+        hasMatchingAdoptionFolds ? bayesianLikeRun.rollingBacktest?.foldWmapes : [],
       );
       const effects = [];
       return mmmStoreCachedResult(csvData.raw, resultCacheKey, {
@@ -4658,6 +4665,15 @@ export default function MarketingResponse({ locale = "ko" }) {
             >
               ⓘ
             </span>
+            {mmm.classicRun?.trendFlexFrozen && (
+              <span style={{ color: MUTED, fontSize: "10.5px" }} title={tx(
+                "52/78/104주 smoothing과 0/1/2개 꺾임을 rolling-origin CV로 비교했습니다. 전체 유료 Cost는 raw nuisance로 선택 단계에만 사용하고 최종 적합에서는 제거했습니다.",
+                "Rolling-origin CV compares 52/78/104-week smoothing and 0/1/2 knots. Raw total paid Cost is used only as a selection nuisance and removed from the final fit.",
+              )}>
+                Trend {mmm.classicRun.trendFlexFrozen.smoothingWindowWeeks}{tx("주", "wk")}
+                {" · "}{mmm.classicRun.trendFlexFrozen.knotCount}{tx("개 꺾임", " knots")}
+              </span>
+            )}
             {mmm.modelCrossCheck?.verdict !== "consistent" && (
               <span style={{ color: "#f59e0b", fontSize: "10.5px" }} title={tx(
                 `두 모델의 전체 미디어 기여 차이 ${(mmm.modelCrossCheck.relDiff * 100).toFixed(1)}%. 그룹 정의·포화 가정에 민감하므로 단일 값을 확정하지 마세요.`,

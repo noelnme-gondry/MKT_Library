@@ -1293,11 +1293,13 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               if (withTrend) {
                 const directionPlan = cfg.trendDirectionPlan;
                 if (directionPlan?.segments?.length) {
-                  const scale = _pstd(t) || 1;
+                  const scale = Number(directionPlan.featureScale) > 0
+                    ? Number(directionPlan.featureScale)
+                    : _pstd(t) || 1;
                   directionPlan.segments.forEach((segment, index) => {
                     if (segment.direction === "flat") return;
                     const start = Number(segment.start);
-                    const end = Number(segment.end);
+                    const end = segment.forecastOpenEnded === true ? Infinity : Number(segment.end);
                     const sign = segment.direction === "down" ? -1 : 1;
                     push(`trend_dir_${index}_${sign > 0 ? "up" : "down"}`, t.map((tt) =>
                       sign * Math.max(0, Math.min(tt, end) - start) / scale,
@@ -3757,7 +3759,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
             // 범위를 보는 저주파 LOESS로 주간 광고 pulse와 연간 파형을 누른 뒤,
             // 0·1·2회 꺾임 후보를 비교해 구간별 상승/하락만 정한다. 실제 기울기
             // 크기는 이후 업계·계절·광고와 같은 회귀에서 다시 추정한다.
-            export function mmmTrendDirectionPlan(panel, targetName) {
+            export function mmmTrendDirectionPlan(panel, targetName, options = {}) {
               const y = panel.targets?.[targetName] || [];
               const weeks = panel.week || [];
               const n = Math.min(y.length, weeks.length);
@@ -3768,7 +3770,11 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               // 레벨 차이까지 계절 성분으로 흡수해 trend를 평평하게 만들 수 있다.
               // 방향 검출에는 연간보다 긴 이웃(약 78주)을 쓰는 직접 저주파 곡선이
               // 더 안전하다. 숫자는 진단에만 쓰고 최종 기여에는 전이하지 않는다.
-              const directionBandwidth = Math.min(0.8, Math.max(0.3, 78 / n));
+              const hasExplicitSmoothingWindow = Number.isFinite(Number(options.smoothingWindowWeeks));
+              const smoothingWindowWeeks = Math.max(26, Number(options.smoothingWindowWeeks) || 78);
+              const directionBandwidth = hasExplicitSmoothingWindow
+                ? Math.min(1, Math.max(0.1, smoothingWindowWeeks / n))
+                : Math.min(0.8, Math.max(0.3, 78 / n));
               const smoothed = CANNIBAL_STATS.loess(
                 weeks.slice(0, n),
                 y.slice(0, n),
@@ -3776,14 +3782,21 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               );
               const trendPanel = { week: weeks.slice(0, n), targets: { [targetName]: smoothed.slice(0, n) } };
               const directionTolerance = Math.max(1e-9, (_pstd(smoothed) || 0) / Math.max(1, n) * 0.1);
-              const knotSets = [
+              const requestedKnotCount = Number.isFinite(Number(options.knotCount))
+                ? Math.max(0, Math.min(2, Math.round(Number(options.knotCount))))
+                : null;
+              const allKnotSets = [
                 [],
                 mmmAutomaticTrendKnots(trendPanel, targetName, 1),
                 mmmAutomaticTrendKnots(trendPanel, targetName, 2),
-              ].filter((knots, index, list) => (
-                knots.length === index
-                && list.findIndex((other) => JSON.stringify(other) === JSON.stringify(knots)) === index
-              ));
+              ];
+              const knotSets = (requestedKnotCount == null
+                ? allKnotSets.filter((knots, index) => knots.length === index)
+                : [allKnotSets[requestedKnotCount]].filter((knots) => knots.length === requestedKnotCount)
+              ).filter((knots, index, list) =>
+                Array.isArray(knots)
+                && list.findIndex((other) => JSON.stringify(other) === JSON.stringify(knots)) === index,
+              );
               const scale = _pstd(weeks) || 1;
               const candidates = knotSets.map((knots) => {
                 const boundaries = [weeks[0], ...knots, weeks[n - 1]];
@@ -3813,9 +3826,11 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 reason: "low-frequency-direction-bic",
                 smoothing: {
                   method: "loess",
+                  requestedWindowWeeks: smoothingWindowWeeks,
                   approximateWindowWeeks: Math.ceil(directionBandwidth * n),
                   flatSlopeTolerance: directionTolerance,
                 },
+                featureScale: scale,
                 knots: selected.knots.slice(),
                 segments: selected.segments.map((segment) => ({ ...segment })),
                 candidates: candidates.map((candidate) => ({
@@ -5357,28 +5372,374 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               };
             }
 
+            function _mmmDeepFreeze(value) {
+              if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
+              Object.values(value).forEach(_mmmDeepFreeze);
+              return Object.freeze(value);
+            }
+
+            function _mmmPaidCostTotal(panel) {
+              const channels = _mmmChans(panel);
+              return (panel.week || []).map((_, weekIndex) => channels.reduce(
+                (sum, channel) => sum + Math.max(0, Number(panel.ch?.[channel.key]?.[weekIndex]) || 0),
+                0,
+              ));
+            }
+
+            function _mmmOpenFinalTrendSegment(plan) {
+              if (!plan?.enabled) return plan;
+              return {
+                ...plan,
+                segments: plan.segments.map((segment, index) => ({
+                  ...segment,
+                  forecastOpenEnded: index === plan.segments.length - 1,
+                })),
+              };
+            }
+
+            function _mmmClassicFreezeFeatureSet(panel, cfg, trendDirectionPlan, externalReference = null) {
+              const controls = _mmmBayesControlFeatures(panel, {
+                ...cfg,
+                trendDirectionFirst: false,
+                trendDirectionPlan,
+                baselineKnots: [],
+                includeExternalControls: true,
+              });
+              const names = controls.names.slice();
+              const cols = controls.X.length
+                ? controls.X[0].map((_, columnIndex) => controls.X.map((row) => row[columnIndex]))
+                : [];
+              if (externalReference) {
+                Object.entries(panel.external || {}).forEach(([key, values]) => {
+                  const columnIndex = names.indexOf("industry_" + key);
+                  const transform = externalReference[key];
+                  if (columnIndex < 0 || !transform) return;
+                  cols[columnIndex] = values.map((value) => _mmmExternalIndexValue(value, transform));
+                });
+              }
+              names.push("paid_cost_total_nuisance");
+              cols.push(_mmmPaidCostTotal(panel));
+              return {
+                names,
+                cols,
+                externalTransforms: controls.externalTransforms || {},
+              };
+            }
+
+            export function mmmClassicTrendFlexSelection(panel, cfg, targetName, options = {}) {
+              const windows = [...new Set((options.smoothingWindows || [52, 78, 104])
+                .map((value) => Math.round(Number(value)))
+                .filter((value) => value >= 26))];
+              const knotCounts = [...new Set((options.knotCounts || [0, 1, 2])
+                .map((value) => Math.max(0, Math.min(2, Math.round(Number(value)))))
+                .filter(Number.isFinite))];
+              const freezeCfg = {
+                ...cfg,
+                jointStructureMinTrain: Math.max(104, Number(cfg.jointStructureMinTrain) || 96),
+              };
+              const { horizon, cuts } = _mmmJointStructureFoldCuts(panel, freezeCfg);
+              if (cuts.length < 2 || !windows.length || !knotCounts.length) {
+                return {
+                  enabled: false,
+                  reason: "insufficient-history-or-candidates",
+                  candidates: [],
+                  evidence: { horizon, cuts: cuts.slice() },
+                  trendDirectionPlan: null,
+                  trendFlexFrozen: null,
+                };
+              }
+              const candidates = [];
+              windows.forEach((smoothingWindowWeeks) => {
+                knotCounts.forEach((knotCount) => {
+                  const foldWmapes = [];
+                  const foldPlans = [];
+                  for (const cut of cuts) {
+                    const train = _mmmBayesSlicePanel(panel, cut);
+                    const candidatePlan = _mmmOpenFinalTrendSegment(mmmTrendDirectionPlan(
+                      train,
+                      targetName,
+                      { smoothingWindowWeeks, knotCount },
+                    ));
+                    if (!candidatePlan?.enabled || candidatePlan.knots.length !== knotCount) break;
+                    const trainFeatures = _mmmClassicFreezeFeatureSet(train, cfg, candidatePlan);
+                    const fit = _mmmBayesFitColumns(
+                      trainFeatures.names,
+                      trainFeatures.cols,
+                      [],
+                      train.targets[targetName],
+                      {
+                        controlPenalty: cfg.controlPenalty,
+                        mediaPenalty: cfg.mediaPenalty,
+                      },
+                    );
+                    if (!fit) break;
+                    const foldPanel = _mmmBayesSlicePanel(panel, Math.min(panel.week.length, cut + horizon));
+                    const foldFeatures = _mmmClassicFreezeFeatureSet(
+                      foldPanel,
+                      cfg,
+                      candidatePlan,
+                      trainFeatures.externalTransforms,
+                    );
+                    const foldColumnByName = new Map(foldFeatures.names.map((name, index) => [name, index]));
+                    if (trainFeatures.names.some((name) => !foldColumnByName.has(name))) break;
+                    const actual = foldPanel.targets[targetName].slice(cut);
+                    const predicted = actual.map((_, offset) => {
+                      const rowIndex = cut + offset;
+                      return fit.absoluteIntercept + trainFeatures.names.reduce((sum, name, coefficientIndex) => {
+                        const sourceColumn = foldColumnByName.get(name);
+                        return sum + fit.absoluteBeta[coefficientIndex]
+                          * (Number(foldFeatures.cols[sourceColumn]?.[rowIndex]) || 0);
+                      }, 0);
+                    });
+                    const denominator = actual.reduce((sum, value) => sum + Math.abs(value), 0);
+                    if (!actual.length || predicted.length !== actual.length || !(denominator > 1e-9)) break;
+                    foldWmapes.push(actual.reduce(
+                      (sum, value, index) => sum + Math.abs(value - predicted[index]),
+                      0,
+                    ) / denominator * 100);
+                    foldPlans.push({
+                      cut,
+                      smoothingWindowWeeks,
+                      knotCount,
+                      knotLocations: candidatePlan.knots.slice(),
+                      segmentDirections: candidatePlan.segments.map((segment) => segment.direction),
+                    });
+                  }
+                  if (foldWmapes.length !== cuts.length) return;
+                  const meanWmape = _mean(foldWmapes);
+                  const variance = foldWmapes.length > 1
+                    ? foldWmapes.reduce((sum, value) => sum + (value - meanWmape) ** 2, 0)
+                      / (foldWmapes.length - 1)
+                    : 0;
+                  candidates.push({
+                    id: `window-${smoothingWindowWeeks}|knots-${knotCount}`,
+                    smoothingWindowWeeks,
+                    knotCount,
+                    foldWmapes,
+                    meanWmape,
+                    standardError: Math.sqrt(variance / foldWmapes.length),
+                    foldPlans,
+                    complexity: knotCount,
+                  });
+                });
+              });
+              if (!candidates.length) {
+                return {
+                  enabled: false,
+                  reason: "all-candidate-fits-failed",
+                  candidates: [],
+                  evidence: { horizon, cuts: cuts.slice() },
+                  trendDirectionPlan: null,
+                  trendFlexFrozen: null,
+                };
+              }
+              const best = candidates.reduce((winner, candidate) =>
+                candidate.meanWmape < winner.meanWmape ? candidate : winner,
+              candidates[0]);
+              const eligible = candidates.filter((candidate) =>
+                candidate.meanWmape <= best.meanWmape + best.standardError,
+              );
+              const selected = eligible.slice().sort((left, right) =>
+                left.complexity - right.complexity
+                || right.smoothingWindowWeeks - left.smoothingWindowWeeks
+                || left.meanWmape - right.meanWmape
+                || left.id.localeCompare(right.id),
+              )[0];
+              const finalPlan = _mmmOpenFinalTrendSegment(mmmTrendDirectionPlan(
+                panel,
+                targetName,
+                {
+                  smoothingWindowWeeks: selected.smoothingWindowWeeks,
+                  knotCount: selected.knotCount,
+                },
+              ));
+              if (!finalPlan?.enabled || finalPlan.knots.length !== selected.knotCount) {
+                return {
+                  enabled: false,
+                  reason: "full-history-plan-failed",
+                  candidates,
+                  evidence: { horizon, cuts: cuts.slice() },
+                  trendDirectionPlan: null,
+                  trendFlexFrozen: null,
+                };
+              }
+              const dataHash = _mmmHashSeed(JSON.stringify({
+                week: panel.week,
+                target: panel.targets?.[targetName],
+                paidCostTotalNuisance: _mmmPaidCostTotal(panel),
+                external: panel.external,
+                dummy: panel.dummy,
+                steps: panel.steps,
+              })).toString(16).padStart(8, "0");
+              const trendFlexFrozen = _mmmDeepFreeze({
+                smoothingWindowWeeks: selected.smoothingWindowWeeks,
+                knotCount: selected.knotCount,
+                knotLocations: finalPlan.knots.slice(),
+                segmentDirections: finalPlan.segments.map((segment) => segment.direction),
+                basis: "direction-hinge-shared",
+                featureScale: finalPlan.featureScale,
+                foldWmapes: selected.foldWmapes.slice(),
+                meanWmape: selected.meanWmape,
+                standardError: selected.standardError,
+                selectedBy: "rolling-origin-one-standard-error-parsimony",
+                nuisance: {
+                  name: "paid_cost_total_nuisance",
+                  source: "raw-performance-plus-branding-cost",
+                  adstocked: false,
+                  hillTransformed: false,
+                  freezeOnly: true,
+                  includedInFinalFit: false,
+                },
+                candidateWindows: windows.slice(),
+                candidateKnotCounts: knotCounts.slice(),
+                dataHash,
+                frozen: true,
+              });
+              return {
+                enabled: true,
+                reason: "rolling-origin-one-standard-error-parsimony",
+                candidates,
+                selected: {
+                  ...selected,
+                  knotLocations: finalPlan.knots.slice(),
+                  segmentDirections: finalPlan.segments.map((segment) => segment.direction),
+                },
+                evidence: {
+                  horizon,
+                  cuts: cuts.slice(),
+                  foldCount: cuts.length,
+                  bestCandidateId: best.id,
+                  eligibleCandidateIds: eligible.map((candidate) => candidate.id),
+                  nuisanceName: "paid_cost_total_nuisance",
+                  nuisanceUsedInFreezeOnly: true,
+                },
+                trendDirectionPlan: _mmmDeepFreeze(finalPlan),
+                trendFlexFrozen,
+              };
+            }
+
+            function _mmmClassicAggregateRollingBacktest(panel, cfg, targetName, trendFlexSelection, options = {}) {
+              if (!trendFlexSelection?.enabled) return null;
+              const cuts = trendFlexSelection.evidence?.cuts || [];
+              const horizon = trendFlexSelection.evidence?.horizon || 0;
+              const selected = trendFlexSelection.selected;
+              const foldWmapes = [];
+              for (const cut of cuts) {
+                const train = _mmmBayesSlicePanel(panel, cut);
+                const foldPlan = _mmmOpenFinalTrendSegment(mmmTrendDirectionPlan(
+                  train,
+                  targetName,
+                  {
+                    smoothingWindowWeeks: selected.smoothingWindowWeeks,
+                    knotCount: selected.knotCount,
+                  },
+                ));
+                if (!foldPlan?.enabled || foldPlan.knots.length !== selected.knotCount) return null;
+                const run = mmmBayesianRun(
+                  train,
+                  {
+                    ...cfg,
+                    trendDirectionFirst: false,
+                    trendDirectionPlan: foldPlan,
+                    baselineKnots: [],
+                  },
+                  targetName,
+                  false,
+                  {
+                    ...options,
+                    mediaPriors: {},
+                    enableJointStructureSelection: false,
+                    enableSeasonalitySelection: false,
+                    enableBaselineSelection: false,
+                    enableMediaPenaltySelection: false,
+                    enableBusinessContributionPrior: false,
+                    skipTransformUncertainty: true,
+                  },
+                );
+                if (!run) return null;
+                const spend = Object.fromEntries(Object.entries(panel.ch || {}).map(([key, values]) =>
+                  [key, values.slice(cut, cut + horizon)],
+                ));
+                const forecast = mmmBayesianForecast(run, train, spend, horizon, {
+                  futureDummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) =>
+                    [key, values.slice(cut, cut + horizon)],
+                  )),
+                  futureSteps: Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) =>
+                    [key, values.slice(cut, cut + horizon)],
+                  )),
+                  futureExternal: Object.fromEntries(Object.entries(panel.external || {}).map(([key, values]) =>
+                    [key, values.slice(cut, cut + horizon)],
+                  )),
+                });
+                const actual = panel.targets?.[targetName]?.slice(cut, cut + horizon) || [];
+                const denominator = actual.reduce((sum, value) => sum + Math.abs(value), 0);
+                if (forecast?.predFut?.length !== actual.length || !(denominator > 1e-9)) return null;
+                foldWmapes.push(actual.reduce((sum, value, index) =>
+                  sum + Math.abs(value - forecast.predFut[index]), 0,
+                ) / denominator * 100);
+              }
+              if (foldWmapes.length !== cuts.length) return null;
+              const meanWmape = _mean(foldWmapes);
+              const variance = foldWmapes.length > 1
+                ? foldWmapes.reduce((sum, value) => sum + (value - meanWmape) ** 2, 0)
+                  / (foldWmapes.length - 1)
+                : 0;
+              return {
+                foldWmapes,
+                meanWmape,
+                standardError: Math.sqrt(variance / Math.max(1, foldWmapes.length)),
+                folds: foldWmapes.length,
+                horizon,
+                cuts: cuts.slice(),
+                trendFlexId: selected.id,
+              };
+            }
+
             export function mmmClassicRun(panel, cfg, targetName, withBacktest = true, options = {}) {
               const aggregatePanel = mmmBuildAggregateMediaPanel(panel);
               if (!aggregatePanel?.channels?.length) return null;
+              const trendFlexSelection = mmmClassicTrendFlexSelection(
+                aggregatePanel,
+                cfg,
+                targetName,
+                options.trendFlexOptions || {},
+              );
+              const hasFrozenTrend = trendFlexSelection.enabled && trendFlexSelection.trendDirectionPlan;
               const run = mmmBayesianRun(
                 aggregatePanel,
                 {
                   ...cfg,
-                  // 상위 Decomp는 채널별 결과를 본 뒤 추세 모양을 고르지 않는다.
-                  // 기존 rolling joint structure selector가 0/1/2 knot을 비교한다.
                   trendDirectionFirst: false,
+                  ...(hasFrozenTrend ? {
+                    trendDirectionPlan: trendFlexSelection.trendDirectionPlan,
+                    baselineKnots: [],
+                  } : {}),
                 },
                 targetName,
-                withBacktest,
+                false,
                 {
                   ...options,
                   mediaPriors: {},
-                  enableJointStructureSelection: true,
-                  enableBaselineSelection: true,
+                  enableJointStructureSelection: !hasFrozenTrend,
+                  enableSeasonalitySelection: !hasFrozenTrend,
+                  enableBaselineSelection: !hasFrozenTrend,
+                  enableMediaPenaltySelection: false,
                   enableBusinessContributionPrior: false,
                 },
               );
               if (!run) return null;
+              if (run.names.includes("paid_cost_total_nuisance")) {
+                throw new Error("Classic MMM invariant failed: freeze-only nuisance entered final fit");
+              }
+              const aggregateRollingBacktest = withBacktest
+                ? _mmmClassicAggregateRollingBacktest(
+                  aggregatePanel,
+                  cfg,
+                  targetName,
+                  trendFlexSelection,
+                  options,
+                )
+                : null;
               const weeks = run.weeks.map((week) => ({
                 ...week,
                 baseline: run.absoluteIntercept,
@@ -5395,17 +5756,24 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 aggregateMediaDefinitions: aggregatePanel.aggregateMediaDefinitions,
                 estimand: "additive-map-component",
                 interceptSeparated: true,
-                trendFlexFrozen: run.jointStructureSelection?.selected ? {
-                  smoothingWindowWeeks: null,
-                  knotCount: run.jointStructureSelection.selected.trendKnotCount,
-                  knotLocations: run.jointStructureSelection.selected.selectedKnots?.slice() || [],
-                  basis: "piecewise-hinge",
-                  foldWmapes: run.jointStructureSelection.selected.foldWmapes?.slice() || [],
-                  meanWmape: run.jointStructureSelection.selected.meanWmape,
-                  standardError: run.jointStructureSelection.selected.standardError,
-                  selectedBy: "rolling-origin-joint-structure",
-                  frozen: true,
-                  limitation: "Current engine does not yet profile 52/78/104-week smoothing windows.",
+                trendFlexSelection,
+                trendFlexFrozen: trendFlexSelection.trendFlexFrozen,
+                trendDirectionPlan: trendFlexSelection.trendDirectionPlan || run.trendDirectionPlan,
+                baselineSelection: trendFlexSelection.enabled ? {
+                  enabled: true,
+                  selected: trendFlexSelection.trendFlexFrozen.knotCount > 0,
+                  selectedKnots: trendFlexSelection.trendFlexFrozen.knotLocations.slice(),
+                  directions: trendFlexSelection.trendFlexFrozen.segmentDirections.slice(),
+                  reason: "trend-flex-frozen-before-final-media-fit",
+                } : run.baselineSelection,
+                aggregateRollingBacktest,
+                backtest: withBacktest && aggregateRollingBacktest ? {
+                  n: aggregateRollingBacktest.folds * aggregateRollingBacktest.horizon,
+                  rmse: null,
+                  mape: aggregateRollingBacktest.meanWmape,
+                  wmape: aggregateRollingBacktest.meanWmape,
+                  source: "aggregate-model-rolling-origin",
+                  folds: aggregateRollingBacktest.foldWmapes.slice(),
                 } : null,
               };
             }
@@ -5574,15 +5942,76 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               };
             }
 
+            function _mmmBayesianLikeRollingBacktest(panel, cfg, targetName, options = {}) {
+              const { horizon, cuts } = _mmmJointStructureFoldCuts(panel, cfg);
+              if (cuts.length < 2) return null;
+              const foldWmapes = [];
+              for (const cut of cuts) {
+                const train = _mmmBayesSlicePanel(panel, cut);
+                const run = mmmBayesianRun(train, cfg, targetName, false, {
+                  ...options,
+                  enableBusinessContributionPrior: false,
+                  skipTransformUncertainty: true,
+                });
+                if (!run) return null;
+                const spend = Object.fromEntries(Object.entries(panel.ch || {}).map(([key, values]) =>
+                  [key, values.slice(cut, cut + horizon)],
+                ));
+                const forecast = mmmBayesianForecast(run, train, spend, horizon, {
+                  futureDummy: Object.fromEntries(Object.entries(panel.dummy || {}).map(([key, values]) =>
+                    [key, values.slice(cut, cut + horizon)],
+                  )),
+                  futureSteps: Object.fromEntries(Object.entries(panel.steps || {}).map(([key, values]) =>
+                    [key, values.slice(cut, cut + horizon)],
+                  )),
+                  futureExternal: Object.fromEntries(Object.entries(panel.external || {}).map(([key, values]) =>
+                    [key, values.slice(cut, cut + horizon)],
+                  )),
+                });
+                const actual = panel.targets?.[targetName]?.slice(cut, cut + horizon) || [];
+                const denominator = actual.reduce((sum, value) => sum + Math.abs(value), 0);
+                if (forecast?.predFut?.length !== actual.length || !(denominator > 1e-9)) return null;
+                foldWmapes.push(actual.reduce((sum, value, index) =>
+                  sum + Math.abs(value - forecast.predFut[index]), 0,
+                ) / denominator * 100);
+              }
+              const meanWmape = _mean(foldWmapes);
+              const variance = foldWmapes.length > 1
+                ? foldWmapes.reduce((sum, value) => sum + (value - meanWmape) ** 2, 0)
+                  / (foldWmapes.length - 1)
+                : 0;
+              return {
+                foldWmapes,
+                meanWmape,
+                standardError: Math.sqrt(variance / Math.max(1, foldWmapes.length)),
+                folds: foldWmapes.length,
+                horizon,
+                cuts: cuts.slice(),
+              };
+            }
+
             export function mmmBayesianLikeRun(panel, cfg, targetName, withBacktest = true, options = {}) {
-              const mapRun = mmmBayesianRun(panel, cfg, targetName, withBacktest, {
+              const mapRun = mmmBayesianRun(panel, cfg, targetName, false, {
                 ...options,
                 enableBusinessContributionPrior: false,
               });
               if (!mapRun) return null;
+              const rollingBacktest = withBacktest
+                ? _mmmBayesianLikeRollingBacktest(panel, cfg, targetName, options)
+                : null;
+              const backtest = rollingBacktest ? {
+                n: rollingBacktest.folds * rollingBacktest.horizon,
+                rmse: null,
+                mape: rollingBacktest.meanWmape,
+                wmape: rollingBacktest.meanWmape,
+                source: "channel-model-rolling-origin",
+                folds: rollingBacktest.foldWmapes.slice(),
+              } : null;
               const approximation = _mmmBayesianLikePosterior(mapRun, panel, targetName, options);
               if (!approximation) return {
                 ...mapRun,
+                rollingBacktest,
+                backtest,
                 modelVariant: "bayesian-like",
                 methodLabel: "Bayesian-like MMM (posterior approximation unavailable)",
                 posteriorApproximation: { enabled: false, reason: "covariance-or-factorization-failed" },
@@ -5644,6 +6073,8 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 absoluteBeta,
                 absoluteIntercept,
                 saturationByChannel,
+                rollingBacktest,
+                backtest,
                 modelVariant: "bayesian-like",
                 methodLabel: "Bayesian-like MMM (Gaussian/Laplace posterior, non-negative media)",
                 estimand: "additive-posterior-mean-component",
