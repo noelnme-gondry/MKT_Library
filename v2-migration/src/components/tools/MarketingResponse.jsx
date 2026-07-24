@@ -10,6 +10,7 @@ import {
   MMM_NONMEDIA_GROUPS,
   mmmValidate,
   mmmBayesianRun,
+  mmmBayesianCorrelatedGroupRefit,
   mmmBayesianHealth,
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
@@ -3363,7 +3364,11 @@ export default function MarketingResponse({ locale = "ko" }) {
       // A selected country prior was tuned against the target rolling folds, so
       // the run's internal split would no longer be an untouched OOS estimate.
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
-      const run = mmmBayesianRun(panel, cfg, t, !isCountryPriorTuned && !hasExternalPrior, { mediaPriors, enableBaselineSelection: true });
+      const run = mmmBayesianRun(panel, cfg, t, !isCountryPriorTuned && !hasExternalPrior, {
+        mediaPriors,
+        enableBaselineSelection: true,
+        enableBusinessContributionPrior: true,
+      });
       if (!run) throw new Error("Bayesian posterior estimate failed");
       const health = mmmBayesianHealth(run);
       const effects = [];
@@ -3407,16 +3412,32 @@ export default function MarketingResponse({ locale = "ko" }) {
     }
   }, [mmm, stage]);
 
-  // 해당 기간의 실제 주별 지출을 모델 곡선에 대입한 채널별 평균 성과.
-  // 전체 타깃을 채널마다 복제하지 않고, 채널별 예측 기여만 보여준다.
+  // 고상관 연결요소는 실제로 합친 입력으로 한 번 더 적합한다. 개별 보기에는
+  // 그룹 총기여를 원래 신호·지출 비중으로 보수 배분한 참고값을 남긴다.
+  const collinearityGroupRefit = useMemo(() => {
+    if (!mmm || mmm.empty || stage !== "mmm") return null;
+    return mmmBayesianCorrelatedGroupRefit(mmm.panel, mmm.run, mmm.target);
+  }, [mmm, stage]);
+
+  // 주간 기여분해와 동일한 채널별 기여 원천을 집계한다. 그룹 재적합이 있으면
+  // 개별 보기 역시 그룹 총기여 안에서만 나뉘어 합계가 어긋나지 않는다.
   const weeklyChannelPerformance = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "mmm") return [];
-    return buildMmmWeeklyPerformance(mmm.panel, mmm.run.saturationByChannel);
-  }, [mmm, stage]);
+    return buildMmmWeeklyPerformance(mmm.panel, {
+      ...mmm.run.channelContributions,
+      ...(collinearityGroupRefit?.individualContributions || {}),
+    });
+  }, [mmm, stage, collinearityGroupRefit]);
   const groupedWeeklyChannelPerformance = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "mmm") return [];
-    return buildMmmCollinearityGroupedPerformance(mmm.panel, weeklyChannelPerformance, mmm.run.collinear_pairs);
-  }, [mmm, stage, weeklyChannelPerformance]);
+    return buildMmmCollinearityGroupedPerformance(
+      mmm.panel,
+      weeklyChannelPerformance,
+      mmm.run.collinear_pairs,
+      0.9,
+      collinearityGroupRefit,
+    );
+  }, [mmm, stage, weeklyChannelPerformance, collinearityGroupRefit]);
 
   // 미래예측은 MMM 기여 분석과 별도 적합한다. 전체 기간 MMM은 장기 기여 해석에
   // 남기고, 예측 회귀만 최근 window·계절성 후보를 rolling holdout으로 선택한다.
@@ -4927,6 +4948,28 @@ export default function MarketingResponse({ locale = "ko" }) {
             const displayedWeeklyChannelPerformance = weeklyPerformanceView === "grouped" && hasCollinearityGroups
               ? groupedWeeklyChannelPerformance
               : weeklyChannelPerformance;
+            const seasonalityEvidence = mmm.run.seasonalitySelection?.evidence;
+            const seasonalityValidationText = mmm.run.seasonalitySelection?.enabled
+              ? seasonalityEvidence?.detectionMode === "rolling-rescue"
+                ? tx(
+                  `BIC만으로는 연간 파형이 탈락했지만, ${seasonalityEvidence.rollingRescue.folds}개 순방향 검증에서 오차가 ${Number(seasonalityEvidence.rollingRescue.noneWmape).toFixed(3)}% → ${Number(seasonalityEvidence.rollingRescue.selectedWmape).toFixed(3)}%로 ${Number(seasonalityEvidence.rollingRescue.relativeImprovement * 100).toFixed(1)}% 개선되어 계절성을 복원했습니다.`,
+                  `BIC alone rejected the annual shape, but ${seasonalityEvidence.rollingRescue.folds} forward-validation folds improved error from ${Number(seasonalityEvidence.rollingRescue.noneWmape).toFixed(3)}% to ${Number(seasonalityEvidence.rollingRescue.selectedWmape).toFixed(3)}% (${Number(seasonalityEvidence.rollingRescue.relativeImprovement * 100).toFixed(1)}%), so seasonality was restored.`,
+                )
+                : seasonalityEvidence?.detected
+                  ? tx(
+                    `전체 ${seasonalityEvidence.observedWeeks}주에서 매체·이벤트·추세를 통제한 뒤 연간 파형의 BIC가 ${Number(seasonalityEvidence.bicImprovement).toFixed(1)} 개선되고 52주 파형 상관이 ${Number(seasonalityEvidence.seasonalLagCorrelation).toFixed(2)}로 유지되어 계절성을 사용했습니다.`,
+                    `Across all ${seasonalityEvidence.observedWeeks} weeks, the annual shape improved BIC by ${Number(seasonalityEvidence.bicImprovement).toFixed(1)} after controlling for media, events, and trend, with ${Number(seasonalityEvidence.seasonalLagCorrelation).toFixed(2)} 52-week shape correlation, so seasonality was retained.`,
+                  )
+                  : tx(
+                    "BIC와 순방향 검증 모두 계절성 사용 기준을 넘지 못해 이번 데이터에서는 계절성을 사용하지 않았습니다.",
+                    "Neither BIC nor forward validation cleared the seasonality threshold, so seasonality was not used for this data.",
+                  )
+              : mmm.run.seasonalityPeriods?.length
+                ? tx(
+                  `현재 ${mmm.panel.week.length}주 이력은 자동 판정 최소 기간보다 짧아 설정된 연간 계절성을 유지했습니다.`,
+                  `The current ${mmm.panel.week.length}-week history is shorter than the automatic-selection minimum, so configured annual seasonality was retained.`,
+                )
+                : "";
             return (
             <>
               <MmmEvidenceLedger
@@ -4967,17 +5010,16 @@ export default function MarketingResponse({ locale = "ko" }) {
                       ? (mmm.run.seasonalitySelection?.enabled ? mmm.run.seasonalitySelection.selected.id : tx(`연간 ${mmm.run.seasonalityPeriods.length}차`, `Annual ${mmm.run.seasonalityPeriods.length}`))
                       : tx("미사용", "Off")}</div></div>}
                     {mmm.run.mediaPenaltySelection?.enabled && <div className="stat-card"><div className="lbl">{tx("매체 규제 자동선택", "Media regularization")}</div><div className="val">{mmm.run.mediaPenaltySelection.selected.mediaPenalty.toFixed(2)}</div></div>}
-                    {mmm.run.jointTransform?.enabled && <div className="stat-card"><div className="lbl">{tx("제한적 joint 점검", "Limited joint check")}</div><div className="val">{mmm.run.jointTransform.evaluatedCount}/{mmm.run.jointTransform.candidateCount}</div></div>}
+                    {mmm.run.businessContributionPrior?.enabled && <div className="stat-card"><div className="lbl">{tx("비즈니스 기여 prior", "Business contribution prior")}</div><div className="val">{Math.round(mmm.run.businessContributionPrior.meanShare * 100)}% ± {Math.round(mmm.run.businessContributionPrior.shareSd * 100)}%p</div></div>}
+                    {mmm.run.jointTransform?.enabled && <div className="stat-card"><div className="lbl">{tx("결합 변환 posterior", "Joint transform posterior")}</div><div className="val">{mmm.run.jointTransform.evaluatedCount}/{mmm.run.jointTransform.candidateCount}</div></div>}
                   </div>
                   {(mmm.run.baselineSelection?.enabled || Array.isArray(mmm.run.seasonalityPeriods) || mmm.run.mediaPenaltySelection?.enabled || mmm.run.jointTransform?.enabled) && <details style={{ margin: "8px 0 0" }}>
                     <summary className="muted" style={{ fontSize: "11px", cursor: "pointer" }}>ⓘ {tx("자동 검증 상세", "Automatic validation details")}</summary>
                     <p className="muted" style={{ fontSize: "11px", lineHeight: 1.5, margin: "6px 0 0" }}>
                     {mmm.run.baselineSelection?.enabled ? tx(`Baseline은 78주 이상 데이터에서 0·1·2개 knot 후보를 비교했으며, BIC가 ${mmm.run.baselineSelection.selected ? "충분히 개선되어 적용" : "충분히 개선되지 않아 기본 추세 유지"}되었습니다.`, `With at least 78 weeks, baseline compared 0/1/2-knot candidates; the base trend was ${mmm.run.baselineSelection.selected ? "replaced because BIC improved materially" : "retained because improvement was not material"}.`) : ""}
-                    {mmm.run.seasonalitySelection?.enabled ? ` ${mmm.run.seasonalitySelection.evidence?.detected
-                      ? tx(`계절성은 최근 12주 예측과 분리했습니다. 전체 ${mmm.run.seasonalitySelection.evidence.observedWeeks}주에서 Brand/Performance 집계 매체·이벤트·추세를 통제한 뒤, 연간 파형 후보의 BIC가 ${Number(mmm.run.seasonalitySelection.evidence.bicImprovement).toFixed(1)} 개선되고 52주 간 파형 상관이 ${Number(mmm.run.seasonalitySelection.evidence.seasonalLagCorrelation).toFixed(2)}로 유지됐습니다. ${mmm.run.seasonalitySelection.evidence.regularizationSelection?.enabled ? `규제 강도 4개를 자동 비교했고, rolling 개선 ${Number(mmm.run.seasonalitySelection.evidence.regularizationSelection.meanImprovement).toFixed(3)}%p가 채택 기준 ${Number(mmm.run.seasonalitySelection.evidence.regularizationSelection.requiredImprovement).toFixed(3)}%p를 ${mmm.run.seasonalitySelection.evidence.regularizationSelection.accepted ? "넘어 규제형을 채택" : "넘지 못해 기존 annual-4를 유지"}했습니다.` : `실제 연도 반복성은 ${Number(mmm.run.seasonalitySelection.evidence.observedRecurrenceScale).toFixed(2)}배 강도로 보수 조정했습니다.`}`, `Seasonality is separated from recent 12-week forecasting. Across all ${mmm.run.seasonalitySelection.evidence.observedWeeks} weeks, after controlling for aggregated Brand/Performance media, events, and trend, the annual-shape candidate improved BIC by ${Number(mmm.run.seasonalitySelection.evidence.bicImprovement).toFixed(1)} and retained ${Number(mmm.run.seasonalitySelection.evidence.seasonalLagCorrelation).toFixed(2)} 52-week shape correlation. ${mmm.run.seasonalitySelection.evidence.regularizationSelection?.enabled ? `Four fixed regularization strengths were compared automatically; the ${Number(mmm.run.seasonalitySelection.evidence.regularizationSelection.meanImprovement).toFixed(3)}pp rolling improvement ${mmm.run.seasonalitySelection.evidence.regularizationSelection.accepted ? "cleared" : "did not clear"} the ${Number(mmm.run.seasonalitySelection.evidence.regularizationSelection.requiredImprovement).toFixed(3)}pp acceptance threshold.` : `Observed recurrence conservatively adjusted strength to ${Number(mmm.run.seasonalitySelection.evidence.observedRecurrenceScale).toFixed(2)}.`}`)
-                      : tx(`실제 연도별 RR 흐름의 반복성이 충분하지 않아 계절성을 미사용으로 판정했습니다. 두 해의 실제 잔여 흐름 상관은 ${Number(mmm.run.seasonalitySelection.evidence?.observedRecurrence?.observedYearCorrelation ?? NaN).toFixed(2)}, 부호 일치율은 ${(Number(mmm.run.seasonalitySelection.evidence?.observedRecurrence?.signAgreement ?? NaN) * 100).toFixed(0)}%, 최저점 시기 차이는 ${Number(mmm.run.seasonalitySelection.evidence?.observedRecurrence?.troughShiftWeeks ?? NaN).toFixed(0)}주였습니다. 모델이 만든 52주 반복 곡선은 이 판정에 사용하지 않았습니다.`, `Seasonality was not used because the observed year-to-year RR pattern was not stable enough. The correlation between the two years of residual RR was ${Number(mmm.run.seasonalitySelection.evidence?.observedRecurrence?.observedYearCorrelation ?? NaN).toFixed(2)}, sign agreement was ${(Number(mmm.run.seasonalitySelection.evidence?.observedRecurrence?.signAgreement ?? NaN) * 100).toFixed(0)}%, and the trough timing differed by ${Number(mmm.run.seasonalitySelection.evidence?.observedRecurrence?.troughShiftWeeks ?? NaN).toFixed(0)} weeks. The model-generated 52-week curve was not used for this decision.`)}` : mmm.run.seasonalityPeriods?.length ? ` ${tx(`현재 ${mmm.panel.week.length}주 이력은 계절성 자동 판정 최소 96주에 못 미쳐, 연간 ${mmm.run.seasonalityPeriods.length}차 계절성을 기본값으로 유지했습니다. 최근 12주 오차로 계절성을 제거하지 않습니다.`, `The current ${mmm.panel.week.length}-week history is shorter than the 96-week minimum for automatic seasonality selection, so the annual ${mmm.run.seasonalityPeriods.length}-harmonic baseline remains active. Recent 12-week error does not remove seasonality.`)}` : ` ${tx("계절성 자동 판정이 비활성화되어 현재 설정을 유지했습니다.", "Automatic seasonality assessment is disabled, so the current configuration was retained.")}`}
+                    {seasonalityValidationText ? ` ${seasonalityValidationText}` : ""}
                     {mmm.run.mediaPenaltySelection?.enabled ? ` ${tx(`매체 계수 규제는 최근 ${mmm.run.mediaPenaltySelection.selected.folds}개 12주 구간을 당시 실제 지출로 순방향 검증해 ${mmm.run.mediaPenaltySelection.selected.mediaPenalty.toFixed(2)}를 선택했습니다. 최저 오차와 사실상 동률이면 더 보수적인 값을 유지하므로, 기여를 크게 보이게 하려고 낮춘 값이 아닙니다.`, `Media regularization was selected as ${mmm.run.mediaPenaltySelection.selected.mediaPenalty.toFixed(2)} using forward validation across ${mmm.run.mediaPenaltySelection.selected.folds} recent 12-week windows with actual spend. Near ties retain the more conservative value, so this is not tuned to inflate contribution.`)}` : ""}
-                    {mmm.run.jointTransform?.enabled ? ` ${tx(`변환 불확실성이 큰 ${mmm.run.jointTransform.channels.length}개 채널만 최대 ${mmm.run.jointTransform.candidateCount}개 조합을 점검했습니다. 이 결과는 계수를 자동 교체하지 않고 변환 상호작용 진단으로만 사용합니다.`, `Only ${mmm.run.jointTransform.channels.length} channels with the most transform uncertainty were checked across at most ${mmm.run.jointTransform.candidateCount} combinations. This is a diagnostic and does not automatically replace coefficients.`)}` : ""}
+                    {mmm.run.jointTransform?.enabled ? ` ${tx(`변환 불확실성이 큰 ${mmm.run.jointTransform.channels.length}개 채널은 ${mmm.run.jointTransform.candidateCount}개 조합을 함께 적합해 기여 구간에 반영했습니다. 점추정의 합계는 주간 분해와 맞추고, 조합이 엇갈릴수록 범위를 넓힙니다.`, `${mmm.run.jointTransform.channels.length} channels with the largest transform uncertainty were jointly fit across ${mmm.run.jointTransform.candidateCount} combinations and incorporated into contribution intervals. Point-estimate totals stay reconciled with weekly decomposition, while disagreement widens the range.`)}` : ""}
                     </p>
                   </details>}
                   {health.flags?.length > 0 ? (
@@ -5081,11 +5123,19 @@ export default function MarketingResponse({ locale = "ko" }) {
                       <h2 className="section-title">{tx("채널별 주 평균 성과", "Average weekly channel performance")}</h2>
                       <p>{tx(
                         weeklyPerformanceView === "grouped" && hasCollinearityGroups
-                          ? "상관이 높은 채널은 하나의 묶음으로 합산해 표시합니다. 모델을 다시 계산한 결과가 아니라, 개별 추정을 더 보수적으로 읽기 위한 보기 방식입니다."
-                          : "해당 기간 실제 집행액을 MMM 곡선에 넣어 계산한 채널별 평균입니다. 지출이 없던 채널은 제외합니다.",
+                          ? (collinearityGroupRefit?.enabled
+                            ? "상관이 높은 채널은 실제로 하나의 입력으로 다시 학습한 결과입니다."
+                            : "상관이 높은 채널은 합산해서 보수적으로 표시합니다.")
+                          : (collinearityGroupRefit?.enabled
+                            ? "개별 값은 그룹 재학습 총기여 안에서 원래 신호와 지출 비중으로 나눈 참고값입니다."
+                            : "주간 기여분해와 같은 채널별 기여를 기간 평균으로 표시합니다."),
                         weeklyPerformanceView === "grouped" && hasCollinearityGroups
-                          ? "Highly correlated channels are summed into one viewing group. This does not refit the model; it is a more conservative way to read individual estimates."
-                          : "Each row applies the period's actual spend to the MMM curve. Channels without spend are excluded.",
+                          ? (collinearityGroupRefit?.enabled
+                            ? "Highly correlated channels are actually refit as one combined input."
+                            : "Highly correlated channels are summed for a conservative view.")
+                          : (collinearityGroupRefit?.enabled
+                            ? "Individual values are reference allocations of the refit group total using the original signal and spend shares."
+                            : "The same channel contributions used in weekly decomposition are averaged over the period."),
                       )}</p>
                     </div>
                     <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -5128,11 +5178,20 @@ export default function MarketingResponse({ locale = "ko" }) {
                             <tr key={row.key} style={row.posteriorPositive != null && row.posteriorPositive < 0.8 ? { opacity: 0.62 } : undefined}>
                               <td>
                                 <strong>{row.label}</strong>
-                                {row.isCollinearityGroup && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>⚠ {tx(`최대 상관 ${row.maxCorrelation.toFixed(2)} · ${row.members.length}개 채널 합산`, `max corr. ${row.maxCorrelation.toFixed(2)} · ${row.members.length} channels summed`)}</div>}
+                                {row.isCollinearityGroup && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>⚠ {tx(`최대 상관 ${row.maxCorrelation.toFixed(2)} · ${row.members.length}개 채널 ${row.isGroupRefit ? "재학습" : "합산"}`, `max corr. ${row.maxCorrelation.toFixed(2)} · ${row.members.length} channels ${row.isGroupRefit ? "refit" : "summed"}`)}</div>}
+                                {row.boundaryPosteriorMean && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>{tx("0으로 잘린 단일값 대신 가능한 양수 범위의 평균", "Mean of the plausible positive range instead of a zero-clipped point")}</div>}
+                                {row.allocationReliability === "reference-low" && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>{tx("그룹 재학습 후 개별 참고 배분 · 신뢰도 낮음", "Reference allocation after group refit · low reliability")}</div>}
                               </td>
                               <td className="tnum">{row.activeWeeks}{tx("주", " wk")}</td>
                               <td className="tnum">{spendLabel(row.avgWeeklySpend)}</td>
-                              <td className="tnum">{row.avgWeeklyPredicted > 0 ? targetValueLabel(row.avgWeeklyPredicted) : "—"}</td>
+                              <td className="tnum">
+                                {row.avgWeeklyPredicted > 0 ? targetValueLabel(row.avgWeeklyPredicted) : "—"}
+                                {Number.isFinite(row.avgWeeklyPredictedLow) && Number.isFinite(row.avgWeeklyPredictedHigh) && row.avgWeeklyPredicted > 0 && (
+                                  <div style={{ fontSize: "10px", color: MUTED, marginTop: "2px" }}>
+                                    {targetValueLabel(row.avgWeeklyPredictedLow)}–{targetValueLabel(row.avgWeeklyPredictedHigh)}
+                                  </div>
+                                )}
+                              </td>
                               <td className="tnum mmm-data-table__metric">
                                 {efficiency == null ? "—" : mmm.target === "Revenue" ? `${fmtOne(efficiency)}x` : spendLabel(efficiency)}
                               </td>
@@ -5143,8 +5202,8 @@ export default function MarketingResponse({ locale = "ko" }) {
                     </table>
                   </div>
                   <p className="mmm-weekly-performance__foot">{tx(
-                    "예측 가입은 전체 가입을 채널마다 나눈 값이 아니라, 각 채널 지출이 모델에서 만든 기여도입니다. 관측 기반 추정이므로 증분 확정은 홀드아웃으로 확인하세요.",
-                    "Predicted results are channel contributions, not the total outcome copied into every row. This is observational; confirm incrementality with a holdout.",
+                    "표와 주간 기여분해는 같은 기여값을 사용하며 광고 잔효가 남은 무집행 주도 포함합니다. 상관 채널의 묶음 값은 재학습 결과이고, 개별 값은 참고 배분이므로 홀드아웃으로 확인하세요.",
+                    "The table and weekly decomposition use the same contributions, including carryover in zero-spend weeks. Correlated-group values are refit estimates; individual values are reference allocations and should be confirmed with a holdout.",
                   )}</p>
                   {selectedCollinearPair && (
                     <Card style={{ marginTop: "10px", borderColor: "rgba(245,158,11,.45)", background: "rgba(245,158,11,.045)" }}>

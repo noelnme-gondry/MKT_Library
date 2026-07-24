@@ -1,15 +1,14 @@
-// MMM 렌더층용: 기간 전체의 채널별 평균 주간 지출·모델 예측 성과·효율.
-// responseAt은 이미 선택된 adstock/포화 파라미터를 반영한 모델 곡선이며,
-// 이 함수는 수학을 재추정하지 않고 화면에 읽기 쉬운 집계만 제공한다.
-export function buildMmmWeeklyPerformance(panel, saturationByChannel = {}) {
+// MMM 렌더층용: 주간 기여분해와 동일한 채널별 counterfactual 기여를 집계한다.
+// 0-spend 주의 carryover도 기여에 포함하므로 반응곡선에 당주 지출을 다시 넣는
+// 별도 계산과 달리 표·분해 그래프·CSV의 합계가 항상 같은 원천을 사용한다.
+export function buildMmmWeeklyPerformance(panel, channelContributions = {}) {
   if (!panel?.ch || !panel?.week?.length) return [];
   const weekCount = panel.week.length;
 
-  return Object.values(saturationByChannel)
+  return Object.values(channelContributions)
     .map((channel) => {
       const spends = panel.ch[channel.key] || [];
       let totalSpend = 0;
-      let totalPredicted = 0;
       let activeWeeks = 0;
 
       spends.forEach((rawSpend) => {
@@ -17,11 +16,13 @@ export function buildMmmWeeklyPerformance(panel, saturationByChannel = {}) {
         if (!Number.isFinite(spend) || spend <= 0) return;
         totalSpend += spend;
         activeWeeks += 1;
-        const predicted = typeof channel.responseAt === "function" ? Number(channel.responseAt(spend)) : null;
-        if (Number.isFinite(predicted) && predicted > 0) totalPredicted += predicted;
       });
 
       if (!(totalSpend > 0)) return null;
+      const weeklyMean = Array.isArray(channel.weeklyMean) ? channel.weeklyMean : [];
+      const totalPredicted = Number.isFinite(channel.totalMean)
+        ? Math.max(0, channel.totalMean)
+        : weeklyMean.reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
       const predictedCpr = totalPredicted > 0 ? totalSpend / totalPredicted : null;
       return {
         key: channel.key,
@@ -29,8 +30,15 @@ export function buildMmmWeeklyPerformance(panel, saturationByChannel = {}) {
         activeWeeks,
         avgWeeklySpend: totalSpend / weekCount,
         avgWeeklyPredicted: totalPredicted / weekCount,
+        avgWeeklyPredictedLow: Number.isFinite(channel.totalLow) ? Math.max(0, channel.totalLow) / weekCount : null,
+        avgWeeklyPredictedHigh: Number.isFinite(channel.totalHigh) ? Math.max(0, channel.totalHigh) / weekCount : null,
         predictedCpr,
         posteriorPositive: channel.posteriorPositive,
+        source: channel.source || "observational",
+        allocationReliability: channel.allocationReliability || "model-estimate",
+        groupKey: channel.groupKey || null,
+        groupLabel: channel.groupLabel || null,
+        groupMaxCorrelation: channel.groupMaxCorrelation ?? null,
       };
     })
     .filter(Boolean)
@@ -40,9 +48,45 @@ export function buildMmmWeeklyPerformance(panel, saturationByChannel = {}) {
 // 상관이 높은 매체 채널은 개별 기여를 단정하기보다 하나의 관측 단위로 함께 읽을 수
 // 있다. 이 함수는 모델을 재적합하거나 개별 효과를 바꾸지 않고, 화면 표시만 연결요소
 // 단위로 합산한다. 따라서 언제든 개별 보기로 원래 추정을 확인할 수 있다.
-export function buildMmmCollinearityGroupedPerformance(panel, rows = [], collinearPairs = [], threshold = 0.9) {
+export function buildMmmCollinearityGroupedPerformance(panel, rows = [], collinearPairs = [], threshold = 0.9, groupRefit = null) {
   if (!panel?.week?.length || !rows.length) return rows;
   const rowByKey = new Map(rows.map((row) => [row.key, row]));
+  if (groupRefit?.enabled && groupRefit.groups?.length) {
+    const groupedKeys = new Set(groupRefit.groups.flatMap((group) => group.members));
+    const refitRows = groupRefit.groups.map((group) => {
+      const contribution = group.contribution || {};
+      const members = group.members.map((key) => rowByKey.get(key)).filter(Boolean);
+      const totalSpend = group.members.reduce((sum, key) =>
+        sum + (panel.ch?.[key] || []).reduce((channelSum, value) => channelSum + Math.max(0, Number(value) || 0), 0),
+      0);
+      const totalPredicted = Math.max(0, Number(contribution.totalMean) || 0);
+      const activeWeeks = panel.week.reduce((count, _, weekIndex) => count + (
+        group.members.some((key) => Number(panel.ch?.[key]?.[weekIndex]) > 0) ? 1 : 0
+      ), 0);
+      return {
+        key: `collinear:${group.members.slice().sort().join("|")}`,
+        label: group.label,
+        members,
+        activeWeeks,
+        avgWeeklySpend: totalSpend / panel.week.length,
+        avgWeeklyPredicted: totalPredicted / panel.week.length,
+        avgWeeklyPredictedLow: Number.isFinite(contribution.totalLow) ? contribution.totalLow / panel.week.length : null,
+        avgWeeklyPredictedHigh: Number.isFinite(contribution.totalHigh) ? contribution.totalHigh / panel.week.length : null,
+        predictedCpr: totalPredicted > 0 ? totalSpend / totalPredicted : null,
+        posteriorPositive: contribution.posteriorPositive ?? null,
+        isCollinearityGroup: true,
+        isGroupRefit: true,
+        maxCorrelation: group.maxCorrelation,
+        source: contribution.source,
+        allocationReliability: "group-estimate",
+        boundaryPosteriorMean: contribution.boundaryPosteriorMean || false,
+      };
+    });
+    return [
+      ...rows.filter((row) => !groupedKeys.has(row.key)),
+      ...refitRows,
+    ].sort((a, b) => b.avgWeeklySpend - a.avgWeeklySpend);
+  }
   const parent = new Map();
   const find = (key) => {
     if (parent.get(key) !== key) parent.set(key, find(parent.get(key)));
@@ -96,6 +140,7 @@ export function buildMmmCollinearityGroupedPerformance(panel, rows = [], colline
       predictedCpr: totalPredicted > 0 ? totalSpend / totalPredicted : null,
       posteriorPositive: null,
       isCollinearityGroup: true,
+      isGroupRefit: false,
       maxCorrelation,
     };
   });

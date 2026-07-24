@@ -13,8 +13,10 @@ import {
   mmmSelectAdstock,
   mmmRunMmm,
   mmmBayesianRun,
+  mmmBayesianCorrelatedGroupRefit,
   mmmBayesianMediaPenaltySelection,
   mmmBayesianSeasonalitySelection,
+  mmmSeasonalityRollingRescueDecision,
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
   mmmForecastRollingSelection,
@@ -167,6 +169,7 @@ describe("runMmmMethTests (golden port)", () => {
     const run = mmmBayesianRun(panel, { ...MMM_METH_CONFIG, steps: {} }, "Regs");
     expect(run?.engine).toBe("bayesian");
     expect(Object.keys(run.saturationByChannel)).toEqual(["google_roi", "meta"]);
+    expect(Object.keys(run.channelContributions)).toEqual(["google_roi", "meta"]);
     expect(run.groupNames).toContain("Performance");
     expect(Number.isFinite(run.saturationByChannel.google_roi.responseAt(3000))).toBe(true);
     const decomp = mmmBayesianWeeklyDecomp(run);
@@ -176,8 +179,92 @@ describe("runMmmMethTests (golden port)", () => {
     expect(Math.max(...run.weeks.map((w) => Math.abs(
       w.baseline + Object.values(w.contrib).reduce((sum, value) => sum + value, 0) - w.fitted,
     )))).toBeLessThan(0.02);
+    expect(Math.max(...run.weeks.map((w) => Math.abs(
+      (w.contrib.Performance || 0) - Object.values(w.channelContrib).reduce((sum, value) => sum + value, 0),
+    )))).toBeLessThan(1e-9);
     // 절편까지 합친 장기 추세는 감소해도 '음수 광고/기준선'이 아닌 자연수요 레벨이다.
     expect(run.weeks.every((w) => w.contrib.Trend > 0)).toBe(true);
+  });
+
+  it("uses a broad business prior without locking transform uncertainty", () => {
+    const n = 64;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const meta = week.map((value) => 500 + ((value * 13) % 11) * 90);
+    const snap = week.map((value) => 300 + ((value * 17) % 13) * 75);
+    const target = week.map((value, index) => 5000 + value * 3 + meta[index] * 0.4 + snap[index] * 0.2);
+    const run = mmmBayesianRun({
+      week,
+      ch: { meta, snap },
+      targets: { Regs: target },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }, { key: "snap", label: "Snap", kind: "perf" }],
+      dummy: {}, steps: {}, external: {},
+    }, {
+      ...MMM_METH_CONFIG,
+      seasonalityPeriods: [],
+      seasonalityMinHistory: 104,
+      mediaPenaltyCandidates: [1],
+      adstockGrid: [0, 0.4],
+      bayesHalfSaturationQuantiles: [0.4, 0.8],
+      bayesHillSlopeGrid: [0.8, 1],
+    }, "Regs", false, {
+      enableBusinessContributionPrior: true,
+      enableBaselineSelection: false,
+      enableMediaPenaltySelection: false,
+    });
+    expect(run.businessContributionPrior).toMatchObject({
+      enabled: true,
+      meanShare: 0.3,
+      shareSd: 0.25,
+      channelCount: 2,
+    });
+    expect(run.channelContributions.meta.source).toBe("data-plus-business-prior");
+    expect(run.saturationByChannel.meta.transformUncertainty?.priorLockedTransform).toBe(false);
+    expect(run.jointTransform.enabled).toBe(true);
+    expect(run.jointTransform.appliedToUncertainty).toBe(true);
+    expect(run.jointTransform.channelMarginals.meta.models.length).toBeGreaterThan(1);
+  });
+
+  it("refits highly correlated channels as one input and keeps individual reference allocations visible", () => {
+    const n = 60;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const snap = week.map((value) => 400 + ((value * 11) % 9) * 80);
+    const tiktok = snap.map((value, index) => value * 0.98 + (index % 3) * 4);
+    const search = week.map((value) => 250 + ((value * 7) % 13) * 55);
+    const target = week.map((value, index) => 4000 + value * 2 + (snap[index] + tiktok[index]) * 0.35 + search[index] * 0.15);
+    const panel = {
+      week,
+      ch: { snap, tiktok, search },
+      targets: { Regs: target },
+      channels: [
+        { key: "snap", label: "Snap", kind: "perf" },
+        { key: "tiktok", label: "TikTok", kind: "perf" },
+        { key: "search", label: "Search", kind: "perf" },
+      ],
+      dummy: {}, steps: {}, external: {},
+    };
+    const cfg = {
+      ...MMM_METH_CONFIG,
+      seasonalityPeriods: [],
+      seasonalityMinHistory: 104,
+      mediaPenaltyCandidates: [1],
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+    };
+    const run = mmmBayesianRun(panel, cfg, "Regs", false, {
+      enableBusinessContributionPrior: true,
+      enableBaselineSelection: false,
+      enableMediaPenaltySelection: false,
+      skipTransformUncertainty: true,
+    });
+    const refit = mmmBayesianCorrelatedGroupRefit(panel, run, "Regs");
+    expect(refit.enabled).toBe(true);
+    expect(refit.groups[0].members).toEqual(["snap", "tiktok"]);
+    expect(refit.groups[0].contribution.totalMean).toBeGreaterThan(0);
+    expect(refit.individualContributions.snap.allocationReliability).toBe("reference-low");
+    expect(
+      refit.individualContributions.snap.totalMean + refit.individualContributions.tiktok.totalMean,
+    ).toBeCloseTo(refit.groups[0].contribution.totalMean, 6);
   });
 
   it("keeps actual-spend media contribution at zero or above instead of showing a negative delta", () => {
@@ -369,6 +456,29 @@ describe("runMmmMethTests (golden port)", () => {
     expect(selection.evidence.controlConsensus).toBe(true);
     expect(selection.candidates.every((candidate) => Number.isFinite(candidate.finalBic))).toBe(true);
     expect(selection.evidence.finalBicImprovement).toBeGreaterThan(0);
+  });
+
+  it("restores business seasonality when three forward folds materially beat no seasonality", () => {
+    const none = { id: "none", periods: [] };
+    const annual = { id: "annual-4", periods: [52.18, 26.09, 17.39, 13.04] };
+    const evidence = new Map([
+      ["none", { meanWmape: 2.507, folds: 3 }],
+      ["annual-4", { meanWmape: 2.294, folds: 3 }],
+    ]);
+    const decision = mmmSeasonalityRollingRescueDecision(
+      none,
+      [annual],
+      evidence,
+      { minimumAbsolute: 0.1, minimumRelative: 0.05, minimumFolds: 3 },
+      { shapeStable: true, controlStable: true },
+    );
+    expect(decision).toMatchObject({
+      accepted: true,
+      selectedId: "annual-4",
+      folds: 3,
+      reason: "rolling-outperformance-restores-seasonality",
+    });
+    expect(decision.relativeImprovement).toBeCloseTo((2.507 - 2.294) / 2.507);
   });
 
   it("does not manufacture business seasonality from trend and irregular noise", () => {

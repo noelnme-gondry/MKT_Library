@@ -642,7 +642,7 @@ import {
             };
 
             export const MMM_METH_CONFIG = {
-              version: "1.5.1",
+              version: "1.6.0",
               // 기본은 연간 1차 조화파만 둔다. 과거의 13주 파형을 무조건 반복하면
               // 매체·이벤트 변동까지 계절성으로 흡수할 수 있으므로, 더 복잡한 모양은
               // rolling holdout에서 이길 때만 아래 후보에서 선택한다.
@@ -674,6 +674,13 @@ import {
               seasonalityRollingMinTrain: 52,
               seasonalityRollingMaxFolds: 3,
               seasonalityRollingMaxDegradation: 2,
+              // BIC는 파라미터 수를 강하게 벌점화하므로, 실제 순방향 예측에서
+              // 반복적으로 이기는 비즈니스 계절성까지 0으로 만들 수 있다. 3개
+              // rolling fold에서 절대·상대 개선을 모두 넘으면 연간 구조를 복원한다.
+              seasonalityRollingRescueMinAbsolute: 0.1,
+              seasonalityRollingRescueMinRelative: 0.05,
+              seasonalityRollingRescueMinFolds: 3,
+              seasonalityRollingRescueTolerance: 0.01,
               seasonalityRegularizationMinImprovement: 0.05,
               // 실제 연도 반복성은 강제 삭제나 수동 계수 조정에 쓰지 않고
               // 진단값으로만 표시한다. 규제는 아래 고정 후보 그리드가 rolling
@@ -702,6 +709,11 @@ import {
               mediaPenaltyMinTrain: 52,
               mediaPenaltyMaxFolds: 3,
               mediaPenaltyHoldoutWeeks: 12,
+              // 실험 근거가 없는 경우에도 매체 전체 기여가 0에만 붙지 않도록
+              // 넓은 비즈니스 사전범위를 둔다. 채널별 몫을 강제하는 값이 아니라
+              // 총 기여 30%±25%p를 지출 비중으로 느슨하게 나눈 시작점이다.
+              businessContributionPriorShare: 0.3,
+              businessContributionPriorSd: 0.25,
               defaultLam: 0.6, // cannibalization net elasticity용
               // 국가·연도와 무관한 고정 주차를 실제 명절처럼 넣지 않는다. 레거시
               // 재현이 꼭 필요한 호출부만 useConfiguredLunarWeeks와 lunarWeeks를
@@ -3108,12 +3120,19 @@ import {
                 const j = names.indexOf("media_" + ch.key);
                 const prior = options.mediaPriors?.[ch.key];
                 if (j < 0 || !prior) continue;
+                const featureTotal = (cols[j] || []).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+                const rawMean = prior.source === "business-contribution" && Number.isFinite(prior.contributionMean) && featureTotal > 1e-12
+                  ? prior.contributionMean / featureTotal
+                  : prior.mean;
+                const rawPrecision = prior.source === "business-contribution" && Number.isFinite(prior.contributionSd) && prior.contributionSd > 0 && featureTotal > 1e-12
+                  ? featureTotal ** 2 / prior.contributionSd ** 2
+                  : prior.precision;
                 mediaPriors[j + 1] = {
-                  mean: isFinite(prior.mean) ? prior.mean * colScale[j] : 0,
+                  mean: isFinite(rawMean) ? rawMean * colScale[j] : 0,
                   // prior는 원래 media feature 단위의 Normal(mean, variance)다.
                   // 회귀는 표준화 feature로 적합하므로 Var(β_std)=Var(β_raw)×scale²,
                   // 즉 precision은 scale²로 나눠야 실험 CI의 강도가 변하지 않는다.
-                  precision: isFinite(prior.precision) ? prior.precision / Math.max(1e-12, colScale[j] ** 2) : prior.precision,
+                  precision: isFinite(rawPrecision) ? rawPrecision / Math.max(1e-12, colScale[j] ** 2) : rawPrecision,
                 };
               }
               const seasonalityIndices = new Set(names
@@ -3144,6 +3163,60 @@ import {
               return { Xraw, colMean, colScale, X, posterior, absoluteBeta, absoluteIntercept };
             }
 
+            function _mmmBusinessContributionPriors(panel, cfg, targetName, names, cols, channelMeta, options = {}) {
+              if (options.enableBusinessContributionPrior !== true || !channelMeta.length) {
+                return { enabled: false, priors: {}, reason: "disabled" };
+              }
+              const target = panel.targets?.[targetName] || [];
+              const targetTotal = target.reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+              const totalSpend = channelMeta.reduce((sum, channel) =>
+                sum + (panel.ch?.[channel.key] || []).reduce((channelSum, value) => channelSum + Math.max(0, Number(value) || 0), 0),
+              0);
+              const meanShare = Math.max(0, Math.min(0.9, Number(cfg.businessContributionPriorShare) || 0.3));
+              const shareSd = Math.max(0.05, Math.min(0.75, Number(cfg.businessContributionPriorSd) || 0.25));
+              if (!(targetTotal > 0) || !(totalSpend > 0)) {
+                return { enabled: false, priors: {}, reason: "no-positive-target-or-spend" };
+              }
+              const priors = {};
+              channelMeta.forEach((channel) => {
+                const columnIndex = names.indexOf("media_" + channel.key);
+                const featureTotal = columnIndex >= 0
+                  ? (cols[columnIndex] || []).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0)
+                  : 0;
+                const channelSpend = (panel.ch?.[channel.key] || []).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+                const spendShare = channelSpend / totalSpend;
+                if (!(featureTotal > 1e-12) || !(spendShare > 0)) return;
+                const contributionMean = targetTotal * meanShare * spendShare;
+                // 각 채널 분산을 spendShare에 비례시키면 독립 가정 아래 합산한
+                // 총 기여의 표준편차가 설정한 전체 prior 범위와 일치한다.
+                const contributionSd = targetTotal * shareSd * Math.sqrt(spendShare);
+                const betaMean = contributionMean / featureTotal;
+                const betaSd = Math.max(1e-12, contributionSd / featureTotal);
+                priors[channel.key] = {
+                  mean: betaMean,
+                  variance: betaSd ** 2,
+                  precision: 1 / (betaSd ** 2),
+                  source: "business-contribution",
+                  contributionMean,
+                  contributionSd,
+                  priorContributionShare: meanShare * spendShare,
+                  spendShare,
+                };
+              });
+              return {
+                enabled: Object.keys(priors).length > 0,
+                priors,
+                meanShare,
+                shareSd,
+                reason: Object.keys(priors).length ? "broad-total-contribution-anchor" : "no-identifiable-media-feature",
+              };
+            }
+
+            function _mmmPriorLocksTransform(options, key) {
+              const locked = options.lockedMediaPriorKeys;
+              return locked instanceof Set ? locked.has(key) : Array.isArray(locked) && locked.includes(key);
+            }
+
             // 한 번 고른 변환만 믿으면 adstock·포화 가정이 효과 구간에서 사라진다.
             // 각 채널을 제외한 변환은 그대로 둔 profile 모델들을 다시 적합하고,
             // BIC 근사 가중치로 계수 posterior를 섞어 그 불확실성을 효과 신뢰도에 넣는다.
@@ -3165,7 +3238,7 @@ import {
             function _mmmBayesTransformUncertainty(panel, cfg, names, cols, channelMeta, options = {}) {
               const y = panel.targets[options.targetName];
               const result = {};
-              const profiledChannelCount = Math.max(1, channelMeta.filter((channel) => !options.mediaPriors?.[channel.key]).length);
+              const profiledChannelCount = Math.max(1, channelMeta.filter((channel) => !_mmmPriorLocksTransform(options, channel.key)).length);
               for (const ch of channelMeta) {
                 const colIndex = names.indexOf("media_" + ch.key);
                 if (colIndex < 0 || !panel.ch[ch.key]) continue;
@@ -3174,7 +3247,7 @@ import {
                 // 실험/국가 prior의 mean·variance는 타깃의 대표 변환 단위로 보정돼
                 // 있다. 다른 alpha/ec/slope에 같은 숫자를 재사용하면 처리강도가 달라져
                 // prior 단위가 깨지므로, 근거가 있는 채널은 그 대표 변환에 고정한다.
-                if (options.mediaPriors?.[ch.key]) {
+                if (_mmmPriorLocksTransform(options, ch.key)) {
                   const fit = _mmmBayesFitColumns(names, cols, channelMeta, y, options);
                   const params = options.channelParams?.[ch.key];
                   if (fit && params) {
@@ -3197,7 +3270,7 @@ import {
                   }
                   continue;
                 }
-                const totalFitBudget = Object.keys(options.mediaPriors || {}).length
+                const totalFitBudget = (options.lockedMediaPriorKeys?.size || options.lockedMediaPriorKeys?.length || 0)
                   ? (cfg.bayesMaxPriorProfileFits || cfg.bayesMaxTotalProfileFits || Infinity)
                   : (cfg.bayesMaxTotalProfileFits || Infinity);
                 const totalFitShare = Math.max(
@@ -3376,6 +3449,49 @@ import {
                   accepted,
                   reason: accepted ? "paired-rolling-improvement-clears-uncertainty" : "paired-rolling-improvement-too-small",
                 },
+              };
+            }
+
+            export function mmmSeasonalityRollingRescueDecision(none, candidates, rollingEvidence, config = {}, structural = {}) {
+              const noneRolling = none ? rollingEvidence.get(none.id) : null;
+              const minimumFolds = Math.max(2, config.minimumFolds ?? 3);
+              const comparable = (candidates || []).filter((candidate) => {
+                const rolling = rollingEvidence.get(candidate.id);
+                return candidate?.periods?.length > 0
+                  && Number.isFinite(rolling?.meanWmape)
+                  && rolling.folds >= minimumFolds;
+              });
+              const best = comparable.length
+                ? comparable.reduce((winner, candidate) =>
+                  rollingEvidence.get(candidate.id).meanWmape < rollingEvidence.get(winner.id).meanWmape ? candidate : winner,
+                comparable[0])
+                : null;
+              const bestRolling = best ? rollingEvidence.get(best.id) : null;
+              const absoluteImprovement = Number.isFinite(noneRolling?.meanWmape) && Number.isFinite(bestRolling?.meanWmape)
+                ? noneRolling.meanWmape - bestRolling.meanWmape
+                : 0;
+              const relativeImprovement = noneRolling?.meanWmape > 1e-12
+                ? absoluteImprovement / noneRolling.meanWmape
+                : 0;
+              const accepted = !!best
+                && noneRolling?.folds >= minimumFolds
+                && absoluteImprovement >= Math.max(0, config.minimumAbsolute ?? 0.1)
+                && relativeImprovement >= Math.max(0, config.minimumRelative ?? 0.05)
+                && structural.shapeStable !== false
+                && structural.controlStable !== false;
+              return {
+                accepted,
+                selected: accepted ? best : null,
+                selectedId: accepted ? best.id : null,
+                noneWmape: noneRolling?.meanWmape ?? null,
+                selectedWmape: bestRolling?.meanWmape ?? null,
+                absoluteImprovement,
+                relativeImprovement,
+                folds: Math.min(noneRolling?.folds || 0, bestRolling?.folds || 0),
+                minimumFolds,
+                minimumAbsolute: Math.max(0, config.minimumAbsolute ?? 0.1),
+                minimumRelative: Math.max(0, config.minimumRelative ?? 0.05),
+                reason: accepted ? "rolling-outperformance-restores-seasonality" : "rolling-rescue-threshold-not-cleared",
               };
             }
 
@@ -3594,6 +3710,10 @@ import {
               const controlConsensus = marketBlindSelection
                 ? sameSeasonalityFamily(marketBlindSelection.selected, best)
                 : true;
+              const sameAnnualBasisFamily = (left, right) => {
+                if (!left?.periods?.length || !right?.periods?.length) return false;
+                return (left.seasonalityBasis?.type || "fourier") === (right.seasonalityBasis?.type || "fourier");
+              };
               const observedRecurrence = Array.isArray(panel.dateLabel) && finalNoneFit
                 ? compareObservedYearShapes(buildObservedYearShapes(panel.dateLabel, finalNoneFit.posterior.resid))
                 : { available: false, reason: "date-labels-unavailable" };
@@ -3604,6 +3724,37 @@ import {
               const observedRecurrenceScale = observedRecurrence.available
                 ? Math.max(0.5, Math.min(1, 0.5 + 0.5 * Math.max(0, Number(observedRecurrence.observedYearCorrelation) || 0)))
                 : 1;
+              const shapeStable = Number.isFinite(seasonalLagCorrelation)
+                && seasonalLagCorrelation >= 0.75
+                && seasonalRms >= Math.max(1, _mean(selectionPanel.targets[targetName]) * 0.005);
+              const bicDetected = bicImprovement >= (cfg.seasonalityBicThreshold || 6) && shapeStable;
+              const rollingRescue = mmmSeasonalityRollingRescueDecision(
+                none,
+                annualCandidates,
+                rollingEvidence,
+                {
+                  minimumAbsolute: cfg.seasonalityRollingRescueMinAbsolute ?? 0.1,
+                  minimumRelative: cfg.seasonalityRollingRescueMinRelative ?? 0.05,
+                  minimumFolds: cfg.seasonalityRollingRescueMinFolds ?? 3,
+                },
+                {
+                  shapeStable,
+                  // 선택 후보는 decision 뒤에 정해지므로 계열 일치는 바로 아래에서
+                  // 해당 rolling winner를 대상으로 다시 확인한다.
+                  controlStable: true,
+                },
+              );
+              // decision을 만들 때 자기 결과를 참조할 수 없으므로 control 안정성은
+              // 선택된 rolling 후보로 한 번 명시적으로 재확인한다.
+              if (rollingRescue.selected && marketBlindSelection) {
+                const controlStable = sameAnnualBasisFamily(marketBlindSelection.selected, rollingRescue.selected);
+                if (!controlStable) {
+                  rollingRescue.accepted = false;
+                  rollingRescue.selected = null;
+                  rollingRescue.selectedId = null;
+                  rollingRescue.reason = "rolling-rescue-control-family-mismatch";
+                }
+              }
               const evidence = {
                 minHistory,
                 observedWeeks: n,
@@ -3627,26 +3778,39 @@ import {
                 observedRecurrenceGate,
                 observedRecurrenceScale,
                 observedRecurrencePenaltyMultiplier: 1 / observedRecurrenceScale,
+                bicDetected,
+                rollingRescue: Object.fromEntries(
+                  Object.entries(rollingRescue).filter(([key]) => key !== "selected"),
+                ),
+                detectionMode: bicDetected ? "full-history-bic" : rollingRescue.accepted ? "rolling-rescue" : "none",
                 // 계절성 선택은 분해용이다. 최근 holdout을 통과시키는 대신,
                 // 집계 매체를 통제한 전체 이력에서 구조적 BIC 개선과 동일한
                 // 연간 파형의 재현성을 요구한다. 미래 예측은 별도 rolling
                 // 선택을 사용한다.
-                detected: bicImprovement >= (cfg.seasonalityBicThreshold || 6)
-                  && Number.isFinite(seasonalLagCorrelation)
-                  && seasonalLagCorrelation >= 0.75
-                  && seasonalRms >= Math.max(1, _mean(selectionPanel.targets[targetName]) * 0.005),
+                detected: bicDetected || rollingRescue.accepted,
               };
-              const eligible = evidence.detected
+              const rollingRescueTolerance = Math.max(0, cfg.seasonalityRollingRescueTolerance ?? 0.01);
+              const eligible = rollingRescue.accepted
                 ? annualCandidates.filter((item) => {
+                  const rolling = rollingEvidence.get(item.id);
+                  if (!rolling || rolling.meanWmape > rollingRescue.selectedWmape + rollingRescueTolerance) return false;
+                  if (marketBlindSelection && !sameAnnualBasisFamily(item, marketBlindSelection.selected)) return false;
+                  return true;
+                })
+                : evidence.detected
+                  ? annualCandidates.filter((item) => {
                   if (marketBlindSelection && !sameSeasonalityFamily(item, marketBlindSelection.selected)) return false;
                   if (!noneRolling || !rollingEvidence.has(item.id)) return true;
                   return rollingEvidence.get(item.id).meanWmape <= noneRolling.meanWmape + rollingMaxDegradation;
                 })
                 : [none];
               const safeEligible = eligible.length ? eligible : [none];
-              const bestEligible = safeEligible.reduce((winner, item) => (Number.isFinite(item.finalBic) ? item.finalBic : item.bic) < (Number.isFinite(winner.finalBic) ? winner.finalBic : winner.bic) ? item : winner, safeEligible[0]);
-              const bicShortlist = safeEligible
-                .filter((item) => (Number.isFinite(item.finalBic) ? item.finalBic : item.bic) <= (Number.isFinite(bestEligible.finalBic) ? bestEligible.finalBic : bestEligible.bic) + (cfg.seasonalityComplexityTolerance ?? 2));
+              const bestEligible = rollingRescue.accepted && rollingRescue.selected
+                ? safeEligible.find((item) => item.id === rollingRescue.selected.id) || safeEligible[0]
+                : safeEligible.reduce((winner, item) => (Number.isFinite(item.finalBic) ? item.finalBic : item.bic) < (Number.isFinite(winner.finalBic) ? winner.finalBic : winner.bic) ? item : winner, safeEligible[0]);
+              const bicShortlist = rollingRescue.accepted
+                ? safeEligible
+                : safeEligible.filter((item) => (Number.isFinite(item.finalBic) ? item.finalBic : item.bic) <= (Number.isFinite(bestEligible.finalBic) ? bestEligible.finalBic : bestEligible.bic) + (cfg.seasonalityComplexityTolerance ?? 2));
               const defaultSelected = bicShortlist
                 .slice()
                 .sort((a, b) => {
@@ -3673,7 +3837,9 @@ import {
                 ...item,
                 deltaBicVsNone: none.bic - item.bic,
                 finalBic: finalBicById.get(item.id) ?? null,
-                finalDeltaBicVsNone: finalBicById.has(item.id) ? none.bic - finalBicById.get(item.id) : null,
+                finalDeltaBicVsNone: finalBicById.has(item.id) && Number.isFinite(finalNoneBic)
+                  ? finalNoneBic - finalBicById.get(item.id)
+                  : null,
                 rollingWmape: rollingEvidence.get(item.id)?.meanWmape ?? null,
                 rollingFolds: rollingEvidence.get(item.id)?.folds ?? 0,
               }));
@@ -3697,7 +3863,9 @@ import {
                 candidates: publicCandidates,
                 evidence,
                 reason: evidence.detected
-                  ? (selected.id === bestEligible.id ? "full-history-recurrence-business-structure-and-lowest-bic" : "full-history-recurrence-business-structure-smoother-bic-tie")
+                  ? (evidence.detectionMode === "rolling-rescue"
+                    ? "rolling-validated-business-seasonality-restored"
+                    : selected.id === bestEligible.id ? "full-history-recurrence-business-structure-and-lowest-bic" : "full-history-recurrence-business-structure-smoother-bic-tie")
                   : "full-history-recurrence-business-structure-not-detected",
               };
             }
@@ -3782,19 +3950,139 @@ import {
                 const fit = _mmmBayesFitColumns(names, cols, channelMeta, panel.targets[targetName], options);
                 if (!fit) return { choice, bic: Infinity };
                 const sse = fit.posterior.resid.reduce((sum, value) => sum + value ** 2, 0);
-                return { choice, bic: panel.week.length * Math.log(Math.max(sse / Math.max(1, panel.week.length), 1e-12)) + (names.length + 1) * Math.log(Math.max(2, panel.week.length)) };
+                const effects = Object.fromEntries(eligible.map((channel) => {
+                  const columnIndex = names.indexOf("media_" + channel.key);
+                  return [channel.key, {
+                    ...choiceByKey[channel.key],
+                    beta: Math.max(0, fit.absoluteBeta[columnIndex] || 0),
+                    sd: Math.max(0, fit.posterior.sd[columnIndex + 1] / fit.colScale[columnIndex] || 0),
+                  }];
+                }));
+                return {
+                  choice,
+                  effects,
+                  bic: panel.week.length * Math.log(Math.max(sse / Math.max(1, panel.week.length), 1e-12)) + (names.length + 1) * Math.log(Math.max(2, panel.week.length)),
+                };
               }).sort((a, b) => a.bic - b.bic);
+              const finite = evaluated.filter((item) => Number.isFinite(item.bic));
+              if (!finite.length) return { enabled: false, reason: "joint-fit-failed" };
+              const minimumBic = finite[0].bic;
+              const rawWeights = finite.map((item) => Math.exp(-0.5 * Math.min(700, item.bic - minimumBic)));
+              const weightTotal = rawWeights.reduce((sum, weight) => sum + weight, 0) || 1;
+              const weighted = finite.map((item, index) => ({ ...item, weight: rawWeights[index] / weightTotal }));
+              const channelMarginals = Object.fromEntries(eligible.map((channel) => {
+                const profile = weighted.map((item) => ({
+                  ...item.effects[channel.key],
+                  weight: item.weight,
+                }));
+                const beta = profile.reduce((sum, item) => sum + item.weight * item.beta, 0);
+                const variance = Math.max(0, profile.reduce(
+                  (sum, item) => sum + item.weight * (item.sd ** 2 + item.beta ** 2),
+                  0,
+                ) - beta ** 2);
+                const posteriorPositive = Math.min(1, Math.max(0, profile.reduce(
+                  (sum, item) => sum + item.weight * (item.sd > 0 ? mmmNormCdf(item.beta / item.sd) : item.beta > 0 ? 1 : 0),
+                  0,
+                )));
+                return [channel.key, {
+                  beta,
+                  sd: Math.sqrt(variance),
+                  ci: [_mmmNormalMixtureQuantile(profile, 0.05), _mmmNormalMixtureQuantile(profile, 0.95)],
+                  posteriorPositive,
+                  models: profile,
+                  jointCandidateCount: weighted.length,
+                }];
+              }));
               return {
                 enabled: true,
                 channels: eligible.map((ch) => ch.key),
                 candidateCount: combinations.length,
-                evaluatedCount: evaluated.filter((item) => Number.isFinite(item.bic)).length,
-                selectedBic: evaluated[0]?.bic ?? null,
+                evaluatedCount: finite.length,
+                selectedBic: finite[0]?.bic ?? null,
                 baselineBic: evaluated.find((item) => item.choice.every((model, index) => model === modelSets[index][0]))?.bic ?? null,
-                selected: evaluated[0]?.choice?.map((model) => ({ alpha: model.alpha, ec: model.ec, slope: model.slope })) || [],
+                selected: finite[0]?.choice?.map((model) => ({ alpha: model.alpha, ec: model.ec, slope: model.slope })) || [],
+                channelMarginals,
+                modelWeights: weighted.map((item) => item.weight),
+                appliedToUncertainty: true,
                 appliedToCoefficients: false,
-                note: "limited-joint-diagnostic",
+                note: "top-two-channel-joint-posterior",
               };
+            }
+
+            function _mmmBuildChannelContributions(
+              panel,
+              names,
+              Xraw,
+              absoluteBeta,
+              posterior,
+              colScale,
+              channelMeta,
+              params,
+              transformUncertainty,
+              externalMediaPriors,
+              businessContributionPrior,
+            ) {
+              return Object.fromEntries(channelMeta.map((channel) => {
+                const columnIndex = names.indexOf("media_" + channel.key);
+                const raw = panel.ch[channel.key] || [];
+                const conditionalBeta = Math.max(0, Number(absoluteBeta[columnIndex]) || 0);
+                const conditionalSd = Math.max(0, Number(posterior.sd[columnIndex + 1] / colScale[columnIndex]) || 0);
+                const weeklyMean = (Xraw.map((row) => Math.max(0, conditionalBeta * (Number(row[columnIndex]) || 0))));
+                const totalMean = weeklyMean.reduce((sum, value) => sum + value, 0);
+                const uncertainty = transformUncertainty[channel.key];
+                const sourceModels = uncertainty?.models?.length
+                  ? uncertainty.models
+                  : [{ ...params[channel.key], beta: conditionalBeta, sd: conditionalSd, weight: 1 }];
+                const modelWeightTotal = sourceModels.reduce((sum, model) => sum + Math.max(0, Number(model.weight) || 0), 0) || 1;
+                const models = sourceModels.map((model) => {
+                  const weight = Math.max(0, Number(model.weight) || 0) / modelWeightTotal;
+                  const feature = mmmAdstock(raw, model.alpha).map((value) => mmmHill(value, model.ec, model.slope));
+                  const beta = Math.max(0, Number(model.beta) || 0);
+                  const sd = Math.max(0, Number(model.sd) || 0);
+                  const featureTotal = feature.reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+                  return { ...model, weight, feature, beta, sd, featureTotal };
+                });
+                const weeklySd = weeklyMean.map((conditionalValue, weekIndex) => {
+                  const mixtureMean = models.reduce((sum, model) =>
+                    sum + model.weight * model.beta * (model.feature[weekIndex] || 0),
+                  0);
+                  const secondMoment = models.reduce((sum, model) => {
+                    const feature = model.feature[weekIndex] || 0;
+                    return sum + model.weight * feature ** 2 * (model.sd ** 2 + model.beta ** 2);
+                  }, 0);
+                  // 평균은 fitted 항등식을 보존하기 위해 conditional fit에 고정하고,
+                  // 분산만 transform posterior에서 가져와 그 중심으로 다시 놓는다.
+                  return Math.sqrt(Math.max(0, secondMoment - mixtureMean ** 2))
+                    + Math.abs(conditionalValue - mixtureMean) * 0.25;
+                });
+                const totalMixtureMean = models.reduce((sum, model) =>
+                  sum + model.weight * model.beta * model.featureTotal,
+                0);
+                const totalSecondMoment = models.reduce((sum, model) =>
+                  sum + model.weight * model.featureTotal ** 2 * (model.sd ** 2 + model.beta ** 2),
+                0);
+                const totalSd = Math.sqrt(Math.max(0, totalSecondMoment - totalMixtureMean ** 2))
+                  + Math.abs(totalMean - totalMixtureMean) * 0.25;
+                return [channel.key, {
+                  key: channel.key,
+                  label: channel.label || channel.key,
+                  weeklyMean,
+                  weeklyLow: weeklyMean.map((value, index) => Math.max(0, value - 1.645 * weeklySd[index])),
+                  weeklyHigh: weeklyMean.map((value, index) => value + 1.645 * weeklySd[index]),
+                  totalMean,
+                  totalLow: Math.max(0, totalMean - 1.645 * totalSd),
+                  totalHigh: totalMean + 1.645 * totalSd,
+                  posteriorPositive: uncertainty?.posteriorPositive
+                    ?? (conditionalSd > 0 ? mmmNormCdf(conditionalBeta / conditionalSd) : conditionalBeta > 0 ? 1 : 0),
+                  source: externalMediaPriors[channel.key]
+                    ? "external-prior"
+                    : businessContributionPrior.priors[channel.key]
+                      ? "data-plus-business-prior"
+                      : "observational",
+                  jointPosteriorApplied: uncertainty?.jointPosteriorApplied || false,
+                  allocationReliability: "model-estimate",
+                }];
+              }));
             }
 
             export function mmmBayesianRun(panel, cfg, targetName, withBacktest = true, options = {}) {
@@ -3838,6 +4126,24 @@ import {
                 names.push("media_" + ch.key);
                 cols.push(mmmAdstock(panel.ch[ch.key], p.alpha).map((v) => mmmHill(v, p.ec, p.slope)));
               }
+              const businessContributionPrior = _mmmBusinessContributionPriors(
+                panel,
+                effectiveCfg,
+                targetName,
+                names,
+                cols,
+                channelMeta,
+                options,
+              );
+              const externalMediaPriors = options.mediaPriors || {};
+              fitOptions.mediaPriors = {
+                ...businessContributionPrior.priors,
+                ...externalMediaPriors,
+              };
+              // 외부 실험·참고시장 prior만 변환 단위를 고정한다. 넓은 비즈니스
+              // prior는 모든 adstock·포화 후보에 같은 방식으로 다시 계산되어야
+              // transform posterior가 사라지지 않는다.
+              fitOptions.lockedMediaPriorKeys = new Set(Object.keys(externalMediaPriors));
               const fitted = _mmmBayesFitColumns(names, cols, channelMeta, targetSeries, fitOptions);
               if (!fitted) return null;
               const { Xraw, colMean, colScale, X, posterior, absoluteBeta, absoluteIntercept } = fitted;
@@ -3853,6 +4159,26 @@ import {
               const jointTransform = options.skipTransformUncertainty
                 ? { enabled: false, reason: "transform-uncertainty-skipped" }
                 : _mmmBayesJointTransformCheck(panel, effectiveCfg, targetName, controls, channelMeta, params, transformUncertainty, fitOptions);
+              Object.entries(jointTransform.channelMarginals || {}).forEach(([key, marginal]) => {
+                transformUncertainty[key] = {
+                  ...(transformUncertainty[key] || {}),
+                  ...marginal,
+                  jointPosteriorApplied: true,
+                };
+              });
+              const channelContributions = _mmmBuildChannelContributions(
+                panel,
+                names,
+                Xraw,
+                absoluteBeta,
+                posterior,
+                colScale,
+                channelMeta,
+                params,
+                transformUncertainty,
+                externalMediaPriors,
+                businessContributionPrior,
+              );
               // 회사 MMM 대시보드처럼 채널별이 아니라 의사결정 단위로 묶는다.
               // MmmColumnMapper의 kind=brand는 Brand, 나머지 매체는 Performance.
               const mediaGroups = [];
@@ -3892,7 +4218,13 @@ import {
                 // 절편을 Trend에 넣어 양수 레벨이 낮아지는 모습으로 표현한다.
                 contrib.Trend = absoluteIntercept;
                 names.forEach((name, j) => {
-                  contrib[groupFor(name)] += absoluteBeta[j] * Xraw[t][j];
+                  if (!name.startsWith("media_")) contrib[groupFor(name)] += absoluteBeta[j] * Xraw[t][j];
+                });
+                const channelContrib = {};
+                channelMeta.forEach((channel) => {
+                  const value = channelContributions[channel.key]?.weeklyMean?.[t] || 0;
+                  channelContrib[channel.key] = value;
+                  contrib[channel.kind === "brand" ? "Brand" : "Performance"] += value;
                 });
                 const predictionSd = predictiveSd(X[t]);
                 return {
@@ -3902,6 +4234,7 @@ import {
                   fitted: +posterior.fitted[t].toFixed(2),
                   residual: +posterior.resid[t].toFixed(2),
                   contrib,
+                  channelContrib,
                   lo: +(posterior.fitted[t] - 1.645 * predictionSd).toFixed(2),
                   hi: +(posterior.fitted[t] + 1.645 * predictionSd).toFixed(2),
                 };
@@ -4114,6 +4447,7 @@ import {
                 weeks,
                 groupNames,
                 saturationByChannel,
+                channelContributions,
                 shapley: { rows, total: 1 }, // backwards-compatible consumer shape; this is contribution variance, not Shapley R².
                 best_lambda: null,
                 cv_rmse: {},
@@ -4128,7 +4462,194 @@ import {
                 mediaPenaltySelection: penaltySelection,
                 effectiveCfg,
                 jointTransform,
-                appliedMediaPriors: options.mediaPriors || {},
+                businessContributionPrior: {
+                  enabled: businessContributionPrior.enabled,
+                  meanShare: businessContributionPrior.meanShare ?? null,
+                  shareSd: businessContributionPrior.shareSd ?? null,
+                  reason: businessContributionPrior.reason,
+                  channelCount: Object.keys(businessContributionPrior.priors || {}).length,
+                },
+                appliedMediaPriors: externalMediaPriors,
+              };
+            }
+
+            export function mmmBayesianCorrelatedGroupRefit(panel, run, targetName, options = {}) {
+              if (!panel?.week?.length || !run?.channelContributions) {
+                return { enabled: false, groups: [], individualContributions: {}, reason: "missing-panel-or-run" };
+              }
+              const threshold = Math.max(0.85, Math.min(0.999, Number(options.threshold) || 0.9));
+              const channelKeys = new Set(Object.keys(run.channelContributions));
+              const parent = new Map();
+              const find = (key) => {
+                if (parent.get(key) !== key) parent.set(key, find(parent.get(key)));
+                return parent.get(key);
+              };
+              const join = (left, right) => {
+                const a = find(left), b = find(right);
+                if (a !== b) parent.set(b, a);
+              };
+              const pairs = (run.collinear_pairs || []).map((pair) => ({
+                ...pair,
+                left: String(pair.a || "").replace(/^media_/, ""),
+                right: String(pair.b || "").replace(/^media_/, ""),
+              })).filter((pair) =>
+                Math.abs(Number(pair.corr)) >= threshold
+                && channelKeys.has(pair.left)
+                && channelKeys.has(pair.right),
+              );
+              pairs.forEach((pair) => {
+                if (!parent.has(pair.left)) parent.set(pair.left, pair.left);
+                if (!parent.has(pair.right)) parent.set(pair.right, pair.right);
+                join(pair.left, pair.right);
+              });
+              if (!pairs.length) return { enabled: false, groups: [], individualContributions: {}, reason: "no-high-correlation-media-group" };
+              const components = new Map();
+              [...parent.keys()].forEach((key) => {
+                const root = find(key);
+                if (!components.has(root)) components.set(root, []);
+                components.get(root).push(key);
+              });
+              const groupedMembers = new Set([...components.values()].flat());
+              const originalMeta = _mmmChans(panel);
+              const groupDefs = [...components.values()].map((members, index) => {
+                const sortedMembers = members.slice().sort();
+                const memberMeta = sortedMembers.map((key) => originalMeta.find((channel) => channel.key === key)).filter(Boolean);
+                return {
+                  key: `__corr_group_${index + 1}`,
+                  label: memberMeta.map((channel) => channel.label || channel.key).join(" + "),
+                  kind: memberMeta.every((channel) => channel.kind === "brand") ? "brand" : "perf",
+                  members: sortedMembers,
+                  maxCorrelation: Math.max(...pairs
+                    .filter((pair) => sortedMembers.includes(pair.left) && sortedMembers.includes(pair.right))
+                    .map((pair) => Math.abs(Number(pair.corr)))),
+                };
+              });
+              const groupedPanel = {
+                ...panel,
+                ch: {
+                  ...Object.fromEntries(Object.entries(panel.ch || {}).filter(([key]) => !groupedMembers.has(key))),
+                  ...Object.fromEntries(groupDefs.map((group) => [group.key, panel.week.map((_, weekIndex) =>
+                    group.members.reduce((sum, key) => sum + Math.max(0, Number(panel.ch?.[key]?.[weekIndex]) || 0), 0),
+                  )])),
+                },
+                channels: [
+                  ...originalMeta.filter((channel) => !groupedMembers.has(channel.key)),
+                  ...groupDefs.map(({ key, label, kind }) => ({ key, label, kind })),
+                ],
+              };
+              const groupedRun = mmmBayesianRun(
+                groupedPanel,
+                run.effectiveCfg || MMM_METH_CONFIG,
+                targetName,
+                false,
+                {
+                  enableSeasonalitySelection: false,
+                  enableBaselineSelection: false,
+                  enableMediaPenaltySelection: false,
+                  enableBusinessContributionPrior: true,
+                  skipTransformUncertainty: true,
+                },
+              );
+              if (!groupedRun) return { enabled: false, groups: [], individualContributions: {}, reason: "group-refit-failed" };
+              const individualContributions = {};
+              const groups = groupDefs.map((group) => {
+                const fittedContribution = groupedRun.channelContributions[group.key];
+                if (!fittedContribution) return null;
+                // 비음수 효과의 MAP가 경계(0)에 붙어도 posterior 전체가 0이라는
+                // 뜻은 아니다. 그룹 재적합에서만 half-normal 경계 posterior의
+                // 평균을 써서 "0 아니면 확정값"의 winner-takes-all 표시를 피한다.
+                const isBoundaryPosterior = fittedContribution.totalMean <= 1e-9
+                  && fittedContribution.totalHigh > 1e-9;
+                const boundaryMeanFactor = Math.sqrt(2 / Math.PI) / 1.645;
+                const boundaryWeeklyRaw = isBoundaryPosterior
+                  ? (fittedContribution.weeklyHigh || []).map((value) => Math.max(0, value) * boundaryMeanFactor)
+                  : fittedContribution.weeklyMean;
+                const boundaryTotalMean = isBoundaryPosterior
+                  ? Math.max(0, fittedContribution.totalHigh) * boundaryMeanFactor
+                  : fittedContribution.totalMean;
+                const boundaryWeeklyTotal = boundaryWeeklyRaw.reduce((sum, value) => sum + value, 0);
+                const weeklyScale = boundaryWeeklyTotal > 1e-12 ? boundaryTotalMean / boundaryWeeklyTotal : 0;
+                const contribution = isBoundaryPosterior ? {
+                  ...fittedContribution,
+                  weeklyMean: boundaryWeeklyRaw.map((value) => value * weeklyScale),
+                  totalMean: boundaryTotalMean,
+                  totalLow: 0,
+                  source: "correlated-group-refit-boundary-posterior",
+                  boundaryPosteriorMean: true,
+                } : fittedContribution;
+                const memberTotalSpends = Object.fromEntries(group.members.map((key) => [
+                  key,
+                  (panel.ch?.[key] || []).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0),
+                ]));
+                const groupTotalSpend = Object.values(memberTotalSpends).reduce((sum, value) => sum + value, 0) || 1;
+                const allocationDataWeight = Math.max(0.1, Math.min(0.75, (1 - group.maxCorrelation) / 0.15));
+                const allocatedWeekly = Object.fromEntries(group.members.map((key) => [key, []]));
+                panel.week.forEach((_, weekIndex) => {
+                  const baseTotal = group.members.reduce(
+                    (sum, key) => sum + Math.max(0, Number(run.channelContributions[key]?.weeklyMean?.[weekIndex]) || 0),
+                    0,
+                  );
+                  const currentSpendTotal = group.members.reduce(
+                    (sum, key) => sum + Math.max(0, Number(panel.ch?.[key]?.[weekIndex]) || 0),
+                    0,
+                  );
+                  group.members.forEach((key) => {
+                    const signalShare = baseTotal > 1e-12
+                      ? Math.max(0, Number(run.channelContributions[key]?.weeklyMean?.[weekIndex]) || 0) / baseTotal
+                      : memberTotalSpends[key] / groupTotalSpend;
+                    const spendShare = currentSpendTotal > 1e-12
+                      ? Math.max(0, Number(panel.ch?.[key]?.[weekIndex]) || 0) / currentSpendTotal
+                      : memberTotalSpends[key] / groupTotalSpend;
+                    const share = allocationDataWeight * signalShare + (1 - allocationDataWeight) * spendShare;
+                    allocatedWeekly[key].push((contribution.weeklyMean?.[weekIndex] || 0) * share);
+                  });
+                });
+                group.members.forEach((key) => {
+                  const weeklyMean = allocatedWeekly[key];
+                  const totalMean = weeklyMean.reduce((sum, value) => sum + value, 0);
+                  const groupTotal = Math.max(1e-12, contribution.totalMean || 0);
+                  const totalShare = totalMean / groupTotal;
+                  individualContributions[key] = {
+                    ...run.channelContributions[key],
+                    weeklyMean,
+                    weeklyLow: (contribution.weeklyLow || []).map((value, index) => {
+                      const denominator = contribution.weeklyMean?.[index] || 0;
+                      const share = denominator > 1e-12 ? weeklyMean[index] / denominator : totalShare;
+                      return Math.max(0, value * share);
+                    }),
+                    weeklyHigh: (contribution.weeklyHigh || []).map((value, index) => {
+                      const denominator = contribution.weeklyMean?.[index] || 0;
+                      const share = denominator > 1e-12 ? weeklyMean[index] / denominator : totalShare;
+                      return Math.max(0, value * share);
+                    }),
+                    totalMean,
+                    totalLow: Math.max(0, (contribution.totalLow || 0) * totalShare),
+                    totalHigh: Math.max(0, (contribution.totalHigh || 0) * totalShare),
+                    source: "group-refit-reference-allocation",
+                    allocationReliability: "reference-low",
+                    groupKey: group.key,
+                    groupLabel: group.label,
+                    groupMaxCorrelation: group.maxCorrelation,
+                    allocationDataWeight,
+                  };
+                });
+                return {
+                  ...group,
+                  contribution: {
+                    ...contribution,
+                    source: contribution.boundaryPosteriorMean
+                      ? "correlated-group-refit-boundary-posterior"
+                      : "correlated-group-refit",
+                    allocationReliability: "group-estimate",
+                  },
+                };
+              }).filter(Boolean);
+              return {
+                enabled: groups.length > 0,
+                groups,
+                individualContributions,
+                reason: groups.length ? "high-correlation-components-refitted" : "group-contribution-missing",
+                threshold,
               };
             }
 
