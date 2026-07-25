@@ -50,6 +50,7 @@ import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBa
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact } from "@/utils/format";
 import {
+  applyMmmPosteriorFloorAllocation,
   buildMmmCollinearityGroupedPerformance,
   buildMmmWeeklyPerformance,
   sliceMmmChannelContributions,
@@ -2918,7 +2919,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       if (!mmmColMap) return { empty: true, reason: tx("컬럼 역할을 매핑하세요 (날짜/주차 · 목표 Y · 채널 spend).", "Map column roles (date/week · target Y · channel spend).") };
       const resultCacheKey = [
         `meth:${MMM_METH_CONFIG.version}`,
-        "pr416-channel-first-decomp-v2",
+        "pr416-channel-first-posterior-floor-v1",
         mmmAnalyzedSig,
         colMapSig,
         target,
@@ -3547,19 +3548,20 @@ export default function MarketingResponse({ locale = "ko" }) {
         enableBaselineSelection: true,
       });
       if (!run) throw new Error("PR #416 channel-first Bayesian posterior estimate failed");
-      run.modelVariant = "pr416-channel-first-decomp";
-      run.methodLabel = "PR #416 channel-first MMM with group-summed Decomp";
-      run.pr416Provenance = {
+      const allocatedRun = applyMmmPosteriorFloorAllocation(run, panel, 0.05);
+      allocatedRun.modelVariant = "pr416-channel-first-posterior-floor-decomp";
+      allocatedRun.methodLabel = "PR #416 channel-first MMM with posterior-floor allocation";
+      allocatedRun.pr416Provenance = {
         commit: "ae12706",
         modelScope: "mmm-engine-only",
         currentFiltersPreserved: true,
         totalIndustryAggregationPreserved: true,
         decompMediaSource: "channel-level posterior contributions summed by group",
-        channelAllocation: "direct channel fit",
-        channelAllocationByConstruction: false,
+        channelAllocation: "posterior-positive-share-with-floor",
+        channelAllocationByConstruction: true,
         externalChannelPriorsAppliedToChannelFit: hasExternalPrior,
       };
-      const health = mmmBayesianHealth(run);
+      const health = mmmBayesianHealth(allocatedRun);
       const effects = [];
       return mmmStoreCachedResult(csvData.raw, resultCacheKey, {
         empty: false,
@@ -3570,7 +3572,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         validate,
         saturationPanel: panel,
         aggregatePanel: null,
-        run,
+        run: allocatedRun,
         health,
         effects,
         absorb,
@@ -4617,15 +4619,15 @@ export default function MarketingResponse({ locale = "ko" }) {
             <span className="ab-pill active">{tx("PR #416 채널 우선 Decomp", "PR #416 channel-first Decomp")}</span>
             <span
               title={tx(
-                "PR #416(ae12706) 엔진으로 채널별 모델을 먼저 적합하고, Decomp Performance·Branding은 같은 채널별 RR을 그룹별로 합산합니다. 현재 날짜·플랫폼·세그먼트 필터와 Total 업계지표 합산은 유지됩니다.",
-                "The PR #416 (ae12706) engine fits channels first, then sums the same channel RR into Decomp Performance and Branding. Current date, platform, segment filters, and Total industry aggregation remain active.",
+                "PR #416(ae12706) 엔진으로 채널별 모델을 먼저 적합하고, Decomp Performance·Branding은 같은 채널별 RR을 그룹별로 합산합니다. 채널 표시는 positive posterior 5% floor allocation이며 별도 채널 재적합이 아닙니다.",
+                "The PR #416 (ae12706) engine fits channels first, then sums the same channel RR into Decomp Performance and Branding. Channel rows use a 5% positive-posterior floor allocation and are not a separate channel refit.",
               )}
               style={{ color: MUTED, cursor: "help", fontSize: "14px" }}
             >
               ⓘ
             </span>
             <span style={{ color: MUTED, fontSize: "10.5px" }}>
-              {tx("엔진 v1.6.0 · 그룹 RR = 채널 적합 합계 · 추세 prior 4x", "Engine v1.6.0 · Group RR = channel-fit sum · trend prior 4x")}
+              {tx("엔진 v1.6.0 · posterior floor 5% · 추세 prior 4x", "Engine v1.6.0 · 5% posterior floor · trend prior 4x")}
             </span>
           </div>
         )}
