@@ -705,6 +705,10 @@ import {
               // 값을 선택하되, 차이가 작으면 더 보수적인(큰) penalty를 유지한다.
               mediaPenalty: 4,
               controlPenalty: 0.15,
+              // Decomp stress profile: neutral trend coefficient를 기준으로
+              // 하락 방향을 4배 강제한다. 기본 인과효과가 아니라 민감도 프로파일이다.
+              trendPriorMultiplier: 4,
+              trendPriorPrecision: 0.1,
               mediaPenaltyCandidates: [0.15, 0.5, 1, 2, 4],
               mediaPenaltyMinTrain: 52,
               mediaPenaltyMaxFolds: 3,
@@ -3042,6 +3046,12 @@ import {
                 if (isFinite(prior.mean)) priorMean[j] = prior.mean;
                 if (isFinite(prior.precision) && prior.precision > 0) calibratedPrecision[j] = prior.precision;
               }
+              for (const [idx, prior] of Object.entries(options.controlPriors || {})) {
+                const j = Number(idx);
+                if (mediaIndices.has(j) || !prior) continue;
+                if (isFinite(prior.mean)) priorMean[j] = prior.mean;
+                if (isFinite(prior.precision) && prior.precision > 0) calibratedPrecision[j] = prior.precision;
+              }
               const fitWithPenalty = (penalty) => {
                 const augX = X.map((r) => r.slice());
                 const augY = y.slice();
@@ -3138,6 +3148,15 @@ import {
               const seasonalityIndices = new Set(names
                 .map((name, index) => (/^(sin|cos)_/.test(name) || name.startsWith("season_rbf_")) ? index + 1 : null)
                 .filter((index) => index !== null));
+              const controlPriors = {};
+              for (const [name, prior] of Object.entries(options.controlPriors || {})) {
+                const j = names.indexOf(name);
+                if (j < 0 || !prior) continue;
+                controlPriors[j + 1] = {
+                  mean: Number(prior.mean) * colScale[j],
+                  precision: Number(prior.precision) / Math.max(1e-12, colScale[j] ** 2),
+                };
+              }
               const seasonalityPenaltyByIndex = {};
               if (options.seasonalityPenaltyProfile === "harmonic-order") {
                 const strength = Math.max(0, Number(options.seasonalityPenaltyStrength) || 0);
@@ -3151,6 +3170,7 @@ import {
               }
               const posterior = _mmmBayesianLinear(X, y, mediaIndices, mediaPriors, {
                 ...options,
+                controlPriors,
                 seasonalityIndices,
                 seasonalityPenaltyByIndex,
               });
@@ -4098,8 +4118,38 @@ import {
               const baseline = _mmmBayesBaselineSelection(panel, seasonalitySelection.cfg, targetName, options);
               const penaltySelection = mmmBayesianMediaPenaltySelection(panel, baseline.cfg, targetName, options);
               const effectiveCfg = penaltySelection.cfg;
+              const inferredControlPriors = { ...(options.controlPriors || {}) };
+              const trendMultiplier = Number(effectiveCfg.trendPriorMultiplier);
+              if (Number.isFinite(trendMultiplier) && trendMultiplier !== 1 && !options._trendPriorPass) {
+                const neutralRun = mmmBayesianRun(
+                  panel,
+                  { ...effectiveCfg, trendPriorMultiplier: null },
+                  targetName,
+                  false,
+                  {
+                    ...options,
+                    _trendPriorPass: true,
+                    controlPriors: {},
+                    enableBaselineSelection: false,
+                    enableSeasonalitySelection: false,
+                    enableMediaPenaltySelection: false,
+                    skipTransformUncertainty: true,
+                  },
+                );
+                const trendIndex = neutralRun?.names?.indexOf("trend") ?? -1;
+                const neutralTrend = trendIndex >= 0 ? neutralRun.absoluteBeta[trendIndex] : NaN;
+                if (Number.isFinite(neutralTrend)) {
+                  inferredControlPriors.trend = {
+                    mean: neutralTrend * trendMultiplier,
+                    precision: Number.isFinite(effectiveCfg.trendPriorPrecision)
+                      ? Math.max(0, effectiveCfg.trendPriorPrecision)
+                      : 0.1,
+                  };
+                }
+              }
               const fitOptions = {
                 ...options,
+                controlPriors: inferredControlPriors,
                 mediaPenalty: effectiveCfg.mediaPenalty,
                 controlPenalty: effectiveCfg.controlPenalty,
                 seasonalityPenaltyMultiplier: effectiveCfg.seasonalityPenaltyMultiplier || 1,
