@@ -50,7 +50,8 @@ import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBa
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact } from "@/utils/format";
 import {
-  applyMmmPosteriorFloorAllocation,
+  allocateFixedMmmGroupTotals,
+  buildMmmAggregateMediaPanel,
   buildMmmCollinearityGroupedPerformance,
   buildMmmWeeklyPerformance,
   sliceMmmChannelContributions,
@@ -2919,7 +2920,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       if (!mmmColMap) return { empty: true, reason: tx("컬럼 역할을 매핑하세요 (날짜/주차 · 목표 Y · 채널 spend).", "Map column roles (date/week · target Y · channel spend).") };
       const resultCacheKey = [
         `meth:${MMM_METH_CONFIG.version}`,
-        "pr416-channel-first-posterior-floor-v1",
+        "pr416-fixed-group-total-ranked-allocation-v1",
         mmmAnalyzedSig,
         colMapSig,
         target,
@@ -3539,27 +3540,33 @@ export default function MarketingResponse({ locale = "ko" }) {
         }
         }
       }
-      // 채널별 모델을 먼저 적합한다. Decomp의 Performance·Branding은 이 동일한
-      // 채널별 weekly contribution을 그룹별로 합산해 만들므로, 화면의 그룹 총량과
-      // 채널 표의 합계가 서로 다른 재적합 경로를 갖지 않는다.
+      // Decomp 그룹 총량을 먼저 고정하고, 별도 채널 모델은 share만 계산한다.
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
-      const run = mmmBayesianRun(panel, cfg, t, true, {
-        mediaPriors,
+      const aggregatePanel = buildMmmAggregateMediaPanel(panel);
+      if (!aggregatePanel) throw new Error("PR #416 aggregate media panel failed");
+      const aggregateRun = mmmBayesianRun(aggregatePanel, cfg, t, true, {
+        mediaPriors: {},
         enableBaselineSelection: true,
       });
-      if (!run) throw new Error("PR #416 channel-first Bayesian posterior estimate failed");
-      const allocatedRun = applyMmmPosteriorFloorAllocation(run, panel, 0.01);
-      allocatedRun.modelVariant = "pr416-channel-first-posterior-floor-decomp";
-      allocatedRun.methodLabel = "PR #416 channel-first MMM with posterior-floor allocation";
+      if (!aggregateRun) throw new Error("PR #416 aggregate Bayesian posterior estimate failed");
+      const allocationRun = mmmBayesianRun(panel, cfg, t, false, {
+        mediaPriors,
+        enableBaselineSelection: true,
+        skipTransformUncertainty: true,
+      });
+      if (!allocationRun) throw new Error("PR #416 channel allocation model failed");
+      const allocatedRun = allocateFixedMmmGroupTotals(panel, aggregatePanel, aggregateRun, allocationRun, 0.01);
+      allocatedRun.modelVariant = "pr416-fixed-group-total-ranked-allocation";
+      allocatedRun.methodLabel = "PR #416 fixed Decomp totals with ranked channel allocation";
       allocatedRun.pr416Provenance = {
         commit: "ae12706",
         modelScope: "mmm-engine-only",
         currentFiltersPreserved: true,
         totalIndustryAggregationPreserved: true,
-        decompMediaSource: "channel-level posterior contributions summed by group",
-        channelAllocation: "posterior-positive-share-with-floor",
+        decompMediaSource: "aggregate Performance/Branding posterior",
+        channelAllocation: "fixed-group-total-ranked-coefficient-share",
         channelAllocationByConstruction: true,
-        externalChannelPriorsAppliedToChannelFit: hasExternalPrior,
+        externalChannelPriorsAppliedToAllocationFit: hasExternalPrior,
       };
       const health = mmmBayesianHealth(allocatedRun);
       const effects = [];
@@ -3571,7 +3578,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         target: t,
         validate,
         saturationPanel: panel,
-        aggregatePanel: null,
+        aggregatePanel,
         run: allocatedRun,
         health,
         effects,
@@ -4616,18 +4623,18 @@ export default function MarketingResponse({ locale = "ko" }) {
         {stage === "mmm" && mmm && !mmm.empty && (
           <div className="ab-pillgroup" style={{ margin: 0 }}>
             <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
-            <span className="ab-pill active">{tx("PR #416 채널 우선 Decomp", "PR #416 channel-first Decomp")}</span>
+            <span className="ab-pill active">{tx("PR #416 고정 총량 + 채널 분배", "PR #416 fixed totals + channel allocation")}</span>
             <span
               title={tx(
-                "PR #416(ae12706) 엔진으로 채널별 모델을 먼저 적합하고, Decomp Performance·Branding은 같은 채널별 RR을 그룹별로 합산합니다. 채널 표시는 Cost가 있는 채널의 양의 회귀계수 차등 배분이며 1% floor만 둔 임시 allocation입니다.",
-                "The PR #416 (ae12706) engine fits channels first, then sums the same channel RR into Decomp Performance and Branding. Channel rows use positive regression-coefficient weighting among cost-active channels with a 1% floor.",
+                "Decomp에서 Performance·Branding 총량을 먼저 확정하고, 별도 채널 모델의 회귀계수 순위로 고정 총량을 Cost 활성 채널에만 분배합니다. 채널 합계는 Decomp 총량과 항상 같습니다.",
+                "Decomp fixes Performance and Branding totals first, then a separate channel model ranks regression coefficients to allocate those fixed totals among cost-active channels. Channel sums always equal Decomp totals.",
               )}
               style={{ color: MUTED, cursor: "help", fontSize: "14px" }}
             >
               ⓘ
             </span>
             <span style={{ color: MUTED, fontSize: "10.5px" }}>
-              {tx("엔진 v1.6.0 · 회귀계수 차등 + floor 1% · 추세 prior 4x", "Engine v1.6.0 · coefficient-weighted + 1% floor · trend prior 4x")}
+              {tx("엔진 v1.6.0 · 고정 총량·계수순위 분배 · 추세 prior 4x", "Engine v1.6.0 · fixed totals/ranked allocation · trend prior 4x")}
             </span>
           </div>
         )}
