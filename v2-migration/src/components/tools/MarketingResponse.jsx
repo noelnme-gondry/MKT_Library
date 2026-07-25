@@ -1469,6 +1469,7 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
   add("09_Glossary", [
     [tx("항목", "Term"), tx("설명", "Description")],
     ["Empirical-Bayes MMM", tx("잔차 분산을 plug-in 추정하고 Gaussian prior를 반영한 조건부 분석 근사입니다. 관측 데이터의 연관 모델이며 인과 확정이 아닙니다.", "Conditional Gaussian empirical-Bayes approximation with plug-in residual variance and Gaussian priors. Observational association, not causal proof.")],
+    ["Trend stress profile", tx("현재 Decomp은 중립 추세계수의 하락 방향을 4배로 강제하는 stress prior를 사용합니다. 민감도 결과이며 OOS WMAPE가 기준을 넘으면 기본 추정으로 해석하지 마세요.", "Current Decomp uses a stress prior that forces the neutral trend coefficient four times further downward. This is a sensitivity profile; do not treat it as a base estimate when OOS WMAPE exceeds the gate.")],
     ["P(effect > 0)", tx("채널 효과가 양수일 posterior 확률. 80% 이상이면서 기간·공선성 식별 gate도 통과해야 예산 추천에 씁니다.", "Posterior probability that the channel effect is positive. Budget use requires ≥80% plus the time-span and collinearity identification gates.")],
     ["Adstock", tx("광고 효과의 다음 주 이월.", "Carryover of ad effect into later weeks.")],
     ["Hill saturation", tx("지출이 커질수록 추가 효과가 줄어드는 반응 곡선.", "Response curve with diminishing marginal return.")],
