@@ -4634,7 +4634,7 @@ export default function MarketingResponse({ locale = "ko" }) {
               ⓘ
             </span>
             <span style={{ color: MUTED, fontSize: "10.5px" }}>
-              {tx("엔진 v1.6.0 · 고정 총량·계수순위 분배 · 추세 prior 4x", "Engine v1.6.0 · fixed totals/ranked allocation · trend prior 4x")}
+              {tx("엔진 v1.6.0 · 고정 총량·계수순위 분배 · 추세 prior 3x", "Engine v1.6.0 · fixed totals/ranked allocation · trend prior 3x")}
             </span>
           </div>
         )}
