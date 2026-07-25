@@ -219,6 +219,77 @@ export function applyMmmPosteriorFloorAllocation(run, panel, minShare = 0.01) {
   return { ...run, weeks, channelContributions: allocated, channelAllocation: { method: "positive-regression-coefficient-share-with-active-cost-floor", minShare: floor, byConstruction: true } };
 }
 
+// Fits group totals once, then allocates those fixed totals using a separate
+// channel model. The allocation model never changes the Decomp group amount.
+export function allocateFixedMmmGroupTotals(panel, aggregatePanel, aggregateRun, allocationRun, minShare = 0.01) {
+  if (!panel?.week?.length || !aggregateRun?.weeks?.length || !allocationRun?.channelContributions) return aggregateRun;
+  const groups = aggregatePanel?.aggregateMediaGroups || [];
+  const floor = Math.max(0, Math.min(Number(minShare) || 0, 0.25));
+  const betaByKey = Object.fromEntries((panel.channels || []).map((channel) => {
+    const index = allocationRun.names?.indexOf(`media_${channel.key}`) ?? -1;
+    return [channel.key, index >= 0 ? Number(allocationRun.absoluteBeta?.[index]) || 0 : 0];
+  }));
+  const allocated = {};
+  const weeklyByChannel = Object.fromEntries((panel.channels || []).map((channel) => [channel.key, []]));
+  groups.forEach((group) => {
+    const total = aggregateRun.channelContributions?.[group.key];
+    if (!total) return;
+    const members = group.members.map((key) => panel.channels.find((channel) => channel.key === key)).filter(Boolean);
+    members.forEach((channel) => {
+      const weeklyMean = [];
+      const weeklyLow = [];
+      const weeklyHigh = [];
+      panel.week.forEach((_, weekIndex) => {
+        const eligible = members.filter((member) => {
+          const spend = panel.ch?.[member.key] || [];
+          return spend.slice(Math.max(0, weekIndex - 12), weekIndex + 1).some((value) => Math.max(0, Number(value) || 0) > 0);
+        });
+        const candidates = eligible.length ? eligible : members.filter((member) => (panel.ch?.[member.key] || []).some((value) => Math.max(0, Number(value) || 0) > 0));
+        const ranked = candidates.slice().sort((left, right) => betaByKey[right.key] - betaByKey[left.key]);
+        const rankWeights = ranked.map((_, index) => ranked.length - index);
+        const rankTotal = rankWeights.reduce((sum, value) => sum + value, 0) || 1;
+        const index = ranked.findIndex((member) => member.key === channel.key);
+        const share = index >= 0 ? floor + (1 - floor * ranked.length) * rankWeights[index] / rankTotal : 0;
+        weeklyMean.push((Number(total.weeklyMean?.[weekIndex]) || 0) * share);
+        weeklyLow.push((Number(total.weeklyLow?.[weekIndex]) || 0) * share);
+        weeklyHigh.push((Number(total.weeklyHigh?.[weekIndex]) || 0) * share);
+      });
+      weeklyByChannel[channel.key] = weeklyMean;
+      allocated[channel.key] = {
+        ...total,
+        key: channel.key,
+        label: channel.label || channel.key,
+        weeklyMean,
+        weeklyLow,
+        weeklyHigh,
+        totalMean: weeklyMean.reduce((sum, value) => sum + value, 0),
+        totalLow: weeklyLow.reduce((sum, value) => sum + value, 0),
+        totalHigh: weeklyHigh.reduce((sum, value) => sum + value, 0),
+        source: "fixed-group-total-ranked-coefficient-allocation",
+        allocationReliability: "fixed-group-total-allocation",
+        identificationVerdict: "ALLOCATED/BY-CONSTRUCTION",
+        identification: { byConstruction: true, allocationBasis: "active-cost-ranked-coefficient-share", minShare, groupKey: group.key },
+        groupKey: group.key,
+        groupLabel: group.label,
+      };
+    });
+  });
+  const weeks = aggregateRun.weeks.map((week, weekIndex) => ({
+    ...week,
+    channelContrib: Object.fromEntries(Object.entries(weeklyByChannel).map(([key, values]) => [key, values[weekIndex] || 0])),
+  }));
+  return {
+    ...aggregateRun,
+    weeks,
+    channelContributions: allocated,
+    saturationByChannel: allocationRun.saturationByChannel,
+    channelMeta: allocationRun.channelMeta,
+    names: allocationRun.names,
+    absoluteBeta: allocationRun.absoluteBeta,
+    channelAllocation: { method: "fixed-group-total-ranked-coefficient-allocation", minShare: floor, byConstruction: true },
+  };
+}
+
 export function buildMmmWeeklyPerformance(panel, channelContributions = {}) {
   if (!panel?.ch || !panel?.week?.length) return [];
   const weekCount = panel.week.length;
