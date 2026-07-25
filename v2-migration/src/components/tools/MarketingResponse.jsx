@@ -50,8 +50,6 @@ import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBa
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact } from "@/utils/format";
 import {
-  allocateMmmAggregateRun,
-  buildMmmAggregateMediaPanel,
   buildMmmCollinearityGroupedPerformance,
   buildMmmWeeklyPerformance,
   sliceMmmChannelContributions,
@@ -2920,7 +2918,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       if (!mmmColMap) return { empty: true, reason: tx("컬럼 역할을 매핑하세요 (날짜/주차 · 목표 Y · 채널 spend).", "Map column roles (date/week · target Y · channel spend).") };
       const resultCacheKey = [
         `meth:${MMM_METH_CONFIG.version}`,
-        "pr416-aggregate-media-allocation-v1",
+        "pr416-channel-first-decomp-v2",
         mmmAnalyzedSig,
         colMapSig,
         target,
@@ -3540,44 +3538,27 @@ export default function MarketingResponse({ locale = "ko" }) {
         }
         }
       }
-      // PR #416 엔진은 그대로 사용하되, 공선 채널을 개별 계수로 경쟁시키지 않는다.
-      // Performance·Branding Cost를 각각 한 입력으로 합쳐 그룹 총 RR을 먼저 적합하고,
-      // 그 총량만 주별 adstocked spend share로 원래 채널에 배분한다.
+      // 채널별 모델을 먼저 적합한다. Decomp의 Performance·Branding은 이 동일한
+      // 채널별 weekly contribution을 그룹별로 합산해 만들므로, 화면의 그룹 총량과
+      // 채널 표의 합계가 서로 다른 재적합 경로를 갖지 않는다.
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
-      const aggregatePanel = buildMmmAggregateMediaPanel(panel);
-      if (!aggregatePanel) throw new Error("PR #416 aggregate media panel failed");
-      const aggregateRun = mmmBayesianRun(aggregatePanel, cfg, t, true, {
-        // 원래 채널 feature 단위의 실험·참고시장 prior는 합산 feature의 계수 prior로
-        // 직접 변환할 수 없다. 그룹 총량은 타깃 데이터만으로 적합하고, 원 prior는
-        // 아래 provenance에 보존해 배분 근거로 오인하지 않게 한다.
-        mediaPriors: {},
+      const run = mmmBayesianRun(panel, cfg, t, true, {
+        mediaPriors,
         enableBaselineSelection: true,
       });
-      if (!aggregateRun) throw new Error("PR #416 aggregate Bayesian posterior estimate failed");
-      const run = allocateMmmAggregateRun(panel, aggregatePanel, aggregateRun, mmmAdstock);
-      if (!run) throw new Error("PR #416 aggregate channel allocation failed");
-      run.modelVariant = "pr416-aggregate-media-allocation";
-      run.methodLabel = "PR #416 aggregate media MMM + adstocked spend allocation";
+      if (!run) throw new Error("PR #416 channel-first Bayesian posterior estimate failed");
+      run.modelVariant = "pr416-channel-first-decomp";
+      run.methodLabel = "PR #416 channel-first MMM with group-summed Decomp";
       run.pr416Provenance = {
         commit: "ae12706",
         modelScope: "mmm-engine-only",
         currentFiltersPreserved: true,
         totalIndustryAggregationPreserved: true,
-        decompMediaSource: "aggregate Performance/Brand posterior",
-        channelAllocation: "weekly-adstocked-spend-share",
-        channelAllocationByConstruction: true,
-        externalChannelPriorsAppliedToAggregateFit: false,
-        heldExternalChannelPriorCount: Object.keys(mediaPriors).length,
+        decompMediaSource: "channel-level posterior contributions summed by group",
+        channelAllocation: "direct channel fit",
+        channelAllocationByConstruction: false,
+        externalChannelPriorsAppliedToChannelFit: hasExternalPrior,
       };
-      const aggregateExperimentPriorDiagnostics = hasExternalPrior
-        ? experimentPriorDiagnostics.map((item) => item.unidentified ? item : ({
-            ...item,
-            unidentified: true,
-            reason: "aggregate-feature-prior-not-transferable",
-            messageKo: "채널 단위 prior를 Performance·Branding 합산 feature의 계수 prior로 직접 변환할 수 없어 적용을 보류했습니다.",
-            messageEn: "The channel-level prior was held because it cannot be directly converted into a coefficient prior for the aggregated Performance/Branding feature.",
-          }))
-        : experimentPriorDiagnostics;
       const health = mmmBayesianHealth(run);
       const effects = [];
       return mmmStoreCachedResult(csvData.raw, resultCacheKey, {
@@ -3587,21 +3568,21 @@ export default function MarketingResponse({ locale = "ko" }) {
         derived,
         target: t,
         validate,
-        saturationPanel: aggregatePanel,
-        aggregatePanel,
+        saturationPanel: panel,
+        aggregatePanel: null,
         run,
         health,
         effects,
         absorb,
-        mediaPriors: {},
-        heldMediaPriors: mediaPriors,
-        experimentPriorDiagnostics: aggregateExperimentPriorDiagnostics,
+        mediaPriors,
+        heldMediaPriors: {},
+        experimentPriorDiagnostics,
         countryCandidates,
         countryIndividualCandidates,
         countryBacktests,
         countryValidationMode,
-        countryPlan: countryPlan ? { ...countryPlan, aggregatePriorHeld: hasExternalPrior } : countryPlan,
-        isCountryPriorTuned: false,
+        countryPlan,
+        isCountryPriorTuned,
       });
     } catch (e) {
       // null-fit(특이행렬)은 대개 채널 공선성(예산이 함께 움직임)·기간 부족 → 정직한 도메인 메시지 (§8)
@@ -4633,18 +4614,18 @@ export default function MarketingResponse({ locale = "ko" }) {
         {stage === "mmm" && mmm && !mmm.empty && (
           <div className="ab-pillgroup" style={{ margin: 0 }}>
             <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
-            <span className="ab-pill active">{tx("PR #416 집계 MMM", "PR #416 aggregate MMM")}</span>
+            <span className="ab-pill active">{tx("PR #416 채널 우선 Decomp", "PR #416 channel-first Decomp")}</span>
             <span
               title={tx(
-                "PR #416(ae12706) 엔진으로 Performance·Branding 총예산을 먼저 적합합니다. 채널값은 그룹 총 RR을 주별 adstock 지출 비중으로 나눈 배분값입니다. 현재 날짜·플랫폼·세그먼트 필터와 Total 업계지표 합산은 유지됩니다.",
-                "The PR #416 (ae12706) engine first fits total Performance and Branding spend. Channel values allocate each group RR by weekly adstocked spend share. Current date, platform, segment filters, and Total industry aggregation remain active.",
+                "PR #416(ae12706) 엔진으로 채널별 모델을 먼저 적합하고, Decomp Performance·Branding은 같은 채널별 RR을 그룹별로 합산합니다. 현재 날짜·플랫폼·세그먼트 필터와 Total 업계지표 합산은 유지됩니다.",
+                "The PR #416 (ae12706) engine fits channels first, then sums the same channel RR into Decomp Performance and Branding. Current date, platform, segment filters, and Total industry aggregation remain active.",
               )}
               style={{ color: MUTED, cursor: "help", fontSize: "14px" }}
             >
               ⓘ
             </span>
             <span style={{ color: MUTED, fontSize: "10.5px" }}>
-              {tx("엔진 v1.6.0 · 그룹 RR = 채널 배분합", "Engine v1.6.0 · Group RR = allocated channel sum")}
+              {tx("엔진 v1.6.0 · 그룹 RR = 채널 적합 합계 · 추세 prior 3x", "Engine v1.6.0 · Group RR = channel-fit sum · trend prior 3x")}
             </span>
           </div>
         )}
