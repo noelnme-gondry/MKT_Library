@@ -50,6 +50,8 @@ import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBa
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact } from "@/utils/format";
 import {
+  allocateMmmAggregateRun,
+  buildMmmAggregateMediaPanel,
   buildMmmCollinearityGroupedPerformance,
   buildMmmWeeklyPerformance,
   sliceMmmChannelContributions,
@@ -2917,7 +2919,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       if (!mmmColMap) return { empty: true, reason: tx("컬럼 역할을 매핑하세요 (날짜/주차 · 목표 Y · 채널 spend).", "Map column roles (date/week · target Y · channel spend).") };
       const resultCacheKey = [
         `meth:${MMM_METH_CONFIG.version}`,
-        "pr416-engine-channel-ssot",
+        "pr416-aggregate-media-allocation-v1",
         mmmAnalyzedSig,
         colMapSig,
         target,
@@ -3537,24 +3539,44 @@ export default function MarketingResponse({ locale = "ko" }) {
         }
         }
       }
-      // PR #416의 단일 채널 MMM을 그대로 실행한다. 현재 날짜·플랫폼·세그먼트
-      // 필터와 Total 업계지표 합산은 패널 생성 단계에서 유지하지만, 이후 도입된
-      // dual engine·trend freeze·blackout prior·legacy replay는 호출하지 않는다.
+      // PR #416 엔진은 그대로 사용하되, 공선 채널을 개별 계수로 경쟁시키지 않는다.
+      // Performance·Branding Cost를 각각 한 입력으로 합쳐 그룹 총 RR을 먼저 적합하고,
+      // 그 총량만 주별 adstocked spend share로 원래 채널에 배분한다.
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
-      const run = mmmBayesianRun(panel, cfg, t, !isCountryPriorTuned && !hasExternalPrior, {
-        mediaPriors,
+      const aggregatePanel = buildMmmAggregateMediaPanel(panel);
+      if (!aggregatePanel) throw new Error("PR #416 aggregate media panel failed");
+      const aggregateRun = mmmBayesianRun(aggregatePanel, cfg, t, true, {
+        // 원래 채널 feature 단위의 실험·참고시장 prior는 합산 feature의 계수 prior로
+        // 직접 변환할 수 없다. 그룹 총량은 타깃 데이터만으로 적합하고, 원 prior는
+        // 아래 provenance에 보존해 배분 근거로 오인하지 않게 한다.
+        mediaPriors: {},
         enableBaselineSelection: true,
       });
-      if (!run) throw new Error("PR #416 Bayesian posterior estimate failed");
-      run.modelVariant = "pr416-channel-ssot";
-      run.methodLabel = "PR #416 channel MMM (frozen ae12706)";
+      if (!aggregateRun) throw new Error("PR #416 aggregate Bayesian posterior estimate failed");
+      const run = allocateMmmAggregateRun(panel, aggregatePanel, aggregateRun, mmmAdstock);
+      if (!run) throw new Error("PR #416 aggregate channel allocation failed");
+      run.modelVariant = "pr416-aggregate-media-allocation";
+      run.methodLabel = "PR #416 aggregate media MMM + adstocked spend allocation";
       run.pr416Provenance = {
         commit: "ae12706",
         modelScope: "mmm-engine-only",
         currentFiltersPreserved: true,
         totalIndustryAggregationPreserved: true,
-        decompMediaSource: "channelContributions.weeklyMean",
+        decompMediaSource: "aggregate Performance/Brand posterior",
+        channelAllocation: "weekly-adstocked-spend-share",
+        channelAllocationByConstruction: true,
+        externalChannelPriorsAppliedToAggregateFit: false,
+        heldExternalChannelPriorCount: Object.keys(mediaPriors).length,
       };
+      const aggregateExperimentPriorDiagnostics = hasExternalPrior
+        ? experimentPriorDiagnostics.map((item) => item.unidentified ? item : ({
+            ...item,
+            unidentified: true,
+            reason: "aggregate-feature-prior-not-transferable",
+            messageKo: "채널 단위 prior를 Performance·Branding 합산 feature의 계수 prior로 직접 변환할 수 없어 적용을 보류했습니다.",
+            messageEn: "The channel-level prior was held because it cannot be directly converted into a coefficient prior for the aggregated Performance/Branding feature.",
+          }))
+        : experimentPriorDiagnostics;
       const health = mmmBayesianHealth(run);
       const effects = [];
       return mmmStoreCachedResult(csvData.raw, resultCacheKey, {
@@ -3564,19 +3586,21 @@ export default function MarketingResponse({ locale = "ko" }) {
         derived,
         target: t,
         validate,
-        saturationPanel: panel,
+        saturationPanel: aggregatePanel,
+        aggregatePanel,
         run,
         health,
         effects,
         absorb,
-        mediaPriors,
-        experimentPriorDiagnostics,
+        mediaPriors: {},
+        heldMediaPriors: mediaPriors,
+        experimentPriorDiagnostics: aggregateExperimentPriorDiagnostics,
         countryCandidates,
         countryIndividualCandidates,
         countryBacktests,
         countryValidationMode,
-        countryPlan,
-        isCountryPriorTuned,
+        countryPlan: countryPlan ? { ...countryPlan, aggregatePriorHeld: hasExternalPrior } : countryPlan,
+        isCountryPriorTuned: false,
       });
     } catch (e) {
       // null-fit(특이행렬)은 대개 채널 공선성(예산이 함께 움직임)·기간 부족 → 정직한 도메인 메시지 (§8)
@@ -3641,9 +3665,8 @@ export default function MarketingResponse({ locale = "ko" }) {
     ? sliceMmmPanel(mmm.saturationPanel, contributionViewRange.end, contributionViewRange.start)
     : displayedMmmPanel, [mmm, displayedMmmPanel, contributionViewRange]);
 
-  // PR #416의 fitted 채널 기여를 유일한 원천으로 둔다. 후대의 그룹 재적합을
-  // 채널 표에만 덮어쓰면 Decomp와 채널합이 다시 어긋나므로 사용하지 않는다.
-  // 그룹 보기는 아래 표시 함수가 동일한 채널행을 단순 합산한다.
+  // 상위 Performance·Branding posterior가 총량 SSOT다. 채널 표에는 그 총량을
+  // adstocked spend share로 나눈 배분값만 사용하며 별도 그룹 재적합은 하지 않는다.
   const collinearityGroupRefit = null;
   const displayedCollinearityGroupRefit = useMemo(() => sliceMmmCollinearityGroupRefit(
     collinearityGroupRefit,
@@ -3662,8 +3685,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     return Object.values(displayedSaturationByChannel).map((channel) => ({ ...channel, isGroup: false }));
   }, [displayedSaturationByChannel, displayedSaturationPanel, locale, saturationCurveView]);
 
-  // 주간 기여분해와 동일한 채널별 기여 원천을 집계한다. 그룹 재적합이 있으면
-  // 개별 보기 역시 그룹 총기여 안에서만 나뉘어 합계가 어긋나지 않는다.
+  // 주간 상위 그룹 기여를 by-construction으로 나눈 채널 배분값을 집계한다.
   const weeklyChannelPerformance = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "mmm") return [];
     return buildMmmWeeklyPerformance(mmm.panel, mmm.run.channelContributions);
@@ -4610,18 +4632,18 @@ export default function MarketingResponse({ locale = "ko" }) {
         {stage === "mmm" && mmm && !mmm.empty && (
           <div className="ab-pillgroup" style={{ margin: 0 }}>
             <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
-            <span className="ab-pill active">{tx("PR #416 MMM", "PR #416 MMM")}</span>
+            <span className="ab-pill active">{tx("PR #416 집계 MMM", "PR #416 aggregate MMM")}</span>
             <span
               title={tx(
-                "계산 엔진은 PR #416(ae12706)의 채널별 Empirical-Bayes MMM으로 동결했습니다. 현재 날짜·플랫폼·세그먼트 필터와 Total 업계지표 합산은 유지됩니다.",
-                "The calculation engine is frozen to the per-channel empirical-Bayes MMM from PR #416 (ae12706). Current date, platform, segment filters, and Total industry aggregation remain active.",
+                "PR #416(ae12706) 엔진으로 Performance·Branding 총예산을 먼저 적합합니다. 채널값은 그룹 총 RR을 주별 adstock 지출 비중으로 나눈 배분값입니다. 현재 날짜·플랫폼·세그먼트 필터와 Total 업계지표 합산은 유지됩니다.",
+                "The PR #416 (ae12706) engine first fits total Performance and Branding spend. Channel values allocate each group RR by weekly adstocked spend share. Current date, platform, segment filters, and Total industry aggregation remain active.",
               )}
               style={{ color: MUTED, cursor: "help", fontSize: "14px" }}
             >
               ⓘ
             </span>
             <span style={{ color: MUTED, fontSize: "10.5px" }}>
-              {tx("엔진 v1.6.0 · Decomp = 채널 RR 합", "Engine v1.6.0 · Decomp = channel RR sum")}
+              {tx("엔진 v1.6.0 · 그룹 RR = 채널 배분합", "Engine v1.6.0 · Group RR = allocated channel sum")}
             </span>
           </div>
         )}
@@ -5278,7 +5300,11 @@ export default function MarketingResponse({ locale = "ko" }) {
               />
               {(selectedEvidence.experiment || selectedEvidence.country) && (
                 <div className="callout" style={{ marginBottom: "12px" }}>
-                  <div className="ico">i</div><div className="body"><strong>{Object.keys(mmm.mediaPriors || {}).length ? tx(`${tgtKo}에는 ${Object.keys(mmm.mediaPriors).length}개 채널 prior 적용`, `${Object.keys(mmm.mediaPriors).length} channel priors applied to ${tgtKo}`) : tx(`${tgtKo}에 일치하는 prior 없음`, `No matching prior for ${tgtKo}`)}</strong><p>{Object.keys(mmm.mediaPriors || {}).length ? tx("헤더·목표 역할이 연결된 근거입니다. KPI 정의·집계 창·단위가 실제로 같은지는 사용자가 확인해야 합니다.", "The evidence matches by header and target role. You must confirm equivalent KPI definitions, aggregation windows, and units.") : tx("이 목표에는 기본 MMM만 사용합니다.", "This target continues to use the base MMM.")}</p></div>
+                  <div className="ico">i</div><div className="body"><strong>{Object.keys(mmm.heldMediaPriors || {}).length
+                    ? tx(`채널 prior ${Object.keys(mmm.heldMediaPriors).length}개 적용 보류`, `${Object.keys(mmm.heldMediaPriors).length} channel prior(s) held`)
+                    : tx(`${tgtKo}에 일치하는 prior 없음`, `No matching prior for ${tgtKo}`)}</strong><p>{Object.keys(mmm.heldMediaPriors || {}).length
+                    ? tx("채널 단위 계수를 Performance·Branding 합산 feature의 계수로 직접 바꾸면 단위가 달라집니다. 그룹 prior 변환 규칙이 생기기 전까지 근거는 보존하되 모델에는 적용하지 않습니다.", "A channel coefficient cannot be directly converted to the aggregated Performance/Branding feature without changing units. Evidence is preserved but not applied until a valid group-prior conversion is defined.")
+                    : tx("이 목표에는 기본 MMM만 사용합니다.", "This target continues to use the base MMM.")}</p></div>
                 </div>
               )}
               {health && (
@@ -5435,7 +5461,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                 <section className="block mmm-weekly-performance" id="s-mmm-weekly-performance">
                   <div className="mmm-weekly-performance__head">
                     <div>
-                      <h2 className="section-title">{tx("채널별 주 평균 성과", "Average weekly channel performance")}</h2>
+                      <h2 className="section-title">{tx("채널별 RR 배분", "Channel RR allocation")}</h2>
                       <p>{tx(
                         weeklyPerformanceView === "grouped" && hasCollinearityGroups
                           ? (displayedCollinearityGroupRefit?.enabled
@@ -5443,14 +5469,14 @@ export default function MarketingResponse({ locale = "ko" }) {
                             : "상관이 높은 채널은 합산해서 보수적으로 표시합니다.")
                           : (displayedCollinearityGroupRefit?.enabled
                             ? "개별 값은 그룹 재학습 총기여 안에서 원래 신호와 지출 비중으로 나눈 참고값입니다."
-                            : "주간 기여분해와 같은 채널별 기여를 기간 평균으로 표시합니다."),
+                            : "Performance·Branding 그룹 RR을 주별 adstock 지출 비중으로 나눈 배분값입니다."),
                         weeklyPerformanceView === "grouped" && hasCollinearityGroups
                           ? (displayedCollinearityGroupRefit?.enabled
                             ? "Highly correlated channels are actually refit as one combined input."
                             : "Highly correlated channels are summed for a conservative view.")
                           : (displayedCollinearityGroupRefit?.enabled
                             ? "Individual values are reference allocations of the refit group total using the original signal and spend shares."
-                            : "The same channel contributions used in weekly decomposition are averaged over the period."),
+                            : "Performance and Branding group RR is allocated by weekly adstocked spend share."),
                       )}</p>
                     </div>
                     <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -5470,7 +5496,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                           ⚠ {tx(`채널 쌍 상관 ${highCollinearPairs.length}건`, `${highCollinearPairs.length} correlated pair${highCollinearPairs.length > 1 ? "s" : ""}`)}
                         </button>
                       )}
-                      <span className="mmm-weekly-performance__note">{tx("모델 예측치", "Model estimate")}</span>
+                      <span className="mmm-weekly-performance__note">{tx("그룹 총량 기반 배분", "Group-total allocation")}</span>
                     </div>
                   </div>
                   <div className="table-wrap">
@@ -5533,7 +5559,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                               </td>
                               <td>
                                 <span className={`mmm-data-table__tag ${row.identificationVerdict === "IDENTIFIED" ? "is-media" : ""}`}>
-                                  {row.identificationVerdict || tx("PR416 추정", "PR416 estimate")}
+                                  {row.identificationVerdict || tx("배분값", "Allocated")}
                                 </span>
                               </td>
                             </tr>
@@ -5543,8 +5569,8 @@ export default function MarketingResponse({ locale = "ko" }) {
                     </table>
                   </div>
                   <p className="mmm-weekly-performance__foot">{tx(
-                    "평균 RR·전체 RR·CPA는 모두 선택 기간의 동일한 채널 weeklyMean에서 계산합니다. Performance·Branding 채널의 전체 RR 합은 Decomp의 같은 그룹과 정확히 일치합니다.",
-                    "Average RR, total RR, and CPA all come from the same channel weeklyMean over the selected period. Total RR across Performance and Branding channels exactly matches the corresponding Decomp groups.",
+                    "Decomp에서 먼저 확정한 Performance·Branding RR을 주별 adstock 지출 비중으로 채널에 나눕니다. 채널별 값은 인과적으로 식별된 효과가 아닌 운영 배분값이며, 각 그룹의 채널 RR 합은 Decomp와 정확히 일치합니다.",
+                    "Performance and Branding RR is fixed in Decomp first, then allocated to channels by weekly adstocked spend share. Channel values are operational allocations, not causally identified effects; each group’s channel RR sum exactly matches Decomp.",
                   )}</p>
                   {spendTimelineKinds.length > 0 && (
                     <Card style={{ marginTop: "12px", padding: "14px 16px", borderColor: "rgba(127,119,221,.34)", background: "linear-gradient(90deg, rgba(127,119,221,.07), transparent 44%)" }}>

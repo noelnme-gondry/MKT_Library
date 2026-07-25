@@ -1,6 +1,139 @@
 // MMM 렌더층용: 주간 기여분해와 동일한 채널별 counterfactual 기여를 집계한다.
 // 0-spend 주의 carryover도 기여에 포함하므로 반응곡선에 당주 지출을 다시 넣는
 // 별도 계산과 달리 표·분해 그래프·CSV의 합계가 항상 같은 원천을 사용한다.
+export const MMM_AGGREGATE_MEDIA_GROUPS = [
+  { key: "performance_total", label: "Performance total", kind: "perf", groupName: "Performance" },
+  { key: "branding_total", label: "Branding total", kind: "brand", groupName: "Brand" },
+];
+
+export function buildMmmAggregateMediaPanel(panel) {
+  if (!panel?.week?.length || !panel?.channels?.length) return null;
+  const groups = MMM_AGGREGATE_MEDIA_GROUPS.map((group) => ({
+    ...group,
+    members: panel.channels.filter((channel) => (
+      group.kind === "brand" ? channel.kind === "brand" : channel.kind !== "brand"
+    )),
+  })).filter((group) => group.members.length > 0);
+  const ch = Object.fromEntries(groups.map((group) => [
+    group.key,
+    panel.week.map((_, weekIndex) => group.members.reduce(
+      (sum, channel) => sum + Math.max(0, Number(panel.ch?.[channel.key]?.[weekIndex]) || 0),
+      0,
+    )),
+  ]));
+  return {
+    ...panel,
+    ch,
+    channels: groups.map(({ key, label, kind }) => ({ key, label, kind })),
+    aggregateMediaGroups: groups.map((group) => ({
+      key: group.key,
+      label: group.label,
+      kind: group.kind,
+      groupName: group.groupName,
+      members: group.members.map((channel) => channel.key),
+    })),
+  };
+}
+
+export function allocateMmmAggregateRun(panel, aggregatePanel, aggregateRun, adstockFn) {
+  if (!panel?.week?.length || !aggregateRun?.weeks?.length || typeof adstockFn !== "function") return null;
+  const groups = aggregatePanel?.aggregateMediaGroups || [];
+  const allocated = {};
+  const weeklyByChannel = Object.fromEntries((panel.channels || []).map((channel) => [channel.key, []]));
+
+  groups.forEach((group) => {
+    const groupContribution = aggregateRun.channelContributions?.[group.key];
+    const alpha = aggregateRun.saturationByChannel?.[group.key]?.params?.alpha;
+    if (!groupContribution || !Number.isFinite(alpha)) return;
+    const members = group.members.map((key) => (
+      (panel.channels || []).find((channel) => channel.key === key)
+    )).filter(Boolean);
+    const adstockByKey = Object.fromEntries(members.map((channel) => [
+      channel.key,
+      adstockFn(panel.ch?.[channel.key] || [], alpha),
+    ]));
+    const fallbackWeights = Object.fromEntries(members.map((channel) => {
+      const total = (panel.ch?.[channel.key] || []).reduce(
+        (sum, value) => sum + Math.max(0, Number(value) || 0),
+        0,
+      );
+      return [channel.key, total];
+    }));
+    const fallbackTotal = Object.values(fallbackWeights).reduce((sum, value) => sum + value, 0);
+    const sharesByKey = Object.fromEntries(members.map((channel) => [channel.key, []]));
+
+    panel.week.forEach((_, weekIndex) => {
+      const denominator = members.reduce(
+        (sum, channel) => sum + Math.max(0, Number(adstockByKey[channel.key]?.[weekIndex]) || 0),
+        0,
+      );
+      members.forEach((channel) => {
+        const share = denominator > 0
+          ? Math.max(0, Number(adstockByKey[channel.key]?.[weekIndex]) || 0) / denominator
+          : fallbackTotal > 0
+            ? fallbackWeights[channel.key] / fallbackTotal
+            : 1 / Math.max(1, members.length);
+        sharesByKey[channel.key].push(share);
+        weeklyByChannel[channel.key][weekIndex] = Math.max(
+          0,
+          Number(groupContribution.weeklyMean?.[weekIndex]) || 0,
+        ) * share;
+      });
+    });
+
+    members.forEach((channel) => {
+      const shares = sharesByKey[channel.key];
+      const weeklyMean = weeklyByChannel[channel.key];
+      const weeklyLow = shares.map((share, index) => (
+        Math.max(0, Number(groupContribution.weeklyLow?.[index]) || 0) * share
+      ));
+      const weeklyHigh = shares.map((share, index) => (
+        Math.max(0, Number(groupContribution.weeklyHigh?.[index]) || 0) * share
+      ));
+      allocated[channel.key] = {
+        ...groupContribution,
+        key: channel.key,
+        label: channel.label || channel.key,
+        weeklyMean,
+        weeklyLow,
+        weeklyHigh,
+        totalMean: weeklyMean.reduce((sum, value) => sum + value, 0),
+        totalLow: weeklyLow.reduce((sum, value) => sum + value, 0),
+        totalHigh: weeklyHigh.reduce((sum, value) => sum + value, 0),
+        source: "aggregate-group-adstock-allocation",
+        allocationReliability: "group-total-by-construction",
+        identificationVerdict: "ALLOCATED/BY-CONSTRUCTION",
+        identification: {
+          byConstruction: true,
+          allocationBasis: "weekly-adstocked-spend-share",
+          groupKey: group.key,
+        },
+        groupKey: group.key,
+        groupLabel: group.label,
+        groupPosteriorPositive: groupContribution.posteriorPositive,
+      };
+    });
+  });
+
+  const weeks = aggregateRun.weeks.map((week, weekIndex) => ({
+    ...week,
+    channelContrib: Object.fromEntries(Object.entries(weeklyByChannel).map(([key, values]) => [
+      key,
+      Math.max(0, Number(values[weekIndex]) || 0),
+    ])),
+  }));
+  return {
+    ...aggregateRun,
+    weeks,
+    channelContributions: allocated,
+    aggregateMediaAllocation: {
+      method: "weekly-adstocked-spend-share",
+      byConstruction: true,
+      groups,
+    },
+  };
+}
+
 export function sliceMmmChannelContributions(channelContributions = {}, start = 0, end = Infinity) {
   const slice = (values) => Array.isArray(values) ? values.slice(start, end) : [];
   return Object.fromEntries(Object.entries(channelContributions).map(([key, value]) => {
@@ -36,12 +169,12 @@ export function buildMmmWeeklyPerformance(panel, channelContributions = {}) {
         activeWeeks += 1;
       });
 
-      if (!(totalSpend > 0)) return null;
       const weeklyMean = Array.isArray(channel.weeklyMean) ? channel.weeklyMean : [];
       const totalPredicted = Number.isFinite(channel.totalMean)
         ? Math.max(0, channel.totalMean)
         : weeklyMean.reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
-      const predictedCpr = totalPredicted > 0 ? totalSpend / totalPredicted : null;
+      if (!(totalSpend > 0) && !(totalPredicted > 0)) return null;
+      const predictedCpr = totalSpend > 0 && totalPredicted > 0 ? totalSpend / totalPredicted : null;
       return {
         key: channel.key,
         label: channel.label || channel.key,
