@@ -155,7 +155,7 @@ export function sliceMmmChannelContributions(channelContributions = {}, start = 
 // Stress-profile display allocation: preserve each fitted group total while giving
 // every active channel a small positive share. This is not a new channel fit and must
 // remain labeled as allocation rather than identified channel effect.
-export function applyMmmPosteriorFloorAllocation(run, panel, minShare = 0.05) {
+export function applyMmmPosteriorFloorAllocation(run, panel, minShare = 0.01) {
   if (!run?.weeks?.length || !panel?.channels?.length || !run.channelContributions) return run;
   const channels = panel.channels.filter((channel) => run.channelContributions[channel.key]);
   const groups = [
@@ -163,6 +163,10 @@ export function applyMmmPosteriorFloorAllocation(run, panel, minShare = 0.05) {
     { key: "Brand", members: channels.filter((channel) => channel.kind === "brand") },
   ].filter((group) => group.members.length);
   const floor = Math.min(Math.max(0, Number(minShare) || 0), 1 / Math.max(1, channels.length));
+  const betaByKey = Object.fromEntries(channels.map((channel) => {
+    const index = run.names?.indexOf(`media_${channel.key}`) ?? -1;
+    return [channel.key, index >= 0 ? Number(run.absoluteBeta?.[index]) || 0 : 0];
+  }));
   const allocated = Object.fromEntries(Object.entries(run.channelContributions).map(([key, value]) => [key, {
     ...value,
     weeklyMean: (value.weeklyMean || []).slice(),
@@ -171,35 +175,40 @@ export function applyMmmPosteriorFloorAllocation(run, panel, minShare = 0.05) {
   }]));
 
   groups.forEach((group) => {
-    const baseWeights = group.members.map((channel) => {
-      const contribution = run.channelContributions[channel.key];
-      const posterior = Math.max(0, Number(contribution.posteriorPositive) || 0);
-      const fitted = Math.max(0, Number(contribution.totalMean) || 0);
-      return posterior > 0 ? posterior : fitted;
-    });
-    const weightTotal = baseWeights.reduce((sum, value) => sum + value, 0);
-    const rawShares = weightTotal > 0
-      ? baseWeights.map((value) => value / weightTotal)
-      : group.members.map(() => 1 / group.members.length);
-    const shares = rawShares.map((share) => floor + (1 - floor * group.members.length) * share);
-    group.members.forEach((channel, memberIndex) => {
+    group.members.forEach((channel) => {
       const contribution = allocated[channel.key];
-      contribution.weeklyMean = run.weeks.map((_, weekIndex) => (
-        group.members.reduce((sum, member) => sum + Math.max(0, Number(run.channelContributions[member.key]?.weeklyMean?.[weekIndex]) || 0), 0)
-      ) * shares[memberIndex]);
-      contribution.weeklyLow = run.weeks.map((_, weekIndex) => (
-        group.members.reduce((sum, member) => sum + Math.max(0, Number(run.channelContributions[member.key]?.weeklyLow?.[weekIndex]) || 0), 0)
-      ) * shares[memberIndex]);
-      contribution.weeklyHigh = run.weeks.map((_, weekIndex) => (
-        group.members.reduce((sum, member) => sum + Math.max(0, Number(run.channelContributions[member.key]?.weeklyHigh?.[weekIndex]) || 0), 0)
-      ) * shares[memberIndex]);
+      contribution.weeklyMean = run.weeks.map((_, weekIndex) => {
+        const eligible = group.members.filter((member) => {
+          const spend = panel.ch?.[member.key] || [];
+          const lookbackStart = Math.max(0, weekIndex - 12);
+          return spend.slice(lookbackStart, weekIndex + 1).some((value) => Math.max(0, Number(value) || 0) > 0);
+        });
+        const candidates = eligible.length
+          ? eligible
+          : group.members.filter((member) => (panel.ch?.[member.key] || []).some((value) => Math.max(0, Number(value) || 0) > 0));
+        const weightTotal = candidates.reduce((sum, member) => sum + Math.max(0, betaByKey[member.key]), 0);
+        const posteriorTotal = candidates.reduce((sum, member) => sum + Math.max(0, Number(run.channelContributions[member.key]?.posteriorPositive) || 0), 0);
+        const candidateIndex = candidates.indexOf(channel);
+        if (candidateIndex < 0) return 0;
+        const rawShare = weightTotal > 0
+          ? Math.max(0, betaByKey[channel.key]) / weightTotal
+          : posteriorTotal > 0
+            ? Math.max(0, Number(run.channelContributions[channel.key]?.posteriorPositive) || 0) / posteriorTotal
+            : 1 / candidates.length;
+        const share = floor + (1 - floor * candidates.length) * rawShare;
+        return group.members.reduce((sum, member) => sum + Math.max(0, Number(run.channelContributions[member.key]?.weeklyMean?.[weekIndex]) || 0), 0) * share;
+      });
+      const meanTotals = run.weeks.map((_, weekIndex) => group.members.reduce((sum, member) => sum + Math.max(0, Number(run.channelContributions[member.key]?.weeklyMean?.[weekIndex]) || 0), 0));
+      const meanShare = contribution.weeklyMean.map((value, index) => value / Math.max(1e-12, meanTotals[index]));
+      contribution.weeklyLow = run.weeks.map((_, weekIndex) => group.members.reduce((sum, member) => sum + Math.max(0, Number(run.channelContributions[member.key]?.weeklyLow?.[weekIndex]) || 0), 0) * meanShare[weekIndex]);
+      contribution.weeklyHigh = run.weeks.map((_, weekIndex) => group.members.reduce((sum, member) => sum + Math.max(0, Number(run.channelContributions[member.key]?.weeklyHigh?.[weekIndex]) || 0), 0) * meanShare[weekIndex]);
       contribution.totalMean = contribution.weeklyMean.reduce((sum, value) => sum + value, 0);
       contribution.totalLow = contribution.weeklyLow.reduce((sum, value) => sum + value, 0);
       contribution.totalHigh = contribution.weeklyHigh.reduce((sum, value) => sum + value, 0);
-      contribution.source = "channel-model-posterior-floor-allocation";
-      contribution.allocationReliability = "posterior-floor-allocation";
+      contribution.source = "channel-model-positive-coefficient-allocation";
+      contribution.allocationReliability = "coefficient-weighted-active-cost-allocation";
       contribution.identificationVerdict = "ALLOCATED/BY-CONSTRUCTION";
-      contribution.identification = { byConstruction: true, allocationBasis: "posterior-positive-share-with-floor", minShare: floor, groupKey: group.key };
+      contribution.identification = { byConstruction: true, allocationBasis: "positive-regression-coefficient-share-with-active-cost-floor", minShare: floor, groupKey: group.key };
     });
   });
 
@@ -207,7 +216,7 @@ export function applyMmmPosteriorFloorAllocation(run, panel, minShare = 0.05) {
     ...week,
     channelContrib: Object.fromEntries(Object.entries(allocated).map(([key, contribution]) => [key, contribution.weeklyMean[weekIndex] || 0])),
   }));
-  return { ...run, weeks, channelContributions: allocated, channelAllocation: { method: "posterior-positive-share-with-floor", minShare: floor, byConstruction: true } };
+  return { ...run, weeks, channelContributions: allocated, channelAllocation: { method: "positive-regression-coefficient-share-with-active-cost-floor", minShare: floor, byConstruction: true } };
 }
 
 export function buildMmmWeeklyPerformance(panel, channelContributions = {}) {
