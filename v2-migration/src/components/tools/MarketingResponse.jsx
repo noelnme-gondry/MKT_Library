@@ -3548,7 +3548,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         enableBaselineSelection: true,
       });
       if (!run) throw new Error("PR #416 channel-first Bayesian posterior estimate failed");
-      const allocatedRun = applyMmmPosteriorFloorAllocation(run, panel, 0.05);
+      const allocatedRun = applyMmmPosteriorFloorAllocation(run, panel, 0.01);
       allocatedRun.modelVariant = "pr416-channel-first-posterior-floor-decomp";
       allocatedRun.methodLabel = "PR #416 channel-first MMM with posterior-floor allocation";
       allocatedRun.pr416Provenance = {
@@ -4619,15 +4619,15 @@ export default function MarketingResponse({ locale = "ko" }) {
             <span className="ab-pill active">{tx("PR #416 채널 우선 Decomp", "PR #416 channel-first Decomp")}</span>
             <span
               title={tx(
-                "PR #416(ae12706) 엔진으로 채널별 모델을 먼저 적합하고, Decomp Performance·Branding은 같은 채널별 RR을 그룹별로 합산합니다. 채널 표시는 positive posterior 5% floor allocation이며 별도 채널 재적합이 아닙니다.",
-                "The PR #416 (ae12706) engine fits channels first, then sums the same channel RR into Decomp Performance and Branding. Channel rows use a 5% positive-posterior floor allocation and are not a separate channel refit.",
+                "PR #416(ae12706) 엔진으로 채널별 모델을 먼저 적합하고, Decomp Performance·Branding은 같은 채널별 RR을 그룹별로 합산합니다. 채널 표시는 Cost가 있는 채널의 양의 회귀계수 차등 배분이며 1% floor만 둔 임시 allocation입니다.",
+                "The PR #416 (ae12706) engine fits channels first, then sums the same channel RR into Decomp Performance and Branding. Channel rows use positive regression-coefficient weighting among cost-active channels with a 1% floor.",
               )}
               style={{ color: MUTED, cursor: "help", fontSize: "14px" }}
             >
               ⓘ
             </span>
             <span style={{ color: MUTED, fontSize: "10.5px" }}>
-              {tx("엔진 v1.6.0 · posterior floor 5% · 추세 prior 4x", "Engine v1.6.0 · 5% posterior floor · trend prior 4x")}
+              {tx("엔진 v1.6.0 · 회귀계수 차등 + floor 1% · 추세 prior 4x", "Engine v1.6.0 · coefficient-weighted + 1% floor · trend prior 4x")}
             </span>
           </div>
         )}
