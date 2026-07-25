@@ -4625,7 +4625,7 @@ export default function MarketingResponse({ locale = "ko" }) {
               ⓘ
             </span>
             <span style={{ color: MUTED, fontSize: "10.5px" }}>
-              {tx("엔진 v1.6.0 · 그룹 RR = 채널 적합 합계 · 추세 prior 3x", "Engine v1.6.0 · Group RR = channel-fit sum · trend prior 3x")}
+              {tx("엔진 v1.6.0 · 그룹 RR = 채널 적합 합계 · 추세 prior 4x", "Engine v1.6.0 · Group RR = channel-fit sum · trend prior 4x")}
             </span>
           </div>
         )}
