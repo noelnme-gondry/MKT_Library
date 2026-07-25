@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   MMM_METH_CONFIG,
+  mmmAdstock,
   mmmBayesianRun,
   mmmBayesianWeeklyDecomp,
 } from "./mmmMathPr416";
-import { sliceMmmChannelContributions } from "./mmmWeeklyPerformance";
+import {
+  allocateMmmAggregateRun,
+  buildMmmAggregateMediaPanel,
+  sliceMmmChannelContributions,
+} from "./mmmWeeklyPerformance";
 
 describe("PR #416 MMM rollback contract", () => {
   it("keeps the frozen engine and makes Decomp media equal the channel RR sum", () => {
@@ -43,15 +48,21 @@ describe("PR #416 MMM rollback contract", () => {
       mediaPenaltyCandidates: [1],
       steps: {},
     };
-    const run = mmmBayesianRun(panel, cfg, "Regs", false, {
+    const aggregatePanel = buildMmmAggregateMediaPanel(panel);
+    const aggregateRun = mmmBayesianRun(aggregatePanel, cfg, "Regs", false, {
       enableBaselineSelection: false,
       enableSeasonalitySelection: false,
       enableMediaPenaltySelection: false,
       skipTransformUncertainty: true,
     });
+    const run = allocateMmmAggregateRun(panel, aggregatePanel, aggregateRun, mmmAdstock);
 
     expect(MMM_METH_CONFIG.version).toBe("1.6.0");
     expect(run?.engine).toBe("bayesian");
+    expect(run.aggregateMediaAllocation).toMatchObject({
+      method: "weekly-adstocked-spend-share",
+      byConstruction: true,
+    });
     expect(mmmBayesianWeeklyDecomp(run)?.weeks).toHaveLength(n);
 
     run.weeks.forEach((row, index) => {
