@@ -32,18 +32,20 @@ export default function ResultActionCard({
   children,
   style,
   collapsePointsAfter = null,
+  locale = "ko",
 }) {
+  const resolvedTitle = title === "결론" && locale === "en" ? "Conclusion" : title;
   const t = TONE[tone] || TONE.neutral;
   const headingId = useId();
   const visiblePoints = collapsePointsAfter == null ? points : points.slice(0, collapsePointsAfter);
   const hiddenPoints = collapsePointsAfter == null ? [] : points.slice(collapsePointsAfter);
   return (
-    <section className={`result-action-card ${tone}`} style={style} aria-labelledby={headline ? headingId : undefined} aria-label={!headline && typeof title === "string" ? title : undefined}>
+    <section className={`result-action-card ${tone}`} style={style} aria-labelledby={headline ? headingId : undefined} aria-label={!headline && typeof resolvedTitle === "string" ? resolvedTitle : undefined}>
       <div className="result-action-card__head">
         <span className="result-action-card__signal" aria-hidden>{t.icon}</span>
         <div className="result-action-card__copy">
           <div className="result-action-card__label">
-            {title}
+            {resolvedTitle}
           </div>
           {headline && (
             <h2 id={headingId} className="result-action-card__headline">
@@ -71,7 +73,7 @@ export default function ResultActionCard({
 
       {hiddenPoints.length > 0 && (
         <details className="result-action-card__details">
-          <summary>근거 {hiddenPoints.length}개 더 보기</summary>
+          <summary>{locale === "en" ? `View ${hiddenPoints.length} more supporting point(s)` : `근거 ${hiddenPoints.length}개 더 보기`}</summary>
           <ul className="result-action-card__points result-action-card__points--nested">
             {hiddenPoints.map((p, i) => (
               <li key={i} className={p.cls || ""}>{p.text}</li>

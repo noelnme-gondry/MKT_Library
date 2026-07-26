@@ -289,6 +289,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 headline={verdict.headline}
                 points={verdict.keyPoints}
                 stats={verdict.stats}
+                locale={locale}
                 controls={
                   <div className="ab-pillgroup" style={{ display: "inline-flex", alignItems: "center" }}>
                     <span className="ab-pillgroup-label">{tr("비교", "Window")}</span>

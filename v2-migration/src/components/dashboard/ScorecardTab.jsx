@@ -382,6 +382,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
             editMode={editMode}
             onPatch={(p) => setViewConfig(SCORECARD_SCOPE, p)}
             gridClassName="ab-stat-row"
+            locale={locale}
           />
         </div>
         <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>

@@ -18,7 +18,7 @@ export default function CustomMetricBuilder({
 }) {
   const isEn = locale === "en";
   const T = isEn ? {
-    title: "Build a custom metric", close: "Close", type: "Type", field: "Field", number: "Number",
+    title: "Build a custom metric", close: "Close", type: "Type", field: "Field", number: "Number", operator: "Operator",
     numberPlaceholder: "Number (e.g. 1000)", noFields: "No numeric columns are available. Upload and map a CSV first.",
     intro: "Join fields and numbers into a formula (no free text → fewer typos). Terms are calculated left to right (e.g. cost ÷ impressions × 1000 = eCPM).",
     name: "Metric name", namePlaceholder: "e.g. Net profit, eCPM, efficiency index…", start: "Start",
@@ -27,7 +27,7 @@ export default function CustomMetricBuilder({
     mine: "My metrics", deleteTerm: "Delete this term", shown: "Saved in this browser only (data is not sent to a server)",
     newMetric: "New metric", cannotCompute: "Cannot compute (zero denominator or no data)",
   } : {
-    title: "커스텀 지표 만들기", close: "닫기", type: "종류", field: "컬럼", number: "숫자",
+    title: "커스텀 지표 만들기", close: "닫기", type: "종류", field: "컬럼", number: "숫자", operator: "연산",
     numberPlaceholder: "숫자 (예: 1000)", noFields: "조립할 수 있는 숫자 컬럼이 데이터에 없습니다. CSV를 먼저 업로드·매핑하세요.",
     intro: "컬럼·숫자를 골라 항을 이어 붙입니다(직접 입력 없음 → 오타 X). 왼쪽부터 순서대로 계산돼요(예: 비용 ÷ 노출수 × 1000 = eCPM).",
     name: "지표 이름", namePlaceholder: "예: 순이익, eCPM, 효율지수…", start: "시작",
@@ -169,7 +169,7 @@ export default function CustomMetricBuilder({
                 const i = idx + 1;
                 return (
                   <div key={i} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                    <select value={t.op} onChange={(e) => setTermAt(i, { ...t, op: e.target.value })} style={{ ...sel, width: "34px", flex: "none", padding: "6px 2px", textAlign: "center" }} aria-label="연산">
+                    <select value={t.op} onChange={(e) => setTermAt(i, { ...t, op: e.target.value })} style={{ ...sel, width: "34px", flex: "none", padding: "6px 2px", textAlign: "center" }} aria-label={T.operator}>
                       {CUSTOM_OPS.map((o) => <option key={o.id} value={o.id}>{o.sym}</option>)}
                     </select>
                     {operandEditor(t, i)}

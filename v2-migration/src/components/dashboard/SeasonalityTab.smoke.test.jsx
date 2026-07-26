@@ -53,6 +53,12 @@ describe("SeasonalityTab render smoke", () => {
     expect(() => render(<SeasonalityTab />)).not.toThrow();
   });
 
+  it("keeps the no-metric guidance in English", () => {
+    render(<SeasonalityTab locale="en" />);
+    const koreanCopy = Array.from(new Set((document.body.textContent || "").match(/[가-힣]+/g) || []));
+    expect(koreanCopy).toEqual([]);
+  });
+
   it("mounts with sufficient multi-year data and renders the verification chart + download hub", () => {
     seedWithData();
     let utils;
