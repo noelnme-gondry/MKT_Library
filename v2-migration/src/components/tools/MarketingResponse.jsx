@@ -10,6 +10,7 @@ import {
   MMM_NONMEDIA_GROUPS,
   mmmValidate,
   mmmBayesianRun,
+  mmmBayesianLikeRun,
   mmmBayesianHealth,
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
@@ -2793,6 +2794,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const bucketMeta = mmmBucketMeta(locale);
   const [stage, setStage] = useState("trend"); // trend | diagnose | mmm | lab
   const [target, setTarget] = useState("Regs");
+  const [mmmMode, setMmmMode] = useState("classic"); // classic = PR #416, bayesian = posterior channel fit
   const [decompGrouped, setDecompGrouped] = useState(true); // §5.5 true=4버킷 묶음 / false=광고 개별채널
   // RMS 비중에서 기본 수요·추세가 너무 큰 경우, 나머지 동인끼리의 상대 크기를
   // 볼 수 있게 한다. 모델·원본 기여값은 바꾸지 않고 이 표시용 분모만 전환한다.
@@ -2988,7 +2990,8 @@ export default function MarketingResponse({ locale = "ko" }) {
       if (!mmmColMap) return { empty: true, reason: tx("컬럼 역할을 매핑하세요 (날짜/주차 · 목표 Y · 채널 spend).", "Map column roles (date/week · target Y · channel spend).") };
       const resultCacheKey = [
         `meth:${MMM_METH_CONFIG.version}`,
-        "pr416-fixed-group-total-ranked-allocation-v1",
+        `mode:${mmmMode}`,
+        mmmMode === "classic" ? "pr416-classic-fixed-group-total-ranked-allocation-v1" : "bayesian-posterior-channel-fit-v1",
         mmmAnalyzedSig,
         colMapSig,
         target,
@@ -3039,6 +3042,13 @@ export default function MarketingResponse({ locale = "ko" }) {
         n: panel.week.length,
         dummies: built.roles.dummies.map((d) => d.label),
         useDummies: panel.useDummies,
+        targetSources: {
+          Traffic: built.roles.traffic.map((item) => item.header),
+          Regs: built.roles.reg.map((item) => item.header),
+          React: built.roles.react.map((item) => item.header),
+          Purchasers: built.roles.purchasers.map((item) => item.header),
+          Revenue: built.roles.revenue.map((item) => item.header),
+        },
       };
       // 공선쌍 감지. 사용자 선택이 없으면 어느 변수도 임의 제거하지 않고 식별·예산 gate로 보류한다.
       const absorb = mmmResolveAbsorb(panel, cfg);
@@ -3620,7 +3630,40 @@ export default function MarketingResponse({ locale = "ko" }) {
         }
         }
       }
-      // Decomp 그룹 총량을 먼저 고정하고, 별도 채널 모델은 share만 계산한다.
+      if (mmmMode === "bayesian") {
+        const bayesianRun = mmmBayesianLikeRun(panel, cfg, t, true, {
+          mediaPriors,
+          enableBaselineSelection: true,
+        });
+        if (!bayesianRun) throw new Error("Bayesian posterior estimate failed");
+        const health = mmmBayesianHealth(bayesianRun);
+        return mmmStoreCachedResult(csvData.raw, resultCacheKey, {
+          empty: false,
+          panel,
+          cfg,
+          derived,
+          target: t,
+          validate,
+          saturationPanel: panel,
+          aggregatePanel: null,
+          run: bayesianRun,
+          health,
+          effects: [],
+          absorb,
+          mediaPriors,
+          heldMediaPriors: {},
+          experimentPriorDiagnostics,
+          countryCandidates,
+          countryIndividualCandidates,
+          countryBacktests,
+          countryValidationMode,
+          countryPlan,
+          isCountryPriorTuned,
+          modelMode: "bayesian",
+        });
+      }
+
+      // Classic PR #416: Decomp 그룹 총량을 먼저 고정하고, 별도 채널 모델은 share만 계산한다.
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
       const aggregatePanel = buildMmmAggregateMediaPanel(panel);
       if (!aggregatePanel) throw new Error("PR #416 aggregate media panel failed");
@@ -3672,6 +3715,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         countryValidationMode,
         countryPlan,
         isCountryPriorTuned,
+        modelMode: "classic",
       });
     } catch (e) {
       // null-fit(특이행렬)은 대개 채널 공선성(예산이 함께 움직임)·기간 부족 → 정직한 도메인 메시지 (§8)
@@ -3687,7 +3731,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       }
       return { empty: true, reason: tx("분석 오류: ", "Analysis error: ") + msg };
     }
-  }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, mmmAnalyzedSig, colMapSig, mmmWeekStart, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence]);
+  }, [hasData, csvData, target, mmmMode, mmmColMap, mmmAnalyzed, mmmAnalyzedSig, colMapSig, mmmWeekStart, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence]);
 
   const mmm = mmmBundle;
 
@@ -4728,6 +4772,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   };
 
   const effectiveTarget = mmm && !mmm.empty ? mmm.target : target;
+  const targetSourceHeaders = mmm?.derived?.targetSources?.[effectiveTarget] || [];
   // 태그(_android/_ios) 있는 컬럼이 매핑돼 있을 때만 플랫폼 토글 노출(단일 플랫폼 컬럼 없는 wide 데이터용).
   const platformTags = hasData && mmmColMap ? mmmPlatformTags(csvData.headers, mmmColMap) : [];
 
@@ -4748,9 +4793,11 @@ export default function MarketingResponse({ locale = "ko" }) {
         {tx("마케팅 반응 분석", "Marketing Response Analysis")} <span style={{ margin: "0 4px" }}>·</span> <strong style={{ color: "var(--text-1)" }}>{stageKo}</strong>
       </span>
       <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-        {availTargets.length > 1 && (
+        {(availTargets.length > 1 || targetSourceHeaders.length > 0) && (
           <div className="ab-pillgroup" style={{ margin: 0 }}>
-            <span className="ab-pillgroup-label">{tx("타깃", "Target")}</span>
+            <span className="ab-pillgroup-label" title={targetSourceHeaders.length ? tx(`현재 Y 원본: ${targetSourceHeaders.join(" + ")}`, `Current Y source: ${targetSourceHeaders.join(" + ")}`) : undefined}>
+              {tx("타깃", "Target")}{targetSourceHeaders.length ? ` · ${targetSourceHeaders.join(" + ")}` : ""}
+            </span>
             {availTargets.map((t) => (
               <button key={t} className={`ab-pill ${effectiveTarget === t ? "active" : ""}`} onClick={() => {
                 if (effectiveTarget !== t) deferMmmUpdate(() => setTarget(t));
@@ -4815,18 +4862,25 @@ export default function MarketingResponse({ locale = "ko" }) {
         {stage === "mmm" && mmm && !mmm.empty && (
           <div className="ab-pillgroup" style={{ margin: 0 }}>
             <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
-            <span className="ab-pill active">{tx("PR #416 고정 총량 + 채널 분배", "PR #416 fixed totals + channel allocation")}</span>
+            <button className={`ab-pill ${mmmMode === "classic" ? "active" : ""}`} onClick={() => {
+              if (mmmMode !== "classic") deferMmmUpdate(() => setMmmMode("classic"));
+            }}>{tx("Classic · PR #416", "Classic · PR #416")}</button>
+            <button className={`ab-pill ${mmmMode === "bayesian" ? "active" : ""}`} onClick={() => {
+              if (mmmMode !== "bayesian") deferMmmUpdate(() => setMmmMode("bayesian"));
+            }}>{tx("Bayesian", "Bayesian")}</button>
             <span
               title={tx(
-                "Decomp에서 Performance·Branding 총량을 먼저 확정하고, 별도 채널 모델의 회귀계수 순위로 고정 총량을 Cost 활성 채널에만 분배합니다. 채널 합계는 Decomp 총량과 항상 같습니다.",
-                "Decomp fixes Performance and Branding totals first, then a separate channel model ranks regression coefficients to allocate those fixed totals among cost-active channels. Channel sums always equal Decomp totals.",
+                "Classic은 PR #416 고정 총량·채널 분배 경로입니다. Bayesian은 채널별 posterior를 별도로 적합합니다.",
+                "Classic uses the PR #416 fixed-total/channel-allocation path. Bayesian fits a separate channel-level posterior.",
               )}
               style={{ color: MUTED, cursor: "help", fontSize: "14px" }}
             >
               ⓘ
             </span>
             <span style={{ color: MUTED, fontSize: "10.5px" }}>
-              {tx("엔진 v1.6.0 · 고정 총량·계수순위 분배 · 추세 prior 3x", "Engine v1.6.0 · fixed totals/ranked allocation · trend prior 3x")}
+              {mmmMode === "classic"
+                ? tx("Classic · PR #416 고정 총량·채널 분배", "Classic · PR #416 fixed totals/channel allocation")
+                : tx("Bayesian · posterior 채널 적합", "Bayesian · posterior channel fit")}
             </span>
           </div>
         )}

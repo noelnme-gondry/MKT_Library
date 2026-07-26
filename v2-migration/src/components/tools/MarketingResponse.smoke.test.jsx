@@ -610,8 +610,8 @@ describe("MarketingResponse render smoke", () => {
     enterMmmAndAnalyze(container);
     await flushRaf();
     clickByText(container, "기여 분해");
-    expect(document.body.textContent).toContain("PR #416 고정 총량 + 채널 분배");
-    expect(document.body.textContent).toContain("엔진 v1.6.0");
+    expect(document.body.textContent).toContain("Classic · PR #416");
+    expect(document.body.textContent).toContain("Bayesian");
     expect(document.body.textContent).not.toContain("Bayesian-like MMM");
     expect(document.body.textContent).toContain("평균 Cost/주");
     expect(document.body.textContent).toContain("전체 Spend");
@@ -620,6 +620,11 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("RMS 기여 크기 비중");
     expect(document.body.textContent).toContain("모델 건강");
     expect(document.body.textContent).toContain("R-hat");
+    const bayesian = Array.from(container.querySelectorAll("button")).find((button) => button.textContent.trim() === "Bayesian");
+    expect(bayesian).toBeTruthy();
+    fireEvent.click(bayesian);
+    await flushRaf();
+    expect(document.body.textContent).toContain("Bayesian · posterior 채널 적합");
     const footerManual = container.querySelector('[data-mmm-manual-placement="footer"] a');
     expect(footerManual?.getAttribute("href")).toBe("/manuals/mmm-model-manual-ko.pdf");
   });
