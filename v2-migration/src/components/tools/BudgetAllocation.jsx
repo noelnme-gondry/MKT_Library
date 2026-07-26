@@ -2134,7 +2134,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             <p className="muted" style={{ fontSize: "12px", margin: 0 }}>
               {simMode === "auto"
                 ? tr("총 예산을 입력하면 모델에 따라 가장 효율적인 비율로 자동 분배합니다.", "Enter a total budget and it will be auto-allocated in the most efficient ratio per the model.")
-                : tr("캠페인별 수동 시뮬레이션은 준비 중입니다 — 현재는 자동 분배 결과만 제공합니다.", "Manual per-campaign simulation is coming soon — only auto-allocation results are available for now.")}
+                : tr("총 예산을 입력한 뒤 표의 Cost를 직접 바꾸면 채널·캠페인별 수동 시나리오를 계산합니다. 입력한 행은 잠금됩니다.", "Enter a total budget, then edit Cost in the table to simulate a manual channel/campaign scenario. Edited rows are locked.")}
             </p>
           </div>
 

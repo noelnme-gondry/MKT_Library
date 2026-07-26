@@ -32,6 +32,16 @@ export const TOOL_GROUP = {
 
 const EMPTY_SLICE = () => ({ raw: [], headers: [], mapping: {}, fileName: "" });
 
+function nextStableId(prefix, items = []) {
+  const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`^${escapedPrefix}(\\d+)$`);
+  const max = items.reduce((highest, item) => {
+    const match = String(item?.id || "").match(pattern);
+    return match ? Math.max(highest, Number(match[1])) : highest;
+  }, 0);
+  return `${prefix}${max + 1}`;
+}
+
 // Home / SOP guide ids (no CSV) fall back to "efficiency" so the mirror is always
 // a valid slice; those pages never read csvData anyway.
 export const groupForRoute = (id) => TOOL_GROUP[id] || "efficiency";
@@ -566,7 +576,7 @@ export const useAppStore = create(persist((set, get) => ({
   // Event Markers for Dashboard Charts
   eventMarkers: [],
   addEventMarker: (marker) => set((state) => ({
-    eventMarkers: [...state.eventMarkers, { ...marker, id: "m" + Date.now() + Math.random().toString(36).slice(2, 7) }]
+    eventMarkers: [...state.eventMarkers, { ...marker, id: nextStableId("m", state.eventMarkers) }]
   })),
   removeEventMarker: (id) => set((state) => ({
     eventMarkers: state.eventMarkers.filter((m) => m.id !== id)
@@ -594,8 +604,8 @@ export const useAppStore = create(persist((set, get) => ({
   // persist 대상(원본 데이터 아님, §2.2). compute는 customMetric.js가 순수 생성(eval X).
   customMetrics: {},
   addCustomMetric: (scopeId, def) => set((state) => {
-    const id = "cm_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const list = state.customMetrics[scopeId] || [];
+    const id = nextStableId("cm_", list);
     return { customMetrics: { ...state.customMetrics, [scopeId]: [...list, { ...def, id }] } };
   }),
   removeCustomMetric: (scopeId, id) => set((state) => {
@@ -612,8 +622,8 @@ export const useAppStore = create(persist((set, get) => ({
   // scope별 { [scopeId]: [{ id, name, type, dim, metric }] }. 정의(config)라 persist.
   customCharts: {},
   addCustomChart: (scopeId, def) => set((state) => {
-    const id = "ch_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const list = state.customCharts[scopeId] || [];
+    const id = nextStableId("ch_", list);
     return { customCharts: { ...state.customCharts, [scopeId]: [...list, { ...def, id }] } };
   }),
   removeCustomChart: (scopeId, id) => set((state) => {

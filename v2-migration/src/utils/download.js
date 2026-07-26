@@ -39,3 +39,9 @@ export function downloadText(textString, baseName = "summary", ext = "md") {
   const blob = new Blob([textString], { type: "text/plain;charset=utf-8" });
   return triggerDownload(blob, withDate(baseName, ext));
 }
+
+export function downloadJson(value, baseName = "result-manifest") {
+  const text = `${JSON.stringify(value, null, 2)}\n`;
+  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+  return triggerDownload(blob, withDate(baseName, "json"));
+}

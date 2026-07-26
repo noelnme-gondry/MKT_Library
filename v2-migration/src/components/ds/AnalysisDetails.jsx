@@ -40,6 +40,9 @@ export default function AnalysisDetails({
   version = "",
   seed = "",
   cachePolicy = "",
+  inputSignature = "",
+  filterSummary = "",
+  metricDefinition = "",
   warnings = [],
 }) {
   const isEn = locale === "en";
@@ -51,7 +54,7 @@ export default function AnalysisDetails({
     ? (hasValue(interval.value) ? interval.value : `${displayValue(interval.low)}–${displayValue(interval.high)}`)
     : interval;
   const cleanWarnings = (warnings || []).filter(hasValue);
-  const hasProvenance = [method, version, seed, cachePolicy].some(hasValue);
+  const hasProvenance = [method, version, seed, cachePolicy, inputSignature, filterSummary, metricDefinition].some(hasValue);
 
   return (
     <details className={`analysis-details analysis-details--${statusTone}`}>
@@ -97,6 +100,9 @@ export default function AnalysisDetails({
               <MetaItem label={tr("엔진 버전", "Engine version")} value={version} />
               <MetaItem label={tr("시드", "Seed")} value={seed} />
               <MetaItem label={tr("캐시 정책", "Cache policy")} value={cachePolicy} />
+              <MetaItem label={tr("입력 식별자", "Input signature")} value={inputSignature} />
+              <MetaItem label={tr("필터", "Filter")} value={filterSummary} />
+              <MetaItem label={tr("지표 정의", "Metric definition")} value={metricDefinition} />
             </div>
             {(hasValue(seed) || hasValue(cachePolicy)) && (
               <p className="analysis-details__technical-note">

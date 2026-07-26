@@ -1,5 +1,6 @@
 import { TOOL_REQUIRED_FIELDS } from "@/utils/csvConstants";
 import { buildDataQualityReport } from "@/lib/data-import/buildDataQualityReport";
+import { deriveStatisticalStatus } from "./statisticalStatus";
 
 export const ANALYSIS_CONTRACTS = {
   "5-2": { minRows: 1, minPeriods: 1, priority: 1 },
@@ -167,6 +168,13 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
   if (!isBlocked) details.push(...qualityDetails(quality));
   const hasCaution = details.length > 0;
   const status = isBlocked ? "blocked" : hasCaution ? "caution" : "ready";
+  const statisticalStatus = deriveStatisticalStatus({
+    hasEstimate: !isBlocked,
+    rowCount: records.length,
+    requiredMissing: missing,
+    qualityGrade: quality.grade,
+    warnings: details,
+  });
   const recommendation = diagnosis?.byTool?.[toolId] || null;
   return {
     toolId,
@@ -177,6 +185,7 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
     periodCount: quality.periodCount,
     priority: contract.priority,
     confidenceTier,
+    statisticalStatus,
     quality,
     entityCoverage,
     recommendationScore: recommendation?.score || 0,

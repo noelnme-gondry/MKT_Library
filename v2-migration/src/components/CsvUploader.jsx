@@ -7,13 +7,13 @@ import { buildDemoCsv } from "@/utils/demoData";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "@/components/GoogleSheetConnect";
-import { assessMappingConfidence, findMappingConflicts, scoreMappingCandidates } from "@/lib/data-import/scoreMappingCandidates";
+import { assessMappingConfidence, findMappingConflicts } from "@/lib/data-import/scoreMappingCandidates";
 import { buildCanonicalDataset } from "@/lib/data-import/buildCanonicalDataset";
 import { tableToRecords } from "@/lib/data-import/detectHeaderRow";
 import { detectDatasetSignature } from "@/lib/data-import/detectDatasetSignature";
 import { wideToLong } from "@/lib/data-import/wideToLong";
 import { getTransformRecipe, saveTransformRecipe } from "@/lib/data-import/localHistory";
-import { toolFieldKeys } from "@/lib/data-import/prepareDatasetForTool";
+import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import { trackProductEvent } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
 import { ANALYSIS_CONTRACTS, evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
@@ -185,8 +185,8 @@ const CSV_COPY = {
 };
 
 function buildImportInsights(headers, raw, toolId) {
-  const result = scoreMappingCandidates({ headers, rows: raw, allowedKeys: toolFieldKeys(toolId), fields: STANDARD_FIELDS });
-  return { profiles: result.profiles, candidates: result.candidates, conflicts: result.conflicts, selections: result.selections, signature: detectDatasetSignature(headers, raw) };
+  const contract = buildMappingContract({ headers, rows: raw, toolId, source: "csv" });
+  return { ...contract, selections: contract.mapping, signature: detectDatasetSignature(headers, raw) };
 }
 
 export default function CsvUploader({ toolId, locale = "ko" }) {

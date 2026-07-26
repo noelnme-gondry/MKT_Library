@@ -6,6 +6,7 @@ import { PVM_MATH } from "@/utils/pvmMath";
 import { pvmGenerateDiagnosis, buildPvmResultCsv } from "@/utils/pvmExport";
 import { resolvePvmCopy } from "@/utils/contentDomain";
 import { getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
+import { checkAdditiveIdentity } from "@/utils/identityChecks";
 import CsvUploader from "@/components/CsvUploader";
 import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
 import ToolPageShell from "@/components/ToolPageShell";
@@ -376,6 +377,7 @@ function buildPvmCache(csvData, state) {
     layer1,
     layer2,
     layer3,
+    identity: checkAdditiveIdentity(fin.deltaCpa, layer1.map((row) => row.contribution)),
   };
 }
 
@@ -913,6 +915,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     ? pvmSortRows([...cache.layer1].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)), "channel", pvmSortChannel)
     : [];
   const channelSigma = channelRows.reduce((a, e) => a + e.contribution, 0);
+  const channelIdentity = ready ? cache.identity : null;
 
   // §3 캠페인 드릴 — 채널 선택
   const channelKeys = ready ? channelRows.map((e) => e.key) : [];
@@ -1310,11 +1313,20 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           </table>
         </div>
         {ready && channelRows.length > 0 && (
-          <div className="callout ok" style={{ marginTop: "10px" }}>
-            <div className="ico">✓</div>
+          <div className={`callout ${channelIdentity?.ok ? "ok" : "warn"}`} style={{ marginTop: "10px" }}>
+            <div className="ico">{channelIdentity?.ok ? "✓" : "!"}</div>
             <div className="body">
               <strong>{tr(`Σ ${ml} 영향 = 전체 Δ${ml}`, `Σ ${ml} impact = total Δ${ml}`)}</strong>
-              <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "2px" }}>{pvmFmtMoney(channelSigma, cur)} = {pvmFmtMoney(cache.deltaCpa, cur)} {tr("(잔차 없음)", "(no residual)")}</p>
+              <p style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "2px" }}>
+                {pvmFmtMoney(channelSigma, cur)} = {pvmFmtMoney(cache.deltaCpa, cur)} {channelIdentity?.ok
+                  ? tr("(구성상 항등식 확인)", "(identity checked by construction)")
+                  : tr("(항등식 검증 필요)", "(identity check required)")}
+              </p>
+              {!channelIdentity?.ok && (
+                <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+                  {tr(`잔차 ${pvmFmtMoney(channelIdentity?.error || 0, cur)} — 데이터 또는 분해 계층을 확인하세요.`, `Residual ${pvmFmtMoney(channelIdentity?.error || 0, cur)} — inspect the data or decomposition layers.`)}
+                </p>
+              )}
             </div>
           </div>
         )}
