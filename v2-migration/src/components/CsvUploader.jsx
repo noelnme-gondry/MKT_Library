@@ -112,6 +112,7 @@ const CSV_COPY = {
     wideTransformDesc: (count) => `${count}개의 날짜 열을 행으로 바꿉니다. 원래의 차원 컬럼은 유지하고, 기간별 숫자는 “기간별 값”으로 만듭니다. 비용·성과·매출 중 무엇인지 추정하지 않습니다.`,
     wideTransformBtn: "날짜 열을 행으로 변환",
     cancelImportBtn: "다른 파일 선택",
+    cancelActiveImportBtn: "가져오기 취소",
     workbookTitle: "가져올 시트를 선택하세요",
     workbookDesc: (count) => `${count}개의 데이터 시트를 찾았습니다. 한 번에 하나의 시트만 불러와 데이터가 섞이지 않도록 합니다.`,
     workbookSelectLabel: "시트",
@@ -182,6 +183,7 @@ const CSV_COPY = {
     wideTransformDesc: (count) => `This will turn ${count} date columns into rows. Dimension columns stay intact and each period number becomes “Period value.” We do not guess whether it means cost, outcome, or revenue.`,
     wideTransformBtn: "Convert date columns to rows",
     cancelImportBtn: "Choose another file",
+    cancelActiveImportBtn: "Cancel import",
     workbookTitle: "Choose a worksheet to import",
     workbookDesc: (count) => `Found ${count} data worksheets. Import one at a time so data from different sheets never gets mixed.`,
     workbookSelectLabel: "Worksheet",
@@ -231,6 +233,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   const [selectedWorkbookSheet, setSelectedWorkbookSheet] = useState("");
   const [pendingWideImport, setPendingWideImport] = useState(null);
   const preparationRequestRef = useRef(0);
+  const importTaskRef = useRef(0);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -300,12 +303,14 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     setErrorMsg("");
     setImportAnnouncement("");
     setIsImporting(true);
+    const taskId = ++importTaskRef.current;
     const isWorkbook = /\.xlsx?$/i.test(file.name);
     const source = isWorkbook ? "xlsx" : "csv";
     trackProductEvent("data_import_start", { tool_id: toolId, source });
     if (isWorkbook) {
       try {
         const sheets = await parseXlsxFile(file);
+        if (taskId !== importTaskRef.current) return;
         if (!sheets.length) {
           setErrorMsg(T.emptyCsv);
         } else if (sheets.length === 1) {
@@ -335,7 +340,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
             setErrorMsg(T.emptyCsv);
             return;
           }
-          await applyImportedTable({ headers, raw, fileName: file.name, source });
+          if (taskId === importTaskRef.current) await applyImportedTable({ headers, raw, fileName: file.name, source });
         } catch (error) {
           setErrorMsg(`${T.parseError}${error.message}`);
         } finally {
@@ -389,6 +394,14 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     setPendingWideImport(null);
     setSelectedWorkbookSheet("");
     setErrorMsg("");
+  };
+
+  const cancelActiveImport = () => {
+    importTaskRef.current += 1;
+    preparationRequestRef.current += 1;
+    setIsImporting(false);
+    setErrorMsg("");
+    setImportAnnouncement("");
   };
 
   // 구글 시트 로드 완료 콜백 — GoogleSheetConnect가 {headers, raw, fileName, sheetUrl}을
@@ -624,6 +637,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           <div className="csv-drop-sub">{T.dropSub}</div>
         </button>
         <input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden ref={fileInputRef} onChange={handleFileChange} />
+        {isImporting && <button type="button" className="ab-pill" onClick={cancelActiveImport} style={{ marginTop: "10px" }}>{T.cancelActiveImportBtn}</button>}
         <GoogleSheetConnect onLoaded={handleSheetLoaded} onError={setErrorMsg} locale={locale} />
         <DemoLoadButton onLoad={handleLoadDemo} locale={locale} className={hasSheetImport ? "demo-load-row--spaced" : ""} />
           </>
