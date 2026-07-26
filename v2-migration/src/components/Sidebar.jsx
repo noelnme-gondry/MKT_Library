@@ -190,7 +190,7 @@ export default function Sidebar({ locale = "ko" }) {
           <span style={{ fontSize: "13px", opacity: 0.6 }}>→</span>
         </Link>
         <Link
-          href="/templates"
+          href={locale === "en" ? "/en/templates" : "/templates"}
           className="phase-header"
           aria-current={(pathname || "").includes("/templates") ? "page" : undefined}
           style={{

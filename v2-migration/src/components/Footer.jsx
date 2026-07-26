@@ -14,7 +14,7 @@ export default function Footer() {
     <div className="site-footer__inner">
       <div className="site-footer__brand"><Link href={p || "/"}>Growth Opt Playbook</Link><p>{copy.note}</p></div>
       <nav className="site-footer__column" aria-label={copy.tools}><strong>{copy.tools}</strong><Link href={`${p}/dashboard`}>{copy.dashboard}</Link><Link href={`${p}/tools/campaign-variance`}>{copy.variance}</Link><Link href={`${p}/content/freshness`}>{copy.fatigue}</Link><Link href={`${p}/tools/budget-allocation`}>{copy.budget}</Link></nav>
-      <nav className="site-footer__column" aria-label={copy.learn}><strong>{copy.learn}</strong><Link href={`${p}/blog`}>{copy.blog}</Link><Link href={`${p}/glossary`}>{copy.glossary}</Link><Link href={`${p}/guide`}>{copy.guide}</Link><Link href="/templates">{copy.templates}</Link></nav>
+      <nav className="site-footer__column" aria-label={copy.learn}><strong>{copy.learn}</strong><Link href={`${p}/blog`}>{copy.blog}</Link><Link href={`${p}/glossary`}>{copy.glossary}</Link><Link href={`${p}/guide`}>{copy.guide}</Link><Link href={isEn ? "/en/templates" : "/templates"}>{copy.templates}</Link></nav>
       <nav className="site-footer__column" aria-label={copy.legal}><strong>{copy.legal}</strong><Link href="/privacy">{copy.privacy}</Link><Link href="/terms">{copy.terms}</Link></nav>
     </div>
   </footer>;

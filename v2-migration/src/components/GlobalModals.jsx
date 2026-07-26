@@ -32,7 +32,7 @@ export default function GlobalModals({ locale = "ko" }) {
     return items.concat([
       { key: "blog", title: locale === "en" ? "Performance marketing blog" : "퍼포먼스 마케팅 블로그", group: locale === "en" ? "Learn" : "실무 자료", href: locale === "en" ? "/en/blog" : "/blog", kind: locale === "en" ? "Blog" : "블로그" },
       { key: "glossary", title: locale === "en" ? "Marketing glossary" : "마케팅 용어사전", group: locale === "en" ? "Learn" : "실무 자료", href: locale === "en" ? "/en/glossary" : "/glossary", kind: locale === "en" ? "Glossary" : "용어" },
-      { key: "templates", title: locale === "en" ? "CSV templates" : "CSV 템플릿", group: locale === "en" ? "Prepare data" : "데이터 준비", href: "/templates", kind: locale === "en" ? "Template" : "템플릿" },
+      { key: "templates", title: locale === "en" ? "CSV templates" : "CSV 템플릿", group: locale === "en" ? "Prepare data" : "데이터 준비", href: locale === "en" ? "/en/templates" : "/templates", kind: locale === "en" ? "Template" : "템플릿" },
     ]);
   }, [locale]);
   const results = useMemo(() => {
