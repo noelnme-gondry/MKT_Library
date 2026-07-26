@@ -450,7 +450,10 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
     .replace("행렬 특이값 — control 매핑 부족", "Singular matrix — insufficient control mapping")
     .replace("데이터 부족", "Insufficient data")
     .replace("추정 불가", "Cannot estimate")
-    .replace("행렬 특이값", "Singular matrix"));
+    .replace("행렬 특이값", "Singular matrix")
+    .replace("악화 추세 없음", "No worsening trend")
+    .replace(/horizon\((\d+)일\) 밖/, "outside horizon ($1d)")
+    .replace("추세 외삽", "Trend extrapolation"));
   const decMetaAll = useMemo(() => buildDecomposeMeta(locale), [locale]);
   const csvData = useAppStore((state) => state.csvData);
   const [metric, setMetric] = useState("ctr");
@@ -1304,7 +1307,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                       <td className="tnum" style={{ color: (a.cpmTrendPctPerDay || 0) > 0 ? "#f87171" : "var(--text-muted)" }}>{fmtPctDay(a.cpmTrendPctPerDay, locale)}</td>
                       <td className="tnum">
                         {a.etaDays == null ? (
-                          <span style={{ color: "var(--text-muted)", fontSize: "10.5px" }}>{a.etaReason || "—"}</span>
+                          <span style={{ color: "var(--text-muted)", fontSize: "10.5px" }}>{localizeEngineMsg(a.etaReason) || "—"}</span>
                         ) : a.etaDays === 0 ? (
                           <strong style={{ color: "#f87171" }}>{tr("즉시", "Immediate")}</strong>
                         ) : (

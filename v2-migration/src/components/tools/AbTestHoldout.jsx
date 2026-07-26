@@ -790,6 +790,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                   <DataTable
                     rows={readoutData.mass.rows}
                     rowKey={(r, i) => i}
+                    emptyText={tr("데이터 없음", "No data")}
                     columns={[
                       { key: "name", label: "Arm", align: "left", fmt: (_, r) => <>{r.name}{r.isControl ? <span style={{ color: "var(--text-muted)", fontSize: "11px" }}> (control)</span> : ""}</> },
                       { key: "n", label: tr("표본수", "Sample size"), align: "right", fmt: (v) => v.toLocaleString() },

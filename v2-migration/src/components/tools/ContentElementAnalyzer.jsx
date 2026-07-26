@@ -220,7 +220,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       },
     });
   };
-  const handleLoadDemo = () => { setDemoPending(true); setCsvData(buildDemoCsv(C.demoGroup)); };
+  const handleLoadDemo = () => { setDemoPending(true); setCsvData(buildDemoCsv(C.demoGroup, locale)); };
   const resetCsv = () => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" });
 
   // 첫 진입 시 데모 자동 로드(다른 도구와 동일 첫인상 패턴).

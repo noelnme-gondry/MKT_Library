@@ -420,6 +420,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
       <MetricConfigPanel
         open={funnelCfgOpen}
         onClose={() => setFunnelCfgOpen(false)}
+        locale={locale}
         title={tr("전체 퍼널 단계 표 — 컬럼 편집", "Full funnel stage table — Edit columns")}
         items={funnelCols.map((col) => ({ key: col.k, label: col.label }))}
         config={funnelTableCfg}

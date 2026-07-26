@@ -212,10 +212,10 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
             <p className="seasonality-sub">{locale === "en" ? "Input frequency is detected automatically. Existing country, OS, channel and date filters apply." : "입력 단위를 자동 인식합니다. 상단의 국가·OS·채널·기간 필터가 그대로 적용됩니다."}</p>
           </div>
           <div className="seasonality-controls">
-            <select value={selected?.key || ""} onChange={(event) => setMetric(event.target.value)} aria-label="시즈널리티 지표">
+            <select value={selected?.key || ""} onChange={(event) => setMetric(event.target.value)} aria-label={locale === "en" ? "Seasonality metric" : "시즈널리티 지표"}>
               {availableMetrics.map((item) => <option key={item.key} value={item.key}>{locale === "en" ? item.en : item.ko}</option>)}
             </select>
-            <div className="ab-pillgroup" aria-label="시즈널리티 단위">
+            <div className="ab-pillgroup" aria-label={locale === "en" ? "Seasonality unit" : "시즈널리티 단위"}>
               {["month", "week"].map((value) => <button key={value} disabled={!availableGrains.includes(value)} className={`ab-pill ${activeGrain === value ? "active" : ""}`} onClick={() => setGrain(value)} title={!availableGrains.includes(value) ? (locale === "en" ? "Not available for this input frequency" : "입력 단위상 정확히 집계할 수 없습니다") : undefined}>{value === "month" ? (locale === "en" ? "Monthly" : "월별") : (locale === "en" ? "Weekly" : "주별")}</button>)}
             </div>
             {downloadItems.length > 0 && (
@@ -252,7 +252,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
               <article className="chart-container seasonality-chart"><h3>{detrend ? (locale === "en" ? "Trend-adjusted pattern by year" : "추세 제외 후 연도별 패턴") : (locale === "en" ? "Actual values by year" : "연도별 실제값")}</h3><canvas ref={overlayRef} /></article>
               <article className="chart-container seasonality-chart"><h3>{locale === "en" ? "Average seasonal index" : "평균 시즈널리티 인덱스"}</h3><canvas ref={indexRef} /></article>
             </div>
-            <div className="seasonality-heatmap" aria-label="연도별 시즈널리티 히트맵">
+            <div className="seasonality-heatmap" aria-label={locale === "en" ? "Seasonality heatmap by year" : "연도별 시즈널리티 히트맵"}>
               <div className="seasonality-heatmap__title">{locale === "en" ? "Year × calendar period" : "연도 × 달력 구간"}</div>
               <div className="seasonality-heatmap__body" style={{ "--season-columns": result.seasonal.length }}>
                 <span />{result.seasonal.map((item) => <span key={item.bucket} className="seasonality-heatmap__label">{bucketLabel(item.bucket, activeGrain, locale)}</span>)}

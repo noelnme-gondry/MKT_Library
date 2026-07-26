@@ -543,6 +543,19 @@ describe("MarketingResponse render smoke", () => {
     englishRender.unmount();
   }, 10_000);
 
+  it("keeps every MMM stage free of Korean UI copy in English", async () => {
+    seedWithData();
+    const { container } = render(<MarketingResponse locale="en" />);
+    clickByText(container, "Analyze");
+    await flushRaf();
+    for (const stage of ["Cannibalization", "Contribution", "Regression · Forecast", "Time series"]) {
+      clickByText(container, stage);
+      await flushRaf();
+      const koreanCopy = Array.from(new Set(document.body.textContent.match(/[가-힣]+/g) || []));
+      expect(koreanCopy, `${stage}: ${koreanCopy.join(", ")}`).toEqual([]);
+    }
+  }, 20_000);
+
   it("shows the colMap mapper + analyze gate by default (MMM primary) with a valid CSV", () => {
     seedWithData();
     render(<MarketingResponse />);

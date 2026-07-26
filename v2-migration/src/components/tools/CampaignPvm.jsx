@@ -108,7 +108,7 @@ const DAY = 86400000;
 // 통화 표시 헬퍼 — index.html pvmFmtMoney 이식 (값 변환 없이 단위 기호만 전환)
 // decimals: usd일 때 소수 자리 강제(CPA/CPI처럼 단가 지표는 1자리 — 예: $19.1).
 // 미지정 시 기존 동작(최대 2자리) 유지.
-function pvmFmtMoney(v, cur, decimals) {
+function formatPvmMoney(v, cur, decimals, locale = "ko") {
   const sign = v < 0 ? "-" : "";
   const abs = Math.abs(v);
   if (cur === "usd") {
@@ -117,7 +117,7 @@ function pvmFmtMoney(v, cur, decimals) {
       : { maximumFractionDigits: 2 };
     return `${sign}$${abs.toLocaleString(undefined, opts)}`;
   }
-  return `${sign}${Math.round(abs).toLocaleString()}원`;
+  return `${sign}${locale === "en" ? "₩" : ""}${Math.round(abs).toLocaleString()}${locale === "en" ? "" : "원"}`;
 }
 
 // 월요일(UTC 고정) — 마감주(calendar weekBasis) 계산 기준
@@ -399,6 +399,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   // locale="en"일 때만 PVM_COPY_EN으로 오버레이(별도 축, domain 로직과 독립).
   const C = localizePvmCopy(domain, locale);
   const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
+  const pvmFmtMoney = useCallback((value, cur, decimals) => formatPvmMoney(value, cur, decimals, locale), [locale]);
   const csvData = useAppStore((state) => state.csvData);
   const denomBasis = useAppStore((state) => state.denomBasis);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
@@ -627,7 +628,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       if (waterfallChart) waterfallChart.destroy();
       if (trendChart) trendChart.destroy();
     };
-  }, [ready, cache, byChannelChart, currency, C, locale, tr]);
+  }, [ready, cache, byChannelChart, currency, C, locale, tr, pvmFmtMoney]);
 
   // 진단(💡) 플로팅 툴팁 — index.html #pvm-float-tip 이식(document 위임, 스크롤 시 숨김)
   useEffect(() => {

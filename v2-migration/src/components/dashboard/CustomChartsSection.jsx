@@ -82,12 +82,16 @@ export default function CustomChartsSection({
 
   const { availDims, metricOptions, resolveMetricCompute, dimLabelOf, metricLabelOf, metricUnitOf } =
     buildChartFieldOptions(csvData && csvData.mapping, customMetrics);
+  const chartTypeLabel = (type) => {
+    if (locale !== "en") return CHART_TYPES.find((t) => t.id === type)?.label || type;
+    return ({ bar: "Bar", line: "Line", scorecard: "Scorecard" })[type] || type;
+  };
 
   const chartDefs = customCharts || [];
   const chartMetas = chartDefs.map((def) => ({
     k: def.id,
     title: def.name,
-    sub: `${CHART_TYPES.find((t) => t.id === def.type)?.label || def.type} · ${def.type === "scorecard" ? metricLabelOf(def.metric) : `${dimLabelOf(def.dim)}별 ${metricLabelOf(def.metric)}`}`,
+    sub: `${chartTypeLabel(def.type)} · ${def.type === "scorecard" ? metricLabelOf(def.metric) : locale === "en" ? `${dimLabelOf(def.dim)} · ${metricLabelOf(def.metric)}` : `${dimLabelOf(def.dim)}별 ${metricLabelOf(def.metric)}`}`,
   }));
   const orderedCharts = applyMetricView(chartMetas, chartCfg, (c) => c.k);
   const visibleKeys = orderedCharts.map((c) => c.k).join(",");
@@ -173,6 +177,7 @@ export default function CustomChartsSection({
       <CustomChartBuilder
         open={builderOpen}
         onClose={() => setBuilderOpen(false)}
+        locale={locale}
         dims={availDims}
         metrics={metricOptions}
         existing={chartDefs}
@@ -182,6 +187,7 @@ export default function CustomChartsSection({
       <MetricConfigPanel
         open={cfgOpen}
         onClose={() => setCfgOpen(false)}
+        locale={locale}
         title={`${sectionTitle} ${T.configTitleSuffix}`}
         items={chartMetas.map((c) => ({ key: c.k, label: c.title }))}
         config={chartCfg}

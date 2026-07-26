@@ -109,7 +109,7 @@ export default function Header({ locale = "ko" }) {
           <>
             <span className="sep">/</span>
             <span className="current" style={{ color: "var(--text-secondary)" }}>
-              CSV 템플릿
+              {locale === "en" ? "CSV Templates" : "CSV 템플릿"}
             </span>
           </>
         )}
