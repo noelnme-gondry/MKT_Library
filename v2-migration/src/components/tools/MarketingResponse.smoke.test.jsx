@@ -591,12 +591,19 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("데이터 위생");
   });
 
-  it("renders the honest RMS label, health diagnostics, and shared footer manual in MMM results", async () => {
+  it("renders the frozen PR #416 model, channel totals, health diagnostics, and shared footer manual", async () => {
     seedWithData();
     const { container } = render(<MarketingResponse />);
     enterMmmAndAnalyze(container);
     await flushRaf();
     clickByText(container, "기여 분해");
+    expect(document.body.textContent).toContain("PR #416 집계 MMM");
+    expect(document.body.textContent).toContain("엔진 v1.6.0");
+    expect(document.body.textContent).not.toContain("Bayesian-like MMM");
+    expect(document.body.textContent).toContain("평균 Cost/주");
+    expect(document.body.textContent).toContain("전체 Spend");
+    expect(document.body.textContent).toContain("전체 가입");
+    expect(document.body.textContent).toContain("그룹 총량 기반 배분");
     expect(document.body.textContent).toContain("RMS 기여 크기 비중");
     expect(document.body.textContent).toContain("모델 건강");
     expect(document.body.textContent).toContain("R-hat");

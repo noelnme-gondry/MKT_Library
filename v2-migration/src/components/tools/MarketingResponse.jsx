@@ -10,7 +10,6 @@ import {
   MMM_NONMEDIA_GROUPS,
   mmmValidate,
   mmmBayesianRun,
-  mmmBayesianCorrelatedGroupRefit,
   mmmBayesianHealth,
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
@@ -30,7 +29,7 @@ import {
   mmmMacroFacts,
   mmmResolveAbsorb,
   _mmmChans,
-} from "@/utils/mmmMath";
+} from "@/utils/mmmMathPr416";
 import { mmmOls } from "@/utils/regMath";
 import {
   mmmBuildCannibRank,
@@ -50,7 +49,13 @@ import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, colMapMissing, 
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact } from "@/utils/format";
-import { buildMmmCollinearityGroupedPerformance, buildMmmWeeklyPerformance } from "@/utils/mmmWeeklyPerformance";
+import {
+  allocateFixedMmmGroupTotals,
+  buildMmmAggregateMediaPanel,
+  buildMmmCollinearityGroupedPerformance,
+  buildMmmWeeklyPerformance,
+  sliceMmmChannelContributions,
+} from "@/utils/mmmWeeklyPerformance";
 import { buildExperimentMediaPriorDetailed, mmmRollingOrigins, summarizeRollingErrors, mmmPriorMroiAtSpend } from "@/utils/mmmPriorMath";
 import {
   planCountryReferenceFits,
@@ -1411,7 +1416,7 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     ["model", run.methodLabel], ["R2", run.posterior?.r2], ["sigma", run.posterior?.sigma], ["target", mmm.target], [],
     ["weeks_per_parameter", identification.weeksPerParameter], ["max_media_correlation", identification.maxMediaCorrelation], ["high_collinearity", identification.highCollinearity], ["budget_eligible", identification.budgetEligible], [],
     ["industry_controls", JSON.stringify(mmm.panel.externalDefs || [])],
-    ["baseline_selection", JSON.stringify(run.baselineSelection || null)], ["seasonality_selection", JSON.stringify(run.seasonalitySelection || null)], ["media_penalty_selection", JSON.stringify(run.mediaPenaltySelection || null)], ["joint_structure_selection", JSON.stringify(run.jointStructureSelection || null)], ["joint_transform_check", JSON.stringify(run.jointTransform || null)],
+    ["pr416_provenance", JSON.stringify(run.pr416Provenance || null)], ["baseline_selection", JSON.stringify(run.baselineSelection || null)], ["seasonality_selection", JSON.stringify(run.seasonalitySelection || null)], ["media_penalty_selection", JSON.stringify(run.mediaPenaltySelection || null)], ["joint_transform_check", JSON.stringify(run.jointTransform || null)],
     ["channel", "adstock_alpha", "half_saturation", "hill_slope", "evaluated_transform_candidates", "total_transform_candidates", "candidate_search_capped", "prior_locked_transform", "effective_transform_candidates", "top_transform_weight", "posterior_positive_probability"],
     ...Object.values(run.saturationByChannel || {}).map((s) => [s.label, s.params.alpha, s.params.ec, s.params.slope, s.transformUncertainty?.candidateCount, s.transformUncertainty?.totalCandidateCount, s.transformUncertainty?.candidateSearchCapped, !!s.transformUncertainty?.priorLockedTransform, s.transformUncertainty?.effectiveCandidateCount, s.transformUncertainty?.topWeight, s.posteriorPositive]),
   ]);
@@ -1419,6 +1424,28 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     ["week", "actual", "fitted", "residual", "baseline", ...decomp.groupNames],
     ...decomp.weeks.map((w) => [w.week, w.actual, w.fitted, w.residual, w.baseline, ...decomp.groupNames.map((g) => w.contrib[g] || 0)]),
   ] : [[tx("주별 기여", "Weekly contribution")], [tx("기여 분해 결과가 없습니다.", "Contribution result unavailable.")]]);
+  const channelPerformance = buildMmmWeeklyPerformance(mmm.panel, run.channelContributions);
+  add("05b_ChannelAttribution", [
+    ["channel", "group", `avg_cost_per_week_${sourceCurrency}`, `avg_${mmm.target}_per_week`, `total_spend_${sourceCurrency}`, `total_${mmm.target}`, mmm.target === "Revenue" ? "ROAS" : "CPA", "source", "identification", "by_construction"],
+    ...channelPerformance.map((row) => {
+      const contribution = run.channelContributions?.[row.key] || {};
+      const channel = (mmm.panel.channels || []).find((item) => item.key === row.key);
+      return [
+        row.label,
+        channel?.kind === "brand" ? "Brand" : "Performance",
+        row.avgWeeklySpend,
+        row.avgWeeklyPredicted,
+        row.totalSpend,
+        row.totalPredicted,
+        mmm.target === "Revenue"
+          ? (row.totalSpend > 0 ? row.totalPredicted / row.totalSpend : null)
+          : row.predictedCpr,
+        contribution.source,
+        contribution.identificationVerdict,
+        Boolean(contribution.identification?.byConstruction),
+      ];
+    }),
+  ]);
   add("06_ChannelEffect", [
     ["channel", "posterior_positive_probability", "effect_size", "ci_low", "ci_high", `recent_spend_${sourceCurrency}`, `observed_raw_max_spend_${sourceCurrency}`, `observed_sustainable_spend_ceiling_${sourceCurrency}`, "range_profile_weight", `decision_step_${sourceCurrency}`, "incremental_mean", "incremental_ci_low", "incremental_ci_high", "increment_inside_observed_transformed_range", "budget_eligible", "budget_gate_reasons"],
     ...Object.values(run.saturationByChannel || {}).map((s) => {
@@ -1442,6 +1469,7 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
   add("09_Glossary", [
     [tx("항목", "Term"), tx("설명", "Description")],
     ["Empirical-Bayes MMM", tx("잔차 분산을 plug-in 추정하고 Gaussian prior를 반영한 조건부 분석 근사입니다. 관측 데이터의 연관 모델이며 인과 확정이 아닙니다.", "Conditional Gaussian empirical-Bayes approximation with plug-in residual variance and Gaussian priors. Observational association, not causal proof.")],
+    ["Trend stress profile", tx("현재 Decomp은 중립 추세계수의 하락 방향을 4배로 강제하는 stress prior를 사용합니다. 민감도 결과이며 OOS WMAPE가 기준을 넘으면 기본 추정으로 해석하지 마세요.", "Current Decomp uses a stress prior that forces the neutral trend coefficient four times further downward. This is a sensitivity profile; do not treat it as a base estimate when OOS WMAPE exceeds the gate.")],
     ["P(effect > 0)", tx("채널 효과가 양수일 posterior 확률. 80% 이상이면서 기간·공선성 식별 gate도 통과해야 예산 추천에 씁니다.", "Posterior probability that the channel effect is positive. Budget use requires ≥80% plus the time-span and collinearity identification gates.")],
     ["Adstock", tx("광고 효과의 다음 주 이월.", "Carryover of ad effect into later weeks.")],
     ["Hill saturation", tx("지출이 커질수록 추가 효과가 줄어드는 반응 곡선.", "Response curve with diminishing marginal return.")],
@@ -2371,13 +2399,7 @@ function sliceMmmPanel(panel, end, start = 0) {
 
 function sliceMmmRun(run, start, end) {
   if (!run) return run;
-  const sliceSeries = (value) => Array.isArray(value) ? value.slice(start, end) : value;
-  const channelContributions = Object.fromEntries(Object.entries(run.channelContributions || {}).map(([key, value]) => [key, {
-    ...value,
-    weeklyMean: sliceSeries(value.weeklyMean),
-    weeklyLow: sliceSeries(value.weeklyLow),
-    weeklyHigh: sliceSeries(value.weeklyHigh),
-  }]));
+  const channelContributions = sliceMmmChannelContributions(run.channelContributions, start, end);
   return { ...run, weeks: (run.weeks || []).slice(start, end), channelContributions };
 }
 
@@ -2710,7 +2732,6 @@ export default function MarketingResponse({ locale = "ko" }) {
   const bucketMeta = mmmBucketMeta(locale);
   const [stage, setStage] = useState("trend"); // trend | diagnose | mmm | lab
   const [target, setTarget] = useState("Regs");
-  const decompModel = "bayesian";
   const [decompGrouped, setDecompGrouped] = useState(true); // §5.5 true=4버킷 묶음 / false=광고 개별채널
   // RMS 비중에서 기본 수요·추세가 너무 큰 경우, 나머지 동인끼리의 상대 크기를
   // 볼 수 있게 한다. 모델·원본 기여값은 바꾸지 않고 이 표시용 분모만 전환한다.
@@ -2889,7 +2910,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   const irfRef = useRef(null);
 
   // ── MMM 캐시 (buildMmmMethCache 축약) — 매핑·데이터·target·model 변경 시 재계산 ──
-  const mmm = useMemo(() => {
+  const mmmBundle = useMemo(() => {
     if (!hasData) return null;
     // 분석 게이트(index 분석하기): 매핑 확정 전엔 무거운 엔진(mmmRunMmm 등)을 돌리지 않음 —
     // 드래그 도중 반쯤 매핑된 colMap으로 엔진이 도는 것을 막고(성능·크래시 방지) 게이트 후에만 계산.
@@ -2899,6 +2920,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       if (!mmmColMap) return { empty: true, reason: tx("컬럼 역할을 매핑하세요 (날짜/주차 · 목표 Y · 채널 spend).", "Map column roles (date/week · target Y · channel spend).") };
       const resultCacheKey = [
         `meth:${MMM_METH_CONFIG.version}`,
+        "pr416-fixed-group-total-ranked-allocation-v1",
         mmmAnalyzedSig,
         colMapSig,
         target,
@@ -3518,19 +3540,59 @@ export default function MarketingResponse({ locale = "ko" }) {
         }
         }
       }
-      // A selected country prior was tuned against the target rolling folds, so
-      // the run's internal split would no longer be an untouched OOS estimate.
+      // Decomp 그룹 총량을 먼저 고정하고, 별도 채널 모델은 share만 계산한다.
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
-      const run = mmmBayesianRun(panel, cfg, t, !isCountryPriorTuned && !hasExternalPrior, {
-        mediaPriors,
-        enableJointStructureSelection: true,
+      const aggregatePanel = buildMmmAggregateMediaPanel(panel);
+      if (!aggregatePanel) throw new Error("PR #416 aggregate media panel failed");
+      const aggregateRun = mmmBayesianRun(aggregatePanel, cfg, t, true, {
+        mediaPriors: {},
         enableBaselineSelection: true,
-        enableBusinessContributionPrior: true,
       });
-      if (!run) throw new Error("Bayesian posterior estimate failed");
-      const health = mmmBayesianHealth(run);
+      if (!aggregateRun) throw new Error("PR #416 aggregate Bayesian posterior estimate failed");
+      const allocationRun = mmmBayesianRun(panel, cfg, t, false, {
+        mediaPriors,
+        enableBaselineSelection: true,
+        skipTransformUncertainty: true,
+      });
+      if (!allocationRun) throw new Error("PR #416 channel allocation model failed");
+      const allocatedRun = allocateFixedMmmGroupTotals(panel, aggregatePanel, aggregateRun, allocationRun, 0.01);
+      allocatedRun.modelVariant = "pr416-fixed-group-total-ranked-allocation";
+      allocatedRun.methodLabel = "PR #416 fixed Decomp totals with ranked channel allocation";
+      allocatedRun.pr416Provenance = {
+        commit: "ae12706",
+        modelScope: "mmm-engine-only",
+        currentFiltersPreserved: true,
+        totalIndustryAggregationPreserved: true,
+        decompMediaSource: "aggregate Performance/Branding posterior",
+        channelAllocation: "fixed-group-total-ranked-coefficient-share",
+        channelAllocationByConstruction: true,
+        externalChannelPriorsAppliedToAllocationFit: hasExternalPrior,
+      };
+      const health = mmmBayesianHealth(allocatedRun);
       const effects = [];
-      return mmmStoreCachedResult(csvData.raw, resultCacheKey, { empty: false, panel, cfg, derived, target: t, validate, run, health, effects, absorb, mediaPriors, experimentPriorDiagnostics, countryCandidates, countryIndividualCandidates, countryBacktests, countryValidationMode, countryPlan, isCountryPriorTuned });
+      return mmmStoreCachedResult(csvData.raw, resultCacheKey, {
+        empty: false,
+        panel,
+        cfg,
+        derived,
+        target: t,
+        validate,
+        saturationPanel: panel,
+        aggregatePanel,
+        run: allocatedRun,
+        health,
+        effects,
+        absorb,
+        mediaPriors,
+        heldMediaPriors: {},
+        experimentPriorDiagnostics,
+        countryCandidates,
+        countryIndividualCandidates,
+        countryBacktests,
+        countryValidationMode,
+        countryPlan,
+        isCountryPriorTuned,
+      });
     } catch (e) {
       // null-fit(특이행렬)은 대개 채널 공선성(예산이 함께 움직임)·기간 부족 → 정직한 도메인 메시지 (§8)
       const msg = String(e && e.message || "");
@@ -3546,6 +3608,8 @@ export default function MarketingResponse({ locale = "ko" }) {
       return { empty: true, reason: tx("분석 오류: ", "Analysis error: ") + msg };
     }
   }, [hasData, csvData, target, mmmColMap, mmmAnalyzed, mmmAnalyzedSig, colMapSig, mmmWeekStart, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence]);
+
+  const mmm = mmmBundle;
 
   useEffect(() => {
     if (!mmmAnalyzed) return;
@@ -3588,13 +3652,13 @@ export default function MarketingResponse({ locale = "ko" }) {
     try { return mmmBayesianWeeklyDecomp(sliceMmmRun(mmm.run, contributionViewRange.start, contributionViewRange.end)); } catch { return null; }
   }, [decomp, mmm, contributionViewRange]);
   const displayedMmmPanel = useMemo(() => mmm?.panel ? sliceMmmPanel(mmm.panel, contributionViewRange.end, contributionViewRange.start) : null, [mmm, contributionViewRange]);
+  const displayedSaturationPanel = useMemo(() => mmm?.saturationPanel
+    ? sliceMmmPanel(mmm.saturationPanel, contributionViewRange.end, contributionViewRange.start)
+    : displayedMmmPanel, [mmm, displayedMmmPanel, contributionViewRange]);
 
-  // 고상관 연결요소는 실제로 합친 입력으로 한 번 더 적합한다. 개별 보기에는
-  // 그룹 총기여를 원래 신호·지출 비중으로 보수 배분한 참고값을 남긴다.
-  const collinearityGroupRefit = useMemo(() => {
-    if (!mmm || mmm.empty || stage !== "mmm") return null;
-    return mmmBayesianCorrelatedGroupRefit(mmm.panel, mmm.run, mmm.target);
-  }, [mmm, stage]);
+  // 상위 Performance·Branding posterior가 총량 SSOT다. 채널 표에는 그 총량을
+  // adstocked spend share로 나눈 배분값만 사용하며 별도 그룹 재적합은 하지 않는다.
+  const collinearityGroupRefit = null;
   const displayedCollinearityGroupRefit = useMemo(() => sliceMmmCollinearityGroupRefit(
     collinearityGroupRefit,
     contributionViewRange.start,
@@ -3602,25 +3666,21 @@ export default function MarketingResponse({ locale = "ko" }) {
   ), [collinearityGroupRefit, contributionViewRange]);
   const displayedSaturationByChannel = useMemo(() => withMmmViewSpend(
     mmm?.run?.saturationByChannel,
-    displayedMmmPanel,
+    displayedSaturationPanel,
     Boolean(contributionViewStart || contributionViewEnd),
-  ), [mmm, displayedMmmPanel, contributionViewStart, contributionViewEnd]);
+  ), [mmm, displayedSaturationPanel, contributionViewStart, contributionViewEnd]);
   const displayedSaturationCurveSeries = useMemo(() => {
     if (saturationCurveView === "group") {
-      return buildMmmSaturationCurveGroups(displayedSaturationByChannel, displayedMmmPanel?.channels, locale);
+      return buildMmmSaturationCurveGroups(displayedSaturationByChannel, displayedSaturationPanel?.channels, locale);
     }
     return Object.values(displayedSaturationByChannel).map((channel) => ({ ...channel, isGroup: false }));
-  }, [displayedSaturationByChannel, displayedMmmPanel, locale, saturationCurveView]);
+  }, [displayedSaturationByChannel, displayedSaturationPanel, locale, saturationCurveView]);
 
-  // 주간 기여분해와 동일한 채널별 기여 원천을 집계한다. 그룹 재적합이 있으면
-  // 개별 보기 역시 그룹 총기여 안에서만 나뉘어 합계가 어긋나지 않는다.
+  // 주간 상위 그룹 기여를 by-construction으로 나눈 채널 배분값을 집계한다.
   const weeklyChannelPerformance = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "mmm") return [];
-    return buildMmmWeeklyPerformance(mmm.panel, {
-      ...mmm.run.channelContributions,
-      ...(collinearityGroupRefit?.individualContributions || {}),
-    });
-  }, [mmm, stage, collinearityGroupRefit]);
+    return buildMmmWeeklyPerformance(mmm.panel, mmm.run.channelContributions);
+  }, [mmm, stage]);
   const groupedWeeklyChannelPerformance = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "mmm") return [];
     return buildMmmCollinearityGroupedPerformance(
@@ -4560,12 +4620,33 @@ export default function MarketingResponse({ locale = "ko" }) {
             <span title={tx("학습은 전체 데이터를 사용합니다. 이 필터는 다시 학습하지 않고, 그 결과 중 선택한 날짜만 보여줍니다.", "The model is trained on all data. This filter only limits dates shown from the fitted result.")} style={{ color: MUTED, cursor: "help", fontSize: "14px" }}>ⓘ</span>
           </div>
         )}
+        {stage === "mmm" && mmm && !mmm.empty && (
+          <div className="ab-pillgroup" style={{ margin: 0 }}>
+            <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
+            <span className="ab-pill active">{tx("PR #416 고정 총량 + 채널 분배", "PR #416 fixed totals + channel allocation")}</span>
+            <span
+              title={tx(
+                "Decomp에서 Performance·Branding 총량을 먼저 확정하고, 별도 채널 모델의 회귀계수 순위로 고정 총량을 Cost 활성 채널에만 분배합니다. 채널 합계는 Decomp 총량과 항상 같습니다.",
+                "Decomp fixes Performance and Branding totals first, then a separate channel model ranks regression coefficients to allocate those fixed totals among cost-active channels. Channel sums always equal Decomp totals.",
+              )}
+              style={{ color: MUTED, cursor: "help", fontSize: "14px" }}
+            >
+              ⓘ
+            </span>
+            <span style={{ color: MUTED, fontSize: "10.5px" }}>
+              {tx("엔진 v1.6.0 · 고정 총량·계수순위 분배 · 추세 prior 3x", "Engine v1.6.0 · fixed totals/ranked allocation · trend prior 3x")}
+            </span>
+          </div>
+        )}
         {mmm && !mmm.empty && (
           <button className="ab-pill" onClick={() => {
-            const packageDecomp = mmmBayesianWeeklyDecomp(mmm.run);
+            const packageRun = sliceMmmRun(mmm.run, contributionViewRange.start, contributionViewRange.end);
+            const packagePanel = sliceMmmPanel(mmm.panel, contributionViewRange.end, contributionViewRange.start);
+            const packageMmm = { ...mmm, run: packageRun, panel: packagePanel, saturationPanel: packagePanel };
+            const packageDecomp = mmmBayesianWeeklyDecomp(packageRun);
             const packageTrend = trend || mmmTrendExistence(mmm.panel, mmm.cfg, mmm.target, locale);
-            const packageForecast = mmmBayesianForecast(mmm.run, mmm.panel, null, 13);
-            downloadMmmWorkbook({ mmm, cannib, decomp: packageDecomp, trend: packageTrend, forecast: packageForecast, csvData, colMap: mmmColMap, locale, currency: displayCurrency });
+            const packageForecast = mmmBayesianForecast(mmm.run, mmm.saturationPanel || mmm.panel, null, 13);
+            downloadMmmWorkbook({ mmm: packageMmm, cannib, decomp: packageDecomp, trend: packageTrend, forecast: packageForecast, csvData, colMap: mmmColMap, locale, currency: displayCurrency });
           }}>{tx("⬇ 분석 패키지", "⬇ Analysis package")}</button>
         )}
       </div>
@@ -5210,7 +5291,11 @@ export default function MarketingResponse({ locale = "ko" }) {
               />
               {(selectedEvidence.experiment || selectedEvidence.country) && (
                 <div className="callout" style={{ marginBottom: "12px" }}>
-                  <div className="ico">i</div><div className="body"><strong>{Object.keys(mmm.mediaPriors || {}).length ? tx(`${tgtKo}에는 ${Object.keys(mmm.mediaPriors).length}개 채널 prior 적용`, `${Object.keys(mmm.mediaPriors).length} channel priors applied to ${tgtKo}`) : tx(`${tgtKo}에 일치하는 prior 없음`, `No matching prior for ${tgtKo}`)}</strong><p>{Object.keys(mmm.mediaPriors || {}).length ? tx("헤더·목표 역할이 연결된 근거입니다. KPI 정의·집계 창·단위가 실제로 같은지는 사용자가 확인해야 합니다.", "The evidence matches by header and target role. You must confirm equivalent KPI definitions, aggregation windows, and units.") : tx("이 목표에는 기본 MMM만 사용합니다.", "This target continues to use the base MMM.")}</p></div>
+                  <div className="ico">i</div><div className="body"><strong>{Object.keys(mmm.heldMediaPriors || {}).length
+                    ? tx(`채널 prior ${Object.keys(mmm.heldMediaPriors).length}개 적용 보류`, `${Object.keys(mmm.heldMediaPriors).length} channel prior(s) held`)
+                    : tx(`${tgtKo}에 일치하는 prior 없음`, `No matching prior for ${tgtKo}`)}</strong><p>{Object.keys(mmm.heldMediaPriors || {}).length
+                    ? tx("채널 단위 계수를 Performance·Branding 합산 feature의 계수로 직접 바꾸면 단위가 달라집니다. 그룹 prior 변환 규칙이 생기기 전까지 근거는 보존하되 모델에는 적용하지 않습니다.", "A channel coefficient cannot be directly converted to the aggregated Performance/Branding feature without changing units. Evidence is preserved but not applied until a valid group-prior conversion is defined.")
+                    : tx("이 목표에는 기본 MMM만 사용합니다.", "This target continues to use the base MMM.")}</p></div>
                 </div>
               )}
               {health && (
@@ -5367,7 +5452,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                 <section className="block mmm-weekly-performance" id="s-mmm-weekly-performance">
                   <div className="mmm-weekly-performance__head">
                     <div>
-                      <h2 className="section-title">{tx("채널별 주 평균 성과", "Average weekly channel performance")}</h2>
+                      <h2 className="section-title">{tx("채널별 RR 배분", "Channel RR allocation")}</h2>
                       <p>{tx(
                         weeklyPerformanceView === "grouped" && hasCollinearityGroups
                           ? (displayedCollinearityGroupRefit?.enabled
@@ -5375,14 +5460,14 @@ export default function MarketingResponse({ locale = "ko" }) {
                             : "상관이 높은 채널은 합산해서 보수적으로 표시합니다.")
                           : (displayedCollinearityGroupRefit?.enabled
                             ? "개별 값은 그룹 재학습 총기여 안에서 원래 신호와 지출 비중으로 나눈 참고값입니다."
-                            : "주간 기여분해와 같은 채널별 기여를 기간 평균으로 표시합니다."),
+                            : "Performance·Branding 그룹 RR을 주별 adstock 지출 비중으로 나눈 배분값입니다."),
                         weeklyPerformanceView === "grouped" && hasCollinearityGroups
                           ? (displayedCollinearityGroupRefit?.enabled
                             ? "Highly correlated channels are actually refit as one combined input."
                             : "Highly correlated channels are summed for a conservative view.")
                           : (displayedCollinearityGroupRefit?.enabled
                             ? "Individual values are reference allocations of the refit group total using the original signal and spend shares."
-                            : "The same channel contributions used in weekly decomposition are averaged over the period."),
+                            : "Performance and Branding group RR is allocated by weekly adstocked spend share."),
                       )}</p>
                     </div>
                     <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -5402,7 +5487,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                           ⚠ {tx(`채널 쌍 상관 ${highCollinearPairs.length}건`, `${highCollinearPairs.length} correlated pair${highCollinearPairs.length > 1 ? "s" : ""}`)}
                         </button>
                       )}
-                      <span className="mmm-weekly-performance__note">{tx("모델 예측치", "Model estimate")}</span>
+                      <span className="mmm-weekly-performance__note">{tx("그룹 총량 기반 배분", "Group-total allocation")}</span>
                     </div>
                   </div>
                   <div className="table-wrap">
@@ -5411,9 +5496,12 @@ export default function MarketingResponse({ locale = "ko" }) {
                         <tr>
                           <th>{tx("채널", "Channel")}</th>
                           <th>{tx("집행 주", "Active weeks")}</th>
-                          <th>{tx("평균 지출/주", "Avg. spend/wk")}</th>
-                          <th>{tx(`예측 ${tgtKo}/주`, `Predicted ${tgtKo}/wk`)}</th>
-                          <th>{mmm.target === "Revenue" ? tx("예측 ROAS", "Predicted ROAS") : tx("예측 CPR", "Predicted CPR")}</th>
+                          <th>{tx("평균 Cost/주", "Avg. Cost/wk")}</th>
+                          <th>{tx(`평균 ${tgtKo}/주`, `Avg. ${tgtKo}/wk`)}</th>
+                          <th>{tx("전체 Spend", "Total Spend")}</th>
+                          <th>{tx(`전체 ${tgtKo}`, `Total ${tgtKo}`)}</th>
+                          <th>{mmm.target === "Revenue" ? tx("ROAS", "ROAS") : tx("CPA", "CPA")}</th>
+                          <th>{tx("식별", "Identification")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -5421,6 +5509,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                           const efficiency = mmm.target === "Revenue"
                             ? row.avgWeeklySpend > 0 && row.avgWeeklyPredicted > 0 ? row.avgWeeklyPredicted / row.avgWeeklySpend : null
                             : row.predictedCpr;
+                          const isUnidentified = ["ABSTAIN", "BOUNDARY/UNIDENTIFIED"].includes(row.identificationVerdict);
                           return (
                             <tr key={row.key} style={row.posteriorPositive != null && row.posteriorPositive < 0.8 ? { opacity: 0.62 } : undefined}>
                               <td>
@@ -5428,19 +5517,41 @@ export default function MarketingResponse({ locale = "ko" }) {
                                 {row.isCollinearityGroup && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>⚠ {tx(`최대 상관 ${row.maxCorrelation.toFixed(2)} · ${row.members.length}개 채널 ${row.isGroupRefit ? "재학습" : "합산"}`, `max corr. ${row.maxCorrelation.toFixed(2)} · ${row.members.length} channels ${row.isGroupRefit ? "refit" : "summed"}`)}</div>}
                                 {row.boundaryPosteriorMean && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>{tx("0으로 잘린 단일값 대신 가능한 양수 범위의 평균", "Mean of the plausible positive range instead of a zero-clipped point")}</div>}
                                 {row.allocationReliability === "reference-low" && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>{tx("그룹 재학습 후 개별 참고 배분 · 신뢰도 낮음", "Reference allocation after group refit · low reliability")}</div>}
+                                {row.allocationReliability === "group-total-by-construction" && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>{tx("상위 그룹 총량의 adstock carryover 비중 배분", "Allocation of the top-level total by adstock carryover share")}</div>}
+                                {row.allocationReliability === "legacy-response-curve-reapplication" && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>{tx("구 responseAt(당주 Cost) 재대입 비교값", "Legacy responseAt(same-week Cost) replay")}</div>}
                               </td>
                               <td className="tnum">{row.activeWeeks}{tx("주", " wk")}</td>
                               <td className="tnum">{spendLabel(row.avgWeeklySpend)}</td>
                               <td className="tnum">
-                                {row.avgWeeklyPredicted > 0 ? targetValueLabel(row.avgWeeklyPredicted) : "—"}
-                                {Number.isFinite(row.avgWeeklyPredictedLow) && Number.isFinite(row.avgWeeklyPredictedHigh) && row.avgWeeklyPredicted > 0 && (
+                                {isUnidentified
+                                  ? `0–${targetValueLabel(row.avgWeeklyPredictedHigh || 0)}`
+                                  : row.avgWeeklyPredicted > 0 ? targetValueLabel(row.avgWeeklyPredicted) : "—"}
+                                {!isUnidentified && Number.isFinite(row.avgWeeklyPredictedLow) && Number.isFinite(row.avgWeeklyPredictedHigh) && row.avgWeeklyPredicted > 0 && (
                                   <div style={{ fontSize: "10px", color: MUTED, marginTop: "2px" }}>
                                     {targetValueLabel(row.avgWeeklyPredictedLow)}–{targetValueLabel(row.avgWeeklyPredictedHigh)}
                                   </div>
                                 )}
                               </td>
+                              <td className="tnum">{spendLabel(row.totalSpend)}</td>
+                              <td className="tnum">
+                                {isUnidentified
+                                  ? `0–${targetValueLabel(row.totalPredictedHigh || 0)}`
+                                  : row.totalPredicted > 0 ? targetValueLabel(row.totalPredicted) : "—"}
+                                {!isUnidentified && Number.isFinite(row.totalPredictedLow) && Number.isFinite(row.totalPredictedHigh) && row.totalPredicted > 0 && (
+                                  <div style={{ fontSize: "10px", color: MUTED, marginTop: "2px" }}>
+                                    {targetValueLabel(row.totalPredictedLow)}–{targetValueLabel(row.totalPredictedHigh)}
+                                  </div>
+                                )}
+                              </td>
                               <td className="tnum mmm-data-table__metric">
-                                {efficiency == null ? "—" : mmm.target === "Revenue" ? `${fmtOne(efficiency)}x` : spendLabel(efficiency)}
+                                {isUnidentified
+                                  ? tx("보류", "Held")
+                                  : efficiency == null ? "—" : mmm.target === "Revenue" ? `${fmtOne(efficiency)}x` : spendLabel(efficiency)}
+                              </td>
+                              <td>
+                                <span className={`mmm-data-table__tag ${row.identificationVerdict === "IDENTIFIED" ? "is-media" : ""}`}>
+                                  {row.identificationVerdict || tx("배분값", "Allocated")}
+                                </span>
                               </td>
                             </tr>
                           );
@@ -5449,8 +5560,8 @@ export default function MarketingResponse({ locale = "ko" }) {
                     </table>
                   </div>
                   <p className="mmm-weekly-performance__foot">{tx(
-                    "표와 주간 기여분해는 같은 기여값을 사용하며 광고 잔효가 남은 무집행 주도 포함합니다. 상관 채널의 묶음 값은 재학습 결과이고, 개별 값은 참고 배분이므로 홀드아웃으로 확인하세요.",
-                    "The table and weekly decomposition use the same contributions, including carryover in zero-spend weeks. Correlated-group values are refit estimates; individual values are reference allocations and should be confirmed with a holdout.",
+                    "Decomp에서 먼저 확정한 Performance·Branding RR을 주별 adstock 지출 비중으로 채널에 나눕니다. 채널별 값은 인과적으로 식별된 효과가 아닌 운영 배분값이며, 각 그룹의 채널 RR 합은 Decomp와 정확히 일치합니다.",
+                    "Performance and Branding RR is fixed in Decomp first, then allocated to channels by weekly adstocked spend share. Channel values are operational allocations, not causally identified effects; each group’s channel RR sum exactly matches Decomp.",
                   )}</p>
                   {spendTimelineKinds.length > 0 && (
                     <Card style={{ marginTop: "12px", padding: "14px 16px", borderColor: "rgba(127,119,221,.34)", background: "linear-gradient(90deg, rgba(127,119,221,.07), transparent 44%)" }}>
