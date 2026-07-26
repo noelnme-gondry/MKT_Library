@@ -16,6 +16,7 @@ import FunnelTab from "@/components/dashboard/FunnelTab";
 import SegmentTab from "@/components/dashboard/SegmentTab";
 import SeasonalityTab from "@/components/dashboard/SeasonalityTab";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
 import { trackProductEvent } from "@/lib/analytics";
@@ -290,6 +291,22 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 points={verdict.keyPoints}
                 stats={verdict.stats}
                 locale={locale}
+                analysisDetails={
+                  <AnalysisDetails
+                    locale={locale}
+                    statusLabel={verdict.tone === "good" ? tr("개선", "Improving") : verdict.tone === "bad" ? tr("주의", "Watch") : tr("안정", "Stable")}
+                    statusTone={verdict.tone}
+                    metric={tr("최근 성과 변화", "Recent performance change")}
+                    unit={tr("비교 기간 대비 변화율·매핑된 KPI 단위", "Change rate vs. prior window; mapped KPI units")}
+                    meaning={tr("관측상 요약 — 광고의 인과효과나 증분효과가 아님", "Observed summary — not causal or incremental attribution")}
+                    sampleSize={{ label: tr("사용 행", "Rows used"), value: csvData.raw.length, detail: tr("현재 필터와 업로드 범위", "Current filter and upload scope") }}
+                    scope={tr(`최근 ${dashWindowDays}일 vs 직전 ${dashWindowDays}일`, `Last ${dashWindowDays} days vs. prior ${dashWindowDays} days`)}
+                    method={tr("WoW 운영 요약", "WoW operational summary")}
+                    version="dashboard-verdict"
+                    cachePolicy={tr("브라우저 메모리 전용", "In-memory browser cache only")}
+                    warnings={[tr("이 카드는 관측 요약입니다. 인과효과로 해석하려면 증분분석 또는 실험이 필요합니다.", "This is an observed summary. Use incrementality or an experiment for causal claims.")]}
+                  />
+                }
                 controls={
                   <div className="ab-pillgroup" style={{ display: "inline-flex", alignItems: "center" }}>
                     <span className="ab-pillgroup-label">{tr("비교", "Window")}</span>

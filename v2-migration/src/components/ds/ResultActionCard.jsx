@@ -13,6 +13,7 @@ import React, { useId } from "react";
 //   points   : [{ text, cls? }]  다음 액션/설명 불릿 (cls: "bad"|"good"|"muted")
 //   stats    : [{ label, value, detail? }]  핵심 수치 스트립
 //   download : node (DownloadHub 등)  — 우상단 배치
+//   analysisDetails : node (AnalysisDetails 등) — 단위·신뢰도·provenance 접기
 //   children : 카드 하단 추가 콘텐츠(선택)
 //   collapsePointsAfter : 첫 N개 근거만 펼쳐 보이고 나머지는 details에 둔다.
 const TONE = {
@@ -29,6 +30,7 @@ export default function ResultActionCard({
   stats = [],
   download = null,
   controls = null,
+  analysisDetails = null,
   children,
   style,
   collapsePointsAfter = null,
@@ -94,6 +96,7 @@ export default function ResultActionCard({
         </div>
       )}
 
+      {analysisDetails}
       {children}
     </section>
   );

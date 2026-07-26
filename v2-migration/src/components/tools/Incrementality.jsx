@@ -11,6 +11,7 @@ import { CHART_THEME, getCssVar } from "@/utils/chartUtils";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { downloadCsv as dlCsv, downloadText } from "@/utils/download";
 import { buildIncrSuppressionDemo, buildIncrPrepostDemo } from "@/utils/demoData";
@@ -356,6 +357,22 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
           headline={card.headline}
           points={card.points}
           stats={card.stats}
+          analysisDetails={
+            <AnalysisDetails
+              locale={locale}
+              statusLabel={win.balanced === false ? tr("균형 주의", "Balance concern") : win.balanced ? tr("균형 확인", "Balanced") : tr("판정 보류", "Inconclusive")}
+              statusTone={win.balanced === false ? "bad" : win.balanced ? "good" : "neutral"}
+              metric={tr("증분 전환", "Incremental conversions")}
+              unit={tr("전환 건수", "Conversion count")}
+              meaning={tr("홀드아웃 대비 차이 — 일반 어트리뷰션이 아님", "Difference vs. holdout — not standard attribution")}
+              sampleSize={{ label: tr("비교 분모", "Comparison denominator"), value: win.cD + win.tD, detail: tr("홀드아웃 + 노출 그룹", "Holdout + exposed groups") }}
+              scope={`${start} ~ ${end}`}
+              method={tr("통제군 홀드아웃", "Control-group holdout")}
+              version="incrementality-suppression"
+              cachePolicy={tr("브라우저 메모리 전용", "In-memory browser cache only")}
+              warnings={win.balanced === false ? [tr("홀드아웃 전 그룹 균형이 맞지 않아 증분값이 왜곡될 수 있습니다.", "Pre-holdout group balance is questionable; incrementality may be distorted.")] : []}
+            />
+          }
           download={
             <DownloadHub
               toolId="5-23"
@@ -576,6 +593,23 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
               headline={card.headline}
               points={card.points}
               stats={card.stats}
+              analysisDetails={
+                <AnalysisDetails
+                  locale={locale}
+                  statusLabel={sigP != null && sigP < 0.05 ? tr("유의", "Significant") : tr("비유의", "Not significant")}
+                  statusTone={sigP != null && sigP < 0.05 ? "good" : "neutral"}
+                  metric={isDiD ? tr("순효과 Δ", "Net effect Δ") : tr("전후 변화 Δ", "Pre/post change Δ")}
+                  unit={tr("일평균 전환·기간 합계", "Daily average conversion; period total")}
+                  meaning={tr("전후 비교 또는 대조군 보정(DiD) — 자동 인과 확정 아님", "Pre/post comparison or control-adjusted DiD — not automatically causal")}
+                  sampleSize={{ label: tr("전·후 표본", "Pre / post sample"), value: `${r.nPre} / ${r.nPost}`, detail: tr("관측 일수", "Observed days") }}
+                  interval={sigP != null ? { label: tr("유의성", "Significance"), value: `p=${sigP.toFixed(4)}` } : null}
+                  scope={`${effCutoff} (${lost ? tr("종료", "shutdown") : tr("시작", "launch")})`}
+                  method={isDiD ? "DiD" : lost ? tr("종료 전후", "Shutdown pre/post") : tr("신규 전후", "Launch pre/post")}
+                  version="incrementality-prepost"
+                  cachePolicy={tr("브라우저 메모리 전용", "In-memory browser cache only")}
+                  warnings={!isDiD ? [tr("단순 전후 비교는 계절성·추세·프로모션과 섞일 수 있습니다.", "Simple pre/post comparisons can mix seasonality, trend, and promotions.")] : []}
+                />
+              }
               download={
                 <DownloadHub
                   toolId="5-23"

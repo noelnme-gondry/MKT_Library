@@ -4741,6 +4741,30 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .result-action-card__stats strong { display: block; margin-top: 2px; color: var(--text-primary); font-size: 13px; }
 .result-action-card__stats small { display: block; margin-top: 2px; color: var(--text-muted); font-size: 9px; white-space: nowrap; }
 
+/* 결과 메타데이터는 기본 접힘. 결론 카드의 시각적 밀도를 유지하면서
+   단위·표본·불확실성·재현 정보를 필요한 사람에게만 제공한다. */
+.analysis-details { margin: 12px 0 0 47px; border-top: 1px solid var(--border-subtle); color: var(--text-muted); font-size: 11px; }
+.analysis-details > summary { display: flex; align-items: center; gap: 8px; width: fit-content; padding: 9px 0 2px; cursor: pointer; list-style: none; }
+.analysis-details > summary::-webkit-details-marker { display: none; }
+.analysis-details > summary::before { content: "＋"; color: var(--primary); font: 700 12px var(--font-mono); }
+.analysis-details[open] > summary::before { content: "－"; }
+.analysis-details__summary-label { color: var(--text-secondary); font-weight: 650; }
+.analysis-details__status { padding: 2px 7px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-muted); font: 700 9px var(--font-mono); }
+.analysis-details--good .analysis-details__status { border-color: color-mix(in srgb, var(--success) 40%, var(--border)); color: var(--success); }
+.analysis-details--bad .analysis-details__status { border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); color: var(--danger); }
+.analysis-details__body { padding: 2px 0 10px; }
+.analysis-details__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 7px; }
+.analysis-details__item { min-width: 0; padding: 8px 9px; border: 1px solid var(--border-subtle); border-radius: 7px; background: var(--surface-container-lowest); }
+.analysis-details__item > span { display: block; color: var(--text-muted); font: 600 9px var(--font-mono); letter-spacing: .04em; }
+.analysis-details__item > strong { display: block; margin-top: 3px; overflow-wrap: anywhere; color: var(--text-primary); font-size: 11px; font-weight: 650; line-height: 1.45; }
+.analysis-details__item > small { display: block; margin-top: 3px; color: var(--text-muted); font-size: 9px; line-height: 1.4; }
+.analysis-details__warnings { margin: 8px 0 0; padding: 7px 9px 7px 24px; border-left: 2px solid var(--border); color: var(--text-muted); line-height: 1.5; }
+.analysis-details--bad .analysis-details__warnings { border-left-color: var(--danger); }
+.analysis-details__technical { margin-top: 8px; }
+.analysis-details__technical > summary { width: fit-content; cursor: pointer; color: var(--text-muted); }
+.analysis-details__technical-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; margin-top: 7px; }
+.analysis-details__technical-note { margin: 7px 0 0; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
+
 /* 분석 도구 공통 가독성 가드. 도구별 계산·차트는 건드리지 않고, 긴 보고서형 화면을
    결론(상단) · 조작(탭/필터) · 근거(본문) 순서로 빠르게 훑을 수 있게 밀도만 맞춘다. */
 .is-analysis .tab-pane.active > .block { margin-bottom: 14px; }
@@ -5060,7 +5084,7 @@ body.light-mode .operator-preview__queue > a { color: #fff; }
   .result-action-card { padding: 17px; }
   .result-action-card__head { grid-template-columns: 30px minmax(0,1fr); }
   .result-action-card__controls { grid-column: 1 / -1; }
-  .result-action-card__points, .result-action-card__stats, .result-action-card__details { margin-left: 0; }
+  .result-action-card__points, .result-action-card__stats, .result-action-card__details, .analysis-details { margin-left: 0; }
   .kpi-grid--overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .seasonality-heading { display: block; }
   .seasonality-controls { flex-wrap: wrap; margin-top: 12px; }
