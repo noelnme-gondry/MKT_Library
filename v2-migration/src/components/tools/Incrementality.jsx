@@ -13,6 +13,7 @@ import CsvGuide from "@/components/ds/CsvGuide";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
+import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { downloadCsv as dlCsv, downloadText } from "@/utils/download";
 import { buildIncrSuppressionDemo, buildIncrPrepostDemo } from "@/utils/demoData";
 
@@ -378,6 +379,18 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
               toolId="5-23"
               label={tr("결과 받기", "Download")}
               align="right"
+              manifest={buildResultManifest({
+                toolId: "5-23",
+                mode: "holdout",
+                source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+                inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
+                filter: { start, end },
+                grain: "holdout-period",
+                metricDefinitions: ["incremental", "lift", "iROAS"].map((key) => ({ key })),
+                engineVersion: "incrementality-suppression",
+                status: "COMPLETE",
+                warnings: win.balanced === false ? ["Pre-holdout balance is questionable"] : [],
+              })}
               items={[
                 { icon: "📄", analyticsType: "csv", label: tr("증분 요약 (CSV)", "Summary (CSV)"), desc: tr("전환율·Lift·증분·iROAS", "Rates, lift, incremental, iROAS"), onSelect: () => dlCsv(card.csv, "incrementality_suppression") },
                 { icon: "📝", analyticsType: "text", label: tr("증분 요약 (텍스트)", "Summary (text)"), desc: tr("결론·지표·주의", "Conclusion, metrics, caveats"), onSelect: () => downloadText(card.text, "incrementality_suppression") },

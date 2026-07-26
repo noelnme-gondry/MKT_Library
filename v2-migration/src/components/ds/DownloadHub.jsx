@@ -21,6 +21,7 @@ export default function DownloadHub({
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
   const menuRef = useRef(null);
+  const triggerRef = useRef(null);
   const menuId = useId();
   const manifestItem = manifest ? {
     label: "실행 정보(JSON)",
@@ -34,11 +35,16 @@ export default function DownloadHub({
   // 바깥 클릭 / ESC로 닫기.
   useEffect(() => {
     if (!open) return;
+    const firstItem = menuRef.current?.querySelector('[role="menuitem"]');
+    firstItem?.focus();
     const onDoc = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
     };
     const onKey = (e) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
       if (!menuRef.current || !["ArrowDown", "ArrowUp"].includes(e.key)) return;
       const buttons = [...menuRef.current.querySelectorAll('[role="menuitem"]')];
       if (!buttons.length) return;
@@ -63,11 +69,13 @@ export default function DownloadHub({
     <div ref={wrapRef} className={className} style={{ position: "relative", display: "inline-block" }}>
       <button
         type="button"
+        ref={triggerRef}
         className="ab-pill"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-controls={menuId}
         aria-expanded={open}
+        aria-label={label}
         style={{ fontWeight: 600, ...buttonStyle }}
       >
         ⬇ {label} ▾

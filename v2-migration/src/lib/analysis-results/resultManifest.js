@@ -1,3 +1,5 @@
+import { buildMetricContracts } from "./metricContract";
+
 export function buildResultManifest({
   toolId = "",
   mode = "default",
@@ -13,6 +15,7 @@ export function buildResultManifest({
   warnings = [],
   generatedAt = null,
 } = {}) {
+  const metricContract = buildMetricContracts(metricDefinitions);
   return {
     toolId,
     mode,
@@ -21,7 +24,8 @@ export function buildResultManifest({
     mappingSignature,
     filter: { ...filter },
     grain,
-    metricDefinitions: [...metricDefinitions],
+    metricDefinitions: metricContract.contracts,
+    metricContractValid: metricContract.valid,
     engineVersion,
     seed,
     status,

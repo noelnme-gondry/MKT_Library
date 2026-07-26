@@ -16,13 +16,13 @@ const COPY = {
   en: { summaryLabel: "Summary", toc: "Contents" },
 };
 
-export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko" }) {
+export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko", toolId = "" }) {
   const T = COPY[locale] || COPY.ko;
   const tocItems = toc || [];
   const hasToc = tocItems.length > 0;
 
   return (
-    <div className={`tool-page-shell${hasToc ? " has-toc" : ""}`}>
+    <div className={`tool-page-shell${hasToc ? " has-toc" : ""}`} data-tool-id={toolId || undefined} aria-label={typeof title === "string" ? title : undefined}>
       {/* Main Content Area */}
       <div className="tool-page-shell__main">
         {/* Sticky title bar — legacy page-sticky-bar/page-sticky-row1/page-sticky-title
