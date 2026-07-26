@@ -11,6 +11,11 @@ import {
 import { sliceMmmChannelContributions } from "./mmmWeeklyPerformance";
 
 describe("PR #416 MMM rollback contract", () => {
+  it("keeps the generic Classic trend prior neutral while Prism stays explicit", () => {
+    expect(MMM_METH_CONFIG.trendPriorMultiplier).toBe(1);
+    expect(MMM_CLASSIC_TARGET_PROFILE.trendPriorMultiplier).toBe(0.5);
+  });
+
   it("activates the fixed Prism profile from canonical target and industry keys", () => {
     const panel = {
       targets: { Regs: [1, 2] },

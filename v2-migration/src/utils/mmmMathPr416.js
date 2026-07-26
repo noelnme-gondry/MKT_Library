@@ -705,9 +705,9 @@ import {
               // 값을 선택하되, 차이가 작으면 더 보수적인(큰) penalty를 유지한다.
               mediaPenalty: 4,
               controlPenalty: 0.15,
-              // Decomp stress profile: neutral trend coefficient를 기준으로
-              // 하락 방향을 4배 강제한다. 기본 인과효과가 아니라 민감도 프로파일이다.
-              trendPriorMultiplier: 3,
+              // 일반 Classic 경로는 추세를 인위적으로 3배 하락시키지 않는다.
+              // Prism 업황 프로필은 별도 고정값(0.5)으로 이 값을 명시적으로 덮어쓴다.
+              trendPriorMultiplier: 1,
               trendPriorPrecision: 0.1,
               mediaPenaltyCandidates: [0.15, 0.5, 1, 2, 4],
               mediaPenaltyMinTrain: 52,
