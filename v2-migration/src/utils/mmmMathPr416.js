@@ -734,40 +734,24 @@ import {
               hacAutoLag: (n) => Math.floor(4 * Math.pow(n / 100, 2 / 9)),
             };
 
-            // Prism RR Classic profile selected by a deterministic constraint sweep.
-            // This is intentionally separate from the Bayesian mode and is activated
-            // only when the RR/Regs target and dating_market_install_total mapping are present.
-            export const MMM_CLASSIC_TARGET_PROFILE = {
-              version: "prism-rr-target-profile-v2",
-              // AUS 재현 스윕에서 일반 3배 추세 prior의 과도한 하락을 제거하고,
-              // 시작 ≤55k·종료 ≥47k 범위를 만족한 고정 후보를 사용한다.
-              trendPriorMultiplier: 0.5,
-              trendStartMax: 55000,
-              trendEndMin: 47000,
-              performanceContributionShare: 0.051,
-              brandingContributionShare: 0.02,
+            // Prism Option 3: the user explicitly selects this model. It never
+            // depends on a raw header name; any mapped external industry series is
+            // required and retained in the fit alongside annual seasonality.
+            export const MMM_PRISM_MODEL_CONFIG = {
+              version: "prism-option-3-v1",
+              trendPriorMultiplier: 1.1,
+              trendStartMax: 58000,
+              trendEndMin: 44000,
+              performanceContributionShare: 0.0536,
+              brandingContributionShare: 0.018,
               contributionShareSd: 0.002,
               wmapeMax: 10,
               seasonalityPeriods: [52.18],
-              mandatoryIndustryKey: "dating_market_install_total",
-              mandatoryTarget: "RR",
-              mandatoryTargetAliases: ["Regs"],
-              selectionMethod: "deterministic-grid-constraint-sweep",
+              requiresExternalIndustry: true,
+              selectionMethod: "fixed-option-3-constraint-profile",
             };
 
-            export function mmmClassicHasTargetProfileInputs(panel, targetName, profile = MMM_CLASSIC_TARGET_PROFILE) {
-              const targetAliases = new Set([
-                profile.mandatoryTarget,
-                ...(profile.mandatoryTargetAliases || []),
-              ].filter(Boolean));
-              const requiredIndustry = String(profile.mandatoryIndustryKey || "").trim().toLowerCase();
-              const hasIndustry = Object.keys(panel?.external || {}).some((key) => (
-                String(key).replace(/^c_/, "").trim().toLowerCase() === requiredIndustry
-              ));
-              return targetAliases.has(targetName) && hasIndustry;
-            }
-
-            export function mmmClassicBuildGroupContributionPriors(aggregatePanel, targetSeries, baselineRun, profile = MMM_CLASSIC_TARGET_PROFILE) {
+            export function mmmClassicBuildGroupContributionPriors(aggregatePanel, targetSeries, baselineRun, profile = MMM_PRISM_MODEL_CONFIG) {
               const targetTotal = (targetSeries || []).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
               if (!(targetTotal > 0) || !baselineRun?.params) return {};
               const groups = {
