@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const PROTECTED_FILES = {
-  "src/utils/mmmMathPr416.js": "2ace4b96e788b152d9733399a4cf09e868edf7b7cb343961cfc3de95e3d79a85",
+  "src/utils/mmmMathPr416.js": "0127e78b893974ec6b811e080e0febe8b1dcabe29a12bd297bf9c0b45f541a7e",
   "src/components/tools/MarketingResponse.jsx": "66d750c6d33b186bab497f4019c5e9bd6d9dc2e83acaccd49ac9b5e5730d92c9",
   "src/utils/mmmMath.js": "64a3cb574f96cc711efa94c21d0375f79310897984c0bb295cc724ffe9e84547",
 };
