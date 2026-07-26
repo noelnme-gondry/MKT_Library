@@ -14,6 +14,7 @@ import { detectDatasetSignature } from "@/lib/data-import/detectDatasetSignature
 import { wideToLong } from "@/lib/data-import/wideToLong";
 import { getTransformRecipe, saveTransformRecipe } from "@/lib/data-import/localHistory";
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
+import { prepareImportedData } from "@/lib/data-import/dataPreparationWorkerClient";
 import { trackProductEvent } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
 import { ANALYSIS_CONTRACTS, evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
@@ -225,6 +226,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   const [pendingWorkbook, setPendingWorkbook] = useState(null);
   const [selectedWorkbookSheet, setSelectedWorkbookSheet] = useState("");
   const [pendingWideImport, setPendingWideImport] = useState(null);
+  const preparationRequestRef = useRef(0);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -257,14 +259,17 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
       setErrorMsg(T.emptyCsv);
       return;
     }
-    const insights = buildImportInsights(headers, raw, toolId);
+    const requestId = ++preparationRequestRef.current;
+    const prepared = await prepareImportedData({ headers, raw, toolId, source });
+    if (requestId !== preparationRequestRef.current) return;
+    const insights = prepared.insights;
     if (insights.signature.needsWideToLong) {
       setPendingWideImport({ headers, raw, fileName, source, worksheetName, insights });
       return;
     }
     const recipe = await getTransformRecipe(headers).catch(() => null);
     const mapping = recipe?.mapping && Object.keys(recipe.mapping).every((header) => headers.includes(header)) ? recipe.mapping : insights.selections;
-    const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
+    const canonicalData = prepared.canonicalData;
     const displayName = worksheetName ? `${fileName} · ${worksheetName}` : fileName;
 
     setCsvData({

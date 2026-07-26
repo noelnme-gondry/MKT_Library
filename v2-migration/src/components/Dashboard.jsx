@@ -25,6 +25,7 @@ import { FileText, ChevronRight } from "lucide-react";
 import AnalysisHistory from "@/components/data-import/AnalysisHistory";
 import AnalysisPathway from "@/components/data-import/AnalysisPathway";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
+import { runDashboardVerdict, shouldUseDashboardVerdictWorker } from "@/lib/analysis/dashboardVerdictWorkerClient";
 
 const TOC_MAP = {
   viz: [
@@ -154,6 +155,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   // React가 자동으로 모르므로 controlled로 추적(라벨 펼치기/접기 동기화, §CLAUDE 12.20류 렌더층 패턴).
   const [mappingOpen, setMappingOpen] = useState(false);
   const analysisEventRef = useRef(null);
+  const [workerState, setWorkerState] = useState({ key: "", result: null });
 
   const hasData = csvData && csvData.raw.length > 0;
   // 결과(탭·차트·TOC)는 데이터가 있고 + 분석이 확정된 뒤에만 렌더.
@@ -165,10 +167,48 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
 
   // 결론 카드 판정(WoW) — 결과가 열린 뒤에만 계산. dashboardAggregator 순수함수
   // 재사용(엔진 불변), 데이터 부족하면 insufficient로 카드 미노출(§8 정직).
-  const verdict = useMemo(() => {
-    if (!showResults) return null;
+  const syncVerdict = useMemo(() => {
+    if (!showResults || shouldUseDashboardVerdictWorker(csvData?.raw?.length || 0)) return null;
     return buildDashboardVerdict({ csvData, filterState: dashboardFilter, denomBasis, displayCurrency, windowDays: dashWindowDays, locale });
   }, [showResults, csvData, dashboardFilter, denomBasis, displayCurrency, dashWindowDays, locale]);
+
+  const workerKey = JSON.stringify({
+    toolId,
+    fileName: csvData?.fileName || "",
+    rows: csvData?.raw?.length || 0,
+    windowDays: dashWindowDays,
+    denomBasis,
+    displayCurrency,
+    locale,
+    dateStart: dashboardFilter.dateStart || null,
+    dateEnd: dashboardFilter.dateEnd || null,
+    platforms: [...(dashboardFilter.platforms || [])].sort(),
+    countries: [...(dashboardFilter.countries || [])].sort(),
+    channels: [...(dashboardFilter.channels || [])].sort(),
+    sources: [...(dashboardFilter.sources || [])].sort(),
+  });
+
+  useEffect(() => {
+    const useWorker = showResults && shouldUseDashboardVerdictWorker(csvData?.raw?.length || 0);
+    if (!useWorker) return undefined;
+    let active = true;
+    runDashboardVerdict({ csvData, filterState: dashboardFilter, denomBasis, displayCurrency, windowDays: dashWindowDays, locale })
+      .then((result) => {
+        if (!active) return;
+        setWorkerState({ key: workerKey, result });
+      })
+      .catch(() => {
+        if (!active) return;
+        setWorkerState({ key: workerKey, result: { insufficient: true, workerError: true } });
+      });
+    return () => { active = false; };
+  }, [showResults, csvData, dashboardFilter, denomBasis, displayCurrency, dashWindowDays, locale, workerKey]);
+
+  const useDashboardWorker = showResults && shouldUseDashboardVerdictWorker(csvData?.raw?.length || 0);
+  const workerPending = useDashboardWorker && workerState.key !== workerKey;
+  const verdict = useDashboardWorker
+    ? (workerState.key === workerKey ? workerState.result : null)
+    : syncVerdict;
 
   useEffect(() => {
     if (!showResults) return;
@@ -281,6 +321,12 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         {/* Tabs & Content */}
         {showResults && (
           <div className="dashboard-content">
+            {workerPending && (
+              <div className="callout" role="status" aria-live="polite" style={{ marginBottom: "1rem" }}>
+                <div className="ico">◌</div>
+                <div className="body"><strong>{tr("대용량 데이터 분석 중", "Analyzing large dataset")}</strong><p>{tr("화면을 멈추지 않고 결과를 계산하고 있습니다.", "The result is being computed without blocking the page.")}</p></div>
+              </div>
+            )}
             {/* 결론 카드 — "결론 먼저"(claude-ux §0). 탭 위에 항상 노출, 어느 탭을
                 보든 최근 성과 요약·다음 액션·결과 받기를 한 곳에서. */}
             {verdict && !verdict.insufficient && (
