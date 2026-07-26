@@ -35,6 +35,7 @@ import {
 import {
   MMM_METH_CONFIG as MMM_CLASSIC_CONFIG,
   MMM_CLASSIC_TARGET_PROFILE,
+  mmmClassicHasTargetProfileInputs,
   mmmBayesianRun as mmmClassicBayesianRun,
   mmmClassicBuildGroupContributionPriors,
   mmmResolveAbsorb as mmmClassicResolveAbsorb,
@@ -3676,8 +3677,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
       const aggregatePanel = buildMmmAggregateMediaPanel(panel);
       if (!aggregatePanel) throw new Error("PR #416 aggregate media panel failed");
-      const useClassicTargetProfile = t === MMM_CLASSIC_TARGET_PROFILE.mandatoryTarget
-        && Object.prototype.hasOwnProperty.call(panel.external || {}, MMM_CLASSIC_TARGET_PROFILE.mandatoryIndustryKey);
+      const useClassicTargetProfile = mmmClassicHasTargetProfileInputs(panel, t, MMM_CLASSIC_TARGET_PROFILE);
       const classicCfg = {
         ...MMM_CLASSIC_CONFIG,
         ...(useClassicTargetProfile ? {
