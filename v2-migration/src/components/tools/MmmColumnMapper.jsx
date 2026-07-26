@@ -6,7 +6,7 @@ import { mmmExcelSerialDateTimestamp, mmmParseNumericValue } from "@/utils/mmmIn
 /* index.html의 5-18 DnD colMap(§12.20류 이관) — mmmGuessRole/mmmAutoMapPartial/
  * mmmColMapRoles/mmmGetPanelFromColMap을 React 네이티브 HTML5 DnD로 포팅.
  * colMap: { [header]: { role, kind?, plat? } }
- * role: week|date|reg|react|revenue|channel|dummy|step|external|platform|ignore */
+ * role: week|date|reg|react|revenue|channel|dummy|step|external|platform|geo|reach|frequency|ignore */
 
 const MMM_DAY_MS = 86400000;
 
@@ -188,6 +188,9 @@ function guessRole(col, rows) {
   let role = "ignore";
   if (/^(week|t|wk)$/.test(name) || /week|주차|주인덱스/.test(name)) role = "week";
   else if (isDateCol) role = "date";
+  else if (!isNum && /geo|region|location|country|지역|권역|국가/.test(name)) role = "geo";
+  else if (isNum && /reach|도달/.test(name)) role = "reach";
+  else if (isNum && /frequency|freq|빈도|평균.?노출/.test(name)) role = "frequency";
   else if (/날짜|date/.test(name)) role = "date";
   else if (isBin && binaryRole === "step") role = "step";
   else if (isBin) role = "dummy";
@@ -211,7 +214,7 @@ function guessRole(col, rows) {
 export function autoGuessColMap(headers, rows, partial = true) {
   const derivedRe = /^\s*(ln|log|sin|cos)\s*[\(_]|^\s*(ln|log|sin|cos)\b|description/i;
   const out = {};
-  const once = { week: false, date: false, platform: false };
+  const once = { week: false, date: false, platform: false, geo: false };
   for (const h of headers || []) {
     const name = String(h).toLowerCase();
     if (!partial) {
@@ -222,7 +225,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
         else once[role] = true;
       }
       out[h] = { role, kind: g.kind };
-      if (["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external"].includes(role)) out[h].plat = guessPlat(h);
+      if (["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role)) out[h].plat = guessPlat(h);
       continue;
     }
     // partial: 강한 키워드만. isNum·isBin·isDateCol 판정 후 reg/react/channel/date만.
@@ -256,7 +259,13 @@ export function autoGuessColMap(headers, rows, partial = true) {
       else if (/industry|market|category|업계|시장.?수요|카테고리.?수요/.test(name)) role = "external";
       else if (/reg|가입|등록|signup|sign_up|install/.test(name)) role = "reg";
       else if (/react|재활성|reactiv|resurrect|win.?back|winback/.test(name)) role = "react";
+      else if (/reach|도달/.test(name)) role = "reach";
+      else if (/frequency|freq|빈도|평균.?노출/.test(name)) role = "frequency";
       else if (/spend|cost|비용|지출|budget|brand/.test(name)) role = "channel";
+    }
+    if (role === "ignore" && !isNum && /geo|region|location|country|지역|권역|국가/.test(name)) {
+      role = once.geo ? "ignore" : "geo";
+      once.geo = true;
     }
     if (role === "ignore" && !isNum && /platform|os|플랫폼|기기|device/.test(name)) {
       role = once.platform ? "ignore" : "platform";
@@ -264,7 +273,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
     }
     if (role === "date") { if (once.date) role = "ignore"; else once.date = true; }
     out[h] = { role, kind };
-    if (["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external"].includes(role)) out[h].plat = guessPlat(h);
+    if (["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role)) out[h].plat = guessPlat(h);
   }
   return out;
 }
@@ -281,8 +290,29 @@ function sanKey(name, used) {
   return k;
 }
 
+function mediaStem(name) {
+  return String(name ?? "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/(?:reach|frequency|freq|도달|빈도|평균.?노출|spend|cost|budget|impressions?|clicks?|비용|지출|예산)/g, "")
+    .replace(/(?:brand|performance|perf|브랜드)/g, "")
+    .replace(/(?:android|ios|aos|iphone|ipad|common)/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function matchMediaInput(channel, candidates) {
+  const stem = mediaStem(channel.header || channel.label);
+  if (!stem) return null;
+  return candidates.find((candidate) => mediaStem(candidate.header) === stem)
+    || candidates.find((candidate) => {
+      const candidateStem = mediaStem(candidate.header);
+      return candidateStem && (candidateStem.includes(stem) || stem.includes(candidateStem));
+    })
+    || null;
+}
+
 function colMapRoles(headers, colMap) {
-  const out = { week: [], date: null, reg: [], react: [], traffic: [], purchasers: [], revenue: [], platform: null, channels: [], dummies: [], steps: [], externals: [] };
+  const out = { week: [], date: null, reg: [], react: [], traffic: [], purchasers: [], revenue: [], platform: null, geo: null, reach: [], frequency: [], channels: [], dummies: [], steps: [], externals: [] };
   const used = new Set();
   for (const h of headers || []) {
     const def = colMap[h] || {};
@@ -299,12 +329,87 @@ function colMapRoles(headers, colMap) {
     else if (r === "purchasers") out.purchasers.push({ header: h, plat });
     else if (r === "revenue") out.revenue.push({ header: h, plat });
     else if (r === "platform" && !out.platform) out.platform = h;
+    else if (r === "geo" && !out.geo) out.geo = h;
+    else if (r === "reach") out.reach.push({ header: h, key: sanKey(h, used), label: h, plat });
+    else if (r === "frequency") out.frequency.push({ header: h, key: sanKey(h, used), label: h, plat });
     else if (r === "channel") out.channels.push({ header: h, key: sanKey(h, used), label: h, kind: def.kind === "brand" ? "brand" : "perf", plat });
     else if (r === "dummy") out.dummies.push({ header: h, key: sanKey(h, used), label: h, plat });
     else if (r === "step") out.steps.push({ header: h, key: sanKey(h, used), label: h, plat });
     else if (r === "external") out.externals.push({ header: h, key: sanKey(h, used), label: h, plat });
   }
   return out;
+}
+
+// GEO 원자료를 national 집계와 별도로 보존한다. 현재 national MMM은 기존
+// panel을 사용하고, Meridian 계층 적합은 이 geoPanel의 geo-week 행을 사용한다.
+function buildGeoPanelFromRows(headers, rows, roles, platform, weekStart) {
+  if (!roles.geo) return null;
+  const tagMode = !roles.platform && (headers || []).some((header) => /(?:android|ios|aos|iphone|ipad)/i.test(String(header)));
+  const P = platform === "all" ? null : platform;
+  const inPlat = (item) => !tagMode || !P || item.plat === P || item.plat === "common";
+  const channels = roles.channels.filter(inPlat).filter((item) => !/(^|[_\s])(other|etc|misc|기타)([_\s]|$)/i.test(item.header));
+  const targets = [
+    ...roles.reg.map((item) => ({ ...item, targetKey: "Regs" })),
+    ...roles.react.map((item) => ({ ...item, targetKey: "React" })),
+    ...roles.traffic.map((item) => ({ ...item, targetKey: "Traffic" })),
+    ...roles.purchasers.map((item) => ({ ...item, targetKey: "Purchasers" })),
+    ...roles.revenue.map((item) => ({ ...item, targetKey: "Revenue" })),
+  ].filter(inPlat);
+  const groups = new Map();
+  for (const row of rows || []) {
+    const geo = String(row[roles.geo] ?? "").trim();
+    const parsed = mappedTimeKey(row[roles.date || roles.week[0]?.header]);
+    if (!geo || !parsed) continue;
+    const period = parsed.source === "calendar-date" && roles.date
+      ? weekStartTimestamp(parsed.value, weekStart)
+      : parsed.value;
+    const segment = roles.platform ? String(row[roles.platform] ?? "").trim() : "";
+    const key = `${geo}\u0001${parsed.kind}:${period}\u0001${segment}`;
+    const item = groups.get(key) || { geo, period, kind: parsed.kind, ch: {}, targets: {}, dummy: {}, steps: {}, external: {}, count: {} };
+    channels.forEach((channel) => {
+      const value = mmmParseNumericValue(row[channel.header]);
+      item.ch[channel.key] = (item.ch[channel.key] || 0) + (Number.isFinite(value) ? value : 0);
+    });
+    targets.forEach((target) => {
+      const value = mmmParseNumericValue(row[target.header]);
+      const targetKey = target.targetKey;
+      if (targetKey && Number.isFinite(value)) item.targets[targetKey] = (item.targets[targetKey] || 0) + value;
+    });
+    roles.dummies.filter(inPlat).forEach((dummy) => {
+      const value = mmmParseBinaryIndicator(row[dummy.header], "dummy");
+      if (Number.isFinite(value)) item.dummy[dummy.key] = Math.max(item.dummy[dummy.key] || 0, value);
+    });
+    roles.steps.filter(inPlat).forEach((step) => {
+      const value = mmmParseBinaryIndicator(row[step.header], "step");
+      if (Number.isFinite(value)) item.steps[step.key] = value;
+    });
+    groups.set(key, item);
+  }
+  const byGeo = new Map();
+  [...groups.values()].forEach((item) => {
+    const list = byGeo.get(item.geo) || [];
+    list.push(item);
+    byGeo.set(item.geo, list);
+  });
+  return [...byGeo.entries()].map(([geo, items]) => {
+    const sorted = items.sort((a, b) => a.period - b.period);
+    const panel = {
+      geo,
+      week: sorted.map((_, index) => index + 1),
+      weekLabel: sorted.map((item) => item.kind === "date" ? formatWeekStart(item.period) : item.period),
+      ch: Object.fromEntries(channels.map((channel) => [channel.key, sorted.map((item) => item.ch[channel.key] || 0)])),
+      targets: Object.fromEntries([...new Set(sorted.flatMap((item) => Object.keys(item.targets)))].map((key) => [key, sorted.map((item) => item.targets[key] ?? NaN)])),
+      dummy: Object.fromEntries(roles.dummies.filter(inPlat).map((dummy) => [dummy.key, sorted.map((item) => item.dummy[dummy.key] ?? 0)])),
+      steps: Object.fromEntries(roles.steps.filter(inPlat).map((step) => [step.key, sorted.map((item) => item.steps[step.key] ?? NaN)])),
+      external: {},
+      channels: channels.map((channel) => ({ key: channel.key, label: channel.label, kind: channel.kind })),
+      dummyDefs: roles.dummies.filter(inPlat).map((item) => ({ key: item.key, label: item.label })),
+      stepDefs: roles.steps.filter(inPlat).map((item) => ({ key: item.key, label: item.label })),
+      mediaInputMap: Object.fromEntries(channels.map((channel) => [channel.key, { type: "spend" }])),
+    };
+    if (panel.targets.Regs && panel.targets.React) panel.targets.RR = panel.targets.Regs.map((value, index) => value + panel.targets.React[index]);
+    return panel;
+  });
 }
 
 export function colMapMissing(headers, colMap, locale = "ko") {
@@ -328,7 +433,7 @@ export function mmmPlatformTags(headers, colMap) {
   const r = colMapRoles(headers, colMap);
   if (r.platform) return []; // 행 필터(단일 컬럼) 모드는 태그 토글 대상 아님 — 값 자체가 플랫폼
   const set = new Set();
-  [...r.reg, ...r.react, ...r.traffic, ...r.purchasers, ...r.revenue, ...r.channels, ...r.externals].forEach((x) => {
+  [...r.reg, ...r.react, ...r.traffic, ...r.purchasers, ...r.revenue, ...r.channels, ...r.externals, ...r.reach, ...r.frequency].forEach((x) => {
     if (x.plat && x.plat !== "common") set.add(x.plat);
   });
   return [...set];
@@ -485,6 +590,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   if (pivoted) return buildPanelFromColMap(pivoted.headers, pivoted.rows, pivoted.colMap, platform, locale, pivoted.diagnostics, options);
   const weekStart = options.weekStart === "sunday" ? "sunday" : "monday";
   const r = colMapRoles(headers, colMap);
+  const geoPanels = buildGeoPanelFromRows(headers, rows, r, platform, weekStart);
   const tagMode = !r.platform && mmmPlatformTags(headers, colMap).length > 0;
   const P = platform === "all" ? null : platform;
   const inPlat = (x) => !tagMode || !P || x.plat === P || x.plat === "common";
@@ -538,12 +644,14 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
     // 업계 지수는 일자/플랫폼 행에 반복될 수 있는 level control이다. KPI·spend처럼
     // 합산하면 주간 시장 규모가 행 수만큼 부풀므로 유효값 평균으로 묶는다.
     const externalHeaders = new Set(r.externals.map((item) => item.header));
+    const rfHeaders = new Set([...r.reach, ...r.frequency].map((item) => item.header));
+    const geoHeader = r.geo;
     const binaryRoles = new Map([
       ...r.dummies.map((item) => [item.header, "dummy"]),
       ...r.steps.map((item) => [item.header, "step"]),
     ]);
     const binaryHeaders = new Set(binaryRoles.keys());
-    const modelHeaders = new Set([...additiveHeaders, ...externalHeaders, ...binaryHeaders]);
+    const modelHeaders = new Set([...additiveHeaders, ...externalHeaders, ...rfHeaders, ...binaryHeaders]);
     const numericValue = (value) => {
       if (value == null || String(value).trim() === "") return NaN;
       const parsed = mmmParseNumericValue(value);
@@ -579,6 +687,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
         Object.defineProperty(item, "__mmmStepStates", { value: new Map(), enumerable: false, configurable: true });
         Object.defineProperty(item, "__mmmExternalCounts", { value: new Map(), enumerable: false, configurable: true });
         item[timeHeader] = normalizedTime;
+        if (geoHeader) item[geoHeader] = String(row[geoHeader] ?? "").trim();
         for (const header of modelHeaders) {
           if (binaryHeaders.has(header)) {
             const role = binaryRoles.get(header);
@@ -586,6 +695,12 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
             item[header] = value;
             if (!Number.isFinite(value)) item.__mmmInvalidBinary.add(header);
             if (role === "step" && Number.isFinite(value)) item.__mmmStepStates.set(header, new Set([value]));
+            continue;
+          }
+          if (rfHeaders.has(header)) {
+            const value = numericValue(row[header]);
+            item[header] = Number.isFinite(value) ? value : "";
+            if (Number.isFinite(value)) item.__mmmExternalCounts.set(header, 1);
             continue;
           }
           const value = numericValue(row[header]);
@@ -598,6 +713,12 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
           if (!Number.isFinite(value)) item.__mmmMissingAdditive.add(header);
         }
       } else {
+        if (geoHeader) {
+          const currentGeo = String(item[geoHeader] ?? "").trim();
+          const nextGeo = String(row[geoHeader] ?? "").trim();
+          if (currentGeo && nextGeo && currentGeo !== nextGeo) item[geoHeader] = "";
+          else if (!currentGeo && nextGeo) item[geoHeader] = nextGeo;
+        }
         for (const header of modelHeaders) {
           if (binaryHeaders.has(header)) {
             const role = binaryRoles.get(header);
@@ -620,6 +741,14 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
             continue;
           }
           const value = numericValue(row[header]);
+          if (rfHeaders.has(header)) {
+            if (!Number.isFinite(value)) continue;
+            const current = numericValue(item[header]);
+            const count = item.__mmmExternalCounts.get(header) || 0;
+            item[header] = Number.isFinite(current) && count > 0 ? (current * count + value) / (count + 1) : value;
+            item.__mmmExternalCounts.set(header, count + 1);
+            continue;
+          }
           if (externalHeaders.has(header)) {
             if (!Number.isFinite(value)) continue;
             const current = numericValue(item[header]);
@@ -750,7 +879,8 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   // 표시 라벨: 매핑된 날짜 컬럼(2025-01-06 등) 우선, 없으면 주차 컬럼 원본값. 둘 다 없으면 null(→인덱스 폴백).
   const labelC = r.date || (weekC ? weekC.header : null);
   const weekLabelRaw = labelC ? baseRows.map((row) => row[labelC]) : null;
-  const panel = { week: baseRows.map((_, i) => i + 1), ch: {}, dummy: {}, steps: {}, external: {}, targets: {} };
+  const panel = { week: baseRows.map((_, i) => i + 1), ch: {}, dummy: {}, steps: {}, external: {}, targets: {}, geo: null, reach: {}, frequency: {} };
+  panel.geoPanel = geoPanels;
   const chans = r.channels.filter((channel) => inPlat(channel) && !isAmbiguousOtherCost(channel));
   const dummies = r.dummies.filter(inPlat);
   const steps = r.steps.filter(inPlat);
@@ -758,6 +888,9 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   for (const ch of chans) panel.ch[ch.key] = num(ch.header, true);
   for (const d of dummies) panel.dummy[d.key] = baseRows.map((row) => mmmParseBinaryIndicator(row[d.header], "dummy"));
   for (const s of steps) panel.steps[s.key] = baseRows.map((row) => mmmParseBinaryIndicator(row[s.header], "step"));
+  if (r.geo) panel.geo = baseRows.map((row) => String(row[r.geo] ?? "").trim() || null);
+  for (const item of r.reach.filter(inPlat)) panel.reach[item.key] = num(item.header, true);
+  for (const item of r.frequency.filter(inPlat)) panel.frequency[item.key] = num(item.header, true);
   // Total KPI에서는 같은 업계 지표의 Android/iOS 값을 한 level로 합산한다.
   // OS별 KPI 보기에서는 기존처럼 해당 OS 지표만 쓴다.
   const totalExternal = !P ? buildTotalExternalControls(externals, baseRows, num) : null;
@@ -789,6 +922,9 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   for (const k in panel.dummy) panel.dummy[k] = re(panel.dummy[k]);
   for (const k in panel.steps) panel.steps[k] = re(panel.steps[k]);
   for (const k in panel.external) panel.external[k] = re(panel.external[k]);
+  if (panel.geo) panel.geo = re(panel.geo);
+  for (const k in panel.reach) panel.reach[k] = re(panel.reach[k]);
+  for (const k in panel.frequency) panel.frequency[k] = re(panel.frequency[k]);
   for (const k in panel.targets) panel.targets[k] = re(panel.targets[k]);
   if (panel.targets.Regs && panel.targets.React) {
     panel.targets.RR = panel.week.map((_, i) => panel.targets.Regs[i] + panel.targets.React[i]);
@@ -796,6 +932,29 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   }
   // deriveWide와 동일한 패널 형태로 — 엔진(mmmChannelEffects/decomp)·렌더가 참조.
   panel.channels = chans.map((c) => ({ key: c.key, label: c.label, kind: c.kind }));
+  panel.mediaInputMap = Object.fromEntries(chans.map((channel) => {
+    const reach = matchMediaInput(channel, r.reach.filter(inPlat));
+    const frequency = matchMediaInput(channel, r.frequency.filter(inPlat));
+    return [channel.key, {
+      channelLabel: channel.label,
+      type: reach && frequency ? "reach-frequency" : "spend",
+      reachKey: reach?.key || null,
+      frequencyKey: frequency?.key || null,
+      reachHeader: reach?.header || null,
+      frequencyHeader: frequency?.header || null,
+    }];
+  }));
+  const hasCompleteGeo = Boolean(panel.geo?.length && panel.geo.every(Boolean));
+  panel.geoMode = hasCompleteGeo ? "geo-available" : panel.geo ? "geo-incomplete" : "national-fallback";
+  panel.rfMode = Object.keys(panel.reach).length && Object.keys(panel.frequency).length ? "rf-available" : "spend-only";
+  panel.meridianInput = {
+    level: panel.geoMode === "geo-available" ? "geo" : "national",
+    reach: Object.keys(panel.reach).length > 0,
+    frequency: Object.keys(panel.frequency).length > 0,
+    fitMode: Object.values(panel.mediaInputMap).some((item) => item.type === "reach-frequency") ? "mixed-spend-rf" : "spend-based",
+    matchedRfChannels: Object.values(panel.mediaInputMap).filter((item) => item.type === "reach-frequency").length,
+    unmatchedRfChannels: Object.values(panel.mediaInputMap).filter((item) => item.type !== "reach-frequency").map((item) => item.channelLabel).filter(Boolean),
+  };
   panel.channelValueSemantics = "cost";
   panel.channelCostHeaders = chans
     .filter((channel) => isOperationalDeliveryCostHeader(channel.header))
@@ -808,6 +967,8 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
     isPlatformAggregate: Boolean(external.isPlatformAggregate),
     sourceHeaders: external.sourceHeaders,
   }));
+  panel.reachDefs = r.reach.filter(inPlat).map((item) => ({ key: item.key, label: item.label }));
+  panel.frequencyDefs = r.frequency.filter(inPlat).map((item) => ({ key: item.key, label: item.label }));
   panel.useDummies = dummies.length > 0;
   // 차트·예측 라벨: mmmForecast/차트는 panel.dateLabel·dates·granularity를 읽음(weekLabel 아님) →
   // 매핑된 주차/날짜 라벨을 그 이름들로도 노출해야 x축·미래라벨이 실제 날짜(t 인덱스 아님)로 나옴.
@@ -869,6 +1030,9 @@ const ZONES = [
   ["purchasers", "🛍 구매자 Purchasers", "🛍 Purchasers", false, true],
   ["revenue", "💰 매출 Revenue", "💰 Revenue", false, true],
   ["channel", "📈 채널 spend (여러 개 · perf/brand · 플랫폼)", "📈 Channel spend (many · perf/brand · platform)", true, true],
+  ["geo", "🌍 GEO (선택 · 없으면 National-level)", "🌍 GEO (optional · National-level fallback)", false, false],
+  ["reach", "👥 Reach (선택 · RF)", "👥 Reach (optional · RF)", false, true],
+  ["frequency", "🔁 Frequency (선택 · RF)", "🔁 Frequency (optional · RF)", false, true],
   ["external", "📊 업계 수요 지수 (MMM 전용 · 상대 변화로 변환 · 여러 개 · 플랫폼)", "📊 Industry-demand index (MMM only · converted to relative change · many · platform)", false, true],
   ["dummy", "🔢 더미/이벤트 (0·1 · true/false · yes/no · on/off)", "🔢 Dummy/event (0/1 · true/false · yes/no · on/off)", false, true],
   ["step", "📐 구조변화 step (0·1 · pre/post · before/after)", "📐 Structural step (0/1 · pre/post · before/after)", false, true],
@@ -880,17 +1044,18 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
   const [dragCol, setDragCol] = useState(null);
   const [selectedCol, setSelectedCol] = useState(null);
   const [dragOverRole, setDragOverRole] = useState(null);
+  const [mapperTab, setMapperTab] = useState("core");
   const cm = colMap || {};
 
   const setRole = (col, role) => {
     const next = { ...cm };
-    if (["week", "date", "platform"].includes(role)) {
+    if (["week", "date", "platform", "geo"].includes(role)) {
       for (const h of headers || []) {
         if (next[h] && next[h].role === role) next[h] = { ...next[h], role: "ignore" };
       }
     }
     const prev = next[col] || {};
-    next[col] = { ...prev, role, plat: ["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external"].includes(role) ? prev.plat || guessPlat(col) : prev.plat };
+    next[col] = { ...prev, role, plat: ["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role) ? prev.plat || guessPlat(col) : prev.plat };
     onChange(next);
   };
   const setField = (col, field, value) => {
@@ -976,6 +1141,11 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
   const missing = colMapMissing(headers, cm, locale);
   const hasMappedTime = (headers || []).some((header) => ["date", "week"].includes(cm[header]?.role));
   const hasMappedPlatform = (headers || []).some((header) => cm[header]?.role === "platform");
+  const optionalRoles = new Set(["geo", "reach", "frequency"]);
+  const visibleZones = ZONES.filter(([role]) => mapperTab === "meridian" ? optionalRoles.has(role) : !optionalRoles.has(role));
+  const hasGeo = inRole("geo").length > 0;
+  const hasReach = inRole("reach").length > 0;
+  const hasFrequency = inRole("frequency").length > 0;
 
   return (
     <div>
@@ -993,6 +1163,19 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
           {tr("🪄 전부 자동 추정", "🪄 Auto-map all")}
         </button>
       </div>
+      <div style={{ display: "flex", gap: "6px", borderBottom: "1px solid var(--border)", marginBottom: "10px" }}>
+        {["core", "meridian"].map((tab) => (
+          <button key={tab} type="button" className="ab-pill" onClick={() => setMapperTab(tab)} style={{ borderBottom: mapperTab === tab ? "2px solid var(--primary)" : "2px solid transparent", borderRadius: "6px 6px 0 0" }}>
+            {tab === "core" ? tr("기본 MMM", "Core MMM") : tr("Meridian 입력 (선택)", "Meridian inputs (optional)")}
+          </button>
+        ))}
+      </div>
+      {mapperTab === "meridian" && (
+        <div className="callout" style={{ marginBottom: "10px" }}>
+          <div className="ico">i</div>
+          <div className="body"><strong>{tr("선택 입력입니다", "Optional inputs")}</strong><p>{tr("GEO가 없으면 National-level로 분석합니다. Reach/Frequency가 없으면 spend 기반으로 분석합니다. 현재 매핑은 입력을 보존하며 기본 적합은 spend 기반입니다.", "Without GEO, the model uses a national-level fallback. Without Reach/Frequency, it uses spend-based inputs. Mapping preserves these fields; the current fit remains spend-based.")}</p></div>
+        </div>
+      )}
       <div
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => { event.preventDefault(); placeColumn(draggedColumn(event), "ignore"); }}
@@ -1004,9 +1187,12 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-        {ZONES.map(([role, koLabel, enLabel, withKind, withPlat]) => (
+        {visibleZones.map(([role, koLabel, enLabel, withKind, withPlat]) => (
           <Zone key={role} role={role} label={tr(koLabel, enLabel)} withKind={withKind} withPlat={withPlat} />
         ))}
+      </div>
+      <div style={{ marginTop: "10px", fontSize: "12px", color: "var(--text-muted)" }}>
+        {tr(`Meridian 입력 상태 · GEO: ${hasGeo ? "매핑됨" : "없음 → National-level"} · Reach: ${hasReach ? "매핑됨" : "없음"} · Frequency: ${hasFrequency ? "매핑됨" : "없음"}`, `Meridian inputs · GEO: ${hasGeo ? "mapped" : "missing → National-level"} · Reach: ${hasReach ? "mapped" : "missing"} · Frequency: ${hasFrequency ? "mapped" : "missing"}`)}
       </div>
       {!hasMappedTime && !hasMappedPlatform && (
         <label style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginTop: "10px", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: "8px", fontSize: "12px", color: "var(--text-1)" }}>
