@@ -597,7 +597,7 @@ describe("MarketingResponse render smoke", () => {
     enterMmmAndAnalyze(container);
     await flushRaf();
     clickByText(container, "기여 분해");
-    expect(document.body.textContent).toContain("PR #416 집계 MMM");
+    expect(document.body.textContent).toContain("PR #416 고정 총량 + 채널 분배");
     expect(document.body.textContent).toContain("엔진 v1.6.0");
     expect(document.body.textContent).not.toContain("Bayesian-like MMM");
     expect(document.body.textContent).toContain("평균 Cost/주");
