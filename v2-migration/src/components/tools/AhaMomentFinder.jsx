@@ -9,12 +9,15 @@ import { downloadChartAsPNG, CHART_THEME } from "@/utils/chartUtils";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
 import DemoLoadButton from "@/components/DemoLoadButton";
+import AnalysisDetails from "@/components/ds/AnalysisDetails";
+import DownloadHub from "@/components/ds/DownloadHub";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import { buildDemoCsv } from "@/utils/demoData";
 import AhaColumnMapper, { ahaAutoMapColumns } from "@/components/tools/AhaColumnMapper";
 import { resolveAhaCopy } from "@/utils/contentDomain";
 import { trackProductEvent } from "@/lib/analytics";
+import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 
 // EN 번역팩 — domain(performance/content)별 AHA_COPY(ko)를 locale="en"일 때만 오버레이.
 // contentDomain.js(SSOT, 5-20/9-2 공용)는 절대 불변 — 여기서 로컬 병합만 수행(CampaignPvm.jsx 패턴과 동일).
@@ -1082,6 +1085,26 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             <p className="muted" style={{ fontSize: "12px", marginTop: "-4px", marginBottom: "14px" }}>
               {C.heroSub}
             </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "10px" }}>
+              <DownloadHub
+                toolId={domain === "content" ? "9-2" : "5-20"}
+                locale={locale}
+                label={tr("실행 정보", "Run details")}
+                manifest={buildResultManifest({
+                  toolId: domain === "content" ? "9-2" : "5-20",
+                  mode: holdoutOn ? "association-holdout" : "association",
+                  source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+                  inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
+                  mappingSignature: Object.entries(csvData?.mapping || {}).sort().map(([k, v]) => `${k}=${v}`).join("|"),
+                  filter: { segment: validSeg ? `${validSeg.col}=${validSeg.value}` : "all", holdout: holdoutOn, minSupport },
+                  grain: "user-action-window",
+                  metricDefinitions: ["support", "precision", "recall", "F1", "lift"].map((key) => ({ key, unit: key === "lift" ? "ratio" : "score", aggregation: "custom" })),
+                  engineVersion: "aha-v1",
+                  status: topAction ? "COMPLETE" : "ABSTAIN",
+                  warnings: ["Association is not causation", ...(holdoutOn ? [] : ["Holdout validation disabled"])],
+                })}
+              />
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "12px", marginBottom: "14px" }}>
               {[
                 [C.statAll, cache.n.toLocaleString(), null],
@@ -1143,6 +1166,23 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                   {tr("으로 검증하세요.", ".")}</p>
               </div>
             </div>
+            <AnalysisDetails
+              locale={locale}
+              statusLabel={topAction ? tr("연관 신호", "Association signal") : tr("판정 보류", "Abstain")}
+              statusTone={topAction ? "neutral" : "warning"}
+              metric={tr("홀드아웃 F1 · lift", "Holdout F1 · lift")}
+              unit="F1 / ratio"
+              meaning={tr("행동과 목표의 연관 후보를 좁히는 분석이며 인과효과가 아닙니다.", "This narrows association candidates between actions and the target; it is not a causal effect.")}
+              sampleSize={{ value: cache.n, label: tr("사용자·분모", "Users / denominator"), detail: `${totalTargets.toLocaleString()} ${tr("명 목표 도달", "reached the target")}` }}
+              scope={validSeg ? `${validSeg.col}=${validSeg.value}` : tr("전체 데이터", "All data")}
+              method="deterministic-grid-search + train/holdout"
+              version="aha-v1"
+              metricDefinition={tr("support·precision·recall·F1·lift를 최소 지지도와 홀드아웃으로 판정합니다.", "Support, precision, recall, F1, and lift are evaluated with minimum support and a holdout split.")}
+              warnings={[
+                tr("최소 지지도와 행동 윈도우 설정에 민감합니다. 홀드아웃을 끄면 예측력 검증이 약해집니다.", "Results are sensitive to minimum support and action-window settings. Turning off holdout weakens predictive validation."),
+                tr("강한 신호도 실험·홀드아웃으로 인과효과를 확인해야 합니다.", "Even a strong signal requires an experiment or holdout to confirm incrementality."),
+              ]}
+            />
           </section>
 
           {/* ── §1 칸반 그룹핑 — 신호 세기별 3버킷(배지 반복 대신 칼럼 헤더가 곧 상태) ── */}

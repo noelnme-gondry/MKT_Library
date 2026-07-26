@@ -371,12 +371,16 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
               method={tr("통제군 홀드아웃", "Control-group holdout")}
               version="incrementality-suppression"
               cachePolicy={tr("브라우저 메모리 전용", "In-memory browser cache only")}
-              warnings={win.balanced === false ? [tr("홀드아웃 전 그룹 균형이 맞지 않아 증분값이 왜곡될 수 있습니다.", "Pre-holdout group balance is questionable; incrementality may be distorted.")] : []}
+              warnings={[
+                ...(win.balanced === false ? [tr("홀드아웃 전 그룹 균형이 맞지 않아 증분값이 왜곡될 수 있습니다.", "Pre-holdout group balance is questionable; incrementality may be distorted.")] : []),
+                tr("사전 MDE·검정력이 없으면 증분 결과의 검정력을 역산하지 않습니다. 증거 수준은 균형·기간·효과 방향을 함께 읽으세요.", "Without a pre-specified MDE and target power, post-hoc power is not back-calculated. Read the evidence level from balance, window, and effect direction together."),
+              ]}
             />
           }
           download={
             <DownloadHub
               toolId="5-23"
+              locale={locale}
               label={tr("결과 받기", "Download")}
               align="right"
               manifest={buildResultManifest({
@@ -620,12 +624,16 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
                   method={isDiD ? "DiD" : lost ? tr("종료 전후", "Shutdown pre/post") : tr("신규 전후", "Launch pre/post")}
                   version="incrementality-prepost"
                   cachePolicy={tr("브라우저 메모리 전용", "In-memory browser cache only")}
-                  warnings={!isDiD ? [tr("단순 전후 비교는 계절성·추세·프로모션과 섞일 수 있습니다.", "Simple pre/post comparisons can mix seasonality, trend, and promotions.")] : []}
+                  warnings={[
+                    ...(!isDiD ? [tr("단순 전후 비교는 계절성·추세·프로모션과 섞일 수 있습니다.", "Simple pre/post comparisons can mix seasonality, trend, and promotions.")] : []),
+                    tr("사전 MDE·검정력이 없으면 검정력을 역산하지 않습니다. 단순 전후는 증거 수준이 낮고 DiD/무작위 홀드아웃이 더 강합니다.", "Without a pre-specified MDE and target power, post-hoc power is not back-calculated. Simple pre/post evidence is weaker than DiD or randomized holdout evidence."),
+                  ]}
                 />
               }
               download={
                 <DownloadHub
                   toolId="5-23"
+                  locale={locale}
                   label={tr("결과 받기", "Download")}
                   align="right"
                   items={[

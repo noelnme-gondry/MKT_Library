@@ -219,7 +219,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
               {["month", "week"].map((value) => <button key={value} disabled={!availableGrains.includes(value)} className={`ab-pill ${activeGrain === value ? "active" : ""}`} onClick={() => setGrain(value)} title={!availableGrains.includes(value) ? (locale === "en" ? "Not available for this input frequency" : "입력 단위상 정확히 집계할 수 없습니다") : undefined}>{value === "month" ? (locale === "en" ? "Monthly" : "월별") : (locale === "en" ? "Weekly" : "주별")}</button>)}
             </div>
             {downloadItems.length > 0 && (
-              <DownloadHub items={downloadItems} align="right" label={locale === "en" ? "Download" : "데이터 받기"} toolId="5-2" />
+              <DownloadHub items={downloadItems} align="right" locale={locale} label={locale === "en" ? "Download" : "데이터 받기"} toolId="5-2" />
             )}
           </div>
         </div>

@@ -6,6 +6,10 @@ import { STATS } from "@/utils/abTestMath";
 import CsvUploader from "@/components/CsvUploader";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import DataTable from "@/components/ds/DataTable";
+import ResultActionCard from "@/components/ds/ResultActionCard";
+import AnalysisDetails from "@/components/ds/AnalysisDetails";
+import DownloadHub from "@/components/ds/DownloadHub";
+import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
@@ -741,12 +745,38 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
           {readoutData && (
             <>
               <section className="block" id="s-readout-sig">
-                <h2 className="section-title">{tr("유의성 검정 (Control vs Test)", "Significance test (Control vs Test)")}</h2>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                  <h2 className="section-title" style={{ marginBottom: 0 }}>{tr("유의성 검정 (Control vs Test)", "Significance test (Control vs Test)")}</h2>
+                  <DownloadHub
+                    toolId="5-4"
+                    locale={locale}
+                    label={tr("실행 정보", "Run details")}
+                    manifest={buildResultManifest({
+                      toolId: "5-4",
+                      mode: testType,
+                      source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+                      inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
+                      grain: "arm",
+                      metricDefinitions: [{ key: "conversion-rate-difference", unit: "percentage points" }, { key: "p-value" }, { key: "95% CI" }],
+                      engineVersion: testType === "binary" ? "two-proportion-z-test" : "welch-approximation",
+                      status: readoutData.sig ? "COMPLETE" : "ABSTAIN",
+                      warnings: ["Non-significance is inconclusive", ...(readoutData.mass ? ["Holm-adjusted mass-test p-values apply to variants"] : [])],
+                    })}
+                  />
+                </div>
                 {readoutData.sig ? (() => {
                   const s = readoutData.sig;
                   const liftPositive = s.liftRel >= 0;
                   return (
-                    <div className="alloc-card" style={{ borderLeft: `3px solid ${verdictColor(s.pValue, liftPositive)}` }}>
+                    <ResultActionCard
+                      locale={locale}
+                      tone={s.pValue < 0.05 ? (liftPositive ? "good" : "bad") : "neutral"}
+                      title={tr("결론 — Control vs Test", "Conclusion — Control vs Test")}
+                      headline={s.pValue < 0.05
+                        ? tr(liftPositive ? "통계적 개선 후보입니다" : "통계적 악화 후보입니다", liftPositive ? "Statistical improvement candidate" : "Statistical decline candidate")
+                        : tr("현재 표본만으로 차이를 확정할 수 없습니다", "The current sample does not establish a difference")}
+                      points={[{ text: tr("효과 크기·95% CI·검정력을 함께 확인하세요.", "Check effect size, the 95% interval, and power together."), cls: s.pValue < 0.05 ? "good" : "muted" }]}
+                    >
                       <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
                         <div className="ab-stat"><div className="ab-stat-label">{tr("Control 전환율", "Control conversion rate")}</div><div className="ab-stat-value tnum">{readoutData.cRate.toFixed(2)}%</div><div className="ab-stat-hint">{readoutData.cNum.toLocaleString()}/{readoutData.cDen.toLocaleString()}</div></div>
                         <div className="ab-stat"><div className="ab-stat-label">{tr("Test 전환율", "Test conversion rate")}</div><div className="ab-stat-value tnum">{readoutData.tRate.toFixed(2)}%</div><div className="ab-stat-hint">{readoutData.tNum.toLocaleString()}/{readoutData.tDen.toLocaleString()}</div></div>
@@ -770,7 +800,24 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                           {" "}The z and CI in parentheses are the raw statistics (for experts).</>,
                         )}
                       </p></div></div>
-                    </div>
+                      <AnalysisDetails
+                        locale={locale}
+                        statusLabel={s.pValue < 0.05 ? tr("통계적 차이 후보", "Statistical-difference candidate") : tr("판정 보류", "Inconclusive")}
+                        statusTone={s.pValue < 0.05 ? "good" : "warning"}
+                        metric={tr("전환율 차이", "Conversion-rate difference")}
+                        unit="percentage points"
+                        meaning={tr("무작위 Control/Test 비교의 통계적 참고값이며 광고 증분성을 의미하지 않습니다.", "A statistical reference for a randomized Control/Test comparison; it does not establish advertising incrementality.")}
+                        sampleSize={{ value: readoutData.cDen + readoutData.tDen, label: tr("총 분모", "Total denominator"), detail: `Control ${readoutData.cDen.toLocaleString()} · Test ${readoutData.tDen.toLocaleString()}` }}
+                        interval={{ value: `[ ${(s.ciLow95 * 100).toFixed(2)}%, ${(s.ciHigh95 * 100).toFixed(2)}% ]`, confidence: "95%" }}
+                        method="two-proportion-z-test"
+                        version="ab-readout-v1"
+                        metricDefinition={tr("전환수 ÷ 그룹 분모, 양측 α=0.05", "Conversions ÷ arm denominator, two-sided α=0.05")}
+                        warnings={[
+                          tr("비유의는 효과 없음의 증명이 아니라 현재 표본에서 판정 보류입니다.", "Non-significance is not proof of no effect; it is inconclusive for the current sample."),
+                          tr("사전 MDE·검정력을 지정하지 않은 사후 판정에서는 검정력을 역산하지 않습니다. 설계 탭의 목표 Power와 필요한 표본을 함께 기록하세요.", "Post-hoc power is not back-calculated without a pre-specified MDE and target power. Record the target power and required sample size in the design tab."),
+                        ]}
+                      />
+                    </ResultActionCard>
                   );
                 })() : (
                   <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("Control/Test 양쪽 데이터가 필요합니다", "Data for both Control and Test is required")}</strong><p>{tr("is_control 컬럼으로 대조군을 구분하고 numerator/denominator를 채우세요.", "Use the is_control column to mark the control arm and fill in numerator/denominator.")}</p></div></div>

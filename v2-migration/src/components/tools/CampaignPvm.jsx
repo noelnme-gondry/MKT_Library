@@ -1185,6 +1185,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           <h2 className="section-title" style={{ margin: 0 }}><span className="ix">§0</span>{tr("한눈에 보기", "Overview")}</h2>
           <DownloadHub
             toolId={pvmManifest.toolId}
+            locale={locale}
             label={tr("결과 받기", "Download")}
             align="right"
             manifest={pvmManifest}

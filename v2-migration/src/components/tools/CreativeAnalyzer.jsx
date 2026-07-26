@@ -8,6 +8,9 @@ import { getMappedRows } from "@/utils/dashboardAggregator";
 import { downloadChartAsPNG } from "@/utils/chartUtils";
 import CsvUploader from "@/components/CsvUploader";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import AnalysisDetails from "@/components/ds/AnalysisDetails";
+import DownloadHub from "@/components/ds/DownloadHub";
+import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import Chart from "chart.js/auto";
 
 // EN 번역팩 — domain(performance/content)별 CREATIVE_COPY(ko)를 locale="en"일 때만 오버레이.
@@ -859,6 +862,23 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
             <span className="chip ok"><span className="dot"></span>{C.entity} {metrics.length}{tr("개", "")}</span>
             <span className="chip"><span className="dot"></span>config {CREATIVE_CONFIG.version}</span>
+            <DownloadHub
+              toolId={domain === "content" ? "9-6" : "5-6"}
+              label={tr("실행 정보", "Run details")}
+              manifest={buildResultManifest({
+                toolId: domain === "content" ? "9-6" : "5-6",
+                mode: domain,
+                source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+                inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
+                mappingSignature: Object.entries(csvData?.mapping || {}).sort().map(([k, v]) => `${k}=${v}`).join("|"),
+                filter: { metric, selectedCell: selectedCell ? `${selectedCell.row}|${selectedCell.col}` : "all" },
+                grain: "creative",
+                metricDefinitions: ["CTR", "CVR", "CPA", "fatigue", "attribute-effect"].map((key) => ({ key, aggregation: "custom" })),
+                engineVersion: CREATIVE_CONFIG.version,
+                status: metrics.length ? "COMPLETE" : "ABSTAIN",
+                warnings: ["Observed association is not causal", ...(metrics.length < 30 ? ["Sparse creative sample"] : [])],
+              })}
+            />
           </div>
         </div>
 
@@ -890,6 +910,21 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           { label: tr("피로 신호", "Fatigue signals"), value: `${fatiguedCount}${tr("개", "")}` },
           { label: tr("권장 제작 속도", "Recommended production"), value: autoPlan ? `${autoPlan.recommendedWeeklyVelocity}${tr("개/주", "/wk")}` : "—" },
         ]}
+        analysisDetails={(
+          <AnalysisDetails
+            locale={locale}
+            statusLabel={tr("관측 신호", "Observed signal")}
+            statusTone={fatigueTone === "bad" ? "warning" : "neutral"}
+            metric={tr("소재 피로·운영 신호", "Creative fatigue and operations signal")}
+            unit="creative-level"
+            meaning={tr("소재별 관측 성과를 이용한 운영 우선순위이며 인과효과가 아닙니다.", "An operational priority from observed creative performance; not a causal effect.")}
+            sampleSize={{ value: metrics.length, label: tr("소재 수", "Creative count") }}
+            method="creative-fatigue-and-attribute-analysis"
+            version={CREATIVE_CONFIG.version}
+            metricDefinition={tr("소재별 성과·피로·속성 신호를 결합한 운영 판정", "Operational verdict combining creative performance, fatigue, and attribute signals")}
+            warnings={[tr("희소 소재·짧은 집행 기간·공선 속성은 판정 신뢰도를 낮춥니다.", "Sparse creatives, short flighting, and collinear attributes reduce confidence.")]}
+          />
+        )}
       />
 
       <section className="creative-control-room" aria-label={tr("소재 운영 실행 패널", "Creative operations action panel")}>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildResultManifest, serializeResultManifest } from "./resultManifest";
+import { buildComparisonManifest, buildResultManifest, serializeResultManifest } from "./resultManifest";
 
 describe("resultManifest", () => {
   it("keeps reproducibility metadata explicit and deterministic by default", () => {
@@ -10,5 +10,11 @@ describe("resultManifest", () => {
 
   it("serializes with a trailing newline for text downloads", () => {
     expect(serializeResultManifest({ toolId: "5-2" })).toBe('{\n  "toolId": "5-2"\n}\n');
+  });
+
+  it("only marks runs comparable when metric, filter, and grain match", () => {
+    const base = buildResultManifest({ toolId: "5-22", metricDefinitions: [{ key: "cpa", unit: "currency / result" }], filter: { days: 90 }, grain: "channel" });
+    expect(buildComparisonManifest([base, { ...base, mode: "bayesian" }]).comparable).toBe(true);
+    expect(buildComparisonManifest([base, { ...base, grain: "campaign" }])).toMatchObject({ comparable: false, reason: "metric, filter, or grain mismatch" });
   });
 });

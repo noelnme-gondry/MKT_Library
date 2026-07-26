@@ -21,6 +21,10 @@ import { TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import ToolPageShell from "@/components/ToolPageShell";
+import ResultActionCard from "@/components/ds/ResultActionCard";
+import AnalysisDetails from "@/components/ds/AnalysisDetails";
+import DownloadHub from "@/components/ds/DownloadHub";
+import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 
 // 우측 TOC — legacy page_5_22() 목차와 동일 (§0 요약/§1 순위/§2 응답곡선).
 // 실제 렌더되는 section id(analyzed 분기 하위)만 포함 — 없는 앵커 추가 금지.
@@ -447,17 +451,55 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       <>
       <section className="block" id="s-sat-summary">
         <h2 className="section-title"><span className="ix">§0</span>{tr("한눈에 보기", "At a glance")}</h2>
-        {okRows.length ? (
-          <>
-            <div style={{ fontSize: "15px", fontWeight: "600", marginBottom: "6px" }} dangerouslySetInnerHTML={{ __html: head }} />
-            <div style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.65 }}>{advice}</div>
-          </>
-        ) : (
-          <div className="callout warn">
-            <div className="ico">!</div>
-            <div className="body">{advice}</div>
-          </div>
-        )}
+        <ResultActionCard
+          locale={locale}
+          tone={!okRows.length ? "bad" : sat.length ? "bad" : scale.length ? "good" : "neutral"}
+          title={tr("포화도 결론", "Saturation conclusion")}
+          headline={<span dangerouslySetInnerHTML={{ __html: head }} />}
+          download={(
+            <DownloadHub
+              toolId="5-22"
+              locale={locale}
+              label={tr("실행 정보", "Run details")}
+              manifest={buildResultManifest({
+                toolId: "5-22",
+                mode: effectiveMetric,
+                source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+                inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
+                filter: { grain: effectiveGrain, metric: effectiveMetric },
+                grain: effectiveGrain,
+                metricDefinitions: [{ key: effectiveMetric, aggregation: "custom" }],
+                engineVersion: "sat-v1",
+                status: okRows.length ? "COMPLETE" : "ABSTAIN",
+                warnings: ["Observed-range marginal efficiency is not causal incrementality"],
+              })}
+            />
+          )}
+          points={[{ text: advice, cls: !okRows.length || sat.length ? "bad" : scale.length ? "good" : "muted" }]}
+          stats={[
+            { label: tr("분석 가능", "Analyzable"), value: `${okRows.length}/${rows.length}` },
+            { label: tr("포화", "Saturated"), value: sat.length },
+            { label: tr("여유", "Headroom"), value: scale.length },
+          ]}
+          analysisDetails={(
+            <AnalysisDetails
+              locale={locale}
+              statusLabel={okRows.length ? tr("관측 범위 내 참고", "In-range reference") : tr("판정 보류", "Abstain")}
+              statusTone={!okRows.length || badRows.length ? "warning" : "neutral"}
+              metric={metricLabel}
+              unit={effectiveMetric === "roas" ? "ratio" : "currency / result"}
+              meaning={tr("비용-성과 곡선의 관측 범위 내 한계효율 참고값이며 인과효과가 아닙니다.", "An in-range marginal-efficiency reference from the cost-performance curve; not a causal effect.")}
+              sampleSize={{ value: rows.reduce((sum, row) => sum + (row.raw || 0), 0), label: tr("관측 행", "Observed rows"), detail: tr(`${grainLabel}별 최소 ${SAT_CONFIG.minPoints}개 관측 필요`, `At least ${SAT_CONFIG.minPoints} observations per ${grainLabel} are required`) }}
+              method="saturation-curve-fit"
+              version="sat-v1"
+              metricDefinition={tr("CPA는 Cost/성과, ROAS는 Revenue/Cost 기준입니다.", "CPA uses Cost/results; ROAS uses Revenue/Cost.")}
+              warnings={[
+                ...(badRows.length ? [tr(`${badRows.length}개 대상은 표본·변동성 부족으로 판정에서 제외됐습니다.`, `${badRows.length} target(s) were excluded because of insufficient sample or variation.`)] : []),
+                tr("관측 지출 범위 밖의 외삽은 추천 근거로 사용하지 않습니다.", "Extrapolation beyond observed spend is not used as recommendation evidence."),
+              ]}
+            />
+          )}
+        />
       </section>
 
       <section className="block" id="s-sat">

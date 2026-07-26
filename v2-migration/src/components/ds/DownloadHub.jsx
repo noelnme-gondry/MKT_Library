@@ -17,6 +17,7 @@ export default function DownloadHub({
   buttonStyle,
   toolId,
   manifest = null,
+  locale = "ko",
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -24,8 +25,10 @@ export default function DownloadHub({
   const triggerRef = useRef(null);
   const menuId = useId();
   const manifestItem = manifest ? {
-    label: "실행 정보(JSON)",
-    desc: "필터·단위·엔진 버전·경고",
+    label: locale === "en" ? "Run details (JSON)" : "실행 정보(JSON)",
+    desc: locale === "en"
+      ? `Filter · units · engine version · warnings · source: ${manifest.source || "unknown"}`
+      : `필터·단위·엔진 버전·경고 · 원본: ${manifest.source || "알 수 없음"}`,
     icon: "ⓘ",
     analyticsType: "manifest",
     onSelect: () => downloadJson(manifest, `${toolId || "analysis"}_manifest`),
