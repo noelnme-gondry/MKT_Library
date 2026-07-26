@@ -1279,6 +1279,56 @@ function fmtOne(v) {
   return Number(v).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
+// STL/모델의 "첫 주→마지막 주 변화"를 0 기준 양·음 막대로 보여주는 표시층.
+// 원자료·모델 계산은 바꾸지 않고, 플랫한 추세가 어떤 조정 요인과 함께 만들어졌는지만 설명한다.
+function TrendChangeBars({ title, subtitle, rows, total, totalLabel, tx }) {
+  const visibleRows = (rows || []).filter((row) => Number.isFinite(row.change));
+  if (!visibleRows.length) return null;
+  const maxAbs = Math.max(1, ...visibleRows.map((row) => Math.abs(row.change)));
+  const signed = (value) => `${value >= 0 ? "+" : "−"}${fmtOne(Math.abs(value))}`;
+  return (
+    <section className="trend-change-ledger" aria-label={title}>
+      <div className="trend-change-ledger__head">
+        <div>
+          <h3>{title}</h3>
+          {subtitle && <p>{subtitle}</p>}
+        </div>
+        {Number.isFinite(total) && (
+          <span className="trend-change-ledger__total">
+            {totalLabel || tx("변화", "Change")} <strong>{signed(total)}</strong>
+          </span>
+        )}
+      </div>
+      <div className="trend-change-ledger__rows">
+        {visibleRows.map((row) => {
+          const width = Math.min(50, Math.abs(row.change) / maxAbs * 50);
+          const isPositive = row.change >= 0;
+          return (
+            <div className="trend-change-row" key={row.key || row.label}>
+              <div className="trend-change-row__label">
+                <span className="trend-change-row__swatch" style={{ background: row.tone }} aria-hidden />
+                <span>{row.label}</span>
+              </div>
+              <div className="trend-change-row__track" aria-label={`${row.label}: ${signed(row.change)}`}>
+                <span className="trend-change-row__zero" aria-hidden />
+                <span
+                  className={`trend-change-row__bar ${isPositive ? "is-positive" : "is-negative"}`}
+                  style={{
+                    [isPositive ? "left" : "right"]: "50%",
+                    width: `${width}%`,
+                    background: row.tone,
+                  }}
+                />
+              </div>
+              <strong className={isPositive ? "is-positive" : "is-negative"}>{signed(row.change)}</strong>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function forecastScenarioReasonLabel(reason, tx) {
   const labels = {
     "fewer-than-three-holdouts": tx("12주 학습 제외 검증이 3회 미만입니다", "Fewer than three 12-week holdouts are available"),
@@ -3890,6 +3940,44 @@ export default function MarketingResponse({ locale = "ko" }) {
     }
   }, [mmm, stage, locale]);
 
+  // STL 원장과 MMM 버킷 원장을 함께 제공하는 표시용 파생값.
+  // 엔진의 계수·추정·분해값은 수정하지 않고, 첫 주→마지막 주 변화만 비교한다.
+  const trendLedger = useMemo(() => {
+    if (!trend || !mmm || mmm.empty) return null;
+    const delta = (values) => {
+      if (!Array.isArray(values) || values.length < 2) return null;
+      const first = Number(values[0]), last = Number(values.at(-1));
+      return Number.isFinite(first) && Number.isFinite(last) ? last - first : null;
+    };
+    const targetValues = mmm.panel.targets[mmm.target] || [];
+    const stlRows = [
+      { key: "stl-trend", label: tx("순수 STL 추세", "Pure STL trend"), tone: "#38bdf8", change: delta(trend.stl?.trend) },
+      { key: "stl-seasonal", label: tx("계절성 조정", "Seasonality adjustment"), tone: "#5DCAA5", change: delta(trend.stl?.seasonal) },
+      { key: "stl-residual", label: tx("불규칙·잔차", "Irregular / residual"), tone: "#94a3b8", change: delta(trend.stl?.residual) },
+    ];
+    const modelBuckets = new Map(MMM_BUCKET_ORDER.map((bucket) => [bucket, 0]));
+    const weeks = mmm.run?.weeks || [];
+    (mmm.run?.groupNames || []).forEach((name) => {
+      const bucket = decompBucketOf(name);
+      const values = weeks.map((week) => week.contrib?.[name] || 0);
+      const change = delta(values);
+      if (change != null) modelBuckets.set(bucket, (modelBuckets.get(bucket) || 0) + change);
+    });
+    const modelMeta = mmmBucketMeta(locale);
+    const modelRows = MMM_BUCKET_ORDER.map((bucket) => ({
+      key: `mmm-${bucket}`,
+      label: modelMeta[bucket].label,
+      tone: modelMeta[bucket].tone,
+      change: modelBuckets.get(bucket) || 0,
+    })).filter((row) => Math.abs(row.change) > 0.05);
+    return {
+      rawChange: delta(targetValues),
+      stlRows,
+      modelRows,
+      fittedChange: delta(weeks.map((week) => week.fitted)),
+    };
+  }, [trend, mmm, locale, tx]);
+
   // 채널별 카니발 + §4.5 랭킹/전역 종합 (index buildMmmMethCache byTarget 오케스트레이션 포트)
   const cannib = useMemo(() => {
     // 분석 패키지는 어느 단계에서 받아도 4검증을 모두 포함해야 한다. 화면은
@@ -4831,6 +4919,36 @@ export default function MarketingResponse({ locale = "ko" }) {
                   <div className="stat-card"><div className="lbl">{tx("판정", "Verdict")}</div><div className="val" style={{ fontSize: "13px" }}>{trend.verdict}</div></div>
                 </div>
                 <div className="chart-container" style={{ height: "280px" }}><canvas ref={trendRef}></canvas></div>
+                {trendLedger && (
+                  <div className="trend-change-ledgers">
+                    <p className="trend-change-ledgers__intro">
+                      {tx(
+                        "실제선의 변화와 순수 추세의 변화가 다르면, 그 차이는 계절성·불규칙 요인 또는 모델이 함께 설명한 업황·이벤트·광고 변화에서 옵니다. 막대는 첫 주에서 마지막 주까지의 변화량입니다.",
+                        "When the actual and pure-trend changes differ, the gap comes from seasonality, irregular movement, or modelled industry, event, and media changes. Bars show the change from the first to the last week."
+                      )}
+                    </p>
+                    <div className="trend-change-ledgers__grid">
+                      <TrendChangeBars
+                        title={tx("STL 변화 원장", "STL change ledger")}
+                        subtitle={tx("실제 = 추세 + 계절성 + 잔차", "Actual = trend + seasonality + residual")}
+                        rows={trendLedger.stlRows}
+                        total={trendLedger.rawChange}
+                        totalLabel={tx("실제 변화", "Actual change")}
+                        tx={tx}
+                      />
+                      {trendLedger.modelRows.length > 0 && (
+                        <TrendChangeBars
+                          title={tx("MMM 드라이버 변화", "MMM driver change")}
+                          subtitle={tx("공동 적합된 모델의 변화 배분 · 인과 기여율 아님", "Jointly fitted model change · not causal attribution")}
+                          rows={trendLedger.modelRows}
+                          total={trendLedger.fittedChange}
+                          totalLabel={tx("모델 변화", "Fitted change")}
+                          tx={tx}
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
                 <Card style={{ marginTop: "12px", fontSize: "12px", lineHeight: 1.55 }}>
                   {tx("다음 단계에서 카니발 4검증을 보세요. 그중 ②는 이 시간 추세를 다시 걷어낸 뒤 광고와 성과의 관계를 확인합니다.", "Continue to the four cannibalization checks. Check ② removes this time trend again before comparing spend and outcome.")}
                   <button className="ab-pill active" style={{ marginLeft: "10px" }} onClick={() => setStage("diagnose")}>{tx("카니발 진단으로", "Open cannibalization")}</button>
