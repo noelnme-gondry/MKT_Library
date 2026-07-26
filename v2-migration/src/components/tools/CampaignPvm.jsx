@@ -7,6 +7,9 @@ import { pvmGenerateDiagnosis, buildPvmResultCsv } from "@/utils/pvmExport";
 import { resolvePvmCopy } from "@/utils/contentDomain";
 import { getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { checkAdditiveIdentity } from "@/utils/identityChecks";
+import AnalysisDetails from "@/components/ds/AnalysisDetails";
+import DownloadHub from "@/components/ds/DownloadHub";
+import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import CsvUploader from "@/components/CsvUploader";
 import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
 import ToolPageShell from "@/components/ToolPageShell";
@@ -916,6 +919,18 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     : [];
   const channelSigma = channelRows.reduce((a, e) => a + e.contribution, 0);
   const channelIdentity = ready ? cache.identity : null;
+  const pvmManifest = buildResultManifest({
+    toolId: C.uploaderToolId === "9-6" ? "9-6" : "5-21",
+    mode: "pvm",
+    source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+    inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
+    filter: { lookback, weekBasis, metric },
+    grain: "channel-campaign-creative",
+    metricDefinitions: [{ key: metric, label: ml, aggregation: "ratio", timeBasis: weekBasis }],
+    engineVersion: "pvm-identity-checked",
+    status: ready ? "COMPLETE" : "BLOCKED",
+    warnings: channelIdentity?.ok ? [] : [tr("채널 합산 항등식을 확인해야 합니다.", "Channel additive identity needs review.")],
+  });
 
   // §3 캠페인 드릴 — 채널 선택
   const channelKeys = ready ? channelRows.map((e) => e.key) : [];
@@ -1168,8 +1183,33 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <h2 className="section-title" style={{ margin: 0 }}><span className="ix">§0</span>{tr("한눈에 보기", "Overview")}</h2>
-          <button className="ab-pill" title={tr("이 분석의 모든 표·비교 데이터를 CSV로 내려받기", "Download all tables and comparison data from this analysis as CSV")} disabled={!ready} onClick={downloadPvmCsv}>{tr("⬇ 결과 다운받기", "⬇ Download results")}</button>
+          <DownloadHub
+            toolId={pvmManifest.toolId}
+            label={tr("결과 받기", "Download")}
+            align="right"
+            manifest={pvmManifest}
+            items={[
+              { icon: "📄", label: tr("분해 결과 CSV", "Decomposition CSV"), desc: tr("채널·캠페인·소재 표", "Channel, campaign, and creative tables"), onSelect: ready ? downloadPvmCsv : undefined },
+              { icon: "🖼", label: tr("워터폴 PNG", "Waterfall PNG"), desc: tr("현재 분해 차트", "Current decomposition chart"), onSelect: ready ? () => downloadChartPng(chartPvmWaterfall, "pvm_waterfall") : undefined },
+            ]}
+          />
         </div>
+
+        <AnalysisDetails
+          locale={locale}
+          statusLabel={ready ? tr("계산 완료", "Complete") : tr("입력 확인 필요", "Input review needed")}
+          statusTone={ready ? "good" : "neutral"}
+          metric={ml}
+          unit={tr("통화 단위 CPA/CPI", "Currency per CPA/CPI")}
+          meaning={tr("관측 PVM 연관 분해이며 인과 효과가 아닙니다.", "Observed PVM association decomposition; not causal attribution.")}
+          sampleSize={ready ? { value: `${cache.rowsP1.length + cache.rowsP2.length} rows`, detail: `${cache.p1Range[0]}–${cache.p2Range[1]}` } : null}
+          scope={ready ? `${cache.p1Range[0]} → ${cache.p2Range[1]}` : ""}
+          method="PVM finest-grain rollup"
+          version="pvm-identity-checked"
+          filterSummary={JSON.stringify({ lookback, weekBasis, metric })}
+          metricDefinition={pvmManifest.metricDefinitions[0]?.key}
+          warnings={pvmManifest.warnings}
+        />
 
         <div className="analysis-local-controls" aria-label={tr("비교 조건", "Comparison settings")} style={{ marginTop: "1rem" }}>
         <div className="analysis-local-controls__inner">
