@@ -5,11 +5,26 @@ import {
   mmmAdstock,
   mmmBayesianRun,
   mmmClassicBuildGroupContributionPriors,
+  mmmClassicHasTargetProfileInputs,
   mmmBayesianWeeklyDecomp,
 } from "./mmmMathPr416";
 import { sliceMmmChannelContributions } from "./mmmWeeklyPerformance";
 
 describe("PR #416 MMM rollback contract", () => {
+  it("activates the fixed Prism profile from canonical target and industry keys", () => {
+    const panel = {
+      targets: { Regs: [1, 2] },
+      external: { c_dating_market_install_total: [3, 4] },
+    };
+    expect(mmmClassicHasTargetProfileInputs(panel, "Regs")).toBe(true);
+    expect(mmmClassicHasTargetProfileInputs(panel, "RR")).toBe(true);
+    expect(mmmClassicHasTargetProfileInputs({ ...panel, external: {} }, "Regs")).toBe(false);
+    expect(mmmClassicHasTargetProfileInputs(panel, "Regs", {
+      ...MMM_CLASSIC_TARGET_PROFILE,
+      mandatoryIndustryKey: "other_industry",
+    })).toBe(false);
+  });
+
   it("keeps the frozen engine and makes Decomp media equal the channel RR sum", () => {
     const n = 64;
     const week = Array.from({ length: n }, (_, index) => index + 1);
