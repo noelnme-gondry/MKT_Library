@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  MMM_CLASSIC_TARGET_PROFILE,
+  MMM_PRISM_MODEL_CONFIG,
   MMM_METH_CONFIG,
   mmmAdstock,
   mmmBayesianRun,
   mmmClassicBuildGroupContributionPriors,
-  mmmClassicHasTargetProfileInputs,
   mmmBayesianWeeklyDecomp,
 } from "./mmmMathPr416";
 import { sliceMmmChannelContributions } from "./mmmWeeklyPerformance";
@@ -13,21 +12,8 @@ import { sliceMmmChannelContributions } from "./mmmWeeklyPerformance";
 describe("PR #416 MMM rollback contract", () => {
   it("keeps the generic Classic trend prior neutral while Prism stays explicit", () => {
     expect(MMM_METH_CONFIG.trendPriorMultiplier).toBe(1);
-    expect(MMM_CLASSIC_TARGET_PROFILE.trendPriorMultiplier).toBe(0.5);
-  });
-
-  it("activates the fixed Prism profile from canonical target and industry keys", () => {
-    const panel = {
-      targets: { Regs: [1, 2] },
-      external: { c_dating_market_install_total: [3, 4] },
-    };
-    expect(mmmClassicHasTargetProfileInputs(panel, "Regs")).toBe(true);
-    expect(mmmClassicHasTargetProfileInputs(panel, "RR")).toBe(true);
-    expect(mmmClassicHasTargetProfileInputs({ ...panel, external: {} }, "Regs")).toBe(false);
-    expect(mmmClassicHasTargetProfileInputs(panel, "Regs", {
-      ...MMM_CLASSIC_TARGET_PROFILE,
-      mandatoryIndustryKey: "other_industry",
-    })).toBe(false);
+    expect(MMM_PRISM_MODEL_CONFIG.trendPriorMultiplier).toBe(1.1);
+    expect(MMM_PRISM_MODEL_CONFIG.requiresExternalIndustry).toBe(true);
   });
 
   it("keeps the frozen engine and makes Decomp media equal the channel RR sum", () => {
@@ -134,12 +120,12 @@ describe("PR #416 MMM rollback contract", () => {
       aggregatePanel,
       aggregatePanel.targets.RR,
       baseline,
-      MMM_CLASSIC_TARGET_PROFILE,
+      MMM_PRISM_MODEL_CONFIG,
     );
     const totalTarget = aggregatePanel.targets.RR.reduce((sum, value) => sum + value, 0);
     expect(priors.performance_total.source).toBe("business-contribution");
     expect(priors.branding_total.source).toBe("business-contribution");
-    expect(priors.performance_total.contributionMean).toBeCloseTo(totalTarget * MMM_CLASSIC_TARGET_PROFILE.performanceContributionShare, 8);
-    expect(priors.branding_total.contributionMean).toBeCloseTo(totalTarget * MMM_CLASSIC_TARGET_PROFILE.brandingContributionShare, 8);
+    expect(priors.performance_total.contributionMean).toBeCloseTo(totalTarget * MMM_PRISM_MODEL_CONFIG.performanceContributionShare, 8);
+    expect(priors.branding_total.contributionMean).toBeCloseTo(totalTarget * MMM_PRISM_MODEL_CONFIG.brandingContributionShare, 8);
   });
 });
