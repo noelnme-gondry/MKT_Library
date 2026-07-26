@@ -1,6 +1,7 @@
 "use client";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useId } from "react";
 import { trackProductEvent } from "@/lib/analytics";
+import { downloadJson } from "@/utils/download";
 
 // 결과 다운로드 허브 — 도구마다 흩어져 있던 PNG/CSV/텍스트 다운로드 버튼을
 // 눈에 잘 띄는 단일 드롭다운("⬇ 결과 받기 ▾")으로 통일한다(디자인시스템 §1).
@@ -15,10 +16,20 @@ export default function DownloadHub({
   className = "",
   buttonStyle,
   toolId,
+  manifest = null,
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
-  const usable = items.filter((it) => it && it.onSelect);
+  const menuRef = useRef(null);
+  const menuId = useId();
+  const manifestItem = manifest ? {
+    label: "실행 정보(JSON)",
+    desc: "필터·단위·엔진 버전·경고",
+    icon: "ⓘ",
+    analyticsType: "manifest",
+    onSelect: () => downloadJson(manifest, `${toolId || "analysis"}_manifest`),
+  } : null;
+  const usable = [...items, manifestItem].filter((it) => it && it.onSelect);
 
   // 바깥 클릭 / ESC로 닫기.
   useEffect(() => {
@@ -28,6 +39,15 @@ export default function DownloadHub({
     };
     const onKey = (e) => {
       if (e.key === "Escape") setOpen(false);
+      if (!menuRef.current || !["ArrowDown", "ArrowUp"].includes(e.key)) return;
+      const buttons = [...menuRef.current.querySelectorAll('[role="menuitem"]')];
+      if (!buttons.length) return;
+      e.preventDefault();
+      const current = buttons.indexOf(document.activeElement);
+      const next = e.key === "ArrowDown"
+        ? (current + 1 + buttons.length) % buttons.length
+        : (current - 1 + buttons.length) % buttons.length;
+      buttons[next].focus();
     };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
@@ -46,6 +66,7 @@ export default function DownloadHub({
         className="ab-pill"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
+        aria-controls={menuId}
         aria-expanded={open}
         style={{ fontWeight: 600, ...buttonStyle }}
       >
@@ -53,6 +74,8 @@ export default function DownloadHub({
       </button>
       {open && (
         <div
+          ref={menuRef}
+          id={menuId}
           role="menu"
           style={{
             position: "absolute",
@@ -76,6 +99,9 @@ export default function DownloadHub({
                 setOpen(false);
                 trackProductEvent("result_downloaded", { tool_id: toolId, source: "export", download_type: it.analyticsType || "other" });
                 it.onSelect();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") e.currentTarget.click();
               }}
               style={{
                 display: "block",

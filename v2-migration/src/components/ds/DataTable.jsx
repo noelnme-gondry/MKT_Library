@@ -19,6 +19,8 @@ export default function DataTable({
   className = "",
   style,
   emptyText = "데이터 없음",
+  ariaLabel = "데이터 표",
+  caption = "",
 }) {
   const cols = columns || [];
   const alignOf = (c) => c.align || "left";
@@ -28,12 +30,14 @@ export default function DataTable({
 
   return (
     <div className="table-wrap" style={style}>
-      <table className={`data ${className}`.trim()}>
+      <table className={`data ${className}`.trim()} aria-label={ariaLabel}>
+        {caption ? <caption className="sr-only">{caption}</caption> : null}
         <thead style={theadStyle}>
           <tr>
             {cols.map((c) => (
               <th
                 key={c.key}
+                scope="col"
                 title={c.tooltip || undefined}
                 style={{ textAlign: alignOf(c), whiteSpace: "nowrap", ...(c.headStyle || {}) }}
               >
