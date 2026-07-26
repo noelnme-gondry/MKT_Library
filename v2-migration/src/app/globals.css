@@ -4769,6 +4769,12 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .trend-change-ledgers { margin-top: 12px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-container-lowest); }
 .trend-change-ledgers__intro { margin: 0 0 10px; color: var(--text-muted); font-size: 11px; line-height: 1.55; }
 .trend-change-ledgers__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.trend-chart-explainer { margin-top: 10px; padding: 10px 12px; border: 1px solid color-mix(in srgb, #5DCAA5 35%, var(--border-subtle)); border-left: 3px solid #5DCAA5; border-radius: 8px; background: color-mix(in srgb, #5DCAA5 7%, var(--surface-container-lowest)); }
+.trend-chart-explainer__eyebrow { color: var(--text-primary); font-size: 11px; font-weight: 700; letter-spacing: .02em; }
+.trend-chart-explainer p { margin: 4px 0 8px; color: var(--text-secondary); font-size: 11px; line-height: 1.55; }
+.trend-chart-explainer__legend { display: flex; flex-wrap: wrap; gap: 8px 14px; color: var(--text-muted); font-size: 10px; }
+.trend-chart-explainer__legend span { display: inline-flex; align-items: center; gap: 5px; }
+.trend-chart-explainer__legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
 .trend-change-ledger { min-width: 0; padding: 10px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-container-low); }
 .trend-change-ledger__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .trend-change-ledger__head h3 { margin: 0; color: var(--text-primary); font-size: 12px; }
