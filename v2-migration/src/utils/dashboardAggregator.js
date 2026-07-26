@@ -1,4 +1,5 @@
 import { DERIVED_METRICS, computeMetrics } from "./metrics/metricRegistry.js";
+import { mapRowsToStandard } from "./mappedRows";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
@@ -95,27 +96,9 @@ export function buildRetentionCurve(rows, basis, days = [0, 7, 14]) {
  */
 export function getMappedRows(csvData) {
   if (!csvData || !csvData.raw || csvData.raw.length === 0) return [];
+  if (Array.isArray(csvData.mappedRows)) return csvData.mappedRows;
   const { raw, mapping } = csvData;
-
-  return raw.map((row) => {
-    const mapped = {};
-    for (const [origKey, val] of Object.entries(row)) {
-      const standardKey = mapping[origKey];
-      if (standardKey && standardKey !== "__ignore__") {
-        mapped[standardKey] = val;
-      }
-    }
-    // cost/spend 별칭 (§7): 효율 CSV는 비용을 'cost' 표준키로, creative CSV는 'spend'로 매핑.
-    // 엔진마다 읽는 키가 다름(PVM/creativeMath=spend, ALLOC/dashboard=cost) → 둘 다 채워 도구별 불일치 방지.
-    if (mapped.cost != null && mapped.spend == null) mapped.spend = mapped.cost;
-    else if (mapped.spend != null && mapped.cost == null) mapped.cost = mapped.spend;
-    // Date normalization if needed
-    if (mapped.date) {
-      // Basic normalization (assuming YYYY-MM-DD or parsing needed)
-      // In old code, usually it was kept as string YYYY-MM-DD
-    }
-    return mapped;
-  });
+  return mapRowsToStandard(raw, mapping);
 }
 
 /**

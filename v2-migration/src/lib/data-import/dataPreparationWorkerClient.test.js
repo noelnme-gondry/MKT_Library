@@ -20,5 +20,6 @@ describe("data preparation worker client", () => {
     });
     expect(result.insights.mapping).toMatchObject({ date: "date", cost: "cost", installs: "installs" });
     expect(result.canonicalData.summary.outputRows).toBe(1);
+    expect(result.mappedRows[0].spend).toBe("100");
   });
 });

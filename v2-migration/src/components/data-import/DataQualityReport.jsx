@@ -1,5 +1,6 @@
 "use client";
 import { buildDataQualityReport } from "@/lib/data-import/buildDataQualityReport";
+import { statisticalStatusLabel } from "@/lib/analysis-router/statisticalStatus";
 
 const COPY = {
   ko: {
@@ -31,6 +32,15 @@ export default function DataQualityReport({ canonicalData, metricKeys, eligibili
     <section className="required-banner data-quality-report" style={{ borderLeftColor: tone, marginTop: "14px" }}>
       <strong>◉ {T[report.grade]}</strong>
       <span style={{ color: "var(--text-muted)", marginLeft: "8px", fontSize: "12px" }}>{T.rows} {report.rowCount.toLocaleString()} · {T.periods} {report.periodCount.toLocaleString()}</span>
+      {eligibility?.statisticalStatus && (
+        <span
+          data-statistical-status={eligibility.statisticalStatus}
+          style={{ color: "var(--text-muted)", marginLeft: "8px", fontSize: "12px" }}
+          title={statisticalStatusLabel(eligibility.statisticalStatus, locale)}
+        >
+          · {statisticalStatusLabel(eligibility.statisticalStatus, locale)}
+        </span>
+      )}
       {eligibility?.confidenceTier && eligibility.confidenceTier !== "standard" && (
         <span className={`data-confidence-tier ${eligibility.confidenceTier}`}>
           {T[eligibility.confidenceTier]}

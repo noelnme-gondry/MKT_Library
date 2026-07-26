@@ -1,5 +1,6 @@
 import { buildCanonicalDataset } from "./buildCanonicalDataset";
 import { buildMappingContract } from "./mappingContract";
+import { mapRowsToStandard } from "@/utils/mappedRows";
 
 export function toolFieldKeys(toolId) {
   const keys = new Set();
@@ -24,5 +25,6 @@ export function prepareDatasetForTool({ raw = [], headers = [], toolId, source =
     importInsights: { ...mappingContract, selections: mapping, handoff: true },
     mappingContract,
     canonicalData: buildCanonicalDataset({ raw, headers, mapping }),
+    mappedRows: mapRowsToStandard(raw, mapping),
   };
 }
