@@ -4765,6 +4765,27 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .analysis-details__technical-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; margin-top: 7px; }
 .analysis-details__technical-note { margin: 7px 0 0; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
 
+/* STL trend ledger: 0 기준선에서 양·음 변화를 좌우로 읽는다. */
+.trend-change-ledgers { margin-top: 12px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-container-lowest); }
+.trend-change-ledgers__intro { margin: 0 0 10px; color: var(--text-muted); font-size: 11px; line-height: 1.55; }
+.trend-change-ledgers__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.trend-change-ledger { min-width: 0; padding: 10px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-container-low); }
+.trend-change-ledger__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.trend-change-ledger__head h3 { margin: 0; color: var(--text-primary); font-size: 12px; }
+.trend-change-ledger__head p { margin: 3px 0 0; color: var(--text-muted); font-size: 9.5px; line-height: 1.4; }
+.trend-change-ledger__total { flex: 0 0 auto; color: var(--text-muted); font: 600 9px var(--font-mono); text-align: right; }
+.trend-change-ledger__total strong { display: block; margin-top: 2px; color: var(--text-primary); font-size: 11px; }
+.trend-change-row { display: grid; grid-template-columns: minmax(118px, 1fr) minmax(90px, 1.25fr) 52px; align-items: center; gap: 8px; min-height: 26px; }
+.trend-change-row__label { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--text-secondary); font-size: 10px; }
+.trend-change-row__label span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trend-change-row__swatch { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 2px; }
+.trend-change-row__track { position: relative; height: 14px; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--border-subtle) 55%, transparent); }
+.trend-change-row__zero { position: absolute; z-index: 1; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--text-muted); opacity: .65; }
+.trend-change-row__bar { position: absolute; top: 3px; height: 8px; border-radius: 2px; opacity: .9; }
+.trend-change-row > strong { font: 650 10px var(--font-mono); text-align: right; }
+.trend-change-row > strong.is-positive { color: var(--success); }
+.trend-change-row > strong.is-negative { color: var(--danger); }
+
 /* 분석 도구 공통 가독성 가드. 도구별 계산·차트는 건드리지 않고, 긴 보고서형 화면을
    결론(상단) · 조작(탭/필터) · 근거(본문) 순서로 빠르게 훑을 수 있게 밀도만 맞춘다. */
 .is-analysis .tab-pane.active > .block { margin-bottom: 14px; }
@@ -5091,6 +5112,8 @@ body.light-mode .operator-preview__queue > a { color: #fff; }
   .seasonality-grid { grid-template-columns: 1fr; }
   .analysis-pathway__grid, .content-list { grid-template-columns: 1fr; }
   .analysis-recommendations__grid { grid-template-columns: 1fr; }
+  .trend-change-ledgers__grid { grid-template-columns: 1fr; }
+  .trend-change-row { grid-template-columns: minmax(105px, 1fr) minmax(80px, 1.25fr) 48px; gap: 6px; }
   .search-topic-hub { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
