@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  MMM_CLASSIC_TARGET_PROFILE,
   MMM_METH_CONFIG,
   mmmAdstock,
   mmmBayesianRun,
+  mmmClassicBuildGroupContributionPriors,
   mmmBayesianWeeklyDecomp,
 } from "./mmmMathPr416";
 import { sliceMmmChannelContributions } from "./mmmWeeklyPerformance";
@@ -73,5 +75,51 @@ describe("PR #416 MMM rollback contract", () => {
       .reduce((sum, row) => sum + row.contrib.Brand, 0);
     expect(channelPerformance).toBeCloseTo(decompPerformance, 8);
     expect(channelBrand).toBeCloseTo(decompBrand, 8);
+  });
+
+  it("builds the Classic Prism group priors from target shares, not channel guesses", () => {
+    const n = 64;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const aggregatePanel = {
+      week,
+      weekLabel: week.map(String),
+      ch: {
+        performance_total: week.map((value) => 900 + (value % 7) * 100),
+        branding_total: week.map((value) => 500 + (value % 5) * 80),
+      },
+      targets: { RR: week.map((value) => 7000 + value * 4) },
+      channels: [
+        { key: "performance_total", label: "Performance total", kind: "perf" },
+        { key: "branding_total", label: "Branding total", kind: "brand" },
+      ],
+      dummy: {},
+      steps: {},
+      external: { dating_market_install_total: week.map((value) => 1000 + value * 2) },
+    };
+    const cfg = {
+      ...MMM_METH_CONFIG,
+      seasonalityPeriods: [52.18],
+      seasonalityCandidates: [{ id: "annual-1", periods: [52.18] }],
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+      mediaPenaltyCandidates: [1],
+    };
+    const baseline = mmmBayesianRun(aggregatePanel, cfg, "RR", false, {
+      enableSeasonalitySelection: false,
+      enableMediaPenaltySelection: false,
+      skipTransformUncertainty: true,
+    });
+    const priors = mmmClassicBuildGroupContributionPriors(
+      aggregatePanel,
+      aggregatePanel.targets.RR,
+      baseline,
+      MMM_CLASSIC_TARGET_PROFILE,
+    );
+    const totalTarget = aggregatePanel.targets.RR.reduce((sum, value) => sum + value, 0);
+    expect(priors.performance_total.source).toBe("business-contribution");
+    expect(priors.branding_total.source).toBe("business-contribution");
+    expect(priors.performance_total.contributionMean).toBeCloseTo(totalTarget * MMM_CLASSIC_TARGET_PROFILE.performanceContributionShare, 8);
+    expect(priors.branding_total.contributionMean).toBeCloseTo(totalTarget * MMM_CLASSIC_TARGET_PROFILE.brandingContributionShare, 8);
   });
 });

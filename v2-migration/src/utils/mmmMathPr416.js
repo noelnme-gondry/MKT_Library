@@ -734,6 +734,52 @@ import {
               hacAutoLag: (n) => Math.floor(4 * Math.pow(n / 100, 2 / 9)),
             };
 
+            // Prism RR Classic profile selected by a deterministic constraint sweep.
+            // This is intentionally separate from the Bayesian mode and is activated
+            // only when the RR + dating_market_install_total mapping is present.
+            export const MMM_CLASSIC_TARGET_PROFILE = {
+              version: "prism-rr-target-profile-v1",
+              trendPriorMultiplier: 1,
+              trendStartMax: 58000,
+              trendEndMin: 44000,
+              performanceContributionShare: 0.051,
+              brandingContributionShare: 0.02,
+              contributionShareSd: 0.002,
+              wmapeMax: 10,
+              seasonalityPeriods: [52.18],
+              mandatoryIndustryKey: "dating_market_install_total",
+              mandatoryTarget: "RR",
+              selectionMethod: "deterministic-grid-constraint-sweep",
+            };
+
+            export function mmmClassicBuildGroupContributionPriors(aggregatePanel, targetSeries, baselineRun, profile = MMM_CLASSIC_TARGET_PROFILE) {
+              const targetTotal = (targetSeries || []).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+              if (!(targetTotal > 0) || !baselineRun?.params) return {};
+              const groups = {
+                performance_total: profile.performanceContributionShare,
+                branding_total: profile.brandingContributionShare,
+              };
+              return Object.fromEntries(Object.entries(groups).map(([key, share]) => {
+                const params = baselineRun.params[key];
+                const raw = aggregatePanel.ch?.[key] || [];
+                const feature = params
+                  ? mmmAdstock(raw, params.alpha).map((value) => mmmHill(value, params.ec, params.slope))
+                  : [];
+                const featureTotal = feature.reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+                const contributionMean = targetTotal * Math.max(0, Number(share) || 0);
+                const contributionSd = targetTotal * Math.max(1e-6, Number(profile.contributionShareSd) || 0.002);
+                return [key, {
+                  source: "business-contribution",
+                  contributionMean,
+                  contributionSd,
+                  priorContributionShare: Number(share) || 0,
+                  mean: featureTotal > 1e-12 ? contributionMean / featureTotal : 0,
+                  precision: featureTotal > 1e-12 ? featureTotal ** 2 / contributionSd ** 2 : 0,
+                  fixedTransform: params ? { alpha: params.alpha, ec: params.ec, slope: params.slope } : null,
+                }];
+              }).filter(([, prior]) => prior.precision > 0));
+            }
+
             export const MMM_CANNIB_RULES = {
               lowSpendPct: 0.25, // ① 저지출 구간 = 채널 spend ≤ p25
               precMinN: 6, // ① 저지출 구간 최소 표본
@@ -4176,15 +4222,26 @@ import {
                 names.push("media_" + ch.key);
                 cols.push(mmmAdstock(panel.ch[ch.key], p.alpha).map((v) => mmmHill(v, p.ec, p.slope)));
               }
-              const businessContributionPrior = _mmmBusinessContributionPriors(
-                panel,
-                effectiveCfg,
-                targetName,
-                names,
-                cols,
-                channelMeta,
-                options,
-              );
+              const configuredGroupPriors = options.groupContributionPriors && Object.keys(options.groupContributionPriors).length
+                ? options.groupContributionPriors
+                : null;
+              const businessContributionPrior = configuredGroupPriors
+                ? {
+                  enabled: true,
+                  priors: configuredGroupPriors,
+                  meanShare: null,
+                  shareSd: null,
+                  reason: "configured-classic-group-contribution-profile",
+                }
+                : _mmmBusinessContributionPriors(
+                  panel,
+                  effectiveCfg,
+                  targetName,
+                  names,
+                  cols,
+                  channelMeta,
+                  options,
+                );
               const externalMediaPriors = options.mediaPriors || {};
               fitOptions.mediaPriors = {
                 ...businessContributionPrior.priors,

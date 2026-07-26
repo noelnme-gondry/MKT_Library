@@ -34,7 +34,9 @@ import {
 } from "@/utils/mmmMath";
 import {
   MMM_METH_CONFIG as MMM_CLASSIC_CONFIG,
+  MMM_CLASSIC_TARGET_PROFILE,
   mmmBayesianRun as mmmClassicBayesianRun,
+  mmmClassicBuildGroupContributionPriors,
   mmmResolveAbsorb as mmmClassicResolveAbsorb,
 } from "@/utils/mmmMathPr416";
 import { mmmOls } from "@/utils/regMath";
@@ -2996,7 +2998,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       const resultCacheKey = [
         `meth:${MMM_METH_CONFIG.version}`,
         `mode:${mmmMode}`,
-        mmmMode === "classic" ? `pr441-classic-fixed-group-total-trend3-v1:${MMM_CLASSIC_CONFIG.version}` : "bayesian-posterior-channel-fit-v1",
+        mmmMode === "classic" ? `classic-prism-target-profile-v1:${MMM_CLASSIC_CONFIG.version}:${MMM_CLASSIC_TARGET_PROFILE.version}` : "bayesian-posterior-channel-fit-v1",
         mmmAnalyzedSig,
         colMapSig,
         target,
@@ -3668,39 +3670,100 @@ export default function MarketingResponse({ locale = "ko" }) {
         });
       }
 
-      // Classic PR #441: trendPriorMultiplier=3인 PR #416 계열 엔진을 유지한다.
-      // Bayesian 모드와 같은 최신 엔진으로 재적합하지 않는다.
+      // Classic은 PR #416 계열 엔진을 유지한다. Prism RR 파일에 install_total
+      // 업황이 매핑된 경우에만 사전 등록한 목표 profile을 적용하며 Bayesian에는
+      // 이 prior·추세·계절성 설정을 전이하지 않는다.
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
       const aggregatePanel = buildMmmAggregateMediaPanel(panel);
       if (!aggregatePanel) throw new Error("PR #416 aggregate media panel failed");
+      const useClassicTargetProfile = t === MMM_CLASSIC_TARGET_PROFILE.mandatoryTarget
+        && Object.prototype.hasOwnProperty.call(panel.external || {}, MMM_CLASSIC_TARGET_PROFILE.mandatoryIndustryKey);
       const classicCfg = {
         ...MMM_CLASSIC_CONFIG,
+        ...(useClassicTargetProfile ? {
+          trendPriorMultiplier: MMM_CLASSIC_TARGET_PROFILE.trendPriorMultiplier,
+          seasonalityPeriods: MMM_CLASSIC_TARGET_PROFILE.seasonalityPeriods.slice(),
+          mediaPenalty: 0,
+        } : {}),
         absorbed: mmmClassicResolveAbsorb(panel, { ...MMM_CLASSIC_CONFIG, absorbed: new Set() }).absorbed,
       };
-      const aggregateRun = mmmClassicBayesianRun(aggregatePanel, classicCfg, t, true, {
+      const classicFitOptions = {
         mediaPriors: {},
         enableBaselineSelection: true,
+        ...(useClassicTargetProfile ? {
+          enableSeasonalitySelection: false,
+          enableMediaPenaltySelection: false,
+        } : {}),
+      };
+      const aggregateBaseRun = useClassicTargetProfile
+        ? mmmClassicBayesianRun(aggregatePanel, classicCfg, t, false, {
+          ...classicFitOptions,
+          skipTransformUncertainty: true,
+        })
+        : null;
+      const groupContributionPriors = useClassicTargetProfile
+        ? mmmClassicBuildGroupContributionPriors(aggregatePanel, panel.targets[t], aggregateBaseRun, MMM_CLASSIC_TARGET_PROFILE)
+        : {};
+      const aggregateRun = mmmClassicBayesianRun(aggregatePanel, classicCfg, t, true, {
+        ...classicFitOptions,
+        groupContributionPriors,
       });
       if (!aggregateRun) throw new Error("PR #416 aggregate Bayesian posterior estimate failed");
       const allocationRun = mmmClassicBayesianRun(panel, classicCfg, t, false, {
         mediaPriors,
         enableBaselineSelection: true,
         skipTransformUncertainty: true,
+        ...(useClassicTargetProfile ? {
+          enableSeasonalitySelection: false,
+          enableMediaPenaltySelection: false,
+        } : {}),
       });
       if (!allocationRun) throw new Error("PR #416 channel allocation model failed");
       const allocatedRun = allocateFixedMmmGroupTotals(panel, aggregatePanel, aggregateRun, allocationRun, 0.01);
-      allocatedRun.modelVariant = "pr416-fixed-group-total-ranked-allocation";
-      allocatedRun.methodLabel = "Classic PR #441 fixed Decomp totals with ranked channel allocation (trend prior 3x)";
+      allocatedRun.modelVariant = useClassicTargetProfile
+        ? "classic-prism-target-gated-fixed-group-total"
+        : "pr416-fixed-group-total-ranked-allocation";
+      allocatedRun.methodLabel = useClassicTargetProfile
+        ? "Classic Prism target-gated fixed totals with ranked channel allocation"
+        : "Classic PR #441 fixed Decomp totals with ranked channel allocation (trend prior 3x)";
+      const targetGateStartIndex = (panel.weekLabel || []).findIndex((label) => String(label) >= "2024-01-01");
+      const gateWeeks = targetGateStartIndex >= 0 ? allocatedRun.weeks.slice(targetGateStartIndex) : allocatedRun.weeks;
+      const targetDiagnostics = {
+        enabled: useClassicTargetProfile,
+        profile: useClassicTargetProfile ? MMM_CLASSIC_TARGET_PROFILE.version : null,
+        performance2024: gateWeeks.reduce((sum, week) => sum + Math.max(0, Number(week.contrib?.Performance) || 0), 0),
+        branding2024: gateWeeks.reduce((sum, week) => sum + Math.max(0, Number(week.contrib?.Brand) || 0), 0),
+        wmape: aggregateRun.backtest?.wmape ?? null,
+        trendStart: allocatedRun.weeks[0]?.contrib?.Trend ?? null,
+        trendEnd: allocatedRun.weeks.at(-1)?.contrib?.Trend ?? null,
+        seasonalityMandatory: useClassicTargetProfile,
+        industryKey: useClassicTargetProfile ? MMM_CLASSIC_TARGET_PROFILE.mandatoryIndustryKey : null,
+      };
+      targetDiagnostics.passed = !useClassicTargetProfile || (
+        targetDiagnostics.performance2024 >= 250000
+        && targetDiagnostics.branding2024 >= 70000
+        && targetDiagnostics.branding2024 <= 100000
+        && targetDiagnostics.wmape != null
+        && targetDiagnostics.wmape <= MMM_CLASSIC_TARGET_PROFILE.wmapeMax
+        && targetDiagnostics.trendStart <= MMM_CLASSIC_TARGET_PROFILE.trendStartMax
+        && targetDiagnostics.trendEnd >= MMM_CLASSIC_TARGET_PROFILE.trendEndMin
+      );
+      allocatedRun.classicTargetDiagnostics = targetDiagnostics;
       allocatedRun.pr416Provenance = {
-        commit: "5a3e7fb",
+        commit: useClassicTargetProfile ? "classic-target-sweep-v1" : "5a3e7fb",
         modelScope: "mmm-engine-only",
         currentFiltersPreserved: true,
         totalIndustryAggregationPreserved: true,
         decompMediaSource: "aggregate Performance/Branding posterior",
         channelAllocation: "fixed-group-total-ranked-coefficient-share",
         channelAllocationByConstruction: true,
-        trendPriorMultiplier: 3,
+        trendPriorMultiplier: classicCfg.trendPriorMultiplier,
         classicEngine: "mmmMathPr416",
+        targetProfile: useClassicTargetProfile ? {
+          ...MMM_CLASSIC_TARGET_PROFILE,
+          groupContributionPriors,
+          diagnostics: targetDiagnostics,
+        } : null,
         externalChannelPriorsAppliedToAllocationFit: hasExternalPrior,
       };
       const health = mmmBayesianHealth(allocatedRun);
@@ -4882,8 +4945,8 @@ export default function MarketingResponse({ locale = "ko" }) {
             }}>{tx("Bayesian", "Bayesian")}</button>
             <span
               title={tx(
-                "Classic은 PR #416 고정 총량·채널 분배 경로입니다. Bayesian은 채널별 posterior를 별도로 적합합니다.",
-                "Classic uses the PR #416 fixed-total/channel-allocation path. Bayesian fits a separate channel-level posterior.",
+                "Classic은 PR #416 계열 고정 총량·채널 분배 경로입니다. Prism RR + install_total 매핑에서는 WMAPE·기여·추세 gate profile을 적용합니다. Bayesian은 별도 posterior입니다.",
+                "Classic uses the PR #416 fixed-total/channel-allocation path. Prism RR + install_total applies the WMAPE/contribution/trend gate profile. Bayesian is a separate posterior model.",
               )}
               style={{ color: MUTED, cursor: "help", fontSize: "14px" }}
             >
@@ -4891,7 +4954,9 @@ export default function MarketingResponse({ locale = "ko" }) {
             </span>
             <span style={{ color: MUTED, fontSize: "10.5px" }}>
               {mmmMode === "classic"
-                ? tx("Classic · PR #441 · 고정 총량·채널 분배 · 추세 prior 3x", "Classic · PR #441 · fixed totals/channel allocation · trend prior 3x")
+                ? (mmm?.run?.pr416Provenance?.targetProfile?.version
+                  ? tx("Classic · Prism profile · 고정 총량·추세 prior 1x · 계절성/업황 필수", "Classic · Prism profile · fixed totals/trend prior 1x · seasonality/industry required")
+                  : tx("Classic · PR #441 · 고정 총량·채널 분배 · 추세 prior 3x", "Classic · PR #441 · fixed totals/channel allocation · trend prior 3x"))
                 : tx("Bayesian · posterior 채널 적합", "Bayesian · posterior channel fit")}
             </span>
           </div>
