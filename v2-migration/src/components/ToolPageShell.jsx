@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useId } from "react";
 
 /**
  * ToolPageShell — 5-x 분석 도구 공용 레이아웃 래퍼.
@@ -20,16 +20,17 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
   const T = COPY[locale] || COPY.ko;
   const tocItems = toc || [];
   const hasToc = tocItems.length > 0;
+  const titleId = useId();
 
   return (
-    <div className={`tool-page-shell${hasToc ? " has-toc" : ""}`} data-tool-id={toolId || undefined} aria-label={typeof title === "string" ? title : undefined}>
+    <div className={`tool-page-shell${hasToc ? " has-toc" : ""}`} data-tool-id={toolId || undefined} aria-labelledby={typeof title === "string" ? titleId : undefined}>
       {/* Main Content Area */}
       <div className="tool-page-shell__main">
         {/* Sticky title bar — legacy page-sticky-bar/page-sticky-row1/page-sticky-title
             (index.html pageShell 5-x 분기, CLAUDE.md §4.1) */}
         <div className="page-sticky-bar">
           <div className="page-sticky-row1">
-            <h1 className="page-sticky-title">{title}</h1>
+            <h1 id={titleId} className="page-sticky-title">{title}</h1>
             {chips}
           </div>
           {stickyFilter}
@@ -48,7 +49,7 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
 
       {/* Floating Table of Contents (Right Side) — Dashboard.jsx 우측 TOC aside와 동일 마크업/포지셔닝 */}
       {hasToc && (
-        <aside className="tool-page-shell__toc">
+        <aside className="tool-page-shell__toc" aria-label={T.toc}>
           <div className="tool-page-shell__toc-label">
             {T.toc}
           </div>
