@@ -1283,6 +1283,12 @@ function fmtInt(v) {
   return Math.round(v).toLocaleString();
 }
 
+function fmtSignedInt(v) {
+  if (v == null || !isFinite(v)) return "—";
+  const value = Math.round(v);
+  return `${value >= 0 ? "+" : "−"}${Math.abs(value).toLocaleString()}`;
+}
+
 function fmtOne(v) {
   if (v == null || !isFinite(v)) return "—";
   return Number(v).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -4069,6 +4075,13 @@ export default function MarketingResponse({ locale = "ko" }) {
       return Number.isFinite(first) && Number.isFinite(last) ? last - first : null;
     };
     const targetValues = mmm.panel.targets[mmm.target] || [];
+    const stlTrend = trend.stl?.trend || [];
+    const stlNonTrend = targetValues.map((value, index) => {
+      const trendValue = Number(stlTrend[index]);
+      return Number.isFinite(Number(value)) && Number.isFinite(trendValue)
+        ? Number(value) - trendValue
+        : NaN;
+    });
     const stlRows = [
       { key: "stl-trend", label: tx("순수 STL 추세", "Pure STL trend"), tone: "#38bdf8", change: delta(trend.stl?.trend) },
       { key: "stl-seasonal", label: tx("계절성 조정", "Seasonality adjustment"), tone: "#5DCAA5", change: delta(trend.stl?.seasonal) },
@@ -4091,6 +4104,9 @@ export default function MarketingResponse({ locale = "ko" }) {
     })).filter((row) => Math.abs(row.change) > 0.05);
     return {
       rawChange: delta(targetValues),
+      stlTrendChange: delta(stlTrend),
+      stlNonTrendChange: delta(stlNonTrend),
+      stlNonTrend,
       stlRows,
       modelRows,
       fittedChange: delta(weeks.map((week) => week.fitted)),
@@ -4563,7 +4579,8 @@ export default function MarketingResponse({ locale = "ko" }) {
     return () => inst.forEach((c) => c && c.destroy());
   }, [stage, forecast, forecastEnhancement, fcIntervalMode, tx, targetValueLabel]);
 
-  // Stage ① trend chart (STL trend + actual)
+  // Stage ① trend chart: actual/trend share the primary axis; seasonality+residual
+  // is shown as a zero-centered secondary-axis signal so a flat trend is explainable.
   useEffect(() => {
     const inst = [];
     if (["trend", "diagnose"].includes(stage) && trend && trendRef.current && mmm && !mmm.empty) {
@@ -4575,8 +4592,20 @@ export default function MarketingResponse({ locale = "ko" }) {
           data: {
             labels,
             datasets: [
-              { label: tx("실제", "Actual"), data: y, borderColor: CHART_THEME.muted, pointRadius: 0, tension: 0.15 },
-              { label: tx("STL 추세", "STL trend"), data: trend.stl?.trend || [], borderColor: "#7aa2f7", pointRadius: 0, borderWidth: 2 },
+              { label: tx("실제 RR", "Actual RR"), data: y, borderColor: CHART_THEME.muted, pointRadius: 0, borderWidth: 2, tension: 0.15 },
+              { label: tx("순수 STL 추세", "Pure STL trend"), data: trend.stl?.trend || [], borderColor: "#38bdf8", pointRadius: 0, borderWidth: 2.5, tension: 0.15 },
+              {
+                label: tx("추세 외 요인 (계절성 + 잔차)", "Non-trend (seasonality + residual)"),
+                data: trendLedger?.stlNonTrend || [],
+                borderColor: "#5DCAA5",
+                backgroundColor: "rgba(93,202,165,0.12)",
+                borderDash: [6, 4],
+                pointRadius: 0,
+                borderWidth: 1.8,
+                tension: 0.15,
+                fill: "origin",
+                yAxisID: "nonTrend",
+              },
             ],
           },
           options: {
@@ -4585,7 +4614,7 @@ export default function MarketingResponse({ locale = "ko" }) {
               ...chartBase().plugins,
               tooltip: {
                 ...chartBase().plugins.tooltip,
-                callbacks: { label: (context) => `${context.dataset.label}: ${targetValueLabel(context.parsed.y)}` },
+                callbacks: { label: (context) => `${context.dataset.label}: ${targetValueLabel(context.parsed.y, { sign: context.dataset.yAxisID === "nonTrend" })}` },
               },
             },
             scales: {
@@ -4594,13 +4623,19 @@ export default function MarketingResponse({ locale = "ko" }) {
                 ...chartBase().scales.y,
                 ticks: { ...chartBase().scales.y.ticks, callback: (value) => targetValueLabel(value) },
               },
+              nonTrend: {
+                position: "right",
+                title: { display: true, text: tx("추세 외 변화량", "Non-trend change"), color: CHART_THEME.muted, font: { size: 10, weight: "600" } },
+                ticks: { color: "#5DCAA5", font: { size: 10 }, callback: (value) => targetValueLabel(value, { sign: true }) },
+                grid: { drawOnChartArea: false },
+              },
             },
           },
         }),
       );
     }
     return () => inst.forEach((c) => c && c.destroy());
-  }, [stage, trend, mmm, tx, targetValueLabel]);
+  }, [stage, trend, trendLedger, mmm, tx, targetValueLabel]);
 
   // Stage ① 카니발 4검증 — 선택한 질문 하나의 근거 차트만 렌더.
   useEffect(() => {
@@ -5042,14 +5077,29 @@ export default function MarketingResponse({ locale = "ko" }) {
           {stage === "trend" && (
             <section className="block" id="s-trend">
               <h2 className="section-title">{tx("광고 전에: 자연 추세·계절성을 먼저 분리합니다", "Before ads: separate natural trend and seasonality")}</h2>
-              <p className="muted" style={{ fontSize: "12px", marginBottom: "10px" }}>{tx("STL은 성과를 추세·계절성·불규칙 요인으로 나눕니다. 여기서 보인 추세는 카니발과 MMM이 광고 효과를 과대해석하지 않도록 하는 사전 점검입니다.", "STL separates outcome into trend, seasonality, and irregular movement. It is a pre-check so cannibalization and MMM do not over-credit ads.")}</p>
+                <p className="muted" style={{ fontSize: "12px", marginBottom: "10px" }}>{tx("STL은 성과를 추세·계절성·불규칙 요인으로 나눕니다. 파란선은 추세만, 초록 점선은 실제값에서 추세를 뺀 나머지 변화입니다. 오른쪽 축으로 초록선을 읽으면 파란선이 평평한 이유를 확인할 수 있습니다.", "STL separates outcome into trend, seasonality, and irregular movement. The blue line is trend only; the green dashed line is actual minus trend. Read the green line on the right axis to see why the blue line can stay flat.")}</p>
               {trend ? <>
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "10px" }}>
                   <div className="stat-card"><div className="lbl">STL</div><div className="val">{trend.stl_pct >= 0 ? "+" : ""}{fmtOne(trend.stl_pct)}%</div></div>
                   <div className="stat-card"><div className="lbl">Mann-Kendall</div><div className="val">p={fmtOne(trend.mk_deseason?.[1])}</div></div>
                   <div className="stat-card"><div className="lbl">{tx("판정", "Verdict")}</div><div className="val" style={{ fontSize: "13px" }}>{trend.verdict}</div></div>
                 </div>
-                <div className="chart-container" style={{ height: "280px" }}><canvas ref={trendRef}></canvas></div>
+                <div className="chart-container" style={{ height: "310px" }}><canvas ref={trendRef}></canvas></div>
+                {trendLedger && (
+                  <div className="trend-chart-explainer" role="note">
+                    <div className="trend-chart-explainer__eyebrow">{tx("이 차트 읽는 법", "How to read this chart")}</div>
+                    <p>
+                      {tx(
+                        `실제 RR은 ${fmtSignedInt(trendLedger.rawChange)}명 변했지만, 순수 추세는 ${fmtSignedInt(trendLedger.stlTrendChange)}명입니다. 나머지 ${fmtSignedInt(trendLedger.stlNonTrendChange)}명은 계절성·잔차에 남아 있어 파란 추세선에는 반영되지 않습니다.`,
+                        `Actual RR changed by ${fmtSignedInt(trendLedger.rawChange)}, while pure trend changed by ${fmtSignedInt(trendLedger.stlTrendChange)}. The remaining ${fmtSignedInt(trendLedger.stlNonTrendChange)} is in seasonality and residual, so it does not move the blue trend line.`
+                      )}
+                    </p>
+                    <div className="trend-chart-explainer__legend">
+                      <span><i style={{ background: "#38bdf8" }} />{tx("왼쪽 축: 실제·순수 추세", "Left axis: actual · pure trend")}</span>
+                      <span><i style={{ background: "#5DCAA5" }} />{tx("오른쪽 축: 추세 외 변화량(0 기준)", "Right axis: non-trend change (zero-centered)")}</span>
+                    </div>
+                  </div>
+                )}
                 {trendLedger && (
                   <div className="trend-change-ledgers">
                     <p className="trend-change-ledgers__intro">
