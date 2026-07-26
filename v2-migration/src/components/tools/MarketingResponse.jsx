@@ -66,6 +66,14 @@ import {
   rescaleCountryPriorToTarget,
 } from "@/utils/mmmCountryPrior";
 import { mmmParseNumericValue } from "@/utils/mmmInputUtils";
+import {
+  buildForecastProvenance,
+  buildForecastScenarioDefinitions,
+  forecastIntervalCalibration,
+  forecastResidualDiagnostics,
+  splitForecastIntervals,
+  summarizeForecastScenario,
+} from "@/utils/forecastEnhancements";
 
 /* ============================================================================
  * MarketingResponse (5-18) — MOCK → REAL 와이어링
@@ -2638,7 +2646,7 @@ function buildForecastExcelModel(model, rawForecast, restoredForecast) {
   };
 }
 
-function runForecastScenario(model, horizon, budgets, stepOff) {
+function runForecastScenario(model, horizon, budgets, stepOff, options = {}) {
   if (!model?.run || !model?.panel) return null;
   const chans = _mmmChans(model.panel).filter((ch) => model.panel.ch[ch.key]);
   const futureSpend = {};
@@ -2654,14 +2662,16 @@ function runForecastScenario(model, horizon, budgets, stepOff) {
     const rawIndex = model.run.names.indexOf(key);
     if (rawIndex < 0) return;
     const lastValue = model.run.rawFeatureHistory?.at(-1)?.[rawIndex] || 0;
-    futureSteps[key] = Array.from({ length: horizon }, (_, index) => index < keepWeeks ? lastValue : 0);
+    futureSteps[key] = options.eventPolicy === "off"
+      ? Array(horizon).fill(0)
+      : Array.from({ length: horizon }, (_, index) => index < keepWeeks ? lastValue : 0);
   });
   const result = mmmBayesianForecast(
     model.run,
     model.panel,
     Object.keys(futureSpend).length ? futureSpend : null,
     horizon,
-    { futureSteps },
+    { futureSteps, trendDamping: options.trendDamping },
   );
   const restored = mmmForecastRestoreSeasonality(result, model.panel, model.seasonalModel);
   if (!restored) return null;
@@ -2743,6 +2753,13 @@ export default function MarketingResponse({ locale = "ko" }) {
   const [fcHorizon, setFcHorizon] = useState(13);
   const [fcBudget, setFcBudget] = useState({}); // {chKey: 주 평균 예산} — 미입력 채널은 최근평균
   const [fcStepOff, setFcStepOff] = useState({}); // {stepKey: 켜둘 미래 기간 N} — 빈값=지속
+  const [fcTotalBudget, setFcTotalBudget] = useState(null);
+  const [fcMinBudget, setFcMinBudget] = useState(0);
+  const [fcMaxBudget, setFcMaxBudget] = useState(null);
+  const [fcTrendDamping, setFcTrendDamping] = useState(0.25);
+  const [fcEventPolicy, setFcEventPolicy] = useState("hold");
+  const [fcIntervalMode, setFcIntervalMode] = useState("predictive");
+  const [fcScenarioOpen, setFcScenarioOpen] = useState(true);
   const [cannibChannel, setCannibChannel] = useState(null);
   const [cannibQuestion, setCannibQuestion] = useState("precedence");
   const [selectedCollinearPairKey, setSelectedCollinearPairKey] = useState(null);
@@ -3734,7 +3751,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     try {
       if (forecastModel.isAdditiveTotal) {
         const scenarioBudget = forecastScenario.eligible ? fcBudget : {};
-        const components = forecastModel.components.map((model) => runForecastScenario(model, fcHorizon, scenarioBudget, fcStepOff));
+        const components = forecastModel.components.map((model) => runForecastScenario(model, fcHorizon, scenarioBudget, fcStepOff, { trendDamping: fcTrendDamping, eventPolicy: fcEventPolicy }));
         return mmmSumOsForecasts(components);
       }
       if (!forecastModel.run || !forecastModel.panel) return null;
@@ -3752,14 +3769,16 @@ export default function MarketingResponse({ locale = "ko" }) {
         const rawIndex = forecastModel.run.names.indexOf(key);
         if (rawIndex < 0 || !Number.isFinite(keepWeeks)) return;
         const lastValue = forecastModel.run.rawFeatureHistory?.at(-1)?.[rawIndex] || 0;
-        futureSteps[key] = Array.from({ length: fcHorizon }, (_, index) => index < keepWeeks ? lastValue : 0);
+          futureSteps[key] = fcEventPolicy === "off"
+            ? Array(fcHorizon).fill(0)
+            : Array.from({ length: fcHorizon }, (_, index) => index < keepWeeks ? lastValue : 0);
       });
       const result = mmmBayesianForecast(
         forecastModel.run,
         forecastModel.panel,
         hasBudget ? futureSpend : null,
         fcHorizon,
-        { futureSteps },
+        { futureSteps, trendDamping: fcTrendDamping },
       );
       const restored = mmmForecastRestoreSeasonality(result, forecastModel.panel, forecastModel.seasonalModel);
       const excelModel = restored && buildForecastExcelModel(forecastModel, result, restored);
@@ -3767,7 +3786,7 @@ export default function MarketingResponse({ locale = "ko" }) {
     } catch (e) {
       return null;
     }
-  }, [mmm, stage, forecastModel, forecastScenario.eligible, fcHorizon, fcBudget, fcStepOff]);
+  }, [mmm, stage, forecastModel, forecastScenario.eligible, fcHorizon, fcBudget, fcStepOff, fcTrendDamping, fcEventPolicy]);
 
   const recentBacktest = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "lab" || !forecastModel) return null;
@@ -3782,6 +3801,66 @@ export default function MarketingResponse({ locale = "ko" }) {
       return null;
     }
   }, [mmm, stage, forecastModel]);
+
+  // 미래 예측 탭의 공통 진단 산출물. 구간을 신뢰구간으로 오인하지 않도록
+  // parameter band와 predictive band를 분리하고, rolling holdout coverage를 표시한다.
+  const forecastEnhancement = useMemo(() => {
+    if (!forecast) return null;
+    const calibration = recentBacktest
+      ? forecastIntervalCalibration(
+        recentBacktest.actual.slice(recentBacktest.validationStartIndex),
+        forecast.lo?.slice(0, recentBacktest.actual.length - recentBacktest.validationStartIndex) || [],
+        forecast.hi?.slice(0, recentBacktest.actual.length - recentBacktest.validationStartIndex) || [],
+      )
+      : null;
+    const diagnostics = recentBacktest
+      ? forecastResidualDiagnostics(
+        recentBacktest.actual.slice(recentBacktest.validationStartIndex),
+        recentBacktest.predicted.slice(recentBacktest.validationStartIndex),
+      )
+      : null;
+    const bands = splitForecastIntervals(forecast.predFut || [], forecast.lo || [], forecast.hi || []);
+    return {
+      calibration,
+      diagnostics,
+      bands,
+      provenance: buildForecastProvenance({
+        target,
+        horizon: forecast.horizon,
+        selection: forecast.rollingSelection?.selected,
+        assumptions: { trendDamping: fcTrendDamping, eventPolicy: fcEventPolicy, interval: "90% predictive reference" },
+        validation: recentBacktest ? { wmape: recentBacktest.wmape, rmse: recentBacktest.rmse } : null,
+      }),
+    };
+  }, [forecast, recentBacktest, target, fcTrendDamping, fcEventPolicy]);
+
+  // 기본·OFF·증액·감액을 같은 모델에서 비교한다. 식별 게이트가 닫혀 있으면
+  // 값은 계산하지 않고 시나리오 표에 참고용 잠금 상태만 표시한다.
+  const forecastScenarioResults = useMemo(() => {
+    if (!forecast || !forecastModel) return null;
+    const channels = forecast.chans || [];
+    const recent = forecast.recentMean || {};
+    const baselineBudgets = Object.fromEntries(channels.map((channel) => [channel.key, fcBudget[channel.key] ?? recent[channel.key] ?? 0]));
+    const definitions = buildForecastScenarioDefinitions({
+      baseline: baselineBudgets,
+      recent,
+      channels,
+      totalBudget: fcTotalBudget,
+      minBudget: fcMinBudget,
+      maxBudget: fcMaxBudget == null ? Infinity : fcMaxBudget,
+    });
+    const baseResult = { ...forecast, scenarioKey: "baseline" };
+    const results = definitions.map((definition) => {
+      if (definition.key === "baseline") return { ...definition, forecast: baseResult, summary: summarizeForecastScenario(definition.key, baseResult, baseResult) };
+      if (!forecastScenario.eligible) return { ...definition, forecast: null, summary: null };
+      const runOne = (model) => runForecastScenario(model, fcHorizon, definition.budgets, fcStepOff, { trendDamping: fcTrendDamping, eventPolicy: fcEventPolicy });
+      const result = forecastModel.isAdditiveTotal
+        ? mmmSumOsForecasts(forecastModel.components.map(runOne))
+        : runOne(forecastModel);
+      return { ...definition, forecast: result, summary: summarizeForecastScenario(definition.key, result, baseResult) };
+    });
+    return { definitions, results };
+  }, [forecast, forecastModel, forecastScenario.eligible, fcBudget, fcTotalBudget, fcMinBudget, fcMaxBudget, fcHorizon, fcStepOff, fcTrendDamping, fcEventPolicy]);
 
   const trend = useMemo(() => {
     if (!mmm || mmm.empty || !["trend", "diagnose"].includes(stage)) return null;
@@ -4214,8 +4293,14 @@ export default function MarketingResponse({ locale = "ko" }) {
         fc.fittedHist[nHist - 1],
         ...fc.predFut,
       ];
-      const bandLo = [...Array(nHist).fill(null), ...fc.lo];
-      const bandHi = [...Array(nHist).fill(null), ...fc.hi];
+      const selectedBands = fcIntervalMode === "parameter"
+        ? (forecastEnhancement?.bands || []).map((band) => band.parameterLo)
+        : fc.lo;
+      const selectedBandHigh = fcIntervalMode === "parameter"
+        ? (forecastEnhancement?.bands || []).map((band) => band.parameterHi)
+        : fc.hi;
+      const bandLo = [...Array(nHist).fill(null), ...selectedBands];
+      const bandHi = [...Array(nHist).fill(null), ...selectedBandHigh];
       inst.push(
         new Chart(forecastRef.current.getContext("2d"), {
           type: "line",
@@ -4250,7 +4335,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       );
     }
     return () => inst.forEach((c) => c && c.destroy());
-  }, [stage, forecast, tx, targetValueLabel]);
+  }, [stage, forecast, forecastEnhancement, fcIntervalMode, tx, targetValueLabel]);
 
   // Stage ① trend chart (STL trend + actual)
   useEffect(() => {
@@ -5940,6 +6025,21 @@ export default function MarketingResponse({ locale = "ko" }) {
                   {tx("예측 기간(주):", "Forecast horizon (wk):")}{" "}
                   <input type="number" min="1" max="52" value={fcHorizon} onChange={(e) => setFcHorizon(Math.max(1, Math.min(52, parseInt(e.target.value, 10) || 1)))} style={{ width: "60px" }} />
                 </label>
+                <label style={{ fontSize: "12px", color: MUTED }}>{tx("추세 감쇠:", "Trend damping:")} {" "}
+                  <select value={fcTrendDamping} onChange={(e) => setFcTrendDamping(Number(e.target.value))}>
+                    <option value="0">{tx("없음", "None")}</option><option value="0.25">25%</option><option value="0.5">50%</option><option value="0.75">75%</option>
+                  </select>
+                </label>
+                <label style={{ fontSize: "12px", color: MUTED }}>{tx("미래 이벤트:", "Future events:")} {" "}
+                  <select value={fcEventPolicy} onChange={(e) => setFcEventPolicy(e.target.value)}>
+                    <option value="hold">{tx("마지막 상태 유지", "Hold last state")}</option><option value="off">{tx("모두 끔", "Turn all off")}</option>
+                  </select>
+                </label>
+                <label style={{ fontSize: "12px", color: MUTED }}>{tx("구간:", "Interval:")} {" "}
+                  <select value={fcIntervalMode} onChange={(e) => setFcIntervalMode(e.target.value)}>
+                    <option value="predictive">{tx("예측 참고구간", "Predictive reference")}</option><option value="parameter">{tx("모수 참고구간", "Parameter reference")}</option>
+                  </select>
+                </label>
               </div>
               {forecast ? (
                 <>
@@ -6031,6 +6131,46 @@ export default function MarketingResponse({ locale = "ko" }) {
                       {!recentBacktest.reliable && <div className="callout warn" style={{ marginTop: "10px" }}><div className="ico">!</div><div className="body"><strong>{tx("현재 데이터에서는 12주 예측을 신뢰할 수 없습니다", "The 12-week forecast is not reliable for this data")}</strong><p>{tx("검증 구간 wMAPE가 30%를 초과했습니다. 아래 예산 변경 시나리오는 의사결정에 사용하지 말고, 먼저 캠페인 OFF/증액 홀드아웃으로 확인하세요.", "Holdout wMAPE exceeds 30%. Do not use the budget-change scenarios for decisions until a campaign OFF/incrementality holdout confirms them.")}</p></div></div>}
                       <div style={{ display: "flex", gap: "6px", marginTop: "10px", flexWrap: "wrap" }}><span className="ab-pill">{tx("앞 12주: 학습 구간 적합", "First 12: training fit")}</span><span className="ab-pill" style={{ borderColor: "#f59e0b", color: "#b45309" }}>{tx("뒤 12주: 학습 제외 검증", "Last 12: held-out validation")}</span></div>
                       <MmmBacktestChart locale={locale} labels={recentBacktest.labels} actual={recentBacktest.actual} validationStartIndex={recentBacktest.validationStartIndex} variants={[{ label: tx("모델 적합·예측", "Model fit · prediction"), predicted: recentBacktest.predicted, color: "#2563eb", dash: [] }]} formatValue={targetValueLabel} />
+                    </Card>
+                  )}
+                  {forecastEnhancement && (
+                    <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "baseline" }}>
+                        <strong>{tx("예측 신뢰도·잔차 진단", "Forecast calibration and residual diagnostics")}</strong>
+                        <span className="ab-pill">{tx("관측 예측", "Observational forecast")}</span>
+                      </div>
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
+                        <span className="ab-pill">{tx("구간 포함률", "Interval coverage")} {forecastEnhancement.calibration?.coverage == null ? "—" : `${(forecastEnhancement.calibration.coverage * 100).toFixed(0)}% / 90%`}</span>
+                        <span className="ab-pill">ACF(1) {forecastEnhancement.diagnostics?.acf1 == null ? "—" : forecastEnhancement.diagnostics.acf1.toFixed(2)}</span>
+                        <span className="ab-pill">{tx("잔차 drift", "Residual drift")} {forecastEnhancement.diagnostics?.drift == null ? "—" : targetValueLabel(forecastEnhancement.diagnostics.drift)}</span>
+                        <span className="ab-pill" style={forecastEnhancement.diagnostics?.heteroscedastic ? { borderColor: "#f59e0b", color: "#b45309" } : undefined}>{forecastEnhancement.diagnostics?.heteroscedastic ? tx("분산 변화 점검", "Variance shift") : tx("분산 안정", "Variance stable")}</span>
+                      </div>
+                      <p className="muted" style={{ fontSize: "11px", lineHeight: 1.5, margin: "8px 0 0" }}>
+                        {tx("예측 참고구간은 인과효과의 신뢰구간이 아닙니다. 포함률이 90%에서 크게 벗어나거나 잔차 ACF가 크면 시나리오보다 추가 홀드아웃을 우선하세요.", "The predictive reference interval is not a causal-effect confidence interval. If coverage differs materially from 90% or residual ACF is large, prioritize another holdout before using scenarios.")}
+                      </p>
+                      <details style={{ marginTop: "8px" }}>
+                        <summary style={{ cursor: "pointer", fontSize: "11px" }}>{tx("재현성 정보", "Reproducibility details")}</summary>
+                        <pre style={{ whiteSpace: "pre-wrap", fontSize: "10px", color: MUTED, margin: "6px 0 0" }}>{JSON.stringify(forecastEnhancement.provenance, null, 2)}</pre>
+                      </details>
+                    </Card>
+                  )}
+                  {forecastScenarioResults && (
+                    <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+                        <strong>{tx("미래 시나리오 비교", "Future scenario comparison")}</strong>
+                        <button className="ab-pill" onClick={() => setFcScenarioOpen((value) => !value)}>{fcScenarioOpen ? tx("접기", "Hide") : tx("열기", "Show")}</button>
+                      </div>
+                      {fcScenarioOpen && <>
+                        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", margin: "8px 0" }}>
+                          <label style={{ fontSize: "11px", color: MUTED }}>{tx("총 주간 예산", "Total weekly budget")} <CommaNumberInput value={fcTotalBudget == null ? "" : Math.round(convertCurrency(fcTotalBudget, sourceCurrency, displayCurrency))} onCommit={(value) => setFcTotalBudget(value == null ? null : convertCurrency(value, displayCurrency, sourceCurrency))} style={{ width: "110px" }} /></label>
+                          <label style={{ fontSize: "11px", color: MUTED }}>{tx("채널 최소", "Channel min")} <CommaNumberInput value={Math.round(convertCurrency(fcMinBudget, sourceCurrency, displayCurrency))} onCommit={(value) => setFcMinBudget(value == null ? 0 : convertCurrency(value, displayCurrency, sourceCurrency))} style={{ width: "90px" }} /></label>
+                          <label style={{ fontSize: "11px", color: MUTED }}>{tx("채널 최대", "Channel max")} <CommaNumberInput value={fcMaxBudget == null ? "" : Math.round(convertCurrency(fcMaxBudget, sourceCurrency, displayCurrency))} onCommit={(value) => setFcMaxBudget(value == null ? null : convertCurrency(value, displayCurrency, sourceCurrency))} style={{ width: "90px" }} /></label>
+                        </div>
+                        <div className="table-wrap"><table className="data" style={{ fontSize: "11.5px" }}><thead><tr><th>{tx("시나리오", "Scenario")}</th><th>{tx("평균/주", "Average/wk")}</th><th>{tx("기준 대비", "vs baseline")}</th><th>{tx("상태", "Status")}</th></tr></thead><tbody>
+                          {forecastScenarioResults.results.map((scenario) => <tr key={scenario.key}><td><strong>{tx({ baseline: "기준 예산", "media-off": "미디어 OFF", "plus-10": "+10% 증액", "minus-10": "-10% 감액" }[scenario.key] || scenario.label, scenario.label)}</strong></td><td className="tnum">{scenario.summary?.average == null ? "—" : targetValueLabel(scenario.summary.average, { perWeek: true })}</td><td className="tnum">{scenario.summary?.percentFromBaseline == null ? "—" : `${scenario.summary.percentFromBaseline >= 0 ? "+" : ""}${scenario.summary.percentFromBaseline.toFixed(1)}%`}</td><td>{scenario.key === "baseline" ? tx("표시", "Shown") : forecastScenario.eligible ? tx("참고 시나리오", "Reference scenario") : tx("식별 게이트 잠금", "Identification locked")}</td></tr>)}
+                        </tbody></table></div>
+                        <p className="muted" style={{ fontSize: "11px", margin: "7px 0 0" }}>{tx("시나리오 수치는 예측 모델의 조건부 비교이며 증분효과·인과효과를 확정하지 않습니다. 미디어 OFF는 홀드아웃 또는 실험으로 별도 검증해야 합니다.", "Scenario values are conditional model comparisons, not confirmed incremental or causal effects. Validate media-off with a holdout or experiment.")}</p>
+                      </>}
                     </Card>
                   )}
                   <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "12px" }}>
