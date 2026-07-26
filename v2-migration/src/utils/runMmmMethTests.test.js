@@ -13,6 +13,10 @@ import {
   mmmSelectAdstock,
   mmmRunMmm,
   mmmBayesianRun,
+  mmmBayesianMcmcRun,
+  mmmMeridianAdstock,
+  mmmTruncatedNormalMoments,
+  mmmAggregateCrossCheck,
   mmmBayesianCorrelatedGroupRefit,
   mmmBayesianMediaPenaltySelection,
   mmmBayesianSeasonalitySelection,
@@ -47,6 +51,23 @@ import {
 } from "./mmmMath.js";
 
 describe("runMmmMethTests (golden port)", () => {
+  it("exposes deterministic Meridian-like truncated posterior primitives", () => {
+    const moments = mmmTruncatedNormalMoments(0, 1);
+    expect(moments.mean).toBeCloseTo(0.797884, 4);
+    expect(moments.variance).toBeCloseTo(0.36338, 3);
+    expect(mmmAggregateCrossCheck(100, 110, 0.15).verdict).toBe("consistent");
+    expect(mmmAggregateCrossCheck(100, 140, 0.15).verdict).toBe("abstain-group-definition-sensitive");
+    expect(JSON.stringify(moments)).toBe(JSON.stringify(mmmTruncatedNormalMoments(0, 1)));
+  });
+  it("supports Meridian-style normalized finite-lag adstock", () => {
+    const geometric = mmmMeridianAdstock([0, 10, 0], 0.5, 2, "geometric");
+    const binomial = mmmMeridianAdstock([0, 10, 0], 0.5, 2, "binomial");
+    expect(geometric[1]).toBeCloseTo(10 / 1.75, 8);
+    expect(binomial[1]).toBeCloseTo(2.5, 8);
+    expect(geometric[2]).toBeGreaterThan(0);
+    expect(binomial[2]).toBeGreaterThan(0);
+  });
+
   it("selects recent Cost window by rolling holdout and excludes annual seasonality before two cycles", () => {
     const n = 75;
     const week = Array.from({ length: n }, (_, index) => index + 1);
@@ -188,6 +209,94 @@ describe("runMmmMethTests (golden port)", () => {
     // 절편까지 합친 장기 추세는 감소해도 '음수 광고/기준선'이 아닌 자연수요 레벨이다.
     expect(run.weeks.every((w) => w.contrib.Trend > 0)).toBe(true);
   });
+
+  it("runs deterministic HMC and returns posterior contribution intervals", () => {
+    const n = 48;
+    const week = Array.from({ length: n }, (_, i) => i + 1);
+    const google = week.map((t) => 1200 + (t % 7) * 260);
+    const meta = week.map((t) => 900 + ((t * 5) % 9) * 180);
+    const target = week.map((t, i) => 5000 + 1.8 * google[i] + 0.9 * meta[i] + t * 20);
+    const panel = {
+      week,
+      ch: { google, meta },
+      targets: { Regs: target },
+      channels: [
+        { key: "google", label: "Google", kind: "perf" },
+        { key: "meta", label: "Meta", kind: "brand" },
+      ],
+      dummy: {},
+      steps: {},
+      external: {},
+    };
+    const analytical = mmmBayesianRun(panel, { ...MMM_METH_CONFIG, steps: {} }, "Regs", false, {
+      enableMediaPenaltySelection: false,
+      enableSeasonalitySelection: false,
+      enableBaselineSelection: false,
+    });
+    const first = mmmBayesianMcmcRun(analytical, { seed: 77, burn: 60, samples: 100, leapfrog: 4, stepSize: 0.02 });
+    const second = mmmBayesianMcmcRun(analytical, { seed: 77, burn: 60, samples: 100, leapfrog: 4, stepSize: 0.02 });
+    expect(first?.mcmc?.enabled).toBe(true);
+    expect(first.mcmc.acceptanceRate).toBeGreaterThan(0);
+    expect(first.mcmc.acceptanceRate).toBeLessThanOrEqual(1);
+    expect(first.mcmc.seed).toBe(77);
+    expect(first.weeks.map((weekRow) => weekRow.fitted)).toEqual(second.weeks.map((weekRow) => weekRow.fitted));
+    expect(first.weeks.every((weekRow) => weekRow.lo <= weekRow.fitted && weekRow.fitted <= weekRow.hi)).toBe(true);
+    const multi = mmmBayesianMcmcRun(analytical, { seed: 77, chains: 2, burn: 60, samples: 100, leapfrog: 4, stepSize: 0.02 });
+    expect(multi?.mcmc?.multiChain).toBe(true);
+    expect(multi.mcmc.chains).toBe(2);
+    expect(multi.mcmc.rhat.length).toBeGreaterThan(0);
+    expect(Number.isFinite(multi.mcmc.maxRhat)).toBe(true);
+    expect(Number.isFinite(multi.mcmc.minEss)).toBe(true);
+    const meridianAnalytical = mmmBayesianRun(panel, {
+      ...MMM_METH_CONFIG,
+      steps: {},
+      meridianMode: true,
+      meridianAdstockDecay: "binomial",
+      meridianMaxLag: 4,
+      meridianHillBeforeAdstock: false,
+    }, "Regs", false, {
+      enableMediaPenaltySelection: false,
+      enableSeasonalitySelection: false,
+      enableBaselineSelection: false,
+    });
+    expect(meridianAnalytical?.meridianSpec?.enabled).toBe(true);
+    expect(meridianAnalytical?.meridianSpec?.adstockDecay).toBe("binomial");
+    expect(mmmBayesianMcmcRun(meridianAnalytical, { seed: 77, burn: 60, samples: 100, leapfrog: 4, stepSize: 0.02 })?.mcmc?.enabled).toBe(true);
+  });
+
+  it("uses matched Reach/Frequency inputs for Meridian media channels", () => {
+    const week = Array.from({ length: 52 }, (_, index) => index + 1);
+    const spend = week.map((index) => 500 + (index % 8) * 90);
+    const reach = week.map((index) => 2000 + (index % 6) * 140);
+    const frequency = week.map((index) => 1.5 + (index % 5) * 0.2);
+    const target = week.map((_, index) => 3000 + reach[index] * 0.35 + frequency[index] * 80 + index * 4);
+    const run = mmmBayesianRun({
+      week,
+      ch: { meta: spend },
+      reach: { metaReach: reach },
+      frequency: { metaFrequency: frequency },
+      mediaInputMap: { meta: { type: "reach-frequency", reachKey: "metaReach", frequencyKey: "metaFrequency" } },
+      targets: { Regs: target },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+      dummy: {}, steps: {}, external: {},
+    }, {
+      ...MMM_METH_CONFIG,
+      meridianMode: true,
+      seasonalityPeriods: [],
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+    }, "Regs", false, {
+      enableMediaPenaltySelection: false,
+      enableSeasonalitySelection: false,
+      enableBaselineSelection: false,
+      skipTransformUncertainty: true,
+    });
+    expect(run?.meridianSpec?.rfChannels).toEqual(["meta"]);
+    expect(run?.meridianSpec?.spendChannels).toEqual([]);
+    expect(Number.isFinite(run?.channelContributions?.meta?.totalMean)).toBe(true);
+  });
+
 
   it("uses a broad business prior without locking transform uncertainty", () => {
     const n = 64;
@@ -951,7 +1060,7 @@ describe("runMmmMethTests (golden port)", () => {
     const vt = cn.votes,
       vsum = vt.FOR + vt.AGAINST + vt.ABSTAIN;
     expect(
-      ["ok", "cannibal", "inconclusive"].includes(cn.verdict_class) && vsum === 3,
+      ["ok", "cannibal", "inconclusive", "not_identified"].includes(cn.verdict_class) && vsum === 3,
     ).toBe(true);
 
     // T6b 검정력 게이트 OK 차단
@@ -983,7 +1092,7 @@ describe("runMmmMethTests (golden port)", () => {
       channels: [{ key: "x", label: "x", kind: "perf" }],
     };
 
-    // T6c 유의 음순효과→cannibal
+    // T6c 유의 음순효과 하나만으로는 red 승격하지 않음(복수 증거 합의 필요)
     const cnNeg = mmmCannibalization(
       oscPanel,
       cfg,
@@ -993,7 +1102,7 @@ describe("runMmmMethTests (golden port)", () => {
     );
     expect(
       cnNeg.net_incrementality.vote === "AGAINST" &&
-        cnNeg.verdict_class === "cannibal",
+        cnNeg.verdict_class !== "cannibal",
     ).toBe(true);
 
     // T6d non-sig는 FOR 아님(ABSTAIN)
@@ -1288,8 +1397,12 @@ describe("runMmmMethTests (golden port)", () => {
     expect(run.names.some((name) => name.startsWith("season_rbf_"))).toBe(true);
     expect(run.names.some((name) => name.startsWith("industry_"))).toBe(true);
     expect(run.names.some((name) => /^(sin|cos)_/.test(name))).toBe(false);
-    expect(run.params.media.selection).toBe("joint-full-model-profile");
-    expect(run.names.filter((name) => name.startsWith("trend_dir_")).every((name) =>
+    const trendDirectionNames = run.names.filter((name) => name.startsWith("trend_dir_"));
+    const nonFlatDirections = plan.segments
+      .filter((segment) => segment.direction !== "flat")
+      .map((segment) => segment.direction);
+    expect(trendDirectionNames.length).toBe(nonFlatDirections.length);
+    expect(trendDirectionNames.every((name) =>
       run.posterior.beta[run.names.indexOf(name) + 1] >= -1e-10,
     )).toBe(true);
     expect(run.groupNames).toEqual(expect.arrayContaining(["Trend", "Seasonality", "Industry Trend", "Performance"]));

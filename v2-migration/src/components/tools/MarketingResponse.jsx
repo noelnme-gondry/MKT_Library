@@ -1578,7 +1578,7 @@ function buildCannibGuideDoc(cannib, targetKo, locale = "ko") {
   L.push("");
   L.push(`## 판정은 어떻게 종합하나 (입증책임 비대칭)`);
   L.push(`- **문제 없음(방어 양호)**: 네 방향 모두 뚜렷한 잠식 신호가 없을 때만. "잠식 신호가 없다"는 강한 증거가 있어야 OK를 줍니다.`);
-  L.push(`- **잠식 의심**: 어느 한 신호라도 잠식을 가리키면(특히 ④ 시차 신호가 있으면) 의심으로 올립니다. 같은 주 지표가 괜찮아도 시차에서 걸리면 의심입니다.`);
+  L.push(`- **잠식 의심**: 식별 가능성 게이트를 통과한 채널에서 서로 다른 신호가 2개 이상 같은 방향으로 일치할 때만 올립니다. 단일 음의 신호·장기 추세·산발 집행만으로는 red가 되지 않습니다.`);
   L.push(`- **애매함(판단 보류)**: 데이터가 부족하거나(집행 주 수가 적음) 채널끼리 지출이 거의 똑같이 움직여(공선) 서로 구분이 안 되면, 억지로 판정하지 않고 보류합니다.`);
   L.push("");
   L.push(`## 꼭 기억할 것`);
@@ -1630,7 +1630,7 @@ function buildCannibGuideDoc(cannib, targetKo, locale = "ko") {
     L.push(`## 현재 데이터 판정 요약`);
     for (const r of cannib.cannibRank) {
       const lv = mmmCannibLevel(r);
-      const bucket = !r.eligible || lv.lv === 1 ? "애매함(판단 보류)" : lv.lv >= 4 ? "잠식 의심" : "문제 없음";
+      const bucket = !r.eligible || lv.lv <= 4 ? "애매함(판단 보류)" : "잠식 의심";
       L.push(`- **${r.label}** → ${bucket}${r.eligible ? "" : ` (데이터 부족 ${r.nActive}/${r.total}주)`}`);
     }
     L.push("");
@@ -1666,7 +1666,7 @@ function buildCannibGuideDocEn(cannib, targetLabel) {
   L.push("");
   L.push(`## How the verdict is combined (asymmetric burden of proof)`);
   L.push(`- **No issue (well-defended)**: only when none of the four signals show a clear cannibalization signal. Strong evidence of "no signal" is required to give an OK.`);
-  L.push(`- **Cannibalization suspected**: if any signal points to cannibalization (especially the lagged signal ④), it's flagged as suspected — even if same-week metrics look fine.`);
+  L.push(`- **Cannibalization suspected**: only when an eligible channel has at least two independent signals pointing in the same direction. A single trend, sparse flight, or lagged signal alone remains withheld.`);
   L.push(`- **Unclear (verdict withheld)**: if data is insufficient (few active weeks) or channels move almost identically (collinear) and can't be separated, we withhold judgment rather than force a verdict.`);
   L.push("");
   L.push(`## Key takeaway`);
@@ -1718,7 +1718,7 @@ function buildCannibGuideDocEn(cannib, targetLabel) {
     L.push(`## Current-data verdict summary`);
     for (const r of cannib.cannibRank) {
       const lv = mmmCannibLevel(r);
-      const bucket = !r.eligible || lv.lv === 1 ? "Unclear (withheld)" : lv.lv >= 4 ? "Cannibalization suspected" : "No issue";
+      const bucket = !r.eligible || lv.lv <= 4 ? "Unclear (withheld)" : "Cannibalization suspected";
       L.push(`- **${r.label}** → ${bucket}${r.eligible ? "" : ` (insufficient data ${r.nActive}/${r.total} weeks)`}`);
     }
     L.push("");
@@ -4744,7 +4744,8 @@ export default function MarketingResponse({ locale = "ko" }) {
                 const bucketOf = (r) => {
                   const L = mmmCannibLevel(r);
                   if (!r.eligible || L.lv === 1) return "unclear";
-                  if (L.lv >= 4) return "danger"; // 카니발 + 신호 조금 → 점검 대상
+                  if (L.lv >= 5) return "danger"; // 복수 증거가 일치한 경우만 red
+                  if (L.lv >= 4) return "unclear"; // 약한 음의 신호·추세 혼재는 red가 아님
                   return "ok"; // 신호 없음 / 거의 없음
                 };
                 const buckets = { danger: [], unclear: [], ok: [] };
@@ -4812,7 +4813,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                 // 헤드라인을 칸반 버킷과 동일 규칙으로 계산 → "문제없다는데 왜 잠식의심" 모순 제거.
                 const rr = (cannib.cannibRank || []).find((x) => x.key === activeCannibCh);
                 const lv = rr ? mmmCannibLevel(rr).lv : null;
-                const bucket = !rr || !rr.eligible || lv === 1 ? "unclear" : lv >= 4 ? "danger" : "ok";
+                const bucket = !rr || !rr.eligible || lv <= 4 ? "unclear" : "danger";
                 const votes = [p.vote, d.vote, ni.vote];
                 const nFor = votes.filter((v) => v === "FOR").length;
                 const nAg = votes.filter((v) => v === "AGAINST").length;

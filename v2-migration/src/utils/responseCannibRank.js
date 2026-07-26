@@ -14,6 +14,10 @@ export const RANK_CFG = {
   MIN_ACTIVE: 12, // 적격: 비-0 지출 주 수 최소
   MIN_DF: 8, // 적격: 탈추세 회귀 후 잔차 자유도 최소
   MIN_SPEND_CV: 0.1, // 적격: 지출 변동(sd/mean) 최소
+  MIN_FLIGHTS: 2,
+  MIN_FLIGHT_WEEKS: 4,
+  MIN_LOW_BLOCK: 4,
+  MIN_AGAINST: 2,
   ALPHA: 0.05,
   P_WEAK: 0.1,
   W: { detrend: 1, diff: 1, net: 1 }, // CEI 가중치
@@ -61,7 +65,23 @@ export const CANNIBAL_RANK = (() => {
     if (cv < cfg.MIN_SPEND_CV)
       reasons.push(`지출 변동 CV ${cv.toFixed(2)} < ${cfg.MIN_SPEND_CV}`);
     if (df < cfg.MIN_DF) reasons.push(`자유도 ${df} < ${cfg.MIN_DF}`);
-    return { eligible: reasons.length === 0, spendCV: +cv.toFixed(3), dfResid: df, reasons };
+    let run = 0;
+    const flights = [];
+    let lowRun = 0, lowBlockMax = 0;
+    const sorted = spend.slice().sort((a, b) => a - b);
+    const p25 = sorted.length ? sorted[Math.floor((sorted.length - 1) * 0.25)] : 0;
+    for (const value of spend) {
+      if (value > 0) run++;
+      else if (run) { flights.push(run); run = 0; }
+      if (value <= p25) lowRun++;
+      else { lowBlockMax = Math.max(lowBlockMax, lowRun); lowRun = 0; }
+    }
+    if (run) flights.push(run);
+    lowBlockMax = Math.max(lowBlockMax, lowRun);
+    if (flights.filter((value) => value >= cfg.MIN_FLIGHT_WEEKS).length < cfg.MIN_FLIGHTS)
+      reasons.push(`지속 flight ${flights.filter((value) => value >= cfg.MIN_FLIGHT_WEEKS).length} < ${cfg.MIN_FLIGHTS}`);
+    if (lowBlockMax < cfg.MIN_LOW_BLOCK) reasons.push(`연속 low-spend ${lowBlockMax}주 < ${cfg.MIN_LOW_BLOCK}주`);
+    return { eligible: reasons.length === 0, spendCV: +cv.toFixed(3), dfResid: df, flights, lowBlockMax, reasons };
   }
   return { spendCV, zFromR, twoSidedP, relu, eligibility, RANK_CFG };
 })();
@@ -130,12 +150,11 @@ export function mmmBuildCannibRank(panel, target, cannibByChannel, cov, chans, c
         cfg.W.net * contrib(z3)
       ).toFixed(3);
       const detP = +CANNIBAL_RANK.twoSidedP(z2).toFixed(4);
-      const anyAgainst =
+      const rawAnyAgainst =
         cn.precedence.vote === "AGAINST" ||
         cn.detrend_corr.vote === "AGAINST" ||
         ni.vote === "AGAINST" ||
         cn.granger_cannibal;
-      const cannibSignal = z2 < -zA || z2d < -zA || anyAgainst;
       const votes3 = [cn.detrend_corr.vote, cn.precedence.vote, ni.vote];
       const forCount = votes3.filter((v) => v === "FOR").length;
       const againstCount =
@@ -143,10 +162,14 @@ export function mmmBuildCannibRank(panel, target, cannibByChannel, cov, chans, c
       const abstainCount =
         votes3.filter((v) => v === "ABSTAIN" || !v).length +
         (!cn.granger_cannibal && !cn.granger_help ? 1 : 0);
-      const leanNeg = rDet <= MMM_CANNIB_RULES.detrendFor;
+      const anyAgainst = el.eligible && rawAnyAgainst;
+      const cannibSignal = el.eligible && (
+        againstCount >= (cfg.MIN_AGAINST || 2) || (z2 < -zA && z2d < -zA)
+      );
+      const leanNeg = el.eligible && rDet <= MMM_CANNIB_RULES.detrendFor;
       let badge;
       if (!el.eligible) badge = "판단불가";
-      else if (z2 < -zA && !gated && !(z3 > zA)) badge = "강";
+      else if (againstCount >= (cfg.MIN_AGAINST || 2) && !gated && !(z3 > zA)) badge = "강";
       else if (anyAgainst || (rDet < 0 && detP < cfg.P_WEAK)) badge = "중";
       else badge = "약";
       const spendShare = +(
@@ -182,9 +205,12 @@ export function mmmBuildCannibRank(panel, target, cannibByChannel, cov, chans, c
         flighted: !!cn.flighted,
         flightTrans: cn.flight_transitions,
         flightZeroFrac: cn.flight_zero_frac,
+        flightRuns: el.flights,
+        lowSpendBlockMax: el.lowBlockMax,
         forCount,
         againstCount,
         abstainCount,
+        minAgainst: cfg.MIN_AGAINST,
         leanNeg,
       };
     })
@@ -211,9 +237,7 @@ export function mmmBuildCannibRank(panel, target, cannibByChannel, cov, chans, c
 // 권고 짧은 라벨(표 셀) + 전체 문구(title 툴팁)
 export function mmmCannibAction(r) {
   if (!r.eligible)
-    return r.cannibSignal
-      ? "⚠ 데이터 부족하지만 잠식 방향 신호 — 데이터 축적·holdout 고려"
-      : "모니터 — 집행 확대/데이터 축적 후 재검";
+    return "데이터 부족·추세 혼재 — 잠식 판정 보류. 연속 집행 또는 holdout 필요";
   if (r.flighted)
     return "⚡ 산발 집행(on/off) — 시차·선행성 검정 신뢰도↓. 매칭 on/off 비교 또는 holdout으로만 확인";
   if (r.badge === "강") return "holdout 우선순위 높음";
@@ -223,7 +247,7 @@ export function mmmCannibAction(r) {
   return "관측상 이상 無 (비공선·탈추세 무해) — deprioritize 가능";
 }
 export function mmmCannibActionShort(r) {
-  if (!r.eligible) return r.cannibSignal ? "⚠ 데이터·holdout" : "모니터·데이터축적";
+  if (!r.eligible) return "데이터 부족·보류";
   if (r.flighted) return "⚡ holdout 확인";
   if (r.badge === "강") return "holdout 1순위";
   if (r.badge === "중") return "holdout 후보";
@@ -236,7 +260,7 @@ export function mmmCannibActionShort(r) {
 export function mmmCannibLevel(r) {
   if (!r.eligible)
     return { lv: 1, label: "데이터 없음", short: "데이터없음", color: "#9CA3AF", sym: "⊘" };
-  if (r.verdict_class === "cannibal" || r.againstCount >= 1 || r.cei > 0)
+  if (r.verdict_class === "cannibal" && r.againstCount >= (r.minAgainst || 2))
     return { lv: 5, label: "카니발", short: "카니발", color: "#f87171", sym: "●" };
   if (r.leanNeg)
     return { lv: 4, label: "못 가리지만 신호 조금", short: "신호 조금", color: "#fbbf24", sym: "◑" };

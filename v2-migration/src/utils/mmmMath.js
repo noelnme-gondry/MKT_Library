@@ -826,46 +826,81 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               return { rows, total };
             }
 
-            export function stlWeekly(values, period = 52, iters = 2) {
+            export function stlWeekly(values, period = 52, iters = 2, options = {}) {
+              // Robust additive STL. Missing observations are excluded from local
+              // fits; Tukey bisquare iterations prevent isolated spikes/events
+              // from becoming either seasonality or long-run trend.
               const n = values.length,
-                ts = Array.from({ length: n }, (_, i) => i);
-              const trendBw = Math.min(0.95, Math.max(0.15, (1.5 * period) / n));
+                P = Math.max(2, Math.round(period)),
+                ts = Array.from({ length: n }, (_, i) => i),
+                finite = values.map((v) => Number.isFinite(Number(v))),
+                clean = values.map((v) => Number.isFinite(Number(v)) ? Number(v) : NaN),
+                trendBw = Math.min(0.98, Math.max(0.12, Number(options.trendBandwidth) || (1.5 * P) / Math.max(P + 1, n))),
+                seasonalBw = Math.min(0.98, Math.max(0.35, Number(options.seasonalBandwidth) || 0.75)),
+                robustIters = Math.max(0, Math.floor(options.robustIters ?? Math.max(2, iters)));
               let trend = new Array(n).fill(0),
-                seasonal = new Array(n).fill(0);
-              for (let it = 0; it < iters; it++) {
-                const detr = values.map((v, i) =>
-                  Number.isFinite(trend[i]) ? v - trend[i] : v,
-                );
+                seasonal = new Array(n).fill(0),
+                robustWeights = finite.map((ok) => ok ? 1 : 0);
+              const median = (arr) => {
+                const a = arr.filter(Number.isFinite).slice().sort((x, y) => x - y);
+                if (!a.length) return 0;
+                const m = Math.floor(a.length / 2);
+                return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+              };
+              const loessWeighted = (x, y, weights, bandwidth) => {
+                const keep = y.map((v, i) => Number.isFinite(v) && weights[i] > 0 ? i : -1).filter((i) => i >= 0);
+                if (!keep.length) return y.map(() => NaN);
+                if (keep.length < 4) {
+                  const den = keep.reduce((s, i) => s + weights[i], 0) || 1;
+                  const mean = keep.reduce((s, i) => s + y[i] * weights[i], 0) / den;
+                  return y.map((_, i) => keep.includes(i) ? mean : NaN);
+                }
+                const sm = CANNIBAL_STATS.loess(keep.map((i) => x[i]), keep.map((i) => y[i]), { bandwidth });
+                const out = y.map(() => NaN);
+                keep.forEach((i, j) => { out[i] = Number.isFinite(sm[j]) ? sm[j] : y[i]; });
+                return out;
+              };
+              for (let it = 0; it < robustIters + 1; it++) {
+                const detr = clean.map((v, i) => finite[i] ? v - (trend[i] || 0) : NaN);
                 const seas = new Array(n).fill(0);
-                for (let ph = 0; ph < period; ph++) {
-                  const idx = [],
-                    ys = [];
-                  for (let i = ph; i < n; i += period) {
-                    if (Number.isFinite(detr[i])) {
-                      idx.push(i);
-                      ys.push(detr[i]);
-                    }
+                for (let ph = 0; ph < P; ph++) {
+                  const idx = [], ys = [], ws = [];
+                  for (let i = ph; i < n; i += P) {
+                    if (Number.isFinite(detr[i])) { idx.push(i); ys.push(detr[i]); ws.push(robustWeights[i]); }
                   }
                   if (!idx.length) continue;
-                  if (idx.length < 4) {
-                    const m = ys.reduce((a, b) => a + b, 0) / ys.length;
-                    for (const i of idx) seas[i] = m;
-                  } else {
-                    const sm = CANNIBAL_STATS.loess(idx, ys, { bandwidth: 0.75 });
-                    for (let j = 0; j < idx.length; j++)
-                      seas[idx[j]] = Number.isFinite(sm[j]) ? sm[j] : ys[j];
-                  }
+                  const sm = loessWeighted(idx.map((_, j) => j), ys, ws, seasonalBw);
+                  idx.forEach((i, j) => { seas[i] = Number.isFinite(sm[j]) ? sm[j] : ys[j]; });
                 }
-                const fin = seas.filter(Number.isFinite),
-                  sm0 = fin.reduce((a, b) => a + b, 0) / Math.max(1, fin.length);
-                for (let i = 0; i < n; i++) seasonal[i] = (seas[i] || 0) - sm0;
-                const deseason = values.map((v, i) => v - seasonal[i]);
-                trend = CANNIBAL_STATS.loess(ts, deseason, { bandwidth: trendBw });
+                const seasonalMean = median(seas.filter((v, i) => finite[i]));
+                for (let i = 0; i < n; i++) seasonal[i] = finite[i] ? seas[i] - seasonalMean : 0;
+                const deseason = clean.map((v, i) => finite[i] ? v - seasonal[i] : NaN);
+                const smTrend = loessWeighted(ts, deseason, robustWeights, trendBw);
+                trend = smTrend.map((v, i) => Number.isFinite(v) ? v : (i ? trend[i - 1] : 0));
+                const resid = clean.map((v, i) => finite[i] ? v - trend[i] - seasonal[i] : NaN);
+                if (it < robustIters) {
+                  const scale = Math.max(1e-9, 6 * median(resid.map((v) => Math.abs(v)).filter(Number.isFinite)));
+                  robustWeights = resid.map((v, i) => {
+                    if (!finite[i]) return 0;
+                    const u = Math.abs(v) / scale;
+                    return u >= 1 ? 0 : (1 - u * u) ** 2;
+                  });
+                }
               }
-              const residual = values.map((v, i) =>
-                Number.isFinite(trend[i]) ? v - trend[i] - seasonal[i] : NaN,
-              );
-              return { trend, seasonal, residual };
+              const residual = clean.map((v, i) => finite[i] ? v - trend[i] - seasonal[i] : NaN);
+              const variance = (arr) => {
+                const a = arr.filter(Number.isFinite), m = a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0;
+                return a.length ? a.reduce((s, v) => s + (v - m) ** 2, 0) / a.length : 0;
+              };
+              const totalVar = variance(clean), residualVar = variance(residual);
+              return {
+                trend, seasonal, residual, period: P,
+                method: "robust-additive-stl-seasonal-subseries-lowess",
+                robustIterations: robustIters, robustWeights,
+                missingCount: finite.filter((v) => !v).length,
+                seasonalStrength: totalVar > 0 ? Math.max(0, Math.min(1, 1 - variance(clean.map((v, i) => finite[i] ? v - seasonal[i] : NaN)) / totalVar)) : 0,
+                trendStrength: totalVar > 0 ? Math.max(0, Math.min(1, 1 - residualVar / totalVar)) : 0,
+              };
             }
 
             export const MMM_STATS = {
@@ -931,7 +966,15 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               // 개선의 오차범위를 넘을 때만 자동 적용한다.
               seasonalityObservedRecurrenceRequired: false,
               seasonalityMinLagCorrelation: 0.15,
+              stlRobustIterations: 3,
+              stlTrendBandwidth: null,
               adstockGrid: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
+              // Meridian-compatible media transformation profile. Classic MMM does
+              // not read these switches; the Bayesian toggle opts in explicitly.
+              meridianMode: false,
+              meridianAdstockDecay: "geometric",
+              meridianMaxLag: 8,
+              meridianHillBeforeAdstock: false,
               // Empirical-Bayes 효과 신뢰도는 한 변환을 고정하지 않는다. 채널별 α × 반포화점 ×
               // Hill 기울기 후보의 profile posterior를 평균내되, 계산량은 주간 MMM에 맞춘다.
               bayesHalfSaturationQuantiles: [0.4, 0.6, 0.8],
@@ -1008,6 +1051,13 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               gateSpendTimeCorr: 0.7, // 게이트: |corr(ln_spend, t)| ≥ 0.7
               gateCiMult: 3, // 게이트: ③ CI폭 ≥ 3×|점추정|
               gateMinN: 30, // 게이트: n < 30
+              minActiveWeeks: 12,
+              minFlightWeeks: 4,
+              minFlightCount: 2,
+              minLowSpendBlock: 4,
+              minSpendCV: 0.1,
+              minAgainstVotes: 2,
+              grangerMinActive: 20,
               brandBarFor: 3, // 브랜드 가로채기 채널: FOR=3 AND AGAINST=0 일 때만 잠정 OK
               otherBarFor: 2, // 그 외(prospecting): FOR≥2 AND AGAINST=0
               brandInterceptRe:
@@ -1053,6 +1103,39 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               for (let i = 0; i < x.length; i++)
                 o.push((isNaN(x[i]) ? 0 : x[i]) + (i > 0 ? lam * o[i - 1] : 0));
               return o;
+            }
+
+            // Meridian-compatible finite-lag normalized adstock. The legacy
+            // recursive adstock remains unchanged for Classic MMM and old tests.
+            export function mmmMeridianAdstock(x, alpha, maxLag = 8, decay = "geometric") {
+              const values = x.map((value) => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0);
+              const lag = Math.max(0, Math.floor(maxLag));
+              const a = Math.min(0.999, Math.max(0, Number(alpha) || 0));
+              const choose = (n, k) => {
+                let result = 1;
+                for (let i = 1; i <= k; i++) result *= (n - i + 1) / i;
+                return result;
+              };
+              const weights = Array.from({ length: lag + 1 }, (_, s) => decay === "binomial"
+                ? choose(lag, s) * (a ** s) * ((1 - a) ** (lag - s))
+                : a ** s);
+              const denominator = weights.reduce((sum, value) => sum + value, 0) || 1;
+              return values.map((_, t) => weights.reduce((sum, weight, s) => sum + weight * (values[t - s] || 0), 0) / denominator);
+            }
+
+            function _mmmChannelInput(panel, channelKey) {
+              const mapping = panel.mediaInputMap?.[channelKey];
+              if (mapping?.type === "reach-frequency"
+                && panel.reach?.[mapping.reachKey]
+                && panel.frequency?.[mapping.frequencyKey]) {
+                return {
+                  type: "reach-frequency",
+                  spend: panel.ch[channelKey] || [],
+                  reach: panel.reach[mapping.reachKey],
+                  frequency: panel.frequency[mapping.frequencyKey],
+                };
+              }
+              return panel.ch[channelKey] || [];
             }
 
             export function mmmLnMedia(raw, lam) {
@@ -1734,11 +1817,15 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
             export function mmmTrendExistence(panel, cfg, targetName, locale = "ko") {
               const isEn = locale === "en";
               const y = panel.targets[targetName];
-              const stl = stlWeekly(y, 52);
+              const stlPeriod = cfg?.seasonalityPeriods?.[0] || 52.18;
+              const stl = stlWeekly(y, stlPeriod, cfg?.stlRobustIterations || 3, {
+                trendBandwidth: cfg?.stlTrendBandwidth,
+                robustIters: cfg?.stlRobustIterations || 3,
+              });
               const deseason = y.map((v, i) => v - stl.seasonal[i]);
               const mkRaw = mkOriginal(y),
                 mkAc = mkHamedRao(y),
-                mkSeas = mkSeasonal(y, 52),
+                mkSeas = mkSeasonal(y, Math.round(stlPeriod)),
                 mkDes = mkHamedRao(deseason);
               const adf = adfCT(y),
                 kp = kpssCT(y);
@@ -2213,8 +2300,31 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               const zeroFrac = +(1 - _onoff.reduce((a, b) => a + b, 0) / n).toFixed(
                 2,
               );
+              const flightRuns = [];
+              let currentRun = 0;
+              for (const value of _onoff) {
+                if (value) currentRun++;
+                else if (currentRun) { flightRuns.push(currentRun); currentRun = 0; }
+              }
+              if (currentRun) flightRuns.push(currentRun);
+              const activeWeeks = _onoff.reduce((sum, value) => sum + value, 0);
+              const spendMean = _mean(spend),
+                spendSd = Math.sqrt(_mean(spend.map((value) => (value - spendMean) ** 2))),
+                spendCV = spendMean > 0 ? spendSd / spendMean : 0;
               const flighted = flightTrans >= 4 && zeroFrac >= 0.2; // ≥2 분리 플라이트 + 무집행 ≥20%
               const lowDegenerate = p25 <= 0; // 저지출창이 0지출 주들(초반 블록이 아니라 흩어지면 시점 혼재)
+              let lowBlockCount = 0, lowBlockMax = 0, lowBlock = 0;
+              for (const value of spend) {
+                if (value <= p25) lowBlock++;
+                else if (lowBlock) { lowBlockCount++; lowBlockMax = Math.max(lowBlockMax, lowBlock); lowBlock = 0; }
+              }
+              if (lowBlock) { lowBlockCount++; lowBlockMax = Math.max(lowBlockMax, lowBlock); }
+              const identificationReasons = [];
+              if (activeWeeks < (R.minActiveWeeks || 12)) identificationReasons.push(`active weeks ${activeWeeks} < ${R.minActiveWeeks || 12}`);
+              if (spendCV < (R.minSpendCV || 0.1)) identificationReasons.push(`spend CV ${spendCV.toFixed(2)} < ${R.minSpendCV || 0.1}`);
+              if (flighted && flightRuns.filter((run) => run >= (R.minFlightWeeks || 4)).length < (R.minFlightCount || 2)) identificationReasons.push("insufficient sustained flights");
+              if (lowBlockMax < (R.minLowSpendBlock || 4)) identificationReasons.push("no contiguous low-spend block");
+              const identificationBlocked = identificationReasons.length > 0;
               let slope = 0,
                 slopeP = 1,
                 changePct = 0;
@@ -2235,7 +2345,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 }
               }
               let precVote;
-              if (lowN < R.precMinN) precVote = "ABSTAIN";
+              if (lowN < R.precMinN || (flighted && lowBlockMax < (R.minLowSpendBlock || 4))) precVote = "ABSTAIN";
               else if (flighted && lowDegenerate)
                 precVote = "ABSTAIN"; // 산발 집행·저지출창=0지출 시점혼재 → 선행성 신뢰 불가(degenerate P25)
               else if (
@@ -2342,7 +2452,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               };
 
               // ── ④ 그랜저 인과 (시차·방향) — 동시점 검정이 못 보는 lagged 신호 ──
-              const gr = mmmGranger(y, spend, 6);
+              const gr = activeWeeks >= (R.grangerMinActive || 20) && !identificationBlocked ? mmmGranger(y, spend, 6) : null;
               const grP = R.netP;
               const grangerCannibal =
                 gr && gr.spend_to_organic.p < grP && gr.spend_to_organic.coefSum < 0; // 광고비→오가닉 시차 하락
@@ -2355,9 +2465,16 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               [precVote, detVote, netVote].forEach((v) => votes[v]++);
               const forBar = isBrand ? R.brandBarFor : R.otherBarFor;
 
-              // ── 최종 판정 (입증책임 비대칭) ──
+              // ── 최종 판정 (식별 가능성 선행 + 복수 증거 합의) ──
               let verdict, verdictClass;
-              if (votes.AGAINST >= 1) {
+              if (identificationBlocked) {
+                precVote = "ABSTAIN";
+                detVote = "ABSTAIN";
+                netVote = "ABSTAIN";
+                votes.FOR = 0; votes.AGAINST = 0; votes.ABSTAIN = 3;
+                verdictClass = "not_identified";
+                verdict = isEn ? "NOT IDENTIFIED — insufficient variation or contiguous low-spend evidence" : "NOT IDENTIFIED — 지출 변동·연속 저지출 구간 부족으로 판단 보류";
+              } else if (votes.AGAINST >= (R.minAgainstVotes || 2)) {
                 verdictClass = "cannibal";
                 verdict = isEn ? "LEAN CANNIBAL — cannibalization concern; holdout is first priority" : "LEAN CANNIBAL — 카니발 우려, holdout 1순위";
               } else if (
@@ -2373,7 +2490,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               }
               // 그랜저 시차 잠식이 유의하면 비-카니발 판정을 LEAN CANNIBAL로 격상 (동시점이 놓친 신호 — 보수적으로 우려만 ↑)
               // 단, 산발(flighted) 집행이면 그랜저 단독으로 격상 금지(on/off 버스트가 시차 신호를 왜곡 — 매칭 on/off/holdout 필요).
-              if (grangerCannibal && verdictClass !== "cannibal" && !flighted) {
+              if (grangerCannibal && verdictClass !== "cannibal" && !flighted && votes.AGAINST >= 1 && !identificationBlocked) {
                 verdictClass = "cannibal";
                 verdict = isEn ? `LEAN CANNIBAL — lagged Granger signal (spend→organic↓, lag ${gr.spend_to_organic.lag}); holdout is first priority` : `LEAN CANNIBAL — 그랜저 시차 인과(광고비→오가닉↓, lag ${gr.spend_to_organic.lag}), holdout 1순위`;
               }
@@ -2389,6 +2506,12 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 flighted,
                 flight_transitions: flightTrans,
                 flight_zero_frac: zeroFrac,
+                active_weeks: activeWeeks,
+                spend_cv: +spendCV.toFixed(3),
+                flight_runs: flightRuns,
+                low_spend_block_count: lowBlockCount,
+                low_spend_block_max: lowBlockMax,
+                identification: { blocked: identificationBlocked, reasons: identificationReasons },
                 is_brand_intercept: isBrand,
                 for_bar: forBar,
                 reverse_causality_risk: reverseRisk,
@@ -3216,6 +3339,20 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               };
             }
 
+            function _mmmBayesMediaTransform(raw, params, cfg) {
+              const isRf = raw?.type === "reach-frequency";
+              const base = isRf
+                ? raw.reach.map((reach, index) => Math.max(0, Number(reach) || 0) * mmmHill(Number(raw.frequency[index]) || 0, params.ec, params.slope))
+                : raw;
+              const adstock = (values) => cfg.meridianMode
+                ? mmmMeridianAdstock(values, params.alpha, cfg.meridianMaxLag, cfg.meridianAdstockDecay)
+                : mmmAdstock(values, params.alpha);
+              if (cfg.meridianMode && cfg.meridianHillBeforeAdstock) {
+                return adstock(isRf ? raw.reach.map((reach, index) => Math.max(0, Number(reach) || 0) * mmmHill(Number(raw.frequency[index]) || 0, params.ec, params.slope)) : raw.map((value) => mmmHill(value, params.ec, params.slope)));
+              }
+              return isRf ? adstock(base) : adstock(raw).map((value) => mmmHill(value, params.ec, params.slope));
+            }
+
             function _mmmBayesTransformCandidates(raw, cfg) {
               const alphas = cfg.adstockGrid || [0, 0.2, 0.4, 0.6, 0.8];
               const quantiles = cfg.bayesHalfSaturationQuantiles || [0.4, 0.6, 0.8];
@@ -3223,7 +3360,12 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               const seen = new Set();
               const candidates = [];
               for (const alpha of alphas) {
-                const ad = mmmAdstock(raw, alpha);
+                const base = raw?.type === "reach-frequency"
+                  ? raw.reach.map((reach, index) => Math.max(0, Number(reach) || 0) * Math.max(0, Number(raw.frequency[index]) || 0))
+                  : raw;
+                const ad = cfg.meridianMode
+                  ? mmmMeridianAdstock(base, alpha, cfg.meridianMaxLag, cfg.meridianAdstockDecay)
+                  : mmmAdstock(base, alpha);
                 const positive = ad.filter((v) => v > 0 && isFinite(v));
                 if (!positive.length) continue;
                 for (const q of quantiles) {
@@ -3232,43 +3374,21 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                     const key = `${alpha}|${ec}|${slope}`;
                     if (seen.has(key)) continue;
                     seen.add(key);
-                    const values = ad.map((v) => mmmHill(v, ec, slope));
+                    const values = raw?.type === "reach-frequency"
+                      ? (cfg.meridianMode
+                        ? mmmMeridianAdstock(raw.reach.map((reach, index) => Math.max(0, Number(reach) || 0) * mmmHill(Number(raw.frequency[index]) || 0, ec, slope)), alpha, cfg.meridianMaxLag, cfg.meridianAdstockDecay)
+                        : ad.map((v) => mmmHill(v, ec, slope)))
+                      : cfg.meridianMode && cfg.meridianHillBeforeAdstock
+                        ? mmmMeridianAdstock(raw.map((value) => mmmHill(value, ec, slope)), alpha, cfg.meridianMaxLag, cfg.meridianAdstockDecay)
+                        : ad.map((v) => mmmHill(v, ec, slope));
                     const mean = _mean(values);
                     const variance = _mean(values.map((v) => (v - mean) ** 2));
                     if (!(variance > 1e-12)) continue;
-                    candidates.push({ alpha, ec, slope, quantile: q, values });
+                    candidates.push({ alpha, ec, slope, values });
                   }
                 }
               }
               return candidates;
-            }
-
-            // 방향 제약 모델에서는 광고 변환을 추세·계절·업계만 먼저 뺀 잔차로
-            // 고르지 않는다. 잔차 선선택은 광고와 함께 움직인 장기 신호를 광고
-            // 후보에서 미리 삭제하기 때문이다. 우선 중립적인 변환으로 모든 채널을
-            // 올린 뒤, 아래 full-model profile에서 다섯 요소를 함께 넣고 교체한다.
-            function _mmmBayesNeutralChannelParams(panel, cfg) {
-              const params = {};
-              for (const ch of _mmmChans(panel)) {
-                const raw = panel.ch[ch.key];
-                if (!raw) continue;
-                const candidates = _mmmBayesTransformCandidates(raw, cfg);
-                const neutral = candidates.reduce((best, candidate) => {
-                  const score = Math.abs(candidate.alpha - 0.4)
-                    + Math.abs((candidate.quantile ?? 0.6) - 0.6)
-                    + Math.abs(candidate.slope - 1) * 0.25;
-                  return !best || score < best.score ? { candidate, score } : best;
-                }, null)?.candidate;
-                params[ch.key] = neutral
-                  ? {
-                    alpha: neutral.alpha,
-                    ec: neutral.ec,
-                    slope: neutral.slope,
-                    selection: "neutral-before-joint-profile",
-                  }
-                  : { alpha: 0, ec: 1, slope: 1, selection: "no-variable-transform-candidate" };
-              }
-              return params;
             }
 
             function _mmmBayesChannelParams(panel, cfg, targetName, controls) {
@@ -3277,7 +3397,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               const residual = base ? base.resid : y.map((v) => v - _mean(y));
               const params = {};
               for (const ch of _mmmChans(panel)) {
-                const raw = panel.ch[ch.key];
+                const raw = _mmmChannelInput(panel, ch.key);
                 if (!raw) continue;
                 let best = null;
                 for (const candidate of _mmmBayesTransformCandidates(raw, cfg)) {
@@ -3340,9 +3460,13 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               const controlPenalty = Number.isFinite(options.controlPenalty)
                 ? Math.max(0, options.controlPenalty)
                 : 0.15;
+              const trendPenalty = Number.isFinite(options.trendPenalty)
+                ? Math.max(0, options.trendPenalty)
+                : controlPenalty;
               const defaultPenalty = Array.from({ length: p }, (_, j) => {
                 if (j === 0) return 1e-8;
                 if (mediaIndices.has(j)) return mediaPenalty;
+                if (options.trendIndices?.has(j)) return trendPenalty;
                 const seasonalMultiplier = options.seasonalityIndices?.has(j)
                   ? (options.seasonalityPenaltyMultiplier || 1) * (options.seasonalityPenaltyByIndex?.[j] || 1)
                   : 1;
@@ -3490,6 +3614,9 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               const nonNegativeControlIndices = new Set(names
                 .map((name, index) => name.startsWith("trend_dir_") ? index + 1 : null)
                 .filter((index) => index !== null));
+              const trendIndices = new Set(names
+                .map((name, index) => name.startsWith("trend_dir_") ? index + 1 : null)
+                .filter((index) => index !== null));
               const seasonalityPenaltyByIndex = {};
               if (options.seasonalityPenaltyProfile === "harmonic-order") {
                 const strength = Math.max(0, Number(options.seasonalityPenaltyStrength) || 0);
@@ -3511,6 +3638,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                   seasonalityIndices,
                   seasonalityPenaltyByIndex,
                   nonNegativeControlIndices,
+                  trendIndices,
                 },
               );
               if (!fittedPosterior) return null;
@@ -3614,7 +3742,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 const colIndex = names.indexOf("media_" + ch.key);
                 if (colIndex < 0 || !panel.ch[ch.key]) continue;
                 const profile = [];
-                const allCandidates = _mmmBayesTransformCandidates(panel.ch[ch.key], cfg);
+                const allCandidates = _mmmBayesTransformCandidates(_mmmChannelInput(panel, ch.key), cfg);
                 // 실험/국가 prior의 mean·variance는 타깃의 대표 변환 단위로 보정돼
                 // 있다. 다른 alpha/ec/slope에 같은 숫자를 재사용하면 처리강도가 달라져
                 // prior 단위가 깨지므로, 근거가 있는 채널은 그 대표 변환에 고정한다.
@@ -4757,10 +4885,11 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               transformUncertainty,
               externalMediaPriors,
               businessContributionPrior,
+              effectiveCfg,
             ) {
               return Object.fromEntries(channelMeta.map((channel) => {
                 const columnIndex = names.indexOf("media_" + channel.key);
-                const raw = panel.ch[channel.key] || [];
+                const raw = _mmmChannelInput(panel, channel.key);
                 const conditionalBeta = Math.max(0, Number(absoluteBeta[columnIndex]) || 0);
                 const conditionalSd = Math.max(0, Number(posterior.sd[columnIndex + 1] / colScale[columnIndex]) || 0);
                 const weeklyMean = (Xraw.map((row) => Math.max(0, conditionalBeta * (Number(row[columnIndex]) || 0))));
@@ -4772,7 +4901,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 const modelWeightTotal = sourceModels.reduce((sum, model) => sum + Math.max(0, Number(model.weight) || 0), 0) || 1;
                 const models = sourceModels.map((model) => {
                   const weight = Math.max(0, Number(model.weight) || 0) / modelWeightTotal;
-                  const feature = mmmAdstock(raw, model.alpha).map((value) => mmmHill(value, model.ec, model.slope));
+                  const feature = _mmmBayesMediaTransform(raw, model, effectiveCfg);
                   const beta = Math.max(0, Number(model.beta) || 0);
                   const sd = Math.max(0, Number(model.sd) || 0);
                   const featureTotal = feature.reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
@@ -4950,14 +5079,18 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 ...options,
                 mediaPenalty: effectiveCfg.mediaPenalty,
                 controlPenalty: effectiveCfg.controlPenalty,
+                // 꺾인 추세가 광고보다 훨씬 약한 규제를 받아 같은 장기 신호를
+                // 값싸게 선점하지 않도록, 방향 제약 모델에서는 둘을 같은 세기로
+                // 비교한다. 모든 feature는 이미 표준화돼 있어 직접 비교 가능하다.
+                trendPenalty: trendDirectionPlan?.enabled
+                  ? effectiveCfg.mediaPenalty * 4
+                  : effectiveCfg.controlPenalty,
                 seasonalityPenaltyMultiplier: effectiveCfg.seasonalityPenaltyMultiplier || 1,
                 seasonalityPenaltyProfile: effectiveCfg.seasonalityPenaltyProfile || null,
                 seasonalityPenaltyStrength: effectiveCfg.seasonalityPenaltyStrength || 0,
               };
               const controls = _mmmBayesControlFeatures(panel, effectiveCfg);
-              const selectedParams = trendDirectionPlan?.enabled
-                ? _mmmBayesNeutralChannelParams(panel, effectiveCfg)
-                : _mmmBayesChannelParams(panel, effectiveCfg, targetName, controls);
+              const selectedParams = _mmmBayesChannelParams(panel, effectiveCfg, targetName, controls);
               // 참고시장 계수를 타깃과 같은 feature 단위로 추정할 때는 타깃이
               // 선택한 alpha/ec/slope를 명시적으로 고정한다. 각 참고시장이 자체
               // 변환을 고른 뒤 계수 숫자만 전이하면 서로 다른 Hill 단위를 같은
@@ -4974,7 +5107,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               for (const ch of channelMeta) {
                 const p = params[ch.key];
                 names.push("media_" + ch.key);
-                cols.push(mmmAdstock(panel.ch[ch.key], p.alpha).map((v) => mmmHill(v, p.ec, p.slope)));
+                cols.push(_mmmBayesMediaTransform(_mmmChannelInput(panel, ch.key), p, effectiveCfg));
               }
               const businessContributionPrior = _mmmBusinessContributionPriors(
                 panel,
@@ -4990,15 +5123,76 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 ...businessContributionPrior.priors,
                 ...externalMediaPriors,
               };
+              let directionReferencePrior = { enabled: false, priors: {}, reason: "not-direction-model" };
+              if (trendDirectionPlan?.enabled && options.enableDirectionReferencePrior !== false) {
+                // 같은 계절·업계·이벤트·광고를 둔 직선 추세 모델을 약한 기준점으로
+                // 사용한다. 추세 모양만 꺾었다는 이유로 공선 채널의 계수가 0으로
+                // 붕괴하는 것을 막되, 최종 숫자는 아래 꺾인 추세 모델에서 다시
+                // 공동 추정한다. 이는 고정값이 아니라 평균 대비 ±25%의 범위다.
+                const referenceCfg = {
+                  ...effectiveCfg,
+                  trendDirectionPlan: null,
+                  trendDirectionFirst: false,
+                  baselineKnots: [],
+                };
+                const referenceControls = _mmmBayesControlFeatures(panel, referenceCfg);
+                const referenceNames = referenceControls.names.slice();
+                const referenceCols = referenceControls.X.length
+                  ? referenceControls.X[0].map((_, index) => referenceControls.X.map((row) => row[index]))
+                  : [];
+                channelMeta.forEach((channel) => {
+                  const p = params[channel.key];
+                  referenceNames.push("media_" + channel.key);
+                  referenceCols.push(_mmmBayesMediaTransform(_mmmChannelInput(panel, channel.key), p, effectiveCfg));
+                });
+                const referenceFit = _mmmBayesFitColumns(
+                  referenceNames,
+                  referenceCols,
+                  channelMeta,
+                  targetSeries,
+                  {
+                    ...fitOptions,
+                    trendPenalty: effectiveCfg.controlPenalty,
+                  },
+                );
+                if (referenceFit) {
+                  const priors = {};
+                  channelMeta.forEach((channel) => {
+                    const index = referenceNames.indexOf("media_" + channel.key);
+                    const mean = Math.max(0, Number(referenceFit.absoluteBeta[index]) || 0);
+                    if (!(mean > 1e-12)) return;
+                    const sd = Math.max(1e-9, mean * 0.25);
+                    priors[channel.key] = {
+                      mean,
+                      variance: sd ** 2,
+                      precision: 1 / (sd ** 2),
+                      source: "straight-trend-reference",
+                    };
+                  });
+                  directionReferencePrior = {
+                    enabled: Object.keys(priors).length > 0,
+                    priors,
+                    reason: Object.keys(priors).length
+                      ? "weak-straight-trend-allocation-anchor"
+                      : "reference-had-no-positive-media",
+                  };
+                  fitOptions.mediaPriors = {
+                    ...businessContributionPrior.priors,
+                    ...priors,
+                    ...externalMediaPriors,
+                  };
+                } else {
+                  directionReferencePrior = { enabled: false, priors: {}, reason: "reference-fit-failed" };
+                }
+              }
               // 외부 실험·참고시장 prior만 변환 단위를 고정한다. 넓은 비즈니스
               // prior는 모든 adstock·포화 후보에 같은 방식으로 다시 계산되어야
               // transform posterior가 사라지지 않는다.
               fitOptions.lockedMediaPriorKeys = new Set(Object.keys(externalMediaPriors));
-              // 추세 방향 외에는 어떤 숫자도 먼저 고정하지 않는다. 각 광고 변환
-              // 후보를 추세·계절·업계·이벤트·모든 광고가 들어간 완성 모델에 넣어
-              // profile하고, 그 안에서 가장 지지가 큰 잔효·포화 모양을 채택한다.
-              // 이 과정이 꺼지는 것은 반복 백테스트처럼 명시적으로 계산을 생략한
-              // 내부 호출뿐이며, 최종 사용자 모델에서는 항상 실행된다.
+              // 변환 profile은 최종 계수의 불확실성을 넓히는 진단이다. 대표
+              // adstock·포화 모양 자체를 여기서 다시 교체하면 상관 채널 중 하나만
+              // 살아남는 winner-takes-all이 심해지므로 최종 기여 계수에는 적용하지
+              // 않는다. 다섯 요소의 숫자 배분은 아래 한 회귀에서 함께 수행한다.
               const transformUncertainty = options.skipTransformUncertainty
                 ? {}
                 : _mmmBayesTransformUncertainty(
@@ -5009,30 +5203,6 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                   channelMeta,
                   { ...fitOptions, targetName, channelParams: params },
                 );
-              if (!options.skipTransformUncertainty && trendDirectionPlan?.enabled) {
-                channelMeta.forEach((channel) => {
-                  if (_mmmPriorLocksTransform(fitOptions, channel.key)) return;
-                  const models = transformUncertainty[channel.key]?.models || [];
-                  const selected = models.reduce(
-                    (best, model) => !best || model.weight > best.weight ? model : best,
-                    null,
-                  );
-                  if (!selected || !Number.isFinite(selected.alpha) || !(selected.ec > 0) || !(selected.slope > 0)) return;
-                  params[channel.key] = {
-                    ...params[channel.key],
-                    alpha: selected.alpha,
-                    ec: selected.ec,
-                    slope: selected.slope,
-                    selection: "joint-full-model-profile",
-                    profileWeight: selected.weight,
-                  };
-                  const columnIndex = names.indexOf("media_" + channel.key);
-                  if (columnIndex >= 0) {
-                    cols[columnIndex] = mmmAdstock(panel.ch[channel.key], selected.alpha)
-                      .map((value) => mmmHill(value, selected.ec, selected.slope));
-                  }
-                });
-              }
               const fitted = _mmmBayesFitColumns(
                 names,
                 cols,
@@ -5070,6 +5240,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 transformUncertainty,
                 externalMediaPriors,
                 businessContributionPrior,
+                effectiveCfg,
               );
               // 회사 MMM 대시보드처럼 채널별이 아니라 의사결정 단위로 묶는다.
               // MmmColumnMapper의 kind=brand는 Brand, 나머지 매체는 Performance.
@@ -5148,14 +5319,18 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                   ...model,
                   // 외부 prior·profile 평균도 0-spend 대비 절대기여 계약을 지킨다.
                   beta: Math.max(0, Number(model.beta) || 0),
-                  historicalAdstockMax: mmmAdstock(raw, model.alpha).reduce((maximum, value) => Number.isFinite(value) ? Math.max(maximum, value) : maximum, 0),
+                  historicalAdstockMax: (effectiveCfg.meridianMode
+                    ? mmmMeridianAdstock(raw, model.alpha, effectiveCfg.meridianMaxLag, effectiveCfg.meridianAdstockDecay)
+                    : mmmAdstock(raw, model.alpha)).reduce((maximum, value) => Number.isFinite(value) ? Math.max(maximum, value) : maximum, 0),
                 }));
                 const beta = Math.max(0, uncertainty?.beta ?? conditionalBeta);
                 const sd = uncertainty?.sd ?? conditionalSd;
                 // 반응곡선의 x축은 "한 주만 집행"이 아니라 지속 가능한 주간 예산 수준이다.
                 // 기하 adstock의 정상상태 spend/(1-alpha)를 써야 alpha가 곡선·marginal에 반영된다.
                 const responseAt = (spend) => models.reduce((sum, model) => {
-                  const steadyAdstock = Math.max(0, spend) / Math.max(0.05, 1 - Math.min(0.95, model.alpha));
+                  const steadyAdstock = effectiveCfg.meridianMode
+                    ? Math.max(0, spend)
+                    : Math.max(0, spend) / Math.max(0.05, 1 - Math.min(0.95, model.alpha));
                   return sum + model.weight * model.beta * mmmHill(steadyAdstock, model.ec, model.slope);
                 }, 0);
                 const marginalAt = (spend) => {
@@ -5171,7 +5346,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                   const safeSpend = Math.max(0, Number(spend) || 0);
                   const safeStep = Math.max(0, Number(step) || 0);
                   const profile = models.map((model) => {
-                    const denominator = Math.max(0.05, 1 - Math.min(0.95, model.alpha));
+                    const denominator = effectiveCfg.meridianMode ? 1 : Math.max(0.05, 1 - Math.min(0.95, model.alpha));
                     const before = mmmHill(safeSpend / denominator, model.ec, model.slope);
                     const after = mmmHill((safeSpend + safeStep) / denominator, model.ec, model.slope);
                     const factor = after - before;
@@ -5360,6 +5535,17 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 mediaPenaltySelection: penaltySelection,
                 jointStructureSelection,
                 effectiveCfg,
+                meridianSpec: effectiveCfg.meridianMode ? {
+                  enabled: true,
+                  adstockDecay: effectiveCfg.meridianAdstockDecay,
+                  maxLag: effectiveCfg.meridianMaxLag,
+                  hillBeforeAdstock: effectiveCfg.meridianHillBeforeAdstock,
+                  geoInputLevel: panel.meridianInput?.level || "national",
+                  fitLevel: "national",
+                  rfChannels: Object.entries(panel.mediaInputMap || {}).filter(([, input]) => input.type === "reach-frequency").map(([key]) => key),
+                  spendChannels: Object.entries(panel.mediaInputMap || {}).filter(([, input]) => input.type !== "reach-frequency").map(([key]) => key),
+                  rfMode: Object.keys(panel.reach || {}).length && Object.keys(panel.frequency || {}).length ? "mixed-channel" : "spend-only",
+                } : { enabled: false },
                 trendDirectionPlan: trendDirectionPlan?.enabled ? {
                   enabled: true,
                   method: "low-frequency-direction-only-then-joint-allocation",
@@ -5379,6 +5565,11 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                   shareSd: businessContributionPrior.shareSd ?? null,
                   reason: businessContributionPrior.reason,
                   channelCount: Object.keys(businessContributionPrior.priors || {}).length,
+                },
+                directionReferencePrior: {
+                  enabled: directionReferencePrior.enabled,
+                  reason: directionReferencePrior.reason,
+                  channelCount: Object.keys(directionReferencePrior.priors || {}).length,
                 },
                 appliedMediaPriors: externalMediaPriors,
               };
@@ -6448,6 +6639,55 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 },
               };
             }
+            // Browser-safe Meridian-style geo hierarchy. Each geo gets the same
+            // transform structure, then coefficients are partially pooled toward
+            // the national fit. This is an empirical-Bayes hierarchy, not a full
+            // joint NUTS sampler; the distinction remains visible in diagnostics.
+            export function mmmBayesianGeoHierarchicalRun(panel, cfg, targetName, nationalRun, options = {}) {
+              const geoPanels = Array.isArray(panel?.geoPanel) ? panel.geoPanel : [];
+              if (geoPanels.length < 2 || !nationalRun) return { enabled: false, reason: "geo-panels-unavailable" };
+              const minWeeks = Math.max(8, options.minWeeks || 16);
+              const maxGeos = Math.max(2, options.maxGeos || 24);
+              const fits = geoPanels.slice(0, maxGeos).map((geoPanel) => {
+                const target = geoPanel.targets?.[targetName];
+                if (!target || target.length < minWeeks || target.some((value) => !Number.isFinite(value))) return null;
+                const child = { ...geoPanel, geoPanel: null, meridianInput: { level: "national" } };
+                return { geo: geoPanel.geo, n: target.length, run: mmmBayesianRun(child, { ...cfg, enableGeoHierarchy: false }, targetName, false, {
+                  ...options,
+                  enableMediaPenaltySelection: false,
+                  enableSeasonalitySelection: false,
+                  enableBaselineSelection: false,
+                  skipTransformUncertainty: true,
+                }) };
+              }).filter((item) => item?.run);
+              if (fits.length < 2) return { enabled: false, reason: "fewer-than-two-usable-geos", candidateCount: geoPanels.length };
+              const nationalBeta = Object.fromEntries((nationalRun.channelMeta || []).map((channel) => [channel.key, Math.max(0, nationalRun.absoluteBeta?.[nationalRun.names.indexOf(`media_${channel.key}`)] || 0)]));
+              const channels = (nationalRun.channelMeta || []).map((channel) => {
+                const observations = fits.map((fit) => ({
+                  geo: fit.geo,
+                  n: fit.n,
+                  beta: Math.max(0, fit.run.absoluteBeta?.[fit.run.names.indexOf(`media_${channel.key}`)] || 0),
+                }));
+                const priorStrength = Math.max(1, options.priorStrength || 8);
+                const totalWeight = observations.reduce((sum, item) => sum + item.n, 0) + priorStrength;
+                const pooled = (observations.reduce((sum, item) => sum + item.n * item.beta, 0) + priorStrength * nationalBeta[channel.key]) / totalWeight;
+                const variance = observations.reduce((sum, item) => sum + item.n * (item.beta - pooled) ** 2, 0) / Math.max(1, observations.reduce((sum, item) => sum + item.n, 0));
+                return { key: channel.key, label: channel.label, nationalBeta: nationalBeta[channel.key], pooledBeta: pooled, betweenGeoSd: Math.sqrt(Math.max(0, variance)), observations };
+              });
+              return {
+                enabled: true,
+                method: "empirical-bayes-partial-pooling",
+                fitLevel: "geo-hierarchical-approximation",
+                sampler: "conditional-geo-fits-plus-analytic-pooling",
+                nationalFitRetained: true,
+                geoCount: fits.length,
+                omittedGeoCount: Math.max(0, geoPanels.length - fits.length),
+                priorStrength: Math.max(1, options.priorStrength || 8),
+                channels,
+                fits: fits.map((fit) => ({ geo: fit.geo, n: fit.n, r2: fit.run.posterior?.r2 ?? null, wmape: fit.run.backtest?.wmape ?? null })),
+                note: "Geo coefficients are partially pooled toward the national fit; full joint geo-NUTS is not run in the browser.",
+              };
+            }
 
             export function mmmBayesianCorrelatedGroupRefit(panel, run, targetName, options = {}) {
               if (!panel?.week?.length || !run?.channelContributions) {
@@ -6921,8 +7161,307 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               return { eligible: reasons.length === 0, reasons: [...new Set(reasons)] };
             }
 
+            function _mmmMcmcSoftplus(x) {
+              if (x > 30) return x;
+              if (x < -30) return Math.exp(x);
+              return Math.log1p(Math.exp(x));
+            }
+
+            function _mmmMcmcSigmoid(x) {
+              if (x >= 0) {
+                const e = Math.exp(-x);
+                return 1 / (1 + e);
+              }
+              const e = Math.exp(x);
+              return e / (1 + e);
+            }
+
+            function _mmmMcmcInvSoftplus(x) {
+              const v = Math.max(1e-8, Number(x) || 0);
+              return v > 30 ? v : Math.log(Math.expm1(v));
+            }
+
+            function _mmmMcmcRng(seed = 1729) {
+              let state = (Number(seed) >>> 0) || 1729;
+              let spare = null;
+              const next = () => {
+                state ^= state << 13;
+                state ^= state >>> 17;
+                state ^= state << 5;
+                return (state >>> 0) / 4294967296;
+              };
+              return {
+                uniform: () => Math.min(1 - 1e-12, Math.max(1e-12, next())),
+                normal: () => {
+                  if (spare != null) {
+                    const value = spare;
+                    spare = null;
+                    return value;
+                  }
+                  const u = next() || 1e-12;
+                  const v = next() || 1e-12;
+                  const radius = Math.sqrt(-2 * Math.log(u));
+                  const angle = 2 * Math.PI * v;
+                  spare = radius * Math.sin(angle);
+                  return radius * Math.cos(angle);
+                },
+              };
+            }
+
+            function _mmmMcmcRhat(chains) {
+              if (!chains.length || chains.some((chain) => chain.length < 4)) return null;
+              const n = Math.min(...chains.map((chain) => chain.length));
+              const trimmed = chains.map((chain) => chain.slice(0, n));
+              const means = trimmed.map((chain) => _mean(chain));
+              const grand = _mean(means);
+              const within = _mean(trimmed.map((chain, i) => _mean(chain.map((value) => (value - means[i]) ** 2))));
+              const between = n * _mean(means.map((value) => (value - grand) ** 2));
+              return within > 1e-12 ? Math.sqrt(((n - 1) * within + between) / n / within) : 1;
+            }
+
+            function _mmmMcmcEss(chain) {
+              if (!chain || chain.length < 8) return chain?.length || 0;
+              const mean = _mean(chain);
+              const variance = _mean(chain.map((value) => (value - mean) ** 2));
+              if (!(variance > 1e-12)) return chain.length;
+              let rhoSum = 0;
+              for (let lag = 1; lag < Math.min(100, chain.length - 1); lag++) {
+                const covariance = _mean(chain.slice(lag).map((value, index) => (value - mean) * (chain[index] - mean)));
+                const rho = covariance / variance;
+                if (rho <= 0) break;
+                rhoSum += rho;
+              }
+              return Math.max(1, Math.min(chain.length, chain.length / (1 + 2 * rhoSum)));
+            }
+
+            // Deterministic HMC posterior over the selected feature structure.
+            // This is deliberately separate from the analytical EB fit: the latter
+            // selects transforms/structure, while this sampler propagates coefficient
+            // and residual-scale uncertainty into weekly contribution intervals.
+            export function mmmBayesianMcmcRun(run, options = {}) {
+              if (!run || !run.posterior || !run.standardizedX?.length || !run.rawFeatureHistory?.length) return run || null;
+              const requestedChains = Math.max(1, Math.floor(options.chains ?? 1));
+              if (requestedChains > 1 && !Array.isArray(options.precomputedSamples)) {
+                const chainRuns = Array.from({ length: requestedChains }, (_, chainIndex) => mmmBayesianMcmcRun(run, {
+                  ...options,
+                  chains: 1,
+                  seed: (options.seed ?? 1729) + chainIndex * 1009,
+                }));
+                const validChains = chainRuns.filter((chain) => chain?.mcmc?.enabled && chain.mcmc.samplesBeta?.length);
+                if (!validChains.length) return { ...run, mcmc: { enabled: false, reason: "no-valid-chains", requestedChains } };
+                const betaChains = validChains.map((chain) => chain.mcmc.samplesBeta);
+                const sigmaChains = validChains.map((chain) => chain.mcmc.samplesSigma);
+                const combined = betaChains.flat().map((beta, index) => beta.concat(sigmaChains.flat()[index] ?? run.posterior.sigma));
+                const merged = mmmBayesianMcmcRun(run, {
+                  ...options,
+                  chains: 1,
+                  precomputedSamples: combined,
+                  acceptedTransitions: validChains.reduce((sum, chain) => sum + chain.mcmc.acceptedTransitions, 0),
+                  totalIterationsOverride: validChains.reduce((sum, chain) => sum + chain.mcmc.totalIterations, 0),
+                });
+                if (!merged?.mcmc?.enabled) return merged;
+                const parameterCount = betaChains[0][0]?.length || 0;
+                const rhat = Array.from({ length: parameterCount }, (_, j) => _mmmMcmcRhat(betaChains.map((chain) => chain.map((sample) => sample[j]))));
+                const ess = Array.from({ length: parameterCount }, (_, j) => _mmmMcmcEss(betaChains.flat().map((sample) => sample[j])));
+                return {
+                  ...merged,
+                  mcmc: {
+                    ...merged.mcmc,
+                    chains: validChains.length,
+                    requestedChains,
+                    chainAcceptanceRates: validChains.map((chain) => chain.mcmc.acceptanceRate),
+                    rhat,
+                    maxRhat: Math.max(...rhat.filter(Number.isFinite), 1),
+                    minEss: Math.min(...ess.filter(Number.isFinite), Infinity),
+                    multiChain: true,
+                    posteriorAggregation: "pooled-chain-draws",
+                  },
+                };
+              }
+              const X = run.standardizedX;
+              const y = run.weeks.map((week) => Number(week.actual));
+              const p = X[0]?.length || 0;
+              if (!p || y.length !== X.length) return run;
+              const names = run.names || [];
+              const media = new Set(names.map((name, index) => name.startsWith("media_") ? index + 1 : -1).filter((index) => index > 0));
+              const mean = Array.isArray(run.posterior.beta) ? run.posterior.beta.slice() : [];
+              const sd = Array.isArray(run.posterior.sd) ? run.posterior.sd.slice() : [];
+              if (mean.length !== p || sd.length !== p) return run;
+              // The analytical fit is an initial state, not a second data-informed
+              // prior. Media receives a weak half-normal center at zero; controls keep
+              // the empirical fit as a stabilizing reference when the design is large.
+              const priorCenter = mean.map((value, index) => media.has(index) ? 0 : value);
+              const priorSd = mean.map((value, index) => Math.max(1e-6, Number(sd[index]) * 8 || Math.abs(value) * 2 + 1));
+              const rng = _mmmMcmcRng(options.seed ?? 1729);
+              const burn = Math.max(50, Math.floor(options.burn ?? 200));
+              const samples = Math.max(100, Math.floor(options.samples ?? 400));
+              const thin = Math.max(1, Math.floor(options.thin ?? 1));
+              const leapfrog = Math.max(3, Math.floor(options.leapfrog ?? 6));
+              let stepSize = Math.max(1e-5, Number(options.stepSize ?? 0.02));
+              const totalIterations = burn + samples * thin;
+              const initialSigma = Math.max(1e-6, Number(run.posterior.sigma) || 1);
+              const theta = mean.map((value, index) => media.has(index) ? _mmmMcmcInvSoftplus(Math.max(1e-8, value)) : value);
+              theta.push(Math.log(initialSigma));
+              const betaFrom = (state) => state.slice(0, p).map((value, index) => media.has(index) ? _mmmMcmcSoftplus(value) : value);
+              const target = (state) => {
+                const beta = betaFrom(state);
+                const sigma = Math.exp(state[p]);
+                const residual = y.map((value, row) => value - X[row].reduce((sum, feature, j) => sum + feature * beta[j], 0));
+                const sse = residual.reduce((sum, value) => sum + value * value, 0);
+                let logp = -y.length * state[p] - sse / (2 * sigma * sigma);
+                for (let j = 0; j < p; j++) {
+                  const delta = (beta[j] - priorCenter[j]) / priorSd[j];
+                  logp -= 0.5 * delta * delta;
+                  if (media.has(j)) logp += Math.log(Math.max(1e-12, _mmmMcmcSigmoid(state[j])));
+                }
+                return { logp, beta, residual, sse };
+              };
+              const gradient = (state, evaluated = target(state)) => {
+                const sigma2 = Math.exp(2 * state[p]);
+                const gradBeta = Array(p).fill(0);
+                for (let row = 0; row < X.length; row++) {
+                  for (let j = 0; j < p; j++) gradBeta[j] += X[row][j] * evaluated.residual[row] / sigma2;
+                }
+                for (let j = 0; j < p; j++) gradBeta[j] -= (evaluated.beta[j] - priorCenter[j]) / (priorSd[j] ** 2);
+                const grad = gradBeta.map((value, j) => media.has(j)
+                  ? value * _mmmMcmcSigmoid(state[j]) + (1 - _mmmMcmcSigmoid(state[j]))
+                  : value);
+                grad.push(-y.length + evaluated.sse / sigma2);
+                return grad;
+              };
+              const collected = Array.isArray(options.precomputedSamples) ? options.precomputedSamples.slice() : [];
+              let accepted = Number(options.acceptedTransitions) || 0;
+              let adaptationAccepted = 0;
+              for (let iteration = 0; !Array.isArray(options.precomputedSamples) && iteration < totalIterations; iteration++) {
+                const proposal = theta.slice();
+                const momentum = proposal.map(() => rng.normal());
+                const initialMomentum = momentum.slice();
+                let current = target(proposal);
+                let grad = gradient(proposal, current);
+                for (let j = 0; j < proposal.length; j++) momentum[j] += 0.5 * stepSize * grad[j];
+                for (let leap = 0; leap < leapfrog; leap++) {
+                  for (let j = 0; j < proposal.length; j++) proposal[j] += stepSize * momentum[j];
+                  current = target(proposal);
+                  grad = gradient(proposal, current);
+                  if (leap !== leapfrog - 1) for (let j = 0; j < proposal.length; j++) momentum[j] += stepSize * grad[j];
+                }
+                for (let j = 0; j < proposal.length; j++) momentum[j] += 0.5 * stepSize * grad[j];
+                const proposed = target(proposal);
+                const currentHamiltonian = -target(theta).logp + initialMomentum.reduce((sum, value) => sum + value * value / 2, 0);
+                const proposedHamiltonian = -proposed.logp + momentum.reduce((sum, value) => sum + value * value / 2, 0);
+                const logAccept = Math.min(0, currentHamiltonian - proposedHamiltonian);
+                if (Math.log(rng.uniform()) < logAccept && proposal.every(Number.isFinite)) {
+                  for (let j = 0; j < theta.length; j++) theta[j] = proposal[j];
+                  accepted++;
+                  adaptationAccepted++;
+                }
+                if (iteration < burn && (iteration + 1) % 25 === 0) {
+                  const rate = adaptationAccepted / 25;
+                  stepSize *= rate < 0.55 ? 0.85 : rate > 0.85 ? 1.15 : 1;
+                  adaptationAccepted = 0;
+                }
+                if (iteration >= burn && (iteration - burn) % thin === 0) collected.push(betaFrom(theta).concat(Math.exp(theta[p])));
+              }
+              if (collected.length < 50) return { ...run, mcmc: { enabled: false, reason: "insufficient-accepted-samples" } };
+              const quantile = (values, q) => {
+                const sorted = values.slice().sort((a, b) => a - b);
+                const index = (sorted.length - 1) * q;
+                const lo = Math.floor(index), hi = Math.ceil(index);
+                return sorted[lo] + (sorted[hi] - sorted[lo]) * (index - lo);
+              };
+              const betaMean = Array(p).fill(0).map((_, j) => _mean(collected.map((sample) => sample[j])));
+              const betaSd = Array(p).fill(0).map((_, j) => Math.sqrt(_mean(collected.map((sample) => (sample[j] - betaMean[j]) ** 2))));
+              const raw = run.rawFeatureHistory;
+              const means = run.featureMeans || Array(names.length).fill(0);
+              const scales = run.featureScales || Array(names.length).fill(1);
+              const predictiveRng = _mmmMcmcRng((options.seed ?? 1729) + 7919);
+              const absoluteBeta = names.map((_, j) => betaMean[j + 1] / Math.max(1e-12, scales[j]));
+              const absoluteIntercept = betaMean[0] - absoluteBeta.reduce((sum, value, j) => sum + value * means[j], 0);
+              const groupFor = (name) => {
+                if (name === "trend" || name.startsWith("baseline_knot_") || name.startsWith("trend_dir_")) return "Trend";
+                if (/^(sin|cos)_/.test(name) || name.startsWith("season_rbf_")) return "Seasonality";
+                if (name === "lny" || name === "chuseok" || name.startsWith("d_")) return "Holidays & Events";
+                if (name.startsWith("industry_")) return "Industry Trend";
+                if (name.startsWith("media_")) return (run.channelMeta?.find((channel) => channel.key === name.slice(6))?.kind === "brand") ? "Brand" : "Performance";
+                return "Regime change";
+              };
+              const groupNames = run.groupNames || [];
+              const weeks = run.weeks.map((week, t) => {
+                const fittedDraws = collected.map((sample) => sample.slice(0, p).reduce((sum, beta, j) => sum + X[t][j] * beta, 0));
+                const predictiveDraws = fittedDraws.map((value, index) => value + collected[index][p] * predictiveRng.normal());
+                const contribDraws = Object.fromEntries(groupNames.map((group) => [group, []]));
+                collected.forEach((sample) => {
+                  const abs = names.map((_, j) => sample[j + 1] / Math.max(1e-12, scales[j]));
+                  const intercept = sample[0] - abs.reduce((sum, value, j) => sum + value * means[j], 0);
+                  const groups = Object.fromEntries(groupNames.map((group) => [group, 0]));
+                  if (groups.Trend != null) groups.Trend += intercept;
+                  names.forEach((name, j) => {
+                    const group = groupFor(name);
+                    if (groups[group] != null) groups[group] += abs[j] * raw[t][j];
+                  });
+                  Object.entries(groups).forEach(([group, value]) => contribDraws[group].push(value));
+                });
+                const contrib = Object.fromEntries(groupNames.map((group) => [group, _mean(contribDraws[group] || [0])]));
+                return {
+                  ...week,
+                  fitted: +_mean(fittedDraws).toFixed(2),
+                  residual: +(week.actual - _mean(fittedDraws)).toFixed(2),
+                  contrib,
+                  lo: +quantile(predictiveDraws, 0.05).toFixed(2),
+                  hi: +quantile(predictiveDraws, 0.95).toFixed(2),
+                };
+              });
+              const posterior = {
+                ...run.posterior,
+                beta: betaMean,
+                sd: [betaSd[0], ...betaSd.slice(1)],
+                fitted: weeks.map((week) => week.fitted),
+                resid: weeks.map((week) => week.residual),
+                sigma: _mean(collected.map((sample) => sample[p])),
+                sigma2: _mean(collected.map((sample) => sample[p] ** 2)),
+                r2: (() => {
+                  const yMean = _mean(y);
+                  const sst = y.reduce((sum, value) => sum + (value - yMean) ** 2, 0);
+                  const sse = weeks.reduce((sum, week) => sum + (week.actual - week.fitted) ** 2, 0);
+                  return sst > 0 ? 1 - sse / sst : 0;
+                })(),
+              };
+              const saturationByChannel = Object.fromEntries(Object.entries(run.saturationByChannel || {}).map(([key, effect]) => {
+                const j = names.indexOf("media_" + key) + 1;
+                const draws = collected.map((sample) => sample[j] / Math.max(1e-12, scales[j - 1]));
+                return [key, { ...effect, ln_coef: _mean(draws), ci: [quantile(draws, 0.05), quantile(draws, 0.95)], posteriorPositive: draws.filter((value) => value > 0).length / draws.length }];
+              }));
+              return {
+                ...run,
+                engine: "bayesian-mcmc",
+                methodLabel: "Deterministic HMC Bayesian MMM (selected-transform posterior)",
+                posterior,
+                weeks,
+                saturationByChannel,
+                mcmc: {
+                  enabled: true,
+                  sampler: "HMC",
+                  seed: options.seed ?? 1729,
+                  burn,
+                  samples: collected.length,
+                  thin,
+                  leapfrog,
+                  stepSize,
+                  acceptanceRate: accepted / Math.max(1, Number(options.totalIterationsOverride) || totalIterations),
+                  acceptedTransitions: accepted,
+                  totalIterations: Number(options.totalIterationsOverride) || totalIterations,
+                  samplesBeta: collected.map((sample) => sample.slice(0, p)),
+                  samplesSigma: collected.map((sample) => sample[p]),
+                  parameterCount: p + 1,
+                  transformSampling: "fixed-selected-adstock-hill-structure",
+                  mediaPrior: "weak-half-normal-zero-centered",
+                  predictiveInterval: "posterior-predictive-with-residual-noise",
+                },
+              };
+            }
+
             export function mmmBayesianWeeklyDecomp(run) {
-              if (!run || run.engine !== "bayesian") return null;
+              if (!run || !["bayesian", "bayesian-mcmc"].includes(run.engine)) return null;
               const actual = run.weeks.map((w) => w.actual);
               const resid = run.weeks.map((w) => w.residual);
               const meanActual = _mean(actual);
@@ -6962,10 +7501,10 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               };
             }
 
-            // Meridian의 post-modeling health checks 중 MCMC 전용 R-hat/trace를 제외하고,
-            // 현재 empirical-Bayes 조건부 Gaussian 근사에서 계산 가능한 항목만 제공한다.
+            // Meridian의 post-modeling health checks 중 R-hat/ESS·coverage를 제공한다.
+            // 다만 geo hierarchy·NUTS 전체 구조 샘플링은 이 브라우저 엔진의 범위 밖이다.
             export function mmmBayesianHealth(run) {
-              if (!run || run.engine !== "bayesian" || !run.weeks?.length) return null;
+              if (!run || !["bayesian", "bayesian-mcmc"].includes(run.engine) || !run.weeks?.length) return null;
               const actual = run.weeks.map((week) => week.actual);
               const fitted = run.weeks.map((week) => week.fitted);
               const residual = run.weeks.map((week) => week.residual);
@@ -7019,7 +7558,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
             }
 
             export function mmmBayesianForecast(run, panel, futureSpend, horizon, options = {}) {
-              if (!run || run.engine !== "bayesian") return null;
+              if (!run || !["bayesian", "bayesian-mcmc"].includes(run.engine)) return null;
               const H = Math.max(1, Math.min(52, horizon || 13));
               const n = run.weeks.length;
               const spendRanges = Object.fromEntries(run.channelMeta.map((ch) => {
@@ -7032,6 +7571,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               const scenarioWarnings = Object.entries(spendRanges)
                 .filter(([, range]) => range.outOfRange)
                 .map(([key, range]) => ({ key, type: "outside-observed-spend-range", ...range }));
+              const rfWarningKeys = new Set();
               run.channelMeta.forEach((ch) => {
                 const mediaIndex = run.names.indexOf("media_" + ch.key);
                 const coefficient = mediaIndex >= 0 ? run.posterior.beta[mediaIndex + 1] : null;
@@ -7045,9 +7585,20 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 (Number.isFinite(lastWeek) ? lastWeek : n) + h + 1,
               );
               const state = {};
+              const futureMediaHistory = Object.fromEntries(run.channelMeta.map((ch) => [ch.key, (panel.ch[ch.key] || []).slice()]));
+              const futureReachHistory = Object.fromEntries(run.channelMeta.map((ch) => {
+                const mapping = panel.mediaInputMap?.[ch.key];
+                return [ch.key, mapping?.type === "reach-frequency" ? (panel.reach?.[mapping.reachKey] || []).slice() : null];
+              }));
+              const futureFrequencyHistory = Object.fromEntries(run.channelMeta.map((ch) => {
+                const mapping = panel.mediaInputMap?.[ch.key];
+                return [ch.key, mapping?.type === "reach-frequency" ? (panel.frequency?.[mapping.frequencyKey] || []).slice() : null];
+              }));
               run.channelMeta.forEach((ch) => {
                 const p = run.params[ch.key];
-                state[ch.key] = mmmAdstock(panel.ch[ch.key], p.alpha).at(-1) || 0;
+                state[ch.key] = (run.meridianSpec?.enabled
+                  ? mmmMeridianAdstock(futureMediaHistory[ch.key], p.alpha, run.meridianSpec.maxLag, run.meridianSpec.adstockDecay)
+                  : mmmAdstock(panel.ch[ch.key], p.alpha)).at(-1) || 0;
               });
               const predFut = [];
               const baselineFut = [];
@@ -7118,9 +7669,34 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                   const spend = clampScenario && range
                     ? Math.min(range.max, Math.max(range.min, requestedSpend || 0))
                     : requestedSpend;
-                  state[ch.key] = Math.max(0, spend || 0) + p.alpha * state[ch.key];
+                futureMediaHistory[ch.key].push(Math.max(0, spend || 0));
+                const hasFutureRf = run.meridianSpec?.rfChannels?.includes(ch.key)
+                  && Array.isArray(options.futureReach?.[ch.key])
+                  && Array.isArray(options.futureFrequency?.[ch.key]);
+                if (hasFutureRf) {
+                  futureReachHistory[ch.key].push(Math.max(0, Number(options.futureReach[ch.key][h]) || 0));
+                  futureFrequencyHistory[ch.key].push(Math.max(0, Number(options.futureFrequency[ch.key][h]) || 0));
+                }
+                if (run.meridianSpec?.rfChannels?.includes(ch.key) && !hasFutureRf && !rfWarningKeys.has(ch.key)) {
+                  rfWarningKeys.add(ch.key);
+                  scenarioWarnings.push({ key: ch.key, type: "rf-future-input-missing", message: "Future Reach/Frequency not supplied; spend scenario used for this RF channel." });
+                }
+                const futureRaw = hasFutureRf
+                  ? { type: "reach-frequency", reach: futureReachHistory[ch.key], frequency: futureFrequencyHistory[ch.key], spend: futureMediaHistory[ch.key] }
+                  : futureMediaHistory[ch.key];
+                const meridianFeature = run.meridianSpec?.enabled
+                    ? _mmmBayesMediaTransform(futureRaw, p, {
+                      meridianMode: true,
+                      meridianMaxLag: run.meridianSpec.maxLag,
+                      meridianAdstockDecay: run.meridianSpec.adstockDecay,
+                      meridianHillBeforeAdstock: run.meridianSpec.hillBeforeAdstock,
+                    }).at(-1)
+                    : null;
+                  state[ch.key] = run.meridianSpec?.enabled
+                    ? meridianFeature
+                    : Math.max(0, spend || 0) + p.alpha * state[ch.key];
                   const j = run.names.indexOf("media_" + ch.key);
-                  rawRow[j] = mmmHill(state[ch.key], p.ec, p.slope);
+                  rawRow[j] = run.meridianSpec?.enabled ? state[ch.key] : mmmHill(state[ch.key], p.ec, p.slope);
                 });
                 const row = [1, ...rawRow.map((value, j) => (value - run.featureMeans[j]) / run.featureScales[j])];
                 const prediction = run.posterior.beta.reduce((sum, beta, j) => sum + beta * row[j], 0);

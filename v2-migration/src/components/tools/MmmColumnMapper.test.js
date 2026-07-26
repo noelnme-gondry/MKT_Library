@@ -3,6 +3,34 @@ import { autoGuessColMap, buildPanelFromColMap, colMapMissing, isOperationalDeli
 import { mmmValidate } from "@/utils/mmmMath";
 
 describe("MMM column mapping", () => {
+  it("treats GEO and Reach/Frequency as optional Meridian inputs", () => {
+    const headers = ["week", "regs", "meta_spend", "geo", "meta_reach", "meta_frequency"];
+    const rows = [
+      { week: "2025-W01", regs: "100", meta_spend: "20", geo: "KR", meta_reach: "1000", meta_frequency: "2" },
+      { week: "2025-W02", regs: "110", meta_spend: "25", geo: "KR", meta_reach: "1200", meta_frequency: "2.5" },
+    ];
+    const mapped = autoGuessColMap(headers, rows, false);
+    expect(mapped.geo.role).toBe("geo");
+    expect(mapped.meta_reach.role).toBe("reach");
+    expect(mapped.meta_frequency.role).toBe("frequency");
+    const withOptional = buildPanelFromColMap(headers, rows, mapped).panel;
+    expect(withOptional.geoMode).toBe("geo-available");
+    expect(withOptional.rfMode).toBe("rf-available");
+    expect(withOptional.meridianInput).toMatchObject({ level: "geo", reach: true, frequency: true, fitMode: "mixed-spend-rf" });
+    expect(withOptional.mediaInputMap.c_meta_spend).toMatchObject({ type: "reach-frequency", reachHeader: "meta_reach", frequencyHeader: "meta_frequency" });
+    expect(withOptional.geoPanel).toHaveLength(1);
+    expect(withOptional.geoPanel[0].targets.Regs).toEqual([100, 110]);
+
+    const withoutOptionalHeaders = ["week", "regs", "meta_spend"];
+    const withoutOptionalRows = rows.map(({ week, regs, meta_spend }) => ({ week, regs, meta_spend }));
+    const withoutOptionalMap = autoGuessColMap(withoutOptionalHeaders, withoutOptionalRows, false);
+    const fallback = buildPanelFromColMap(withoutOptionalHeaders, withoutOptionalRows, withoutOptionalMap).panel;
+    expect(colMapMissing(withoutOptionalHeaders, withoutOptionalMap)).toEqual([]);
+    expect(fallback.geoMode).toBe("national-fallback");
+    expect(fallback.rfMode).toBe("spend-only");
+    expect(fallback.meridianInput).toMatchObject({ level: "national", reach: false, frequency: false });
+  });
+
   it("prioritizes explicit spend/cost names over embedded target words", () => {
     const headers = ["date", "signup_spend", "revenue_campaign_cost", "traffic_spend", "revenue"];
     const rows = [{ date: "2025-01-06", signup_spend: "100", revenue_campaign_cost: "200", traffic_spend: "300", revenue: "500" }];
