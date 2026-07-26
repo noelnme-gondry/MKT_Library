@@ -4,7 +4,7 @@
 // CsvUploader (efficiency·creative·experiment groups) and the self-hosted
 // dropzones of 5-18 (response) and 5-20 (aha).
 //
-// buildDemoCsv(group) → { raw, headers, mapping, fileName }
+// buildDemoCsv(group, locale) → { raw, headers, mapping, fileName }
 //   - raw:     array of row objects keyed by header (numbers for metrics, strings for dims)
 //   - headers: header order
 //   - mapping: header → standard-field key ("__ignore__" to skip). Empty {} for
@@ -771,7 +771,24 @@ const BUILDERS = {
 };
 
 // group name (TOOL_GROUP value) → demo csv. Falls back to efficiency.
-export function buildDemoCsv(group) {
+const DEMO_EN_VALUE_MAP = {
+  "할인혜택": "Discount offer", "사회적증거": "Social proof", "기능강조": "Feature focus", "감성스토리": "Emotional story",
+  "제작영상": "Produced video", "정적이미지": "Static image", "플레이어블": "Playable", "문제제기": "Problem",
+  "호기심": "Curiosity", "혜택제시": "Benefit", "지금설치": "Install now", "무료체험": "Free trial", "한정할인": "Limited offer",
+  "얼굴클로즈업": "Face close-up", "텍스트훅": "Text hook", "제품시연": "Product demo", "악화 추세 없음": "No worsening trend",
+  "추세 외삽": "Trend extrapolation", "일": "d", "밖": "outside",
+};
+
+function localizeDemoCsv(data, locale) {
+  if (locale !== "en" || !data?.raw) return data;
+  const replaceValue = (value) => {
+    if (typeof value !== "string") return value;
+    return Object.entries(DEMO_EN_VALUE_MAP).reduce((next, [ko, en]) => next.replaceAll(ko, en), value);
+  };
+  return { ...data, raw: data.raw.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, replaceValue(value)]))) };
+}
+
+export function buildDemoCsv(group, locale = "ko") {
   const fn = BUILDERS[group] || BUILDERS.efficiency;
-  return fn();
+  return localizeDemoCsv(fn(), locale);
 }

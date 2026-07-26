@@ -75,6 +75,14 @@ describe("VizTab render smoke", () => {
     expect(screen.getByText("PVM으로 원인 보기")).toBeTruthy();
   });
 
+  it("keeps the dashboard visualization surface free of Korean UI copy in English", () => {
+    seedWithData();
+    render(<VizTab locale="en" />);
+    const koreanCopy = Array.from(new Set(document.body.textContent.match(/[가-힣]+/g) || []));
+    expect(koreanCopy, koreanCopy.join(", ")).toEqual([]);
+    expect(screen.getByText("Total Cost trend")).toBeTruthy();
+  });
+
   it("keeps the ready-made charts and renders a custom scorecard", () => {
     seedWithData();
     useAppStore.setState({

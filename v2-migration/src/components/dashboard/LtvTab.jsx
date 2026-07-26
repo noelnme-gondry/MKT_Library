@@ -647,6 +647,7 @@ export default function LtvTab({ locale = "ko" } = {}) {
       <MetricConfigPanel
         open={ltvCfgOpen}
         onClose={() => setLtvCfgOpen(false)}
+        locale={locale}
         title={T.modalTitle}
         items={ltvCols.map((c) => ({ key: c.k, label: c.label }))}
         config={ltvTableCfg}

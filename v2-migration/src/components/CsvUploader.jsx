@@ -18,8 +18,29 @@ import { trackProductEvent } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
 import { ANALYSIS_CONTRACTS, evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
 
-// 셸 카피만 번역(드롭존·배너·버튼·미리보기 텍스트). STANDARD_FIELDS 필드 라벨(비용·노출수
-// 등, csvConstants.js 210여 개)은 별도 백로그 — 공수가 자릿수 다름(§plan).
+const STANDARD_FIELD_EN_LABELS = {
+  date: "Date", platform: "Platform (OS)", channel: "Channel / media", campaign_name: "Campaign name",
+  country: "Country", source: "Source (paid / organic)", cost: "Cost", impressions: "Impressions",
+  clicks: "Clicks", installs: "Installs", actions: "Actions / signups",
+};
+
+function localizedStandardFieldLabel(key, locale) {
+  if (locale !== "en") return STANDARD_FIELDS[key]?.label || key;
+  if (STANDARD_FIELD_EN_LABELS[key]) return STANDARD_FIELD_EN_LABELS[key];
+  const match = String(key || "").match(/^(revenue|pu|ret)_d(\d+)$/);
+  if (match) {
+    const prefix = { revenue: "Revenue", pu: "Purchases", ret: "Retention" }[match[1]];
+    return `${prefix} D${match[2]}`;
+  }
+  return String(key || "").replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function localizedFieldGroupLabel(group, locale) {
+  if (locale !== "en") return group;
+  return ({ "디멘션": "Dimensions", "단일 지표": "Single metrics" })[group]
+    || String(group || "").replaceAll("코호트", "Cohort ").replaceAll("지표", "metrics");
+}
+
 const CSV_COPY = {
   ko: {
     emptyCsv: "파일이 비어 있거나 올바르지 않습니다.",
@@ -430,7 +451,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   const handleLoadDemo = () => {
     setErrorMsg("");
     const group = TOOL_GROUP[toolId] || "efficiency";
-    const demo = buildDemoCsv(group);
+    const demo = buildDemoCsv(group, locale);
     setCsvData({ ...demo, canonicalData: buildCanonicalDataset(demo) });
     setGroupAnalyzed(toolId);
     setPreviewOpen(false);
@@ -481,9 +502,9 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     });
 
     const labels = reqs.map((r) => {
-      if (typeof r === "string") return STANDARD_FIELDS[r]?.label || r;
+      if (typeof r === "string") return localizedStandardFieldLabel(r, locale);
       if (r.oneOf)
-        return T.oneOfSuffix(r.oneOf.map((k) => STANDARD_FIELDS[k]?.label || k).join(" / "));
+        return T.oneOfSuffix(r.oneOf.map((k) => localizedStandardFieldLabel(k, locale)).join(" / "));
       return "?";
     });
 
@@ -498,19 +519,21 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     const groups = {};
     for (const [key, def] of Object.entries(STANDARD_FIELDS)) {
       if (allowed.size > 0 && !allowed.has(key)) continue;
-      if (!groups[def.group]) groups[def.group] = [];
-      groups[def.group].push({ key, label: def.label });
+      const group = localizedFieldGroupLabel(def.group, locale);
+      if (!groups[group]) groups[group] = [];
+      groups[group].push({ key, label: localizedStandardFieldLabel(key, locale) });
     }
     // Fallback if empty
     if (Object.keys(groups).length === 0) {
       for (const [key, def] of Object.entries(STANDARD_FIELDS)) {
-        if (!groups[def.group]) groups[def.group] = [];
-        groups[def.group].push({ key, label: def.label });
+        const group = localizedFieldGroupLabel(def.group, locale);
+        if (!groups[group]) groups[group] = [];
+        groups[group].push({ key, label: localizedStandardFieldLabel(key, locale) });
       }
     }
 
     return { missing: missingKeys, reqLabels: labels, fieldGroups: groups, allowKeys: allowed };
-  }, [toolId, csvData.mapping, T]);
+  }, [toolId, csvData.mapping, T, locale]);
 
   // --- Data preview (#6): first ~8 rows × MAPPED columns so the user maps with
   // context. Ignored columns are dropped; each header shows its standard-field
@@ -783,7 +806,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
                   <option value="__ignore__">{T.ignoreOption}</option>
                   {outOfScope && (
                     <option value={sel}>
-                      {STANDARD_FIELDS[sel].label}{T.outOfScopeSuffix}
+                      {localizedStandardFieldLabel(sel, locale)}{T.outOfScopeSuffix}
                     </option>
                   )}
                   {Object.entries(fieldGroups).map(([gr, fs]) => (
@@ -835,7 +858,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
                   <tr>
                     {preview.cols.map((h) => {
                       const sel = csvData.mapping[h];
-                      const stdLabel = sel && sel !== "__ignore__" ? STANDARD_FIELDS[sel]?.label : null;
+                      const stdLabel = sel && sel !== "__ignore__" ? localizedStandardFieldLabel(sel, locale) : null;
                       return (
                         <th key={h} title={stdLabel ? `${h} → ${stdLabel}` : h} style={{ whiteSpace: "nowrap" }}>
                           {h}

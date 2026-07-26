@@ -368,6 +368,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
       <MetricConfigPanel
         open={cohortCfgOpen}
         onClose={() => setCohortCfgOpen(false)}
+        locale={locale}
         title={tr("전체 리텐션 곡선 표 — 컬럼 편집", "Overall retention curve table — Edit columns")}
         items={cohortCols.map((col) => ({ key: col.k, label: col.label }))}
         config={cohortTableCfg}

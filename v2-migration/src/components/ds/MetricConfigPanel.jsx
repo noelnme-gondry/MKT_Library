@@ -15,8 +15,19 @@ import { materializeOrder } from "@/utils/metrics/metricView";
 //
 // props: open, onClose, title, items[{key,label,desc?}], config{hidden,order}, onSave(next)
 export default function MetricConfigPanel({
-  open, onClose, title = "편집", items = [], config, onSave,
+  open, onClose, title, items = [], config, onSave, locale = "ko",
 }) {
+  const isEn = locale === "en";
+  const T = isEn ? {
+    title: "Edit display", close: "Close", hint: "Click a tag to show/hide · drag (⠿) to reorder · changes apply when you click Apply.",
+    hidden: "Hidden items", restore: "click the tag to show again", shown: "Shown — click to hide", hiddenTag: "Hidden — click to show",
+    reset: "Show all · default order", saved: "🔒 Saved in this browser only", cancel: "Cancel", apply: "Apply",
+  } : {
+    title: "편집", close: "닫기", hint: "태그를 눌러 표시/숨김 · 드래그(⠿)로 순서 변경 · 적용을 눌러야 반영됩니다.",
+    hidden: "숨긴 항목", restore: "태그를 눌러 다시 표시", shown: "표시 중 — 누르면 숨김", hiddenTag: "숨김 — 누르면 표시",
+    reset: "전체 표시·기본 순서", saved: "🔒 이 브라우저에만 저장", cancel: "취소", apply: "적용",
+  };
+  const panelTitle = title || T.title;
   const [draft, setDraft] = useState({ hidden: [], order: [] });
   const [dragKey, setDragKey] = useState(null);
   const dragKeyRef = useRef(null);   // 포인터 이동 핸들러가 읽는 현재 드래그 키
@@ -120,7 +131,7 @@ export default function MetricConfigPanel({
 
   const modal = (
     <div
-      role="dialog" aria-modal="true" aria-label={title}
+      role="dialog" aria-modal="true" aria-label={panelTitle}
       style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)" }}
       onClick={onClose}
     >
@@ -129,11 +140,11 @@ export default function MetricConfigPanel({
         style={{ width: "min(460px, 93vw)", maxHeight: "84vh", display: "flex", flexDirection: "column", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px 2px" }}>
-          <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>{title}</h3>
-          <button className="ab-pill" onClick={onClose} aria-label="닫기" style={{ padding: "2px 8px" }}>✕</button>
+          <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>{panelTitle}</h3>
+          <button className="ab-pill" onClick={onClose} aria-label={T.close} style={{ padding: "2px 8px" }}>✕</button>
         </div>
         <p className="muted" style={{ fontSize: "11px", margin: "0 18px 10px" }}>
-          태그를 눌러 표시/숨김 · 드래그(⠿)로 순서 변경 · <strong>적용</strong>을 눌러야 반영됩니다.
+          {T.hint}
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "5px", padding: "0 18px", overflow: "auto" }}>
@@ -153,20 +164,20 @@ export default function MetricConfigPanel({
                   onPointerMove={onHandleMove}
                   onPointerUp={onHandleUp}
                   onPointerCancel={onHandleUp}
-                  title="드래그해서 순서 변경"
+                  title={isEn ? "Drag to reorder" : "드래그해서 순서 변경"}
                   style={{ color: "var(--text-muted)", cursor: "grab", fontSize: "16px", lineHeight: 1, flex: "none", padding: "2px 4px", touchAction: "none", userSelect: "none" }}
                 >⠿</span>
                 <span style={{ flex: 1, minWidth: 0, fontSize: "13px", color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {it.label}
                   {it.desc ? <span className="muted" style={{ fontSize: "11px", marginLeft: "6px" }}>{it.desc}</span> : null}
                 </span>
-                <button style={tagBtn(true)} onClick={() => toggle(key)} title="표시 중 — 누르면 숨김">표시</button>
+                <button style={tagBtn(true)} onClick={() => toggle(key)} title={T.shown}>{isEn ? "Shown" : "표시"}</button>
               </div>
             );
           })}
 
           {offKeys.length > 0 && (
-            <div className="muted" style={{ fontSize: "10.5px", margin: "8px 2px 2px" }}>숨긴 항목 ({offKeys.length}) — 태그를 눌러 다시 표시</div>
+            <div className="muted" style={{ fontSize: "10.5px", margin: "8px 2px 2px" }}>{T.hidden} ({offKeys.length}) — {T.restore}</div>
           )}
           {offKeys.map((key) => {
             const it = byKey.get(key);
@@ -177,17 +188,17 @@ export default function MetricConfigPanel({
                 <span style={{ flex: 1, minWidth: 0, fontSize: "13px", color: "var(--text-muted)", textDecoration: "line-through", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {it.label}
                 </span>
-                <button style={tagBtn(false)} onClick={() => toggle(key)} title="숨김 — 누르면 표시">숨김</button>
+                <button style={tagBtn(false)} onClick={() => toggle(key)} title={T.hiddenTag}>{isEn ? "Hidden" : "숨김"}</button>
               </div>
             );
           })}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "14px 18px", borderTop: "1px solid var(--border)", marginTop: "12px" }}>
-          <button className="ab-pill" onClick={resetDraft}>전체 표시·기본 순서</button>
-          <span className="muted" style={{ fontSize: "10px", flex: 1, lineHeight: 1.3 }}>🔒 이 브라우저에만 저장</span>
-          <button className="ab-pill" onClick={onClose}>취소</button>
-          <button className="ab-pill active" onClick={apply} style={{ fontWeight: 700 }}>적용</button>
+          <button className="ab-pill" onClick={resetDraft}>{T.reset}</button>
+          <span className="muted" style={{ fontSize: "10px", flex: 1, lineHeight: 1.3 }}>{T.saved}</span>
+          <button className="ab-pill" onClick={onClose}>{T.cancel}</button>
+          <button className="ab-pill active" onClick={apply} style={{ fontWeight: 700 }}>{T.apply}</button>
         </div>
       </div>
     </div>

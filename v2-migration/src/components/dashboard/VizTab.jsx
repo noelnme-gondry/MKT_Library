@@ -393,17 +393,33 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
 
   const metricTrend = (metric) => {
     const values = dailyKpis.map((d) => metricValue(metric, d.kpi)).filter((v) => Number.isFinite(v));
-    if (values.length < 4) return { change: null, status: "— 데이터 필요", note: "기간 비교를 위한 날짜 데이터가 부족합니다." };
+    if (values.length < 4) return {
+      change: null,
+      statusKey: "missing",
+      status: locale === "en" ? "— Data needed" : "— 데이터 필요",
+      note: locale === "en" ? "Not enough dated data for a period comparison." : "기간 비교를 위한 날짜 데이터가 부족합니다.",
+    };
     const split = Math.floor(values.length / 2);
     const before = values.slice(0, split).reduce((sum, v) => sum + v, 0) / split;
     const after = values.slice(split).reduce((sum, v) => sum + v, 0) / (values.length - split);
     const change = before ? (after - before) / Math.abs(before) : null;
-    if (change == null || !Number.isFinite(change)) return { change: null, status: "— 데이터 필요", note: "비교 기준값이 없습니다." };
+    if (change == null || !Number.isFinite(change)) return {
+      change: null,
+      statusKey: "missing",
+      status: locale === "en" ? "— Data needed" : "— 데이터 필요",
+      note: locale === "en" ? "No comparison baseline is available." : "비교 기준값이 없습니다.",
+    };
     const higherIsBetter = ["outcome", "roas", "ctr", "retention"].includes(metric);
     const direction = higherIsBetter ? change : -change;
-    const status = Math.abs(change) < 0.03 ? "✓ 안정" : direction > 0 ? "↗ 개선" : "▲ 주의";
-    const directionText = change > 0 ? "상승" : "하락";
-    return { change, status, note: `최근 ${dailyKpis.length}일 ${Math.abs(change * 100).toFixed(1)}% ${directionText} 추세` };
+    const statusKey = Math.abs(change) < 0.03 ? "stable" : direction > 0 ? "improving" : "warning";
+    const status = locale === "en"
+      ? ({ stable: "✓ Stable", improving: "↗ Improving", warning: "▲ Attention" })[statusKey]
+      : ({ stable: "✓ 안정", improving: "↗ 개선", warning: "▲ 주의" })[statusKey];
+    const directionText = locale === "en" ? (change > 0 ? "up" : "down") : (change > 0 ? "상승" : "하락");
+    const note = locale === "en"
+      ? `${dailyKpis.length}-day trend: ${Math.abs(change * 100).toFixed(1)}% ${directionText}`
+      : `최근 ${dailyKpis.length}일 ${Math.abs(change * 100).toFixed(1)}% ${directionText} 추세`;
+    return { change, statusKey, status, note };
   };
 
   const recommendedMetric = useMemo(() => {
@@ -438,7 +454,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const customChartMetas = customChartDefs.map((def) => ({
     k: def.id, custom: true, full: false,
     title: def.name,
-    sub: `${CHART_TYPES.find((t) => t.id === def.type)?.label || def.type} · ${def.type === "scorecard" ? metricLabelOf(def.metric) : `${dimLabelOf(def.dim)}별 ${metricLabelOf(def.metric)}`}`,
+    sub: `${locale === "en" ? ({ bar: "Bar", line: "Line", scorecard: "Scorecard" })[def.type] || def.type : CHART_TYPES.find((t) => t.id === def.type)?.label || def.type} · ${def.type === "scorecard" ? metricLabelOf(def.metric) : locale === "en" ? `${dimLabelOf(def.dim)} · ${metricLabelOf(def.metric)}` : `${dimLabelOf(def.dim)}별 ${metricLabelOf(def.metric)}`}`,
   }));
   // 기본 차트는 즉시 제공하고, 기본·커스텀 모두 같은 편집 패널에서 표시/숨김·순서를
   // 관리한다. 위 KPI 탐색 차트와 설정 scope는 분리되어 서로 덮어쓰지 않는다.
@@ -765,7 +781,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       : "0,15 100,15";
     const lastY = sparkValues.length ? sparkY(sparkValues[sparkValues.length - 1]) : 15;
     const isSelected = activeMetric === key;
-    const tone = unavailable ? "neutral" : trend.status === "▲ 주의" ? "warning" : trend.status === "↗ 개선" ? "improving" : "stable";
+    const tone = unavailable ? "neutral" : trend.statusKey === "warning" ? "warning" : trend.statusKey === "improving" ? "improving" : "stable";
     return (
       <button key={key} type="button" className={`kpi-card kpi-card--explorer${isSelected ? " is-selected" : ""}`} aria-pressed={isSelected} onClick={() => setSelectedMetric(key)}>
         <span className="kpi-card__select-state">{isSelected ? (locale === "en" ? "Selected" : "선택됨") : ""}</span>
@@ -776,8 +792,8 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
           <polyline points={points} />
           <circle cx="100" cy={lastY} r="2.5" />
         </svg>
-        <span className={`delta ${trend.status === "▲ 주의" ? "down" : ""}`}>{unavailable ? "— 데이터 필요" : trend.status}</span>
-        <span className="kpi-card__note">{unavailable ? "ret_dN 컬럼을 매핑하세요" : trend.note}</span>
+        <span className={`delta ${trend.statusKey === "warning" ? "down" : ""}`}>{unavailable ? (locale === "en" ? "— Data needed" : "— 데이터 필요") : trend.status}</span>
+        <span className="kpi-card__note">{unavailable ? (locale === "en" ? "Map a ret_dN column" : "ret_dN 컬럼을 매핑하세요") : trend.note}</span>
       </button>
     );
   };
@@ -876,13 +892,13 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
     locale,
   );
   const actionButtons = activeMetric === "acq"
-    ? [["PVM으로 원인 보기", "5-21"], ["포화도 확인", "5-22"], ["예산 배분 시뮬레이션", "5-3"]]
+    ? [[locale === "en" ? "View drivers in PVM" : "PVM으로 원인 보기", "5-21"], [locale === "en" ? "Check saturation" : "포화도 확인", "5-22"], [locale === "en" ? "Simulate budget allocation" : "예산 배분 시뮬레이션", "5-3"]]
     : activeMetric === "outcome"
-      ? [["채널별 변화 보기", "5-21"]]
+      ? [[locale === "en" ? "View channel changes" : "채널별 변화 보기", "5-21"]]
       : activeMetric === "roas"
-        ? [["LTV & ROAS 보기", "5-2"], ["예산 배분", "5-3"]]
+        ? [[locale === "en" ? "View LTV & ROAS" : "LTV & ROAS 보기", "5-2"], [locale === "en" ? "Allocate budget" : "예산 배분", "5-3"]]
         : activeMetric === "retention"
-          ? [["코호트 상세 보기", "5-2"]]
+          ? [[locale === "en" ? "View cohort details" : "코호트 상세 보기", "5-2"]]
           : [];
 
   return (
@@ -954,21 +970,25 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
           <span className="dashboard-explorer__status">{activeTrend.status}</span>
         </div>
         {isCustomActive ? (
-          <div className="dashboard-explorer__empty">커스텀 KPI는 현재 합계값 계산만 지원합니다. 날짜별 같은 식을 재계산하는 어댑터를 검증한 뒤 추이 차트에 추가할 수 있습니다.</div>
+          <div className="dashboard-explorer__empty">{locale === "en" ? "Custom KPIs currently support aggregate values only. A date-level adapter will be added after the same formula is validated for trend calculations." : "커스텀 KPI는 현재 합계값 계산만 지원합니다. 날짜별 같은 식을 재계산하는 어댑터를 검증한 뒤 추이 차트에 추가할 수 있습니다."}</div>
         ) : (
           <>
             <div className="chart-canvas-wrap dashboard-explorer__canvas"><canvas ref={detailCanvasRef}></canvas></div>
             <p className="dashboard-explorer__interpretation">
               {activeTrend.change == null
-                ? "기간 비교를 위한 날짜 데이터가 부족합니다."
+                ? (locale === "en" ? "Not enough dated data for a period comparison." : "기간 비교를 위한 날짜 데이터가 부족합니다.")
                 : activeMetric === "retention"
-                  ? `최근 ${dailyKpis.length}일 ${activeMetricLabel}가 ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "상승" : "하락"}했습니다. D0는 100%이며, D7·D14는 코호트 규모로 가중한 잔존율입니다.`
-                  : `최근 ${dailyKpis.length}일 ${activeMetricLabel}가 ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "상승" : "하락"}했습니다. 채널별 선은 관찰값이며, 원인 판단은 PVM 분석에서 확인하세요.`}
+                  ? locale === "en"
+                    ? `${activeMetricLabel} is ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "higher" : "lower"} over the last ${dailyKpis.length} days. D0 is 100%; D7 and D14 retention are weighted by cohort size.`
+                    : `최근 ${dailyKpis.length}일 ${activeMetricLabel}가 ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "상승" : "하락"}했습니다. D0는 100%이며, D7·D14는 코호트 규모로 가중한 잔존율입니다.`
+                  : locale === "en"
+                    ? `${activeMetricLabel} is ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "higher" : "lower"} over the last ${dailyKpis.length} days. Channel lines are observations; use PVM to assess drivers.`
+                    : `최근 ${dailyKpis.length}일 ${activeMetricLabel}가 ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "상승" : "하락"}했습니다. 채널별 선은 관찰값이며, 원인 판단은 PVM 분석에서 확인하세요.`}
             </p>
           </>
         )}
         <div className="dashboard-explorer__actions">
-          {actionButtons.length ? actionButtons.map(([label, id]) => <button key={id} type="button" className="ab-pill" onClick={() => goToTool(id)}>{label}</button>) : <span className="muted">{activeMetric === "cost" || activeMetric === "ctr" ? "원인 모델이 없는 지표입니다. 채널별 관찰값만 표시합니다." : "데이터 매핑을 확인하세요."}</span>}
+          {actionButtons.length ? actionButtons.map(([label, id]) => <button key={id} type="button" className="ab-pill" onClick={() => goToTool(id)}>{label}</button>) : <span className="muted">{activeMetric === "cost" || activeMetric === "ctr" ? (locale === "en" ? "This metric has no driver model. Showing channel observations only." : "원인 모델이 없는 지표입니다. 채널별 관찰값만 표시합니다.") : (locale === "en" ? "Check your data mapping." : "데이터 매핑을 확인하세요.")}</span>}
         </div>
       </section>
 
@@ -1013,6 +1033,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       <CustomMetricBuilder
         open={builderOpen}
         onClose={() => setBuilderOpen(false)}
+        locale={locale}
         fields={builderFields}
         agg={agg}
         existing={customMetrics || []}
@@ -1023,6 +1044,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       <MetricConfigPanel
         open={chartCfgOpen}
         onClose={() => setChartCfgOpen(false)}
+        locale={locale}
         title={T.chartEditPanelTitle}
         items={[...chartMeta, ...customChartMetas].map((c) => ({ key: c.k, label: c.title }))}
         config={chartCfg}
@@ -1031,6 +1053,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       <CustomChartBuilder
         open={chartBuilderOpen}
         onClose={() => setChartBuilderOpen(false)}
+        locale={locale}
         dims={availDims}
         metrics={metricOptions}
         existing={customChartDefs}

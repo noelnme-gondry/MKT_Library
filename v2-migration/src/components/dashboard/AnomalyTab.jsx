@@ -309,6 +309,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
       <MetricConfigPanel
         open={anomalyCfgOpen}
         onClose={() => setAnomalyCfgOpen(false)}
+        locale={locale}
         title={tr("이상탐지 표 — 컬럼 편집", "Anomaly detection table — Edit columns")}
         items={anomalyCols.map((col) => ({ key: col.k, label: col.label }))}
         config={anomalyTableCfg}

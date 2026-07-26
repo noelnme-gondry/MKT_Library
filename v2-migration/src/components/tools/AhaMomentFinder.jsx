@@ -439,7 +439,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const [demoPending, setDemoPending] = useState(false);
   const handleLoadDemo = () => {
     setDemoPending(true);
-    setCsvData(buildDemoCsv(C.demoGroup));
+    setCsvData(buildDemoCsv(C.demoGroup, locale));
   };
   const resetCsv = () => setCsvData({ raw: [], headers: [], mapping: {}, fileName: "" });
   const [minSupport, setMinSupport] = useState(30);

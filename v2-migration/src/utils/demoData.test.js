@@ -40,6 +40,13 @@ describe("demo sanity", () => {
     expect(statuses.size).toBeGreaterThanOrEqual(3);
   });
 
+  it("uses English categorical values for English demo surfaces", () => {
+    const d = buildDemoCsv("creative", "en");
+    expect(d.raw.some((row) => String(row.message_angle).includes("할인혜택"))).toBe(false);
+    expect(d.raw.some((row) => String(row.format).includes("플레이어블"))).toBe(false);
+    expect(d.raw.some((row) => String(row.message_angle).includes("Discount offer"))).toBe(true);
+  });
+
   it("efficiency: rows + funnel + saturation signal", () => {
     const d = buildDemoCsv("efficiency");
     expect(d.raw.length).toBeGreaterThan(300);

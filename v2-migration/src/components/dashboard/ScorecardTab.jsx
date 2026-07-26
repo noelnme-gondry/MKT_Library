@@ -392,6 +392,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
       <CustomMetricBuilder
         open={builderOpen}
         onClose={() => setBuilderOpen(false)}
+        locale={locale}
         fields={builderFields}
         agg={recent}
         existing={customMetrics || []}

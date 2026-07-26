@@ -2872,7 +2872,7 @@ export default function MarketingResponse({ locale = "ko" }) {
   };
   const handleLoadDemo = () => {
     demoPending.current = true;
-    setCsvData(buildDemoCsv("response"));
+    setCsvData(buildDemoCsv("response", locale));
   };
   const handleLoadPriorDemo = () => {
     const demo = buildMmmPriorDemo();
@@ -3734,7 +3734,13 @@ export default function MarketingResponse({ locale = "ko" }) {
           ...(segmentSel?.values || []).map((value) => value.value),
         ].map((value) => String(value).trim().toLowerCase());
         if (!mappedPlatforms.includes("android") || !mappedPlatforms.includes("ios")) {
-          return { isAdditiveTotal: true, components: [], reason: "Android와 iOS가 각각 매핑되어야 Total 합산 예측을 만들 수 있습니다." };
+          return {
+            isAdditiveTotal: true,
+            components: [],
+            reason: locale === "en"
+              ? "Android and iOS must both be mapped to create an additive Total forecast."
+              : "Android와 iOS가 각각 매핑되어야 Total 합산 예측을 만들 수 있습니다.",
+          };
         }
         const components = ["android", "ios"].map((platform) =>
           buildOsForecastComponent(csvData.headers, csvData.raw, mmmColMap, platform, target, locale, mmmWeekStart),
@@ -5226,7 +5232,10 @@ export default function MarketingResponse({ locale = "ko" }) {
               : tx("최근 12주 평균 지출", "Last-12-week avg. spend");
             const spendLabel = (amount) => {
               const displayAmount = convAmt(amount);
-              if (displayCurrency === "KRW") return `${fmtCompact(Math.round(displayAmount))}원`;
+              if (displayCurrency === "KRW") {
+                if (locale === "en") return `₩${Math.round(displayAmount).toLocaleString("en-US")}`;
+                return `${fmtCompact(Math.round(displayAmount))}원`;
+              }
               return Math.abs(displayAmount) >= 1000
                 ? `$${(displayAmount / 1000).toFixed(1)}k`
                 : `$${displayAmount.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
