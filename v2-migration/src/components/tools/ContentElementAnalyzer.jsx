@@ -17,6 +17,7 @@ import { CHART_THEME } from "@/utils/chartUtils";
 import { buildDemoCsv } from "@/utils/demoData";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
+import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import { ELEMENT_COPY as C } from "@/utils/contentDomain";
 import { trackProductEvent } from "@/lib/analytics";
 
@@ -192,6 +193,7 @@ function downloadCoefCsv(rows) {
 
 export default function ContentElementAnalyzer({ locale = "ko" }) {
   const T = EA_COPY[locale] || EA_COPY.ko;
+  const tr = (ko, en) => (locale === "en" ? en : ko);
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
   const demoDisabled = useAppStore((s) => s.demoDisabled);
@@ -550,6 +552,23 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                 <p style={{ margin: ".25rem 0 0" }} dangerouslySetInnerHTML={{ __html: T.causationBody }} />
               </div>
             </div>
+            <AnalysisDetails
+              locale={locale}
+              statusLabel={topSig ? tr("유의 연관 후보", "Significant association candidate") : tr("판정 보류", "Abstain")}
+              statusTone={topSig ? "neutral" : "warning"}
+              metric={tr("요소 회귀계수·HC3 CI", "Element coefficient · HC3 CI")}
+              unit={tr("성과 원 단위", "Outcome units")}
+              meaning={tr("콘텐츠 요소와 성과의 관측 연관이며 인과효과가 아닙니다.", "Observed association between content elements and the outcome; not a causal effect.")}
+              sampleSize={{ value: fit.n, label: tr("유효 행", "Valid rows"), detail: `${fit.k} ${tr("개 요소", "features")} · ${fit.dropped.length} ${tr("개 제외", "dropped")}` }}
+              scope={tr("선택한 outcome·요소 매핑", "Selected outcome and feature mapping")}
+              method="WLS/OLS + HC3 + Benjamini-Hochberg"
+              version="content-elements-v1"
+              metricDefinition={tr("BH 보정 p<0.05를 유의 연관으로 표시하고 95% HC3 구간을 함께 표시합니다.", "BH-adjusted p<0.05 marks an association candidate; pointwise HC3 95% intervals are shown.")}
+              warnings={[
+                ...(fit.dropped.length ? [tr("분산 0·완전 공선·고레버리지 요소는 추정에서 제외됐습니다.", "Zero-variance, perfectly collinear, or high-leverage features were excluded.")] : []),
+                tr("희소 요소와 플랫폼 선택 편향은 불확실성을 키웁니다. 실험으로 확인하세요.", "Sparse elements and platform selection bias increase uncertainty. Confirm with an experiment."),
+              ]}
+            />
           </section>
 
           {/* ── §1 요소별 기여도 forest plot ── */}

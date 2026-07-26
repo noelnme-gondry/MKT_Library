@@ -8,6 +8,10 @@ import CsvUploader from "@/components/CsvUploader";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import ToolPageShell from "@/components/ToolPageShell";
+import ResultActionCard from "@/components/ds/ResultActionCard";
+import AnalysisDetails from "@/components/ds/AnalysisDetails";
+import DownloadHub from "@/components/ds/DownloadHub";
+import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { showToast } from "@/utils/toast";
 import {
@@ -2046,34 +2050,59 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
       {/* 결론·액션 카드 */}
       {verdict && (
-        <div
-          className={`alloc-verdict-card ${verdict.tone}`}
-          style={{
-            background: "var(--bg-1)",
-            border: "1px solid var(--border)",
-            borderLeft: `3px solid ${verdict.tone === "good" ? "#5ad19a" : verdict.tone === "bad" ? "#f0917e" : "var(--primary, #adc6ff)"}`,
-            borderRadius: "var(--radius)",
-            padding: "14px 16px",
-            marginBottom: "1rem",
-          }}
-        >
-          <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "6px" }}>📌 {tr("결론 — 이 예산으로 무엇을 할까", "Conclusion — what to do with this budget")}</div>
-          <div style={{ fontSize: "13px", lineHeight: 1.6, color: "var(--text-secondary)" }}>{verdict.text}</div>
-          {verdict.acts.length > 0 && (
-            <ul style={{ margin: "8px 0 0", paddingLeft: "18px", fontSize: "13px", lineHeight: 1.6 }}>
-              {verdict.acts.map((a, i) => (
-                <li key={i} style={{ color: "var(--text-secondary)" }}>{a}</li>
-              ))}
-            </ul>
+        <ResultActionCard
+          locale={locale}
+          tone={verdict.tone}
+          title={tr("결론 — 이 예산으로 무엇을 할까", "Conclusion — what to do with this budget")}
+          headline={verdict.text}
+          download={(
+            <DownloadHub
+              toolId="5-3"
+              locale={locale}
+              label={tr("실행 정보", "Run details")}
+              manifest={buildResultManifest({
+                toolId: "5-3",
+                mode: allocMode === "c" ? "absolute-cpr" : "marginal-utility-greedy",
+                source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+                inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
+                filter: { recentDays, budgetPeriod, extrapolateMode, effectiveMetric },
+                grain: allocMode === "b" ? "channel-model" : "channel-history",
+                metricDefinitions: [{ key: effectiveMetric, aggregation: "custom" }],
+                engineVersion: "budget-allocation-v1",
+                status: "COMPLETE",
+                warnings: ["Historical efficiency simulation is not causal incrementality"],
+              })}
+            />
           )}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "18px", marginTop: "10px", fontSize: "12px", color: "var(--text-muted)" }}>
-            <div>{tr(`예상 ${unitLabel}수`, `Projected ${unitLabel}s`)} <strong style={{ color: "var(--text-primary)" }}>{formatNumberK(verdict.S.next.results, 0)}</strong></div>
-            <div>{tr(`예상 평균 ${metricLabel}`, `Projected average ${metricLabel}`)} <strong style={{ color: "var(--text-primary)" }}>{verdict.S.prevAvgCPR != null ? fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency) : "—"} → {verdict.S.nextAvgCPR != null ? fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency) : "—"}</strong></div>
-            {verdict.S.nextROAS != null && (
-              <div>{tr("예상 ROAS", "Projected ROAS")} <strong style={{ color: "var(--text-primary)" }}>{(verdict.S.nextROAS * 100).toFixed(1)}%</strong></div>
-            )}
-          </div>
-        </div>
+          points={verdict.acts.map((text) => ({ text }))}
+          stats={[
+            { label: tr(`예상 ${unitLabel}수`, `Projected ${unitLabel}s`), value: formatNumberK(verdict.S.next.results, 0) },
+            { label: tr(`예상 평균 ${metricLabel}`, `Projected average ${metricLabel}`), value: `${verdict.S.prevAvgCPR != null ? fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency) : "—"} → ${verdict.S.nextAvgCPR != null ? fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency) : "—"}` },
+            ...(verdict.S.nextROAS != null ? [{ label: tr("예상 ROAS", "Projected ROAS"), value: `${(verdict.S.nextROAS * 100).toFixed(1)}%` }] : []),
+          ]}
+          analysisDetails={(
+            <AnalysisDetails
+              locale={locale}
+              statusLabel={tr("시나리오 참고", "Scenario reference")}
+              statusTone={verdict.tone === "bad" ? "warning" : "neutral"}
+              metric={metricLabel}
+              unit={unitLabel}
+              meaning={tr("관측된 비용·성과 관계를 이용한 예산 시뮬레이션이며 인과 증분 효과가 아닙니다.", "A budget simulation from observed cost-performance relationships; it is not causal incrementality.")}
+              sampleSize={{ value: rows.length, label: tr("입력 행", "Input rows") }}
+              scope={tr(`최근 ${summary?.recentDays || recentDays}일`, `Recent ${summary?.recentDays || recentDays} days`)}
+              method={allocMode === "c" ? "absolute-cpr-weighting" : "marginal-utility-greedy"}
+              version="budget-allocation-v1"
+              metricDefinition={tr("목표 지표·분모는 상단 설정과 현재 매핑을 따릅니다.", "The objective metric and denominator follow the current settings and mapping.")}
+              warnings={[
+                tr(
+                  `그리디 추천의 외삽 한도는 ${extrapolateMode === "fallback" ? "비례배분(추세선 외삽 없음)" : `${extrapolateMode}× 관측 최대 Cost`}입니다. ${extrapolateMode === "fallback" ? "추세선 기반 추천이 아니라 안정적인 비례 기준입니다." : "관측 범위 밖에서는 모델 가정에 의존합니다."}`,
+                  `Greedy extrapolation is capped at ${extrapolateMode === "fallback" ? "proportional allocation (no trend extrapolation)" : `${extrapolateMode}× observed max Cost`}. ${extrapolateMode === "fallback" ? "This is a stable proportional baseline rather than a trendline recommendation." : "Outside the observed range, the result depends on model assumptions."}`
+                ),
+                tr("수동 잠금·최소/최대 제약은 효율 순위보다 우선하며 추천 근거와 별도로 표시됩니다.", "Manual locks and min/max constraints override efficiency ranking and should be read separately from the recommendation rationale."),
+              ]}
+            />
+          )}
+        />
       )}
 
       {/* 총 합계 비교 카드 */}

@@ -8,6 +8,7 @@ import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { fitPowerCurve, filterMaturedCohorts, retentionDays } from "@/utils/cohortMath";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
+import AnalysisDetails from "@/components/ds/AnalysisDetails";
 
 // 지표 뷰 설정 scope — §1 전체 리텐션 곡선 표의 지표 컬럼 표시/순서.
 const COHORT_TABLE_SCOPE = "5-2:cohort-table";
@@ -269,6 +270,24 @@ export default function CohortTab({ locale = "ko" } = {}) {
           <button className={`ab-pill ${!matureCohortOnly ? "active" : ""}`} onClick={() => setMatureCohortOnly(false)}>{tr("전체 포함", "Include All")}</button>
           <button className={`ab-pill ${matureCohortOnly ? "active" : ""}`} onClick={() => setMatureCohortOnly(true)}>{tr("마감된 코호트만", "Matured Only")}</button>
         </div>
+
+        <AnalysisDetails
+          locale={locale}
+          statusLabel={wrc.retCurve.length ? tr("가중 집계", "Weighted aggregate") : tr("판정 보류", "Abstain")}
+          statusTone={wrc.retCurve.length ? "neutral" : "warning"}
+          metric={tr("리텐션율·잔존 인원", "Retention rate · retained users")}
+          unit="rate / users"
+          meaning={tr("코호트 크기로 가중한 관측 리텐션이며, 미마감 코호트는 후속 기간이 덜 관측될 수 있습니다.", "Observed retention weighted by cohort size; immature cohorts may have less follow-up observed.")}
+          sampleSize={{ value: wrc.retCurve[0]?.n || 0, label: tr("기준 모수", "Base denominator"), detail: tr(`${wrc.anchor === "actions" ? "가입(액션)" : "설치"} 기준`, `By ${wrc.anchor === "actions" ? "signup/action" : "install"}`) }}
+          scope={wrc.retDays.length ? `D${Math.min(...wrc.retDays)}–D${Math.max(...wrc.retDays)}` : ""}
+          method="cohort-size-weighted-retention"
+          version="cohort-retention-v1"
+          metricDefinition={tr("Σ잔존 인원 ÷ Σ기준 모수; ret_dN이 0~1이면 모수로 환산하고 정수면 인원수로 합산합니다.", "Σ retained users ÷ Σ base denominator; 0–1 ret_dN values are converted by the base, while whole numbers are treated as headcounts.")}
+          warnings={[
+            ...(matureCohortOnly ? [] : [tr("마감만을 끄면 최근 미마감 코호트가 포함되어 장기 리텐션이 낮거나 높게 보일 수 있습니다.", "Including immature cohorts can make long-horizon retention look biased.")]),
+            ...(wrc.wholePctWarn ? [tr("정수 퍼센트 입력은 인원수로 해석됐습니다.", "Whole-number percentage-like inputs were interpreted as headcounts.")] : []),
+          ]}
+        />
 
         <div className="chart-container" style={{ height: "220px" }}>
           <canvas id="wide-ret-curve" ref={chartRef}></canvas>

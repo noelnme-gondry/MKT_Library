@@ -371,11 +371,12 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 download={
                   <DownloadHub
                     toolId={toolId}
+                    locale={locale}
                     label={tr("결과 받기", "Download")}
                     align="right"
                     manifest={buildResultManifest({
                       toolId,
-                      source: isContent ? "content_csv" : "csv",
+                      source: csvData.fileName?.startsWith("demo_") ? "demo" : isContent ? "content-csv" : "csv",
                       inputSignature: `${csvData.fileName || "dataset"}|${csvData.raw.length}`,
                       filter: { windowDays: dashWindowDays },
                       grain: "dashboard-period",
