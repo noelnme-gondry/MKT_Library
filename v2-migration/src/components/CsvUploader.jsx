@@ -15,9 +15,13 @@ import { wideToLong } from "@/lib/data-import/wideToLong";
 import { getTransformRecipe, saveTransformRecipe } from "@/lib/data-import/localHistory";
 import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import { prepareImportedData } from "@/lib/data-import/dataPreparationWorkerClient";
+import { mapRowsToStandard } from "@/utils/mappedRows";
+import { parseXlsxFile } from "@/lib/data-import/xlsxWorkerClient";
 import { trackProductEvent } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
 import { ANALYSIS_CONTRACTS, evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
+import { ANALYSIS_STATUS, deriveAnalysisStatus } from "@/lib/analysis-router/analysisStatus";
+import AnalysisStatusBadge from "@/components/ds/AnalysisStatusBadge";
 
 const STANDARD_FIELD_EN_LABELS = {
   date: "Date", platform: "Platform (OS)", channel: "Channel / media", campaign_name: "Campaign name",
@@ -268,8 +272,10 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
       return;
     }
     const recipe = await getTransformRecipe(headers).catch(() => null);
-    const mapping = recipe?.mapping && Object.keys(recipe.mapping).every((header) => headers.includes(header)) ? recipe.mapping : insights.selections;
-    const canonicalData = prepared.canonicalData;
+    const hasValidRecipe = recipe?.mapping && Object.keys(recipe.mapping).every((header) => headers.includes(header));
+    const mapping = hasValidRecipe ? recipe.mapping : insights.selections;
+    const canonicalData = hasValidRecipe ? buildCanonicalDataset({ raw, headers, mapping }) : prepared.canonicalData;
+    const mappedRows = hasValidRecipe ? mapRowsToStandard(raw, mapping) : prepared.mappedRows;
     const displayName = worksheetName ? `${fileName} · ${worksheetName}` : fileName;
 
     setCsvData({
@@ -281,6 +287,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
       worksheetName,
       importInsights: { ...insights, recipeApplied: !!recipe },
       canonicalData,
+      mappedRows,
     });
     setConfirmedHeaders(new Set());
     setImportAnnouncement(T.importSuccess(displayName, raw.length, headers.length));
@@ -298,13 +305,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     trackProductEvent("data_import_start", { tool_id: toolId, source });
     if (isWorkbook) {
       try {
-        const XLSX = await import("xlsx");
-        const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
-        const sheets = workbook.SheetNames.map((name) => {
-          const table = XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: "", blankrows: false });
-          const records = tableToRecords(table);
-          return { name, ...records };
-        }).filter((sheet) => sheet.headers.length > 0 && sheet.raw.length > 0);
+        const sheets = await parseXlsxFile(file);
         if (!sheets.length) {
           setErrorMsg(T.emptyCsv);
         } else if (sheets.length === 1) {
@@ -395,12 +396,14 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   // CSV 경로와 같은 함수(autoMapHeaders) 재사용 — 이후 파이프라인은 CSV/시트 구분 없음.
   // sheetUrl을 csvData에 같이 저장해두면(§setCsvData는 매번 전체 치환이라 CSV 경로에선
   // 자연히 undefined) "최신 데이터 불러오기"가 재입력 없이 같은 URL로 재조회 가능해짐.
-  const handleSheetLoaded = ({ headers, raw, fileName, sheetUrl }) => {
+  const handleSheetLoaded = async ({ headers, raw, fileName, sheetUrl }) => {
     setErrorMsg("");
-    const insights = buildImportInsights(headers, raw, toolId);
+    const requestId = ++preparationRequestRef.current;
+    const prepared = await prepareImportedData({ headers, raw, toolId, source: "google_sheets" });
+    if (requestId !== preparationRequestRef.current) return;
+    const insights = prepared.insights;
     const mapping = insights.selections;
-    const canonicalData = buildCanonicalDataset({ raw, headers, mapping });
-    setCsvData({ raw, headers, mapping, fileName, sheetUrl, importInsights: insights, canonicalData });
+    setCsvData({ raw, headers, mapping, fileName, sheetUrl, importInsights: insights, canonicalData: prepared.canonicalData, mappedRows: prepared.mappedRows });
     setConfirmedHeaders(new Set());
     setImportAnnouncement(T.importSuccess(fileName, raw.length, headers.length));
     trackProductEvent("data_import_success", { tool_id: toolId, source: "google_sheets", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
@@ -423,7 +426,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
       if (result.error) {
         setErrorMsg(sheetErrorMessage(result.error, locale));
       } else {
-        handleSheetLoaded(result);
+        await handleSheetLoaded(result);
       }
     } catch {
       setErrorMsg(sheetErrorMessage("fetch", locale));
@@ -438,6 +441,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
       ...csvData,
       mapping,
       canonicalData: buildCanonicalDataset({ raw: csvData.raw, headers: csvData.headers, mapping }),
+      mappedRows: mapRowsToStandard(csvData.raw, mapping),
     });
     setConfirmedHeaders((previous) => new Set([...previous, header]));
     // Mapping edit changes the sig → store gate auto-resets. Re-open preview so
@@ -457,7 +461,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     setErrorMsg("");
     const group = TOOL_GROUP[toolId] || "efficiency";
     const demo = buildDemoCsv(group, locale);
-    setCsvData({ ...demo, canonicalData: buildCanonicalDataset(demo) });
+    setCsvData({ ...demo, canonicalData: buildCanonicalDataset(demo), mappedRows: mapRowsToStandard(demo.raw, demo.mapping) });
     setGroupAnalyzed(toolId);
     setPreviewOpen(false);
   };
@@ -567,7 +571,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
 
   if (!hasFile) {
     return (
-      <div>
+      <div data-analysis-status={ANALYSIS_STATUS.EMPTY}>
         {/* Keep this as the first child in both render branches so React
             preserves one live region while upload state changes. */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
@@ -650,6 +654,11 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   const needsReview = mappingAssessments.filter((assessment) => assessment.state === "review" || assessment.state === "must_confirm").length;
   const mappingBlocked = mappingConflicts.length > 0 || hasRequiredMustConfirm;
   const analysisBlocked = missing.length === 0 && (dataEligibility?.status === "blocked" || mappingBlocked);
+  const analysisStatus = deriveAnalysisStatus({
+    hasData: !!hasFile,
+    hasRequiredMapping: missing.length === 0 && !analysisBlocked,
+    isAnalyzed,
+  });
   const confirmAnalysis = () => {
     if (analysisBlocked) return;
     const confidenceBucket = needsReview || mappingConflicts.length ? "review" : "high";
@@ -694,6 +703,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
             {T.rowsCols(csvData.raw.length, csvData.headers.length, isDemo)}
           </span>
         </div>
+        <AnalysisStatusBadge status={analysisStatus} locale={locale} compact />
         {!isDemo && !isSheetSourced && (
           <button className="ab-pill csv-change-btn" title={T.changeCsvTitle} onClick={handleReset}>
             {T.changeCsvBtn}

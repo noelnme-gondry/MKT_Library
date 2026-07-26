@@ -47,6 +47,7 @@ describe("CsvUploader render smoke", () => {
     seedWithData();
     expect(() => render(<CsvUploader toolId="5-2" />)).not.toThrow();
     expect(document.querySelector(".mapping-grid")).toBeTruthy();
+    expect(document.querySelector('[data-analysis-status="READY"]')).toBeTruthy();
   });
   it("keeps one live status node across upload branch transition", () => {
     useAppStore.setState({ demoDisabled: true, csvClearedByGroup: { efficiency: true } });

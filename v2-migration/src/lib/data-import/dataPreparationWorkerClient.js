@@ -1,6 +1,7 @@
 import { buildCanonicalDataset } from "./buildCanonicalDataset";
 import { buildMappingContract } from "./mappingContract";
 import { detectDatasetSignature } from "./detectDatasetSignature";
+import { mapRowsToStandard } from "@/utils/mappedRows";
 
 // Mapping and canonicalization are import-time work, not model math. Keep small
 // files synchronous to avoid worker startup overhead; move large files off the
@@ -17,6 +18,7 @@ function prepareOnMainThread({ headers = [], raw = [], toolId, source = "csv" } 
   return {
     insights: { ...mappingContract, selections: mapping, signature: detectDatasetSignature(headers, raw) },
     canonicalData: buildCanonicalDataset({ raw, headers, mapping }),
+    mappedRows: mapRowsToStandard(raw, mapping),
   };
 }
 
@@ -36,7 +38,7 @@ export function prepareImportedData(payload = {}) {
     worker.onmessage = (event) => {
       worker.terminate();
       const result = event.data || {};
-      if (result.ok) resolve({ insights: result.insights, canonicalData: result.canonicalData });
+      if (result.ok) resolve({ insights: result.insights, canonicalData: result.canonicalData, mappedRows: result.mappedRows });
       else reject(new Error(result.error || "Data preparation failed"));
     };
     worker.onerror = (event) => {
