@@ -17,6 +17,7 @@ import {
   mmmMeridianAdstock,
   mmmTruncatedNormalMoments,
   mmmAggregateCrossCheck,
+  mmmDataQualityAudit,
   mmmBayesianCorrelatedGroupRefit,
   mmmBayesianMediaPenaltySelection,
   mmmBayesianSeasonalitySelection,
@@ -334,6 +335,23 @@ describe("runMmmMethTests (golden port)", () => {
     expect(run.jointTransform.enabled).toBe(true);
     expect(run.jointTransform.appliedToUncertainty).toBe(true);
     expect(run.jointTransform.channelMarginals.meta.models.length).toBeGreaterThan(1);
+  });
+
+  it("audits panel quality before model fitting", () => {
+    const panel = {
+      week: [1, 2, 3],
+      weekLabel: ["2025-01-06", "2025-01-13", "2025-01-20"],
+      ch: { meta: [10, 20, 30] },
+      targets: { Regs: [100, 110, 120] },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+      dummy: {}, steps: {}, external: {},
+    };
+    const audit = mmmDataQualityAudit(panel);
+    expect(audit.valid).toBe(true);
+    expect(audit.issues).toEqual([]);
+    const invalid = mmmDataQualityAudit({ ...panel, week: [1, 1, 3] });
+    expect(invalid.valid).toBe(false);
+    expect(invalid.issues).toContain("non-increasing-week");
   });
 
   it("refits highly correlated channels as one input and keeps individual reference allocations visible", () => {

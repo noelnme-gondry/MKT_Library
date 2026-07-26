@@ -27,9 +27,10 @@ import {
   mmmAdstock,
   mmmAudit,
   mmmMacroFacts,
+  mmmDataQualityAudit,
   mmmResolveAbsorb,
   _mmmChans,
-} from "@/utils/mmmMathPr416";
+} from "@/utils/mmmMath";
 import { mmmOls } from "@/utils/regMath";
 import {
   mmmBuildCannibRank,
@@ -2954,6 +2955,18 @@ export default function MarketingResponse({ locale = "ko" }) {
       const panel = trimToActive(built.panel);
       const cfg = { ...MMM_METH_CONFIG, absorbed: new Set() };
       const t = pickTarget(panel, target);
+      const dataQuality = mmmDataQualityAudit(panel);
+      if (!dataQuality.valid) {
+        return {
+          empty: true,
+          reason: tx(
+            `데이터 품질 게이트 미통과: ${dataQuality.issues.join(", ")}`,
+            `Data-quality gate failed: ${dataQuality.issues.join(", ")}`,
+          ),
+          dataQuality,
+          panel,
+        };
+      }
       const validate = mmmValidate(panel, locale, t);
       // 실제 달력 주가 비어 있으면 행 번호를 t=1…N으로 압축하는 순간 adstock과
       // 계절성이 틀어진다. 결측 주를 0으로 임의 보간하지 않고 사용자가 실제 KPI·
@@ -5375,6 +5388,27 @@ export default function MarketingResponse({ locale = "ko" }) {
                 countryPlan={mmm.countryPlan}
                 formatValue={targetValueLabel}
               />
+              {(mmm.run.trendDecomposition || mmm.run.penaltyAudit || mmm.run.dataQuality) && (
+                <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
+                  <strong>{tx("추세·모델 공정성 진단", "Trend and model fairness diagnostics")}</strong>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
+                    {mmm.run.trendDecomposition && <>
+                      <span className="ab-pill">{tx("절편 합계", "Intercept total")} {targetValueLabel(mmm.run.trendDecomposition.totals.intercept)}</span>
+                      <span className="ab-pill">{tx("순수 추세", "Pure trend")} {targetValueLabel(mmm.run.trendDecomposition.totals.pureTrend)}</span>
+                      <span className="ab-pill">{tx("Trend sink", "Trend sink")} {targetValueLabel(mmm.run.trendDecomposition.totals.trendSink)}</span>
+                    </>}
+                    {mmm.run.penaltyAudit && <span className="ab-pill" style={mmm.run.penaltyAudit.symmetricWithControl ? undefined : { borderColor: "#f59e0b", color: "#b45309" }}>
+                      {tx("Penalty", "Penalty")} {mmm.run.penaltyAudit.profile} · {mmm.run.penaltyAudit.symmetricWithControl ? tx("대칭", "symmetric") : tx("비대칭 점검", "asymmetry check")}
+                    </span>}
+                    {mmm.run.dataQuality && <span className="ab-pill" style={!mmm.run.dataQuality.valid ? { borderColor: "#ef4444", color: "#b91c1c" } : undefined}>
+                      {tx("데이터 품질", "Data quality")} {mmm.run.dataQuality.valid ? tx("통과", "pass") : `${mmm.run.dataQuality.issues.length} ${tx("건 경고", "warning(s)")}`}
+                    </span>}
+                  </div>
+                  <p className="muted" style={{ fontSize: "11px", lineHeight: 1.5, margin: "8px 0 0" }}>
+                    {tx("절편·순수 추세·미분류 Trend sink를 분리해 장기 하락을 광고 효과로 자동 전가하지 않습니다. Trend sink는 식별되지 않은 기준선 성분이며 광고 기여로 해석하지 않습니다.", "Intercept, pure trend, and unclassified trend sink are separated so long-term decline is not automatically transferred to media. Trend sink is an unidentified baseline component, not media contribution.")}
+                  </p>
+                </Card>
+              )}
               {(selectedEvidence.experiment || selectedEvidence.country) && (
                 <div className="callout" style={{ marginBottom: "12px" }}>
                   <div className="ico">i</div><div className="body"><strong>{Object.keys(mmm.heldMediaPriors || {}).length

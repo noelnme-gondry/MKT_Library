@@ -253,6 +253,43 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
   };
 }
 
+// Data-contract gate shared by MMM, forecast, and contribution exports. The panel
+// builder may use row-order weeks, so this audit deliberately checks both the
+// internal numeric sequence and any supplied calendar labels without inventing
+// missing weeks.
+export function mmmDataQualityAudit(panel) {
+  const weeks = Array.isArray(panel?.week) ? panel.week.map(Number) : [];
+  const labels = Array.isArray(panel?.weekLabel) ? panel.weekLabel : [];
+  const targetLengths = Object.values(panel?.targets || {}).map((values) => values?.length || 0);
+  const channelLengths = Object.values(panel?.ch || {}).map((values) => values?.length || 0);
+  const expected = weeks.length;
+  const numericWeek = weeks.every(Number.isFinite);
+  const strictlyIncreasing = weeks.every((value, index) => index === 0 || value > weeks[index - 1]);
+  const duplicateLabels = labels.length
+    ? labels.length - new Set(labels.map(String)).size
+    : 0;
+  const mismatchedSeries = [...targetLengths, ...channelLengths].filter((length) => length !== expected).length;
+  const missingValues = [...Object.values(panel?.targets || {}), ...Object.values(panel?.ch || {})]
+    .reduce((count, values) => count + (values || []).filter((value) => !Number.isFinite(Number(value))).length, 0);
+  const issues = [];
+  if (!expected) issues.push("empty-panel");
+  if (!numericWeek) issues.push("non-numeric-week");
+  if (!strictlyIncreasing) issues.push("non-increasing-week");
+  if (duplicateLabels > 0) issues.push("duplicate-week-label");
+  if (mismatchedSeries > 0) issues.push("series-length-mismatch");
+  if (missingValues > 0) issues.push("missing-numeric-value");
+  return {
+    valid: issues.length === 0,
+    n: expected,
+    numericWeek,
+    strictlyIncreasing,
+    duplicateLabels,
+    mismatchedSeries,
+    missingValues,
+    issues,
+  };
+}
+
             export const MMR_MATH = {
               // 기하 adstock: a_t = x_t + θ·a_{t-1}
               adstock(x, theta) {
@@ -968,6 +1005,9 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               seasonalityMinLagCorrelation: 0.15,
               stlRobustIterations: 3,
               stlTrendBandwidth: null,
+              trendSmoothingProfiles: [52, 78, 104],
+              trendPenaltyProfile: "symmetric-control",
+              enableDirectionReferencePrior: false,
               adstockGrid: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
               // Meridian-compatible media transformation profile. Classic MMM does
               // not read these switches; the Bayesian toggle opts in explicitly.
@@ -2490,7 +2530,7 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
               }
               // 그랜저 시차 잠식이 유의하면 비-카니발 판정을 LEAN CANNIBAL로 격상 (동시점이 놓친 신호 — 보수적으로 우려만 ↑)
               // 단, 산발(flighted) 집행이면 그랜저 단독으로 격상 금지(on/off 버스트가 시차 신호를 왜곡 — 매칭 on/off/holdout 필요).
-              if (grangerCannibal && verdictClass !== "cannibal" && !flighted && votes.AGAINST >= 1 && !identificationBlocked) {
+              if (grangerCannibal && verdictClass !== "cannibal" && !flighted && votes.AGAINST >= (R.minAgainstVotes || 2) && !identificationBlocked) {
                 verdictClass = "cannibal";
                 verdict = isEn ? `LEAN CANNIBAL — lagged Granger signal (spend→organic↓, lag ${gr.spend_to_organic.lag}); holdout is first priority` : `LEAN CANNIBAL — 그랜저 시차 인과(광고비→오가닉↓, lag ${gr.spend_to_organic.lag}), holdout 1순위`;
               }
@@ -5082,12 +5122,14 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 // 꺾인 추세가 광고보다 훨씬 약한 규제를 받아 같은 장기 신호를
                 // 값싸게 선점하지 않도록, 방향 제약 모델에서는 둘을 같은 세기로
                 // 비교한다. 모든 feature는 이미 표준화돼 있어 직접 비교 가능하다.
-                trendPenalty: trendDirectionPlan?.enabled
-                  ? effectiveCfg.mediaPenalty * 4
-                  : effectiveCfg.controlPenalty,
+                // 추세를 광고보다 4배 강하게 누르던 미검증 레버를 제거한다.
+                // 방향 제약은 모양만 고정하고, 크기 penalty는 다른 control과 같은
+                // 스케일에서 적용한다.
+                trendPenalty: effectiveCfg.controlPenalty,
                 seasonalityPenaltyMultiplier: effectiveCfg.seasonalityPenaltyMultiplier || 1,
                 seasonalityPenaltyProfile: effectiveCfg.seasonalityPenaltyProfile || null,
                 seasonalityPenaltyStrength: effectiveCfg.seasonalityPenaltyStrength || 0,
+                penaltyProfile: effectiveCfg.trendPenaltyProfile || "symmetric-control",
               };
               const controls = _mmmBayesControlFeatures(panel, effectiveCfg);
               const selectedParams = _mmmBayesChannelParams(panel, effectiveCfg, targetName, controls);
@@ -5123,8 +5165,10 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 ...businessContributionPrior.priors,
                 ...externalMediaPriors,
               };
-              let directionReferencePrior = { enabled: false, priors: {}, reason: "not-direction-model" };
-              if (trendDirectionPlan?.enabled && options.enableDirectionReferencePrior !== false) {
+              let directionReferencePrior = { enabled: false, priors: {}, reason: "disabled-by-default-same-data-prior" };
+              const allowDirectionReferencePrior = options.enableDirectionReferencePrior === true
+                || (options.enableDirectionReferencePrior == null && effectiveCfg.enableDirectionReferencePrior === true);
+              if (trendDirectionPlan?.enabled && allowDirectionReferencePrior) {
                 // 같은 계절·업계·이벤트·광고를 둔 직선 추세 모델을 약한 기준점으로
                 // 사용한다. 추세 모양만 꺾었다는 이유로 공선 채널의 계수가 0으로
                 // 붕괴하는 것을 막되, 최종 숫자는 아래 꺾인 추세 모델에서 다시
@@ -5302,6 +5346,51 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                   hi: +(posterior.fitted[t] + 1.645 * predictionSd).toFixed(2),
                 };
               });
+              const pureTrendNames = new Set(names.filter((name) =>
+                name === "trend" || name.startsWith("trend_dir_") || name.startsWith("baseline_knot_"),
+              ));
+              const trendSinkNames = new Set(names.filter((name) =>
+                !name.startsWith("media_") && groupFor(name) === "Trend" && !pureTrendNames.has(name),
+              ));
+              const trendDecompositionWeeks = panel.week.map((week, t) => {
+                const pureTrend = [...pureTrendNames].reduce((sum, name) => {
+                  const index = names.indexOf(name);
+                  return sum + (index >= 0 ? absoluteBeta[index] * Xraw[t][index] : 0);
+                }, 0);
+                const trendSink = [...trendSinkNames].reduce((sum, name) => {
+                  const index = names.indexOf(name);
+                  return sum + (index >= 0 ? absoluteBeta[index] * Xraw[t][index] : 0);
+                }, 0);
+                return {
+                  week,
+                  intercept: absoluteIntercept,
+                  pureTrend,
+                  trendSink,
+                  trend: absoluteIntercept + pureTrend + trendSink,
+                };
+              });
+              const trendDecomposition = {
+                convention: "intercept-plus-pure-trend-plus-unclassified-trend-sink",
+                intercept: absoluteIntercept,
+                pureTrendNames: [...pureTrendNames],
+                trendSinkNames: [...trendSinkNames],
+                weeks: trendDecompositionWeeks,
+                totals: Object.fromEntries(["intercept", "pureTrend", "trendSink", "trend"].map((key) => [
+                  key,
+                  trendDecompositionWeeks.reduce((sum, row) => sum + (Number(row[key]) || 0), 0),
+                ])),
+              };
+              const penaltyAudit = {
+                profile: fitOptions.penaltyProfile,
+                mediaPenalty: Number(fitOptions.mediaPenalty) || 0,
+                trendPenalty: Number(fitOptions.trendPenalty) || 0,
+                controlPenalty: Number(fitOptions.controlPenalty) || 0,
+                ratioToMedia: Number(fitOptions.mediaPenalty) > 0
+                  ? (Number(fitOptions.trendPenalty) || 0) / Number(fitOptions.mediaPenalty)
+                  : null,
+                symmetricWithControl: Math.abs((Number(fitOptions.trendPenalty) || 0) - (Number(fitOptions.controlPenalty) || 0)) <= 1e-12,
+                directionReferencePriorEnabled: directionReferencePrior.enabled,
+              };
               const saturationByChannel = {};
               const channelCoverage = mmmChannelCoverage(panel, effectiveCfg);
               channelMeta.forEach((ch) => {
@@ -5521,6 +5610,9 @@ export function mmmAggregateAdoptionGate(aggregateFolds, channelFolds) {
                 groupNames,
                 saturationByChannel,
                 channelContributions,
+                trendDecomposition,
+                penaltyAudit,
+                dataQuality: mmmDataQualityAudit(panel),
                 shapley: { rows, total: 1 }, // backwards-compatible consumer shape; this is contribution variance, not Shapley R².
                 best_lambda: null,
                 cv_rmse: {},

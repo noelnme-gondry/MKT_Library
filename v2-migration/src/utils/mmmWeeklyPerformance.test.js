@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  allocateFixedMmmGroupTotals,
   allocateMmmAggregateRun,
   buildMmmAggregateMediaPanel,
   buildMmmCollinearityGroupedPerformance,
@@ -76,6 +77,59 @@ describe("PR #416 aggregate media allocation", () => {
       identificationVerdict: "ALLOCATED/BY-CONSTRUCTION",
       groupKey: "performance_total",
     });
+  });
+
+  it("records an exact identity audit when channel allocation preserves fixed group totals", () => {
+    const panel = {
+      week: [1, 2],
+      ch: { search: [100, 0], social: [0, 100] },
+      channels: [
+        { key: "search", label: "Search", kind: "perf" },
+        { key: "social", label: "Social", kind: "perf" },
+      ],
+    };
+    const aggregatePanel = buildMmmAggregateMediaPanel(panel);
+    const aggregateRun = {
+      weeks: [
+        { contrib: { Performance: 10 } },
+        { contrib: { Performance: 20 } },
+      ],
+      channelContributions: {
+        performance_total: {
+          key: "performance_total",
+          weeklyMean: [10, 20],
+          weeklyLow: [8, 16],
+          weeklyHigh: [12, 24],
+          totalMean: 30,
+          totalLow: 24,
+          totalHigh: 36,
+        },
+      },
+    };
+    const allocationRun = {
+      names: ["media_search", "media_social"],
+      absoluteBeta: [2, 1],
+      channelContributions: {
+        search: { key: "search" },
+        social: { key: "social" },
+      },
+    };
+
+    const allocated = allocateFixedMmmGroupTotals(
+      panel,
+      aggregatePanel,
+      aggregateRun,
+      allocationRun,
+      0.01,
+    );
+
+    expect(allocated.channelAllocation.identityAudit).toMatchObject({
+      maxWeeklyAbsError: 0,
+      maxTotalAbsError: 0,
+      passed: true,
+    });
+    expect(allocated.channelContributions.search.totalMean
+      + allocated.channelContributions.social.totalMean).toBe(30);
   });
 });
 

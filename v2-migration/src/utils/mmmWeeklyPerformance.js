@@ -231,10 +231,12 @@ export function allocateFixedMmmGroupTotals(panel, aggregatePanel, aggregateRun,
   }));
   const allocated = {};
   const weeklyByChannel = Object.fromEntries((panel.channels || []).map((channel) => [channel.key, []]));
+  const identityByGroup = [];
   groups.forEach((group) => {
     const total = aggregateRun.channelContributions?.[group.key];
     if (!total) return;
     const members = group.members.map((key) => panel.channels.find((channel) => channel.key === key)).filter(Boolean);
+    const weeklyErrors = [];
     members.forEach((channel) => {
       const weeklyMean = [];
       const weeklyLow = [];
@@ -273,6 +275,18 @@ export function allocateFixedMmmGroupTotals(panel, aggregatePanel, aggregateRun,
         groupLabel: group.label,
       };
     });
+    panel.week.forEach((_, weekIndex) => {
+      const allocatedTotal = members.reduce((sum, channel) => sum + (weeklyByChannel[channel.key]?.[weekIndex] || 0), 0);
+      weeklyErrors.push(Math.abs(allocatedTotal - (Number(total.weeklyMean?.[weekIndex]) || 0)));
+    });
+    identityByGroup.push({
+      key: group.key,
+      label: group.label,
+      maxWeeklyAbsError: weeklyErrors.length ? Math.max(...weeklyErrors) : 0,
+      totalAbsError: Math.abs(
+        members.reduce((sum, channel) => sum + (allocated[channel.key]?.totalMean || 0), 0) - (Number(total.totalMean) || 0),
+      ),
+    });
   });
   const weeks = aggregateRun.weeks.map((week, weekIndex) => ({
     ...week,
@@ -286,7 +300,17 @@ export function allocateFixedMmmGroupTotals(panel, aggregatePanel, aggregateRun,
     channelMeta: allocationRun.channelMeta,
     names: allocationRun.names,
     absoluteBeta: allocationRun.absoluteBeta,
-    channelAllocation: { method: "fixed-group-total-ranked-coefficient-allocation", minShare: floor, byConstruction: true },
+    channelAllocation: {
+      method: "fixed-group-total-ranked-coefficient-allocation",
+      minShare: floor,
+      byConstruction: true,
+      identityAudit: {
+        groups: identityByGroup,
+        maxWeeklyAbsError: identityByGroup.length ? Math.max(...identityByGroup.map((item) => item.maxWeeklyAbsError)) : 0,
+        maxTotalAbsError: identityByGroup.length ? Math.max(...identityByGroup.map((item) => item.totalAbsError)) : 0,
+        passed: identityByGroup.every((item) => item.maxWeeklyAbsError <= 1e-8 && item.totalAbsError <= 1e-8),
+      },
+    },
   };
 }
 
