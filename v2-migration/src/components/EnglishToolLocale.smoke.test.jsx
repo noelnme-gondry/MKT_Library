@@ -12,6 +12,8 @@ import Incrementality from "@/components/tools/Incrementality";
 import AhaMomentFinder from "@/components/tools/AhaMomentFinder";
 import CreativeAnalyzer from "@/components/tools/CreativeAnalyzer";
 import ContentElementAnalyzer from "@/components/tools/ContentElementAnalyzer";
+import ContentFreshness from "@/components/tools/ContentFreshness";
+import MarketingResponse from "@/components/tools/MarketingResponse";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -35,6 +37,8 @@ const EN_READY_SURFACES = [
   ["Aha moment", <AhaMomentFinder key="aha" locale="en" />],
   ["Creative analyzer", <CreativeAnalyzer key="creative" locale="en" />],
   ["Content element analyzer", <ContentElementAnalyzer key="content-element" locale="en" />],
+  ["Content freshness", <ContentFreshness key="content-freshness" locale="en" />],
+  ["Marketing response", <MarketingResponse key="marketing-response" locale="en" />],
 ];
 
 describe("English analysis surfaces", () => {

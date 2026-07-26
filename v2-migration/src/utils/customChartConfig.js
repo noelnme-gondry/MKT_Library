@@ -7,19 +7,49 @@ import { customMetricToDescriptor } from "./metrics/customMetric";
 
 // 커스텀 차트 행(차원) 후보 — 매핑된 것만 노출.
 export const DIM_CANDIDATES = [
-  { key: "channel", label: "채널" },
-  { key: "country", label: "국가" },
-  { key: "platform", label: "OS" },
-  { key: "campaign_name", label: "캠페인" },
-  { key: "date", label: "날짜" },
+  { key: "channel", label: "채널", labelEn: "Channel" },
+  { key: "country", label: "국가", labelEn: "Country" },
+  { key: "platform", label: "OS", labelEn: "Platform" },
+  { key: "campaign_name", label: "캠페인", labelEn: "Campaign" },
+  { key: "date", label: "날짜", labelEn: "Date" },
 ];
 
+const METRIC_LABELS_EN = {
+  cost: "Cost",
+  impressions: "Impressions",
+  clicks: "Clicks",
+  installs: "Installs",
+  actions: "Actions / Signups",
+  revenue: "Revenue",
+  purchases: "Purchases",
+  denom: "Denominator (installs / signups)",
+  cpm: "CPM",
+  ctr: "CTR",
+  cpc: "CPC",
+  cpi: "CPI / CPA",
+  cvr: "CVR",
+  purchaseRate: "Purchase rate",
+  roas: "ROAS",
+  cpp: "CPP",
+  cpa: "CPA (purchase)",
+  arpu: "ARPU",
+  arppu: "ARPPU",
+  profit: "Profit",
+  profitMargin: "Profit margin",
+};
+
+const localizedMetric = (metric, locale) => locale === "en"
+  ? (METRIC_LABELS_EN[metric.id] || metric.label)
+  : metric.label;
+
 // mapping + 커스텀 지표 → 차트 빌더용 차원/값 옵션·해석기(VizTab·CustomChartsSection 공용).
-export function buildChartFieldOptions(mapping, customMetrics) {
+export function buildChartFieldOptions(mapping, customMetrics, locale = "ko") {
   const mappedKeys = new Set(Object.values(mapping || {}));
   const hasRev = [...mappedKeys].some((k) => /^revenue_d/.test(k));
   const hasPu = [...mappedKeys].some((k) => /^pu_d/.test(k));
-  const availDims = DIM_CANDIDATES.filter((d) => mappedKeys.has(d.key));
+  const availDims = DIM_CANDIDATES
+    .filter((d) => mappedKeys.has(d.key))
+    .map((d) => ({ ...d, label: locale === "en" ? d.labelEn || d.label : d.label }));
   const availAggKeys = new Set(["cost"]);
   ["impressions", "clicks", "installs", "actions"].forEach((k) => { if (mappedKeys.has(k)) availAggKeys.add(k); });
   if (hasRev) availAggKeys.add("revenue");
@@ -27,8 +57,8 @@ export function buildChartFieldOptions(mapping, customMetrics) {
   if (mappedKeys.has("installs") || mappedKeys.has("actions")) availAggKeys.add("denom");
   const cms = customMetrics || [];
   const metricOptions = [
-    ...BASE_FIELDS.filter((f) => f.id !== "denom" && availAggKeys.has(f.id)).map((f) => ({ key: f.id, label: f.label })),
-    ...DERIVED_METRICS.filter((m) => m.deps.every((d) => availAggKeys.has(d))).map((m) => ({ key: m.id, label: m.label })),
+    ...BASE_FIELDS.filter((f) => f.id !== "denom" && availAggKeys.has(f.id)).map((f) => ({ key: f.id, label: localizedMetric(f, locale) })),
+    ...DERIVED_METRICS.filter((m) => m.deps.every((d) => availAggKeys.has(d))).map((m) => ({ key: m.id, label: localizedMetric(m, locale) })),
     ...cms.map((m) => ({ key: m.id, label: m.name, unit: m.unit || "number" })),
   ];
   const resolveMetricCompute = (key) => {
@@ -37,7 +67,10 @@ export function buildChartFieldOptions(mapping, customMetrics) {
     if (cm) return customMetricToDescriptor(cm).compute;
     return () => null;
   };
-  const dimLabelOf = (k) => DIM_CANDIDATES.find((d) => d.key === k)?.label || k;
+  const dimLabelOf = (k) => {
+    const item = DIM_CANDIDATES.find((d) => d.key === k);
+    return locale === "en" ? item?.labelEn || item?.label || k : item?.label || k;
+  };
   const metricLabelOf = (k) => metricOptions.find((m) => m.key === k)?.label || k;
   const metricUnitOf = (k) => metricOptions.find((m) => m.key === k)?.unit
     || METRIC_BY_ID[k]?.unit

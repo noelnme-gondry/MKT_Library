@@ -147,7 +147,7 @@ export default function SeasonalityTab({ locale = "ko" } = {}) {
     return () => Object.values(chartsRef.current).forEach((chart) => chart?.destroy());
   }, [result, activeGrain, detrend, locale, displayCurrency, selected?.kind]);
 
-  if (!availableMetrics.length) return <p className="muted">날짜와 설치·가입·매출·지출 중 하나를 매핑하면 시즈널리티를 볼 수 있습니다.</p>;
+  if (!availableMetrics.length) return <p className="muted">{locale === "en" ? "Map a date column and at least one metric (installs, signups, revenue, or spend) to view seasonality." : "날짜와 설치·가입·매출·지출 중 하나를 매핑하면 시즈널리티를 볼 수 있습니다."}</p>;
 
   const strongest = result.sufficient ? [...result.seasonal].sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))[0] : null;
 

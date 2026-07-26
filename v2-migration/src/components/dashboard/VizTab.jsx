@@ -436,7 +436,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
 
   // 커스텀 차트 차원/값 옵션·해석기(공용 헬퍼 — CustomChartsSection과 DRY).
   const { availDims, metricOptions, resolveMetricCompute, dimLabelOf, metricLabelOf, metricUnitOf } =
-    buildChartFieldOptions(csvData && csvData.mapping, customMetrics);
+    buildChartFieldOptions(csvData && csvData.mapping, customMetrics, locale);
   const customChartDefs = customCharts || [];
   const customChartSig = JSON.stringify(customChartDefs) + "|" + JSON.stringify(customMetrics || []) + "|" + selectedCohort;
 
@@ -956,6 +956,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
             editMode={kpiEditMode}
             onPatch={(p) => setViewConfig(VIZ_KPI_SCOPE, { ...p, preset: "compact-v1" })}
             gridClassName="kpi-grid kpi-grid--overview"
+            locale={locale}
           />
         )}
       </section>

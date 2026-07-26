@@ -33,4 +33,12 @@ describe("custom chart scorecard", () => {
     expect(model.value).toBeNull();
     expect(formatCustomScorecardValue(model, "KRW", "ko")).toBe("—");
   });
+
+  it("영문 차트 빌더 옵션은 차원·지표 라벨을 영어로 제공한다", () => {
+    const opts = buildChartFieldOptions({ Channel: "channel", Spend: "cost", Installs: "installs" }, [], "en");
+    expect(opts.availDims.find((item) => item.key === "channel").label).toBe("Channel");
+    expect(opts.dimLabelOf("channel")).toBe("Channel");
+    expect(opts.metricOptions.map((item) => item.label)).toEqual(["Cost", "Installs", "CPI / CPA"]);
+    expect(opts.metricLabelOf("cpi")).toBe("CPI / CPA");
+  });
 });

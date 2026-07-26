@@ -6,7 +6,7 @@
 // (VizTab/ScorecardTab/…). We mount each of the 8 tabs on a valid efficiency CSV
 // so a throw in any tab surfaces here. mapping = { originalHeader: standardKey }.
 import { describe, it, expect, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Dashboard from "@/components/Dashboard";
 
@@ -76,4 +76,21 @@ describe("Dashboard render smoke", () => {
       expect(document.querySelector(".dashboard-tabs")?.closest(".page-sticky-bar")).toBeTruthy();
     });
   }
+
+  it("with-data renders every tab in English without Korean UI copy", () => {
+    for (const tab of TABS) {
+      seedWithData();
+      useAppStore.setState({ dashboardTab: tab });
+      const { unmount } = render(<Dashboard locale="en" />);
+      const text = document.body.textContent || "";
+      const koreanCopy = Array.from(new Set(text.match(/[가-힣]+/g) || []));
+      const contexts = koreanCopy.map((value) => {
+        const index = text.indexOf(value);
+        return text.slice(Math.max(0, index - 36), index + value.length + 48);
+      });
+      expect(koreanCopy, `${tab}: ${contexts.join(" | ")}`).toEqual([]);
+      unmount();
+      cleanup();
+    }
+  });
 });

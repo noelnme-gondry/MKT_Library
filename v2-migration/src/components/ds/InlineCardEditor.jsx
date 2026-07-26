@@ -16,7 +16,9 @@ import { materializeOrder, applyMetricView } from "@/utils/metrics/metricView";
 // props: items[{key,label,node}], config, editMode, onPatch(partial), gridClassName
 export default function InlineCardEditor({
   items = [], config, editMode = false, onPatch, gridClassName = "",
+  locale = "ko",
 }) {
+  const isEn = locale === "en";
   const [dragKey, setDragKey] = useState(null);
   const dragKeyRef = useRef(null);
   const cellRefs = useRef({});
@@ -137,12 +139,14 @@ export default function InlineCardEditor({
                 <span
                   aria-hidden
                   onPointerDown={(e) => onHandleDown(e, key)}
-                  title="드래그해서 이동"
+                  title={isEn ? "Drag to reorder" : "드래그해서 이동"}
                   style={{ ...ctlBtn, position: "absolute", top: "4px", left: "4px", zIndex: 3, cursor: "grab", touchAction: "none", userSelect: "none" }}
                 >⠿</span>
                 <button
                   onClick={() => patchHidden(key)}
-                  title={isHidden ? "숨김 — 누르면 표시" : "표시 — 누르면 숨김"}
+                  title={isHidden
+                    ? (isEn ? "Hidden — click to show" : "숨김 — 누르면 표시")
+                    : (isEn ? "Shown — click to hide" : "표시 — 누르면 숨김")}
                   style={{ ...ctlBtn, position: "absolute", top: "4px", right: "4px", zIndex: 3, opacity: isHidden ? 0.4 : 1 }}
                 >👁</button>
               </>

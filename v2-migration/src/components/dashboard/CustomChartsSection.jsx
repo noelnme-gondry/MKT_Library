@@ -81,7 +81,7 @@ export default function CustomChartsSection({
   const hasData = !!(csvData && csvData.raw && csvData.raw.length);
 
   const { availDims, metricOptions, resolveMetricCompute, dimLabelOf, metricLabelOf, metricUnitOf } =
-    buildChartFieldOptions(csvData && csvData.mapping, customMetrics);
+    buildChartFieldOptions(csvData && csvData.mapping, customMetrics, locale);
   const chartTypeLabel = (type) => {
     if (locale !== "en") return CHART_TYPES.find((t) => t.id === type)?.label || type;
     return ({ bar: "Bar", line: "Line", scorecard: "Scorecard" })[type] || type;
