@@ -32,6 +32,11 @@ import {
   mmmResolveAbsorb,
   _mmmChans,
 } from "@/utils/mmmMath";
+import {
+  MMM_METH_CONFIG as MMM_CLASSIC_CONFIG,
+  mmmBayesianRun as mmmClassicBayesianRun,
+  mmmResolveAbsorb as mmmClassicResolveAbsorb,
+} from "@/utils/mmmMathPr416";
 import { mmmOls } from "@/utils/regMath";
 import {
   mmmBuildCannibRank,
@@ -2991,7 +2996,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       const resultCacheKey = [
         `meth:${MMM_METH_CONFIG.version}`,
         `mode:${mmmMode}`,
-        mmmMode === "classic" ? "pr416-classic-fixed-group-total-ranked-allocation-v1" : "bayesian-posterior-channel-fit-v1",
+        mmmMode === "classic" ? `pr441-classic-fixed-group-total-trend3-v1:${MMM_CLASSIC_CONFIG.version}` : "bayesian-posterior-channel-fit-v1",
         mmmAnalyzedSig,
         colMapSig,
         target,
@@ -3663,16 +3668,21 @@ export default function MarketingResponse({ locale = "ko" }) {
         });
       }
 
-      // Classic PR #416: Decomp 그룹 총량을 먼저 고정하고, 별도 채널 모델은 share만 계산한다.
+      // Classic PR #441: trendPriorMultiplier=3인 PR #416 계열 엔진을 유지한다.
+      // Bayesian 모드와 같은 최신 엔진으로 재적합하지 않는다.
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
       const aggregatePanel = buildMmmAggregateMediaPanel(panel);
       if (!aggregatePanel) throw new Error("PR #416 aggregate media panel failed");
-      const aggregateRun = mmmBayesianRun(aggregatePanel, cfg, t, true, {
+      const classicCfg = {
+        ...MMM_CLASSIC_CONFIG,
+        absorbed: mmmClassicResolveAbsorb(panel, { ...MMM_CLASSIC_CONFIG, absorbed: new Set() }).absorbed,
+      };
+      const aggregateRun = mmmClassicBayesianRun(aggregatePanel, classicCfg, t, true, {
         mediaPriors: {},
         enableBaselineSelection: true,
       });
       if (!aggregateRun) throw new Error("PR #416 aggregate Bayesian posterior estimate failed");
-      const allocationRun = mmmBayesianRun(panel, cfg, t, false, {
+      const allocationRun = mmmClassicBayesianRun(panel, classicCfg, t, false, {
         mediaPriors,
         enableBaselineSelection: true,
         skipTransformUncertainty: true,
@@ -3680,15 +3690,17 @@ export default function MarketingResponse({ locale = "ko" }) {
       if (!allocationRun) throw new Error("PR #416 channel allocation model failed");
       const allocatedRun = allocateFixedMmmGroupTotals(panel, aggregatePanel, aggregateRun, allocationRun, 0.01);
       allocatedRun.modelVariant = "pr416-fixed-group-total-ranked-allocation";
-      allocatedRun.methodLabel = "PR #416 fixed Decomp totals with ranked channel allocation";
+      allocatedRun.methodLabel = "Classic PR #441 fixed Decomp totals with ranked channel allocation (trend prior 3x)";
       allocatedRun.pr416Provenance = {
-        commit: "ae12706",
+        commit: "5a3e7fb",
         modelScope: "mmm-engine-only",
         currentFiltersPreserved: true,
         totalIndustryAggregationPreserved: true,
         decompMediaSource: "aggregate Performance/Branding posterior",
         channelAllocation: "fixed-group-total-ranked-coefficient-share",
         channelAllocationByConstruction: true,
+        trendPriorMultiplier: 3,
+        classicEngine: "mmmMathPr416",
         externalChannelPriorsAppliedToAllocationFit: hasExternalPrior,
       };
       const health = mmmBayesianHealth(allocatedRun);
@@ -3696,7 +3708,7 @@ export default function MarketingResponse({ locale = "ko" }) {
       return mmmStoreCachedResult(csvData.raw, resultCacheKey, {
         empty: false,
         panel,
-        cfg,
+        cfg: classicCfg,
         derived,
         target: t,
         validate,
@@ -4879,7 +4891,7 @@ export default function MarketingResponse({ locale = "ko" }) {
             </span>
             <span style={{ color: MUTED, fontSize: "10.5px" }}>
               {mmmMode === "classic"
-                ? tx("Classic · PR #416 고정 총량·채널 분배", "Classic · PR #416 fixed totals/channel allocation")
+                ? tx("Classic · PR #441 · 고정 총량·채널 분배 · 추세 prior 3x", "Classic · PR #441 · fixed totals/channel allocation · trend prior 3x")
                 : tx("Bayesian · posterior 채널 적합", "Bayesian · posterior channel fit")}
             </span>
           </div>
