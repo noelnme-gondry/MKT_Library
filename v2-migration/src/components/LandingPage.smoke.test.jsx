@@ -38,6 +38,8 @@ describe("LandingPage render smoke", () => {
     expect(() => render(<LandingPage />)).not.toThrow();
     expect(document.querySelector(".page-title")).toBeTruthy();
     expect(document.querySelectorAll(".landing-decision-lane")).toHaveLength(3);
+    expect(document.querySelectorAll(".connected-tool-card")).toHaveLength(10);
+    expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
   });
   it("with-data mounts", () => {
     seedWithData();
@@ -45,5 +47,11 @@ describe("LandingPage render smoke", () => {
     // 재구성된 홈: 질문 캐러셀 + 블로그|SOP 허브 카드.
     expect(document.querySelector(".carousel-track")).toBeTruthy();
     expect(document.querySelector(".home-hub-card")).toBeTruthy();
+  });
+  it("renders the same connected workflow in English", () => {
+    const { container } = render(<LandingPage locale="en" />);
+    expect(container.querySelectorAll(".connected-tool-card")).toHaveLength(10);
+    expect(container.textContent).toContain("Move from one analysis to the next decision");
+    expect(container.querySelector('a[href="/en/tools/campaign-variance"]')).toBeTruthy();
   });
 });

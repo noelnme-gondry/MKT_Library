@@ -28,6 +28,7 @@
 8. **정직성**: 동작 안 하는 기능·거짓 숫자·보안모델과 모순되는 카피 금지. 추정 불가하면 "추정 불가" 정직히.
 9. **병렬 사용 환경 동기화 의무**: Antigravity·Claude Code 병렬 작동 중 — 작업 시작 전 항상 `git fetch`+`git status` 확인, 리모트와 다르면 사용자에게 "pull 후 진행?" 확인.
 10. **전체 파일 덮어쓰기·임의 포맷팅 금지**: 충돌·작업유실 방지. 무관한 코드 들여쓰기·포맷 임의 변경 금지, 정확히 타겟팅된 부분(Delta)만 수정.
+11. **외부 노출 KR/EN 동시 반영**: 사용자에게 노출되는 UI·카피·CTA·링크·SEO 메타·구조화 데이터·공개 문서·랜딩·도구 흐름을 수정하면 **같은 작업에서 EN 버전도 의미·기능·라우트 기준으로 동등하게 수정**하고 KR/EN 검증을 함께 실행한다. EN 미지원 페이지는 임의로 반쪽 번역하지 않고 `EN_READY_*` 게이트를 유지한다.
 
 ---
 
@@ -107,7 +108,7 @@ function buildXxxCache() {
 
 - **JS**: `var` 금지·`const` 기본·재할당만 `let`. 순수 함수 우선, 사이드이펙트 명시. `camelCase`, boolean은 `is*`/`has*`/`can*`. 통계 함수는 `CANNIBAL_STATS`·`ALLOC_MATH` 같은 객체에 모음(단위 테스트 가능). DOM은 `getElementById`/`querySelectorAll` 직접(jQuery X).
 - **CSS**: 의미적 변수(`--bg-1`·`--text-muted`·`--border` Obsidian Flux 토큰). 인라인 style은 일회성만. 공용은 클래스(`chart-container` 등).
-- **한/영**: UI 표시=한글, 코드 식별자=영어, 주석=한글 OK. CSV 헤더 한글 alias 등록 가능.
+- **한/영**: UI 표시=한글, 코드 식별자=영어, 주석=한글 OK. CSV 헤더 한글 alias 등록 가능. 외부 노출 변경은 §2.11에 따라 KR/EN을 같은 작업에서 함께 반영·검증.
 - **Chart.js**: `responsive:true, maintainAspectRatio:false` 항상. 부모 `.chart-container`. 다크 테마 색 명시(`getCssVar`). 인스턴스 `CHART_INSTANCES[id]` 저장 후 재렌더 전 destroy. PNG 다운로드는 합성 캔버스에 배경(`--bg-1`) 깔고 export.
 
 ---
