@@ -29,9 +29,11 @@ describe("Incrementality render smoke", () => {
 
   it("mounts with suppression demo → 결론 카드 + 다운로드", () => {
     seed(buildIncrSuppressionDemo());
-    expect(() => render(<Incrementality />)).not.toThrow();
+    const { container } = render(<Incrementality />);
     expect(screen.getByText(/결론 — 광고가 만든 순증분/)).toBeTruthy();
     expect(screen.getAllByText(/결과 받기/).length).toBeGreaterThan(0);
+    expect(container.querySelector("#s-incr-method")).toBeTruthy();
+    expect(container.querySelector("#s-incr-result")).toBeTruthy();
   });
 
   it("mounts with pre/post demos (on & off) → 탭 전환 후 결론 카드", () => {

@@ -85,6 +85,7 @@ describe("Dashboard render smoke", () => {
     expect(container.querySelector(".dashboard-data-jump a")?.getAttribute("href")).toBe("#dashboard-tabpanel");
     expect(dataPanel).toBeTruthy();
     expect(utilities).toBeTruthy();
+    expect(utilities.id).toBe("dashboard-support-tools");
     expect(dataPanel.compareDocumentPosition(utilities) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(utilities.hasAttribute("open")).toBe(false);
   });

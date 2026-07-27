@@ -406,7 +406,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   if (!hasData) {
     return (
       <div className="tab-pane active">
-        <section className="block">
+        <section className="block" id="s-content-mapping">
           <h2 className="section-title">{T.dataPrep}</h2>
           <CsvGuide toolId={C.guideToolId} locale={locale} />
           <div className="csv-dropzone"
@@ -442,7 +442,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       )}
 
       {/* ── §0 매핑 ── */}
-      <section className="block">
+      <section className="block" id="s-content-mapping">
         <h2 className="section-title"><span className="ix">§0</span>{T.mappingTitle}</h2>
         <div className="csv-loaded-bar">
           <div className="csv-loaded-info">
@@ -513,7 +513,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       {analyzed && fit && !fit.error && (
         <>
           {/* ── §0 결론 히어로 ── */}
-          <section className="block" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}>
+          <section className="block" id="s-content-result" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}>
             <h2 className="section-title" style={{ marginTop: 0 }}>{T.heroQ}</h2>
             <p className="muted" style={{ fontSize: "12px", marginTop: "-4px", marginBottom: "14px" }}>{T.heroSub}</p>
             {topSig ? (

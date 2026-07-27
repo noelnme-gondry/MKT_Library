@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 
 import ToolAssistRail, { getSections } from "@/components/ToolAssistRail";
 
@@ -53,5 +53,31 @@ describe("ToolAssistRail", () => {
     expect(scrollIntoView).toHaveBeenCalled();
     expect(window.gtag).toHaveBeenCalledWith("event", "tool_assist_jump", expect.objectContaining({ tool_id: "5-3", section_id: "s-prep" }));
     delete window.gtag;
+  });
+
+  it("updates the collapsed label when the reader passes the next checkpoint", async () => {
+    let prepTop = 120;
+    let resultTop = 860;
+    document.body.innerHTML = '<section id="s-prep"></section><section id="s-sat-summary"></section>';
+    document.getElementById("s-prep").getBoundingClientRect = () => ({ top: prepTop });
+    document.getElementById("s-sat-summary").getBoundingClientRect = () => ({ top: resultTop });
+    const { getByRole } = render(<ToolAssistRail toolId="5-22" />);
+    await waitFor(() => expect(getByRole("button", { name: /포화도 입력 준비/ })).toBeTruthy());
+    prepTop = -540;
+    resultTop = 140;
+    fireEvent.scroll(window);
+    await waitFor(() => expect(getByRole("button", { name: "분석 도우미 접기" })).toBeTruthy());
+    fireEvent.click(getByRole("button", { name: "분석 도우미 접기" }));
+    await waitFor(() => expect(getByRole("button", { name: /증액 여지 판단/ })).toBeTruthy());
+  });
+
+  it("opens once when an actual result checkpoint is added", async () => {
+    document.body.innerHTML = '<section id="s-incr-method"></section>';
+    const { container } = render(<ToolAssistRail toolId="5-23" />);
+    expect(container.querySelector(".tool-assist-rail").classList.contains("is-open")).toBe(false);
+    const result = document.createElement("section");
+    result.id = "s-incr-result";
+    document.body.appendChild(result);
+    await waitFor(() => expect(container.querySelector(".tool-assist-rail").classList.contains("is-open")).toBe(true));
   });
 });

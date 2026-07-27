@@ -77,7 +77,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
   return (
     <div className="tab-pane active" id="tab-incr">
       {/* 히어로 (claude-ux §1 여정=질문) */}
-      <section className="block" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px", marginBottom: "16px" }}>
+      <section className="block" id="s-incr-method" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px", marginBottom: "16px" }}>
         <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>{tr("광고를 켠 것(혹은 끈 것)이 진짜 얼마를 만들었나?", "How much did turning ads on (or off) actually create?")}</h2>
         <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6, maxWidth: "680px" }}>
           {tr(<>어트리뷰션과 달리, <strong>광고가 없었어도 어차피 일어났을 전환</strong>을 빼고 순수 증분만 봅니다. 3가지 방법 중 상황에 맞는 걸 고르세요.</>,
@@ -348,7 +348,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
   })();
 
   return (
-    <section className="block">
+    <section className="block" id="s-incr-result">
       <h2 className="section-title"><span className="ix">§1</span>{tr("증분 결과 (홀드아웃 기간)", "Incrementality result (holdout period)")}</h2>
 
       {card && (
@@ -603,7 +603,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
       </section>
 
       {r && (
-        <section className="block">
+        <section className="block" id="s-incr-result">
           <h2 className="section-title"><span className="ix">§2</span>{lost ? tr("종료 임팩트 (잃은 성과)", "Shutdown impact (performance lost)") : tr("신규 임팩트 (얻은 성과)", "New-launch impact (performance gained)")}</h2>
           {card && (
             <ResultActionCard
