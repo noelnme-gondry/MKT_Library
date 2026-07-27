@@ -550,6 +550,10 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       cleanRows,
       CREATIVE_CONFIG.fatigueAlert,
     );
+    const fatigueRisk = CREATIVE_FATIGUE.buildRiskAnalysis(
+      cleanRows,
+      CREATIVE_CONFIG.fatigueRisk,
+    );
 
     // §2 운영 건강도 (Win-rate · Velocity · 라이프사이클)
     const health = computeCreativeHealth(metrics, fatigue, cleanRows);
@@ -584,6 +588,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       decompose,
       fatigue,
       fatigueAlerts,
+      fatigueRisk,
       health,
       matrix,
       nextTest,
@@ -780,7 +785,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
     );
   }
 
-  const { validation, metrics, decompose, fatigue, fatigueAlerts, health, matrix, nextTest, snapshotHash } =
+  const { validation, metrics, decompose, fatigue, fatigueAlerts, fatigueRisk, health, matrix, nextTest, snapshotHash } =
     analysis;
   const hasValidationIssues = validation.errors.length > 0 || validation.droppedRows > 0;
 
@@ -817,6 +822,27 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
     .sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
     .slice(0, 30);
   const alertNowN = (fatigueAlerts || []).filter((a) => a.alert).length;
+  const riskZoneRows = (fatigueRisk?.current || [])
+    .filter((item) => item.isInRiskZone)
+    .sort((a, b) => {
+      if (Boolean(a.signalDate) !== Boolean(b.signalDate)) return a.signalDate ? -1 : 1;
+      if (a.enteredDimensions !== b.enteredDimensions) return b.enteredDimensions - a.enteredDimensions;
+      return (b.dropPct || 0) - (a.dropPct || 0);
+    });
+  const riskProfiles = [
+    fatigueRisk?.profiles?.overall,
+    ...Object.values(fatigueRisk?.profiles?.channels || {}),
+  ].filter(Boolean);
+  const riskBacktest3 = fatigueRisk?.backtest?.[3] || null;
+  const riskBacktest7 = fatigueRisk?.backtest?.[7] || null;
+  const fmtRiskRange = (dist, formatter) =>
+    dist?.median == null
+      ? "—"
+      : `${formatter(dist.q25)}–${formatter(dist.q75)} (${tr("중앙", "median")} ${formatter(dist.median)})`;
+  const fmtRiskRate = (result) =>
+    result?.hitRate == null
+      ? "—"
+      : `${(result.hitRate * 100).toFixed(0)}% (${result.hits}/${result.eligible})`;
   const fatigueTone = alertNowN > 0 || (autoPlan && autoPlan.isUndersupplied) ? "bad" : fatiguedCount > 0 ? "neutral" : "good";
   const fatigueHeadline = alertNowN > 0
     ? tr(`지금 교체가 필요한 소재가 ${alertNowN}개입니다. 이번 주 교체 계획부터 확정하세요.`, `${alertNowN} creatives need replacement now. Lock this week's swap plan first.`)
@@ -829,6 +855,9 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       : { cls: fatigueTone === "good" ? "good" : "muted", text: tr("교체 순서는 ‘지금 경고 → 위험 임박 → 피로 점수’ 기준으로 아래 일정에 정렬했습니다.", "The schedule below orders swaps by alert now, then risk soon, then fatigue score.") },
     analysis.nextTest?.length
       ? { text: tr(`다음 제작 실험 후보 ${analysis.nextTest.length}개를 제안했습니다. 성과가 좋았던 조합을 반복하기보다 검증 가능한 한 가지 변수만 바꿔 보세요.`, `${analysis.nextTest.length} next-test candidates are ready. Change one testable variable rather than blindly repeating the best combination.`) }
+      : null,
+    fatigueRisk?.profiles?.overall
+      ? { text: tr(`과거 신호 발생 시점과 비교해 현재 위험 구간에 들어온 소재는 ${riskZoneRows.length}개입니다.`, `${riskZoneRows.length} creatives are now in the observed risk zone based on past signal timing.`) }
       : null,
   ].filter(Boolean);
   const problemChoices = [
@@ -1340,7 +1369,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
                       <td className="tnum">{a.days}{tr("일", "d")}</td>
                       <td className="tnum"><strong style={{ color: scoreColor }}>{a.score == null ? "—" : (a.score * 100).toFixed(0) + "%"}</strong></td>
                       <td className="tnum" style={{ color: (a.ctrTrendPctPerDay || 0) < 0 ? "#f87171" : "var(--text-muted)" }}>{fmtPctDay(a.ctrTrendPctPerDay, locale)}</td>
-                      <td className="tnum" style={{ color: (a.freqTrendPctPerDay || 0) > 0 ? "#f87171" : "var(--text-muted)" }}>{fmtPctDay(a.freqTrendPctPerDay, locale)}</td>
+                      <td className="tnum" style={{ color: (a.impressionTrendPctPerDay || 0) > 0 ? "#f87171" : "var(--text-muted)" }}>{fmtPctDay(a.impressionTrendPctPerDay, locale)}</td>
                       <td className="tnum" style={{ color: (a.cpmTrendPctPerDay || 0) > 0 ? "#f87171" : "var(--text-muted)" }}>{fmtPctDay(a.cpmTrendPctPerDay, locale)}</td>
                       <td className="tnum">
                         {a.etaDays == null ? (
@@ -1360,6 +1389,130 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="block" id="s-fatigue-risk">
+        <h2 className="section-title">
+          <span className="ix">§6.1</span>
+          {tr("누적 집행 위험 구간 · 과거 신호 적중률", "Cumulative delivery risk zone · historical signal hit rate")}
+        </h2>
+        <p className="muted" style={{ color: "var(--text-muted)", fontSize: "12px", lineHeight: 1.6 }}>
+          {tr(
+            `빈도나 고유 도달을 추정하지 않습니다. ${CREATIVE_CONFIG.fatigueRisk.rollingWindow}일 CTR이 고점 대비 ${(CREATIVE_CONFIG.fatigueRisk.dropPct * 100).toFixed(0)}% 이상 낮은 상태가 ${CREATIVE_CONFIG.fatigueRisk.confirmDays}일 이어진 최초 시점의 집행일수·누적 노출·누적 비용을 과거 ${domain === "content" ? "콘텐츠" : "소재"}와 비교합니다.`,
+            `This does not estimate frequency or unique reach. It compares age, cumulative impressions, and cumulative spend at the first point where ${CREATIVE_CONFIG.fatigueRisk.rollingWindow}-day CTR stayed at least ${(CREATIVE_CONFIG.fatigueRisk.dropPct * 100).toFixed(0)}% below its peak for ${CREATIVE_CONFIG.fatigueRisk.confirmDays} days.`,
+          )}
+        </p>
+
+        <div className="ab-stat-row" style={{ margin: "10px 0 12px" }}>
+          <div className="ab-stat">
+            <div className="ab-stat-label" title={tr("최대 예측기간 이후 데이터까지 존재하는 과거 최초 신호", "Historical first signals with complete follow-up")}>{tr("과거 신호 표본", "Historical signals")}</div>
+            <div className="ab-stat-value tnum">{fatigueRisk?.historicalSignals?.length || 0}</div>
+          </div>
+          <div className="ab-stat">
+            <div className="ab-stat-label" title={tr(`신호 이후 3일 CTR이 신호 시점보다 ${(CREATIVE_CONFIG.fatigueRisk.outcomeDropPct * 100).toFixed(0)}% 이상 추가 하락한 비율`, `Share whose next 3-day CTR fell at least ${(CREATIVE_CONFIG.fatigueRisk.outcomeDropPct * 100).toFixed(0)}% further`)}>
+              {tr("3일 적중률", "3-day hit rate")}
+            </div>
+            <div className="ab-stat-value tnum">{fmtRiskRate(riskBacktest3)}</div>
+          </div>
+          <div className="ab-stat">
+            <div className="ab-stat-label" title={tr(`신호 이후 7일 CTR이 신호 시점보다 ${(CREATIVE_CONFIG.fatigueRisk.outcomeDropPct * 100).toFixed(0)}% 이상 추가 하락한 비율`, `Share whose next 7-day CTR fell at least ${(CREATIVE_CONFIG.fatigueRisk.outcomeDropPct * 100).toFixed(0)}% further`)}>
+              {tr("7일 적중률", "7-day hit rate")}
+            </div>
+            <div className="ab-stat-value tnum">{fmtRiskRate(riskBacktest7)}</div>
+          </div>
+          <div className="ab-stat">
+            <div className="ab-stat-label" title={tr("과거 신호 구간의 하단값 3개 중 2개 이상을 지난 현재 항목", "Current items past at least 2 of 3 historical lower bounds")}>{tr("현재 위험 구간", "In risk zone now")}</div>
+            <div className={`ab-stat-value tnum ${riskZoneRows.length ? "neg" : "pos"}`}>{riskZoneRows.length}</div>
+          </div>
+        </div>
+
+        {riskProfiles.length ? (
+          <>
+            <div className="table-wrap" style={{ marginBottom: "12px" }}>
+              <table className="data" style={{ fontSize: "11.5px" }}>
+                <thead>
+                  <tr>
+                    <th>{tr("비교 기준", "Comparison scope")}</th>
+                    <th>{tr("신호 표본", "Signals")}</th>
+                    <th>{tr("집행일수 위험 구간", "Age risk range")}</th>
+                    <th>{tr("누적 노출 위험 구간", "Cumulative impression range")}</th>
+                    <th>{tr("누적 비용 위험 구간", "Cumulative spend range")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {riskProfiles.map((profile) => (
+                    <tr key={profile.scope}>
+                      <td><strong>{profile.scope === "all" ? tr("전체 데이터", "All data") : profile.scope}</strong></td>
+                      <td className="tnum">{profile.sampleSize}</td>
+                      <td className="tnum">{fmtRiskRange(profile.ageDays, (v) => tr(`${Math.round(v)}일`, `${Math.round(v)}d`))}</td>
+                      <td className="tnum">{fmtRiskRange(profile.cumulativeImpressions, (v) => Math.round(v).toLocaleString())}</td>
+                      <td className="tnum">{fmtRiskRange(profile.cumulativeSpend, (v) => fmtNum(v, 0))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="table-wrap">
+              <table className="data" style={{ fontSize: "11.5px" }}>
+                <thead>
+                  <tr>
+                    <th>{tr("상태", "Status")}</th>
+                    <th>{C.colCreativeId}</th>
+                    <th>{tr("채널", "Channel")}</th>
+                    <th>{tr("집행일수", "Age")}</th>
+                    <th>{tr("누적 노출", "Cumulative impressions")}</th>
+                    <th>{tr("누적 비용", "Cumulative spend")}</th>
+                    <th>{tr("비교 기준", "Scope")}</th>
+                    <th>{tr("진입 조건", "Bounds crossed")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {riskZoneRows.length ? (
+                    riskZoneRows.slice(0, 30).map((item) => (
+                      <tr key={item.seriesKey}>
+                        <td>
+                          <span className="chip" style={{ fontSize: "11px", padding: "2px 8px", color: item.signalDate ? "#f87171" : "#fbbf24" }}>
+                            <span className="dot" style={{ background: item.signalDate ? "#f87171" : "#fbbf24" }}></span>
+                            {item.signalDate ? tr("하락 신호 발생", "Decline signaled") : tr("위험 구간 진입", "Entered risk zone")}
+                          </span>
+                        </td>
+                        <td><code className="inline" style={{ fontSize: "10px" }}>{String(item.creative_id).slice(0, 24)}</code></td>
+                        <td>{item.channel || tr("미분류", "Unclassified")}</td>
+                        <td className="tnum">{tr(`${item.ageDays}일`, `${item.ageDays}d`)}</td>
+                        <td className="tnum">{Math.round(item.cumulativeImpressions).toLocaleString()}</td>
+                        <td className="tnum">{fmtNum(item.cumulativeSpend, 0)}</td>
+                        <td>{item.profile?.scope === "all" ? tr("전체 데이터", "All data") : item.profile?.scope}</td>
+                        <td className="tnum">{item.enteredDimensions}/{item.availableDimensions}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan="8" style={{ textAlign: "center", padding: "16px", color: "var(--text-muted)" }}>{tr("현재 과거 위험 구간에 들어온 항목이 없습니다.", "No current item has entered the historical risk zone.")}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <div className="callout warning">
+            <div className="ico">!</div>
+            <div className="body">
+              <strong>{tr("아직 위험 구간을 추정할 수 없습니다", "Risk zone cannot be estimated yet")}</strong>
+              <p>
+                {tr(
+                  `최초 하락 신호가 발생한 뒤 ${Math.max(...CREATIVE_CONFIG.fatigueRisk.horizons)}일 이상 추적된 과거 ${domain === "content" ? "콘텐츠" : "소재"}가 최소 ${CREATIVE_CONFIG.fatigueRisk.minProfileSignals}개 필요합니다. 표본이 쌓이기 전에는 기존 CTR 하락 신호만 사용합니다.`,
+                  `At least ${CREATIVE_CONFIG.fatigueRisk.minProfileSignals} historical items need a first decline signal plus ${Math.max(...CREATIVE_CONFIG.fatigueRisk.horizons)} days of follow-up. Until then, use the existing CTR decline signal only.`,
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+        <p className="muted" style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "10px", lineHeight: 1.6 }}>
+          {tr(
+            `위험 구간은 과거 최초 신호 시점의 25~75백분위이며, 현재 판정은 하단값 3개 중 2개 이상 진입했을 때 표시합니다. 적중은 신호 이후 CTR이 추가 ${(CREATIVE_CONFIG.fatigueRisk.outcomeDropPct * 100).toFixed(0)}% 이상 하락한 경우입니다. 관측 우선순위이지 피로의 인과 판정은 아닙니다.`,
+            `Risk ranges are the 25th–75th percentiles at historical first-signal points. Current items are flagged after crossing at least 2 of 3 lower bounds. A hit means CTR fell at least ${(CREATIVE_CONFIG.fatigueRisk.outcomeDropPct * 100).toFixed(0)}% further after the signal. This is an observed priority, not a causal fatigue verdict.`,
+          )}
+        </p>
       </section>
 
       <section className="block" id="s-auto-planner">

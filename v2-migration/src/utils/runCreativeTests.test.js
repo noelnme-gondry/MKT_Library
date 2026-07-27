@@ -16,7 +16,7 @@ const CREATIVE_CONFIG = {
     minDays: 7,
     trendWindow: 14,
     ctrWeight: 0.45,
-    freqWeight: 0.35,
+    impressionWeight: 0.35,
     cpmWeight: 0.2,
     alertScore: 0.5,
     horizonDays: 30,
@@ -120,7 +120,7 @@ describe("runCreativeTests (golden, ported from index.html)", () => {
       idxBad &&
         idxBad.score > 0.5 &&
         idxBad.ctrTrendPctPerDay < 0 &&
-        idxBad.freqTrendPctPerDay > 0 &&
+        idxBad.impressionTrendPctPerDay > 0 &&
         idxBad.cpmTrendPctPerDay > 0,
     ).toBe(true);
   });
