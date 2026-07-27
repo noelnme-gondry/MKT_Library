@@ -21,6 +21,7 @@ const SIDEBAR_COPY = {
     naverBlog: "네이버 블로그",
     resourceLabel: "LIBRARY",
     workspaceLabel: "DECISION WORKSPACE",
+    allTools: "전체 도구",
     today: "오늘의 질문",
     workflow: "연결된 분석 흐름",
     dataGuide: "데이터 준비",
@@ -39,6 +40,7 @@ const SIDEBAR_COPY = {
     facebook: "Facebook",
     naverBlog: "Naver Blog",
     workspaceLabel: "DECISION WORKSPACE",
+    allTools: "All tools",
     today: "Today’s question",
     workflow: "Connected workflow",
     dataGuide: "Prepare data",
@@ -113,6 +115,10 @@ export default function Sidebar({ locale = "ko" }) {
         </div>
       ) : (
         <>
+      <div className="inner-workspace-label">
+        <span>{T.workspaceLabel}</span>
+        <b>{T.allTools}</b>
+      </div>
       <button type="button" className="sidebar-search" onClick={() => setCmdkOpen(true)} aria-label={T.searchPlaceholder}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="11" cy="11" r="8"></circle>
