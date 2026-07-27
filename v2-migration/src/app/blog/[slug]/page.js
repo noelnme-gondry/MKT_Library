@@ -64,6 +64,16 @@ function extractImages(html) {
   return out;
 }
 
+function splitAtContentAction(html) {
+  const marker = "<!-- CONTENT_ACTION -->";
+  const index = String(html || "").indexOf(marker);
+  if (index < 0) return { before: html, after: "" };
+  return {
+    before: html.slice(0, index),
+    after: html.slice(index + marker.length),
+  };
+}
+
 // 글별 구조화 데이터(JSON-LD) — BlogPosting(리치결과) + BreadcrumbList(빵부스러기).
 // SSR로 초기 HTML에 포함돼 크롤러가 즉시 파싱.
 function buildPostJsonLd(post, canonical) {
@@ -124,6 +134,7 @@ export default async function BlogPostPage({ params }) {
   if (!post) notFound();
 
   const canonical = `${SITE_URL}/blog/${post.slug}`;
+  const article = splitAtContentAction(post.html);
 
   return (
     <div className="content-article">
@@ -159,7 +170,11 @@ export default async function BlogPostPage({ params }) {
         </div>
       </header>
 
-      <article className="blog-prose" dangerouslySetInnerHTML={{ __html: post.html }} />
+      <article className="blog-prose">
+        <div dangerouslySetInnerHTML={{ __html: article.before }} />
+        {article.after && <ContentActionPanel toolId={post.primaryTool} post={post} placement="article_mid" />}
+        <div dangerouslySetInnerHTML={{ __html: article.after }} />
+      </article>
 
       <ContentActionPanel toolId={post.primaryTool} post={post} />
 

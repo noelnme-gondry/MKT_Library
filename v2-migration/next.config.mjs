@@ -27,6 +27,14 @@ const nextConfig = {
       { source: `/blog/${slug}`, destination: "/blog/ad-performance-diagnosis", permanent: true },
       { source: `/en/blog/${slug}`, destination: "/en/blog/ad-performance-diagnosis", permanent: true },
     ]);
+    // CVR·퍼널, 주니어 지표·지표 사슬을 각각 하나의 깊은 필라로 통합.
+    const pillarRedirects = [
+      ["cvr-optimization", "funnel-dropoff-analysis"],
+      ["junior-metrics-guide", "performance-marketing-metrics"],
+    ].flatMap(([sourceSlug, destinationSlug]) => [
+      { source: `/blog/${sourceSlug}`, destination: `/blog/${destinationSlug}`, permanent: true },
+      { source: `/en/blog/${sourceSlug}`, destination: `/en/blog/${destinationSlug}`, permanent: true },
+    ]);
     return [
       {
         source: "/tools/creative-analysis",
@@ -40,6 +48,7 @@ const nextConfig = {
       },
       ...budgetRedirects,
       ...diagnosisRedirects,
+      ...pillarRedirects,
     ];
   },
   async headers() {

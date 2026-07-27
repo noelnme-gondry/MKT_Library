@@ -6,7 +6,7 @@ date: "2026-07-18"
 slug: "cvr"
 keywords: "CVR, CVR meaning, Conversion Rate, conversion rate calculation"
 category: "Basic Metrics"
-relatedPosts: ["cvr-optimization"]
+relatedPosts: ["funnel-dropoff-analysis"]
 draft: false
 ---
 
@@ -24,4 +24,4 @@ Chasing CVR alone can shrink your volume drastically. Think in terms of **CVR ×
 
 ## Go deeper
 
-What to check when CVR won't budge is covered in [Optimizing CVR](/blog/cvr-optimization).
+What to check when CVR won't budge is covered in the [conversion funnel guide](/blog/funnel-dropoff-analysis).

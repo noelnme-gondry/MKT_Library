@@ -1,7 +1,8 @@
 ---
-title: "Performance Marketing Metrics: Stop Memorizing Them, Read Them as a Chain"
-description: "Instead of memorizing CPI, CPA, ROAS, and LTV:CAC separately, read them as one connected chain and you'll see exactly where performance is leaking. A metrics primer for junior marketers."
-date: "2026-07-09"
+title: "Performance Marketing Metrics: From Your First 4 to CPA and ROAS Diagnosis"
+description: "Start with CTR, CVR, CPA, and ROAS, then connect CPM, CPC, CPI, and LTV:CAC into one chain to locate the actual performance problem."
+date: "2026-07-27"
+updated: "2026-07-27"
 slug: "performance-marketing-metrics"
 keywords: "performance marketing metrics, CPI, CPA, ROAS, LTV, CAC, LTV:CAC, marketing metrics basics, junior marketer, how metrics connect, LTV to CAC ratio explained"
 tags: ["Metrics Basics", "Performance Marketing"]
@@ -9,6 +10,8 @@ draft: false
 ---
 
 CPI, CPA, ROAS, LTV, CAC… open a report and the acronyms pour out. You know what each one means, but "so what should I actually look at right now?" doesn't jump out at you. Today I'll show you how to read these metrics as one connected chain instead of memorizing them separately. Read them this way, and when a number spikes, you'll immediately know where to look.
+
+If the number of metrics feels overwhelming, begin with only four: CTR, CVR, CPA, and ROAS. Once you know the question behind each number, the rest naturally join when you need to narrow a diagnosis.
 
 ## Reading metrics one by one won't get you a diagnosis
 
@@ -34,6 +37,23 @@ Each metric answers a different question. Let's go through the definitions and e
 - **LTV : CAC**: the ratio of LTV (LifeTime Value — the value a customer generates over their lifetime) to CAC (Customer Acquisition Cost — the cost of acquiring that customer). Look closely and it's not that different from ROAS. (ROAS is revenue ÷ ad spend; LTV is revenue ÷ users; CAC is ad spend ÷ users — so the ratio reduces to revenue : ad spend, same as ROAS.) The real difference between ROAS and LTV is the revenue window they use. ROAS tallies revenue over a fixed window (Day 0, Day 1, Day 7, Day 14, etc.), while LTV accounts for repurchase behavior and tallies the total revenue a user is expected to generate over their whole relationship with you. Think of it as a longer-horizon version of ROAS — which is exactly why how you estimate that long-term revenue matters so much.
 
 The first three (CPI, CPA, ROAS) look at this ad's efficiency and short-term profitability. LTV:CAC looks at whether "this business stays profitable in the long run." They're watching different time horizons.
+
+## Start with these four questions
+
+Before memorizing every acronym, line up these four metrics. In day-to-day work, it is more useful to remember a metric as the **question it asks** than as a formula.
+
+![CTR, conversion rate, CPA, and ROAS, each labeled with the question it answers and where to look when it is low.](/blog-assets-en/junior-metrics-guide/metric-questions.svg)
+
+- **CTR — Did the creative earn attention?** When it is low, check the hook, thumbnail, copy, and the audience's first reaction. Compare with your own recent trend, not a universal benchmark.
+- **CVR — Did visitors take action?** When it is low, inspect the landing page, offer, signup or checkout flow, and whether the ad makes the same promise. See the [conversion funnel guide](/blog/funnel-dropoff-analysis) for the full workflow.
+- **CPA — What did one conversion cost?** Do not replace creative just because blended CPA rose. The average can rise when more budget shifts to a more expensive channel even if channel efficiency did not change.
+- **ROAS — Is the outcome profitable?** ROAS measures revenue, not margin or long-term repurchase. It can also include conversions that would have happened without advertising; when a firm answer matters, check [incrementality measurement](/blog/incrementality-measurement).
+
+The same high CPA needs different action depending on the surrounding metrics. Low CTR with normal CVR points to creative or targeting; normal CTR with low CVR points to the landing page or product. When the sample is thin, the correct answer is "not enough evidence yet."
+
+![Two cases where the same high CPA leads to different diagnoses once CTR and conversion rate are read together.](/blog-assets-en/junior-metrics-guide/metric-diagnosis.svg)
+
+<!-- CONTENT_ACTION -->
 
 ## 3. Read them as a chain, and the problem's location becomes visible
 

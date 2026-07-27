@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { idToSlug } from "@/lib/routeMap";
 import { primaryToolForContent } from "@/lib/contentToolRegistry";
+import { trackProductEvent } from "@/lib/analytics";
 
 const TOOL_COPY = {
   "5-2": {
@@ -52,7 +55,7 @@ const RELATED_TOOL = {
   },
 };
 
-export default function ContentActionPanel({ locale = "ko", toolId, term, post }) {
+export default function ContentActionPanel({ locale = "ko", toolId, term, post, placement = "article_post" }) {
   const content = term || post;
   const contentType = term ? "glossary" : "blog";
   const candidate = toolId || content?.primaryTool || primaryToolForContent(content?.slug, contentType);
@@ -61,15 +64,26 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post }
   const related = RELATED_TOOL[resolvedTool]?.[locale === "en" ? "en" : "ko"];
   const withStage = (toolId, stage) => `${locale === "en" ? "/en" : ""}${idToSlug[toolId]}${stage ? `?stage=${stage}` : ""}`;
   const href = withStage(resolvedTool, copy.stage);
-  return <aside className="content-action-panel">
+  const trackClick = (targetToolId, targetPlacement) => {
+    trackProductEvent("blog_tool_cta_clicked", {
+      tool_id: targetToolId,
+      source: contentType,
+      locale,
+      placement: targetPlacement,
+      content_slug: content?.slug,
+      content_type: contentType,
+    });
+  };
+  const isInline = placement === "article_mid";
+  return <aside className={`content-action-panel${isInline ? " content-action-panel--inline" : ""}`}>
     <div>
-      <span className="content-action-panel__eyebrow">{copy.label}</span>
+      <span className="content-action-panel__eyebrow">{isInline ? (locale === "en" ? "READY TO CHECK" : "바로 확인하기") : copy.label}</span>
       <h2>{copy.title}</h2>
       <p>{copy.desc}</p>
     </div>
     <div className="content-action-panel__links">
-      <Link href={href} className="content-action-panel__cta">{copy.cta} <span aria-hidden>→</span></Link>
-      {related && <Link href={withStage(related.toolId, related.stage)} className="content-action-panel__secondary">{related.cta} <span aria-hidden>→</span></Link>}
+      <Link href={href} className="content-action-panel__cta" onClick={() => trackClick(resolvedTool, placement)}>{copy.cta} <span aria-hidden>→</span></Link>
+      {!isInline && related && <Link href={withStage(related.toolId, related.stage)} className="content-action-panel__secondary" onClick={() => trackClick(related.toolId, `${placement}_secondary`)}>{related.cta} <span aria-hidden>→</span></Link>}
     </div>
   </aside>;
 }

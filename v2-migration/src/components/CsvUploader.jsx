@@ -789,7 +789,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         </div>
       )}
 
-      {csvData.canonicalData && <DataQualityReport canonicalData={csvData.canonicalData} metricKeys={Object.values(csvData.mapping || {}).filter((key) => key && key !== "__ignore__")} eligibility={dataEligibility} locale={locale} />}
+      {csvData.canonicalData && <DataQualityReport canonicalData={csvData.canonicalData} mappedRows={csvData.mappedRows} mapping={csvData.mapping} toolId={toolId} eligibility={dataEligibility} locale={locale} />}
 
       <div className="csv-mapping-block">
         <div className="csv-mapping-header">
