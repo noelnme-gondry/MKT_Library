@@ -1,423 +1,216 @@
 "use client";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { IA, SECTIONS, useAppStore } from "@/store/useDataStore";
-import { idToSlug, hasEnVersion } from "@/lib/routeMap";
-import { trItemTitle } from "@/lib/enNavCopy";
-import { trackProductEvent } from "@/lib/analytics";
-import ProductPreview from "@/components/landing/ProductPreview";
-import ToolCarousel from "@/components/landing/ToolCarousel";
+
 import ConnectedToolJourney from "@/components/ConnectedToolJourney";
+import { trackProductEvent } from "@/lib/analytics";
+import { hasEnVersion, idToSlug } from "@/lib/routeMap";
+import { useAppStore } from "@/store/useDataStore";
 
-// 랜딩 화면 전용 EN 카피 — 앱 전체 번역은 범위 밖(§1), 이 랜딩 히어로/3카드/블로그
-// 배너/소셜 행만 locale 분기. LandingGuide/Analyze/Content 하위 트랙은 IA 원본
-// 한글 데이터 그대로(뒤로가기 버튼 라벨만 분기).
-const LANDING_COPY = {
+const COPY = {
   ko: {
-    eyebrow: "Growth Opt Playbook",
-    title: "무엇이 궁금하세요?",
-    deck: "질문을 고르면 그 도구로 바로 들어갑니다. 데이터가 없어도 예시로 먼저 보고, 준비되면 내 데이터로 분석하세요. 모든 분석 도구 무료.",
-    hero: {
-      title: "성과가 움직인 이유를",
-      titleTools: "이번 주 데이터로 확인하고",
-      titleAccent: "다음 한 가지를 정합니다",
-      sub: "캠페인 CSV를 올리면 변동 원인·예산 여력·소재 신호를 한 번에 정리합니다.",
-      subDetail: "MMM과 실험 분석은 필요한 데이터부터 안내합니다.",
-      ctaPrimary: "내 자료 올리고 무료 분석 시작",
-      ctaDemo: "샘플로 먼저 보기",
-      freeNote: "무료로 바로 시작 · 가입 없음 · 데이터는 브라우저에서만 처리",
-      privacy: "🔒 서버 전송 0",
-      previewCaption: "실제 화면 예시 · 주간 결론과 다음 조치",
-      carouselTitle: "다음 질문도 같은 데이터에서 이어서 확인하세요",
-      lab: { eyebrow: "ADVANCED ANALYSIS LAB", titleLead: "MMM·회귀·미래 예측", titleRest: "도 같은 도구 안에서", desc: "주간 운영을 넘어 채널별 기여도, 광고비 반응곡선, 예산 시나리오별 미래 성과를 분석합니다. 관측 데이터의 한계와 외삽 위험도 결과와 함께 설명합니다.", cta: "마케팅 반응 분석 열기", items: ["채널별 기여 분해", "다변량 회귀", "4주 미래 예측"] },
-    },
-    localeSwitchLabel: "English",
-    guide: {
-      step: "가이드",
-      tag: "SOP 문서",
-      title: "📘 운영 가이드 확인",
-      desc: "MMP·트래킹 셋업부터 캠페인 운영·소재, 운영 후 분석·최적화까지. 단계별 표준 절차 문서.",
-      metaSuffix: "개 가이드",
-      cta: "가이드 보기 →",
-    },
-    analyze: {
-      step: "분석",
-      tag: "대시보드 · 도구",
-      title: "📊 마케팅 분석 · 대시보드",
-      desc: "실제 운영한 캠페인 CSV를 올리거나 구글 시트를 불러와 대시보드 시각화·효율 분석·실험 판독·고급 회귀까지. 시트는 필요할 때 최신 데이터를 다시 불러올 수 있어요. 시각화·모니터링은 무료.",
-      metaSuffix: "개 분석 도구",
-      cta: "분석 시작 →",
-    },
-    content: {
-      step: "콘텐츠",
-      tag: "블로그 · SNS · 뉴스레터",
-      title: "✍️ 콘텐츠 성과 분석",
-      desc: "콘텐츠 성과 CSV를 올리거나 구글 시트를 연동해 어떤 제작 요소가 조회수·CTR을 끌어올리는지, 어떤 콘텐츠가 구독 전환을 만드는지 진단. 전부 무료.",
-      metaSuffix: "개 분석 도구",
-      cta: "콘텐츠 분석 →",
-    },
-    blogBanner: {
-      title: "마케팅 블로그",
-      desc: "퍼포먼스·콘텐츠 마케팅 실무 인사이트와 데이터·SEO·그로스 팁을 정기적으로 업데이트합니다.",
-      cta: "글 보러 가기 →",
-    },
-    social: { youtube: "유튜브", instagram: "인스타그램", facebook: "페이스북", naverBlog: "네이버 블로그" },
-    back: "← 처음으로",
-  },
-  en: {
-    eyebrow: "Growth Opt Playbook",
-    title: "What are you curious about?",
-    deck: "Pick a question and jump straight into the tool. No data yet? See a live example first, then analyze your own. All analysis tools are free.",
-    hero: {
-      title: "Know why performance moved,",
-      titleTools: "read this week’s data, then",
-      titleAccent: "choose the next move",
-      sub: "Upload a campaign CSV to see performance drivers, budget headroom, and creative signals in one pass.",
-      subDetail: "MMM and experiments show the exact data they need.",
-      ctaPrimary: "Upload data · analyze free",
-      ctaDemo: "Try a sample first",
-      freeNote: "Free to start · no signup · your data stays in browser memory",
-      privacy: "🔒 Nothing sent to any server",
-      previewCaption: "Live product view · weekly decisions and next actions",
-      carouselTitle: "Continue with the next question from the same data",
-      lab: { eyebrow: "ADVANCED ANALYSIS LAB", titleLead: "MMM, regression, and forecasting", titleRest: "in the same workflow", desc: "Go beyond weekly operations to estimate channel contribution, spend-response curves, and future performance by budget scenario, with observational limits and extrapolation risk shown beside the result.", cta: "Open marketing response analysis", items: ["Channel contribution", "Multivariate regression", "4-week forecast"] },
-    },
-    localeSwitchLabel: "한국어",
-    guide: {
-      step: "Guides",
-      tag: "SOP docs",
-      title: "📘 Browse operating guides",
-      desc: "From MMP/tracking setup to campaign ops, creative, and post-launch analysis — step-by-step standard playbooks.",
-      metaSuffix: " guides",
-      cta: "Browse guides →",
-    },
-    analyze: {
-      step: "Analyze",
-      tag: "Dashboard · tools",
-      title: "📊 Marketing analysis · dashboard",
-      desc: "Upload a campaign CSV or connect a Google Sheet for dashboard visualization, efficiency analysis, experiment readouts, and advanced regression — reconnect the sheet anytime for fresh data. Visualization and monitoring are free.",
-      metaSuffix: " analysis tools",
-      cta: "Start analyzing →",
-    },
-    content: {
-      step: "Content",
-      tag: "Blog · social · newsletter",
-      title: "✍️ Content performance analysis",
-      desc: "Upload a content performance CSV or connect a Google Sheet to see which creative elements drive views/CTR and which content drives subscriber conversions. All free.",
-      metaSuffix: " analysis tools",
-      cta: "Analyze content →",
-    },
-    blogBanner: {
-      title: "Marketing blog",
-      desc: "Practical performance and content marketing insights — data, SEO, and growth tips, updated regularly.",
-      cta: "Read the blog →",
-    },
-    social: { youtube: "YouTube", instagram: "Instagram", facebook: "Facebook", naverBlog: "Naver Blog" },
-    back: "← Back to home",
-  },
-};
-
-// 랜딩의 한 가지 일: 처음 방문한 운영자가 "내가 지금 판단할 질문"을 고르고,
-// 별도 탐색 없이 해당 도구의 샘플 분석까지 진입시키는 것. 세 카드는 사용 빈도가
-// 높은 주간 운영 순서(상태 확인 → 예산 판단 → 소재 조치)를 표현한다.
-const DECISION_LANES = {
-  ko: {
-    label: "WEEKLY DECISION LANES",
-    title: "지금 가장 먼저 확인할 질문",
-    items: [
-      { id: "5-2", label: "주간 상태", title: "이번 주, 어디를 먼저 봐야 할까?", desc: "CPA·ROAS·페이싱·이상 신호를 한 화면에서 점검" },
-      { id: "5-3", label: "예산 판단", title: "다음 예산은 어디로 옮길까?", desc: "현재 효율과 한계 효율로 증액·감액 후보 비교" },
-      { id: "9-6", label: "소재 조치", title: "무엇을 교체하고 새로 만들까?", desc: "소재 피로 신호와 교체 우선순위 정리" },
+    eyebrow: "WEEKLY DECISION SYSTEM",
+    title: "성과가 움직인 이유를",
+    titleMuted: "이번 주 데이터에서 찾고",
+    titleAccent: "다음 한 가지를 정합니다.",
+    deck: "CSV 하나로 상태 점검부터 예산과 소재 판단까지 이어갑니다. 분석표를 읽게 하지 않고, 무엇을 유지하고 무엇을 바꿀지 먼저 보여줍니다.",
+    sampleCta: "샘플 판단 화면 보기",
+    dataGuideCta: "내 데이터 준비 방법",
+    privacy: "가입 없음 · 모든 분석 무료 · 데이터 서버 전송 0",
+    instrumentAria: "이번 주 판단 미리보기",
+    weeklyDecision: "이번 주 운영 판단",
+    verdict: <>Meta 예산을 바로 늘리기보다<br />검색광고 낭비부터 줄이세요.</>,
+    reason: "전체 CPA는 안정적이지만 검색 일반 캠페인의 비용이 18% 늘며 효율을 끌어내렸습니다.",
+    nextAction: "다음 행동",
+    action: "일반 키워드 예산 10% 감액 검토",
+    evidence: "근거 보기",
+    questionEyebrow: "CHOOSE BY QUESTION",
+    questionTitle: "지금 가장 먼저 판단할 것은?",
+    questionDeck: "도구 이름보다 실제 업무 질문으로 시작합니다.",
+    questions: [
+      { id: "5-2", label: "WEEKLY HEALTH", title: "이번 주, 어디를 먼저 봐야 할까?", desc: "CPA·ROAS·페이싱·이상 신호를 한 화면에서 점검합니다." },
+      { id: "5-3", label: "BUDGET MOVE", title: "다음 예산은 어디로 옮길까?", desc: "현재 효율과 한계 효율로 증액·감액 후보를 비교합니다." },
+      { id: "9-6", label: "CREATIVE ACTION", title: "무엇을 교체하고 새로 만들까?", desc: "소재 피로 신호와 교체 우선순위를 정리합니다." },
     ],
+    libraryEyebrow: "PLAYBOOK LIBRARY",
+    libraryTitle: "분석 밖에서도 판단을 이어가세요.",
+    libraryDeck: "실무 인사이트와 SOP를 같은 제품 안에 유지합니다.",
+    blogLabel: "MARKETING BLOG",
+    blogTitle: "성과를 해석하는 실무 인사이트",
+    blogDesc: "퍼포먼스·콘텐츠 마케팅, 데이터·SEO·그로스 팁을 정기적으로 업데이트합니다.",
+    guideLabel: "OPERATING PLAYBOOK",
+    guideTitle: "팀이 함께 쓰는 운영 표준",
+    guideDesc: "트래킹 셋업부터 캠페인 운영·소재·분석까지 단계별 SOP를 확인합니다.",
+    resources: "바로 쓰는 자료와 외부 채널",
+    templates: "CSV 템플릿",
+    glossary: "용어사전",
+    naver: "네이버 블로그",
   },
   en: {
-    label: "WEEKLY DECISION LANES",
-    title: "What should you check first?",
-    items: [
-      { id: "5-2", label: "Weekly health", title: "Where should I look first this week?", desc: "Review CPA, ROAS, pacing, and anomaly signals in one view" },
-      { id: "5-3", label: "Budget move", title: "Where should the next budget go?", desc: "Compare scale-up and pull-back candidates with marginal efficiency" },
-      { id: "9-6", label: "Creative action", title: "What should we replace or make next?", desc: "Prioritize creative fatigue signals and the next swaps" },
+    eyebrow: "WEEKLY DECISION SYSTEM",
+    title: "Know why performance moved,",
+    titleMuted: "read this week’s data, then",
+    titleAccent: "choose the next move.",
+    deck: "Move from weekly health to budget and creative decisions with one CSV. See what to keep and what to change before digging through analysis tables.",
+    sampleCta: "See the sample decision",
+    dataGuideCta: "Prepare my data",
+    privacy: "No signup · every analysis tool is free · nothing sent to a server",
+    instrumentAria: "Preview of this week’s decision",
+    weeklyDecision: "This week’s operating decision",
+    verdict: <>Cut wasted search spend<br />before scaling Meta.</>,
+    reason: "Overall CPA is stable, but generic search spend rose 18% and pulled efficiency down.",
+    nextAction: "Next action",
+    action: "Review a 10% cut to generic-keyword spend",
+    evidence: "See evidence",
+    questionEyebrow: "CHOOSE BY QUESTION",
+    questionTitle: "What do you need to decide first?",
+    questionDeck: "Start with the operating question, not the tool name.",
+    questions: [
+      { id: "5-2", label: "WEEKLY HEALTH", title: "Where should I look first this week?", desc: "Review CPA, ROAS, pacing, and anomaly signals in one view." },
+      { id: "5-3", label: "BUDGET MOVE", title: "Where should the next budget go?", desc: "Compare scale-up and pull-back candidates with marginal efficiency." },
+      { id: "9-6", label: "CREATIVE ACTION", title: "What should we replace or make next?", desc: "Prioritize creative fatigue signals and the next swaps." },
     ],
+    libraryEyebrow: "PLAYBOOK LIBRARY",
+    libraryTitle: "Keep learning beyond the analysis.",
+    libraryDeck: "Practical insight and operating standards stay in the same product.",
+    blogLabel: "MARKETING BLOG",
+    blogTitle: "Practical insight for reading performance",
+    blogDesc: "Performance and content marketing, data, SEO, and growth notes updated regularly.",
+    guideLabel: "OPERATING PLAYBOOK",
+    guideTitle: "Operating standards your team can share",
+    guideDesc: "Step-by-step SOPs from tracking setup to campaign operations, creative, and analysis.",
+    resources: "Ready-to-use resources and external channels",
+    templates: "CSV templates",
+    glossary: "Glossary",
+    naver: "Naver Blog",
   },
 };
 
-const GUIDE_SECTION = SECTIONS.find((s) => s.id === "guide");
-const ANALYSIS_SECTION = SECTIONS.find((s) => s.id === "analysis");
-const GUIDE_GROUP_IDS = new Set(GUIDE_SECTION.groups);
-const OPS_GROUP_IDS = new Set(ANALYSIS_SECTION.groups);
-
-// 홈 1층에 도구를 "질문"으로 노출 — 유저가 자기 궁금증으로 도구를 고르게(선택성↑)
-// + 궁금해서 더 누르게(호기심 훅). 실제 도구 이름은 카드 desc에 함께 노출(식별 유지).
-// 키=라우트 id(§4.1 불변). 훅 없는 신규 도구는 자동으로 도구명+설명으로 폴백.
-const TOOL_HOOKS = {
-  ko: {
-    "5-2": "이번 주 성과, 예산 속도, 코호트까지 한눈에 볼까?",
-    "5-21": "성과가 올랐네? 물량 때문일까, 효율 때문일까?",
-    "5-22": "이 캠페인, 예산을 더 태워도 효율이 유지될까?",
-    "5-3": "예산, 어디에 더 써야 이득일까?",
-    "9-6": "지금 성과 좋은 소재, 언제쯤 교체해야 할까?",
-    "5-4": "A안과 B안, 진짜 차이가 있는 걸까?",
-    "5-23": "자연 유입 빼고, 광고가 순수하게 만든 성과는?",
-    "5-18": "예산을 바꾸면 다음 4주 성과는 얼마나 달라질까?",
-    "5-20": "유저를 붙잡는 '아하 순간'은 언제일까?",
-  },
-  en: {
-    "5-2": "Is our operation running healthy right now?",
-    "5-21": "What actually moved this week's performance?",
-    "5-22": "That winning campaign — why did CPA suddenly jump?",
-    "5-3": "Where should the next dollar of budget go?",
-    "5-4": "Version A vs B — is the difference real?",
-    "5-23": "How much did this ad truly create on its own?",
-    "5-18": "If we spend more, how much will performance grow?",
-    "5-20": "When is the 'aha moment' that keeps users hooked?",
-    "9-1": "Which content elements actually drive views/CTR?",
-    "9-2": "Which content turns readers into subscribers?",
-    "9-3": "What moved your traffic — and which source drove it?",
-    "9-6": "Which creatives are actually lifting performance?",
-    "9-7": "Is our content operation healthy right now?",
-  },
-};
-
-function findMeta(id) {
-  for (const group of IA) {
-    const item = group.items.find((i) => i.id === id);
-    if (item) return item;
-  }
-  return null;
-}
-
-/* ──────────────────────────── STEP 1 (홈) ──────────────────────────── */
-// 재구성: 추상적 3-트랙 게이트(유저가 안 눌러 이탈)를 제거하고, 분석 도구를 홈에서
-// 바로 "질문형 카드"로 노출 → 한 번 클릭에 도구+라이브 데모 진입(선택성·호기심↑).
-// 가이드·콘텐츠는 보조 카드로 강등(트랙 유지), 블로그·소셜은 그대로.
-function LandingHome({ locale }) {
+export default function LandingPage({ locale = "ko" }) {
+  const lang = locale === "en" ? "en" : "ko";
+  const T = COPY[lang];
   const router = useRouter();
-  const setDemoDisabled = useAppStore((s) => s.setDemoDisabled);
-  const L = LANDING_COPY[locale] || LANDING_COPY.ko;
-  const H = TOOL_HOOKS[locale] || TOOL_HOOKS.ko;
-  const decisionLanes = DECISION_LANES[locale] || DECISION_LANES.ko;
-  // 데이터 가이드(그룹 08)는 상단 도구 그리드에서 제외 → 맨 밑에 약하게(§요구:
-  // 준비 가이드가 맨 위에 오지 않게). 사이드바(SECTIONS)는 불변.
-  const DATA_GUIDE_GROUP = "08";
-  const opsGroups = IA.filter(
-    (g) => OPS_GROUP_IDS.has(g.id) && g.id !== DATA_GUIDE_GROUP
-  );
-  const dataGuideItem = (IA.find((g) => g.id === DATA_GUIDE_GROUP) || {}).items?.[0];
-  const fireGa = (name, params) => {
-    if (typeof window !== "undefined" && typeof window.gtag === "function") {
-      window.gtag("event", name, params);
-    }
-  };
-  const totalGuides = IA.filter((g) => GUIDE_GROUP_IDS.has(g.id)).reduce(
-    (a, g) => a + g.items.length,
-    0
-  );
-  // 번역된 도구만 /en 유지, 미번역은 KR로(Sidebar.navHref와 동일 규칙 — §plan).
-  const goTool = (id) =>
-    router.push(locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/");
-  const ctaLabel = locale === "en" ? "See a live example →" : "예시로 바로 보기 →";
-  const hero = L.hero || {};
-
-  // 캐러셀 카드 = 분석 도구(콘텐츠 09 포함, SECTIONS.analysis에 흡수됨)를 "질문"으로
-  // 평탄화(그룹 제목=eyebrow, 훅=헤드라인). opsGroups가 09를 이미 포함.
-  const featuredOrder = ["5-2", "5-21", "9-6", "5-18", "5-22", "5-3", "5-4", "5-23", "5-20", "9-1"];
-  const carouselCards = opsGroups.flatMap((g) =>
-    g.items
-      .filter((it) => !it.hidden)
-      .map((it) => {
-        const meta = findMeta(it.id);
-        if (!meta) return null;
-        return {
-          id: it.id,
-          eyebrow: g.title,
-          headline: H[it.id] || trItemTitle(it.id, locale, meta.title),
-          mockTitle: trItemTitle(it.id, locale, meta.title),
-          href: locale === "en" && hasEnVersion(it.id) ? `/en${idToSlug[it.id] || ""}` : idToSlug[it.id] || "/",
-        };
-      })
-      .filter(Boolean)
-  ).sort((a, b) => featuredOrder.indexOf(a.id) - featuredOrder.indexOf(b.id));
-  const pickTool = (id) => { fireGa("landing_tool_pick", { tool: id }); };
-  const openDecisionLane = (id) => {
-    trackProductEvent("landing_decision_lane_pick", { tool_id: id, source: "landing", placement: "decision_lane" });
+  const setDemoDisabled = useAppStore((state) => state.setDemoDisabled);
+  const toolHref = (id) =>
+    lang === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/";
+  const openSample = (id, placement) => {
+    trackProductEvent("landing_tool_pick", {
+      tool_id: id,
+      source: "landing",
+      placement,
+      locale: lang,
+    });
     setDemoDisabled(false);
-    goTool(id);
+    router.push(toolHref(id));
   };
 
   return (
-    <div className="landing-shell">
-      {/* 브랜드(로고+이름)는 전역 Header 좌상단으로 이동, 언어 전환도 Header EN 토글로
-          일원화 — 랜딩 자체 eyebrow/English 버튼(중복) 제거. */}
-      {/* ── 히어로 (Semrush형 전환 히어로) ── */}
-      <section className="landing-hero">
-        <div className="landing-hero__signal"><span></span>{locale === "en" ? "WEEKLY DECISION SYSTEM" : "WEEKLY DECISION SYSTEM · 주간 운영 판단"}</div>
-        <h1 className="page-title landing-hero__title">
-          {hero.title}
-          {/* 기능 예시는 제목과 확연히 다른 층위로: 작게·뮤트·괄호. 자체 줄 차지. */}
-          {hero.titleTools && (
-            <span className="landing-hero__subtitle">
-              {hero.titleTools}
-            </span>
-          )}
-          {/* "전부 무료."는 한 덩어리 — 줄 중간에서 끊기지 않게 자체 줄 + nowrap */}
-          {hero.titleAccent && (
-            <span className="landing-hero__accent">{hero.titleAccent}<i className="landing-hero__punctuation">.</i></span>
-          )}
-        </h1>
-        <p className="landing-hero__deck">
-          <span>{hero.sub}</span>
-          {hero.subDetail && <span>{hero.subDetail}</span>}
-        </p>
-        <div className="landing-hero__actions">
-          <Link href={locale === "en" ? "/en/start" : "/start"} className="btn primary landing-hero__primary" onClick={() => fireGa("landing_cta", { action: "analyze" })}>
-            {hero.ctaPrimary} →
-          </Link>
-          <button type="button" className="btn ghost landing-hero__secondary" onClick={() => { fireGa("landing_cta", { action: "demo" }); setDemoDisabled(false); goTool("5-2"); }}>
-            ▶ {hero.ctaDemo}
-          </button>
+    <div className="decision-console-landing">
+      <section className="dc-hero" aria-labelledby="dc-hero-title">
+        <div className="dc-hero__copy">
+          <div className="dc-eyebrow">{T.eyebrow}</div>
+          <h1 id="dc-hero-title">
+            <span>{T.title}</span>
+            <span className="dc-hero__muted">{T.titleMuted}</span>
+            <span className="dc-hero__accent">{T.titleAccent}</span>
+          </h1>
+          <p>{T.deck}</p>
+          <div className="dc-hero__actions">
+            <button className="btn primary dc-primary-button" type="button" onClick={() => openSample("5-2", "hero")}>
+              {T.sampleCta}
+            </button>
+            <Link className="dc-text-link" href={lang === "en" ? "/en/guide/csv-data-prep" : "/guide/csv-data-prep"}>
+              {T.dataGuideCta} →
+            </Link>
+          </div>
+          <div className="dc-privacy">{T.privacy}</div>
         </div>
-        <div className="landing-hero__privacy">{hero.privacy}</div>
-        <div className="landing-hero__free">{hero.freeNote}</div>
+
+        <article className="dc-instrument" aria-label={T.instrumentAria}>
+          <header className="dc-instrument__head">
+            <strong>{T.weeklyDecision}</strong>
+            <span>ANALYSIS READY</span>
+          </header>
+          <div className="dc-instrument__verdict">
+            <span>DECISION 01 · BUDGET</span>
+            <h2>{T.verdict}</h2>
+            <p>{T.reason}</p>
+          </div>
+          <div className="dc-mini-chart" aria-hidden="true">
+            <svg viewBox="0 0 440 114" preserveAspectRatio="none" focusable="false">
+              <path className="dc-chart-primary" d="M0,80 C35,76 48,57 78,61 S125,82 154,67 S201,35 233,44 S286,80 318,62 S375,32 440,38" />
+              <path className="dc-chart-baseline" d="M0,96 C40,91 73,92 112,82 S180,80 226,77 S305,74 350,66 S407,59 440,55" />
+              <circle cx="440" cy="38" r="4" />
+            </svg>
+          </div>
+          <footer className="dc-instrument__actions">
+            <div>
+              <b>{T.nextAction}</b>
+              <span>{T.action}</span>
+            </div>
+            <button type="button" onClick={() => openSample("5-2", "decision_instrument")}>
+              {T.evidence} →
+            </button>
+          </footer>
+        </article>
       </section>
 
-      <section className="landing-decision-lanes" aria-labelledby="landing-decision-lanes-title">
-        <div className="landing-decision-lanes__head">
-          <span>{decisionLanes.label}</span>
-          <h2 id="landing-decision-lanes-title">{decisionLanes.title}</h2>
-        </div>
-        <div className="landing-decision-lanes__grid">
-          {decisionLanes.items.map((item) => (
-            <button key={item.id} type="button" className="landing-decision-lane" onClick={() => openDecisionLane(item.id)}>
-              <span className="landing-decision-lane__label">{item.label}</span>
-              <strong>{item.title}</strong>
-              <span>{item.desc}</span>
-              <b>{locale === "en" ? "Open sample analysis" : "샘플 분석 열기"} <i aria-hidden="true">→</i></b>
+      <section className="dc-questions" id="questions" aria-labelledby="dc-question-title">
+        <header className="dc-section-head">
+          <div>
+            <div className="dc-eyebrow">{T.questionEyebrow}</div>
+            <h2 id="dc-question-title">{T.questionTitle}</h2>
+          </div>
+          <p>{T.questionDeck}</p>
+        </header>
+        <div className="dc-question-grid">
+          {T.questions.map((question) => (
+            <button type="button" className="dc-question-card" key={question.id} onClick={() => openSample(question.id, "question_card")}>
+              <span>{question.label}</span>
+              <h3>{question.title}</h3>
+              <p>{question.desc}</p>
             </button>
           ))}
         </div>
       </section>
 
-      {/* ── 라이브 제품 미리보기(시연 슬롯 — 여러 도구 로테이션, 나중 mp4 교체 가능) ── */}
-      <section className="landing-preview-stage" aria-label={hero.previewCaption}>
-        <div className="landing-preview-stage__bar"><span>{hero.previewCaption}</span><span className="landing-preview-stage__status">● {locale === "en" ? "SAMPLE DATA" : "샘플 데이터"}</span></div>
-        <ProductPreview locale={locale} />
-      </section>
+      <div id="workflow">
+        <ConnectedToolJourney locale={lang} />
+      </div>
 
-      <section className="landing-advanced-lab">
-        <div>
-          <span>{hero.lab.eyebrow}</span>
-          <h2><span className="lab-title__accent">{hero.lab.titleLead}</span> {hero.lab.titleRest}</h2>
-          <p>{hero.lab.desc}</p>
-          <Link href={locale === "en" ? "/en/tools/marketing-response" : "/tools/marketing-response"} className="btn primary" onClick={() => fireGa("landing_tool_pick", { tool: "5-18" })}>{hero.lab.cta} →</Link>
-        </div>
-        <div className="landing-advanced-lab__model" aria-label={locale === "en" ? "Marketing response model preview" : "마케팅 반응 모델 미리보기"}>
-          <div className="mmm-preview__topline">
-            <div><span>MARKETING RESPONSE / 5-18</span><b>{locale === "en" ? "Weekly model" : "주간 모델"}</b></div>
-            <em className="mmm-preview__fit">R² 0.81 <i>GOOD FIT</i></em>
+      <section className="dc-library" id="library" aria-labelledby="dc-library-title">
+        <header className="dc-section-head">
+          <div>
+            <div className="dc-eyebrow">{T.libraryEyebrow}</div>
+            <h2 id="dc-library-title">{T.libraryTitle}</h2>
           </div>
-          <div className="mmm-preview__toolbar">
-            <span>{locale === "en" ? "12 weeks · spend → outcome" : "최근 12주 · 비용 → 결과"}</span>
-            <span className="mmm-preview__legend"><i></i>{locale === "en" ? "Observed" : "실측"}<i></i>{locale === "en" ? "Model" : "모형"}</span>
-          </div>
-          <div className="mmm-preview__chart" aria-hidden="true">
-            <svg viewBox="0 0 520 132" preserveAspectRatio="none" focusable="false">
-              <path className="mmm-grid" d="M0 22H520M0 55H520M0 88H520M0 121H520" />
-              <path className="mmm-bars" d="M18 121V86h21v35zm39 0V70h21v51zm39 0V97h21v24zm39 0V57h21v64zm39 0V75h21v46zm39 0V42h21v79zm39 0V83h21v38zm39 0V64h21v57zm39 0V91h21v30zm39 0V51h21v70zm39 0V73h21v48zm39 0V34h21v87z" />
-              <path className="mmm-observed" d="M18 83C42 79 50 66 78 71S105 96 135 56s44 18 62 11 35-31 55-18 31 37 52 16 39 1 55-9 41 12 59-2 29-21 45-20 29 5 42 1" />
-              <path className="mmm-model" d="M18 80C42 77 57 72 78 70s38 4 57-2 40-2 62-5 35-5 55-3 37-2 52-4 37 0 55-1 42-3 59-5 38 1 60-2 38-4 59-4" />
-            </svg>
-          </div>
-          <div className="mmm-preview__table">
-            <div className="mmm-preview__table-head"><span>{locale === "en" ? "Channel contribution" : "채널 기여도"}</span><b>{locale === "en" ? "Share" : "기여 비중"}</b></div>
-            <div className="mmm-preview__channel-row"><i className="mmm-dot mmm-dot--blue"></i><span>Paid social</span><strong>42.8%</strong></div>
-            <div className="mmm-preview__channel-row"><i className="mmm-dot mmm-dot--green"></i><span>Search</span><strong>31.4%</strong></div>
-            <div className="mmm-preview__channel-row"><i className="mmm-dot mmm-dot--amber"></i><span>{locale === "en" ? "Organic / baseline" : "오가닉·기준선"}</span><strong>25.8%</strong></div>
-          </div>
-          <div className="mmm-preview__footer"><span>{locale === "en" ? "Next 4 weeks forecast" : "다음 4주 예측"}</span><b>+9.8%</b><small>{locale === "en" ? "association ≠ causation · holdout recommended" : "연관 ≠ 인과 · 홀드아웃 검증 권장"}</small></div>
-        </div>
-      </section>
-
-      {/* ── 질문 캐러셀(도구 진입) ── */}
-      <ToolCarousel
-        cards={carouselCards}
-        title={hero.carouselTitle}
-        onPick={pickTool}
-        ctaLabel={ctaLabel}
-        liveCardId="5-2"
-        locale={locale}
-      />
-
-      <ConnectedToolJourney locale={locale} />
-
-      {/* ── 블로그 | SOP 나란히(읽을거리·문서 2대장). 각자 자체 주소(/blog · /guide). ── */}
-      <section className="landing-exit-grid" aria-label={locale === "en" ? "Keep learning or prepare data" : "더 알아보거나 데이터 준비하기"}>
-        <Link href={locale === "en" ? "/en/blog" : "/blog"} className="home-hub-card landing-exit-card">
-          <div className="landing-exit-card__index">01</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="landing-exit-card__title">{L.blogBanner.title}</div>
-            <div className="landing-exit-card__desc">{L.blogBanner.desc}</div>
-          </div>
-          <span className="landing-exit-card__cta">{L.blogBanner.cta}</span>
-        </Link>
-
-        <Link href={locale === "en" ? "/en/guide" : "/guide"} className="home-hub-card landing-exit-card">
-          <div className="landing-exit-card__index">02</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="landing-exit-card__title">{L.guide.title}</div>
-            <div className="landing-exit-card__desc">{L.guide.desc}</div>
-            <div className="landing-exit-card__meta tnum">{totalGuides}{L.guide.metaSuffix}</div>
-          </div>
-          <span className="landing-exit-card__cta">{L.guide.cta}</span>
-        </Link>
-      </section>
-
-      {/* 데이터 준비 가이드 — 상단이 아닌 맨 밑에 약하게(자기서비스 탈출구). */}
-      {dataGuideItem && (
-        <div style={{ marginTop: "1.4rem", textAlign: "center" }}>
-          <Link
-            href={locale === "en" && hasEnVersion(dataGuideItem.id) ? `/en${idToSlug[dataGuideItem.id] || ""}` : idToSlug[dataGuideItem.id] || "/"}
-            onClick={() => fireGa("data_guide_open", { from: "landing" })}
-            style={{
-              fontSize: "12.5px",
-              color: "var(--text-muted)",
-              textDecoration: "none",
-              cursor: "pointer",
-            }}
-          >
-            📄{" "}
-            {locale === "en"
-              ? "New to preparing data? See the CSV prep & column-mapping guide"
-              : "데이터 준비가 처음이라면 — CSV 준비 & 컬럼 매핑 가이드"}{" "}
-            →
+          <p>{T.libraryDeck}</p>
+        </header>
+        <div className="dc-library__grid">
+          <Link className="dc-library-card" href={lang === "en" ? "/en/blog" : "/blog"}>
+            <span>{T.blogLabel}</span>
+            <h3>{T.blogTitle}</h3>
+            <p>{T.blogDesc}</p>
+          </Link>
+          <Link className="dc-library-card" href={lang === "en" ? "/en/guide" : "/guide"}>
+            <span>{T.guideLabel}</span>
+            <h3>{T.guideTitle}</h3>
+            <p>{T.guideDesc}</p>
           </Link>
         </div>
-      )}
-
-      <div className="landing-social-row">
-        <a className="landing-social-btn ls-youtube" href="https://youtube.com/channel/UCvRcpOHOqvSHQPNbgZdPNUw/" target="_blank" rel="noopener noreferrer" onClick={() => fireGa("social_click", { network: "youtube", from: "landing" })}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.11-2.12C19.44 3.5 12 3.5 12 3.5s-7.44 0-9.39.58A3 3 0 0 0 .5 6.2 31.6 31.6 0 0 0 0 12a31.6 31.6 0 0 0 .5 5.8 3 3 0 0 0 2.11 2.12C4.56 20.5 12 20.5 12 20.5s7.44 0 9.39-.58a3 3 0 0 0 2.11-2.12A31.6 31.6 0 0 0 24 12a31.6 31.6 0 0 0-.5-5.8ZM9.6 15.6V8.4L15.8 12Z"/></svg>
-          <span>{L.social.youtube}</span>
-        </a>
-        <a className="landing-social-btn ls-instagram" href="https://www.instagram.com/gondry__workshop/" target="_blank" rel="noopener noreferrer" onClick={() => fireGa("social_click", { network: "instagram", from: "landing" })}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2c3.2 0 3.6 0 4.85.07 1.17.06 1.97.24 2.43.42a4.9 4.9 0 0 1 1.77 1.15 4.9 4.9 0 0 1 1.15 1.77c.18.46.36 1.26.42 2.43.06 1.25.07 1.65.07 4.85s0 3.6-.07 4.85c-.06 1.17-.24 1.97-.42 2.43a4.9 4.9 0 0 1-1.15 1.77 4.9 4.9 0 0 1-1.77 1.15c-.46.18-1.26.36-2.43.42-1.25.06-1.65.07-4.85.07s-3.6 0-4.85-.07c-1.17-.06-1.97-.24-2.43-.42a4.9 4.9 0 0 1-1.77-1.15 4.9 4.9 0 0 1-1.15-1.77c-.18-.46-.36-1.26-.42-2.43C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.85c.06-1.17.24-1.97.42-2.43A4.9 4.9 0 0 1 3.84 3c.53-.5 1.12-.9 1.77-1.15.46-.18 1.26-.36 2.43-.42C9.29 1.37 9.69 2.2 12 2.2Zm0 1.8c-3.15 0-3.52 0-4.75.06-.96.05-1.48.2-1.82.34a3.1 3.1 0 0 0-1.15.75 3.1 3.1 0 0 0-.75 1.15c-.14.34-.29.86-.34 1.82-.06 1.23-.06 1.6-.06 4.75s0 3.52.06 4.75c.05.96.2 1.48.34 1.82.16.42.38.79.75 1.15.36.36.73.6 1.15.75.34.14.86.29 1.82.34 1.23.06 1.6.06 4.75.06s3.52 0 4.75-.06c.96-.05 1.48-.2 1.82-.34.42-.16.79-.38 1.15-.75.36-.36.6-.73.75-1.15.14-.34.29-.86.34-1.82.06-1.23.06-1.6.06-4.75s0-3.52-.06-4.75c-.05-.96-.2-1.48-.34-1.82a3.1 3.1 0 0 0-.75-1.15 3.1 3.1 0 0 0-1.15-.75c-.34-.14-.86-.29-1.82-.34C15.52 4 15.15 4 12 4Zm0 3.05a4.95 4.95 0 1 1 0 9.9 4.95 4.95 0 0 1 0-9.9Zm0 1.8a3.15 3.15 0 1 0 0 6.3 3.15 3.15 0 0 0 0-6.3Zm5.3-3.4a1.15 1.15 0 1 1 0 2.3 1.15 1.15 0 0 1 0-2.3Z"/></svg>
-          <span>{L.social.instagram}</span>
-        </a>
-        <a className="landing-social-btn ls-facebook" href="https://www.facebook.com/profile.php?id=61591483650900" target="_blank" rel="noopener noreferrer" onClick={() => fireGa("social_click", { network: "facebook", from: "landing" })}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12.06C22 6.51 17.52 2 12 2S2 6.51 2 12.06c0 5.01 3.66 9.16 8.44 9.94v-7.03H7.9v-2.91h2.54V9.79c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.23.2 2.23.2v2.75h-1.26c-1.24 0-1.63.78-1.63 1.58v1.89h2.78l-.44 2.91h-2.34V22c4.78-.78 8.44-4.93 8.44-9.94Z"/></svg>
-          <span>{L.social.facebook}</span>
-        </a>
-        <a className="landing-social-btn ls-naver" href="https://blog.naver.com/growthoptplaybook" target="_blank" rel="noopener noreferrer" onClick={() => fireGa("social_click", { network: "naver_blog", from: "landing" })}>
-          <span className="social-letter-icon" aria-hidden="true">N</span>
-          <span>{L.social.naverBlog}</span>
-        </a>
-      </div>
+        <div className="dc-resource-strip">
+          <span>{T.resources}</span>
+          <div>
+            <Link href={lang === "en" ? "/en/templates" : "/templates"}>{T.templates} ↗</Link>
+            <Link href={lang === "en" ? "/en/glossary" : "/glossary"}>{T.glossary} ↗</Link>
+            <a href="https://youtube.com/channel/UCvRcpOHOqvSHQPNbgZdPNUw/" target="_blank" rel="noopener noreferrer">YouTube ↗</a>
+            <a href="https://www.instagram.com/gondry__workshop/" target="_blank" rel="noopener noreferrer">Instagram ↗</a>
+            <a href="https://www.facebook.com/profile.php?id=61591483650900" target="_blank" rel="noopener noreferrer">Facebook ↗</a>
+            <a href="https://blog.naver.com/growthoptplaybook" target="_blank" rel="noopener noreferrer">{T.naver} ↗</a>
+          </div>
+        </div>
+      </section>
     </div>
   );
-}
-
-/* ──────────────────────────── MAIN ──────────────────────────── */
-// locale: "ko"(default, "/") | "en"("/en"). 홈은 단일 화면(무주소 게이트 트랙 제거 —
-// 가이드는 /guide 라우트, 콘텐츠는 분석에 흡수). 뒤로가기 정상.
-export default function LandingPage({ locale = "ko" }) {
-  return <LandingHome locale={locale} />;
 }
