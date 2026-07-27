@@ -2,6 +2,8 @@
 import React, { useEffect, useId, useRef } from "react";
 import { trackProductEvent } from "@/lib/analytics";
 import DecisionReview from "@/components/ds/DecisionReview";
+import AnalysisBasisBar from "@/components/data-import/AnalysisBasisBar";
+import { useAppStore } from "@/store/useDataStore";
 
 // 표준 결론·액션 카드 — "결론 먼저, 근거는 접어서"(claude-ux §0)의 1층.
 // 5-3 예산배분의 alloc-verdict-card 패턴을 디자인시스템 공용으로 승격한 것.
@@ -41,11 +43,13 @@ export default function ResultActionCard({
   locale = "ko",
   toolId = null,
   decisionReview = true,
+  analysisBasis = true,
 }) {
   const resolvedTitle = title === "결론" && locale === "en" ? "Conclusion" : title;
   const t = TONE[tone] || TONE.neutral;
   const headingId = useId();
   const hasTrackedResultView = useRef(false);
+  const csvData = useAppStore((state) => state.csvData);
   const visiblePoints = collapsePointsAfter == null ? points : points.slice(0, collapsePointsAfter);
   const hiddenPoints = collapsePointsAfter == null ? [] : points.slice(collapsePointsAfter);
   useEffect(() => {
@@ -106,6 +110,17 @@ export default function ResultActionCard({
             </div>
           ))}
         </div>
+      )}
+
+      {analysisBasis && toolId && (
+        <AnalysisBasisBar
+          canonicalData={csvData?.canonicalData}
+          mappedRows={csvData?.mappedRows}
+          mapping={csvData?.mapping}
+          toolId={toolId}
+          locale={locale}
+          showPeriodComparison={toolId !== "5-2"}
+        />
       )}
 
       {decisionReview && toolId && <DecisionReview toolId={toolId} locale={locale} />}
