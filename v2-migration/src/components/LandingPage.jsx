@@ -42,7 +42,7 @@ const LANDING_COPY = {
       step: "분석",
       tag: "대시보드 · 도구",
       title: "📊 마케팅 분석 · 대시보드",
-      desc: "실제 운영한 캠페인 CSV를 올리거나 구글 시트를 연동해 대시보드 시각화·효율 분석·실험 판독·고급 회귀까지. 시트는 연동해두면 꾸준히 최신 데이터로. 시각화·모니터링은 무료.",
+      desc: "실제 운영한 캠페인 CSV를 올리거나 구글 시트를 불러와 대시보드 시각화·효율 분석·실험 판독·고급 회귀까지. 시트는 필요할 때 최신 데이터를 다시 불러올 수 있어요. 시각화·모니터링은 무료.",
       metaSuffix: "개 분석 도구",
       cta: "분석 시작 →",
     },
@@ -115,6 +115,30 @@ const LANDING_COPY = {
   },
 };
 
+// 랜딩의 한 가지 일: 처음 방문한 운영자가 "내가 지금 판단할 질문"을 고르고,
+// 별도 탐색 없이 해당 도구의 샘플 분석까지 진입시키는 것. 세 카드는 사용 빈도가
+// 높은 주간 운영 순서(상태 확인 → 예산 판단 → 소재 조치)를 표현한다.
+const DECISION_LANES = {
+  ko: {
+    label: "WEEKLY DECISION LANES",
+    title: "지금 가장 먼저 확인할 질문",
+    items: [
+      { id: "5-2", label: "주간 상태", title: "이번 주, 어디를 먼저 봐야 할까?", desc: "CPA·ROAS·페이싱·이상 신호를 한 화면에서 점검" },
+      { id: "5-3", label: "예산 판단", title: "다음 예산은 어디로 옮길까?", desc: "현재 효율과 한계 효율로 증액·감액 후보 비교" },
+      { id: "9-6", label: "소재 조치", title: "무엇을 교체하고 새로 만들까?", desc: "소재 피로 신호와 교체 우선순위 정리" },
+    ],
+  },
+  en: {
+    label: "WEEKLY DECISION LANES",
+    title: "What should you check first?",
+    items: [
+      { id: "5-2", label: "Weekly health", title: "Where should I look first this week?", desc: "Review CPA, ROAS, pacing, and anomaly signals in one view" },
+      { id: "5-3", label: "Budget move", title: "Where should the next budget go?", desc: "Compare scale-up and pull-back candidates with marginal efficiency" },
+      { id: "9-6", label: "Creative action", title: "What should we replace or make next?", desc: "Prioritize creative fatigue signals and the next swaps" },
+    ],
+  },
+};
+
 const GUIDE_SECTION = SECTIONS.find((s) => s.id === "guide");
 const ANALYSIS_SECTION = SECTIONS.find((s) => s.id === "analysis");
 const GUIDE_GROUP_IDS = new Set(GUIDE_SECTION.groups);
@@ -169,6 +193,7 @@ function LandingHome({ locale }) {
   const setDemoDisabled = useAppStore((s) => s.setDemoDisabled);
   const L = LANDING_COPY[locale] || LANDING_COPY.ko;
   const H = TOOL_HOOKS[locale] || TOOL_HOOKS.ko;
+  const decisionLanes = DECISION_LANES[locale] || DECISION_LANES.ko;
   // 데이터 가이드(그룹 08)는 상단 도구 그리드에서 제외 → 맨 밑에 약하게(§요구:
   // 준비 가이드가 맨 위에 오지 않게). 사이드바(SECTIONS)는 불변.
   const DATA_GUIDE_GROUP = "08";
@@ -211,6 +236,11 @@ function LandingHome({ locale }) {
       .filter(Boolean)
   ).sort((a, b) => featuredOrder.indexOf(a.id) - featuredOrder.indexOf(b.id));
   const pickTool = (id) => { fireGa("landing_tool_pick", { tool: id }); };
+  const openDecisionLane = (id) => {
+    fireGa("landing_decision_lane_pick", { tool: id });
+    setDemoDisabled(false);
+    goTool(id);
+  };
 
   return (
     <div className="landing-shell">
@@ -246,6 +276,23 @@ function LandingHome({ locale }) {
         </div>
         <div className="landing-hero__privacy">{hero.privacy}</div>
         <div className="landing-hero__free">{hero.freeNote}</div>
+      </section>
+
+      <section className="landing-decision-lanes" aria-labelledby="landing-decision-lanes-title">
+        <div className="landing-decision-lanes__head">
+          <span>{decisionLanes.label}</span>
+          <h2 id="landing-decision-lanes-title">{decisionLanes.title}</h2>
+        </div>
+        <div className="landing-decision-lanes__grid">
+          {decisionLanes.items.map((item) => (
+            <button key={item.id} type="button" className="landing-decision-lane" onClick={() => openDecisionLane(item.id)}>
+              <span className="landing-decision-lane__label">{item.label}</span>
+              <strong>{item.title}</strong>
+              <span>{item.desc}</span>
+              <b>{locale === "en" ? "Open sample analysis" : "샘플 분석 열기"} <i aria-hidden="true">→</i></b>
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* ── 라이브 제품 미리보기(시연 슬롯 — 여러 도구 로테이션, 나중 mp4 교체 가능) ── */}

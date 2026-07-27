@@ -16,7 +16,7 @@ const TOOL_COPY = {
     en: { label: "Performance variance", title: "See where the CPA change started", desc: "Break down channel, campaign, and creative contributions to focus the investigation.", cta: "Analyze performance change" },
   },
   "5-18": {
-    ko: { label: "광고 카니발라이제이션", title: "광고가 오가닉을 잠식하는지 먼저 확인하세요", desc: "유료 광고와 오가닉의 관계를 네 가지 신호로 점검해, 예산을 다시 볼 채널을 좁힙니다.", cta: "카니발라이제이션 진단하기" },
+    ko: { label: "마케팅 반응 분석", title: "광고가 오가닉을 잠식하는지 먼저 확인하세요", desc: "시계열 점검부터 네 가지 잠식 신호, 기여도, 예측까지 한 흐름에서 확인합니다.", cta: "잠식·기여도 분석 열기" },
     en: { label: "MMM, regression & forecast", title: "Model channel contribution and the next four weeks", desc: "Estimate spend response with multivariate regression and compare budget scenarios with a historical-residual reference range.", cta: "Open marketing response analysis" },
   },
   "5-22": {
@@ -47,7 +47,7 @@ const RELATED_TOOL = {
     en: { toolId: "5-3", cta: "Plan budget allocation" },
   },
   "5-3": {
-    ko: { toolId: "5-18", cta: "광고 잠식 먼저 점검" },
+    ko: { toolId: "5-18", cta: "마케팅 반응 분석으로 점검" },
     en: { toolId: "5-18", cta: "Check ad cannibalization first" },
   },
 };
