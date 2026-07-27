@@ -2,33 +2,9 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import Papa from "papaparse";
 import { SECTION_LABEL_EN } from "@/lib/enNavCopy";
+import { TOOL_GROUP, groupForRoute } from "@/lib/toolGroups";
 
-// ── Group-scoped CSV state (Phase 6.3) ──────────────────────────────────────
-// Tools with a similar data-grain SHARE one CSV slice; different-grain tools get
-// SEPARATE slices. So an efficiency CSV (dashboard family) and an event CSV (Aha)
-// can coexist without overwriting each other.
-//
-// route id → group. Legacy experiment ids (5-7/5-15) are defensive-only: the
-// router always resolves to the primary id (5-4), so they never actually appear
-// as currentRouteId — but they're harmless to keep here.
-export const TOOL_GROUP = {
-  "5-2": "efficiency", "5-21": "efficiency", "5-22": "efficiency", "5-3": "efficiency",
-  // 5-6(소재 분석)은 9-6으로 통합됨(중복 제거). route 5-6은 폐기됐지만 CreativeAnalyzer
-  // domain=performance의 uploaderToolId가 여전히 "5-6"이라(csvGuide·demo 게이트 키)
-  // creative 그룹 별칭으로 남겨둔다 — 9-6과 같은 creative 슬라이스로 정렬.
-  "5-6": "creative",
-  "5-4": "experiment", "5-7": "experiment", "5-15": "experiment",
-  "5-18": "response",
-  "5-20": "aha",
-  "5-23": "incrementality",
-  // ── Content Analytics (콘텐츠 마케터용, 엔진 재사용·도메인 라벨만 신규) ──
-  // 콘텐츠 데이터는 grain이 달라 효율/이벤트 CSV를 덮으면 안 됨 → 전용 슬라이스.
-  "9-1": "content_attr", // 콘텐츠 요소 분석기 (regMath 재사용)
-  "9-2": "content_aha",  // 킬러 콘텐츠·충성 독자 발굴 (ahaMath 재사용)
-  "9-3": "content_traffic", // 콘텐츠 트래픽 변동 탐지 (pvmMath 재사용) — grain(유입경로×기간×트래픽) 상이 → 전용 슬라이스
-  "9-6": "creative", // 소재 분석 (구 5-6 통합, creativeMath) — 퍼포먼스 도메인으로 전환, creative 슬라이스 공유
-  "9-7": "content_dashboard", // 콘텐츠 운영 대시보드 (dashboardAggregator 재사용) — grain(일×유입경로×콘텐츠) 전용 슬라이스
-};
+export { TOOL_GROUP, groupForRoute };
 
 const EMPTY_SLICE = () => ({ raw: [], headers: [], mapping: {}, fileName: "" });
 
@@ -41,10 +17,6 @@ function nextStableId(prefix, items = []) {
   }, 0);
   return `${prefix}${max + 1}`;
 }
-
-// Home / SOP guide ids (no CSV) fall back to "efficiency" so the mirror is always
-// a valid slice; those pages never read csvData anyway.
-export const groupForRoute = (id) => TOOL_GROUP[id] || "efficiency";
 
 // ── Analyze-gate signature (index.html toolAnalyzeSig 이식, §12.5) ───────────
 // SINGLE source of the "mapping I confirmed by pressing 분석하기" signature.

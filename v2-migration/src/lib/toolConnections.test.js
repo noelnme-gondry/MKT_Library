@@ -7,14 +7,20 @@ import {
   getNextTools,
   localizedTool,
 } from "@/lib/toolConnections";
+import { EN_READY_TOOL_IDS, ROUTES, idToSlug, isRoutePublished } from "@/lib/routeMap";
+import { TOOL_GROUP, groupForRoute } from "@/lib/toolGroups";
 
 describe("connected tool workflow", () => {
-  it("covers each published KR/EN tool exactly once in the landing journey", () => {
+  it("covers every published tool exactly once in the landing journey", () => {
     const toolIds = Object.keys(CONNECTED_TOOLS);
     const journeyIds = TOOL_JOURNEY.flatMap((stage) => stage.tools);
-    expect(toolIds).toHaveLength(10);
+    const publishedToolIds = ROUTES
+      .filter((route) => /^(5|9)-/.test(route.id) && !route.legacy && isRoutePublished(route))
+      .map((route) => route.id);
     expect(new Set(journeyIds).size).toBe(10);
     expect([...journeyIds].sort()).toEqual([...toolIds].sort());
+    expect([...toolIds].sort()).toEqual([...publishedToolIds].sort());
+    expect([...toolIds].sort()).toEqual([...EN_READY_TOOL_IDS].sort());
   });
 
   it("keeps every next-step reference valid and limited to three choices", () => {
@@ -30,13 +36,42 @@ describe("connected tool workflow", () => {
     expect(localizedTool("5-21", "ko").href).toBe("/tools/campaign-variance");
     expect(localizedTool("5-21", "en").href).toBe("/en/tools/campaign-variance");
     expect(localizedTool("5-21", "en").title).toBe("Campaign performance variance");
+    for (const toolId of Object.keys(CONNECTED_TOOLS)) {
+      expect(localizedTool(toolId, "ko").href).toBe(idToSlug[toolId]);
+      expect(localizedTool(toolId, "en").href).toBe(`/en${idToSlug[toolId]}`);
+    }
   });
 
-  it("labels only compatible datasets as same-CSV continuations", () => {
+  it("derives same-CSV labels from the real store group registry", () => {
+    for (const toolId of Object.keys(CONNECTED_TOOLS)) {
+      expect(TOOL_GROUP[toolId]).toBeTruthy();
+      for (const nextTool of getNextTools(toolId, "ko")) {
+        expect(nextTool.isSameData).toBe(groupForRoute(toolId) === groupForRoute(nextTool.id));
+      }
+    }
     const dashboardNext = getNextTools("5-2", "ko");
     expect(dashboardNext.every((tool) => tool.isSameData)).toBe(true);
     const saturationNext = getNextTools("5-22", "ko");
     expect(saturationNext.find((tool) => tool.id === "5-3").isSameData).toBe(true);
     expect(saturationNext.find((tool) => tool.id === "9-6").isSameData).toBe(false);
+  });
+
+  it("has no self-links or dead ends and reaches every tool from every start", () => {
+    const toolIds = Object.keys(CONNECTED_TOOLS);
+    for (const startId of toolIds) {
+      const seen = new Set([startId]);
+      const queue = [startId];
+      expect(NEXT_TOOL_IDS[startId]).not.toContain(startId);
+      while (queue.length > 0) {
+        const currentId = queue.shift();
+        for (const nextId of NEXT_TOOL_IDS[currentId]) {
+          if (!seen.has(nextId)) {
+            seen.add(nextId);
+            queue.push(nextId);
+          }
+        }
+      }
+      expect([...seen].sort()).toEqual([...toolIds].sort());
+    }
   });
 });

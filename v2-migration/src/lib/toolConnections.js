@@ -1,61 +1,44 @@
+import { idToSlug } from "@/lib/routeMap";
+import { groupForRoute } from "@/lib/toolGroups";
+
 export const CONNECTED_TOOLS = {
   "5-2": {
-    path: "/dashboard",
-    dataGroup: "campaign",
     title: { ko: "운영 대시보드", en: "Operations dashboard" },
     question: { ko: "이번 주 전체 성과는 어디서 흔들렸을까?", en: "Where did overall performance move this week?" },
   },
   "5-21": {
-    path: "/tools/campaign-variance",
-    dataGroup: "campaign",
     title: { ko: "캠페인 성과 변동 탐지", en: "Campaign performance variance" },
     question: { ko: "변화를 물량·효율·믹스로 나누면 원인은 뭘까?", en: "Was the change driven by volume, efficiency, or mix?" },
   },
   "5-22": {
-    path: "/tools/campaign-saturation",
-    dataGroup: "campaign",
     title: { ko: "캠페인 포화도 탐지", en: "Campaign saturation" },
     question: { ko: "효율을 해치지 않고 더 늘릴 수 있을까?", en: "Can we scale further without hurting efficiency?" },
   },
   "5-3": {
-    path: "/tools/budget-allocation",
-    dataGroup: "campaign",
     title: { ko: "예산 배분", en: "Budget allocation" },
     question: { ko: "줄인 예산을 어디로 옮기는 게 좋을까?", en: "Where should the pulled-back budget move next?" },
   },
   "9-6": {
-    path: "/content/freshness",
-    dataGroup: "creative",
     title: { ko: "소재 분석", en: "Creative analysis" },
     question: { ko: "무엇을 교체하고 다음에 어떤 소재를 만들까?", en: "What should we replace and create next?" },
   },
   "5-4": {
-    path: "/tools/experiment-analysis",
-    dataGroup: "experiment",
     title: { ko: "실험 분석", en: "Experiment analysis" },
     question: { ko: "관찰된 차이를 실제 효과라고 볼 수 있을까?", en: "Is the observed difference a real effect?" },
   },
   "5-23": {
-    path: "/tools/incrementality",
-    dataGroup: "incrementality",
     title: { ko: "증분 분석", en: "Incrementality analysis" },
     question: { ko: "광고가 실제로 추가로 만든 성과는 얼마일까?", en: "How much outcome did marketing truly add?" },
   },
   "5-18": {
-    path: "/tools/marketing-response",
-    dataGroup: "weekly",
     title: { ko: "마케팅 반응 분석", en: "Marketing response analysis" },
     question: { ko: "채널별 기여와 다음 예산 반응은 어떨까?", en: "What are channel contributions and future spend response?" },
   },
   "5-20": {
-    path: "/tools/aha-moment",
-    dataGroup: "event",
     title: { ko: "핵심 가치 발굴", en: "Aha-moment finder" },
     question: { ko: "잔존을 예측하는 초기 행동은 무엇일까?", en: "Which early actions predict retention?" },
   },
   "9-1": {
-    path: "/content/element-analysis",
-    dataGroup: "content",
     title: { ko: "콘텐츠 요소 분석", en: "Content element analysis" },
     question: { ko: "어떤 콘텐츠 요소가 성과를 만드는 걸까?", en: "Which content elements drive performance?" },
   },
@@ -103,7 +86,7 @@ export const NEXT_TOOL_IDS = {
   "5-2": ["5-21", "5-22", "5-3"],
   "5-21": ["5-22", "5-3", "5-4"],
   "5-22": ["5-3", "9-6", "5-4"],
-  "5-3": ["5-22", "9-6", "5-4"],
+  "5-3": ["5-22", "5-18", "5-4"],
   "9-6": ["5-4", "9-1", "5-2"],
   "5-4": ["5-23", "5-18", "5-2"],
   "5-23": ["5-4", "5-18", "5-2"],
@@ -121,7 +104,7 @@ export function localizedTool(toolId, locale = "ko") {
     id: toolId,
     title: tool.title[lang],
     question: tool.question[lang],
-    href: `${lang === "en" ? "/en" : ""}${tool.path}`,
+    href: `${lang === "en" ? "/en" : ""}${idToSlug[toolId]}`,
   };
 }
 
@@ -130,6 +113,6 @@ export function getNextTools(toolId, locale = "ko") {
   if (!source) return [];
   return (NEXT_TOOL_IDS[toolId] || []).map((nextId) => ({
     ...localizedTool(nextId, locale),
-    isSameData: source.dataGroup === CONNECTED_TOOLS[nextId].dataGroup,
+    isSameData: groupForRoute(toolId) === groupForRoute(nextId),
   }));
 }

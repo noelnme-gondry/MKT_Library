@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 
+import { trackProductEvent } from "@/lib/analytics";
 import { getNextTools } from "@/lib/toolConnections";
 
 const COPY = {
@@ -36,7 +39,20 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
       </header>
       <div className="tool-connections__grid">
         {nextTools.map((tool, index) => (
-          <Link className={`tool-connection-card ${index === 0 ? "is-recommended" : ""}`} href={tool.href} key={tool.id}>
+          <Link
+            className={`tool-connection-card ${index === 0 ? "is-recommended" : ""}`}
+            href={tool.href}
+            key={tool.id}
+            onClick={() => trackProductEvent("tool_connection_pick", {
+              tool_id: tool.id,
+              source_tool_id: toolId,
+              source: "analysis_tool",
+              placement: "next_decision",
+              data_continuity: tool.isSameData ? "same_csv" : "new_data",
+              rank: index + 1,
+              locale: lang,
+            })}
+          >
             <div className="tool-connection-card__meta">
               <span>{index === 0 ? T.recommended : tool.id}</span>
               <em className={tool.isSameData ? "is-same-data" : ""}>

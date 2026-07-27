@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 
+import { trackProductEvent } from "@/lib/analytics";
 import { TOOL_JOURNEY, localizedTool } from "@/lib/toolConnections";
 
 const COPY = {
@@ -40,7 +43,18 @@ export default function ConnectedToolJourney({ locale = "ko" }) {
               {stage.tools.map((toolId) => {
                 const tool = localizedTool(toolId, lang);
                 return (
-                  <Link className="connected-tool-card" href={tool.href} key={tool.id}>
+                  <Link
+                    className="connected-tool-card"
+                    href={tool.href}
+                    key={tool.id}
+                    onClick={() => trackProductEvent("connected_workflow_pick", {
+                      tool_id: tool.id,
+                      source: "landing",
+                      placement: "connected_workflow",
+                      tab_name: stage.id,
+                      locale: lang,
+                    })}
+                  >
                     <span className="connected-tool-card__id">{tool.id}</span>
                     <strong>{tool.title}</strong>
                     <p>{tool.question}</p>
