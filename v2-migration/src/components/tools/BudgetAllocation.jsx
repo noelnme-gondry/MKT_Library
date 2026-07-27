@@ -2051,6 +2051,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       {/* 결론·액션 카드 */}
       {verdict && (
         <ResultActionCard
+          toolId="5-3"
           locale={locale}
           tone={verdict.tone}
           title={tr("결론 — 이 예산으로 무엇을 할까", "Conclusion — what to do with this budget")}

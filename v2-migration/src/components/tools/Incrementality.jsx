@@ -353,6 +353,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
 
       {card && (
         <ResultActionCard
+          toolId="5-23"
           tone={card.tone}
           title={tr("결론 — 광고가 만든 순증분", "Conclusion — net incremental from ads")}
           headline={card.headline}
@@ -605,6 +606,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
           <h2 className="section-title"><span className="ix">§2</span>{lost ? tr("종료 임팩트 (잃은 성과)", "Shutdown impact (performance lost)") : tr("신규 임팩트 (얻은 성과)", "New-launch impact (performance gained)")}</h2>
           {card && (
             <ResultActionCard
+              toolId="5-23"
               tone={card.tone}
               title={lost ? tr("결론 — 종료로 잃은 성과", "Conclusion — performance lost from shutdown") : tr("결론 — 신규로 얻은 성과", "Conclusion — performance gained from launch")}
               headline={card.headline}

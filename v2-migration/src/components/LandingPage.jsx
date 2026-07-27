@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { IA, SECTIONS, useAppStore } from "@/store/useDataStore";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { trItemTitle } from "@/lib/enNavCopy";
+import { trackProductEvent } from "@/lib/analytics";
 import ProductPreview from "@/components/landing/ProductPreview";
 import ToolCarousel from "@/components/landing/ToolCarousel";
 
@@ -237,7 +238,7 @@ function LandingHome({ locale }) {
   ).sort((a, b) => featuredOrder.indexOf(a.id) - featuredOrder.indexOf(b.id));
   const pickTool = (id) => { fireGa("landing_tool_pick", { tool: id }); };
   const openDecisionLane = (id) => {
-    fireGa("landing_decision_lane_pick", { tool: id });
+    trackProductEvent("landing_decision_lane_pick", { tool_id: id, source: "landing", placement: "decision_lane" });
     setDemoDisabled(false);
     goTool(id);
   };

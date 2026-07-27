@@ -1,5 +1,6 @@
 "use client";
-import React, { useId } from "react";
+import React, { useEffect, useId, useRef } from "react";
+import { trackProductEvent } from "@/lib/analytics";
 
 // 표준 결론·액션 카드 — "결론 먼저, 근거는 접어서"(claude-ux §0)의 1층.
 // 5-3 예산배분의 alloc-verdict-card 패턴을 디자인시스템 공용으로 승격한 것.
@@ -16,6 +17,7 @@ import React, { useId } from "react";
 //   analysisDetails : node (AnalysisDetails 등) — 단위·신뢰도·provenance 접기
 //   children : 카드 하단 추가 콘텐츠(선택)
 //   collapsePointsAfter : 첫 N개 근거만 펼쳐 보이고 나머지는 details에 둔다.
+//   toolId : 지정하면 실제 결과 카드가 화면에 도달한 순간만 익명 제품 이벤트를 남긴다.
 const TONE = {
   good: { icon: "↗" },
   bad: { icon: "!" },
@@ -35,12 +37,19 @@ export default function ResultActionCard({
   style,
   collapsePointsAfter = null,
   locale = "ko",
+  toolId = null,
 }) {
   const resolvedTitle = title === "결론" && locale === "en" ? "Conclusion" : title;
   const t = TONE[tone] || TONE.neutral;
   const headingId = useId();
+  const hasTrackedResultView = useRef(false);
   const visiblePoints = collapsePointsAfter == null ? points : points.slice(0, collapsePointsAfter);
   const hiddenPoints = collapsePointsAfter == null ? [] : points.slice(collapsePointsAfter);
+  useEffect(() => {
+    if (!toolId || hasTrackedResultView.current) return;
+    hasTrackedResultView.current = true;
+    trackProductEvent("analysis_result_viewed", { tool_id: toolId, source: "result", placement: "result_action_card", locale });
+  }, [locale, toolId]);
   return (
     <section className={`result-action-card ${tone}`} style={style} aria-labelledby={headline ? headingId : undefined} aria-label={!headline && typeof resolvedTitle === "string" ? resolvedTitle : undefined}>
       <div className="result-action-card__head">

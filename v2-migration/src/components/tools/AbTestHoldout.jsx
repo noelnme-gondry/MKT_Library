@@ -769,6 +769,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                   const liftPositive = s.liftRel >= 0;
                   return (
                     <ResultActionCard
+                      toolId="5-4"
                       locale={locale}
                       tone={s.pValue < 0.05 ? (liftPositive ? "good" : "bad") : "neutral"}
                       title={tr("결론 — Control vs Test", "Conclusion — Control vs Test")}

@@ -332,6 +332,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             {verdict && !verdict.insufficient && (
               <>
               <ResultActionCard
+                toolId="5-2"
                 tone={verdict.tone}
                 title={tr("결론 — 최근 성과 요약", "Conclusion — recent performance")}
                 headline={verdict.headline}

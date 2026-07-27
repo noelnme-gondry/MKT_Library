@@ -3,7 +3,7 @@
 const ALLOWED_PARAMS = new Set([
   "tool_id", "source", "column_count", "row_count", "mapped_count", "confidence_bucket",
   "conflict_count", "missing_required_count", "tab_name", "download_type", "analysis_type",
-  "result_state", "locale",
+  "result_state", "locale", "placement",
   "placement",
 ]);
 

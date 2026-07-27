@@ -16,8 +16,8 @@ const TOOL_COPY = {
     en: { label: "Performance variance", title: "See where the CPA change started", desc: "Break down channel, campaign, and creative contributions to focus the investigation.", cta: "Analyze performance change" },
   },
   "5-18": {
-    ko: { label: "마케팅 반응 분석", title: "광고가 오가닉을 잠식하는지 먼저 확인하세요", desc: "시계열 점검부터 네 가지 잠식 신호, 기여도, 예측까지 한 흐름에서 확인합니다.", cta: "잠식·기여도 분석 열기" },
-    en: { label: "MMM, regression & forecast", title: "Model channel contribution and the next four weeks", desc: "Estimate spend response with multivariate regression and compare budget scenarios with a historical-residual reference range.", cta: "Open marketing response analysis" },
+    ko: { label: "마케팅 반응 분석", title: "광고가 오가닉을 잠식하는지 먼저 확인하세요", desc: "시계열 점검부터 네 가지 잠식 신호, 기여도, 예측까지 한 흐름에서 확인합니다.", cta: "잠식 진단 바로 열기", stage: "diagnose" },
+    en: { label: "MMM, regression & forecast", title: "Model channel contribution and the next four weeks", desc: "Estimate spend response with multivariate regression and compare budget scenarios with a historical-residual reference range.", cta: "Open contribution analysis", stage: "mmm" },
   },
   "5-22": {
     ko: { label: "캠페인 포화도", title: "예산을 더 쓰기 전에 한계 효율을 확인하세요", desc: "평균 효율이 아니라 추가 광고비의 한계 CPA·ROAS와 증액 여력을 진단합니다.", cta: "포화도 분석하기" },
@@ -47,8 +47,8 @@ const RELATED_TOOL = {
     en: { toolId: "5-3", cta: "Plan budget allocation" },
   },
   "5-3": {
-    ko: { toolId: "5-18", cta: "마케팅 반응 분석으로 점검" },
-    en: { toolId: "5-18", cta: "Check ad cannibalization first" },
+    ko: { toolId: "5-18", cta: "잠식 진단 바로 열기", stage: "diagnose" },
+    en: { toolId: "5-18", cta: "Open cannibalization diagnosis", stage: "diagnose" },
   },
 };
 
@@ -59,7 +59,8 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post }
   const resolvedTool = TOOL_COPY[candidate] ? candidate : "5-2";
   const copy = TOOL_COPY[resolvedTool][locale === "en" ? "en" : "ko"];
   const related = RELATED_TOOL[resolvedTool]?.[locale === "en" ? "en" : "ko"];
-  const href = `${locale === "en" ? "/en" : ""}${idToSlug[resolvedTool]}`;
+  const withStage = (toolId, stage) => `${locale === "en" ? "/en" : ""}${idToSlug[toolId]}${stage ? `?stage=${stage}` : ""}`;
+  const href = withStage(resolvedTool, copy.stage);
   return <aside className="content-action-panel">
     <div>
       <span className="content-action-panel__eyebrow">{copy.label}</span>
@@ -68,7 +69,7 @@ export default function ContentActionPanel({ locale = "ko", toolId, term, post }
     </div>
     <div className="content-action-panel__links">
       <Link href={href} className="content-action-panel__cta">{copy.cta} <span aria-hidden>→</span></Link>
-      {related && <Link href={`${locale === "en" ? "/en" : ""}${idToSlug[related.toolId]}`} className="content-action-panel__secondary">{related.cta} <span aria-hidden>→</span></Link>}
+      {related && <Link href={withStage(related.toolId, related.stage)} className="content-action-panel__secondary">{related.cta} <span aria-hidden>→</span></Link>}
     </div>
   </aside>;
 }
