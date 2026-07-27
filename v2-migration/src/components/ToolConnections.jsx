@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
 import { trackProductEvent } from "@/lib/analytics";
-import { getJourneyContext, getNextTools } from "@/lib/toolConnections";
+import { getJourneyContext, getNextTools, localizedTool } from "@/lib/toolConnections";
 
 const COPY = {
   ko: {
@@ -43,6 +43,7 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
   const lang = locale === "en" ? "en" : "ko";
   const nextTools = getNextTools(toolId, lang);
   const journey = getJourneyContext(toolId, lang);
+  const sourceTool = localizedTool(toolId, lang);
   if (nextTools.length === 0) return null;
   const T = COPY[lang];
   const templateTarget = nextTools.find((tool) => !tool.isSameData);
@@ -53,7 +54,7 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
         <span>{T.eyebrow}</span>
         <div>
           <small>{T.title}</small>
-          <h2 id={`tool-connections-${toolId}`}>{journey?.stage.title[lang]}</h2>
+          <h2 id={`tool-connections-${toolId}`}>{journey?.stage.title[lang] || sourceTool?.title}</h2>
         </div>
         <p>{T.deck}</p>
       </header>
