@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useId, useRef } from "react";
 import { trackProductEvent } from "@/lib/analytics";
+import DecisionReview from "@/components/ds/DecisionReview";
 
 // 표준 결론·액션 카드 — "결론 먼저, 근거는 접어서"(claude-ux §0)의 1층.
 // 5-3 예산배분의 alloc-verdict-card 패턴을 디자인시스템 공용으로 승격한 것.
@@ -18,6 +19,7 @@ import { trackProductEvent } from "@/lib/analytics";
 //   children : 카드 하단 추가 콘텐츠(선택)
 //   collapsePointsAfter : 첫 N개 근거만 펼쳐 보이고 나머지는 details에 둔다.
 //   toolId : 지정하면 실제 결과 카드가 화면에 도달한 순간만 익명 제품 이벤트를 남긴다.
+//   decisionReview : 결과 → 실행 → 다음 검토의 CSV 기반 기록 루프를 표시한다.
 const TONE = {
   good: { icon: "↗" },
   bad: { icon: "!" },
@@ -38,6 +40,7 @@ export default function ResultActionCard({
   collapsePointsAfter = null,
   locale = "ko",
   toolId = null,
+  decisionReview = true,
 }) {
   const resolvedTitle = title === "결론" && locale === "en" ? "Conclusion" : title;
   const t = TONE[tone] || TONE.neutral;
@@ -105,6 +108,7 @@ export default function ResultActionCard({
         </div>
       )}
 
+      {decisionReview && toolId && <DecisionReview toolId={toolId} locale={locale} />}
       {analysisDetails}
       {children}
     </section>
