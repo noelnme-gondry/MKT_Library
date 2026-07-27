@@ -6,7 +6,7 @@ date: "2026-07-18"
 slug: "cvr"
 keywords: "CVR, CVR 뜻, CVR이란, Conversion Rate, 전환율, 전환율 계산"
 category: "기초 지표"
-relatedPosts: ["cvr-optimization"]
+relatedPosts: ["funnel-dropoff-analysis"]
 draft: false
 ---
 
@@ -30,4 +30,4 @@ CVR은 채널 평균보다 **광고 메시지와 랜딩 조합**으로 나눠 �
 
 ## 더 깊게 보려면
 
-CVR이 안 오를 때 뭘 점검해야 하는지는 [CVR 개선 글](/blog/cvr-optimization)에서 다룹니다.
+CVR이 안 오를 때 뭘 점검해야 하는지는 [전환율·퍼널 진단 가이드](/blog/funnel-dropoff-analysis)에서 다룹니다.

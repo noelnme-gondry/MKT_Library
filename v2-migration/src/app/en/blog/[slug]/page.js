@@ -62,6 +62,16 @@ function extractImages(html) {
   return out;
 }
 
+function splitAtContentAction(html) {
+  const marker = "<!-- CONTENT_ACTION -->";
+  const index = String(html || "").indexOf(marker);
+  if (index < 0) return { before: html, after: "" };
+  return {
+    before: html.slice(0, index),
+    after: html.slice(index + marker.length),
+  };
+}
+
 function buildPostJsonLd(post, canonical) {
   const publisher = {
     "@type": "Organization",
@@ -120,6 +130,7 @@ export default async function EnBlogPostPage({ params }) {
   if (!post) notFound();
 
   const canonical = `${SITE_URL}/en/blog/${post.slug}`;
+  const article = splitAtContentAction(post.html);
 
   return (
     <div className="content-article">
@@ -153,7 +164,11 @@ export default async function EnBlogPostPage({ params }) {
         </div>
       </header>
 
-      <article className="blog-prose" dangerouslySetInnerHTML={{ __html: post.html }} />
+      <article className="blog-prose">
+        <div dangerouslySetInnerHTML={{ __html: article.before }} />
+        {article.after && <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} placement="article_mid" />}
+        <div dangerouslySetInnerHTML={{ __html: article.after }} />
+      </article>
 
       <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} />
 
