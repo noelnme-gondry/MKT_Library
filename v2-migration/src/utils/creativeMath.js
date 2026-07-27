@@ -143,6 +143,248 @@ export const CREATIVE_MATH = {
 };
 
 export const CREATIVE_FATIGUE = {
+  aggregateDailyRows(rows) {
+    const byKey = new Map();
+    for (const r of rows) {
+      if (!r.creative_id || !r.date) continue;
+      const channel = r.channel || null;
+      const seriesKey = `${channel || ""}\u0000${r.creative_id}`;
+      const key = `${seriesKey}\u0000${r.date}`;
+      if (!byKey.has(key)) {
+        byKey.set(key, {
+          seriesKey,
+          creative_id: r.creative_id,
+          channel,
+          date: r.date,
+          impressions: 0,
+          clicks: 0,
+          spend: 0,
+        });
+      }
+      const daily = byKey.get(key);
+      daily.impressions += Math.max(0, Number(r.impressions) || 0);
+      daily.clicks += Math.max(0, Number(r.clicks) || 0);
+      daily.spend += Math.max(0, Number(r.spend ?? r.cost) || 0);
+    }
+    return [...byKey.values()].sort((a, b) => {
+      const keyCmp = String(a.seriesKey).localeCompare(String(b.seriesKey));
+      return keyCmp || String(a.date).localeCompare(String(b.date));
+    });
+  },
+  quantile(values, q) {
+    const sorted = values
+      .filter((v) => Number.isFinite(v))
+      .slice()
+      .sort((a, b) => a - b);
+    if (!sorted.length) return null;
+    const pos = (sorted.length - 1) * q;
+    const lo = Math.floor(pos);
+    const hi = Math.ceil(pos);
+    if (lo === hi) return sorted[lo];
+    return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+  },
+  buildRiskAnalysis(rows, cfg) {
+    const dailyRows = this.aggregateDailyRows(rows);
+    const byId = new Map();
+    for (const row of dailyRows) {
+      if (!byId.has(row.seriesKey)) byId.set(row.seriesKey, []);
+      byId.get(row.seriesKey).push(row);
+    }
+
+    const snapshots = [];
+    const signals = [];
+    const current = [];
+    const dayMs = 86400000;
+    for (const [seriesKey, series] of byId) {
+      series.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+      const creativeId = series[0].creative_id;
+      const startMs = Date.parse(series[0].date);
+      let cumulativeImpressions = 0;
+      let cumulativeSpend = 0;
+      let peakCtr = null;
+      let belowCount = 0;
+      let firstSignal = null;
+      const creativeSnapshots = [];
+
+      for (let i = 0; i < series.length; i++) {
+        const row = series[i];
+        cumulativeImpressions += row.impressions;
+        cumulativeSpend += row.spend;
+        const recent = series.slice(Math.max(0, i - cfg.rollingWindow + 1), i + 1);
+        const recentImpressions = recent.reduce((s, d) => s + d.impressions, 0);
+        const recentClicks = recent.reduce((s, d) => s + d.clicks, 0);
+        const rollingCtr =
+          recent.length >= cfg.rollingWindow &&
+          recentImpressions >= cfg.minWindowImpressions
+            ? recentClicks / recentImpressions
+            : null;
+        if (rollingCtr != null && (peakCtr == null || rollingCtr > peakCtr)) {
+          peakCtr = rollingCtr;
+        }
+        const dropPct =
+          rollingCtr != null && peakCtr > 0
+            ? Math.max(0, (peakCtr - rollingCtr) / peakCtr)
+            : null;
+        const parsedMs = Date.parse(row.date);
+        const previousMs = i > 0 ? Date.parse(series[i - 1].date) : null;
+        const isConsecutiveDay =
+          i === 0 ||
+          (Number.isFinite(parsedMs) &&
+            Number.isFinite(previousMs) &&
+            parsedMs - previousMs === dayMs);
+        belowCount =
+          dropPct != null && dropPct >= cfg.dropPct
+            ? isConsecutiveDay
+              ? belowCount + 1
+              : 1
+            : 0;
+        const ageDays =
+          Number.isFinite(startMs) && Number.isFinite(parsedMs)
+            ? Math.max(1, Math.floor((parsedMs - startMs) / dayMs) + 1)
+            : i + 1;
+        const isFirstSignal =
+          firstSignal == null &&
+          belowCount >= cfg.confirmDays &&
+          rollingCtr != null;
+        const snapshot = {
+          creative_id: creativeId,
+          seriesKey,
+          channel: row.channel || series[0].channel || null,
+          date: row.date,
+          ageDays,
+          cumulativeImpressions,
+          cumulativeSpend,
+          rollingCtr,
+          peakCtr,
+          dropPct,
+          isFirstSignal,
+        };
+        creativeSnapshots.push(snapshot);
+        snapshots.push(snapshot);
+        if (isFirstSignal) {
+          firstSignal = snapshot;
+          signals.push(snapshot);
+        }
+      }
+      current.push({
+        ...creativeSnapshots[creativeSnapshots.length - 1],
+        signalDate: firstSignal?.date || null,
+      });
+    }
+
+    const maxHorizon = Math.max(...cfg.horizons);
+    const historicalSignals = signals.filter((signal) => {
+      const series = byId.get(signal.seriesKey) || [];
+      const signalMs = Date.parse(signal.date);
+      const lastMs = Date.parse(series[series.length - 1]?.date);
+      return (
+        Number.isFinite(signalMs) &&
+        Number.isFinite(lastMs) &&
+        lastMs >= signalMs + maxHorizon * dayMs
+      );
+    });
+    const buildProfile = (scope, scopeSignals) => {
+      const dist = (key) => {
+        const values = scopeSignals
+          .map((s) => s[key])
+          .filter((v) => Number.isFinite(v) && v > 0);
+        return {
+          q25: this.quantile(values, 0.25),
+          median: this.quantile(values, 0.5),
+          q75: this.quantile(values, 0.75),
+        };
+      };
+      return {
+        scope,
+        sampleSize: scopeSignals.length,
+        ageDays: dist("ageDays"),
+        cumulativeImpressions: dist("cumulativeImpressions"),
+        cumulativeSpend: dist("cumulativeSpend"),
+      };
+    };
+    const overallProfile =
+      historicalSignals.length >= cfg.minProfileSignals
+        ? buildProfile("all", historicalSignals)
+        : null;
+    const channelProfiles = {};
+    const channelSignals = new Map();
+    for (const signal of historicalSignals) {
+      const channel = signal.channel || "미분류";
+      if (!channelSignals.has(channel)) channelSignals.set(channel, []);
+      channelSignals.get(channel).push(signal);
+    }
+    for (const [channel, scoped] of channelSignals) {
+      if (scoped.length >= cfg.minProfileSignals) {
+        channelProfiles[channel] = buildProfile(channel, scoped);
+      }
+    }
+
+    const currentStatus = current.map((item) => {
+      const profile = channelProfiles[item.channel || "미분류"] || overallProfile;
+      if (!profile) return { ...item, profile: null, enteredDimensions: 0, isInRiskZone: false };
+      const comparisons = [
+        [item.ageDays, profile.ageDays.q25],
+        [item.cumulativeImpressions, profile.cumulativeImpressions.q25],
+        [item.cumulativeSpend, profile.cumulativeSpend.q25],
+      ].filter(([, threshold]) => threshold != null);
+      const enteredDimensions = comparisons.filter(
+        ([value, threshold]) => value >= threshold,
+      ).length;
+      const requiredDimensions = Math.min(2, comparisons.length);
+      return {
+        ...item,
+        profile,
+        enteredDimensions,
+        availableDimensions: comparisons.length,
+        isInRiskZone:
+          requiredDimensions > 0 && enteredDimensions >= requiredDimensions,
+      };
+    });
+
+    const backtest = {};
+    for (const horizon of cfg.horizons) {
+      let eligible = 0;
+      let hits = 0;
+      for (const signal of signals) {
+        const series = byId.get(signal.seriesKey) || [];
+        const signalMs = Date.parse(signal.date);
+        if (!Number.isFinite(signalMs)) continue;
+        const horizonEnd = signalMs + horizon * dayMs;
+        const lastMs = Date.parse(series[series.length - 1]?.date);
+        if (!Number.isFinite(lastMs) || lastMs < horizonEnd) continue;
+        const future = series.filter((row) => {
+          const rowMs = Date.parse(row.date);
+          return rowMs > signalMs && rowMs <= horizonEnd;
+        });
+        const futureImpressions = future.reduce((s, row) => s + row.impressions, 0);
+        if (
+          futureImpressions < cfg.minWindowImpressions ||
+          signal.rollingCtr == null
+        ) {
+          continue;
+        }
+        const futureCtr =
+          future.reduce((s, row) => s + row.clicks, 0) / futureImpressions;
+        eligible++;
+        if (futureCtr <= signal.rollingCtr * (1 - cfg.outcomeDropPct)) hits++;
+      }
+      backtest[horizon] = {
+        horizonDays: horizon,
+        eligible,
+        hits,
+        hitRate: eligible > 0 ? hits / eligible : null,
+      };
+    }
+
+    return {
+      snapshots,
+      signals,
+      historicalSignals,
+      current: currentStatus,
+      profiles: { overall: overallProfile, channels: channelProfiles },
+      backtest,
+    };
+  },
   olsSlope(values) {
     const pts = values
       .map((v, i) => ({ x: i, y: v }))
@@ -179,33 +421,34 @@ export const CREATIVE_FATIGUE = {
     const recent = dailySeries.slice(-W);
     if (recent.length < cfg.minDays) return null;
     const ctrVals = recent.map((d) => d.ctr);
-    const freqVals = recent.map((d) => d.impressions);
+    const impressionVals = recent.map((d) => d.impressions);
     const cpmVals = recent.map((d) => d.cpm);
     const ctrFit = this.olsSlope(ctrVals);
-    const freqFit = this.olsSlope(freqVals);
+    const impressionFit = this.olsSlope(impressionVals);
     const cpmFit = this.olsSlope(cpmVals);
     const meanOf = (arr) => {
       const v = arr.filter((x) => x != null && isFinite(x));
       return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
     };
     const ctrMean = meanOf(ctrVals);
-    const freqMean = meanOf(freqVals);
+    const impressionMean = meanOf(impressionVals);
     const cpmMean = meanOf(cpmVals);
     const ctrPctPerDay = ctrFit && ctrMean ? ctrFit.slope / ctrMean : 0;
-    const freqPctPerDay = freqFit && freqMean ? freqFit.slope / freqMean : 0;
+    const impressionPctPerDay =
+      impressionFit && impressionMean ? impressionFit.slope / impressionMean : 0;
     const cpmPctPerDay = cpmFit && cpmMean ? cpmFit.slope / cpmMean : 0;
     const ctrRisk = Math.max(0, -ctrPctPerDay);
-    const freqRisk = Math.max(0, freqPctPerDay);
+    const impressionRisk = Math.max(0, impressionPctPerDay);
     const cpmRisk = Math.max(0, cpmPctPerDay);
     const raw =
       cfg.ctrWeight * ctrRisk +
-      cfg.freqWeight * freqRisk +
+      cfg.impressionWeight * impressionRisk +
       cfg.cpmWeight * cpmRisk;
     const score = Math.max(0, Math.min(1, Math.tanh(raw * 20)));
     return {
       score,
       ctrTrendPctPerDay: ctrPctPerDay,
-      freqTrendPctPerDay: freqPctPerDay,
+      impressionTrendPctPerDay: impressionPctPerDay,
       cpmTrendPctPerDay: cpmPctPerDay,
       n: recent.length,
     };
@@ -266,7 +509,7 @@ export const CREATIVE_FATIGUE = {
         days: sorted.length,
         score: idx ? idx.score : null,
         ctrTrendPctPerDay: idx ? idx.ctrTrendPctPerDay : null,
-        freqTrendPctPerDay: idx ? idx.freqTrendPctPerDay : null,
+        impressionTrendPctPerDay: idx ? idx.impressionTrendPctPerDay : null,
         cpmTrendPctPerDay: idx ? idx.cpmTrendPctPerDay : null,
         alert: idx ? idx.score >= cfg.alertScore : false,
         etaDays: proj.etaDays,

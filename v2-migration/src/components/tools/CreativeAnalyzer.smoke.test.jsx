@@ -25,7 +25,7 @@ function seedNoData() {
 // (hook_type, format) with >=30 clean rows so the WLS decompose branch runs.
 // mapping = { origHeader: standardKey }.
 function seedWithData() {
-  const headers = ["Date", "Channel", "CreativeID", "Hook", "Format", "Impr", "Clicks", "Installs"];
+  const headers = ["Date", "Channel", "CreativeID", "Hook", "Format", "Impr", "Clicks", "Installs", "Spend"];
   const mapping = {
     Date: "date",
     Channel: "channel",
@@ -35,6 +35,7 @@ function seedWithData() {
     Impr: "impressions",
     Clicks: "clicks",
     Installs: "installs",
+    Spend: "spend",
   };
   const raw = [];
   const creatives = [
@@ -42,10 +43,12 @@ function seedWithData() {
     { id: "cr_B", hook: "stat", format: "static" },
     { id: "cr_C", hook: "question", format: "static" },
     { id: "cr_D", hook: "stat", format: "video" },
+    { id: "cr_E", hook: "question", format: "video" },
+    { id: "cr_F", hook: "stat", format: "static" },
   ];
-  // 10 days × 4 creatives = 40 rows. Deterministic decaying CTR (§8, no Math.random)
-  // so at least one creative registers fatigue and the decompose has signal.
-  for (let d = 1; d <= 10; d++) {
+  // 20 days × 6 creatives = 120 rows. Deterministic decaying CTR (§8, no Math.random)
+  // so first-signal risk zones also have a complete 7-day follow-up window.
+  for (let d = 1; d <= 20; d++) {
     const date = `2026-01-${String(d).padStart(2, "0")}`;
     creatives.forEach((c, ci) => {
       const impressions = 5000 + ci * 400 + d * 50;
@@ -63,6 +66,7 @@ function seedWithData() {
         Impr: impressions,
         Clicks: clicks,
         Installs: installs,
+        Spend: 1000 + ci * 100 + d * 20,
       });
     });
   }
@@ -155,6 +159,8 @@ describe("CreativeAnalyzer render smoke", () => {
     expect(screen.getByText(/운영 건강도/)).toBeTruthy();
     expect(screen.getAllByText(/교체 일정 추천/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/다음 테스트 추천/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/누적 집행 위험 구간/)).toBeTruthy();
+    expect(screen.getAllByText(/현재 위험 구간/).length).toBeGreaterThan(0);
     // §8 Concept Matrix section is present (matrix falls back to "생성 불가"
     // here since message_angle isn't in the seed mapping — honest empty state).
     expect(screen.getAllByText(/조합별 성과표/).length).toBeGreaterThan(0);
