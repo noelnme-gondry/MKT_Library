@@ -40,6 +40,7 @@ const COPY = {
     briefTitle: "주간 운영 브리프",
     briefPending: "검토 대기",
     briefReviewed: "검토 완료",
+    hypothesis: "가설",
   },
   en: {
     eyebrow: "WEEKLY REVIEW",
@@ -64,6 +65,7 @@ const COPY = {
     briefTitle: "Weekly operating brief",
     briefPending: "Pending review",
     briefReviewed: "Reviewed",
+    hypothesis: "Hypothesis",
   },
 };
 
@@ -84,7 +86,7 @@ function toolName(toolId, locale) {
   return names ? names[locale === "en" ? 1 : 0] : toolId || "—";
 }
 
-function buildBrief(records, t, locale) {
+export function buildBrief(records, t, locale) {
   const today = new Date().toISOString().slice(0, 10);
   const lines = [`# ${t.briefTitle}`, "", `- ${today}`, "", "## Decisions"];
   records.forEach((record) => {
@@ -93,7 +95,7 @@ function buildBrief(records, t, locale) {
     lines.push(`- ${t.baseline}: ${record.metric || t.noMetric} ${record.baseline || "—"}`);
     lines.push(`- ${record.status === "reviewed" ? t.briefReviewed : t.briefPending}: ${record.actual || "—"}`);
     lines.push(`- ${t.learning}: ${record.learning || "—"}`);
-    if (record.hypothesis) lines.push(`- Hypothesis: ${record.hypothesis}`);
+    if (record.hypothesis) lines.push(`- ${t.hypothesis}: ${record.hypothesis}`);
     lines.push("");
   });
   return `${lines.join("\n")}\n`;

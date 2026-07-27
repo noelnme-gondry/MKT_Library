@@ -109,6 +109,23 @@ function sheetSourceId(toolId, url) {
   return `${toolId}:${url}`;
 }
 
+export function sheetSourceOverflowIds(sources, limit = 5) {
+  return [...sources]
+    .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
+    .slice(limit)
+    .map((source) => source.id);
+}
+
+async function readSheetSources(db, toolId) {
+  return new Promise((resolve, reject) => {
+    const request = db.transaction("sheetSources", "readonly").objectStore("sheetSources").getAll();
+    request.onsuccess = () => resolve((request.result || [])
+      .filter((source) => source.toolId === toolId)
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))));
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // 같은 브라우저에서만 "최근 연결한 공개 시트"를 다시 고르는 용도다. URL은 민감할 수
 // 있으므로 최대 5개·명시적 삭제를 제공하고, CSV 원본/분석 수치는 저장하지 않는다.
 export async function rememberSheetSource({ toolId, url, label = "" }) {
@@ -120,13 +137,13 @@ export async function rememberSheetSource({ toolId, url, label = "" }) {
     request.onsuccess = resolve;
     request.onerror = () => reject(request.error);
   });
-  const sources = await listSheetSources(toolId);
-  const stale = sources.slice(5);
-  if (!stale.length) return;
+  const sources = await readSheetSources(db, toolId);
+  const staleIds = sheetSourceOverflowIds(sources);
+  if (!staleIds.length) return;
   await new Promise((resolve, reject) => {
     const transaction = db.transaction("sheetSources", "readwrite");
     const store = transaction.objectStore("sheetSources");
-    stale.forEach((source) => store.delete(source.id));
+    staleIds.forEach((id) => store.delete(id));
     transaction.oncomplete = resolve;
     transaction.onerror = () => reject(transaction.error);
   });
@@ -135,14 +152,7 @@ export async function rememberSheetSource({ toolId, url, label = "" }) {
 export async function listSheetSources(toolId) {
   const db = await openDb();
   if (!db || !toolId) return [];
-  return new Promise((resolve, reject) => {
-    const request = db.transaction("sheetSources", "readonly").objectStore("sheetSources").getAll();
-    request.onsuccess = () => resolve((request.result || [])
-      .filter((source) => source.toolId === toolId)
-      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
-      .slice(0, 5));
-    request.onerror = () => reject(request.error);
-  });
+  return (await readSheetSources(db, toolId)).slice(0, 5);
 }
 
 export async function forgetSheetSource(id) {
