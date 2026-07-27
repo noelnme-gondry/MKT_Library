@@ -1512,9 +1512,11 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     [tx("항목", "Item"), tx("내용", "Value")],
     [tx("대상", "Target"), mmm.target],
     [tx("단위", "Unit"), tx("타깃 CSV의 원래 성과 단위(예: 유저 수). 통화 단위가 아님.", "The original target unit from the CSV (for example, users); not a currency unit.")],
-    [tx("방법", "Method"), trend.stl.method || "robust-additive-stl-seasonal-subseries-lowess"],
+    [tx("방법", "Method"), trend.stl.method || "robust-additive-stl-weighted-phase-mean-lowess-trend"],
+    [tx("계절성 템플릿", "Seasonal template"), trend.stl.seasonalSubseries || "weighted-phase-mean"],
     [tx("시즌 주기", "Seasonal period"), trend.stl.period || 52],
     [tx("Robust 반복 횟수", "Robust iterations"), trend.stl.robustIterations ?? null],
+    [tx("Robust weight fallback", "Robust-weight fallbacks"), trend.stl.robustWeightFallbacks ?? 0],
     [tx("결측 주차", "Missing weeks"), trend.stl.missingCount ?? null],
     [tx("계절성 강도", "Seasonality strength"), trend.stl.seasonalStrength ?? null],
     [tx("추세 강도", "Trend strength"), trend.stl.trendStrength ?? null],
@@ -1733,7 +1735,7 @@ function buildCannibGuideDoc(cannib, targetKo, locale = "ko") {
   L.push(`Prewhiten한 레벨 VAR(벡터자기회귀) 모형에서, 광고비에 1표준편차(1SD) 크기의 충격을 한 번 줬을 때 이후 여러 주에 걸쳐 오가닉이 어떻게 반응하는지 경로를 계산합니다. 음수 구간이 있으면 시차 잠식, 양수면 시차 증분. n<24주면 신뢰할 수 없어 곡선을 생략합니다.`);
   L.push("");
   L.push(`### 추세 존재성 검정 — STL 분해 + Mann-Kendall 4변형 + 단위근 검정`);
-  L.push(`- **STL(Seasonal-Trend decomposition using Loess)**: 시계열을 추세+계절+잔차로 분해(52주 주기, 2회 반복).`);
+  L.push(`- **STL(Seasonal-Trend decomposition using Loess)**: Performance 제외 baseline 입력을 52.18주 계절 주기와 주차별 가중 계절성 템플릿 + LOWESS 추세 + 잔차로 분해(robust 반복 3회).`);
   L.push(`- **Mann-Kendall 4가지**: 원본(raw), 자기상관 보정(Hamed-Rao, 순위 기반 분산 보정), 계절형(seasonal MK, 같은 계절끼리만 비교), 탈계절 잔차형(deseason). 네 개가 일치해야 "진짜 추세"로 확신.`);
   L.push(`- **ADF(Augmented Dickey-Fuller)**: 단위근(비정상성, 추세가 발산) 존재 여부 검정. p<0.05면 정상(추세가 있어도 발산 안 함).`);
   L.push(`- **KPSS**: ADF와 반대 귀무가설(정상성을 귀무가설로) — 두 검정이 서로 보완. 둘 다 통과해야 "trend-stationary" 확정.`);
@@ -1821,7 +1823,7 @@ function buildCannibGuideDocEn(cannib, targetLabel) {
   L.push(`In a prewhitened level VAR (vector autoregression) model, we compute the path of how organic responds over the following weeks to a single one-standard-deviation (1SD) shock to spend. A negative stretch = lagged cannibalization; positive = lagged incrementality. With n<24 weeks the curve is omitted as unreliable.`);
   L.push("");
   L.push(`### Trend-existence test — STL decomposition + 4 Mann-Kendall variants + unit-root tests`);
-  L.push(`- **STL (Seasonal-Trend decomposition using Loess)**: decomposes the series into trend + seasonal + residual (52-week period, 2 iterations).`);
+  L.push(`- **STL (Seasonal-Trend decomposition using Loess)**: decomposes the Performance-excluded baseline input into a 52.18-week seasonal period, weighted week-of-year template, LOWESS trend, and residual (3 robust iterations).`);
   L.push(`- **4 Mann-Kendall variants**: raw, autocorrelation-corrected (Hamed-Rao, rank-based variance correction), seasonal MK (compares only within the same season), deseasonalized-residual MK. All four must agree to be confident it's a "real trend."`);
   L.push(`- **ADF (Augmented Dickey-Fuller)**: tests for a unit root (non-stationarity, a diverging trend). p<0.05 means stationary (even with a trend, it doesn't diverge).`);
   L.push(`- **KPSS**: opposite null hypothesis to ADF (stationarity as the null) — the two tests complement each other. Both must pass to confirm "trend-stationary."`);
