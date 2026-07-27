@@ -37,6 +37,7 @@ describe("LandingPage render smoke", () => {
   it("no-data mounts", () => {
     expect(() => render(<LandingPage />)).not.toThrow();
     expect(document.querySelector(".page-title")).toBeTruthy();
+    expect(document.querySelectorAll(".landing-decision-lane")).toHaveLength(3);
   });
   it("with-data mounts", () => {
     seedWithData();

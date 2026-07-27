@@ -18,7 +18,7 @@ import { parseGoogleSheetUrl, sheetValuesToTable, resolveSheetRange } from "@/ut
 // 무료(표준 사용량 과금 없음, 분당 300건 한도 — 개인 사용 범위에선 안 걸림).
 const COPY = {
   ko: {
-    openBtn: "📊 구글 시트에서 불러오기",
+    openBtn: "📊 공개 Google Sheets에서 불러오기",
     urlLabel: "구글 시트 링크",
     urlHint: '이 시트가 "링크가 있는 모든 사용자에게 공개(보기)"로 설정돼 있어야 해요.',
     urlPlaceholder: "https://docs.google.com/spreadsheets/d/...",
@@ -31,7 +31,7 @@ const COPY = {
     errEmpty: "이 시트에 데이터가 없어요.",
   },
   en: {
-    openBtn: "📊 Import from Google Sheets",
+    openBtn: "📊 Import from a public Google Sheet",
     urlLabel: "Google Sheets link",
     urlHint: 'This sheet needs to be shared as "Anyone with the link" (Viewer).',
     urlPlaceholder: "https://docs.google.com/spreadsheets/d/...",
