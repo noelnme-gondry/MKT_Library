@@ -127,5 +127,8 @@ describe("runMmmStatTests golden parity (full)", () => {
     );
     const stl = stlWeekly(stlY, 52);
     expect(stl.trend[103] - stl.trend[0] > 20).toBe(true); // T12
+    stlY.forEach((value, index) => {
+      expect(value - stl.trend[index] - stl.seasonal[index] - stl.residual[index]).toBeCloseTo(0, 8);
+    }); // T12b: STL components reconstruct the target
   });
 });

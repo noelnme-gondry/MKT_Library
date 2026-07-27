@@ -710,13 +710,15 @@ import {
               // Prism 업황 프로필은 별도 고정값(0.5)으로 이 값을 명시적으로 덮어쓴다.
               trendPriorMultiplier: 1,
               trendPriorPrecision: 0.1,
-              mediaPenaltyCandidates: [0.15, 0.5, 1, 2, 4],
+              // 0도 후보에 포함한다. 데이터가 규제를 필요로 하지 않으면
+              // OOS 검증이 무규제 경로를 선택할 수 있어야 한다.
+              mediaPenaltyCandidates: [0, 0.15, 0.5, 1, 2, 4],
               mediaPenaltyMinTrain: 52,
               mediaPenaltyMaxFolds: 3,
               mediaPenaltyHoldoutWeeks: 12,
-              // 실험 근거가 없는 경우에도 매체 전체 기여가 0에만 붙지 않도록
-              // 넓은 비즈니스 사전범위를 둔다. 채널별 몫을 강제하는 값이 아니라
-              // 총 기여 30%±25%p를 지출 비중으로 느슨하게 나눈 시작점이다.
+              // Bayesian/legacy 호출부가 명시적으로 켤 때만 쓰는 empirical-Bayes
+              // 시작점이다. 일반 Classic은 disableManualPriors로 이 경로를
+              // 차단하고, 데이터와 OOS 검증만으로 적합한다.
               businessContributionPriorShare: 0.3,
               businessContributionPriorSd: 0.25,
               defaultLam: 0.6, // cannibalization net elasticity용
@@ -3240,7 +3242,7 @@ import {
             }
 
             function _mmmBusinessContributionPriors(panel, cfg, targetName, names, cols, channelMeta, options = {}) {
-              if (options.enableBusinessContributionPrior !== true || !channelMeta.length) {
+              if (options.disableManualPriors === true || options.enableBusinessContributionPrior !== true || !channelMeta.length) {
                 return { enabled: false, priors: {}, reason: "disabled" };
               }
               const target = panel.targets?.[targetName] || [];
@@ -4344,7 +4346,10 @@ import {
                 names.push("media_" + ch.key);
                 cols.push(mmmAdstock(panel.ch[ch.key], p.alpha).map((v) => mmmHill(v, p.ec, p.slope)));
               }
-              const configuredGroupPriors = options.groupContributionPriors && Object.keys(options.groupContributionPriors).length
+              const manualPriorsEnabled = options.disableManualPriors !== true;
+              const configuredGroupPriors = manualPriorsEnabled
+                && options.groupContributionPriors
+                && Object.keys(options.groupContributionPriors).length
                 ? options.groupContributionPriors
                 : null;
               const businessContributionPrior = configuredGroupPriors
@@ -4364,7 +4369,7 @@ import {
                   channelMeta,
                   options,
                 );
-              const externalMediaPriors = options.mediaPriors || {};
+              const externalMediaPriors = manualPriorsEnabled ? (options.mediaPriors || {}) : {};
               fitOptions.mediaPriors = {
                 ...businessContributionPrior.priors,
                 ...externalMediaPriors,
