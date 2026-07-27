@@ -354,6 +354,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
       {card && (
         <ResultActionCard
           toolId="5-23"
+          locale={locale}
           tone={card.tone}
           title={tr("결론 — 광고가 만든 순증분", "Conclusion — net incremental from ads")}
           headline={card.headline}
@@ -607,6 +608,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
           {card && (
             <ResultActionCard
               toolId="5-23"
+              locale={locale}
               tone={card.tone}
               title={lost ? tr("결론 — 종료로 잃은 성과", "Conclusion — performance lost from shutdown") : tr("결론 — 신규로 얻은 성과", "Conclusion — performance gained from launch")}
               headline={card.headline}

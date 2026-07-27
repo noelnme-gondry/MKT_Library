@@ -4740,6 +4740,43 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .result-action-card__stats > div { min-width: 118px; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 7px; color: var(--text-muted); font: 500 10px var(--font-mono); }
 .result-action-card__stats strong { display: block; margin-top: 2px; color: var(--text-primary); font-size: 13px; }
 .result-action-card__stats small { display: block; margin-top: 2px; color: var(--text-muted); font-size: 9px; white-space: nowrap; }
+.decision-review { margin: 12px 0 0 47px; border-top: 1px solid var(--border-subtle); }
+.decision-review > summary { display: flex; align-items: center; gap: 8px; width: fit-content; padding: 10px 0 3px; color: var(--text-secondary); cursor: pointer; font: 700 10px var(--font-mono); letter-spacing: .04em; }
+.decision-review > summary::before { content: "＋"; color: var(--primary); font-size: 13px; }
+.decision-review[open] > summary::before { content: "－"; }
+.decision-review > summary em { display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border: 1px solid var(--border); border-radius: 10px; color: var(--primary); font: 700 9px var(--font-mono); font-style: normal; }
+.decision-review__body { padding: 7px 0 2px; }
+.decision-review__helper { max-width: 680px; margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.55; }
+.decision-review__privacy { margin: 5px 0 0; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
+.decision-review__form { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-top: 12px; }
+.decision-review__field { min-width: 0; }
+.decision-review__field--wide { grid-column: span 3; }
+.decision-review__field > span { display: block; margin: 0 0 4px; color: var(--text-muted); font: 700 9px var(--font-mono); letter-spacing: .04em; }
+.decision-review input { box-sizing: border-box; width: 100%; min-height: 31px; border: 1px solid var(--border); border-radius: 6px; outline: 0; background: var(--surface-container-lowest); color: var(--text-primary); font: 500 11px var(--font-body); }
+.decision-review__field input { padding: 6px 8px; }
+.decision-review input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 16%, transparent); }
+.decision-review__add { align-self: end; min-height: 31px; justify-content: center; white-space: nowrap; }
+.decision-review__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.decision-review__file { display: none; }
+.decision-review__message { color: var(--text-muted); font-size: 10px; }
+.decision-review__empty { margin: 12px 0 0; padding: 10px; border: 1px dashed var(--border); border-radius: 7px; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.decision-review__ledger { margin-top: 12px; }
+.decision-review__ledger-label { margin-bottom: 5px; color: var(--text-muted); font: 700 9px var(--font-mono); letter-spacing: .1em; }
+.decision-review__record { padding: 10px 0; border-top: 1px solid var(--border-subtle); }
+.decision-review__record-head { display: flex; justify-content: space-between; gap: 10px; }
+.decision-review__record-head strong { color: var(--text-primary); font-size: 12px; }
+.decision-review__record-head p { margin: 3px 0 0; color: var(--text-muted); font-size: 10px; line-height: 1.45; }
+.decision-review__status { flex: 0 0 auto; height: fit-content; padding: 3px 6px; border: 1px solid var(--border); border-radius: 10px; color: var(--text-muted); font: 700 9px var(--font-mono); }
+.decision-review__status.reviewed { border-color: color-mix(in srgb, var(--success) 48%, var(--border)); color: var(--success); }
+.decision-review__comparison { display: grid; grid-template-columns: minmax(90px, .7fr) 16px minmax(0,1.3fr); align-items: center; gap: 7px; margin-top: 8px; }
+.decision-review__comparison > span { min-height: 31px; padding: 5px 7px; border: 1px solid var(--border-subtle); border-radius: 6px; color: var(--text-secondary); font: 600 11px var(--font-mono); }
+.decision-review__comparison small { display: block; margin-bottom: 2px; color: var(--text-muted); font-size: 8px; }
+.decision-review__comparison > b { color: var(--primary); text-align: center; font: 700 13px var(--font-mono); }
+.decision-review__comparison input, .decision-review__record-footer input { padding: 5px 7px; }
+.decision-review__record-footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 7px; margin-top: 7px; }
+.decision-review__record-footer > span { color: var(--text-muted); font: 500 9px var(--font-mono); white-space: nowrap; }
+.decision-review__remove { color: var(--text-muted); font-size: 10px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 /* 결과 메타데이터는 기본 접힘. 결론 카드의 시각적 밀도를 유지하면서
    단위·표본·불확실성·재현 정보를 필요한 사람에게만 제공한다. */
@@ -5125,7 +5162,14 @@ body.light-mode .operator-preview__queue > a { color: #fff; }
   .result-action-card { padding: 17px; }
   .result-action-card__head { grid-template-columns: 30px minmax(0,1fr); }
   .result-action-card__controls { grid-column: 1 / -1; }
-  .result-action-card__points, .result-action-card__stats, .result-action-card__details, .analysis-details { margin-left: 0; }
+  .result-action-card__points, .result-action-card__stats, .result-action-card__details, .analysis-details, .decision-review { margin-left: 0; }
+  .decision-review__form { grid-template-columns: 1fr 1fr; }
+  .decision-review__field--wide { grid-column: span 2; }
+  .decision-review__add { grid-column: 1 / -1; }
+  .decision-review__record-footer { grid-template-columns: 1fr auto; }
+  .decision-review__record-footer > label { grid-column: 1 / -1; grid-row: 1; }
+  .decision-review__record-footer > span { grid-row: 2; }
+  .decision-review__record-footer > button { grid-column: 2; grid-row: 2; }
   .kpi-grid--overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .seasonality-heading { display: block; }
   .seasonality-controls { flex-wrap: wrap; margin-top: 12px; }
