@@ -116,6 +116,10 @@ const FAQ = [
     a: "아니요. 모든 CSV는 브라우저 안에서만 처리되고 서버로 전송되거나 저장되지 않습니다.",
   },
   {
+    q: "Google Sheets에서 템플릿을 쓰려면 어떻게 하나요?",
+    a: "아래 템플릿 CSV를 받은 뒤 Google Sheets에서 파일 → 가져오기 → 업로드로 열면 됩니다. 헤더를 바꾸지 않고 데이터를 채운 뒤, 앱에서 공개 보기 링크를 연결하세요.",
+  },
+  {
     q: "왜 모든 도구에 템플릿이 있는 건 아닌가요?",
     a: "핵심 가치 발굴(Aha-moment)이나 증분 분석처럼 이벤트·홀드아웃 단위 CSV를 쓰는 도구는 데이터 형식(grain)이 달라 현재는 목록에서 제외했어요.",
   },
@@ -172,6 +176,16 @@ export default function TemplatesPage() {
           브라우저 안에서만 생성되고 서버로 전송되지 않습니다.
         </p>
       </header>
+
+      <section className="templates-sheet-guide" aria-label="Google Sheets 템플릿 사용 방법">
+        <div><span>GOOGLE SHEETS</span><strong>같은 템플릿을 시트에서도 그대로 쓰세요</strong></div>
+        <ol>
+          <li>아래에서 CSV / Google Sheets 템플릿을 받습니다.</li>
+          <li>Google Sheets에서 <b>파일 → 가져오기 → 업로드</b>로 열고, 헤더 행은 바꾸지 않습니다.</li>
+          <li>데이터를 채운 뒤 <b>링크가 있는 모든 사용자 · 보기</b>로 공유하면 앱에서 바로 불러올 수 있습니다.</li>
+        </ol>
+        <small>시트는 Google 계정에, 분석 원본은 브라우저 메모리에만 남습니다. 앱은 시트 URL과 이름만 이 브라우저에서 다시 고를 수 있게 기억합니다.</small>
+      </section>
 
       {publishedGroups.map((group) => (
         <section key={group.heading} style={{ marginBottom: "2.25rem" }}>

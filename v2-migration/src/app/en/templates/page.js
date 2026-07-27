@@ -43,6 +43,7 @@ const FAQ = [
   ["Does the template include example data?", "No. It contains only a header row. Fill the rows below with your own data before uploading."],
   ["Can I upload a CSV I already have?", "Yes. Automatic column mapping recognizes most existing headers. Use a template when the mapping is unclear."],
   ["Is uploaded data sent to a server?", "No. CSV files are processed and discarded in your browser; they are not sent to or stored on a server."],
+  ["How do I use a template in Google Sheets?", "Download a template below, then use File → Import → Upload in Google Sheets. Keep the header row unchanged, fill your data, and connect the shared Viewer link in the app."],
   ["Why do some tools have no template?", "Aha-moment and incrementality tools use event- or holdout-level data with a different grain, so they are not included here."],
 ];
 
@@ -58,6 +59,15 @@ export default function EnglishTemplatesPage() {
           Each analysis tool expects slightly different columns. Download a blank header-only CSV, fill it in, and upload it without rebuilding the mapping. Downloads are generated in your browser and never sent to a server.
         </p>
       </header>
+      <section className="templates-sheet-guide" aria-label="How to use the Google Sheets templates">
+        <div><span>GOOGLE SHEETS</span><strong>Use the same template in a spreadsheet</strong></div>
+        <ol>
+          <li>Download a CSV / Google Sheets template below.</li>
+          <li>In Google Sheets, use <b>File → Import → Upload</b>; keep the header row unchanged.</li>
+          <li>Fill the data, share it as <b>Anyone with the link · Viewer</b>, then import it in the app.</li>
+        </ol>
+        <small>Your sheet remains in Google Sheets and source rows stay in browser memory. The app can only remember that sheet’s URL and name in this browser.</small>
+      </section>
       {publishedGroups.map((group) => (
         <section key={group.heading} style={{ marginBottom: "2.25rem" }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.35rem" }}>{group.heading}</h2>
