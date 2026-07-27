@@ -52,13 +52,15 @@ describe("ContentElementAnalyzer render smoke", () => {
   });
 
   it("mounts without throwing in the no-data state", () => {
-    expect(() => render(<ContentElementAnalyzer />)).not.toThrow();
+    const { container } = render(<ContentElementAnalyzer />);
     expect(document.body.querySelector("*")).toBeTruthy();
+    expect(container.querySelector("#s-content-mapping")).toBeTruthy();
   });
 
   it("mounts without throwing with a valid attribute×outcome CSV", () => {
     seedWithData();
-    expect(() => render(<ContentElementAnalyzer />)).not.toThrow();
+    const { container } = render(<ContentElementAnalyzer />);
     expect(document.body.textContent.length).toBeGreaterThan(0);
+    expect(container.querySelector("#s-content-mapping")).toBeTruthy();
   });
 });

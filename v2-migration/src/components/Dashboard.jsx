@@ -420,7 +420,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
               )}
             </div>
             {verdict && !verdict.insufficient && (
-              <details className="dashboard-support-tools">
+              <details className="dashboard-support-tools" id="dashboard-support-tools">
                 <summary>
                   <span>{tr("분석 보조 도구", "Analysis utilities")}</span>
                   <small>{tr("기록 · 다음 분석 · 이벤트 마커", "History · next analyses · event markers")}</small>

@@ -63,10 +63,13 @@ const ASSIST_SECTIONS = {
     { id: "s-readout-sig", result: true, title: ["효과 판독", "Read the effect"], body: ["유의하지 않은 결과는 효과 없음이 아니라 판단 보류입니다. 다음 실험 조건을 기록하세요.", "A non-significant result is inconclusive, not no effect. Record the next test condition."] },
   ],
   "5-23": [
-    { id: "s-prep", title: ["증분 측정 준비", "Prepare incrementality measurement"], body: ["비교군과 기간 정의가 먼저입니다. 관찰 성과만으로 증분을 단정하지 마세요.", "Define the comparison group and period first; do not infer incrementality from observed outcomes alone."] },
+    { id: "s-incr-method", title: ["증분 측정 방식 선택", "Choose an incrementality method"], body: ["비교군과 기간 정의가 먼저입니다. 관찰 성과만으로 증분을 단정하지 마세요.", "Define the comparison group and period first; do not infer incrementality from observed outcomes alone."] },
+    { id: "s-incr-result", result: true, title: ["증분 결과 판독", "Read the incrementality result"], body: ["무작위 홀드아웃·DiD·단순 전후의 증거 수준을 구분해 다음 실험을 정하세요.", "Distinguish randomized holdout, DiD, and simple pre/post evidence before choosing the next test."] },
   ],
   "5-18": [
     { id: "s-prep", title: ["반응 데이터 준비", "Prepare response data"], body: ["주차 단위와 채널별 비용·성과가 맞아야 반응을 안정적으로 읽을 수 있습니다.", "Align weekly grain with channel cost and outcome to read response reliably."] },
+    { id: "s-trend", result: true, title: ["반응 변화 확인", "Read the response change"], body: ["관찰된 변화는 진단 신호입니다. 예산 이동 전에는 잠식·추세를 함께 확인하세요.", "Observed movement is a diagnostic signal. Check cannibalization and trend before moving budget."] },
+    { id: "s-macro", result: true, title: ["기여도 해석", "Interpret contribution"], body: ["모델 기여도는 예산 방향을 정하는 근거이며, 인과 효과 확정은 별도 검증이 필요합니다.", "Model contribution guides budget direction; causal confirmation needs separate validation."] },
     { id: "s-forecast", result: true, title: ["예측과 다음 조치", "Forecast and next action"], body: ["예측은 방향을 정하는 근거입니다. 실제 증분은 별도 실험으로 확인하세요.", "Use the forecast to choose direction; verify true incrementality with a separate experiment."] },
   ],
   "5-20": [
@@ -74,7 +77,8 @@ const ASSIST_SECTIONS = {
     { id: "s-aha-hero", result: true, title: ["핵심 행동 해석", "Interpret the key action"], body: ["발견한 행동은 가설입니다. 온보딩 또는 실험 설계로 다음 검증을 이어가세요.", "The discovered action is a hypothesis. Continue with onboarding or experiment design to validate it."] },
   ],
   "9-1": [
-    { id: "s-prep", title: ["콘텐츠 요소 준비", "Prepare content elements"], body: ["요소가 구분된 콘텐츠 단위와 성과 지표를 맞추면 비교가 선명해집니다.", "Align element-level content data with an outcome metric for a clear comparison."] },
+    { id: "s-content-mapping", title: ["콘텐츠 데이터·요소 지정", "Set content data and elements"], body: ["콘텐츠 한 건당 한 행에서 성과 1개와 설명 요소를 고르세요. 비슷한 요소를 너무 많이 넣으면 분리해 읽기 어렵습니다.", "Use one row per content item, then choose one outcome and explanatory elements. Too many similar elements are hard to separate."] },
+    { id: "s-content-result", result: true, title: ["요소 연관 해석", "Interpret element associations"], body: ["유의 연관은 다음 제작 가설입니다. 인과 효과로 단정하지 말고 실험으로 확인하세요.", "A significant association is a production hypothesis, not causality. Confirm it with an experiment."] },
   ],
   "9-2": [
     { id: "s-prep", title: ["콘텐츠 행동 데이터 준비", "Prepare content behavior data"], body: ["독자·콘텐츠·행동 시간이 연결되어야 재방문을 만드는 경험을 찾을 수 있습니다.", "Reader, content, and event time need to connect to find experiences that drive return visits."] },
@@ -96,6 +100,13 @@ const ASSIST_TOOL_FALLBACKS = {
   "9-2": { title: { ko: "킬러 콘텐츠·충성 독자 발굴", en: "Killer content and loyal reader finder" } },
   "9-3": { title: { ko: "콘텐츠 트래픽 변동 탐지", en: "Content traffic variance" } },
   "9-7": { title: { ko: "콘텐츠 운영 대시보드", en: "Content operations dashboard" } },
+};
+
+const QUICK_ACTION_TARGETS = {
+  "5-2": "dashboard-support-tools",
+  "9-7": "dashboard-support-tools",
+  "5-23": "s-incr-method",
+  "9-1": "s-content-mapping",
 };
 
 function copyFor(value, lang) {
@@ -130,11 +141,13 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
       }
     };
     const syncCurrentSection = () => {
-      const nearest = sections
+      const checkpoints = sections
         .map((section) => ({ section, element: document.getElementById(section.id) }))
-        .filter(({ element }) => element)
-        .sort((a, b) => Math.abs(a.element.getBoundingClientRect().top - window.innerHeight * 0.34) - Math.abs(b.element.getBoundingClientRect().top - window.innerHeight * 0.34))[0];
-      if (nearest) setActiveSectionId((current) => current === nearest.section.id ? current : nearest.section.id);
+        .filter(({ element }) => element);
+      const viewportMarker = window.innerHeight * 0.38;
+      const passed = checkpoints.filter(({ element }) => element.getBoundingClientRect().top <= viewportMarker);
+      const current = (passed.length > 0 ? passed : checkpoints)[(passed.length > 0 ? passed : checkpoints).length - 1];
+      if (current) setActiveSectionId((previous) => previous === current.section.id ? previous : current.section.id);
       revealResultIfReady();
     };
     const scheduleSync = () => {
@@ -191,8 +204,8 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
           <button type="button" onClick={() => scrollToSection(activeSection.id, "current_context")}>{T.jump} <span aria-hidden="true">↓</span></button>
         </div>
         <div className="tool-assist-rail__actions">
-          <button type="button" onClick={() => scrollToSection(toolId === "5-2" ? "dashboard-support-tools" : "s-prep", "support_action")}>
-            {toolId === "5-2" ? T.support : T.mapping}
+          <button type="button" onClick={() => scrollToSection(QUICK_ACTION_TARGETS[toolId] || "s-prep", "support_action")}>
+            {QUICK_ACTION_TARGETS[toolId] === "dashboard-support-tools" ? T.support : T.mapping}
           </button>
           {nextTool ? (
             <Link href={nextTool.href} onClick={() => trackProductEvent("tool_assist_next", { tool_id: nextTool.id, source_tool_id: toolId, locale: lang })}>
