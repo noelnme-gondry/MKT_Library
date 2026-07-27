@@ -36,6 +36,7 @@ import {
   MMM_METH_CONFIG as MMM_CLASSIC_CONFIG,
   MMM_PRISM_MODEL_CONFIG,
   mmmBayesianRun as mmmClassicBayesianRun,
+  mmmClassicControlSelection,
   mmmClassicBuildGroupContributionPriors,
   mmmResolveAbsorb as mmmClassicResolveAbsorb,
 } from "@/utils/mmmMathPr416";
@@ -3686,13 +3687,13 @@ export default function MarketingResponse({ locale = "ko" }) {
         });
       }
 
-      // Classic과 Prism은 같은 PR #416 엔진을 쓰되, Prism은 사용자가 명시적으로
-      // Option 3을 선택했을 때만 고정된 업황·계절성·기여 목표를 적용한다.
+      // Classic과 Prism은 같은 PR #416 엔진을 쓴다. Classic은 시즈널리티를
+      // 기본 후보로 유지하고, 업황이 매핑되어 있으면 함께 넣는다. 시간순 OOS
+      // WMAPE가 악화될 때만 해당 요소를 자동 제외한다. 업황이 없으면 외부
+      // 제어변수 없이 일반 Classic으로 계속 진행한다.
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
-      const aggregatePanel = buildMmmAggregateMediaPanel(panel);
-      if (!aggregatePanel) throw new Error("PR #416 aggregate media panel failed");
       const usePrismModel = mmmMode === "prism";
-      const classicCfg = {
+      const classicBaseCfg = {
         ...MMM_CLASSIC_CONFIG,
         ...(usePrismModel ? {
           trendPriorMultiplier: MMM_PRISM_MODEL_CONFIG.trendPriorMultiplier,
@@ -3701,13 +3702,29 @@ export default function MarketingResponse({ locale = "ko" }) {
         } : {}),
         absorbed: mmmClassicResolveAbsorb(panel, { ...MMM_CLASSIC_CONFIG, absorbed: new Set() }).absorbed,
       };
+      const classicControlSelection = usePrismModel
+        ? null
+        : mmmClassicControlSelection(panel, classicBaseCfg, t, {
+          enableClassicControlSelection: true,
+          enableSeasonalitySelection: false,
+          enableBaselineSelection: false,
+          enableMediaPenaltySelection: false,
+          skipTransformUncertainty: true,
+        });
+      const selectedPanel = usePrismModel ? panel : classicControlSelection.panel;
+      const classicCfg = usePrismModel ? classicBaseCfg : classicControlSelection.cfg;
+      const aggregatePanel = buildMmmAggregateMediaPanel(selectedPanel);
+      if (!aggregatePanel) throw new Error("PR #416 aggregate media panel failed");
       const classicFitOptions = {
         mediaPriors: {},
         enableBaselineSelection: true,
         ...(usePrismModel ? {
           enableSeasonalitySelection: false,
           enableMediaPenaltySelection: false,
-        } : {}),
+        } : {
+          enableClassicControlSelection: false,
+          enableSeasonalitySelection: false,
+        }),
       };
       const aggregateBaseRun = usePrismModel
         ? mmmClassicBayesianRun(aggregatePanel, classicCfg, t, false, {
@@ -3723,7 +3740,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         groupContributionPriors,
       });
       if (!aggregateRun) throw new Error("PR #416 aggregate Bayesian posterior estimate failed");
-      const allocationRun = mmmClassicBayesianRun(panel, classicCfg, t, false, {
+      const allocationRun = mmmClassicBayesianRun(selectedPanel, classicCfg, t, false, {
         mediaPriors,
         enableBaselineSelection: true,
         skipTransformUncertainty: true,
@@ -3733,7 +3750,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         } : {}),
       });
       if (!allocationRun) throw new Error("PR #416 channel allocation model failed");
-      const allocatedRun = allocateFixedMmmGroupTotals(panel, aggregatePanel, aggregateRun, allocationRun, 0.01);
+      const allocatedRun = allocateFixedMmmGroupTotals(selectedPanel, aggregatePanel, aggregateRun, allocationRun, 0.01);
       allocatedRun.modelVariant = usePrismModel
         ? "prism-option-3-fixed-group-total"
         : "pr416-fixed-group-total-ranked-allocation";
@@ -3752,6 +3769,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         trendEnd: allocatedRun.weeks.at(-1)?.contrib?.Trend ?? null,
         seasonalityMandatory: usePrismModel,
         industryKey: usePrismModel ? Object.keys(panel.external || {}) : [],
+        controlSelection: classicControlSelection,
       };
       targetDiagnostics.passed = !usePrismModel || (
         targetDiagnostics.performance2024 >= 250000
@@ -3763,6 +3781,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         && targetDiagnostics.trendEnd >= MMM_PRISM_MODEL_CONFIG.trendEndMin
       );
       allocatedRun.prismDiagnostics = targetDiagnostics;
+      allocatedRun.classicControlSelection = classicControlSelection;
       allocatedRun.pr416Provenance = {
         commit: usePrismModel ? "prism-option-3-v1" : "5a3e7fb",
         modelScope: "mmm-engine-only",
@@ -3779,17 +3798,18 @@ export default function MarketingResponse({ locale = "ko" }) {
           diagnostics: targetDiagnostics,
         } : null,
         externalChannelPriorsAppliedToAllocationFit: hasExternalPrior,
+        classicControlSelection,
       };
       const health = mmmBayesianHealth(allocatedRun);
       const effects = [];
       return mmmStoreCachedResult(csvData.raw, resultCacheKey, {
         empty: false,
-        panel,
+          panel: selectedPanel,
         cfg: classicCfg,
         derived,
         target: t,
         validate,
-        saturationPanel: panel,
+          saturationPanel: selectedPanel,
         aggregatePanel,
         run: allocatedRun,
         health,
@@ -5659,6 +5679,18 @@ export default function MarketingResponse({ locale = "ko" }) {
               ? buildMmmCollinearityGroupedPerformance(viewedPanel, viewedWeeklyChannelPerformance, mmm.run.collinear_pairs, 0.9, displayedCollinearityGroupRefit)
               : viewedWeeklyChannelPerformance;
             const seasonalityEvidence = mmm.run.seasonalitySelection?.evidence;
+            const classicControlSelection = mmm.run.classicControlSelection;
+            const classicControlText = classicControlSelection?.enabled
+              ? classicControlSelection.overfitDetected
+                ? tx(
+                  `OOS WMAPE 과적합 방지: ${classicControlSelection.excluded.join("·")} 제외 · 선택 ${Number(classicControlSelection.selected.wmape).toFixed(1)}%`,
+                  `OOS WMAPE overfit gate: dropped ${classicControlSelection.excluded.join(" · ")} · selected ${Number(classicControlSelection.selected.wmape).toFixed(1)}%`,
+                )
+                : tx(
+                  `OOS WMAPE 검증: ${classicControlSelection.selected.id} 유지 · ${Number(classicControlSelection.selected.wmape).toFixed(1)}%`,
+                  `OOS WMAPE check: retained ${classicControlSelection.selected.id} · ${Number(classicControlSelection.selected.wmape).toFixed(1)}%`,
+                )
+              : null;
             const seasonalityValidationText = mmm.run.seasonalitySelection?.enabled
               ? seasonalityEvidence?.detectionMode === "trend-direction-first-joint-allocation"
                 ? tx(
@@ -5707,7 +5739,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                 countryPlan={mmm.countryPlan}
                 formatValue={targetValueLabel}
               />
-              {(mmm.run.trendDecomposition || mmm.run.penaltyAudit || mmm.run.dataQuality) && (
+              {(mmm.run.trendDecomposition || mmm.run.penaltyAudit || mmm.run.dataQuality || classicControlText) && (
                 <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
                   <strong>{tx("추세·모델 공정성 진단", "Trend and model fairness diagnostics")}</strong>
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
@@ -5719,6 +5751,7 @@ export default function MarketingResponse({ locale = "ko" }) {
                     {mmm.run.penaltyAudit && <span className="ab-pill" style={mmm.run.penaltyAudit.symmetricWithControl ? undefined : { borderColor: "#f59e0b", color: "#b45309" }}>
                       {tx("Penalty", "Penalty")} {mmm.run.penaltyAudit.profile} · {mmm.run.penaltyAudit.symmetricWithControl ? tx("대칭", "symmetric") : tx("비대칭 점검", "asymmetry check")}
                     </span>}
+                    {classicControlText && <span className="ab-pill" title={tx("시즈널리티·업황 후보를 동일한 시간순 OOS WMAPE로 비교한 결과입니다.", "Seasonality and industry candidates were compared using the same time-ordered OOS WMAPE.")}>{classicControlText}</span>}
                     {mmm.run.dataQuality && <span className="ab-pill" style={!mmm.run.dataQuality.valid ? { borderColor: "#ef4444", color: "#b91c1c" } : undefined}>
                       {tx("데이터 품질", "Data quality")} {mmm.run.dataQuality.valid ? tx("통과", "pass") : `${mmm.run.dataQuality.issues.length} ${tx("건 경고", "warning(s)")}`}
                     </span>}

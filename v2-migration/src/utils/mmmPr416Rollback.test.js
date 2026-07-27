@@ -4,6 +4,7 @@ import {
   MMM_METH_CONFIG,
   mmmAdstock,
   mmmBayesianRun,
+  mmmClassicControlSelection,
   mmmClassicBuildGroupContributionPriors,
   mmmBayesianWeeklyDecomp,
 } from "./mmmMathPr416";
@@ -127,5 +128,52 @@ describe("PR #416 MMM rollback contract", () => {
     expect(priors.branding_total.source).toBe("business-contribution");
     expect(priors.performance_total.contributionMean).toBeCloseTo(totalTarget * MMM_PRISM_MODEL_CONFIG.performanceContributionShare, 8);
     expect(priors.branding_total.contributionMean).toBeCloseTo(totalTarget * MMM_PRISM_MODEL_CONFIG.brandingContributionShare, 8);
+  });
+
+  it("keeps Classic running without an industry column and gates seasonality by OOS WMAPE", () => {
+    const n = 64;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const search = week.map((value) => 800 + ((value * 13) % 17) * 70);
+    const brandVideo = week.map((value) => 500 + ((value * 7) % 11) * 55);
+    const target = week.map((value, index) => (
+      7000 - value * 6
+      + 350 * Math.sin((2 * Math.PI * value) / 52.18)
+      + search[index] * 0.18
+      + brandVideo[index] * 0.12
+    ));
+    const panel = {
+      week,
+      weekLabel: week.map(String),
+      ch: { search, brandVideo },
+      targets: { Regs: target },
+      channels: [
+        { key: "search", label: "Search", kind: "perf" },
+        { key: "brandVideo", label: "Brand video", kind: "brand" },
+      ],
+      dummy: {},
+      steps: {},
+      external: {},
+    };
+    const selection = mmmClassicControlSelection(panel, {
+      ...MMM_METH_CONFIG,
+      seasonalityPeriods: [52.18],
+      adstockGrid: [0, 0.4],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+      mediaPenaltyCandidates: [1],
+    }, "Regs", {
+      enableClassicControlSelection: true,
+      enableBaselineSelection: false,
+      enableSeasonalitySelection: false,
+      enableMediaPenaltySelection: false,
+      skipTransformUncertainty: true,
+    });
+    expect(selection.enabled).toBe(true);
+    expect(selection.selected.useIndustry).toBe(false);
+    expect(typeof selection.selected.useSeasonality).toBe("boolean");
+    expect(selection.cfg.seasonalityPeriods.length).toBe(selection.selected.useSeasonality ? 1 : 0);
+    expect(selection.panel.external).toEqual({});
+    expect(selection.candidates).toHaveLength(2);
+    expect(selection.candidates.every((candidate) => Number.isFinite(candidate.wmape))).toBe(true);
   });
 });

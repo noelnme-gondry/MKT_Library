@@ -3994,6 +3994,118 @@ import {
               };
             }
 
+            function _mmmClassicControlPanel(panel, includeIndustry) {
+              if (includeIndustry || !Object.keys(panel.external || {}).length) return panel;
+              return {
+                ...panel,
+                external: {},
+                externalDefs: [],
+              };
+            }
+
+            // 일반 Classic도 시즈널리티와 매핑된 업황을 기본 후보로 유지한다.
+            // 다만 두 제어변수가 학습기간에만 맞고 시간순 미래 구간에서 무너지면
+            // 해당 요소를 빼고 다시 적합한다. 이 선택은 기여량을 키우기 위한
+            // 레버가 아니라, 마지막 20% OOS WMAPE 하나로만 결정된다.
+            export function mmmClassicControlSelection(panel, cfg, targetName, options = {}) {
+              const n = panel?.week?.length || 0;
+              const hasIndustry = Object.keys(panel?.external || {}).length > 0;
+              const defaultPeriods = Array.isArray(cfg.seasonalityPeriods) && cfg.seasonalityPeriods.length
+                ? cfg.seasonalityPeriods.slice()
+                : [52.18];
+              const defaultSelection = {
+                enabled: false,
+                selected: {
+                  id: hasIndustry ? "seasonality+industry" : "seasonality",
+                  useSeasonality: true,
+                  useIndustry: hasIndustry,
+                  wmape: null,
+                  oosN: 0,
+                },
+                cfg: { ...cfg, seasonalityPeriods: defaultPeriods },
+                panel: _mmmClassicControlPanel(panel, hasIndustry),
+                candidates: [],
+                overfitDetected: false,
+                excluded: [],
+                reason: n < 48 ? "short-history-controls-retained" : "oos-unavailable-controls-retained",
+              };
+              if (options.enableClassicControlSelection === false || n < 48) return defaultSelection;
+
+              const candidates = hasIndustry
+                ? [
+                  { id: "base", useSeasonality: false, useIndustry: false },
+                  { id: "seasonality", useSeasonality: true, useIndustry: false },
+                  { id: "industry", useSeasonality: false, useIndustry: true },
+                  { id: "seasonality+industry", useSeasonality: true, useIndustry: true },
+                ]
+                : [
+                  { id: "base", useSeasonality: false, useIndustry: false },
+                  { id: "seasonality", useSeasonality: true, useIndustry: false },
+                ];
+              const fitOptions = {
+                ...options,
+                enableClassicControlSelection: false,
+                enableSeasonalitySelection: false,
+                enableBaselineSelection: false,
+                enableMediaPenaltySelection: false,
+                skipTransformUncertainty: true,
+              };
+              const evaluated = candidates.map((candidate) => {
+                const candidatePanel = _mmmClassicControlPanel(panel, candidate.useIndustry);
+                const candidateCfg = {
+                  ...cfg,
+                  seasonalityPeriods: candidate.useSeasonality ? defaultPeriods : [],
+                };
+                const run = mmmBayesianRun(candidatePanel, candidateCfg, targetName, true, fitOptions);
+                const wmape = run?.backtest?.wmape;
+                return {
+                  ...candidate,
+                  wmape: Number.isFinite(wmape) ? wmape : null,
+                  oosN: run?.backtest?.n || 0,
+                };
+              });
+              const finite = evaluated.filter((candidate) => Number.isFinite(candidate.wmape));
+              if (!finite.length) return {
+                ...defaultSelection,
+                candidates: evaluated,
+                reason: "control-oos-fit-failed-controls-retained",
+              };
+              const bestWmape = Math.min(...finite.map((candidate) => candidate.wmape));
+              // 작은 OOS 차이는 표본 변동으로 보고 더 많은 구조를 유지한다.
+              // 그보다 큰 차이만 과적합으로 판정해 요소를 제거한다.
+              const tolerance = Math.max(0.25, bestWmape * 0.02);
+              const selected = finite
+                .filter((candidate) => candidate.wmape <= bestWmape + tolerance)
+                .sort((left, right) => (
+                  Number(right.useSeasonality) + Number(right.useIndustry)
+                  - Number(left.useSeasonality) - Number(left.useIndustry)
+                ) || left.wmape - right.wmape)[0];
+              const defaultCandidate = evaluated.find((candidate) => candidate.id === (hasIndustry ? "seasonality+industry" : "seasonality"));
+              const overfitDetected = Number.isFinite(defaultCandidate?.wmape)
+                && Number.isFinite(selected.wmape)
+                && selected.id !== defaultCandidate.id
+                && defaultCandidate.wmape > selected.wmape + tolerance;
+              const excluded = [
+                ...(selected.useSeasonality ? [] : ["seasonality"]),
+                ...(selected.useIndustry || !hasIndustry ? [] : ["industry"]),
+              ];
+              return {
+                enabled: true,
+                selected,
+                cfg: {
+                  ...cfg,
+                  seasonalityPeriods: selected.useSeasonality ? defaultPeriods : [],
+                },
+                panel: _mmmClassicControlPanel(panel, selected.useIndustry),
+                candidates: evaluated,
+                bestWmape,
+                tolerance,
+                overfitDetected,
+                excluded,
+                reason: overfitDetected ? "oos-wmape-dropped-overfit-control" : "oos-wmape-controls-retained",
+              };
+            }
+
             function _mmmBayesJointTransformCheck(panel, cfg, targetName, controls, channelMeta, params, uncertainty, options = {}) {
               const eligible = channelMeta
                 .filter((ch) => (uncertainty[ch.key]?.models || []).length > 1)
