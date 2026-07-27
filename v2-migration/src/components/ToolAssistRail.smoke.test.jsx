@@ -32,7 +32,20 @@ describe("ToolAssistRail", () => {
 
   it("maps contextual sections for the dashboard and creative analysis", () => {
     expect(getSections("5-2").map((section) => section.id)).toContain("dashboard-support-tools");
+    expect(getSections("5-2", false).map((section) => section.id)).toEqual(["dashboard-data-setup"]);
     expect(getSections("9-6").map((section) => section.id)).toContain("s-creative-hero");
+  });
+
+  it("keeps dashboard assistance on the upload and mapping step until a result panel exists", () => {
+    document.body.innerHTML = '<section id="dashboard-data-setup"></section>';
+    const scrollIntoView = vi.fn();
+    document.getElementById("dashboard-data-setup").scrollIntoView = scrollIntoView;
+    const { getByRole, container } = render(<ToolAssistRail toolId="5-2" />);
+    fireEvent.click(getByRole("button", { name: /분석 도우미 열기/ }));
+    expect(container.textContent).toContain("데이터 업로드·매핑");
+    expect(container.textContent).not.toContain("현재 탭 결과 읽기");
+    fireEvent.click(getByRole("button", { name: "데이터 준비하기" }));
+    expect(scrollIntoView).toHaveBeenCalled();
   });
 
   it("keeps a contextual assistant for preview content wrappers without publishing them into the main journey", () => {
