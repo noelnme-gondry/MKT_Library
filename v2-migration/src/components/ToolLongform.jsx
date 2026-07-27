@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 const COPY = {
   "5-18": {
     ko: {
@@ -12,7 +10,6 @@ const COPY = {
         ["무엇을 확인하나", "지출을 한 번 늘린 뒤 몇 주간 결과가 어떻게 움직이는지, 오가닉·브랜드 지표와 반대로 움직이는지, 채널끼리 너무 비슷한 패턴인지, 모델이 실제 추이를 얼마나 따라가는지를 함께 확인합니다. 한 신호만으로 잠식이라고 단정하지 않고 네 가지 진단을 병렬로 읽는 이유입니다."],
         ["결과를 어떻게 쓰나", "잠식 의심이 큰 채널은 바로 끄기보다 일부 지역·오디언스·기간을 남겨 통제군으로 비교하세요. 신뢰도가 낮거나 채널 간 패턴이 겹치면 예산을 크게 이동하지 말고, 데이터를 더 모은 뒤 재검토해야 합니다. 잠식 가능성이 낮고 한계 효율이 남은 채널은 예산 배분 시뮬레이션에서 증액 후보로 비교할 수 있습니다."],
       ],
-      related: { href: "/tools/budget-allocation", label: "의심 채널 포함 예산 시뮬레이션 열기" },
     },
     en: {
       eyebrow: "Tool guide",
@@ -24,7 +21,6 @@ const COPY = {
         ["What to inspect", "Review delayed response after a spend increase, movement against organic and branded outcomes, overlap between channels, and model fit. Read the four signals together rather than labelling one correlation as cannibalization."],
         ["How to act", "Do not turn off a suspect channel immediately. Keep a controlled slice by geography, audience, or time, then compare the incremental outcome. Use budget allocation only after confidence and marginal efficiency support a move."],
       ],
-      related: { href: "/en/tools/budget-allocation", label: "Open budget allocation simulation" },
     },
   },
   "5-3": {
@@ -38,7 +34,6 @@ const COPY = {
         ["무엇을 계산하나", "현재 지출 근처에서 추가 예산이 만들 것으로 추정되는 결과를 비교합니다. 따라서 평균 효율이 좋더라도 이미 포화 구간이면 우선순위가 낮아질 수 있고, 평균은 평범해도 아직 여력이 남은 채널이 후보가 될 수 있습니다. 결과는 과거 관측 기반 시뮬레이션이지 미래 보장이 아닙니다."],
         ["결과를 어떻게 쓰나", "추천 금액을 한 번에 전액 적용하지 말고 작은 단위로 나눠 적용한 뒤 실제 CPA·ROAS와 예상 범위를 비교하세요. 카니발라이제이션 의심 채널은 증액 전 먼저 통제 실험을 검토해야 합니다. 신규 채널·캠페인처럼 관측치가 적은 곳은 모델 결과보다 실험 예산으로 취급하세요."],
       ],
-      related: { href: "/tools/marketing-response", label: "예산 이동 전 광고 잠식 점검하기" },
     },
     en: {
       eyebrow: "Tool guide",
@@ -50,7 +45,6 @@ const COPY = {
         ["What it estimates", "The tool compares estimated incremental outcomes near current spend. A channel with strong average efficiency can rank lower when it is near saturation, while a moderate channel can rank higher when headroom remains. It is a historical simulation, not a guarantee."],
         ["How to act", "Apply recommendations in small steps, then compare actual CPA or ROAS with the estimated range. Check cannibalization before increasing a suspect channel, and treat sparse new channels as an experiment budget rather than a model-led scale decision."],
       ],
-      related: { href: "/en/tools/marketing-response", label: "Check ad cannibalization first" },
     },
   },
 };
@@ -72,6 +66,5 @@ export default function ToolLongform({ toolId, locale = "ko" }) {
         </section>)}
       </div>
     </details>
-    <Link className="tool-longform__link" href={content.related.href}>{content.related.label} <span aria-hidden>→</span></Link>
   </section>;
 }
