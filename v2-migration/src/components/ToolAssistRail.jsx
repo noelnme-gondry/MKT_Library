@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { trackProductEvent } from "@/lib/analytics";
@@ -14,6 +14,7 @@ const COPY = {
     current: "지금 보는 단계",
     jump: "이 위치로 이동",
     mapping: "데이터 매핑 확인",
+    prepare: "데이터 준비하기",
     support: "판단 기록·보조 도구",
     next: "다음 분석으로",
     noNext: "이 도구에서 판단을 정리한 뒤 다음 단계를 선택하세요.",
@@ -28,6 +29,7 @@ const COPY = {
     current: "Current step",
     jump: "Jump to this section",
     mapping: "Check data mapping",
+    prepare: "Prepare data",
     support: "Decision log and supporting tools",
     next: "Continue to next analysis",
     noNext: "Review this result, then choose the next decision step.",
@@ -94,6 +96,15 @@ const ASSIST_SECTIONS = {
   ],
 };
 
+const DASHBOARD_SETUP_SECTIONS = {
+  "5-2": [
+    { id: "dashboard-data-setup", title: ["데이터 업로드·매핑", "Upload and map data"], body: ["캠페인 CSV를 올린 뒤 날짜·비용·성과 컬럼을 연결하고 분석을 시작하세요.", "Upload a campaign CSV, connect date, spend, and outcome fields, then start the analysis."] },
+  ],
+  "9-7": [
+    { id: "dashboard-data-setup", title: ["데이터 업로드·매핑", "Upload and map data"], body: ["콘텐츠 성과 CSV를 올린 뒤 날짜·콘텐츠·성과 컬럼을 연결하고 분석을 시작하세요.", "Upload a content-performance CSV, connect date, content, and outcome fields, then start the analysis."] },
+  ],
+};
+
 // 공개 도구 여정과 별개로, preview 콘텐츠 화면도 같은 보조 경험을 제공한다.
 // CONNECTED_TOOLS에 넣으면 랜딩 여정·CSV 템플릿의 공개 범위까지 바뀌므로 여기서만 관리한다.
 const ASSIST_TOOL_FALLBACKS = {
@@ -113,14 +124,17 @@ function copyFor(value, lang) {
   return value[lang === "en" ? 1 : 0];
 }
 
-function getSections(toolId) {
+function getSections(toolId, hasDashboardResults = true) {
+  if (!hasDashboardResults && DASHBOARD_SETUP_SECTIONS[toolId]) return DASHBOARD_SETUP_SECTIONS[toolId];
   return ASSIST_SECTIONS[toolId] || [{ id: "s-prep", title: ["데이터 준비", "Prepare data"], body: ["입력 항목을 확인한 뒤 분석을 시작하세요.", "Confirm the input fields before starting analysis."] }];
 }
 
 export default function ToolAssistRail({ toolId, locale = "ko" }) {
   const lang = locale === "en" ? "en" : "ko";
   const T = COPY[lang];
-  const sections = useMemo(() => getSections(toolId), [toolId]);
+  const isDashboardTool = Boolean(DASHBOARD_SETUP_SECTIONS[toolId]);
+  const [hasDashboardResults, setHasDashboardResults] = useState(!isDashboardTool);
+  const sections = useMemo(() => getSections(toolId, hasDashboardResults), [toolId, hasDashboardResults]);
   const [isOpen, setIsOpen] = useState(false);
   const [hasNewContext, setHasNewContext] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState(sections[0].id);
@@ -128,6 +142,28 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
   const nextTool = getNextTools(toolId, lang)[0] || null;
   const sourceTool = localizedTool(toolId, lang) || (ASSIST_TOOL_FALLBACKS[toolId] && { title: ASSIST_TOOL_FALLBACKS[toolId].title[lang] });
   const activeSection = sections.find((section) => section.id === activeSectionId) || sections[0];
+  const quickActionTarget = isDashboardTool && !hasDashboardResults
+    ? "dashboard-data-setup"
+    : (QUICK_ACTION_TARGETS[toolId] || "s-prep");
+
+  useLayoutEffect(() => {
+    if (!isDashboardTool) return undefined;
+    let frameId = 0;
+    const syncDashboardPhase = () => {
+      setHasDashboardResults(Boolean(document.getElementById("dashboard-tabpanel")));
+    };
+    const scheduleSync = () => {
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(syncDashboardPhase);
+    };
+    syncDashboardPhase();
+    const observer = typeof MutationObserver === "undefined" ? null : new MutationObserver(scheduleSync);
+    observer?.observe(document.getElementById("content") || document.body, { childList: true, subtree: true });
+    return () => {
+      cancelAnimationFrame(frameId);
+      observer?.disconnect();
+    };
+  }, [isDashboardTool, toolId]);
 
   useEffect(() => {
     didRevealResult.current = false;
@@ -204,8 +240,8 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
           <button type="button" onClick={() => scrollToSection(activeSection.id, "current_context")}>{T.jump} <span aria-hidden="true">↓</span></button>
         </div>
         <div className="tool-assist-rail__actions">
-          <button type="button" onClick={() => scrollToSection(QUICK_ACTION_TARGETS[toolId] || "s-prep", "support_action")}>
-            {QUICK_ACTION_TARGETS[toolId] === "dashboard-support-tools" ? T.support : T.mapping}
+          <button type="button" onClick={() => scrollToSection(quickActionTarget, "support_action")}>
+            {quickActionTarget === "dashboard-support-tools" ? T.support : quickActionTarget === "dashboard-data-setup" ? T.prepare : T.mapping}
           </button>
           {nextTool ? (
             <Link href={nextTool.href} onClick={() => trackProductEvent("tool_assist_next", { tool_id: nextTool.id, source_tool_id: toolId, locale: lang })}>

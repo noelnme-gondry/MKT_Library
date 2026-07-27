@@ -270,13 +270,13 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                사용자가 "데이터 분석하기"를 눌러 확정(CsvUploader가 게이트 세팅).
             ③ 데이터 有 · 분석 완료: 매핑을 접어(details) 결과에 집중. */}
         {!hasData ? (
-          <div className="block">
+          <div className="block" id="dashboard-data-setup">
             <h2 className="section-title">{tr("데이터 업로드", "Upload Data")}</h2>
             <p className="card-desc" style={{ marginBottom: "1rem" }}>{tr(C.uploadDesc, enC.uploadDesc)}</p>
             <CsvUploader toolId={toolId} locale={locale} />
           </div>
         ) : !analyzed ? (
-          <div className="block" style={{ padding: "12px", margin: "0 0 16px", borderRadius: "var(--radius-lg)", background: "rgba(255,255,255,0.01)" }}>
+          <div className="block" id="dashboard-data-setup" style={{ padding: "12px", margin: "0 0 16px", borderRadius: "var(--radius-lg)", background: "rgba(255,255,255,0.01)" }}>
             <div style={{ marginBottom: "8px", fontSize: "11px", color: "var(--text-muted)" }}>
               {tr("🔒 업로드 데이터는 브라우저 메모리에서만 안전하게 유지됩니다.", "🔒 Uploaded data stays safely in your browser memory only.")}
             </div>

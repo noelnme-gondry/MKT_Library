@@ -18,6 +18,7 @@ function seedNoData() {
     dashboardTab: "viz",
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    analyzedByGroup: { ...useAppStore.getState().analyzedByGroup, efficiency: null },
   });
 }
 
