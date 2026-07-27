@@ -1457,7 +1457,8 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     [],
     [tx("시트", "Sheet"), tx("무엇을 확인하나", "What it contains")],
     ["01_Input", tx("분석에 사용한 원본·매핑", "Source rows and mapping")],
-    ["02_STL", tx("추세·계절성·잔차", "Trend, seasonality, residual")],
+    ["02_STL", tx("추세·계절성·잔차·재구성 검증", "Trend, seasonality, residual, and reconstruction check")],
+    ["02_STL_Notes", tx("STL 계산법·단위·해석 안내", "STL method, units, and interpretation notes")],
     ["03_Cannibal", tx("4개 잠식 검증의 채널별 결과", "Per-channel four-check cannibal evidence")],
     ["04_Model", tx("Empirical-Bayes 모델·적합도·채널 파라미터", "Empirical-Bayes model, fit, channel parameters")],
     ["05_WeeklyContribution", tx("주별 그룹 기여", "Weekly group contribution")],
@@ -1476,10 +1477,46 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     headers,
     ...(csvData?.raw || []).map((row) => headers.map((h) => row[h] ?? "")),
   ]);
+  const stlActual = trend?.stl ? (mmm.panel.targets[mmm.target] || []) : [];
+  const stlData = trend?.stl ? mmm.panel.week.map((w, i) => {
+    const actual = Number(stlActual[i]);
+    const trendValue = Number(trend.stl.trend?.[i]);
+    const seasonal = Number(trend.stl.seasonal?.[i]);
+    const residual = Number(trend.stl.residual?.[i]);
+    const finiteParts = [actual, trendValue, seasonal, residual].every(Number.isFinite);
+    return [
+      i,
+      mmm.panel.weekLabel?.[i] || w,
+      actual,
+      trendValue,
+      seasonal,
+      residual,
+      finiteParts ? seasonal + residual : null,
+      finiteParts ? actual - trendValue - seasonal - residual : null,
+    ];
+  }) : [];
+  const stlIdentityError = stlData.length
+    ? Math.max(...stlData.map((row) => Math.abs(Number(row[7]) || 0)))
+    : null;
   add("02_STL", trend?.stl ? [
-    ["week", "actual", "trend", "seasonality", "residual"],
-    ...mmm.panel.week.map((w, i) => [mmm.panel.weekLabel?.[i] || w, mmm.panel.targets[mmm.target][i], trend.stl.trend?.[i], trend.stl.seasonal?.[i], trend.stl.residual?.[i]]),
+    ["week_index", "week", "actual", "trend", "seasonality", "residual", "non_trend_seasonality_plus_residual", "recomposition_error"],
+    ...stlData,
   ] : [[tx("STL 결과", "STL result")], [tx("이 패키지는 시계열 점검 단계에서 다운로드하면 STL 원자료를 포함합니다.", "Download from the time-series step to include STL source data.")]]);
+  add("02_STL_Notes", trend?.stl ? [
+    [tx("항목", "Item"), tx("내용", "Value")],
+    [tx("대상", "Target"), mmm.target],
+    [tx("단위", "Unit"), tx("타깃 CSV의 원래 성과 단위(예: 유저 수). 통화 단위가 아님.", "The original target unit from the CSV (for example, users); not a currency unit.")],
+    [tx("방법", "Method"), trend.stl.method || "robust-additive-stl-seasonal-subseries-lowess"],
+    [tx("시즌 주기", "Seasonal period"), trend.stl.period || 52],
+    [tx("Robust 반복 횟수", "Robust iterations"), trend.stl.robustIterations ?? null],
+    [tx("결측 주차", "Missing weeks"), trend.stl.missingCount ?? null],
+    [tx("계절성 강도", "Seasonality strength"), trend.stl.seasonalStrength ?? null],
+    [tx("추세 강도", "Trend strength"), trend.stl.trendStrength ?? null],
+    [tx("분해 항등식", "Decomposition identity"), "actual = trend + seasonality + residual"],
+    [tx("재구성 최대 오차", "Maximum reconstruction error"), stlIdentityError],
+    [tx("해석 주의", "Interpretation warning"), tx("residual은 광고·이벤트·업황·측정오차가 섞인 불규칙 성분일 수 있으며 순수 광고효과가 아닙니다.", "Residual can contain media, events, industry movement, and measurement noise; it is not pure ad effect.")],
+    [tx("외부 그래프 작성", "External plotting"), tx("02_STL의 week를 x축으로 사용하고 actual/trend/seasonality/residual을 각각 그리세요. non_trend_seasonality_plus_residual은 추세 외 합계입니다.", "Use week as x-axis and plot actual/trend/seasonality/residual separately. non_trend_seasonality_plus_residual is the combined non-trend component.")],
+  ] : [[tx("STL 안내", "STL notes")], [tx("STL 결과가 없어 안내를 만들 수 없습니다.", "No STL result is available for notes.")]]);
   add("03_Cannibal", cannib?.cannibRank ? [
     ["channel", "verdict", "eligible", "active_weeks", "precedence_vote", "detrend_vote", "net_vote", "lag_p", "lag_coef", "notes"],
     ...cannib.cannibRank.map((r) => {
@@ -3688,7 +3725,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         });
       }
 
-      // Classic과 Prism은 같은 PR #416 엔진을 쓴다. Classic은 시즈널리티를
+      // Classic과 내부 호환용 Prism은 같은 PR #416 엔진을 쓴다. Classic은 시즈널리티를
       // 기본 후보로 유지하고, 업황이 매핑되어 있으면 함께 넣는다. 시간순 OOS
       // WMAPE가 악화될 때만 해당 요소를 자동 제외한다. 업황이 없으면 외부
       // 제어변수 없이 일반 Classic으로 계속 진행한다.
@@ -3701,6 +3738,7 @@ export default function MarketingResponse({ locale = "ko" }) {
           seasonalityPeriods: MMM_PRISM_MODEL_CONFIG.seasonalityPeriods.slice(),
           mediaPenalty: 0,
         } : {}),
+        ...(usePrismModel ? {} : { mediaPenalty: 0 }),
         absorbed: mmmClassicResolveAbsorb(panel, { ...MMM_CLASSIC_CONFIG, absorbed: new Set() }).absorbed,
       };
       const prismNeutralRun = usePrismModel
@@ -3743,6 +3781,7 @@ export default function MarketingResponse({ locale = "ko" }) {
           enableSeasonalitySelection: false,
           enableBaselineSelection: false,
           enableMediaPenaltySelection: false,
+          disableManualPriors: true,
           skipTransformUncertainty: true,
         });
       const selectedPanel = usePrismModel ? panel : classicControlSelection.panel;
@@ -3752,6 +3791,9 @@ export default function MarketingResponse({ locale = "ko" }) {
       const classicFitOptions = {
         mediaPriors: {},
         enableBaselineSelection: true,
+        // 일반 Classic은 business-contribution·experiment·group prior를 사용하지
+        // 않는다. 업황/계절성 포함 여부는 시간순 OOS WMAPE로만 선택한다.
+        ...(usePrismModel ? {} : { disableManualPriors: true }),
         ...(usePrismModel ? {
           enableSeasonalitySelection: false,
           enableMediaPenaltySelection: false,
@@ -3775,7 +3817,8 @@ export default function MarketingResponse({ locale = "ko" }) {
       });
       if (!aggregateRun) throw new Error("PR #416 aggregate Bayesian posterior estimate failed");
       const allocationRun = mmmClassicBayesianRun(selectedPanel, classicCfg, t, false, {
-        mediaPriors,
+        mediaPriors: usePrismModel ? mediaPriors : {},
+        ...(usePrismModel ? {} : { disableManualPriors: true }),
         enableBaselineSelection: true,
         skipTransformUncertainty: true,
         ...(usePrismModel ? {
@@ -3827,6 +3870,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         channelAllocationByConstruction: true,
         trendPriorMultiplier: classicCfg.trendPriorMultiplier,
         classicEngine: "mmmMathPr416",
+        classicBiasPolicy: usePrismModel ? "internal-prism-profile" : "neutral-data-driven-no-manual-priors",
         prismOption: usePrismModel ? {
           ...MMM_PRISM_MODEL_CONFIG,
           groupContributionPriors,
@@ -5038,27 +5082,24 @@ export default function MarketingResponse({ locale = "ko" }) {
             <button className={`ab-pill ${mmmMode === "classic" ? "active" : ""}`} onClick={() => {
               if (mmmMode !== "classic") deferMmmUpdate(() => setMmmMode("classic"));
             }}>{tx("Classic · PR #416", "Classic · PR #416")}</button>
-            <button className={`ab-pill ${mmmMode === "prism" ? "active" : ""}`} onClick={() => {
-              if (mmmMode !== "prism") deferMmmUpdate(() => setMmmMode("prism"));
-            }}>{tx("Prism · Option 3", "Prism · Option 3")}</button>
+            {/* Prism Option 3 remains as an internal compatibility path only.
+                It is intentionally not exposed as a user-selectable model. */}
             <button className={`ab-pill ${mmmMode === "bayesian" ? "active" : ""}`} onClick={() => {
               if (mmmMode !== "bayesian") deferMmmUpdate(() => setMmmMode("bayesian"));
             }}>{tx("Bayesian", "Bayesian")}</button>
             <span
               title={tx(
-                "Classic은 일반 PR #416 고정 총량·채널 분배입니다. Prism Option 3은 이 버튼을 눌렀을 때만 mapped external 업황과 연간 시즈널리티를 필수로 포함하고, 고정된 추세·기여 목표를 적용합니다. Bayesian은 별도 posterior입니다.",
-                "Classic is the generic PR #416 fixed-total/channel-allocation path. Prism Option 3 is explicit: it requires the mapped external industry series, keeps annual seasonality, and applies the fixed trend/contribution targets. Bayesian is a separate posterior model.",
+                "Classic은 업황·시즈널리티 후보를 시간순 OOS 성능으로 점검해 선택합니다. Bayesian은 선택된 변환을 조건으로 한 empirical-Bayes posterior 근사이며 full joint MCMC는 아닙니다.",
+                "Classic selects industry and seasonality controls using time-ordered OOS performance. Bayesian is an empirical-Bayes posterior approximation conditional on selected transforms, not full joint MCMC.",
               )}
               style={{ color: MUTED, cursor: "help", fontSize: "14px" }}
             >
               ⓘ
             </span>
             <span style={{ color: MUTED, fontSize: "10.5px" }}>
-              {mmmMode === "classic"
-                ? tx("Classic · PR #416 · 일반 고정 총량·채널 분배", "Classic · PR #416 · generic fixed totals/channel allocation")
-                : mmmMode === "prism"
-                  ? tx("Prism · Option 3 · 업황+연간 시즈널리티 필수", "Prism · Option 3 · industry + annual seasonality required")
-                  : tx("Bayesian · posterior 채널 적합", "Bayesian · posterior channel fit")}
+              {mmmMode === "bayesian"
+                ? tx("Bayesian · conditional posterior 채널 적합", "Bayesian · conditional posterior channel fit")
+                : tx("Classic · 데이터 기반 총량·채널 분배", "Classic · data-selected totals/channel allocation")}
             </span>
           </div>
         )}

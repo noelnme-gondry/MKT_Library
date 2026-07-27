@@ -624,7 +624,7 @@ describe("MarketingResponse render smoke", () => {
     expect(bayesian).toBeTruthy();
     fireEvent.click(bayesian);
     await flushRaf();
-    expect(document.body.textContent).toContain("Bayesian · posterior 채널 적합");
+    expect(document.body.textContent).toContain("Bayesian · conditional posterior 채널 적합");
     const footerManual = container.querySelector('[data-mmm-manual-placement="footer"] a');
     expect(footerManual?.getAttribute("href")).toBe("/manuals/mmm-model-manual-ko.pdf");
   });

@@ -14,6 +14,7 @@ import { sliceMmmChannelContributions } from "./mmmWeeklyPerformance";
 describe("PR #416 MMM rollback contract", () => {
   it("keeps the generic Classic trend prior neutral while Prism stays explicit", () => {
     expect(MMM_METH_CONFIG.trendPriorMultiplier).toBe(1);
+    expect(MMM_METH_CONFIG.mediaPenaltyCandidates).toContain(0);
     expect(MMM_PRISM_MODEL_CONFIG.trendPriorMultiplier).toBe(1.1);
     expect(MMM_PRISM_MODEL_CONFIG.requiresExternalIndustry).toBe(true);
   });
@@ -83,6 +84,44 @@ describe("PR #416 MMM rollback contract", () => {
       .reduce((sum, row) => sum + row.contrib.Brand, 0);
     expect(channelPerformance).toBeCloseTo(decompPerformance, 8);
     expect(channelBrand).toBeCloseTo(decompBrand, 8);
+  });
+
+  it("lets the generic Classic path hard-disable manual priors", () => {
+    const n = 64;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const search = week.map((value) => 900 + ((value * 7) % 13) * 120);
+    const target = week.map((value, index) => 6000 - value * 8 + search[index] * 0.22);
+    const panel = {
+      week,
+      weekLabel: week.map(String),
+      ch: { search },
+      targets: { Regs: target },
+      channels: [{ key: "search", label: "Search", kind: "perf" }],
+      dummy: {},
+      steps: {},
+      external: {},
+    };
+    const cfg = {
+      ...MMM_METH_CONFIG,
+      seasonalityPeriods: [],
+      seasonalityCandidates: [{ id: "none", periods: [] }],
+      adstockGrid: [0, 0.4],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+      mediaPenaltyCandidates: [1],
+    };
+    const run = mmmBayesianRun(panel, cfg, "Regs", false, {
+      disableManualPriors: true,
+      enableBusinessContributionPrior: true,
+      mediaPriors: { search: { mean: 999, variance: 1, precision: 1 } },
+      groupContributionPriors: { search: { mean: 999, variance: 1, precision: 1 } },
+      enableSeasonalitySelection: false,
+      enableMediaPenaltySelection: false,
+      skipTransformUncertainty: true,
+    });
+    expect(run?.businessContributionPrior).toMatchObject({ enabled: false, reason: "disabled" });
+    expect(run?.appliedMediaPriors).toEqual({});
+    expect(run?.channelContributions?.search?.source).toBe("observational");
   });
 
   it("builds the Classic Prism group priors from target shares, not channel guesses", () => {
