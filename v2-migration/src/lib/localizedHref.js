@@ -8,6 +8,7 @@ export const EN_BLOG_SLUGS = new Set([
   "ad-creative-specs-guide",
   "ad-machine-learning",
   "ad-performance-diagnosis",
+  "aha-event-ad-optimization",
   "aha-moment-retention",
   "ai-era-marketer",
   "apple-search-ads-guide",
