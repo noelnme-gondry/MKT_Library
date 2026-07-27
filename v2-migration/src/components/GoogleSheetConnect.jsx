@@ -1,6 +1,7 @@
 "use client";
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { parseGoogleSheetUrl, sheetValuesToTable, resolveSheetRange } from "@/utils/googleSheets";
+import { forgetSheetSource, listSheetSources, rememberSheetSource } from "@/lib/data-import/localHistory";
 
 // 구글 시트 불러오기 — CsvUploader 빈 드롭존의 대체 입력 경로(§CsvUploader.jsx 연동).
 // API 키 방식(OAuth 아님) — 로그인 팝업·동의화면 없이 브라우저가 Sheets API를 바로
@@ -29,6 +30,9 @@ const COPY = {
     errForbidden: '이 시트를 못 읽었어요. 구글 시트 우측 상단 "공유" → "링크가 있는 모든 사용자"로 보기 권한을 켜주세요.',
     errFetch: "시트를 불러오지 못했어요. 링크가 정확한지 확인해주세요.",
     errEmpty: "이 시트에 데이터가 없어요.",
+    recentLabel: "이 브라우저에서 최근 연결한 시트",
+    forgetSource: "목록에서 지우기",
+    sourcePrivacy: "시트 URL과 이름만 이 브라우저에 기억합니다. 행 데이터는 저장하지 않습니다.",
   },
   en: {
     openBtn: "📊 Import from a public Google Sheet",
@@ -42,6 +46,9 @@ const COPY = {
     errForbidden: 'Couldn\'t read this sheet. Open "Share" in Google Sheets and turn on "Anyone with the link" (Viewer).',
     errFetch: "Couldn't load the sheet. Check that the link is correct.",
     errEmpty: "This sheet has no data.",
+    recentLabel: "Recently connected in this browser",
+    forgetSource: "Remove from this list",
+    sourcePrivacy: "Only the sheet URL and name are remembered in this browser. No row data is stored.",
   },
 };
 
@@ -91,20 +98,23 @@ export async function fetchSheetTable(apiKey, url) {
 // initialOpen/onCancel: CsvUploader.jsx가 데이터 연동 후 상태에서 "시트 변경" 버튼으로
 // 이 폼을 다시 열 때 사용(그때는 취소 시 pill 버튼이 아니라 부모의 3버튼 뷰로 돌아가야
 // 하므로 onCancel로 위임 — 기본 사용처(빈 드롭존)는 그냥 내부 open 상태로 닫힘).
-export default function GoogleSheetConnect({ onLoaded, onError, onCancel, initialOpen = false, locale = "ko" }) {
+export default function GoogleSheetConnect({ onLoaded, onError, onCancel, initialOpen = false, locale = "ko", toolId = "" }) {
   const T = COPY[locale] || COPY.ko;
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
   const [open, setOpen] = useState(initialOpen);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [recentSources, setRecentSources] = useState([]);
   const inputRef = useRef(null);
+
+  const refreshRecentSources = () => listSheetSources(toolId).then(setRecentSources).catch(() => {});
+  useEffect(() => { refreshRecentSources(); }, [toolId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 설정(API 키) 전에는 아예 노출하지 않음 — 반쪽짜리 버튼을 유저에게 보여주지 않기 위해.
   if (!apiKey) return null;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const parsed = parseGoogleSheetUrl(url);
+  const loadSheet = async (sheetUrl) => {
+    const parsed = parseGoogleSheetUrl(sheetUrl);
     if (!parsed) {
       onError?.(T.errInvalidUrl);
       return;
@@ -112,11 +122,13 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, initia
     onError?.("");
     setLoading(true);
     try {
-      const result = await fetchSheetTable(apiKey, url);
+      const result = await fetchSheetTable(apiKey, sheetUrl);
       if (result.error) {
         onError?.(sheetErrorMessage(result.error, locale));
       } else {
-        onLoaded?.(result);
+        await onLoaded?.(result);
+        await rememberSheetSource({ toolId, url: sheetUrl, label: result.fileName });
+        refreshRecentSources();
         setOpen(false);
         setUrl("");
       }
@@ -127,19 +139,42 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, initia
     }
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await loadSheet(url);
+  };
+
   if (!open) {
     return (
-      <button
-        type="button"
-        className="sheet-connect-btn"
-        style={{ marginTop: "10px" }}
-        onClick={() => {
-          setOpen(true);
-          setTimeout(() => inputRef.current?.focus(), 0);
-        }}
-      >
-        {T.openBtn}
-      </button>
+      <div className="sheet-connect-entry">
+        <button
+          type="button"
+          className="sheet-connect-btn"
+          onClick={() => {
+            setOpen(true);
+            setTimeout(() => inputRef.current?.focus(), 0);
+          }}
+        >
+          {T.openBtn}
+        </button>
+        {recentSources.length > 0 && (
+          <div className="sheet-source-list">
+            <span>{T.recentLabel}</span>
+            {recentSources.map((source) => (
+              <div className="sheet-source-list__item" key={source.id}>
+                <button type="button" onClick={() => loadSheet(source.url)} disabled={loading}>{source.label || source.url}</button>
+                <button
+                  type="button"
+                  aria-label={T.forgetSource}
+                  title={T.forgetSource}
+                  onClick={async () => { await forgetSheetSource(source.id); refreshRecentSources(); }}
+                >×</button>
+              </div>
+            ))}
+            <small>{T.sourcePrivacy}</small>
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -185,6 +220,7 @@ export default function GoogleSheetConnect({ onLoaded, onError, onCancel, initia
         </button>
       </div>
       <span style={{ fontSize: "10.5px", color: "var(--text-muted)" }}>{T.urlHint}</span>
+      {recentSources.length > 0 && <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>{T.sourcePrivacy}</span>}
     </form>
   );
 }

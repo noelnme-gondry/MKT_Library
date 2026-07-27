@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import Link from "next/link";
 import Papa from "papaparse";
 import { trackProductEvent } from "@/lib/analytics";
 import { normalizeDecisionReviewRows, serializeDecisionReviewCsv } from "@/lib/decisionReview";
@@ -51,6 +52,7 @@ const COPY = {
     imported: (count) => `${count}개의 결정 기록을 불러왔습니다.`,
     error: "실행할 변경 내용을 먼저 적어 주세요.",
     ledger: "BASELINE → ACTUAL",
+    openWeeklyReview: "주간 검토 열기 →",
   },
   en: {
     summary: "Log a decision — review the outcome next week",
@@ -80,6 +82,7 @@ const COPY = {
     imported: (count) => `Imported ${count} decision ${count === 1 ? "record" : "records"}.`,
     error: "Add the action you plan to take first.",
     ledger: "BASELINE → ACTUAL",
+    openWeeklyReview: "Open weekly review →",
   },
 };
 
@@ -186,6 +189,7 @@ export default function DecisionReview({ toolId, locale = "ko" }) {
           <button type="button" className="btn small" onClick={() => importRef.current?.click()}>{t.import}</button>
           <input ref={importRef} className="decision-review__file" type="file" accept=".csv,text/csv" onChange={importRecords} />
           {message && <span className="decision-review__message" role="status">{message}</span>}
+          <Link className="decision-review__weekly-link" href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}>{t.openWeeklyReview}</Link>
         </div>
 
         {records.length === 0 ? (

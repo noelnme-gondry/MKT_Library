@@ -62,6 +62,7 @@ const CSV_COPY = {
     changeCsvTitle: "이 도구의 CSV를 제거하고 다른 파일 업로드",
     changeCsvBtn: "⟳ CSV 변경",
     sheetConnectedLabel: "구글 시트 연동됨",
+    savedMappingApplied: "이 브라우저에 기억된 컬럼 매핑을 적용했습니다",
     refreshSheetBtn: "🔄 최신 데이터 불러오기",
     refreshingSheet: "불러오는 중…",
     changeSheetBtn: "🔗 시트 변경",
@@ -133,6 +134,7 @@ const CSV_COPY = {
     changeCsvTitle: "Remove this tool's CSV and upload another file",
     changeCsvBtn: "⟳ Change CSV",
     sheetConnectedLabel: "Connected to Google Sheets",
+    savedMappingApplied: "Applied the column mapping remembered in this browser",
     refreshSheetBtn: "🔄 Fetch latest data",
     refreshingSheet: "Fetching…",
     changeSheetBtn: "🔗 Change sheet",
@@ -261,7 +263,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     e.target.value = null;
   };
 
-  const applyImportedTable = async ({ headers, raw, fileName, source, worksheetName = null }) => {
+  const applyImportedTable = async ({ headers, raw, fileName, source, worksheetName = null, sheetUrl = null }) => {
     if (!headers.length || !raw.length) {
       setErrorMsg(T.emptyCsv);
       return;
@@ -288,6 +290,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
       fileName: displayName,
       importSource: source,
       worksheetName,
+      ...(sheetUrl ? { sheetUrl } : {}),
       importInsights: { ...insights, recipeApplied: !!recipe },
       canonicalData,
       mappedRows,
@@ -404,24 +407,12 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     setImportAnnouncement("");
   };
 
-  // 구글 시트 로드 완료 콜백 — GoogleSheetConnect가 {headers, raw, fileName, sheetUrl}을
-  // CSV 업로드와 동일한 모양으로 넘겨줌(sheetValuesToTable, §googleSheets.js). 자동매핑도
-  // CSV 경로와 같은 함수(autoMapHeaders) 재사용 — 이후 파이프라인은 CSV/시트 구분 없음.
-  // sheetUrl을 csvData에 같이 저장해두면(§setCsvData는 매번 전체 치환이라 CSV 경로에선
-  // 자연히 undefined) "최신 데이터 불러오기"가 재입력 없이 같은 URL로 재조회 가능해짐.
+  // 시트도 일반 업로드와 같은 prepare 경로를 탄다. 즉, 같은 헤더의 이전 매핑 recipe를
+  // 재사용해 새로고침 뒤에도 드롭다운을 다시 맞출 필요가 없다. 원본 행은 상태 메모리에만
+  // 있고, sheetUrl만 별도 브라우저 기록에 남는다.
   const handleSheetLoaded = async ({ headers, raw, fileName, sheetUrl }) => {
     setErrorMsg("");
-    const requestId = ++preparationRequestRef.current;
-    const prepared = await prepareImportedData({ headers, raw, toolId, source: "google_sheets" });
-    if (requestId !== preparationRequestRef.current) return;
-    const insights = prepared.insights;
-    const mapping = insights.selections;
-    setCsvData({ raw, headers, mapping, fileName, sheetUrl, importInsights: insights, canonicalData: prepared.canonicalData, mappedRows: prepared.mappedRows });
-    setConfirmedHeaders(new Set());
-    setImportAnnouncement(T.importSuccess(fileName, raw.length, headers.length));
-    trackProductEvent("data_import_success", { tool_id: toolId, source: "google_sheets", column_count: headers.length, row_count: raw.length, mapped_count: Object.values(mapping).filter((value) => value !== "__ignore__").length, conflict_count: insights.conflicts.length });
-    trackProductEvent("data_profile_completed", { tool_id: toolId, source: "google_sheets", column_count: headers.length, row_count: raw.length, conflict_count: insights.conflicts.length });
-    setPreviewOpen(true);
+    await applyImportedTable({ headers, raw, fileName, sheetUrl, source: "google_sheets" });
     setSheetChangeOpen(false);
   };
 
@@ -482,6 +473,9 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   const hasFile = csvData && csvData.headers && csvData.headers.length > 0;
   const isDemo = !!(csvData && csvData.fileName && csvData.fileName.startsWith("demo_"));
   const isSheetSourced = !!(csvData && csvData.sheetUrl);
+  // 시트 원본은 도구 ID가 아니라 데이터 grain(효율·소재·MMM 등) 단위로 기억한다.
+  // 같은 효율 CSV를 쓰는 5-2/5-3/5-21/5-22 사이에서 다시 URL을 입력하지 않게 한다.
+  const sheetSourceScope = TOOL_GROUP[toolId] || "efficiency";
   // GoogleSheetConnect가 실제로 렌더되는지(=API 키 설정됨) — 그때만 데모버튼 앞에
   // 가변 높이 형제가 끼어드니 여백 모디파이어 적용. 미설정 배포는 기존 spacing 그대로.
   const hasSheetImport = !!process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
@@ -638,7 +632,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         </button>
         <input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden ref={fileInputRef} onChange={handleFileChange} />
         {isImporting && <button type="button" className="ab-pill" onClick={cancelActiveImport} style={{ marginTop: "10px" }}>{T.cancelActiveImportBtn}</button>}
-        <GoogleSheetConnect onLoaded={handleSheetLoaded} onError={setErrorMsg} locale={locale} />
+        <GoogleSheetConnect onLoaded={handleSheetLoaded} onError={setErrorMsg} locale={locale} toolId={sheetSourceScope} />
         <DemoLoadButton onLoad={handleLoadDemo} locale={locale} className={hasSheetImport ? "demo-load-row--spaced" : ""} />
           </>
         )}
@@ -724,6 +718,9 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           </button>
         )}
       </div>
+      {csvData.importInsights?.recipeApplied && (
+        <div className="csv-memory-note">◉ {T.savedMappingApplied}</div>
+      )}
 
       {/* 구글 시트 연동 상태 UX(§요청): 시트에서 온 데이터는 CSV와 다르게, "재조회"와
           "다른 시트로 교체"를 한 번의 재업로드 없이 바로 할 수 있어야 함. CSV 업로드로
@@ -737,6 +734,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
               onError={setErrorMsg}
               onCancel={() => setSheetChangeOpen(false)}
               locale={locale}
+              toolId={sheetSourceScope}
             />
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
