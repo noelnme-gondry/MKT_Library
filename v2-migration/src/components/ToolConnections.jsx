@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 
+import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
 import { trackProductEvent } from "@/lib/analytics";
-import { getNextTools } from "@/lib/toolConnections";
+import { getJourneyContext, getNextTools } from "@/lib/toolConnections";
 
 const COPY = {
   ko: {
@@ -13,6 +14,12 @@ const COPY = {
     recommended: "추천 다음 단계",
     sameData: "같은 CSV로 이어보기",
     newData: "새 데이터 준비",
+    back: "앞 단계로",
+    here: "같은 단계에서",
+    forward: "다음 단계로",
+    cycle: "다음 운영 주기",
+    mapDeck: "어디서 시작해도 괜찮습니다. 앞뒤 단계와 같은 단계의 다른 도구로 자유롭게 이동하세요.",
+    templateReason: "새 데이터가 필요한 다음 분석을 위해 템플릿을 미리 준비하세요",
   },
   en: {
     eyebrow: "NEXT DECISION",
@@ -21,14 +28,22 @@ const COPY = {
     recommended: "Recommended next step",
     sameData: "Continue with the same CSV",
     newData: "Prepare a new dataset",
+    back: "Previous stage",
+    here: "Same-stage options",
+    forward: "Next stage",
+    cycle: "Next operating cycle",
+    mapDeck: "Start anywhere, then move freely to the previous, next, or an alternative tool in the same stage.",
+    templateReason: "Prepare the mapping template for a next analysis that needs a new dataset",
   },
 };
 
 export default function ToolConnections({ toolId, locale = "ko" }) {
   const lang = locale === "en" ? "en" : "ko";
   const nextTools = getNextTools(toolId, lang);
+  const journey = getJourneyContext(toolId, lang);
   if (nextTools.length === 0) return null;
   const T = COPY[lang];
+  const templateTarget = nextTools.find((tool) => !tool.isSameData);
 
   return (
     <section className="tool-connections" aria-labelledby={`tool-connections-${toolId}`}>
@@ -37,6 +52,23 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
         <h2 id={`tool-connections-${toolId}`}>{T.title}</h2>
         <p>{T.deck}</p>
       </header>
+      {journey && (
+        <div className="tool-connections__map" aria-label={T.mapDeck}>
+          <p>{T.mapDeck}</p>
+          <div>
+            <JourneyLinks label={T.back} tools={journey.previous} sourceToolId={toolId} locale={lang} />
+            {journey.alternatives.length > 0 && (
+              <JourneyLinks label={T.here} tools={journey.alternatives} sourceToolId={toolId} locale={lang} />
+            )}
+            <JourneyLinks
+              label={journey.isCycleRestart ? T.cycle : T.forward}
+              tools={journey.next}
+              sourceToolId={toolId}
+              locale={lang}
+            />
+          </div>
+        </div>
+      )}
       <div className="tool-connections__grid">
         {nextTools.map((tool, index) => (
           <Link
@@ -65,6 +97,39 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
           </Link>
         ))}
       </div>
+      {templateTarget && (
+        <ToolTemplateAction
+          toolId={templateTarget.id}
+          locale={lang}
+          compact
+          reason={T.templateReason}
+          source={`connection_from_${toolId}`}
+        />
+      )}
     </section>
+  );
+}
+
+function JourneyLinks({ label, tools, sourceToolId, locale }) {
+  return (
+    <div className="tool-connections__map-group">
+      <span>{label}</span>
+      <div>
+        {tools.map((tool) => (
+          <Link
+            href={tool.href}
+            key={tool.id}
+            onClick={() => trackProductEvent("journey_direction_pick", {
+              tool_id: tool.id,
+              source_tool_id: sourceToolId,
+              placement: "journey_map",
+              locale,
+            })}
+          >
+            {tool.title}
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }

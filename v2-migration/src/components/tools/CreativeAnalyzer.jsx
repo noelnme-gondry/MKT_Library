@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import Link from "next/link";
 import { useAppStore } from "@/store/useDataStore";
 import { CREATIVE_FATIGUE, CREATIVE_STATS } from "@/utils/creativeMath";
 import { CREATIVE_CONFIG } from "@/utils/creativeConfig";
@@ -10,7 +11,9 @@ import CsvUploader from "@/components/CsvUploader";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
+import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
+import { localizedTool } from "@/lib/toolConnections";
 import Chart from "chart.js/auto";
 
 // EN 번역팩 — domain(performance/content)별 CREATIVE_COPY(ko)를 locale="en"일 때만 오버레이.
@@ -776,6 +779,12 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
               <strong>{tr("CSV 업로드 대기", "Waiting for CSV upload")}</strong>
               <p>{C.noDataDesc}</p>
               <div style={{ marginTop: "1rem" }}>
+                <ToolTemplateAction
+                  toolId={C.uploaderToolId}
+                  locale={locale}
+                  reason={tr("소재 성과·속성 컬럼을 먼저 맞춘 뒤 업로드하세요", "Align creative performance and attribute columns before uploading")}
+                  source="creative_empty_state"
+                />
                 <CsvUploader toolId={C.uploaderToolId} locale={locale} />
               </div>
             </div>
@@ -996,6 +1005,11 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
             <>
               <div className="creative-control-room__panel-title"><div><span>{tr("03 · 성과 변화 신호", "03 · Performance-change signals")}</span><h3>{tr(`${decMeta.desc}에 크게 연결된 속성`, `Attributes most associated with ${decMeta.desc}`)}</h3></div><strong>{tr("관측 상관", "Observational")}</strong></div>
               {effRows.length ? <div className="creative-control-room__briefs">{effRows.slice(0, 3).map((item, index) => <article key={`${item.factor}-${item.level}-${index}`}><span>{item.factor}</span><h4>{item.level}</h4><p>{tr(`기준 대비 ${decMeta.fmtVal(item.coef)} · 보정 p=${fmtNum(item.pAdj)}`, `${decMeta.fmtVal(item.coef)} vs baseline · adjusted p=${fmtNum(item.pAdj)}`)}</p><small>{tr("확정 전 A/B 검증 필요", "Validate with an A/B test before deciding")}</small></article>)}</div> : <p className="creative-control-room__empty">{tr("통계적으로 읽을 수 있는 속성 신호가 없습니다. 데이터 30행 이상과 속성 매핑이 필요합니다.", "No readable attribute signal. Map attributes and provide at least 30 rows.")}</p>}
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "10px" }}>
+                <Link className="ab-pill" href={localizedTool("5-4", locale).href}>
+                  {tr("이 가설을 실험으로 검증하기 →", "Validate this hypothesis in an experiment →")}
+                </Link>
+              </div>
             </>
           )}
           {activeProblem === "operations" && health && (
@@ -1010,6 +1024,13 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       <details className="block" id="s-prep" style={{ padding: "13px 16px" }}>
         <summary style={{ cursor: "pointer", fontSize: "12.5px", fontWeight: 600, color: "var(--text-muted)", outline: "none" }}>{tr("🗂 데이터 매핑 설정 (펼쳐서 변경)", "🗂 Data mapping settings (expand to change)")}</summary>
         <div style={{ marginTop: "10px" }}>
+          <ToolTemplateAction
+            toolId={C.uploaderToolId}
+            locale={locale}
+            compact
+            reason={tr("현재 매핑을 원본 팀과 공유할 템플릿", "Template to share the expected mapping with your source team")}
+            source="creative_mapping_panel"
+          />
           <CsvUploader toolId={C.uploaderToolId} locale={locale} />
         </div>
       </details>

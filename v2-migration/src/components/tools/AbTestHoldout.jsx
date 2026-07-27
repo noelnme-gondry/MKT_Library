@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import Link from "next/link";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { STATS } from "@/utils/abTestMath";
@@ -9,7 +10,9 @@ import DataTable from "@/components/ds/DataTable";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
+import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
+import { localizedTool } from "@/lib/toolConnections";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
@@ -342,6 +345,30 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
 
   return (
     <div className="tab-pane active" id="tab-ab">
+      <section className="experiment-journey" aria-label={tr("실험 의사결정 흐름", "Experiment decision flow")}>
+        <div className="experiment-journey__head">
+          <span>EXPERIMENT DECISION FLOW</span>
+          <h2>{tr("가설을 만들고, 필요한 만큼 모으고, 행동을 결정합니다", "Form a hypothesis, collect enough data, then make the decision")}</h2>
+          <p>{tr("어느 단계에서든 시작할 수 있습니다. 결과 판독 뒤에도 설계로 돌아가 다음 실험을 준비할 수 있습니다.", "Start at any stage. After readout, return to design to prepare the next test.")}</p>
+        </div>
+        <div className="experiment-journey__steps">
+          <button type="button" className={activeTab === "design" ? "is-active" : ""} onClick={() => { setActiveTab("design"); setMode("plan"); }}>
+            <span>01 · DESIGN</span>
+            <strong>{tr("얼마나 모아야 할까?", "How much data is enough?")}</strong>
+            <small>{planResult?.n ? tr(`그룹당 ${planResult.n.toLocaleString()}명 필요`, `${planResult.n.toLocaleString()} per arm`) : tr("MDE·검정력으로 표본 계산", "Calculate sample from MDE and power")}</small>
+          </button>
+          <button type="button" className={activeTab === "readout" && !readoutData ? "is-active" : ""} onClick={() => setActiveTab("readout")}>
+            <span>02 · COLLECT</span>
+            <strong>{tr("무엇을 같은 조건으로 모을까?", "What should stay consistent?")}</strong>
+            <small>{tr("대조군·실험군·전환수·분모 매핑", "Map control, variant, numerator, denominator")}</small>
+          </button>
+          <button type="button" className={activeTab === "readout" && readoutData ? "is-active" : ""} onClick={() => setActiveTab("readout")}>
+            <span>03 · DECIDE</span>
+            <strong>{tr("바꿀까, 더 모을까?", "Ship, stop, or collect more?")}</strong>
+            <small>{readoutData?.sig ? tr(`p=${readoutData.sig.pValue.toFixed(4)} · 효과 크기와 함께 판정`, `p=${readoutData.sig.pValue.toFixed(4)} · decide with effect size`) : tr("결과 CSV를 올리면 판정", "Upload results to decide")}</small>
+          </button>
+        </div>
+      </section>
       <div className="ab-tabs" style={{ marginBottom: "8px" }}>
         <button className={`ab-tab ${activeTab === "design" ? "active" : ""}`} onClick={() => setActiveTab("design")}>
           {tr("① 설계 · 얼마나 모아야 하나?", "① Design · How much data do I need?")}
@@ -361,7 +388,10 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
             <><strong>광고가 없었어도 일어났을 전환(증분)</strong>을 보려면? → 왼쪽 메뉴 <strong>증분 분석</strong> 도구(홀드아웃·전후 비교)를 쓰세요. A/B는 &quot;둘 중 뭐가 나은가&quot;, 증분 분석은 &quot;광고를 한 것 자체가 값어치였나&quot;를 봅니다.</>,
             <>Want to see <strong>conversions that would have happened anyway (incrementality)</strong>? → Use the <strong>Incrementality Analysis</strong> tool in the left menu (holdout, before/after). A/B answers &quot;which one is better&quot;, incrementality answers &quot;was running the ad itself worth it&quot;.</>,
           )}
-        </p></div></div>
+        </p><div style={{ display: "flex", gap: "7px", flexWrap: "wrap", marginTop: "8px" }}>
+          <Link className="ab-pill" href={localizedTool("9-6", locale).href}>{tr("소재 가설 찾기", "Find a creative hypothesis")} ←</Link>
+          <Link className="ab-pill" href={localizedTool("5-23", locale).href}>{tr("광고 자체 효과 검증", "Test advertising incrementality")} →</Link>
+        </div></div></div>
       )}
 
       {activeTab === "design" && (
@@ -369,9 +399,9 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
           <section className="block" id="s-mode">
             <h2 className="section-title"><span className="ix">§1</span>{tr("모드 선택", "Select mode")}</h2>
             <div className="ab-tabs">
-              <button className={`ab-tab ${mode === "plan" ? "active" : ""}`} onClick={() => setMode("plan")}>{tr("① 모수 계산 (Plan)", "① Parameter calc (Plan)")}</button>
-              <button className={`ab-tab ${mode === "analyze" ? "active" : ""}`} onClick={() => setMode("analyze")}>{tr("② 결과 분석 (Analyze)", "② Result analysis (Analyze)")}</button>
-              <button className={`ab-tab ${mode === "threshold" ? "active" : ""}`} onClick={() => setMode("threshold")}>{tr("③ 신뢰수준 가이드", "③ Confidence level guide")}</button>
+              <button className={`ab-tab ${mode === "plan" ? "active" : ""}`} onClick={() => setMode("plan")}>{tr("필요 표본 계산", "Required sample")}</button>
+              <button className={`ab-tab ${mode === "analyze" ? "active" : ""}`} onClick={() => setMode("analyze")}>{tr("수동 결과 판독", "Manual readout")}</button>
+              <button className={`ab-tab ${mode === "threshold" ? "active" : ""}`} onClick={() => setMode("threshold")}>{tr("조건별 표본 비교", "Compare assumptions")}</button>
             </div>
 
             <div className="analysis-local-controls" aria-label={tr("실험 조건", "Experiment settings")}>
@@ -704,8 +734,8 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
             </div>
           </section>
 
-          <section className="block" id="s-notes">
-            <h2 className="section-title"><span className="ix">§4</span>{tr("통계 노트", "Statistical notes")}</h2>
+          <details className="block" id="s-notes">
+            <summary className="section-title" style={{ cursor: "pointer" }}><span className="ix">§4</span>{tr("전문가용 통계 노트 펼치기", "Open statistical notes for experts")}</summary>
             <ul>
               <li><strong>Binary (CVR) · z-test</strong>: <code className="inline">z = (p̂_B - p̂_A) / √(p̄(1-p̄)(1/n_A + 1/n_B))</code>. {tr("p-value < α 시 귀무가설 기각.", "Reject the null hypothesis when p-value < α.")}</li>
               <li><strong>Binary · Sample Size</strong>: <code className="inline">n = 2 × (z_α/2 + z_β)² × p̄(1-p̄) / δ²</code></li>
@@ -714,7 +744,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
               <li><strong>{tr("예산 계산", "Budget calculation")}</strong>: <code className="inline">Total Budget = n_per_arm × (CPR_A + CPR_B)</code>.</li>
               <li><strong>{tr("파워 커브", "Power curve")}</strong>: {tr("sample size 기준으로 역산(이분 탐색)하여 탐지 가능한 최소 MDE 도출.", "Derived by inverting sample size (binary search) to find the minimum detectable MDE.")}</li>
             </ul>
-          </section>
+          </details>
         </>
       )}
 
@@ -734,6 +764,12 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                   <div style={{ margin: "6px 0 4px" }}>
                     <button className="ab-pill" onClick={downloadAbTemplate}>{tr("⬇ A/B 템플릿 CSV (예시 포함)", "⬇ A/B template CSV (with examples)")}</button>
                   </div>
+                  <ToolTemplateAction
+                    toolId="5-4"
+                    locale={locale}
+                    reason={tr("빈 매핑 템플릿으로 팀의 원본 컬럼을 먼저 정렬하세요", "Use the blank mapping template to align source columns with your team")}
+                    source="experiment_empty_state"
+                  />
                   <div style={{ marginTop: "1rem" }}><CsvUploader toolId="5-4" showMatrix={false} locale={locale} /></div>
                 </div>
               </div>

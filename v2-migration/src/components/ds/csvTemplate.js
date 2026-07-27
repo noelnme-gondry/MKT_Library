@@ -19,25 +19,43 @@ const CANON_FIELDS = [
   "ret_d7", "ret_d14", "ret_d30", "ret_d60", "ret_d90", "ret_d180", "ret_d360",
 ];
 
-function fieldUsed(toolId, key) {
-  for (const r of TOOL_REQUIRED_FIELDS[toolId] || []) {
-    if (typeof r === "string" && r === key) return true;
-    if (r && r.oneOf && r.oneOf.includes(key)) return true;
-  }
-  return (TOOL_OPTIONAL_FIELDS[toolId] || []).some((x) => x.key === key);
-}
+// 자유 역할 매핑 도구는 STANDARD_FIELDS 계약이 아니라 업로드 화면에서 직접
+// outcome/feature를 고른다. 분석 가능한 최소 형태를 예시 헤더로 명시한다.
+const ROLE_MAPPING_TEMPLATE_FIELDS = {
+  "5-20": ["user_id", "target", "invite_d1", "invite_d7", "share_d7"],
+  "5-23": ["date", "holdout_group", "numerator", "denominator", "spend", "revenue_d7"],
+  "9-1": ["content_id", "outcome", "has_hook", "text_overlay", "video_length"],
+};
 
 const canonHeader = (key) => (key === "creative_id" ? "creative_name" : key);
 
+export function getToolTemplateFields(toolId) {
+  const required = [];
+  for (const field of TOOL_REQUIRED_FIELDS[toolId] || []) {
+    if (typeof field === "string") required.push(field);
+    else if (field?.oneOf) required.push(...field.oneOf);
+  }
+  const optional = (TOOL_OPTIONAL_FIELDS[toolId] || []).map((field) => field.key);
+  const used = [...new Set([
+    ...required,
+    ...optional,
+    ...(ROLE_MAPPING_TEMPLATE_FIELDS[toolId] || []),
+  ])];
+  return [
+    ...CANON_FIELDS.filter((field) => used.includes(field)),
+    ...used.filter((field) => !CANON_FIELDS.includes(field)),
+  ];
+}
+
 // scope: "tool"(이 도구가 쓰는 컬럼만) | "unified"(효율패밀리 전체 컬럼)
 export function buildToolTemplateCsv(toolId, scope = "tool") {
-  const fields = scope === "unified" ? CANON_FIELDS : CANON_FIELDS.filter((k) => fieldUsed(toolId, k));
+  const fields = scope === "unified" ? CANON_FIELDS : getToolTemplateFields(toolId);
   const headers = [...new Set(fields.map(canonHeader))];
   return "﻿" + headers.join(",") + "\r\n";
 }
 
 export function hasToolTemplate(toolId) {
-  return CANON_FIELDS.some((k) => fieldUsed(toolId, k));
+  return getToolTemplateFields(toolId).length > 0;
 }
 
 export function downloadTemplateCsv(toolId, scope = "tool") {
