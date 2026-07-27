@@ -16,6 +16,7 @@ import FunnelTab from "@/components/dashboard/FunnelTab";
 import SegmentTab from "@/components/dashboard/SegmentTab";
 import SeasonalityTab from "@/components/dashboard/SeasonalityTab";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
@@ -154,6 +155,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   // 분석 완료 후 접힌 "데이터 매핑 설정" details — native <details>는 열림/닫힘 상태를
   // React가 자동으로 모르므로 controlled로 추적(라벨 펼치기/접기 동기화, §CLAUDE 12.20류 렌더층 패턴).
   const [mappingOpen, setMappingOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const analysisEventRef = useRef(null);
   const [workerState, setWorkerState] = useState({ key: "", result: null });
 
@@ -209,6 +211,15 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   const verdict = useDashboardWorker
     ? (workerState.key === workerKey ? workerState.result : null)
     : syncVerdict;
+  const isDemo = String(csvData?.fileName || "").startsWith("demo_");
+  const openMapping = () => {
+    setMappingOpen(true);
+    requestAnimationFrame(() => document.getElementById("dashboard-data-setup")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+  const openSupportTools = () => {
+    setSupportOpen(true);
+    requestAnimationFrame(() => document.getElementById("dashboard-support-tools")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
   useEffect(() => {
     if (!showResults) return;
@@ -239,9 +250,9 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             <h1 className="page-sticky-title">{tr(C.pageTitle, enC.pageTitle)}</h1>
             {hasData && (
               <>
-                <span className="chip" style={{ display: "inline-flex", alignItems: "center" }}>
+                <span className={`chip${isDemo ? " warn" : ""}`} style={{ display: "inline-flex", alignItems: "center" }}>
                   <span className="dot"></span>
-                  {csvData.fileName || "Data.csv"}
+                  {isDemo ? tr("예시 데이터", "Sample data") : (csvData.fileName || "Data.csv")}
                 </span>
                 <span className="chip ok" style={{ display: "inline-flex", alignItems: "center" }}>
                   <span className="dot"></span>
@@ -285,6 +296,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         ) : (
           <details
             className="block"
+            id="dashboard-data-setup"
             open={mappingOpen}
             onToggle={(e) => setMappingOpen(e.target.open)}
             style={{ padding: "8px 12px", margin: "0 0 16px", borderRadius: "var(--radius-lg)", background: "rgba(255,255,255,0.01)" }}
@@ -331,6 +343,20 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 보든 최근 성과 요약·다음 액션·결과 받기를 한 곳에서. */}
             {verdict && !verdict.insufficient && (
               <>
+              {isDemo && (
+                <section className="dashboard-demo-source" id="dashboard-demo-source" aria-label={tr("예시 데이터 안내", "Sample data notice")}>
+                  <div><span>SAMPLE DATA</span><strong>{tr("지금 보는 수치는 예시입니다", "These numbers are an example")}</strong><p>{tr("내 CSV를 올리면 같은 화면에서 실제 데이터로 바로 교체됩니다.", "Upload your CSV to replace this view with your real data.")}</p></div>
+                  <button type="button" onClick={openMapping}>{tr("내 CSV로 바꾸기", "Use my CSV")} <span aria-hidden="true">→</span></button>
+                </section>
+              )}
+              <section className="dashboard-decision-strip" aria-label={tr("다음 작업", "Next actions")}>
+                <div><span>NEXT ACTIONS</span><strong>{tr("결과에서 바로 이어가기", "Continue from this result")}</strong></div>
+                <div className="dashboard-decision-strip__actions">
+                  <button type="button" onClick={openSupportTools}>{tr("결과 기록", "Save result")}</button>
+                  <button type="button" onClick={openSupportTools}>{tr("다음 분석 선택", "Choose next analysis")}</button>
+                  <ToolTemplateAction toolId={toolId} locale={locale} compact reason={tr("다음 분석용 입력 형식", "Input format for the next analysis")} source="dashboard_result" />
+                </div>
+              </section>
               <ResultActionCard
                 toolId="5-2"
                 tone={verdict.tone}
@@ -420,7 +446,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
               )}
             </div>
             {verdict && !verdict.insufficient && (
-              <details className="dashboard-support-tools" id="dashboard-support-tools">
+              <details className="dashboard-support-tools" id="dashboard-support-tools" open={supportOpen} onToggle={(event) => setSupportOpen(event.target.open)}>
                 <summary>
                   <span>{tr("분석 보조 도구", "Analysis utilities")}</span>
                   <small>{tr("기록 · 다음 분석 · 이벤트 마커", "History · next analyses · event markers")}</small>

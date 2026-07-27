@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { trackProductEvent } from "@/lib/analytics";
 import { getNextTools, localizedTool } from "@/lib/toolConnections";
+import { computeAnalyzeSig, TOOL_GROUP, useAppStore } from "@/store/useDataStore";
 
 const COPY = {
   ko: {
@@ -15,6 +16,7 @@ const COPY = {
     jump: "이 위치로 이동",
     mapping: "데이터 매핑 확인",
     prepare: "데이터 준비하기",
+    replaceSample: "내 CSV로 바꾸기",
     support: "판단 기록·보조 도구",
     next: "다음 분석으로",
     noNext: "이 도구에서 판단을 정리한 뒤 다음 단계를 선택하세요.",
@@ -30,6 +32,7 @@ const COPY = {
     jump: "Jump to this section",
     mapping: "Check data mapping",
     prepare: "Prepare data",
+    replaceSample: "Use my CSV",
     support: "Decision log and supporting tools",
     next: "Continue to next analysis",
     noNext: "Review this result, then choose the next decision step.",
@@ -105,6 +108,15 @@ const DASHBOARD_SETUP_SECTIONS = {
   ],
 };
 
+const DASHBOARD_DEMO_SECTIONS = {
+  "5-2": [
+    { id: "dashboard-demo-source", result: true, title: ["샘플 결과 살펴보기", "Explore the sample result"], body: ["이 결과는 예시 데이터입니다. 내 캠페인 판단을 시작하려면 CSV를 올려 같은 흐름으로 바꾸세요.", "This result uses sample data. Upload your CSV to make decisions from your own campaigns."] },
+  ],
+  "9-7": [
+    { id: "dashboard-demo-source", result: true, title: ["샘플 결과 살펴보기", "Explore the sample result"], body: ["이 결과는 예시 데이터입니다. 내 콘텐츠 데이터로 바꾸면 같은 흐름에서 분석할 수 있습니다.", "This result uses sample data. Replace it with your content data to analyze in the same flow."] },
+  ],
+};
+
 // 공개 도구 여정과 별개로, preview 콘텐츠 화면도 같은 보조 경험을 제공한다.
 // CONNECTED_TOOLS에 넣으면 랜딩 여정·CSV 템플릿의 공개 범위까지 바뀌므로 여기서만 관리한다.
 const ASSIST_TOOL_FALLBACKS = {
@@ -124,8 +136,9 @@ function copyFor(value, lang) {
   return value[lang === "en" ? 1 : 0];
 }
 
-function getSections(toolId, hasDashboardResults = true) {
+function getSections(toolId, { hasDashboardResults = true, isDashboardDemo = false } = {}) {
   if (!hasDashboardResults && DASHBOARD_SETUP_SECTIONS[toolId]) return DASHBOARD_SETUP_SECTIONS[toolId];
+  if (isDashboardDemo && DASHBOARD_DEMO_SECTIONS[toolId]) return DASHBOARD_DEMO_SECTIONS[toolId];
   return ASSIST_SECTIONS[toolId] || [{ id: "s-prep", title: ["데이터 준비", "Prepare data"], body: ["입력 항목을 확인한 뒤 분석을 시작하세요.", "Confirm the input fields before starting analysis."] }];
 }
 
@@ -133,8 +146,12 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
   const lang = locale === "en" ? "en" : "ko";
   const T = COPY[lang];
   const isDashboardTool = Boolean(DASHBOARD_SETUP_SECTIONS[toolId]);
-  const [hasDashboardResults, setHasDashboardResults] = useState(!isDashboardTool);
-  const sections = useMemo(() => getSections(toolId, hasDashboardResults), [toolId, hasDashboardResults]);
+  const csvData = useAppStore((state) => state.csvData);
+  const analyzedByGroup = useAppStore((state) => state.analyzedByGroup);
+  const group = TOOL_GROUP[toolId];
+  const hasDashboardResults = !isDashboardTool || Boolean(csvData?.raw?.length > 0 && group && analyzedByGroup?.[group] === computeAnalyzeSig(csvData));
+  const isDashboardDemo = isDashboardTool && String(csvData?.fileName || "").startsWith("demo_");
+  const sections = useMemo(() => getSections(toolId, { hasDashboardResults, isDashboardDemo }), [toolId, hasDashboardResults, isDashboardDemo]);
   const [isOpen, setIsOpen] = useState(false);
   const [hasNewContext, setHasNewContext] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState(sections[0].id);
@@ -144,26 +161,9 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
   const activeSection = sections.find((section) => section.id === activeSectionId) || sections[0];
   const quickActionTarget = isDashboardTool && !hasDashboardResults
     ? "dashboard-data-setup"
+    : isDashboardDemo
+      ? "dashboard-data-setup"
     : (QUICK_ACTION_TARGETS[toolId] || "s-prep");
-
-  useLayoutEffect(() => {
-    if (!isDashboardTool) return undefined;
-    let frameId = 0;
-    const syncDashboardPhase = () => {
-      setHasDashboardResults(Boolean(document.getElementById("dashboard-tabpanel")));
-    };
-    const scheduleSync = () => {
-      cancelAnimationFrame(frameId);
-      frameId = requestAnimationFrame(syncDashboardPhase);
-    };
-    syncDashboardPhase();
-    const observer = typeof MutationObserver === "undefined" ? null : new MutationObserver(scheduleSync);
-    observer?.observe(document.getElementById("content") || document.body, { childList: true, subtree: true });
-    return () => {
-      cancelAnimationFrame(frameId);
-      observer?.disconnect();
-    };
-  }, [isDashboardTool, toolId]);
 
   useEffect(() => {
     didRevealResult.current = false;
@@ -241,9 +241,9 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
         </div>
         <div className="tool-assist-rail__actions">
           <button type="button" onClick={() => scrollToSection(quickActionTarget, "support_action")}>
-            {quickActionTarget === "dashboard-support-tools" ? T.support : quickActionTarget === "dashboard-data-setup" ? T.prepare : T.mapping}
+            {isDashboardDemo ? T.replaceSample : quickActionTarget === "dashboard-support-tools" ? T.support : quickActionTarget === "dashboard-data-setup" ? T.prepare : T.mapping}
           </button>
-          {nextTool ? (
+          {nextTool && !isDashboardDemo ? (
             <Link href={nextTool.href} onClick={() => trackProductEvent("tool_assist_next", { tool_id: nextTool.id, source_tool_id: toolId, locale: lang })}>
               <span>{T.next}</span>
               <strong>{nextTool.title}</strong>

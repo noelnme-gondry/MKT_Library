@@ -66,6 +66,7 @@ describe("Dashboard render smoke", () => {
     expect(() => render(<Dashboard />)).not.toThrow();
     expect(document.querySelector(".mapping-grid")).toBeTruthy();
     expect(document.querySelector(".csv-dropzone")).toBeFalsy();
+    expect(document.querySelector("#dashboard-demo-source")).toBeTruthy();
   });
 
   for (const tab of TABS) {

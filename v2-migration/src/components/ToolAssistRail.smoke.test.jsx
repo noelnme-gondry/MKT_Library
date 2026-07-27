@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, waitFor } from "@testing-library/react";
 
 import ToolAssistRail, { getSections } from "@/components/ToolAssistRail";
+import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 
 class Observer {
   observe() {}
@@ -13,6 +14,8 @@ window.IntersectionObserver = Observer;
 
 describe("ToolAssistRail", () => {
   it("provides a collapsed contextual assistant and opens on request", () => {
+    const csvData = { raw: [{ Date: "2026-01-01" }], headers: ["Date"], mapping: { Date: "date" }, fileName: "ops.csv" };
+    useAppStore.setState({ csvData, analyzedByGroup: { ...useAppStore.getState().analyzedByGroup, efficiency: computeAnalyzeSig(csvData) } });
     document.body.innerHTML = '<section id="dashboard-tabpanel"></section><section id="dashboard-support-tools"></section>';
     const { getByRole, container } = render(<ToolAssistRail toolId="5-2" />);
     expect(container.querySelector(".tool-assist-rail")).toBeTruthy();
@@ -32,11 +35,12 @@ describe("ToolAssistRail", () => {
 
   it("maps contextual sections for the dashboard and creative analysis", () => {
     expect(getSections("5-2").map((section) => section.id)).toContain("dashboard-support-tools");
-    expect(getSections("5-2", false).map((section) => section.id)).toEqual(["dashboard-data-setup"]);
+    expect(getSections("5-2", { hasDashboardResults: false }).map((section) => section.id)).toEqual(["dashboard-data-setup"]);
     expect(getSections("9-6").map((section) => section.id)).toContain("s-creative-hero");
   });
 
   it("keeps dashboard assistance on the upload and mapping step until a result panel exists", () => {
+    useAppStore.setState({ csvData: { raw: [], headers: [], mapping: {}, fileName: "" }, analyzedByGroup: { ...useAppStore.getState().analyzedByGroup, efficiency: null } });
     document.body.innerHTML = '<section id="dashboard-data-setup"></section>';
     const scrollIntoView = vi.fn();
     document.getElementById("dashboard-data-setup").scrollIntoView = scrollIntoView;
@@ -46,6 +50,17 @@ describe("ToolAssistRail", () => {
     expect(container.textContent).not.toContain("현재 탭 결과 읽기");
     fireEvent.click(getByRole("button", { name: "데이터 준비하기" }));
     expect(scrollIntoView).toHaveBeenCalled();
+  });
+
+  it("treats a dashboard demo as a sample, not the user's next analysis", () => {
+    const csvData = { raw: [{ Date: "2026-01-01" }], headers: ["Date"], mapping: { Date: "date" }, fileName: "demo_efficiency.csv" };
+    useAppStore.setState({ csvData, analyzedByGroup: { ...useAppStore.getState().analyzedByGroup, efficiency: computeAnalyzeSig(csvData) } });
+    document.body.innerHTML = '<section id="dashboard-demo-source"></section><section id="dashboard-data-setup"></section>';
+    const { getByRole, container } = render(<ToolAssistRail toolId="5-2" />);
+    fireEvent.click(getByRole("button", { name: /분석 도우미 열기/ }));
+    expect(container.textContent).toContain("샘플 결과 살펴보기");
+    expect(container.textContent).toContain("내 CSV로 바꾸기");
+    expect(container.textContent).not.toContain("캠페인 성과 변동 탐지");
   });
 
   it("keeps a contextual assistant for preview content wrappers without publishing them into the main journey", () => {

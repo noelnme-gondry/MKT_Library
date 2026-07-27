@@ -58,6 +58,12 @@ const CSV_COPY = {
     demoBannerDesc: "실제 내 데이터가 아니며, 서버로 전송되지 않습니다. 내 CSV를 업로드하면 바로 교체됩니다.",
     demoBannerBtn: "📁 내 CSV 업로드하기",
     previewingDemo: "샘플 데이터로 미리보기 중",
+    journeyLabel: "분석 준비 상태",
+    journeySource: "데이터 선택",
+    journeyMapping: "컬럼 매핑",
+    journeyAnalysis: "분석 시작",
+    journeyOwnData: "내 CSV로 교체 필요",
+    journeyDemoResult: "예시 결과 보는 중",
     rowsCols: (rows, cols, demo) => `${rows.toLocaleString()}행 · ${cols}컬럼${demo ? " · 실제 데이터 아님" : ""}`,
     changeCsvTitle: "이 도구의 CSV를 제거하고 다른 파일 업로드",
     changeCsvBtn: "⟳ CSV 변경",
@@ -130,6 +136,12 @@ const CSV_COPY = {
     demoBannerDesc: "This isn't your real data and nothing is sent to a server. Upload your own CSV to replace it instantly.",
     demoBannerBtn: "📁 Upload my CSV",
     previewingDemo: "Previewing sample data",
+    journeyLabel: "Analysis readiness",
+    journeySource: "Choose data",
+    journeyMapping: "Map columns",
+    journeyAnalysis: "Start analysis",
+    journeyOwnData: "Replace with your CSV",
+    journeyDemoResult: "Viewing sample result",
     rowsCols: (rows, cols, demo) => `${rows.toLocaleString()} rows · ${cols} cols${demo ? " · not real data" : ""}`,
     changeCsvTitle: "Remove this tool's CSV and upload another file",
     changeCsvBtn: "⟳ Change CSV",
@@ -698,6 +710,11 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           <button className="ab-button" onClick={handleReset}>{T.demoBannerBtn}</button>
         </div>
       )}
+      <ol className="data-journey" aria-label={T.journeyLabel}>
+        <li className={isDemo ? "is-sample" : hasFile ? "is-done" : "is-current"}><span>1</span><div><strong>{T.journeySource}</strong><small>{isDemo ? T.journeyOwnData : hasFile ? csvData.fileName : T.dropSub}</small></div></li>
+        <li className={missing.length === 0 && !analysisBlocked ? "is-done" : hasFile ? "is-current" : ""}><span>2</span><div><strong>{T.journeyMapping}</strong><small>{missing.length === 0 && !analysisBlocked ? T.okTitle : T.checkMapping}</small></div></li>
+        <li className={isAnalyzed && !isDemo ? "is-done" : isDemo ? "is-sample" : missing.length === 0 && !analysisBlocked ? "is-current" : ""}><span>3</span><div><strong>{T.journeyAnalysis}</strong><small>{isDemo ? T.journeyDemoResult : isAnalyzed ? T.analyzedBadge : T.analyzeBtn}</small></div></li>
+      </ol>
       <CsvGuide toolId={toolId} locale={locale} />
       <div className="file-state">
         <div className="meta-text">
