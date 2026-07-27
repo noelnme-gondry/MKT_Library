@@ -116,3 +116,24 @@ export function getNextTools(toolId, locale = "ko") {
     isSameData: groupForRoute(toolId) === groupForRoute(nextId),
   }));
 }
+
+export function getJourneyContext(toolId, locale = "ko") {
+  const stageIndex = TOOL_JOURNEY.findIndex((stage) => stage.tools.includes(toolId));
+  if (stageIndex < 0) return null;
+  const stage = TOOL_JOURNEY[stageIndex];
+  const previousStage = TOOL_JOURNEY[(stageIndex - 1 + TOOL_JOURNEY.length) % TOOL_JOURNEY.length];
+  const nextStage = TOOL_JOURNEY[(stageIndex + 1) % TOOL_JOURNEY.length];
+  const decorate = (id) => ({
+    ...localizedTool(id, locale),
+    isSameData: groupForRoute(toolId) === groupForRoute(id),
+  });
+  return {
+    stage,
+    previousStage,
+    nextStage,
+    previous: previousStage.tools.map(decorate),
+    alternatives: stage.tools.filter((id) => id !== toolId).map(decorate),
+    next: nextStage.tools.map(decorate),
+    isCycleRestart: stageIndex === TOOL_JOURNEY.length - 1,
+  };
+}
