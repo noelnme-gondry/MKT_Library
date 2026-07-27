@@ -877,7 +877,8 @@ export function mmmDataQualityAudit(panel) {
                 robustIters = Math.max(0, Math.floor(options.robustIters ?? Math.max(2, iters)));
               let trend = new Array(n).fill(0),
                 seasonal = new Array(n).fill(0),
-                robustWeights = finite.map((ok) => ok ? 1 : 0);
+                robustWeights = finite.map((ok) => ok ? 1 : 0),
+                robustWeightFallbacks = 0;
               const median = (arr) => {
                 const a = arr.filter(Number.isFinite).slice().sort((x, y) => x - y);
                 if (!a.length) return 0;
@@ -906,22 +907,45 @@ export function mmmDataQualityAudit(panel) {
                     if (Number.isFinite(detr[i])) { idx.push(i); ys.push(detr[i]); ws.push(robustWeights[i]); }
                   }
                   if (!idx.length) continue;
-                  const sm = loessWeighted(idx.map((_, j) => j), ys, ws, seasonalBw);
-                  idx.forEach((i, j) => { seas[i] = Number.isFinite(sm[j]) ? sm[j] : ys[j]; });
+                  // Smooth across calendar phase, not across years. A LOESS over
+                  // the four observations for the same week-of-year can absorb a
+                  // real multi-year decline into "seasonality" and leave trend
+                  // flat. The weighted phase mean is the stable seasonal template;
+                  // the long-run movement is estimated only by the trend smoother.
+                  const denominator = ws.reduce((sum, weight) => sum + weight, 0);
+                  const phaseMean = denominator > 0
+                    ? ys.reduce((sum, value, index) => sum + value * ws[index], 0) / denominator
+                    : _mean(ys);
+                  idx.forEach((i) => { seas[i] = phaseMean; });
                 }
                 const seasonalMean = median(seas.filter((v, i) => finite[i]));
                 for (let i = 0; i < n; i++) seasonal[i] = finite[i] ? seas[i] - seasonalMean : 0;
                 const deseason = clean.map((v, i) => finite[i] ? v - seasonal[i] : NaN);
                 const smTrend = loessWeighted(ts, deseason, robustWeights, trendBw);
-                trend = smTrend.map((v, i) => Number.isFinite(v) ? v : (i ? trend[i - 1] : 0));
+                const firstFiniteTrend = smTrend.find((value) => Number.isFinite(value));
+                let previousTrend = Number.isFinite(firstFiniteTrend) ? firstFiniteTrend : _mean(deseason.filter(Number.isFinite));
+                trend = smTrend.map((value) => {
+                  if (Number.isFinite(value)) previousTrend = value;
+                  return previousTrend;
+                });
                 const resid = clean.map((v, i) => finite[i] ? v - trend[i] - seasonal[i] : NaN);
                 if (it < robustIters) {
-                  const scale = Math.max(1e-9, 6 * median(resid.map((v) => Math.abs(v)).filter(Number.isFinite)));
-                  robustWeights = resid.map((v, i) => {
-                    if (!finite[i]) return 0;
-                    const u = Math.abs(v) / scale;
-                    return u >= 1 ? 0 : (1 - u * u) ** 2;
-                  });
+                  const medianAbsResidual = median(resid.map((v) => Math.abs(v)).filter(Number.isFinite));
+                  // A highly repeated seasonal subseries can fit most residuals
+                  // exactly. MAD=0 is not evidence that every observation is an
+                  // outlier; assigning weight 0 would make the next LOESS fit
+                  // empty and the trend fallback would become a flat line.
+                  if (!(medianAbsResidual > 1e-9)) {
+                    robustWeights = finite.map((ok) => ok ? 1 : 0);
+                    robustWeightFallbacks += 1;
+                  } else {
+                    const scale = 6 * medianAbsResidual;
+                    robustWeights = resid.map((v, i) => {
+                      if (!finite[i]) return 0;
+                      const u = Math.abs(v) / scale;
+                      return u >= 1 ? 0 : (1 - u * u) ** 2;
+                    });
+                  }
                 }
               }
               const residual = clean.map((v, i) => finite[i] ? v - trend[i] - seasonal[i] : NaN);
@@ -932,8 +956,10 @@ export function mmmDataQualityAudit(panel) {
               const totalVar = variance(clean), residualVar = variance(residual);
               return {
                 trend, seasonal, residual, period: P,
-                method: "robust-additive-stl-seasonal-subseries-lowess",
+                method: "robust-additive-stl-weighted-phase-mean-lowess-trend",
                 robustIterations: robustIters, robustWeights,
+                robustWeightFallbacks,
+                seasonalSubseries: "weighted-phase-mean",
                 missingCount: finite.filter((v) => !v).length,
                 seasonalStrength: totalVar > 0 ? Math.max(0, Math.min(1, 1 - variance(clean.map((v, i) => finite[i] ? v - seasonal[i] : NaN)) / totalVar)) : 0,
                 trendStrength: totalVar > 0 ? Math.max(0, Math.min(1, 1 - residualVar / totalVar)) : 0,
