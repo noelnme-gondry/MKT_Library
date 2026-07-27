@@ -20,6 +20,7 @@ const HEADER_COPY = {
     quickNav: "빠른 이동",
     localeSwitch: "🌐 EN",
     localeSwitchTitle: "영어 페이지로 (번역된 페이지만 지원)",
+    homeCrumb: "오늘의 질문",
   },
   en: {
     breadcrumbAria: "Breadcrumb",
@@ -31,6 +32,7 @@ const HEADER_COPY = {
     quickNav: "Quick nav",
     localeSwitch: "🌐 한국어",
     localeSwitchTitle: "Switch to the Korean page",
+    homeCrumb: "Today’s question",
   },
 };
 
@@ -96,6 +98,12 @@ export default function Header({ locale = "ko" }) {
           <BrandMark size={26} label="Growth Opt Playbook" />
           <span className="brand-crumb__label" style={{ fontWeight: 700 }}>Growth Opt Playbook</span>
         </Link>
+        {currentRouteId === "home" && (
+          <>
+            <span className="sep">/</span>
+            <strong className="current">{T.homeCrumb}</strong>
+          </>
+        )}
         {/* 블로그는 브랜드 + "블로그" 크럼. */}
         {isBlog && (
           <>

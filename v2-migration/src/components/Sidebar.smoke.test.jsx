@@ -2,9 +2,8 @@
 //
 // Render-smoke for Sidebar. Regression net for a render/mount-effect throw.
 // Sidebar derives its active id from usePathname() (mocked to "/") and reads the
-// static IA/PHASES tables — it does NOT read csvData. We still seed the store
-// (no-data + with-data) for parity with the other smoke tests; either way the
-// nav must mount.
+// static IA/PHASES tables — it does NOT read csvData. "/" intentionally renders
+// the compact Decision Workspace nav; inner pages retain the full IA nav.
 import { describe, it, expect, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
@@ -36,7 +35,8 @@ describe("Sidebar render smoke", () => {
   beforeEach(() => seedNoData());
   it("no-data mounts", () => {
     expect(() => render(<Sidebar />)).not.toThrow();
-    expect(document.querySelector("nav#nav")).toBeTruthy();
+    expect(document.querySelector(".home-sidebar-nav")).toBeTruthy();
+    expect(document.querySelectorAll(".home-sidebar-nav__item")).toHaveLength(4);
     expect(document.querySelectorAll(".sidebar-library-link")).toHaveLength(4);
     expect(document.querySelectorAll(".sidebar-social .ss-btn")).toHaveLength(4);
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();

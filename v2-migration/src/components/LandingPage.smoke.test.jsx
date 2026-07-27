@@ -1,10 +1,8 @@
 // @vitest-environment jsdom
 //
 // Render-smoke for LandingPage. Regression net for a render/mount-effect throw.
-// LandingPage is the two-step track selector (home → guide/analyze). It reads
-// only the static IA/PHASES tables and useRouter() (mocked), NOT csvData. We seed
-// the store (no-data + with-data) for parity; the landing home must mount either
-// way.
+// LandingPage is the public Decision Console home. It reads no CSV rows, but we
+// seed no-data + with-data states to guarantee the public shell mounts either way.
 import { describe, it, expect, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
@@ -36,17 +34,17 @@ describe("LandingPage render smoke", () => {
   beforeEach(() => seedNoData());
   it("no-data mounts", () => {
     expect(() => render(<LandingPage />)).not.toThrow();
-    expect(document.querySelector(".page-title")).toBeTruthy();
-    expect(document.querySelectorAll(".landing-decision-lane")).toHaveLength(3);
+    expect(document.querySelector(".dc-hero")).toBeTruthy();
+    expect(document.querySelector(".dc-instrument")).toBeTruthy();
+    expect(document.querySelectorAll(".dc-question-card")).toHaveLength(3);
     expect(document.querySelectorAll(".connected-tool-card")).toHaveLength(10);
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
   });
   it("with-data mounts", () => {
     seedWithData();
     expect(() => render(<LandingPage />)).not.toThrow();
-    // 재구성된 홈: 질문 캐러셀 + 블로그|SOP 허브 카드.
-    expect(document.querySelector(".carousel-track")).toBeTruthy();
-    expect(document.querySelector(".home-hub-card")).toBeTruthy();
+    expect(document.querySelectorAll(".dc-library-card")).toHaveLength(2);
+    expect(document.querySelector(".dc-resource-strip")).toBeTruthy();
   });
   it("renders the same connected workflow in English", () => {
     const { container } = render(<LandingPage locale="en" />);

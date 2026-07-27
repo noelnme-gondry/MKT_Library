@@ -20,6 +20,12 @@ const SIDEBAR_COPY = {
     facebook: "페북",
     naverBlog: "네이버 블로그",
     resourceLabel: "LIBRARY",
+    workspaceLabel: "DECISION WORKSPACE",
+    today: "오늘의 질문",
+    workflow: "연결된 분석 흐름",
+    dataGuide: "데이터 준비",
+    insights: "실무 인사이트",
+    localOnly: "업로드한 데이터는 이 브라우저 안에서만 처리됩니다.",
   },
   en: {
     searchPlaceholder: "Search guides, params, code…",
@@ -32,6 +38,12 @@ const SIDEBAR_COPY = {
     instagram: "Instagram",
     facebook: "Facebook",
     naverBlog: "Naver Blog",
+    workspaceLabel: "DECISION WORKSPACE",
+    today: "Today’s question",
+    workflow: "Connected workflow",
+    dataGuide: "Prepare data",
+    insights: "Practical insights",
+    localOnly: "Uploaded data is processed only in this browser.",
   },
 };
 
@@ -44,6 +56,7 @@ export default function Sidebar({ locale = "ko" }) {
   // the page-level store-sync effect runs (avoids a first-paint race).
   const pathname = usePathname();
   const currentRouteId = resolvePathToId(pathname) ?? "home";
+  const isHome = currentRouteId === "home";
   const setCmdkOpen = useAppStore((state) => state.setCmdkOpen);
 
   // Keep track of collapsed states
@@ -80,6 +93,26 @@ export default function Sidebar({ locale = "ko" }) {
         </div>
       </Link>
 
+      {isHome ? (
+        <div className="home-sidebar-workspace">
+          <div className="home-sidebar-workspace__label">{T.workspaceLabel}</div>
+          <nav className="home-sidebar-nav" aria-label={T.workspaceLabel}>
+            <Link href={locale === "en" ? "/en" : "/"} className="home-sidebar-nav__item active">
+              <span aria-hidden="true">◎</span><strong>{T.today}</strong><small>01</small>
+            </Link>
+            <a href="#workflow" className="home-sidebar-nav__item">
+              <span aria-hidden="true">↳</span><strong>{T.workflow}</strong><small>02</small>
+            </a>
+            <Link href={locale === "en" ? "/en/guide/csv-data-prep" : "/guide/csv-data-prep"} className="home-sidebar-nav__item">
+              <span aria-hidden="true">▤</span><strong>{T.dataGuide}</strong><small>03</small>
+            </Link>
+            <Link href={locale === "en" ? "/en/blog" : "/blog"} className="home-sidebar-nav__item">
+              <span aria-hidden="true">⌁</span><strong>{T.insights}</strong><small>04</small>
+            </Link>
+          </nav>
+        </div>
+      ) : (
+        <>
       <button type="button" className="sidebar-search" onClick={() => setCmdkOpen(true)} aria-label={T.searchPlaceholder}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="11" cy="11" r="8"></circle>
@@ -171,6 +204,8 @@ export default function Sidebar({ locale = "ko" }) {
           );
         })}
       </nav>
+        </>
+      )}
 
       {/* 메인 IA는 그대로 유지하고, 자주 찾는 리소스만 긴 카드로 다시 노출한다. */}
       <div className="sidebar-resource-label">{T.resourceLabel}</div>
@@ -223,6 +258,12 @@ export default function Sidebar({ locale = "ko" }) {
           <span>{T.naverBlog}</span>
         </a>
       </div>
+      {isHome && (
+        <div className="home-sidebar-local">
+          <b>LOCAL ONLY</b>
+          <span>{T.localOnly}</span>
+        </div>
+      )}
     </aside>
   );
 }
