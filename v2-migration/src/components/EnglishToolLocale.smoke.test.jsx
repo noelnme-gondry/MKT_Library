@@ -2,7 +2,8 @@
 // EN-ready analysis tools must not silently fall back to Korean UI copy.
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { cleanup, render } from "@testing-library/react";
-import { useAppStore } from "@/store/useDataStore";
+import { TOOL_GROUP, computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
+import { buildDemoCsv } from "@/utils/demoData";
 import Dashboard from "@/components/Dashboard";
 import BudgetAllocation from "@/components/tools/BudgetAllocation";
 import AbTestHoldout from "@/components/tools/AbTestHoldout";
@@ -23,8 +24,23 @@ function resetStore() {
   useAppStore.setState({
     csvData: EMPTY_CSV,
     csvGroups: Object.fromEntries(Object.keys(current.csvGroups || {}).map((key) => [key, EMPTY_CSV])),
+    analyzedByGroup: Object.fromEntries(Object.keys(current.analyzedByGroup || {}).map((key) => [key, null])),
+    csvClearedByGroup: {},
+    demoDisabled: false,
     currentRouteId: "5-2",
     dashboardTab: "viz",
+  });
+}
+
+function seedEnglishDemo(routeId, demoGroup) {
+  const group = TOOL_GROUP[routeId];
+  const csvData = buildDemoCsv(demoGroup, "en");
+  const current = useAppStore.getState();
+  useAppStore.setState({
+    currentRouteId: routeId,
+    csvData,
+    csvGroups: { ...current.csvGroups, [group]: csvData },
+    analyzedByGroup: { ...current.analyzedByGroup, [group]: computeAnalyzeSig(csvData) },
   });
 }
 
@@ -43,6 +59,22 @@ const EN_READY_SURFACES = [
   ["Cohort analysis", <CohortTab key="cohort" locale="en" />],
 ];
 
+// Empty-state copy is not enough: these cases enter each public tool with its
+// deterministic English demo dataset and an already-confirmed analysis gate.
+// This catches Korean strings in result cards, tables, and recommendations.
+const EN_DEMO_SURFACES = [
+  ["Dashboard", "5-2", "efficiency", () => <Dashboard locale="en" />],
+  ["Budget allocation", "5-3", "efficiency", () => <BudgetAllocation locale="en" />],
+  ["A/B holdout", "5-4", "experiment", () => <AbTestHoldout locale="en" />],
+  ["Campaign PVM", "5-21", "efficiency", () => <CampaignPvm locale="en" />],
+  ["Marketing efficiency", "5-22", "efficiency", () => <MarketingEfficiency locale="en" />],
+  ["Incrementality", "5-23", "incrementality", () => <Incrementality locale="en" />],
+  ["Aha moment", "5-20", "aha", () => <AhaMomentFinder locale="en" />],
+  ["Creative analyzer", "9-6", "creative", () => <CreativeAnalyzer locale="en" />],
+  ["Content element analyzer", "9-1", "content_attr", () => <ContentElementAnalyzer locale="en" />],
+  ["Marketing response", "5-18", "response", () => <MarketingResponse locale="en" />],
+];
+
 describe("English analysis surfaces", () => {
   beforeEach(resetStore);
   afterEach(cleanup);
@@ -53,5 +85,14 @@ describe("English analysis surfaces", () => {
     const koreanCopy = Array.from(new Set(text.match(/[가-힣]+/g) || []));
     const contexts = koreanCopy.map((value) => text.slice(Math.max(0, text.indexOf(value) - 36), text.indexOf(value) + value.length + 48));
     expect(koreanCopy, `${_name}: ${contexts.join(" | ")}`).toEqual([]);
+  });
+
+  it.each(EN_DEMO_SURFACES)("$0 has no Korean UI copy with demo analysis results", (name, routeId, demoGroup, renderSurface) => {
+    seedEnglishDemo(routeId, demoGroup);
+    render(renderSurface());
+    const text = document.body.textContent || "";
+    const koreanCopy = Array.from(new Set(text.match(/[가-힣]+/g) || []));
+    const contexts = koreanCopy.map((value) => text.slice(Math.max(0, text.indexOf(value) - 36), text.indexOf(value) + value.length + 48));
+    expect(koreanCopy, `${name}: ${contexts.join(" | ")}`).toEqual([]);
   });
 });
