@@ -3,6 +3,7 @@ import Papa from "papaparse";
 import { describe, expect, it } from "vitest";
 import {
   businessWeekOfYear,
+  buildObservedBusinessSeasonality,
   buildObservedYearShapes,
   classifyBusinessSeasonality,
   compareObservedYearShapes,
@@ -191,6 +192,15 @@ describe("business seasonality diagnostics", () => {
     expect(evidence.available).toBe(true);
     expect(evidence.observedYearCorrelation).toBeGreaterThan(0.9);
     expect(classifyBusinessSeasonality(evidence, 104).level).toBe("moderate");
+  });
+
+  it("builds a centered business shape from repeated observed calendar years", () => {
+    const shape = buildObservedBusinessSeasonality(sundayLabels(104), recurringResiduals(104));
+    expect(shape.available).toBe(true);
+    expect(shape.yearCount).toBe(2);
+    expect(shape.values).toHaveLength(52);
+    expect(Math.abs(shape.values.reduce((sum, value) => sum + value, 0) / 52)).toBeLessThan(1e-9);
+    expect(shape.amplitude).toBeGreaterThan(0);
   });
 
   it("does not recognize unrelated year shapes as recurring seasonality", () => {

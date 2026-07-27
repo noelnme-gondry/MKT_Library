@@ -4,6 +4,7 @@ import {
   MMM_METH_CONFIG,
   mmmAdstock,
   mmmBayesianRun,
+  mmmBuildFeatures,
   mmmClassicControlSelection,
   mmmClassicBuildGroupContributionPriors,
   mmmBayesianWeeklyDecomp,
@@ -175,5 +176,32 @@ describe("PR #416 MMM rollback contract", () => {
     expect(selection.panel.external).toEqual({});
     expect(selection.candidates).toHaveLength(2);
     expect(selection.candidates.every((candidate) => Number.isFinite(candidate.wmape))).toBe(true);
+  });
+
+  it("uses the observed business shape as one centered seasonal feature", () => {
+    const dateLabel = Array.from({ length: 104 }, (_, index) => {
+      const date = new Date(Date.UTC(2022, 0, 2 + index * 7));
+      return date.toISOString().slice(0, 10);
+    });
+    const built = mmmBuildFeatures({
+      week: dateLabel.map((_, index) => index + 1),
+      dateLabel,
+      ch: {},
+      channels: [],
+      targets: { RR: dateLabel.map(() => 1) },
+      dummy: {},
+      steps: {},
+      external: {},
+    }, {
+      ...MMM_METH_CONFIG,
+      seasonalityPeriods: [52.18],
+      seasonalityBasis: {
+        type: "observed-business",
+        values: Array.from({ length: 52 }, (_, index) => 1 + Math.sin((2 * Math.PI * index) / 52)),
+      },
+    }, 0, false);
+    expect(built.names).toContain("business_seasonality");
+    expect(built.names.filter((name) => name.startsWith("sin_") || name.startsWith("cos_") || name.startsWith("season_rbf_"))).toHaveLength(0);
+    expect(built.X[0][built.names.indexOf("business_seasonality")]).not.toBe(0);
   });
 });
