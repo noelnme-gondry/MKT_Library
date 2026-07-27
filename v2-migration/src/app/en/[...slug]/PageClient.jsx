@@ -12,6 +12,7 @@ import DemoNoticeModal from "@/components/DemoNoticeModal";
 import ToolIntro from "@/components/ToolIntro";
 import ToolLongform from "@/components/ToolLongform";
 import ToolConnections from "@/components/ToolConnections";
+import ToolAssistRail from "@/components/ToolAssistRail";
 
 // 번역 완료된 도구만 실제로 렌더(routeMap EN_READY_TOOL_IDS 게이트 통과 후).
 // 여기 케이스는 미리 준비해도 안전 — hasEnVersion()이 registry에 없는 id는
@@ -63,6 +64,7 @@ export default function PageClient({ params, initialSopData = null }) {
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge locale="en" />}
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} locale="en" />}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <ToolConnections toolId={routeId} locale="en" />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <ToolAssistRail toolId={routeId} locale="en" />}
 
             {routeId === "start-gate" && <StartGate locale="en" />}
             {routeId === "5-2" && <Dashboard locale="en" />}

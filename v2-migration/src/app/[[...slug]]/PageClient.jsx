@@ -15,6 +15,7 @@ import DemoNoticeModal from "@/components/DemoNoticeModal";
 import ToolIntro from "@/components/ToolIntro";
 import ToolLongform from "@/components/ToolLongform";
 import ToolConnections from "@/components/ToolConnections";
+import ToolAssistRail from "@/components/ToolAssistRail";
 
 // 도구는 무겁고(Chart.js·XLSX·PapaParse) 라우트별로 하나만 필요 → next/dynamic으로
 // 코드 분할. 정적 import 시 홈 포함 모든 경로가 앱 전체 JS(~1MB)를 최초 로드해
@@ -71,6 +72,7 @@ export default function PageClient({ params }) {
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge />}
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} />}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <ToolConnections toolId={routeId} />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <ToolAssistRail toolId={routeId} />}
 
             {/* 라우팅: URL에서 해석한 routeId 기준 직접 디스패치 (스토어 비의존 → 첫 페인트 플래시 없음) */}
             {routeId === "home" && <LandingPage />}

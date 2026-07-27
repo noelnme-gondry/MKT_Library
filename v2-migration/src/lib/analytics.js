@@ -5,6 +5,7 @@ const ALLOWED_PARAMS = new Set([
   "conflict_count", "missing_required_count", "tab_name", "download_type", "analysis_type",
   "result_state", "locale", "placement", "content_slug", "content_type",
   "source_tool_id", "data_continuity", "rank",
+  "section_id", "state",
 ]);
 
 export function sanitizeProductEventParams(params = {}) {
