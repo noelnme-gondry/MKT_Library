@@ -13,6 +13,7 @@ import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import CsvUploader from "@/components/CsvUploader";
 import DashboardFilterBar from "@/components/dashboard/DashboardFilterBar";
 import ToolPageShell from "@/components/ToolPageShell";
+import { trackProductEvent } from "@/lib/analytics";
 
 // 우측 TOC — legacy page_5_21() 목차와 동일 (§0 한눈에 보기~§4 …별 결과).
 // §2~§4 라벨은 도메인 카피팩(C)에서 주입 — performance는 기존과 byte-동일.
@@ -442,6 +443,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
 
   const chartPvmWaterfall = useRef(null);
   const chartPvmTrend = useRef(null);
+  const completedAnalysisKey = useRef(null);
 
   // 실제 엔진 출력 계산 (캐시) — metric/weekBasis/lookback/denomBasis 변경 시 재계산
   const cache = useMemo(() => {
@@ -454,6 +456,24 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   }, [hasData, csvData, metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale, tr]);
 
   const ready = cache && !cache.insufficientData;
+
+  // PVM은 결과 카드 대신 cache가 준비되는 즉시 화면을 구성한다. 따라서 이 시점이
+  // "결과가 실제로 보임"의 완료 기준이며, 파일명·채널명 같은 사용자 데이터는 전송하지 않는다.
+  const analysisKey = ready
+    ? `${csvData?.raw?.length || 0}|${metric}|${weekBasis}|${lookback}|${denomBasis}`
+    : null;
+  useEffect(() => {
+    if (!analysisKey || completedAnalysisKey.current === analysisKey) return;
+    completedAnalysisKey.current = analysisKey;
+    trackProductEvent("analysis_completed", {
+      tool_id: domain === "content" ? "9-3" : "5-21",
+      source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+      row_count: csvData?.raw?.length || 0,
+      analysis_type: "pvm",
+      result_state: "ready",
+      locale,
+    });
+  }, [analysisKey, csvData?.fileName, csvData?.raw?.length, domain, locale]);
 
   // §2 차트용 채널 배열 (top7 + 기타 축약) — index.html renderPvmCharts 이식
   const byChannelChart = useMemo(() => {

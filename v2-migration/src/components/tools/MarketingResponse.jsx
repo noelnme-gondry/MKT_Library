@@ -68,6 +68,7 @@ import {
   sliceMmmChannelContributions,
 } from "@/utils/mmmWeeklyPerformance";
 import { buildExperimentMediaPriorDetailed, mmmRollingOrigins, summarizeRollingErrors, mmmPriorMroiAtSpend } from "@/utils/mmmPriorMath";
+import { resolveResponseStage } from "@/lib/responseStage";
 import {
   planCountryReferenceFits,
   buildCountryTransferPrior,
@@ -2847,12 +2848,14 @@ export function buildForecastRecentBacktest(model) {
   };
 }
 
-export default function MarketingResponse({ locale = "ko" }) {
+export default function MarketingResponse({ locale = "ko", initialStage = "trend" }) {
   // 3단계(index MMM_STAGE_DEFS): diagnose | mmm | lab. 구 "forecast" 스테이지는 lab에 흡수 —
   // ③ lab이 mmmForecast(②계수) §7 미래예측을 렌더(stage==="lab"). 셋 다 shared mmmColMap 사용.
   const tx = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]); // 인라인 텍스트 로컬라이즈 헬퍼(§12.20 v2 i18n 패턴)
   const bucketMeta = mmmBucketMeta(locale);
-  const [stage, setStage] = useState("trend"); // trend | diagnose | mmm | lab
+  // URL에서 전달받은 단계는 라우팅 레이어가 검증하지만, 컴포넌트 단독 사용·테스트도
+  // 안전하도록 여기서 한 번 더 폴백한다. 모델 계산·데이터 계약에는 관여하지 않는다.
+  const [stage, setStage] = useState(() => resolveResponseStage(initialStage)); // trend | diagnose | mmm | lab
   const [target, setTarget] = useState("Regs");
   const [mmmMode, setMmmMode] = useState("classic"); // classic = PR #416, prism = fixed Option 3, bayesian = posterior channel fit
   const [decompGrouped, setDecompGrouped] = useState(true); // §5.5 true=4버킷 묶음 / false=광고 개별채널

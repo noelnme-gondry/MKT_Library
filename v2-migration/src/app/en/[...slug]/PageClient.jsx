@@ -1,6 +1,6 @@
 "use client";
 import { use, useEffect } from "react";
-import { notFound, redirect } from "next/navigation";
+import { notFound, redirect, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 
 import Sidebar from "@/components/Sidebar";
@@ -34,10 +34,12 @@ const CUSTOM_TOOL_INTRO_IDS = new Set(["5-4", "5-18", "5-20", "5-23", "9-1", "9-
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId, hasEnVersion, idToPath } from "@/lib/routeMap";
+import { resolveResponseStage } from "@/lib/responseStage";
 
 export default function PageClient({ params, initialSopData = null }) {
   const { slug } = use(params);
   const routeId = resolveSlugToId(slug);
+  const responseStage = resolveResponseStage(useSearchParams().get("stage"));
 
   // Unknown URL -> 404. Known but untranslated -> KR canonical (thin/half-EN
   // page never gets served or indexed — §plan EN_READY_TOOL_IDS gate).
@@ -68,7 +70,7 @@ export default function PageClient({ params, initialSopData = null }) {
             {routeId === "5-22" && <MarketingEfficiency locale="en" />}
             {routeId === "9-6" && <ContentFreshness locale="en" />}
             {routeId === "5-4" && <AbTestHoldout locale="en" />}
-            {routeId === "5-18" && <MarketingResponse locale="en" />}
+            {routeId === "5-18" && <MarketingResponse key={`marketing-response-${responseStage}`} locale="en" initialStage={responseStage} />}
             {routeId === "5-20" && <AhaMomentFinder locale="en" />}
             {routeId === "5-23" && <Incrementality locale="en" />}
             {routeId === "9-1" && <ContentElementAnalyzer locale="en" />}

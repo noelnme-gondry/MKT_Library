@@ -1,6 +1,6 @@
 "use client";
 import { use, useEffect } from "react";
-import { notFound } from "next/navigation";
+import { notFound, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 
 import Sidebar from "@/components/Sidebar";
@@ -38,12 +38,14 @@ const CUSTOM_TOOL_INTRO_IDS = new Set(["5-4", "5-18", "5-20", "5-23", "9-1", "9-
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId } from "@/lib/routeMap";
+import { resolveResponseStage } from "@/lib/responseStage";
 
 export default function PageClient({ params }) {
   // Next 16: params is a Promise. On the root "/" the optional catch-all gives
   // slug = undefined; on any nested path it's a string[].
   const { slug } = use(params);
   const routeId = resolveSlugToId(slug);
+  const responseStage = resolveResponseStage(useSearchParams().get("stage"));
 
   // Unknown URL -> 404 (must run before any dispatch that assumes a valid id).
   if (routeId === null) notFound();
@@ -79,7 +81,7 @@ export default function PageClient({ params }) {
             {routeId === "5-21" && <CampaignPvm />}
             {routeId === "5-22" && <MarketingEfficiency />}
             {routeId === "5-4" && <AbTestHoldout />}
-            {routeId === "5-18" && <MarketingResponse />}
+            {routeId === "5-18" && <MarketingResponse key={`marketing-response-${responseStage}`} initialStage={responseStage} />}
             {routeId === "5-20" && <AhaMomentFinder />}
             {routeId === "5-23" && <Incrementality />}
 

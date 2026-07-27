@@ -901,6 +901,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       </section>
 
       <ResultActionCard
+        toolId="9-6"
         tone={fatigueTone}
         title={tr("결론 — 소재 교체와 다음 제작", "Conclusion — creative swaps and next production")}
         headline={fatigueHeadline}

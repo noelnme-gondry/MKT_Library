@@ -452,6 +452,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       <section className="block" id="s-sat-summary">
         <h2 className="section-title"><span className="ix">§0</span>{tr("한눈에 보기", "At a glance")}</h2>
         <ResultActionCard
+          toolId="5-22"
           locale={locale}
           tone={!okRows.length ? "bad" : sat.length ? "bad" : scale.length ? "good" : "neutral"}
           title={tr("포화도 결론", "Saturation conclusion")}
