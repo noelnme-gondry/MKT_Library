@@ -9,7 +9,6 @@ import GlobalModals from "@/components/GlobalModals";
 import StartGate from "@/components/StartGate";
 import MobileToolNudge from "@/components/MobileToolNudge";
 import DemoNoticeModal from "@/components/DemoNoticeModal";
-import DmNudge from "@/components/DmNudge";
 import ToolIntro from "@/components/ToolIntro";
 import ToolLongform from "@/components/ToolLongform";
 import ToolConnections from "@/components/ToolConnections";
@@ -63,6 +62,7 @@ export default function PageClient({ params, initialSopData = null }) {
           <article className="content" id="content">
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge locale="en" />}
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} locale="en" />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <ToolConnections toolId={routeId} locale="en" />}
 
             {routeId === "start-gate" && <StartGate locale="en" />}
             {routeId === "5-2" && <Dashboard locale="en" />}
@@ -77,12 +77,10 @@ export default function PageClient({ params, initialSopData = null }) {
             {routeId === "9-1" && <ContentElementAnalyzer locale="en" />}
             {/^[1-4]-|^8-/.test(routeId) && <SopContent routeId={routeId} locale="en" initialData={initialSopData} />}
             <ToolLongform toolId={routeId} locale="en" />
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <ToolConnections toolId={routeId} locale="en" />}
           </article>
         </main>
       </div>
       {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DemoNoticeModal locale="en" />}
-      {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <DmNudge locale="en" />}
       <GlobalModals locale="en" />
     </>
   );

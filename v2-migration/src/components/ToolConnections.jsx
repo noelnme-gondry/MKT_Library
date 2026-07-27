@@ -9,8 +9,8 @@ import { getJourneyContext, getNextTools } from "@/lib/toolConnections";
 const COPY = {
   ko: {
     eyebrow: "NEXT DECISION",
-    title: "이 분석 다음에는 무엇을 확인할까요?",
-    deck: "결과를 다음 판단으로 이어가세요. 첫 번째 카드는 지금 흐름에서 가장 가까운 다음 단계입니다.",
+    title: "현재 판단 위치",
+    deck: "결과를 확인한 뒤 바로 이어갈 분석",
     recommended: "추천 다음 단계",
     sameData: "같은 CSV로 이어보기",
     newData: "새 데이터 준비",
@@ -20,11 +20,12 @@ const COPY = {
     cycle: "다음 운영 주기",
     mapDeck: "어디서 시작해도 괜찮습니다. 앞뒤 단계와 같은 단계의 다른 도구로 자유롭게 이동하세요.",
     templateReason: "새 데이터가 필요한 다음 분석을 위해 템플릿을 미리 준비하세요",
+    expand: "전체 경로·입력 템플릿",
   },
   en: {
     eyebrow: "NEXT DECISION",
-    title: "What should you check after this analysis?",
-    deck: "Carry the result into the next decision. The first card is the closest next step in this workflow.",
+    title: "Current decision stage",
+    deck: "Analyses to continue after reviewing the result",
     recommended: "Recommended next step",
     sameData: "Continue with the same CSV",
     newData: "Prepare a new dataset",
@@ -34,6 +35,7 @@ const COPY = {
     cycle: "Next operating cycle",
     mapDeck: "Start anywhere, then move freely to the previous, next, or an alternative tool in the same stage.",
     templateReason: "Prepare the mapping template for a next analysis that needs a new dataset",
+    expand: "Full path and input template",
   },
 };
 
@@ -46,29 +48,15 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
   const templateTarget = nextTools.find((tool) => !tool.isSameData);
 
   return (
-    <section className="tool-connections" aria-labelledby={`tool-connections-${toolId}`}>
+    <section className="tool-connections tool-connections--rail" aria-labelledby={`tool-connections-${toolId}`}>
       <header className="tool-connections__head">
         <span>{T.eyebrow}</span>
-        <h2 id={`tool-connections-${toolId}`}>{T.title}</h2>
+        <div>
+          <small>{T.title}</small>
+          <h2 id={`tool-connections-${toolId}`}>{journey?.stage.title[lang]}</h2>
+        </div>
         <p>{T.deck}</p>
       </header>
-      {journey && (
-        <div className="tool-connections__map" aria-label={T.mapDeck}>
-          <p>{T.mapDeck}</p>
-          <div>
-            <JourneyLinks label={T.back} tools={journey.previous} sourceToolId={toolId} locale={lang} />
-            {journey.alternatives.length > 0 && (
-              <JourneyLinks label={T.here} tools={journey.alternatives} sourceToolId={toolId} locale={lang} />
-            )}
-            <JourneyLinks
-              label={journey.isCycleRestart ? T.cycle : T.forward}
-              tools={journey.next}
-              sourceToolId={toolId}
-              locale={lang}
-            />
-          </div>
-        </div>
-      )}
       <div className="tool-connections__grid">
         {nextTools.map((tool, index) => (
           <Link
@@ -92,20 +80,39 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
               </em>
             </div>
             <strong>{tool.title}</strong>
-            <p>{tool.question}</p>
             <b aria-hidden="true">→</b>
           </Link>
         ))}
       </div>
-      {templateTarget && (
-        <ToolTemplateAction
-          toolId={templateTarget.id}
-          locale={lang}
-          compact
-          reason={T.templateReason}
-          source={`connection_from_${toolId}`}
-        />
-      )}
+      <details className="tool-connections__more">
+        <summary>{T.expand} <span aria-hidden="true">＋</span></summary>
+        {journey && (
+          <div className="tool-connections__map" aria-label={T.mapDeck}>
+            <p>{T.mapDeck}</p>
+            <div>
+              <JourneyLinks label={T.back} tools={journey.previous} sourceToolId={toolId} locale={lang} />
+              {journey.alternatives.length > 0 && (
+                <JourneyLinks label={T.here} tools={journey.alternatives} sourceToolId={toolId} locale={lang} />
+              )}
+              <JourneyLinks
+                label={journey.isCycleRestart ? T.cycle : T.forward}
+                tools={journey.next}
+                sourceToolId={toolId}
+                locale={lang}
+              />
+            </div>
+          </div>
+        )}
+        {templateTarget && (
+          <ToolTemplateAction
+            toolId={templateTarget.id}
+            locale={lang}
+            compact
+            reason={T.templateReason}
+            source={`connection_from_${toolId}`}
+          />
+        )}
+      </details>
     </section>
   );
 }

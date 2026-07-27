@@ -1,41 +1,90 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clearAnalysisRuns, deleteAnalysisRun, listAnalysisRuns, saveAnalysisRun } from "@/lib/data-import/localHistory";
+
+function matchesLocale(run, locale) {
+  if (run.locale) return run.locale === locale;
+  const headline = String(run.summary?.headline || "");
+  const hasKorean = /[가-힣]/.test(headline);
+  return locale === "en" ? !hasKorean : hasKorean;
+}
 
 export default function AnalysisHistory({ toolId, summary, locale = "ko" }) {
   const [runs, setRuns] = useState([]);
   const summarySignature = useMemo(() => JSON.stringify(summary), [summary]);
   const lastSavedSignature = useRef("");
+  const load = useCallback(() => listAnalysisRuns(toolId)
+    .then((items) => items.filter((run) => matchesLocale(run, locale)))
+    .then(setRuns)
+    .catch(() => {}), [locale, toolId]);
   useEffect(() => {
-    if (!summarySignature || summarySignature === lastSavedSignature.current) return;
-    lastSavedSignature.current = summarySignature;
+    const localizedSignature = `${locale}|${summarySignature}`;
+    if (!summarySignature || localizedSignature === lastSavedSignature.current) return;
+    lastSavedSignature.current = localizedSignature;
     const parsedSummary = JSON.parse(summarySignature);
-    saveAnalysisRun({ toolId, summary: parsedSummary, signature: summarySignature }).then(() => listAnalysisRuns(toolId)).then(setRuns).catch(() => {});
-  }, [toolId, summarySignature]);
+    saveAnalysisRun({
+      toolId,
+      locale,
+      summary: parsedSummary,
+      signature: localizedSignature,
+    }).then(load).catch(() => {});
+  }, [toolId, locale, summarySignature, load]);
   if (runs.length === 0) return null;
   const previous = runs[1];
-  const refresh = () => listAnalysisRuns(toolId).then(setRuns).catch(() => {});
-  const remove = (id) => deleteAnalysisRun(id).then(refresh).catch(() => {});
+  const remove = (id) => deleteAnalysisRun(id).then(load).catch(() => {});
   const clear = () => clearAnalysisRuns(toolId).then(() => setRuns([])).catch(() => {});
+  const dateLocale = locale === "en" ? "en-US" : "ko-KR";
+  const copy = locale === "en"
+    ? {
+        title: "Saved decisions",
+        local: "Stored only in this browser",
+        current: "Current result",
+        previous: "Previous result",
+        clear: "Clear history",
+        remove: "Delete",
+        count: `${runs.length} saved`,
+      }
+    : {
+        title: "저장된 판단 기록",
+        local: "이 브라우저에만 보관",
+        current: "현재 결과",
+        previous: "직전 결과",
+        clear: "기록 전체 삭제",
+        remove: "삭제",
+        count: `${runs.length}개 저장`,
+      };
   return (
-    <div className="callout" style={{ marginTop: "12px" }}>
-      <div className="ico">◷</div>
-      <div className="body" style={{ width: "100%" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-          <strong>{locale === "en" ? "Local analysis history" : "로컬 분석 기록"}</strong>
-          <span style={{ color: "var(--text-muted)", fontSize: 11 }}>{locale === "en" ? `${runs.length} saved run(s), browser-only` : `${runs.length}개 저장됨 · 이 브라우저에만 보관`}</span>
-          <button type="button" className="ab-pill" style={{ marginLeft: "auto", fontSize: 11 }} onClick={clear}>{locale === "en" ? "Clear all" : "전체 삭제"}</button>
+    <section className="analysis-history">
+      <header>
+        <div>
+          <span>DECISION LOG</span>
+          <strong>{copy.title}</strong>
         </div>
-        {previous && <div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 6 }}>{locale === "en" ? `Prior result: ${previous.summary?.headline || "—"}` : `직전 결론: ${previous.summary?.headline || "—"}`}</div>}
-        <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
-          {runs.map((run, index) => (
-            <div key={run.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "var(--text-muted)" }}>
-              <span style={{ flex: 1 }}>{index === 0 ? (locale === "en" ? "Current" : "현재") : new Date(run.savedAt).toLocaleString(locale === "en" ? "en-US" : "ko-KR")} · {run.summary?.headline || "—"}</span>
-              <button type="button" className="ab-pill" style={{ fontSize: 10, padding: "3px 7px" }} onClick={() => remove(run.id)}>{locale === "en" ? "Delete" : "삭제"}</button>
+        <small>{copy.count} · {copy.local}</small>
+        <button type="button" onClick={clear}>{copy.clear}</button>
+      </header>
+      {previous && (
+        <div className="analysis-history__compare">
+          <span>{copy.previous}</span>
+          <p>{previous.summary?.headline || "—"}</p>
+        </div>
+      )}
+      <div className="analysis-history__runs">
+        {runs.map((run, index) => (
+          <article key={run.id}>
+            <div className="analysis-history__run-meta">
+              <span>{index === 0 ? copy.current : new Date(run.savedAt).toLocaleString(dateLocale, { dateStyle: "medium", timeStyle: "short" })}</span>
+              <button type="button" onClick={() => remove(run.id)}>{copy.remove}</button>
             </div>
-          ))}
-        </div>
+            <strong>{run.summary?.headline || "—"}</strong>
+            <div className="analysis-history__stats">
+              {(run.summary?.stats || []).slice(0, 3).map((stat, statIndex) => (
+                <span key={`${stat.label}-${statIndex}`}>{stat.label} <b>{stat.value}</b></span>
+              ))}
+            </div>
+          </article>
+        ))}
       </div>
-    </div>
+    </section>
   );
 }
