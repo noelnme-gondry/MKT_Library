@@ -1477,29 +1477,35 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     headers,
     ...(csvData?.raw || []).map((row) => headers.map((h) => row[h] ?? "")),
   ]);
-  const stlActual = trend?.stl ? (mmm.panel.targets[mmm.target] || []) : [];
+  const stlActual = trend?.stl ? (trend.rawTarget || mmm.panel.targets[mmm.target] || []) : [];
+  const stlPerformance = trend?.stl ? (trend.performanceContribution || []) : [];
+  const stlBaseline = trend?.stl ? (trend.baselineTarget || stlActual) : [];
   const stlData = trend?.stl ? mmm.panel.week.map((w, i) => {
     const actual = Number(stlActual[i]);
+    const performance = Number(stlPerformance[i]);
+    const baseline = Number(stlBaseline[i]);
     const trendValue = Number(trend.stl.trend?.[i]);
     const seasonal = Number(trend.stl.seasonal?.[i]);
     const residual = Number(trend.stl.residual?.[i]);
-    const finiteParts = [actual, trendValue, seasonal, residual].every(Number.isFinite);
+    const finiteParts = [actual, performance, baseline, trendValue, seasonal, residual].every(Number.isFinite);
     return [
       i,
       mmm.panel.weekLabel?.[i] || w,
       actual,
+      performance,
+      baseline,
       trendValue,
       seasonal,
       residual,
       finiteParts ? seasonal + residual : null,
-      finiteParts ? actual - trendValue - seasonal - residual : null,
+      finiteParts ? baseline - trendValue - seasonal - residual : null,
     ];
   }) : [];
   const stlIdentityError = stlData.length
-    ? Math.max(...stlData.map((row) => Math.abs(Number(row[7]) || 0)))
+    ? Math.max(...stlData.map((row) => Math.abs(Number(row[9]) || 0)))
     : null;
   add("02_STL", trend?.stl ? [
-    ["week_index", "week", "actual", "trend", "seasonality", "residual", "non_trend_seasonality_plus_residual", "recomposition_error"],
+    ["week_index", "week", "actual", "performance_contribution_removed", "performance_excluded_baseline_input", "trend", "seasonality", "residual", "non_trend_seasonality_plus_residual", "recomposition_error"],
     ...stlData,
   ] : [[tx("STL 결과", "STL result")], [tx("이 패키지는 시계열 점검 단계에서 다운로드하면 STL 원자료를 포함합니다.", "Download from the time-series step to include STL source data.")]]);
   add("02_STL_Notes", trend?.stl ? [
@@ -1512,10 +1518,10 @@ function downloadMmmWorkbook({ mmm, cannib, decomp, trend, forecast, csvData, co
     [tx("결측 주차", "Missing weeks"), trend.stl.missingCount ?? null],
     [tx("계절성 강도", "Seasonality strength"), trend.stl.seasonalStrength ?? null],
     [tx("추세 강도", "Trend strength"), trend.stl.trendStrength ?? null],
-    [tx("분해 항등식", "Decomposition identity"), "actual = trend + seasonality + residual"],
+    [tx("분해 항등식", "Decomposition identity"), "performance_excluded_baseline_input = trend + seasonality + residual"],
     [tx("재구성 최대 오차", "Maximum reconstruction error"), stlIdentityError],
     [tx("해석 주의", "Interpretation warning"), tx("residual은 광고·이벤트·업황·측정오차가 섞인 불규칙 성분일 수 있으며 순수 광고효과가 아닙니다.", "Residual can contain media, events, industry movement, and measurement noise; it is not pure ad effect.")],
-    [tx("외부 그래프 작성", "External plotting"), tx("02_STL의 week를 x축으로 사용하고 actual/trend/seasonality/residual을 각각 그리세요. non_trend_seasonality_plus_residual은 추세 외 합계입니다.", "Use week as x-axis and plot actual/trend/seasonality/residual separately. non_trend_seasonality_plus_residual is the combined non-trend component.")],
+    [tx("외부 그래프 작성", "External plotting"), tx("02_STL의 week를 x축으로 사용하세요. actual에서 performance_contribution_removed를 빼면 performance_excluded_baseline_input이 됩니다. 그 입력의 trend/seasonality/residual을 각각 그리세요. Branding은 이 입력에 남아 있습니다.", "Use week as x-axis. Subtract performance_contribution_removed from actual to obtain performance_excluded_baseline_input, then plot its trend/seasonality/residual. Branding remains in this input.")],
   ] : [[tx("STL 안내", "STL notes")], [tx("STL 결과가 없어 안내를 만들 수 없습니다.", "No STL result is available for notes.")]]);
   add("03_Cannibal", cannib?.cannibRank ? [
     ["channel", "verdict", "eligible", "active_weeks", "precedence_vote", "detrend_vote", "net_vote", "lag_p", "lag_coef", "notes"],
@@ -4166,7 +4172,23 @@ export default function MarketingResponse({ locale = "ko" }) {
   const trend = useMemo(() => {
     if (!mmm || mmm.empty || !["trend", "diagnose"].includes(stage)) return null;
     try {
-      return mmmTrendExistence(mmm.panel, mmm.cfg, mmm.target, locale);
+      const rawTarget = mmm.panel.targets[mmm.target] || [];
+      const weeks = mmm.run?.weeks || [];
+      // Baseline STL must not learn Performance as natural demand. Branding
+      // remains in this input by design and is stated explicitly in the UI.
+      const performanceContribution = rawTarget.map((value, index) => {
+        const groupValue = Number(weeks[index]?.contrib?.Performance);
+        return Number.isFinite(groupValue) ? groupValue : 0;
+      });
+      const baselineTarget = rawTarget.map((value, index) => Number(value) - performanceContribution[index]);
+      const baselinePanel = {
+        ...mmm.panel,
+        channels: [],
+        ch: {},
+        targets: { ...mmm.panel.targets, [mmm.target]: baselineTarget },
+      };
+      const result = mmmTrendExistence(baselinePanel, mmm.cfg, mmm.target, locale);
+      return { ...result, rawTarget, baselineTarget, performanceContribution, trendInput: "performance-excluded-baseline" };
     } catch (e) {
       return null;
     }
@@ -4181,16 +4203,18 @@ export default function MarketingResponse({ locale = "ko" }) {
       const first = Number(values[0]), last = Number(values.at(-1));
       return Number.isFinite(first) && Number.isFinite(last) ? last - first : null;
     };
-    const targetValues = mmm.panel.targets[mmm.target] || [];
+    const targetValues = trend.rawTarget || mmm.panel.targets[mmm.target] || [];
+    const baselineTarget = trend.baselineTarget || targetValues;
+    const performanceContribution = trend.performanceContribution || targetValues.map(() => 0);
     const stlTrend = trend.stl?.trend || [];
-    const stlNonTrend = targetValues.map((value, index) => {
+    const stlNonTrend = baselineTarget.map((value, index) => {
       const trendValue = Number(stlTrend[index]);
       return Number.isFinite(Number(value)) && Number.isFinite(trendValue)
         ? Number(value) - trendValue
         : NaN;
     });
     const stlRows = [
-      { key: "stl-trend", label: tx("순수 STL 추세", "Pure STL trend"), tone: "#38bdf8", change: delta(trend.stl?.trend) },
+      { key: "stl-trend", label: tx("순수 베이스라인 STL 추세", "Pure baseline STL trend"), tone: "#38bdf8", change: delta(trend.stl?.trend) },
       { key: "stl-seasonal", label: tx("계절성 조정", "Seasonality adjustment"), tone: "#5DCAA5", change: delta(trend.stl?.seasonal) },
       { key: "stl-residual", label: tx("불규칙·잔차", "Irregular / residual"), tone: "#94a3b8", change: delta(trend.stl?.residual) },
     ];
@@ -4211,6 +4235,8 @@ export default function MarketingResponse({ locale = "ko" }) {
     })).filter((row) => Math.abs(row.change) > 0.05);
     return {
       rawChange: delta(targetValues),
+      performanceChange: delta(performanceContribution),
+      baselineInputChange: delta(baselineTarget),
       stlTrendChange: delta(stlTrend),
       stlNonTrendChange: delta(stlNonTrend),
       stlNonTrend,
@@ -4686,12 +4712,13 @@ export default function MarketingResponse({ locale = "ko" }) {
     return () => inst.forEach((c) => c && c.destroy());
   }, [stage, forecast, forecastEnhancement, fcIntervalMode, tx, targetValueLabel]);
 
-  // Stage ① trend chart: actual/trend share the primary axis; seasonality+residual
-  // is shown as a zero-centered secondary-axis signal so a flat trend is explainable.
+  // Stage ① trend chart: raw RR and Performance-excluded baseline input share the
+  // primary axis. The zero-centered non-trend remainder explains the baseline STL trend.
   useEffect(() => {
     const inst = [];
     if (["trend", "diagnose"].includes(stage) && trend && trendRef.current && mmm && !mmm.empty) {
-      const y = mmm.panel.targets[mmm.target];
+      const y = trend.rawTarget || mmm.panel.targets[mmm.target];
+      const baseline = trend.baselineTarget || y;
       const labels = mmm.panel.weekLabel || y.map((_, i) => i + 1);
       inst.push(
         new Chart(trendRef.current.getContext("2d"), {
@@ -4700,9 +4727,10 @@ export default function MarketingResponse({ locale = "ko" }) {
             labels,
             datasets: [
               { label: tx("실제 RR", "Actual RR"), data: y, borderColor: CHART_THEME.muted, pointRadius: 0, borderWidth: 2, tension: 0.15 },
-              { label: tx("순수 STL 추세", "Pure STL trend"), data: trend.stl?.trend || [], borderColor: "#38bdf8", pointRadius: 0, borderWidth: 2.5, tension: 0.15 },
+              { label: tx("Performance 제외 성과(베이스라인 입력)", "Performance-excluded outcome (baseline input)"), data: baseline, borderColor: "#f59e0b", borderDash: [4, 3], pointRadius: 0, borderWidth: 1.8, tension: 0.15 },
+              { label: tx("순수 베이스라인 STL 추세", "Pure baseline STL trend"), data: trend.stl?.trend || [], borderColor: "#38bdf8", pointRadius: 0, borderWidth: 2.5, tension: 0.15 },
               {
-                label: tx("추세 외 요인 (계절성 + 잔차)", "Non-trend (seasonality + residual)"),
+                label: tx("베이스라인 추세 외 요인 (계절성 + 잔차)", "Baseline non-trend (seasonality + residual)"),
                 data: trendLedger?.stlNonTrend || [],
                 borderColor: "#5DCAA5",
                 backgroundColor: "rgba(93,202,165,0.12)",
@@ -5184,7 +5212,7 @@ export default function MarketingResponse({ locale = "ko" }) {
           {stage === "trend" && (
             <section className="block" id="s-trend">
               <h2 className="section-title">{tx("광고 전에: 자연 추세·계절성을 먼저 분리합니다", "Before ads: separate natural trend and seasonality")}</h2>
-                <p className="muted" style={{ fontSize: "12px", marginBottom: "10px" }}>{tx("STL은 성과를 추세·계절성·불규칙 요인으로 나눕니다. 파란선은 추세만, 초록 점선은 실제값에서 추세를 뺀 나머지 변화입니다. 오른쪽 축으로 초록선을 읽으면 파란선이 평평한 이유를 확인할 수 있습니다.", "STL separates outcome into trend, seasonality, and irregular movement. The blue line is trend only; the green dashed line is actual minus trend. Read the green line on the right axis to see why the blue line can stay flat.")}</p>
+                <p className="muted" style={{ fontSize: "12px", marginBottom: "10px" }}>{tx("먼저 MMM Performance 기여를 실제 RR에서 빼고, 그 Performance 제외 성과를 baseline = 추세 + 계절성 + 잔차로 STL 분해합니다. 파란선은 광고에 잡힌 Performance 하락을 자연 추세로 다시 세지 않은 베이스라인 추세입니다. Branding은 입력에 남아 있으므로 완전한 미디어 0 반사실이 아닙니다.", "First subtract MMM Performance contribution from actual RR, then decompose the Performance-excluded outcome as baseline = trend + seasonality + residual. The blue line is the baseline trend without reclassifying paid Performance decline as natural trend. Branding remains in the input, so this is not a fully media-zero counterfactual.")}</p>
               {trend ? <>
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "10px" }}>
                   <div className="stat-card"><div className="lbl">STL</div><div className="val">{trend.stl_pct >= 0 ? "+" : ""}{fmtOne(trend.stl_pct)}%</div></div>
@@ -5197,13 +5225,14 @@ export default function MarketingResponse({ locale = "ko" }) {
                     <div className="trend-chart-explainer__eyebrow">{tx("이 차트 읽는 법", "How to read this chart")}</div>
                     <p>
                       {tx(
-                        `실제 RR은 ${fmtSignedInt(trendLedger.rawChange)}명 변했지만, 순수 추세는 ${fmtSignedInt(trendLedger.stlTrendChange)}명입니다. 나머지 ${fmtSignedInt(trendLedger.stlNonTrendChange)}명은 계절성·잔차에 남아 있어 파란 추세선에는 반영되지 않습니다.`,
-                        `Actual RR changed by ${fmtSignedInt(trendLedger.rawChange)}, while pure trend changed by ${fmtSignedInt(trendLedger.stlTrendChange)}. The remaining ${fmtSignedInt(trendLedger.stlNonTrendChange)} is in seasonality and residual, so it does not move the blue trend line.`
+                        `실제 RR은 ${fmtSignedInt(trendLedger.rawChange)}명, Performance 기여는 ${fmtSignedInt(trendLedger.performanceChange)}명 변했고, Performance 제외 입력은 ${fmtSignedInt(trendLedger.baselineInputChange)}명 변했습니다. 그 입력의 순수 베이스라인 추세는 ${fmtSignedInt(trendLedger.stlTrendChange)}명, 나머지 ${fmtSignedInt(trendLedger.stlNonTrendChange)}명은 계절성·잔차입니다.`,
+                        `Actual RR changed by ${fmtSignedInt(trendLedger.rawChange)} and Performance contribution changed by ${fmtSignedInt(trendLedger.performanceChange)}. The Performance-excluded input changed by ${fmtSignedInt(trendLedger.baselineInputChange)}; its pure baseline trend changed by ${fmtSignedInt(trendLedger.stlTrendChange)}, with ${fmtSignedInt(trendLedger.stlNonTrendChange)} remaining in seasonality and residual.`
                       )}
                     </p>
                     <div className="trend-chart-explainer__legend">
-                      <span><i style={{ background: "#38bdf8" }} />{tx("왼쪽 축: 실제·순수 추세", "Left axis: actual · pure trend")}</span>
-                      <span><i style={{ background: "#5DCAA5" }} />{tx("오른쪽 축: 추세 외 변화량(0 기준)", "Right axis: non-trend change (zero-centered)")}</span>
+                      <span><i style={{ background: "#f59e0b" }} />{tx("왼쪽 축: Performance 제외 베이스라인 입력", "Left axis: Performance-excluded baseline input")}</span>
+                      <span><i style={{ background: "#38bdf8" }} />{tx("왼쪽 축: 순수 베이스라인 추세", "Left axis: pure baseline trend")}</span>
+                      <span><i style={{ background: "#5DCAA5" }} />{tx("오른쪽 축: 베이스라인 추세 외 변화량(0 기준)", "Right axis: baseline non-trend change (zero-centered)")}</span>
                     </div>
                   </div>
                 )}
@@ -5211,17 +5240,17 @@ export default function MarketingResponse({ locale = "ko" }) {
                   <div className="trend-change-ledgers">
                     <p className="trend-change-ledgers__intro">
                       {tx(
-                        "실제선의 변화와 순수 추세의 변화가 다르면, 그 차이는 계절성·불규칙 요인 또는 모델이 함께 설명한 업황·이벤트·광고 변화에서 옵니다. 막대는 첫 주에서 마지막 주까지의 변화량입니다.",
-                        "When the actual and pure-trend changes differ, the gap comes from seasonality, irregular movement, or modelled industry, event, and media changes. Bars show the change from the first to the last week."
+                        "Performance 기여를 제거한 입력을 기준으로 베이스라인 STL 원장을 계산합니다. Performance 변화는 원본 RR과 베이스라인 입력 사이에 별도로 표시되고, 파란선·계절성·잔차의 합은 Performance 제외 입력 변화와 맞아야 합니다. 막대는 첫 주에서 마지막 주까지의 변화량입니다.",
+                        "The baseline STL ledger is calculated from the Performance-excluded input. Performance change is shown separately between raw RR and the baseline input; baseline trend, seasonality, and residual must sum to the baseline-input change. Bars show the change from the first to the last week."
                       )}
                     </p>
                     <div className="trend-change-ledgers__grid">
                       <TrendChangeBars
                         title={tx("STL 변화 원장", "STL change ledger")}
-                        subtitle={tx("실제 = 추세 + 계절성 + 잔차", "Actual = trend + seasonality + residual")}
+                        subtitle={tx("Performance 제외 입력 = 베이스라인 추세 + 계절성 + 잔차", "Performance-excluded input = baseline trend + seasonality + residual")}
                         rows={trendLedger.stlRows}
-                        total={trendLedger.rawChange}
-                        totalLabel={tx("실제 변화", "Actual change")}
+                        total={trendLedger.baselineInputChange}
+                        totalLabel={tx("Performance 제외 입력 변화", "Performance-excluded input change")}
                         tx={tx}
                       />
                       {trendLedger.modelRows.length > 0 && (
