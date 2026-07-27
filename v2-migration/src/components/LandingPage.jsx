@@ -7,6 +7,7 @@ import { trItemTitle } from "@/lib/enNavCopy";
 import { trackProductEvent } from "@/lib/analytics";
 import ProductPreview from "@/components/landing/ProductPreview";
 import ToolCarousel from "@/components/landing/ToolCarousel";
+import ConnectedToolJourney from "@/components/ConnectedToolJourney";
 
 // 랜딩 화면 전용 EN 카피 — 앱 전체 번역은 범위 밖(§1), 이 랜딩 히어로/3카드/블로그
 // 배너/소셜 행만 locale 분기. LandingGuide/Analyze/Content 하위 트랙은 IA 원본
@@ -60,7 +61,7 @@ const LANDING_COPY = {
       desc: "퍼포먼스·콘텐츠 마케팅 실무 인사이트와 데이터·SEO·그로스 팁을 정기적으로 업데이트합니다.",
       cta: "글 보러 가기 →",
     },
-    social: { youtube: "유튜브", instagram: "인스타그램", facebook: "페이스북", feedback: "1분 설문 남기기" },
+    social: { youtube: "유튜브", instagram: "인스타그램", facebook: "페이스북", naverBlog: "네이버 블로그" },
     back: "← 처음으로",
   },
   en: {
@@ -111,7 +112,7 @@ const LANDING_COPY = {
       desc: "Practical performance and content marketing insights — data, SEO, and growth tips, updated regularly.",
       cta: "Read the blog →",
     },
-    social: { youtube: "YouTube", instagram: "Instagram", facebook: "Facebook", feedback: "Take our 1-min survey" },
+    social: { youtube: "YouTube", instagram: "Instagram", facebook: "Facebook", naverBlog: "Naver Blog" },
     back: "← Back to home",
   },
 };
@@ -346,6 +347,8 @@ function LandingHome({ locale }) {
         locale={locale}
       />
 
+      <ConnectedToolJourney locale={locale} />
+
       {/* ── 블로그 | SOP 나란히(읽을거리·문서 2대장). 각자 자체 주소(/blog · /guide). ── */}
       <section className="landing-exit-grid" aria-label={locale === "en" ? "Keep learning or prepare data" : "더 알아보거나 데이터 준비하기"}>
         <Link href={locale === "en" ? "/en/blog" : "/blog"} className="home-hub-card landing-exit-card">
@@ -403,9 +406,9 @@ function LandingHome({ locale }) {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12.06C22 6.51 17.52 2 12 2S2 6.51 2 12.06c0 5.01 3.66 9.16 8.44 9.94v-7.03H7.9v-2.91h2.54V9.79c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.23.2 2.23.2v2.75h-1.26c-1.24 0-1.63.78-1.63 1.58v1.89h2.78l-.44 2.91h-2.34V22c4.78-.78 8.44-4.93 8.44-9.94Z"/></svg>
           <span>{L.social.facebook}</span>
         </a>
-        <a className="landing-social-btn ls-feedback" href="https://forms.gle/vxTfmt6HmxwNnWb99" target="_blank" rel="noopener noreferrer" onClick={() => fireGa("feedback_open", { from: "landing" })}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
-          <span>{L.social.feedback}</span>
+        <a className="landing-social-btn ls-naver" href="https://blog.naver.com/growthoptplaybook" target="_blank" rel="noopener noreferrer" onClick={() => fireGa("social_click", { network: "naver_blog", from: "landing" })}>
+          <span className="social-letter-icon" aria-hidden="true">N</span>
+          <span>{L.social.naverBlog}</span>
         </a>
       </div>
     </div>

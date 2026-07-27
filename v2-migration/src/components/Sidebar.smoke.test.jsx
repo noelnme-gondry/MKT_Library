@@ -37,10 +37,19 @@ describe("Sidebar render smoke", () => {
   it("no-data mounts", () => {
     expect(() => render(<Sidebar />)).not.toThrow();
     expect(document.querySelector("nav#nav")).toBeTruthy();
+    expect(document.querySelectorAll(".sidebar-library-link")).toHaveLength(4);
+    expect(document.querySelectorAll(".sidebar-social .ss-btn")).toHaveLength(4);
+    expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
   });
   it("with-data mounts", () => {
     seedWithData();
     expect(() => render(<Sidebar />)).not.toThrow();
     expect(document.querySelector("aside.sidebar")).toBeTruthy();
+  });
+  it("keeps resource and external-link parity in English", () => {
+    const { container } = render(<Sidebar locale="en" />);
+    expect(container.textContent).toContain("Operating Guide");
+    expect(container.textContent).toContain("Naver Blog");
+    expect(container.querySelector('a[href="/en/guide"]')).toBeTruthy();
   });
 });

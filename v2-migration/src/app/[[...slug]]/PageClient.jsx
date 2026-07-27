@@ -15,6 +15,7 @@ import DemoNoticeModal from "@/components/DemoNoticeModal";
 import DmNudge from "@/components/DmNudge";
 import ToolIntro from "@/components/ToolIntro";
 import ToolLongform from "@/components/ToolLongform";
+import ToolConnections from "@/components/ToolConnections";
 
 // 도구는 무겁고(Chart.js·XLSX·PapaParse) 라우트별로 하나만 필요 → next/dynamic으로
 // 코드 분할. 정적 import 시 홈 포함 모든 경로가 앱 전체 JS(~1MB)를 최초 로드해
@@ -101,6 +102,7 @@ export default function PageClient({ params }) {
               <SopContent routeId={routeId} />
             )}
             <ToolLongform toolId={routeId} />
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <ToolConnections toolId={routeId} />}
           </article>
         </main>
       </div>

@@ -12,24 +12,26 @@ const SIDEBAR_COPY = {
   ko: {
     searchPlaceholder: "가이드·파라미터·코드 검색…",
     blog: "블로그",
+    guide: "운영 가이드",
     templates: "CSV 템플릿",
     glossary: "용어사전",
     youtube: "유튜브",
     instagram: "인스타",
     facebook: "페북",
-    survey: "설문",
-    resourceLabel: "더 알아보기",
+    naverBlog: "네이버 블로그",
+    resourceLabel: "LIBRARY",
   },
   en: {
     searchPlaceholder: "Search guides, params, code…",
     blog: "Blog",
+    guide: "Operating Guide",
     templates: "CSV Templates",
     glossary: "Glossary",
-    resourceLabel: "More",
+    resourceLabel: "LIBRARY",
     youtube: "YouTube",
     instagram: "Instagram",
     facebook: "Facebook",
-    survey: "Survey",
+    naverBlog: "Naver Blog",
   },
 };
 
@@ -170,54 +172,36 @@ export default function Sidebar({ locale = "ko" }) {
         })}
       </nav>
 
-      {/* 블로그·템플릿·용어사전 = routeMap/IA 밖 보조 리소스(§UX 개선: "분석" 도구와
-          시각적으로 경쟁하지 않도록 muted 톤 + 한 묶음으로 그룹핑, 작은 라벨로 구분). */}
+      {/* 메인 IA는 그대로 유지하고, 자주 찾는 리소스만 긴 카드로 다시 노출한다. */}
       <div className="sidebar-resource-label">{T.resourceLabel}</div>
-      <section className="phase-section phase-section--resource" data-section="resources">
+      <section className="sidebar-library" data-section="resources">
         <Link
           href={locale === "en" ? "/en/blog" : "/blog"}
-          className="phase-header"
+          className="sidebar-library-link"
           aria-current={(pathname || "").includes("/blog") ? "page" : undefined}
-          style={{
-            textDecoration: "none",
-            color: "inherit",
-            background: (pathname || "").includes("/blog") ? "rgba(255,255,255,.08)" : undefined,
-          }}
         >
-          <span className="phase-header-left">
-            <span className="phase-tag phase-tag--muted">{T.blog}</span>
-          </span>
-          <span style={{ fontSize: "13px", opacity: 0.6 }}>→</span>
+          <span><strong>{T.blog}</strong><small>INSIGHTS</small></span><b>↗</b>
+        </Link>
+        <Link
+          href={locale === "en" ? "/en/guide" : "/guide"}
+          className="sidebar-library-link"
+          aria-current={(pathname || "").includes("/guide") ? "page" : undefined}
+        >
+          <span><strong>{T.guide}</strong><small>SOP</small></span><b>↗</b>
         </Link>
         <Link
           href={locale === "en" ? "/en/templates" : "/templates"}
-          className="phase-header"
+          className="sidebar-library-link"
           aria-current={(pathname || "").includes("/templates") ? "page" : undefined}
-          style={{
-            textDecoration: "none",
-            color: "inherit",
-            background: (pathname || "").includes("/templates") ? "rgba(255,255,255,.08)" : undefined,
-          }}
         >
-          <span className="phase-header-left">
-            <span className="phase-tag phase-tag--muted">{T.templates}</span>
-          </span>
-          <span style={{ fontSize: "13px", opacity: 0.6 }}>→</span>
+          <span><strong>{T.templates}</strong><small>FILES</small></span><b>↗</b>
         </Link>
         <Link
           href={locale === "en" ? "/en/glossary" : "/glossary"}
-          className="phase-header"
+          className="sidebar-library-link"
           aria-current={(pathname || "").includes("/glossary") ? "page" : undefined}
-          style={{
-            textDecoration: "none",
-            color: "inherit",
-            background: (pathname || "").includes("/glossary") ? "rgba(255,255,255,.08)" : undefined,
-          }}
         >
-          <span className="phase-header-left">
-            <span className="phase-tag phase-tag--muted">{T.glossary}</span>
-          </span>
-          <span style={{ fontSize: "13px", opacity: 0.6 }}>→</span>
+          <span><strong>{T.glossary}</strong><small>TERMS</small></span><b>↗</b>
         </Link>
       </section>
 
@@ -234,9 +218,9 @@ export default function Sidebar({ locale = "ko" }) {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12.06C22 6.51 17.52 2 12 2S2 6.51 2 12.06c0 5.01 3.66 9.16 8.44 9.94v-7.03H7.9v-2.91h2.54V9.79c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.23.2 2.23.2v2.75h-1.26c-1.24 0-1.63.78-1.63 1.58v1.89h2.78l-.44 2.91h-2.34V22c4.78-.78 8.44-4.93 8.44-9.94Z"/></svg>
           <span>{T.facebook}</span>
         </a>
-        <a className="ss-btn ss-feedback" href="https://forms.gle/vxTfmt6HmxwNnWb99" target="_blank" rel="noopener noreferrer" title={T.survey}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
-          <span>{T.survey}</span>
+        <a className="ss-btn ss-naver" href="https://blog.naver.com/growthoptplaybook" target="_blank" rel="noopener noreferrer" title={T.naverBlog}>
+          <span className="social-letter-icon" aria-hidden="true">N</span>
+          <span>{T.naverBlog}</span>
         </a>
       </div>
     </aside>
