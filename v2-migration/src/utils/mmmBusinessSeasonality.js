@@ -99,6 +99,46 @@ export function buildObservedYearShapes(dateLabels, residuals, options = {}) {
     });
 }
 
+// Aggregate the repeated calendar-week residual shape across observed years.
+// The returned values are centered and scaled only for numerical conditioning;
+// the MMM estimates the final business-seasonality magnitude jointly with trend,
+// industry, events, and media.
+export function buildObservedBusinessSeasonality(dateLabels, residuals, options = {}) {
+  const shapes = buildObservedYearShapes(dateLabels, residuals, options)
+    .filter((item) => item.observedWeeks >= (options.minimumObservedWeeks ?? 40));
+  if (shapes.length < (options.minimumYears ?? 2)) {
+    return {
+      available: false,
+      reason: "fewer-than-two-observed-calendar-years",
+      yearCount: shapes.length,
+      values: [],
+    };
+  }
+  const values = Array.from({ length: 52 }, (_, index) => {
+    const observed = shapes.map((shape) => shape.shape[index]).filter(Number.isFinite);
+    return observed.length ? mean(observed) : 0;
+  });
+  const average = mean(values);
+  const centeredValues = values.map((value) => value - average);
+  const rms = Math.sqrt(mean(centeredValues.map((value) => value ** 2)));
+  if (!(rms > 1e-9)) {
+    return {
+      available: false,
+      reason: "flat-observed-seasonality-shape",
+      yearCount: shapes.length,
+      values: [],
+    };
+  }
+  return {
+    available: true,
+    reason: "observed-calendar-year-residual-shape",
+    yearCount: shapes.length,
+    observedYears: shapes.map((shape) => shape.year),
+    values: centeredValues.map((value) => value / rms),
+    amplitude: Math.max(...centeredValues) - Math.min(...centeredValues),
+  };
+}
+
 export function compareObservedYearShapes(shapes) {
   if (!Array.isArray(shapes) || shapes.length < 2) {
     return {

@@ -5,6 +5,7 @@ import { _Z975, mmmNormCdf, chi2Cdf, studentTp, studentTcrit } from "./statPrimi
 import { _mmmFmtDate } from "./regForecastMath.js";
 import {
   buildObservedYearShapes,
+  businessWeekOfYear,
   classifyBusinessSeasonality,
   compareObservedYearShapes,
 } from "./mmmBusinessSeasonality.js";
@@ -738,7 +739,7 @@ import {
             // depends on a raw header name; any mapped external industry series is
             // required and retained in the fit alongside annual seasonality.
             export const MMM_PRISM_MODEL_CONFIG = {
-              version: "prism-option-3-v1",
+              version: "prism-option-3-v2-observed-business-seasonality",
               trendPriorMultiplier: 1.1,
               trendStartMax: 58000,
               trendEndMin: 44000,
@@ -747,6 +748,7 @@ import {
               contributionShareSd: 0.002,
               wmapeMax: 10,
               seasonalityPeriods: [52.18],
+              seasonalityMode: "observed-business-shape",
               requiresExternalIndustry: true,
               selectionMethod: "fixed-option-3-constraint-profile",
             };
@@ -994,7 +996,16 @@ import {
                 names.push(nm);
                 cols.push(arr);
               };
-              if (cfg.seasonalityBasis?.type === "cyclic-rbf") {
+              if (cfg.seasonalityBasis?.type === "observed-business") {
+                const shape = Array.isArray(cfg.seasonalityBasis.values) ? cfg.seasonalityBasis.values : [];
+                push("business_seasonality", t.map((tt, index) => {
+                  const businessWeek = businessWeekOfYear(panel.dateLabel?.[index]);
+                  const shapeIndex = Number.isFinite(businessWeek) && businessWeek >= 1
+                    ? businessWeek - 1
+                    : Math.floor((((tt - 1) % 52) + 52) % 52);
+                  return Number.isFinite(shape[shapeIndex]) ? shape[shapeIndex] : 0;
+                }));
+              } else if (cfg.seasonalityBasis?.type === "cyclic-rbf") {
                 const knots = Math.max(4, Math.min(12, Math.round(cfg.seasonalityBasis.knots || 6)));
                 const period = cfg.seasonalityPeriods?.[0] || 52.18;
                 const bandwidth = 0.85 / knots;
@@ -4410,7 +4421,7 @@ import {
               const groupNames = ["Trend", "Seasonality", "Holidays & Events", ...(stepNames.size ? ["Regime change"] : []), ...(industryNames.size ? ["Industry Trend"] : []), ...mediaGroups];
               const groupFor = (name) => {
                 if (name === "trend" || name.startsWith("baseline_knot_")) return "Trend";
-                if (/^(sin|cos)_/.test(name) || name.startsWith("season_rbf_")) return "Seasonality";
+                if (/^(sin|cos)_/.test(name) || name.startsWith("season_rbf_") || name === "business_seasonality") return "Seasonality";
                 if (name === "lny" || name === "chuseok" || name.startsWith("d_")) return "Holidays & Events";
                 if (industryNames.has(name)) return "Industry Trend";
                 if (name.startsWith("media_")) {

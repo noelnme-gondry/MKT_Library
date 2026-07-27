@@ -56,6 +56,7 @@ import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import { buildDemoCsv, buildMmmPriorDemo } from "@/utils/demoData";
 import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, colMapMissing, mmmPlatformTags, mmmSegmentValues } from "@/components/tools/MmmColumnMapper";
+import { buildObservedBusinessSeasonality } from "@/utils/mmmBusinessSeasonality";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact } from "@/utils/format";
@@ -3702,6 +3703,39 @@ export default function MarketingResponse({ locale = "ko" }) {
         } : {}),
         absorbed: mmmClassicResolveAbsorb(panel, { ...MMM_CLASSIC_CONFIG, absorbed: new Set() }).absorbed,
       };
+      const prismNeutralRun = usePrismModel
+        ? mmmClassicBayesianRun(panel, {
+          ...classicBaseCfg,
+          seasonalityPeriods: [],
+          seasonalityBasis: null,
+        }, t, false, {
+          enableClassicControlSelection: false,
+          enableSeasonalitySelection: false,
+          enableBaselineSelection: false,
+          enableMediaPenaltySelection: false,
+          skipTransformUncertainty: true,
+        })
+        : null;
+      const prismBusinessSeasonality = usePrismModel
+        ? buildObservedBusinessSeasonality(panel.dateLabel, prismNeutralRun?.posterior?.resid || [])
+        : null;
+      const prismSeasonalityBasis = prismBusinessSeasonality?.available
+        ? {
+          type: "observed-business",
+          values: prismBusinessSeasonality.values,
+          yearCount: prismBusinessSeasonality.yearCount,
+          observedYears: prismBusinessSeasonality.observedYears,
+        }
+        : null;
+      if (usePrismModel && !prismBusinessSeasonality?.available) {
+        throw new Error(tx(
+          "Prism 모델은 최소 2개 연도의 실제 비즈니스 계절성 패턴을 추정할 수 있어야 합니다.",
+          "Prism requires at least two observed calendar years to estimate business seasonality.",
+        ));
+      }
+      const prismClassicCfg = usePrismModel
+        ? { ...classicBaseCfg, seasonalityBasis: prismSeasonalityBasis }
+        : classicBaseCfg;
       const classicControlSelection = usePrismModel
         ? null
         : mmmClassicControlSelection(panel, classicBaseCfg, t, {
@@ -3712,7 +3746,7 @@ export default function MarketingResponse({ locale = "ko" }) {
           skipTransformUncertainty: true,
         });
       const selectedPanel = usePrismModel ? panel : classicControlSelection.panel;
-      const classicCfg = usePrismModel ? classicBaseCfg : classicControlSelection.cfg;
+      const classicCfg = usePrismModel ? prismClassicCfg : classicControlSelection.cfg;
       const aggregatePanel = buildMmmAggregateMediaPanel(selectedPanel);
       if (!aggregatePanel) throw new Error("PR #416 aggregate media panel failed");
       const classicFitOptions = {
@@ -3768,6 +3802,7 @@ export default function MarketingResponse({ locale = "ko" }) {
         trendStart: allocatedRun.weeks[0]?.contrib?.Trend ?? null,
         trendEnd: allocatedRun.weeks.at(-1)?.contrib?.Trend ?? null,
         seasonalityMandatory: usePrismModel,
+        seasonalitySource: usePrismModel ? prismBusinessSeasonality : null,
         industryKey: usePrismModel ? Object.keys(panel.external || {}) : [],
         controlSelection: classicControlSelection,
       };
@@ -5785,7 +5820,9 @@ export default function MarketingResponse({ locale = "ko" }) {
                     {Number.isFinite(identification.maxMediaCorrelation) && <div className="stat-card"><div className="lbl">{tx("검출된 공선쌍 최대 상관", "Max detected collinear-pair corr.")}</div><div className="val">{identification.maxMediaCorrelation > 0 ? identification.maxMediaCorrelation.toFixed(2) : tx("검출 없음", "None")}</div></div>}
                     {mmm.run.baselineSelection?.enabled && <div className="stat-card"><div className="lbl">{tx("Baseline 후보", "Baseline candidates")}</div><div className="val">{mmm.run.baselineSelection.selected ? tx("Knot 적용", "Knot selected") : tx("기본 유지", "Base retained")}</div></div>}
                     {Array.isArray(mmm.run.seasonalityPeriods) && <div className="stat-card"><div className="lbl">{tx("계절성", "Seasonality")}</div><div className="val">{mmm.run.seasonalityPeriods.length
-                      ? (mmm.run.seasonalitySelection?.enabled ? mmm.run.seasonalitySelection.selected.id : tx(`연간 ${mmm.run.seasonalityPeriods.length}차`, `Annual ${mmm.run.seasonalityPeriods.length}`))
+                      ? (mmm.run.seasonalityBasis?.type === "observed-business"
+                        ? tx(`실제 연도 반복 ${mmm.run.seasonalityBasis.yearCount || "—"}개`, `Observed business shape · ${mmm.run.seasonalityBasis.yearCount || "—"} years`)
+                        : (mmm.run.seasonalitySelection?.enabled ? mmm.run.seasonalitySelection.selected.id : tx(`연간 ${mmm.run.seasonalityPeriods.length}차`, `Annual ${mmm.run.seasonalityPeriods.length}`)))
                       : tx("미사용", "Off")}</div></div>}
                     {mmm.run.mediaPenaltySelection?.enabled && <div className="stat-card"><div className="lbl">{tx("매체 규제 자동선택", "Media regularization")}</div><div className="val">{mmm.run.mediaPenaltySelection.selected.mediaPenalty.toFixed(2)}</div></div>}
                     {mmm.run.businessContributionPrior?.enabled && <div className="stat-card"><div className="lbl">{tx("비즈니스 기여 prior", "Business contribution prior")}</div><div className="val">{Math.round(mmm.run.businessContributionPrior.meanShare * 100)}% ± {Math.round(mmm.run.businessContributionPrior.shareSd * 100)}%p</div></div>}
