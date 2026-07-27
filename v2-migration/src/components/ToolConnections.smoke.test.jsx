@@ -17,7 +17,7 @@ describe("ToolConnections", () => {
     const links = [...container.querySelectorAll(".tool-connection-card")];
     expect(links).toHaveLength(3);
     expect(links.every((link) => link.getAttribute("href").startsWith("/en/"))).toBe(true);
-    expect(container.textContent).toContain("What should you check after this analysis?");
+    expect(container.textContent).toContain("Current decision stage");
     expect(container.textContent).toContain("Prepare a new dataset");
   });
 

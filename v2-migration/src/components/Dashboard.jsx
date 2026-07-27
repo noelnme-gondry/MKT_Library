@@ -393,11 +393,12 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                   />
                 }
               />
-              <AnalysisHistory toolId={toolId} summary={{ headline: verdict.headline, tone: verdict.tone, stats: verdict.stats }} locale={locale} />
-              <AnalysisPathway csvData={csvData} locale={locale} />
+              <div className="dashboard-data-jump">
+                <a href="#dashboard-tabpanel">{tr("바로 데이터 보기", "Jump to data")} <span aria-hidden="true">↓</span></a>
+                <span>{tr("기록·다음 분석·이벤트 마커는 데이터 아래에 정리했습니다.", "History, next analyses, and event markers are organized below the data.")}</span>
+              </div>
               </>
             )}
-            <MonEventMarkerUI locale={locale} />
 
             <div id="dashboard-tabpanel" className="tab-content" role="tabpanel" aria-labelledby={`dashboard-tab-${activeTab}`} tabIndex={0} style={{ marginTop: "1rem" }}>
               {activeTab === "viz" && <VizTab domain={domain} locale={locale} />}
@@ -418,6 +419,20 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 </div>
               )}
             </div>
+            {verdict && !verdict.insufficient && (
+              <details className="dashboard-support-tools">
+                <summary>
+                  <span>{tr("분석 보조 도구", "Analysis utilities")}</span>
+                  <small>{tr("기록 · 다음 분석 · 이벤트 마커", "History · next analyses · event markers")}</small>
+                  <b aria-hidden="true">＋</b>
+                </summary>
+                <div className="dashboard-support-tools__body">
+                  <AnalysisHistory toolId={toolId} summary={{ headline: verdict.headline, tone: verdict.tone, stats: verdict.stats }} locale={locale} />
+                  <AnalysisPathway csvData={csvData} locale={locale} />
+                  <MonEventMarkerUI locale={locale} />
+                </div>
+              </details>
+            )}
           </div>
         )}
       </div>

@@ -4,6 +4,8 @@ import { usePathname } from "next/navigation";
 
 export default function Footer() {
   const pathname = usePathname() || "/";
+  const isAnalysisPath = /^\/(?:en\/)?(?:dashboard|tools\/|content\/)/.test(pathname);
+  if (isAnalysisPath) return null;
   const isEn = pathname === "/en" || pathname.startsWith("/en/");
   const hasAppShell = !["/", "/en", "/privacy", "/terms", "/templates"].includes(pathname);
   const p = isEn ? "/en" : "";
