@@ -15,6 +15,8 @@ import {
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
   mmmForecastRollingSelection,
+  mmmForecastCombineNestedParts,
+  mmmForecastSelectNestedRoute,
   mmmForecastScenarioEligibility,
   mmmForecastGlobalBaseline,
   mmmForecastGlobalSeasonality,
@@ -1360,6 +1362,7 @@ function forecastScenarioReasonLabel(reason, tx) {
     "fewer-than-three-holdouts": tx("12주 학습 제외 검증이 3회 미만입니다", "Fewer than three 12-week holdouts are available"),
     "does-not-beat-persistence": tx("단순 최근 평균 기준선을 이기지 못했습니다", "It does not beat the recent-average baseline"),
     "wins-too-few-holdouts": tx("검증 구간 승리 횟수가 부족합니다", "It wins too few holdouts"),
+    "structural-controls-unavailable": tx("매핑한 구조 Step을 포함한 안정적 적합을 만들지 못했습니다", "A stable fit including the mapped structural Steps is unavailable"),
     "forecast-validation": tx("rolling 검증 적격성이 확인되지 않았습니다", "Rolling validation eligibility is unavailable"),
     "high-collinearity": tx("최근 Cost 창에서 채널 예산이 함께 움직여 분리되지 않습니다", "Channel budgets move together in the recent Cost window"),
     "low-information": tx("최근 Cost 창의 독립적인 지출 변동이 부족합니다", "The recent Cost window lacks independent spend variation"),
@@ -2724,9 +2727,9 @@ function buildForecastModelForSelection(sourcePanel, sourceCfg, target, selected
 
 export function buildForecastOnlyModelFromPanel(sourcePanel, sourceCfg, target) {
   const selection = mmmForecastRollingSelection(sourcePanel, sourceCfg, target);
-  const selected = selection.selected;
+  const selected = selection.productionSelected || selection.selected;
   if (!selected) return { selection, sourcePanel, sourceCfg, target, panel: null, cfg: null, run: null };
-  return { ...buildForecastModelForSelection(sourcePanel, sourceCfg, target, selected), selection, sourcePanel, sourceCfg, target };
+  return { ...buildForecastModelForSelection(sourcePanel, sourceCfg, target, selected), selection, forecastSelected: selected, sourcePanel, sourceCfg, target };
 }
 
 function buildForecastOnlyModel(mmm) {
@@ -4298,7 +4301,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     if (!mmm || mmm.empty || stage !== "lab") return null;
     try {
       if (attributedForecastRoute) return { isStructural: true, route: attributedForecastRoute };
-      // Total은 별도 회귀를 금지한다. Android/iOS를 각각 적합하고 모든 예측값을 합산한다.
+      // 충분한 이력이면 Direct Total과 Android+iOS 합산을 nested OOS로 비교한다.
+      // 114주 미만에서는 별도 Total 회귀를 열지 않고 기존 OS 항등 합을 유지한다.
       if (effPlatformFilter === "all") {
         const mappedPlatforms = [
           ...mmmPlatformTags(csvData.headers, mmmColMap),
@@ -4341,7 +4345,22 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         if (components.some((component) => !component.run || !component.panel)) {
           return { isAdditiveTotal: true, components, reason: components.find((component) => !component.run || !component.panel)?.reason || "OS forecast model unavailable" };
         }
-        return { isAdditiveTotal: true, components };
+        // 78주 후보 + 봉인 12주 + 최소 3개 이전 holdout(총 114주)을 확보하기
+        // 전에는 Direct-vs-OS 경로 선택을 열지 않고 기존 OS 항등 합을 유지한다.
+        if (prepared.all.sourcePanel.week.length < 114) return { isAdditiveTotal: true, components, routeDecision: null };
+        const direct = {
+          ...buildForecastOnlyModelFromPanel(prepared.all.sourcePanel, prepared.all.cfg, prepared.all.target),
+          ...prepared.all,
+          platform: "all",
+        };
+        if (!direct.run || !direct.panel) return { isAdditiveTotal: true, components, routeDecision: null };
+        const osNested = mmmForecastCombineNestedParts(components.map((component) => component.selection?.nested), { route: "android-ios-sum" });
+        const directNested = direct.selection?.nested ? { ...direct.selection.nested, route: "direct-total" } : null;
+        const rawRouteDecision = mmmForecastSelectNestedRoute([directNested, osNested], { horizon: 12 });
+        const routeDecision = rawRouteDecision.auditRoute ? rawRouteDecision : null;
+        return routeDecision.productionRoute === "direct-total"
+          ? { ...direct, isNestedDirect: true, routeDecision, challengerComponents: components }
+          : { isAdditiveTotal: true, components, directChallenger: direct, routeDecision };
       }
       return buildForecastOnlyModel(mmm);
     } catch {
@@ -4376,7 +4395,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       if (forecastModel.isAdditiveTotal) {
         const scenarioBudget = forecastScenario.eligible ? fcBudget : {};
         const components = forecastModel.components.map((model) => runForecastScenario(model, fcHorizon, scenarioBudget, fcStepOff, { trendDamping: fcTrendDamping, eventPolicy: fcEventPolicy }));
-        return mmmSumOsForecasts(components);
+        const summed = mmmSumOsForecasts(components);
+        return summed && { ...summed, nestedRouteDecision: forecastModel.routeDecision };
       }
       if (!forecastModel.run || !forecastModel.panel) return null;
       // fcBudget: 채널별 주 평균 예산(명시 채널만 H개로 채움) → 미입력은 mmmForecast가 최근평균 사용.
@@ -4406,7 +4426,13 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       );
       const restored = mmmForecastRestoreSeasonality(result, forecastModel.panel, forecastModel.seasonalModel);
       const excelModel = restored && buildForecastExcelModel(forecastModel, result, restored);
-      return restored && { ...restored, rollingSelection: forecastModel.selection, modelWindow: forecastModel.panel.week.length, excelModels: excelModel ? [excelModel] : [] };
+      return restored && {
+        ...restored,
+        rollingSelection: forecastModel.selection,
+        modelWindow: forecastModel.panel.week.length,
+        excelModels: excelModel ? [excelModel] : [],
+        nestedRouteDecision: forecastModel.routeDecision,
+      };
     } catch (e) {
       return null;
     }
@@ -6935,7 +6961,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   : forecast?.isAnnualAnalog
                     ? tx("최근 구조변화가 있고 최신 12주 audit에서 검증된 경우, 전년 같은 주차 패턴을 최근 4주 수준으로 보정한 연간 반복형을 사용합니다. Direct Total과 Android+iOS 합산을 함께 비교하며, 이 경로는 Cost 반응 시나리오를 제공하지 않습니다. ", "When a recent structural break exists and the latest 12-week audit supports it, the forecast uses last year's matching weeks rescaled to the latest four-week level. Direct Total and Android+iOS sum are compared; this route does not provide budget-response scenarios. ")
                   : tx("같은 CSV·매핑을 쓰되, MMM은 전체 기간 기여도를 유지하고 예측 회귀만 Cost 학습 window·추세·계절성을 12주 rolling 검증으로 고릅니다. ", "Uses the same CSV/mapping, but keeps MMM on full-history contribution analysis and selects only the forecast regression's Cost window, trend, and seasonality with rolling 12-week validation. ")}
-                {!forecast?.isStructural && !forecast?.isAnnualAnalog && effPlatformFilter === "all" && tx("Total은 별도 회귀하지 않고 Android·iOS 예측을 주별로 합산합니다. ", "Total is not separately regressed; it is the weekly sum of Android and iOS forecasts. ")}
+                {!forecast?.isStructural && !forecast?.isAnnualAnalog && effPlatformFilter === "all" && tx("114주 이상이면 Direct Total과 Android·iOS 합산을 nested OOS로 비교하고, 더 짧으면 OS 합산을 유지합니다. ", "With 114+ weeks, Direct Total and the Android+iOS sum are compared by nested OOS; shorter histories retain the OS sum. ")}
                 {tx(`선택한 목표(${mmmTargetDisplay(mmm.target, locale)})의 회색선은 실측, 파란선은 모델/예측, 음영은 최근 오차를 반영한 참고 범위입니다(인과 보장 아님).`, `For the selected target (${mmmTargetDisplay(mmm.target, locale)}), gray is actual, blue is model/forecast, and the band is a recent-error reference range, not a causal guarantee.`)}
               </p>
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "12px", alignItems: "center" }}>
@@ -7075,6 +7101,32 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       )}
                     </Card>
                   )}
+                  {forecast.nestedRouteDecision && (
+                    <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
+                      <strong>{tx("Actual Cost 조건부 nested rolling OOS", "Actual-Cost conditional nested rolling OOS")}</strong>
+                      <p style={{ margin: "5px 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
+                        {(forecast.nestedRouteDecision.candidates || []).map((candidate) =>
+                          `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} · ${tx("선택용 과거", "selection history")} ${candidate.developmentWmape.toFixed(2)}% · ${tx("봉인 최신 12주", "sealed latest 12 weeks")} ${candidate.latestWmape.toFixed(2)}%`
+                        ).join(" / ")}
+                      </p>
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                        <span className="ab-pill" style={forecast.nestedRouteDecision.certified ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}>
+                          {forecast.nestedRouteDecision.certified
+                            ? tx(`공식 OOS ${forecast.nestedRouteDecision.latestWmape.toFixed(2)}% · 10% 인증`, `Official OOS ${forecast.nestedRouteDecision.latestWmape.toFixed(2)}% · certified under 10%`)
+                            : tx(`공식 OOS ${forecast.nestedRouteDecision.latestWmape.toFixed(2)}% · 10% 미인증`, `Official OOS ${forecast.nestedRouteDecision.latestWmape.toFixed(2)}% · not certified under 10%`)}
+                        </span>
+                        <span className="ab-pill">
+                          {tx(
+                            `미래 운영 경로: ${forecast.nestedRouteDecision.productionRoute === "direct-total" ? "Direct Total" : "Android + iOS"}`,
+                            `Production route: ${forecast.nestedRouteDecision.productionRoute === "direct-total" ? "Direct Total" : "Android + iOS"}`,
+                          )}
+                        </span>
+                      </div>
+                      <p style={{ margin: "6px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
+                        {tx("각 cutoff마다 그보다 오래된 OOS만으로 26·52·78주와 모델을 다시 선택합니다. 최신 12주의 RR은 선택에 쓰지 않고, 해당 주의 Actual Cost와 알려진 Step만 입력합니다.", "At every cutoff, 26/52/78-week windows and model form are reselected using only older OOS folds. The latest 12-week outcomes are never used for selection; only their Actual Cost and known Steps are supplied.")}
+                      </p>
+                    </Card>
+                  )}
                   {forecast.isAdditiveTotal && (
                     <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
                       <strong>{tx("Total 예측 = Android 예측 + iOS 예측", "Total forecast = Android forecast + iOS forecast")}</strong>
@@ -7101,7 +7153,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             {` → ${forecast.selectedRoute === "direct-total" ? "Direct Total" : "Android + iOS"} ${tx("선택", "selected")}`}
                           </p>
                           <p style={{ margin: "6px 0 0", color: "#15803d", fontSize: "11.5px" }}>
-                            {tx(`최신 12주 wMAPE ${selected.latestWmape.toFixed(2)}% · 최근평균 기준선 ${selected.persistenceWmape.toFixed(2)}%. 모델 선택에 사용한 audit이므로 별도의 독립 최종 OOS 인증은 아닙니다.`, `Latest 12-week wMAPE ${selected.latestWmape.toFixed(2)}% · recent-average baseline ${selected.persistenceWmape.toFixed(2)}%. This audit selected the model, so it is not a separate independent final OOS certification.`)}
+                            {tx(`최신 12주 wMAPE ${selected.latestWmape.toFixed(2)}% · 최근평균 기준선 ${selected.persistenceWmape.toFixed(2)}%. 경로는 더 오래된 development OOS만으로 선택했고 최신 12주는 봉인 audit으로만 사용했습니다.`, `Latest 12-week wMAPE ${selected.latestWmape.toFixed(2)}% · recent-average baseline ${selected.persistenceWmape.toFixed(2)}%. The route was selected only on older development OOS; the latest 12 weeks were used solely as a sealed audit.`)}
                           </p>
                         </Card>
                       );

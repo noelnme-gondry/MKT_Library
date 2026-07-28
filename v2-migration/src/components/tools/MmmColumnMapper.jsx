@@ -208,7 +208,11 @@ function guessRole(col, rows) {
 }
 
 function guessedStepMode(header) {
-  return /delist|reopen|relaunch|liveness|shutdown|launch|서비스.?중단|재개|재오픈|런칭/i.test(String(header || ""))
+  const name = String(header || "");
+  // Delist는 실제 셧다운 기간을 1로 채우고 재오픈 시 0으로 되돌리는 상태열이다.
+  // Liveness/Reopen처럼 사건 주에만 1을 찍는 열만 이후 1로 확장한다.
+  if (/delist|shutdown|서비스.?중단/i.test(name)) return "state";
+  return /reopen|relaunch|liveness|launch|재개|재오픈|런칭/i.test(name)
     ? "boundary"
     : "state";
 }

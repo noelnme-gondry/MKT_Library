@@ -6,9 +6,10 @@ import { describe, expect, it } from "vitest";
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const PROTECTED_FILES = {
   "src/utils/mmmMathPr416.js": "986decb7e6efc15b58f7b3c909e813d7aa383c4af8a8bc54449d4a4ceaf24f41",
-  // Forecast routing/export UI changed; frozen Classic math engines remain byte-identical.
-  "src/components/tools/MarketingResponse.jsx": "a5aef77a55c8ac9b235535d65b26e25b775a8205c0780c6892cd5ab99c245d77",
-  "src/utils/mmmMath.js": "bf6cb84d00d428dbebf41aa22386c5b1c6bda405f0f205aaa182818894146e9f",
+  // Forecast routing/UI and the v2 forecast selector changed intentionally;
+  // the frozen Classic engine above remains byte-identical.
+  "src/components/tools/MarketingResponse.jsx": "bc8c48b3028a674cadc58fc62a79368212cb942ddc1bb64533feedb50e60f76c",
+  "src/utils/mmmMath.js": "46362c11209fd234d81ddab4e1cbe8344435a96487478bac5b5a25a5feb6b65d",
 };
 
 function sha256(path) {

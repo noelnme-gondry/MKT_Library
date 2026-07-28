@@ -115,9 +115,22 @@ describe("MMM column mapping", () => {
         { week: "2025-W02", "IOS Delist": "1", "IOS Reopen": "0", "Liveness Check": "1" },
       ],
     );
-    expect(operationalSteps["IOS Delist"]).toMatchObject({ role: "step", plat: "ios" });
-    expect(operationalSteps["IOS Reopen"]).toMatchObject({ role: "step", plat: "ios" });
-    expect(operationalSteps["Liveness Check"]).toMatchObject({ role: "step", plat: "common" });
+    expect(operationalSteps["IOS Delist"]).toMatchObject({ role: "step", plat: "ios", stepMode: "state" });
+    expect(operationalSteps["IOS Reopen"]).toMatchObject({ role: "step", plat: "ios", stepMode: "boundary" });
+    expect(operationalSteps["Liveness Check"]).toMatchObject({ role: "step", plat: "common", stepMode: "boundary" });
+    const stepRows = [
+      { week: "2025-W01", IOS_RR: "80", IOS_Cost: "30", "IOS Delist": "0", "IOS Reopen": "0", "Liveness Check": "0" },
+      { week: "2025-W02", IOS_RR: "20", IOS_Cost: "5", "IOS Delist": "1", "IOS Reopen": "0", "Liveness Check": "1" },
+      { week: "2025-W03", IOS_RR: "18", IOS_Cost: "5", "IOS Delist": "1", "IOS Reopen": "0", "Liveness Check": "0" },
+      { week: "2025-W04", IOS_RR: "75", IOS_Cost: "25", "IOS Delist": "0", "IOS Reopen": "1", "Liveness Check": "0" },
+    ];
+    const stepHeaders = Object.keys(stepRows[0]);
+    const stepMap = autoGuessColMap(stepHeaders, stepRows);
+    const stepPanel = buildPanelFromColMap(stepHeaders, stepRows, stepMap, "ios").panel;
+    const stepValues = (label) => stepPanel.steps[stepPanel.stepDefs.find((step) => step.label === label).key];
+    expect(stepValues("IOS Delist")).toEqual([0, 1, 1, 0]);
+    expect(stepValues("IOS Reopen")).toEqual([0, 0, 0, 1]);
+    expect(stepValues("Liveness Check")).toEqual([0, 1, 1, 1]);
     const wideTargets = autoGuessColMap(
       ["week", "ANDROID_RR", "IOS_RR", "Google_ANDROID_Cost", "Apple Search Ads_IOS_Cost"],
       [{ week: "2025-W01", ANDROID_RR: "100", IOS_RR: "80", Google_ANDROID_Cost: "20", "Apple Search Ads_IOS_Cost": "30" }],
