@@ -76,29 +76,19 @@ export default function Incrementality({ locale = "ko" } = {}) {
 
   return (
     <div className="tab-pane active" id="tab-incr">
-      {/* 히어로 (claude-ux §1 여정=질문) */}
+      {/* 방법 선택을 첫 행동으로 올리고, 비교 설명은 필요할 때만 펼친다. */}
       <section className="block" id="s-incr-method" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px", marginBottom: "16px" }}>
         <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>{tr("광고를 켠 것(혹은 끈 것)이 진짜 얼마를 만들었나?", "How much did turning ads on (or off) actually create?")}</h2>
         <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6, maxWidth: "680px" }}>
-          {tr(<>어트리뷰션과 달리, <strong>광고가 없었어도 어차피 일어났을 전환</strong>을 빼고 순수 증분만 봅니다. 3가지 방법 중 상황에 맞는 걸 고르세요.</>,
-            <>Unlike attribution, this excludes <strong>conversions that would have happened anyway without ads</strong> and shows pure incrementality. Pick whichever of the 3 methods fits your situation.</>)}
+          {tr(<>광고가 없어도 생겼을 성과를 빼고 <strong>순수 증분</strong>만 봅니다. 지금 가진 데이터 형태를 고르세요.</>,
+            <>Subtract outcomes that would have happened without ads and measure <strong>net incrementality</strong>. Choose the data shape you have.</>)}
         </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "10px", marginTop: "14px" }}>
-          {(locale === "en" ? [
-            ["🧪", "Control group (suppression)", "Randomly block ads for a subset → compare exposed vs unexposed concurrently. Cleanest."],
-            ["🟢", "New launch (on)", "Compare before/after turning on something new → the lift it created."],
-            ["🔴", "Shutdown (off)", "Compare before/after turning off something running → the drop from stopping it."],
-          ] : [
-            ["🧪", "통제군 (suppression)", "일부를 무작위로 광고 차단 → 노출 vs 미노출 동시 비교. 가장 깨끗."],
-            ["🟢", "신규 켜기 (on)", "안 하던 걸 켠 시점 전후 비교 → 켠 것이 만든 상승분."],
-            ["🔴", "종료 (off)", "켜뒀던 걸 끈 시점 전후 비교 → 끄면서 잃은 하락분."],
-          ]).map(([ic, t, d], i) => (
-            <div key={i} style={{ background: "var(--surface-container-lowest)", border: "1px solid var(--border)", borderRadius: "10px", padding: "11px 13px" }}>
-              <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-primary)" }}>{ic} {t}</div>
-              <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "4px", lineHeight: 1.5 }}>{d}</div>
-            </div>
-          ))}
-        </div>
+        <details style={{ marginTop: "9px", color: "var(--text-muted)", fontSize: "11.5px" }}>
+          <summary style={{ cursor: "pointer" }}>{tr("세 방법의 차이 보기", "Compare the three methods")}</summary>
+          <p style={{ margin: "7px 0 0", lineHeight: 1.55 }}>
+            {tr("통제군은 같은 기간의 노출·미노출을 비교해 가장 강합니다. 신규 켜기와 종료는 전후를 비교하며, 대조군이 있으면 계절·추세를 더 잘 분리합니다.", "Control groups compare exposed and unexposed users concurrently and provide the strongest design. Launch and shutdown compare before/after; a control group helps separate seasonality and trend.")}
+          </p>
+        </details>
       </section>
 
       {/* 방법 탭 */}
@@ -109,7 +99,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
           </button>
         ))}
       </div>
-      <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "0 0 16px", lineHeight: 1.6 }}>
+      <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "0 0 12px", lineHeight: 1.5 }}>
         {method === "suppression" && tr("같은 기간, 무작위로 광고를 차단한 홀드아웃 그룹 vs 노출 그룹을 비교합니다. 무작위 분할이면 인과 신뢰가 가장 높습니다.", "Compares a holdout group (ads randomly blocked) vs an exposed group over the same period. Random assignment gives the highest causal confidence.")}
         {method === "on" && tr("안 하던 광고/캠페인을 켠 시점(cutoff) 전후를 비교합니다. 대조군을 넣으면 계절·추세를 제거(DiD)합니다.", "Compares before/after the moment (cutoff) you turned on an ad/campaign that wasn't running. Adding a control group removes seasonality/trend (DiD).")}
         {method === "off" && tr("켜뒀던 광고/캠페인을 끈 시점(cutoff) 전후를 비교해 끄면서 잃은 성과를 봅니다. 대조군 있으면 DiD 권장.", "Compares before/after the moment (cutoff) you turned off a running ad/campaign to see what was lost. A control group + DiD is recommended.")}

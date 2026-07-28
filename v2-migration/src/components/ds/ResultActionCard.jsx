@@ -79,6 +79,18 @@ export default function ResultActionCard({
         )}
       </div>
 
+      {stats.length > 0 && (
+        <div className="result-action-card__stats" aria-label={locale === "en" ? "Key figures" : "핵심 수치"}>
+          {stats.map((s, i) => (
+            <div key={i}>
+              <span>{s.label}</span>
+              <strong>{s.value}</strong>
+              {s.detail && <small>{s.detail}</small>}
+            </div>
+          ))}
+        </div>
+      )}
+
       {visiblePoints.length > 0 && (
         <ul className="result-action-card__points">
           {visiblePoints.map((p, i) => (
@@ -98,18 +110,6 @@ export default function ResultActionCard({
             ))}
           </ul>
         </details>
-      )}
-
-      {stats.length > 0 && (
-        <div className="result-action-card__stats">
-          {stats.map((s, i) => (
-            <div key={i}>
-              {s.label}{" "}
-              <strong>{s.value}</strong>
-              {s.detail && <small>{s.detail}</small>}
-            </div>
-          ))}
-        </div>
       )}
 
       {analysisBasis && toolId && (

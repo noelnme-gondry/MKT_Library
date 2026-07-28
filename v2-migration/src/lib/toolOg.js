@@ -1,0 +1,34 @@
+import { getRouteSeo } from "./routeSeo";
+
+export const TOOL_OG_CONFIG = {
+  "5-2": { accent: "#68a8ff", glyph: "MONITOR", metrics: { ko: ["비용", "설치", "CPI", "ROAS"], en: ["SPEND", "INSTALLS", "CPI", "ROAS"] } },
+  "5-21": { accent: "#a78bfa", glyph: "EXPLAIN", metrics: { ko: ["물량", "효율", "믹스"], en: ["VOLUME", "RATE", "MIX"] } },
+  "5-22": { accent: "#fb7185", glyph: "SCALE", metrics: { ko: ["한계 CPA", "포화", "여유"], en: ["MARGINAL CPA", "SATURATED", "HEADROOM"] } },
+  "5-18": { accent: "#f59e0b", glyph: "MODEL", metrics: { ko: ["추세", "잠식", "기여", "예측"], en: ["TREND", "CANNIBAL", "CONTRIBUTION", "FORECAST"] } },
+  "5-3": { accent: "#5eead4", glyph: "ALLOCATE", metrics: { ko: ["늘릴 곳", "줄일 곳", "제약"], en: ["INCREASE", "DECREASE", "CONSTRAINTS"] } },
+  "5-4": { accent: "#facc15", glyph: "PROVE", metrics: { ko: ["표본수", "LIFT", "검정력"], en: ["SAMPLE", "LIFT", "POWER"] } },
+  "5-20": { accent: "#c084fc", glyph: "LEARN", metrics: { ko: ["행동", "리프트", "지지도"], en: ["ACTION", "LIFT", "SUPPORT"] } },
+  "5-23": { accent: "#4ade80", glyph: "INCREMENT", metrics: { ko: ["통제군", "증분", "신뢰구간"], en: ["HOLDOUT", "INCREMENT", "INTERVAL"] } },
+  "9-1": { accent: "#38bdf8", glyph: "ELEMENTS", metrics: { ko: ["요소", "효과", "신뢰구간"], en: ["ELEMENT", "EFFECT", "INTERVAL"] } },
+  "9-6": { accent: "#f97316", glyph: "CREATIVE", metrics: { ko: ["교체", "피로", "다음 제작"], en: ["REPLACE", "FATIGUE", "NEXT BRIEF"] } },
+};
+
+export function getToolOgData(toolId, locale = "ko") {
+  const config = TOOL_OG_CONFIG[toolId];
+  const seo = getRouteSeo(toolId, locale);
+  if (!config || !seo) return null;
+  return {
+    toolId,
+    locale,
+    title: seo.title,
+    description: seo.description,
+    accent: config.accent,
+    glyph: config.glyph,
+    metrics: config.metrics[locale] || config.metrics.ko,
+  };
+}
+
+export function getToolOgImageUrl(siteUrl, toolId, locale = "ko") {
+  if (!TOOL_OG_CONFIG[toolId]) return `${siteUrl}/og-card.png`;
+  return `${siteUrl}/og/tool/${encodeURIComponent(toolId)}${locale === "en" ? "?lang=en" : ""}`;
+}
