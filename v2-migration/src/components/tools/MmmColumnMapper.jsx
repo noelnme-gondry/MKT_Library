@@ -311,7 +311,7 @@ function matchMediaInput(channel, candidates) {
     || null;
 }
 
-function colMapRoles(headers, colMap) {
+export function colMapRoles(headers, colMap) {
   const out = { week: [], date: null, reg: [], react: [], traffic: [], purchasers: [], revenue: [], platform: null, geo: null, reach: [], frequency: [], channels: [], dummies: [], steps: [], externals: [] };
   const used = new Set();
   for (const h of headers || []) {
@@ -465,8 +465,10 @@ function longFormatHeader(headers, expression) {
 }
 
 // long-format MMM 입력: `week | channel | spend | target`.
-// 타깃은 해당 주의 전체값이 채널별 행에서 반복된다는 계약으로 첫 유효값만 보존하고,
-// 채널 spend만 주차×채널 wide 형태로 pivot한다. 타깃을 행 수만큼 더하면 가짜 성과가 된다.
+// 기본 계약은 target이 채널 행마다 반복된 주간 Total이다. 다만 Organic 행이 있고
+// 같은 기간의 target이 채널별로 다른 귀속형 CSV는 Organic+Paid를 합산한다.
+// 이 자동 분기는 Organic이라는 강한 구조 신호가 있을 때만 켜서, 더러운 반복 Total을
+// 채널 귀속값으로 오인해 합산하는 것을 막는다.
 function pivotLongFormat(headers, rows, colMap) {
   const roles = colMapRoles(headers, colMap);
   const channelHeader = longFormatHeader(headers, /(^|[_\s])(channel|media|source|network)([_\s]|$)|채널|매체/i);
@@ -497,6 +499,7 @@ function pivotLongFormat(headers, rows, colMap) {
     blankChannelRows: 0,
     repeatedValueConflicts: 0,
     conflictingHeaders: new Set(),
+    attributedTargetHeaders: [],
   };
   const targetHeaders = new Set([
     ...roles.reg, ...roles.react, ...roles.traffic, ...roles.purchasers, ...roles.revenue,
@@ -506,7 +509,47 @@ function pivotLongFormat(headers, rows, colMap) {
     ...roles.dummies.map((item) => [item.header, "dummy"]),
     ...roles.steps.map((item) => [item.header, "step"]),
   ]);
-  const repeatedHeaders = new Set([...targetHeaders, ...externalHeaders, ...binaryHeaders.keys()]);
+  const hasOrganicChannel = (rows || []).some((row) =>
+    /(^|[\s_-])(organic|오가닉|자연|비광고)([\s_-]|$)/i.test(String(row[channelHeader] ?? "").normalize("NFKC")),
+  );
+  const attributedTargetHeaders = new Set();
+  if (hasOrganicChannel) {
+    const targetValuesByPeriod = new Map();
+    for (const row of rows || []) {
+      const parsedTime = mappedTimeKey(row[timeHeader]);
+      const channel = String(row[channelHeader] ?? "").trim();
+      if (!parsedTime || !channel) continue;
+      const segment = roles.platform ? String(row[roles.platform] ?? "") : "";
+      const key = `${parsedTime.kind}:${parsedTime.value}\u0001${segment}`;
+      const byHeader = targetValuesByPeriod.get(key) || new Map();
+      targetHeaders.forEach((header) => {
+        const value = mmmParseNumericValue(row[header]);
+        if (!Number.isFinite(value)) return;
+        const values = byHeader.get(header) || [];
+        values.push(value);
+        byHeader.set(header, values);
+      });
+      targetValuesByPeriod.set(key, byHeader);
+    }
+    targetHeaders.forEach((header) => {
+      let comparable = 0;
+      let differing = 0;
+      targetValuesByPeriod.forEach((byHeader) => {
+        const values = byHeader.get(header) || [];
+        if (values.length < 2) return;
+        comparable += 1;
+        const first = values[0];
+        if (values.some((value) => Math.abs(value - first) > 1e-9 * Math.max(1, Math.abs(value), Math.abs(first)))) differing += 1;
+      });
+      if (comparable >= 2 && differing / comparable >= 0.2) attributedTargetHeaders.add(header);
+    });
+  }
+  diagnostics.attributedTargetHeaders = [...attributedTargetHeaders].sort((a, b) => a.localeCompare(b));
+  const repeatedHeaders = new Set([
+    ...[...targetHeaders].filter((header) => !attributedTargetHeaders.has(header)),
+    ...externalHeaders,
+    ...binaryHeaders.keys(),
+  ]);
   const isBlank = (value) => value == null || String(value).trim() === "";
   const canonicalRepeated = (header, value) => {
     if (binaryHeaders.has(header)) return mmmParseBinaryIndicator(value, binaryHeaders.get(header));
@@ -532,6 +575,15 @@ function pivotLongFormat(headers, rows, colMap) {
     const key = `${parsedTime.kind}:${parsedTime.value}\u0001${segment}`;
     const existing = grouped.get(key);
     const item = existing || { ...row };
+    if (!existing) {
+      Object.defineProperty(item, "__mmmLongSeenChannels", { value: new Set(), enumerable: false, configurable: true });
+      attributedTargetHeaders.forEach((header) => { item[header] = 0; });
+    }
+    attributedTargetHeaders.forEach((header) => {
+      const value = mmmParseNumericValue(row[header]);
+      if (Number.isFinite(value)) item[header] += value;
+      else item[header] = NaN;
+    });
     // 첫 행의 타깃이 비어 있으면 이후 같은 주의 유효값을 채운다. 이미 값이 있으면
     // 반복 타깃을 더하지 않는다.
     for (const header of repeatedHeaders) {
@@ -555,6 +607,7 @@ function pivotLongFormat(headers, rows, colMap) {
       if ((item[header] == null || String(item[header]).trim() === "") && row[header] != null && String(row[header]).trim() !== "") item[header] = row[header];
     }
     const dynamicHeader = makeChannelHeader(channel);
+    item.__mmmLongSeenChannels.add(dynamicHeader);
     const spendValue = mmmParseNumericValue(row[spendHeader]);
     const previous = item[dynamicHeader];
     const previousValue = mmmParseNumericValue(previous);
@@ -568,12 +621,21 @@ function pivotLongFormat(headers, rows, colMap) {
     grouped.set(key, item);
   }
   if (!grouped.size || !channelToHeader.size) return null;
+  const dynamicHeaders = [...channelToHeader.values()];
+  grouped.forEach((item) => {
+    dynamicHeaders.forEach((header) => {
+      if (!item.__mmmLongSeenChannels.has(header)) item[header] = 0;
+    });
+    delete item.__mmmLongSeenChannels;
+  });
 
   const nextHeaders = (headers || []).filter((header) => header !== channelHeader && header !== spendHeader);
   const nextMap = { ...colMap, [channelHeader]: { ...(colMap[channelHeader] || {}), role: "ignore" }, [spendHeader]: { ...(colMap[spendHeader] || {}), role: "ignore" } };
   for (const [channel, header] of channelToHeader) {
     nextHeaders.push(header);
-    nextMap[header] = { role: "channel", kind: /brand|브랜드/i.test(channel) ? "brand" : "perf", plat: "common" };
+    nextMap[header] = /(^|[\s_-])(organic|오가닉|자연|비광고)([\s_-]|$)/i.test(channel)
+      ? { role: "ignore" }
+      : { role: "channel", kind: /brand|브랜드/i.test(channel) ? "brand" : "perf", plat: "common" };
   }
   return {
     headers: nextHeaders,
@@ -611,6 +673,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
     blankChannelRows: inheritedDiagnostics?.blankChannelRows || 0,
     repeatedValueConflicts: inheritedDiagnostics?.repeatedValueConflicts || 0,
     conflictingHeaders: inheritedDiagnostics?.conflictingHeaders || [],
+    attributedTargetHeaders: inheritedDiagnostics?.attributedTargetHeaders || [],
     duplicatePeriods: 0,
     internalPartialWeeks: 0,
     boundaryPartialWeeks: 0,
@@ -1003,6 +1066,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   if (timeDiagnostics.droppedInvalidRows) timeDiagnostics.issues.push({ code: "invalid-time-row", count: timeDiagnostics.droppedInvalidRows, messageKo: `날짜/주차를 해석할 수 없는 ${timeDiagnostics.droppedInvalidRows}개 행을 제외했습니다. 원자료를 고친 뒤 다시 분석하세요.`, messageEn: `${timeDiagnostics.droppedInvalidRows} row(s) with blank or unparseable dates/weeks were dropped. Fix the source data before analysis.` });
   if (timeDiagnostics.blankChannelRows) timeDiagnostics.issues.push({ code: "blank-long-channel", count: timeDiagnostics.blankChannelRows, messageKo: `long-format 원자료에 채널명이 빈 ${timeDiagnostics.blankChannelRows}개 행이 있습니다. 행을 조용히 제외하지 않고 분석을 중단했습니다.`, messageEn: `${timeDiagnostics.blankChannelRows} long-format row(s) have a blank channel. Analysis was blocked instead of silently dropping them.` });
   if (timeDiagnostics.repeatedValueConflicts) timeDiagnostics.issues.push({ code: "conflicting-long-repeated-value", count: timeDiagnostics.repeatedValueConflicts, headers: timeDiagnostics.conflictingHeaders, messageKo: `같은 기간·세그먼트의 채널 행에서 반복 Y/이벤트 값이 서로 다릅니다(${timeDiagnostics.conflictingHeaders.join(", ")}). 채널별 행에는 같은 전체값을 반복하세요.`, messageEn: `Repeated Y/event values disagree across channel rows for the same period and segment (${timeDiagnostics.conflictingHeaders.join(", ")}). Repeat the same total value on every channel row.` });
+  if (timeDiagnostics.attributedTargetHeaders.length) timeDiagnostics.warnings.push({ code: "attributed-long-target", headers: timeDiagnostics.attributedTargetHeaders, messageKo: `Organic 행과 채널별로 다른 Y를 확인해 ${timeDiagnostics.attributedTargetHeaders.join(", ")}를 채널 귀속값으로 합산했습니다.`, messageEn: `An Organic row and channel-varying Y were detected, so ${timeDiagnostics.attributedTargetHeaders.join(", ")} was summed as channel-attributed outcomes.` });
   if (timeDiagnostics.duplicatePeriods) timeDiagnostics.issues.push({ code: "duplicate-time-period", count: timeDiagnostics.duplicatePeriods, messageKo: `같은 주차가 ${timeDiagnostics.duplicatePeriods}번 중복되었습니다. 플랫폼 행이 아니라면 주차별 한 행으로 정리하세요.`, messageEn: `${timeDiagnostics.duplicatePeriods} duplicate weekly period(s) were found. Use one row per week unless rows represent mapped platform segments.` });
   if (timeDiagnostics.internalPartialWeeks) timeDiagnostics.issues.push({ code: "partial-internal-week", count: timeDiagnostics.internalPartialWeeks, messageKo: `내부 ${timeDiagnostics.internalPartialWeeks}개 주차의 일자 수가 ${timeDiagnostics.expectedDaysPerWeek}일 cadence보다 적습니다. 빠진 일자를 채우세요.`, messageEn: `${timeDiagnostics.internalPartialWeeks} internal week(s) have fewer dates than the ${timeDiagnostics.expectedDaysPerWeek}-day cadence. Add the missing daily rows.` });
   if (timeDiagnostics.boundaryPartialWeeks) timeDiagnostics.warnings.push({ code: "partial-boundary-week", count: timeDiagnostics.boundaryPartialWeeks, messageKo: `첫/마지막 경계 partial ${timeDiagnostics.boundaryPartialWeeks}개 주차를 제외했습니다.`, messageEn: `${timeDiagnostics.boundaryPartialWeeks} partial boundary week(s) were excluded.` });

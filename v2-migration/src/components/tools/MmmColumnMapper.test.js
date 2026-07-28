@@ -355,6 +355,26 @@ describe("MMM column mapping", () => {
     expect(panel.ch.c_mmm_spend_meta).toEqual([50, 40]);
   });
 
+  it("sums channel-attributed targets when long data includes an Organic row", () => {
+    const headers = ["week", "platform", "channel", "cost", "regs"];
+    const rows = [
+      { week: "2025-W01", platform: "android", channel: "Organic", cost: "0", regs: "70" },
+      { week: "2025-W01", platform: "android", channel: "Meta", cost: "100", regs: "20" },
+      { week: "2025-W01", platform: "android", channel: "Google", cost: "80", regs: "10" },
+      { week: "2025-W02", platform: "android", channel: "Organic", cost: "0", regs: "80" },
+      { week: "2025-W02", platform: "android", channel: "Meta", cost: "120", regs: "15" },
+      { week: "2025-W02", platform: "android", channel: "Google", cost: "0", regs: "5" },
+    ];
+    const map = autoGuessColMap(headers, rows);
+    const panel = buildPanelFromColMap(headers, rows, map, "android").panel;
+    expect(panel.targets.Regs).toEqual([100, 100]);
+    expect(panel.ch.c_mmm_spend_organic).toBeUndefined();
+    expect(panel.ch.c_mmm_spend_meta).toEqual([100, 120]);
+    expect(panel.ch.c_mmm_spend_google).toEqual([80, 0]);
+    expect(panel.timeDiagnostics.issues.some((issue) => issue.code === "conflicting-long-repeated-value")).toBe(false);
+    expect(panel.timeDiagnostics.warnings.find((warning) => warning.code === "attributed-long-target")?.headers).toEqual(["regs"]);
+  });
+
   it("auto-detects explicit week labels before pivoting long-format MMM", () => {
     const headers = ["week", "media", "cost", "revenue"];
     const rows = [
