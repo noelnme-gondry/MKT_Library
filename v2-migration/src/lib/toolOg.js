@@ -32,3 +32,14 @@ export function getToolOgImageUrl(siteUrl, toolId, locale = "ko") {
   if (!TOOL_OG_CONFIG[toolId]) return `${siteUrl}/og-card.png`;
   return `${siteUrl}/og/tool/${encodeURIComponent(toolId)}${locale === "en" ? "?lang=en" : ""}`;
 }
+
+export function getToolFeatureList(toolId, locale = "ko") {
+  const config = TOOL_OG_CONFIG[toolId];
+  if (!config) return [];
+  const metrics = config.metrics[locale] || config.metrics.ko;
+  return [
+    ...metrics,
+    locale === "en" ? "Client-side CSV analysis" : "브라우저 내 CSV 분석",
+    locale === "en" ? "No server upload" : "서버 업로드 없음",
+  ];
+}

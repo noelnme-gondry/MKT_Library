@@ -396,15 +396,10 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
       chips={<span className="chip"><span className="dot"></span>{csvData?.fileName || ""}</span>}
       summary={
         <>
-          <p>
-            {tr("각 채널·캠페인의 비용↔효율 산점도를 곡선 적합해 ", "We curve-fit each channel/campaign's cost-vs-efficiency scatter to estimate ")}
-            <strong>{tr("현재 지출점의 한계 효율", "the marginal efficiency at the current spend point")}</strong>
-            {tr("을 평균과 비교합니다. 한계가 평균보다 나쁘면 ", " and compare it to the average. If marginal is worse than average, it's ")}
-            <strong style={{ color: "#f87171" }}>{tr("포화(증액 위험)", "saturated (risk if you increase)")}</strong>
-            {tr(", 좋으면 ", ", if better it's ")}
-            <strong style={{ color: "#22c55e" }}>{tr("여유(증액 기회)", "has headroom (opportunity to increase)")}</strong>
-            {tr("입니다.", ".")}
-          </p>
+          <p>{tr(
+            "지금 더 늘릴 곳과 멈출 곳을 한계 CPA/ROAS로 나눕니다.",
+            "Separate where to scale from where to stop using marginal CPA/ROAS.",
+          )}</p>
           <details style={{ marginTop: "6px", fontSize: "11.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
             <summary>{tr("⚠️ 해석 참고", "⚠️ Interpretation notes")}</summary>
             <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>

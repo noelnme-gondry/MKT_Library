@@ -5551,6 +5551,12 @@ body.light-mode .cmdk-item .cmdk-ico { color: #fff; }
 .experiment-journey__steps span { color: var(--primary); font: 700 9px var(--font-mono); }
 .experiment-journey__steps strong { display: block; margin-top: 6px; color: var(--text-primary); font-size: 12px; }
 .experiment-journey__steps small { display: block; margin-top: 4px; color: var(--text-muted); font-size: 9.5px; line-height: 1.4; }
+.experiment-journey--compact { display: grid; grid-template-columns: minmax(180px,.7fr) minmax(0,1.3fr); align-items: center; gap: 14px; padding: 11px 12px; }
+.experiment-journey--compact .experiment-journey__head h2 { margin-bottom: 0; font-size: 16px; }
+.experiment-journey--compact .experiment-journey__steps { grid-template-columns: repeat(2,minmax(0,1fr)); margin-top: 0; }
+.experiment-journey--compact .experiment-journey__steps button { min-height: 54px; display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; column-gap: 9px; padding: 8px 10px; }
+.experiment-journey--compact .experiment-journey__steps button > span { grid-row: 1 / 3; }
+.experiment-journey--compact .experiment-journey__steps strong,.experiment-journey--compact .experiment-journey__steps small { margin-top: 0; }
 
 /* Sidebar library: four stacked resources, then four icon-led external links. */
 .sidebar-library { display: grid; gap: 6px; margin: 0 3px; }
@@ -5568,6 +5574,11 @@ body.light-mode .cmdk-item .cmdk-ico { color: #fff; }
   .connected-tool-journey__stages { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .connected-tool-stage:last-child { grid-column: 1/-1; }
   .connected-tool-stage:last-child .connected-tool-stage__tools { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+
+@media (max-width: 760px) {
+  .experiment-journey--compact { grid-template-columns: 1fr; }
+  .experiment-journey--compact .experiment-journey__steps { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 760px) {

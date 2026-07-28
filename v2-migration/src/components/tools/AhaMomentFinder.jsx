@@ -10,6 +10,7 @@ import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
+import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
@@ -625,6 +626,9 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   }, [viewResults, sortBy, minSupport]);
 
   const topAction = sortedResults.length ? sortedResults[0] : null;
+  const strongCandidateCount = sortedResults.filter(
+    (result) => ahaBucketOf(result, minSupport) === "strong",
+  ).length;
 
   // 이벤트별 고정 색상 — cache.results 삽입 순서 기준이라 정렬/선택이 바뀌어도 색이 안 흔들림.
   const actionColorMap = useMemo(() => {
@@ -1085,26 +1089,57 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             <p className="muted" style={{ fontSize: "12px", marginTop: "-4px", marginBottom: "14px" }}>
               {C.heroSub}
             </p>
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "10px" }}>
-              <DownloadHub
-                toolId={domain === "content" ? "9-2" : "5-20"}
-                locale={locale}
-                label={tr("실행 정보", "Run details")}
-                manifest={buildResultManifest({
-                  toolId: domain === "content" ? "9-2" : "5-20",
-                  mode: holdoutOn ? "association-holdout" : "association",
-                  source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
-                  inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
-                  mappingSignature: Object.entries(csvData?.mapping || {}).sort().map(([k, v]) => `${k}=${v}`).join("|"),
-                  filter: { segment: validSeg ? `${validSeg.col}=${validSeg.value}` : "all", holdout: holdoutOn, minSupport },
-                  grain: "user-action-window",
-                  metricDefinitions: ["support", "precision", "recall", "F1", "lift"].map((key) => ({ key, unit: key === "lift" ? "ratio" : "score", aggregation: "custom" })),
-                  engineVersion: "aha-v1",
-                  status: topAction ? "COMPLETE" : "ABSTAIN",
-                  warnings: ["Association is not causation", ...(holdoutOn ? [] : ["Holdout validation disabled"])],
-                })}
-              />
-            </div>
+            <ResultActionCard
+              toolId={domain === "content" ? "9-2" : "5-20"}
+              locale={locale}
+              tone={strongCandidateCount > 0 ? "good" : topAction ? "neutral" : "bad"}
+              title={tr("선행 행동 결론", "Leading-action conclusion")}
+              headline={topAction
+                ? tr(
+                    `${topAction.action} · ${topAction.bestWindow === Infinity ? "전체 기간" : `${topAction.bestWindow}일`} 내 ${topAction.bestK}회`,
+                    `${topAction.action} · ${topAction.bestK} time(s) within ${topAction.bestWindow === Infinity ? "the full period" : `${topAction.bestWindow} days`}`,
+                  )
+                : tr("분석 가능한 행동 후보가 없습니다", "No analyzable behavior candidate")}
+              stats={[
+                { label: C.statAll, value: cache.n.toLocaleString() },
+                { label: C.statTarget, value: totalTargets.toLocaleString(), detail: `${(cache.baseRate * 100).toFixed(1)}%` },
+                { label: tr("강한 후보", "Strong candidates"), value: strongCandidateCount, detail: tr(`전체 ${sortedResults.length}개`, `${sortedResults.length} total`) },
+                { label: tr("Top Lift", "Top lift"), value: topAction?.lift == null ? "—" : `${topAction.lift.toFixed(1)}x`, detail: topAction ? `F1 ${topAction.holdout.F1.toFixed(2)}` : "" },
+              ]}
+              points={topAction ? [
+                {
+                  text: tr(
+                    "다음 액션: 이 행동을 유도하는 실험을 설계하고 5-4에서 검증하세요.",
+                    "Next: design an experiment that encourages this behavior and validate it in 5-4.",
+                  ),
+                  cls: "good",
+                },
+                { text: C.causationBody, cls: "muted" },
+              ] : [{ text: tr("매핑과 최소 지지도를 확인한 뒤 다시 분석하세요.", "Review mapping and minimum support, then analyze again."), cls: "bad" }]}
+              collapsePointsAfter={1}
+              download={(
+                <DownloadHub
+                  toolId={domain === "content" ? "9-2" : "5-20"}
+                  locale={locale}
+                  label={tr("실행 정보", "Run details")}
+                  manifest={buildResultManifest({
+                    toolId: domain === "content" ? "9-2" : "5-20",
+                    mode: holdoutOn ? "association-holdout" : "association",
+                    source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
+                    inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
+                    mappingSignature: Object.entries(csvData?.mapping || {}).sort().map(([k, v]) => `${k}=${v}`).join("|"),
+                    filter: { segment: validSeg ? `${validSeg.col}=${validSeg.value}` : "all", holdout: holdoutOn, minSupport },
+                    grain: "user-action-window",
+                    metricDefinitions: ["support", "precision", "recall", "F1", "lift"].map((key) => ({ key, unit: key === "lift" ? "ratio" : "score", aggregation: "custom" })),
+                    engineVersion: "aha-v1",
+                    status: topAction ? "COMPLETE" : "ABSTAIN",
+                    warnings: ["Association is not causation", ...(holdoutOn ? [] : ["Holdout validation disabled"])],
+                  })}
+                />
+              )}
+            >
+            <details className="result-action-card__details">
+              <summary>{tr("기존 상세 근거와 검증 경로 보기", "View detailed evidence and validation path")}</summary>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "12px", marginBottom: "14px" }}>
               {[
                 [C.statAll, cache.n.toLocaleString(), null],
@@ -1183,6 +1218,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 tr("강한 신호도 실험·홀드아웃으로 인과효과를 확인해야 합니다.", "Even a strong signal requires an experiment or holdout to confirm incrementality."),
               ]}
             />
+            </details>
+            </ResultActionCard>
           </section>
 
           {/* ── §1 칸반 그룹핑 — 신호 세기별 3버킷(배지 반복 대신 칼럼 헤더가 곧 상태) ── */}

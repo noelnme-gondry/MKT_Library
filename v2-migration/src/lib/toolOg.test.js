@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getToolOgData, getToolOgImageUrl, TOOL_OG_CONFIG } from "./toolOg";
+import { getToolFeatureList, getToolOgData, getToolOgImageUrl, TOOL_OG_CONFIG } from "./toolOg";
 
 const TOOL_IDS = ["5-2", "5-3", "5-4", "5-18", "5-20", "5-21", "5-22", "5-23", "9-1", "9-6"];
 
@@ -12,6 +12,8 @@ describe("tool-specific social cards", () => {
     expect(ko.title).not.toBe(en.title);
     expect(ko.metrics.length).toBeGreaterThanOrEqual(3);
     expect(en.metrics.length).toBeGreaterThanOrEqual(3);
+    expect(getToolFeatureList(toolId, "ko")).toContain("브라우저 내 CSV 분석");
+    expect(getToolFeatureList(toolId, "en")).toContain("Client-side CSV analysis");
   });
 
   it("uses a unique visual signature for every published tool", () => {

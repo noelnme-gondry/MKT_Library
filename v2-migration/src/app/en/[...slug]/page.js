@@ -3,7 +3,7 @@ import { findMeta } from "@/store/useDataStore";
 import { ITEM_TITLE_EN } from "@/lib/enNavCopy";
 import { buildPageKeywords } from "@/lib/pageKeywords";
 import { getRouteSeo } from "@/lib/routeSeo";
-import { getToolOgImageUrl } from "@/lib/toolOg";
+import { getToolFeatureList, getToolOgImageUrl } from "@/lib/toolOg";
 import { readSopData } from "@/lib/sopData";
 import PageClient from "./PageClient";
 
@@ -62,6 +62,7 @@ async function PageWithStructuredData({ params }) {
     description: routeSeo?.description || meta.seoDescriptionEn || meta.seoDescription || meta.group?.desc,
     url: `${SITE_URL}/en${idToPath(routeId)}`,
     image: getToolOgImageUrl(SITE_URL, routeId, "en"),
+    featureList: getToolFeatureList(routeId, "en"),
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     isAccessibleForFree: true,
