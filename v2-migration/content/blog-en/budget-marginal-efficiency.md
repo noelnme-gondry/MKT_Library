@@ -1,6 +1,6 @@
 ---
 title: "Cut, Scale, or Reallocate Budget? The #1 Metric — Marginal ROAS & CPA"
-description: "Increasing, reallocating, and cutting budget look like different problems, but the #1 criterion is one thing: the marginal metric (the ROAS/CPA of the next or last dollar). Plus why a winner breaks when you scale it, and why cuts don't bounce back."
+description: "Marketing budget allocation means deciding where to increase, reallocate, or cut spend. The #1 criterion is the marginal ROAS/CPA of the next or last dollar — including why a winner breaks when you scale it and why cuts do not always bounce back."
 date: "2026-07-21"
 slug: "budget-marginal-efficiency"
 keywords: "marketing budget allocation, ad budget reallocation, when to scale ad budget, budget cut priorities, marginal ROAS, marginal CPA, response curve"

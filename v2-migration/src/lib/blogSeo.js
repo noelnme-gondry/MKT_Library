@@ -9,13 +9,13 @@ const KO_TITLES = {
   "aha-moment-retention": "Aha Moment 찾는 법: 초기 행동과 리텐션 분석",
   "ai-era-marketer": "AI 시대 퍼포먼스 마케터 역량: 자동화 이후에도 남는 일",
   "apple-search-ads-guide": "Apple Search Ads, 캠페인 왜 4개로 쪼개나 — 구조부터",
-  "aso-basics-guide": "광고비 태우기 전에, 스토어에서 새는 설치부터 막으세요 — ASO 기초",
+  "aso-basics-guide": "ASO 전략: 광고비 태우기 전 스토어 전환부터 막는 법",
   "attribution-data-mismatch": "어트리뷰션 데이터 불일치 원인: 매체·GA4·MMP 전환수 비교",
   "audience-broad-vs-narrow": "브로드 타겟 vs 좁은 타겟: 광고 오디언스 선택 기준",
-  "budget-marginal-efficiency": "예산 삭감·증액·재배분, 1순위 지표는? 한계 ROAS·CPA",
+  "budget-marginal-efficiency": "마케팅 예산 배분: 삭감·증액·재배분의 한계 ROAS·CPA",
   "campaign-anomaly-detection": "캠페인 이상 탐지: CPA 급등·전환 급감 원인 찾기",
   "cannibalization-organic-paid": "광고 카니발라이제이션이란? 유료·오가닉 잠식 측정",
-  "cohort-analysis-guide": "리텐션 30%라는데 매출은 왜 안 오를까 — 코호트로 쪼개면 보여요",
+  "cohort-analysis-guide": "D1·D7·D30 리텐션 코호트 분석: 평균이 숨기는 이탈 읽는 법",
   "correlation-vs-causation": "상관관계와 인과관계 차이: 마케팅 실험으로 검증하기",
   "cpi-cpa-cpm-difference": "CPI·CPA·CPM·CPC 차이: 광고 지표 계산과 선택 기준",
   "event-taxonomy-guide": "이벤트 택소노미 설계: GA4·MMP 전환 데이터 이름 규칙",
@@ -42,7 +42,7 @@ const EN_TITLES = {
   "ai-era-marketer": "The AI-Era Performance Marketer: Skills That Still Matter",
   "attribution-data-mismatch": "Attribution Data Mismatch: Comparing Media, GA4, and MMP Conversions",
   "audience-broad-vs-narrow": "Broad vs Narrow Targeting: How to Choose an Ad Audience",
-  "budget-marginal-efficiency": "Cut, Scale, or Reallocate Budget? The One Metric — Marginal ROAS & CPA",
+  "budget-marginal-efficiency": "Marketing Budget Allocation: Cut, Scale, or Reallocate With Marginal ROAS & CPA",
   "correlation-vs-causation": "Correlation vs Causation in Marketing: How Experiments Verify Lift",
   "ga4-data-traps": "GA4 Data Traps: Seven Aggregation Rules Behind Different Numbers",
   "incrementality-measurement": "Incrementality Measurement: Validate Ad Lift with Holdouts and DiD",
@@ -51,10 +51,10 @@ const EN_TITLES = {
   "performance-marketing-metrics": "Performance Marketing Metrics: From Your First 4 to CPA and ROAS Diagnosis",
   "aha-moment-retention": "How to Find the Aha Moment: Early Actions and Retention",
   "apple-search-ads-guide": "Apple Search Ads: Brand, Competitor, Category, Discovery Structure",
-  "aso-basics-guide": "ASO Basics: Store Page Conversion and Keyword Optimization",
+  "aso-basics-guide": "ASO Strategy: App Store Optimization for Conversion and Keywords",
   "campaign-anomaly-detection": "Campaign Anomaly Detection: Finding CPA Spike and Conversion Drop Causes",
   "cannibalization-organic-paid": "What Is Ad Cannibalization? Measuring Paid vs Organic Overlap",
-  "cohort-analysis-guide": "Cohort Analysis: Reading Retention Curves and the Average Trap",
+  "cohort-analysis-guide": "Cohort Analysis: Reading D1, D7, and D30 Retention Cohorts",
   "cpi-cpa-cpm-difference": "CPI vs CPA vs CPM vs CPC: Ad Metric Math and Which to Choose",
   "event-taxonomy-guide": "Event Taxonomy Design: Naming Rules for GA4 and MMP Conversions",
   "funnel-dropoff-analysis": "Improve Conversion Rate: Diagnose Funnel Drop-off, Then Test the Fix",
@@ -75,6 +75,11 @@ const UPDATED_TODAY = new Set([
   "ltv-cac-ratio", "marketing-mix-modeling", "performance-marketer-skills", "performance-marketing-metrics",
 ]);
 const UPDATED_TODAY_EN = new Set(["ad-performance-diagnosis", "marketing-mix-modeling"]);
+// 2026-07-28: Search Console 노출어 감사 후, 제목/설명에 검색 의도를 명시적으로
+// 복구한 글만 실제 편집일로 갱신한다. 단순 메타 재생성에 날짜를 쓰지 않는다.
+const UPDATED_2026_07_28 = new Set([
+  "aso-basics-guide", "budget-marginal-efficiency", "cannibalization-organic-paid", "cohort-analysis-guide",
+]);
 
 export function getBlogSeo(locale, slug, source = {}) {
   const title = TITLES[locale]?.[slug];
@@ -89,7 +94,9 @@ export function getBlogSeo(locale, slug, source = {}) {
     description: `${source.description || title}${suffix}`,
     answer: `${source.description || title}${suffix}`,
     intent: isEnglish ? "Search answer · practical workflow" : "검색 답변 · 실무 워크플로우",
-    updated: source.updated || ((isEnglish ? UPDATED_TODAY_EN : UPDATED_TODAY).has(slug) ? "2026-07-20" : ""),
+    updated: source.updated || (UPDATED_2026_07_28.has(slug)
+      ? "2026-07-28"
+      : ((isEnglish ? UPDATED_TODAY_EN : UPDATED_TODAY).has(slug) ? "2026-07-20" : "")),
   };
 }
 

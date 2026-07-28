@@ -44,6 +44,31 @@ describe("editorial SEO registries", () => {
     expect(getAllPosts("en").every((post) => post.seoAnswer && post.searchIntent)).toBe(true);
   });
 
+  it("keeps audited high-intent search phrases in final SEO titles or descriptions", () => {
+    const coverage = {
+      ko: {
+        "budget-marginal-efficiency": "마케팅 예산 배분",
+        "cohort-analysis-guide": "D30 리텐션",
+        "aso-basics-guide": "ASO 전략",
+        "cannibalization-organic-paid": "내부 카니발라이제이션",
+      },
+      en: {
+        "budget-marginal-efficiency": "marketing budget allocation",
+        "cohort-analysis-guide": "d30 retention",
+        "aso-basics-guide": "aso strategy",
+        "cannibalization-organic-paid": "internal cannibalisation",
+      },
+    };
+    for (const [locale, entries] of Object.entries(coverage)) {
+      const posts = new Map(getAllPosts(locale).map((post) => [post.slug, post]));
+      for (const [slug, phrase] of Object.entries(entries)) {
+        const post = posts.get(slug);
+        expect(post, `${locale}/${slug} must exist`).toBeTruthy();
+        expect(`${post.title} ${post.description}`.toLowerCase()).toContain(phrase.toLowerCase());
+      }
+    }
+  });
+
   it("does not invent an English URL for unpublished draft content", () => {
     expect(localizedHref("/blog/adjust-vs-appsflyer", "en")).toBe("/blog/adjust-vs-appsflyer");
     expect(localizedHref("/blog/ad-performance-diagnosis", "en")).toBe("/en/blog/ad-performance-diagnosis");

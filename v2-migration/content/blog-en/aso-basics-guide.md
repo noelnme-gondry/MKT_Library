@@ -1,6 +1,6 @@
 ---
 title: "Before You Spend on Ads, Stop the Installs Leaking at the Store — ASO Basics"
-description: "A tap on your ad still installs on the store page. If store conversion leaks, ad spend leaks with it. The order to fix ASO — from icon and screenshots to keywords."
+description: "An ASO strategy improves both store-page conversion and search visibility after an ad click. The order to fix app store optimization — from icons and screenshots to keywords."
 date: "2026-07-15"
 slug: "aso-basics-guide"
 keywords: "ASO, app store optimization, ASO basics, app keyword optimization, app store conversion rate, store page conversion, app icon screenshots, app ranking, organic installs"
