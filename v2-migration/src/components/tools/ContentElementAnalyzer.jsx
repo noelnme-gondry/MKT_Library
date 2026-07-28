@@ -18,6 +18,7 @@ import { buildDemoCsv } from "@/utils/demoData";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
+import ResultActionCard from "@/components/ds/ResultActionCard";
 import { ELEMENT_COPY as C } from "@/utils/contentDomain";
 import { trackProductEvent } from "@/lib/analytics";
 
@@ -209,6 +210,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const [outcome, setOutcome] = useState(null);
   const [features, setFeatures] = useState([]);
   const [analyzedSig, setAnalyzedSig] = useState(null);
+  const [mappingOpen, setMappingOpen] = useState(true);
   const analysisEventRef = useRef(null);
   const [seededKey, setSeededKey] = useState(null);
 
@@ -252,13 +254,17 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
     setOutcome(o);
     setFeatures(f);
     setAnalyzedSig(demoPending && hasData ? analyzeSig(o, f, fileName) : null);
+    setMappingOpen(!(demoPending && hasData));
     if (demoPending) setDemoPending(false);
   }
 
   const analyzed = analyzedSig != null && analyzedSig === analyzeSig(outcome, features, fileName);
   const runElementAnalysis = () => {
     trackProductEvent("analysis_started", { tool_id: "9-1", source: isDemo ? "demo" : "csv", row_count: csvData?.raw?.length || 0, analysis_type: "content_elements" });
-    requestAd(() => setAnalyzedSig(analyzeSig(outcome, features, fileName)));
+    requestAd(() => {
+      setAnalyzedSig(analyzeSig(outcome, features, fileName));
+      setMappingOpen(false);
+    });
   };
 
   // ── 회귀 적합 (REG_STATS.ols) ──────────────────────────────────────────────
@@ -427,7 +433,6 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
   const canAnalyze = !!outcome && features.length > 0;
   const topSig = fit && !fit.error ? fit.rows.find((r) => r.sig) : null;
   const effDir = (coef) => (coef >= 0 ? "높이는" : "낮추는");
-  const effWord = (coef) => (coef >= 0 ? "높" : "낮");
 
   return (
     <div className="tab-pane active">
@@ -442,8 +447,12 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       )}
 
       {/* ── §0 매핑 ── */}
-      <section className="block" id="s-content-mapping">
-        <h2 className="section-title"><span className="ix">§0</span>{T.mappingTitle}</h2>
+      <details className="block analysis-data-mapping" id="s-content-mapping" open={mappingOpen} onToggle={(event) => setMappingOpen(event.currentTarget.open)}>
+        <summary>
+          <span><span className="ix">§0</span>{T.mappingTitle}</span>
+          {analyzed && <small>{T.analyzedBadge} · {fit?.n?.toLocaleString?.() || csvData.raw.length.toLocaleString()}{tr("행", " rows")}</small>}
+        </summary>
+        <div className="analysis-data-mapping__body">
         <div className="csv-loaded-bar">
           <div className="csv-loaded-info">
             <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
@@ -494,7 +503,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
             <button className="ab-pill" style={{ background: "#7aa2f7", color: "#0b0d12", fontWeight: 700, borderColor: "#7aa2f7", fontSize: "13px", padding: "8px 18px" }} onClick={runElementAnalysis}>{T.analyzeBtn}</button>
           </div>
         )}
-      </section>
+        </div>
+      </details>
 
       {analyzed && fit && fit.error && (
         <section className="block">
@@ -512,46 +522,35 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
       {analyzed && fit && !fit.error && (
         <>
-          {/* ── §0 결론 히어로 ── */}
-          <section className="block" id="s-content-result" style={{ background: "linear-gradient(135deg, rgba(122,162,247,0.12), rgba(192,132,252,0.05))", border: "1px solid rgba(122,162,247,0.25)", borderRadius: "14px", padding: "18px 20px" }}>
-            <h2 className="section-title" style={{ marginTop: 0 }}>{T.heroQ}</h2>
-            <p className="muted" style={{ fontSize: "12px", marginTop: "-4px", marginBottom: "14px" }}>{T.heroSub}</p>
-            {topSig ? (
-              <div style={{ background: "var(--surface-container-low)", border: "1px solid rgba(34,197,94,0.4)", borderRadius: "10px", padding: "12px 14px", marginBottom: "12px" }}>
-                <div style={{ fontSize: "12px", color: MUTED, marginBottom: "4px" }}>{T.topSigLabel}</div>
-                <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-1)", lineHeight: 1.6 }}>
-                  {locale === "en" ? (
-                    <>
-                      <strong>{topSig.name}</strong> is <strong>statistically significantly</strong> associated with {topSig.coef >= 0 ? "raising" : "lowering"} {fit.outcome}
-                      {topSig.binary
-                        ? <> — when present, {fit.outcome} averaged <strong>{Math.abs(topSig.coef).toFixed(2)}</strong> {topSig.coef >= 0 ? "higher" : "lower"}.</>
-                        : <> — each +1 is associated with an average change of <strong>{Math.abs(topSig.coef).toFixed(3)}</strong> {topSig.coef >= 0 ? "upward" : "downward"}.</>}
-                    </>
-                  ) : (
-                    <>
-                      <strong>{topSig.name}</strong>은(는) {fit.outcome}을(를) {effDir(topSig.coef)} 방향으로 <strong>통계적으로 유의</strong>하게 연관돼요
-                      {topSig.binary
-                        ? <> — 있을 때 평균 <strong>{Math.abs(topSig.coef).toFixed(2)}</strong>만큼 {effWord(topSig.coef)}았어요.</>
-                        : <> — 1 늘 때마다 평균 <strong>{Math.abs(topSig.coef).toFixed(3)}</strong>만큼 {effWord(topSig.coef)}아져요.</>}
-                    </>
-                  )}
-                </div>
-                <div style={{ fontSize: "10.5px", color: MUTED, marginTop: "6px", opacity: 0.85 }} title="two-sided p-value">
-                  BH p={topSig.p.toFixed(3)} · 95%CI [{topSig.ciLo.toFixed(3)}, {topSig.ciHi.toFixed(3)}]
-                </div>
-              </div>
-            ) : (
-              locale === "en"
-                ? <div style={{ fontSize: "13px", color: MUTED, marginBottom: "12px" }} dangerouslySetInnerHTML={{ __html: T.noSigHtml }} />
-                : <div style={{ fontSize: "13px", color: MUTED, marginBottom: "12px" }}>이 데이터에서는 <strong>통계적으로 유의한 요소가 없어요</strong>. 표본을 늘리거나 다른 요소를 넣어보세요(무유의 = 효과 없음이 아니라 <em>증거 부족</em>).</div>
-            )}
-            <div className="callout warn" style={{ margin: 0 }}>
-              <div className="ico">⚠</div>
-              <div className="body">
-                <strong>{T.causationTitle}</strong>
-                <p style={{ margin: ".25rem 0 0" }} dangerouslySetInnerHTML={{ __html: T.causationBody }} />
-              </div>
-            </div>
+          <section className="block" id="s-content-result">
+            <ResultActionCard
+              toolId="9-1"
+              locale={locale}
+              tone={topSig ? "good" : "neutral"}
+              title={T.heroQ}
+              headline={topSig
+                ? tr(
+                    `${topSig.name}: ${fit.outcome} ${effDir(topSig.coef)} 신호가 가장 강합니다.`,
+                    `${topSig.name} has the strongest signal associated with ${topSig.coef >= 0 ? "raising" : "lowering"} ${fit.outcome}.`,
+                  )
+                : tr("유의한 요소를 확정할 증거가 아직 부족합니다.", "There is not enough evidence to confirm a significant element yet.")}
+              points={[
+                {
+                  text: topSig
+                    ? tr("다음 실험에서는 이 요소 하나만 바꿔 인과효과를 확인하세요.", "In the next experiment, change only this element to test causality.")
+                    : tr("표본을 늘리거나 서로 겹치지 않는 제작 요소를 추가하세요.", "Add more observations or production elements that do not overlap."),
+                  cls: topSig ? "good" : "muted",
+                },
+                { text: tr("회귀 결과는 관측 연관이며 인과효과가 아닙니다.", "Regression results are observed associations, not causal effects."), cls: "muted" },
+              ]}
+              stats={[
+                { label: tr("가장 강한 요소", "Strongest element"), value: topSig?.name || "—" },
+                { label: tr("효과 크기", "Effect size"), value: topSig ? `${topSig.coef >= 0 ? "+" : ""}${topSig.coef.toFixed(topSig.binary ? 2 : 3)}` : "—", detail: topSig ? `BH p=${topSig.p.toFixed(3)}` : tr("증거 부족", "Insufficient evidence") },
+                { label: tr("유효 행", "Valid rows"), value: fit.n.toLocaleString() },
+                { label: tr("분석 요소", "Features"), value: `${fit.k}${tr("개", "")}`, detail: fit.dropped.length ? tr(`${fit.dropped.length}개 제외`, `${fit.dropped.length} dropped`) : tr("제외 없음", "None dropped") },
+              ]}
+              collapsePointsAfter={1}
+              analysisDetails={(
             <AnalysisDetails
               locale={locale}
               statusLabel={topSig ? tr("유의 연관 후보", "Significant association candidate") : tr("판정 보류", "Abstain")}
@@ -568,6 +567,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                 ...(fit.dropped.length ? [tr("분산 0·완전 공선·고레버리지 요소는 추정에서 제외됐습니다.", "Zero-variance, perfectly collinear, or high-leverage features were excluded.")] : []),
                 tr("희소 요소와 플랫폼 선택 편향은 불확실성을 키웁니다. 실험으로 확인하세요.", "Sparse elements and platform selection bias increase uncertainty. Confirm with an experiment."),
               ]}
+            />
+              )}
             />
           </section>
 

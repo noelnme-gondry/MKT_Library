@@ -7,7 +7,7 @@
 // columns + an outcome column). Deterministic signal so the fit succeeds and the
 // forest plot + table render. NO Math.random (harness §3).
 import { describe, it, expect, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import ContentElementAnalyzer from "@/components/tools/ContentElementAnalyzer";
 
@@ -62,5 +62,20 @@ describe("ContentElementAnalyzer render smoke", () => {
     const { container } = render(<ContentElementAnalyzer />);
     expect(document.body.textContent.length).toBeGreaterThan(0);
     expect(container.querySelector("#s-content-mapping")).toBeTruthy();
+  });
+
+  it("collapses mapping and puts numeric evidence first after analysis", () => {
+    seedWithData();
+    const { container } = render(<ContentElementAnalyzer />);
+    const mapping = container.querySelector("#s-content-mapping");
+    expect(mapping.open).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
+
+    expect(mapping.open).toBe(false);
+    const stats = container.querySelector(".result-action-card__stats");
+    const points = container.querySelector(".result-action-card__points");
+    expect(stats).toBeTruthy();
+    expect(stats.compareDocumentPosition(points) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

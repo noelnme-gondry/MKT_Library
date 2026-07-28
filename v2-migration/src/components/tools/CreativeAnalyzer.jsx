@@ -878,7 +878,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
 
   return (
     <div className="tab-pane active" id="tab-creative">
-      {/* 히어로 — 결론 먼저(질문 헤드라인) + 여정=질문 grid + 방법론 fold (claude-ux §0·§1·§3·§5) */}
+      {/* 도구 소개는 한 줄만 유지한다. 실제 판단은 바로 아래 결론·컨트롤룸이 담당한다. */}
       <section
         className="block"
         id="s-creative-hero"
@@ -893,8 +893,8 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px" }}>
           <div>
             <h2 className="section-title" style={{ marginTop: 0, marginBottom: "6px" }}>{C.heroTitle}</h2>
-            <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6, maxWidth: "660px" }}>
-              {C.heroSub}
+            <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.5, maxWidth: "660px" }}>
+              {tr("교체할 소재, 다음 제작 후보, 성과 변화 신호를 한 번에 정리합니다.", "See what to replace, what to produce next, and what changed performance.")}
             </p>
           </div>
           <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
@@ -920,17 +920,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           </div>
         </div>
 
-        {/* 여정 = 질문 4개 (grid 균등 정렬) */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "10px", marginTop: "14px" }}>
-          {C.heroJourney.map(([ic, q, a], i) => (
-            <div key={i} style={{ background: "var(--surface-container-lowest)", border: "1px solid var(--border)", borderRadius: "10px", padding: "11px 13px" }}>
-              <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.35 }}>{ic} {q}</div>
-              <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginTop: "4px", lineHeight: 1.5 }}>{a}</div>
-            </div>
-          ))}
-        </div>
-
-        <details style={{ marginTop: "12px", fontSize: "11.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
+        <details style={{ marginTop: "9px", fontSize: "11px", color: "var(--text-secondary)", cursor: "pointer" }}>
           <summary>{tr("⚠️ 통계 분석 및 해석 한계 (상관 ≠ 인과)", "⚠️ Statistical analysis & interpretation limits (correlation ≠ causation)")}</summary>
           <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
             {C.heroCausationBody}

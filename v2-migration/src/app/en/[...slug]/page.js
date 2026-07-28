@@ -3,6 +3,7 @@ import { findMeta } from "@/store/useDataStore";
 import { ITEM_TITLE_EN } from "@/lib/enNavCopy";
 import { buildPageKeywords } from "@/lib/pageKeywords";
 import { getRouteSeo } from "@/lib/routeSeo";
+import { getToolOgImageUrl } from "@/lib/toolOg";
 import { readSopData } from "@/lib/sopData";
 import PageClient from "./PageClient";
 
@@ -30,6 +31,7 @@ export async function generateMetadata({ params }) {
   const canonical = `${SITE_URL}/en${idToPath(routeId)}`;
   const keywords = buildPageKeywords(meta, "en");
   const langs = enAlternates(routeId);
+  const socialImage = getToolOgImageUrl(SITE_URL, routeId, "en");
 
   return {
     title,
@@ -37,7 +39,8 @@ export async function generateMetadata({ params }) {
     keywords,
     ...(!isRoutePublished(routeId) ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical, ...(langs ? { languages: langs } : {}) },
-    openGraph: { title, description, url: canonical, locale: "en_US", images: [`${SITE_URL}/og-card.png`] },
+    openGraph: { title, description, url: canonical, locale: "en_US", images: [socialImage] },
+    twitter: { card: "summary_large_image", title, description, images: [socialImage] },
   };
 }
 
@@ -49,14 +52,16 @@ async function PageWithStructuredData({ params }) {
   const { slug } = await params;
   const routeId = resolveSlugToId(slug);
   const meta = routeId ? findMeta(routeId) : null;
+  const routeSeo = routeId ? getRouteSeo(routeId, "en") : null;
   const initialSopData = routeId && EN_READY_GUIDE_IDS.has(routeId) ? readSopData(routeId, "en") : null;
   const isTool = Boolean(routeId && (routeId.startsWith("5-") || routeId.startsWith("9-")) && hasEnVersion(routeId));
   const structuredData = isTool && meta ? {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: meta.seoTitleEn || meta.titleEn || meta.title,
-    description: meta.seoDescriptionEn || meta.seoDescription || meta.group?.desc,
+    name: routeSeo?.title || meta.seoTitleEn || meta.titleEn || meta.title,
+    description: routeSeo?.description || meta.seoDescriptionEn || meta.seoDescription || meta.group?.desc,
     url: `${SITE_URL}/en${idToPath(routeId)}`,
+    image: getToolOgImageUrl(SITE_URL, routeId, "en"),
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     isAccessibleForFree: true,

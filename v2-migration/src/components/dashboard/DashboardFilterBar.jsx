@@ -143,6 +143,13 @@ export default function DashboardFilterBar({ locale = "ko" }) {
   if (dashboardFilter.countries && dashboardFilter.countries.size > 0) activeCount++;
   if (dashboardFilter.channels && dashboardFilter.channels.size > 0) activeCount++;
   if (dashboardFilter.sources && dashboardFilter.sources.size > 0) activeCount++;
+  const activeSegmentCount = [
+    dashboardFilter.platforms,
+    dashboardFilter.countries,
+    dashboardFilter.channels,
+    dashboardFilter.sources,
+  ].filter((value) => value && value.size > 0).length;
+  const segmentFilterCount = [platforms, countries, channels, sources].filter((options) => options.length > 0).length;
 
   const handleReset = () => {
     setDashboardFilter({
@@ -193,44 +200,51 @@ export default function DashboardFilterBar({ locale = "ko" }) {
           </>
         )}
 
-        {platforms.length > 0 && (
-          <MultiSelect
-            label={locale === "en" ? "Platform" : "플랫폼"}
-            options={platforms}
-            selected={dashboardFilter.platforms && dashboardFilter.platforms.size > 0 ? dashboardFilter.platforms : null}
-            onChange={(set) => setDashboardFilter({ platforms: set || new Set() })}
-            T={T}
-          />
-        )}
-
-        {countries.length > 0 && (
-          <MultiSelect
-            label={T.country}
-            options={countries}
-            selected={dashboardFilter.countries && dashboardFilter.countries.size > 0 ? dashboardFilter.countries : null}
-            onChange={(set) => setDashboardFilter({ countries: set || new Set() })}
-            T={T}
-          />
-        )}
-
-        {channels.length > 0 && (
-          <MultiSelect
-            label={T.channel}
-            options={channels}
-            selected={dashboardFilter.channels && dashboardFilter.channels.size > 0 ? dashboardFilter.channels : null}
-            onChange={(set) => setDashboardFilter({ channels: set || new Set() })}
-            T={T}
-          />
-        )}
-
-        {sources.length > 0 && (
-          <MultiSelect
-            label={T.source}
-            options={sources}
-            selected={dashboardFilter.sources && dashboardFilter.sources.size > 0 ? dashboardFilter.sources : null}
-            onChange={(set) => setDashboardFilter({ sources: set || new Set() })}
-            T={T}
-          />
+        {segmentFilterCount > 0 && (
+          <details className="dashboard-filter-more" defaultOpen={activeSegmentCount > 0}>
+            <summary>
+              {locale === "en" ? "Segments" : "세그먼트"}
+              <span>{activeSegmentCount > 0 ? activeSegmentCount : segmentFilterCount}</span>
+            </summary>
+            <div className="dashboard-filter-more__body">
+              {platforms.length > 0 && (
+                <MultiSelect
+                  label={locale === "en" ? "Platform" : "플랫폼"}
+                  options={platforms}
+                  selected={dashboardFilter.platforms && dashboardFilter.platforms.size > 0 ? dashboardFilter.platforms : null}
+                  onChange={(set) => setDashboardFilter({ platforms: set || new Set() })}
+                  T={T}
+                />
+              )}
+              {countries.length > 0 && (
+                <MultiSelect
+                  label={T.country}
+                  options={countries}
+                  selected={dashboardFilter.countries && dashboardFilter.countries.size > 0 ? dashboardFilter.countries : null}
+                  onChange={(set) => setDashboardFilter({ countries: set || new Set() })}
+                  T={T}
+                />
+              )}
+              {channels.length > 0 && (
+                <MultiSelect
+                  label={T.channel}
+                  options={channels}
+                  selected={dashboardFilter.channels && dashboardFilter.channels.size > 0 ? dashboardFilter.channels : null}
+                  onChange={(set) => setDashboardFilter({ channels: set || new Set() })}
+                  T={T}
+                />
+              )}
+              {sources.length > 0 && (
+                <MultiSelect
+                  label={T.source}
+                  options={sources}
+                  selected={dashboardFilter.sources && dashboardFilter.sources.size > 0 ? dashboardFilter.sources : null}
+                  onChange={(set) => setDashboardFilter({ sources: set || new Set() })}
+                  T={T}
+                />
+              )}
+            </div>
+          </details>
         )}
 
         {activeCount > 0 && (

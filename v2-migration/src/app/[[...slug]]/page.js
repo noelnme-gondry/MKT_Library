@@ -2,6 +2,7 @@ import { resolveSlugToId, idToPath, SITE_URL, enAlternates, isRoutePublished } f
 import { findMeta } from "@/store/useDataStore";
 import { buildPageKeywords } from "@/lib/pageKeywords";
 import { getRouteSeo } from "@/lib/routeSeo";
+import { getToolOgImageUrl } from "@/lib/toolOg";
 import PageClient from "./PageClient";
 
 export async function generateMetadata({ params }) {
@@ -32,6 +33,7 @@ export async function generateMetadata({ params }) {
   const canonical = `${SITE_URL}${idToPath(routeId)}`;
   const keywords = buildPageKeywords(meta);
   const langs = enAlternates(routeId);
+  const socialImage = getToolOgImageUrl(SITE_URL, routeId, "ko");
 
   return {
     title,
@@ -39,7 +41,8 @@ export async function generateMetadata({ params }) {
     keywords,
     ...(!isRoutePublished(routeId) ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical, ...(langs ? { languages: langs } : {}) },
-    openGraph: { title, description, url: canonical, images: [`${SITE_URL}/og-card.png`] },
+    openGraph: { title, description, url: canonical, images: [socialImage] },
+    twitter: { card: "summary_large_image", title, description, images: [socialImage] },
   };
 }
 
@@ -51,13 +54,15 @@ async function PageWithStructuredData({ params }) {
   const { slug } = await params;
   const routeId = resolveSlugToId(slug);
   const meta = routeId ? findMeta(routeId) : null;
+  const routeSeo = routeId ? getRouteSeo(routeId, "ko") : null;
   const isTool = Boolean(routeId && (routeId.startsWith("5-") || routeId.startsWith("9-")));
   const structuredData = isTool && meta ? {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: meta.seoTitle || meta.title,
-    description: meta.seoDescription || meta.group?.desc,
+    name: routeSeo?.title || meta.seoTitle || meta.title,
+    description: routeSeo?.description || meta.seoDescription || meta.group?.desc,
     url: `${SITE_URL}${idToPath(routeId)}`,
+    image: getToolOgImageUrl(SITE_URL, routeId, "ko"),
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     isAccessibleForFree: true,
