@@ -173,7 +173,9 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
       if (resultIsVisible && !didRevealResult.current) {
         didRevealResult.current = true;
         setHasNewContext(true);
-        setIsOpen(true);
+        // 모바일에서 자동 패널이 결과·필터를 덮지 않게 배지만 알린다.
+        // 사용자가 토글을 누르면 같은 맥락 안내를 그대로 펼칠 수 있다.
+        if (window.innerWidth > 760) setIsOpen(true);
       }
     };
     const syncCurrentSection = () => {
