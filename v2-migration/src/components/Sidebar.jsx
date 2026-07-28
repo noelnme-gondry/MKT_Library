@@ -3,9 +3,10 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAppStore, IA, SECTIONS, displayGroupNumberShort, displayItemNumberShort } from "@/store/useDataStore";
+import { useAppStore, IA, SECTIONS, displayGroupNumberShort, displayItemNumberShort, findMeta } from "@/store/useDataStore";
 import { idToSlug, resolvePathToId, hasEnVersion } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle, trSectionLabel } from "@/lib/enNavCopy";
+import { TOOL_JOURNEY, localizedTool } from "@/lib/toolConnections";
 import BrandMark from "@/components/BrandMark";
 
 const SIDEBAR_COPY = {
@@ -136,9 +137,10 @@ export default function Sidebar({ locale = "ko" }) {
         {[...SECTIONS].sort((a, b) => (a.id === "analysis" ? -1 : b.id === "analysis" ? 1 : 0)).map((section) => {
           const isPrimarySection = section.id === "analysis";
           const sectionGroups = IA.filter((g) => section.groups.includes(g.id));
-          const sectionHasActive = sectionGroups.some((g) =>
-            g.items.some((it) => it.id === currentRouteId)
-          );
+          const workflowToolIds = TOOL_JOURNEY.flatMap((stage) => stage.tools);
+          const sectionHasActive = isPrimarySection
+            ? workflowToolIds.includes(currentRouteId) || currentRouteId === "8-1"
+            : sectionGroups.some((g) => g.items.some((it) => it.id === currentRouteId));
 
           // If it hasn't been explicitly toggled, use the derived state. 분석
           // 섹션은 메인 제품이라 홈에서도 기본 펼침(다른 섹션은 기존 로직 유지).
@@ -167,7 +169,57 @@ export default function Sidebar({ locale = "ko" }) {
               </button>
 
               <div className="phase-body">
-                {sectionGroups.map((group) => {
+                {isPrimarySection ? (
+                  <>
+                    <Link href={navHref("8-1")} className={`sidebar-workflow-prep ${currentRouteId === "8-1" ? "active" : ""}`}>
+                      <span>{T.dataGuide}</span>
+                      <b>{displayItemNumberShort("8-1")}</b>
+                    </Link>
+                    {TOOL_JOURNEY.map((stage, stageIndex) => {
+                      const hasActive = stage.tools.includes(currentRouteId);
+                      const stageKey = `journey-${stage.id}`;
+                      const isGroupCollapsed = collapsedGroups[stageKey] !== undefined
+                        ? collapsedGroups[stageKey]
+                        : !hasActive;
+                      return (
+                        <div key={stage.id} className={`nav-group sidebar-workflow-stage ${isGroupCollapsed ? "collapsed" : ""}`} data-stage={stage.id}>
+                          <button
+                            type="button"
+                            className="nav-group-header"
+                            onClick={() => toggleGroup(stageKey, isGroupCollapsed)}
+                            aria-expanded={!isGroupCollapsed}
+                          >
+                            <span className="nav-group-title">
+                              <span className="nav-group-index">{String(stageIndex + 1).padStart(2, "0")}</span>
+                              <span>{stage.title[locale === "en" ? "en" : "ko"]}</span>
+                            </span>
+                            <svg className="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                          </button>
+                          <div className="nav-items">
+                            {stage.tools.map((toolId) => {
+                              const tool = localizedTool(toolId, locale);
+                              const meta = findMeta(toolId);
+                              const title = meta ? trItemTitle(toolId, locale, meta.title) : tool.title;
+                              return (
+                                <Link
+                                  key={toolId}
+                                  href={navHref(toolId)}
+                                  className={`nav-item ${toolId === currentRouteId ? "active" : ""}`}
+                                  data-route={toolId}
+                                >
+                                  <span className="ix tnum">{displayItemNumberShort(toolId)}</span>
+                                  <span>{title}</span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                ) : sectionGroups.map((group) => {
                   const hasActive = group.items.some((it) => it.id === currentRouteId);
                   const isGroupCollapsed = collapsedGroups[group.id] !== undefined
                     ? collapsedGroups[group.id]

@@ -5520,6 +5520,10 @@ body.light-mode .cmdk-item .cmdk-ico { color: #fff; }
 .connected-tool-card strong { display: block; margin-top: 8px; color: var(--text-primary); font-size: 12px; }
 .connected-tool-card p { margin: 5px 0 23px; color: var(--text-secondary); font-size: 10.5px; line-height: 1.45; }
 .connected-tool-card b { position: absolute; right: 11px; bottom: 10px; color: var(--primary); font: 700 9px var(--font-mono); }
+.sidebar-workflow-prep { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 0 7px; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-muted); font-size: 11px; text-decoration: none; }
+.sidebar-workflow-prep:hover, .sidebar-workflow-prep.active { border-color: color-mix(in srgb,var(--primary) 55%,var(--border)); color: var(--text-primary); background: color-mix(in srgb,var(--primary) 6%,var(--surface-container-lowest)); }
+.sidebar-workflow-prep b { color: var(--primary); font: 700 9px var(--font-mono); }
+.sidebar-workflow-stage .nav-group-header { margin-top: 1px; }
 .tool-connections { margin: 34px 0 6px; padding-top: 24px; border-top: 1px solid var(--border); }
 .tool-connections__head { display: grid; grid-template-columns: minmax(0,1fr) minmax(260px,.55fr); gap: 6px 28px; align-items: end; }
 .tool-connections__head > span { grid-column: 1/-1; color: var(--primary); font: 750 9px var(--font-mono); letter-spacing: .14em; }
