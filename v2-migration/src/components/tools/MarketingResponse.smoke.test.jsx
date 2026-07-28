@@ -233,6 +233,33 @@ describe("MarketingResponse render smoke", () => {
     expect(csv).toContain("ln1p_adstock_android_cost_audit");
     expect(csv).toContain("Total = Android + iOS");
     expect(csv).toContain("^$D$");
+    expect(csv).toContain("fitted_or_forecast_live,organic_predicted_live,performance_predicted_live,lower_live,upper_live");
+    expect(csv).toContain("prediction_total_live,organic_total_live,performance_total_live,lower_total_live,upper_total_live");
+    expect(csv).toMatch(/=E\d+-G\d+/);
+    expect(csv).toMatch(/=MAX\(0,\$B\$/);
+  });
+
+  it("exports structural forecasts with adjacent absolute Organic and Performance columns", () => {
+    const lines = buildForecastCsv({
+      isStructural: true,
+      structuralRoute: "direct-total",
+      structuralThreshold: 10,
+      actual: [100],
+      fittedHist: [98],
+      organicHist: [80],
+      performanceHist: [18],
+      histLabels: ["W1"],
+      predFut: [110],
+      organicFut: [85],
+      performanceFut: [25],
+      lo: [100],
+      hi: [120],
+      futLabels: ["W2"],
+    }, "Regs", "ko");
+    const csv = lines.join("\n");
+    expect(csv).toContain("fitted_or_forecast_live,organic_predicted_live,performance_predicted_live,lower_live,upper_live");
+    expect(csv).toContain("W1,history,100,=E8+F8,80,18");
+    expect(csv).toContain("W2,forecast,,=E9+F9,85,25,100,120");
   });
 
   it("parses formatted experiment values before deriving traffic", () => {
