@@ -108,6 +108,22 @@ describe("MMM column mapping", () => {
     expect(Object.keys(ios.steps)).toEqual(["c_ios_delist_step"]);
     expect(ios.targets.Regs).toEqual([80, 70]);
     expect(autoGuessColMap(["week", "ios_reopen_step"], [{ week: "2025-W01", ios_reopen_step: "1" }], false).ios_reopen_step).toMatchObject({ role: "step", plat: "ios" });
+    const operationalSteps = autoGuessColMap(
+      ["week", "IOS Delist", "IOS Reopen", "Liveness Check"],
+      [
+        { week: "2025-W01", "IOS Delist": "0", "IOS Reopen": "0", "Liveness Check": "0" },
+        { week: "2025-W02", "IOS Delist": "1", "IOS Reopen": "0", "Liveness Check": "1" },
+      ],
+    );
+    expect(operationalSteps["IOS Delist"]).toMatchObject({ role: "step", plat: "ios" });
+    expect(operationalSteps["IOS Reopen"]).toMatchObject({ role: "step", plat: "ios" });
+    expect(operationalSteps["Liveness Check"]).toMatchObject({ role: "step", plat: "common" });
+    const wideTargets = autoGuessColMap(
+      ["week", "ANDROID_RR", "IOS_RR", "Google_ANDROID_Cost", "Apple Search Ads_IOS_Cost"],
+      [{ week: "2025-W01", ANDROID_RR: "100", IOS_RR: "80", Google_ANDROID_Cost: "20", "Apple Search Ads_IOS_Cost": "30" }],
+    );
+    expect(wideTargets.ANDROID_RR).toMatchObject({ role: "reg", plat: "android" });
+    expect(wideTargets.IOS_RR).toMatchObject({ role: "reg", plat: "ios" });
   });
 
   it("uses OS-specific industry demand for OS models and a summed control for Total", () => {

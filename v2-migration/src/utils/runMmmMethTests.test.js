@@ -88,7 +88,8 @@ describe("runMmmMethTests (golden port)", () => {
       steps: {},
     }, "Regs");
     expect(selection.enabled).toBe(true);
-    expect(selection.selected.folds).toBe(3);
+    expect(selection.selected.folds).toBeGreaterThan(3);
+    expect(selection.foldStep).toBe(4);
     expect(selection.decisionMinFolds).toBe(3);
     expect(selection.selected.wmape).toBeLessThanOrEqual(selection.selected.persistenceWmape);
     expect(selection.candidates.some((item) => item.spec === "cost-trend-year-quarter")).toBe(false);

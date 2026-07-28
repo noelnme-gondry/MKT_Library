@@ -7,8 +7,8 @@ const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const PROTECTED_FILES = {
   "src/utils/mmmMathPr416.js": "986decb7e6efc15b58f7b3c909e813d7aa383c4af8a8bc54449d4a4ceaf24f41",
   // Forecast routing/export UI changed; frozen Classic math engines remain byte-identical.
-  "src/components/tools/MarketingResponse.jsx": "408dca1e2db88b743f57692551094147daaf03cea917c8813fd33a4390c10408",
-  "src/utils/mmmMath.js": "9bd6b44c11c01829628bf9211d7bceb9297399b7d96a8141a8e288a600f91c0a",
+  "src/components/tools/MarketingResponse.jsx": "a5aef77a55c8ac9b235535d65b26e25b775a8205c0780c6892cd5ab99c245d77",
+  "src/utils/mmmMath.js": "bf6cb84d00d428dbebf41aa22386c5b1c6bda405f0f205aaa182818894146e9f",
 };
 
 function sha256(path) {

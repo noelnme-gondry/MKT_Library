@@ -18,23 +18,49 @@ function fixture() {
   return rows;
 }
 
-function datasetFrom(rows) {
+function datasetFrom(rows, stepFields = []) {
   return buildAttributedForecastDataset(rows, {
     timeHeader: "week",
     platformHeader: "platform",
     channelHeader: "channel",
     spendHeader: "cost",
     targetHeader: "regs",
+    stepFields,
   }, { asOfDate: "2026-01-01" });
 }
 
 describe("live-condition attributed forecast router", () => {
+  it("auto-maps repeated long event columns and OS-scoped wide event headers without summing channel rows", () => {
+    const rows = fixture();
+    rows.forEach((row) => {
+      row["Liveness Check"] = row.week === "2024-09-30" ? 1 : 0;
+      row["IOS Delist"] = row.week === "2024-10-07" && row.platform === "IOS" ? 1 : 0;
+    });
+    const dataset = datasetFrom(rows, [
+      { header: "Liveness Check", plat: "common", stepMode: "boundary" },
+      { header: "IOS Delist", plat: "ios", stepMode: "boundary" },
+    ]);
+    expect(dataset.eventHeaders).toEqual(["Liveness Check", "IOS Delist"]);
+    expect(dataset.eventConflicts).toHaveLength(0);
+    const active = dataset.events.filter((event) => event.value === 1);
+    expect(active.filter((event) => event.key === "liveness_check" && event.platform === "android").length).toBeGreaterThan(1);
+    expect(active.filter((event) => event.key === "liveness_check" && event.platform === "ios").length).toBeGreaterThan(1);
+    expect(active.filter((event) => event.key === "ios_delist").every((event) => event.platform === "ios")).toBe(true);
+    expect(active.find((event) => event.key === "ios_delist")).toMatchObject({
+      platform: "ios",
+      value: 1,
+      sourceActiveWeeks: 1,
+      mode: "step-boundary",
+    });
+  });
+
   it("selects on four-week rolling origins and separates live, known-spend, and naive errors", () => {
     const dataset = datasetFrom(fixture());
     const result = runAttributedForecastLiveRouter(dataset, { holdout: 12, horizon: 12 });
-    expect(result.model).toBe("live-oos-organic-paid-v3");
+    expect(result.model).toBe("live-oos-organic-paid-v4-step-selection");
     expect(result.foldStep).toBe(4);
     expect([26, 52, 78]).toContain(result.selectedSpec.trainingWindow);
+    expect(["none", "reset", "level"]).toContain(result.selectedSpec.stepPolicy);
     expect(result.lookbackCandidates.map((candidate) => candidate.trainingWindow)).toEqual([26, 52, 78]);
     expect(result.lookbackCandidates.filter((candidate) => candidate.available).every((candidate) => Number.isFinite(candidate.pooledWmape))).toBe(true);
     expect(result.candidates).toHaveLength(2);
