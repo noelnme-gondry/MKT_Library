@@ -208,7 +208,11 @@ function guessRole(col, rows) {
 }
 
 function guessedStepMode(header) {
-  return /delist|reopen|relaunch|liveness|shutdown|launch|서비스.?중단|재개|재오픈|런칭/i.test(String(header || ""))
+  const name = String(header || "");
+  // Delist는 실제 셧다운 기간을 1로 채우고 재오픈 시 0으로 되돌리는 상태열이다.
+  // Liveness/Reopen처럼 사건 주에만 1을 찍는 열만 이후 1로 확장한다.
+  if (/delist|shutdown|서비스.?중단/i.test(name)) return "state";
+  return /reopen|relaunch|liveness|launch|재개|재오픈|런칭/i.test(name)
     ? "boundary"
     : "state";
 }
@@ -348,6 +352,42 @@ export function colMapRoles(headers, colMap) {
     else if (r === "external") out.externals.push({ header: h, key: sanKey(h, used), label: h, plat });
   }
   return out;
+}
+
+export function mmmForecastInputWarnings(headers, rows, colMap, locale = "ko") {
+  const roles = colMapRoles(headers, colMap);
+  const numberValue = (value) => {
+    const parsed = Number(String(value ?? "").replace(/[,\s]/g, ""));
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const periodHeader = roles.date || roles.week[0]?.header || null;
+  const periodAt = (row, index) => periodHeader ? String(row[periodHeader] ?? index) : String(index);
+  const warnings = [];
+  roles.steps
+    .filter((step) => step.stepMode === "state" && /delist|shutdown|서비스.?중단/i.test(step.header))
+    .forEach((step) => {
+      const activePeriods = new Set((rows || [])
+        .map((row, index) => numberValue(row[step.header]) !== 0 ? periodAt(row, index) : null)
+        .filter(Boolean));
+      if (activePeriods.size === 1) {
+        warnings.push(locale === "en"
+          ? `${step.header}: a state series is active for only one period. If the shutdown lasted longer, mark every affected week as 1 (then return to 0) or provide explicit start/end events.`
+          : `${step.header}: 상태열이 1개 기간에만 1입니다. 셧다운이 더 길었다면 영향받은 모든 주를 1로 채운 뒤 0으로 되돌리거나 시작·종료 이벤트를 함께 주세요.`);
+      }
+    });
+  const lateChannels = roles.channels.filter((channel) => {
+    const values = (rows || []).map((row) => numberValue(row[channel.header]));
+    const first = values.findIndex((value) => value > 0);
+    return first >= Math.max(12, Math.floor(values.length * 0.25));
+  }).map((channel) => channel.header);
+  if (lateChannels.length) {
+    const preview = lateChannels.slice(0, 4).join(", ");
+    const more = lateChannels.length > 4 ? ` +${lateChannels.length - 4}` : "";
+    warnings.push(locale === "en"
+      ? `Cost coverage starts late for ${preview}${more}. Earlier zeros may be missing coverage rather than true no-spend; reconcile before interpreting them as Organic.`
+      : `${preview}${more}의 Cost 커버리지가 뒤늦게 시작합니다. 초기 0은 실제 무집행이 아니라 미수집일 수 있으므로 Organic으로 해석하기 전에 확인하세요.`);
+  }
+  return warnings;
 }
 
 // GEO 원자료를 national 집계와 별도로 보존한다. 현재 national MMM은 기존
@@ -1244,6 +1284,7 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
   const hasGeo = inRole("geo").length > 0;
   const hasReach = inRole("reach").length > 0;
   const hasFrequency = inRole("frequency").length > 0;
+  const forecastInputWarnings = mmmForecastInputWarnings(headers, rows, cm, locale);
 
   return (
     <div>
@@ -1309,6 +1350,15 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
         <div className="callout warning" style={{ marginTop: "10px" }}>
           <div className="ico">!</div>
           <div className="body"><strong>{tr("플랫폼 행에는 날짜/주차가 필요합니다", "Platform rows require date/week")}</strong><p>{tr("Android·iOS 등 같은 기간의 여러 행을 Total 한 주로 합치려면 날짜 또는 주차 컬럼을 매핑하세요.", "Map a date or week column so Android, iOS, and other rows for the same period can be combined into one Total week.")}</p></div>
+        </div>
+      )}
+      {forecastInputWarnings.length > 0 && (
+        <div className="callout warning" style={{ marginTop: "10px" }}>
+          <div className="ico">!</div>
+          <div className="body">
+            <strong>{tr("미래예측 입력 확인", "Forecast input check")}</strong>
+            {forecastInputWarnings.map((warning) => <p key={warning}>{warning}</p>)}
+          </div>
         </div>
       )}
       {missing.length > 0 && (

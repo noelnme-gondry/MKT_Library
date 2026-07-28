@@ -25,6 +25,9 @@ import {
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
   mmmForecastRollingSelection,
+  mmmForecastNestedSelection,
+  mmmForecastCombineNestedParts,
+  mmmForecastSelectNestedRoute,
   mmmForecastScenarioEligibility,
   mmmForecastGlobalBaseline,
   mmmForecastGlobalSeasonality,
@@ -96,6 +99,49 @@ describe("runMmmMethTests (golden port)", () => {
     expect(selection.candidates.every((item) => item.window <= 51)).toBe(true);
   });
 
+  it("keeps explicitly mapped structural steps in every forecast candidate", () => {
+    const n = 75;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const cost = week.map((_, index) => 500 + (index % 9) * 40);
+    const regime = week.map((_, index) => index >= 48 ? 1 : 0);
+    const target = week.map((_, index) => 2000 + cost[index] * 1.2 + regime[index] * 500);
+    const selection = mmmForecastRollingSelection({
+      week,
+      ch: { cost },
+      channels: [{ key: "cost", label: "Cost", kind: "perf" }],
+      targets: { Regs: target },
+      dummy: {},
+      steps: { regime },
+      stepDefs: [{ key: "regime", label: "Regime" }],
+    }, { ...MMM_METH_CONFIG, absorbed: new Set() }, "Regs");
+    expect(selection.candidates.length).toBeGreaterThan(0);
+    expect(selection.selected.controlPolicy).toBe("mapped");
+    expect(selection.productionSelected.controlPolicy).toBe("mapped");
+    expect(selection.candidates.some((candidate) => candidate.structuralFallback)).toBe(true);
+  });
+
+  it("restores global trend offsets before scoring the persistence baseline", () => {
+    const n = 140;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const cost = week.map((_, index) => 500 + (index % 7) * 20);
+    const target = week.map((_, index) => 1000 + index * 50);
+    const selection = mmmForecastRollingSelection({
+      week,
+      ch: { cost },
+      channels: [{ key: "cost", label: "Cost", kind: "perf" }],
+      targets: { Regs: target },
+      dummy: {},
+      steps: {},
+    }, { ...MMM_METH_CONFIG, absorbed: new Set() }, "Regs", {
+      horizon: 4,
+      candidateWindows: [26],
+      annualMinWeeks: 999,
+    });
+    const globalTrend = selection.candidates.filter((candidate) => candidate.trendScope === "global");
+    expect(globalTrend.length).toBeGreaterThan(0);
+    expect(Math.min(...globalTrend.map((candidate) => candidate.latestPersistenceWmape))).toBeLessThan(10);
+  });
+
   it("keeps short-history forecasts but withholds channel Cost scenarios until three holdouts", () => {
     const selection = {
       decisionEligible: false,
@@ -109,6 +155,80 @@ describe("runMmmMethTests (golden port)", () => {
       selection: { decisionEligible: true, decisionReasons: [] },
       run: { identification: { highCollinearity: true, lowInformation: false } },
     }])).toEqual({ eligible: false, reasons: ["high-collinearity"] });
+  });
+
+  it("nests window selection before each cutoff and keeps the latest 12 weeks sealed", () => {
+    const fold = (offset, actual, predicted) => ({
+      offset,
+      actual: [actual],
+      predicted: [predicted],
+      conditionalPredicted: [predicted],
+      persistence: [80],
+    });
+    const candidates = [
+      {
+        candidateId: "stable",
+        window: 52,
+        spec: "cost-trend",
+        controlPolicy: "mapped",
+        trendScope: "recent",
+        trendWindow: null,
+        foldSeries: [48, 36, 24, 12, 0].map((offset) => fold(offset, 100, offset === 0 ? 120 : 95)),
+      },
+      {
+        candidateId: "latest-only",
+        window: 26,
+        spec: "cost-trend-quarter",
+        controlPolicy: "mapped",
+        trendScope: "global",
+        trendWindow: 24,
+        foldSeries: [48, 36, 24, 12, 0].map((offset) => fold(offset, 100, offset === 0 ? 100 : 150)),
+      },
+    ];
+    const nested = mmmForecastNestedSelection(candidates, { horizon: 12, minPriorFolds: 3 });
+    expect(nested.latest.candidateId).toBe("stable");
+    expect(nested.latest.wmape).toBeCloseTo(20, 8);
+    expect(nested.productionCandidateId).toBe("stable");
+
+    // OS 합산과 Direct 경로 역시 봉인 최신 fold가 아니라 더 오래된 nested
+    // 성적으로 경로를 고른다.
+    const android = { ...nested, folds: nested.folds.map((item) => ({ ...item, actual: [60], predicted: [57] })) };
+    const ios = { ...nested, folds: nested.folds.map((item) => ({ ...item, actual: [40], predicted: [38] })) };
+    const os = mmmForecastCombineNestedParts([android, ios], { route: "android-ios-sum" });
+    const direct = {
+      route: "direct-total",
+      folds: os.folds.map((item) => ({ ...item, predicted: item.offset === 0 ? [100] : [80], wmape: item.offset === 0 ? 0 : 20 })),
+    };
+    direct.latest = direct.folds.find((item) => item.offset === 0);
+    const route = mmmForecastSelectNestedRoute([direct, os], { horizon: 12 });
+    expect(route.auditRoute).toBe("android-ios-sum");
+    expect(route.latestWmape).toBeCloseTo(5, 8);
+    expect(route.certified).toBe(true);
+  });
+
+  it("withholds Total certification when either OS fails its own nested guardrail", () => {
+    const makePart = (component, actual, predicted) => ({
+      component,
+      horizon: 12,
+      folds: [36, 24, 12, 0].map((offset) => ({
+        offset,
+        actual: [actual],
+        predicted: [predicted],
+        baselinePredicted: [actual * 0.7],
+        wmape: Math.abs(actual - predicted) / actual * 100,
+      })),
+    });
+    const android = makePart("android", 90, 98);
+    const ios = makePart("ios", 10, 20);
+    const os = mmmForecastCombineNestedParts([android, ios], { route: "android-ios-sum" });
+    const route = mmmForecastSelectNestedRoute([os], { horizon: 12 });
+    expect(route.latestWmape).toBeCloseTo(18, 8);
+    expect(route.osGuardrail).toEqual([
+      expect.objectContaining({ component: "android", passed: true }),
+      expect.objectContaining({ component: "ios", passed: false }),
+    ]);
+    expect(route.osGuardrailPassed).toBe(false);
+    expect(route.certified).toBe(false);
   });
 
   it("fits full-history seasonality separately and restores it after recent Cost forecast", () => {

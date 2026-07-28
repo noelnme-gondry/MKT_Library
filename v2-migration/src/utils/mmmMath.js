@@ -7112,6 +7112,198 @@ export function mmmDataQualityAudit(panel) {
               };
             }
 
+            function _mmmForecastFoldWmape(fold, predictionKey = "conditionalPredicted") {
+              const predicted = fold?.[predictionKey] || fold?.predicted;
+              const denominator = (fold?.actual || []).reduce((sum, value) => sum + Math.abs(value), 0);
+              if (!(denominator > 0) || predicted?.length !== fold?.actual?.length) return null;
+              return fold.actual.reduce((sum, value, index) => sum + Math.abs(value - predicted[index]), 0) / denominator * 100;
+            }
+
+            function _mmmForecastPooledWmape(folds, predictionKey = "conditionalPredicted") {
+              let numerator = 0;
+              let denominator = 0;
+              for (const fold of folds || []) {
+                const predicted = fold?.[predictionKey] || fold?.predicted;
+                if (predicted?.length !== fold?.actual?.length) continue;
+                fold.actual.forEach((value, index) => {
+                  numerator += Math.abs(value - predicted[index]);
+                  denominator += Math.abs(value);
+                });
+              }
+              return denominator > 0 ? numerator / denominator * 100 : null;
+            }
+
+            function _mmmForecastCandidateAtOffset(candidates, offset, horizon, minPriorFolds, predictionKey, allowMissingCurrent = false) {
+              const eligible = (candidates || []).map((candidate) => {
+                const current = candidate.foldSeries?.find((fold) => fold.offset === offset);
+                const prior = (candidate.foldSeries || []).filter((fold) => fold.offset >= offset + horizon);
+                if ((!current && !allowMissingCurrent) || prior.length < minPriorFolds) return null;
+                const priorWmape = _mmmForecastPooledWmape(prior, predictionKey);
+                const foldWmapes = prior.map((fold) => _mmmForecastFoldWmape(fold, predictionKey)).filter(Number.isFinite);
+                if (!Number.isFinite(priorWmape) || !foldWmapes.length) return null;
+                const meanFold = foldWmapes.reduce((sum, value) => sum + value, 0) / foldWmapes.length;
+                const instability = foldWmapes.reduce((sum, value) => sum + Math.abs(value - meanFold), 0) / foldWmapes.length;
+                return {
+                  candidate,
+                  current,
+                  priorFolds: prior.length,
+                  priorWmape,
+                  instability,
+                  // 한 구간만 잘 맞는 후보보다 반복적으로 안정적인 후보를 우선한다.
+                  // 구조 Step 포함 적합이 수치적으로 불가능할 때만 no-control을
+                  // 읽기 전용 fallback으로 허용한다.
+                  selectionScore: priorWmape + instability * 0.15 + (candidate.structuralFallback ? 1e6 : 0),
+                };
+              }).filter(Boolean);
+              eligible.sort((left, right) =>
+                left.selectionScore - right.selectionScore
+                || left.priorWmape - right.priorWmape
+                || (left.candidate.controlPolicy === right.candidate.controlPolicy ? 0 : left.candidate.controlPolicy === "none" ? -1 : 1)
+                || left.candidate.window - right.candidate.window
+                || left.candidate.candidateId.localeCompare(right.candidate.candidateId),
+              );
+              return eligible[0] || null;
+            }
+
+            // 각 outer cutoff의 정답을 가린 채, 그보다 더 오래된 fold만으로
+            // window/spec을 다시 선택한다. Actual Cost와 당시 알려진 Step을 넣는
+            // conditional OOS이며 최신 12주는 모델 선택에 절대 사용하지 않는다.
+            export function mmmForecastNestedSelection(candidates, options = {}) {
+              const horizon = Math.max(1, options.horizon || 12);
+              const minPriorFolds = Math.max(2, options.minPriorFolds || 3);
+              const predictionKey = options.predictionKey || "conditionalPredicted";
+              const offsets = [...new Set((candidates || []).flatMap((candidate) =>
+                (candidate.foldSeries || []).map((fold) => fold.offset),
+              ))].sort((left, right) => right - left);
+              const folds = offsets.map((offset) => {
+                const selected = _mmmForecastCandidateAtOffset(candidates, offset, horizon, minPriorFolds, predictionKey);
+                if (!selected) return null;
+                return {
+                  offset,
+                  candidateId: selected.candidate.candidateId,
+                  window: selected.candidate.window,
+                  spec: selected.candidate.spec,
+                  controlPolicy: selected.candidate.controlPolicy,
+                  trendScope: selected.candidate.trendScope,
+                  trendWindow: selected.candidate.trendWindow,
+                  priorFolds: selected.priorFolds,
+                  priorWmape: selected.priorWmape,
+                  selectionScore: selected.selectionScore,
+                  actual: selected.current.actual,
+                  predicted: selected.current[predictionKey] || selected.current.predicted,
+                  baselinePredicted: selected.current.persistence,
+                  wmape: _mmmForecastFoldWmape(selected.current, predictionKey),
+                  baselineWmape: _mmmForecastFoldWmape({
+                    actual: selected.current.actual,
+                    predicted: selected.current.persistence,
+                  }, "predicted"),
+                };
+              }).filter(Boolean);
+              const latest = folds.find((fold) => fold.offset === 0) || null;
+              const production = _mmmForecastCandidateAtOffset(candidates, -horizon, horizon, minPriorFolds, predictionKey, true);
+              return {
+                horizon,
+                minPriorFolds,
+                folds,
+                latest,
+                pooledWmape: _mmmForecastPooledWmape(folds, "predicted"),
+                productionCandidateId: production?.candidate?.candidateId || null,
+                productionPriorWmape: production?.priorWmape ?? null,
+              };
+            }
+
+            export function mmmForecastCombineNestedParts(parts, options = {}) {
+              const valid = (parts || []).filter((part) => part?.folds?.length);
+              if (valid.length < 2) return null;
+              const offsets = valid[0].folds.map((fold) => fold.offset).filter((offset) =>
+                valid.every((part) => part.folds.some((fold) => fold.offset === offset)),
+              );
+              const folds = offsets.map((offset) => {
+                const matched = valid.map((part) => part.folds.find((fold) => fold.offset === offset));
+                const length = Math.min(...matched.map((fold) => fold.actual.length));
+                const actual = Array.from({ length }, (_, index) => matched.reduce((sum, fold) => sum + fold.actual[index], 0));
+                const predicted = Array.from({ length }, (_, index) => matched.reduce((sum, fold) => sum + fold.predicted[index], 0));
+                const baselinePredicted = Array.from({ length }, (_, index) => matched.reduce((sum, fold) =>
+                  sum + (fold.baselinePredicted?.[index] ?? fold.predicted[index]), 0));
+                return {
+                  offset,
+                  actual,
+                  predicted,
+                  baselinePredicted,
+                  wmape: _mmmForecastFoldWmape({ actual, predicted }, "predicted"),
+                  baselineWmape: _mmmForecastFoldWmape({ actual, predicted: baselinePredicted }, "predicted"),
+                };
+              });
+              return {
+                route: options.route || "android-ios-sum",
+                horizon: valid[0].horizon,
+                folds,
+                latest: folds.find((fold) => fold.offset === 0) || null,
+                pooledWmape: _mmmForecastPooledWmape(folds, "predicted"),
+                componentMetrics: valid.map((part, index) => {
+                  const latest = part.folds.find((fold) => fold.offset === 0) || null;
+                  return {
+                    component: part.component || options.components?.[index] || `component-${index + 1}`,
+                    latestWmape: latest ? _mmmForecastFoldWmape(latest, "predicted") : null,
+                    developmentWmape: _mmmForecastPooledWmape(
+                      part.folds.filter((fold) => fold.offset >= part.horizon),
+                      "predicted",
+                    ),
+                  };
+                }),
+              };
+            }
+
+            export function mmmForecastSelectNestedRoute(routes, options = {}) {
+              const horizon = Math.max(1, options.horizon || 12);
+              const available = (routes || []).filter((route) => route?.folds?.length && route.latest);
+              const scored = available.map((route) => {
+                const development = route.folds.filter((fold) => fold.offset >= horizon);
+                return {
+                  route,
+                  developmentWmape: _mmmForecastPooledWmape(development, "predicted"),
+                  productionWmape: _mmmForecastPooledWmape(route.folds, "predicted"),
+                };
+              }).filter((item) => Number.isFinite(item.developmentWmape));
+              scored.sort((left, right) =>
+                left.developmentWmape - right.developmentWmape
+                || left.route.route.localeCompare(right.route.route),
+              );
+              const audit = scored[0] || null;
+              const production = scored.slice().sort((left, right) =>
+                left.productionWmape - right.productionWmape
+                || left.route.route.localeCompare(right.route.route),
+              )[0] || null;
+              const osRoute = scored.find((item) => item.route.route === "android-ios-sum")?.route;
+              const osGuardrail = (osRoute?.componentMetrics || []).map((component) => ({
+                ...component,
+                passed: Number.isFinite(component.latestWmape)
+                  && Number.isFinite(component.developmentWmape)
+                  && component.latestWmape < 10
+                  && component.developmentWmape < 10,
+              }));
+              const osGuardrailPassed = osGuardrail.length >= 2 && osGuardrail.every((component) => component.passed);
+              return {
+                auditRoute: audit?.route?.route || null,
+                productionRoute: production?.route?.route || null,
+                latestWmape: audit?.route?.latest?.wmape ?? null,
+                latestBaselineWmape: audit?.route?.latest?.baselineWmape ?? null,
+                certified: Number.isFinite(audit?.route?.latest?.wmape)
+                  && audit.route.latest.wmape < 10
+                  && audit.developmentWmape < 10
+                  && (!Number.isFinite(audit.route.latest.baselineWmape) || audit.route.latest.wmape < audit.route.latest.baselineWmape)
+                  && osGuardrailPassed,
+                osGuardrail,
+                osGuardrailPassed,
+                candidates: scored.map((item) => ({
+                  route: item.route.route,
+                  developmentWmape: item.developmentWmape,
+                  productionWmape: item.productionWmape,
+                  latestWmape: item.route.latest.wmape,
+                })),
+              };
+            }
+
             // 최근 운영 체계가 과거와 다를 때 전체 기간을 모두 쓰면 Cost 반응이
             // 희석된다. 후보 window와 계절성 복잡도를 시간순 12주 holdout으로
             // 비교해, 가장 낮은 pooled wMAPE 조합만 최종 적합에 넘긴다.
@@ -7160,7 +7352,10 @@ export function mmmDataQualityAudit(panel) {
                 bayesHillSlopeGrid: options.bayesHillSlopeGrid || [1],
                 baselineKnots: [],
               };
-              const hasMappedControls = Object.keys(panel.dummy || {}).length > 0 || Object.keys(panel.steps || {}).length > 0;
+              const hasMappedSteps = Object.keys(panel.steps || {}).length > 0;
+              const hasMappedControls = Object.keys(panel.dummy || {}).length > 0 || hasMappedSteps;
+              // 사용자가 구조변화 Step으로 확정한 열은 모델 후보가 임의로 버리지 않는다.
+              // 일회성 Dummy만 있을 때는 잡음 가능성이 있어 포함/제외를 계속 검증한다.
               const controlPolicies = hasMappedControls
                 ? [{ id: "none", mapped: false }, { id: "mapped", mapped: true }]
                 : [{ id: "none", mapped: false }];
@@ -7233,12 +7428,19 @@ export function mmmDataQualityAudit(panel) {
                       : conditionalForecast?.predFut;
                     if (!predicted?.length || predicted.length !== actual?.length || !predicted.every(Number.isFinite)) continue;
                     const recent = train.targets[targetName].slice(-Math.min(8, train.targets[targetName].length));
-                    const persistence = recent.reduce((sum, value) => sum + value, 0) / Math.max(1, recent.length);
+                    const persistenceLevel = recent.reduce((sum, value) => sum + value, 0) / Math.max(1, recent.length);
+                    // Global trend/seasonality 후보는 학습 target을 잔차 공간으로
+                    // 바꾼다. 기준선도 같은 공간에서 만든 뒤 미래 offset을 복원해야
+                    // raw actual과 공정하게 비교된다. 복원하지 않으면 추세 후보의
+                    // persistence만 인위적으로 나빠져 인증·guardrail이 왜곡된다.
+                    const persistence = held.week.map((week) =>
+                      persistenceLevel + ((seasonalModel || trendModel) ? futureOffsetAt(week) : 0),
+                    );
                     outcomes.push({
                       actual,
                       predicted,
                       conditionalPredicted: conditionalPredicted?.every(Number.isFinite) ? conditionalPredicted : predicted,
-                      persistence: Array(horizon).fill(persistence),
+                      persistence,
                       offset: n - holdoutEnd,
                     });
                   }
@@ -7259,7 +7461,15 @@ export function mmmDataQualityAudit(panel) {
                   const developmentBaselineFold = development.map(persistenceFoldWmape);
                   const allDenominator = outcomes.flatMap((item) => item.actual).reduce((sum, value) => sum + Math.abs(value), 0);
                   const allAbsoluteError = outcomes.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.predicted[index]))).reduce((sum, value) => sum + value, 0);
+                  const candidateId = [
+                    window,
+                    spec.id,
+                    trendOption.trendScope,
+                    trendOption.trendWindow ?? "window",
+                    controlPolicy.id,
+                  ].join("::");
                   candidates.push({
+                    candidateId,
                     window,
                     spec: spec.id,
                     seasonalityPeriods: spec.seasonalityPeriods,
@@ -7268,6 +7478,7 @@ export function mmmDataQualityAudit(panel) {
                     trendWindow: trendOption.trendWindow,
                     trendEventControls,
                     controlPolicy: controlPolicy.id,
+                    structuralFallback: hasMappedSteps && !controlPolicy.mapped,
                     folds: development.length,
                     allFolds: outcomes.length,
                     wmape: modelAbsError.reduce((sum, value) => sum + value, 0) / denominator * 100,
@@ -7282,25 +7493,34 @@ export function mmmDataQualityAudit(panel) {
                       actual: item.actual,
                       predicted: item.predicted,
                       conditionalPredicted: item.conditionalPredicted,
+                      persistence: item.persistence,
                     })),
                   });
                 }
               }
-              candidates.sort((a, b) =>
-                a.wmape - b.wmape
+              const nested = mmmForecastNestedSelection(candidates, {
+                horizon,
+                minPriorFolds: decisionMinFolds,
+                predictionKey: "conditionalPredicted",
+              });
+              const fallbackSelected = candidates.slice().sort((a, b) =>
+                Number(!!a.structuralFallback) - Number(!!b.structuralFallback)
+                || a.wmape - b.wmape
                 || (a.controlPolicy === b.controlPolicy ? 0 : a.controlPolicy === "none" ? -1 : 1)
                 || b.foldWins - a.foldWins
                 || a.window - b.window,
-              );
-              const selected = candidates[0] || null;
+              )[0] || null;
+              const selected = candidates.find((candidate) => candidate.candidateId === nested.latest?.candidateId) || fallbackSelected;
+              const productionSelected = candidates.find((candidate) => candidate.candidateId === nested.productionCandidateId) || selected;
               candidates.forEach((candidate) => {
-                if (candidate !== selected) delete candidate.foldSeries;
+                if (candidate !== selected && candidate !== productionSelected) delete candidate.foldSeries;
               });
               const decisionReasons = [];
               if (selected) {
                 if (selected.folds < decisionMinFolds) decisionReasons.push("fewer-than-three-holdouts");
                 if (selected.wmape > selected.persistenceWmape) decisionReasons.push("does-not-beat-persistence");
                 if (selected.foldWins < Math.ceil(selected.folds / 2)) decisionReasons.push("wins-too-few-holdouts");
+                if (selected.structuralFallback) decisionReasons.push("structural-controls-unavailable");
               }
               return {
                 enabled: !!selected,
@@ -7311,6 +7531,8 @@ export function mmmDataQualityAudit(panel) {
                 decisionMinFolds,
                 candidates,
                 selected,
+                productionSelected,
+                nested,
                 decisionReasons,
                 decisionEligible: !!selected && decisionReasons.length === 0,
               };
