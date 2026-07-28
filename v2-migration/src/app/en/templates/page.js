@@ -1,10 +1,20 @@
-import { isRoutePublished } from "@/lib/routeMap";
+import { SITE_URL, isRoutePublished } from "@/lib/routeMap";
 import TemplateDownloadCard from "@/components/TemplateDownloadCard";
 
-export const metadata = {
-  title: "Free CSV templates",
-  description: "Download blank CSV templates for each marketing analysis tool.",
-};
+export async function generateMetadata() {
+  const title = "Free CSV templates";
+  const description = "Download blank CSV templates for each marketing analysis tool.";
+  const canonical = `${SITE_URL}/en/templates`;
+  return {
+    title,
+    description,
+    alternates: {
+      canonical,
+      languages: { ko: `${SITE_URL}/templates`, en: canonical, "x-default": `${SITE_URL}/templates` },
+    },
+    openGraph: { title, description, url: canonical, locale: "en_US", images: [`${SITE_URL}/og-card.png`] },
+  };
+}
 
 const GROUPS = [
   {

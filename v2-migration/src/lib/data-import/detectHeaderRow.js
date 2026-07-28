@@ -1,4 +1,10 @@
 const clean = (value) => String(value ?? "").trim();
+const BLOCKED_HEADER_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+
+const safeHeader = (value, index) => {
+  const header = clean(value) || `column_${index + 1}`;
+  return BLOCKED_HEADER_KEYS.has(header.toLowerCase()) ? `_${header}` : header;
+};
 
 export function detectHeaderRow(table = [], maxRows = 20) {
   const candidates = table.slice(0, maxRows);
@@ -20,7 +26,7 @@ export function tableToRecords(table = []) {
   const headerIndex = detectHeaderRow(table);
   const seen = new Map();
   const headers = (table[headerIndex] || []).map((value, index) => {
-    const base = clean(value) || `column_${index + 1}`;
+    const base = safeHeader(value, index);
     const n = (seen.get(base) || 0) + 1;
     seen.set(base, n);
     return n === 1 ? base : `${base}_${n}`;

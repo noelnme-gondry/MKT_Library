@@ -17,6 +17,7 @@ import { buildMappingContract } from "@/lib/data-import/mappingContract";
 import { prepareImportedData } from "@/lib/data-import/dataPreparationWorkerClient";
 import { mapRowsToStandard } from "@/utils/mappedRows";
 import { parseXlsxFile } from "@/lib/data-import/xlsxWorkerClient";
+import { xlsxImportErrorMessage } from "@/lib/data-import/xlsxImportPolicy";
 import { trackProductEvent } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
 import { ANALYSIS_CONTRACTS, evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
@@ -51,7 +52,7 @@ const CSV_COPY = {
     emptyCsv: "파일이 비어 있거나 올바르지 않습니다.",
     parseError: "파일을 읽는 중 오류 발생: ",
     dropTitle: "CSV 또는 XLSX 파일 드래그 & 드롭",
-    dropSub: "또는 클릭하여 파일 선택",
+    dropSub: "또는 클릭하여 파일 선택 · XLSX는 25MB 이하",
     importing: "파일 구조를 읽는 중…",
     importSuccess: (name, rows, cols) => `${name} 업로드 완료. ${rows.toLocaleString()}행, ${cols}컬럼을 읽었습니다. 컬럼 매핑을 확인하세요.`,
     demoBannerTitle: "🧪 지금 보고 있는 화면은 샘플(예시) 데이터입니다",
@@ -129,7 +130,7 @@ const CSV_COPY = {
     emptyCsv: "This file is empty or invalid.",
     parseError: "Error reading file: ",
     dropTitle: "Drag & drop a CSV or XLSX file",
-    dropSub: "or click to choose a file",
+    dropSub: "or click to choose a file · XLSX up to 25MB",
     importing: "Reading file structure…",
     importSuccess: (name, rows, cols) => `${name} uploaded. Read ${rows.toLocaleString()} rows and ${cols} columns. Review the column mapping next.`,
     demoBannerTitle: "🧪 You're viewing sample data",
@@ -335,7 +336,9 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           setSelectedWorkbookSheet(sheets[0].name);
         }
       } catch (error) {
-        setErrorMsg(`${T.parseError}${error.message}`);
+        setErrorMsg(error?.code
+          ? xlsxImportErrorMessage(error.code, locale)
+          : `${T.parseError}${error.message}`);
       } finally {
         setIsImporting(false);
       }

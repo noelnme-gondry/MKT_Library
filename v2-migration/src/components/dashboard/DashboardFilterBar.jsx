@@ -130,6 +130,13 @@ export default function DashboardFilterBar({ locale = "ko" }) {
     };
   }, [csvData]);
 
+  const activeSegmentCount = [
+    dashboardFilter.platforms,
+    dashboardFilter.countries,
+    dashboardFilter.channels,
+    dashboardFilter.sources,
+  ].filter((value) => value && value.size > 0).length;
+
   if (!dates.length && !platforms.length && !countries.length && !channels.length && !sources.length && !hasInstalls && !hasActions)
     return null;
 
@@ -143,12 +150,6 @@ export default function DashboardFilterBar({ locale = "ko" }) {
   if (dashboardFilter.countries && dashboardFilter.countries.size > 0) activeCount++;
   if (dashboardFilter.channels && dashboardFilter.channels.size > 0) activeCount++;
   if (dashboardFilter.sources && dashboardFilter.sources.size > 0) activeCount++;
-  const activeSegmentCount = [
-    dashboardFilter.platforms,
-    dashboardFilter.countries,
-    dashboardFilter.channels,
-    dashboardFilter.sources,
-  ].filter((value) => value && value.size > 0).length;
   const segmentFilterCount = [platforms, countries, channels, sources].filter((options) => options.length > 0).length;
 
   const handleReset = () => {
@@ -201,7 +202,7 @@ export default function DashboardFilterBar({ locale = "ko" }) {
         )}
 
         {segmentFilterCount > 0 && (
-          <details className="dashboard-filter-more" defaultOpen={activeSegmentCount > 0}>
+          <details className="dashboard-filter-more" open={activeSegmentCount > 0}>
             <summary>
               {locale === "en" ? "Segments" : "세그먼트"}
               <span>{activeSegmentCount > 0 ? activeSegmentCount : segmentFilterCount}</span>

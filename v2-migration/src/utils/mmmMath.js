@@ -1111,6 +1111,8 @@ export function mmmDataQualityAudit(panel) {
               precSlopeP: 0.05, // ① slope 유의 임계 (FOR=유의 하락 / AGAINST=유의 상승)
               detrendFor: -0.1, // ② FOR: detrended r ≥ -0.10 AND 1차차분 r ≥ -0.10
               detrendAgainst: -0.2, // ② AGAINST: detrended r ≤ -0.20 OR 1차차분 r ≤ -0.20
+              directionMinN: 8, // ② 전주 대비 유의미한 동행/역행 주 최소 표본
+              directionMinRate: 0.65, // ② 같은 방향 또는 반대 방향 반복 비율 최소
               netP: 0.05, // ③ 유의 임계
               netMaterial: 0.05, // ③ FOR(대안): 95%CI 하한 > -material 이면 의미있는 카니발 배제
               gateVif: 5, // 게이트: VIF ≥ 5
@@ -2389,7 +2391,6 @@ export function mmmDataQualityAudit(panel) {
               if (activeWeeks < (R.minActiveWeeks || 12)) identificationReasons.push(`active weeks ${activeWeeks} < ${R.minActiveWeeks || 12}`);
               if (spendCV < (R.minSpendCV || 0.1)) identificationReasons.push(`spend CV ${spendCV.toFixed(2)} < ${R.minSpendCV || 0.1}`);
               if (flighted && flightRuns.filter((run) => run >= (R.minFlightWeeks || 4)).length < (R.minFlightCount || 2)) identificationReasons.push("insufficient sustained flights");
-              if (lowBlockMax < (R.minLowSpendBlock || 4)) identificationReasons.push("no contiguous low-spend block");
               const identificationBlocked = identificationReasons.length > 0;
               let slope = 0,
                 slopeP = 1,
@@ -2411,7 +2412,10 @@ export function mmmDataQualityAudit(panel) {
                 }
               }
               let precVote;
-              if (lowN < R.precMinN || (flighted && lowBlockMax < (R.minLowSpendBlock || 4))) precVote = "ABSTAIN";
+              if (
+                lowN < R.precMinN ||
+                lowBlockMax < (R.minLowSpendBlock || 4)
+              ) precVote = "ABSTAIN";
               else if (flighted && lowDegenerate)
                 precVote = "ABSTAIN"; // 산발 집행·저지출창=0지출 시점혼재 → 선행성 신뢰 불가(degenerate P25)
               else if (
@@ -2420,12 +2424,17 @@ export function mmmDataQualityAudit(panel) {
                 changePct <= -R.precDeclinePct
               )
                 precVote = "FOR";
-              else if (slope > 0 && slopeP < R.precSlopeP) precVote = "AGAINST";
+              else if (
+                slope > 0 &&
+                slopeP < R.precSlopeP &&
+                changePct >= R.precDeclinePct
+              )
+                precVote = "AGAINST";
               else precVote = "ABSTAIN";
               const precedence = {
                 window: "low-spend(≤p25)",
                 low_n: lowN,
-                p25: Math.round(p25),
+                p25,
                 avg_spend: Math.round(_mean(lowIdx.map((i) => spend[i])) || 0),
                 kpi_slope_per_wk: +slope.toFixed(1),
                 slope_p: +slopeP.toFixed(4),
@@ -2457,15 +2466,107 @@ export function mmmDataQualityAudit(panel) {
                 dy.push(y[i] - y[i - 1]);
               }
               const fd = CANNIBAL_STATS.pearson(dlnG, dy);
+              // 상관계수 하나가 큰 이상치에 끌려가도 반복적인 방향 반전을 놓치지 않도록,
+              // 유의미한 전주 대비 변화만 골라 지출↓·성과↑ / 지출↑·성과↓ 빈도를 센다.
+              // 같은 주의 두 변화는 독립 검정이 아니므로 별도 표를 추가하지 않고 ②의
+              // 강건성 근거로만 사용한다.
+              const signedLog1p = (value) => {
+                const nValue = Number(value);
+                if (!Number.isFinite(nValue)) return 0;
+                return Math.sign(nValue) * Math.log1p(Math.abs(nValue));
+              };
+              const yLog = y.map(signedLog1p);
+              const dYLog = [];
+              for (let i = 1; i < n; i++) dYLog.push(yLog[i] - yLog[i - 1]);
+              const medianPositive = (values) => {
+                const sorted = values
+                  .map((value) => Math.abs(value))
+                  .filter((value) => Number.isFinite(value) && value > 0)
+                  .sort((a, b) => a - b);
+                if (!sorted.length) return 0;
+                const mid = Math.floor(sorted.length / 2);
+                return sorted.length % 2
+                  ? sorted[mid]
+                  : (sorted[mid - 1] + sorted[mid]) / 2;
+              };
+              const minSpendMove = medianPositive(dlnG) * 0.25;
+              const minTargetMove = medianPositive(dYLog) * 0.25;
+              const directionCounts = {
+                spend_down_target_up: 0,
+                spend_up_target_down: 0,
+                spend_up_target_up: 0,
+                spend_down_target_down: 0,
+              };
+              for (let i = 0; i < dlnG.length; i++) {
+                const ds = dlnG[i],
+                  dt = dYLog[i];
+                if (
+                  Math.abs(ds) < minSpendMove ||
+                  Math.abs(dt) < minTargetMove ||
+                  ds === 0 ||
+                  dt === 0
+                ) continue;
+                if (ds < 0 && dt > 0) directionCounts.spend_down_target_up++;
+                else if (ds > 0 && dt < 0) directionCounts.spend_up_target_down++;
+                else if (ds > 0 && dt > 0) directionCounts.spend_up_target_up++;
+                else if (ds < 0 && dt < 0) directionCounts.spend_down_target_down++;
+              }
+              const oppositeN =
+                directionCounts.spend_down_target_up +
+                directionCounts.spend_up_target_down;
+              const sameN =
+                directionCounts.spend_up_target_up +
+                directionCounts.spend_down_target_down;
+              const directionN = oppositeN + sameN;
+              const oppositeRate = directionN ? oppositeN / directionN : 0;
+              const sameRate = directionN ? sameN / directionN : 0;
+              const wilsonLower = (successes, total, z = 1.96) => {
+                if (!total) return 0;
+                const phat = successes / total,
+                  z2 = z * z,
+                  center = phat + z2 / (2 * total),
+                  margin = z * Math.sqrt((phat * (1 - phat) + z2 / (4 * total)) / total),
+                  denom = 1 + z2 / total;
+                return Math.max(0, (center - margin) / denom);
+              };
+              let directionVote = "ABSTAIN";
+              if (directionN >= R.directionMinN) {
+                if (
+                  oppositeRate >= R.directionMinRate &&
+                  wilsonLower(oppositeN, directionN) > 0.5
+                ) directionVote = "AGAINST";
+                else if (
+                  sameRate >= R.directionMinRate &&
+                  wilsonLower(sameN, directionN) > 0.5
+                ) directionVote = "FOR";
+              }
               let detVote;
-              if (det >= R.detrendFor && fd >= R.detrendFor) detVote = "FOR";
-              else if (det <= R.detrendAgainst || fd <= R.detrendAgainst)
+              if (
+                det <= R.detrendAgainst ||
+                fd <= R.detrendAgainst ||
+                directionVote === "AGAINST"
+              )
                 detVote = "AGAINST";
+              else if (
+                det >= R.detrendFor &&
+                fd >= R.detrendFor &&
+                directionVote !== "AGAINST"
+              ) detVote = "FOR";
               else detVote = "ABSTAIN";
               const detrend = {
                 raw: +raw.toFixed(3),
                 detrended: +det.toFixed(3),
                 first_diff: +fd.toFixed(3),
+                directional: {
+                  ...directionCounts,
+                  informative_n: directionN,
+                  opposite_n: oppositeN,
+                  same_n: sameN,
+                  opposite_rate: +oppositeRate.toFixed(3),
+                  same_rate: +sameRate.toFixed(3),
+                  opposite_ci_lo: +wilsonLower(oppositeN, directionN).toFixed(3),
+                  vote: directionVote,
+                },
                 vote: detVote,
                 negative_collapses: detVote === "FOR" && raw < 0,
               };

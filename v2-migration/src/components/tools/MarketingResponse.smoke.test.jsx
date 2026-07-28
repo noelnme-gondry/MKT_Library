@@ -718,13 +718,14 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("데이터 위생");
   });
 
-  it("renders the frozen PR #416 model, channel totals, health diagnostics, and shared footer manual", async () => {
+  it("renders the Classic model, channel totals, health diagnostics, and shared footer manual", async () => {
     seedWithData();
     const { container } = render(<MarketingResponse />);
     enterMmmAndAnalyze(container);
     await flushRaf();
     clickByText(container, "기여 분해");
-    expect(document.body.textContent).toContain("Classic · PR #416");
+    expect(document.body.textContent).toContain("Classic");
+    expect(document.body.textContent).not.toContain("PR #416");
     expect(document.body.textContent).toContain("Bayesian");
     expect(document.body.textContent).not.toContain("Bayesian-like MMM");
     expect(document.body.textContent).toContain("평균 Cost/주");
@@ -738,7 +739,8 @@ describe("MarketingResponse render smoke", () => {
     expect(bayesian).toBeTruthy();
     fireEvent.click(bayesian);
     await flushRaf();
-    expect(document.body.textContent).toContain("Bayesian · conditional posterior 채널 적합");
+    expect(bayesian.classList.contains("active")).toBe(true);
+    expect(document.body.textContent).not.toContain("conditional posterior 채널 적합");
     const footerManual = container.querySelector('[data-mmm-manual-placement="footer"] a');
     expect(footerManual?.getAttribute("href")).toBe("/manuals/mmm-model-manual-ko.pdf");
   });

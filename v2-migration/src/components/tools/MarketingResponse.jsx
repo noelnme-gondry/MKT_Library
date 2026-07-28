@@ -46,6 +46,7 @@ import { mmmOls } from "@/utils/regMath";
 import {
   mmmBuildCannibRank,
   mmmCannibLevel,
+  mmmCannibBucket,
   mmmCannibActionShort,
   mmmGlobalCannib,
   mmmRankCfg,
@@ -60,6 +61,12 @@ import ResultActionCard from "@/components/ds/ResultActionCard";
 import { buildDemoCsv, buildMmmPriorDemo } from "@/utils/demoData";
 import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, colMapMissing, colMapRoles, mmmPlatformTags, mmmSegmentValues } from "@/components/tools/MmmColumnMapper";
 import { buildObservedBusinessSeasonality } from "@/utils/mmmBusinessSeasonality";
+import {
+  auditClassicNoPriorRun,
+  classicNoPriorConfig,
+  classicNoPriorFitOptions,
+} from "@/utils/classicMmmPolicy";
+import { buildLowSpendOutcomeSeries } from "@/utils/responseCannibChart";
 import BasisCurrencyToggleBar from "@/components/dashboard/BasisCurrencyToggleBar";
 import AnalysisControlBar from "@/components/dashboard/AnalysisControlBar";
 import { CURRENCY_SYMBOLS, convertCurrency, fmtCompact } from "@/utils/format";
@@ -1704,10 +1711,10 @@ function buildCannibGuideDoc(cannib, targetKo, locale = "ko") {
   L.push(`광고 대시보드에 찍히는 전환은 "광고가 새로 만든 것"과 "원래 왔을 사람을 광고가 가로챈 것"이 섞여 있습니다. 뒤쪽(잠식)이 크면, 광고를 꺼도 성과가 별로 안 줄어드는데도 예산만 계속 쓰게 됩니다. 그래서 "이 채널을 늘려야 하나?"의 답이 달라집니다.`);
   L.push("");
   L.push(`## 4가지 신호 (각 채널마다 따져보는 것)`);
-  L.push(`- **① 광고를 늘리기 전에 이미 줄고 있었나?** — 저지출 구간에서 오가닉이 이미 하락 추세였다면, 그 하락은 광고 탓이 아닐 가능성이 큽니다. (전문: 저지출 구간 기울기 검정)`);
-  L.push(`- **② 시즌·추세를 걷어내도 광고 늘 때 오가닉이 줄어드나?** — 계절성·전반 추세를 제거한 뒤에도 광고비↑ 시 오가닉↓이면 잠식이 의심됩니다. (전문: 탈추세·1차차분 상관)`);
+  L.push(`- **① 광고를 늘리기 전에 이미 줄고 있었나?** — 저지출 구간에서 선택 성과(유저수·매출 등)가 이미 하락 추세였다면, 그 하락은 광고 탓이 아닐 가능성이 큽니다. (전문: 저지출 구간 기울기 검정)`);
+  L.push(`- **② 시간 추세를 걷어내도 광고와 성과가 반대로 움직이나?** — 공통 시간 추세를 제거한 뒤에도 광고비↑·성과↓ 또는 광고비↓·성과↑가 반복되면 잠식이 의심됩니다. (전문: 탈추세·1차차분 상관 + 방향 반복 검증)`);
   L.push(`- **③ 광고를 늘리면 (잠식을 빼고도) 전체 성과가 순증가하나?** — 잠식분을 감안하고도 전체가 순으로 늘면 방어 양호입니다. (전문: 순증분 탄력성, 95% 신뢰구간)`);
-  L.push(`- **④ 광고비가 몇 주 뒤에 오가닉을 끌어내리나?** — ①~③은 "같은 주"만 봅니다. ④는 시차를 두고(예: 3~6주 뒤) 광고비가 오가닉을 떨어뜨리는지 봅니다. (전문: 그랜저 인과, prewhitening 후 F-검정)`);
+  L.push(`- **④ 광고비가 몇 주 뒤에 선택 성과를 끌어내리나?** — ①~③은 "같은 주"만 봅니다. ④는 시차를 두고(예: 3~6주 뒤) 광고비가 선택 성과를 떨어뜨리는지 봅니다. (전문: 그랜저 인과, prewhitening 후 F-검정)`);
   L.push(`- **⑤ 충격 반응(IRF)** — 지출을 한 번 확 늘렸을 때 이후 몇 주간 성과가 어떻게 반응하는지 곡선으로 봅니다. 아래로 내려가면 시차 잠식, 위로 올라가면 시차 증분.`);
   L.push("");
   L.push(`## 판정은 어떻게 종합하나 (입증책임 비대칭)`);
@@ -1720,33 +1727,33 @@ function buildCannibGuideDoc(cannib, targetKo, locale = "ko") {
   L.push("");
   L.push(`## 수학·통계 상세 (전문가용)`);
   L.push("");
-  L.push(`### ① 시간 선행성 — Theil-Sen 기울기 + Mann-Kendall 유의성`);
-  L.push(`저지출 구간(지출 ≤ 전체 지출의 25번째 백분위수, p25)만 잘라내 그 구간 안에서 오가닉 KPI의 시간 추세를 봅니다.`);
-  L.push(`- **기울기 추정**: Theil-Sen estimator — 모든 두 점 쌍 (i,j)의 기울기 (yⱼ−yᵢ)/(j−i)를 계산해 그 **중앙값**을 대표 기울기로 씀(이상치에 강함, OLS보다 로버스트).`);
-  L.push(`- **유의성 검정**: Mann-Kendall 검정 통계량 S = Σᵢ<ⱼ sign(yⱼ−yᵢ). 분산 Var(S) = n(n−1)(2n+5)/18(동순위 보정 포함). Z = (S−sign(S))/√Var(S). |Z| > 1.96(양측 α=0.05)이면 유의한 추세로 판정.`);
-  L.push(`- **판정 규칙**: 유의하게 하락(slope<0, p<0.05) → FOR(오가닉, 광고와 무관한 하락). 유의하게 상승 → AGAINST(카니발 의심). 유의하지 않거나 표본(n=low_n) 부족 → ABSTAIN.`);
+  L.push(`### ① 시간 선행성 — 저지출 구간 선형 추세`);
+  L.push(`저지출 구간(지출 ≤ 전체 지출의 25번째 백분위수, p25)만 잘라내 그 구간 안에서 선택 KPI의 시간 추세를 봅니다.`);
+  L.push(`- **기울기·유의성**: 시간에 대한 OLS 선형회귀 기울기와 t 검정 p값을 사용합니다.`);
+  L.push(`- **판정 규칙**: p<0.05이면서 구간 전체 변화가 −10% 이하이면 FOR(광고 확대 전부터 하락), +10% 이상이면 AGAINST(광고 확대 전 상승). 통계적으로 유의해도 실제 변화가 10% 미만이거나 표본(n=low_n)이 부족하면 ABSTAIN.`);
   L.push("");
   L.push(`### ② 허위상관 — 탈추세·1차차분 Pearson 상관`);
   L.push(`시간(t)에 걸쳐 같이 늘어나는 두 변수는 서로 무관해도 상관이 크게 나옵니다(허위상관). 이를 걸러내기 위해:`);
-  L.push(`1. **원상관(raw)**: 광고비와 오가닉 KPI의 단순 Pearson r.`);
+  L.push(`1. **원상관(raw)**: 광고비와 선택 KPI의 단순 Pearson r.`);
   L.push(`2. **탈추세(detrended)**: 각 시계열에서 선형 추세(OLS 적합값)를 빼고 남은 잔차끼리의 상관.`);
-  L.push(`3. **1차차분(first_diff)**: yₜ − yₜ₋₁ 변환 후 상관(단위근 제거 효과, 추세를 완전히 없앰).`);
-  L.push(`- **판정 규칙**: detrended ≥ −0.10 AND first_diff ≥ −0.10 → FOR(허위상관이었을 뿐, 진짜 음의 관계 아님). detrended ≤ −0.20 OR first_diff ≤ −0.20 → AGAINST(탈추세해도 음의 관계 유지 = 잠식 의심). 그 사이는 ABSTAIN.`);
+  L.push(`3. **1차차분(first_diff)**: yₜ − yₜ₋₁ 변환 후 상관(공통 장기 추세를 제거).`);
+  L.push(`4. **방향 반복 검증**: 미세한 흔들림은 제외하고 지출↓·성과↑ 또는 지출↑·성과↓가 반복되는 주를 셉니다. 유효 주가 8주 이상이고 역행 비율이 65% 이상이며 Wilson 95% 하한도 50%를 넘으면 AGAINST입니다.`);
+  L.push(`- **판정 규칙**: detrended ≤ −0.20, first_diff ≤ −0.20, 또는 방향 반복 검증 AGAINST 중 하나면 ②는 잠식 신호입니다. 두 상관이 모두 −0.10 이상이고 방향 반복도 역행이 아니면 FOR, 나머지는 ABSTAIN입니다.`);
   L.push("");
   L.push(`### ③ 순증분 — log-log 탄력성 회귀 (AR(1) 자기상관 보정)`);
-  L.push(`ln(오가닉 KPI) = β·ln(1+광고비) + 통제변수 + 오차, 형태의 회귀를 적합해 계수 β(탄력성)를 추정합니다.`);
+  L.push(`ln(선택 KPI) = β·ln(1+광고비) + 통제변수 + 오차, 형태의 회귀를 적합해 계수 β(탄력성)를 추정합니다.`);
   L.push(`- **AR(1) 보정**: 잔차가 자기상관(어제 오차가 오늘 오차에 영향)을 가지면 OLS 표준오차가 과소평가돼 거짓 유의성이 나올 수 있습니다. Yule-Walker로 AR(1) 계수 ρ를 추정하고 Cochrane-Orcutt류 변환(yₜ−ρyₜ₋₁)으로 재적합해 보정된 표준오차·p값을 씁니다.`);
   L.push(`- **95% 신뢰구간**: β ± 1.96×SE(β). CI가 0을 포함하지 않고 β>0이면 FOR(순증분 확인), β<0이고 CI가 0 미포함이면 AGAINST(순수 잠식), CI가 0을 포함하면 ABSTAIN(증거 없음 ≠ 효과 없음).`);
   L.push(`- **검정력 게이트**: 표본(n)이 적거나 광고비 변동계수(CV)가 작으면(=지출이 거의 늘 비슷해서 효과를 식별할 통계적 힘이 없으면) ③을 강제로 ABSTAIN 처리 — "효과 없음"과 "증거 없음"을 구분하기 위한 안전장치.`);
   L.push("");
   L.push(`### ④ 그랜저 인과 — Prewhitening 후 lagged F-검정`);
-  L.push(`①~③은 전부 "같은 주(동시점)" 관계만 봅니다. 그랜저 인과는 "광고비의 **과거값**이 오가닉의 **미래값**을 추가로 설명하는가"를 봐서 시차 효과를 잡습니다.`);
+  L.push(`①~③은 전부 "같은 주(동시점)" 관계만 봅니다. 그랜저 인과는 "광고비의 **과거값**이 선택 KPI의 **미래값**을 추가로 설명하는가"를 봐서 시차 효과를 잡습니다.`);
   L.push(`- **Prewhitening**: 두 시계열 각각에서 추세(선형)+52주 계절성(Fourier 2차 항)을 먼저 제거해 순수한 단기 변동만 남깁니다(장기 추세 때문에 생기는 허위 그랜저-인과 방지).`);
-  L.push(`- **F-검정**: "오가닉ₜ = f(오가닉 과거값들)"만 있는 축소모형과, "오가닉ₜ = f(오가닉 과거값들, 광고비 과거값들)"인 완전모형을 비교. 완전모형이 유의하게 더 잘 맞으면(F-검정 p<0.05) 광고비가 오가닉을 그랜저-인과함.`);
-  L.push(`- **방향 두 가지**: 광고비→오가닉(시차 잠식/증분 여부), 오가닉→광고비(페이싱=예산 담당자가 오가닉이 약할 때 방어적으로 예산을 올리는 역인과 패턴 — 이게 유의하면 ②④의 음의 관계가 인과가 아니라 반응일 수 있음).`);
+  L.push(`- **F-검정**: "성과ₜ = f(성과 과거값들)"만 있는 축소모형과, "성과ₜ = f(성과 과거값들, 광고비 과거값들)"인 완전모형을 비교. 완전모형이 유의하게 더 잘 맞으면(F-검정 p<0.05) 광고비가 선택 성과를 그랜저-인과함.`);
+  L.push(`- **방향 두 가지**: 광고비→성과(시차 잠식/증분 여부), 성과→광고비(페이싱=예산 담당자가 성과가 약할 때 방어적으로 예산을 올리는 역인과 패턴 — 이게 유의하면 ②④의 음의 관계가 인과가 아니라 반응일 수 있음).`);
   L.push("");
   L.push(`### ⑤ 임펄스 응답 함수(IRF)`);
-  L.push(`Prewhiten한 레벨 VAR(벡터자기회귀) 모형에서, 광고비에 1표준편차(1SD) 크기의 충격을 한 번 줬을 때 이후 여러 주에 걸쳐 오가닉이 어떻게 반응하는지 경로를 계산합니다. 음수 구간이 있으면 시차 잠식, 양수면 시차 증분. n<24주면 신뢰할 수 없어 곡선을 생략합니다.`);
+  L.push(`Prewhiten한 레벨 VAR(벡터자기회귀) 모형에서, 광고비에 1표준편차(1SD) 크기의 충격을 한 번 줬을 때 이후 여러 주에 걸쳐 선택 성과가 어떻게 반응하는지 경로를 계산합니다. 음수 구간이 있으면 시차 잠식, 양수면 시차 증분. n<24주면 신뢰할 수 없어 곡선을 생략합니다.`);
   L.push("");
   L.push(`### 추세 존재성 검정 — STL 분해 + Mann-Kendall 4변형 + 단위근 검정`);
   L.push(`- **STL(Seasonal-Trend decomposition using Loess)**: Performance 제외 baseline 입력을 52.18주 계절 주기와 주차별 가중 계절성 템플릿 + LOWESS 추세 + 잔차로 분해(robust 반복 3회).`);
@@ -1792,10 +1799,10 @@ function buildCannibGuideDocEn(cannib, targetLabel) {
   L.push(`Conversions on an ad dashboard mix "what ads newly created" with "people who would have come anyway, that ads intercepted." If the latter (cannibalization) is large, turning ads off won't hurt performance much even though you keep spending. That changes the answer to "should we scale this channel?"`);
   L.push("");
   L.push(`## The 4 signals (checked per channel)`);
-  L.push(`- **① Was organic already declining before ad spend increased?** — If organic was already trending down in low-spend periods, that decline is likely not ads' fault. (Technical: low-spend-window slope test)`);
-  L.push(`- **② After removing season/trend, does organic still fall when ads rise?** — If organic still moves opposite to spend after detrending, cannibalization is suspected. (Technical: detrended / first-difference correlation)`);
+  L.push(`- **① Was the selected outcome already declining before ad spend increased?** — If users, revenue, or the selected KPI was already trending down in low-spend periods, that decline is likely not ads' fault. (Technical: low-spend-window slope test)`);
+  L.push(`- **② After removing the time trend, do spend and outcome repeatedly move opposite?** — Repeated spend↑/outcome↓ or spend↓/outcome↑ movement is a cannibalization signal. (Technical: detrended / first-difference correlation + repeated-direction check)`);
   L.push(`- **③ Does total performance net-increase when ads rise (even accounting for cannibalization)?** — If the net total still rises, defense is good. (Technical: net-incremental elasticity, 95% CI)`);
-  L.push(`- **④ Does spend pull organic down a few weeks later?** — ①–③ only look at "the same week." ④ checks whether spend depresses organic with a lag (e.g. 3–6 weeks later). (Technical: Granger causality, F-test after prewhitening)`);
+  L.push(`- **④ Does spend pull the selected outcome down a few weeks later?** — ①–③ only look at "the same week." ④ checks whether spend depresses the outcome with a lag (e.g. 3–6 weeks later). (Technical: Granger causality, F-test after prewhitening)`);
   L.push(`- **⑤ Impulse response (IRF)** — Shows, as a curve, how performance responds over the following weeks to a one-time spend shock. A dip below zero = lagged cannibalization; a rise = lagged incrementality.`);
   L.push("");
   L.push(`## How the verdict is combined (asymmetric burden of proof)`);
@@ -1808,33 +1815,33 @@ function buildCannibGuideDocEn(cannib, targetLabel) {
   L.push("");
   L.push(`## Math & statistics detail (for specialists)`);
   L.push("");
-  L.push(`### ① Temporal precedence — Theil-Sen slope + Mann-Kendall significance`);
-  L.push(`We isolate the low-spend window (spend ≤ the 25th percentile of total spend, p25) and look at the organic KPI's time trend within it.`);
-  L.push(`- **Slope estimate**: Theil-Sen estimator — computes the slope (yⱼ−yᵢ)/(j−i) for every pair of points (i,j) and takes the **median** as the representative slope (robust to outliers, more robust than OLS).`);
-  L.push(`- **Significance test**: Mann-Kendall test statistic S = Σᵢ<ⱼ sign(yⱼ−yᵢ). Variance Var(S) = n(n−1)(2n+5)/18 (with tie correction). Z = (S−sign(S))/√Var(S). |Z| > 1.96 (two-sided α=0.05) is judged a significant trend.`);
-  L.push(`- **Decision rule**: significantly declining (slope<0, p<0.05) → FOR (organic decline unrelated to ads). Significantly rising → AGAINST (cannibalization suspected). Not significant or sample too small (n=low_n) → ABSTAIN.`);
+  L.push(`### ① Temporal precedence — low-spend linear trend`);
+  L.push(`We isolate the low-spend window (spend ≤ the 25th percentile of total spend, p25) and inspect the selected KPI's time trend within it.`);
+  L.push(`- **Slope and significance**: OLS slope against time with its t-test p-value.`);
+  L.push(`- **Decision rule**: with p<0.05, a full-window change of −10% or less is FOR (decline predates the ramp), while +10% or more is AGAINST. A statistically significant but immaterial change below 10%, or too little data (n=low_n), is ABSTAIN.`);
   L.push("");
   L.push(`### ② Spurious correlation — detrended / first-difference Pearson correlation`);
   L.push(`Two variables that both grow over time (t) can appear highly correlated even if unrelated (spurious correlation). To filter this out:`);
-  L.push(`1. **Raw correlation**: simple Pearson r between spend and the organic KPI.`);
+  L.push(`1. **Raw correlation**: simple Pearson r between spend and the selected KPI.`);
   L.push(`2. **Detrended**: correlation between the residuals left after subtracting a linear trend (OLS fit) from each series.`);
-  L.push(`3. **First difference**: correlation after the yₜ − yₜ₋₁ transform (removes unit roots, fully removes trend).`);
-  L.push(`- **Decision rule**: detrended ≥ −0.10 AND first_diff ≥ −0.10 → FOR (was just spurious correlation, not a real negative relationship). detrended ≤ −0.20 OR first_diff ≤ −0.20 → AGAINST (negative relationship survives detrending = cannibalization suspected). In between → ABSTAIN.`);
+  L.push(`3. **First difference**: correlation after the yₜ − yₜ₋₁ transform, removing the shared long-run trend.`);
+  L.push(`4. **Repeated-direction check**: after excluding tiny movements, count spend↓/outcome↑ and spend↑/outcome↓ weeks. With at least 8 informative weeks, an opposite-direction rate of at least 65%, and a Wilson 95% lower bound above 50%, the result is AGAINST.`);
+  L.push(`- **Decision rule**: ② is AGAINST if detrended ≤ −0.20, first_diff ≤ −0.20, or the repeated-direction check is AGAINST. It is FOR only when both correlations are at least −0.10 and repeated movement is not opposite; otherwise ABSTAIN.`);
   L.push("");
   L.push(`### ③ Net incrementality — log-log elasticity regression (AR(1) autocorrelation correction)`);
-  L.push(`Fits a regression of the form ln(organic KPI) = β·ln(1+spend) + controls + error, estimating coefficient β (elasticity).`);
+  L.push(`Fits a regression of the form ln(selected KPI) = β·ln(1+spend) + controls + error, estimating coefficient β (elasticity).`);
   L.push(`- **AR(1) correction**: if residuals are autocorrelated (yesterday's error affects today's), OLS standard errors are underestimated, producing false significance. We estimate the AR(1) coefficient ρ via Yule-Walker and refit with a Cochrane-Orcutt-style transform (yₜ−ρyₜ₋₁) to get corrected SE/p-values.`);
   L.push(`- **95% CI**: β ± 1.96×SE(β). If CI excludes 0 and β>0 → FOR (net incrementality confirmed); β<0 with CI excluding 0 → AGAINST (pure cannibalization); CI including 0 → ABSTAIN (no evidence ≠ no effect).`);
   L.push(`- **Power gate**: if sample size (n) is small or spend's coefficient of variation (CV) is low (i.e. spend barely varies, so there's no statistical power to identify an effect), ③ is force-set to ABSTAIN — a safeguard distinguishing "no effect" from "no evidence."`);
   L.push("");
   L.push(`### ④ Granger causality — lagged F-test after prewhitening`);
-  L.push(`①–③ only look at "same week" (contemporaneous) relationships. Granger causality checks whether **past values** of spend explain **future values** of organic beyond organic's own history, capturing lagged effects.`);
+  L.push(`①–③ only look at "same week" (contemporaneous) relationships. Granger causality checks whether **past values** of spend explain **future values** of the selected outcome beyond that outcome's own history, capturing lagged effects.`);
   L.push(`- **Prewhitening**: trend (linear) + 52-week seasonality (2nd-order Fourier terms) are first removed from each series, leaving only pure short-term variation (prevents spurious Granger causality from long-term trends).`);
-  L.push(`- **F-test**: compares a restricted model "organicₜ = f(organic's own past)" against a full model "organicₜ = f(organic's own past, spend's past)." If the full model fits significantly better (F-test p<0.05), spend Granger-causes organic.`);
-  L.push(`- **Two directions**: spend→organic (lagged cannibalization/incrementality), organic→spend (pacing = a reverse-causality pattern where budget owners raise spend defensively when organic is weak — if this is significant, the negative relationship in ②④ may be a response, not a cause).`);
+  L.push(`- **F-test**: compares a restricted model "outcomeₜ = f(outcome's own past)" against a full model "outcomeₜ = f(outcome's own past, spend's past)." If the full model fits significantly better (F-test p<0.05), spend Granger-causes the selected outcome.`);
+  L.push(`- **Two directions**: spend→outcome (lagged cannibalization/incrementality), outcome→spend (pacing = a reverse-causality pattern where budget owners raise spend defensively when performance is weak — if this is significant, the negative relationship in ②④ may be a response, not a cause).`);
   L.push("");
   L.push(`### ⑤ Impulse response function (IRF)`);
-  L.push(`In a prewhitened level VAR (vector autoregression) model, we compute the path of how organic responds over the following weeks to a single one-standard-deviation (1SD) shock to spend. A negative stretch = lagged cannibalization; positive = lagged incrementality. With n<24 weeks the curve is omitted as unreliable.`);
+  L.push(`In a prewhitened level VAR (vector autoregression) model, we compute the path of how the selected outcome responds over the following weeks to a single one-standard-deviation (1SD) shock to spend. A negative stretch = lagged cannibalization; positive = lagged incrementality. With n<24 weeks the curve is omitted as unreliable.`);
   L.push("");
   L.push(`### Trend-existence test — STL decomposition + 4 Mann-Kendall variants + unit-root tests`);
   L.push(`- **STL (Seasonal-Trend decomposition using Loess)**: decomposes the Performance-excluded baseline input into a 52.18-week seasonal period, weighted week-of-year template, LOWESS trend, and residual (3 robust iterations).`);
@@ -2491,6 +2498,8 @@ function buildCannibCsv(cannib, effects, target) {
     "power_gate_reasons", "reverse_causality_risk", "spend_time_corr",
     "prec_vote", "prec_low_n", "prec_p25", "prec_slope_per_wk", "prec_slope_p", "prec_change_pct",
     "detrend_vote", "detrend_raw", "detrend_detrended", "detrend_first_diff",
+    "direction_vote", "direction_informative_n", "direction_opposite_n", "direction_opposite_rate",
+    "spend_down_target_up", "spend_up_target_down", "spend_up_target_up", "spend_down_target_down",
     "net_vote", "net_elasticity", "net_p", "net_ci_lo", "net_ci_hi",
     "elasticity", "ci_lo", "ci_hi", "p", "significant", "effect_verdict",
     "per10pct_pct", "weekly_per_1k", "mean_spend",
@@ -2519,6 +2528,10 @@ function buildCannibCsv(cannib, effects, target) {
         (pg.reasons || []).join(" | "), cn.reverse_causality_risk, cn.spend_time_corr,
         pr.vote, pr.low_n, pr.p25, pr.kpi_slope_per_wk, pr.slope_p, pr.kpi_change_over_window_pct,
         dt.vote, dt.raw, dt.detrended, dt.first_diff,
+        dt.directional?.vote || "", dt.directional?.informative_n ?? "",
+        dt.directional?.opposite_n ?? "", dt.directional?.opposite_rate ?? "",
+        dt.directional?.spend_down_target_up ?? "", dt.directional?.spend_up_target_down ?? "",
+        dt.directional?.spend_up_target_up ?? "", dt.directional?.spend_down_target_down ?? "",
         ni.vote, ni.net_elasticity, ni.p,
         ni.ci_lo != null ? ni.ci_lo : "", ni.ci_hi != null ? ni.ci_hi : "",
         e.elas != null ? e.elas : "", e.ci ? e.ci[0] : "", e.ci ? e.ci[1] : "",
@@ -3356,7 +3369,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // 안전하도록 여기서 한 번 더 폴백한다. 모델 계산·데이터 계약에는 관여하지 않는다.
   const [stage, setStage] = useState(() => resolveResponseStage(initialStage)); // trend | diagnose | mmm | lab
   const [target, setTarget] = useState("Regs");
-  const [mmmMode, setMmmMode] = useState("classic"); // classic = PR #416, prism = fixed Option 3, bayesian = posterior channel fit
+  const [mmmMode, setMmmMode] = useState("classic"); // classic = standard Classic path, bayesian = posterior channel fit
   const [decompGrouped, setDecompGrouped] = useState(true); // §5.5 true=4버킷 묶음 / false=광고 개별채널
   // RMS 비중에서 기본 수요·추세가 너무 큰 경우, 나머지 동인끼리의 상대 크기를
   // 볼 수 있게 한다. 모델·원본 기여값은 바꾸지 않고 이 표시용 분모만 전환한다.
@@ -4235,22 +4248,25 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         });
       }
 
-      // Classic과 내부 호환용 Prism은 같은 PR #416 엔진을 쓴다. Classic은 시즈널리티를
+      // Classic과 내부 호환용 Prism은 같은 기반 엔진을 쓴다. Classic은 시즈널리티를
       // 기본 후보로 유지하고, 업황이 매핑되어 있으면 함께 넣는다. 시간순 OOS
       // WMAPE가 악화될 때만 해당 요소를 자동 제외한다. 업황이 없으면 외부
       // 제어변수 없이 일반 Classic으로 계속 진행한다.
       const hasExternalPrior = Object.keys(mediaPriors).length > 0;
       const usePrismModel = mmmMode === "prism";
-      const classicBaseCfg = {
-        ...MMM_CLASSIC_CONFIG,
-        ...(usePrismModel ? {
+      const classicAbsorbed = mmmClassicResolveAbsorb(
+        panel,
+        { ...MMM_CLASSIC_CONFIG, absorbed: new Set() },
+      ).absorbed;
+      const classicBaseCfg = usePrismModel
+        ? {
+          ...MMM_CLASSIC_CONFIG,
           trendPriorMultiplier: MMM_PRISM_MODEL_CONFIG.trendPriorMultiplier,
           seasonalityPeriods: MMM_PRISM_MODEL_CONFIG.seasonalityPeriods.slice(),
           mediaPenalty: 0,
-        } : {}),
-        ...(usePrismModel ? {} : { mediaPenalty: 0 }),
-        absorbed: mmmClassicResolveAbsorb(panel, { ...MMM_CLASSIC_CONFIG, absorbed: new Set() }).absorbed,
-      };
+          absorbed: classicAbsorbed,
+        }
+        : classicNoPriorConfig(MMM_CLASSIC_CONFIG, classicAbsorbed);
       const prismNeutralRun = usePrismModel
         ? mmmClassicBayesianRun(panel, {
           ...classicBaseCfg,
@@ -4297,21 +4313,17 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       const selectedPanel = usePrismModel ? panel : classicControlSelection.panel;
       const classicCfg = usePrismModel ? prismClassicCfg : classicControlSelection.cfg;
       const aggregatePanel = buildMmmAggregateMediaPanel(selectedPanel);
-      if (!aggregatePanel) throw new Error("PR #416 aggregate media panel failed");
-      const classicFitOptions = {
-        mediaPriors: {},
+      if (!aggregatePanel) throw new Error("Classic aggregate media panel failed");
+      const classicFitOptions = usePrismModel ? {
+        mediaPriors,
         enableBaselineSelection: true,
-        // 일반 Classic은 business-contribution·experiment·group prior를 사용하지
-        // 않는다. 업황/계절성 포함 여부는 시간순 OOS WMAPE로만 선택한다.
-        ...(usePrismModel ? {} : { disableManualPriors: true }),
-        ...(usePrismModel ? {
-          enableSeasonalitySelection: false,
-          enableMediaPenaltySelection: false,
-        } : {
-          enableClassicControlSelection: false,
-          enableSeasonalitySelection: false,
-        }),
-      };
+        enableSeasonalitySelection: false,
+        enableMediaPenaltySelection: false,
+      } : classicNoPriorFitOptions({
+        enableBaselineSelection: true,
+        enableClassicControlSelection: false,
+        enableSeasonalitySelection: false,
+      });
       const aggregateBaseRun = usePrismModel
         ? mmmClassicBayesianRun(aggregatePanel, classicCfg, t, false, {
           ...classicFitOptions,
@@ -4325,25 +4337,48 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         ...classicFitOptions,
         groupContributionPriors,
       });
-      if (!aggregateRun) throw new Error("PR #416 aggregate Bayesian posterior estimate failed");
-      const allocationRun = mmmClassicBayesianRun(selectedPanel, classicCfg, t, false, {
-        mediaPriors: usePrismModel ? mediaPriors : {},
-        ...(usePrismModel ? {} : { disableManualPriors: true }),
-        enableBaselineSelection: true,
-        skipTransformUncertainty: true,
-        ...(usePrismModel ? {
+      if (!aggregateRun) throw new Error("Classic aggregate estimate failed");
+      const allocationFitOptions = usePrismModel
+        ? {
+          mediaPriors,
+          enableBaselineSelection: true,
+          skipTransformUncertainty: true,
           enableSeasonalitySelection: false,
           enableMediaPenaltySelection: false,
-        } : {}),
-      });
-      if (!allocationRun) throw new Error("PR #416 channel allocation model failed");
+        }
+        : classicNoPriorFitOptions({
+          enableBaselineSelection: true,
+          skipTransformUncertainty: true,
+        });
+      const allocationRun = mmmClassicBayesianRun(
+        selectedPanel,
+        classicCfg,
+        t,
+        false,
+        allocationFitOptions,
+      );
+      if (!allocationRun) throw new Error("Classic channel allocation model failed");
+      if (!usePrismModel) {
+        const aggregatePriorAudit = auditClassicNoPriorRun(aggregateRun);
+        const allocationPriorAudit = auditClassicNoPriorRun(allocationRun);
+        if (!aggregatePriorAudit.passed || !allocationPriorAudit.passed) {
+          throw new Error(`Classic prior invariant failed: ${[
+            ...aggregatePriorAudit.reasons,
+            ...allocationPriorAudit.reasons,
+          ].join(",")}`);
+        }
+      }
       const allocatedRun = allocateFixedMmmGroupTotals(selectedPanel, aggregatePanel, aggregateRun, allocationRun, 0.01);
       allocatedRun.modelVariant = usePrismModel
         ? "prism-option-3-fixed-group-total"
         : "pr416-fixed-group-total-ranked-allocation";
       allocatedRun.methodLabel = usePrismModel
         ? "Prism Option 3 fixed totals with ranked channel allocation"
-        : "Classic PR #441 fixed Decomp totals with ranked channel allocation";
+        : "Classic";
+      allocatedRun.priorAudit = usePrismModel ? null : {
+        aggregate: auditClassicNoPriorRun(aggregateRun),
+        allocation: auditClassicNoPriorRun(allocationRun),
+      };
       const targetGateStartIndex = (panel.weekLabel || []).findIndex((label) => String(label) >= "2024-01-01");
       const gateWeeks = targetGateStartIndex >= 0 ? allocatedRun.weeks.slice(targetGateStartIndex) : allocatedRun.weeks;
       const targetDiagnostics = {
@@ -4386,7 +4421,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           groupContributionPriors,
           diagnostics: targetDiagnostics,
         } : null,
-        externalChannelPriorsAppliedToAllocationFit: hasExternalPrior,
+        externalChannelPriorsAppliedToAllocationFit: usePrismModel && hasExternalPrior,
         classicControlSelection,
       };
       const health = mmmBayesianHealth(allocatedRun);
@@ -4404,8 +4439,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         health,
         effects,
         absorb,
-        mediaPriors,
-        heldMediaPriors: {},
+        mediaPriors: usePrismModel ? mediaPriors : {},
+        heldMediaPriors: usePrismModel ? {} : mediaPriors,
         experimentPriorDiagnostics,
         countryCandidates,
         countryIndividualCandidates,
@@ -5430,7 +5465,26 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 labels,
                 datasets: [
                   {
-                    label: tx("성과", "Outcome"), data: y, borderColor: "#7aa2f7", pointRadius: spend.map((v) => v <= p25 ? 3 : 0), pointBackgroundColor: "#f59e0b", tension: 0.2,
+                    label: tx("성과", "Outcome"),
+                    data: y,
+                    borderColor: "#7aa2f7",
+                    pointRadius: 0,
+                    tension: 0.2,
+                  },
+                  {
+                    label: tx(
+                      `저지출 주 성과 (지출 ≤ ${spendValueLabel(p25)})`,
+                      `Outcome in low-spend weeks (spend ≤ ${spendValueLabel(p25)})`,
+                    ),
+                    data: buildLowSpendOutcomeSeries(y, spend, p25),
+                    borderColor: "transparent",
+                    backgroundColor: "#f59e0b",
+                    pointBackgroundColor: "#f59e0b",
+                    pointBorderColor: "#b45309",
+                    pointBorderWidth: 1,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    showLine: false,
                   },
                   {
                     label: tx("지출", "Spend"), data: spend, borderColor: "#94a3b8", borderDash: [5, 4], pointRadius: 0, tension: 0.2, yAxisID: "spend",
@@ -5443,7 +5497,15 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   ...chartBase().plugins,
                   tooltip: {
                     ...chartBase().plugins.tooltip,
-                    callbacks: { label: (context) => `${context.dataset.label}: ${context.dataset.yAxisID === "spend" ? spendValueLabel(context.parsed.y) : targetValueLabel(context.parsed.y)}` },
+                    callbacks: {
+                      label: (context) => `${context.dataset.label}: ${context.dataset.yAxisID === "spend" ? spendValueLabel(context.parsed.y) : targetValueLabel(context.parsed.y)}`,
+                      afterLabel: (context) => context.datasetIndex === 1
+                        ? tx(
+                          `해당 주 지출 ${spendValueLabel(spend[context.dataIndex])} · 저지출 기준 ${spendValueLabel(p25)}`,
+                          `Spend that week ${spendValueLabel(spend[context.dataIndex])} · low-spend threshold ${spendValueLabel(p25)}`,
+                        )
+                        : "",
+                    },
                   },
                 },
                 scales: {
@@ -5466,16 +5528,69 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           const rs = residual(logSpend), ry = residual(y);
           const ds = logSpend.slice(1).map((v, i) => v - logSpend[i]);
           const dy = y.slice(1).map((v, i) => v - y[i]);
+          const detrendedPoints = rs.map((x, i) => ({ x, y: ry[i], week: labels[i] }));
+          const weeklyPoints = ds.map((x, i) => ({ x, y: dy[i], week: labels[i + 1] }));
+          const fitLine = (points) => {
+            if (points.length < 2) return [];
+            const xMean = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+            const yMean = points.reduce((sum, point) => sum + point.y, 0) / points.length;
+            const denominator = points.reduce((sum, point) => sum + (point.x - xMean) ** 2, 0);
+            if (denominator <= 1e-12) return [];
+            const slope = points.reduce(
+              (sum, point) => sum + (point.x - xMean) * (point.y - yMean),
+              0,
+            ) / denominator;
+            const intercept = yMean - slope * xMean;
+            const xValues = points.map((point) => point.x);
+            const xMin = Math.min(...xValues), xMax = Math.max(...xValues);
+            return [
+              { x: xMin, y: intercept + slope * xMin },
+              { x: xMax, y: intercept + slope * xMax },
+            ];
+          };
+          const zeroGridColor = (context) => Number(context.tick?.value) === 0
+            ? "#475569"
+            : CHART_THEME.grid;
+          const zeroGridWidth = (context) => Number(context.tick?.value) === 0 ? 2.2 : 1;
           inst.push(new Chart(irfRef.current.getContext("2d"), {
             type: "scatter",
             data: { datasets: [
-              { label: tx("추세 제거 후", "Detrended"), data: rs.map((x, i) => ({ x, y: ry[i] })), backgroundColor: "#7aa2f7", pointRadius: 3 },
-              { label: tx("전주 대비 변화", "Weekly change"), data: ds.map((x, i) => ({ x, y: dy[i] })), backgroundColor: "#e0af68", pointRadius: 3 },
+              { label: tx("추세 제거 후", "Detrended"), data: detrendedPoints, backgroundColor: "#7aa2f7", pointRadius: 3.5, pointHoverRadius: 6 },
+              { label: tx("전주 대비 변화", "Weekly change"), data: weeklyPoints, backgroundColor: "#e0af68", pointStyle: "triangle", pointRadius: 4, pointHoverRadius: 6 },
+              { type: "line", label: tx("추세 제거 관계선", "Detrended trend line"), data: fitLine(detrendedPoints), borderColor: "#2563eb", borderWidth: 2.2, pointRadius: 0, tension: 0, fill: false },
+              { type: "line", label: tx("전주 대비 관계선", "Weekly-change trend line"), data: fitLine(weeklyPoints), borderColor: "#b45309", borderWidth: 2.2, borderDash: [6, 4], pointRadius: 0, tension: 0, fill: false },
             ] },
             options: {
               ...chartBase(),
-              plugins: { ...chartBase().plugins, tooltip: { ...chartBase().plugins.tooltip, callbacks: { label: (context) => `${context.dataset.label}: ${targetValueLabel(context.parsed.y)}` } } },
-              scales: { x: { type: "linear", ticks: { color: CHART_THEME.muted }, grid: { color: CHART_THEME.grid } }, y: { ticks: { color: CHART_THEME.muted, callback: (value) => targetValueLabel(value) }, grid: { color: CHART_THEME.grid } } },
+              plugins: {
+                ...chartBase().plugins,
+                tooltip: {
+                  ...chartBase().plugins.tooltip,
+                  filter: (context) => context.dataset.type !== "line",
+                  callbacks: {
+                    title: (items) => items[0]?.raw?.week ? String(items[0].raw.week) : "",
+                    label: (context) => tx(
+                      `${context.dataset.label} · 지출 ${context.parsed.x.toFixed(3)} · 성과 ${targetValueLabel(context.parsed.y, { sign: true })}`,
+                      `${context.dataset.label} · spend ${context.parsed.x.toFixed(3)} · outcome ${targetValueLabel(context.parsed.y, { sign: true })}`,
+                    ),
+                  },
+                },
+              },
+              scales: {
+                x: {
+                  type: "linear",
+                  grace: "10%",
+                  title: { display: true, text: tx("지출 잔차·전주 대비 변화", "Spend residual / weekly change"), color: CHART_THEME.muted },
+                  ticks: { color: CHART_THEME.muted },
+                  grid: { color: zeroGridColor, lineWidth: zeroGridWidth },
+                },
+                y: {
+                  grace: "12%",
+                  title: { display: true, text: tx("성과 잔차·전주 대비 변화", "Outcome residual / weekly change"), color: CHART_THEME.muted },
+                  ticks: { color: CHART_THEME.muted, callback: (value) => targetValueLabel(value) },
+                  grid: { color: zeroGridColor, lineWidth: zeroGridWidth },
+                },
+              },
             },
           }));
         } else if (cannibQuestion === "net") {
@@ -5813,26 +5928,12 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
             <button className={`ab-pill ${mmmMode === "classic" ? "active" : ""}`} onClick={() => {
               if (mmmMode !== "classic") deferMmmUpdate(() => setMmmMode("classic"));
-            }}>{tx("Classic · PR #416", "Classic · PR #416")}</button>
+            }}>{tx("Classic", "Classic")}</button>
             {/* Prism Option 3 remains as an internal compatibility path only.
                 It is intentionally not exposed as a user-selectable model. */}
             <button className={`ab-pill ${mmmMode === "bayesian" ? "active" : ""}`} onClick={() => {
               if (mmmMode !== "bayesian") deferMmmUpdate(() => setMmmMode("bayesian"));
             }}>{tx("Bayesian", "Bayesian")}</button>
-            <span
-              title={tx(
-                "Classic은 업황·시즈널리티 후보를 시간순 OOS 성능으로 점검해 선택합니다. Bayesian은 선택된 변환을 조건으로 한 empirical-Bayes posterior 근사이며 full joint MCMC는 아닙니다.",
-                "Classic selects industry and seasonality controls using time-ordered OOS performance. Bayesian is an empirical-Bayes posterior approximation conditional on selected transforms, not full joint MCMC.",
-              )}
-              style={{ color: MUTED, cursor: "help", fontSize: "14px" }}
-            >
-              ⓘ
-            </span>
-            <span style={{ color: MUTED, fontSize: "10.5px" }}>
-              {mmmMode === "bayesian"
-                ? tx("Bayesian · conditional posterior 채널 적합", "Bayesian · conditional posterior channel fit")
-                : tx("Classic · 데이터 기반 총량·채널 분배", "Classic · data-selected totals/channel allocation")}
-            </span>
           </div>
         )}
         {mmm && !mmm.empty && (
@@ -6011,15 +6112,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               {cannib && cannib.cannibRank && cannib.cannibRank.length ? (() => {
                 const rk = cannib.cannibRank;
                 // 엔진 5단계(lv) → 마케터용 3버킷: 잠식의심 / 애매함(데이터부족·공선) / 문제없음.
-                const bucketOf = (r) => {
-                  const L = mmmCannibLevel(r);
-                  if (!r.eligible || L.lv === 1) return "unclear";
-                  if (L.lv >= 5) return "danger"; // 복수 증거가 일치한 경우만 red
-                  if (L.lv >= 4) return "unclear"; // 약한 음의 신호·추세 혼재는 red가 아님
-                  return "ok"; // 신호 없음 / 거의 없음
-                };
                 const buckets = { danger: [], unclear: [], ok: [] };
-                rk.forEach((r) => buckets[bucketOf(r)].push(r));
+                rk.forEach((r) => buckets[mmmCannibBucket(r)].push(r));
                 const nD = buckets.danger.length;
                 const headTone = nD > 0 ? "danger" : buckets.ok.length > 0 ? "ok" : "warn";
                 const headBadge = nD > 0 ? tx("잠식 의심", "Cannibalization suspected") : buckets.ok.length > 0 ? tx("방어 양호", "Well defended") : tx("판단 보류", "Verdict withheld");
@@ -6044,7 +6138,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           <div style={{ fontSize: "11px", color: MUTED, marginTop: "2px" }}>
                             {key === "unclear"
                               ? (r.eligible ? tx("채널끼리 지출이 겹침(공선)", "Channels' spend overlaps (collinear)") : tx(`데이터 부족 (${r.nActive}/${r.total}주)`, `Insufficient data (${r.nActive}/${r.total} wk)`))
-                              : mmmCannibActionShort(r)}
+                              : mmmCannibActionShort(r, locale)}
                           </div>
                         </div>
                       )) : <div style={{ fontSize: "11px", color: MUTED }}>{tx("없음", "None")}</div>}
@@ -6082,8 +6176,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 const gate = cn.power_gate || { blocked: false, reasons: [] };
                 // 헤드라인을 칸반 버킷과 동일 규칙으로 계산 → "문제없다는데 왜 잠식의심" 모순 제거.
                 const rr = (cannib.cannibRank || []).find((x) => x.key === activeCannibCh);
-                const lv = rr ? mmmCannibLevel(rr).lv : null;
-                const bucket = !rr || !rr.eligible || lv <= 4 ? "unclear" : "danger";
+                const bucket = rr ? mmmCannibBucket(rr) : "unclear";
                 const votes = [p.vote, d.vote, ni.vote];
                 const nFor = votes.filter((v) => v === "FOR").length;
                 const nAg = votes.filter((v) => v === "AGAINST").length;
@@ -6144,7 +6237,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "10px" }}>
                       {signal("precedence", "①", tx("광고를 늘리기 전에 성과가 이미 줄고 있었나?", "Was outcome already declining before ad spend rose?"), tx("저지출 주의 시간 흐름을 봅니다. 이미 줄었다면 광고 탓으로 단정 못 해요.", "Checks the time path in low-spend weeks. A prior decline cannot be blamed on ads."), p.vote, tx(`저지출 기울기 ${p.kpi_slope_per_wk}/주 · ${p.kpi_change_over_window_pct}%`, `Low-spend slope ${p.kpi_slope_per_wk}/wk · ${p.kpi_change_over_window_pct}%`))}
-                      {signal("detrend", "②", tx("추세·계절을 걷어내도 광고와 성과가 반대로 움직이나?", "After removing trend, do spend and outcome still move opposite?"), tx("시간 착시를 제거한 잔차와 전주 대비 변화를 함께 봅니다.", "Compares detrended residuals and week-over-week changes."), d.vote, tx(`잔차 상관 ${d.detrended} · 차분 상관 ${d.first_diff}`, `Residual corr ${d.detrended} · diff corr ${d.first_diff}`))}
+                      {signal("detrend", "②", tx("시간 추세를 걷어내도 광고와 성과가 반대로 움직이나?", "After removing the time trend, do spend and outcome still move opposite?"), tx("시간 착시를 제거한 잔차와 전주 대비 변화 방향을 함께 봅니다.", "Compares detrended residuals and the direction of week-over-week changes."), d.vote, tx(`잔차 ${d.detrended} · 차분 ${d.first_diff} · 역행 ${d.directional?.opposite_n ?? 0}/${d.directional?.informative_n ?? 0}주`, `Residual ${d.detrended} · diff ${d.first_diff} · opposite ${d.directional?.opposite_n ?? 0}/${d.directional?.informative_n ?? 0} wk`))}
                       {signal("net", "③", tx("광고를 늘리면 전체 성과는 순증가하나?", "Does more spend net-increase total outcome?"), tx("점추정과 신뢰구간이 0보다 어느 쪽에 있는지 봅니다.", "Checks point estimate and confidence interval against zero."), ni.vote, tx(`순증분 ${isFinite(ni.net_elasticity) ? ni.net_elasticity : "—"} · CI[${ni.ci_lo ?? "—"}, ${ni.ci_hi ?? "—"}]`, `Net effect ${isFinite(ni.net_elasticity) ? ni.net_elasticity : "—"} · CI[${ni.ci_lo ?? "—"}, ${ni.ci_hi ?? "—"}]`))}
                       {signal("lag", "④", tx("광고비가 몇 주 뒤 성과를 끌어내리나?", "Does spend pull outcome down weeks later?"), tx("광고 충격 뒤의 주별·누적 반응을 봅니다.", "Shows weekly and cumulative response after a spend shock."), cn.granger_cannibal ? "AGAINST" : cn.granger_help ? "FOR" : "ABSTAIN", g ? tx(`시차 ${g.spend_to_organic.lag}주 · p=${g.spend_to_organic.p}`, `Lag ${g.spend_to_organic.lag}wk · p=${g.spend_to_organic.p}`) : tx("데이터 부족", "Insufficient data"))}
                     </div>
@@ -6152,8 +6245,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-1)", marginBottom: "3px" }}>
                         {cannibQuestion === "precedence" ? tx("① 저지출 주의 성과·지출 흐름", "① Outcome and spend in low-spend weeks") : cannibQuestion === "detrend" ? tx("② 추세 제거·전주 대비 관계", "② Detrended and week-over-week relationship") : cannibQuestion === "net" ? tx("③ 순증분 효과와 신뢰구간", "③ Net incremental effect and interval") : tx("④ 지출 충격 뒤 시차 반응", "④ Lagged response after a spend shock")}
                       </div>
-                      <p className="muted" style={{ fontSize: "11px", margin: "0 0 5px" }}>{cannibQuestion === "net" ? tx("초록 막대가 아니라 순증분 탄력성의 점추정과 신뢰구간입니다. 0을 포함하면 결론은 보류합니다.", "This is a net-elasticity estimate and interval, not a green success bar. If it includes 0, verdict is withheld.") : cannibQuestion === "lag" ? tx("아래면 시차 잠식, 위면 시차 증분 신호입니다.", "Below zero suggests lagged cannibalization; above zero suggests incremental response.") : cannibQuestion === "detrend" ? tx("가로축은 광고 지출 변화, 세로축은 성과 변화입니다. 오른쪽 아래로 모이면 잠식 신호, 오른쪽 위로 모이면 증분 신호예요. 점이 흩어지면 보류합니다.", "Horizontal = spend change; vertical = outcome change. Down-right clustering signals cannibalization, up-right signals incrementality; scattered points mean withhold.") : tx("선택한 검증의 원자료를 직접 확인하세요. 단일 차트가 최종 인과 증명은 아닙니다.", "Inspect source evidence for the selected test. One chart is not causal proof.")}</p>
-                      {cannibQuestion === "net" ? <NetEffectEvidence net={ni} locale={locale} /> : <div className="chart-container" style={{ height: "250px" }}><canvas ref={irfRef}></canvas></div>}
+                      <p className="muted" style={{ fontSize: "11px", margin: "0 0 5px" }}>{cannibQuestion === "net" ? tx("초록 막대가 아니라 순증분 탄력성의 점추정과 신뢰구간입니다. 0을 포함하면 결론은 보류합니다.", "This is a net-elasticity estimate and interval, not a green success bar. If it includes 0, verdict is withheld.") : cannibQuestion === "lag" ? tx("아래면 시차 잠식, 위면 시차 증분 신호입니다.", "Below zero suggests lagged cannibalization; above zero suggests incremental response.") : cannibQuestion === "detrend" ? tx(`굵은 0축을 기준으로 오른쪽 아래(지출↑·성과↓)와 왼쪽 위(지출↓·성과↑)를 모두 역행으로 셉니다. 점 위의 관계선으로 전체 방향을 확인하세요. 현재 유효 ${d.directional?.informative_n ?? 0}주 중 ${d.directional?.opposite_n ?? 0}주가 반대로 움직였습니다.`, `Using the bold zero axes, both lower-right (spend↑/outcome↓) and upper-left (spend↓/outcome↑) count as opposite movement. Use the fitted lines to read the overall direction. Currently ${d.directional?.opposite_n ?? 0} of ${d.directional?.informative_n ?? 0} informative weeks move opposite.`) : cannibQuestion === "precedence" ? tx(`이 차트는 상관관계 차트가 아닙니다. 주황 점은 지출이 하위 25% 기준(${spendValueLabel(p.p25)}) 이하였던 주의 성과만 표시합니다. 비용과 성과의 직접 관계는 ②에서 확인하세요.`, `This is not a correlation chart. Orange points mark outcome only in weeks where spend was at or below the bottom-quartile threshold (${spendValueLabel(p.p25)}). Use ② for the direct spend–outcome relationship.`) : tx("선택한 검증의 원자료를 직접 확인하세요. 단일 차트가 최종 인과 증명은 아닙니다.", "Inspect source evidence for the selected test. One chart is not causal proof.")}</p>
+                      {cannibQuestion === "net" ? <NetEffectEvidence net={ni} locale={locale} /> : <div className="chart-container" style={{ height: cannibQuestion === "detrend" ? "360px" : "280px" }}><canvas ref={irfRef}></canvas></div>}
                     </div>
                   </section>
                 );
@@ -6166,7 +6259,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 </summary>
                 <div style={{ marginTop: "12px" }}>
                   <p className="muted" style={{ fontSize: "12px", lineHeight: 1.7, marginBottom: "10px" }}>
-                    <strong>{tx("카니발리제이션(잠식)", "Cannibalization")}</strong>{tx("이란 유료 광고가 원래 공짜로 들어올 오가닉 유입을 빼앗는 현상입니다. 이 도구는 4가지 독립 신호(①시간 선행성 ②탈추세·차분 상관 ③순증분 탄력성 ④그랜저 인과)를 투표로 종합해 채널별로 판정합니다. 관측 검정은 용의자를 좁힐 뿐이며, 확정은 홀드아웃 실험(5-4)에서만 가능합니다.", " is when paid ads take away organic traffic that would have come for free. This tool combines 4 independent signals (① temporal precedence ② detrended/diff correlation ③ net-incremental elasticity ④ Granger causality) by vote to judge each channel. Observational tests only narrow down suspects — confirmation is only possible via a holdout experiment (5-4).")}
+                    <strong>{tx("카니발리제이션(잠식)", "Cannibalization")}</strong>{tx("이란 유료 광고가 원래 공짜로 들어올 오가닉 유입을 빼앗는 현상입니다. 이 도구는 선택한 성과(유저수·매출 등)와 지출의 4가지 신호(①시간 선행성 ②탈추세·방향 반복 ③순증분 탄력성 ④그랜저 인과)를 종합해 의심 채널을 좁힙니다. 관측 데이터만으로 오가닉을 분리하거나 인과를 확정할 수 없으며, 확정은 홀드아웃 실험(5-4)에서만 가능합니다.", " is when paid ads take away organic traffic that would have come for free. This tool combines four signals between spend and the selected outcome (users, revenue, and so on): ① temporal precedence ② detrended and repeated-direction movement ③ net-incremental elasticity ④ Granger causality. Observational data can only narrow down suspects; it cannot isolate organic traffic or prove causality. Confirmation requires a holdout experiment (5-4).")}
                   </p>
                   <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "14px" }}>
                     <button className="ab-pill" title={tx("채널 × 3-state 투표 + 게이트·탄력성·커버리지·그랜저 → CSV", "Channel × 3-state vote + gate/elasticity/coverage/Granger → CSV")}

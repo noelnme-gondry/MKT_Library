@@ -68,9 +68,13 @@ export const CANNIBAL_RANK = (() => {
     let run = 0;
     const flights = [];
     let lowRun = 0, lowBlockMax = 0;
+    let transitions = 0, activeCount = 0;
     const sorted = spend.slice().sort((a, b) => a - b);
     const p25 = sorted.length ? sorted[Math.floor((sorted.length - 1) * 0.25)] : 0;
-    for (const value of spend) {
+    for (let i = 0; i < spend.length; i++) {
+      const value = spend[i];
+      if (value > 0) activeCount++;
+      if (i > 0 && (value > 0) !== (spend[i - 1] > 0)) transitions++;
       if (value > 0) run++;
       else if (run) { flights.push(run); run = 0; }
       if (value <= p25) lowRun++;
@@ -78,10 +82,25 @@ export const CANNIBAL_RANK = (() => {
     }
     if (run) flights.push(run);
     lowBlockMax = Math.max(lowBlockMax, lowRun);
-    if (flights.filter((value) => value >= cfg.MIN_FLIGHT_WEEKS).length < cfg.MIN_FLIGHTS)
+    const zeroFrac = spend.length ? 1 - activeCount / spend.length : 1;
+    const flighted = transitions >= 4 && zeroFrac >= 0.2;
+    // 상시 집행 채널은 지출의 연속 변동으로 식별한다. 반복 on/off가 실제로 있는
+    // 채널만 지속 flight 요건을 적용해야 always-on 채널을 오판하지 않는다.
+    if (
+      flighted &&
+      flights.filter((value) => value >= cfg.MIN_FLIGHT_WEEKS).length < cfg.MIN_FLIGHTS
+    )
       reasons.push(`지속 flight ${flights.filter((value) => value >= cfg.MIN_FLIGHT_WEEKS).length} < ${cfg.MIN_FLIGHTS}`);
-    if (lowBlockMax < cfg.MIN_LOW_BLOCK) reasons.push(`연속 low-spend ${lowBlockMax}주 < ${cfg.MIN_LOW_BLOCK}주`);
-    return { eligible: reasons.length === 0, spendCV: +cv.toFixed(3), dfResid: df, flights, lowBlockMax, reasons };
+    return {
+      eligible: reasons.length === 0,
+      spendCV: +cv.toFixed(3),
+      dfResid: df,
+      flights,
+      flighted,
+      zeroFrac: +zeroFrac.toFixed(3),
+      lowBlockMax,
+      reasons,
+    };
   }
   return { spendCV, zFromR, twoSidedP, relu, eligibility, RANK_CFG };
 })();
@@ -235,25 +254,37 @@ export function mmmBuildCannibRank(panel, target, cannibByChannel, cov, chans, c
 }
 
 // 권고 짧은 라벨(표 셀) + 전체 문구(title 툴팁)
-export function mmmCannibAction(r) {
+export function mmmCannibAction(r, locale = "ko") {
+  const en = locale === "en";
   if (!r.eligible)
-    return "데이터 부족·추세 혼재 — 잠식 판정 보류. 연속 집행 또는 holdout 필요";
+    return en
+      ? "Insufficient data or mixed trends — withhold the verdict; use sustained delivery or a holdout"
+      : "데이터 부족·추세 혼재 — 잠식 판정 보류. 연속 집행 또는 holdout 필요";
   if (r.flighted)
-    return "⚡ 산발 집행(on/off) — 시차·선행성 검정 신뢰도↓. 매칭 on/off 비교 또는 holdout으로만 확인";
-  if (r.badge === "강") return "holdout 우선순위 높음";
-  if (r.badge === "중") return "holdout 후보 (우선순위 중)";
-  if (r.gated) return "공선으로 관측 식별 불가 — '안전' 단정 말고 holdout으로 확인";
-  if (r.leanNeg) return "약한 음의 기미·검정력 부족 — 모니터 / holdout 고려";
-  return "관측상 이상 無 (비공선·탈추세 무해) — deprioritize 가능";
+    return en
+      ? "⚡ Flighted delivery — lag and precedence evidence is weaker; confirm with a matched on/off comparison or holdout"
+      : "⚡ 산발 집행(on/off) — 시차·선행성 검정 신뢰도↓. 매칭 on/off 비교 또는 holdout으로만 확인";
+  if (r.badge === "강") return en ? "High-priority holdout" : "holdout 우선순위 높음";
+  if (r.badge === "중") return en ? "Holdout candidate (medium priority)" : "holdout 후보 (우선순위 중)";
+  if (r.gated) return en
+    ? "Not identified due to collinearity — do not call it safe; confirm with a holdout"
+    : "공선으로 관측 식별 불가 — '안전' 단정 말고 holdout으로 확인";
+  if (r.leanNeg) return en
+    ? "Weak negative signal with low power — monitor or consider a holdout"
+    : "약한 음의 기미·검정력 부족 — 모니터 / holdout 고려";
+  return en
+    ? "No observed red flag after detrending — reasonable to deprioritize"
+    : "관측상 이상 無 (비공선·탈추세 무해) — deprioritize 가능";
 }
-export function mmmCannibActionShort(r) {
-  if (!r.eligible) return "데이터 부족·보류";
-  if (r.flighted) return "⚡ holdout 확인";
-  if (r.badge === "강") return "holdout 1순위";
-  if (r.badge === "중") return "holdout 후보";
-  if (r.gated) return "🔗 holdout 확인";
-  if (r.leanNeg) return "모니터/holdout";
-  return "deprioritize 가능";
+export function mmmCannibActionShort(r, locale = "ko") {
+  const en = locale === "en";
+  if (!r.eligible) return en ? "Insufficient · withheld" : "데이터 부족·보류";
+  if (r.flighted) return en ? "⚡ Confirm by holdout" : "⚡ holdout 확인";
+  if (r.badge === "강") return en ? "Holdout priority 1" : "holdout 1순위";
+  if (r.badge === "중") return en ? "Holdout candidate" : "holdout 후보";
+  if (r.gated) return en ? "🔗 Confirm by holdout" : "🔗 holdout 확인";
+  if (r.leanNeg) return en ? "Monitor / holdout" : "모니터/holdout";
+  return en ? "Can deprioritize" : "deprioritize 가능";
 }
 
 // 5단계 판정 그라데이션 — L1 데이터없음 / L2 신호없음 / L3 거의없음 / L4 신호조금 / L5 카니발
@@ -267,6 +298,14 @@ export function mmmCannibLevel(r) {
   if (r.verdict_class === "ok")
     return { lv: 2, label: "적색신호 없음", short: "신호 없음", color: "#22c55e", sym: "●" };
   return { lv: 3, label: "적색신호 없음에 가까움", short: "거의 없음", color: "#2dd4bf", sym: "◐" };
+}
+
+export function mmmCannibBucket(r) {
+  const level = mmmCannibLevel(r);
+  if (!r?.eligible || level.lv === 1) return "unclear";
+  if (level.lv >= 5) return "danger";
+  if (level.lv >= 4) return "unclear";
+  return "ok";
 }
 
 // 전역 카니발 verdict = 식별 가능한 채널들의 worst-case (cannibal > inconclusive > ok).
