@@ -20,6 +20,7 @@ import MarketingResponse, {
   MMM_EXPERIMENT_ONOFF_TEMPLATE_CSV,
   MMM_TEMPLATE_CSV,
   buildForecastCsv,
+  buildForecastAssistInsight,
   buildForecastOnlyModelFromPanel,
   buildForecastRecentBacktest,
   mmmDerivedTrafficValue,
@@ -180,6 +181,22 @@ describe("MarketingResponse render smoke", () => {
   it("mounts without throwing in the no-data state", () => {
     expect(() => render(<MarketingResponse />)).not.toThrow();
     expect(document.body.querySelector("*")).toBeTruthy();
+  });
+
+  it("summarizes the loaded forecast result into a concrete hold/action recommendation", () => {
+    const insight = buildForecastAssistInsight({
+      isAdditiveTotal: true,
+      predFut: Array(12).fill(100),
+      components: [
+        { platform: "android", rollingSelection: { decisionEligible: true, selected: { window: 78 } } },
+        { platform: "ios", rollingSelection: { decisionEligible: true, selected: { window: 26 } } },
+      ],
+    }, { wmape: 18.42 }, { eligible: false });
+    expect(insight.titleKo).toContain("미인증");
+    expect(insight.summaryKo).toContain("18.42%");
+    expect(insight.summaryKo).toContain("android 78주");
+    expect(insight.actionsKo.join(" ")).toContain("예산 증감");
+    expect(insight.actionsEn.join(" ")).toContain("Cost scenarios locked");
   });
 
   it("defines Total forecast as the exact weekly sum of Android and iOS forecasts", () => {

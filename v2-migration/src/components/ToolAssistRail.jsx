@@ -14,6 +14,8 @@ const COPY = {
     eyebrow: "CONTEXT ASSIST",
     current: "지금 보는 단계",
     jump: "이 위치로 이동",
+    evidence: "근거 위치 보기",
+    recommendations: "추천 액션",
     mapping: "데이터 매핑 확인",
     prepare: "데이터 준비하기",
     replaceSample: "내 CSV로 바꾸기",
@@ -30,6 +32,8 @@ const COPY = {
     eyebrow: "CONTEXT ASSIST",
     current: "Current step",
     jump: "Jump to this section",
+    evidence: "View supporting result",
+    recommendations: "Recommended actions",
     mapping: "Check data mapping",
     prepare: "Prepare data",
     replaceSample: "Use my CSV",
@@ -136,6 +140,21 @@ function copyFor(value, lang) {
   return value[lang === "en" ? 1 : 0];
 }
 
+export function readAssistInsight(element, lang = "ko") {
+  if (!element?.dataset) return null;
+  const suffix = lang === "en" ? "En" : "Ko";
+  const summary = element.dataset[`assistSummary${suffix}`];
+  if (!summary) return null;
+  return {
+    title: element.dataset[`assistTitle${suffix}`] || null,
+    summary,
+    actions: String(element.dataset[`assistActions${suffix}`] || "")
+      .split("|||")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  };
+}
+
 function getSections(toolId, { hasDashboardResults = true, isDashboardDemo = false } = {}) {
   if (!hasDashboardResults && DASHBOARD_SETUP_SECTIONS[toolId]) return DASHBOARD_SETUP_SECTIONS[toolId];
   if (isDashboardDemo && DASHBOARD_DEMO_SECTIONS[toolId]) return DASHBOARD_DEMO_SECTIONS[toolId];
@@ -155,6 +174,7 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
   const [isOpen, setIsOpen] = useState(false);
   const [hasNewContext, setHasNewContext] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState(sections[0].id);
+  const [activeInsight, setActiveInsight] = useState(null);
   const didRevealResult = useRef(false);
   const nextTool = getNextTools(toolId, lang)[0] || null;
   const sourceTool = localizedTool(toolId, lang) || (ASSIST_TOOL_FALLBACKS[toolId] && { title: ASSIST_TOOL_FALLBACKS[toolId].title[lang] });
@@ -185,7 +205,11 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
       const viewportMarker = window.innerHeight * 0.38;
       const passed = checkpoints.filter(({ element }) => element.getBoundingClientRect().top <= viewportMarker);
       const current = (passed.length > 0 ? passed : checkpoints)[(passed.length > 0 ? passed : checkpoints).length - 1];
-      if (current) setActiveSectionId((previous) => previous === current.section.id ? previous : current.section.id);
+      if (current) {
+        setActiveSectionId((previous) => previous === current.section.id ? previous : current.section.id);
+        const nextInsight = readAssistInsight(current.element, lang);
+        setActiveInsight((previous) => JSON.stringify(previous) === JSON.stringify(nextInsight) ? previous : nextInsight);
+      }
       revealResultIfReady();
     };
     const scheduleSync = () => {
@@ -199,14 +223,26 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
       scheduleSync();
       revealResultIfReady();
     });
-    observer?.observe(document.getElementById("content") || document.body, { childList: true, subtree: true });
+    observer?.observe(document.getElementById("content") || document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: [
+        "data-assist-title-ko",
+        "data-assist-title-en",
+        "data-assist-summary-ko",
+        "data-assist-summary-en",
+        "data-assist-actions-ko",
+        "data-assist-actions-en",
+      ],
+    });
     return () => {
       cancelAnimationFrame(frameId);
       window.removeEventListener("scroll", scheduleSync);
       window.removeEventListener("resize", scheduleSync);
       observer?.disconnect();
     };
-  }, [sections]);
+  }, [sections, lang]);
 
   const scrollToSection = (id, source) => {
     const target = document.getElementById(id);
@@ -237,14 +273,22 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
         </header>
         <div className="tool-assist-rail__context">
           <small>{T.current}</small>
-          <h2>{copyFor(activeSection.title, lang) || T.defaultTitle}</h2>
-          <p>{copyFor(activeSection.body, lang) || T.defaultBody}</p>
-          <button type="button" onClick={() => scrollToSection(activeSection.id, "current_context")}>{T.jump} <span aria-hidden="true">↓</span></button>
+          <h2>{activeInsight?.title || copyFor(activeSection.title, lang) || T.defaultTitle}</h2>
+          <p>{activeInsight?.summary || copyFor(activeSection.body, lang) || T.defaultBody}</p>
+          {activeInsight?.actions?.length > 0 && (
+            <div className="tool-assist-rail__recommendations">
+              <small>{T.recommendations}</small>
+              <ol>{activeInsight.actions.map((action) => <li key={action}>{action}</li>)}</ol>
+            </div>
+          )}
+          <button type="button" onClick={() => scrollToSection(activeSection.id, "current_context")}>{activeInsight ? T.evidence : T.jump} <span aria-hidden="true">↓</span></button>
         </div>
         <div className="tool-assist-rail__actions">
-          <button type="button" onClick={() => scrollToSection(quickActionTarget, "support_action")}>
-            {isDashboardDemo ? T.replaceSample : quickActionTarget === "dashboard-support-tools" ? T.support : quickActionTarget === "dashboard-data-setup" ? T.prepare : T.mapping}
-          </button>
+          {!activeInsight && (
+            <button type="button" onClick={() => scrollToSection(quickActionTarget, "support_action")}>
+              {isDashboardDemo ? T.replaceSample : quickActionTarget === "dashboard-support-tools" ? T.support : quickActionTarget === "dashboard-data-setup" ? T.prepare : T.mapping}
+            </button>
+          )}
           {nextTool && !isDashboardDemo ? (
             <Link href={nextTool.href} onClick={() => trackProductEvent("tool_assist_next", { tool_id: nextTool.id, source_tool_id: toolId, locale: lang })}>
               <span>{T.next}</span>
