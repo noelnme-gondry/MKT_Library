@@ -1699,6 +1699,22 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
   const totalResults = items.reduce((s, it) => s + it.results, 0);
   const avgCpr = totalResults > 0 ? totalCost / totalResults : 0;
   const showTable = dailyBudget > 0 || simMode === "manual";
+  const allocationMoveCounts = items.reduce(
+    (acc, item) => {
+      const previous = historyByCh[item.channel]?.totalCost || 0;
+      const delta = item.cost - previous;
+      if (delta > 0.005) acc.increase += 1;
+      else if (delta < -0.005) acc.decrease += 1;
+      else acc.hold += 1;
+      if (
+        item.locked ||
+        Number(allocMinSpend[item.channel]) > 0 ||
+        (allocMaxSpend[item.channel] != null && Number(allocMaxSpend[item.channel]) >= 0)
+      ) acc.constrained += 1;
+      return acc;
+    },
+    { increase: 0, decrease: 0, hold: 0, constrained: 0 },
+  );
 
   // ── 잠금/되돌리기 + Min/Max 핸들러 (라이브 콤마·§7 parseFloat 콤마 함정) ──
   const setNumMap = (setter, ch, raw) => {
@@ -2077,9 +2093,13 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           )}
           points={verdict.acts.map((text) => ({ text }))}
           stats={[
-            { label: tr(`예상 ${unitLabel}수`, `Projected ${unitLabel}s`), value: formatNumberK(verdict.S.next.results, 0) },
+            {
+              label: tr(budgetPeriod === "monthly" ? "총 월예산" : "총 일예산", budgetPeriod === "monthly" ? "Total monthly budget" : "Total daily budget"),
+              value: fmtCurrency(budgetPeriod === "monthly" ? dailyBudget * 30 : dailyBudget, currency),
+            },
+            { label: tr("증액 / 감액", "Increase / decrease"), value: `${allocationMoveCounts.increase} / ${allocationMoveCounts.decrease}`, detail: tr(`유지 ${allocationMoveCounts.hold}`, `${allocationMoveCounts.hold} unchanged`) },
+            { label: tr("잠금·제약", "Locks · constraints"), value: allocationMoveCounts.constrained },
             { label: tr(`예상 평균 ${metricLabel}`, `Projected average ${metricLabel}`), value: `${verdict.S.prevAvgCPR != null ? fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency) : "—"} → ${verdict.S.nextAvgCPR != null ? fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency) : "—"}` },
-            ...(verdict.S.nextROAS != null ? [{ label: tr("예상 ROAS", "Projected ROAS"), value: `${(verdict.S.nextROAS * 100).toFixed(1)}%` }] : []),
           ]}
           analysisDetails={(
             <AnalysisDetails
@@ -2108,17 +2128,20 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
 
       {/* 총 합계 비교 카드 */}
       {summary && (
-        <div style={{ background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "14px 16px", marginBottom: "1rem" }}>
-          <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "10px" }}>
+        <details style={{ background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "14px 16px", marginBottom: "1rem" }}>
+          <summary style={{ fontWeight: 600, fontSize: "14px", cursor: "pointer" }}>
             {tr("총 합계 비교", "Total comparison")}{" "}
             <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 400 }}>
-              {tr(
-                `알고리즘: ${allocMode === "c" ? "절대 CPR 가중" : "한계효용 그리디"} · 분배 기준: ${budgetPeriod === "monthly" ? "월 (÷30 환산)" : "일"}예산 · 비교 기준: 최근 ${summary.recentDays}일 CPR 기반`,
-                `Algorithm: ${allocMode === "c" ? "absolute CPR weighting" : "marginal-utility greedy"} · Basis: ${budgetPeriod === "monthly" ? "monthly (÷30)" : "daily"} budget · Comparison: last ${summary.recentDays}-day CPR`
-              )}
+              {tr("과거와 추천안의 상세 수치", "Detailed historical vs recommended figures")}
             </span>
+          </summary>
+          <div style={{ marginTop: "10px", fontSize: "11px", color: "var(--text-muted)" }}>
+            {tr(
+              `알고리즘: ${allocMode === "c" ? "절대 CPR 가중" : "한계효용 그리디"} · 분배 기준: ${budgetPeriod === "monthly" ? "월 (÷30 환산)" : "일"}예산 · 비교 기준: 최근 ${summary.recentDays}일 CPR 기반`,
+              `Algorithm: ${allocMode === "c" ? "absolute CPR weighting" : "marginal-utility greedy"} · Basis: ${budgetPeriod === "monthly" ? "monthly (÷30)" : "daily"} budget · Comparison: last ${summary.recentDays}-day CPR`
+            )}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: "12px", alignItems: "center" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: "12px", alignItems: "center", marginTop: "10px" }}>
             <div>
               <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "6px" }}>{tr(`과거 기준 (최근 ${summary.recentDays}일 평균 일예산)`, `Historical basis (avg. daily budget, last ${summary.recentDays} days)`)}</div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "2px 0" }}><span>{tr("비용 (일평균)", "Cost (daily avg.)")}</span><strong className="tnum">{fmtCurrency(summary.prev.cost, currency)}</strong></div>
@@ -2150,7 +2173,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
               {summary.nextROAS != null && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "2px 0" }}><span>{tr("예상 ROAS", "Projected ROAS")}</span><strong className="tnum">{(summary.nextROAS * 100).toFixed(1)}%</strong></div>}
             </div>
           </div>
-        </div>
+        </details>
       )}
 
       <section className="block" id="s-controls">

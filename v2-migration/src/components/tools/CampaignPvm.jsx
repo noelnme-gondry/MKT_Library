@@ -8,6 +8,7 @@ import { resolvePvmCopy } from "@/utils/contentDomain";
 import { getMonFilteredRows, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { checkAdditiveIdentity } from "@/utils/identityChecks";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
+import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import CsvUploader from "@/components/CsvUploader";
@@ -937,6 +938,10 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const channelRows = ready
     ? pvmSortRows([...cache.layer1].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)), "channel", pvmSortChannel)
     : [];
+  const pvmTopCauses = channelRows.slice(0, 3);
+  const pvmDeltaPct = ready && cache.CPA1
+    ? (cache.deltaCpa / cache.CPA1) * 100
+    : null;
   const channelSigma = channelRows.reduce((a, e) => a + e.contribution, 0);
   const channelIdentity = ready ? cache.identity : null;
   const pvmManifest = buildResultManifest({
@@ -1203,34 +1208,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <h2 className="section-title" style={{ margin: 0 }}><span className="ix">§0</span>{tr("한눈에 보기", "Overview")}</h2>
-          <DownloadHub
-            toolId={pvmManifest.toolId}
-            locale={locale}
-            label={tr("결과 받기", "Download")}
-            align="right"
-            manifest={pvmManifest}
-            items={[
-              { icon: "📄", label: tr("분해 결과 CSV", "Decomposition CSV"), desc: tr("채널·캠페인·소재 표", "Channel, campaign, and creative tables"), onSelect: ready ? downloadPvmCsv : undefined },
-              { icon: "🖼", label: tr("워터폴 PNG", "Waterfall PNG"), desc: tr("현재 분해 차트", "Current decomposition chart"), onSelect: ready ? () => downloadChartPng(chartPvmWaterfall, "pvm_waterfall") : undefined },
-            ]}
-          />
         </div>
-
-        <AnalysisDetails
-          locale={locale}
-          statusLabel={ready ? tr("계산 완료", "Complete") : tr("입력 확인 필요", "Input review needed")}
-          statusTone={ready ? "good" : "neutral"}
-          metric={ml}
-          unit={tr("통화 단위 CPA/CPI", "Currency per CPA/CPI")}
-          meaning={tr("관측 PVM 연관 분해이며 인과 효과가 아닙니다.", "Observed PVM association decomposition; not causal attribution.")}
-          sampleSize={ready ? { value: `${cache.rowsP1.length + cache.rowsP2.length} rows`, detail: `${cache.p1Range[0]}–${cache.p2Range[1]}` } : null}
-          scope={ready ? `${cache.p1Range[0]} → ${cache.p2Range[1]}` : ""}
-          method="PVM finest-grain rollup"
-          version="pvm-identity-checked"
-          filterSummary={JSON.stringify({ lookback, weekBasis, metric })}
-          metricDefinition={pvmManifest.metricDefinitions[0]?.key}
-          warnings={pvmManifest.warnings}
-        />
 
         <div className="analysis-local-controls" aria-label={tr("비교 조건", "Comparison settings")} style={{ marginTop: "1rem" }}>
         <div className="analysis-local-controls__inner">
@@ -1272,15 +1250,74 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           <p style={{ margin: "8px 0 0", fontSize: "11.5px", color: "var(--text-muted)" }}>{periodCaption}</p>
         )}
 
-        {ready && (upMover || downMover) && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", margin: "12px 0 4px" }}>
-            {upMover && moverCard(upMover, "up")}
-            {downMover && moverCard(downMover, "down")}
-          </div>
-        )}
-
         {ready ? (
-          <ul style={{ margin: "12px 0 10px", padding: 0, listStyle: "none" }}>{headlineLines}</ul>
+          <ResultActionCard
+            toolId={pvmManifest.toolId}
+            locale={locale}
+            tone={cache.deltaCpa > 0 ? "bad" : cache.deltaCpa < 0 ? "good" : "neutral"}
+            title={tr("변동 원인 결론", "Variance conclusion")}
+            headline={tr(
+              `${ml} ${pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → ${pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}`,
+              `${ml} ${pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → ${pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}`,
+            )}
+            stats={[
+              { label: tr("전체 변화", "Overall change"), value: `${cache.deltaCpa >= 0 ? "+" : ""}${pvmFmtMoney(cache.deltaCpa, cur)}`, detail: pvmDeltaPct == null ? "—" : `${pvmDeltaPct >= 0 ? "+" : ""}${pvmDeltaPct.toFixed(1)}%` },
+              { label: tr("가장 큰 원인", "Top cause"), value: pvmTopCauses[0]?.key || unspec, detail: pvmTopCauses[0] ? `${pvmTopCauses[0].contribution >= 0 ? "+" : ""}${pvmFmtMoney(pvmTopCauses[0].contribution, cur)}` : "—" },
+              { label: tr("분석 채널", "Channels"), value: channelRows.length },
+            ]}
+            points={pvmTopCauses.map((cause, index) => ({
+              text: tr(
+                `${index + 1}위 ${cause.key || unspec} · ${ml} ${cause.contribution >= 0 ? "+" : ""}${pvmFmtMoney(cause.contribution, cur)}`,
+                `#${index + 1} ${cause.key || unspec} · ${ml} ${cause.contribution >= 0 ? "+" : ""}${pvmFmtMoney(cause.contribution, cur)}`,
+              ),
+              cls: cause.contribution > 0 ? "bad" : cause.contribution < 0 ? "good" : "muted",
+            }))}
+            download={(
+              <DownloadHub
+                toolId={pvmManifest.toolId}
+                locale={locale}
+                label={tr("결과 받기", "Download")}
+                align="right"
+                manifest={pvmManifest}
+                items={[
+                  { icon: "📄", label: tr("분해 결과 CSV", "Decomposition CSV"), desc: tr("채널·캠페인·소재 표", "Channel, campaign, and creative tables"), onSelect: downloadPvmCsv },
+                  { icon: "🖼", label: tr("워터폴 PNG", "Waterfall PNG"), desc: tr("현재 분해 차트", "Current decomposition chart"), onSelect: () => downloadChartPng(chartPvmWaterfall, "pvm_waterfall") },
+                ]}
+              />
+            )}
+            analysisDetails={(
+              <AnalysisDetails
+                locale={locale}
+                statusLabel={tr("계산 완료", "Complete")}
+                statusTone="good"
+                metric={ml}
+                unit={tr("통화 단위 CPA/CPI", "Currency per CPA/CPI")}
+                meaning={tr("관측 PVM 연관 분해이며 인과 효과가 아닙니다.", "Observed PVM association decomposition; not causal attribution.")}
+                sampleSize={{ value: `${cache.rowsP1.length + cache.rowsP2.length} rows`, detail: `${cache.p1Range[0]}–${cache.p2Range[1]}` }}
+                scope={`${cache.p1Range[0]} → ${cache.p2Range[1]}`}
+                method="PVM finest-grain rollup"
+                version="pvm-identity-checked"
+                filterSummary={JSON.stringify({ lookback, weekBasis, metric })}
+                metricDefinition={pvmManifest.metricDefinitions[0]?.key}
+                warnings={pvmManifest.warnings}
+              />
+            )}
+          >
+            <details className="result-action-card__details">
+              <summary>{tr("추가 변동 근거 보기", "View additional variance evidence")}</summary>
+              {(upMover || downMover) && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", margin: "12px 0 4px" }}>
+                  {upMover && moverCard(upMover, "up")}
+                  {downMover && moverCard(downMover, "down")}
+                </div>
+              )}
+              <ul style={{ margin: "12px 0 10px", padding: 0, listStyle: "none" }}>{headlineLines}</ul>
+              <div className="callout warn" style={{ marginTop: "6px" }}>
+                <div className="ico">!</div>
+                <div className="body" style={{ fontSize: "11.5px" }}>{C.causationCallout}</div>
+              </div>
+            </details>
+          </ResultActionCard>
         ) : (
           <div className="callout warn" style={{ marginTop: "12px" }}>
             <div className="ico">!</div>
@@ -1290,10 +1327,6 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             </div>
           </div>
         )}
-        <div className="callout warn" style={{ marginTop: "6px" }}>
-          <div className="ico">!</div>
-          <div className="body" style={{ fontSize: "11.5px" }}>{C.causationCallout}</div>
-        </div>
       </section>
 
       {/* §1 스코어카드 */}

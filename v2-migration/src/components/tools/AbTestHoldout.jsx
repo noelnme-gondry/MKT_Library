@@ -345,27 +345,21 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
 
   return (
     <div className="tab-pane active" id="tab-ab">
-      <section className="experiment-journey" aria-label={tr("실험 의사결정 흐름", "Experiment decision flow")}>
+      <section className="experiment-journey experiment-journey--compact" aria-label={tr("실험 의사결정 흐름", "Experiment decision flow")}>
         <div className="experiment-journey__head">
           <span>EXPERIMENT DECISION FLOW</span>
-          <h2>{tr("가설을 만들고, 필요한 만큼 모으고, 행동을 결정합니다", "Form a hypothesis, collect enough data, then make the decision")}</h2>
-          <p>{tr("어느 단계에서든 시작할 수 있습니다. 결과 판독 뒤에도 설계로 돌아가 다음 실험을 준비할 수 있습니다.", "Start at any stage. After readout, return to design to prepare the next test.")}</p>
+          <h2>{tr("설계하거나, 바로 판독하세요", "Design a test or read results now")}</h2>
         </div>
         <div className="experiment-journey__steps">
           <button type="button" className={activeTab === "design" ? "is-active" : ""} onClick={() => { setActiveTab("design"); setMode("plan"); }}>
-            <span>01 · DESIGN</span>
-            <strong>{tr("얼마나 모아야 할까?", "How much data is enough?")}</strong>
-            <small>{planResult?.n ? tr(`그룹당 ${planResult.n.toLocaleString()}명 필요`, `${planResult.n.toLocaleString()} per arm`) : tr("MDE·검정력으로 표본 계산", "Calculate sample from MDE and power")}</small>
+            <span>01 · {tr("설계", "DESIGN")}</span>
+            <strong>{planResult?.n ? tr(`그룹당 ${planResult.n.toLocaleString()}명`, `${planResult.n.toLocaleString()} per arm`) : tr("필요 표본 계산", "Calculate sample")}</strong>
+            <small>{tr("MDE · 검정력", "MDE · power")}</small>
           </button>
-          <button type="button" className={activeTab === "readout" && !readoutData ? "is-active" : ""} onClick={() => setActiveTab("readout")}>
-            <span>02 · COLLECT</span>
-            <strong>{tr("무엇을 같은 조건으로 모을까?", "What should stay consistent?")}</strong>
-            <small>{tr("대조군·실험군·전환수·분모 매핑", "Map control, variant, numerator, denominator")}</small>
-          </button>
-          <button type="button" className={activeTab === "readout" && readoutData ? "is-active" : ""} onClick={() => setActiveTab("readout")}>
-            <span>03 · DECIDE</span>
-            <strong>{tr("바꿀까, 더 모을까?", "Ship, stop, or collect more?")}</strong>
-            <small>{readoutData?.sig ? tr(`p=${readoutData.sig.pValue.toFixed(4)} · 효과 크기와 함께 판정`, `p=${readoutData.sig.pValue.toFixed(4)} · decide with effect size`) : tr("결과 CSV를 올리면 판정", "Upload results to decide")}</small>
+          <button type="button" className={activeTab === "readout" ? "is-active" : ""} onClick={() => setActiveTab("readout")}>
+            <span>02 · {tr("판독", "READOUT")}</span>
+            <strong>{readoutData?.sig ? `p=${readoutData.sig.pValue.toFixed(4)}` : tr("결과 바로 판독", "Read results")}</strong>
+            <small>{readoutData?.sig ? tr(`Lift ${(readoutData.sig.liftRel * 100).toFixed(1)}%`, `Lift ${(readoutData.sig.liftRel * 100).toFixed(1)}%`) : tr("Control · Test 매핑", "Map Control · Test")}</small>
           </button>
         </div>
       </section>
@@ -813,30 +807,19 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                         ? tr(liftPositive ? "통계적 개선 후보입니다" : "통계적 악화 후보입니다", liftPositive ? "Statistical improvement candidate" : "Statistical decline candidate")
                         : tr("현재 표본만으로 차이를 확정할 수 없습니다", "The current sample does not establish a difference")}
                       points={[{ text: tr("효과 크기·95% CI·검정력을 함께 확인하세요.", "Check effect size, the 95% interval, and power together."), cls: s.pValue < 0.05 ? "good" : "muted" }]}
+                      stats={[
+                        { label: tr("Control 전환율", "Control rate"), value: `${readoutData.cRate.toFixed(2)}%`, detail: `${readoutData.cNum.toLocaleString()}/${readoutData.cDen.toLocaleString()}` },
+                        { label: tr("Test 전환율", "Test rate"), value: `${readoutData.tRate.toFixed(2)}%`, detail: `${readoutData.tNum.toLocaleString()}/${readoutData.tDen.toLocaleString()}` },
+                        { label: tr("상대 Lift", "Relative lift"), value: `${s.liftRel >= 0 ? "+" : ""}${(s.liftRel * 100).toFixed(2)}%` },
+                        { label: "p-value", value: s.pValue.toFixed(4), detail: s.pValue < 0.05 ? tr("차이 후보", "Difference candidate") : tr("판정 보류", "Inconclusive") },
+                      ]}
                     >
-                      <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-                        <div className="ab-stat"><div className="ab-stat-label">{tr("Control 전환율", "Control conversion rate")}</div><div className="ab-stat-value tnum">{readoutData.cRate.toFixed(2)}%</div><div className="ab-stat-hint">{readoutData.cNum.toLocaleString()}/{readoutData.cDen.toLocaleString()}</div></div>
-                        <div className="ab-stat"><div className="ab-stat-label">{tr("Test 전환율", "Test conversion rate")}</div><div className="ab-stat-value tnum">{readoutData.tRate.toFixed(2)}%</div><div className="ab-stat-hint">{readoutData.tNum.toLocaleString()}/{readoutData.tDen.toLocaleString()}</div></div>
-                        <div className="ab-stat"><div className="ab-stat-label">{tr("상대 Lift", "Relative lift")}</div><div className="ab-stat-value tnum" style={{ color: liftPositive ? undefined : "#ef4444" }}>{(s.liftRel * 100).toFixed(2)}%</div></div>
-                        <div className="ab-stat"><div className="ab-stat-label">z-score</div><div className="ab-stat-value tnum">{s.z.toFixed(3)}</div></div>
-                        <div className="ab-stat"><div className="ab-stat-label">p-value</div><div className="ab-stat-value tnum">{s.pValue.toFixed(4)} <PvBadge p={s.pValue} locale={locale} /></div></div>
-                        <div className="ab-stat"><div className="ab-stat-label">{tr("절대차 95% CI", "Absolute difference 95% CI")}</div><div className="ab-stat-value tnum">[ {(s.ciLow95 * 100).toFixed(2)}% , {(s.ciHigh95 * 100).toFixed(2)}% ]</div></div>
-                      </div>
-                      <div style={{ marginTop: "12px", fontWeight: 700, color: verdictColor(s.pValue, liftPositive) }}>
-                        {s.pValue < 0.05 ? (liftPositive ? tr("✓ 통계적 개선 — 효과 크기·MDE 확인", "✓ Statistical improvement — check effect size and MDE") : tr("✗ 통계적 악화 — 효과 크기·MDE 확인", "✗ Statistical decline — check effect size and MDE")) : tr("— 비유의 (Inconclusive — 더 많은 데이터 필요)", "— Not significant (Inconclusive — need more data)")}
-                      </div>
-                      <div className="callout" style={{ marginTop: "10px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
-                        {tr(
-                          <><strong>쉽게 말하면:</strong> Test안이 Control보다 전환율이 <strong>{s.liftRel >= 0 ? "+" : ""}{(s.liftRel * 100).toFixed(1)}%</strong> {s.liftRel >= 0 ? "높습니다" : "낮습니다"}.
-                          {" "}<strong>p-value {s.pValue.toFixed(4)}</strong> = 실제 차이가 없다고 가정할 때, 지금만큼 극단적인 데이터가 나올 확률입니다.
-                          {s.pValue < 0.05 ? " 사전에 정한 단일 지표 기준으로 0.05보다 작아 통계적 차이 후보입니다. 효과 크기·신뢰구간도 함께 확인하세요." : " 0.05보다 커서 현재 표본만으로 차이를 확정할 수 없습니다."}
-                          {" "}괄호 안 z·CI는 통계 원값(전문가용)입니다.</>,
-                          <><strong>In plain terms:</strong> Test&apos;s conversion rate is <strong>{s.liftRel >= 0 ? "+" : ""}{(s.liftRel * 100).toFixed(1)}%</strong> {s.liftRel >= 0 ? "higher" : "lower"} than Control.
-                          {" "}<strong>p-value {s.pValue.toFixed(4)}</strong> is the chance of seeing data this extreme if there were no real difference.
-                          {s.pValue < 0.05 ? " For one pre-specified metric it is below 0.05, making this a statistical-difference candidate; check effect size and the interval too." : " It is above 0.05, so this sample does not establish a difference."}
-                          {" "}The z and CI in parentheses are the raw statistics (for experts).</>,
-                        )}
-                      </p></div></div>
+                      <details className="result-action-card__details">
+                        <summary>{tr("통계 원값 보기", "View raw statistics")}</summary>
+                        <p className="tnum" style={{ margin: "8px 0 0", color: verdictColor(s.pValue, liftPositive), fontSize: "12px" }}>
+                          z={s.z.toFixed(3)} · 95% CI [{(s.ciLow95 * 100).toFixed(2)}%, {(s.ciHigh95 * 100).toFixed(2)}%] · <PvBadge p={s.pValue} locale={locale} />
+                        </p>
+                      </details>
                       <AnalysisDetails
                         locale={locale}
                         statusLabel={s.pValue < 0.05 ? tr("통계적 차이 후보", "Statistical-difference candidate") : tr("판정 보류", "Inconclusive")}

@@ -2,7 +2,7 @@ import { resolveSlugToId, idToPath, SITE_URL, enAlternates, isRoutePublished } f
 import { findMeta } from "@/store/useDataStore";
 import { buildPageKeywords } from "@/lib/pageKeywords";
 import { getRouteSeo } from "@/lib/routeSeo";
-import { getToolOgImageUrl } from "@/lib/toolOg";
+import { getToolFeatureList, getToolOgImageUrl } from "@/lib/toolOg";
 import PageClient from "./PageClient";
 
 export async function generateMetadata({ params }) {
@@ -63,6 +63,7 @@ async function PageWithStructuredData({ params }) {
     description: routeSeo?.description || meta.seoDescription || meta.group?.desc,
     url: `${SITE_URL}${idToPath(routeId)}`,
     image: getToolOgImageUrl(SITE_URL, routeId, "ko"),
+    featureList: getToolFeatureList(routeId, "ko"),
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     isAccessibleForFree: true,

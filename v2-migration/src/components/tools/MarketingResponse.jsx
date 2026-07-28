@@ -54,6 +54,7 @@ import { trackProductEvent } from "@/lib/analytics";
 import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
+import ResultActionCard from "@/components/ds/ResultActionCard";
 import { buildDemoCsv, buildMmmPriorDemo } from "@/utils/demoData";
 import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, colMapMissing, mmmPlatformTags, mmmSegmentValues } from "@/components/tools/MmmColumnMapper";
 import { buildObservedBusinessSeasonality } from "@/utils/mmmBusinessSeasonality";
@@ -5028,6 +5029,77 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
 
   // 브레드크럼 = 현재 위치 + 타깃/플랫폼 토글을 한 바(bar)에 좌측 정렬로 병합(토글이 곧 breadcrumb).
   const stageKo = stage === "trend" ? tx("시계열 점검", "Time series") : stage === "mmm" ? tx("기여 분해", "Contribution") : stage === "lab" ? tx("회귀·미래예측", "Regression · Forecast") : tx("잠식 진단", "Cannibalization");
+  const responseStageSummary = () => {
+    const weeks = mmm?.panel?.week?.length || 0;
+    if (stage === "trend") {
+      return {
+        tone: trend ? "neutral" : "bad",
+        headline: trend?.verdict || tx("자연 추세를 판정할 수 없습니다", "Natural trend cannot be determined"),
+        stats: [
+          { label: "STL", value: Number.isFinite(trend?.stl_pct) ? `${trend.stl_pct >= 0 ? "+" : ""}${trend.stl_pct.toFixed(1)}%` : "—" },
+          { label: "Mann-Kendall", value: Number.isFinite(trend?.mk_deseason?.[1]) ? `p=${trend.mk_deseason[1].toFixed(3)}` : "—" },
+          { label: tx("분석 주", "Weeks"), value: weeks },
+        ],
+        point: tx("추세를 확인했으면 채널 간 잠식 신호를 점검하세요.", "After checking trend, inspect cross-channel cannibalization signals."),
+        next: "diagnose",
+        nextLabel: tx("잠식 진단으로", "Next: cannibalization"),
+      };
+    }
+    if (stage === "diagnose") {
+      const ranks = cannib?.cannibRank || [];
+      const strong = ranks.filter((row) => mmmCannibLevel(row).lv >= 5).length;
+      return {
+        tone: strong > 0 ? "bad" : ranks.length ? "neutral" : "bad",
+        headline: strong > 0
+          ? tx(`강한 잠식 후보 ${strong}개를 먼저 확인하세요`, `Review ${strong} strong cannibalization candidate(s) first`)
+          : tx("강한 잠식 후보가 확인되지 않았습니다", "No strong cannibalization candidate was identified"),
+        stats: [
+          { label: tx("분석 채널", "Channels"), value: ranks.length },
+          { label: tx("강한 후보", "Strong candidates"), value: strong },
+          { label: tx("식별 가능", "Identified"), value: cannib?.identifiedChannels?.length || 0 },
+        ],
+        point: tx("후보를 확인했으면 MMM에서 전체 기여와 함께 교차 검증하세요.", "Cross-check candidates against total contribution in MMM."),
+        next: "mmm",
+        nextLabel: tx("기여 분해로", "Next: contribution"),
+      };
+    }
+    if (stage === "mmm") {
+      const health = mmm?.health || (mmm?.run ? mmmBayesianHealth(mmm.run) : null);
+      const oos = health?.oos?.wmape;
+      const warningCount = health?.flags?.length || 0;
+      return {
+        tone: warningCount > 0 ? "neutral" : "good",
+        headline: Number.isFinite(oos)
+          ? tx(`시간순 검증 오차 ${oos.toFixed(1)}%로 기여를 읽습니다`, `Read contribution with ${oos.toFixed(1)}% time-ordered validation error`)
+          : tx("기여 분해 결과와 모델 경고를 함께 확인하세요", "Review contribution together with model warnings"),
+        stats: [
+          { label: tx("OOS 오차", "OOS error"), value: Number.isFinite(oos) ? `${oos.toFixed(1)}%` : "—" },
+          { label: tx("모델 경고", "Model warnings"), value: warningCount },
+          { label: tx("분석 주", "Weeks"), value: weeks },
+        ],
+        point: tx("기여를 확인했으면 미래 예측의 백테스트 신뢰도를 점검하세요.", "After contribution, check forecast backtest reliability."),
+        next: "lab",
+        nextLabel: tx("미래예측으로", "Next: forecast"),
+      };
+    }
+    const wmape = recentBacktest?.wmape;
+    return {
+      tone: recentBacktest?.reliable ? "good" : recentBacktest ? "bad" : "neutral",
+      headline: recentBacktest
+        ? (recentBacktest.reliable
+            ? tx("백테스트를 통과한 범위에서 예측을 참고하세요", "Use the forecast within the range supported by backtesting")
+            : tx("현재 예측은 실행 판단에 쓰기 어렵습니다", "The current forecast is not reliable enough for action"))
+        : tx("예측 조건을 설정해 백테스트부터 확인하세요", "Set forecast conditions and check backtesting first"),
+      stats: [
+        { label: "wMAPE", value: Number.isFinite(wmape) ? `${wmape.toFixed(1)}%` : "—" },
+        { label: tx("예측 기간", "Horizon"), value: tx(`${fcHorizon}주`, `${fcHorizon} weeks`) },
+        { label: tx("시나리오", "Scenarios"), value: forecastScenarioResults?.results?.length || 0 },
+      ],
+      point: tx("실행 뒤에는 새 데이터를 추가해 추세 단계부터 다시 점검하세요.", "After execution, add new data and re-check from the trend stage."),
+      next: "trend",
+      nextLabel: tx("처음부터 재점검", "Re-check from trend"),
+    };
+  };
   const demoBanner = isDemo && (
     <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
       <div>
@@ -5196,6 +5268,27 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         </div>
       )}
       {renderTabs()}
+      {(() => {
+        const summary = responseStageSummary();
+        return (
+          <ResultActionCard
+            toolId="5-18"
+            locale={locale}
+            tone={summary.tone}
+            title={tx(`${stageKo} 요약`, `${stageKo} summary`)}
+            headline={summary.headline}
+            stats={summary.stats}
+            points={[{ text: summary.point, cls: summary.tone === "bad" ? "bad" : "good" }]}
+            controls={(
+              <button className="ab-pill active" onClick={() => setStage(summary.next)}>
+                {summary.nextLabel} →
+              </button>
+            )}
+            decisionReview={false}
+            analysisBasis={false}
+          />
+        );
+      })()}
 
       {panelEmpty ? (
         <section className="block">
@@ -5217,7 +5310,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           {stage === "trend" && (
             <section className="block" id="s-trend">
               <h2 className="section-title">{tx("광고 전에: 자연 추세·계절성을 먼저 분리합니다", "Before ads: separate natural trend and seasonality")}</h2>
-                <p className="muted" style={{ fontSize: "12px", marginBottom: "10px" }}>{tx("먼저 MMM Performance 기여를 실제 RR에서 빼고, 그 Performance 제외 성과를 baseline = 추세 + 계절성 + 잔차로 STL 분해합니다. 파란선은 광고에 잡힌 Performance 하락을 자연 추세로 다시 세지 않은 베이스라인 추세입니다. Branding은 입력에 남아 있으므로 완전한 미디어 0 반사실이 아닙니다.", "First subtract MMM Performance contribution from actual RR, then decompose the Performance-excluded outcome as baseline = trend + seasonality + residual. The blue line is the baseline trend without reclassifying paid Performance decline as natural trend. Branding remains in the input, so this is not a fully media-zero counterfactual.")}</p>
+                <details className="result-action-card__details" style={{ marginBottom: "10px" }}>
+                  <summary>{tx("추세 분리 방식 보기", "How trend is separated")}</summary>
+                  <p className="muted" style={{ fontSize: "12px", margin: "8px 0 0" }}>{tx("먼저 MMM Performance 기여를 실제 RR에서 빼고, 그 Performance 제외 성과를 baseline = 추세 + 계절성 + 잔차로 STL 분해합니다. 파란선은 광고에 잡힌 Performance 하락을 자연 추세로 다시 세지 않은 베이스라인 추세입니다. Branding은 입력에 남아 있으므로 완전한 미디어 0 반사실이 아닙니다.", "First subtract MMM Performance contribution from actual RR, then decompose the Performance-excluded outcome as baseline = trend + seasonality + residual. The blue line is the baseline trend without reclassifying paid Performance decline as natural trend. Branding remains in the input, so this is not a fully media-zero counterfactual.")}</p>
+                </details>
               {trend ? <>
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "10px" }}>
                   <div className="stat-card"><div className="lbl">STL</div><div className="val">{trend.stl_pct >= 0 ? "+" : ""}{fmtOne(trend.stl_pct)}%</div></div>
