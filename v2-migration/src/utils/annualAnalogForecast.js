@@ -1,6 +1,8 @@
 const DEFAULT_HORIZON = 12;
 const DEFAULT_FOLD_STEP = 4;
 const DEFAULT_SELECTION_FOLDS = 6;
+const MAX_TRAINING_WEEKS = 104;
+const BLEND_WEIGHTS = [0, 0.25, 0.5, 0.75, 1];
 const ANNUAL_ANALOG_SPECS = [4, 8, 16].flatMap((anchorWeeks) =>
   [0.5, 1].flatMap((seasonWeight) =>
     [0.75, 1].map((ratioPower) => ({
@@ -16,6 +18,34 @@ const ORGANIC_LEVEL_SPECS = [4, 8, 12, 16, 26].map((window) => ({
   kind: "flat",
   window,
 }));
+const LOCAL_TREND_SPECS = [8, 12, 26, 52, 78, 104].flatMap((window) =>
+  [0.25, 0.5].map((damping) => ({
+    id: `trend-${window}-${damping}`,
+    kind: "trend",
+    window,
+    damping,
+  })),
+);
+const LOCAL_HOLT_SPECS = [26, 52, 104].flatMap((window) =>
+  [0.3, 0.7].flatMap((alpha) =>
+    [0.1, 0.3].flatMap((beta) =>
+      [0.8, 0.95].map((damping) => ({
+        id: `holt-${window}-${alpha}-${beta}-${damping}`,
+        kind: "holt",
+        window,
+        alpha,
+        beta,
+        damping,
+      })),
+    ),
+  ),
+);
+const BOUNDED_SERIES_SPECS = [
+  ...ORGANIC_LEVEL_SPECS,
+  ...LOCAL_TREND_SPECS,
+  ...LOCAL_HOLT_SPECS,
+  ...ANNUAL_ANALOG_SPECS.map((spec) => ({ ...spec, kind: "annual" })),
+];
 const PAID_RESPONSE_SPECS = [
   ...[4, 8, 12, 26, 52].flatMap((window) =>
     [0, 0.3, 0.6, 0.8].map((decay) => ({
@@ -79,15 +109,62 @@ function annualAt(series, trainEnd, horizon, spec = ANNUAL_ANALOG_SPECS.find((it
   };
 }
 
+function localSeriesAt(series, trainEnd, horizon, spec) {
+  if (spec?.kind === "annual") return annualAt(series, trainEnd, horizon, spec)?.predicted || null;
+  const window = Math.min(MAX_TRAINING_WEEKS, Math.max(2, spec?.window || 8));
+  const start = trainEnd - window;
+  if (!Array.isArray(series) || start < 0 || trainEnd > series.length) return null;
+  const sample = series.slice(start, trainEnd);
+  const level = Math.max(0, mean(sample.slice(-Math.min(4, sample.length))) || 0);
+  if (spec?.kind === "flat") return Array(horizon).fill(level);
+  if (spec?.kind === "holt") {
+    let smoothedLevel = Math.max(0, sample[0]);
+    let smoothedTrend = sample.length > 1 ? sample[1] - sample[0] : 0;
+    const alpha = Math.max(0.01, Math.min(0.99, spec.alpha));
+    const beta = Math.max(0.01, Math.min(0.99, spec.beta));
+    const damping = Math.max(0, Math.min(0.99, spec.damping));
+    for (let index = 1; index < sample.length; index += 1) {
+      const priorLevel = smoothedLevel;
+      smoothedLevel = alpha * sample[index]
+        + (1 - alpha) * (smoothedLevel + damping * smoothedTrend);
+      smoothedTrend = beta * (smoothedLevel - priorLevel)
+        + (1 - beta) * damping * smoothedTrend;
+    }
+    const lower = level * 0.25;
+    const upper = Math.max(level * 4, level + 1);
+    return Array.from({ length: horizon }, (_, index) => {
+      const dampedSteps = damping > 0
+        ? damping * (1 - damping ** (index + 1)) / (1 - damping)
+        : 0;
+      return Math.max(0, Math.min(upper, Math.max(lower, smoothedLevel + dampedSteps * smoothedTrend)));
+    });
+  }
+  const xMean = (sample.length - 1) / 2;
+  const yMean = mean(sample);
+  const denominator = sample.reduce((sum, _, index) => sum + (index - xMean) ** 2, 0);
+  if (!(denominator > 0) || !Number.isFinite(yMean)) return null;
+  const slope = sample.reduce((sum, value, index) =>
+    sum + (index - xMean) * (value - yMean), 0) / denominator;
+  const damping = Math.max(0, Math.min(1, spec?.damping ?? 0.5));
+  const lower = level * 0.25;
+  const upper = Math.max(level * 4, level + 1);
+  return Array.from({ length: horizon }, (_, index) =>
+    Math.max(0, Math.min(upper, Math.max(lower, level + slope * (index + 1) * damping))),
+  );
+}
+
 function routeAt(seriesByPlatform, route, trainEnd, horizon, spec) {
-  if (route === "direct-total") return annualAt(seriesByPlatform.total, trainEnd, horizon, spec);
-  const android = annualAt(seriesByPlatform.android, trainEnd, horizon, spec);
-  const ios = annualAt(seriesByPlatform.ios, trainEnd, horizon, spec);
+  if (route === "direct-total") {
+    const predicted = localSeriesAt(seriesByPlatform.total, trainEnd, horizon, spec);
+    return predicted ? { predicted, ratio: null } : null;
+  }
+  const android = localSeriesAt(seriesByPlatform.android, trainEnd, horizon, spec);
+  const ios = localSeriesAt(seriesByPlatform.ios, trainEnd, horizon, spec);
   if (!android || !ios) return null;
   return {
-    ratio: { android: android.ratio, ios: ios.ratio },
-    predicted: android.predicted.map((value, index) => value + ios.predicted[index]),
-    parts: { android: android.predicted, ios: ios.predicted },
+    ratio: null,
+    predicted: android.map((value, index) => value + ios[index]),
+    parts: { android, ios },
   };
 }
 
@@ -108,17 +185,33 @@ function pooledWmape(folds) {
     : null;
 }
 
-function selectCandidateAt(candidates, trainEnd, horizon, selectionFolds, requireCurrent = true) {
+function foldWmapePercentile(folds, percentile = 0.9) {
+  const values = (folds || []).map((fold) => fold.wmape).filter(Number.isFinite)
+    .sort((left, right) => left - right);
+  return values.length
+    ? values[Math.min(values.length - 1, Math.max(0, Math.ceil(values.length * percentile) - 1))]
+    : null;
+}
+
+function selectStableCandidate(candidates, horizon) {
   const eligible = candidates.map((candidate) => {
-    const current = candidate.folds.find((fold) => fold.trainEnd === trainEnd);
-    const prior = candidate.folds.filter((fold) => fold.trainEnd + horizon <= trainEnd);
-    if ((requireCurrent && !current) || prior.length < selectionFolds) return null;
-    const recent = prior.slice(-selectionFolds);
-    const weights = recent.map((_, index) => index + 1);
-    const weightTotal = weights.reduce((sum, value) => sum + value, 0);
-    const score = recent.reduce((sum, fold, index) => sum + fold.wmape * weights[index], 0) / weightTotal;
-    const instability = recent.reduce((sum, fold) => sum + Math.abs(fold.wmape - score), 0) / recent.length;
-    return { candidate, current, score, instability, selectionScore: score + instability * 0.15 };
+    const development = candidate.folds.filter((fold) => fold.offset >= horizon);
+    const score = pooledWmape(development);
+    if (!development.length || !Number.isFinite(score)) return null;
+    const instability = development.reduce((sum, fold) => sum + Math.abs(fold.wmape - score), 0)
+      / development.length;
+    const tailRisk = foldWmapePercentile(development);
+    const selectionPenalty = Math.max(0, Number(candidate.selectionPenalty) || 0);
+    return {
+      candidate,
+      score,
+      instability,
+      tailRisk,
+      selectionScore: score
+        + instability * 0.15
+        + Math.max(0, tailRisk - score) * 0.1
+        + selectionPenalty,
+    };
   }).filter(Boolean);
   eligible.sort((left, right) =>
     left.selectionScore - right.selectionScore
@@ -129,9 +222,44 @@ function selectCandidateAt(candidates, trainEnd, horizon, selectionFolds, requir
   return eligible[0] || null;
 }
 
-function nestedTournament(candidates, starts, n, horizon, selectionFolds) {
+function selectCandidateAt(
+  candidates,
+  trainEnd,
+  horizon,
+  selectionFolds,
+  requireCurrent = true,
+  maxSelectionFolds = selectionFolds,
+) {
+  const eligible = candidates.map((candidate) => {
+    const current = candidate.folds.find((fold) => fold.trainEnd === trainEnd);
+    const prior = candidate.folds.filter((fold) => fold.trainEnd + horizon <= trainEnd);
+    if ((requireCurrent && !current) || prior.length < selectionFolds) return null;
+    const recent = prior.slice(-Math.max(selectionFolds, maxSelectionFolds));
+    const weights = recent.map((_, index) => index + 1);
+    const weightTotal = weights.reduce((sum, value) => sum + value, 0);
+    const score = recent.reduce((sum, fold, index) => sum + fold.wmape * weights[index], 0) / weightTotal;
+    const instability = recent.reduce((sum, fold) => sum + Math.abs(fold.wmape - score), 0) / recent.length;
+    const selectionPenalty = Math.max(0, Number(candidate.selectionPenalty) || 0);
+    return {
+      candidate,
+      current,
+      score,
+      instability,
+      selectionScore: score + instability * 0.15 + selectionPenalty,
+    };
+  }).filter(Boolean);
+  eligible.sort((left, right) =>
+    left.selectionScore - right.selectionScore
+    || left.score - right.score
+    || left.candidate.route.localeCompare(right.candidate.route)
+    || left.candidate.spec.id.localeCompare(right.candidate.spec.id),
+  );
+  return eligible[0] || null;
+}
+
+function nestedTournament(candidates, starts, n, horizon, selectionFolds, maxSelectionFolds = selectionFolds) {
   const folds = starts.map((trainEnd) => {
-    const chosen = selectCandidateAt(candidates, trainEnd, horizon, selectionFolds);
+    const chosen = selectCandidateAt(candidates, trainEnd, horizon, selectionFolds, true, maxSelectionFolds);
     return chosen?.current ? {
       ...chosen.current,
       route: chosen.candidate.route,
@@ -189,6 +317,24 @@ function panelCostRows(panel, horizon = 0) {
   return rows;
 }
 
+function normalizePaidByCost(panel, total, paid) {
+  const costRows = panelCostRows(panel);
+  if (!costRows || costRows.length !== total.length) return null;
+  const zeroedWeeks = [];
+  const adjusted = paid.map((value, index) => {
+    const totalCost = costRows[index].reduce((sum, cost) => sum + cost, 0);
+    if (totalCost <= 1e-9) {
+      if (value > 0) zeroedWeeks.push(index);
+      return 0;
+    }
+    return value;
+  });
+  if (adjusted.some((value, index) =>
+    !Number.isFinite(value) || value < 0 || value > total[index],
+  )) return null;
+  return { paid: adjusted, zeroedWeeks };
+}
+
 function adstockFeatures(costRows, decay, channels, transform) {
   const carry = Array(costRows[0]?.length || 0).fill(0);
   return costRows.map((row) => {
@@ -241,13 +387,21 @@ function paidForecast(panel, paid, trainEnd, horizon, spec, costRows = null) {
   const rows = costRows || panelCostRows(panel);
   if (!rows?.length || rows.length < trainEnd + horizon) return null;
   const features = adstockFeatures(rows, spec.decay, spec.channels === true, spec.transform || "raw");
-  if (spec.kind === "ridge") return ridgeForecast(features, paid, trainEnd, horizon, spec);
-  const total = features.map((row) => row.reduce((sum, value) => sum + value, 0));
-  const start = Math.max(0, trainEnd - spec.window);
-  const denominator = total.slice(start, trainEnd).reduce((sum, value) => sum + value, 0);
-  if (!(denominator > 0)) return null;
-  const rate = paid.slice(start, trainEnd).reduce((sum, value) => sum + value, 0) / denominator;
-  return total.slice(trainEnd, trainEnd + horizon).map((value) => Math.max(0, value * rate));
+  let predicted;
+  if (spec.kind === "ridge") {
+    predicted = ridgeForecast(features, paid, trainEnd, horizon, spec);
+  } else {
+    const total = features.map((row) => row.reduce((sum, value) => sum + value, 0));
+    const start = Math.max(0, trainEnd - spec.window);
+    const denominator = total.slice(start, trainEnd).reduce((sum, value) => sum + value, 0);
+    if (!(denominator > 0)) return null;
+    const rate = paid.slice(start, trainEnd).reduce((sum, value) => sum + value, 0) / denominator;
+    predicted = total.slice(trainEnd, trainEnd + horizon).map((value) => Math.max(0, value * rate));
+  }
+  if (!predicted) return null;
+  return predicted.map((value, index) =>
+    rows[trainEnd + index].reduce((sum, cost) => sum + cost, 0) <= 1e-9 ? 0 : value,
+  );
 }
 
 function componentCandidate(series, spec, starts, n, horizon, forecastAt, route) {
@@ -265,7 +419,16 @@ function componentCandidate(series, spec, starts, n, horizon, forecastAt, route)
       wmape: error.wmape,
     } : null;
   }).filter(Boolean);
-  return { route, spec, folds };
+  const selectionPenalty = spec.kind === "trend"
+    ? 1.5
+    : spec.kind === "flat"
+      ? 0.5
+      : spec.kind === "holt"
+        ? 0.25
+      : spec.kind === "ridge"
+        ? 0.25
+        : 0;
+  return { route, spec, folds, selectionPenalty };
 }
 
 function runComponentTournament(candidates, starts, n, horizon, selectionFolds, productionForecast) {
@@ -282,24 +445,19 @@ function runComponentTournament(candidates, starts, n, horizon, selectionFolds, 
 
 export function runPaidOrganicPlatform(panel, target, starts, n, horizon, selectionFolds) {
   const total = panel?.targets?.[target];
-  const paid = panel?.targets?.PaidRegs;
-  if (!total?.length || paid?.length !== total.length || paid.some((value, index) =>
-    !Number.isFinite(value) || value < 0 || value > total[index],
-  )) return null;
+  const observedPaid = panel?.targets?.PaidRegs;
+  if (!total?.length || observedPaid?.length !== total.length) return null;
+  const normalized = normalizePaidByCost(panel, total, observedPaid);
+  if (!normalized) return null;
+  const paid = normalized.paid;
   const organic = total.map((value, index) => value - paid[index]);
-  const organicSpecs = [
-    ...ORGANIC_LEVEL_SPECS,
-    ...ANNUAL_ANALOG_SPECS.map((spec) => ({ ...spec, kind: "annual" })),
-  ];
-  const organicCandidates = organicSpecs.map((spec) => componentCandidate(
+  const organicCandidates = BOUNDED_SERIES_SPECS.map((spec) => componentCandidate(
     organic,
     spec,
     starts,
     n,
     horizon,
-    (trainEnd, useHorizon, useSpec) => useSpec.kind === "flat"
-      ? Array(useHorizon).fill(Math.max(0, mean(organic.slice(trainEnd - useSpec.window, trainEnd)) || 0))
-      : annualAt(organic, trainEnd, useHorizon, useSpec)?.predicted,
+    (trainEnd, useHorizon, useSpec) => localSeriesAt(organic, trainEnd, useHorizon, useSpec),
     "organic",
   ));
   const productionCosts = panelCostRows(panel, horizon);
@@ -309,9 +467,7 @@ export function runPaidOrganicPlatform(panel, target, starts, n, horizon, select
     n,
     horizon,
     selectionFolds,
-    (spec) => spec.kind === "flat"
-      ? Array(horizon).fill(Math.max(0, mean(organic.slice(n - spec.window, n)) || 0))
-      : annualAt(organic, n, horizon, spec)?.predicted,
+    (spec) => localSeriesAt(organic, n, horizon, spec),
   );
   const paidCandidates = PAID_RESPONSE_SPECS.map((spec) => componentCandidate(
     paid,
@@ -330,59 +486,113 @@ export function runPaidOrganicPlatform(panel, target, starts, n, horizon, select
     selectionFolds,
     (spec) => paidForecast(panel, paid, n, horizon, spec, productionCosts),
   );
-  const annualCandidates = ANNUAL_ANALOG_SPECS.map((spec) => componentCandidate(
+  const totalCandidates = BOUNDED_SERIES_SPECS.map((spec) => componentCandidate(
     total,
     spec,
     starts,
     n,
     horizon,
-    (trainEnd, useHorizon, useSpec) => annualAt(total, trainEnd, useHorizon, useSpec)?.predicted,
-    "annual-total",
+    (trainEnd, useHorizon, useSpec) => localSeriesAt(total, trainEnd, useHorizon, useSpec),
+    "bounded-total",
   ));
-  const annualTournament = runComponentTournament(
-    annualCandidates,
+  const totalTournament = runComponentTournament(
+    totalCandidates,
     starts,
     n,
     horizon,
     selectionFolds,
-    (spec) => annualAt(total, n, horizon, spec)?.predicted,
+    (spec) => localSeriesAt(total, n, horizon, spec),
   );
-  if (!organicTournament || !paidTournament || !annualTournament
-    || !organicTournament.future || !paidTournament.future || !annualTournament.future) return null;
-  const folds = annualTournament.folds.map((annualFold) => {
-    const organicFold = organicTournament.folds.find((fold) => fold.trainEnd === annualFold.trainEnd);
-    const paidFold = paidTournament.folds.find((fold) => fold.trainEnd === annualFold.trainEnd);
-    if (!organicFold || !paidFold) return null;
-    const organicPredicted = annualFold.predicted.map((value, index) =>
-      Math.max(0, value * 0.5 + organicFold.predicted[index] * 0.5),
-    );
-    const performancePredicted = paidFold.predicted.map((value) => Math.max(0, value * 0.5));
-    const predicted = organicPredicted.map((value, index) => value + performancePredicted[index]);
-    const error = wmape(annualFold.actual, predicted);
+  if (!organicTournament || !paidTournament || !totalTournament
+    || !organicTournament.future || !paidTournament.future || !totalTournament.future) return null;
+  const blendCandidates = BLEND_WEIGHTS.map((blendWeight) => {
+    const folds = totalTournament.folds.map((totalFold) => {
+      const organicFold = organicTournament.folds.find((fold) => fold.trainEnd === totalFold.trainEnd);
+      const paidFold = paidTournament.folds.find((fold) => fold.trainEnd === totalFold.trainEnd);
+      if (!organicFold || !paidFold) return null;
+      const organicPredicted = totalFold.predicted.map((value, index) =>
+        Math.max(0, value * (1 - blendWeight) + organicFold.predicted[index] * blendWeight),
+      );
+      const performancePredicted = paidFold.predicted.map((value) => Math.max(0, value * blendWeight));
+      const predicted = organicPredicted.map((value, index) => value + performancePredicted[index]);
+      const error = wmape(totalFold.actual, predicted);
+      return error ? {
+        trainEnd: totalFold.trainEnd,
+        offset: totalFold.offset,
+        actual: totalFold.actual,
+        predicted,
+        organicPredicted,
+        performancePredicted,
+        absoluteErrors: error.absoluteErrors,
+        denominator: error.denominator,
+        wmape: error.wmape,
+      } : null;
+    }).filter(Boolean);
     return {
-      trainEnd: annualFold.trainEnd,
-      offset: annualFold.offset,
-      actual: annualFold.actual,
-      predicted,
-      organicPredicted,
-      performancePredicted,
-      absoluteErrors: error.absoluteErrors,
-      denominator: error.denominator,
-      wmape: error.wmape,
+      route: "paid-organic-blend",
+      spec: { id: `blend-${blendWeight}`, blendWeight },
+      selectionPenalty: Math.abs(blendWeight - 0.5) * 2,
+      folds,
     };
-  }).filter(Boolean);
+  });
+  const blendFoldCount = Math.min(...blendCandidates.map((candidate) => candidate.folds.length));
+  const blendSelectionFolds = Math.max(3, Math.min(selectionFolds, blendFoldCount - 1));
+  const blendMaxSelectionFolds = Math.max(blendSelectionFolds, Math.min(23, blendFoldCount - 1));
+  const blendTournament = nestedTournament(
+    blendCandidates,
+    starts,
+    n,
+    horizon,
+    blendSelectionFolds,
+    blendMaxSelectionFolds,
+  );
+  const stableBlend = selectStableCandidate(blendCandidates, horizon);
+  const productionBlend = selectCandidateAt(
+    blendCandidates,
+    n,
+    horizon,
+    blendSelectionFolds,
+    false,
+    blendMaxSelectionFolds,
+  );
+  if (!blendTournament.latest || !stableBlend || !productionBlend) return null;
+  const folds = stableBlend.candidate.folds;
   const latest = folds.find((fold) => fold.offset === 0);
   const development = folds.filter((fold) => fold.offset >= horizon);
-  const futureOrganic = annualTournament.future.map((value, index) =>
-    Math.max(0, value * 0.5 + organicTournament.future[index] * 0.5),
+  const auditWeight = stableBlend.candidate.spec.blendWeight;
+  const productionWeight = productionBlend.candidate.spec.blendWeight;
+  const futureOrganic = totalTournament.future.map((value, index) =>
+    Math.max(0, value * (1 - productionWeight) + organicTournament.future[index] * productionWeight),
   );
-  const futurePerformance = paidTournament.future.map((value) => Math.max(0, value * 0.5));
+  const futurePerformance = paidTournament.future.map((value) => Math.max(0, value * productionWeight));
   return {
     folds,
     latest,
     development,
     developmentWmape: pooledWmape(development),
     allWmape: pooledWmape(folds),
+    search: {
+      maxTrainingWeeks: MAX_TRAINING_WEEKS,
+      blendWeights: BLEND_WEIGHTS,
+      selectionFolds: blendSelectionFolds,
+      maxSelectionFolds: blendMaxSelectionFolds,
+      selectionMode: "development-tournament-with-sealed-latest",
+      nestedRollingWmape: blendTournament.allWmape,
+      productionBlendWeight: productionWeight,
+      auditBlendWeight: auditWeight,
+      zeroedPaidWeeks: normalized.zeroedWeeks.length,
+      selectedBlendWeights: [productionWeight],
+      blendScores: blendCandidates.map((candidate) => ({
+        blendWeight: candidate.spec.blendWeight,
+        developmentWmape: pooledWmape(candidate.folds.filter((fold) => fold.offset >= horizon)),
+        developmentP90Wmape: foldWmapePercentile(candidate.folds.filter((fold) => fold.offset >= horizon)),
+        allWmape: pooledWmape(candidate.folds),
+        latestWmape: candidate.folds.find((fold) => fold.offset === 0)?.wmape ?? null,
+      })),
+      organicSpec: organicTournament.production.candidate.spec.id,
+      paidSpec: paidTournament.production.candidate.spec.id,
+      totalSpec: totalTournament.production.candidate.spec.id,
+    },
     future: {
       organic: futureOrganic,
       performance: futurePerformance,
@@ -438,6 +648,11 @@ export function runPaidOrganicHybrid(androidPanel, iosPanel, target, starts, n, 
     developmentWmape: pooledWmape(development),
     allWmape: pooledWmape(folds),
     componentMetrics,
+    search: {
+      maxTrainingWeeks: MAX_TRAINING_WEEKS,
+      android: android.search,
+      ios: ios.search,
+    },
     future: {
       organic,
       performance,
@@ -465,7 +680,7 @@ export function runAnnualAnalogRouter({
   for (let start = 78; start <= n - horizon; start += foldStep) starts.push(start);
   if (starts.at(-1) !== n - horizon) starts.push(n - horizon);
   const modelCandidates = ["direct-total", "android-ios-sum"].flatMap((route) =>
-    ANNUAL_ANALOG_SPECS.map((spec) => {
+    BOUNDED_SERIES_SPECS.map((spec) => {
       const folds = starts.map((trainEnd) => {
         const forecast = routeAt(seriesByPlatform, route, trainEnd, horizon, spec);
         const actual = total.slice(trainEnd, trainEnd + horizon);
@@ -491,9 +706,16 @@ export function runAnnualAnalogRouter({
           componentErrors,
         } : null;
       }).filter(Boolean);
-      return { route, spec, folds };
+      const selectionPenalty = spec.kind === "trend"
+        ? 1.5
+        : spec.kind === "flat"
+          ? 0.5
+          : spec.kind === "holt"
+            ? 0.25
+            : 0;
+      return { route, spec, folds, selectionPenalty };
     }),
-  ).filter((candidate) => candidate.folds.length === starts.length);
+  ).filter((candidate) => candidate.folds.length >= selectionFolds + 1);
   if (!modelCandidates.length) return null;
 
   const nested = nestedTournament(modelCandidates, starts, n, horizon, selectionFolds);
@@ -538,11 +760,28 @@ export function runAnnualAnalogRouter({
   const hybrid = target === "Regs"
     ? runPaidOrganicHybrid(androidPanel, iosPanel, target, starts, n, horizon, selectionFolds)
     : null;
-  const osGuardrail = hybrid?.componentMetrics || annualOsGuardrail;
+  const finalCandidates = [
+    {
+      route: "bounded-total-router",
+      spec: { id: "bounded-total-router" },
+      folds: nested.folds,
+    },
+    ...(hybrid ? [{
+      route: "paid-organic-hybrid",
+      spec: { id: "paid-organic-adaptive-blend" },
+      folds: hybrid.folds,
+    }] : []),
+  ].filter((candidate) => candidate.folds.length >= selectionFolds + 1);
+  const finalProduction = finalCandidates.length > 1
+    ? selectStableCandidate(finalCandidates, horizon)
+    : null;
+  const useAdaptiveHybrid = finalProduction?.candidate.route === "paid-organic-hybrid";
+  const selectedNested = useAdaptiveHybrid ? hybrid : nested;
+  const osGuardrail = useAdaptiveHybrid ? hybrid.componentMetrics : annualOsGuardrail;
   const osGuardrailPassed = osGuardrail.length >= 2 && osGuardrail.every((component) => component.passed);
-  const selectedFolds = hybrid?.folds || nested.folds;
-  const selectedDevelopment = hybrid?.development || nested.development;
-  const selectedLatest = hybrid?.latest || nested.latest;
+  const selectedFolds = selectedNested.folds;
+  const selectedDevelopment = selectedNested.development;
+  const selectedLatest = selectedNested.latest;
   const marginByHorizon = Array.from({ length: horizon }, (_, index) => {
     const sorted = selectedDevelopment
       .map((fold) => fold.absoluteErrors[index])
@@ -550,24 +789,32 @@ export function runAnnualAnalogRouter({
       .sort((left, right) => left - right);
     return sorted.length ? sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.9) - 1)] : 0;
   });
-  const selected = hybrid ? {
+  const selected = useAdaptiveHybrid ? {
     route: "android-ios-sum",
-    spec: { id: "paid-organic-equal-ensemble", paidObserved: true, blendWeight: 0.5 },
+    spec: {
+      id: "paid-organic-adaptive-search",
+      paidObserved: true,
+      blendWeight: {
+        android: hybrid.search.android.productionBlendWeight,
+        ios: hybrid.search.ios.productionBlendWeight,
+      },
+      maxTrainingWeeks: MAX_TRAINING_WEEKS,
+    },
     folds: selectedFolds.length,
-    developmentWmape: hybrid.developmentWmape,
-    allWmape: hybrid.allWmape,
+    developmentWmape: selectedNested.developmentWmape,
+    allWmape: selectedNested.allWmape,
     latestWmape: selectedLatest.wmape,
     latestPersistenceWmape: nested.latest.persistenceWmape,
     latest: selectedLatest,
     marginByHorizon,
     future: hybrid.future,
-    productionPriorWmape: null,
+    productionPriorWmape: finalProduction.score,
   } : {
     route: productionChoice.candidate.route,
     spec: productionChoice.candidate.spec,
     folds: selectedFolds.length,
-    developmentWmape: nested.developmentWmape,
-    allWmape: nested.allWmape,
+    developmentWmape: selectedNested.developmentWmape,
+    allWmape: selectedNested.allWmape,
     latestWmape: selectedLatest.wmape,
     latestPersistenceWmape: nested.latest.persistenceWmape,
     latest: selectedLatest,
@@ -596,11 +843,23 @@ export function runAnnualAnalogRouter({
     else candidateSummaries.push(hybridSummary);
   }
   return {
-    model: hybrid ? "paid-organic-hybrid-v1" : "annual-analog-regime-v2-nested-tournament",
+    model: useAdaptiveHybrid ? "paid-organic-adaptive-search-v2" : "bounded-regime-search-v3",
     selectedRoute: selected.route,
     selected,
     candidates: candidateSummaries,
-    paidOrganicHybrid: Boolean(hybrid),
+    paidOrganicHybrid: useAdaptiveHybrid,
+    adaptiveModelSearch: Boolean(hybrid),
+    modelSearch: hybrid ? {
+      maxTrainingWeeks: MAX_TRAINING_WEEKS,
+      blendWeights: BLEND_WEIGHTS,
+      selectedProductionRoute: useAdaptiveHybrid ? "paid-organic-hybrid" : "bounded-total-router",
+      android: hybrid.search.android,
+      ios: hybrid.search.ios,
+    } : {
+      maxTrainingWeeks: MAX_TRAINING_WEEKS,
+      blendWeights: [],
+      selectedProductionRoute: productionChoice.candidate.route,
+    },
     currentBreak,
     osGuardrail,
     osGuardrailPassed,
