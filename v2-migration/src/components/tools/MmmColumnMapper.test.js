@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoGuessColMap, buildPanelFromColMap, colMapMissing, isOperationalDeliveryCostHeader, mmmPlatformTags, mmmSegmentValues } from "./MmmColumnMapper";
+import { autoGuessColMap, buildPanelFromColMap, colMapMissing, isOperationalDeliveryCostHeader, mmmForecastInputWarnings, mmmPlatformTags, mmmSegmentValues } from "./MmmColumnMapper";
 import { mmmValidate } from "@/utils/mmmMath";
 
 describe("MMM column mapping", () => {
@@ -131,6 +131,18 @@ describe("MMM column mapping", () => {
     expect(stepValues("IOS Delist")).toEqual([0, 1, 1, 0]);
     expect(stepValues("IOS Reopen")).toEqual([0, 0, 0, 1]);
     expect(stepValues("Liveness Check")).toEqual([0, 1, 1, 1]);
+    const warningRows = Array.from({ length: 20 }, (_, index) => ({
+      week: `2025-W${String(index + 1).padStart(2, "0")}`,
+      IOS_RR: "80",
+      IOS_Cost: index >= 12 ? "30" : "0",
+      "IOS Delist": index === 10 ? "1" : "0",
+      "IOS Reopen": index === 14 ? "1" : "0",
+    }));
+    const warningHeaders = Object.keys(warningRows[0]);
+    const warningMap = autoGuessColMap(warningHeaders, warningRows);
+    const warnings = mmmForecastInputWarnings(warningHeaders, warningRows, warningMap, "ko");
+    expect(warnings.some((warning) => warning.includes("상태열이 1개 기간에만 1"))).toBe(true);
+    expect(warnings.some((warning) => warning.includes("Cost 커버리지가 뒤늦게 시작"))).toBe(true);
     const wideTargets = autoGuessColMap(
       ["week", "ANDROID_RR", "IOS_RR", "Google_ANDROID_Cost", "Apple Search Ads_IOS_Cost"],
       [{ week: "2025-W01", ANDROID_RR: "100", IOS_RR: "80", Google_ANDROID_Cost: "20", "Apple Search Ads_IOS_Cost": "30" }],

@@ -68,6 +68,10 @@ export function runAnnualAnalogRouter({ totalPanel, androidPanel, iosPanel, targ
       const persistenceLevel = mean(total.slice(trainEnd - 8, trainEnd));
       const persistence = Array(horizon).fill(Math.max(0, persistenceLevel || 0));
       const persistenceError = wmape(actual, persistence);
+      const componentErrors = forecast?.parts ? {
+        android: wmape(android.slice(trainEnd, trainEnd + horizon), forecast.parts.android),
+        ios: wmape(ios.slice(trainEnd, trainEnd + horizon), forecast.parts.ios),
+      } : null;
       return forecast && error && persistenceError ? {
         trainEnd,
         offset: n - trainEnd - horizon,
@@ -79,6 +83,7 @@ export function runAnnualAnalogRouter({ totalPanel, androidPanel, iosPanel, targ
         persistenceWmape: persistenceError.wmape,
         ratio: forecast.ratio,
         parts: forecast.parts,
+        componentErrors,
       } : null;
     }).filter(Boolean);
     const latest = folds.find((fold) => fold.offset === 0);
@@ -93,6 +98,25 @@ export function runAnnualAnalogRouter({ totalPanel, androidPanel, iosPanel, targ
         ? items.reduce((sum, fold) => sum + fold.absoluteErrors.reduce((inner, value) => inner + value, 0), 0) / denominator * 100
         : null;
     };
+    const componentMetrics = latest?.componentErrors
+      ? ["android", "ios"].map((component) => {
+        const developmentDenominator = development.reduce((sum, fold) =>
+          sum + (fold.componentErrors?.[component]?.denominator || 0), 0);
+        const developmentAbsoluteError = development.reduce((sum, fold) =>
+          sum + (fold.componentErrors?.[component]?.absoluteErrors || []).reduce((inner, value) => inner + value, 0), 0);
+        const latestWmape = latest.componentErrors[component]?.wmape ?? null;
+        const developmentWmape = developmentDenominator > 0 ? developmentAbsoluteError / developmentDenominator * 100 : null;
+        return {
+          component,
+          latestWmape,
+          developmentWmape,
+          passed: Number.isFinite(latestWmape)
+            && Number.isFinite(developmentWmape)
+            && latestWmape < 10
+            && developmentWmape < 10,
+        };
+      })
+      : [];
     return latest ? {
       route,
       folds: folds.length,
@@ -102,6 +126,7 @@ export function runAnnualAnalogRouter({ totalPanel, androidPanel, iosPanel, targ
       latestPersistenceWmape: latest.persistenceWmape,
       marginByHorizon,
       latest,
+      componentMetrics,
       future: routeAt(seriesByPlatform, route, n, horizon),
     } : null;
   }).filter(Boolean);
@@ -110,6 +135,8 @@ export function runAnnualAnalogRouter({ totalPanel, androidPanel, iosPanel, targ
   // development fold만으로 끝내 최신 정답을 보고 고르는 누수를 막는다.
   candidates.sort((left, right) => left.developmentWmape - right.developmentWmape || left.allWmape - right.allWmape);
   const selected = candidates[0];
+  const osGuardrail = candidates.find((candidate) => candidate.route === "android-ios-sum")?.componentMetrics || [];
+  const osGuardrailPassed = osGuardrail.length >= 2 && osGuardrail.every((component) => component.passed);
   const currentBreak = hasRecentStep([totalPanel, androidPanel, iosPanel]);
   return {
     model: "annual-analog-regime-v1",
@@ -117,11 +144,24 @@ export function runAnnualAnalogRouter({ totalPanel, androidPanel, iosPanel, targ
     selected,
     candidates,
     currentBreak,
+    osGuardrail,
+    osGuardrailPassed,
     qualified: currentBreak
       && selected.developmentWmape < 10
       && selected.latestWmape < 10
-      && selected.latestWmape < selected.latestPersistenceWmape * 0.8,
+      && selected.latestWmape < selected.latestPersistenceWmape * 0.8
+      && osGuardrailPassed,
     horizon,
     foldStep,
   };
+}
+
+export function shouldUseAnnualAnalogFallback(annual, routeDecision) {
+  return Boolean(
+    annual?.currentBreak
+    && !annual.qualified
+    && Number.isFinite(annual.selected?.latestWmape)
+    && annual.selected.latestWmape < annual.selected.latestPersistenceWmape
+    && (!Number.isFinite(routeDecision?.latestWmape) || annual.selected.latestWmape < routeDecision.latestWmape)
+  );
 }

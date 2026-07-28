@@ -7240,6 +7240,17 @@ export function mmmDataQualityAudit(panel) {
                 folds,
                 latest: folds.find((fold) => fold.offset === 0) || null,
                 pooledWmape: _mmmForecastPooledWmape(folds, "predicted"),
+                componentMetrics: valid.map((part, index) => {
+                  const latest = part.folds.find((fold) => fold.offset === 0) || null;
+                  return {
+                    component: part.component || options.components?.[index] || `component-${index + 1}`,
+                    latestWmape: latest ? _mmmForecastFoldWmape(latest, "predicted") : null,
+                    developmentWmape: _mmmForecastPooledWmape(
+                      part.folds.filter((fold) => fold.offset >= part.horizon),
+                      "predicted",
+                    ),
+                  };
+                }),
               };
             }
 
@@ -7263,6 +7274,15 @@ export function mmmDataQualityAudit(panel) {
                 left.productionWmape - right.productionWmape
                 || left.route.route.localeCompare(right.route.route),
               )[0] || null;
+              const osRoute = scored.find((item) => item.route.route === "android-ios-sum")?.route;
+              const osGuardrail = (osRoute?.componentMetrics || []).map((component) => ({
+                ...component,
+                passed: Number.isFinite(component.latestWmape)
+                  && Number.isFinite(component.developmentWmape)
+                  && component.latestWmape < 10
+                  && component.developmentWmape < 10,
+              }));
+              const osGuardrailPassed = osGuardrail.length >= 2 && osGuardrail.every((component) => component.passed);
               return {
                 auditRoute: audit?.route?.route || null,
                 productionRoute: production?.route?.route || null,
@@ -7271,7 +7291,10 @@ export function mmmDataQualityAudit(panel) {
                 certified: Number.isFinite(audit?.route?.latest?.wmape)
                   && audit.route.latest.wmape < 10
                   && audit.developmentWmape < 10
-                  && (!Number.isFinite(audit.route.latest.baselineWmape) || audit.route.latest.wmape < audit.route.latest.baselineWmape),
+                  && (!Number.isFinite(audit.route.latest.baselineWmape) || audit.route.latest.wmape < audit.route.latest.baselineWmape)
+                  && osGuardrailPassed,
+                osGuardrail,
+                osGuardrailPassed,
                 candidates: scored.map((item) => ({
                   route: item.route.route,
                   developmentWmape: item.developmentWmape,
@@ -7405,12 +7428,19 @@ export function mmmDataQualityAudit(panel) {
                       : conditionalForecast?.predFut;
                     if (!predicted?.length || predicted.length !== actual?.length || !predicted.every(Number.isFinite)) continue;
                     const recent = train.targets[targetName].slice(-Math.min(8, train.targets[targetName].length));
-                    const persistence = recent.reduce((sum, value) => sum + value, 0) / Math.max(1, recent.length);
+                    const persistenceLevel = recent.reduce((sum, value) => sum + value, 0) / Math.max(1, recent.length);
+                    // Global trend/seasonality 후보는 학습 target을 잔차 공간으로
+                    // 바꾼다. 기준선도 같은 공간에서 만든 뒤 미래 offset을 복원해야
+                    // raw actual과 공정하게 비교된다. 복원하지 않으면 추세 후보의
+                    // persistence만 인위적으로 나빠져 인증·guardrail이 왜곡된다.
+                    const persistence = held.week.map((week) =>
+                      persistenceLevel + ((seasonalModel || trendModel) ? futureOffsetAt(week) : 0),
+                    );
                     outcomes.push({
                       actual,
                       predicted,
                       conditionalPredicted: conditionalPredicted?.every(Number.isFinite) ? conditionalPredicted : predicted,
-                      persistence: Array(horizon).fill(persistence),
+                      persistence,
                       offset: n - holdoutEnd,
                     });
                   }

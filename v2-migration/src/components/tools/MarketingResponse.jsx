@@ -91,7 +91,7 @@ import {
 } from "@/utils/forecastEnhancements";
 import { buildAttributedForecastDataset } from "@/utils/attributedForecastDataset";
 import { runAttributedForecastLiveRouter, runAttributedForecastLiveScenario } from "@/utils/attributedForecastLiveMath";
-import { runAnnualAnalogRouter } from "@/utils/annualAnalogForecast";
+import { runAnnualAnalogRouter, shouldUseAnnualAnalogFallback } from "@/utils/annualAnalogForecast";
 
 /* ============================================================================
  * MarketingResponse (5-18) — MOCK → REAL 와이어링
@@ -2201,6 +2201,45 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
     ));
     return rows.map((row) => row.map(csvQ).join(","));
   }
+  if (fc.isAnnualAnalog) {
+    const rows = [
+      [tx("# 도구", "# Tool"), "Annual analog best-available forecast (5-18)"],
+      [tx("# 대상", "# Target"), `${tKo} (${target})`],
+      [tx("# 선택 경로", "# Selected route"), fc.selectedRoute],
+      [tx("# 상태", "# Status"), fc.annualQualified
+        ? tx("공식 10% 인증", "official 10% certified")
+        : tx("미인증 best-available · 예산 반응 해석 금지", "uncertified best-available · no budget-response interpretation")],
+      [tx("# 최신 12주 OOS", "# Latest 12-week OOS"), fc.rollingSelection?.selected?.latestWmape],
+      [tx("# 전체 rolling OOS", "# Full rolling OOS"), fc.rollingSelection?.selected?.wmape],
+      [tx("# OS guardrail", "# OS guardrail"), (fc.annualOsGuardrail || []).map((component) =>
+        `${component.component}: history ${component.developmentWmape.toFixed(2)}% / latest ${component.latestWmape.toFixed(2)}% / ${component.passed ? "pass" : "fail"}`
+      ).join(" | ")],
+      [tx("# 분해", "# Decomposition"), tx("Paid/Organic 실측이 없어 Organic Predicted와 Perf Predicted는 비워 둡니다.", "Organic Predicted and Perf Predicted are blank because observed Paid/Organic outcomes are unavailable.")],
+      [],
+      ["period", "segment", "actual", "fitted_or_forecast_live", "Organic Predicted", "Perf Predicted", "lower_live", "upper_live"],
+      ...(fc.actual || []).map((actual, index) => [
+        fc.histLabels?.[index] ?? index + 1,
+        "history",
+        actual,
+        fc.fittedHist?.[index],
+        "",
+        "",
+        "",
+        "",
+      ]),
+      ...(fc.predFut || []).map((prediction, index) => [
+        fc.futLabels?.[index] ?? `+${index + 1}`,
+        fc.annualQualified ? "forecast" : "best_available_uncertified",
+        "",
+        prediction,
+        "",
+        "",
+        fc.lo?.[index],
+        fc.hi?.[index],
+      ]),
+    ];
+    return rows.map((row) => row.map(csvQ).join(","));
+  }
   if (fc.isBayesian) {
     const liveCsv = buildBayesianForecastCsv(fc, target, locale, sourceCurrency, displayCurrency);
     if (liveCsv) return liveCsv;
@@ -2834,6 +2873,9 @@ function annualAnalogForecastShape(model) {
   return {
     model: model.annual.model,
     isAnnualAnalog: true,
+    annualQualified: model.annual.qualified,
+    annualBestAvailable: model.annual.bestAvailable === true,
+    annualOsGuardrail: model.annual.osGuardrail || [],
     selectedRoute: model.annual.selectedRoute,
     annualCandidates: model.annual.candidates.map((candidate) => ({
       route: candidate.route,
@@ -3127,7 +3169,7 @@ export function buildForecastAssistInsight(forecast, recentBacktest, forecastSce
     modelKo = window ? `선택 학습창은 최근 ${window}주입니다.` : "";
     modelEn = window ? `The selected training window is the latest ${window} weeks.` : "";
   } else if (forecast.isAnnualAnalog) {
-    certified = Number.isFinite(score) && score < 10;
+    certified = Boolean(forecast.annualQualified);
     routeKo = forecastAssistRouteLabel(forecast.selectedRoute, "ko");
     routeEn = forecastAssistRouteLabel(forecast.selectedRoute, "en");
     modelKo = "구조변화 이후 전년 동주 패턴을 최근 수준으로 보정한 연간 반복형입니다.";
@@ -3150,12 +3192,17 @@ export function buildForecastAssistInsight(forecast, recentBacktest, forecastSce
     modelEn = selected ? `The selected window is the latest ${selected.window} weeks; historical rolling wMAPE is ${forecastAssistPct(selected.wmape) || "unavailable"}.` : "";
   }
 
-  const statusKo = scoreText
-    ? `봉인한 최근 12주에 실제 Cost를 입력한 OOS wMAPE는 ${scoreText}로, 10% 목표를 ${certified ? "통과했습니다" : "통과하지 못했습니다"}.`
-    : "현재 데이터로 최근 12주 OOS 점수를 계산하지 못했습니다.";
-  const statusEn = scoreText
-    ? `With Actual Cost supplied to the sealed latest 12 weeks, OOS wMAPE is ${scoreText}; the 10% target is ${certified ? "passed" : "not passed"}.`
-    : "The latest 12-week OOS score could not be computed from the current data.";
+  const annualRollingScore = forecastAssistPct(forecast.rollingSelection?.selected?.wmape);
+  const statusKo = forecast.isAnnualAnalog && scoreText
+    ? `연간 반복형의 봉인 최근 12주 wMAPE는 ${scoreText}, 전체 rolling OOS는 ${annualRollingScore || "계산 불가"}입니다. ${certified ? "두 기준 모두 10% 인증을 통과했습니다." : "최신 구간은 좋아도 전체 rolling 10%를 넘어서 미인증 best-available입니다."}`
+    : scoreText
+      ? `봉인한 최근 12주에 실제 Cost를 입력한 OOS wMAPE는 ${scoreText}로, 10% 목표를 ${certified ? "통과했습니다" : "통과하지 못했습니다"}.`
+      : "현재 데이터로 최근 12주 OOS 점수를 계산하지 못했습니다.";
+  const statusEn = forecast.isAnnualAnalog && scoreText
+    ? `The annual analog scores ${scoreText} on the sealed latest 12 weeks and ${annualRollingScore || "unavailable"} on full rolling OOS. ${certified ? "Both gates pass official 10% certification." : "Despite the stronger latest window, it remains an uncertified best-available model because full rolling OOS exceeds 10%."}`
+    : scoreText
+      ? `With Actual Cost supplied to the sealed latest 12 weeks, OOS wMAPE is ${scoreText}; the 10% target is ${certified ? "passed" : "not passed"}.`
+      : "The latest 12-week OOS score could not be computed from the current data.";
 
   const actionsKo = certified
     ? [
@@ -4447,10 +4494,24 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           platform: "all",
         };
         if (!direct.run || !direct.panel) return { isAdditiveTotal: true, components, routeDecision: null };
-        const osNested = mmmForecastCombineNestedParts(components.map((component) => component.selection?.nested), { route: "android-ios-sum" });
+        const osNested = mmmForecastCombineNestedParts(components.map((component) => component.selection?.nested
+          ? { ...component.selection.nested, component: component.platform }
+          : null), { route: "android-ios-sum" });
         const directNested = direct.selection?.nested ? { ...direct.selection.nested, route: "direct-total" } : null;
         const rawRouteDecision = mmmForecastSelectNestedRoute([directNested, osNested], { horizon: 12 });
         const routeDecision = rawRouteDecision.auditRoute ? rawRouteDecision : null;
+        // 구조변화 뒤 Cost 회귀가 봉인 audit에서 무너졌다면, 인증을 꾸미지
+        // 않고 더 단순한 연간 반복형을 best-available로 사용한다. 연간형 경로
+        // 자체는 최신 정답이 아니라 development OOS로 이미 선택되어 있다.
+        const useAnnualFallback = shouldUseAnnualAnalogFallback(annual, routeDecision);
+        if (useAnnualFallback) {
+          return {
+            isAnnualAnalog: true,
+            annual: { ...annual, bestAvailable: true },
+            totalPanel: prepared.all.sourcePanel,
+            target: prepared.all.target,
+          };
+        }
         return routeDecision.productionRoute === "direct-total"
           ? { ...direct, isNestedDirect: true, routeDecision, challengerComponents: components }
           : { isAdditiveTotal: true, components, directChallenger: direct, routeDecision };
@@ -7226,9 +7287,18 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             `Production route: ${forecast.nestedRouteDecision.productionRoute === "direct-total" ? "Direct Total" : "Android + iOS"}`,
                           )}
                         </span>
+                        {(forecast.nestedRouteDecision.osGuardrail || []).map((component) => (
+                          <span
+                            className="ab-pill"
+                            key={component.component}
+                            style={component.passed ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}
+                          >
+                            {`${component.component} · ${tx("과거", "history")} ${component.developmentWmape.toFixed(2)}% · ${tx("최신", "latest")} ${component.latestWmape.toFixed(2)}%`}
+                          </span>
+                        ))}
                       </div>
                       <p style={{ margin: "6px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
-                        {tx("각 cutoff마다 그보다 오래된 OOS만으로 26·52·78주와 모델을 다시 선택합니다. 최신 12주의 RR은 선택에 쓰지 않고, 해당 주의 Actual Cost와 알려진 Step만 입력합니다.", "At every cutoff, 26/52/78-week windows and model form are reselected using only older OOS folds. The latest 12-week outcomes are never used for selection; only their Actual Cost and known Steps are supplied.")}
+                        {tx("각 cutoff마다 그보다 오래된 OOS만으로 26·52·78주와 모델을 다시 선택합니다. 최신 12주의 RR은 선택에 쓰지 않고, 해당 주의 Actual Cost와 알려진 Step만 입력합니다. Total이 좋아도 Android·iOS 중 하나가 과거·최신 10% 기준을 넘으면 공식 인증하지 않습니다.", "At every cutoff, 26/52/78-week windows and model form are reselected using only older OOS folds. The latest 12-week outcomes are never used for selection; only their Actual Cost and known Steps are supplied. Even a strong Total is not certified when either Android or iOS breaches the 10% history/latest guardrail.")}
                       </p>
                     </Card>
                   )}
@@ -7251,14 +7321,30 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       return (
                         <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
                           <strong>{tx("구조변화 후 자동 선택 · 연간 반복형", "Auto-selected after regime change · annual analog")}</strong>
+                          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "7px" }}>
+                            <span className="ab-pill" style={forecast.annualQualified ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#f59e0b", color: "#b45309" }}>
+                              {forecast.annualQualified
+                                ? tx("공식 10% 인증", "Official 10% certified")
+                                : tx("미인증 best-available · 예산 반응 해석 금지", "Uncertified best-available · no budget-response interpretation")}
+                            </span>
+                            {(forecast.annualOsGuardrail || []).map((component) => (
+                              <span
+                                className="ab-pill"
+                                key={component.component}
+                                style={component.passed ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}
+                              >
+                                {`${component.component} · ${tx("과거", "history")} ${component.developmentWmape.toFixed(2)}% · ${tx("최신", "latest")} ${component.latestWmape.toFixed(2)}%`}
+                              </span>
+                            ))}
+                          </div>
                           <p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
                             {(forecast.annualCandidates || []).map((candidate) =>
                               `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} · ${tx("최신 12주", "latest 12 weeks")} ${candidate.latestWmape.toFixed(2)}% · ${tx("전체 rolling", "full rolling")} ${candidate.allWmape.toFixed(2)}%`
                             ).join(" / ")}
                             {` → ${forecast.selectedRoute === "direct-total" ? "Direct Total" : "Android + iOS"} ${tx("선택", "selected")}`}
                           </p>
-                          <p style={{ margin: "6px 0 0", color: "#15803d", fontSize: "11.5px" }}>
-                            {tx(`최신 12주 wMAPE ${selected.latestWmape.toFixed(2)}% · 최근평균 기준선 ${selected.persistenceWmape.toFixed(2)}%. 경로는 더 오래된 development OOS만으로 선택했고 최신 12주는 봉인 audit으로만 사용했습니다.`, `Latest 12-week wMAPE ${selected.latestWmape.toFixed(2)}% · recent-average baseline ${selected.persistenceWmape.toFixed(2)}%. The route was selected only on older development OOS; the latest 12 weeks were used solely as a sealed audit.`)}
+                          <p style={{ margin: "6px 0 0", color: forecast.annualQualified ? "#15803d" : "#b45309", fontSize: "11.5px" }}>
+                            {tx(`최신 12주 wMAPE ${selected.latestWmape.toFixed(2)}% · 전체 rolling ${selected.wmape.toFixed(2)}% · 최근평균 기준선 ${selected.persistenceWmape.toFixed(2)}%. 경로는 더 오래된 development OOS만으로 선택했고 최신 12주는 봉인 audit으로만 사용했습니다.${forecast.annualQualified ? "" : " 최신 구간은 좋아도 전체 rolling 10%를 넘어서 공식 인증은 아닙니다."}`, `Latest 12-week wMAPE ${selected.latestWmape.toFixed(2)}% · full rolling ${selected.wmape.toFixed(2)}% · recent-average baseline ${selected.persistenceWmape.toFixed(2)}%. The route was selected only on older development OOS; the latest 12 weeks were used solely as a sealed audit.${forecast.annualQualified ? "" : " It is not officially certified because full rolling OOS remains above 10%, despite the stronger latest window."}`)}
                           </p>
                         </Card>
                       );

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runAnnualAnalogRouter } from "./annualAnalogForecast";
+import { runAnnualAnalogRouter, shouldUseAnnualAnalogFallback } from "./annualAnalogForecast";
 
 function panel(values, stepAt = null) {
   return {
@@ -22,7 +22,24 @@ describe("annual analog regime router", () => {
     });
     expect(result.currentBreak).toBe(true);
     expect(result.qualified).toBe(true);
+    expect(result.osGuardrailPassed).toBe(true);
+    expect(result.osGuardrail.every((component) => component.passed)).toBe(true);
     expect(result.selected.latestWmape).toBeLessThan(1e-8);
     expect(result.selected.future.predicted).toHaveLength(12);
+  });
+
+  it("uses an uncertified annual analog only as a safer post-break fallback", () => {
+    const annual = {
+      currentBreak: true,
+      qualified: false,
+      selected: { latestWmape: 7, latestPersistenceWmape: 12 },
+    };
+    expect(shouldUseAnnualAnalogFallback(annual, { latestWmape: 30 })).toBe(true);
+    expect(shouldUseAnnualAnalogFallback(annual, { latestWmape: 5 })).toBe(false);
+    expect(shouldUseAnnualAnalogFallback({ ...annual, currentBreak: false }, { latestWmape: 30 })).toBe(false);
+    expect(shouldUseAnnualAnalogFallback({
+      ...annual,
+      selected: { latestWmape: 13, latestPersistenceWmape: 12 },
+    }, { latestWmape: 30 })).toBe(false);
   });
 });

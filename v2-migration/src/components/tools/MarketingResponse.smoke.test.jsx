@@ -199,6 +199,20 @@ describe("MarketingResponse render smoke", () => {
     expect(insight.actionsEn.join(" ")).toContain("Cost scenarios locked");
   });
 
+  it("does not certify an annual fallback from the latest window alone", () => {
+    const insight = buildForecastAssistInsight({
+      isAnnualAnalog: true,
+      annualQualified: false,
+      selectedRoute: "direct-total",
+      predFut: Array(12).fill(100),
+      rollingSelection: { selected: { wmape: 24.51 } },
+    }, { wmape: 6.44 }, { eligible: false });
+    expect(insight.titleKo).toContain("미인증");
+    expect(insight.summaryKo).toContain("6.44%");
+    expect(insight.summaryKo).toContain("24.51%");
+    expect(insight.summaryKo).toContain("best-available");
+  });
+
   it("defines Total forecast as the exact weekly sum of Android and iOS forecasts", () => {
     const android = {
       actual: [100, 120, 140], fittedHist: [98, 121, 139], predFut: [150, 160], baselineFut: [110, 115], lo: [130, 140], hi: [170, 180],
@@ -278,6 +292,27 @@ describe("MarketingResponse render smoke", () => {
     expect(csv).toContain("fitted_or_forecast_live,Organic Predicted,Perf Predicted,lower_live,upper_live");
     expect(csv).toContain("W1,history,100,=E13+F13,80,18");
     expect(csv).toContain("W2,forecast,,=E14+F14,85,25,100,120");
+  });
+
+  it("exports uncertified annual fallback totals without inventing Paid/Organic parts", () => {
+    const lines = buildForecastCsv({
+      isAnnualAnalog: true,
+      annualQualified: false,
+      selectedRoute: "direct-total",
+      rollingSelection: { selected: { latestWmape: 6.44, wmape: 24.51 } },
+      actual: [100],
+      fittedHist: [98],
+      histLabels: ["W1"],
+      predFut: [110],
+      lo: [90],
+      hi: [130],
+      futLabels: ["W2"],
+    }, "Regs", "ko");
+    const csv = lines.join("\n");
+    expect(csv).toContain("미인증 best-available");
+    expect(csv).toContain("fitted_or_forecast_live,Organic Predicted,Perf Predicted,lower_live,upper_live");
+    expect(csv).toContain("W2,best_available_uncertified,,110,,,90,130");
+    expect(csv).toContain("Paid/Organic 실측이 없어");
   });
 
   it("parses formatted experiment values before deriving traffic", () => {

@@ -120,6 +120,28 @@ describe("runMmmMethTests (golden port)", () => {
     expect(selection.candidates.some((candidate) => candidate.structuralFallback)).toBe(true);
   });
 
+  it("restores global trend offsets before scoring the persistence baseline", () => {
+    const n = 140;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const cost = week.map((_, index) => 500 + (index % 7) * 20);
+    const target = week.map((_, index) => 1000 + index * 50);
+    const selection = mmmForecastRollingSelection({
+      week,
+      ch: { cost },
+      channels: [{ key: "cost", label: "Cost", kind: "perf" }],
+      targets: { Regs: target },
+      dummy: {},
+      steps: {},
+    }, { ...MMM_METH_CONFIG, absorbed: new Set() }, "Regs", {
+      horizon: 4,
+      candidateWindows: [26],
+      annualMinWeeks: 999,
+    });
+    const globalTrend = selection.candidates.filter((candidate) => candidate.trendScope === "global");
+    expect(globalTrend.length).toBeGreaterThan(0);
+    expect(Math.min(...globalTrend.map((candidate) => candidate.latestPersistenceWmape))).toBeLessThan(10);
+  });
+
   it("keeps short-history forecasts but withholds channel Cost scenarios until three holdouts", () => {
     const selection = {
       decisionEligible: false,
@@ -182,6 +204,31 @@ describe("runMmmMethTests (golden port)", () => {
     expect(route.auditRoute).toBe("android-ios-sum");
     expect(route.latestWmape).toBeCloseTo(5, 8);
     expect(route.certified).toBe(true);
+  });
+
+  it("withholds Total certification when either OS fails its own nested guardrail", () => {
+    const makePart = (component, actual, predicted) => ({
+      component,
+      horizon: 12,
+      folds: [36, 24, 12, 0].map((offset) => ({
+        offset,
+        actual: [actual],
+        predicted: [predicted],
+        baselinePredicted: [actual * 0.7],
+        wmape: Math.abs(actual - predicted) / actual * 100,
+      })),
+    });
+    const android = makePart("android", 90, 98);
+    const ios = makePart("ios", 10, 20);
+    const os = mmmForecastCombineNestedParts([android, ios], { route: "android-ios-sum" });
+    const route = mmmForecastSelectNestedRoute([os], { horizon: 12 });
+    expect(route.latestWmape).toBeCloseTo(18, 8);
+    expect(route.osGuardrail).toEqual([
+      expect.objectContaining({ component: "android", passed: true }),
+      expect.objectContaining({ component: "ios", passed: false }),
+    ]);
+    expect(route.osGuardrailPassed).toBe(false);
+    expect(route.certified).toBe(false);
   });
 
   it("fits full-history seasonality separately and restores it after recent Cost forecast", () => {
