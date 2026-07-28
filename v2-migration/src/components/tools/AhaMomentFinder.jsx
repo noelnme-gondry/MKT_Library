@@ -800,30 +800,31 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           x: {
             title: { display: true, text: tr("Precision (정밀도)", "Precision"), color: CHART_THEME.text },
             min: 0,
-            max: 1,
-            ticks: { color: CHART_THEME.text },
+            // 1.0 경계의 큰 점/금색 최적 링이 잘리지 않도록, 표시 범위에만 작은
+            // 안전 여백을 둔다. 1.0을 넘는 값처럼 읽히지 않도록 여백 눈금은 숨긴다.
+            max: 1.05,
+            ticks: {
+              color: CHART_THEME.text,
+              callback: (value) => (Number(value) > 1 ? "" : Number(value).toFixed(1)),
+            },
             grid: { color: CHART_THEME.grid },
           },
           y: {
             title: { display: true, text: tr("Recall (재현율)", "Recall"), color: CHART_THEME.text },
             min: 0,
-            max: 1,
-            ticks: { color: CHART_THEME.text },
+            max: 1.05,
+            ticks: {
+              color: CHART_THEME.text,
+              callback: (value) => (Number(value) > 1 ? "" : Number(value).toFixed(1)),
+            },
             grid: { color: CHART_THEME.grid },
           },
         },
+        layout: { padding: { top: 12, right: 8, bottom: 2, left: 0 } },
         plugins: {
-          legend: {
-            display: true,
-            position: "right",
-            labels: {
-              color: CHART_THEME.text,
-              boxWidth: 12,
-              font: { size: 11 },
-              usePointStyle: true,
-              filter: (item) => item.text !== tr("★ 최적", "★ Optimal"),
-            },
-          },
+          // 이벤트 선택 칩이 범례이자 필터다. 캔버스 안의 중복 범례는 곡선을
+          // 좁히고 시선을 분산시켜 제거한다.
+          legend: { display: false },
           tooltip: {
             callbacks: {
               title: (items) => {
@@ -1440,23 +1441,51 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>{tr("정밀도 × 재현율 산점도 — 이벤트별 달성률 곡선", "Precision × recall scatter — reach curve by event")}</div>
                 <button className="ab-pill" onClick={handleScatterPng}>⬇ PNG</button>
               </div>
-              <p className="muted">{tr(
-                <>X=정밀도, Y=재현율. <strong>이벤트마다 색이 다르고</strong>, 각 점은 <strong>달성률(전체 유저 중 그 조건을 채운 비율) 5% 구간</strong>이에요 — 점을 이은 선을 따라가면 기준을 느슨/빡빡하게 했을 때 정밀도·재현율이 어떻게 바뀌는지 보입니다. 점 크기 = 해당 인원, <span style={{ color: "#facc15" }}>●</span> 금색 큰 점 = 자동으로 고른 최적 지점. <strong>아래 표의 체크박스로 표시할 이벤트를 고르세요.</strong></>,
-                <>X=precision, Y=recall. <strong>Each event has its own color</strong>, and each point is a <strong>5% reach bucket</strong> (share of all users meeting that condition) — follow the line to see how precision/recall change as the bar is loosened/tightened. Point size = number of users, <span style={{ color: "#facc15" }}>●</span> large gold point = the auto-selected optimal point. <strong>Use the checkboxes in the table below to choose which events to show.</strong></>,
+              <p className="muted aha-scatter-intro">{tr(
+                <>색상 칩을 눌러 이벤트를 비교하세요. <span style={{ color: "#facc15" }}>●</span> 금색 테두리는 자동으로 고른 기준입니다.</>,
+                <>Use the color chips to compare events. <span style={{ color: "#facc15" }}>●</span> A gold ring marks the auto-selected threshold.</>,
               )}</p>
               {allActionNames.length > 0 && (
-                <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginBottom: "8px" }}>
-                  <span style={{ fontSize: "11.5px", color: MUTED }}>{tr(`표시: ${selectedCount}/${allActionNames.length}개`, `Showing: ${selectedCount}/${allActionNames.length}`)}</span>
-                  <button className="ab-pill" onClick={() => setAllSel(true)}>{tr("전체 선택", "Select all")}</button>
-                  <button className="ab-pill" onClick={() => setAllSel(false)}>{tr("전체 해제", "Deselect all")}</button>
+                <div className="aha-scatter-toolbar">
+                  <div className="aha-scatter-events" aria-label={tr("산점도에 표시할 이벤트", "Events shown in the scatter plot")}>
+                    {sortedResults.map((r) => {
+                      const isSelected = isSel(r.action);
+                      const color = actionColorMap[r.action] || "#94a3b8";
+                      return (
+                        <button
+                          key={r.action}
+                          type="button"
+                          className={`aha-event-chip ${isSelected ? "is-active" : ""}`}
+                          style={{ "--aha-event-color": color }}
+                          aria-pressed={isSelected}
+                          onClick={() => toggleSel(r.action)}
+                        >
+                          <span>{r.action}</span>
+                          <b aria-hidden="true">{isSelected ? "✓" : "＋"}</b>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="aha-scatter-actions">
+                    <span>{tr(`${selectedCount}/${allActionNames.length} 표시`, `${selectedCount}/${allActionNames.length} shown`)}</span>
+                    <button className="ab-pill" onClick={() => setAllSel(true)}>{tr("전체", "All")}</button>
+                    <button className="ab-pill" onClick={() => setAllSel(false)}>{tr("해제", "Clear")}</button>
+                  </div>
                 </div>
               )}
-              <div className="chart-container" style={{ height: "380px", marginBottom: "16px" }}>
+              <div className="chart-container aha-scatter-chart">
                 {selectedCount === 0 ? (
-                  <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontSize: "12.5px" }}>{tr("표시할 이벤트를 아래 표에서 체크하세요.", "Check events to display in the table below.")}</div>
+                  <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontSize: "12.5px" }}>{tr("위 칩에서 표시할 이벤트를 선택하세요.", "Choose an event from the chips above.")}</div>
                 ) : null}
                 <canvas ref={chartRef} style={{ display: selectedCount === 0 ? "none" : undefined }}></canvas>
               </div>
+              <details className="aha-scatter-explainer">
+                <summary>{tr("점 읽는 법", "How to read this")}</summary>
+                <p>{tr(
+                  <>가로축은 조건을 채운 유저의 타겟 달성 비율(정밀도), 세로축은 타겟 달성 유저 중 조건을 채운 비율(재현율)입니다. 각 점은 전체 유저 달성률 5% 구간이고, 점이 클수록 해당 인원이 많습니다. 선을 따라가면 기준을 느슨하거나 엄격하게 바꿀 때 두 값의 변화를 볼 수 있습니다.</>,
+                  <>The x-axis is the target-achievement rate among users meeting the condition (precision); the y-axis is the share of target achievers meeting it (recall). Each point is a 5% reach bucket, and a larger point means more users. Follow a line to see both measures change as the threshold loosens or tightens.</>,
+                )}</p>
+              </details>
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>{tr("전체 지표 표", "Full metrics table")}</div>
