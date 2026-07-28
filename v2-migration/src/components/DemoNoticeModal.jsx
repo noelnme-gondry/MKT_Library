@@ -41,7 +41,7 @@ export default function DemoNoticeModal({ locale = "ko" }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: "420px", width: "100%", background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "14px", boxShadow: "0 24px 60px rgba(0,0,0,0.4)", padding: "22px 24px" }}
+        style={{ boxSizing: "border-box", maxWidth: "420px", width: "100%", background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "14px", boxShadow: "0 24px 60px rgba(0,0,0,0.4)", padding: "22px 24px" }}
       >
         <div style={{ fontSize: "26px", marginBottom: "10px" }}>🧪</div>
         <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--text-primary)", marginBottom: "8px" }}>

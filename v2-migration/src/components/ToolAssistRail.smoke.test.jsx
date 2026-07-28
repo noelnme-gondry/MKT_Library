@@ -108,4 +108,18 @@ describe("ToolAssistRail", () => {
     document.body.appendChild(result);
     await waitFor(() => expect(container.querySelector(".tool-assist-rail").classList.contains("is-open")).toBe(true));
   });
+
+  it("announces a new result without covering the mobile viewport", async () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
+    document.body.innerHTML = '<section id="s-incr-method"></section>';
+    const { container, getByRole } = render(<ToolAssistRail toolId="5-23" />);
+    const result = document.createElement("section");
+    result.id = "s-incr-result";
+    document.body.appendChild(result);
+    await waitFor(() => expect(getByRole("button", { name: /분석 도우미 열기: 증분 결과 판독/ })).toBeTruthy());
+    expect(container.textContent).toContain("새 결과가 준비됐습니다");
+    expect(container.querySelector(".tool-assist-rail").classList.contains("is-open")).toBe(false);
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: originalWidth });
+  });
 });

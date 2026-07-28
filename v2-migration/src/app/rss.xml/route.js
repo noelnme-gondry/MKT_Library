@@ -27,7 +27,7 @@ function stripTags(s) {
 }
 
 export const dynamic = "force-static";
-const PRODUCT_PUB_DATE = new Date("2026-07-20T00:00:00Z").toUTCString();
+const PRODUCT_PUB_DATE = new Date("2026-07-28T00:00:00Z").toUTCString();
 
 export function GET() {
   const posts = getAllPosts();

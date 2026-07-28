@@ -48,6 +48,7 @@ export default function ToolIntro({ toolId, locale = "ko" }) {
   const crossLink = TOOL_CROSS_LINK[toolId]?.[locale === "en" ? "en" : "ko"];
   if (!copy) return null;
   return <aside className="tool-context-header" aria-label={locale === "en" ? "About this tool" : "도구 안내"}>
+    <h1 className="sr-only">{copy[0]}</h1>
     <div className="tool-context-header__meta"><em>{locale === "en" ? "BROWSER-ONLY ANALYSIS" : "브라우저 내 분석"}</em></div>
     <p><strong>{copy[0]}</strong> — {copy[1]}</p>
     {crossLink && <div className="tool-context-header__next">

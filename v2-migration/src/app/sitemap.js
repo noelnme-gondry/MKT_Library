@@ -3,7 +3,7 @@ import { getAllPosts, getAllTags } from "@/lib/blog";
 import { getAllTerms } from "@/lib/glossary";
 
 const BASE = SITE_URL; // matches layout.js canonical/openGraph
-const PRODUCT_LAST_MODIFIED = new Date("2026-07-20");
+const PRODUCT_LAST_MODIFIED = new Date("2026-07-28");
 const latestDate = (items) => {
   const dates = items.map((item) => item.updated || item.date).filter(Boolean).sort();
   return dates.length ? new Date(dates[dates.length - 1]) : PRODUCT_LAST_MODIFIED;
@@ -53,6 +53,16 @@ export default function sitemap() {
   // CSV 템플릿 다운로드("/templates") — 블로그와 동일하게 routeMap 밖 독립 페이지.
   const templateEntries = [
     { url: `${BASE}/templates`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/en/templates`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "monthly", priority: 0.6 },
+  ];
+
+  // routeMap 밖의 독립 페이지. 색인 가능한 canonical 페이지가 sitemap에서
+  // 누락되지 않게 주간 리뷰 KO/EN과 법적 고지 페이지를 명시한다.
+  const standaloneEntries = [
+    { url: `${BASE}/weekly-review`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/en/weekly-review`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/privacy`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/terms`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "yearly", priority: 0.3 },
   ];
 
   // 용어사전("/glossary") — 목록 + 발행 항목별. 블로그와 동일 패턴.
@@ -115,7 +125,7 @@ export default function sitemap() {
     priority: 0.8,
   }));
 
-  return [...routeEntries, ...blogEntries, ...templateEntries, ...glossaryEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enGlossaryEntries, ...enToolEntries];
+  return [...routeEntries, ...blogEntries, ...templateEntries, ...standaloneEntries, ...glossaryEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enGlossaryEntries, ...enToolEntries];
 }
 
 function getPostsByTagSafe(tagSlug, posts) {
