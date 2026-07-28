@@ -3094,6 +3094,99 @@ function attributedForecastShape(route) {
   };
 }
 
+function forecastAssistPct(value) {
+  return Number.isFinite(value) ? `${value.toFixed(2)}%` : null;
+}
+
+function forecastAssistRouteLabel(route, lang) {
+  if (route === "direct-total") return "Direct Total";
+  if (route === "android-ios-sum" || route === "android-ios-additive") return lang === "en" ? "Android + iOS" : "Android + iOS 합산";
+  return lang === "en" ? "current forecast" : "현재 예측";
+}
+
+export function buildForecastAssistInsight(forecast, recentBacktest, forecastScenario = {}) {
+  if (!forecast) return null;
+  const score = recentBacktest?.conditionalWmape ?? recentBacktest?.wmape;
+  const scoreText = forecastAssistPct(score);
+  const horizon = forecast.predFut?.length || forecast.horizon || 12;
+  const scenarioEligible = forecastScenario?.eligible !== false;
+  let certified = false;
+  let routeKo = "현재 예측";
+  let routeEn = "current forecast";
+  let modelKo = "";
+  let modelEn = "";
+
+  if (forecast.isStructural) {
+    certified = Boolean(forecast.structuralEligible);
+    routeKo = forecastAssistRouteLabel(forecast.structuralRoute, "ko");
+    routeEn = forecastAssistRouteLabel(forecast.structuralRoute, "en");
+    const window = forecast.structuralSelectedSpec?.trainingWindow;
+    modelKo = window ? `선택 학습창은 최근 ${window}주입니다.` : "";
+    modelEn = window ? `The selected training window is the latest ${window} weeks.` : "";
+  } else if (forecast.isAnnualAnalog) {
+    certified = Number.isFinite(score) && score < 10;
+    routeKo = forecastAssistRouteLabel(forecast.selectedRoute, "ko");
+    routeEn = forecastAssistRouteLabel(forecast.selectedRoute, "en");
+    modelKo = "구조변화 이후 전년 동주 패턴을 최근 수준으로 보정한 연간 반복형입니다.";
+    modelEn = "This annual-analog model rescales matching weeks from last year to the latest level after a structural break.";
+  } else if (forecast.isAdditiveTotal) {
+    const components = (forecast.components || []).map((component) => {
+      const selected = component.rollingSelection?.selected;
+      return selected ? `${component.platform} ${selected.window}주` : null;
+    }).filter(Boolean);
+    const validationEligible = (forecast.components || []).every((component) => component.rollingSelection?.decisionEligible !== false);
+    certified = Number.isFinite(score) && score < 10 && validationEligible;
+    routeKo = "Android + iOS 합산";
+    routeEn = "Android + iOS";
+    modelKo = components.length ? `OS별 선택 학습창은 ${components.join(", ")}입니다.` : "";
+    modelEn = components.length ? `OS-specific training windows: ${components.join(", ")}.` : "";
+  } else {
+    const selected = forecast.rollingSelection?.selected;
+    certified = Number.isFinite(score) && score < 10 && forecast.rollingSelection?.decisionEligible !== false;
+    modelKo = selected ? `선택 학습창은 최근 ${selected.window}주, 과거 rolling wMAPE는 ${forecastAssistPct(selected.wmape) || "계산 불가"}입니다.` : "";
+    modelEn = selected ? `The selected window is the latest ${selected.window} weeks; historical rolling wMAPE is ${forecastAssistPct(selected.wmape) || "unavailable"}.` : "";
+  }
+
+  const statusKo = scoreText
+    ? `봉인한 최근 12주에 실제 Cost를 입력한 OOS wMAPE는 ${scoreText}로, 10% 목표를 ${certified ? "통과했습니다" : "통과하지 못했습니다"}.`
+    : "현재 데이터로 최근 12주 OOS 점수를 계산하지 못했습니다.";
+  const statusEn = scoreText
+    ? `With Actual Cost supplied to the sealed latest 12 weeks, OOS wMAPE is ${scoreText}; the 10% target is ${certified ? "passed" : "not passed"}.`
+    : "The latest 12-week OOS score could not be computed from the current data.";
+
+  const actionsKo = certified
+    ? [
+      `선택 경로(${routeKo})의 ${horizon}주 예측을 단일 숫자가 아니라 참고 범위와 함께 사용하세요.`,
+      scenarioEligible ? "예산 변경은 현재 Cost 대비 작은 폭부터 시나리오로 비교하세요." : "Cost 증감 시나리오는 잠금 상태로 두고 기본 예측만 사용하세요.",
+      "실제 증분 효과는 홀드아웃 또는 지역 실험으로 확인하세요.",
+    ]
+    : [
+      "현재 예측값으로 예산 증감이나 목표치를 확정하지 마세요.",
+      "최근 레짐 데이터를 추가한 뒤 같은 12주 OOS 검증을 다시 실행하세요.",
+      scenarioEligible ? "Step 매핑과 Direct/OS 경로를 재검토하고, 통과 전에는 보수적 기준선을 사용하세요." : "채널별 Cost 시나리오 잠금을 유지하고 최근평균 기준선을 사용하세요.",
+    ];
+  const actionsEn = certified
+    ? [
+      `Use the ${horizon}-week ${routeEn} forecast with its reference interval, not as a single point estimate.`,
+      scenarioEligible ? "Compare budget changes in small increments from current Cost." : "Keep Cost scenarios locked and use only the base forecast.",
+      "Confirm true incrementality with a holdout or geo experiment.",
+    ]
+    : [
+      "Do not set budget changes or targets from the current forecast.",
+      "Add more observations from the current regime, then rerun the same sealed 12-week OOS test.",
+      scenarioEligible ? "Review Step mapping and Direct/OS routing; use a conservative baseline until certification." : "Keep channel Cost scenarios locked and use the recent-average baseline.",
+    ];
+
+  return {
+    titleKo: certified ? "10% 인증을 통과한 예측 결과" : "10% 미인증 — 운영 판단 보류",
+    titleEn: certified ? "Forecast passed the 10% gate" : "Not certified under 10% — hold decisions",
+    summaryKo: `${statusKo} 선택 경로는 ${routeKo}입니다. ${modelKo}`.trim(),
+    summaryEn: `${statusEn} The selected route is ${routeEn}. ${modelEn}`.trim(),
+    actionsKo,
+    actionsEn,
+  };
+}
+
 export default function MarketingResponse({ locale = "ko", initialStage = "trend" }) {
   // 3단계(index MMM_STAGE_DEFS): diagnose | mmm | lab. 구 "forecast" 스테이지는 lab에 흡수 —
   // ③ lab이 mmmForecast(②계수) §7 미래예측을 렌더(stage==="lab"). 셋 다 shared mmmColMap 사용.
@@ -5580,6 +5673,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
 
   // ── analyzed: 매핑 완료 후에도 패널이 비면(엔진 오류·공선) 사유 표시 ──
   const panelEmpty = mmm && mmm.empty;
+  const forecastAssistInsight = stage === "lab"
+    ? buildForecastAssistInsight(forecast, recentBacktest, forecastScenario)
+    : null;
 
   return (
     <div className="tab-pane active" id="tab-response">
@@ -6927,7 +7023,16 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
 
           {/* ── STAGE ③ LAB — 회귀·미래예측(②와 같은 MMM 모델 계수로 과거 적합 + 미래 외삽) ── */}
           {stage === "lab" && (
-            <section className="block" id="s-forecast">
+            <section
+              className="block"
+              id="s-forecast"
+              data-assist-title-ko={forecastAssistInsight?.titleKo}
+              data-assist-title-en={forecastAssistInsight?.titleEn}
+              data-assist-summary-ko={forecastAssistInsight?.summaryKo}
+              data-assist-summary-en={forecastAssistInsight?.summaryEn}
+              data-assist-actions-ko={forecastAssistInsight?.actionsKo?.join("|||")}
+              data-assist-actions-en={forecastAssistInsight?.actionsEn?.join("|||")}
+            >
               <h2 className="section-title">{tx("📈 예측 전용 회귀 · 미래 예측", "📈 Forecast regression · future prediction")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx("· MMM 기여 분석과 별도 모델", "· separate from MMM contribution model")}</span></h2>
               <p style={{ fontSize: "12px", color: MUTED, marginBottom: "12px", lineHeight: 1.55 }}>
                 {forecast?.isStructural

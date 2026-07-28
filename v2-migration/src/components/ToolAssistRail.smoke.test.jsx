@@ -83,6 +83,26 @@ describe("ToolAssistRail", () => {
     delete window.gtag;
   });
 
+  it("shows result-derived evidence and recommended actions instead of a generic mapping jump", async () => {
+    document.body.innerHTML = `
+      <section id="s-forecast"
+        data-assist-title-ko="10% 미인증 — 운영 판단 보류"
+        data-assist-summary-ko="봉인 최근 12주 OOS wMAPE는 32.77%입니다."
+        data-assist-actions-ko="현재 예측값으로 예산을 확정하지 마세요.|||최근 레짐 데이터를 추가해 재검증하세요.">
+      </section>`;
+    const { getByRole, container } = render(<ToolAssistRail toolId="5-18" />);
+    await waitFor(() => expect(getByRole("button", { name: /분석 도우미/ })).toBeTruthy());
+    if (!container.querySelector(".tool-assist-rail").classList.contains("is-open")) {
+      fireEvent.click(getByRole("button", { name: /분석 도우미 열기/ }));
+    }
+    await waitFor(() => expect(container.textContent).toContain("10% 미인증 — 운영 판단 보류"));
+    expect(container.textContent).toContain("32.77%");
+    expect(container.textContent).toContain("추천 액션");
+    expect(container.textContent).toContain("현재 예측값으로 예산을 확정하지 마세요.");
+    expect(container.textContent).toContain("근거 위치 보기");
+    expect(container.textContent).not.toContain("데이터 매핑 확인");
+  });
+
   it("updates the collapsed label when the reader passes the next checkpoint", async () => {
     let prepTop = 120;
     let resultTop = 860;
