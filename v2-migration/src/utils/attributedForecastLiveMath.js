@@ -4,6 +4,7 @@ const DAY_MS = 86400000;
 const FOLD_STEP = 4;
 const LOOKBACK_WEEKS = [26, 52, 78];
 const MIN_TRAIN_WEEKS = Math.max(...LOOKBACK_WEEKS);
+const MIN_SELECTION_FOLDS = 3;
 const PANEL_CACHE = new WeakMap();
 
 const ORGANIC_SPECS = [
@@ -710,6 +711,7 @@ export function runAttributedForecastLiveRouter(dataset, options = {}) {
   if (maxOffset < 0) return null;
   const foldOffsets = Array.from({ length: Math.floor(maxOffset / FOLD_STEP) + 1 }, (_, index) => index * FOLD_STEP);
   const selectionOffsets = new Set(foldOffsets.filter((offset) => offset >= holdout));
+  if (selectionOffsets.size < MIN_SELECTION_FOLDS) return null;
   const evaluated = [];
   ["direct-total", "android-ios-sum"].forEach((route) => {
     MODEL_SPECS.forEach((spec) => {
@@ -802,7 +804,7 @@ export function runAttributedForecastLiveRouter(dataset, options = {}) {
   if (!future) return null;
   const futureNaive = naiveRouteAt(dataset, dataset.weeks.length, horizon, selected.route);
   const futureUseModel = Array.from({ length: horizon }, (_, index) =>
-    selected.useModelByHorizon[Math.min(index, selected.useModelByHorizon.length - 1)],
+    index < selected.useModelByHorizon.length ? selected.useModelByHorizon[index] : false,
   );
   const guardedFuture = mixResults(future, futureNaive, futureUseModel);
   const marginByHorizon = Array.from({ length: horizon }, (_, index) => {
@@ -882,7 +884,7 @@ export function runAttributedForecastLiveScenario(dataset, router, budgetByKey =
   const selectedCandidate = router.candidates?.find((candidate) => candidate.route === router.selectedRoute);
   const useModelByHorizon = Array.from({ length: useHorizon }, (_, index) => {
     const source = selectedCandidate?.useModelByHorizon || router.forecast?.useModelByHorizon || [];
-    return source[Math.min(index, Math.max(0, source.length - 1))] ?? false;
+    return index < source.length ? source[index] : false;
   });
   const mixed = mixResults(modelFuture, naiveFuture, useModelByHorizon);
   const lastWeek = dataset.weeks.at(-1);
