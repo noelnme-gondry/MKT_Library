@@ -6042,6 +6042,9 @@ body.light-mode .app:not(.is-home) .main {
   margin:0 0 18px;
   padding:7px 8px;
   overflow:visible;
+  position:relative;
+  z-index:2;
+  isolation:isolate;
   border:1px solid var(--border);
   border-radius:10px;
   background:color-mix(in srgb,var(--surface-container-low) 72%,transparent);
@@ -6142,6 +6145,11 @@ body.light-mode .app:not(.is-home) .main {
 }
 .dashboard-data-jump a { color:var(--primary);font-size:11px;font-weight:750;text-decoration:none;white-space:nowrap; }
 .dashboard-data-jump span { color:var(--text-muted);font-size:9.5px; }
+.dashboard-top-stat { display:grid;grid-template-columns:auto auto;column-gap:5px;align-items:baseline;min-width:72px;padding:3px 7px;border-left:1px solid var(--border-subtle);font-variant-numeric:tabular-nums; }
+.dashboard-top-stat small { grid-column:1/-1;color:var(--text-muted);font-size:7px;font-weight:700;letter-spacing:.06em;text-transform:uppercase; }
+.dashboard-top-stat b { color:var(--text-primary);font:750 12px var(--font-mono);letter-spacing:-.04em; }
+.dashboard-top-stat em { color:var(--primary);font:700 8px var(--font-mono);font-style:normal; }
+@media (max-width:980px) { .dashboard-top-stat { display:none; } }
 .dashboard-demo-source,.dashboard-decision-strip { display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 10px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-container-lowest); }
 .dashboard-demo-source { border-left:3px solid #f7b955;background:color-mix(in srgb,#f7b955 7%,var(--surface-container-lowest)); }
 .dashboard-demo-source span,.dashboard-decision-strip span { display:block;color:var(--primary);font:700 8px var(--font-mono);letter-spacing:.1em; }
@@ -6237,7 +6245,7 @@ body.light-mode .app:not(.is-home) .main {
   .tool-connections__more > summary { max-width:none;margin-left:auto; }
 }
 @media (min-width:1101px) {
-  .app.is-analysis .tool-connections--rail { width:calc(100% - 208px); }
+  .app.is-analysis .tool-connections--rail { width:100%; }
 }
 @media (max-width:760px) {
   .tool-connections--rail { display:block;padding:9px; }
