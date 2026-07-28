@@ -76,7 +76,7 @@ function looksDate(value) {
 function guessPlat(name) {
   const s = String(name).toLowerCase();
   const hasA = /(android|aos|google_?play|playstore)/.test(s);
-  const hasI = /(^|_)ios(_|$)/.test(s) || /(iphone|ipad)/.test(s);
+  const hasI = /(^|[^a-z0-9])ios([^a-z0-9]|$)/.test(s) || /(iphone|ipad)/.test(s);
   if (hasA && hasI) return s.lastIndexOf("android") > s.lastIndexOf("ios") ? "android" : "ios";
   if (hasA) return "android";
   if (hasI) return "ios";
@@ -175,7 +175,7 @@ function guessRole(col, rows) {
   const vals = rows.map((r) => r[col]).filter((v) => v != null && String(v).trim() !== "");
   const nums = vals.map(mmmParseNumericValue).filter(Number.isFinite);
   const isNum = nums.length >= vals.length * 0.7 && vals.length > 0;
-  const binaryRole = /step|구조변화|regime|레짐|shutdown|중단|종료|launch|런칭/.test(name) ? "step" : "dummy";
+  const binaryRole = /step|구조변화|regime|레짐|shutdown|중단|종료|launch|런칭|delist|reopen|relaunch|liveness|서비스.?중단|재개|재오픈/.test(name) ? "step" : "dummy";
   const binaryValues = vals.map((value) => mmmParseBinaryIndicator(value, binaryRole));
   const isBin = vals.length > 0 && binaryValues.every(Number.isFinite);
   const kind = /brand|브랜드/.test(name) ? "brand" : "perf";
@@ -199,12 +199,18 @@ function guessRole(col, rows) {
   else if (isNum && /purchaser|buyer|구매자|결제자/.test(name)) role = "purchasers";
   else if (isNum && /traffic|total.?visit|총.?유입|방문자|sessions?/.test(name)) role = "traffic";
   else if (isNum && /industry|market|category|업계|시장.?수요|카테고리.?수요/.test(name)) role = "external";
-  else if (isNum && /reg|가입|등록|signup|sign_up|install/.test(name)) role = "reg";
+  else if (isNum && (/reg|가입|등록|signup|sign_up|install/.test(name) || /(^|[_\s-])rr($|[_\s-])/.test(name))) role = "reg";
   else if (isNum && /react|재활성|reactiv|resurrect|win.?back|winback/.test(name)) role = "react";
   else if (isNum && /cost|spend|비용|지출|budget|imp|click|ch_|채널|brand/.test(name)) role = "channel";
   else if (!isNum && /platform|os|플랫폼|기기|device|segment|세그/.test(name)) role = "platform";
   else if (isNum) role = "channel";
   return { role, kind };
+}
+
+function guessedStepMode(header) {
+  return /delist|reopen|relaunch|liveness|shutdown|launch|서비스.?중단|재개|재오픈|런칭/i.test(String(header || ""))
+    ? "boundary"
+    : "state";
 }
 
 // 부분 자동 매핑(index.html mmmAutoMapPartial 이식) — 타깃과 명시 매체 열을 강한 키워드로 배치.
@@ -225,6 +231,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
         else once[role] = true;
       }
       out[h] = { role, kind: g.kind };
+      if (role === "step") out[h].stepMode = guessedStepMode(h);
       if (["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role)) out[h].plat = guessPlat(h);
       continue;
     }
@@ -241,6 +248,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
     const isExplicitSpend = /(^|[_\s])(spend|cost|budget)([_\s]|$)|(?:spend|cost|budget)$|비용|지출|예산/i.test(name);
     const isExplicitMediaDelivery = isOperationalDeliveryCostHeader(name)
       || /^(brand|performance)[_\s].*(spend|cost|budget|clicks?)$/i.test(name);
+    const isExplicitStep = /step|regime|shutdown|delist|reopen|relaunch|liveness|launch|구조변화|레짐|서비스.?중단|재개|재오픈|런칭/i.test(name);
     const isExplicitEvent = /holiday|event|christmas|easter|new.?year|anzac|funeral|festival|ramadan|black.?friday|cyber.?monday|chuseok|seollal|lunar|record|(?:^|[_\s])day(?:$|[_\s])|공휴일|명절|이벤트|크리스마스|설날|추석/i.test(name);
     let role = "ignore";
     if (/^(week|t|wk)$/.test(name) || /week|주차|주인덱스/.test(name)) {
@@ -248,11 +256,12 @@ export function autoGuessColMap(headers, rows, partial = true) {
       once.week = true;
     }
     else if (isDateCol) role = "date"; // 날짜는 분석 무영향(표시/예측용)이라 자동 배치
+    else if (isBin && isExplicitStep) role = "step";
     else if (isBin && isExplicitEvent) role = "dummy";
     else if (!derivedRe.test(name) && isNum && !isBin) {
       if (isExplicitSpend) role = "channel";
       else if (isExplicitMediaDelivery) role = "channel";
-      else if (/^rr$|^total[_\s-]*(reg|registration|signup).*(react|reactivation)$/i.test(name)) role = "reg";
+      else if (/(^|[_\s-])rr($|[_\s-])|^total[_\s-]*(reg|registration|signup).*(react|reactivation)$/i.test(name)) role = "reg";
       else if (/revenue|매출|sales|gmv|payment|결제금액/.test(name)) role = "revenue";
       else if (/purchaser|buyer|구매자|결제자/.test(name)) role = "purchasers";
       else if (/traffic|total.?visit|총.?유입|방문자|sessions?/.test(name)) role = "traffic";
@@ -273,6 +282,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
     }
     if (role === "date") { if (once.date) role = "ignore"; else once.date = true; }
     out[h] = { role, kind };
+    if (role === "step") out[h].stepMode = guessedStepMode(h);
     if (["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role)) out[h].plat = guessPlat(h);
   }
   return out;
@@ -334,7 +344,7 @@ export function colMapRoles(headers, colMap) {
     else if (r === "frequency") out.frequency.push({ header: h, key: sanKey(h, used), label: h, plat });
     else if (r === "channel") out.channels.push({ header: h, key: sanKey(h, used), label: h, kind: def.kind === "brand" ? "brand" : "perf", plat });
     else if (r === "dummy") out.dummies.push({ header: h, key: sanKey(h, used), label: h, plat });
-    else if (r === "step") out.steps.push({ header: h, key: sanKey(h, used), label: h, plat });
+    else if (r === "step") out.steps.push({ header: h, key: sanKey(h, used), label: h, plat, stepMode: def.stepMode || "state" });
     else if (r === "external") out.externals.push({ header: h, key: sanKey(h, used), label: h, plat });
   }
   return out;
@@ -983,7 +993,20 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   if (weekLabelRaw) panel.weekLabel = re(weekLabelRaw);
   for (const k in panel.ch) panel.ch[k] = re(panel.ch[k]);
   for (const k in panel.dummy) panel.dummy[k] = re(panel.dummy[k]);
-  for (const k in panel.steps) panel.steps[k] = re(panel.steps[k]);
+  const stepModeByKey = new Map(steps.map((step) => [step.key, step.stepMode]));
+  for (const k in panel.steps) {
+    const ordered = re(panel.steps[k]);
+    if (stepModeByKey.get(k) !== "boundary") {
+      panel.steps[k] = ordered;
+      continue;
+    }
+    let active = 0;
+    panel.steps[k] = ordered.map((value) => {
+      if (!Number.isFinite(value)) return NaN;
+      if (value !== 0) active = 1;
+      return active;
+    });
+  }
   for (const k in panel.external) panel.external[k] = re(panel.external[k]);
   if (panel.geo) panel.geo = re(panel.geo);
   for (const k in panel.reach) panel.reach[k] = re(panel.reach[k]);
@@ -1119,7 +1142,12 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
       }
     }
     const prev = next[col] || {};
-    next[col] = { ...prev, role, plat: ["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role) ? prev.plat || guessPlat(col) : prev.plat };
+    next[col] = {
+      ...prev,
+      role,
+      plat: ["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role) ? prev.plat || guessPlat(col) : prev.plat,
+      stepMode: role === "step" ? prev.stepMode || guessedStepMode(col) : prev.stepMode,
+    };
     onChange(next);
   };
   const setField = (col, field, value) => {
@@ -1175,6 +1203,12 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
             <option value="common">{tr("공통", "Common")}</option>
             <option value="android">Android</option>
             <option value="ios">iOS</option>
+          </select>
+        )}
+        {def.role === "step" && (
+          <select value={def.stepMode || "state"} onClick={(event) => event.stopPropagation()} onChange={(e) => setField(col, "stepMode", e.target.value)} style={{ fontSize: "11px" }}>
+            <option value="state">{tr("상태열", "State series")}</option>
+            <option value="boundary">{tr("경계 pulse→이후 1", "Boundary pulse → post=1")}</option>
           </select>
         )}
         <span onClick={(event) => { event.stopPropagation(); placeColumn(col, "ignore"); }} style={{ cursor: "pointer", color: "var(--text-muted)" }}>✕</span>

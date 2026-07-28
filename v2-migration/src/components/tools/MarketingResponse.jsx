@@ -89,6 +89,7 @@ import {
 } from "@/utils/forecastEnhancements";
 import { buildAttributedForecastDataset } from "@/utils/attributedForecastDataset";
 import { runAttributedForecastLiveRouter, runAttributedForecastLiveScenario } from "@/utils/attributedForecastLiveMath";
+import { runAnnualAnalogRouter } from "@/utils/annualAnalogForecast";
 
 /* ============================================================================
  * MarketingResponse (5-18) — MOCK → REAL 와이어링
@@ -1363,6 +1364,7 @@ function forecastScenarioReasonLabel(reason, tx) {
     "high-collinearity": tx("최근 Cost 창에서 채널 예산이 함께 움직여 분리되지 않습니다", "Channel budgets move together in the recent Cost window"),
     "low-information": tx("최근 Cost 창의 독립적인 지출 변동이 부족합니다", "The recent Cost window lacks independent spend variation"),
     "scenario-identification": tx("채널별 Cost 시나리오 식별 조건을 충족하지 못했습니다", "Channel-level Cost scenario identification is not met"),
+    "annual-analog-no-budget-response": tx("연간 반복형 예측은 Cost 증감 반응을 식별하지 않습니다", "The annual-analog forecast does not identify budget-response effects"),
     "missing-model": tx("예측 회귀 모델을 만들지 못했습니다", "The forecast regression model is unavailable"),
   };
   return labels[reason] || String(reason);
@@ -2687,13 +2689,16 @@ function weekBoundaryDate(isoDate, weekStart, boundary) {
 }
 
 function buildForecastModelForSelection(sourcePanel, sourceCfg, target, selected) {
-  const rawPanel = sliceMmmPanel(sourcePanel, sourcePanel.week.length, Math.max(0, sourcePanel.week.length - selected.window));
+  const controlledSourcePanel = selected.controlPolicy === "none"
+    ? { ...sourcePanel, dummy: {}, steps: {}, dummyDefs: [], stepDefs: [] }
+    : sourcePanel;
+  const rawPanel = sliceMmmPanel(controlledSourcePanel, controlledSourcePanel.week.length, Math.max(0, controlledSourcePanel.week.length - selected.window));
   const seasonalModel = selected.seasonalityScope === "global"
-    ? mmmForecastGlobalSeasonality(sourcePanel, target, selected.seasonalityPeriods)
+    ? mmmForecastGlobalSeasonality(controlledSourcePanel, target, selected.seasonalityPeriods)
     : null;
-  const trendStart = selected.trendWindow === "all" ? 0 : Math.max(0, sourcePanel.week.length - (selected.trendWindow || 0));
+  const trendStart = selected.trendWindow === "all" ? 0 : Math.max(0, controlledSourcePanel.week.length - (selected.trendWindow || 0));
   const trendModel = selected.trendScope === "global"
-    ? mmmForecastGlobalBaseline(sliceMmmPanel(sourcePanel, sourcePanel.week.length, trendStart), target, [])
+    ? mmmForecastGlobalBaseline(sliceMmmPanel(controlledSourcePanel, controlledSourcePanel.week.length, trendStart), target, [])
     : null;
   if ((selected.seasonalityScope === "global" && !seasonalModel) || (selected.trendScope === "global" && !trendModel)) return { rawPanel, panel: null, cfg: null, run: null };
   const lastWeek = rawPanel.week.at(-1);
@@ -2805,7 +2810,88 @@ function mmmSumOsBacktests(parts) {
   };
 }
 
-function buildOsForecastComponent(headers, rows, colMap, platform, target, locale, weekStart) {
+function annualAnalogForecastShape(model) {
+  const selected = model?.annual?.selected;
+  const panel = model?.totalPanel;
+  const target = model?.target;
+  const future = selected?.future?.predicted;
+  const latest = selected?.latest;
+  const actualSeries = panel?.targets?.[target];
+  if (!future?.length || !latest?.predicted?.length || !actualSeries?.length) return null;
+  const margin = selected.marginByHorizon || Array(future.length).fill(0);
+  const labels = panel.weekLabel || panel.dateLabel || panel.week;
+  const futureLabels = Array.from({ length: future.length }, (_, index) => {
+    const raw = labels.at(-1);
+    const parsed = isoDateFromLabel(raw);
+    if (!parsed) return `+${index + 1}`;
+    const date = new Date(`${parsed}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + 7 * (index + 1));
+    return date.toISOString().slice(0, 10);
+  });
+  return {
+    model: model.annual.model,
+    isAnnualAnalog: true,
+    selectedRoute: model.annual.selectedRoute,
+    annualCandidates: model.annual.candidates.map((candidate) => ({
+      route: candidate.route,
+      developmentWmape: candidate.developmentWmape,
+      allWmape: candidate.allWmape,
+      latestWmape: candidate.latestWmape,
+      latestPersistenceWmape: candidate.latestPersistenceWmape,
+    })),
+    actual: actualSeries.slice(-latest.actual.length),
+    fittedHist: latest.predicted,
+    predFut: future,
+    baselineFut: future,
+    lo: future.map((value, index) => Math.max(0, value - (margin[index] || 0))),
+    hi: future.map((value, index) => value + (margin[index] || 0)),
+    histLabels: labels.slice(-latest.actual.length),
+    futLabels: futureLabels,
+    labels: [...labels.slice(-latest.actual.length), ...futureLabels],
+    splitAt: latest.actual.length,
+    intervalLabel: "90% rolling annual-analog absolute-error reference",
+    chans: [],
+    recentMean: {},
+    futSpendByKey: {},
+    scenarioWarnings: [],
+    steps: (panel.stepDefs || []).map((step) => ({ ...step, label: step.label })),
+    rollingSelection: {
+      enabled: true,
+      decisionEligible: false,
+      decisionReasons: ["annual-analog-no-budget-response"],
+      foldStep: model.annual.foldStep,
+      selected: {
+        window: 52,
+        spec: "annual-analog",
+        controlPolicy: "mapped-regime-gate",
+        folds: selected.folds,
+        wmape: selected.allWmape,
+        latestWmape: selected.latestWmape,
+        persistenceWmape: selected.latestPersistenceWmape,
+      },
+    },
+  };
+}
+
+function annualAnalogBacktestShape(model) {
+  const selected = model?.annual?.selected;
+  const panel = model?.totalPanel;
+  const target = model?.target;
+  const latest = selected?.latest;
+  if (!latest || !panel?.targets?.[target]) return null;
+  const contextLength = 12;
+  const targetSeries = panel.targets[target];
+  return {
+    labels: (panel.weekLabel || panel.dateLabel || panel.week).slice(-(latest.actual.length + contextLength)),
+    actual: targetSeries.slice(-(latest.actual.length + contextLength)),
+    predicted: [...targetSeries.slice(-(latest.actual.length + contextLength), -latest.actual.length), ...latest.predicted],
+    validationStartIndex: contextLength,
+    wmape: latest.wmape,
+    reliable: latest.wmape < 10,
+  };
+}
+
+function buildOsForecastPanel(headers, rows, colMap, platform, target, locale, weekStart) {
   const built = buildPanelFromColMap(headers, rows, colMap, platform, locale, null, { weekStart });
   if (built.missing.length) return { platform, reason: `missing: ${built.missing.join(", ")}` };
   const panel = trimToActive(built.panel);
@@ -2814,8 +2900,15 @@ function buildOsForecastComponent(headers, rows, colMap, platform, target, local
   if (validate.issues?.length) return { platform, reason: validate.issues.join(" ") };
   const cfg = { ...MMM_METH_CONFIG, absorbed: new Set() };
   cfg.absorbed = mmmResolveAbsorb(panel, cfg).absorbed;
+  return { platform, target: resolvedTarget, sourcePanel: panel, cfg };
+}
+
+function buildOsForecastComponent(headers, rows, colMap, platform, target, locale, weekStart) {
+  const prepared = buildOsForecastPanel(headers, rows, colMap, platform, target, locale, weekStart);
+  if (!prepared.sourcePanel) return prepared;
+  const { sourcePanel: panel, cfg, target: resolvedTarget } = prepared;
   const model = buildForecastOnlyModelFromPanel(panel, cfg, resolvedTarget);
-  return { ...model, platform, target: resolvedTarget, sourcePanel: panel };
+  return { ...model, ...prepared };
 }
 
 function buildForecastExcelModel(model, rawForecast, restoredForecast) {
@@ -4192,6 +4285,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       channelHeader,
       spendHeader,
       targetHeader: targetItems[0].header,
+      stepFields: roles.steps,
     });
     if (!dataset) return null;
     const route = runAttributedForecastLiveRouter(dataset, { holdout: 12, horizon: fcHorizon });
@@ -4219,9 +4313,31 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               : "Android와 iOS가 각각 매핑되어야 Total 합산 예측을 만들 수 있습니다.",
           };
         }
-        const components = ["android", "ios"].map((platform) =>
-          buildOsForecastComponent(csvData.headers, csvData.raw, mmmColMap, platform, target, locale, mmmWeekStart),
-        );
+        const prepared = Object.fromEntries(["android", "ios", "all"].map((platform) => [
+          platform,
+          buildOsForecastPanel(csvData.headers, csvData.raw, mmmColMap, platform, target, locale, mmmWeekStart),
+        ]));
+        const invalid = Object.values(prepared).find((item) => !item.sourcePanel);
+        if (invalid) return { isAdditiveTotal: true, components: [], reason: invalid.reason || "Forecast panel unavailable" };
+        const annual = runAnnualAnalogRouter({
+          totalPanel: prepared.all.sourcePanel,
+          androidPanel: prepared.android.sourcePanel,
+          iosPanel: prepared.ios.sourcePanel,
+          target: prepared.all.target,
+          horizon: fcHorizon,
+        });
+        if (annual?.qualified) {
+          return {
+            isAnnualAnalog: true,
+            annual,
+            totalPanel: prepared.all.sourcePanel,
+            target: prepared.all.target,
+          };
+        }
+        const components = ["android", "ios"].map((platform) => ({
+          ...buildForecastOnlyModelFromPanel(prepared[platform].sourcePanel, prepared[platform].cfg, prepared[platform].target),
+          ...prepared[platform],
+        }));
         if (components.some((component) => !component.run || !component.panel)) {
           return { isAdditiveTotal: true, components, reason: components.find((component) => !component.run || !component.panel)?.reason || "OS forecast model unavailable" };
         }
@@ -4231,13 +4347,14 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     } catch {
       return null;
     }
-  }, [mmm, stage, effPlatformFilter, csvData, mmmColMap, target, locale, segmentSel, mmmWeekStart, attributedForecastRoute]);
+  }, [mmm, stage, effPlatformFilter, csvData, mmmColMap, target, locale, segmentSel, mmmWeekStart, attributedForecastRoute, fcHorizon]);
 
   // 이 판정은 Stage ④ 예측 회귀에만 적용한다. MMM 기여 분해·이벤트/step(P0)와
   // 분리해, 기본 예측은 유지하고 식별되지 않은 Cost 변경 입력만 막는다.
   const forecastScenario = useMemo(() => {
     if (!forecastModel) return { eligible: false, reasons: ["missing-model"] };
     if (forecastModel.isStructural) return { eligible: true, structuralConditional: true, reasons: [] };
+    if (forecastModel.isAnnualAnalog) return { eligible: false, reasons: ["annual-analog-no-budget-response"] };
     return mmmForecastScenarioEligibility(
       forecastModel.isAdditiveTotal ? forecastModel.components : [forecastModel],
     );
@@ -4255,6 +4372,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         );
         return scenario ? attributedForecastShape({ ...forecastModel.route, forecast: scenario }) : null;
       }
+      if (forecastModel.isAnnualAnalog) return annualAnalogForecastShape(forecastModel);
       if (forecastModel.isAdditiveTotal) {
         const scenarioBudget = forecastScenario.eligible ? fcBudget : {};
         const components = forecastModel.components.map((model) => runForecastScenario(model, fcHorizon, scenarioBudget, fcStepOff, { trendDamping: fcTrendDamping, eventPolicy: fcEventPolicy }));
@@ -4298,6 +4416,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     if (!mmm || mmm.empty || stage !== "lab" || !forecastModel) return null;
     try {
       if (forecastModel.isStructural) return forecastModel.route.backtest;
+      if (forecastModel.isAnnualAnalog) return annualAnalogBacktestShape(forecastModel);
       if (forecastModel.isAdditiveTotal) {
         const components = forecastModel.components.map((model) => buildForecastRecentBacktest(model));
         return mmmSumOsBacktests(components);
@@ -6813,14 +6932,20 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               <p style={{ fontSize: "12px", color: MUTED, marginBottom: "12px", lineHeight: 1.55 }}>
                 {forecast?.isStructural
                   ? tx("귀속형 Organic·Paid 후보를 4주 간격 rolling OOS로 비교합니다. 모델 선택은 실제 미래비용을 보지 않는 라이브 조건으로 수행하고, 실제 비용을 미리 넣은 조건부 오차와 naive 오차를 분리합니다. 예측 거리별로 모델이 naive를 이기지 못하면 해당 주차는 자동으로 naive로 되돌립니다. ", "Attributed Organic and Paid candidates are compared with rolling OOS origins spaced four weeks apart. Selection uses live conditions without seeing future spend; conditional error with known future spend and naive error are reported separately. At each horizon, the forecast falls back to naive when the model does not beat it. ")
+                  : forecast?.isAnnualAnalog
+                    ? tx("최근 구조변화가 있고 최신 12주 audit에서 검증된 경우, 전년 같은 주차 패턴을 최근 4주 수준으로 보정한 연간 반복형을 사용합니다. Direct Total과 Android+iOS 합산을 함께 비교하며, 이 경로는 Cost 반응 시나리오를 제공하지 않습니다. ", "When a recent structural break exists and the latest 12-week audit supports it, the forecast uses last year's matching weeks rescaled to the latest four-week level. Direct Total and Android+iOS sum are compared; this route does not provide budget-response scenarios. ")
                   : tx("같은 CSV·매핑을 쓰되, MMM은 전체 기간 기여도를 유지하고 예측 회귀만 Cost 학습 window·추세·계절성을 12주 rolling 검증으로 고릅니다. ", "Uses the same CSV/mapping, but keeps MMM on full-history contribution analysis and selects only the forecast regression's Cost window, trend, and seasonality with rolling 12-week validation. ")}
-                {!forecast?.isStructural && effPlatformFilter === "all" && tx("Total은 별도 회귀하지 않고 Android·iOS 예측을 주별로 합산합니다. ", "Total is not separately regressed; it is the weekly sum of Android and iOS forecasts. ")}
+                {!forecast?.isStructural && !forecast?.isAnnualAnalog && effPlatformFilter === "all" && tx("Total은 별도 회귀하지 않고 Android·iOS 예측을 주별로 합산합니다. ", "Total is not separately regressed; it is the weekly sum of Android and iOS forecasts. ")}
                 {tx(`선택한 목표(${mmmTargetDisplay(mmm.target, locale)})의 회색선은 실측, 파란선은 모델/예측, 음영은 최근 오차를 반영한 참고 범위입니다(인과 보장 아님).`, `For the selected target (${mmmTargetDisplay(mmm.target, locale)}), gray is actual, blue is model/forecast, and the band is a recent-error reference range, not a causal guarantee.`)}
               </p>
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "12px", alignItems: "center" }}>
                 <div className="ab-pillgroup">
                   <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
-                  <span className="ab-pill active">{forecast?.isStructural ? tx("라이브 OOS 자동선택 · naive 안전장치", "Live-OOS selection · naive guardrail") : "Empirical-Bayes MMM"}</span>
+                  <span className="ab-pill active">{forecast?.isStructural
+                    ? tx("라이브 OOS 자동선택 · naive 안전장치", "Live-OOS selection · naive guardrail")
+                    : forecast?.isAnnualAnalog
+                      ? tx("연간 반복형 · 구조변화 게이트", "Annual analog · regime gate")
+                      : "Empirical-Bayes MMM"}</span>
                 </div>
                 <div className="ab-pillgroup">
                   <span className="ab-pillgroup-label">{tx("범위", "Range")}</span>
@@ -6965,6 +7090,22 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   )}
                   {forecast.rollingSelection?.selected && (() => {
                     const selected = forecast.rollingSelection.selected;
+                    if (forecast.isAnnualAnalog) {
+                      return (
+                        <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
+                          <strong>{tx("구조변화 후 자동 선택 · 연간 반복형", "Auto-selected after regime change · annual analog")}</strong>
+                          <p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
+                            {(forecast.annualCandidates || []).map((candidate) =>
+                              `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} · ${tx("최신 12주", "latest 12 weeks")} ${candidate.latestWmape.toFixed(2)}% · ${tx("전체 rolling", "full rolling")} ${candidate.allWmape.toFixed(2)}%`
+                            ).join(" / ")}
+                            {` → ${forecast.selectedRoute === "direct-total" ? "Direct Total" : "Android + iOS"} ${tx("선택", "selected")}`}
+                          </p>
+                          <p style={{ margin: "6px 0 0", color: "#15803d", fontSize: "11.5px" }}>
+                            {tx(`최신 12주 wMAPE ${selected.latestWmape.toFixed(2)}% · 최근평균 기준선 ${selected.persistenceWmape.toFixed(2)}%. 모델 선택에 사용한 audit이므로 별도의 독립 최종 OOS 인증은 아닙니다.`, `Latest 12-week wMAPE ${selected.latestWmape.toFixed(2)}% · recent-average baseline ${selected.persistenceWmape.toFixed(2)}%. This audit selected the model, so it is not a separate independent final OOS certification.`)}
+                          </p>
+                        </Card>
+                      );
+                    }
                     const seasonLabel = selected.spec === "cost-trend"
                       ? tx("Cost + 추세", "Cost + trend")
                       : selected.seasonalityScope === "global" && selected.seasonalityPeriods.length === 1

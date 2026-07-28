@@ -7123,17 +7123,22 @@ export function mmmDataQualityAudit(panel) {
               // 75주 원자료처럼 가능한 경우 12주 독립 holdout 3회를 기본으로 쓴다.
               // 짧은 이력은 2회로만 후보를 만들되, Cost 변경 시나리오의 의사결정
               // 자격은 주지 않는다. 단순 최근 1회 적합이 과대평가되는 것을 막는다.
-              const feasibleFolds = Math.floor((n - 16) / horizon);
+              const foldStep = Math.max(1, options.foldStep || 4);
+              const feasibleFolds = Math.floor((n - 16 - horizon) / foldStep) + 1;
               const decisionMinFolds = Math.max(3, options.decisionMinFolds || 3);
               const minFolds = Math.max(2, Math.min(
                 options.minFolds == null ? decisionMinFolds : options.minFolds,
                 feasibleFolds,
               ));
-              const maxFolds = Math.max(minFolds, Math.min(options.maxFolds || decisionMinFolds, feasibleFolds));
-              const maxWindow = n - horizon * minFolds;
-              const defaultWindows = [...new Set([24, 30, 36, 42, 48, 54, 60, 72, 84, 104, 130, 156, maxWindow])];
-              const candidateWindows = (options.candidateWindows || defaultWindows)
+              const defaultWindows = [26, 52, 78];
+              let candidateWindows = (options.candidateWindows || defaultWindows)
                 .filter((window) => Number.isInteger(window) && window >= 16 && window + horizon * minFolds <= n);
+              // 26주조차 확보되지 않는 기존 짧은 CSV는 가능한 최대 창 하나로
+              // 읽기 전용 예측을 유지한다. 26·52·78 선택 계약은 충분한 이력에서만 적용한다.
+              if (!candidateWindows.length) {
+                const fallbackWindow = n - horizon * minFolds;
+                if (fallbackWindow >= 16) candidateWindows = [fallbackWindow];
+              }
               if (!panel?.targets?.[targetName]?.length || !_mmmChans(panel).length || !candidateWindows.length) {
                 return { enabled: false, reason: "insufficient-history", horizon, candidates: [] };
               }
@@ -7155,27 +7160,38 @@ export function mmmDataQualityAudit(panel) {
                 bayesHillSlopeGrid: options.bayesHillSlopeGrid || [1],
                 baselineKnots: [],
               };
+              const hasMappedControls = Object.keys(panel.dummy || {}).length > 0 || Object.keys(panel.steps || {}).length > 0;
+              const controlPolicies = hasMappedControls
+                ? [{ id: "none", mapped: false }, { id: "mapped", mapped: true }]
+                : [{ id: "none", mapped: false }];
+              const maxCandidateWindow = Math.max(...candidateWindows);
+              const latestHoldoutStart = n - horizon;
+              const holdoutStarts = [];
+              for (let start = maxCandidateWindow; start <= latestHoldoutStart; start += foldStep) holdoutStarts.push(start);
+              if (holdoutStarts.at(-1) !== latestHoldoutStart) holdoutStarts.push(latestHoldoutStart);
               const candidates = [];
               for (const spec of specs) {
                 const trendOptions = [{ trendScope: "recent", trendWindow: null }, ...[24, 36, "all"].map((trendWindow) => ({ trendScope: "global", trendWindow }))];
-                for (const trendOption of trendOptions) for (const window of candidateWindows) {
+                for (const trendOption of trendOptions) for (const window of candidateWindows) for (const controlPolicy of controlPolicies) {
                   if (window < spec.minWindow) continue;
                   const outcomes = [];
                   let trendEventControls = 0;
-                  for (let fold = maxFolds; fold >= 1; fold--) {
-                    const holdoutEnd = n - (fold - 1) * horizon;
-                    const holdoutStart = holdoutEnd - horizon;
+                  const controlledPanel = controlPolicy.mapped
+                    ? panel
+                    : { ...panel, dummy: {}, steps: {}, dummyDefs: [], stepDefs: [] };
+                  for (const holdoutStart of holdoutStarts) {
+                    const holdoutEnd = holdoutStart + horizon;
                     const trainStart = holdoutStart - window;
                     if (trainStart < 0 || holdoutStart < spec.minHistory) continue;
-                    const rawTrain = _mmmSliceWindowPanel(panel, trainStart, holdoutStart);
-                    const held = _mmmSliceWindowPanel(panel, holdoutStart, holdoutEnd);
+                    const rawTrain = _mmmSliceWindowPanel(controlledPanel, trainStart, holdoutStart);
+                    const held = _mmmSliceWindowPanel(controlledPanel, holdoutStart, holdoutEnd);
                     const seasonalModel = spec.seasonalityScope === "global"
-                      ? mmmForecastGlobalSeasonality(_mmmSliceWindowPanel(panel, 0, holdoutStart), targetName, spec.seasonalityPeriods)
+                      ? mmmForecastGlobalSeasonality(_mmmSliceWindowPanel(controlledPanel, 0, holdoutStart), targetName, spec.seasonalityPeriods)
                       : null;
                     if (spec.seasonalityScope === "global" && !seasonalModel) continue;
                     const trendStart = trendOption.trendWindow === "all" ? 0 : Math.max(0, holdoutStart - (trendOption.trendWindow || 0));
                     const trendModel = trendOption.trendScope === "global"
-                      ? mmmForecastGlobalBaseline(_mmmSliceWindowPanel(panel, trendStart, holdoutStart), targetName, [])
+                      ? mmmForecastGlobalBaseline(_mmmSliceWindowPanel(controlledPanel, trendStart, holdoutStart), targetName, [])
                       : null;
                     if (trendOption.trendScope === "global" && !trendModel) continue;
                     trendEventControls = Math.max(trendEventControls, trendModel?.eventControls?.length || seasonalModel?.eventControls?.length || 0);
@@ -7194,7 +7210,15 @@ export function mmmDataQualityAudit(panel) {
                       skipTransformUncertainty: true,
                       enableBaselineSelection: false,
                     });
+                    const liveDummy = Object.fromEntries(Object.keys(train.dummy || {}).map((key) => [key, Array(horizon).fill(0)]));
+                    const liveSteps = Object.fromEntries(Object.entries(train.steps || {}).map(([key, values]) => [key, Array(horizon).fill(values.at(-1) || 0)]));
                     const forecast = fit && mmmBayesianForecast(fit, train, held.ch, horizon, {
+                      futureDummy: liveDummy,
+                      futureSteps: liveSteps,
+                      clampScenario: false,
+                      trendDamping: 0,
+                    });
+                    const conditionalForecast = fit && mmmBayesianForecast(fit, train, held.ch, horizon, {
                       futureDummy: held.dummy,
                       futureSteps: held.steps,
                       clampScenario: false,
@@ -7204,23 +7228,37 @@ export function mmmDataQualityAudit(panel) {
                     const predicted = (seasonalModel || trendModel)
                       ? forecast?.predFut?.map((value, index) => value + futureOffsetAt(held.week[index]))
                       : forecast?.predFut;
+                    const conditionalPredicted = (seasonalModel || trendModel)
+                      ? conditionalForecast?.predFut?.map((value, index) => value + futureOffsetAt(held.week[index]))
+                      : conditionalForecast?.predFut;
                     if (!predicted?.length || predicted.length !== actual?.length || !predicted.every(Number.isFinite)) continue;
                     const recent = train.targets[targetName].slice(-Math.min(8, train.targets[targetName].length));
                     const persistence = recent.reduce((sum, value) => sum + value, 0) / Math.max(1, recent.length);
-                    outcomes.push({ actual, predicted, persistence: Array(horizon).fill(persistence) });
+                    outcomes.push({
+                      actual,
+                      predicted,
+                      conditionalPredicted: conditionalPredicted?.every(Number.isFinite) ? conditionalPredicted : predicted,
+                      persistence: Array(horizon).fill(persistence),
+                      offset: n - holdoutEnd,
+                    });
                   }
-                  if (outcomes.length < minFolds) continue;
-                  const actualAbs = outcomes.flatMap((item) => item.actual.map((value) => Math.abs(value)));
-                  const modelAbsError = outcomes.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.predicted[index])));
-                  const persistenceAbsError = outcomes.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.persistence[index])));
+                  const development = outcomes.filter((item) => item.offset >= horizon);
+                  const latest = outcomes.find((item) => item.offset === 0) || null;
+                  if (development.length < minFolds || !latest) continue;
+                  const actualAbs = development.flatMap((item) => item.actual.map((value) => Math.abs(value)));
+                  const modelAbsError = development.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.predicted[index])));
+                  const conditionalAbsError = development.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.conditionalPredicted[index])));
+                  const persistenceAbsError = development.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.persistence[index])));
                   const denominator = actualAbs.reduce((sum, value) => sum + value, 0);
                   if (!(denominator > 0)) continue;
                   const foldWmape = (item) => item.actual.reduce((sum, value, index) => sum + Math.abs(value - item.predicted[index]), 0)
                     / Math.max(1e-9, item.actual.reduce((sum, value) => sum + Math.abs(value), 0)) * 100;
                   const persistenceFoldWmape = (item) => item.actual.reduce((sum, value, index) => sum + Math.abs(value - item.persistence[index]), 0)
                     / Math.max(1e-9, item.actual.reduce((sum, value) => sum + Math.abs(value), 0)) * 100;
-                  const modelFold = outcomes.map(foldWmape);
-                  const baselineFold = outcomes.map(persistenceFoldWmape);
+                  const developmentModelFold = development.map(foldWmape);
+                  const developmentBaselineFold = development.map(persistenceFoldWmape);
+                  const allDenominator = outcomes.flatMap((item) => item.actual).reduce((sum, value) => sum + Math.abs(value), 0);
+                  const allAbsoluteError = outcomes.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.predicted[index]))).reduce((sum, value) => sum + value, 0);
                   candidates.push({
                     window,
                     spec: spec.id,
@@ -7229,17 +7267,35 @@ export function mmmDataQualityAudit(panel) {
                     trendScope: trendOption.trendScope,
                     trendWindow: trendOption.trendWindow,
                     trendEventControls,
-                    folds: outcomes.length,
+                    controlPolicy: controlPolicy.id,
+                    folds: development.length,
+                    allFolds: outcomes.length,
                     wmape: modelAbsError.reduce((sum, value) => sum + value, 0) / denominator * 100,
+                    conditionalWmape: conditionalAbsError.reduce((sum, value) => sum + value, 0) / denominator * 100,
+                    allWmape: allDenominator > 0 ? allAbsoluteError / allDenominator * 100 : null,
                     persistenceWmape: persistenceAbsError.reduce((sum, value) => sum + value, 0) / denominator * 100,
-                    foldWins: modelFold.filter((value, index) => value < baselineFold[index]).length,
-                    latestWmape: modelFold.at(-1),
-                    latestPersistenceWmape: baselineFold.at(-1),
+                    foldWins: developmentModelFold.filter((value, index) => value < developmentBaselineFold[index]).length,
+                    latestWmape: foldWmape(latest),
+                    latestPersistenceWmape: persistenceFoldWmape(latest),
+                    foldSeries: outcomes.map((item) => ({
+                      offset: item.offset,
+                      actual: item.actual,
+                      predicted: item.predicted,
+                      conditionalPredicted: item.conditionalPredicted,
+                    })),
                   });
                 }
               }
-              candidates.sort((a, b) => a.wmape - b.wmape || b.foldWins - a.foldWins || a.window - b.window);
+              candidates.sort((a, b) =>
+                a.wmape - b.wmape
+                || (a.controlPolicy === b.controlPolicy ? 0 : a.controlPolicy === "none" ? -1 : 1)
+                || b.foldWins - a.foldWins
+                || a.window - b.window,
+              );
               const selected = candidates[0] || null;
+              candidates.forEach((candidate) => {
+                if (candidate !== selected) delete candidate.foldSeries;
+              });
               const decisionReasons = [];
               if (selected) {
                 if (selected.folds < decisionMinFolds) decisionReasons.push("fewer-than-three-holdouts");
@@ -7250,6 +7306,7 @@ export function mmmDataQualityAudit(panel) {
                 enabled: !!selected,
                 reason: selected ? null : "no-valid-time-ordered-fit",
                 horizon,
+                foldStep,
                 feasibleFolds: Math.max(0, feasibleFolds),
                 decisionMinFolds,
                 candidates,

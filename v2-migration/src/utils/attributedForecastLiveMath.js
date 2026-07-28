@@ -27,16 +27,21 @@ const COST_SPECS = [
   { id: "cost-holt-lookback", kind: "holt", window: "lookback", alpha: 0.6, beta: 0.2, phi: 0.8 },
 ];
 
+const STEP_POLICIES = ["none", "reset", "level"];
+
 const MODEL_SPECS = LOOKBACK_WEEKS.flatMap((trainingWindow) =>
   ORGANIC_SPECS.flatMap((organic) =>
     PAID_SPECS.flatMap((paid) =>
-      COST_SPECS.map((cost) => ({
-        id: `lb${trainingWindow}__${organic.id}__${paid.id}__${cost.id}`,
-        trainingWindow,
-        organic,
-        paid,
-        cost,
-      })),
+      COST_SPECS.flatMap((cost) =>
+        STEP_POLICIES.map((stepPolicy) => ({
+          id: `lb${trainingWindow}__${organic.id}__${paid.id}__${cost.id}__step-${stepPolicy}`,
+          trainingWindow,
+          organic,
+          paid,
+          cost,
+          stepPolicy,
+        })),
+      ),
     ),
   ),
 );
@@ -92,6 +97,19 @@ function panelFor(dataset, platform = "total") {
     else item.costs[record.channel] = (item.costs[record.channel] || 0) + record.cost;
   });
   const rows = dataset.weeks.map((week) => byWeek.get(week));
+  const relevantEvents = (dataset.events || []).filter((event) =>
+    platform === "total" || event.platform === platform || event.platform === "total",
+  );
+  const eventSeries = {};
+  relevantEvents.forEach((event) => {
+    const key = platform === "total" && event.platform !== "total" ? `${event.platform}::${event.key}` : event.key;
+    if (!eventSeries[key]) eventSeries[key] = Array(dataset.weeks.length).fill(0);
+    const index = dataset.weeks.indexOf(event.week);
+    if (index >= 0 && Math.abs(event.value) > Math.abs(eventSeries[key][index])) eventSeries[key][index] = event.value;
+  });
+  const eventBoundaries = [...new Set(Object.values(eventSeries).flatMap((values) =>
+    values.flatMap((value, index) => value !== 0 && (index === 0 || values[index - 1] === 0) ? [index] : []),
+  ))].sort((left, right) => left - right);
   const panel = {
     platform,
     weeks: dataset.weeks,
@@ -100,6 +118,8 @@ function panelFor(dataset, platform = "total") {
     organic: rows.map((row) => row.organic),
     paid: rows.map((row) => Math.max(0, row.total - row.organic)),
     costs: rows.map((row) => channels.map((channel) => row.costs[channel] || 0)),
+    eventSeries,
+    eventBoundaries,
   };
   cached.set(platform, panel);
   return panel;
@@ -239,11 +259,111 @@ function paidForecast(panel, trainEnd, futureCosts, spec, trainingWindow) {
   return prediction?.every(Number.isFinite) ? prediction : null;
 }
 
+function eventAdjustedTrainingWindow(panel, trainEnd, trainingWindow, stepPolicy) {
+  if (stepPolicy !== "reset") return { window: trainingWindow, boundary: null };
+  const baseStart = Math.max(0, trainEnd - trainingWindow);
+  const latestBoundary = panel.eventBoundaries.filter((index) => index >= baseStart && index < trainEnd).at(-1);
+  if (latestBoundary == null) return { window: trainingWindow, boundary: null };
+  const observedWeeks = trainEnd - latestBoundary;
+  if (observedWeeks < 4) return { window: trainingWindow, boundary: null };
+  return { window: Math.min(trainingWindow, observedWeeks), boundary: latestBoundary };
+}
+
+function solveLinearSystem(matrix, vector) {
+  const n = vector.length;
+  const augmented = matrix.map((row, index) => [...row, vector[index]]);
+  for (let column = 0; column < n; column++) {
+    let pivot = column;
+    for (let row = column + 1; row < n; row++) {
+      if (Math.abs(augmented[row][column]) > Math.abs(augmented[pivot][column])) pivot = row;
+    }
+    if (Math.abs(augmented[pivot][column]) < 1e-10) return null;
+    [augmented[column], augmented[pivot]] = [augmented[pivot], augmented[column]];
+    const divisor = augmented[column][column];
+    for (let index = column; index <= n; index++) augmented[column][index] /= divisor;
+    for (let row = 0; row < n; row++) {
+      if (row === column) continue;
+      const factor = augmented[row][column];
+      for (let index = column; index <= n; index++) augmented[row][index] -= factor * augmented[column][index];
+    }
+  }
+  return augmented.map((row) => row[n]);
+}
+
+function stepLevelAdjustment(panel, values, trainEnd, trainingWindow, stepPolicy) {
+  if (stepPolicy !== "level") return { values, futureScale: 1, controls: [] };
+  const start = Math.max(0, trainEnd - trainingWindow);
+  const controls = Object.entries(panel.eventSeries || {}).filter(([, series]) => {
+    const sample = series.slice(start, trainEnd);
+    const active = sample.filter((value) => value !== 0).length;
+    return active >= 4 && sample.length - active >= 4;
+  });
+  if (!controls.length) return { values, futureScale: 1, controls: [] };
+  // 절편·완만한 시간 추세를 함께 통제해 장기 성장/하락을 Step 효과로
+  // 잘못 흡수하지 않는다. Step 계수만 원계열에서 제거한다.
+  const rows = [];
+  const outcome = [];
+  for (let index = start; index < trainEnd; index++) {
+    const value = values[index];
+    if (!Number.isFinite(value) || value < 0) continue;
+    const trend = trainEnd - start > 1 ? (index - start) / (trainEnd - start - 1) - 0.5 : 0;
+    rows.push([1, trend, ...controls.map(([, series]) => series[index] || 0)]);
+    outcome.push(Math.log1p(value));
+  }
+  const width = 2 + controls.length;
+  if (rows.length < width + 4) return { values, futureScale: 1, controls: [] };
+  const xtx = Array.from({ length: width }, () => Array(width).fill(0));
+  const xty = Array(width).fill(0);
+  rows.forEach((row, rowIndex) => {
+    row.forEach((left, i) => {
+      xty[i] += left * outcome[rowIndex];
+      row.forEach((right, j) => { xtx[i][j] += left * right; });
+    });
+  });
+  // 중첩 Step(Delist 이후 + Reopen 이후)의 공선성을 안정화한다.
+  for (let index = 2; index < width; index++) xtx[index][index] += 0.01;
+  const coefficients = solveLinearSystem(xtx, xty);
+  if (!coefficients?.every(Number.isFinite)) return { values, futureScale: 1, controls: [] };
+  const stepCoefficients = coefficients.slice(2).map((value) => Math.max(-2, Math.min(2, value)));
+  const scaleAt = (index) => Math.exp(stepCoefficients.reduce(
+    (sum, coefficient, controlIndex) => sum + coefficient * (controls[controlIndex][1][index] || 0),
+    0,
+  ));
+  const adjusted = values.map((value, index) => Number.isFinite(value) ? Math.max(0, value / scaleAt(index)) : value);
+  return {
+    values: adjusted,
+    futureScale: scaleAt(Math.max(0, trainEnd - 1)),
+    controls: controls.map(([key], index) => ({ key, logEffect: stepCoefficients[index] })),
+  };
+}
+
+function stepAdjustedCostRows(panel, trainEnd, horizon, spec) {
+  const columns = panel.channels.map((_, column) => {
+    const values = panel.costs.map((row) => row[column]);
+    const adjustment = stepLevelAdjustment(panel, values, trainEnd, spec.trainingWindow, spec.stepPolicy);
+    const forecast = forecastCostColumn(adjustment.values, trainEnd, horizon, spec.cost, spec.trainingWindow);
+    return forecast?.map((value) => Math.max(0, value * adjustment.futureScale));
+  });
+  if (columns.some((column) => !column)) return null;
+  return Array.from({ length: horizon }, (_, index) => columns.map((column) => column[index]));
+}
+
 function fitPanel(panel, trainEnd, horizon, spec, suppliedCosts = null) {
-  const futureCosts = suppliedCosts || forecastCostRows(panel, trainEnd, horizon, spec);
+  const eventWindow = eventAdjustedTrainingWindow(panel, trainEnd, spec.trainingWindow, spec.stepPolicy);
+  const effectiveSpec = { ...spec, trainingWindow: eventWindow.window };
+  const futureCosts = suppliedCosts || (spec.stepPolicy === "level"
+    ? stepAdjustedCostRows(panel, trainEnd, horizon, effectiveSpec)
+    : forecastCostRows(panel, trainEnd, horizon, effectiveSpec));
   if (!futureCosts || futureCosts.length !== horizon) return null;
-  const organic = organicForecast(panel, trainEnd, horizon, spec.organic, spec.trainingWindow);
-  const performance = paidForecast(panel, trainEnd, futureCosts, spec.paid, spec.trainingWindow);
+  const organicAdjustment = stepLevelAdjustment(panel, panel.organic, trainEnd, eventWindow.window, spec.stepPolicy);
+  const paidAdjustment = stepLevelAdjustment(panel, panel.paid, trainEnd, eventWindow.window, spec.stepPolicy);
+  const adjustedPanel = spec.stepPolicy === "level"
+    ? { ...panel, organic: organicAdjustment.values, paid: paidAdjustment.values }
+    : panel;
+  const organicBase = organicForecast(adjustedPanel, trainEnd, horizon, spec.organic, eventWindow.window);
+  const performanceBase = paidForecast(adjustedPanel, trainEnd, futureCosts, spec.paid, eventWindow.window);
+  const organic = organicBase?.map((value) => Math.max(0, value * organicAdjustment.futureScale));
+  const performance = performanceBase?.map((value) => Math.max(0, value * paidAdjustment.futureScale));
   if (!organic || !performance) return null;
   return {
     organic,
@@ -251,6 +371,12 @@ function fitPanel(panel, trainEnd, horizon, spec, suppliedCosts = null) {
     predicted: organic.map((value, index) => value + performance[index]),
     futureCosts,
     spec,
+    eventBoundary: eventWindow.boundary,
+    effectiveTrainingWindow: eventWindow.window,
+    stepControls: {
+      organic: organicAdjustment.controls,
+      performance: paidAdjustment.controls,
+    },
   };
 }
 
@@ -551,6 +677,31 @@ function regimeDiagnostics(dataset) {
   };
 }
 
+function structuralStepDiagnostics(dataset) {
+  const groups = new Map();
+  (dataset.events || []).forEach((event) => {
+    const groupKey = `${event.platform}::${event.key}`;
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, {
+        key: event.key,
+        label: event.label,
+        platform: event.platform,
+        firstActiveWeek: event.firstActiveWeek ?? event.week,
+        sourceActiveWeeks: event.sourceActiveWeeks || 1,
+      });
+    }
+  });
+  return {
+    mappedHeaders: dataset.eventHeaders || [],
+    conflicts: dataset.eventConflicts || [],
+    steps: [...groups.values()].map((step) => ({
+      ...step,
+      firstActiveLabel: isoDate(step.firstActiveWeek),
+      expandedFromPulse: step.sourceActiveWeeks === 1,
+    })),
+  };
+}
+
 export function runAttributedForecastLiveRouter(dataset, options = {}) {
   if (!dataset?.weeks?.length) return null;
   const holdout = options.holdout || 12;
@@ -616,6 +767,26 @@ export function runAttributedForecastLiveRouter(dataset, options = {}) {
     || left.route.localeCompare(right.route),
   );
   const selected = bestByRoute[0];
+  const stepPolicyCandidates = STEP_POLICIES.map((stepPolicy) => {
+    const candidates = evaluated.filter((candidate) => candidate.spec.stepPolicy === stepPolicy);
+    candidates.sort((left, right) =>
+      left.developmentPooledWmape - right.developmentPooledWmape
+      || left.worstWmape - right.worstWmape
+      || left.spec.id.localeCompare(right.spec.id),
+    );
+    const candidate = candidates[0];
+    return candidate ? {
+      stepPolicy,
+      route: candidate.route,
+      spec: candidate.spec,
+      developmentPooledWmape: candidate.developmentPooledWmape,
+      pooledWmape: candidate.pooledWmape,
+      conditionalPooledWmape: candidate.conditionalPooledWmape,
+      naivePooledWmape: candidate.naivePooledWmape,
+      worstWmape: candidate.worstWmape,
+      componentPooledWmape: candidate.componentPooledWmape,
+    } : null;
+  }).filter(Boolean);
   const latest = selected.folds.find((fold) => fold.offset === 0);
   const osCandidate = bestByRoute.find((candidate) => candidate.route === "android-ios-sum");
   if (!latest || !osCandidate) return null;
@@ -642,7 +813,7 @@ export function runAttributedForecastLiveRouter(dataset, options = {}) {
   const contextLength = 12;
   const lastWeek = dataset.weeks.at(-1);
   return {
-    model: "live-oos-organic-paid-v3",
+    model: "live-oos-organic-paid-v4-step-selection",
     selectedRoute: selected.route,
     selectedSpec: selected.spec,
     eligible,
@@ -653,6 +824,7 @@ export function runAttributedForecastLiveRouter(dataset, options = {}) {
     foldStep: FOLD_STEP,
     selectionHoldoutWeeks: holdout,
     lookbackCandidates,
+    stepPolicyCandidates,
     candidates: bestByRoute.map((candidate) => ({
       route: candidate.route,
       spec: candidate.spec,
@@ -697,6 +869,7 @@ export function runAttributedForecastLiveRouter(dataset, options = {}) {
       useModelByHorizon: futureUseModel,
     },
     diagnostics: regimeDiagnostics(dataset),
+    structuralSteps: structuralStepDiagnostics(dataset),
   };
 }
 
