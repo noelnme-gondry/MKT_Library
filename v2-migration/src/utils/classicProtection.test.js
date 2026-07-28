@@ -8,7 +8,7 @@ const PROTECTED_FILES = {
   "src/utils/mmmMathPr416.js": "986decb7e6efc15b58f7b3c909e813d7aa383c4af8a8bc54449d4a4ceaf24f41",
   // Forecast routing/UI and the v2 forecast selector changed intentionally;
   // the frozen Classic engine above remains byte-identical.
-  "src/components/tools/MarketingResponse.jsx": "3844ee7f5a8008a824e5b8278c9f08722e6c0e393dd63e69636e33881f4b0854",
+  "src/components/tools/MarketingResponse.jsx": "9db358a7a56df559e374127d418da9aad1ee93a814edada3ce0ca61df15cdb94",
   "src/utils/mmmMath.js": "4eb5e131bf7e036b385bf8fb5837902427619f2c7ecbe78d60614d828ff9e79d",
 };
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runAnnualAnalogRouter, shouldUseAnnualAnalogFallback } from "./annualAnalogForecast";
+import { runAnnualAnalogRouter, shouldUseAnnualAnalogFallback, similarSeasonAt } from "./annualAnalogForecast";
 
 function panel(values, stepAt = null) {
   return {
@@ -33,7 +33,7 @@ describe("annual analog regime router", () => {
     });
     expect(result.currentBreak).toBe(true);
     expect(result.qualified).toBe(true);
-    expect(result.model).toBe("bounded-regime-search-v3");
+    expect(result.model).toBe("bounded-regime-search-v4");
     expect(result.osGuardrailPassed).toBe(true);
     expect(result.osGuardrail.every((component) => component.passed)).toBe(true);
     expect(result.selected.latestWmape).toBeLessThan(1e-8);
@@ -71,11 +71,19 @@ describe("annual analog regime router", () => {
     const total = panel(android.targets.Regs.map((value, index) => value + ios.targets.Regs[index]), 152);
     total.targets.PaidRegs = androidPaid.map((value, index) => value + iosPaid[index]);
     const result = runAnnualAnalogRouter({ totalPanel: total, androidPanel: android, iosPanel: ios });
-    expect(result.model).toBe("paid-organic-adaptive-search-v2");
+    expect(result.model).toBe("paid-organic-adaptive-search-v3");
     expect(result.paidOrganicHybrid).toBe(true);
     expect(result.adaptiveModelSearch).toBe(true);
     expect(result.modelSearch.maxTrainingWeeks).toBe(104);
     expect(result.modelSearch.blendWeights).toEqual([0, 0.25, 0.5, 0.75, 1]);
+    expect(result.modelSearch.criteria).toEqual({
+      overallBase: 1,
+      recentDeterioration: 0.1,
+      tailRiskDeterioration: 0.1,
+      instability: 0.1,
+    });
+    expect(result.modelSearch.routeDecision.winner.reasonCodes.length).toBeGreaterThan(0);
+    expect(result.modelSearch.android.auditDecision.winner.ranks.overall).toBeGreaterThan(0);
     expect(result.modelSearch.android.zeroedPaidWeeks).toBe(2);
     expect(result.modelSearch.ios.zeroedPaidWeeks).toBe(2);
     expect(Number.isFinite(result.selected.latestWmape)).toBe(true);
@@ -92,6 +100,32 @@ describe("annual analog regime router", () => {
     expect(result.selected.future.predicted).toEqual(
       result.selected.future.organic.map((value, index) => value + result.selected.future.performance[index]),
     );
+  });
+
+  it("weights similar seasonal segments without reading the forecast outcome", () => {
+    const trainEnd = 118;
+    const horizon = 12;
+    const series = Array(130).fill(100);
+    const matchingShape = Array.from({ length: 13 }, (_, index) => 80 + index * 2);
+    matchingShape.forEach((value, index) => {
+      series[trainEnd - 13 + index] = value;
+      series[trainEnd - 52 - 13 + index] = value;
+    });
+    Array.from({ length: horizon }, (_, index) => 180 + index * 3).forEach((value, index) => {
+      series[trainEnd - 52 + index] = value;
+    });
+    const spec = { kind: "similar-season", matchWeeks: 13, temperature: 0.25, neighbors: 2 };
+    const original = similarSeasonAt(series, trainEnd, horizon, spec);
+    const changedFuture = series.map((value, index) => index >= trainEnd ? value * 10 : value);
+    const perturbed = similarSeasonAt(changedFuture, trainEnd, horizon, spec);
+    expect(original.analogs[0].lag).toBe(52);
+    expect(original.analogs.reduce((sum, analog) => sum + analog.weight, 0)).toBeCloseTo(1, 10);
+    expect(perturbed.predicted).toEqual(original.predicted);
+
+    const longHorizon = similarSeasonAt([...series, ...Array(52).fill(999999)], 120, 52, spec);
+    const changedLongHorizon = similarSeasonAt([...series, ...Array(52).fill(1)], 120, 52, spec);
+    expect(longHorizon.predicted).toEqual(changedLongHorizon.predicted);
+    expect(longHorizon.analogs.every((analog) => analog.lag >= 52)).toBe(true);
   });
 
   it("uses an uncertified annual analog only as a safer post-break fallback", () => {

@@ -300,6 +300,23 @@ describe("MarketingResponse render smoke", () => {
       annualQualified: false,
       selectedRoute: "direct-total",
       rollingSelection: { selected: { latestWmape: 6.44, wmape: 24.51 } },
+      adaptiveModelSearch: true,
+      modelSearch: {
+        maxTrainingWeeks: 104,
+        blendWeights: [0, 0.5, 1],
+        routeDecision: {
+          candidatesCompared: 8,
+          scoreGap: 1.25,
+          winner: {
+            overallWmape: 17.8,
+            recentWmape: 8.1,
+            tailRiskWmape: 24.2,
+            instabilityWmape: 5.4,
+            ranks: { overall: 1, recent: 2, tailRisk: 1, instability: 3 },
+            reasonCodes: ["overall", "tailRisk"],
+          },
+        },
+      },
       actual: [100],
       fittedHist: [98],
       histLabels: ["W1"],
@@ -313,6 +330,10 @@ describe("MarketingResponse render smoke", () => {
     expect(csv).toContain("fitted_or_forecast_live,Organic Predicted,Perf Predicted,lower_live,upper_live");
     expect(csv).toContain("W2,best_available_uncertified,,110,,,90,130");
     expect(csv).toContain("Paid/Organic 실측이 없어");
+    expect(csv).toContain("# 선정 이유");
+    expect(csv).toContain("전체 OOS 17.80%(#1)");
+    expect(csv).toContain("2위보다 1.25p 낮았습니다");
+    expect(csv).toContain("후보로 비교했으나 현재 데이터에서는 다른 모델이 우세");
   });
 
   it("parses formatted experiment values before deriving traffic", () => {
