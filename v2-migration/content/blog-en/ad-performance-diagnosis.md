@@ -12,6 +12,13 @@ When you operate marketing campaigns, ad performance sometimes worsens without a
 
 But a higher CPA does not automatically mean the creative is worse. Conversion tracking may have broken, budget may have shifted toward a more expensive channel, or the landing page may be the problem. Diagnose in this order: **validate the number → isolate the scope → separate mix from efficiency → trace the funnel**.
 
+## First choose: a sudden anomaly, or a sustained performance drop?
+
+- **A metric jumped today or over only a few recent days**: start with [campaign anomaly detection](/blog/campaign-anomaly-detection). First confirm that the movement broke outside its normal range.
+- **CPA, CTR, or conversion rate keeps worsening across multiple periods**: follow this four-step diagnosis. It is for narrowing a persistent problem before changing anything.
+
+Treating one day of noise like a long-term problem can reset learning unnecessarily. Treating a repeated decline like noise can let the cause grow. Separate the time pattern first.
+
 ![Four-step ad performance diagnosis flow: validate data, isolate channels, split mix and efficiency, then diagnose the funnel](/blog-assets/ad-performance-drop/diagnosis-order.svg)
 
 ## The four-step diagnosis sequence

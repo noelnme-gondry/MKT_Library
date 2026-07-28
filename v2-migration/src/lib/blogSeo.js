@@ -78,7 +78,8 @@ const UPDATED_TODAY_EN = new Set(["ad-performance-diagnosis", "marketing-mix-mod
 // 2026-07-28: Search Console 노출어 감사 후, 제목/설명에 검색 의도를 명시적으로
 // 복구한 글만 실제 편집일로 갱신한다. 단순 메타 재생성에 날짜를 쓰지 않는다.
 const UPDATED_2026_07_28 = new Set([
-  "aso-basics-guide", "budget-marginal-efficiency", "cannibalization-organic-paid", "cohort-analysis-guide",
+  "ad-performance-diagnosis", "aso-basics-guide", "attribution-data-mismatch", "budget-marginal-efficiency",
+  "campaign-anomaly-detection", "cannibalization-organic-paid", "cohort-analysis-guide", "ga4-data-traps",
 ]);
 
 export function getBlogSeo(locale, slug, source = {}) {

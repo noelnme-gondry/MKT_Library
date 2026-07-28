@@ -10,6 +10,13 @@ draft: false
 
 You open the dashboard one day and CPA has jumped. Your stomach drops. But before you touch anything, ask one question: **is this a real anomaly, or just that day's noise?**
 
+## First choose: a sudden spike, or a sustained performance drop?
+
+- **A number jumped today or only over the last few days**: start here. Confirm that it broke outside the normal range before decomposing the cause.
+- **CPA, CTR, or conversion rate has worsened across several periods**: go to [the four-step ad performance diagnosis](/blog/ad-performance-diagnosis). It moves from measurement to scope, mix versus efficiency, and then the funnel.
+
+A one-day anomaly and a continuing decline should not get the same response. Confirm the signal first; move to the deeper diagnosis only when the problem persists.
+
 ## Daily numbers wobble by nature
 
 Day-to-day performance always swings. Weekend and day-of-week effects, the luck of a low-sample day, billing lag, yesterday's conversions posting today. Mistake this **normal in-range wobble** for an anomaly and act on it, and you can [reset the platform's learning](/blog/ad-machine-learning) and make things worse.
@@ -38,3 +45,5 @@ The [operations dashboard](/dashboard)'s anomaly tab auto-flags days that break 
 ## Let's be honest
 
 Anomaly detection tells you "this looks off" — it doesn't prove the cause. Even a day that broke the band may have outside factors mixed in (a competitor promo, seasonality, a landing outage). Use the spiked number only as a **starting point** for investigation, and check what actually happened that day before deciding.
+
+If the anomaly proves to be a repeating decline, the next question is what to fix first. Continue with [the four-step ad performance diagnosis](/blog/ad-performance-diagnosis) to narrow measurement, channel, mix, and funnel causes in order.

@@ -69,6 +69,21 @@ describe("editorial SEO registries", () => {
     }
   });
 
+  it("keeps paired diagnostic articles linked in both directions for each locale", () => {
+    const pairs = [
+      ["attribution-data-mismatch", "ga4-data-traps"],
+      ["campaign-anomaly-detection", "ad-performance-diagnosis"],
+    ];
+    for (const locale of ["ko", "en"]) {
+      const posts = new Map(getAllPosts(locale).map((post) => [post.slug, post]));
+      const prefix = locale === "en" ? "/en" : "";
+      for (const [first, second] of pairs) {
+        expect(posts.get(first).html).toContain(`href="${prefix}/blog/${second}"`);
+        expect(posts.get(second).html).toContain(`href="${prefix}/blog/${first}"`);
+      }
+    }
+  });
+
   it("does not invent an English URL for unpublished draft content", () => {
     expect(localizedHref("/blog/adjust-vs-appsflyer", "en")).toBe("/blog/adjust-vs-appsflyer");
     expect(localizedHref("/blog/ad-performance-diagnosis", "en")).toBe("/en/blog/ad-performance-diagnosis");
