@@ -4416,6 +4416,23 @@ body:not(.light-mode) .moon-icon {
 .site-footer__column a:hover { color: var(--primary); }
 @media (max-width: 720px) { .site-footer__inner { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 26px 16px; padding: 30px 1rem; } .site-footer__brand { grid-column: 1 / -1; } }
 
+.policy-page { width: min(760px, calc(100% - 40px)); margin: 0 auto; padding: 64px 0 80px; color: var(--text-secondary); }
+.policy-page__header { padding-bottom: 30px; border-bottom: 1px solid var(--border-subtle); }
+.policy-page__topline { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; color: var(--text-muted); font: 700 11px var(--font-mono); letter-spacing: .12em; }
+.policy-page__topline a { color: var(--primary); text-decoration: none; letter-spacing: 0; }
+.policy-page__header h1 { margin: 0; color: var(--text-primary); font-size: clamp(30px, 5vw, 46px); line-height: 1.12; letter-spacing: -.04em; }
+.policy-page__header > p { max-width: 650px; margin: 16px 0 0; font-size: 16px; line-height: 1.75; }
+.policy-page__body { display: grid; gap: 30px; padding: 34px 0; }
+.policy-page__body section { padding-left: 18px; border-left: 2px solid var(--border-subtle); }
+.policy-page__body h2 { margin: 0 0 10px; color: var(--text-primary); font-size: 17px; letter-spacing: -.015em; }
+.policy-page__body p, .policy-page__body ul { margin: 0; font-size: 14px; line-height: 1.8; }
+.policy-page__body ul { padding-left: 20px; }
+.policy-page__body a { color: var(--primary); text-underline-offset: 3px; }
+.policy-page__contact { padding: 18px 20px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-container-low); }
+.policy-page__contact > a { display: inline-block; margin-bottom: 7px; font: 700 15px var(--font-mono); overflow-wrap: anywhere; }
+.policy-page__updated { padding-top: 18px; border-top: 1px solid var(--border-subtle); color: var(--text-muted); font: 11px var(--font-mono); }
+@media (max-width: 560px) { .policy-page { width: min(100% - 32px, 760px); padding: 40px 0 56px; } .policy-page__body section { padding-left: 14px; } }
+
 /* ======================================================================
    2026 Operator Desk — site-wide visual system
    A decision workspace for performance marketers: conclusions first,
