@@ -1,14 +1,14 @@
 ---
 title: "Is Paid Advertising Eating Your Free Traffic?"
-description: "How to diagnose whether paid ads are cannibalizing organic conversions, and how to tell correlation from causation."
+description: "Diagnose internal cannibalisation (US: internal cannibalization): when paid ads displace organic conversions, and separate correlation from causation."
 date: "2026-07-15"
 slug: "cannibalization-organic-paid"
-keywords: "cannibalization, organic cannibalization, paid vs organic, brand search ads, incrementality, cannibalization diagnosis, organic conversion decline"
+keywords: "cannibalization, cannibalisation, internal cannibalization, internal cannibalisation, organic cannibalization, paid vs organic, brand search ads, incrementality, cannibalization diagnosis, organic conversion decline"
 tags: ["Analysis", "Incrementality Analysis"]
 draft: false
 ---
 
-Turn off brand-search ads and organic traffic rises by exactly that much? Then that ad spend was re-buying **people who were coming anyway**. That's cannibalization — paid eating into free traffic.
+Turn off brand-search ads and organic traffic rises by exactly that much? Then that ad spend was re-buying **people who were coming anyway**. That's **internal cannibalization** (also spelled *internal cannibalisation*) — paid eating into free traffic.
 
 ## Why it's dangerous
 

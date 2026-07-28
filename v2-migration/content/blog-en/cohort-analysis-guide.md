@@ -1,6 +1,6 @@
 ---
 title: "Retention Is 30% but Revenue Won't Move — Split by Cohort and You'll See"
-description: "Average retention lies. When new users keep pouring in, the number looks fine even as users bleed out. How to read a retention curve with cohort analysis and use it for channel and onboarding decisions."
+description: "Read D1, D7, and D30 retention cohorts instead of a misleading average. Learn how cohort analysis reveals churn and guides channel and onboarding decisions."
 date: "2026-07-15"
 slug: "cohort-analysis-guide"
 keywords: "cohort analysis, what is cohort analysis, retention analysis, retention curve, cohort retention, D1 D7 D30 retention, how to read app retention, improve user retention, average retention trap, cohort table"
