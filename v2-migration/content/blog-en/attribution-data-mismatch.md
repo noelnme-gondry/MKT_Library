@@ -12,6 +12,13 @@ Same week, same conversions — Meta's dashboard says 120, GA4 says 70, your MMP
 
 ![Same week's conversion count, different by system](/blog-assets-en/attribution-data-mismatch/four-numbers.svg)
 
+## First choose: do systems disagree, or does GA4 itself look wrong?
+
+- **Meta, GA4, MMP, and the order database disagree**: stay here. This is about aligning attribution rules and choosing a reporting source.
+- **GA4 sessions differ from UA, yesterday's conversions keep changing, or unassigned grows**: start with [GA4 data traps](/blog/ga4-data-traps). That is a GA4 definition, processing-lag, or threshold question.
+
+Both symptoms sound like “the numbers do not match,” but they lead to different fixes. Set the reporting source first, then inspect the product analytics setup.
+
 ## Why this actually becomes a problem
 
 Numbers differing isn't the incident. The incident comes after: you report channel performance off ad-platform numbers, someone adds them up, and the total exceeds the order DB. From that moment, the entire marketing report is under suspicion. Once you hear "are your numbers inflated?" once, it takes months to earn that trust back. So you need to be able to explain the divergence — and set the ground rules in advance.
@@ -46,7 +53,7 @@ On top of that, iOS adds another layer. Since tracking restrictions kicked in, a
 
 And one more thing: **"how much revenue drops if we turn this channel off" — none of the numbers above can answer that.** They're all observational data, mixed in with conversions that would have happened anyway without the ad. That question can only be answered with an [incrementality test](/blog/incrementality-measurement). If you want to decompose the contribution of every channel at once, that's [MMM](/blog/marketing-mix-modeling) territory.
 
-By the way, if GA4's own numbers feel off, that's a separate issue — GA4-specific traps like session definitions and processing lag are covered in [this post](/blog/ga4-data-traps).
+By the way, if GA4's own numbers feel off, that is a separate issue. After setting the reporting source, check GA4-specific traps such as session definitions and processing lag in [GA4 data traps](/blog/ga4-data-traps).
 
 ## Do this today
 

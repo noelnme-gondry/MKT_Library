@@ -10,6 +10,13 @@ draft: false
 
 You pulled last week's conversions Monday, check again Wednesday, and the number went up. Sessions are lower than what you remember from UA. The channel report has a pile of "unassigned." If you've ever wondered whether you can trust GA4's numbers, you're not alone. The short answer: GA4 isn't broken. It just counts differently. Here are the four traps that trip people up most, plus the ground rules that actually hold up.
 
+## First choose: a GA4 issue, or a cross-system comparison issue?
+
+- **Session definitions, processing lag, thresholds, or unassigned traffic** make GA4's own screens look inconsistent: stay with this article.
+- **Meta, GA4, MMP, and the order database report different conversions**: start with [aligning ad-platform, MMP, and GA4 numbers](/blog/attribution-data-mismatch). That is about choosing the right source for the reporting question.
+
+Choose the scope before changing settings. It prevents you from treating a legitimate cross-system attribution difference as a broken GA4 configuration.
+
 ## It's not "wrong" — it's "counted differently"
 
 The most common mistake is reading GA4 through a UA or ad-platform lens and concluding "the data is broken." People then start poking at settings and genuinely break something. Without understanding the definitions, you'll misjudge perfectly healthy data. So before you suspect your setup, learn where GA4 counts things differently in the first place.
@@ -42,7 +49,7 @@ The narrower you slice a segment, and the lower-traffic a campaign is, the more 
 
 GA4's default attribution is a data-driven model that's fundamentally click-based. Ad platform dashboards count by their own rules, including view-through. On top of that, missing UTMs or parameters lost during redirects push traffic into direct or unassigned. If "unassigned" suddenly spikes, suspect a tagging leak before assuming the channel mix actually shifted.
 
-So ad-platform numbers and GA4 numbers were never going to match in the first place. We covered why they diverge and which number to anchor on in a separate post → [When ad platform, MMP, and GA numbers all disagree](/blog/attribution-data-mismatch)
+So ad-platform numbers and GA4 numbers were never going to match in the first place. First set the reporting source in [aligning ad-platform, MMP, and GA4 numbers](/blog/attribution-data-mismatch), then return here to check GA4 settings and finalization timing.
 
 ## Three ground rules you can actually trust
 
