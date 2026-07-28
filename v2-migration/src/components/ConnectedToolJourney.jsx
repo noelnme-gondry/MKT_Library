@@ -5,6 +5,8 @@ import Link from "next/link";
 import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
 import { trackProductEvent } from "@/lib/analytics";
 import { TOOL_JOURNEY, localizedTool } from "@/lib/toolConnections";
+import { displayItemNumberShort, findMeta } from "@/store/useDataStore";
+import { trItemTitle } from "@/lib/enNavCopy";
 
 const COPY = {
   ko: {
@@ -47,6 +49,8 @@ export default function ConnectedToolJourney({ locale = "ko" }) {
             <div className="connected-tool-stage__tools">
               {stage.tools.map((toolId) => {
                 const tool = localizedTool(toolId, lang);
+                const meta = findMeta(toolId);
+                const title = meta ? trItemTitle(toolId, lang, meta.title) : tool.title;
                 return (
                   <Link
                     className="connected-tool-card"
@@ -60,8 +64,8 @@ export default function ConnectedToolJourney({ locale = "ko" }) {
                       locale: lang,
                     })}
                   >
-                    <span className="connected-tool-card__id">{tool.id}</span>
-                    <strong>{tool.title}</strong>
+                    <span className="connected-tool-card__id">{displayItemNumberShort(tool.id)}</span>
+                    <strong>{title}</strong>
                     <p>{tool.question}</p>
                     <b>{T.open} <span aria-hidden="true">→</span></b>
                   </Link>

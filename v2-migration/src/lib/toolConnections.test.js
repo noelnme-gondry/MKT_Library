@@ -10,6 +10,7 @@ import {
 } from "@/lib/toolConnections";
 import { EN_READY_TOOL_IDS, ROUTES, idToSlug, isRoutePublished } from "@/lib/routeMap";
 import { TOOL_GROUP, groupForRoute } from "@/lib/toolGroups";
+import { displayItemNumberShort } from "@/store/useDataStore";
 
 describe("connected tool workflow", () => {
   it("covers every published tool exactly once in the landing journey", () => {
@@ -22,6 +23,12 @@ describe("connected tool workflow", () => {
     expect([...journeyIds].sort()).toEqual([...toolIds].sort());
     expect([...toolIds].sort()).toEqual([...publishedToolIds].sort());
     expect([...toolIds].sort()).toEqual([...EN_READY_TOOL_IDS].sort());
+  });
+
+  it("uses the same visible tool numbers in the journey and sidebar", () => {
+    expect(TOOL_JOURNEY.flatMap((stage) => stage.tools).map(displayItemNumberShort)).toEqual([
+      "2-1", "2-2", "2-3", "2-4", "5-1", "3-1", "3-2", "4-1", "4-2", "5-2",
+    ]);
   });
 
   it("keeps every next-step reference valid and limited to three choices", () => {
