@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { buildAttributedForecastDataset } from "./attributedForecastDataset";
 import { runAttributedForecastLiveRouter, runAttributedForecastLiveScenario } from "./attributedForecastLiveMath";
 
-function fixture() {
+function fixture(length = 120) {
   const start = Date.UTC(2023, 0, 2);
   const rows = [];
-  for (let week = 0; week < 120; week++) {
+  for (let week = 0; week < length; week++) {
     const date = new Date(start + week * 7 * 86400000).toISOString().slice(0, 10);
     ["ANDROID", "IOS"].forEach((platform, platformIndex) => {
       const organic = 900 + platformIndex * 150 + week * 4 + Math.sin(week / 5) * 30;
@@ -30,6 +30,11 @@ function datasetFrom(rows, stepFields = []) {
 }
 
 describe("live-condition attributed forecast router", () => {
+  it("fails closed when there are not enough older folds for model selection", () => {
+    expect(runAttributedForecastLiveRouter(datasetFrom(fixture(109)), { holdout: 12, horizon: 12 })).toBeNull();
+    expect(runAttributedForecastLiveRouter(datasetFrom(fixture(110)), { holdout: 12, horizon: 12 })).not.toBeNull();
+  });
+
   it("auto-maps repeated long event columns and OS-scoped wide event headers without summing channel rows", () => {
     const rows = fixture();
     rows.forEach((row) => {
@@ -95,5 +100,15 @@ describe("live-condition attributed forecast router", () => {
     if (router.selectedRoute === "android-ios-sum") {
       expect(scenario.parts.every((part) => part.panel?.channels?.length && part.futureCosts?.length === 12)).toBe(true);
     }
+  });
+
+  it("falls back to naive beyond the validated 12-week horizon", () => {
+    const dataset = datasetFrom(fixture());
+    const router = runAttributedForecastLiveRouter(dataset, { holdout: 12, horizon: 26 });
+    expect(router.forecast.useModelByHorizon).toHaveLength(26);
+    expect(router.forecast.useModelByHorizon.slice(12).every((useModel) => useModel === false)).toBe(true);
+    const scenario = runAttributedForecastLiveScenario(dataset, router, {}, 26);
+    expect(scenario.useModelByHorizon.slice(12).every((useModel) => useModel === false)).toBe(true);
+    expect(scenario.predicted.slice(12).every((value) => value === scenario.predicted[12])).toBe(true);
   });
 });

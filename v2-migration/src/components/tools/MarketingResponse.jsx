@@ -4542,14 +4542,25 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     });
     if (!dataset) return null;
     const route = runAttributedForecastLiveRouter(dataset, { holdout: 12, horizon: fcHorizon });
-    return route ? { ...route, dataset } : null;
-  }, [stage, effPlatformFilter, mmmColMap, csvData, target, fcHorizon]);
+    return route ? { ...route, dataset } : {
+      unavailable: true,
+      dataset,
+      reason: dataset.weeks.length < 110
+        ? locale === "en"
+          ? `This attributed forecast needs at least 110 valid weekly periods to keep a sealed 12-week audit plus three older selection folds; ${dataset.weeks.length} were found. The data was not discarded; add more history and rerun.`
+          : `귀속형 예측은 봉인 12주와 그보다 오래된 선택용 fold 3개를 확보하기 위해 최소 110개의 유효 주간이 필요하지만 현재 ${dataset.weeks.length}개입니다. 데이터가 버려진 것은 아니며, 이력을 추가한 뒤 다시 분석하세요.`
+        : locale === "en"
+          ? "No attributed candidate passed fitting. Confirm that at least one Paid channel has positive Cost and outcome history, and that Organic + Paid reconciles with Total."
+          : "적합 가능한 귀속형 후보가 없습니다. Paid 채널에 양수 Cost와 성과 이력이 있는지, Organic + Paid가 Total과 맞는지 확인하세요.",
+    };
+  }, [stage, effPlatformFilter, mmmColMap, csvData, target, fcHorizon, locale]);
 
   // 미래예측은 MMM 기여 분석과 별도 적합한다. 전체 기간 MMM은 장기 기여 해석에
   // 남기고, 예측 회귀만 최근 window·계절성 후보를 rolling holdout으로 선택한다.
   const forecastModel = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "lab") return null;
     try {
+      if (attributedForecastRoute?.unavailable) return { reason: attributedForecastRoute.reason };
       if (attributedForecastRoute) return { isStructural: true, route: attributedForecastRoute };
       // 충분한 이력이면 Direct Total과 Android+iOS 합산을 nested OOS로 비교한다.
       // 114주 미만에서는 별도 Total 회귀를 열지 않고 기존 OS 항등 합을 유지한다.
@@ -7233,7 +7244,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               <h2 className="section-title">{tx("📈 예측 전용 회귀 · 미래 예측", "📈 Forecast regression · future prediction")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx("· MMM 기여 분석과 별도 모델", "· separate from MMM contribution model")}</span></h2>
               <p style={{ fontSize: "12px", color: MUTED, marginBottom: "12px", lineHeight: 1.55 }}>
                 {forecast?.isStructural
-                  ? tx("귀속형 Organic·Paid 후보를 4주 간격 rolling OOS로 비교합니다. 모델 선택은 실제 미래비용을 보지 않는 라이브 조건으로 수행하고, 실제 비용을 미리 넣은 조건부 오차와 naive 오차를 분리합니다. 예측 거리별로 모델이 naive를 이기지 못하면 해당 주차는 자동으로 naive로 되돌립니다. ", "Attributed Organic and Paid candidates are compared with rolling OOS origins spaced four weeks apart. Selection uses live conditions without seeing future spend; conditional error with known future spend and naive error are reported separately. At each horizon, the forecast falls back to naive when the model does not beat it. ")
+                  ? tx("귀속형 Organic·Paid 후보를 4주 간격 rolling OOS로 비교합니다. 모델 선택은 실제 미래비용을 보지 않는 라이브 조건으로 수행하고, 실제 비용을 미리 넣은 조건부 오차와 naive 오차를 분리합니다. 예측 거리별로 모델이 naive를 이기지 못하면 해당 주차는 자동으로 naive로 되돌리며, 검증 범위인 12주를 넘는 구간은 무조건 naive로 전환합니다. ", "Attributed Organic and Paid candidates are compared with rolling OOS origins spaced four weeks apart. Selection uses live conditions without seeing future spend; conditional error with known future spend and naive error are reported separately. At each horizon, the forecast falls back to naive when the model does not beat it, and every week beyond the validated 12-week range is forced to naive. ")
                   : forecast?.isAnnualAnalog
                       ? forecast.paidOrganicHybrid
                       ? tx("OS별 Total과 Paid 실측을 사용해 Organic=Total−Paid를 구성하며, 해당 OS의 Paid Cost 합계가 0인 주는 Paid RR과 Paid 예측도 0으로 정규화합니다. 최대 104주 안에서 최근평균·감쇠 추세·전년 동주·26/52/78주 전 유사 시즌·Cost 기반 Paid 반응과 0/25/50/75/100% 결합비를 비교합니다. 하나의 wMAPE만 보지 않고 전체 OOS, 최근 OOS, 나쁜 구간 P90, fold 안정성을 함께 평가합니다. 전체나 최근 OOS가 최근평균 기준선보다 악화되거나, 최악 구간 위험이 10% 넘게 커지거나, fold 절반도 이기지 못한 후보는 선택 전에 자동 제외합니다. 통과 후보가 없으면 최근평균 기준선으로 되돌아갑니다. 최신 12주 audit은 그 구간을 제외한 development OOS로 고정하고, 실제 미래예측용 결합비만 audit 완료 후 최신 관측까지 포함해 다시 선택합니다. ", "Observed OS-level Total and Paid outcomes define Organic=Total−Paid; when an OS has zero total Paid Cost, both Paid RR and its Paid forecast are normalized to zero. Within a maximum 104-week window, the search compares recent-level, damped-trend, matching-week annual, analogous seasons 26/52/78 weeks back, cost-based Paid response, and 0/25/50/75/100% blend candidates. Selection balances full OOS, recent OOS, bad-window P90, and fold stability instead of relying on one wMAPE. Before selection, a candidate is rejected when full or recent OOS is worse than the recent-average baseline, bad-window risk is more than 10% higher, or it fails to win at least half the folds. The system falls back to the recent-average baseline when nothing passes. The latest 12-week audit is frozen using development OOS that excludes it; only the live future blend is reselected with all observations after the audit is complete. ")
@@ -7308,7 +7319,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       </div>
                       {!forecast.structuralHistoricallyStable && (
                         <p style={{ margin: "7px 0 0", color: "#b45309", fontSize: "11.5px", lineHeight: 1.5 }}>
-                          {tx("전 구간 10% 인증은 계속 엄격하게 유지합니다. 단기 등급은 h별 라이브 OOS가 10% 미만이고 naive보다 나쁘지 않을 때만 별도로 엽니다. 장기 수치는 예산 조건부 시나리오이며 공식 예측으로 사용하지 마세요.", "The every-window 10% certification remains strict. A separate short-term tier opens only when horizon-specific live OOS is below 10% and no worse than naive. Longer-range values are spend-conditional scenarios, not certified forecasts.")}
+                          {tx("전 구간 10% 인증은 계속 엄격하게 유지합니다. 단기 등급은 h별 라이브 OOS가 10% 미만이고 naive보다 나쁘지 않을 때만 별도로 엽니다. 13주 이후는 검증되지 않은 외삽을 내보내지 않고 최근값 naive로 자동 전환합니다.", "The every-window 10% certification remains strict. A separate short-term tier opens only when horizon-specific live OOS is below 10% and no worse than naive. From week 13 onward, unvalidated extrapolation is suppressed and the output automatically falls back to the recent-value naive forecast.")}
                         </p>
                       )}
                       <details style={{ marginTop: "8px" }} open>
