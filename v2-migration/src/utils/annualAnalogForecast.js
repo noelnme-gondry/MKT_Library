@@ -106,7 +106,9 @@ export function runAnnualAnalogRouter({ totalPanel, androidPanel, iosPanel, targ
     } : null;
   }).filter(Boolean);
   if (candidates.length !== 2) return null;
-  candidates.sort((left, right) => left.latestWmape - right.latestWmape || left.allWmape - right.allWmape);
+  // 최신 12주는 봉인된 최종 audit이다. 경로 선택은 그보다 오래된
+  // development fold만으로 끝내 최신 정답을 보고 고르는 누수를 막는다.
+  candidates.sort((left, right) => left.developmentWmape - right.developmentWmape || left.allWmape - right.allWmape);
   const selected = candidates[0];
   const currentBreak = hasRecentStep([totalPanel, androidPanel, iosPanel]);
   return {
@@ -116,6 +118,7 @@ export function runAnnualAnalogRouter({ totalPanel, androidPanel, iosPanel, targ
     candidates,
     currentBreak,
     qualified: currentBreak
+      && selected.developmentWmape < 10
       && selected.latestWmape < 10
       && selected.latestWmape < selected.latestPersistenceWmape * 0.8,
     horizon,
