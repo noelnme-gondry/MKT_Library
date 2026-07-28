@@ -9,6 +9,12 @@ const SELECTION_CRITERIA = {
   tailRiskDeterioration: 0.1,
   instability: 0.1,
 };
+const PERFORMANCE_GUARDRAILS = {
+  overallTolerancePoints: 0,
+  recentTolerancePoints: 0,
+  tailRiskToleranceRatio: 1.1,
+  minimumFoldWinRate: 0.5,
+};
 const ANNUAL_ANALOG_SPECS = [4, 8, 16].flatMap((anchorWeeks) =>
   [0.5, 1].flatMap((seasonWeight) =>
     [0.75, 1].map((ratioPower) => ({
@@ -289,7 +295,65 @@ function candidateIdentity(candidate) {
   };
 }
 
-function buildSelectionDecision(eligible, winner) {
+function isGuardrailBaseline(candidate) {
+  return candidate?.spec?.id === "flat-8"
+    || candidate?.spec?.id === "rate-8-0"
+    || candidate?.spec?.id === "blend-0"
+    || candidate?.spec?.id === "bounded-total-router";
+}
+
+function applyPerformanceGuardrail(evaluated) {
+  const baseline = evaluated.filter((item) => isGuardrailBaseline(item.candidate))
+    .sort((left, right) =>
+      left.metrics.compositeScore - right.metrics.compositeScore
+      || left.candidate.route.localeCompare(right.candidate.route),
+    )[0] || null;
+  if (!baseline) {
+    return {
+      eligible: evaluated,
+      baseline: null,
+      rejected: [],
+    };
+  }
+  const rejected = [];
+  const eligible = evaluated.filter((item) => {
+    if (item === baseline) return true;
+    const baselineByTrainEnd = new Map((baseline.history || []).map((fold) => [fold.trainEnd, fold]));
+    const comparable = (item.history || []).map((fold) => {
+      const baselineFold = baselineByTrainEnd.get(fold.trainEnd);
+      return baselineFold ? { candidate: fold.wmape, baseline: baselineFold.wmape } : null;
+    }).filter(Boolean);
+    const foldWinRate = comparable.length
+      ? comparable.filter((fold) => fold.candidate <= fold.baseline).length / comparable.length
+      : 0;
+    item.metrics.foldWinRate = foldWinRate;
+    const reasons = [];
+    if (item.metrics.overallWmape > baseline.metrics.overallWmape + PERFORMANCE_GUARDRAILS.overallTolerancePoints) {
+      reasons.push("overall-worse-than-baseline");
+    }
+    if (item.metrics.recentWmape > baseline.metrics.recentWmape + PERFORMANCE_GUARDRAILS.recentTolerancePoints) {
+      reasons.push("recent-worse-than-baseline");
+    }
+    if (item.metrics.tailRiskWmape > baseline.metrics.tailRiskWmape * PERFORMANCE_GUARDRAILS.tailRiskToleranceRatio) {
+      reasons.push("tail-risk-worse-than-baseline");
+    }
+    if (foldWinRate < PERFORMANCE_GUARDRAILS.minimumFoldWinRate) {
+      reasons.push("insufficient-fold-wins");
+    }
+    if (reasons.length) {
+      rejected.push({
+        ...candidateIdentity(item.candidate),
+        ...item.metrics,
+        reasons,
+      });
+      return false;
+    }
+    return true;
+  });
+  return { eligible, baseline, rejected };
+}
+
+function buildSelectionDecision(eligible, winner, guardrail = null) {
   const rank = (key) => [...eligible].sort((left, right) =>
     left.metrics[key] - right.metrics[key]
     || left.metrics.compositeScore - right.metrics.compositeScore,
@@ -304,6 +368,12 @@ function buildSelectionDecision(eligible, winner) {
   if (!reasonCodes.length) reasonCodes.push("balanced");
   if (winner.metrics.complexityPenalty === 0) reasonCodes.push("simpler");
   const runnerUp = eligible[1] || null;
+  const rejectedByReason = (guardrail?.rejected || []).reduce((counts, item) => {
+    item.reasons.forEach((reason) => {
+      counts[reason] = (counts[reason] || 0) + 1;
+    });
+    return counts;
+  }, {});
   return {
     criteria: SELECTION_CRITERIA,
     winner: {
@@ -318,11 +388,24 @@ function buildSelectionDecision(eligible, winner) {
     } : null,
     scoreGap: runnerUp ? runnerUp.metrics.compositeScore - winner.metrics.compositeScore : null,
     candidatesCompared: eligible.length,
+    candidatesEvaluated: guardrail?.evaluatedCount ?? eligible.length,
+    guardrail: guardrail ? {
+      enabled: Boolean(guardrail.baseline),
+      thresholds: PERFORMANCE_GUARDRAILS,
+      fallbackUsed: guardrail.baseline === winner,
+      baseline: guardrail.baseline ? {
+        ...candidateIdentity(guardrail.baseline.candidate),
+        ...guardrail.baseline.metrics,
+      } : null,
+      rejectedCount: guardrail.rejected.length,
+      rejectedByReason,
+      rejected: guardrail.rejected.slice(0, 12),
+    } : null,
   };
 }
 
 function selectStableCandidate(candidates, horizon) {
-  const eligible = candidates.map((candidate) => {
+  const evaluated = candidates.map((candidate) => {
     const development = candidate.folds.filter((fold) => fold.offset >= horizon);
     const selectionPenalty = Math.max(0, Number(candidate.selectionPenalty) || 0);
     const metrics = scoreCandidateFolds(development, 6, selectionPenalty);
@@ -334,8 +417,11 @@ function selectStableCandidate(candidates, horizon) {
       tailRisk: metrics.tailRiskWmape,
       selectionScore: metrics.compositeScore,
       metrics,
+      history: development,
     };
   }).filter(Boolean);
+  const guarded = applyPerformanceGuardrail(evaluated);
+  const eligible = guarded.eligible;
   eligible.sort((left, right) =>
     left.selectionScore - right.selectionScore
     || left.score - right.score
@@ -344,7 +430,10 @@ function selectStableCandidate(candidates, horizon) {
   );
   return eligible[0] ? {
     ...eligible[0],
-    decision: buildSelectionDecision(eligible, eligible[0]),
+    decision: buildSelectionDecision(eligible, eligible[0], {
+      ...guarded,
+      evaluatedCount: evaluated.length,
+    }),
   } : null;
 }
 
@@ -356,7 +445,7 @@ function selectCandidateAt(
   requireCurrent = true,
   maxSelectionFolds = selectionFolds,
 ) {
-  const eligible = candidates.map((candidate) => {
+  const evaluated = candidates.map((candidate) => {
     const current = candidate.folds.find((fold) => fold.trainEnd === trainEnd);
     const prior = candidate.folds.filter((fold) => fold.trainEnd + horizon <= trainEnd);
     if ((requireCurrent && !current) || prior.length < selectionFolds) return null;
@@ -380,8 +469,11 @@ function selectCandidateAt(
       instability: metrics.instabilityWmape,
       selectionScore: metrics.compositeScore,
       metrics,
+      history,
     };
   }).filter(Boolean);
+  const guarded = applyPerformanceGuardrail(evaluated);
+  const eligible = guarded.eligible;
   eligible.sort((left, right) =>
     left.selectionScore - right.selectionScore
     || left.score - right.score
@@ -390,7 +482,10 @@ function selectCandidateAt(
   );
   return eligible[0] ? {
     ...eligible[0],
-    decision: buildSelectionDecision(eligible, eligible[0]),
+    decision: buildSelectionDecision(eligible, eligible[0], {
+      ...guarded,
+      evaluatedCount: evaluated.length,
+    }),
   } : null;
 }
 
@@ -1017,7 +1112,7 @@ export function runAnnualAnalogRouter({
     else candidateSummaries.push(hybridSummary);
   }
   return {
-    model: useAdaptiveHybrid ? "paid-organic-adaptive-search-v3" : "bounded-regime-search-v4",
+    model: useAdaptiveHybrid ? "paid-organic-adaptive-search-v4" : "bounded-regime-search-v5",
     selectedRoute: selected.route,
     selected,
     candidates: candidateSummaries,
@@ -1027,6 +1122,7 @@ export function runAnnualAnalogRouter({
       maxTrainingWeeks: MAX_TRAINING_WEEKS,
       blendWeights: BLEND_WEIGHTS,
       criteria: SELECTION_CRITERIA,
+      performanceGuardrails: PERFORMANCE_GUARDRAILS,
       selectedProductionRoute: useAdaptiveHybrid ? "paid-organic-hybrid" : "bounded-total-router",
       routeDecision: finalProduction?.decision || null,
       android: hybrid.search.android,
@@ -1035,6 +1131,7 @@ export function runAnnualAnalogRouter({
       maxTrainingWeeks: MAX_TRAINING_WEEKS,
       blendWeights: [],
       criteria: SELECTION_CRITERIA,
+      performanceGuardrails: PERFORMANCE_GUARDRAILS,
       selectedProductionRoute: productionChoice.candidate.route,
       routeDecision: productionChoice.decision,
       similarSeason: directSimilarSeason ? {

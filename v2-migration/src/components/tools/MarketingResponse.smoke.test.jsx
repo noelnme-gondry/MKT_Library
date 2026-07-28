@@ -306,6 +306,7 @@ describe("MarketingResponse render smoke", () => {
         blendWeights: [0, 0.5, 1],
         routeDecision: {
           candidatesCompared: 8,
+          candidatesEvaluated: 10,
           scoreGap: 1.25,
           winner: {
             overallWmape: 17.8,
@@ -314,6 +315,15 @@ describe("MarketingResponse render smoke", () => {
             instabilityWmape: 5.4,
             ranks: { overall: 1, recent: 2, tailRisk: 1, instability: 3 },
             reasonCodes: ["overall", "tailRisk"],
+          },
+          guardrail: {
+            enabled: true,
+            fallbackUsed: false,
+            rejectedCount: 2,
+            rejectedByReason: {
+              "overall-worse-than-baseline": 1,
+              "recent-worse-than-baseline": 2,
+            },
           },
         },
       },
@@ -333,6 +343,9 @@ describe("MarketingResponse render smoke", () => {
     expect(csv).toContain("# 선정 이유");
     expect(csv).toContain("전체 OOS 17.80%(#1)");
     expect(csv).toContain("2위보다 1.25p 낮았습니다");
+    expect(csv).toContain("성과가 악화된 후보 2개를 자동 제외");
+    expect(csv).toContain("전체 OOS 악화 1");
+    expect(csv).toContain("최근 OOS 악화 2");
     expect(csv).toContain("후보로 비교했으나 현재 데이터에서는 다른 모델이 우세");
   });
 
