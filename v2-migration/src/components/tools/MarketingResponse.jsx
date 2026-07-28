@@ -2212,6 +2212,18 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
         : tx("미인증 best-available · 예산 반응 해석 금지", "uncertified best-available · no budget-response interpretation")],
       [tx("# 최신 12주 OOS", "# Latest 12-week OOS"), fc.rollingSelection?.selected?.latestWmape],
       [tx("# 전체 rolling OOS", "# Full rolling OOS"), fc.rollingSelection?.selected?.wmape],
+      [tx("# 자동 탐색", "# Auto-search"), fc.adaptiveModelSearch
+        ? tx(
+          `최대 ${fc.modelSearch?.maxTrainingWeeks || 104}주 · 결합 후보 ${(fc.modelSearch?.blendWeights || []).map((value) => `${Math.round(value * 100)}%`).join("/")}`,
+          `max ${fc.modelSearch?.maxTrainingWeeks || 104} weeks · blend candidates ${(fc.modelSearch?.blendWeights || []).map((value) => `${Math.round(value * 100)}%`).join("/")}`,
+        )
+        : ""],
+      [tx("# Paid=0 정규화", "# Paid=0 normalization"), fc.adaptiveModelSearch
+        ? `Android ${fc.modelSearch?.android?.zeroedPaidWeeks || 0} / iOS ${fc.modelSearch?.ios?.zeroedPaidWeeks || 0}`
+        : ""],
+      [tx("# 미래 결합비", "# Live future blend"), fc.paidOrganicHybrid
+        ? `Android ${Math.round((fc.modelSearch?.android?.productionBlendWeight ?? 0.5) * 100)}% / iOS ${Math.round((fc.modelSearch?.ios?.productionBlendWeight ?? 0.5) * 100)}%`
+        : ""],
       [tx("# OS guardrail", "# OS guardrail"), (fc.annualOsGuardrail || []).map((component) =>
         `${component.component}: history ${component.developmentWmape.toFixed(2)}% / latest ${component.latestWmape.toFixed(2)}% / ${component.passed ? "pass" : "fail"}`
       ).join(" | ")],
@@ -2879,6 +2891,8 @@ function annualAnalogForecastShape(model) {
     annualQualified: model.annual.qualified,
     annualBestAvailable: model.annual.bestAvailable === true,
     paidOrganicHybrid: model.annual.paidOrganicHybrid === true,
+    adaptiveModelSearch: model.annual.adaptiveModelSearch === true,
+    modelSearch: model.annual.modelSearch || null,
     annualOsGuardrail: model.annual.osGuardrail || [],
     selectedRoute: model.annual.selectedRoute,
     annualCandidates: model.annual.candidates.map((candidate) => ({
@@ -3181,11 +3195,11 @@ export function buildForecastAssistInsight(forecast, recentBacktest, forecastSce
     routeKo = forecastAssistRouteLabel(forecast.selectedRoute, "ko");
     routeEn = forecastAssistRouteLabel(forecast.selectedRoute, "en");
     modelKo = forecast.paidOrganicHybrid
-      ? "Total 예측과 Paid·Organic 분리 예측을 동일 가중으로 결합해 레짐 변화의 이중계산을 줄인 모델입니다."
-      : "구조변화 이후 전년 동주 패턴을 최근 수준으로 보정한 연간 반복형입니다.";
+      ? `최대 ${forecast.modelSearch?.maxTrainingWeeks || 104}주 안에서 Total·Organic·Paid 후보와 OS별 결합비를 development OOS로 자동 선택한 모델입니다.`
+      : `최대 ${forecast.modelSearch?.maxTrainingWeeks || 104}주 안에서 최근평균·감쇠 추세·전년 동주 패턴을 비교한 자동 탐색 모델입니다.`;
     modelEn = forecast.paidOrganicHybrid
-      ? "This model equally blends the Total forecast with separate Paid and Organic forecasts to reduce double-counting across regime changes."
-      : "This annual-analog model rescales matching weeks from last year to the latest level after a structural break.";
+      ? `This model searches Total, Organic, and Paid candidates plus OS-specific blend weights within a maximum ${forecast.modelSearch?.maxTrainingWeeks || 104}-week window using development OOS.`
+      : `This model compares recent-level, damped-trend, and matching-week annual candidates within a maximum ${forecast.modelSearch?.maxTrainingWeeks || 104}-week window.`;
   } else if (forecast.isAdditiveTotal) {
     const components = (forecast.components || []).map((component) => {
       const selected = component.rollingSelection?.selected;
@@ -7138,8 +7152,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   ? tx("귀속형 Organic·Paid 후보를 4주 간격 rolling OOS로 비교합니다. 모델 선택은 실제 미래비용을 보지 않는 라이브 조건으로 수행하고, 실제 비용을 미리 넣은 조건부 오차와 naive 오차를 분리합니다. 예측 거리별로 모델이 naive를 이기지 못하면 해당 주차는 자동으로 naive로 되돌립니다. ", "Attributed Organic and Paid candidates are compared with rolling OOS origins spaced four weeks apart. Selection uses live conditions without seeing future spend; conditional error with known future spend and naive error are reported separately. At each horizon, the forecast falls back to naive when the model does not beat it. ")
                   : forecast?.isAnnualAnalog
                     ? forecast.paidOrganicHybrid
-                      ? tx("OS별 Total과 Paid 실측을 사용해 Organic=Total−Paid를 구성합니다. Total 예측과 Cost 기반 Paid·Organic 분리 예측을 50:50으로 결합하고, 각 내부 모델은 과거 nested OOS만으로 선택합니다. ", "Observed OS-level Total and Paid outcomes define Organic=Total−Paid. The model blends the Total forecast 50:50 with separate cost-based Paid and Organic forecasts; every inner model is selected from older nested OOS folds only. ")
-                      : tx("최근 구조변화가 있고 최신 12주 audit에서 검증된 경우, 전년 같은 주차 패턴을 최근 4주 수준으로 보정한 연간 반복형을 사용합니다. Direct Total과 Android+iOS 합산을 함께 비교하며, 이 경로는 Cost 반응 시나리오를 제공하지 않습니다. ", "When a recent structural break exists and the latest 12-week audit supports it, the forecast uses last year's matching weeks rescaled to the latest four-week level. Direct Total and Android+iOS sum are compared; this route does not provide budget-response scenarios. ")
+                      ? tx("OS별 Total과 Paid 실측을 사용해 Organic=Total−Paid를 구성하며, 해당 OS의 Paid Cost 합계가 0인 주는 Paid RR과 Paid 예측도 0으로 정규화합니다. 최대 104주 안에서 최근평균·감쇠 추세·전년 동주 패턴·Cost 기반 Paid 반응과 0/25/50/75/100% 결합비를 비교합니다. 최신 12주 audit은 그 구간을 제외한 development OOS로 고정하고, 실제 미래예측용 결합비만 audit 완료 후 최신 관측까지 포함해 다시 선택합니다. ", "Observed OS-level Total and Paid outcomes define Organic=Total−Paid; when an OS has zero total Paid Cost, both Paid RR and its Paid forecast are normalized to zero. Within a maximum 104-week window, the search compares recent-level, damped-trend, matching-week annual, cost-based Paid response, and 0/25/50/75/100% blend candidates. The latest 12-week audit is frozen using development OOS that excludes it; only the live future blend is reselected with all observations after the audit is complete. ")
+                      : tx("최대 104주 안에서 최근평균·감쇠 추세·전년 같은 주차 패턴을 비교합니다. Direct Total과 Android+iOS 합산도 development OOS로 선택하며, 이 경로는 Cost 반응 시나리오를 제공하지 않습니다. ", "Within a maximum 104-week window, recent-level, damped-trend, and matching-week annual candidates are compared. Direct Total versus Android+iOS is also selected on development OOS; this route does not provide budget-response scenarios. ")
                   : tx("같은 CSV·매핑을 쓰되, MMM은 전체 기간 기여도를 유지하고 예측 회귀만 Cost 학습 window·추세·계절성을 12주 rolling 검증으로 고릅니다. ", "Uses the same CSV/mapping, but keeps MMM on full-history contribution analysis and selects only the forecast regression's Cost window, trend, and seasonality with rolling 12-week validation. ")}
                 {!forecast?.isStructural && !forecast?.isAnnualAnalog && effPlatformFilter === "all" && tx("114주 이상이면 Direct Total과 Android·iOS 합산을 nested OOS로 비교하고, 더 짧으면 OS 합산을 유지합니다. ", "With 114+ weeks, Direct Total and the Android+iOS sum are compared by nested OOS; shorter histories retain the OS sum. ")}
                 {tx(`선택한 목표(${mmmTargetDisplay(mmm.target, locale)})의 회색선은 실측, 파란선은 모델/예측, 음영은 최근 오차를 반영한 참고 범위입니다(인과 보장 아님).`, `For the selected target (${mmmTargetDisplay(mmm.target, locale)}), gray is actual, blue is model/forecast, and the band is a recent-error reference range, not a causal guarantee.`)}
@@ -7151,8 +7165,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     ? tx("라이브 OOS 자동선택 · naive 안전장치", "Live-OOS selection · naive guardrail")
                     : forecast?.isAnnualAnalog
                       ? forecast.paidOrganicHybrid
-                        ? tx("Paid·Organic 하이브리드 · nested OOS", "Paid/Organic hybrid · nested OOS")
-                        : tx("연간 반복형 · 구조변화 게이트", "Annual analog · regime gate")
+                        ? tx("Paid·Organic 자동 탐색 · 최대 104주", "Paid/Organic auto-search · max 104 weeks")
+                        : tx("기간·연간 패턴 자동 탐색 · 최대 104주", "Window/annual-pattern search · max 104 weeks")
                       : "Empirical-Bayes MMM"}</span>
                 </div>
                 <div className="ab-pillgroup">
@@ -7362,7 +7376,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             {` → ${forecast.selectedRoute === "direct-total" ? "Direct Total" : "Android + iOS"} ${tx("선택", "selected")}`}
                           </p>
                           <p style={{ margin: "6px 0 0", color: forecast.annualQualified ? "#15803d" : "#b45309", fontSize: "11.5px" }}>
-                            {tx(`최신 12주 wMAPE ${selected.latestWmape.toFixed(2)}% · 전체 rolling ${selected.wmape.toFixed(2)}% · 최근평균 기준선 ${selected.persistenceWmape.toFixed(2)}%. ${forecast.paidOrganicHybrid ? "Total·Organic·Paid 내부 모델은 각각 더 오래된 OOS만으로 선택했고, 50:50 결합비는 고정했습니다." : "경로는 더 오래된 development OOS만으로 선택했습니다."} 최신 12주는 봉인 audit으로만 사용했습니다.${forecast.annualQualified ? "" : " 최신 구간은 좋아도 전체 rolling 10%를 넘어서 공식 인증은 아닙니다."}`, `Latest 12-week wMAPE ${selected.latestWmape.toFixed(2)}% · full rolling ${selected.wmape.toFixed(2)}% · recent-average baseline ${selected.persistenceWmape.toFixed(2)}%. ${forecast.paidOrganicHybrid ? "The Total, Organic, and Paid inner models were each selected only on older OOS folds; the 50:50 blend is fixed." : "The route was selected only on older development OOS."} The latest 12 weeks were used solely as a sealed audit.${forecast.annualQualified ? "" : " It is not officially certified because full rolling OOS remains above 10%, despite the stronger latest window."}`)}
+                            {tx(`최신 12주 wMAPE ${selected.latestWmape.toFixed(2)}% · 전체 rolling ${selected.wmape.toFixed(2)}% · 최근평균 기준선 ${selected.persistenceWmape.toFixed(2)}%. ${forecast.paidOrganicHybrid ? `봉인 audit 결합비는 Android ${Math.round((forecast.modelSearch?.android?.auditBlendWeight ?? 0.5) * 100)}%·iOS ${Math.round((forecast.modelSearch?.ios?.auditBlendWeight ?? 0.5) * 100)}%, audit 후 미래예측 결합비는 Android ${Math.round((forecast.modelSearch?.android?.productionBlendWeight ?? 0.5) * 100)}%·iOS ${Math.round((forecast.modelSearch?.ios?.productionBlendWeight ?? 0.5) * 100)}%로 재선택했습니다.` : "경로를 더 오래된 development OOS로 선택했습니다."} 최신 12주는 모델 인증용으로 봉인했습니다.${forecast.annualQualified ? "" : " 최신 구간은 좋아도 전체 rolling 10%를 넘어서 공식 인증은 아닙니다."}`, `Latest 12-week wMAPE ${selected.latestWmape.toFixed(2)}% · full rolling ${selected.wmape.toFixed(2)}% · recent-average baseline ${selected.persistenceWmape.toFixed(2)}%. ${forecast.paidOrganicHybrid ? `Sealed-audit blend weights were Android ${Math.round((forecast.modelSearch?.android?.auditBlendWeight ?? 0.5) * 100)}% and iOS ${Math.round((forecast.modelSearch?.ios?.auditBlendWeight ?? 0.5) * 100)}%; after the audit, live future weights were reselected to Android ${Math.round((forecast.modelSearch?.android?.productionBlendWeight ?? 0.5) * 100)}% and iOS ${Math.round((forecast.modelSearch?.ios?.productionBlendWeight ?? 0.5) * 100)}%.` : "The route was selected only on older development OOS."} The latest 12 weeks remained sealed for model certification.${forecast.annualQualified ? "" : " It is not officially certified because full rolling OOS remains above 10%, despite the stronger latest window."}`)}
                           </p>
                         </Card>
                       );

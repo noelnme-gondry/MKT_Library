@@ -33,7 +33,7 @@ describe("annual analog regime router", () => {
     });
     expect(result.currentBreak).toBe(true);
     expect(result.qualified).toBe(true);
-    expect(result.model).toBe("annual-analog-regime-v2-nested-tournament");
+    expect(result.model).toBe("bounded-regime-search-v3");
     expect(result.osGuardrailPassed).toBe(true);
     expect(result.osGuardrail.every((component) => component.passed)).toBe(true);
     expect(result.selected.latestWmape).toBeLessThan(1e-8);
@@ -60,10 +60,10 @@ describe("annual analog regime router", () => {
 
   it("uses observed Paid regs without double-counting the residual Organic level", () => {
     const length = 170;
-    const androidCost = Array.from({ length }, (_, index) => 20 + 5 * Math.sin(index * 2 * Math.PI / 13));
-    const iosCost = Array.from({ length }, (_, index) => 30 + 4 * Math.cos(index * 2 * Math.PI / 13));
-    const androidPaid = androidCost.map((value) => value * 2);
-    const iosPaid = iosCost.map((value) => value * 1.5);
+    const androidCost = Array.from({ length }, (_, index) => index === 0 || index === 158 ? 0 : 20 + 5 * Math.sin(index * 2 * Math.PI / 13));
+    const iosCost = Array.from({ length }, (_, index) => index === 0 || index === 158 ? 0 : 30 + 4 * Math.cos(index * 2 * Math.PI / 13));
+    const androidPaid = androidCost.map((value, index) => index === 0 || index === 158 ? 40 : value * 2);
+    const iosPaid = iosCost.map((value, index) => index === 0 || index === 158 ? 45 : value * 1.5);
     const androidOrganic = Array.from({ length }, (_, index) => 100 + 15 * Math.sin(index * 2 * Math.PI / 52));
     const iosOrganic = Array.from({ length }, (_, index) => 220 + 30 * Math.cos(index * 2 * Math.PI / 52));
     const android = paidPanel(androidOrganic, androidPaid, androidCost, 152);
@@ -71,9 +71,15 @@ describe("annual analog regime router", () => {
     const total = panel(android.targets.Regs.map((value, index) => value + ios.targets.Regs[index]), 152);
     total.targets.PaidRegs = androidPaid.map((value, index) => value + iosPaid[index]);
     const result = runAnnualAnalogRouter({ totalPanel: total, androidPanel: android, iosPanel: ios });
-    expect(result.model).toBe("paid-organic-hybrid-v1");
+    expect(result.model).toBe("paid-organic-adaptive-search-v2");
     expect(result.paidOrganicHybrid).toBe(true);
-    expect(result.selected.latestWmape).toBeLessThan(1e-8);
+    expect(result.adaptiveModelSearch).toBe(true);
+    expect(result.modelSearch.maxTrainingWeeks).toBe(104);
+    expect(result.modelSearch.blendWeights).toEqual([0, 0.25, 0.5, 0.75, 1]);
+    expect(result.modelSearch.android.zeroedPaidWeeks).toBe(2);
+    expect(result.modelSearch.ios.zeroedPaidWeeks).toBe(2);
+    expect(Number.isFinite(result.selected.latestWmape)).toBe(true);
+    expect(result.selected.latest.performancePredicted[0]).toBe(0);
     result.selected.latest.predicted.forEach((value, index) => {
       expect(value).toBeCloseTo(
         result.selected.latest.organicPredicted[index]
