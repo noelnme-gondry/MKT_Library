@@ -9,8 +9,8 @@ import { getJourneyContext, getNextTools, localizedTool } from "@/lib/toolConnec
 const COPY = {
   ko: {
     eyebrow: "NEXT DECISION",
-    title: "현재 판단 위치",
-    deck: "결과를 확인한 뒤 바로 이어갈 분석",
+    title: "현재 위치",
+    deck: "결과 다음에 할 일",
     recommended: "추천 다음 단계",
     sameData: "같은 CSV로 이어보기",
     newData: "새 데이터 준비",
@@ -20,12 +20,12 @@ const COPY = {
     cycle: "다음 운영 주기",
     mapDeck: "어디서 시작해도 괜찮습니다. 앞뒤 단계와 같은 단계의 다른 도구로 자유롭게 이동하세요.",
     templateReason: "새 데이터가 필요한 다음 분석을 위해 템플릿을 미리 준비하세요",
-    expand: "전체 경로·입력 템플릿",
+    expand: "전체 여정",
   },
   en: {
     eyebrow: "NEXT DECISION",
-    title: "Current decision stage",
-    deck: "Analyses to continue after reviewing the result",
+    title: "Current stage",
+    deck: "What to do after this result",
     recommended: "Recommended next step",
     sameData: "Continue with the same CSV",
     newData: "Prepare a new dataset",
@@ -35,7 +35,7 @@ const COPY = {
     cycle: "Next operating cycle",
     mapDeck: "Start anywhere, then move freely to the previous, next, or an alternative tool in the same stage.",
     templateReason: "Prepare the mapping template for a next analysis that needs a new dataset",
-    expand: "Full path and input template",
+    expand: "Full journey",
   },
 };
 
@@ -47,6 +47,9 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
   if (nextTools.length === 0) return null;
   const T = COPY[lang];
   const templateTarget = nextTools.find((tool) => !tool.isSameData);
+  // 상단 레일은 "바로 갈 곳" 두 개만 보여주고, 나머지 경로는 접어서 제공한다.
+  // 고정 폭 카드 3개가 좁은 도구 셸 밖으로 밀리던 문제를 없애며 선택 부담도 줄인다.
+  const visibleNextTools = nextTools.slice(0, 2);
 
   return (
     <section className="tool-connections tool-connections--rail" aria-labelledby={`tool-connections-${toolId}`}>
@@ -59,7 +62,7 @@ export default function ToolConnections({ toolId, locale = "ko" }) {
         <p>{T.deck}</p>
       </header>
       <div className="tool-connections__grid">
-        {nextTools.map((tool, index) => (
+        {visibleNextTools.map((tool, index) => (
           <Link
             className={`tool-connection-card ${index === 0 ? "is-recommended" : ""}`}
             href={tool.href}
