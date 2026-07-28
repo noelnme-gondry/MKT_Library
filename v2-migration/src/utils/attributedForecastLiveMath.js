@@ -2,15 +2,15 @@ import { ALLOC_MATH } from "./allocationMath.js";
 
 const DAY_MS = 86400000;
 const FOLD_STEP = 4;
-const MIN_TRAIN_WEEKS = 60;
+const LOOKBACK_WEEKS = [26, 52, 78];
+const MIN_TRAIN_WEEKS = Math.max(...LOOKBACK_WEEKS);
 const PANEL_CACHE = new WeakMap();
 
 const ORGANIC_SPECS = [
   { id: "endpoint-4-yoy10", kind: "endpoint", window: 4, seasonWeight: 0.1 },
-  { id: "flat-8", kind: "flat", window: 8, seasonWeight: 0 },
-  { id: "holt-13", kind: "holt", window: 13, alpha: 0.6, beta: 0.2, phi: 0.8, seasonWeight: 0 },
-  { id: "holt-26", kind: "holt", window: 26, alpha: 0.6, beta: 0.15, phi: 0.9, seasonWeight: 0 },
-  { id: "holt-26-yoy15", kind: "holt", window: 26, alpha: 0.6, beta: 0.15, phi: 0.9, seasonWeight: 0.15 },
+  { id: "flat-lookback", kind: "flat", window: "lookback", seasonWeight: 0 },
+  { id: "holt-lookback-phi80", kind: "holt", window: "lookback", alpha: 0.6, beta: 0.2, phi: 0.8, seasonWeight: 0 },
+  { id: "holt-lookback-phi90-yoy15", kind: "holt", window: "lookback", alpha: 0.6, beta: 0.15, phi: 0.9, seasonWeight: 0.15 },
 ];
 
 const PAID_SPECS = [
@@ -23,17 +23,21 @@ const PAID_SPECS = [
 
 const COST_SPECS = [
   { id: "cost-mean8", kind: "mean", window: 8 },
-  { id: "cost-holt13", kind: "holt", window: 13, alpha: 0.6, beta: 0.2, phi: 0.8 },
+  { id: "cost-mean-lookback", kind: "mean", window: "lookback" },
+  { id: "cost-holt-lookback", kind: "holt", window: "lookback", alpha: 0.6, beta: 0.2, phi: 0.8 },
 ];
 
-const MODEL_SPECS = ORGANIC_SPECS.flatMap((organic) =>
-  PAID_SPECS.flatMap((paid) =>
-    COST_SPECS.map((cost) => ({
-      id: `${organic.id}__${paid.id}__${cost.id}`,
-      organic,
-      paid,
-      cost,
-    })),
+const MODEL_SPECS = LOOKBACK_WEEKS.flatMap((trainingWindow) =>
+  ORGANIC_SPECS.flatMap((organic) =>
+    PAID_SPECS.flatMap((paid) =>
+      COST_SPECS.map((cost) => ({
+        id: `lb${trainingWindow}__${organic.id}__${paid.id}__${cost.id}`,
+        trainingWindow,
+        organic,
+        paid,
+        cost,
+      })),
+    ),
   ),
 );
 
@@ -133,19 +137,22 @@ function linearEndpoint(values) {
   return Math.max(0, yMean + slope * ((values.length - 1) - xMean));
 }
 
-function organicForecast(panel, trainEnd, horizon, spec) {
-  const history = panel.organic.slice(0, trainEnd);
+function organicForecast(panel, trainEnd, horizon, spec, trainingWindow) {
+  const historyStart = Math.max(0, trainEnd - trainingWindow);
+  const history = panel.organic.slice(historyStart, trainEnd);
+  const window = spec.window === "lookback" ? trainingWindow : spec.window;
+  const resolvedSpec = { ...spec, window };
   let forecast;
   if (spec.kind === "flat") {
-    const level = mean(history.slice(-Math.min(spec.window, history.length)));
+    const level = mean(history.slice(-Math.min(window, history.length)));
     forecast = Number.isFinite(level) ? Array(horizon).fill(Math.max(0, level)) : null;
   } else if (spec.kind === "endpoint") {
-    const level = linearEndpoint(history.slice(-Math.min(spec.window, history.length)));
+    const level = linearEndpoint(history.slice(-Math.min(window, history.length)));
     forecast = Number.isFinite(level) ? Array(horizon).fill(level) : null;
   } else {
-    forecast = holtLogForecast(history, horizon, spec);
+    forecast = holtLogForecast(history, horizon, resolvedSpec);
   }
-  if (!forecast || !(spec.seasonWeight > 0) || trainEnd < 56) return forecast;
+  if (!forecast || !(spec.seasonWeight > 0) || trainingWindow < 56 || trainEnd < 56) return forecast;
   const yearlyBase = panel.organic.slice(trainEnd - 52, trainEnd - 52 + horizon);
   const currentMean = mean(panel.organic.slice(trainEnd - 4, trainEnd));
   const priorMean = mean(panel.organic.slice(trainEnd - 56, trainEnd - 52));
@@ -156,16 +163,17 @@ function organicForecast(panel, trainEnd, horizon, spec) {
   });
 }
 
-function forecastCostColumn(values, trainEnd, horizon, spec) {
-  const history = values.slice(0, trainEnd);
-  if (spec.kind === "holt") return holtLogForecast(history, horizon, spec);
-  const level = mean(history.slice(-Math.min(spec.window, history.length)));
+function forecastCostColumn(values, trainEnd, horizon, spec, trainingWindow) {
+  const history = values.slice(Math.max(0, trainEnd - trainingWindow), trainEnd);
+  const window = spec.window === "lookback" ? trainingWindow : spec.window;
+  if (spec.kind === "holt") return holtLogForecast(history, horizon, { ...spec, window });
+  const level = mean(history.slice(-Math.min(window, history.length)));
   return Number.isFinite(level) ? Array(horizon).fill(Math.max(0, level)) : null;
 }
 
 function forecastCostRows(panel, trainEnd, horizon, spec) {
   const columns = panel.channels.map((_, column) =>
-    forecastCostColumn(panel.costs.map((row) => row[column]), trainEnd, horizon, spec),
+    forecastCostColumn(panel.costs.map((row) => row[column]), trainEnd, horizon, spec.cost, spec.trainingWindow),
   );
   if (columns.some((column) => !column)) return null;
   return Array.from({ length: horizon }, (_, index) => columns.map((column) => column[index]));
@@ -179,9 +187,9 @@ function adstock(values, decay, initial = 0) {
   });
 }
 
-function ratePaidForecast(panel, trainEnd, costTotals, spec) {
+function ratePaidForecast(panel, trainEnd, costTotals, spec, trainingWindow) {
   let level = null;
-  for (let index = 0; index < trainEnd; index++) {
+  for (let index = Math.max(0, trainEnd - trainingWindow); index < trainEnd; index++) {
     const cost = panel.costs[index].reduce((sum, value) => sum + Math.max(0, value), 0);
     const paid = Math.max(0, panel.paid[index]);
     if (!(cost > 0) || !(paid > 0)) continue;
@@ -191,14 +199,15 @@ function ratePaidForecast(panel, trainEnd, costTotals, spec) {
   return Number.isFinite(level) ? costTotals.map((cost) => Math.max(0, cost * level)) : null;
 }
 
-function saturationPaidForecast(panel, trainEnd, costTotals, spec) {
-  const rawHistory = panel.costs.slice(0, trainEnd).map((row) => row.reduce((sum, value) => sum + Math.max(0, value), 0));
+function saturationPaidForecast(panel, trainEnd, costTotals, spec, trainingWindow) {
+  const historyStart = Math.max(0, trainEnd - trainingWindow);
+  const rawHistory = panel.costs.slice(historyStart, trainEnd).map((row) => row.reduce((sum, value) => sum + Math.max(0, value), 0));
   const effectiveHistory = adstock(rawHistory, spec.adstock);
-  const start = Math.max(0, trainEnd - spec.window);
+  const start = Math.max(0, effectiveHistory.length - spec.window);
   const points = [];
-  for (let index = start; index < trainEnd; index++) {
+  for (let index = start; index < effectiveHistory.length; index++) {
     const cost = effectiveHistory[index];
-    const paid = Math.max(0, panel.paid[index]);
+    const paid = Math.max(0, panel.paid[historyStart + index]);
     if (cost > 0 && paid > 0) points.push([cost, cost / paid]);
   }
   if (points.length < 8) return null;
@@ -222,19 +231,19 @@ function saturationPaidForecast(panel, trainEnd, costTotals, spec) {
   });
 }
 
-function paidForecast(panel, trainEnd, futureCosts, spec) {
+function paidForecast(panel, trainEnd, futureCosts, spec, trainingWindow) {
   const costTotals = futureCosts.map((row) => row.reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0));
   const prediction = spec.kind === "saturation"
-    ? saturationPaidForecast(panel, trainEnd, costTotals, spec)
-    : ratePaidForecast(panel, trainEnd, costTotals, spec);
+    ? saturationPaidForecast(panel, trainEnd, costTotals, spec, trainingWindow)
+    : ratePaidForecast(panel, trainEnd, costTotals, spec, trainingWindow);
   return prediction?.every(Number.isFinite) ? prediction : null;
 }
 
 function fitPanel(panel, trainEnd, horizon, spec, suppliedCosts = null) {
-  const futureCosts = suppliedCosts || forecastCostRows(panel, trainEnd, horizon, spec.cost);
+  const futureCosts = suppliedCosts || forecastCostRows(panel, trainEnd, horizon, spec);
   if (!futureCosts || futureCosts.length !== horizon) return null;
-  const organic = organicForecast(panel, trainEnd, horizon, spec.organic);
-  const performance = paidForecast(panel, trainEnd, futureCosts, spec.paid);
+  const organic = organicForecast(panel, trainEnd, horizon, spec.organic, spec.trainingWindow);
+  const performance = paidForecast(panel, trainEnd, futureCosts, spec.paid, spec.trainingWindow);
   if (!organic || !performance) return null;
   return {
     organic,
@@ -564,6 +573,33 @@ export function runAttributedForecastLiveRouter(dataset, options = {}) {
     });
   });
   if (!evaluated.length) return null;
+  const lookbackCandidates = LOOKBACK_WEEKS.map((trainingWindow) => {
+    const candidates = evaluated.filter((candidate) => candidate.spec.trainingWindow === trainingWindow);
+    candidates.sort((left, right) =>
+      left.developmentPooledWmape - right.developmentPooledWmape
+      || left.worstWmape - right.worstWmape
+      || left.route.localeCompare(right.route),
+    );
+    const candidate = candidates[0];
+    if (!candidate) {
+      return {
+        trainingWindow,
+        available: false,
+        reason: "insufficient-active-paid-history",
+      };
+    }
+    return {
+      trainingWindow,
+      available: true,
+      route: candidate.route,
+      spec: candidate.spec,
+      developmentPooledWmape: candidate.developmentPooledWmape,
+      pooledWmape: candidate.pooledWmape,
+      conditionalPooledWmape: candidate.conditionalPooledWmape,
+      naivePooledWmape: candidate.naivePooledWmape,
+      worstWmape: candidate.worstWmape,
+    };
+  });
   const bestByRoute = ["direct-total", "android-ios-sum"].map((route) => {
     const routeCandidates = evaluated.filter((candidate) => candidate.route === route);
     routeCandidates.sort((left, right) =>
@@ -616,6 +652,7 @@ export function runAttributedForecastLiveRouter(dataset, options = {}) {
     threshold: 10,
     foldStep: FOLD_STEP,
     selectionHoldoutWeeks: holdout,
+    lookbackCandidates,
     candidates: bestByRoute.map((candidate) => ({
       route: candidate.route,
       spec: candidate.spec,

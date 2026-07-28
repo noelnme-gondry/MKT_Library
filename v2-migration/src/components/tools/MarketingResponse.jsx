@@ -2147,6 +2147,8 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
       [tx("# 대상", "# Target"), `${tKo} (${target})`],
       [tx("# 선택 경로", "# Selected route"), fc.structuralRoute],
       [tx("# 선택 사양", "# Selected specification"), fc.structuralSelectedSpec?.id || ""],
+      [tx("# 선택 학습 기간", "# Selected training window"), `${fc.structuralSelectedSpec?.trainingWindow || ""}${tx("주", " weeks")}`],
+      [tx("# 학습 기간 비교", "# Training-window comparison"), (fc.structuralLookbackCandidates || []).map((candidate) => candidate.available ? `${candidate.trainingWindow}w=${candidate.pooledWmape.toFixed(2)}%` : `${candidate.trainingWindow}w=${tx("근거 부족", "insufficient evidence")}`).join(" / ")],
       [tx("# 상태", "# Status"), fc.structuralEligible ? tx("공식 10% 인증", "official 10% certified") : fc.structuralShortTermEligible ? tx(`단기 ${fc.structuralRecommendedHorizon}주만 사용`, `short-term use only: ${fc.structuralRecommendedHorizon} weeks`) : tx("사용 불가 · 진단 전용", "unavailable · diagnostic only")],
       [tx("# 사용 기준", "# Use gate"), `${tx("전체 rolling OOS의 Total·구성요소 최악 wMAPE", "worst Total and component wMAPE across full rolling OOS")} < ${fc.structuralThreshold}%`],
       [tx("# 비용 조건", "# Spend condition"), tx("화면의 미래 예산 입력값에 조건부인 예측입니다. 입력하지 않은 채널은 선택된 비용 예측 사양을 사용합니다.", "The forecast is conditional on future budgets entered in the UI. Channels without an input use the selected spend-forecast specification.")],
@@ -2964,6 +2966,7 @@ function attributedForecastShape(route) {
     structuralSelectedSpec: route.selectedSpec,
     structuralRoute: route.selectedRoute,
     structuralCandidates: route.candidates,
+    structuralLookbackCandidates: route.lookbackCandidates,
     structuralEligible: route.eligible,
     structuralOsBreakdownEligible: route.osBreakdownEligible,
     structuralHistoricallyStable: route.historicallyStable,
@@ -6867,6 +6870,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           {forecast.structuralOsBreakdownEligible ? tx("OS 분해 사용 가능", "OS breakdown usable") : tx("OS 분해 사용 불가", "OS breakdown unavailable")}
                         </span>
                         <span className="ab-pill">{tx("부분 주차 자동 제외", "Partial current week excluded")}</span>
+                        <span className="ab-pill">{tx(`${forecast.structuralSelectedSpec?.trainingWindow || "—"}주 학습`, `${forecast.structuralSelectedSpec?.trainingWindow || "—"}-week training window`)}</span>
                         <span className="ab-pill">{forecast.structuralSelectedSpec?.id || "—"}</span>
                         <span className="ab-pill">{tx(`${forecast.structuralFoldStep || 4}주 간격 OOS`, `${forecast.structuralFoldStep || 4}-week OOS step`)}</span>
                         <span className="ab-pill">{tx("Perf 절대 수준 ≥ 0", "Absolute Perf level ≥ 0")}</span>
@@ -6876,6 +6880,26 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           {tx("전 구간 10% 인증은 계속 엄격하게 유지합니다. 단기 등급은 h별 라이브 OOS가 10% 미만이고 naive보다 나쁘지 않을 때만 별도로 엽니다. 장기 수치는 예산 조건부 시나리오이며 공식 예측으로 사용하지 마세요.", "The every-window 10% certification remains strict. A separate short-term tier opens only when horizon-specific live OOS is below 10% and no worse than naive. Longer-range values are spend-conditional scenarios, not certified forecasts.")}
                         </p>
                       )}
+                      <details style={{ marginTop: "8px" }} open>
+                        <summary style={{ cursor: "pointer", fontSize: "11.5px" }}>{tx("26·52·78주 학습 기간 비교", "Compare 26-, 52-, and 78-week training windows")}</summary>
+                        <div className="table-wrap" style={{ marginTop: "7px" }}>
+                          <table className="data" style={{ fontSize: "10.5px" }}>
+                            <thead><tr><th>{tx("학습 기간", "Training window")}</th><th>{tx("최적 경로", "Best route")}</th><th>{tx("선택용 과거 OOS", "Selection-history OOS")}</th><th>{tx("전체 라이브 OOS", "Full live OOS")}</th><th>{tx("비용 입력 시", "Known spend")}</th><th>naive</th></tr></thead>
+                            <tbody>
+                              {(forecast.structuralLookbackCandidates || []).map((candidate) => (
+                                <tr key={candidate.trainingWindow} style={candidate.trainingWindow === forecast.structuralSelectedSpec?.trainingWindow ? { fontWeight: 700 } : undefined}>
+                                  <td>{candidate.trainingWindow}{tx("주", " weeks")}</td>
+                                  <td>{candidate.available ? candidate.route === "direct-total" ? "Direct Total" : "Android + iOS" : tx("근거 부족", "Insufficient evidence")}</td>
+                                  <td className="tnum">{candidate.available ? `${candidate.developmentPooledWmape.toFixed(2)}%` : "—"}</td>
+                                  <td className="tnum">{candidate.available ? `${candidate.pooledWmape.toFixed(2)}%` : "—"}</td>
+                                  <td className="tnum">{candidate.available ? `${candidate.conditionalPooledWmape.toFixed(2)}%` : "—"}</td>
+                                  <td className="tnum">{candidate.available ? `${candidate.naivePooledWmape.toFixed(2)}%` : "—"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </details>
                       <details style={{ marginTop: "8px" }}>
                         <summary style={{ cursor: "pointer", fontSize: "11.5px" }}>{tx("전체 OOS 오차 흐름 보기", "View full OOS error trajectory")}</summary>
                         <div className="table-wrap" style={{ marginTop: "7px" }}>
