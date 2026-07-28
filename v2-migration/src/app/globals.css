@@ -6198,10 +6198,11 @@ body.light-mode .app:not(.is-home) .main {
 @media (max-width:980px) { .dashboard-top-stat { display:none; } }
 .dashboard-demo-source,.dashboard-decision-strip { display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 10px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-container-lowest); }
 .dashboard-demo-source { border-left:3px solid #f7b955;background:color-mix(in srgb,#f7b955 7%,var(--surface-container-lowest)); }
-.dashboard-demo-source span,.dashboard-decision-strip span { display:block;color:var(--primary);font:700 8px var(--font-mono);letter-spacing:.1em; }
+.dashboard-demo-source > div > span,.dashboard-decision-strip > div:first-child > span { display:block;color:var(--primary);font:700 8px var(--font-mono);letter-spacing:.1em; }
 .dashboard-demo-source strong,.dashboard-decision-strip strong { display:block;margin-top:3px;color:var(--text-primary);font-size:13px; }
 .dashboard-demo-source p { margin:3px 0 0;color:var(--text-muted);font-size:10.5px; }
-.dashboard-demo-source > button { flex:0 0 auto;border:0;border-radius:7px;padding:8px 10px;background:var(--primary);color:var(--on-primary);font-size:11px;font-weight:750;cursor:pointer; }
+.dashboard-demo-source > button { display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;gap:6px;border:0;border-radius:7px;padding:8px 10px;background:var(--primary);color:var(--on-primary);font-size:11px;font-weight:750;line-height:1;white-space:nowrap;cursor:pointer; }
+.dashboard-demo-source > button > span { display:inline;color:currentColor;font:inherit;letter-spacing:0;line-height:1; }
 .dashboard-decision-strip__actions { display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end; }
 .dashboard-decision-strip__actions > button { border:1px solid var(--border);border-radius:7px;padding:7px 9px;background:var(--surface-container-low);color:var(--text-secondary);font-size:10.5px;font-weight:700;cursor:pointer; }
 .dashboard-decision-strip .tool-template-action { margin:0;padding:0;border:0;background:transparent;display:block; }
