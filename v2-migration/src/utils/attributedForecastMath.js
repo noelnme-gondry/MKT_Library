@@ -30,55 +30,63 @@ function isOrganic(value) {
   return /(^|[\s_-])(organic|오가닉|자연|비광고)([\s_-]|$)/i.test(String(value ?? "").normalize("NFKC"));
 }
 
-function solveLinear(matrix, vector) {
-  const n = vector.length;
-  const augmented = matrix.map((row, index) => [...row, vector[index]]);
-  for (let column = 0; column < n; column++) {
-    let pivot = column;
-    for (let row = column + 1; row < n; row++) {
-      if (Math.abs(augmented[row][column]) > Math.abs(augmented[pivot][column])) pivot = row;
-    }
-    if (Math.abs(augmented[pivot][column]) < 1e-10) return null;
-    [augmented[column], augmented[pivot]] = [augmented[pivot], augmented[column]];
-    const divisor = augmented[column][column];
-    for (let j = column; j <= n; j++) augmented[column][j] /= divisor;
-    for (let row = 0; row < n; row++) {
-      if (row === column) continue;
-      const factor = augmented[row][column];
-      for (let j = column; j <= n; j++) augmented[row][j] -= factor * augmented[column][j];
-    }
-  }
-  return augmented.map((row) => row[n]);
+const ATTRIBUTED_MODEL_SPEC = Object.freeze({
+  organicRecentWindow: 4,
+  organicYearlyWindow: 4,
+  organicYearlyWeight: 0.1,
+  yearlyLag: 52,
+  paidRateAlpha: 0.9,
+});
+
+function average(values) {
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function ridgeFit(costRows, outcomes, penalty = 1) {
-  if (!costRows.length || costRows.length !== outcomes.length) return null;
-  const width = costRows[0]?.length || 0;
-  if (!width) return { means: [], scales: [], keep: [], beta: [], meanOutcome: outcomes.reduce((sum, value) => sum + value, 0) / outcomes.length };
-  const transformed = costRows.map((row) => row.map((value) => Math.log1p(Math.max(0, Number(value) || 0))));
-  const means = Array.from({ length: width }, (_, column) => transformed.reduce((sum, row) => sum + row[column], 0) / transformed.length);
-  const scales = means.map((mean, column) => Math.sqrt(transformed.reduce((sum, row) => sum + (row[column] - mean) ** 2, 0) / transformed.length));
-  const keep = scales.map((scale, index) => scale > 1e-10 ? index : null).filter((index) => index != null);
-  const meanOutcome = outcomes.reduce((sum, value) => sum + value, 0) / outcomes.length;
-  if (!keep.length) return { means, scales, keep, beta: [], meanOutcome };
-  const standardized = transformed.map((row) => keep.map((column) => (row[column] - means[column]) / scales[column]));
-  const gram = keep.map((_, left) => keep.map((__, right) =>
-    standardized.reduce((sum, row) => sum + row[left] * row[right], 0) + (left === right ? penalty : 0),
-  ));
-  const rhs = keep.map((_, column) => standardized.reduce((sum, row, index) => sum + row[column] * (outcomes[index] - meanOutcome), 0));
-  const beta = solveLinear(gram, rhs);
-  return beta ? { means, scales, keep, beta, meanOutcome } : null;
-}
-
-function ridgePredict(fit, costRows) {
-  if (!fit) return null;
-  return costRows.map((row) => {
-    const media = fit.keep.reduce((sum, column, betaIndex) => {
-      const transformed = Math.log1p(Math.max(0, Number(row[column]) || 0));
-      return sum + ((transformed - fit.means[column]) / fit.scales[column]) * fit.beta[betaIndex];
-    }, 0);
-    return Math.max(0, fit.meanOutcome + media);
+function localLinearEndpoint(values) {
+  if (!values.length) return null;
+  if (values.length === 1) return Math.max(0, values[0]);
+  const xMean = (values.length - 1) / 2;
+  const yMean = average(values);
+  let numerator = 0;
+  let denominator = 0;
+  values.forEach((value, index) => {
+    numerator += (index - xMean) * (value - yMean);
+    denominator += (index - xMean) ** 2;
   });
+  const slope = denominator > 0 ? numerator / denominator : 0;
+  return Math.max(0, yMean + slope * ((values.length - 1) - xMean));
+}
+
+function organicForecast(panel, trainEnd, horizon) {
+  const recentWindow = ATTRIBUTED_MODEL_SPEC.organicRecentWindow;
+  const recent = panel.organic.slice(Math.max(0, trainEnd - recentWindow), trainEnd);
+  const recentLevel = localLinearEndpoint(recent);
+  if (!Number.isFinite(recentLevel)) return null;
+  const local = Array(horizon).fill(recentLevel);
+  const lag = ATTRIBUTED_MODEL_SPEC.yearlyLag;
+  const yearlyWindow = ATTRIBUTED_MODEL_SPEC.organicYearlyWindow;
+  if (trainEnd < lag + yearlyWindow) return local;
+  const base = panel.organic.slice(trainEnd - lag, trainEnd - lag + horizon);
+  const currentMean = average(panel.organic.slice(trainEnd - yearlyWindow, trainEnd));
+  const priorMean = average(panel.organic.slice(trainEnd - lag - yearlyWindow, trainEnd - lag));
+  const yearlyWeight = ATTRIBUTED_MODEL_SPEC.organicYearlyWeight;
+  return local.map((value, index) => {
+    const yearly = Math.max(0, (base[index] || 0) + currentMean - priorMean);
+    return Math.max(0, value * (1 - yearlyWeight) + yearly * yearlyWeight);
+  });
+}
+
+function paidRateLevel(panel, trainEnd) {
+  let level = null;
+  const alpha = ATTRIBUTED_MODEL_SPEC.paidRateAlpha;
+  for (let index = 0; index < trainEnd; index++) {
+    const cost = panel.costs[index].reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+    const paid = Math.max(0, Number(panel.paid[index]) || 0);
+    if (!(cost > 0) || !(paid > 0)) continue;
+    const rate = paid / cost;
+    level = level == null ? rate : alpha * rate + (1 - alpha) * level;
+  }
+  return level;
 }
 
 function panelFor(dataset, platform = "total") {
@@ -109,20 +117,19 @@ function panelFor(dataset, platform = "total") {
 
 function fitAt(panel, trainEnd, horizon, futureCosts = null) {
   if (trainEnd < 39 || horizon < 1) return null;
-  const organicWindow = panel.organic.slice(Math.max(0, trainEnd - 26), trainEnd);
-  const organicLevel = organicWindow.reduce((sum, value) => sum + value, 0) / organicWindow.length;
-  const start = Math.max(0, trainEnd - 39);
-  const fit = ridgeFit(panel.costs.slice(start, trainEnd), panel.paid.slice(start, trainEnd), 1);
   const costs = futureCosts || panel.costs.slice(trainEnd, trainEnd + horizon);
   if (costs.length !== horizon) return null;
-  const performance = ridgePredict(fit, costs);
-  if (!performance) return null;
-  const organic = Array(horizon).fill(Math.max(0, organicLevel));
+  const rate = paidRateLevel(panel, trainEnd);
+  const organic = organicForecast(panel, trainEnd, horizon);
+  if (!Number.isFinite(rate) || !organic) return null;
+  const performance = costs.map((row) =>
+    Math.max(0, row.reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0) * rate),
+  );
   return {
     organic,
     performance,
     predicted: organic.map((value, index) => value + performance[index]),
-    fit,
+    fit: { paidRate: rate, modelSpec: ATTRIBUTED_MODEL_SPEC },
   };
 }
 
@@ -319,7 +326,8 @@ export function runAttributedForecastRouter(dataset, options = {}) {
   const margin = residuals[Math.min(residuals.length - 1, Math.ceil(residuals.length * 0.9) - 1)] || 0;
   const lastWeek = dataset.weeks.at(-1);
   return {
-    model: "organic-paid-structural-router-v1",
+    model: "adaptive-yearly-organic-paid-v2",
+    modelSpec: ATTRIBUTED_MODEL_SPEC,
     selectedRoute: selected.route,
     eligible,
     osBreakdownEligible,
