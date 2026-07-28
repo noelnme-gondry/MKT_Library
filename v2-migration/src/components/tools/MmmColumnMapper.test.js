@@ -41,6 +41,26 @@ describe("MMM column mapping", () => {
     expect(partial.revenue.role).toBe("revenue");
   });
 
+  it("maps OS Paid RR separately from Total RR and preserves the identity inputs", () => {
+    const headers = ["week", "ANDROID_RR", "IOS_RR", "ANDROID PAID RR", "IOS PAID RR", "Google_ANDROID_Cost", "Apple Search Ads_IOS_Cost"];
+    const rows = [
+      { week: "2025-W01", ANDROID_RR: "100", IOS_RR: "80", "ANDROID PAID RR": "30", "IOS PAID RR": "20", Google_ANDROID_Cost: "50", "Apple Search Ads_IOS_Cost": "40" },
+      { week: "2025-W02", ANDROID_RR: "110", IOS_RR: "90", "ANDROID PAID RR": "35", "IOS PAID RR": "25", Google_ANDROID_Cost: "60", "Apple Search Ads_IOS_Cost": "45" },
+    ];
+    const map = autoGuessColMap(headers, rows);
+    expect(map.ANDROID_RR).toMatchObject({ role: "reg", plat: "android" });
+    expect(map.IOS_RR).toMatchObject({ role: "reg", plat: "ios" });
+    expect(map["ANDROID PAID RR"]).toMatchObject({ role: "paid", plat: "android" });
+    expect(map["IOS PAID RR"]).toMatchObject({ role: "paid", plat: "ios" });
+    const android = buildPanelFromColMap(headers, rows, map, "android").panel;
+    const total = buildPanelFromColMap(headers, rows, map, "all").panel;
+    expect(android.targets.Regs).toEqual([100, 110]);
+    expect(android.targets.PaidRegs).toEqual([30, 35]);
+    expect(total.targets.Regs).toEqual([180, 200]);
+    expect(total.targets.PaidRegs).toEqual([50, 60]);
+    expect(android.targets.Regs.map((value, index) => value - android.targets.PaidRegs[index])).toEqual([70, 75]);
+  });
+
   it("keeps Prism-style RR and performance delivery columns in partial auto mapping", () => {
     const headers = ["Week of", "RR", "brand_tiktok_impressions", "performance_meta_impressions", "performance_tiktok_impressions", "Christmas", "cold april record"];
     const rows = [

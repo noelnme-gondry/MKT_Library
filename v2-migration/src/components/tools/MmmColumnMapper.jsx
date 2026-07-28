@@ -6,7 +6,7 @@ import { mmmExcelSerialDateTimestamp, mmmParseNumericValue } from "@/utils/mmmIn
 /* index.html의 5-18 DnD colMap(§12.20류 이관) — mmmGuessRole/mmmAutoMapPartial/
  * mmmColMapRoles/mmmGetPanelFromColMap을 React 네이티브 HTML5 DnD로 포팅.
  * colMap: { [header]: { role, kind?, plat? } }
- * role: week|date|reg|react|revenue|channel|dummy|step|external|platform|geo|reach|frequency|ignore */
+ * role: week|date|reg|paid|react|revenue|channel|dummy|step|external|platform|geo|reach|frequency|ignore */
 
 const MMM_DAY_MS = 86400000;
 
@@ -199,6 +199,7 @@ function guessRole(col, rows) {
   else if (isNum && /purchaser|buyer|구매자|결제자/.test(name)) role = "purchasers";
   else if (isNum && /traffic|total.?visit|총.?유입|방문자|sessions?/.test(name)) role = "traffic";
   else if (isNum && /industry|market|category|업계|시장.?수요|카테고리.?수요/.test(name)) role = "external";
+  else if (isNum && /paid|유료/.test(name) && (/reg|가입|등록|signup|sign_up|install|(^|[_\s-])rr($|[_\s-])/.test(name))) role = "paid";
   else if (isNum && (/reg|가입|등록|signup|sign_up|install/.test(name) || /(^|[_\s-])rr($|[_\s-])/.test(name))) role = "reg";
   else if (isNum && /react|재활성|reactiv|resurrect|win.?back|winback/.test(name)) role = "react";
   else if (isNum && /cost|spend|비용|지출|budget|imp|click|ch_|채널|brand/.test(name)) role = "channel";
@@ -236,7 +237,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
       }
       out[h] = { role, kind: g.kind };
       if (role === "step") out[h].stepMode = guessedStepMode(h);
-      if (["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role)) out[h].plat = guessPlat(h);
+      if (["reg", "paid", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role)) out[h].plat = guessPlat(h);
       continue;
     }
     // partial: 강한 키워드만. isNum·isBin·isDateCol 판정 후 reg/react/channel/date만.
@@ -265,6 +266,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
     else if (!derivedRe.test(name) && isNum && !isBin) {
       if (isExplicitSpend) role = "channel";
       else if (isExplicitMediaDelivery) role = "channel";
+      else if (/paid|유료/.test(name) && /reg|가입|등록|signup|sign_up|install|(^|[_\s-])rr($|[_\s-])/.test(name)) role = "paid";
       else if (/(^|[_\s-])rr($|[_\s-])|^total[_\s-]*(reg|registration|signup).*(react|reactivation)$/i.test(name)) role = "reg";
       else if (/revenue|매출|sales|gmv|payment|결제금액/.test(name)) role = "revenue";
       else if (/purchaser|buyer|구매자|결제자/.test(name)) role = "purchasers";
@@ -287,7 +289,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
     if (role === "date") { if (once.date) role = "ignore"; else once.date = true; }
     out[h] = { role, kind };
     if (role === "step") out[h].stepMode = guessedStepMode(h);
-    if (["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role)) out[h].plat = guessPlat(h);
+    if (["reg", "paid", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role)) out[h].plat = guessPlat(h);
   }
   return out;
 }
@@ -326,7 +328,7 @@ function matchMediaInput(channel, candidates) {
 }
 
 export function colMapRoles(headers, colMap) {
-  const out = { week: [], date: null, reg: [], react: [], traffic: [], purchasers: [], revenue: [], platform: null, geo: null, reach: [], frequency: [], channels: [], dummies: [], steps: [], externals: [] };
+  const out = { week: [], date: null, reg: [], paid: [], react: [], traffic: [], purchasers: [], revenue: [], platform: null, geo: null, reach: [], frequency: [], channels: [], dummies: [], steps: [], externals: [] };
   const used = new Set();
   for (const h of headers || []) {
     const def = colMap[h] || {};
@@ -338,6 +340,7 @@ export function colMapRoles(headers, colMap) {
     if (r === "week") out.week.push({ header: h, plat });
     else if (r === "date" && !out.date) out.date = h;
     else if (r === "reg") out.reg.push({ header: h, plat });
+    else if (r === "paid") out.paid.push({ header: h, plat });
     else if (r === "react") out.react.push({ header: h, plat });
     else if (r === "traffic") out.traffic.push({ header: h, plat });
     else if (r === "purchasers") out.purchasers.push({ header: h, plat });
@@ -400,6 +403,7 @@ function buildGeoPanelFromRows(headers, rows, roles, platform, weekStart) {
   const channels = roles.channels.filter(inPlat).filter((item) => !/(^|[_\s])(other|etc|misc|기타)([_\s]|$)/i.test(item.header));
   const targets = [
     ...roles.reg.map((item) => ({ ...item, targetKey: "Regs" })),
+    ...roles.paid.map((item) => ({ ...item, targetKey: "PaidRegs" })),
     ...roles.react.map((item) => ({ ...item, targetKey: "React" })),
     ...roles.traffic.map((item) => ({ ...item, targetKey: "Traffic" })),
     ...roles.purchasers.map((item) => ({ ...item, targetKey: "Purchasers" })),
@@ -483,7 +487,7 @@ export function mmmPlatformTags(headers, colMap) {
   const r = colMapRoles(headers, colMap);
   if (r.platform) return []; // 행 필터(단일 컬럼) 모드는 태그 토글 대상 아님 — 값 자체가 플랫폼
   const set = new Set();
-  [...r.reg, ...r.react, ...r.traffic, ...r.purchasers, ...r.revenue, ...r.channels, ...r.externals, ...r.reach, ...r.frequency].forEach((x) => {
+  [...r.reg, ...r.paid, ...r.react, ...r.traffic, ...r.purchasers, ...r.revenue, ...r.channels, ...r.externals, ...r.reach, ...r.frequency].forEach((x) => {
     if (x.plat && x.plat !== "common") set.add(x.plat);
   });
   return [...set];
@@ -552,7 +556,7 @@ function pivotLongFormat(headers, rows, colMap) {
     attributedTargetHeaders: [],
   };
   const targetHeaders = new Set([
-    ...roles.reg, ...roles.react, ...roles.traffic, ...roles.purchasers, ...roles.revenue,
+    ...roles.reg, ...roles.paid, ...roles.react, ...roles.traffic, ...roles.purchasers, ...roles.revenue,
   ].map((item) => item.header));
   const externalHeaders = new Set(roles.externals.map((item) => item.header));
   const binaryHeaders = new Map([
@@ -752,7 +756,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   // 주 안에서 0/1이 섞이면 NaN으로 남겨 경계 주를 차단한다.
   if ((r.date || (weekC && r.platform)) && baseRows.length) {
     const additiveHeaders = new Set([
-      ...r.reg, ...r.react, ...r.traffic, ...r.purchasers, ...r.revenue, ...r.channels,
+      ...r.reg, ...r.paid, ...r.react, ...r.traffic, ...r.purchasers, ...r.revenue, ...r.channels,
     ].map((item) => item.header));
     // 업계 지수는 일자/플랫폼 행에 반복될 수 있는 level control이다. KPI·spend처럼
     // 합산하면 주간 시장 규모가 행 수만큼 부풀므로 유효값 평균으로 묶는다.
@@ -1021,8 +1025,9 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
       return values.every(Number.isFinite) ? values.reduce((sum, value) => sum + value, 0) : NaN;
     });
   };
-  const regA = sumCols(r.reg), reactA = sumCols(r.react), trafficA = sumCols(r.traffic), purchasersA = sumCols(r.purchasers), revenueA = sumCols(r.revenue);
+  const regA = sumCols(r.reg), paidA = sumCols(r.paid), reactA = sumCols(r.react), trafficA = sumCols(r.traffic), purchasersA = sumCols(r.purchasers), revenueA = sumCols(r.revenue);
   if (regA) panel.targets.Regs = regA;
+  if (paidA) panel.targets.PaidRegs = paidA;
   if (reactA) panel.targets.React = reactA;
   if (trafficA) panel.targets.Traffic = trafficA;
   if (purchasersA) panel.targets.Purchasers = purchasersA;
@@ -1152,6 +1157,7 @@ const ZONES = [
   ["week", "🗓 주차(t) · 1개", "🗓 Week (t) · 1", false, false],
   ["date", "📅 날짜 · 1개 (표시용)", "📅 Date · 1 (for display)", false, false],
   ["reg", "🎯 가입 Regs", "🎯 Regs", false, true],
+  ["paid", "🎯 Paid 가입 Regs (선택)", "🎯 Paid regs (optional)", false, true],
   ["react", "🎯 재활성 React", "🎯 Reactivation", false, true],
   ["traffic", "🎯 총유입 Traffic", "🎯 Total traffic", false, true],
   ["purchasers", "🛍 구매자 Purchasers", "🛍 Purchasers", false, true],
@@ -1185,7 +1191,7 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
     next[col] = {
       ...prev,
       role,
-      plat: ["reg", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role) ? prev.plat || guessPlat(col) : prev.plat,
+      plat: ["reg", "paid", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role) ? prev.plat || guessPlat(col) : prev.plat,
       stepMode: role === "step" ? prev.stepMode || guessedStepMode(col) : prev.stepMode,
     };
     onChange(next);
