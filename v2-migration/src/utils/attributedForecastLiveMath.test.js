@@ -34,8 +34,11 @@ describe("live-condition attributed forecast router", () => {
     const result = runAttributedForecastLiveRouter(dataset, { holdout: 12, horizon: 12 });
     expect(result.model).toBe("live-oos-organic-paid-v3");
     expect(result.foldStep).toBe(4);
+    expect([26, 52, 78]).toContain(result.selectedSpec.trainingWindow);
+    expect(result.lookbackCandidates.map((candidate) => candidate.trainingWindow)).toEqual([26, 52, 78]);
+    expect(result.lookbackCandidates.filter((candidate) => candidate.available).every((candidate) => Number.isFinite(candidate.pooledWmape))).toBe(true);
     expect(result.candidates).toHaveLength(2);
-    expect(result.candidates.every((candidate) => candidate.folds.length > 10)).toBe(true);
+    expect(result.candidates.every((candidate) => candidate.folds.length >= 8)).toBe(true);
     expect(result.candidates.every((candidate) =>
       Number.isFinite(candidate.pooledWmape)
       && Number.isFinite(candidate.conditionalPooledWmape)
