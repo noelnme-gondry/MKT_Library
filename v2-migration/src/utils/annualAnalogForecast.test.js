@@ -33,7 +33,7 @@ describe("annual analog regime router", () => {
     });
     expect(result.currentBreak).toBe(true);
     expect(result.qualified).toBe(true);
-    expect(result.model).toBe("bounded-regime-search-v4");
+    expect(result.model).toBe("bounded-regime-search-v5");
     expect(result.osGuardrailPassed).toBe(true);
     expect(result.osGuardrail.every((component) => component.passed)).toBe(true);
     expect(result.selected.latestWmape).toBeLessThan(1e-8);
@@ -71,7 +71,7 @@ describe("annual analog regime router", () => {
     const total = panel(android.targets.Regs.map((value, index) => value + ios.targets.Regs[index]), 152);
     total.targets.PaidRegs = androidPaid.map((value, index) => value + iosPaid[index]);
     const result = runAnnualAnalogRouter({ totalPanel: total, androidPanel: android, iosPanel: ios });
-    expect(result.model).toBe("paid-organic-adaptive-search-v3");
+    expect(result.model).toBe("paid-organic-adaptive-search-v4");
     expect(result.paidOrganicHybrid).toBe(true);
     expect(result.adaptiveModelSearch).toBe(true);
     expect(result.modelSearch.maxTrainingWeeks).toBe(104);
@@ -82,7 +82,14 @@ describe("annual analog regime router", () => {
       tailRiskDeterioration: 0.1,
       instability: 0.1,
     });
+    expect(result.modelSearch.performanceGuardrails).toEqual({
+      overallTolerancePoints: 0,
+      recentTolerancePoints: 0,
+      tailRiskToleranceRatio: 1.1,
+      minimumFoldWinRate: 0.5,
+    });
     expect(result.modelSearch.routeDecision.winner.reasonCodes.length).toBeGreaterThan(0);
+    expect(result.modelSearch.routeDecision.guardrail.enabled).toBe(true);
     expect(result.modelSearch.android.auditDecision.winner.ranks.overall).toBeGreaterThan(0);
     expect(result.modelSearch.android.zeroedPaidWeeks).toBe(2);
     expect(result.modelSearch.ios.zeroedPaidWeeks).toBe(2);
@@ -100,6 +107,26 @@ describe("annual analog regime router", () => {
     expect(result.selected.future.predicted).toEqual(
       result.selected.future.organic.map((value, index) => value + result.selected.future.performance[index]),
     );
+  });
+
+  it("rejects deteriorating candidates before selection and retains a baseline fallback", () => {
+    const length = 170;
+    const android = Array.from({ length }, (_, index) =>
+      100 + (index % 9 === 0 ? 180 : 0) + (index % 4 === 0 ? 35 : 0));
+    const ios = Array.from({ length }, (_, index) =>
+      220 + (index % 11 === 0 ? 260 : 0) - (index % 5 === 0 ? 45 : 0));
+    const result = runAnnualAnalogRouter({
+      totalPanel: panel(android.map((value, index) => value + ios[index]), 150),
+      androidPanel: panel(android, 150),
+      iosPanel: panel(ios, 150),
+    });
+    const decision = result.modelSearch.routeDecision;
+    expect(decision.guardrail.enabled).toBe(true);
+    expect(decision.guardrail.rejectedCount).toBeGreaterThan(0);
+    expect(decision.candidatesEvaluated).toBeGreaterThan(decision.candidatesCompared);
+    expect(decision.guardrail.baseline.specId).toBe("flat-8");
+    expect(decision.guardrail.rejected.length).toBeLessThanOrEqual(12);
+    expect(decision.guardrail.rejected.every((candidate) => candidate.reasons.length > 0)).toBe(true);
   });
 
   it("weights similar seasonal segments without reading the forecast outcome", () => {

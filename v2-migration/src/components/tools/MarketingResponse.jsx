@@ -2219,6 +2219,7 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
         )
         : ""],
       [tx("# 선정 이유", "# Selection rationale"), forecastSelectionDecisionText(fc.modelSearch?.routeDecision, locale)],
+      [tx("# 성과 악화 자동 제외", "# Automatic deterioration rejection"), forecastGuardrailSummaryText(fc.modelSearch, locale)],
       [tx("# 유사 시즌 결과", "# Similar-season result"), fc.modelSearch?.similarSeason
         ? tx(
           `선택됨 · ${fc.modelSearch.similarSeason.matchWeeks}주 모양 비교 · ${fc.modelSearch.similarSeason.analogLags?.join("/")}주 전 유사 구간`,
@@ -3200,10 +3201,52 @@ function forecastSelectionDecisionText(decision, lang = "ko") {
       ? ` Its composite score beat the runner-up by ${decision.scoreGap.toFixed(2)} points.`
       : ` 종합점수는 2위보다 ${decision.scoreGap.toFixed(2)}p 낮았습니다.`
     : "";
+  const evaluated = decision.candidatesEvaluated || decision.candidatesCompared || 0;
+  const rejected = decision.guardrail?.rejectedCount || 0;
   if (lang === "en") {
-    return `Selected from ${decision.candidatesCompared || 0} candidates using full-history OOS ${pct(winner.overallWmape)} (${rank("overall")}), recent OOS ${pct(winner.recentWmape)} (${rank("recent")}), bad-window P90 ${pct(winner.tailRiskWmape)} (${rank("tailRisk")}), and fold instability ${pct(winner.instabilityWmape)} (${rank("instability")}); strengths: ${reasons || "balanced result"}.${gap}`;
+    return `Selected after evaluating ${evaluated} candidates and rejecting ${rejected} that breached the baseline guardrail. Full-history OOS ${pct(winner.overallWmape)} (${rank("overall")}), recent OOS ${pct(winner.recentWmape)} (${rank("recent")}), bad-window P90 ${pct(winner.tailRiskWmape)} (${rank("tailRisk")}), and fold instability ${pct(winner.instabilityWmape)} (${rank("instability")}); strengths: ${reasons || "balanced result"}.${gap}`;
   }
-  return `${decision.candidatesCompared || 0}개 후보의 전체 OOS ${pct(winner.overallWmape)}(${rank("overall")}), 최근 OOS ${pct(winner.recentWmape)}(${rank("recent")}), 나쁜 구간 P90 ${pct(winner.tailRiskWmape)}(${rank("tailRisk")}), fold 변동성 ${pct(winner.instabilityWmape)}(${rank("instability")})을 함께 평가했습니다. 강점: ${reasons || "기준 간 균형"}.${gap}`;
+  return `${evaluated}개 후보를 평가하고 기준선 안전장치를 위반한 ${rejected}개를 먼저 제외했습니다. 전체 OOS ${pct(winner.overallWmape)}(${rank("overall")}), 최근 OOS ${pct(winner.recentWmape)}(${rank("recent")}), 나쁜 구간 P90 ${pct(winner.tailRiskWmape)}(${rank("tailRisk")}), fold 변동성 ${pct(winner.instabilityWmape)}(${rank("instability")})을 함께 평가했습니다. 강점: ${reasons || "기준 간 균형"}.${gap}`;
+}
+
+function forecastGuardrailSummaryText(modelSearch, lang = "ko") {
+  const decisions = [
+    [lang === "en" ? "route" : "최종 경로", modelSearch?.routeDecision],
+    [lang === "en" ? "Android blend" : "Android 결합비", modelSearch?.android?.productionDecision],
+    [lang === "en" ? "iOS blend" : "iOS 결합비", modelSearch?.ios?.productionDecision],
+    ...Object.entries(modelSearch?.android?.componentDecisions || {}).map(([key, decision]) =>
+      [`Android ${key}`, decision]),
+    ...Object.entries(modelSearch?.ios?.componentDecisions || {}).map(([key, decision]) =>
+      [`iOS ${key}`, decision]),
+  ].filter(([, decision]) => decision?.guardrail?.enabled);
+  if (!decisions.length) return "";
+  const rejected = decisions.reduce((sum, [, decision]) => sum + (decision.guardrail.rejectedCount || 0), 0);
+  const fallback = decisions.filter(([, decision]) => decision.guardrail.fallbackUsed).map(([label]) => label);
+  const reasonCounts = decisions.reduce((counts, [, decision]) => {
+    Object.entries(decision.guardrail.rejectedByReason || {}).forEach(([reason, count]) => {
+      counts[reason] = (counts[reason] || 0) + count;
+    });
+    return counts;
+  }, {});
+  const reasonLabels = lang === "en"
+    ? {
+      "overall-worse-than-baseline": "worse full OOS",
+      "recent-worse-than-baseline": "worse recent OOS",
+      "tail-risk-worse-than-baseline": "excess bad-window risk",
+      "insufficient-fold-wins": "won fewer than half of folds",
+    }
+    : {
+      "overall-worse-than-baseline": "전체 OOS 악화",
+      "recent-worse-than-baseline": "최근 OOS 악화",
+      "tail-risk-worse-than-baseline": "나쁜 구간 위험 초과",
+      "insufficient-fold-wins": "fold 절반 미만 승리",
+    };
+  const reasons = Object.entries(reasonCounts).map(([reason, count]) =>
+    `${reasonLabels[reason] || reason} ${count}`).join(" · ");
+  if (lang === "en") {
+    return `${rejected} deteriorating candidate(s) were removed before selection${reasons ? `: ${reasons}` : ""}. ${fallback.length ? `Baseline fallback was used for ${fallback.join(", ")}.` : "Every selected layer beat its baseline guardrail; no fallback was needed."}`;
+  }
+  return `선택 전에 성과가 악화된 후보 ${rejected}개를 자동 제외했습니다${reasons ? `: ${reasons}` : ""}. ${fallback.length ? `${fallback.join(", ")}은 통과 모델이 없어 최근평균 기준선으로 자동 전환했습니다.` : "최종 선택된 각 레이어는 기준선 안전장치를 통과해 fallback이 필요하지 않았습니다."}`;
 }
 
 function forecastAssistRouteLabel(route, lang) {
@@ -7193,8 +7236,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   ? tx("귀속형 Organic·Paid 후보를 4주 간격 rolling OOS로 비교합니다. 모델 선택은 실제 미래비용을 보지 않는 라이브 조건으로 수행하고, 실제 비용을 미리 넣은 조건부 오차와 naive 오차를 분리합니다. 예측 거리별로 모델이 naive를 이기지 못하면 해당 주차는 자동으로 naive로 되돌립니다. ", "Attributed Organic and Paid candidates are compared with rolling OOS origins spaced four weeks apart. Selection uses live conditions without seeing future spend; conditional error with known future spend and naive error are reported separately. At each horizon, the forecast falls back to naive when the model does not beat it. ")
                   : forecast?.isAnnualAnalog
                       ? forecast.paidOrganicHybrid
-                      ? tx("OS별 Total과 Paid 실측을 사용해 Organic=Total−Paid를 구성하며, 해당 OS의 Paid Cost 합계가 0인 주는 Paid RR과 Paid 예측도 0으로 정규화합니다. 최대 104주 안에서 최근평균·감쇠 추세·전년 동주·26/52/78주 전 유사 시즌·Cost 기반 Paid 반응과 0/25/50/75/100% 결합비를 비교합니다. 하나의 wMAPE만 보지 않고 전체 OOS, 최근 OOS, 나쁜 구간 P90, fold 안정성을 함께 평가합니다. 최신 12주 audit은 그 구간을 제외한 development OOS로 고정하고, 실제 미래예측용 결합비만 audit 완료 후 최신 관측까지 포함해 다시 선택합니다. ", "Observed OS-level Total and Paid outcomes define Organic=Total−Paid; when an OS has zero total Paid Cost, both Paid RR and its Paid forecast are normalized to zero. Within a maximum 104-week window, the search compares recent-level, damped-trend, matching-week annual, analogous seasons 26/52/78 weeks back, cost-based Paid response, and 0/25/50/75/100% blend candidates. Selection balances full OOS, recent OOS, bad-window P90, and fold stability instead of relying on one wMAPE. The latest 12-week audit is frozen using development OOS that excludes it; only the live future blend is reselected with all observations after the audit is complete. ")
-                      : tx("최대 104주 안에서 최근평균·감쇠 추세·전년 같은 주차·26/52/78주 전 유사 시즌 패턴을 비교합니다. 전체·최근·나쁜 구간·안정성 OOS를 함께 보고 Direct Total과 Android+iOS 합산도 선택하며, 이 경로는 Cost 반응 시나리오를 제공하지 않습니다. ", "Within a maximum 104-week window, recent-level, damped-trend, matching-week annual, and analogous-season candidates 26/52/78 weeks back are compared. Full, recent, bad-window, and stability OOS jointly select Direct Total versus Android+iOS; this route does not provide budget-response scenarios. ")
+                      ? tx("OS별 Total과 Paid 실측을 사용해 Organic=Total−Paid를 구성하며, 해당 OS의 Paid Cost 합계가 0인 주는 Paid RR과 Paid 예측도 0으로 정규화합니다. 최대 104주 안에서 최근평균·감쇠 추세·전년 동주·26/52/78주 전 유사 시즌·Cost 기반 Paid 반응과 0/25/50/75/100% 결합비를 비교합니다. 하나의 wMAPE만 보지 않고 전체 OOS, 최근 OOS, 나쁜 구간 P90, fold 안정성을 함께 평가합니다. 전체나 최근 OOS가 최근평균 기준선보다 악화되거나, 최악 구간 위험이 10% 넘게 커지거나, fold 절반도 이기지 못한 후보는 선택 전에 자동 제외합니다. 통과 후보가 없으면 최근평균 기준선으로 되돌아갑니다. 최신 12주 audit은 그 구간을 제외한 development OOS로 고정하고, 실제 미래예측용 결합비만 audit 완료 후 최신 관측까지 포함해 다시 선택합니다. ", "Observed OS-level Total and Paid outcomes define Organic=Total−Paid; when an OS has zero total Paid Cost, both Paid RR and its Paid forecast are normalized to zero. Within a maximum 104-week window, the search compares recent-level, damped-trend, matching-week annual, analogous seasons 26/52/78 weeks back, cost-based Paid response, and 0/25/50/75/100% blend candidates. Selection balances full OOS, recent OOS, bad-window P90, and fold stability instead of relying on one wMAPE. Before selection, a candidate is rejected when full or recent OOS is worse than the recent-average baseline, bad-window risk is more than 10% higher, or it fails to win at least half the folds. The system falls back to the recent-average baseline when nothing passes. The latest 12-week audit is frozen using development OOS that excludes it; only the live future blend is reselected with all observations after the audit is complete. ")
+                      : tx("최대 104주 안에서 최근평균·감쇠 추세·전년 같은 주차·26/52/78주 전 유사 시즌 패턴을 비교합니다. 전체·최근·나쁜 구간·안정성 OOS를 함께 보고 Direct Total과 Android+iOS 합산도 선택합니다. 최근평균 기준선보다 악화된 후보는 자동 제외하며 통과 모델이 없으면 기준선으로 되돌아갑니다. 이 경로는 Cost 반응 시나리오를 제공하지 않습니다. ", "Within a maximum 104-week window, recent-level, damped-trend, matching-week annual, and analogous-season candidates 26/52/78 weeks back are compared. Full, recent, bad-window, and stability OOS jointly select Direct Total versus Android+iOS. Candidates that deteriorate versus the recent-average baseline are removed automatically, with a baseline fallback when none pass. This route does not provide budget-response scenarios. ")
                   : tx("같은 CSV·매핑을 쓰되, MMM은 전체 기간 기여도를 유지하고 예측 회귀만 Cost 학습 window·추세·계절성을 12주 rolling 검증으로 고릅니다. ", "Uses the same CSV/mapping, but keeps MMM on full-history contribution analysis and selects only the forecast regression's Cost window, trend, and seasonality with rolling 12-week validation. ")}
                 {!forecast?.isStructural && !forecast?.isAnnualAnalog && effPlatformFilter === "all" && tx("114주 이상이면 Direct Total과 Android·iOS 합산을 nested OOS로 비교하고, 더 짧으면 OS 합산을 유지합니다. ", "With 114+ weeks, Direct Total and the Android+iOS sum are compared by nested OOS; shorter histories retain the OS sum. ")}
                 {tx(`선택한 목표(${mmmTargetDisplay(mmm.target, locale)})의 회색선은 실측, 파란선은 모델/예측, 음영은 최근 오차를 반영한 참고 범위입니다(인과 보장 아님).`, `For the selected target (${mmmTargetDisplay(mmm.target, locale)}), gray is actual, blue is model/forecast, and the band is a recent-error reference range, not a causal guarantee.`)}
@@ -7419,6 +7462,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           <p style={{ margin: "6px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.55 }}>
                             <strong>{tx("왜 이 모델인가: ", "Why this model: ")}</strong>
                             {forecastSelectionDecisionText(forecast.modelSearch?.routeDecision, locale)}
+                          </p>
+                          <p style={{ margin: "5px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
+                            <strong>{tx("자동 제외 안전장치: ", "Automatic rejection guardrail: ")}</strong>
+                            {forecastGuardrailSummaryText(forecast.modelSearch, locale)}
                           </p>
                           <p style={{ margin: "5px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
                             {forecast.modelSearch?.similarSeason
