@@ -2146,7 +2146,8 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
       [tx("# 도구", "# Tool"), "Organic + Paid structural forecast router (5-18)"],
       [tx("# 대상", "# Target"), `${tKo} (${target})`],
       [tx("# 선택 경로", "# Selected route"), fc.structuralRoute],
-      [tx("# 사용 기준", "# Use gate"), `${tx("최근 봉인 12주 wMAPE", "latest sealed 12-week wMAPE")} < ${fc.structuralThreshold}%`],
+      [tx("# 상태", "# Status"), fc.structuralEligible ? tx("사용 가능", "usable") : tx("사용 불가 · 진단 전용", "unavailable · diagnostic only")],
+      [tx("# 사용 기준", "# Use gate"), `${tx("전체 rolling OOS의 Total·구성요소 최악 wMAPE", "worst Total and component wMAPE across full rolling OOS")} < ${fc.structuralThreshold}%`],
       [tx("# 분해 정의", "# Decomposition"), tx("organic_predicted_live는 Organic 수준, performance_predicted_live는 비용으로 예측한 0 이상 Paid 절대 수준이며 두 열의 합이 fitted_or_forecast_live입니다.", "organic_predicted_live is the Organic level; performance_predicted_live is the non-negative absolute Paid level predicted from cost, and their sum is fitted_or_forecast_live.")],
       [],
       ["period", "segment", "actual", "fitted_or_forecast_live", "organic_predicted_live", "performance_predicted_live", "lower_live", "upper_live"],
@@ -2177,7 +2178,7 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
     ));
     (fc.predFut || []).forEach((prediction, index) => append(
       fc.futLabels?.[index] ?? `+${index + 1}`,
-      "forecast",
+      fc.structuralEligible ? "forecast" : "forecast_diagnostic_only",
       "",
       prediction,
       fc.organicFut?.[index],
@@ -2956,6 +2957,7 @@ function attributedForecastShape(route) {
     structuralRoute: route.selectedRoute,
     structuralCandidates: route.candidates,
     structuralEligible: route.eligible,
+    structuralOsBreakdownEligible: route.osBreakdownEligible,
     structuralHistoricallyStable: route.historicallyStable,
     structuralThreshold: route.threshold,
     structuralDiagnostics: route.diagnostics,
@@ -6813,23 +6815,44 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 <>
                   {forecast.isStructural && (
                     <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
-                      <strong>{tx("최근 12주 OOS로 Total 방식 자동 선택", "Total route selected by latest 12-week OOS")}</strong>
+                      <strong>{tx("전체 rolling OOS로 예측 경로 선택·차단", "Forecast route selected and gated by full rolling OOS")}</strong>
                       <p style={{ margin: "5px 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
-                        {(forecast.structuralCandidates || []).map((candidate) => `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} ${tx("최근", "latest")} ${candidate.wmape.toFixed(2)}% · ${tx(`${candidate.folds.length}개 시점 통합`, `${candidate.folds.length}-fold pooled`)} ${candidate.pooledWmape.toFixed(2)}%`).join(" / ")}
+                        {(forecast.structuralCandidates || []).map((candidate) => `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} · ${tx("전체", "full")} ${candidate.pooledWmape.toFixed(2)}% · ${tx("최악", "worst")} ${candidate.worstWmape.toFixed(2)}% · ${tx("통과", "passes")} ${Math.round(candidate.passRate * candidate.folds.length)}/${candidate.folds.length} · ${candidate.route === "direct-total" ? tx("Organic/Paid", "Organic/Paid") : tx("OS×Organic/Paid", "OS×Organic/Paid")} ${candidate.componentPooledWmape.toFixed(2)}%`).join(" / ")}
                         {` → ${forecast.structuralRoute === "direct-total" ? "Direct Total" : "Android + iOS"} ${tx("선택", "selected")}`}
                       </p>
                       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                         <span className="ab-pill" style={forecast.structuralEligible ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}>
-                          {forecast.structuralEligible ? tx("사용 가능 · wMAPE < 10%", "Usable · wMAPE < 10%") : tx("사용 보류 · wMAPE ≥ 10%", "Hold · wMAPE ≥ 10%")}
+                          {forecast.structuralEligible ? tx("사용 가능 · 전 OOS < 10%", "Usable · every OOS < 10%") : tx("사용 불가 · 전체 OOS 게이트 실패", "Unavailable · full OOS gate failed")}
+                        </span>
+                        <span className="ab-pill" style={forecast.structuralOsBreakdownEligible ? undefined : { borderColor: "#ef4444", color: "#b91c1c" }}>
+                          {forecast.structuralOsBreakdownEligible ? tx("OS 분해 사용 가능", "OS breakdown usable") : tx("OS 분해 사용 불가", "OS breakdown unavailable")}
                         </span>
                         <span className="ab-pill">{tx("부분 주차 자동 제외", "Partial current week excluded")}</span>
                         <span className="ab-pill">{tx("Perf 절대 수준 ≥ 0", "Absolute Perf level ≥ 0")}</span>
                       </div>
                       {!forecast.structuralHistoricallyStable && (
                         <p style={{ margin: "7px 0 0", color: "#b45309", fontSize: "11.5px", lineHeight: 1.5 }}>
-                          {tx("현재 최근 12주는 10% 기준을 통과했지만 과거 제외 시점 전체에서는 10%가 유지되지 않았습니다. 현재 예측은 사용할 수 있으나, 신규 Organic 레짐이 다시 바뀌면 즉시 재검증해야 합니다.", "The latest 12 weeks pass the 10% gate, but the threshold was not sustained across historical cutoffs. The current forecast is usable, but revalidate immediately after another Organic regime shift.")}
+                          {tx("최신 구간만 좋아도 승인하지 않습니다. 전체 가능한 12주 제외 시점에서 Total과 구성요소가 모두 10% 미만이어야 하며, 현재 미래 숫자는 운영 의사결정과 OS별 CSV 공식값으로 사용할 수 없습니다.", "A strong latest window is not enough for approval. Total and component errors must both remain below 10% across every eligible 12-week cutoff; current future values cannot be used for operating decisions or official OS-level CSV output.")}
                         </p>
                       )}
+                      <details style={{ marginTop: "8px" }}>
+                        <summary style={{ cursor: "pointer", fontSize: "11.5px" }}>{tx("전체 OOS 오차 흐름 보기", "View full OOS error trajectory")}</summary>
+                        <div className="table-wrap" style={{ marginTop: "7px" }}>
+                          <table className="data" style={{ fontSize: "10.5px" }}>
+                            <thead><tr><th>{tx("뒤에서 제외", "Excluded from end")}</th><th>{tx("검증 기간", "Validation period")}</th><th>Total wMAPE</th><th>{forecast.structuralRoute === "direct-total" ? "Organic/Paid" : "OS×Organic/Paid"} wMAPE</th></tr></thead>
+                            <tbody>
+                              {((forecast.structuralCandidates || []).find((candidate) => candidate.route === forecast.structuralRoute)?.folds || []).map((fold) => (
+                                <tr key={fold.offset}>
+                                  <td>{fold.excludedWeeks}{tx("주", " wk")}</td>
+                                  <td>{fold.start}–{fold.end}</td>
+                                  <td className="tnum" style={fold.wmape >= 10 ? { color: "#b91c1c" } : undefined}>{fold.wmape.toFixed(2)}%</td>
+                                  <td className="tnum" style={fold.componentWmape >= 10 ? { color: "#b91c1c" } : undefined}>{fold.componentWmape.toFixed(2)}%</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </details>
                       {forecast.structuralDiagnostics && (
                         <p style={{ margin: "7px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
                           {tx(
@@ -6926,7 +6949,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         <span className="ab-pill" style={!recentBacktest.reliable ? { borderColor: "#ef4444", color: "#b91c1c" } : undefined}>RMSE {targetValueLabel(recentBacktest.rmse)} · MAE {targetValueLabel(recentBacktest.mae)} · wMAPE {Number.isFinite(recentBacktest.wmape) ? `${recentBacktest.wmape.toFixed(1)}%` : "—"}</span>
                       </div>
                       {!recentBacktest.reliable && <div className="callout warn" style={{ marginTop: "10px" }}><div className="ico">!</div><div className="body"><strong>{tx("현재 데이터에서는 12주 예측을 신뢰할 수 없습니다", "The 12-week forecast is not reliable for this data")}</strong><p>{forecast.isStructural
-                        ? tx("검증 구간 wMAPE가 사용 기준 10% 이상입니다. 미래 숫자를 운영 의사결정에 쓰지 말고 새 데이터가 쌓인 뒤 다시 검증하세요.", "Holdout wMAPE is at or above the 10% use gate. Do not use the future values for operating decisions; validate again after new data arrives.")
+                        ? tx("최신 12주가 통과하더라도 전체 rolling OOS 또는 구성요소 오차가 10% 기준을 넘었습니다. 미래 숫자를 운영 의사결정에 쓰지 말고 새 데이터가 쌓인 뒤 다시 검증하세요.", "Even if the latest 12 weeks pass, full rolling OOS or component error exceeds the 10% gate. Do not use the future values for operating decisions; validate again after new data arrives.")
                         : tx("검증 구간 wMAPE가 30%를 초과했습니다. 아래 예산 변경 시나리오는 의사결정에 사용하지 말고, 먼저 캠페인 OFF/증액 홀드아웃으로 확인하세요.", "Holdout wMAPE exceeds 30%. Do not use the budget-change scenarios for decisions until a campaign OFF/incrementality holdout confirms them.")}</p></div></div>}
                       <div style={{ display: "flex", gap: "6px", marginTop: "10px", flexWrap: "wrap" }}><span className="ab-pill">{tx("앞 12주: 학습 구간 적합", "First 12: training fit")}</span><span className="ab-pill" style={{ borderColor: "#f59e0b", color: "#b45309" }}>{tx("뒤 12주: 학습 제외 검증", "Last 12: held-out validation")}</span></div>
                       <MmmBacktestChart locale={locale} labels={recentBacktest.labels} actual={recentBacktest.actual} validationStartIndex={recentBacktest.validationStartIndex} variants={[{ label: tx("모델 적합·예측", "Model fit · prediction"), predicted: recentBacktest.predicted, color: "#2563eb", dash: [] }]} formatValue={targetValueLabel} />
@@ -7005,7 +7028,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       onClick={() => csvDownload(`mmm_forecast_${mmm.target}_${forecast.model}_${_today()}.csv`, buildForecastCsv(forecast, mmm.target, locale, sourceCurrency, displayCurrency))}
                     >
                       {forecast.isStructural
-                        ? tx("⬇ 예측 분해 CSV (Organic·Perf)", "⬇ Forecast decomposition CSV (Organic · Perf)")
+                        ? forecast.structuralEligible
+                          ? tx("⬇ 예측 분해 CSV (Organic·Perf)", "⬇ Forecast decomposition CSV (Organic · Perf)")
+                          : tx("⬇ OOS 진단 CSV (예측 사용 불가)", "⬇ OOS diagnostic CSV (forecast unavailable)")
                         : tx("⬇ 살아있는 예측 CSV (수식·실측·예측)", "⬇ Live forecast CSV (formulas/actual/forecast)")}
                     </button>
                   </div>
