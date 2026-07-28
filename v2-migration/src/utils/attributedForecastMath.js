@@ -144,6 +144,35 @@ function routeAt(dataset, trainEnd, horizon, route) {
   };
 }
 
+function componentFoldError(dataset, route, result, trainEnd, horizon) {
+  const actualSeries = [];
+  const predictedSeries = [];
+  if (route === "direct-total") {
+    const panel = panelFor(dataset, "total");
+    actualSeries.push(panel.organic.slice(trainEnd, trainEnd + horizon), panel.paid.slice(trainEnd, trainEnd + horizon));
+    predictedSeries.push(result.organic, result.performance);
+  } else {
+    ["android", "ios"].forEach((platform, index) => {
+      const panel = panelFor(dataset, platform);
+      actualSeries.push(panel.organic.slice(trainEnd, trainEnd + horizon), panel.paid.slice(trainEnd, trainEnd + horizon));
+      predictedSeries.push(result.parts[index].organic, result.parts[index].performance);
+    });
+  }
+  let absoluteError = 0;
+  let denominator = 0;
+  actualSeries.forEach((actual, seriesIndex) => {
+    actual.forEach((value, index) => {
+      absoluteError += Math.abs(value - predictedSeries[seriesIndex][index]);
+      denominator += Math.abs(value);
+    });
+  });
+  return {
+    componentWmape: denominator > 0 ? absoluteError / denominator * 100 : null,
+    componentAbsoluteError: absoluteError,
+    componentDenominator: denominator,
+  };
+}
+
 function recentAverageCosts(panel, count = 8) {
   const rows = panel.costs.slice(-Math.min(count, panel.costs.length));
   return panel.channels.map((_, column) => rows.reduce((sum, row) => sum + row[column], 0) / rows.length);
@@ -236,13 +265,23 @@ export function runAttributedForecastRouter(dataset, options = {}) {
   if (trainEnd < 39) return null;
   const totalPanel = panelFor(dataset, "total");
   const actual = totalPanel.total.slice(trainEnd);
-  const foldOffsets = [0, 12, 24, 36, 48, 60, 72].filter((offset) => dataset.weeks.length - holdout - offset >= 39);
+  const maxOffset = dataset.weeks.length - holdout - 39;
+  const foldOffsets = Array.from({ length: Math.floor(maxOffset / holdout) + 1 }, (_, index) => index * holdout);
   const candidates = ["direct-total", "android-ios-sum"].map((route) => {
     const folds = foldOffsets.map((offset) => {
       const foldTrainEnd = dataset.weeks.length - holdout - offset;
       const foldActual = totalPanel.total.slice(foldTrainEnd, foldTrainEnd + holdout);
       const result = routeAt(dataset, foldTrainEnd, holdout, route);
-      return result ? { offset, wmape: wmape(foldActual, result.predicted), denominator: foldActual.reduce((sum, value) => sum + Math.abs(value), 0) } : null;
+      if (!result) return null;
+      return {
+        offset,
+        excludedWeeks: offset + holdout,
+        start: dataset.weekLabels[foldTrainEnd],
+        end: dataset.weekLabels[foldTrainEnd + holdout - 1],
+        wmape: wmape(foldActual, result.predicted),
+        denominator: foldActual.reduce((sum, value) => sum + Math.abs(value), 0),
+        ...componentFoldError(dataset, route, result, foldTrainEnd, holdout),
+      };
     }).filter(Boolean);
     const latest = folds.find((fold) => fold.offset === 0);
     const result = routeAt(dataset, trainEnd, holdout, route);
@@ -250,18 +289,29 @@ export function runAttributedForecastRouter(dataset, options = {}) {
     const pooledWmape = denominator > 0
       ? folds.reduce((sum, fold) => sum + fold.wmape / 100 * fold.denominator, 0) / denominator * 100
       : null;
+    const componentDenominator = folds.reduce((sum, fold) => sum + fold.componentDenominator, 0);
+    const componentPooledWmape = componentDenominator > 0
+      ? folds.reduce((sum, fold) => sum + fold.componentAbsoluteError, 0) / componentDenominator * 100
+      : null;
     return result && latest && {
       route,
       ...result,
       wmape: latest.wmape,
       pooledWmape,
       worstWmape: Math.max(...folds.map((fold) => fold.wmape)),
+      passRate: folds.filter((fold) => fold.wmape < 10).length / folds.length,
+      componentPooledWmape,
+      componentWorstWmape: Math.max(...folds.map((fold) => fold.componentWmape)),
+      componentPassRate: folds.filter((fold) => fold.componentWmape < 10).length / folds.length,
       folds,
     };
   }).filter(Boolean);
   if (candidates.length !== 2) return null;
-  candidates.sort((left, right) => left.wmape - right.wmape || left.route.localeCompare(right.route));
+  candidates.sort((left, right) => left.pooledWmape - right.pooledWmape || left.componentPooledWmape - right.componentPooledWmape || left.route.localeCompare(right.route));
   const selected = candidates[0];
+  const osCandidate = candidates.find((candidate) => candidate.route === "android-ios-sum");
+  const eligible = selected.worstWmape < 10 && selected.componentWorstWmape < 10;
+  const osBreakdownEligible = osCandidate.worstWmape < 10 && osCandidate.componentWorstWmape < 10;
   const future = futureForRoute(dataset, selected.route, horizon);
   if (!future) return null;
   const absoluteErrors = actual.map((value, index) => Math.abs(value - selected.predicted[index]));
@@ -271,10 +321,21 @@ export function runAttributedForecastRouter(dataset, options = {}) {
   return {
     model: "organic-paid-structural-router-v1",
     selectedRoute: selected.route,
-    eligible: selected.wmape < 10,
+    eligible,
+    osBreakdownEligible,
     threshold: 10,
-    candidates: candidates.map(({ route, wmape: value, pooledWmape, worstWmape, folds }) => ({ route, wmape: value, pooledWmape, worstWmape, folds })),
-    historicallyStable: selected.pooledWmape < 10,
+    candidates: candidates.map(({ route, wmape: value, pooledWmape, worstWmape, passRate, componentPooledWmape, componentWorstWmape, componentPassRate, folds }) => ({
+      route,
+      wmape: value,
+      pooledWmape,
+      worstWmape,
+      passRate,
+      componentPooledWmape,
+      componentWorstWmape,
+      componentPassRate,
+      folds,
+    })),
+    historicallyStable: eligible,
     backtest: {
       labels: dataset.weekLabels.slice(-(holdout + 12)),
       actual: panelFor(dataset, "total").total.slice(-(holdout + 12)),
@@ -288,7 +349,7 @@ export function runAttributedForecastRouter(dataset, options = {}) {
       wmape: selected.wmape,
       rmse: Math.sqrt(absoluteErrors.reduce((sum, value) => sum + value ** 2, 0) / absoluteErrors.length),
       mae: absoluteErrors.reduce((sum, value) => sum + value, 0) / absoluteErrors.length,
-      reliable: selected.wmape < 10,
+      reliable: eligible,
     },
     forecast: {
       organic: future.organic,
