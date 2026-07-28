@@ -3,6 +3,12 @@ const DEFAULT_FOLD_STEP = 4;
 const DEFAULT_SELECTION_FOLDS = 6;
 const MAX_TRAINING_WEEKS = 104;
 const BLEND_WEIGHTS = [0, 0.25, 0.5, 0.75, 1];
+const SELECTION_CRITERIA = {
+  overallBase: 1,
+  recentDeterioration: 0.1,
+  tailRiskDeterioration: 0.1,
+  instability: 0.1,
+};
 const ANNUAL_ANALOG_SPECS = [4, 8, 16].flatMap((anchorWeeks) =>
   [0.5, 1].flatMap((seasonWeight) =>
     [0.75, 1].map((ratioPower) => ({
@@ -40,10 +46,23 @@ const LOCAL_HOLT_SPECS = [26, 52, 104].flatMap((window) =>
     ),
   ),
 );
+const SIMILAR_SEASON_SPECS = [13, 26].flatMap((matchWeeks) =>
+  [0.25, 0.5].flatMap((temperature) =>
+    [2, 3].map((neighbors) => ({
+      id: `similar-season-${matchWeeks}-${temperature}-k${neighbors}`,
+      kind: "similar-season",
+      window: 104,
+      matchWeeks,
+      temperature,
+      neighbors,
+    })),
+  ),
+);
 const BOUNDED_SERIES_SPECS = [
   ...ORGANIC_LEVEL_SPECS,
   ...LOCAL_TREND_SPECS,
   ...LOCAL_HOLT_SPECS,
+  ...SIMILAR_SEASON_SPECS,
   ...ANNUAL_ANALOG_SPECS.map((spec) => ({ ...spec, kind: "annual" })),
 ];
 const PAID_RESPONSE_SPECS = [
@@ -109,8 +128,54 @@ function annualAt(series, trainEnd, horizon, spec = ANNUAL_ANALOG_SPECS.find((it
   };
 }
 
+export function similarSeasonAt(series, trainEnd, horizon, spec) {
+  const matchWeeks = spec?.matchWeeks || 13;
+  if (!Array.isArray(series) || trainEnd < 104 || trainEnd > series.length) return null;
+  const current = series.slice(trainEnd - matchWeeks, trainEnd);
+  const currentMean = mean(current);
+  if (!(currentMean > 0) || current.length !== matchWeeks) return null;
+  const analogs = [26, 52, 78].map((lag) => {
+    const origin = trainEnd - lag;
+    if (origin + horizon > trainEnd) return null;
+    const history = series.slice(origin - matchWeeks, origin);
+    const future = series.slice(origin, origin + horizon);
+    const historyMean = mean(history);
+    if (!(historyMean > 0) || history.length !== matchWeeks || future.length !== horizon) return null;
+    const distance = Math.sqrt(history.reduce((sum, value, index) => {
+      const currentNormalized = current[index] / currentMean;
+      const historyNormalized = value / historyMean;
+      return sum + (currentNormalized - historyNormalized) ** 2;
+    }, 0) / matchWeeks);
+    const scale = Math.max(0.25, Math.min(4, currentMean / historyMean));
+    return {
+      lag,
+      distance,
+      predicted: future.map((value) => Math.max(0, value * scale)),
+    };
+  }).filter(Boolean).sort((left, right) => left.distance - right.distance || left.lag - right.lag)
+    .slice(0, Math.max(1, spec?.neighbors || 2));
+  if (analogs.length < 2) return null;
+  const temperature = Math.max(0.05, spec?.temperature || 0.5);
+  const rawWeights = analogs.map((analog) => Math.exp(-analog.distance / temperature));
+  const weightTotal = rawWeights.reduce((sum, value) => sum + value, 0);
+  if (!(weightTotal > 0)) return null;
+  const weights = rawWeights.map((value) => value / weightTotal);
+  return {
+    predicted: Array.from({ length: horizon }, (_, index) =>
+      analogs.reduce((sum, analog, analogIndex) =>
+        sum + analog.predicted[index] * weights[analogIndex], 0),
+    ),
+    analogs: analogs.map((analog, index) => ({
+      lag: analog.lag,
+      distance: analog.distance,
+      weight: weights[index],
+    })),
+  };
+}
+
 function localSeriesAt(series, trainEnd, horizon, spec) {
   if (spec?.kind === "annual") return annualAt(series, trainEnd, horizon, spec)?.predicted || null;
+  if (spec?.kind === "similar-season") return similarSeasonAt(series, trainEnd, horizon, spec)?.predicted || null;
   const window = Math.min(MAX_TRAINING_WEEKS, Math.max(2, spec?.window || 8));
   const start = trainEnd - window;
   if (!Array.isArray(series) || start < 0 || trainEnd > series.length) return null;
@@ -193,24 +258,82 @@ function foldWmapePercentile(folds, percentile = 0.9) {
     : null;
 }
 
+function scoreCandidateFolds(folds, recentCount, selectionPenalty = 0) {
+  const ordered = [...(folds || [])].sort((left, right) => left.trainEnd - right.trainEnd);
+  const recent = ordered.slice(-Math.min(Math.max(1, recentCount), ordered.length));
+  const overallWmape = pooledWmape(ordered);
+  const recentWmape = pooledWmape(recent);
+  const tailRiskWmape = foldWmapePercentile(ordered);
+  if (![overallWmape, recentWmape, tailRiskWmape].every(Number.isFinite)) return null;
+  const instabilityWmape = ordered.reduce((sum, fold) =>
+    sum + Math.abs(fold.wmape - overallWmape), 0) / ordered.length;
+  const complexityPenalty = Math.max(0, Number(selectionPenalty) || 0);
+  return {
+    overallWmape,
+    recentWmape,
+    tailRiskWmape,
+    instabilityWmape,
+    complexityPenalty,
+    compositeScore: overallWmape * SELECTION_CRITERIA.overallBase
+      + Math.max(0, recentWmape - overallWmape) * SELECTION_CRITERIA.recentDeterioration
+      + Math.max(0, tailRiskWmape - overallWmape) * SELECTION_CRITERIA.tailRiskDeterioration
+      + instabilityWmape * SELECTION_CRITERIA.instability
+      + complexityPenalty,
+  };
+}
+
+function candidateIdentity(candidate) {
+  return {
+    route: candidate.route,
+    specId: candidate.spec?.id || "unknown",
+  };
+}
+
+function buildSelectionDecision(eligible, winner) {
+  const rank = (key) => [...eligible].sort((left, right) =>
+    left.metrics[key] - right.metrics[key]
+    || left.metrics.compositeScore - right.metrics.compositeScore,
+  ).findIndex((item) => item === winner) + 1;
+  const ranks = {
+    overall: rank("overallWmape"),
+    recent: rank("recentWmape"),
+    tailRisk: rank("tailRiskWmape"),
+    instability: rank("instabilityWmape"),
+  };
+  const reasonCodes = Object.entries(ranks).filter(([, value]) => value === 1).map(([key]) => key);
+  if (!reasonCodes.length) reasonCodes.push("balanced");
+  if (winner.metrics.complexityPenalty === 0) reasonCodes.push("simpler");
+  const runnerUp = eligible[1] || null;
+  return {
+    criteria: SELECTION_CRITERIA,
+    winner: {
+      ...candidateIdentity(winner.candidate),
+      ...winner.metrics,
+      ranks,
+      reasonCodes,
+    },
+    runnerUp: runnerUp ? {
+      ...candidateIdentity(runnerUp.candidate),
+      ...runnerUp.metrics,
+    } : null,
+    scoreGap: runnerUp ? runnerUp.metrics.compositeScore - winner.metrics.compositeScore : null,
+    candidatesCompared: eligible.length,
+  };
+}
+
 function selectStableCandidate(candidates, horizon) {
   const eligible = candidates.map((candidate) => {
     const development = candidate.folds.filter((fold) => fold.offset >= horizon);
-    const score = pooledWmape(development);
-    if (!development.length || !Number.isFinite(score)) return null;
-    const instability = development.reduce((sum, fold) => sum + Math.abs(fold.wmape - score), 0)
-      / development.length;
-    const tailRisk = foldWmapePercentile(development);
     const selectionPenalty = Math.max(0, Number(candidate.selectionPenalty) || 0);
+    const metrics = scoreCandidateFolds(development, 6, selectionPenalty);
+    if (!development.length || !metrics) return null;
     return {
       candidate,
-      score,
-      instability,
-      tailRisk,
-      selectionScore: score
-        + instability * 0.15
-        + Math.max(0, tailRisk - score) * 0.1
-        + selectionPenalty,
+      score: metrics.overallWmape,
+      instability: metrics.instabilityWmape,
+      tailRisk: metrics.tailRiskWmape,
+      selectionScore: metrics.compositeScore,
+      metrics,
     };
   }).filter(Boolean);
   eligible.sort((left, right) =>
@@ -219,7 +342,10 @@ function selectStableCandidate(candidates, horizon) {
     || left.candidate.route.localeCompare(right.candidate.route)
     || left.candidate.spec.id.localeCompare(right.candidate.spec.id),
   );
-  return eligible[0] || null;
+  return eligible[0] ? {
+    ...eligible[0],
+    decision: buildSelectionDecision(eligible, eligible[0]),
+  } : null;
 }
 
 function selectCandidateAt(
@@ -234,18 +360,26 @@ function selectCandidateAt(
     const current = candidate.folds.find((fold) => fold.trainEnd === trainEnd);
     const prior = candidate.folds.filter((fold) => fold.trainEnd + horizon <= trainEnd);
     if ((requireCurrent && !current) || prior.length < selectionFolds) return null;
-    const recent = prior.slice(-Math.max(selectionFolds, maxSelectionFolds));
-    const weights = recent.map((_, index) => index + 1);
-    const weightTotal = weights.reduce((sum, value) => sum + value, 0);
-    const score = recent.reduce((sum, fold, index) => sum + fold.wmape * weights[index], 0) / weightTotal;
-    const instability = recent.reduce((sum, fold) => sum + Math.abs(fold.wmape - score), 0) / recent.length;
+    const history = prior.slice(-Math.max(selectionFolds, maxSelectionFolds));
     const selectionPenalty = Math.max(0, Number(candidate.selectionPenalty) || 0);
+    const metrics = scoreCandidateFolds(history, selectionFolds, selectionPenalty);
+    if (!metrics) return null;
+    const recencyWeights = history.map((_, index) => index + 1);
+    const recencyWeightTotal = recencyWeights.reduce((sum, value) => sum + value, 0);
+    const recencyWeightedWmape = history.reduce((sum, fold, index) =>
+      sum + fold.wmape * recencyWeights[index], 0) / recencyWeightTotal;
+    metrics.recencyWeightedWmape = recencyWeightedWmape;
+    metrics.compositeScore = recencyWeightedWmape
+      + metrics.instabilityWmape * 0.15
+      + Math.max(0, metrics.tailRiskWmape - recencyWeightedWmape) * 0.05
+      + selectionPenalty;
     return {
       candidate,
       current,
-      score,
-      instability,
-      selectionScore: score + instability * 0.15 + selectionPenalty,
+      score: metrics.overallWmape,
+      instability: metrics.instabilityWmape,
+      selectionScore: metrics.compositeScore,
+      metrics,
     };
   }).filter(Boolean);
   eligible.sort((left, right) =>
@@ -254,7 +388,10 @@ function selectCandidateAt(
     || left.candidate.route.localeCompare(right.candidate.route)
     || left.candidate.spec.id.localeCompare(right.candidate.spec.id),
   );
-  return eligible[0] || null;
+  return eligible[0] ? {
+    ...eligible[0],
+    decision: buildSelectionDecision(eligible, eligible[0]),
+  } : null;
 }
 
 function nestedTournament(candidates, starts, n, horizon, selectionFolds, maxSelectionFolds = selectionFolds) {
@@ -425,6 +562,8 @@ function componentCandidate(series, spec, starts, n, horizon, forecastAt, route)
       ? 0.5
       : spec.kind === "holt"
         ? 0.25
+      : spec.kind === "similar-season"
+        ? 0.5
       : spec.kind === "ridge"
         ? 0.25
         : 0;
@@ -561,6 +700,14 @@ export function runPaidOrganicPlatform(panel, target, starts, n, horizon, select
   const development = folds.filter((fold) => fold.offset >= horizon);
   const auditWeight = stableBlend.candidate.spec.blendWeight;
   const productionWeight = productionBlend.candidate.spec.blendWeight;
+  const organicProductionSpec = organicTournament.production.candidate.spec;
+  const totalProductionSpec = totalTournament.production.candidate.spec;
+  const organicSimilarSeason = organicProductionSpec.kind === "similar-season"
+    ? similarSeasonAt(organic, n, horizon, organicProductionSpec)
+    : null;
+  const totalSimilarSeason = totalProductionSpec.kind === "similar-season"
+    ? similarSeasonAt(total, n, horizon, totalProductionSpec)
+    : null;
   const futureOrganic = totalTournament.future.map((value, index) =>
     Math.max(0, value * (1 - productionWeight) + organicTournament.future[index] * productionWeight),
   );
@@ -582,6 +729,8 @@ export function runPaidOrganicPlatform(panel, target, starts, n, horizon, select
       auditBlendWeight: auditWeight,
       zeroedPaidWeeks: normalized.zeroedWeeks.length,
       selectedBlendWeights: [productionWeight],
+      auditDecision: stableBlend.decision,
+      productionDecision: productionBlend.decision,
       blendScores: blendCandidates.map((candidate) => ({
         blendWeight: candidate.spec.blendWeight,
         developmentWmape: pooledWmape(candidate.folds.filter((fold) => fold.offset >= horizon)),
@@ -592,6 +741,21 @@ export function runPaidOrganicPlatform(panel, target, starts, n, horizon, select
       organicSpec: organicTournament.production.candidate.spec.id,
       paidSpec: paidTournament.production.candidate.spec.id,
       totalSpec: totalTournament.production.candidate.spec.id,
+      componentDecisions: {
+        organic: organicTournament.production.decision,
+        paid: paidTournament.production.decision,
+        total: totalTournament.production.decision,
+      },
+      similarSeason: {
+        organic: organicSimilarSeason ? {
+          specId: organicProductionSpec.id,
+          analogs: organicSimilarSeason.analogs,
+        } : null,
+        total: totalSimilarSeason ? {
+          specId: totalProductionSpec.id,
+          analogs: totalSimilarSeason.analogs,
+        } : null,
+      },
     },
     future: {
       organic: futureOrganic,
@@ -712,6 +876,8 @@ export function runAnnualAnalogRouter({
           ? 0.5
           : spec.kind === "holt"
             ? 0.25
+          : spec.kind === "similar-season"
+            ? 0.5
             : 0;
       return { route, spec, folds, selectionPenalty };
     }),
@@ -823,6 +989,14 @@ export function runAnnualAnalogRouter({
     productionPriorWmape: productionChoice.score,
   };
   const currentBreak = hasRecentStep([totalPanel, androidPanel, iosPanel]);
+  const directSimilarSeason = !useAdaptiveHybrid && productionChoice.candidate.spec.kind === "similar-season"
+    ? productionChoice.candidate.route === "direct-total"
+      ? { total: similarSeasonAt(total, n, horizon, productionChoice.candidate.spec) }
+      : {
+        android: similarSeasonAt(android, n, horizon, productionChoice.candidate.spec),
+        ios: similarSeasonAt(ios, n, horizon, productionChoice.candidate.spec),
+      }
+    : null;
   const candidateSummaries = routeTournaments.map((candidate) => ({
     route: candidate.route,
     developmentWmape: candidate.developmentWmape,
@@ -843,7 +1017,7 @@ export function runAnnualAnalogRouter({
     else candidateSummaries.push(hybridSummary);
   }
   return {
-    model: useAdaptiveHybrid ? "paid-organic-adaptive-search-v2" : "bounded-regime-search-v3",
+    model: useAdaptiveHybrid ? "paid-organic-adaptive-search-v3" : "bounded-regime-search-v4",
     selectedRoute: selected.route,
     selected,
     candidates: candidateSummaries,
@@ -852,13 +1026,24 @@ export function runAnnualAnalogRouter({
     modelSearch: hybrid ? {
       maxTrainingWeeks: MAX_TRAINING_WEEKS,
       blendWeights: BLEND_WEIGHTS,
+      criteria: SELECTION_CRITERIA,
       selectedProductionRoute: useAdaptiveHybrid ? "paid-organic-hybrid" : "bounded-total-router",
+      routeDecision: finalProduction?.decision || null,
       android: hybrid.search.android,
       ios: hybrid.search.ios,
     } : {
       maxTrainingWeeks: MAX_TRAINING_WEEKS,
       blendWeights: [],
+      criteria: SELECTION_CRITERIA,
       selectedProductionRoute: productionChoice.candidate.route,
+      routeDecision: productionChoice.decision,
+      similarSeason: directSimilarSeason ? {
+        specId: productionChoice.candidate.spec.id,
+        ...Object.fromEntries(Object.entries(directSimilarSeason).map(([key, value]) => [
+          key,
+          value?.analogs || [],
+        ])),
+      } : null,
     },
     currentBreak,
     osGuardrail,
