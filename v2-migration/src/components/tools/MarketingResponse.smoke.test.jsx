@@ -258,9 +258,9 @@ describe("MarketingResponse render smoke", () => {
       futLabels: ["W2"],
     }, "Regs", "ko");
     const csv = lines.join("\n");
-    expect(csv).toContain("fitted_or_forecast_live,organic_predicted_live,performance_predicted_live,lower_live,upper_live");
-    expect(csv).toContain("W1,history,100,=E9+F9,80,18");
-    expect(csv).toContain("W2,forecast,,=E10+F10,85,25,100,120");
+    expect(csv).toContain("fitted_or_forecast_live,Organic Predicted,Perf Predicted,lower_live,upper_live");
+    expect(csv).toContain("W1,history,100,=E11+F11,80,18");
+    expect(csv).toContain("W2,forecast,,=E12+F12,85,25,100,120");
   });
 
   it("parses formatted experiment values before deriving traffic", () => {

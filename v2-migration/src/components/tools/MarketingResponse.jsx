@@ -87,7 +87,8 @@ import {
   splitForecastIntervals,
   summarizeForecastScenario,
 } from "@/utils/forecastEnhancements";
-import { buildAttributedForecastDataset, runAttributedForecastRouter } from "@/utils/attributedForecastMath";
+import { buildAttributedForecastDataset } from "@/utils/attributedForecastDataset";
+import { runAttributedForecastLiveRouter, runAttributedForecastLiveScenario } from "@/utils/attributedForecastLiveMath";
 
 /* ============================================================================
  * MarketingResponse (5-18) — MOCK → REAL 와이어링
@@ -1362,7 +1363,6 @@ function forecastScenarioReasonLabel(reason, tx) {
     "high-collinearity": tx("최근 Cost 창에서 채널 예산이 함께 움직여 분리되지 않습니다", "Channel budgets move together in the recent Cost window"),
     "low-information": tx("최근 Cost 창의 독립적인 지출 변동이 부족합니다", "The recent Cost window lacks independent spend variation"),
     "scenario-identification": tx("채널별 Cost 시나리오 식별 조건을 충족하지 못했습니다", "Channel-level Cost scenario identification is not met"),
-    "structural-readonly": tx("귀속형 Organic+Paid 예측은 현재 비용 변경 없이 기준 예측만 제공합니다", "The attributed Organic+Paid model currently provides a baseline forecast without budget edits"),
     "missing-model": tx("예측 회귀 모델을 만들지 못했습니다", "The forecast regression model is unavailable"),
   };
   return labels[reason] || String(reason);
@@ -2146,11 +2146,13 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
       [tx("# 도구", "# Tool"), "Organic + Paid structural forecast router (5-18)"],
       [tx("# 대상", "# Target"), `${tKo} (${target})`],
       [tx("# 선택 경로", "# Selected route"), fc.structuralRoute],
-      [tx("# 상태", "# Status"), fc.structuralEligible ? tx("사용 가능", "usable") : tx("사용 불가 · 진단 전용", "unavailable · diagnostic only")],
+      [tx("# 선택 사양", "# Selected specification"), fc.structuralSelectedSpec?.id || ""],
+      [tx("# 상태", "# Status"), fc.structuralEligible ? tx("공식 10% 인증", "official 10% certified") : fc.structuralShortTermEligible ? tx(`단기 ${fc.structuralRecommendedHorizon}주만 사용`, `short-term use only: ${fc.structuralRecommendedHorizon} weeks`) : tx("사용 불가 · 진단 전용", "unavailable · diagnostic only")],
       [tx("# 사용 기준", "# Use gate"), `${tx("전체 rolling OOS의 Total·구성요소 최악 wMAPE", "worst Total and component wMAPE across full rolling OOS")} < ${fc.structuralThreshold}%`],
-      [tx("# 분해 정의", "# Decomposition"), tx("organic_predicted_live는 Organic 수준, performance_predicted_live는 비용으로 예측한 0 이상 Paid 절대 수준이며 두 열의 합이 fitted_or_forecast_live입니다.", "organic_predicted_live is the Organic level; performance_predicted_live is the non-negative absolute Paid level predicted from cost, and their sum is fitted_or_forecast_live.")],
+      [tx("# 비용 조건", "# Spend condition"), tx("화면의 미래 예산 입력값에 조건부인 예측입니다. 입력하지 않은 채널은 선택된 비용 예측 사양을 사용합니다.", "The forecast is conditional on future budgets entered in the UI. Channels without an input use the selected spend-forecast specification.")],
+      [tx("# 분해 정의", "# Decomposition"), tx("Organic Predicted는 Organic 수준, Perf Predicted는 비용으로 예측한 0 이상 Paid 절대 수준이며 두 열의 합이 fitted_or_forecast_live입니다.", "Organic Predicted is the Organic level; Perf Predicted is the non-negative absolute Paid level predicted from cost, and their sum is fitted_or_forecast_live.")],
       [],
-      ["period", "segment", "actual", "fitted_or_forecast_live", "organic_predicted_live", "performance_predicted_live", "lower_live", "upper_live"],
+      ["period", "segment", "actual", "fitted_or_forecast_live", "Organic Predicted", "Perf Predicted", "lower_live", "upper_live"],
     ];
     const append = (period, segment, actual, fitted, organic, performance, lower, upper) => {
       const rowNumber = rows.length + 1;
@@ -2178,7 +2180,11 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
     ));
     (fc.predFut || []).forEach((prediction, index) => append(
       fc.futLabels?.[index] ?? `+${index + 1}`,
-      fc.structuralEligible ? "forecast" : "forecast_diagnostic_only",
+      fc.structuralEligible
+        ? "forecast"
+        : index < (fc.structuralRecommendedHorizon || 0)
+          ? "forecast_short_term"
+          : "scenario_only",
       "",
       prediction,
       fc.organicFut?.[index],
@@ -2938,7 +2944,7 @@ function attributedForecastShape(route) {
     channels.forEach((channel, column) => {
       const values = (route.forecast.futureCosts || []).map((row) => Number(row[column]) || 0);
       futureSpendByKey[channel.key] = values;
-      recentMean[channel.key] = values[0] || 0;
+      recentMean[channel.key] = Number(route.forecast.recentCosts?.[column]) || 0;
     });
   } else {
     (route.forecast.parts || []).forEach((part) => {
@@ -2946,7 +2952,7 @@ function attributedForecastShape(route) {
         const key = `${part.panel.platform}::${name}`;
         const values = (part.futureCosts || []).map((row) => Number(row[column]) || 0);
         futureSpendByKey[key] = values;
-        recentMean[key] = values[0] || 0;
+        recentMean[key] = Number(part.recentCosts?.[column]) || 0;
       });
     });
   }
@@ -2954,13 +2960,17 @@ function attributedForecastShape(route) {
     model: route.model,
     isBayesian: true,
     isStructural: true,
-    structuralModelSpec: route.modelSpec,
+    structuralModelSpec: route.selectedSpec,
+    structuralSelectedSpec: route.selectedSpec,
     structuralRoute: route.selectedRoute,
     structuralCandidates: route.candidates,
     structuralEligible: route.eligible,
     structuralOsBreakdownEligible: route.osBreakdownEligible,
     structuralHistoricallyStable: route.historicallyStable,
     structuralThreshold: route.threshold,
+    structuralShortTermEligible: route.shortTermEligible,
+    structuralRecommendedHorizon: route.recommendedHorizon,
+    structuralFoldStep: route.foldStep,
     structuralDiagnostics: route.diagnostics,
     r2: null,
     actual: route.backtest.actual,
@@ -2978,7 +2988,7 @@ function attributedForecastShape(route) {
     labels: [...route.backtest.labels, ...route.forecast.labels],
     splitAt: historyLength,
     horizon: route.forecast.predicted.length,
-    intervalLabel: "90% recent holdout absolute-error reference interval",
+    intervalLabel: "90% horizon-specific rolling-OOS absolute-error reference interval",
     chans: channels,
     recentMean,
     futSpendByKey: futureSpendByKey,
@@ -4180,7 +4190,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       spendHeader,
       targetHeader: targetItems[0].header,
     });
-    return dataset ? runAttributedForecastRouter(dataset, { holdout: 12, horizon: fcHorizon }) : null;
+    if (!dataset) return null;
+    const route = runAttributedForecastLiveRouter(dataset, { holdout: 12, horizon: fcHorizon });
+    return route ? { ...route, dataset } : null;
   }, [stage, effPlatformFilter, mmmColMap, csvData, target, fcHorizon]);
 
   // 미래예측은 MMM 기여 분석과 별도 적합한다. 전체 기간 MMM은 장기 기여 해석에
@@ -4222,7 +4234,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // 분리해, 기본 예측은 유지하고 식별되지 않은 Cost 변경 입력만 막는다.
   const forecastScenario = useMemo(() => {
     if (!forecastModel) return { eligible: false, reasons: ["missing-model"] };
-    if (forecastModel.isStructural) return { eligible: false, reasons: ["structural-readonly"] };
+    if (forecastModel.isStructural) return { eligible: true, structuralConditional: true, reasons: [] };
     return mmmForecastScenarioEligibility(
       forecastModel.isAdditiveTotal ? forecastModel.components : [forecastModel],
     );
@@ -4231,7 +4243,15 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const forecast = useMemo(() => {
     if (!mmm || mmm.empty || stage !== "lab" || !forecastModel) return null;
     try {
-      if (forecastModel.isStructural) return attributedForecastShape(forecastModel.route);
+      if (forecastModel.isStructural) {
+        const scenario = runAttributedForecastLiveScenario(
+          forecastModel.route.dataset,
+          forecastModel.route,
+          fcBudget,
+          fcHorizon,
+        );
+        return scenario ? attributedForecastShape({ ...forecastModel.route, forecast: scenario }) : null;
+      }
       if (forecastModel.isAdditiveTotal) {
         const scenarioBudget = forecastScenario.eligible ? fcBudget : {};
         const components = forecastModel.components.map((model) => runForecastScenario(model, fcHorizon, scenarioBudget, fcStepOff, { trendDamping: fcTrendDamping, eventPolicy: fcEventPolicy }));
@@ -4337,10 +4357,21 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     const results = definitions.map((definition) => {
       if (definition.key === "baseline") return { ...definition, forecast: baseResult, summary: summarizeForecastScenario(definition.key, baseResult, baseResult) };
       if (!forecastScenario.eligible) return { ...definition, forecast: null, summary: null };
-      const runOne = (model) => runForecastScenario(model, fcHorizon, definition.budgets, fcStepOff, { trendDamping: fcTrendDamping, eventPolicy: fcEventPolicy });
-      const result = forecastModel.isAdditiveTotal
-        ? mmmSumOsForecasts(forecastModel.components.map(runOne))
-        : runOne(forecastModel);
+      let result;
+      if (forecastModel.isStructural) {
+        const scenario = runAttributedForecastLiveScenario(
+          forecastModel.route.dataset,
+          forecastModel.route,
+          definition.budgets,
+          fcHorizon,
+        );
+        result = scenario ? attributedForecastShape({ ...forecastModel.route, forecast: scenario }) : null;
+      } else {
+        const runOne = (model) => runForecastScenario(model, fcHorizon, definition.budgets, fcStepOff, { trendDamping: fcTrendDamping, eventPolicy: fcEventPolicy });
+        result = forecastModel.isAdditiveTotal
+          ? mmmSumOsForecasts(forecastModel.components.map(runOne))
+          : runOne(forecastModel);
+      }
       return { ...definition, forecast: result, summary: summarizeForecastScenario(definition.key, result, baseResult) };
     });
     return { definitions, results };
@@ -6778,7 +6809,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               <h2 className="section-title">{tx("📈 예측 전용 회귀 · 미래 예측", "📈 Forecast regression · future prediction")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx("· MMM 기여 분석과 별도 모델", "· separate from MMM contribution model")}</span></h2>
               <p style={{ fontSize: "12px", color: MUTED, marginBottom: "12px", lineHeight: 1.55 }}>
                 {forecast?.isStructural
-                  ? tx("채널별 귀속 Y가 있는 long CSV를 확인해 Organic과 Paid를 따로 예측합니다. Organic은 최근 4주 레벨 90%와 전년동주 최근보정 10%를 결합하고, Paid는 최근 CPA 변화에 빠르게 적응하는 전환율을 실제 비용에 적용합니다. 전체 rolling OOS에서 Direct Total과 Android+iOS 합산을 비교합니다. ", "For long CSVs with channel-attributed Y, Organic and Paid are forecast separately. Organic blends a 90% recent four-week level with a 10% recency-adjusted same-week-last-year signal; Paid applies a conversion rate that adapts quickly to recent CPA changes to actual spend. Direct Total and the Android+iOS sum compete across the full rolling OOS history. ")
+                  ? tx("귀속형 Organic·Paid 후보를 4주 간격 rolling OOS로 비교합니다. 모델 선택은 실제 미래비용을 보지 않는 라이브 조건으로 수행하고, 실제 비용을 미리 넣은 조건부 오차와 naive 오차를 분리합니다. 예측 거리별로 모델이 naive를 이기지 못하면 해당 주차는 자동으로 naive로 되돌립니다. ", "Attributed Organic and Paid candidates are compared with rolling OOS origins spaced four weeks apart. Selection uses live conditions without seeing future spend; conditional error with known future spend and naive error are reported separately. At each horizon, the forecast falls back to naive when the model does not beat it. ")
                   : tx("같은 CSV·매핑을 쓰되, MMM은 전체 기간 기여도를 유지하고 예측 회귀만 Cost 학습 window·추세·계절성을 12주 rolling 검증으로 고릅니다. ", "Uses the same CSV/mapping, but keeps MMM on full-history contribution analysis and selects only the forecast regression's Cost window, trend, and seasonality with rolling 12-week validation. ")}
                 {!forecast?.isStructural && effPlatformFilter === "all" && tx("Total은 별도 회귀하지 않고 Android·iOS 예측을 주별로 합산합니다. ", "Total is not separately regressed; it is the weekly sum of Android and iOS forecasts. ")}
                 {tx(`선택한 목표(${mmmTargetDisplay(mmm.target, locale)})의 회색선은 실측, 파란선은 모델/예측, 음영은 최근 오차를 반영한 참고 범위입니다(인과 보장 아님).`, `For the selected target (${mmmTargetDisplay(mmm.target, locale)}), gray is actual, blue is model/forecast, and the band is a recent-error reference range, not a causal guarantee.`)}
@@ -6786,7 +6817,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "12px", alignItems: "center" }}>
                 <div className="ab-pillgroup">
                   <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
-                  <span className="ab-pill active">{forecast?.isStructural ? tx("최근성 + 연간 Organic · CPA 적응형 Paid", "Recency + yearly Organic · CPA-adaptive Paid") : "Empirical-Bayes MMM"}</span>
+                  <span className="ab-pill active">{forecast?.isStructural ? tx("라이브 OOS 자동선택 · naive 안전장치", "Live-OOS selection · naive guardrail") : "Empirical-Bayes MMM"}</span>
                 </div>
                 <div className="ab-pillgroup">
                   <span className="ab-pillgroup-label">{tx("범위", "Range")}</span>
@@ -6796,16 +6827,18 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   {tx("예측 기간(주):", "Forecast horizon (wk):")}{" "}
                   <input type="number" min="1" max="52" value={fcHorizon} onChange={(e) => setFcHorizon(Math.max(1, Math.min(52, parseInt(e.target.value, 10) || 1)))} style={{ width: "60px" }} />
                 </label>
-                <label style={{ fontSize: "12px", color: MUTED }}>{tx("추세 감쇠:", "Trend damping:")} {" "}
-                  <select value={fcTrendDamping} onChange={(e) => setFcTrendDamping(Number(e.target.value))}>
-                    <option value="0">{tx("없음", "None")}</option><option value="0.25">25%</option><option value="0.5">50%</option><option value="0.75">75%</option>
-                  </select>
-                </label>
-                <label style={{ fontSize: "12px", color: MUTED }}>{tx("미래 이벤트:", "Future events:")} {" "}
-                  <select value={fcEventPolicy} onChange={(e) => setFcEventPolicy(e.target.value)}>
-                    <option value="hold">{tx("마지막 상태 유지", "Hold last state")}</option><option value="off">{tx("모두 끔", "Turn all off")}</option>
-                  </select>
-                </label>
+                {!forecast?.isStructural && <>
+                  <label style={{ fontSize: "12px", color: MUTED }}>{tx("추세 감쇠:", "Trend damping:")} {" "}
+                    <select value={fcTrendDamping} onChange={(e) => setFcTrendDamping(Number(e.target.value))}>
+                      <option value="0">{tx("없음", "None")}</option><option value="0.25">25%</option><option value="0.5">50%</option><option value="0.75">75%</option>
+                    </select>
+                  </label>
+                  <label style={{ fontSize: "12px", color: MUTED }}>{tx("미래 이벤트:", "Future events:")} {" "}
+                    <select value={fcEventPolicy} onChange={(e) => setFcEventPolicy(e.target.value)}>
+                      <option value="hold">{tx("마지막 상태 유지", "Hold last state")}</option><option value="off">{tx("모두 끔", "Turn all off")}</option>
+                    </select>
+                  </label>
+                </>}
                 <label style={{ fontSize: "12px", color: MUTED }}>{tx("구간:", "Interval:")} {" "}
                   <select value={fcIntervalMode} onChange={(e) => setFcIntervalMode(e.target.value)}>
                     <option value="predictive">{tx("예측 참고구간", "Predictive reference")}</option><option value="parameter">{tx("모수 참고구간", "Parameter reference")}</option>
@@ -6816,40 +6849,67 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 <>
                   {forecast.isStructural && (
                     <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
-                      <strong>{tx("전체 rolling OOS로 예측 경로 선택·차단", "Forecast route selected and gated by full rolling OOS")}</strong>
+                      <strong>{tx("라이브 조건 rolling OOS · 조건부 비용 오차 분리", "Live-condition rolling OOS · known-spend error separated")}</strong>
                       <p style={{ margin: "5px 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
-                        {(forecast.structuralCandidates || []).map((candidate) => `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} · ${tx("전체", "full")} ${candidate.pooledWmape.toFixed(2)}% · ${tx("최악", "worst")} ${candidate.worstWmape.toFixed(2)}% · ${tx("통과", "passes")} ${Math.round(candidate.passRate * candidate.folds.length)}/${candidate.folds.length} · ${candidate.route === "direct-total" ? tx("Organic/Paid", "Organic/Paid") : tx("OS×Organic/Paid", "OS×Organic/Paid")} ${candidate.componentPooledWmape.toFixed(2)}%`).join(" / ")}
+                        {(forecast.structuralCandidates || []).map((candidate) => `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} · ${tx("라이브", "live")} ${candidate.pooledWmape.toFixed(2)}% · ${tx("비용 입력 시", "known spend")} ${candidate.conditionalPooledWmape.toFixed(2)}% · naive ${candidate.naivePooledWmape.toFixed(2)}% · ${tx("선택용 과거", "selection history")} ${candidate.developmentPooledWmape.toFixed(2)}%`).join(" / ")}
                         {` → ${forecast.structuralRoute === "direct-total" ? "Direct Total" : "Android + iOS"} ${tx("선택", "selected")}`}
                       </p>
                       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                         <span className="ab-pill" style={forecast.structuralEligible ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}>
-                          {forecast.structuralEligible ? tx("사용 가능 · 전 OOS < 10%", "Usable · every OOS < 10%") : tx("사용 불가 · 전체 OOS 게이트 실패", "Unavailable · full OOS gate failed")}
+                          {forecast.structuralEligible ? tx("공식 10% 인증 통과", "Official 10% certification passed") : tx("공식 10% 인증 실패", "Official 10% certification failed")}
+                        </span>
+                        <span className="ab-pill" style={forecast.structuralShortTermEligible ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}>
+                          {forecast.structuralShortTermEligible
+                            ? tx(`단기 ${forecast.structuralRecommendedHorizon}주 사용 가능`, `Short-term use: ${forecast.structuralRecommendedHorizon} weeks`)
+                            : tx("단기 운영 기준도 미달", "Short-term operating gate failed")}
                         </span>
                         <span className="ab-pill" style={forecast.structuralOsBreakdownEligible ? undefined : { borderColor: "#ef4444", color: "#b91c1c" }}>
                           {forecast.structuralOsBreakdownEligible ? tx("OS 분해 사용 가능", "OS breakdown usable") : tx("OS 분해 사용 불가", "OS breakdown unavailable")}
                         </span>
                         <span className="ab-pill">{tx("부분 주차 자동 제외", "Partial current week excluded")}</span>
-                        <span className="ab-pill">{tx("연간 신호 10% · 최근 레벨 90%", "10% yearly signal · 90% recent level")}</span>
-                        <span className="ab-pill">{tx("Paid 최근 전환율 α=0.9", "Paid recent rate α=0.9")}</span>
+                        <span className="ab-pill">{forecast.structuralSelectedSpec?.id || "—"}</span>
+                        <span className="ab-pill">{tx(`${forecast.structuralFoldStep || 4}주 간격 OOS`, `${forecast.structuralFoldStep || 4}-week OOS step`)}</span>
                         <span className="ab-pill">{tx("Perf 절대 수준 ≥ 0", "Absolute Perf level ≥ 0")}</span>
                       </div>
                       {!forecast.structuralHistoricallyStable && (
                         <p style={{ margin: "7px 0 0", color: "#b45309", fontSize: "11.5px", lineHeight: 1.5 }}>
-                          {tx("최신 구간만 좋아도 승인하지 않습니다. 전체 가능한 12주 제외 시점에서 Total과 구성요소가 모두 10% 미만이어야 하며, 현재 미래 숫자는 운영 의사결정과 OS별 CSV 공식값으로 사용할 수 없습니다.", "A strong latest window is not enough for approval. Total and component errors must both remain below 10% across every eligible 12-week cutoff; current future values cannot be used for operating decisions or official OS-level CSV output.")}
+                          {tx("전 구간 10% 인증은 계속 엄격하게 유지합니다. 단기 등급은 h별 라이브 OOS가 10% 미만이고 naive보다 나쁘지 않을 때만 별도로 엽니다. 장기 수치는 예산 조건부 시나리오이며 공식 예측으로 사용하지 마세요.", "The every-window 10% certification remains strict. A separate short-term tier opens only when horizon-specific live OOS is below 10% and no worse than naive. Longer-range values are spend-conditional scenarios, not certified forecasts.")}
                         </p>
                       )}
                       <details style={{ marginTop: "8px" }}>
                         <summary style={{ cursor: "pointer", fontSize: "11.5px" }}>{tx("전체 OOS 오차 흐름 보기", "View full OOS error trajectory")}</summary>
                         <div className="table-wrap" style={{ marginTop: "7px" }}>
                           <table className="data" style={{ fontSize: "10.5px" }}>
-                            <thead><tr><th>{tx("뒤에서 제외", "Excluded from end")}</th><th>{tx("검증 기간", "Validation period")}</th><th>Total wMAPE</th><th>{forecast.structuralRoute === "direct-total" ? "Organic/Paid" : "OS×Organic/Paid"} wMAPE</th></tr></thead>
+                            <thead><tr><th>{tx("뒤에서 제외", "Excluded from end")}</th><th>{tx("검증 기간", "Validation period")}</th><th>{tx("라이브", "Live")}</th><th>{tx("비용 입력 시", "Known spend")}</th><th>naive</th><th>{tx("변화", "Break")}</th></tr></thead>
                             <tbody>
                               {((forecast.structuralCandidates || []).find((candidate) => candidate.route === forecast.structuralRoute)?.folds || []).map((fold) => (
                                 <tr key={fold.offset}>
                                   <td>{fold.excludedWeeks}{tx("주", " wk")}</td>
                                   <td>{fold.start}–{fold.end}</td>
                                   <td className="tnum" style={fold.wmape >= 10 ? { color: "#b91c1c" } : undefined}>{fold.wmape.toFixed(2)}%</td>
-                                  <td className="tnum" style={fold.componentWmape >= 10 ? { color: "#b91c1c" } : undefined}>{fold.componentWmape.toFixed(2)}%</td>
+                                  <td className="tnum">{fold.conditionalWmape.toFixed(2)}%</td>
+                                  <td className="tnum">{fold.naiveWmape.toFixed(2)}%</td>
+                                  <td>{fold.regime?.isBreak ? `⚠ ${fold.regime.reasons.join("/")}` : "—"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </details>
+                      <details style={{ marginTop: "8px" }}>
+                        <summary style={{ cursor: "pointer", fontSize: "11.5px" }}>{tx("예측 거리별 정확도·naive 비교", "Accuracy and naive benchmark by horizon")}</summary>
+                        <div className="table-wrap" style={{ marginTop: "7px" }}>
+                          <table className="data" style={{ fontSize: "10.5px" }}>
+                            <thead><tr><th>h</th><th>{tx("라이브 wMAPE", "Live wMAPE")}</th><th>{tx("비용 입력 시", "Known spend")}</th><th>naive</th><th>MASE</th><th>{tx("선택", "Choice")}</th></tr></thead>
+                            <tbody>
+                              {((forecast.structuralCandidates || []).find((candidate) => candidate.route === forecast.structuralRoute)?.horizonMetrics || []).map((metric, index) => (
+                                <tr key={metric.horizon}>
+                                  <td>{metric.horizon}{tx("주", "w")}</td>
+                                  <td className="tnum" style={metric.wmape >= 10 ? { color: "#b91c1c" } : undefined}>{metric.wmape.toFixed(2)}%</td>
+                                  <td className="tnum">{metric.conditionalWmape.toFixed(2)}%</td>
+                                  <td className="tnum">{metric.naiveWmape.toFixed(2)}%</td>
+                                  <td className="tnum">{metric.mase.toFixed(2)}</td>
+                                  <td>{((forecast.structuralCandidates || []).find((candidate) => candidate.route === forecast.structuralRoute)?.useModelByHorizon || [])[index] ? tx("모델", "Model") : "naive"}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -7016,7 +7076,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   </div>
                   <div className="chart-container" style={{ height: "300px", marginBottom: "12px" }}><canvas ref={forecastRef}></canvas></div>
                   <p style={{ fontSize: "11px", color: MUTED, marginBottom: "10px" }}>
-                    {tx("posterior 모수 불확실성과 잔차를 함께 반영한 근사 90% 예측 범위", "Approximate 90% predictive range combining posterior parameter uncertainty and residual noise")} · {tx("채널별 미래 예산을 수정하면 그 시나리오로 즉시 재예측됩니다(주 평균). 실제 배분·시나리오는 5-3 예산 배분 시뮬레이터를 사용하세요.", "Editing per-channel future budgets instantly re-forecasts that scenario (weekly average). For actual allocation/scenarios, use the Budget Allocation simulator (5-3).")}
+                    {forecast.isStructural
+                      ? tx("4주 간격 rolling OOS의 예측거리별 90% 절대오차 범위입니다. 미래 예산을 수정하면 모델 선택 주차만 조건부로 재예측되며, naive 안전장치가 선택된 주차는 예산에 반응하지 않습니다.", "This is the horizon-specific 90% absolute-error range from rolling OOS origins spaced four weeks apart. Editing future budgets conditionally re-forecasts model-selected horizons; horizons protected by the naive guardrail do not respond to spend.")
+                      : <>{tx("posterior 모수 불확실성과 잔차를 함께 반영한 근사 90% 예측 범위", "Approximate 90% predictive range combining posterior parameter uncertainty and residual noise")} · {tx("채널별 미래 예산을 수정하면 그 시나리오로 즉시 재예측됩니다(주 평균). 실제 배분·시나리오는 5-3 예산 배분 시뮬레이터를 사용하세요.", "Editing per-channel future budgets instantly re-forecasts that scenario (weekly average). For actual allocation/scenarios, use the Budget Allocation simulator (5-3).")}</>}
                   </p>
 
                   {/* ── 채널별 미래 예산 편집 (수정 시 즉시 재예측) ── */}
@@ -7033,7 +7095,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       {forecast.isStructural
                         ? forecast.structuralEligible
                           ? tx("⬇ 예측 분해 CSV (Organic·Perf)", "⬇ Forecast decomposition CSV (Organic · Perf)")
-                          : tx("⬇ OOS 진단 CSV (예측 사용 불가)", "⬇ OOS diagnostic CSV (forecast unavailable)")
+                          : forecast.structuralShortTermEligible
+                            ? tx(`⬇ 단기 ${forecast.structuralRecommendedHorizon}주 + 장기 시나리오 CSV`, `⬇ ${forecast.structuralRecommendedHorizon}-week forecast + longer scenario CSV`)
+                            : tx("⬇ OOS 진단 CSV (예측 사용 불가)", "⬇ OOS diagnostic CSV (forecast unavailable)")
                         : tx("⬇ 살아있는 예측 CSV (수식·실측·예측)", "⬇ Live forecast CSV (formulas/actual/forecast)")}
                     </button>
                   </div>
@@ -7043,7 +7107,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       <h3 style={{ fontSize: "13px", margin: "10px 0 6px" }}>
                         {tx("채널별 미래 예산 (주 평균)", "Future budget per channel (weekly average)")}{" "}
                         <span style={{ fontSize: "11px", color: MUTED, fontWeight: 400 }}>{forecastScenario.eligible
-                          ? tx("— 기본값 = 최근 8주 평균. 수정하면 즉시 재예측.", "— default = recent 8-week average. Edit to re-forecast instantly.")
+                          ? forecast.isStructural
+                            ? tx("— 기본값 = OOS가 선택한 비용 예측. 입력값은 조건부 시나리오로 반영.", "— default = the spend forecast selected by OOS. Inputs are applied as a conditional scenario.")
+                            : tx("— 기본값 = 최근 8주 평균. 수정하면 즉시 재예측.", "— default = recent 8-week average. Edit to re-forecast instantly.")
                           : tx("— rolling 검증/식별성 미충족으로 입력 잠김. 기본 예측만 표시합니다.", "— locked because rolling validation/identification is not met. Showing base forecast only.")}</span>
                       </h3>
                       <div className="table-wrap">
