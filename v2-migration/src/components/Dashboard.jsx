@@ -211,6 +211,7 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   const verdict = useDashboardWorker
     ? (workerState.key === workerKey ? workerState.result : null)
     : syncVerdict;
+  const topStats = verdict && !verdict.insufficient ? verdict.stats.slice(0, 3) : [];
   const isDemo = String(csvData?.fileName || "").startsWith("demo_");
   const openMapping = () => {
     setMappingOpen(true);
@@ -258,6 +259,10 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                   <span className="dot"></span>
                   {csvData.raw.length.toLocaleString()}{tr("행", " rows")}
                 </span>
+                {topStats.map((stat) => {
+                  const delta = String(stat.detail || "").match(/[+−]\d+(?:\.\d+)?%/)?.[0] || "—";
+                  return <span className="dashboard-top-stat" key={stat.label}><small>{stat.label}</small><b>{stat.value}</b><em>{delta}</em></span>;
+                })}
               </>
             )}
           </div>
