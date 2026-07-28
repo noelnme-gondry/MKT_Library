@@ -30,7 +30,7 @@ export default function NewsletterSignup({ locale = "ko", placement = "post" }) 
         submitted: "받은편지함에서 확인 메일을 열어 구독을 완료해 주세요.",
         privacy: "개인정보처리방침",
       };
-  const privacyHref = isEnglish ? "/privacy" : "/privacy";
+  const privacyHref = isEnglish ? "/en/privacy" : "/privacy";
   const sourceTag = `blog-${locale}-${placement}`;
 
   function handleSubmit() {

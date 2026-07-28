@@ -3,7 +3,7 @@ import { getAllPosts, getAllTags } from "@/lib/blog";
 import { getAllTerms } from "@/lib/glossary";
 
 const BASE = SITE_URL; // matches layout.js canonical/openGraph
-const PRODUCT_LAST_MODIFIED = new Date("2026-07-28");
+const PRODUCT_LAST_MODIFIED = new Date("2026-07-29");
 const latestDate = (items) => {
   const dates = items.map((item) => item.updated || item.date).filter(Boolean).sort();
   return dates.length ? new Date(dates[dates.length - 1]) : PRODUCT_LAST_MODIFIED;
@@ -62,7 +62,11 @@ export default function sitemap() {
     { url: `${BASE}/weekly-review`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/en/weekly-review`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/privacy`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/en/privacy`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/terms`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/en/terms`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/contact`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "yearly", priority: 0.4 },
+    { url: `${BASE}/en/contact`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "yearly", priority: 0.4 },
   ];
 
   // 용어사전("/glossary") — 목록 + 발행 항목별. 블로그와 동일 패턴.

@@ -25,4 +25,11 @@ describe("sitemap", () => {
     expect(urls.has(`${SITE_URL}/tools/experiment-analysis`)).toBe(true);
     expect(urls.has(`${SITE_URL}/en/tools/experiment-analysis`)).toBe(true);
   });
+
+  it("contains localized legal and contact pages", () => {
+    const urls = new Set(sitemap().map((entry) => entry.url));
+    for (const path of ["/privacy", "/en/privacy", "/terms", "/en/terms", "/contact", "/en/contact"]) {
+      expect(urls.has(`${SITE_URL}${path}`)).toBe(true);
+    }
+  });
 });
