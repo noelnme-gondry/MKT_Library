@@ -2954,6 +2954,7 @@ function attributedForecastShape(route) {
     model: route.model,
     isBayesian: true,
     isStructural: true,
+    structuralModelSpec: route.modelSpec,
     structuralRoute: route.selectedRoute,
     structuralCandidates: route.candidates,
     structuralEligible: route.eligible,
@@ -6777,7 +6778,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               <h2 className="section-title">{tx("📈 예측 전용 회귀 · 미래 예측", "📈 Forecast regression · future prediction")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx("· MMM 기여 분석과 별도 모델", "· separate from MMM contribution model")}</span></h2>
               <p style={{ fontSize: "12px", color: MUTED, marginBottom: "12px", lineHeight: 1.55 }}>
                 {forecast?.isStructural
-                  ? tx("채널별 귀속 Y가 있는 long CSV를 확인해 Organic 수준과 비용 기반 Paid 수준을 따로 예측합니다. 마지막 12주를 학습에서 완전히 제외한 동일 검증 구간에서 Direct Total과 Android+iOS 합산을 비교하고, wMAPE가 낮은 경로만 선택합니다. ", "For long CSVs with channel-attributed Y, Organic level and cost-driven Paid level are forecast separately. Direct Total and the Android+iOS sum compete on the same final 12 weeks held completely out of training, and the lower-wMAPE route is selected. ")
+                  ? tx("채널별 귀속 Y가 있는 long CSV를 확인해 Organic과 Paid를 따로 예측합니다. Organic은 최근 4주 레벨 90%와 전년동주 최근보정 10%를 결합하고, Paid는 최근 CPA 변화에 빠르게 적응하는 전환율을 실제 비용에 적용합니다. 전체 rolling OOS에서 Direct Total과 Android+iOS 합산을 비교합니다. ", "For long CSVs with channel-attributed Y, Organic and Paid are forecast separately. Organic blends a 90% recent four-week level with a 10% recency-adjusted same-week-last-year signal; Paid applies a conversion rate that adapts quickly to recent CPA changes to actual spend. Direct Total and the Android+iOS sum compete across the full rolling OOS history. ")
                   : tx("같은 CSV·매핑을 쓰되, MMM은 전체 기간 기여도를 유지하고 예측 회귀만 Cost 학습 window·추세·계절성을 12주 rolling 검증으로 고릅니다. ", "Uses the same CSV/mapping, but keeps MMM on full-history contribution analysis and selects only the forecast regression's Cost window, trend, and seasonality with rolling 12-week validation. ")}
                 {!forecast?.isStructural && effPlatformFilter === "all" && tx("Total은 별도 회귀하지 않고 Android·iOS 예측을 주별로 합산합니다. ", "Total is not separately regressed; it is the weekly sum of Android and iOS forecasts. ")}
                 {tx(`선택한 목표(${mmmTargetDisplay(mmm.target, locale)})의 회색선은 실측, 파란선은 모델/예측, 음영은 최근 오차를 반영한 참고 범위입니다(인과 보장 아님).`, `For the selected target (${mmmTargetDisplay(mmm.target, locale)}), gray is actual, blue is model/forecast, and the band is a recent-error reference range, not a causal guarantee.`)}
@@ -6785,7 +6786,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "12px", alignItems: "center" }}>
                 <div className="ab-pillgroup">
                   <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
-                  <span className="ab-pill active">{forecast?.isStructural ? tx("Organic + Paid 구조 모델", "Organic + Paid structural model") : "Empirical-Bayes MMM"}</span>
+                  <span className="ab-pill active">{forecast?.isStructural ? tx("최근성 + 연간 Organic · CPA 적응형 Paid", "Recency + yearly Organic · CPA-adaptive Paid") : "Empirical-Bayes MMM"}</span>
                 </div>
                 <div className="ab-pillgroup">
                   <span className="ab-pillgroup-label">{tx("범위", "Range")}</span>
@@ -6828,6 +6829,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           {forecast.structuralOsBreakdownEligible ? tx("OS 분해 사용 가능", "OS breakdown usable") : tx("OS 분해 사용 불가", "OS breakdown unavailable")}
                         </span>
                         <span className="ab-pill">{tx("부분 주차 자동 제외", "Partial current week excluded")}</span>
+                        <span className="ab-pill">{tx("연간 신호 10% · 최근 레벨 90%", "10% yearly signal · 90% recent level")}</span>
+                        <span className="ab-pill">{tx("Paid 최근 전환율 α=0.9", "Paid recent rate α=0.9")}</span>
                         <span className="ab-pill">{tx("Perf 절대 수준 ≥ 0", "Absolute Perf level ≥ 0")}</span>
                       </div>
                       {!forecast.structuralHistoricallyStable && (

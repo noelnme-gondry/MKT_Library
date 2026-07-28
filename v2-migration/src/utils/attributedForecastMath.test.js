@@ -31,6 +31,13 @@ describe("attributed forecast router", () => {
     }, { asOfDate: "2025-07-15" });
     expect(dataset.weekLabels.at(-1)).not.toBe("2025-07-14");
     const result = runAttributedForecastRouter(dataset);
+    expect(result.model).toBe("adaptive-yearly-organic-paid-v2");
+    expect(result.modelSpec).toMatchObject({
+      organicRecentWindow: 4,
+      organicYearlyWeight: 0.1,
+      yearlyLag: 52,
+      paidRateAlpha: 0.9,
+    });
     expect(result.candidates.map((candidate) => candidate.route).sort()).toEqual(["android-ios-sum", "direct-total"]);
     expect(result.candidates.every((candidate) => candidate.folds.length === 3)).toBe(true);
     expect(result.candidates.every((candidate) => Number.isFinite(candidate.componentPooledWmape))).toBe(true);
@@ -48,7 +55,7 @@ describe("attributed forecast router", () => {
     const rows = [];
     for (let week = 0; week < 100; week++) {
       const date = new Date(start + week * 7 * 86400000).toISOString().slice(0, 10);
-      const organic = week >= 36 && week < 60 ? 3000 : 1000;
+      const organic = week >= 12 && week < 36 ? 3000 : 1000;
       ["ANDROID", "IOS"].forEach((platform) => {
         rows.push({ week: date, platform, channel: "Organic", cost: 0, regs: organic });
         rows.push({ week: date, platform, channel: "Meta", cost: 100, regs: 100 });
