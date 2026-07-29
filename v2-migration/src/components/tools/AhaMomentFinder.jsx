@@ -1113,17 +1113,16 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 { label: tr("강한 후보", "Strong candidates"), value: strongCandidateCount, detail: tr(`전체 ${sortedResults.length}개`, `${sortedResults.length} total`) },
                 { label: tr("Top Lift", "Top lift"), value: topAction?.lift == null ? "—" : `${topAction.lift.toFixed(1)}x`, detail: topAction ? `F1 ${topAction.holdout.F1.toFixed(2)}` : "" },
               ]}
-              points={topAction ? [
-                {
-                  text: tr(
-                    "다음 액션: 이 행동을 유도하는 실험을 설계하고 5-4에서 검증하세요.",
-                    "Next: design an experiment that encourages this behavior and validate it in 5-4.",
-                  ),
-                  cls: "good",
-                },
-                { text: C.causationBody, cls: "muted" },
-              ] : [{ text: tr("매핑과 최소 지지도를 확인한 뒤 다시 분석하세요.", "Review mapping and minimum support, then analyze again."), cls: "bad" }]}
-              collapsePointsAfter={1}
+              points={topAction ? [] : [{ text: tr("매핑과 최소 지지도를 확인한 뒤 다시 분석하세요.", "Review mapping and minimum support, then analyze again."), cls: "bad" }]}
+              controls={topAction ? (
+                <button
+                  type="button"
+                  className="ab-pill"
+                  onClick={() => router.push(locale === "en" && hasEnVersion("5-4") ? `/en${idToSlug["5-4"] || ""}` : idToSlug["5-4"] || "/tools/experiment-analysis")}
+                >
+                  {tr("실험 설계", "Design experiment")} →
+                </button>
+              ) : null}
               download={(
                 <DownloadHub
                   toolId={domain === "content" ? "9-2" : "5-20"}

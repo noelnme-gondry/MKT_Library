@@ -78,6 +78,8 @@ describe("VizTab render smoke", () => {
   it("keeps cohort calculation context in an on-demand help icon", () => {
     seedWithData();
     const { container } = render(<VizTab />);
+    expect(container.querySelector("#s-cohort")?.classList.contains("dashboard-cohort-control")).toBe(true);
+    expect(container.querySelector("#s-cohort")?.classList.contains("block")).toBe(false);
     const help = container.querySelector(".cohort-help");
     expect(help?.getAttribute("title")).toContain("매출/결제/잔존율");
     expect(screen.queryByText(/단일 지표\(CPI\/CTR\/CVR/)).toBeNull();

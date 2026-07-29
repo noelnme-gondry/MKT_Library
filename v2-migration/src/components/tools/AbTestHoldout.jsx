@@ -816,7 +816,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                       headline={s.pValue < 0.05
                         ? tr(liftPositive ? "통계적 개선 후보입니다" : "통계적 악화 후보입니다", liftPositive ? "Statistical improvement candidate" : "Statistical decline candidate")
                         : tr("현재 표본만으로 차이를 확정할 수 없습니다", "The current sample does not establish a difference")}
-                      points={[{ text: tr("효과 크기·95% CI·검정력을 함께 확인하세요.", "Check effect size, the 95% interval, and power together."), cls: s.pValue < 0.05 ? "good" : "muted" }]}
+                      points={[]}
                       stats={[
                         { label: tr("Control 전환율", "Control rate"), value: `${readoutData.cRate.toFixed(2)}%`, detail: `${readoutData.cNum.toLocaleString()}/${readoutData.cDen.toLocaleString()}` },
                         { label: tr("Test 전환율", "Test rate"), value: `${readoutData.tRate.toFixed(2)}%`, detail: `${readoutData.tNum.toLocaleString()}/${readoutData.tDen.toLocaleString()}` },
