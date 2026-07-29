@@ -1848,6 +1848,25 @@
         color: var(--surface-base);
         font-weight: 600;
       }
+      .cohort-help {
+        display: inline-grid;
+        place-items: center;
+        width: 16px;
+        height: 16px;
+        margin-left: 7px;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        color: var(--text-muted);
+        cursor: help;
+        font: 700 9px var(--font-mono);
+        vertical-align: 2px;
+        outline: none;
+      }
+      .cohort-help:hover, .cohort-help:focus-visible {
+        border-color: var(--primary);
+        color: var(--primary);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
+      }
 
       .nav-divider {
         height: 1px;
