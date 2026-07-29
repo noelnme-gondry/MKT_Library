@@ -541,6 +541,33 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     let waterfallChart = null;
     let trendChart = null;
     const base = chartCommonOpts();
+    // Mix·Rate 막대는 0을 양쪽에 두므로, 기본 그리드보다 강한 기준선을 별도로
+    // 그린다. 0이 화면 중앙이 아닐 때도 개선/악화의 출발점을 즉시 읽게 한다.
+    const zeroBaselinePlugin = {
+      id: "pvmMixRateZeroBaseline",
+      afterDraw(chart) {
+        const scale = chart.scales.x;
+        const area = chart.chartArea;
+        if (!scale || !area) return;
+        const zeroX = scale.getPixelForValue(0);
+        if (!Number.isFinite(zeroX) || zeroX < area.left || zeroX > area.right) return;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.strokeStyle = "#475569";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(zeroX, area.top);
+        ctx.lineTo(zeroX, area.bottom);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#334155";
+        ctx.font = "700 10px JetBrains Mono";
+        ctx.textAlign = "center";
+        ctx.fillText(cur === "usd" ? tr("$0 기준", "$0 baseline") : tr("0원 기준", "₩0 baseline"), zeroX, area.top - 6);
+        ctx.restore();
+      },
+    };
 
     // 1. Waterfall Chart — 지난주 전체 CPA / 채널 기여(±) / 이번주 전체 CPA
     if (chartPvmWaterfall.current) {
@@ -656,6 +683,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
             },
           },
         },
+        plugins: [zeroBaselinePlugin],
       });
     }
 
