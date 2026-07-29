@@ -9368,9 +9368,14 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     ))}
                   </div>
                 ) : <p className="muted" style={{ fontSize: "12px" }}>{tx("계산할 수 없어요.", "Can't compute this.")}</p>}
-                    <p className="muted" style={{ fontSize: "11px", marginTop: "8px" }}>{includeBaseDemandInShare
-                      ? tx("각 드라이버의 주별 기여값 제곱평균을 전체 합으로 나눈 크기 비중입니다. 인과 기여율이나 Shapley R²가 아니며, 진한 보라 = 광고 채널입니다.", "Each share is the driver's mean squared weekly contribution divided by the total. It is not causal attribution or Shapley R². Dark purple = ad channels.")
-                      : tx("기본 수요·추세를 분모와 표시에서 제외하고, 남은 드라이버만 다시 100%로 정규화했습니다. 모델과 원본 기여값은 바뀌지 않습니다.", "Base demand · trend is removed from both the display and denominator; remaining drivers are re-normalized to 100%. The model and raw contributions do not change.")}</p>
+                    <span
+                      className="mmm-chart-help"
+                      tabIndex="0"
+                      title={includeBaseDemandInShare
+                        ? tx("각 드라이버의 주별 기여값 제곱평균을 전체 합으로 나눈 크기 비중입니다. 인과 기여율이나 Shapley R²가 아니며, 진한 보라는 광고 채널입니다.", "Each share is the driver's mean squared weekly contribution divided by the total. It is not causal attribution or Shapley R². Dark purple marks ad channels.")
+                        : tx("기본 수요·추세를 분모와 표시에서 제외하고, 남은 드라이버만 다시 100%로 정규화했습니다. 모델과 원본 기여값은 바뀌지 않습니다.", "Base demand · trend is removed from both the display and denominator; remaining drivers are re-normalized to 100%. The model and raw contributions do not change.")}
+                      aria-label={tx("기여도 차트 해석 도움말", "Contribution-chart interpretation help")}
+                    >ⓘ</span>
               </section>
 
               {/* ── 메인: 다음 예산은 여기로 (액션 카드) ── */}

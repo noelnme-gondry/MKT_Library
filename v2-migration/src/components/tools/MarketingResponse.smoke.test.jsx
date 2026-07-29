@@ -1658,7 +1658,7 @@ describe("MarketingResponse render smoke", () => {
     expect(exclude).toBeTruthy();
     fireEvent.click(exclude);
     expect(exclude?.className).toContain("active");
-    expect(document.body.textContent).toContain("기본 수요·추세를 분모와 표시에서 제외");
+    expect(document.querySelector(".mmm-chart-help")?.getAttribute("title")).toContain("기본 수요·추세를 분모와 표시에서 제외");
   });
 
   it("renders the 회귀·미래 예측 (lab) stage without throwing", async () => {

@@ -212,9 +212,8 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
       if (resultIsVisible && !didRevealResult.current) {
         didRevealResult.current = true;
         setHasNewContext(true);
-        // 모바일에서 자동 패널이 결과·필터를 덮지 않게 배지만 알린다.
-        // 사용자가 토글을 누르면 같은 맥락 안내를 그대로 펼칠 수 있다.
-        if (window.innerWidth > 760) setIsOpen(true);
+        // 결과의 수치·차트·조작 기능이 첫 화면의 주인공이다. 도우미는 새 결과를
+        // 배지로만 알리고, 사용자가 필요할 때만 연다.
       }
     };
     const syncCurrentSection = () => {
