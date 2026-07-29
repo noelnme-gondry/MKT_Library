@@ -898,9 +898,9 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
     <div className="tab-pane active" id="tab-viz">
       {/* Cohort Toggle — 콘텐츠는 매출/결제/잔존율(코호트 지표)이 없어 제외(§정직성). */}
       {!isContent && (
-      <section className="block" id="s-cohort">
-        <h2 className="section-title"><span className="ix">§1</span>{T.cohortSectionTitle}<span className="cohort-help" tabIndex="0" title={T.cohortDesc(kpi.cohort)} aria-label={locale === "en" ? "Cohort calculation help" : "코호트 계산 기준 도움말"}>ⓘ</span></h2>
-        <div className="cohort-toggle" id="cohort-toggle" style={{ marginBottom: "1rem" }}>
+      <section className="dashboard-cohort-control" id="s-cohort" aria-label={T.cohortSectionTitle}>
+        <span className="dashboard-cohort-control__label">{T.cohortSectionTitle}<span className="cohort-help" tabIndex="0" title={T.cohortDesc(kpi.cohort)} aria-label={locale === "en" ? "Cohort calculation help" : "코호트 계산 기준 도움말"}>ⓘ</span></span>
+        <div className="cohort-toggle" id="cohort-toggle">
           <button data-cohort="0" className={selectedCohort === 0 ? "active" : ""} onClick={() => setSelectedCohort(0)}>D0</button>
           <button data-cohort="7" className={selectedCohort === 7 ? "active" : ""} onClick={() => setSelectedCohort(7)}>D7</button>
           <button data-cohort="14" className={selectedCohort === 14 ? "active" : ""} onClick={() => setSelectedCohort(14)}>D14</button>

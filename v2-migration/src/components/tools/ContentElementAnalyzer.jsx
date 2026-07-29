@@ -579,11 +579,10 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               points={[
                 {
                   text: topSig
-                    ? tr("다음 실험에서는 이 요소 하나만 바꿔 인과효과를 확인하세요.", "In the next experiment, change only this element to test causality.")
+                    ? tr("다음 실험: 이 요소 하나만 바꾸기", "Next experiment: change this element only")
                     : tr("표본을 늘리거나 서로 겹치지 않는 제작 요소를 추가하세요.", "Add more observations or production elements that do not overlap."),
                   cls: topSig ? "good" : "muted",
                 },
-                { text: tr("회귀 결과는 관측 연관이며 인과효과가 아닙니다.", "Regression results are observed associations, not causal effects."), cls: "muted" },
               ]}
               stats={[
                 { label: tr("가장 강한 요소", "Strongest element"), value: topSig?.name || "—" },
@@ -591,7 +590,6 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                 { label: tr("유효 행", "Valid rows"), value: fit.n.toLocaleString(), detail: T.excludedRows(fit.n, fit.inputRows) },
                 { label: tr("분석 요소", "Features"), value: `${fit.k}${tr("개", "")}`, detail: fit.dropped.length ? tr(`${fit.dropped.length}개 제외`, `${fit.dropped.length} dropped`) : tr("제외 없음", "None dropped") },
               ]}
-              collapsePointsAfter={1}
               analysisDetails={(
             <AnalysisDetails
               locale={locale}
