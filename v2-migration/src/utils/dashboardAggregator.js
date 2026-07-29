@@ -62,7 +62,10 @@ export function effectiveDenomBasis(csvData, requested) {
  */
 export function computeWeightedRetention(rows, day, basis) {
   const rk = `ret_d${day}`;
-  const vals = rows.map((r) => Number(r[rk])).filter((v) => isFinite(v) && v > 0);
+  // 0% 리텐션은 결측이 아니라 유효 관측치다. 0을 제외하면 해당 코호트의
+  // 분모까지 빠져 가중 리텐션이 과대추정되고, 전부 0일 때는 "데이터 없음"으로
+  // 잘못 표시된다.
+  const vals = rows.map((r) => Number(r[rk])).filter((v) => isFinite(v) && v >= 0);
   if (!vals.length) return { rate: null, survivors: 0, denom: 0, isRate: null };
   const isRate = Math.max(...vals) <= 1; // 컬럼 단위 판별
   let num = 0,
@@ -70,7 +73,7 @@ export function computeWeightedRetention(rows, day, basis) {
     hasWholePct = false;
   for (const r of rows) {
     const v = Number(r[rk]);
-    if (!isFinite(v) || v <= 0) continue;
+    if (!isFinite(v) || v < 0) continue;
     const base = Number(r[basis]) || 0;
     if (isRate) {
       num += v * base;
@@ -133,7 +136,7 @@ export function calculateKPIs(filteredRows, cohort = 7, denomBasis = "installs")
   const sum = (key) =>
     filteredRows.reduce((a, r) => {
       const val = Number(r[key]);
-      return a + (isNaN(val) ? 0 : val);
+      return a + (isFinite(val) ? val : 0);
     }, 0);
 
   const cost = sum("cost");
@@ -186,7 +189,7 @@ export function aggregateByKey(rows, keyField, sumFields) {
     const tgt = map.get(k);
     sumFields.forEach((f) => {
       const v = Number(r[f]);
-      if (!isNaN(v)) tgt[f] += v;
+      if (isFinite(v)) tgt[f] += v;
     });
   }
   return Array.from(map.values());
