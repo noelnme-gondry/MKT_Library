@@ -3,7 +3,8 @@
 // CTR·CVR·ROAS·리텐션·이익까지 파생지표 전부 포함해 판정+표로 제공.
 // 렌더층 헬퍼(골든 아님) — dashboardAggregator 순수함수만 소비. 데이터 부족·컬럼
 // 미매핑이면 정직하게 생략(§8 날조 금지). WoW는 5-2류 시계열 전용 판정.
-import { getMonFilteredRows, aggregateByKey, effectiveDenomBasis, computeWeightedRetention, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { getMonFilteredRows, getMappedRows, aggregateByKey, effectiveDenomBasis, computeWeightedRetention, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
+import { resolveRetentionSnapshot } from "@/utils/retentionSnapshot";
 import { buildCreativeQuickSummary } from "@/lib/analysis-results/creativeQuickSummary";
 import { buildPvmQuickSummary } from "@/lib/analysis-results/pvmQuickSummary";
 
@@ -35,6 +36,14 @@ export function buildDashboardVerdict({
   if (!csvData || !csvData.raw || csvData.raw.length === 0) return { insufficient: true };
 
   const rows = getMonFilteredRows(csvData, filterState);
+  // 추천 카드가 리텐션을 앞에 세울 때는 "현재 날짜"가 아니라 파일의 관측 기준일을
+  // 함께 확인한다. 기준일을 알 수 없는 파일은 코호트 추천 후보에서 제외된다.
+  const retentionSnapshot = resolveRetentionSnapshot({
+    rows: getMappedRows(csvData),
+    fileName: csvData.fileName,
+    fileModifiedAt: csvData.fileModifiedAt,
+    manualDate: csvData.retentionSnapshotOverride,
+  });
   const daily = aggregateByKey(rows, "date", ["cost"]) // 날짜 목록만 필요
     .map((d) => d._key)
     .sort();
@@ -229,5 +238,5 @@ export function buildDashboardVerdict({
     points.map((p) => `- ${p.text}`).join("\n") +
     "\n";
 
-  return { insufficient: false, tone, headline, points, keyPoints, stats, metricRows, primaryDriver, newCreativeSignal, creativeSummary, pvmSummary, export: { csv, text }, windowDays: w };
+  return { insufficient: false, tone, headline, points, keyPoints, stats, metricRows, primaryDriver, newCreativeSignal, creativeSummary, pvmSummary, export: { csv, text }, windowDays: w, days: daily.length, conversionKey: convKey, efficiencyKey: effKey, retentionSnapshot };
 }
