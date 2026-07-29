@@ -766,6 +766,7 @@ describe("MarketingResponse render smoke", () => {
     const model = (platform, offset = 0) => ({
       platform,
       target: "Regs",
+      formulaCapability: "exact",
       names: ["trend", `media_${platform}_cost`],
       beta: [2, 8],
       intercept: 100,
@@ -777,7 +778,7 @@ describe("MarketingResponse render smoke", () => {
       chans: [{ key: `${platform}_cost`, label: `${platform}_cost` }],
       histSpendByKey: { [`${platform}_cost`]: [100, 120] },
       futSpendByKey: { [`${platform}_cost`]: [140] },
-      histLabels: ["W1", "W2"], futLabels: ["W3"], actual: [100 + offset, 110 + offset],
+      histLabels: ["=1+1", "W2"], futLabels: ["W3"], actual: [100 + offset, 110 + offset],
       historyOffset: [0, 0], futureOffset: [0], futureMargins: [12],
     });
     const lines = buildForecastCsv({
@@ -794,14 +795,164 @@ describe("MarketingResponse render smoke", () => {
     expect(csv).toContain("^$D$");
     expect(csv).toContain("fitted_or_forecast_live,organic_predicted_live,performance_predicted_live,lower_live,upper_live");
     expect(csv).toContain("prediction_total_live,organic_total_live,performance_total_live,lower_total_live,upper_total_live");
+    expect(csv).toContain("1,'=1+1,history");
+    expect(csv).not.toContain("1,=1+1,history");
     expect(csv).toMatch(/=E\d+-G\d+/);
     expect(csv).toMatch(/=MAX\(0,\$B\$/);
+  });
+
+  it("exports one editable Cost source that drives Organic halo, Paid levels, OS totals, and Total", () => {
+    const component = (platform, componentType, offset = 0) => {
+      const isOrganic = componentType === "organic";
+      const perfKey = isOrganic ? "performance_total" : `${platform}_perf`;
+      const brandKey = isOrganic ? "branding_total" : `${platform}_brand`;
+      return {
+        platform,
+        componentType,
+        formulaCapability: "exact",
+        target: isOrganic ? "OrganicRegs" : "PaidRegs",
+        names: ["trend", `media_${perfKey}`, `media_${brandKey}`],
+        beta: [2, 8, 3],
+        intercept: 100,
+        featureMeans: [1, 0.5, 0.25],
+        featureScales: [1, 0.25, 0.2],
+        rawFeatureHistory: [[0, 0.4, 0.2], [1, 0.5, 0.25]],
+        futureRawFeatures: [[2, 0.6, 0.3]],
+        params: {
+          [perfKey]: { alpha: 0.4, ec: 100, slope: 1.2, family: "hill" },
+          [brandKey]: { alpha: 0.2, ec: 50, slope: 1, family: "log1p" },
+        },
+        chans: [
+          { key: perfKey, label: perfKey, kind: "perf" },
+          { key: brandKey, label: brandKey, kind: "brand" },
+        ],
+        aggregateMediaGroups: isOrganic ? [
+          { key: "performance_total", members: [`${platform}_perf`] },
+          { key: "branding_total", members: [`${platform}_brand`] },
+        ] : [],
+        spendRanges: {
+          [perfKey]: { min: isOrganic ? 0 : 50, max: isOrganic ? 500 : 200 },
+          [brandKey]: { min: 0, max: isOrganic ? 200 : 100 },
+        },
+        histSpendByKey: {
+          [perfKey]: [100, 120],
+          [brandKey]: [30, 35],
+        },
+        futSpendByKey: {
+          [perfKey]: [140],
+          [brandKey]: [40],
+        },
+        requestedFutSpendByKey: {
+          [perfKey]: [140],
+          [brandKey]: [40],
+        },
+        histLabels: ["W1", "W2"],
+        futLabels: ["W3"],
+        actual: [100 + offset, 110 + offset],
+        historyOffset: [0, 0],
+        futureOffset: [0],
+        futureMargins: [12],
+      };
+    };
+    const forecast = {
+      isBayesian: true,
+      isPaidOrganicSplit: true,
+      isAdditiveTotal: true,
+      model: "android-ios-organic-paid-spend-split",
+      excelModels: [
+        component("android", "organic"),
+        component("android", "paid", 20),
+        component("ios", "organic", 40),
+        component("ios", "paid", 60),
+      ],
+    };
+    const lines = buildForecastCsv(forecast, "Regs", "ko", "USD", "USD");
+    const csv = lines.join("\n");
+    const enCsv = buildForecastCsv(forecast, "Regs", "en", "USD", "USD").join("\n");
+    const lockedCsv = buildForecastCsv({
+      ...forecast,
+      exportScenarioGate: { eligible: false, reasons: ["identification-failed"] },
+    }, "Regs", "ko", "USD", "USD").join("\n");
+    const androidCostIndex = lines.findIndex((line) =>
+      line.startsWith("W3,forecast_cost_input,140.0000000000,40.0000000000"));
+    expect(androidCostIndex).toBeGreaterThan(0);
+    const androidCostRow = androidCostIndex + 1;
+    const androidOrganicModelIndex = lines.findIndex((line) =>
+      line.includes("# 모델,android · OrganicRegs"));
+    const androidOrganicFuture = lines
+      .slice(androidOrganicModelIndex)
+      .find((line) => line.startsWith("3,W3,forecast"));
+    expect(androidOrganicFuture).toBeTruthy();
+    expect(csv).toContain("android 미래 Cost 입력 — 이 표만 수정");
+    expect(csv).toContain("ios 미래 Cost 입력 — 이 표만 수정");
+    expect(csv).toContain("android · OrganicRegs · Organic 기저 + Spend 연관 halo");
+    expect(csv).toContain("android · PaidRegs · Cost 조건부 Paid 예측 수준");
+    expect(csv).toContain("organic_baseline_live,organic_spend_halo_live");
+    expect(csv).toContain("paid_predicted_level_live");
+    expect(csv).toContain("Total = Android + iOS");
+    expect(csv).toContain(`MAX(0,$C$${androidCostRow})`);
+    expect(csv).toContain(`$C$${androidCostRow}-140.0000000000`);
+    expect(csv).toContain(`$D$${androidCostRow}-40.0000000000`);
+    expect((androidOrganicFuture.match(/\(\(0-\$C\$/g) || [])).toHaveLength(2);
+    expect(androidOrganicFuture).toMatch(/=E\d+-F\d+/);
+    expect(csv).toMatch(/=G\d+\+H\d+/);
+    expect(csv).toMatch(/=G\d+-E\d+/);
+    expect(csv).toContain("observed_spend_min_USD,observed_spend_max_USD");
+    expect(enCsv).toContain("future Cost inputs — edit this table only");
+    expect(enCsv).toContain("Organic baseline + spend-associated halo");
+    expect(enCsv).toContain("Paid predicted level");
+    expect(csv).toContain("Cost 수정 후 참고범위");
+    expect(lockedCsv).toContain("잠김 · 운영 판단에 사용 금지");
+    expect(lockedCsv).toContain("identification-failed");
+    expect(forecastDownloadTitle({
+      isPaidOrganicSplit: true,
+      excelModels: [
+        { platform: "android", target: "OrganicRegs", names: ["trend"], formulaCapability: "exact" },
+        { platform: "android", target: "PaidRegs", names: ["trend"], formulaCapability: "exact" },
+      ],
+    }, "en")).toContain("editing Cost by OS");
+  });
+
+  it("falls back honestly when a Paid/Organic model graph cannot be reproduced by CSV formulas", () => {
+    const csv = buildForecastCsv({
+      isBayesian: true,
+      isPaidOrganicSplit: true,
+      excelModels: [{
+        platform: "android",
+        target: "OrganicRegs",
+        names: ["trend"],
+        formulaCapability: "snapshot",
+      }],
+      actual: [100],
+      fittedHist: [98],
+      organicHist: [80],
+      performanceHist: [18],
+      histLabels: ["=1+1"],
+      predFut: [110],
+      organicBaseFut: [82],
+      organicHaloFut: [3],
+      organicFut: [85],
+      performanceFut: [25],
+      lo: [100],
+      hi: [120],
+      futLabels: ["@SUM(1)"],
+      platformForecasts: [],
+    }, "Regs", "en", "USD", "USD").join("\n");
+    expect(csv).toContain("Organic baseline + spend halo + Paid spend regression");
+    expect(csv).toContain("Total,'@SUM(1),forecast,,110,82,3,85,25,100,120");
+    expect(csv).toContain("Total,'=1+1,history");
+    expect(csv).not.toContain("future Cost inputs");
+    expect(forecastDownloadTitle({
+      isPaidOrganicSplit: true,
+      excelModels: [{ names: ["trend"], formulaCapability: "snapshot" }],
+    }, "en")).toContain("Fixed snapshot");
   });
 
   it("exports the selected regression-naive blend without overstating spend response", () => {
     const model = {
       platform: "android",
       target: "Regs",
+      formulaCapability: "exact",
       names: ["trend", "media_android_cost"],
       beta: [2, 8],
       intercept: 100,
@@ -828,7 +979,7 @@ describe("MarketingResponse render smoke", () => {
       excelModels: [model],
     }, "Regs", "ko", "USD", "USD").join("\n");
     expect(csv).toContain("회귀 50% + recent-mean-8 50%");
-    expect(csv).toMatch(/=0\.5000000000\*\(\$B\$\d+.*\)\+0\.5000000000\*123\.0000000000/);
+    expect(csv).toMatch(/=MAX\(0,0\.5000000000\*\(MAX\(0,\$B\$\d+.*\)\)\+0\.5000000000\*123\.0000000000\)/);
     expect(csv).toMatch(/=MAX\(0,0\.5000000000\*\(\$B\$/);
   });
 
@@ -945,9 +1096,16 @@ describe("MarketingResponse render smoke", () => {
   it("describes annual downloads as fixed snapshots and generic formulas by selected transforms", () => {
     expect(forecastDownloadTitle({ isAnnualAnalog: true }, "ko")).toContain("고정 스냅샷");
     expect(forecastDownloadTitle({ isAnnualAnalog: true }, "en")).toContain("Fixed snapshot");
-    const genericTitle = forecastDownloadTitle({ isBayesian: true }, "en");
+    const genericTitle = forecastDownloadTitle({
+      isBayesian: true,
+      excelModels: [{ names: ["trend"], formulaCapability: "exact" }],
+    }, "en");
     expect(genericTitle).toContain("selected adstock, media transform");
     expect(genericTitle).not.toContain("Hill transforms");
+    expect(forecastDownloadTitle({
+      isBayesian: true,
+      excelModels: [{ names: ["trend"], formulaCapability: "snapshot" }],
+    }, "en")).toContain("fixed snapshot");
   });
 
   it("uses the same interval contract and provenance in Bayesian fixed-snapshot exports", () => {

@@ -1651,6 +1651,10 @@ function csvQ(s) {
   s = String(s == null ? "" : s);
   return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 }
+function csvSafeLiteral(s) {
+  const value = String(s == null ? "" : s);
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+}
 function csvNum(v, d = 2) {
   return v == null || !isFinite(v) ? "" : (+v).toFixed(d);
 }
@@ -2363,24 +2367,161 @@ function forecastIntervalNote(fc, locale = "ko") {
     : `표시 범위는 적합 모델 자체의 참고폭입니다. 독립 바깥 OOS ${meta.observedFolds}회로는 경험적 P90 보정 최소 ${meta.minimumFolds}회에 미달합니다.`;
 }
 
+function forecastExcelComponentType(model) {
+  if (model?.componentType === "organic" || model?.componentType === "paid") {
+    return model.componentType;
+  }
+  if (model?.target === "OrganicRegs") return "organic";
+  if (model?.target === "PaidRegs") return "paid";
+  return null;
+}
+
+function forecastCostRefKey(platform, channelKey, futureIndex) {
+  return `${platform || "model"}::${channelKey}::${futureIndex}`;
+}
+
+function forecastEffectiveCostFormula(requestedExpression, range) {
+  const nonnegative = `MAX(0,${requestedExpression})`;
+  if (!Number.isFinite(range?.min) || !Number.isFinite(range?.max)) {
+    return nonnegative;
+  }
+  return `MIN(${csvNum(range.max, 10)},MAX(${csvNum(range.min, 10)},${nonnegative}))`;
+}
+
+function forecastHasExactFormulaModels(forecast) {
+  const models = (forecast?.excelModels || []).filter((model) => model?.names?.length);
+  if (!models.length || !models.every((model) => model.formulaCapability === "exact")) {
+    return false;
+  }
+  if (!forecast?.isPaidOrganicSplit) return true;
+  const platforms = (forecast.platformForecasts || []).length
+    ? [...new Set(forecast.platformForecasts.map((part) => part?.platform).filter(Boolean))]
+    : [...new Set(models.map((model) => model.platform).filter(Boolean))];
+  return platforms.length > 0 && platforms.every((platform) =>
+    ["organic", "paid"].every((componentType) =>
+      models.some((model) =>
+        model.platform === platform
+        && forecastExcelComponentType(model) === componentType)));
+}
+
 function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, displayCurrency) {
   const tx = (ko, en) => (locale === "en" ? en : ko);
-  const models = (fc.excelModels || []).filter((model) => model?.names?.length);
-  if (!models.length) return null;
+  const sourceModels = (fc.excelModels || []).filter((model) => model?.names?.length);
+  if (!forecastHasExactFormulaModels(fc)) return null;
+  const models = sourceModels;
+  const isPaidOrganicLive = fc.isPaidOrganicSplit === true
+    && forecastHasExactFormulaModels(fc);
+  const livePlatforms = [...new Set(models.map((model) => model.platform).filter(Boolean))];
+  const liveScope = livePlatforms.length > 1
+    ? tx("Android·iOS·Total", "Android, iOS, and Total")
+    : tx(`${livePlatforms[0] || "OS"} 예측`, `${livePlatforms[0] || "OS"} forecast`);
   const lines = [];
   const push = (row) => lines.push(row.map(csvQ).join(","));
-  push([tx("# 도구", "# Tool"), "Empirical-Bayes MMM Forecast (5-18) · live Excel formulas"]);
+  push([
+    tx("# 도구", "# Tool"),
+    isPaidOrganicLive
+      ? "Empirical-Bayes Paid/Organic MMM Forecast (5-18) · live Excel formulas"
+      : "Empirical-Bayes MMM Forecast (5-18) · live Excel formulas",
+  ]);
   push([tx("# 대상", "# Target"), `${mmmTargetDisplay(target, locale)} (${target})`]);
   push([tx("# 원본 통화", "# Source currency"), sourceCurrency]);
   push([tx("# 화면 표시 통화", "# Display currency"), displayCurrency]);
-  push([tx("# 사용법", "# How to use"), tx("spend를 수정하면 adstock → 자동 선택된 선형/log1p/Hill 변환 → 예측이 즉시 재계산됩니다. 단순 기준선과 혼합된 모델은 선택된 회귀 비중만큼만 spend에 반응합니다.", "Editing spend recalculates adstock → the auto-selected identity/log1p/Hill transform → forecast immediately. When validation selected a naive blend, only the selected regression share responds to spend.")]);
+  push([
+    tx("# 사용법", "# How to use"),
+    isPaidOrganicLive
+      ? tx(
+        `아래 OS별 미래 Cost 입력만 수정하세요. 같은 Cost가 Organic halo와 Paid 예측 수준 모델에 함께 연결되고, ${liveScope}까지 즉시 재계산됩니다.`,
+        `Edit only the future Cost inputs by OS below. The same Cost cells feed both the Organic-halo and Paid-level models, then recalculate the ${liveScope} immediately.`,
+      )
+      : tx("spend를 수정하면 adstock → 자동 선택된 선형/log1p/Hill 변환 → 예측이 즉시 재계산됩니다. 단순 기준선과 혼합된 모델은 선택된 회귀 비중만큼만 spend에 반응합니다.", "Editing spend recalculates adstock → the auto-selected identity/log1p/Hill transform → forecast immediately. When validation selected a naive blend, only the selected regression share responds to spend."),
+  ]);
   push([tx("# 참고 범위", "# Reference interval"), forecastIntervalNote(fc, locale)]);
-  push([tx("# 예측 분해", "# Forecast decomposition"), tx("organic_predicted_live는 Performance 비용을 0으로 둔 예측입니다. Branding 채널이 있으면 Branding은 이 값에 남습니다. performance_predicted_live는 0원 대비 Performance 절대 반응이며 두 열의 합은 fitted_or_forecast_live와 같습니다.", "organic_predicted_live is the forecast with Performance spend set to zero; mapped Branding remains in this value. performance_predicted_live is the absolute Performance response versus zero spend, and the two columns sum to fitted_or_forecast_live.")]);
+  push([
+    tx("# Cost 수정 후 참고범위", "# Reference range after a Cost edit"),
+    tx(
+      "하한·상한은 다운로드 시점의 주차별 비대칭 오차폭을 고정한 채 새 점예측을 따라 이동합니다. Cost 수정 뒤 새로 재추정·재검증한 예측구간이 아닙니다.",
+      "Lower and upper bounds move with the new point forecast while keeping the download-time asymmetric error widths fixed. They are not newly estimated or revalidated intervals after a Cost edit.",
+    ),
+  ]);
+  push([
+    tx("# 예측 분해", "# Forecast decomposition"),
+    isPaidOrganicLive
+      ? tx(
+        "OS별 Total = Organic 기저 + Spend 연관 halo + Cost 조건부 Paid 예측 수준입니다. Organic은 Total−Paid 실측, Paid는 PaidRegs 실측에 따로 적합해 중복 합산하지 않습니다. Paid 값에는 회귀 절편이 포함될 수 있으며 관측 연관이지 인과 증명은 아닙니다.",
+        "For each OS, Total = Organic baseline + spend-associated halo + the Cost-conditional Paid predicted level. Organic is fit to observed Total−Paid and Paid to observed PaidRegs, so the components do not double-count. The Paid level may include a regression intercept; these are observational associations, not causal proof.",
+      )
+      : tx("organic_predicted_live는 Performance 비용을 0으로 둔 예측입니다. Branding 채널이 있으면 Branding은 이 값에 남습니다. performance_predicted_live는 0원 대비 Performance 절대 반응이며 두 열의 합은 fitted_or_forecast_live와 같습니다.", "organic_predicted_live is the forecast with Performance spend set to zero; mapped Branding remains in this value. performance_predicted_live is the absolute Performance response versus zero spend, and the two columns sum to fitted_or_forecast_live."),
+  ]);
+  if (isPaidOrganicLive) {
+    push([
+      tx("# Cost 범위", "# Cost range"),
+      tx(
+        "입력 Cost는 요청값입니다. 각 모델 계산표의 effective_spend는 해당 모델 학습창에서 관측된 최소~최대 범위로 제한됩니다. 범위 밖 입력은 새로운 검증 결과가 아닙니다.",
+        "Cost inputs are requested values. effective_spend in each model table is constrained to that model's observed minimum–maximum range. An out-of-range edit is not a newly validated result.",
+      ),
+    ]);
+    if (fc.exportScenarioGate) {
+      const isGateOpen = fc.exportScenarioGate.eligible === true;
+      push([
+        tx("# Cost 시나리오 게이트", "# Cost-scenario gate"),
+        isGateOpen
+          ? tx("통과", "passed")
+          : tx("잠김 · 운영 판단에 사용 금지", "locked · do not use for operating decisions"),
+      ]);
+      push([
+        tx("# 게이트 사유", "# Gate reasons"),
+        (fc.exportScenarioGate.reasons || []).join("|"),
+      ]);
+    }
+  }
+
+  const futureCostRefs = new Map();
+  const paidModelByPlatform = new Map();
+  if (isPaidOrganicLive) {
+    models
+      .filter((model) => forecastExcelComponentType(model) === "paid")
+      .forEach((model) => {
+        paidModelByPlatform.set(model.platform, model);
+        lines.push("");
+        push([
+          tx(`# ${model.platform} 미래 Cost 입력 — 이 표만 수정`, `# ${model.platform} future Cost inputs — edit this table only`),
+        ]);
+        push([
+          "period",
+          "segment",
+          ...(model.chans || []).map((channel) => `cost_${channel.key}_${sourceCurrency}`),
+        ]);
+        (model.futLabels || []).forEach((label, futureIndex) => {
+          const rowNumber = lines.length + 1;
+          const values = (model.chans || []).map((channel, channelIndex) => {
+            futureCostRefs.set(
+              forecastCostRefKey(model.platform, channel.key, futureIndex),
+              `$${csvColL(2 + channelIndex)}$${rowNumber}`,
+            );
+            return csvNum(
+              model.requestedFutSpendByKey?.[channel.key]?.[futureIndex]
+                ?? model.futSpendByKey?.[channel.key]?.[futureIndex],
+              10,
+            );
+          });
+          push([csvSafeLiteral(label), "forecast_cost_input", ...values]);
+        });
+      });
+  }
 
   const tables = [];
   models.forEach((model) => {
     lines.push("");
-    push([tx("# 모델", "# Model"), `${model.platform} · ${model.target}`]);
+    const componentType = forecastExcelComponentType(model);
+    const componentLabel = componentType === "organic"
+      ? tx("Organic 기저 + Spend 연관 halo", "Organic baseline + spend-associated halo")
+      : componentType === "paid"
+        ? tx("Cost 조건부 Paid 예측 수준", "Cost-conditional Paid predicted level")
+        : "";
+    push([
+      tx("# 모델", "# Model"),
+      `${model.platform} · ${model.target}${componentLabel ? ` · ${componentLabel}` : ""}`,
+    ]);
     const requestedBlendWeight = Number(model.selectedBlend?.regressionWeight);
     const blendWeight = model.blendApplied && Number.isFinite(requestedBlendWeight)
       ? Math.max(0, Math.min(1, requestedBlendWeight))
@@ -2409,16 +2550,33 @@ function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, displayCur
     const featureRows = {};
     model.names.forEach((name, index) => {
       featureRows[name] = lines.length + 1;
-      push([name, csvNum(model.beta[index], 10), csvNum(model.featureMeans[index], 10), csvNum(model.featureScales[index] || 1, 10)]);
+      push([csvSafeLiteral(name), csvNum(model.beta[index], 10), csvNum(model.featureMeans[index], 10), csvNum(model.featureScales[index] || 1, 10)]);
     });
     lines.push("");
     push([tx("# 채널 변환 파라미터", "# Channel transform parameters")]);
-    push(["channel", "adstock_alpha", "hill_ec", "hill_slope", "transform_family"]);
+    push([
+      "channel",
+      "adstock_alpha",
+      "hill_ec",
+      "hill_slope",
+      "transform_family",
+      `observed_spend_min_${sourceCurrency}`,
+      `observed_spend_max_${sourceCurrency}`,
+    ]);
     const channelRows = {};
     (model.chans || []).forEach((channel) => {
       const params = model.params[channel.key] || {};
+      const spendRange = model.spendRanges?.[channel.key] || {};
       channelRows[channel.key] = lines.length + 1;
-      push([channel.key, csvNum(params.alpha, 10), csvNum(params.ec, 10), csvNum(params.slope, 10), params.family || "hill"]);
+      push([
+        csvSafeLiteral(channel.key),
+        csvNum(params.alpha, 10),
+        csvNum(params.ec, 10),
+        csvNum(params.slope, 10),
+        params.family || "hill",
+        csvNum(spendRange.min, 10),
+        csvNum(spendRange.max, 10),
+      ]);
     });
     lines.push("");
     push([tx("# 시계열 — spend 수정 → adstock → 선택 변환 → 예측 자동 연쇄", "# Time series — edit spend → adstock → selected transform → forecast live chain")]);
@@ -2435,6 +2593,10 @@ function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, displayCur
     const hillCol = (index) => csvColL(hillStart + index);
     const logCol = (index) => csvColL(logStart + index);
     const spendCol = (index) => csvColL(spendStart + index);
+    const mediaFeatureIndexes = model.names
+      .map((name, featureIndex) => ({ name, featureIndex }))
+      .filter(({ name }) => name.startsWith("media_"))
+      .map(({ featureIndex }) => featureIndex);
     const performanceFeatureIndexes = model.names
       .map((name, featureIndex) => ({ name, featureIndex }))
       .filter(({ name }) => {
@@ -2444,13 +2606,36 @@ function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, displayCur
         return channel?.kind !== "brand";
       })
       .map(({ featureIndex }) => featureIndex);
+    const isOrganicSplitModel = isPaidOrganicLive && componentType === "organic";
+    const isPaidSplitModel = isPaidOrganicLive && componentType === "paid";
+    const isExactSplitDecomposition = isOrganicSplitModel || isPaidSplitModel;
+    const zeroedMediaIndexes = isExactSplitDecomposition
+      ? mediaFeatureIndexes
+      : performanceFeatureIndexes;
     push([
-      "t", "period", "segment", "actual", "fitted_or_forecast_live", "organic_predicted_live", "performance_predicted_live", "lower_live", "upper_live",
-      ...model.names,
+      "t",
+      "period",
+      "segment",
+      "actual",
+      "fitted_or_forecast_live",
+      isOrganicSplitModel
+        ? "organic_baseline_live"
+        : isPaidSplitModel
+          ? "paid_at_zero_cost_live"
+          : "organic_predicted_live",
+      isOrganicSplitModel
+        ? "organic_spend_halo_live"
+        : isPaidSplitModel
+          ? "paid_spend_associated_live"
+          : "performance_predicted_live",
+      "lower_live",
+      "upper_live",
+      ...model.names.map(csvSafeLiteral),
       ...model.chans.map((channel) => `adstock_${channel.key}`),
       ...model.chans.map((channel) => `hill_${channel.key}`),
       ...model.chans.map((channel) => `ln1p_adstock_${channel.key}_audit`),
-      ...model.chans.map((channel) => `spend_${channel.key}_${sourceCurrency}`),
+      ...model.chans.map((channel) =>
+        `${isPaidOrganicLive ? "effective_spend" : "spend"}_${channel.key}_${sourceCurrency}`),
     ]);
     const tableStart = lines.length + 1;
     const historyLength = model.histLabels.length;
@@ -2484,17 +2669,78 @@ function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, displayCur
         return `=${ad}^$D$${paramRow}/($C$${paramRow}^$D$${paramRow}+${ad}^$D$${paramRow})`;
       });
       const logs = model.chans.map((_, channelIndex) => `=LN(1+${adstockCol(channelIndex)}${rowNumber})`);
-      const spend = model.chans.map((channel) => csvNum(
-        isHistory ? model.histSpendByKey[channel.key]?.[index] : model.futSpendByKey[channel.key]?.[futureIndex],
-        10,
-      ));
-      const regressionExpression = "$B$" + interceptRow + model.names.map((name, featureIndex) => {
+      const spend = model.chans.map((channel) => {
+        if (isHistory || !isPaidOrganicLive) {
+          return csvNum(
+            isHistory
+              ? model.histSpendByKey[channel.key]?.[index]
+              : model.futSpendByKey[channel.key]?.[futureIndex],
+            10,
+          );
+        }
+        const directRef = futureCostRefs.get(
+          forecastCostRefKey(model.platform, channel.key, futureIndex),
+        );
+        if (componentType === "paid" && directRef) {
+          return `=${forecastEffectiveCostFormula(
+            directRef,
+            model.spendRanges?.[channel.key],
+          )}`;
+        }
+        if (componentType !== "organic") {
+          return directRef
+            ? `=${forecastEffectiveCostFormula(
+              directRef,
+              model.spendRanges?.[channel.key],
+            )}`
+            : csvNum(model.futSpendByKey[channel.key]?.[futureIndex], 10);
+        }
+        const group = (model.aggregateMediaGroups || [])
+          .find((candidate) => candidate.key === channel.key);
+        const paidModel = paidModelByPlatform.get(model.platform);
+        const linkedMembers = (group?.members || [channel.key])
+          .map((memberKey) => ({
+            ref: futureCostRefs.get(
+              forecastCostRefKey(model.platform, memberKey, futureIndex),
+            ),
+            baseline: paidModel?.requestedFutSpendByKey?.[memberKey]?.[futureIndex]
+              ?? paidModel?.futSpendByKey?.[memberKey]?.[futureIndex],
+          }))
+          .filter((member) => member.ref);
+        if (!linkedMembers.length) {
+          return directRef
+            ? `=${forecastEffectiveCostFormula(
+              directRef,
+              model.spendRanges?.[channel.key],
+            )}`
+            : csvNum(model.futSpendByKey[channel.key]?.[futureIndex], 10);
+        }
+        const groupBaseline = csvNum(
+          model.requestedFutSpendByKey?.[channel.key]?.[futureIndex]
+            ?? model.futSpendByKey[channel.key]?.[futureIndex],
+          10,
+        );
+        const deltas = linkedMembers.map((member) =>
+          `+(${member.ref}-${csvNum(member.baseline, 10)})`).join("");
+        return `=${forecastEffectiveCostFormula(
+          `(${groupBaseline}${deltas})`,
+          model.spendRanges?.[channel.key],
+        )}`;
+      });
+      const linearExpression = "$B$" + interceptRow + model.names.map((name, featureIndex) => {
         const featureRow = featureRows[name];
         return `+$B$${featureRow}*((${featureCol(featureIndex)}${rowNumber}-$C$${featureRow})/$D$${featureRow})`;
-      }).join("") + (offset ? `+${csvNum(offset, 10)}` : "");
-      const prediction = !isHistory && hasLiveBlend
-        ? `=${csvNum(blendWeight, 10)}*(${regressionExpression})+${csvNum(1 - blendWeight, 10)}*${csvNum(model.blendBaselineFut[futureIndex], 10)}`
-        : `=${regressionExpression}`;
+      }).join("");
+      const offsetExpression = offset ? `+${csvNum(offset, 10)}` : "";
+      const restoredRegressionExpression = isHistory
+        ? `${linearExpression}${offsetExpression}`
+        : `MAX(0,${linearExpression})${offsetExpression}`;
+      const predictionExpression = !isHistory && hasLiveBlend
+        ? `${csvNum(blendWeight, 10)}*(${restoredRegressionExpression})+${csvNum(1 - blendWeight, 10)}*${csvNum(model.blendBaselineFut[futureIndex], 10)}`
+        : restoredRegressionExpression;
+      const prediction = isHistory
+        ? `=${predictionExpression}`
+        : `=MAX(0,${predictionExpression})`;
       const performanceExpression = performanceFeatureIndexes.length
         ? performanceFeatureIndexes.map((featureIndex) => {
           const name = model.names[featureIndex];
@@ -2502,21 +2748,54 @@ function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, displayCur
           return `$B$${featureRow}*(${featureCol(featureIndex)}${rowNumber}/$D$${featureRow})`;
         }).join("+")
         : "0";
-      const performancePrediction = !isHistory && hasLiveBlend
-        ? `=MAX(0,${csvNum(blendWeight, 10)}*(${performanceExpression}))`
-        : `=MAX(0,${performanceExpression})`;
-      const organicPrediction = `=${csvColL(4)}${rowNumber}-${csvColL(6)}${rowNumber}`;
-      const margin = isHistory ? null : model.futureMargins[futureIndex] || 0;
+      let organicPrediction;
+      let performancePrediction;
+      if (isExactSplitDecomposition) {
+        const baselineLinearExpression = "$B$" + interceptRow + model.names
+          .map((name, featureIndex) => {
+            const featureRow = featureRows[name];
+            const value = zeroedMediaIndexes.includes(featureIndex)
+              ? "0"
+              : `${featureCol(featureIndex)}${rowNumber}`;
+            return `+$B$${featureRow}*((${value}-$C$${featureRow})/$D$${featureRow})`;
+          })
+          .join("");
+        const restoredBaselineExpression = isHistory
+          ? `${baselineLinearExpression}${offsetExpression}`
+          : `MAX(0,MAX(0,${baselineLinearExpression})${offsetExpression})`;
+        const baselineExpression = !isHistory && hasLiveBlend
+          ? `${csvNum(blendWeight, 10)}*(${restoredBaselineExpression})+${csvNum(1 - blendWeight, 10)}*${csvNum(model.blendBaselineFut[futureIndex], 10)}`
+          : restoredBaselineExpression;
+        organicPrediction = isHistory
+          ? `=${baselineExpression}`
+          : `=MAX(0,${baselineExpression})`;
+        performancePrediction = `=${csvColL(4)}${rowNumber}-${csvColL(5)}${rowNumber}`;
+      } else {
+        performancePrediction = !isHistory && hasLiveBlend
+          ? `=MAX(0,${csvNum(blendWeight, 10)}*(${performanceExpression}))`
+          : `=MAX(0,${performanceExpression})`;
+        organicPrediction = `=${csvColL(4)}${rowNumber}-${csvColL(6)}${rowNumber}`;
+      }
+      const lowerMargin = isHistory
+        ? null
+        : model.futureLowerMargins?.[futureIndex]
+          ?? model.futureMargins?.[futureIndex]
+          ?? 0;
+      const upperMargin = isHistory
+        ? null
+        : model.futureUpperMargins?.[futureIndex]
+          ?? model.futureMargins?.[futureIndex]
+          ?? 0;
       push([
         index + 1,
-        isHistory ? model.histLabels[index] : model.futLabels[futureIndex],
+        csvSafeLiteral(isHistory ? model.histLabels[index] : model.futLabels[futureIndex]),
         isHistory ? "history" : "forecast",
         isHistory ? csvNum(model.actual[index], 10) : "",
         prediction,
         organicPrediction,
         performancePrediction,
-        margin == null ? "" : `=E${rowNumber}-${csvNum(margin, 10)}`,
-        margin == null ? "" : `=E${rowNumber}+${csvNum(margin, 10)}`,
+        lowerMargin == null ? "" : `=MAX(0,E${rowNumber}-${csvNum(lowerMargin, 10)})`,
+        upperMargin == null ? "" : `=E${rowNumber}+${csvNum(upperMargin, 10)}`,
         ...values,
         ...adstock,
         ...hill,
@@ -2524,10 +2803,130 @@ function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, displayCur
         ...spend,
       ]);
     }
-    tables.push({ model, tableStart, historyLength, horizon });
+    tables.push({
+      model,
+      componentType,
+      tableStart,
+      historyLength,
+      horizon,
+    });
   });
 
-  if (fc.isAdditiveTotal && tables.length === 2) {
+  if (isPaidOrganicLive) {
+    const platformTables = [...new Set(tables.map((table) => table.model.platform))]
+      .map((platform) => {
+        const organic = tables.find((table) =>
+          table.model.platform === platform && table.componentType === "organic");
+        const paid = tables.find((table) =>
+          table.model.platform === platform && table.componentType === "paid");
+        if (!organic || !paid) return null;
+        const historyLength = Math.min(organic.historyLength, paid.historyLength);
+        const horizon = Math.min(organic.horizon, paid.horizon);
+        lines.push("");
+        push([
+          tx(
+            `# ${platform} = Organic 기저 + halo + Paid (아래도 모두 수식)`,
+            `# ${platform} = Organic baseline + halo + Paid (all formulas below)`,
+          ),
+        ]);
+        push([
+          "period",
+          "segment",
+          "actual_total",
+          "predicted_total_live",
+          "organic_baseline_live",
+          "organic_spend_halo_live",
+          "organic_total_live",
+          "paid_predicted_level_live",
+          "lower_live",
+          "upper_live",
+        ]);
+        const tableStart = lines.length + 1;
+        for (let index = 0; index < historyLength + horizon; index++) {
+          const isHistory = index < historyLength;
+          const organicRow = isHistory
+            ? organic.tableStart + (organic.historyLength - historyLength) + index
+            : organic.tableStart + organic.historyLength + (index - historyLength);
+          const paidRow = isHistory
+            ? paid.tableStart + (paid.historyLength - historyLength) + index
+            : paid.tableStart + paid.historyLength + (index - historyLength);
+          const rowNumber = lines.length + 1;
+          const label = isHistory
+            ? organic.model.histLabels.at(-(historyLength - index))
+            : organic.model.futLabels[index - historyLength];
+          push([
+            csvSafeLiteral(label),
+            isHistory ? "history" : "forecast",
+            isHistory ? `=D${organicRow}+D${paidRow}` : "",
+            `=G${rowNumber}+H${rowNumber}`,
+            `=MAX(0,F${organicRow})`,
+            `=G${rowNumber}-E${rowNumber}`,
+            `=MAX(0,E${organicRow})`,
+            `=MAX(0,E${paidRow})`,
+            isHistory ? "" : `=MAX(0,H${organicRow}+H${paidRow})`,
+            isHistory ? "" : `=MAX(D${rowNumber},I${organicRow}+I${paidRow})`,
+          ]);
+        }
+        return {
+          platform,
+          tableStart,
+          historyLength,
+          horizon,
+          labels: organic.model.histLabels,
+          futureLabels: organic.model.futLabels,
+        };
+      })
+      .filter(Boolean);
+
+    if (platformTables.length > 1) {
+      const historyLength = Math.min(...platformTables.map((table) => table.historyLength));
+      const horizon = Math.min(...platformTables.map((table) => table.horizon));
+      lines.push("");
+      push([
+        tx(
+          "# Total = Android + iOS (아래도 모두 수식)",
+          "# Total = Android + iOS (all formulas below)",
+        ),
+      ]);
+      push([
+        "period",
+        "segment",
+        "actual_total",
+        "predicted_total_live",
+        "organic_baseline_live",
+        "organic_spend_halo_live",
+        "organic_total_live",
+        "paid_predicted_level_live",
+        "lower_live",
+        "upper_live",
+      ]);
+      for (let index = 0; index < historyLength + horizon; index++) {
+        const isHistory = index < historyLength;
+        const refs = platformTables.map((table) => {
+          const row = isHistory
+            ? table.tableStart + (table.historyLength - historyLength) + index
+            : table.tableStart + table.historyLength + (index - historyLength);
+          return row;
+        });
+        const label = isHistory
+          ? platformTables[0].labels.at(-(historyLength - index))
+          : platformTables[0].futureLabels[index - historyLength];
+        const sumRefs = (column) => refs.map((row) => `${column}${row}`).join("+");
+        push([
+          csvSafeLiteral(label),
+          isHistory ? "history" : "forecast",
+          isHistory ? `=${sumRefs("C")}` : "",
+          `=${sumRefs("D")}`,
+          `=${sumRefs("E")}`,
+          `=${sumRefs("F")}`,
+          `=${sumRefs("G")}`,
+          `=${sumRefs("H")}`,
+          isHistory ? "" : `=${sumRefs("I")}`,
+          isHistory ? "" : `=${sumRefs("J")}`,
+        ]);
+      }
+    }
+  } else if (fc.isAdditiveTotal && tables.length === 2) {
     const historyLength = Math.min(...tables.map((table) => table.historyLength));
     const horizon = Math.min(...tables.map((table) => table.horizon));
     lines.push("");
@@ -2543,7 +2942,7 @@ function buildBayesianForecastCsv(fc, target, locale, sourceCurrency, displayCur
       });
       const label = isHistory ? tables[0].model.histLabels.at(-(historyLength - index)) : tables[0].model.futLabels[index - historyLength];
       push([
-        label,
+        csvSafeLiteral(label),
         isHistory ? "history" : "forecast",
         isHistory ? `=${refs.map((ref) => ref.actual).join("+")}` : "",
         `=${refs.map((ref) => ref.prediction).join("+")}`,
@@ -2619,22 +3018,30 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
     return rows.map((row) => row.map(csvQ).join(","));
   }
   if (fc.isPaidOrganicSplit) {
+    const liveCsv = buildBayesianForecastCsv(
+      fc,
+      target,
+      locale,
+      sourceCurrency,
+      displayCurrency,
+    );
+    if (liveCsv) return liveCsv;
     const rows = [
       [tx("# 도구", "# Tool"), "Organic baseline + spend halo + Paid spend regression (5-18)"],
       [tx("# 대상", "# Target"), `${tKo} (${target})`],
       [tx("# 합산", "# Identity"), "Total = Android(Organic + Paid) + iOS(Organic + Paid)"],
       [tx("# Organic", "# Organic"), tx("Total−Paid 실측을 자연 추세·계절성·Spend 연관 halo로 예측", "Forecasts observed Total−Paid with natural trend, seasonality, and a spend-associated halo")],
-      [tx("# Paid", "# Paid"), tx("PaidRegs 실측을 Spend 반응으로 별도 예측", "Forecasts observed PaidRegs separately from spend response")],
-      [tx("# 주의", "# Note"), tx("halo와 Paid 반응은 서로 다른 실측 성분에 적합하므로 합산 시 중복되지 않습니다. 관측 연관이며 인과 증명은 아닙니다.", "Halo and Paid response are fit to disjoint observed components, so their sum does not double-count. These are observational associations, not causal proof.")],
+      [tx("# Paid", "# Paid"), tx("PaidRegs 실측의 Cost 조건부 예측 수준입니다. 회귀 절편·비매체 성분이 포함될 수 있습니다.", "This is the Cost-conditional predicted level of observed PaidRegs and may include an intercept or non-media component.")],
+      [tx("# 주의", "# Note"), tx("halo와 Paid 예측은 서로 다른 실측 성분에 적합하므로 합산 시 중복되지 않습니다. 관측 연관이며 인과 증명은 아닙니다.", "The halo and Paid prediction are fit to disjoint observed components, so their sum does not double-count. These are observational associations, not causal proof.")],
       [tx("# 구간 출처", "# Interval provenance"), forecastIntervalNote(fc, locale)],
       [],
-      ["platform", "period", "segment", "actual_total", "predicted_total", "organic_baseline", "organic_spend_halo", "organic_total", "paid_direct", "lower", "upper"],
+      ["platform", "period", "segment", "actual_total", "predicted_total", "organic_baseline", "organic_spend_halo", "organic_total", "paid_predicted_level", "lower", "upper"],
     ];
     const appendForecast = (part, platform) => {
       (part.actual || []).forEach((actual, index) => {
         rows.push([
           platform,
-          part.histLabels?.[index] ?? index + 1,
+          csvSafeLiteral(part.histLabels?.[index] ?? index + 1),
           "history",
           actual,
           part.fittedHist?.[index],
@@ -2649,7 +3056,7 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
       (part.predFut || []).forEach((prediction, index) => {
         rows.push([
           platform,
-          part.futLabels?.[index] ?? `+${index + 1}`,
+          csvSafeLiteral(part.futLabels?.[index] ?? `+${index + 1}`),
           "forecast",
           "",
           prediction,
@@ -4028,6 +4435,11 @@ function buildForecastExcelModel(model, rawForecast, restoredForecast, finalFore
   return {
     platform: model.platform || "model",
     target: model.target,
+    componentType: model.componentType || null,
+    formulaCapability: model.run.meridianSpec?.enabled === true ? "snapshot" : "exact",
+    formulaCapabilityReason: model.run.meridianSpec?.enabled === true
+      ? "meridian-or-reach-frequency-transform-not-represented-by-the-csv-formula-compiler"
+      : null,
     names: rawForecast.names || [],
     beta: rawForecast.beta || [],
     intercept: rawForecast.intercept,
@@ -4039,13 +4451,30 @@ function buildForecastExcelModel(model, rawForecast, restoredForecast, finalFore
     )),
     params: model.run.params || {},
     chans: rawForecast.chans || [],
+    aggregateMediaGroups: model.panel.aggregateMediaGroups || [],
+    haloMemberRecentMean: model.haloMemberRecentMean || {},
+    spendRanges: rawForecast.spendRanges || {},
     histSpendByKey: model.panel.ch || {},
     futSpendByKey: rawForecast.futSpendByKey || {},
+    requestedFutSpendByKey: Object.fromEntries((rawForecast.chans || []).map((channel) => {
+      const requested = rawForecast.spendRanges?.[channel.key]?.requested;
+      const effective = rawForecast.futSpendByKey?.[channel.key] || [];
+      return [
+        channel.key,
+        Number.isFinite(requested)
+          ? Array(effective.length).fill(requested)
+          : effective.slice(),
+      ];
+    })),
     histLabels: rawForecast.histLabels || [],
     futLabels: rawForecast.futLabels || [],
     actual: restoredForecast.actual || [],
     historyOffset,
     futureOffset,
+    futureLowerMargins: (finalForecast.lo || []).map((value, index) =>
+      Math.max(0, (finalForecast.predFut?.[index] || 0) - value)),
+    futureUpperMargins: (finalForecast.hi || []).map((value, index) =>
+      Math.max(0, value - (finalForecast.predFut?.[index] || 0))),
     futureMargins: (finalForecast.hi || []).map((value, index) =>
       Math.max(0, value - (finalForecast.predFut?.[index] || 0))),
   };
@@ -4439,9 +4868,27 @@ export function forecastDownloadTitle(forecast, locale = "ko") {
     );
   }
   if (forecast?.isPaidOrganicSplit) {
+    const hasLiveModels = forecastHasExactFormulaModels(forecast);
+    const platforms = [...new Set((forecast.excelModels || [])
+      .map((model) => model?.platform)
+      .filter(Boolean))];
+    const scope = platforms.length > 1
+      ? tx("Android·iOS·Total", "Android, iOS, and Total")
+      : tx(`${platforms[0] || "OS"} 예측`, `${platforms[0] || "OS"} forecast`);
+    return hasLiveModels
+      ? tx(
+        `OS별 Cost를 수정하면 Organic halo·Paid 예측 수준·${scope}가 연쇄 재계산되는 엑셀 수식 CSV`,
+        `Excel-formula CSV: editing Cost by OS recalculates Organic halo, Paid predicted level, and the ${scope}`,
+      )
+      : tx(
+        "OS별 Organic 기저·halo·Paid 예측 수준·Total 항등식을 포함한 고정 스냅샷 CSV",
+        "Fixed snapshot CSV with OS-level Organic baseline, halo, Paid predicted level, and Total identity",
+      );
+  }
+  if (forecast?.isBayesian && !forecastHasExactFormulaModels(forecast)) {
     return tx(
-      "OS별 Organic 기저·halo·Paid 직접반응·Total 항등식을 포함한 고정 스냅샷 CSV",
-      "Fixed snapshot CSV with OS-level Organic baseline, halo, direct Paid response, and Total identity",
+      "현재 선택 모델은 CSV 수식으로 정확히 재현할 수 없어 고정 스냅샷으로 내보냅니다",
+      "The selected model cannot be reproduced exactly with CSV formulas, so this export is a fixed snapshot",
     );
   }
   return tx(
@@ -10107,7 +10554,16 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       className="ab-pill"
                       style={{ background: "#7aa2f7", color: "#0b0d12", fontWeight: 700, borderColor: "#7aa2f7" }}
                       title={forecastDownloadTitle(forecast, locale)}
-                      onClick={() => csvDownload(`mmm_forecast_${mmm.target}_${forecast.model}_${_today()}.csv`, buildForecastCsv(forecast, mmm.target, locale, sourceCurrency, displayCurrency))}
+                      onClick={() => csvDownload(
+                        `mmm_forecast_${mmm.target}_${forecast.model}_${_today()}.csv`,
+                        buildForecastCsv(
+                          { ...forecast, exportScenarioGate: forecastScenario },
+                          mmm.target,
+                          locale,
+                          sourceCurrency,
+                          displayCurrency,
+                        ),
+                      )}
                     >
                       {forecast.isStructural
                         ? forecast.structuralEligible
@@ -10116,7 +10572,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             ? tx(`⬇ 단기 ${forecast.structuralRecommendedHorizon}주 + 장기 시나리오 CSV`, `⬇ ${forecast.structuralRecommendedHorizon}-week forecast + longer scenario CSV`)
                             : tx("⬇ OOS 진단 CSV (예측 사용 불가)", "⬇ OOS diagnostic CSV (forecast unavailable)")
                         : forecast.isPaidOrganicSplit
-                          ? tx("⬇ 예측 분해 CSV (OS·Organic·Paid)", "⬇ Forecast decomposition CSV (OS · Organic · Paid)")
+                          ? forecastHasExactFormulaModels(forecast)
+                            ? tx("⬇ 살아있는 예측 CSV (OS·Cost 수식)", "⬇ Live forecast CSV (OS · Cost formulas)")
+                            : tx("⬇ 예측 분해 CSV (OS·Organic·Paid)", "⬇ Forecast decomposition CSV (OS · Organic · Paid)")
                           : forecast.isAnnualAnalog
                             ? tx("⬇ 자동 선택 예측 CSV (고정 스냅샷)", "⬇ Auto-selected forecast CSV (fixed snapshot)")
                           : tx("⬇ 살아있는 예측 CSV (수식·실측·예측)", "⬇ Live forecast CSV (formulas/actual/forecast)")}
