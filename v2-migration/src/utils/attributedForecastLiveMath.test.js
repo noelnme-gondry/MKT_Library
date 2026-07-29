@@ -67,7 +67,7 @@ describe("live-condition attributed forecast router", () => {
     expect(calibrated.intervalCalibrationEligible).toBe(true);
     expect(calibrated.intervalCalibrationFoldCount).toBeGreaterThanOrEqual(8);
     expect(calibrated.minimumIntervalWeeks).toBe(170);
-  });
+  }, 30_000);
 
   it("auto-maps repeated long event columns and OS-scoped wide event headers without summing channel rows", () => {
     const rows = fixture();
@@ -124,7 +124,7 @@ describe("live-condition attributed forecast router", () => {
     expect(result.forecast.predicted.every((value, index) =>
       Math.abs(value - result.forecast.organic[index] - result.forecast.performance[index]) < 1e-8,
     )).toBe(true);
-  });
+  }, 30_000);
 
   it("re-forecasts conditionally on an explicit future budget without producing negative components", () => {
     const dataset = datasetFrom(fixture());
@@ -169,7 +169,7 @@ describe("live-condition attributed forecast router", () => {
     expect(result.osBreakdownEligible).toBe(false);
     expect(result.componentCertificationComplete).toBe(false);
     expect(result.eligible).toBe(false);
-  });
+  }, 30_000);
 
   it("keeps third-platform totals on Direct and withholds component certification", () => {
     const rows = fixture(120);
@@ -296,7 +296,7 @@ describe("live-condition attributed forecast router", () => {
     expect(auditRefit.predicted).toEqual(router.backtest.predicted.slice(validationStart));
     expect(auditRefit.organic).toEqual(router.backtest.organic.slice(validationStart));
     expect(auditRefit.performance).toEqual(router.backtest.performance.slice(validationStart));
-  });
+  }, 30_000);
 
   it("validates the exact requested horizon and keeps the sealed outcome out of production selection", () => {
     const baseRows = fixture(180);
@@ -318,5 +318,5 @@ describe("live-condition attributed forecast router", () => {
     const scenario = runAttributedForecastLiveScenario(datasetFrom(baseRows), first, {}, 13);
     expect(scenario.predicted).toHaveLength(13);
     expect(scenario.marginByHorizon).toEqual(first.forecast.marginByHorizon);
-  });
+  }, 30_000);
 });

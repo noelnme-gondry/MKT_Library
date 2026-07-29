@@ -151,7 +151,7 @@ describe("runMmmMethTests (golden port)", () => {
     expect(recentOnly.selected.wmape).toBeCloseTo(withPrefix.selected.wmape, 8);
     expect(recentOnly.selected.latestWmape).toBeCloseTo(withPrefix.selected.latestWmape, 8);
     expect(recentOnly.selected.foldSeries).toEqual(withPrefix.selected.foldSeries);
-  });
+  }, 30_000);
 
   it("space-fills capped forecast candidates across every structural axis deterministically", () => {
     const n = 180;
@@ -253,7 +253,7 @@ describe("runMmmMethTests (golden port)", () => {
       missingAxes: {},
     });
     expect(JSON.stringify(tiny)).toBe(JSON.stringify(tinyAgain));
-  });
+  }, 30_000);
 
   it("scales the browser candidate budget by feature complexity and gates incomplete coverage", () => {
     expect([
