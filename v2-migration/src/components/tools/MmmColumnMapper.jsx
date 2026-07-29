@@ -1172,7 +1172,7 @@ const ZONES = [
   ["platform", "🔀 세그먼트/플랫폼 단일 컬럼 (선택 · 성별·플랫폼·국가 등 값별로 나눠보기)", "🔀 Segment/platform single column (optional · split by gender/platform/country, etc.)", false, false],
 ];
 
-export default function MmmColumnMapper({ headers, rows, colMap, onChange, locale = "ko" }) {
+export default function MmmColumnMapper({ headers, rows, colMap, onChange, locale = "ko", allowNoSpend = false }) {
   const tr = (ko, en) => (locale === "en" ? en : ko);
   const [dragCol, setDragCol] = useState(null);
   const [selectedCol, setSelectedCol] = useState(null);
@@ -1282,7 +1282,9 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
   );
 
   const tray = (headers || []).filter((h) => (cm[h]?.role || "ignore") === "ignore");
-  const missing = colMapMissing(headers, cm, locale);
+  const missing = colMapMissing(headers, cm, locale).filter((item) =>
+    !allowNoSpend || !["채널 spend 1개 이상", "1+ channel spend"].includes(item),
+  );
   const hasMappedTime = (headers || []).some((header) => ["date", "week"].includes(cm[header]?.role));
   const hasMappedPlatform = (headers || []).some((header) => cm[header]?.role === "platform");
   const optionalRoles = new Set(["geo", "reach", "frequency"]);

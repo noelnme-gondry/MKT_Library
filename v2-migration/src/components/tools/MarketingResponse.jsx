@@ -99,7 +99,7 @@ import {
 } from "@/utils/forecastEnhancements";
 import { buildAttributedForecastDataset } from "@/utils/attributedForecastDataset";
 import { runAttributedForecastLiveRouter, runAttributedForecastLiveScenario } from "@/utils/attributedForecastLiveMath";
-import { runAnnualAnalogRouter, shouldUseAnnualAnalogFallback } from "@/utils/annualAnalogForecast";
+import { runAnnualAnalogRouter } from "@/utils/annualAnalogForecast";
 
 /* ============================================================================
  * MarketingResponse (5-18) — MOCK → REAL 와이어링
@@ -2209,6 +2209,53 @@ export function buildForecastCsv(fc, target, locale = "ko", sourceCurrency = "KR
     ));
     return rows.map((row) => row.map(csvQ).join(","));
   }
+  if (fc.isPaidOrganicSplit) {
+    const rows = [
+      [tx("# 도구", "# Tool"), "Organic baseline + spend halo + Paid spend regression (5-18)"],
+      [tx("# 대상", "# Target"), `${tKo} (${target})`],
+      [tx("# 합산", "# Identity"), "Total = Android(Organic + Paid) + iOS(Organic + Paid)"],
+      [tx("# Organic", "# Organic"), tx("Total−Paid 실측을 자연 추세·계절성·Spend 연관 halo로 예측", "Forecasts observed Total−Paid with natural trend, seasonality, and a spend-associated halo")],
+      [tx("# Paid", "# Paid"), tx("PaidRegs 실측을 Spend 반응으로 별도 예측", "Forecasts observed PaidRegs separately from spend response")],
+      [tx("# 주의", "# Note"), tx("halo와 Paid 반응은 서로 다른 실측 성분에 적합하므로 합산 시 중복되지 않습니다. 관측 연관이며 인과 증명은 아닙니다.", "Halo and Paid response are fit to disjoint observed components, so their sum does not double-count. These are observational associations, not causal proof.")],
+      [],
+      ["platform", "period", "segment", "actual_total", "predicted_total", "organic_baseline", "organic_spend_halo", "organic_total", "paid_direct", "lower", "upper"],
+    ];
+    const appendForecast = (part, platform) => {
+      (part.actual || []).forEach((actual, index) => {
+        rows.push([
+          platform,
+          part.histLabels?.[index] ?? index + 1,
+          "history",
+          actual,
+          part.fittedHist?.[index],
+          "",
+          "",
+          part.organicHist?.[index],
+          part.performanceHist?.[index],
+          "",
+          "",
+        ]);
+      });
+      (part.predFut || []).forEach((prediction, index) => {
+        rows.push([
+          platform,
+          part.futLabels?.[index] ?? `+${index + 1}`,
+          "forecast",
+          "",
+          prediction,
+          part.organicBaseFut?.[index],
+          part.organicHaloFut?.[index],
+          part.organicFut?.[index],
+          part.performanceFut?.[index],
+          part.lo?.[index],
+          part.hi?.[index],
+        ]);
+      });
+    };
+    appendForecast(fc, "Total");
+    (fc.platformForecasts || []).forEach((part) => appendForecast(part, part.platform));
+    return rows.map((row) => row.map(csvQ).join(","));
+  }
   if (fc.isAnnualAnalog) {
     const hasPaidOrganic = fc.paidOrganicHybrid === true;
     const rows = [
@@ -2947,6 +2994,7 @@ export function mmmSumOsForecasts(parts) {
     model: "android-ios-additive",
     isBayesian: true,
     isAdditiveTotal: true,
+    horizon,
     r2: sst > 0 ? +(1 - sse / sst).toFixed(4) : null,
     actual,
     fittedHist,
@@ -2967,6 +3015,240 @@ export function mmmSumOsForecasts(parts) {
     excelModels: valid.flatMap((part) => part.excelModels || []),
     components: valid,
   };
+}
+
+function buildPaidOrganicPlatformModel(prepared) {
+  const sourcePanel = prepared?.sourcePanel;
+  const target = prepared?.target;
+  const total = sourcePanel?.targets?.[target];
+  const paid = sourcePanel?.targets?.PaidRegs;
+  if (!total?.length || paid?.length !== total.length) {
+    return {
+      platform: prepared?.platform,
+      reason: "paid-target-unavailable",
+    };
+  }
+  const invalidIndex = paid.findIndex((value, index) =>
+    !Number.isFinite(value)
+    || value < 0
+    || !Number.isFinite(total[index])
+    || value > total[index] + Math.max(1, Math.abs(total[index]) * 0.001),
+  );
+  if (invalidIndex >= 0) {
+    return {
+      platform: prepared.platform,
+      reason: `paid-total-identity-invalid:${invalidIndex}`,
+    };
+  }
+  const organicPanel = {
+    ...sourcePanel,
+    targets: {
+      ...sourcePanel.targets,
+      OrganicRegs: total.map((value, index) => Math.max(0, value - paid[index])),
+    },
+  };
+  const organicModel = {
+    ...buildForecastOnlyModelFromPanel(organicPanel, prepared.cfg, "OrganicRegs"),
+    sourcePanel: organicPanel,
+    sourceCfg: prepared.cfg,
+    target: "OrganicRegs",
+    platform: prepared.platform,
+    componentType: "organic",
+  };
+  const paidModel = {
+    ...buildForecastOnlyModelFromPanel(sourcePanel, prepared.cfg, "PaidRegs"),
+    sourcePanel,
+    sourceCfg: prepared.cfg,
+    target: "PaidRegs",
+    platform: prepared.platform,
+    componentType: "paid",
+  };
+  return {
+    platform: prepared.platform,
+    target,
+    sourcePanel,
+    organicModel,
+    paidModel,
+    reason: !organicModel.run || !organicModel.panel
+      ? "organic-model-unavailable"
+      : !paidModel.run || !paidModel.panel
+        ? "paid-model-unavailable"
+        : null,
+  };
+}
+
+export function combinePaidOrganicForecastParts(organic, paid, platform) {
+  const combined = mmmSumOsForecasts([organic, paid]);
+  if (!combined) return null;
+  const historyLength = combined.actual.length;
+  const horizon = combined.predFut.length;
+  const organicHist = (organic.fittedHist || []).slice(-historyLength).map((value) => Math.max(0, Number(value) || 0));
+  const performanceHist = (paid.fittedHist || []).slice(-historyLength).map((value) => Math.max(0, Number(value) || 0));
+  const organicFut = (organic.predFut || []).slice(0, horizon).map((value) => Math.max(0, Number(value) || 0));
+  const performanceFut = (paid.predFut || []).slice(0, horizon).map((value) => Math.max(0, Number(value) || 0));
+  const organicBaseFut = (organic.baselineFut || []).slice(0, horizon).map((value) => Math.max(0, Number(value) || 0));
+  const organicHaloFut = organicFut.map((value, index) =>
+    value - (Number(organicBaseFut[index]) || 0),
+  );
+  const fittedHist = organicHist.map((value, index) => value + performanceHist[index]);
+  const actualMean = combined.actual.reduce((sum, value) => sum + value, 0) / historyLength;
+  const fittedSse = combined.actual.reduce((sum, value, index) => sum + (value - fittedHist[index]) ** 2, 0);
+  const fittedSst = combined.actual.reduce((sum, value) => sum + (value - actualMean) ** 2, 0);
+  const chans = [...new Map([...(organic.chans || []), ...(paid.chans || [])].map((channel) => [channel.key, channel])).values()];
+  return {
+    ...combined,
+    model: "organic-paid-spend-split",
+    isPaidOrganicSplit: true,
+    platform,
+    r2: fittedSst > 0 ? +(1 - fittedSse / fittedSst).toFixed(4) : null,
+    fittedHist,
+    predFut: organicFut.map((value, index) => value + performanceFut[index]),
+    lo: (combined.lo || []).slice(0, horizon).map((value) => Math.max(0, Number(value) || 0)),
+    hi: (combined.hi || []).slice(0, horizon).map((value, index) =>
+      Math.max(organicFut[index] + performanceFut[index], Number(value) || 0),
+    ),
+    organicHist,
+    performanceHist,
+    organicFut,
+    performanceFut,
+    organicBaseFut,
+    organicHaloFut,
+    // PaidRegs는 정의상 Spend가 0이면 0이다. Total의 zero-media 기준선에는
+    // Paid 회귀의 절편을 더하지 않고 Organic의 비매체 기준선만 사용한다.
+    baselineFut: organicBaseFut,
+    chans,
+    steps: organic.steps || [],
+    scenarioWarnings: [
+      ...(organic.scenarioWarnings || []).map((warning) => ({ ...warning, component: "organic" })),
+      ...(paid.scenarioWarnings || []).map((warning) => ({ ...warning, component: "paid" })),
+    ],
+    componentForecasts: { organic, paid },
+  };
+}
+
+export function combinePaidOrganicPlatforms(parts) {
+  const valid = (parts || []).filter((part) => part?.isPaidOrganicSplit);
+  if (valid.length === 1) {
+    return {
+      ...valid[0],
+      isAdditiveTotal: false,
+      platformForecasts: valid,
+      components: valid,
+    };
+  }
+  const combined = mmmSumOsForecasts(valid);
+  if (!combined || valid.length !== 2) return null;
+  const historyLength = combined.actual.length;
+  const horizon = combined.predFut.length;
+  const sumHistory = (field) => sumTail(valid, field, historyLength);
+  const sumFuture = (field) => Array.from({ length: horizon }, (_, index) =>
+    valid.reduce((sum, part) => sum + (Number(part[field]?.[index]) || 0), 0),
+  );
+  const chans = [...new Map(valid.flatMap((part) => part.chans || []).map((channel) => [channel.key, channel])).values()];
+  return {
+    ...combined,
+    model: "android-ios-organic-paid-spend-split",
+    isPaidOrganicSplit: true,
+    isAdditiveTotal: true,
+    actual: sumHistory("actual"),
+    fittedHist: sumHistory("fittedHist"),
+    organicHist: sumHistory("organicHist"),
+    performanceHist: sumHistory("performanceHist"),
+    predFut: sumFuture("predFut"),
+    organicFut: sumFuture("organicFut"),
+    performanceFut: sumFuture("performanceFut"),
+    organicBaseFut: sumFuture("organicBaseFut"),
+    organicHaloFut: sumFuture("organicHaloFut"),
+    baselineFut: sumFuture("organicBaseFut"),
+    lo: sumFuture("lo"),
+    hi: sumFuture("hi"),
+    chans,
+    recentMean: Object.assign({}, ...valid.map((part) => part.recentMean || {})),
+    futSpendByKey: Object.assign({}, ...valid.map((part) => part.futSpendByKey || {})),
+    platformForecasts: valid,
+    components: valid,
+  };
+}
+
+function runPaidOrganicSplitScenario(model, horizon, budgets, stepOff, options = {}) {
+  const platformForecasts = (model?.components || []).map((component) => {
+    const organic = runForecastScenario(component.organicModel, horizon, budgets, stepOff, options);
+    const paid = runForecastScenario(component.paidModel, horizon, budgets, stepOff, options);
+    return combinePaidOrganicForecastParts(organic, paid, component.platform);
+  });
+  return combinePaidOrganicPlatforms(platformForecasts);
+}
+
+function nonnegativeForecastBacktest(backtest) {
+  if (!backtest?.actual?.length || backtest.predicted?.length !== backtest.actual.length) return backtest;
+  const predicted = backtest.predicted.map((value) => Math.max(0, Number(value) || 0));
+  const start = Math.max(0, backtest.validationStartIndex || 0);
+  const actual = backtest.actual.slice(start);
+  const validationPredicted = predicted.slice(start);
+  const absoluteErrors = actual.map((value, index) => Math.abs(value - validationPredicted[index]));
+  const denominator = actual.reduce((sum, value) => sum + Math.abs(value), 0);
+  const updatedWmape = denominator > 0
+    ? absoluteErrors.reduce((sum, value) => sum + value, 0) / denominator * 100
+    : null;
+  return {
+    ...backtest,
+    predicted,
+    rmse: absoluteErrors.length
+      ? Math.sqrt(absoluteErrors.reduce((sum, value) => sum + value ** 2, 0) / absoluteErrors.length)
+      : null,
+    mae: absoluteErrors.length
+      ? absoluteErrors.reduce((sum, value) => sum + value, 0) / absoluteErrors.length
+      : null,
+    wmape: updatedWmape,
+    reliable: Number.isFinite(updatedWmape) && updatedWmape <= 30,
+  };
+}
+
+function buildPaidOrganicRecentBacktest(model) {
+  const platformBacktests = (model?.components || []).map((component) => {
+    const organic = nonnegativeForecastBacktest(buildForecastRecentBacktest(component.organicModel));
+    const paid = nonnegativeForecastBacktest(buildForecastRecentBacktest(component.paidModel));
+    const total = mmmSumOsBacktests([organic, paid]);
+    return total ? {
+      platform: component.platform,
+      total,
+      organic,
+      paid,
+    } : null;
+  }).filter(Boolean);
+  if (platformBacktests.length === 1) {
+    const item = platformBacktests[0];
+    return {
+      ...item.total,
+      componentMetrics: [
+        { platform: item.platform, component: "organic", wmape: item.organic.wmape },
+        { platform: item.platform, component: "paid", wmape: item.paid.wmape },
+        { platform: item.platform, component: "total", wmape: item.total.wmape },
+      ],
+      segmentMetrics: {
+        organic: item.organic.wmape,
+        paid: item.paid.wmape,
+        total: item.total.wmape,
+      },
+    };
+  }
+  if (platformBacktests.length !== 2) return null;
+  const organic = mmmSumOsBacktests(platformBacktests.map((item) => item.organic));
+  const paid = mmmSumOsBacktests(platformBacktests.map((item) => item.paid));
+  const total = organic && paid ? mmmSumOsBacktests([organic, paid]) : null;
+  return total ? {
+    ...total,
+    componentMetrics: platformBacktests.flatMap((item) => [
+      { platform: item.platform, component: "organic", wmape: item.organic.wmape },
+      { platform: item.platform, component: "paid", wmape: item.paid.wmape },
+      { platform: item.platform, component: "total", wmape: item.total.wmape },
+    ]),
+    segmentMetrics: {
+      organic: organic.wmape,
+      paid: paid.wmape,
+      total: total.wmape,
+    },
+  } : null;
 }
 
 function mmmSumOsBacktests(parts) {
@@ -3018,6 +3300,7 @@ function annualAnalogForecastShape(model) {
     isAnnualAnalog: true,
     annualQualified: model.annual.qualified,
     annualBestAvailable: model.annual.bestAvailable === true,
+    organicOnly: model.organicOnly === true,
     paidOrganicHybrid: model.annual.paidOrganicHybrid === true,
     adaptiveModelSearch: model.annual.adaptiveModelSearch === true,
     modelSearch: model.annual.modelSearch || null,
@@ -3086,9 +3369,12 @@ function annualAnalogBacktestShape(model) {
   };
 }
 
-function buildOsForecastPanel(headers, rows, colMap, platform, target, locale, weekStart) {
+function buildOsForecastPanel(headers, rows, colMap, platform, target, locale, weekStart, allowNoSpend = false) {
   const built = buildPanelFromColMap(headers, rows, colMap, platform, locale, null, { weekStart });
-  if (built.missing.length) return { platform, reason: `missing: ${built.missing.join(", ")}` };
+  const missing = allowNoSpend
+    ? built.missing.filter((item) => !["채널 spend 1개 이상", "1+ channel spend"].includes(item))
+    : built.missing;
+  if (missing.length) return { platform, reason: `missing: ${missing.join(", ")}` };
   const panel = trimToActive(built.panel);
   const resolvedTarget = pickTarget(panel, target);
   const validate = mmmValidate(panel, locale, resolvedTarget);
@@ -3713,7 +3999,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     try {
       if (!mmmColMap) return { empty: true, reason: tx("컬럼 역할을 매핑하세요 (날짜/주차 · 목표 Y · 채널 spend).", "Map column roles (date/week · target Y · channel spend).") };
       const built = buildPanelFromColMap(csvData.headers, csvData.raw, mmmColMap, effPlatformFilter, locale, null, { weekStart: mmmWeekStart });
-      if (built.missing.length) return { empty: true, reason: tx("필수 역할 미지정: ", "Required role not set: ") + built.missing.join(", ") };
+      const baseMissing = stage === "lab"
+        ? built.missing.filter((item) => !["채널 spend 1개 이상", "1+ channel spend"].includes(item))
+        : built.missing;
+      if (baseMissing.length) return { empty: true, reason: tx("필수 역할 미지정: ", "Required role not set: ") + baseMissing.join(", ") };
       const panel = trimToActive(built.panel);
       const cfg = { ...MMM_METH_CONFIG, absorbed: new Set() };
       const resolvedTarget = pickTarget(panel, target);
@@ -4805,7 +5094,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         }
         const prepared = Object.fromEntries(["android", "ios", "all"].map((platform) => [
           platform,
-          buildOsForecastPanel(csvData.headers, csvData.raw, mmmColMap, platform, target, locale, mmmWeekStart),
+          buildOsForecastPanel(csvData.headers, csvData.raw, mmmColMap, platform, target, locale, mmmWeekStart, true),
         ]));
         const invalid = Object.values(prepared).find((item) => !item.sourcePanel);
         if (invalid) return { isAdditiveTotal: true, components: [], reason: invalid.reason || "Forecast panel unavailable" };
@@ -4813,6 +5102,72 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           ...item,
           sourcePanel: sliceForecastTrainingWindow(item.sourcePanel, fcRegimeTrainingWeeks),
         }]));
+        const hasPaidTargets = ["android", "ios"].every((platform) => {
+          const panel = preparedForRegime[platform].sourcePanel;
+          return panel.targets?.PaidRegs?.length === panel.targets?.[preparedForRegime[platform].target]?.length;
+        });
+        const hasSpendHistory = ["android", "ios"].some((platform) =>
+          Object.values(preparedForRegime[platform].sourcePanel.ch || {}).some((values) =>
+            values.some((value) => Number.isFinite(value) && value > 0),
+          ),
+        );
+        if (!hasSpendHistory) {
+          const organicPanels = Object.fromEntries(["android", "ios"].map((platform) => {
+            const source = preparedForRegime[platform].sourcePanel;
+            const sourceTarget = preparedForRegime[platform].target;
+            const totalValues = source.targets[sourceTarget];
+            const paidValues = source.targets.PaidRegs;
+            const values = paidValues?.length === totalValues?.length
+              ? totalValues.map((value, index) => Math.max(0, value - paidValues[index]))
+              : totalValues;
+            return [platform, {
+              ...source,
+              ch: {},
+              targets: { ...source.targets, Regs: values },
+            }];
+          }));
+          const totalOrganic = organicPanels.android.targets.Regs.map((value, index) =>
+            value + organicPanels.ios.targets.Regs[index],
+          );
+          const annual = runAnnualAnalogRouter({
+            totalPanel: { ...preparedForRegime.all.sourcePanel, ch: {}, targets: { Regs: totalOrganic } },
+            androidPanel: organicPanels.android,
+            iosPanel: organicPanels.ios,
+            target: "Regs",
+            horizon: fcHorizon,
+          });
+          return annual?.selected ? {
+            isAnnualAnalog: true,
+            organicOnly: true,
+            annual: { ...annual, bestAvailable: true, fallbackReason: "no-spend-input" },
+            totalPanel: { ...preparedForRegime.all.sourcePanel, ch: {}, targets: { Regs: totalOrganic } },
+            androidPanel: organicPanels.android,
+            iosPanel: organicPanels.ios,
+            target: "Regs",
+          } : {
+            reason: locale === "en"
+              ? "No Spend history is available, and there is not enough history to fit an Organic trend/seasonality forecast."
+              : "Spend 이력이 없고 Organic 추세·계절성 예측을 만들기에도 이력이 부족합니다.",
+          };
+        }
+        if (hasPaidTargets) {
+          const paidOrganicComponents = ["android", "ios"].map((platform) =>
+            buildPaidOrganicPlatformModel(preparedForRegime[platform]),
+          );
+          const unavailable = paidOrganicComponents.find((component) => component.reason);
+          return {
+            isPaidOrganicSplit: true,
+            isAdditiveTotal: true,
+            components: paidOrganicComponents,
+            totalPanel: preparedForRegime.all.sourcePanel,
+            target: preparedForRegime.all.target,
+            reason: unavailable
+              ? locale === "en"
+                ? `The ${unavailable.platform || "OS"} Paid/Organic split could not be fitted (${unavailable.reason}). Check that Paid is between 0 and Total for every week and that Spend varies enough to estimate both components.`
+                : `${unavailable.platform || "OS"} Paid·Organic 분리 모델을 적합하지 못했습니다(${unavailable.reason}). 모든 주차에서 Paid가 0~Total 범위인지, 두 성분을 추정할 만큼 Spend가 변했는지 확인하세요.`
+              : null,
+          };
+        }
         const annual = runAnnualAnalogRouter({
           totalPanel: preparedForRegime.all.sourcePanel,
           androidPanel: preparedForRegime.android.sourcePanel,
@@ -4820,57 +5175,105 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           target: preparedForRegime.all.target,
           horizon: fcHorizon,
         });
-        if (annual?.qualified) {
-          return {
-            isAnnualAnalog: true,
-            annual,
-            totalPanel: preparedForRegime.all.sourcePanel,
-            androidPanel: preparedForRegime.android.sourcePanel,
-            iosPanel: preparedForRegime.ios.sourcePanel,
-            target: preparedForRegime.all.target,
-          };
-        }
         const components = ["android", "ios"].map((platform) => ({
           ...buildForecastOnlyModelFromPanel(preparedForRegime[platform].sourcePanel, preparedForRegime[platform].cfg, preparedForRegime[platform].target),
           ...preparedForRegime[platform],
         }));
         if (components.some((component) => !component.run || !component.panel)) {
-          return { isAdditiveTotal: true, components, reason: components.find((component) => !component.run || !component.panel)?.reason || "OS forecast model unavailable" };
+          // 연간 반복형은 Cost 반응 회귀의 대체 기본값이 아니다. Cost 회귀가
+          // **적합 자체를 만들 수 없는 경우에만** 수준 예측 참고값으로 사용한다.
+          // 구조변화(step)가 있다는 이유만으로 예산 반응 모델을 덮어쓰면, 어떤
+          // CSV에서도 채널 시나리오가 잠기는 문제가 생긴다.
+          if (annual?.selected) {
+            return {
+              isAnnualAnalog: true,
+              annual: { ...annual, bestAvailable: true, fallbackReason: "cost-regression-unavailable" },
+              totalPanel: preparedForRegime.all.sourcePanel,
+              androidPanel: preparedForRegime.android.sourcePanel,
+              iosPanel: preparedForRegime.ios.sourcePanel,
+              target: preparedForRegime.all.target,
+            };
+          }
+          return { isAdditiveTotal: true, paidOrganicUnavailable: true, components, reason: components.find((component) => !component.run || !component.panel)?.reason || "OS forecast model unavailable" };
         }
         // 78주 후보 + 봉인 12주 + 최소 3개 이전 holdout(총 114주)을 확보하기
         // 전에는 Direct-vs-OS 경로 선택을 열지 않고 기존 OS 항등 합을 유지한다.
-        if (preparedForRegime.all.sourcePanel.week.length < 114) return { isAdditiveTotal: true, components, routeDecision: null };
+        if (preparedForRegime.all.sourcePanel.week.length < 114) return { isAdditiveTotal: true, paidOrganicUnavailable: true, components, routeDecision: null };
         const direct = {
           ...buildForecastOnlyModelFromPanel(preparedForRegime.all.sourcePanel, preparedForRegime.all.cfg, preparedForRegime.all.target),
           ...preparedForRegime.all,
           platform: "all",
         };
-        if (!direct.run || !direct.panel) return { isAdditiveTotal: true, components, routeDecision: null };
+        if (!direct.run || !direct.panel) return { isAdditiveTotal: true, paidOrganicUnavailable: true, components, routeDecision: null };
         const osNested = mmmForecastCombineNestedParts(components.map((component) => component.selection?.nested
           ? { ...component.selection.nested, component: component.platform }
           : null), { route: "android-ios-sum" });
         const directNested = direct.selection?.nested ? { ...direct.selection.nested, route: "direct-total" } : null;
         const rawRouteDecision = mmmForecastSelectNestedRoute([directNested, osNested], { horizon: 12 });
         const routeDecision = rawRouteDecision.auditRoute ? rawRouteDecision : null;
-        // 구조변화 뒤 Cost 회귀가 봉인 audit에서 무너졌다면, 인증을 꾸미지
-        // 않고 더 단순한 연간 반복형을 best-available로 사용한다. 연간형 경로
-        // 자체는 최신 정답이 아니라 development OOS로 이미 선택되어 있다.
-        const useAnnualFallback = shouldUseAnnualAnalogFallback(annual, routeDecision);
-        if (useAnnualFallback) {
-          return {
-            isAnnualAnalog: true,
-            annual: { ...annual, bestAvailable: true },
-            totalPanel: preparedForRegime.all.sourcePanel,
-            androidPanel: preparedForRegime.android.sourcePanel,
-            iosPanel: preparedForRegime.ios.sourcePanel,
-            target: preparedForRegime.all.target,
-          };
-        }
+        // 연간 반복형은 별도 수준 예측 후보로만 남긴다. Cost 회귀의 OOS가 좋지
+        // 않더라도 구조변화 열 하나를 근거로 Cost 반응 모델을 자동 대체하지 않는다.
+        // 그 경우에는 Cost 시나리오를 잠그고 회귀의 검증 결과를 정직하게 표시한다.
         return routeDecision.productionRoute === "direct-total"
-          ? { ...direct, isNestedDirect: true, routeDecision, challengerComponents: components }
-          : { isAdditiveTotal: true, components, directChallenger: direct, routeDecision };
+          ? { ...direct, isNestedDirect: true, paidOrganicUnavailable: true, routeDecision, challengerComponents: components }
+          : { isAdditiveTotal: true, paidOrganicUnavailable: true, components, directChallenger: direct, routeDecision };
       }
-      return buildForecastOnlyModelFromPanel(sliceForecastTrainingWindow(mmm.panel, fcRegimeTrainingWeeks), mmm.cfg, mmm.target);
+      const singlePanel = sliceForecastTrainingWindow(mmm.panel, fcRegimeTrainingWeeks);
+      const singlePaid = singlePanel.targets?.PaidRegs;
+      const singleTotal = singlePanel.targets?.[mmm.target];
+      const hasSingleSpend = Object.values(singlePanel.ch || {}).some((values) =>
+        values.some((value) => Number.isFinite(value) && value > 0),
+      );
+      if (!hasSingleSpend) {
+        const organicValues = singlePaid?.length === singleTotal?.length
+          ? singleTotal.map((value, index) => Math.max(0, value - singlePaid[index]))
+          : singleTotal;
+        const organicPanel = { ...singlePanel, ch: {}, targets: { Regs: organicValues } };
+        const zeroPanel = { ...singlePanel, ch: {}, targets: { Regs: organicValues.map(() => 0) } };
+        const annual = runAnnualAnalogRouter({
+          totalPanel: organicPanel,
+          androidPanel: organicPanel,
+          iosPanel: zeroPanel,
+          target: "Regs",
+          horizon: fcHorizon,
+        });
+        return annual?.selected ? {
+          isAnnualAnalog: true,
+          organicOnly: true,
+          annual: { ...annual, bestAvailable: true, fallbackReason: "no-spend-input" },
+          totalPanel: organicPanel,
+          androidPanel: organicPanel,
+          iosPanel: zeroPanel,
+          target: "Regs",
+        } : {
+          reason: locale === "en"
+            ? "No Spend history is available, and there is not enough history to fit an Organic trend/seasonality forecast."
+            : "Spend 이력이 없고 Organic 추세·계절성 예측을 만들기에도 이력이 부족합니다.",
+        };
+      }
+      if (mmm.target === "Regs" && hasSingleSpend && singlePaid?.length === singleTotal?.length) {
+        const component = buildPaidOrganicPlatformModel({
+          platform: effPlatformFilter,
+          sourcePanel: singlePanel,
+          cfg: mmm.cfg,
+          target: mmm.target,
+        });
+        return {
+          isPaidOrganicSplit: true,
+          isAdditiveTotal: false,
+          components: [component],
+          target: mmm.target,
+          reason: component.reason
+            ? locale === "en"
+              ? `The ${effPlatformFilter} Paid/Organic split could not be fitted (${component.reason}).`
+              : `${effPlatformFilter} Paid·Organic 분리 모델을 적합하지 못했습니다(${component.reason}).`
+            : null,
+        };
+      }
+      return {
+        ...buildForecastOnlyModelFromPanel(singlePanel, mmm.cfg, mmm.target),
+        paidOrganicUnavailable: mmm.target === "Regs" && hasSingleSpend,
+      };
     } catch {
       return null;
     }
@@ -4882,6 +5285,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     if (!forecastModel) return { eligible: false, reasons: ["missing-model"] };
     if (forecastModel.isStructural) return { eligible: true, structuralConditional: true, reasons: [] };
     if (forecastModel.isAnnualAnalog) return { eligible: false, reasons: ["annual-analog-no-budget-response"] };
+    if (forecastModel.isPaidOrganicSplit) {
+      return mmmForecastScenarioEligibility(
+        forecastModel.components.flatMap((component) => [component.organicModel, component.paidModel]),
+      );
+    }
     return mmmForecastScenarioEligibility(
       forecastModel.isAdditiveTotal ? forecastModel.components : [forecastModel],
     );
@@ -4900,11 +5308,24 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         return scenario ? attributedForecastShape({ ...forecastModel.route, forecast: scenario }) : null;
       }
       if (forecastModel.isAnnualAnalog) return annualAnalogForecastShape(forecastModel);
+      if (forecastModel.isPaidOrganicSplit) {
+        return runPaidOrganicSplitScenario(
+          forecastModel,
+          fcHorizon,
+          forecastScenario.eligible ? fcBudget : {},
+          fcStepOff,
+          { trendDamping: fcTrendDamping, eventPolicy: fcEventPolicy },
+        );
+      }
       if (forecastModel.isAdditiveTotal) {
         const scenarioBudget = forecastScenario.eligible ? fcBudget : {};
         const components = forecastModel.components.map((model) => runForecastScenario(model, fcHorizon, scenarioBudget, fcStepOff, { trendDamping: fcTrendDamping, eventPolicy: fcEventPolicy }));
         const summed = mmmSumOsForecasts(components);
-        return summed && { ...summed, nestedRouteDecision: forecastModel.routeDecision };
+        return summed && {
+          ...summed,
+          paidOrganicUnavailable: forecastModel.paidOrganicUnavailable === true,
+          nestedRouteDecision: forecastModel.routeDecision,
+        };
       }
       if (!forecastModel.run || !forecastModel.panel) return null;
       // fcBudget: 채널별 주 평균 예산(명시 채널만 H개로 채움) → 미입력은 mmmForecast가 최근평균 사용.
@@ -4939,6 +5360,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         rollingSelection: forecastModel.selection,
         modelWindow: forecastModel.panel.week.length,
         excelModels: excelModel ? [excelModel] : [],
+        paidOrganicUnavailable: forecastModel.paidOrganicUnavailable === true,
         nestedRouteDecision: forecastModel.routeDecision,
       };
     } catch (e) {
@@ -4951,6 +5373,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     try {
       if (forecastModel.isStructural) return forecastModel.route.backtest;
       if (forecastModel.isAnnualAnalog) return annualAnalogBacktestShape(forecastModel);
+      if (forecastModel.isPaidOrganicSplit) return buildPaidOrganicRecentBacktest(forecastModel);
       if (forecastModel.isAdditiveTotal) {
         const components = forecastModel.components.map((model) => buildForecastRecentBacktest(model));
         return mmmSumOsBacktests(components);
@@ -4975,7 +5398,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         horizon: fcHorizon,
       });
     }
-    const models = forecastModel.isAdditiveTotal ? forecastModel.components : [forecastModel];
+    const models = forecastModel.isPaidOrganicSplit
+      ? forecastModel.components.flatMap((component) => [component.organicModel, component.paidModel])
+      : forecastModel.isAdditiveTotal
+        ? forecastModel.components
+        : [forecastModel];
     return scanForecastRegimeWindows(models);
   }, [stage, isRegimeWindowScanRequested, fcRegimeTrainingWeeks, forecastModel, fcHorizon]);
   const requestRegimeWindowScan = useCallback(() => {
@@ -5028,6 +5455,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // 값은 계산하지 않고 시나리오 표에 참고용 잠금 상태만 표시한다.
   const forecastScenarioResults = useMemo(() => {
     if (!forecast || !forecastModel) return null;
+    if (forecast.organicOnly || !(forecast.chans || []).length) return null;
     const channels = forecast.chans || [];
     const recent = forecast.recentMean || {};
     const baselineBudgets = Object.fromEntries(channels.map((channel) => [channel.key, fcBudget[channel.key] ?? recent[channel.key] ?? 0]));
@@ -5052,6 +5480,14 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           fcHorizon,
         );
         result = scenario ? attributedForecastShape({ ...forecastModel.route, forecast: scenario }) : null;
+      } else if (forecastModel.isPaidOrganicSplit) {
+        result = runPaidOrganicSplitScenario(
+          forecastModel,
+          fcHorizon,
+          definition.budgets,
+          fcStepOff,
+          { trendDamping: fcTrendDamping, eventPolicy: fcEventPolicy },
+        );
       } else {
         const runOne = (model) => runForecastScenario(model, fcHorizon, definition.budgets, fcStepOff, { trendDamping: fcTrendDamping, eventPolicy: fcEventPolicy });
         result = forecastModel.isAdditiveTotal
@@ -5572,6 +6008,24 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         : fc.hi;
       const bandLo = [...Array(nHist).fill(null), ...selectedBands];
       const bandHi = [...Array(nHist).fill(null), ...selectedBandHigh];
+      const componentDatasets = fc.isPaidOrganicSplit ? [
+        {
+          label: tx("Organic (기저+halo)", "Organic (baseline+halo)"),
+          data: [...Array(nHist - 1).fill(null), fc.organicHist?.[nHist - 1] ?? null, ...(fc.organicFut || [])],
+          borderColor: "#22c55e",
+          borderDash: [3, 3],
+          pointRadius: 0,
+          tension: 0.2,
+        },
+        {
+          label: tx("Paid 직접반응", "Direct Paid response"),
+          data: [...Array(nHist - 1).fill(null), fc.performanceHist?.[nHist - 1] ?? null, ...(fc.performanceFut || [])],
+          borderColor: "#f59e0b",
+          borderDash: [3, 3],
+          pointRadius: 0,
+          tension: 0.2,
+        },
+      ] : [];
       inst.push(
         new Chart(forecastRef.current.getContext("2d"), {
           type: "line",
@@ -5581,6 +6035,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               { label: tx("실제", "Actual"), data: actual, borderColor: CHART_THEME.muted, pointRadius: 0, tension: 0.2 },
               { label: tx("모델(과거)", "Model (past)"), data: model, borderColor: "#7aa2f7", pointRadius: 0, tension: 0.2 },
               { label: tx("예측(미래)", "Forecast (future)"), data: future, borderColor: "#7aa2f7", borderDash: [6, 4], pointRadius: 0, tension: 0.2 },
+              ...componentDatasets,
               { label: tx("상한", "Upper bound"), data: bandHi, borderColor: "transparent", backgroundColor: "rgba(122,162,247,0.12)", fill: "+1", pointRadius: 0 },
               { label: tx("하한", "Lower bound"), data: bandLo, borderColor: "transparent", backgroundColor: "rgba(122,162,247,0.12)", fill: false, pointRadius: 0 },
             ],
@@ -5918,7 +6373,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           </svg>
         </div>
         <div className="csv-drop-text">{tx("CSV 파일 드래그 & 드롭", "Drag & drop a CSV file")}</div>
-        <div className="csv-drop-sub">{tx("일별 또는 주별 패널 CSV. 일별은 자동으로 주간 집계됩니다. 날짜/주차 · 총유입/가입/재유입/구매자/매출 중 1개 이상 · 채널 spend 1개 이상이 필요합니다. 국가 prior를 쓰려면 모든 행에 같은 COUNTRY 값을 넣으세요.", "Daily or weekly panel CSV. Daily rows are aggregated to weeks automatically. Requires date/week · at least one of traffic/registrations/reactivations/purchasers/revenue · at least one channel spend. To use market priors, put the same COUNTRY value on every row.")}</div>
+        <div className="csv-drop-sub">{tx("일별 또는 주별 패널 CSV. 날짜/주차와 목표가 필요합니다. 카니발·기여·예산 반응에는 채널 spend가 필요하지만, 미래예측은 Spend 없이 Organic 추세·계절성만 사용할 수 있습니다.", "Daily or weekly panel CSV. Date/week and an outcome are required. Cannibalization, contribution, and budget response require channel spend; Forecast can run an Organic trend/seasonality model without Spend.")}</div>
         <input type="file" accept=".csv,text/csv" style={{ display: "none" }} ref={mmmFileRef}
           onChange={(e) => { if (e.target.files?.[0]) handleMmmFile(e.target.files[0]); e.target.value = null; }} />
       </div>
@@ -5930,7 +6385,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const mmmMapperSection = () => {
     // 매핑 중에는 헤더 역할만 확인한다. 전체 일→주 집계는 `분석하기` 뒤 mmm
     // useMemo에서 한 번만 수행해 대용량 CSV 드래그가 매 렌더마다 멈추지 않게 한다.
-    const missing = mmmColMap ? colMapMissing(csvData.headers, mmmColMap, locale) : [tx("매핑", "mapping")];
+    const rawMissing = mmmColMap ? colMapMissing(csvData.headers, mmmColMap, locale) : [tx("매핑", "mapping")];
+    const missing = stage === "lab"
+      ? rawMissing.filter((item) => !["채널 spend 1개 이상", "1+ channel spend"].includes(item))
+      : rawMissing;
     // 지출 단위를 모르는데 분석을 허용하면 숫자가 다른 통화로 오해될 수 있다. 원본
     // 통화는 매핑 단계에서 한 번만 선택하고, 선택 후 표시 통화 토글로 환산한다.
     const currencyMissing = !isDemo && !selectedSourceCurrency;
@@ -5978,6 +6436,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           colMap={mmmColMap || autoGuessColMap(csvData.headers, csvData.raw)}
           onChange={updateMmmColMap}
           locale={locale}
+          allowNoSpend={stage === "lab"}
         />
         {mappingReady && (
           <div data-mmm-analysis-gate style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", background: canAnalyze ? "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))" : "linear-gradient(135deg,rgba(245,158,11,0.12),rgba(245,158,11,0.03))", border: `1px solid ${canAnalyze ? "rgba(122,162,247,0.3)" : "rgba(245,158,11,0.4)"}`, borderRadius: "10px", padding: "14px 16px" }}>
@@ -7619,12 +8078,16 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               <p style={{ fontSize: "12px", color: MUTED, marginBottom: "12px", lineHeight: 1.55 }}>
                 {forecast?.isStructural
                   ? tx("실제 미래 Cost를 모른 채 OOS로 비교합니다. 검증에서 기준선보다 못한 주차는 자동으로 최근평균으로 되돌립니다. ", "Candidates are compared by OOS without seeing future Cost. Any horizon that loses to baseline falls back to the recent average. ")
+                  : forecast?.isPaidOrganicSplit
+                    ? tx("OS별로 Organic과 PaidRegs를 분리합니다. Organic은 자연 추세·계절성에 Spend 연관 halo를 더하고, Paid는 Spend 반응으로 예측한 뒤 Android+iOS를 합산합니다. ", "Organic and PaidRegs are modeled separately by OS. Organic combines natural trend/seasonality with a spend-associated halo; Paid uses spend response, then Android and iOS are added. ")
                   : forecast?.isAnnualAnalog
-                      ? forecast.paidOrganicHybrid
+                      ? forecast.organicOnly
+                        ? tx("Spend 이력이 없어 Organic 자연 추세·계절성만 예측합니다. Paid 반응과 예산 시나리오는 만들지 않습니다. ", "With no Spend history, only the Organic natural trend and seasonality are forecast. Paid response and budget scenarios are not produced. ")
+                      : forecast.paidOrganicHybrid
                       ? tx("최근 104주 안에서 Paid·Organic 예측 후보를 OOS로 비교합니다. 기준선보다 나쁘면 예산 변경을 잠급니다. ", "Paid/Organic candidates within the latest 104 weeks are compared by OOS. Budget changes stay locked when they lose to baseline. ")
                       : tx("최근 104주 후보를 OOS로 비교해 가장 안정적인 예측을 고릅니다. 기준선보다 나쁘면 최근평균을 사용합니다. ", "Candidates within the latest 104 weeks are compared by OOS. The recent average is used when none beats baseline. ")
                   : tx("같은 CSV·매핑을 쓰되, MMM은 전체 기간 기여도를 유지하고 예측 회귀만 Cost 학습 window·추세·계절성을 12주 rolling 검증으로 고릅니다. ", "Uses the same CSV/mapping, but keeps MMM on full-history contribution analysis and selects only the forecast regression's Cost window, trend, and seasonality with rolling 12-week validation. ")}
-                {!forecast?.isStructural && !forecast?.isAnnualAnalog && effPlatformFilter === "all" && tx("114주 이상이면 Direct Total과 Android·iOS 합산을 nested OOS로 비교하고, 더 짧으면 OS 합산을 유지합니다. ", "With 114+ weeks, Direct Total and the Android+iOS sum are compared by nested OOS; shorter histories retain the OS sum. ")}
+                {!forecast?.isStructural && !forecast?.isAnnualAnalog && !forecast?.isPaidOrganicSplit && effPlatformFilter === "all" && tx("114주 이상이면 Direct Total과 Android·iOS 합산을 nested OOS로 비교하고, 더 짧으면 OS 합산을 유지합니다. ", "With 114+ weeks, Direct Total and the Android+iOS sum are compared by nested OOS; shorter histories retain the OS sum. ")}
                 {tx(`선택한 목표(${mmmTargetDisplay(mmm.target, locale)})의 회색선은 실측, 파란선은 모델/예측, 음영은 최근 오차를 반영한 참고 범위입니다(인과 보장 아님).`, `For the selected target (${mmmTargetDisplay(mmm.target, locale)}), gray is actual, blue is model/forecast, and the band is a recent-error reference range, not a causal guarantee.`)}
               </p>
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "12px", alignItems: "center" }}>
@@ -7632,8 +8095,12 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   <span className="ab-pillgroup-label">{tx("모델", "Model")}</span>
                   <span className="ab-pill active">{forecast?.isStructural
                     ? tx("라이브 OOS 자동선택 · naive 안전장치", "Live-OOS selection · naive guardrail")
+                    : forecast?.isPaidOrganicSplit
+                      ? tx("Organic 기저+halo · Paid Spend 회귀", "Organic baseline+halo · Paid spend regression")
                     : forecast?.isAnnualAnalog
-                      ? forecast.paidOrganicHybrid
+                      ? forecast.organicOnly
+                        ? tx("Organic 추세·계절성 · Spend 없음", "Organic trend/seasonality · no Spend")
+                      : forecast.paidOrganicHybrid
                         ? tx("Paid·Organic 자동 탐색 · 최대 104주", "Paid/Organic auto-search · max 104 weeks")
                         : tx("기간·연간 패턴 자동 탐색 · 최대 104주", "Window/annual-pattern search · max 104 weeks")
                       : "Empirical-Bayes MMM"}</span>
@@ -7673,7 +8140,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
                       <strong>{tx("라이브 조건 rolling OOS · 조건부 비용 오차 분리", "Live-condition rolling OOS · known-spend error separated")}</strong>
                       <p style={{ margin: "5px 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
-                        {(forecast.structuralCandidates || []).map((candidate) => `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} · ${tx("라이브", "live")} ${candidate.pooledWmape.toFixed(2)}% · ${tx("비용 입력 시", "known spend")} ${candidate.conditionalPooledWmape.toFixed(2)}% · naive ${candidate.naivePooledWmape.toFixed(2)}% · ${tx("선택용 과거", "selection history")} ${candidate.developmentPooledWmape.toFixed(2)}%`).join(" / ")}
+                        {(forecast.structuralCandidates || []).map((candidate) => `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} · ${tx("라이브", "live")} ${forecastPct(candidate.pooledWmape)} · ${tx("비용 입력 시", "known spend")} ${forecastPct(candidate.conditionalPooledWmape)} · naive ${forecastPct(candidate.naivePooledWmape)} · ${tx("선택용 과거", "selection history")} ${forecastPct(candidate.developmentPooledWmape)}`).join(" / ")}
                         {` → ${forecast.structuralRoute === "direct-total" ? "Direct Total" : "Android + iOS"} ${tx("선택", "selected")}`}
                       </p>
                       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -7709,10 +8176,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                 <tr key={candidate.trainingWindow} style={candidate.trainingWindow === forecast.structuralSelectedSpec?.trainingWindow ? { fontWeight: 700 } : undefined}>
                                   <td>{candidate.trainingWindow}{tx("주", " weeks")}</td>
                                   <td>{candidate.available ? candidate.route === "direct-total" ? "Direct Total" : "Android + iOS" : tx("근거 부족", "Insufficient evidence")}</td>
-                                  <td className="tnum">{candidate.available ? `${candidate.developmentPooledWmape.toFixed(2)}%` : "—"}</td>
-                                  <td className="tnum">{candidate.available ? `${candidate.pooledWmape.toFixed(2)}%` : "—"}</td>
-                                  <td className="tnum">{candidate.available ? `${candidate.conditionalPooledWmape.toFixed(2)}%` : "—"}</td>
-                                  <td className="tnum">{candidate.available ? `${candidate.naivePooledWmape.toFixed(2)}%` : "—"}</td>
+                                  <td className="tnum">{candidate.available ? forecastPct(candidate.developmentPooledWmape) : "—"}</td>
+                                  <td className="tnum">{candidate.available ? forecastPct(candidate.pooledWmape) : "—"}</td>
+                                  <td className="tnum">{candidate.available ? forecastPct(candidate.conditionalPooledWmape) : "—"}</td>
+                                  <td className="tnum">{candidate.available ? forecastPct(candidate.naivePooledWmape) : "—"}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -7729,9 +8196,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                 <tr key={fold.offset}>
                                   <td>{fold.excludedWeeks}{tx("주", " wk")}</td>
                                   <td>{fold.start}–{fold.end}</td>
-                                  <td className="tnum" style={fold.wmape >= 10 ? { color: "#b91c1c" } : undefined}>{fold.wmape.toFixed(2)}%</td>
-                                  <td className="tnum">{fold.conditionalWmape.toFixed(2)}%</td>
-                                  <td className="tnum">{fold.naiveWmape.toFixed(2)}%</td>
+                                  <td className="tnum" style={fold.wmape >= 10 ? { color: "#b91c1c" } : undefined}>{forecastPct(fold.wmape)}</td>
+                                  <td className="tnum">{forecastPct(fold.conditionalWmape)}</td>
+                                  <td className="tnum">{forecastPct(fold.naiveWmape)}</td>
                                   <td>{fold.regime?.isBreak ? `⚠ ${fold.regime.reasons.join("/")}` : "—"}</td>
                                 </tr>
                               ))}
@@ -7748,10 +8215,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                               {((forecast.structuralCandidates || []).find((candidate) => candidate.route === forecast.structuralRoute)?.horizonMetrics || []).map((metric, index) => (
                                 <tr key={metric.horizon}>
                                   <td>{metric.horizon}{tx("주", "w")}</td>
-                                  <td className="tnum" style={metric.wmape >= 10 ? { color: "#b91c1c" } : undefined}>{metric.wmape.toFixed(2)}%</td>
-                                  <td className="tnum">{metric.conditionalWmape.toFixed(2)}%</td>
-                                  <td className="tnum">{metric.naiveWmape.toFixed(2)}%</td>
-                                  <td className="tnum">{metric.mase.toFixed(2)}</td>
+                                  <td className="tnum" style={metric.wmape >= 10 ? { color: "#b91c1c" } : undefined}>{forecastPct(metric.wmape)}</td>
+                                  <td className="tnum">{forecastPct(metric.conditionalWmape)}</td>
+                                  <td className="tnum">{forecastPct(metric.naiveWmape)}</td>
+                                  <td className="tnum">{Number.isFinite(metric.mase) ? metric.mase.toFixed(2) : "—"}</td>
                                   <td>{((forecast.structuralCandidates || []).find((candidate) => candidate.route === forecast.structuralRoute)?.useModelByHorizon || [])[index] ? tx("모델", "Model") : "naive"}</td>
                                 </tr>
                               ))}
@@ -7774,14 +8241,14 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       <strong>{tx("Actual Cost 조건부 nested rolling OOS", "Actual-Cost conditional nested rolling OOS")}</strong>
                       <p style={{ margin: "5px 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
                         {(forecast.nestedRouteDecision.candidates || []).map((candidate) =>
-                          `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} · ${tx("선택용 과거", "selection history")} ${candidate.developmentWmape.toFixed(2)}% · ${tx("봉인 최신 12주", "sealed latest 12 weeks")} ${candidate.latestWmape.toFixed(2)}%`
+                          `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} · ${tx("선택용 과거", "selection history")} ${forecastPct(candidate.developmentWmape)} · ${tx("봉인 최신 12주", "sealed latest 12 weeks")} ${forecastPct(candidate.latestWmape)}`
                         ).join(" / ")}
                       </p>
                       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                         <span className="ab-pill" style={forecast.nestedRouteDecision.certified ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}>
                           {forecast.nestedRouteDecision.certified
-                            ? tx(`공식 OOS ${forecast.nestedRouteDecision.latestWmape.toFixed(2)}% · 10% 인증`, `Official OOS ${forecast.nestedRouteDecision.latestWmape.toFixed(2)}% · certified under 10%`)
-                            : tx(`공식 OOS ${forecast.nestedRouteDecision.latestWmape.toFixed(2)}% · 10% 미인증`, `Official OOS ${forecast.nestedRouteDecision.latestWmape.toFixed(2)}% · not certified under 10%`)}
+                            ? tx(`공식 OOS ${forecastPct(forecast.nestedRouteDecision.latestWmape)} · 10% 인증`, `Official OOS ${forecastPct(forecast.nestedRouteDecision.latestWmape)} · certified under 10%`)
+                            : tx(`공식 OOS ${forecastPct(forecast.nestedRouteDecision.latestWmape)} · 10% 미인증`, `Official OOS ${forecastPct(forecast.nestedRouteDecision.latestWmape)} · not certified under 10%`)}
                         </span>
                         <span className="ab-pill">
                           {tx(
@@ -7795,7 +8262,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             key={component.component}
                             style={component.passed ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}
                           >
-                            {`${component.component} · ${tx("과거", "history")} ${component.developmentWmape.toFixed(2)}% · ${tx("최신", "latest")} ${component.latestWmape.toFixed(2)}%`}
+                            {`${component.component} · ${tx("과거", "history")} ${forecastPct(component.developmentWmape)} · ${tx("최신", "latest")} ${forecastPct(component.latestWmape)}`}
                           </span>
                         ))}
                       </div>
@@ -7806,16 +8273,55 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   )}
                   {forecast.isAdditiveTotal && (
                     <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
-                      <strong>{tx("Total 예측 = Android 예측 + iOS 예측", "Total forecast = Android forecast + iOS forecast")}</strong>
+                      <strong>{forecast.isPaidOrganicSplit
+                        ? tx("Total = Android(Organic + Paid) + iOS(Organic + Paid)", "Total = Android (Organic + Paid) + iOS (Organic + Paid)")
+                        : tx("Total 예측 = Android 예측 + iOS 예측", "Total forecast = Android forecast + iOS forecast")}</strong>
                       <p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
-                        {tx("Total에 별도 Cost 회귀를 적합하지 않습니다. 아래 검증·기준선·미래 예측은 각 OS 결과를 같은 주차끼리 더한 값입니다.", "No separate Cost regression is fit for Total. Validation, baseline, and forecasts below are same-week sums of the two OS results.")}
+                        {forecast.isPaidOrganicSplit
+                          ? tx("Organic 실측은 Total−Paid로 만들고, 같은 Spend를 Organic halo와 Paid 직접반응에 각각 적합합니다. 두 결과는 서로 다른 실측 성분이므로 중복 합산하지 않으며, Total에 별도 연간 반복형 모델을 섞지 않습니다.", "Observed Organic is Total−Paid. The same spend is fit separately to the Organic halo and direct Paid response. Because they predict disjoint observed components, they are not double-counted, and no separate annual-repeat Total model is blended in.")
+                          : tx("Total에 별도 Cost 회귀를 적합하지 않습니다. 아래 검증·기준선·미래 예측은 각 OS 결과를 같은 주차끼리 더한 값입니다.", "No separate Cost regression is fit for Total. Validation, baseline, and forecasts below are same-week sums of the two OS results.")}
                       </p>
-                      {(forecast.components || []).map((component) => component.rollingSelection?.selected && (
-                        <p key={component.platform} style={{ margin: "5px 0 0", fontSize: "11.5px", color: MUTED }}>
-                          <strong>{component.platform}</strong>{` · Cost 최근 ${component.rollingSelection.selected.window}주 · rolling wMAPE ${component.rollingSelection.selected.wmape.toFixed(1)}% (기준선 ${component.rollingSelection.selected.persistenceWmape.toFixed(1)}%)`}
-                        </p>
-                      ))}
+                      {forecast.isPaidOrganicSplit && recentBacktest?.segmentMetrics && (
+                        <>
+                          <div style={{ display: "flex", gap: "7px", flexWrap: "wrap", marginTop: "9px" }}>
+                            <span className="ab-pill">{tx("최근 12주", "Latest 12 weeks")} · Organic {forecastPct(recentBacktest.segmentMetrics.organic, 1)}</span>
+                            <span className="ab-pill">{tx("최근 12주", "Latest 12 weeks")} · Paid {forecastPct(recentBacktest.segmentMetrics.paid, 1)}</span>
+                            <span className="ab-pill">{tx("최근 12주", "Latest 12 weeks")} · Total {forecastPct(recentBacktest.segmentMetrics.total, 1)}</span>
+                          </div>
+                          <details style={{ marginTop: "8px" }}>
+                            <summary style={{ cursor: "pointer", fontSize: "11.5px" }}>{tx("Android·iOS 성분 검증", "Android/iOS component validation")}</summary>
+                            <div className="table-wrap" style={{ marginTop: "6px" }}>
+                              <table className="data" style={{ fontSize: "10.5px" }}>
+                                <thead><tr><th>OS</th><th>{tx("성분", "Component")}</th><th>{tx("최근 12주 wMAPE", "Latest-12-week wMAPE")}</th></tr></thead>
+                                <tbody>
+                                  {(recentBacktest.componentMetrics || []).map((metric) => (
+                                    <tr key={`${metric.platform}-${metric.component}`}>
+                                      <td>{metric.platform}</td>
+                                      <td>{{ organic: "Organic", paid: "Paid", total: "Total" }[metric.component]}</td>
+                                      <td className="tnum">{forecastPct(metric.wmape, 1)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </details>
+                        </>
+                      )}
+                      {!forecast.isPaidOrganicSplit && (forecast.components || []).map((component) => component.rollingSelection?.selected && (
+                          <p key={component.platform} style={{ margin: "5px 0 0", fontSize: "11.5px", color: MUTED }}>
+                            <strong>{component.platform}</strong>{` · Cost 최근 ${component.rollingSelection.selected.window}주 · rolling wMAPE ${forecastPct(component.rollingSelection.selected.wmape, 1)} (기준선 ${forecastPct(component.rollingSelection.selected.persistenceWmape, 1)})`}
+                          </p>
+                        ))}
                     </Card>
+                  )}
+                  {forecast.paidOrganicUnavailable && (
+                    <div className="callout warn" style={{ marginBottom: "12px" }}>
+                      <div className="ico">!</div>
+                      <div className="body">
+                        <strong>{tx("PaidRegs가 없어 Total만 예측합니다", "PaidRegs is unavailable, so only Total is forecast")}</strong>
+                        <p>{tx("Spend가 있어도 Paid와 Organic 실측이 분리되지 않으면 Paid 직접반응과 Organic halo를 따로 식별할 수 없습니다. PaidRegs를 매핑하면 OS별 분리 모델로 자동 전환합니다.", "Spend alone cannot separate direct Paid response from the Organic halo without observed Paid and Organic components. Map PaidRegs to switch automatically to the OS-level split model.")}</p>
+                      </div>
+                    </div>
                   )}
                   {forecast.rollingSelection?.selected && (() => {
                     const selected = forecast.rollingSelection.selected;
@@ -7864,7 +8370,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
                         <strong>{tx("자동 선택된 예측 회귀", "Auto-selected forecast regression")}</strong>
                         <p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
-                          {tx(`Cost 최근 ${selected.window}주 · ${seasonLabel} · ${trendLabel}${eventAdjustedLabel ? ` · ${eventAdjustedLabel}` : ""} · 12주 holdout ${selected.folds}회 · rolling wMAPE ${selected.wmape.toFixed(1)}% (기준선 ${selected.persistenceWmape.toFixed(1)}%) · 기준선 승리 ${selected.foldWins}/${selected.folds}회`, `Cost recent ${selected.window} weeks · ${seasonLabel} · ${trendLabel}${eventAdjustedLabel ? ` · ${eventAdjustedLabel}` : ""} · ${selected.folds} rolling 12-week holdouts · rolling wMAPE ${selected.wmape.toFixed(1)}% (baseline ${selected.persistenceWmape.toFixed(1)}%) · beats baseline ${selected.foldWins}/${selected.folds} times`)}
+                          {tx(`Cost 최근 ${selected.window}주 · ${seasonLabel} · ${trendLabel}${eventAdjustedLabel ? ` · ${eventAdjustedLabel}` : ""} · 12주 holdout ${selected.folds}회 · rolling wMAPE ${forecastPct(selected.wmape, 1)} (기준선 ${forecastPct(selected.persistenceWmape, 1)}) · 기준선 승리 ${selected.foldWins}/${selected.folds}회`, `Cost recent ${selected.window} weeks · ${seasonLabel} · ${trendLabel}${eventAdjustedLabel ? ` · ${eventAdjustedLabel}` : ""} · ${selected.folds} rolling 12-week holdouts · rolling wMAPE ${forecastPct(selected.wmape, 1)} (baseline ${forecastPct(selected.persistenceWmape, 1)}) · beats baseline ${selected.foldWins}/${selected.folds} times`)}
                         </p>
                         {!forecast.rollingSelection.decisionEligible && <p style={{ margin: "6px 0 0", color: "#b45309", fontSize: "11.5px" }}>{tx(`Cost 변경 판정 보류: ${(forecast.rollingSelection.decisionReasons || []).map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ") || "rolling 검증 적격성 미충족"}`, `Cost scenario decision paused: ${(forecast.rollingSelection.decisionReasons || []).map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ") || "rolling validation is not eligible"}`)}</p>}
                       </Card>
@@ -8018,7 +8524,15 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           <div className="stat-card"><div className="lbl">{tx("예측 평균/주", "Forecast avg/wk")}</div><div className="val">{targetValueLabel(futAvg, { perWeek: true })}</div></div>
                           <div className="stat-card"><div className="lbl">{tx(`최근 ${recentN}주 평균`, `Recent ${recentN}wk avg`)}</div><div className="val">{targetValueLabel(histAvg, { perWeek: true })}</div></div>
                           <div className="stat-card"><div className="lbl">{tx("변화", "Change")}</div><div className="val" style={{ color: chg >= 0 ? NEG : POS }}>{chg >= 0 ? "+" : ""}{chg.toFixed(1)}%</div></div>
-                          <div className="stat-card"><div className="lbl">{forecast.isAdditiveTotal ? tx("합산 적합 R²", "Additive fit R²") : tx("모델 적합 R²", "Model fit R²")}</div><div className="val">{forecast.r2 ?? "—"}</div></div>
+                          <div className="stat-card"><div className="lbl">{forecast.isAdditiveTotal ? tx("과거 합산 적합 R² (OOS 아님)", "Historical additive-fit R² (not OOS)") : tx("과거 적합 R² (OOS 아님)", "Historical fit R² (not OOS)")}</div><div className="val">{forecast.r2 ?? "—"}</div></div>
+                          {forecast.isPaidOrganicSplit && [
+                            [tx("Organic 기저/주", "Organic baseline/wk"), forecast.organicBaseFut],
+                            [tx("Organic halo/주", "Organic halo/wk"), forecast.organicHaloFut],
+                            [tx("Paid 직접반응/주", "Direct Paid/wk"), forecast.performanceFut],
+                          ].map(([label, values]) => {
+                            const average = values?.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+                            return <div className="stat-card" key={label}><div className="lbl">{label}</div><div className="val">{average == null ? "—" : targetValueLabel(average, { perWeek: true, sign: label.includes("halo") })}</div></div>;
+                          })}
                         </>
                       );
                     })()}
@@ -8032,13 +8546,15 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
 
                   {/* ── 채널별 미래 예산 편집 (수정 시 즉시 재예측) ── */}
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "6px" }}>
-                    <button className="ab-pill" onClick={() => { setFcBudget({}); setFcStepOff({}); }}>{tx("↺ 최근 평균으로 초기화", "↺ Reset to recent average")}</button>
+                    {forecast.chans.length > 0 && <button className="ab-pill" onClick={() => { setFcBudget({}); setFcStepOff({}); }}>{tx("↺ 최근 평균으로 초기화", "↺ Reset to recent average")}</button>}
                     <button
                       className="ab-pill"
                       style={{ background: "#7aa2f7", color: "#0b0d12", fontWeight: 700, borderColor: "#7aa2f7" }}
                       title={forecast.isStructural
                         ? tx("Organic·Performance 절대 예측과 합계 항등식을 포함한 CSV", "CSV with absolute Organic and Performance predictions and their additive identity")
-                        : tx("채널 spend를 수정하면 adstock·Hill 변환·예측이 연쇄 재계산되는 엑셀 수식 CSV", "Excel-formula CSV: editing channel spend recalculates adstock, Hill transforms, and forecasts")}
+                        : forecast.isPaidOrganicSplit
+                          ? tx("OS별 Organic 기저·halo·Paid 직접반응·Total 항등식을 포함한 고정 스냅샷 CSV", "Fixed snapshot CSV with OS-level Organic baseline, halo, direct Paid response, and Total identity")
+                          : tx("채널 spend를 수정하면 adstock·Hill 변환·예측이 연쇄 재계산되는 엑셀 수식 CSV", "Excel-formula CSV: editing channel spend recalculates adstock, Hill transforms, and forecasts")}
                       onClick={() => csvDownload(`mmm_forecast_${mmm.target}_${forecast.model}_${_today()}.csv`, buildForecastCsv(forecast, mmm.target, locale, sourceCurrency, displayCurrency))}
                     >
                       {forecast.isStructural
@@ -8047,13 +8563,16 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           : forecast.structuralShortTermEligible
                             ? tx(`⬇ 단기 ${forecast.structuralRecommendedHorizon}주 + 장기 시나리오 CSV`, `⬇ ${forecast.structuralRecommendedHorizon}-week forecast + longer scenario CSV`)
                             : tx("⬇ OOS 진단 CSV (예측 사용 불가)", "⬇ OOS diagnostic CSV (forecast unavailable)")
-                        : tx("⬇ 살아있는 예측 CSV (수식·실측·예측)", "⬇ Live forecast CSV (formulas/actual/forecast)")}
+                        : forecast.isPaidOrganicSplit
+                          ? tx("⬇ 예측 분해 CSV (OS·Organic·Paid)", "⬇ Forecast decomposition CSV (OS · Organic · Paid)")
+                          : tx("⬇ 살아있는 예측 CSV (수식·실측·예측)", "⬇ Live forecast CSV (formulas/actual/forecast)")}
                     </button>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", alignItems: "start" }}>
                     {/* 좌: 채널별 미래 예산 */}
                     <div>
-                      <h3 style={{ fontSize: "13px", margin: "10px 0 6px" }}>
+                      {forecast.chans.length > 0 ? <>
+                        <h3 style={{ fontSize: "13px", margin: "10px 0 6px" }}>
                         {tx("채널별 미래 예산 (주 평균)", "Future budget per channel (weekly average)")}{" "}
                         <span style={{ fontSize: "11px", color: MUTED, fontWeight: 400 }}>{forecastScenario.eligible
                           ? forecast.isStructural
@@ -8095,6 +8614,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           </tbody>
                         </table>
                       </div>
+                      </> : <div className="callout" style={{ marginTop: "10px" }}><div className="ico">i</div><div className="body"><strong>{tx("Spend 없음 · Organic 예측만 표시", "No Spend · Organic-only forecast")}</strong><p>{tx("예산 입력과 Paid 시나리오는 표시하지 않습니다.", "Budget inputs and Paid scenarios are not shown.")}</p></div></div>}
                     </div>
 
                     {/* 우: 구조변화 미래 처리. 휴일·이벤트 더미는 미래 기본값 0. */}

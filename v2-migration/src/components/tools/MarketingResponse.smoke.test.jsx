@@ -24,6 +24,8 @@ import MarketingResponse, {
   forecastPct,
   buildForecastOnlyModelFromPanel,
   buildForecastRecentBacktest,
+  combinePaidOrganicForecastParts,
+  combinePaidOrganicPlatforms,
   sliceForecastTrainingWindow,
   scanAnnualForecastRegimeWindows,
   scanForecastRegimeWindows,
@@ -108,6 +110,68 @@ function seedWithOsForecastData() {
     };
   });
   const slice = { raw, headers, mapping: {}, fileName: "response_os_forecast.csv", currency: "USD" };
+  useAppStore.setState({
+    currentRouteId: "5-18",
+    csvGroups: { ...useAppStore.getState().csvGroups, response: slice },
+    csvData: slice,
+  });
+}
+
+function seedWithPaidOrganicForecastData() {
+  const headers = [
+    "week",
+    "ANDROID_RR",
+    "ANDROID_PAID_RR",
+    "IOS_RR",
+    "IOS_PAID_RR",
+    "GOOGLE_ANDROID_COST",
+    "META_ANDROID_COST",
+    "ASA_IOS_COST",
+    "META_IOS_COST",
+  ];
+  const raw = Array.from({ length: 134 }, (_, index) => {
+    const week = index + 1;
+    const googleAndroid = 70000 + (week % 11) * 6000 + (week % 4) * 1700;
+    const metaAndroid = 52000 + (week % 7) * 7100 + (week % 5) * 1300;
+    const asaIos = 48000 + (week % 9) * 5300 + (week % 4) * 2100;
+    const metaIos = 41000 + (week % 8) * 4900 + (week % 3) * 1800;
+    const androidPaid = 500 + googleAndroid / 75 + metaAndroid / 92;
+    const iosPaid = 420 + asaIos / 82 + metaIos / 98;
+    const androidOrganic = 5400 + week * 8 + 420 * Math.sin(week * 2 * Math.PI / 52)
+      + googleAndroid / 950 + metaAndroid / 1200;
+    const iosOrganic = 4300 + week * 6 + 350 * Math.cos(week * 2 * Math.PI / 52)
+      + asaIos / 1050 + metaIos / 1300;
+    return {
+      week,
+      ANDROID_RR: Math.round(androidOrganic + androidPaid),
+      ANDROID_PAID_RR: Math.round(androidPaid),
+      IOS_RR: Math.round(iosOrganic + iosPaid),
+      IOS_PAID_RR: Math.round(iosPaid),
+      GOOGLE_ANDROID_COST: googleAndroid,
+      META_ANDROID_COST: metaAndroid,
+      ASA_IOS_COST: asaIos,
+      META_IOS_COST: metaIos,
+    };
+  });
+  const slice = { raw, headers, mapping: {}, fileName: "paid_organic_forecast.csv", currency: "USD" };
+  useAppStore.setState({
+    currentRouteId: "5-18",
+    csvGroups: { ...useAppStore.getState().csvGroups, response: slice },
+    csvData: slice,
+  });
+}
+
+function seedWithOrganicOnlyForecastData() {
+  const headers = ["week", "ANDROID_RR", "IOS_RR"];
+  const raw = Array.from({ length: 134 }, (_, index) => {
+    const week = index + 1;
+    return {
+      week,
+      ANDROID_RR: Math.round(5400 + week * 8 + 420 * Math.sin(week * 2 * Math.PI / 52)),
+      IOS_RR: Math.round(4300 + week * 6 + 350 * Math.cos(week * 2 * Math.PI / 52)),
+    };
+  });
+  const slice = { raw, headers, mapping: {}, fileName: "organic_only_forecast.csv", currency: "USD" };
   useAppStore.setState({
     currentRouteId: "5-18",
     csvGroups: { ...useAppStore.getState().csvGroups, response: slice },
@@ -813,6 +877,62 @@ describe("MarketingResponse render smoke", () => {
     const footerManual = container.querySelector('[data-mmm-manual-placement="footer"] a');
     expect(footerManual?.getAttribute("href")).toBe("/manuals/mmm-model-manual-ko.pdf");
   });
+
+  it("keeps Organic baseline, Organic spend halo, Paid, OS, and Total additive", () => {
+    const part = (actual, fittedHist, predFut, baselineFut, key) => ({
+      actual,
+      fittedHist,
+      predFut,
+      baselineFut,
+      lo: predFut.map((value) => value - 2),
+      hi: predFut.map((value) => value + 2),
+      histLabels: ["w1", "w2"],
+      futLabels: ["w3", "w4"],
+      labels: ["w1", "w2", "w3", "w4"],
+      chans: [{ key, label: key }],
+      recentMean: { [key]: 100 },
+      futSpendByKey: { [key]: [100, 100] },
+      scenarioWarnings: [],
+      steps: [],
+    });
+    const android = combinePaidOrganicForecastParts(
+      part([100, 110], [98, 111], [120, 125], [105, 107], "android_cost"),
+      part([20, 25], [21, 24], [30, 32], [4, 4], "android_cost"),
+      "android",
+    );
+    const ios = combinePaidOrganicForecastParts(
+      part([80, 85], [81, 84], [90, 92], [82, 83], "ios_cost"),
+      part([15, 17], [14, 18], [20, 21], [3, 3], "ios_cost"),
+      "ios",
+    );
+    const total = combinePaidOrganicPlatforms([android, ios]);
+    expect(android.predFut).toEqual(android.organicFut.map((value, index) => value + android.performanceFut[index]));
+    expect(android.organicFut).toEqual(android.organicBaseFut.map((value, index) => value + android.organicHaloFut[index]));
+    expect(total.predFut).toEqual(total.organicFut.map((value, index) => value + total.performanceFut[index]));
+    expect(total.predFut).toEqual([260, 270]);
+    expect(total.baselineFut).toEqual(total.organicBaseFut);
+  });
+
+  it("routes mapped Total, PaidRegs, and Spend through the OS-level split forecast", async () => {
+    seedWithPaidOrganicForecastData();
+    const { container } = render(<MarketingResponse initialStage="lab" />);
+    enterMmmAndAnalyze(container);
+    await flushRaf();
+    expect(document.body.textContent).toContain("Organic 기저+halo · Paid Spend 회귀");
+    expect(document.body.textContent).toContain("Total = Android(Organic + Paid) + iOS(Organic + Paid)");
+    expect(document.body.textContent).toContain("Android·iOS 성분 검증");
+    expect(document.body.textContent).not.toContain("기간·연간 패턴 자동 탐색");
+  }, 30000);
+
+  it("shows an Organic trend/seasonality forecast without empty budget scenarios when Spend is absent", async () => {
+    seedWithOrganicOnlyForecastData();
+    const { container } = render(<MarketingResponse initialStage="lab" />);
+    enterMmmAndAnalyze(container);
+    await flushRaf();
+    expect(document.body.textContent).toContain("Organic 추세·계절성 · Spend 없음");
+    expect(document.body.textContent).toContain("Spend 없음 · Organic 예측만 표시");
+    expect(document.body.textContent).not.toContain("미디어 OFF");
+  }, 30000);
 
   it("withholds a last-24-week validation when selecting inside the sealed train history cannot fit", async () => {
     seedWithOsForecastData();
