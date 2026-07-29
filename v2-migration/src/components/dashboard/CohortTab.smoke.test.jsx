@@ -5,7 +5,7 @@
 // tests cover cohortMath.fitPowerCurve; this asserts the tab MOUNTS without
 // throwing in no-data and with-data states. Copied from BudgetAllocation smoke.
 import { describe, it, expect, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import CohortTab from "@/components/dashboard/CohortTab";
 
@@ -85,5 +85,19 @@ describe("CohortTab render smoke", () => {
     }).not.toThrow();
     // Key node: the overall retention curve canvas.
     expect(container.querySelector("#wide-ret-curve")).toBeTruthy();
+  });
+
+  it("shows the inferred data snapshot and lets the operator override it instead of using today", () => {
+    seedWithData();
+    render(<CohortTab />);
+
+    expect(screen.getByText(/리텐션 데이터 기준일: 2026-01-10/)).toBeTruthy();
+    expect(screen.getByText(/데이터 내 최대 날짜/)).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("리텐션 데이터 기준일 직접 지정"), { target: { value: "2026-01-26" } });
+    fireEvent.click(screen.getByRole("button", { name: "기준일 적용" }));
+
+    expect(screen.getByText(/리텐션 데이터 기준일: 2026-01-26/)).toBeTruthy();
+    expect(screen.getByText(/직접 입력/)).toBeTruthy();
   });
 });

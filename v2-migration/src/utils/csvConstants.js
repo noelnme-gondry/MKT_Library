@@ -8,6 +8,13 @@ export const STANDARD_FIELDS = {
                 required: true,
                 group: "디멘션",
               },
+              snapshot_date: {
+                label: "데이터 기준일(Snapshot)",
+                aliases: ["snapshot_date", "snapshot", "as_of_date", "as_of", "export_date", "report_date", "download_date", "데이터기준일", "추출일", "다운로드일", "리포트일"],
+                type: "date",
+                required: false,
+                group: "디멘션",
+              },
               platform: {
                 label: "플랫폼(OS)",
                 aliases: ["os", "platform_name", "플랫폼"],
@@ -1050,6 +1057,7 @@ export const TOOL_OPTIONAL_FIELDS = {
                 { key: "date", unlocks: "기간 표기 (선택)" },
               ],
               "5-2": [
+                { key: "snapshot_date", unlocks: "리텐션 Dn 마감 판정 — 데이터 추출 기준일" },
                 { key: "source", unlocks: "광고/오가닉(소스) 필터 — 유료·자연 유입 분리" },
                 { key: "channel", unlocks: "채널별 비중·시계열 분석" },
                 { key: "campaign_name", unlocks: "캠페인 단위 분석" },

@@ -707,10 +707,10 @@ export function buildMaturationResult(
 }
 
 /* ============================================================
- * 리텐션 코호트 마감 필터 (§7 미마감 코호트 부풀림 방지, 브랜치 06cda0c)
- * 오늘(로컬 자정) 기준 D일이 지난 코호트(행)만 — 분자·분모 둘 다 동일 필터해야
- * 부풀려지지 않음(분모만 필터하면 오히려 더 부풀려짐). day=0/음수는 필터 불필요.
- * 결정론: Math.random 없음(now는 순수 인자로 주입 가능, 기본은 실제 오늘).
+ * 리텐션 코호트 마감 필터 (§7 미마감 코호트 부풀림 방지)
+ * 실제 오늘이 아니라 CSV가 관측한 snapshot 기준일을 사용한다. 과거 export를 오늘
+ * 다시 열어 최근 코호트를 성숙으로 오판하지 않는다. 숫자 fourth arg는 기존 테스트·
+ * 호출부 호환을 위한 legacy nowTs 주입만 유지한다.
  * ============================================================ */
 
 /* 오늘(로컬) 자정 UTC timestamp — 데이터 최대 날짜가 아닌 실제 오늘 기준. */
@@ -724,9 +724,19 @@ export function todayMidnightTs(now) {
  * @param {number} day Dn (7·14·30…)
  * @param {boolean} maturedOnly 마감 코호트만 여부
  * @param {number} [nowTs] 기준 자정 ts(테스트 주입용, 기본 오늘) */
-export function filterMaturedCohorts(rows, day, maturedOnly, nowTs) {
+export function filterMaturedCohorts(rows, day, maturedOnly, snapshotOrNowTs) {
   if (!maturedOnly || !(day > 0)) return rows;
-  const cutoff = (nowTs != null ? nowTs : todayMidnightTs()) - day * 86400000;
+  if (snapshotOrNowTs && typeof snapshotOrNowTs === "object") {
+    return rows.filter((row) => {
+      const snapshotDate = snapshotOrNowTs.perRow ? snapshotOrNowTs.getDateForRow?.(row) : snapshotOrNowTs.date;
+      if (!snapshotDate) return false;
+      const cohortMs = Date.parse(row.date);
+      const snapshotMs = Date.parse(snapshotDate);
+      const buffer = Number(snapshotOrNowTs.bufferDays) || 0;
+      return isFinite(cohortMs) && isFinite(snapshotMs) && cohortMs <= snapshotMs - (day + buffer) * 86400000;
+    });
+  }
+  const cutoff = (snapshotOrNowTs != null ? snapshotOrNowTs : todayMidnightTs()) - day * 86400000;
   return rows.filter((r) => {
     const d = Date.parse(r.date);
     return isFinite(d) && d <= cutoff;

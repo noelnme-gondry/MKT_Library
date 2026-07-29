@@ -50,8 +50,13 @@ export function buildCanonicalDataset({ raw = [], headers = [], mapping = {} } =
         return;
       }
       const normalized = normalizeFieldValue(value, field);
-      if (field.type === "date") {
+      if (standardKey === "date") {
         date = normalized;
+        if (!normalized && !EMPTY(value)) issues.push({ rowNumber: index + 2, header, code: "invalid_date" });
+      } else if (field.type === "date") {
+        // snapshot/start/end 같은 보조 날짜는 분석 기준 날짜를 덮어쓰면 안 된다.
+        // canonical dimensions에 보존해 코호트 성숙도·기간 표기에 재사용한다.
+        dimensions[standardKey] = normalized;
         if (!normalized && !EMPTY(value)) issues.push({ rowNumber: index + 2, header, code: "invalid_date" });
       } else if (DIMENSION_KEYS.has(standardKey)) {
         dimensions[standardKey] = normalized;

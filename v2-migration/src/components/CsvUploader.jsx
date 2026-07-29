@@ -26,6 +26,7 @@ import AnalysisStatusBadge from "@/components/ds/AnalysisStatusBadge";
 
 const STANDARD_FIELD_EN_LABELS = {
   date: "Date", platform: "Platform (OS)", channel: "Channel / media", campaign_name: "Campaign name",
+  snapshot_date: "Data snapshot date",
   country: "Country", source: "Source (paid / organic)", cost: "Cost", impressions: "Impressions",
   clicks: "Clicks", installs: "Installs", actions: "Actions / signups",
 };
@@ -276,7 +277,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     e.target.value = null;
   };
 
-  const applyImportedTable = async ({ headers, raw, fileName, source, worksheetName = null, sheetUrl = null }) => {
+  const applyImportedTable = async ({ headers, raw, fileName, source, worksheetName = null, sheetUrl = null, fileModifiedAt = null }) => {
     if (!headers.length || !raw.length) {
       setErrorMsg(T.emptyCsv);
       return;
@@ -286,7 +287,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     if (requestId !== preparationRequestRef.current) return;
     const insights = prepared.insights;
     if (insights.signature.needsWideToLong) {
-      setPendingWideImport({ headers, raw, fileName, source, worksheetName, insights });
+      setPendingWideImport({ headers, raw, fileName, source, worksheetName, fileModifiedAt, insights });
       return;
     }
     const recipe = await getTransformRecipe(headers).catch(() => null);
@@ -304,6 +305,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
       importSource: source,
       worksheetName,
       ...(sheetUrl ? { sheetUrl } : {}),
+      ...(fileModifiedAt != null ? { fileModifiedAt } : {}),
       importInsights: { ...insights, recipeApplied: !!recipe },
       canonicalData,
       mappedRows,
@@ -330,9 +332,9 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         if (!sheets.length) {
           setErrorMsg(T.emptyCsv);
         } else if (sheets.length === 1) {
-          await applyImportedTable({ ...sheets[0], fileName: file.name, source, worksheetName: sheets[0].name });
+          await applyImportedTable({ ...sheets[0], fileName: file.name, source, worksheetName: sheets[0].name, fileModifiedAt: file.lastModified });
         } else {
-          setPendingWorkbook({ fileName: file.name, source, sheets });
+          setPendingWorkbook({ fileName: file.name, source, sheets, fileModifiedAt: file.lastModified });
           setSelectedWorkbookSheet(sheets[0].name);
         }
       } catch (error) {
@@ -358,7 +360,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
             setErrorMsg(T.emptyCsv);
             return;
           }
-          if (taskId === importTaskRef.current) await applyImportedTable({ headers, raw, fileName: file.name, source });
+          if (taskId === importTaskRef.current) await applyImportedTable({ headers, raw, fileName: file.name, source, fileModifiedAt: file.lastModified });
         } catch (error) {
           setErrorMsg(`${T.parseError}${error.message}`);
         } finally {
@@ -378,7 +380,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
     setErrorMsg("");
     setIsImporting(true);
     try {
-      await applyImportedTable({ ...sheet, fileName: pendingWorkbook.fileName, source: pendingWorkbook.source, worksheetName: sheet.name });
+      await applyImportedTable({ ...sheet, fileName: pendingWorkbook.fileName, source: pendingWorkbook.source, worksheetName: sheet.name, fileModifiedAt: pendingWorkbook.fileModifiedAt });
       setPendingWorkbook(null);
     } catch (error) {
       setErrorMsg(`${T.parseError}${error.message}`);
@@ -399,6 +401,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         fileName: pendingWideImport.fileName,
         source: pendingWideImport.source,
         worksheetName: pendingWideImport.worksheetName,
+        fileModifiedAt: pendingWideImport.fileModifiedAt,
       });
     } catch (error) {
       setErrorMsg(`${T.parseError}${error.message}`);

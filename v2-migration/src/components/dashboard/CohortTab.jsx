@@ -6,6 +6,7 @@ import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, effectiveDenomBasis, computeWeightedRetention } from "@/utils/dashboardAggregator";
 import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { fitPowerCurve, filterMaturedCohorts, retentionDays } from "@/utils/cohortMath";
+import { maturityCutoffDate, parseSnapshotDate, resolveRetentionSnapshot, snapshotDateForRow } from "@/utils/retentionSnapshot";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
@@ -16,6 +17,7 @@ const COHORT_TABLE_SCOPE = "5-2:cohort-table";
 export default function CohortTab({ locale = "ko" } = {}) {
   const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const csvData = useAppStore((state) => state.csvData);
+  const setCsvData = useAppStore((state) => state.setCsvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   // 전역 분모 기준(설치/가입) 구독 — index.html MON_DENOM_STATE 이식(§12.18).
   // 리텐션 기준 토글은 이 전역 상태를 바꿔 스코어카드·LTV 탭과 동기화된다.
@@ -31,11 +33,31 @@ export default function CohortTab({ locale = "ko" } = {}) {
   const setViewConfig = useAppStore((state) => state.setViewConfig);
   const resetViewConfig = useAppStore((state) => state.resetViewConfig);
   const [cohortCfgOpen, setCohortCfgOpen] = useState(false);
+  const [snapshotDraft, setSnapshotDraft] = useState("");
 
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
   const segmentChartRefs = useRef({});
   const segmentChartInstancesRef = useRef({});
+
+  // 실제 오늘이 아니라 "이 파일이 어디까지 관측했는가"를 기준으로 Dn 마감을
+  // 판단한다. dashboardFilter는 결과 범위일 뿐 snapshot 추정에는 영향을 주지 않는다.
+  const maturitySnapshot = useMemo(() => {
+    const allRows = getMonFilteredRows(csvData, {});
+    const base = resolveRetentionSnapshot({
+      rows: allRows,
+      fileName: csvData?.fileName,
+      fileModifiedAt: csvData?.fileModifiedAt,
+      manualDate: csvData?.retentionSnapshotOverride,
+    });
+    return { ...base, getDateForRow: (row) => snapshotDateForRow(base, row) };
+  }, [csvData]);
+
+  const saveSnapshotOverride = () => {
+    const date = parseSnapshotDate(snapshotDraft);
+    if (!date || !csvData) return;
+    setCsvData({ ...csvData, retentionSnapshotOverride: date });
+  };
 
   const { wrc, hasData, canActions, canInstalls } = useMemo(() => {
     if (!csvData || !csvData.raw || csvData.raw.length === 0) return { hasData: false };
@@ -67,7 +89,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
             return { day: 0, retentionRate: 1, n, survivors: n, wholePct: false };
           }
           // 마감 필터: 분자·분모 둘 다 동일 필터(분모만 필터하면 오히려 더 부풀려짐).
-          const scoped = filterMaturedCohorts(subset, day, matureCohortOnly);
+          const scoped = filterMaturedCohorts(subset, day, matureCohortOnly, maturitySnapshot);
           const r = computeWeightedRetention(scoped, day, anchor);
           if (r.rate == null) return null;
           return { day, retentionRate: r.rate, n: r.denom, survivors: r.survivors, wholePct: !!r.hasWholePct };
@@ -105,11 +127,12 @@ export default function CohortTab({ locale = "ko" } = {}) {
         bySegment: bySeg,
         pwr,
         wholePctWarn: anyWholePct,
+        maturitySnapshot,
       },
       canActions: _canActions,
       canInstalls: _canInstalls
     };
-  }, [csvData, dashboardFilter, denomBasis, matureCohortOnly]);
+  }, [csvData, dashboardFilter, denomBasis, matureCohortOnly, maturitySnapshot]);
 
   useEffect(() => {
     if (!hasData || !wrc.retCurve.length || !chartRef.current) return;
@@ -226,6 +249,22 @@ export default function CohortTab({ locale = "ko" } = {}) {
   const fmtPct = (v) => (v == null ? "—" : (v * 100).toFixed(1) + "%");
   const anchorLabel = wrc.anchor === "actions" ? tr("가입(액션)", "Signup (Action)") : tr("설치", "Install");
   const survLabel = wrc.anchor === "actions" ? tr("잔존 가입자 수", "Retained Signups") : tr("잔존 유저 수", "Retained Users");
+  const snapshotSourceLabel = {
+    manual: tr("직접 입력", "Manual input"),
+    snapshot_column: tr("CSV 기준일 컬럼", "CSV snapshot column"),
+    filename: tr("파일명 날짜", "Filename date"),
+    data_max_date: tr("데이터 내 최대 날짜", "Latest date in data"),
+    file_modified: tr("파일 수정 시각", "File modified time"),
+    unknown: tr("기준일을 찾지 못함", "No snapshot date found"),
+  }[maturitySnapshot.source] || maturitySnapshot.source;
+  const confidenceLabel = {
+    high: tr("높음", "High"),
+    medium: tr("중간(추정)", "Medium (estimated)"),
+    low: tr("낮음(보수 버퍼 적용)", "Low (conservative buffer applied)"),
+    unknown: tr("알 수 없음", "Unknown"),
+  }[maturitySnapshot.confidence] || maturitySnapshot.confidence;
+  const longestObservedDay = Math.max(...wrc.retDays);
+  const maturityCutoff = maturityCutoffDate(longestObservedDay, maturitySnapshot);
 
   const renderSegmentChart = (sk, label) => {
     return (
@@ -262,10 +301,40 @@ export default function CohortTab({ locale = "ko" } = {}) {
           </div>
         )}
 
+        <div className="callout" style={{ marginBottom: "10px" }}>
+          <div className="ico">◷</div>
+          <div className="body">
+            <strong>{tr("리텐션 데이터 기준일", "Retention data snapshot")}: {maturitySnapshot.date || "—"}</strong>
+            <p style={{ margin: ".25rem 0 0", fontSize: "11.5px" }}>
+              {tr(
+                <>근거: <strong>{snapshotSourceLabel}</strong> · 신뢰도: <strong>{confidenceLabel}</strong>{maturitySnapshot.perRow ? ` · ${maturitySnapshot.validRowDateCount.toLocaleString()}행별 기준` : ""}</>,
+                <>Source: <strong>{snapshotSourceLabel}</strong> · confidence: <strong>{confidenceLabel}</strong>{maturitySnapshot.perRow ? ` · ${maturitySnapshot.validRowDateCount.toLocaleString()} row-level dates` : ""}</>
+              )}
+              {maturityCutoff && tr(
+                <> · D{longestObservedDay}는 <strong>{maturityCutoff} 이전·당일</strong> 코호트만 마감으로 봅니다.</>,
+                <> · For D{longestObservedDay}, only cohorts on or before <strong>{maturityCutoff}</strong> are mature.</>
+              )}
+            </p>
+            <details open={maturitySnapshot.source === "unknown"} style={{ marginTop: "8px" }}>
+              <summary style={{ cursor: "pointer", fontSize: "11px", color: "var(--text-muted)" }}>{tr("기준일 수정·확인", "Edit or confirm snapshot date")}</summary>
+              <div style={{ display: "flex", alignItems: "end", gap: "8px", flexWrap: "wrap", marginTop: "7px" }}>
+                <label style={{ display: "grid", gap: "3px", fontSize: "11px", color: "var(--text-muted)" }}>
+                  {tr("기준일 직접 지정", "Set snapshot date")}
+                  <input type="date" value={snapshotDraft} onChange={(event) => setSnapshotDraft(event.target.value)} style={{ minHeight: "32px" }} aria-label={tr("리텐션 데이터 기준일 직접 지정", "Set retention data snapshot date")} />
+                </label>
+                <button className="ab-pill" onClick={saveSnapshotOverride} disabled={!parseSnapshotDate(snapshotDraft)}>{tr("기준일 적용", "Apply date")}</button>
+                <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                  {tr("오늘 날짜를 쓰지 않습니다. 과거 다운로드 파일이면 실제 추출 기준일을 입력하세요.", "Today is never used. For an older export, enter its actual extraction date.")}
+                </span>
+              </div>
+            </details>
+          </div>
+        </div>
+
         <div className="ab-pillgroup" style={{ marginBottom: "10px" }}>
           <span className="ab-pillgroup-label" title={tr(
-            "아직 D일이 지나지 않은(미마감) 최근 코호트는 잔존율을 왜곡시킵니다. '마감만'은 오늘 기준 D일이 지난 코호트만 분자·분모 양쪽에서 집계.",
-            "Recent cohorts that haven't yet reached day D (immature) distort the retention rate. \"Matured only\" aggregates both numerator and denominator using only cohorts that have passed day D as of today."
+            "아직 D일이 지나지 않은(미마감) 최근 코호트는 잔존율을 왜곡시킵니다. '마감만'은 데이터 기준일로 D일이 지난 코호트만 분자·분모 양쪽에서 집계.",
+            "Recent cohorts that haven't yet reached day D (immature) distort the retention rate. \"Matured only\" aggregates both numerator and denominator using only cohorts that have passed day D as of the data snapshot."
           )}>{tr("코호트 마감", "Cohort maturity")}</span>
           <button className={`ab-pill ${!matureCohortOnly ? "active" : ""}`} onClick={() => setMatureCohortOnly(false)}>{tr("전체 포함", "Include All")}</button>
           <button className={`ab-pill ${matureCohortOnly ? "active" : ""}`} onClick={() => setMatureCohortOnly(true)}>{tr("마감된 코호트만", "Matured Only")}</button>
@@ -277,7 +346,7 @@ export default function CohortTab({ locale = "ko" } = {}) {
           statusTone={wrc.retCurve.length ? "neutral" : "warning"}
           metric={tr("리텐션율·잔존 인원", "Retention rate · retained users")}
           unit="rate / users"
-          meaning={tr("코호트 크기로 가중한 관측 리텐션이며, 미마감 코호트는 후속 기간이 덜 관측될 수 있습니다.", "Observed retention weighted by cohort size; immature cohorts may have less follow-up observed.")}
+          meaning={tr("코호트 크기로 가중한 관측 리텐션입니다. 마감 여부는 오늘이 아닌 이 데이터의 기준일로 판단합니다.", "Observed retention weighted by cohort size. Maturity is evaluated from this dataset's snapshot date, not today.")}
           sampleSize={{ value: wrc.retCurve[0]?.n || 0, label: tr("기준 모수", "Base denominator"), detail: tr(`${wrc.anchor === "actions" ? "가입(액션)" : "설치"} 기준`, `By ${wrc.anchor === "actions" ? "signup/action" : "install"}`) }}
           scope={wrc.retDays.length ? `D${Math.min(...wrc.retDays)}–D${Math.max(...wrc.retDays)}` : ""}
           method="cohort-size-weighted-retention"
@@ -285,6 +354,8 @@ export default function CohortTab({ locale = "ko" } = {}) {
           metricDefinition={tr("Σ잔존 인원 ÷ Σ기준 모수; ret_dN이 0~1이면 모수로 환산하고 정수면 인원수로 합산합니다.", "Σ retained users ÷ Σ base denominator; 0–1 ret_dN values are converted by the base, while whole numbers are treated as headcounts.")}
           warnings={[
             ...(matureCohortOnly ? [] : [tr("마감만을 끄면 최근 미마감 코호트가 포함되어 장기 리텐션이 낮거나 높게 보일 수 있습니다.", "Including immature cohorts can make long-horizon retention look biased.")]),
+            ...(maturitySnapshot.confidence === "unknown" ? [tr("데이터 기준일을 확인할 수 없습니다. 마감된 코호트만 보려면 실제 추출일을 직접 지정하세요.", "The data snapshot date is unknown. Set the actual extraction date before using matured cohorts only.")] : []),
+            ...(maturitySnapshot.confidence === "low" ? [tr(`파일 수정 시각을 임시 기준으로 사용해 ${maturitySnapshot.bufferDays}일 보수 버퍼를 더했습니다. 실제 추출일을 확인하세요.`, `The file modified time is a temporary reference, so a ${maturitySnapshot.bufferDays}-day conservative buffer is applied. Confirm the real extraction date.`)] : []),
             ...(wrc.wholePctWarn ? [tr("정수 퍼센트 입력은 인원수로 해석됐습니다.", "Whole-number percentage-like inputs were interpreted as headcounts.")] : []),
           ]}
         />
