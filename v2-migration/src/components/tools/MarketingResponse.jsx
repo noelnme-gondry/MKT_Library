@@ -2808,6 +2808,62 @@ export function buildForecastOnlyModelFromPanel(sourcePanel, sourceCfg, target) 
   return { ...buildForecastModelForSelection(sourcePanel, sourceCfg, target, selected), selection, forecastSelected: selected, sourcePanel, sourceCfg, target };
 }
 
+// 과거 운영 체제가 현재와 달라진 경우, 최근 구간만으로 다시 학습·검증할 수 있다.
+// 단순히 최근 window를 고르는 기존 내부 Cost window와 다르다. 이 함수는 입력의
+// 앞부분을 통째로 제외한 뒤 그 남은 기간 안에서만 rolling OOS를 만든다.
+export function sliceForecastTrainingWindow(panel, trainingWeeks = null) {
+  const n = panel?.week?.length || 0;
+  const keep = Number(trainingWeeks);
+  if (!Number.isInteger(keep) || keep <= 0 || keep >= n) return panel;
+  return sliceMmmPanel(panel, n, n - keep);
+}
+
+export function scanForecastRegimeWindows(models, { candidateWeeks = [104, 78], minimumWeeks = 78 } = {}) {
+  const items = (Array.isArray(models) ? models : [models]).filter((model) => model?.sourcePanel && model?.sourceCfg && model?.target);
+  if (!items.length) return { available: false, reason: "missing-source", candidates: [], recommended: null };
+  const maxWeeks = Math.min(...items.map((model) => model.sourcePanel.week?.length || 0));
+  const windows = [...new Set([maxWeeks, ...candidateWeeks])]
+    .filter((weeks) => Number.isInteger(weeks) && weeks >= minimumWeeks && weeks <= maxWeeks)
+    .sort((a, b) => b - a);
+  const candidates = windows.map((trainingWeeks) => {
+    const fitted = items.map((model) => {
+      const sourcePanel = sliceForecastTrainingWindow(model.sourcePanel, trainingWeeks);
+      return buildForecastOnlyModelFromPanel(sourcePanel, model.sourceCfg, model.target);
+    });
+    // 후보 기간 비교는 마지막 12주를 보지 않은 nested 선택값으로만 한다.
+    // productionSelected는 감사가 끝난 뒤 실제 미래 예측에 쓰는 값이라 여기의
+    // 기간 추천에 쓰면 마지막 감사 구간이 간접적으로 새어 들어갈 수 있다.
+    const selections = fitted.map((model) => model.selection?.selected);
+    const backtests = fitted.map((model) => buildForecastRecentBacktest(model));
+    const available = selections.every(Boolean) && backtests.every(Boolean);
+    const startLabel = fitted[0]?.sourcePanel?.weekLabel?.[0] || null;
+    const endLabel = fitted[0]?.sourcePanel?.weekLabel?.at(-1) || null;
+    return {
+      trainingWeeks,
+      startLabel,
+      endLabel,
+      available,
+      // 여러 OS를 합산하는 경우 한 OS만 좋아도 추천하지 않는다. 각 OS의 개발
+      // OOS·봉인 OOS 중 가장 나쁜 값을 대표값으로 삼는다.
+      developmentWmape: available ? Math.max(...selections.map((selection) => Number(selection.wmape))) : null,
+      latestWmape: available ? Math.max(...backtests.map((backtest) => Number(backtest.wmape))) : null,
+      decisionEligible: available && fitted.every((model) => model.selection?.decisionEligible),
+    };
+  });
+  const full = candidates.find((candidate) => candidate.trainingWeeks === maxWeeks && candidate.available) || null;
+  const eligibleShorter = candidates.filter((candidate) => candidate.available && candidate.decisionEligible && candidate.trainingWeeks < maxWeeks);
+  const bestShorter = eligibleShorter.slice().sort((a, b) => a.developmentWmape - b.developmentWmape || b.trainingWeeks - a.trainingWeeks)[0] || null;
+  // 마지막 12주는 후보 선택에 사용하지 않는다. 추천 판단은 development OOS만으로,
+  // 오래된 체제가 실제로 방해가 된 경우(상대 20% + 절대 3%p 개선)에만 열린다.
+  const recommended = full && bestShorter
+    && full.developmentWmape > 10
+    && bestShorter.developmentWmape <= full.developmentWmape * 0.8
+    && full.developmentWmape - bestShorter.developmentWmape >= 3
+    ? bestShorter
+    : null;
+  return { available: !!full, full, candidates, recommended };
+}
+
 function buildForecastOnlyModel(mmm) {
   return buildForecastOnlyModelFromPanel(mmm.panel, mmm.cfg, mmm.target);
 }
@@ -3397,6 +3453,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const [fcTrendDampingDraft, setFcTrendDampingDraft] = useState("0.25");
   const [fcEventPolicy, setFcEventPolicy] = useState("hold");
   const [fcEventPolicyDraft, setFcEventPolicyDraft] = useState("hold");
+  // null=전체 이력. 사용자가 추천을 승인했을 때만 최근 운영 체제의 시작점 이후
+  // 데이터로 예측 회귀를 다시 적합한다. 원본 CSV·MMM 기여 분해는 바꾸지 않는다.
+  const [fcRegimeTrainingWeeks, setFcRegimeTrainingWeeks] = useState(null);
+  const [isRegimeWindowScanRequested, setIsRegimeWindowScanRequested] = useState(false);
   const [fcIntervalMode, setFcIntervalMode] = useState("predictive");
   const [fcScenarioOpen, setFcScenarioOpen] = useState(true);
   const [cannibChannel, setCannibChannel] = useState(null);
@@ -4699,34 +4759,38 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         ]));
         const invalid = Object.values(prepared).find((item) => !item.sourcePanel);
         if (invalid) return { isAdditiveTotal: true, components: [], reason: invalid.reason || "Forecast panel unavailable" };
+        const preparedForRegime = Object.fromEntries(Object.entries(prepared).map(([platform, item]) => [platform, {
+          ...item,
+          sourcePanel: sliceForecastTrainingWindow(item.sourcePanel, fcRegimeTrainingWeeks),
+        }]));
         const annual = runAnnualAnalogRouter({
-          totalPanel: prepared.all.sourcePanel,
-          androidPanel: prepared.android.sourcePanel,
-          iosPanel: prepared.ios.sourcePanel,
-          target: prepared.all.target,
+          totalPanel: preparedForRegime.all.sourcePanel,
+          androidPanel: preparedForRegime.android.sourcePanel,
+          iosPanel: preparedForRegime.ios.sourcePanel,
+          target: preparedForRegime.all.target,
           horizon: fcHorizon,
         });
         if (annual?.qualified) {
           return {
             isAnnualAnalog: true,
             annual,
-            totalPanel: prepared.all.sourcePanel,
-            target: prepared.all.target,
+            totalPanel: preparedForRegime.all.sourcePanel,
+            target: preparedForRegime.all.target,
           };
         }
         const components = ["android", "ios"].map((platform) => ({
-          ...buildForecastOnlyModelFromPanel(prepared[platform].sourcePanel, prepared[platform].cfg, prepared[platform].target),
-          ...prepared[platform],
+          ...buildForecastOnlyModelFromPanel(preparedForRegime[platform].sourcePanel, preparedForRegime[platform].cfg, preparedForRegime[platform].target),
+          ...preparedForRegime[platform],
         }));
         if (components.some((component) => !component.run || !component.panel)) {
           return { isAdditiveTotal: true, components, reason: components.find((component) => !component.run || !component.panel)?.reason || "OS forecast model unavailable" };
         }
         // 78주 후보 + 봉인 12주 + 최소 3개 이전 holdout(총 114주)을 확보하기
         // 전에는 Direct-vs-OS 경로 선택을 열지 않고 기존 OS 항등 합을 유지한다.
-        if (prepared.all.sourcePanel.week.length < 114) return { isAdditiveTotal: true, components, routeDecision: null };
+        if (preparedForRegime.all.sourcePanel.week.length < 114) return { isAdditiveTotal: true, components, routeDecision: null };
         const direct = {
-          ...buildForecastOnlyModelFromPanel(prepared.all.sourcePanel, prepared.all.cfg, prepared.all.target),
-          ...prepared.all,
+          ...buildForecastOnlyModelFromPanel(preparedForRegime.all.sourcePanel, preparedForRegime.all.cfg, preparedForRegime.all.target),
+          ...preparedForRegime.all,
           platform: "all",
         };
         if (!direct.run || !direct.panel) return { isAdditiveTotal: true, components, routeDecision: null };
@@ -4744,19 +4808,19 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           return {
             isAnnualAnalog: true,
             annual: { ...annual, bestAvailable: true },
-            totalPanel: prepared.all.sourcePanel,
-            target: prepared.all.target,
+            totalPanel: preparedForRegime.all.sourcePanel,
+            target: preparedForRegime.all.target,
           };
         }
         return routeDecision.productionRoute === "direct-total"
           ? { ...direct, isNestedDirect: true, routeDecision, challengerComponents: components }
           : { isAdditiveTotal: true, components, directChallenger: direct, routeDecision };
       }
-      return buildForecastOnlyModel(mmm);
+      return buildForecastOnlyModelFromPanel(sliceForecastTrainingWindow(mmm.panel, fcRegimeTrainingWeeks), mmm.cfg, mmm.target);
     } catch {
       return null;
     }
-  }, [mmm, stage, effPlatformFilter, csvData, mmmColMap, target, locale, segmentSel, mmmWeekStart, attributedForecastRoute, fcHorizon]);
+  }, [mmm, stage, effPlatformFilter, csvData, mmmColMap, target, locale, segmentSel, mmmWeekStart, attributedForecastRoute, fcHorizon, fcRegimeTrainingWeeks]);
 
   // 이 판정은 Stage ④ 예측 회귀에만 적용한다. MMM 기여 분해·이벤트/step(P0)와
   // 분리해, 기본 예측은 유지하고 식별되지 않은 Cost 변경 입력만 막는다.
@@ -4843,6 +4907,27 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       return null;
     }
   }, [mmm, stage, forecastModel]);
+
+  // 자동 적용하지 않는다. 사용자가 탐색을 요청한 경우에만 후보별 재적합을 하고,
+  // 추천된 시작점도 별도 승인 버튼을 눌러야 실제 예측 회귀에 반영된다.
+  const regimeWindowScan = useMemo(() => {
+    if (stage !== "lab" || !isRegimeWindowScanRequested || fcRegimeTrainingWeeks || !forecastModel || forecastModel.isStructural || forecastModel.isAnnualAnalog) return null;
+    const models = forecastModel.isAdditiveTotal ? forecastModel.components : [forecastModel];
+    return scanForecastRegimeWindows(models);
+  }, [stage, isRegimeWindowScanRequested, fcRegimeTrainingWeeks, forecastModel]);
+  const requestRegimeWindowScan = useCallback(() => {
+    deferMmmUpdate(() => setIsRegimeWindowScanRequested(true));
+  }, [deferMmmUpdate]);
+  const acceptRegimeWindow = useCallback((candidate) => {
+    if (!candidate?.trainingWeeks) return;
+    deferMmmUpdate(() => setFcRegimeTrainingWeeks(candidate.trainingWeeks));
+  }, [deferMmmUpdate]);
+  const resetRegimeWindow = useCallback(() => {
+    deferMmmUpdate(() => {
+      setFcRegimeTrainingWeeks(null);
+      setIsRegimeWindowScanRequested(false);
+    });
+  }, [deferMmmUpdate]);
 
   // 미래 예측 탭의 공통 진단 산출물. 구간을 신뢰구간으로 오인하지 않도록
   // parameter band와 predictive band를 분리하고, rolling holdout coverage를 표시한다.
@@ -7757,6 +7842,44 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         <span className="ab-pill">{tx("현재 시나리오 평균", "Scenario avg")} {targetValueLabel(forecast.predFut.reduce((s, v) => s + v, 0) / forecast.predFut.length, { perWeek: true })}</span>
                         {forecast.baselineFloorApplied > 0 && <span className="ab-pill" style={{ borderColor: "#f59e0b", color: "#b45309" }}>{tx(`기준선 0 하한 ${forecast.baselineFloorApplied}주 적용`, `0 floor applied for ${forecast.baselineFloorApplied} week(s)`)}</span>}
                       </div>
+                    </Card>
+                  )}
+                  {!forecast.isStructural && !forecast.isAnnualAnalog && (
+                    <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
+                      <strong>{tx("현재 운영 기간만으로 다시 검증", "Revalidate using the current operating regime")}</strong>
+                      {fcRegimeTrainingWeeks ? (
+                        <>
+                          <p style={{ margin: "5px 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
+                            {tx(`현재 예측 회귀는 최근 ${fcRegimeTrainingWeeks}주만 학습·검증합니다. 더 이른 기간은 이 예측 모델에서만 제외되며, 원본 CSV와 MMM 기여 분해는 바뀌지 않습니다.`, `This forecast regression trains and validates on only the latest ${fcRegimeTrainingWeeks} weeks. Earlier history is excluded only from this forecast model; the raw CSV and MMM contribution are unchanged.`)}
+                          </p>
+                          <button className="ab-pill" disabled={isAnalyzing} onClick={resetRegimeWindow}>{tx("전체 이력으로 되돌리기", "Restore full history")}</button>
+                        </>
+                      ) : (
+                        <>
+                          <p style={{ margin: "5px 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
+                            {tx("제품·채널·측정 체계가 바뀐 과거를 모두 학습에 넣으면 현재 운영 예측이 희석될 수 있습니다. 후보별 선택용 과거 OOS만 비교하고, 마지막 12주는 후보 선택에 쓰지 않는 감사 구간으로 남깁니다.", "When product, channels, or measurement changed, including all old history can dilute a current-regime forecast. We compare development OOS within each candidate regime only; the final 12 weeks remain an audit holdout and are never used to choose the window.")}
+                          </p>
+                          <button className="ab-pill active" disabled={isAnalyzing} onClick={requestRegimeWindowScan}>
+                            {isAnalyzing ? tx("기간 후보 계산 중…", "Calculating window candidates…") : tx("현재 운영 기간 후보 찾기", "Find current-regime windows")}
+                          </button>
+                        </>
+                      )}
+                      {regimeWindowScan && (
+                        <div style={{ marginTop: "10px" }}>
+                          {regimeWindowScan.recommended ? (
+                            <div className="callout good" style={{ marginBottom: "10px" }}><div className="ico">✓</div><div className="body">
+                              <strong>{tx(`최근 ${regimeWindowScan.recommended.trainingWeeks}주 (${regimeWindowScan.recommended.startLabel || "날짜 미상"} 이후)를 권장합니다`, `Recommend the latest ${regimeWindowScan.recommended.trainingWeeks} weeks (since ${regimeWindowScan.recommended.startLabel || "unknown date"})`)}</strong>
+                              <p>{tx(`선택용 과거 OOS가 전체 이력 ${regimeWindowScan.full.developmentWmape.toFixed(1)}% → ${regimeWindowScan.recommended.developmentWmape.toFixed(1)}%로 개선됐습니다. 마지막 12주 감사 오차는 ${regimeWindowScan.recommended.latestWmape.toFixed(1)}%이며, 이 수치로 기간을 고르지는 않았습니다.`, `Development OOS improved from ${regimeWindowScan.full.developmentWmape.toFixed(1)}% on full history to ${regimeWindowScan.recommended.developmentWmape.toFixed(1)}%. The final 12-week audit is ${regimeWindowScan.recommended.latestWmape.toFixed(1)}%; it was not used to choose the window.`)}</p>
+                              <button className="ab-pill active" disabled={isAnalyzing} onClick={() => acceptRegimeWindow(regimeWindowScan.recommended)}>{tx("이 기간으로 예측 다시 계산", "Recalculate using this period")}</button>
+                            </div></div>
+                          ) : (
+                            <p className="muted" style={{ margin: "0 0 8px", fontSize: "11.5px" }}>{tx("최소 이력·독립 검증 조건을 지키면서 전체 이력보다 충분히 나은 기간은 찾지 못했습니다. 임의로 과거를 버리지는 않습니다.", "No shorter period improved enough while meeting minimum-history and independent-validation rules. Earlier history will not be removed arbitrarily.")}</p>
+                          )}
+                          <div className="table-wrap"><table className="data" style={{ fontSize: "10.5px" }}><thead><tr><th>{tx("학습 시작", "Training starts")}</th><th>{tx("학습 기간", "Training period")}</th><th>{tx("선택용 OOS", "Development OOS")}</th><th>{tx("마지막 12주 감사", "Final 12-week audit")}</th><th>{tx("적격", "Eligible")}</th></tr></thead><tbody>
+                            {regimeWindowScan.candidates.map((candidate) => <tr key={candidate.trainingWeeks} style={candidate.trainingWeeks === regimeWindowScan.recommended?.trainingWeeks ? { fontWeight: 700 } : undefined}><td>{candidate.startLabel || "—"}</td><td>{candidate.trainingWeeks}{tx("주", " wk")}</td><td className="tnum">{candidate.developmentWmape == null ? "—" : `${candidate.developmentWmape.toFixed(1)}%`}</td><td className="tnum">{candidate.latestWmape == null ? "—" : `${candidate.latestWmape.toFixed(1)}%`}</td><td>{candidate.decisionEligible ? tx("통과", "Pass") : tx("보류", "Hold")}</td></tr>)}
+                          </tbody></table></div>
+                        </div>
+                      )}
                     </Card>
                   )}
                   {recentBacktest && !forecast.isAnnualAnalog && (

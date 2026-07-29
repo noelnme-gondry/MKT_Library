@@ -23,6 +23,8 @@ import MarketingResponse, {
   buildForecastAssistInsight,
   buildForecastOnlyModelFromPanel,
   buildForecastRecentBacktest,
+  sliceForecastTrainingWindow,
+  scanForecastRegimeWindows,
   mmmDerivedTrafficValue,
   mmmComposeEvidenceTarget,
   mmmCsvSourceChanged,
@@ -181,6 +183,16 @@ describe("MarketingResponse render smoke", () => {
   it("mounts without throwing in the no-data state", () => {
     expect(() => render(<MarketingResponse />)).not.toThrow();
     expect(document.body.querySelector("*")).toBeTruthy();
+  });
+
+  it("keeps the most recent observations when preparing a current-regime training window", () => {
+    const panel = { week: [1, 2, 3, 4, 5], weekLabel: ["2024-01-01", "2024-01-08", "2024-01-15", "2024-01-22", "2024-01-29"], targets: { Regs: [10, 11, 12, 13, 14] }, channels: [], ch: {} };
+    expect(sliceForecastTrainingWindow(panel, 3)).toMatchObject({ week: [3, 4, 5], targets: { Regs: [12, 13, 14] } });
+    expect(sliceForecastTrainingWindow(panel, 10)).toBe(panel);
+  });
+
+  it("does not invent a regime-window recommendation without a forecast source", () => {
+    expect(scanForecastRegimeWindows([])).toMatchObject({ available: false, reason: "missing-source", recommended: null });
   });
 
   it("uses the hub only to choose an independent analysis after mapping", async () => {
