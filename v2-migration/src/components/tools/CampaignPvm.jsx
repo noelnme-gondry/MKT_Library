@@ -158,7 +158,7 @@ function pvmColor(v) {
 }
 
 // index.html buildPvmCache 이식 — 순수 계산(사이드이펙트 없음), PVM_MATH 엔진 재사용
-function buildPvmCache(csvData, state) {
+export function buildPvmCache(csvData, state) {
   const locale = state.locale;
   const tr = (ko, en) => (locale === "en" ? en : ko);
   // 대시보드 공유 CSV는 비용 표준키가 cost, PVM 전용 업로드는 spend일 수 있다.
@@ -279,21 +279,30 @@ function buildPvmCache(csvData, state) {
     };
   }
 
-  const Cbar = (fin.CPA1 + fin.CPA2) / 2;
-  const layer1 = PVM_MATH.decomposeLayer(
-    rowsP1,
-    rowsP2,
-    keys,
+  // Bennet 분해는 최소 grain(채널×캠페인×소재)에서 단 한 번만 계산한다.
+  // 레이어별로 다시 분해하면 각 레이어의 전체 합은 맞아도 드릴다운의 "상위 = 하위합"
+  // 항등식이 깨진다. UI 레이어는 finest 셀의 단순 롤업으로만 만든다.
+  const rollupLayer = (keyFn, metaOf) => PVM_MATH.rollup(
+    fin.finest,
+    keyFn,
     fin.Result1,
     fin.Result2,
-    Cbar,
-    "channel",
+  ).map((group) => ({ ...group, ...metaOf(group.children[0]) }));
+  const layer1 = rollupLayer(
+    (f) => f.chKey,
+    (f) => ({ key: f.chKey, chKey: f.chKey, cmpKey: null, crKey: null }),
   );
   const layer2 = keys.cmp
-    ? PVM_MATH.decomposeLayer(rowsP1, rowsP2, keys, fin.Result1, fin.Result2, Cbar, "campaign")
+    ? rollupLayer(
+      (f) => `${f.chKey}\u001f${f.cmpKey}`,
+      (f) => ({ key: f.cmpKey, chKey: f.chKey, cmpKey: f.cmpKey, crKey: null }),
+    )
     : [];
   const layer3 = keys.cr
-    ? PVM_MATH.decomposeLayer(rowsP1, rowsP2, keys, fin.Result1, fin.Result2, Cbar, "creative")
+    ? rollupLayer(
+      (f) => `${f.chKey}\u001f${f.cmpKey}\u001f${f.crKey}`,
+      (f) => ({ key: f.crKey, chKey: f.chKey, cmpKey: f.cmpKey, crKey: f.crKey }),
+    )
     : [];
 
   // Layer 2 하위합(withinMix) — 소재 합 대비 캠페인 계산 믹스

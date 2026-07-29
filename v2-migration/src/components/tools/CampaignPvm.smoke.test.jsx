@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
-import CampaignPvm from "@/components/tools/CampaignPvm";
+import CampaignPvm, { buildPvmCache } from "@/components/tools/CampaignPvm";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -66,5 +66,26 @@ describe("CampaignPvm render smoke", () => {
     // With-data branch renders the "한눈에 보기" §0 section (heading, distinct
     // from the ToolPageShell TOC link of the same name).
     expect(screen.getByRole("heading", { name: /한눈에 보기/ })).toBeTruthy();
+  });
+
+  it("rolls campaign and creative rows up from one finest-grain decomposition", () => {
+    const headers = ["Date", "Channel", "Campaign", "Creative", "Spend", "Installs"];
+    const mapping = { Date: "date", Channel: "channel", Campaign: "campaign_name", Creative: "creative_id", Spend: "cost", Installs: "installs" };
+    const raw = [
+      ["2026-01-05", "Search", "A", "c1", 100, 10], ["2026-01-05", "Search", "A", "c2", 100, 5],
+      ["2026-01-06", "Search", "A", "c1", 100, 10], ["2026-01-06", "Search", "A", "c2", 100, 5],
+      ["2026-01-12", "Search", "A", "c1", 100, 20], ["2026-01-12", "Search", "A", "c2", 100, 5],
+      ["2026-01-18", "Search", "A", "c1", 100, 20], ["2026-01-18", "Search", "A", "c2", 100, 5],
+    ].map((values) => Object.fromEntries(headers.map((header, index) => [header, values[index]])));
+    const cache = buildPvmCache({ raw, headers, mapping, fileName: "pvm.csv" }, {
+      metric: "cpi", weekBasis: "calendar", lookback: 1, currency: "KRW", denomBasis: "installs", dashboardFilter: {}, locale: "ko",
+    });
+    const channel = cache.layer1[0];
+    const campaignSum = cache.layer2.reduce((sum, row) => sum + row.contribution, 0);
+    const creativeSum = cache.layer3.reduce((sum, row) => sum + row.contribution, 0);
+
+    expect(cache.insufficientData).toBe(false);
+    expect(campaignSum).toBeCloseTo(channel.contribution, 10);
+    expect(creativeSum).toBeCloseTo(channel.contribution, 10);
   });
 });
