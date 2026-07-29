@@ -46,6 +46,23 @@ function seedWithData() {
   });
 }
 
+function seedWithSparseElement() {
+  const headers = ["post_id", "rare_hook", "ctr"];
+  const raw = Array.from({ length: 24 }, (_, i) => ({
+    post_id: `p${i}`,
+    // Four appearances can look dramatic in a tiny sample but must not become
+    // a conclusion. The tool requires at least five present and absent rows.
+    rare_hook: i < 4 ? 1 : 0,
+    ctr: 1 + i * 0.1,
+  }));
+  const slice = { raw, headers, mapping: {}, fileName: "sparse_content_attr.csv" };
+  useAppStore.setState({
+    currentRouteId: "9-1",
+    csvGroups: { ...useAppStore.getState().csvGroups, content_attr: slice },
+    csvData: slice,
+  });
+}
+
 describe("ContentElementAnalyzer render smoke", () => {
   beforeEach(() => {
     seedNoData();
@@ -77,5 +94,15 @@ describe("ContentElementAnalyzer render smoke", () => {
     const points = container.querySelector(".result-action-card__points");
     expect(stats).toBeTruthy();
     expect(stats.compareDocumentPosition(points) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("abstains from a sparse binary element instead of over-reading four appearances", () => {
+    seedWithSparseElement();
+    render(<ContentElementAnalyzer />);
+
+    fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
+
+    expect(screen.getByText("추정 불가")).toBeTruthy();
+    expect(screen.getByText(/희소 요소\(rare_hook\)/)).toBeTruthy();
   });
 });

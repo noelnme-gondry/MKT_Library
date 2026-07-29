@@ -23,6 +23,7 @@ import { ELEMENT_COPY as C } from "@/utils/contentDomain";
 import { trackProductEvent } from "@/lib/analytics";
 
 const MUTED = "var(--text-muted)";
+const MIN_BINARY_SUPPORT = 5;
 
 // 셸 카피 KR/EN 팩(§EN 확장). ko = 기존 하드코딩 문자열과 byte-동일(출력 불변),
 // en = 번역. 도메인 카피(heroQ 등)는 ko가 contentDomain ELEMENT_COPY를 그대로 참조.
@@ -42,6 +43,7 @@ const EA_COPY = {
     outcomeHint: "설명하고 싶은 성과 숫자 1개를 고르세요.",
     featureLabel: C.featureLabel,
     featureHint: "성과에 영향을 줬을 만한 요소들을 고르세요(있음/없음은 0/1, 길이·개수는 숫자).",
+    featureDataHint: "콘텐츠 1건당 1행, 요소 1개당 1개 숫자 열로 준비하세요. 태그 중복은 업로드 전에 한 열로 합치고, ‘없음’은 빈칸 대신 0으로 적으세요(빈칸은 결측으로 제외됩니다).",
     needBoth: "⚠ 성과 1개 + 요소 1개 이상을 지정하세요",
     analyzedBadge: "✓ 분석 완료",
     analyzedHint: "컬럼을 바꾸면 결과가 숨겨지고 다시 분석해야 합니다.",
@@ -54,6 +56,9 @@ const EA_COPY = {
     errTooFewRows: (n, k) => `데이터 행이 요소 수 대비 너무 적습니다(행 ${n} · 변수 ${k}). 콘텐츠 편수를 늘리거나 요소 수를 줄이세요.`,
     errSingular: "요소들이 서로 너무 비슷(공선성)해 각 요소의 몫을 분리할 수 없습니다. 겹치는 요소를 하나만 남겨보세요.",
     errHighLeverage: "선택한 요소가 너무 적은 콘텐츠에만 나타나 강건한 불확실성을 계산할 수 없습니다. 해당 요소가 있는 콘텐츠와 없는 콘텐츠를 각각 2개 이상 확보하거나 희소 요소를 빼주세요.",
+    errConstantOutcome: "선택한 성과가 모든 유효 콘텐츠에서 같아 요소와의 관계를 추정할 수 없습니다. 값이 변하는 성과 지표를 고르세요.",
+    errSparseFeatures: (features) => `희소 요소(${features.join(", ")})는 있는 콘텐츠 또는 없는 콘텐츠가 5건 미만이라 과대해석 위험이 있어 결론에서 제외했습니다. 각 상태를 5건 이상 확보하거나 해당 요소를 빼세요.`,
+    excludedRows: (valid, total) => `유효 행 ${valid.toLocaleString()} / 입력 ${total.toLocaleString()}행`,
     heroQ: C.heroQ,
     heroSub: C.heroSub,
     topSigLabel: "🏆 가장 강한 요소",
@@ -62,8 +67,8 @@ const EA_COPY = {
     causationBody: C.causationBody,
     forestTitle: "어떤 요소가 성과와 연관됐나",
     ciLegendLabel: "HC3 95% 신뢰구간",
-    coefLegendLabel: "계수(추정 효과)",
-    axisTitle: (outcome) => `${outcome} 변화 (계수)`,
+    coefLegendLabel: "계수(추정 연관)",
+    axisTitle: (outcome) => `${outcome}와의 연관 계수`,
     tipSig: " (유의)",
     tipNs: " (무유의)",
     tipCoef: "계수",
@@ -72,7 +77,7 @@ const EA_COPY = {
     droppedPrefix: "무분산 제외: ",
     thElement: "요소",
     thCoef: "계수",
-    thCoefTip: "추정 효과(계수)",
+    thCoefTip: "다른 선택 요소를 함께 둔 관측 연관 계수(인과효과 아님)",
     thSeTip: "이분산에 강건한 HC3 표준오차",
     thTTip: "t = 계수/HC3 SE (연관 강도)",
     thRawPTip: "HC3 two-sided 원 p-value",
@@ -99,6 +104,7 @@ const EA_COPY = {
     outcomeHint: "Pick the one performance number you want to explain.",
     featureLabel: "Content elements (production attributes)",
     featureHint: "Pick the elements that might have driven the outcome (yes/no as 0/1; lengths and counts as numbers).",
+    featureDataHint: "Use one row per content piece and one numeric column per element. Combine duplicate tags before upload, and write 0—not a blank—for an absent tag (blanks are excluded as missing).",
     needBoth: "⚠ Choose 1 outcome + at least 1 element",
     analyzedBadge: "✓ Analysis done",
     analyzedHint: "Changing columns hides the results until you analyze again.",
@@ -111,6 +117,9 @@ const EA_COPY = {
     errTooFewRows: (n, k) => `Too few rows for the number of elements (rows ${n} · variables ${k}). Add more content pieces or drop some elements.`,
     errSingular: "The elements are too similar to each other (collinearity) to separate their contributions. Keep only one of any overlapping pair.",
     errHighLeverage: "A selected element appears in too few content pieces to estimate robust uncertainty. Add at least two pieces with and without that element, or remove the sparse element.",
+    errConstantOutcome: "The selected outcome is identical for every valid content piece, so its relationship with elements can't be estimated. Choose an outcome that varies.",
+    errSparseFeatures: (features) => `Sparse element(s) (${features.join(", ")}) have fewer than 5 content pieces with or without the element, so they are excluded from the conclusion to avoid over-reading them. Collect at least 5 of each state or remove the element.`,
+    excludedRows: (valid, total) => `${valid.toLocaleString()} valid / ${total.toLocaleString()} input rows`,
     heroQ: "Which production elements drive performance?",
     heroSub: "Puts your content pieces' production attributes and outcomes (CTR, views) side by side, and uses multivariate regression to isolate the elements significantly associated with performance.",
     topSigLabel: "🏆 Strongest element",
@@ -119,8 +128,8 @@ const EA_COPY = {
     causationBody: "These results are <strong>associations</strong>, not <strong>causation</strong>. Skilled creators tend to use several good elements together (confounding), so changing one element in isolation may behave differently. Confirm with an <strong>A/B test</strong> that changes exactly one element.",
     forestTitle: "Which elements are associated with the outcome",
     ciLegendLabel: "HC3 95% confidence interval",
-    coefLegendLabel: "Coefficient (estimated effect)",
-    axisTitle: (outcome) => `Change in ${outcome} (coefficient)`,
+    coefLegendLabel: "Coefficient (estimated association)",
+    axisTitle: (outcome) => `Association coefficient with ${outcome}`,
     tipSig: " (significant)",
     tipNs: " (not significant)",
     tipCoef: "coef",
@@ -129,7 +138,7 @@ const EA_COPY = {
     droppedPrefix: "No-variance excluded: ",
     thElement: "Element",
     thCoef: "Coef",
-    thCoefTip: "Estimated effect (coefficient)",
+    thCoefTip: "Observed association coefficient with other selected elements included (not causal effect)",
     thSeTip: "HC3 heteroskedasticity-robust standard error",
     thTTip: "t = coef/HC3 SE (association strength)",
     thRawPTip: "Raw HC3 two-sided p-value",
@@ -156,6 +165,16 @@ function isNumericColumn(rows, header) {
 }
 
 const num = (v) => parseFloat(String(v == null ? "" : v).replace(/,/g, ""));
+
+function numberRange(values) {
+  let min = Infinity, max = -Infinity;
+  for (const value of values) {
+    if (!isFinite(value)) continue;
+    min = Math.min(min, value);
+    max = Math.max(max, value);
+  }
+  return { min, max };
+}
 
 /* 성과(종속) 컬럼 자동 추정 — 이름이 성과성이면 우선, 아니면 마지막 숫자 컬럼. */
 function guessOutcome(numericCols) {
@@ -269,38 +288,60 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
   // ── 회귀 적합 (REG_STATS.ols) ──────────────────────────────────────────────
   const fit = useMemo(() => {
-    if (!hasData || !outcome || !features.length) return null;
+    // 매핑을 고르는 동안에는 대용량 CSV를 재계산하지 않는다. 분석 실행 시점의
+    // signature만 적합해 결과와 입력이 어긋나는 일도 막는다.
+    if (!analyzed || !hasData || !outcome || !features.length) return null;
     // 상수(무분산) 피처 드롭 → 특이행렬 방지 + 정직 안내.
     const dropped = [];
     const useFeatures = features.filter((f) => {
       const vals = csvData.raw.map((r) => num(r[f])).filter(isFinite);
-      const mn = Math.min(...vals), mx = Math.max(...vals);
-      if (!(mx > mn)) { dropped.push(f); return false; }
+      const { min, max } = numberRange(vals);
+      if (!(max > min)) { dropped.push(f); return false; }
       return true;
     });
     if (!useFeatures.length) return { error: "no-variance", dropped };
 
-    const X = [], y = [];
-    for (const r of csvData.raw) {
+    const completeRows = (includedFeatures) => csvData.raw.filter((r) => {
       const yv = num(r[outcome]);
-      const xs = useFeatures.map((f) => num(r[f]));
-      if (!isFinite(yv) || xs.some((v) => !isFinite(v))) continue;
-      X.push([1, ...xs]);
-      y.push(yv);
-    }
-    const n = X.length, k = useFeatures.length + 1;
-    if (n < k + 2) return { error: "too-few-rows", n, k, dropped };
+      return isFinite(yv) && includedFeatures.every((f) => isFinite(num(r[f])));
+    });
+    // 0/1 태그는 한쪽 상태가 5건 미만이면 극단적인 몇 행이 계수를 지배한다.
+    // 이때는 억지로 추정하지 않고 요소 자체를 결론에서 제외한다.
+    const sparse = [];
+    const supportedFeatures = useFeatures.filter((f) => {
+      const values = csvData.raw
+        .filter((r) => isFinite(num(r[outcome])) && isFinite(num(r[f])))
+        .map((r) => num(r[f]));
+      const isBinary = values.every((v) => v === 0 || v === 1);
+      if (!isBinary) return true;
+      const present = values.filter((v) => v === 1).length;
+      const absent = values.length - present;
+      if (present < MIN_BINARY_SUPPORT || absent < MIN_BINARY_SUPPORT) {
+        sparse.push(f);
+        return false;
+      }
+      return true;
+    });
+    if (!supportedFeatures.length) return { error: "sparse-features", dropped, sparse, n: 0, inputRows: csvData.raw.length };
+
+    const validRows = completeRows(supportedFeatures);
+    const X = validRows.map((r) => [1, ...supportedFeatures.map((f) => num(r[f]))]);
+    const y = validRows.map((r) => num(r[outcome]));
+    const n = X.length;
+    if (n < supportedFeatures.length + 3) return { error: "too-few-rows", n, k: supportedFeatures.length, dropped, sparse, inputRows: csvData.raw.length };
+    const { min: yMin, max: yMax } = numberRange(y);
+    if (!(yMax > yMin)) return { error: "constant-outcome", n, k: supportedFeatures.length, dropped, sparse, inputRows: csvData.raw.length };
 
     let res;
     try { res = REG_STATS.ols(X, y); } catch { return { error: "singular", dropped }; }
-    if (!res || res.regularized || !isFinite(res.R2) || res.se.some((s) => !isFinite(s))) return { error: "singular", dropped };
-    if (!res.hc3Valid) return { error: "high-leverage", dropped, maxLeverage: res.maxLeverage };
+    if (!res || res.regularized || !isFinite(res.R2) || res.se.some((s) => !isFinite(s))) return { error: "singular", dropped, sparse, inputRows: csvData.raw.length };
+    if (!res.hc3Valid) return { error: "high-leverage", dropped, sparse, maxLeverage: res.maxLeverage, inputRows: csvData.raw.length };
 
     const isBinaryFeature = (f) => {
-      const set = new Set(csvData.raw.map((r) => num(r[f])).filter(isFinite));
+      const set = new Set(validRows.map((r) => num(r[f])));
       return [...set].every((v) => v === 0 || v === 1);
     };
-    const rows = useFeatures.map((f, j) => {
+    const rows = supportedFeatures.map((f, j) => {
       const idx = j + 1; // 절편이 0
       const p2 = res.hc3Pval[idx]; // REG_STATS.tSF가 이미 two-sided p-value 반환.
       return {
@@ -327,10 +368,10 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
     // 중요도 = 연관 강도(|t|) 내림차순 — 단위 무관 비교(§honesty: effect-size 아님).
     rows.sort((a, b) => Math.abs(b.t) - Math.abs(a.t));
     return {
-      rows, n, k, dropped,
+      rows, n, k: supportedFeatures.length, dropped, sparse, inputRows: csvData.raw.length, excludedRows: csvData.raw.length - n,
       R2: res.R2, adjR2: res.adjR2, intercept: res.beta[0], outcome,
     };
-  }, [hasData, csvData, outcome, features]);
+  }, [analyzed, hasData, csvData, outcome, features]);
 
   useEffect(() => {
     if (!analyzed) return;
@@ -432,8 +473,6 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
   const canAnalyze = !!outcome && features.length > 0;
   const topSig = fit && !fit.error ? fit.rows.find((r) => r.sig) : null;
-  const effDir = (coef) => (coef >= 0 ? "높이는" : "낮추는");
-
   return (
     <div className="tab-pane active">
       {isDemo && (
@@ -484,6 +523,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
                 );
               })}
             </div>
+            <div style={{ fontSize: "11px", color: MUTED, marginTop: "7px", lineHeight: 1.45 }}>{T.featureDataHint}</div>
           </div>
         </div>
 
@@ -515,6 +555,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               {fit.error === "too-few-rows" && T.errTooFewRows(fit.n || 0, fit.k || 0)}
               {fit.error === "singular" && T.errSingular}
               {fit.error === "high-leverage" && T.errHighLeverage}
+              {fit.error === "constant-outcome" && T.errConstantOutcome}
+              {fit.error === "sparse-features" && T.errSparseFeatures(fit.sparse || [])}
             </p>
           </div>
         </section>
@@ -530,8 +572,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               title={T.heroQ}
               headline={topSig
                 ? tr(
-                    `${topSig.name}: ${fit.outcome} ${effDir(topSig.coef)} 신호가 가장 강합니다.`,
-                    `${topSig.name} has the strongest signal associated with ${topSig.coef >= 0 ? "raising" : "lowering"} ${fit.outcome}.`,
+                    `${topSig.name}: ${fit.outcome}가 ${topSig.coef >= 0 ? "높은" : "낮은"} 쪽과 가장 강하게 연관된 신호입니다.`,
+                    `${topSig.name} has the strongest association with a ${topSig.coef >= 0 ? "higher" : "lower"} ${fit.outcome}.`,
                   )
                 : tr("유의한 요소를 확정할 증거가 아직 부족합니다.", "There is not enough evidence to confirm a significant element yet.")}
               points={[
@@ -545,8 +587,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               ]}
               stats={[
                 { label: tr("가장 강한 요소", "Strongest element"), value: topSig?.name || "—" },
-                { label: tr("효과 크기", "Effect size"), value: topSig ? `${topSig.coef >= 0 ? "+" : ""}${topSig.coef.toFixed(topSig.binary ? 2 : 3)}` : "—", detail: topSig ? `BH p=${topSig.p.toFixed(3)}` : tr("증거 부족", "Insufficient evidence") },
-                { label: tr("유효 행", "Valid rows"), value: fit.n.toLocaleString() },
+                { label: tr("연관 계수", "Association coefficient"), value: topSig ? `${topSig.coef >= 0 ? "+" : ""}${topSig.coef.toFixed(topSig.binary ? 2 : 3)}` : "—", detail: topSig ? `BH p=${topSig.p.toFixed(3)}` : tr("증거 부족", "Insufficient evidence") },
+                { label: tr("유효 행", "Valid rows"), value: fit.n.toLocaleString(), detail: T.excludedRows(fit.n, fit.inputRows) },
                 { label: tr("분석 요소", "Features"), value: `${fit.k}${tr("개", "")}`, detail: fit.dropped.length ? tr(`${fit.dropped.length}개 제외`, `${fit.dropped.length} dropped`) : tr("제외 없음", "None dropped") },
               ]}
               collapsePointsAfter={1}
@@ -564,7 +606,9 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               version="content-elements-v1"
               metricDefinition={tr("BH 보정 p<0.05를 유의 연관으로 표시하고 95% HC3 구간을 함께 표시합니다.", "BH-adjusted p<0.05 marks an association candidate; pointwise HC3 95% intervals are shown.")}
               warnings={[
-                ...(fit.dropped.length ? [tr("분산 0·완전 공선·고레버리지 요소는 추정에서 제외됐습니다.", "Zero-variance, perfectly collinear, or high-leverage features were excluded.")] : []),
+                ...(fit.dropped.length ? [tr("분산 0인 요소는 추정에서 제외됐습니다.", "Zero-variance elements were excluded from estimation.")] : []),
+                ...(fit.sparse.length ? [tr(`희소 요소(${fit.sparse.join(", ")})는 있는/없는 콘텐츠가 각각 5건 미만이라 결론에서 제외됐습니다.`, `Sparse element(s) (${fit.sparse.join(", ")}) have fewer than 5 contents in one state and were excluded from the conclusion.`)] : []),
+                ...(fit.excludedRows ? [tr(`성과 또는 선택 요소가 비어 있는 ${fit.excludedRows.toLocaleString()}행은 추정에서 제외됐습니다. 빈칸을 ‘없음’으로 가정하지 않았습니다.`, `${fit.excludedRows.toLocaleString()} rows with a missing outcome or selected element were excluded; blanks were not assumed to mean absence.`)] : []),
                 tr("희소 요소와 플랫폼 선택 편향은 불확실성을 키웁니다. 실험으로 확인하세요.", "Sparse elements and platform selection bias increase uncertainty. Confirm with an experiment."),
               ]}
             />
