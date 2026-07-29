@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { idToSlug } from "@/lib/routeMap";
+import { responseStageHref } from "@/lib/responseStage";
 
 const INTRO = {
   "5-4": {
@@ -7,8 +8,8 @@ const INTRO = {
     en: ["Experiment analysis", "Check whether the difference is more than chance and whether the next experiment decision is justified."],
   },
   "5-18": {
-    ko: ["광고 카니발라이제이션 진단", "유료 광고가 오가닉 성과를 잠식하는지 먼저 점검하고, 의심 채널의 기여도·회귀·예산 시나리오를 한 흐름으로 봅니다."],
-    en: ["Ad cannibalization diagnosis", "Check whether paid ads may displace organic outcomes, then review suspect-channel contribution, regression, and budget scenarios in one flow."],
+    ko: ["마케팅 반응 분석", "CSV를 한 번 매핑한 뒤 추세·카니발·MMM 기여·회귀 예측 중 필요한 분석만 따로 실행합니다."],
+    en: ["Marketing response analysis", "Map the CSV once, then run only the trend, cannibalization, MMM contribution, or regression forecast you need."],
   },
   "5-3": {
     ko: ["마케팅 예산 배분", "채널별 한계 효율과 지출 여력으로 다음 예산을 어디에 늘리고 줄일지 시뮬레이션합니다."],
@@ -38,8 +39,8 @@ const TOOL_CROSS_LINK = {
     en: { label: "Next step", toolId: "5-3", cta: "Simulate suspect-channel budget moves" },
   },
   "5-3": {
-    ko: { label: "예산 이동 전", toolId: "5-18", cta: "광고 잠식 먼저 점검" },
-    en: { label: "Before moving budget", toolId: "5-18", cta: "Check ad cannibalization first" },
+    ko: { label: "예산 이동 전", toolId: "5-18", stage: "diagnose", cta: "광고 잠식 먼저 점검" },
+    en: { label: "Before moving budget", toolId: "5-18", stage: "diagnose", cta: "Check ad cannibalization first" },
   },
 };
 
@@ -53,7 +54,7 @@ export default function ToolIntro({ toolId, locale = "ko" }) {
     <p><strong>{copy[0]}</strong> — {copy[1]}</p>
     {crossLink && <div className="tool-context-header__next">
       <span>{crossLink.label}</span>
-      <Link href={`${locale === "en" ? "/en" : ""}${idToSlug[crossLink.toolId]}`}>{crossLink.cta} <b aria-hidden>→</b></Link>
+      <Link href={crossLink.toolId === "5-18" && crossLink.stage ? responseStageHref(crossLink.stage, locale) : `${locale === "en" ? "/en" : ""}${idToSlug[crossLink.toolId]}`}>{crossLink.cta} <b aria-hidden>→</b></Link>
     </div>}
   </aside>;
 }

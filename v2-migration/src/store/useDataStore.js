@@ -342,6 +342,12 @@ export const useAppStore = create(persist((set, get) => ({
   // 기존 호출부 호환용 분석 실행 래퍼. 전면 광고 게이트는 제거했고 즉시 실행한다.
   requestAd: (cb) => { if (cb) cb(); },
 
+  // 5-18 허브에서 확정한 컬럼 역할은 같은 브라우저 세션의 하위 분석 화면에서만
+  // 이어 쓴다. CSV 원본과 함께 persist하지 않으므로 새로고침 뒤에는 재업로드가
+  // 필요하며, 민감 원자료가 localStorage에 남지 않는다.
+  responseMappingSession: { raw: null, colMap: null, weekStart: "monday" },
+  setResponseMappingSession: (session) => set({ responseMappingSession: session }),
+
   // CSV Data State — group-scoped slices + an active-group mirror.
   // Consumers keep reading `s.csvData` unchanged; scoping happens by storing
   // per-group and swapping the mirror on route change (see setCurrentRouteId).
@@ -386,7 +392,10 @@ export const useAppStore = create(persist((set, get) => ({
     const csvClearedByGroup = hasRows
       ? { ...state.csvClearedByGroup, [g]: false }
       : state.csvClearedByGroup;
-    return { csvGroups: { ...state.csvGroups, [g]: data }, csvData: data, analyzedByGroup, csvClearedByGroup };
+    const responseMappingSession = g === "response" && state.responseMappingSession.raw !== data.raw
+      ? { raw: null, colMap: null, weekStart: "monday" }
+      : state.responseMappingSession;
+    return { csvGroups: { ...state.csvGroups, [g]: data }, csvData: data, analyzedByGroup, csvClearedByGroup, responseMappingSession };
   }),
   // 결과 허브에서 "같은 데이터로 상세 분석"을 고르면 대상 그룹에만 재매핑된 사본을
   // 넣는다. 원본은 브라우저 메모리에만 있고, 대상 도구를 바로 열 수 있게 gate도 확인한다.

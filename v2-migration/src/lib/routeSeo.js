@@ -59,6 +59,22 @@ export const ROUTE_SEO = {
       description: "Check four signals that paid ads may be displacing organic outcomes, then narrow the channels that need holdout validation or a budget review.",
     },
   },
+  "5-18-trend": {
+    ko: { title: "마케팅 추세 분석", description: "광고 판단 전 자연 추세·계절성·이상 주차를 분리해 성과 변화의 기준선을 확인합니다." },
+    en: { title: "Marketing Trend Analysis", description: "Separate natural trend, seasonality, and irregular weeks before interpreting marketing performance." },
+  },
+  "5-18-cannibal": {
+    ko: { title: "광고 카니발 진단", description: "유료 광고가 오가닉 성과를 잠식하는지 채널별 네 가지 신호로 점검합니다." },
+    en: { title: "Ad Cannibalization Diagnosis", description: "Check four channel-level signals that paid advertising may be displacing organic outcomes." },
+  },
+  "5-18-mmm": {
+    ko: { title: "MMM 기여도 분석", description: "채널·기본 수요·이벤트의 성과 기여를 마케팅 믹스 모델로 분해합니다." },
+    en: { title: "MMM Contribution Analysis", description: "Use marketing mix modeling to decompose channel, base-demand, and event contribution." },
+  },
+  "5-18-forecast": {
+    ko: { title: "마케팅 회귀 예측", description: "예측 전용 회귀와 봉인 OOS 검증으로 다음 기간의 성과와 불확실성을 확인합니다." },
+    en: { title: "Marketing Regression Forecast", description: "Use forecast-only regression and sealed OOS validation to assess the next period and its uncertainty." },
+  },
   "5-3": {
     ko: {
       title: "마케팅 예산 배분",

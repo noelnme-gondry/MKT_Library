@@ -183,6 +183,20 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.querySelector("*")).toBeTruthy();
   });
 
+  it("uses the hub only to choose an independent analysis after mapping", async () => {
+    seedWithData();
+    const { container } = render(<MarketingResponse initialStage="hub" />);
+    const saveMapping = Array.from(container.querySelectorAll("button")).find((button) => button.textContent.includes("매핑 저장 후 분석 선택"));
+    expect(saveMapping).toBeTruthy();
+    fireEvent.click(saveMapping);
+    await flushRaf();
+    const links = Array.from(container.querySelectorAll("a")).map((link) => link.getAttribute("href"));
+    expect(links).toContain("/tools/marketing-trend");
+    expect(links).toContain("/tools/cannibalization-diagnosis");
+    expect(links).toContain("/tools/mmm-contribution");
+    expect(links).toContain("/tools/marketing-forecast");
+  });
+
   it("summarizes the loaded forecast result into a concrete hold/action recommendation", () => {
     const insight = buildForecastAssistInsight({
       isAdditiveTotal: true,

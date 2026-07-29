@@ -1,4 +1,4 @@
-import { ROUTES, SITE_URL, EN_READY_TOOL_IDS, EN_READY_GUIDE_IDS, idToPath, isRoutePublished } from "@/lib/routeMap";
+import { ROUTES, SITE_URL, EN_READY_TOOL_IDS, EN_READY_GUIDE_IDS, EN_READY_RESPONSE_SUBTOOL_IDS, idToPath, isRoutePublished } from "@/lib/routeMap";
 import { getAllPosts, getAllTags } from "@/lib/blog";
 import { getAllTerms } from "@/lib/glossary";
 
@@ -29,6 +29,14 @@ export default function sitemap() {
         : r.slug.startsWith("/tools/") || r.slug === "/dashboard"
         ? 0.8
         : 0.6,
+  }));
+  // 5-18 하위 분석은 전역 사이드바에는 보이지 않지만 블로그에서 직접 진입하는
+  // 독립 URL이다. 일반 도구 여정에는 넣지 않고 sitemap에는 명시적으로 포함한다.
+  const responseSubtoolEntries = ROUTES.filter((r) => r.publication === "subtool").map((r) => ({
+    url: BASE + r.slug,
+    lastModified: PRODUCT_LAST_MODIFIED,
+    changeFrequency: "weekly",
+    priority: 0.75,
   }));
 
   const posts = getAllPosts();
@@ -128,8 +136,14 @@ export default function sitemap() {
     changeFrequency: "weekly",
     priority: 0.8,
   }));
+  const enResponseSubtoolEntries = [...EN_READY_RESPONSE_SUBTOOL_IDS].map((id) => ({
+    url: `${BASE}/en${idToPath(id)}`,
+    lastModified: PRODUCT_LAST_MODIFIED,
+    changeFrequency: "weekly",
+    priority: 0.75,
+  }));
 
-  return [...routeEntries, ...blogEntries, ...templateEntries, ...standaloneEntries, ...glossaryEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enGlossaryEntries, ...enToolEntries];
+  return [...routeEntries, ...responseSubtoolEntries, ...blogEntries, ...templateEntries, ...standaloneEntries, ...glossaryEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enGlossaryEntries, ...enToolEntries, ...enResponseSubtoolEntries];
 }
 
 function getPostsByTagSafe(tagSlug, posts) {

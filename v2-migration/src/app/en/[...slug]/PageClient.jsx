@@ -41,6 +41,7 @@ export default function PageClient({ params, initialSopData = null }) {
   const { slug } = use(params);
   const routeId = resolveSlugToId(slug);
   const responseStage = resolveResponseStage(useSearchParams().get("stage"));
+  const isResponseSubtool = ["5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast"].includes(routeId);
 
   // Unknown URL -> 404. Known but untranslated -> KR canonical (thin/half-EN
   // page never gets served or indexed — §plan EN_READY_TOOL_IDS gate).
@@ -63,8 +64,8 @@ export default function PageClient({ params, initialSopData = null }) {
           <article className="content" id="content">
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge locale="en" />}
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} locale="en" />}
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <ToolConnections toolId={routeId} locale="en" />}
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <ToolAssistRail toolId={routeId} locale="en" />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolConnections toolId={routeId} locale="en" />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolAssistRail toolId={routeId} locale="en" />}
 
             {routeId === "start-gate" && <StartGate locale="en" />}
             {routeId === "5-2" && <Dashboard locale="en" />}
@@ -73,7 +74,11 @@ export default function PageClient({ params, initialSopData = null }) {
             {routeId === "5-22" && <MarketingEfficiency locale="en" />}
             {routeId === "9-6" && <ContentFreshness locale="en" />}
             {routeId === "5-4" && <AbTestHoldout locale="en" />}
-            {routeId === "5-18" && <MarketingResponse key={`marketing-response-${responseStage}`} locale="en" initialStage={responseStage} />}
+            {routeId === "5-18" && <MarketingResponse key={`marketing-response-${responseStage}`} locale="en" initialStage={responseStage} isolated={responseStage !== "hub"} />}
+            {routeId === "5-18-trend" && <MarketingResponse locale="en" initialStage="trend" isolated />}
+            {routeId === "5-18-cannibal" && <MarketingResponse locale="en" initialStage="diagnose" isolated />}
+            {routeId === "5-18-mmm" && <MarketingResponse locale="en" initialStage="mmm" isolated />}
+            {routeId === "5-18-forecast" && <MarketingResponse locale="en" initialStage="lab" isolated />}
             {routeId === "5-20" && <AhaMomentFinder locale="en" />}
             {routeId === "5-23" && <Incrementality locale="en" />}
             {routeId === "9-1" && <ContentElementAnalyzer locale="en" />}

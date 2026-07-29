@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import Link from "next/link";
 import Papa from "papaparse";
 import Chart from "chart.js/auto";
 import * as XLSX from "xlsx";
@@ -3365,14 +3366,14 @@ export function buildForecastAssistInsight(forecast, recentBacktest, forecastSce
   };
 }
 
-export default function MarketingResponse({ locale = "ko", initialStage = "trend" }) {
+export default function MarketingResponse({ locale = "ko", initialStage = "trend", isolated = false }) {
   // 3단계(index MMM_STAGE_DEFS): diagnose | mmm | lab. 구 "forecast" 스테이지는 lab에 흡수 —
   // ③ lab이 mmmForecast(②계수) §7 미래예측을 렌더(stage==="lab"). 셋 다 shared mmmColMap 사용.
   const tx = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]); // 인라인 텍스트 로컬라이즈 헬퍼(§12.20 v2 i18n 패턴)
   const bucketMeta = mmmBucketMeta(locale);
   // URL에서 전달받은 단계는 라우팅 레이어가 검증하지만, 컴포넌트 단독 사용·테스트도
   // 안전하도록 여기서 한 번 더 폴백한다. 모델 계산·데이터 계약에는 관여하지 않는다.
-  const [stage, setStage] = useState(() => resolveResponseStage(initialStage)); // trend | diagnose | mmm | lab
+  const [stage, setStage] = useState(() => resolveResponseStage(initialStage)); // hub | trend | diagnose | mmm | lab
   const [target, setTarget] = useState("Regs");
   const [mmmMode, setMmmMode] = useState("classic"); // classic = standard Classic path, bayesian = posterior channel fit
   const [decompGrouped, setDecompGrouped] = useState(true); // §5.5 true=4버킷 묶음 / false=광고 개별채널
@@ -3411,6 +3412,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const [priorEvidence, setPriorEvidence] = useState({ experiment: null, country: null });
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
+  const responseMappingSession = useAppStore((state) => state.responseMappingSession);
+  const setResponseMappingSession = useAppStore((state) => state.setResponseMappingSession);
   const demoDisabled = useAppStore((state) => state.demoDisabled);
   const requestAd = useAppStore((state) => state.requestAd);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
@@ -3431,8 +3434,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // 5-18 = colMap DnD가 PRIMARY 매퍼(index.html page_5_18 이식). 단일 generic CSV를
   // 주차/날짜/가입/재활성/채널(perf·brand)/더미/step 역할로 드래그 → 모든 분석(진단·MMM·시뮬)
   // 이 이 하나의 패널을 공유. 표준필드(DataFeatureMatrix) 경로 미사용.
-  const [mmmColMap, setMmmColMap] = useState(null);
-  const [mmmWeekStart, setMmmWeekStart] = useState("monday");
+  const [mmmColMap, setMmmColMap] = useState(() => responseMappingSession?.colMap || null);
+  const [mmmWeekStart, setMmmWeekStart] = useState(() => responseMappingSession?.weekStart || "monday");
   const [mmmAnalyzedSig, setMmmAnalyzedSig] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const analysisEventRef = useRef(null);
@@ -3471,7 +3474,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // 페인트(더블 rAF)한 뒤 시그니처를 커밋 → "멈춤" 대신 "분석 중" 표시(§7 성능).
   // 분석 시작은 현재 매핑 위치에서 하는 행동이므로 스크롤을 강제로 옮기지 않는다.
   const runMmmAnalyze = (sig) => {
-    trackProductEvent("analysis_started", { tool_id: "5-18", source: isDemo ? "demo" : "csv", row_count: csvData?.raw?.length || 0, analysis_type: "mmm" });
+    trackProductEvent("analysis_started", { tool_id: "5-18", source: isDemo ? "demo" : "csv", row_count: csvData?.raw?.length || 0, analysis_type: stage === "hub" ? "mapping" : stage });
     deferMmmUpdate(() => setMmmAnalyzedSig(sig));
   };
   // 플랫폼 필터(Total/Android/iOS) — colMap 헤더 태그(_android/_ios) 기준. 태그 없으면 토글 자체 숨김.
@@ -3481,6 +3484,14 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const csvSig = hasData ? `${csvData.fileName}|${(csvData.headers || []).join(",")}` : "";
   const colMapSig = mmmColMap ? JSON.stringify(mmmColMap) : "";
   const mmmAnalysisSig = `${colMapSig}\u001fweek-start:${mmmWeekStart}`;
+  const saveResponseMapping = useCallback((nextMap = mmmColMap, nextWeekStart = mmmWeekStart) => {
+    if (!csvData?.raw?.length || !nextMap) return;
+    setResponseMappingSession({ raw: csvData.raw, colMap: nextMap, weekStart: nextWeekStart });
+  }, [csvData.raw, mmmColMap, mmmWeekStart, setResponseMappingSession]);
+  const updateMmmColMap = useCallback((nextMap) => {
+    setMmmColMap(nextMap);
+    saveResponseMapping(nextMap, mmmWeekStart);
+  }, [saveResponseMapping, mmmWeekStart]);
   const prevCsvSig = useRef(null);
   const prevCsvRaw = useRef(null);
   // Set by the demo button so the auto-guessed colMap is also auto-confirmed
@@ -3491,9 +3502,14 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     // 비교하면 이전 수동 매핑이 새 데이터에 남아 계절·이벤트 역할이 달라질 수
     // 있으므로, 실제 원자료가 바뀌면 항상 다시 추정하고 분석 게이트를 닫는다.
     if (hasData && mmmCsvSourceChanged(prevCsvSig.current, csvSig, prevCsvRaw.current, csvData.raw)) {
-      const guess = autoGuessColMap(csvData.headers, csvData.raw);
+      const saved = responseMappingSession?.raw === csvData.raw ? responseMappingSession : null;
+      const guess = saved?.colMap || autoGuessColMap(csvData.headers, csvData.raw);
+      const weekStart = saved?.weekStart || mmmWeekStart;
       setMmmColMap(guess);
-      setMmmAnalyzedSig(demoPending.current ? `${JSON.stringify(guess)}\u001fweek-start:${mmmWeekStart}` : null);
+      setMmmWeekStart(weekStart);
+      // 허브에서 저장한 매핑으로 독립 화면에 직접 들어온 경우에는 다시 매핑을
+      // 요구하지 않는다. 새 CSV·데모만 명시적으로 분석 확인을 거친다.
+      setMmmAnalyzedSig(saved || demoPending.current ? `${JSON.stringify(guess)}\u001fweek-start:${weekStart}` : null);
       setSelectedEvidence({ experiment: false, country: false });
       setPriorEvidence({ experiment: null, country: null });
       demoPending.current = false;
@@ -3505,7 +3521,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       prevCsvSig.current = null;
       prevCsvRaw.current = null;
     }
-  }, [hasData, csvSig, csvData.headers, csvData.raw, mmmWeekStart]);
+  }, [hasData, csvSig, csvData.headers, csvData.raw, mmmWeekStart, responseMappingSession]);
 
   // 파일 업로드(자체 dropzone — 5-18은 표준 CsvUploader/DataFeatureMatrix 미사용).
   const mmmFileRef = useRef(null);
@@ -3550,6 +3566,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     if (weekStart === mmmWeekStart) return;
     const shouldReanalyze = mmmAnalyzed;
     setMmmWeekStart(weekStart);
+    saveResponseMapping(mmmColMap, weekStart);
     if (shouldReanalyze) deferMmmUpdate(() => setMmmAnalyzedSig(`${colMapSig}\u001fweek-start:${weekStart}`));
   };
 
@@ -3578,12 +3595,51 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const simpleRef = useRef(null);
   const irfRef = useRef(null);
 
+  // 추세·카니발·예측은 전체 MMM 기여 적합을 선행 조건으로 두지 않는다. 공통으로
+  // 필요한 것은 매핑된 주간 패널과 데이터 품질 검사뿐이며, 이 가벼운 번들은 각
+  // 독립 화면에서만 만든다. MMM 화면만 아래의 무거운 Classic 적합을 실행한다.
+  const responseBaseBundle = useMemo(() => {
+    if (!hasData || !mmmAnalyzed || stage === "hub") return null;
+    try {
+      if (!mmmColMap) return { empty: true, reason: tx("컬럼 역할을 매핑하세요 (날짜/주차 · 목표 Y · 채널 spend).", "Map column roles (date/week · target Y · channel spend).") };
+      const built = buildPanelFromColMap(csvData.headers, csvData.raw, mmmColMap, effPlatformFilter, locale, null, { weekStart: mmmWeekStart });
+      if (built.missing.length) return { empty: true, reason: tx("필수 역할 미지정: ", "Required role not set: ") + built.missing.join(", ") };
+      const panel = trimToActive(built.panel);
+      const cfg = { ...MMM_METH_CONFIG, absorbed: new Set() };
+      const resolvedTarget = pickTarget(panel, target);
+      const dataQuality = mmmDataQualityAudit(panel);
+      if (!dataQuality.valid) return { empty: true, reason: tx(`데이터 품질 게이트 미통과: ${dataQuality.issues.join(", ")}`, `Data-quality gate failed: ${dataQuality.issues.join(", ")}`), dataQuality, panel };
+      const validate = mmmValidate(panel, locale, resolvedTarget);
+      if (validate.issues?.length) return { empty: true, reason: validate.issues.join(" "), issues: validate.issues, validate, panel };
+      const absorb = mmmResolveAbsorb(panel, cfg);
+      cfg.absorbed = absorb.absorbed;
+      return {
+        empty: false,
+        panel,
+        cfg,
+        target: resolvedTarget,
+        validate,
+        absorb,
+        derived: {
+          availableTargets: MMM_USER_TARGETS.filter((candidate) => Object.prototype.hasOwnProperty.call(panel.targets, candidate)),
+          targetSources: {
+            Traffic: built.roles.traffic.map((item) => item.header), Regs: built.roles.reg.map((item) => item.header),
+            React: built.roles.react.map((item) => item.header), Purchasers: built.roles.purchasers.map((item) => item.header), Revenue: built.roles.revenue.map((item) => item.header),
+          },
+        },
+      };
+    } catch (error) {
+      return { empty: true, reason: tx("분석 오류: ", "Analysis error: ") + String(error?.message || error) };
+    }
+  }, [hasData, mmmAnalyzed, stage, mmmColMap, csvData, effPlatformFilter, locale, mmmWeekStart, target, tx]);
+
   // ── MMM 캐시 (buildMmmMethCache 축약) — 매핑·데이터·target·model 변경 시 재계산 ──
   const mmmBundle = useMemo(() => {
     if (!hasData) return null;
     // 분석 게이트(index 분석하기): 매핑 확정 전엔 무거운 엔진(mmmRunMmm 등)을 돌리지 않음 —
     // 드래그 도중 반쯤 매핑된 colMap으로 엔진이 도는 것을 막고(성능·크래시 방지) 게이트 후에만 계산.
     if (!mmmAnalyzed) return { empty: true, reason: tx("매핑 확정(분석하기) 후 결과가 표시됩니다.", "Results appear after you confirm the mapping (Analyze).") };
+    if (stage !== "mmm") return null;
     try {
       // colMap(PRIMARY) → 패널. 미완성이면 매핑 안내(패널 empty).
       if (!mmmColMap) return { empty: true, reason: tx("컬럼 역할을 매핑하세요 (날짜/주차 · 목표 Y · 채널 spend).", "Map column roles (date/week · target Y · channel spend).") };
@@ -4488,9 +4544,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       }
       return { empty: true, reason: tx("분석 오류: ", "Analysis error: ") + msg };
     }
-  }, [hasData, csvData, target, mmmMode, mmmColMap, mmmAnalyzed, mmmAnalyzedSig, colMapSig, mmmWeekStart, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence]);
+  }, [hasData, csvData, target, mmmMode, mmmColMap, mmmAnalyzed, mmmAnalyzedSig, colMapSig, mmmWeekStart, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence, stage]);
 
-  const mmm = mmmBundle;
+  const mmm = stage === "mmm" ? mmmBundle : responseBaseBundle;
 
   useEffect(() => {
     if (!mmmAnalyzed) return;
@@ -4517,7 +4573,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
 
   // 모델 적합은 항상 전체 이력으로 한 번만 한다. 이 범위는 재학습 조건이 아니라
   // 결과를 읽는 창이다. 따라서 아래 모든 날짜 기반 뷰는 같은 주 구간을 공유한다.
-  const contributionFilterDates = useMemo(() => (mmm && !mmm.empty
+  const contributionFilterDates = useMemo(() => (mmm?.run?.weeks
     ? mmm.run.weeks.map((week, index) => {
       const raw = isoDateFromLabel(mmm.panel.dateLabel?.[index] || mmm.panel.weekLabel?.[index]);
       return { index, label: String(mmm.panel.weekLabel?.[index] || week.week), start: weekBoundaryDate(raw, mmmWeekStart, "start"), end: weekBoundaryDate(raw, mmmWeekStart, "end") };
@@ -5653,7 +5709,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
 
   // index.html MMM_STAGE_DEFS(3단계) + renderMmmStageTabs 카드형 탭 이식. 구 "시뮬레이션"(TF)은
   // §12.15대로 회귀·미래예측(lab)에 흡수. 카드: no·아이콘·제목·설명 + active 하이라이트.
-  const renderTabs = () => (
+  const renderTabs = () => {
+    if (isolated) return null;
+    return (
     <section className="block" style={{ padding: 0, border: "none", background: "none", marginBottom: "20px" }}>
       <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
         {mmmStageDefs(locale).map((d) => {
@@ -5677,7 +5735,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         })}
       </div>
     </section>
-  );
+    );
+  };
 
   // 5-18 전용 템플릿 — colMap 방식이라 표준필드 경로(효율 template)와 무관, 자체 헤더+예시.
   const downloadMmmTemplate = () => {
@@ -5769,7 +5828,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           headers={csvData.headers}
           rows={csvData.raw}
           colMap={mmmColMap || autoGuessColMap(csvData.headers, csvData.raw)}
-          onChange={setMmmColMap}
+          onChange={updateMmmColMap}
           locale={locale}
         />
         {mappingReady && (
@@ -5781,7 +5840,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             </span>
             <button className="ab-button" style={{ marginLeft: "auto" }} disabled={!canAnalyze}
               title={canAnalyze ? undefined : tx("원본 CSV 통화를 선택하면 분석할 수 있습니다.", "Select the source CSV currency to run the analysis.")}
-              onClick={() => requestAd(() => runMmmAnalyze(mmmAnalysisSig))}>{tx("▶ 분석하기", "▶ Analyze")}</button>
+              onClick={() => requestAd(() => {
+                saveResponseMapping();
+                runMmmAnalyze(mmmAnalysisSig);
+              })}>{stage === "hub" ? tx("매핑 저장 후 분석 선택", "Save mapping and choose an analysis") : tx("▶ 분석하기", "▶ Analyze")}</button>
           </div>
         )}
       </section>
@@ -6004,6 +6066,40 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     );
   }
 
+  // 허브는 결과를 겹쳐 보여주지 않는다. 한 번 확정한 CSV·컬럼 역할을 세션 내
+  // 독립 분석 화면으로 넘기고, 사용자가 필요한 질문 하나만 실행하게 한다.
+  if (stage === "hub") {
+    const routePrefix = locale === "en" ? "/en" : "";
+    const analysisLinks = [
+      { id: "trend", href: `${routePrefix}/tools/marketing-trend`, icon: "〰", title: tx("추세 분석", "Trend analysis"), desc: tx("자연 추세·계절성·이상 주차만 분리합니다.", "Separate natural trend, seasonality, and irregular weeks.") },
+      { id: "diagnose", href: `${routePrefix}/tools/cannibalization-diagnosis`, icon: "🔬", title: tx("카니발 진단", "Cannibalization diagnosis"), desc: tx("유료 광고가 오가닉 성과를 잠식하는지 점검합니다.", "Check whether paid activity may displace organic outcomes.") },
+      { id: "mmm", href: `${routePrefix}/tools/mmm-contribution`, icon: "🧩", title: tx("MMM 기여 분해", "MMM contribution"), desc: tx("채널·기본 수요·이벤트의 기여를 분해합니다.", "Decompose channel, base-demand, and event contribution.") },
+      { id: "lab", href: `${routePrefix}/tools/marketing-forecast`, icon: "📈", title: tx("회귀 · 미래 예측", "Regression · forecast"), desc: tx("예측 전용 회귀와 봉인 OOS 검증을 실행합니다.", "Run forecast-only regression with sealed OOS validation.") },
+    ];
+    return (
+      <div className="tab-pane active" id="tab-response">
+        <section className="block">
+          <span className="eyebrow">{tx("공유 매핑 준비 완료", "Shared mapping ready")}</span>
+          <h2 className="section-title" style={{ marginTop: "6px" }}>{tx("무엇을 확인할까요?", "What do you need to check?")}</h2>
+          <p className="muted" style={{ fontSize: "12px", margin: "0 0 14px" }}>{tx("아래 분석은 같은 CSV·매핑을 이어받지만, 다른 분석 결과나 모델을 함께 실행하지 않습니다.", "Each analysis reuses this CSV and mapping, but does not render or run the other analyses.")}</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: "10px" }}>
+            {analysisLinks.map((item) => (
+              <Link key={item.id} href={item.href} className="tool-card" style={{ display: "block", padding: "16px", textDecoration: "none" }}>
+                <div style={{ fontSize: "18px" }}>{item.icon}</div>
+                <strong style={{ display: "block", marginTop: "7px", color: "var(--text-1)" }}>{item.title}</strong>
+                <span style={{ display: "block", marginTop: "4px", fontSize: "12px", lineHeight: 1.45, color: "var(--text-2)" }}>{item.desc}</span>
+              </Link>
+            ))}
+          </div>
+          <details style={{ marginTop: "16px" }} onToggle={onAccordionToggle}>
+            <summary>{tx("컬럼 매핑 다시 보기·수정", "Review or edit column mapping")}</summary>
+            <div style={{ marginTop: "12px" }}>{mmmMapperSection()}</div>
+          </details>
+        </section>
+      </div>
+    );
+  }
+
   // ── analyzed: 매핑 완료 후에도 패널이 비면(엔진 오류·공선) 사유 표시 ──
   const panelEmpty = mmm && mmm.empty;
   const forecastAssistInsight = stage === "lab"
@@ -6034,11 +6130,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             headline={summary.headline}
             stats={summary.stats}
             points={[{ text: summary.point, cls: summary.tone === "bad" ? "bad" : "good" }]}
-            controls={(
+            controls={!isolated ? (
               <button className="ab-pill active" onClick={() => setStage(summary.next)}>
                 {summary.nextLabel} →
               </button>
-            )}
+            ) : null}
             decisionReview={false}
             analysisBasis={false}
           />
@@ -6122,10 +6218,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     </div>
                   </div>
                 )}
-                <Card style={{ marginTop: "12px", fontSize: "12px", lineHeight: 1.55 }}>
+                {!isolated && <Card style={{ marginTop: "12px", fontSize: "12px", lineHeight: 1.55 }}>
                   {tx("다음 단계에서 카니발 4검증을 보세요. 그중 ②는 이 시간 추세를 다시 걷어낸 뒤 광고와 성과의 관계를 확인합니다.", "Continue to the four cannibalization checks. Check ② removes this time trend again before comparing spend and outcome.")}
                   <button className="ab-pill active" style={{ marginLeft: "10px" }} onClick={() => setStage("diagnose")}>{tx("카니발 진단으로", "Open cannibalization")}</button>
-                </Card>
+                </Card>}
               </> : <p className="muted">{tx("추세 분석을 계산할 수 없습니다.", "Trend analysis is unavailable.")}</p>}
             </section>
           )}
