@@ -32,7 +32,7 @@ export const CONNECTED_TOOLS = {
   },
   "5-18": {
     title: { ko: "마케팅 반응 분석", en: "Marketing response analysis" },
-    question: { ko: "채널별 기여와 다음 예산 반응은 어떨까?", en: "What are channel contributions and future spend response?" },
+    question: { ko: "지금 필요한 것은 추세·잠식·기여·예측 중 무엇일까?", en: "Do I need trend, cannibalization, contribution, or forecast next?" },
   },
   "5-20": {
     title: { ko: "핵심 가치 발굴", en: "Aha-moment finder" },

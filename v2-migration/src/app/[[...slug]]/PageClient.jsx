@@ -47,6 +47,7 @@ export default function PageClient({ params }) {
   const { slug } = use(params);
   const routeId = resolveSlugToId(slug);
   const responseStage = resolveResponseStage(useSearchParams().get("stage"));
+  const isResponseSubtool = ["5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast"].includes(routeId);
 
   // Unknown URL -> 404 (must run before any dispatch that assumes a valid id).
   if (routeId === null) notFound();
@@ -71,8 +72,8 @@ export default function PageClient({ params }) {
             {/* 모바일 안내 배너: 대시보드+전 분석 도구(5-x·9-x)만, 블로그/랜딩/SOP 제외 */}
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge />}
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} />}
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <ToolConnections toolId={routeId} />}
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <ToolAssistRail toolId={routeId} />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolConnections toolId={routeId} />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolAssistRail toolId={routeId} />}
 
             {/* 라우팅: URL에서 해석한 routeId 기준 직접 디스패치 (스토어 비의존 → 첫 페인트 플래시 없음) */}
             {routeId === "home" && <LandingPage />}
@@ -84,7 +85,11 @@ export default function PageClient({ params }) {
             {routeId === "5-21" && <CampaignPvm />}
             {routeId === "5-22" && <MarketingEfficiency />}
             {routeId === "5-4" && <AbTestHoldout />}
-            {routeId === "5-18" && <MarketingResponse key={`marketing-response-${responseStage}`} initialStage={responseStage} />}
+            {routeId === "5-18" && <MarketingResponse key={`marketing-response-${responseStage}`} initialStage={responseStage} isolated={responseStage !== "hub"} />}
+            {routeId === "5-18-trend" && <MarketingResponse initialStage="trend" isolated />}
+            {routeId === "5-18-cannibal" && <MarketingResponse initialStage="diagnose" isolated />}
+            {routeId === "5-18-mmm" && <MarketingResponse initialStage="mmm" isolated />}
+            {routeId === "5-18-forecast" && <MarketingResponse initialStage="lab" isolated />}
             {routeId === "5-20" && <AhaMomentFinder />}
             {routeId === "5-23" && <Incrementality />}
 

@@ -63,6 +63,23 @@ const GLOSSARY_PRIMARY_TOOL = {
   uplift: "5-23",
 };
 
+// 5-18은 이제 매핑 허브와 네 개의 독립 분석 화면으로 분리된다. 콘텐츠의 질문에
+// 맞는 화면으로 바로 보내고, CSV·매핑은 해당 브라우저 세션에서만 공유한다.
+const BLOG_RESPONSE_STAGE = {
+  "ad-machine-learning": "mmm",
+  "ai-era-marketer": "mmm",
+  "cannibalization-organic-paid": "diagnose",
+  "ga4-data-traps": "trend",
+  "marketing-mix-modeling": "mmm",
+};
+
+const GLOSSARY_RESPONSE_STAGE = {
+  adstock: "mmm",
+  cannibalization: "diagnose",
+  multicollinearity: "mmm",
+  "probabilistic-attribution": "mmm",
+};
+
 const BLOG_RELATED_GLOSSARY = {
   "ab-testing": ["holdout-test", "uplift"],
   "ad-creative-specs-guide": ["ctr", "cpm"],
@@ -100,6 +117,11 @@ const BLOG_RELATED_GLOSSARY = {
 export function primaryToolForContent(slug, type = "blog") {
   const registry = type === "glossary" ? GLOSSARY_PRIMARY_TOOL : BLOG_PRIMARY_TOOL;
   return registry[slug] || "5-2";
+}
+
+export function primaryResponseStageForContent(slug, type = "blog") {
+  const registry = type === "glossary" ? GLOSSARY_RESPONSE_STAGE : BLOG_RESPONSE_STAGE;
+  return registry[slug] || null;
 }
 
 export function relatedGlossaryForPost(slug) {

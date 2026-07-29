@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import Link from "next/link";
 import Papa from "papaparse";
 import Chart from "chart.js/auto";
 import * as XLSX from "xlsx";
@@ -2807,6 +2808,62 @@ export function buildForecastOnlyModelFromPanel(sourcePanel, sourceCfg, target) 
   return { ...buildForecastModelForSelection(sourcePanel, sourceCfg, target, selected), selection, forecastSelected: selected, sourcePanel, sourceCfg, target };
 }
 
+// 과거 운영 체제가 현재와 달라진 경우, 최근 구간만으로 다시 학습·검증할 수 있다.
+// 단순히 최근 window를 고르는 기존 내부 Cost window와 다르다. 이 함수는 입력의
+// 앞부분을 통째로 제외한 뒤 그 남은 기간 안에서만 rolling OOS를 만든다.
+export function sliceForecastTrainingWindow(panel, trainingWeeks = null) {
+  const n = panel?.week?.length || 0;
+  const keep = Number(trainingWeeks);
+  if (!Number.isInteger(keep) || keep <= 0 || keep >= n) return panel;
+  return sliceMmmPanel(panel, n, n - keep);
+}
+
+export function scanForecastRegimeWindows(models, { candidateWeeks = [104, 78], minimumWeeks = 78 } = {}) {
+  const items = (Array.isArray(models) ? models : [models]).filter((model) => model?.sourcePanel && model?.sourceCfg && model?.target);
+  if (!items.length) return { available: false, reason: "missing-source", candidates: [], recommended: null };
+  const maxWeeks = Math.min(...items.map((model) => model.sourcePanel.week?.length || 0));
+  const windows = [...new Set([maxWeeks, ...candidateWeeks])]
+    .filter((weeks) => Number.isInteger(weeks) && weeks >= minimumWeeks && weeks <= maxWeeks)
+    .sort((a, b) => b - a);
+  const candidates = windows.map((trainingWeeks) => {
+    const fitted = items.map((model) => {
+      const sourcePanel = sliceForecastTrainingWindow(model.sourcePanel, trainingWeeks);
+      return buildForecastOnlyModelFromPanel(sourcePanel, model.sourceCfg, model.target);
+    });
+    // 후보 기간 비교는 마지막 12주를 보지 않은 nested 선택값으로만 한다.
+    // productionSelected는 감사가 끝난 뒤 실제 미래 예측에 쓰는 값이라 여기의
+    // 기간 추천에 쓰면 마지막 감사 구간이 간접적으로 새어 들어갈 수 있다.
+    const selections = fitted.map((model) => model.selection?.selected);
+    const backtests = fitted.map((model) => buildForecastRecentBacktest(model));
+    const available = selections.every(Boolean) && backtests.every(Boolean);
+    const startLabel = fitted[0]?.sourcePanel?.weekLabel?.[0] || null;
+    const endLabel = fitted[0]?.sourcePanel?.weekLabel?.at(-1) || null;
+    return {
+      trainingWeeks,
+      startLabel,
+      endLabel,
+      available,
+      // 여러 OS를 합산하는 경우 한 OS만 좋아도 추천하지 않는다. 각 OS의 개발
+      // OOS·봉인 OOS 중 가장 나쁜 값을 대표값으로 삼는다.
+      developmentWmape: available ? Math.max(...selections.map((selection) => Number(selection.wmape))) : null,
+      latestWmape: available ? Math.max(...backtests.map((backtest) => Number(backtest.wmape))) : null,
+      decisionEligible: available && fitted.every((model) => model.selection?.decisionEligible),
+    };
+  });
+  const full = candidates.find((candidate) => candidate.trainingWeeks === maxWeeks && candidate.available) || null;
+  const eligibleShorter = candidates.filter((candidate) => candidate.available && candidate.decisionEligible && candidate.trainingWeeks < maxWeeks);
+  const bestShorter = eligibleShorter.slice().sort((a, b) => a.developmentWmape - b.developmentWmape || b.trainingWeeks - a.trainingWeeks)[0] || null;
+  // 마지막 12주는 후보 선택에 사용하지 않는다. 추천 판단은 development OOS만으로,
+  // 오래된 체제가 실제로 방해가 된 경우(상대 20% + 절대 3%p 개선)에만 열린다.
+  const recommended = full && bestShorter
+    && full.developmentWmape > 10
+    && bestShorter.developmentWmape <= full.developmentWmape * 0.8
+    && full.developmentWmape - bestShorter.developmentWmape >= 3
+    ? bestShorter
+    : null;
+  return { available: !!full, full, candidates, recommended };
+}
+
 function buildForecastOnlyModel(mmm) {
   return buildForecastOnlyModelFromPanel(mmm.panel, mmm.cfg, mmm.target);
 }
@@ -3365,14 +3422,14 @@ export function buildForecastAssistInsight(forecast, recentBacktest, forecastSce
   };
 }
 
-export default function MarketingResponse({ locale = "ko", initialStage = "trend" }) {
+export default function MarketingResponse({ locale = "ko", initialStage = "trend", isolated = false }) {
   // 3단계(index MMM_STAGE_DEFS): diagnose | mmm | lab. 구 "forecast" 스테이지는 lab에 흡수 —
   // ③ lab이 mmmForecast(②계수) §7 미래예측을 렌더(stage==="lab"). 셋 다 shared mmmColMap 사용.
   const tx = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]); // 인라인 텍스트 로컬라이즈 헬퍼(§12.20 v2 i18n 패턴)
   const bucketMeta = mmmBucketMeta(locale);
   // URL에서 전달받은 단계는 라우팅 레이어가 검증하지만, 컴포넌트 단독 사용·테스트도
   // 안전하도록 여기서 한 번 더 폴백한다. 모델 계산·데이터 계약에는 관여하지 않는다.
-  const [stage, setStage] = useState(() => resolveResponseStage(initialStage)); // trend | diagnose | mmm | lab
+  const [stage, setStage] = useState(() => resolveResponseStage(initialStage)); // hub | trend | diagnose | mmm | lab
   const [target, setTarget] = useState("Regs");
   const [mmmMode, setMmmMode] = useState("classic"); // classic = standard Classic path, bayesian = posterior channel fit
   const [decompGrouped, setDecompGrouped] = useState(true); // §5.5 true=4버킷 묶음 / false=광고 개별채널
@@ -3384,13 +3441,22 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const [isHealthWarningOpen, setIsHealthWarningOpen] = useState(false);
   const [spikeNotes, setSpikeNotes] = useState({}); // §5.5 튀는 구간 메모 { [target|week]: note }
   const [fcHorizon, setFcHorizon] = useState(13);
+  // 입력 중 값과 실제 계산값을 분리한다. 스피너의 화살표 한 번에도 후보 탐색·OOS
+  // 재계산이 실행되면 메인 스레드가 멈추므로, 명시적 적용 때만 계산값을 바꾼다.
+  const [fcHorizonDraft, setFcHorizonDraft] = useState("13");
   const [fcBudget, setFcBudget] = useState({}); // {chKey: 주 평균 예산} — 미입력 채널은 최근평균
   const [fcStepOff, setFcStepOff] = useState({}); // {stepKey: 켜둘 미래 기간 N} — 빈값=지속
   const [fcTotalBudget, setFcTotalBudget] = useState(null);
   const [fcMinBudget, setFcMinBudget] = useState(0);
   const [fcMaxBudget, setFcMaxBudget] = useState(null);
   const [fcTrendDamping, setFcTrendDamping] = useState(0.25);
+  const [fcTrendDampingDraft, setFcTrendDampingDraft] = useState("0.25");
   const [fcEventPolicy, setFcEventPolicy] = useState("hold");
+  const [fcEventPolicyDraft, setFcEventPolicyDraft] = useState("hold");
+  // null=전체 이력. 사용자가 추천을 승인했을 때만 최근 운영 체제의 시작점 이후
+  // 데이터로 예측 회귀를 다시 적합한다. 원본 CSV·MMM 기여 분해는 바꾸지 않는다.
+  const [fcRegimeTrainingWeeks, setFcRegimeTrainingWeeks] = useState(null);
+  const [isRegimeWindowScanRequested, setIsRegimeWindowScanRequested] = useState(false);
   const [fcIntervalMode, setFcIntervalMode] = useState("predictive");
   const [fcScenarioOpen, setFcScenarioOpen] = useState(true);
   const [cannibChannel, setCannibChannel] = useState(null);
@@ -3406,6 +3472,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const [priorEvidence, setPriorEvidence] = useState({ experiment: null, country: null });
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
+  const responseMappingSession = useAppStore((state) => state.responseMappingSession);
+  const setResponseMappingSession = useAppStore((state) => state.setResponseMappingSession);
   const demoDisabled = useAppStore((state) => state.demoDisabled);
   const requestAd = useAppStore((state) => state.requestAd);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
@@ -3426,8 +3494,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // 5-18 = colMap DnD가 PRIMARY 매퍼(index.html page_5_18 이식). 단일 generic CSV를
   // 주차/날짜/가입/재활성/채널(perf·brand)/더미/step 역할로 드래그 → 모든 분석(진단·MMM·시뮬)
   // 이 이 하나의 패널을 공유. 표준필드(DataFeatureMatrix) 경로 미사용.
-  const [mmmColMap, setMmmColMap] = useState(null);
-  const [mmmWeekStart, setMmmWeekStart] = useState("monday");
+  const [mmmColMap, setMmmColMap] = useState(() => responseMappingSession?.colMap || null);
+  const [mmmWeekStart, setMmmWeekStart] = useState(() => responseMappingSession?.weekStart || "monday");
   const [mmmAnalyzedSig, setMmmAnalyzedSig] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const analysisEventRef = useRef(null);
@@ -3448,11 +3516,25 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       });
     });
   }, []);
+  const preparedForecastHorizon = Math.max(1, Math.min(52, Number.parseInt(fcHorizonDraft, 10) || 1));
+  const preparedTrendDamping = Number(fcTrendDampingDraft);
+  const isForecastSettingsDirty = preparedForecastHorizon !== fcHorizon
+    || preparedTrendDamping !== fcTrendDamping
+    || fcEventPolicyDraft !== fcEventPolicy;
+  const applyForecastSettings = useCallback(() => {
+    if (!isForecastSettingsDirty) return;
+    // 오버레이를 두 프레임 먼저 페인트한 뒤 무거운 forecast useMemo를 실행한다.
+    deferMmmUpdate(() => {
+      setFcHorizon(preparedForecastHorizon);
+      setFcTrendDamping(Number.isFinite(preparedTrendDamping) ? preparedTrendDamping : 0.25);
+      setFcEventPolicy(fcEventPolicyDraft);
+    });
+  }, [deferMmmUpdate, isForecastSettingsDirty, preparedForecastHorizon, preparedTrendDamping, fcEventPolicyDraft]);
   // 분석하기: 무거운 mmm useMemo가 커밋 렌더에서 동기 실행되므로, 로딩 오버레이를 먼저
   // 페인트(더블 rAF)한 뒤 시그니처를 커밋 → "멈춤" 대신 "분석 중" 표시(§7 성능).
   // 분석 시작은 현재 매핑 위치에서 하는 행동이므로 스크롤을 강제로 옮기지 않는다.
   const runMmmAnalyze = (sig) => {
-    trackProductEvent("analysis_started", { tool_id: "5-18", source: isDemo ? "demo" : "csv", row_count: csvData?.raw?.length || 0, analysis_type: "mmm" });
+    trackProductEvent("analysis_started", { tool_id: "5-18", source: isDemo ? "demo" : "csv", row_count: csvData?.raw?.length || 0, analysis_type: stage === "hub" ? "mapping" : stage });
     deferMmmUpdate(() => setMmmAnalyzedSig(sig));
   };
   // 플랫폼 필터(Total/Android/iOS) — colMap 헤더 태그(_android/_ios) 기준. 태그 없으면 토글 자체 숨김.
@@ -3462,6 +3544,14 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const csvSig = hasData ? `${csvData.fileName}|${(csvData.headers || []).join(",")}` : "";
   const colMapSig = mmmColMap ? JSON.stringify(mmmColMap) : "";
   const mmmAnalysisSig = `${colMapSig}\u001fweek-start:${mmmWeekStart}`;
+  const saveResponseMapping = useCallback((nextMap = mmmColMap, nextWeekStart = mmmWeekStart) => {
+    if (!csvData?.raw?.length || !nextMap) return;
+    setResponseMappingSession({ raw: csvData.raw, colMap: nextMap, weekStart: nextWeekStart });
+  }, [csvData.raw, mmmColMap, mmmWeekStart, setResponseMappingSession]);
+  const updateMmmColMap = useCallback((nextMap) => {
+    setMmmColMap(nextMap);
+    saveResponseMapping(nextMap, mmmWeekStart);
+  }, [saveResponseMapping, mmmWeekStart]);
   const prevCsvSig = useRef(null);
   const prevCsvRaw = useRef(null);
   // Set by the demo button so the auto-guessed colMap is also auto-confirmed
@@ -3472,9 +3562,14 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     // 비교하면 이전 수동 매핑이 새 데이터에 남아 계절·이벤트 역할이 달라질 수
     // 있으므로, 실제 원자료가 바뀌면 항상 다시 추정하고 분석 게이트를 닫는다.
     if (hasData && mmmCsvSourceChanged(prevCsvSig.current, csvSig, prevCsvRaw.current, csvData.raw)) {
-      const guess = autoGuessColMap(csvData.headers, csvData.raw);
+      const saved = responseMappingSession?.raw === csvData.raw ? responseMappingSession : null;
+      const guess = saved?.colMap || autoGuessColMap(csvData.headers, csvData.raw);
+      const weekStart = saved?.weekStart || mmmWeekStart;
       setMmmColMap(guess);
-      setMmmAnalyzedSig(demoPending.current ? `${JSON.stringify(guess)}\u001fweek-start:${mmmWeekStart}` : null);
+      setMmmWeekStart(weekStart);
+      // 허브에서 저장한 매핑으로 독립 화면에 직접 들어온 경우에는 다시 매핑을
+      // 요구하지 않는다. 새 CSV·데모만 명시적으로 분석 확인을 거친다.
+      setMmmAnalyzedSig(saved || demoPending.current ? `${JSON.stringify(guess)}\u001fweek-start:${weekStart}` : null);
       setSelectedEvidence({ experiment: false, country: false });
       setPriorEvidence({ experiment: null, country: null });
       demoPending.current = false;
@@ -3486,7 +3581,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       prevCsvSig.current = null;
       prevCsvRaw.current = null;
     }
-  }, [hasData, csvSig, csvData.headers, csvData.raw, mmmWeekStart]);
+  }, [hasData, csvSig, csvData.headers, csvData.raw, mmmWeekStart, responseMappingSession]);
 
   // 파일 업로드(자체 dropzone — 5-18은 표준 CsvUploader/DataFeatureMatrix 미사용).
   const mmmFileRef = useRef(null);
@@ -3531,6 +3626,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     if (weekStart === mmmWeekStart) return;
     const shouldReanalyze = mmmAnalyzed;
     setMmmWeekStart(weekStart);
+    saveResponseMapping(mmmColMap, weekStart);
     if (shouldReanalyze) deferMmmUpdate(() => setMmmAnalyzedSig(`${colMapSig}\u001fweek-start:${weekStart}`));
   };
 
@@ -3559,12 +3655,51 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const simpleRef = useRef(null);
   const irfRef = useRef(null);
 
+  // 추세·카니발·예측은 전체 MMM 기여 적합을 선행 조건으로 두지 않는다. 공통으로
+  // 필요한 것은 매핑된 주간 패널과 데이터 품질 검사뿐이며, 이 가벼운 번들은 각
+  // 독립 화면에서만 만든다. MMM 화면만 아래의 무거운 Classic 적합을 실행한다.
+  const responseBaseBundle = useMemo(() => {
+    if (!hasData || !mmmAnalyzed || stage === "hub") return null;
+    try {
+      if (!mmmColMap) return { empty: true, reason: tx("컬럼 역할을 매핑하세요 (날짜/주차 · 목표 Y · 채널 spend).", "Map column roles (date/week · target Y · channel spend).") };
+      const built = buildPanelFromColMap(csvData.headers, csvData.raw, mmmColMap, effPlatformFilter, locale, null, { weekStart: mmmWeekStart });
+      if (built.missing.length) return { empty: true, reason: tx("필수 역할 미지정: ", "Required role not set: ") + built.missing.join(", ") };
+      const panel = trimToActive(built.panel);
+      const cfg = { ...MMM_METH_CONFIG, absorbed: new Set() };
+      const resolvedTarget = pickTarget(panel, target);
+      const dataQuality = mmmDataQualityAudit(panel);
+      if (!dataQuality.valid) return { empty: true, reason: tx(`데이터 품질 게이트 미통과: ${dataQuality.issues.join(", ")}`, `Data-quality gate failed: ${dataQuality.issues.join(", ")}`), dataQuality, panel };
+      const validate = mmmValidate(panel, locale, resolvedTarget);
+      if (validate.issues?.length) return { empty: true, reason: validate.issues.join(" "), issues: validate.issues, validate, panel };
+      const absorb = mmmResolveAbsorb(panel, cfg);
+      cfg.absorbed = absorb.absorbed;
+      return {
+        empty: false,
+        panel,
+        cfg,
+        target: resolvedTarget,
+        validate,
+        absorb,
+        derived: {
+          availableTargets: MMM_USER_TARGETS.filter((candidate) => Object.prototype.hasOwnProperty.call(panel.targets, candidate)),
+          targetSources: {
+            Traffic: built.roles.traffic.map((item) => item.header), Regs: built.roles.reg.map((item) => item.header),
+            React: built.roles.react.map((item) => item.header), Purchasers: built.roles.purchasers.map((item) => item.header), Revenue: built.roles.revenue.map((item) => item.header),
+          },
+        },
+      };
+    } catch (error) {
+      return { empty: true, reason: tx("분석 오류: ", "Analysis error: ") + String(error?.message || error) };
+    }
+  }, [hasData, mmmAnalyzed, stage, mmmColMap, csvData, effPlatformFilter, locale, mmmWeekStart, target, tx]);
+
   // ── MMM 캐시 (buildMmmMethCache 축약) — 매핑·데이터·target·model 변경 시 재계산 ──
   const mmmBundle = useMemo(() => {
     if (!hasData) return null;
     // 분석 게이트(index 분석하기): 매핑 확정 전엔 무거운 엔진(mmmRunMmm 등)을 돌리지 않음 —
     // 드래그 도중 반쯤 매핑된 colMap으로 엔진이 도는 것을 막고(성능·크래시 방지) 게이트 후에만 계산.
     if (!mmmAnalyzed) return { empty: true, reason: tx("매핑 확정(분석하기) 후 결과가 표시됩니다.", "Results appear after you confirm the mapping (Analyze).") };
+    if (stage !== "mmm") return null;
     try {
       // colMap(PRIMARY) → 패널. 미완성이면 매핑 안내(패널 empty).
       if (!mmmColMap) return { empty: true, reason: tx("컬럼 역할을 매핑하세요 (날짜/주차 · 목표 Y · 채널 spend).", "Map column roles (date/week · target Y · channel spend).") };
@@ -4469,9 +4604,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       }
       return { empty: true, reason: tx("분석 오류: ", "Analysis error: ") + msg };
     }
-  }, [hasData, csvData, target, mmmMode, mmmColMap, mmmAnalyzed, mmmAnalyzedSig, colMapSig, mmmWeekStart, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence]);
+  }, [hasData, csvData, target, mmmMode, mmmColMap, mmmAnalyzed, mmmAnalyzedSig, colMapSig, mmmWeekStart, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence, stage]);
 
-  const mmm = mmmBundle;
+  const mmm = stage === "mmm" ? mmmBundle : responseBaseBundle;
 
   useEffect(() => {
     if (!mmmAnalyzed) return;
@@ -4498,7 +4633,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
 
   // 모델 적합은 항상 전체 이력으로 한 번만 한다. 이 범위는 재학습 조건이 아니라
   // 결과를 읽는 창이다. 따라서 아래 모든 날짜 기반 뷰는 같은 주 구간을 공유한다.
-  const contributionFilterDates = useMemo(() => (mmm && !mmm.empty
+  const contributionFilterDates = useMemo(() => (mmm?.run?.weeks
     ? mmm.run.weeks.map((week, index) => {
       const raw = isoDateFromLabel(mmm.panel.dateLabel?.[index] || mmm.panel.weekLabel?.[index]);
       return { index, label: String(mmm.panel.weekLabel?.[index] || week.week), start: weekBoundaryDate(raw, mmmWeekStart, "start"), end: weekBoundaryDate(raw, mmmWeekStart, "end") };
@@ -4624,34 +4759,38 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         ]));
         const invalid = Object.values(prepared).find((item) => !item.sourcePanel);
         if (invalid) return { isAdditiveTotal: true, components: [], reason: invalid.reason || "Forecast panel unavailable" };
+        const preparedForRegime = Object.fromEntries(Object.entries(prepared).map(([platform, item]) => [platform, {
+          ...item,
+          sourcePanel: sliceForecastTrainingWindow(item.sourcePanel, fcRegimeTrainingWeeks),
+        }]));
         const annual = runAnnualAnalogRouter({
-          totalPanel: prepared.all.sourcePanel,
-          androidPanel: prepared.android.sourcePanel,
-          iosPanel: prepared.ios.sourcePanel,
-          target: prepared.all.target,
+          totalPanel: preparedForRegime.all.sourcePanel,
+          androidPanel: preparedForRegime.android.sourcePanel,
+          iosPanel: preparedForRegime.ios.sourcePanel,
+          target: preparedForRegime.all.target,
           horizon: fcHorizon,
         });
         if (annual?.qualified) {
           return {
             isAnnualAnalog: true,
             annual,
-            totalPanel: prepared.all.sourcePanel,
-            target: prepared.all.target,
+            totalPanel: preparedForRegime.all.sourcePanel,
+            target: preparedForRegime.all.target,
           };
         }
         const components = ["android", "ios"].map((platform) => ({
-          ...buildForecastOnlyModelFromPanel(prepared[platform].sourcePanel, prepared[platform].cfg, prepared[platform].target),
-          ...prepared[platform],
+          ...buildForecastOnlyModelFromPanel(preparedForRegime[platform].sourcePanel, preparedForRegime[platform].cfg, preparedForRegime[platform].target),
+          ...preparedForRegime[platform],
         }));
         if (components.some((component) => !component.run || !component.panel)) {
           return { isAdditiveTotal: true, components, reason: components.find((component) => !component.run || !component.panel)?.reason || "OS forecast model unavailable" };
         }
         // 78주 후보 + 봉인 12주 + 최소 3개 이전 holdout(총 114주)을 확보하기
         // 전에는 Direct-vs-OS 경로 선택을 열지 않고 기존 OS 항등 합을 유지한다.
-        if (prepared.all.sourcePanel.week.length < 114) return { isAdditiveTotal: true, components, routeDecision: null };
+        if (preparedForRegime.all.sourcePanel.week.length < 114) return { isAdditiveTotal: true, components, routeDecision: null };
         const direct = {
-          ...buildForecastOnlyModelFromPanel(prepared.all.sourcePanel, prepared.all.cfg, prepared.all.target),
-          ...prepared.all,
+          ...buildForecastOnlyModelFromPanel(preparedForRegime.all.sourcePanel, preparedForRegime.all.cfg, preparedForRegime.all.target),
+          ...preparedForRegime.all,
           platform: "all",
         };
         if (!direct.run || !direct.panel) return { isAdditiveTotal: true, components, routeDecision: null };
@@ -4669,19 +4808,19 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           return {
             isAnnualAnalog: true,
             annual: { ...annual, bestAvailable: true },
-            totalPanel: prepared.all.sourcePanel,
-            target: prepared.all.target,
+            totalPanel: preparedForRegime.all.sourcePanel,
+            target: preparedForRegime.all.target,
           };
         }
         return routeDecision.productionRoute === "direct-total"
           ? { ...direct, isNestedDirect: true, routeDecision, challengerComponents: components }
           : { isAdditiveTotal: true, components, directChallenger: direct, routeDecision };
       }
-      return buildForecastOnlyModel(mmm);
+      return buildForecastOnlyModelFromPanel(sliceForecastTrainingWindow(mmm.panel, fcRegimeTrainingWeeks), mmm.cfg, mmm.target);
     } catch {
       return null;
     }
-  }, [mmm, stage, effPlatformFilter, csvData, mmmColMap, target, locale, segmentSel, mmmWeekStart, attributedForecastRoute, fcHorizon]);
+  }, [mmm, stage, effPlatformFilter, csvData, mmmColMap, target, locale, segmentSel, mmmWeekStart, attributedForecastRoute, fcHorizon, fcRegimeTrainingWeeks]);
 
   // 이 판정은 Stage ④ 예측 회귀에만 적용한다. MMM 기여 분해·이벤트/step(P0)와
   // 분리해, 기본 예측은 유지하고 식별되지 않은 Cost 변경 입력만 막는다.
@@ -4768,6 +4907,27 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       return null;
     }
   }, [mmm, stage, forecastModel]);
+
+  // 자동 적용하지 않는다. 사용자가 탐색을 요청한 경우에만 후보별 재적합을 하고,
+  // 추천된 시작점도 별도 승인 버튼을 눌러야 실제 예측 회귀에 반영된다.
+  const regimeWindowScan = useMemo(() => {
+    if (stage !== "lab" || !isRegimeWindowScanRequested || fcRegimeTrainingWeeks || !forecastModel || forecastModel.isStructural || forecastModel.isAnnualAnalog) return null;
+    const models = forecastModel.isAdditiveTotal ? forecastModel.components : [forecastModel];
+    return scanForecastRegimeWindows(models);
+  }, [stage, isRegimeWindowScanRequested, fcRegimeTrainingWeeks, forecastModel]);
+  const requestRegimeWindowScan = useCallback(() => {
+    deferMmmUpdate(() => setIsRegimeWindowScanRequested(true));
+  }, [deferMmmUpdate]);
+  const acceptRegimeWindow = useCallback((candidate) => {
+    if (!candidate?.trainingWeeks) return;
+    deferMmmUpdate(() => setFcRegimeTrainingWeeks(candidate.trainingWeeks));
+  }, [deferMmmUpdate]);
+  const resetRegimeWindow = useCallback(() => {
+    deferMmmUpdate(() => {
+      setFcRegimeTrainingWeeks(null);
+      setIsRegimeWindowScanRequested(false);
+    });
+  }, [deferMmmUpdate]);
 
   // 미래 예측 탭의 공통 진단 산출물. 구간을 신뢰구간으로 오인하지 않도록
   // parameter band와 predictive band를 분리하고, rolling holdout coverage를 표시한다.
@@ -5634,7 +5794,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
 
   // index.html MMM_STAGE_DEFS(3단계) + renderMmmStageTabs 카드형 탭 이식. 구 "시뮬레이션"(TF)은
   // §12.15대로 회귀·미래예측(lab)에 흡수. 카드: no·아이콘·제목·설명 + active 하이라이트.
-  const renderTabs = () => (
+  const renderTabs = () => {
+    if (isolated) return null;
+    return (
     <section className="block" style={{ padding: 0, border: "none", background: "none", marginBottom: "20px" }}>
       <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
         {mmmStageDefs(locale).map((d) => {
@@ -5658,7 +5820,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         })}
       </div>
     </section>
-  );
+    );
+  };
 
   // 5-18 전용 템플릿 — colMap 방식이라 표준필드 경로(효율 template)와 무관, 자체 헤더+예시.
   const downloadMmmTemplate = () => {
@@ -5750,7 +5913,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           headers={csvData.headers}
           rows={csvData.raw}
           colMap={mmmColMap || autoGuessColMap(csvData.headers, csvData.raw)}
-          onChange={setMmmColMap}
+          onChange={updateMmmColMap}
           locale={locale}
         />
         {mappingReady && (
@@ -5762,7 +5925,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             </span>
             <button className="ab-button" style={{ marginLeft: "auto" }} disabled={!canAnalyze}
               title={canAnalyze ? undefined : tx("원본 CSV 통화를 선택하면 분석할 수 있습니다.", "Select the source CSV currency to run the analysis.")}
-              onClick={() => requestAd(() => runMmmAnalyze(mmmAnalysisSig))}>{tx("▶ 분석하기", "▶ Analyze")}</button>
+              onClick={() => requestAd(() => {
+                saveResponseMapping();
+                runMmmAnalyze(mmmAnalysisSig);
+              })}>{stage === "hub" ? tx("매핑 저장 후 분석 선택", "Save mapping and choose an analysis") : tx("▶ 분석하기", "▶ Analyze")}</button>
           </div>
         )}
       </section>
@@ -5985,6 +6151,40 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     );
   }
 
+  // 허브는 결과를 겹쳐 보여주지 않는다. 한 번 확정한 CSV·컬럼 역할을 세션 내
+  // 독립 분석 화면으로 넘기고, 사용자가 필요한 질문 하나만 실행하게 한다.
+  if (stage === "hub") {
+    const routePrefix = locale === "en" ? "/en" : "";
+    const analysisLinks = [
+      { id: "trend", href: `${routePrefix}/tools/marketing-trend`, icon: "〰", title: tx("추세 분석", "Trend analysis"), desc: tx("자연 추세·계절성·이상 주차만 분리합니다.", "Separate natural trend, seasonality, and irregular weeks.") },
+      { id: "diagnose", href: `${routePrefix}/tools/cannibalization-diagnosis`, icon: "🔬", title: tx("카니발 진단", "Cannibalization diagnosis"), desc: tx("유료 광고가 오가닉 성과를 잠식하는지 점검합니다.", "Check whether paid activity may displace organic outcomes.") },
+      { id: "mmm", href: `${routePrefix}/tools/mmm-contribution`, icon: "🧩", title: tx("MMM 기여 분해", "MMM contribution"), desc: tx("채널·기본 수요·이벤트의 기여를 분해합니다.", "Decompose channel, base-demand, and event contribution.") },
+      { id: "lab", href: `${routePrefix}/tools/marketing-forecast`, icon: "📈", title: tx("회귀 · 미래 예측", "Regression · forecast"), desc: tx("예측 전용 회귀와 봉인 OOS 검증을 실행합니다.", "Run forecast-only regression with sealed OOS validation.") },
+    ];
+    return (
+      <div className="tab-pane active" id="tab-response">
+        <section className="block">
+          <span className="eyebrow">{tx("공유 매핑 준비 완료", "Shared mapping ready")}</span>
+          <h2 className="section-title" style={{ marginTop: "6px" }}>{tx("무엇을 확인할까요?", "What do you need to check?")}</h2>
+          <p className="muted" style={{ fontSize: "12px", margin: "0 0 14px" }}>{tx("아래 분석은 같은 CSV·매핑을 이어받지만, 다른 분석 결과나 모델을 함께 실행하지 않습니다.", "Each analysis reuses this CSV and mapping, but does not render or run the other analyses.")}</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: "10px" }}>
+            {analysisLinks.map((item) => (
+              <Link key={item.id} href={item.href} className="tool-card" style={{ display: "block", padding: "16px", textDecoration: "none" }}>
+                <div style={{ fontSize: "18px" }}>{item.icon}</div>
+                <strong style={{ display: "block", marginTop: "7px", color: "var(--text-1)" }}>{item.title}</strong>
+                <span style={{ display: "block", marginTop: "4px", fontSize: "12px", lineHeight: 1.45, color: "var(--text-2)" }}>{item.desc}</span>
+              </Link>
+            ))}
+          </div>
+          <details style={{ marginTop: "16px" }} onToggle={onAccordionToggle}>
+            <summary>{tx("컬럼 매핑 다시 보기·수정", "Review or edit column mapping")}</summary>
+            <div style={{ marginTop: "12px" }}>{mmmMapperSection()}</div>
+          </details>
+        </section>
+      </div>
+    );
+  }
+
   // ── analyzed: 매핑 완료 후에도 패널이 비면(엔진 오류·공선) 사유 표시 ──
   const panelEmpty = mmm && mmm.empty;
   const forecastAssistInsight = stage === "lab"
@@ -6015,11 +6215,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             headline={summary.headline}
             stats={summary.stats}
             points={[{ text: summary.point, cls: summary.tone === "bad" ? "bad" : "good" }]}
-            controls={(
+            controls={!isolated ? (
               <button className="ab-pill active" onClick={() => setStage(summary.next)}>
                 {summary.nextLabel} →
               </button>
-            )}
+            ) : null}
             decisionReview={false}
             analysisBasis={false}
           />
@@ -6103,10 +6303,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     </div>
                   </div>
                 )}
-                <Card style={{ marginTop: "12px", fontSize: "12px", lineHeight: 1.55 }}>
+                {!isolated && <Card style={{ marginTop: "12px", fontSize: "12px", lineHeight: 1.55 }}>
                   {tx("다음 단계에서 카니발 4검증을 보세요. 그중 ②는 이 시간 추세를 다시 걷어낸 뒤 광고와 성과의 관계를 확인합니다.", "Continue to the four cannibalization checks. Check ② removes this time trend again before comparing spend and outcome.")}
                   <button className="ab-pill active" style={{ marginLeft: "10px" }} onClick={() => setStage("diagnose")}>{tx("카니발 진단으로", "Open cannibalization")}</button>
-                </Card>
+                </Card>}
               </> : <p className="muted">{tx("추세 분석을 계산할 수 없습니다.", "Trend analysis is unavailable.")}</p>}
             </section>
           )}
@@ -7381,16 +7581,16 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 </div>
                 <label style={{ fontSize: "12px", color: MUTED }}>
                   {tx("예측 기간(주):", "Forecast horizon (wk):")}{" "}
-                  <input type="number" min="1" max="52" value={fcHorizon} onChange={(e) => setFcHorizon(Math.max(1, Math.min(52, parseInt(e.target.value, 10) || 1)))} style={{ width: "60px" }} />
+                  <input type="number" min="1" max="52" value={fcHorizonDraft} onChange={(e) => setFcHorizonDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") applyForecastSettings(); }} style={{ width: "60px" }} />
                 </label>
                 {!forecast?.isStructural && <>
                   <label style={{ fontSize: "12px", color: MUTED }}>{tx("추세 감쇠:", "Trend damping:")} {" "}
-                    <select value={fcTrendDamping} onChange={(e) => setFcTrendDamping(Number(e.target.value))}>
+                    <select value={fcTrendDampingDraft} onChange={(e) => setFcTrendDampingDraft(e.target.value)}>
                       <option value="0">{tx("없음", "None")}</option><option value="0.25">25%</option><option value="0.5">50%</option><option value="0.75">75%</option>
                     </select>
                   </label>
                   <label style={{ fontSize: "12px", color: MUTED }}>{tx("미래 이벤트:", "Future events:")} {" "}
-                    <select value={fcEventPolicy} onChange={(e) => setFcEventPolicy(e.target.value)}>
+                    <select value={fcEventPolicyDraft} onChange={(e) => setFcEventPolicyDraft(e.target.value)}>
                       <option value="hold">{tx("마지막 상태 유지", "Hold last state")}</option><option value="off">{tx("모두 끔", "Turn all off")}</option>
                     </select>
                   </label>
@@ -7400,6 +7600,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     <option value="predictive">{tx("예측 참고구간", "Predictive reference")}</option><option value="parameter">{tx("모수 참고구간", "Parameter reference")}</option>
                   </select>
                 </label>
+                <button type="button" className="ab-pill active" disabled={!isForecastSettingsDirty || isAnalyzing} onClick={applyForecastSettings}>
+                  {isAnalyzing ? tx("계산 중…", "Calculating…") : tx("예측 다시 계산", "Recalculate forecast")}
+                </button>
               </div>
               {forecast ? (
                 <>
@@ -7555,51 +7758,25 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     const selected = forecast.rollingSelection.selected;
                     if (forecast.isAnnualAnalog) {
                       return (
-                        <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
-                          <strong>{forecast.paidOrganicHybrid
-                            ? tx("Total + Paid·Organic 하이브리드", "Total + Paid/Organic hybrid")
-                            : tx("구조변화 후 자동 선택 · 연간 반복형", "Auto-selected after regime change · annual analog")}</strong>
-                          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "7px" }}>
+                        <Card className="forecast-validation-card" style={{ marginBottom: "12px", padding: "13px 16px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "flex-start", flexWrap: "wrap" }}>
+                            <div>
+                              <span className="forecast-validation-card__eyebrow">FORECAST VALIDATION</span>
+                              <strong>{forecast.annualQualified ? tx("예측 검증 통과", "Forecast validation passed") : tx("예측 검증 미통과", "Forecast validation did not pass")}</strong>
+                              <p>{tx(`최근 12주 ${selected.latestWmape.toFixed(1)}% · 전체 검증 ${selected.wmape.toFixed(1)}% · 기준 10% 미만`, `Latest 12 weeks ${selected.latestWmape.toFixed(1)}% · full validation ${selected.wmape.toFixed(1)}% · threshold below 10%`)}</p>
+                            </div>
                             <span className="ab-pill" style={forecast.annualQualified ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#f59e0b", color: "#b45309" }}>
-                              {forecast.annualQualified
-                                ? tx("공식 10% 인증", "Official 10% certified")
-                                : tx("미인증 best-available · 예산 반응 해석 금지", "Uncertified best-available · no budget-response interpretation")}
+                              {forecast.annualQualified ? tx("운영 사용 가능", "Ready for operations") : tx("예산 변경 잠금", "Budget changes locked")}
                             </span>
-                            {(forecast.annualOsGuardrail || []).map((component) => (
-                              <span
-                                className="ab-pill"
-                                key={component.component}
-                                style={component.passed ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}
-                              >
-                                {`${component.component} · ${tx("과거", "history")} ${component.developmentWmape.toFixed(2)}% · ${tx("최신", "latest")} ${component.latestWmape.toFixed(2)}%`}
-                              </span>
-                            ))}
                           </div>
-                          <p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
-                            {(forecast.annualCandidates || []).map((candidate) =>
-                              `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} · ${tx("최신 12주", "latest 12 weeks")} ${candidate.latestWmape.toFixed(2)}% · ${tx("전체 rolling", "full rolling")} ${candidate.allWmape.toFixed(2)}%`
-                            ).join(" / ")}
-                            {` → ${forecast.selectedRoute === "direct-total" ? "Direct Total" : "Android + iOS"} ${tx("선택", "selected")}`}
-                          </p>
-                          <p style={{ margin: "6px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.55 }}>
-                            <strong>{tx("왜 이 모델인가: ", "Why this model: ")}</strong>
-                            {forecastSelectionDecisionText(forecast.modelSearch?.routeDecision, locale)}
-                          </p>
-                          <p style={{ margin: "5px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
-                            <strong>{tx("자동 제외 안전장치: ", "Automatic rejection guardrail: ")}</strong>
-                            {forecastGuardrailSummaryText(forecast.modelSearch, locale)}
-                          </p>
-                          <p style={{ margin: "5px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
-                            {forecast.modelSearch?.similarSeason
-                              ? tx(
-                                `유사 시즌 후보가 선택됐습니다: 직전 ${forecast.modelSearch.similarSeason.matchWeeks}주 모양을 비교해 ${forecast.modelSearch.similarSeason.analogLags?.join("/")}주 전 유사 구간을 결합했습니다.`,
-                                `A similar-season candidate won: it matched the preceding ${forecast.modelSearch.similarSeason.matchWeeks}-week shape and blended analogous periods ${forecast.modelSearch.similarSeason.analogLags?.join("/")} weeks back.`,
-                              )
-                              : tx("유사 시즌 후보도 같은 OOS 기준으로 비교했지만, 현재 데이터에서는 다른 후보가 더 강해 선택되지 않았습니다.", "Similar-season candidates were evaluated under the same OOS criteria, but another candidate was stronger for the current dataset.")}
-                          </p>
-                          <p style={{ margin: "6px 0 0", color: forecast.annualQualified ? "#15803d" : "#b45309", fontSize: "11.5px" }}>
-                            {tx(`최신 12주 wMAPE ${selected.latestWmape.toFixed(2)}% · 전체 rolling ${selected.wmape.toFixed(2)}% · 최근평균 기준선 ${selected.persistenceWmape.toFixed(2)}%. ${forecast.paidOrganicHybrid ? `봉인 audit 결합비는 Android ${Math.round((forecast.modelSearch?.android?.auditBlendWeight ?? 0.5) * 100)}%·iOS ${Math.round((forecast.modelSearch?.ios?.auditBlendWeight ?? 0.5) * 100)}%, audit 후 미래예측 결합비는 Android ${Math.round((forecast.modelSearch?.android?.productionBlendWeight ?? 0.5) * 100)}%·iOS ${Math.round((forecast.modelSearch?.ios?.productionBlendWeight ?? 0.5) * 100)}%로 재선택했습니다.` : "경로를 더 오래된 development OOS로 선택했습니다."} 최신 12주는 모델 인증용으로 봉인했습니다.${forecast.annualQualified ? "" : " 최신 구간은 좋아도 전체 rolling 10%를 넘어서 공식 인증은 아닙니다."}`, `Latest 12-week wMAPE ${selected.latestWmape.toFixed(2)}% · full rolling ${selected.wmape.toFixed(2)}% · recent-average baseline ${selected.persistenceWmape.toFixed(2)}%. ${forecast.paidOrganicHybrid ? `Sealed-audit blend weights were Android ${Math.round((forecast.modelSearch?.android?.auditBlendWeight ?? 0.5) * 100)}% and iOS ${Math.round((forecast.modelSearch?.ios?.auditBlendWeight ?? 0.5) * 100)}%; after the audit, live future weights were reselected to Android ${Math.round((forecast.modelSearch?.android?.productionBlendWeight ?? 0.5) * 100)}% and iOS ${Math.round((forecast.modelSearch?.ios?.productionBlendWeight ?? 0.5) * 100)}%.` : "The route was selected only on older development OOS."} The latest 12 weeks remained sealed for model certification.${forecast.annualQualified ? "" : " It is not officially certified because full rolling OOS remains above 10%, despite the stronger latest window."}`)}
-                          </p>
+                          {!forecast.annualQualified && <div className="forecast-validation-card__action">{tx("지금은 기본 예측만 참고하고, 예산 증감·광고 OFF 판단은 보류하세요.", "Use only the base forecast for now; hold budget-change and ad-off decisions.")}</div>}
+                          <details className="forecast-validation-card__details">
+                            <summary>{tx("모델 검증 상세", "Model validation details")}</summary>
+                            <p>{(forecast.annualCandidates || []).map((candidate) => `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} · ${tx("최근", "latest")} ${candidate.latestWmape.toFixed(2)}% · ${tx("전체", "full")} ${candidate.allWmape.toFixed(2)}%`).join(" / ")}</p>
+                            <p><strong>{tx("선택 근거: ", "Selection: ")}</strong>{forecastSelectionDecisionText(forecast.modelSearch?.routeDecision, locale)}</p>
+                            <p><strong>{tx("안전장치: ", "Guardrail: ")}</strong>{forecastGuardrailSummaryText(forecast.modelSearch, locale)}</p>
+                            {(forecast.annualOsGuardrail || []).length > 0 && <div>{(forecast.annualOsGuardrail || []).map((component) => <span className="ab-pill" key={component.component} style={component.passed ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}>{`${component.component} · ${tx("과거", "history")} ${component.developmentWmape.toFixed(2)}% · ${tx("최근", "latest")} ${component.latestWmape.toFixed(2)}%`}</span>)}</div>}
+                          </details>
                         </Card>
                       );
                     }
@@ -7630,7 +7807,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       </Card>
                     );
                   })()}
-                  {!forecastScenario.eligible && (
+                  {!forecastScenario.eligible && !forecast.isAnnualAnalog && (
                     <div className="callout warn" style={{ marginBottom: "12px" }}>
                       <div className="ico">!</div><div className="body">
                         <strong>{tx("기본 12주 예측은 제공하지만, 채널별 Cost 변경은 잠금", "Base 12-week forecast is available; channel Cost changes are locked")}</strong>
@@ -7650,7 +7827,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       </div>
                     </div>
                   )}
-                  {forecast.baselineFut?.length > 0 && (
+                  {forecast.baselineFut?.length > 0 && forecastScenario.eligible && (
                     <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
                       <strong>{forecastScenario.eligible
                         ? tx("광고비 0 기준선(비매체 기준 수요)", "Zero-media baseline (non-media demand)")
@@ -7667,7 +7844,45 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       </div>
                     </Card>
                   )}
-                  {recentBacktest && (
+                  {!forecast.isStructural && !forecast.isAnnualAnalog && (
+                    <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
+                      <strong>{tx("현재 운영 기간만으로 다시 검증", "Revalidate using the current operating regime")}</strong>
+                      {fcRegimeTrainingWeeks ? (
+                        <>
+                          <p style={{ margin: "5px 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
+                            {tx(`현재 예측 회귀는 최근 ${fcRegimeTrainingWeeks}주만 학습·검증합니다. 더 이른 기간은 이 예측 모델에서만 제외되며, 원본 CSV와 MMM 기여 분해는 바뀌지 않습니다.`, `This forecast regression trains and validates on only the latest ${fcRegimeTrainingWeeks} weeks. Earlier history is excluded only from this forecast model; the raw CSV and MMM contribution are unchanged.`)}
+                          </p>
+                          <button className="ab-pill" disabled={isAnalyzing} onClick={resetRegimeWindow}>{tx("전체 이력으로 되돌리기", "Restore full history")}</button>
+                        </>
+                      ) : (
+                        <>
+                          <p style={{ margin: "5px 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
+                            {tx("제품·채널·측정 체계가 바뀐 과거를 모두 학습에 넣으면 현재 운영 예측이 희석될 수 있습니다. 후보별 선택용 과거 OOS만 비교하고, 마지막 12주는 후보 선택에 쓰지 않는 감사 구간으로 남깁니다.", "When product, channels, or measurement changed, including all old history can dilute a current-regime forecast. We compare development OOS within each candidate regime only; the final 12 weeks remain an audit holdout and are never used to choose the window.")}
+                          </p>
+                          <button className="ab-pill active" disabled={isAnalyzing} onClick={requestRegimeWindowScan}>
+                            {isAnalyzing ? tx("기간 후보 계산 중…", "Calculating window candidates…") : tx("현재 운영 기간 후보 찾기", "Find current-regime windows")}
+                          </button>
+                        </>
+                      )}
+                      {regimeWindowScan && (
+                        <div style={{ marginTop: "10px" }}>
+                          {regimeWindowScan.recommended ? (
+                            <div className="callout good" style={{ marginBottom: "10px" }}><div className="ico">✓</div><div className="body">
+                              <strong>{tx(`최근 ${regimeWindowScan.recommended.trainingWeeks}주 (${regimeWindowScan.recommended.startLabel || "날짜 미상"} 이후)를 권장합니다`, `Recommend the latest ${regimeWindowScan.recommended.trainingWeeks} weeks (since ${regimeWindowScan.recommended.startLabel || "unknown date"})`)}</strong>
+                              <p>{tx(`선택용 과거 OOS가 전체 이력 ${regimeWindowScan.full.developmentWmape.toFixed(1)}% → ${regimeWindowScan.recommended.developmentWmape.toFixed(1)}%로 개선됐습니다. 마지막 12주 감사 오차는 ${regimeWindowScan.recommended.latestWmape.toFixed(1)}%이며, 이 수치로 기간을 고르지는 않았습니다.`, `Development OOS improved from ${regimeWindowScan.full.developmentWmape.toFixed(1)}% on full history to ${regimeWindowScan.recommended.developmentWmape.toFixed(1)}%. The final 12-week audit is ${regimeWindowScan.recommended.latestWmape.toFixed(1)}%; it was not used to choose the window.`)}</p>
+                              <button className="ab-pill active" disabled={isAnalyzing} onClick={() => acceptRegimeWindow(regimeWindowScan.recommended)}>{tx("이 기간으로 예측 다시 계산", "Recalculate using this period")}</button>
+                            </div></div>
+                          ) : (
+                            <p className="muted" style={{ margin: "0 0 8px", fontSize: "11.5px" }}>{tx("최소 이력·독립 검증 조건을 지키면서 전체 이력보다 충분히 나은 기간은 찾지 못했습니다. 임의로 과거를 버리지는 않습니다.", "No shorter period improved enough while meeting minimum-history and independent-validation rules. Earlier history will not be removed arbitrarily.")}</p>
+                          )}
+                          <div className="table-wrap"><table className="data" style={{ fontSize: "10.5px" }}><thead><tr><th>{tx("학습 시작", "Training starts")}</th><th>{tx("학습 기간", "Training period")}</th><th>{tx("선택용 OOS", "Development OOS")}</th><th>{tx("마지막 12주 감사", "Final 12-week audit")}</th><th>{tx("적격", "Eligible")}</th></tr></thead><tbody>
+                            {regimeWindowScan.candidates.map((candidate) => <tr key={candidate.trainingWeeks} style={candidate.trainingWeeks === regimeWindowScan.recommended?.trainingWeeks ? { fontWeight: 700 } : undefined}><td>{candidate.startLabel || "—"}</td><td>{candidate.trainingWeeks}{tx("주", " wk")}</td><td className="tnum">{candidate.developmentWmape == null ? "—" : `${candidate.developmentWmape.toFixed(1)}%`}</td><td className="tnum">{candidate.latestWmape == null ? "—" : `${candidate.latestWmape.toFixed(1)}%`}</td><td>{candidate.decisionEligible ? tx("통과", "Pass") : tx("보류", "Hold")}</td></tr>)}
+                          </tbody></table></div>
+                        </div>
+                      )}
+                    </Card>
+                  )}
+                  {recentBacktest && !forecast.isAnnualAnalog && (
                     <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "baseline" }}>
                         <div><strong>{tx("미래 예측 전 최근 24주 검증", "Last-24-week check before forecasting")}</strong><p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED }}>{tx("앞 12주는 모델이 학습 구간을 얼마나 따라갔는지, 뒤 12주는 학습에서 제외한 뒤 당시 실제 지출로 예측한 값입니다.", "The first 12 weeks show training fit; the last 12 were excluded from training and predicted using their actual spend.")}</p></div>
@@ -7680,7 +7895,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       <MmmBacktestChart locale={locale} labels={recentBacktest.labels} actual={recentBacktest.actual} validationStartIndex={recentBacktest.validationStartIndex} variants={[{ label: tx("모델 적합·예측", "Model fit · prediction"), predicted: recentBacktest.predicted, color: "#2563eb", dash: [] }]} formatValue={targetValueLabel} />
                     </Card>
                   )}
-                  {!recentBacktest && (
+                  {!recentBacktest && !forecast.isAnnualAnalog && (
                     <div className="callout warn" style={{ marginBottom: "12px" }}>
                       <div className="ico">!</div>
                       <div className="body">
@@ -7690,17 +7905,17 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     </div>
                   )}
                   {forecastEnhancement && (
-                    <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
+                    <Card className="forecast-diagnostics" style={{ marginBottom: "12px", padding: "14px 16px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "baseline" }}>
                         <strong>{tx("예측 신뢰도·잔차 진단", "Forecast calibration and residual diagnostics")}</strong>
-                        <span className="ab-pill">{tx("관측 예측", "Observational forecast")}</span>
+                        <span className="forecast-diagnostics__scope">{tx("관측 예측", "Observational forecast")}</span>
                       </div>
-                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
-                        <span className="ab-pill">{tx("구간 포함률", "Interval coverage")} {forecastEnhancement.calibration?.coverage == null ? "—" : `${(forecastEnhancement.calibration.coverage * 100).toFixed(0)}% / 90%`}</span>
-                        <span className="ab-pill">ACF(1) {forecastEnhancement.diagnostics?.acf1 == null ? "—" : forecastEnhancement.diagnostics.acf1.toFixed(2)}</span>
-                        <span className="ab-pill">{tx("잔차 drift", "Residual drift")} {forecastEnhancement.diagnostics?.drift == null ? "—" : targetValueLabel(forecastEnhancement.diagnostics.drift)}</span>
-                        <span className="ab-pill" style={forecastEnhancement.diagnostics?.heteroscedastic ? { borderColor: "#f59e0b", color: "#b45309" } : undefined}>{forecastEnhancement.diagnostics?.heteroscedastic ? tx("분산 변화 점검", "Variance shift") : tx("분산 안정", "Variance stable")}</span>
-                      </div>
+                      <dl className="forecast-diagnostics__metrics">
+                        <div><dt>{tx("구간 포함률", "Interval coverage")}</dt><dd>{forecastEnhancement.calibration?.coverage == null ? "—" : `${(forecastEnhancement.calibration.coverage * 100).toFixed(0)}% / 90%`}</dd></div>
+                        <div><dt>ACF(1)</dt><dd>{forecastEnhancement.diagnostics?.acf1 == null ? "—" : forecastEnhancement.diagnostics.acf1.toFixed(2)}</dd></div>
+                        <div><dt>{tx("잔차 drift", "Residual drift")}</dt><dd>{forecastEnhancement.diagnostics?.drift == null ? "—" : targetValueLabel(forecastEnhancement.diagnostics.drift)}</dd></div>
+                        <div className={forecastEnhancement.diagnostics?.heteroscedastic ? "is-warn" : ""}><dt>{tx("분산", "Variance")}</dt><dd>{forecastEnhancement.diagnostics?.heteroscedastic ? tx("변화 점검", "Check shift") : tx("안정", "Stable")}</dd></div>
+                      </dl>
                       <p className="muted" style={{ fontSize: "11px", lineHeight: 1.5, margin: "8px 0 0" }}>
                         {tx("예측 참고구간은 인과효과의 신뢰구간이 아닙니다. 포함률이 90%에서 크게 벗어나거나 잔차 ACF가 크면 시나리오보다 추가 홀드아웃을 우선하세요.", "The predictive reference interval is not a causal-effect confidence interval. If coverage differs materially from 90% or residual ACF is large, prioritize another holdout before using scenarios.")}
                       </p>
