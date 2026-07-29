@@ -56,15 +56,38 @@ export const SAT_MATH = (() => {
     const avgCpr = A.predictSafeCpr(chWrap, currentCost);
     if (avgCpr == null || avgCpr <= 0) return { ok: false, reason: "out_of_range", n: kept.length };
     const resC = currentCost / avgCpr;
-    const delta = Math.max(currentCost * cfg.deltaPct, 1e-9);
-    const cprT = A.predictSafeCpr(chWrap, currentCost + delta);
-    let marginalCpr = Infinity, resT = resC;
-    if (cprT != null && cprT > 0) {
-      resT = (currentCost + delta) / cprT;
-      const dRes = resT - resC;
-      marginalCpr = dRes > 1e-12 ? delta / dRes : Infinity;
+    // 한계효율은 반드시 관측된 비용 범위 안에서만 계산한다. currentCost+delta가
+    // xMax를 넘으면 predictSafeCpr의 xMax clamp가 사실상 "상수 CPA 외삽"을 만들어
+    // 화면의 관측범위 안내와 달리 포화/여유를 판정할 수 있었다.
+    const baseDelta = Math.max(currentCost * cfg.deltaPct, 1e-9);
+    const observedRoom = xMax - currentCost;
+    const observedBackRoom = currentCost - xMin;
+    let delta = 0;
+    let dRes = 0;
+    if (observedRoom > 1e-9) {
+      // Forward difference: current → a higher, still observed spend point.
+      delta = Math.min(baseDelta, observedRoom);
+      const cprT = A.predictSafeCpr(chWrap, currentCost + delta);
+      if (cprT != null && cprT > 0) {
+        dRes = (currentCost + delta) / cprT - resC;
+      }
+    } else if (observedBackRoom > 1e-9) {
+      // At the observed maximum, use the preceding observed-range increment
+      // (left derivative) instead of extending the curve beyond xMax.
+      delta = Math.min(baseDelta, observedBackRoom);
+      const cprPrev = A.predictSafeCpr(chWrap, currentCost - delta);
+      if (cprPrev != null && cprPrev > 0) {
+        const resPrev = (currentCost - delta) / cprPrev;
+        dRes = resC - resPrev;
+      }
     }
-    const satIndex = isFinite(marginalCpr) && avgCpr > 0 ? marginalCpr / avgCpr : Infinity;
+    // 추가 결과가 정확히 0이면 한계 CPA는 무한대이므로 실제 포화 신호다.
+    // 반대로 결과가 감소하는 곡선은 안정적인 한계효율 판정 근거가 아니므로 보류한다.
+    if (!isFinite(dRes) || dRes < -1e-12 || !(delta > 0)) {
+      return { ok: false, reason: "nonpositive_marginal", n: kept.length };
+    }
+    const marginalCpr = dRes > 1e-12 ? delta / dRes : Infinity;
+    const satIndex = marginalCpr / avgCpr;
     let totCost = 0, totRes = 0, totRev = 0, hasRev = false;
     for (const p of kept) {
       totCost += p.x;
@@ -79,9 +102,8 @@ export const SAT_MATH = (() => {
     if (hasRev && totRev > 0 && totRes > 0) {
       const revPerRes = totRev / totRes;
       const revC = resC * revPerRes;
-      const revT = resT * revPerRes;
       const avgRoas = currentCost > 0 ? revC / currentCost : null;
-      const marginalRoas = delta > 0 ? (revT - revC) / delta : null;
+      const marginalRoas = delta > 0 ? (dRes * revPerRes) / delta : null;
       const satIndexRoas = marginalRoas > 0 && avgRoas > 0 ? avgRoas / marginalRoas : Infinity;
       roas = {
         avgRoas,
