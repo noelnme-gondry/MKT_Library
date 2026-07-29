@@ -35,4 +35,9 @@ describe("MMM locale output", () => {
     expect(trend.verdict).not.toMatch(korean);
     expect(cannib.verdict).not.toMatch(korean);
   });
+
+  it("abstains instead of throwing when the ADF auxiliary regression is singular", () => {
+    const flatPanel = { ...panel, targets: { Regs: Array(40).fill(100) } };
+    expect(() => mmmTrendExistence(flatPanel, MMM_METH_CONFIG, "Regs", "en")).not.toThrow();
+  });
 });

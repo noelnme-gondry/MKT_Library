@@ -25,6 +25,8 @@ export const CREATIVE_MATH = {
   },
   inverse(M) {
     const n = M.length;
+    if (!n || M.some((row) => !Array.isArray(row) || row.length !== n)) return null;
+    const original = M.map((row) => row.slice());
     const a = M.map((r) => r.slice());
     const I = Array.from({ length: n }, (_, i) => {
       const row = new Array(n).fill(0);
@@ -60,7 +62,18 @@ export const CREATIVE_MATH = {
         }
       }
     }
-    return I;
+    // 절대 pivot 임계만으로는 스케일이 큰 거의-특이 행렬을 걸러내지 못한다.
+    // 역행렬을 실제 원행렬에 다시 곱해 단위행렬 오차를 확인해야 가비지 계수/SE가
+    // 화면에 유의 효과처럼 표시되는 것을 막을 수 있다.
+    let maxErr = 0;
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        let value = 0;
+        for (let k = 0; k < n; k++) value += I[i][k] * original[k][j];
+        maxErr = Math.max(maxErr, Math.abs(value - (i === j ? 1 : 0)));
+      }
+    }
+    return maxErr <= 1e-6 ? I : null;
   },
   demean(rows, groupKey) {
     if (!groupKey) return rows;
@@ -749,7 +762,7 @@ export const CREATIVE_STATS = {
     const w = rowsWithExtras.map((r) => r._w);
     let hasIntercept = true;
     // campaign_id within-transformation (FWL). demean은 dummy 컬럼(1..p)만, 절편(col 0) 제외.
-    if (rowsWithExtras[0].campaign_id) {
+    if (rowsWithExtras.some((row) => row.campaign_id != null && row.campaign_id !== "")) {
       const camp = rowsWithExtras.map((r) => r.campaign_id || "_");
       y = CREATIVE_MATH.demeanColumn(y, camp);
       for (let j = 1; j < X[0].length; j++) {

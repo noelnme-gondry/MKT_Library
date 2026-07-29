@@ -677,6 +677,9 @@ export function mmmDataQualityAudit(panel) {
                 if (f && f.aic < best.aic) best = { aic: f.aic, j };
               }
               const f = mmmOls(design(best.j), xdshort);
+              if (!f || !Array.isArray(f.tvalues) || !Number.isFinite(f.tvalues[2])) {
+                return { stat: NaN, p: NaN, usedlag: best.j, nobs };
+              }
               const stat = f.tvalues[2];
               return { stat, p: _mackinnonpCT(stat), usedlag: best.j, nobs };
             }
