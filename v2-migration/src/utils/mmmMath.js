@@ -7496,11 +7496,37 @@ export function mmmDataQualityAudit(panel) {
                   const sourceIndex = Math.round(index * (allHoldoutStarts.length - 1) / (maxSelectionFolds - 1));
                   return allHoldoutStarts[sourceIndex];
                 });
+              const trendOptions = [{ trendScope: "recent", trendWindow: null }, ...[24, 36, "all"].map((trendWindow) => ({ trendScope: "global", trendWindow }))];
+              const specPriority = (spec) => ({
+                "cost-trend": 0,
+                "cost-trend-quarter": 1,
+                "cost-trend-global-quarter": 2,
+                "cost-trend-year-quarter": 3,
+                "cost-trend-global-year-quarter": 4,
+              }[spec.id] ?? 9);
+              const configurationPlans = [];
+              specs.forEach((spec) => trendOptions.forEach((trendOption, trendIndex) => {
+                candidateWindows.forEach((window) => controlPolicies.forEach((controlPolicy) => {
+                  if (window >= spec.minWindow) configurationPlans.push({ spec, trendOption, trendIndex, window, controlPolicy });
+                }));
+              }));
+              // 채널·구조변화 열이 많은 CSV에서 후보 조합까지 무제한이면, 각 조합의
+              // rolling 회귀가 곱해져 브라우저 탭 자체가 죽을 수 있다. 기본 40개는
+              // 단순/분기/전역분기와 명시한 Step을 우선 평가하고, 나머지는 안전한
+              // fallback으로 남긴다. 모든 후보는 같은 독립 holdout 계약을 지킨다.
+              const maxCandidateConfigurations = Number.isInteger(options.maxCandidateConfigurations)
+                ? Math.max(1, options.maxCandidateConfigurations)
+                : 40;
+              const configurationPlansToEvaluate = configurationPlans
+                .sort((left, right) =>
+                  specPriority(left.spec) - specPriority(right.spec)
+                  || left.trendIndex - right.trendIndex
+                  || (hasMappedSteps ? Number(!left.controlPolicy.mapped) - Number(!right.controlPolicy.mapped) : Number(left.controlPolicy.mapped) - Number(right.controlPolicy.mapped))
+                  || right.window - left.window,
+                )
+                .slice(0, maxCandidateConfigurations);
               const candidates = [];
-              for (const spec of specs) {
-                const trendOptions = [{ trendScope: "recent", trendWindow: null }, ...[24, 36, "all"].map((trendWindow) => ({ trendScope: "global", trendWindow }))];
-                for (const trendOption of trendOptions) for (const window of candidateWindows) for (const controlPolicy of controlPolicies) {
-                  if (window < spec.minWindow) continue;
+              for (const { spec, trendOption, window, controlPolicy } of configurationPlansToEvaluate) {
                   const outcomes = [];
                   let trendEventControls = 0;
                   const controlledPanel = controlPolicy.mapped
@@ -7628,7 +7654,6 @@ export function mmmDataQualityAudit(panel) {
                       persistence: item.persistence,
                     })),
                   });
-                }
               }
               const nested = mmmForecastNestedSelection(candidates, {
                 horizon,
@@ -7661,6 +7686,8 @@ export function mmmDataQualityAudit(panel) {
                 foldStep,
                 availableHoldoutOrigins: allHoldoutStarts.length,
                 evaluatedHoldoutOrigins: holdoutStarts.length,
+                availableCandidateConfigurations: configurationPlans.length,
+                evaluatedCandidateConfigurations: configurationPlansToEvaluate.length,
                 feasibleFolds: Math.max(0, feasibleFolds),
                 decisionMinFolds,
                 candidates,

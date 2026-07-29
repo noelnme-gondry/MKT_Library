@@ -2864,6 +2864,56 @@ export function scanForecastRegimeWindows(models, { candidateWeeks = [104, 78], 
   return { available: !!full, full, candidates, recommended };
 }
 
+// Paid·Organic 자동 탐색은 모델 내부에서 104주 이하의 보조 창을 고르지만,
+// 오래된 운영 체계를 통째로 제외한 뒤 OOS를 다시 평가하지는 않았다. 이 함수는
+// 그 바깥 학습 기간까지 비교한다. 연간/유사시즌 후보에는 최소 91주가 필요하다.
+export function scanAnnualForecastRegimeWindows({ totalPanel, androidPanel, iosPanel, target, horizon = 12 } = {}, { candidateWeeks = [104, 91] } = {}) {
+  const panels = [totalPanel, androidPanel, iosPanel];
+  if (panels.some((panel) => !panel?.week?.length) || !target) {
+    return { available: false, reason: "missing-source", candidates: [], recommended: null };
+  }
+  const minimumWeeks = Math.max(91, 68 + horizon);
+  const maxWeeks = Math.min(...panels.map((panel) => panel.week.length));
+  const windows = [...new Set([maxWeeks, ...candidateWeeks])]
+    .filter((weeks) => Number.isInteger(weeks) && weeks >= minimumWeeks && weeks <= maxWeeks)
+    .sort((a, b) => b - a);
+  const candidates = windows.map((trainingWeeks) => {
+    const annual = runAnnualAnalogRouter({
+      totalPanel: sliceForecastTrainingWindow(totalPanel, trainingWeeks),
+      androidPanel: sliceForecastTrainingWindow(androidPanel, trainingWeeks),
+      iosPanel: sliceForecastTrainingWindow(iosPanel, trainingWeeks),
+      target,
+      horizon,
+    });
+    const selected = annual?.selected;
+    const componentDevelopmentPass = (annual?.osGuardrail || []).length >= 2
+      && annual.osGuardrail.every((item) => Number.isFinite(item.developmentWmape) && item.developmentWmape < 10);
+    const available = Number.isFinite(selected?.developmentWmape) && Number.isFinite(selected?.latestWmape);
+    return {
+      trainingWeeks,
+      startLabel: totalPanel.weekLabel?.[Math.max(0, totalPanel.week.length - trainingWeeks)] || null,
+      endLabel: totalPanel.weekLabel?.at(-1) || null,
+      available,
+      developmentWmape: available ? selected.developmentWmape : null,
+      latestWmape: available ? selected.latestWmape : null,
+      // 마지막 12주 감사는 기간 선택에 쓰지 않는다. 개발 OOS와 OS별 개발
+      // 검증만으로 "더 짧은 기간을 검토할 자격"을 판정한다.
+      decisionEligible: available && selected.developmentWmape < 10 && componentDevelopmentPass,
+    };
+  });
+  const full = candidates.find((candidate) => candidate.trainingWeeks === maxWeeks && candidate.available) || null;
+  const bestShorter = candidates
+    .filter((candidate) => candidate.available && candidate.decisionEligible && candidate.trainingWeeks < maxWeeks)
+    .sort((a, b) => a.developmentWmape - b.developmentWmape || b.trainingWeeks - a.trainingWeeks)[0] || null;
+  const recommended = full && bestShorter
+    && full.developmentWmape > 10
+    && bestShorter.developmentWmape <= full.developmentWmape * 0.8
+    && full.developmentWmape - bestShorter.developmentWmape >= 3
+    ? bestShorter
+    : null;
+  return { available: !!full, full, candidates, recommended };
+}
+
 function buildForecastOnlyModel(mmm) {
   return buildForecastOnlyModelFromPanel(mmm.panel, mmm.cfg, mmm.target);
 }
@@ -3353,12 +3403,8 @@ export function buildForecastAssistInsight(forecast, recentBacktest, forecastSce
     certified = Boolean(forecast.annualQualified);
     routeKo = forecastAssistRouteLabel(forecast.selectedRoute, "ko");
     routeEn = forecastAssistRouteLabel(forecast.selectedRoute, "en");
-    modelKo = forecast.paidOrganicHybrid
-      ? `최대 ${forecast.modelSearch?.maxTrainingWeeks || 104}주 안에서 Total·Organic·Paid, 전년 동주·유사 시즌 후보와 OS별 결합비를 전체·최근·최악 구간·안정성 OOS로 자동 선택한 모델입니다.`
-      : `최대 ${forecast.modelSearch?.maxTrainingWeeks || 104}주 안에서 최근평균·감쇠 추세·전년 동주·유사 시즌 패턴을 여러 OOS 기준으로 비교한 자동 탐색 모델입니다.`;
-    modelEn = forecast.paidOrganicHybrid
-      ? `This model searches Total, Organic, Paid, annual, and similar-season candidates plus OS-specific blend weights within a maximum ${forecast.modelSearch?.maxTrainingWeeks || 104}-week window, balancing full, recent, bad-window, and stability OOS criteria.`
-      : `This model compares recent-level, damped-trend, matching-week annual, and similar-season candidates within a maximum ${forecast.modelSearch?.maxTrainingWeeks || 104}-week window using multiple OOS criteria.`;
+    modelKo = `최근 ${forecast.modelSearch?.maxTrainingWeeks || 104}주 후보를 개발 OOS로 비교했고, 마지막 12주는 감사용으로 남겼습니다.`;
+    modelEn = `Candidates within the latest ${forecast.modelSearch?.maxTrainingWeeks || 104} weeks were compared on development OOS; the final 12 weeks remain an audit.`;
   } else if (forecast.isAdditiveTotal) {
     const components = (forecast.components || []).map((component) => {
       const selected = component.rollingSelection?.selected;
@@ -3379,12 +3425,12 @@ export function buildForecastAssistInsight(forecast, recentBacktest, forecastSce
 
   const annualRollingScore = forecastAssistPct(forecast.rollingSelection?.selected?.wmape);
   const statusKo = forecast.isAnnualAnalog && scoreText
-    ? `${forecast.paidOrganicHybrid ? "Paid·Organic 하이브리드" : "연간 반복형"}의 봉인 최근 12주 wMAPE는 ${scoreText}, 전체 rolling OOS는 ${annualRollingScore || "계산 불가"}입니다. ${certified ? "두 기준 모두 10% 인증을 통과했습니다." : "최신 구간은 좋아도 전체 rolling 10%를 넘어서 미인증 best-available입니다."}`
+    ? `최근 12주 ${scoreText} · 개발 OOS ${annualRollingScore || "계산 불가"}. ${certified ? "예산 변경 가능" : "예산 변경 잠금"}.`
     : scoreText
       ? `봉인한 최근 12주에 실제 Cost를 입력한 OOS wMAPE는 ${scoreText}로, 10% 목표를 ${certified ? "통과했습니다" : "통과하지 못했습니다"}.`
       : "현재 데이터로 최근 12주 OOS 점수를 계산하지 못했습니다.";
   const statusEn = forecast.isAnnualAnalog && scoreText
-    ? `The ${forecast.paidOrganicHybrid ? "Paid/Organic hybrid" : "annual analog"} scores ${scoreText} on the sealed latest 12 weeks and ${annualRollingScore || "unavailable"} on full rolling OOS. ${certified ? "Both gates pass official 10% certification." : "Despite the stronger latest window, it remains an uncertified best-available model because full rolling OOS exceeds 10%."}`
+    ? `Latest 12 weeks: ${scoreText} · development OOS: ${annualRollingScore || "unavailable"}. ${certified ? "Budget changes available." : "Budget changes locked."}`
     : scoreText
       ? `With Actual Cost supplied to the sealed latest 12 weeks, OOS wMAPE is ${scoreText}; the 10% target is ${certified ? "passed" : "not passed"}.`
       : "The latest 12-week OOS score could not be computed from the current data.";
@@ -4775,6 +4821,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             isAnnualAnalog: true,
             annual,
             totalPanel: preparedForRegime.all.sourcePanel,
+            androidPanel: preparedForRegime.android.sourcePanel,
+            iosPanel: preparedForRegime.ios.sourcePanel,
             target: preparedForRegime.all.target,
           };
         }
@@ -4809,6 +4857,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
             isAnnualAnalog: true,
             annual: { ...annual, bestAvailable: true },
             totalPanel: preparedForRegime.all.sourcePanel,
+            androidPanel: preparedForRegime.android.sourcePanel,
+            iosPanel: preparedForRegime.ios.sourcePanel,
             target: preparedForRegime.all.target,
           };
         }
@@ -4911,10 +4961,19 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // 자동 적용하지 않는다. 사용자가 탐색을 요청한 경우에만 후보별 재적합을 하고,
   // 추천된 시작점도 별도 승인 버튼을 눌러야 실제 예측 회귀에 반영된다.
   const regimeWindowScan = useMemo(() => {
-    if (stage !== "lab" || !isRegimeWindowScanRequested || fcRegimeTrainingWeeks || !forecastModel || forecastModel.isStructural || forecastModel.isAnnualAnalog) return null;
+    if (stage !== "lab" || !isRegimeWindowScanRequested || fcRegimeTrainingWeeks || !forecastModel || forecastModel.isStructural) return null;
+    if (forecastModel.isAnnualAnalog) {
+      return scanAnnualForecastRegimeWindows({
+        totalPanel: forecastModel.totalPanel,
+        androidPanel: forecastModel.androidPanel,
+        iosPanel: forecastModel.iosPanel,
+        target: forecastModel.target,
+        horizon: fcHorizon,
+      });
+    }
     const models = forecastModel.isAdditiveTotal ? forecastModel.components : [forecastModel];
     return scanForecastRegimeWindows(models);
-  }, [stage, isRegimeWindowScanRequested, fcRegimeTrainingWeeks, forecastModel]);
+  }, [stage, isRegimeWindowScanRequested, fcRegimeTrainingWeeks, forecastModel, fcHorizon]);
   const requestRegimeWindowScan = useCallback(() => {
     deferMmmUpdate(() => setIsRegimeWindowScanRequested(true));
   }, [deferMmmUpdate]);
@@ -7555,11 +7614,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
               <h2 className="section-title">{tx("📈 예측 전용 회귀 · 미래 예측", "📈 Forecast regression · future prediction")} <span style={{ fontSize: "12px", color: MUTED, fontWeight: 400 }}>{tx("· MMM 기여 분석과 별도 모델", "· separate from MMM contribution model")}</span></h2>
               <p style={{ fontSize: "12px", color: MUTED, marginBottom: "12px", lineHeight: 1.55 }}>
                 {forecast?.isStructural
-                  ? tx("귀속형 Organic·Paid 후보를 4주 간격 rolling OOS로 비교합니다. 모델 선택은 실제 미래비용을 보지 않는 라이브 조건으로 수행하고, 실제 비용을 미리 넣은 조건부 오차와 naive 오차를 분리합니다. 예측 거리별로 모델이 naive를 이기지 못하면 해당 주차는 자동으로 naive로 되돌리며, 검증 범위인 12주를 넘는 구간은 무조건 naive로 전환합니다. ", "Attributed Organic and Paid candidates are compared with rolling OOS origins spaced four weeks apart. Selection uses live conditions without seeing future spend; conditional error with known future spend and naive error are reported separately. At each horizon, the forecast falls back to naive when the model does not beat it, and every week beyond the validated 12-week range is forced to naive. ")
+                  ? tx("실제 미래 Cost를 모른 채 OOS로 비교합니다. 검증에서 기준선보다 못한 주차는 자동으로 최근평균으로 되돌립니다. ", "Candidates are compared by OOS without seeing future Cost. Any horizon that loses to baseline falls back to the recent average. ")
                   : forecast?.isAnnualAnalog
                       ? forecast.paidOrganicHybrid
-                      ? tx("OS별 Total과 Paid 실측을 사용해 Organic=Total−Paid를 구성하며, 해당 OS의 Paid Cost 합계가 0인 주는 Paid RR과 Paid 예측도 0으로 정규화합니다. 최대 104주 안에서 최근평균·감쇠 추세·전년 동주·26/52/78주 전 유사 시즌·Cost 기반 Paid 반응과 0/25/50/75/100% 결합비를 비교합니다. 하나의 wMAPE만 보지 않고 전체 OOS, 최근 OOS, 나쁜 구간 P90, fold 안정성을 함께 평가합니다. 전체나 최근 OOS가 최근평균 기준선보다 악화되거나, 최악 구간 위험이 10% 넘게 커지거나, fold 절반도 이기지 못한 후보는 선택 전에 자동 제외합니다. 통과 후보가 없으면 최근평균 기준선으로 되돌아갑니다. 최신 12주 audit은 그 구간을 제외한 development OOS로 고정하고, 실제 미래예측용 결합비만 audit 완료 후 최신 관측까지 포함해 다시 선택합니다. ", "Observed OS-level Total and Paid outcomes define Organic=Total−Paid; when an OS has zero total Paid Cost, both Paid RR and its Paid forecast are normalized to zero. Within a maximum 104-week window, the search compares recent-level, damped-trend, matching-week annual, analogous seasons 26/52/78 weeks back, cost-based Paid response, and 0/25/50/75/100% blend candidates. Selection balances full OOS, recent OOS, bad-window P90, and fold stability instead of relying on one wMAPE. Before selection, a candidate is rejected when full or recent OOS is worse than the recent-average baseline, bad-window risk is more than 10% higher, or it fails to win at least half the folds. The system falls back to the recent-average baseline when nothing passes. The latest 12-week audit is frozen using development OOS that excludes it; only the live future blend is reselected with all observations after the audit is complete. ")
-                      : tx("최대 104주 안에서 최근평균·감쇠 추세·전년 같은 주차·26/52/78주 전 유사 시즌 패턴을 비교합니다. 전체·최근·나쁜 구간·안정성 OOS를 함께 보고 Direct Total과 Android+iOS 합산도 선택합니다. 최근평균 기준선보다 악화된 후보는 자동 제외하며 통과 모델이 없으면 기준선으로 되돌아갑니다. 이 경로는 Cost 반응 시나리오를 제공하지 않습니다. ", "Within a maximum 104-week window, recent-level, damped-trend, matching-week annual, and analogous-season candidates 26/52/78 weeks back are compared. Full, recent, bad-window, and stability OOS jointly select Direct Total versus Android+iOS. Candidates that deteriorate versus the recent-average baseline are removed automatically, with a baseline fallback when none pass. This route does not provide budget-response scenarios. ")
+                      ? tx("최근 104주 안에서 Paid·Organic 예측 후보를 OOS로 비교합니다. 기준선보다 나쁘면 예산 변경을 잠급니다. ", "Paid/Organic candidates within the latest 104 weeks are compared by OOS. Budget changes stay locked when they lose to baseline. ")
+                      : tx("최근 104주 후보를 OOS로 비교해 가장 안정적인 예측을 고릅니다. 기준선보다 나쁘면 최근평균을 사용합니다. ", "Candidates within the latest 104 weeks are compared by OOS. The recent average is used when none beats baseline. ")
                   : tx("같은 CSV·매핑을 쓰되, MMM은 전체 기간 기여도를 유지하고 예측 회귀만 Cost 학습 window·추세·계절성을 12주 rolling 검증으로 고릅니다. ", "Uses the same CSV/mapping, but keeps MMM on full-history contribution analysis and selects only the forecast regression's Cost window, trend, and seasonality with rolling 12-week validation. ")}
                 {!forecast?.isStructural && !forecast?.isAnnualAnalog && effPlatformFilter === "all" && tx("114주 이상이면 Direct Total과 Android·iOS 합산을 nested OOS로 비교하고, 더 짧으면 OS 합산을 유지합니다. ", "With 114+ weeks, Direct Total and the Android+iOS sum are compared by nested OOS; shorter histories retain the OS sum. ")}
                 {tx(`선택한 목표(${mmmTargetDisplay(mmm.target, locale)})의 회색선은 실측, 파란선은 모델/예측, 음영은 최근 오차를 반영한 참고 범위입니다(인과 보장 아님).`, `For the selected target (${mmmTargetDisplay(mmm.target, locale)}), gray is actual, blue is model/forecast, and the band is a recent-error reference range, not a causal guarantee.`)}
@@ -7844,7 +7903,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       </div>
                     </Card>
                   )}
-                  {!forecast.isStructural && !forecast.isAnnualAnalog && (
+                  {!forecast.isStructural && (
                     <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
                       <strong>{tx("현재 운영 기간만으로 다시 검증", "Revalidate using the current operating regime")}</strong>
                       {fcRegimeTrainingWeeks ? (
