@@ -6217,6 +6217,26 @@ body.light-mode .app:not(.is-home) .main {
   }
 }
 
+.dashboard-recommendations { margin:12px 0 10px;padding:14px;border:1px solid color-mix(in srgb,var(--primary) 34%,var(--border));border-radius:11px;background:linear-gradient(112deg,color-mix(in srgb,var(--primary) 8%,var(--surface-container-lowest)),var(--surface-container-lowest) 48%); }
+.dashboard-recommendations__heading { display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:10px; }
+.dashboard-recommendations__heading > div > span { display:block;color:var(--primary);font:700 8px var(--font-mono);letter-spacing:.12em; }
+.dashboard-recommendations__heading h2 { margin:3px 0 0;color:var(--text-primary);font-size:14px;letter-spacing:-.025em; }
+.dashboard-recommendations__heading p { max-width:380px;margin:0;color:var(--text-muted);font-size:9.5px;line-height:1.45;text-align:right; }
+.dashboard-recommendations__grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px; }
+.dashboard-recommendation { display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:9px;min-width:0;padding:10px;border:1px solid var(--border-subtle);border-radius:8px;background:var(--surface-container-lowest);color:var(--text-secondary);text-align:left;cursor:pointer;transition:border-color .16s ease,transform .16s ease,background .16s ease; }
+.dashboard-recommendation:hover,.dashboard-recommendation:focus-visible { border-color:var(--primary);background:color-mix(in srgb,var(--primary) 7%,var(--surface-container-lowest));outline:none;transform:translateY(-1px); }
+.dashboard-recommendation__rank { color:var(--primary);font:750 10px var(--font-mono);line-height:1.45; }
+.dashboard-recommendation__content { min-width:0; }
+.dashboard-recommendation__topline { display:flex;align-items:center;justify-content:space-between;gap:6px; }
+.dashboard-recommendation strong { color:var(--text-primary);font-size:11px; }
+.dashboard-recommendation em { flex:none;padding:2px 4px;border-radius:4px;background:color-mix(in srgb,var(--primary) 11%,transparent);color:var(--primary);font-size:7.5px;font-style:normal;font-weight:750; }
+.dashboard-recommendation__content > span:last-child { display:block;margin-top:5px;color:var(--text-muted);font-size:9px;line-height:1.48; }
+.dashboard-recommendation > svg { margin-top:2px;color:var(--primary); }
+.dashboard-recommendations__more { margin-top:9px; }
+.dashboard-recommendations__more > summary { display:inline-flex;align-items:center;gap:5px;color:var(--text-muted);font-size:9.5px;cursor:pointer; }
+.dashboard-recommendations__more > div { display:flex;flex-wrap:wrap;gap:5px;margin-top:7px; }
+.dashboard-recommendations__more button { padding:4px 7px;border:1px solid var(--border-subtle);border-radius:5px;background:var(--surface-container-lowest);color:var(--text-secondary);font-size:9px;cursor:pointer; }
+.dashboard-recommendations__more button:hover,.dashboard-recommendations__more button:focus-visible { border-color:var(--primary);color:var(--primary);outline:none; }
 .dashboard-data-jump {
   display:flex;
   align-items:center;
@@ -6257,7 +6277,7 @@ body.light-mode .app:not(.is-home) .main {
 .data-journey li.is-sample span { background:#f7b955;color:#172033; }
 .data-journey strong,.data-journey small { display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 .data-journey strong { color:var(--text-secondary);font-size:10px; }.data-journey small { margin-top:2px;color:var(--text-muted);font-size:9px; }
-@media (max-width:700px) { .dashboard-demo-source,.dashboard-decision-strip { align-items:flex-start;flex-direction:column; }.dashboard-decision-strip__actions { justify-content:flex-start; }.data-journey { grid-template-columns:1fr; } }
+@media (max-width:700px) { .dashboard-demo-source,.dashboard-decision-strip { align-items:flex-start;flex-direction:column; }.dashboard-decision-strip__actions { justify-content:flex-start; }.dashboard-recommendations__heading { align-items:flex-start;flex-direction:column;gap:6px; }.dashboard-recommendations__heading p { text-align:left; }.dashboard-recommendations__grid { grid-template-columns:1fr; }.data-journey { grid-template-columns:1fr; } }
 .dashboard-support-tools {
   margin-top:18px;
   border:1px solid var(--border);

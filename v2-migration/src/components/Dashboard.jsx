@@ -20,6 +20,8 @@ import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import DownloadHub from "@/components/ds/DownloadHub";
 import { buildDashboardVerdict } from "@/utils/dashboardVerdict";
+import { buildDashboardRecommendations } from "@/utils/dashboardRecommendations";
+import DashboardRecommendedViews from "@/components/dashboard/DashboardRecommendedViews";
 import { trackProductEvent } from "@/lib/analytics";
 import { downloadCsv, downloadText } from "@/utils/download";
 import { FileText, ChevronRight } from "lucide-react";
@@ -212,6 +214,12 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
     ? (workerState.key === workerKey ? workerState.result : null)
     : syncVerdict;
   const topStats = verdict && !verdict.insufficient ? verdict.stats.slice(0, 3) : [];
+  const dashboardRecommendations = useMemo(() => buildDashboardRecommendations({
+    verdict,
+    mapping: csvData?.mapping,
+    domain,
+    locale,
+  }), [verdict, csvData?.mapping, domain, locale]);
   const isDemo = String(csvData?.fileName || "").startsWith("demo_");
   const openMapping = () => {
     setMappingOpen(true);
@@ -220,6 +228,11 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   const openSupportTools = () => {
     setSupportOpen(true);
     requestAnimationFrame(() => document.getElementById("dashboard-support-tools")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+  const selectRecommendedView = (item) => {
+    setDashboardTab(item.tab);
+    trackProductEvent("dashboard_recommendation_open", { tool_id: toolId, tab_name: item.tab, rank: item.rank, confidence: item.confidence });
+    requestAnimationFrame(() => document.getElementById("dashboard-tabpanel")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
   useEffect(() => {
@@ -423,6 +436,11 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                     ]}
                   />
                 }
+              />
+              <DashboardRecommendedViews
+                {...dashboardRecommendations}
+                locale={locale}
+                onSelect={selectRecommendedView}
               />
               <div className="dashboard-data-jump">
                 <a href="#dashboard-tabpanel">{tr("바로 데이터 보기", "Jump to data")} <span aria-hidden="true">↓</span></a>
