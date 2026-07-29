@@ -448,6 +448,19 @@ function conditionalCosts(dataset, route, trainEnd, horizon) {
   ]));
 }
 
+// 예측 구조·event 정책·학습창은 그대로 두고 Cost만 0으로 고정하는 자기 자신의
+// ablation 기준선이다. 일반 persistence가 아니라 "Cost 항을 빼도 같은 모델이
+// 맞는가"를 보기 위한 전용 비교다.
+function spendFreeCosts(dataset, route, trainEnd, horizon) {
+  const zeroRows = (panel) => actualCostRows(panel, trainEnd, horizon)
+    ?.map((row) => row.map(() => 0)) || null;
+  if (route === "direct-total") return { total: zeroRows(panelFor(dataset, "total")) };
+  return Object.fromEntries(["android", "ios"].map((platform) => [
+    platform,
+    zeroRows(panelFor(dataset, platform)),
+  ]));
+}
+
 function componentError(dataset, route, result, trainEnd, horizon) {
   const series = [];
   if (route === "direct-total") {
@@ -544,13 +557,15 @@ function evaluateSpec(dataset, route, spec, foldOffsets, holdout) {
     const actual = totalPanel.total.slice(trainEnd, trainEnd + holdout);
     const live = routeAt(dataset, trainEnd, holdout, route, spec);
     const conditional = routeAt(dataset, trainEnd, holdout, route, spec, conditionalCosts(dataset, route, trainEnd, holdout));
+    const spendFree = routeAt(dataset, trainEnd, holdout, route, spec, spendFreeCosts(dataset, route, trainEnd, holdout));
     const naiveResult = naiveRouteAt(dataset, trainEnd, holdout, route);
-    if (!live || !conditional || !naiveResult || actual.length !== holdout) continue;
+    if (!live || !conditional || !spendFree || !naiveResult || actual.length !== holdout) continue;
     const liveError = wmapeParts(actual, live.predicted);
     const conditionalError = wmapeParts(actual, conditional.predicted);
+    const spendFreeError = wmapeParts(actual, spendFree.predicted);
     const naive = Array(holdout).fill(totalPanel.total[trainEnd - 1]);
     const naiveError = wmapeParts(actual, naive);
-    if (!liveError || !conditionalError || !naiveError) continue;
+    if (!liveError || !conditionalError || !spendFreeError || !naiveError) continue;
     folds.push({
       offset,
       excludedWeeks: offset + holdout,
@@ -558,19 +573,23 @@ function evaluateSpec(dataset, route, spec, foldOffsets, holdout) {
       end: dataset.weekLabels[trainEnd + holdout - 1],
       wmape: liveError.wmape,
       conditionalWmape: conditionalError.wmape,
+      spendFreeWmape: spendFreeError.wmape,
       naiveWmape: naiveError.wmape,
       denominator: liveError.denominator,
       absoluteError: liveError.absoluteError,
       conditionalAbsoluteError: conditionalError.absoluteError,
+      spendFreeAbsoluteError: spendFreeError.absoluteError,
       naiveAbsoluteError: naiveError.absoluteError,
       actual,
       absoluteErrors: liveError.absoluteErrors,
       conditionalAbsoluteErrors: conditionalError.absoluteErrors,
+      spendFreeAbsoluteErrors: spendFreeError.absoluteErrors,
       naiveAbsoluteErrors: naiveError.absoluteErrors,
       ...componentError(dataset, route, live, trainEnd, holdout),
       regime: foldRegime(totalPanel, trainEnd, holdout),
       result: live,
       conditionalResult: conditional,
+      spendFreeResult: spendFree,
       naiveResult,
     });
   }
@@ -589,19 +608,25 @@ function applyHorizonGuardrail(dataset, evaluation, selectionOffsets, holdout) {
     const trainEnd = dataset.weeks.length - holdout - fold.offset;
     const result = mixResults(fold.result, fold.naiveResult, useModelByHorizon);
     const conditionalResult = mixResults(fold.conditionalResult, fold.naiveResult, useModelByHorizon);
+    const spendFreeResult = mixResults(fold.spendFreeResult, fold.naiveResult, useModelByHorizon);
     const liveError = wmapeParts(fold.actual, result.predicted);
     const conditionalError = wmapeParts(fold.actual, conditionalResult.predicted);
+    const spendFreeError = wmapeParts(fold.actual, spendFreeResult.predicted);
     return {
       ...fold,
       wmape: liveError.wmape,
       conditionalWmape: conditionalError.wmape,
+      spendFreeWmape: spendFreeError.wmape,
       absoluteError: liveError.absoluteError,
       conditionalAbsoluteError: conditionalError.absoluteError,
+      spendFreeAbsoluteError: spendFreeError.absoluteError,
       absoluteErrors: liveError.absoluteErrors,
       conditionalAbsoluteErrors: conditionalError.absoluteErrors,
+      spendFreeAbsoluteErrors: spendFreeError.absoluteErrors,
       ...componentError(dataset, evaluation.route, result, trainEnd, holdout),
       result,
       conditionalResult,
+      spendFreeResult,
     };
   });
   return { ...evaluation, folds: guardedFolds, useModelByHorizon };
@@ -681,6 +706,11 @@ function summarizeEvaluation(evaluation, selectionOffsets, holdout) {
       : null,
     pooledWmape: pooled(folds),
     conditionalPooledWmape: pooled(folds, "conditionalAbsoluteError"),
+    spendFreePooledWmape: pooled(folds, "spendFreeAbsoluteError"),
+    spendFreeFoldWins: folds.filter((fold) =>
+      Number.isFinite(fold.wmape)
+      && Number.isFinite(fold.spendFreeWmape)
+      && fold.wmape < fold.spendFreeWmape).length,
     naivePooledWmape: pooled(folds, "naiveAbsoluteError"),
     worstWmape: Math.max(...folds.map((fold) => fold.wmape)),
     passRate: folds.filter((fold) => fold.wmape < 10).length / folds.length,
@@ -806,6 +836,11 @@ function summarizeNestedFolds(folds, holdout) {
     foldCount: valid.length,
     pooledWmape: pooled(valid),
     conditionalPooledWmape: pooled(valid, "conditionalAbsoluteError"),
+    spendFreePooledWmape: pooled(valid, "spendFreeAbsoluteError"),
+    spendFreeFoldWins: valid.filter((fold) =>
+      Number.isFinite(fold.wmape)
+      && Number.isFinite(fold.spendFreeWmape)
+      && fold.wmape < fold.spendFreeWmape).length,
     naivePooledWmape: pooled(valid, "naiveAbsoluteError"),
     worstWmape: valid.length ? Math.max(...valid.map((fold) => fold.wmape)) : null,
     passRate: valid.length ? valid.filter((fold) => fold.wmape < 10).length / valid.length : 0,
@@ -1120,11 +1155,32 @@ export function runAttributedForecastLiveRouter(dataset, options = {}) {
   const futureUseModel = Array.from({ length: horizon }, (_, index) =>
     index < selected.useModelByHorizon.length ? selected.useModelByHorizon[index] : false,
   );
+  const costAblation = {
+    available: Number.isFinite(development.pooledWmape)
+      && Number.isFinite(development.spendFreePooledWmape),
+    modelWmape: development.pooledWmape,
+    spendFreeWmape: development.spendFreePooledWmape,
+    improvement: Number.isFinite(development.pooledWmape)
+      && Number.isFinite(development.spendFreePooledWmape)
+      ? development.spendFreePooledWmape - development.pooledWmape
+      : null,
+    foldWins: development.spendFreeFoldWins,
+    folds: development.foldCount,
+  };
+  costAblation.passed = costAblation.available
+    && costAblation.modelWmape < costAblation.spendFreeWmape
+    && costAblation.foldWins >= Math.ceil(costAblation.folds / 2);
   // 모든 horizon이 naive로 대체되면 화면의 Cost를 바꿔도 예측은 동일하다.
   // 그 상태를 "예측 통과"와 분리해 Cost 시나리오를 열지 않는다.
+  const budgetResponseReasons = [];
+  if (!futureUseModel.some(Boolean)) budgetResponseReasons.push("naive-horizon-selected");
+  if (!costAblation.available) budgetResponseReasons.push("spend-free-ablation-unavailable");
+  else if (!(costAblation.modelWmape < costAblation.spendFreeWmape)) budgetResponseReasons.push("does-not-beat-spend-free");
+  else if (costAblation.foldWins < Math.ceil(costAblation.folds / 2)) budgetResponseReasons.push("wins-too-few-spend-free-holdouts");
   const budgetResponseEligible = futureUseModel.some(Boolean)
     && Array.isArray(future.channels)
-    && future.channels.length > 0;
+    && future.channels.length > 0
+    && costAblation.passed;
   const guardedFuture = mixResults(future, futureNaive, futureUseModel);
   const marginByHorizon = Array.from({ length: horizon }, (_, index) => {
     const source = development.horizonMetrics[index];
@@ -1145,6 +1201,8 @@ export function runAttributedForecastLiveRouter(dataset, options = {}) {
     recommendedHorizon,
     osBreakdownEligible,
     budgetResponseEligible,
+    budgetResponseReasons,
+    costAblation,
     threshold: 10,
     foldStep,
     selectionHoldoutWeeks: holdout,

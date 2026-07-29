@@ -7545,6 +7545,14 @@ export function mmmDataQualityAudit(panel) {
                   selectedBaseline,
                   selected.blend.regressionWeight,
                 );
+                const spendFreeRegression = selected.current.spendFreePredicted;
+                const spendFreePredicted = spendFreeRegression?.length === selected.current.actual.length
+                  ? mmmForecastBlendPredictions(
+                    spendFreeRegression,
+                    selectedBaseline,
+                    selected.blend.regressionWeight,
+                  )
+                  : null;
                 const auditBaseline = _mmmForecastFoldBaselineMap(selected.current)[selected.baseline.id];
                 return {
                   offset,
@@ -7570,9 +7578,13 @@ export function mmmDataQualityAudit(panel) {
                   actual: selected.current.actual,
                   predicted,
                   regressionPredicted: regression,
+                  spendFreePredicted,
                   baselinePredicted: auditBaseline,
                   wmape: _mmmForecastFoldWmape({ actual: selected.current.actual, predicted }, "predicted"),
                   regressionWmape: _mmmForecastFoldWmape(selected.current, predictionKey),
+                  spendFreeWmape: spendFreePredicted
+                    ? _mmmForecastFoldWmape({ actual: selected.current.actual, predicted: spendFreePredicted }, "predicted")
+                    : null,
                   baselineWmape: _mmmForecastFoldWmape({
                     actual: selected.current.actual,
                     predicted: auditBaseline,
@@ -7583,6 +7595,7 @@ export function mmmDataQualityAudit(panel) {
               const developmentFolds = folds.filter((fold) => fold.offset >= horizon);
               const developmentPooledWmape = _mmmForecastPooledWmape(developmentFolds, "predicted");
               const developmentRegressionPooledWmape = _mmmForecastPooledWmape(developmentFolds, "regressionPredicted");
+              const developmentSpendFreePooledWmape = _mmmForecastPooledWmape(developmentFolds, "spendFreePredicted");
               const developmentBaselinePooledWmape = _mmmForecastPooledWmape(developmentFolds, "baselinePredicted");
               // A horizon-specific percentile needs enough independent outer
               // origins. Match the general interval-calibration minimum (8);
@@ -7605,6 +7618,13 @@ export function mmmDataQualityAudit(panel) {
                 && Number.isFinite(fold.baselineWmape)
                 && fold.wmape < fold.baselineWmape,
               ).length;
+              const developmentSpendFreeFoldWins = developmentFolds.filter((fold) =>
+                Number.isFinite(fold.wmape)
+                && Number.isFinite(fold.spendFreeWmape)
+                && fold.wmape < fold.spendFreeWmape,
+              ).length;
+              const spendFreeAblationAvailable = developmentFolds.length > 0
+                && developmentFolds.every((fold) => Number.isFinite(fold.spendFreeWmape));
               // 미래 운용 모델은 선택된 구조로 전체 관측치를 다시 적합할 수 있지만,
               // window/spec/ridge/blend 선택 자체에는 봉인 최신 12주의 정답을 쓰지 않는다.
               // offset=0의 current는 적합 가능성만 확인하고, candidate scoring은
@@ -7627,12 +7647,15 @@ export function mmmDataQualityAudit(panel) {
                 developmentFolds,
                 developmentPooledWmape,
                 developmentRegressionPooledWmape,
+                developmentSpendFreePooledWmape,
                 developmentBaselinePooledWmape,
                 developmentMargins,
                 intervalCalibrationMinFolds,
                 intervalCalibrationFoldCount: intervalCalibrationFolds.length,
                 intervalCalibrationEligible: intervalCalibrationFolds.length >= intervalCalibrationMinFolds,
                 developmentBaselineFoldWins,
+                developmentSpendFreeFoldWins,
+                spendFreeAblationAvailable,
                 productionCandidateId: production?.candidate?.candidateId || null,
                 productionPriorWmape: production?.priorWmape ?? null,
                 productionPriorRegressionWmape: production?.regressionPriorWmape ?? null,
@@ -8751,6 +8774,26 @@ export function mmmDataQualityAudit(panel) {
                       clampScenario: false,
                       trendDamping: fitContract.trendDamping,
                     });
+                    // Cost 시나리오를 열기 전, 같은 fold·같은 추세/계절성/step에서
+                    // media 입력만 0으로 묶은 반사실 기준선과 비교한다. 이것은 후보
+                    // 선택이나 점 예측을 바꾸지 않고 Cost 항이 실제 OOS 개선을 주는지만
+                    // 확인하는 전용 ablation이다.
+                    const zeroSpend = Object.fromEntries(Object.entries(held.ch || {}).map(([key, values]) => [
+                      key,
+                      Array(values.length).fill(0),
+                    ]));
+                    const zeroRf = (inputs) => Object.fromEntries(Object.entries(inputs || {}).map(([key, values]) => [
+                      key,
+                      Array(values.length).fill(0),
+                    ]));
+                    const spendFreeForecast = fit && mmmBayesianForecast(fit, train, zeroSpend, horizon, {
+                      futureDummy: liveDummy,
+                      futureSteps: liveSteps,
+                      futureReach: zeroRf(heldRf.futureReach),
+                      futureFrequency: zeroRf(heldRf.futureFrequency),
+                      clampScenario: false,
+                      trendDamping: fitContract.trendDamping,
+                    });
                     const actual = held.targets[targetName];
                     const predicted = (seasonalModel || trendModel)
                       ? forecast?.predFut?.map((value, index) => value + futureOffsetAt(held.week[index]))
@@ -8758,6 +8801,9 @@ export function mmmDataQualityAudit(panel) {
                     const conditionalPredicted = (seasonalModel || trendModel)
                       ? conditionalForecast?.predFut?.map((value, index) => value + futureOffsetAt(held.week[index]))
                       : conditionalForecast?.predFut;
+                    const spendFreePredicted = (seasonalModel || trendModel)
+                      ? spendFreeForecast?.predFut?.map((value, index) => value + futureOffsetAt(held.week[index]))
+                      : spendFreeForecast?.predFut;
                     if (!predicted?.length || predicted.length !== actual?.length || !predicted.every(Number.isFinite)) continue;
                     // Naive references always live in the original KPI space. They
                     // must not inherit a candidate's separately fitted trend or
@@ -8775,6 +8821,9 @@ export function mmmDataQualityAudit(panel) {
                       actual,
                       predicted,
                       conditionalPredicted: conditionalPredicted?.every(Number.isFinite) ? conditionalPredicted : predicted,
+                      spendFreePredicted: spendFreePredicted?.length === actual.length && spendFreePredicted.every(Number.isFinite)
+                        ? spendFreePredicted
+                        : null,
                       persistence,
                       baselines,
                       offset: n - holdoutEnd,
@@ -8786,6 +8835,11 @@ export function mmmDataQualityAudit(panel) {
                   const actualAbs = development.flatMap((item) => item.actual.map((value) => Math.abs(value)));
                   const modelAbsError = development.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.predicted[index])));
                   const conditionalAbsError = development.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.conditionalPredicted[index])));
+                  const hasSpendFreeAblation = development.length > 0 && development.every((item) =>
+                    item.spendFreePredicted?.length === item.actual.length);
+                  const spendFreeAbsError = hasSpendFreeAblation
+                    ? development.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.spendFreePredicted[index])))
+                    : [];
                   const persistenceAbsError = development.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.persistence[index])));
                   const denominator = actualAbs.reduce((sum, value) => sum + value, 0);
                   if (!(denominator > 0)) continue;
@@ -8800,9 +8854,14 @@ export function mmmDataQualityAudit(panel) {
                     return item.actual.reduce((sum, value, index) => sum + Math.abs(value - baseline[index]), 0)
                       / Math.max(1e-9, item.actual.reduce((sum, value) => sum + Math.abs(value), 0)) * 100;
                   };
+                  const spendFreeFoldWmape = (item) => item.spendFreePredicted?.length === item.actual.length
+                    ? item.actual.reduce((sum, value, index) => sum + Math.abs(value - item.spendFreePredicted[index]), 0)
+                      / Math.max(1e-9, item.actual.reduce((sum, value) => sum + Math.abs(value), 0)) * 100
+                    : null;
                   const developmentModelFold = development.map(foldWmape);
                   const developmentBaselineFold = development.map(persistenceFoldWmape);
                   const developmentBestBaselineFold = development.map(bestBaselineFoldWmape);
+                  const developmentSpendFreeFold = development.map(spendFreeFoldWmape);
                   const allDenominator = outcomes.flatMap((item) => item.actual).reduce((sum, value) => sum + Math.abs(value), 0);
                   const allAbsoluteError = outcomes.flatMap((item) => item.actual.map((value, index) => Math.abs(value - item.predicted[index]))).reduce((sum, value) => sum + value, 0);
                   const candidateId = [
@@ -8845,6 +8904,13 @@ export function mmmDataQualityAudit(panel) {
                     allFolds: outcomes.length,
                     wmape: modelAbsError.reduce((sum, value) => sum + value, 0) / denominator * 100,
                     conditionalWmape: conditionalAbsError.reduce((sum, value) => sum + value, 0) / denominator * 100,
+                    spendFreeWmape: hasSpendFreeAblation
+                      ? spendFreeAbsError.reduce((sum, value) => sum + value, 0) / denominator * 100
+                      : null,
+                    spendFreeFoldWins: hasSpendFreeAblation
+                      ? developmentModelFold.filter((value, index) => value < developmentSpendFreeFold[index]).length
+                      : 0,
+                    spendFreeAblationAvailable: hasSpendFreeAblation,
                     allWmape: allDenominator > 0 ? allAbsoluteError / allDenominator * 100 : null,
                     persistenceWmape: persistenceAbsError.reduce((sum, value) => sum + value, 0) / denominator * 100,
                     foldWins: developmentModelFold.filter((value, index) => value < developmentBaselineFold[index]).length,
@@ -8862,6 +8928,7 @@ export function mmmDataQualityAudit(panel) {
                       actual: item.actual,
                       predicted: item.predicted,
                       conditionalPredicted: item.conditionalPredicted,
+                      spendFreePredicted: item.spendFreePredicted,
                       persistence: item.persistence,
                       baselines: item.baselines,
                     })),
@@ -8920,6 +8987,16 @@ export function mmmDataQualityAudit(panel) {
                   && Number.isFinite(nested.developmentPooledWmape)
                   ? nested.developmentBaselinePooledWmape - nested.developmentPooledWmape
                   : null,
+                spendFreeWmape: nested.spendFreeAblationAvailable
+                  ? nested.developmentSpendFreePooledWmape
+                  : null,
+                spendFreeFoldWins: nested.developmentSpendFreeFoldWins,
+                spendFreeAblationAvailable: nested.spendFreeAblationAvailable,
+                spendFreeImprovement: nested.spendFreeAblationAvailable
+                  && Number.isFinite(nested.developmentSpendFreePooledWmape)
+                  && Number.isFinite(nested.developmentPooledWmape)
+                  ? nested.developmentSpendFreePooledWmape - nested.developmentPooledWmape
+                  : null,
               } : null;
               const productionSelected = productionCandidate ? {
                 ...productionCandidate,
@@ -8944,6 +9021,16 @@ export function mmmDataQualityAudit(panel) {
                 baselineImprovement: Number.isFinite(nested.developmentBaselinePooledWmape)
                   && Number.isFinite(nested.developmentPooledWmape)
                   ? nested.developmentBaselinePooledWmape - nested.developmentPooledWmape
+                  : null,
+                spendFreeWmape: nested.spendFreeAblationAvailable
+                  ? nested.developmentSpendFreePooledWmape
+                  : null,
+                spendFreeFoldWins: nested.developmentSpendFreeFoldWins,
+                spendFreeAblationAvailable: nested.spendFreeAblationAvailable,
+                spendFreeImprovement: nested.spendFreeAblationAvailable
+                  && Number.isFinite(nested.developmentSpendFreePooledWmape)
+                  && Number.isFinite(nested.developmentPooledWmape)
+                  ? nested.developmentSpendFreePooledWmape - nested.developmentPooledWmape
                   : null,
               } : selected;
               const countFittedAxis = (valueAt, sort) => Object.fromEntries(
@@ -9020,6 +9107,13 @@ export function mmmDataQualityAudit(panel) {
                 if (!(selected.wmape < selected.bestBaselineWmape)) decisionReasons.push("does-not-beat-best-naive");
                 if (selected.baselineFoldWins < Math.ceil(selected.selectionFolds / 2)) decisionReasons.push("wins-too-few-naive-holdouts");
                 if (!(selected.selectedBlend?.regressionWeight > 0)) decisionReasons.push("naive-baseline-selected");
+                if (!selected.spendFreeAblationAvailable) {
+                  decisionReasons.push("spend-free-ablation-unavailable");
+                } else if (!(Number.isFinite(selected.spendFreeWmape) && selected.wmape < selected.spendFreeWmape)) {
+                  decisionReasons.push("does-not-beat-spend-free");
+                } else if (selected.spendFreeFoldWins < Math.ceil(selected.selectionFolds / 2)) {
+                  decisionReasons.push("wins-too-few-spend-free-holdouts");
+                }
                 if (selected.structuralFallback) decisionReasons.push("structural-controls-unavailable");
                 if (selected.selectionFolds < decisionMinFolds) {
                   forecastDecisionReasons.push("fewer-than-three-holdouts");
