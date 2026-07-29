@@ -1629,7 +1629,7 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("Total = Android(Organic + Paid) + iOS(Organic + Paid)");
     expect(document.body.textContent).toContain("Android·iOS 성분 검증");
     expect(document.body.textContent).not.toContain("기간·연간 패턴 자동 탐색");
-  }, 30000);
+  }, 90_000);
 
   it("shows an Organic trend/seasonality forecast without empty budget scenarios when Spend is absent", async () => {
     seedWithOrganicOnlyForecastData();

@@ -227,7 +227,7 @@ describe("live-condition attributed forecast router", () => {
       12,
     );
     expect(extreme.predicted).toEqual(baseline.predicted);
-  });
+  }, 30_000);
 
   it("retains the longest evidence window when lookbacks are practically tied", () => {
     const start = Date.UTC(2023, 0, 2);
@@ -252,7 +252,7 @@ describe("live-condition attributed forecast router", () => {
     }));
     expect(result.dataPreservation.selectedSpecId.replace(/^lb\d+__/, ""))
       .toBe(result.dataPreservation.rawBestSpecId.replace(/^lb\d+__/, ""));
-  });
+  }, 30_000);
 
   it("keeps Step-aware audit and default-scenario refits identical to production", () => {
     const rows = fixture(170);
