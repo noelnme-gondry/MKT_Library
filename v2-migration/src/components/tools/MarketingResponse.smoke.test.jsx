@@ -726,6 +726,7 @@ describe("MarketingResponse render smoke", () => {
     clickByText(container, "기여 분해");
     expect(document.body.textContent).toContain("Classic");
     expect(document.body.textContent).not.toContain("PR #416");
+    expect(document.body.textContent).toContain("Classic은 관측 데이터만 사용");
     expect(document.body.textContent).toContain("Bayesian");
     expect(document.body.textContent).not.toContain("Bayesian-like MMM");
     expect(document.body.textContent).toContain("평균 Cost/주");
@@ -778,7 +779,7 @@ describe("MarketingResponse render smoke", () => {
     expect(footerManual?.getAttribute("href")).toBe("/manuals/mmm-model-manual-ko.pdf");
   });
 
-  it("keeps the last-24-week backtest for short iOS Cost windows and additive Total", async () => {
+  it("withholds a last-24-week validation when selecting inside the sealed train history cannot fit", async () => {
     seedWithOsForecastData();
     const slice = useAppStore.getState().csvData;
     const map = autoGuessColMap(slice.headers, slice.raw);
@@ -789,7 +790,9 @@ describe("MarketingResponse render smoke", () => {
     const directModel = buildForecastOnlyModelFromPanel(panel, cfg, "Regs");
     expect(directModel.run).toBeTruthy();
     const directBacktest = buildForecastRecentBacktest(directModel);
-    expect(directBacktest).toBeTruthy();
+    // 전체 이력에서 후보를 고른 뒤 마지막 12주를 채점하면 누수다. 짧은 이력은
+    // 검증 카드를 만들지 않고 미인증으로 남겨야 한다.
+    expect(directBacktest).toBeNull();
     const { container } = render(<MarketingResponse />);
     enterMmmAndAnalyze(container);
     await flushRaf();
@@ -799,10 +802,10 @@ describe("MarketingResponse render smoke", () => {
     expect(iosTab).toBeTruthy();
     fireEvent.click(iosTab);
     await flushRaf();
-    expect(document.body.textContent).toContain("미래 예측 전 최근 24주 검증");
+    expect(document.body.textContent).toContain("봉인 12주 검증을 만들 수 없어 예측을 인증하지 않습니다");
     clickByText(container, "Total");
     await flushRaf();
     expect(document.body.textContent).toContain("Total 예측 = Android 예측 + iOS 예측");
-    expect(document.body.textContent).toContain("미래 예측 전 최근 24주 검증");
+    expect(document.body.textContent).toContain("봉인 12주 검증을 만들 수 없어 예측을 인증하지 않습니다");
   });
 });

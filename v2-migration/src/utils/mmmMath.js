@@ -2638,6 +2638,12 @@ export function mmmDataQualityAudit(panel) {
                 precVote = "ABSTAIN";
                 detVote = "ABSTAIN";
                 netVote = "ABSTAIN";
+                // 최종 식별성 게이트가 닫히면 요약 투표만 바꾸면 안 된다.
+                // detail 카드·CSV도 같은 vote 객체를 읽으므로 앞서 계산한
+                // 개별 검정 결과를 함께 ABSTAIN으로 동기화한다.
+                precedence.vote = precVote;
+                detrend.vote = detVote;
+                net.vote = netVote;
                 votes.FOR = 0; votes.AGAINST = 0; votes.ABSTAIN = 3;
                 verdictClass = "not_identified";
                 verdict = isEn ? "NOT IDENTIFIED — insufficient variation or contiguous low-spend evidence" : "NOT IDENTIFIED — 지출 변동·연속 저지출 구간 부족으로 판단 보류";
@@ -2655,9 +2661,13 @@ export function mmmDataQualityAudit(panel) {
                 verdictClass = "inconclusive";
                 verdict = isEn ? "INCONCLUSIVE — insufficient evidence; holdout needed" : "INCONCLUSIVE — 증거 부족, holdout 필요";
               }
-              // 그랜저 시차 잠식이 유의하면 비-카니발 판정을 LEAN CANNIBAL로 격상 (동시점이 놓친 신호 — 보수적으로 우려만 ↑)
-              // 단, 산발(flighted) 집행이면 그랜저 단독으로 격상 금지(on/off 버스트가 시차 신호를 왜곡 — 매칭 on/off/holdout 필요).
-              if (grangerCannibal && verdictClass !== "cannibal" && !flighted && votes.AGAINST >= (R.minAgainstVotes || 2) && !identificationBlocked) {
+              // ④ 그랜저 시차 신호는 독립된 네 번째 검정이다. 따라서 ①~③ 중
+              // 하나의 AGAINST와 결합하면(총 2개 증거) LEAN CANNIBAL로 올린다.
+              // 기존에는 이미 ①~③에서 2개 AGAINST여야만 이 블록에 도달해
+              // 조건이 사실상 불가능했고, ④가 최종 판정에 전혀 반영되지 않았다.
+              // 산발(flighted) 집행에서는 on/off 버스트가 시차 신호를 왜곡하므로
+              // ④ 단독·결합 승격 모두 금지한다.
+              if (grangerCannibal && verdictClass !== "cannibal" && !flighted && votes.AGAINST >= Math.max(1, (R.minAgainstVotes || 2) - 1) && !identificationBlocked) {
                 verdictClass = "cannibal";
                 verdict = isEn ? `LEAN CANNIBAL — lagged Granger signal (spend→organic↓, lag ${gr.spend_to_organic.lag}); holdout is first priority` : `LEAN CANNIBAL — 그랜저 시차 인과(광고비→오가닉↓, lag ${gr.spend_to_organic.lag}), holdout 1순위`;
               }

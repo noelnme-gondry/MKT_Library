@@ -3079,9 +3079,10 @@ export function buildForecastRecentBacktest(model) {
   const holdout = 12;
   if (!model?.sourceCfg || !target || n < 36) return null;
   const trainSource = sliceMmmPanel(sourcePanel, n - holdout);
-  const trainModel = model.selection?.selected
-    ? buildForecastModelForSelection(trainSource, model.sourceCfg, target, model.selection.selected)
-    : null;
+  // 마지막 12주는 봉인된 검증 구간이다. 전체 이력에서 고른 window/spec을 그대로
+  // 가져오면 그 12주의 실제값이 후보 선택에 이미 쓰여 OOS 카드가 낙관적으로
+  // 보일 수 있다. 따라서 trainSource 안에서 후보 선택부터 다시 수행한다.
+  const trainModel = buildForecastOnlyModelFromPanel(trainSource, model.sourceCfg, target);
   if (!trainModel.run || !trainModel.panel) return null;
   const futureSpend = Object.fromEntries(Object.entries(sourcePanel.ch).map(([key, values]) => [key, values.slice(-holdout)]));
   const futureDummy = Object.fromEntries(Object.entries(sourcePanel.dummy || {}).map(([key, values]) => [key, values.slice(-holdout)]));
@@ -3110,6 +3111,10 @@ export function buildForecastRecentBacktest(model) {
     actual,
     predicted,
     validationStartIndex: contextLength,
+    selectionTrainingWeeks: trainSource.week.length,
+    selectionWindow: trainModel.selection?.productionSelected?.window
+      ?? trainModel.selection?.selected?.window
+      ?? null,
     rmse: Math.sqrt(absErrors.reduce((sum, value) => sum + value ** 2, 0) / holdout),
     mae: absErrors.reduce((sum, value) => sum + value, 0) / holdout,
     wmape,
@@ -6177,7 +6182,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 // 헤드라인을 칸반 버킷과 동일 규칙으로 계산 → "문제없다는데 왜 잠식의심" 모순 제거.
                 const rr = (cannib.cannibRank || []).find((x) => x.key === activeCannibCh);
                 const bucket = rr ? mmmCannibBucket(rr) : "unclear";
-                const votes = [p.vote, d.vote, ni.vote];
+                const lagVote = cn.granger_cannibal ? "AGAINST" : cn.granger_help ? "FOR" : "ABSTAIN";
+                const votes = [p.vote, d.vote, ni.vote, lagVote];
                 const nFor = votes.filter((v) => v === "FOR").length;
                 const nAg = votes.filter((v) => v === "AGAINST").length;
                 const nAb = votes.filter((v) => v === "ABSTAIN").length;
@@ -6233,7 +6239,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           <span>{tx("점이 흩어지면: 방향이 불분명해 추가 검증 필요", "Scattered points: direction unclear, more evidence needed")}</span>
                         </div>
                       </div>
-                      <p>{tx("② 차트는 추세·계절을 걷어낸 뒤의 관계입니다. 기울기 하나만으로 확정하지 않고, 아래 4가지 신호를 함께 봅니다.", "Chart ② removes trend and seasonality first. One slope never decides the verdict; we combine all four signals below.")}</p>
+                      <p>{tx("② 차트는 각 시계열의 선형 시간 추세를 걷어낸 뒤의 관계입니다. 기울기 하나만으로 확정하지 않고, 아래 4가지 신호를 함께 봅니다.", "Chart ② removes each series' linear time trend first. One slope never decides the verdict; we combine all four signals below.")}</p>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "10px" }}>
                       {signal("precedence", "①", tx("광고를 늘리기 전에 성과가 이미 줄고 있었나?", "Was outcome already declining before ad spend rose?"), tx("저지출 주의 시간 흐름을 봅니다. 이미 줄었다면 광고 탓으로 단정 못 해요.", "Checks the time path in low-spend weeks. A prior decline cannot be blamed on ads."), p.vote, tx(`저지출 기울기 ${p.kpi_slope_per_wk}/주 · ${p.kpi_change_over_window_pct}%`, `Low-spend slope ${p.kpi_slope_per_wk}/wk · ${p.kpi_change_over_window_pct}%`))}
@@ -6653,21 +6659,33 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 : "";
             return (
             <>
-              <MmmEvidenceLedger
-                locale={locale}
-                selectedEvidence={selectedEvidence}
-                onToggleEvidence={(kind) => deferMmmUpdate(() => setSelectedEvidence((current) => ({ ...current, [kind]: !current[kind] })))}
-                evidence={priorEvidence}
-                onEvidence={(update) => deferMmmUpdate(() => setPriorEvidence(update))}
-                onLoadDemo={handleLoadPriorDemo}
-                appliedPriorCount={Object.keys(mmm.mediaPriors || {}).length}
-                experimentPriorDiagnostics={mmm.experimentPriorDiagnostics || []}
-                countryCandidates={mmm.countryCandidates || []}
-                countryIndividualCandidates={mmm.countryIndividualCandidates || []}
-                countryBacktests={mmm.countryBacktests}
-                countryPlan={mmm.countryPlan}
-                formatValue={targetValueLabel}
-              />
+              {mmm.modelMode === "classic" ? (
+                <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
+                  <strong>{tx("Classic은 관측 데이터만 사용", "Classic uses observational data only")}</strong>
+                  <p className="muted" style={{ fontSize: "11px", lineHeight: 1.55, margin: "6px 0 0" }}>
+                    {tx(
+                      "외부 실험·국가 prior와 media/control penalty는 Classic에 적용하지 않습니다. 외부 근거를 결합해 보는 작업은 Bayesian 모델에서만 할 수 있습니다.",
+                      "Classic does not apply experiment/market priors or media/control penalties. Use the Bayesian model if you want to combine external evidence.",
+                    )}
+                  </p>
+                </Card>
+              ) : (
+                <MmmEvidenceLedger
+                  locale={locale}
+                  selectedEvidence={selectedEvidence}
+                  onToggleEvidence={(kind) => deferMmmUpdate(() => setSelectedEvidence((current) => ({ ...current, [kind]: !current[kind] })))}
+                  evidence={priorEvidence}
+                  onEvidence={(update) => deferMmmUpdate(() => setPriorEvidence(update))}
+                  onLoadDemo={handleLoadPriorDemo}
+                  appliedPriorCount={Object.keys(mmm.mediaPriors || {}).length}
+                  experimentPriorDiagnostics={mmm.experimentPriorDiagnostics || []}
+                  countryCandidates={mmm.countryCandidates || []}
+                  countryIndividualCandidates={mmm.countryIndividualCandidates || []}
+                  countryBacktests={mmm.countryBacktests}
+                  countryPlan={mmm.countryPlan}
+                  formatValue={targetValueLabel}
+                />
+              )}
               {(mmm.run.trendDecomposition || mmm.run.penaltyAudit || mmm.run.dataQuality || classicControlText) && (
                 <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
                   <strong>{tx("추세·모델 공정성 진단", "Trend and model fairness diagnostics")}</strong>
@@ -6690,7 +6708,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   </p>
                 </Card>
               )}
-              {(selectedEvidence.experiment || selectedEvidence.country) && (
+              {mmm.modelMode !== "classic" && (selectedEvidence.experiment || selectedEvidence.country) && (
                 <div className="callout" style={{ marginBottom: "12px" }}>
                   <div className="ico">i</div><div className="body"><strong>{Object.keys(mmm.heldMediaPriors || {}).length
                     ? tx(`채널 prior ${Object.keys(mmm.heldMediaPriors).length}개 적용 보류`, `${Object.keys(mmm.heldMediaPriors).length} channel prior(s) held`)
@@ -7661,6 +7679,15 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       <div style={{ display: "flex", gap: "6px", marginTop: "10px", flexWrap: "wrap" }}><span className="ab-pill">{tx("앞 12주: 학습 구간 적합", "First 12: training fit")}</span><span className="ab-pill" style={{ borderColor: "#f59e0b", color: "#b45309" }}>{tx("뒤 12주: 학습 제외 검증", "Last 12: held-out validation")}</span></div>
                       <MmmBacktestChart locale={locale} labels={recentBacktest.labels} actual={recentBacktest.actual} validationStartIndex={recentBacktest.validationStartIndex} variants={[{ label: tx("모델 적합·예측", "Model fit · prediction"), predicted: recentBacktest.predicted, color: "#2563eb", dash: [] }]} formatValue={targetValueLabel} />
                     </Card>
+                  )}
+                  {!recentBacktest && (
+                    <div className="callout warn" style={{ marginBottom: "12px" }}>
+                      <div className="ico">!</div>
+                      <div className="body">
+                        <strong>{tx("봉인 12주 검증을 만들 수 없어 예측을 인증하지 않습니다", "The sealed 12-week validation could not be built, so this forecast is not certified")}</strong>
+                        <p>{tx("마지막 12주를 후보 선택과 학습에서 모두 제외한 뒤에는 유효한 모델을 만들 수 있는 이력이 부족합니다. 예측은 참고용으로만 보고, 최근 이력을 더 추가한 뒤 다시 검증하세요.", "After excluding the final 12 weeks from both candidate selection and training, there is not enough history to fit a valid model. Treat this forecast as reference-only, add more recent history, and validate again.")}</p>
+                      </div>
+                    </div>
                   )}
                   {forecastEnhancement && (
                     <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>

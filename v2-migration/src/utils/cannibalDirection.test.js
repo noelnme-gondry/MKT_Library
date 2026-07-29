@@ -12,6 +12,7 @@ import {
   buildLowSpendOutcomeSeries,
   lowSpendPointIndices,
 } from "./responseCannibChart";
+import { seededNoise } from "./testFixtures";
 
 function directionalPanel(targetDirection = "opposite") {
   const week = Array.from({ length: 40 }, (_, index) => index + 1);
@@ -115,6 +116,62 @@ describe("cannibal directional movement", () => {
     expect(result.verdict_class).toBe("cannibal");
     expect(eligibility.lowBlockMax).toBe(1);
     expect(eligibility.eligible).toBe(true);
+  });
+
+  it("keeps every detail vote withheld when the final identification gate closes", () => {
+    const week = Array.from({ length: 40 }, (_, index) => index + 1);
+    const panel = {
+      week,
+      ch: { x: week.map(() => 100) },
+      dummy: {},
+      targets: { Users: week.map((value) => 500 - value * 8) },
+      channels: [{ key: "x", label: "Prospecting", kind: "perf" }],
+    };
+    const result = mmmCannibalization(
+      panel,
+      MMM_METH_CONFIG,
+      "Users",
+      { coef: -0.3, ci_lo: -0.4, ci_hi: -0.2, p: 0.001, vif: 1.2 },
+      "x",
+    );
+
+    expect(result.identification.blocked).toBe(true);
+    expect(result.votes).toEqual({ FOR: 0, AGAINST: 0, ABSTAIN: 3 });
+    expect(result.precedence.vote).toBe("ABSTAIN");
+    expect(result.detrend_corr.vote).toBe("ABSTAIN");
+    expect(result.net_incrementality.vote).toBe("ABSTAIN");
+    expect(result.verdict_class).toBe("not_identified");
+  });
+
+  it("counts a lagged Granger signal as the fourth check when one core check also warns", () => {
+    const week = Array.from({ length: 84 }, (_, index) => index + 1);
+    const spendNoise = seededNoise(801);
+    const targetNoise = seededNoise(917);
+    const spend = week.map(() => 7000 + spendNoise() * 3200);
+    const target = week.map((_, index) => (
+      90000 - 5 * spend[Math.max(0, index - 2)] + targetNoise() * 120
+    ));
+    const panel = {
+      week,
+      ch: { x: spend },
+      dummy: {},
+      targets: { Users: target },
+      channels: [{ key: "x", label: "Prospecting", kind: "perf" }],
+    };
+    const result = mmmCannibalization(
+      panel,
+      MMM_METH_CONFIG,
+      "Users",
+      // ③의 유의 음 순증분과 ④의 시차 하락은 서로 다른 두 검정이다.
+      { coef: -0.3, ci_lo: -0.4, ci_hi: -0.2, p: 0.001, vif: 1.2 },
+      "x",
+    );
+
+    expect(result.granger_cannibal).toBe(true);
+    // ①~③에는 ③만 AGAINST다. 과거 조건(AGAINST 2개 필요)에서는 ④가
+    // 있어도 inconclusive였고, 이제 ③+④ 두 검정으로 승격한다.
+    expect(result.votes.AGAINST).toBe(1);
+    expect(result.verdict_class).toBe("cannibal");
   });
 
   it("uses the same marketer-facing bucket for summary and detail views", () => {
