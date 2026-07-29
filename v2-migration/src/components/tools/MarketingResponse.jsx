@@ -7555,51 +7555,25 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     const selected = forecast.rollingSelection.selected;
                     if (forecast.isAnnualAnalog) {
                       return (
-                        <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
-                          <strong>{forecast.paidOrganicHybrid
-                            ? tx("Total + Paid·Organic 하이브리드", "Total + Paid/Organic hybrid")
-                            : tx("구조변화 후 자동 선택 · 연간 반복형", "Auto-selected after regime change · annual analog")}</strong>
-                          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "7px" }}>
+                        <Card className="forecast-validation-card" style={{ marginBottom: "12px", padding: "13px 16px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "flex-start", flexWrap: "wrap" }}>
+                            <div>
+                              <span className="forecast-validation-card__eyebrow">FORECAST VALIDATION</span>
+                              <strong>{forecast.annualQualified ? tx("예측 검증 통과", "Forecast validation passed") : tx("예측 검증 미통과", "Forecast validation did not pass")}</strong>
+                              <p>{tx(`최근 12주 ${selected.latestWmape.toFixed(1)}% · 전체 검증 ${selected.wmape.toFixed(1)}% · 기준 10% 미만`, `Latest 12 weeks ${selected.latestWmape.toFixed(1)}% · full validation ${selected.wmape.toFixed(1)}% · threshold below 10%`)}</p>
+                            </div>
                             <span className="ab-pill" style={forecast.annualQualified ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#f59e0b", color: "#b45309" }}>
-                              {forecast.annualQualified
-                                ? tx("공식 10% 인증", "Official 10% certified")
-                                : tx("미인증 best-available · 예산 반응 해석 금지", "Uncertified best-available · no budget-response interpretation")}
+                              {forecast.annualQualified ? tx("운영 사용 가능", "Ready for operations") : tx("예산 변경 잠금", "Budget changes locked")}
                             </span>
-                            {(forecast.annualOsGuardrail || []).map((component) => (
-                              <span
-                                className="ab-pill"
-                                key={component.component}
-                                style={component.passed ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}
-                              >
-                                {`${component.component} · ${tx("과거", "history")} ${component.developmentWmape.toFixed(2)}% · ${tx("최신", "latest")} ${component.latestWmape.toFixed(2)}%`}
-                              </span>
-                            ))}
                           </div>
-                          <p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
-                            {(forecast.annualCandidates || []).map((candidate) =>
-                              `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} · ${tx("최신 12주", "latest 12 weeks")} ${candidate.latestWmape.toFixed(2)}% · ${tx("전체 rolling", "full rolling")} ${candidate.allWmape.toFixed(2)}%`
-                            ).join(" / ")}
-                            {` → ${forecast.selectedRoute === "direct-total" ? "Direct Total" : "Android + iOS"} ${tx("선택", "selected")}`}
-                          </p>
-                          <p style={{ margin: "6px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.55 }}>
-                            <strong>{tx("왜 이 모델인가: ", "Why this model: ")}</strong>
-                            {forecastSelectionDecisionText(forecast.modelSearch?.routeDecision, locale)}
-                          </p>
-                          <p style={{ margin: "5px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
-                            <strong>{tx("자동 제외 안전장치: ", "Automatic rejection guardrail: ")}</strong>
-                            {forecastGuardrailSummaryText(forecast.modelSearch, locale)}
-                          </p>
-                          <p style={{ margin: "5px 0 0", fontSize: "11.5px", color: MUTED, lineHeight: 1.5 }}>
-                            {forecast.modelSearch?.similarSeason
-                              ? tx(
-                                `유사 시즌 후보가 선택됐습니다: 직전 ${forecast.modelSearch.similarSeason.matchWeeks}주 모양을 비교해 ${forecast.modelSearch.similarSeason.analogLags?.join("/")}주 전 유사 구간을 결합했습니다.`,
-                                `A similar-season candidate won: it matched the preceding ${forecast.modelSearch.similarSeason.matchWeeks}-week shape and blended analogous periods ${forecast.modelSearch.similarSeason.analogLags?.join("/")} weeks back.`,
-                              )
-                              : tx("유사 시즌 후보도 같은 OOS 기준으로 비교했지만, 현재 데이터에서는 다른 후보가 더 강해 선택되지 않았습니다.", "Similar-season candidates were evaluated under the same OOS criteria, but another candidate was stronger for the current dataset.")}
-                          </p>
-                          <p style={{ margin: "6px 0 0", color: forecast.annualQualified ? "#15803d" : "#b45309", fontSize: "11.5px" }}>
-                            {tx(`최신 12주 wMAPE ${selected.latestWmape.toFixed(2)}% · 전체 rolling ${selected.wmape.toFixed(2)}% · 최근평균 기준선 ${selected.persistenceWmape.toFixed(2)}%. ${forecast.paidOrganicHybrid ? `봉인 audit 결합비는 Android ${Math.round((forecast.modelSearch?.android?.auditBlendWeight ?? 0.5) * 100)}%·iOS ${Math.round((forecast.modelSearch?.ios?.auditBlendWeight ?? 0.5) * 100)}%, audit 후 미래예측 결합비는 Android ${Math.round((forecast.modelSearch?.android?.productionBlendWeight ?? 0.5) * 100)}%·iOS ${Math.round((forecast.modelSearch?.ios?.productionBlendWeight ?? 0.5) * 100)}%로 재선택했습니다.` : "경로를 더 오래된 development OOS로 선택했습니다."} 최신 12주는 모델 인증용으로 봉인했습니다.${forecast.annualQualified ? "" : " 최신 구간은 좋아도 전체 rolling 10%를 넘어서 공식 인증은 아닙니다."}`, `Latest 12-week wMAPE ${selected.latestWmape.toFixed(2)}% · full rolling ${selected.wmape.toFixed(2)}% · recent-average baseline ${selected.persistenceWmape.toFixed(2)}%. ${forecast.paidOrganicHybrid ? `Sealed-audit blend weights were Android ${Math.round((forecast.modelSearch?.android?.auditBlendWeight ?? 0.5) * 100)}% and iOS ${Math.round((forecast.modelSearch?.ios?.auditBlendWeight ?? 0.5) * 100)}%; after the audit, live future weights were reselected to Android ${Math.round((forecast.modelSearch?.android?.productionBlendWeight ?? 0.5) * 100)}% and iOS ${Math.round((forecast.modelSearch?.ios?.productionBlendWeight ?? 0.5) * 100)}%.` : "The route was selected only on older development OOS."} The latest 12 weeks remained sealed for model certification.${forecast.annualQualified ? "" : " It is not officially certified because full rolling OOS remains above 10%, despite the stronger latest window."}`)}
-                          </p>
+                          {!forecast.annualQualified && <div className="forecast-validation-card__action">{tx("지금은 기본 예측만 참고하고, 예산 증감·광고 OFF 판단은 보류하세요.", "Use only the base forecast for now; hold budget-change and ad-off decisions.")}</div>}
+                          <details className="forecast-validation-card__details">
+                            <summary>{tx("모델 검증 상세", "Model validation details")}</summary>
+                            <p>{(forecast.annualCandidates || []).map((candidate) => `${candidate.route === "direct-total" ? "Direct Total" : "Android + iOS"} · ${tx("최근", "latest")} ${candidate.latestWmape.toFixed(2)}% · ${tx("전체", "full")} ${candidate.allWmape.toFixed(2)}%`).join(" / ")}</p>
+                            <p><strong>{tx("선택 근거: ", "Selection: ")}</strong>{forecastSelectionDecisionText(forecast.modelSearch?.routeDecision, locale)}</p>
+                            <p><strong>{tx("안전장치: ", "Guardrail: ")}</strong>{forecastGuardrailSummaryText(forecast.modelSearch, locale)}</p>
+                            {(forecast.annualOsGuardrail || []).length > 0 && <div>{(forecast.annualOsGuardrail || []).map((component) => <span className="ab-pill" key={component.component} style={component.passed ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}>{`${component.component} · ${tx("과거", "history")} ${component.developmentWmape.toFixed(2)}% · ${tx("최근", "latest")} ${component.latestWmape.toFixed(2)}%`}</span>)}</div>}
+                          </details>
                         </Card>
                       );
                     }
@@ -7630,7 +7604,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       </Card>
                     );
                   })()}
-                  {!forecastScenario.eligible && (
+                  {!forecastScenario.eligible && !forecast.isAnnualAnalog && (
                     <div className="callout warn" style={{ marginBottom: "12px" }}>
                       <div className="ico">!</div><div className="body">
                         <strong>{tx("기본 12주 예측은 제공하지만, 채널별 Cost 변경은 잠금", "Base 12-week forecast is available; channel Cost changes are locked")}</strong>
@@ -7650,7 +7624,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       </div>
                     </div>
                   )}
-                  {forecast.baselineFut?.length > 0 && (
+                  {forecast.baselineFut?.length > 0 && forecastScenario.eligible && (
                     <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
                       <strong>{forecastScenario.eligible
                         ? tx("광고비 0 기준선(비매체 기준 수요)", "Zero-media baseline (non-media demand)")
@@ -7667,7 +7641,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       </div>
                     </Card>
                   )}
-                  {recentBacktest && (
+                  {recentBacktest && !forecast.isAnnualAnalog && (
                     <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "baseline" }}>
                         <div><strong>{tx("미래 예측 전 최근 24주 검증", "Last-24-week check before forecasting")}</strong><p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED }}>{tx("앞 12주는 모델이 학습 구간을 얼마나 따라갔는지, 뒤 12주는 학습에서 제외한 뒤 당시 실제 지출로 예측한 값입니다.", "The first 12 weeks show training fit; the last 12 were excluded from training and predicted using their actual spend.")}</p></div>
@@ -7680,7 +7654,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       <MmmBacktestChart locale={locale} labels={recentBacktest.labels} actual={recentBacktest.actual} validationStartIndex={recentBacktest.validationStartIndex} variants={[{ label: tx("모델 적합·예측", "Model fit · prediction"), predicted: recentBacktest.predicted, color: "#2563eb", dash: [] }]} formatValue={targetValueLabel} />
                     </Card>
                   )}
-                  {!recentBacktest && (
+                  {!recentBacktest && !forecast.isAnnualAnalog && (
                     <div className="callout warn" style={{ marginBottom: "12px" }}>
                       <div className="ico">!</div>
                       <div className="body">
