@@ -362,10 +362,9 @@ function computeAhaCache(rows, colMap, minSupport, holdoutOn) {
   if (!targetCol || !Object.keys(groups).length || !n)
     return { ...empty, n, targetCol, groups };
 
-  const targets = rows.map((r) => {
-    const v = parseFloat(r[targetCol]);
-    return isFinite(v) && v >= 0.5 ? 1 : 0;
-  });
+  const targetCheck = AHA_STATS.validateBinaryTargets(rows.map((r) => r[targetCol]));
+  if (!targetCheck.ok) return { ...empty, n, targetCol, groups, invalidReason: targetCheck.reason };
+  const targets = targetCheck.targets;
   const baseRate = targets.reduce((s, t) => s + t, 0) / n;
   const ms = Math.max(1, minSupport || 1);
 
@@ -625,7 +624,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
     });
   }, [viewResults, sortBy, minSupport]);
 
-  const topAction = sortedResults.length ? sortedResults[0] : null;
+  const topAction = sortedResults.find((result) => result.holdout.support >= minSupport) || null;
   const strongCandidateCount = sortedResults.filter(
     (result) => ahaBucketOf(result, minSupport) === "strong",
   ).length;
@@ -1067,6 +1066,13 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 <code key={m} className="inline" style={{ marginRight: "6px" }}>{m}</code>
               ))}
             </p>
+          </div>
+        ) : analyzed && cache.invalidReason ? (
+          <div className="required-banner" style={{ marginTop: "12px" }}>
+            <strong>⚠ {tr("타깃 열을 분석할 수 없습니다", "The target column cannot be analyzed")}</strong>
+            <p>{cache.invalidReason === "constant_target"
+              ? tr("타깃 열에 0과 1이 모두 있어야 합니다. 전원이 미도달 또는 전원 도달이면 행동 후보를 비교할 기준이 없습니다.", "The target column must contain both 0 and 1. If everyone has the same outcome, there is no basis for comparing behavior candidates.")
+              : tr("타깃 열은 사용자별 0 또는 1이어야 합니다. 비율·매출·빈 값이 섞인 열은 타깃으로 사용할 수 없습니다.", "The target column must be 0 or 1 for every user. A rate, revenue, or column with missing values cannot be used as the target.")}</p>
           </div>
         ) : analyzed ? (
           <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
