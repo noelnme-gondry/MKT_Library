@@ -92,6 +92,14 @@ describe("Dashboard render smoke", () => {
     expect(utilities.hasAttribute("open")).toBe(false);
   });
 
+  it("shows the dashboard-wide verdict only on the visualization tab", () => {
+    seedWithData();
+    useAppStore.setState({ dashboardTab: "seasonality" });
+    const { container } = render(<Dashboard />);
+    expect(container.querySelector(".result-action-card")).toBeNull();
+    expect(container.querySelector(".seasonality-heading")).toBeTruthy();
+  });
+
   it("with-data renders every tab in English without Korean UI copy", () => {
     for (const tab of TABS) {
       seedWithData();

@@ -75,6 +75,14 @@ describe("VizTab render smoke", () => {
     expect(screen.getByText("PVM으로 원인 보기")).toBeTruthy();
   });
 
+  it("keeps cohort calculation context in an on-demand help icon", () => {
+    seedWithData();
+    const { container } = render(<VizTab />);
+    const help = container.querySelector(".cohort-help");
+    expect(help?.getAttribute("title")).toContain("매출/결제/잔존율");
+    expect(screen.queryByText(/단일 지표\(CPI\/CTR\/CVR/)).toBeNull();
+  });
+
   it("keeps the dashboard visualization surface free of Korean UI copy in English", () => {
     seedWithData();
     render(<VizTab locale="en" />);

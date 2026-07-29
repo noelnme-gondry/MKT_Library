@@ -54,8 +54,6 @@ const VIZ_COPY = {
     cohortDesc: (d) => `매출/결제/잔존율은 선택된 코호트(D${d}) 기준으로 계산됩니다. 단일 지표(CPI/CTR/CVR/비용/설치)는 코호트 무관.`,
     kpiSectionTitle: "KPI 요약",
     chartSectionTitle: "차트 시각화",
-    alertTitle: "D7 ROAS가 권장 벤치마크(15%) 미달입니다.",
-    alertBody: (pct) => `현재 ${pct}% — UAC/AAP 캠페인의 입찰 단계·에셋 다양성·매체별 카니발 비중 진단이 필요합니다.`,
     purchasesLabel: (d) => `구매자 수 (D${d})`,
     purchasesDelta: (d) => `pu_d${d} 합산`,
     purchaseRateLabel: (d) => `구매율 (D${d})`,
@@ -121,8 +119,6 @@ const VIZ_COPY = {
     cohortDesc: (d) => `Revenue/purchases/retention are calculated for the selected cohort (D${d}). Single metrics (CPI/CTR/CVR/cost/installs) are cohort-independent.`,
     kpiSectionTitle: "KPI Summary",
     chartSectionTitle: "Chart Visualization",
-    alertTitle: "D7 ROAS is below the recommended benchmark (15%).",
-    alertBody: (pct) => `Currently ${pct}% — review UAC/AAP campaign bidding stage, asset diversity, and cannibalization by channel.`,
     purchasesLabel: (d) => `Purchasers (D${d})`,
     purchasesDelta: (d) => `Sum of pu_d${d}`,
     purchaseRateLabel: (d) => `Purchase rate (D${d})`,
@@ -298,7 +294,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
   const effBasis = effectiveDenomBasis(csvData, denomBasis);
 
   // 1. Data Aggregation (useMemo)
-  const { filteredRows, dailyAgg, byChannel, totals, kpi, d7RoasNormalized } = useMemo(() => {
+  const { filteredRows, dailyAgg, byChannel, totals, kpi } = useMemo(() => {
     const fRows = getMonFilteredRows(csvData, dashboardFilter);
     const dAgg = aggregateByKey(fRows, "date", ["cost", "installs", "actions", "revenue_d7", "clicks"]).sort(
       (a, b) => (a._key > b._key ? 1 : -1)
@@ -319,10 +315,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       {}
     );
     const k = calculateKPIs(fRows, selectedCohort, effBasis);
-    const d7Kpi = t.cost ? t.revenue_d7 / t.cost : null;
-    const roasNorm = k.roas == null ? null : k.roas > 1 ? k.roas : k.roas * 100;
-
-    return { filteredRows: fRows, dailyAgg: dAgg, byChannel: chAgg, totals: t, kpi: k, d7RoasNormalized: roasNorm };
+    return { filteredRows: fRows, dailyAgg: dAgg, byChannel: chAgg, totals: t, kpi: k };
   }, [csvData, dashboardFilter, selectedCohort, effBasis]);
 
   // 도메인 라벨(effBasis 소비하는 C 메서드 호출은 데이터 메모 뒤에 둠 — 메모 앞에서
@@ -903,27 +896,15 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
 
   return (
     <div className="tab-pane active" id="tab-viz">
-      {/* Alert Banner */}
-      {kpi.cohort === 7 && d7RoasNormalized != null && d7RoasNormalized < 15 && (
-        <aside className="alert-banner" role="alert">
-          <div className="alert-icon">⚠</div>
-          <div className="alert-body">
-            <strong>{T.alertTitle}</strong>
-            {T.alertBody(d7RoasNormalized.toFixed(2))}
-          </div>
-        </aside>
-      )}
-
       {/* Cohort Toggle — 콘텐츠는 매출/결제/잔존율(코호트 지표)이 없어 제외(§정직성). */}
       {!isContent && (
       <section className="block" id="s-cohort">
-        <h2 className="section-title"><span className="ix">§1</span>{T.cohortSectionTitle}</h2>
+        <h2 className="section-title"><span className="ix">§1</span>{T.cohortSectionTitle}<span className="cohort-help" tabIndex="0" title={T.cohortDesc(kpi.cohort)} aria-label={locale === "en" ? "Cohort calculation help" : "코호트 계산 기준 도움말"}>ⓘ</span></h2>
         <div className="cohort-toggle" id="cohort-toggle" style={{ marginBottom: "1rem" }}>
           <button data-cohort="0" className={selectedCohort === 0 ? "active" : ""} onClick={() => setSelectedCohort(0)}>D0</button>
           <button data-cohort="7" className={selectedCohort === 7 ? "active" : ""} onClick={() => setSelectedCohort(7)}>D7</button>
           <button data-cohort="14" className={selectedCohort === 14 ? "active" : ""} onClick={() => setSelectedCohort(14)}>D14</button>
         </div>
-        <p>{T.cohortDesc(kpi.cohort)}</p>
       </section>
       )}
 
@@ -978,18 +959,14 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
             <p className="dashboard-explorer__interpretation">
               {activeTrend.change == null
                 ? (locale === "en" ? "Not enough dated data for a period comparison." : "기간 비교를 위한 날짜 데이터가 부족합니다.")
-                : activeMetric === "retention"
-                  ? locale === "en"
-                    ? `${activeMetricLabel} is ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "higher" : "lower"} over the last ${dailyKpis.length} days. D0 is 100%; D7 and D14 retention are weighted by cohort size.`
-                    : `최근 ${dailyKpis.length}일 ${activeMetricLabel}가 ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "상승" : "하락"}했습니다. D0는 100%이며, D7·D14는 코호트 규모로 가중한 잔존율입니다.`
-                  : locale === "en"
-                    ? `${activeMetricLabel} is ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "higher" : "lower"} over the last ${dailyKpis.length} days. Channel lines are observations; use PVM to assess drivers.`
-                    : `최근 ${dailyKpis.length}일 ${activeMetricLabel}가 ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "상승" : "하락"}했습니다. 채널별 선은 관찰값이며, 원인 판단은 PVM 분석에서 확인하세요.`}
+                : locale === "en"
+                  ? `${activeMetricLabel} is ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "higher" : "lower"} over the last ${dailyKpis.length} days.`
+                  : `최근 ${dailyKpis.length}일 ${activeMetricLabel}가 ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "상승" : "하락"}했습니다.`}
             </p>
           </>
         )}
         <div className="dashboard-explorer__actions">
-          {actionButtons.length ? actionButtons.map(([label, id]) => <button key={id} type="button" className="ab-pill" onClick={() => goToTool(id)}>{label}</button>) : <span className="muted">{activeMetric === "cost" || activeMetric === "ctr" ? (locale === "en" ? "This metric has no driver model. Showing channel observations only." : "원인 모델이 없는 지표입니다. 채널별 관찰값만 표시합니다.") : (locale === "en" ? "Check your data mapping." : "데이터 매핑을 확인하세요.")}</span>}
+          {actionButtons.map(([label, id]) => <button key={id} type="button" className="ab-pill" onClick={() => goToTool(id)}>{label}</button>)}
         </div>
       </section>
 

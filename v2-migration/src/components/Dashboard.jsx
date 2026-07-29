@@ -357,9 +357,9 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 <div className="body"><strong>{tr("대용량 데이터 분석 중", "Analyzing large dataset")}</strong><p>{tr("화면을 멈추지 않고 결과를 계산하고 있습니다.", "The result is being computed without blocking the page.")}</p></div>
               </div>
             )}
-            {/* 결론 카드 — "결론 먼저"(claude-ux §0). 탭 위에 항상 노출, 어느 탭을
-                보든 최근 성과 요약·다음 액션·결과 받기를 한 곳에서. */}
-            {verdict && !verdict.insufficient && (
+            {/* 전체 결론은 첫 진입인 시각화 탭에서만 보여 준다. 하위 탭에서는
+                현재 선택한 분석의 그래프·조작 기능이 첫 화면을 차지한다. */}
+            {activeTab === "viz" && verdict && !verdict.insufficient && (
               <>
               {isDemo && (
                 <section className="dashboard-demo-source" id="dashboard-demo-source" aria-label={tr("예시 데이터 안내", "Sample data notice")}>
