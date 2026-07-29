@@ -3708,6 +3708,9 @@
         letter-spacing: 0.06em;
         margin-bottom: 0.25rem;
       }
+      .ab-stat-label__meta {
+        white-space: nowrap;
+      }
 
       /* ab-stat-hint */
       .ab-stat-hint {

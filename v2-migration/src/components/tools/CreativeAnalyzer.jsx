@@ -160,6 +160,15 @@ function localizeCreativeCopy(domain, locale) {
   return { ...ko, ...en };
 }
 
+// 영문 보조명은 한 덩어리로 이동시킨다. 카드 폭이 좁으면 "(CTR Win-rate)" 전체가
+// 다음 줄로 내려가고, CTR / WIN-RATE처럼 어색하게 쪼개지지 않는다.
+function renderStatLabel(label) {
+  const text = String(label || "");
+  const metaStart = text.lastIndexOf(" (");
+  if (metaStart < 0 || !text.endsWith(")")) return text;
+  return <>{text.slice(0, metaStart)} <span className="ab-stat-label__meta">{text.slice(metaStart + 1)}</span></>;
+}
+
 // 소재 분석 설정 (index.html CREATIVE_CONFIG 이식 — 순수 config, 엔진에 파라미터로 주입)
 // Concept Matrix 셀 status → 색·라벨 (index.html renderCreativeMatrix 이식)
 const MATRIX_STATUS_COLOR = {
@@ -1064,12 +1073,12 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
           </p>
           <div className="ab-stat-row" style={{ margin: "8px 0 12px" }}>
             <div className="ab-stat">
-              <div className="ab-stat-label" title={C.statCtrTitle}>{C.statCtrLabel}</div>
+              <div className="ab-stat-label" title={C.statCtrTitle}>{renderStatLabel(C.statCtrLabel)}</div>
               <div className="ab-stat-value tnum">{pctOf(health.ctrWinnersN, health.eligN)}</div>
               <div className="ab-stat-hint">{tr(`중앙값 초과 ${health.ctrWinnersN}/${health.eligN} (≥${health.minImp.toLocaleString()} impr)`, `Above median ${health.ctrWinnersN}/${health.eligN} (≥${health.minImp.toLocaleString()} impr)`)}</div>
             </div>
             <div className="ab-stat">
-              <div className="ab-stat-label" title={C.statCvrTitle}>{C.statCvrLabel}</div>
+              <div className="ab-stat-label" title={C.statCvrTitle}>{renderStatLabel(C.statCvrLabel)}</div>
               <div className="ab-stat-value tnum">{pctOf(health.cvrWinnersN, health.eligN)}</div>
               <div className="ab-stat-hint">{tr(`중앙값 ${fmtPct(health.medCvr)} 초과`, `Above median ${fmtPct(health.medCvr)}`)}</div>
             </div>
@@ -1079,7 +1088,7 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
               <div className="ab-stat-hint">{C.statSpendHint}</div>
             </div>
             <div className="ab-stat">
-              <div className="ab-stat-label" title={C.statVelTitle}>{C.statVelLabel}</div>
+              <div className="ab-stat-label" title={C.statVelTitle}>{renderStatLabel(C.statVelLabel)}</div>
               <div className="ab-stat-value tnum">{health.avgPerWeek.toFixed(1)}</div>
               <div className="ab-stat-hint">{tr(`${health.weeksN}주 평균`, `avg over ${health.weeksN} weeks`)}</div>
             </div>
