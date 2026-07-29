@@ -1169,12 +1169,19 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       </section>
 
       <section className="block" id="s-decompose">
-        <h2 className="section-title"><span className="ix">§4</span>{tr("어떤 특징이 효과적인가 (속성별 효과 분석 · WLS 분해)", "Which attributes work (attribute effect analysis · WLS decomposition)")}</h2>
+        <h2 className="section-title">
+          <span className="ix">§4</span>{tr("어떤 특징이 효과적인가 (속성별 효과 분석 · WLS 분해)", "Which attributes work (attribute effect analysis · WLS decomposition)")}
+          {hasDecompose && (
+            <span
+              className="section-help"
+              tabIndex="0"
+              title={`${C.decomposeDescPre}${decMeta.desc}${tr("에 실제로 영향을 주는지 통계적으로 분석합니다. 아래 버튼으로 분석 기준 지표(CTR·CVR·CPA·ROAS)를 바꿀 수 있습니다.", " statistically. Use the buttons below to switch the metric being analyzed (CTR·CVR·CPA·ROAS).")}`}
+              aria-label={tr("속성별 효과 분석 도움말", "Attribute effect analysis help")}
+            >ⓘ</span>
+          )}
+        </h2>
         {hasDecompose ? (
           <>
-            <p className="muted" style={{ fontSize: "12px", color: "var(--text-muted)", margin: "0 0 6px" }}>
-              {C.decomposeDescPre}<strong>{decMeta.desc}</strong>{tr("에 실제로 영향을 주는지 통계적으로 분석합니다. 아래 버튼으로 분석 기준 지표(CTR·CVR·CPA·ROAS)를 바꿀 수 있습니다.", " statistically. Use the buttons below to switch the metric being analyzed (CTR·CVR·CPA·ROAS).")}
-            </p>
             <details style={{ marginBottom: "8px", fontSize: "11.5px", color: "var(--text-muted)", cursor: "pointer" }}>
               <summary>{tr("어떻게 계산하나요? (분석 방법 펼치기)", "How is this calculated? (expand methodology)")}</summary>
               <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>

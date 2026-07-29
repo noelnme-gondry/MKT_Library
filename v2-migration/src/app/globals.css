@@ -1884,6 +1884,25 @@
         color: var(--primary);
         box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
       }
+      .section-help {
+        display: inline-grid;
+        place-items: center;
+        width: 14px;
+        height: 14px;
+        margin-left: 6px;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        color: var(--text-muted);
+        cursor: help;
+        font: 700 8px var(--font-mono);
+        vertical-align: 2px;
+        outline: none;
+      }
+      .section-help:hover, .section-help:focus-visible {
+        border-color: var(--primary);
+        color: var(--primary);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
+      }
 
       .nav-divider {
         height: 1px;
