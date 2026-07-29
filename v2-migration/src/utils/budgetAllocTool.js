@@ -253,7 +253,9 @@ export function calculateAllocationModeB({
     const shape = ALLOC_MATH.detectPoly2Shape(meta.model);
     if (overrides[ch] != null && overrides[ch] >= 0) {
       const cost = Number(overrides[ch]);
-      const cpr = meta.model.predict(cost);
+      // 수동 시나리오도 자동 분배와 같은 안전 예측 구간을 쓴다. 직접 predict하면
+      // Poly2 꼭짓점 이후/관측 최대 밖의 비현실적 곡선으로 예상 성과가 튈 수 있다.
+      const cpr = ALLOC_MATH.predictSafeCpr(meta, cost);
       const results = isFinite(cpr) && cpr > 0 && cost > 0 ? cost / cpr : 0;
       lockedChannels.push({
         channel: ch, model: meta.model, xMin: meta.xMin, xMax: meta.xMax,
