@@ -3384,13 +3384,18 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const [isHealthWarningOpen, setIsHealthWarningOpen] = useState(false);
   const [spikeNotes, setSpikeNotes] = useState({}); // §5.5 튀는 구간 메모 { [target|week]: note }
   const [fcHorizon, setFcHorizon] = useState(13);
+  // 입력 중 값과 실제 계산값을 분리한다. 스피너의 화살표 한 번에도 후보 탐색·OOS
+  // 재계산이 실행되면 메인 스레드가 멈추므로, 명시적 적용 때만 계산값을 바꾼다.
+  const [fcHorizonDraft, setFcHorizonDraft] = useState("13");
   const [fcBudget, setFcBudget] = useState({}); // {chKey: 주 평균 예산} — 미입력 채널은 최근평균
   const [fcStepOff, setFcStepOff] = useState({}); // {stepKey: 켜둘 미래 기간 N} — 빈값=지속
   const [fcTotalBudget, setFcTotalBudget] = useState(null);
   const [fcMinBudget, setFcMinBudget] = useState(0);
   const [fcMaxBudget, setFcMaxBudget] = useState(null);
   const [fcTrendDamping, setFcTrendDamping] = useState(0.25);
+  const [fcTrendDampingDraft, setFcTrendDampingDraft] = useState("0.25");
   const [fcEventPolicy, setFcEventPolicy] = useState("hold");
+  const [fcEventPolicyDraft, setFcEventPolicyDraft] = useState("hold");
   const [fcIntervalMode, setFcIntervalMode] = useState("predictive");
   const [fcScenarioOpen, setFcScenarioOpen] = useState(true);
   const [cannibChannel, setCannibChannel] = useState(null);
@@ -3448,6 +3453,20 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       });
     });
   }, []);
+  const preparedForecastHorizon = Math.max(1, Math.min(52, Number.parseInt(fcHorizonDraft, 10) || 1));
+  const preparedTrendDamping = Number(fcTrendDampingDraft);
+  const isForecastSettingsDirty = preparedForecastHorizon !== fcHorizon
+    || preparedTrendDamping !== fcTrendDamping
+    || fcEventPolicyDraft !== fcEventPolicy;
+  const applyForecastSettings = useCallback(() => {
+    if (!isForecastSettingsDirty) return;
+    // 오버레이를 두 프레임 먼저 페인트한 뒤 무거운 forecast useMemo를 실행한다.
+    deferMmmUpdate(() => {
+      setFcHorizon(preparedForecastHorizon);
+      setFcTrendDamping(Number.isFinite(preparedTrendDamping) ? preparedTrendDamping : 0.25);
+      setFcEventPolicy(fcEventPolicyDraft);
+    });
+  }, [deferMmmUpdate, isForecastSettingsDirty, preparedForecastHorizon, preparedTrendDamping, fcEventPolicyDraft]);
   // 분석하기: 무거운 mmm useMemo가 커밋 렌더에서 동기 실행되므로, 로딩 오버레이를 먼저
   // 페인트(더블 rAF)한 뒤 시그니처를 커밋 → "멈춤" 대신 "분석 중" 표시(§7 성능).
   // 분석 시작은 현재 매핑 위치에서 하는 행동이므로 스크롤을 강제로 옮기지 않는다.
@@ -7381,16 +7400,16 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 </div>
                 <label style={{ fontSize: "12px", color: MUTED }}>
                   {tx("예측 기간(주):", "Forecast horizon (wk):")}{" "}
-                  <input type="number" min="1" max="52" value={fcHorizon} onChange={(e) => setFcHorizon(Math.max(1, Math.min(52, parseInt(e.target.value, 10) || 1)))} style={{ width: "60px" }} />
+                  <input type="number" min="1" max="52" value={fcHorizonDraft} onChange={(e) => setFcHorizonDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") applyForecastSettings(); }} style={{ width: "60px" }} />
                 </label>
                 {!forecast?.isStructural && <>
                   <label style={{ fontSize: "12px", color: MUTED }}>{tx("추세 감쇠:", "Trend damping:")} {" "}
-                    <select value={fcTrendDamping} onChange={(e) => setFcTrendDamping(Number(e.target.value))}>
+                    <select value={fcTrendDampingDraft} onChange={(e) => setFcTrendDampingDraft(e.target.value)}>
                       <option value="0">{tx("없음", "None")}</option><option value="0.25">25%</option><option value="0.5">50%</option><option value="0.75">75%</option>
                     </select>
                   </label>
                   <label style={{ fontSize: "12px", color: MUTED }}>{tx("미래 이벤트:", "Future events:")} {" "}
-                    <select value={fcEventPolicy} onChange={(e) => setFcEventPolicy(e.target.value)}>
+                    <select value={fcEventPolicyDraft} onChange={(e) => setFcEventPolicyDraft(e.target.value)}>
                       <option value="hold">{tx("마지막 상태 유지", "Hold last state")}</option><option value="off">{tx("모두 끔", "Turn all off")}</option>
                     </select>
                   </label>
@@ -7400,6 +7419,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     <option value="predictive">{tx("예측 참고구간", "Predictive reference")}</option><option value="parameter">{tx("모수 참고구간", "Parameter reference")}</option>
                   </select>
                 </label>
+                <button type="button" className="ab-pill active" disabled={!isForecastSettingsDirty || isAnalyzing} onClick={applyForecastSettings}>
+                  {isAnalyzing ? tx("계산 중…", "Calculating…") : tx("예측 다시 계산", "Recalculate forecast")}
+                </button>
               </div>
               {forecast ? (
                 <>
