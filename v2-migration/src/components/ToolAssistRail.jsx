@@ -15,7 +15,8 @@ const COPY = {
     current: "지금 보는 단계",
     jump: "이 위치로 이동",
     evidence: "근거 위치 보기",
-    recommendations: "추천 액션",
+    decision: "현재 판단",
+    action: "지금 할 일",
     mapping: "데이터 매핑 확인",
     prepare: "데이터 준비하기",
     replaceSample: "내 CSV로 바꾸기",
@@ -33,7 +34,8 @@ const COPY = {
     current: "Current step",
     jump: "Jump to this section",
     evidence: "View supporting result",
-    recommendations: "Recommended actions",
+    decision: "Current decision",
+    action: "Do this now",
     mapping: "Check data mapping",
     prepare: "Prepare data",
     replaceSample: "Use my CSV",
@@ -155,6 +157,20 @@ export function readAssistInsight(element, lang = "ko") {
   };
 }
 
+// 결과 보조창은 결과 본문을 대체하지 않는다. 긴 모델 설명은 첫 문장(판정 근거)만
+// 남기고, 실제 행동은 가장 우선인 한 가지로 제한한다. 상세 근거는 원래 결과 위치로
+// 이동해 확인한다.
+function compactAssistSummary(summary) {
+  const firstSentence = String(summary || "").match(/^.*?[.!?](?:\s|$)/);
+  return (firstSentence?.[0] || summary || "").trim();
+}
+
+function compactAssistTitle(title, lang) {
+  if (lang === "ko" && title === "10% 미인증 — 운영 판단 보류") return "예측 검증 미통과";
+  if (lang === "en" && title === "Not certified under 10% — hold decisions") return "Forecast validation did not pass";
+  return title;
+}
+
 function getSections(toolId, { hasDashboardResults = true, isDashboardDemo = false } = {}) {
   if (!hasDashboardResults && DASHBOARD_SETUP_SECTIONS[toolId]) return DASHBOARD_SETUP_SECTIONS[toolId];
   if (isDashboardDemo && DASHBOARD_DEMO_SECTIONS[toolId]) return DASHBOARD_DEMO_SECTIONS[toolId];
@@ -179,6 +195,9 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
   const nextTool = getNextTools(toolId, lang)[0] || null;
   const sourceTool = localizedTool(toolId, lang) || (ASSIST_TOOL_FALLBACKS[toolId] && { title: ASSIST_TOOL_FALLBACKS[toolId].title[lang] });
   const activeSection = sections.find((section) => section.id === activeSectionId) || sections[0];
+  const insightTitle = compactAssistTitle(activeInsight?.title, lang);
+  const insightSummary = compactAssistSummary(activeInsight?.summary);
+  const primaryAction = activeInsight?.actions?.[0] || null;
   const quickActionTarget = isDashboardTool && !hasDashboardResults
     ? "dashboard-data-setup"
     : isDashboardDemo
@@ -272,13 +291,13 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
           <strong>{sourceTool.title}</strong>
         </header>
         <div className="tool-assist-rail__context">
-          <small>{T.current}</small>
-          <h2>{activeInsight?.title || copyFor(activeSection.title, lang) || T.defaultTitle}</h2>
-          <p>{activeInsight?.summary || copyFor(activeSection.body, lang) || T.defaultBody}</p>
-          {activeInsight?.actions?.length > 0 && (
-            <div className="tool-assist-rail__recommendations">
-              <small>{T.recommendations}</small>
-              <ol>{activeInsight.actions.map((action) => <li key={action}>{action}</li>)}</ol>
+          <small>{activeInsight ? T.decision : T.current}</small>
+          <h2>{insightTitle || copyFor(activeSection.title, lang) || T.defaultTitle}</h2>
+          <p>{insightSummary || copyFor(activeSection.body, lang) || T.defaultBody}</p>
+          {primaryAction && (
+            <div className="tool-assist-rail__primary-action">
+              <small>{T.action}</small>
+              <strong>{primaryAction}</strong>
             </div>
           )}
           <button type="button" onClick={() => scrollToSection(activeSection.id, "current_context")}>{activeInsight ? T.evidence : T.jump} <span aria-hidden="true">↓</span></button>
@@ -289,13 +308,15 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
               {isDashboardDemo ? T.replaceSample : quickActionTarget === "dashboard-support-tools" ? T.support : quickActionTarget === "dashboard-data-setup" ? T.prepare : T.mapping}
             </button>
           )}
-          {nextTool && !isDashboardDemo ? (
-            <Link href={nextTool.href} onClick={() => trackProductEvent("tool_assist_next", { tool_id: nextTool.id, source_tool_id: toolId, locale: lang })}>
-              <span>{T.next}</span>
-              <strong>{nextTool.title}</strong>
-              <b aria-hidden="true">→</b>
-            </Link>
-          ) : <p>{T.noNext}</p>}
+          {!activeInsight && (
+            nextTool && !isDashboardDemo ? (
+              <Link href={nextTool.href} onClick={() => trackProductEvent("tool_assist_next", { tool_id: nextTool.id, source_tool_id: toolId, locale: lang })}>
+                <span>{T.next}</span>
+                <strong>{nextTool.title}</strong>
+                <b aria-hidden="true">→</b>
+              </Link>
+            ) : <p>{T.noNext}</p>
+          )}
         </div>
       </div>
     </aside>

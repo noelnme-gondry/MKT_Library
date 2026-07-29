@@ -83,7 +83,7 @@ describe("ToolAssistRail", () => {
     delete window.gtag;
   });
 
-  it("shows result-derived evidence and recommended actions instead of a generic mapping jump", async () => {
+  it("compresses a result into one decision, one action, and an evidence link", async () => {
     document.body.innerHTML = `
       <section id="s-forecast"
         data-assist-title-ko="10% 미인증 — 운영 판단 보류"
@@ -95,11 +95,14 @@ describe("ToolAssistRail", () => {
     if (!container.querySelector(".tool-assist-rail").classList.contains("is-open")) {
       fireEvent.click(getByRole("button", { name: /분석 도우미 열기/ }));
     }
-    await waitFor(() => expect(container.textContent).toContain("10% 미인증 — 운영 판단 보류"));
+    await waitFor(() => expect(container.textContent).toContain("예측 검증 미통과"));
     expect(container.textContent).toContain("32.77%");
-    expect(container.textContent).toContain("추천 액션");
+    expect(container.textContent).toContain("지금 할 일");
     expect(container.textContent).toContain("현재 예측값으로 예산을 확정하지 마세요.");
+    expect(container.textContent).not.toContain("최근 레짐 데이터를 추가해 재검증하세요.");
     expect(container.textContent).toContain("근거 위치 보기");
+    expect(container.textContent).not.toContain("예산 분배");
+    expect(container.textContent).not.toContain("이 도구에서 판단을 정리한 뒤");
     expect(container.textContent).not.toContain("데이터 매핑 확인");
   });
 
