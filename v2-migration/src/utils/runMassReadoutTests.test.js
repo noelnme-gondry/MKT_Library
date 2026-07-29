@@ -29,14 +29,12 @@ describe("runMassReadoutTests (golden parity)", () => {
     expect(row2.probBWins).toBeLessThan(0.1);
   });
 
-  it("T3 · is_control 없을 때 첫 행 fallback", () => {
+  it("T3 · is_control 없으면 대조군을 추정하지 않고 보류", () => {
     const r3 = massReadout([
       { name: "alpha", n: 5000, x: 300, isControl: false },
       { name: "beta", n: 5000, x: 320, isControl: false },
     ]);
-    expect(r3.control).toBeTruthy();
-    expect(r3.control.name).toBe("alpha");
-    expect(r3.rows[0].isControl).toBe(true);
+    expect(r3).toEqual({ control: null, rows: [] });
   });
 
   it("T4 · massReadout 결정론", () => {

@@ -35,4 +35,17 @@ describe("bayesianAB deterministic grid integration", () => {
     expect(result.probBWins).toBeGreaterThan(0.99);
     expect(result.ciA).not.toEqual(result.ciB);
   });
+
+  it("refuses a continuous test with no estimable variation", () => {
+    expect(STATS.continuousTest(20, 100, 0, 20, 110, 0)).toEqual({ ok: false, reason: "insufficient_variation" });
+    expect(STATS.continuousTest(1, 100, 10, 20, 110, 10)).toEqual({ ok: false, reason: "insufficient_variation" });
+  });
+
+  it("does not run a proportion test for impossible conversion counts", () => {
+    expect(STATS.twoPropZTest(100, 101, 100, 10)).toBeNull();
+  });
+
+  it("requires an explicit control arm for mass readout", () => {
+    expect(STATS.massReadout([{ name: "A", n: 100, x: 10 }, { name: "B", n: 100, x: 12 }])).toEqual({ control: null, rows: [] });
+  });
 });

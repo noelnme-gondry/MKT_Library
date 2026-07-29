@@ -180,7 +180,9 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
     const sB = num(ancSb);
     if (!nA || !nB || !isFinite(mA) || !isFinite(mB) || sA < 0 || sB < 0)
       return { invalid: true };
-    return { r: STATS.continuousTest(nA, mA, sA, nB, mB, sB), smallSample: nA < 30 || nB < 30 };
+    const r = STATS.continuousTest(nA, mA, sA, nB, mB, sB);
+    if (!r?.ok) return { invalid: true, reason: r?.reason || "invalid" };
+    return { r, smallSample: nA < 30 || nB < 30 };
   }, [mode, testType, ancNa, ancMa, ancSa, ancNb, ancMb, ancSb]);
 
   // ============================================================
@@ -214,6 +216,13 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
     // 헤더가 이미 표준키라 identity 매핑.
     const rows = getMappedRows(csvData);
     if (!rows || rows.length === 0) return null;
+
+    const invalidRows = rows.filter((row) => {
+      const numerator = num(row.numerator);
+      const denominator = num(row.denominator);
+      return !Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0 || numerator < 0 || numerator > denominator;
+    });
+    if (invalidRows.length) return { invalidRows: invalidRows.length };
 
     // Detect an arm dimension for mass readout
     const hasArm = rows.some((r) => r?.arm_id != null && String(r.arm_id).trim() !== "");
@@ -251,8 +260,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
         if (isTruthy(row.is_control)) a.isControl = true;
       });
       const arms = [...armMap.values()].filter((a) => a.n > 0);
-      if (arms.length >= 2) {
-        if (!arms.some((a) => a.isControl)) arms[0].isControl = true;
+      if (arms.length >= 2 && arms.some((a) => a.isControl)) {
         mass = STATS.massReadout(arms);
       }
     }
@@ -267,7 +275,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
   // ============================================================
   useEffect(() => {
     if (abChartRef.current) { abChartRef.current.destroy(); abChartRef.current = null; }
-    if (activeTab !== "readout" || !readoutData) return;
+    if (activeTab !== "readout" || !readoutData || readoutData.invalidRows) return;
     const ctx = document.getElementById("ab-bar");
     if (!ctx) return;
     abChartRef.current = new Chart(ctx, {
@@ -617,7 +625,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                 </div>
                 <div className="ab-result" id="ab-anc-result">
                   {!analyzeContinuous ? null : analyzeContinuous.invalid ? (
-                    <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("입력값 확인 필요", "Please check your inputs")}</strong><p>{tr("n ≥ 1, mean / sd는 숫자, sd ≥ 0 이어야 합니다.", "n must be ≥ 1, mean/sd must be numeric, and sd must be ≥ 0.")}</p></div></div>
+                    <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("입력값 확인 필요", "Please check your inputs")}</strong><p>{analyzeContinuous.reason === "insufficient_variation" ? tr("Welch 검정에는 각 그룹 최소 2명과 적어도 한 그룹의 양수 표준편차가 필요합니다. 변동이 전혀 없으면 p-value를 추정하지 않습니다.", "A Welch test needs at least two observations per arm and positive standard deviation in at least one arm. No p-value is estimated when there is no variation.") : tr("n ≥ 1, mean / sd는 숫자, sd ≥ 0 이어야 합니다.", "n must be ≥ 1, mean/sd must be numeric, and sd must be ≥ 0.")}</p></div></div>
                   ) : (() => {
                     const { r, smallSample } = analyzeContinuous;
                     const liftPositive = r.liftRel >= 0;
@@ -772,7 +780,9 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
             )}
           </section>
 
-          {readoutData && (
+          {readoutData?.invalidRows ? (
+            <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("판독할 수 없는 행이 있습니다", "Some rows cannot be read")}</strong><p>{tr(`${readoutData.invalidRows.toLocaleString()}행에서 전환수는 0 이상이고 분모 이하여야 하며, 분모는 0보다 커야 합니다. 원본 값을 수정한 뒤 다시 분석하세요.`, `In ${readoutData.invalidRows.toLocaleString()} row(s), conversions must be between 0 and the denominator, and the denominator must be greater than 0. Correct the source values and analyze again.`)}</p></div></div>
+          ) : readoutData && (
             <>
               <section className="block" id="s-readout-sig">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
