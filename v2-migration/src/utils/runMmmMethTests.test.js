@@ -93,6 +93,10 @@ describe("runMmmMethTests (golden port)", () => {
     expect(selection.enabled).toBe(true);
     expect(selection.selected.folds).toBeGreaterThan(3);
     expect(selection.foldStep).toBe(4);
+    // 긴 이력에서도 모든 4주 origin을 다시 적합하지 않는다. 최신 봉인 구간을
+    // 포함한 균등 표본만 사용해 브라우저 회귀 실행이 탭을 멈추지 않게 한다.
+    expect(selection.availableHoldoutOrigins).toBeGreaterThan(selection.evaluatedHoldoutOrigins);
+    expect(selection.evaluatedHoldoutOrigins).toBeLessThanOrEqual(6);
     expect(selection.decisionMinFolds).toBe(3);
     expect(selection.selected.wmape).toBeLessThanOrEqual(selection.selected.persistenceWmape);
     expect(selection.candidates.some((item) => item.spec === "cost-trend-year-quarter")).toBe(false);

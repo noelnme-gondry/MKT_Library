@@ -7475,9 +7475,27 @@ export function mmmDataQualityAudit(panel) {
                 : [{ id: "none", mapped: false }];
               const maxCandidateWindow = Math.max(...candidateWindows);
               const latestHoldoutStart = n - horizon;
-              const holdoutStarts = [];
-              for (let start = maxCandidateWindow; start <= latestHoldoutStart; start += foldStep) holdoutStarts.push(start);
-              if (holdoutStarts.at(-1) !== latestHoldoutStart) holdoutStarts.push(latestHoldoutStart);
+              const allHoldoutStarts = [];
+              for (let start = maxCandidateWindow; start <= latestHoldoutStart; start += foldStep) allHoldoutStarts.push(start);
+              if (allHoldoutStarts.at(-1) !== latestHoldoutStart) allHoldoutStarts.push(latestHoldoutStart);
+              // 긴 이력에서 4주마다 모든 origin을 다시 적합하면, 후보 수와 곱해져
+              // 수천 번의 회귀가 한 번의 React 렌더에서 실행된다. 최신 봉인 구간과
+              // 그 이전의 독립적인 개발 holdout은 반드시 남기되, origin은 균등하게
+              // 최대 여섯 개(개발 4~5개 + 최신 1개)만 평가한다. 이는 데이터의 앞
+              // 구간을 학습에 섞지 않는 기간 선택과는 별개인 계산량 안전장치다.
+              const requestedSelectionFolds = Number.isInteger(options.maxSelectionFolds)
+                ? options.maxSelectionFolds
+                : 6;
+              const maxSelectionFolds = Math.max(
+                minFolds + 1,
+                Math.min(requestedSelectionFolds, allHoldoutStarts.length),
+              );
+              const holdoutStarts = allHoldoutStarts.length <= maxSelectionFolds
+                ? allHoldoutStarts
+                : Array.from({ length: maxSelectionFolds }, (_, index) => {
+                  const sourceIndex = Math.round(index * (allHoldoutStarts.length - 1) / (maxSelectionFolds - 1));
+                  return allHoldoutStarts[sourceIndex];
+                });
               const candidates = [];
               for (const spec of specs) {
                 const trendOptions = [{ trendScope: "recent", trendWindow: null }, ...[24, 36, "all"].map((trendWindow) => ({ trendScope: "global", trendWindow }))];
@@ -7641,6 +7659,8 @@ export function mmmDataQualityAudit(panel) {
                 reason: selected ? null : "no-valid-time-ordered-fit",
                 horizon,
                 foldStep,
+                availableHoldoutOrigins: allHoldoutStarts.length,
+                evaluatedHoldoutOrigins: holdoutStarts.length,
                 feasibleFolds: Math.max(0, feasibleFolds),
                 decisionMinFolds,
                 candidates,
