@@ -35,4 +35,17 @@ describe("buildCanonicalDataset", () => {
     expect(dataset.records[0]).toMatchObject({ date: null, metrics: { cost: null } });
     expect(dataset.issues).toHaveLength(2);
   });
+
+  it("keeps a snapshot date as metadata instead of replacing the cohort date", () => {
+    const dataset = buildCanonicalDataset({
+      headers: ["코호트일", "추출일", "설치"],
+      mapping: { 코호트일: "date", 추출일: "snapshot_date", 설치: "installs" },
+      raw: [{ 코호트일: "2026-07-19", 추출일: "2026-07-26", 설치: "100" }],
+    });
+    expect(dataset.records[0]).toMatchObject({
+      date: "2026-07-19",
+      dimensions: { snapshot_date: "2026-07-26" },
+      metrics: { installs: 100 },
+    });
+  });
 });
