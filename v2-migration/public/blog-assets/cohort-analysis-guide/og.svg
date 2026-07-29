@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title">
+  <title id="title">Retention Cohort Analysis</title><rect width="1200" height="630" fill="#101827"/><rect x="70" y="70" width="1060" height="490" rx="28" fill="#16243a" stroke="#36547d" stroke-width="2"/>
+  <text x="130" y="180" fill="#93c5fd" font-family="Arial, sans-serif" font-size="28" font-weight="700">GROWTH OPT PLAYBOOK</text><text x="130" y="270" fill="#f8fafc" font-family="Arial, sans-serif" font-size="62" font-weight="700">Retention cohort analysis</text><text x="130" y="326" fill="#d8e2f0" font-family="Arial, sans-serif" font-size="34">Read D1, D7, and D30 correctly</text>
+  <g transform="translate(770 182)"><path d="M0 235C58 188 99 154 150 143C211 130 253 154 315 83" fill="none" stroke="#60a5fa" stroke-width="14" stroke-linecap="round"/><path d="M0 235C58 218 103 202 150 201C211 199 259 219 315 175" fill="none" stroke="#34d399" stroke-width="14" stroke-linecap="round"/><circle cx="0" cy="235" r="12" fill="#f8fafc"/><circle cx="150" cy="143" r="12" fill="#f8fafc"/><circle cx="315" cy="83" r="12" fill="#f8fafc"/></g>
+  <text x="130" y="470" fill="#a8b5c8" font-family="Arial, sans-serif" font-size="27">Mature cohorts · valid comparisons · next actions</text>
+</svg>

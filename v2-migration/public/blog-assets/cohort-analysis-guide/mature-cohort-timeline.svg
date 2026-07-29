@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">D1 D7 D30 mature cohort timeline</title>
+  <desc id="desc">Illustrative timeline showing latest eligible cohorts when data ends on July 30.</desc>
+  <rect width="1200" height="520" fill="#101827"/>
+  <text x="64" y="72" fill="#f8fafc" font-family="Arial, sans-serif" font-size="34" font-weight="700">Compare only mature cohorts</text>
+  <text x="64" y="110" fill="#a8b5c8" font-family="Arial, sans-serif" font-size="20">Illustrative data · data available through July 30</text>
+  <line x1="230" y1="188" x2="1070" y2="188" stroke="#50607a" stroke-width="3"/>
+  <g fill="#a8b5c8" font-family="Arial, sans-serif" font-size="18"><text x="210" y="164">Jun 30</text><text x="430" y="164">Jul 10</text><text x="650" y="164">Jul 23</text><text x="860" y="164">Jul 29</text><text x="1030" y="164">Jul 30</text></g>
+  <g fill="#93c5fd"><circle cx="230" cy="188" r="8"/><circle cx="450" cy="188" r="8"/><circle cx="670" cy="188" r="8"/></g><g fill="#fbbf24"><circle cx="880" cy="188" r="8"/><circle cx="1050" cy="188" r="8"/></g>
+  <g font-family="Arial, sans-serif"><text x="64" y="270" fill="#f8fafc" font-size="26" font-weight="700">D30</text><rect x="230" y="238" width="820" height="42" rx="21" fill="#23334d"/><rect x="230" y="238" width="8" height="42" rx="4" fill="#60a5fa"/><text x="260" y="266" fill="#dbeafe" font-size="19">Include cohorts through Jun 30</text><text x="64" y="354" fill="#f8fafc" font-size="26" font-weight="700">D7</text><rect x="230" y="322" width="820" height="42" rx="21" fill="#23334d"/><rect x="230" y="322" width="440" height="42" rx="21" fill="#60a5fa"/><text x="260" y="350" fill="#dbeafe" font-size="19">Include cohorts through Jul 23</text><text x="64" y="438" fill="#f8fafc" font-size="26" font-weight="700">D1</text><rect x="230" y="406" width="820" height="42" rx="21" fill="#23334d"/><rect x="230" y="406" width="650" height="42" rx="21" fill="#60a5fa"/><text x="260" y="434" fill="#dbeafe" font-size="19">Include cohorts through Jul 29</text></g>
+  <text x="905" y="488" fill="#fbbf24" font-family="Arial, sans-serif" font-size="18">Amber = still incomplete</text>
+</svg>
