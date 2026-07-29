@@ -1,8 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { autoGuessColMap, buildPanelFromColMap, colMapMissing, isOperationalDeliveryCostHeader, mmmForecastInputWarnings, mmmPlatformTags, mmmSegmentValues } from "./MmmColumnMapper";
+import { autoGuessColMap, buildPanelFromColMap, colMapMissing, isOperationalDeliveryCostHeader, mmmForecastInputWarnings, mmmPlatformTags, mmmSegmentValues, normalizePlatformValue } from "./MmmColumnMapper";
 import { mmmValidate } from "@/utils/mmmMath";
 
 describe("MMM column mapping", () => {
+  it("normalizes row-platform casing and store aliases without folding Web into Android or iOS", () => {
+    expect(["Android", "ANDROID", "AOS", "Google Play"].map(normalizePlatformValue))
+      .toEqual(["android", "android", "android", "android"]);
+    expect(["iOS", "IOS", "iPhone", "iPad"].map(normalizePlatformValue))
+      .toEqual(["ios", "ios", "ios", "ios"]);
+    expect(normalizePlatformValue("Web")).toBe("web");
+
+    const headers = ["week", "platform", "regs", "spend"];
+    const rows = [
+      { week: "2025-W01", platform: "Android", regs: "10", spend: "20" },
+      { week: "2025-W01", platform: "iOS", regs: "8", spend: "15" },
+      { week: "2025-W01", platform: "Web", regs: "5", spend: "4" },
+      { week: "2025-W02", platform: "AOS", regs: "11", spend: "22" },
+      { week: "2025-W02", platform: "iPhone", regs: "9", spend: "16" },
+      { week: "2025-W02", platform: "WEB", regs: "6", spend: "5" },
+    ];
+    const map = {
+      week: { role: "week" },
+      platform: { role: "platform" },
+      regs: { role: "reg" },
+      spend: { role: "channel", kind: "perf", plat: "common" },
+    };
+    expect(buildPanelFromColMap(headers, rows, map, "android", "en").panel.targets.Regs)
+      .toEqual([10, 11]);
+    expect(buildPanelFromColMap(headers, rows, map, "IOS", "en").panel.targets.Regs)
+      .toEqual([8, 9]);
+    expect(buildPanelFromColMap(headers, rows, map, "web", "en").panel.targets.Regs)
+      .toEqual([5, 6]);
+    const total = buildPanelFromColMap(headers, rows, map, "all", "en");
+    expect(total.panel.targets.Regs).toEqual([23, 26]);
+    expect(total.panel.timeDiagnostics.internalIncompletePlatformWeeks).toBe(0);
+  });
+
   it("treats GEO and Reach/Frequency as optional Meridian inputs", () => {
     const headers = ["week", "regs", "meta_spend", "geo", "meta_reach", "meta_frequency"];
     const rows = [
@@ -139,10 +172,10 @@ describe("MMM column mapping", () => {
     expect(operationalSteps["IOS Reopen"]).toMatchObject({ role: "step", plat: "ios", stepMode: "boundary" });
     expect(operationalSteps["Liveness Check"]).toMatchObject({ role: "step", plat: "common", stepMode: "boundary" });
     const stepRows = [
-      { week: "2025-W01", IOS_RR: "80", IOS_Cost: "30", "IOS Delist": "0", "IOS Reopen": "0", "Liveness Check": "0" },
-      { week: "2025-W02", IOS_RR: "20", IOS_Cost: "5", "IOS Delist": "1", "IOS Reopen": "0", "Liveness Check": "1" },
-      { week: "2025-W03", IOS_RR: "18", IOS_Cost: "5", "IOS Delist": "1", "IOS Reopen": "0", "Liveness Check": "0" },
       { week: "2025-W04", IOS_RR: "75", IOS_Cost: "25", "IOS Delist": "0", "IOS Reopen": "1", "Liveness Check": "0" },
+      { week: "2025-W01", IOS_RR: "80", IOS_Cost: "30", "IOS Delist": "0", "IOS Reopen": "0", "Liveness Check": "0" },
+      { week: "2025-W03", IOS_RR: "18", IOS_Cost: "5", "IOS Delist": "0", "IOS Reopen": "0", "Liveness Check": "0" },
+      { week: "2025-W02", IOS_RR: "20", IOS_Cost: "5", "IOS Delist": "1", "IOS Reopen": "0", "Liveness Check": "1" },
     ];
     const stepHeaders = Object.keys(stepRows[0]);
     const stepMap = autoGuessColMap(stepHeaders, stepRows);
@@ -151,6 +184,14 @@ describe("MMM column mapping", () => {
     expect(stepValues("IOS Delist")).toEqual([0, 1, 1, 0]);
     expect(stepValues("IOS Reopen")).toEqual([0, 0, 0, 1]);
     expect(stepValues("Liveness Check")).toEqual([0, 1, 1, 1]);
+    expect(stepPanel.operationalStepIntervals).toMatchObject([{
+      platform: "ios",
+      shutdownLabel: "IOS Delist",
+      reopenLabel: "IOS Reopen",
+      startIndex: 1,
+      reopenIndex: 3,
+    }]);
+    expect(stepPanel.stepDefs.find((step) => step.label === "IOS Delist")).toMatchObject({ autoDerivedInterval: true });
     const warningRows = Array.from({ length: 20 }, (_, index) => ({
       week: `2025-W${String(index + 1).padStart(2, "0")}`,
       IOS_RR: "80",
@@ -161,7 +202,8 @@ describe("MMM column mapping", () => {
     const warningHeaders = Object.keys(warningRows[0]);
     const warningMap = autoGuessColMap(warningHeaders, warningRows);
     const warnings = mmmForecastInputWarnings(warningHeaders, warningRows, warningMap, "ko");
-    expect(warnings.some((warning) => warning.includes("상태열이 1개 기간에만 1"))).toBe(true);
+    expect(warnings.some((warning) => warning.includes("운영 중단 상태를 2025-W11부터 2025-W15 직전까지 1로 자동 생성"))).toBe(true);
+    expect(warnings.some((warning) => warning.includes("상태열이 1개 기간에만 1"))).toBe(false);
     expect(warnings.some((warning) => warning.includes("Cost 커버리지가 뒤늦게 시작"))).toBe(true);
     const wideTargets = autoGuessColMap(
       ["week", "ANDROID_RR", "IOS_RR", "Google_ANDROID_Cost", "Apple Search Ads_IOS_Cost"],
@@ -169,6 +211,117 @@ describe("MMM column mapping", () => {
     );
     expect(wideTargets.ANDROID_RR).toMatchObject({ role: "reg", plat: "android" });
     expect(wideTargets.IOS_RR).toMatchObject({ role: "reg", plat: "ios" });
+  });
+
+  it("preserves an explicitly supplied shutdown state series", () => {
+    const headers = ["week", "IOS_RR", "IOS_Cost", "IOS Delist", "IOS Reopen"];
+    const rows = [
+      { week: "2025-W01", IOS_RR: "80", IOS_Cost: "30", "IOS Delist": "0", "IOS Reopen": "0" },
+      { week: "2025-W02", IOS_RR: "20", IOS_Cost: "5", "IOS Delist": "1", "IOS Reopen": "0" },
+      { week: "2025-W03", IOS_RR: "18", IOS_Cost: "5", "IOS Delist": "1", "IOS Reopen": "0" },
+      { week: "2025-W04", IOS_RR: "19", IOS_Cost: "5", "IOS Delist": "1", "IOS Reopen": "0" },
+      { week: "2025-W05", IOS_RR: "75", IOS_Cost: "25", "IOS Delist": "0", "IOS Reopen": "1" },
+    ];
+    const autoMap = autoGuessColMap(headers, rows);
+    const autoPanel = buildPanelFromColMap(headers, rows, autoMap, "ios").panel;
+    const autoDelistKey = autoPanel.stepDefs.find((step) => step.label === "IOS Delist").key;
+    expect(autoPanel.steps[autoDelistKey]).toEqual([0, 1, 1, 1, 0]);
+    expect(autoPanel.operationalStepIntervals).toEqual([]);
+
+    const manualMap = {
+      week: { role: "week" },
+      IOS_RR: { role: "reg", plat: "ios" },
+      IOS_Cost: { role: "channel", plat: "ios" },
+      "IOS Delist": { role: "step", plat: "ios", stepMode: "state" },
+      "IOS Reopen": { role: "step", plat: "ios", stepMode: "boundary" },
+    };
+    const panel = buildPanelFromColMap(headers, rows, manualMap, "ios").panel;
+    const delistKey = panel.stepDefs.find((step) => step.label === "IOS Delist").key;
+    expect(panel.steps[delistKey]).toEqual([0, 1, 1, 1, 0]);
+    expect(panel.operationalStepIntervals).toEqual([]);
+    expect(panel.stepDefs.find((step) => step.label === "IOS Delist")).toMatchObject({ autoDerivedInterval: false });
+  });
+
+  it("does not guess across platforms or ambiguous operational boundary pairs", () => {
+    const ambiguousRows = [
+      { week: "2025-W01", IOS_RR: "80", IOS_Cost: "30", "IOS Delist A": "0", "IOS Delist B": "0", "IOS Reopen": "0" },
+      { week: "2025-W02", IOS_RR: "20", IOS_Cost: "5", "IOS Delist A": "1", "IOS Delist B": "0", "IOS Reopen": "0" },
+      { week: "2025-W03", IOS_RR: "18", IOS_Cost: "5", "IOS Delist A": "0", "IOS Delist B": "1", "IOS Reopen": "0" },
+      { week: "2025-W04", IOS_RR: "75", IOS_Cost: "25", "IOS Delist A": "0", "IOS Delist B": "0", "IOS Reopen": "1" },
+    ];
+    const ambiguousHeaders = Object.keys(ambiguousRows[0]);
+    const ambiguousMap = autoGuessColMap(ambiguousHeaders, ambiguousRows);
+    const ambiguousPanel = buildPanelFromColMap(ambiguousHeaders, ambiguousRows, ambiguousMap, "ios").panel;
+    const stepValues = (label) => ambiguousPanel.steps[ambiguousPanel.stepDefs.find((step) => step.label === label).key];
+    expect(stepValues("IOS Delist A")).toEqual([0, 1, 0, 0]);
+    expect(stepValues("IOS Delist B")).toEqual([0, 0, 1, 0]);
+    expect(ambiguousPanel.operationalStepIntervals).toEqual([]);
+    expect(mmmForecastInputWarnings(ambiguousHeaders, ambiguousRows, ambiguousMap, "ko"))
+      .toEqual(expect.arrayContaining([expect.stringContaining("운영 중단·재개 경계가 여러 개라 자동 연결하지 않았습니다")]));
+    expect(mmmForecastInputWarnings(ambiguousHeaders, ambiguousRows, ambiguousMap, "en"))
+      .toEqual(expect.arrayContaining([expect.stringContaining("operational boundaries are ambiguous")]));
+
+    const crossRows = [
+      { week: "2025-W01", IOS_RR: "80", IOS_Cost: "30", "IOS Delist": "0", "Android Reopen": "0" },
+      { week: "2025-W02", IOS_RR: "20", IOS_Cost: "5", "IOS Delist": "1", "Android Reopen": "0" },
+      { week: "2025-W03", IOS_RR: "18", IOS_Cost: "5", "IOS Delist": "0", "Android Reopen": "1" },
+    ];
+    const crossHeaders = Object.keys(crossRows[0]);
+    const crossMap = autoGuessColMap(crossHeaders, crossRows);
+    const crossPanel = buildPanelFromColMap(crossHeaders, crossRows, crossMap, "ios").panel;
+    const crossDelistKey = crossPanel.stepDefs.find((step) => step.label === "IOS Delist").key;
+    expect(crossPanel.steps[crossDelistKey]).toEqual([0, 1, 0]);
+    expect(crossPanel.operationalStepIntervals).toEqual([]);
+    expect(mmmForecastInputWarnings(crossHeaders, crossRows, crossMap, "ko"))
+      .toEqual(expect.arrayContaining([expect.stringContaining("같은 플랫폼의 명확한 후속 재개 pulse가 없습니다")]));
+  });
+
+  it.each([
+    ["IOS Campaign Shutdown", "Campaign IOS Reopen"],
+    ["iOS 캠페인 중단", "캠페인 iOS 재개"],
+  ])("pairs related shutdown/reopen entities for %s", (shutdownHeader, reopenHeader) => {
+    const rows = [
+      { week: "2025-W01", IOS_RR: "80", IOS_Cost: "30", [shutdownHeader]: "0", [reopenHeader]: "0" },
+      { week: "2025-W02", IOS_RR: "20", IOS_Cost: "5", [shutdownHeader]: "1", [reopenHeader]: "0" },
+      { week: "2025-W03", IOS_RR: "18", IOS_Cost: "5", [shutdownHeader]: "0", [reopenHeader]: "0" },
+      { week: "2025-W04", IOS_RR: "75", IOS_Cost: "25", [shutdownHeader]: "0", [reopenHeader]: "1" },
+    ];
+    const headers = Object.keys(rows[0]);
+    const map = autoGuessColMap(headers, rows);
+    const panel = buildPanelFromColMap(headers, rows, map, "ios").panel;
+    const shutdownKey = panel.stepDefs.find((step) => step.label === shutdownHeader).key;
+    expect(panel.steps[shutdownKey]).toEqual([0, 1, 1, 0]);
+    expect(panel.operationalStepIntervals).toEqual([expect.objectContaining({
+      platform: "ios",
+      shutdownLabel: shutdownHeader,
+      reopenLabel: reopenHeader,
+      startIndex: 1,
+      reopenIndex: 3,
+    })]);
+  });
+
+  it.each([
+    ["IOS Campaign Shutdown", "IOS Service Reopen"],
+    ["iOS 캠페인 종료", "iOS 서비스 재개"],
+  ])("keeps unrelated shutdown/reopen entities separate for %s", (shutdownHeader, reopenHeader) => {
+    const rows = [
+      { week: "2025-W01", IOS_RR: "80", IOS_Cost: "30", [shutdownHeader]: "0", [reopenHeader]: "0" },
+      { week: "2025-W02", IOS_RR: "20", IOS_Cost: "5", [shutdownHeader]: "1", [reopenHeader]: "0" },
+      { week: "2025-W03", IOS_RR: "18", IOS_Cost: "5", [shutdownHeader]: "0", [reopenHeader]: "0" },
+      { week: "2025-W04", IOS_RR: "75", IOS_Cost: "25", [shutdownHeader]: "0", [reopenHeader]: "1" },
+    ];
+    const headers = Object.keys(rows[0]);
+    const map = autoGuessColMap(headers, rows);
+    const panel = buildPanelFromColMap(headers, rows, map, "ios").panel;
+    const shutdownKey = panel.stepDefs.find((step) => step.label === shutdownHeader).key;
+    const reopenKey = panel.stepDefs.find((step) => step.label === reopenHeader).key;
+    expect(panel.steps[shutdownKey]).toEqual([0, 1, 0, 0]);
+    expect(panel.steps[reopenKey]).toEqual([0, 0, 0, 1]);
+    expect(panel.operationalStepIntervals).toEqual([]);
+    expect(mmmForecastInputWarnings(headers, rows, map, "ko"))
+      .toEqual(expect.arrayContaining([expect.stringContaining("중단·재개 헤더의 대상 이름이 달라 별도 경계로 유지")]));
+    expect(mmmForecastInputWarnings(headers, rows, map, "en"))
+      .toEqual(expect.arrayContaining([expect.stringContaining("refer to different entities, so they remain separate boundaries")]));
   });
 
   it("uses OS-specific industry demand for OS models and a summed control for Total", () => {

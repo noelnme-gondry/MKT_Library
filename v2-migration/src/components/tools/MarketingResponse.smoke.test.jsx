@@ -13,6 +13,7 @@
 // so the OLS panel is non-singular. Deterministic — NO Math.random (harness §3).
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, fireEvent, act } from "@testing-library/react";
+import Papa from "papaparse";
 import { useAppStore } from "@/store/useDataStore";
 import MarketingResponse, {
   MMM_EXPERIMENT_GEO_LONG_TEMPLATE_CSV,
@@ -21,9 +22,26 @@ import MarketingResponse, {
   MMM_TEMPLATE_CSV,
   buildForecastCsv,
   buildForecastAssistInsight,
+  forecastDownloadTitle,
+  forecastHorizonDraftState,
+  forecastWorkerConfigDto,
+  mergeForecastSelectionCache,
+  forecastIntervalContract,
+  forecastPlatformRouteGuard,
+  selectForecastProductionRoute,
+  buildForecastProductionModel,
+  forecastCandidateSearchProvenance,
+  forecastRegimeInputChanged,
+  forecastRegimeStateForInput,
+  safeForecastRegimeScan,
   forecastPct,
+  forecastOrganicTargetValues,
+  hasForecastSpendHistory,
+  hasPaidRegistrationTargets,
   buildForecastOnlyModelFromPanel,
   buildForecastRecentBacktest,
+  calendarizeForecastPanel,
+  certifyForecastBacktest,
   combinePaidOrganicForecastParts,
   combinePaidOrganicPlatforms,
   sliceForecastTrainingWindow,
@@ -31,6 +49,8 @@ import MarketingResponse, {
   scanForecastRegimeWindows,
   mmmDerivedTrafficValue,
   mmmComposeEvidenceTarget,
+  mmmAnalysisGateOpen,
+  mmmCsvParseFailure,
   mmmCsvSourceChanged,
   mmmDetectTargetCountry,
   mmmEvidenceNumber,
@@ -48,6 +68,8 @@ import MarketingResponse, {
   mmmResolveExperimentType,
   mmmSumOsForecasts,
   mmmTargetHeader,
+  paidOrganicHaloBudgets,
+  reconcileForecastScenarioAudit,
   trimToActive,
 } from "@/components/tools/MarketingResponse";
 import { autoGuessColMap, buildPanelFromColMap } from "@/components/tools/MmmColumnMapper";
@@ -236,6 +258,7 @@ async function flushRaf() {
 
 describe("MarketingResponse render smoke", () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     seedNoData();
   });
 
@@ -244,6 +267,89 @@ describe("MarketingResponse render smoke", () => {
     const secondRaw = [{ week: "2025-01-06", RR: "110" }];
     expect(mmmCsvSourceChanged("same.csv|week,RR", "same.csv|week,RR", firstRaw, secondRaw)).toBe(true);
     expect(mmmCsvSourceChanged("same.csv|week,RR", "same.csv|week,RR", firstRaw, firstRaw)).toBe(false);
+    expect(mmmAnalysisGateOpen({
+      analyzedSignature: "mapping-a",
+      analysisSignature: "mapping-a",
+      analyzedRaw: firstRaw,
+      currentRaw: secondRaw,
+    })).toBe(false);
+    expect(mmmAnalysisGateOpen({
+      analyzedSignature: "mapping-a",
+      analysisSignature: "mapping-a",
+      analyzedRaw: firstRaw,
+      currentRaw: firstRaw,
+    })).toBe(true);
+  });
+
+  it("keeps only the latest CSV parse and ignores callbacks after unmount", async () => {
+    seedWithData();
+    const queued = [];
+    vi.spyOn(Papa, "parse").mockImplementation((file, options) => {
+      queued.push({ file, options });
+      return undefined;
+    });
+    const view = render(<MarketingResponse />);
+    const upload = () => view.container.querySelector('input[type="file"][accept=".csv,text/csv"]');
+    const fileA = new File(["week,Regs\n1,10"], "a.csv", { type: "text/csv" });
+    const fileB = new File(["week,Regs\n1,20"], "b.csv", { type: "text/csv" });
+
+    fireEvent.change(upload(), { target: { files: [fileA] } });
+    fireEvent.change(upload(), { target: { files: [fileB] } });
+    expect(queued).toHaveLength(2);
+
+    await act(async () => {
+      queued[1].options.complete({
+        data: [{ week: "1", Regs: "20" }],
+        errors: [],
+        meta: { fields: ["week", "Regs"] },
+      });
+    });
+    expect(useAppStore.getState().csvData.fileName).toBe("b.csv");
+
+    await act(async () => {
+      queued[0].options.complete({
+        data: [{ week: "1", Regs: "10" }],
+        errors: [],
+        meta: { fields: ["week", "Regs"] },
+      });
+    });
+    expect(useAppStore.getState().csvData.fileName).toBe("b.csv");
+
+    const fileC = new File(["week,Regs\n1,\"20"], "broken.csv", { type: "text/csv" });
+    fireEvent.change(upload(), { target: { files: [fileC] } });
+    await act(async () => {
+      queued[2].options.complete({
+        data: [{ week: "1", Regs: "20" }],
+        errors: [{ type: "Quotes", code: "MissingQuotes", row: 0 }],
+        meta: { fields: ["week", "Regs"] },
+      });
+    });
+    expect(useAppStore.getState().csvData.fileName).toBe("b.csv");
+    expect(document.body.textContent).toContain("기존 데이터는 유지했습니다");
+
+    const fileD = new File(["week,Regs\n1,30"], "late.csv", { type: "text/csv" });
+    fireEvent.change(upload(), { target: { files: [fileD] } });
+    view.unmount();
+    await act(async () => {
+      queued[3].options.complete({
+        data: [{ week: "1", Regs: "30" }],
+        errors: [],
+        meta: { fields: ["week", "Regs"] },
+      });
+    });
+    expect(useAppStore.getState().csvData.fileName).toBe("b.csv");
+  });
+
+  it("classifies only empty or structurally broken CSV parses as failures", () => {
+    expect(mmmCsvParseFailure({ data: [], errors: [] })).toBe("empty");
+    expect(mmmCsvParseFailure({
+      data: [{ week: "1", Regs: "" }],
+      errors: [{ type: "FieldMismatch", code: "TooFewFields", row: 0 }],
+    })).toBe(null);
+    expect(mmmCsvParseFailure({
+      data: [{ week: "1", Regs: "10" }],
+      errors: [{ type: "Quotes", code: "MissingQuotes", row: 0 }],
+    })).toBe("parse");
   });
 
   it("mounts without throwing in the no-data state", () => {
@@ -252,8 +358,25 @@ describe("MarketingResponse render smoke", () => {
   });
 
   it("keeps the most recent observations when preparing a current-regime training window", () => {
-    const panel = { week: [1, 2, 3, 4, 5], weekLabel: ["2024-01-01", "2024-01-08", "2024-01-15", "2024-01-22", "2024-01-29"], targets: { Regs: [10, 11, 12, 13, 14] }, channels: [], ch: {} };
-    expect(sliceForecastTrainingWindow(panel, 3)).toMatchObject({ week: [3, 4, 5], targets: { Regs: [12, 13, 14] } });
+    const panel = {
+      week: [1, 2, 3, 4, 5],
+      weekLabel: ["2024-01-01", "2024-01-08", "2024-01-15", "2024-01-22", "2024-01-29"],
+      targets: { Regs: [10, 11, 12, 13, 14] },
+      channels: [],
+      ch: {},
+      reach: { media: [1, 2, 3, 4, 5] },
+      frequency: { media: [6, 7, 8, 9, 10] },
+      external: { market: [100, 200, 300, 400, 500] },
+      geo: ["A", "B", "C", "D", "E"],
+    };
+    expect(sliceForecastTrainingWindow(panel, 3)).toMatchObject({
+      week: [3, 4, 5],
+      targets: { Regs: [12, 13, 14] },
+      reach: { media: [3, 4, 5] },
+      frequency: { media: [8, 9, 10] },
+      external: { market: [300, 400, 500] },
+      geo: ["C", "D", "E"],
+    });
     expect(sliceForecastTrainingWindow(panel, 10)).toBe(panel);
   });
 
@@ -262,10 +385,311 @@ describe("MarketingResponse render smoke", () => {
     expect(scanAnnualForecastRegimeWindows()).toMatchObject({ available: false, reason: "missing-source", recommended: null });
   });
 
+  it("resets a requested regime scan when the CSV or mapping signature changes", () => {
+    expect(forecastRegimeInputChanged(null, "csv-a|map-a")).toBe(false);
+    expect(forecastRegimeInputChanged("csv-a|map-a", "csv-a|map-a")).toBe(false);
+    expect(forecastRegimeInputChanged("csv-a|map-a", "csv-b|map-a")).toBe(true);
+    expect(forecastRegimeInputChanged("csv-a|map-a", "csv-a|map-b")).toBe(true);
+  });
+
+  it("turns a synchronous regime scan exception into a safe unavailable result", () => {
+    expect(safeForecastRegimeScan(() => {
+      throw new Error("candidate failed");
+    })).toEqual({
+      available: false,
+      calculationFailed: true,
+      reason: "regime-scan-error",
+      candidates: [],
+      recommended: null,
+    });
+  });
+
+  it("uses one effective regime wave before and after the passive reset", () => {
+    const beforePassiveReset = forecastRegimeStateForInput({
+      stateSignature: "target:Regs|platform:all|horizon:13",
+      currentSignature: "target:Revenue|platform:all|horizon:13",
+      trainingWeeks: 104,
+      scanRequested: true,
+    });
+    const afterPassiveReset = forecastRegimeStateForInput({
+      stateSignature: null,
+      currentSignature: "target:Revenue|platform:all|horizon:13",
+      trainingWeeks: null,
+      scanRequested: false,
+    });
+    expect(beforePassiveReset).toEqual({ trainingWeeks: null, scanRequested: false });
+    expect(afterPassiveReset).toEqual(beforePassiveReset);
+    expect(forecastRegimeStateForInput({
+      stateSignature: "target:Regs|platform:all|horizon:13",
+      currentSignature: "target:Regs|platform:all|horizon:13",
+      trainingWeeks: 104,
+      scanRequested: true,
+    })).toEqual({ trainingWeeks: 104, scanRequested: true });
+    expect(forecastRegimeStateForInput({
+      stateSignature: null,
+      currentSignature: "target:Regs|platform:all|horizon:13",
+      trainingWeeks: 104,
+      scanRequested: true,
+    })).toEqual({ trainingWeeks: null, scanRequested: false });
+  });
+
+  it("serializes forecast worker config without executable values", () => {
+    const dto = forecastWorkerConfigDto({
+      absorbed: new Set(["channel_a"]),
+      hacAutoLag: () => 4,
+      nested: {
+        values: [1, 2],
+        callback: () => "not cloneable",
+      },
+    });
+    expect(dto).toEqual({
+      absorbed: ["channel_a"],
+      nested: { values: [1, 2] },
+    });
+    expect(() => structuredClone(dto)).not.toThrow();
+  });
+
+  it("keeps earlier worker results when a later fallback task completes", () => {
+    const first = mergeForecastSelectionCache(
+      { signature: null, results: {} },
+      "csv-a",
+      { "direct-total": { enabled: true } },
+    );
+    const second = mergeForecastSelectionCache(
+      first,
+      "csv-a",
+      { "annual-fallback-total": { selected: { spec: { id: "flat-8" } } } },
+    );
+    expect(second.results).toHaveProperty("direct-total");
+    expect(second.results).toHaveProperty("annual-fallback-total");
+    expect(mergeForecastSelectionCache(
+      second,
+      "csv-b",
+      { "direct-total": { enabled: false } },
+    ).results).toEqual({ "direct-total": { enabled: false } });
+  });
+
+  it("keeps component candidate-search audits in reproducibility provenance", () => {
+    const complete = { complete: true, planned: 8, attempted: 8, evaluated: 8, missingAxes: {}, reasons: [] };
+    const incomplete = { complete: false, planned: 8, attempted: 24, evaluated: 6, missingAxes: { spec: ["annual"] }, reasons: ["candidate-search-incomplete"] };
+    const android = { platform: "android", rollingSelection: { candidateSearchAudit: complete } };
+    const ios = { platform: "ios", rollingSelection: { candidateSearchAudit: incomplete } };
+    const provenance = forecastCandidateSearchProvenance({
+      components: [android, ios],
+      platformForecasts: [android, ios],
+    });
+    expect(provenance).toEqual([
+      { scope: "forecast.components[0]", platform: "android", ...complete },
+      { scope: "forecast.components[1]", platform: "ios", ...incomplete },
+    ]);
+  });
+
+  it("includes a 208-week current-regime candidate for annual forecasts when available", () => {
+    const length = 220;
+    const makePanel = (values) => ({
+      week: values.map((_, index) => index + 1),
+      weekLabel: values.map((_, index) => `W${index + 1}`),
+      ch: {},
+      dummy: {},
+      targets: { Regs: values },
+      steps: {},
+    });
+    const android = Array(length).fill(200);
+    const ios = Array(length).fill(300);
+    const result = scanAnnualForecastRegimeWindows({
+      totalPanel: makePanel(android.map((value, index) => value + ios[index])),
+      androidPanel: makePanel(android),
+      iosPanel: makePanel(ios),
+      target: "Regs",
+      horizon: 12,
+    });
+    expect(result.candidates.map((candidate) => candidate.trainingWeeks))
+      .toEqual([220, 208, 156, 130, 104, 91]);
+  });
+
   it("renders an unavailable annual OS metric without throwing", () => {
     expect(forecastPct(null)).toBe("—");
     expect(forecastPct(undefined, 1)).toBe("—");
     expect(forecastPct(12.345, 1)).toBe("12.3%");
+  });
+
+  it("subtracts Paid only for registration counts, not unrelated KPI targets", () => {
+    expect(forecastOrganicTargetValues("Regs", [100, 120], [30, 40])).toEqual([70, 80]);
+    expect(forecastOrganicTargetValues("Revenue", [100, 120], [30, 40])).toEqual([100, 120]);
+    expect(forecastOrganicTargetValues("Traffic", [100, 120], [30, 40])).toEqual([100, 120]);
+    const platform = (target) => ({
+      target,
+      sourcePanel: { targets: { Regs: [100, 120], PaidRegs: [30, 40], Revenue: [500, 600] } },
+    });
+    expect(hasPaidRegistrationTargets({
+      all: platform("Regs"),
+      android: platform("Regs"),
+      ios: platform("Regs"),
+    })).toBe(true);
+    expect(hasPaidRegistrationTargets({
+      all: platform("Revenue"),
+      android: platform("Revenue"),
+      ios: platform("Revenue"),
+    })).toBe(false);
+    expect(hasForecastSpendHistory({
+      ch: { android: [0, 0], ios: [0, 0], web: [0, 5] },
+    })).toBe(true);
+    expect(hasForecastSpendHistory({
+      ch: { android: [0, 0], ios: [0, 0], web: [0, 0] },
+    })).toBe(false);
+  });
+
+  it("uses one normalized platform contract for OS routing and blocks third-platform partial totals", () => {
+    expect(forecastPlatformRouteGuard([])).toMatchObject({
+      hasAndroid: false,
+      hasIos: false,
+      hasDisaggregatedPlatformRows: false,
+      hasAggregatePlatformRows: false,
+    });
+    expect(forecastPlatformRouteGuard(["Total"])).toMatchObject({
+      hasAndroid: false,
+      hasIos: false,
+      hasDisaggregatedPlatformRows: false,
+      hasAggregatePlatformRows: true,
+    });
+    expect(forecastPlatformRouteGuard(["Android"])).toMatchObject({
+      hasAndroid: true,
+      hasIos: false,
+      hasDisaggregatedPlatformRows: true,
+      hasAggregatePlatformRows: false,
+    });
+    expect(forecastPlatformRouteGuard(["Android", "iPhone"])).toMatchObject({
+      hasAndroid: true,
+      hasIos: true,
+      hasOnlyAndroidIos: true,
+      hasAggregatePlatformRows: false,
+    });
+    expect(forecastPlatformRouteGuard(["AOS", "IOS", "Web"])).toMatchObject({
+      hasAndroid: true,
+      hasIos: true,
+      hasOnlyAndroidIos: false,
+      hasAggregatePlatformRows: false,
+    });
+    expect(forecastPlatformRouteGuard(["ANDROID", "iOS", "Total"])).toMatchObject({
+      hasAndroid: true,
+      hasIos: true,
+      hasOnlyAndroidIos: true,
+      hasAggregatePlatformRows: true,
+    });
+  });
+
+  it("keeps a third-platform Total on the direct production model", () => {
+    const nested = (route, predicted) => {
+      const folds = [
+        {
+          offset: 12,
+          actual: [100, 100],
+          predicted,
+          baselinePredicted: [85, 85],
+          wmape: predicted === undefined ? null : predicted.reduce((sum, value) =>
+            sum + Math.abs(100 - value), 0) / 200 * 100,
+          baselineWmape: 15,
+        },
+        {
+          offset: 0,
+          actual: [100, 100],
+          predicted,
+          baselinePredicted: [85, 85],
+          wmape: predicted === undefined ? null : predicted.reduce((sum, value) =>
+            sum + Math.abs(100 - value), 0) / 200 * 100,
+          baselineWmape: 15,
+        },
+      ];
+      return {
+        route,
+        horizon: 12,
+        folds,
+        latest: folds[1],
+        ...(route === "android-ios-sum" ? {
+          componentMetrics: [
+            { component: "android", latestWmape: 3, developmentWmape: 3 },
+            { component: "ios", latestWmape: 3, developmentWmape: 3 },
+          ],
+        } : {}),
+      };
+    };
+    const decision = selectForecastProductionRoute(
+      nested("direct-total", [96, 104]),
+      nested("android-ios-sum", [100, 100]),
+      { horizon: 12, allowOsProduction: false },
+    );
+    expect(decision).toMatchObject({
+      diagnosticProductionRoute: "android-ios-sum",
+      productionRoute: "direct-total",
+      componentGuardrailRequired: false,
+      certified: true,
+    });
+    expect(decision.candidates.map((candidate) => candidate.route))
+      .toEqual(["android-ios-sum", "direct-total"]);
+
+    const direct = {
+      platform: "all",
+      actual: [1000, 1010],
+      predFut: [1020, 1030],
+    };
+    const result = buildForecastProductionModel(
+      direct,
+      [{ platform: "android" }, { platform: "ios" }],
+      decision,
+    );
+    expect(result).toMatchObject({
+      platform: "all",
+      actual: [1000, 1010],
+      predFut: [1020, 1030],
+      isAdditiveTotal: false,
+      isNestedDirect: true,
+    });
+  });
+
+  it("never lets one good latest fold override an authoritative OOS gate", () => {
+    expect(certifyForecastBacktest({
+      actual: [100, 100],
+      predicted: [95, 105],
+      wmape: 5,
+      certificationGate: false,
+    })).toMatchObject({ reliable: false, certificationThreshold: 10 });
+    expect(certifyForecastBacktest({
+      actual: [100, 100],
+      predicted: [95, 105],
+      wmape: 5,
+      certificationGate: true,
+    })).toMatchObject({ reliable: true, certificationThreshold: 10 });
+  });
+
+  it("reuses the selector's sealed outer fold without reserving the horizon twice", () => {
+    const actual = Array.from({ length: 13 }, (_, index) => 100 + index);
+    const predicted = actual.map((value) => value - 2);
+    const backtest = buildForecastRecentBacktest({
+      target: "Regs",
+      sourcePanel: {
+        week: Array.from({ length: 78 }, (_, index) => index + 1),
+        weekLabel: Array.from({ length: 78 }, (_, index) => `W${index + 1}`),
+      },
+      selection: {
+        horizon: 13,
+        decisionEligible: false,
+        decisionReasons: ["naive-baseline-selected"],
+        forecastDecisionEligible: true,
+        forecastDecisionReasons: [],
+        nested: {
+          latest: { candidateId: "sealed", window: 26, actual, predicted },
+        },
+      },
+    });
+    expect(backtest).toMatchObject({
+      validationStartIndex: 0,
+      validationHorizon: 13,
+      selectionTrainingWeeks: 65,
+      selectionWindow: 26,
+      certificationGate: true,
+    });
+    expect(backtest.actual).toEqual(actual);
+    expect(backtest.predicted).toEqual(predicted);
   });
 
   it("uses the hub only to choose an independent analysis after mapping", async () => {
@@ -290,9 +714,10 @@ describe("MarketingResponse render smoke", () => {
         { platform: "android", rollingSelection: { decisionEligible: true, selected: { window: 78 } } },
         { platform: "ios", rollingSelection: { decisionEligible: true, selected: { window: 26 } } },
       ],
-    }, { wmape: 18.42 }, { eligible: false });
+    }, { wmape: 18.42, conditionalWmape: 1.11 }, { eligible: false });
     expect(insight.titleKo).toContain("미인증");
     expect(insight.summaryKo).toContain("18.42%");
+    expect(insight.summaryKo).not.toContain("1.11%");
     expect(insight.summaryKo).toContain("android 78주");
     expect(insight.actionsKo.join(" ")).toContain("예산 증감");
     expect(insight.actionsEn.join(" ")).toContain("Cost scenarios locked");
@@ -302,6 +727,10 @@ describe("MarketingResponse render smoke", () => {
     const insight = buildForecastAssistInsight({
       isAnnualAnalog: true,
       annualQualified: false,
+      annualComponentGuardrailRequired: false,
+      annualOsGuardrail: [
+        { component: "android", developmentWmape: 18, latestWmape: 7, passed: false },
+      ],
       selectedRoute: "direct-total",
       predFut: Array(12).fill(100),
       rollingSelection: { selected: { wmape: 24.51 } },
@@ -369,6 +798,40 @@ describe("MarketingResponse render smoke", () => {
     expect(csv).toMatch(/=MAX\(0,\$B\$/);
   });
 
+  it("exports the selected regression-naive blend without overstating spend response", () => {
+    const model = {
+      platform: "android",
+      target: "Regs",
+      names: ["trend", "media_android_cost"],
+      beta: [2, 8],
+      intercept: 100,
+      featureMeans: [1, 0.5],
+      featureScales: [1, 0.25],
+      rawFeatureHistory: [[0, 0.4], [1, 0.5]],
+      futureRawFeatures: [[2, 0.6]],
+      params: { android_cost: { alpha: 0.4, ec: 100, slope: 1.2 } },
+      chans: [{ key: "android_cost", label: "android_cost", kind: "perf" }],
+      histSpendByKey: { android_cost: [100, 120] },
+      futSpendByKey: { android_cost: [140] },
+      histLabels: ["W1", "W2"],
+      futLabels: ["W3"],
+      actual: [100, 110],
+      historyOffset: [0, 0],
+      futureOffset: [0],
+      futureMargins: [12],
+      selectedBlend: { baselineId: "recent-mean-8", regressionWeight: 0.5 },
+      blendApplied: true,
+      blendBaselineFut: [123],
+    };
+    const csv = buildForecastCsv({
+      isBayesian: true,
+      excelModels: [model],
+    }, "Regs", "ko", "USD", "USD").join("\n");
+    expect(csv).toContain("회귀 50% + recent-mean-8 50%");
+    expect(csv).toMatch(/=0\.5000000000\*\(\$B\$\d+.*\)\+0\.5000000000\*123\.0000000000/);
+    expect(csv).toMatch(/=MAX\(0,0\.5000000000\*\(\$B\$/);
+  });
+
   it("exports structural forecasts with adjacent absolute Organic and Performance columns", () => {
     const lines = buildForecastCsv({
       isStructural: true,
@@ -389,14 +852,145 @@ describe("MarketingResponse render smoke", () => {
     }, "Regs", "ko");
     const csv = lines.join("\n");
     expect(csv).toContain("fitted_or_forecast_live,Organic Predicted,Perf Predicted,lower_live,upper_live");
-    expect(csv).toContain("W1,history,100,=E13+F13,80,18");
-    expect(csv).toContain("W2,forecast,,=E14+F14,85,25,100,120");
+    expect(csv).toContain("W1,history,100,=E14+F14,80,18");
+    expect(csv).toContain("W2,forecast,,=E15+F15,85,25,100,120");
+  });
+
+  it("labels aggregate calibration separately from summed component envelopes", () => {
+    expect(forecastIntervalContract({
+      horizon: 2,
+      rollingSelection: {
+        nested: {
+          intervalCalibrationEligible: true,
+          intervalCalibrationMinFolds: 8,
+          developmentFolds: Array(8).fill({}),
+        },
+        productionSelected: { selectionFolds: 8, blendMargins: [2, 3] },
+      },
+    })).toMatchObject({ kind: "aggregate-oos-envelope", observedFolds: 8 });
+    const component = {
+      rollingSelection: {
+        nested: {
+          intervalCalibrationEligible: true,
+          intervalCalibrationMinFolds: 8,
+          developmentFolds: Array(8).fill({}),
+        },
+        productionSelected: { selectionFolds: 8, blendMargins: [2, 3] },
+      },
+    };
+    expect(forecastIntervalContract({
+      isAdditiveTotal: true,
+      horizon: 2,
+      components: [component, component],
+    })).toMatchObject({ kind: "component-oos-envelope", observedFolds: 8 });
+  });
+
+  it("labels structural and annual bounds as point forecasts plus outer-OOS P90 errors", () => {
+    expect(forecastIntervalContract({
+      isStructural: true,
+      intervalCalibrationEligible: true,
+      intervalObservedOuterFolds: 9,
+      intervalCalibrationMinFolds: 8,
+    })).toMatchObject({
+      kind: "point-plus-outer-oos-p90",
+      method: "point-forecast-plus-nested-outer-oos-p90-absolute-error",
+      observedFolds: 9,
+    });
+    expect(forecastIntervalContract({
+      isAnnualAnalog: true,
+      intervalCalibrationEligible: true,
+      intervalCalibrationFoldCount: 8,
+      intervalCalibrationMinFolds: 8,
+    })).toMatchObject({
+      kind: "point-plus-outer-oos-p90",
+      method: "point-forecast-plus-nested-outer-oos-p90-absolute-error",
+      observedFolds: 8,
+    });
+    expect(forecastIntervalContract({
+      isStructural: true,
+      intervalCalibrationEligible: true,
+      intervalObservedOuterFolds: 7,
+      intervalCalibrationMinFolds: 8,
+    })).toMatchObject({ kind: "point", observedFolds: 7 });
+  });
+
+  it("keeps exact gate reasons and adds latest-audit-failed only for an actual threshold breach", () => {
+    expect(reconcileForecastScenarioAudit(
+      { eligible: true, reasons: [] },
+      {
+        reliable: false,
+        wmape: 5,
+        certificationGate: false,
+        decisionReasons: ["development-oos-above-threshold"],
+      },
+    )).toEqual({
+      eligible: false,
+      reasons: ["development-oos-above-threshold"],
+    });
+    expect(reconcileForecastScenarioAudit(
+      { eligible: true, reasons: ["does-not-beat-best-naive"] },
+      { reliable: false, wmape: 12, certificationThreshold: 10 },
+    )).toEqual({
+      eligible: false,
+      reasons: ["does-not-beat-best-naive", "latest-audit-failed"],
+    });
+  });
+
+  it("normalizes horizon drafts before deciding whether recalculation is needed", () => {
+    expect(forecastHorizonDraftState("13", 13)).toMatchObject({ horizon: 13, normalized: "13", dirty: false });
+    expect(forecastHorizonDraftState("013", 13)).toMatchObject({ horizon: 13, normalized: "13", dirty: true });
+    expect(forecastHorizonDraftState("99", 52)).toMatchObject({ horizon: 52, normalized: "52", dirty: true });
+  });
+
+  it("describes annual downloads as fixed snapshots and generic formulas by selected transforms", () => {
+    expect(forecastDownloadTitle({ isAnnualAnalog: true }, "ko")).toContain("고정 스냅샷");
+    expect(forecastDownloadTitle({ isAnnualAnalog: true }, "en")).toContain("Fixed snapshot");
+    const genericTitle = forecastDownloadTitle({ isBayesian: true }, "en");
+    expect(genericTitle).toContain("selected adstock, media transform");
+    expect(genericTitle).not.toContain("Hill transforms");
+  });
+
+  it("uses the same interval contract and provenance in Bayesian fixed-snapshot exports", () => {
+    const forecast = {
+      isBayesian: true,
+      excelModels: [],
+      model: "profile-snapshot",
+      r2: 0.8,
+      intervalLabel: "legacy conflicting label",
+      horizon: 2,
+      rollingSelection: {
+        nested: {
+          intervalCalibrationEligible: true,
+          intervalCalibrationMinFolds: 8,
+          developmentFolds: Array(8).fill({}),
+        },
+        productionSelected: { selectionFolds: 8, blendMargins: [3, 4] },
+      },
+      labels: ["W1"],
+      actual: [100],
+      fittedHist: [98],
+      predFut: [105, 110],
+      futLabels: ["W2", "W3"],
+      lo: [100, 104],
+      hi: [110, 116],
+      chans: [],
+    };
+    const contract = forecastIntervalContract(forecast);
+    const csv = buildForecastCsv(forecast, "Regs", "ko", "USD", "USD").join("\n");
+    expect(csv).toContain(`# 예측 범위,${contract.method}`);
+    expect(csv).toContain("# 구간 출처");
+    expect(csv).toContain("nested 바깥 OOS 8회");
+    expect(csv).not.toContain("legacy conflicting label");
   });
 
   it("exports uncertified annual fallback totals without inventing Paid/Organic parts", () => {
     const lines = buildForecastCsv({
       isAnnualAnalog: true,
       annualQualified: false,
+      annualComponentGuardrailRequired: false,
+      annualOsGuardrail: [
+        { component: "android", developmentWmape: 18, latestWmape: 7, passed: false },
+      ],
       selectedRoute: "direct-total",
       rollingSelection: { selected: { latestWmape: 6.44, wmape: 24.51 } },
       adaptiveModelSearch: true,
@@ -436,6 +1030,7 @@ describe("MarketingResponse render smoke", () => {
     }, "Regs", "ko");
     const csv = lines.join("\n");
     expect(csv).toContain("미인증 best-available");
+    expect(csv).toContain("# OS 진단(인증 비적용)");
     expect(csv).toContain("fitted_or_forecast_live,Organic Predicted,Perf Predicted,lower_live,upper_live");
     expect(csv).toContain("W2,best_available_uncertified,,110,,,90,130");
     expect(csv).toContain("Paid/Organic 실측이 없어");
@@ -446,6 +1041,33 @@ describe("MarketingResponse render smoke", () => {
     expect(csv).toContain("전체 OOS 악화 1");
     expect(csv).toContain("최근 OOS 악화 2");
     expect(csv).toContain("후보로 비교했으나 현재 데이터에서는 다른 모델이 우세");
+  });
+
+  it("exports annual Paid/Organic history and future parts in their declared columns", () => {
+    const csv = buildForecastCsv({
+      isAnnualAnalog: true,
+      annualQualified: true,
+      paidOrganicHybrid: true,
+      selectedRoute: "android-ios-sum",
+      rollingSelection: {
+        selected: { latestWmape: 5, wmape: 6 },
+        productionSelected: { latestWmape: 5, wmape: 6 },
+      },
+      annualOsGuardrail: [],
+      actual: [100],
+      fittedHist: [98],
+      organicHist: [70],
+      performanceHist: [28],
+      histLabels: ["W1"],
+      predFut: [110],
+      organicFut: [75],
+      performanceFut: [35],
+      lo: [95],
+      hi: [125],
+      futLabels: ["W2"],
+    }, "Regs", "en").join("\n");
+    expect(csv).toContain("W1,history,100,98,70,28,,");
+    expect(csv).toContain("W2,forecast,,110,75,35,95,125");
   });
 
   it("parses formatted experiment values before deriving traffic", () => {
@@ -715,6 +1337,29 @@ describe("MarketingResponse render smoke", () => {
     expect(Number.isNaN(trimmed.ch.meta.at(-1))).toBe(true);
   });
 
+  it("keeps every time-aligned model input on the same rows when trimming", () => {
+    const panel = {
+      week: [1, 2, 3, 4, 5, 6],
+      ch: { meta: [0, 10, 10, 10, 10, 0] },
+      reach: { meta: [0, 1, 2, 3, 4, 0] },
+      frequency: { meta: [0, 5, 6, 7, 8, 0] },
+      targets: { Regs: [0, 100, 110, 120, 130, 0] },
+      dummy: { promo: [0, 0, 0, 0, 0, 0] },
+      steps: {},
+      external: { market: [90, 100, 110, 120, 130, 140] },
+      geo: ["A", "B", "C", "D", "E", "F"],
+    };
+    expect(trimToActive(panel)).toMatchObject({
+      week: [2, 3, 4, 5],
+      ch: { meta: [10, 10, 10, 10] },
+      reach: { meta: [1, 2, 3, 4] },
+      frequency: { meta: [5, 6, 7, 8] },
+      targets: { Regs: [100, 110, 120, 130] },
+      external: { market: [100, 110, 120, 130] },
+      geo: ["B", "C", "D", "E"],
+    });
+  });
+
   it("blocks modeling when a real calendar week is missing instead of compressing t", async () => {
     seedWithCalendarGap();
     const { container } = render(<MarketingResponse />);
@@ -913,6 +1558,68 @@ describe("MarketingResponse render smoke", () => {
     expect(total.baselineFut).toEqual(total.organicBaseFut);
   });
 
+  it("feeds Organic halo with aggregate budgets while keeping Paid channel budgets separate", () => {
+    expect(paidOrganicHaloBudgets({
+      panel: {
+        ch: {
+          performance_total: Array(12).fill(120),
+          branding_total: Array(12).fill(20),
+        },
+        aggregateMediaGroups: [
+          { key: "performance_total", members: ["meta", "google"] },
+          { key: "branding_total", members: ["youtube"] },
+        ],
+      },
+      haloMemberRecentMean: { meta: 80, google: 40, youtube: 20 },
+    }, {
+      meta: 100,
+      google: 50,
+      youtube: 25,
+    })).toEqual({
+      performance_total: 150,
+      branding_total: 25,
+    });
+    expect(paidOrganicHaloBudgets({
+      panel: {
+        ch: { performance_total: Array(12).fill(120) },
+        aggregateMediaGroups: [{ key: "performance_total", members: ["meta", "google"] }],
+      },
+      haloMemberRecentMean: { meta: 80, google: 40 },
+    }, { meta: 100 })).toEqual({ performance_total: 140 });
+  });
+
+  it("anchors forecast seasonality to calendar weeks instead of CSV row offsets", () => {
+    const panel = (labels) => ({
+      week: labels.map((_, index) => index + 1),
+      weekLabel: labels,
+      dates: labels.map((label) => new Date(`${label}T00:00:00Z`)),
+      ch: { cost: labels.map(() => 1) },
+      dummy: {},
+      steps: {},
+      targets: { Regs: labels.map(() => 10) },
+    });
+    const recentLabels = ["2024-01-01", "2024-01-08", "2024-01-15"];
+    const longer = calendarizeForecastPanel(panel(["2023-12-18", "2023-12-25", ...recentLabels]));
+    const shorter = calendarizeForecastPanel(panel(recentLabels));
+    expect(longer.week.slice(-recentLabels.length)).toEqual(shorter.week);
+  });
+
+  it("does not certify a good Total when an OS/component error is hidden by cancellation", () => {
+    const audited = certifyForecastBacktest(
+      { wmape: 9, actual: [100], predicted: [91], validationStartIndex: 0 },
+      [
+        { platform: "android", component: "organic", wmape: 7 },
+        { platform: "ios", component: "organic", wmape: 24 },
+      ],
+    );
+    expect(audited.reliable).toBe(false);
+    expect(audited.worstComponent).toMatchObject({ platform: "ios", wmape: 24, passed: false });
+    expect(certifyForecastBacktest(
+      { wmape: 9, actual: [100], predicted: [91], validationStartIndex: 0 },
+      [{ platform: "android", component: "total", wmape: 8 }],
+    ).reliable).toBe(true);
+  });
+
   it("routes mapped Total, PaidRegs, and Spend through the OS-level split forecast", async () => {
     seedWithPaidOrganicForecastData();
     const { container } = render(<MarketingResponse initialStage="lab" />);
@@ -922,7 +1629,7 @@ describe("MarketingResponse render smoke", () => {
     expect(document.body.textContent).toContain("Total = Android(Organic + Paid) + iOS(Organic + Paid)");
     expect(document.body.textContent).toContain("Android·iOS 성분 검증");
     expect(document.body.textContent).not.toContain("기간·연간 패턴 자동 탐색");
-  }, 30000);
+  }, 90_000);
 
   it("shows an Organic trend/seasonality forecast without empty budget scenarios when Spend is absent", async () => {
     seedWithOrganicOnlyForecastData();
@@ -931,10 +1638,33 @@ describe("MarketingResponse render smoke", () => {
     await flushRaf();
     expect(document.body.textContent).toContain("Organic 추세·계절성 · Spend 없음");
     expect(document.body.textContent).toContain("Spend 없음 · Organic 예측만 표시");
+    expect(document.body.textContent).toContain("자동 선택 예측 CSV (고정 스냅샷)");
+    expect(document.body.textContent).not.toContain("살아있는 예측 CSV");
     expect(document.body.textContent).not.toContain("미디어 OFF");
   }, 30000);
 
-  it("withholds a last-24-week validation when selecting inside the sealed train history cannot fit", async () => {
+  it("keeps the transform-family search contract in the final forecast refit", () => {
+    seedWithPaidOrganicForecastData();
+    const slice = useAppStore.getState().csvData;
+    const map = autoGuessColMap(slice.headers, slice.raw);
+    const built = buildPanelFromColMap(slice.headers, slice.raw, map, "android");
+    const panel = trimToActive(built.panel);
+    const cfg = { ...MMM_METH_CONFIG, absorbed: new Set() };
+    cfg.absorbed = mmmResolveAbsorb(panel, cfg).absorbed;
+    const model = buildForecastOnlyModelFromPanel(panel, cfg, "Regs", { horizon: 13 });
+    const grid = model.selection.transformGrid;
+    expect(grid.families).toEqual(["identity", "log1p", "hill"]);
+    expect(grid.perChannelUpperBound).toBe(
+      grid.adstock.length
+        * (2 + grid.halfSaturationQuantiles.length * grid.hillSlopes.length),
+    );
+    expect(model.cfg.mediaTransformFamilies).toEqual(model.forecastSelected.mediaTransformFamilies);
+    const selectedFamilies = Object.values(model.run.params || {}).map((params) => params.family);
+    expect(selectedFamilies.length).toBeGreaterThan(0);
+    expect(selectedFamilies.every((family) => grid.families.includes(family))).toBe(true);
+  }, 30000);
+
+  it("withholds validation when the requested horizon lacks a meaningful training window", async () => {
     seedWithOsForecastData();
     const slice = useAppStore.getState().csvData;
     const map = autoGuessColMap(slice.headers, slice.raw);
@@ -943,10 +1673,10 @@ describe("MarketingResponse render smoke", () => {
     const cfg = { ...MMM_METH_CONFIG, absorbed: new Set() };
     cfg.absorbed = mmmResolveAbsorb(panel, cfg).absorbed;
     const directModel = buildForecastOnlyModelFromPanel(panel, cfg, "Regs");
-    expect(directModel.run).toBeTruthy();
+    expect(directModel.run).toBeNull();
+    expect(directModel.selection.reason).toBe("insufficient-history");
     const directBacktest = buildForecastRecentBacktest(directModel);
-    // 전체 이력에서 후보를 고른 뒤 마지막 12주를 채점하면 누수다. 짧은 이력은
-    // 검증 카드를 만들지 않고 미인증으로 남겨야 한다.
+    // 예측기간보다 짧은 학습창을 억지로 만들지 않고 미인증으로 남긴다.
     expect(directBacktest).toBeNull();
     const { container } = render(<MarketingResponse />);
     enterMmmAndAnalyze(container);
@@ -957,10 +1687,9 @@ describe("MarketingResponse render smoke", () => {
     expect(iosTab).toBeTruthy();
     fireEvent.click(iosTab);
     await flushRaf();
-    expect(document.body.textContent).toContain("봉인 12주 검증을 만들 수 없어 예측을 인증하지 않습니다");
+    expect(document.body.textContent).toContain("봉인 13주 검증을 만들 수 없어 예측을 인증하지 않습니다");
     clickByText(container, "Total");
     await flushRaf();
-    expect(document.body.textContent).toContain("Total 예측 = Android 예측 + iOS 예측");
-    expect(document.body.textContent).toContain("봉인 12주 검증을 만들 수 없어 예측을 인증하지 않습니다");
+    expect(document.body.textContent).toContain("봉인 13주 검증을 만들 수 없어 예측을 인증하지 않습니다");
   });
 });

@@ -40,6 +40,9 @@ describe("mmmBayesianForecast safety", () => {
 
   it("damps a one-week trend shock by default", () => {
     const run = fixture();
+    // Keep both forecasts above the non-negative KPI floor so this assertion
+    // isolates trend damping rather than testing floor behavior.
+    run.posterior.beta[0] = 500;
     run.rawFeatureHistory[10][1] = 0;
     run.rawFeatureHistory[11][1] = 100;
     const panel = { week: Array.from({ length: 12 }, (_, i) => i + 1), ch: { ios: Array.from({ length: 12 }, () => 10) }, dates: [] };
