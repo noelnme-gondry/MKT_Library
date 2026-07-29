@@ -97,6 +97,7 @@ describe("runMmmMethTests (golden port)", () => {
     // 포함한 균등 표본만 사용해 브라우저 회귀 실행이 탭을 멈추지 않게 한다.
     expect(selection.availableHoldoutOrigins).toBeGreaterThan(selection.evaluatedHoldoutOrigins);
     expect(selection.evaluatedHoldoutOrigins).toBeLessThanOrEqual(6);
+    expect(selection.evaluatedCandidateConfigurations).toBeLessThanOrEqual(40);
     expect(selection.decisionMinFolds).toBe(3);
     expect(selection.selected.wmape).toBeLessThanOrEqual(selection.selected.persistenceWmape);
     expect(selection.candidates.some((item) => item.spec === "cost-trend-year-quarter")).toBe(false);

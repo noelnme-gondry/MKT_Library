@@ -24,6 +24,7 @@ import MarketingResponse, {
   buildForecastOnlyModelFromPanel,
   buildForecastRecentBacktest,
   sliceForecastTrainingWindow,
+  scanAnnualForecastRegimeWindows,
   scanForecastRegimeWindows,
   mmmDerivedTrafficValue,
   mmmComposeEvidenceTarget,
@@ -193,6 +194,7 @@ describe("MarketingResponse render smoke", () => {
 
   it("does not invent a regime-window recommendation without a forecast source", () => {
     expect(scanForecastRegimeWindows([])).toMatchObject({ available: false, reason: "missing-source", recommended: null });
+    expect(scanAnnualForecastRegimeWindows()).toMatchObject({ available: false, reason: "missing-source", recommended: null });
   });
 
   it("uses the hub only to choose an independent analysis after mapping", async () => {
@@ -236,7 +238,7 @@ describe("MarketingResponse render smoke", () => {
     expect(insight.titleKo).toContain("미인증");
     expect(insight.summaryKo).toContain("6.44%");
     expect(insight.summaryKo).toContain("24.51%");
-    expect(insight.summaryKo).toContain("best-available");
+    expect(insight.summaryKo).toContain("예산 변경 잠금");
   });
 
   it("defines Total forecast as the exact weekly sum of Android and iOS forecasts", () => {
