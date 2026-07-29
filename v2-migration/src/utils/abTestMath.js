@@ -95,7 +95,9 @@ export const STATS = (() => {
   }) {
     const p1 = baseline;
     const p2 = baseline * (1 + mdeRelative);
-    if (p2 <= 0 || p2 >= 1) return { n: NaN, p1, p2 };
+    if (!(p1 > 0) || p1 >= 1 || !(mdeRelative > 0) || p2 <= 0 || p2 >= 1 || !(alpha > 0) || alpha >= 1 || !(power > 0) || power >= 1) {
+      return { n: NaN, p1, p2 };
+    }
     const pBar = (p1 + p2) / 2;
     const zA = twoSided
       ? normalInverse(1 - alpha / 2)
@@ -107,6 +109,7 @@ export const STATS = (() => {
   }
 
   function twoPropZTest(nA, xA, nB, xB) {
+    if (![nA, xA, nB, xB].every(Number.isFinite) || !(nA > 0) || !(nB > 0) || xA < 0 || xB < 0 || xA > nA || xB > nB) return null;
     const pA = xA / nA,
       pB = xB / nB;
     const pPool = (xA + xB) / (nA + nB);
@@ -293,7 +296,9 @@ export const STATS = (() => {
     twoSided = true,
   }) {
     const delta = baselineMean * mdeRelative;
-    if (delta === 0 || sigma <= 0) return { n: NaN, delta, sigma };
+    if (!(baselineMean > 0) || !(mdeRelative > 0) || !(sigma > 0) || !(alpha > 0) || alpha >= 1 || !(power > 0) || power >= 1) {
+      return { n: NaN, delta, sigma };
+    }
     const zA = twoSided
       ? normalInverse(1 - alpha / 2)
       : normalInverse(1 - alpha);
@@ -304,6 +309,9 @@ export const STATS = (() => {
   }
 
   function continuousTest(nA, meanA, sdA, nB, meanB, sdB) {
+    if (![nA, meanA, sdA, nB, meanB, sdB].every(Number.isFinite) || !(nA >= 2) || !(nB >= 2) || sdA < 0 || sdB < 0 || (sdA === 0 && sdB === 0)) {
+      return { ok: false, reason: "insufficient_variation" };
+    }
     const seA2 = (sdA * sdA) / nA;
     const seB2 = (sdB * sdB) / nB;
     const se = Math.sqrt(seA2 + seB2);
@@ -325,6 +333,7 @@ export const STATS = (() => {
     const ciLow95 = liftAbs - tCrit * se;
     const ciHigh95 = liftAbs + tCrit * se;
     return {
+      ok: true,
       meanA,
       meanB,
       sdA,
@@ -347,7 +356,7 @@ export const STATS = (() => {
   }
 
   function massReadout(arms) {
-    const control = arms.find((a) => a.isControl) || arms[0];
+    const control = arms.find((a) => a.isControl);
     if (!control || !control.n || control.n <= 0)
       return { control: null, rows: [] };
     const rows = arms.map((a) => {

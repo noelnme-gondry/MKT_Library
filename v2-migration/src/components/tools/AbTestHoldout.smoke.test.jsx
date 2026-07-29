@@ -11,7 +11,7 @@
 // through getMappedRows — so the seeded slice carries those raw headers. A
 // pass-through mapping keeps the store slice shape identical to real uploads.
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import AbTestHoldout from "@/components/tools/AbTestHoldout";
 
@@ -76,5 +76,16 @@ describe("AbTestHoldout render smoke", () => {
     // Default tab is "design" — exercises plan compute, threshold matrix, power curve chart.
     expect(() => render(<AbTestHoldout />)).not.toThrow();
     expect(document.body.textContent.length).toBeGreaterThan(0);
+  });
+
+  it("blocks an impossible CSV readout instead of producing a significance verdict", () => {
+    seedWithData();
+    const current = useAppStore.getState().csvData;
+    const invalid = { ...current, raw: [{ arm_id: "control", is_control: "1", numerator: 101, denominator: 100 }], fileName: "invalid.csv" };
+    useAppStore.setState({ csvGroups: { ...useAppStore.getState().csvGroups, experiment: invalid }, csvData: invalid });
+    render(<AbTestHoldout />);
+    fireEvent.click(screen.getByText("② A/B 판독 · 어느 쪽이 이겼나?"));
+    expect(screen.getByText("판독할 수 없는 행이 있습니다")).toBeTruthy();
+    expect(screen.queryByText("유의성 검정 (Control vs Test)")).toBeNull();
   });
 });
