@@ -117,19 +117,18 @@ describe("ToolAssistRail", () => {
     prepTop = -540;
     resultTop = 140;
     fireEvent.scroll(window);
-    await waitFor(() => expect(getByRole("button", { name: "분석 도우미 접기" })).toBeTruthy());
-    fireEvent.click(getByRole("button", { name: "분석 도우미 접기" }));
     await waitFor(() => expect(getByRole("button", { name: /증액 여지 판단/ })).toBeTruthy());
   });
 
-  it("opens once when an actual result checkpoint is added", async () => {
+  it("announces, but does not open over, an actual result checkpoint", async () => {
     document.body.innerHTML = '<section id="s-incr-method"></section>';
     const { container } = render(<ToolAssistRail toolId="5-23" />);
     expect(container.querySelector(".tool-assist-rail").classList.contains("is-open")).toBe(false);
     const result = document.createElement("section");
     result.id = "s-incr-result";
     document.body.appendChild(result);
-    await waitFor(() => expect(container.querySelector(".tool-assist-rail").classList.contains("is-open")).toBe(true));
+    await waitFor(() => expect(container.textContent).toContain("새 결과가 준비됐습니다"));
+    expect(container.querySelector(".tool-assist-rail").classList.contains("is-open")).toBe(false);
   });
 
   it("announces a new result without covering the mobile viewport", async () => {

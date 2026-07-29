@@ -4886,6 +4886,10 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .analysis-details__technical-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; margin-top: 7px; }
 .analysis-details__technical-note { margin: 7px 0 0; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
 
+/* MMM의 기여도 막대와 토글은 계속 첫 화면에 두고, 방법론 설명만 hover/focus로 분리한다. */
+.mmm-chart-help { display: inline-grid; place-items: center; width: 17px; height: 17px; margin-top: 8px; border: 1px solid var(--border); border-radius: 50%; color: var(--text-muted); cursor: help; font: 700 10px var(--font-mono); outline: none; }
+.mmm-chart-help:hover, .mmm-chart-help:focus-visible { border-color: var(--primary); color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent); }
+
 /* STL trend ledger: 0 기준선에서 양·음 변화를 좌우로 읽는다. */
 .trend-change-ledgers { margin-top: 12px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-container-lowest); }
 .trend-change-ledgers__intro { margin: 0 0 10px; color: var(--text-muted); font-size: 11px; line-height: 1.55; }
