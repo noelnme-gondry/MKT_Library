@@ -150,7 +150,10 @@ describe("CreativeAnalyzer render smoke", () => {
 
   it("mounts without throwing with a valid seeded CSV", () => {
     seedWithData();
-    expect(() => render(<CreativeAnalyzer />)).not.toThrow();
+    let container;
+    expect(() => {
+      ({ container } = render(<CreativeAnalyzer />));
+    }).not.toThrow();
     // With-data branch renders the §3 per-creative metrics table heading
     // (faithful to index.html: "소재별 성과표").
     expect(screen.getByText(/소재별 성과표/)).toBeTruthy();
@@ -161,6 +164,10 @@ describe("CreativeAnalyzer render smoke", () => {
     expect(screen.getAllByText(/다음 테스트 추천/).length).toBeGreaterThan(0);
     expect(screen.getByText(/누적 집행 위험 구간/)).toBeTruthy();
     expect(screen.getAllByText(/현재 위험 구간/).length).toBeGreaterThan(0);
+    // §4's explanatory sentence is compacted into a hover/focus help icon;
+    // leave the metric controls visible without a full-width description line.
+    expect(container.querySelector(".section-help")?.getAttribute("title")).toContain("분석 기준 지표");
+    expect(screen.queryByText(/후킹 방식.*통계적으로 분석/)).toBeFalsy();
     // §8 Concept Matrix section is present (matrix falls back to "생성 불가"
     // here since message_angle isn't in the seed mapping — honest empty state).
     expect(screen.getAllByText(/조합별 성과표/).length).toBeGreaterThan(0);
