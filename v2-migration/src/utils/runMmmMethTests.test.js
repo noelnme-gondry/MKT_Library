@@ -1423,6 +1423,11 @@ describe("runMmmMethTests (golden port)", () => {
     expect(selection.nested?.latest?.actual).toHaveLength(6);
     expect(selection.nested?.latest?.predicted).toHaveLength(6);
     expect(selection.nested.latest.predicted.every(Number.isFinite)).toBe(true);
+    expect(selection.selected).toMatchObject({
+      spendFreeAblationAvailable: true,
+      spendFreeWmape: expect.any(Number),
+      spendFreeFoldWins: expect.any(Number),
+    });
   });
 
   it("uses supplied future Reach/Frequency under the default non-Meridian forecast config", () => {

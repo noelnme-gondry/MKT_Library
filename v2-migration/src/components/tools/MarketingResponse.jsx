@@ -1563,6 +1563,9 @@ function forecastScenarioReasonLabel(reason, tx) {
     "wins-too-few-holdouts": tx("검증 구간 승리 횟수가 부족합니다", "It wins too few holdouts"),
     "does-not-beat-best-naive": tx("선택용 과거 구간에서 가장 강한 단순 기준선을 이기지 못했습니다", "It does not beat the strongest naive baseline on the development history"),
     "wins-too-few-naive-holdouts": tx("단순 기준선보다 나았던 과거 검증 구간이 절반 미만입니다", "It beats the naive baseline in fewer than half of the historical holdouts"),
+    "spend-free-ablation-unavailable": tx("같은 모델의 Spend=0 기준선을 안정적으로 검증하지 못했습니다", "The same-model Spend=0 baseline could not be validated reliably"),
+    "does-not-beat-spend-free": tx("Cost를 뺀 같은 모델보다 OOS가 낫지 않았습니다", "OOS is not better than the same model with Cost removed"),
+    "wins-too-few-spend-free-holdouts": tx("Cost 포함 모델이 Spend=0 기준선보다 나은 검증 구간이 절반 미만입니다", "The Cost model beats its Spend=0 baseline in fewer than half of validation folds"),
     "naive-baseline-selected": tx("과거 검증에서 회귀보다 단순 기준선이 선택됐습니다", "Historical validation selected a naive baseline instead of the regression"),
     "development-oos-above-threshold": tx("선택과 분리한 과거 OOS가 10% 기준을 넘었습니다", "Development OOS, separated from selection, exceeds the 10% threshold"),
     "development-fold-above-threshold": tx("과거 OOS 구간 중 하나 이상이 10% 기준을 넘었습니다", "At least one development-OOS fold exceeds the 10% threshold"),
@@ -1581,6 +1584,20 @@ function forecastScenarioReasonLabel(reason, tx) {
     "missing-model": tx("예측 회귀 모델을 만들지 못했습니다", "The forecast regression model is unavailable"),
   };
   return labels[reason] || String(reason);
+}
+
+function ForecastHint({ label }) {
+  return (
+    <span
+      className="data-confidence-hint"
+      tabIndex={0}
+      role="img"
+      aria-label={label}
+      data-tooltip={label}
+    >
+      ⓘ
+    </span>
+  );
 }
 
 export function reconcileForecastScenarioAudit(result, recentBacktest) {
@@ -6926,7 +6943,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         : {
           eligible: false,
           structuralConditional: true,
-          reasons: ["naive-horizon-selected"],
+          reasons: forecastModel.route.budgetResponseReasons?.length
+            ? forecastModel.route.budgetResponseReasons
+            : ["naive-horizon-selected"],
         };
     } else if (forecastModel.isPaidOrganicSplit) {
       result = mmmForecastScenarioEligibility(
@@ -10308,7 +10327,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       : tx(`매체 변환 ${selected.transformPolicy || "—"}`, `media transform ${selected.transformPolicy || "—"}`);
                     return (
                       <Card style={{ marginBottom: "12px", padding: "12px 16px" }}>
-                        <strong>{tx("실제 미래 예측 모델", "Model used for the actual future forecast")}</strong>
+                        <strong>{tx("실제 미래 예측 모델", "Model used for the actual future forecast")} <ForecastHint label={tx(
+                          "후보 선택 규칙 v1: 전체·최근 OOS, 나쁜 구간 위험, fold 안정성, 복잡도 벌점을 함께 보는 제품 정책입니다. 데이터가 학습한 절대 진실이 아니라, 검증 후보를 고르는 사전 규칙입니다.",
+                          "Selection policy v1: a product rule that balances full/recent OOS, bad-window risk, fold stability, and complexity. It is a prior for selecting among validated candidates, not a learned truth.",
+                        )} /></strong>
                         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
                           <span className="ab-pill">{candidateWindowLabel(selected)} · {trendLabel} · {seasonLabel}</span>
                           <span
@@ -10326,26 +10348,22 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                               : tx("회귀 100%", "100% regression")}
                           </span>
                           <span className="ab-pill">{tx("단순 기준선 대비 승리", "Wins vs naive")} {selected.baselineFoldWins ?? selected.foldWins}/{selectionFoldCount}</span>
-                          {selected.dataPreservation?.applied && <span className="ab-pill" title={tx(
-                            `오차 차이가 ${selected.dataPreservation.tolerancePoints?.toFixed?.(2) ?? "—"}%p 이내여서 더 긴 이력을 유지했습니다.`,
-                            `The error difference was within ${selected.dataPreservation.tolerancePoints?.toFixed?.(2) ?? "—"}pp, so the longer history was retained.`,
-                          )}>{tx("근소한 차이 · 긴 이력 유지", "Near tie · longer history kept")}</span>}
+                          {selected.dataPreservation?.applied && <span className="ab-pill">{tx("근소한 차이 · 긴 이력 유지", "Near tie · longer history kept")} <ForecastHint label={tx(
+                            `오차 차이가 ${selected.dataPreservation.tolerancePoints?.toFixed?.(2) ?? "—"}%p 이내여서 더 긴 이력을 유지했습니다. 이 선택은 데이터가 한 후보만 강하게 지지한다는 뜻이 아닙니다.`,
+                            `The error difference was within ${selected.dataPreservation.tolerancePoints?.toFixed?.(2) ?? "—"}pp, so the longer history was retained. This does not mean the data strongly supports only one candidate.`,
+                          )} /></span>}
                           <span className="ab-pill">{transformLabel}</span>
                           {Number.isFinite(selected.mediaPenaltyStrength) && <span className="ab-pill">ridge {selected.mediaPenaltyStrength}</span>}
                           {Number.isFinite(selected.trendDamping) && <span className="ab-pill">{tx("감쇠", "damping")} {selected.trendDamping}</span>}
                         </div>
-                        <p style={{ margin: "7px 0 0", fontSize: "11px", color: MUTED, lineHeight: 1.5 }}>
-                          {tx(
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "7px", fontSize: "11px", color: MUTED }}>
+                          <span>{tx(`검증 후보 ${evaluatedConfigurations}개`, `${evaluatedConfigurations} validated candidates`)}</span>
+                          <ForecastHint label={tx(
                             `가능 ${availableConfigurations}개 중 브라우저 계획 ${plannedConfigurations}개, 시도 ${attemptedConfigurations}개, 안정 적합 ${evaluatedConfigurations}개를 nested OOS로 비교했습니다. 전체 조합의 수학적 최적값이 아니라 검증한 후보 중 선택입니다.`,
                             `Of ${availableConfigurations} possible combinations, the browser planned ${plannedConfigurations}, attempted ${attemptedConfigurations}, and stably fitted ${evaluatedConfigurations} for nested OOS. This is the winner among evaluated candidates, not a claimed mathematical optimum over every combination.`,
-                          )}
-                        </p>
-                        {candidateSearchAudit && !candidateSearchAudit.complete && <p style={{ margin: "5px 0 0", color: "#b45309", fontSize: "11px" }}>
-                          {tx(
-                            `후보 탐색 미완료: ${candidateSearchAudit.reasons.map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ")}`,
-                            `Candidate search incomplete: ${candidateSearchAudit.reasons.map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ")}`,
-                          )}
-                        </p>}
+                          )} />
+                          {candidateSearchAudit && !candidateSearchAudit.complete && <><span className="ab-pill" style={{ color: "#b45309" }}>{tx("후보 탐색 일부 미완료", "Candidate search incomplete")}</span><ForecastHint label={candidateSearchAudit.reasons.map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ")} /></>}
+                        </div>
                         {eventAdjustedLabel && <p style={{ margin: "6px 0 0", fontSize: "11px", color: MUTED }}>{eventAdjustedLabel}</p>}
                         {auditSelected.candidateId !== selected.candidateId && (
                           <p style={{ margin: "6px 0 0", fontSize: "11px", color: MUTED }}>
@@ -10355,7 +10373,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             )}
                           </p>
                         )}
-                        {!forecast.rollingSelection.decisionEligible && <p style={{ margin: "6px 0 0", color: "#b45309", fontSize: "11.5px" }}>{tx(`Cost 변경 판정 보류: ${(forecast.rollingSelection.decisionReasons || []).map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ") || "rolling 검증 적격성 미충족"}`, `Cost scenario decision paused: ${(forecast.rollingSelection.decisionReasons || []).map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ") || "rolling validation is not eligible"}`)}</p>}
+                        {!forecast.rollingSelection.decisionEligible && <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "7px" }}><span className="ab-pill" style={{ color: "#b45309" }}>{tx("Cost 변경 판정 보류", "Cost scenario paused")}</span><ForecastHint label={tx(
+                          (forecast.rollingSelection.decisionReasons || []).map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ") || "rolling 검증 적격성 미충족",
+                          (forecast.rollingSelection.decisionReasons || []).map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ") || "rolling validation is not eligible",
+                        )} /></div>}
                       </Card>
                     );
                   })()}
@@ -10363,8 +10384,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     <div className="callout warn" style={{ marginBottom: "12px" }}>
                       <div className="ico">!</div><div className="body">
                         <strong>{tx(`기본 ${fcHorizon}주 예측은 제공하지만, 채널별 Cost 변경은 잠금`, `Base ${fcHorizon}-week forecast is available; channel Cost changes are locked`)}</strong>
-                        <p>{forecastScenario.reasons.slice(0, 3).map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ")}
-                          {forecastScenario.reasons.length > 3 ? ` · +${forecastScenario.reasons.length - 3}` : ""}</p>
+                        <ForecastHint label={forecastScenario.reasons.map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ")} />
                       </div>
                     </div>
                   )}
@@ -10374,7 +10394,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         <strong>{forecast.scenarioWarnings.some((w) => w.type === "negative-media-effect")
                           ? tx("음의 광고효과 또는 관측 범위 밖 예산 — OFF 시나리오를 인과효과로 해석하지 마세요", "Negative media effect or out-of-range budget — do not interpret OFF as causal")
                           : tx("관측 범위 밖 예산 — 범위 내로 제한해 계산했습니다", "Budget outside observed range — constrained to the observed range")}</strong>
-                        <p>{forecast.scenarioWarnings.map((w) => w.type === "negative-media-effect"
+                        <ForecastHint label={forecast.scenarioWarnings.map((w) => w.type === "negative-media-effect"
                           ? tx(
                             `${String(w.key).replace("::", " · ")}: 음의 광고효과 계수(${Number(w.coefficient).toFixed(3)}) — OFF 증분효과 추정 불가`,
                             `${String(w.key).replace("::", " · ")}: negative media coefficient (${Number(w.coefficient).toFixed(3)}) — OFF incrementality is not identifiable`,
@@ -10382,7 +10402,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           : tx(
                             `${String(w.key).replace("::", " · ")}: ${spendValueLabel(w.requested)} (관측 ${spendValueLabel(w.min)}–${spendValueLabel(w.max)})`,
                             `${String(w.key).replace("::", " · ")}: ${spendValueLabel(w.requested)} (observed ${spendValueLabel(w.min)}–${spendValueLabel(w.max)})`,
-                          )).join(" · ")}</p>
+                          )).join(" · ")} />
                       </div>
                     </div>
                   )}
@@ -10591,11 +10611,12 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       {forecast.chans.length > 0 ? <>
                         <h3 style={{ fontSize: "13px", margin: "10px 0 6px" }}>
                         {tx("채널별 미래 예산 (주 평균)", "Future budget per channel (weekly average)")}{" "}
-                        <span style={{ fontSize: "11px", color: MUTED, fontWeight: 400 }}>{forecastScenario.eligible
+                        <ForecastHint label={forecastScenario.eligible
                           ? forecast.isStructural
-                            ? tx("— 기본값 = OOS가 선택한 비용 예측. 입력값은 조건부 시나리오로 반영.", "— default = the spend forecast selected by OOS. Inputs are applied as a conditional scenario.")
-                            : tx("— 기본값 = 최근 12주 평균. 수정하면 즉시 재예측.", "— default = recent 12-week average. Edit to re-forecast instantly.")
-                          : tx("— rolling 검증/식별성 미충족으로 입력 잠김. 기본 예측만 표시합니다.", "— locked because rolling validation/identification is not met. Showing base forecast only.")}</span>
+                            ? tx("기본값은 OOS가 선택한 비용 예측입니다. 입력값은 조건부 시나리오로 반영합니다.", "The default is the spend forecast selected by OOS. Your input is applied as a conditional scenario.")
+                            : tx("기본값은 최근 12주 평균입니다. 수정하면 즉시 재예측합니다.", "The default is the recent 12-week average. Editing it re-forecasts immediately.")
+                          : tx("rolling 검증·식별성 또는 Spend=0 자기비교를 통과하지 못해 입력을 잠갔습니다. 기본 예측만 표시합니다.", "Inputs are locked because rolling validation, identification, or the Spend=0 self-comparison did not pass. Only the base forecast is shown.")
+                        } />
                       </h3>
                       <div className="table-wrap">
                         <table className="data" style={{ fontSize: "12px" }}>
@@ -10608,6 +10629,10 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                               const cur = forecastScenario.eligible ? fcBudget[ch.key] : null;
                               const sourceValue = cur != null && isFinite(cur) ? cur : rec;
                               const val = Math.round(convertCurrency(sourceValue, sourceCurrency, displayCurrency));
+                              const effectiveValue = forecast.futSpendByKey?.[ch.key]?.[0];
+                              const isEffectiveValueClamped = forecast.spendRanges?.[ch.key]?.outOfRange === true
+                                && Number.isFinite(effectiveValue)
+                                && Math.abs(effectiveValue - sourceValue) > Math.max(1, Math.abs(sourceValue) * 0.001);
                               return (
                                 <tr key={ch.key}>
                                   <td>{ch.label}</td>
@@ -10624,6 +10649,13 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                       })}
                                       style={{ width: "120px", textAlign: "right" }}
                                     />
+                                    {isEffectiveValueClamped && <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "4px", marginTop: "3px", fontSize: "10px", color: "#b45309" }}>
+                                      <span>{tx(`모델 반영 ${spendValueLabel(effectiveValue, { perWeek: true })}`, `Model input ${spendValueLabel(effectiveValue, { perWeek: true })}`)}</span>
+                                      <ForecastHint label={tx(
+                                        `요청한 Cost ${spendValueLabel(sourceValue, { perWeek: true })}는 관측 범위 밖이라 모델에는 ${spendValueLabel(effectiveValue, { perWeek: true })}까지만 반영했습니다. 성과가 없거나 포화됐다는 뜻이 아니라, 이 범위 밖은 추정하지 않는다는 뜻입니다.`,
+                                        `Requested Cost ${spendValueLabel(sourceValue, { perWeek: true })} is outside the observed range, so the model uses ${spendValueLabel(effectiveValue, { perWeek: true })}. This does not mean no effect or saturation; it means the model does not estimate outside that range.`,
+                                      )} />
+                                    </div>}
                                   </td>
                                 </tr>
                               );

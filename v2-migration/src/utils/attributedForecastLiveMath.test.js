@@ -107,6 +107,7 @@ describe("live-condition attributed forecast router", () => {
     expect(result.candidates.every((candidate) =>
       Number.isFinite(candidate.pooledWmape)
       && Number.isFinite(candidate.conditionalPooledWmape)
+      && (candidate.spendFreePooledWmape == null || Number.isFinite(candidate.spendFreePooledWmape))
       && Number.isFinite(candidate.naivePooledWmape),
     )).toBe(true);
     const selected = result.candidates.find((candidate) => candidate.route === result.selectedRoute);
@@ -124,6 +125,16 @@ describe("live-condition attributed forecast router", () => {
     expect(result.forecast.predicted.every((value, index) =>
       Math.abs(value - result.forecast.organic[index] - result.forecast.performance[index]) < 1e-8,
     )).toBe(true);
+    expect(result.costAblation).toMatchObject({
+      available: expect.any(Boolean),
+      folds: expect.any(Number),
+    });
+    if (result.costAblation.available) {
+      expect(result.costAblation).toMatchObject({
+        modelWmape: expect.any(Number),
+        spendFreeWmape: expect.any(Number),
+      });
+    }
   }, 30_000);
 
   it("re-forecasts conditionally on an explicit future budget without producing negative components", () => {
