@@ -50,6 +50,17 @@ describe("AHA_STATS.coverage", () => {
   });
 });
 
+describe("AHA_STATS.validateBinaryTargets", () => {
+  it("accepts a non-constant 0/1 target and preserves the labels", () => {
+    expect(AHA_STATS.validateBinaryTargets(["0", 1, "0", "1"])).toEqual({ ok: true, targets: [0, 1, 0, 1], positives: 2 });
+  });
+
+  it("rejects non-binary and constant targets instead of silently coercing them", () => {
+    expect(AHA_STATS.validateBinaryTargets(["0", "2"])).toMatchObject({ ok: false, reason: "non_binary_target" });
+    expect(AHA_STATS.validateBinaryTargets(["0", "0"])).toMatchObject({ ok: false, reason: "constant_target" });
+  });
+});
+
 describe("AHA_STATS.gridSearch — per-window holdout + coverage", () => {
   it("every grid row carries its own holdout metrics + population coverage", () => {
     const { valuesAll, targets, idx } = buildSynthetic();
@@ -70,6 +81,20 @@ describe("AHA_STATS.gridSearch — per-window holdout + coverage", () => {
     // top-level result mirrors the winning window's holdout/coverage (not just train).
     expect(gs.holdout).toBeTruthy();
     expect(gs.allSupport).toBeGreaterThanOrEqual(0);
+  });
+
+  it("marks a candidate gated when its holdout support is below the minimum", () => {
+    const valuesAll = Array(12).fill(1);
+    const targets = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0];
+    const result = AHA_STATS.gridSearch(
+      [{ header: "action_d7", window: 7, valuesAll }],
+      targets,
+      Array.from({ length: 10 }, (_, i) => i),
+      [10, 11],
+      5,
+    );
+    expect(result.gated).toBe(true);
+    expect(result.grid[0].gated).toBe(true);
   });
 });
 

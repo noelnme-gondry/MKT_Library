@@ -84,6 +84,19 @@ export function ahaCoverageBuckets(sweep, opts = {}) {
 }
 
 export const AHA_STATS = (() => {
+  function validateBinaryTargets(values) {
+    if (!Array.isArray(values) || !values.length) return { ok: false, reason: "empty_target" };
+    const targets = [];
+    for (const value of values) {
+      const normalized = String(value ?? "").trim();
+      if (normalized !== "0" && normalized !== "1") return { ok: false, reason: "non_binary_target" };
+      targets.push(normalized === "1" ? 1 : 0);
+    }
+    const positives = targets.reduce((sum, value) => sum + value, 0);
+    if (positives === 0 || positives === targets.length) return { ok: false, reason: "constant_target" };
+    return { ok: true, targets, positives };
+  }
+
   function f1(p, r) {
     if (!(p + r > 0)) return 0;
     return (2 * p * r) / (p + r);
@@ -209,7 +222,7 @@ export const AHA_STATS = (() => {
           P: tr.P,
           R: tr.R,
           support: tr.support,
-          gated: tr.gated,
+          gated: tr.gated || ho.support < minSupport,
           // 이 윈도우를 D1/D7 토글로 직접 선택했을 때 쓸 홀드아웃 재평가값
           // (기존엔 우승 윈도우 1개만 갖고 있어 다른 윈도우 선택 시 지표가 없었음).
           holdout: ho,
@@ -247,7 +260,7 @@ export const AHA_STATS = (() => {
       holdout: bestW.holdout,
       allSupport: bestW.allSupport,
       allPct: bestW.allPct,
-      gated: bestW.train.gated,
+      gated: bestW.train.gated || bestW.holdout.support < minSupport,
       grid,
     };
   }
@@ -287,5 +300,5 @@ export const AHA_STATS = (() => {
     return out.reverse(); // k 오름차순(작은 횟수 → 큰 횟수)으로 반환
   }
 
-  return { f1, lift, splitDeterministic, bestThreshold, gridSearch, thresholdSweep, coverage };
+  return { f1, lift, splitDeterministic, bestThreshold, gridSearch, thresholdSweep, coverage, validateBinaryTargets };
 })();
