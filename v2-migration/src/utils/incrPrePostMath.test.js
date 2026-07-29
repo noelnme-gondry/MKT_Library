@@ -22,13 +22,26 @@ describe("INCR_PREPOST", () => {
   });
 
   it("DiD subtracts control's own change", () => {
-    const pre = [100, 100, 100];
-    const post = [150, 150, 150];        // treatment +50
-    const control = { pre: [100, 100, 100], post: [120, 120, 120] }; // +20 seasonal
+    const pre = [98, 101, 100, 102, 99, 100];
+    const post = [148, 151, 150, 152, 149, 150];        // treatment +50
+    const control = { pre: [99, 100, 101, 100, 99, 101], post: [119, 120, 121, 120, 119, 121] }; // +20 seasonal
     const r = INCR_PREPOST.compute({ pre, post, control });
     expect(r.did).toBeTruthy();
     expect(r.did.ctrlDelta).toBeCloseTo(20, 6);
     expect(r.did.didDelta).toBeCloseTo(30, 6); // 50 − 20
+    expect(r.did.sig.ok).toBe(true);
+    expect(r.did.sig.pValue).toBeLessThan(0.05);
+  });
+
+  it("uses DiD significance rather than a significant common trend", () => {
+    const pre = [98, 101, 100, 102, 99, 100];
+    const post = [118, 121, 120, 122, 119, 120];
+    const control = { pre: [99, 100, 101, 100, 99, 101], post: [119, 120, 121, 120, 119, 121] };
+    const r = INCR_PREPOST.compute({ pre, post, control });
+    expect(r.sig.pValue).toBeLessThan(0.05);
+    expect(r.did.didDelta).toBeCloseTo(0, 6);
+    expect(r.did.sig.ok).toBe(true);
+    expect(r.did.sig.pValue).toBeGreaterThan(0.05);
   });
 
   it("returns null on empty", () => {

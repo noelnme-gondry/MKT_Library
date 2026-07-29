@@ -50,7 +50,18 @@ export const INCR_PREPOST = {
       const treatDelta = delta;
       const ctrlDelta = cPost - cPre;
       const didDelta = treatDelta - ctrlDelta; // effect net of control's own change
-      did = { ctrlPreMean: cPre, ctrlPostMean: cPost, ctrlDelta, didDelta };
+      // DiD를 선택했을 때 유의성도 반드시 처리군의 단순 전후 변화가 아니라
+      // (처리군 − 대조군) 일별 차이의 전후 변화에서 계산한다. 그렇지 않으면
+      // 공통 계절성만 유의해도 순효과가 유의한 것처럼 화면에 표시될 수 있다.
+      const pairedPreN = Math.min(pre.length, control.pre.length);
+      const pairedPostN = Math.min(post.length, control.post.length);
+      const diffPre = Array.from({ length: pairedPreN }, (_, i) => pre[i] - control.pre[i]);
+      const diffPost = Array.from({ length: pairedPostN }, (_, i) => post[i] - control.post[i]);
+      const sig = STATS.continuousTest(
+        diffPre.length, mean(diffPre), sd(diffPre),
+        diffPost.length, mean(diffPost), sd(diffPost),
+      );
+      did = { ctrlPreMean: cPre, ctrlPostMean: cPost, ctrlDelta, didDelta, sig, pairedPreN, pairedPostN };
     }
 
     // Direction framing: "off" measures the LOSS from turning off (magnitude of

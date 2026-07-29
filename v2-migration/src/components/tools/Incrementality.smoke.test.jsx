@@ -41,11 +41,23 @@ describe("Incrementality render smoke", () => {
     seed(buildIncrPrepostDemo("on"));
     const on = render(<Incrementality />);
     fireEvent.click(on.getByText(/신규 켜기 \(전후\)/));
-    expect(on.getByText(/결론 — 신규로 얻은 성과/)).toBeTruthy();
+    expect(on.getByText(/결론 — 신규/)).toBeTruthy();
     on.unmount();
     seed(buildIncrPrepostDemo("off"));
     const off = render(<Incrementality />);
     fireEvent.click(off.getByText(/종료 \(전후\)/));
-    expect(off.getByText(/결론 — 종료로 잃은 성과/)).toBeTruthy();
+    expect(off.getByText(/결론 — 종료/)).toBeTruthy();
+  });
+
+  it("withholds a suppression conclusion for impossible rows", () => {
+    seed({
+      raw: [{ date: "2026-02-30", holdout_group: "exposed", numerator: 101, denominator: 100 }],
+      headers: ["date", "holdout_group", "numerator", "denominator"],
+      mapping: { date: "date", holdout_group: "holdout_group", numerator: "numerator", denominator: "denominator" },
+      fileName: "invalid-holdout.csv",
+    });
+    render(<Incrementality />);
+    expect(screen.getByText("증분을 계산할 수 없는 행이 있습니다")).toBeTruthy();
+    expect(screen.queryByText(/결론 — 광고가 만든 순증분/)).toBeNull();
   });
 });
