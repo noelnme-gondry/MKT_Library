@@ -1,10 +1,11 @@
 import { ALLOC_MATH } from "./allocationMath.js";
 
 const DAY_MS = 86400000;
-const FOLD_STEP = 4;
 const LOOKBACK_WEEKS = [26, 52, 78];
-const MIN_TRAIN_WEEKS = Math.max(...LOOKBACK_WEEKS);
+const MIN_TRAIN_WEEKS = Math.min(...LOOKBACK_WEEKS);
 const MIN_SELECTION_FOLDS = 3;
+const MIN_CERTIFICATION_FOLDS = 3;
+const MIN_INTERVAL_FOLDS = 8;
 const PANEL_CACHE = new WeakMap();
 
 const ORGANIC_SPECS = [
@@ -448,31 +449,68 @@ function conditionalCosts(dataset, route, trainEnd, horizon) {
 }
 
 function componentError(dataset, route, result, trainEnd, horizon) {
-  const actualSeries = [];
-  const predictedSeries = [];
+  const series = [];
   if (route === "direct-total") {
     const panel = panelFor(dataset, "total");
-    actualSeries.push(panel.organic.slice(trainEnd, trainEnd + horizon), panel.paid.slice(trainEnd, trainEnd + horizon));
-    predictedSeries.push(result.organic, result.performance);
+    series.push(
+      {
+        key: "total-organic",
+        actual: panel.organic.slice(trainEnd, trainEnd + horizon),
+        predicted: result.organic,
+      },
+      {
+        key: "total-paid",
+        actual: panel.paid.slice(trainEnd, trainEnd + horizon),
+        predicted: result.performance,
+      },
+    );
   } else {
     ["android", "ios"].forEach((platform, index) => {
       const panel = panelFor(dataset, platform);
-      actualSeries.push(panel.organic.slice(trainEnd, trainEnd + horizon), panel.paid.slice(trainEnd, trainEnd + horizon));
-      predictedSeries.push(result.parts[index].organic, result.parts[index].performance);
+      series.push(
+        {
+          key: `${platform}-organic`,
+          actual: panel.organic.slice(trainEnd, trainEnd + horizon),
+          predicted: result.parts[index].organic,
+        },
+        {
+          key: `${platform}-paid`,
+          actual: panel.paid.slice(trainEnd, trainEnd + horizon),
+          predicted: result.parts[index].performance,
+        },
+      );
     });
   }
   let absoluteError = 0;
   let denominator = 0;
-  actualSeries.forEach((actual, seriesIndex) => {
+  const componentBreakdown = {};
+  series.forEach(({ key, actual, predicted }) => {
+    let seriesAbsoluteError = 0;
+    let seriesDenominator = 0;
     actual.forEach((value, index) => {
-      absoluteError += Math.abs(value - predictedSeries[seriesIndex][index]);
-      denominator += Math.abs(value);
+      seriesAbsoluteError += Math.abs(value - predicted[index]);
+      seriesDenominator += Math.abs(value);
     });
+    absoluteError += seriesAbsoluteError;
+    denominator += seriesDenominator;
+    componentBreakdown[key] = {
+      absoluteError: seriesAbsoluteError,
+      denominator: seriesDenominator,
+      wmape: seriesDenominator > 0
+        ? seriesAbsoluteError / seriesDenominator * 100
+        : null,
+    };
   });
+  const activeComponents = Object.values(componentBreakdown)
+    .filter((component) => component.denominator > 0);
   return {
     componentWmape: denominator > 0 ? absoluteError / denominator * 100 : null,
     componentAbsoluteError: absoluteError,
     componentDenominator: denominator,
+    componentBreakdown,
+    componentEveryPassed: activeComponents.length > 0
+      && activeComponents.every((component) =>
+        Number.isFinite(component.wmape) && component.wmape < 10),
   };
 }
 
@@ -502,6 +540,7 @@ function evaluateSpec(dataset, route, spec, foldOffsets, holdout) {
   const folds = [];
   for (const offset of foldOffsets) {
     const trainEnd = dataset.weeks.length - holdout - offset;
+    if (trainEnd < spec.trainingWindow) continue;
     const actual = totalPanel.total.slice(trainEnd, trainEnd + holdout);
     const live = routeAt(dataset, trainEnd, holdout, route, spec);
     const conditional = routeAt(dataset, trainEnd, holdout, route, spec, conditionalCosts(dataset, route, trainEnd, holdout));
@@ -573,9 +612,46 @@ function pooled(folds, errorKey = "absoluteError", denominatorKey = "denominator
   return denominator > 0 ? folds.reduce((sum, fold) => sum + fold[errorKey], 0) / denominator * 100 : null;
 }
 
+function summarizeComponentEvidence(folds) {
+  const keys = [...new Set((folds || []).flatMap((fold) =>
+    Object.keys(fold.componentBreakdown || {})))].sort();
+  const components = keys.map((key) => {
+    const observations = folds
+      .map((fold) => fold.componentBreakdown?.[key])
+      .filter((component) => component?.denominator > 0);
+    const denominator = observations.reduce((sum, component) =>
+      sum + component.denominator, 0);
+    const absoluteError = observations.reduce((sum, component) =>
+      sum + component.absoluteError, 0);
+    const wmapeValue = denominator > 0
+      ? absoluteError / denominator * 100
+      : null;
+    const worstWmape = observations.length
+      ? Math.max(...observations.map((component) => component.wmape))
+      : null;
+    return {
+      key,
+      folds: observations.length,
+      denominator,
+      wmape: wmapeValue,
+      worstWmape,
+      passed: Number.isFinite(wmapeValue)
+        && wmapeValue < 10
+        && Number.isFinite(worstWmape)
+        && worstWmape < 10,
+    };
+  }).filter((component) => component.denominator > 0);
+  return {
+    components,
+    everyPassed: components.length > 0
+      && components.every((component) => component.passed),
+  };
+}
+
 function summarizeEvaluation(evaluation, selectionOffsets, holdout) {
   const folds = evaluation.folds;
   const development = folds.filter((fold) => selectionOffsets.has(fold.offset));
+  const developmentComponentDenominator = development.reduce((sum, fold) => sum + fold.componentDenominator, 0);
   const componentDenominator = folds.reduce((sum, fold) => sum + fold.componentDenominator, 0);
   const horizonMetrics = Array.from({ length: holdout }, (_, index) => {
     const denominator = folds.reduce((sum, fold) => sum + Math.abs(fold.actual[index]), 0);
@@ -594,6 +670,15 @@ function summarizeEvaluation(evaluation, selectionOffsets, holdout) {
   return {
     ...evaluation,
     developmentPooledWmape: pooled(development),
+    developmentWorstWmape: development.length
+      ? Math.max(...development.map((fold) => fold.wmape))
+      : null,
+    developmentComponentPooledWmape: developmentComponentDenominator > 0
+      ? development.reduce((sum, fold) => sum + fold.componentAbsoluteError, 0) / developmentComponentDenominator * 100
+      : null,
+    developmentComponentWorstWmape: development.length
+      ? Math.max(...development.map((fold) => fold.componentWmape))
+      : null,
     pooledWmape: pooled(folds),
     conditionalPooledWmape: pooled(folds, "conditionalAbsoluteError"),
     naivePooledWmape: pooled(folds, "naiveAbsoluteError"),
@@ -608,13 +693,170 @@ function summarizeEvaluation(evaluation, selectionOffsets, holdout) {
   };
 }
 
+function compareDevelopmentCandidates(left, right) {
+  const finite = (value) => Number.isFinite(value) ? value : Infinity;
+  return finite(left.developmentPooledWmape) - finite(right.developmentPooledWmape)
+    || finite(left.developmentWorstWmape) - finite(right.developmentWorstWmape)
+    || finite(left.developmentComponentPooledWmape) - finite(right.developmentComponentPooledWmape)
+    || left.route.localeCompare(right.route)
+    || left.spec.id.localeCompare(right.spec.id);
+}
+
+function selectDataPreservingCandidate(candidates) {
+  const ranked = candidates.slice().sort(compareDevelopmentCandidates);
+  const rawBest = ranked[0] || null;
+  if (!rawBest) return null;
+  const tolerance = Math.max(
+    0.1,
+    Math.max(0, Number(rawBest.developmentPooledWmape) || 0) * 0.02,
+  );
+  const equivalent = ranked.filter((candidate) =>
+    candidate.route === rawBest.route
+    && candidate.spec?.organic?.id === rawBest.spec?.organic?.id
+    && candidate.spec?.paid?.id === rawBest.spec?.paid?.id
+    && candidate.spec?.cost?.id === rawBest.spec?.cost?.id
+    && candidate.spec?.stepPolicy === rawBest.spec?.stepPolicy
+    && Number.isFinite(candidate.developmentPooledWmape)
+    && candidate.developmentPooledWmape
+      <= rawBest.developmentPooledWmape + tolerance
+    && (
+      !Number.isFinite(rawBest.developmentWorstWmape)
+      || (
+        Number.isFinite(candidate.developmentWorstWmape)
+        && candidate.developmentWorstWmape
+          <= rawBest.developmentWorstWmape + tolerance
+      )
+    ));
+  equivalent.sort((left, right) =>
+    (Number(right.spec?.trainingWindow) || 0)
+      - (Number(left.spec?.trainingWindow) || 0)
+    || compareDevelopmentCandidates(left, right));
+  const selected = equivalent[0] || rawBest;
+  return {
+    ...selected,
+    dataPreservation: {
+      applied: selected.spec?.id !== rawBest.spec?.id
+        || selected.route !== rawBest.route,
+      tolerancePoints: tolerance,
+      equivalentCandidates: equivalent.length,
+      rawBestSpecId: rawBest.spec?.id || null,
+      selectedSpecId: selected.spec?.id || null,
+    },
+  };
+}
+
+function selectCandidateAtOffset(dataset, evaluations, foldOffsets, offset, holdout, predicate = null) {
+  const priorOffsets = foldOffsets
+    .filter((candidateOffset) => candidateOffset >= offset + holdout)
+    .sort((left, right) => left - right)
+    .slice(0, MIN_SELECTION_FOLDS);
+  if (priorOffsets.length < MIN_SELECTION_FOLDS) return null;
+  const selectionOffsets = new Set(priorOffsets);
+  const candidates = evaluations.map((evaluation) => {
+    if (predicate && !predicate(evaluation)) return null;
+    if (!evaluation.folds.some((fold) => fold.offset === offset)) return null;
+    if (!priorOffsets.every((priorOffset) =>
+      evaluation.folds.some((fold) => fold.offset === priorOffset),
+    )) return null;
+    return summarizeEvaluation(
+      applyHorizonGuardrail(dataset, evaluation, selectionOffsets, holdout),
+      selectionOffsets,
+      holdout,
+    );
+  }).filter(Boolean).sort(compareDevelopmentCandidates);
+  const selected = selectDataPreservingCandidate(candidates);
+  const current = selected?.folds.find((fold) => fold.offset === offset) || null;
+  return selected && current ? {
+    offset,
+    priorOffsets,
+    selected,
+    current: {
+      ...current,
+      selectedRoute: selected.route,
+      selectedSpec: selected.spec,
+      useModelByHorizon: selected.useModelByHorizon.slice(),
+    },
+    candidates,
+  } : null;
+}
+
+function summarizeNestedFolds(folds, holdout) {
+  const valid = (folds || []).filter((fold) => fold?.actual?.length === holdout);
+  const componentDenominator = valid.reduce((sum, fold) => sum + fold.componentDenominator, 0);
+  const componentEvidence = summarizeComponentEvidence(valid);
+  const calibrationEligible = valid.length >= MIN_INTERVAL_FOLDS;
+  const horizonMetrics = Array.from({ length: holdout }, (_, index) => {
+    const denominator = valid.reduce((sum, fold) => sum + Math.abs(fold.actual[index]), 0);
+    const absoluteError = valid.reduce((sum, fold) => sum + fold.absoluteErrors[index], 0);
+    const conditionalAbsoluteError = valid.reduce((sum, fold) => sum + fold.conditionalAbsoluteErrors[index], 0);
+    const naiveAbsoluteError = valid.reduce((sum, fold) => sum + fold.naiveAbsoluteErrors[index], 0);
+    return {
+      horizon: index + 1,
+      wmape: denominator > 0 ? absoluteError / denominator * 100 : null,
+      conditionalWmape: denominator > 0 ? conditionalAbsoluteError / denominator * 100 : null,
+      naiveWmape: denominator > 0 ? naiveAbsoluteError / denominator * 100 : null,
+      mase: naiveAbsoluteError > 0 ? absoluteError / naiveAbsoluteError : null,
+      margin90: calibrationEligible
+        ? quantile(valid.map((fold) => fold.absoluteErrors[index]), 0.9)
+        : null,
+    };
+  });
+  return {
+    folds: valid,
+    foldCount: valid.length,
+    pooledWmape: pooled(valid),
+    conditionalPooledWmape: pooled(valid, "conditionalAbsoluteError"),
+    naivePooledWmape: pooled(valid, "naiveAbsoluteError"),
+    worstWmape: valid.length ? Math.max(...valid.map((fold) => fold.wmape)) : null,
+    passRate: valid.length ? valid.filter((fold) => fold.wmape < 10).length / valid.length : 0,
+    componentPooledWmape: componentDenominator > 0
+      ? valid.reduce((sum, fold) => sum + fold.componentAbsoluteError, 0) / componentDenominator * 100
+      : null,
+    componentWorstWmape: valid.length
+      ? Math.max(...valid.map((fold) => fold.componentWmape))
+      : null,
+    componentPassRate: valid.length
+      ? valid.filter((fold) => fold.componentWmape < 10).length / valid.length
+      : 0,
+    componentEvidence: componentEvidence.components,
+    componentEveryPassed: componentEvidence.everyPassed,
+    calibrationEligible,
+    calibrationFoldCount: calibrationEligible ? valid.length : 0,
+    horizonMetrics,
+  };
+}
+
+function buildNestedPath(dataset, evaluations, foldOffsets, holdout, predicate = null) {
+  const selections = foldOffsets.map((offset) =>
+    selectCandidateAtOffset(dataset, evaluations, foldOffsets, offset, holdout, predicate),
+  ).filter(Boolean);
+  const folds = selections.map((selection) => selection.current);
+  const latestSelection = selections.find((selection) => selection.offset === 0) || null;
+  const developmentFolds = folds.filter((fold) => fold.offset >= holdout);
+  return latestSelection ? {
+    latestSelection,
+    selections,
+    folds,
+    latest: latestSelection.current,
+    development: summarizeNestedFolds(developmentFolds, holdout),
+    all: summarizeNestedFolds(folds, holdout),
+  } : null;
+}
+
 function recentAverageCosts(panel, count = 8) {
   const rows = panel.costs.slice(-Math.min(count, panel.costs.length));
   return panel.channels.map((_, column) => mean(rows.map((row) => row[column])) || 0);
 }
 
 function scenarioCostRows(panel, trainEnd, horizon, spec, budgetByKey, keyPrefix = "") {
-  const defaults = forecastCostRows(panel, trainEnd, horizon, spec);
+  // A scenario with no explicit override must be byte-equivalent to the
+  // estimator validated in routeAt/fitPanel. In particular, reset changes the
+  // effective lookback and level removes/reapplies the mapped step from Cost.
+  const eventWindow = eventAdjustedTrainingWindow(panel, trainEnd, spec.trainingWindow, spec.stepPolicy);
+  const effectiveSpec = { ...spec, trainingWindow: eventWindow.window };
+  const defaults = spec.stepPolicy === "level"
+    ? stepAdjustedCostRows(panel, trainEnd, horizon, effectiveSpec)
+    : forecastCostRows(panel, trainEnd, horizon, effectiveSpec);
   if (!defaults) return null;
   return defaults.map((row, horizonIndex) => row.map((value, column) => {
     const key = `${keyPrefix}${panel.channels[column]}`;
@@ -705,143 +947,237 @@ function structuralStepDiagnostics(dataset) {
 
 export function runAttributedForecastLiveRouter(dataset, options = {}) {
   if (!dataset?.weeks?.length) return null;
-  const holdout = options.holdout || 12;
-  const horizon = options.horizon || holdout;
+  const datasetPlatforms = [...new Set((dataset.platforms || [])
+    .map((platform) => String(platform ?? "").normalize("NFKC").trim().toLowerCase())
+    .filter(Boolean))];
+  const aggregatePlatformAliases = new Set(["total", "all", "common", "전체", "합계", "공통"]);
+  const hasAggregatePlatformRows = datasetPlatforms.some((platform) =>
+    aggregatePlatformAliases.has(platform));
+  const hasDisaggregatedPlatformRows = datasetPlatforms.some((platform) =>
+    !aggregatePlatformAliases.has(platform));
+  // A Total row and its platform children represent two grains of the same
+  // outcome. Summing both would double-count the target before route scoring,
+  // so do not let an apparently accurate candidate legitimize the mixed input.
+  if (hasAggregatePlatformRows && hasDisaggregatedPlatformRows) return null;
+  const requestedHorizon = Number(options.horizon ?? options.holdout);
+  const holdout = Math.max(
+    1,
+    Math.min(52, Math.round(Number.isFinite(requestedHorizon) ? requestedHorizon : 12)),
+  );
+  const horizon = holdout;
+  const foldStep = Math.max(
+    holdout,
+    Math.round(Number.isFinite(Number(options.foldStep)) ? Number(options.foldStep) : holdout),
+  );
   const maxOffset = dataset.weeks.length - holdout - MIN_TRAIN_WEEKS;
   if (maxOffset < 0) return null;
-  const foldOffsets = Array.from({ length: Math.floor(maxOffset / FOLD_STEP) + 1 }, (_, index) => index * FOLD_STEP);
-  const selectionOffsets = new Set(foldOffsets.filter((offset) => offset >= holdout));
-  if (selectionOffsets.size < MIN_SELECTION_FOLDS) return null;
+  const foldOffsets = Array.from(
+    { length: Math.floor(maxOffset / foldStep) + 1 },
+    (_, index) => index * foldStep,
+  );
+  const modeledPlatforms = datasetPlatforms.filter((platform) =>
+    !aggregatePlatformAliases.has(platform));
+  const hasOnlyAndroidIos = modeledPlatforms.includes("android")
+    && modeledPlatforms.includes("ios")
+    && modeledPlatforms.every((platform) =>
+      platform === "android" || platform === "ios");
+  const allowedProductionRoutes = hasOnlyAndroidIos
+    ? ["direct-total", "android-ios-sum"]
+    : ["direct-total"];
+  const isProductionCandidate = (candidate) =>
+    allowedProductionRoutes.includes(candidate.route);
   const evaluated = [];
   ["direct-total", "android-ios-sum"].forEach((route) => {
     MODEL_SPECS.forEach((spec) => {
       const evaluation = evaluateSpec(dataset, route, spec, foldOffsets, holdout);
-      if (evaluation?.folds.length === foldOffsets.length) {
-        evaluated.push(summarizeEvaluation(
-          applyHorizonGuardrail(dataset, evaluation, selectionOffsets, holdout),
-          selectionOffsets,
-          holdout,
-        ));
-      }
+      if (evaluation?.folds.length) evaluated.push(evaluation);
     });
   });
   if (!evaluated.length) return null;
+  // Each outer cutoff re-selects route, window, Organic/Paid/Cost family,
+  // structural-step policy and horizon guardrail using only the same three
+  // nearest, non-overlapping older origins. The latest H-week outcome is an
+  // audit only and can never choose the production estimator.
+  const nested = buildNestedPath(
+    dataset,
+    evaluated,
+    foldOffsets,
+    holdout,
+    isProductionCandidate,
+  );
+  if (!nested) return null;
   const lookbackCandidates = LOOKBACK_WEEKS.map((trainingWindow) => {
-    const candidates = evaluated.filter((candidate) => candidate.spec.trainingWindow === trainingWindow);
-    candidates.sort((left, right) =>
-      left.developmentPooledWmape - right.developmentPooledWmape
-      || left.worstWmape - right.worstWmape
-      || left.route.localeCompare(right.route),
+    const path = buildNestedPath(
+      dataset,
+      evaluated,
+      foldOffsets,
+      holdout,
+      (candidate) =>
+        isProductionCandidate(candidate)
+        && candidate.spec.trainingWindow === trainingWindow,
     );
-    const candidate = candidates[0];
-    if (!candidate) {
+    if (!path) {
       return {
         trainingWindow,
         available: false,
-        reason: "insufficient-active-paid-history",
+        reason: "insufficient-independent-history",
       };
     }
+    const candidate = path.latestSelection.selected;
     return {
       trainingWindow,
       available: true,
       route: candidate.route,
       spec: candidate.spec,
-      developmentPooledWmape: candidate.developmentPooledWmape,
-      pooledWmape: candidate.pooledWmape,
-      conditionalPooledWmape: candidate.conditionalPooledWmape,
-      naivePooledWmape: candidate.naivePooledWmape,
-      worstWmape: candidate.worstWmape,
+      developmentPooledWmape: path.development.pooledWmape,
+      pooledWmape: path.all.pooledWmape,
+      conditionalPooledWmape: path.development.conditionalPooledWmape,
+      naivePooledWmape: path.development.naivePooledWmape,
+      worstWmape: path.development.worstWmape,
+      outerFolds: path.development.foldCount,
     };
   });
-  const bestByRoute = ["direct-total", "android-ios-sum"].map((route) => {
-    const routeCandidates = evaluated.filter((candidate) => candidate.route === route);
-    routeCandidates.sort((left, right) =>
-      left.developmentPooledWmape - right.developmentPooledWmape
-      || left.worstWmape - right.worstWmape
-      || left.spec.id.localeCompare(right.spec.id),
-    );
-    return routeCandidates[0];
-  }).filter(Boolean);
-  if (bestByRoute.length !== 2) return null;
-  bestByRoute.sort((left, right) =>
-    left.developmentPooledWmape - right.developmentPooledWmape
-    || left.componentPooledWmape - right.componentPooledWmape
-    || left.route.localeCompare(right.route),
-  );
-  const selected = bestByRoute[0];
+  const bestByRoute = ["direct-total", "android-ios-sum"].map((route) => ({
+    route,
+    path: buildNestedPath(
+      dataset,
+      evaluated,
+      foldOffsets,
+      holdout,
+      (candidate) => candidate.route === route,
+    ),
+  })).filter((item) => item.path);
+  if (!bestByRoute.length) return null;
+  const selected = nested.latestSelection.selected;
   const stepPolicyCandidates = STEP_POLICIES.map((stepPolicy) => {
-    const candidates = evaluated.filter((candidate) => candidate.spec.stepPolicy === stepPolicy);
-    candidates.sort((left, right) =>
-      left.developmentPooledWmape - right.developmentPooledWmape
-      || left.worstWmape - right.worstWmape
-      || left.spec.id.localeCompare(right.spec.id),
+    const path = buildNestedPath(
+      dataset,
+      evaluated,
+      foldOffsets,
+      holdout,
+      (candidate) =>
+        isProductionCandidate(candidate)
+        && candidate.spec.stepPolicy === stepPolicy,
     );
-    const candidate = candidates[0];
+    const candidate = path?.latestSelection?.selected;
     return candidate ? {
       stepPolicy,
       route: candidate.route,
       spec: candidate.spec,
-      developmentPooledWmape: candidate.developmentPooledWmape,
-      pooledWmape: candidate.pooledWmape,
-      conditionalPooledWmape: candidate.conditionalPooledWmape,
-      naivePooledWmape: candidate.naivePooledWmape,
-      worstWmape: candidate.worstWmape,
-      componentPooledWmape: candidate.componentPooledWmape,
+      developmentPooledWmape: path.development.pooledWmape,
+      pooledWmape: path.all.pooledWmape,
+      conditionalPooledWmape: path.development.conditionalPooledWmape,
+      naivePooledWmape: path.development.naivePooledWmape,
+      worstWmape: path.development.worstWmape,
+      componentPooledWmape: path.development.componentPooledWmape,
+      outerFolds: path.development.foldCount,
     } : null;
   }).filter(Boolean);
-  const latest = selected.folds.find((fold) => fold.offset === 0);
-  const osCandidate = bestByRoute.find((candidate) => candidate.route === "android-ios-sum");
-  if (!latest || !osCandidate) return null;
-  const eligible = selected.worstWmape < 10 && selected.componentWorstWmape < 10;
+  const latest = nested.latest;
+  const development = nested.development;
+  const osCandidate = bestByRoute.find((candidate) => candidate.route === "android-ios-sum")?.path || null;
+  if (!latest) return null;
+  const osBreakdownEligible = !!osCandidate
+    && osCandidate.development.foldCount >= MIN_CERTIFICATION_FOLDS
+    && Number.isFinite(osCandidate.development.worstWmape)
+    && osCandidate.development.worstWmape < 10
+    && Number.isFinite(osCandidate.development.componentWorstWmape)
+    && osCandidate.development.componentWorstWmape < 10
+    && osCandidate.development.componentEveryPassed
+    && Number.isFinite(osCandidate.latest.wmape)
+    && osCandidate.latest.wmape < 10
+    && Number.isFinite(osCandidate.latest.componentWmape)
+    && osCandidate.latest.componentWmape < 10
+    && osCandidate.latest.componentEveryPassed;
+  // Direct Total만 잘 맞고 Android/iOS 하위 성분이 서로 상쇄되는 모델을 공식
+  // 인증하지 않는다. Web/기타 플랫폼이 있으면 Direct Total만 배포하되, 모든
+  // 플랫폼 하위 예측을 닫을 수 없으므로 참고 예측으로만 남긴다.
+  const componentCertificationComplete = hasOnlyAndroidIos
+    && osBreakdownEligible;
+  const eligible = componentCertificationComplete
+    && development.foldCount >= MIN_CERTIFICATION_FOLDS
+    && Number.isFinite(development.worstWmape)
+    && development.worstWmape < 10
+    && Number.isFinite(development.componentWorstWmape)
+    && development.componentWorstWmape < 10
+    && development.componentEveryPassed
+    && Number.isFinite(latest.wmape)
+    && latest.wmape < 10
+    && Number.isFinite(latest.componentWmape)
+    && latest.componentWmape < 10
+    && latest.componentEveryPassed;
   let recommendedHorizon = 0;
-  for (const metric of selected.horizonMetrics) {
-    if (!(metric.wmape < 10 && metric.mase <= 1)) break;
+  for (const metric of development.horizonMetrics) {
+    if (!(Number.isFinite(metric.wmape) && metric.wmape < 10 && Number.isFinite(metric.mase) && metric.mase <= 1)) break;
     recommendedHorizon = metric.horizon;
   }
-  const shortTermEligible = recommendedHorizon > 0;
-  const osBreakdownEligible = osCandidate.worstWmape < 10 && osCandidate.componentWorstWmape < 10;
+  const shortTermEligible = componentCertificationComplete
+    && development.foldCount >= MIN_CERTIFICATION_FOLDS
+    && recommendedHorizon > 0;
   const future = futureForRoute(dataset, selected.route, horizon, selected.spec);
   if (!future) return null;
   const futureNaive = naiveRouteAt(dataset, dataset.weeks.length, horizon, selected.route);
   const futureUseModel = Array.from({ length: horizon }, (_, index) =>
     index < selected.useModelByHorizon.length ? selected.useModelByHorizon[index] : false,
   );
+  // 모든 horizon이 naive로 대체되면 화면의 Cost를 바꿔도 예측은 동일하다.
+  // 그 상태를 "예측 통과"와 분리해 Cost 시나리오를 열지 않는다.
+  const budgetResponseEligible = futureUseModel.some(Boolean)
+    && Array.isArray(future.channels)
+    && future.channels.length > 0;
   const guardedFuture = mixResults(future, futureNaive, futureUseModel);
   const marginByHorizon = Array.from({ length: horizon }, (_, index) => {
-    const source = selected.horizonMetrics[Math.min(index, selected.horizonMetrics.length - 1)];
-    return source?.margin90 || 0;
+    const source = development.horizonMetrics[index];
+    return Number.isFinite(source?.margin90) ? source.margin90 : 0;
   });
   const totalPanel = panelFor(dataset, "total");
   const contextLength = 12;
   const lastWeek = dataset.weeks.at(-1);
   return {
-    model: "live-oos-organic-paid-v4-step-selection",
+    model: "nested-oos-organic-paid-v5-auto-selection",
     selectedRoute: selected.route,
+    allowedProductionRoutes,
+    componentCertificationComplete,
     selectedSpec: selected.spec,
+    dataPreservation: selected.dataPreservation || null,
     eligible,
     shortTermEligible,
     recommendedHorizon,
     osBreakdownEligible,
+    budgetResponseEligible,
     threshold: 10,
-    foldStep: FOLD_STEP,
+    foldStep,
     selectionHoldoutWeeks: holdout,
+    outerFoldCount: development.foldCount,
+    intervalCalibrationEligible: development.calibrationEligible,
+    intervalCalibrationFoldCount: development.calibrationFoldCount,
+    intervalCalibrationMinFolds: MIN_INTERVAL_FOLDS,
+    intervalObservedOuterFolds: development.foldCount,
+    minimumRequiredWeeks: MIN_TRAIN_WEEKS + holdout + MIN_SELECTION_FOLDS * foldStep,
+    minimumCertifiedWeeks: MIN_TRAIN_WEEKS + holdout
+      + (MIN_SELECTION_FOLDS + MIN_CERTIFICATION_FOLDS) * foldStep,
+    minimumIntervalWeeks: MIN_TRAIN_WEEKS + holdout
+      + (MIN_SELECTION_FOLDS + MIN_INTERVAL_FOLDS) * foldStep,
     lookbackCandidates,
     stepPolicyCandidates,
-    candidates: bestByRoute.map((candidate) => ({
-      route: candidate.route,
-      spec: candidate.spec,
-      useModelByHorizon: candidate.useModelByHorizon,
-      developmentPooledWmape: candidate.developmentPooledWmape,
-      pooledWmape: candidate.pooledWmape,
-      conditionalPooledWmape: candidate.conditionalPooledWmape,
-      naivePooledWmape: candidate.naivePooledWmape,
-      worstWmape: candidate.worstWmape,
-      passRate: candidate.passRate,
-      componentPooledWmape: candidate.componentPooledWmape,
-      componentWorstWmape: candidate.componentWorstWmape,
-      componentPassRate: candidate.componentPassRate,
-      horizonMetrics: candidate.horizonMetrics,
-      folds: candidate.folds.map(({ result, conditionalResult, naiveResult, actual, absoluteErrors, conditionalAbsoluteErrors, naiveAbsoluteErrors, ...fold }) => fold),
+    candidates: bestByRoute.map(({ route, path }) => ({
+      route,
+      spec: path.latestSelection.selected.spec,
+      useModelByHorizon: path.latestSelection.selected.useModelByHorizon,
+      developmentPooledWmape: path.development.pooledWmape,
+      pooledWmape: path.all.pooledWmape,
+      conditionalPooledWmape: path.development.conditionalPooledWmape,
+      naivePooledWmape: path.development.naivePooledWmape,
+      worstWmape: path.development.worstWmape,
+      passRate: path.development.passRate,
+      componentPooledWmape: path.development.componentPooledWmape,
+      componentWorstWmape: path.development.componentWorstWmape,
+      componentPassRate: path.development.componentPassRate,
+      componentEvidence: path.development.componentEvidence,
+      componentEveryPassed: path.development.componentEveryPassed,
+      horizonMetrics: path.development.horizonMetrics,
+      outerFoldCount: path.development.foldCount,
+      folds: path.folds.map(({ result, conditionalResult, naiveResult, actual, absoluteErrors, conditionalAbsoluteErrors, naiveAbsoluteErrors, ...fold }) => fold),
     })),
     historicallyStable: eligible,
     backtest: {
@@ -869,6 +1205,32 @@ export function runAttributedForecastLiveRouter(dataset, options = {}) {
       parts: guardedFuture.parts,
       marginByHorizon,
       useModelByHorizon: futureUseModel,
+      intervalCalibrationEligible: development.calibrationEligible,
+      intervalCalibrationFoldCount: development.calibrationFoldCount,
+    },
+    validation: {
+      method: "nested-rolling-origin",
+      horizon,
+      foldStep,
+      priorFoldsPerSelection: MIN_SELECTION_FOLDS,
+      outerFoldCount: development.foldCount,
+      pooledWmape: development.pooledWmape,
+      conditionalPooledWmape: development.conditionalPooledWmape,
+      naivePooledWmape: development.naivePooledWmape,
+      intervalCalibrationEligible: development.calibrationEligible,
+      folds: development.folds.map((fold) => ({
+        offset: fold.offset,
+        start: fold.start,
+        end: fold.end,
+        selectedRoute: fold.selectedRoute,
+        selectedSpecId: fold.selectedSpec?.id || null,
+        actual: fold.actual.slice(),
+        predicted: fold.result.predicted.slice(),
+        absoluteErrors: fold.absoluteErrors.slice(),
+        denominator: fold.denominator,
+        absoluteError: fold.absoluteError,
+        wmape: fold.wmape,
+      })),
     },
     diagnostics: regimeDiagnostics(dataset),
     structuralSteps: structuralStepDiagnostics(dataset),
@@ -889,8 +1251,8 @@ export function runAttributedForecastLiveScenario(dataset, router, budgetByKey =
   const mixed = mixResults(modelFuture, naiveFuture, useModelByHorizon);
   const lastWeek = dataset.weeks.at(-1);
   const marginByHorizon = Array.from({ length: useHorizon }, (_, index) => {
-    const metrics = selectedCandidate?.horizonMetrics || [];
-    return metrics[Math.min(index, Math.max(0, metrics.length - 1))]?.margin90 || 0;
+    const margin = router.forecast?.marginByHorizon?.[index];
+    return Number.isFinite(margin) ? margin : 0;
   });
   return {
     ...mixed,

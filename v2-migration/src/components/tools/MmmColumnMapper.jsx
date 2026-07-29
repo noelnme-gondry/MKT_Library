@@ -75,12 +75,23 @@ function looksDate(value) {
 
 function guessPlat(name) {
   const s = String(name).toLowerCase();
-  const hasA = /(android|aos|google_?play|playstore)/.test(s);
+  const hasA = /(android|aos|google[_\s-]?play|play[_\s-]?store)/.test(s);
   const hasI = /(^|[^a-z0-9])ios([^a-z0-9]|$)/.test(s) || /(iphone|ipad)/.test(s);
   if (hasA && hasI) return s.lastIndexOf("android") > s.lastIndexOf("ios") ? "android" : "ios";
   if (hasA) return "android";
   if (hasI) return "ios";
   return "common";
+}
+
+// 행 기반 플랫폼 값은 헤더 태그와 달리 대소문자·스토어 별칭이 제각각이다.
+// Android/iOS 계열만 canonical key로 묶고, Web·국가 같은 임의 세그먼트는
+// 소문자 원문을 보존해 같은 정규화 규칙으로 필터와 route guard를 판단한다.
+export function normalizePlatformValue(value) {
+  const normalized = String(value ?? "").normalize("NFKC").trim().toLocaleLowerCase("en-US");
+  if (!normalized) return "";
+  if (["all", "total", "common", "전체", "합계", "공통"].includes(normalized)) return "all";
+  const guessed = guessPlat(normalized);
+  return guessed === "common" ? normalized : guessed;
 }
 
 // Prism 운영 CSV에서는 `brand_*_impressions`/`performance_*_impressions`가
@@ -218,6 +229,117 @@ function guessedStepMode(header) {
     : "state";
 }
 
+function guessedOperationalBoundaryKind(header) {
+  const name = String(header || "");
+  if (/delist|shutdown|서비스.?(?:중단|종료)|운영.?중단|중단|종료/i.test(name)) return "shutdown-start";
+  if (/reopen|relaunch|재개|재오픈/i.test(name)) return "reopen";
+  return null;
+}
+
+function operationalBoundaryEntity(header) {
+  const normalized = String(header || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    // 서로 다른 언어로 적힌 같은 엔티티도 같은 안전 키가 되게 최소한의
+    // 도메인 명사만 정규화한다. 중단/재개 동작어와 표시용 suffix는 제거한다.
+    .replace(/캠페인/g, " campaign ")
+    .replace(/서비스/g, " service ")
+    .replace(/애플리케이션|어플리케이션|어플|앱/g, " app ")
+    .replace(/제품|상품/g, " product ")
+    .replace(/기능/g, " feature ")
+    .replace(/마켓/g, " market ")
+    .replace(/shut[\s_-]*down|delist|reopen|relaunch|중단|종료|재개|재오픈/giu, " ")
+    .replace(/step|boundary|pulse|flag|indicator|dummy|regime|event|status|state|단계|경계|펄스|더미|레짐|이벤트|시점|상태/giu, " ");
+  const tokens = normalized
+    .split(/[^\p{L}\p{N}]+/u)
+    .map((token) => token.trim())
+    .filter(Boolean);
+  return [...new Set(tokens)].sort().join("|");
+}
+
+function operationalStepPairPlan(steps) {
+  const byPlatform = new Map();
+  (steps || []).forEach((step) => {
+    if (!step.autoBoundaryKind) return;
+    const platform = step.plat || "common";
+    const group = byPlatform.get(platform) || { platform, shutdown: [], reopen: [] };
+    if (step.autoBoundaryKind === "shutdown-start") group.shutdown.push(step);
+    if (step.autoBoundaryKind === "reopen") group.reopen.push(step);
+    byPlatform.set(platform, group);
+  });
+  const pairs = [];
+  const unresolved = [];
+  byPlatform.forEach((group) => {
+    const shutdownByEntity = new Map();
+    const reopenByEntity = new Map();
+    group.shutdown.forEach((step) => {
+      const entity = operationalBoundaryEntity(step.header);
+      const items = shutdownByEntity.get(entity) || [];
+      items.push(step);
+      shutdownByEntity.set(entity, items);
+    });
+    group.reopen.forEach((step) => {
+      const entity = operationalBoundaryEntity(step.header);
+      const items = reopenByEntity.get(entity) || [];
+      items.push(step);
+      reopenByEntity.set(entity, items);
+    });
+    const unmatched = { platform: group.platform, shutdown: [], reopen: [] };
+    const entities = new Set([...shutdownByEntity.keys(), ...reopenByEntity.keys()]);
+    entities.forEach((entity) => {
+      const shutdown = shutdownByEntity.get(entity) || [];
+      const reopen = reopenByEntity.get(entity) || [];
+      if (entity && shutdown.length === 1 && reopen.length === 1) {
+        pairs.push({ platform: group.platform, entity, shutdown: shutdown[0], reopen: reopen[0] });
+      } else if (entity && shutdown.length && reopen.length) {
+        unresolved.push({ platform: group.platform, entity, shutdown, reopen, reason: "ambiguous" });
+      } else {
+        unmatched.shutdown.push(...shutdown);
+        unmatched.reopen.push(...reopen);
+      }
+    });
+    if (unmatched.shutdown.length || unmatched.reopen.length) {
+      const hasBothKinds = unmatched.shutdown.length > 0 && unmatched.reopen.length > 0;
+      unresolved.push({
+        ...unmatched,
+        reason: unmatched.shutdown.length > 1 || unmatched.reopen.length > 1
+          ? "ambiguous"
+          : hasBothKinds
+            ? "semantic-mismatch"
+            : "unmatched",
+      });
+    }
+  });
+  return { pairs, unresolved };
+}
+
+function deriveOperationalStepIntervals(steps, orderedSeries) {
+  const next = Object.fromEntries(Object.entries(orderedSeries || {}).map(([key, values]) => [key, values.slice()]));
+  const { pairs, unresolved } = operationalStepPairPlan(steps);
+  const derived = [];
+  const invalidPairs = [];
+  pairs.forEach((pair) => {
+    const shutdownValues = next[pair.shutdown.key] || [];
+    const reopenValues = next[pair.reopen.key] || [];
+    const shutdownPulse = shutdownValues.flatMap((value, index) => Number.isFinite(value) && value !== 0 ? [index] : []);
+    const reopenPulse = reopenValues.flatMap((value, index) => Number.isFinite(value) && value !== 0 ? [index] : []);
+    // 여러 주가 1이면 사용자가 이미 완성한 상태열로 간주해 절대 덮어쓰지 않는다.
+    if (shutdownPulse.length > 1) return;
+    if (shutdownPulse.length !== 1 || reopenPulse.length !== 1 || reopenPulse[0] <= shutdownPulse[0]) {
+      invalidPairs.push({ ...pair, shutdownPulseCount: shutdownPulse.length, reopenPulseCount: reopenPulse.length });
+      return;
+    }
+    const startIndex = shutdownPulse[0];
+    const reopenIndex = reopenPulse[0];
+    next[pair.shutdown.key] = shutdownValues.map((value, index) => {
+      if (!Number.isFinite(value)) return NaN;
+      return index >= startIndex && index < reopenIndex ? 1 : 0;
+    });
+    derived.push({ ...pair, startIndex, reopenIndex });
+  });
+  return { series: next, derived, unresolved, invalidPairs };
+}
+
 // 부분 자동 매핑(index.html mmmAutoMapPartial 이식) — 타깃과 명시 매체 열을 강한 키워드로 배치.
 // `performance_*_impressions`처럼 헤더는 노출수여도 실제 값이 지출인 운영 CSV가 있으므로,
 // brand/performance 접두사가 있는 media delivery 열은 누락시키지 않는다.
@@ -236,7 +358,10 @@ export function autoGuessColMap(headers, rows, partial = true) {
         else once[role] = true;
       }
       out[h] = { role, kind: g.kind };
-      if (role === "step") out[h].stepMode = guessedStepMode(h);
+      if (role === "step") {
+        out[h].stepMode = guessedStepMode(h);
+        out[h].autoBoundaryKind = guessedOperationalBoundaryKind(h);
+      }
       if (["reg", "paid", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role)) out[h].plat = guessPlat(h);
       continue;
     }
@@ -253,7 +378,7 @@ export function autoGuessColMap(headers, rows, partial = true) {
     const isExplicitSpend = /(^|[_\s])(spend|cost|budget)([_\s]|$)|(?:spend|cost|budget)$|비용|지출|예산/i.test(name);
     const isExplicitMediaDelivery = isOperationalDeliveryCostHeader(name)
       || /^(brand|performance)[_\s].*(spend|cost|budget|clicks?)$/i.test(name);
-    const isExplicitStep = /step|regime|shutdown|delist|reopen|relaunch|liveness|launch|구조변화|레짐|서비스.?중단|재개|재오픈|런칭/i.test(name);
+    const isExplicitStep = /step|regime|shutdown|delist|reopen|relaunch|liveness|launch|구조변화|레짐|서비스.?중단|운영.?중단|중단|종료|재개|재오픈|런칭/i.test(name);
     const isExplicitEvent = /holiday|event|christmas|easter|new.?year|anzac|funeral|festival|ramadan|black.?friday|cyber.?monday|chuseok|seollal|lunar|record|(?:^|[_\s])day(?:$|[_\s])|공휴일|명절|이벤트|크리스마스|설날|추석/i.test(name);
     let role = "ignore";
     if (/^(week|t|wk)$/.test(name) || /week|주차|주인덱스/.test(name)) {
@@ -288,7 +413,10 @@ export function autoGuessColMap(headers, rows, partial = true) {
     }
     if (role === "date") { if (once.date) role = "ignore"; else once.date = true; }
     out[h] = { role, kind };
-    if (role === "step") out[h].stepMode = guessedStepMode(h);
+    if (role === "step") {
+      out[h].stepMode = guessedStepMode(h);
+      out[h].autoBoundaryKind = guessedOperationalBoundaryKind(h);
+    }
     if (["reg", "paid", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role)) out[h].plat = guessPlat(h);
   }
   return out;
@@ -351,7 +479,14 @@ export function colMapRoles(headers, colMap) {
     else if (r === "frequency") out.frequency.push({ header: h, key: sanKey(h, used), label: h, plat });
     else if (r === "channel") out.channels.push({ header: h, key: sanKey(h, used), label: h, kind: def.kind === "brand" ? "brand" : "perf", plat });
     else if (r === "dummy") out.dummies.push({ header: h, key: sanKey(h, used), label: h, plat });
-    else if (r === "step") out.steps.push({ header: h, key: sanKey(h, used), label: h, plat, stepMode: def.stepMode || "state" });
+    else if (r === "step") out.steps.push({
+      header: h,
+      key: sanKey(h, used),
+      label: h,
+      plat,
+      stepMode: def.stepMode || "state",
+      autoBoundaryKind: def.autoBoundaryKind || null,
+    });
     else if (r === "external") out.externals.push({ header: h, key: sanKey(h, used), label: h, plat });
   }
   return out;
@@ -364,18 +499,61 @@ export function mmmForecastInputWarnings(headers, rows, colMap, locale = "ko") {
     return Number.isFinite(parsed) ? parsed : 0;
   };
   const periodHeader = roles.date || roles.week[0]?.header || null;
-  const periodAt = (row, index) => periodHeader ? String(row[periodHeader] ?? index) : String(index);
+  const periodAt = (row, index) => periodHeader ? String(row?.[periodHeader] ?? index) : String(index);
   const warnings = [];
+  const rowOrder = (rows || []).map((_, index) => index).sort((a, b) => {
+    if (!periodHeader) return a - b;
+    const left = mappedTimeKey((rows || [])[a]?.[periodHeader]);
+    const right = mappedTimeKey((rows || [])[b]?.[periodHeader]);
+    if (!left || !right || left.kind !== right.kind) return a - b;
+    return left.value - right.value || a - b;
+  });
+  const orderedStepSeries = Object.fromEntries(roles.steps.map((step) => [
+    step.key,
+    rowOrder.map((index) => mmmParseBinaryIndicator((rows || [])[index]?.[step.header], "step")),
+  ]));
+  const operationalIntervals = deriveOperationalStepIntervals(roles.steps, orderedStepSeries);
+  const derivedShutdownHeaders = new Set(operationalIntervals.derived.map((item) => item.shutdown.header));
+  const platformLabel = (platform) => platform === "android" ? "Android" : platform === "ios" ? "iOS" : locale === "en" ? "Common" : "공통";
+  operationalIntervals.derived.forEach((item) => {
+    const startPeriod = periodAt((rows || [])[rowOrder[item.startIndex]], item.startIndex);
+    const reopenPeriod = periodAt((rows || [])[rowOrder[item.reopenIndex]], item.reopenIndex);
+    warnings.push(locale === "en"
+      ? `${item.shutdown.header} + ${item.reopen.header}: auto-derived the ${platformLabel(item.platform)} shutdown state as 1 from ${startPeriod} through the period before ${reopenPeriod}. The reopen column remains a separate post-reopen boundary.`
+      : `${item.shutdown.header} + ${item.reopen.header}: ${platformLabel(item.platform)} 운영 중단 상태를 ${startPeriod}부터 ${reopenPeriod} 직전까지 1로 자동 생성합니다. 재개 열은 재개 후 수준 변화를 위한 별도 경계로 유지합니다.`);
+  });
+  operationalIntervals.unresolved
+    .filter((group) => group.reason === "ambiguous")
+    .forEach((group) => {
+      const names = [...group.shutdown, ...group.reopen].map((step) => step.header).join(", ");
+      warnings.push(locale === "en"
+        ? `${platformLabel(group.platform)} operational boundaries are ambiguous (${names}). No shutdown interval was auto-derived; keep one unambiguous pair or provide the full state series.`
+        : `${platformLabel(group.platform)} 운영 중단·재개 경계가 여러 개라 자동 연결하지 않았습니다(${names}). 한 쌍만 남기거나 전체 상태열을 직접 입력하세요.`);
+    });
+  operationalIntervals.unresolved
+    .filter((group) => group.reason === "semantic-mismatch")
+    .forEach((group) => {
+      const shutdownNames = group.shutdown.map((step) => step.header).join(", ");
+      const reopenNames = group.reopen.map((step) => step.header).join(", ");
+      warnings.push(locale === "en"
+        ? `${shutdownNames} + ${reopenNames}: the shutdown and reopen headers refer to different entities, so they remain separate boundaries. Use the same entity name only when they describe one interval.`
+        : `${shutdownNames} + ${reopenNames}: 중단·재개 헤더의 대상 이름이 달라 별도 경계로 유지합니다. 하나의 기간을 뜻할 때만 같은 대상 이름을 사용하세요.`);
+    });
+  operationalIntervals.invalidPairs.forEach((item) => {
+    warnings.push(locale === "en"
+      ? `${item.shutdown.header} + ${item.reopen.header}: the same-platform boundaries are not one shutdown pulse followed by one reopen pulse. No interval was auto-derived; verify the dates or provide the full state series.`
+      : `${item.shutdown.header} + ${item.reopen.header}: 같은 플랫폼에서 중단 pulse 1개 뒤에 재개 pulse 1개가 오는 형태가 아니어서 기간을 자동 생성하지 않았습니다. 날짜를 확인하거나 전체 상태열을 직접 입력하세요.`);
+  });
   roles.steps
     .filter((step) => step.stepMode === "state" && /delist|shutdown|서비스.?중단/i.test(step.header))
     .forEach((step) => {
       const activePeriods = new Set((rows || [])
         .map((row, index) => numberValue(row[step.header]) !== 0 ? periodAt(row, index) : null)
         .filter(Boolean));
-      if (activePeriods.size === 1) {
+      if (activePeriods.size === 1 && !derivedShutdownHeaders.has(step.header)) {
         warnings.push(locale === "en"
-          ? `${step.header}: a state series is active for only one period. If the shutdown lasted longer, mark every affected week as 1 (then return to 0) or provide explicit start/end events.`
-          : `${step.header}: 상태열이 1개 기간에만 1입니다. 셧다운이 더 길었다면 영향받은 모든 주를 1로 채운 뒤 0으로 되돌리거나 시작·종료 이벤트를 함께 주세요.`);
+          ? `${step.header}: a state series is active for only one period and no unambiguous later reopen pulse exists on the same platform. Mark every affected week as 1 (then return to 0) or provide one matching reopen boundary.`
+          : `${step.header}: 상태열이 1개 기간에만 1이고 같은 플랫폼의 명확한 후속 재개 pulse가 없습니다. 영향받은 모든 주를 1로 채운 뒤 0으로 되돌리거나 재개 경계 한 개를 함께 주세요.`);
       }
     });
   const lateChannels = roles.channels.filter((channel) => {
@@ -399,7 +577,9 @@ function buildGeoPanelFromRows(headers, rows, roles, platform, weekStart) {
   if (!roles.geo) return null;
   const tagMode = !roles.platform && (headers || []).some((header) => /(?:android|ios|aos|iphone|ipad)/i.test(String(header)));
   const P = platform === "all" ? null : platform;
-  const inPlat = (item) => !tagMode || !P || item.plat === P || item.plat === "common";
+  const normalizedPlatform = P ? normalizePlatformValue(P) : null;
+  const inPlat = (item) => !tagMode || !normalizedPlatform
+    || item.plat === normalizedPlatform || item.plat === "common";
   const channels = roles.channels.filter(inPlat).filter((item) => !/(^|[_\s])(other|etc|misc|기타)([_\s]|$)/i.test(item.header));
   const targets = [
     ...roles.reg.map((item) => ({ ...item, targetKey: "Regs" })),
@@ -411,13 +591,15 @@ function buildGeoPanelFromRows(headers, rows, roles, platform, weekStart) {
   ].filter(inPlat);
   const groups = new Map();
   for (const row of rows || []) {
+    if (roles.platform && normalizedPlatform
+      && normalizePlatformValue(row[roles.platform]) !== normalizedPlatform) continue;
     const geo = String(row[roles.geo] ?? "").trim();
     const parsed = mappedTimeKey(row[roles.date || roles.week[0]?.header]);
     if (!geo || !parsed) continue;
     const period = parsed.source === "calendar-date" && roles.date
       ? weekStartTimestamp(parsed.value, weekStart)
       : parsed.value;
-    const segment = roles.platform ? String(row[roles.platform] ?? "").trim() : "";
+    const segment = roles.platform ? normalizePlatformValue(row[roles.platform]) : "";
     const key = `${geo}\u0001${parsed.kind}:${period}\u0001${segment}`;
     const item = groups.get(key) || { geo, period, kind: parsed.kind, ch: {}, targets: {}, dummy: {}, steps: {}, external: {}, count: {} };
     channels.forEach((channel) => {
@@ -709,15 +891,20 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   const geoPanels = buildGeoPanelFromRows(headers, rows, r, platform, weekStart);
   const tagMode = !r.platform && mmmPlatformTags(headers, colMap).length > 0;
   const P = platform === "all" ? null : platform;
-  const inPlat = (x) => !tagMode || !P || x.plat === P || x.plat === "common";
+  const normalizedPlatform = P ? normalizePlatformValue(P) : null;
+  const inPlat = (x) => !tagMode || !normalizedPlatform
+    || x.plat === normalizedPlatform || x.plat === "common";
   // OS가 분리된 회귀에서는 귀속을 알 수 없는 `other_cost`를 매체 효과로
   // 추정하면 Android/iOS 계수가 왜곡된다. 사용자가 명시적으로 채널로
   // 매핑했더라도 이 패널에서는 제외한다.
   const isAmbiguousOtherCost = (x) => /(^|[_\s])(other|etc|misc|기타)([_\s]|$)/i.test(String(x.header || x.label || ""));
   let baseRows = rows || [];
-  if (r.platform && P) baseRows = baseRows.filter((row) => String(row[r.platform]) === P);
+  if (r.platform && normalizedPlatform) {
+    baseRows = baseRows.filter((row) =>
+      normalizePlatformValue(row[r.platform]) === normalizedPlatform);
+  }
   const expectedSegments = r.platform
-    ? [...new Set(baseRows.map((row) => String(row[r.platform] ?? "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+    ? [...new Set(baseRows.map((row) => normalizePlatformValue(row[r.platform])).filter(Boolean))].sort((a, b) => a.localeCompare(b))
     : [];
   const timeDiagnostics = {
     sourceRows: inheritedDiagnostics?.sourceRows ?? baseRows.length,
@@ -884,7 +1071,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
       }
       if (parsedTime.source === "calendar-date") {
         item.__mmmDistinctDates.add(parsedTime.value);
-        const segment = r.platform ? String(row[r.platform] ?? "").trim() : "";
+        const segment = r.platform ? normalizePlatformValue(row[r.platform]) : "";
         const dailyKey = `${parsedTime.value}\u0001${segment}`;
         if (item.__mmmDailyKeys.has(dailyKey)) timeDiagnostics.duplicatePeriods += 1;
         item.__mmmDailyKeys.add(dailyKey);
@@ -895,7 +1082,7 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
         }
       }
       if (r.platform) {
-        const segment = String(row[r.platform] ?? "").trim();
+        const segment = normalizePlatformValue(row[r.platform]);
         if (segment) {
           if (parsedTime.source !== "calendar-date" && item.__mmmSegments.has(segment)) timeDiagnostics.duplicatePeriods += 1;
           item.__mmmSegments.add(segment);
@@ -1038,9 +1225,21 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
   if (weekLabelRaw) panel.weekLabel = re(weekLabelRaw);
   for (const k in panel.ch) panel.ch[k] = re(panel.ch[k]);
   for (const k in panel.dummy) panel.dummy[k] = re(panel.dummy[k]);
+  const orderedStepSeries = Object.fromEntries(Object.entries(panel.steps).map(([key, values]) => [key, re(values)]));
+  const operationalIntervals = deriveOperationalStepIntervals(steps, orderedStepSeries);
+  panel.steps = operationalIntervals.series;
+  panel.operationalStepIntervals = operationalIntervals.derived.map((item) => ({
+    platform: item.platform,
+    shutdownKey: item.shutdown.key,
+    shutdownLabel: item.shutdown.label,
+    reopenKey: item.reopen.key,
+    reopenLabel: item.reopen.label,
+    startIndex: item.startIndex,
+    reopenIndex: item.reopenIndex,
+  }));
   const stepModeByKey = new Map(steps.map((step) => [step.key, step.stepMode]));
   for (const k in panel.steps) {
-    const ordered = re(panel.steps[k]);
+    const ordered = panel.steps[k];
     if (stepModeByKey.get(k) !== "boundary") {
       panel.steps[k] = ordered;
       continue;
@@ -1091,7 +1290,8 @@ export function buildPanelFromColMap(headers, rows, colMap, platform = "all", lo
     .filter((channel) => isOperationalDeliveryCostHeader(channel.header))
     .map((channel) => channel.header);
   panel.dummyDefs = dummies.map((d) => ({ key: d.key, label: d.label }));
-  panel.stepDefs = steps.map((s) => ({ key: s.key, label: s.label }));
+  const derivedIntervalKeys = new Set(panel.operationalStepIntervals.map((item) => item.shutdownKey));
+  panel.stepDefs = steps.map((s) => ({ key: s.key, label: s.label, autoDerivedInterval: derivedIntervalKeys.has(s.key) }));
   panel.externalDefs = panelExternals.map((external) => ({
     key: external.key,
     label: external.label,
@@ -1168,7 +1368,7 @@ const ZONES = [
   ["frequency", "🔁 Frequency (선택 · RF)", "🔁 Frequency (optional · RF)", false, true],
   ["external", "📊 업계 수요 지수 (MMM 전용 · 상대 변화로 변환 · 여러 개 · 플랫폼)", "📊 Industry-demand index (MMM only · converted to relative change · many · platform)", false, true],
   ["dummy", "🔢 더미/이벤트 (0·1 · true/false · yes/no · on/off)", "🔢 Dummy/event (0/1 · true/false · yes/no · on/off)", false, true],
-  ["step", "📐 구조변화 step (0·1 · pre/post · before/after)", "📐 Structural step (0/1 · pre/post · before/after)", false, true],
+  ["step", "📐 구조변화 step (상태열 또는 경계 pulse · 중단+재개 단일쌍은 기간 자동 생성)", "📐 Structural step (state or boundary pulse · one shutdown/reopen pair derives the interval)", false, true],
   ["platform", "🔀 세그먼트/플랫폼 단일 컬럼 (선택 · 성별·플랫폼·국가 등 값별로 나눠보기)", "🔀 Segment/platform single column (optional · split by gender/platform/country, etc.)", false, false],
 ];
 
@@ -1188,16 +1388,21 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
       }
     }
     const prev = next[col] || {};
-    next[col] = {
+    const nextDef = {
       ...prev,
       role,
       plat: ["reg", "paid", "react", "traffic", "purchasers", "revenue", "channel", "dummy", "step", "external", "reach", "frequency"].includes(role) ? prev.plat || guessPlat(col) : prev.plat,
       stepMode: role === "step" ? prev.stepMode || guessedStepMode(col) : prev.stepMode,
     };
+    // 사용자가 직접 역할을 지정하면 자동 경계 추론보다 명시적 선택을 우선한다.
+    delete nextDef.autoBoundaryKind;
+    next[col] = nextDef;
     onChange(next);
   };
   const setField = (col, field, value) => {
-    onChange({ ...cm, [col]: { ...(cm[col] || {}), [field]: value } });
+    const nextDef = { ...(cm[col] || {}), [field]: value };
+    if (nextDef.role === "step" && ["plat", "stepMode"].includes(field)) delete nextDef.autoBoundaryKind;
+    onChange({ ...cm, [col]: nextDef });
   };
 
   // React state만으로 drag 대상을 기억하면 브라우저가 onDrop 전에 렌더를 끊는
@@ -1253,7 +1458,7 @@ export default function MmmColumnMapper({ headers, rows, colMap, onChange, local
         )}
         {def.role === "step" && (
           <select value={def.stepMode || "state"} onClick={(event) => event.stopPropagation()} onChange={(e) => setField(col, "stepMode", e.target.value)} style={{ fontSize: "11px" }}>
-            <option value="state">{tr("상태열", "State series")}</option>
+            <option value="state">{tr("상태열 (입력값 유지)", "State series (keep input)")}</option>
             <option value="boundary">{tr("경계 pulse→이후 1", "Boundary pulse → post=1")}</option>
           </select>
         )}

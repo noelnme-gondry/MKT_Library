@@ -2,7 +2,9 @@ const DAY_MS = 86400000;
 
 function parseNumber(value) {
   if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
-  const parsed = Number(String(value ?? "").replace(/[,\s]/g, ""));
+  const text = String(value ?? "").trim();
+  if (!text) return NaN;
+  const parsed = Number(text.replace(/[,\s]/g, ""));
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
@@ -70,6 +72,7 @@ export function buildAttributedForecastDataset(rows, fields, options = {}) {
   const stepByHeader = new Map(steps.map((step) => [step.header, step]));
   const eventMap = new Map();
   const eventConflicts = [];
+  let invalidPaidCostRows = 0;
   for (const row of rows || []) {
     const week = mondayTimestamp(row[timeHeader]);
     const channel = String(row[channelHeader] ?? "").trim();
@@ -96,19 +99,31 @@ export function buildAttributedForecastDataset(rows, fields, options = {}) {
       });
     }
     if (week == null || !channel || !Number.isFinite(outcome)) continue;
+    const organic = isOrganic(channel);
+    if (!organic && !Number.isFinite(cost)) invalidPaidCostRows += 1;
     records.push({
       week,
       platform,
       channel,
-      organic: isOrganic(channel),
+      organic,
       outcome,
       cost: Number.isFinite(cost) ? Math.max(0, cost) : 0,
     });
   }
   if (!records.some((record) => record.organic) || !records.some((record) => !record.organic)) return null;
   let weeks = [...new Set(records.map((record) => record.week))].sort((left, right) => left - right);
-  const asOf = options.asOfDate == null ? Date.now() : new Date(options.asOfDate).getTime();
-  if (weeks.length && Number.isFinite(asOf) && asOf < weeks.at(-1) + 7 * DAY_MS) weeks = weeks.slice(0, -1);
+  const hasExplicitAsOf = options.asOfDate != null
+    && Number.isFinite(new Date(options.asOfDate).getTime());
+  // snapshot 기준일이 없을 때 실행 날짜(Date.now)를 쓰면 같은 CSV 결과가
+  // 며칠 뒤 달라진다. 이 경우 최신 주를 보수적으로 제외하는 결정론적 규칙을
+  // 쓰고, 파일 수정일/명시 기준일이 있으면 그 시점으로 성숙도를 판정한다.
+  const asOf = hasExplicitAsOf
+    ? new Date(options.asOfDate).getTime()
+    : weeks.at(-1);
+  const excludedPartialWeek = Boolean(
+    weeks.length && Number.isFinite(asOf) && asOf < weeks.at(-1) + 7 * DAY_MS,
+  );
+  if (excludedPartialWeek) weeks = weeks.slice(0, -1);
   const weekSet = new Set(weeks);
   const filtered = records.filter((record) => weekSet.has(record.week));
   const rawEvents = [...eventMap.values()].filter((event) => weekSet.has(event.week));
@@ -149,5 +164,11 @@ export function buildAttributedForecastDataset(rows, fields, options = {}) {
     events,
     eventHeaders,
     eventConflicts,
+    invalidPaidCostRows,
+    snapshotDateSource: hasExplicitAsOf
+      ? (options.asOfDateSource || "provided")
+      : "conservative-latest-week-excluded",
+    snapshotAsOfDate: Number.isFinite(asOf) ? isoDate(asOf) : null,
+    excludedPartialWeek,
   };
 }

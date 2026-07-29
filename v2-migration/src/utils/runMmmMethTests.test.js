@@ -24,7 +24,17 @@ import {
   mmmSeasonalityRollingRescueDecision,
   mmmBayesianWeeklyDecomp,
   mmmBayesianForecast,
+  mmmForecastBackgroundCandidateCap,
+  mmmForecastCandidateCap,
+  mmmForecastCandidateSearchAudit,
   mmmForecastRollingSelection,
+  MMM_FORECAST_DEFAULT_TREND_DAMPING,
+  MMM_FORECAST_MEDIA_PENALTY_STRENGTHS,
+  mmmForecastScaledMediaPenalty,
+  mmmForecastDeclaredFitContract,
+  mmmForecastNaiveBaselines,
+  mmmForecastBlendPredictions,
+  mmmForecastApplySelectedBlend,
   mmmForecastNestedSelection,
   mmmForecastCombineNestedParts,
   mmmForecastSelectNestedRoute,
@@ -72,6 +82,754 @@ describe("runMmmMethTests (golden port)", () => {
     expect(binomial[2]).toBeGreaterThan(0);
   });
 
+  it("fits the declared non-seasonal forecast structure without annual RBF reselection", () => {
+    const n = 72;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const cost = week.map((value) => 600 + (value % 9) * 70);
+    const contract = mmmForecastDeclaredFitContract({
+      ...MMM_METH_CONFIG,
+      trendDirectionFirst: true,
+      seasonalityPeriods: [],
+      seasonalityBasis: { type: "cyclic-rbf", knots: 8 },
+      baselineKnots: [],
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+    }, { skipTransformUncertainty: true });
+    const run = mmmBayesianRun({
+      week,
+      ch: { cost },
+      channels: [{ key: "cost", label: "Cost", kind: "perf" }],
+      targets: { Regs: week.map((value, index) => 1200 + value * 4 + cost[index] * 0.7) },
+      dummy: {},
+      steps: {},
+    }, contract.cfg, "Regs", false, contract.options);
+    expect(contract.cfg.trendDirectionFirst).toBe(false);
+    expect(contract.cfg.seasonalityBasis).toBe(null);
+    expect(contract.options.enableJointStructureSelection).toBe(false);
+    expect(contract.options.enableSeasonalitySelection).toBe(false);
+    expect(contract.options.enableBaselineSelection).toBe(false);
+    expect(contract.trendDamping).toBe(MMM_FORECAST_DEFAULT_TREND_DAMPING);
+    expect(contract.trendDamping).toBe(0.25);
+    expect(run).not.toBe(null);
+    expect(run.names.some((name) => name.startsWith("season_rbf_") || /^(sin|cos)_/.test(name))).toBe(false);
+  });
+
+  it("keeps recent rolling origins and scores stable when an old calendar-consistent prefix is added", () => {
+    const makePanel = (start, end) => {
+      const week = Array.from({ length: end - start + 1 }, (_, index) => start + index);
+      const cost = week.map((value) => 700 + (value % 9) * 90);
+      return {
+        week,
+        ch: { cost },
+        channels: [{ key: "cost", label: "Cost", kind: "perf" }],
+        targets: { Regs: week.map((value, index) => 2400 + value * 6 + cost[index] * 0.8) },
+        dummy: {},
+        steps: {},
+      };
+    };
+    const cfg = {
+      ...MMM_METH_CONFIG,
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.5],
+      bayesHillSlopeGrid: [1],
+    };
+    const options = {
+      maxSelectionFolds: 6,
+      candidateWindows: [26, 52, 78, 104],
+    };
+    // Both panels already support the same 26/52/78/104-week candidate set.
+    // The second only adds rows older than every declared lookback.
+    const recentOnly = mmmForecastRollingSelection(makePanel(41, 220), cfg, "Regs", options);
+    const withPrefix = mmmForecastRollingSelection(makePanel(1, 220), cfg, "Regs", options);
+    expect(recentOnly.relativeOriginOffsets).toEqual(withPrefix.relativeOriginOffsets);
+    expect(recentOnly.relativeOriginOffsets).toEqual([60, 48, 36, 24, 12, 0]);
+    recentOnly.relativeOriginOffsets.slice(1).forEach((offset, index) => {
+      expect(recentOnly.relativeOriginOffsets[index] - offset).toBeGreaterThanOrEqual(recentOnly.horizon);
+    });
+    expect(recentOnly.selected.candidateId).toBe(withPrefix.selected.candidateId);
+    expect(recentOnly.selected.wmape).toBeCloseTo(withPrefix.selected.wmape, 8);
+    expect(recentOnly.selected.latestWmape).toBeCloseTo(withPrefix.selected.latestWmape, 8);
+    expect(recentOnly.selected.foldSeries).toEqual(withPrefix.selected.foldSeries);
+  });
+
+  it("space-fills capped forecast candidates across every structural axis deterministically", () => {
+    const n = 180;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const cost = week.map((value) => 800 + (value % 11) * 60);
+    const target = week.map((value, index) =>
+      3000 + value * 3 + 180 * Math.sin((2 * Math.PI * value) / 52.18) + cost[index] * 0.5,
+    );
+    const panel = {
+      week,
+      ch: { cost },
+      channels: [{ key: "cost", label: "Cost", kind: "perf" }],
+      targets: { Regs: target },
+      dummy: { launch: week.map((value) => Number(value >= 90 && value < 96)) },
+      steps: {},
+    };
+    const cfg = {
+      ...MMM_METH_CONFIG,
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+    };
+    const options = {
+      candidateWindows: [26, 52, 78, 104, 104],
+      trendOptions: [
+        { trendScope: "none" },
+        { trendScope: "recent" },
+        { trendScope: "global", trendWindow: 24 },
+        { trendScope: "global", trendWindow: 36 },
+        { trendScope: "global", trendWindow: "all" },
+        { trendScope: "global", trendWindow: "all" },
+      ],
+      mediaPenaltyStrengths: [0, 0.01, 0.05, 0.2, 0.2],
+      maxSelectionFolds: 8,
+    };
+    const run = (cap) => mmmForecastRollingSelection(panel, cfg, "Regs", {
+      ...options,
+      maxCandidateConfigurations: cap,
+    });
+    const full = run(40);
+    const tiny = run(5);
+    const tinyAgain = run(5);
+    const expectedFamilies = [
+      "cost-trend",
+      "cost-trend-quarter",
+      "cost-trend-global-quarter",
+      "cost-trend-year-quarter",
+      "cost-trend-global-year-quarter",
+    ];
+    expect(full.candidateConfigurationCounts.cap).toBe(40);
+    expect(full.evaluatedCandidateConfigurations).toBe(40);
+    expect(Object.keys(full.candidateConfigurationCounts.plannedByWindow)).toEqual(["26", "52", "78", "104", "expanding"]);
+    expect(Object.keys(full.candidateConfigurationCounts.plannedByTrend)).toEqual([
+      "global:24",
+      "global:36",
+      "global:all",
+      "none",
+      "recent",
+    ]);
+    expect(Object.keys(full.candidateConfigurationCounts.plannedByControl)).toEqual(["mapped", "none"]);
+    expect(Object.keys(full.candidateConfigurationCounts.plannedByTransform)).toEqual([
+      "auto",
+      "hill",
+      "identity",
+      "log1p",
+    ]);
+    expect(Object.keys(full.candidateConfigurationCounts.plannedByPenalty)).toEqual(["0", "0.01", "0.05", "0.2"]);
+    expect(Object.keys(full.candidateConfigurationCounts.plannedByDamping)).toEqual(["0", "0.25", "0.5", "0.75"]);
+    expect([...new Set(full.candidates.map((candidate) =>
+      candidate.windowMode === "expanding" ? "expanding" : String(candidate.window),
+    ))].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })))
+      .toEqual(["26", "52", "78", "104", "expanding"]);
+    expect([...new Set(full.candidates.map((candidate) =>
+      candidate.trendScope === "global" ? `global:${candidate.trendWindow}` : candidate.trendScope,
+    ))].sort()).toEqual(["global:24", "global:36", "global:all", "none", "recent"]);
+    expect([...new Set(full.candidates.map((candidate) => candidate.controlPolicy))].sort())
+      .toEqual(["mapped", "none"]);
+    expect([...new Set(full.candidates.map((candidate) => candidate.transformPolicy))].sort())
+      .toEqual(["auto", "hill", "identity", "log1p"]);
+    expect([...new Set(full.candidates.map((candidate) => candidate.mediaPenaltyStrength))].sort((a, b) => a - b))
+      .toEqual([0, 0.01, 0.05, 0.2]);
+    expect([...new Set(full.candidates.map((candidate) => candidate.trendDamping))].sort((a, b) => a - b))
+      .toEqual([0, 0.25, 0.5, 0.75]);
+    expect([...new Set(full.candidates.map((candidate) => candidate.spec))].sort())
+      .toEqual(expectedFamilies.slice().sort());
+    expect(new Set(full.candidates.map((candidate) => candidate.candidateId)).size)
+      .toBe(full.candidates.length);
+    expectedFamilies.forEach((spec) => {
+      expect(full.candidateConfigurationCounts.plannedBySpec[spec]).toBeGreaterThan(0);
+      expect(tiny.candidateConfigurationCounts.plannedBySpec[spec]).toBe(1);
+    });
+    expect(tiny.evaluatedCandidateConfigurations).toBe(5);
+    expect(Object.keys(tiny.candidateConfigurationCounts.plannedByWindow).length).toBeGreaterThanOrEqual(3);
+    expect(Object.keys(tiny.candidateConfigurationCounts.plannedByTrend).length).toBeGreaterThanOrEqual(3);
+    expect(full.candidateSearchAudit).toMatchObject({
+      complete: true,
+      planned: 40,
+      evaluated: 40,
+      missingAxes: {},
+    });
+    expect(JSON.stringify(tiny)).toBe(JSON.stringify(tinyAgain));
+  });
+
+  it("scales the browser candidate budget by feature complexity and gates incomplete coverage", () => {
+    expect([
+      mmmForecastCandidateCap(0),
+      mmmForecastCandidateCap(8),
+      mmmForecastCandidateCap(9),
+      mmmForecastCandidateCap(16),
+      mmmForecastCandidateCap(17),
+      mmmForecastCandidateCap(32),
+      mmmForecastCandidateCap(33),
+      mmmForecastCandidateCap(100),
+    ]).toEqual([40, 40, 24, 24, 16, 16, 8, 8]);
+    expect([
+      mmmForecastBackgroundCandidateCap(0),
+      mmmForecastBackgroundCandidateCap(16),
+      mmmForecastBackgroundCandidateCap(17),
+      mmmForecastBackgroundCandidateCap(32),
+      mmmForecastBackgroundCandidateCap(33),
+      mmmForecastBackgroundCandidateCap(100),
+    ]).toEqual([40, 40, 24, 24, 16, 16]);
+    const audit = mmmForecastCandidateSearchAudit({
+      planned: 8,
+      attempted: 24,
+      evaluated: 6,
+      plannedAxes: {
+        spec: { level: 4, annual: 4 },
+        transform: { identity: 4, hill: 4 },
+      },
+      fittedAxes: {
+        spec: { level: 6 },
+        transform: { identity: 6 },
+      },
+    });
+    expect(audit).toEqual({
+      complete: false,
+      reasons: ["candidate-search-incomplete", "candidate-diversity-incomplete"],
+      planned: 8,
+      attempted: 24,
+      evaluated: 6,
+      fitSuccessRate: 0.25,
+      missingAxes: { spec: ["annual"], transform: ["hill"] },
+    });
+    expect(mmmForecastScenarioEligibility([{
+      selection: { decisionEligible: false, decisionReasons: audit.reasons },
+      run: { identification: {} },
+    }])).toEqual({
+      eligible: false,
+      reasons: ["candidate-search-incomplete", "candidate-diversity-incomplete"],
+    });
+  });
+
+  it("uses the same 104-week naive reference for 26- and 104-week candidates at a shared origin", () => {
+    const n = 180;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const cost = week.map((value) => 900 + (value % 13) * 70);
+    const panel = {
+      week,
+      ch: { cost },
+      channels: [{ key: "cost", label: "Cost", kind: "perf" }],
+      targets: {
+        Regs: week.map((value, index) =>
+          2600 + value * 4 + 120 * Math.sin((2 * Math.PI * value) / 52.18) + cost[index] * 0.7,
+        ),
+      },
+      dummy: {},
+      steps: {},
+    };
+    const cfg = {
+      ...MMM_METH_CONFIG,
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+    };
+    const selectWindow = (window) => mmmForecastRollingSelection(panel, cfg, "Regs", {
+      candidateWindows: [window],
+      specIds: ["cost-trend"],
+      trendOptions: [{ trendScope: "recent" }],
+      mediaPenaltyStrengths: [0],
+      maxCandidateConfigurations: 1,
+      maxSelectionFolds: 8,
+      baselineHistoryWeeks: 104,
+    });
+    const short = selectWindow(26);
+    const long = selectWindow(104);
+    const sharedOffsets = short.selected.foldSeries
+      .map((fold) => fold.offset)
+      .filter((offset) => long.selected.foldSeries.some((fold) => fold.offset === offset));
+    expect(sharedOffsets.length).toBeGreaterThan(0);
+    sharedOffsets.forEach((offset) => {
+      const shortFold = short.selected.foldSeries.find((fold) => fold.offset === offset);
+      const longFold = long.selected.foldSeries.find((fold) => fold.offset === offset);
+      expect(shortFold.actual).toEqual(longFold.actual);
+      expect(shortFold.baselines).toEqual(longFold.baselines);
+      expect(shortFold.persistence).toEqual(longFold.persistence);
+    });
+  });
+
+  it("searches standardized media penalties within the same declared fold contract", () => {
+    expect(MMM_FORECAST_MEDIA_PENALTY_STRENGTHS).toEqual([0, 0.01, 0.05, 0.2]);
+    expect(mmmForecastScaledMediaPenalty(0.05, 52)).toBeCloseTo(2.6, 12);
+    expect(mmmForecastScaledMediaPenalty(0.05, 104)).toBeCloseTo(5.2, 12);
+    const n = 120;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const cost = week.map((value) => 700 + (value % 11) * 75);
+    const selection = mmmForecastRollingSelection({
+      week,
+      ch: { cost },
+      channels: [{ key: "cost", label: "Cost", kind: "perf" }],
+      targets: { Regs: week.map((value, index) => 3200 + value * 2 + cost[index] * 0.6) },
+      dummy: {},
+      steps: {},
+    }, {
+      ...MMM_METH_CONFIG,
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+    }, "Regs", {
+      horizon: 4,
+      candidateWindows: [52],
+      specIds: ["cost-trend"],
+      trendOptions: [{ trendScope: "recent" }],
+      mediaPenaltyStrengths: [0, 0.05],
+      maxCandidateConfigurations: 2,
+      maxSelectionFolds: 8,
+    });
+    expect(selection.candidateConfigurationCounts.plannedByPenalty).toEqual({ "0": 1, "0.05": 1 });
+    expect(selection.candidates.map((candidate) => candidate.mediaPenaltyStrength).sort()).toEqual([0, 0.05]);
+    selection.candidates.forEach((candidate) => {
+      expect(candidate.mediaPenalty).toBeCloseTo(
+        mmmForecastScaledMediaPenalty(candidate.mediaPenaltyStrength, candidate.window),
+        12,
+      );
+      expect(candidate.candidateId).toContain(`ridge-${candidate.mediaPenaltyStrength}`);
+    });
+    expect(selection.fitContract.mediaPenaltyScale).toBe("standardized-per-row");
+    expect(selection.fitContract.foldLocalAbsorption).toBe(true);
+    expect(selection.selected.mediaPenalty).toBeCloseTo(
+      mmmForecastScaledMediaPenalty(selection.selected.mediaPenaltyStrength, selection.selected.window),
+      12,
+    );
+  });
+
+  it("selects regression-naive blends on prior folds and never on the sealed fold", () => {
+    const makeFold = (offset, actual, regression, baseline) => ({
+      offset,
+      actual: [actual],
+      predicted: [regression],
+      conditionalPredicted: [regression],
+      persistence: [baseline],
+      baselines: {
+        "recent-mean-8": [baseline],
+        "damped-local-trend-13": [baseline + 2],
+      },
+    });
+    const candidate = {
+      candidateId: "generic-regression",
+      window: 52,
+      spec: "cost-trend",
+      controlPolicy: "mapped",
+      trendScope: "recent",
+      trendWindow: null,
+      foldSeries: [
+        makeFold(60, 100, 130, 70),
+        makeFold(48, 100, 130, 70),
+        makeFold(36, 100, 130, 70),
+        makeFold(24, 100, 130, 70),
+        makeFold(12, 100, 130, 70),
+        makeFold(0, 100, 110, 90),
+      ],
+    };
+    const nested = mmmForecastNestedSelection([candidate], {
+      horizon: 12,
+      minPriorFolds: 3,
+      blendWeights: [0, 0.25, 0.5, 0.75, 1],
+    });
+    expect(nested.latest.regressionWeight).toBe(0.5);
+    expect(nested.latest.blendBaselineId).toBe("recent-mean-8");
+    expect(nested.latest.priorWmape).toBeCloseTo(0, 12);
+    expect(nested.latest.wmape).toBeCloseTo(0, 12);
+    expect(nested.latest.beatsBestBaseline).toBe(true);
+    expect(mmmForecastBlendPredictions([110], [90], 0.5)).toEqual([100]);
+    const applied = mmmForecastApplySelectedBlend({
+      predFut: [110],
+      lo: [100],
+      hi: [120],
+      baselineFut: [80],
+      mediaContributionFut: [30],
+      futWeek: [21],
+    }, {
+      week: Array.from({ length: 20 }, (_, index) => index + 1),
+      targets: { Regs: Array(20).fill(90) },
+    }, "Regs", {
+      selectedBlend: { baselineId: "recent-mean-8", regressionWeight: 0.5 },
+    });
+    expect(applied.predFut).toEqual([100]);
+    expect(applied.lo).toEqual([90]);
+    expect(applied.hi).toEqual([110]);
+    expect(applied.baselineFut).toEqual([85]);
+    expect(applied.mediaContributionFut).toEqual([15]);
+    expect(applied.blendApplied).toBe(true);
+
+    const changedSealed = {
+      ...candidate,
+      foldSeries: candidate.foldSeries.map((fold) =>
+        fold.offset === 0 ? makeFold(0, 1000, 5, 900) : fold,
+      ),
+    };
+    const changed = mmmForecastNestedSelection([changedSealed], {
+      horizon: 12,
+      minPriorFolds: 3,
+      blendWeights: [0, 0.25, 0.5, 0.75, 1],
+    });
+    expect(changed.latest.candidateId).toBe(nested.latest.candidateId);
+    expect(changed.latest.regressionWeight).toBe(nested.latest.regressionWeight);
+    expect(changed.latest.blendBaselineId).toBe(nested.latest.blendBaselineId);
+    expect(changed.latest.priorWmape).toBeCloseTo(nested.latest.priorWmape, 12);
+    expect(changed.latest.wmape).not.toBeCloseTo(nested.latest.wmape, 4);
+  });
+
+  it("offers annual seasonal-naive only after two observed cycles", () => {
+    const makePanel = (n) => {
+      const week = Array.from({ length: n }, (_, index) => index + 1);
+      return {
+        week,
+        targets: { Regs: week.map((value) => 2000 + 300 * Math.sin((2 * Math.PI * value) / 52.18)) },
+      };
+    };
+    const future = [105, 106, 107, 108];
+    expect(mmmForecastNaiveBaselines(makePanel(103), "Regs", future)["seasonal-naive-52"]).toBeUndefined();
+    const mature = mmmForecastNaiveBaselines(makePanel(104), "Regs", future);
+    expect(mature["seasonal-naive-52"]).toHaveLength(4);
+    expect(mature["seasonal-naive-52"].every(Number.isFinite)).toBe(true);
+  });
+
+  it("compares several cheap generic level and damped-trend references", () => {
+    const week = Array.from({ length: 60 }, (_, index) => index + 1);
+    const baselines = mmmForecastNaiveBaselines({
+      week,
+      targets: { Regs: week.map((value) => 1000 + value * 8) },
+    }, "Regs", [61, 62, 63]);
+    expect(Object.keys(baselines)).toEqual(expect.arrayContaining([
+      "last-value",
+      "recent-mean-4",
+      "recent-mean-8",
+      "recent-mean-13",
+      "recent-mean-26",
+      "damped-local-trend-8",
+      "damped-local-trend-13",
+      "damped-local-trend-26",
+      "damped-local-trend-13-phi-0.5",
+      "damped-local-trend-13-phi-0.95",
+    ]));
+    expect(Object.values(baselines).every((values) =>
+      values.length === 3 && values.every(Number.isFinite),
+    )).toBe(true);
+  });
+
+  it("rebuilds the exact custom naive baseline selected by nested OOS", () => {
+    const applied = mmmForecastApplySelectedBlend({
+      predFut: [90, 95],
+      lo: [80, 85],
+      hi: [100, 105],
+      baselineFut: [70, 70],
+      mediaContributionFut: [20, 25],
+      futWeek: [7, 8],
+    }, {
+      week: [1, 2, 3, 4, 5, 6],
+      targets: { Regs: [10, 20, 30, 40, 50, 60] },
+    }, "Regs", {
+      selectedBlend: { baselineId: "recent-mean-3", regressionWeight: 0 },
+      naiveBaselineOptions: { recentMeanWeeks: 3 },
+      blendMargins: [],
+    });
+    expect(applied.blendApplied).toBe(true);
+    expect(applied.blendWarning).toBeUndefined();
+    expect(applied.predFut).toEqual([50, 50]);
+  });
+
+  it("calibrates nested horizon margins only after eight outer OOS folds", () => {
+    const makeCandidate = (offsets) => ({
+      candidateId: "stable",
+      window: 26,
+      spec: "cost-trend",
+      controlPolicy: "none",
+      trendScope: "none",
+      trendWindow: null,
+      foldSeries: offsets.map((offset) => ({
+        offset,
+        actual: [100, 100],
+        predicted: [98, 102],
+        conditionalPredicted: [98, 102],
+        baselines: { "last-value": [80, 80] },
+      })),
+    });
+    const tooFew = mmmForecastNestedSelection(
+      [makeCandidate([60, 48, 36, 24, 12, 0])],
+      { horizon: 12, minPriorFolds: 3, blendWeights: [1] },
+    );
+    expect(tooFew.developmentFolds).toHaveLength(2);
+    expect(tooFew.intervalCalibrationEligible).toBe(false);
+    expect(tooFew.intervalCalibrationFoldCount).toBe(0);
+    expect(tooFew.developmentMargins).toEqual([]);
+
+    const enough = mmmForecastNestedSelection(
+      [makeCandidate([132, 120, 108, 96, 84, 72, 60, 48, 36, 24, 12, 0])],
+      { horizon: 12, minPriorFolds: 3, blendWeights: [1] },
+    );
+    expect(enough.developmentFolds).toHaveLength(8);
+    expect(enough.intervalCalibrationEligible).toBe(true);
+    expect(enough.intervalCalibrationFoldCount).toBe(8);
+    expect(enough.developmentMargins).toEqual([2, 2]);
+  });
+
+  it("keeps more history when a short window is only practically tied, but accepts a material short-window win", () => {
+    const offsets = [48, 36, 24, 12, 0];
+    const makeCandidate = (candidateId, window, error) => ({
+      candidateId,
+      window,
+      windowMode: "fixed",
+      spec: "cost-trend",
+      controlPolicy: "none",
+      trendScope: "none",
+      trendWindow: null,
+      foldSeries: offsets.map((offset) => ({
+        offset,
+        actual: [100],
+        predicted: [100 - error],
+        conditionalPredicted: [100 - error],
+        baselines: { "last-value": [80] },
+      })),
+    });
+    const nearTie = mmmForecastNestedSelection([
+      makeCandidate("short", 26, 1),
+      makeCandidate("long", 104, 1.05),
+    ], { horizon: 12, minPriorFolds: 3, blendWeights: [1] });
+    expect(nearTie.latest.candidateId).toBe("long");
+    expect(nearTie.latest.dataPreservation).toEqual(expect.objectContaining({
+      applied: true,
+      rawBestCandidateId: "short",
+      selectedCandidateId: "long",
+    }));
+
+    const materialWin = mmmForecastNestedSelection([
+      makeCandidate("short", 26, 0.5),
+      makeCandidate("long", 104, 1.2),
+    ], { horizon: 12, minPriorFolds: 3, blendWeights: [1] });
+    expect(materialWin.latest.candidateId).toBe("short");
+    expect(materialWin.latest.dataPreservation.applied).toBe(false);
+
+    const crossFamilyTie = mmmForecastNestedSelection([
+      makeCandidate("short-quarter", 26, 1),
+      {
+        ...makeCandidate("long-year", 104, 1.05),
+        spec: "cost-trend-year-quarter",
+        trendScope: "global",
+        trendWindow: 36,
+      },
+    ], { horizon: 12, minPriorFolds: 3, blendWeights: [1] });
+    expect(crossFamilyTie.latest.candidateId).toBe("long-year");
+
+    const fallbackShort = {
+      ...makeCandidate("fallback-short", 26, 10),
+      structuralFallback: true,
+    };
+    const fallbackLong = {
+      ...makeCandidate("fallback-long", 104, 100),
+      structuralFallback: true,
+    };
+    const fallback = mmmForecastNestedSelection(
+      [fallbackShort, fallbackLong],
+      { horizon: 12, minPriorFolds: 3, blendWeights: [1] },
+    );
+    expect(fallback.latest.candidateId).toBe("fallback-short");
+  });
+
+  it("keeps hyperparameter selection unchanged when only the sealed latest outcomes change", () => {
+    const n = 150;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const cost = week.map((value) => 900 + (value % 13) * 55);
+    const baseTarget = week.map((value, index) => 4000 + value * 2 + cost[index] * 0.55);
+    const makeSelection = (target, absorbed = new Set()) => mmmForecastRollingSelection({
+      week,
+      ch: { cost },
+      channels: [{ key: "cost", label: "Cost", kind: "perf" }],
+      targets: { Regs: target },
+      dummy: {},
+      steps: {},
+    }, {
+      ...MMM_METH_CONFIG,
+      absorbed,
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+    }, "Regs", {
+      candidateWindows: [52, 78],
+      specIds: ["cost-trend"],
+      trendOptions: [{ trendScope: "recent" }],
+      mediaPenaltyStrengths: [0, 0.05],
+      maxCandidateConfigurations: 4,
+      maxSelectionFolds: 8,
+    });
+    const first = makeSelection(baseTarget);
+    const changed = makeSelection(baseTarget.map((value, index) =>
+      index >= n - 12 ? value * (index % 2 ? 0.2 : 2.5) : value,
+    ));
+    expect(first.selected.candidateId).toBe(changed.selected.candidateId);
+    expect(first.selected.mediaPenaltyStrength).toBe(changed.selected.mediaPenaltyStrength);
+    expect(first.selected.selectedBlend).toEqual(changed.selected.selectedBlend);
+    expect(first.selected.wmape).toBeCloseTo(changed.selected.wmape, 10);
+    expect(first.productionSelected.candidateId).toBe(changed.productionSelected.candidateId);
+    expect(first.productionSelected.mediaPenaltyStrength).toBe(changed.productionSelected.mediaPenaltyStrength);
+    expect(first.productionSelected.selectedBlend).toEqual(changed.productionSelected.selectedBlend);
+    expect(first.productionSelected.wmape).toBeCloseTo(changed.productionSelected.wmape, 10);
+    expect(first.selected.latestWmape).not.toBeCloseTo(changed.selected.latestWmape, 2);
+    const futureDerivedAbsorption = makeSelection(baseTarget, new Set(["cost"]));
+    expect(futureDerivedAbsorption.selected.candidateId).toBe(first.selected.candidateId);
+    expect(futureDerivedAbsorption.selected.wmape).toBeCloseTo(first.selected.wmape, 10);
+  });
+
+  it("uses the exact integer horizon and refuses overlapping rolling origins", () => {
+    const n = 134;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const cost = week.map((value) => 600 + (value % 9) * 75);
+    const selection = mmmForecastRollingSelection({
+      week,
+      ch: { cost },
+      channels: [{ key: "cost", label: "Cost", kind: "perf" }],
+      targets: { Regs: week.map((value, index) => 2500 + value * 2 + cost[index] * 0.7) },
+      dummy: {},
+      steps: {},
+    }, {
+      ...MMM_METH_CONFIG,
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+    }, "Regs", {
+      horizon: 12.7,
+      foldStep: 1,
+      relativeOriginStride: 1,
+      candidateWindows: [26],
+      specIds: ["cost-trend"],
+      trendOptions: [{ trendScope: "none" }],
+      transformPolicies: [{ id: "identity", families: ["identity"] }],
+      mediaPenaltyStrengths: [0],
+      trendDampingStrengths: [0],
+      includeExpandingWindow: false,
+      maxCandidateConfigurations: 1,
+      maxSelectionFolds: 8,
+    });
+    expect(selection.horizon).toBe(13);
+    expect(selection.foldStep).toBe(13);
+    expect(selection.relativeOriginStride).toBe(13);
+    selection.relativeOriginOffsets.slice(1).forEach((offset, index) => {
+      expect(selection.relativeOriginOffsets[index] - offset).toBeGreaterThanOrEqual(13);
+    });
+    expect(selection.selected.foldSeries.every((fold) =>
+      fold.actual.length === 13 && fold.predicted.length === 13,
+    )).toBe(true);
+  });
+
+  it("normalizes the final Bayesian forecast to the same integer horizon contract", () => {
+    const week = Array.from({ length: 52 }, (_, index) => index + 1);
+    const cost = week.map((value) => 500 + (value % 7) * 80);
+    const panel = {
+      week,
+      ch: { cost },
+      channels: [{ key: "cost", label: "Cost", kind: "perf" }],
+      targets: { Regs: cost.map((value, index) => 1500 + value * 0.6 + index * 2) },
+      dummy: {},
+      steps: {},
+    };
+    const cfg = {
+      ...MMM_METH_CONFIG,
+      absorbed: new Set(),
+      adstockGrid: [0],
+      mediaTransformFamilies: ["identity"],
+      bayesHalfSaturationQuantiles: [0.5],
+      bayesHillSlopeGrid: [1],
+      seasonalityPeriods: [],
+      seasonalityBasis: null,
+      includeTrend: true,
+    };
+    const contract = mmmForecastDeclaredFitContract(cfg, { skipTransformUncertainty: true });
+    const run = mmmBayesianRun(panel, contract.cfg, "Regs", false, contract.options);
+    const rounded = mmmBayesianForecast(run, panel, null, 12.2);
+    expect(rounded.horizon).toBe(12);
+    expect(rounded.predFut).toHaveLength(12);
+    expect(rounded.futWeek).toHaveLength(12);
+    expect(rounded.futLabels).toHaveLength(12);
+    const minimum = mmmBayesianForecast(run, panel, null, 0);
+    expect(minimum.horizon).toBe(1);
+    expect(minimum.predFut).toHaveLength(1);
+  });
+
+  it("lets a fixed log-response family beat linear and Hill alternatives on log-generated data", () => {
+    const n = 160;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const levels = [0, 3, 15, 80, 400, 2000, 10000];
+    const cost = week.map((_, index) => levels[(index * 5 + index % 3) % levels.length]);
+    const selection = mmmForecastRollingSelection({
+      week,
+      ch: { cost },
+      channels: [{ key: "cost", label: "Cost", kind: "perf" }],
+      targets: { Regs: cost.map((value, index) => 1500 + 500 * Math.log1p(value) + (index % 2) * 0.01) },
+      dummy: {},
+      steps: {},
+    }, {
+      ...MMM_METH_CONFIG,
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.5],
+      bayesHillSlopeGrid: [1],
+    }, "Regs", {
+      horizon: 4,
+      candidateWindows: [52],
+      specIds: ["cost-trend"],
+      trendOptions: [{ trendScope: "none" }],
+      transformPolicies: [
+        { id: "identity", families: ["identity"] },
+        { id: "log1p", families: ["log1p"] },
+        { id: "hill", families: ["hill"] },
+      ],
+      mediaPenaltyStrengths: [0],
+      trendDampingStrengths: [0],
+      includeExpandingWindow: false,
+      maxCandidateConfigurations: 3,
+      maxSelectionFolds: 8,
+    });
+    const byPolicy = Object.fromEntries(selection.candidates.map((candidate) => [
+      candidate.transformPolicy,
+      candidate,
+    ]));
+    expect(Object.keys(byPolicy).sort()).toEqual(["hill", "identity", "log1p"]);
+    expect(byPolicy.log1p.wmape).toBeLessThan(byPolicy.identity.wmape);
+    expect(byPolicy.log1p.wmape).toBeLessThan(byPolicy.hill.wmape);
+    expect(selection.productionSelected.transformPolicy).toBe("log1p");
+    expect(selection.productionSelected.mediaTransformFamilies).toEqual(["log1p"]);
+  });
+
+  it("does not use held-out future dummy values to choose the deployed estimator", () => {
+    const n = 120;
+    const horizon = 4;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const cost = week.map((value) => 500 + (value % 10) * 60);
+    const target = week.map((value, index) => 1800 + value * 2 + cost[index] * 0.65);
+    const select = (promo) => mmmForecastRollingSelection({
+      week,
+      ch: { cost },
+      channels: [{ key: "cost", label: "Cost", kind: "perf" }],
+      targets: { Regs: target },
+      dummy: { promo },
+      steps: {},
+    }, {
+      ...MMM_METH_CONFIG,
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.5],
+      bayesHillSlopeGrid: [1],
+    }, "Regs", {
+      horizon,
+      candidateWindows: [26],
+      specIds: ["cost-trend"],
+      trendOptions: [{ trendScope: "none" }],
+      transformPolicies: [{ id: "identity", families: ["identity"] }],
+      mediaPenaltyStrengths: [0],
+      trendDampingStrengths: [0],
+      includeExpandingWindow: false,
+      maxCandidateConfigurations: 2,
+      maxSelectionFolds: 8,
+    });
+    const base = select(Array(n).fill(0));
+    const changedFuture = select(Array.from({ length: n }, (_, index) => Number(index >= n - horizon)));
+    expect(changedFuture.productionSelected.candidateId).toBe(base.productionSelected.candidateId);
+    expect(changedFuture.productionSelected.selectedBlend).toEqual(base.productionSelected.selectedBlend);
+    expect(changedFuture.productionSelected.wmape).toBeCloseTo(base.productionSelected.wmape, 12);
+    expect(changedFuture.nested.developmentFolds).toEqual(base.nested.developmentFolds);
+  });
+
   it("selects recent Cost window by rolling holdout and excludes annual seasonality before two cycles", () => {
     const n = 75;
     const week = Array.from({ length: n }, (_, index) => index + 1);
@@ -91,15 +849,33 @@ describe("runMmmMethTests (golden port)", () => {
       steps: {},
     }, "Regs");
     expect(selection.enabled).toBe(true);
-    expect(selection.selected.folds).toBeGreaterThan(3);
-    expect(selection.foldStep).toBe(4);
-    // 긴 이력에서도 모든 4주 origin을 다시 적합하지 않는다. 최신 봉인 구간을
-    // 포함한 균등 표본만 사용해 브라우저 회귀 실행이 탭을 멈추지 않게 한다.
+    expect(selection.selected.folds).toBe(selection.decisionMinFolds);
+    expect(selection.foldStep).toBe(selection.horizon);
+    // 긴 이력에서도 중첩된 origin을 다시 적합하지 않는다. 최신 기준의
+    // 상대 origin만 사용해 앞에 과거 행을 붙여도 검증 날짜가 움직이지 않는다.
     expect(selection.availableHoldoutOrigins).toBeGreaterThan(selection.evaluatedHoldoutOrigins);
-    expect(selection.evaluatedHoldoutOrigins).toBeLessThanOrEqual(6);
+    expect(selection.evaluatedHoldoutOrigins).toBeLessThanOrEqual(8);
     expect(selection.evaluatedCandidateConfigurations).toBeLessThanOrEqual(40);
     expect(selection.decisionMinFolds).toBe(3);
-    expect(selection.selected.wmape).toBeLessThanOrEqual(selection.selected.persistenceWmape);
+    expect(selection.transformGrid.adstock).toEqual(MMM_METH_CONFIG.adstockGrid);
+    expect(selection.transformGrid.halfSaturationQuantiles).toEqual(MMM_METH_CONFIG.bayesHalfSaturationQuantiles);
+    expect(selection.transformGrid.hillSlopes).toEqual(MMM_METH_CONFIG.bayesHillSlopeGrid);
+    expect(selection.transformGrid.perChannelUpperBound).toBe(
+      MMM_METH_CONFIG.adstockGrid.length
+        * (
+          2
+          + MMM_METH_CONFIG.bayesHalfSaturationQuantiles.length
+            * MMM_METH_CONFIG.bayesHillSlopeGrid.length
+        ),
+    );
+    expect(selection.transformGrid.families).toEqual(["identity", "log1p", "hill"]);
+    expect(selection.fitContract.trendDampingSelection).toBe("rolling-oos-candidate-axis");
+    expect(selection.fitContract.trendDampingStrengths).toEqual([0, 0.25, 0.5, 0.75]);
+    expect(selection.fitContract.adaptiveSeasonality).toBe(false);
+    expect(selection.nested.latest).not.toBe(null);
+    expect(selection.nested.latest.priorFolds).toBe(selection.decisionMinFolds);
+    expect(selection.selected.wmape).toBe(null);
+    expect(selection.selected.selectionScoreWmape).toBeLessThanOrEqual(selection.selected.persistenceWmape);
     expect(selection.candidates.some((item) => item.spec === "cost-trend-year-quarter")).toBe(false);
     expect(selection.candidates.every((item) => item.window <= 51)).toBe(true);
   });
@@ -122,7 +898,10 @@ describe("runMmmMethTests (golden port)", () => {
     expect(selection.candidates.length).toBeGreaterThan(0);
     expect(selection.selected.controlPolicy).toBe("mapped");
     expect(selection.productionSelected.controlPolicy).toBe("mapped");
-    expect(selection.candidates.some((candidate) => candidate.structuralFallback)).toBe(true);
+    expect(selection.candidateConfigurationCounts.plannedByControl).toEqual(expect.objectContaining({
+      mapped: expect.any(Number),
+      none: expect.any(Number),
+    }));
   });
 
   it("restores global trend offsets before scoring the persistence baseline", () => {
@@ -190,7 +969,7 @@ describe("runMmmMethTests (golden port)", () => {
         foldSeries: [48, 36, 24, 12, 0].map((offset) => fold(offset, 100, offset === 0 ? 100 : 150)),
       },
     ];
-    const nested = mmmForecastNestedSelection(candidates, { horizon: 12, minPriorFolds: 3 });
+    const nested = mmmForecastNestedSelection(candidates, { horizon: 12, minPriorFolds: 3, blendWeights: [1] });
     expect(nested.latest.candidateId).toBe("stable");
     expect(nested.latest.wmape).toBeCloseTo(20, 8);
     expect(nested.productionCandidateId).toBe("stable");
@@ -207,8 +986,29 @@ describe("runMmmMethTests (golden port)", () => {
     direct.latest = direct.folds.find((item) => item.offset === 0);
     const route = mmmForecastSelectNestedRoute([direct, os], { horizon: 12 });
     expect(route.auditRoute).toBe("android-ios-sum");
+    expect(route.productionRoute).toBe("android-ios-sum");
     expect(route.latestWmape).toBeCloseTo(5, 8);
     expect(route.certified).toBe(true);
+
+    const paidOrganic = mmmForecastCombineNestedParts(
+      ["android-organic", "android-paid", "ios-organic", "ios-paid"].map((component) => ({
+        ...nested,
+        component,
+        folds: nested.folds.map((item) => ({
+          ...item,
+          actual: [25],
+          predicted: [24],
+          baselinePredicted: [20],
+        })),
+      })),
+      { route: "paid-organic-bottom-up" },
+    );
+    const paidOrganicRoute = mmmForecastSelectNestedRoute([direct, paidOrganic], { horizon: 12 });
+    expect(paidOrganicRoute.auditRoute).toBe("paid-organic-bottom-up");
+    expect(paidOrganicRoute.productionRoute).toBe("paid-organic-bottom-up");
+    expect(paidOrganicRoute.osGuardrail).toHaveLength(4);
+    expect(paidOrganicRoute.osGuardrailPassed).toBe(true);
+    expect(paidOrganicRoute.certified).toBe(true);
   });
 
   it("withholds Total certification when either OS fails its own nested guardrail", () => {
@@ -234,6 +1034,40 @@ describe("runMmmMethTests (golden port)", () => {
     ]);
     expect(route.osGuardrailPassed).toBe(false);
     expect(route.certified).toBe(false);
+  });
+
+  it("scores OS-sum routes against the same Total actual as Direct Total", () => {
+    const makePart = (component) => ({
+      component,
+      horizon: 12,
+      folds: [36, 24, 12, 0].map((offset) => ({
+        offset,
+        actual: [100],
+        predicted: [100],
+        baselinePredicted: [90],
+      })),
+    });
+    const direct = {
+      route: "direct-total",
+      horizon: 12,
+      folds: [36, 24, 12, 0].map((offset) => ({
+        offset,
+        actual: [1000],
+        predicted: [950],
+        baselinePredicted: [800],
+      })),
+    };
+    direct.latest = direct.folds.find((fold) => fold.offset === 0);
+    const os = mmmForecastCombineNestedParts(
+      [makePart("android"), makePart("ios")],
+      { route: "android-ios-sum", actualRoute: direct },
+    );
+    expect(os.actualSource).toBe("direct-total");
+    expect(os.latest.actual).toEqual([1000]);
+    expect(os.latest.predicted).toEqual([200]);
+    const route = mmmForecastSelectNestedRoute([direct, os], { horizon: 12 });
+    expect(route.auditRoute).toBe("direct-total");
+    expect(route.productionRoute).toBe("direct-total");
   });
 
   it("fits full-history seasonality separately and restores it after recent Cost forecast", () => {
@@ -297,6 +1131,40 @@ describe("runMmmMethTests (golden port)", () => {
     expect(interval.calibrated).toBe(true);
     expect(interval.lo).toBeLessThanOrEqual(90);
     expect(interval.hi).toBeGreaterThanOrEqual(110);
+    const widenedOnly = mmmForecastApplySelectedBlend({
+      predFut: [100],
+      lo: [80],
+      hi: [120],
+      baselineFut: [90],
+      mediaContributionFut: [10],
+      futWeek: [10],
+    }, {
+      week: Array.from({ length: 9 }, (_, index) => index + 1),
+      targets: { Regs: Array(9).fill(100) },
+    }, "Regs", {
+      selectedBlend: { baselineId: "last-value", regressionWeight: 1 },
+      blendMargins: [2],
+    });
+    expect(widenedOnly.lo).toEqual([80]);
+    expect(widenedOnly.hi).toEqual([120]);
+    expect(widenedOnly.intervalCalibration).toBe("rolling-oos-p90-absolute-error");
+    const nonnegative = mmmForecastApplySelectedBlend({
+      predFut: [-100],
+      lo: [-120],
+      hi: [-80],
+      baselineFut: [0],
+      mediaContributionFut: [-100],
+      futWeek: [10],
+    }, {
+      week: Array.from({ length: 9 }, (_, index) => index + 1),
+      targets: { Regs: Array(9).fill(100) },
+    }, "Regs", {
+      selectedBlend: { baselineId: "last-value", regressionWeight: 1 },
+      blendMargins: [10],
+    });
+    expect(nonnegative.predFut).toEqual([0]);
+    expect(nonnegative.lo).toEqual([0]);
+    expect(nonnegative.hi).toEqual([10]);
   });
   it("builds one browser empirical-Bayes fit for contributions and response curves", () => {
     const n = 64;
@@ -335,6 +1203,57 @@ describe("runMmmMethTests (golden port)", () => {
     )))).toBeLessThan(1e-9);
     // 절편까지 합친 장기 추세는 감소해도 '음수 광고/기준선'이 아닌 자연수요 레벨이다.
     expect(run.weeks.every((w) => w.contrib.Trend > 0)).toBe(true);
+  });
+
+  it("keeps paid media nonnegative by default but supports an explicit signed Organic-halo fit", () => {
+    const n = 72;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const spend = week.map((value) => 500 + (value % 11) * 100);
+    const target = spend.map((value, index) => 6000 - value * 1.4 + index * 0.5);
+    const panel = {
+      week,
+      ch: { paid_spend: spend },
+      targets: { OrganicRegs: target },
+      channels: [{ key: "paid_spend", label: "Paid spend", kind: "perf" }],
+      dummy: {},
+      steps: {},
+      external: {},
+    };
+    const baseCfg = {
+      ...MMM_METH_CONFIG,
+      trendDirectionFirst: false,
+      includeTrend: true,
+      seasonalityPeriods: [],
+      seasonalityBasis: null,
+      baselineKnots: [],
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.5],
+      bayesHillSlopeGrid: [1],
+    };
+    const options = {
+      enableMediaPenaltySelection: false,
+      enableSeasonalitySelection: false,
+      enableBaselineSelection: false,
+      enableJointStructureSelection: false,
+      skipTransformUncertainty: true,
+    };
+    const nonnegative = mmmBayesianRun(panel, baseCfg, "OrganicRegs", false, options);
+    const signed = mmmBayesianRun(panel, { ...baseCfg, allowSignedMedia: true }, "OrganicRegs", false, options);
+    const mediaIndex = signed.names.indexOf("media_paid_spend");
+    expect(nonnegative.mediaCoefficientConstraint).toBe("nonnegative");
+    expect(nonnegative.absoluteBeta[mediaIndex]).toBeGreaterThanOrEqual(0);
+    expect(signed.mediaCoefficientConstraint).toBe("signed");
+    expect(signed.penaltyAudit.mediaCoefficientConstraint).toBe("signed");
+    expect(signed.absoluteBeta[mediaIndex]).toBeLessThan(0);
+    expect(signed.channelContributions.paid_spend.totalMean).toBeLessThan(0);
+    const low = mmmBayesianForecast(signed, panel, { paid_spend: Array(4).fill(500) }, 4, { clampScenario: false });
+    const high = mmmBayesianForecast(signed, panel, { paid_spend: Array(4).fill(1500) }, 4, { clampScenario: false });
+    expect(low.predFut.every(Number.isFinite)).toBe(true);
+    expect(high.predFut.every(Number.isFinite)).toBe(true);
+    expect(high.predFut.reduce((sum, value) => sum + value, 0)).toBeLessThan(
+      low.predFut.reduce((sum, value) => sum + value, 0),
+    );
+    expect(high.scenarioWarnings.some((warning) => warning.type === "negative-media-effect")).toBe(true);
   });
 
   it("runs deterministic HMC and returns posterior contribution intervals", () => {
@@ -422,6 +1341,152 @@ describe("runMmmMethTests (golden port)", () => {
     expect(run?.meridianSpec?.rfChannels).toEqual(["meta"]);
     expect(run?.meridianSpec?.spendChannels).toEqual([]);
     expect(Number.isFinite(run?.channelContributions?.meta?.totalMean)).toBe(true);
+    const identity = mmmBayesianRun({
+      week,
+      ch: { meta: spend },
+      reach: { metaReach: reach },
+      frequency: { metaFrequency: frequency },
+      mediaInputMap: { meta: { type: "reach-frequency", reachKey: "metaReach", frequencyKey: "metaFrequency" } },
+      targets: { Regs: target },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+      dummy: {}, steps: {}, external: {},
+    }, {
+      ...MMM_METH_CONFIG,
+      meridianMode: true,
+      seasonalityPeriods: [],
+      mediaTransformFamilies: ["identity", "log1p", "hill"],
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+    }, "Regs", false, {
+      enableMediaPenaltySelection: false,
+      enableSeasonalitySelection: false,
+      enableBaselineSelection: false,
+      skipTransformUncertainty: true,
+      channelParams: {
+        meta: { family: "identity", alpha: 0, ec: null, slope: null },
+      },
+    });
+    expect(identity?.params?.meta).toEqual(expect.objectContaining({
+      family: "identity",
+      fixedFromTarget: true,
+    }));
+    expect(identity?.weeks.every((row) => Number.isFinite(row.fitted))).toBe(true);
+  });
+
+  it("keeps Reach/Frequency aligned inside every rolling forecast fold", () => {
+    const n = 100;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const spend = week.map((value) => 500 + (value % 7) * 80);
+    const reach = week.map((value) => 1500 + (value % 11) * 90);
+    const frequency = week.map((value) => 1.2 + (value % 5) * 0.2);
+    const panel = {
+      week,
+      ch: { meta: spend },
+      reach: { metaReach: reach },
+      frequency: { metaFrequency: frequency },
+      mediaInputMap: {
+        meta: {
+          type: "reach-frequency",
+          reachKey: "metaReach",
+          frequencyKey: "metaFrequency",
+        },
+      },
+      targets: {
+        Regs: week.map((value, index) =>
+          1200 + reach[index] * frequency[index] * 0.35 + value),
+      },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+      dummy: {},
+      steps: {},
+      external: {},
+    };
+    const selection = mmmForecastRollingSelection(panel, {
+      ...MMM_METH_CONFIG,
+      seasonalityPeriods: [],
+      adstockGrid: [0],
+      bayesHalfSaturationQuantiles: [0.6],
+      bayesHillSlopeGrid: [1],
+    }, "Regs", {
+      horizon: 6,
+      candidateWindows: [52],
+      specIds: ["cost-trend"],
+      trendOptions: [{ trendScope: "none" }],
+      transformPolicies: [{ id: "identity", families: ["identity"] }],
+      mediaPenaltyStrengths: [0],
+      trendDampingStrengths: [0],
+      maxCandidateConfigurations: 1,
+      maxSelectionFolds: 5,
+    });
+    expect(selection.enabled).toBe(true);
+    expect(selection.selected?.transformPolicy).toBe("identity");
+    expect(selection.nested?.latest?.actual).toHaveLength(6);
+    expect(selection.nested?.latest?.predicted).toHaveLength(6);
+    expect(selection.nested.latest.predicted.every(Number.isFinite)).toBe(true);
+  });
+
+  it("uses supplied future Reach/Frequency under the default non-Meridian forecast config", () => {
+    const n = 64;
+    const week = Array.from({ length: n }, (_, index) => index + 1);
+    const spend = week.map((value) => 500 + (value % 7) * 25);
+    const reach = week.map((value) => 1000 + (value % 9) * 80);
+    const frequency = week.map((value) => 1.2 + (value % 4) * 0.25);
+    const panel = {
+      week,
+      ch: { meta: spend },
+      reach: { metaReach: reach },
+      frequency: { metaFrequency: frequency },
+      mediaInputMap: {
+        meta: {
+          type: "reach-frequency",
+          reachKey: "metaReach",
+          frequencyKey: "metaFrequency",
+        },
+      },
+      targets: {
+        Regs: week.map((value, index) =>
+          500 + reach[index] * frequency[index] * 0.4 + value),
+      },
+      channels: [{ key: "meta", label: "Meta", kind: "perf" }],
+      dummy: {},
+      steps: {},
+      external: {},
+    };
+    const run = mmmBayesianRun(panel, {
+      ...MMM_METH_CONFIG,
+      seasonalityPeriods: [],
+      includeTrend: false,
+      mediaTransformFamilies: ["identity"],
+      adstockGrid: [0],
+    }, "Regs", false, {
+      enableMediaPenaltySelection: false,
+      enableSeasonalitySelection: false,
+      enableBaselineSelection: false,
+      skipTransformUncertainty: true,
+      channelParams: {
+        meta: { family: "identity", alpha: 0, ec: null, slope: null },
+      },
+    });
+    expect(run?.meridianSpec).toMatchObject({
+      enabled: false,
+      rfChannels: ["meta"],
+    });
+    const common = {
+      futureFrequency: { meta: [2, 2] },
+      clampScenario: false,
+    };
+    const low = mmmBayesianForecast(run, panel, { meta: [600, 600] }, 2, {
+      ...common,
+      futureReach: { meta: [800, 800] },
+    });
+    const high = mmmBayesianForecast(run, panel, { meta: [600, 600] }, 2, {
+      ...common,
+      futureReach: { meta: [2400, 2400] },
+    });
+    expect(low.predFut).toHaveLength(2);
+    expect(high.predFut).toHaveLength(2);
+    expect(high.predFut[0]).toBeGreaterThan(low.predFut[0]);
+    expect(high.predFut[1]).toBeGreaterThan(low.predFut[1]);
   });
 
 
