@@ -36,17 +36,26 @@ describe("computeWeightedRetention (golden)", () => {
     expect(r.hasWholePct).toBe(true);
   });
 
-  it("T3 · 빈/무효 → null 방어", () => {
+  it("T3 · 빈/무효 → null 방어, 0%는 유효 관측", () => {
     expect(computeWeightedRetention([], 7, "installs").rate).toBe(null);
-    // 전부 0/음수/NaN → vals 비어 null
+    // 음수/NaN만 있으면 null. 0은 실제 0% 리텐션이라 분모에 포함해야 한다.
     const r = computeWeightedRetention(
-      [{ ret_d7: 0, installs: 100 }, { ret_d7: -1, installs: 50 }, { ret_d7: NaN, installs: 10 }],
+      [{ ret_d7: -1, installs: 50 }, { ret_d7: NaN, installs: 10 }],
       7,
       "installs",
     );
     expect(r.rate).toBe(null);
     expect(r.survivors).toBe(0);
     expect(r.denom).toBe(0);
+
+    const zero = computeWeightedRetention(
+      [{ ret_d7: 0, installs: 900 }, { ret_d7: 0.5, installs: 100 }],
+      7,
+      "installs",
+    );
+    expect(zero.rate).toBeCloseTo(0.05, 12);
+    expect(zero.denom).toBe(1000);
+    expect(zero.survivors).toBe(50);
   });
 
   it("T4 · rate 상한 clamp (num > denom → 1)", () => {
@@ -92,5 +101,15 @@ describe("computeWeightedRetention (golden)", () => {
     expect(kpi.retentionAvg).not.toBeNull();
     expect(kpi.retentionAvg).toBeLessThanOrEqual(1);
     expect(kpi.retentionAvg).toBeCloseTo((50 + 80) / (100 + 200), 12); // Σret/Σinstalls
+  });
+
+  it("T8 · malformed Infinity values never poison dashboard totals", () => {
+    const kpi = calculateKPIs([
+      { cost: 100, installs: 10, actions: 5, impressions: 1000, clicks: 20, revenue_d7: 40 },
+      { cost: Infinity, installs: Infinity, actions: Infinity, impressions: Infinity, clicks: Infinity, revenue_d7: Infinity },
+    ], 7, "installs");
+    expect(kpi.cost).toBe(100);
+    expect(kpi.installs).toBe(10);
+    expect(kpi.revenue).toBe(40);
   });
 });
