@@ -196,10 +196,17 @@ function fitChannel(pts, adv) {
     poly2Shape: ALLOC_MATH.detectPoly2Shape(model),
   };
 }
-function buildModels(byChannel, adv) {
+export function buildAllocationModels(byChannel, adv, modelOverrides = {}) {
   const models = new Map();
   for (const [ch, pts] of byChannel) {
-    models.set(ch, fitChannel(pts, adv));
+    const selectedTrendType = modelOverrides[ch];
+    models.set(
+      ch,
+      fitChannel(
+        pts,
+        selectedTrendType ? { ...adv, trendType: selectedTrendType } : adv,
+      ),
+    );
   }
   return models;
 }
@@ -207,7 +214,7 @@ function buildModels(byChannel, adv) {
 /* 산점도(점+추세선) Chart.js datasets 빌더 — Step2(단일 단위) · Step3(다중 채널) 공유.
    index.html renderAllocatorScatter 이식(§7 render-throw는 주입식 harness 대신 두 호출부 모두 이 함수를 거치므로
    여기서 한 번만 검증하면 됨). perAdv(ch)로 채널/단위별 trendType override를 줄 수 있음(Step2 개별 모델 선택). */
-function buildScatterDatasets(channels, byCh, adv, { hidePoints, normalizeMode: nmode, perAdv, colorOf } = {}) {
+export function buildScatterDatasets(channels, byCh, adv, { hidePoints, normalizeMode: nmode, perAdv, colorOf, isRoas = false } = {}) {
   const datasets = [];
   const trendInfo = [];
   channels.forEach((ch, i) => {
@@ -221,11 +228,16 @@ function buildScatterDatasets(channels, byCh, adv, { hidePoints, normalizeMode: 
     const kept = fit ? fit.kept : pts;
     if (kept.length < 2) return;
 
-    const nctx = ALLOC_MATH.calcNormContext(kept, nmode);
+    // 엔진은 모든 목표를 내부 CPR(cost/result) 공간에서 적합한다. ROAS 목표의
+    // 화면만 Revenue/Cost로 역변환해야 축 라벨(높을수록 좋음)과 점의 방향이 맞는다.
+    const displayPoints = isRoas
+      ? kept.map((p) => ({ ...p, y: p.y > 0 ? 1 / p.y : NaN }))
+      : kept;
+    const nctx = ALLOC_MATH.calcNormContext(displayPoints, nmode);
     const norm = (x, y) => ALLOC_MATH.normalizeXY(x, y, nmode, nctx);
 
     if (!hidePoints) {
-      const ptData = kept
+      const ptData = displayPoints
         .map((p) => norm(p.x, p.y))
         .filter((v) => v && isFinite(v.x) && isFinite(v.y));
       datasets.push({
@@ -247,7 +259,8 @@ function buildScatterDatasets(channels, byCh, adv, { hidePoints, normalizeMode: 
       const stepSize = (xMax - xMin) / steps;
       for (let j = 0; j <= steps; j++) {
         const x = xMin + j * stepSize;
-        const y = model.predict(x);
+        const rawY = model.predict(x);
+        const y = isRoas && rawY > 0 ? 1 / rawY : rawY;
         if (isFinite(y) && y > 0) {
           const nv = norm(x, y);
           if (nv && isFinite(nv.x) && isFinite(nv.y)) trendPts.push(nv);
@@ -543,7 +556,13 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     () => buildByChannel(rows, unitField, effectiveMetric),
     [rows, unitField, effectiveMetric],
   );
-  const modelsMap = useMemo(() => buildModels(byChannel, adv), [byChannel, adv]);
+  // Step 2에서 확정한 채널별 모델을 Step 3의 실제 분배에도 그대로 사용한다.
+  // 이전에는 검증 산점도만 override를 반영해, "Linear로 확정"해도 자동 모델로
+  // 예산이 계산되는 화면-계산 불일치가 있었다.
+  const modelsMap = useMemo(
+    () => buildAllocationModels(byChannel, adv, groupModels),
+    [byChannel, adv, groupModels],
+  );
   // 최근 N일 채널별 히스토리 요약 (모든 metric 동시 산출) — 진단/결론/총합계/이전평균 공유
   const historyByCh = useMemo(() => {
     const out = {};
@@ -844,6 +863,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
       normalizeMode: nmode,
       perAdv: () => chAdv,
       colorOf: () => CHART_THEME.series[0],
+      isRoas,
     });
 
     const ctx = verifyChartRef.current.getContext("2d");
@@ -926,6 +946,7 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
     const { datasets } = buildScatterDatasets(topChannels, byCh, adv, {
       hidePoints,
       normalizeMode: nmode,
+      isRoas: isRoasView,
     });
 
     const ctx = chartRef.current.getContext("2d");

@@ -353,17 +353,20 @@ export const ALLOC_MATH = (() => {
   function predictSafeCpr(ch, cost) {
     if (!ch || !ch.model) return null;
     let evalCost = cost;
-    if (ch.poly2Shape) {
+    // 호출자가 wrapper의 poly2Shape를 누락해도 수동 시나리오·테스트에서
+    // 꼭짓점 보호가 사라지지 않도록 모델에서 한 번 더 유도한다.
+    const poly2Shape = ch.poly2Shape || detectPoly2Shape(ch.model);
+    if (poly2Shape) {
       if (
-        ch.poly2Shape.shape === "bell" &&
-        evalCost > ch.poly2Shape.vertex
+        poly2Shape.shape === "bell" &&
+        evalCost > poly2Shape.vertex
       ) {
-        evalCost = ch.poly2Shape.vertex;
+        evalCost = poly2Shape.vertex;
       } else if (
-        ch.poly2Shape.shape === "u" &&
-        evalCost < ch.poly2Shape.vertex
+        poly2Shape.shape === "u" &&
+        evalCost < poly2Shape.vertex
       ) {
-        evalCost = ch.poly2Shape.vertex;
+        evalCost = poly2Shape.vertex;
       }
     }
     if (evalCost > ch.xMax) {

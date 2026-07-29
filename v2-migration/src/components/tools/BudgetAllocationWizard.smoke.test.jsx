@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
-import BudgetAllocation from "@/components/tools/BudgetAllocation";
+import BudgetAllocation, { buildAllocationModels, buildScatterDatasets } from "@/components/tools/BudgetAllocation";
 
 function seedWithData() {
   const headers = ["Date", "Country", "Platform", "Channel", "Spend", "Installs"];
@@ -106,5 +106,32 @@ describe("BudgetAllocation Step2/Step3 wizard flow render smoke", () => {
     expect(barCanvas.tagName).toBe("CANVAS");
     // Legacy flexbox segments must be gone from this section.
     expect(document.querySelector(".alloc-bar-seg")).toBeNull();
+  });
+
+  it("uses the Step 2 channel model override when rebuilding allocation models", () => {
+    const points = new Map([[
+      "Search",
+      [
+        { x: 10, y: 9, date: "2026-01-01" },
+        { x: 20, y: 14, date: "2026-01-02" },
+        { x: 30, y: 19, date: "2026-01-03" },
+      ],
+    ]]);
+    const models = buildAllocationModels(
+      points,
+      { trendType: "auto", outlierMethod: "none", outlierStrength: "standard", weightMode: "none" },
+      { Search: "linear" },
+    );
+
+    expect(models.get("Search")?.model.type).toBe("Linear");
+  });
+
+  it("renders ROAS scatter values as Revenue / Cost rather than its inverse", () => {
+    const points = new Map([["Search", [{ x: 100, y: 0.5, date: "2026-01-01" }, { x: 200, y: 0.5, date: "2026-01-02" }]]]);
+    const { datasets } = buildScatterDatasets(["Search"], points, {
+      trendType: "linear", outlierMethod: "none", outlierStrength: "standard", weightMode: "none",
+    }, { hidePoints: false, normalizeMode: "raw", isRoas: true });
+
+    expect(datasets[0].data.map((point) => point.y)).toEqual([2, 2]);
   });
 });
