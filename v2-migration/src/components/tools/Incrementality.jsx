@@ -17,8 +17,20 @@ import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { downloadCsv as dlCsv, downloadText } from "@/utils/download";
 import { buildIncrSuppressionDemo, buildIncrPrepostDemo } from "@/utils/demoData";
 
-const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : NaN; };
-const looksDate = (v) => /^\d{4}[-/]\d{1,2}([-/]\d{1,2})?/.test(String(v || "").trim());
+const num = (v) => {
+  if (v == null || String(v).trim() === "") return NaN;
+  const n = Number(String(v).replace(/[,\s]/g, ""));
+  return Number.isFinite(n) ? n : NaN;
+};
+const looksDate = (v) => {
+  const matched = String(v || "").trim().match(/^(\d{4})[-/](\d{1,2})(?:[-/](\d{1,2}))?$/);
+  if (!matched) return false;
+  const year = Number(matched[1]);
+  const month = Number(matched[2]);
+  const day = matched[3] == null ? 1 : Number(matched[3]);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+};
 
 // CSV 셀 이스케이프(콤마·따옴표 §7).
 const qc = (s) => (/[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g, '""')}"` : String(s));
@@ -165,6 +177,12 @@ function UploadPanel({ method, fileRef, handleFile, loadDemo, locale = "ko" }) {
 /* ── ① 통제군 (suppression) ── */
 function SuppressionView({ csvData, currency, locale = "ko" }) {
   const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
+  const invalidRows = useMemo(() => getMappedRows(csvData).filter((r) => {
+    const group = parseHoldoutGroup(r.holdout_group);
+    const numerator = num(r.numerator);
+    const denominator = num(r.denominator);
+    return !looksDate(r.date) || group == null || !Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0 || numerator < 0 || numerator > denominator;
+  }).length, [csvData]);
   // 날짜별 그룹 집계 (전환율·모수·비용·매출)
   const series = useMemo(() => {
     const rows = getMappedRows(csvData);
@@ -289,6 +307,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
     return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
   }, [series, start, end, tr]);
 
+  if (invalidRows) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("증분을 계산할 수 없는 행이 있습니다", "Some rows cannot be used for incrementality")}</strong><p>{tr(`${invalidRows.toLocaleString()}행의 날짜·그룹·전환수·분모를 확인하세요. 날짜는 실제 달력 날짜여야 하며, 전환수는 0 이상 분모 이하여야 하고 분모는 0보다 커야 합니다.`, `Check date, group, conversions, and denominator in ${invalidRows.toLocaleString()} row(s). Dates must be valid calendar dates; conversions must be between 0 and the denominator, and the denominator must be greater than 0.`)}</p></div></div>;
   if (totals.cDen <= 0 || totals.tDen <= 0) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("노출(exposed)·홀드아웃(holdout) 양쪽 데이터가 필요합니다", "Both exposed and holdout data are required")}</strong><p>{tr("holdout_group 컬럼에 두 그룹이 모두 있어야 증분을 계산합니다.", "The holdout_group column must contain both groups to calculate incrementality.")}</p></div></div>;
 
   const r = win?.incr;
@@ -449,11 +468,19 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
   const headers = useMemo(() => csvData.headers || [], [csvData.headers]);
   // 컬럼 자동 감지
   const dateCol = useMemo(() => headers.find((h) => (csvData.raw || []).slice(0, 5).some((r) => looksDate(r[h]))) || headers[0], [headers, csvData.raw]);
-  const numericCols = useMemo(() => headers.filter((h) => h !== dateCol && (csvData.raw || []).slice(0, 8).some((r) => Number.isFinite(Number(r[h])) && String(r[h]).trim() !== "")), [headers, dateCol, csvData.raw]);
+  const numericCols = useMemo(() => headers.filter((h) => h !== dateCol && (csvData.raw || []).slice(0, 8).some((r) => Number.isFinite(num(r[h])))), [headers, dateCol, csvData.raw]);
   const groupCols = useMemo(() => headers.filter((h) => h !== dateCol && !numericCols.includes(h)), [headers, dateCol, numericCols]);
   const [metricCol, setMetricCol] = useState(numericCols[0] || "");
   const [groupCol, setGroupCol] = useState(groupCols[0] || "");
   const [useDiD, setUseDiD] = useState(!!groupCols.length);
+  const [controlGroup, setControlGroup] = useState("");
+  const [treatmentGroup, setTreatmentGroup] = useState("");
+  const groupVals = useMemo(() => groupCol ? [...new Set((csvData.raw || []).map((r) => String(r[groupCol]).trim()).filter(Boolean))] : [], [csvData.raw, groupCol]);
+  const detectedControl = groupVals.find((g) => /control|대조|holdout/i.test(g));
+  const selectedControl = groupVals.includes(controlGroup) ? controlGroup : detectedControl;
+  const selectedTreatment = groupVals.includes(treatmentGroup) && treatmentGroup !== selectedControl
+    ? treatmentGroup
+    : groupVals.find((g) => g !== selectedControl);
 
   const dates = useMemo(() => [...new Set((csvData.raw || []).map((r) => String(r[dateCol])))].filter(looksDate).sort(), [csvData.raw, dateCol]);
   const [cutoff, setCutoff] = useState("");
@@ -463,14 +490,14 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
   const result = useMemo(() => {
     if (!metricCol || !effCutoff) return null;
     const rows = csvData.raw || [];
-    const groupVals = groupCol ? [...new Set(rows.map((r) => String(r[groupCol]).trim()))] : [];
-    const ctrlVal = groupVals.find((g) => /control|대조|holdout|off/i.test(g));
-    const treatVal = groupVals.find((g) => g !== ctrlVal);
+    const ctrlVal = selectedControl;
+    const treatVal = selectedTreatment;
+    if (useDiD && (!ctrlVal || !treatVal)) return null;
     const pick = (pred) => rows.filter(pred);
     const seriesOf = (rowsF) => {
       const pre = [], post = [];
       for (const r of rowsF) {
-        const v = Number(r[metricCol]); if (!Number.isFinite(v)) continue;
+        const v = num(r[metricCol]); if (!Number.isFinite(v)) continue;
         (String(r[dateCol]) < effCutoff ? pre : post).push(v);
       }
       return { pre, post };
@@ -483,7 +510,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
       if (c.pre.length && c.post.length) control = c;
     }
     return INCR_PREPOST.compute({ pre: t.pre, post: t.post, direction, control });
-  }, [csvData.raw, metricCol, groupCol, effCutoff, dateCol, useDiD, direction]);
+  }, [csvData.raw, metricCol, groupCol, selectedControl, selectedTreatment, effCutoff, dateCol, useDiD, direction]);
 
   // 라인 차트 (treatment 시계열 + cutoff 마커 + pre/post 평균선)
   useEffect(() => {
@@ -491,13 +518,11 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
     if (!metricCol || !effCutoff) return;
     const ctx = document.getElementById("incr-prepost-chart"); if (!ctx) return;
     const rows = csvData.raw || [];
-    const groupVals = groupCol ? [...new Set(rows.map((r) => String(r[groupCol]).trim()))] : [];
-    const ctrlVal = groupVals.find((g) => /control|대조|holdout|off/i.test(g));
-    const treatVal = groupVals.find((g) => g !== ctrlVal);
+    const treatVal = selectedTreatment;
     const treatRows = (groupCol && treatVal ? rows.filter((r) => String(r[groupCol]).trim() === treatVal) : rows)
       .filter((r) => looksDate(r[dateCol])).sort((a, b) => String(a[dateCol]) < String(b[dateCol]) ? -1 : 1);
     const labels = treatRows.map((r) => String(r[dateCol]));
-    const vals = treatRows.map((r) => Number(r[metricCol]));
+    const vals = treatRows.map((r) => num(r[metricCol]));
     const cutoffIdx = labels.findIndex((l) => l >= effCutoff);
     const preMean = result?.preMean, postMean = result?.postMean;
     chartInst.current = new Chart(ctx, {
@@ -524,7 +549,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
     });
     requestAnimationFrame(() => chartInst.current && chartInst.current.resize());
     return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
-  }, [csvData.raw, metricCol, groupCol, effCutoff, dateCol, result, direction, tr]);
+  }, [csvData.raw, metricCol, groupCol, selectedTreatment, effCutoff, dateCol, result, direction, tr]);
 
   if (!numericCols.length) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("성과 지표(숫자) 컬럼이 필요합니다", "A performance metric (numeric) column is required")}</strong><p>{tr("date + 숫자 지표 컬럼이 있는 CSV를 올리세요.", "Upload a CSV with a date column plus a numeric metric column.")}</p></div></div>;
 
@@ -533,21 +558,24 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
   const isDiD = !!r?.did;
   const effVal = isDiD ? r.did.didDelta : delta;
   const lost = direction === "off";
-  const good = lost ? effVal < 0 : effVal > 0; // on: 상승=좋음, off: 하락=원인확인
-  const sigP = r?.sig?.pValue ?? r?.sig?.p;
+  const sigP = (isDiD ? r?.did?.sig?.pValue : r?.sig?.pValue) ?? r?.sig?.p;
+  const sig = sigP != null && sigP < 0.05;
+  const confirmedLoss = lost && effVal < 0 && sig;
+  const confirmedGain = !lost && effVal > 0 && sig;
+  const good = confirmedLoss || confirmedGain;
 
   // 결론 카드 props + 다운로드(계산된 인사이트). 엔진 결과 재사용.
   const card = r && (() => {
-    const sig = sigP != null && sigP < 0.05;
-    const headline = lost
-      ? tr(
-          `끈 뒤 하루 평균이 ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} 변했습니다 — 종료로 잃은(되돌릴 수 있는) 성과입니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`,
-          `After turning it off, the daily average changed by ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} — performance lost (recoverable) from the shutdown${isDiD ? " (control's natural change removed)" : ""}.`
-        )
-      : tr(
-          `켠 뒤 하루 평균이 ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} 변했습니다 — 새로 얻은 성과입니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`,
-          `After turning it on, the daily average changed by ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} — performance gained from the launch${isDiD ? " (control's natural change removed)" : ""}.`
-        );
+    const change = `${effVal >= 0 ? "+" : ""}${fmtNum(effVal, 1)}`;
+    const headline = !sig
+      ? tr(`전환 뒤 일평균이 ${change} 변했습니다. 현재 표본만으로 전환의 효과를 확정할 수 없습니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`, `The daily average changed by ${change} after the switch. The current sample does not establish an effect of the switch${isDiD ? " (control's natural change removed)" : ""}.`)
+      : lost
+        ? effVal < 0
+          ? tr(`끈 뒤 일평균이 ${change} 변했습니다 — 종료와 연관된 손실 후보입니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`, `After turning it off, the daily average changed by ${change} — a candidate loss associated with the shutdown${isDiD ? " (control's natural change removed)" : ""}.`)
+          : tr(`끈 뒤 일평균이 ${change} 변했습니다 — 종료로 인한 손실은 확인되지 않습니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`, `After turning it off, the daily average changed by ${change} — a shutdown loss is not supported${isDiD ? " (control's natural change removed)" : ""}.`)
+        : effVal > 0
+          ? tr(`켠 뒤 일평균이 ${change} 변했습니다 — 신규 실행과 연관된 증가 후보입니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`, `After turning it on, the daily average changed by ${change} — a candidate increase associated with the launch${isDiD ? " (control's natural change removed)" : ""}.`)
+          : tr(`켠 뒤 일평균이 ${change} 변했습니다 — 신규 실행에 의한 증가는 확인되지 않습니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`, `After turning it on, the daily average changed by ${change} — a launch-driven increase is not supported${isDiD ? " (control's natural change removed)" : ""}.`);
     const points = [];
     points.push({ cls: sig ? "good" : "muted", text: sig ? tr(`통계적으로 유의합니다 (p=${sigP.toFixed(4)}).`, `Statistically significant (p=${sigP.toFixed(4)}).`) : tr(`아직 통계적으로 유의하지 않습니다 (p=${sigP != null ? sigP.toFixed(3) : "—"}) — 표본을 더 모으세요.`, `Not statistically significant yet (p=${sigP != null ? sigP.toFixed(3) : "—"}) — gather more data.`) });
     if (!isDiD) points.push({ cls: "muted", text: tr("대조군을 넣어 DiD로 보정하면 계절·추세 영향을 줄일 수 있습니다.", "Adding a control group (DiD) reduces seasonality/trend effects.") });
@@ -573,7 +601,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
       `${headline}\n\n` +
       csvRows.map(([k, v]) => `- ${k}: ${v}`).join("\n") + "\n\n" +
       points.map((p) => `- ${p.text}`).join("\n") + "\n";
-    return { tone: good ? "good" : "bad", headline, points, stats, csv, text };
+    return { tone: good ? "good" : "neutral", headline, points, stats, csv, text };
   })();
 
   return (
@@ -586,21 +614,27 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
           {groupCols.length > 0 && (
             <>
               <Field label={tr("그룹 컬럼 (대조군)", "Group column (control)")}><select className="map-select" value={groupCol} onChange={(e) => setGroupCol(e.target.value)}><option value="">{tr("(없음)", "(none)")}</option>{groupCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
+              {groupCol && <Field label={tr("대조군 값", "Control value")}><select className="map-select" value={selectedControl || ""} onChange={(e) => setControlGroup(e.target.value)}><option value="">{tr("선택", "Select")}</option>{groupVals.map((g) => <option key={g} value={g}>{g}</option>)}</select></Field>}
+              {groupCol && <Field label={tr("처리군 값", "Treatment value")}><select className="map-select" value={selectedTreatment || ""} onChange={(e) => setTreatmentGroup(e.target.value)}><option value="">{tr("선택", "Select")}</option>{groupVals.filter((g) => g !== selectedControl).map((g) => <option key={g} value={g}>{g}</option>)}</select></Field>}
               <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}><input type="checkbox" checked={useDiD} onChange={(e) => setUseDiD(e.target.checked)} disabled={!groupCol} /> {tr("DiD (대조군으로 계절·추세 제거)", "DiD (remove seasonality/trend via control group)")}</label>
             </>
           )}
         </div>
       </section>
 
+      {useDiD && (!selectedControl || !selectedTreatment) && (
+        <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("DiD에는 대조군과 처리군을 각각 지정해야 합니다", "DiD needs an explicit control and treatment group")}</strong><p>{tr("그룹 값이 자동으로 분명하지 않으면 위 선택기에서 두 그룹을 직접 고르세요. 선택 전에는 DiD 결론을 만들지 않습니다.", "If the group values are not unambiguous, select both groups above. No DiD conclusion is produced until they are chosen.")}</p></div></div>
+      )}
+
       {r && (
         <section className="block" id="s-incr-result">
-          <h2 className="section-title"><span className="ix">§2</span>{lost ? tr("종료 임팩트 (잃은 성과)", "Shutdown impact (performance lost)") : tr("신규 임팩트 (얻은 성과)", "New-launch impact (performance gained)")}</h2>
+          <h2 className="section-title"><span className="ix">§2</span>{lost ? tr(confirmedLoss ? "종료 임팩트 (손실 후보)" : "종료 후 변화", confirmedLoss ? "Shutdown impact (loss candidate)" : "Post-shutdown change") : tr(confirmedGain ? "신규 임팩트 (증가 후보)" : "신규 실행 후 변화", confirmedGain ? "New-launch impact (increase candidate)" : "Post-launch change")}</h2>
           {card && (
             <ResultActionCard
               toolId="5-23"
               locale={locale}
               tone={card.tone}
-              title={lost ? tr("결론 — 종료로 잃은 성과", "Conclusion — performance lost from shutdown") : tr("결론 — 신규로 얻은 성과", "Conclusion — performance gained from launch")}
+              title={lost ? tr(confirmedLoss ? "결론 — 종료와 연관된 손실 후보" : "결론 — 종료 후 관측 변화", confirmedLoss ? "Conclusion — loss candidate after shutdown" : "Conclusion — observed post-shutdown change") : tr(confirmedGain ? "결론 — 신규 실행과 연관된 증가 후보" : "결론 — 신규 실행 후 관측 변화", confirmedGain ? "Conclusion — increase candidate after launch" : "Conclusion — observed post-launch change")}
               headline={card.headline}
               points={card.points}
               stats={card.stats}
