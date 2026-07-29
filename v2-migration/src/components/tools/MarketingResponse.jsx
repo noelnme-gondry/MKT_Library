@@ -7664,17 +7664,17 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     </div>
                   )}
                   {forecastEnhancement && (
-                    <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
+                    <Card className="forecast-diagnostics" style={{ marginBottom: "12px", padding: "14px 16px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "baseline" }}>
                         <strong>{tx("예측 신뢰도·잔차 진단", "Forecast calibration and residual diagnostics")}</strong>
-                        <span className="ab-pill">{tx("관측 예측", "Observational forecast")}</span>
+                        <span className="forecast-diagnostics__scope">{tx("관측 예측", "Observational forecast")}</span>
                       </div>
-                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
-                        <span className="ab-pill">{tx("구간 포함률", "Interval coverage")} {forecastEnhancement.calibration?.coverage == null ? "—" : `${(forecastEnhancement.calibration.coverage * 100).toFixed(0)}% / 90%`}</span>
-                        <span className="ab-pill">ACF(1) {forecastEnhancement.diagnostics?.acf1 == null ? "—" : forecastEnhancement.diagnostics.acf1.toFixed(2)}</span>
-                        <span className="ab-pill">{tx("잔차 drift", "Residual drift")} {forecastEnhancement.diagnostics?.drift == null ? "—" : targetValueLabel(forecastEnhancement.diagnostics.drift)}</span>
-                        <span className="ab-pill" style={forecastEnhancement.diagnostics?.heteroscedastic ? { borderColor: "#f59e0b", color: "#b45309" } : undefined}>{forecastEnhancement.diagnostics?.heteroscedastic ? tx("분산 변화 점검", "Variance shift") : tx("분산 안정", "Variance stable")}</span>
-                      </div>
+                      <dl className="forecast-diagnostics__metrics">
+                        <div><dt>{tx("구간 포함률", "Interval coverage")}</dt><dd>{forecastEnhancement.calibration?.coverage == null ? "—" : `${(forecastEnhancement.calibration.coverage * 100).toFixed(0)}% / 90%`}</dd></div>
+                        <div><dt>ACF(1)</dt><dd>{forecastEnhancement.diagnostics?.acf1 == null ? "—" : forecastEnhancement.diagnostics.acf1.toFixed(2)}</dd></div>
+                        <div><dt>{tx("잔차 drift", "Residual drift")}</dt><dd>{forecastEnhancement.diagnostics?.drift == null ? "—" : targetValueLabel(forecastEnhancement.diagnostics.drift)}</dd></div>
+                        <div className={forecastEnhancement.diagnostics?.heteroscedastic ? "is-warn" : ""}><dt>{tx("분산", "Variance")}</dt><dd>{forecastEnhancement.diagnostics?.heteroscedastic ? tx("변화 점검", "Check shift") : tx("안정", "Stable")}</dd></div>
+                      </dl>
                       <p className="muted" style={{ fontSize: "11px", lineHeight: 1.5, margin: "8px 0 0" }}>
                         {tx("예측 참고구간은 인과효과의 신뢰구간이 아닙니다. 포함률이 90%에서 크게 벗어나거나 잔차 ACF가 크면 시나리오보다 추가 홀드아웃을 우선하세요.", "The predictive reference interval is not a causal-effect confidence interval. If coverage differs materially from 90% or residual ACF is large, prioritize another holdout before using scenarios.")}
                       </p>

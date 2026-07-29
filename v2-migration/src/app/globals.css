@@ -6355,6 +6355,13 @@ body.light-mode .app:not(.is-home) .main {
 .forecast-validation-card__details > summary { color:var(--text-muted);font-size:10px;cursor:pointer; }
 .forecast-validation-card__details > div { display:flex;gap:5px;flex-wrap:wrap;margin-top:7px; }
 .forecast-validation-card__details .ab-pill { font-size:9px; }
+.forecast-diagnostics__scope { color:var(--text-muted);font-size:10px; }
+.forecast-diagnostics__metrics { display:flex;flex-wrap:wrap;gap:0;margin:10px 0 0;padding:0;border-top:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle); }
+.forecast-diagnostics__metrics > div { display:grid;gap:2px;min-width:118px;padding:8px 13px 8px 0;margin-right:13px;border-right:1px solid var(--border-subtle); }
+.forecast-diagnostics__metrics > div:last-child { border-right:0; }
+.forecast-diagnostics__metrics dt { color:var(--text-muted);font-size:9px; }
+.forecast-diagnostics__metrics dd { margin:0;color:var(--text-secondary);font-size:11px;font-weight:700; }
+.forecast-diagnostics__metrics .is-warn dd { color:#b45309; }
 
 @media (max-width:1100px) {
   .tool-connections--rail { grid-template-columns:170px minmax(0,1fr); }
