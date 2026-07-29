@@ -292,4 +292,31 @@ describe("runCreativeTests (golden, ported from index.html)", () => {
         JSON.stringify(r1.effects) === JSON.stringify(r2.effects),
     ).toBe(true);
   });
+
+  it("T14 · 거의 특이한 역행렬은 추정 불가로 보류", () => {
+    const nearlySingular = [
+      [1e12, 1e12],
+      [1e12, 1e12 + 1e-4],
+    ];
+    expect(CREATIVE_MATH.inverse(nearlySingular)).toBeNull();
+  });
+
+  it("T15 · 첫 행에 campaign_id가 비어도 남은 캠페인 고정효과를 흡수", () => {
+    const rows = [];
+    for (let i = 0; i < 40; i++) {
+      rows.push({
+        creative_id: `c${i}`,
+        campaign_id: i === 0 ? "" : (i % 2 ? "campaign_a" : "campaign_b"),
+        date: `2024-04-${String((i % 20) + 1).padStart(2, "0")}`,
+        channel: i % 2 ? "fb" : "ig",
+        format: i % 4 < 2 ? "video" : "image",
+        impressions: 5000,
+        clicks: i % 4 < 2 ? 350 : 200,
+        installs: 50,
+      });
+    }
+    const result = CREATIVE_STATS.decompose(rows, { metric: "ctr", attributes: ["format"] }, CREATIVE_CONFIG);
+    expect(result.diag.error).toBeUndefined();
+    expect(result.effects.length).toBeGreaterThan(0);
+  });
 });
