@@ -21,6 +21,7 @@ import MarketingResponse, {
   MMM_TEMPLATE_CSV,
   buildForecastCsv,
   buildForecastAssistInsight,
+  forecastPct,
   buildForecastOnlyModelFromPanel,
   buildForecastRecentBacktest,
   sliceForecastTrainingWindow,
@@ -195,6 +196,12 @@ describe("MarketingResponse render smoke", () => {
   it("does not invent a regime-window recommendation without a forecast source", () => {
     expect(scanForecastRegimeWindows([])).toMatchObject({ available: false, reason: "missing-source", recommended: null });
     expect(scanAnnualForecastRegimeWindows()).toMatchObject({ available: false, reason: "missing-source", recommended: null });
+  });
+
+  it("renders an unavailable annual OS metric without throwing", () => {
+    expect(forecastPct(null)).toBe("—");
+    expect(forecastPct(undefined, 1)).toBe("—");
+    expect(forecastPct(12.345, 1)).toBe("12.3%");
   });
 
   it("uses the hub only to choose an independent analysis after mapping", async () => {
