@@ -36,6 +36,7 @@ describe("buildDashboardVerdict", () => {
     expect(v.insufficient).toBe(false);
     expect(v.tone).toBe("good");
     expect(v.stats.length).toBeGreaterThan(0);
+    expect(v.stats.find((stat) => stat.label === "CPI")?.emphasis).toBe("primary");
     expect(typeof v.export.csv).toBe("string");
     expect(v.export.csv.startsWith("﻿")).toBe(true); // BOM
     expect(v.export.csv).toContain("\r\n"); // CRLF
@@ -89,6 +90,20 @@ describe("buildDashboardVerdict", () => {
     const v = buildDashboardVerdict({ csvData: csv });
     expect(v.primaryDriver).toBeTruthy();
     expect(v.keyPoints.some((point) => point.kind === "largest-observed-change")).toBe(true);
+    expect(v.keyPoints.find((point) => point.kind === "largest-observed-change")?.label).toBe("지출 최대 변동");
     expect(v.points.some((point) => point.text.includes("가장 크게 변한 곳"))).toBe(true);
+  });
+
+  it("변화가 0인 건수는 +0건 대신 변화 없음으로 표시", () => {
+    const csv = makeCsv({ recentInstalls: 10, prevInstalls: 10 });
+    csv.raw.forEach((row, index) => {
+      row.cost = index < 7 ? 1000 : 2000;
+      row.channel = "Meta";
+    });
+    csv.mapping.channel = "channel";
+    const v = buildDashboardVerdict({ csvData: csv });
+    const point = v.keyPoints.find((item) => item.kind === "largest-observed-change");
+    expect(point.detail).toContain("설치 변화 없음");
+    expect(point.detail).not.toContain("+0건");
   });
 });

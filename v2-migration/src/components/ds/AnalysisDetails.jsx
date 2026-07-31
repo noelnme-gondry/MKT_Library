@@ -59,7 +59,7 @@ export default function AnalysisDetails({
   return (
     <details className={`analysis-details analysis-details--${statusTone}`}>
       <summary>
-        <span className="analysis-details__summary-label">ⓘ {tr("신뢰도·방법", "Reliability & method")}</span>
+        <span className="analysis-details__summary-label">{tr("신뢰도·방법", "Reliability & method")}</span>
         {hasValue(statusLabel) && <span className="analysis-details__status">{statusLabel}</span>}
       </summary>
       <div className="analysis-details__body">

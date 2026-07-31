@@ -150,16 +150,25 @@ export function buildDashboardVerdict({
     });
   }
   if (primaryDriver && Math.abs(primaryDriver.costDelta) > 0) {
+    const resultChange = primaryDriver.resultDelta === 0
+      ? tr(`${convLabel} 변화 없음`, `No ${convLabel.toLowerCase()} change`)
+      : `${convLabel} ${primaryDriver.resultDelta > 0 ? "+" : "−"}${Math.abs(primaryDriver.resultDelta).toLocaleString()}${tr("건", "")}`;
     const point = {
       kind: "largest-observed-change",
       cls: primaryDriver.costDelta > 0 && tone === "bad" ? "bad" : "muted",
       text: tr(
-        `가장 크게 변한 곳: ${primaryDriver.key}. 지출 ${fc(primaryDriver.prev.cost)} → ${fc(primaryDriver.recent.cost)} (${primaryDriver.costDelta >= 0 ? "+" : "−"}${fc(Math.abs(primaryDriver.costDelta))}), ${convLabel} ${primaryDriver.resultDelta >= 0 ? "+" : "−"}${Math.abs(primaryDriver.resultDelta).toLocaleString()}건.`,
-        `Largest observed change: ${primaryDriver.key}. Spend ${fc(primaryDriver.prev.cost)} → ${fc(primaryDriver.recent.cost)} (${primaryDriver.costDelta >= 0 ? "+" : "−"}${fc(Math.abs(primaryDriver.costDelta))}); ${convLabel} ${primaryDriver.resultDelta >= 0 ? "+" : "−"}${Math.abs(primaryDriver.resultDelta).toLocaleString()}.`
+        `가장 크게 변한 곳: ${primaryDriver.key}. 지출 ${fc(primaryDriver.prev.cost)} → ${fc(primaryDriver.recent.cost)} (${primaryDriver.costDelta >= 0 ? "+" : "−"}${fc(Math.abs(primaryDriver.costDelta))}), ${resultChange}.`,
+        `Largest observed change: ${primaryDriver.key}. Spend ${fc(primaryDriver.prev.cost)} → ${fc(primaryDriver.recent.cost)} (${primaryDriver.costDelta >= 0 ? "+" : "−"}${fc(Math.abs(primaryDriver.costDelta))}); ${resultChange}.`
       ),
     };
     points.push(point);
-    keyPoints.push(point);
+    keyPoints.push({
+      kind: point.kind,
+      cls: point.cls,
+      label: tr("지출 최대 변동", "Largest spend movement"),
+      text: primaryDriver.key,
+      detail: `${primaryDriver.costDelta >= 0 ? "+" : "−"}${fc(Math.abs(primaryDriver.costDelta))} · ${resultChange}`,
+    });
   }
   if (newCreativeSignal) {
     points.push({ text: tr(`신규 소재 ${newCreativeSignal.count}개가 최근 기간에 추가되어 ${convLabel} ${newCreativeSignal.result.toLocaleString()}건을 만들었습니다. 소재 분석에서 피로도·교체 우선순위를 확인하세요.`, `${newCreativeSignal.count} new creatives appeared in the recent period and produced ${newCreativeSignal.result.toLocaleString()} ${convLabel}. Check Creative Analysis for fatigue and replacement priority.`) });
@@ -178,7 +187,13 @@ export function buildDashboardVerdict({
       `Largest performance-analysis impact: ${pvmSummary.driver.key} ${driverSign}${fc(Math.abs(pvmSummary.driver.contribution))}. ${pvmSummary.metric} ${fc(pvmSummary.prior)} → ${fc(pvmSummary.current)} (${deltaSign}${fc(Math.abs(pvmSummary.delta))}).`
     ) };
     points.push(point);
-    keyPoints.push(point);
+    keyPoints.push({
+      kind: point.kind,
+      cls: point.cls,
+      label: tr("효율 최대 영향", "Largest efficiency impact"),
+      text: pvmSummary.driver.key,
+      detail: `${pvmSummary.metric} ${deltaSign}${fc(Math.abs(pvmSummary.delta))} · ${tr("기여", "contribution")} ${driverSign}${fc(Math.abs(pvmSummary.driver.contribution))}`,
+    });
   }
   if (tone === "good") points.push({ cls: "good", text: tr("증액 여력 점검: 예산 배분(5-3)에서 한계효율이 살아있는 채널을 확인하세요.", "Room to scale: check Budget Allocation (5-3) for channels with headroom.") });
   else if (tone === "bad") points.push({ cls: "bad", text: tr("이상 감지 탭에서 급변한 날·채널을 먼저 확인하세요.", "Start with the Anomaly tab to find the day/channel that spiked.") });
@@ -214,6 +229,7 @@ export function buildDashboardVerdict({
       label: m.label,
       value: m.fmt(m.recent),
       detail: tr(`직전 ${m.fmt(m.prev)} · ${fmtPctDelta(m.wow)}`, `Prior ${m.fmt(m.prev)} · ${fmtPctDelta(m.wow)}`),
+      emphasis: m.key === effKey ? "primary" : undefined,
     }));
 
   // 다운로드 — 계산된 인사이트만(BOM+CRLF §7). 원천 업로드 데이터는 주지 않는다.

@@ -5,6 +5,10 @@ function plain(value) {
   return typeof value === "string" || typeof value === "number" ? String(value) : null;
 }
 
+function plainPoint(item) {
+  return [plain(item?.label), plain(item?.text), plain(item?.detail)].filter(Boolean).join(" · ") || null;
+}
+
 export function findingFromResultCard({ toolId, tone, headline, points, stats, inputSignature, locale, dataGroup, scope = {} }) {
   const title = plain(headline);
   if (!TOOL_KIND[toolId] || !title || !inputSignature) return null;
@@ -12,7 +16,7 @@ export function findingFromResultCard({ toolId, tone, headline, points, stats, i
     label: plain(stat.label) || "",
     displayValue: plain(stat.value) || "",
   })).filter((item) => item.label && item.displayValue);
-  const firstPoint = plain(points?.[0]?.text);
+  const firstPoint = plainPoint(points?.[0]);
   const resultSignature = `${inputSignature}|result:${[title, firstPoint, ...evidence.map((item) => `${item.label}:${item.displayValue}`)].filter(Boolean).join("|")}`;
   return {
     schemaVersion: 1,

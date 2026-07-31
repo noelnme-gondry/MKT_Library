@@ -47,5 +47,18 @@ describe("structured assist findings", () => {
     expect(finding.kind).toBe("saturation");
     expect(JSON.stringify(finding)).not.toContain("csvData");
   });
-});
 
+  it("구조화된 첫 근거를 라벨·대상·수치까지 finding에 보존한다", () => {
+    const finding = findingFromResultCard({
+      toolId: "5-2",
+      tone: "neutral",
+      headline: "큰 변화 없습니다",
+      points: [{ label: "지출 최대 변동", text: "Apple Search Ads", detail: "+₩3,610,678 · 설치 변화 없음" }],
+      stats: [{ label: "CPI", value: "₩1,506" }],
+      inputSignature: "structured",
+      locale: "ko",
+      dataGroup: "efficiency",
+    });
+    expect(finding.detail).toBe("지출 최대 변동 · Apple Search Ads · +₩3,610,678 · 설치 변화 없음");
+  });
+});
