@@ -37,8 +37,8 @@ export default function DiagnosePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="calculator-hero">
         <span>증상 기반 분석 라우터</span>
-        <h1>“무슨 도구를 쓰지?”보다<br />“왜 변했지?”에서 시작하세요</h1>
-        <p>세 가지 질문에 답하면 가능한 원인 가설과 확인 순서를 정리합니다. 원본 데이터는 입력하지 않으며, 결과는 인과를 단정하지 않습니다.</p>
+        <h1>무슨 분석을 해야 할지<br />모르겠다면</h1>
+        <p>지금 겪는 증상부터 하나씩 고르세요. 세 번째 답 뒤에 가장 먼저 확인할 분석 하나를 안내합니다.</p>
       </header>
       <DiagnoseRouter />
       <section className="calculator-faq" aria-label="자주 묻는 질문">

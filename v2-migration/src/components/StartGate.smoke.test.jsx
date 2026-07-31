@@ -16,6 +16,7 @@ describe("StartGate render smoke", () => {
     // 도구 카드(질문/제목) 최소 1개.
     expect(document.querySelectorAll(".phase-card").length).toBeGreaterThan(0);
     expect(screen.getByText(/데이터부터 살펴볼게요/)).toBeTruthy();
+    expect(document.querySelector('a[href="/diagnose"]')).toBeTruthy();
   });
 
   it("startMyData clears demo-loaded groups only (real uploads kept)", () => {

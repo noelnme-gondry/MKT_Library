@@ -28,6 +28,10 @@ const COPY = {
     questionEyebrow: "CHOOSE BY QUESTION",
     questionTitle: "지금 가장 먼저 판단할 것은?",
     questionDeck: "도구 이름보다 실제 업무 질문으로 시작합니다.",
+    diagnoseLabel: "아직 질문도 정하기 어렵다면",
+    diagnoseTitle: "문제 증상부터 3단계로 정리하기",
+    diagnoseDesc: "데이터 업로드 없이 증상·보유 데이터·다음 결정을 하나씩 고릅니다.",
+    diagnoseCta: "성과 문제 진단",
     questions: [
       { id: "5-2", label: "WEEKLY HEALTH", title: "이번 주, 어디를 먼저 봐야 할까?", desc: "CPA·ROAS·페이싱·이상 신호를 한 화면에서 점검합니다." },
       { id: "5-3", label: "BUDGET MOVE", title: "다음 예산은 어디로 옮길까?", desc: "현재 효율과 한계 효율로 증액·감액 후보를 비교합니다." },
@@ -66,6 +70,10 @@ const COPY = {
     questionEyebrow: "CHOOSE BY QUESTION",
     questionTitle: "What do you need to decide first?",
     questionDeck: "Start with the operating question, not the tool name.",
+    diagnoseLabel: "NOT SURE WHAT TO ASK YET?",
+    diagnoseTitle: "Turn the symptom into a three-step diagnosis",
+    diagnoseDesc: "Choose the symptom, available data, and next decision—no upload needed.",
+    diagnoseCta: "Diagnose performance",
     questions: [
       { id: "5-2", label: "WEEKLY HEALTH", title: "Where should I look first this week?", desc: "Review CPA, ROAS, pacing, and anomaly signals in one view." },
       { id: "5-3", label: "BUDGET MOVE", title: "Where should the next budget go?", desc: "Compare scale-up and pull-back candidates with marginal efficiency." },
@@ -164,6 +172,15 @@ export default function LandingPage({ locale = "ko" }) {
           </div>
           <p>{T.questionDeck}</p>
         </header>
+        <Link
+          className="dc-diagnose-entry"
+          href={lang === "en" ? "/en/diagnose" : "/diagnose"}
+          onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "landing", placement: "question_section", locale: lang })}
+        >
+          <span>{T.diagnoseLabel}</span>
+          <div><strong>{T.diagnoseTitle}</strong><p>{T.diagnoseDesc}</p></div>
+          <b>{T.diagnoseCta} →</b>
+        </Link>
         <div className="dc-question-grid">
           {T.questions.map((question) => (
             <button type="button" className="dc-question-card" key={question.id} onClick={() => openSample(question.id, "question_card")}>
