@@ -4,7 +4,7 @@ import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows } from "@/utils/dashboardAggregator";
-import { chartCommonOpts, getCssVar } from "@/utils/chartUtils";
+import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { buildFunnelData, FUNNEL_FIELD_LABEL } from "@/utils/funnelMath";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
@@ -79,8 +79,8 @@ export default function FunnelTab({ locale = "ko" } = {}) {
       {
         label: lbl,
         data: cvrData,
-        borderColor: "#adc6ff",
-        backgroundColor: "#adc6ff20",
+        borderColor: CHART_THEME.primary,
+        backgroundColor: getCssVar("--chart-primary-soft") || "rgba(143,177,255,0.12)",
         fill: true,
         tension: 0.2,
         pointRadius: ptR,
@@ -92,7 +92,7 @@ export default function FunnelTab({ locale = "ko" } = {}) {
       ds.push({
         label: tr("평균", "Average"),
         data: daily.map(() => mean),
-        borderColor: "#fbbf24",
+        borderColor: CHART_THEME.tertiary,
         borderDash: [5, 4],
         borderWidth: 1.5,
         pointRadius: 0,

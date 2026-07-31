@@ -6,7 +6,7 @@ import { CREATIVE_FATIGUE, CREATIVE_STATS } from "@/utils/creativeMath";
 import { CREATIVE_CONFIG } from "@/utils/creativeConfig";
 import { resolveCreativeCopy } from "@/utils/contentDomain";
 import { getMappedRows } from "@/utils/dashboardAggregator";
-import { downloadChartAsPNG } from "@/utils/chartUtils";
+import { CHART_THEME, downloadChartAsPNG } from "@/utils/chartUtils";
 import CsvUploader from "@/components/CsvUploader";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
@@ -731,8 +731,8 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
               type: "scatter",
               label: tr("β (효과)", "β (effect)"),
               data: pointData,
-              backgroundColor: "#ffffff",
-              borderColor: "#000",
+              backgroundColor: CHART_THEME.textPrimary,
+              borderColor: CHART_THEME.text,
               pointRadius: 4,
               pointHoverRadius: 6,
             },

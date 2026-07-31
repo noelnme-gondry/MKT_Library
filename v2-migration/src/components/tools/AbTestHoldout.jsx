@@ -13,21 +13,13 @@ import DownloadHub from "@/components/ds/DownloadHub";
 import ToolTemplateAction from "@/components/ds/ToolTemplateAction";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { localizedTool } from "@/lib/toolConnections";
+import { downloadCsv } from "@/utils/download";
+import { CHART_THEME } from "@/utils/chartUtils";
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
 
 /* 5-4 전용 템플릿 CSV (DataFeatureMatrix는 효율 스키마라 부적합 → 자체 제공).
    BOM+CRLF (§7). 헤더 + 예시 1~N행. */
-function downloadCsv(fileName, text) {
-  const blob = new Blob(["﻿" + text], { type: "text/csv;charset=utf-8" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-}
 function downloadAbTemplate() {
   const rows = [
     "arm_id,is_control,numerator,denominator",
@@ -35,7 +27,7 @@ function downloadAbTemplate() {
     "Variant A,0,496,8000",
     "Variant B,0,424,8000",
   ];
-  downloadCsv("template_5-4_ab.csv", rows.join("\r\n") + "\r\n");
+  downloadCsv("﻿" + rows.join("\r\n") + "\r\n", "template_5-4_ab");
 }
 
 /* 통화 포맷 — index.html fmtCurrency 포팅 (통화 토글 반영) */
@@ -78,6 +70,20 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
   const [activeTab, setActiveTab] = useState("design");
   const [mode, setMode] = useState("plan");
   const [testType, setTestType] = useState("binary");
+  const onPrimaryTabKeyDown = useCallback((event, tabId) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const tabs = ["design", "readout"];
+    const current = tabs.indexOf(tabId);
+    const nextIndex = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? tabs.length - 1
+        : (current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    const nextTab = tabs[nextIndex];
+    setActiveTab(nextTab);
+    window.requestAnimationFrame(() => document.getElementById(`ab-primary-tab-${nextTab}`)?.focus());
+  }, []);
   // 전역 통화(design-system §1.2) — 이 도구엔 다른 토글 UI가 없어 여기 단독 배치.
   const currency = useAppStore((s) => s.displayCurrency);
   const setDisplayCurrency = useAppStore((s) => s.setDisplayCurrency);
@@ -317,7 +323,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
         datasets: [{
           label: `MDE (%) · ${tr("baseline", "baseline")} ${pcBaseline}%`,
           data: pts.map((p) => ({ x: p.n, y: p.mdePct })),
-          borderColor: "#7aa2f7",
+          borderColor: CHART_THEME.primary,
           backgroundColor: "rgba(122,162,247,0.12)",
           borderWidth: 2,
           pointRadius: 2,
@@ -371,14 +377,15 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
           </button>
         </div>
       </section>
-      <div className="ab-tabs" style={{ marginBottom: "8px" }}>
-        <button className={`ab-tab ${activeTab === "design" ? "active" : ""}`} onClick={() => setActiveTab("design")}>
+      <div className="ab-tabs" role="tablist" aria-label={tr("실험 분석 보기", "Experiment analysis views")} style={{ marginBottom: "8px" }}>
+        <button type="button" id="ab-primary-tab-design" role="tab" aria-selected={activeTab === "design"} aria-controls="ab-primary-panel" tabIndex={activeTab === "design" ? 0 : -1} className={`ab-tab ${activeTab === "design" ? "active" : ""}`} onClick={() => setActiveTab("design")} onKeyDown={(event) => onPrimaryTabKeyDown(event, "design")}>
           {tr("① 설계 · 얼마나 모아야 하나?", "① Design · How much data do I need?")}
         </button>
-        <button className={`ab-tab ${activeTab === "readout" ? "active" : ""}`} onClick={() => setActiveTab("readout")}>
+        <button type="button" id="ab-primary-tab-readout" role="tab" aria-selected={activeTab === "readout"} aria-controls="ab-primary-panel" tabIndex={activeTab === "readout" ? 0 : -1} className={`ab-tab ${activeTab === "readout" ? "active" : ""}`} onClick={() => setActiveTab("readout")} onKeyDown={(event) => onPrimaryTabKeyDown(event, "readout")}>
           {tr("② A/B 판독 · 어느 쪽이 이겼나?", "② A/B readout · Which side won?")}
         </button>
       </div>
+      <div id="ab-primary-panel" role="tabpanel" aria-labelledby={`ab-primary-tab-${activeTab}`} tabIndex={0}>
       {/* 탭별 한 줄 평어 안내 (claude-ux §1 여정=질문) */}
       <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "0 0 18px", lineHeight: 1.6 }}>
         {activeTab === "design" && tr("실험을 시작하기 전에 — 얼마나 많은 표본(사람 수)을 모아야 결과를 믿을 수 있는지 계산합니다.", "Before you launch the test — calculate how many samples (people) you need to trust the result.")}
@@ -894,6 +901,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
         </>
       )}
 
+      </div>
     </div>
   );
 }

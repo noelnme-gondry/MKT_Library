@@ -28,6 +28,15 @@ export default function DemoNoticeModal({ locale = "ko" }) {
     }
   }, [isDemo, seen, setSeen]);
 
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
   if (!mounted || !open) return null;
 
   const close = () => setOpen(false);

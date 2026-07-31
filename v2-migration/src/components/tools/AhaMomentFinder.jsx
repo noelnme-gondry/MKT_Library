@@ -876,7 +876,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           {
             label: tr("F1 (예측 정확도)", "F1 (accuracy)"),
             data: kSweep.map((s) => s.F1),
-            borderColor: "#7aa2f7",
+            borderColor: CHART_THEME.primary,
             backgroundColor: "rgba(122,162,247,0.15)",
             yAxisID: "y",
             tension: 0.25,
@@ -886,7 +886,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           {
             label: tr("전체 유저 중 비율(%)", "% of all users"),
             data: kSweep.map((s) => (s.allPct || 0) * 100),
-            borderColor: "#9ece6a",
+            borderColor: CHART_THEME.secondary,
             borderDash: [4, 3],
             yAxisID: "y1",
             tension: 0.25,
@@ -1083,7 +1083,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
         ) : (
           <div style={{ marginTop: "12px", background: "linear-gradient(135deg,rgba(122,162,247,0.12),rgba(122,162,247,0.03))", border: "1px solid rgba(122,162,247,0.3)", borderRadius: "10px", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <div style={{ fontSize: "12.5px", color: "var(--text-1)" }}>✅ {tr("필수 역할 매핑 완료.", "Required roles are mapped.")} <strong>{tr("매핑이 맞는지 확인한 뒤 분석을 실행하세요.", "Confirm the mapping looks right, then run the analysis.")}</strong></div>
-            <button className="ab-pill" style={{ background: "#7aa2f7", color: "#0b0d12", fontWeight: 700, borderColor: "#7aa2f7", fontSize: "13px", padding: "8px 18px" }} onClick={runAhaAnalysis}>▶ {tr("분석하기", "Analyze")}</button>
+            <button className="ab-pill" style={{ background: CHART_THEME.primary, color: "var(--bg-1)", fontWeight: 700, borderColor: CHART_THEME.primary, fontSize: "13px", padding: "8px 18px" }} onClick={runAhaAnalysis}>▶ {tr("분석하기", "Analyze")}</button>
           </div>
         )}
       </section>

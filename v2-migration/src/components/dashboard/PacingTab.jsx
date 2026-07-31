@@ -204,7 +204,7 @@ export default function PacingTab({ locale = "ko" } = {}) {
       ds.push({
         label: T.targetLinear,
         data: mtdSeries.map((_, i) => target * (i + 1) / paceData.daysInMonth),
-        borderColor: "#fbbf24",
+        borderColor: CHART_THEME.tertiary,
         borderDash: [5, 4],
         borderWidth: 1.5,
         pointRadius: 0,

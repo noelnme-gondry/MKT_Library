@@ -5,7 +5,7 @@ import { useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
 import { getMonFilteredRows, aggregateByKey, fmtCurrencyCompact, fmtCurrencyPrecise, effectiveDenomBasis } from "@/utils/dashboardAggregator";
 import { convertCurrency } from "@/utils/format";
-import { chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
+import { CHART_THEME, chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import { customMetricToDescriptor } from "@/utils/metrics/customMetric";
 import InlineCardEditor from "@/components/ds/InlineCardEditor";
@@ -284,7 +284,7 @@ export default function ScorecardTab({ domain = "performance", locale = "ko" } =
     const ds = isContinuous ? [{
       label: "",
       data: vals,
-      borderColor: "#adc6ff",
+      borderColor: CHART_THEME.primary,
       backgroundColor: ptBg,
       pointBackgroundColor: ptBorder,
       pointBorderColor: ptBorder,

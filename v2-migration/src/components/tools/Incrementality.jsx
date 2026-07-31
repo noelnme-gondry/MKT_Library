@@ -61,6 +61,21 @@ export default function Incrementality({ locale = "ko" } = {}) {
   const [method, setMethod] = useState("suppression");
   const fileRef = useRef(null);
   const hasData = csvData?.raw?.length > 0;
+  const selectMethod = useCallback((nextMethod) => setMethod(nextMethod), []);
+  const onMethodKeyDown = useCallback((event, methodKey) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const keys = METHODS.map((item) => item.key);
+    const current = keys.indexOf(methodKey);
+    const nextIndex = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? keys.length - 1
+        : (current + (event.key === "ArrowRight" ? 1 : -1) + keys.length) % keys.length;
+    const nextMethod = keys[nextIndex];
+    selectMethod(nextMethod);
+    window.requestAnimationFrame(() => document.getElementById(`incrementality-tab-${nextMethod}`)?.focus());
+  }, [METHODS, selectMethod]);
 
   const handleFile = (file) => {
     if (!file) return;
@@ -104,13 +119,30 @@ export default function Incrementality({ locale = "ko" } = {}) {
       </section>
 
       {/* 방법 탭 */}
-      <div className="ab-tabs" style={{ marginBottom: "8px" }}>
+      <div className="ab-tabs" role="tablist" aria-label={tr("증분 분석 방법", "Incrementality methods")} style={{ marginBottom: "8px" }}>
         {METHODS.map((m) => (
-          <button key={m.key} className={`ab-tab ${method === m.key ? "active" : ""}`} onClick={() => setMethod(m.key)}>
+          <button
+            key={m.key}
+            type="button"
+            id={`incrementality-tab-${m.key}`}
+            role="tab"
+            aria-selected={method === m.key}
+            aria-controls="incrementality-method-panel"
+            tabIndex={method === m.key ? 0 : -1}
+            className={`ab-tab ${method === m.key ? "active" : ""}`}
+            onClick={() => selectMethod(m.key)}
+            onKeyDown={(event) => onMethodKeyDown(event, m.key)}
+          >
             {m.label}
           </button>
         ))}
       </div>
+      <div
+        id="incrementality-method-panel"
+        role="tabpanel"
+        aria-labelledby={`incrementality-tab-${method}`}
+        tabIndex={0}
+      >
       <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "0 0 12px", lineHeight: 1.5 }}>
         {method === "suppression" && tr("같은 기간, 무작위로 광고를 차단한 홀드아웃 그룹 vs 노출 그룹을 비교합니다. 무작위 분할이면 인과 신뢰가 가장 높습니다.", "Compares a holdout group (ads randomly blocked) vs an exposed group over the same period. Random assignment gives the highest causal confidence.")}
         {method === "on" && tr("안 하던 광고/캠페인을 켠 시점(cutoff) 전후를 비교합니다. 대조군을 넣으면 계절·추세를 제거(DiD)합니다.", "Compares before/after the moment (cutoff) you turned on an ad/campaign that wasn't running. Adding a control group removes seasonality/trend (DiD).")}
@@ -148,6 +180,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
             : <PrePostView csvData={csvData} direction={method} currency={currency} locale={locale} />}
         </div>
       )}
+    </div>
     </div>
   );
 }
@@ -290,7 +323,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
     chartInst.current = new Chart(ctx, {
       type: "line",
       data: { labels, datasets: [
-        { label: tr("노출 그룹(광고 봄)", "Exposed group (saw ads)"), data: expRate, borderColor: "#22c55e", backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, tension: 0.15 },
+        { label: tr("노출 그룹(광고 봄)", "Exposed group (saw ads)"), data: expRate, borderColor: CHART_THEME.secondary, backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, tension: 0.15 },
         { label: tr("홀드아웃(광고 차단)", "Holdout (ads blocked)"), data: holdRate, borderColor: getCssVar("--text-muted"), backgroundColor: "transparent", pointRadius: 0, borderWidth: 2, borderDash: [5, 4], tension: 0.15 },
       ] },
       options: {
