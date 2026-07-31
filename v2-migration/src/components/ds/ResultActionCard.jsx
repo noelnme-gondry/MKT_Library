@@ -139,7 +139,7 @@ export default function ResultActionCard({
       {stats.length > 0 && (
         <div className="result-action-card__stats" aria-label={locale === "en" ? "Key figures" : "핵심 수치"}>
           {stats.map((s, i) => (
-            <div key={i}>
+            <div className={s.emphasis === "primary" ? "is-primary" : ""} key={i}>
               <span>{s.label}</span>
               <strong>{s.value}</strong>
               {s.detail && <small>{s.detail}</small>}
@@ -151,8 +151,10 @@ export default function ResultActionCard({
       {visiblePoints.length > 0 && (
         <ul className="result-action-card__points">
           {visiblePoints.map((p, i) => (
-            <li key={i} className={p.cls || ""}>
-              {p.text}
+            <li key={i} className={`${p.cls || ""} ${p.label ? "is-structured" : ""}`.trim()}>
+              {p.label && <span className="result-action-card__point-label">{p.label}</span>}
+              {p.label ? <strong>{p.text}</strong> : p.text}
+              {p.detail && <small>{p.detail}</small>}
             </li>
           ))}
         </ul>
@@ -163,7 +165,11 @@ export default function ResultActionCard({
           <summary>{locale === "en" ? `View ${hiddenPoints.length} more supporting point(s)` : `근거 ${hiddenPoints.length}개 더 보기`}</summary>
           <ul className="result-action-card__points result-action-card__points--nested">
             {hiddenPoints.map((p, i) => (
-              <li key={i} className={p.cls || ""}>{p.text}</li>
+              <li key={i} className={`${p.cls || ""} ${p.label ? "is-structured" : ""}`.trim()}>
+                {p.label && <span className="result-action-card__point-label">{p.label}</span>}
+                {p.label ? <strong>{p.text}</strong> : p.text}
+                {p.detail && <small>{p.detail}</small>}
+              </li>
             ))}
           </ul>
         </details>

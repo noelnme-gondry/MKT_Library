@@ -5,6 +5,10 @@ function plain(value) {
   return typeof value === "string" || typeof value === "number" ? String(value) : null;
 }
 
+function plainPoint(item) {
+  return [plain(item?.label), plain(item?.text), plain(item?.detail)].filter(Boolean).join(" · ") || null;
+}
+
 function containsForbidden(value, seen = new Set()) {
   if (!value || typeof value !== "object" || seen.has(value)) return false;
   seen.add(value);
@@ -21,7 +25,7 @@ export function reportBlockFromResultCard({ toolId, toolTitle, headline, points,
     toolTitle: plain(toolTitle) || toolId,
     blockKind: "summary",
     headline: title.slice(0, 240),
-    points: (points || []).map((item) => plain(item.text)).filter(Boolean).slice(0, 8),
+    points: (points || []).map(plainPoint).filter(Boolean).slice(0, 8),
     stats: (stats || []).map((item) => ({
       label: plain(item.label) || "",
       displayValue: plain(item.value) || "",

@@ -18,6 +18,19 @@ describe("weekly report contract", () => {
     expect(block.stats[0].displayValue).toBe("+₩2,000");
   });
 
+  it("구조화된 화면 근거의 라벨·대상·수치를 함께 보존한다", () => {
+    const structured = reportBlockFromResultCard({
+      toolId: "5-21",
+      toolTitle: "성과 변동 탐지",
+      headline: "Meta가 변화를 주도했습니다",
+      points: [{ label: "효율 최대 영향", text: "Meta", detail: "CPI +₩22.6" }],
+      stats: [],
+      inputSignature: "structured",
+      locale: "ko",
+    });
+    expect(structured.points[0]).toBe("효율 최대 영향 · Meta · CPI +₩22.6");
+  });
+
   it("금지된 원본 키가 있으면 내보내기를 중단한다", () => {
     expect(() => serializeReportDraft({ title: "x", blocks: [block], notes: [], raw: [{ secret: 1 }] })).toThrow("REPORT_FORBIDDEN_DATA");
   });
@@ -29,4 +42,3 @@ describe("weekly report contract", () => {
     expect(renderReportMarkdown(draft, "ko")).toBe(first);
   });
 });
-
