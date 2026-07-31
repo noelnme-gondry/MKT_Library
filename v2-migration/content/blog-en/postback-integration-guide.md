@@ -7,6 +7,7 @@ keywords: "postback integration, MMP postback, zero installs, missing events, re
 tags: ["Measurement", "Fundamentals"]
 draft: false
 primaryTool: "5-20"
+ogImage: "/blog-assets/postback-integration-guide/og-en.svg"
 faq:
   - q: "Do zero installs in the ad network always mean a postback problem?"
     a: "No. Verify the app install, MMP attribution, partner connection, app ID, and conversion window in order. The last working point narrows the cause."
@@ -24,7 +25,7 @@ A postback is a signal from an MMP or measurement system to an ad network for in
 
 `Ad click or impression → app install and launch → MMP attribution → event collection → network postback → network reporting and learning`
 
-![Postback path from app event to network reporting](/blog-assets/postback-integration-guide/postback-flow.svg)
+![Postback path from app event to network reporting](/blog-assets/postback-integration-guide/postback-flow-en.svg)
 
 ## Separate SAN from S2S first
 
@@ -41,7 +42,7 @@ iOS privacy measurement is also different from user-level postbacks. Apple AdAtt
 | Zero revenue | Purchase event | `value`, `currency`, revenue-event setup | Check transaction ID, amount, currency, duplicates |
 | Zero cost | Network API connection | Permission, account connection, time zone, sync delay | Check cost API status and account scope |
 
-![Symptoms separated by the last verified point](/blog-assets/postback-integration-guide/zero-data-diagnosis.svg)
+![Symptoms separated by the last verified point](/blog-assets/postback-integration-guide/zero-data-diagnosis-en.svg)
 
 ## If installs are zero
 
@@ -71,7 +72,7 @@ Cost depends on network API tokens, ad-account permissions, account connections,
 - [ ] Check cost API permission, account scope, time zone, and sync delay
 - [ ] Interpret iOS privacy postbacks with their own delay and aggregation rules
 
-![Campaign launch QA flow](/blog-assets/postback-integration-guide/launch-qa-flow.svg)
+![Campaign launch QA flow](/blog-assets/postback-integration-guide/launch-qa-flow-en.svg)
 
 ## Conclusion
 

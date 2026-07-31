@@ -6,7 +6,7 @@ slug: "event-taxonomy-guide"
 keywords: "이벤트 택소노미, 이벤트 네이밍 규칙, 인앱 이벤트 설계, GA4 이벤트, MMP 이벤트, 이벤트 파라미터, 이벤트 QA"
 tags: ["측정", "기초"]
 draft: false
-ogImage: "/blog-assets/event-taxonomy-guide/og.svg"
+ogImage: "/blog-assets/event-taxonomy-guide/og-ko.svg"
 relatedGlossary: ["mmp", "retention", "ltv"]
 faq:
   - q: "이벤트명은 화면 이름으로 지어도 되나요?"
@@ -33,7 +33,7 @@ faq:
 
 `paywall_screen_view`처럼 화면과 행동을 한 이름에 섞지 마세요. 사용자가 화면을 봤다면 `screen_view` 또는 제품의 화면 조회 규칙을 쓰고, `screen_name=paywall`을 파라미터로 둡니다. 결제를 완료했다면 `purchase_completed`를 발화하고 결제수단·상품·금액을 파라미터로 보냅니다.
 
-![사용자 행동을 이벤트, 파라미터, 사용자 속성으로 분리하고 GA4·MMP·광고 매체로 보내는 구조도](/blog-assets/event-taxonomy-guide/action-event-parameter-flow.svg)
+![사용자 행동을 이벤트, 파라미터, 사용자 속성으로 분리하고 GA4·MMP·광고 매체로 보내는 구조도](/blog-assets/event-taxonomy-guide/action-event-parameter-flow-ko.svg)
 
 ## 네이밍 규칙은 적고 엄격하게
 
@@ -59,7 +59,7 @@ GA4의 권장 이벤트를 제품 정의와 맞게 쓸 수 있다면 먼저 사�
 
 `value`를 보낼 때는 `currency`를 함께 보냅니다. GA4 권장 전자상거래 이벤트도 금액 값이 있으면 3자리 ISO 4217 통화 코드가 필요하다고 명시합니다. 거래 금액은 쉼표·통화 기호가 없는 숫자 값으로 보내고, `transaction_id`는 중복 제거 규칙을 갖게 하세요. AppsFlyer도 인앱 매출 값에 통화 기호·쉼표·문자를 넣지 않도록 안내합니다. [AppsFlyer 인앱 이벤트 문서](https://dev.appsflyer.com/hc/docs/inappevents)를 참고하세요.
 
-![좋은 이벤트명과 나쁜 이벤트명을 행동·파라미터·발화 시점 기준으로 비교한 표](/blog-assets/event-taxonomy-guide/good-bad-naming.svg)
+![좋은 이벤트명과 나쁜 이벤트명을 행동·파라미터·발화 시점 기준으로 비교한 표](/blog-assets/event-taxonomy-guide/good-bad-naming-ko.svg)
 
 ## 발화 시점과 중복 제거를 먼저 결정하세요
 
@@ -84,7 +84,7 @@ GA4의 권장 이벤트를 제품 정의와 맞게 쓸 수 있다면 먼저 사�
 
 GA4는 이벤트와 파라미터를 Realtime·DebugView에서 확인할 수 있고, Measurement Protocol 검증 서버도 제공합니다. [GA4 이벤트 검증 방법](https://developers.google.com/analytics/devguides/collection/protocol/ga4/validating-events)처럼 운영 환경 전 검증 경로를 정하세요.
 
-![택소노미 설계부터 개발, QA, 포스트백, 광고 최적화까지 이어지는 운영 흐름](/blog-assets/event-taxonomy-guide/design-to-qa-flow.svg)
+![택소노미 설계부터 개발, QA, 포스트백, 광고 최적화까지 이어지는 운영 흐름](/blog-assets/event-taxonomy-guide/design-to-qa-flow-ko.svg)
 
 ## 개발 전달 전 QA 체크리스트
 
