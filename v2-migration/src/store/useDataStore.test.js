@@ -119,3 +119,75 @@ describe("useDataStore · CSV grain별 필터 승계", () => {
     expect([...useAppStore.getState().dashboardFilter.channels]).toEqual(["Google"]);
   });
 });
+
+describe("useDataStore · 구조화 세션 상태", () => {
+  it("finding은 같은 도구의 최신 결과로 교체되고 persist되지 않는다", () => {
+    useAppStore.setState({ findingsByGroup: {} });
+    const finding = {
+      schemaVersion: 1,
+      id: "5-2:sig:primary",
+      toolId: "5-2",
+      dataGroup: "efficiency",
+      kind: "anomaly",
+      severity: "watch",
+      score: 70,
+      headline: "변동 확인",
+      detail: "근거 확인",
+      evidence: [],
+      scope: {},
+      suggestedTargets: [],
+      inputSignature: "sig",
+      locale: "ko",
+    };
+    useAppStore.getState().publishFinding(finding);
+    useAppStore.getState().publishFinding({ ...finding, id: "5-2:sig2:primary", inputSignature: "sig2" });
+    expect(useAppStore.getState().findingsByGroup.efficiency).toHaveLength(1);
+    const persisted = persistPartialize(useAppStore.getState());
+    expect(persisted.findingsByGroup).toBeUndefined();
+    expect(persisted.reportDraft).toBeUndefined();
+    expect(persisted.analysisHandoff).toBeUndefined();
+  });
+
+  it("보고서 블록 순서를 바꾸고 같은 id를 갱신한다", () => {
+    useAppStore.setState({ reportDraft: { schemaVersion: 1, title: "", period: null, blocks: [], notes: [] } });
+    const a = { schemaVersion: 1, id: "a", headline: "A" };
+    const b = { schemaVersion: 1, id: "b", headline: "B" };
+    useAppStore.getState().addReportBlock(a);
+    useAppStore.getState().addReportBlock(b);
+    useAppStore.getState().moveReportBlock("b", -1);
+    expect(useAppStore.getState().reportDraft.blocks.map((item) => item.id)).toEqual(["b", "a"]);
+    useAppStore.getState().addReportBlock({ ...a, headline: "A2" });
+    expect(useAppStore.getState().reportDraft.blocks.find((item) => item.id === "a").headline).toBe("A2");
+  });
+
+  it("프로젝트 복원은 호환 group만 적용하고 분석 gate를 열지 않는다", () => {
+    const emptyFilter = {
+      dateStart: null, dateEnd: null,
+      platforms: new Set(), countries: new Set(), channels: new Set(), sources: new Set(),
+    };
+    useAppStore.setState({
+      currentRouteId: "5-2",
+      csvGroups: {
+        ...useAppStore.getState().csvGroups,
+        efficiency: { raw: [{ 날짜: "2026-07-01", 비용: "100" }], headers: ["날짜", "비용"], mapping: {}, fileName: "x.csv" },
+      },
+      dashboardFilterGroups: { ...useAppStore.getState().dashboardFilterGroups, efficiency: emptyFilter },
+      analyzedByGroup: { ...useAppStore.getState().analyzedByGroup, efficiency: "old" },
+    });
+    useAppStore.getState().applyProjectConfig({
+      groups: {
+        efficiency: {
+          mapping: { 날짜: "date", 비용: "cost", 악성: "not_a_field" },
+          filters: { channels: ["Google"] },
+        },
+      },
+      viewConfig: { scope: { hidden: ["ctr"], order: [] } },
+      customMetrics: {},
+      customCharts: {},
+    }, ["efficiency"]);
+    const state = useAppStore.getState();
+    expect(state.csvGroups.efficiency.mapping).toEqual({ 날짜: "date", 비용: "cost" });
+    expect([...state.dashboardFilterGroups.efficiency.channels]).toEqual(["Google"]);
+    expect(state.analyzedByGroup.efficiency).toBeNull();
+  });
+});

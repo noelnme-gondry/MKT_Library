@@ -8,6 +8,7 @@ import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 import { setLocalePref } from "@/lib/localePref";
 import { englishSwitchHref } from "@/lib/localizedHref";
 import BrandMark from "@/components/BrandMark";
+import ProjectSettingsMenu from "@/components/ProjectSettingsMenu";
 
 const HEADER_COPY = {
   ko: {
@@ -64,6 +65,8 @@ export default function Header({ locale = "ko" }) {
   const isTemplates = cleanPath === "/templates";
   const isCalculator = cleanPath === "/calculator" || cleanPath.startsWith("/calculator/");
   const isDiagnose = cleanPath === "/diagnose";
+  const isWeeklyReport = cleanPath === "/weekly-report";
+  const isWeeklyReview = cleanPath === "/weekly-review";
   // 용어사전도 동일 패턴(§glossary) — 이제 EN 있음(content/glossary-en), 블로그처럼
   // /glossary↔/en/glossary 전환.
   const isGlossary = cleanPath === "/glossary" || cleanPath.startsWith("/glossary/");
@@ -144,6 +147,16 @@ export default function Header({ locale = "ko" }) {
             </span>
           </>
         )}
+        {(isWeeklyReport || isWeeklyReview) && (
+          <>
+            <span className="sep">/</span>
+            <span className="current" style={{ color: "var(--text-secondary)" }}>
+              {isWeeklyReport
+                ? (locale === "en" ? "Weekly report" : "주간 보고서")
+                : (locale === "en" ? "Weekly review" : "주간 검토")}
+            </span>
+          </>
+        )}
         {isGlossary && (
           <>
             <span className="sep">/</span>
@@ -153,7 +166,7 @@ export default function Header({ locale = "ko" }) {
           </>
         )}
         {/* 트레일링 크럼은 도구/문서 페이지에서만(홈은 브랜드만). */}
-        {!isBlog && !isTemplates && !isCalculator && !isDiagnose && !isGlossary && meta && (
+        {!isBlog && !isTemplates && !isCalculator && !isDiagnose && !isWeeklyReport && !isWeeklyReview && !isGlossary && meta && (
           <>
             <span className="sep">/</span>
             <span
@@ -171,6 +184,7 @@ export default function Header({ locale = "ko" }) {
         )}
       </nav>
       <div className="topbar-actions">
+        <ProjectSettingsMenu locale={locale} />
         {hasCsv && (
           <span className="header-csv" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11.5px", color: "var(--text-muted)", marginRight: "4px" }}>
             <span className="chip" title={csvData.fileName}>

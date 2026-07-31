@@ -214,6 +214,18 @@ export function buildPvmCache(csvData, state) {
   const earliestMon = getMonday(new Date(minT)).getTime();
 
   function rangesFor(lb) {
+    if (state.periodOverride?.periodA?.start && state.periodOverride?.periodB?.end) {
+      return {
+        p1: [
+          new Date(`${state.periodOverride.periodA.start}T00:00:00Z`).getTime(),
+          new Date(`${state.periodOverride.periodA.end}T00:00:00Z`).getTime(),
+        ],
+        p2: [
+          new Date(`${state.periodOverride.periodB.start}T00:00:00Z`).getTime(),
+          new Date(`${state.periodOverride.periodB.end}T00:00:00Z`).getTime(),
+        ],
+      };
+    }
     if (weekBasis === "calendar") {
       const p2 = [thisMon, thisMon + 6 * DAY];
       const p1start = thisMon - 7 * lb * DAY;
@@ -225,6 +237,7 @@ export function buildPvmCache(csvData, state) {
   }
 
   function isLocked(lb) {
+    if (state.periodOverride) return false;
     if (weekBasis === "calendar") {
       const p1start = thisMon - 7 * lb * DAY;
       return p1start < earliestMon;
@@ -422,6 +435,8 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   // 전역 통화(₩/$) SSOT 구독 — 토글 UI는 Header(브레드크럼 옆) 하나뿐(디자인시스템,
   // 도구별 중복 토글 금지). 여기선 표시 포맷에만 사용.
   const displayCurrency = useAppStore((state) => state.displayCurrency);
+  const analysisHandoff = useAppStore((state) => state.analysisHandoff);
+  const clearAnalysisHandoff = useAppStore((state) => state.clearAnalysisHandoff);
   // 전역 분모 기준(설치/가입) → 지표(가입=CPA, 설치=CPI). §12.18 SSOT 구독.
   const effBasis = effectiveDenomBasis(csvData, denomBasis);
   const basisMetric = effBasis === "installs" ? "cpi" : "cpa";
@@ -437,6 +452,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const setMetric = setMetricOverride;
   const [weekBasis, setWeekBasis] = useState("calendar");
   const [lookback, setLookback] = useState(1);
+  const [periodOverride, setPeriodOverride] = useState(null);
   const currency = displayCurrency === "USD" ? "usd" : "krw";
 
   const [drillChannel, setDrillChannel] = useState("__all__");
@@ -459,11 +475,11 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const cache = useMemo(() => {
     if (!hasData) return null;
     try {
-      return buildPvmCache(csvData, { metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale });
+      return buildPvmCache(csvData, { metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale, periodOverride });
     } catch (e) {
       return { insufficientData: true, message: tr("분석 중 오류: ", "Analysis error: ") + e.message };
     }
-  }, [hasData, csvData, metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale, tr]);
+  }, [hasData, csvData, metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale, periodOverride, tr]);
 
   const ready = cache && !cache.insufficientData;
 
@@ -1237,6 +1253,34 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         toc={buildPvmToc(C, locale)}
         stickyFilter={<DashboardFilterBar locale={locale} />}
       >
+      {analysisHandoff?.targetToolId === "5-21" && analysisHandoff?.dataGroup === "efficiency" && (
+        <div className="callout info" style={{ marginBottom: "12px" }}>
+          <div className="body">
+            <strong>{tr("이상탐지에서 비교 맥락을 가져왔습니다.", "Comparison context received from Anomaly Detection.")}</strong>
+            <p>
+              {analysisHandoff.periodA?.start} ~ {analysisHandoff.periodA?.end}
+              {" → "}
+              {analysisHandoff.periodB?.start} ~ {analysisHandoff.periodB?.end}
+              {" · "}
+              {String(analysisHandoff.metric || "").toUpperCase()}
+            </p>
+            <p className="muted">{tr(
+              "현재 PVM 비교 조건을 확인한 뒤 직접 실행하세요. 자동 분석하지 않습니다.",
+              "Confirm the PVM comparison settings and run it yourself. The analysis is not started automatically.",
+            )}</p>
+            {!periodOverride && (
+              <button className="btn primary" type="button" onClick={() => {
+                setMetric(analysisHandoff.metric);
+                setPeriodOverride({ periodA: analysisHandoff.periodA, periodB: analysisHandoff.periodB });
+              }}>{tr("이 기간을 비교 조건에 적용", "Apply these comparison periods")}</button>
+            )}
+            <button className="btn ghost" type="button" onClick={() => {
+              setPeriodOverride(null);
+              clearAnalysisHandoff();
+            }}>{tr("맥락 닫기", "Dismiss context")}</button>
+          </div>
+        </div>
+      )}
       {/* §0 한눈에 보기 */}
       <section
         className="block"
