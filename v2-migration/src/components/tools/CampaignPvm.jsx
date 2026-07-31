@@ -558,7 +558,7 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     let trendChart = null;
     const base = chartCommonOpts();
     // Mix·Rate 막대는 0을 양쪽에 두므로, 기본 그리드보다 강한 기준선을 별도로
-    // 그린다. 0이 화면 중앙이 아닐 때도 개선/악화의 출발점을 즉시 읽게 한다.
+    // 그린다. 기준 라벨은 축의 0원 눈금과 중복되므로 선만 표시한다.
     const zeroBaselinePlugin = {
       id: "pvmMixRateZeroBaseline",
       afterDraw(chart) {
@@ -576,11 +576,6 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         ctx.moveTo(zeroX, area.top);
         ctx.lineTo(zeroX, area.bottom);
         ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.fillStyle = "#334155";
-        ctx.font = "700 10px JetBrains Mono";
-        ctx.textAlign = "center";
-        ctx.fillText(cur === "usd" ? tr("$0 기준", "$0 baseline") : tr("0원 기준", "₩0 baseline"), zeroX, area.top - 6);
         ctx.restore();
       },
     };
@@ -674,7 +669,20 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           ...base,
           indexAxis: "y",
           scales: {
-            x: { ...base.scales.x, stacked: true, ticks: { ...base.scales.x.ticks, callback: (v) => pvmFmtMoney(v, cur) }, title: { display: true, text: tr(`${ml} 영향(${cur === "usd" ? "$" : "원"})`, `${ml} impact (${cur === "usd" ? "$" : "KRW"})`), color: CHART_THEME.muted, font: { size: 10 } } },
+            x: {
+              ...base.scales.x,
+              stacked: true,
+              ticks: {
+                ...base.scales.x.ticks,
+                callback: (v) => pvmFmtMoney(v, cur),
+                font: (context) => ({
+                  family: "JetBrains Mono",
+                  size: 11,
+                  weight: Number(context.tick?.value) === 0 ? "700" : "400",
+                }),
+              },
+              title: { display: true, text: tr(`${ml} 영향(${cur === "usd" ? "$" : "원"})`, `${ml} impact (${cur === "usd" ? "$" : "KRW"})`), color: CHART_THEME.muted, font: { size: 10 } },
+            },
             y: { ...base.scales.y, stacked: true, beginAtZero: true, grid: { display: false } },
           },
           plugins: {
