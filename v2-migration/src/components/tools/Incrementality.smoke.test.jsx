@@ -27,6 +27,16 @@ describe("Incrementality render smoke", () => {
     expect(() => render(<Incrementality />)).not.toThrow();
   });
 
+  it("exposes keyboard-operable method tabs", () => {
+    render(<Incrementality />);
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs).toHaveLength(3);
+    expect(tabs[0].getAttribute("aria-selected")).toBe("true");
+    fireEvent.keyDown(tabs[0], { key: "ArrowRight" });
+    expect(tabs[1].getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tabpanel").getAttribute("aria-labelledby")).toBe(tabs[1].id);
+  });
+
   it("mounts with suppression demo → 결론 카드 + 다운로드", () => {
     seed(buildIncrSuppressionDemo());
     const { container } = render(<Incrementality />);

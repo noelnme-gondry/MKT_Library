@@ -358,7 +358,7 @@ index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상�
 - **판정 엔진은 도구별 렌더 유틸**(골든 아님, 공용 아님): 5-2=`utils/dashboardVerdict.js`(`buildDashboardVerdict` — WoW 최근 vs 직전). **WoW는 5-2류 시계열 대시보드 전용** — MMM(5-18=기여/최적예산)·Aha(5-20=최적 윈도우)·PVM(5-21=top-mover)은 각자 자연스러운 "결론"을 계산해 같은 `ResultActionCard`에 꽂는다(공용은 카드 셸·허브·download.js뿐, 판정 로직은 도구별).
 - **다운로드는 "계산한 인사이트"만 — 업로드 원천 데이터 되돌려주기 금지**(UX 무가치): 일별/채널별/캠페인별 raw dump는 사용자가 이미 가진 것. 대신 도구가 **계산한** WoW 증감표(지출·노출·클릭·설치·전환 + 파생 CPA·CPI·CTR·CVR·ROAS·매출·이익·**리텐션 D7**)를 리치하게 준다. 미매핑 지표는 표에서 제외(정직 §8). 리텐션은 raw 윈도우 행에서 `computeWeightedRetention`(일별 합산 아님). DownloadHub items=요약표(CSV)+요약문서(텍스트) 2개. 단위 테스트로 tone 분기·BOM/CRLF·파생행·미매핑 게이트 검증.
 - **WoW 기간 토글 연동**(5-2): store `dashWindowDays`(7/14/28, 휘발) 공유 → 결론카드 pill(`controls` 슬롯)+스코어카드 토글 양방향 동기화.
-- **채택 현황**(갭 큰 순): 5-2 ✅ · 5-23 증분 ✅(통제군·전후 두 뷰 각 결론카드, csv=엔진결과 요약·인과 단정 금지 §8 유지). 다음: 5-22→5-20→5-6→5-21→5-18(각 도구 결론은 tool-specific 렌더 유틸, EN=`tr` 필수). 로컬 `downloadCsv` 재정의는 채택 시 공용 `download.js`로 교체.
+- **채택 현황**: 공개 분석 도구 11개 모두 `ResultActionCard` 채택 완료. 결론은 tool-specific 렌더 유틸, EN=`tr` 동등 반영. CSV 다운로드는 공용 `utils/download.js` 사용.
 
 ---
 
@@ -413,7 +413,7 @@ index.html을 v2 Next.js 모듈로 이관하며 확립한 재사용 패턴. 상�
 **최우선 진행 = v2 Next.js 마이그레이션** (SSOT: `docs/v2-migration-tasks.md`, 패턴: §12.20):
 - ✅ Phase 1 수학엔진 이관 · Phase 2 Pro삭제+Supabase주석 · Phase 3 CSS 패리티 · Phase 4 전 도구 실배선 · **Phase 6.3 CSV 그룹 스코프 상태**(csvGroups+TOOL_GROUP 미러) · **6.4 Path 라우팅**(`[[...slug]]`+routeMap+sitemap) · **Phase 7 골든+스모크 하네스**(vitest golden+jsdom smoke).
 - ✅ 검증: `npm run test:all` **42파일·202 GREEN**(golden 22+smoke 20)·eslint 0·next build ✓·전 도구/대시보드 preview 크래시 0. **Phase 8 배포 게이트 충족**.
-- ✅ **Phase 8 컷오버 진행**(feat/v2-nextjs-cutover PR): v2를 별도 repo(Growth_Ops_Playbook)에서 개발 후 MKT_Library로 편입 — nested `.git` 제거·파일 복사, `index.html`·루트 `serve` package.json·`serve.json`·`validate.js`·`sitemap.xml`·`content/` 레거시 삭제. SOP가 런타임 fetch하는 `content/pages`·`schema.md`+`ads.txt`는 `v2-migration/public/`로 이동(v2 자기완결). 도메인 `mktlibrary.up.railway.app`로 교체(layout·routeMap).
+- ✅ **Phase 8 컷오버 완료**(feat/v2-nextjs-cutover PR): v2를 MKT_Library에 편입하고 레거시 런타임을 제거. `v2-migration/`이 운영 앱 SSOT.
 - ⚠ **배포 수동 작업(사용자)**: Railway 서비스 **Root Directory=`v2-migration`**, Build=`npm run build`, Start=`npm start`(`next start -p $PORT`). 이 설정 없으면 루트에 package.json 없어 빌드 실패. 이후 v2 작업은 MKT_Library `v2-migration/`에서.
 
 **레거시 백로그** (필요 시): 쉬운말 딥다이브 잔여(5-4→5-18→5-20 §12.17) · SOP 콘텐츠 보강 · 회귀·예측 후속(§12.15·§12.20) · Pro 처방 레이어. (index.html은 git 히스토리에 보존.)

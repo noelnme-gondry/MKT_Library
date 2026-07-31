@@ -26,25 +26,27 @@ import {
 } from "@/utils/budgetAllocTool";
 
 const CHART_THEME = {
-  text: "#9CA3AF",
-  textPrimary: "#F9FAFB",
-  muted: "#6B7280",
-  grid: "rgba(255,255,255,0.06)",
-  border: "rgba(255,255,255,0.08)",
-  primary: "#adc6ff",
-  primaryContainer: "#4d8eff",
-  secondary: "#4cd7f6",
-  series: [
-    "#adc6ff",
-    "#4cd7f6",
-    "#f7b955",
-    "#5ad19a",
-    "#c792ea",
-    "#ff8a8a",
-    "#7fcfff",
-    "#ffcb6b",
-  ],
-  surface: "#0d0e0f",
+  get text() { return getCssVar("--text-muted") || "#6B7280"; },
+  get textPrimary() { return getCssVar("--text-primary") || "#F9FAFB"; },
+  get muted() { return getCssVar("--text-muted") || "#6B7280"; },
+  get grid() { return getCssVar("--border-subtle") || "rgba(255,255,255,0.06)"; },
+  get border() { return getCssVar("--border") || "rgba(255,255,255,0.08)"; },
+  get primary() { return getCssVar("--chart-primary") || "#8fb1ff"; },
+  get primaryContainer() { return getCssVar("--primary") || "#4d8eff"; },
+  get secondary() { return getCssVar("--chart-secondary") || "#77dcaa"; },
+  get series() {
+    return [
+      this.primary,
+      this.secondary,
+      getCssVar("--chart-tertiary") || "#ffc56e",
+      getCssVar("--chart-accent") || "#ff8d7e",
+      "#a78bfa",
+      "#2dd4bf",
+      "#fb923c",
+      "#f472b6",
+    ];
+  },
+  get surface() { return getCssVar("--bg-1") || "#0d0e0f"; },
 };
 
 const CURRENCY_SYMBOLS = { KRW: "₩", USD: "$" };
@@ -244,7 +246,7 @@ export function buildScatterDatasets(channels, byCh, adv, { hidePoints, normaliz
         label: `${ch} (Points)`,
         data: ptData,
         backgroundColor: color,
-        borderColor: "#0d0e0f",
+        borderColor: CHART_THEME.surface,
         borderWidth: 1.5,
         pointRadius: 5,
         pointStyle: "circle",
@@ -885,9 +887,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             labels: { color: CHART_THEME.text, font: { family: "Inter", size: 10 }, usePointStyle: true, boxWidth: 8 },
           },
           tooltip: {
-            backgroundColor: "#1f2021",
-            titleColor: "#F9FAFB",
-            bodyColor: "#F9FAFB",
+            backgroundColor: CHART_THEME.surface,
+            titleColor: CHART_THEME.textPrimary,
+            bodyColor: CHART_THEME.textPrimary,
             borderColor: CHART_THEME.border,
             borderWidth: 1,
             callbacks: {
@@ -979,9 +981,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             },
           },
           tooltip: {
-            backgroundColor: "#1f2021",
-            titleColor: "#F9FAFB",
-            bodyColor: "#F9FAFB",
+            backgroundColor: CHART_THEME.surface,
+            titleColor: CHART_THEME.textPrimary,
+            bodyColor: CHART_THEME.textPrimary,
             borderColor: CHART_THEME.border,
             borderWidth: 1,
             callbacks: {
@@ -1051,8 +1053,8 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           {
             label: tr(`예상 ${unitLabel}수`, `Projected ${unitLabel}s`),
             data: scenarios.map((s) => Math.round(s.totResults)),
-            borderColor: "#adc6ff",
-            backgroundColor: "#adc6ff30",
+            borderColor: CHART_THEME.primary,
+            backgroundColor: getCssVar("--chart-primary-soft") || "rgba(143,177,255,0.18)",
             fill: true,
             tension: 0.3,
             pointRadius: scenarios.map((s) => (s.m === 1.0 ? 6 : 3)),
@@ -1149,9 +1151,9 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             labels: { color: tickColor, font: { family: "Inter", size: 11 }, usePointStyle: true, boxWidth: 8, padding: 12 },
           },
           tooltip: {
-            backgroundColor: "#1f2021",
-            titleColor: "#F9FAFB",
-            bodyColor: "#F9FAFB",
+            backgroundColor: CHART_THEME.surface,
+            titleColor: CHART_THEME.textPrimary,
+            bodyColor: CHART_THEME.textPrimary,
             borderColor: CHART_THEME.border,
             borderWidth: 1,
             callbacks: { label: (c) => `${c.dataset.label} ${c.parsed.x.toFixed(1)}%` },

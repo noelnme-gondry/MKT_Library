@@ -69,6 +69,18 @@ const EN_TITLES = {
 };
 
 const TITLES = { ko: KO_TITLES, en: EN_TITLES };
+const DRAFT_TITLES = {
+  ko: { "adjust-vs-appsflyer": "Adjust vs AppsFlyer 비교: 모바일 MMP 선택 기준" },
+  en: { "adjust-vs-appsflyer": "Adjust vs AppsFlyer: How to Choose a Mobile MMP" },
+};
+const DESCRIPTION_OVERRIDES = {
+  ko: {
+    "cannibalization-organic-paid": "내부 카니발라이제이션과 유료·오가닉 잠식을 구분하고 측정하는 방법입니다.",
+  },
+  en: {
+    "cannibalization-organic-paid": "Measure internal cannibalisation and separate paid impact from organic demand.",
+  },
+};
 const UPDATED_TODAY = new Set([
   "ad-performance-diagnosis", "apple-search-ads-guide", "aso-basics-guide", "cohort-analysis-guide",
   "funnel-dropoff-analysis", "google-uac-optimization", "ios-att-skan-guide",
@@ -83,7 +95,7 @@ const UPDATED_2026_07_28 = new Set([
 ]);
 
 export function getBlogSeo(locale, slug, source = {}) {
-  const title = TITLES[locale]?.[slug];
+  const title = TITLES[locale]?.[slug] || DRAFT_TITLES[locale]?.[slug];
   if (!title) return null;
   const isEnglish = locale === "en";
   const suffix = isEnglish
@@ -91,8 +103,11 @@ export function getBlogSeo(locale, slug, source = {}) {
     : " 먼저 기준 기간과 전환 정의를 고정한 뒤, 연결된 분석 도구에서 결과를 검증하세요.";
   return {
     title,
-    // 기존 원고의 설명도 보존하되 검색자가 바로 실행할 다음 행동을 덧붙인다.
-    description: `${source.description || title}${suffix}`,
+    // 검색 메타는 제목을 중심으로 짧게 유지한다. 원고 설명과 실행 CTA는 본문
+    // answer에 보존해 SERP 길이 제한과 본문 전환 역할을 분리한다.
+    description: DESCRIPTION_OVERRIDES[locale]?.[slug] || (isEnglish
+      ? `${title}. A practical guide to the key checks, trade-offs, and next steps.`
+      : `${title}. 핵심 기준과 실무 확인 순서를 정리합니다.`),
     answer: `${source.description || title}${suffix}`,
     intent: isEnglish ? "Search answer · practical workflow" : "검색 답변 · 실무 워크플로우",
     updated: source.updated || (UPDATED_2026_07_28.has(slug)

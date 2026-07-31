@@ -71,6 +71,15 @@ describe("AbTestHoldout render smoke", () => {
     expect(screen.getByText("② A/B 판독 · 어느 쪽이 이겼나?")).toBeTruthy();
   });
 
+  it("exposes keyboard-operable primary tabs", () => {
+    render(<AbTestHoldout />);
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs).toHaveLength(2);
+    fireEvent.keyDown(tabs[0], { key: "ArrowRight" });
+    expect(tabs[1].getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tabpanel").getAttribute("aria-labelledby")).toBe(tabs[1].id);
+  });
+
   it("mounts without throwing with a valid seeded CSV (design + charts)", () => {
     seedWithData();
     // Default tab is "design" — exercises plan compute, threshold matrix, power curve chart.

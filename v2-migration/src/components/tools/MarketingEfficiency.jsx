@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import Chart from "chart.js/auto";
 import { ALLOC_MATH } from "@/utils/allocationMath";
-import { getCssVar, downloadChartAsPNG } from "@/utils/chartUtils";
+import { CHART_THEME, getCssVar, downloadChartAsPNG } from "@/utils/chartUtils";
 import CsvUploader from "@/components/CsvUploader";
 import { showToast } from "@/utils/toast";
 import {
@@ -252,7 +252,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
           {
             label: tr("현 지출점", "Current spend point"),
             data: marker,
-            borderColor: "#f59e0b",
+            borderColor: CHART_THEME.tertiary,
             borderDash: [5, 4],
             pointRadius: 0,
             pointStyle: "line",

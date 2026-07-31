@@ -1,7 +1,7 @@
 # V2 CODE MAP — 어디에 무엇이 있는가
 
 > 목적: 최소 토큰, 즉시 파일 탐색. 설명 최소, **경로 매핑** 집중.
-> 이행 중: `index.html`(레거시, Phase 8 컷오버 전 라이브) → `v2-migration/`(Next.js). 상세 계획·현황: `../docs/v2-migration-tasks.md`.
+> Phase 8 컷오버 완료: 운영 앱은 `v2-migration/` Next.js. 상세 이력: `../docs/v2-migration-tasks.md`.
 
 ## 1. 디렉토리 트리 (핵심)
 ```
@@ -27,6 +27,7 @@ v2-migration/
 │     ├─ landing/       # 랜딩: ProductPreview(실제 제품 4장면 순환)·ToolCarousel(도구별 실제 결과 미니어처)
 │     ├─ seo/           # SearchTopicHub(검색 질문→도구 허브)·ContentActionPanel(글/용어→도구 전환 CTA)
 │     ├─ ToolPageShell.jsx·ToolIntro.jsx # 분석 셸 + 질문/산출물/진입 데이터 소개
+│     ├─ GoogleSheetConnect.jsx # 공개 Google Sheets API를 브라우저에서 직접 읽기(서버 경유 없음)
 │     ├─ GaPageviews.jsx     # SPA 라우트 변경 시 GA4 page_view(usePathname, 최초 로드 제외)
 │     ├─ AdInterstitial.jsx·AdFreeInit.jsx # 분석하기 전면광고 모달(store adGate·requestAd/closeAd) + 광고제외 비밀 URL(?adfree=토큰). §12.26
 │     ├─ Sidebar/Header/LandingPage/CsvUploader/GlobalModals/Dashboard.jsx  # 셸
@@ -56,6 +57,9 @@ v2-migration/
 | `/guide` | guide-index | GuideIndex.jsx (SOP 목록, 블로그처럼 자체 주소) |
 | `/start` | start-gate | StartGate.jsx (내 데이터로 시작 게이트 — 데모 off·도구 선택) |
 | `/guide/<kebab>` | 1-x~4-x | sops/SopContent.jsx (SOP) |
+| `/privacy` · `/terms` | 별도 App Route | 개인정보처리방침·이용약관(KR/EN) |
+| `/templates` | 별도 App Route | CSV 템플릿 허브(KR/EN) |
+| `/weekly-review` | 별도 App Route | 주간 리뷰 가이드(KR/EN) |
 
 **Content Analytics(9-x)**: 퍼포먼스 엔진을 콘텐츠 도메인 라벨로 리라벨. 라벨팩 SSOT=`utils/contentDomain.js`. CSV 격리 그룹 `content_*`. PageClient 폴백 가드 `!startsWith("9-")`(SopContent 누수 차단). **콘텐츠는 SECTIONS `analysis`로 흡수**(별도 카테고리 제거, 사이드바 자동 반영). slug `/content/*`는 SEO·북마크 보존.
 **가이드 인덱스**: `/guide`=`guide-index`(routeMap) → PageClient(KR·EN) 분기 → `GuideIndex.jsx`. 랜딩 무주소 track(guide/content) 제거 → 뒤로가기 정상.
@@ -69,7 +73,7 @@ v2-migration/
 | CreativeAnalyzer.jsx | `creativeMath.js` (CREATIVE_MATH/FATIGUE/STATS) | WLS·피로도 |
 | AbTestHoldout.jsx | `abTestMath.js` (STATS) | z-test·bayesian·powerCurve (A/B만) |
 | Incrementality.jsx (5-23) | `incrMath.js`(통제군 INCR_MATH)+`incrPrePostMath.js`(전후 on/off·DiD·Welch) | 3방법 탭·CSV 그룹 독립 |
-| MarketingResponse.jsx | `mmmMath.js`(MMM 기여분해+`mmmForecast` §7 미래예측)+`regMath.js`(mmmOls)+`responseCannibRank.js` | ①진단·②기여분해·③회귀예측 3탭, 단일 CSV/colMap. ③예측=`mmmForecast`; 밴드는 인과·예측 CI가 아닌 **과거 잔차 참고 범위**로 표시. `regForecastMath`=날짜포맷 헬퍼, `regLabMath`=테스트 전용 |
+| MarketingResponse.jsx + marketingResponseModel.jsx | `mmmMath.js`(MMM 기여분해+`mmmForecast` §7 미래예측)+`regMath.js`(mmmOls)+`responseCannibRank.js` | UI·상태 orchestration과 모델/차트/export 지원 코드를 분리. ①진단·②기여분해·③회귀예측, 단일 CSV/colMap. ③예측=`mmmForecast`; 밴드는 인과·예측 CI가 아닌 **과거 잔차 참고 범위** |
 | AhaMomentFinder.jsx | `ahaMath.js` (AHA_STATS) | gridSearch·F1/Lift. `domain` prop(§contentDomain)로 5-20(perf)·9-2(content) 공용 |
 | ContentElementAnalyzer.jsx (9-1) | `regMath.js` (REG_STATS.ols) | 콘텐츠 요소 다변량 회귀·HC3 robust SE·BH 다중검정·forest plot. regularized/역행렬 검증 실패 시 추론 거부 |
 | KillerContentFinder.jsx (9-2) | `ahaMath.js` (AHA_STATS) | AhaMomentFinder domain="content" 얇은 래퍼 |
@@ -87,9 +91,9 @@ v2-migration/
 - **전역 상태 = `src/store/useDataStore.js` (Zustand)**: `currentRouteId`(URL 미러) · `dashboardFilter` · `isDarkMode` · `isCmdkOpen` · `IA`·`PHASES` · **`TOOL_GROUP`·`groupForRoute`** · **`viewConfig`**(지표 표시/순서, scope별).
 - **persist(Phase B/C)**: `persist` 미들웨어로 **`viewConfig`+`customMetrics`만** localStorage 저장(`partialize=persistPartialize`, name `mkt_view_config`). 원본 CSV·필터 Set은 **절대 저장 X**(§2.2). 서버/테스트엔 `noopStorage` 폴백. `customMetrics`={scope→조립정의[]}·`customCharts`={scope→차트정의[]}, add/remove 액션.
 - **CSV 그룹 스코프 상태(Phase 6.3)**: `csvGroups`{efficiency·creative·experiment·response·aha} 슬라이스. `csvData`=활성 그룹 **미러**(`setCurrentRouteId`가 라우트 변경 시 스왑, `setCsvData`가 활성 그룹+미러 기록). 효율 family(5-2·5-21·5-22·5-3) 공유, 나머진 격리. **소비자는 `s.csvData`만 읽으면 끝**(미러라 무변경).
-- **데이터 파이프라인**: 업로드(`CsvUploader.jsx`, PapaParse+프로파일·도구 스코프 자동매핑) → `csvData` + `canonicalData`(정규화된 공통 레코드, 신규 소비자용) → **`dashboardAggregator.js:getMappedRows(csvData)`** (기존 엔진 호환 raw행 → 표준키 행; **cost↔spend 별칭 채움 §7**) → 도구별 엔진 입력 구성 → 순수엔진 → 렌더. `importInsights`·`canonicalData`는 브라우저 메모리만 사용하며 원본 CSV와 함께 영속화하지 않는다.
+- **데이터 파이프라인**: 업로드(`CsvUploader.jsx`, PapaParse+프로파일·도구 스코프 자동매핑) 또는 공개 시트 읽기(`GoogleSheetConnect.jsx`, Google Sheets API에서 브라우저로 직접 조회) → `csvData` + `canonicalData`(정규화된 공통 레코드, 신규 소비자용) → **`dashboardAggregator.js:getMappedRows(csvData)`** (기존 엔진 호환 raw행 → 표준키 행; **cost↔spend 별칭 채움 §7**) → 도구별 엔진 입력 구성 → 순수엔진 → 렌더. 시트·CSV 모두 앱 서버를 경유하지 않으며 `importInsights`·`canonicalData`·원본 행은 영속화하지 않는다. `NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY`는 공개 브라우저 키이므로 배포 도메인 HTTP 리퍼러와 Sheets API로 제한한다.
 - **함정**: 효율 CSV 비용=`cost`키, PVM/creative 엔진은 `spend` 읽음 → getMappedRows가 양쪽 채움. creative 등 하위 grain CSV, 분해 안 하는 도구(5-22·5-3)에선 (그룹×날짜) **sum 후 점 생성**(satBuildPoints·buildByChannel).
-- **CSV 상태 스코프(Phase 6.3 예정)**: TOOL_GROUP 기반 — 효율 CSV family(5-2·5-21·5-22·5-3) 공유, 이질 도구는 별도 슬라이스.
+- **CSV 상태 스코프(Phase 6.3 완료)**: TOOL_GROUP 기반 — 효율 CSV family(5-2·5-21·5-22·5-3) 공유, 이질 도구는 별도 슬라이스.
 
 ## 5. 글로벌 스타일 (CSS/테마)
 - **`src/app/globals.css`** — 전 디자인 시스템, 단일 파일. **CSS Modules로 쪼개지 말 것**(토큰 스코핑 불가).

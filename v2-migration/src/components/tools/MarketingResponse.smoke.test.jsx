@@ -353,8 +353,12 @@ describe("MarketingResponse render smoke", () => {
   });
 
   it("mounts without throwing in the no-data state", () => {
-    expect(() => render(<MarketingResponse />)).not.toThrow();
+    const view = render(<MarketingResponse />);
     expect(document.body.querySelector("*")).toBeTruthy();
+    const tabs = view.getAllByRole("tab");
+    expect(tabs.length).toBeGreaterThanOrEqual(3);
+    fireEvent.keyDown(tabs[0], { key: "End" });
+    expect(tabs[tabs.length - 1].getAttribute("aria-selected")).toBe("true");
   });
 
   it("keeps the most recent observations when preparing a current-regime training window", () => {

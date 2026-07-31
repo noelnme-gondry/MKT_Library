@@ -746,7 +746,30 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       if (chart) chart.draw();
     });
 
+    // Chart.js 내장 observer가 일부 기본 차트에서 부모 리플로우를 놓치는 경우를
+    // 방어한다. 부모 크기와 window resize를 함께 감시하고 다음 프레임에 재측정한다.
+    let resizeFrame = null;
+    const resizeCharts = () => {
+      if (resizeFrame != null) window.cancelAnimationFrame(resizeFrame);
+      resizeFrame = window.requestAnimationFrame(() => {
+        Object.values(instances).forEach((chart) => chart?.resize());
+        resizeFrame = null;
+      });
+    };
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(resizeCharts);
+    Object.values(instances).forEach((chart) => {
+      const parent = chart?.canvas?.parentElement;
+      if (parent) resizeObserver?.observe(parent);
+    });
+    window.addEventListener("resize", resizeCharts);
+    resizeCharts();
+
     return () => {
+      window.removeEventListener("resize", resizeCharts);
+      resizeObserver?.disconnect();
+      if (resizeFrame != null) window.cancelAnimationFrame(resizeFrame);
       Object.values(instances).forEach((chart) => {
         if (chart) chart.destroy();
       });
