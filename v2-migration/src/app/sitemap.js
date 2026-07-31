@@ -81,6 +81,8 @@ export default function sitemap() {
   const standaloneEntries = [
     { url: `${BASE}/weekly-review`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/en/weekly-review`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/weekly-report`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/en/weekly-report`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/privacy`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/en/privacy`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/terms`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "yearly", priority: 0.3 },

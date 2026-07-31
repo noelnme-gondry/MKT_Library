@@ -6,6 +6,10 @@ import Link from "next/link";
 import { trackProductEvent } from "@/lib/analytics";
 import { getNextTools, localizedTool } from "@/lib/toolConnections";
 import { computeAnalyzeSig, TOOL_GROUP, useAppStore } from "@/store/useDataStore";
+import { rankFindings } from "@/lib/assist/rankFindings";
+import { idToPath } from "@/lib/routeMap";
+
+const EMPTY_FINDINGS = [];
 
 const COPY = {
   ko: {
@@ -26,6 +30,9 @@ const COPY = {
     defaultTitle: "분석 흐름 안내",
     defaultBody: "현재 화면에서 필요한 입력과 결과를 확인한 뒤, 다음 판단으로 이어가세요.",
     resultReady: "새 결과가 준비됐습니다",
+    briefing: "지금 볼 것",
+    why: "왜 중요한가",
+    newData: "다른 데이터 형식이 필요해 필터를 넘기지 않습니다.",
   },
   en: {
     open: "Open analysis assistant",
@@ -45,6 +52,9 @@ const COPY = {
     defaultTitle: "Analysis guide",
     defaultBody: "Check the inputs and result in view, then continue to the next decision.",
     resultReady: "A new result is ready",
+    briefing: "Review now",
+    why: "Why it matters",
+    newData: "This tool needs a different data grain, so filters will not carry over.",
   },
 };
 
@@ -184,6 +194,7 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
   const csvData = useAppStore((state) => state.csvData);
   const analyzedByGroup = useAppStore((state) => state.analyzedByGroup);
   const group = TOOL_GROUP[toolId];
+  const findings = useAppStore((state) => state.findingsByGroup[group] || EMPTY_FINDINGS);
   const hasDashboardResults = !isDashboardTool || Boolean(csvData?.raw?.length > 0 && group && analyzedByGroup?.[group] === computeAnalyzeSig(csvData));
   const isDashboardDemo = isDashboardTool && String(csvData?.fileName || "").startsWith("demo_");
   const sections = useMemo(() => getSections(toolId, { hasDashboardResults, isDashboardDemo }), [toolId, hasDashboardResults, isDashboardDemo]);
@@ -193,6 +204,19 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
   const [activeInsight, setActiveInsight] = useState(null);
   const didRevealResult = useRef(false);
   const nextTool = getNextTools(toolId, lang)[0] || null;
+  const rankedFindings = useMemo(
+    () => {
+      const dataSignature = computeAnalyzeSig(csvData);
+      return rankFindings(findings.filter((finding) =>
+        finding.inputSignature === dataSignature || finding.inputSignature.startsWith(`${dataSignature}|result:`)
+      ));
+    },
+    [findings, csvData],
+  );
+  const primaryFinding = rankedFindings[0] || null;
+  const findingTarget = primaryFinding?.suggestedTargets?.[0] || null;
+  const targetGroup = findingTarget ? TOOL_GROUP[findingTarget.toolId] : null;
+  const targetHref = findingTarget ? `${lang === "en" ? "/en" : ""}${idToPath(findingTarget.toolId)}` : null;
   const sourceTool = localizedTool(toolId, lang) || (ASSIST_TOOL_FALLBACKS[toolId] && { title: ASSIST_TOOL_FALLBACKS[toolId].title[lang] });
   const activeSection = sections.find((section) => section.id === activeSectionId) || sections[0];
   const insightTitle = compactAssistTitle(activeInsight?.title, lang);
@@ -290,9 +314,15 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
           <strong>{sourceTool.title}</strong>
         </header>
         <div className="tool-assist-rail__context">
-          <small>{activeInsight ? T.decision : T.current}</small>
-          <h2>{insightTitle || copyFor(activeSection.title, lang) || T.defaultTitle}</h2>
-          <p>{insightSummary || copyFor(activeSection.body, lang) || T.defaultBody}</p>
+          <small>{primaryFinding ? T.briefing : activeInsight ? T.decision : T.current}</small>
+          <h2>{primaryFinding?.headline || insightTitle || copyFor(activeSection.title, lang) || T.defaultTitle}</h2>
+          <p>{primaryFinding?.detail || insightSummary || copyFor(activeSection.body, lang) || T.defaultBody}</p>
+          {primaryFinding?.evidence?.length > 0 && (
+            <div className="tool-assist-rail__primary-action">
+              <small>{T.why}</small>
+              {primaryFinding.evidence.map((item) => <strong key={item.label}>{item.label}: {item.displayValue}</strong>)}
+            </div>
+          )}
           {primaryAction && (
             <div className="tool-assist-rail__primary-action">
               <small>{T.action}</small>
@@ -302,12 +332,22 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
           <button type="button" onClick={() => scrollToSection(activeSection.id, "current_context")}>{activeInsight ? T.evidence : T.jump} <span aria-hidden="true">↓</span></button>
         </div>
         <div className="tool-assist-rail__actions">
-          {!activeInsight && (
+          {primaryFinding && findingTarget && targetHref && (
+            <>
+              {targetGroup !== group && <p className="muted">{T.newData}</p>}
+              <Link href={targetHref} onClick={() => trackProductEvent("tool_assist_finding_next", { tool_id: findingTarget.toolId, source_tool_id: toolId, locale: lang })}>
+                <span>{findingTarget.actionLabel}</span>
+                <strong>{findingTarget.reason}</strong>
+                <b aria-hidden="true">→</b>
+              </Link>
+            </>
+          )}
+          {!primaryFinding && !activeInsight && (
             <button type="button" onClick={() => scrollToSection(quickActionTarget, "support_action")}>
               {isDashboardDemo ? T.replaceSample : quickActionTarget === "dashboard-support-tools" ? T.support : quickActionTarget === "dashboard-data-setup" ? T.prepare : T.mapping}
             </button>
           )}
-          {!activeInsight && (
+          {!primaryFinding && !activeInsight && (
             nextTool && !isDashboardDemo ? (
               <Link href={nextTool.href} onClick={() => trackProductEvent("tool_assist_next", { tool_id: nextTool.id, source_tool_id: toolId, locale: lang })}>
                 <span>{T.next}</span>

@@ -1,7 +1,8 @@
 "use client";
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import Chart from "chart.js/auto";
-import { useAppStore } from "@/store/useDataStore";
+import Link from "next/link";
+import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
 import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, aggregateByKey } from "@/utils/dashboardAggregator";
@@ -10,6 +11,7 @@ import { ANOMALY_MATH } from "@/utils/anomalyMath";
 import { fmtCurrency } from "@/utils/format";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
+import { buildAttributionCache } from "@/utils/anomalyAttribution";
 
 // 지표 뷰 설정 scope — 이상탐지 표의 지표 컬럼 표시/순서.
 const ANOMALY_TABLE_SCOPE = "5-2:anomaly-table";
@@ -30,7 +32,7 @@ const AN_LABELS_EN = {
 
 export default function AnomalyTab({ domain = "performance", locale = "ko" } = {}) {
   const C = resolveDashCopy(domain);
-  const tr = (ko, en) => (locale === "en" ? en : ko);
+  const tr = useCallback((ko, en) => (locale === "en" ? en : ko), [locale]);
   const csvData = useAppStore((state) => state.csvData);
   const dashboardFilter = useAppStore((state) => state.dashboardFilter);
   const displayCurrency = useAppStore((state) => state.displayCurrency);
@@ -38,7 +40,9 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
   const anomalyTableCfg = useAppStore((state) => state.viewConfig[ANOMALY_TABLE_SCOPE]);
   const setViewConfig = useAppStore((state) => state.setViewConfig);
   const resetViewConfig = useAppStore((state) => state.resetViewConfig);
+  const setAnalysisHandoff = useAppStore((state) => state.setAnalysisHandoff);
   const [anomalyCfgOpen, setAnomalyCfgOpen] = useState(false);
+  const [expandedDate, setExpandedDate] = useState(null);
 
   const [metric, setMetric] = useState("cost");
   const [win, setWin] = useState(14);
@@ -129,6 +133,40 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
     };
   }, [csvData, dashboardFilter, metric, win, zThresh, dowAdjust, C, domain, locale]);
 
+  const attributionCache = useMemo(() => {
+    if (!hasData || !anomalies?.length) return { eligibility: { eligible: false, reason: "no_anomalies" }, byDate: {} };
+    const rows = getMonFilteredRows(csvData, dashboardFilter);
+    const mappedFields = new Set(Object.values(csvData?.mapping || {}));
+    const filterSig = JSON.stringify({
+      dateStart: dashboardFilter.dateStart,
+      dateEnd: dashboardFilter.dateEnd,
+      channels: [...(dashboardFilter.channels || [])].sort(),
+      countries: [...(dashboardFilter.countries || [])].sort(),
+      platforms: [...(dashboardFilter.platforms || [])].sort(),
+      sources: [...(dashboardFilter.sources || [])].sort(),
+    });
+    return buildAttributionCache({
+      rows,
+      anomalyDates: anomalies.map((item) => item.date),
+      metric,
+      mappedFields,
+      inputSignature: `${computeAnalyzeSig(csvData)}|${metric}|${filterSig}`,
+    });
+  }, [hasData, anomalies, csvData, dashboardFilter, metric]);
+
+  const attributionReason = useCallback(() => {
+    const reason = attributionCache.eligibility?.reason;
+    if (reason === "unsupported_metric") return tr(
+      "현재 지표는 비용÷결과 구조가 아니어서 무잔차 분해를 적용할 수 없습니다.",
+      "This metric is not a cost-per-result ratio, so residual-free attribution is unavailable.",
+    );
+    if (reason === "missing_fields") return tr(
+      "날짜·비용·결과·채널 매핑이 있어야 변동 기여를 나눌 수 있습니다.",
+      "Date, cost, outcome, and channel mappings are required to attribute the change.",
+    );
+    return tr("비교 기간이 부족해 원인 기여를 계산할 수 없습니다.", "There is not enough comparison history to attribute this change.");
+  }, [attributionCache.eligibility, tr]);
+
   const formatValue = useCallback((v) => {
     if (v == null) return "—";
     if (["cvr", "ctr", "roas"].includes(metric)) return (v * 100).toFixed(2) + "%";
@@ -176,7 +214,17 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
                   lbl += ` (z: ${f.z > 0 ? "+" : ""}${f.z.toFixed(2)})`;
                 }
                 return lbl;
-              }
+              },
+              afterBody: (items) => {
+                const index = items?.[0]?.dataIndex;
+                const date = dailyData[index]?._key;
+                const result = attributionCache.byDate?.[date];
+                if (!result || result.unavailable) return [];
+                const heading = tr("변동 기여 상위", "Top change contributors");
+                return [heading, ...result.drivers.slice(0, 3).map((driver) =>
+                  `${driver.label}: ${driver.contribution >= 0 ? "+" : ""}${formatValue(driver.contribution)}`
+                )];
+              },
             }
           }
         },
@@ -190,7 +238,7 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
     return () => {
       if (chartInstanceRef.current) chartInstanceRef.current.destroy();
     };
-  }, [hasData, dailyData, seriesVals, flags, metric, metricOpts, isDarkMode, formatValue]);
+  }, [hasData, dailyData, seriesVals, flags, metric, metricOpts, isDarkMode, formatValue, attributionCache, tr]);
 
   if (!hasData || metricOpts.length === 0) {
     return (
@@ -281,14 +329,71 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
                   </tr>
                 </thead>
                 <tbody>
-                  {anomalies.slice(0, 40).map((a, i) => (
-                    <tr key={i}>
-                      <td className="tnum">{a.date}</td>
-                      {orderedAnomalyCols.map((col) => (
-                        <td key={col.k} className={`tnum ${col.cellClass ? col.cellClass(a) : ""}`.trim()}>{col.render(a)}</td>
-                      ))}
-                    </tr>
-                  ))}
+                  {anomalies.slice(0, 40).map((a) => {
+                    const attribution = attributionCache.byDate?.[a.date];
+                    const isOpen = expandedDate === a.date;
+                    return (
+                      <React.Fragment key={a.date}>
+                        <tr>
+                          <td className="tnum">
+                            {a.date}
+                            <button
+                              className="ab-pill"
+                              type="button"
+                              style={{ marginLeft: "8px" }}
+                              onClick={() => setExpandedDate(isOpen ? null : a.date)}
+                            >
+                              {isOpen ? tr("접기", "Close") : tr("원인 보기", "View drivers")}
+                            </button>
+                          </td>
+                          {orderedAnomalyCols.map((col) => (
+                            <td key={col.k} className={`tnum ${col.cellClass ? col.cellClass(a) : ""}`.trim()}>{col.render(a)}</td>
+                          ))}
+                        </tr>
+                        {isOpen && (
+                          <tr>
+                            <td colSpan={orderedAnomalyCols.length + 1}>
+                              {attribution && !attribution.unavailable ? (
+                                <div className="callout info" style={{ margin: "8px 0" }}>
+                                  <div className="body">
+                                    <strong>{tr("이 변동에 크게 기여한 항목", "Largest contributors to this change")}</strong>
+                                    <ul>
+                                      {attribution.drivers.slice(0, 5).map((driver) => (
+                                        <li key={driver.key}>
+                                          {driver.label}: <b>{driver.contribution >= 0 ? "+" : ""}{formatValue(driver.contribution)}</b>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                    <p className="muted">{tr(
+                                      "통계적 기여 분해이며 원인·인과를 확정하지 않습니다.",
+                                      "This is statistical attribution and does not establish cause or causality.",
+                                    )}</p>
+                                    <Link
+                                      className="btn ghost"
+                                      href={locale === "en" ? "/en/tools/campaign-variance" : "/tools/campaign-variance"}
+                                      onClick={() => setAnalysisHandoff({
+                                        schemaVersion: 1,
+                                        sourceToolId: "5-2",
+                                        targetToolId: "5-21",
+                                        dataGroup: "efficiency",
+                                        metric,
+                                        anomalyDate: a.date,
+                                        periodA: attribution.periodA,
+                                        periodB: attribution.periodB,
+                                        inputSignature: attributionCache.inputSignature,
+                                      })}
+                                    >
+                                      {tr("성과 변동 분석에서 자세히 보기", "Inspect in Campaign Variance")}
+                                    </Link>
+                                  </div>
+                                </div>
+                              ) : <p className="muted">{attributionReason()}</p>}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

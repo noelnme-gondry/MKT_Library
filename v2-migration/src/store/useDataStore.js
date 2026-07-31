@@ -3,6 +3,8 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import Papa from "papaparse";
 import { SECTION_LABEL_EN } from "@/lib/enNavCopy";
 import { TOOL_GROUP, groupForRoute } from "@/lib/toolGroups";
+import { validateFinding } from "@/lib/assist/findingSchema";
+import { STANDARD_FIELDS } from "@/utils/csvConstants";
 
 export { TOOL_GROUP, groupForRoute };
 
@@ -359,6 +361,88 @@ export const useAppStore = create(persist((set, get) => ({
   responseMappingSession: { raw: null, colMap: null, weekStart: "monday" },
   setResponseMappingSession: (session) => set({ responseMappingSession: session }),
 
+  // 구조화된 분석 연결 상태. 모두 세션 메모리 전용이며 persistPartialize에 포함하지
+  // 않는다. 원본 행 대신 집계 결과·설정만 보관한다.
+  analysisHandoff: null,
+  setAnalysisHandoff: (handoff) => set({ analysisHandoff: handoff }),
+  clearAnalysisHandoff: () => set({ analysisHandoff: null }),
+  findingsByGroup: {},
+  publishFinding: (finding) => set((state) => {
+    if (!validateFinding(finding)) return {};
+    const group = finding.dataGroup;
+    const current = state.findingsByGroup[group] || [];
+    return {
+      findingsByGroup: {
+        ...state.findingsByGroup,
+        [group]: [...current.filter((item) => item.id !== finding.id && item.toolId !== finding.toolId), finding],
+      },
+    };
+  }),
+  clearFindingsForGroup: (group) => set((state) => ({
+    findingsByGroup: { ...state.findingsByGroup, [group]: [] },
+  })),
+  reportDraft: { schemaVersion: 1, title: "", period: null, blocks: [], notes: [] },
+  setReportMeta: (patch) => set((state) => ({ reportDraft: { ...state.reportDraft, ...patch } })),
+  addReportBlock: (block) => set((state) => ({
+    reportDraft: {
+      ...state.reportDraft,
+      blocks: [...state.reportDraft.blocks.filter((item) => item.id !== block.id), block],
+    },
+  })),
+  removeReportBlock: (id) => set((state) => ({
+    reportDraft: { ...state.reportDraft, blocks: state.reportDraft.blocks.filter((item) => item.id !== id) },
+  })),
+  moveReportBlock: (id, direction) => set((state) => {
+    const blocks = [...state.reportDraft.blocks];
+    const from = blocks.findIndex((item) => item.id === id);
+    const to = from + direction;
+    if (from < 0 || to < 0 || to >= blocks.length) return {};
+    [blocks[from], blocks[to]] = [blocks[to], blocks[from]];
+    return { reportDraft: { ...state.reportDraft, blocks } };
+  }),
+  setReportNote: (text) => set((state) => ({
+    reportDraft: {
+      ...state.reportDraft,
+      notes: text ? [{ id: "weekly-note", text: String(text) }] : [],
+    },
+  })),
+  pendingProjectConfig: null,
+  setPendingProjectConfig: (project) => set({ pendingProjectConfig: project }),
+  applyProjectConfig: (project, compatibleGroups = []) => set((state) => {
+    const allowed = new Set(compatibleGroups);
+    const csvGroups = { ...state.csvGroups };
+    const dashboardFilterGroups = { ...state.dashboardFilterGroups };
+    Object.entries(project.groups || {}).forEach(([group, config]) => {
+      if (!allowed.has(group) || !csvGroups[group]) return;
+      const headers = new Set(csvGroups[group].headers || []);
+      const safeMapping = Object.fromEntries(Object.entries(config.mapping || {}).filter(([header, field]) =>
+        headers.has(header) && (field === "__ignore__" || Boolean(STANDARD_FIELDS[field]))
+      ));
+      csvGroups[group] = { ...csvGroups[group], mapping: safeMapping };
+      const filters = config.filters || {};
+      dashboardFilterGroups[group] = {
+        dateStart: filters.dateStart || null,
+        dateEnd: filters.dateEnd || null,
+        platforms: new Set(filters.platforms || []),
+        countries: new Set(filters.countries || []),
+        channels: new Set(filters.channels || []),
+        sources: new Set(filters.sources || []),
+      };
+    });
+    const activeGroup = groupForRoute(state.currentRouteId);
+    return {
+      viewConfig: project.viewConfig || {},
+      customMetrics: project.customMetrics || {},
+      customCharts: project.customCharts || {},
+      csvGroups,
+      dashboardFilterGroups,
+      csvData: csvGroups[activeGroup] || EMPTY_SLICE(),
+      dashboardFilter: dashboardFilterGroups[activeGroup] || EMPTY_DASHBOARD_FILTER(),
+      analyzedByGroup: { ...state.analyzedByGroup, ...Object.fromEntries([...allowed].map((group) => [group, null])) },
+      pendingProjectConfig: compatibleGroups.length === Object.keys(project.groups || {}).length ? null : project,
+    };
+  }),
+
   // CSV Data State — group-scoped slices + an active-group mirror.
   // Consumers keep reading `s.csvData` unchanged; scoping happens by storing
   // per-group and swapping the mirror on route change (see setCurrentRouteId).
@@ -406,7 +490,15 @@ export const useAppStore = create(persist((set, get) => ({
     const responseMappingSession = g === "response" && state.responseMappingSession.raw !== data.raw
       ? { raw: null, colMap: null, weekStart: "monday" }
       : state.responseMappingSession;
-    return { csvGroups: { ...state.csvGroups, [g]: data }, csvData: data, analyzedByGroup, csvClearedByGroup, responseMappingSession };
+    return {
+      csvGroups: { ...state.csvGroups, [g]: data },
+      csvData: data,
+      analyzedByGroup,
+      csvClearedByGroup,
+      responseMappingSession,
+      findingsByGroup: { ...state.findingsByGroup, [g]: [] },
+      analysisHandoff: state.analysisHandoff?.dataGroup === g ? null : state.analysisHandoff,
+    };
   }),
   // 결과 허브에서 "같은 데이터로 상세 분석"을 고르면 대상 그룹에만 재매핑된 사본을
   // 넣는다. 원본은 브라우저 메모리에만 있고, 대상 도구를 바로 열 수 있게 gate도 확인한다.
@@ -438,6 +530,8 @@ export const useAppStore = create(persist((set, get) => ({
       csvData: EMPTY_SLICE(),
       analyzedByGroup: { ...state.analyzedByGroup, [g]: null },
       csvClearedByGroup: { ...state.csvClearedByGroup, [g]: true },
+      findingsByGroup: { ...state.findingsByGroup, [g]: [] },
+      analysisHandoff: state.analysisHandoff?.dataGroup === g ? null : state.analysisHandoff,
     };
   }),
 

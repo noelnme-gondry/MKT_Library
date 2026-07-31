@@ -1,9 +1,13 @@
 "use client";
-import React, { useEffect, useId, useRef } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { trackProductEvent } from "@/lib/analytics";
 import DecisionReview from "@/components/ds/DecisionReview";
 import AnalysisBasisBar from "@/components/data-import/AnalysisBasisBar";
-import { useAppStore } from "@/store/useDataStore";
+import { computeAnalyzeSig, findMeta, TOOL_GROUP, useAppStore } from "@/store/useDataStore";
+import { findingFromResultCard } from "@/lib/assist/findingProducers";
+import { reportBlockFromResultCard } from "@/lib/reports/reportSchema";
+import { localizedTool } from "@/lib/toolConnections";
 
 // 표준 결론·액션 카드 — "결론 먼저, 근거는 접어서"(claude-ux §0)의 1층.
 // 5-3 예산배분의 alloc-verdict-card 패턴을 디자인시스템 공용으로 승격한 것.
@@ -44,12 +48,45 @@ export default function ResultActionCard({
   toolId = null,
   decisionReview = true,
   analysisBasis = true,
+  reportBlock = null,
 }) {
   const resolvedTitle = title === "결론" && locale === "en" ? "Conclusion" : title;
   const t = TONE[tone] || TONE.neutral;
   const headingId = useId();
   const hasTrackedResultView = useRef(false);
   const csvData = useAppStore((state) => state.csvData);
+  const dashboardFilter = useAppStore((state) => state.dashboardFilter);
+  const publishFinding = useAppStore((state) => state.publishFinding);
+  const addReportBlock = useAppStore((state) => state.addReportBlock);
+  const [reportAdded, setReportAdded] = useState(false);
+  const inputSignature = computeAnalyzeSig(csvData);
+  const resultScope = useMemo(() => ({
+    dateStart: dashboardFilter?.dateStart || undefined,
+    dateEnd: dashboardFilter?.dateEnd || undefined,
+    channels: [...(dashboardFilter?.channels || [])].map(String).sort(),
+    countries: [...(dashboardFilter?.countries || [])].map(String).sort(),
+  }), [dashboardFilter]);
+  const generatedReportBlock = useMemo(() => reportBlock || reportBlockFromResultCard({
+    toolId,
+    toolTitle: locale === "en" ? (localizedTool(toolId, "en")?.title || findMeta(toolId)?.title || toolId) : (findMeta(toolId)?.title || toolId),
+    headline,
+    points,
+    stats,
+    inputSignature,
+    locale,
+    scope: resultScope,
+  }), [reportBlock, toolId, headline, points, stats, inputSignature, locale, resultScope]);
+  const generatedFinding = useMemo(() => findingFromResultCard({
+    toolId,
+    tone,
+    headline,
+    points,
+    stats,
+    inputSignature,
+    locale,
+    dataGroup: TOOL_GROUP[toolId],
+    scope: resultScope,
+  }), [toolId, tone, headline, points, stats, inputSignature, locale, resultScope]);
   const visiblePoints = collapsePointsAfter == null ? points : points.slice(0, collapsePointsAfter);
   const hiddenPoints = collapsePointsAfter == null ? [] : points.slice(collapsePointsAfter);
   useEffect(() => {
@@ -57,6 +94,15 @@ export default function ResultActionCard({
     hasTrackedResultView.current = true;
     trackProductEvent("analysis_result_viewed", { tool_id: toolId, source: "result", placement: "result_action_card", locale });
   }, [locale, toolId]);
+  useEffect(() => {
+    if (generatedFinding) publishFinding(generatedFinding);
+  }, [generatedFinding, publishFinding]);
+  const collectForReport = () => {
+    if (!generatedReportBlock) return;
+    addReportBlock(generatedReportBlock);
+    setReportAdded(true);
+    trackProductEvent("weekly_report_block_added", { tool_id: toolId, locale });
+  };
   return (
     <section className={`result-action-card ${tone}`} style={style} aria-labelledby={headline ? headingId : undefined} aria-label={!headline && typeof resolvedTitle === "string" ? resolvedTitle : undefined}>
       <div className="result-action-card__head">
@@ -71,9 +117,20 @@ export default function ResultActionCard({
             </h2>
           )}
         </div>
-        {(controls || download) && (
+        {(controls || download || generatedReportBlock) && (
           <div className="result-action-card__controls">
             {controls}
+            {generatedReportBlock && (
+              reportAdded ? (
+                <Link className="btn ghost" href={locale === "en" ? "/en/weekly-report" : "/weekly-report"}>
+                  {locale === "en" ? "✓ Open report" : "✓ 보고서 열기"}
+                </Link>
+              ) : (
+                <button className="btn ghost" type="button" onClick={collectForReport}>
+                  {locale === "en" ? "Add to report" : "보고서에 추가"}
+                </button>
+              )
+            )}
             {download}
           </div>
         )}

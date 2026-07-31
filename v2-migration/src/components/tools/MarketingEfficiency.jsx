@@ -451,7 +451,7 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
           locale={locale}
           tone={!okRows.length ? "bad" : sat.length ? "bad" : scale.length ? "good" : "neutral"}
           title={tr("포화도 결론", "Saturation conclusion")}
-          headline={<span dangerouslySetInnerHTML={{ __html: head }} />}
+          headline={head.replace(/<[^>]+>/g, "")}
           download={(
             <DownloadHub
               toolId="5-22"
