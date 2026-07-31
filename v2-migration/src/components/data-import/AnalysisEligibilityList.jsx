@@ -1,4 +1,5 @@
 "use client";
+import { formatEligibilityBlocker } from "@/lib/analysis-router/evaluateEligibility";
 
 const COPY = {
   ko: { ready: "바로 가능", caution: "주의해서 가능", blocked: "추가 데이터 필요", exploratory: "탐색용 MMM", decision: "의사결정용 MMM", open: "분석 시작", title: "이 데이터로 먼저 볼 분석", more: "다른 분석 가능성 보기", rows: "행", periods: "기간", recommended: "추천", clear: "필수 구조가 확인됐습니다.", detail: "판정 세부 정보" },
@@ -20,7 +21,7 @@ function EligibilityCard({ result, getTitle, onOpen, locale, isRecommended = fal
   const outcome = OUTCOME[result.toolId]?.[locale] || OUTCOME[result.toolId]?.ko || getTitle(result.toolId);
   const isBlocked = result.status === "blocked";
   const reason = isBlocked
-    ? (locale === "en" ? "Required columns, usable values, or the minimum sample is missing." : result.reasons[0])
+    ? formatEligibilityBlocker(result, locale)
     : result.recommendationReason || T.clear;
   const confidenceLabel = result.confidenceTier && result.confidenceTier !== "standard" ? T[result.confidenceTier] : null;
   const detail = result.reasonDetails?.join(" ");

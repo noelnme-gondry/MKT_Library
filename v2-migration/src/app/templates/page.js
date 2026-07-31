@@ -1,14 +1,15 @@
 import { SITE_URL, isRoutePublished } from "@/lib/routeMap";
 import TemplateDownloadCard from "@/components/TemplateDownloadCard";
+import ChecklistDownloadCard from "@/components/ChecklistDownloadCard";
 
 // CSV 템플릿 다운로드 랜딩 — routeMap 밖 독립 페이지(/blog·/guide와 동일 패턴, §12.24).
 // 실제 다운로드는 기존 csvTemplate.js(buildToolTemplateCsv, BOM+CRLF §7)를 그대로
 // 재사용 — 신규 CSV 스키마·엔진 없음. 도구가 없는(=hasToolTemplate false) 이벤트/증분
 // 도구(Aha·증분 분석)는 CANON_FIELDS와 grain이 달라 템플릿 목록에서 제외(정직 §8).
 export async function generateMetadata() {
-  const title = "무료 CSV 템플릿 다운로드";
+  const title = "무료 마케팅 템플릿·체크리스트 다운로드";
   const description =
-    "운영 대시보드·예산 배분·소재 분석 등 분석 도구별 CSV 업로드 양식을 빈 템플릿으로 무료 다운로드합니다.";
+    "분석 도구별 CSV 양식과 이벤트 택소노미·포스트백 QA·신규 광고 매체 온보딩 체크리스트를 무료 다운로드합니다.";
   const canonical = `${SITE_URL}/templates`;
   return {
     title,
@@ -136,8 +137,8 @@ function buildJsonLd() {
         "@type": "CollectionPage",
         "@id": `${SITE_URL}/templates#page`,
         url: `${SITE_URL}/templates`,
-        name: "무료 CSV 템플릿 다운로드",
-        description: "분석 도구별 CSV 업로드 양식을 빈 템플릿으로 무료 다운로드합니다.",
+        name: "무료 마케팅 템플릿·체크리스트 다운로드",
+        description: "분석 도구별 CSV 양식과 마케팅 운영 체크리스트를 무료 다운로드합니다.",
         inLanguage: "ko-KR",
       },
       {
@@ -160,6 +161,7 @@ function buildJsonLd() {
 }
 
 export default function TemplatesPage() {
+  const checklists = ["taxonomy", "postback", "media"];
   const publishedGroups = GROUPS
     .map((group) => ({ ...group, items: group.items.filter((item) => isRoutePublished(item.toolId)) }))
     .filter((group) => group.items.length > 0);
@@ -171,7 +173,7 @@ export default function TemplatesPage() {
       />
       <header style={{ marginBottom: "1.5rem" }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
-          무료 CSV 템플릿 다운로드
+          무료 마케팅 템플릿·체크리스트
         </h1>
         <p style={{ marginTop: "0.5rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
           분석 도구마다 필요한 컬럼이 조금씩 달라요. 헤더만 채워진 빈 CSV를 받아서
@@ -212,6 +214,15 @@ export default function TemplatesPage() {
           </div>
         </section>
       ))}
+
+      <section className="template-checklists" aria-labelledby="template-checklist-title">
+        <span>운영 문서 템플릿</span>
+        <h2 id="template-checklist-title">배포 전에 빠뜨리지 않는 체크리스트</h2>
+        <p>가이드의 핵심 검수 항목만 마크다운으로 분리했습니다. 노션·문서·이슈에 그대로 붙여 팀의 완료 기준으로 쓰세요.</p>
+        <div>
+          {checklists.map((checklistId) => <ChecklistDownloadCard key={checklistId} checklistId={checklistId} />)}
+        </div>
+      </section>
 
       <section className="blog-faq" aria-label="자주 묻는 질문">
         <h2>자주 묻는 질문</h2>

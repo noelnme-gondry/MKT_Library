@@ -32,4 +32,20 @@ describe("sitemap", () => {
       expect(urls.has(`${SITE_URL}${path}`)).toBe(true);
     }
   });
+
+  it("contains localized no-CSV calculators and diagnosis routes", () => {
+    const urls = new Set(sitemap().map((entry) => entry.url));
+    for (const path of [
+      "/calculator",
+      "/en/calculator",
+      "/calculator/ltv-cac",
+      "/en/calculator/ltv-cac",
+      "/calculator/ab-test-sample-size",
+      "/en/calculator/ab-test-sample-size",
+      "/diagnose",
+      "/en/diagnose",
+    ]) {
+      expect(urls.has(`${SITE_URL}${path}`)).toBe(true);
+    }
+  });
 });

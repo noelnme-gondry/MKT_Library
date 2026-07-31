@@ -7,6 +7,14 @@ import { TOOL_GROUP, groupForRoute } from "@/lib/toolGroups";
 export { TOOL_GROUP, groupForRoute };
 
 const EMPTY_SLICE = () => ({ raw: [], headers: [], mapping: {}, fileName: "" });
+const EMPTY_DASHBOARD_FILTER = () => ({
+  dateStart: null,
+  dateEnd: null,
+  platforms: new Set(),
+  countries: new Set(),
+  channels: new Set(),
+  sources: new Set(),
+});
 
 function nextStableId(prefix, items = []) {
   const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -319,6 +327,9 @@ export const useAppStore = create(persist((set, get) => ({
   setCurrentRouteId: (id) => set((state) => ({
     currentRouteId: id,
     csvData: state.csvGroups[groupForRoute(id)],
+    // 같은 CSV grain은 같은 필터를 이어 쓰고, 다른 grain으로 이동하면 그 그룹의
+    // 필터로 교체한다. 다른 데이터에 이전 채널/국가 필터가 남는 cross-grain 사고 방지.
+    dashboardFilter: state.dashboardFilterGroups[groupForRoute(id)] || EMPTY_DASHBOARD_FILTER(),
   })),
 
   // Theme State — 라이트모드 기본값 (매 새로고침 리셋 방지)
@@ -522,17 +533,28 @@ export const useAppStore = create(persist((set, get) => ({
   dashWindowDays: 7, // 7 | 14 | 28
   setDashWindowDays: (d) => set({ dashWindowDays: d }),
 
-  dashboardFilter: {
-    dateStart: null,
-    dateEnd: null,
-    platforms: new Set(),
-    countries: new Set(),
-    channels: new Set(),
-    sources: new Set(),
+  dashboardFilterGroups: {
+    efficiency: EMPTY_DASHBOARD_FILTER(),
+    creative: EMPTY_DASHBOARD_FILTER(),
+    experiment: EMPTY_DASHBOARD_FILTER(),
+    response: EMPTY_DASHBOARD_FILTER(),
+    aha: EMPTY_DASHBOARD_FILTER(),
+    incrementality: EMPTY_DASHBOARD_FILTER(),
+    content_attr: EMPTY_DASHBOARD_FILTER(),
+    content_aha: EMPTY_DASHBOARD_FILTER(),
+    content_traffic: EMPTY_DASHBOARD_FILTER(),
+    content_freshness: EMPTY_DASHBOARD_FILTER(),
+    content_dashboard: EMPTY_DASHBOARD_FILTER(),
   },
-  setDashboardFilter: (filterUpdate) => set((state) => ({
-    dashboardFilter: { ...state.dashboardFilter, ...filterUpdate }
-  })),
+  dashboardFilter: EMPTY_DASHBOARD_FILTER(),
+  setDashboardFilter: (filterUpdate) => set((state) => {
+    const group = groupForRoute(state.currentRouteId);
+    const next = { ...state.dashboardFilter, ...filterUpdate };
+    return {
+      dashboardFilter: next,
+      dashboardFilterGroups: { ...state.dashboardFilterGroups, [group]: next },
+    };
+  }),
 
   // Selected Cohort (0, 7, 14, 30...)
   selectedCohort: 7,

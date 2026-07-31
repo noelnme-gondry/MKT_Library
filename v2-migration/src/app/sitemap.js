@@ -1,9 +1,10 @@
 import { ROUTES, SITE_URL, EN_READY_TOOL_IDS, EN_READY_GUIDE_IDS, EN_READY_RESPONSE_SUBTOOL_IDS, idToPath, isRoutePublished } from "@/lib/routeMap";
 import { getAllPosts, getAllTags } from "@/lib/blog";
 import { getAllTerms } from "@/lib/glossary";
+import { CALCULATOR_ORDER } from "@/lib/calculators";
 
 const BASE = SITE_URL; // matches layout.js canonical/openGraph
-const PRODUCT_LAST_MODIFIED = new Date("2026-07-29");
+const PRODUCT_LAST_MODIFIED = new Date("2026-07-31");
 const latestDate = (items) => {
   const dates = items.map((item) => item.updated || item.date).filter(Boolean).sort();
   return dates.length ? new Date(dates[dates.length - 1]) : PRODUCT_LAST_MODIFIED;
@@ -62,6 +63,17 @@ export default function sitemap() {
   const templateEntries = [
     { url: `${BASE}/templates`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/en/templates`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "monthly", priority: 0.6 },
+  ];
+
+  const calculatorEntries = [
+    { url: `${BASE}/calculator`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${BASE}/en/calculator`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "monthly", priority: 0.8 },
+    ...CALCULATOR_ORDER.flatMap((slug) => [
+      { url: `${BASE}/calculator/${slug}`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "monthly", priority: 0.8 },
+      { url: `${BASE}/en/calculator/${slug}`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "monthly", priority: 0.8 },
+    ]),
+    { url: `${BASE}/diagnose`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${BASE}/en/diagnose`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "monthly", priority: 0.8 },
   ];
 
   // routeMap 밖의 독립 페이지. 색인 가능한 canonical 페이지가 sitemap에서
@@ -143,7 +155,7 @@ export default function sitemap() {
     priority: 0.75,
   }));
 
-  return [...routeEntries, ...responseSubtoolEntries, ...blogEntries, ...templateEntries, ...standaloneEntries, ...glossaryEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enGlossaryEntries, ...enToolEntries, ...enResponseSubtoolEntries];
+  return [...routeEntries, ...responseSubtoolEntries, ...blogEntries, ...templateEntries, ...calculatorEntries, ...standaloneEntries, ...glossaryEntries, ...enLandingEntries, ...enBlogEntries, ...enGuideEntries, ...enGlossaryEntries, ...enToolEntries, ...enResponseSubtoolEntries];
 }
 
 function getPostsByTagSafe(tagSlug, posts) {

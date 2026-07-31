@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateEligibility, rankRecommendedAnalyses } from "./evaluateEligibility";
+import { evaluateEligibility, formatEligibilityBlocker, rankRecommendedAnalyses } from "./evaluateEligibility";
 
 const isoDay = (index) => new Date(Date.UTC(2026, 6, index + 1)).toISOString().slice(0, 10);
 const canonicalData = {
@@ -35,6 +35,8 @@ describe("analysis eligibility", () => {
     const result = evaluateEligibility({ toolId: "5-2", mapping: { Date: "date", Spend: "cost" }, canonicalData });
     expect(result).toMatchObject({ status: "blocked" });
     expect(result.reasons[0]).toContain("installs/actions");
+    expect(formatEligibilityBlocker(result, "ko")).toContain("CSV 매핑");
+    expect(formatEligibilityBlocker(result, "en")).toContain("Map these required fields");
   });
 
   it("marks enough time series data as ready", () => {

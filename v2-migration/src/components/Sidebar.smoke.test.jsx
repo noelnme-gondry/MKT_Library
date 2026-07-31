@@ -37,7 +37,9 @@ describe("Sidebar render smoke", () => {
     expect(() => render(<Sidebar />)).not.toThrow();
     expect(document.querySelector(".home-sidebar-nav")).toBeTruthy();
     expect(document.querySelectorAll(".home-sidebar-nav__item")).toHaveLength(4);
-    expect(document.querySelectorAll(".sidebar-library-link")).toHaveLength(4);
+    expect(document.querySelectorAll(".sidebar-library-link")).toHaveLength(6);
+    expect(document.querySelector('a[href="/calculator"]')).toBeTruthy();
+    expect(document.querySelector('a[href="/diagnose"]')).toBeTruthy();
     expect(document.querySelectorAll(".sidebar-social .ss-btn")).toHaveLength(4);
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
   });

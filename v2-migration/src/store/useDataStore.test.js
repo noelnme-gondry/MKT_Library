@@ -82,3 +82,40 @@ describe("useDataStore · persist 불변식(설정만 저장, 원본 CSV 제외 
     expect(executed).toBe(true);
   });
 });
+
+describe("useDataStore · CSV grain별 필터 승계", () => {
+  beforeEach(() => {
+    const empty = {
+      dateStart: null,
+      dateEnd: null,
+      platforms: new Set(),
+      countries: new Set(),
+      channels: new Set(),
+      sources: new Set(),
+    };
+    useAppStore.setState({
+      currentRouteId: "5-2",
+      dashboardFilter: empty,
+      dashboardFilterGroups: { efficiency: empty },
+    });
+  });
+
+  it("같은 efficiency grain에서는 채널·기간 필터를 승계", () => {
+    useAppStore.getState().setDashboardFilter({
+      dateStart: "2026-07-01",
+      channels: new Set(["Google"]),
+    });
+    useAppStore.getState().setCurrentRouteId("5-21");
+    const filter = useAppStore.getState().dashboardFilter;
+    expect(filter.dateStart).toBe("2026-07-01");
+    expect([...filter.channels]).toEqual(["Google"]);
+  });
+
+  it("다른 grain으로 이동하면 efficiency 필터를 전달하지 않음", () => {
+    useAppStore.getState().setDashboardFilter({ channels: new Set(["Google"]) });
+    useAppStore.getState().setCurrentRouteId("5-18");
+    expect([...useAppStore.getState().dashboardFilter.channels]).toEqual([]);
+    useAppStore.getState().setCurrentRouteId("5-2");
+    expect([...useAppStore.getState().dashboardFilter.channels]).toEqual(["Google"]);
+  });
+});
