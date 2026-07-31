@@ -4703,7 +4703,7 @@ a.card:hover, button.card:hover, .card.is-interactive:hover { border-color: var(
 .csv-drop-icon { width: 48px; height: 48px; border: 1px solid var(--border); border-radius: 12px; color: var(--primary); background: var(--surface-container-low); }
 .csv-drop-text { font-family: var(--font-display); font-size: 18px; font-weight: 650; letter-spacing: -.025em; }
 .csv-drop-sub { color: var(--text-muted); font-size: 12px; }
-.table-wrap { border: 1px solid var(--border-subtle); border-width: 1px 0; border-radius: 0; background: transparent; }
+.table-wrap { border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-container-lowest); }
 .table-wrap table.data thead th { padding: 9px 10px; background: transparent; color: var(--text-muted); font: 600 9.5px var(--font-mono); letter-spacing: .035em; text-transform: uppercase; }
 .table-wrap table.data tbody td { padding: 9px 10px; border-top-color: var(--border-subtle); }
 .table-wrap table.data tbody tr:hover { background: color-mix(in srgb, var(--primary) 3%, transparent); }
@@ -4729,7 +4729,7 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .aha-scatter-explainer p { max-width: 860px; margin: 7px 0 0; line-height: 1.6; }
 @media (max-width: 760px) { .aha-scatter-toolbar { align-items: flex-start; flex-direction: column; } .aha-scatter-chart { height: 310px; padding: 8px; } }
 .kpi-grid { gap: 0; }
-.kpi-grid--overview { grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--border-subtle); border-width: 1px 0; }
+.kpi-grid--overview { grid-template-columns: repeat(5, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-container-lowest); }
 .kpi-grid__hint { margin: -5px 0 9px; color: var(--text-muted); font-size: 11px; }
 .kpi-card { min-width: 0; min-height: 96px; padding: 14px 15px; border: 0; border-right: 1px solid var(--border-subtle); border-radius: 0; background: transparent; }
 .kpi-card:last-child { border-right: 0; }
@@ -4831,9 +4831,9 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .tool-page-shell__toc-label { margin: 0 0 7px 9px; color: var(--text-muted); font: 700 9px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
 .tool-page-shell__toc-link { padding: 6px 9px; border-radius: 6px; color: var(--text-muted); text-decoration: none; font-size: 11px; line-height: 1.35; }
 .tool-page-shell__toc-link:hover { color: var(--text-primary); background: var(--surface-container-low); }
-/* Result hierarchy contract: one strong conclusion, one flat metric strip,
-   compact evidence rows, then quiet expandable provenance. */
-.result-action-card { position: relative; margin-bottom: 18px; padding: 18px 0 14px; overflow: hidden; border: 0; border-top: 3px solid var(--primary); border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; }
+/* Result hierarchy contract: one contained surface with a strong conclusion,
+   then a flat metric strip, compact evidence rows, and quiet provenance. */
+.result-action-card { position: relative; margin-bottom: 18px; padding: 18px; overflow: hidden; border: 1px solid var(--border); border-top: 3px solid var(--primary); border-radius: 13px; background: var(--surface-container-lowest); }
 .result-action-card.good { border-top-color: var(--success); }
 .result-action-card.bad { border-top-color: var(--danger); }
 .result-action-card__head { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: start; gap: 13px; }
@@ -5363,7 +5363,7 @@ body.light-mode .operator-preview__queue > a { color: #fff; }
   .operator-preview__queue li:nth-child(n+3) { display: none; }
   .landing-advanced-lab { grid-template-columns: 1fr; padding: 24px 18px; }
   .landing-advanced-lab__model { transform: none; }
-  .result-action-card { padding: 15px 0 12px; }
+  .result-action-card { padding: 15px 14px 12px; }
   .result-action-card__head { grid-template-columns: 30px minmax(0,1fr); }
   .result-action-card__controls { grid-column: 1 / -1; }
   .result-action-card__points, .result-action-card__stats, .result-action-card__details, .analysis-basis-bar, .analysis-details, .decision-review { margin-left: 0; }
