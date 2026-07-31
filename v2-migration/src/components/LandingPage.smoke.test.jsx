@@ -36,6 +36,7 @@ describe("LandingPage render smoke", () => {
     expect(() => render(<LandingPage />)).not.toThrow();
     expect(document.querySelector(".dc-hero")).toBeTruthy();
     expect(document.querySelector(".dc-instrument")).toBeTruthy();
+    expect(document.querySelector('a.dc-diagnose-entry[href="/diagnose"]')).toBeTruthy();
     expect(document.querySelectorAll(".dc-question-card")).toHaveLength(3);
     expect(document.querySelectorAll(".connected-tool-card")).toHaveLength(10);
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
@@ -51,5 +52,6 @@ describe("LandingPage render smoke", () => {
     expect(container.querySelectorAll(".connected-tool-card")).toHaveLength(10);
     expect(container.textContent).toContain("Move from one analysis to the next decision");
     expect(container.querySelector('a[href="/en/tools/campaign-variance"]')).toBeTruthy();
+    expect(container.querySelector('a.dc-diagnose-entry[href="/en/diagnose"]')).toBeTruthy();
   });
 });

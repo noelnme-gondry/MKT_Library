@@ -37,8 +37,8 @@ export default function EnglishDiagnosePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="calculator-hero">
         <span>SYMPTOM-BASED ANALYSIS ROUTER</span>
-        <h1>Start with “why did it move?”<br />not “which tool should I use?”</h1>
-        <p>Three questions turn a performance symptom into a cause hypothesis and check order. No source data is entered, and the result does not claim causality.</p>
+        <h1>Not sure what to<br />analyze first?</h1>
+        <p>Choose the symptom that feels closest. After the third answer, you’ll get one analysis to check first.</p>
       </header>
       <DiagnoseRouter locale="en" />
       <section className="calculator-faq" aria-label="Frequently asked questions">

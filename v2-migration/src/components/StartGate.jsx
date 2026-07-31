@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useMemo } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IA, SECTIONS } from "@/store/useDataStore";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
@@ -28,6 +29,9 @@ const COPY = {
     demoLink: "먼저 예시(데모)로 둘러볼래요 →",
     open: "이 분석 시작 →",
     browseAll: "데이터 없이 전체 도구부터 둘러보기",
+    diagnoseLabel: "CSV보다 문제부터 정리하고 싶나요?",
+    diagnoseDesc: "세 가지 질문으로 먼저 확인할 분석 하나를 찾습니다.",
+    diagnoseCta: "성과 문제 진단",
   },
   en: {
     eyebrow: "Start with your data",
@@ -36,6 +40,9 @@ const COPY = {
     demoLink: "I'd rather browse the demo first →",
     open: "Start this →",
     browseAll: "Browse every tool without data",
+    diagnoseLabel: "Want to frame the problem before uploading a CSV?",
+    diagnoseDesc: "Use three questions to find the first analysis to check.",
+    diagnoseCta: "Diagnose performance",
   },
 };
 
@@ -75,6 +82,16 @@ export default function StartGate({ locale = "ko" }) {
       <div className="page-eyebrow">{C.eyebrow}</div>
       <h1 className="page-title">{C.title}</h1>
       <p className="page-deck">{C.deck}</p>
+      <aside className="start-diagnose-entry">
+        <div><strong>{C.diagnoseLabel}</strong><p>{C.diagnoseDesc}</p></div>
+        <Link
+          className="btn ghost"
+          href={locale === "en" ? "/en/diagnose" : "/diagnose"}
+          onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "start", placement: "before_upload", locale })}
+        >
+          {C.diagnoseCta} →
+        </Link>
+      </aside>
 
       <section className="block" style={{ marginTop: "1.2rem" }}>
         <CsvUploader toolId="start-gate" locale={locale} />
