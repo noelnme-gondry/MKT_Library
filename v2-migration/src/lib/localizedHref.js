@@ -47,7 +47,7 @@ export const EN_GLOSSARY_SLUGS = new Set([
 
 export function localizedHref(href, locale = "ko") {
   if (locale !== "en" || !href || !href.startsWith("/") || href.startsWith("/en/")) return href;
-  if (href === "/blog" || href === "/glossary") return `/en${href}`;
+  if (href === "/blog" || href === "/glossary" || href === "/templates" || href === "/diagnose" || href === "/calculator" || href.startsWith("/calculator/")) return `/en${href}`;
   if (href.startsWith("/blog/")) {
     const slug = href.slice("/blog/".length).split(/[?#]/)[0];
     return EN_BLOG_SLUGS.has(slug) ? `/en${href}` : href;
@@ -62,6 +62,7 @@ export function localizedHref(href, locale = "ko") {
 
 export function englishSwitchHref(pathname) {
   const cleanPath = (pathname || "/").replace(/^\/en(?=\/|$)/, "") || "/";
+  if (cleanPath === "/templates" || cleanPath === "/diagnose" || cleanPath === "/calculator" || cleanPath.startsWith("/calculator/")) return `/en${cleanPath}`;
   if (cleanPath === "/blog") return "/en/blog";
   if (cleanPath.startsWith("/blog/tag/")) return "/en/blog";
   if (cleanPath.startsWith("/blog/")) {

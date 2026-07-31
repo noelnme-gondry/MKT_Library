@@ -1,9 +1,10 @@
 import { SITE_URL, isRoutePublished } from "@/lib/routeMap";
 import TemplateDownloadCard from "@/components/TemplateDownloadCard";
+import ChecklistDownloadCard from "@/components/ChecklistDownloadCard";
 
 export async function generateMetadata() {
-  const title = "Free CSV templates";
-  const description = "Download blank CSV templates for each marketing analysis tool.";
+  const title = "Free marketing templates and checklists";
+  const description = "Download CSV schemas plus event taxonomy, postback QA, and new ad channel onboarding checklists.";
   const canonical = `${SITE_URL}/en/templates`;
   return {
     title,
@@ -58,13 +59,14 @@ const FAQ = [
 ];
 
 export default function EnglishTemplatesPage() {
+  const checklists = ["taxonomy", "postback", "media"];
   const publishedGroups = GROUPS
     .map((group) => ({ ...group, items: group.items.filter(([toolId]) => isRoutePublished(toolId)) }))
     .filter((group) => group.items.length > 0);
   return (
     <main id="main-content" className="page-inner" style={{ maxWidth: 860, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <header style={{ marginBottom: "1.5rem" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Free CSV templates</h1>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Free marketing templates and checklists</h1>
         <p style={{ marginTop: "0.5rem", fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6 }}>
           Each analysis tool expects slightly different columns. Download a blank header-only CSV, fill it in, and upload it without rebuilding the mapping. Downloads are generated in your browser and never sent to a server.
         </p>
@@ -87,6 +89,14 @@ export default function EnglishTemplatesPage() {
           </div>
         </section>
       ))}
+      <section className="template-checklists" aria-labelledby="template-checklist-title">
+        <span>OPERATIONS CHECKLISTS</span>
+        <h2 id="template-checklist-title">Make the pre-launch checks repeatable</h2>
+        <p>Download the key QA steps from the operating guides as Markdown, then paste them into Notion, a document, or an issue.</p>
+        <div>
+          {checklists.map((checklistId) => <ChecklistDownloadCard key={checklistId} checklistId={checklistId} locale="en" />)}
+        </div>
+      </section>
       <section className="blog-faq" aria-label="Frequently asked questions">
         <h2>Frequently asked questions</h2>
         {FAQ.map(([question, answer]) => <details key={question} className="blog-faq-item"><summary>{question}</summary><div className="blog-faq-item-answer">{answer}</div></details>)}

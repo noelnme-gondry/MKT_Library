@@ -14,7 +14,9 @@ const SIDEBAR_COPY = {
     searchPlaceholder: "가이드·파라미터·코드 검색…",
     blog: "블로그",
     guide: "운영 가이드",
-    templates: "CSV 템플릿",
+    calculators: "무CSV 계산기",
+    diagnose: "성과 문제 진단",
+    templates: "템플릿·체크리스트",
     glossary: "용어사전",
     youtube: "유튜브",
     instagram: "인스타",
@@ -33,7 +35,9 @@ const SIDEBAR_COPY = {
     searchPlaceholder: "Search guides, params, code…",
     blog: "Blog",
     guide: "Operating Guide",
-    templates: "CSV Templates",
+    calculators: "No-CSV Calculators",
+    diagnose: "Diagnose Performance",
+    templates: "Templates",
     glossary: "Glossary",
     resourceLabel: "LIBRARY",
     youtube: "YouTube",
@@ -281,6 +285,20 @@ export default function Sidebar({ locale = "ko" }) {
           aria-current={(pathname || "").includes("/guide") ? "page" : undefined}
         >
           <span><strong>{T.guide}</strong><small>SOP</small></span><b>↗</b>
+        </Link>
+        <Link
+          href={locale === "en" ? "/en/calculator" : "/calculator"}
+          className="sidebar-library-link"
+          aria-current={(pathname || "").includes("/calculator") ? "page" : undefined}
+        >
+          <span><strong>{T.calculators}</strong><small>QUICK MATH</small></span><b>↗</b>
+        </Link>
+        <Link
+          href={locale === "en" ? "/en/diagnose" : "/diagnose"}
+          className="sidebar-library-link"
+          aria-current={(pathname || "").includes("/diagnose") ? "page" : undefined}
+        >
+          <span><strong>{T.diagnose}</strong><small>ROUTER</small></span><b>↗</b>
         </Link>
         <Link
           href={locale === "en" ? "/en/templates" : "/templates"}

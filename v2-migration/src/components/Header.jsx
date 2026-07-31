@@ -20,6 +20,8 @@ const HEADER_COPY = {
     quickNav: "빠른 이동",
     localeSwitch: "🌐 EN",
     localeSwitchTitle: "영어 페이지로 (번역된 페이지만 지원)",
+    print: "인쇄 / PDF",
+    printTitle: "현재 분석 결과를 인쇄하거나 PDF로 저장",
     homeCrumb: "오늘의 질문",
   },
   en: {
@@ -32,6 +34,8 @@ const HEADER_COPY = {
     quickNav: "Quick nav",
     localeSwitch: "🌐 한국어",
     localeSwitchTitle: "Switch to the Korean page",
+    print: "Print / PDF",
+    printTitle: "Print this analysis or save it as a PDF",
     homeCrumb: "Today’s question",
   },
 };
@@ -50,13 +54,16 @@ export default function Header({ locale = "ko" }) {
   // Breadcrumb sourced from the URL (SSOT) → correct on deep-link + back/forward.
   const pathname = usePathname();
   const currentRouteId = resolvePathToId(pathname) ?? "home";
+  const isAnalysisRoute = currentRouteId.startsWith("5-") || currentRouteId.startsWith("9-");
   // 블로그는 routeMap 밖(fs 기반)이라 id 해석이 "home"으로 떨어짐 → 경로로 직접 감지해
   // 브레드크럼("블로그")·언어전환(/blog↔/en/blog)을 도구와 동일한 공용 Header에서 처리.
   const cleanPath = (pathname || "/").replace(/^\/en(?=\/|$)/, "") || "/";
   const isBlog = cleanPath === "/blog" || cleanPath.startsWith("/blog/");
   const blogHref = locale === "en" ? "/en/blog" : "/blog";
-  // CSV 템플릿도 블로그와 동일하게 routeMap 밖(§templates). EN 미번역이라 항상 KR로.
+  // 독립 SEO 리소스도 routeMap 밖. KR/EN 리터럴 라우트를 함께 제공한다.
   const isTemplates = cleanPath === "/templates";
+  const isCalculator = cleanPath === "/calculator" || cleanPath.startsWith("/calculator/");
+  const isDiagnose = cleanPath === "/diagnose";
   // 용어사전도 동일 패턴(§glossary) — 이제 EN 있음(content/glossary-en), 블로그처럼
   // /glossary↔/en/glossary 전환.
   const isGlossary = cleanPath === "/glossary" || cleanPath.startsWith("/glossary/");
@@ -98,7 +105,7 @@ export default function Header({ locale = "ko" }) {
           <BrandMark size={26} label="Growth Opt Playbook" />
           <span className="brand-crumb__label" style={{ fontWeight: 700 }}>Growth Opt Playbook</span>
         </Link>
-        {currentRouteId === "home" && (
+        {cleanPath === "/" && (
           <>
             <span className="sep">/</span>
             <strong className="current">{T.homeCrumb}</strong>
@@ -117,7 +124,23 @@ export default function Header({ locale = "ko" }) {
           <>
             <span className="sep">/</span>
             <span className="current" style={{ color: "var(--text-secondary)" }}>
-              {locale === "en" ? "CSV Templates" : "CSV 템플릿"}
+              {locale === "en" ? "Templates" : "템플릿"}
+            </span>
+          </>
+        )}
+        {isCalculator && (
+          <>
+            <span className="sep">/</span>
+            <Link href={locale === "en" ? "/en/calculator" : "/calculator"} className="current" style={{ textDecoration: "none", color: "var(--text-secondary)" }}>
+              {locale === "en" ? "Calculators" : "계산기"}
+            </Link>
+          </>
+        )}
+        {isDiagnose && (
+          <>
+            <span className="sep">/</span>
+            <span className="current" style={{ color: "var(--text-secondary)" }}>
+              {locale === "en" ? "Diagnosis" : "문제 진단"}
             </span>
           </>
         )}
@@ -130,7 +153,7 @@ export default function Header({ locale = "ko" }) {
           </>
         )}
         {/* 트레일링 크럼은 도구/문서 페이지에서만(홈은 브랜드만). */}
-        {!isBlog && !isTemplates && !isGlossary && meta && (
+        {!isBlog && !isTemplates && !isCalculator && !isDiagnose && !isGlossary && meta && (
           <>
             <span className="sep">/</span>
             <span
@@ -163,6 +186,16 @@ export default function Header({ locale = "ko" }) {
               {T.csvChangeBtn}
             </button>
           </span>
+        )}
+        {isAnalysisRoute && (
+          <button
+            className="btn ghost header-print"
+            type="button"
+            title={T.printTitle}
+            onClick={() => window.print()}
+          >
+            {T.print}
+          </button>
         )}
         <Link
           href={switchHref}

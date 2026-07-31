@@ -20,7 +20,7 @@ import { parseXlsxFile } from "@/lib/data-import/xlsxWorkerClient";
 import { xlsxImportErrorMessage } from "@/lib/data-import/xlsxImportPolicy";
 import { trackProductEvent } from "@/lib/analytics";
 import DataQualityReport from "@/components/data-import/DataQualityReport";
-import { ANALYSIS_CONTRACTS, evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
+import { ANALYSIS_CONTRACTS, evaluateEligibility, formatEligibilityBlocker } from "@/lib/analysis-router/evaluateEligibility";
 import { ANALYSIS_STATUS, deriveAnalysisStatus } from "@/lib/analysis-router/analysisStatus";
 import AnalysisStatusBadge from "@/components/ds/AnalysisStatusBadge";
 
@@ -596,7 +596,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
 
   if (!hasFile) {
     return (
-      <div data-analysis-status={ANALYSIS_STATUS.EMPTY}>
+      <div className="csv-uploader" data-analysis-status={ANALYSIS_STATUS.EMPTY}>
         {/* Keep this as the first child in both render branches so React
             preserves one live region while upload state changes. */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
@@ -705,7 +705,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   const confirmHeader = (header) => setConfirmedHeaders((previous) => new Set([...previous, header]));
 
   return (
-    <div>
+    <div className="csv-uploader">
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
       {isDemo && (
         <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
@@ -802,7 +802,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         <div className="required-banner">
           <strong>{mappingBlocked ? T.mappingBlockedTitle : T.dataBlockedTitle}</strong>
           <p style={{ margin: "0.25rem 0 0" }}>
-            {mappingConflicts.length ? T.mappingBlockedConflict : hasRequiredMustConfirm ? T.mappingBlockedConfirm : dataEligibility?.reasons[0] || T.dataBlockedHint}
+            {mappingConflicts.length ? T.mappingBlockedConflict : hasRequiredMustConfirm ? T.mappingBlockedConfirm : formatEligibilityBlocker(dataEligibility, locale) || T.dataBlockedHint}
           </p>
         </div>
       ) : (

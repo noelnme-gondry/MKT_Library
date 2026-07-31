@@ -145,16 +145,29 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
   const metricKeys = requiredMetricKeys(required, mapped, records);
   const quality = buildDataQualityReport(canonicalData, { metricKeys });
   const reasons = [];
+  const blockers = [];
   const details = [];
-  if (missing.length) reasons.push(`필수 항목 누락: ${missing.join(", ")}`);
-  if (records.length < contract.minRows) reasons.push(`최소 ${contract.minRows}행 필요 (현재 ${records.length}행)`);
-  if (contract.minPeriods && quality.periodCount < contract.minPeriods) reasons.push(`최소 ${contract.minPeriods}개 기간 필요 (현재 ${quality.periodCount}개 기간)`);
+  if (missing.length) {
+    reasons.push(`필수 항목 누락: ${missing.join(", ")}`);
+    blockers.push({ code: "missing_fields", fields: missing });
+  }
+  if (records.length < contract.minRows) {
+    reasons.push(`최소 ${contract.minRows}행 필요 (현재 ${records.length}행)`);
+    blockers.push({ code: "min_rows", required: contract.minRows, current: records.length });
+  }
+  if (contract.minPeriods && quality.periodCount < contract.minPeriods) {
+    reasons.push(`최소 ${contract.minPeriods}개 기간 필요 (현재 ${quality.periodCount}개 기간)`);
+    blockers.push({ code: "min_periods", required: contract.minPeriods, current: quality.periodCount });
+  }
 
   const unusableMetrics = metricKeys.filter((key) => {
     const stats = quality.metricStats[key];
     return stats && (stats.validCount === 0 || stats.zeroRate === 1);
   });
-  if (unusableMetrics.length) reasons.push(`유효한 핵심 지표 필요: ${unusableMetrics.join(", ")}`);
+  if (unusableMetrics.length) {
+    reasons.push(`유효한 핵심 지표 필요: ${unusableMetrics.join(", ")}`);
+    blockers.push({ code: "unusable_metrics", fields: unusableMetrics });
+  }
 
   const isBlocked = missing.length || records.length < contract.minRows || (contract.minPeriods && quality.periodCount < contract.minPeriods) || unusableMetrics.length;
   let confidenceTier = "standard";
@@ -180,6 +193,7 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
     toolId,
     status,
     reasons,
+    blockers,
     reasonDetails: details,
     rowCount: records.length,
     periodCount: quality.periodCount,
@@ -191,6 +205,33 @@ export function evaluateEligibility({ mapping = {}, canonicalData, toolId, diagn
     recommendationScore: recommendation?.score || 0,
     recommendationReason: recommendation?.reason || null,
   };
+}
+
+export function formatEligibilityBlocker(result, locale = "ko") {
+  const blocker = result?.blockers?.[0];
+  if (!blocker) return result?.reasons?.[0] || null;
+  const isEn = locale === "en";
+  if (blocker.code === "missing_fields") {
+    return isEn
+      ? `Map these required fields, then run the analysis again: ${blocker.fields.join(", ")}.`
+      : `CSV 매핑에서 다음 필수 항목을 연결한 뒤 다시 분석하세요: ${blocker.fields.join(", ")}.`;
+  }
+  if (blocker.code === "min_rows") {
+    return isEn
+      ? `Add more rows: at least ${blocker.required.toLocaleString()} are required (${blocker.current.toLocaleString()} now).`
+      : `행을 더 추가하세요. 최소 ${blocker.required.toLocaleString()}행이 필요하며 현재 ${blocker.current.toLocaleString()}행입니다.`;
+  }
+  if (blocker.code === "min_periods") {
+    return isEn
+      ? `Extend the date range to at least ${blocker.required} periods (${blocker.current} now).`
+      : `날짜 범위를 최소 ${blocker.required}개 기간까지 늘리세요. 현재 ${blocker.current}개 기간입니다.`;
+  }
+  if (blocker.code === "unusable_metrics") {
+    return isEn
+      ? `Provide non-empty, non-zero values for: ${blocker.fields.join(", ")}.`
+      : `다음 핵심 지표에 비어 있지 않은 0 초과 값을 넣으세요: ${blocker.fields.join(", ")}.`;
+  }
+  return result?.reasons?.[0] || null;
 }
 
 export function rankRecommendedAnalyses(results = []) {
