@@ -10,7 +10,7 @@ describe("blogSeo metadata contract", () => {
       const seo = getBlogSeo(locale, slug, { description: "Original article summary." });
       expect(seo?.title).toBeTruthy();
       expect([...seo.description].length).toBeLessThanOrEqual(limit);
-      expect(seo.answer).toContain("Original article summary.");
+      expect(seo).not.toHaveProperty("answer");
     }
   });
 

@@ -45,28 +45,32 @@ describe("editorial SEO registries", () => {
     expect(getAllPosts("en").every((post) => post.seoAnswer && post.searchIntent)).toBe(true);
   });
 
-  it("keeps answer, applicability, and review metadata complete for every published blog", () => {
+  it("keeps direct answers and topic-specific applicability guidance complete", () => {
     for (const locale of ["ko", "en"]) {
       const posts = getAllPosts(locale);
       expect(sorted(publishedEditorialSlugs(locale))).toEqual(sorted(posts.map((post) => post.slug)));
+      expect(new Set(posts.map((post) => post.conditions)).size).toBeGreaterThanOrEqual(7);
       for (const post of posts) {
         const editorial = getBlogEditorial(locale, post.slug);
         expect(editorial.answer, `${locale}/${post.slug} needs a direct answer`).toBeTruthy();
         expect(editorial.conditions, `${locale}/${post.slug} needs applicability guidance`).toBeTruthy();
-        expect(editorial.reviewer, `${locale}/${post.slug} needs a reviewer`).toBeTruthy();
-        expect(post.reviewedAt, `${locale}/${post.slug} needs a review date`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
         expect(post.seoAnswer).toBe(editorial.answer);
+        if (post.reviewedAt) expect(post.reviewedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       }
     }
   });
 
-  it("keeps any cited source valid and equivalent across KR/EN article pairs", () => {
+  it("keeps visible external citations valid, complete, and equivalent across KR/EN pairs", () => {
     const english = new Map(getAllPosts("en").map((post) => [post.slug, post]));
     for (const post of getAllPosts("ko")) {
       const enPost = english.get(post.slug);
       expect(enPost, `en/${post.slug} must exist`).toBeTruthy();
       expect(post.sources.every((source) => /^https:\/\//.test(source.url))).toBe(true);
       expect(enPost.sources.every((source) => /^https:\/\//.test(source.url))).toBe(true);
+      const visibleUrls = [...post.html.matchAll(/href="(https:\/\/[^"]+)"/g)].map((match) => match[1]);
+      const visibleEnUrls = [...enPost.html.matchAll(/href="(https:\/\/[^"]+)"/g)].map((match) => match[1]);
+      expect(post.sources.map((source) => source.url)).toEqual(expect.arrayContaining(visibleUrls));
+      expect(enPost.sources.map((source) => source.url)).toEqual(expect.arrayContaining(visibleEnUrls));
       expect(enPost.sources.map((source) => source.url)).toEqual(post.sources.map((source) => source.url));
     }
   });

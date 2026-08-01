@@ -98,9 +98,6 @@ export function getBlogSeo(locale, slug, source = {}) {
   const title = TITLES[locale]?.[slug] || DRAFT_TITLES[locale]?.[slug];
   if (!title) return null;
   const isEnglish = locale === "en";
-  const suffix = isEnglish
-    ? " Start by fixing the date range and conversion definition, then validate the recommendation in the linked analysis tool."
-    : " 먼저 기준 기간과 전환 정의를 고정한 뒤, 연결된 분석 도구에서 결과를 검증하세요.";
   return {
     title,
     // 검색 메타는 제목을 중심으로 짧게 유지한다. 본문의 직접 답변은
@@ -108,7 +105,6 @@ export function getBlogSeo(locale, slug, source = {}) {
     description: DESCRIPTION_OVERRIDES[locale]?.[slug] || (isEnglish
       ? `${title}. A practical guide to the key checks, trade-offs, and next steps.`
       : `${title}. 핵심 기준과 실무 확인 순서를 정리합니다.`),
-    answer: `${source.description || title}${suffix}`,
     intent: isEnglish ? "Search answer · practical workflow" : "검색 답변 · 실무 워크플로우",
     updated: source.updated || (UPDATED_2026_07_28.has(slug)
       ? "2026-07-28"

@@ -80,6 +80,7 @@ function splitAtContentAction(html) {
 function buildPostJsonLd(post, canonical) {
   const publisher = {
     "@type": "Organization",
+    "@id": `${SITE_URL}/#org`,
     name: "Growth Opt Playbook",
     url: `${SITE_URL}/`,
     logo: { "@type": "ImageObject", url: `${SITE_URL}/favicon.svg` },
@@ -106,7 +107,7 @@ function buildPostJsonLd(post, canonical) {
         headline: post.title,
         description: post.description,
         datePublished: post.date || undefined,
-        dateModified: post.reviewedAt || post.updated || post.date || undefined,
+        dateModified: post.updated || post.date || undefined,
         author: publisher,
         publisher,
         mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
@@ -158,6 +159,7 @@ export default async function BlogPostPage({ params }) {
           <aside className="content-answer" aria-label="검색 질문에 대한 짧은 답">
             <span className="content-answer__label">{post.searchIntent || "검색 질문에 대한 짧은 답"}</span>
             <p>{post.seoAnswer}</p>
+            {post.conditions && <p className="content-answer__conditions"><strong>적용 조건</strong>{post.conditions}</p>}
           </aside>
         )}
         <div className="content-article__meta">
@@ -181,7 +183,6 @@ export default async function BlogPostPage({ params }) {
       <ContentActionPanel toolId={post.primaryTool} post={post} />
 
       <EditorialTrust
-        conditions={post.conditions}
         reviewer={post.reviewer}
         reviewedAt={post.reviewedAt}
         sources={post.sources}
