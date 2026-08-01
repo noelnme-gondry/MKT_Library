@@ -42,6 +42,15 @@ const localizedMetric = (metric, locale) => locale === "en"
   ? (METRIC_LABELS_EN[metric.id] || metric.label)
   : metric.label;
 
+const withAlpha = (color, alpha = "cc") => {
+  if (/^#[0-9a-f]{6}$/i.test(color)) return `${color}${alpha}`;
+  if (/^#[0-9a-f]{3}$/i.test(color)) {
+    const expanded = color.slice(1).split("").map((part) => part + part).join("");
+    return `#${expanded}${alpha}`;
+  }
+  return color;
+};
+
 // mapping + 커스텀 지표 → 차트 빌더용 차원/값 옵션·해석기(VizTab·CustomChartsSection 공용).
 export function buildChartFieldOptions(mapping, customMetrics, locale = "ko") {
   const mappedKeys = new Set(Object.values(mapping || {}));
@@ -112,6 +121,7 @@ export function buildCustomChartConfig(def, rows, opts) {
   const isPie = def.type === "pie" || def.type === "doughnut";
   const isLine = def.type === "line";
   const chartType = isPie ? def.type : isLine ? "line" : "bar";
+  const common = chartCommonOpts();
   return {
     type: chartType,
     data: {
@@ -119,21 +129,21 @@ export function buildCustomChartConfig(def, rows, opts) {
       datasets: [{
         label: metricLabelOf ? metricLabelOf(def.metric) : def.metric,
         data: series.values,
-        backgroundColor: isPie ? colors : isLine ? "rgba(173,198,255,0.1)" : colors.map((c) => c + "cc"),
+        backgroundColor: isPie ? colors : isLine ? CHART_THEME.primary : colors.map((color) => withAlpha(color)),
         borderColor: isLine ? CHART_THEME.primary : colors,
         borderWidth: isLine ? 2 : 1,
         borderRadius: isPie ? 0 : 4,
         tension: 0.3,
         pointRadius: isLine ? 2 : 0,
-        fill: isLine,
+        fill: false,
       }],
     },
     options: isPie ? {
-      responsive: true, maintainAspectRatio: false, cutout: def.type === "doughnut" ? "62%" : 0,
-      plugins: { legend: { position: "right", labels: { color: CHART_THEME.text, font: { family: "Inter", size: 11 }, usePointStyle: true, padding: 10 } }, tooltip: chartCommonOpts().plugins.tooltip },
+      responsive: common.responsive, maintainAspectRatio: common.maintainAspectRatio, animation: common.animation, cutout: def.type === "doughnut" ? "62%" : 0,
+      plugins: { legend: { position: "right", labels: { ...common.plugins.legend.labels, color: CHART_THEME.text, padding: 10 } }, tooltip: common.plugins.tooltip },
     } : {
-      ...chartCommonOpts(), indexAxis: def.type === "hbar" ? "y" : "x",
-      plugins: { ...chartCommonOpts().plugins, legend: { display: false } },
+      ...common, indexAxis: def.type === "hbar" ? "y" : "x",
+      plugins: { ...common.plugins, legend: { display: false } },
     },
   };
 }

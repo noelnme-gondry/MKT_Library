@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildChartFieldOptions,
+  buildCustomChartConfig,
   buildCustomScorecardModel,
   formatCustomScorecardValue,
 } from "./customChartConfig.js";
@@ -40,5 +41,31 @@ describe("custom chart scorecard", () => {
     expect(opts.dimLabelOf("channel")).toBe("Channel");
     expect(opts.metricOptions.map((item) => item.label)).toEqual(["Cost", "Installs", "CPI / CPA"]);
     expect(opts.metricLabelOf("cpi")).toBe("CPI / CPA");
+  });
+
+  it("라인 차트는 공용 반응형 계약과 의미 토큰을 사용한다", () => {
+    const opts = buildChartFieldOptions({ Channel: "channel", Spend: "cost", Installs: "installs" }, []);
+    const config = buildCustomChartConfig(
+      { type: "line", dim: "channel", metric: "cpi" },
+      [{ channel: "Meta", cost: 100, installs: 10 }, { channel: "Google", cost: 180, installs: 20 }],
+      opts,
+    );
+    expect(config.options.responsive).toBe(true);
+    expect(config.options.maintainAspectRatio).toBe(false);
+    expect(config.data.datasets[0].fill).toBe(false);
+    expect(config.data.datasets[0].backgroundColor).toBe(config.data.datasets[0].borderColor);
+    expect(config.data.datasets[0].borderColor).not.toContain("var(");
+  });
+
+  it("파이 차트 범례도 공용 글꼴과 툴팁을 재사용한다", () => {
+    const opts = buildChartFieldOptions({ Channel: "channel", Spend: "cost" }, []);
+    const config = buildCustomChartConfig(
+      { type: "pie", dim: "channel", metric: "cost" },
+      [{ channel: "Meta", cost: 100 }, { channel: "Google", cost: 180 }],
+      opts,
+    );
+    expect(config.options.maintainAspectRatio).toBe(false);
+    expect(config.options.plugins.legend.labels.font.family).toContain("DM Sans");
+    expect(config.options.plugins.tooltip.backgroundColor).toBe("rgba(0,0,0,0.85)");
   });
 });

@@ -4,7 +4,7 @@ import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, aggregateByKey, fmtCurrencyPrecise } from "@/utils/dashboardAggregator";
-import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
+import { CHART_THEME, chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
 import { PACING_MATH } from "@/utils/pacingMath";
 
 const PACING_COPY = {
@@ -364,7 +364,14 @@ export default function PacingTab({ locale = "ko" } = {}) {
         <div className="alloc-card" style={{ marginTop: "12px" }}>
           <div className="cann-card-header">
             <div className="alloc-card-title">{T.dailyTrendTitle(metricLabel)}</div>
-            <button className="ab-pill" data-pngdownload="pacing-chart" data-pngname="pacing">{T.pngBtn}</button>
+            <button
+              className="ab-pill"
+              type="button"
+              aria-label={locale === "en" ? "Download pacing chart as PNG" : "페이싱 차트 PNG 다운로드"}
+              onClick={() => downloadChartAsPNG(chartRef.current, "pacing")}
+            >
+              {T.pngBtn}
+            </button>
           </div>
           <div className="chart-container" style={{ height: "260px" }}>
             <canvas id="pacing-chart" ref={chartRef}></canvas>

@@ -1,6 +1,6 @@
 # Frontend Tool Design Guide — Growth Opt Playbook
 
-> 버전: 1.0
+> 버전: 1.1
 > 작성일: 2026-08-01
 > 대상: `v2-migration/`의 분석 도구, 대시보드, 데이터 입력, 결과·리포트 화면
 > 상태: **제품 UI의 디자인·행동 규약**
@@ -36,6 +36,27 @@
 | 도구별 spec | 해당 도구에만 필요한 예외와 분석 계약 |
 
 기존 공용 컴포넌트와 이 가이드가 충돌하면 임의로 우회하지 않는다. 예외의 이유를 도구 spec에 기록하고, 재사용 가능하면 공용 계약과 이 문서를 함께 갱신한다.
+
+### 0.1 코드 적용 현황 — 2026-08-01
+
+이 문서의 1차 P0 계약을 `v2-migration/` 공용층과 대표 결과 화면에 적용했다. 아래 표는 “모든 레거시 화면의 이관 완료”가 아니라, 새 편차를 막는 공용 기반과 사용을 막던 편차의 해소 범위를 뜻한다.
+
+| 영역 | 1차 적용 내용 |
+|---|---|
+| 정보 순서 | 분석 도구 본문 뒤에 보조 연결·레일을 배치하고, 대시보드는 결론 카드 뒤에 후속 행동·근거가 오도록 정리 |
+| 토큰·상태 | Operator Desk의 누락 alias와 간격·그림자 토큰 보강, warning/danger/info/success 콜아웃 상태 통일 |
+| 모바일 탐색 | 숨은 검색 아이콘을 `전체 도구 / All tools` 진입점으로 명시, 핵심 Header·보조 레일 타깃 44px 적용 |
+| 모달 | `ModalDialog`로 portal·accessible name·초기 focus·Tab trap·Escape·backdrop·focus return 공통화 |
+| 데이터 시작 | 데모 모달에 직접 `내 CSV로 바꾸기` 제공, 커스텀 dropzone을 Enter/Space로 실행 가능하게 보강 |
+| 컬럼·객체 조작 | Aha/MMM 매퍼에 드래그 없이 쓰는 역할 select, 지표 순서 편집에 위/아래 버튼 제공 |
+| 차트 | 보이는 PNG action을 실제 exporter에 연결하고 미니·커스텀 차트가 공용 테마·반응형 계약을 사용 |
+| KR/EN·접근성 | locale-aware skip link, active nav `aria-current`, 전체 도구 dialog ARIA와 KR/EN 회귀 테스트 추가 |
+
+후속 적용 범위는 다음과 같다.
+
+- Decision Tape의 `다음 검토 약속` 발견성은 자동 저장·자동 modal 여부를 제품 결정한 뒤 별도 반영한다.
+- 남은 hand-written table은 변경되는 도구부터 `DataTable` 또는 승인된 matrix variant로 이관한다.
+- 360px·720px·1100px·200% 확대의 최종 시각 판정은 코드 검증과 별도로 실제 브라우저에서 확인한다.
 
 ---
 
@@ -1377,7 +1398,7 @@ DOM 순서는 시각 순서와 일치한다.
 - 직접 `<table>` 사용은 약 60곳, `<DataTable>` 사용은 1곳이다.
 - Chart.js 생성부는 약 49곳이며 일부 도구에 로컬 theme 정의가 남아 있다.
 - `globals.css` 상단 Obsidian 토큰과 4,500행대 Operator Desk 토큰이 중복 정의되어 실제 유효 SSOT를 오해하기 쉽다.
-- `--bg-3`, `--bg-4`, `--radius`, `--radius-sm`, `--font-body`, `--on-primary`, `--shadow-sm` 등 정의 없이 사용되는 변수 경로가 있다.
+- 초기 감사에서 미정의였던 `--bg-3`, `--bg-4`, `--radius`, `--radius-sm`, `--font-body`, `--on-primary`, `--shadow-sm` 등은 1차 적용에서 호환 alias를 추가했다. 신규 미정의 변수는 허용하지 않는다.
 
 이 수치는 즉시 전면 리팩터링하라는 의미가 아니다. 새 코드가 부채를 늘리지 않게 하고, 화면을 수정하는 PR에서 해당 영역만 공용 규약으로 옮기는 기준선이다.
 

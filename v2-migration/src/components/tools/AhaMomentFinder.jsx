@@ -988,9 +988,13 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
           <CsvGuide toolId={C.guideToolId} locale={locale} />
           <div
             className="csv-dropzone"
+            role="button"
+            tabIndex={0}
+            aria-label={tr("Aha 분석 CSV 파일 선택", "Choose an Aha-analysis CSV file")}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleAhaFile(e.dataTransfer.files[0]); }}
             onClick={() => ahaFileRef.current?.click()}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ahaFileRef.current?.click(); } }}
             style={{ cursor: "pointer" }}
           >
             <div className="csv-drop-icon">
@@ -1003,6 +1007,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             <div className="csv-drop-text">{tr("CSV 파일 드래그 & 드롭", "Drag & drop a CSV file")}</div>
             <div className="csv-drop-sub">{tr("또는 클릭하여 파일 선택", "or click to choose a file")}</div>
             <input type="file" accept=".csv,text/csv" style={{ display: "none" }} ref={ahaFileRef}
+              onClick={(e) => e.stopPropagation()}
               onChange={(e) => { if (e.target.files?.[0]) handleAhaFile(e.target.files[0]); e.target.value = null; }} />
           </div>
           <DemoLoadButton onLoad={handleLoadDemo} locale={locale} />

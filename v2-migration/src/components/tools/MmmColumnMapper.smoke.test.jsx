@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import MmmColumnMapper from "./MmmColumnMapper";
 
 describe("MmmColumnMapper interaction", () => {
@@ -24,5 +24,52 @@ describe("MmmColumnMapper interaction", () => {
     expect(regsZone).toBeTruthy();
     fireEvent.click(regsZone);
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ regs: expect.objectContaining({ role: "reg" }) }));
+  });
+
+  it("assigns a role directly from a keyboard-accessible selector", () => {
+    const onChange = vi.fn();
+    render(
+      <MmmColumnMapper
+        headers={["week", "regs"]}
+        rows={[{ week: "2025-W01", regs: "100" }]}
+        colMap={{ week: { role: "week" } }}
+        onChange={onChange}
+        locale="en"
+      />,
+    );
+
+    const selector = screen.getByRole("combobox", { name: "regs role" });
+    fireEvent.change(selector, { target: { value: "reg" } });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ regs: expect.objectContaining({ role: "reg" }) }));
+    expect(screen.getByText(/use each chip’s role selector/i)).toBeTruthy();
+  });
+
+  it("contains mapper controls at narrow widths and keeps a 44px clear target", () => {
+    const onChange = vi.fn();
+    render(
+      <MmmColumnMapper
+        headers={["week", "very_long_channel_spend_header"]}
+        rows={[{ week: "2025-W01", very_long_channel_spend_header: "100" }]}
+        colMap={{
+          week: { role: "week" },
+          very_long_channel_spend_header: { role: "channel", kind: "perf", plat: "common" },
+        }}
+        onChange={onChange}
+        locale="en"
+      />,
+    );
+
+    const role = screen.getByRole("combobox", { name: "very_long_channel_spend_header role" });
+    const chip = role.closest(".mmm-mapper-chip");
+    expect(chip).toBeTruthy();
+    expect(chip.style.flexWrap).toBe("wrap");
+    expect(chip.style.width).toBe("fit-content");
+    expect(chip.style.maxWidth).toBe("100%");
+    expect(chip.style.minWidth).toBe("0px");
+
+    const clear = screen.getByRole("button", { name: "Clear very_long_channel_spend_header mapping" });
+    expect(clear.classList.contains("mmm-mapper-chip__clear")).toBe(true);
+    expect(clear.style.minWidth).toBe("44px");
+    expect(clear.style.minHeight).toBe("44px");
   });
 });

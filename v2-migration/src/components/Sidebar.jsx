@@ -64,6 +64,7 @@ export default function Sidebar({ locale = "ko" }) {
   const pathname = usePathname();
   const currentRouteId = resolvePathToId(pathname) ?? "home";
   const isHome = currentRouteId === "home";
+  const isCmdkOpen = useAppStore((state) => state.isCmdkOpen);
   const setCmdkOpen = useAppStore((state) => state.setCmdkOpen);
 
   // Keep track of collapsed states
@@ -104,7 +105,7 @@ export default function Sidebar({ locale = "ko" }) {
         <div className="home-sidebar-workspace">
           <div className="home-sidebar-workspace__label">{T.workspaceLabel}</div>
           <nav className="home-sidebar-nav" aria-label={T.workspaceLabel}>
-            <Link href={locale === "en" ? "/en" : "/"} className="home-sidebar-nav__item active">
+            <Link href={locale === "en" ? "/en" : "/"} className="home-sidebar-nav__item active" aria-current="page">
               <span aria-hidden="true">◎</span><strong>{T.today}</strong><small>01</small>
             </Link>
             <a href="#workflow" className="home-sidebar-nav__item">
@@ -124,7 +125,7 @@ export default function Sidebar({ locale = "ko" }) {
         <span>{T.workspaceLabel}</span>
         <b>{T.allTools}</b>
       </div>
-      <button type="button" className="sidebar-search" onClick={() => setCmdkOpen(true)} aria-label={T.searchPlaceholder}>
+      <button type="button" className="sidebar-search" onClick={() => setCmdkOpen(true)} aria-label={T.searchPlaceholder} aria-haspopup="dialog" aria-controls="cmdk" aria-expanded={isCmdkOpen}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -175,7 +176,7 @@ export default function Sidebar({ locale = "ko" }) {
               <div className="phase-body">
                 {isPrimarySection ? (
                   <>
-                    <Link href={navHref("8-1")} className={`sidebar-workflow-prep ${currentRouteId === "8-1" ? "active" : ""}`}>
+                    <Link href={navHref("8-1")} className={`sidebar-workflow-prep ${currentRouteId === "8-1" ? "active" : ""}`} aria-current={currentRouteId === "8-1" ? "page" : undefined}>
                       <span>{T.dataGuide}</span>
                       <b>{displayItemNumberShort("8-1")}</b>
                     </Link>
@@ -212,6 +213,7 @@ export default function Sidebar({ locale = "ko" }) {
                                   href={navHref(toolId)}
                                   className={`nav-item ${toolId === currentRouteId ? "active" : ""}`}
                                   data-route={toolId}
+                                  aria-current={toolId === currentRouteId ? "page" : undefined}
                                 >
                                   <span className="ix tnum">{displayItemNumberShort(toolId)}</span>
                                   <span>{title}</span>
@@ -252,6 +254,7 @@ export default function Sidebar({ locale = "ko" }) {
                             href={navHref(it.id)}
                             className={`nav-item ${it.id === currentRouteId ? "active" : ""}`}
                             data-route={it.id}
+                            aria-current={it.id === currentRouteId ? "page" : undefined}
                           >
                             <span className="ix tnum">{displayItemNumberShort(it.id)}</span>
                             <span>{trItemTitle(it.id, locale, it.title)}</span>

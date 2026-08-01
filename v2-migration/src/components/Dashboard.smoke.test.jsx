@@ -93,6 +93,20 @@ describe("Dashboard render smoke", () => {
     expect(utilities.hasAttribute("open")).toBe(false);
   });
 
+  it("puts the conclusion before follow-up actions and supporting views", () => {
+    seedWithData();
+    const { container } = render(<Dashboard />);
+    const conclusion = container.querySelector(".result-action-card");
+    const actions = container.querySelector(".dashboard-decision-strip");
+    const supportingViews = container.querySelector(".dashboard-recommendations");
+    expect(conclusion).toBeTruthy();
+    expect(actions).toBeTruthy();
+    expect(conclusion.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    if (supportingViews) {
+      expect(actions.compareDocumentPosition(supportingViews) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
   it("prefills a conservative next review from the visible verdict", () => {
     seedWithData();
     render(<Dashboard />);

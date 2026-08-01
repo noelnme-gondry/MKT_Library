@@ -1,9 +1,19 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import ModalDialog from "@/components/ds/ModalDialog";
 import {
   CUSTOM_OPS, customMetricCompute, customMetricFormula, isValidCustomMetricDef,
 } from "@/utils/metrics/customMetric";
+
+const ICON_TOUCH_TARGET = {
+  boxSizing: "border-box",
+  minWidth: "44px",
+  minHeight: "44px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flex: "none",
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CustomMetricBuilder — 커스텀 지표 조립 모달 (Phase C, 오타 없는 안전 빌더)
@@ -24,7 +34,7 @@ export default function CustomMetricBuilder({
     name: "Metric name", namePlaceholder: "e.g. Net profit, eCPM, efficiency index…", start: "Start",
     noColumn: "No column", addTerm: "＋ Add term", chartShape: "Daily detail chart shape", bar: "Bars", line: "Line",
     preview: "Current data preview", editing: "Editing…", cancel: "Cancel", save: "Save changes", add: "+ Add metric",
-    mine: "My metrics", deleteTerm: "Delete this term", shown: "Saved in this browser only (data is not sent to a server)",
+    mine: "My metrics", edit: "Edit", delete: "Delete", deleteTerm: "Delete this term", shown: "Saved in this browser only (data is not sent to a server)",
     newMetric: "New metric", cannotCompute: "Cannot compute (zero denominator or no data)",
   } : {
     title: "커스텀 지표 만들기", close: "닫기", type: "종류", field: "컬럼", number: "숫자", operator: "연산",
@@ -33,7 +43,7 @@ export default function CustomMetricBuilder({
     name: "지표 이름", namePlaceholder: "예: 순이익, eCPM, 효율지수…", start: "시작",
     noColumn: "컬럼 없음", addTerm: "＋ 항 추가", chartShape: "일별 상세 차트 모양", bar: "📊 막대", line: "📈 선",
     preview: "현재 데이터 미리보기", editing: "수정 중…", cancel: "취소", save: "수정 저장", add: "+ 지표 추가",
-    mine: "내가 만든 지표", deleteTerm: "이 항 삭제", shown: "🔒 이 브라우저에만 저장 (데이터 서버 전송 없음)",
+    mine: "내가 만든 지표", edit: "수정", delete: "삭제", deleteTerm: "이 항 삭제", shown: "🔒 이 브라우저에만 저장 (데이터 서버 전송 없음)",
     newMetric: "새 지표", cannotCompute: "계산 불가 (분모 0 또는 데이터 없음)",
   };
   const firstFieldKey = fields[0] ? fields[0].key : "";
@@ -67,13 +77,6 @@ export default function CustomMetricBuilder({
     setTerms((m.terms && m.terms.length) ? m.terms.map((t) => ({ ...t })) : [{ type: "field", value: fields[0] ? fields[0].key : "" }]);
     setChartType(m.chartType === "line" ? "line" : "bar");
   };
-
-  useEffect(() => {
-    if (!open) return undefined;
-    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
 
   if (!open || typeof document === "undefined") return null;
 
@@ -126,19 +129,17 @@ export default function CustomMetricBuilder({
     );
   };
 
-  const modal = (
-    <div
-      role="dialog" aria-modal="true" aria-label={T.title}
-      style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)" }}
-      onClick={onClose}
+  return (
+    <ModalDialog
+      open={open}
+      onClose={onClose}
+      ariaLabel={T.title}
+      overlayStyle={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)" }}
+      panelStyle={{ boxSizing: "border-box", width: "min(520px, 94vw)", maxHeight: "88vh", overflow: "auto", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", padding: "18px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{ width: "min(520px, 94vw)", maxHeight: "88vh", overflow: "auto", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", padding: "18px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
-      >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
           <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>{T.title}</h3>
-          <button className="ab-pill" onClick={onClose} aria-label={T.close} style={{ padding: "2px 8px" }}>✕</button>
+          <button type="button" className="ab-pill" onClick={onClose} aria-label={`${T.title}: ${T.close}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>✕</button>
         </div>
         <p className="muted" style={{ fontSize: "11px", margin: "0 0 14px" }}>
           {T.intro}
@@ -173,7 +174,7 @@ export default function CustomMetricBuilder({
                       {CUSTOM_OPS.map((o) => <option key={o.id} value={o.id}>{o.sym}</option>)}
                     </select>
                     {operandEditor(t, i)}
-                    <button className="ab-pill" onClick={() => removeTerm(i)} title={T.deleteTerm} style={{ padding: "2px 7px", width: "26px", flex: "none" }}>✕</button>
+                    <button type="button" className="ab-pill" onClick={() => removeTerm(i)} title={T.deleteTerm} aria-label={`${T.deleteTerm} ${i + 1}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 7px" }}>✕</button>
                   </div>
                 );
               })}
@@ -218,8 +219,8 @@ export default function CustomMetricBuilder({
                     <strong>{m.name}</strong>
                     <span className="muted" style={{ marginLeft: "6px", fontSize: "11px" }}>{customMetricFormula(m, labelOf)}</span>
                   </span>
-                  <button className="ab-pill" onClick={() => startEdit(m)} title={T.save} style={{ padding: "2px 8px" }}>✏️</button>
-                  <button className="ab-pill" onClick={() => onDelete?.(m.id)} title={isEn ? "Delete" : "삭제"} style={{ padding: "2px 8px" }}>🗑</button>
+                  <button type="button" className="ab-pill" onClick={() => startEdit(m)} title={T.edit} aria-label={`${T.edit}: ${m.name}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>✏️</button>
+                  <button type="button" className="ab-pill" onClick={() => onDelete?.(m.id)} title={T.delete} aria-label={`${T.delete}: ${m.name}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>🗑</button>
                 </div>
               ))}
             </div>
@@ -229,9 +230,6 @@ export default function CustomMetricBuilder({
         <p className="muted" style={{ fontSize: "10px", marginTop: "12px", textAlign: "right" }}>
           {T.shown}
         </p>
-      </div>
-    </div>
+    </ModalDialog>
   );
-
-  return createPortal(modal, document.body);
 }
