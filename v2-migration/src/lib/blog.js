@@ -10,6 +10,7 @@ import { marked } from "marked";
 import { localizedHref } from "@/lib/localizedHref";
 import { primaryToolForContent, relatedGlossaryForPost } from "@/lib/contentToolRegistry";
 import { getBlogSeo } from "@/lib/blogSeo";
+import { getBlogEditorial } from "@/lib/blogEditorial";
 
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const BLOG_DIRS = {
@@ -85,12 +86,17 @@ function parseFile(fileName, locale) {
   const { data, content } = matter(raw);
   const slug = data.slug || fileName.replace(/\.md$/, "");
   const seo = getBlogSeo(locale, slug, data);
+  const editorial = getBlogEditorial(locale, slug, data);
   return {
     slug,
     title: seo?.title || data.title || slug,
     description: seo?.description || data.description || "",
-    seoAnswer: seo?.answer || data.description || "",
+    seoAnswer: editorial.answer || seo?.answer || data.description || "",
     searchIntent: seo?.intent || "",
+    conditions: editorial.conditions,
+    reviewer: editorial.reviewer,
+    reviewedAt: editorial.reviewedAt,
+    sources: editorial.sources,
     date: data.date || "",
     updated: seo?.updated || data.updated || data.date || "",
     keywords: data.keywords || "",

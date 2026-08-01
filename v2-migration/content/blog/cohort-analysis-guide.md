@@ -9,6 +9,11 @@ draft: false
 ogImage: "/blog-assets/cohort-analysis-guide/og.svg"
 primaryTool: "5-20"
 relatedGlossary: ["cohort", "retention", "ltv"]
+sources:
+  - title: "Google Analytics Data API — CohortSpec"
+    url: "https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1alpha/CohortSpec"
+  - title: "Amplitude — Retention Analysis: how time works"
+    url: "https://amplitude.com/docs/analytics/charts/retention-analysis/retention-analysis-time"
 faq:
   - q: "최근 D7 리텐션이 0%로 보입니다. 사용자가 모두 이탈한 건가요?"
     a: "아닐 수 있습니다. 데이터 최대 날짜 기준으로 해당 코호트가 D7까지 관찰될 시간이 있었는지 먼저 확인하세요. 미완성 코호트는 0%가 아니라 미완성으로 표시하고 평균에서 제외해야 합니다."

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug, tagSlug } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
+import EditorialTrust from "@/components/seo/EditorialTrust";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 
 // 발행 글만 정적 생성. 0편이면 빈 배열(라우트 미생성) — 빌드 정상 통과.
@@ -105,7 +106,7 @@ function buildPostJsonLd(post, canonical) {
         headline: post.title,
         description: post.description,
         datePublished: post.date || undefined,
-        dateModified: post.updated || post.date || undefined,
+        dateModified: post.reviewedAt || post.updated || post.date || undefined,
         author: publisher,
         publisher,
         mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
@@ -113,6 +114,7 @@ function buildPostJsonLd(post, canonical) {
         inLanguage: "ko-KR",
         articleSection: post.tags,
         ...(post.keywords ? { keywords: post.keywords } : {}),
+        ...(post.sources.length ? { citation: post.sources.map((source) => source.url) } : {}),
         image: articleImages,
       },
       {
@@ -177,6 +179,13 @@ export default async function BlogPostPage({ params }) {
       </article>
 
       <ContentActionPanel toolId={post.primaryTool} post={post} />
+
+      <EditorialTrust
+        conditions={post.conditions}
+        reviewer={post.reviewer}
+        reviewedAt={post.reviewedAt}
+        sources={post.sources}
+      />
 
       <NewsletterSignup placement="post" />
 

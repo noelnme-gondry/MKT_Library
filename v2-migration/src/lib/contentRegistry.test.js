@@ -9,6 +9,7 @@ import {
 import { EN_BLOG_SLUGS, EN_GLOSSARY_SLUGS, localizedHref } from "./localizedHref";
 import { isRoutePublished } from "./routeMap";
 import { publishedBlogSeoSlugs } from "./blogSeo";
+import { getBlogEditorial, publishedEditorialSlugs } from "./blogEditorial";
 
 const sorted = (values) => [...values].sort();
 
@@ -42,6 +43,32 @@ describe("editorial SEO registries", () => {
     expect(sorted(publishedBlogSeoSlugs("en"))).toEqual(sorted(getAllPosts("en").map((post) => post.slug)));
     expect(getAllPosts("ko").every((post) => post.seoAnswer && post.searchIntent)).toBe(true);
     expect(getAllPosts("en").every((post) => post.seoAnswer && post.searchIntent)).toBe(true);
+  });
+
+  it("keeps answer, applicability, and review metadata complete for every published blog", () => {
+    for (const locale of ["ko", "en"]) {
+      const posts = getAllPosts(locale);
+      expect(sorted(publishedEditorialSlugs(locale))).toEqual(sorted(posts.map((post) => post.slug)));
+      for (const post of posts) {
+        const editorial = getBlogEditorial(locale, post.slug);
+        expect(editorial.answer, `${locale}/${post.slug} needs a direct answer`).toBeTruthy();
+        expect(editorial.conditions, `${locale}/${post.slug} needs applicability guidance`).toBeTruthy();
+        expect(editorial.reviewer, `${locale}/${post.slug} needs a reviewer`).toBeTruthy();
+        expect(post.reviewedAt, `${locale}/${post.slug} needs a review date`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(post.seoAnswer).toBe(editorial.answer);
+      }
+    }
+  });
+
+  it("keeps any cited source valid and equivalent across KR/EN article pairs", () => {
+    const english = new Map(getAllPosts("en").map((post) => [post.slug, post]));
+    for (const post of getAllPosts("ko")) {
+      const enPost = english.get(post.slug);
+      expect(enPost, `en/${post.slug} must exist`).toBeTruthy();
+      expect(post.sources.every((source) => /^https:\/\//.test(source.url))).toBe(true);
+      expect(enPost.sources.every((source) => /^https:\/\//.test(source.url))).toBe(true);
+      expect(enPost.sources.map((source) => source.url)).toEqual(post.sources.map((source) => source.url));
+    }
   });
 
   it("keeps audited high-intent search phrases in final SEO titles or descriptions", () => {
