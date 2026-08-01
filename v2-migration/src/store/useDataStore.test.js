@@ -35,8 +35,8 @@ describe("useDataStore · viewConfig 액션", () => {
   });
 });
 
-describe("useDataStore · persist 불변식(설정만 저장, 원본 CSV 제외 §2.2)", () => {
-  it("partialize는 설정(viewConfig·customMetrics)만 남기고 원본 데이터·필터 제외", () => {
+describe("useDataStore · persist 불변식(동의한 요약만 저장, 원본 CSV 제외 §2.2)", () => {
+  it("partialize는 설정과 opt-in 상태만 남기고 원본 데이터·필터 제외", () => {
     const fakeState = {
       viewConfig: { "5-2:scorecard": { hidden: ["ctr"], order: [] } },
       customMetrics: { "5-2:viz-kpi": [{ id: "cm_1", name: "이익", op: "sub", a: "revenue", b: "cost" }] },
@@ -47,7 +47,9 @@ describe("useDataStore · persist 불변식(설정만 저장, 원본 CSV 제외 
       isDarkMode: true,
     };
     const persisted = persistPartialize({ ...fakeState, customCharts: { s: [{ id: "ch_1" }] } });
-    expect(Object.keys(persisted).sort()).toEqual(["customCharts", "customMetrics", "viewConfig"]);
+    expect(Object.keys(persisted).sort()).toEqual(["customCharts", "customMetrics", "decisionPersistenceEnabled", "viewConfig"]);
+    expect(persisted.decisionPersistenceEnabled).toBe(false);
+    expect(persisted.decisionRecords).toBeUndefined();
     expect(persisted.viewConfig).toBe(fakeState.viewConfig);
     expect(persisted.customMetrics).toBe(fakeState.customMetrics);
     // 원본 데이터 키가 저장 payload에 절대 없어야 함
@@ -60,9 +62,30 @@ describe("useDataStore · persist 불변식(설정만 저장, 원본 CSV 제외 
     expect(json).not.toContain("iOS");
   });
 
-  it("persistMigrate — version 1(현재)은 저장 형태를 그대로 통과(무동작)", () => {
+  it("persistMigrate — 현재 스키마는 안전한 결정 요약만 통과", () => {
     const persisted = { viewConfig: { s1: { hidden: ["a"], order: [] } }, customMetrics: {}, customCharts: {} };
-    expect(persistMigrate(persisted, 1)).toBe(persisted);
+    expect(persistMigrate(persisted, 2)).toEqual({ ...persisted, decisionPersistenceEnabled: false });
+  });
+
+  it("구 스키마와 opt-out 상태에서는 결정 기록을 영속 payload에서 제거", () => {
+    const persisted = { decisionPersistenceEnabled: true, decisionRecords: [{ action: "A", raw: [{ secret: 1 }] }] };
+    expect(persistMigrate(persisted, 1)).toEqual({ decisionPersistenceEnabled: false });
+  });
+
+  it("명시적 opt-in 때도 allowlist 결정 요약만 저장", () => {
+    const fakeState = {
+      viewConfig: {}, customMetrics: {}, customCharts: {}, decisionPersistenceEnabled: true,
+      decisionRecords: [{
+        id: "decision_1", toolId: "5-2", action: "예산 조정", reviewDate: "2026-08-08",
+        raw: [{ secret: "row-value" }], csvData: { fileName: "private.csv" }, inputSignature: "private.csv|10",
+      }],
+    };
+    const persisted = persistPartialize(fakeState);
+    expect(persisted.decisionRecords).toHaveLength(1);
+    expect(persisted.decisionRecords[0]).toMatchObject({ id: "decision_1", toolId: "5-2", action: "예산 조정" });
+    const json = JSON.stringify(persisted);
+    expect(json).not.toContain("row-value");
+    expect(json).not.toContain("private.csv");
   });
 
   it("addCustomMetric/removeCustomMetric — scope별 정의 추가·삭제", () => {
@@ -80,6 +103,45 @@ describe("useDataStore · persist 불변식(설정만 저장, 원본 CSV 제외 
     let executed = false;
     useAppStore.getState().requestAd(() => { executed = true; });
     expect(executed).toBe(true);
+  });
+
+  it("결정 기록은 도구 간 세션에서 공유하고 opt-out해도 현재 세션 기록은 유지", () => {
+    useAppStore.setState({ decisionRecords: [], decisionPersistenceEnabled: false });
+    useAppStore.getState().addDecisionRecord({ toolId: "5-2", action: "Meta 예산 감액", raw: [{ secret: 1 }] });
+    const record = useAppStore.getState().decisionRecords[0];
+    expect(record).toMatchObject({ toolId: "5-2", action: "Meta 예산 감액", status: "pending" });
+    expect(record.id).toMatch(/^decision_/);
+    expect(record.id).not.toMatch(/^decision_\d+$/);
+    expect(record.raw).toBeUndefined();
+    useAppStore.getState().updateDecisionRecord(record.id, { actual: "CPA 4,980", csvData: { raw: [1] } });
+    expect(useAppStore.getState().decisionRecords[0].status).toBe("reviewed");
+    expect(useAppStore.getState().decisionRecords[0].csvData).toBeUndefined();
+    useAppStore.getState().setDecisionPersistenceEnabled(true);
+    useAppStore.getState().setDecisionPersistenceEnabled(false);
+    expect(useAppStore.getState().decisionRecords).toHaveLength(1);
+  });
+
+  it("record_id가 있는 CSV를 반복 import하면 같은 결정을 갱신하고 중복하지 않음", () => {
+    useAppStore.setState({ decisionRecords: [] });
+    useAppStore.getState().importDecisionRecords([{ record_id: "decision_9", tool_id: "5-3", action: "예산 유지", actual: "" }]);
+    useAppStore.getState().importDecisionRecords([{ record_id: "decision_9", tool_id: "5-3", action: "예산 유지", actual: "CPA 4,900" }]);
+    expect(useAppStore.getState().decisionRecords).toHaveLength(1);
+    expect(useAppStore.getState().decisionRecords[0]).toMatchObject({ id: "decision_9", actual: "CPA 4,900", status: "reviewed" });
+  });
+
+  it("다른 브라우저의 동일 legacy record_id가 기존 결정을 덮어쓰지 않음", () => {
+    useAppStore.setState({
+      decisionRecords: [{
+        id: "decision_1", toolId: "5-2", locale: "ko", conclusion: "", action: "기존 예산 결정",
+        hypothesis: "", metric: "CPA", baseline: "", reviewQuestion: "", reviewDate: "", sourcePeriod: "",
+        actual: "", learning: "", status: "pending", createdAt: "", updatedAt: "",
+      }],
+    });
+    useAppStore.getState().importDecisionRecords([{ record_id: "decision_1", tool_id: "9-6", action: "다른 기기의 소재 교체" }]);
+    const records = useAppStore.getState().decisionRecords;
+    expect(records).toHaveLength(2);
+    expect(records.find((record) => record.id === "decision_1")).toMatchObject({ toolId: "5-2", action: "기존 예산 결정" });
+    expect(records.find((record) => record.action === "다른 기기의 소재 교체").id).not.toBe("decision_1");
   });
 });
 

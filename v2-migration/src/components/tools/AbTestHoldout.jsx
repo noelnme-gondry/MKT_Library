@@ -818,16 +818,76 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                 {readoutData.sig ? (() => {
                   const s = readoutData.sig;
                   const liftPositive = s.liftRel >= 0;
+                  const isSignificant = s.pValue < 0.05;
+                  const testArmCount = readoutData.mass
+                    ? readoutData.mass.rows.filter((row) => !row.isControl).length
+                    : 1;
+                  // arm_id가 여러 개인 CSV의 2-arm 수치는 모든 variant를 합친 가상
+                  // Test다. 실행 대상을 특정할 수 없으므로 mass 표에서 arm을 고르기 전에는
+                  // 결정 초안을 만들지 않는다.
+                  const canPrefillDecision = Number.isFinite(s.pValue)
+                    && Number.isFinite(s.liftRel)
+                    && testArmCount === 1;
+                  const conclusion = isSignificant
+                    ? tr(
+                        liftPositive ? "Test 전환율이 Control보다 유의하게 높았습니다" : "Test 전환율이 Control보다 유의하게 낮았습니다",
+                        liftPositive ? "Test conversion rate was significantly higher than Control" : "Test conversion rate was significantly lower than Control",
+                      )
+                    : tr(
+                        "현재 표본에서는 Test와 Control 전환율 차이를 판정할 수 없습니다",
+                        "The current sample cannot distinguish the Test and Control conversion rates",
+                      );
+                  const action = isSignificant
+                    ? liftPositive
+                      ? tr(
+                          "Test를 제한적으로 롤아웃하고 Control을 유지해 전환율을 계속 비교한다",
+                          "Run a limited rollout of Test while keeping Control and continue comparing conversion rates",
+                        )
+                      : tr(
+                          "Test 출시를 보류하고 Control을 유지한다",
+                          "Hold the Test launch and keep Control",
+                        )
+                    : tr(
+                        "사전 계획한 표본 수에 도달할 때까지 Control과 Test를 유지하고 판정을 보류한다",
+                        "Keep Control and Test running and defer the decision until the pre-planned sample size is reached",
+                      );
+                  const metric = tr("Control 대비 Test 전환율", "Test conversion rate vs Control");
+                  const baseline = tr(
+                    `${readoutData.cRate.toFixed(2)}% (Control 전환율)`,
+                    `${readoutData.cRate.toFixed(2)}% (Control conversion rate)`,
+                  );
+                  const reviewQuestion = isSignificant
+                    ? liftPositive
+                      ? tr(
+                          `제한적 롤아웃에서도 Test 전환율이 Control 기준 ${readoutData.cRate.toFixed(2)}%보다 높게 유지됐는가?`,
+                          `During the limited rollout, did Test conversion rate remain above the Control baseline of ${readoutData.cRate.toFixed(2)}%?`,
+                        )
+                      : tr(
+                          `Test 출시를 보류한 동안 Control 전환율이 ${readoutData.cRate.toFixed(2)}% 기준을 유지했는가?`,
+                          `While the Test launch was on hold, did the Control conversion rate hold its ${readoutData.cRate.toFixed(2)}% baseline?`,
+                        )
+                    : tr(
+                        `사전 계획한 표본 수에 도달한 뒤 Test 전환율이 Control 기준 ${readoutData.cRate.toFixed(2)}%와 구분되는가?`,
+                        `After reaching the pre-planned sample size, is the Test conversion rate distinguishable from the ${readoutData.cRate.toFixed(2)}% Control baseline?`,
+                      );
                   return (
                     <ResultActionCard
                       toolId="5-4"
                       locale={locale}
-                      tone={s.pValue < 0.05 ? (liftPositive ? "good" : "bad") : "neutral"}
+                      decisionReview={canPrefillDecision}
+                      decisionPrefill={canPrefillDecision ? { conclusion, action, metric, baseline, reviewQuestion } : null}
+                      tone={isSignificant ? (liftPositive ? "good" : "bad") : "neutral"}
                       title={tr("결론 — Control vs Test", "Conclusion — Control vs Test")}
-                      headline={s.pValue < 0.05
+                      headline={isSignificant
                         ? tr(liftPositive ? "통계적 개선 후보입니다" : "통계적 악화 후보입니다", liftPositive ? "Statistical improvement candidate" : "Statistical decline candidate")
                         : tr("현재 표본만으로 차이를 확정할 수 없습니다", "The current sample does not establish a difference")}
-                      points={[]}
+                      points={testArmCount > 1 ? [{
+                        cls: "muted",
+                        text: tr(
+                          `이 수치는 ${testArmCount}개 variant를 합친 참고값입니다. 실행 결정은 아래 Holm 보정 arm별 표에서 한 variant를 특정한 뒤 내리세요.`,
+                          `This is a reference aggregate across ${testArmCount} variants. Choose one specific variant from the Holm-adjusted arm table below before making an operating decision.`,
+                        ),
+                      }] : []}
                       stats={[
                         { label: tr("Control 전환율", "Control rate"), value: `${readoutData.cRate.toFixed(2)}%`, detail: `${readoutData.cNum.toLocaleString()}/${readoutData.cDen.toLocaleString()}` },
                         { label: tr("Test 전환율", "Test rate"), value: `${readoutData.tRate.toFixed(2)}%`, detail: `${readoutData.tNum.toLocaleString()}/${readoutData.tDen.toLocaleString()}` },

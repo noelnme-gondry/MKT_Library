@@ -7,6 +7,7 @@ import { resolvePathToId } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 import { setLocalePref } from "@/lib/localePref";
 import { englishSwitchHref } from "@/lib/localizedHref";
+import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import BrandMark from "@/components/BrandMark";
 import ProjectSettingsMenu from "@/components/ProjectSettingsMenu";
 
@@ -24,6 +25,8 @@ const HEADER_COPY = {
     print: "인쇄 / PDF",
     printTitle: "현재 분석 결과를 인쇄하거나 PDF로 저장",
     homeCrumb: "오늘의 질문",
+    decisionInbox: "결정 검토함",
+    decisionInboxAria: (count) => `결정 검토함${count ? `, 지금 검토할 결정 ${count}건` : ""}`,
   },
   en: {
     breadcrumbAria: "Breadcrumb",
@@ -38,6 +41,8 @@ const HEADER_COPY = {
     print: "Print / PDF",
     printTitle: "Print this analysis or save it as a PDF",
     homeCrumb: "Today’s question",
+    decisionInbox: "Decision inbox",
+    decisionInboxAria: (count) => `Decision inbox${count ? `, ${count} decision${count === 1 ? "" : "s"} due now` : ""}`,
   },
 };
 
@@ -50,6 +55,11 @@ export default function Header({ locale = "ko" }) {
   // 어느 도구에서든 동일하게 초기화 가능하게(§ 그룹 스코프 csvData 미러).
   const csvData = useAppStore((state) => state.csvData);
   const clearCsvGroup = useAppStore((state) => state.clearCsvGroup);
+  const decisionRecords = useAppStore((state) => state.decisionRecords);
+  const dueDecisionCount = decisionRecords.reduce((count, record) => {
+    const status = getDecisionReviewBucket(record);
+    return count + (status === "overdue" || status === "today" ? 1 : 0);
+  }, 0);
   const hasCsv = !!(csvData && csvData.raw && csvData.raw.length > 0);
   const resetCsv = () => clearCsvGroup();
   // Breadcrumb sourced from the URL (SSOT) → correct on deep-link + back/forward.
@@ -184,6 +194,16 @@ export default function Header({ locale = "ko" }) {
         )}
       </nav>
       <div className="topbar-actions">
+        <Link
+          href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}
+          className="btn ghost header-decision-inbox"
+          aria-label={T.decisionInboxAria(dueDecisionCount)}
+          aria-current={isWeeklyReview ? "page" : undefined}
+        >
+          <span className="header-decision-inbox__icon" aria-hidden="true">◷</span>
+          <span className="header-decision-inbox__label">{T.decisionInbox}</span>
+          {dueDecisionCount > 0 && <em>{dueDecisionCount}</em>}
+        </Link>
         <ProjectSettingsMenu locale={locale} />
         {hasCsv && (
           <span className="header-csv" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11.5px", color: "var(--text-muted)", marginRight: "4px" }}>

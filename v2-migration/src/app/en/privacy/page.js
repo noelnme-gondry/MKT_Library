@@ -15,6 +15,7 @@ export const metadata = {
 export default function EnglishPrivacyPage() {
   return (
     <PolicyPage
+      updated="2026-08-01"
       locale="en"
       eyebrow="PRIVACY"
       alternateHref="/privacy"
@@ -27,7 +28,7 @@ export default function EnglishPrivacyPage() {
         },
         {
           title: "Information stored in your browser",
-          content: <p>For convenience, this device may retain theme, language and display preferences, column-mapping recipes, recently connected public Google Sheets URLs, and summaries of recent analysis runs in localStorage or IndexedDB. Source CSV rows are not stored. You can remove this information at any time by clearing site data in your browser.</p>,
+          content: <p>For convenience, this device may retain theme, language and display preferences, column-mapping recipes, recently connected public Google Sheets URLs, and summaries of recent analysis runs in localStorage or IndexedDB. Decision records stay in the current session by default. Only when you explicitly enable <strong>“Keep decision summaries on this device”</strong> do we store the tool ID and language; conclusion, action, and hypothesis; metric and baseline; source period, review question, and review date; actual outcome and learning; and created/updated timestamps in localStorage. When you save a decision, these fields may include channel, campaign, creative, action, or analysis-element names and summary figures that you entered or accepted from an analysis-result prefill. Full source CSV rows, file names, mappings, filters, input signatures, and chart data are not included. Turning storage off removes the persistent copy while retaining the current session; use Delete all records in Weekly Review or clear browser site data to remove everything.</p>,
         },
         {
           title: "Analytics and advertising",

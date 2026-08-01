@@ -26,11 +26,22 @@ import { localizedTool } from "@/lib/toolConnections";
 //   collapsePointsAfter : 첫 N개 근거만 펼쳐 보이고 나머지는 details에 둔다.
 //   toolId : 지정하면 실제 결과 카드가 화면에 도달한 순간만 익명 제품 이벤트를 남긴다.
 //   decisionReview : 결과 → 실행 → 다음 검토의 CSV 기반 기록 루프를 표시한다.
+//   decisionPrefill : 도구가 명시적으로 만든 안전한 결론·행동·기준값 제안. 원본 행 금지.
 const TONE = {
   good: { icon: "↗" },
   bad: { icon: "!" },
   neutral: { icon: "→" },
 };
+
+const DECISION_PREFILL_FIELDS = ["conclusion", "action", "hypothesis", "metric", "baseline", "reviewQuestion", "reviewDate", "sourcePeriod"];
+
+function decisionPrefillKey(prefill) {
+  if (!prefill || typeof prefill !== "object" || Array.isArray(prefill)) return "empty";
+  return JSON.stringify(DECISION_PREFILL_FIELDS.map((key) => {
+    const value = prefill[key];
+    return typeof value === "string" || typeof value === "number" ? String(value) : "";
+  }));
+}
 
 export default function ResultActionCard({
   tone = "neutral",
@@ -47,6 +58,7 @@ export default function ResultActionCard({
   locale = "ko",
   toolId = null,
   decisionReview = true,
+  decisionPrefill = null,
   analysisBasis = true,
   reportBlock = null,
 }) {
@@ -87,6 +99,7 @@ export default function ResultActionCard({
     dataGroup: TOOL_GROUP[toolId],
     scope: resultScope,
   }), [toolId, tone, headline, points, stats, inputSignature, locale, resultScope]);
+  const resolvedDecisionPrefillKey = useMemo(() => decisionPrefillKey(decisionPrefill), [decisionPrefill]);
   const visiblePoints = collapsePointsAfter == null ? points : points.slice(0, collapsePointsAfter);
   const hiddenPoints = collapsePointsAfter == null ? [] : points.slice(collapsePointsAfter);
   useEffect(() => {
@@ -186,7 +199,14 @@ export default function ResultActionCard({
         />
       )}
 
-      {decisionReview && toolId && <DecisionReview toolId={toolId} locale={locale} />}
+      {decisionReview && toolId && (
+        <DecisionReview
+          toolId={toolId}
+          locale={locale}
+          decisionPrefill={decisionPrefill}
+          decisionPrefillKey={resolvedDecisionPrefillKey}
+        />
+      )}
       {analysisDetails}
       {children}
     </section>

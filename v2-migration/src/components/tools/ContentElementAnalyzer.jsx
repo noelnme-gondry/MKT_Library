@@ -473,6 +473,36 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
 
   const canAnalyze = !!outcome && features.length > 0;
   const topSig = fit && !fit.error ? fit.rows.find((r) => r.sig) : null;
+  // 관측 연관이 유의한 topSig 하나로 좁혀졌을 때만 도구가 명시한 한 변수 실험 초안을 제공한다.
+  // 파일명·원본 행·매핑·signature는 넘기지 않고, 실험 baseline은 계산하지 않았으므로 비운다.
+  const decisionPrefill = topSig
+    ? {
+        conclusion: tr(
+          `${topSig.name}과 ${fit.outcome} 사이에 ${topSig.coef >= 0 ? "양의" : "음의"} 관측 연관이 확인됐습니다 (BH p=${topSig.p.toFixed(3)}). 인과효과로 확정하지 않습니다.`,
+          `${topSig.name} has a ${topSig.coef >= 0 ? "positive" : "negative"} observed association with ${fit.outcome} (BH p=${topSig.p.toFixed(3)}). This does not establish a causal effect.`,
+        ),
+        action: topSig.binary
+          ? tr(
+              `${topSig.name} 있음/없음만 다른 A/B 테스트 초안을 만들고 나머지 요소와 배포 조건을 고정한다`,
+              `Draft an A/B test that differs only in whether ${topSig.name} is present, holding every other element and distribution condition fixed`,
+            )
+          : tr(
+              `${topSig.name} 수준만 다른 두 버전의 A/B 테스트 초안을 만들고 나머지 요소와 배포 조건을 고정한다`,
+              `Draft an A/B test with two preset ${topSig.name} levels, holding every other element and distribution condition fixed`,
+            ),
+        hypothesis: tr(
+          `한 변수 통제 실험에서도 ${fit.outcome} 차이가 관측 연관과 같은 ${topSig.coef >= 0 ? "높은" : "낮은"} 방향으로 재현될 것이다`,
+          `In the one-variable controlled experiment, the ${fit.outcome} difference should reproduce the observed ${topSig.coef >= 0 ? "higher" : "lower"} direction`,
+        ),
+        metric: String(fit.outcome),
+        baseline: "",
+        sourcePeriod: "",
+        reviewQuestion: tr(
+          `한 변수 통제 실험에서 ${fit.outcome} 차이가 재현됐는가, 아니면 관측 연관만 남았는가?`,
+          `Did the one-variable controlled experiment reproduce the ${fit.outcome} difference, or was it only an observational association?`,
+        ),
+      }
+    : null;
   return (
     <div className="tab-pane active">
       {isDemo && (
@@ -570,6 +600,8 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               locale={locale}
               tone={topSig ? "good" : "neutral"}
               title={T.heroQ}
+              decisionReview={Boolean(decisionPrefill)}
+              decisionPrefill={decisionPrefill}
               headline={topSig
                 ? tr(
                     `${topSig.name}: ${fit.outcome}가 ${topSig.coef >= 0 ? "높은" : "낮은"} 쪽과 가장 강하게 연관된 신호입니다.`,

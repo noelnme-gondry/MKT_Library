@@ -5,7 +5,7 @@
 // → matchMedia). It reads isDarkMode/theme from the store, NOT csvData. We seed
 // the store (no-data + with-data) for parity; the topbar must mount either way.
 import { describe, it, expect, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Header from "@/components/Header";
 
@@ -16,6 +16,7 @@ function seedNoData() {
     currentRouteId: "home",
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    decisionRecords: [],
   });
 }
 
@@ -41,5 +42,17 @@ describe("Header render smoke", () => {
     seedWithData();
     expect(() => render(<Header />)).not.toThrow();
     expect(document.querySelector("#theme-toggle")).toBeTruthy();
+  });
+  it("links to the localized decision inbox and shows decisions due now", () => {
+    useAppStore.setState({
+      decisionRecords: [{ id: "decision_1", toolId: "5-2", action: "Review CPA", reviewDate: "2020-01-01", actual: "", learning: "" }],
+    });
+    const { unmount } = render(<Header />);
+    const koLink = screen.getByRole("link", { name: "결정 검토함, 지금 검토할 결정 1건" });
+    expect(koLink.getAttribute("href")).toBe("/weekly-review");
+    expect(koLink.textContent).toContain("1");
+    unmount();
+    render(<Header locale="en" />);
+    expect(screen.getByRole("link", { name: "Decision inbox, 1 decision due now" }).getAttribute("href")).toBe("/en/weekly-review");
   });
 });

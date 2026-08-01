@@ -376,13 +376,34 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                 </div>
               </section>
               <ResultActionCard
-                toolId="5-2"
+                toolId={toolId}
                 tone={verdict.tone}
                 title={tr("결론 — 최근 성과 요약", "Conclusion — recent performance")}
                 headline={verdict.headline}
                 points={verdict.keyPoints}
                 stats={verdict.stats}
                 locale={locale}
+                decisionPrefill={{
+                  conclusion: verdict.headline,
+                  action: verdict.tone === "bad"
+                    ? tr(
+                      isContent ? "이상 감지에서 급변한 날짜와 유입경로를 먼저 점검한다" : "이상 감지에서 급변한 날짜와 채널을 먼저 점검한다",
+                      isContent ? "Check the spike date and traffic source in Anomaly Detection first" : "Check the spike date and channel in Anomaly Detection first",
+                    )
+                    : verdict.tone === "good"
+                      ? tr(
+                        isContent ? "개선에 기여한 유입경로를 확인하고 한 조건만 유지 시험한다" : "포화도와 예산 배분에서 여력을 확인하고 한 채널만 소규모 시험한다",
+                        isContent ? "Identify the traffic source associated with the improvement and test one condition" : "Check saturation and allocation headroom, then run a small test on one channel",
+                      )
+                      : tr("같은 기준으로 다음 비교기간의 변화를 다시 확인한다", "Recheck the next comparison window using the same definition"),
+                  metric: verdict.stats.find((stat) => stat.emphasis === "primary")?.label || verdict.stats[0]?.label || "",
+                  baseline: verdict.stats.find((stat) => stat.emphasis === "primary")?.value || verdict.stats[0]?.value || "",
+                  sourcePeriod: tr(`최근 ${dashWindowDays}일 vs 직전 ${dashWindowDays}일`, `Last ${dashWindowDays} days vs. prior ${dashWindowDays} days`),
+                  reviewQuestion: tr(
+                    `다음 ${dashWindowDays}일에도 같은 지표가 현재 기준보다 개선됐는가?`,
+                    `After the next ${dashWindowDays} days, did the same metric improve from this baseline?`,
+                  ),
+                }}
                 analysisDetails={
                   <AnalysisDetails
                     locale={locale}

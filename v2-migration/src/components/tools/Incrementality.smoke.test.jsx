@@ -17,6 +17,7 @@ function seed(slice) {
     currentRouteId: "5-23",
     csvGroups: { ...useAppStore.getState().csvGroups, incrementality: slice },
     csvData: slice,
+    decisionRecords: [],
   });
 }
 
@@ -49,6 +50,19 @@ describe("Incrementality render smoke", () => {
     expect(screen.getAllByText(/결과 받기/).length).toBeGreaterThan(0);
     expect(container.querySelector("#s-incr-method")).toBeTruthy();
     expect(container.querySelector("#s-incr-result")).toBeTruthy();
+    expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/무작위 홀드아웃.*재검증/);
+    expect(screen.getByLabelText("현재 기준값 (선택)").value).toMatch(/×$/);
+
+    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    const saved = useAppStore.getState().decisionRecords.at(-1);
+    expect(saved.toolId).toBe("5-23");
+    expect(saved.sourcePeriod).toBe("2024-05-12 ~ 2024-06-05");
+    expect(saved.action).toMatch(/제한적으로 반복.*재검증/);
+    expect(saved.conclusion).toMatch(/관측.*인과효과로 확정하지 않습니다/);
+    expect(saved.baseline).toMatch(/×$/);
+    expect(saved.raw).toBeUndefined();
+    expect(saved.fileName).toBeUndefined();
+    expect(JSON.stringify(saved)).not.toContain("demo_incr_suppression.csv");
   });
 
   it("mounts with pre/post demos (on & off) → 탭 전환 후 결론 카드", () => {
@@ -77,6 +91,80 @@ describe("Incrementality render smoke", () => {
     fireEvent.click(view.getByText(/종료 \(전후\)/));
     expect(view.getByText("전환 시점을 먼저 지정하세요")).toBeTruthy();
     expect(view.queryByText(/결론 — 종료/)).toBeNull();
+  });
+
+  it("stores an identified DiD as a limited English follow-up, not a causal scale action", () => {
+    seed(buildIncrPrepostDemo("on"));
+    const view = render(<Incrementality locale="en" />);
+    fireEvent.click(view.getByText(/New launch \(pre\/post\)/));
+    fireEvent.change(view.container.querySelectorAll("select")[1], { target: { value: "2024-05-16" } });
+
+    expect(screen.getByLabelText("What will change?").value).toMatch(/limited follow-up window/);
+    expect(screen.getByLabelText("Current baseline (optional)").value).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "Save for next review" }));
+
+    const saved = useAppStore.getState().decisionRecords.at(-1);
+    expect(saved.toolId).toBe("5-23");
+    expect(saved.locale).toBe("en");
+    expect(saved.sourcePeriod).toBe("2024-04-01 ~ 2024-06-29 · cutoff 2024-05-16");
+    expect(saved.conclusion).toMatch(/observed.*not a confirmed causal effect/i);
+    expect(saved.action).toMatch(/revalidate DiD/i);
+    expect(saved.action).not.toMatch(/scale|increase budget/i);
+    expect(saved.baseline).toBe("");
+  });
+
+  it("turns a simple pre/post result only into a control-group DiD revalidation", () => {
+    seed(buildIncrPrepostDemo("on"));
+    const view = render(<Incrementality />);
+    fireEvent.click(view.getByText(/신규 켜기 \(전후\)/));
+    fireEvent.click(screen.getByRole("checkbox", { name: /DiD/ }));
+    fireEvent.change(view.container.querySelectorAll("select")[1], { target: { value: "2024-05-16" } });
+
+    expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/대조군.*DiD.*재검증/);
+    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    const saved = useAppStore.getState().decisionRecords.at(-1);
+    expect(saved.toolId).toBe("5-23");
+    expect(saved.sourcePeriod).toBe("2024-04-01 ~ 2024-06-29 · 전환 시점 2024-05-16");
+    expect(saved.conclusion).toMatch(/대조군이 없어 인과효과로 해석할 수 없습니다/);
+    expect(saved.action).toBe("변경하지 않은 대조군을 추가하고 같은 전환 시점으로 DiD를 재검증한다");
+    expect(saved.baseline).toBe("");
+  });
+
+  it("prefills experiment redesign instead of scaling when holdout balance fails", () => {
+    seed({
+      raw: [
+        { date: "2024-01-01", holdout_group: "exposed", numerator: 80, denominator: 1000 },
+        { date: "2024-01-01", holdout_group: "holdout", numerator: 20, denominator: 1000 },
+        { date: "2024-01-02", holdout_group: "exposed", numerator: 70, denominator: 1000 },
+        { date: "2024-01-02", holdout_group: "holdout", numerator: 40, denominator: 1000 },
+        { date: "2024-01-03", holdout_group: "exposed", numerator: 72, denominator: 1000 },
+        { date: "2024-01-03", holdout_group: "holdout", numerator: 42, denominator: 1000 },
+      ],
+      headers: ["date", "holdout_group", "numerator", "denominator"],
+      mapping: { date: "date", holdout_group: "holdout_group", numerator: "numerator", denominator: "denominator" },
+      fileName: "imbalanced-holdout.csv",
+    });
+    const view = render(<Incrementality />);
+    fireEvent.change(view.container.querySelectorAll("select")[0], { target: { value: "2024-01-02" } });
+    fireEvent.change(view.container.querySelectorAll("select")[1], { target: { value: "2024-01-03" } });
+
+    expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/확대하지 않고.*재설계/);
+    expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    const saved = useAppStore.getState().decisionRecords.at(-1);
+    expect(saved.toolId).toBe("5-23");
+    expect(saved.sourcePeriod).toBe("2024-01-02 ~ 2024-01-03");
+    expect(saved.conclusion).toMatch(/불균형.*확대 근거로 사용할 수 없습니다/);
+    expect(saved.action).toMatch(/재설계/);
+  });
+
+  it("does not infer a review action when pre-holdout balance is unavailable", () => {
+    seed(buildIncrSuppressionDemo());
+    const view = render(<Incrementality />);
+    fireEvent.change(view.container.querySelectorAll("select")[0], { target: { value: "2024-05-01" } });
+    fireEvent.change(view.container.querySelectorAll("select")[1], { target: { value: "2024-05-02" } });
+    expect(screen.getByText(/결론 — 광고가 만든 순증분/)).toBeTruthy();
+    expect(screen.queryByText("다음 검토 약속 만들기")).toBeNull();
   });
 
   it("replaces an incompatible demo dataset when the method changes", () => {

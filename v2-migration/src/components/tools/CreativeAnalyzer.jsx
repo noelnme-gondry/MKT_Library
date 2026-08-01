@@ -862,11 +862,12 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       ? "—"
       : `${(result.hitRate * 100).toFixed(0)}% (${result.hits}/${result.eligible})`;
   const fatigueTone = alertNowN > 0 || (autoPlan && autoPlan.isUndersupplied) ? "bad" : fatiguedCount > 0 ? "neutral" : "good";
+  const entityPluralEn = domain === "content" ? "content items" : "creatives";
   const fatigueHeadline = alertNowN > 0
-    ? tr(`지금 교체가 필요한 소재가 ${alertNowN}개입니다. 이번 주 교체 계획부터 확정하세요.`, `${alertNowN} creatives need replacement now. Lock this week's swap plan first.`)
+    ? tr(`지금 교체가 필요한 ${C.entity}가 ${alertNowN}개입니다. 이번 주 계획부터 확정하세요.`, `${alertNowN} ${entityPluralEn} need replacement now. Lock this week's plan first.`)
     : fatiguedCount > 0
-      ? tr(`피로 신호가 있는 소재가 ${fatiguedCount}개입니다. 교체 시점을 미리 잡아 두세요.`, `${fatiguedCount} creatives show fatigue signals. Plan their replacements before they become urgent.`)
-      : tr("현재 즉시 교체 경고는 없습니다. 성과 좋은 소재의 특징을 다음 제작에 재사용하세요.", "There are no immediate replacement alerts. Reuse what is working in the next creative batch.");
+      ? tr(`피로 신호가 있는 ${C.entity}가 ${fatiguedCount}개입니다. 교체 시점을 미리 잡아 두세요.`, `${fatiguedCount} ${entityPluralEn} show fatigue signals. Plan replacements before they become urgent.`)
+      : tr(`현재 즉시 교체 경고는 없습니다. 성과 좋은 ${C.entity}의 특징을 다음 제작에 재사용하세요.`, `There are no immediate replacement alerts. Reuse what is working in the next ${domain === "content" ? "content" : "creative"} batch.`);
   const fatiguePoints = [
     autoPlan?.isUndersupplied
       ? { cls: "bad", text: tr(`현재 제작 속도(${weeklyVelocity}개/주)로는 긴급 교체 물량을 제때 처리하기 어렵습니다. 최소 ${autoPlan.recommendedWeeklyVelocity}개/주를 권장합니다.`, `At ${weeklyVelocity}/week, you cannot clear urgent replacements in time. Target at least ${autoPlan.recommendedWeeklyVelocity}/week.`) }
@@ -875,9 +876,25 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       ? { text: tr(`다음 제작 실험 후보 ${analysis.nextTest.length}개를 제안했습니다. 성과가 좋았던 조합을 반복하기보다 검증 가능한 한 가지 변수만 바꿔 보세요.`, `${analysis.nextTest.length} next-test candidates are ready. Change one testable variable rather than blindly repeating the best combination.`) }
       : null,
     fatigueRisk?.profiles?.overall
-      ? { text: tr(`과거 신호 발생 시점과 비교해 현재 위험 구간에 들어온 소재는 ${riskZoneRows.length}개입니다.`, `${riskZoneRows.length} creatives are now in the observed risk zone based on past signal timing.`) }
+      ? { text: tr(`과거 신호 발생 시점과 비교해 현재 위험 구간에 들어온 ${C.entity}는 ${riskZoneRows.length}개입니다.`, `${riskZoneRows.length} ${entityPluralEn} are now in the observed risk zone based on past signal timing.`) }
       : null,
   ].filter(Boolean);
+  const immediateDecisionTarget = alertRows.find((item) => item.alert) || null;
+  const fatiguedDecisionTarget = immediateDecisionTarget
+    ? fatiguedRows.find((item) => String(item.creative_id) === String(immediateDecisionTarget.creative_id)) || null
+    : fatiguedRows[0] || null;
+  const decisionEntityId = immediateDecisionTarget?.creative_id || fatiguedDecisionTarget?.creative_id || null;
+  const decisionEntityLabel = decisionEntityId == null ? "" : String(decisionEntityId).slice(0, 24);
+  const decisionEntityDates = decisionEntityId == null
+    ? []
+    : analysis.cleanRows
+      .filter((row) => String(row.creative_id) === String(decisionEntityId) && row.date)
+      .map((row) => row.date)
+      .sort();
+  const decisionSourcePeriod = decisionEntityDates.length
+    ? `${decisionEntityDates[0]} ~ ${decisionEntityDates[decisionEntityDates.length - 1]}`
+    : "";
+  const hasDecisionTarget = Boolean(immediateDecisionTarget || fatiguedDecisionTarget);
   const problemChoices = [
     { id: "swaps", icon: "↻", label: tr("교체 필요", "Needs swapping"), count: alertNowN, desc: tr("이번 주 빼야 할 소재", "Creatives to remove this week") },
     { id: "production", icon: "✦", label: tr("새 소재 제작", "Next production"), count: nextTest?.length || 0, desc: tr("다음 실험 후보", "Next test candidates") },
@@ -940,6 +957,20 @@ export default function CreativeAnalyzer({ domain = "performance", locale = "ko"
       <ResultActionCard
         toolId="9-6"
         locale={locale}
+        decisionReview={hasDecisionTarget}
+        decisionPrefill={hasDecisionTarget ? {
+          conclusion: `${fatigueHeadline} · ${decisionEntityLabel}`,
+          action: domain === "content"
+            ? tr(`${decisionEntityLabel}의 한 요소만 바꾼 새 버전을 발행한다`, `Publish a refreshed version of ${decisionEntityLabel} with one element changed`)
+            : tr(`${decisionEntityLabel}의 한 요소만 바꾼 대체 소재를 투입한다`, `Launch a replacement for ${decisionEntityLabel} with one element changed`),
+          hypothesis: domain === "content"
+            ? tr("한 요소만 바꾼 새 버전은 CTR 하락을 멈추고 현재 기준을 넘어설 것이다", "A one-variable refresh should stop the CTR decline and beat the current baseline")
+            : tr("한 요소만 바꾼 대체 소재는 CTR 하락을 멈추고 현재 기준을 넘어설 것이다", "A one-variable replacement should stop the CTR decline and beat the current baseline"),
+          metric: fatiguedDecisionTarget ? "CTR" : tr("CTR 일별 추세", "Daily CTR trend"),
+          baseline: fatiguedDecisionTarget ? fmtPct(fatiguedDecisionTarget.currentValue) : fmtPctDay(immediateDecisionTarget?.ctrTrendPctPerDay, locale),
+          sourcePeriod: decisionSourcePeriod,
+          reviewQuestion: tr("교체·발행 7일 뒤 CTR이 기준값을 넘었는가?", "Seven days after launch, did CTR beat the baseline?"),
+        } : null}
         tone={fatigueTone}
         title={tr("결론 — 소재 교체와 다음 제작", "Conclusion — creative swaps and next production")}
         headline={fatigueHeadline}

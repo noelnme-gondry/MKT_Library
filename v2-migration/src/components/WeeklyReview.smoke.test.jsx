@@ -1,14 +1,20 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import WeeklyReview, { buildBrief } from "@/components/WeeklyReview";
+import { useAppStore } from "@/store/useDataStore";
 
 describe("WeeklyReview", () => {
+  beforeEach(() => {
+    useAppStore.setState({ decisionRecords: [], decisionPersistenceEnabled: false });
+  });
+
   it("explains the client-only review loop before a CSV is imported", () => {
     render(<WeeklyReview />);
-    expect(screen.getByRole("heading", { name: "지난 판단을 다음 판단의 근거로" })).toBeTruthy();
-    expect(screen.getByText(/브라우저 메모리에서만/)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "이번 주 결정 인박스" })).toBeTruthy();
+    expect(screen.getByText(/현재 세션에서만/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "결정 기록 CSV 불러오기" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "이 기기에 결정 요약 저장" }).checked).toBe(false);
   });
 
   it("renders all copy in English", () => {
@@ -24,5 +30,20 @@ describe("WeeklyReview", () => {
 
     expect(buildBrief(record, koCopy, "ko")).toContain("- 가설: Keep CPA below target");
     expect(buildBrief(record, enCopy, "en")).toContain("- Hypothesis: Keep CPA below target");
+  });
+
+  it("derives overdue and unscheduled states and lets the review date be repaired", () => {
+    useAppStore.setState({
+      decisionRecords: [
+        { id: "decision_1", toolId: "5-3", action: "기한 지난 결정", reviewDate: "2020-01-01", actual: "", learning: "", status: "pending" },
+        { id: "decision_2", toolId: "5-22", action: "날짜 없는 결정", reviewDate: "", actual: "", learning: "", status: "pending" },
+      ],
+    });
+    render(<WeeklyReview />);
+    expect(screen.getAllByText("기한 지남").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("검토일 없음").length).toBeGreaterThan(0);
+    const emptyDate = screen.getAllByLabelText("검토일").find((input) => input.value === "");
+    fireEvent.change(emptyDate, { target: { value: "2099-01-01" } });
+    expect(useAppStore.getState().decisionRecords.find((record) => record.id === "decision_2").reviewDate).toBe("2099-01-01");
   });
 });

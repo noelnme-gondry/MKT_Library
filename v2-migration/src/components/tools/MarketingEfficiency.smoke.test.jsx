@@ -88,6 +88,8 @@ describe("MarketingEfficiency render smoke", () => {
     // added via ToolPageShell) — assert at least one match rather than a
     // single unique node.
     expect(screen.getAllByText(/포화도 순위/).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
+    expect(screen.getByLabelText("검증 지표").value).toBe("CPA");
     // Currency toggle lives ONLY in Header now (design-system: single global
     // toggle, no per-tool duplicates) — not asserted here.
   });
