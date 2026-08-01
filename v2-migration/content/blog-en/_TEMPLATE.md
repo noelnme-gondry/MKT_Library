@@ -17,6 +17,8 @@ reviewer: "Growth Opt Playbook editorial review"
 # sources:
 #   - title: "Primary or authoritative source title"
 #     url: "https://example.com/source"
+# faq is optional and appears as a visible accordion plus standard FAQPage data.
+# Google stopped showing FAQ rich results in May 2026, so do not add FAQs only for search appearance.
 ---
 
 ## First section

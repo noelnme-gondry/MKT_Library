@@ -44,6 +44,29 @@ function normalizeArticleHeadings(html) {
   return html.replace(/<h1([^>]*)>/g, "<h2$1>").replace(/<\/h1>/g, "</h2>");
 }
 
+function extractExternalSources(html) {
+  const sources = [];
+  const anchorPattern = /<a\s[^>]*href="(https:\/\/[^"#]+(?:#[^"]*)?)"[^>]*>([\s\S]*?)<\/a>/g;
+  let match;
+  while ((match = anchorPattern.exec(html || ""))) {
+    const title = match[2]
+      .replace(/<[^>]+>/g, "")
+      .replace(/&amp;/g, "&")
+      .replace(/&quot;/g, "\"")
+      .trim();
+    sources.push({ title: title || match[1], url: match[1] });
+  }
+  return sources;
+}
+
+function mergeSources(...groups) {
+  const byUrl = new Map();
+  for (const source of groups.flat()) {
+    if (source?.title && source?.url && !byUrl.has(source.url)) byUrl.set(source.url, source);
+  }
+  return [...byUrl.values()];
+}
+
 // ── 카테고리 정리(§UX) ─────────────────────────────────────────────────
 // 난잡한 원본 태그(21종·대부분 count 1)를 6개 상위 카테고리로 통합. frontmatter는
 // 불변 — 여기가 taxonomy SSOT라 파싱 시점에 매핑(되돌리기 쉬움, 글 내용 무관).
@@ -87,16 +110,17 @@ function parseFile(fileName, locale) {
   const slug = data.slug || fileName.replace(/\.md$/, "");
   const seo = getBlogSeo(locale, slug, data);
   const editorial = getBlogEditorial(locale, slug, data);
+  const html = normalizeArticleHeadings(localizeInternalLinks(marked.parse(content || ""), locale));
   return {
     slug,
     title: seo?.title || data.title || slug,
     description: seo?.description || data.description || "",
-    seoAnswer: editorial.answer || seo?.answer || data.description || "",
+    seoAnswer: editorial.answer || data.description || "",
     searchIntent: seo?.intent || "",
     conditions: editorial.conditions,
     reviewer: editorial.reviewer,
     reviewedAt: editorial.reviewedAt,
-    sources: editorial.sources,
+    sources: mergeSources(editorial.sources, extractExternalSources(html)),
     date: data.date || "",
     updated: seo?.updated || data.updated || data.date || "",
     keywords: data.keywords || "",
@@ -114,8 +138,8 @@ function parseFile(fileName, locale) {
     draft: data.draft === true,
     // RSS는 요약이 아니라 본문 전체를 제공해야 한다. Naver Search Advisor의 RSS
     // 가이드에 맞춰 렌더된 HTML을 별도 필드로 보관한다(화면 html과 같은 원문).
-    rssHtml: normalizeArticleHeadings(localizeInternalLinks(marked.parse(content || ""), locale)),
-    html: normalizeArticleHeadings(localizeInternalLinks(marked.parse(content || ""), locale)),
+    rssHtml: html,
+    html,
   };
 }
 

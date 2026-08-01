@@ -70,28 +70,52 @@ const EN_ANSWERS = {
   "retargeting-reengagement-guide": "Retargeting addresses a different user state and goal from acquisition, so combining them can distort efficiency. Manage exclusion rules and incremental effect alongside attributed results.",
 };
 
-const DEFAULTS = {
+const CONDITION_GROUP_BY_SLUG = {
+  "ab-testing": "experiment", "aha-event-ad-optimization": "causal", "aha-moment-retention": "causal",
+  "cannibalization-organic-paid": "causal", "correlation-vs-causation": "causal", "incrementality-measurement": "causal",
+  "marketing-mix-modeling": "causal", "ad-creative-specs-guide": "platform", "ad-machine-learning": "platform",
+  "adjust-vs-appsflyer": "platform", "apple-search-ads-guide": "platform", "aso-basics-guide": "platform",
+  "google-uac-optimization": "platform", "ios-att-skan-guide": "platform", "meta-advantage-plus-guide": "platform",
+  "postback-integration-guide": "platform", "ad-performance-diagnosis": "measurement", "attribution-data-mismatch": "measurement",
+  "campaign-anomaly-detection": "measurement", "cohort-analysis-guide": "measurement", "cpi-cpa-cpm-difference": "measurement",
+  "event-taxonomy-guide": "measurement", "funnel-dropoff-analysis": "measurement", "ga4-data-traps": "measurement",
+  "performance-marketing-metrics": "measurement", "budget-marginal-efficiency": "economics", "ltv-cac-ratio": "economics",
+  "audience-broad-vs-narrow": "creative", "hook-3-seconds-framework": "creative", "retargeting-reengagement-guide": "creative",
+  "ai-era-marketer": "editorial", "performance-marketer-skills": "editorial",
+};
+
+const CONDITIONS = {
   ko: {
-    conditions: "이 답은 일반적인 운영 원칙입니다. 매체 설정, 데이터 기준, 표본 규모가 다르면 결론도 달라질 수 있으니 실제 데이터와 공식 문서를 함께 확인하세요.",
-    reviewer: "Growth Opt Playbook 편집 검토",
+    experiment: "무작위 배정, 사전 종료 기준, 서로 독립인 관측치가 확보된 실험에 적용합니다. 표본이 작거나 중간 결과를 반복 확인했다면 판정을 보수적으로 해석하세요.",
+    causal: "관측 데이터의 연관성만으로 인과를 확정할 수 없습니다. 대조군의 비교 가능성, 동시 변화, 표본 규모를 확인하고 중요한 결정은 실험으로 검증하세요.",
+    platform: "매체 정책과 제품 기능은 바뀔 수 있습니다. 계정 유형·국가·측정 설정을 확인하고 집행 시점의 공식 문서를 최종 기준으로 사용하세요.",
+    measurement: "같은 기간, 시간대, 전환 정의, 집계 단위를 맞춘 비교에 적용합니다. 모수와 누락 데이터를 확인하지 않은 비율 비교는 결론에서 제외하세요.",
+    economics: "비용·매출·고객 범위와 관찰 기간을 동일하게 맞춘 데이터에 적용합니다. 미래 효율은 추정치이므로 작은 예산 단계로 검증하세요.",
+    creative: "타깃, 지면, 메시지, 노출 빈도가 비슷한 조건의 비교에 적용합니다. 매체 평균보다 실제 계정의 전환량과 소재 실험 결과를 우선하세요.",
+    editorial: "팀의 역할과 제품 단계에 따라 우선순위가 달라지는 편집 관점입니다. 채용 요건이나 조직 설계를 위한 보편적 기준으로 단정하지 마세요.",
   },
   en: {
-    conditions: "This is a general operating principle. Platform settings, data definitions, and sample size can change the conclusion, so check your data and the current official documentation.",
-    reviewer: "Growth Opt Playbook editorial review",
+    experiment: "This applies to experiments with random assignment, a pre-set stopping rule, and independent observations. Treat the result conservatively if the sample is small or repeatedly inspected mid-test.",
+    causal: "Observational association alone does not establish causality. Check control-group comparability, simultaneous changes, and sample size, then validate consequential decisions with an experiment.",
+    platform: "Platform policies and product behavior can change. Check account type, country, and measurement setup, and use the current official documentation as the final operating reference.",
+    measurement: "This applies when date range, time zone, conversion definition, and aggregation grain are aligned. Exclude ratio comparisons whose denominator or missingness has not been checked.",
+    economics: "Align cost, revenue, customer scope, and observation window. Future efficiency is an estimate, so validate it through small budget steps.",
+    creative: "Compare like-for-like audiences, placements, messages, and frequency. Prefer conversion volume and creative-test evidence from the actual account over platform-wide averages.",
+    editorial: "This is an editorial perspective whose priorities depend on team role and product stage. Do not treat it as a universal hiring or organization-design standard.",
   },
 };
 
 export function getBlogEditorial(locale, slug, source = {}) {
   const lang = locale === "en" ? "en" : "ko";
   const answer = source.answer || (lang === "en" ? EN_ANSWERS[slug] : KO_ANSWERS[slug]) || "";
-  const conditions = source.conditions || DEFAULTS[lang].conditions;
+  const conditionGroup = CONDITION_GROUP_BY_SLUG[slug] || "measurement";
+  const conditions = source.conditions || CONDITIONS[lang][conditionGroup];
   return {
     answer,
     conditions,
-    reviewer: source.reviewer || DEFAULTS[lang].reviewer,
-    // 글별로 실제 검토일이 없으면 발행일만 표시한다. 편집 레지스트리를 추가한
-    // 날짜를 모든 글의 사실 검토일처럼 쓰지 않는다.
-    reviewedAt: source.reviewedAt || source.updated || source.date || "",
+    // 실제 검토 정보가 원고에 있을 때만 노출한다. 발행일을 검토일로 바꾸지 않는다.
+    reviewer: source.reviewer || "",
+    reviewedAt: source.reviewedAt || "",
     sources: Array.isArray(source.sources) ? source.sources.filter((item) => item?.title && item?.url) : [],
   };
 }

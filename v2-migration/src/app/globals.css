@@ -5471,6 +5471,8 @@ body:not(.light-mode) .landing-advanced-lab h2 .lab-title__accent { color: #8fb1
   font-size: 15px;
   line-height: 1.72;
 }
+.content-answer .content-answer__conditions { margin-top: 11px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border-subtle)); color: var(--text-muted); font-size: 12px; line-height: 1.65; }
+.content-answer__conditions strong { display: block; margin-bottom: 3px; color: var(--text-secondary); font: 550 9px var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
 .editorial-trust { margin-top: 18px; padding: 16px 18px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-container-lowest); }
 .editorial-trust__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--text-muted); font: 520 9px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
 .editorial-trust__head > span { color: var(--primary); }

@@ -12,11 +12,11 @@
 |---|---|---|
 | `answer` | 글 첫 화면의 직접 답변 | 두 문장 안에서 질문에 답한다. CTA·메타 설명을 섞지 않는다. |
 | `conditions` | 적용 범위·예외 | 인과·성과를 단정하지 않고 데이터·설정·표본의 의존성을 명시한다. |
-| `reviewedAt` / `reviewer` | 검토 책임 | 사실·링크를 다시 확인한 날짜와 역할 또는 이름을 남긴다. |
+| `reviewedAt` / `reviewer` | 검토 책임 | 실제로 사실·링크를 다시 확인했을 때만 날짜와 역할 또는 이름을 남긴다. |
 | `sources` | 검증 근거 | 실제로 본문에서 인용한 1차 또는 권위 출처만 URL과 함께 쓴다. 없는 출처를 만들어 넣지 않는다. |
 | `primaryTool` / `relatedGlossary` | 다음 행동 | 읽은 내용이 실제 분석·정의와 양방향으로 이어져야 한다. |
 
-현재 발행 글의 공통 답변·조건은 `v2-migration/src/lib/blogEditorial.js`에 있으며, 개별 원고 frontmatter가 있으면 그것을 우선한다. `reviewedAt`은 명시값이 없으면 발행일을 표시할 뿐, 레지스트리 변경일을 사실 검토일처럼 쓰지 않는다. 원고 작성 템플릿은 `content/blog/_TEMPLATE.md`, `content/blog-en/_TEMPLATE.md`다.
+현재 발행 글의 공통 답변·조건은 `v2-migration/src/lib/blogEditorial.js`에 있으며, 개별 원고 frontmatter가 있으면 그것을 우선한다. `reviewedAt`과 `reviewer`는 명시값이 없으면 노출하지 않으며, 발행일을 검토일처럼 바꾸지 않는다. 본문에서 실제로 연결한 HTTPS 출처는 렌더 시 자동 수집되어 출처 목록과 `BlogPosting.citation`에 같은 값으로 반영된다. 원고 작성 템플릿은 `content/blog/_TEMPLATE.md`, `content/blog-en/_TEMPLATE.md`다.
 
 ## 검토 순서
 
@@ -30,9 +30,11 @@
 
 고정 질의 세트는 검색 의도별로 KR/EN 각각 관리한다: 정의형, 비교형, 진단형, 실행형. 매월 다음을 기록한다.
 
-- Search Console의 질문형 검색어 노출·클릭·CTR
+- Search Console의 Generative AI 성과 보고서와 일반 검색의 질문형 검색어 노출·클릭·CTR
 - 블로그에서 `ContentActionPanel`을 거친 도구 진입과 분석 실행 비율
 - 대표 생성형 검색 환경에서의 답변 정확성, 출처 표기, 브랜드·URL 언급 여부
 - 잘못된 단정·오래된 플랫폼 정보·깨진 출처 링크
 
 AI 답변의 순위나 인용은 변동성이 크므로 단일 수치로 성공을 단정하지 않는다. 검색 유입의 질, 도구 전환, 답변의 정확성을 함께 본다.
+
+Google Search는 AEO/GEO를 별도 기술 요건으로 보지 않으며, 전용 스키마·`llms.txt`·인위적 콘텐츠 분할을 요구하지 않는다. 이 프로젝트도 일반 SEO 기반, 고유한 실무 근거, 읽기 쉬운 본문과 측정에 집중한다. 기준은 [Google의 생성형 AI 검색 최적화 가이드](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide)와 [Article 구조화 데이터 가이드](https://developers.google.com/search/docs/appearance/structured-data/article)를 따른다.

@@ -6,15 +6,15 @@ function formatDate(value, locale) {
   });
 }
 
-export default function EditorialTrust({ locale = "ko", conditions, reviewer, reviewedAt, sources = [] }) {
+export default function EditorialTrust({ locale = "ko", reviewer, reviewedAt, sources = [] }) {
   const isEnglish = locale === "en";
+  if (!reviewer && !reviewedAt && sources.length === 0) return null;
   return (
     <section className="editorial-trust" aria-label={isEnglish ? "Editorial review and sources" : "검토 기준과 출처"}>
       <div className="editorial-trust__head">
         <span>{isEnglish ? "REVIEW NOTES" : "검토 기준"}</span>
         {reviewedAt && <time dateTime={reviewedAt}>{isEnglish ? "Reviewed " : "검토일 "}{formatDate(reviewedAt, locale)}</time>}
       </div>
-      {conditions && <p>{conditions}</p>}
       {reviewer && <small>{isEnglish ? "Reviewed by " : "검토 "}{reviewer}</small>}
       {sources.length > 0 && (
         <div className="editorial-trust__sources">
