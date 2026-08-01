@@ -48,6 +48,8 @@ describe("pvmGenerateDiagnosis", () => {
 
 describe("buildPvmResultCsv", () => {
   const cache = {
+    analysisStatus: "COMPLETE",
+    identity: { ok: true, error: 0 },
     currency: "krw",
     weekBasis: "calendar",
     lookback: 1,
@@ -103,5 +105,19 @@ describe("buildPvmResultCsv", () => {
     const csv = buildPvmResultCsv(noCmp, "CPA");
     expect(csv).not.toContain("CAMPAIGN");
     expect(csv).toContain("CHANNEL");
+  });
+
+  it("refuses to export a NOT_IDENTIFIED or failed-identity decomposition", () => {
+    expect(() => buildPvmResultCsv({
+      ...cache,
+      analysisStatus: "NOT_IDENTIFIED",
+      identity: { ok: false, error: 1 },
+    }, "CPA")).toThrow(/identity-verified/i);
+  });
+
+  it("fails closed unless both COMPLETE and identity.ok=true are explicit", () => {
+    expect(() => buildPvmResultCsv({ ...cache, analysisStatus: undefined }, "CPA")).toThrow(/identity-verified/i);
+    expect(() => buildPvmResultCsv({ ...cache, identity: undefined }, "CPA")).toThrow(/identity-verified/i);
+    expect(() => buildPvmResultCsv({ ...cache, analysisStatus: "BLOCKED" }, "CPA")).toThrow(/identity-verified/i);
   });
 });

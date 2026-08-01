@@ -1,4 +1,10 @@
+import { studentTp, studentTcrit } from "./statPrimitives.js";
+
 export const STATS = (() => {
+  // Incomplete-beta Student-t loses precision once df is far into its normal
+  // limit. At this threshold the 97.5% critical value differs from z by <3e-7.
+  const NORMAL_APPROX_DF = 10_000_000;
+
   function erf(x) {
     const sign = x >= 0 ? 1 : -1;
     x = Math.abs(x);
@@ -70,20 +76,27 @@ export const STATS = (() => {
   }
 
   function studentTCDF(t, v) {
-    if (v <= 0) return NaN;
-    if (v === 1) return 0.5 + Math.atan(t) / Math.PI; // Exact for Cauchy
-    if (v > 1000) return normalCDF(t);
-    // Hill-Davis (1968) approximation for Student's T CDF
-    const t2 = t * t;
-    const t4 = t2 * t2;
-    const t6 = t4 * t2;
-    const z = t * (
-      1 
-      - (t2 + 3) / (4 * v) 
-      + (5 * t4 + 16 * t2 + 3) / (96 * v * v) 
-      + (3 * t6 + 19 * t4 + 17 * t2 - 15) / (384 * v * v * v)
-    );
-    return normalCDF(z);
+    if (!(v > 0) || Number.isNaN(t)) return NaN;
+    if (t === Infinity) return 1;
+    if (t === -Infinity) return 0;
+    if (t === 0) return 0.5;
+    if (v >= NORMAL_APPROX_DF) return normalCDF(t);
+    const oneTail = studentTp(Math.abs(t), v) / 2;
+    return t < 0 ? oneTail : 1 - oneTail;
+  }
+
+  function studentTwoSidedP(t, v) {
+    if (!(v > 0) || Number.isNaN(t)) return NaN;
+    if (!Number.isFinite(t)) return 0;
+    if (v >= NORMAL_APPROX_DF) {
+      return Math.min(1, Math.max(0, 2 * (1 - normalCDF(Math.abs(t)))));
+    }
+    return studentTp(Math.abs(t), v);
+  }
+
+  function studentCritical95(v) {
+    if (!(v > 0)) return NaN;
+    return v >= NORMAL_APPROX_DF ? normalInverse(0.975) : studentTcrit(0.95, v);
   }
 
   function sampleSizePerArm({
@@ -314,24 +327,32 @@ export const STATS = (() => {
     }
     const seA2 = (sdA * sdA) / nA;
     const seB2 = (sdB * sdB) / nB;
-    const se = Math.sqrt(seA2 + seB2);
-    const z = se > 0 ? (meanB - meanA) / se : 0; // z is actually t-statistic here
-    const df =
-      (seA2 + seB2) ** 2 /
-      ((seA2 * seA2) / Math.max(1, nA - 1) + (seB2 * seB2) / Math.max(1, nB - 1));
-    const pValue = 2 * (1 - studentTCDF(Math.abs(z), df));
+    const varianceSum = seA2 + seB2;
+    const se = Math.sqrt(varianceSum);
     const liftAbs = meanB - meanA;
+    if (![seA2, seB2, varianceSum, se, liftAbs].every(Number.isFinite) || !(varianceSum > 0) || !(se > 0)) {
+      return { ok: false, reason: "numerical_error" };
+    }
+    const z = liftAbs / se; // z is actually t-statistic here
+    const dfNumerator = varianceSum ** 2;
+    const dfDenominator = (seA2 * seA2) / (nA - 1) + (seB2 * seB2) / (nB - 1);
+    const df =
+      dfNumerator / dfDenominator;
+    if (![z, dfNumerator, dfDenominator, df].every(Number.isFinite) || !(dfDenominator > 0) || !(df > 0)) {
+      return { ok: false, reason: "numerical_error" };
+    }
+    // 두 꼬리 확률을 직접 계산해 1-CDF 뺄셈에 의한 극단 꼬리 정밀도 손실을 피한다.
+    const pValue = studentTwoSidedP(z, df);
     const liftRel = meanA > 0 ? (meanB - meanA) / meanA : 0;
     
-    // Calculate critical t-value for 95% CI (two-tailed). Since normalInverse is standard normal,
-    // we use a simple normal approx for CI bound if df is large, else we could invert the t-dist.
-    // For simplicity and speed, we will approximate t-critical for 95% CI
-    // t_crit ~ z_crit + (z_crit^3 + z_crit)/(4*df)
-    const zCrit = 1.95996;
-    const tCrit = zCrit + (Math.pow(zCrit, 3) + zCrit) / (4 * df);
+    // p-value와 동일한 Student-t 분포를 역산해 95% CI를 구성한다.
+    const tCrit = studentCritical95(df);
     
     const ciLow95 = liftAbs - tCrit * se;
     const ciHigh95 = liftAbs + tCrit * se;
+    if (![pValue, liftRel, tCrit, ciLow95, ciHigh95].every(Number.isFinite)) {
+      return { ok: false, reason: "numerical_error" };
+    }
     return {
       ok: true,
       meanA,

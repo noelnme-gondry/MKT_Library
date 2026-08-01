@@ -87,6 +87,19 @@ describe("AbTestHoldout render smoke", () => {
     expect(document.body.textContent.length).toBeGreaterThan(0);
   });
 
+  it("describes continuous readout with the same Student-t contract used by the engine", () => {
+    const { container } = render(<AbTestHoldout />);
+    fireEvent.click(screen.getByText("수동 결과 판독"));
+    fireEvent.click(screen.getByText("평균값 (CPR·ARPPU·매출)"));
+    const inputs = container.querySelectorAll("#s-body input");
+    fireEvent.change(inputs[0], { target: { value: "2" } });
+    fireEvent.change(inputs[3], { target: { value: "2" } });
+
+    expect(screen.getByText("Welch t 검정 · 평균 비교")).toBeTruthy();
+    expect(screen.getByText(/Student-t 분포로 계산했지만/)).toBeTruthy();
+    expect(screen.queryByText(/t-분포 기반 검정을 권장/)).toBeNull();
+  });
+
   it("blocks an impossible CSV readout instead of producing a significance verdict", () => {
     seedWithData();
     const current = useAppStore.getState().csvData;

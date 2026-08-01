@@ -17,4 +17,28 @@ describe("buildPvmQuickSummary", () => {
     const result = buildPvmQuickSummary({ csvData: { raw, mapping: { date: "date", channel: "channel", campaign: "campaign_name", cost: "cost", installs: "installs" } } });
     expect(result).toMatchObject({ available: true, metric: "CPI" });
   });
+
+  it("preserves formatted costs and withholds a zero-result PVM contract", () => {
+    const base = Array.from({ length: 14 }, (_, index) => ({
+      date: `2026-07-${String(index + 1).padStart(2, "0")}`,
+      channel: "Meta",
+      campaign: "Always on",
+      cost: index < 7 ? "1,000" : "1 200",
+      installs: 100,
+    }));
+    const mapping = { date: "date", channel: "channel", campaign: "campaign_name", cost: "cost", installs: "installs" };
+    expect(buildPvmQuickSummary({ csvData: { raw: base, mapping } })).toMatchObject({ available: true, prior: 10, current: 12 });
+
+    const invalid = [
+      ...base,
+      ...Array.from({ length: 14 }, (_, index) => ({
+        date: `2026-07-${String(index + 1).padStart(2, "0")}`,
+        channel: "Referral",
+        campaign: "Zero result",
+        cost: 100,
+        installs: 0,
+      })),
+    ];
+    expect(buildPvmQuickSummary({ csvData: { raw: invalid, mapping } })).toEqual({ available: false });
+  });
 });

@@ -615,7 +615,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
             {mode === "analyze" && testType === "continuous" && (
               <div>
                 <h2 className="section-title"><span className="ix">§2</span>{tr("② Continuous (CPR/ARPPU/Revenue) 결과 분석", "② Continuous (CPR/ARPPU/Revenue) result analysis")}</h2>
-                <p style={{ color: "var(--text-secondary)" }}>{tr("각 그룹의 표본 수(n), 평균(mean), 표준편차(sd)를 입력하면 Welch 근사 기반으로 평균 차이의 유의성을 검정합니다.", "Enter each arm's sample size (n), mean, and standard deviation (sd) to test the significance of the mean difference using the Welch approximation.")}</p>
+                <p style={{ color: "var(--text-secondary)" }}>{tr("각 그룹의 표본 수(n), 평균(mean), 표준편차(sd)를 입력하면 Welch t 검정으로 평균 차이의 유의성과 95% 신뢰구간을 계산합니다.", "Enter each arm's sample size (n), mean, and standard deviation (sd) to calculate the mean-difference significance and 95% confidence interval with Welch's t-test.")}</p>
                 <div className="ab-form-grid ab-form-grid-2col">
                   <div>
                     <div className="ab-arm-title">Arm A · Control</div>
@@ -632,18 +632,22 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                 </div>
                 <div className="ab-result" id="ab-anc-result">
                   {!analyzeContinuous ? null : analyzeContinuous.invalid ? (
-                    <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("입력값 확인 필요", "Please check your inputs")}</strong><p>{analyzeContinuous.reason === "insufficient_variation" ? tr("Welch 검정에는 각 그룹 최소 2명과 적어도 한 그룹의 양수 표준편차가 필요합니다. 변동이 전혀 없으면 p-value를 추정하지 않습니다.", "A Welch test needs at least two observations per arm and positive standard deviation in at least one arm. No p-value is estimated when there is no variation.") : tr("n ≥ 1, mean / sd는 숫자, sd ≥ 0 이어야 합니다.", "n must be ≥ 1, mean/sd must be numeric, and sd must be ≥ 0.")}</p></div></div>
+                    <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("입력값 확인 필요", "Please check your inputs")}</strong><p>{analyzeContinuous.reason === "insufficient_variation"
+                      ? tr("Welch 검정에는 각 그룹 최소 2명과 적어도 한 그룹의 양수 표준편차가 필요합니다. 변동이 전혀 없으면 p-value를 추정하지 않습니다.", "A Welch test needs at least two observations per arm and positive standard deviation in at least one arm. No p-value is estimated when there is no variation.")
+                      : analyzeContinuous.reason === "numerical_error"
+                        ? tr("입력값의 크기가 계산 가능한 범위를 벗어나 평균 차이와 불확실성을 안전하게 계산하지 못했습니다. 단위를 축소해 다시 입력하세요. 이 상태에서는 p-value를 만들지 않습니다.", "The input scale exceeds the safe numerical range for the mean difference and uncertainty. Rescale the unit and try again. No p-value is produced in this state.")
+                        : tr("각 그룹은 n ≥ 2이고, mean / sd는 숫자이며, sd ≥ 0이어야 합니다.", "Each arm needs n ≥ 2; mean and sd must be numeric, and sd must be ≥ 0.")}</p></div></div>
                   ) : (() => {
                     const { r, smallSample } = analyzeContinuous;
                     const liftPositive = r.liftRel >= 0;
                     return (
                       <>
                         {smallSample && (
-                          <div className="callout warn" style={{ marginBottom: "0.75rem" }}><div className="ico">!</div><div className="body"><strong>{tr("샘플 크기가 작습니다 (n < 30)", "Sample size is small (n < 30)")}</strong><p>{tr("근사 신뢰성 낮음. 표본을 더 모으거나 t-분포 기반 검정을 권장합니다.", "The approximation is less reliable. Consider collecting more samples or using a t-distribution based test.")}</p></div></div>
+                          <div className="callout warn" style={{ marginBottom: "0.75rem" }}><div className="ico">!</div><div className="body"><strong>{tr("샘플 크기가 작습니다 (n < 30)", "Sample size is small (n < 30)")}</strong><p>{tr("Student-t 분포로 계산했지만 작은 표본은 이상치와 분포 가정에 민감합니다. 원자료 분포를 확인하고 가능하면 표본을 더 모으세요.", "The calculation uses the Student-t distribution, but a small sample remains sensitive to outliers and distribution assumptions. Inspect the raw distribution and collect more observations when possible.")}</p></div></div>
                         )}
                         <div className="ab-result-split">
                           <div className="ab-result-block" style={{ gridColumn: "1 / -1" }}>
-                            <div className="ab-result-block-title">{tr("Welch 근사 · 평균 비교", "Welch approximation · mean comparison")}</div>
+                            <div className="ab-result-block-title">{tr("Welch t 검정 · 평균 비교", "Welch's t-test · mean comparison")}</div>
                             <div className="ab-stats-grid">
                               <div className="ab-stat"><div className="ab-stat-label">{tr("평균 A / B", "Mean A / B")}</div><div className="ab-stat-value tnum">{fmtCurrency(r.meanA, currency)} / {fmtCurrency(r.meanB, currency)}</div></div>
                               <div className="ab-stat"><div className="ab-stat-label">{tr("표준편차 A / B", "Standard deviation A / B")}</div><div className="ab-stat-value tnum">{fmtCurrency(r.sdA, currency)} / {fmtCurrency(r.sdB, currency)}</div></div>
@@ -748,7 +752,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
             <ul>
               <li><strong>Binary (CVR) · z-test</strong>: <code className="inline">z = (p̂_B - p̂_A) / √(p̄(1-p̄)(1/n_A + 1/n_B))</code>. {tr("p-value < α 시 귀무가설 기각.", "Reject the null hypothesis when p-value < α.")}</li>
               <li><strong>Binary · Sample Size</strong>: <code className="inline">n = 2 × (z_α/2 + z_β)² × p̄(1-p̄) / δ²</code></li>
-              <li><strong>Continuous · Welch</strong>: <code className="inline">z = (μ̂_B - μ̂_A) / √(s_A²/n_A + s_B²/n_B)</code>. {tr("n > 30 per arm일 때 정확.", "Accurate when n > 30 per arm.")}</li>
+              <li><strong>Continuous · Welch t</strong>: <code className="inline">t = (μ̂_B - μ̂_A) / √(s_A²/n_A + s_B²/n_B)</code>. {tr("Welch–Satterthwaite 자유도의 Student-t 분포로 p-value와 95% 신뢰구간을 함께 계산합니다.", "The p-value and 95% confidence interval use the Student-t distribution with Welch–Satterthwaite degrees of freedom.")}</li>
               <li><strong>Bayesian</strong>: {tr("Binary 전용. 사전 Beta(1,1), 사후 Beta(1+x, 1+n-x)를 결정론적 수치계산(정확 유한합·정규근사·적응형 적분)으로 비교합니다.", "Binary only. Beta(1+x, 1+n-x) posteriors under a Beta(1,1) prior are compared deterministically using an exact finite sum, normal approximation, or adaptive integration.")}</li>
               <li><strong>{tr("예산 계산", "Budget calculation")}</strong>: <code className="inline">Total Budget = n_per_arm × (CPR_A + CPR_B)</code>.</li>
               <li><strong>{tr("파워 커브", "Power curve")}</strong>: {tr("sample size 기준으로 역산(이분 탐색)하여 탐지 가능한 최소 MDE 도출.", "Derived by inverting sample size (binary search) to find the minimum detectable MDE.")}</li>
@@ -805,7 +809,7 @@ export default function AbTestHoldout({ locale = "ko" } = {}) {
                       inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
                       grain: "arm",
                       metricDefinitions: [{ key: "conversion-rate-difference", unit: "percentage points" }, { key: "p-value" }, { key: "95% CI" }],
-                      engineVersion: testType === "binary" ? "two-proportion-z-test" : "welch-approximation",
+                      engineVersion: "two-proportion-z-test",
                       status: readoutData.sig ? "COMPLETE" : "ABSTAIN",
                       warnings: ["Non-significance is inconclusive", ...(readoutData.mass ? ["Holm-adjusted mass-test p-values apply to variants"] : [])],
                     })}

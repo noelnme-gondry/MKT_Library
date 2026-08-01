@@ -64,16 +64,21 @@ export function attributeAnomaly(rows, anomalyDate, metric) {
   const resultField = metric === "cpi" ? "installs" : "actions";
   const normalized = (items) => items.map((row) => ({
     ...row,
-    spend: Number(row.cost) || 0,
+    spend: row.spend ?? row.cost ?? 0,
     campaign_id: row.campaign_id ?? row.campaign_name ?? "",
     creative_id: row.creative_id ?? "",
   }));
-  const finest = PVM_MATH.decomposeFinest(normalized(rowsA), normalized(rowsB), {
+  const keys = {
     ch: "channel",
     cmp: "campaign_id",
     cr: "creative_id",
     resultField,
-  });
+  };
+  const normalizedA = normalized(rowsA);
+  const normalizedB = normalized(rowsB);
+  const inputContract = PVM_MATH.inspectFinestInputs(normalizedA, normalizedB, keys);
+  if (!inputContract.ok) return { unavailable: true, reason: "not_identified", reasonCode: inputContract.code, ...periods };
+  const finest = PVM_MATH.decomposeFinest(normalizedA, normalizedB, keys);
   if (!finest) return { unavailable: true, reason: "zero_denominator", ...periods };
 
   const channelRows = PVM_MATH.rollup(finest.finest, (row) => row.chKey || "Unknown", finest.Result1, finest.Result2);
@@ -122,4 +127,3 @@ export function buildAttributionCache({ rows, anomalyDates, metric, mappedFields
   });
   return { inputSignature, eligibility, byDate };
 }
-

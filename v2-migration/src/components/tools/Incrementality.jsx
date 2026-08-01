@@ -4,7 +4,7 @@ import Papa from "papaparse";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { INCR_MATH, parseHoldoutGroup } from "@/utils/incrMath";
-import { INCR_PREPOST } from "@/utils/incrPrePostMath";
+import { INCR_PREPOST, INCR_PREPOST_CONTRACT, normalizeIncrDate } from "@/utils/incrPrePostMath";
 import { getMappedRows } from "@/utils/dashboardAggregator";
 import { fmtCurrency, fmtNum, fmtPct } from "@/utils/format";
 import { CHART_THEME, getCssVar } from "@/utils/chartUtils";
@@ -39,6 +39,33 @@ function buildSummaryCsv(header, rows) {
   return "﻿" + [header, ...rows.map((r) => r.map(qc).join(","))].join("\r\n") + "\r\n";
 }
 
+function aggregateDailyMetric(rows, dateCol, metricCol) {
+  const byDate = new Map();
+  for (const row of rows || []) {
+    const date = normalizeIncrDate(row?.[dateCol]);
+    const value = num(row?.[metricCol]);
+    if (!date || !Number.isFinite(value)) continue;
+    byDate.set(date, (byDate.get(date) || 0) + value);
+  }
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, value]) => ({ date, value }));
+}
+
+function auditSelectedMetricRows(rows, dateCol, metricCol) {
+  let invalidRows = 0;
+  let invalidDateRows = 0;
+  let invalidMetricRows = 0;
+  for (const row of rows || []) {
+    const hasInvalidDate = !normalizeIncrDate(row?.[dateCol]);
+    const hasInvalidMetric = !Number.isFinite(num(row?.[metricCol]));
+    if (hasInvalidDate) invalidDateRows += 1;
+    if (hasInvalidMetric) invalidMetricRows += 1;
+    if (hasInvalidDate || hasInvalidMetric) invalidRows += 1;
+  }
+  return { rowCount: rows?.length || 0, invalidRows, invalidDateRows, invalidMetricRows };
+}
+
 const METHODS_KO = [
   { key: "suppression", label: "① 통제군 (동시 비교)", tip: "★★★ 가장 신뢰 높음" },
   { key: "on", label: "② 신규 켜기 (전후)", tip: "★★ 준실험" },
@@ -61,7 +88,15 @@ export default function Incrementality({ locale = "ko" } = {}) {
   const [method, setMethod] = useState("suppression");
   const fileRef = useRef(null);
   const hasData = csvData?.raw?.length > 0;
-  const selectMethod = useCallback((nextMethod) => setMethod(nextMethod), []);
+  const selectMethod = useCallback((nextMethod) => {
+    setMethod(nextMethod);
+    // 방법별 샘플의 열 계약이 다르다. 탭만 바꾸고 이전 샘플을 남기면 다른
+    // 방법의 데이터가 그럴듯한 숫자로 해석될 수 있어, 샘플만 안전하게 교체한다.
+    if (csvData?.fileName?.startsWith("demo_")) {
+      const nextDemo = nextMethod === "suppression" ? buildIncrSuppressionDemo() : buildIncrPrepostDemo(nextMethod);
+      if (nextDemo.fileName !== csvData.fileName) setCsvData(nextDemo);
+    }
+  }, [csvData, setCsvData]);
   const onMethodKeyDown = useCallback((event, methodKey) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
@@ -145,8 +180,8 @@ export default function Incrementality({ locale = "ko" } = {}) {
       >
       <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "0 0 12px", lineHeight: 1.5 }}>
         {method === "suppression" && tr("같은 기간, 무작위로 광고를 차단한 홀드아웃 그룹 vs 노출 그룹을 비교합니다. 무작위 분할이면 인과 신뢰가 가장 높습니다.", "Compares a holdout group (ads randomly blocked) vs an exposed group over the same period. Random assignment gives the highest causal confidence.")}
-        {method === "on" && tr("안 하던 광고/캠페인을 켠 시점(cutoff) 전후를 비교합니다. 대조군을 넣으면 계절·추세를 제거(DiD)합니다.", "Compares before/after the moment (cutoff) you turned on an ad/campaign that wasn't running. Adding a control group removes seasonality/trend (DiD).")}
-        {method === "off" && tr("켜뒀던 광고/캠페인을 끈 시점(cutoff) 전후를 비교해 끄면서 잃은 성과를 봅니다. 대조군 있으면 DiD 권장.", "Compares before/after the moment (cutoff) you turned off a running ad/campaign to see what was lost. A control group + DiD is recommended.")}
+        {method === "on" && tr("안 하던 광고/캠페인을 켠 시점(cutoff) 전후를 비교합니다. 대조군으로 공통 변화를 보정하되, 개입 전 평행추세를 통과해야 DiD 결과를 냅니다.", "Compares before/after the moment (cutoff) you turned on an ad/campaign that wasn't running. A control adjusts for common change, but DiD is reported only after the pre-intervention parallel-trends check passes.")}
+        {method === "off" && tr("켜뒀던 광고/캠페인을 끈 시점(cutoff) 전후를 비교합니다. 대조군 DiD도 개입 전 평행추세를 통과해야 결과를 냅니다.", "Compares before/after the moment (cutoff) you turned off a running ad/campaign. Control-group DiD is reported only after the pre-intervention parallel-trends check passes.")}
       </p>
 
       {!hasData ? (
@@ -177,7 +212,7 @@ export default function Incrementality({ locale = "ko" } = {}) {
           </div>
           {method === "suppression"
             ? <SuppressionView csvData={csvData} currency={currency} locale={locale} />
-            : <PrePostView csvData={csvData} direction={method} currency={currency} locale={locale} />}
+            : <PrePostView key={method} csvData={csvData} direction={method} currency={currency} locale={locale} />}
         </div>
       )}
     </div>
@@ -226,7 +261,8 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
       if (!looksDate(r.date)) return;
       const g = parseHoldoutGroup(r.holdout_group);
       if (g !== "control" && g !== "test") return;
-      const d = String(r.date);
+      const d = normalizeIncrDate(r.date);
+      if (!d) return;
       if (!byDate.has(d)) byDate.set(d, { exp: { n: 0, d: 0, s: 0, rev: 0 }, hold: { n: 0, d: 0, s: 0, rev: 0 } });
       const slot = byDate.get(d)[g === "test" ? "exp" : "hold"];
       slot.n += num(r.numerator) || 0; slot.d += num(r.denominator) || 0;
@@ -255,26 +291,16 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
     return { cDen, tDen };
   }, [csvData]);
 
-  // 홀드아웃 창 자동 감지(두 그룹 전환율 차가 큰 구간). 없으면 전체.
-  const detected = useMemo(() => {
-    if (!series) return null;
-    const { labels, expRate, holdRate } = series;
-    const diffs = labels.map((_, i) => (expRate[i] != null && holdRate[i] != null) ? expRate[i] - holdRate[i] : 0);
-    const maxD = Math.max(...diffs, 0);
-    if (maxD < 0.3) return { start: labels[0], end: labels[labels.length - 1] }; // 안 벌어짐 → 전체
-    const thr = maxD * 0.4;
-    const idx = diffs.map((x, i) => x >= thr ? i : -1).filter((i) => i >= 0);
-    return { start: labels[idx[0]], end: labels[idx[idx.length - 1]] };
-  }, [series]);
-
   const [winStart, setWinStart] = useState("");
   const [winEnd, setWinEnd] = useState("");
-  const start = winStart || detected?.start || "";
-  const end = winEnd || detected?.end || "";
+  const start = winStart;
+  const end = winEnd;
+  const hasExplicitWindow = !!start && !!end;
+  const isWindowOrderValid = hasExplicitWindow && start <= end;
 
   // 창 기간 내 집계 → 증분 (창 밖 pre/post는 균형 확인용)
   const win = useMemo(() => {
-    if (!series || !start || !end) return null;
+    if (!series || !isWindowOrderValid) return null;
     const { labels, byDate } = series;
     let cN = 0, cD = 0, tN = 0, tD = 0, sp = 0, rv = 0;      // 창 내
     let preExpN = 0, preExpD = 0, preHoldN = 0, preHoldD = 0; // 창 전(균형 확인)
@@ -294,12 +320,12 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
     const preDiff = (preExp != null && preHold != null) ? preExp - preHold : null;
     const balanced = preDiff != null ? Math.abs(preDiff) < 0.5 : null; // 0.5%p 이내면 균형
     return { incr, cN, cD, tN, tD, sp, preExp, preHold, preDiff, balanced, hasPre: preExpD > 0 };
-  }, [series, start, end]);
+  }, [series, start, end, isWindowOrderValid]);
 
   const chartInst = useRef(null);
   useEffect(() => {
     if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; }
-    if (!series) return;
+    if (!series || !isWindowOrderValid) return;
     const ctx = document.getElementById("incr-suppression-chart"); if (!ctx) return;
     const { labels, expRate, holdRate } = series;
     const sIdx = labels.indexOf(start), eIdx = labels.indexOf(end);
@@ -338,7 +364,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
     });
     requestAnimationFrame(() => chartInst.current && chartInst.current.resize());
     return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
-  }, [series, start, end, tr]);
+  }, [series, start, end, isWindowOrderValid, tr]);
 
   if (invalidRows) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("증분을 계산할 수 없는 행이 있습니다", "Some rows cannot be used for incrementality")}</strong><p>{tr(`${invalidRows.toLocaleString()}행의 날짜·그룹·전환수·분모를 확인하세요. 날짜는 실제 달력 날짜여야 하며, 전환수는 0 이상 분모 이하여야 하고 분모는 0보다 커야 합니다.`, `Check date, group, conversions, and denominator in ${invalidRows.toLocaleString()} row(s). Dates must be valid calendar dates; conversions must be between 0 and the denominator, and the denominator must be greater than 0.`)}</p></div></div>;
   if (totals.cDen <= 0 || totals.tDen <= 0) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("노출(exposed)·홀드아웃(holdout) 양쪽 데이터가 필요합니다", "Both exposed and holdout data are required")}</strong><p>{tr("holdout_group 컬럼에 두 그룹이 모두 있어야 증분을 계산합니다.", "The holdout_group column must contain both groups to calculate incrementality.")}</p></div></div>;
@@ -391,7 +417,33 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
 
   return (
     <section className="block" id="s-incr-result">
-      <h2 className="section-title"><span className="ix">§1</span>{tr("증분 결과 (홀드아웃 기간)", "Incrementality result (holdout period)")}</h2>
+      <h2 className="section-title"><span className="ix">§1</span>{tr("홀드아웃 기간 설정 및 결과", "Holdout period setup and result")}</h2>
+
+      {series && (
+        <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "flex-end", marginBottom: "12px" }}>
+          <Field label={tr("홀드아웃 시작일", "Holdout start date")}>
+            <select className="map-select" value={start} onChange={(e) => { const next = e.target.value; setWinStart(next); if (winEnd && winEnd < next) setWinEnd(""); }}>
+              <option value="">{tr("운영 기록에서 선택", "Select from experiment record")}</option>
+              {series.labels.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </Field>
+          <Field label={tr("홀드아웃 종료일", "Holdout end date")}>
+            <select className="map-select" value={end} onChange={(e) => setWinEnd(e.target.value)} disabled={!start}>
+              <option value="">{tr("운영 기록에서 선택", "Select from experiment record")}</option>
+              {series.labels.filter((d) => !start || d >= start).map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </Field>
+          <span style={{ fontSize: "11px", color: "var(--text-muted)", maxWidth: "440px", lineHeight: 1.5 }}>{tr("실험 계획이나 광고 운영 기록에 적힌 실제 차단 기간을 직접 지정해야 계산합니다.", "The calculation only runs after you enter the actual blocked period from the experiment plan or ad-operations record.")}</span>
+        </div>
+      )}
+
+      {!hasExplicitWindow && (
+        <div className="callout warn" style={{ marginBottom: "12px" }}><div className="ico">!</div><div className="body"><strong>{tr("홀드아웃 기간을 먼저 지정하세요", "Specify the holdout period first")}</strong><p>{tr("결과 그래프에서 차이가 큰 구간을 보고 기간을 고르면 효과가 과대평가될 수 있습니다. 결과를 보기 전 정한 시작일·종료일만 사용합니다.", "Choosing the period after inspecting where the outcome lines diverge can overstate the effect. Use only start and end dates defined before viewing the result.")}</p></div></div>
+      )}
+
+      {hasExplicitWindow && !isWindowOrderValid && (
+        <div className="callout warn" style={{ marginBottom: "12px" }}><div className="ico">!</div><div className="body"><strong>{tr("종료일은 시작일과 같거나 뒤여야 합니다", "The end date must be on or after the start date")}</strong></div></div>
+      )}
 
       {card && (
         <ResultActionCard
@@ -448,14 +500,6 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
         />
       )}
 
-      {series && (
-        <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "flex-end", marginBottom: "12px" }}>
-          <Field label={tr("홀드아웃 시작일", "Holdout start date")}><select className="map-select" value={start} onChange={(e) => setWinStart(e.target.value)}>{series.labels.map((d) => <option key={d} value={d}>{d}</option>)}</select></Field>
-          <Field label={tr("홀드아웃 종료일", "Holdout end date")}><select className="map-select" value={end} onChange={(e) => setWinEnd(e.target.value)}>{series.labels.map((d) => <option key={d} value={d}>{d}</option>)}</select></Field>
-          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{tr("이 기간에만 광고를 차단했다고 보고 증분을 계산합니다.", "Incrementality is calculated assuming ads were blocked only during this period.")}</span>
-        </div>
-      )}
-
       {series && win?.hasPre && (
         <div className={`callout ${win.balanced ? "ok" : "warn"}`} style={{ marginBottom: "10px" }}><div className="ico">{win.balanced ? "✓" : "!"}</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
           <strong>{tr("그룹 균형 확인 (홀드아웃 전):", "Group balance check (before holdout):")}</strong> {tr("노출", "Exposed")} {fmtPct(win.preExp, 2, { asRatio: false })} {tr("vs 홀드아웃", "vs holdout")} {fmtPct(win.preHold, 2, { asRatio: false })} — {tr("차이", "difference")} {fmtPct(win.preDiff, 2, { asRatio: false })}p. {win.balanced ? tr("시작 전엔 거의 같음 → 두 그룹이 비교 가능(균형)했다는 증거.", "Nearly identical before the start → evidence the two groups were comparable (balanced).") : tr("시작 전부터 차이가 큼 → 그룹 균형이 의심되어 증분이 왜곡될 수 있음.", "Already a large gap before the start → group balance is questionable and incrementality may be distorted.")}
@@ -475,7 +519,7 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
         </div>
       )}
 
-      {series && (
+      {series && isWindowOrderValid && (
         <div style={{ marginTop: "14px" }}>
           <h3 style={{ fontSize: "13px", margin: "0 0 6px", color: "var(--text-secondary)" }}>{tr("날짜별 전환율 — 노출 vs 홀드아웃", "Conversion rate by date — exposed vs holdout")}</h3>
           <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "0 0 8px" }}>{tr("홀드아웃 기간(주황 세로선 사이)에만 두 선이 벌어져야 정상 — 그 간격이 광고 증분. 기간 밖은 거의 겹쳐야 그룹이 균형입니다.", "The two lines should only diverge during the holdout period (between the orange vertical lines) — that gap is the ad incrementality. Outside that period they should nearly overlap if the groups are balanced.")}</p>
@@ -515,25 +559,46 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
     ? treatmentGroup
     : groupVals.find((g) => g !== selectedControl);
 
-  const dates = useMemo(() => [...new Set((csvData.raw || []).map((r) => String(r[dateCol])))].filter(looksDate).sort(), [csvData.raw, dateCol]);
+  const dates = useMemo(() => [...new Set((csvData.raw || []).map((r) => normalizeIncrDate(r[dateCol])).filter(Boolean))].sort(), [csvData.raw, dateCol]);
   const [cutoff, setCutoff] = useState("");
-  const effCutoff = cutoff || dates[Math.floor(dates.length / 2)] || "";
-  const chartRef = useRef(null); const chartInst = useRef(null);
+  const effCutoff = cutoff;
+  const chartInst = useRef(null);
+
+  const selectedInputAudit = useMemo(() => {
+    const rows = csvData.raw || [];
+    const treatmentRows = groupCol && selectedTreatment
+      ? rows.filter((row) => String(row[groupCol]).trim() === selectedTreatment)
+      : groupCol
+        ? []
+        : rows;
+    const controlRows = useDiD && groupCol && selectedControl
+      ? rows.filter((row) => String(row[groupCol]).trim() === selectedControl)
+      : [];
+    const treatment = auditSelectedMetricRows(treatmentRows, dateCol, metricCol);
+    const control = auditSelectedMetricRows(controlRows, dateCol, metricCol);
+    return {
+      treatment,
+      control,
+      invalidRows: treatment.invalidRows + control.invalidRows,
+      invalidDateRows: treatment.invalidDateRows + control.invalidDateRows,
+      invalidMetricRows: treatment.invalidMetricRows + control.invalidMetricRows,
+    };
+  }, [csvData.raw, groupCol, selectedTreatment, selectedControl, useDiD, dateCol, metricCol]);
+  const hasInvalidSelectedRows = selectedInputAudit.invalidRows > 0;
 
   const result = useMemo(() => {
-    if (!metricCol || !effCutoff) return null;
+    if (!metricCol || !effCutoff || hasInvalidSelectedRows) return null;
     const rows = csvData.raw || [];
     const ctrlVal = selectedControl;
     const treatVal = selectedTreatment;
     if (useDiD && (!ctrlVal || !treatVal)) return null;
     const pick = (pred) => rows.filter(pred);
     const seriesOf = (rowsF) => {
-      const pre = [], post = [];
-      for (const r of rowsF) {
-        const v = num(r[metricCol]); if (!Number.isFinite(v)) continue;
-        (String(r[dateCol]) < effCutoff ? pre : post).push(v);
-      }
-      return { pre, post };
+      const daily = aggregateDailyMetric(rowsF, dateCol, metricCol);
+      return {
+        pre: daily.filter((point) => point.date < effCutoff),
+        post: daily.filter((point) => point.date >= effCutoff),
+      };
     };
     const treatRows = groupCol && treatVal ? pick((r) => String(r[groupCol]).trim() === treatVal) : rows;
     const t = seriesOf(treatRows);
@@ -543,21 +608,25 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
       if (c.pre.length && c.post.length) control = c;
     }
     return INCR_PREPOST.compute({ pre: t.pre, post: t.post, direction, control });
-  }, [csvData.raw, metricCol, groupCol, selectedControl, selectedTreatment, effCutoff, dateCol, useDiD, direction]);
+  }, [csvData.raw, metricCol, groupCol, selectedControl, selectedTreatment, effCutoff, dateCol, useDiD, direction, hasInvalidSelectedRows]);
+
+  const isDiDBlocked = useDiD && !!effCutoff && !hasInvalidSelectedRows && (!result?.did || result.did.ok !== true);
+  const r = isDiDBlocked ? null : result;
 
   // 라인 차트 (treatment 시계열 + cutoff 마커 + pre/post 평균선)
   useEffect(() => {
     if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; }
-    if (!metricCol || !effCutoff) return;
+    if (!metricCol || !effCutoff || !r) return;
     const ctx = document.getElementById("incr-prepost-chart"); if (!ctx) return;
     const rows = csvData.raw || [];
     const treatVal = selectedTreatment;
-    const treatRows = (groupCol && treatVal ? rows.filter((r) => String(r[groupCol]).trim() === treatVal) : rows)
-      .filter((r) => looksDate(r[dateCol])).sort((a, b) => String(a[dateCol]) < String(b[dateCol]) ? -1 : 1);
-    const labels = treatRows.map((r) => String(r[dateCol]));
-    const vals = treatRows.map((r) => num(r[metricCol]));
+    const treatRows = groupCol && treatVal ? rows.filter((row) => String(row[groupCol]).trim() === treatVal) : rows;
+    const daily = aggregateDailyMetric(treatRows, dateCol, metricCol);
+    const labels = daily.map((point) => point.date);
+    const vals = daily.map((point) => point.value);
     const cutoffIdx = labels.findIndex((l) => l >= effCutoff);
-    const preMean = result?.preMean, postMean = result?.postMean;
+    const preMean = r.did?.ok ? r.did.treatPreMean : r.preMean;
+    const postMean = r.did?.ok ? r.did.treatPostMean : r.postMean;
     chartInst.current = new Chart(ctx, {
       type: "line",
       data: {
@@ -582,17 +651,23 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
     });
     requestAnimationFrame(() => chartInst.current && chartInst.current.resize());
     return () => { if (chartInst.current) { chartInst.current.destroy(); chartInst.current = null; } };
-  }, [csvData.raw, metricCol, groupCol, selectedTreatment, effCutoff, dateCol, result, direction, tr]);
+  }, [csvData.raw, metricCol, groupCol, selectedTreatment, effCutoff, dateCol, r, direction, tr]);
 
   if (!numericCols.length) return <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("성과 지표(숫자) 컬럼이 필요합니다", "A performance metric (numeric) column is required")}</strong><p>{tr("date + 숫자 지표 컬럼이 있는 CSV를 올리세요.", "Upload a CSV with a date column plus a numeric metric column.")}</p></div></div>;
 
-  const r = result;
   const delta = r?.delta;
-  const isDiD = !!r?.did;
+  const isDiD = r?.did?.ok === true;
   const effVal = isDiD ? r.did.didDelta : delta;
+  const displayPreMean = isDiD ? r.did.treatPreMean : r?.preMean;
+  const displayPostMean = isDiD ? r.did.treatPostMean : r?.postMean;
+  const displayPreN = isDiD ? r.did.pairedPreN : r?.nPre;
+  const displayPostN = isDiD ? r.did.pairedPostN : r?.nPost;
+  const totalEffect = isDiD ? r.did.incrementalTotal : r?.incrementalTotal;
+  const unmatchedDateCount = isDiD ? (r.did.unmatchedTreatmentDates || 0) + (r.did.unmatchedControlDates || 0) : 0;
   const lost = direction === "off";
-  const sigP = (isDiD ? r?.did?.sig?.pValue : r?.sig?.pValue) ?? r?.sig?.p;
-  const sig = sigP != null && sigP < 0.05;
+  const sigP = isDiD ? (r?.did?.sig?.pValue ?? null) : (r?.sig?.pValue ?? r?.sig?.p ?? null);
+  const hasSignificance = Number.isFinite(sigP);
+  const sig = hasSignificance && sigP < 0.05;
   const confirmedLoss = lost && effVal < 0 && sig;
   const confirmedGain = !lost && effVal > 0 && sig;
   const good = confirmedLoss || confirmedGain;
@@ -610,24 +685,34 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
           ? tr(`켠 뒤 일평균이 ${change} 변했습니다 — 신규 실행과 연관된 증가 후보입니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`, `After turning it on, the daily average changed by ${change} — a candidate increase associated with the launch${isDiD ? " (control's natural change removed)" : ""}.`)
           : tr(`켠 뒤 일평균이 ${change} 변했습니다 — 신규 실행에 의한 증가는 확인되지 않습니다${isDiD ? " (대조군 자연변화 제거)" : ""}.`, `After turning it on, the daily average changed by ${change} — a launch-driven increase is not supported${isDiD ? " (control's natural change removed)" : ""}.`);
     const points = [];
-    points.push({ cls: sig ? "good" : "muted", text: sig ? tr(`통계적으로 유의합니다 (p=${sigP.toFixed(4)}).`, `Statistically significant (p=${sigP.toFixed(4)}).`) : tr(`아직 통계적으로 유의하지 않습니다 (p=${sigP != null ? sigP.toFixed(3) : "—"}) — 표본을 더 모으세요.`, `Not statistically significant yet (p=${sigP != null ? sigP.toFixed(3) : "—"}) — gather more data.`) });
+    points.push({ cls: sig ? "good" : "muted", text: sig
+      ? tr(`통계적으로 유의합니다 (p=${sigP.toFixed(4)}).`, `Statistically significant (p=${sigP.toFixed(4)}).`)
+      : hasSignificance
+        ? tr(`아직 통계적으로 유의하지 않습니다 (p=${sigP.toFixed(3)}) — 표본을 더 모으세요.`, `Not statistically significant yet (p=${sigP.toFixed(3)}) — gather more data.`)
+        : tr("공통 날짜와 변동이 부족해 유의성을 추정할 수 없습니다.", "Significance cannot be estimated because there are too few common dates or too little variation.") });
+    if (isDiD) points.push({ cls: unmatchedDateCount > 0 ? "muted" : "good", text: tr(`DiD는 공통 날짜만 매칭했습니다 (전 ${r.did.pairedPreN}일 · 후 ${r.did.pairedPostN}일)${unmatchedDateCount > 0 ? `; 매칭되지 않은 그룹-날짜 ${unmatchedDateCount}개는 제외했습니다.` : "."}`, `DiD matched common dates only (${r.did.pairedPreN} pre · ${r.did.pairedPostN} post)${unmatchedDateCount > 0 ? `; ${unmatchedDateCount} unmatched group-date entries were excluded.` : "."}`) });
+    if (isDiD) points.push({ cls: "muted", text: tr(`사전추세 위반은 발견되지 않았습니다 (격차 기울기 ${fmtNum(r.did.pretrend.slopePerDay, 2)}/일 · p=${r.did.pretrend.pValue.toFixed(3)}). 이는 평행추세를 증명하는 검정은 아닙니다.`, `No pretrend violation was detected (gap slope ${fmtNum(r.did.pretrend.slopePerDay, 2)}/day · p=${r.did.pretrend.pValue.toFixed(3)}). This does not prove parallel trends.`) });
     if (!isDiD) points.push({ cls: "muted", text: tr("대조군을 넣어 DiD로 보정하면 계절·추세 영향을 줄일 수 있습니다.", "Adding a control group (DiD) reduces seasonality/trend effects.") });
     points.push({ cls: "muted", text: tr("무작위 실험이 아니면 인과를 단정하지 마세요.", "Don't assert causality unless this was a randomized experiment.") });
     const stats = [
-      { label: tr("전환 전 평균(일)", "Pre avg (daily)"), value: fmtNum(r.preMean, 1) },
-      { label: tr("전환 후 평균(일)", "Post avg (daily)"), value: fmtNum(r.postMean, 1) },
+      { label: tr("전환 전 평균(일)", "Pre avg (daily)"), value: fmtNum(displayPreMean, 1) },
+      { label: tr("전환 후 평균(일)", "Post avg (daily)"), value: fmtNum(displayPostMean, 1) },
       { label: isDiD ? tr("순효과 Δ (DiD)", "Net Δ (DiD)") : tr("변화 Δ(일)", "Change Δ (daily)"), value: (effVal >= 0 ? "+" : "") + fmtNum(effVal, 1) },
-      { label: lost ? tr("총 손실(기간)", "Total loss") : tr("총 증분(기간)", "Total incremental"), value: (r.incrementalTotal >= 0 ? "+" : "") + fmtNum(r.incrementalTotal, 0) },
+      { label: lost ? tr("총 손실(기간)", "Total loss") : tr("총 증분(기간)", "Total incremental"), value: (totalEffect >= 0 ? "+" : "") + fmtNum(totalEffect, 0) },
     ];
     const csvRows = [
-      [tr("전환 전 평균(일)", "Pre-cutoff daily average"), fmtNum(r.preMean, 1)],
-      [tr("전환 후 평균(일)", "Post-cutoff daily average"), fmtNum(r.postMean, 1)],
+      [tr("전환 전 평균(일)", "Pre-cutoff daily average"), fmtNum(displayPreMean, 1)],
+      [tr("전환 후 평균(일)", "Post-cutoff daily average"), fmtNum(displayPostMean, 1)],
       [isDiD ? tr("순효과 Δ (DiD)", "Net effect Δ (DiD)") : tr("변화 Δ(일)", "Change Δ (daily)"), (effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)],
-      [lost ? tr("총 손실(기간)", "Total loss (period)") : tr("총 증분(기간)", "Total incremental (period)"), (r.incrementalTotal >= 0 ? "+" : "") + fmtNum(r.incrementalTotal, 0)],
-      [tr("유의성 p", "Significance p"), sigP != null ? sigP.toFixed(4) : "—"],
+      [lost ? tr("총 손실(기간)", "Total loss (period)") : tr("총 증분(기간)", "Total incremental (period)"), (totalEffect >= 0 ? "+" : "") + fmtNum(totalEffect, 0)],
+      [tr("유의성 p", "Significance p"), hasSignificance ? sigP.toFixed(4) : tr("추정 불가", "Not estimable")],
       [tr("전환 시점", "Cutoff date"), effCutoff],
       [tr("방법", "Method"), isDiD ? "DiD" : (lost ? tr("종료 전후", "Shutdown pre/post") : tr("신규 전후", "Launch pre/post"))],
     ];
+    if (isDiD) {
+      csvRows.push([tr("공통 날짜(전/후)", "Common dates (pre/post)"), `${r.did.pairedPreN}/${r.did.pairedPostN}`]);
+      csvRows.push([tr("사전추세 검사", "Pretrend check"), tr(`위반 미탐지 (기울기 ${fmtNum(r.did.pretrend.slopePerDay, 2)}/일, p=${r.did.pretrend.pValue.toFixed(4)})`, `No violation detected (slope ${fmtNum(r.did.pretrend.slopePerDay, 2)}/day, p=${r.did.pretrend.pValue.toFixed(4)})`)]);
+    }
     const csv = buildSummaryCsv(tr("지표,값", "Metric,Value"), csvRows);
     const text =
       (lost ? tr("# 증분 분석 — 종료(전후) 요약\n\n", "# Incrementality — Shutdown (pre/post) summary\n\n") : tr("# 증분 분석 — 신규 켜기(전후) 요약\n\n", "# Incrementality — New launch (pre/post) summary\n\n")) +
@@ -643,20 +728,46 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
         <h2 className="section-title"><span className="ix">§1</span>{tr("비교 설정", "Comparison settings")}</h2>
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "flex-end" }}>
           <Field label={tr("성과 지표", "Performance metric")}><select className="map-select" value={metricCol} onChange={(e) => setMetricCol(e.target.value)}>{numericCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
-          <Field label={tr(`전환 시점 (${direction === "off" ? "끈" : "켠"} 날)`, `Cutoff date (day turned ${direction === "off" ? "off" : "on"})`)}><select className="map-select" value={effCutoff} onChange={(e) => setCutoff(e.target.value)}>{dates.map((d) => <option key={d} value={d}>{d}</option>)}</select></Field>
+          <Field label={tr(`전환 시점 (${direction === "off" ? "끈" : "켠"} 날)`, `Cutoff date (day turned ${direction === "off" ? "off" : "on"})`)}>
+            <select className="map-select" value={effCutoff} onChange={(e) => setCutoff(e.target.value)}>
+              <option value="">{tr("운영 기록에서 선택", "Select from operations record")}</option>
+              {dates.slice(1).map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </Field>
           {groupCols.length > 0 && (
             <>
-              <Field label={tr("그룹 컬럼 (대조군)", "Group column (control)")}><select className="map-select" value={groupCol} onChange={(e) => setGroupCol(e.target.value)}><option value="">{tr("(없음)", "(none)")}</option>{groupCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
+              <Field label={tr("그룹 컬럼 (대조군)", "Group column (control)")}><select className="map-select" value={groupCol} onChange={(e) => { const next = e.target.value; setGroupCol(next); setControlGroup(""); setTreatmentGroup(""); if (!next) setUseDiD(false); }}><option value="">{tr("(없음)", "(none)")}</option>{groupCols.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
               {groupCol && <Field label={tr("대조군 값", "Control value")}><select className="map-select" value={selectedControl || ""} onChange={(e) => setControlGroup(e.target.value)}><option value="">{tr("선택", "Select")}</option>{groupVals.map((g) => <option key={g} value={g}>{g}</option>)}</select></Field>}
               {groupCol && <Field label={tr("처리군 값", "Treatment value")}><select className="map-select" value={selectedTreatment || ""} onChange={(e) => setTreatmentGroup(e.target.value)}><option value="">{tr("선택", "Select")}</option>{groupVals.filter((g) => g !== selectedControl).map((g) => <option key={g} value={g}>{g}</option>)}</select></Field>}
-              <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}><input type="checkbox" checked={useDiD} onChange={(e) => setUseDiD(e.target.checked)} disabled={!groupCol} /> {tr("DiD (대조군으로 계절·추세 제거)", "DiD (remove seasonality/trend via control group)")}</label>
+              <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}><input type="checkbox" checked={useDiD} onChange={(e) => setUseDiD(e.target.checked)} disabled={!groupCol} /> {tr("DiD (대조군으로 공통 변화 보정)", "DiD (adjust common change with a control)")}</label>
             </>
           )}
         </div>
+        <p style={{ margin: "9px 0 0", fontSize: "11px", lineHeight: 1.5, color: "var(--text-muted)" }}>{tr(`전환 시점은 결과 차트를 보기 전에 캠페인 운영 기록에 적힌 실제 시작일 또는 종료일로 지정하세요. 같은 날짜에 여러 행이 있으면 일별 합계로 먼저 집계합니다. DiD는 공통 개입 전 날짜가 최소 ${INCR_PREPOST_CONTRACT.minPretrendDates}일 필요합니다.`, `Set the cutoff from the actual launch or shutdown date in the campaign operations record before viewing the outcome chart. Multiple rows on the same date are aggregated to a daily total first. DiD requires at least ${INCR_PREPOST_CONTRACT.minPretrendDates} common pre-intervention dates.`)}</p>
       </section>
+
+      {!effCutoff && (
+        <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("전환 시점을 먼저 지정하세요", "Specify the cutoff date first")}</strong><p>{tr("데이터 중간 날짜를 자동으로 고르거나 결과가 크게 달라지는 날짜를 사후 선택하지 않습니다. 운영 기록에 남은 실제 날짜를 선택해야 분석합니다.", "The tool does not auto-select the middle date or retrospectively choose a date with the largest outcome change. Select the actual date recorded in operations before analysis runs.")}</p></div></div>
+      )}
+
+      {hasInvalidSelectedRows && (
+        <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("선택한 데이터에 사용할 수 없는 행이 있어 분석을 중단했습니다", "Analysis stopped because the selected data contains unusable rows")}</strong><p>{tr(`총 ${selectedInputAudit.invalidRows.toLocaleString()}행입니다 (잘못된 날짜 ${selectedInputAudit.invalidDateRows.toLocaleString()}행 · 비어 있거나 숫자가 아닌 지표 ${selectedInputAudit.invalidMetricRows.toLocaleString()}행; 처리군 ${selectedInputAudit.treatment.invalidRows.toLocaleString()}행 · 대조군 ${selectedInputAudit.control.invalidRows.toLocaleString()}행). 값을 고치기 전에는 결과·차트·다운로드를 만들지 않습니다.`, `${selectedInputAudit.invalidRows.toLocaleString()} row(s) are affected (invalid date: ${selectedInputAudit.invalidDateRows.toLocaleString()} · blank or non-numeric metric: ${selectedInputAudit.invalidMetricRows.toLocaleString()}; treatment: ${selectedInputAudit.treatment.invalidRows.toLocaleString()} · control: ${selectedInputAudit.control.invalidRows.toLocaleString()}). No result, chart, or download is produced until these values are fixed.`)}</p></div></div>
+      )}
 
       {useDiD && (!selectedControl || !selectedTreatment) && (
         <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("DiD에는 대조군과 처리군을 각각 지정해야 합니다", "DiD needs an explicit control and treatment group")}</strong><p>{tr("그룹 값이 자동으로 분명하지 않으면 위 선택기에서 두 그룹을 직접 고르세요. 선택 전에는 DiD 결론을 만들지 않습니다.", "If the group values are not unambiguous, select both groups above. No DiD conclusion is produced until they are chosen.")}</p></div></div>
+      )}
+
+      {effCutoff && !hasInvalidSelectedRows && !isDiDBlocked && !r && (
+        <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("전환 전·후에 모두 유효한 관측이 필요합니다", "Valid observations are required both before and after the cutoff")}</strong><p>{tr("선택한 지표와 전환 시점을 확인하세요. 한쪽 기간이 비어 있으면 결과를 만들지 않습니다.", "Check the selected metric and cutoff date. No result is produced when either side of the cutoff is empty.")}</p></div></div>
+      )}
+
+      {isDiDBlocked && (
+        <div className="callout warn"><div className="ico">!</div><div className="body"><strong>{tr("DiD를 추정할 수 없습니다 (NOT_IDENTIFIED)", "DiD cannot be estimated (NOT_IDENTIFIED)")}</strong><p>{result?.did?.reason === "pretrend_violation"
+          ? tr(`개입 전 처리군−대조군 격차가 시간에 따라 유의하게 움직였습니다 (공통 ${result.did.pretrend.n}일 · 일별 기울기 ${fmtNum(result.did.pretrend.slopePerDay, 2)} · p=${result.did.pretrend.pValue.toFixed(4)}). 평행추세 가정이 깨져 결론·차트·다운로드를 차단합니다.`, `The treatment-control gap changed significantly before the intervention (${result.did.pretrend.n} common dates · slope ${fmtNum(result.did.pretrend.slopePerDay, 2)} per day · p=${result.did.pretrend.pValue.toFixed(4)}). The parallel-trends assumption fails, so the conclusion, chart, and downloads are blocked.`)
+          : result?.did?.reason === "insufficient_pretrend_dates"
+            ? tr(`평행추세를 검사하려면 공통 개입 전 날짜가 최소 ${INCR_PREPOST_CONTRACT.minPretrendDates}일 필요합니다. 현재 ${result.did.pretrend.n}일이므로 결론·차트·다운로드를 차단합니다.`, `At least ${INCR_PREPOST_CONTRACT.minPretrendDates} common pre-intervention dates are required to check parallel trends. Only ${result.did.pretrend.n} are available, so the conclusion, chart, and downloads are blocked.`)
+            : result?.did?.reason === "pretrend_not_estimable" ? tr("공통 개입 전 날짜는 있지만 격차 추세의 불확실성을 안정적으로 계산할 수 없습니다. 결론·차트·다운로드를 차단합니다.", "Common pre-intervention dates exist, but uncertainty in the gap trend cannot be estimated reliably. The conclusion, chart, and downloads are blocked.") : tr("전환 전·후 각각에 처리군과 대조군이 함께 존재하는 같은 날짜가 필요합니다. 누락일을 배열 순서로 억지 매칭하지 않으며, 공통 날짜가 없으면 결론·차트·다운로드를 차단합니다.", "Treatment and control must share calendar dates in both the pre- and post-periods. Missing dates are never force-matched by array position; the conclusion and downloads remain blocked when common dates are unavailable.")}</p></div></div>
       )}
 
       {r && (
@@ -674,19 +785,21 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
               analysisDetails={
                 <AnalysisDetails
                   locale={locale}
-                  statusLabel={sigP != null && sigP < 0.05 ? tr("유의", "Significant") : tr("비유의", "Not significant")}
-                  statusTone={sigP != null && sigP < 0.05 ? "good" : "neutral"}
+                  statusLabel={!hasSignificance ? tr("유의성 추정 불가", "Significance not estimable") : sig ? tr("유의", "Significant") : tr("비유의", "Not significant")}
+                  statusTone={sig ? "good" : "neutral"}
                   metric={isDiD ? tr("순효과 Δ", "Net effect Δ") : tr("전후 변화 Δ", "Pre/post change Δ")}
                   unit={tr("일평균 전환·기간 합계", "Daily average conversion; period total")}
                   meaning={tr("전후 비교 또는 대조군 보정(DiD) — 자동 인과 확정 아님", "Pre/post comparison or control-adjusted DiD — not automatically causal")}
-                  sampleSize={{ label: tr("전·후 표본", "Pre / post sample"), value: `${r.nPre} / ${r.nPost}`, detail: tr("관측 일수", "Observed days") }}
-                  interval={sigP != null ? { label: tr("유의성", "Significance"), value: `p=${sigP.toFixed(4)}` } : null}
+                  sampleSize={{ label: tr("전·후 표본", "Pre / post sample"), value: `${displayPreN} / ${displayPostN}`, detail: isDiD ? tr("처리·대조 공통 관측일", "Common treatment-control dates") : tr("관측 일수", "Observed days") }}
+                  interval={hasSignificance ? { label: tr("유의성", "Significance"), value: `p=${sigP.toFixed(4)}` } : null}
                   scope={`${effCutoff} (${lost ? tr("종료", "shutdown") : tr("시작", "launch")})`}
                   method={isDiD ? "DiD" : lost ? tr("종료 전후", "Shutdown pre/post") : tr("신규 전후", "Launch pre/post")}
                   version="incrementality-prepost"
                   cachePolicy={tr("브라우저 메모리 전용", "In-memory browser cache only")}
                   warnings={[
                     ...(!isDiD ? [tr("단순 전후 비교는 계절성·추세·프로모션과 섞일 수 있습니다.", "Simple pre/post comparisons can mix seasonality, trend, and promotions.")] : []),
+                    ...(isDiD && unmatchedDateCount > 0 ? [tr(`처리군·대조군의 공통 날짜만 사용했고, 매칭되지 않은 그룹-날짜 ${unmatchedDateCount}개는 제외했습니다.`, `Only common treatment-control dates were used; ${unmatchedDateCount} unmatched group-date entries were excluded.`)] : []),
+                    ...(isDiD ? [tr(`개입 전 공통 ${r.did.pretrend.n}일의 실제 날짜 간격으로 처리군−대조군 격차 추세를 검사했습니다. 유의한 위반은 없었지만 평행추세가 증명된 것은 아닙니다.`, `The treatment-control gap trend was checked over ${r.did.pretrend.n} common pre-intervention dates using actual calendar spacing. No significant violation was detected, but parallel trends are not proven.`)] : []),
                     tr("사전 MDE·검정력이 없으면 검정력을 역산하지 않습니다. 단순 전후는 증거 수준이 낮고 DiD/무작위 홀드아웃이 더 강합니다.", "Without a pre-specified MDE and target power, post-hoc power is not back-calculated. Simple pre/post evidence is weaker than DiD or randomized holdout evidence."),
                   ]}
                 />
@@ -707,24 +820,24 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
           )}
           <div className="alloc-card" style={{ borderLeft: `3px solid ${good ? "#22c55e" : "#fbbf24"}`, marginBottom: "12px" }}>
             <div className="ab-stat-row" style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-              <Stat label={tr("전환 전 평균(일)", "Pre-cutoff daily average")} value={fmtNum(r.preMean, 1)} />
-              <Stat label={tr("전환 후 평균(일)", "Post-cutoff daily average")} value={fmtNum(r.postMean, 1)} />
+              <Stat label={tr("전환 전 평균(일)", "Pre-cutoff daily average")} value={fmtNum(displayPreMean, 1)} />
+              <Stat label={tr("전환 후 평균(일)", "Post-cutoff daily average")} value={fmtNum(displayPostMean, 1)} />
               <Stat label={isDiD ? tr("순효과 Δ (DiD)", "Net effect Δ (DiD)") : tr("변화 Δ(일)", "Change Δ (daily)")} value={(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} color={good ? "#22c55e" : "#ef4444"} hint={isDiD ? tr("대조군 변화 제거", "Control group change removed") : (r.deltaPct != null ? fmtPct(r.deltaPct) : "")} />
-              <Stat label={lost ? tr("총 손실(기간)", "Total loss (period)") : tr("총 증분(기간)", "Total incremental (period)")} value={(r.incrementalTotal >= 0 ? "+" : "") + fmtNum(r.incrementalTotal, 0)} hint={tr("반사실 대비 합계", "Total vs. counterfactual")} />
-              <Stat label={tr("유의성", "Significance")} value={sigP != null ? (sigP < 0.05 ? tr(`유의 (p=${sigP.toFixed(4)})`, `Significant (p=${sigP.toFixed(4)})`) : tr(`비유의 (p=${sigP.toFixed(3)})`, `Not significant (p=${sigP.toFixed(3)})`)) : "—"} />
+              <Stat label={lost ? tr("총 손실(기간)", "Total loss (period)") : tr("총 증분(기간)", "Total incremental (period)")} value={(totalEffect >= 0 ? "+" : "") + fmtNum(totalEffect, 0)} hint={isDiD ? tr("공통 후 기간의 DiD 순효과 합", "DiD net effect across common post dates") : tr("반사실 대비 합계", "Total vs. counterfactual")} />
+              <Stat label={tr("유의성", "Significance")} value={!hasSignificance ? tr("추정 불가", "Not estimable") : sig ? tr(`유의 (p=${sigP.toFixed(4)})`, `Significant (p=${sigP.toFixed(4)})`) : tr(`비유의 (p=${sigP.toFixed(3)})`, `Not significant (p=${sigP.toFixed(3)})`)} />
             </div>
           </div>
           <div className="chart-container" style={{ height: "320px" }}><canvas id="incr-prepost-chart"></canvas></div>
           <div className="callout" style={{ marginTop: "10px" }}><div className="ico">💡</div><div className="body"><p style={{ margin: 0, fontSize: "12px", lineHeight: 1.6 }}>
             <strong>{tr("쉽게 말하면:", "In plain terms:")}</strong> {tr(
-              <>전환 시점 {lost ? "끈" : "켠"} 뒤 하루 평균이 {fmtNum(r.preMean, 1)} → {fmtNum(r.postMean, 1)}로 {(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} {effVal >= 0 ? "올랐" : "떨어졌"}습니다. {lost ? "이 하락분이 그걸 끄면서 잃은 성과" : "이 상승분이 새로 켜서 얻은 성과"}입니다.{isDiD && " (대조군의 자연 변화를 뺀 순효과)"}</>,
-              <>After the day it was turned {lost ? "off" : "on"}, the daily average went from {fmtNum(r.preMean, 1)} to {fmtNum(r.postMean, 1)}, {effVal >= 0 ? "up" : "down"} by {(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)}. {lost ? "This drop is the performance lost from turning it off" : "This rise is the performance gained from turning it on"}.{isDiD && " (net effect after removing the control group's natural change)"}</>
+              <>전환 시점 {lost ? "끈" : "켠"} 뒤 처리군 하루 평균이 {fmtNum(displayPreMean, 1)} → {fmtNum(displayPostMean, 1)}로 바뀌었습니다. {isDiD ? `같은 날짜의 대조군 변화를 뺀 순효과는 ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)}입니다.` : `${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)} ${effVal >= 0 ? "올랐" : "떨어졌"}습니다.`}</>,
+              <>After the day it was turned {lost ? "off" : "on"}, the treatment daily average changed from {fmtNum(displayPreMean, 1)} to {fmtNum(displayPostMean, 1)}. {isDiD ? `The net effect after subtracting the control on matching dates is ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)}.` : `It ${effVal >= 0 ? "increased" : "decreased"} by ${(effVal >= 0 ? "+" : "") + fmtNum(effVal, 1)}.`}</>
             )}
           </p></div></div>
           <div className="callout warn" style={{ marginTop: "8px" }}><div className="ico">!</div><div className="body"><p style={{ margin: 0, fontSize: "11.5px", lineHeight: 1.6 }}>
             <strong>{tr("정직하게:", "To be honest:")}</strong> {tr(
-              <>단순 전후 비교는 그 사이 계절·프로모션·시장 변화가 섞일 수 있습니다. {isDiD ? "대조군 DiD로 공통 추세는 제거했지만," : "대조군(변하지 않은 그룹)을 넣어 DiD로 보정하면 더 정확합니다."} 무작위 실험이 아니면 인과를 단정하지 마세요.</>,
-              <>A simple before/after comparison can mix in seasonality, promotions, or market changes over that time. {isDiD ? "DiD with a control group removes common trend, but" : "Adding a control group (a group that didn&apos;t change) and correcting with DiD would be more accurate."} If it wasn&apos;t a randomized experiment, don&apos;t assert causality.</>
+              <>단순 전후 비교는 그 사이 계절·프로모션·시장 변화가 섞일 수 있습니다. {isDiD ? "대조군 DiD로 관측된 공통 변화를 보정하고 사전추세 위반을 검사했지만," : "대조군(변하지 않은 그룹)을 넣어 DiD로 보정하면 더 정확합니다."} 무작위 실험이 아니면 인과를 단정하지 마세요.</>,
+              <>A simple before/after comparison can mix in seasonality, promotions, or market changes over that time. {isDiD ? "Control-group DiD adjusts for observed common change and checks for a pretrend violation, but" : "Adding a control group (a group that didn&apos;t change) and correcting with DiD would be more accurate."} If it wasn&apos;t a randomized experiment, don&apos;t assert causality.</>
             )}
           </p></div></div>
         </section>

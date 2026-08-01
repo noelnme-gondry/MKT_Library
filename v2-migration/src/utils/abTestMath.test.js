@@ -41,6 +41,52 @@ describe("bayesianAB deterministic grid integration", () => {
     expect(STATS.continuousTest(1, 100, 10, 20, 110, 10)).toEqual({ ok: false, reason: "insufficient_variation" });
   });
 
+  it.each([
+    { df: 1, critical: 12.7062047362 },
+    { df: 2, critical: 4.30265272975 },
+    { df: 2.5, critical: 3.57465484201 },
+    { df: 5, critical: 2.57058183564 },
+    { df: 10, critical: 2.22813885199 },
+    { df: 30, critical: 2.0422724563 },
+    { df: 100, critical: 1.98397151852 },
+    { df: 1_000_000, critical: 1.95996635699 },
+  ])("matches the two-sided 5% Student-t boundary at df=$df", ({ df, critical }) => {
+    expect(STATS.studentTCDF(critical, df)).toBeCloseTo(0.975, 9);
+    expect(STATS.studentTCDF(-critical, df)).toBeCloseTo(0.025, 9);
+  });
+
+  it("uses the exact small-sample Student-t distribution for Welch p-value and CI", () => {
+    const criticalDf2 = 4.30265272975;
+    const result = STATS.continuousTest(2, 100, 1, 2, 100 + criticalDf2, 1);
+
+    expect(result.ok).toBe(true);
+    expect(result.df).toBeCloseTo(2, 12);
+    expect(result.z).toBeCloseTo(criticalDf2, 10);
+    expect(result.pValue).toBeCloseTo(0.05, 10);
+    expect(result.ciLow95).toBeCloseTo(0, 10);
+    expect(result.ciHigh95).toBeCloseTo(2 * criticalDf2, 10);
+  });
+
+  it("uses the normal limit consistently for extremely large Welch degrees of freedom", () => {
+    const z975 = 1.95996398454;
+    expect(STATS.studentTCDF(z975, 1e15)).toBeCloseTo(0.975, 6);
+    expect(STATS.studentTCDF(z975, Infinity)).toBeCloseTo(0.975, 6);
+
+    const n = 500_000_000_000_001;
+    const se = Math.sqrt(2 / n);
+    const result = STATS.continuousTest(n, 100, 1, n, 100 + z975 * se, 1);
+    expect(result.ok).toBe(true);
+    expect(result.df).toBeGreaterThanOrEqual(1e15);
+    expect(result.pValue).toBeCloseTo(0.05, 6);
+    expect(result.ciLow95).toBeCloseTo(0, 6);
+  });
+
+  it("blocks non-finite or underflowed Welch derivations", () => {
+    expect(STATS.continuousTest(2, 0, Number.MAX_VALUE, 2, 1, Number.MAX_VALUE)).toEqual({ ok: false, reason: "numerical_error" });
+    expect(STATS.continuousTest(2, -Number.MAX_VALUE, 1, 2, Number.MAX_VALUE, 1)).toEqual({ ok: false, reason: "numerical_error" });
+    expect(STATS.continuousTest(2, 0, Number.MIN_VALUE, 2, 1, Number.MIN_VALUE)).toEqual({ ok: false, reason: "numerical_error" });
+  });
+
   it("does not run a proportion test for impossible conversion counts", () => {
     expect(STATS.twoPropZTest(100, 101, 100, 10)).toBeNull();
   });
