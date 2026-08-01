@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, waitFor } from "@testing-library/react";
 
 import ToolAssistRail, { getSections } from "@/components/ToolAssistRail";
+import DecisionReview from "@/components/ds/DecisionReview";
 import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 
 class Observer {
@@ -25,12 +26,46 @@ describe("ToolAssistRail", () => {
     expect(container.textContent).toContain("캠페인 성과 변동 탐지");
   });
 
-  it("keeps EN copy and the EN next-tool destination in parity", () => {
+  it("keeps EN copy and the EN next-tool destination in parity", async () => {
     document.body.innerHTML = '<section id="s-sat-summary"></section>';
-    const { getByRole, container } = render(<ToolAssistRail toolId="5-22" locale="en" />);
+    const { getByRole, container } = render(<>
+      <DecisionReview toolId="5-22" locale="en" decisionPrefill={{ action: "Raise budget by 10%", metric: "CPA" }} />
+      <ToolAssistRail toolId="5-22" locale="en" />
+    </>);
     fireEvent.click(getByRole("button", { name: /Open analysis assistant/ }));
     expect(container.textContent).toContain("Prepare saturation inputs");
+    await waitFor(() => expect(getByRole("button", { name: /Schedule a review/ })).toBeTruthy());
     expect(container.querySelector('a[href="/en/tools/budget-allocation"]')).toBeTruthy();
+  });
+
+  it("opens and focuses the existing inline review without creating a record", async () => {
+    useAppStore.setState({ decisionRecords: [], decisionPersistenceEnabled: false });
+    window.gtag = vi.fn();
+    document.body.innerHTML = '<section id="s-prep"></section><section id="s-scenario"></section>';
+    const { getByRole, getByLabelText, container } = render(<>
+      <DecisionReview toolId="5-3" decisionPrefill={{ action: "검색 예산 10% 시험 증액", metric: "CPA" }} />
+      <ToolAssistRail toolId="5-3" />
+    </>);
+    const review = container.querySelector(".decision-review");
+    const actionInput = getByLabelText("무엇을 바꿀까요?");
+    actionInput.scrollIntoView = vi.fn();
+
+    fireEvent.click(getByRole("button", { name: /분석 도우미 열기/ }));
+    await waitFor(() => expect(getByRole("button", { name: /검토 약속 만들기/ })).toBeTruthy());
+    fireEvent.click(getByRole("button", { name: /검토 약속 만들기/ }));
+
+    await waitFor(() => expect(review.open).toBe(true));
+    await waitFor(() => expect(document.activeElement).toBe(actionInput));
+    expect(actionInput.scrollIntoView).toHaveBeenCalled();
+    expect(container.querySelector(".tool-assist-rail").classList.contains("is-open")).toBe(false);
+    expect(useAppStore.getState().decisionRecords).toHaveLength(0);
+    expect(window.gtag).toHaveBeenCalledWith("event", "decision_review_opened", expect.objectContaining({
+      tool_id: "5-3",
+      source: "tool_assist_rail",
+      placement: "tool_assist_rail",
+      locale: "ko",
+    }));
+    delete window.gtag;
   });
 
   it("maps contextual sections for the dashboard and creative analysis", () => {

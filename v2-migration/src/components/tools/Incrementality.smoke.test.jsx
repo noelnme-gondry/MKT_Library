@@ -21,6 +21,10 @@ function seed(slice) {
   });
 }
 
+function asRealResult(slice, fileName = "incrementality-real.csv") {
+  return { ...slice, fileName };
+}
+
 describe("Incrementality render smoke", () => {
   beforeEach(() => seed(EMPTY));
 
@@ -38,8 +42,8 @@ describe("Incrementality render smoke", () => {
     expect(screen.getByRole("tabpanel").getAttribute("aria-labelledby")).toBe(tabs[1].id);
   });
 
-  it("mounts with suppression demo → 결론 카드 + 다운로드", () => {
-    seed(buildIncrSuppressionDemo());
+  it("mounts with a suppression fixture → 결론 카드 + 다운로드", () => {
+    seed(asRealResult(buildIncrSuppressionDemo(), "suppression-result.csv"));
     const { container } = render(<Incrementality />);
     expect(screen.queryByText(/결론 — 광고가 만든 순증분/)).toBeNull();
     expect(screen.getByText("홀드아웃 기간을 먼저 지정하세요")).toBeTruthy();
@@ -63,6 +67,18 @@ describe("Incrementality render smoke", () => {
     expect(saved.raw).toBeUndefined();
     expect(saved.fileName).toBeUndefined();
     expect(JSON.stringify(saved)).not.toContain("demo_incr_suppression.csv");
+  });
+
+  it("shows a demo result without offering to save a review promise", () => {
+    seed(buildIncrSuppressionDemo());
+    const view = render(<Incrementality />);
+    const selects = view.container.querySelectorAll("select");
+    fireEvent.change(selects[0], { target: { value: "2024-05-12" } });
+    fireEvent.change(selects[1], { target: { value: "2024-06-05" } });
+
+    expect(screen.getByText(/결론 — 광고가 만든 순증분/)).toBeTruthy();
+    expect(view.container.querySelector(".decision-review")).toBeNull();
+    expect(useAppStore.getState().decisionRecords).toHaveLength(0);
   });
 
   it("mounts with pre/post demos (on & off) → 탭 전환 후 결론 카드", () => {
@@ -94,7 +110,7 @@ describe("Incrementality render smoke", () => {
   });
 
   it("stores an identified DiD as a limited English follow-up, not a causal scale action", () => {
-    seed(buildIncrPrepostDemo("on"));
+    seed(asRealResult(buildIncrPrepostDemo("on"), "did-result.csv"));
     const view = render(<Incrementality locale="en" />);
     fireEvent.click(view.getByText(/New launch \(pre\/post\)/));
     fireEvent.change(view.container.querySelectorAll("select")[1], { target: { value: "2024-05-16" } });
@@ -114,7 +130,7 @@ describe("Incrementality render smoke", () => {
   });
 
   it("turns a simple pre/post result only into a control-group DiD revalidation", () => {
-    seed(buildIncrPrepostDemo("on"));
+    seed(asRealResult(buildIncrPrepostDemo("on"), "prepost-result.csv"));
     const view = render(<Incrementality />);
     fireEvent.click(view.getByText(/신규 켜기 \(전후\)/));
     fireEvent.click(screen.getByRole("checkbox", { name: /DiD/ }));

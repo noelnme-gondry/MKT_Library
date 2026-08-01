@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { trackProductEvent } from "@/lib/analytics";
+import { findDecisionReviewTarget, requestDecisionReviewOpen } from "@/lib/decisionReviewUi";
 import { getNextTools, localizedTool } from "@/lib/toolConnections";
 import { computeAnalyzeSig, TOOL_GROUP, useAppStore } from "@/store/useDataStore";
 import { rankFindings } from "@/lib/assist/rankFindings";
@@ -33,6 +34,8 @@ const COPY = {
     briefing: "지금 볼 것",
     why: "왜 중요한가",
     newData: "다른 데이터 형식이 필요해 필터를 넘기지 않습니다.",
+    review: "검토 약속 만들기",
+    reviewHint: "추천 행동과 검토일이 준비되어 있습니다",
   },
   en: {
     open: "Open analysis assistant",
@@ -55,6 +58,8 @@ const COPY = {
     briefing: "Review now",
     why: "Why it matters",
     newData: "This tool needs a different data grain, so filters will not carry over.",
+    review: "Schedule a review",
+    reviewHint: "A suggested action and review date are ready",
   },
 };
 
@@ -200,6 +205,7 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
   const sections = useMemo(() => getSections(toolId, { hasDashboardResults, isDashboardDemo }), [toolId, hasDashboardResults, isDashboardDemo]);
   const [isOpen, setIsOpen] = useState(false);
   const [hasNewContext, setHasNewContext] = useState(false);
+  const [decisionReviewTargetId, setDecisionReviewTargetId] = useState("");
   const [activeSectionId, setActiveSectionId] = useState(sections[0].id);
   const [activeInsight, setActiveInsight] = useState(null);
   const didRevealResult = useRef(false);
@@ -241,6 +247,8 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
       }
     };
     const syncCurrentSection = () => {
+      const reviewTargetId = findDecisionReviewTarget(toolId)?.id || "";
+      setDecisionReviewTargetId((previous) => previous === reviewTargetId ? previous : reviewTargetId);
       const checkpoints = sections
         .map((section) => ({ section, element: document.getElementById(section.id) }))
         .filter(({ element }) => element);
@@ -284,7 +292,7 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
       window.removeEventListener("resize", scheduleSync);
       observer?.disconnect();
     };
-  }, [sections, lang]);
+  }, [sections, lang, toolId]);
 
   const scrollToSection = (id, source) => {
     const target = document.getElementById(id);
@@ -297,6 +305,12 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
     setIsOpen((open) => !open);
     setHasNewContext(false);
     trackProductEvent("tool_assist_toggle", { tool_id: toolId, state: isOpen ? "closed" : "open", locale: lang });
+  };
+
+  const openDecisionReview = () => {
+    if (!requestDecisionReviewOpen(toolId, "tool_assist_rail")) return;
+    setIsOpen(false);
+    setHasNewContext(false);
   };
 
   if (!sourceTool) return null;
@@ -332,6 +346,13 @@ export default function ToolAssistRail({ toolId, locale = "ko" }) {
           <button type="button" onClick={() => scrollToSection(activeSection.id, "current_context")}>{activeInsight ? T.evidence : T.jump} <span aria-hidden="true">↓</span></button>
         </div>
         <div className="tool-assist-rail__actions">
+          {decisionReviewTargetId && (
+            <button className="tool-assist-rail__review-action" type="button" aria-controls={decisionReviewTargetId} onClick={openDecisionReview}>
+              <span>{T.review}</span>
+              <strong>{T.reviewHint}</strong>
+              <b aria-hidden="true">→</b>
+            </button>
+          )}
           {primaryFinding && findingTarget && targetHref && (
             <>
               {targetGroup !== group && <p className="muted">{T.newData}</p>}
