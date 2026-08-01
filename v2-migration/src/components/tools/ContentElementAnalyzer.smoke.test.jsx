@@ -18,6 +18,7 @@ function seedNoData() {
     currentRouteId: "9-1",
     csvGroups: { ...useAppStore.getState().csvGroups, content_attr: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    decisionRecords: [],
   });
 }
 
@@ -63,6 +64,22 @@ function seedWithSparseElement() {
   });
 }
 
+function seedWithNoSignal() {
+  const headers = ["post_id", "has_emoji", "ctr"];
+  const raw = Array.from({ length: 60 }, (_, i) => ({
+    post_id: `p${i}`,
+    has_emoji: i % 2,
+    // Each binary state gets the same repeating outcome distribution.
+    ctr: (Math.floor(i / 2) % 3) + 1,
+  }));
+  const slice = { raw, headers, mapping: {}, fileName: "no_signal_content_attr.csv" };
+  useAppStore.setState({
+    currentRouteId: "9-1",
+    csvGroups: { ...useAppStore.getState().csvGroups, content_attr: slice },
+    csvData: slice,
+  });
+}
+
 describe("ContentElementAnalyzer render smoke", () => {
   beforeEach(() => {
     seedNoData();
@@ -96,6 +113,68 @@ describe("ContentElementAnalyzer render smoke", () => {
     expect(stats.compareDocumentPosition(points) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("stores only a one-variable observational follow-up for a significant top element", () => {
+    seedWithData();
+    const { container } = render(<ContentElementAnalyzer />);
+    fireEvent.change(container.querySelector("select.map-select"), { target: { value: "ctr" } });
+    for (const name of ["title_has_number", "title_len", "has_emoji"]) {
+      const button = screen.getByRole("button", { name: new RegExp(name) });
+      const shouldBeSelected = name === "title_has_number";
+      if (button.classList.contains("active") !== shouldBeSelected) fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
+
+    expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/A\/B 테스트 초안.*나머지 요소.*고정/);
+    expect(screen.getByLabelText("현재 기준값 (선택)").value).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+
+    const saved = useAppStore.getState().decisionRecords.at(-1);
+    expect(saved.toolId).toBe("9-1");
+    expect(saved.conclusion).toMatch(/관측 연관.*인과효과로 확정하지 않습니다/);
+    expect(saved.action).toMatch(/A\/B 테스트 초안/);
+    expect(saved.metric).toBe("ctr");
+    expect(saved.baseline).toBe("");
+    expect(saved.sourcePeriod).toBe("");
+    expect(saved.raw).toBeUndefined();
+    expect(saved.mapping).toBeUndefined();
+    expect(JSON.stringify(saved)).not.toContain("content_attr.csv");
+  });
+
+  it("provides the same safe one-variable draft in English", () => {
+    seedWithData();
+    const { container } = render(<ContentElementAnalyzer locale="en" />);
+    fireEvent.change(container.querySelector("select.map-select"), { target: { value: "ctr" } });
+    for (const name of ["title_has_number", "title_len", "has_emoji"]) {
+      const button = screen.getByRole("button", { name: new RegExp(name) });
+      const shouldBeSelected = name === "title_has_number";
+      if (button.classList.contains("active") !== shouldBeSelected) fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole("button", { name: "▶ Analyze" }));
+
+    expect(screen.getByLabelText("What will change?").value).toMatch(/Draft an A\/B test.*holding every other element.*fixed/);
+    expect(screen.getByLabelText("Current baseline (optional)").value).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "Save for next review" }));
+
+    const saved = useAppStore.getState().decisionRecords.at(-1);
+    expect(saved.toolId).toBe("9-1");
+    expect(saved.locale).toBe("en");
+    expect(saved.conclusion).toMatch(/observed association.*does not establish a causal effect/i);
+    expect(saved.reviewQuestion).toMatch(/one-variable controlled experiment/i);
+    expect(saved.baseline).toBe("");
+  });
+
+  it("does not show decision review when no significant element exists", () => {
+    seedWithNoSignal();
+    const { container } = render(<ContentElementAnalyzer />);
+    fireEvent.change(container.querySelector("select.map-select"), { target: { value: "ctr" } });
+    const feature = screen.getByRole("button", { name: /has_emoji/ });
+    if (!feature.classList.contains("active")) fireEvent.click(feature);
+    fireEvent.click(screen.getByRole("button", { name: "▶ 분석하기" }));
+
+    expect(screen.getByText("유의한 요소를 확정할 증거가 아직 부족합니다.")).toBeTruthy();
+    expect(screen.queryByText("다음 검토 약속 만들기")).toBeNull();
+  });
+
   it("abstains from a sparse binary element instead of over-reading four appearances", () => {
     seedWithSparseElement();
     render(<ContentElementAnalyzer />);
@@ -104,5 +183,6 @@ describe("ContentElementAnalyzer render smoke", () => {
 
     expect(screen.getByText("추정 불가")).toBeTruthy();
     expect(screen.getByText(/희소 요소\(rare_hook\)/)).toBeTruthy();
+    expect(screen.queryByText("다음 검토 약속 만들기")).toBeNull();
   });
 });

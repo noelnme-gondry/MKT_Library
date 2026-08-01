@@ -2095,6 +2095,45 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
           tone={verdict.tone}
           title={tr("결론 — 이 예산으로 무엇을 할까", "Conclusion — what to do with this budget")}
           headline={verdict.text}
+          decisionPrefill={{
+            conclusion: verdict.text,
+            action: verdict.tone === "good"
+              ? tr(
+                `추천 배분표 전체를 제한된 기간에 적용한다${verdict.acts.length ? ` — 핵심 이동: ${verdict.acts.slice(0, 2).join(" · ")}` : ""}`,
+                `Apply the full recommended allocation for a limited window${verdict.acts.length ? ` — key moves: ${verdict.acts.slice(0, 2).join(" · ")}` : ""}`,
+              )
+              : verdict.tone === "bad"
+                ? tr("잠금·최소·최대 제약을 점검하고 한 가지 제약만 수정해 다시 계산한다", "Review lock/min/max constraints, change one constraint, and rerun the scenario")
+                : tr("추천안과 현재안의 차이가 작은 채널 한 곳부터 운영 변수 하나를 개선한다", "Improve one operating variable in a channel where the recommendation is close to current allocation"),
+            hypothesis: verdict.tone === "bad"
+              ? tr(`제약을 바로잡으면 예상 평균 ${metricLabel} 악화를 피할 수 있을 것이다`, `Correcting the constraint should avoid the projected deterioration in average ${metricLabel}`)
+              : verdict.tone === "good"
+                ? tr(
+                  `추천안을 제한적으로 적용하면 평균 ${metricLabel}가 ${fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency)}에서 ${fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency)} 방향으로 움직일 것이다`,
+                  `A limited rollout of the recommendation should move average ${metricLabel} from ${fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency)} toward ${fmtCostMetric(verdict.S.nextAvgCPR, effectiveMetric, currency)}`,
+                )
+                : tr(
+                  `채널 운영 변수 하나를 개선하면 재배분만 할 때보다 평균 ${metricLabel}가 더 나아질 것이다`,
+                  `Improving one channel operating variable should move average ${metricLabel} more than reallocation alone`,
+                ),
+            metric: metricLabel,
+            baseline: fmtCostMetric(verdict.S.prevAvgCPR, effectiveMetric, currency),
+            sourcePeriod: tr(`최근 ${summary?.recentDays || recentDays}일`, `Recent ${summary?.recentDays || recentDays} days`),
+            reviewQuestion: verdict.tone === "good"
+              ? tr(
+                `같은 길이의 실행 기간 뒤 실제 ${metricLabel}가 예상 방향으로 움직였는가?`,
+                `After an equally long operating window, did actual ${metricLabel} move in the projected direction?`,
+              )
+              : verdict.tone === "bad"
+                ? tr(
+                  `제약 하나를 수정해 다시 계산했을 때 예상 ${metricLabel} 악화가 사라졌는가?`,
+                  `After changing one constraint and rerunning, did the projected ${metricLabel} deterioration disappear?`,
+                )
+                : tr(
+                  `운영 변수 하나를 바꾼 뒤 실제 ${metricLabel}가 현재 기준보다 개선됐는가?`,
+                  `After changing one operating variable, did actual ${metricLabel} improve from the baseline?`,
+                ),
+          }}
           download={(
             <DownloadHub
               toolId="5-3"

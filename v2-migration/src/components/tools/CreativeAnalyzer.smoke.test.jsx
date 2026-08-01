@@ -17,6 +17,7 @@ function seedNoData() {
     currentRouteId: "5-6",
     csvGroups: { ...useAppStore.getState().csvGroups, creative: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    decisionRecords: [],
   });
 }
 
@@ -171,6 +172,10 @@ describe("CreativeAnalyzer render smoke", () => {
     // §8 Concept Matrix section is present (matrix falls back to "생성 불가"
     // here since message_angle isn't in the seed mapping — honest empty state).
     expect(screen.getAllByText(/조합별 성과표/).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByText(/다음 검토 약속/));
+    expect(screen.getByLabelText("무엇을 바꿀까요?").value).toMatch(/cr_/);
+    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    expect(useAppStore.getState().decisionRecords[0].toolId).toBe("9-6");
   });
 
   it("exercises CPA/ROAS decompose render paths without throwing (toggle click)", () => {

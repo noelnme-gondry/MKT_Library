@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+import { beforeEach, describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import ResultActionCard from "./ResultActionCard";
+import { useAppStore } from "@/store/useDataStore";
 
 describe("ResultActionCard decision-first hierarchy", () => {
+  beforeEach(() => useAppStore.setState({ decisionRecords: [], decisionPersistenceEnabled: false }));
+
   it("renders key figures before supporting prose", () => {
     const { container } = render(
       <ResultActionCard
@@ -37,5 +40,48 @@ describe("ResultActionCard decision-first hierarchy", () => {
       />,
     );
     expect(container.querySelector(".result-action-card__stats").getAttribute("aria-label")).toBe("Key figures");
+  });
+
+  it("passes an explicit decision prefill without inferring from generic points or stats", () => {
+    render(
+      <ResultActionCard
+        toolId="5-3"
+        headline="Generic result headline"
+        points={[{ text: "Do not infer this point" }]}
+        stats={[{ label: "Rows", value: "120" }]}
+        analysisBasis={false}
+        decisionPrefill={{ action: "Explicit action", metric: "CPA", baseline: "5,240" }}
+      />,
+    );
+    expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("Explicit action");
+    expect(screen.getByLabelText("검증 지표").value).toBe("CPA");
+  });
+
+  it("refreshes an untouched seed but never discards an in-progress draft", () => {
+    const card = (action) => (
+      <ResultActionCard
+        toolId="5-3"
+        headline="Result"
+        analysisBasis={false}
+        decisionPrefill={{ action, metric: "CPA" }}
+      />
+    );
+    const view = render(card("Initial suggestion"));
+    view.rerender(card("Fresh suggestion"));
+    expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("Fresh suggestion");
+
+    fireEvent.change(screen.getByLabelText("무엇을 바꿀까요?"), { target: { value: "My edited action" } });
+    view.rerender(card("Newest result suggestion"));
+    expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("My edited action");
+
+    view.rerender(
+      <ResultActionCard
+        toolId="5-22"
+        headline="Another tool"
+        analysisBasis={false}
+        decisionPrefill={{ action: "Different tool suggestion", metric: "ROAS" }}
+      />,
+    );
+    expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("Different tool suggestion");
   });
 });

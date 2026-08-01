@@ -387,7 +387,13 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
     const points = [];
     if (win.balanced === false) points.push({ cls: "bad", text: tr("홀드아웃 前 두 그룹이 이미 벌어져 있어 균형이 의심됩니다 — 증분이 왜곡됐을 수 있습니다.", "The two groups already differed before the holdout — balance is questionable and incrementality may be distorted.") });
     else if (win.balanced) points.push({ cls: "good", text: tr("홀드아웃 前 두 그룹이 균형이라 비교가 타당합니다.", "The groups were balanced before the holdout, so the comparison is valid.") });
-    if (r.iroas != null) points.push({ text: r.iroas >= 1 ? tr("증분 매출이 광고비보다 큽니다(이득) — 유지·확대 검토.", "Incremental revenue exceeds ad spend (profitable) — consider keeping/scaling.") : tr("증분 기준 광고비가 매출보다 큽니다 — 효율 재점검.", "Ad spend exceeds incremental revenue — re-check efficiency.") });
+    if (r.iroas != null) points.push({ text: win.balanced === false
+      ? tr("그룹 불균형으로 iROAS를 확대 근거로 쓰지 말고 실험을 재설계하세요.", "Do not use iROAS to justify scaling while the groups are imbalanced; redesign the experiment.")
+      : win.balanced
+        ? r.iroas >= 1
+          ? tr("증분 매출이 광고비보다 큽니다. 확대 전 같은 설계의 후속 홀드아웃으로 재검증하세요.", "Incremental revenue exceeds ad spend. Revalidate with a follow-up holdout using the same design before scaling.")
+          : tr("증분 기준 광고비가 매출보다 큽니다. 같은 설계의 후속 홀드아웃으로 재검증하세요.", "Ad spend exceeds incremental revenue. Revalidate with a follow-up holdout using the same design.")
+        : tr("사전 균형을 확인할 수 없어 iROAS를 운영 행동 근거로 쓰지 않습니다.", "Pre-period balance is unavailable, so iROAS should not drive an operating action.") });
     points.push({ cls: "muted", text: tr("무작위 분할이 아니면 인과로 단정하지 마세요.", "Don't assert causality unless this was a random split.") });
     const stats = [
       { label: tr("증분 전환", "Incremental conv."), value: fmtNum(inc) },
@@ -414,6 +420,58 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
       points.map((p) => `- ${p.text}`).join("\n") + "\n";
     return { tone: positive ? "good" : "bad", headline, points, stats, csv, text };
   })();
+  const decisionSourcePeriod = r ? `${start} ~ ${end}` : "";
+  const decisionMetric = Number.isFinite(r?.iroas) ? "iROAS" : tr("증분 전환", "Incremental conversions");
+  const decisionBaseline = Number.isFinite(r?.iroas)
+    ? `${r.iroas.toFixed(2)}×`
+    : Number.isFinite(r?.incrementalConv) ? fmtNum(inc) : "";
+  // 홀드아웃 전 균형 판정이 있을 때만 도구가 명시한 안전한 초안을 제공한다.
+  // 균형 미확인은 실행 가능한 근거로 추론하지 않으며, 불균형은 확대 대신 재설계한다.
+  const decisionPrefill = r && win?.balanced != null && decisionSourcePeriod
+    ? win.balanced
+      ? {
+          conclusion: tr(
+            `${decisionSourcePeriod}의 사전 균형 확인 홀드아웃에서 ${decisionMetric} ${decisionBaseline}이 관측됐습니다. 무작위 배정이 확인되기 전에는 인과효과로 확정하지 않습니다.`,
+            `The balanced pre-period holdout for ${decisionSourcePeriod} observed ${decisionMetric} of ${decisionBaseline}. Do not treat it as a confirmed causal effect unless random assignment is verified.`,
+          ),
+          action: tr(
+            `같은 대상에서 무작위 홀드아웃을 제한적으로 반복해 ${decisionMetric} 방향을 재검증한다`,
+            `Run a limited randomized holdout with the same audience to revalidate the direction of ${decisionMetric}`,
+          ),
+          hypothesis: tr(
+            `후속 무작위 홀드아웃에서도 ${decisionMetric}가 현재 기준값과 같은 방향으로 재현될 것이다`,
+            `A follow-up randomized holdout should reproduce the direction of ${decisionMetric} versus the current baseline`,
+          ),
+          metric: decisionMetric,
+          baseline: decisionBaseline,
+          sourcePeriod: decisionSourcePeriod,
+          reviewQuestion: tr(
+            `후속 홀드아웃에서 사전 균형이 다시 확인됐고 ${decisionMetric} 방향이 재현됐는가?`,
+            `Did the follow-up holdout confirm pre-period balance again and reproduce the direction of ${decisionMetric}?`,
+          ),
+        }
+      : {
+          conclusion: tr(
+            `${decisionSourcePeriod} 홀드아웃은 시작 전 그룹 불균형으로 현재 증분값을 확대 근거로 사용할 수 없습니다.`,
+            `The ${decisionSourcePeriod} holdout had pre-period group imbalance, so its incremental estimate must not be used to justify scaling.`,
+          ),
+          action: tr(
+            "확대하지 않고 무작위 배정과 사전 균형 기준을 먼저 고정해 홀드아웃 실험을 재설계한다",
+            "Do not scale; redesign the holdout with random assignment and a pre-specified balance rule",
+          ),
+          hypothesis: tr(
+            "재설계한 홀드아웃에서 시작 전 그룹 균형이 확인되면 증분 추정의 왜곡 위험이 줄어들 것이다",
+            "Confirming pre-period balance in the redesigned holdout should reduce the risk of a distorted incremental estimate",
+          ),
+          metric: tr("홀드아웃 사전 균형", "Pre-holdout balance"),
+          baseline: "",
+          sourcePeriod: decisionSourcePeriod,
+          reviewQuestion: tr(
+            "재설계한 실험에서 시작 전 그룹 균형이 확인된 뒤 증분 방향이 재현됐는가?",
+            "Did the redesigned experiment confirm pre-period balance before reproducing the incremental direction?",
+          ),
+        }
+    : null;
 
   return (
     <section className="block" id="s-incr-result">
@@ -454,6 +512,8 @@ function SuppressionView({ csvData, currency, locale = "ko" }) {
           headline={card.headline}
           points={card.points}
           stats={card.stats}
+          decisionReview={Boolean(decisionPrefill)}
+          decisionPrefill={decisionPrefill}
           analysisDetails={
             <AnalysisDetails
               locale={locale}
@@ -560,6 +620,13 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
     : groupVals.find((g) => g !== selectedControl);
 
   const dates = useMemo(() => [...new Set((csvData.raw || []).map((r) => normalizeIncrDate(r[dateCol])).filter(Boolean))].sort(), [csvData.raw, dateCol]);
+  const selectedTreatmentDates = useMemo(() => {
+    const rows = csvData.raw || [];
+    const treatmentRows = groupCol && selectedTreatment
+      ? rows.filter((row) => String(row[groupCol]).trim() === selectedTreatment)
+      : rows;
+    return aggregateDailyMetric(treatmentRows, dateCol, metricCol).map((point) => point.date);
+  }, [csvData.raw, groupCol, selectedTreatment, dateCol, metricCol]);
   const [cutoff, setCutoff] = useState("");
   const effCutoff = cutoff;
   const chartInst = useRef(null);
@@ -688,7 +755,7 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
     points.push({ cls: sig ? "good" : "muted", text: sig
       ? tr(`통계적으로 유의합니다 (p=${sigP.toFixed(4)}).`, `Statistically significant (p=${sigP.toFixed(4)}).`)
       : hasSignificance
-        ? tr(`아직 통계적으로 유의하지 않습니다 (p=${sigP.toFixed(3)}) — 표본을 더 모으세요.`, `Not statistically significant yet (p=${sigP.toFixed(3)}) — gather more data.`)
+        ? tr(`현재 표본에서는 통계적으로 유의하지 않습니다 (p=${sigP.toFixed(3)}) — 사전 계획한 기간·표본까지만 유지한 뒤 재판정하세요.`, `The current sample is not statistically significant (p=${sigP.toFixed(3)}). Continue only to the pre-planned duration or sample size, then reassess.`)
         : tr("공통 날짜와 변동이 부족해 유의성을 추정할 수 없습니다.", "Significance cannot be estimated because there are too few common dates or too little variation.") });
     if (isDiD) points.push({ cls: unmatchedDateCount > 0 ? "muted" : "good", text: tr(`DiD는 공통 날짜만 매칭했습니다 (전 ${r.did.pairedPreN}일 · 후 ${r.did.pairedPostN}일)${unmatchedDateCount > 0 ? `; 매칭되지 않은 그룹-날짜 ${unmatchedDateCount}개는 제외했습니다.` : "."}`, `DiD matched common dates only (${r.did.pairedPreN} pre · ${r.did.pairedPostN} post)${unmatchedDateCount > 0 ? `; ${unmatchedDateCount} unmatched group-date entries were excluded.` : "."}`) });
     if (isDiD) points.push({ cls: "muted", text: tr(`사전추세 위반은 발견되지 않았습니다 (격차 기울기 ${fmtNum(r.did.pretrend.slopePerDay, 2)}/일 · p=${r.did.pretrend.pValue.toFixed(3)}). 이는 평행추세를 증명하는 검정은 아닙니다.`, `No pretrend violation was detected (gap slope ${fmtNum(r.did.pretrend.slopePerDay, 2)}/day · p=${r.did.pretrend.pValue.toFixed(3)}). This does not prove parallel trends.`) });
@@ -721,6 +788,63 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
       points.map((p) => `- ${p.text}`).join("\n") + "\n";
     return { tone: good ? "good" : "neutral", headline, points, stats, csv, text };
   })();
+  const decisionDates = isDiD
+    ? [...(r?.did?.commonPreDates || []), ...(r?.did?.commonPostDates || [])]
+    : selectedTreatmentDates;
+  const decisionSourcePeriod = r && decisionDates.length
+    ? tr(
+        `${decisionDates[0]} ~ ${decisionDates[decisionDates.length - 1]} · 전환 시점 ${effCutoff}`,
+        `${decisionDates[0]} ~ ${decisionDates[decisionDates.length - 1]} · cutoff ${effCutoff}`,
+      )
+    : "";
+  const decisionEffect = Number.isFinite(effVal) ? `${effVal >= 0 ? "+" : ""}${fmtNum(effVal, 1)}` : "";
+  // 식별된 DiD는 제한 재검증만, 단순 전후는 대조군을 추가한 DiD 재검증만 제안한다.
+  // 임의 성과 컬럼의 값을 증분 전환 baseline으로 추론하지 않으므로 baseline은 비운다.
+  const decisionPrefill = r && decisionSourcePeriod && decisionEffect
+    ? isDiD
+      ? {
+          conclusion: tr(
+            `${decisionSourcePeriod}의 식별된 DiD에서 ${metricCol} 순효과 ${decisionEffect}/일이 관측됐습니다. 무작위 실험이 아니므로 인과효과로 확정하지 않습니다.`,
+            `The identified DiD for ${decisionSourcePeriod} observed a net ${metricCol} effect of ${decisionEffect} per day. It is not a confirmed causal effect because the design was not randomized.`,
+          ),
+          action: tr(
+            "같은 대조군과 사전 정의한 전환 시점을 유지해 제한된 후속 기간의 DiD를 재검증한다",
+            "Keep the same control and pre-specified cutoff, then revalidate DiD over a limited follow-up window",
+          ),
+          hypothesis: tr(
+            `후속 DiD에서도 ${metricCol} 순효과가 현재와 같은 방향이면 재현 가능한 신호로 볼 수 있을 것이다`,
+            `A follow-up DiD showing the same direction for net ${metricCol} would support a reproducible signal`,
+          ),
+          metric: tr(`${metricCol} 순효과 (DiD)`, `${metricCol} net effect (DiD)`),
+          baseline: "",
+          sourcePeriod: decisionSourcePeriod,
+          reviewQuestion: tr(
+            "후속 DiD에서 사전추세 위반 없이 같은 방향의 순효과가 재현됐는가?",
+            "Did the follow-up DiD reproduce the same net-effect direction without a pretrend violation?",
+          ),
+        }
+      : {
+          conclusion: tr(
+            `${decisionSourcePeriod} 단순 전후 비교에서 ${metricCol} 일평균 변화 ${decisionEffect}가 관측됐지만 대조군이 없어 인과효과로 해석할 수 없습니다.`,
+            `The simple pre/post comparison for ${decisionSourcePeriod} observed a ${decisionEffect} change in daily average ${metricCol}, but it cannot be interpreted causally without a control.`,
+          ),
+          action: tr(
+            "변경하지 않은 대조군을 추가하고 같은 전환 시점으로 DiD를 재검증한다",
+            "Add an unchanged control group and revalidate with DiD using the same cutoff",
+          ),
+          hypothesis: tr(
+            `대조군의 공통 변화를 제거한 뒤에도 ${metricCol} 변화 방향이 남는지 확인한다`,
+            `Check whether the direction of ${metricCol} remains after removing the control group's common change`,
+          ),
+          metric: tr(`${metricCol} 순효과 (DiD 재검증)`, `${metricCol} net effect (DiD revalidation)`),
+          baseline: "",
+          sourcePeriod: decisionSourcePeriod,
+          reviewQuestion: tr(
+            "DiD 재검증에서 사전추세 위반 없이 같은 방향의 순효과가 남았는가?",
+            "After DiD revalidation, did the same net-effect direction remain without a pretrend violation?",
+          ),
+        }
+    : null;
 
   return (
     <>
@@ -782,6 +906,8 @@ function PrePostView({ csvData, direction, currency, locale = "ko" }) {
               headline={card.headline}
               points={card.points}
               stats={card.stats}
+              decisionReview={Boolean(decisionPrefill)}
+              decisionPrefill={decisionPrefill}
               analysisDetails={
                 <AnalysisDetails
                   locale={locale}

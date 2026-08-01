@@ -1042,14 +1042,22 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const channelRows = ready
     ? pvmSortRows([...cache.layer1].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)), "channel", pvmSortChannel)
     : [];
-  const pvmTopCauses = channelRows.slice(0, 3);
+  // 결론의 상위 원인은 표 정렬 UI와 무관하게 절대 기여도가 큰 순서로 고정한다.
+  const pvmTopCauses = ready
+    ? [...cache.layer1].sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution)).slice(0, 3)
+    : [];
+  const decisionCause = pvmTopCauses[0] || null;
+  const decisionCauseKind = decisionCause && Math.abs(decisionCause.mix || 0) >= Math.abs(decisionCause.rate || 0)
+    ? tr("믹스 이동", "mix shift")
+    : tr("단가 변화", "rate change");
+  const isDecisionCauseAdverse = (decisionCause?.contribution || 0) > 0;
   const pvmDeltaPct = ready && cache.CPA1
     ? (cache.deltaCpa / cache.CPA1) * 100
     : null;
   const channelSigma = channelRows.reduce((a, e) => a + e.contribution, 0);
   const channelIdentity = ready ? cache.identity : null;
   const pvmManifest = buildResultManifest({
-    toolId: C.uploaderToolId === "9-6" ? "9-6" : "5-21",
+    toolId: C.uploaderToolId,
     mode: "pvm",
     source: csvData?.fileName?.startsWith("demo_") ? "demo" : "csv",
     inputSignature: `${csvData?.fileName || "dataset"}|${csvData?.raw?.length || 0}`,
@@ -1399,6 +1407,40 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
               `${ml} ${pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → ${pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}`,
               `${ml} ${pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → ${pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}`,
             )}
+            decisionPrefill={{
+              conclusion: tr(
+                `${ml} ${pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → ${pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}${decisionCause ? ` · 최대 관측 기여 ${decisionCause.key || unspec}` : ""}`,
+                `${ml} ${pvmFmtMoney(cache.CPA1, cur, cur === "usd" ? 1 : undefined)} → ${pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined)}${decisionCause ? ` · largest observed contribution: ${decisionCause.key || unspec}` : ""}`,
+              ),
+              action: decisionCause
+                ? isDecisionCauseAdverse
+                  ? tr(
+                    `${decisionCause.key || unspec}의 ${decisionCauseKind} 구성요소를 점검하고 한 가지 교정만 시험한다`,
+                    `Inspect the ${decisionCauseKind} component for ${decisionCause.key || unspec} and test one corrective change`,
+                  )
+                  : tr(
+                    `${decisionCause.key || unspec}의 유리한 관측 기여와 함께 있었던 운영 조건을 기록하고 다음 기간에 재현되는지 확인한다`,
+                    `Record the operating conditions observed alongside ${decisionCause.key || unspec}'s favorable contribution and check whether it repeats next period`,
+                  )
+                : tr("다음 비교기간에도 같은 기준으로 변동을 다시 분해한다", "Run the same decomposition again for the next comparison window"),
+              metric: ml,
+              baseline: pvmFmtMoney(cache.CPA2, cur, cur === "usd" ? 1 : undefined),
+              sourcePeriod: periodCaption,
+              reviewQuestion: !decisionCause
+                ? tr(
+                  `다음 비교기간에도 같은 기준으로 전체 ${ml} 변화를 설명할 수 있었는가?`,
+                  `In the next comparison window, could the same definition still explain the overall ${ml} change?`,
+                )
+                : isDecisionCauseAdverse
+                  ? tr(
+                    `다음 비교기간에 전체 ${ml}와 불리한 상위 관측 기여가 줄었는가?`,
+                    `In the next comparison window, did overall ${ml} and the largest adverse observed contribution decrease?`,
+                  )
+                  : tr(
+                    `다음 비교기간에도 상위 유리 기여가 유지되고 전체 ${ml}가 현재 기준보다 개선됐는가?`,
+                    `In the next comparison window, did the favorable contribution persist and overall ${ml} improve from the current baseline?`,
+                  ),
+            }}
             stats={[
               { label: tr("전체 변화", "Overall change"), value: `${cache.deltaCpa >= 0 ? "+" : ""}${pvmFmtMoney(cache.deltaCpa, cur)}`, detail: pvmDeltaPct == null ? "—" : `${pvmDeltaPct >= 0 ? "+" : ""}${pvmDeltaPct.toFixed(1)}%` },
               { label: tr("가장 큰 원인", "Top cause"), value: pvmTopCauses[0]?.key || unspec, detail: pvmTopCauses[0] ? `${pvmTopCauses[0].contribution >= 0 ? "+" : ""}${pvmFmtMoney(pvmTopCauses[0].contribution, cur)}` : "—" },

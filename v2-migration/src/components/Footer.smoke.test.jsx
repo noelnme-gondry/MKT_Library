@@ -17,6 +17,7 @@ describe("Footer localized policy links", () => {
     expect(screen.getByRole("link", { name: "개인정보처리방침" }).getAttribute("href")).toBe("/privacy");
     expect(screen.getByRole("link", { name: "이용약관" }).getAttribute("href")).toBe("/terms");
     expect(screen.getByRole("link", { name: "문의하기" }).getAttribute("href")).toBe("/contact");
+    expect(screen.getByRole("link", { name: "결정 검토함" }).getAttribute("href")).toBe("/weekly-review");
   });
 
   it("links English visitors to English policy and contact pages", () => {
@@ -25,5 +26,6 @@ describe("Footer localized policy links", () => {
     expect(screen.getByRole("link", { name: "Privacy" }).getAttribute("href")).toBe("/en/privacy");
     expect(screen.getByRole("link", { name: "Terms" }).getAttribute("href")).toBe("/en/terms");
     expect(screen.getByRole("link", { name: "Contact" }).getAttribute("href")).toBe("/en/contact");
+    expect(screen.getByRole("link", { name: "Decision inbox" }).getAttribute("href")).toBe("/en/weekly-review");
   });
 });

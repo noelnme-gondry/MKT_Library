@@ -628,6 +628,41 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
   const strongCandidateCount = sortedResults.filter(
     (result) => ahaBucketOf(result, minSupport) === "strong",
   ).length;
+  const decisionMetric = domain === "content"
+    ? tr("구독 전환율", "Subscription conversion rate")
+    : tr("타겟 달성률", "Target attainment rate");
+  const decisionBaseline = tr(
+    `${(cache.baseRate * 100).toFixed(1)}% (관측 base rate)`,
+    `${(cache.baseRate * 100).toFixed(1)}% (observed base rate)`,
+  );
+  const topActionCondition = topAction
+    ? tr(
+        `${topAction.bestWindow === Infinity ? "전체 기간" : `${topAction.bestWindow}일`} 내 ${topAction.action} ${topAction.bestK}회 이상`,
+        `${topAction.action} ${topAction.bestK}+ time(s) within ${topAction.bestWindow === Infinity ? "the full period" : `${topAction.bestWindow} days`}`,
+      )
+    : "";
+  const canNudgeTopAction = Boolean(topAction && Number.isFinite(topAction.lift) && topAction.lift > 1);
+  const decisionPrefill = canNudgeTopAction ? {
+    conclusion: tr(
+      `${topActionCondition} 충족과 ${decisionMetric} 사이에 평균 대비 ${topAction.lift.toFixed(2)}배의 양의 관측 연관이 있지만 인과효과는 확정되지 않았습니다`,
+      `Meeting ${topActionCondition} has a positive observed association with ${decisionMetric} (${topAction.lift.toFixed(2)}x the average); causation is not established`,
+    ),
+    action: domain === "content"
+      ? tr(
+          `신규 독자를 무작위로 행동 유도군과 Control로 나누고 유도군에만 ${topActionCondition}을 안내하는 통제 실험 한 가지를 실행한다`,
+          `Run one controlled experiment that randomizes new readers into an action-nudge arm and Control, prompting only the action-nudge arm to meet ${topActionCondition}`,
+        )
+      : tr(
+          `신규 유저를 무작위로 행동 유도군과 Control로 나누고 유도군에만 ${topActionCondition}을 안내하는 통제 실험 한 가지를 실행한다`,
+          `Run one controlled experiment that randomizes new users into an action-nudge arm and Control, prompting only the action-nudge arm to meet ${topActionCondition}`,
+        ),
+    metric: decisionMetric,
+    baseline: decisionBaseline,
+    reviewQuestion: tr(
+      `행동 유도군의 ${decisionMetric}이 Control보다 높고 관측 base rate ${decisionBaseline.split(" ")[0]}를 웃돌았는가?`,
+      `Was ${decisionMetric} higher in the action-nudge arm than in Control and above the observed base rate of ${decisionBaseline.split(" ")[0]}?`,
+    ),
+  } : null;
 
   // 이벤트별 고정 색상 — cache.results 삽입 순서 기준이라 정렬/선택이 바뀌어도 색이 안 흔들림.
   const actionColorMap = useMemo(() => {
@@ -1099,6 +1134,8 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             <ResultActionCard
               toolId={domain === "content" ? "9-2" : "5-20"}
               locale={locale}
+              decisionReview={Boolean(decisionPrefill)}
+              decisionPrefill={decisionPrefill}
               tone={strongCandidateCount > 0 ? "good" : topAction ? "neutral" : "bad"}
               title={tr("선행 행동 결론", "Leading-action conclusion")}
               headline={topAction

@@ -8,7 +8,7 @@
 // category / content_id / cost / traffic across 3 calendar weeks so the PVM
 // lookback compare isn't fully locked). Deterministic — NO Math.random (§8).
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import ContentTrafficVariance from "@/components/tools/ContentTrafficVariance";
 
@@ -19,6 +19,7 @@ function seedNoData() {
     currentRouteId: "9-3",
     csvGroups: { ...useAppStore.getState().csvGroups, content_traffic: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    decisionRecords: [],
   });
 }
 
@@ -99,5 +100,13 @@ describe("ContentTrafficVariance render smoke", () => {
     expect(screen.getAllByText(/비용은 있지만 트래픽이 0/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/비용은 있지만 전환이 0/)).toBeNull();
     expect(screen.queryByRole("button", { name: "결과 받기" })).toBeNull();
+  });
+
+  it("stores the variance follow-up under content traffic rather than campaign PVM", () => {
+    seedWithData();
+    render(<ContentTrafficVariance />);
+    fireEvent.click(screen.getByText(/다음 검토 약속/));
+    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    expect(useAppStore.getState().decisionRecords[0].toolId).toBe("9-3");
   });
 });

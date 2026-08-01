@@ -10,7 +10,7 @@
 // the case where the shared dashboardTab is pre-set to an EXCLUDED tab (must reset
 // to viz, not crash). Deterministic — NO Math.random (§8).
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import ContentDashboard from "@/components/tools/ContentDashboard";
 
@@ -22,6 +22,7 @@ function seedNoData() {
     dashboardTab: "viz",
     csvGroups: { ...useAppStore.getState().csvGroups, content_dashboard: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    decisionRecords: [],
   });
 }
 
@@ -88,5 +89,13 @@ describe("ContentDashboard render smoke", () => {
     useAppStore.setState({ dashboardTab: "ltv" });
     expect(() => render(<ContentDashboard />)).not.toThrow();
     expect(document.querySelector(".dashboard-content")).toBeTruthy();
+  });
+
+  it("stores a content-dashboard decision under the content tool id", () => {
+    seedWithData();
+    render(<ContentDashboard />);
+    fireEvent.click(screen.getByText(/다음 검토 약속/));
+    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+    expect(useAppStore.getState().decisionRecords[0].toolId).toBe("9-7");
   });
 });

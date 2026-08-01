@@ -338,6 +338,16 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
   const metricLabel = isRoas ? "ROAS" : "CPA";
   const sat = okRows.filter((r) => satActiveVerdict(r, effectiveMetric) === "saturated");
   const scale = okRows.filter((r) => satActiveVerdict(r, effectiveMetric) === "scale");
+  const scaleCandidate = [...scale].sort((a, b) => satActiveIndex(a, effectiveMetric) - satActiveIndex(b, effectiveMetric))[0] || null;
+  const saturatedCandidate = sat[0] || null;
+  const decisionTarget = scaleCandidate || saturatedCandidate || okRows[0] || null;
+  const decisionDates = (decisionTarget?.kept || [])
+    .map((point) => point.date)
+    .filter((date) => date && !Number.isNaN(Date.parse(date)))
+    .sort();
+  const decisionSourcePeriod = decisionDates.length
+    ? `${decisionDates[0]} ~ ${decisionDates[decisionDates.length - 1]}`
+    : tr(`최근 ${SAT_CONFIG.recentDays}일 기준`, `Based on the latest ${SAT_CONFIG.recentDays} days`);
 
   const fmtRoas = (v) => (v == null || !isFinite(v) ? "—" : `${v.toFixed(2)}x`);
 
@@ -449,6 +459,34 @@ export default function MarketingEfficiency({ locale = "ko" } = {}) {
         <ResultActionCard
           toolId="5-22"
           locale={locale}
+          decisionReview={Boolean(okRows.length)}
+          decisionPrefill={decisionTarget ? {
+            conclusion: head.replace(/<[^>]+>/g, ""),
+            action: saturatedCandidate && scaleCandidate
+              ? tr(
+                `${saturatedCandidate.name}의 추가 예산 일부를 ${scaleCandidate.name}으로 소규모 이동 시험한다`,
+                `Run a small controlled shift of incremental budget from ${saturatedCandidate.name} to ${scaleCandidate.name}`,
+              )
+              : scaleCandidate
+                ? tr(`${scaleCandidate.name} 예산을 소규모로 시험 증액한다`, `Run a small monitored budget increase for ${scaleCandidate.name}`)
+                : tr(`${saturatedCandidate?.name || decisionTarget.name}의 증액을 보류하고 소재·타겟 한 가지를 개선한다`, `Hold further increases for ${saturatedCandidate?.name || decisionTarget.name} and improve one creative or targeting variable`),
+            hypothesis: scaleCandidate
+              ? tr(
+                `관측 범위 모델상 ${decisionTarget.name}의 한계 ${metricLabel}이 현재 평균 대비 유리한 방향을 유지할 것이다`,
+                `Within the observed-range model, ${decisionTarget.name}'s marginal ${metricLabel} should remain favorable versus its current average`,
+              )
+              : tr(
+                `추가 증액을 멈추고 한 가지 운영 변수를 개선하면 ${metricLabel} 악화가 완화될 것이다`,
+                `Holding further spend increases and improving one operating variable should reduce the ${metricLabel} deterioration`,
+              ),
+            metric: metricLabel,
+            baseline: isRoas ? fmtRoas(decisionTarget.roas?.avgRoas) : fmtCurrency(decisionTarget.avgCpr, currency, { metric: true }),
+            sourcePeriod: decisionSourcePeriod,
+            reviewQuestion: tr(
+              `시험 후 실제 ${metricLabel}이 기준값을 유지하거나 개선했는가?`,
+              `After the test, did actual ${metricLabel} hold or improve from the baseline?`,
+            ),
+          } : null}
           tone={!okRows.length ? "bad" : sat.length ? "bad" : scale.length ? "good" : "neutral"}
           title={tr("포화도 결론", "Saturation conclusion")}
           headline={head.replace(/<[^>]+>/g, "")}

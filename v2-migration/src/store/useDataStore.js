@@ -4,11 +4,18 @@ import Papa from "papaparse";
 import { SECTION_LABEL_EN } from "@/lib/enNavCopy";
 import { TOOL_GROUP, groupForRoute } from "@/lib/toolGroups";
 import { validateFinding } from "@/lib/assist/findingSchema";
+import {
+  normalizeDecisionReviewRows,
+  sanitizeDecisionReviewRecord,
+  sanitizeDecisionReviewRecords,
+} from "@/lib/decisionReview";
 import { STANDARD_FIELDS } from "@/utils/csvConstants";
 
 export { TOOL_GROUP, groupForRoute };
 
 const EMPTY_SLICE = () => ({ raw: [], headers: [], mapping: {}, fileName: "" });
+const APP_PERSIST_VERSION = 2;
+let decisionFallbackSequence = 0;
 const EMPTY_DASHBOARD_FILTER = () => ({
   dateStart: null,
   dateEnd: null,
@@ -26,6 +33,38 @@ function nextStableId(prefix, items = []) {
     return match ? Math.max(highest, Number(match[1])) : highest;
   }, 0);
   return `${prefix}${max + 1}`;
+}
+
+function nextDecisionRecordId(items = []) {
+  const existingIds = new Set(items.map((item) => String(item?.id || "")));
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    const id = `decision_${globalThis.crypto.randomUUID()}`;
+    if (!existingIds.has(id)) return id;
+  }
+  let id;
+  do {
+    decisionFallbackSequence += 1;
+    id = `decision_${Date.now()}_${decisionFallbackSequence}`;
+  } while (existingIds.has(id));
+  return id;
+}
+
+function isSameImportedDecision(existing, incoming) {
+  if (!existing || !incoming) return false;
+  if (existing.createdAt && incoming.createdAt) return existing.createdAt === incoming.createdAt;
+  return existing.toolId === incoming.toolId && existing.action === incoming.action;
+}
+
+function canUseDecisionStorage() {
+  if (typeof window === "undefined") return true;
+  try {
+    const key = "__mkt_decision_storage_probe__";
+    window.localStorage.setItem(key, "1");
+    window.localStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ── Analyze-gate signature (index.html toolAnalyzeSig 이식, §12.5) ───────────
@@ -219,8 +258,8 @@ export const IA = [
         seoDescriptionEn: "Estimate how hooks, formats, lengths, and message angles relate to content performance with regression controls and clear evidence limits. Free, browser-only CSV analysis.",
       },
       { id: "9-2", title: "킬러 콘텐츠·충성 독자 발굴 (전환 동인)", hidden: true },
-      { id: "9-3", title: "콘텐츠 트래픽 변동 탐지 (유입·카테고리·콘텐츠별)", hidden: true },
-      { id: "9-7", title: "콘텐츠 운영 대시보드 (트래픽·스코어카드·이상탐지)", hidden: true },
+      { id: "9-3", title: "콘텐츠 트래픽 변동 탐지 (유입·카테고리·콘텐츠별)", titleEn: "Content Traffic Variance (Source · Category · Content)", hidden: true },
+      { id: "9-7", title: "콘텐츠 운영 대시보드 (트래픽·스코어카드·이상탐지)", titleEn: "Content Operations Dashboard (Traffic · Scorecard · Anomalies)", hidden: true },
     ],
   },
 ];
@@ -290,21 +329,32 @@ export function displayItemNumberShort(itemId) {
 
 // persist 저장 대상 = "설정만"(§2.2). 원본 CSV(csvGroups·csvData)·필터 Set·차트상태는
 // 제외. export하여 불변식(원본 데이터 미저장)을 골든으로 잠금(useDataStore.test.js).
-export const persistPartialize = (state) => ({
-  viewConfig: state.viewConfig,
-  customMetrics: state.customMetrics,
-  customCharts: state.customCharts,
-});
+export const persistPartialize = (state) => {
+  const persisted = {
+    viewConfig: state.viewConfig,
+    customMetrics: state.customMetrics,
+    customCharts: state.customCharts,
+    decisionPersistenceEnabled: state.decisionPersistenceEnabled === true,
+  };
+  if (state.decisionPersistenceEnabled === true) {
+    persisted.decisionRecords = sanitizeDecisionReviewRecords(state.decisionRecords);
+  }
+  return persisted;
+};
 
 // 서버(SSR)·테스트(node) 환경에는 localStorage가 없음 — no-op 폴백으로 persist가
 // setItem에서 throw하지 않게(브라우저에선 실제 localStorage 사용). 클라이언트 전용 저장.
 const noopStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
-// persist 스키마 버전 마이그레이션 훅(§4 persist 버저닝 — 골격만, 미래 스키마 변경 대비).
-// version을 올릴 때 이 함수에 `if (version < N) { ... }` 단계를 추가해 구 localStorage
-// 형태를 새 형태로 변환. 현재 version=1이라 무동작(export하여 골든으로 무증상 확인).
+// persist 스키마 버전 마이그레이션 훅. v2부터 opt-in 결정 요약을 지원하며, v1
+// payload에 우연히 같은 키가 있어도 동의로 간주하지 않고 제거한다.
 export function persistMigrate(persistedState, version) {
-  return persistedState;
+  const state = persistedState && typeof persistedState === "object" ? { ...persistedState } : {};
+  if (version < APP_PERSIST_VERSION || state.decisionPersistenceEnabled !== true) {
+    delete state.decisionRecords;
+    return { ...state, decisionPersistenceEnabled: false };
+  }
+  return { ...state, decisionPersistenceEnabled: true, decisionRecords: sanitizeDecisionReviewRecords(state.decisionRecords) };
 }
 
 export const useAppStore = create(persist((set, get) => ({
@@ -360,6 +410,61 @@ export const useAppStore = create(persist((set, get) => ({
   // 필요하며, 민감 원자료가 localStorage에 남지 않는다.
   responseMappingSession: { raw: null, colMap: null, weekStart: "monday" },
   setResponseMappingSession: (session) => set({ responseMappingSession: session }),
+
+  // 결정·검토 루프는 모든 도구가 공유하는 세션 상태다. 사용자가 아래 opt-in을 켠
+  // 경우에만 persistPartialize가 allowlist 요약을 localStorage에 포함한다. 원본 CSV,
+  // 매핑, 필터, inputSignature, 차트 데이터는 레코드 스키마에 들어갈 수 없다.
+  decisionPersistenceEnabled: false,
+  decisionRecords: [],
+  setDecisionPersistenceEnabled: (enabled) => {
+    const shouldEnable = enabled === true;
+    if (shouldEnable && !canUseDecisionStorage()) return false;
+    set({ decisionPersistenceEnabled: shouldEnable });
+    return true;
+  },
+  addDecisionRecord: (draft) => set((state) => {
+    const now = new Date().toISOString();
+    const normalized = sanitizeDecisionReviewRecord(draft, draft?.toolId);
+    if (!normalized) return {};
+    const isUniqueId = normalized.id && !state.decisionRecords.some((record) => record.id === normalized.id);
+    const id = isUniqueId ? normalized.id : nextDecisionRecordId(state.decisionRecords);
+    return {
+      decisionRecords: [{
+        ...normalized,
+        id,
+        createdAt: normalized.createdAt || now,
+        updatedAt: now,
+      }, ...state.decisionRecords],
+    };
+  }),
+  importDecisionRecords: (rows, fallbackToolId = "") => set((state) => {
+    const now = new Date().toISOString();
+    const normalizedRows = normalizeDecisionReviewRows(rows, fallbackToolId);
+    if (!normalizedRows.length) return {};
+    const nextRecords = [...state.decisionRecords];
+    normalizedRows.forEach((record) => {
+      const existingIndex = record.id ? nextRecords.findIndex((item) => item.id === record.id) : -1;
+      if (existingIndex >= 0 && isSameImportedDecision(nextRecords[existingIndex], record)) {
+        const existing = nextRecords[existingIndex];
+        nextRecords[existingIndex] = { ...record, id: existing.id, createdAt: existing.createdAt || record.createdAt || now, updatedAt: now };
+        return;
+      }
+      const id = record.id && existingIndex < 0 ? record.id : nextDecisionRecordId(nextRecords);
+      nextRecords.unshift({ ...record, id, createdAt: record.createdAt || now, updatedAt: now });
+    });
+    return { decisionRecords: nextRecords };
+  }),
+  updateDecisionRecord: (id, patch) => set((state) => ({
+    decisionRecords: state.decisionRecords.map((record) => {
+      if (record.id !== id) return record;
+      const normalized = sanitizeDecisionReviewRecord({ ...record, ...patch, id: record.id, createdAt: record.createdAt });
+      return normalized ? { ...normalized, updatedAt: new Date().toISOString() } : record;
+    }),
+  })),
+  removeDecisionRecord: (id) => set((state) => ({
+    decisionRecords: state.decisionRecords.filter((record) => record.id !== id),
+  })),
+  clearDecisionRecords: () => set({ decisionRecords: [] }),
 
   // 구조화된 분석 연결 상태. 모두 세션 메모리 전용이며 persistPartialize에 포함하지
   // 않는다. 원본 행 대신 집계 결과·설정만 보관한다.
@@ -731,7 +836,7 @@ export const useAppStore = create(persist((set, get) => ({
   // localStorage에 "설정만" 저장(§2.2 민감데이터 서버·로컬 잔존 최소화). 원본 CSV·필터
   // Set·차트상태는 partialize에서 제외 → 새로고침 시 데이터는 재업로드, 설정은 유지.
   name: "mkt_view_config",
-  version: 1,
+  version: APP_PERSIST_VERSION,
   storage: createJSONStorage(() => (typeof window !== "undefined" ? window.localStorage : noopStorage)),
   partialize: persistPartialize,
   migrate: persistMigrate,

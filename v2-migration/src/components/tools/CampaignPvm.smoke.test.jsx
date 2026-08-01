@@ -112,6 +112,8 @@ describe("CampaignPvm render smoke", () => {
     // With-data branch renders the "한눈에 보기" §0 section (heading, distinct
     // from the ToolPageShell TOC link of the same name).
     expect(screen.getByRole("heading", { name: /한눈에 보기/ })).toBeTruthy();
+    expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
+    expect(screen.getByLabelText("검증 지표").value).toMatch(/CPI|CPA/);
   });
 
   it("rolls campaign and creative rows up from one finest-grain decomposition", () => {

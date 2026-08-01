@@ -6,7 +6,7 @@
 // (VizTab/ScorecardTab/…). We mount each of the 8 tabs on a valid efficiency CSV
 // so a throw in any tab surfaces here. mapping = { originalHeader: standardKey }.
 import { describe, it, expect, beforeEach } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Dashboard from "@/components/Dashboard";
 
@@ -19,6 +19,7 @@ function seedNoData() {
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV },
     csvData: EMPTY_CSV,
     analyzedByGroup: { ...useAppStore.getState().analyzedByGroup, efficiency: null },
+    decisionRecords: [],
   });
 }
 
@@ -90,6 +91,13 @@ describe("Dashboard render smoke", () => {
     expect(utilities.id).toBe("dashboard-support-tools");
     expect(dataPanel.compareDocumentPosition(utilities) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(utilities.hasAttribute("open")).toBe(false);
+  });
+
+  it("prefills a conservative next review from the visible verdict", () => {
+    seedWithData();
+    render(<Dashboard />);
+    expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
+    expect(screen.getByLabelText("검증 지표").value).not.toBe("");
   });
 
   it("shows the dashboard-wide verdict only on the visualization tab", () => {
