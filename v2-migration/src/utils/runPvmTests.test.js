@@ -305,4 +305,89 @@ describe("runPvmTests (golden port)", () => {
     }
     expect(channelSumInvariantOk).toBe(true); // T8 Channel Campaign Sum Invariant
   });
+
+  it("T9 — 비용은 있지만 결과가 0인 셀이 있으면 거짓 항등식 대신 분해를 거부한다", () => {
+    const agg1 = new Map([
+      ["Measured", { cost: 100, result: 10 }],
+      ["Zero result", { cost: 50, result: 0 }],
+    ]);
+    const agg2 = new Map([
+      ["Measured", { cost: 100, result: 10 }],
+      ["Zero result", { cost: 60, result: 0 }],
+    ]);
+
+    // 전체 CPA는 15 → 16(+1)이지만 기존 Rule A에서는 Zero result 셀의
+    // 결과 비중이 0이라 Mix+Rate 합이 0이 되어 항등식이 깨졌다. 해당 셀의
+    // CPA는 정의할 수 없으므로 임의 단가를 만들지 않고 분해 자체를 거부한다.
+    expect(PVM_MATH.decompose(agg1, agg2)).toBeNull();
+  });
+
+  it("T10 — finest 계약도 양의 비용·0결과 셀을 NOT_IDENTIFIED로 안전하게 차단한다", () => {
+    const rowsP1 = [
+      { channel: "Measured", spend: 100, installs: 10 },
+      { channel: "Zero result", spend: 50, installs: 0 },
+    ];
+    const rowsP2 = [
+      { channel: "Measured", spend: 100, installs: 10 },
+      { channel: "Zero result", spend: 60, installs: 0 },
+    ];
+    const keys = { ch: "channel", cmp: null, cr: null, resultField: "installs" };
+
+    expect(PVM_MATH.decomposeFinest(rowsP1, rowsP2, keys)).toBeNull();
+  });
+
+  it("T11 — 천단위 콤마·공백 숫자를 보존하고 비정상 숫자는 NOT_IDENTIFIED로 막는다", () => {
+    const keys = { ch: "channel", cmp: null, cr: null, resultField: "installs" };
+    const validP1 = [{ channel: "A", spend: "1,000", installs: "100" }];
+    const validP2 = [{ channel: "A", spend: "1 200", installs: "100" }];
+    const aggregateP1 = PVM_MATH.aggregate(validP1, "channel", "installs");
+    const aggregateP2 = PVM_MATH.aggregate(validP2, "channel", "installs");
+    expect(aggregateP1.get("A")).toMatchObject({ cost: 1000, result: 100 });
+    expect(PVM_MATH.decompose(aggregateP1, aggregateP2)).toMatchObject({ CPA1: 10, CPA2: 12 });
+    const fin = PVM_MATH.decomposeFinest(validP1, validP2, keys);
+
+    expect(fin.CPA1).toBe(10);
+    expect(fin.CPA2).toBe(12);
+    expect(fin.deltaCpa).toBe(2);
+
+    const invalidP1 = [{ channel: "A", spend: "1,0x0", installs: "100" }];
+    const contract = PVM_MATH.inspectFinestInputs(invalidP1, validP2, keys);
+    expect(contract).toMatchObject({
+      ok: false,
+      status: "NOT_IDENTIFIED",
+      code: "INVALID_NUMERIC_VALUE",
+    });
+    expect(PVM_MATH.decomposeFinest(invalidP1, validP2, keys)).toBeNull();
+
+    const overflowP1 = [
+      { channel: "A", spend: Number.MAX_VALUE, installs: 100 },
+      { channel: "A", spend: Number.MAX_VALUE, installs: 100 },
+    ];
+    expect(PVM_MATH.inspectFinestInputs(overflowP1, validP2, keys)).toMatchObject({
+      ok: false,
+      status: "NOT_IDENTIFIED",
+      code: "INVALID_NUMERIC_VALUE",
+    });
+    expect(PVM_MATH.decomposeFinest(overflowP1, validP2, keys)).toBeNull();
+  });
+
+  it("T12 — 공백이 포함된 계층 키도 서로 다른 tuple로 유지한다", () => {
+    const keys = { ch: "channel", cmp: "campaign_id", cr: null, resultField: "installs" };
+    const rowsP1 = [
+      { channel: "A", campaign_id: "B C", spend: 100, installs: 10 },
+      { channel: "A B", campaign_id: "C", spend: 200, installs: 10 },
+    ];
+    const rowsP2 = [
+      { channel: "A", campaign_id: "B C", spend: 120, installs: 10 },
+      { channel: "A B", campaign_id: "C", spend: 180, installs: 10 },
+    ];
+
+    const fin = PVM_MATH.decomposeFinest(rowsP1, rowsP2, keys);
+    expect(fin.finest).toHaveLength(2);
+    expect(fin.finest.map((row) => [row.chKey, row.cmpKey])).toEqual([
+      ["A", "B C"],
+      ["A B", "C"],
+    ]);
+    expect(fin.finest.reduce((sum, row) => sum + row.contribution, 0)).toBeCloseTo(fin.deltaCpa, 10);
+  });
 });

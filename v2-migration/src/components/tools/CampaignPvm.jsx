@@ -161,11 +161,14 @@ function pvmColor(v) {
 export function buildPvmCache(csvData, state) {
   const locale = state.locale;
   const tr = (ko, en) => (locale === "en" ? en : ko);
+  const isContentDomain = state.domain === "content";
   // 대시보드 공유 CSV는 비용 표준키가 cost, PVM 전용 업로드는 spend일 수 있다.
   // 동일한 통화량을 뜻하는 이 경로에서만 spend 보조값을 만들며 원본·매핑은 건드리지 않는다.
   const rows = getMonFilteredRows(csvData, state.dashboardFilter).map((row) => ({
     ...row,
-    spend: Number(row.spend ?? row.cost) || 0,
+    // PVM 엔진이 천단위 콤마/공백을 같은 계약으로 파싱하고 비정상 값은
+    // NOT_IDENTIFIED로 차단한다. 여기서 Number(...)||0으로 조용히 지우지 않는다.
+    spend: row.spend ?? row.cost ?? 0,
     // 대시보드의 사람이 읽는 campaign_name도 PVM 계층 키로 안전하게 쓴다.
     // 캠페인 ID가 있으면 ID가 우선이며, 소재가 없는 CSV는 여기서 캠페인 단계까지 끝난다.
     campaign_id: row.campaign_id ?? row.campaign_name,
@@ -281,6 +284,28 @@ export function buildPvmCache(csvData, state) {
     cr: creativeMapped ? "creative_id" : null,
     resultField,
   };
+  const inputContract = PVM_MATH.inspectFinestInputs(rowsP1, rowsP2, keys);
+  if (!inputContract.ok) {
+    const isInvalidNumeric = inputContract.code === "INVALID_NUMERIC_VALUE";
+    return {
+      insufficientData: true,
+      analysisStatus: inputContract.status,
+      reasonCode: inputContract.code,
+      invalidCells: inputContract.invalidCells,
+      message: isInvalidNumeric
+        ? tr(
+          `분해 불가: 숫자로 읽을 수 없는 비용·${isContentDomain ? "트래픽" : "전환"} 값이 비교 기간에 ${inputContract.invalidCells.length}개 있습니다. 천단위 콤마와 공백은 허용되며, 원본 값을 수정한 뒤 다시 분석하세요.`,
+          `Not identified: ${inputContract.invalidCells.length} comparison cell(s) contain an invalid cost or ${isContentDomain ? "traffic" : "result"} value. Thousands separators and spaces are accepted; correct the source values and run again.`,
+        )
+        : tr(
+          `분해 불가: 비용은 있지만 ${isContentDomain ? "트래픽" : "전환"}이 0인 항목이 비교 기간에 ${inputContract.invalidCells.length}개 있습니다. 해당 항목의 단가는 정의할 수 없어 Mix·Rate 분해를 계산하지 않았습니다.`,
+          `Not identified: ${inputContract.invalidCells.length} comparison cell(s) have positive cost but zero ${isContentDomain ? "traffic" : "results"}. Their unit cost is undefined, so the Mix·Rate decomposition was not calculated.`,
+        ),
+      lockState,
+      ...baseFields,
+      lookback,
+    };
+  }
   const fin = PVM_MATH.decomposeFinest(rowsP1, rowsP2, keys);
   if (!fin) {
     return {
@@ -352,6 +377,11 @@ export function buildPvmCache(csvData, state) {
     }
   }
 
+  const identity = checkAdditiveIdentity(
+    fin.deltaCpa,
+    layer1.map((row) => row.contribution),
+  );
+
   // 소재 URL 맵 — 비용 최대 변형의 URL 채택
   const urlMapped = mapped.has("creative_url") && creativeMapped;
   let crUrlMap = null;
@@ -363,7 +393,8 @@ export function buildPvmCache(csvData, state) {
       if (!cr || !url) return;
       if (!acc.has(cr)) acc.set(cr, new Map());
       const byUrl = acc.get(cr);
-      byUrl.set(url, (byUrl.get(url) || 0) + (Number(r.spend) || 0));
+      const spend = PVM_MATH.parseNumericValue(r.spend);
+      byUrl.set(url, (byUrl.get(url) || 0) + (Number.isFinite(spend) ? spend : 0));
     });
     crUrlMap = new Map();
     for (const [cr, byUrl] of acc) {
@@ -381,7 +412,15 @@ export function buildPvmCache(csvData, state) {
 
   const ymd = (t) => new Date(t).toISOString().slice(0, 10);
   return {
-    insufficientData: false,
+    insufficientData: !identity.ok,
+    analysisStatus: identity.ok ? "COMPLETE" : "NOT_IDENTIFIED",
+    reasonCode: identity.ok ? null : "ADDITIVE_IDENTITY_FAILED",
+    message: identity.ok
+      ? null
+      : tr(
+        "분해 불가: Mix·Rate 합과 전체 단가 변화의 항등식이 일치하지 않아 결과를 공개하지 않았습니다.",
+        "Not identified: the Mix·Rate sum did not match the total unit-cost change, so the result was withheld.",
+      ),
     ...baseFields,
     urlMapped,
     lookback,
@@ -404,7 +443,7 @@ export function buildPvmCache(csvData, state) {
     layer1,
     layer2,
     layer3,
-    identity: checkAdditiveIdentity(fin.deltaCpa, layer1.map((row) => row.contribution)),
+    identity,
   };
 }
 
@@ -475,13 +514,13 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
   const cache = useMemo(() => {
     if (!hasData) return null;
     try {
-      return buildPvmCache(csvData, { metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale, periodOverride });
+      return buildPvmCache(csvData, { metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale, periodOverride, domain });
     } catch (e) {
       return { insufficientData: true, message: tr("분석 중 오류: ", "Analysis error: ") + e.message };
     }
-  }, [hasData, csvData, metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale, periodOverride, tr]);
+  }, [hasData, csvData, metric, weekBasis, lookback, currency, denomBasis, dashboardFilter, locale, periodOverride, domain, tr]);
 
-  const ready = cache && !cache.insufficientData;
+  const ready = cache && !cache.insufficientData && cache.identity?.ok === true;
 
   // PVM은 결과 카드 대신 cache가 준비되는 즉시 화면을 구성한다. 따라서 이 시점이
   // "결과가 실제로 보임"의 완료 기준이며, 파일명·채널명 같은 사용자 데이터는 전송하지 않는다.
@@ -773,6 +812,10 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
 
   // 차트 PNG 다운로드 — 다크 배경 합성 후 export(§7). ref 기반(v2엔 전역 핸들러 없음)
   const downloadChartPng = (canvasRef, nameSuffix) => {
+    if (!ready) {
+      alert(tr("항등식이 확인된 분석 결과가 없습니다.", "No identity-verified analysis result is available."));
+      return;
+    }
     const canvas = canvasRef?.current;
     if (!canvas) return;
     const tmp = document.createElement("canvas");
@@ -1014,8 +1057,10 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
     grain: "channel-campaign-creative",
     metricDefinitions: [{ key: metric, label: ml, aggregation: "ratio", timeBasis: weekBasis }],
     engineVersion: "pvm-identity-checked",
-    status: ready ? "COMPLETE" : "BLOCKED",
-    warnings: channelIdentity?.ok ? [] : [tr("채널 합산 항등식을 확인해야 합니다.", "Channel additive identity needs review.")],
+    status: ready ? "COMPLETE" : (cache?.analysisStatus || "BLOCKED"),
+    warnings: ready
+      ? []
+      : [cache?.message || tr("채널 합산 항등식을 확인해야 합니다.", "Channel additive identity needs review.")],
   });
 
   // §3 캠페인 드릴 — 채널 선택
@@ -1248,12 +1293,17 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         summary={
           <>
             <p>
-              {C.summaryLead(ml)}
+              {ready
+                ? C.summaryLead(ml)
+                : tr(
+                  "비교 기간의 모든 항목에서 단가가 정의되고 합산 항등식이 확인될 때만 PVM 원인 분해를 제공합니다.",
+                  "PVM drivers are shown only when every comparison cell has a defined unit cost and the additive identity is verified.",
+                )}
             </p>
             <details style={{ marginTop: "6px", fontSize: "11.5px", color: "var(--text-secondary)", cursor: "pointer" }}>
               <summary>{tr("⚠️ 해석 한계 펼치기", "⚠️ Interpretation limits (expand)")}</summary>
               <div style={{ marginTop: "6px", padding: "8px 10px", background: "var(--bg-1)", borderLeft: "3px solid var(--primary)", lineHeight: 1.6 }}>
-                {C.summaryLimitBody}
+                {ready ? C.summaryLimitBody : (cache?.message || C.insufficientFallback)}
               </div>
             </details>
           </>
@@ -1411,7 +1461,9 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           <div className="callout warn" style={{ marginTop: "12px" }}>
             <div className="ico">!</div>
             <div className="body">
-              <strong>{tr("데이터 부족", "Not enough data")}</strong>
+              <strong>{cache?.analysisStatus === "NOT_IDENTIFIED"
+                ? tr("분해 불가", "Not identified")
+                : tr("데이터 부족", "Not enough data")}</strong>
               <p>{cache?.message || C.insufficientFallback}</p>
             </div>
           </div>
@@ -1457,7 +1509,9 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
         <details className="block" style={{ padding: "11px 14px", marginBottom: "10px", background: "var(--bg-2)", borderRadius: "10px" }}>
           <summary style={{ cursor: "pointer", fontSize: "12px", fontWeight: 600, color: "var(--text-2)", outline: "none" }}>{tr(`❓ Mix · Rate · ${ml} 영향이 뭔가요? (펼치기)`, `❓ What are Mix, Rate, and ${ml} impact? (expand)`)}</summary>
           <div style={{ marginTop: "10px", fontSize: "12px", lineHeight: 1.7, color: "var(--text-muted)" }}>
-            {tr(`전체 ${ml} 변동을 잔차 없이 두 원인으로 쪼갠 값입니다.`, `The total ${ml} change, split with no residual into two causes.`)}
+            {ready
+              ? tr(`전체 ${ml} 변동을 잔차 없이 두 원인으로 쪼갠 값입니다.`, `The total ${ml} change, split with no residual into two causes.`)
+              : tr("항등식 검증을 통과한 경우에만 Mix·Rate 원인 분해를 표시합니다.", "Mix·Rate drivers are shown only after the additive identity passes.")}
             <ul style={{ margin: "8px 0 4px", paddingLeft: "18px" }}>
               <li><strong>{tr("Mix(비중 효과)", "Mix (share effect)")}</strong> — {C.explainerMix}</li>
               <li><strong>{tr("Rate(효율 효과)", "Rate (efficiency effect)")}</strong> — {C.explainerRate(ml)}</li>
@@ -1470,14 +1524,14 @@ export default function CampaignPvm({ domain = "performance", locale = "ko" } = 
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
               <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>{tr(`${ml} 브릿지 — 지난주 전체 → ${C.levelChannel} 기여(±) → 이번주 전체`, `${ml} bridge — prior week total → ${C.levelChannel} contribution (±) → this week total`)}</span>
-              <button className="ab-pill" title={tr("PNG 다운로드", "Download PNG")} onClick={() => downloadChartPng(chartPvmWaterfall, "pvm_waterfall")}>⬇ PNG</button>
+              <button className="ab-pill" disabled={!ready} title={tr("PNG 다운로드", "Download PNG")} onClick={() => downloadChartPng(chartPvmWaterfall, "pvm_waterfall")}>⬇ PNG</button>
             </div>
             <div className="chart-container" style={{ height: "260px" }}><canvas id="pvm-waterfall" ref={chartPvmWaterfall}></canvas></div>
           </div>
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
               <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-2)" }}>{tr(`${C.levelChannel}별 Mix·Rate 분해`, `Mix·Rate breakdown by ${C.levelChannel}`)}</span>
-              <button className="ab-pill" title={tr("PNG 다운로드", "Download PNG")} onClick={() => downloadChartPng(chartPvmTrend, "pvm_channel_stack")}>⬇ PNG</button>
+              <button className="ab-pill" disabled={!ready} title={tr("PNG 다운로드", "Download PNG")} onClick={() => downloadChartPng(chartPvmTrend, "pvm_channel_stack")}>⬇ PNG</button>
             </div>
             <div className="chart-container" style={{ height: "260px" }}><canvas id="pvm-channel-stack" ref={chartPvmTrend}></canvas></div>
           </div>

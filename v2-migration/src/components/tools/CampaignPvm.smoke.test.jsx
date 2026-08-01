@@ -51,6 +51,52 @@ function seedWithData() {
   });
 }
 
+function zeroResultSlice() {
+  const headers = ["Date", "Channel", "Spend", "Installs"];
+  const mapping = { Date: "date", Channel: "channel", Spend: "cost", Installs: "installs" };
+  const raw = [
+    ["2026-01-05", "Measured", 100, 10],
+    ["2026-01-05", "Zero result", 50, 0],
+    ["2026-01-12", "Measured", 100, 10],
+    ["2026-01-12", "Zero result", 60, 0],
+    ["2026-01-18", "Measured", 0, 0],
+  ].map((values) => Object.fromEntries(headers.map((header, index) => [header, values[index]])));
+  return { raw, headers, mapping, fileName: "pvm-zero-result.csv" };
+}
+
+function seedZeroResultData() {
+  const slice = zeroResultSlice();
+  useAppStore.setState({
+    currentRouteId: "5-21",
+    csvGroups: { ...useAppStore.getState().csvGroups, efficiency: slice },
+    csvData: slice,
+  });
+}
+
+function formattedNumberSlice(spendP1 = "1,000") {
+  const headers = ["Date", "Channel", "Spend", "Installs"];
+  const mapping = { Date: "date", Channel: "channel", Spend: "cost", Installs: "installs" };
+  const raw = [
+    ["2026-01-05", "Search", spendP1, "100"],
+    ["2026-01-12", "Search", "1 200", "100"],
+    ["2026-01-18", "Search", "0", "0"],
+  ].map((values) => Object.fromEntries(headers.map((header, index) => [header, values[index]])));
+  return { raw, headers, mapping, fileName: "pvm-formatted-numbers.csv" };
+}
+
+function overflowSlice() {
+  const headers = ["Date", "Channel", "Spend", "Installs"];
+  const mapping = { Date: "date", Channel: "channel", Spend: "cost", Installs: "installs" };
+  const raw = [
+    ["2026-01-05", "A", Number.MAX_VALUE, 1],
+    ["2026-01-05", "B", Number.MAX_VALUE, 1],
+    ["2026-01-12", "A", Number.MAX_VALUE, 1],
+    ["2026-01-12", "B", Number.MAX_VALUE, 1],
+    ["2026-01-18", "A", 0, 0],
+  ].map((values) => Object.fromEntries(headers.map((header, index) => [header, values[index]])));
+  return { raw, headers, mapping, fileName: "pvm-overflow.csv" };
+}
+
 describe("CampaignPvm render smoke", () => {
   beforeEach(() => seedNoData());
 
@@ -87,5 +133,77 @@ describe("CampaignPvm render smoke", () => {
     expect(cache.insufficientData).toBe(false);
     expect(campaignSum).toBeCloseTo(channel.contribution, 10);
     expect(creativeSum).toBeCloseTo(channel.contribution, 10);
+  });
+
+  it("marks positive-cost zero-result cells NOT_IDENTIFIED instead of certifying a broken identity", () => {
+    const cache = buildPvmCache(zeroResultSlice(), {
+      metric: "cpi", weekBasis: "calendar", lookback: 1, currency: "KRW", denomBasis: "installs", dashboardFilter: {}, locale: "ko",
+    });
+
+    expect(cache).toMatchObject({
+      insufficientData: true,
+      analysisStatus: "NOT_IDENTIFIED",
+      reasonCode: "POSITIVE_COST_WITH_ZERO_RESULT",
+    });
+    expect(cache.invalidCells).toHaveLength(2);
+  });
+
+  it("does not show complete, no-residual, or export controls for a NOT_IDENTIFIED result", () => {
+    seedZeroResultData();
+    render(<CampaignPvm />);
+
+    expect(screen.getByText("분해 불가")).toBeTruthy();
+    expect(screen.queryByText("계산 완료")).toBeNull();
+    expect(screen.queryByText(/잔차 없이/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "결과 받기" })).toBeNull();
+    const pngButtons = screen.getAllByRole("button", { name: /PNG/ });
+    expect(pngButtons.length).toBeGreaterThan(0);
+    expect(pngButtons.every((button) => button.disabled)).toBe(true);
+  });
+
+  it("keeps formatted numeric strings and blocks malformed numeric input", () => {
+    const state = {
+      metric: "cpi", weekBasis: "calendar", lookback: 1, currency: "KRW", denomBasis: "installs", dashboardFilter: {}, locale: "ko",
+    };
+    const valid = buildPvmCache(formattedNumberSlice(), state);
+    expect(valid).toMatchObject({
+      insufficientData: false,
+      analysisStatus: "COMPLETE",
+      CPA1: 10,
+      CPA2: 12,
+    });
+    expect(valid.identity.ok).toBe(true);
+
+    const invalid = buildPvmCache(formattedNumberSlice("1,0x0"), state);
+    expect(invalid).toMatchObject({
+      insufficientData: true,
+      analysisStatus: "NOT_IDENTIFIED",
+      reasonCode: "INVALID_NUMERIC_VALUE",
+    });
+  });
+
+  it("keeps malformed and non-finite identities out of the result and export UI", () => {
+    const state = {
+      metric: "cpi", weekBasis: "calendar", lookback: 1, currency: "KRW", denomBasis: "installs", dashboardFilter: {}, locale: "ko",
+    };
+    const overflow = buildPvmCache(overflowSlice(), state);
+    expect(overflow).toMatchObject({
+      insufficientData: true,
+      analysisStatus: "NOT_IDENTIFIED",
+      reasonCode: "ADDITIVE_IDENTITY_FAILED",
+    });
+    expect(overflow.identity.ok).toBe(false);
+
+    const slice = formattedNumberSlice("1,0x0");
+    useAppStore.setState({
+      currentRouteId: "5-21",
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: slice },
+      csvData: slice,
+    });
+    render(<CampaignPvm />);
+    expect(screen.getAllByText(/숫자로 읽을 수 없는/).length).toBeGreaterThan(0);
+    expect(screen.queryByText("계산 완료")).toBeNull();
+    expect(screen.queryByRole("button", { name: "결과 받기" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: /PNG/ }).every((button) => button.disabled)).toBe(true);
   });
 });

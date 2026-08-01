@@ -39,6 +39,28 @@ describe("anomalyAttribution", () => {
     expect(result.drivers.reduce((sum, item) => sum + item.contribution, 0)).toBeCloseTo(result.totalDelta, 10);
   });
 
+  it("천단위 구분 비용은 보존하고 정의되지 않은 0결과 셀은 귀속하지 않는다", () => {
+    const formatted = sampleRows().map((row) => ({ ...row, cost: row.cost.toLocaleString("en-US") }));
+    expect(attributeAnomaly(formatted, "2026-07-14", "cpa").unavailable).not.toBe(true);
+
+    const zeroResult = [
+      ...sampleRows(),
+      ...Array.from({ length: 14 }, (_, index) => ({
+        date: `2026-07-${String(index + 1).padStart(2, "0")}`,
+        channel: "Referral",
+        campaign_id: "R1",
+        creative_id: "R-A",
+        cost: 100,
+        actions: 0,
+      })),
+    ];
+    expect(attributeAnomaly(zeroResult, "2026-07-14", "cpa")).toMatchObject({
+      unavailable: true,
+      reason: "not_identified",
+      reasonCode: "POSITIVE_COST_WITH_ZERO_RESULT",
+    });
+  });
+
   it("캐시는 anomaly date별 결과를 한 번 구조화한다", () => {
     const cache = buildAttributionCache({
       rows: sampleRows(),
@@ -51,4 +73,3 @@ describe("anomalyAttribution", () => {
     expect(cache.byDate["2026-07-14"].drivers.length).toBeGreaterThan(0);
   });
 });
-

@@ -44,6 +44,9 @@ function pvmLookbackLabel(lb) {
 // 살아있는 스프레드시트 수식 CSV 문자열 생성 — index.html downloadPvmCsv 이식.
 // c = buildPvmCache 결과. ml = 지표 라벨(CPA/CPI). 반환: BOM 포함 CSV 텍스트.
 export function buildPvmResultCsv(c, ml) {
+  if (c?.analysisStatus !== "COMPLETE" || c?.identity?.ok !== true) {
+    throw new Error("PVM export requires an identity-verified decomposition.");
+  }
   const q = (s) => {
     s = String(s == null ? "" : s);
     return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;

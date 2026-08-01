@@ -1,17 +1,106 @@
 export const PVM_MATH = (function () {
+  const ZERO_RESULT_COST_CODE = "POSITIVE_COST_WITH_ZERO_RESULT";
+  const INVALID_NUMERIC_CODE = "INVALID_NUMERIC_VALUE";
+  const NUMERIC_PATTERN = /^[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?$/;
+
+  function parseNumericValue(value) {
+    if (value == null) return 0;
+    if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
+    const normalized = String(value).trim().replace(/[,\s\u00a0]/g, "");
+    if (!normalized) return 0;
+    if (!NUMERIC_PATTERN.test(normalized)) return NaN;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : NaN;
+  }
+
+  function addNumericField(target, targetKey, rawValue, fieldName) {
+    const parsed = parseNumericValue(rawValue);
+    if (!Number.isFinite(parsed)) {
+      if (!target.invalidFields.includes(fieldName)) target.invalidFields.push(fieldName);
+      return;
+    }
+    const nextValue = target[targetKey] + parsed;
+    if (!Number.isFinite(nextValue)) {
+      if (!target.invalidFields.includes(fieldName)) target.invalidFields.push(fieldName);
+      return;
+    }
+    target[targetKey] = nextValue;
+  }
+
+  function normalizeAggregateMap(input) {
+    const out = new Map();
+    for (const [key, raw] of input || []) {
+      const normalized = { ...raw, cost: 0, result: 0, invalidFields: [...(raw?.invalidFields || [])] };
+      addNumericField(normalized, "cost", raw?.cost, "cost");
+      addNumericField(normalized, "result", raw?.result, "result");
+      out.set(key, normalized);
+    }
+    return out;
+  }
+
+  function validateAggregateContract(agg1, agg2) {
+    const keys = new Set([...agg1.keys(), ...agg2.keys()]);
+    const invalidNumericCells = [];
+    const invalidCells = [];
+    for (const key of keys) {
+      const periods = [
+        ["P1", agg1.get(key)],
+        ["P2", agg2.get(key)],
+      ];
+      for (const [period, raw] of periods) {
+        const cost = raw?.cost || 0;
+        const result = raw?.result || 0;
+        if (raw?.invalidFields?.length || !Number.isFinite(cost) || !Number.isFinite(result)) {
+          invalidNumericCells.push({
+            key,
+            period,
+            fields: [...new Set([
+              ...(raw?.invalidFields || []),
+              ...(!Number.isFinite(cost) ? ["cost"] : []),
+              ...(!Number.isFinite(result) ? ["result"] : []),
+            ])],
+          });
+          continue;
+        }
+        if (cost > 0 && result <= 0) {
+          invalidCells.push({ key, period, cost, result });
+        }
+      }
+    }
+    if (invalidNumericCells.length) {
+      return {
+        ok: false,
+        status: "NOT_IDENTIFIED",
+        code: INVALID_NUMERIC_CODE,
+        invalidCells: invalidNumericCells,
+      };
+    }
+    if (invalidCells.length) {
+      return {
+        ok: false,
+        status: "NOT_IDENTIFIED",
+        code: ZERO_RESULT_COST_CODE,
+        invalidCells,
+      };
+    }
+    return { ok: true, status: "READY", code: null, invalidCells: [] };
+  }
+
   function aggregate(rows, groupKey, resultField) {
     const m = new Map();
     for (const r of rows) {
       const k = String(r[groupKey] ?? "");
-      if (!m.has(k)) m.set(k, { cost: 0, result: 0 });
+      if (!m.has(k)) m.set(k, { cost: 0, result: 0, invalidFields: [] });
       const e = m.get(k);
-      e.cost += Number(r.spend) || 0;
-      e.result += Number(r[resultField]) || 0;
+      addNumericField(e, "cost", r.spend, "cost");
+      addNumericField(e, "result", r[resultField], resultField);
     }
     return m;
   }
 
   function applyNoiseGuard(agg1, agg2, threshold) {
+    agg1 = normalizeAggregateMap(agg1);
+    agg2 = normalizeAggregateMap(agg2);
     const keys = new Set([...agg1.keys(), ...agg2.keys()]);
     const out1 = new Map(),
       out2 = new Map();
@@ -21,30 +110,30 @@ export const PVM_MATH = (function () {
       const e2 = agg2.get(k) || { cost: 0, result: 0 };
       const small = e1.result + e2.result < threshold;
       const dest = small ? OTHER : k;
-      if (!out1.has(dest)) out1.set(dest, { cost: 0, result: 0 });
-      if (!out2.has(dest)) out2.set(dest, { cost: 0, result: 0 });
+      if (!out1.has(dest)) out1.set(dest, { cost: 0, result: 0, invalidFields: [] });
+      if (!out2.has(dest)) out2.set(dest, { cost: 0, result: 0, invalidFields: [] });
       out1.get(dest).cost += e1.cost;
       out1.get(dest).result += e1.result;
       out2.get(dest).cost += e2.cost;
       out2.get(dest).result += e2.result;
+      out1.get(dest).invalidFields.push(...(e1.invalidFields || []));
+      out2.get(dest).invalidFields.push(...(e2.invalidFields || []));
     }
     return [out1, out2];
   }
 
   function calculateCpa(cost, result) {
     const userVal = result > 0 ? cost / result : null;
-    let engineVal = 0;
-    if (result > 0) {
-      engineVal = cost / result;
-    } else if (cost > 0) {
-      engineVal = cost; // Rule A
-    } else {
-      engineVal = 0; // Rule B
-    }
+    // 양의 비용·0결과 셀은 계약 검증에서 이미 중단된다. 0은 진짜 부재(0/0)
+    // 셀에만 쓰며, 정의되지 않은 CPA를 비용값으로 대체하지 않는다.
+    const engineVal = result > 0 ? cost / result : 0;
     return { userVal, engineVal };
   }
 
   function decompose(agg1, agg2) {
+    agg1 = normalizeAggregateMap(agg1);
+    agg2 = normalizeAggregateMap(agg2);
+    if (!validateAggregateContract(agg1, agg2).ok) return null;
     const keys = new Set([...agg1.keys(), ...agg2.keys()]);
     const Cost1 = [...agg1.values()].reduce((a, e) => a + e.cost, 0);
     const Cost2 = [...agg2.values()].reduce((a, e) => a + e.cost, 0);
@@ -99,35 +188,45 @@ export const PVM_MATH = (function () {
     };
   }
 
-  function decomposeFinest(rowsP1, rowsP2, keys) {
+  function buildFinestAggregates(rows, keys) {
     const resultField = keys.resultField || "installs";
     function tupleKey(r) {
       const ch = String(r[keys.ch] ?? "");
       const cmp = keys.cmp ? String(r[keys.cmp] ?? "") : "";
       const cr = keys.cr ? String(r[keys.cr] ?? "") : "";
-      return ch + " " + cmp + " " + cr;
+      return JSON.stringify([ch, cmp, cr]);
     }
-    function aggTuple(rows) {
-      const m = new Map();
-      for (const r of rows) {
-        const k = tupleKey(r);
-        if (!m.has(k)) {
-          m.set(k, {
-            chKey: String(r[keys.ch] ?? ""),
-            cmpKey: keys.cmp ? String(r[keys.cmp] ?? "") : null,
-            crKey: keys.cr ? String(r[keys.cr] ?? "") : null,
-            cost: 0,
-            result: 0,
-          });
-        }
-        const e = m.get(k);
-        e.cost += Number(r.spend) || 0;
-        e.result += Number(r[resultField]) || 0;
+    const m = new Map();
+    for (const r of rows) {
+      const k = tupleKey(r);
+      if (!m.has(k)) {
+        m.set(k, {
+          chKey: String(r[keys.ch] ?? ""),
+          cmpKey: keys.cmp ? String(r[keys.cmp] ?? "") : null,
+          crKey: keys.cr ? String(r[keys.cr] ?? "") : null,
+          cost: 0,
+          result: 0,
+          invalidFields: [],
+        });
       }
-      return m;
+      const e = m.get(k);
+      addNumericField(e, "cost", r.spend, "cost");
+      addNumericField(e, "result", r[resultField], resultField);
     }
-    const agg1 = aggTuple(rowsP1);
-    const agg2 = aggTuple(rowsP2);
+    return m;
+  }
+
+  function inspectFinestInputs(rowsP1, rowsP2, keys) {
+    return validateAggregateContract(
+      buildFinestAggregates(rowsP1, keys),
+      buildFinestAggregates(rowsP2, keys),
+    );
+  }
+
+  function decomposeFinest(rowsP1, rowsP2, keys) {
+    const agg1 = buildFinestAggregates(rowsP1, keys);
+    const agg2 = buildFinestAggregates(rowsP2, keys);
+    if (!validateAggregateContract(agg1, agg2).ok) return null;
     const tupleKeys = new Set([...agg1.keys(), ...agg2.keys()]);
     const Cost1 = [...agg1.values()].reduce((a, e) => a + e.cost, 0);
     const Cost2 = [...agg2.values()].reduce((a, e) => a + e.cost, 0);
@@ -200,17 +299,17 @@ export const PVM_MATH = (function () {
       const cmp = keys.cmp ? String(r[keys.cmp] ?? "") : "";
       const cr = keys.cr ? String(r[keys.cr] ?? "") : "";
       if (level === "channel") {
-        return { groupKey: ch, chKey: ch, cmpKey: "", crKey: "" };
+        return { groupKey: JSON.stringify([ch]), chKey: ch, cmpKey: "", crKey: "" };
       } else if (level === "campaign") {
         return {
-          groupKey: ch + "│" + cmp,
+          groupKey: JSON.stringify([ch, cmp]),
           chKey: ch,
           cmpKey: cmp,
           crKey: "",
         };
       } else {
         return {
-          groupKey: ch + "│" + cmp + "│" + cr,
+          groupKey: JSON.stringify([ch, cmp, cr]),
           chKey: ch,
           cmpKey: cmp,
           crKey: cr,
@@ -230,15 +329,17 @@ export const PVM_MATH = (function () {
             crKey: keys.cr ? crKey : null,
             cost: 0,
             result: 0,
+            invalidFields: [],
           });
         }
         const e = aggMap.get(groupKey);
-        e.cost += Number(r.spend) || 0;
-        e.result += Number(r[resultField]) || 0;
+        addNumericField(e, "cost", r.spend, "cost");
+        addNumericField(e, "result", r[resultField], resultField);
       }
     };
     fillAgg(rowsP1, agg1);
     fillAgg(rowsP2, agg2);
+    if (!validateAggregateContract(agg1, agg2).ok) return [];
 
     const groupKeys = new Set([...agg1.keys(), ...agg2.keys()]);
     const entities = [];
@@ -359,6 +460,8 @@ export const PVM_MATH = (function () {
     decompose,
     classifyNarrative,
     decomposeFinest,
+    inspectFinestInputs,
+    parseNumericValue,
     rollup,
     decomposeLayer,
   };

@@ -60,6 +60,21 @@ function seedWithData() {
   });
 }
 
+function seedZeroTrafficData() {
+  seedWithData();
+  const current = useAppStore.getState().csvData;
+  const raw = [
+    ...current.raw,
+    { date: "2026-01-08", traffic_source: "referral", category: "가이드", content_id: "zero_traffic", cost: 5000, traffic: 0 },
+    { date: "2026-01-15", traffic_source: "referral", category: "가이드", content_id: "zero_traffic", cost: 7000, traffic: 0 },
+  ];
+  const slice = { ...current, raw, fileName: "content_zero_traffic.csv" };
+  useAppStore.setState({
+    csvGroups: { ...useAppStore.getState().csvGroups, content_traffic: slice },
+    csvData: slice,
+  });
+}
+
 describe("ContentTrafficVariance render smoke", () => {
   beforeEach(() => seedNoData());
 
@@ -74,5 +89,15 @@ describe("ContentTrafficVariance render smoke", () => {
     expect(() => render(<ContentTrafficVariance />)).not.toThrow();
     // With-data branch renders the "한눈에 보기" §0 section (heading).
     expect(screen.getByRole("heading", { name: /한눈에 보기/ })).toBeTruthy();
+  });
+
+  it("uses content vocabulary when zero traffic makes the decomposition unidentified", () => {
+    seedZeroTrafficData();
+    render(<ContentTrafficVariance />);
+
+    expect(screen.getByText("분해 불가")).toBeTruthy();
+    expect(screen.getAllByText(/비용은 있지만 트래픽이 0/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/비용은 있지만 전환이 0/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "결과 받기" })).toBeNull();
   });
 });
