@@ -5,7 +5,7 @@ import Papa from "papaparse";
 import Chart from "chart.js/auto";
 import { useAppStore } from "@/store/useDataStore";
 import { AHA_STATS, ahaCoverageBuckets } from "@/utils/ahaMath";
-import { downloadChartAsPNG, CHART_THEME } from "@/utils/chartUtils";
+import { downloadChartAsPNG, CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
 import DemoLoadButton from "@/components/DemoLoadButton";
@@ -903,6 +903,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
     if (!hasData || !analyzed || !sweepChartRef.current || !kSweep.length) return undefined;
 
     const labels = kSweep.map((s) => `≥${s.k}`);
+    const commonOpts = chartCommonOpts();
     sweepChartInstance.current = new Chart(sweepChartRef.current, {
       type: "line",
       data: {
@@ -912,11 +913,11 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
             label: tr("F1 (예측 정확도)", "F1 (accuracy)"),
             data: kSweep.map((s) => s.F1),
             borderColor: CHART_THEME.primary,
-            backgroundColor: "rgba(122,162,247,0.15)",
+            backgroundColor: CHART_THEME.primary,
             yAxisID: "y",
             tension: 0.25,
             pointRadius: kSweep.map((s) => (s.k === drillResult?.bestK ? 5 : 2)),
-            pointBackgroundColor: kSweep.map((s) => (s.k === drillResult?.bestK ? "#facc15" : "#7aa2f7")),
+            pointBackgroundColor: kSweep.map((s) => (s.k === drillResult?.bestK ? CHART_THEME.tertiary : CHART_THEME.primary)),
           },
           {
             label: tr("전체 유저 중 비율(%)", "% of all users"),
@@ -930,16 +931,40 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
         ],
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        ...commonOpts,
         scales: {
-          x: { ticks: { color: "var(--text-muted)", maxTicksLimit: 12 }, grid: { color: "rgba(255,255,255,0.06)" } },
-          y: { min: 0, max: 1, position: "left", title: { display: true, text: "F1", color: "var(--text-muted)" }, ticks: { color: "var(--text-muted)" }, grid: { color: "rgba(255,255,255,0.06)" } },
-          y1: { min: 0, max: 100, position: "right", title: { display: true, text: tr("전체 유저 %", "% of all users"), color: "var(--text-muted)" }, ticks: { color: "var(--text-muted)", callback: (v) => v + "%" }, grid: { display: false } },
+          x: {
+            ...commonOpts.scales.x,
+            ticks: { ...commonOpts.scales.x.ticks, maxTicksLimit: 12 },
+          },
+          y: {
+            ...commonOpts.scales.y,
+            min: 0,
+            max: 1,
+            position: "left",
+            title: { display: true, text: "F1", color: CHART_THEME.muted },
+          },
+          y1: {
+            ...commonOpts.scales.y,
+            min: 0,
+            max: 100,
+            position: "right",
+            title: { display: true, text: tr("전체 유저 %", "% of all users"), color: CHART_THEME.muted },
+            ticks: { ...commonOpts.scales.y.ticks, callback: (v) => v + "%" },
+            grid: { display: false, drawBorder: false },
+          },
         },
         plugins: {
-          legend: { labels: { color: "var(--text-muted)", font: { size: 10 } } },
+          ...commonOpts.plugins,
+          legend: {
+            ...commonOpts.plugins.legend,
+            labels: {
+              ...commonOpts.plugins.legend.labels,
+              font: { ...commonOpts.plugins.legend.labels.font, size: 10 },
+            },
+          },
           tooltip: {
+            ...commonOpts.plugins.tooltip,
             callbacks: {
               label: (ctx) => {
                 const s = kSweep[ctx.dataIndex];
@@ -1446,7 +1471,11 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                   )}
                 </p>
                 <div className="chart-container" style={{ height: "220px" }}>
-                  <canvas ref={sweepChartRef}></canvas>
+                  <canvas
+                    ref={sweepChartRef}
+                    role="img"
+                    aria-label={tr("행동 횟수 기준별 F1과 전체 유저 비율 차트", "F1 and all-user share by action-frequency threshold")}
+                  ></canvas>
                 </div>
               </div>
             )}
@@ -1524,7 +1553,13 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
                 {selectedCount === 0 ? (
                   <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontSize: "12.5px" }}>{tr("위 칩에서 표시할 이벤트를 선택하세요.", "Choose an event from the chips above.")}</div>
                 ) : null}
-                <canvas ref={chartRef} style={{ display: selectedCount === 0 ? "none" : undefined }}></canvas>
+                <canvas
+                  ref={chartRef}
+                  role="img"
+                  aria-label={tr("초기 행동과 장기 가치의 관계 산점도", "Scatter plot of early actions and long-term value")}
+                  aria-hidden={selectedCount === 0 ? "true" : undefined}
+                  style={{ display: selectedCount === 0 ? "none" : undefined }}
+                ></canvas>
               </div>
               <details className="aha-scatter-explainer">
                 <summary>{tr("점 읽는 법", "How to read this")}</summary>

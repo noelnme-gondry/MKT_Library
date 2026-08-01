@@ -106,8 +106,8 @@ export default function PageClient({ params }) {
              !routeId.startsWith("9-") && (
               <SopContent routeId={routeId} />
             )}
-            <ToolLongform toolId={routeId} />
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolConnections toolId={routeId} />}
+            <ToolLongform toolId={routeId} />
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolAssistRail toolId={routeId} />}
           </article>
         </main>

@@ -43,6 +43,9 @@ describe("Header render smoke", () => {
     seedWithData();
     expect(() => render(<Header />)).not.toThrow();
     expect(document.querySelector("#theme-toggle")).toBeTruthy();
+    expect(screen.getByLabelText("현재 데이터: x.csv").textContent).toContain("x.csv");
+    expect(document.querySelector(".topbar-context")).toBeTruthy();
+    expect(document.querySelector(".topbar-actions__primary")).toBeTruthy();
   });
   it("exposes the complete tool menu as a dialog trigger in both locales", () => {
     const { unmount } = render(<Header />);
@@ -68,5 +71,29 @@ describe("Header render smoke", () => {
     unmount();
     render(<Header locale="en" />);
     expect(screen.getByRole("link", { name: "Decision inbox, 1 decision due now" }).getAttribute("href")).toBe("/en/weekly-review");
+  });
+  it("keeps lower-frequency controls in one localized utility menu", () => {
+    const { unmount } = render(<Header />);
+    const koMenu = document.querySelector(".header-utility-menu");
+    expect(koMenu).toBeTruthy();
+    expect(koMenu?.querySelector("summary")?.getAttribute("aria-label")).toBe("기타 설정");
+    expect(koMenu?.querySelector("#theme-toggle")?.getAttribute("aria-label")).toBe("테마 전환");
+    unmount();
+    render(<Header locale="en" />);
+    expect(document.querySelector(".header-utility-menu > summary")?.getAttribute("aria-label")).toBe("More settings");
+    expect(screen.getByRole("link", { name: "Decision inbox" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "All tools" })).toBeTruthy();
+  });
+  it("closes the utility menu on Escape and outside pointer input", () => {
+    render(<Header />);
+    const menu = document.querySelector(".header-utility-menu");
+    const trigger = menu?.querySelector(":scope > summary");
+    menu?.setAttribute("open", "");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(menu?.hasAttribute("open")).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+    menu?.setAttribute("open", "");
+    fireEvent.pointerDown(document.body);
+    expect(menu?.hasAttribute("open")).toBe(false);
   });
 });

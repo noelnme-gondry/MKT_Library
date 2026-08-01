@@ -44,17 +44,29 @@ const TOOL_CROSS_LINK = {
   },
 };
 
+const HEADER_COPY = {
+  ko: { aria: "도구 안내", local: "브라우저 내 분석", mode: "의사결정 도구" },
+  en: { aria: "About this tool", local: "BROWSER-ONLY ANALYSIS", mode: "DECISION TOOL" },
+};
+
 export default function ToolIntro({ toolId, locale = "ko" }) {
-  const copy = INTRO[toolId]?.[locale === "en" ? "en" : "ko"];
-  const crossLink = TOOL_CROSS_LINK[toolId]?.[locale === "en" ? "en" : "ko"];
+  const localeKey = locale === "en" ? "en" : "ko";
+  const copy = INTRO[toolId]?.[localeKey];
+  const crossLink = TOOL_CROSS_LINK[toolId]?.[localeKey];
+  const T = HEADER_COPY[localeKey];
   if (!copy) return null;
-  return <aside className="tool-context-header" aria-label={locale === "en" ? "About this tool" : "도구 안내"}>
-    <div className="tool-context-header__meta"><em>{locale === "en" ? "BROWSER-ONLY ANALYSIS" : "브라우저 내 분석"}</em></div>
-    <h1 className="tool-context-header__title">{copy[0]}</h1>
-    <p>{copy[1]}</p>
-    {crossLink && <div className="tool-context-header__next">
+  return <header className="tool-context-header tool-instrument-header" aria-label={T.aria} data-tool-id={toolId}>
+    <div className="tool-instrument-header__copy">
+      <div className="tool-context-header__meta tool-instrument-header__meta">
+        <em>{T.local}</em>
+        <span>{T.mode}</span>
+      </div>
+      <h1 className="tool-context-header__title tool-instrument-header__title">{copy[0]}</h1>
+      <p className="tool-instrument-header__description">{copy[1]}</p>
+    </div>
+    {crossLink && <div className="tool-context-header__next tool-instrument-header__next">
       <span>{crossLink.label}</span>
       <Link href={crossLink.toolId === "5-18" && crossLink.stage ? responseStageHref(crossLink.stage, locale) : `${locale === "en" ? "/en" : ""}${idToSlug[crossLink.toolId]}`}>{crossLink.cta} <b aria-hidden>→</b></Link>
     </div>}
-  </aside>;
+  </header>;
 }

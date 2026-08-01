@@ -5,15 +5,6 @@ import { hasToolTemplate, downloadTemplateCsv, TEMPLATE_FAMILY } from "@/compone
 import DataTable from "@/components/ds/DataTable";
 import ModalDialog from "@/components/ds/ModalDialog";
 
-const ICON_TOUCH_TARGET = {
-  boxSizing: "border-box",
-  minWidth: "44px",
-  minHeight: "44px",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
 // CSV upload guidance (design-system baseline §1.4). Hybrid per claude-ux §0
 // (avoid hidden-affordance trap): an always-visible 1-line summary + a prominent
 // button that opens a modal with the full "when / why each column / prep / example".
@@ -72,7 +63,7 @@ export default function CsvGuide({ toolId, onDownloadTemplate, locale = "ko" }) 
   const needColumns = [
     { key: "col", label: T.colCol, fmt: (value) => <code className="inline">{value}</code> },
     { key: "label", label: T.colWhat },
-    { key: "why", label: T.colWhy, cellStyle: { color: "var(--text-muted)" } },
+    { key: "why", label: T.colWhy, cellClassName: "csv-guide-reason" },
     { key: "required", label: T.colRequired, align: "center", fmt: (value) => value ? "✅" : "—" },
   ];
 
@@ -96,18 +87,18 @@ export default function CsvGuide({ toolId, onDownloadTemplate, locale = "ko" }) 
         panelClassName="csv-guide-modal"
       >
         <div className="csv-guide-modal-head">
-          <strong>{T.modalTitle}</strong>
-          <button type="button" className="csv-guide-close" onClick={close} aria-label={`${T.modalTitle}: ${T.close}`} style={ICON_TOUCH_TARGET}>✕</button>
+          <strong className="csv-guide-modal-title">{T.modalTitle}</strong>
+          <button type="button" className="csv-guide-close" onClick={close} aria-label={`${T.modalTitle}: ${T.close}`}>✕</button>
         </div>
 
         <div className="csv-guide-modal-body">
-          <section>
+          <section className="csv-guide-section csv-guide-section--purpose">
             <h4>{T.whenHeading}</h4>
             <p>{guide.when}</p>
             {guide.grain && <p className="csv-guide-grain">📄 {guide.grain}</p>}
           </section>
 
-          <section>
+          <section className="csv-guide-section csv-guide-section--columns">
             <h4>{T.colsHeading}</h4>
             <DataTable
               columns={needColumns}
@@ -118,7 +109,7 @@ export default function CsvGuide({ toolId, onDownloadTemplate, locale = "ko" }) 
           </section>
 
           {guide.prep && guide.prep.length > 0 && (
-            <section>
+            <section className="csv-guide-section csv-guide-section--prep">
               <h4>{T.prepHeading}</h4>
               <ul className="csv-guide-prep">
                 {guide.prep.map((p, i) => <li key={i}>{p}</li>)}
@@ -131,17 +122,18 @@ export default function CsvGuide({ toolId, onDownloadTemplate, locale = "ko" }) 
             const head = (lines[0] || "").split(",");
             const body = lines.slice(1).map((l) => l.split(","));
             return (
-              <section>
+              <section className="csv-guide-section csv-guide-section--example">
                 <h4>{T.exampleHeading}</h4>
                 <div className="table-wrap">
-                  <table className="data csv-guide-example-table">
-                    <thead><tr>{head.map((h, i) => <th key={i} style={{ textAlign: "left", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
+                  <table className="data csv-guide-example-table" aria-label={T.exampleHeading}>
+                    <caption className="sr-only">{T.exampleHeading}</caption>
+                    <thead><tr>{head.map((h, i) => <th className="csv-guide-example-heading" scope="col" key={i}>{h}</th>)}</tr></thead>
                     <tbody>{body.map((row, ri) => (
-                      <tr key={ri}>{row.map((c, ci) => <td key={ci} style={{ textAlign: "left", whiteSpace: "nowrap" }}>{c}</td>)}</tr>
+                      <tr key={ri}>{row.map((c, ci) => <td className="csv-guide-example-cell" key={ci}>{c}</td>)}</tr>
                     ))}</tbody>
                   </table>
                 </div>
-                <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0" }}>{T.exampleFoot}</p>
+                <p className="csv-guide-example-foot">{T.exampleFoot}</p>
               </section>
             );
           })()}
@@ -151,16 +143,16 @@ export default function CsvGuide({ toolId, onDownloadTemplate, locale = "ko" }) 
           {/* 템플릿 다운로드 — 도구 자체 제공(onDownloadTemplate) 우선, 없으면 효율패밀리
               표준필드로 자동 생성(구 DataFeatureMatrix 통합 템플릿 이식). */}
           {onDownloadTemplate ? (
-            <button type="button" className="ab-pill" onClick={onDownloadTemplate}>{T.templateBtn}</button>
+            <button type="button" className="ab-pill btn csv-guide-modal-action" onClick={onDownloadTemplate}>{T.templateBtn}</button>
           ) : hasToolTemplate(toolId) && (
             <>
-              <button type="button" className="ab-pill" onClick={() => downloadTemplateCsv(toolId, "tool")}>{T.toolTemplateBtn}</button>
+              <button type="button" className="ab-pill btn csv-guide-modal-action" onClick={() => downloadTemplateCsv(toolId, "tool")}>{T.toolTemplateBtn}</button>
               {TEMPLATE_FAMILY.includes(toolId) && (
-                <button type="button" className="ab-pill" title={T.unifiedTemplateTitle} onClick={() => downloadTemplateCsv(toolId, "unified")}>{T.unifiedTemplateBtn}</button>
+                <button type="button" className="ab-pill btn csv-guide-modal-action" title={T.unifiedTemplateTitle} onClick={() => downloadTemplateCsv(toolId, "unified")}>{T.unifiedTemplateBtn}</button>
               )}
             </>
           )}
-          <button type="button" className="ab-button" onClick={close}>{T.confirm}</button>
+          <button type="button" className="ab-button btn primary csv-guide-modal-action is-primary" onClick={close}>{T.confirm}</button>
         </div>
       </ModalDialog>
     </div>

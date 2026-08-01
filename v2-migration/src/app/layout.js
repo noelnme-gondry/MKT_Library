@@ -1,6 +1,6 @@
 import "./globals.css";
 import Script from "next/script";
-import { DM_Sans, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { DM_Sans, JetBrains_Mono, Noto_Sans_KR, Space_Grotesk } from "next/font/google";
 import Footer from "@/components/Footer";
 import GaPageviews from "@/components/GaPageviews";
 import SkipLink from "@/components/SkipLink";
@@ -8,6 +8,16 @@ import SkipLink from "@/components/SkipLink";
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk", display: "swap" });
 const jetBrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono", display: "swap" });
+// Latin-only display/body faces fall back to a different system font for most
+// Korean UI, which flattens the intended type hierarchy. Keep one variable KR
+// face in the stack; preload is disabled because the font is unicode-ranged and
+// should only be fetched for glyphs the current page actually uses.
+const notoSansKr = Noto_Sans_KR({
+  weight: "variable",
+  variable: "--font-noto-sans-kr",
+  display: "swap",
+  preload: false,
+});
 
 export const metadata = {
   // GSC "페이지 제목 40자 이내·설명 80자 이내" 경고 해소 + 유저가 한눈에 "뭐 하는
@@ -55,7 +65,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="ko" suppressHydrationWarning className={`${dmSans.variable} ${spaceGrotesk.variable} ${jetBrainsMono.variable} dark`}>
+    <html lang="ko" suppressHydrationWarning className={`${dmSans.variable} ${spaceGrotesk.variable} ${jetBrainsMono.variable} ${notoSansKr.variable} dark`}>
       <head>
         <meta name="theme-color" content="#11141b" />
         <meta name="naver-site-verification" content="c4cc3586f416c84363563356e79f834ca11544a7" />

@@ -6,14 +6,15 @@ import React, { useId } from "react";
  *
  * 레거시 index.html의 `pageShell()` 중 5-x 분기(§4.1, CLAUDE.md)를 그대로
  * 미러링: page-sticky-bar(제목+칩+옵션 stickyFilter) + summary 콜아웃 +
- * children(본문) + 우측 플로팅 TOC. Dashboard.jsx가 이미 검증한 클래스/스타일
- * 값을 그대로 재사용(신규 스타일 발명 금지 — CLAUDE.md 지침).
+ * children(본문) + 우측 플로팅 TOC. 기존 page-sticky 클래스는 호환용으로
+ * 유지하고, tool-instrument-header 계약으로 모든 도구의 제목·상태·범위를
+ * 같은 시각 구조에 배치한다.
  *
  * 순수 프레젠테이션 컴포넌트: store 구독·비즈니스 로직 없음.
  */
 const COPY = {
-  ko: { summaryLabel: "핵심 요약", toc: "목차" },
-  en: { summaryLabel: "Summary", toc: "Contents" },
+  ko: { summaryLabel: "핵심 요약", toc: "목차", workspace: "의사결정 작업대" },
+  en: { summaryLabel: "Summary", toc: "Contents", workspace: "DECISION WORKSPACE" },
 };
 
 export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko", toolId = "" }) {
@@ -28,13 +29,16 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
       <div className="tool-page-shell__main">
         {/* Sticky title bar — legacy page-sticky-bar/page-sticky-row1/page-sticky-title
             (index.html pageShell 5-x 분기, CLAUDE.md §4.1) */}
-        <div className="page-sticky-bar">
+        <header className="page-sticky-bar tool-instrument-header tool-instrument-header--sticky">
           <div className="page-sticky-row1">
-            <h1 id={titleId} className="page-sticky-title">{title}</h1>
-            {chips}
+            <div className="tool-instrument-header__heading">
+              <span className="tool-instrument-header__eyebrow">{T.workspace}</span>
+              <h1 id={titleId} className="page-sticky-title tool-instrument-header__title">{title}</h1>
+            </div>
+            {chips && <div className="tool-instrument-header__status">{chips}</div>}
           </div>
-          {stickyFilter}
-        </div>
+          {stickyFilter && <div className="tool-instrument-header__controls">{stickyFilter}</div>}
+        </header>
 
         {/* Summary callout — .summary/.summary-label (globals.css, MarketingEfficiency.jsx 패턴 재사용) */}
         {summary && (

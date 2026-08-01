@@ -931,16 +931,18 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       </section>
       )}
 
-      {/* KPI Summary */}
-      <section className="block" id="s-kpi">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2 className="section-title"><span className="ix">§2</span>{T.kpiSectionTitle}</h2>
-          <div style={{ display: "flex", gap: "6px" }}>
+      {/* KPI strip과 선택 KPI 차트를 한 작업 표면으로 묶는다. 카드 선택과 차트가
+          서로 떨어진 별도 섹션처럼 보이면 관계를 읽기 어려워지는 문제를 막는다. */}
+      <div className="dashboard-viz-workbench">
+      <section className="block dashboard-viz-workbench__metrics" id="s-kpi">
+        <div className="dashboard-section-head">
+          <h2 className="section-title">{T.kpiSectionTitle}</h2>
+          <div className="dashboard-section-actions">
             <button className="ab-pill" onClick={() => setBuilderOpen(true)} title={T.addMetricTitle}>{T.addMetric}</button>
             {kpiEditMode ? (
               <>
                 <button className="ab-pill" onClick={() => resetViewConfig(VIZ_KPI_SCOPE)} title={T.resetTitle}>{T.reset}</button>
-                <button className="ab-pill active" onClick={() => setKpiEditMode(false)} style={{ fontWeight: 700 }}>{T.done}</button>
+                <button className="ab-pill active" onClick={() => setKpiEditMode(false)}>{T.done}</button>
               </>
             ) : (
               <button className="ab-pill" onClick={() => setKpiEditMode(true)} title={T.editTitle}>{T.edit}</button>
@@ -966,7 +968,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
       </section>
 
       {/* 선택 KPI 탐색 — 카드와 하나의 큰 실제 차트를 1:1로 연결한다. */}
-      <section className="block dashboard-explorer" id="s-charts">
+      <section className="block dashboard-explorer dashboard-viz-workbench__chart" id="s-charts">
         <div className="dashboard-explorer__head">
           <div>
             <span className="dashboard-explorer__eyebrow">{locale === "en" ? "Selected KPI" : "선택됨"}</span>
@@ -977,27 +979,30 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
         {isCustomActive ? (
           <div className="dashboard-explorer__empty">{locale === "en" ? "Custom KPIs currently support aggregate values only. A date-level adapter will be added after the same formula is validated for trend calculations." : "커스텀 KPI는 현재 합계값 계산만 지원합니다. 날짜별 같은 식을 재계산하는 어댑터를 검증한 뒤 추이 차트에 추가할 수 있습니다."}</div>
         ) : (
-          <>
-            <div className="chart-canvas-wrap dashboard-explorer__canvas"><canvas ref={detailCanvasRef}></canvas></div>
-            <p className="dashboard-explorer__interpretation">
+          <figure className="dashboard-explorer__figure">
+            <div className="chart-canvas-wrap dashboard-explorer__canvas">
+              <canvas ref={detailCanvasRef} role="img" aria-label={locale === "en" ? `${activeMetricLabel} trend chart` : `${activeMetricLabel} 추이 차트`}></canvas>
+            </div>
+            <figcaption className="dashboard-explorer__interpretation">
               {activeTrend.change == null
                 ? (locale === "en" ? "Not enough dated data for a period comparison." : "기간 비교를 위한 날짜 데이터가 부족합니다.")
                 : locale === "en"
                   ? `${activeMetricLabel} is ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "higher" : "lower"} over the last ${dailyKpis.length} days.`
                   : `최근 ${dailyKpis.length}일 ${activeMetricLabel}가 ${Math.abs(activeTrend.change * 100).toFixed(1)}% ${activeTrend.change > 0 ? "상승" : "하락"}했습니다.`}
-            </p>
-          </>
+            </figcaption>
+          </figure>
         )}
         <div className="dashboard-explorer__actions">
           {actionButtons.map(([label, id]) => <button key={id} type="button" className="ab-pill" onClick={() => goToTool(id)}>{label}</button>)}
         </div>
       </section>
+      </div>
 
       {/* 기본+사용자 보조 차트 — KPI 탐색 차트와 별도 설정을 유지한다. */}
-      <section className="block" id="s-custom-charts">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2 className="section-title"><span className="ix">§3</span>{locale === "en" ? "Custom charts" : "보조 차트"}</h2>
-          <div style={{ display: "flex", gap: "6px" }}>
+      <section className="block dashboard-supporting-charts" id="s-custom-charts">
+        <div className="dashboard-section-head">
+          <h2 className="section-title">{locale === "en" ? "Custom charts" : "보조 차트"}</h2>
+          <div className="dashboard-section-actions">
             <button className="ab-pill" onClick={() => setChartBuilderOpen(true)} title={T.addChartTitle}>{T.addChart}</button>
             <button className="ab-pill" onClick={() => setChartCfgOpen(true)} title={T.editChartTitle}>{T.editChart}</button>
           </div>
@@ -1023,7 +1028,7 @@ export default function VizTab({ domain = "performance", locale = "ko" } = {}) {
                     <small>{locale === "en" ? "Current filtered total" : "현재 필터 기준 전체값"}</small>
                   </div>
                 ) : (
-                  <div className="chart-canvas-wrap" style={{ height: "300px" }}><canvas ref={setCanvasRef(c.k)}></canvas></div>
+                  <div className="chart-canvas-wrap dashboard-supporting-chart__canvas"><canvas ref={setCanvasRef(c.k)} role="img" aria-label={c.title}></canvas></div>
                 )}
               </div>
             ))}

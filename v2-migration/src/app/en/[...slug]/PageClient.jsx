@@ -81,8 +81,8 @@ export default function PageClient({ params, initialSopData = null }) {
             {routeId === "5-23" && <Incrementality locale="en" />}
             {routeId === "9-1" && <ContentElementAnalyzer locale="en" />}
             {/^[1-4]-|^8-/.test(routeId) && <SopContent routeId={routeId} locale="en" initialData={initialSopData} />}
-            <ToolLongform toolId={routeId} locale="en" />
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolConnections toolId={routeId} locale="en" />}
+            <ToolLongform toolId={routeId} locale="en" />
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolAssistRail toolId={routeId} locale="en" />}
           </article>
         </main>

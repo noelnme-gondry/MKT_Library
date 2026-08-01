@@ -9,12 +9,17 @@ describe("ToolIntro heading and locale contract", () => {
     expect(screen.getByRole("heading", { level: 1, name: "실험 분석" })).toBeTruthy();
     expect(container.querySelector("h1")?.classList.contains("sr-only")).toBe(false);
     expect(container.textContent).toContain("두 안의 차이가 우연인지");
+    expect(container.querySelector(".tool-instrument-header")?.getAttribute("data-tool-id")).toBe("5-4");
+    expect(container.textContent).toContain("브라우저 내 분석");
+    expect(container.textContent).toContain("의사결정 도구");
   });
 
   it("keeps the heading and explanation equivalent in English", () => {
     const { container } = render(<ToolIntro toolId="5-4" locale="en" />);
     expect(screen.getByRole("heading", { level: 1, name: "Experiment analysis" })).toBeTruthy();
     expect(container.textContent).toContain("whether the difference is more than chance");
+    expect(container.textContent).toContain("BROWSER-ONLY ANALYSIS");
+    expect(container.textContent).toContain("DECISION TOOL");
     expect(container.textContent?.match(/[가-힣]/)).toBeNull();
   });
 });
