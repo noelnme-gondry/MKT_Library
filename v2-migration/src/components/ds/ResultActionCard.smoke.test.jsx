@@ -5,7 +5,11 @@ import ResultActionCard from "./ResultActionCard";
 import { useAppStore } from "@/store/useDataStore";
 
 describe("ResultActionCard decision-first hierarchy", () => {
-  beforeEach(() => useAppStore.setState({ decisionRecords: [], decisionPersistenceEnabled: false }));
+  beforeEach(() => useAppStore.setState({
+    csvData: { raw: [], headers: [], mapping: {}, fileName: "" },
+    decisionRecords: [],
+    decisionPersistenceEnabled: false,
+  }));
 
   it("renders key figures before supporting prose", () => {
     const { container } = render(
@@ -43,7 +47,7 @@ describe("ResultActionCard decision-first hierarchy", () => {
   });
 
   it("passes an explicit decision prefill without inferring from generic points or stats", () => {
-    render(
+    const { container } = render(
       <ResultActionCard
         toolId="5-3"
         headline="Generic result headline"
@@ -55,6 +59,66 @@ describe("ResultActionCard decision-first hierarchy", () => {
     );
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).toBe("Explicit action");
     expect(screen.getByLabelText("검증 지표").value).toBe("CPA");
+    expect(container.querySelector(".decision-review__tape-main").textContent).toContain("Explicit action");
+    expect(useAppStore.getState().decisionRecords).toHaveLength(0);
+  });
+
+  it("shows the review tape only for a real actionable result", () => {
+    const card = (props = {}) => (
+      <ResultActionCard
+        toolId="5-3"
+        headline="Result"
+        analysisBasis={false}
+        decisionPrefill={{ action: "Move 10% budget", metric: "CPA" }}
+        {...props}
+      />
+    );
+    const view = render(card());
+    expect(view.container.querySelector(".decision-review")).toBeTruthy();
+
+    view.rerender(card({ decisionReview: false }));
+    expect(view.container.querySelector(".decision-review")).toBeFalsy();
+
+    view.rerender(card({ tone: "bad" }));
+    expect(view.container.querySelector(".decision-review")).toBeTruthy();
+
+    view.rerender(card({ decisionPrefill: { conclusion: "No safe action" } }));
+    expect(view.container.querySelector(".decision-review")).toBeFalsy();
+
+    view.rerender(card({ decisionPrefill: { action: "   " } }));
+    expect(view.container.querySelector(".decision-review")).toBeFalsy();
+
+    useAppStore.setState({ csvData: { raw: [{ Date: "2026-01-01" }], headers: ["Date"], mapping: {}, fileName: "demo_efficiency.csv" } });
+    view.rerender(card());
+    expect(view.container.querySelector(".decision-review")).toBeFalsy();
+    expect(useAppStore.getState().decisionRecords).toHaveLength(0);
+  });
+
+  it("places the review promise before the folded analysis basis", () => {
+    const mappedRows = [{ date: "2026-07-01", cost: "100", installs: "10" }];
+    useAppStore.setState({ csvData: {
+      raw: [{ Date: "2026-07-01", Cost: "100", Installs: "10" }],
+      headers: ["Date", "Cost", "Installs"],
+      mapping: { Date: "date", Cost: "cost", Installs: "installs" },
+      fileName: "allocation.csv",
+      mappedRows,
+      canonicalData: {
+        summary: {},
+        records: [{ date: "2026-07-01", dimensions: { channel: "Search" }, metrics: { cost: 100, installs: 10 } }],
+      },
+    } });
+    const { container } = render(
+      <ResultActionCard
+        toolId="5-3"
+        headline="Result"
+        decisionPrefill={{ action: "Move 10% budget", metric: "CPA" }}
+      />,
+    );
+    const review = container.querySelector(".decision-review");
+    const basis = container.querySelector(".analysis-basis-bar");
+    expect(review).toBeTruthy();
+    expect(basis).toBeTruthy();
+    expect(review.compareDocumentPosition(basis) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("refreshes an untouched seed but never discards an in-progress draft", () => {

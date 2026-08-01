@@ -100,6 +100,13 @@ export default function ResultActionCard({
     scope: resultScope,
   }), [toolId, tone, headline, points, stats, inputSignature, locale, resultScope]);
   const resolvedDecisionPrefillKey = useMemo(() => decisionPrefillKey(decisionPrefill), [decisionPrefill]);
+  const hasDecisionPrefill = Boolean(
+    decisionPrefill
+      && typeof decisionPrefill === "object"
+      && !Array.isArray(decisionPrefill)
+      && String(decisionPrefill.action || "").trim(),
+  );
+  const canScheduleDecision = Boolean(decisionReview && toolId && hasDecisionPrefill && !String(csvData?.fileName || "").startsWith("demo_"));
   const visiblePoints = collapsePointsAfter == null ? points : points.slice(0, collapsePointsAfter);
   const hiddenPoints = collapsePointsAfter == null ? [] : points.slice(collapsePointsAfter);
   useEffect(() => {
@@ -188,6 +195,15 @@ export default function ResultActionCard({
         </details>
       )}
 
+      {canScheduleDecision && (
+        <DecisionReview
+          toolId={toolId}
+          locale={locale}
+          decisionPrefill={decisionPrefill}
+          decisionPrefillKey={resolvedDecisionPrefillKey}
+        />
+      )}
+
       {analysisBasis && toolId && (
         <AnalysisBasisBar
           canonicalData={csvData?.canonicalData}
@@ -196,15 +212,6 @@ export default function ResultActionCard({
           toolId={toolId}
           locale={locale}
           showPeriodComparison={toolId !== "5-2"}
-        />
-      )}
-
-      {decisionReview && toolId && (
-        <DecisionReview
-          toolId={toolId}
-          locale={locale}
-          decisionPrefill={decisionPrefill}
-          decisionPrefillKey={resolvedDecisionPrefillKey}
         />
       )}
       {analysisDetails}

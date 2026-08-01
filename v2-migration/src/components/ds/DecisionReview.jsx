@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import Papa from "papaparse";
 import { trackProductEvent } from "@/lib/analytics";
 import { getDecisionReviewBucket, normalizeDecisionReviewRows, serializeDecisionReviewCsv, toLocalDecisionDate } from "@/lib/decisionReview";
+import { DECISION_REVIEW_OPEN_EVENT } from "@/lib/decisionReviewUi";
 import { useAppStore } from "@/store/useDataStore";
 import { downloadCsv } from "@/utils/download";
 
@@ -29,9 +30,33 @@ function createDraft(prefill = {}) {
   };
 }
 
+function reviewDateCue(value, locale) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return locale === "en" ? "Review date" : "검토 예정일";
+  const target = new Date(`${value}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((target.getTime() - today.getTime()) / 86400000);
+  if (days === 0) return locale === "en" ? "Review today" : "오늘 검토";
+  if (days > 0) return locale === "en" ? `Review in ${days} day${days === 1 ? "" : "s"}` : `${days}일 뒤 검토`;
+  return locale === "en" ? `${Math.abs(days)} day${days === -1 ? "" : "s"} overdue` : `${Math.abs(days)}일 지남`;
+}
+
+function formatReviewDate(value, locale) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return "—";
+  const date = new Date(`${value}T00:00:00`);
+  return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "ko-KR", {
+    month: "short",
+    day: "numeric",
+    weekday: "short",
+  }).format(date);
+}
+
 const COPY = {
   ko: {
     summary: "다음 검토 약속 만들기",
+    closeEditor: "편집 접기",
+    suggestedAction: "추천 행동",
+    emptyAction: "결과에서 실행할 행동을 정하세요",
     helper: "현재 결론을 한 가지 행동으로 바꾸고, 검토일에 실제 결과와 배운 점을 이어서 기록하세요.",
     privacySession: "현재 브라우저 세션에서 도구 간 공유됩니다. 새로고침 뒤에도 보려면 아래 저장을 직접 켜세요.",
     privacySaved: "결정 요약만 이 기기에 저장 중입니다. 원본 CSV·분석 행·파일명·차트 데이터는 저장하지 않습니다.",
@@ -74,6 +99,9 @@ const COPY = {
   },
   en: {
     summary: "Schedule the next review",
+    closeEditor: "Close editor",
+    suggestedAction: "Suggested action",
+    emptyAction: "Choose the action to take from this result",
     helper: "Turn this conclusion into one action, then return on the review date to log the outcome and learning.",
     privacySession: "Shared across tools for this browser session. Explicitly enable device storage below to keep it after a reload.",
     privacySaved: "Only decision summaries are stored on this device. Source CSV rows, file names, and chart data are never included.",
@@ -118,9 +146,14 @@ const COPY = {
 
 export default function DecisionReview({ toolId, locale = "ko", decisionPrefill = null, decisionPrefillKey = "" }) {
   const t = COPY[locale] || COPY.ko;
+  const instanceId = useId();
+  const detailsId = `decision-review-${toolId}-${instanceId.replace(/:/g, "")}`;
   const [draft, setDraft] = useState(() => createDraft(decisionPrefill));
   const [isDraftDirty, setIsDraftDirty] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const detailsRef = useRef(null);
+  const actionInputRef = useRef(null);
   const importRef = useRef(null);
   const appliedPrefillKey = useRef(`${toolId}:${decisionPrefillKey}`);
   const draftToolId = useRef(toolId);
@@ -132,6 +165,37 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   const importDecisionRecords = useAppStore((state) => state.importDecisionRecords);
   const updateDecisionRecord = useAppStore((state) => state.updateDecisionRecord);
   const removeDecisionRecord = useAppStore((state) => state.removeDecisionRecord);
+
+  useEffect(() => {
+    const target = detailsRef.current;
+    if (!target) return undefined;
+    const openFromExternalAction = (event) => {
+      const source = event.detail?.source || "external";
+      setIsOpen(true);
+      trackProductEvent("decision_review_opened", {
+        tool_id: toolId,
+        source,
+        placement: source === "tool_assist_rail"
+          ? "tool_assist_rail"
+          : "result_action_card",
+        locale,
+      });
+      const revealEditor = () => {
+        if (!target.isConnected) return;
+        const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+        const focusTarget = actionInputRef.current;
+        focusTarget?.scrollIntoView?.({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "center" });
+        focusTarget?.focus({ preventScroll: true });
+      };
+      if (typeof window.requestAnimationFrame === "function") {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(revealEditor));
+      } else {
+        window.setTimeout(revealEditor, 0);
+      }
+    };
+    target.addEventListener(DECISION_REVIEW_OPEN_EVENT, openFromExternalAction);
+    return () => target.removeEventListener(DECISION_REVIEW_OPEN_EVENT, openFromExternalAction);
+  }, [locale, toolId]);
 
   useEffect(() => {
     const nextKey = `${toolId}:${decisionPrefillKey}`;
@@ -199,9 +263,28 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
   };
 
   return (
-    <details className="decision-review">
-      <summary>
-        <span>{t.summary}</span>
+    <details
+      ref={detailsRef}
+      id={detailsId}
+      className="decision-review"
+      data-decision-review-tool={toolId}
+      open={isOpen}
+      onToggle={(event) => setIsOpen(event.currentTarget.open)}
+    >
+      <summary
+        onClick={() => {
+          if (!isOpen) trackProductEvent("decision_review_opened", { tool_id: toolId, source: "result_tape", placement: "result_action_card", locale });
+        }}
+      >
+        <span className="decision-review__tape-main">
+          <small>{t.suggestedAction}</small>
+          <strong>{draft.action || t.emptyAction}</strong>
+        </span>
+        <span className="decision-review__tape-date">
+          <small>{reviewDateCue(draft.reviewDate, locale)}</small>
+          <strong>{formatReviewDate(draft.reviewDate, locale)}</strong>
+        </span>
+        <span className="decision-review__tape-cta">{isOpen ? t.closeEditor : t.summary}<b aria-hidden="true">{isOpen ? "↑" : "→"}</b></span>
         {records.length > 0 && <em>{records.length}</em>}
       </summary>
       <div className="decision-review__body">
@@ -216,7 +299,11 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
                 const enabled = event.target.checked;
                 const didUpdate = setDecisionPersistenceEnabled(enabled);
                 setMessage(enabled && didUpdate === false ? t.persistenceError : "");
-                trackProductEvent("decision_persistence_changed", { enabled: enabled && didUpdate !== false, source: "decision_review", locale });
+                trackProductEvent("decision_persistence_changed", {
+                  state: enabled && didUpdate !== false ? "enabled" : "disabled",
+                  source: "decision_review",
+                  locale,
+                });
               }}
             />
             <span>{t.persistence}</span>
@@ -236,7 +323,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
         <div className="decision-review__form">
           <label className="decision-review__field decision-review__field--wide">
             <span>{t.action}</span>
-            <input value={draft.action} onChange={(event) => updateDraft("action", event.target.value)} placeholder={t.actionPlaceholder} />
+            <input ref={actionInputRef} value={draft.action} onChange={(event) => updateDraft("action", event.target.value)} placeholder={t.actionPlaceholder} />
           </label>
           <label className="decision-review__field decision-review__field--wide">
             <span>{t.hypothesis}</span>

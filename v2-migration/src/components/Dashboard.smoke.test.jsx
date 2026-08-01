@@ -6,7 +6,7 @@
 // (VizTab/ScorecardTab/…). We mount each of the 8 tabs on a valid efficiency CSV
 // so a throw in any tab surfaces here. mapping = { originalHeader: standardKey }.
 import { describe, it, expect, beforeEach } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Dashboard from "@/components/Dashboard";
 
@@ -68,6 +68,9 @@ describe("Dashboard render smoke", () => {
     expect(document.querySelector(".mapping-grid")).toBeTruthy();
     expect(document.querySelector(".csv-dropzone")).toBeFalsy();
     expect(document.querySelector("#dashboard-demo-source")).toBeTruthy();
+    expect(document.querySelector(".decision-review")).toBeNull();
+    expect(screen.queryByRole("button", { name: "검토 약속 만들기" })).toBeNull();
+    expect(useAppStore.getState().decisionRecords).toHaveLength(0);
   });
 
   for (const tab of TABS) {
@@ -112,6 +115,22 @@ describe("Dashboard render smoke", () => {
     render(<Dashboard />);
     expect(screen.getByLabelText("무엇을 바꿀까요?").value).not.toBe("");
     expect(screen.getByLabelText("검증 지표").value).not.toBe("");
+  });
+
+  it("offers one inline review promise without a duplicate save action", () => {
+    seedWithData();
+    const { container } = render(<Dashboard />);
+    const reviews = container.querySelectorAll(".decision-review");
+    const review = reviews[0];
+    expect(reviews).toHaveLength(1);
+    expect(review).toBeTruthy();
+    expect(review.open).toBe(false);
+
+    fireEvent.click(review.querySelector("summary"));
+
+    expect(review.open).toBe(true);
+    expect(useAppStore.getState().decisionRecords).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: "결과 기록" })).toBeNull();
   });
 
   it("shows the dashboard-wide verdict only on the visualization tab", () => {
