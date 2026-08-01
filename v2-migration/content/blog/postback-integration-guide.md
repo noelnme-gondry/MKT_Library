@@ -7,6 +7,9 @@ keywords: "포스트백 연동, MMP postback, 설치 0, 이벤트 누락, 매출
 tags: ["측정", "기초"]
 draft: false
 primaryTool: "5-20"
+sources:
+  - title: "Apple Developer — Receiving ad attributions and postbacks"
+    url: "https://developer.apple.com/documentation/adattributionkit/receiving-ad-attributions-and-postbacks"
 faq:
   - q: "매체 대시보드에 설치가 0이면 포스트백 문제인가요?"
     a: "항상 그렇지는 않습니다. 앱 설치 이벤트, MMP 어트리뷰션, 매체 파트너 연결, 앱 ID와 전환 기간을 순서대로 확인해야 합니다. 마지막으로 정상인 지점이 원인 범위를 좁힙니다."

@@ -8,6 +8,9 @@ tags: ["Measurement", "Fundamentals"]
 draft: false
 primaryTool: "5-20"
 ogImage: "/blog-assets/postback-integration-guide/og-en.svg"
+sources:
+  - title: "Apple Developer — Receiving ad attributions and postbacks"
+    url: "https://developer.apple.com/documentation/adattributionkit/receiving-ad-attributions-and-postbacks"
 faq:
   - q: "Do zero installs in the ad network always mean a postback problem?"
     a: "No. Verify the app install, MMP attribution, partner connection, app ID, and conversion window in order. The last working point narrows the cause."

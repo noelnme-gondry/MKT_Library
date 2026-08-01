@@ -108,7 +108,7 @@ v2-migration/
 - **공개 범위 SSOT**: `routeMap.isRoutePublished()` + `getAllPosts/getAllTerms`. preview/내부 route와 `draft:true` 콘텐츠는 `noindex`이고 sitemap/RSS/탐색 허브에서 제외한다.
 - **메타 SSOT**: `routeSeo.js`가 route별 intent title/description/keywords/canonical/hreflang(`ko`·`en`·`x-default`)을 생성. EN SOP도 `sopData.js`를 통해 서버 HTML에 실제 제목·본문을 포함한다.
 - **목록(`/blog`, `/glossary`, `/en/*`)**: canonical·hreflang·CollectionPage/Blog/DefinedTermSet JSON-LD. `SearchTopicHub`가 검색 질문을 실제 분석 URL로 연결한다.
-- **상세**: BlogPosting/DefinedTerm + BreadcrumbList, 작성 주체·발행/수정일·관련 용어를 명시한다. 글별 OG는 `/blog/[slug]/opengraph-image`, 없으면 `/og-card.png`를 사용한다.
+- **상세**: BlogPosting/DefinedTerm + BreadcrumbList, 작성 주체·발행/수정일·관련 용어를 명시한다. 블로그의 직접 답변·적용 조건·검토일·검토자·선별 출처는 `lib/blogEditorial.js`(원고 frontmatter로 글별 override 가능)에서 SSR 본문과 JSON-LD에 같은 값으로 반영한다. 출처는 실제로 인용한 1차·권위 출처만 노출하며, 근거가 없을 때 채워 넣지 않는다. 글별 OG는 `/blog/[slug]/opengraph-image`, 없으면 `/og-card.png`를 사용한다.
 - **전환 SSOT**: `contentToolRegistry.js`에 **발행 글/용어 → 정확한 도구**, 발행 글 → 관련 용어를 명시한다. 키워드 추측 폴백은 신규 콘텐츠의 안전망일 뿐이며 `contentRegistry.test.js`가 모든 발행 콘텐츠의 누락·죽은 route·잘못된 EN 연결·한글 tag decode를 막는다.
 - **사용 흐름**: 검색 랜딩 → 문제 설명 → 관련 용어/증거 → `ContentActionPanel` → `/start?tool=<id>` 또는 직접 도구 → CSV 분석 → Decision Tape → 다음 분석. Footer/Cmd-K/templates가 데스크톱·모바일 공통 탈출구다.
 

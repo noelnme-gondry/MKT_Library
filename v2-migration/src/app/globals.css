@@ -5471,6 +5471,16 @@ body:not(.light-mode) .landing-advanced-lab h2 .lab-title__accent { color: #8fb1
   font-size: 15px;
   line-height: 1.72;
 }
+.editorial-trust { margin-top: 18px; padding: 16px 18px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-container-lowest); }
+.editorial-trust__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--text-muted); font: 520 9px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+.editorial-trust__head > span { color: var(--primary); }
+.editorial-trust p { margin: 9px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.65; }
+.editorial-trust small { display: block; margin-top: 8px; color: var(--text-muted); font: 500 10px/1.5 var(--font-mono); }
+.editorial-trust__sources { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+.editorial-trust__sources strong { color: var(--text-secondary); font: 550 10px var(--font-mono); }
+.editorial-trust__sources ul { margin: 7px 0 0; padding-left: 17px; }
+.editorial-trust__sources li { margin: 4px 0; color: var(--text-muted); font-size: 12px; }
+.editorial-trust__sources a { color: var(--primary); }
 
 /* MMM preview: a compact, believable model readout instead of a decorative list. */
 .landing-advanced-lab__model {

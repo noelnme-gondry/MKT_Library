@@ -18,6 +18,14 @@ ogImage: "/blog-assets/example-post/og.png"  # (선택) SNS 공유 카드 이미
 primaryTool: "5-22"                 # (선택) 글 하단에 연결할 분석 도구 내부 id
 template: "efficiency"              # (선택) 권장 데이터 템플릿 이름
 relatedGlossary: ["roas"]           # (선택) 함께 볼 용어 slug
+# AAO/GEO 편집 계약 — 답변·조건은 본문 첫 화면과 SSR 구조화 데이터에 함께 반영됩니다.
+answer: "질문에 대한 직접 답변을 두 문장 안에 씁니다." # (권장) CTA·메타 설명과 분리
+conditions: "이 답이 성립하는 조건과 예외를 씁니다."   # (권장) 단정 대신 적용 범위를 명시
+reviewedAt: "2026-08-01"            # (권장) 마지막 사실·링크 검토일, ISO 형식
+reviewer: "Growth Opt Playbook 편집 검토" # (권장) 검토 책임 역할 또는 이름
+# sources:                           # (선택) 주장 검증에 쓴 1차·권위 출처만 씁니다.
+#   - title: "출처 제목"
+#     url: "https://example.com/source"
 # faq: (선택) 자주 묻는 질문 목록 — 있으면 본문 하단에 아코디언으로 표시 + 구글 FAQPage
 #   구조화 데이터로 자동 삽입(리치 스니펫 노출 후보). 정의/가이드성 글에 우선 적용 권장.
 #   q/a 둘 다 없는 항목은 자동 무시됨.

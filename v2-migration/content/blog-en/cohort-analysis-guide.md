@@ -9,6 +9,11 @@ draft: false
 ogImage: "/blog-assets/cohort-analysis-guide/og.svg"
 primaryTool: "5-20"
 relatedGlossary: ["cohort", "retention", "ltv"]
+sources:
+  - title: "Google Analytics Data API — CohortSpec"
+    url: "https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1alpha/CohortSpec"
+  - title: "Amplitude — Retention Analysis: how time works"
+    url: "https://amplitude.com/docs/analytics/charts/retention-analysis/retention-analysis-time"
 faq:
   - q: "Why is recent D7 retention showing 0%?"
     a: "The cohort may not be seven days old. Check the maximum event date in the source data, then mark that value incomplete rather than zero and exclude it from mature-cohort averages."

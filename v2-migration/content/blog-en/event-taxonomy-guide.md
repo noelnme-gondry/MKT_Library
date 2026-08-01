@@ -8,6 +8,11 @@ tags: ["Measurement", "Metrics Basics"]
 draft: false
 ogImage: "/blog-assets/event-taxonomy-guide/og.svg"
 relatedGlossary: ["mmp", "retention", "ltv"]
+sources:
+  - title: "Google Analytics — GA4 event reference"
+    url: "https://developers.google.com/analytics/devguides/collection/protocol/ga4/reference/events"
+  - title: "AppsFlyer — In-app events"
+    url: "https://dev.appsflyer.com/hc/docs/inappevents"
 faq:
   - q: "Can an event name be a screen name?"
     a: "Avoid it. Screens change often and contain multiple actions. Name the user action as the event and use parameters for screen, object, and other context."

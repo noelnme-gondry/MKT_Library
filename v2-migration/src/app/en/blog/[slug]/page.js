@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
 import { SITE_URL } from "@/lib/routeMap";
 import ContentActionPanel from "@/components/seo/ContentActionPanel";
+import EditorialTrust from "@/components/seo/EditorialTrust";
 import NewsletterSignup from "@/components/seo/NewsletterSignup";
 
 // EN 글 상세 — KR /blog/[slug]/page.js 미러(getAllPosts/getPostBySlug locale="en").
@@ -101,7 +102,7 @@ function buildPostJsonLd(post, canonical) {
         headline: post.title,
         description: post.description,
         datePublished: post.date || undefined,
-        dateModified: post.updated || post.date || undefined,
+        dateModified: post.reviewedAt || post.updated || post.date || undefined,
         author: publisher,
         publisher,
         mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
@@ -109,6 +110,7 @@ function buildPostJsonLd(post, canonical) {
         inLanguage: "en-US",
         articleSection: post.tags,
         ...(post.keywords ? { keywords: post.keywords } : {}),
+        ...(post.sources.length ? { citation: post.sources.map((source) => source.url) } : {}),
         image: articleImages,
       },
       {
@@ -171,6 +173,14 @@ export default async function EnBlogPostPage({ params }) {
       </article>
 
       <ContentActionPanel locale="en" toolId={post.primaryTool} post={post} />
+
+      <EditorialTrust
+        locale="en"
+        conditions={post.conditions}
+        reviewer={post.reviewer}
+        reviewedAt={post.reviewedAt}
+        sources={post.sources}
+      />
 
       <NewsletterSignup locale="en" placement="post" />
 

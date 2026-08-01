@@ -103,8 +103,8 @@ export function getBlogSeo(locale, slug, source = {}) {
     : " 먼저 기준 기간과 전환 정의를 고정한 뒤, 연결된 분석 도구에서 결과를 검증하세요.";
   return {
     title,
-    // 검색 메타는 제목을 중심으로 짧게 유지한다. 원고 설명과 실행 CTA는 본문
-    // answer에 보존해 SERP 길이 제한과 본문 전환 역할을 분리한다.
+    // 검색 메타는 제목을 중심으로 짧게 유지한다. 본문의 직접 답변은
+    // blogEditorial 레지스트리에서 별도로 관리해 메타·CTA와 역할을 분리한다.
     description: DESCRIPTION_OVERRIDES[locale]?.[slug] || (isEnglish
       ? `${title}. A practical guide to the key checks, trade-offs, and next steps.`
       : `${title}. 핵심 기준과 실무 확인 순서를 정리합니다.`),

@@ -8,6 +8,11 @@ tags: ["측정", "기초"]
 draft: false
 ogImage: "/blog-assets/event-taxonomy-guide/og-ko.svg"
 relatedGlossary: ["mmp", "retention", "ltv"]
+sources:
+  - title: "Google Analytics — GA4 event reference"
+    url: "https://developers.google.com/analytics/devguides/collection/protocol/ga4/reference/events"
+  - title: "AppsFlyer — In-app events"
+    url: "https://dev.appsflyer.com/hc/docs/inappevents"
 faq:
   - q: "이벤트명은 화면 이름으로 지어도 되나요?"
     a: "권장하지 않습니다. 화면은 바뀌기 쉽고 하나의 화면에서 여러 행동이 일어납니다. 이벤트명은 사용자의 행동을, 파라미터는 행동이 일어난 화면·대상·값 같은 맥락을 표현하세요."
