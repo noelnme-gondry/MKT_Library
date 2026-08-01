@@ -7,6 +7,7 @@ import { useAppStore, IA, SECTIONS, displayGroupNumberShort, displayItemNumberSh
 import { idToSlug, resolvePathToId, hasEnVersion } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle, trSectionLabel } from "@/lib/enNavCopy";
 import { TOOL_JOURNEY, localizedTool } from "@/lib/toolConnections";
+import { getDecisionReviewBucket } from "@/lib/decisionReview";
 import BrandMark from "@/components/BrandMark";
 
 const SIDEBAR_COPY = {
@@ -26,6 +27,8 @@ const SIDEBAR_COPY = {
     workspaceLabel: "DECISION WORKSPACE",
     allTools: "전체 도구",
     today: "오늘의 질문",
+    review: "결정 검토함",
+    reviewAria: (count) => `결정 검토함${count ? `, 지금 검토할 결정 ${count}건` : ""}`,
     workflow: "연결된 분석 흐름",
     dataGuide: "데이터 준비",
     insights: "실무 인사이트",
@@ -47,6 +50,8 @@ const SIDEBAR_COPY = {
     workspaceLabel: "DECISION WORKSPACE",
     allTools: "All tools",
     today: "Today’s question",
+    review: "Decision inbox",
+    reviewAria: (count) => `Decision inbox${count ? `, ${count} decision${count === 1 ? "" : "s"} due now` : ""}`,
     workflow: "Connected workflow",
     dataGuide: "Prepare data",
     insights: "Practical insights",
@@ -63,9 +68,17 @@ export default function Sidebar({ locale = "ko" }) {
   // the page-level store-sync effect runs (avoids a first-paint race).
   const pathname = usePathname();
   const currentRouteId = resolvePathToId(pathname) ?? "home";
-  const isHome = currentRouteId === "home";
+  const cleanPath = (pathname || "/").replace(/^\/en(?=\/|$)/, "") || "/";
+  const isHome = cleanPath === "/";
+  const isWeeklyReview = cleanPath === "/weekly-review";
+  const isLibraryRoute = /^\/(blog|guide|calculator|diagnose|templates|glossary)(\/|$)/.test(cleanPath);
   const isCmdkOpen = useAppStore((state) => state.isCmdkOpen);
   const setCmdkOpen = useAppStore((state) => state.setCmdkOpen);
+  const decisionRecords = useAppStore((state) => state.decisionRecords);
+  const dueDecisionCount = decisionRecords.reduce((count, record) => {
+    const bucket = getDecisionReviewBucket(record);
+    return count + (bucket === "overdue" || bucket === "today" ? 1 : 0);
+  }, 0);
 
   // Keep track of collapsed states
   // By default, expand if an item is active, otherwise collapsed
@@ -106,21 +119,44 @@ export default function Sidebar({ locale = "ko" }) {
           <div className="home-sidebar-workspace__label">{T.workspaceLabel}</div>
           <nav className="home-sidebar-nav" aria-label={T.workspaceLabel}>
             <Link href={locale === "en" ? "/en" : "/"} className="home-sidebar-nav__item active" aria-current="page">
-              <span aria-hidden="true">◎</span><strong>{T.today}</strong><small>01</small>
+              <span aria-hidden="true">◎</span><strong>{T.today}</strong><small aria-hidden="true">NOW</small>
+            </Link>
+            <Link
+              href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}
+              className="home-sidebar-nav__item home-sidebar-nav__item--review"
+              aria-label={T.reviewAria(dueDecisionCount)}
+              data-due={dueDecisionCount > 0 ? "true" : undefined}
+            >
+              <span aria-hidden="true">◷</span><strong>{T.review}</strong><small aria-hidden="true">{dueDecisionCount || "WEEK"}</small>
             </Link>
             <a href="#workflow" className="home-sidebar-nav__item">
-              <span aria-hidden="true">↳</span><strong>{T.workflow}</strong><small>02</small>
+              <span aria-hidden="true">↳</span><strong>{T.workflow}</strong><small aria-hidden="true">FLOW</small>
             </a>
             <Link href={locale === "en" ? "/en/guide/csv-data-prep" : "/guide/csv-data-prep"} className="home-sidebar-nav__item">
-              <span aria-hidden="true">▤</span><strong>{T.dataGuide}</strong><small>03</small>
+              <span aria-hidden="true">▤</span><strong>{T.dataGuide}</strong><small aria-hidden="true">CSV</small>
             </Link>
             <Link href={locale === "en" ? "/en/blog" : "/blog"} className="home-sidebar-nav__item">
-              <span aria-hidden="true">⌁</span><strong>{T.insights}</strong><small>04</small>
+              <span aria-hidden="true">⌁</span><strong>{T.insights}</strong><small aria-hidden="true">READ</small>
             </Link>
           </nav>
         </div>
       ) : (
         <>
+      <nav className="sidebar-primary-nav" aria-label={T.workspaceLabel}>
+        <Link href={locale === "en" ? "/en" : "/"} className="sidebar-primary-nav__item">
+          <span aria-hidden="true">◎</span><strong>{T.today}</strong><small aria-hidden="true">NOW</small>
+        </Link>
+        <Link
+          href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}
+          className={`sidebar-primary-nav__item sidebar-primary-nav__item--review${isWeeklyReview ? " active" : ""}`}
+          aria-label={T.reviewAria(dueDecisionCount)}
+          aria-current={isWeeklyReview ? "page" : undefined}
+          data-due={dueDecisionCount > 0 ? "true" : undefined}
+        >
+          <span aria-hidden="true">◷</span><strong>{T.review}</strong>
+          <small aria-hidden="true">{dueDecisionCount || "WEEK"}</small>
+        </Link>
+      </nav>
       <div className="inner-workspace-label">
         <span>{T.workspaceLabel}</span>
         <b>{T.allTools}</b>
@@ -272,9 +308,14 @@ export default function Sidebar({ locale = "ko" }) {
         </>
       )}
 
-      {/* 메인 IA는 그대로 유지하고, 자주 찾는 리소스만 긴 카드로 다시 노출한다. */}
-      <div className="sidebar-resource-label">{T.resourceLabel}</div>
-      <section className="sidebar-library" data-section="resources">
+      {/* 라이브러리는 분석 흐름보다 한 단계 낮은 보조 문맥이다. 홈·리소스
+          페이지에서는 펼치고, 도구 작업 중에는 접어 현재 판단 흐름을 우선한다. */}
+      <details className="sidebar-library-disclosure" open={isHome || isLibraryRoute}>
+        <summary className="sidebar-resource-label">
+          <span>{T.resourceLabel}</span>
+          <span className="sidebar-library-disclosure__count" aria-hidden="true">06</span>
+        </summary>
+        <section className="sidebar-library" data-section="resources">
         <Link
           href={locale === "en" ? "/en/blog" : "/blog"}
           className="sidebar-library-link"
@@ -317,9 +358,9 @@ export default function Sidebar({ locale = "ko" }) {
         >
           <span><strong>{T.glossary}</strong><small>TERMS</small></span><b>↗</b>
         </Link>
-      </section>
+        </section>
 
-      <div className="sidebar-social">
+        <div className="sidebar-social">
         <a className="ss-btn ss-youtube" href="https://youtube.com/channel/UCvRcpOHOqvSHQPNbgZdPNUw/" target="_blank" rel="noopener noreferrer" title={T.youtube}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.11-2.12C19.44 3.5 12 3.5 12 3.5s-7.44 0-9.39.58A3 3 0 0 0 .5 6.2 31.6 31.6 0 0 0 0 12a31.6 31.6 0 0 0 .5 5.8 3 3 0 0 0 2.11 2.12C4.56 20.5 12 20.5 12 20.5s7.44 0 9.39-.58a3 3 0 0 0 2.11-2.12A31.6 31.6 0 0 0 24 12a31.6 31.6 0 0 0-.5-5.8ZM9.6 15.6V8.4L15.8 12Z"/></svg>
           <span>{T.youtube}</span>
@@ -336,7 +377,8 @@ export default function Sidebar({ locale = "ko" }) {
           <span className="social-letter-icon" aria-hidden="true">N</span>
           <span>{T.naverBlog}</span>
         </a>
-      </div>
+        </div>
+      </details>
       {isHome && (
         <div className="home-sidebar-local">
           <b>LOCAL ONLY</b>

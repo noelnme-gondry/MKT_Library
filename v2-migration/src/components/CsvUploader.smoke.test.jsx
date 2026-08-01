@@ -48,6 +48,11 @@ describe("CsvUploader render smoke", () => {
     expect(() => render(<CsvUploader toolId="5-2" />)).not.toThrow();
     expect(document.querySelector(".mapping-grid")).toBeTruthy();
     expect(document.querySelector('[data-analysis-status="READY"]')).toBeTruthy();
+    expect(document.querySelectorAll("[data-mapping-source]")).toHaveLength(6);
+    expect(document.querySelectorAll("[data-mapping-target]")).toHaveLength(6);
+    expect(document.querySelectorAll("[data-mapping-status]")).toHaveLength(6);
+    expect(document.querySelector("[data-mapping-target]")?.getAttribute("aria-label")).toContain("표준 필드");
+    expect(document.querySelector(".csv-preview-table")).toBeTruthy();
   });
   it("keeps one live status node across upload branch transition", () => {
     useAppStore.setState({ demoDisabled: true, csvClearedByGroup: { efficiency: true } });

@@ -21,6 +21,7 @@ function seedNoData() {
     currentRouteId: "home",
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    decisionRecords: [],
     isCmdkOpen: false,
   });
 }
@@ -45,13 +46,15 @@ describe("Sidebar render smoke", () => {
   it("no-data mounts", () => {
     expect(() => render(<Sidebar />)).not.toThrow();
     expect(document.querySelector(".home-sidebar-nav")).toBeTruthy();
-    expect(document.querySelectorAll(".home-sidebar-nav__item")).toHaveLength(4);
+    expect(document.querySelectorAll(".home-sidebar-nav__item")).toHaveLength(5);
+    expect(document.querySelector('a[href="/weekly-review"]')).toBeTruthy();
     expect(document.querySelectorAll(".sidebar-library-link")).toHaveLength(6);
     expect(document.querySelector('a[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('a[href="/diagnose"]')).toBeTruthy();
     expect(document.querySelectorAll(".sidebar-social .ss-btn")).toHaveLength(4);
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
     expect(document.querySelector('.home-sidebar-nav__item[aria-current="page"]')).toBeTruthy();
+    expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(true);
   });
   it("with-data mounts", () => {
     pathname = "/dashboard";
@@ -62,12 +65,31 @@ describe("Sidebar render smoke", () => {
     const search = document.querySelector(".sidebar-search");
     expect(search?.getAttribute("aria-controls")).toBe("cmdk");
     expect(search?.getAttribute("aria-expanded")).toBe("false");
+    expect(document.querySelectorAll(".sidebar-primary-nav__item")).toHaveLength(2);
+    expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(false);
   });
   it("keeps resource and external-link parity in English", () => {
     pathname = "/en";
     const { container } = render(<Sidebar locale="en" />);
     expect(container.textContent).toContain("Operating Guide");
     expect(container.textContent).toContain("Naver Blog");
+    expect(container.textContent).toContain("Decision inbox");
     expect(container.querySelector('a[href="/en/guide"]')).toBeTruthy();
+  });
+  it("uses the full workspace navigation on library routes instead of treating them as home", () => {
+    pathname = "/blog";
+    const { container } = render(<Sidebar />);
+    expect(container.querySelector(".home-sidebar-nav")).toBeNull();
+    expect(container.querySelector(".sidebar-primary-nav")).toBeTruthy();
+    expect(container.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(true);
+  });
+  it("surfaces decisions due now in the recurring workspace flow", () => {
+    useAppStore.setState({
+      decisionRecords: [{ id: "decision_1", toolId: "5-2", action: "CPA 검토", reviewDate: "2020-01-01", actual: "", learning: "" }],
+    });
+    const { container } = render(<Sidebar />);
+    const review = container.querySelector('a[href="/weekly-review"]');
+    expect(review?.getAttribute("aria-label")).toBe("결정 검토함, 지금 검토할 결정 1건");
+    expect(review?.textContent).toContain("1");
   });
 });

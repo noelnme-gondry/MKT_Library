@@ -43,6 +43,8 @@ describe("DashboardFilterBar segment disclosure", () => {
   it("keeps the segment controls collapsed when no segment filter is active", () => {
     const { container } = render(<DashboardFilterBar locale="en" />);
     expect(container.querySelector(".dashboard-filter-more")).toHaveProperty("open", false);
+    expect(container.querySelector(".dashboard-filter-bar__scope")?.getAttribute("aria-label")).toBe("Date and segment filters");
+    expect(container.querySelector(".dashboard-filter-bar__display")?.getAttribute("aria-label")).toBe("Display settings");
   });
 
   it("opens after a segment filter becomes active post-mount", () => {

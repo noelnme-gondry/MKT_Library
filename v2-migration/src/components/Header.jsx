@@ -16,35 +16,39 @@ const HEADER_COPY = {
     breadcrumbAria: "페이지 경로",
     overview: "Overview",
     csvChangeTitle: "현재 CSV를 지우고 다시 업로드 (이 CSV를 공유하는 모든 도구에 적용)",
-    csvChangeBtn: "🔄 CSV 변경",
+    csvChangeBtn: "CSV 변경",
     themeAria: "테마 전환",
     themeTitle: "테마 전환 (라이트/다크)",
     quickNav: "빠른 이동",
     allTools: "전체 도구",
-    localeSwitch: "🌐 EN",
+    localeSwitch: "English",
     localeSwitchTitle: "영어 페이지로 (번역된 페이지만 지원)",
     print: "인쇄 / PDF",
     printTitle: "현재 분석 결과를 인쇄하거나 PDF로 저장",
     homeCrumb: "오늘의 질문",
     decisionInbox: "결정 검토함",
     decisionInboxAria: (count) => `결정 검토함${count ? `, 지금 검토할 결정 ${count}건` : ""}`,
+    dataContext: "현재 데이터",
+    utilities: "기타 설정",
   },
   en: {
     breadcrumbAria: "Breadcrumb",
     overview: "Overview",
     csvChangeTitle: "Clear current CSV and re-upload (applies to every tool sharing this data)",
-    csvChangeBtn: "🔄 Change CSV",
+    csvChangeBtn: "Change CSV",
     themeAria: "Toggle theme",
     themeTitle: "Toggle theme (light/dark)",
     quickNav: "Quick nav",
     allTools: "All tools",
-    localeSwitch: "🌐 한국어",
+    localeSwitch: "한국어",
     localeSwitchTitle: "Switch to the Korean page",
     print: "Print / PDF",
     printTitle: "Print this analysis or save it as a PDF",
     homeCrumb: "Today’s question",
     decisionInbox: "Decision inbox",
     decisionInboxAria: (count) => `Decision inbox${count ? `, ${count} decision${count === 1 ? "" : "s"} due now` : ""}`,
+    dataContext: "Current data",
+    utilities: "More settings",
   },
 };
 
@@ -89,6 +93,27 @@ export default function Header({ locale = "ko" }) {
   const switchHref = locale === "en" ? cleanPath : englishSwitchHref(pathname);
   const switchLocale = locale === "en" ? "ko" : "en";
   const hasRestoredTheme = useRef(false);
+  const utilityMenuRef = useRef(null);
+  const closeUtilityMenu = () => utilityMenuRef.current?.removeAttribute("open");
+
+  useEffect(() => {
+    const closeOnOutsidePointer = (event) => {
+      const menu = utilityMenuRef.current;
+      if (menu?.open && !menu.contains(event.target)) menu.removeAttribute("open");
+    };
+    const closeOnEscape = (event) => {
+      const menu = utilityMenuRef.current;
+      if (event.key !== "Escape" || !menu?.open) return;
+      menu.removeAttribute("open");
+      menu.querySelector(":scope > summary")?.focus();
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
 
   // The first inline body script already applies the stored class before paint.
   // Synchronize Zustand once, then keep DOM/storage/canvas charts aligned.
@@ -114,180 +139,112 @@ export default function Header({ locale = "ko" }) {
   const meta = currentRouteId === "home" ? null : findMeta(currentRouteId);
 
   return (
-    <header className="topbar" role="banner">
-      <nav className="breadcrumb" aria-label={T.breadcrumbAria}>
-        {/* 브랜드: 로고 마크(GO) + 이름을 좌상단에 고정(전 페이지·KR/EN 공통, 홈 링크). */}
-        <Link href={locale === "en" ? "/en" : "/"} className="crumb-link brand-crumb" style={{ textDecoration: "none", color: "inherit", display: "inline-flex", alignItems: "center", gap: "8px" }}>
-          <BrandMark size={26} label="Growth Opt Playbook" />
-          <span className="brand-crumb__label" style={{ fontWeight: 700 }}>Growth Opt Playbook</span>
-        </Link>
-        {cleanPath === "/" && (
-          <>
-            <span className="sep">/</span>
-            <strong className="current">{T.homeCrumb}</strong>
-          </>
-        )}
-        {/* 블로그는 브랜드 + "블로그" 크럼. */}
-        {isBlog && (
-          <>
-            <span className="sep">/</span>
-            <Link href={blogHref} className="current" style={{ textDecoration: "none", color: "var(--text-secondary)" }}>
-              {locale === "en" ? "Blog" : "블로그"}
-            </Link>
-          </>
-        )}
-        {isTemplates && (
-          <>
-            <span className="sep">/</span>
-            <span className="current" style={{ color: "var(--text-secondary)" }}>
-              {locale === "en" ? "Templates" : "템플릿"}
-            </span>
-          </>
-        )}
-        {isCalculator && (
-          <>
-            <span className="sep">/</span>
-            <Link href={locale === "en" ? "/en/calculator" : "/calculator"} className="current" style={{ textDecoration: "none", color: "var(--text-secondary)" }}>
-              {locale === "en" ? "Calculators" : "계산기"}
-            </Link>
-          </>
-        )}
-        {isDiagnose && (
-          <>
-            <span className="sep">/</span>
-            <span className="current" style={{ color: "var(--text-secondary)" }}>
-              {locale === "en" ? "Diagnosis" : "문제 진단"}
-            </span>
-          </>
-        )}
-        {(isWeeklyReport || isWeeklyReview) && (
-          <>
-            <span className="sep">/</span>
-            <span className="current" style={{ color: "var(--text-secondary)" }}>
+    <header className="topbar operator-header" role="banner">
+      <div className="topbar-context">
+        <nav className="breadcrumb" aria-label={T.breadcrumbAria}>
+          <Link href={locale === "en" ? "/en" : "/"} className="crumb-link brand-crumb">
+            <BrandMark size={26} label="Growth Opt Playbook" />
+            <span className="brand-crumb__label">Growth Opt Playbook</span>
+          </Link>
+          {cleanPath === "/" && <><span className="sep">/</span><strong className="current">{T.homeCrumb}</strong></>}
+          {isBlog && <><span className="sep">/</span><Link href={blogHref} className="current current--section">{locale === "en" ? "Blog" : "블로그"}</Link></>}
+          {isTemplates && <><span className="sep">/</span><span className="current current--section">{locale === "en" ? "Templates" : "템플릿"}</span></>}
+          {isCalculator && <><span className="sep">/</span><Link href={locale === "en" ? "/en/calculator" : "/calculator"} className="current current--section">{locale === "en" ? "Calculators" : "계산기"}</Link></>}
+          {isDiagnose && <><span className="sep">/</span><span className="current current--section">{locale === "en" ? "Diagnosis" : "문제 진단"}</span></>}
+          {(isWeeklyReport || isWeeklyReview) && (
+            <><span className="sep">/</span><span className="current current--section">
               {isWeeklyReport
                 ? (locale === "en" ? "Weekly report" : "주간 보고서")
                 : (locale === "en" ? "Weekly review" : "주간 검토")}
-            </span>
-          </>
-        )}
-        {isGlossary && (
-          <>
-            <span className="sep">/</span>
-            <Link href={glossaryHref} className="current" style={{ textDecoration: "none", color: "var(--text-secondary)" }}>
-              {locale === "en" ? "Glossary" : "용어사전"}
-            </Link>
-          </>
-        )}
-        {/* 트레일링 크럼은 도구/문서 페이지에서만(홈은 브랜드만). */}
-        {!isBlog && !isTemplates && !isCalculator && !isDiagnose && !isWeeklyReport && !isWeeklyReview && !isGlossary && meta && (
-          <>
-            <span className="sep">/</span>
-            <span
-              className="current"
-              title={trGroupTitle(meta.group.id, locale, meta.group.title)}
-              style={{ color: "var(--text-secondary)", cursor: "default" }}
-            >
-              {displayGroupNumber(meta.group.id, locale)} · {trGroupTitle(meta.group.id, locale, meta.group.title)}
-            </span>
-            <span className="sep">/</span>
-            <span className="current">
-              {displayItemNumber(meta.id, locale)} · {trItemTitle(meta.id, locale, meta.title)}
-            </span>
-          </>
-        )}
-      </nav>
-      <div className="topbar-actions">
-        <Link
-          href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}
-          className="btn ghost header-decision-inbox"
-          aria-label={T.decisionInboxAria(dueDecisionCount)}
-          aria-current={isWeeklyReview ? "page" : undefined}
-        >
-          <span className="header-decision-inbox__icon" aria-hidden="true">◷</span>
-          <span className="header-decision-inbox__label">{T.decisionInbox}</span>
-          {dueDecisionCount > 0 && <em>{dueDecisionCount}</em>}
-        </Link>
-        <ProjectSettingsMenu locale={locale} />
-        {hasCsv && (
-          <span className="header-csv" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11.5px", color: "var(--text-muted)", marginRight: "4px" }}>
-            <span className="chip" title={csvData.fileName}>
-              <span className="dot"></span>{csvData.fileName || "data.csv"}
-            </span>
-            <button
-              className="btn ghost"
-              type="button"
-              title={T.csvChangeTitle}
-              onClick={resetCsv}
-              style={{ fontSize: "11.5px" }}
-            >
-              {T.csvChangeBtn}
-            </button>
-          </span>
-        )}
-        {isAnalysisRoute && (
-          <button
-            className="btn ghost header-print"
-            type="button"
-            title={T.printTitle}
-            onClick={() => window.print()}
-          >
-            {T.print}
-          </button>
-        )}
-        <Link
-          href={switchHref}
-          className="btn ghost header-locale"
-          title={T.localeSwitchTitle}
-          onClick={() => setLocalePref(switchLocale)}
-          style={{ fontSize: "11.5px", textDecoration: "none" }}
-        >
-          {T.localeSwitch}
-        </Link>
-        <button
-          className="btn ghost"
-          id="theme-toggle"
-          type="button"
-          aria-label={T.themeAria}
-          title={T.themeTitle}
-          onClick={toggleTheme}
-        >
-          {/* 원본 로직: 다크모드일 때 sun 아이콘 보여주고(클릭→라이트로), 라이트모드일 때 moon 아이콘 */}
-          {isDarkMode ? (
-            <svg className="sun-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
-              <circle cx="12" cy="12" r="5"></circle>
-              <line x1="12" y1="1" x2="12" y2="3"></line>
-              <line x1="12" y1="21" x2="12" y2="23"></line>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-              <line x1="1" y1="12" x2="3" y2="12"></line>
-              <line x1="21" y1="12" x2="23" y2="12"></line>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-            </svg>
-          ) : (
-            <svg className="moon-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
+            </span></>
           )}
-        </button>
-        <button
-          className="btn ghost header-cmdk"
-          type="button"
-          aria-label={T.allTools}
-          aria-haspopup="dialog"
-          aria-controls="cmdk"
-          aria-expanded={isCmdkOpen}
-          onClick={() => setCmdkOpen(true)}
-        >
-          <svg className="header-cmdk__search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <span className="header-cmdk__menu-icon" aria-hidden="true">☰</span>
-          <span className="header-cmdk__label header-cmdk__label--desktop">{T.quickNav}</span>
-          <span className="header-cmdk__label header-cmdk__label--mobile">{T.allTools}</span>
-          <span className="kbd">⌘K</span>
-        </button>
+          {isGlossary && <><span className="sep">/</span><Link href={glossaryHref} className="current current--section">{locale === "en" ? "Glossary" : "용어사전"}</Link></>}
+          {!isBlog && !isTemplates && !isCalculator && !isDiagnose && !isWeeklyReport && !isWeeklyReview && !isGlossary && meta && (
+            <>
+              <span className="sep">/</span>
+              <span className="current current--section" title={trGroupTitle(meta.group.id, locale, meta.group.title)}>
+                {displayGroupNumber(meta.group.id, locale)} · {trGroupTitle(meta.group.id, locale, meta.group.title)}
+              </span>
+              <span className="sep">/</span>
+              <span className="current current--page">
+                {displayItemNumber(meta.id, locale)} · {trItemTitle(meta.id, locale, meta.title)}
+              </span>
+            </>
+          )}
+        </nav>
+        {hasCsv && (
+          <div className="header-data-context header-csv" aria-label={`${T.dataContext}: ${csvData.fileName || "data.csv"}`}>
+            <span className="header-data-context__label">{T.dataContext}</span>
+            <span className="chip header-data-context__file" title={csvData.fileName || "data.csv"}>
+              <span className="dot" aria-hidden="true"></span>{csvData.fileName || "data.csv"}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="topbar-actions">
+        <div className="topbar-actions__primary">
+          <Link
+            href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}
+            className="btn ghost header-decision-inbox"
+            aria-label={T.decisionInboxAria(dueDecisionCount)}
+            aria-current={isWeeklyReview ? "page" : undefined}
+          >
+            <span className="header-decision-inbox__icon" aria-hidden="true">◷</span>
+            <span className="header-decision-inbox__label">{T.decisionInbox}</span>
+            {dueDecisionCount > 0 && <em>{dueDecisionCount}</em>}
+          </Link>
+          <button
+            className="btn ghost header-cmdk"
+            type="button"
+            aria-label={T.allTools}
+            aria-haspopup="dialog"
+            aria-controls="cmdk"
+            aria-expanded={isCmdkOpen}
+            onClick={() => setCmdkOpen(true)}
+          >
+            <svg className="header-cmdk__search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span className="header-cmdk__menu-icon" aria-hidden="true">☰</span>
+            <span className="header-cmdk__label header-cmdk__label--desktop">{T.quickNav}</span>
+            <span className="header-cmdk__label header-cmdk__label--mobile">{T.allTools}</span>
+            <span className="kbd">⌘K</span>
+          </button>
+          <details ref={utilityMenuRef} className="header-utility-menu">
+            <summary className="btn ghost header-utility-menu__trigger" aria-label={T.utilities}>
+              <span className="header-utility-menu__dots" aria-hidden="true">•••</span>
+              <span className="header-utility-menu__label">{T.utilities}</span>
+            </summary>
+            <div className="header-utility-menu__panel">
+              <ProjectSettingsMenu locale={locale} />
+              {hasCsv && (
+                <button className="btn ghost header-csv-change" type="button" title={T.csvChangeTitle} onClick={() => { resetCsv(); closeUtilityMenu(); }}>
+                  {T.csvChangeBtn}
+                </button>
+              )}
+              {isAnalysisRoute && (
+                <button className="btn ghost header-print" type="button" title={T.printTitle} onClick={() => { window.print(); closeUtilityMenu(); }}>
+                  {T.print}
+                </button>
+              )}
+              <Link href={switchHref} className="btn ghost header-locale" title={T.localeSwitchTitle} onClick={() => { setLocalePref(switchLocale); closeUtilityMenu(); }}>
+                {T.localeSwitch}
+              </Link>
+              <button className="btn ghost header-theme" id="theme-toggle" type="button" aria-label={T.themeAria} title={T.themeTitle} onClick={() => { toggleTheme(); closeUtilityMenu(); }}>
+                {isDarkMode ? (
+                  <svg className="sun-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                  </svg>
+                ) : (
+                  <svg className="moon-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                )}
+                <span>{T.themeTitle}</span>
+              </button>
+            </div>
+          </details>
+        </div>
       </div>
     </header>
   );

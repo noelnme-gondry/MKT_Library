@@ -24,92 +24,14 @@ import { buildDashboardRecommendations } from "@/utils/dashboardRecommendations"
 import DashboardRecommendedViews from "@/components/dashboard/DashboardRecommendedViews";
 import { trackProductEvent } from "@/lib/analytics";
 import { downloadCsv, downloadText } from "@/utils/download";
-import { FileText, ChevronRight } from "lucide-react";
 import AnalysisHistory from "@/components/data-import/AnalysisHistory";
 import AnalysisPathway from "@/components/data-import/AnalysisPathway";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { runDashboardVerdict, shouldUseDashboardVerdictWorker } from "@/lib/analysis/dashboardVerdictWorkerClient";
 
-const TOC_MAP = {
-  viz: [
-    { id: "s-cohort", title: "코호트" },
-    { id: "s-kpi", title: "KPI 요약" },
-    { id: "s-charts", title: "차트" },
-  ],
-  scorecard: [{ id: "s-score", title: "스코어카드" }],
-  pacing: [{ id: "s-pace", title: "페이싱" }],
-  anomaly: [{ id: "s-anom", title: "이상 감지" }],
-  seasonality: [{ id: "s-seasonality", title: "시즈널리티" }],
-  ltv: [
-    { id: "s-ctl", title: "분석 단위" },
-    { id: "s-table", title: "LTV:CAC 표" },
-    { id: "s-mat", title: "ROAS 성숙도" },
-  ],
-  cohort: [
-    { id: "s-retention", title: "리텐션 곡선" },
-    { id: "s-ret-segment", title: "세그먼트별" },
-    { id: "s-ret-predict", title: "예측" },
-  ],
-  funnel: [
-    { id: "s-funnel-wow", title: "주간 변화" },
-    { id: "s-funnel-ctl", title: "단계 선택" },
-    { id: "s-funnel-trend", title: "시계열 급락" },
-    { id: "s-funnel-seg", title: "세그먼트 랭킹" },
-    { id: "s-funnel", title: "전체 퍼널 표" },
-  ],
-  segment: [{ id: "s-matrix", title: "세그먼트" }],
-};
-
-// EN 버전 — id는 동일(앵커 href), title만 번역.
-const TOC_MAP_EN = {
-  viz: [
-    { id: "s-cohort", title: "Cohort" },
-    { id: "s-kpi", title: "KPI Summary" },
-    { id: "s-charts", title: "Charts" },
-  ],
-  scorecard: [{ id: "s-score", title: "Scorecard" }],
-  pacing: [{ id: "s-pace", title: "Pacing" }],
-  anomaly: [{ id: "s-anom", title: "Anomaly Detection" }],
-  seasonality: [{ id: "s-seasonality", title: "Seasonality" }],
-  ltv: [
-    { id: "s-ctl", title: "Analysis Unit" },
-    { id: "s-table", title: "LTV:CAC Table" },
-    { id: "s-mat", title: "ROAS Maturity" },
-  ],
-  cohort: [
-    { id: "s-retention", title: "Retention Curve" },
-    { id: "s-ret-segment", title: "By Segment" },
-    { id: "s-ret-predict", title: "Forecast" },
-  ],
-  funnel: [
-    { id: "s-funnel-wow", title: "Week-over-Week" },
-    { id: "s-funnel-ctl", title: "Stage Selector" },
-    { id: "s-funnel-trend", title: "Time-series Drops" },
-    { id: "s-funnel-seg", title: "Segment Ranking" },
-    { id: "s-funnel", title: "Full Funnel Table" },
-  ],
-  segment: [{ id: "s-matrix", title: "Segment" }],
-};
-
 // 콘텐츠 대시보드(9-7)는 3탭만 노출 — 결제·예산·매출 전제 탭(pacing·ltv·cohort·
 // funnel·segment)은 콘텐츠 데이터로 의미가 없어 제외(§정직성).
 const CONTENT_TABS = ["viz", "scorecard", "anomaly"];
-const CONTENT_TOC_MAP = {
-  viz: [
-    { id: "s-kpi", title: "KPI 요약" },
-    { id: "s-charts", title: "차트" },
-  ],
-  scorecard: [{ id: "s-score", title: "스코어카드" }],
-  anomaly: [{ id: "s-anom", title: "이상 감지" }],
-};
-const CONTENT_TOC_MAP_EN = {
-  viz: [
-    { id: "s-kpi", title: "KPI Summary" },
-    { id: "s-charts", title: "Charts" },
-  ],
-  scorecard: [{ id: "s-score", title: "Scorecard" }],
-  anomaly: [{ id: "s-anom", title: "Anomaly Detection" }],
-};
 
 // Dashboard.jsx 전용 EN 카피 — resolveDashCopy(contentDomain.js)는 domain(퍼포먼스/
 // 콘텐츠) 리라벨 축이라 건드리지 않고, locale 축은 여기서 로컬 오버라이드한다.
@@ -162,12 +84,8 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   const [workerState, setWorkerState] = useState({ key: "", result: null });
 
   const hasData = csvData && csvData.raw.length > 0;
-  // 결과(탭·차트·TOC)는 데이터가 있고 + 분석이 확정된 뒤에만 렌더.
+  // 결과(탭·차트)는 데이터가 있고 + 분석이 확정된 뒤에만 렌더.
   const showResults = hasData && analyzed;
-  const tocMap = locale === "en"
-    ? (isContent ? CONTENT_TOC_MAP_EN : TOC_MAP_EN)
-    : (isContent ? CONTENT_TOC_MAP : TOC_MAP);
-  const currentToc = showResults ? tocMap[activeTab] || [] : [];
 
   // 결론 카드 판정(WoW) — 결과가 열린 뒤에만 계산. dashboardAggregator 순수함수
   // 재사용(엔진 불변), 데이터 부족하면 insufficient로 카드 미노출(§8 정직).
@@ -213,7 +131,6 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
   const verdict = useDashboardWorker
     ? (workerState.key === workerKey ? workerState.result : null)
     : syncVerdict;
-  const topStats = verdict && !verdict.insufficient ? verdict.stats.slice(0, 3) : [];
   const dashboardRecommendations = useMemo(() => buildDashboardRecommendations({
     verdict,
     mapping: csvData?.mapping,
@@ -260,23 +177,19 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             동떨어져 보이던 문제 해결). 결과가 열린 뒤엔 스크롤해도 상단(topbar
             아래 top:48px)에 고정. */}
         <div className="page-sticky-bar">
-          <div className="page-sticky-row1">
+          <div className="page-sticky-row1 dashboard-sticky-context">
             <h1 className="page-sticky-title">{tr(C.pageTitle, enC.pageTitle)}</h1>
             {hasData && (
-              <>
-                <span className={`chip${isDemo ? " warn" : ""}`} style={{ display: "inline-flex", alignItems: "center" }}>
+              <div className="dashboard-sticky-context__data" role="group" aria-label={tr("현재 데이터", "Current data")}>
+                <span className={`chip dashboard-sticky-context__file${isDemo ? " warn" : ""}`}>
                   <span className="dot"></span>
                   {isDemo ? tr("예시 데이터", "Sample data") : (csvData.fileName || "Data.csv")}
                 </span>
-                <span className="chip ok" style={{ display: "inline-flex", alignItems: "center" }}>
+                <span className="chip ok dashboard-sticky-context__rows">
                   <span className="dot"></span>
                   {csvData.raw.length.toLocaleString()}{tr("행", " rows")}
                 </span>
-                {topStats.map((stat) => {
-                  const delta = String(stat.detail || "").match(/[+−]\d+(?:\.\d+)?%/)?.[0] || "—";
-                  return <span className="dashboard-top-stat" key={stat.label}><small>{stat.label}</small><b>{stat.value}</b><em>{delta}</em></span>;
-                })}
-              </>
+              </div>
             )}
           </div>
           {showResults && (
@@ -299,31 +212,32 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                사용자가 "데이터 분석하기"를 눌러 확정(CsvUploader가 게이트 세팅).
             ③ 데이터 有 · 분석 완료: 매핑을 접어(details) 결과에 집중. */}
         {!hasData ? (
-          <div className="block" id="dashboard-data-setup">
+          <div className="block dashboard-data-setup dashboard-data-setup--empty" id="dashboard-data-setup">
             <h2 className="section-title">{tr("데이터 업로드", "Upload Data")}</h2>
             <p className="card-desc" style={{ marginBottom: "1rem" }}>{tr(C.uploadDesc, enC.uploadDesc)}</p>
             <CsvUploader toolId={toolId} locale={locale} />
           </div>
         ) : !analyzed ? (
-          <div className="block" id="dashboard-data-setup" style={{ padding: "12px", margin: "0 0 16px", borderRadius: "var(--radius-lg)", background: "rgba(255,255,255,0.01)" }}>
-            <div style={{ marginBottom: "8px", fontSize: "11px", color: "var(--text-muted)" }}>
+          <div className="block dashboard-data-setup dashboard-data-setup--pending" id="dashboard-data-setup">
+            <div className="dashboard-data-setup__privacy">
               {tr("🔒 업로드 데이터는 브라우저 메모리에서만 안전하게 유지됩니다.", "🔒 Uploaded data stays safely in your browser memory only.")}
             </div>
             <CsvUploader toolId={toolId} locale={locale} />
           </div>
         ) : (
           <details
-            className="block"
+            className="dashboard-data-disclosure"
             id="dashboard-data-setup"
             open={mappingOpen}
             onToggle={(e) => setMappingOpen(e.target.open)}
-            style={{ padding: "8px 12px", margin: "0 0 16px", borderRadius: "var(--radius-lg)", background: "rgba(255,255,255,0.01)" }}
           >
-            <summary style={{ cursor: "pointer", fontSize: "13px", fontWeight: "700", color: "var(--primary, #adc6ff)", outline: "none", display: "flex", alignItems: "center" }}>
-              <span style={{ marginRight: "6px" }}>⚙</span> {tr("데이터 매핑 설정", "Data Mapping Settings")} {mappingOpen ? tr("(접기)", "(collapse)") : tr("(펼치기)", "(expand)")}
+            <summary className="dashboard-data-disclosure__summary">
+              <span className="dashboard-data-disclosure__title"><span aria-hidden="true">⚙</span> {tr("데이터 매핑 설정", "Data Mapping Settings")}</span>
+              <small>{tr("필요할 때만 열어 수정", "Open only when you need to edit")}</small>
+              <b aria-hidden="true">{mappingOpen ? "−" : "＋"}</b>
             </summary>
-            <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px dashed var(--border-subtle)" }}>
-              <div style={{ marginBottom: "6px", fontSize: "11px", color: "var(--text-muted)" }}>
+            <div className="dashboard-data-disclosure__body">
+              <div className="dashboard-data-setup__privacy">
                 {tr("🔒 업로드 데이터는 브라우저 메모리에서만 안전하게 유지됩니다.", "🔒 Uploaded data stays safely in your browser memory only.")}
               </div>
               <CsvUploader toolId={toolId} locale={locale} />
@@ -360,14 +274,14 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             {/* 전체 결론은 첫 진입인 시각화 탭에서만 보여 준다. 하위 탭에서는
                 현재 선택한 분석의 그래프·조작 기능이 첫 화면을 차지한다. */}
             {activeTab === "viz" && verdict && !verdict.insufficient && (
-              <>
-              {isDemo && (
-                <section className="dashboard-demo-source" id="dashboard-demo-source" aria-label={tr("예시 데이터 안내", "Sample data notice")}>
-                  <div><span>SAMPLE DATA</span><strong>{tr("지금 보는 수치는 예시입니다", "These numbers are an example")}</strong><p>{tr("내 CSV를 올리면 같은 화면에서 실제 데이터로 바로 교체됩니다.", "Upload your CSV to replace this view with your real data.")}</p></div>
-                  <button type="button" onClick={openMapping}>{tr("내 CSV로 바꾸기", "Use my CSV")} <span aria-hidden="true">→</span></button>
-                </section>
-              )}
-              <ResultActionCard
+              <section className="dashboard-briefing" aria-label={tr("현재 결론과 다음 단계", "Current conclusion and next steps")}>
+                {isDemo && (
+                  <section className="dashboard-demo-source" id="dashboard-demo-source" aria-label={tr("예시 데이터 안내", "Sample data notice")}>
+                    <div><span>SAMPLE DATA</span><strong>{tr("지금 보는 수치는 예시입니다", "These numbers are an example")}</strong><p>{tr("내 CSV를 올리면 같은 화면에서 실제 데이터로 바로 교체됩니다.", "Upload your CSV to replace this view with your real data.")}</p></div>
+                    <button type="button" onClick={openMapping}>{tr("내 CSV로 바꾸기", "Use my CSV")} <span aria-hidden="true">→</span></button>
+                  </section>
+                )}
+                <ResultActionCard
                 toolId={toolId}
                 tone={verdict.tone}
                 title={tr("결론 — 최근 성과 요약", "Conclusion — recent performance")}
@@ -449,24 +363,26 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                     ]}
                   />
                 }
-              />
-              <section className="dashboard-decision-strip" aria-label={tr("다음 작업", "Next actions")}>
-                <div><span>NEXT ACTIONS</span><strong>{tr("결과에서 바로 이어가기", "Continue from this result")}</strong></div>
-                <div className="dashboard-decision-strip__actions">
-                  <button type="button" onClick={openSupportTools}>{tr("다음 분석 선택", "Choose next analysis")}</button>
-                  <ToolTemplateAction toolId={toolId} locale={locale} compact reason={tr("다음 분석용 입력 형식", "Input format for the next analysis")} source="dashboard_result" />
+                />
+                <div className="dashboard-briefing__followup">
+                  <nav className="dashboard-decision-strip dashboard-result-toolbar" aria-label={tr("다음 작업", "Next actions")}>
+                    <div className="dashboard-decision-strip__copy"><span>NEXT ACTIONS</span><strong>{tr("결과에서 바로 이어가기", "Continue from this result")}</strong></div>
+                    <div className="dashboard-decision-strip__actions">
+                      <button type="button" onClick={openSupportTools}>{tr("다음 분석 선택", "Choose next analysis")}</button>
+                      <ToolTemplateAction toolId={toolId} locale={locale} compact reason={tr("다음 분석용 입력 형식", "Input format for the next analysis")} source="dashboard_result" />
+                    </div>
+                  </nav>
+                  <DashboardRecommendedViews
+                    {...dashboardRecommendations}
+                    locale={locale}
+                    onSelect={selectRecommendedView}
+                  />
+                  <div className="dashboard-data-jump dashboard-data-jump--quiet">
+                    <a href="#dashboard-tabpanel">{tr("바로 데이터 보기", "Jump to data")} <span aria-hidden="true">↓</span></a>
+                    <span>{tr("기록·다음 분석·이벤트 마커는 데이터 아래에 정리했습니다.", "History, next analyses, and event markers are organized below the data.")}</span>
+                  </div>
                 </div>
               </section>
-              <DashboardRecommendedViews
-                {...dashboardRecommendations}
-                locale={locale}
-                onSelect={selectRecommendedView}
-              />
-              <div className="dashboard-data-jump">
-                <a href="#dashboard-tabpanel">{tr("바로 데이터 보기", "Jump to data")} <span aria-hidden="true">↓</span></a>
-                <span>{tr("기록·다음 분석·이벤트 마커는 데이터 아래에 정리했습니다.", "History, next analyses, and event markers are organized below the data.")}</span>
-              </div>
-              </>
             )}
 
             <div id="dashboard-tabpanel" className="tab-content" role="tabpanel" aria-labelledby={`dashboard-tab-${activeTab}`} tabIndex={0} style={{ marginTop: "1rem" }}>
@@ -506,23 +422,6 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
         )}
       </div>
 
-      {/* Floating Table of Contents (Right Side) — 결과가 열린 뒤에만(섹션 앵커 존재). */}
-      {showResults && (
-        <aside className="tool-page-shell__toc dashboard-shell__toc">
-          <div className="tool-page-shell__toc-label">
-            {tr("목차", "Contents")}
-          </div>
-          {currentToc.map((item) => (
-            <a 
-              key={item.id} 
-              href={`#${item.id}`}
-              className="tool-page-shell__toc-link"
-            >
-              {item.title}
-            </a>
-          ))}
-        </aside>
-      )}
     </div>
   );
 }

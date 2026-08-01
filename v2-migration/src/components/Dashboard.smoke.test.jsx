@@ -110,6 +110,26 @@ describe("Dashboard render smoke", () => {
     }
   });
 
+  it("uses one wide operator canvas without duplicate sticky KPIs or a static TOC", () => {
+    seedWithData();
+    const { container } = render(<Dashboard />);
+    expect(container.querySelector(".dashboard-sticky-context__data")).toBeTruthy();
+    expect(container.querySelector(".dashboard-top-stat")).toBeNull();
+    expect(container.querySelector(".dashboard-shell__toc")).toBeNull();
+    expect(container.querySelector(".dashboard-tabs__divider")).toBeNull();
+    expect(container.querySelectorAll(".dashboard-tabs__items")).toHaveLength(3);
+  });
+
+  it("keeps analyzed mapping controls in a quiet disclosure", () => {
+    seedWithData();
+    const { container } = render(<Dashboard />);
+    const disclosure = container.querySelector("#dashboard-data-setup.dashboard-data-disclosure");
+    expect(disclosure).toBeTruthy();
+    expect(disclosure?.classList.contains("block")).toBe(false);
+    expect(disclosure?.hasAttribute("open")).toBe(false);
+    expect(disclosure?.querySelector(".dashboard-data-disclosure__summary")).toBeTruthy();
+  });
+
   it("prefills a conservative next review from the visible verdict", () => {
     seedWithData();
     render(<Dashboard />);

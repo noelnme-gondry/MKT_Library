@@ -1,6 +1,6 @@
 # Frontend Tool Design Guide — Growth Opt Playbook
 
-> 버전: 1.1
+> 버전: 1.2
 > 작성일: 2026-08-01
 > 대상: `v2-migration/`의 분석 도구, 대시보드, 데이터 입력, 결과·리포트 화면
 > 상태: **제품 UI의 디자인·행동 규약**
@@ -58,6 +58,31 @@
 - Decision Tape는 실제 데이터의 안전한 행동 제안이 있을 때만 보인다. 한 도구 화면에는 활성 Tape를 최대 1개만 렌더한다. modal이나 레코드를 자동 생성하지 않으며, 사용자가 `다음 검토로 저장 / Save for next review`를 눌러야 약속이 만들어진다. 데모·차단 결과·행동 제안 없음 상태에서는 숨긴다.
 - 남은 hand-written table은 변경되는 도구부터 `DataTable` 또는 승인된 matrix variant로 이관한다.
 - 360px·720px·1100px·200% 확대의 최종 시각 판정은 코드 검증과 별도로 실제 브라우저에서 확인한다.
+
+### 0.2 2차 시각 적용 — Operator Desk composition
+
+1차 적용이 접근성·행동 계약 중심이라 기존 화면과 체감 차이가 작았던 문제를 보완했다. 2차 적용은 색을 추가하는 대신 **화면의 재료, 밀도, 순서와 표면 수**를 바꾼다.
+
+| 영역 | 2차 적용 계약 |
+|---|---|
+| 셸 | 모든 테마에서 어두운 `instrument rail`을 유지하고, 본문만 dark canvas/light paper로 전환한다. Sidebar의 현재 위치는 큰 pill이 아니라 2px active spine으로 표시한다. |
+| 헤더 | 직접 노출은 현재 문맥, 결정 검토함, 전체 도구, 기타 설정으로 제한한다. CSV 변경·인쇄·언어·테마·프로젝트 설정은 하나의 utility menu에 둔다. |
+| 타이포 | Latin display는 Space Grotesk, Latin body는 DM Sans, 한국어는 Noto Sans KR, 데이터는 JetBrains Mono로 역할을 분리한다. 무게는 400/500/600/700 안에서 사용한다. |
+| 범위 레일 | sticky 영역은 제목·현재 데이터·필터·탭만 포함한다. 하단 calibration tick은 범위가 계속 적용 중임을 보여주는 유일한 측정 장식이다. |
+| 대시보드 | 중복 sticky KPI와 우측 정적 목차를 제거한다. KPI strip과 선택 차트를 하나의 `dashboard-viz-workbench`로 묶고, 결론·검토 약속·후속 분석은 하나의 briefing 흐름으로 읽힌다. |
+| 결과 | `ResultActionCard`는 한 개의 결론 표면으로 유지하고, `Decision Tape`는 내부 카드가 아니라 좌우 끝까지 이어지는 실행 band로 표시한다. |
+| 데이터 객체 | 표·차트·업로드·매핑은 같은 hairline·work-surface 문법을 사용한다. 표 헤더의 거짓 pointer를 제거하고, 숫자 정렬·sticky header·모바일 1열 차트를 공통 적용한다. |
+| 보조 객체 | ToolConnections·ToolLongform·추천 목록은 card wall이 아니라 quiet rail/row로 낮춘다. ToolAssist는 읽을 수 있는 본문 크기와 44px 진입점을 사용한다. |
+
+이번 적용의 의도적인 시각적 리스크는 **dark instrument rail과 theme-responsive work surface의 재료 대비**다. 추가 장식 시그니처는 만들지 않는다. 제품 고유 요소는 계속 Decision Tape 하나다.
+
+적용 후 신규 화면은 아래 순서로 검토한다.
+
+```text
+현재 문맥 → 분석 범위 → 결론/검토 약속 → KPI+근거 차트 → 비교 표 → 보조 분석
+```
+
+직접 작성된 레거시 표·차트의 공용 컴포넌트 이관은 변경되는 도구부터 진행한다. 다만 이관 전에도 최종 Operator Desk selector가 표면·대비·모바일 기본 계약을 제공해야 한다.
 
 ---
 
