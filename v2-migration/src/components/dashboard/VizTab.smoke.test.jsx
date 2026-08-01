@@ -68,11 +68,17 @@ describe("VizTab render smoke", () => {
 
   it("connects a KPI card to the single explorer chart without inventing retention data", () => {
     seedWithData();
-    render(<VizTab />);
+    const { container } = render(<VizTab />);
+    const workbench = container.querySelector(".dashboard-viz-workbench");
+    expect(workbench).toBeTruthy();
+    expect(workbench?.querySelector("#s-kpi")).toBeTruthy();
+    expect(workbench?.querySelector("#s-charts")).toBeTruthy();
+    expect(workbench?.querySelector(".ix")).toBeNull();
     expect(screen.getByText("리텐션 데이터 필요")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /CPI/i }));
     expect(screen.getByText("CPI 추이")).toBeTruthy();
     expect(screen.getByText("PVM으로 원인 보기")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "CPI 추이 차트" })).toBeTruthy();
   });
 
   it("keeps cohort calculation context in an on-demand help icon", () => {

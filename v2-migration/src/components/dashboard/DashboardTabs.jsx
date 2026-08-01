@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useAppStore } from "@/store/useDataStore";
 import { trackProductEvent } from "@/lib/analytics";
 import {
@@ -10,18 +10,15 @@ import {
   Filter,
   Grid,
   LineChart,
-  Monitor,
-  Target,
-  TrendingUp,
   Users,
 } from "lucide-react";
 
 // 운영 대시보드의 공통 뷰 전환. 분석 범위 필터와 함께 상단 sticky 바에 두어,
 // 어느 결과 탭을 스크롤 중이든 즉시 다른 분석 뷰로 이동할 수 있게 한다.
 const MON_TAB_GROUPS = [
-  { label: "모니터링", labelEn: "Monitoring", icon: <Monitor size={14} />, tabs: ["viz", "scorecard", "seasonality", "pacing", "anomaly"] },
-  { label: "장기 가치", labelEn: "Long-term Value", icon: <TrendingUp size={14} />, tabs: ["ltv", "cohort"] },
-  { label: "효율 진단", labelEn: "Efficiency diagnosis", icon: <Target size={14} />, tabs: ["funnel", "segment"] },
+  { label: "모니터링", labelEn: "Monitoring", tabs: ["viz", "scorecard", "seasonality", "pacing", "anomaly"] },
+  { label: "장기 가치", labelEn: "Long-term Value", tabs: ["ltv", "cohort"] },
+  { label: "효율 진단", labelEn: "Efficiency diagnosis", tabs: ["funnel", "segment"] },
 ];
 
 const TABS_INFO = {
@@ -37,7 +34,7 @@ const TABS_INFO = {
 };
 
 const CONTENT_TAB_GROUPS = [
-  { label: "모니터링", labelEn: "Monitoring", icon: <Monitor size={14} />, tabs: ["viz", "scorecard", "anomaly"] },
+  { label: "모니터링", labelEn: "Monitoring", tabs: ["viz", "scorecard", "anomaly"] },
 ];
 
 export default function DashboardTabs({ domain = "performance", locale = "ko" } = {}) {
@@ -78,12 +75,10 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
 
   return (
     <nav className="dashboard-tabs" role="tablist" aria-label={locale === "en" ? "Dashboard views" : "대시보드 보기"}>
-      {groups.map((group, groupIndex) => (
-        <React.Fragment key={group.label}>
-          <div className="dashboard-tabs__group">
-            <span className="dashboard-tabs__label">
-              {group.icon} {locale === "en" ? group.labelEn : group.label}
-            </span>
+      {groups.map((group) => (
+        <div className="dashboard-tabs__group" key={group.label} role="group" aria-label={locale === "en" ? group.labelEn : group.label}>
+          <span className="dashboard-tabs__label">{locale === "en" ? group.labelEn : group.label}</span>
+          <div className="dashboard-tabs__items" role="presentation">
             {group.tabs.map((tabId) => {
               const info = TABS_INFO[tabId];
               const isActive = dashboardTab === tabId;
@@ -100,15 +95,13 @@ export default function DashboardTabs({ domain = "performance", locale = "ko" } 
                   className={`ab-pill ${isActive ? "active" : ""}`}
                   onClick={() => selectTab(tabId)}
                   onKeyDown={(event) => onTabKeyDown(event, tabId)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" }}
                 >
                   {info.icon} {locale === "en" ? info.labelEn : info.label}
                 </button>
               );
             })}
           </div>
-          {groupIndex < groups.length - 1 && <span className="dashboard-tabs__divider">/</span>}
-        </React.Fragment>
+        </div>
       ))}
     </nav>
   );

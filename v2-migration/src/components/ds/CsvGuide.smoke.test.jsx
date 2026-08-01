@@ -12,8 +12,8 @@ describe("CsvGuide", () => {
 
     expect(screen.getByRole("dialog", { name: "이 도구에 올릴 데이터 안내" })).toBeTruthy();
     const close = screen.getByRole("button", { name: "이 도구에 올릴 데이터 안내: 닫기" });
-    expect(close.style.minWidth).toBe("44px");
-    expect(close.style.minHeight).toBe("44px");
+    expect(close.classList.contains("csv-guide-close")).toBe(true);
+    expect(close.getAttribute("style")).toBeNull();
     expect(document.activeElement).toBe(close);
     fireEvent.click(close);
 
@@ -27,7 +27,8 @@ describe("CsvGuide", () => {
 
     expect(screen.getByRole("dialog", { name: "Data guide for this tool" })).toBeTruthy();
     expect(screen.getByRole("table", { name: "Which columns are needed and why?" })).toBeTruthy();
+    expect(screen.getByRole("table", { name: "A file shaped like this works (example)" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Data guide for this tool: Close" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "OK" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "OK" }).classList.contains("is-primary")).toBe(true);
   });
 });

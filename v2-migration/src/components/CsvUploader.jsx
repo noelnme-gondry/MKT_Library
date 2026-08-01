@@ -654,7 +654,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         <DemoLoadButton onLoad={handleLoadDemo} locale={locale} className={hasSheetImport ? "demo-load-row--spaced" : ""} />
           </>
         )}
-        {errorMsg && <div role="alert" style={{ color: "var(--danger)", marginTop: "10px", fontSize: "12px" }}>{errorMsg}</div>}
+        {errorMsg && <div role="alert" className="csv-upload-error">{errorMsg}</div>}
       </div>
     );
   }
@@ -705,13 +705,13 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   const confirmHeader = (header) => setConfirmedHeaders((previous) => new Set([...previous, header]));
 
   return (
-    <div className="csv-uploader">
+    <div className="csv-uploader" data-analysis-status={analysisStatus}>
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
       {isDemo && (
-        <div className="required-banner" style={{ borderLeftColor: "#f7b955", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-          <div>
+        <div className="required-banner csv-demo-banner">
+          <div className="csv-demo-banner__copy">
             <strong>{T.demoBannerTitle}</strong>
-            <p style={{ margin: "0.25rem 0 0" }}>{T.demoBannerDesc}</p>
+            <p className="csv-demo-banner__description">{T.demoBannerDesc}</p>
           </div>
           <button className="ab-button" onClick={handleReset}>{T.demoBannerBtn}</button>
         </div>
@@ -724,7 +724,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
       <CsvGuide toolId={toolId} locale={locale} />
       <div className="file-state">
         <div className="meta-text">
-          <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
+          <span className={`dot ${isDemo ? "is-sample" : "is-source"}`} data-source-kind={isDemo ? "sample" : "user"} aria-hidden="true"></span>
           {isDemo ? (
             <strong>{T.previewingDemo}</strong>
           ) : (
@@ -787,12 +787,12 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           )}
         </div>
       )}
-      {errorMsg && <div role="alert" style={{ color: "var(--danger)", marginBottom: "10px", fontSize: "12px" }}>{errorMsg}</div>}
+      {errorMsg && <div role="alert" className="csv-upload-error csv-upload-error--loaded">{errorMsg}</div>}
 
       {missing.length > 0 ? (
         <div className="required-banner">
           <strong>{T.missingTitle}</strong>
-          <p style={{ margin: "0.25rem 0 0" }}>
+          <p className="required-banner__description">
             {T.missingLabel}{reqLabels.map((l, i) => (
               <span key={i}><code className="inline">{l}</code>{i < reqLabels.length - 1 ? ", " : ""}</span>
             ))}
@@ -801,14 +801,14 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
       ) : analysisBlocked ? (
         <div className="required-banner">
           <strong>{mappingBlocked ? T.mappingBlockedTitle : T.dataBlockedTitle}</strong>
-          <p style={{ margin: "0.25rem 0 0" }}>
+          <p className="required-banner__description">
             {mappingConflicts.length ? T.mappingBlockedConflict : hasRequiredMustConfirm ? T.mappingBlockedConfirm : formatEligibilityBlocker(dataEligibility, locale) || T.dataBlockedHint}
           </p>
         </div>
       ) : (
         <div className="required-banner ok">
           <strong>{T.okTitle}</strong>
-          <p style={{ margin: "0.25rem 0 0" }}>{T.okDesc}</p>
+          <p className="required-banner__description">{T.okDesc}</p>
         </div>
       )}
 
@@ -816,26 +816,26 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
 
       <div className="csv-mapping-block">
         <div className="csv-mapping-header">
-          <div>
-            <strong style={{ fontSize: "14px", color: "var(--primary, #adc6ff)" }}>{T.mappingHeader}</strong>
-            <span style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "8px" }}>
-              {T.mappingSummaryPrefix(csvData.headers.length)}<strong style={{ color: "var(--text-primary)" }}>{mappedOptCount}/{totalOptCount}</strong>
+          <div className="csv-mapping-heading">
+            <strong className="csv-mapping-title">{T.mappingHeader}</strong>
+            <span className="csv-mapping-progress">
+              {T.mappingSummaryPrefix(csvData.headers.length)}<strong className="csv-mapping-progress-value">{mappedOptCount}/{totalOptCount}</strong>
             </span>
           </div>
-          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{T.mappingHint}</span>
+          <span className="csv-mapping-hint">{T.mappingHint}</span>
         </div>
         {importInsights && (
-          <div style={{ margin: "0 0 10px", fontSize: "12px", color: mappingConflicts.length ? "var(--danger)" : "var(--text-secondary)" }}>
+          <div className={`csv-recognition-summary ${mappingConflicts.length ? "has-conflict" : ""}`}>
             <strong>{T.recognitionSummary(mappedCount, csvData.headers.length, needsReview, mappingConflicts.length)}</strong>
-            <span style={{ color: "var(--text-muted)", marginLeft: "6px" }}>{T.recognitionHint}</span>
-            {datasetSignature && <div style={{ color: "var(--text-muted)", marginTop: "4px" }}>{T.signatureSummary(datasetSignature.source, datasetSignature.grain)}{datasetSignature.needsWideToLong ? ` · ⚠ ${T.wideWarning}` : ""}</div>}
+            <span className="csv-recognition-hint">{T.recognitionHint}</span>
+            {datasetSignature && <div className="csv-recognition-signature">{T.signatureSummary(datasetSignature.source, datasetSignature.grain)}{datasetSignature.needsWideToLong ? ` · ⚠ ${T.wideWarning}` : ""}</div>}
           </div>
         )}
         <div className="mapping-grid">
           <div className="mapping-header">{T.colHeaderCsv}</div>
           <div></div>
           <div className="mapping-header">{T.colHeaderStd}</div>
-          <div className="mapping-header" style={{ textAlign: "right" }}>{T.colHeaderStatus}</div>
+          <div className="mapping-header mapping-header--status">{T.colHeaderStatus}</div>
           
           {csvData.headers.map((h) => {
             const sel = csvData.mapping[h] || "__ignore__";
@@ -846,10 +846,12 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
 
             return (
               <React.Fragment key={h}>
-                <div className="map-csv-col" title={h}>{h}</div>
-                <div className="map-arrow">→</div>
+                <div className="map-csv-col" data-mapping-source title={h}>{h}</div>
+                <div className="map-arrow" data-mapping-arrow aria-hidden="true">→</div>
                 <select 
                   className={`map-select ${isUnmapped ? "unmapped" : "auto"} ${assessment.state}`}
+                  data-mapping-target
+                  aria-label={`${h}: ${T.colHeaderStd}`}
                   value={sel}
                   onChange={(e) => handleMappingChange(h, e.target.value)}
                 >
@@ -867,7 +869,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
                     </optgroup>
                   ))}
                 </select>
-                <div className={`map-status ${assessment.state}`}>
+                <div className={`map-status ${assessment.state}`} data-mapping-status>
                   {mappingStatusLabel[assessment.state]}
                   {!isUnmapped && assessment.reasons.length > 0 && (
                     <span className="data-confidence-hint" role="img" tabIndex={0} aria-label={T.colHeaderStatus} data-tooltip={assessment.reasons.join(" · ")}>ⓘ</span>
@@ -885,35 +887,36 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
       {/* 데이터 미리보기(#6) — 매핑 중에는 자동 펼침(맥락 확인), 분석 확정 후 접힘.
           사용자가 언제든 수동으로 다시 펼칠 수 있음(previewOpen 로컬 상태). */}
       {preview.cols.length > 0 && preview.rows.length > 0 && (
-        <div className="csv-preview-block" style={{ marginTop: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px", marginBottom: "6px" }}>
-            <div>
-              <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>{T.previewTitle}</strong>
-              <span style={{ fontSize: "11px", color: "var(--text-muted)", marginLeft: "8px" }}>
+        <div className="csv-preview-block">
+          <div className="csv-preview-header">
+            <div className="csv-preview-title-group">
+              <strong className="csv-preview-title">{T.previewTitle}</strong>
+              <span className="csv-preview-meta">
                 {preview.usingMapped ? T.previewUsingMapped : T.previewAll} · {T.previewRows(preview.rows.length, preview.totalRows)}
               </span>
             </div>
             <button
               className="ab-pill"
-              style={{ fontSize: "11px" }}
+              aria-expanded={previewOpen}
               onClick={() => setPreviewOpen((o) => !o)}
             >
               {previewOpen ? T.collapse : T.expand}
             </button>
           </div>
           {previewOpen && (
-            <div className="table-wrap" style={{ marginTop: "4px", maxHeight: "320px", overflow: "auto" }}>
-              <table className="data" style={{ fontSize: "11.5px" }}>
+            <div className="table-wrap csv-preview-table-wrap">
+              <table className="data csv-preview-table" aria-label={T.previewTitle}>
+                <caption className="sr-only">{T.previewTitle}</caption>
                 <thead>
                   <tr>
                     {preview.cols.map((h) => {
                       const sel = csvData.mapping[h];
                       const stdLabel = sel && sel !== "__ignore__" ? localizedStandardFieldLabel(sel, locale) : null;
                       return (
-                        <th key={h} title={stdLabel ? `${h} → ${stdLabel}` : h} style={{ whiteSpace: "nowrap" }}>
+                        <th className="csv-preview-heading" scope="col" key={h} title={stdLabel ? `${h} → ${stdLabel}` : h}>
                           {h}
                           {stdLabel && (
-                            <span style={{ display: "block", fontSize: "10px", fontWeight: 400, color: "var(--primary, #adc6ff)" }}>
+                            <span className="csv-preview-canonical">
                               → {stdLabel}
                             </span>
                           )}
@@ -926,7 +929,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
                   {preview.rows.map((row, ri) => (
                     <tr key={ri}>
                       {preview.cols.map((h) => (
-                        <td key={h} style={{ whiteSpace: "nowrap", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        <td className="csv-preview-cell" key={h}>
                           {row[h] != null ? String(row[h]) : ""}
                         </td>
                       ))}
@@ -941,16 +944,16 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
 
       {missing.length === 0 && !analysisBlocked && (
         isAnalyzed ? (
-          <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: 600 }}>{T.analyzedBadge}</span>
-            <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{T.analyzedHint}</span>
-            <button className="ab-pill" onClick={confirmAnalysis} style={{ marginLeft: "auto" }}>{T.reanalyzeBtn}</button>
+          <div className="csv-analysis-cta-row is-analyzed">
+            <span className="csv-analysis-status">{T.analyzedBadge}</span>
+            <span className="csv-analysis-hint">{T.analyzedHint}</span>
+            <button className="ab-pill csv-analysis-action" onClick={confirmAnalysis}>{T.reanalyzeBtn}</button>
           </div>
         ) : (
-          <div style={{ marginTop: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <span style={{ color: "var(--danger)", fontSize: "12px", fontWeight: 600 }}>{T.checkMapping}</span>
-            <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{T.checkMappingHint}</span>
-            <button className="ab-button" onClick={confirmAnalysis} style={{ marginLeft: "auto" }}>{T.analyzeBtn}</button>
+          <div className="csv-analysis-cta-row is-ready">
+            <span className="csv-analysis-status">{T.checkMapping}</span>
+            <span className="csv-analysis-hint">{T.checkMappingHint}</span>
+            <button className="ab-button csv-analysis-action" onClick={confirmAnalysis}>{T.analyzeBtn}</button>
           </div>
         )
       )}

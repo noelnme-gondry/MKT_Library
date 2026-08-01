@@ -164,96 +164,101 @@ export default function DashboardFilterBar({ locale = "ko" }) {
   };
 
   return (
-    <AnalysisControlBar
-      title={locale === "en" ? "Analysis scope" : "분석 범위"}
-      activeCount={activeCount}
-      hint={locale === "en" ? "Applies to this shared CSV" : "공유 CSV를 쓰는 도구에 적용"}
-    >
-
-        {dates.length > 0 && (
-          <>
-            <label className="mon-filter-item">
-              <span className="mon-filter-label">{T.start}</span>
-              <input
-                type="date"
-                className="mon-filter-input"
-                lang={locale === "en" ? "en-US" : "ko-KR"}
-                aria-label={T.start}
-                value={dashboardFilter.dateStart || ""}
-                min={minDate}
-                max={maxDate}
-                onChange={(e) => setDashboardFilter({ dateStart: e.target.value || null })}
-              />
-            </label>
-            <label className="mon-filter-item">
-              <span className="mon-filter-label">{T.end}</span>
-              <input
-                type="date"
-                className="mon-filter-input"
-                lang={locale === "en" ? "en-US" : "ko-KR"}
-                aria-label={T.end}
-                value={dashboardFilter.dateEnd || ""}
-                min={minDate}
-                max={maxDate}
-                onChange={(e) => setDashboardFilter({ dateEnd: e.target.value || null })}
-              />
-            </label>
-          </>
-        )}
-
-        {segmentFilterCount > 0 && (
-          <details className="dashboard-filter-more" open={activeSegmentCount > 0}>
-            <summary>
-              {locale === "en" ? "Segments" : "세그먼트"}
-              <span>{activeSegmentCount > 0 ? activeSegmentCount : segmentFilterCount}</span>
-            </summary>
-            <div className="dashboard-filter-more__body">
-              {platforms.length > 0 && (
-                <MultiSelect
-                  label={locale === "en" ? "Platform" : "플랫폼"}
-                  options={platforms}
-                  selected={dashboardFilter.platforms && dashboardFilter.platforms.size > 0 ? dashboardFilter.platforms : null}
-                  onChange={(set) => setDashboardFilter({ platforms: set || new Set() })}
-                  T={T}
+    <div className="dashboard-filter-bar" data-active-filter-count={activeCount}>
+      <AnalysisControlBar
+        title={locale === "en" ? "Analysis scope" : "분석 범위"}
+        activeCount={activeCount}
+        hint={locale === "en" ? "Applies to this shared CSV" : "공유 CSV를 쓰는 도구에 적용"}
+      >
+        <div className="dashboard-filter-bar__scope" role="group" aria-label={locale === "en" ? "Date and segment filters" : "날짜와 세그먼트 필터"}>
+          {dates.length > 0 && (
+            <div className="dashboard-filter-bar__date-range">
+              <label className="mon-filter-item">
+                <span className="mon-filter-label">{T.start}</span>
+                <input
+                  type="date"
+                  className="mon-filter-input"
+                  lang={locale === "en" ? "en-US" : "ko-KR"}
+                  aria-label={T.start}
+                  value={dashboardFilter.dateStart || ""}
+                  min={minDate}
+                  max={maxDate}
+                  onChange={(e) => setDashboardFilter({ dateStart: e.target.value || null })}
                 />
-              )}
-              {countries.length > 0 && (
-                <MultiSelect
-                  label={T.country}
-                  options={countries}
-                  selected={dashboardFilter.countries && dashboardFilter.countries.size > 0 ? dashboardFilter.countries : null}
-                  onChange={(set) => setDashboardFilter({ countries: set || new Set() })}
-                  T={T}
+              </label>
+              <label className="mon-filter-item">
+                <span className="mon-filter-label">{T.end}</span>
+                <input
+                  type="date"
+                  className="mon-filter-input"
+                  lang={locale === "en" ? "en-US" : "ko-KR"}
+                  aria-label={T.end}
+                  value={dashboardFilter.dateEnd || ""}
+                  min={minDate}
+                  max={maxDate}
+                  onChange={(e) => setDashboardFilter({ dateEnd: e.target.value || null })}
                 />
-              )}
-              {channels.length > 0 && (
-                <MultiSelect
-                  label={T.channel}
-                  options={channels}
-                  selected={dashboardFilter.channels && dashboardFilter.channels.size > 0 ? dashboardFilter.channels : null}
-                  onChange={(set) => setDashboardFilter({ channels: set || new Set() })}
-                  T={T}
-                />
-              )}
-              {sources.length > 0 && (
-                <MultiSelect
-                  label={T.source}
-                  options={sources}
-                  selected={dashboardFilter.sources && dashboardFilter.sources.size > 0 ? dashboardFilter.sources : null}
-                  onChange={(set) => setDashboardFilter({ sources: set || new Set() })}
-                  T={T}
-                />
-              )}
+              </label>
             </div>
-          </details>
-        )}
+          )}
 
-        {activeCount > 0 && (
-          <button className="copy-btn mon-filter-reset" onClick={handleReset} style={{ padding: "4px 8px", fontSize: "11px" }}>
-            {T.reset}
-          </button>
-        )}
-      <BasisCurrencyToggleBar locale={locale} />
-    </AnalysisControlBar>
+          {segmentFilterCount > 0 && (
+            <details className="dashboard-filter-more" open={activeSegmentCount > 0}>
+              <summary>
+                {locale === "en" ? "Segments" : "세그먼트"}
+                <span>{activeSegmentCount > 0 ? activeSegmentCount : segmentFilterCount}</span>
+              </summary>
+              <div className="dashboard-filter-more__body">
+                {platforms.length > 0 && (
+                  <MultiSelect
+                    label={locale === "en" ? "Platform" : "플랫폼"}
+                    options={platforms}
+                    selected={dashboardFilter.platforms && dashboardFilter.platforms.size > 0 ? dashboardFilter.platforms : null}
+                    onChange={(set) => setDashboardFilter({ platforms: set || new Set() })}
+                    T={T}
+                  />
+                )}
+                {countries.length > 0 && (
+                  <MultiSelect
+                    label={T.country}
+                    options={countries}
+                    selected={dashboardFilter.countries && dashboardFilter.countries.size > 0 ? dashboardFilter.countries : null}
+                    onChange={(set) => setDashboardFilter({ countries: set || new Set() })}
+                    T={T}
+                  />
+                )}
+                {channels.length > 0 && (
+                  <MultiSelect
+                    label={T.channel}
+                    options={channels}
+                    selected={dashboardFilter.channels && dashboardFilter.channels.size > 0 ? dashboardFilter.channels : null}
+                    onChange={(set) => setDashboardFilter({ channels: set || new Set() })}
+                    T={T}
+                  />
+                )}
+                {sources.length > 0 && (
+                  <MultiSelect
+                    label={T.source}
+                    options={sources}
+                    selected={dashboardFilter.sources && dashboardFilter.sources.size > 0 ? dashboardFilter.sources : null}
+                    onChange={(set) => setDashboardFilter({ sources: set || new Set() })}
+                    T={T}
+                  />
+                )}
+              </div>
+            </details>
+          )}
+
+          {activeCount > 0 && (
+            <button className="copy-btn mon-filter-reset" onClick={handleReset}>
+              {T.reset}
+            </button>
+          )}
+        </div>
+        <div className="dashboard-filter-bar__display" role="group" aria-label={locale === "en" ? "Display settings" : "표시 설정"}>
+          <BasisCurrencyToggleBar locale={locale} />
+        </div>
+      </AnalysisControlBar>
+    </div>
   );
 }
