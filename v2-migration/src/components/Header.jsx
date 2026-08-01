@@ -20,6 +20,7 @@ const HEADER_COPY = {
     themeAria: "테마 전환",
     themeTitle: "테마 전환 (라이트/다크)",
     quickNav: "빠른 이동",
+    allTools: "전체 도구",
     localeSwitch: "🌐 EN",
     localeSwitchTitle: "영어 페이지로 (번역된 페이지만 지원)",
     print: "인쇄 / PDF",
@@ -36,6 +37,7 @@ const HEADER_COPY = {
     themeAria: "Toggle theme",
     themeTitle: "Toggle theme (light/dark)",
     quickNav: "Quick nav",
+    allTools: "All tools",
     localeSwitch: "🌐 한국어",
     localeSwitchTitle: "Switch to the Korean page",
     print: "Print / PDF",
@@ -50,6 +52,7 @@ export default function Header({ locale = "ko" }) {
   const T = HEADER_COPY[locale] || HEADER_COPY.ko;
   const isDarkMode = useAppStore((state) => state.isDarkMode);
   const toggleTheme = useAppStore((state) => state.toggleTheme);
+  const isCmdkOpen = useAppStore((state) => state.isCmdkOpen);
   const setCmdkOpen = useAppStore((state) => state.setCmdkOpen);
   // 현재 활성 그룹(효율/소재/실험/응답/aha)의 csvData — 전역 헤더에서 파일명 노출 +
   // 어느 도구에서든 동일하게 초기화 가능하게(§ 그룹 스코프 csvData 미러).
@@ -270,14 +273,19 @@ export default function Header({ locale = "ko" }) {
         <button
           className="btn ghost header-cmdk"
           type="button"
-          aria-label={T.quickNav}
+          aria-label={T.allTools}
+          aria-haspopup="dialog"
+          aria-controls="cmdk"
+          aria-expanded={isCmdkOpen}
           onClick={() => setCmdkOpen(true)}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg className="header-cmdk__search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <span>{T.quickNav}</span>
+          <span className="header-cmdk__menu-icon" aria-hidden="true">☰</span>
+          <span className="header-cmdk__label header-cmdk__label--desktop">{T.quickNav}</span>
+          <span className="header-cmdk__label header-cmdk__label--mobile">{T.allTools}</span>
           <span className="kbd">⌘K</span>
         </button>
       </div>

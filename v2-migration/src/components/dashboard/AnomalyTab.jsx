@@ -6,7 +6,7 @@ import { computeAnalyzeSig, useAppStore } from "@/store/useDataStore";
 import { resolveDashCopy } from "@/utils/contentDomain";
 import CustomChartsSection from "./CustomChartsSection";
 import { getMonFilteredRows, aggregateByKey } from "@/utils/dashboardAggregator";
-import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
+import { CHART_THEME, chartCommonOpts, downloadChartAsPNG, getCssVar } from "@/utils/chartUtils";
 import { ANOMALY_MATH } from "@/utils/anomalyMath";
 import { fmtCurrency } from "@/utils/format";
 import { applyMetricView } from "@/utils/metrics/metricView";
@@ -308,7 +308,14 @@ export default function AnomalyTab({ domain = "performance", locale = "ko" } = {
         <div className="alloc-card" style={{ margin: "10px 0" }}>
           <div className="cann-card-header">
             <div className="alloc-card-title">{tr("시계열 + 이상 표기", "Time series + anomaly markers")}</div>
-            <button className="ab-pill" data-pngdownload="anomaly-chart" data-pngname="anomaly">⬇ PNG</button>
+            <button
+              className="ab-pill"
+              type="button"
+              aria-label={tr("이상탐지 차트 PNG 다운로드", "Download anomaly chart as PNG")}
+              onClick={() => downloadChartAsPNG(chartRef.current, "anomaly")}
+            >
+              ⬇ PNG
+            </button>
           </div>
           <div className="chart-container" style={{ height: "260px" }}>
             <canvas id="anomaly-chart" ref={chartRef}></canvas>

@@ -6,7 +6,7 @@
 // asserts the component MOUNTS without throwing in both the no-data and
 // with-data states. Copy this pattern verbatim for the other tool components.
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import BudgetAllocation from "@/components/tools/BudgetAllocation";
 
@@ -69,5 +69,20 @@ describe("BudgetAllocation render smoke", () => {
     seedWithData();
     expect(() => render(<BudgetAllocation />)).not.toThrow();
     expect(document.body.textContent.length).toBeGreaterThan(0);
+  });
+
+  it("places the Step 3 conclusion before the scatter plot", () => {
+    seedWithData();
+    render(<BudgetAllocation />);
+
+    fireEvent.click(screen.getByRole("button", { name: /CPI/ }));
+    fireEvent.click(screen.getByRole("button", { name: "✓ 적용 (검증 진행)" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "검증 완료 및 예산 배분 →" })[0]);
+
+    const resultCard = document.querySelector(".result-action-card");
+    const scatter = document.getElementById("s-scatter");
+    expect(resultCard).toBeTruthy();
+    expect(scatter).toBeTruthy();
+    expect(resultCard.compareDocumentPosition(scatter) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
   });
 });

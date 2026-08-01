@@ -229,13 +229,13 @@ function UploadPanel({ method, fileRef, handleFile, loadDemo, locale = "ko" }) {
   return (
     <>
       <CsvGuide toolId={`5-23:${method}`} onDownloadTemplate={() => dlCsv("﻿" + tmpl.text, tmpl.base)} locale={locale} />
-      <div className="csv-dropzone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]); }} onClick={() => fileRef.current?.click()} style={{ cursor: "pointer" }}>
+      <div className="csv-dropzone" role="button" tabIndex={0} aria-label={tr("증분 분석 CSV 파일 선택", "Choose an incrementality CSV file")} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]); }} onClick={() => fileRef.current?.click()} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }} style={{ cursor: "pointer" }}>
         <div className="csv-drop-icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         </div>
         <div className="csv-drop-text">{tr("CSV 파일 드래그 & 드롭", "Drag & drop CSV file")}</div>
         <div className="csv-drop-sub">{tr("또는 클릭하여 파일 선택", "or click to select a file")}</div>
-        <input type="file" accept=".csv,text/csv" style={{ display: "none" }} ref={fileRef} onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); e.target.value = null; }} />
+        <input type="file" accept=".csv,text/csv" style={{ display: "none" }} ref={fileRef} onClick={(e) => e.stopPropagation()} onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); e.target.value = null; }} />
       </div>
       <DemoLoadButton onLoad={loadDemo} locale={locale} />
     </>

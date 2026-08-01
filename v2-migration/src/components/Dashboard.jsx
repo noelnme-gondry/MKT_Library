@@ -367,14 +367,6 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                   <button type="button" onClick={openMapping}>{tr("내 CSV로 바꾸기", "Use my CSV")} <span aria-hidden="true">→</span></button>
                 </section>
               )}
-              <section className="dashboard-decision-strip" aria-label={tr("다음 작업", "Next actions")}>
-                <div><span>NEXT ACTIONS</span><strong>{tr("결과에서 바로 이어가기", "Continue from this result")}</strong></div>
-                <div className="dashboard-decision-strip__actions">
-                  <button type="button" onClick={openSupportTools}>{tr("결과 기록", "Save result")}</button>
-                  <button type="button" onClick={openSupportTools}>{tr("다음 분석 선택", "Choose next analysis")}</button>
-                  <ToolTemplateAction toolId={toolId} locale={locale} compact reason={tr("다음 분석용 입력 형식", "Input format for the next analysis")} source="dashboard_result" />
-                </div>
-              </section>
               <ResultActionCard
                 toolId={toolId}
                 tone={verdict.tone}
@@ -458,6 +450,14 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
                   />
                 }
               />
+              <section className="dashboard-decision-strip" aria-label={tr("다음 작업", "Next actions")}>
+                <div><span>NEXT ACTIONS</span><strong>{tr("결과에서 바로 이어가기", "Continue from this result")}</strong></div>
+                <div className="dashboard-decision-strip__actions">
+                  <button type="button" onClick={openSupportTools}>{tr("결과 기록", "Save result")}</button>
+                  <button type="button" onClick={openSupportTools}>{tr("다음 분석 선택", "Choose next analysis")}</button>
+                  <ToolTemplateAction toolId={toolId} locale={locale} compact reason={tr("다음 분석용 입력 형식", "Input format for the next analysis")} source="dashboard_result" />
+                </div>
+              </section>
               <DashboardRecommendedViews
                 {...dashboardRecommendations}
                 locale={locale}

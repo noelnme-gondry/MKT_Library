@@ -4,10 +4,16 @@
 // the "데이터 부족" pane; with-data feeds the golden PACING_MATH engine and
 // renders a cumulative MTD chart. Mounts cover render + the chart effect; mocks
 // live in vitest.smoke.setup.js.
-import { describe, it, expect, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import PacingTab from "@/components/dashboard/PacingTab";
+
+const { downloadChartSpy } = vi.hoisted(() => ({ downloadChartSpy: vi.fn() }));
+vi.mock("@/utils/chartUtils", async (importOriginal) => ({
+  ...(await importOriginal()),
+  downloadChartAsPNG: downloadChartSpy,
+}));
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -50,7 +56,10 @@ function seedNoData() {
 }
 
 describe("PacingTab render smoke", () => {
-  beforeEach(() => seedNoData());
+  beforeEach(() => {
+    downloadChartSpy.mockClear();
+    seedNoData();
+  });
 
   it("mounts without throwing in the no-data state", () => {
     expect(() => render(<PacingTab />)).not.toThrow();
@@ -62,5 +71,12 @@ describe("PacingTab render smoke", () => {
     expect(() => render(<PacingTab />)).not.toThrow();
     // With data, the pacing chart canvas is present.
     expect(document.getElementById("pacing-chart")).toBeTruthy();
+  });
+
+  it("exports the mounted chart from the visible PNG action", () => {
+    seedWithData();
+    render(<PacingTab />);
+    fireEvent.click(screen.getByRole("button", { name: "페이싱 차트 PNG 다운로드" }));
+    expect(downloadChartSpy).toHaveBeenCalledWith(document.getElementById("pacing-chart"), "pacing");
   });
 });

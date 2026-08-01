@@ -1,7 +1,17 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import ModalDialog from "@/components/ds/ModalDialog";
 import { CHART_TYPES } from "@/utils/metrics/chartBuilder";
+
+const ICON_TOUCH_TARGET = {
+  boxSizing: "border-box",
+  minWidth: "44px",
+  minHeight: "44px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flex: "none",
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CustomChartBuilder — 커스텀 차트 조립 모달 (Phase C)
@@ -44,13 +54,6 @@ export default function CustomChartBuilder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
   if (!open || typeof document === "undefined") return null;
 
   const dimLabel = (k) => dims.find((d) => d.key === k)?.label || k;
@@ -67,19 +70,17 @@ export default function CustomChartBuilder({
     setName("");
   };
 
-  const modal = (
-    <div
-      role="dialog" aria-modal="true" aria-label={T.title}
-      style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)" }}
-      onClick={onClose}
+  return (
+    <ModalDialog
+      open={open}
+      onClose={onClose}
+      ariaLabel={T.title}
+      overlayStyle={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)" }}
+      panelStyle={{ boxSizing: "border-box", width: "min(500px, 94vw)", maxHeight: "88vh", overflow: "auto", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", padding: "18px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{ width: "min(500px, 94vw)", maxHeight: "88vh", overflow: "auto", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", padding: "18px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
-      >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
           <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>{T.title}</h3>
-          <button className="ab-pill" onClick={onClose} aria-label={T.close} style={{ padding: "2px 8px" }}>✕</button>
+          <button type="button" className="ab-pill" onClick={onClose} aria-label={`${T.title}: ${T.close}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>✕</button>
         </div>
 
         {!hasMetrics ? (
@@ -146,7 +147,7 @@ export default function CustomChartBuilder({
                     <strong>{c.name}</strong>
                     <span className="muted" style={{ marginLeft: "6px", fontSize: "11px" }}>{chartTypeLabel(c.type)} · {c.type === "scorecard" ? metricLabel(c.metric) : `${dimLabel(c.dim)} · ${metricLabel(c.metric)}`}</span>
                   </span>
-                  <button className="ab-pill" onClick={() => onDelete?.(c.id)} title={T.delete} style={{ padding: "2px 8px" }}>🗑</button>
+                  <button type="button" className="ab-pill" onClick={() => onDelete?.(c.id)} title={T.delete} aria-label={`${T.delete}: ${c.name}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>🗑</button>
                 </div>
               ))}
             </div>
@@ -154,9 +155,6 @@ export default function CustomChartBuilder({
         )}
 
         <p className="muted" style={{ fontSize: "10px", marginTop: "12px", textAlign: "right" }}>{T.saved}</p>
-      </div>
-    </div>
+    </ModalDialog>
   );
-
-  return createPortal(modal, document.body);
 }

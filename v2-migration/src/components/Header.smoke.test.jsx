@@ -5,7 +5,7 @@
 // → matchMedia). It reads isDarkMode/theme from the store, NOT csvData. We seed
 // the store (no-data + with-data) for parity; the topbar must mount either way.
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Header from "@/components/Header";
 
@@ -17,6 +17,7 @@ function seedNoData() {
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV },
     csvData: EMPTY_CSV,
     decisionRecords: [],
+    isCmdkOpen: false,
   });
 }
 
@@ -42,6 +43,19 @@ describe("Header render smoke", () => {
     seedWithData();
     expect(() => render(<Header />)).not.toThrow();
     expect(document.querySelector("#theme-toggle")).toBeTruthy();
+  });
+  it("exposes the complete tool menu as a dialog trigger in both locales", () => {
+    const { unmount } = render(<Header />);
+    const koTrigger = screen.getByRole("button", { name: "전체 도구" });
+    expect(koTrigger.getAttribute("aria-controls")).toBe("cmdk");
+    expect(koTrigger.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(koTrigger.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(koTrigger);
+    expect(koTrigger.getAttribute("aria-expanded")).toBe("true");
+    unmount();
+    useAppStore.setState({ isCmdkOpen: false });
+    render(<Header locale="en" />);
+    expect(screen.getByRole("button", { name: "All tools" })).toBeTruthy();
   });
   it("links to the localized decision inbox and shows decisions due now", () => {
     useAppStore.setState({

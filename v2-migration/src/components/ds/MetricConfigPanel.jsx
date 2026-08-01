@@ -1,7 +1,17 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
-import { createPortal } from "react-dom";
+import ModalDialog from "@/components/ds/ModalDialog";
 import { materializeOrder } from "@/utils/metrics/metricView";
+
+const ICON_TOUCH_TARGET = {
+  boxSizing: "border-box",
+  minWidth: "44px",
+  minHeight: "44px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flex: "none",
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MetricConfigPanel — 지표/차트/컬럼 표시·순서 편집기 (Phase B/C, DnD + on/off 태그)
@@ -19,13 +29,13 @@ export default function MetricConfigPanel({
 }) {
   const isEn = locale === "en";
   const T = isEn ? {
-    title: "Edit display", close: "Close", hint: "Click a tag to show/hide · drag (⠿) to reorder · changes apply when you click Apply.",
+    title: "Edit display", close: "Close", hint: "Click a tag to show/hide · drag (⠿) or use arrow buttons to reorder · changes apply when you click Apply.",
     hidden: "Hidden items", restore: "click the tag to show again", shown: "Shown — click to hide", hiddenTag: "Hidden — click to show",
-    reset: "Show all · default order", saved: "🔒 Saved in this browser only", cancel: "Cancel", apply: "Apply",
+    reset: "Show all · default order", saved: "🔒 Saved in this browser only", cancel: "Cancel", apply: "Apply", moveUp: "move up", moveDown: "move down",
   } : {
-    title: "편집", close: "닫기", hint: "태그를 눌러 표시/숨김 · 드래그(⠿)로 순서 변경 · 적용을 눌러야 반영됩니다.",
+    title: "편집", close: "닫기", hint: "태그를 눌러 표시/숨김 · 드래그(⠿) 또는 화살표 버튼으로 순서 변경 · 적용을 눌러야 반영됩니다.",
     hidden: "숨긴 항목", restore: "태그를 눌러 다시 표시", shown: "표시 중 — 누르면 숨김", hiddenTag: "숨김 — 누르면 표시",
-    reset: "전체 표시·기본 순서", saved: "🔒 이 브라우저에만 저장", cancel: "취소", apply: "적용",
+    reset: "전체 표시·기본 순서", saved: "🔒 이 브라우저에만 저장", cancel: "취소", apply: "적용", moveUp: "위로", moveDown: "아래로",
   };
   const panelTitle = title || T.title;
   const [draft, setDraft] = useState({ hidden: [], order: [] });
@@ -42,13 +52,6 @@ export default function MetricConfigPanel({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
 
   if (!open || typeof document === "undefined") return null;
 
@@ -84,6 +87,12 @@ export default function MetricConfigPanel({
     next.splice(from, 1);
     next.splice(to, 0, fromKey);
     commitOrder(next, hidden);
+  };
+  const moveBy = (key, delta) => {
+    const index = onKeys.indexOf(key);
+    const target = onKeys[index + delta];
+    if (index < 0 || !target) return;
+    reorder(key, target);
   };
 
   // ── 포인터 기반 DnD(마우스+터치 통합, §터치 지원) ────────────────────────────
@@ -129,19 +138,17 @@ export default function MetricConfigPanel({
     color: on ? "#fff" : "var(--text-muted)", cursor: "pointer", flex: "none",
   });
 
-  const modal = (
-    <div
-      role="dialog" aria-modal="true" aria-label={panelTitle}
-      style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)" }}
-      onClick={onClose}
+  return (
+    <ModalDialog
+      open={open}
+      onClose={onClose}
+      ariaLabel={panelTitle}
+      overlayStyle={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)" }}
+      panelStyle={{ width: "min(460px, 93vw)", maxHeight: "84vh", display: "flex", flexDirection: "column", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{ width: "min(460px, 93vw)", maxHeight: "84vh", display: "flex", flexDirection: "column", background: "var(--surface-base, var(--bg-1))", border: "1px solid var(--border)", borderRadius: "12px", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}
-      >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px 2px" }}>
           <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text-primary)" }}>{panelTitle}</h3>
-          <button className="ab-pill" onClick={onClose} aria-label={T.close} style={{ padding: "2px 8px" }}>✕</button>
+          <button type="button" className="ab-pill" onClick={onClose} aria-label={`${panelTitle}: ${T.close}`} style={{ ...ICON_TOUCH_TARGET, padding: "2px 8px" }}>✕</button>
         </div>
         <p className="muted" style={{ fontSize: "11px", margin: "0 18px 10px" }}>
           {T.hint}
@@ -165,12 +172,14 @@ export default function MetricConfigPanel({
                   onPointerUp={onHandleUp}
                   onPointerCancel={onHandleUp}
                   title={isEn ? "Drag to reorder" : "드래그해서 순서 변경"}
-                  style={{ color: "var(--text-muted)", cursor: "grab", fontSize: "16px", lineHeight: 1, flex: "none", padding: "2px 4px", touchAction: "none", userSelect: "none" }}
+                  style={{ ...ICON_TOUCH_TARGET, color: "var(--text-muted)", cursor: "grab", fontSize: "16px", lineHeight: 1, padding: "2px 4px", touchAction: "none", userSelect: "none" }}
                 >⠿</span>
                 <span style={{ flex: 1, minWidth: 0, fontSize: "13px", color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {it.label}
                   {it.desc ? <span className="muted" style={{ fontSize: "11px", marginLeft: "6px" }}>{it.desc}</span> : null}
                 </span>
+                <button type="button" className="ab-pill metric-config-order-btn" style={ICON_TOUCH_TARGET} onClick={() => moveBy(key, -1)} disabled={onKeys[0] === key} aria-label={`${it.label} ${T.moveUp}`}>↑</button>
+                <button type="button" className="ab-pill metric-config-order-btn" style={ICON_TOUCH_TARGET} onClick={() => moveBy(key, 1)} disabled={onKeys[onKeys.length - 1] === key} aria-label={`${it.label} ${T.moveDown}`}>↓</button>
                 <button style={tagBtn(true)} onClick={() => toggle(key)} title={T.shown}>{isEn ? "Shown" : "표시"}</button>
               </div>
             );
@@ -200,9 +209,6 @@ export default function MetricConfigPanel({
           <button className="ab-pill" onClick={onClose}>{T.cancel}</button>
           <button className="ab-pill active" onClick={apply} style={{ fontWeight: 700 }}>{T.apply}</button>
         </div>
-      </div>
-    </div>
+    </ModalDialog>
   );
-
-  return createPortal(modal, document.body);
 }

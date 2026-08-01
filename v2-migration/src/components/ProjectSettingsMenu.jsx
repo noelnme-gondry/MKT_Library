@@ -88,7 +88,10 @@ export default function ProjectSettingsMenu({ locale = "ko" }) {
 
   return (
     <details className="project-settings no-print">
-      <summary className="btn ghost">{t.menu}</summary>
+      <summary className="btn ghost" aria-label={t.menu}>
+        <span className="project-settings__label">{t.menu}</span>
+        <span className="project-settings__mobile-icon" aria-hidden="true">⚙</span>
+      </summary>
       <div className="project-settings__panel">
         <p>{t.privacy}</p>
         <div>

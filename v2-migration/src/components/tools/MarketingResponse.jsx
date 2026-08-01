@@ -3333,9 +3333,13 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       <MmmManualDownload locale={locale} placement="upload" />
       <div
         className="csv-dropzone"
+        role="button"
+        tabIndex={0}
+        aria-label={tx("마케팅 반응 분석 CSV 파일 선택", "Choose a marketing-response CSV file")}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleMmmFile(e.dataTransfer.files[0]); }}
         onClick={() => mmmFileRef.current?.click()}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); mmmFileRef.current?.click(); } }}
         style={{ cursor: "pointer" }}
       >
         <div className="csv-drop-icon">
@@ -3348,6 +3352,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         <div className="csv-drop-text">{tx("CSV 파일 드래그 & 드롭", "Drag & drop a CSV file")}</div>
         <div className="csv-drop-sub">{tx("일별 또는 주별 패널 CSV. 날짜/주차와 목표가 필요합니다. 카니발·기여·예산 반응에는 채널 spend가 필요하지만, 미래예측은 Spend 없이 Organic 추세·계절성만 사용할 수 있습니다.", "Daily or weekly panel CSV. Date/week and an outcome are required. Cannibalization, contribution, and budget response require channel spend; Forecast can run an Organic trend/seasonality model without Spend.")}</div>
         <input type="file" accept=".csv,text/csv" style={{ display: "none" }} ref={mmmFileRef}
+          onClick={(e) => e.stopPropagation()}
           onChange={(e) => { if (e.target.files?.[0]) handleMmmFile(e.target.files[0]); e.target.value = null; }} />
       </div>
       {mmmUploadError && (

@@ -2010,83 +2010,6 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
         <button className="btn secondary" onClick={() => setStep(2)} style={{ padding: "4px 10px", fontSize: "12px" }}>{tr("← 검증 단계로 돌아가기", "← Back to verification")}</button>
       </div>
 
-      <section className="block" id="s-scatter">
-        <h2 className="section-title"><span className="ix">§1</span>{tr("효율 및 추세선 분석 (단위 곡선)", "Efficiency & trendline analysis (unit curve)")}</h2>
-        <div className="alloc-card">
-          {advancedPanel}
-          {/* 차트 표시 대상 채널 필터 (예산 분배와 무관) */}
-          {rankedChannels.length > 1 && (
-            <div style={{ marginBottom: "0.75rem" }}>
-              <strong style={{ fontSize: "13px", color: "var(--text-1)" }}>{tr("차트 표시 대상 선택", "Select chart display targets")}</strong>
-              <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "4px 0 8px" }}>{tr("아래에서 선택한 대상만 차트에 표시됩니다. (예산 분배와는 무관)", "Only the targets selected below are shown on the chart. (Unrelated to budget allocation)")}</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                {rankedChannels.map((ch) => {
-                  const active = chartChannels ? chartChannels.has(ch) : rankedChannels.slice(0, 6).includes(ch);
-                  return (
-                    <button
-                      key={ch}
-                      className={`ab-pill ${active ? "active" : ""}`}
-                      style={{ fontSize: "11px" }}
-                      onClick={() =>
-                        setChartChannels((prev) => {
-                          const base = prev || new Set(rankedChannels.slice(0, 6));
-                          const next = new Set(base);
-                          if (next.has(ch)) next.delete(ch);
-                          else next.add(ch);
-                          return next;
-                        })
-                      }
-                    >{ch}</button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          <div className="chart-canvas-wrap" style={{ height: "400px" }}>
-            <canvas id="chart-alloc-scatter" ref={chartRef}></canvas>
-          </div>
-        </div>
-      </section>
-
-      {/* §0 진단 카드 — 지금 어디가 문제인가 */}
-      {diagnosis && (
-        <div
-          className="alloc-diag-card"
-          style={{ background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "14px 16px", marginBottom: "1rem" }}
-        >
-          <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "8px" }}>🔍 {tr("진단 — 지금 어디가 문제인가", "Diagnosis — what's the problem right now")}</div>
-          {diagnosis.insufficient ? (
-            <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>
-              {tr(
-                `최근 ${recentDays}일 집행 데이터가 부족해 문제 진단을 생략합니다.`,
-                `Not enough spend data in the last ${recentDays} days, so the problem diagnosis is skipped.`
-              )}
-            </div>
-          ) : (
-            diagnosis.lines.map((l, i) => (
-              <div
-                key={i}
-                style={{
-                  fontSize: "13px",
-                  lineHeight: 1.55,
-                  padding: "3px 0",
-                  color:
-                    l.cls === "bad"
-                      ? "#f0917e"
-                      : l.cls === "good"
-                        ? "#5ad19a"
-                        : l.cls === "muted"
-                          ? "var(--text-muted)"
-                          : "var(--text-secondary)",
-                }}
-              >
-                {l.text}
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
       {/* 결론·액션 카드 */}
       {verdict && (
         <ResultActionCard
@@ -2186,6 +2109,83 @@ export default function BudgetAllocation({ locale = "ko" } = {}) {
             />
           )}
         />
+      )}
+
+      <section className="block" id="s-scatter">
+        <h2 className="section-title"><span className="ix">§1</span>{tr("효율 및 추세선 분석 (단위 곡선)", "Efficiency & trendline analysis (unit curve)")}</h2>
+        <div className="alloc-card">
+          {advancedPanel}
+          {/* 차트 표시 대상 채널 필터 (예산 분배와 무관) */}
+          {rankedChannels.length > 1 && (
+            <div style={{ marginBottom: "0.75rem" }}>
+              <strong style={{ fontSize: "13px", color: "var(--text-1)" }}>{tr("차트 표시 대상 선택", "Select chart display targets")}</strong>
+              <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "4px 0 8px" }}>{tr("아래에서 선택한 대상만 차트에 표시됩니다. (예산 분배와는 무관)", "Only the targets selected below are shown on the chart. (Unrelated to budget allocation)")}</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                {rankedChannels.map((ch) => {
+                  const active = chartChannels ? chartChannels.has(ch) : rankedChannels.slice(0, 6).includes(ch);
+                  return (
+                    <button
+                      key={ch}
+                      className={`ab-pill ${active ? "active" : ""}`}
+                      style={{ fontSize: "11px" }}
+                      onClick={() =>
+                        setChartChannels((prev) => {
+                          const base = prev || new Set(rankedChannels.slice(0, 6));
+                          const next = new Set(base);
+                          if (next.has(ch)) next.delete(ch);
+                          else next.add(ch);
+                          return next;
+                        })
+                      }
+                    >{ch}</button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <div className="chart-canvas-wrap" style={{ height: "400px" }}>
+            <canvas id="chart-alloc-scatter" ref={chartRef}></canvas>
+          </div>
+        </div>
+      </section>
+
+      {/* §0 진단 카드 — 지금 어디가 문제인가 */}
+      {diagnosis && (
+        <div
+          className="alloc-diag-card"
+          style={{ background: "var(--bg-1)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: "14px 16px", marginBottom: "1rem" }}
+        >
+          <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "8px" }}>🔍 {tr("진단 — 지금 어디가 문제인가", "Diagnosis — what's the problem right now")}</div>
+          {diagnosis.insufficient ? (
+            <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>
+              {tr(
+                `최근 ${recentDays}일 집행 데이터가 부족해 문제 진단을 생략합니다.`,
+                `Not enough spend data in the last ${recentDays} days, so the problem diagnosis is skipped.`
+              )}
+            </div>
+          ) : (
+            diagnosis.lines.map((l, i) => (
+              <div
+                key={i}
+                style={{
+                  fontSize: "13px",
+                  lineHeight: 1.55,
+                  padding: "3px 0",
+                  color:
+                    l.cls === "bad"
+                      ? "#f0917e"
+                      : l.cls === "good"
+                        ? "#5ad19a"
+                        : l.cls === "muted"
+                          ? "var(--text-muted)"
+                          : "var(--text-secondary)",
+                }}
+              >
+                {l.text}
+              </div>
+            ))
+          )}
+        </div>
       )}
 
       {/* 총 합계 비교 카드 */}

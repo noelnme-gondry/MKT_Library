@@ -3,6 +3,7 @@ import Script from "next/script";
 import { DM_Sans, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import Footer from "@/components/Footer";
 import GaPageviews from "@/components/GaPageviews";
+import SkipLink from "@/components/SkipLink";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk", display: "swap" });
@@ -69,7 +70,7 @@ export default function RootLayout({ children }) {
       </head>
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('mkt-library-theme')!=='dark')document.body.classList.add('light-mode')}catch(e){document.body.classList.add('light-mode')}" }} />
-        <a className="skip-link" href="#main-content">본문으로 바로가기</a>
+        <SkipLink />
         {/* 구조화 데이터 (JSON-LD) — 검색엔진이 사이트·조직을 인식(SEO). SSR로 초기 HTML에 포함. */}
         <script
           type="application/ld+json"

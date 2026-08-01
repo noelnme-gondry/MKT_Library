@@ -457,12 +457,18 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
           <h2 className="section-title">{T.dataPrep}</h2>
           <CsvGuide toolId={C.guideToolId} locale={locale} />
           <div className="csv-dropzone"
+            role="button"
+            tabIndex={0}
+            aria-label={tr("콘텐츠 분석 CSV 파일 선택", "Choose a content-analysis CSV file")}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]); }}
-            onClick={() => fileRef.current?.click()} style={{ cursor: "pointer" }}>
+            onClick={() => fileRef.current?.click()}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }}
+            style={{ cursor: "pointer" }}>
             <div className="csv-drop-text">{T.dropTitle}</div>
             <div className="csv-drop-sub">{T.dropSub}</div>
             <input type="file" accept=".csv,text/csv" style={{ display: "none" }} ref={fileRef}
+              onClick={(e) => e.stopPropagation()}
               onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); e.target.value = null; }} />
           </div>
           <DemoLoadButton onLoad={handleLoadDemo} locale={locale} />

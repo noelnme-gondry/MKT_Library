@@ -15,6 +15,45 @@ import { ahaParseActionWindow } from "@/utils/ahaMath";
 
 const WINDOW_PRESETS = [1, 3, 7, 14, 30];
 
+const MAPPER_CHIP_LAYOUT_STYLE = {
+  display: "inline-flex",
+  alignItems: "center",
+  flexWrap: "wrap",
+  width: "fit-content",
+  maxWidth: "100%",
+  minWidth: "0px",
+  boxSizing: "border-box",
+};
+
+const MAPPER_CHIP_LABEL_STYLE = {
+  maxWidth: "100%",
+  minWidth: "0px",
+  overflowWrap: "anywhere",
+};
+
+const MAPPER_CLEAR_BUTTON_STYLE = {
+  display: "inline-grid",
+  placeItems: "center",
+  flex: "0 0 44px",
+  width: "44px",
+  minWidth: "44px",
+  height: "44px",
+  minHeight: "44px",
+  border: 0,
+  padding: 0,
+  background: "transparent",
+  cursor: "pointer",
+  color: "var(--text-muted)",
+  touchAction: "manipulation",
+};
+const ROLE_OPTIONS = [
+  ["ignore", "미지정", "Unassigned"],
+  ["target", "타겟", "Target"],
+  ["feature", "선행 행동", "Preceding action"],
+  ["id", "사용자 ID", "User ID"],
+  ["segment", "세그먼트", "Segment"],
+];
+
 function winValue(w) {
   if (w == null || w === Infinity) return "all";
   if (WINDOW_PRESETS.includes(w)) return String(w);
@@ -60,34 +99,52 @@ export function ahaAutoMapColumns(headers, rows) {
   return out;
 }
 
+function RoleSelect({ col, role, setRole, tr = (ko) => ko }) {
+  return (
+    <select
+      value={role || "ignore"}
+      onChange={(event) => setRole(col, event.target.value)}
+      aria-label={tr(`${col} 역할`, `${col} role`)}
+      title={tr("드래그 대신 역할을 직접 선택", "Choose a role instead of dragging")}
+      className="map-select"
+      style={{ maxWidth: "112px", minWidth: "0px", fontSize: "10.5px" }}
+    >
+      {ROLE_OPTIONS.map(([value, ko, en]) => <option key={value} value={value}>{tr(ko, en)}</option>)}
+    </select>
+  );
+}
+
 function FeatureChip({ col, cm, setRole, setField, setDragCol, tr = (ko) => ko }) {
   const def = cm[col] || { action: col, window: Infinity };
   const wv = winValue(def.window);
   return (
     <span
-      className="reg-chip"
+      className="reg-chip aha-mapper-chip aha-mapper-chip--feature"
       draggable
       onDragStart={() => setDragCol(col)}
-      style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 8px", margin: "2px", borderRadius: "6px", background: "var(--bg-2)", border: "1px solid var(--border)", fontSize: "12px", cursor: "grab" }}
+      style={{ ...MAPPER_CHIP_LAYOUT_STYLE, gap: "4px", padding: "3px 8px", margin: "2px", borderRadius: "6px", background: "var(--bg-2)", border: "1px solid var(--border)", fontSize: "12px", cursor: "grab" }}
     >
-      <strong title={col}>{col}</strong>
+      <strong title={col} style={MAPPER_CHIP_LABEL_STYLE}>{col}</strong>
+      <RoleSelect col={col} role={def.role || "feature"} setRole={setRole} tr={tr} />
       <input
         type="text"
         value={def.action || col}
         onChange={(e) => setField(col, "action", e.target.value.trim() || col)}
+        aria-label={tr(`${col} 액션명`, `${col} action name`)}
         title={tr("액션명(같은 이름끼리 윈도우별로 묶임)", "Action name (same names are grouped per window)")}
-        style={{ width: "72px", fontSize: "11px" }}
+        style={{ width: "72px", maxWidth: "100%", minWidth: "0px", fontSize: "11px" }}
         className="map-select"
       />
       <select
         value={wv}
+        aria-label={tr(`${col} 행동 윈도우`, `${col} action window`)}
         onChange={(e) => {
           const v = e.target.value;
           if (v === "all") setField(col, "window", Infinity);
           else if (v === "custom") setField(col, "window", def.window === Infinity || WINDOW_PRESETS.includes(def.window) ? 1 : def.window);
           else setField(col, "window", parseInt(v, 10));
         }}
-        style={{ fontSize: "11px" }}
+        style={{ maxWidth: "100%", minWidth: "0px", fontSize: "11px" }}
       >
         {WINDOW_PRESETS.map((w) => <option key={w} value={w}>D{w}</option>)}
         <option value="all">{tr("전체", "All")}</option>
@@ -99,31 +156,33 @@ function FeatureChip({ col, cm, setRole, setField, setDragCol, tr = (ko) => ko }
           min="1"
           step="1"
           value={def.window === Infinity ? "" : def.window}
+          aria-label={tr(`${col} 행동 윈도우 일수`, `${col} action window days`)}
           onChange={(e) => {
             const n = parseInt(e.target.value, 10);
             setField(col, "window", isFinite(n) && n > 0 ? n : 1);
           }}
           placeholder="N"
           title={tr("윈도우 일수 직접 입력", "Enter window days directly")}
-          style={{ width: "44px", fontSize: "11px" }}
+          style={{ width: "44px", maxWidth: "100%", minWidth: "0px", fontSize: "11px" }}
           className="map-select"
         />
       )}
-      <span onClick={() => setRole(col, "ignore")} style={{ cursor: "pointer", color: "var(--text-muted)" }}>✕</span>
+      <button type="button" className="aha-mapper-chip__clear" onClick={() => setRole(col, "ignore")} aria-label={tr(`${col} 매핑 해제`, `Clear ${col} mapping`)} style={MAPPER_CLEAR_BUTTON_STYLE}>✕</button>
     </span>
   );
 }
 
-function SimpleChip({ col, setRole, setDragCol }) {
+function SimpleChip({ col, role, setRole, setDragCol, tr = (ko) => ko }) {
   return (
     <span
-      className="reg-chip"
+      className="reg-chip aha-mapper-chip aha-mapper-chip--simple"
       draggable
       onDragStart={() => setDragCol(col)}
-      style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 8px", margin: "2px", borderRadius: "6px", background: "var(--bg-2)", border: "1px solid var(--border)", fontSize: "12px", cursor: "grab" }}
+      style={{ ...MAPPER_CHIP_LAYOUT_STYLE, gap: "4px", padding: "3px 8px", margin: "2px", borderRadius: "6px", background: "var(--bg-2)", border: "1px solid var(--border)", fontSize: "12px", cursor: "grab" }}
     >
-      <strong>{col}</strong>
-      <span onClick={() => setRole(col, "ignore")} style={{ cursor: "pointer", color: "var(--text-muted)" }}>✕</span>
+      <strong style={MAPPER_CHIP_LABEL_STYLE}>{col}</strong>
+      <RoleSelect col={col} role={role} setRole={setRole} tr={tr} />
+      {role !== "ignore" && <button type="button" className="aha-mapper-chip__clear" onClick={() => setRole(col, "ignore")} aria-label={tr(`${col} 매핑 해제`, `Clear ${col} mapping`)} style={MAPPER_CLEAR_BUTTON_STYLE}>✕</button>}
     </span>
   );
 }
@@ -140,8 +199,8 @@ function Zone({ role, label, single, feature, cols, cm, setRole, setField, dragC
         {cols.length
           ? cols.map((c) => (feature
               ? <FeatureChip key={c} col={c} cm={cm} setRole={setRole} setField={setField} setDragCol={setDragCol} tr={tr} />
-              : <SimpleChip key={c} col={c} setRole={setRole} setDragCol={setDragCol} />))
-          : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("여기로 드래그", "Drag here")}</span>}
+              : <SimpleChip key={c} col={c} role={role} setRole={setRole} setDragCol={setDragCol} tr={tr} />))
+          : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("여기로 드래그하거나 칩에서 역할 선택", "Drag here or choose the role on a chip")}</span>}
       </div>
       {single && cols.length > 1 && (
         <div style={{ fontSize: "10.5px", color: "#f59e0b", marginTop: "4px" }}>{tr("⚠ 1개만 사용됩니다(나중에 놓은 컬럼 우선)", "⚠ Only one is used (last dropped column wins)")}</div>
@@ -225,7 +284,7 @@ export default function AhaColumnMapper({ headers, rows, colMap, onChange, local
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "8px" }}>
         <p className="muted" style={{ fontSize: "12px", margin: 0 }}>
-          {tr("컬럼을 역할 영역으로 드래그하세요. 칩을 끌어 언제든 수정 가능합니다. 헤더가 ", "Drag columns onto a role zone. Drag chips to adjust anytime. If a header looks like ")}<code className="inline">{"{action}_d{N}"}</code>{tr(" 형태면 액션·윈도우가 자동 파싱됩니다.", ", the action and window are parsed automatically.")}
+          {tr("컬럼을 역할 영역으로 드래그하거나 각 칩의 역할 선택을 사용하세요. 헤더가 ", "Drag columns onto a role zone or use each chip’s role selector. If a header looks like ")}<code className="inline">{"{action}_d{N}"}</code>{tr(" 형태면 액션·윈도우가 자동 파싱됩니다.", ", the action and window are parsed automatically.")}
         </p>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
           <button type="button" className="ab-pill" onClick={() => onChange(ahaAutoMapColumns(headers, rows))}>{tr("🪄 전부 자동 추정", "🪄 Auto-map all")}</button>
@@ -243,7 +302,7 @@ export default function AhaColumnMapper({ headers, rows, colMap, onChange, local
         <div style={{ fontSize: "11.5px", color: "var(--text-muted)", marginBottom: "4px" }}>{tr("📦 컬럼 (미지정 — 드래그해서 배치)", "📦 Columns (unassigned — drag to place)")}</div>
         <div>
           {tray.length
-            ? tray.map((h) => <SimpleChip key={h} col={h} setRole={setRole} setDragCol={setDragCol} />)
+            ? tray.map((h) => <SimpleChip key={h} col={h} role="ignore" setRole={setRole} setDragCol={setDragCol} tr={tr} />)
             : <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>{tr("모두 배치됨", "All placed")}</span>}
         </div>
       </div>

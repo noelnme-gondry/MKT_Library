@@ -4,10 +4,15 @@
 // Sidebar derives its active id from usePathname() (mocked to "/") and reads the
 // static IA/PHASES tables — it does NOT read csvData. "/" intentionally renders
 // the compact Decision Workspace nav; inner pages retain the full IA nav.
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Sidebar from "@/components/Sidebar";
+
+let pathname = "/";
+vi.mock("next/navigation", () => ({
+  usePathname: () => pathname,
+}));
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -16,6 +21,7 @@ function seedNoData() {
     currentRouteId: "home",
     csvGroups: { ...useAppStore.getState().csvGroups, efficiency: EMPTY_CSV },
     csvData: EMPTY_CSV,
+    isCmdkOpen: false,
   });
 }
 
@@ -32,7 +38,10 @@ function seedWithData() {
 }
 
 describe("Sidebar render smoke", () => {
-  beforeEach(() => seedNoData());
+  beforeEach(() => {
+    pathname = "/";
+    seedNoData();
+  });
   it("no-data mounts", () => {
     expect(() => render(<Sidebar />)).not.toThrow();
     expect(document.querySelector(".home-sidebar-nav")).toBeTruthy();
@@ -42,13 +51,20 @@ describe("Sidebar render smoke", () => {
     expect(document.querySelector('a[href="/diagnose"]')).toBeTruthy();
     expect(document.querySelectorAll(".sidebar-social .ss-btn")).toHaveLength(4);
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
+    expect(document.querySelector('.home-sidebar-nav__item[aria-current="page"]')).toBeTruthy();
   });
   it("with-data mounts", () => {
+    pathname = "/dashboard";
     seedWithData();
     expect(() => render(<Sidebar />)).not.toThrow();
     expect(document.querySelector("aside.sidebar")).toBeTruthy();
+    expect(document.querySelector('.nav-item[data-route="5-2"][aria-current="page"]')).toBeTruthy();
+    const search = document.querySelector(".sidebar-search");
+    expect(search?.getAttribute("aria-controls")).toBe("cmdk");
+    expect(search?.getAttribute("aria-expanded")).toBe("false");
   });
   it("keeps resource and external-link parity in English", () => {
+    pathname = "/en";
     const { container } = render(<Sidebar locale="en" />);
     expect(container.textContent).toContain("Operating Guide");
     expect(container.textContent).toContain("Naver Blog");

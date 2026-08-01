@@ -2,6 +2,17 @@
 import React, { useState } from "react";
 import { getToolGuide } from "@/utils/toolGuide";
 import { hasToolTemplate, downloadTemplateCsv, TEMPLATE_FAMILY } from "@/components/ds/csvTemplate";
+import DataTable from "@/components/ds/DataTable";
+import ModalDialog from "@/components/ds/ModalDialog";
+
+const ICON_TOUCH_TARGET = {
+  boxSizing: "border-box",
+  minWidth: "44px",
+  minHeight: "44px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
 
 // CSV upload guidance (design-system baseline §1.4). Hybrid per claude-ux §0
 // (avoid hidden-affordance trap): an always-visible 1-line summary + a prominent
@@ -57,6 +68,13 @@ export default function CsvGuide({ toolId, onDownloadTemplate, locale = "ko" }) 
   if (!guide) return null;
 
   const reqCols = guide.needs.filter((n) => n.required).map((n) => n.label).join(" · ");
+  const close = () => setOpen(false);
+  const needColumns = [
+    { key: "col", label: T.colCol, fmt: (value) => <code className="inline">{value}</code> },
+    { key: "label", label: T.colWhat },
+    { key: "why", label: T.colWhy, cellStyle: { color: "var(--text-muted)" } },
+    { key: "required", label: T.colRequired, align: "center", fmt: (value) => value ? "✅" : "—" },
+  ];
 
   return (
     <div className="csv-guide">
@@ -70,95 +88,81 @@ export default function CsvGuide({ toolId, onDownloadTemplate, locale = "ko" }) 
         </button>
       </div>
 
-      {open && (
-        <div className="csv-guide-overlay" onClick={() => setOpen(false)}>
-          <div className="csv-guide-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <div className="csv-guide-modal-head">
-              <strong>{T.modalTitle}</strong>
-              <button type="button" className="csv-guide-close" onClick={() => setOpen(false)} aria-label={T.close}>✕</button>
-            </div>
+      <ModalDialog
+        open={open}
+        onClose={close}
+        ariaLabel={T.modalTitle}
+        overlayClassName="csv-guide-overlay"
+        panelClassName="csv-guide-modal"
+      >
+        <div className="csv-guide-modal-head">
+          <strong>{T.modalTitle}</strong>
+          <button type="button" className="csv-guide-close" onClick={close} aria-label={`${T.modalTitle}: ${T.close}`} style={ICON_TOUCH_TARGET}>✕</button>
+        </div>
 
-            <div className="csv-guide-modal-body">
-              <section>
-                <h4>{T.whenHeading}</h4>
-                <p>{guide.when}</p>
-                {guide.grain && <p className="csv-guide-grain">📄 {guide.grain}</p>}
-              </section>
+        <div className="csv-guide-modal-body">
+          <section>
+            <h4>{T.whenHeading}</h4>
+            <p>{guide.when}</p>
+            {guide.grain && <p className="csv-guide-grain">📄 {guide.grain}</p>}
+          </section>
 
+          <section>
+            <h4>{T.colsHeading}</h4>
+            <DataTable
+              columns={needColumns}
+              rows={guide.needs}
+              rowKey={(row, index) => `${row.col}-${index}`}
+              ariaLabel={T.colsHeading}
+            />
+          </section>
+
+          {guide.prep && guide.prep.length > 0 && (
+            <section>
+              <h4>{T.prepHeading}</h4>
+              <ul className="csv-guide-prep">
+                {guide.prep.map((p, i) => <li key={i}>{p}</li>)}
+              </ul>
+            </section>
+          )}
+
+          {guide.example && (() => {
+            const lines = guide.example.trim().split("\n");
+            const head = (lines[0] || "").split(",");
+            const body = lines.slice(1).map((l) => l.split(","));
+            return (
               <section>
-                <h4>{T.colsHeading}</h4>
+                <h4>{T.exampleHeading}</h4>
                 <div className="table-wrap">
-                  <table className="data">
-                    <thead>
-                      <tr>
-                        <th style={{ textAlign: "left" }}>{T.colCol}</th>
-                        <th style={{ textAlign: "left" }}>{T.colWhat}</th>
-                        <th style={{ textAlign: "left" }}>{T.colWhy}</th>
-                        <th style={{ textAlign: "center" }}>{T.colRequired}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {guide.needs.map((n, i) => (
-                        <tr key={i}>
-                          <td style={{ textAlign: "left" }}><code className="inline">{n.col}</code></td>
-                          <td style={{ textAlign: "left" }}>{n.label}</td>
-                          <td style={{ textAlign: "left", color: "var(--text-muted)" }}>{n.why}</td>
-                          <td style={{ textAlign: "center" }}>{n.required ? "✅" : "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
+                  <table className="data csv-guide-example-table">
+                    <thead><tr>{head.map((h, i) => <th key={i} style={{ textAlign: "left", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
+                    <tbody>{body.map((row, ri) => (
+                      <tr key={ri}>{row.map((c, ci) => <td key={ci} style={{ textAlign: "left", whiteSpace: "nowrap" }}>{c}</td>)}</tr>
+                    ))}</tbody>
                   </table>
                 </div>
+                <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0" }}>{T.exampleFoot}</p>
               </section>
-
-              {guide.prep && guide.prep.length > 0 && (
-                <section>
-                  <h4>{T.prepHeading}</h4>
-                  <ul className="csv-guide-prep">
-                    {guide.prep.map((p, i) => <li key={i}>{p}</li>)}
-                  </ul>
-                </section>
-              )}
-
-              {guide.example && (() => {
-                const lines = guide.example.trim().split("\n");
-                const head = (lines[0] || "").split(",");
-                const body = lines.slice(1).map((l) => l.split(","));
-                return (
-                  <section>
-                    <h4>{T.exampleHeading}</h4>
-                    <div className="table-wrap">
-                      <table className="data csv-guide-example-table">
-                        <thead><tr>{head.map((h, i) => <th key={i} style={{ textAlign: "left", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
-                        <tbody>{body.map((row, ri) => (
-                          <tr key={ri}>{row.map((c, ci) => <td key={ci} style={{ textAlign: "left", whiteSpace: "nowrap" }}>{c}</td>)}</tr>
-                        ))}</tbody>
-                      </table>
-                    </div>
-                    <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0" }}>{T.exampleFoot}</p>
-                  </section>
-                );
-              })()}
-            </div>
-
-            <div className="csv-guide-modal-foot">
-              {/* 템플릿 다운로드 — 도구 자체 제공(onDownloadTemplate) 우선, 없으면 효율패밀리
-                  표준필드로 자동 생성(구 DataFeatureMatrix 통합 템플릿 이식). */}
-              {onDownloadTemplate ? (
-                <button type="button" className="ab-pill" onClick={onDownloadTemplate}>{T.templateBtn}</button>
-              ) : hasToolTemplate(toolId) && (
-                <>
-                  <button type="button" className="ab-pill" onClick={() => downloadTemplateCsv(toolId, "tool")}>{T.toolTemplateBtn}</button>
-                  {TEMPLATE_FAMILY.includes(toolId) && (
-                    <button type="button" className="ab-pill" title={T.unifiedTemplateTitle} onClick={() => downloadTemplateCsv(toolId, "unified")}>{T.unifiedTemplateBtn}</button>
-                  )}
-                </>
-              )}
-              <button type="button" className="ab-button" onClick={() => setOpen(false)}>{T.confirm}</button>
-            </div>
-          </div>
+            );
+          })()}
         </div>
-      )}
+
+        <div className="csv-guide-modal-foot">
+          {/* 템플릿 다운로드 — 도구 자체 제공(onDownloadTemplate) 우선, 없으면 효율패밀리
+              표준필드로 자동 생성(구 DataFeatureMatrix 통합 템플릿 이식). */}
+          {onDownloadTemplate ? (
+            <button type="button" className="ab-pill" onClick={onDownloadTemplate}>{T.templateBtn}</button>
+          ) : hasToolTemplate(toolId) && (
+            <>
+              <button type="button" className="ab-pill" onClick={() => downloadTemplateCsv(toolId, "tool")}>{T.toolTemplateBtn}</button>
+              {TEMPLATE_FAMILY.includes(toolId) && (
+                <button type="button" className="ab-pill" title={T.unifiedTemplateTitle} onClick={() => downloadTemplateCsv(toolId, "unified")}>{T.unifiedTemplateBtn}</button>
+              )}
+            </>
+          )}
+          <button type="button" className="ab-button" onClick={close}>{T.confirm}</button>
+        </div>
+      </ModalDialog>
     </div>
   );
 }

@@ -4,10 +4,16 @@
 // data with no mappable metric) returns the "데이터 없음" pane; with-data runs
 // the golden ANOMALY_MATH detector and renders a flagged time-series chart.
 // Mounts cover render + the chart effect; mocks live in vitest.smoke.setup.js.
-import { describe, it, expect, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import AnomalyTab from "@/components/dashboard/AnomalyTab";
+
+const { downloadChartSpy } = vi.hoisted(() => ({ downloadChartSpy: vi.fn() }));
+vi.mock("@/utils/chartUtils", async (importOriginal) => ({
+  ...(await importOriginal()),
+  downloadChartAsPNG: downloadChartSpy,
+}));
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -53,7 +59,10 @@ function seedNoData() {
 }
 
 describe("AnomalyTab render smoke", () => {
-  beforeEach(() => seedNoData());
+  beforeEach(() => {
+    downloadChartSpy.mockClear();
+    seedNoData();
+  });
 
   it("mounts without throwing in the no-data state", () => {
     expect(() => render(<AnomalyTab />)).not.toThrow();
@@ -65,5 +74,12 @@ describe("AnomalyTab render smoke", () => {
     expect(() => render(<AnomalyTab />)).not.toThrow();
     // With mappable metrics, the anomaly chart canvas is present.
     expect(document.getElementById("anomaly-chart")).toBeTruthy();
+  });
+
+  it("exports the mounted chart from the visible PNG action", () => {
+    seedWithData();
+    render(<AnomalyTab />);
+    fireEvent.click(screen.getByRole("button", { name: "이상탐지 차트 PNG 다운로드" }));
+    expect(downloadChartSpy).toHaveBeenCalledWith(document.getElementById("anomaly-chart"), "anomaly");
   });
 });

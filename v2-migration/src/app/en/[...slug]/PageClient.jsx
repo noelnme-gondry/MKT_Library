@@ -64,8 +64,6 @@ export default function PageClient({ params, initialSopData = null }) {
           <article className="content" id="content">
             {(routeId.startsWith("5-") || routeId.startsWith("9-")) && <MobileToolNudge locale="en" />}
             {CUSTOM_TOOL_INTRO_IDS.has(routeId) && <ToolIntro toolId={routeId} locale="en" />}
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolConnections toolId={routeId} locale="en" />}
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolAssistRail toolId={routeId} locale="en" />}
 
             {routeId === "start-gate" && <StartGate locale="en" />}
             {routeId === "5-2" && <Dashboard locale="en" />}
@@ -84,6 +82,8 @@ export default function PageClient({ params, initialSopData = null }) {
             {routeId === "9-1" && <ContentElementAnalyzer locale="en" />}
             {/^[1-4]-|^8-/.test(routeId) && <SopContent routeId={routeId} locale="en" initialData={initialSopData} />}
             <ToolLongform toolId={routeId} locale="en" />
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolConnections toolId={routeId} locale="en" />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolAssistRail toolId={routeId} locale="en" />}
           </article>
         </main>
       </div>
