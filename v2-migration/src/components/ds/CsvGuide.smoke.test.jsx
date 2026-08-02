@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import CsvGuide from "@/components/ds/CsvGuide";
 
@@ -30,5 +30,13 @@ describe("CsvGuide", () => {
     expect(screen.getByRole("table", { name: "A file shaped like this works (example)" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Data guide for this tool: Close" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "OK" }).classList.contains("is-primary")).toBe(true);
+  });
+
+  it("shows required effort and runs the example without a download round trip", () => {
+    const onTryExample = vi.fn();
+    render(<CsvGuide toolId="5-18" onTryExample={onTryExample} />);
+    expect(document.body.textContent).toContain("화면 작업 예상 5–10분");
+    fireEvent.click(screen.getByRole("button", { name: /예시 데이터로 결과 바로 보기/ }));
+    expect(onTryExample).toHaveBeenCalledTimes(1);
   });
 });

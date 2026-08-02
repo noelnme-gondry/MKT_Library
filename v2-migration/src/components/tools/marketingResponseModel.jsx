@@ -902,6 +902,15 @@ export function StatHead({ title, hint }) {
   );
 }
 
+// 조건부 패널을 빠르게 닫으면 Chart가 destroy된 뒤 예약된 resize가 실행될 수 있다.
+// cleanup에서 프레임을 취소하고, 이미 분리된 canvas라면 콜백도 조용히 종료한다.
+export function scheduleChartResize(chart) {
+  const frameId = requestAnimationFrame(() => {
+    if (chart?.canvas?.isConnected) chart.resize();
+  });
+  return () => cancelAnimationFrame(frameId);
+}
+
 // 그룹별 기여 패널 — 단일 누적 막대는 큰 기본수요에 가려 마케팅·이벤트의
 // 시계열이 읽히지 않는다. 회사 MMM과 같이 그룹마다 독립 y축을 쓴다.
 export function ContributionGroupPanel({ label, values, labels, color, locale, formatValue }) {
@@ -927,8 +936,11 @@ export function ContributionGroupPanel({ label, values, labels, color, locale, f
         },
       },
     });
-    requestAnimationFrame(() => chart.resize());
-    return () => chart.destroy();
+    const cancelResize = scheduleChartResize(chart);
+    return () => {
+      cancelResize();
+      chart.destroy();
+    };
   }, [label, values, labels, color, locale, formatValue]);
   return <div className="chart-container" style={{ height: "190px", minHeight: "190px" }}><canvas ref={ref}></canvas></div>;
 }
@@ -970,8 +982,11 @@ export function CollinearPairInputChart({ labels, pair, locale }) {
         },
       },
     });
-    requestAnimationFrame(() => chart.resize());
-    return () => chart.destroy();
+    const cancelResize = scheduleChartResize(chart);
+    return () => {
+      cancelResize();
+      chart.destroy();
+    };
   }, [labels, pair, locale]);
   return <div className="chart-container" style={{ height: "250px", minHeight: "250px" }}><canvas ref={ref}></canvas></div>;
 }
@@ -1109,8 +1124,11 @@ export function MmmBacktestChart({ labels, actual, variants, locale, validationS
         },
       },
     });
-    requestAnimationFrame(() => chart.resize());
-    return () => chart.destroy();
+    const cancelResize = scheduleChartResize(chart);
+    return () => {
+      cancelResize();
+      chart.destroy();
+    };
   }, [labels, actual, variants, locale, validationStartIndex, formatValue]);
   return <div className="chart-container" style={{ height: "270px", minHeight: "270px", marginTop: "10px" }}><canvas ref={ref}></canvas></div>;
 }

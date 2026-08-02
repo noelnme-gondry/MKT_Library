@@ -72,22 +72,6 @@ export const TOOL_GUIDE = {
     prep: ["가장 잘게(소재·일별) 넣을수록 분해 항등식이 정확합니다.", "효율 CSV 공유(5-2/5-3/5-22)."],
     example: "date,channel,campaign_name,creative_id,spend,installs\n2024-01-01,Meta AAP,Prospecting,cr_101,320000,240\n2024-01-01,Meta AAP,Retargeting,cr_102,180000,160\n2024-01-02,Meta AAP,Prospecting,cr_101,340000,255",
   },
-  "5-6": {
-    when: "소재별 성과·피로도·속성 효과(어떤 후킹·포맷이 잘 되나)를 분석하고 교체 시점을 알려줍니다.",
-    grain: "1행 = 하루 × 소재(creative)",
-    needs: [
-      { col: "creative_id", label: "소재 ID", why: "소재 단위 집계의 키", required: true },
-      { col: "date", label: "날짜", why: "피로도(시간에 따른 성과 하락)", required: true },
-      { col: "impressions·clicks·installs", label: "노출·클릭·설치", why: "CTR/CVR·승률 계산", required: true },
-      { col: "spend", label: "광고비", why: "CPA·효율", required: true },
-      { col: "message_angle·format·hook_type…", label: "소재 속성", why: "속성별 효과(WLS)·조합 매트릭스", required: false },
-    ],
-    prep: [
-      "속성 컬럼(메시지·포맷·훅)을 넣으면 '어떤 특징이 효과적인가' 분해와 조합표가 열립니다.",
-      "조합표는 조합당 소재 5개 이상 있어야 '검증'으로 뜹니다.",
-    ],
-    example: "creative_id,date,channel,impressions,clicks,installs,spend,message_angle,format\ncr_001,2024-02-01,Meta AAP,52000,1600,210,610000,사회적증거,UGC\ncr_002,2024-02-01,TikTok,48000,1900,180,540000,할인혜택,플레이어블",
-  },
   "5-4": {
     when: "A/B 테스트를 설계(표본 수 계산)하고, 결과 CSV로 어느 안이 통계적으로 이겼는지 판정합니다.",
     grain: "1행 = 그룹(arm) 단위 집계",
@@ -313,22 +297,6 @@ export const TOOL_GUIDE_EN = {
     ],
     prep: ["Shares the same efficiency CSV as 5-2/5-3 — upload once and sibling tools pick it up."],
     example: "date,channel,cost,installs,revenue_d7\n2024-01-01,Google UAC,850000,720,5400000\n2024-01-02,Google UAC,880000,735,5600000\n2024-01-03,Google UAC,920000,742,5700000",
-  },
-  "5-6": {
-    when: "Analyze creative performance, fatigue, and which attributes (hook, format, message) actually drive results — and tells you when to swap a creative.",
-    grain: "1 row = 1 day × creative",
-    needs: [
-      { col: "creative_id", label: "Creative ID", why: "Key for creative-level aggregation", required: true },
-      { col: "date", label: "Date", why: "Fatigue (performance decay over time)", required: true },
-      { col: "impressions · clicks · installs", label: "Impressions · clicks · installs", why: "CTR/CVR and win-rate calculations", required: true },
-      { col: "spend", label: "Ad spend", why: "CPA and efficiency", required: true },
-      { col: "message_angle · format · hook_type…", label: "Creative attributes", why: "Attribute-level effect (WLS) and combination matrix", required: false },
-    ],
-    prep: [
-      "Add attribute columns (message/format/hook) to unlock the 'which attribute works' breakdown and combination table.",
-      "The combination table only shows as 'validated' once a combination has 5+ creatives.",
-    ],
-    example: "creative_id,date,channel,impressions,clicks,installs,spend,message_angle,format\ncr_001,2024-02-01,Meta AAP,52000,1600,210,610000,social_proof,UGC\ncr_002,2024-02-01,TikTok,48000,1900,180,540000,discount,playable",
   },
   "5-4": {
     when: "Design an A/B test (sample size calculation), and judge which variant statistically won from a results CSV.",

@@ -8,7 +8,6 @@ import { AHA_STATS, ahaCoverageBuckets } from "@/utils/ahaMath";
 import { downloadChartAsPNG, CHART_THEME, chartCommonOpts } from "@/utils/chartUtils";
 import { idToSlug, hasEnVersion } from "@/lib/routeMap";
 import { showToast } from "@/utils/toast";
-import DemoLoadButton from "@/components/DemoLoadButton";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import ResultActionCard from "@/components/ds/ResultActionCard";
 import DownloadHub from "@/components/ds/DownloadHub";
@@ -1010,7 +1009,7 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
       <div className="tab-pane active" id="tab-aha">
         <section className="block" id="s-prep">
           <h2 className="section-title">{tr("데이터 준비", "Data setup")}</h2>
-          <CsvGuide toolId={C.guideToolId} locale={locale} />
+          <CsvGuide toolId={C.guideToolId} onTryExample={handleLoadDemo} locale={locale} />
           <div
             className="csv-dropzone"
             role="button"
@@ -1035,7 +1034,6 @@ export default function AhaMomentFinder({ domain = "performance", locale = "ko" 
               onClick={(e) => e.stopPropagation()}
               onChange={(e) => { if (e.target.files?.[0]) handleAhaFile(e.target.files[0]); e.target.value = null; }} />
           </div>
-          <DemoLoadButton onLoad={handleLoadDemo} locale={locale} />
         </section>
         <AnalyzingOverlay show={isParsing} title={tr("데이터 불러오는 중…", "Loading data…")} sub={tr("큰 파일은 몇 초 걸릴 수 있어요", "Large files may take a few seconds")} />
       </div>

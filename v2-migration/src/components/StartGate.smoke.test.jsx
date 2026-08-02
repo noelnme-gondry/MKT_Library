@@ -32,4 +32,23 @@ describe("StartGate render smoke", () => {
     expect(g.efficiency.raw.length).toBe(0); // 데모 → 비움
     expect(g.aha.raw.length).toBe(1); // 실제 업로드 → 보존
   });
+
+  it("shows analysis eligibility immediately after a real file is prepared", () => {
+    const slice = {
+      raw: [{ date: "2026-08-01", cost: "100", installs: "10" }],
+      headers: ["date", "cost", "installs"],
+      mapping: { date: "date", cost: "cost", installs: "installs" },
+      fileName: "weekly.csv",
+      canonicalData: { records: [{ date: "2026-08-01", dimensions: {}, metrics: { cost: 100, installs: 10 } }] },
+      mappedRows: [{ date: "2026-08-01", cost: 100, installs: 10 }],
+    };
+    useAppStore.setState({
+      currentRouteId: "start-gate",
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: slice },
+      csvData: slice,
+    });
+    render(<StartGate />);
+    expect(document.querySelector(".analysis-recommendations")).toBeTruthy();
+    expect(screen.getByText(/업로드 직후 자동 매핑 기준/)).toBeTruthy();
+  });
 });

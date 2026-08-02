@@ -18,4 +18,10 @@ describe("RouteErrorRecovery", () => {
     expect(container.textContent).toContain("This analysis could not be displayed");
     expect(Array.from(container.querySelectorAll("a")).map((link) => link.getAttribute("href"))).toContain("/en/tools/marketing-response");
   });
+
+  it("uses neutral recovery copy outside analysis routes", () => {
+    const { container } = render(<RouteErrorRecovery error={new Error("test")} reset={() => {}} scope="site" />);
+    expect(container.textContent).toContain("이 페이지를 표시하지 못했습니다");
+    expect(container.textContent).not.toContain("분석 허브로");
+  });
 });

@@ -15,7 +15,6 @@ import { useAppStore } from "@/store/useDataStore";
 import { REG_STATS } from "@/utils/regMath";
 import { CHART_THEME } from "@/utils/chartUtils";
 import { buildDemoCsv } from "@/utils/demoData";
-import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
 import ResultActionCard from "@/components/ds/ResultActionCard";
@@ -455,7 +454,7 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
       <div className="tab-pane active">
         <section className="block" id="s-content-mapping">
           <h2 className="section-title">{T.dataPrep}</h2>
-          <CsvGuide toolId={C.guideToolId} locale={locale} />
+          <CsvGuide toolId={C.guideToolId} onTryExample={handleLoadDemo} locale={locale} />
           <div className="csv-dropzone"
             role="button"
             tabIndex={0}
@@ -471,7 +470,6 @@ export default function ContentElementAnalyzer({ locale = "ko" }) {
               onClick={(e) => e.stopPropagation()}
               onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); e.target.value = null; }} />
           </div>
-          <DemoLoadButton onLoad={handleLoadDemo} locale={locale} />
         </section>
       </div>
     );

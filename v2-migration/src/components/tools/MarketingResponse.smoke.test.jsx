@@ -70,6 +70,7 @@ import MarketingResponse, {
   mmmTargetHeader,
   paidOrganicHaloBudgets,
   reconcileForecastScenarioAudit,
+  scheduleChartResize,
   trimToActive,
 } from "@/components/tools/MarketingResponse";
 import { autoGuessColMap, buildPanelFromColMap } from "@/components/tools/MmmColumnMapper";
@@ -260,6 +261,26 @@ describe("MarketingResponse render smoke", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     seedNoData();
+  });
+
+  it("cancels a pending chart resize and ignores a detached canvas", () => {
+    let callback = null;
+    const request = vi.spyOn(window, "requestAnimationFrame").mockImplementation((next) => {
+      callback = next;
+      return 73;
+    });
+    const cancel = vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
+    const chart = { canvas: document.createElement("canvas"), resize: vi.fn() };
+
+    document.body.appendChild(chart.canvas);
+    const cleanup = scheduleChartResize(chart);
+    cleanup();
+
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(cancel).toHaveBeenCalledWith(73);
+    chart.canvas.remove();
+    expect(() => callback()).not.toThrow();
+    expect(chart.resize).not.toHaveBeenCalled();
   });
 
   it("resets MMM mapping when the same-named CSV has a new raw source", () => {
@@ -1620,6 +1641,8 @@ describe("MarketingResponse render smoke", () => {
     const { container } = render(<MarketingResponse />);
     expect(() => enterMmmAndAnalyze(container)).not.toThrow();
     await flushRaf();
+    expect(container.querySelector('.decision-review[data-decision-review-tool="5-18"]')).toBeTruthy();
+    expect(container.textContent).toContain("다음 검토 약속 만들기");
     clickByText(container, "카니발 진단");
     expect(document.body.textContent).toContain("데이터 위생");
   });

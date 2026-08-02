@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DECISION_REVIEW_SAFE_FIELDS,
+  decisionNumericComparison,
   getDecisionReviewBucket,
   getDecisionReviewStatus,
   normalizeDecisionReviewRows,
@@ -10,6 +11,14 @@ import {
 } from "@/lib/decisionReview";
 
 describe("decision review CSV contract", () => {
+  it("compares sanitized summary values without inferring good or bad", () => {
+    expect(decisionNumericComparison({ baseline: "CPA 5,240원", actual: "CPA 4,980원" })).toMatchObject({ delta: -260, changePct: -260 / 5240, isPercentPoint: false });
+    const percentage = decisionNumericComparison({ baseline: "18.2%", actual: "15.0%" });
+    expect(percentage.isPercentPoint).toBe(true);
+    expect(percentage.delta).toBeCloseTo(-3.2);
+    expect(decisionNumericComparison({ baseline: "18.2%", actual: "4,980원" })).toBeNull();
+  });
+
   it("exports Excel-safe UTF-8 BOM + CRLF rows without losing commas", () => {
     const csv = serializeDecisionReviewCsv([{
       id: "decision_7",

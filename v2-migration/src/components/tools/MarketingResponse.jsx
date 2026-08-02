@@ -8,10 +8,11 @@ import { MMM_METH_CONFIG, MMM_FORECAST_DEFAULT_TREND_DAMPING, MMM_NONMEDIA_GROUP
 import { MMM_METH_CONFIG as MMM_CLASSIC_CONFIG, MMM_PRISM_MODEL_CONFIG, mmmBayesianRun as mmmClassicBayesianRun, mmmClassicControlSelection, mmmClassicBuildGroupContributionPriors, mmmResolveAbsorb as mmmClassicResolveAbsorb } from "@/utils/mmmMathPr416";
 import { mmmBuildCannibRank, mmmCannibLevel, mmmCannibBucket, mmmCannibActionShort, mmmGlobalCannib, mmmRankCfg, CANNIBAL_RANK } from "@/utils/responseCannibRank";
 import { trackProductEvent } from "@/lib/analytics";
-import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import ResultActionCard from "@/components/ds/ResultActionCard";
+import EvidenceStatusBadge from "@/components/ds/EvidenceStatusBadge";
+import { STATISTICAL_STATUS } from "@/lib/analysis-router/statisticalStatus";
 import { buildDemoCsv, buildMmmPriorDemo } from "@/utils/demoData";
 import MmmColumnMapper, { autoGuessColMap, buildPanelFromColMap, colMapMissing, colMapRoles, mmmPlatformTags, mmmSegmentValues } from "@/components/tools/MmmColumnMapper";
 import { buildObservedBusinessSeasonality } from "@/utils/mmmBusinessSeasonality";
@@ -3329,7 +3330,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   // 5-18 전용 dropzone (표준 CsvUploader/DataFeatureMatrix 미사용 — 단일 generic CSV → colMap).
   const mmmDropzone = (
     <>
-      <CsvGuide toolId="5-18" onDownloadTemplate={downloadMmmTemplate} locale={locale} />
+      <CsvGuide toolId="5-18" onDownloadTemplate={downloadMmmTemplate} onTryExample={handleLoadDemo} locale={locale} />
       <MmmManualDownload locale={locale} placement="upload" />
       <div
         className="csv-dropzone"
@@ -3364,7 +3365,6 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           )}</p></div>
         </div>
       )}
-      <DemoLoadButton onLoad={handleLoadDemo} locale={locale} />
     </>
   );
 
@@ -3465,17 +3465,28 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const responseStageSummary = () => {
     const weeks = mmm?.panel?.week?.length || 0;
     if (stage === "trend") {
+      const stlValue = Number.isFinite(trend?.stl_pct) ? `${trend.stl_pct >= 0 ? "+" : ""}${trend.stl_pct.toFixed(1)}%` : "—";
       return {
         tone: trend ? "neutral" : "bad",
         headline: trend?.verdict || tx("자연 추세를 판정할 수 없습니다", "Natural trend cannot be determined"),
         stats: [
-          { label: "STL", value: Number.isFinite(trend?.stl_pct) ? `${trend.stl_pct >= 0 ? "+" : ""}${trend.stl_pct.toFixed(1)}%` : "—" },
+          { label: "STL", value: stlValue },
           { label: "Mann-Kendall", value: Number.isFinite(trend?.mk_deseason?.[1]) ? `p=${trend.mk_deseason[1].toFixed(3)}` : "—" },
           { label: tx("분석 주", "Weeks"), value: weeks },
         ],
         point: tx("추세를 확인했으면 채널 간 잠식 신호를 점검하세요.", "After checking trend, inspect cross-channel cannibalization signals."),
         next: "diagnose",
         nextLabel: tx("잠식 진단으로", "Next: cannibalization"),
+        evidenceStatus: trend ? STATISTICAL_STATUS.CAUTION : STATISTICAL_STATUS.INSUFFICIENT_DATA,
+        decisionPrefill: trend ? {
+          conclusion: trend.verdict || tx("자연 추세를 확인했습니다", "Natural trend was reviewed"),
+          action: tx("잠식 진단에서 채널 간 신호를 교차 확인한다", "Cross-check channel signals in cannibalization diagnosis"),
+          hypothesis: tx("자연 추세를 먼저 분리하면 광고 효과로 오인할 변화를 줄일 수 있습니다", "Separating natural trend first reduces changes misread as media effects"),
+          metric: "STL",
+          baseline: stlValue,
+          reviewQuestion: tx("잠식 후보가 자연 추세를 제외하고도 남았는가?", "Do cannibalization candidates remain after accounting for natural trend?"),
+          sourcePeriod: tx(`${weeks}주`, `${weeks} weeks`),
+        } : null,
       };
     }
     if (stage === "diagnose") {
@@ -3494,6 +3505,20 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         point: tx("후보를 확인했으면 MMM에서 전체 기여와 함께 교차 검증하세요.", "Cross-check candidates against total contribution in MMM."),
         next: "mmm",
         nextLabel: tx("기여 분해로", "Next: contribution"),
+        evidenceStatus: cannib?.identifiedChannels?.length ? STATISTICAL_STATUS.CAUTION : STATISTICAL_STATUS.NOT_IDENTIFIED,
+        decisionPrefill: ranks.length ? {
+          conclusion: strong > 0
+            ? tx(`강한 잠식 후보 ${strong}개`, `${strong} strong cannibalization candidate(s)`)
+            : tx("강한 잠식 후보 없음", "No strong cannibalization candidate"),
+          action: strong > 0
+            ? tx(`강한 잠식 후보 ${strong}개를 기여 분해에서 교차 검증한다`, `Cross-check ${strong} strong candidate(s) in contribution analysis`)
+            : tx("현재 판단을 유지하고 다음 데이터에서 잠식 신호를 다시 확인한다", "Keep the current call and re-check cannibalization with the next data update"),
+          hypothesis: tx("단일 신호가 아니라 기여 분해와 함께 보면 과잉 대응을 줄일 수 있습니다", "Cross-checking with contribution reduces overreaction to a single signal"),
+          metric: tx("강한 잠식 후보", "Strong candidates"),
+          baseline: String(strong),
+          reviewQuestion: tx("다음 검토에서도 같은 후보와 방향이 반복됐는가?", "Did the same candidates and direction persist at the next review?"),
+          sourcePeriod: tx(`${weeks}주`, `${weeks} weeks`),
+        } : null,
       };
     }
     if (stage === "mmm") {
@@ -3513,6 +3538,22 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         point: tx("기여를 확인했으면 미래 예측의 백테스트 신뢰도를 점검하세요.", "After contribution, check forecast backtest reliability."),
         next: "lab",
         nextLabel: tx("미래예측으로", "Next: forecast"),
+        evidenceStatus: Number.isFinite(oos)
+          ? (warningCount > 0 ? STATISTICAL_STATUS.CAUTION : STATISTICAL_STATUS.READY)
+          : STATISTICAL_STATUS.INSUFFICIENT_DATA,
+        decisionPrefill: mmm?.run ? {
+          conclusion: Number.isFinite(oos)
+            ? tx(`시간순 검증 오차 ${oos.toFixed(1)}% · 경고 ${warningCount}건`, `Time-ordered validation error ${oos.toFixed(1)}% · ${warningCount} warning(s)`)
+            : tx(`모델 경고 ${warningCount}건`, `${warningCount} model warning(s)`),
+          action: warningCount > 0
+            ? tx("모델 경고를 해소하기 전 대규모 예산 이동을 보류한다", "Hold large budget moves until model warnings are resolved")
+            : tx("기여 상위 채널의 예산 가설을 미래예측에서 검증한다", "Validate the leading channel budget hypothesis in Forecast"),
+          hypothesis: tx("시간순 검증과 모델 경고를 함께 지키면 기여도 과신을 줄일 수 있습니다", "Using time-ordered validation and model warnings together reduces overconfidence in contribution"),
+          metric: tx("OOS 오차", "OOS error"),
+          baseline: Number.isFinite(oos) ? `${oos.toFixed(1)}%` : "—",
+          reviewQuestion: tx("OOS 오차와 모델 경고가 운영 가능한 수준을 유지했는가?", "Did OOS error and model warnings remain operationally usable?"),
+          sourcePeriod: tx(`${weeks}주`, `${weeks} weeks`),
+        } : null,
       };
     }
     const wmape = recentBacktest?.wmape;
@@ -3537,6 +3578,26 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       point: tx("실행 뒤에는 새 데이터를 추가해 추세 단계부터 다시 점검하세요.", "After execution, add new data and re-check from the trend stage."),
       next: "trend",
       nextLabel: tx("처음부터 재점검", "Re-check from trend"),
+      evidenceStatus: recentBacktest?.reliable
+        ? STATISTICAL_STATUS.READY
+        : recentBacktest
+          ? (isSeverelyUnreliable ? STATISTICAL_STATUS.ABSTAIN : STATISTICAL_STATUS.CAUTION)
+          : STATISTICAL_STATUS.INSUFFICIENT_DATA,
+      decisionPrefill: recentBacktest ? {
+        conclusion: recentBacktest.reliable && Number.isFinite(wmape)
+          ? tx(`봉인 백테스트 wMAPE ${wmape.toFixed(1)}%`, `Sealed backtest wMAPE ${wmape.toFixed(1)}%`)
+          : tx(`예측 사용 보류 · wMAPE ${Number.isFinite(wmape) ? `${wmape.toFixed(1)}%` : "—"}`, `Hold forecast use · wMAPE ${Number.isFinite(wmape) ? `${wmape.toFixed(1)}%` : "—"}`),
+        action: recentBacktest.reliable && availableScenarioCount > 0
+          ? tx("검토 가능한 예산 변경안을 소규모로 실행하고 다음 실제값을 기록한다", "Run an eligible budget change at small scale and record the next actual value")
+          : tx("예산 변경을 보류하고 데이터를 추가한 뒤 백테스트를 다시 실행한다", "Hold budget changes, add data, and rerun the backtest"),
+        hypothesis: recentBacktest.reliable
+          ? tx("봉인 백테스트 오차가 10% 미만이면 소규모 운영 검증을 시작할 근거가 됩니다", "A sealed backtest error below 10% supports starting a small operating validation")
+          : tx("인증 전 변경을 보류하면 불안정한 예측으로 인한 예산 손실을 줄일 수 있습니다", "Holding changes before certification reduces budget risk from unstable forecasts"),
+        metric: "wMAPE",
+        baseline: Number.isFinite(wmape) ? `${wmape.toFixed(1)}%` : "—",
+        reviewQuestion: tx("새 데이터에서도 wMAPE와 예측 방향이 유지됐는가?", "Did wMAPE and forecast direction hold with the new data?"),
+        sourcePeriod: tx(`${weeks}주`, `${weeks} weeks`),
+      } : null,
     };
   };
   const demoBanner = isDemo && (
@@ -3777,7 +3838,9 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 {summary.nextLabel} →
               </button>
             ) : null}
-            decisionReview={false}
+            decisionReview={Boolean(summary.decisionPrefill)}
+            decisionPrefill={summary.decisionPrefill}
+            analysisDetails={<div className="result-evidence-status"><EvidenceStatusBadge status={summary.evidenceStatus} locale={locale} /></div>}
             analysisBasis={false}
           />
         );

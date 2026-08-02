@@ -3,8 +3,8 @@
 import { useMemo } from "react";
 import { buildDataQualityReport } from "@/lib/data-import/buildDataQualityReport";
 import { ANALYSIS_CONTRACTS, evaluateEligibility } from "@/lib/analysis-router/evaluateEligibility";
-import { statisticalStatusLabel } from "@/lib/analysis-router/statisticalStatus";
 import { buildRecentPeriodComparison } from "@/lib/analysis-results/periodComparison";
+import EvidenceStatusBadge from "@/components/ds/EvidenceStatusBadge";
 
 const qualityCache = new WeakMap();
 const comparisonCache = new WeakMap();
@@ -113,7 +113,7 @@ export default function AnalysisBasisBar({ canonicalData, mappedRows, mapping, t
         <span className="analysis-basis-bar__label">{T.basis}</span>
         <strong>{label}</strong>
         <span className="analysis-basis-bar__meta">{number(report.rowCount, locale)} {T.rows} · {number(report.periodCount, locale)} {T.periods}</span>
-        {status && <span className="analysis-basis-bar__status-label">{statisticalStatusLabel(status, locale)}</span>}
+        {status && <EvidenceStatusBadge status={status} locale={locale} />}
       </div>
 
       {comparison.available && primaryMetric && (
