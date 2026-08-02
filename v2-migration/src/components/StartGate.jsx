@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IA, SECTIONS } from "@/store/useDataStore";
@@ -12,6 +12,8 @@ import { ANALYSIS_CONTRACTS, evaluateEligibility, rankRecommendedAnalyses } from
 import { trackProductEvent } from "@/lib/analytics";
 import { prepareDatasetForTool } from "@/lib/data-import/prepareDatasetForTool";
 import { buildRouterDiagnosis } from "@/lib/analysis-router/buildRouterDiagnosis";
+import { buildIndustryPresetDemo, getIndustryPresets, getIndustryScaleOptions } from "@/lib/industryPresets";
+import { buildDemoCsv } from "@/utils/demoData";
 
 // "내 데이터로 분석 시작" 진입 게이트 — 데모 없이 어떤 분석부터 할지 고르는 페이지.
 // 진입 시 demoDisabled=true(세션) → 어느 도구로 가도 데모 자동로드 없이 빈 업로드
@@ -32,6 +34,14 @@ const COPY = {
     diagnoseLabel: "CSV보다 문제부터 정리하고 싶나요?",
     diagnoseDesc: "세 가지 질문으로 먼저 확인할 분석 하나를 찾습니다.",
     diagnoseCta: "성과 문제 진단",
+    presetEyebrow: "SITUATION PRESETS",
+    presetTitle: "업로드 전에, 내 상황과 가까운 결과부터 보세요",
+    presetDeck: "업종과 규모를 고르면 90일 합성 데이터로 판단 화면이 바로 열립니다. 숫자는 예시이며 실제 데이터는 저장하거나 전송하지 않습니다.",
+    scaleLabel: "샘플 운영 규모",
+    scaleHint: "선택하지 않으면 성장기 기준",
+    viewPreset: "이 상황으로 결과 보기",
+    sampleMeta: "90일 · 4개 매체 · 합성 데이터",
+    uploadDivider: "또는 내 데이터를 바로 진단",
   },
   en: {
     eyebrow: "Start with your data",
@@ -43,6 +53,14 @@ const COPY = {
     diagnoseLabel: "Want to frame the problem before uploading a CSV?",
     diagnoseDesc: "Use three questions to find the first analysis to check.",
     diagnoseCta: "Diagnose performance",
+    presetEyebrow: "SITUATION PRESETS",
+    presetTitle: "See a result that resembles your situation before uploading",
+    presetDeck: "Choose an industry and scale to open a decision view with 90 days of synthetic data. The numbers are examples; no data is stored or sent.",
+    scaleLabel: "Sample operating scale",
+    scaleHint: "Growth is used by default",
+    viewPreset: "View this situation",
+    sampleMeta: "90 days · 4 channels · synthetic data",
+    uploadDivider: "Or diagnose your own data",
   },
 };
 
@@ -53,15 +71,42 @@ export default function StartGate({ locale = "ko" }) {
   const startMyData = useAppStore((s) => s.startMyData);
   const csvData = useAppStore((s) => s.csvData);
   const handoffCsvToRoute = useAppStore((s) => s.handoffCsvToRoute);
+  const [presetScale, setPresetScale] = useState("growth");
+  const hasTrackedPresetExposure = useRef(false);
+  const presets = useMemo(() => getIndustryPresets(locale), [locale]);
+  const scaleOptions = useMemo(() => getIndustryScaleOptions(locale), [locale]);
 
   // 진입 = 내 데이터 의도 → 데모 자동로드 억제 + 이미 로드된 데모 슬라이스 비움.
   useEffect(() => {
     startMyData();
   }, [startMyData]);
 
+  useEffect(() => {
+    if (hasTrackedPresetExposure.current) return;
+    hasTrackedPresetExposure.current = true;
+    trackProductEvent("preset_exposed", { source: "start", placement: "before_upload", locale });
+  }, [locale]);
+
   const groups = IA.filter((g) => OPS_GROUP_IDS.has(g.id) && g.id !== DATA_GUIDE_GROUP);
   const goTool = (id) => router.push(locale === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/");
   const goDemo = () => { setDemoDisabled(false); router.push(locale === "en" ? "/en/dashboard" : "/dashboard"); };
+  const runPreset = (preset) => {
+    const demo = buildIndustryPresetDemo(buildDemoCsv("efficiency", locale), preset.id, presetScale);
+    if (!demo) return;
+    setDemoDisabled(false);
+    handoffCsvToRoute("5-2", demo);
+    const params = {
+      tool_id: "5-2",
+      source: "industry_preset",
+      placement: "before_upload",
+      locale,
+      preset_id: preset.id,
+      preset_scale: presetScale,
+    };
+    trackProductEvent("preset_selected", params);
+    trackProductEvent("example_run_started", params);
+    router.push(locale === "en" ? "/en/dashboard" : "/dashboard");
+  };
   const diagnosis = useMemo(() => buildRouterDiagnosis({ canonicalData: csvData.canonicalData, mapping: csvData.mapping, locale }), [csvData.mapping, csvData.canonicalData, locale]);
   const eligibility = useMemo(() => ROUTER_TOOL_IDS.map((toolId) => evaluateEligibility({ toolId, mapping: csvData.mapping, canonicalData: csvData.canonicalData, diagnosis })), [csvData.mapping, csvData.canonicalData, diagnosis]);
   const recommended = rankRecommendedAnalyses(eligibility);
@@ -82,16 +127,59 @@ export default function StartGate({ locale = "ko" }) {
       <div className="page-eyebrow">{C.eyebrow}</div>
       <h1 className="page-title">{C.title}</h1>
       <p className="page-deck">{C.deck}</p>
-      <aside className="start-diagnose-entry">
-        <div><strong>{C.diagnoseLabel}</strong><p>{C.diagnoseDesc}</p></div>
-        <Link
-          className="btn ghost"
-          href={locale === "en" ? "/en/diagnose" : "/diagnose"}
-          onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "start", placement: "before_upload", locale })}
-        >
-          {C.diagnoseCta} →
-        </Link>
-      </aside>
+
+      <section className="start-presets" aria-labelledby="start-preset-title">
+        <div className="start-presets__head">
+          <div>
+            <span>{C.presetEyebrow}</span>
+            <h2 id="start-preset-title">{C.presetTitle}</h2>
+            <p>{C.presetDeck}</p>
+          </div>
+          <div className="start-preset-scale" role="group" aria-label={C.scaleLabel}>
+            <div><strong>{C.scaleLabel}</strong><small>{C.scaleHint}</small></div>
+            <div className="start-preset-scale__options">
+              {scaleOptions.map((scale) => (
+                <button
+                  type="button"
+                  key={scale.id}
+                  className={presetScale === scale.id ? "is-active" : ""}
+                  aria-pressed={presetScale === scale.id}
+                  aria-label={`${scale.short} · ${scale.label}`}
+                  onClick={() => setPresetScale(scale.id)}
+                >
+                  <span>{scale.short}</span>
+                  <small>{scale.label}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="start-presets__grid">
+          {presets.map((preset) => (
+            <button
+              type="button"
+              key={preset.id}
+              className="start-preset-card"
+              data-preset={preset.id}
+              onClick={() => runPreset(preset)}
+              aria-label={`${preset.title} · ${C.viewPreset}`}
+              aria-describedby={`start-preset-${preset.id}-question`}
+            >
+              <span className="start-preset-card__code">{preset.code}</span>
+              <h3>{preset.title}</h3>
+              <p id={`start-preset-${preset.id}-question`}>{preset.question}</p>
+              <ol className="start-preset-card__path" aria-label={preset.description}>
+                {preset.metricPath.map((metric) => <li key={metric}>{metric}</li>)}
+              </ol>
+              <span className="start-preset-card__meta">{C.sampleMeta}</span>
+              <strong className="start-preset-card__cta">{C.viewPreset} <span aria-hidden="true">→</span></strong>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <div className="start-upload-divider"><span>{C.uploadDivider}</span></div>
 
       <section className="block" style={{ marginTop: "1.2rem" }}>
         <CsvUploader
@@ -108,6 +196,17 @@ export default function StartGate({ locale = "ko" }) {
           ) : null}
         />
       </section>
+
+      <aside className="start-diagnose-entry">
+        <div><strong>{C.diagnoseLabel}</strong><p>{C.diagnoseDesc}</p></div>
+        <Link
+          className="btn ghost"
+          href={locale === "en" ? "/en/diagnose" : "/diagnose"}
+          onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "start", placement: "before_upload", locale })}
+        >
+          {C.diagnoseCta} →
+        </Link>
+      </aside>
 
       {!hasPreparedData && <details className="start-tool-browser">
         <summary>{C.browseAll}</summary>
