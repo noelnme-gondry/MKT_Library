@@ -1,7 +1,7 @@
 // 결정 기록은 원본 분석 데이터와 분리된 작은 운영 메모다. 브라우저 영속 저장은
 // 사용자가 명시적으로 켠 경우에만 허용하며, 아래 allowlist를 통과한 값만 저장한다.
 // 텍스트 값은 CSV 수식 주입을 막고, Excel 호환을 위해 호출부에서 BOM + CRLF로 저장한다.
-export const DECISION_REVIEW_SCHEMA_VERSION = 3;
+export const DECISION_REVIEW_SCHEMA_VERSION = 4;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
@@ -11,6 +11,14 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "hypothesis",
   "metric",
   "targetDirection",
+  "comparisonKind",
+  "forecastPeriod",
+  "forecastTarget",
+  "forecastPlatform",
+  "forecastValue",
+  "forecastLower",
+  "forecastUpper",
+  "forecastSourceThrough",
   "baseline",
   "reviewQuestion",
   "reviewDate",
@@ -30,6 +38,14 @@ export const DECISION_REVIEW_COLUMNS = [
   "hypothesis",
   "metric",
   "target_direction",
+  "comparison_kind",
+  "forecast_period",
+  "forecast_target",
+  "forecast_platform",
+  "forecast_value",
+  "forecast_lower",
+  "forecast_upper",
+  "forecast_source_through",
   "baseline",
   "review_question",
   "review_date",
@@ -56,6 +72,8 @@ const FIELD_LIMITS = Object.freeze({
   actual: 500,
   learning: 1000,
 });
+
+const FORECAST_TARGETS = new Set(["Traffic", "Regs", "React", "Purchasers", "Revenue"]);
 
 function safeCell(value) {
   const text = String(value ?? "");
@@ -126,6 +144,23 @@ function asTargetDirection(value) {
   return ["higher", "lower", "neutral"].includes(normalized) ? normalized : "";
 }
 
+function asForecastTarget(value) {
+  const normalized = asText(value, 20);
+  return FORECAST_TARGETS.has(normalized) ? normalized : "";
+}
+
+function asForecastPlatform(value) {
+  const normalized = asText(value, 10).toLowerCase();
+  return ["all", "android", "ios"].includes(normalized) ? normalized : "";
+}
+
+function asFiniteNumberText(value) {
+  const normalized = asText(value, 80).replace(/[,\s]/g, "");
+  if (!normalized) return "";
+  const number = Number(normalized);
+  return Number.isFinite(number) ? String(number) : "";
+}
+
 // CPA·ROAS처럼 업계 의미가 안정적인 지표만 자동 제안한다. 비용·전환수·매출처럼
 // 예산이나 목표에 따라 방향이 달라지는 지표는 사용자가 직접 방향을 고르기 전까지
 // 중립으로 남긴다.
@@ -186,6 +221,7 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
   const actual = asText(field(row, "actual"), FIELD_LIMITS.actual);
   const learning = asText(field(row, "learning"), FIELD_LIMITS.learning);
   const locale = asText(field(row, "locale"), FIELD_LIMITS.locale).toLowerCase() === "en" ? "en" : "ko";
+  const comparisonKind = asText(field(row, "comparisonKind", "comparison_kind"), 24) === "forecast_actual" ? "forecast_actual" : "";
   const record = {
     id: asText(field(row, "id", "record_id"), FIELD_LIMITS.id),
     toolId: asText(field(row, "toolId", "tool_id"), FIELD_LIMITS.toolId) || asText(fallbackToolId, FIELD_LIMITS.toolId),
@@ -195,6 +231,14 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     hypothesis: asText(field(row, "hypothesis"), FIELD_LIMITS.hypothesis),
     metric: asText(field(row, "metric"), FIELD_LIMITS.metric),
     targetDirection: asTargetDirection(field(row, "targetDirection", "target_direction")),
+    comparisonKind,
+    forecastPeriod: comparisonKind ? asDate(field(row, "forecastPeriod", "forecast_period")) : "",
+    forecastTarget: comparisonKind ? asForecastTarget(field(row, "forecastTarget", "forecast_target")) : "",
+    forecastPlatform: comparisonKind ? asForecastPlatform(field(row, "forecastPlatform", "forecast_platform")) : "",
+    forecastValue: comparisonKind ? asFiniteNumberText(field(row, "forecastValue", "forecast_value")) : "",
+    forecastLower: comparisonKind ? asFiniteNumberText(field(row, "forecastLower", "forecast_lower")) : "",
+    forecastUpper: comparisonKind ? asFiniteNumberText(field(row, "forecastUpper", "forecast_upper")) : "",
+    forecastSourceThrough: comparisonKind ? asDate(field(row, "forecastSourceThrough", "forecast_source_through")) : "",
     baseline: asText(field(row, "baseline"), FIELD_LIMITS.baseline),
     reviewQuestion: asText(field(row, "reviewQuestion", "review_question"), FIELD_LIMITS.reviewQuestion),
     reviewDate: asDate(field(row, "reviewDate", "review_date")),
@@ -231,6 +275,14 @@ export function serializeDecisionReviewCsv(records = []) {
     record.hypothesis,
     record.metric,
     record.targetDirection,
+    record.comparisonKind,
+    record.forecastPeriod,
+    record.forecastTarget,
+    record.forecastPlatform,
+    record.forecastValue,
+    record.forecastLower,
+    record.forecastUpper,
+    record.forecastSourceThrough,
     record.baseline,
     record.reviewQuestion,
     record.reviewDate,

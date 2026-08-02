@@ -117,4 +117,42 @@ describe("decision review CSV contract", () => {
     expect(json).not.toContain("private-file.csv");
     expect(json).not.toContain("datasets");
   });
+
+  it("keeps only a canonical one-period forecast snapshot", () => {
+    const [record] = normalizeDecisionReviewRows([{
+      tool_id: "5-18",
+      action: "첫 예측 주 실제값 확인",
+      comparison_kind: "forecast_actual",
+      forecast_period: "2026-08-03",
+      forecast_target: "Regs",
+      forecast_platform: "all",
+      forecast_value: "1,240",
+      forecast_lower: "1100",
+      forecast_upper: "1380",
+      forecast_source_through: "2026-07-27",
+      raw: [{ customer: "secret" }],
+    }]);
+    expect(record).toMatchObject({
+      comparisonKind: "forecast_actual",
+      forecastPeriod: "2026-08-03",
+      forecastTarget: "Regs",
+      forecastPlatform: "all",
+      forecastValue: "1240",
+      forecastLower: "1100",
+      forecastUpper: "1380",
+      forecastSourceThrough: "2026-07-27",
+    });
+    expect(JSON.stringify(record)).not.toContain("secret");
+
+    const [invalid] = normalizeDecisionReviewRows([{
+      tool_id: "5-18",
+      action: "잘못된 예측",
+      comparison_kind: "forecast_actual",
+      forecast_period: "next week",
+      forecast_target: "CustomerEmail",
+      forecast_platform: "web",
+      forecast_value: "=SUM(A1:A2)",
+    }]);
+    expect(invalid).toMatchObject({ forecastPeriod: "", forecastTarget: "", forecastPlatform: "", forecastValue: "" });
+  });
 });

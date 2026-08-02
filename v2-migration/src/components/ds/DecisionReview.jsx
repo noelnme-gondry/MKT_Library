@@ -24,6 +24,14 @@ function createDraft(prefill = {}) {
     hypothesis: text(source.hypothesis),
     metric: text(source.metric),
     targetDirection: ["higher", "lower", "neutral"].includes(text(source.targetDirection)) ? text(source.targetDirection) : "",
+    comparisonKind: text(source.comparisonKind),
+    forecastPeriod: text(source.forecastPeriod),
+    forecastTarget: text(source.forecastTarget),
+    forecastPlatform: text(source.forecastPlatform),
+    forecastValue: text(source.forecastValue),
+    forecastLower: text(source.forecastLower),
+    forecastUpper: text(source.forecastUpper),
+    forecastSourceThrough: text(source.forecastSourceThrough),
     baseline: text(source.baseline),
     reviewQuestion: text(source.reviewQuestion),
     sourcePeriod: text(source.sourcePeriod),
@@ -78,6 +86,9 @@ const COPY = {
     directionLower: "낮아지면 개선",
     directionNeutral: "방향 판정 안 함",
     directionHint: "CPA·ROAS 등은 자동 제안되며 언제든 바꿀 수 있습니다.",
+    forecastSnapshot: "다음 CSV와 자동 대조",
+    forecastRange: "참고범위",
+    forecastSourceThrough: "예측 기준 데이터",
     baseline: "현재 기준값 (선택)",
     reviewQuestion: "검토일에 답할 질문",
     reviewQuestionPlaceholder: "예: CPA가 목표 이하로 회복됐는가?",
@@ -137,6 +148,9 @@ const COPY = {
     directionLower: "Lower is better",
     directionNeutral: "Do not judge direction",
     directionHint: "CPA, ROAS, and other clear metrics are suggested automatically and can be changed.",
+    forecastSnapshot: "Match with the next CSV",
+    forecastRange: "Reference range",
+    forecastSourceThrough: "Forecast data through",
     baseline: "Current baseline (optional)",
     reviewQuestion: "Question to answer on review day",
     reviewQuestionPlaceholder: "e.g. Did CPA return below target?",
@@ -253,6 +267,14 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       hypothesis: draft.hypothesis.trim(),
       metric: draft.metric.trim(),
       targetDirection: draft.targetDirection || decisionMetricDirection(draft.metric),
+      comparisonKind: draft.comparisonKind,
+      forecastPeriod: draft.forecastPeriod,
+      forecastTarget: draft.forecastTarget,
+      forecastPlatform: draft.forecastPlatform,
+      forecastValue: draft.forecastValue,
+      forecastLower: draft.forecastLower,
+      forecastUpper: draft.forecastUpper,
+      forecastSourceThrough: draft.forecastSourceThrough,
       baseline: draft.baseline.trim(),
       reviewQuestion: draft.reviewQuestion.trim(),
       reviewDate: draft.reviewDate,
@@ -347,6 +369,15 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
             <span>{t.sourceConclusion}</span>
             <strong>{draft.conclusion}</strong>
             {draft.sourcePeriod && <small>{t.sourcePeriod} · {draft.sourcePeriod}</small>}
+          </div>
+        )}
+
+        {draft.comparisonKind === "forecast_actual" && draft.forecastPeriod && (
+          <div className="decision-review__forecast-ticket">
+            <span>{t.forecastSnapshot}</span>
+            <strong>{draft.forecastPeriod} · {draft.metric || draft.forecastTarget} {draft.baseline}</strong>
+            {(draft.forecastLower || draft.forecastUpper) && <small>{t.forecastRange} · {draft.forecastLower || "—"}–{draft.forecastUpper || "—"}</small>}
+            {draft.forecastSourceThrough && <small>{t.forecastSourceThrough} · {draft.forecastSourceThrough}</small>}
           </div>
         )}
 

@@ -27,6 +27,8 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `decision_record_added` | 결정 요약 저장 | `tool_id`, `source=decision_review`, `placement`, `locale` |
 | `decision_inbox_viewed` | 주간 결정 인박스 진입 | `source=weekly_review`, `result_state=empty|due|active`, `locale` |
 | `decision_review_completed` | 보류 결정에 실제 결과 또는 배운 점을 처음 기록 | `tool_id`, `source=weekly_review`, `result_state=reviewed`, `locale` |
+| `forecast_actual_match_viewed` | 5-18 새 CSV에서 저장된 예측과 같은 주차·타깃·플랫폼 실제값 발견 | `tool_id=5-18`, `source=forecast_review`, `result_state=matched`, `locale` |
+| `forecast_actual_applied` | 사용자가 제안된 실제값을 결정 기록에 반영 | `tool_id=5-18`, `source=forecast_review`, `result_state=reviewed`, `locale` |
 
 `tool_id`는 내부 라우트 ID만 사용한다. CSV 파일명, 채널명, 지출·매출값, 사용자 ID는
 전송하지 않는다. 허용 목록 밖 파라미터는 `sanitizeProductEventParams`가 제거한다.
@@ -49,6 +51,7 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 
 - 예시→실데이터: `example_run_started` → `data_import_start` → `data_import_success` → `analysis_completed`
 - 판단→재방문: `decision_record_added` → `decision_inbox_viewed` → `decision_review_completed`
+- 예측→실제 대조: `decision_record_added(tool_id=5-18)` → `forecast_actual_match_viewed` → `forecast_actual_applied`
 
 `decision_record_added`는 기존 이벤트를 그대로 사용한다. 같은 행동을 새 이름으로 중복 집계하지 않는다.
 업종 프리셋(I1)은 기능이 생기기 전에는 빈 이벤트를 만들지 않는다. 구현 시 고정 enum만 담는
