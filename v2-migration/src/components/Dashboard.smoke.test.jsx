@@ -9,6 +9,8 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Dashboard from "@/components/Dashboard";
+import { buildIndustryPresetDemo } from "@/lib/industryPresets";
+import { buildDemoCsv } from "@/utils/demoData";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
 
@@ -71,6 +73,32 @@ describe("Dashboard render smoke", () => {
     expect(document.querySelector(".decision-review")).toBeNull();
     expect(screen.queryByRole("button", { name: "검토 약속 만들기" })).toBeNull();
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
+  });
+
+  it("keeps the selected situation visible above the result in KR/EN", () => {
+    const preset = buildIndustryPresetDemo(buildDemoCsv("efficiency", "ko"), "lead-generation", "growth");
+    useAppStore.setState({
+      currentRouteId: "5-2",
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: preset },
+      csvData: preset,
+    });
+    useAppStore.getState().setGroupAnalyzed("5-2");
+    const { unmount } = render(<Dashboard />);
+    expect(screen.getByText(/SITUATION PRESET · 리드 제너레이션 · 성장기/)).toBeTruthy();
+    expect(screen.getByText("내 CSV로 같은 판단하기")).toBeTruthy();
+    unmount();
+    cleanup();
+
+    const presetEn = buildIndustryPresetDemo(buildDemoCsv("efficiency", "en"), "lead-generation", "growth");
+    useAppStore.setState({
+      currentRouteId: "5-2",
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: presetEn },
+      csvData: presetEn,
+    });
+    useAppStore.getState().setGroupAnalyzed("5-2");
+    render(<Dashboard locale="en" />);
+    expect(screen.getByText(/SITUATION PRESET · Lead generation · Growth/)).toBeTruthy();
+    expect(screen.getByText("Run the same decision on my CSV")).toBeTruthy();
   });
 
   for (const tab of TABS) {

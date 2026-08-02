@@ -1,13 +1,23 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, it, expect, beforeEach, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import StartGate from "@/components/StartGate";
 
 describe("StartGate render smoke", () => {
   beforeEach(() => {
-    useAppStore.setState({ demoDisabled: false });
+    const empty = { raw: [], headers: [], mapping: {}, fileName: "" };
+    useAppStore.setState({
+      demoDisabled: false,
+      currentRouteId: "start-gate",
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: empty },
+      csvData: empty,
+      analyzedByGroup: { ...useAppStore.getState().analyzedByGroup, efficiency: null },
+    });
+    window.gtag = vi.fn();
   });
+
+  afterEach(() => { delete window.gtag; });
 
   it("mounts + sets demoDisabled(true) + lists tools", () => {
     expect(() => render(<StartGate />)).not.toThrow();
@@ -17,6 +27,43 @@ describe("StartGate render smoke", () => {
     expect(document.querySelectorAll(".phase-card").length).toBeGreaterThan(0);
     expect(screen.getByText(/데이터부터 살펴볼게요/)).toBeTruthy();
     expect(document.querySelector('a[href="/diagnose"]')).toBeTruthy();
+    expect(document.querySelectorAll(".start-preset-card")).toHaveLength(4);
+    expect(window.gtag).toHaveBeenCalledWith("event", "preset_exposed", {
+      source: "start",
+      placement: "before_upload",
+      locale: "ko",
+    });
+  });
+
+  it("opens a deterministic situation result with the selected scale and fixed GA enums", () => {
+    render(<StartGate />);
+    fireEvent.click(screen.getByRole("button", { name: /스케일 · 월 3억 이상/ }));
+    fireEvent.click(screen.getByRole("button", { name: /모바일 게임 · 이 상황으로 결과 보기/ }));
+
+    const state = useAppStore.getState();
+    const slice = state.csvGroups.efficiency;
+    expect(slice.fileName).toBe("demo_preset_mobile-game_scale.csv");
+    expect(slice.demoPresetId).toBe("mobile-game");
+    expect(slice.raw.length).toBeGreaterThan(0);
+    expect(state.analyzedByGroup.efficiency).toBeTruthy();
+    expect(window.gtag).toHaveBeenCalledWith("event", "preset_selected", {
+      tool_id: "5-2",
+      source: "industry_preset",
+      placement: "before_upload",
+      locale: "ko",
+      preset_id: "mobile-game",
+      preset_scale: "scale",
+    });
+    expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", expect.objectContaining({
+      preset_id: "mobile-game",
+      preset_scale: "scale",
+    }));
+  });
+
+  it("keeps the preset chooser equivalent in English", () => {
+    render(<StartGate locale="en" />);
+    expect(screen.getByRole("button", { name: /Lead generation · View this situation/ })).toBeTruthy();
+    expect(screen.getByText("See a result that resembles your situation before uploading")).toBeTruthy();
   });
 
   it("startMyData clears demo-loaded groups only (real uploads kept)", () => {
