@@ -8,6 +8,7 @@ import { CHART_THEME, chartCommonOpts, getCssVar } from "@/utils/chartUtils";
 import { buildFunnelData, FUNNEL_FIELD_LABEL } from "@/utils/funnelMath";
 import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
+import DataTable from "@/components/ds/DataTable";
 
 // 지표 뷰 설정 scope — §5 전체 퍼널 단계 표의 지표 컬럼 표시/순서.
 const FUNNEL_TABLE_SCOPE = "5-2:funnel-table";
@@ -382,26 +383,22 @@ export default function FunnelTab({ locale = "ko" } = {}) {
           <h2 className="section-title"><span className="ix">§5</span>{tr("전체 퍼널 단계 표", "Full funnel stage table")}</h2>
           <button className="ab-pill" onClick={() => setFunnelCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>⚙ {tr("컬럼 편집", "Edit columns")}</button>
         </div>
-        <div className="table-wrap">
-          <table className="data" style={{ fontSize: "11.5px" }}>
-            <thead>
-              <tr>
-                <th>{tr("단위", "Unit")}</th>
-                {orderedFunnelCols.map((col) => <th key={col.k}>{col.label}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {c.rows.slice(0, 40).map((r, i) => (
-                <tr key={i}>
-                  <td><strong>{String(r.unit).slice(0, 24)}</strong></td>
-                  {orderedFunnelCols.map((col) => (
-                    <td key={col.k} className="tnum" style={col.cellStyle}>{col.render(r)}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          ariaLabel={tr("전체 퍼널 단계", "Full funnel stages")}
+          tableStyle={{ fontSize: "11.5px" }}
+          columns={[
+            { key: "unit", label: tr("단위", "Unit"), fmt: (unit) => <strong>{String(unit).slice(0, 24)}</strong> },
+            ...orderedFunnelCols.map((col) => ({
+              key: col.k,
+              label: col.label,
+              align: "right",
+              cellStyle: col.cellStyle,
+              fmt: (_, row) => col.render(row),
+            })),
+          ]}
+          rows={c.rows.slice(0, 40)}
+          rowKey={(row, index) => `${row.unit}-${index}`}
+        />
         {orderedFunnelCols.length === 0 && (
           <p className="muted" style={{ fontSize: "12px" }}>{tr("표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.", "No metric columns to display. Re-enable one via ⚙ Edit columns.")}</p>
         )}

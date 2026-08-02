@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import WeeklyReview, { buildBrief } from "@/components/WeeklyReview";
 import { useAppStore } from "@/store/useDataStore";
@@ -7,6 +7,7 @@ import { useAppStore } from "@/store/useDataStore";
 describe("WeeklyReview", () => {
   beforeEach(() => {
     useAppStore.setState({ decisionRecords: [], decisionPersistenceEnabled: false });
+    window.gtag = vi.fn();
   });
 
   it("explains the client-only review loop before a CSV is imported", () => {
@@ -45,5 +46,29 @@ describe("WeeklyReview", () => {
     const emptyDate = screen.getAllByLabelText("검토일").find((input) => input.value === "");
     fireEvent.change(emptyDate, { target: { value: "2099-01-01" } });
     expect(useAppStore.getState().decisionRecords.find((record) => record.id === "decision_2").reviewDate).toBe("2099-01-01");
+  });
+
+  it("tracks the inbox state and the first completed review without decision content", () => {
+    useAppStore.setState({
+      decisionRecords: [
+        { id: "decision_1", toolId: "5-3", action: "민감한 캠페인 이름", reviewDate: "2099-01-01", actual: "", learning: "", status: "pending" },
+      ],
+    });
+    render(<WeeklyReview />);
+
+    expect(window.gtag).toHaveBeenCalledWith("event", "decision_inbox_viewed", {
+      source: "weekly_review",
+      result_state: "active",
+      locale: "ko",
+    });
+    fireEvent.change(screen.getByLabelText("실제 결과 — 민감한 캠페인 이름"), { target: { value: "CPA 12,000원" } });
+    expect(window.gtag).toHaveBeenCalledWith("event", "decision_review_completed", {
+      tool_id: "5-3",
+      source: "weekly_review",
+      result_state: "reviewed",
+      locale: "ko",
+    });
+    expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("민감한 캠페인 이름");
+    expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("12,000");
   });
 });

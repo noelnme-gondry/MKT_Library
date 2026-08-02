@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
 import {
   getDecisionReviewBucket,
@@ -10,6 +10,7 @@ import {
   toLocalDecisionDate,
 } from "@/lib/decisionReview";
 import { localizedTool } from "@/lib/toolConnections";
+import { trackProductEvent } from "@/lib/analytics";
 import { findMeta, useAppStore } from "@/store/useDataStore";
 import { downloadCsv, downloadText } from "@/utils/download";
 
@@ -128,6 +129,7 @@ export default function WeeklyReview({ locale = "ko" }) {
   const t = COPY[locale] || COPY.ko;
   const [message, setMessage] = useState("");
   const importRef = useRef(null);
+  const hasTrackedInboxView = useRef(false);
   const records = useAppStore((state) => state.decisionRecords);
   const isPersistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
   const setDecisionPersistenceEnabled = useAppStore((state) => state.setDecisionPersistenceEnabled);
@@ -148,6 +150,17 @@ export default function WeeklyReview({ locale = "ko" }) {
     return counts;
   }, { overdue: 0, today: 0, upcoming: 0, unscheduled: 0, reviewed: 0 }), [sortedRecords, todayKey]);
 
+  useEffect(() => {
+    if (hasTrackedInboxView.current) return;
+    hasTrackedInboxView.current = true;
+    const dueCount = statusCounts.overdue + statusCounts.today;
+    trackProductEvent("decision_inbox_viewed", {
+      source: "weekly_review",
+      result_state: records.length === 0 ? "empty" : dueCount > 0 ? "due" : "active",
+      locale,
+    });
+  }, [locale, records.length, statusCounts.overdue, statusCounts.today]);
+
   const importRecords = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -162,7 +175,20 @@ export default function WeeklyReview({ locale = "ko" }) {
     setMessage(t.imported(imported.length));
   };
 
-  const updateRecord = (id, key, value) => updateDecisionRecord(id, { [key]: value });
+  const updateRecord = (id, key, value) => {
+    const current = records.find((record) => record.id === id);
+    const wasReviewed = getDecisionReviewBucket(current, todayKey) === "reviewed";
+    const next = current ? { ...current, [key]: value } : null;
+    updateDecisionRecord(id, { [key]: value });
+    if (!wasReviewed && next && getDecisionReviewBucket(next, todayKey) === "reviewed") {
+      trackProductEvent("decision_review_completed", {
+        tool_id: next.toolId,
+        source: "weekly_review",
+        result_state: "reviewed",
+        locale,
+      });
+    }
+  };
 
   return (
     <main id="main-content" className="page-inner weekly-review-page">

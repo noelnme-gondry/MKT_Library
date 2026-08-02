@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import CsvGuide from "@/components/ds/CsvGuide";
 
 describe("CsvGuide", () => {
+  beforeEach(() => {
+    window.gtag = vi.fn();
+  });
+
   it("opens an accessible portalled guide and preserves the explicit close action", () => {
     render(<CsvGuide toolId="5-2" />);
     const trigger = screen.getByRole("button", { name: "📖 어떤 데이터가 왜 필요한가요?" });
@@ -38,5 +42,11 @@ describe("CsvGuide", () => {
     expect(document.body.textContent).toContain("화면 작업 예상 5–10분");
     fireEvent.click(screen.getByRole("button", { name: /예시 데이터로 결과 바로 보기/ }));
     expect(onTryExample).toHaveBeenCalledTimes(1);
+    expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", {
+      tool_id: "5-18",
+      source: "csv_guide",
+      placement: "before_upload",
+      locale: "ko",
+    });
   });
 });

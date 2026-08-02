@@ -869,9 +869,9 @@ export const VERDICT_META = {
 
 // 상태 배지(Red/Yellow/Green) — 카니발 판정 등 Card 레이아웃 전반에서 재사용.
 export const BADGE_TONE = {
-  ok: { bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.45)", color: "#22c55e" },
-  warn: { bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.45)", color: "#fbbf24" },
-  danger: { bg: "rgba(248,113,113,0.12)", border: "rgba(248,113,113,0.45)", color: "#f87171" },
+  ok: { bg: "color-mix(in srgb, var(--success) 12%, transparent)", border: "color-mix(in srgb, var(--success) 45%, var(--border))", color: "var(--success)" },
+  warn: { bg: "color-mix(in srgb, var(--warning) 12%, transparent)", border: "color-mix(in srgb, var(--warning) 45%, var(--border))", color: "var(--warning)" },
+  danger: { bg: "color-mix(in srgb, var(--danger) 12%, transparent)", border: "color-mix(in srgb, var(--danger) 45%, var(--border))", color: "var(--danger)" },
   neutral: { bg: "var(--bg-2)", border: "var(--border)", color: MUTED },
 };
 export function Badge({ tone = "neutral", color, children }) {

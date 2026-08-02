@@ -3385,7 +3385,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       <section className="block" id="s-prep">
         <div className="file-state">
           <div className="meta-text">
-            <span className="dot" style={{ background: isDemo ? "#f59e0b" : "#22c55e" }}></span>
+            <span className="dot" style={{ background: isDemo ? "var(--warning)" : "var(--success)" }}></span>
             {isDemo ? <strong>{tx("샘플 데이터로 미리보기 중", "Previewing with sample data")}</strong> : <strong>{csvData.fileName}</strong>}
             <span className="csv-loaded-stats tnum">{csvData.raw.length.toLocaleString()}{tx("행", " rows")} · {csvData.headers.length}{tx("컬럼", " columns")}{isDemo ? tx(" · 실제 데이터 아님", " · not real data") : ""}</span>
           </div>
@@ -4016,7 +4016,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                   : bucket === "ok"
                     ? tx("네 방향으로 따져봐도 뚜렷한 잠식 신호가 없어요.", "Checking all four angles, there's no clear cannibalization signal.")
                     : tx("데이터가 부족하거나 채널끼리 지출이 겹쳐(공선) 판정하기 어려워요.", "Data is insufficient, or channels' spend overlaps (collinear), making a verdict hard.");
-                const voteView = (v) => v === "FOR" ? { t: tx("괜찮음", "OK"), c: "#22c55e" } : v === "AGAINST" ? { t: tx("잠식 신호", "Cannibalization signal"), c: "#f87171" } : { t: tx("판단 보류", "Withheld"), c: MUTED };
+                const voteView = (v) => v === "FOR" ? { t: tx("괜찮음", "OK"), c: "var(--success)" } : v === "AGAINST" ? { t: tx("잠식 신호", "Cannibalization signal"), c: "var(--danger)" } : { t: tx("판단 보류", "Withheld"), c: MUTED };
                 const signal = (key, num, q, help, v, tech) => {
                   const vv = voteView(v);
                   return (
@@ -4151,8 +4151,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 </p>
                 <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", margin: "8px 0" }}>
                   <div className="stat-card"><div className="lbl">{tx("주 수(n)", "Weeks (n)")}</div><div className="val">{mmm.derived.n}</div></div>
-                  <div className="stat-card"><div className="lbl">{tx("위생 경고", "Hygiene warnings")}</div><div className="val" style={{ color: mmm.validate?.warnings?.length ? "#f87171" : "#22c55e" }}>{mmm.validate?.warnings?.length || "OK"}</div></div>
-                  <div className="stat-card"><div className="lbl">{tx("분석 차단 이슈", "Blocking issues")}</div><div className="val" style={{ color: mmm.validate?.issues?.length ? "#f87171" : "#22c55e" }}>{mmm.validate?.issues?.length || "OK"}</div></div>
+                  <div className="stat-card"><div className="lbl">{tx("위생 경고", "Hygiene warnings")}</div><div className="val" style={{ color: mmm.validate?.warnings?.length ? "var(--danger)" : "var(--success)" }}>{mmm.validate?.warnings?.length || "OK"}</div></div>
+                  <div className="stat-card"><div className="lbl">{tx("분석 차단 이슈", "Blocking issues")}</div><div className="val" style={{ color: mmm.validate?.issues?.length ? "var(--danger)" : "var(--success)" }}>{mmm.validate?.issues?.length || "OK"}</div></div>
                 </div>
                 {diag && Object.keys(diag.macro).length ? (
                   <div className="table-wrap" style={{ maxWidth: "420px", marginTop: "8px" }}>
@@ -4172,7 +4172,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                 )}
                 {mmm.validate?.warnings?.length ? (
                   <details style={{ marginTop: "8px" }}>
-                    <summary style={{ cursor: "pointer", fontSize: "11px", color: "#fbbf24" }}>{tx(`⚠ 데이터 위생 경고 ${mmm.validate.warnings.length}건 (펼치기)`, `⚠ ${mmm.validate.warnings.length} data hygiene warnings (expand)`)}</summary>
+                    <summary style={{ cursor: "pointer", fontSize: "11px", color: "var(--warning)" }}>{tx(`⚠ 데이터 위생 경고 ${mmm.validate.warnings.length}건 (펼치기)`, `⚠ ${mmm.validate.warnings.length} data hygiene warnings (expand)`)}</summary>
                     <ul style={{ fontSize: "11px", color: "#e0af68", marginTop: "4px" }}>
                       {mmm.validate.warnings.map((w, i) => (<li key={i}>{w}</li>))}
                     </ul>
@@ -4515,11 +4515,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       <span className="ab-pill">{tx("순수 추세", "Pure trend")} {targetValueLabel(mmm.run.trendDecomposition.totals.pureTrend)}</span>
                       <span className="ab-pill">{tx("Trend sink", "Trend sink")} {targetValueLabel(mmm.run.trendDecomposition.totals.trendSink)}</span>
                     </>}
-                    {mmm.run.penaltyAudit && <span className="ab-pill" style={mmm.run.penaltyAudit.symmetricWithControl ? undefined : { borderColor: "#f59e0b", color: "#b45309" }}>
+                    {mmm.run.penaltyAudit && <span className="ab-pill" style={mmm.run.penaltyAudit.symmetricWithControl ? undefined : { borderColor: "var(--warning)", color: "var(--warning)" }}>
                       {tx("Penalty", "Penalty")} {mmm.run.penaltyAudit.profile} · {mmm.run.penaltyAudit.symmetricWithControl ? tx("대칭", "symmetric") : tx("비대칭 점검", "asymmetry check")}
                     </span>}
                     {classicControlText && <span className="ab-pill" title={tx("시즈널리티·업황 후보를 동일한 시간순 OOS WMAPE로 비교한 결과입니다.", "Seasonality and industry candidates were compared using the same time-ordered OOS WMAPE.")}>{classicControlText}</span>}
-                    {mmm.run.dataQuality && <span className="ab-pill" style={!mmm.run.dataQuality.valid ? { borderColor: "#ef4444", color: "#b91c1c" } : undefined}>
+                    {mmm.run.dataQuality && <span className="ab-pill" style={!mmm.run.dataQuality.valid ? { borderColor: "var(--danger)", color: "var(--danger)" } : undefined}>
                       {tx("데이터 품질", "Data quality")} {mmm.run.dataQuality.valid ? tx("통과", "pass") : `${mmm.run.dataQuality.issues.length} ${tx("건 경고", "warning(s)")}`}
                     </span>}
                   </div>
@@ -4603,7 +4603,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         )}
                       </div>
                     </div>
-                  ) : <p style={{ margin: "10px 0 0", color: "#22c55e", fontSize: "11.5px" }}>{tx("현재 자동 건강 진단에서 추가 경고가 발견되지 않았습니다.", "No additional warnings were found by the automated health checks.")}</p>}
+                  ) : <p style={{ margin: "10px 0 0", color: "var(--success)", fontSize: "11.5px" }}>{tx("현재 자동 건강 진단에서 추가 경고가 발견되지 않았습니다.", "No additional warnings were found by the automated health checks.")}</p>}
                   <p className="muted" style={{ display: "none", fontSize: "11px", lineHeight: 1.55, margin: "10px 0 0" }}>
                     {tx("이 모델은 Gaussian posterior를 행렬식으로 계산하고 MCMC chain을 샘플링하지 않으므로 R-hat·ESS는 적용되지 않습니다. 이는 Meridian의 NUTS 샘플링 진단과 같은 검사가 아닙니다.", "This model computes a Gaussian posterior analytically and does not sample MCMC chains, so R-hat and ESS do not apply. This is not the same diagnostic as Meridian's NUTS sampling checks.")}
                     {mmm.countryValidationMode === "as-of-earliest-fold" ? ` ${tx("국가 prior 후보 검증은 가장 이른 학습 cutoff의 타깃 변환·Y 스케일·참고국 근거를 모든 fold에 고정합니다. 이후 정보 누수는 막지만, 같은 folds로 후보를 골랐으므로 최종 독립 OOS는 아닙니다.", "Country-prior candidate checks lock target transforms, Y scale, and reference evidence from the earliest training cutoff across every fold. This prevents later-information leakage, but the folds also select the candidate and are therefore not a final independent OOS score.")}` : ""}
@@ -4677,7 +4677,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       <div key={s.label} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: !isRankingAmbiguous && i === 0 ? "rgba(122,162,247,0.1)" : "transparent", borderRadius: "8px", flexWrap: "wrap" }}>
                         <span style={{ fontSize: "15px", fontWeight: 700, color: !isRankingAmbiguous && i === 0 ? "#7aa2f7" : MUTED, minWidth: "20px" }}>{isRankingAmbiguous ? "•" : i + 1}</span>
                         <span style={{ flex: 1, fontSize: "14px", fontWeight: !isRankingAmbiguous && i === 0 ? 700 : 400 }}>{s.label}</span>
-                        <span style={{ fontSize: "14px", fontWeight: 600, color: "#22c55e" }}>{targetValueLabel(s.curMarg, { sign: true })} <small style={{ color: MUTED, fontWeight: 400 }}>[{targetValueLabel(s.marginalCi[0])} ~ {targetValueLabel(s.marginalCi[1])}]</small></span>
+                        <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--success)" }}>{targetValueLabel(s.curMarg, { sign: true })} <small style={{ color: MUTED, fontWeight: 400 }}>[{targetValueLabel(s.marginalCi[0])} ~ {targetValueLabel(s.marginalCi[1])}]</small></span>
                         <span style={{ fontSize: "12px", color: MUTED }}>{spendReferenceLabel} {spendLabel(s.recentMean || 0)}/주</span>
                       </div>
                     ))}
@@ -4726,7 +4726,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       {highCollinearPairs.length > 0 && (
                         <button
                           className="ab-pill"
-                          style={{ color: "#b45309", borderColor: "rgba(245,158,11,.65)", background: "rgba(245,158,11,.10)" }}
+                          style={{ color: "var(--warning)", borderColor: "color-mix(in srgb, var(--warning) 65%, var(--border))", background: "color-mix(in srgb, var(--warning) 10%, transparent)" }}
                           title={tx("강하게 함께 움직이는 채널 쌍의 주별 입력값을 확인합니다.", "Inspect weekly inputs for channel pairs that move strongly together.")}
                           onClick={() => setSelectedCollinearPairKey((current) => current ? null : collinearPairKey(highCollinearPairs[0]))}
                         >
@@ -4760,11 +4760,11 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             <tr key={row.key} style={row.posteriorPositive != null && row.posteriorPositive < 0.8 ? { opacity: 0.62 } : undefined}>
                               <td>
                                 <strong>{row.label}</strong>
-                                {row.isCollinearityGroup && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>⚠ {tx(`최대 상관 ${row.maxCorrelation.toFixed(2)} · ${row.members.length}개 채널 ${row.isGroupRefit ? "재학습" : "합산"}`, `max corr. ${row.maxCorrelation.toFixed(2)} · ${row.members.length} channels ${row.isGroupRefit ? "refit" : "summed"}`)}</div>}
-                                {row.boundaryPosteriorMean && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>{tx("0으로 잘린 단일값 대신 가능한 양수 범위의 평균", "Mean of the plausible positive range instead of a zero-clipped point")}</div>}
-                                {row.allocationReliability === "reference-low" && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>{tx("그룹 재학습 후 개별 참고 배분 · 신뢰도 낮음", "Reference allocation after group refit · low reliability")}</div>}
-                                {row.allocationReliability === "group-total-by-construction" && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>{tx("상위 그룹 총량의 adstock carryover 비중 배분", "Allocation of the top-level total by adstock carryover share")}</div>}
-                                {row.allocationReliability === "legacy-response-curve-reapplication" && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "#b45309" }}>{tx("구 responseAt(당주 Cost) 재대입 비교값", "Legacy responseAt(same-week Cost) replay")}</div>}
+                                {row.isCollinearityGroup && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "var(--warning)" }}>⚠ {tx(`최대 상관 ${row.maxCorrelation.toFixed(2)} · ${row.members.length}개 채널 ${row.isGroupRefit ? "재학습" : "합산"}`, `max corr. ${row.maxCorrelation.toFixed(2)} · ${row.members.length} channels ${row.isGroupRefit ? "refit" : "summed"}`)}</div>}
+                                {row.boundaryPosteriorMean && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "var(--warning)" }}>{tx("0으로 잘린 단일값 대신 가능한 양수 범위의 평균", "Mean of the plausible positive range instead of a zero-clipped point")}</div>}
+                                {row.allocationReliability === "reference-low" && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "var(--warning)" }}>{tx("그룹 재학습 후 개별 참고 배분 · 신뢰도 낮음", "Reference allocation after group refit · low reliability")}</div>}
+                                {row.allocationReliability === "group-total-by-construction" && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "var(--warning)" }}>{tx("상위 그룹 총량의 adstock carryover 비중 배분", "Allocation of the top-level total by adstock carryover share")}</div>}
+                                {row.allocationReliability === "legacy-response-curve-reapplication" && <div style={{ marginTop: "3px", fontSize: "10.5px", color: "var(--warning)" }}>{tx("구 responseAt(당주 Cost) 재대입 비교값", "Legacy responseAt(same-week Cost) replay")}</div>}
                               </td>
                               <td className="tnum">{row.activeWeeks}{tx("주", " wk")}</td>
                               <td className="tnum">{spendLabel(row.avgWeeklySpend)}</td>
@@ -4981,8 +4981,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                   const clsLabel = s.cls === "channel"
                                     ? { txt: tx("채널 스파크", "Channel spike"), color: "#7aa2f7" }
                                     : s.cls === "baseline"
-                                      ? { txt: tx("기준선·계절 변동", "Baseline/seasonal swing"), color: "#22c55e" }
-                                      : { txt: tx("모델 밖(원인 입력 권장)", "Outside the model (please record a cause)"), color: "#fbbf24" };
+                                      ? { txt: tx("기준선·계절 변동", "Baseline/seasonal swing"), color: "var(--success)" }
+                                      : { txt: tx("모델 밖(원인 입력 권장)", "Outside the model (please record a cause)"), color: "var(--warning)" };
                                   const driverTxt = s.cls === "unexplained"
                                     ? `${tx("잔차", "Residual")} ${targetValueLabel(s.residual, { sign: true })}`
                                     : `${s.domDriver} ${targetValueLabel(s.domVal, { sign: true })}`;
@@ -5112,8 +5112,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                 const neg = !s.budgetEligible || !levels[1].inObservedRange;
                                 return (
                                   <tr key={k} style={neg ? { opacity: 0.55 } : undefined}>
-                                    <td><strong>{s.label}</strong>{neg ? <span style={{ fontSize: "9px", color: "#fbbf24" }}> {tx("예산 보류", "budget hold")}</span> : ""}</td>
-                                    {levels.map(({ spend, result, inObservedRange }, index) => <td key={index} className="tnum" style={index === 1 ? { color: "#adc6ff" } : undefined}>{result == null ? "—" : <>{cell(result.mean)}<span style={{ fontSize: "9px", color: inObservedRange ? MUTED : "#fbbf24" }}><br />[{cell(result.ci[0])} ~ {cell(result.ci[1])}]<br />@{spendLabel(spend)}{!inObservedRange ? tx(" · 외삽", " · extrapolation") : ""}</span></>}</td>)}
+                                    <td><strong>{s.label}</strong>{neg ? <span style={{ fontSize: "9px", color: "var(--warning)" }}> {tx("예산 보류", "budget hold")}</span> : ""}</td>
+                                    {levels.map(({ spend, result, inObservedRange }, index) => <td key={index} className="tnum" style={index === 1 ? { color: "var(--primary)" } : undefined}>{result == null ? "—" : <>{cell(result.mean)}<span style={{ fontSize: "9px", color: inObservedRange ? MUTED : "var(--warning)" }}><br />[{cell(result.ci[0])} ~ {cell(result.ci[1])}]<br />@{spendLabel(spend)}{!inObservedRange ? tx(" · 외삽", " · extrapolation") : ""}</span></>}</td>)}
                                   </tr>
                                 );
                               });
@@ -5244,15 +5244,15 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         {` → ${forecast.structuralRoute === "direct-total" ? "Direct Total" : "Android + iOS"} ${tx("선택", "selected")}`}
                       </p>
                       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                        <span className="ab-pill" style={forecast.structuralEligible ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}>
+                        <span className="ab-pill" style={forecast.structuralEligible ? { borderColor: "var(--success)", color: "var(--success)" } : { borderColor: "var(--danger)", color: "var(--danger)" }}>
                           {forecast.structuralEligible ? tx("공식 10% 인증 통과", "Official 10% certification passed") : tx("공식 10% 인증 실패", "Official 10% certification failed")}
                         </span>
-                        <span className="ab-pill" style={forecast.structuralShortTermEligible ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}>
+                        <span className="ab-pill" style={forecast.structuralShortTermEligible ? { borderColor: "var(--success)", color: "var(--success)" } : { borderColor: "var(--danger)", color: "var(--danger)" }}>
                           {forecast.structuralShortTermEligible
                             ? tx(`단기 ${forecast.structuralRecommendedHorizon}주 사용 가능`, `Short-term use: ${forecast.structuralRecommendedHorizon} weeks`)
                             : tx("단기 운영 기준도 미달", "Short-term operating gate failed")}
                         </span>
-                        <span className="ab-pill" style={forecast.structuralOsBreakdownEligible ? undefined : { borderColor: "#ef4444", color: "#b91c1c" }}>
+                        <span className="ab-pill" style={forecast.structuralOsBreakdownEligible ? undefined : { borderColor: "var(--danger)", color: "var(--danger)" }}>
                           {forecast.structuralOsBreakdownEligible ? tx("OS 분해 사용 가능", "OS breakdown usable") : tx("OS 분해 사용 불가", "OS breakdown unavailable")}
                         </span>
                         <span className="ab-pill">{tx("부분 주차 자동 제외", "Partial current week excluded")}</span>
@@ -5262,7 +5262,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         <span className="ab-pill">{tx("Perf 절대 수준 ≥ 0", "Absolute Perf level ≥ 0")}</span>
                       </div>
                       {!forecast.structuralComponentCertificationComplete && (
-                        <p style={{ margin: "7px 0 0", color: "#b45309", fontSize: "11.5px", lineHeight: 1.5 }}>
+                        <p style={{ margin: "7px 0 0", color: "var(--warning)", fontSize: "11.5px", lineHeight: 1.5 }}>
                           {tx(
                             "Total 예측은 표시하지만 플랫폼·Organic/Paid 하위 오차를 모두 닫지 못해 공식 인증과 Cost 변경은 잠갔습니다.",
                             "The Total forecast remains visible, but official certification and Cost changes are locked because platform and Organic/Paid component errors could not all be closed.",
@@ -5270,7 +5270,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         </p>
                       )}
                       {!forecast.structuralHistoricallyStable && (
-                        <p style={{ margin: "7px 0 0", color: "#b45309", fontSize: "11.5px", lineHeight: 1.5 }}>
+                        <p style={{ margin: "7px 0 0", color: "var(--warning)", fontSize: "11.5px", lineHeight: 1.5 }}>
                           {tx("전 구간 10% 인증은 엄격하게 유지합니다. 검증된 단기 구간만 열고, 그 이후는 최근값 naive로 전환합니다.", "The every-window 10% gate remains strict. Only validated short-term horizons are opened; later horizons fall back to the recent-value naive forecast.")}
                         </p>
                       )}
@@ -5304,7 +5304,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                 <tr key={fold.offset}>
                                   <td>{fold.excludedWeeks}{tx("주", " wk")}</td>
                                   <td>{fold.start}–{fold.end}</td>
-                                  <td className="tnum" style={fold.wmape >= 10 ? { color: "#b91c1c" } : undefined}>{forecastPct(fold.wmape)}</td>
+                                  <td className="tnum" style={fold.wmape >= 10 ? { color: "var(--danger)" } : undefined}>{forecastPct(fold.wmape)}</td>
                                   <td className="tnum">{forecastPct(fold.conditionalWmape)}</td>
                                   <td className="tnum">{forecastPct(fold.naiveWmape)}</td>
                                   <td>{fold.regime?.isBreak ? `⚠ ${fold.regime.reasons.join("/")}` : "—"}</td>
@@ -5323,7 +5323,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                               {((forecast.structuralCandidates || []).find((candidate) => candidate.route === forecast.structuralRoute)?.horizonMetrics || []).map((metric, index) => (
                                 <tr key={metric.horizon}>
                                   <td>{metric.horizon}{tx("주", "w")}</td>
-                                  <td className="tnum" style={metric.wmape >= 10 ? { color: "#b91c1c" } : undefined}>{forecastPct(metric.wmape)}</td>
+                                  <td className="tnum" style={metric.wmape >= 10 ? { color: "var(--danger)" } : undefined}>{forecastPct(metric.wmape)}</td>
                                   <td className="tnum">{forecastPct(metric.conditionalWmape)}</td>
                                   <td className="tnum">{forecastPct(metric.naiveWmape)}</td>
                                   <td className="tnum">{Number.isFinite(metric.mase) ? metric.mase.toFixed(2) : "—"}</td>
@@ -5353,7 +5353,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                         ).join(" / ")}
                       </p>
                       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                        <span className="ab-pill" style={forecast.nestedRouteDecision.certified ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}>
+                        <span className="ab-pill" style={forecast.nestedRouteDecision.certified ? { borderColor: "var(--success)", color: "var(--success)" } : { borderColor: "var(--danger)", color: "var(--danger)" }}>
                           {forecast.nestedRouteDecision.certified
                             ? tx(`공식 OOS ${forecastPct(forecast.nestedRouteDecision.latestWmape)} · 10% 인증`, `Official OOS ${forecastPct(forecast.nestedRouteDecision.latestWmape)} · certified under 10%`)
                             : tx(`공식 OOS ${forecastPct(forecast.nestedRouteDecision.latestWmape)} · 10% 미인증`, `Official OOS ${forecastPct(forecast.nestedRouteDecision.latestWmape)} · not certified under 10%`)}
@@ -5368,7 +5368,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                           <span
                             className="ab-pill"
                             key={component.component}
-                            style={component.passed ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}
+                            style={component.passed ? { borderColor: "var(--success)", color: "var(--success)" } : { borderColor: "var(--danger)", color: "var(--danger)" }}
                           >
                             {`${component.component} · ${tx("과거", "history")} ${forecastPct(component.developmentWmape)} · ${tx("최신", "latest")} ${forecastPct(component.latestWmape)}`}
                           </span>
@@ -5406,8 +5406,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                 className="ab-pill"
                                 key={label}
                                 style={Number.isFinite(value) && value < 10
-                                  ? { borderColor: "#22c55e", color: "#15803d" }
-                                  : { borderColor: "#ef4444", color: "#b91c1c" }}
+                                  ? { borderColor: "var(--success)", color: "var(--success)" }
+                                  : { borderColor: "var(--danger)", color: "var(--danger)" }}
                               >
                                 {tx(`최근 ${fcHorizon}주`, `Latest ${fcHorizon} weeks`)} · {label} {forecastPct(value, 1)}
                               </span>
@@ -5423,7 +5423,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                     <tr key={`${metric.platform}-${metric.component}`}>
                                       <td>{metric.platform}</td>
                                       <td>{{ organic: "Organic", paid: "Paid", total: "Total" }[metric.component]}</td>
-                                      <td className="tnum" style={metric.passed ? { color: "#15803d" } : { color: "#b91c1c", fontWeight: 700 }}>
+                                      <td className="tnum" style={metric.passed ? { color: "var(--success)" } : { color: "var(--danger)", fontWeight: 700 }}>
                                         {forecastPct(metric.wmape, 1)} · {metric.passed ? tx("통과", "Pass") : tx("미달", "Fail")}
                                       </td>
                                     </tr>
@@ -5506,7 +5506,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                               <strong>{forecast.annualQualified ? tx("예측 검증 통과", "Forecast validation passed") : tx("예측 검증 미통과", "Forecast validation did not pass")}</strong>
                               <p>{tx(`봉인 ${fcHorizon}주 ${forecastPct(selected.latestWmape, 1)} · 바깥 rolling OOS ${forecastPct(selected.wmape, 1)} · 기준 10% 미만`, `Sealed ${fcHorizon} weeks ${forecastPct(selected.latestWmape, 1)} · outer rolling OOS ${forecastPct(selected.wmape, 1)} · threshold below 10%`)}</p>
                             </div>
-                            <span className="ab-pill" style={forecast.annualQualified ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#f59e0b", color: "#b45309" }}>
+                            <span className="ab-pill" style={forecast.annualQualified ? { borderColor: "var(--success)", color: "var(--success)" } : { borderColor: "var(--warning)", color: "var(--warning)" }}>
                               {forecast.annualQualified ? tx("운영 사용 가능", "Ready for operations") : tx("예산 변경 잠금", "Budget changes locked")}
                             </span>
                           </div>
@@ -5534,7 +5534,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                   <p><strong>{forecast.annualComponentGuardrailRequired === false
                                     ? tx("Android+iOS 진단(인증 비적용)", "Android+iOS diagnostic (not a certification gate)")
                                     : tx("Android+iOS 성분 인증", "Android+iOS component certification")}</strong></p>
-                                  {(forecast.annualOsGuardrail || []).map((component) => <span className="ab-pill" key={component.component} style={component.passed ? { borderColor: "#22c55e", color: "#15803d" } : { borderColor: "#ef4444", color: "#b91c1c" }}>{`${component.component} · ${tx("과거", "history")} ${forecastPct(component.developmentWmape)} · ${tx("최근", "latest")} ${forecastPct(component.latestWmape)}`}</span>)}
+                                  {(forecast.annualOsGuardrail || []).map((component) => <span className="ab-pill" key={component.component} style={component.passed ? { borderColor: "var(--success)", color: "var(--success)" } : { borderColor: "var(--danger)", color: "var(--danger)" }}>{`${component.component} · ${tx("과거", "history")} ${forecastPct(component.developmentWmape)} · ${tx("최근", "latest")} ${forecastPct(component.latestWmape)}`}</span>)}
                                 </div>
                               )}
                           </details>
@@ -5621,7 +5621,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             `가능 ${availableConfigurations}개 중 브라우저 계획 ${plannedConfigurations}개, 시도 ${attemptedConfigurations}개, 안정 적합 ${evaluatedConfigurations}개를 nested OOS로 비교했습니다. 전체 조합의 수학적 최적값이 아니라 검증한 후보 중 선택입니다.`,
                             `Of ${availableConfigurations} possible combinations, the browser planned ${plannedConfigurations}, attempted ${attemptedConfigurations}, and stably fitted ${evaluatedConfigurations} for nested OOS. This is the winner among evaluated candidates, not a claimed mathematical optimum over every combination.`,
                           )} />
-                          {candidateSearchAudit && !candidateSearchAudit.complete && <><span className="ab-pill" style={{ color: "#b45309" }}>{tx("후보 탐색 일부 미완료", "Candidate search incomplete")}</span><ForecastHint label={candidateSearchAudit.reasons.map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ")} /></>}
+                          {candidateSearchAudit && !candidateSearchAudit.complete && <><span className="ab-pill" style={{ color: "var(--warning)" }}>{tx("후보 탐색 일부 미완료", "Candidate search incomplete")}</span><ForecastHint label={candidateSearchAudit.reasons.map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ")} /></>}
                         </div>
                         {eventAdjustedLabel && <p style={{ margin: "6px 0 0", fontSize: "11px", color: MUTED }}>{eventAdjustedLabel}</p>}
                         {auditSelected.candidateId !== selected.candidateId && (
@@ -5632,7 +5632,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             )}
                           </p>
                         )}
-                        {!forecast.rollingSelection.decisionEligible && <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "7px" }}><span className="ab-pill" style={{ color: "#b45309" }}>{tx("Cost 변경 판정 보류", "Cost scenario paused")}</span><ForecastHint label={tx(
+                        {!forecast.rollingSelection.decisionEligible && <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "7px" }}><span className="ab-pill" style={{ color: "var(--warning)" }}>{tx("Cost 변경 판정 보류", "Cost scenario paused")}</span><ForecastHint label={tx(
                           (forecast.rollingSelection.decisionReasons || []).map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ") || "rolling 검증 적격성 미충족",
                           (forecast.rollingSelection.decisionReasons || []).map((reason) => forecastScenarioReasonLabel(reason, tx)).join(" · ") || "rolling validation is not eligible",
                         )} /></div>}
@@ -5678,7 +5678,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
                         <span className="ab-pill">{tx("기준선 평균", "Baseline avg")} {targetValueLabel(forecast.baselineFut.reduce((s, v) => s + v, 0) / forecast.baselineFut.length, { perWeek: true })}</span>
                         <span className="ab-pill">{tx("현재 시나리오 평균", "Scenario avg")} {targetValueLabel(forecast.predFut.reduce((s, v) => s + v, 0) / forecast.predFut.length, { perWeek: true })}</span>
-                        {forecast.baselineFloorApplied > 0 && <span className="ab-pill" style={{ borderColor: "#f59e0b", color: "#b45309" }}>{tx(`기준선 0 하한 ${forecast.baselineFloorApplied}주 적용`, `0 floor applied for ${forecast.baselineFloorApplied} week(s)`)}</span>}
+                        {forecast.baselineFloorApplied > 0 && <span className="ab-pill" style={{ borderColor: "var(--warning)", color: "var(--warning)" }}>{tx(`기준선 0 하한 ${forecast.baselineFloorApplied}주 적용`, `0 floor applied for ${forecast.baselineFloorApplied} week(s)`)}</span>}
                       </div>
                     </Card>
                   )}
@@ -5729,7 +5729,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                     <Card style={{ marginBottom: "12px", padding: "14px 16px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", alignItems: "baseline" }}>
                         <div><strong>{tx(`봉인 최근 ${fcHorizon}주 검증`, `Sealed latest-${fcHorizon}-week validation`)}</strong><p style={{ margin: "4px 0 0", fontSize: "11.5px", color: MUTED }}>{tx("실적은 후보 선택·학습에서 가리고 당시 Cost만 입력했습니다.", "Outcomes were hidden from selection and fitting; only the Cost known at that time was supplied.")}</p></div>
-                        <span className="ab-pill" style={!recentBacktest.reliable ? { borderColor: "#ef4444", color: "#b91c1c" } : undefined}>RMSE {targetValueLabel(recentBacktest.rmse)} · MAE {targetValueLabel(recentBacktest.mae)} · wMAPE {Number.isFinite(recentBacktest.wmape) ? `${recentBacktest.wmape.toFixed(1)}%` : "—"}</span>
+                        <span className="ab-pill" style={!recentBacktest.reliable ? { borderColor: "var(--danger)", color: "var(--danger)" } : undefined}>RMSE {targetValueLabel(recentBacktest.rmse)} · MAE {targetValueLabel(recentBacktest.mae)} · wMAPE {Number.isFinite(recentBacktest.wmape) ? `${recentBacktest.wmape.toFixed(1)}%` : "—"}</span>
                       </div>
                       {!recentBacktest.reliable && <div className="callout warn" style={{ marginTop: "10px" }}><div className="ico">!</div><div className="body">
                         <strong>{Number.isFinite(recentBacktest.wmape) && recentBacktest.wmape >= 30
@@ -5741,7 +5741,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                             ? tx("봉인 최신 점수와 별개로 개발 OOS·기준선 승률·경로 안전장치 중 하나가 인증 기준을 통과하지 못했습니다.", "Independent of the sealed latest score, at least one development-OOS, baseline win-rate, or route guardrail did not pass certification.")
                           : tx(`봉인 ${fcHorizon}주 wMAPE ${Number.isFinite(recentBacktest.wmape) ? `${recentBacktest.wmape.toFixed(1)}%` : "—"} · 인증 기준 10% 미만.`, `Sealed-${fcHorizon}-week wMAPE ${Number.isFinite(recentBacktest.wmape) ? `${recentBacktest.wmape.toFixed(1)}%` : "—"} · certification requires below 10%.`)}</p>
                       </div></div>}
-                      <div style={{ display: "flex", gap: "6px", marginTop: "10px", flexWrap: "wrap" }}><span className="ab-pill" style={{ borderColor: "#f59e0b", color: "#b45309" }}>{tx(`${fcHorizon}주 전체: 학습 제외`, `All ${fcHorizon} weeks: held out`)}</span></div>
+                      <div style={{ display: "flex", gap: "6px", marginTop: "10px", flexWrap: "wrap" }}><span className="ab-pill" style={{ borderColor: "var(--warning)", color: "var(--warning)" }}>{tx(`${fcHorizon}주 전체: 학습 제외`, `All ${fcHorizon} weeks: held out`)}</span></div>
                       <MmmBacktestChart locale={locale} labels={recentBacktest.labels} actual={recentBacktest.actual} validationStartIndex={recentBacktest.validationStartIndex} variants={[{ label: tx("모델 적합·예측", "Model fit · prediction"), predicted: recentBacktest.predicted, color: "#2563eb", dash: [] }]} formatValue={targetValueLabel} />
                     </Card>
                   )}
@@ -5908,7 +5908,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                       })}
                                       style={{ width: "120px", textAlign: "right" }}
                                     />
-                                    {isEffectiveValueClamped && <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "4px", marginTop: "3px", fontSize: "10px", color: "#b45309" }}>
+                                    {isEffectiveValueClamped && <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "4px", marginTop: "3px", fontSize: "10px", color: "var(--warning)" }}>
                                       <span>{tx(`모델 반영 ${spendValueLabel(effectiveValue, { perWeek: true })}`, `Model input ${spendValueLabel(effectiveValue, { perWeek: true })}`)}</span>
                                       <ForecastHint label={tx(
                                         `요청한 Cost ${spendValueLabel(sourceValue, { perWeek: true })}는 관측 범위 밖이라 모델에는 ${spendValueLabel(effectiveValue, { perWeek: true })}까지만 반영했습니다. 성과가 없거나 포화됐다는 뜻이 아니라, 이 범위 밖은 추정하지 않는다는 뜻입니다.`,
@@ -5943,7 +5943,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
                                     <tr key={s.key}>
                                       <td>{s.label}</td>
                                       <td style={{ fontSize: "11px", color: MUTED }}>{tx("구조변화", "Regime change")}</td>
-                                      <td style={{ color: s.lastOn ? "#22c55e" : MUTED, fontSize: "11px" }}>{s.lastOn ? "ON" : "OFF"}</td>
+                                      <td style={{ color: s.lastOn ? "var(--success)" : MUTED, fontSize: "11px" }}>{s.lastOn ? "ON" : "OFF"}</td>
                                       <td>
                                         <input
                                           type="number"

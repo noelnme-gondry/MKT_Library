@@ -85,6 +85,8 @@ describe("CohortTab render smoke", () => {
     }).not.toThrow();
     // Key node: the overall retention curve canvas.
     expect(container.querySelector("#wide-ret-curve")).toBeTruthy();
+    expect(screen.getByRole("table", { name: "코호트 구간별 리텐션" }).classList.contains("ds-data-table")).toBe(true);
+    expect(screen.getByRole("table", { name: "미관측 구간 리텐션 예측" }).classList.contains("ds-data-table")).toBe(true);
   });
 
   it("shows the inferred data snapshot and lets the operator override it instead of using today", () => {

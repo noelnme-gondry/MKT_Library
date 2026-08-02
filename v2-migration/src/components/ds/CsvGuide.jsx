@@ -4,6 +4,7 @@ import { getToolGuide } from "@/utils/toolGuide";
 import { hasToolTemplate, downloadTemplateCsv, TEMPLATE_FAMILY } from "@/components/ds/csvTemplate";
 import DataTable from "@/components/ds/DataTable";
 import ModalDialog from "@/components/ds/ModalDialog";
+import { trackProductEvent } from "@/lib/analytics";
 
 // CSV upload guidance (design-system baseline §1.4). Hybrid per claude-ux §0
 // (avoid hidden-affordance trap): an always-visible 1-line summary + a prominent
@@ -67,6 +68,15 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
   const timeEstimate = toolId === "5-18" ? "5–10분" : String(toolId).startsWith("5-23:") ? "3–6분" : "2–5분";
   const localizedTimeEstimate = locale === "en" ? timeEstimate.replace("분", " min") : timeEstimate;
   const close = () => setOpen(false);
+  const runExample = () => {
+    trackProductEvent("example_run_started", {
+      tool_id: String(toolId).split(":")[0],
+      source: "csv_guide",
+      placement: "before_upload",
+      locale,
+    });
+    onTryExample?.();
+  };
   const needColumns = [
     { key: "col", label: T.colCol, fmt: (value) => <code className="inline">{value}</code> },
     { key: "label", label: T.colWhat },
@@ -83,7 +93,7 @@ export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = nu
           <span className="csv-guide-effort">{T.effort(requiredNeeds.length, localizedTimeEstimate)}</span>
         </div>
         <div className="csv-guide-actions">
-          {onTryExample && <button type="button" className="csv-guide-example-btn" onClick={onTryExample}>{T.tryExample}<span aria-hidden>→</span></button>}
+          {onTryExample && <button type="button" className="csv-guide-example-btn" onClick={runExample}>{T.tryExample}<span aria-hidden>→</span></button>}
           <button type="button" className="csv-guide-btn" onClick={() => setOpen(true)}>
             {T.openBtn}
           </button>
