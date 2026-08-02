@@ -71,6 +71,7 @@ import MarketingResponse, {
   paidOrganicHaloBudgets,
   reconcileForecastScenarioAudit,
   scheduleChartResize,
+  BADGE_TONE,
   trimToActive,
 } from "@/components/tools/MarketingResponse";
 import { autoGuessColMap, buildPanelFromColMap } from "@/components/tools/MmmColumnMapper";
@@ -281,6 +282,14 @@ describe("MarketingResponse render smoke", () => {
     chart.canvas.remove();
     expect(() => callback()).not.toThrow();
     expect(chart.resize).not.toHaveBeenCalled();
+  });
+
+  it("uses theme-aware semantic colors for shared MMM status badges", () => {
+    expect(BADGE_TONE.ok).toMatchObject({ color: "var(--success)" });
+    expect(BADGE_TONE.warn).toMatchObject({ color: "var(--warning)" });
+    expect(BADGE_TONE.danger).toMatchObject({ color: "var(--danger)" });
+    expect(BADGE_TONE.ok.bg).toContain("var(--success)");
+    expect(BADGE_TONE.danger.border).toContain("var(--danger)");
   });
 
   it("resets MMM mapping when the same-named CSV has a new raw source", () => {

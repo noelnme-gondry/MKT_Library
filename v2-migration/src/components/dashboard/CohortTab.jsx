@@ -10,6 +10,7 @@ import { maturityCutoffDate, parseSnapshotDate, resolveRetentionSnapshot, snapsh
 import { applyMetricView } from "@/utils/metrics/metricView";
 import MetricConfigPanel from "@/components/ds/MetricConfigPanel";
 import AnalysisDetails from "@/components/ds/AnalysisDetails";
+import DataTable from "@/components/ds/DataTable";
 
 // 지표 뷰 설정 scope — §1 전체 리텐션 곡선 표의 지표 컬럼 표시/순서.
 const COHORT_TABLE_SCOPE = "5-2:cohort-table";
@@ -367,26 +368,22 @@ export default function CohortTab({ locale = "ko" } = {}) {
         <div style={{ display: "flex", justifyContent: "flex-end", margin: "14px 0 -6px" }}>
           <button className="ab-pill" onClick={() => setCohortCfgOpen(true)} title={tr("표시할 지표 컬럼과 순서 편집", "Edit displayed metric columns and order")}>{tr("⚙ 컬럼 편집", "⚙ Edit columns")}</button>
         </div>
-        <div className="table-wrap" style={{ marginTop: "14px" }}>
-          <table className="data" style={{ fontSize: "12px" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left" }}>{tr("구간", "Period")}</th>
-                {orderedCohortCols.map((col) => <th key={col.k} style={{ textAlign: "right" }}>{col.label}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {wrc.retCurve.map(p => (
-                <tr key={p.day}>
-                  <td className="tnum">D{p.day}</td>
-                  {orderedCohortCols.map((col) => (
-                    <td key={col.k} className="tnum" style={{ textAlign: "right" }}>{col.render(p)}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          ariaLabel={tr("코호트 구간별 리텐션", "Retention by cohort period")}
+          style={{ marginTop: "14px" }}
+          tableStyle={{ fontSize: "12px" }}
+          columns={[
+            { key: "day", label: tr("구간", "Period"), fmt: (day) => `D${day}` },
+            ...orderedCohortCols.map((col) => ({
+              key: col.k,
+              label: col.label,
+              align: "right",
+              fmt: (_, row) => col.render(row),
+            })),
+          ]}
+          rows={wrc.retCurve}
+          rowKey={(row) => row.day}
+        />
         {orderedCohortCols.length === 0 && (
           <p className="muted" style={{ fontSize: "12px" }}>{tr("표시할 지표 컬럼이 없습니다. ⚙ 컬럼 편집에서 다시 켜세요.", "No metric columns are shown. Re-enable them in ⚙ Edit columns.")}</p>
         )}
@@ -430,29 +427,30 @@ export default function CohortTab({ locale = "ko" } = {}) {
               "Fits a power-law curve to the observed Dn data to extrapolate unobserved periods. Use as a reference value only."
             )}
           </p>
-          <div className="table-wrap" style={{ marginTop: "8px" }}>
-            <table className="data" style={{ fontSize: "12px" }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: "left" }}>{tr("구간", "Period")}</th>
-                  <th style={{ textAlign: "right" }}>{tr("예측 잔존율", "Predicted Retention")}</th>
-                  <th style={{ textAlign: "right" }}>{tr("방법", "Method")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {horizons.map(d => {
-                  const pred = wrc.pwr.a * Math.pow(d, wrc.pwr.b);
-                  return (
-                    <tr key={d}>
-                      <td className="tnum">D{d}</td>
-                      <td className="tnum" style={{ color: "var(--accent)", textAlign: "right" }}>{fmtPct(Math.min(1, Math.max(0, pred)))}</td>
-                      <td className="tnum" style={{ color: "var(--text-muted)", fontSize: "11px", textAlign: "right" }}>{tr("Power fit 외삽", "Power fit extrapolation")}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            ariaLabel={tr("미관측 구간 리텐션 예측", "Retention forecast for unobserved periods")}
+            style={{ marginTop: "8px" }}
+            tableStyle={{ fontSize: "12px" }}
+            columns={[
+              { key: "day", label: tr("구간", "Period"), fmt: (day) => `D${day}` },
+              {
+                key: "prediction",
+                label: tr("예측 잔존율", "Predicted Retention"),
+                align: "right",
+                cellStyle: { color: "var(--accent)" },
+                fmt: (_, row) => fmtPct(Math.min(1, Math.max(0, wrc.pwr.a * Math.pow(row.day, wrc.pwr.b)))),
+              },
+              {
+                key: "method",
+                label: tr("방법", "Method"),
+                align: "right",
+                cellStyle: { color: "var(--text-muted)", fontSize: "11px" },
+                fmt: () => tr("Power fit 외삽", "Power fit extrapolation"),
+              },
+            ]}
+            rows={horizons.map((day) => ({ day }))}
+            rowKey={(row) => row.day}
+          />
         </section>
       )}
       <MetricConfigPanel

@@ -12,6 +12,7 @@ import React from "react";
 //   fmt    : (value, row) => ReactNode      (formatter; default String)
 // rows    : array of row objects
 // rowKey  : (row, i) => key  (default index)
+// tableStyle: table 자체의 소비자별 밀도 조정. wrapper 여백은 style로 지정.
 export default function DataTable({
   columns,
   rows,
@@ -20,6 +21,7 @@ export default function DataTable({
   className = "",
   wrapperClassName = "",
   style,
+  tableStyle,
   emptyText = "데이터 없음",
   ariaLabel = "데이터 표",
   caption = "",
@@ -30,7 +32,7 @@ export default function DataTable({
 
   return (
     <div className={joinClasses("table-wrap", "data-table-wrap", "ds-data-table-wrap", wrapperClassName)} style={style}>
-      <table className={joinClasses("data", "data-table", "ds-data-table", className)} aria-label={ariaLabel}>
+      <table className={joinClasses("data", "data-table", "ds-data-table", className)} aria-label={ariaLabel} style={tableStyle}>
         {caption ? <caption className="sr-only data-table__caption">{caption}</caption> : null}
         <thead className={joinClasses("data-table__head", stickyHeader && "is-sticky")}>
           <tr className="data-table__head-row">

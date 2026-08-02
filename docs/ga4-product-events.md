@@ -21,6 +21,12 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `analysis_completed` | 결과 또는 정직한 추정 불가 상태 생성 | `tool_id`, `analysis_type`, `result_state` |
 | `dashboard_tab_view` | 대시보드 탭 선택 | `tool_id`, `tab_name` |
 | `result_downloaded` | 결과 CSV/텍스트 다운로드 | `tool_id`, `download_type` |
+| `example_run_started` | 업로드 전 예시 결과 실행 클릭 | `tool_id`, `source=csv_guide`, `placement=before_upload`, `locale` |
+| `analysis_result_viewed` | 결과 행동 카드 노출 | `tool_id`, `source=result`, `placement`, `locale` |
+| `decision_review_opened` | 결과에서 다음 검토 약속 열기 | `tool_id`, `source`, `placement`, `locale` |
+| `decision_record_added` | 결정 요약 저장 | `tool_id`, `source=decision_review`, `placement`, `locale` |
+| `decision_inbox_viewed` | 주간 결정 인박스 진입 | `source=weekly_review`, `result_state=empty|due|active`, `locale` |
+| `decision_review_completed` | 보류 결정에 실제 결과 또는 배운 점을 처음 기록 | `tool_id`, `source=weekly_review`, `result_state=reviewed`, `locale` |
 
 `tool_id`는 내부 라우트 ID만 사용한다. CSV 파일명, 채널명, 지출·매출값, 사용자 ID는
 전송하지 않는다. 허용 목록 밖 파라미터는 `sanitizeProductEventParams`가 제거한다.
@@ -36,6 +42,17 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 - `download_type`
 - `source`
 - `confidence_bucket`
+- `placement`
+- `locale`
+
+## 검증 퍼널
+
+- 예시→실데이터: `example_run_started` → `data_import_start` → `data_import_success` → `analysis_completed`
+- 판단→재방문: `decision_record_added` → `decision_inbox_viewed` → `decision_review_completed`
+
+`decision_record_added`는 기존 이벤트를 그대로 사용한다. 같은 행동을 새 이름으로 중복 집계하지 않는다.
+업종 프리셋(I1)은 기능이 생기기 전에는 빈 이벤트를 만들지 않는다. 구현 시 고정 enum만 담는
+`preset_exposed`·`preset_selected`를 추가하고, 자유입력 업종명은 전송하지 않는다.
 
 `row_count`, `column_count`, `mapped_count`, `conflict_count`, `missing_required_count`는
 이벤트 범위의 custom metric(숫자)으로 등록한다.

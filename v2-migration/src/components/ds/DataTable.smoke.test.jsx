@@ -10,6 +10,7 @@ describe("DataTable semantic contract", () => {
         ariaLabel="Campaign evidence"
         caption="Campaign evidence caption"
         stickyHeader
+        tableStyle={{ fontSize: "12px" }}
         wrapperClassName="campaign-table-wrap"
         className="campaign-table"
         columns={[
@@ -21,6 +22,7 @@ describe("DataTable semantic contract", () => {
     );
 
     expect(screen.getByRole("table", { name: "Campaign evidence" }).classList.contains("data-table")).toBe(true);
+    expect(screen.getByRole("table", { name: "Campaign evidence" }).style.fontSize).toBe("12px");
     expect(container.querySelector(".data-table-wrap.campaign-table-wrap")).toBeTruthy();
     expect(container.querySelector("thead.data-table__head.is-sticky")).toBeTruthy();
     expect(container.querySelector("th.cost-heading[data-numeric='true']")).toBeTruthy();

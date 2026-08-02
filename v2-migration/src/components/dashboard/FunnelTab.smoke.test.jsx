@@ -5,7 +5,7 @@
 // this asserts the tab MOUNTS without throwing in no-data and with-data states.
 // Copied from the BudgetAllocation smoke pattern.
 import { describe, it, expect, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import FunnelTab from "@/components/dashboard/FunnelTab";
 
@@ -76,6 +76,7 @@ describe("FunnelTab render smoke", () => {
     }).not.toThrow();
     // Key node: the CVR trend chart canvas.
     expect(container.querySelector("#funnel-trend-chart")).toBeTruthy();
+    expect(screen.getByRole("table", { name: "전체 퍼널 단계" }).classList.contains("ds-data-table")).toBe(true);
   });
 
   // Regression for the "rising trend flagged as 급락" report: the low-day
