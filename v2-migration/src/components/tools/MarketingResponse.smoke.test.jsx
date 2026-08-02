@@ -1620,6 +1620,8 @@ describe("MarketingResponse render smoke", () => {
     const { container } = render(<MarketingResponse />);
     expect(() => enterMmmAndAnalyze(container)).not.toThrow();
     await flushRaf();
+    expect(container.querySelector('.decision-review[data-decision-review-tool="5-18"]')).toBeTruthy();
+    expect(container.textContent).toContain("다음 검토 약속 만들기");
     clickByText(container, "카니발 진단");
     expect(document.body.textContent).toContain("데이터 위생");
   });

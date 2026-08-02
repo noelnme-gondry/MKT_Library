@@ -12,6 +12,8 @@ import ModalDialog from "@/components/ds/ModalDialog";
 const GUIDE_COPY = {
   ko: {
     need: "필요: ",
+    effort: (count, time) => `필수 ${count}개 · 화면 작업 예상 ${time} (CSV 준비 제외)`,
+    tryExample: "예시 데이터로 결과 바로 보기",
     openBtn: "📖 어떤 데이터가 왜 필요한가요?",
     modalTitle: "이 도구에 올릴 데이터 안내",
     close: "닫기",
@@ -32,6 +34,8 @@ const GUIDE_COPY = {
   },
   en: {
     need: "Needs: ",
+    effort: (count, time) => `${count} required · estimated ${time} on screen (CSV prep excluded)`,
+    tryExample: "Run the example and see results",
     openBtn: "📖 What data is needed and why?",
     modalTitle: "Data guide for this tool",
     close: "Close",
@@ -52,13 +56,16 @@ const GUIDE_COPY = {
   },
 };
 
-export default function CsvGuide({ toolId, onDownloadTemplate, locale = "ko" }) {
+export default function CsvGuide({ toolId, onDownloadTemplate, onTryExample = null, locale = "ko" }) {
   const [open, setOpen] = useState(false);
   const T = GUIDE_COPY[locale] || GUIDE_COPY.ko;
   const guide = getToolGuide(toolId, locale);
   if (!guide) return null;
 
-  const reqCols = guide.needs.filter((n) => n.required).map((n) => n.label).join(" · ");
+  const requiredNeeds = guide.needs.filter((n) => n.required);
+  const reqCols = requiredNeeds.map((n) => n.label).join(" · ");
+  const timeEstimate = toolId === "5-18" ? "5–10분" : String(toolId).startsWith("5-23:") ? "3–6분" : "2–5분";
+  const localizedTimeEstimate = locale === "en" ? timeEstimate.replace("분", " min") : timeEstimate;
   const close = () => setOpen(false);
   const needColumns = [
     { key: "col", label: T.colCol, fmt: (value) => <code className="inline">{value}</code> },
@@ -73,10 +80,14 @@ export default function CsvGuide({ toolId, onDownloadTemplate, locale = "ko" }) 
         <div className="csv-guide-line">
           <span className="csv-guide-when">{guide.when}</span>
           {reqCols && <span className="csv-guide-need">{T.need}{reqCols}</span>}
+          <span className="csv-guide-effort">{T.effort(requiredNeeds.length, localizedTimeEstimate)}</span>
         </div>
-        <button type="button" className="csv-guide-btn" onClick={() => setOpen(true)}>
-          {T.openBtn}
-        </button>
+        <div className="csv-guide-actions">
+          {onTryExample && <button type="button" className="csv-guide-example-btn" onClick={onTryExample}>{T.tryExample}<span aria-hidden>→</span></button>}
+          <button type="button" className="csv-guide-btn" onClick={() => setOpen(true)}>
+            {T.openBtn}
+          </button>
+        </div>
       </div>
 
       <ModalDialog

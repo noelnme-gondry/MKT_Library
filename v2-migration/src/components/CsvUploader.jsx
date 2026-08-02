@@ -4,7 +4,6 @@ import Papa from "papaparse";
 import { useAppStore, TOOL_GROUP } from "@/store/useDataStore";
 import { STANDARD_FIELDS, TOOL_REQUIRED_FIELDS, TOOL_OPTIONAL_FIELDS } from "@/utils/csvConstants";
 import { buildDemoCsv } from "@/utils/demoData";
-import DemoLoadButton from "@/components/DemoLoadButton";
 import CsvGuide from "@/components/ds/CsvGuide";
 import GoogleSheetConnect, { fetchSheetTable, sheetErrorMessage } from "@/components/GoogleSheetConnect";
 import { assessMappingConfidence, findMappingConflicts } from "@/lib/data-import/scoreMappingCandidates";
@@ -212,7 +211,7 @@ function buildImportInsights(headers, raw, toolId) {
   return { ...contract, selections: contract.mapping, signature: detectDatasetSignature(headers, raw) };
 }
 
-export default function CsvUploader({ toolId, locale = "ko" }) {
+export default function CsvUploader({ toolId, locale = "ko", afterFileSummary = null }) {
   const T = CSV_COPY[locale] || CSV_COPY.ko;
   const csvData = useAppStore((s) => s.csvData);
   const setCsvData = useAppStore((s) => s.setCsvData);
@@ -494,10 +493,6 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
   // 시트 원본은 도구 ID가 아니라 데이터 grain(효율·소재·MMM 등) 단위로 기억한다.
   // 같은 효율 CSV를 쓰는 5-2/5-3/5-21/5-22 사이에서 다시 URL을 입력하지 않게 한다.
   const sheetSourceScope = TOOL_GROUP[toolId] || "efficiency";
-  // GoogleSheetConnect가 실제로 렌더되는지(=API 키 설정됨) — 그때만 데모버튼 앞에
-  // 가변 높이 형제가 끼어드니 여백 모디파이어 적용. 미설정 배포는 기존 spacing 그대로.
-  const hasSheetImport = !!process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
-
   // 첫 진입(데이터 없음) 시 샘플 데이터를 자동 로드해 빈 업로드 화면 대신 라이브
   // 분석 화면을 즉시 보여준다(SEO·첫인상 개선). 마운트 1회만 — 사용자가 CSV 변경으로
   // 명시적으로 비우면 재자동로드 없음(의도된 빈 드롭존 유지).
@@ -600,7 +595,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         {/* Keep this as the first child in both render branches so React
             preserves one live region while upload state changes. */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{isImporting ? T.importing : importAnnouncement}</div>
-        <CsvGuide toolId={toolId} locale={locale} />
+        <CsvGuide toolId={toolId} onTryExample={handleLoadDemo} locale={locale} />
         {pendingWorkbook ? (
           <section className="required-banner" style={{ borderLeftColor: "var(--primary)" }}>
             <strong>{T.workbookTitle}</strong>
@@ -651,7 +646,6 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
         <input type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden ref={fileInputRef} onChange={handleFileChange} />
         {isImporting && <button type="button" className="ab-pill" onClick={cancelActiveImport} style={{ marginTop: "10px" }}>{T.cancelActiveImportBtn}</button>}
         <GoogleSheetConnect onLoaded={handleSheetLoaded} onError={setErrorMsg} locale={locale} toolId={sheetSourceScope} />
-        <DemoLoadButton onLoad={handleLoadDemo} locale={locale} className={hasSheetImport ? "demo-load-row--spaced" : ""} />
           </>
         )}
         {errorMsg && <div role="alert" className="csv-upload-error">{errorMsg}</div>}
@@ -741,6 +735,7 @@ export default function CsvUploader({ toolId, locale = "ko" }) {
           </button>
         )}
       </div>
+      {afterFileSummary}
       {csvData.importInsights?.recipeApplied && (
         <div className="csv-memory-note">◉ {T.savedMappingApplied}</div>
       )}

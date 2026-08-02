@@ -14,5 +14,6 @@ describe("deriveStatisticalStatus", () => {
   it("uses an explicit engine error state", () => {
     expect(deriveStatisticalStatus({ rowCount: 10, engineError: "inverse failed" })).toBe(STATISTICAL_STATUS.ENGINE_ERROR);
     expect(statisticalStatusLabel(STATISTICAL_STATUS.NOT_IDENTIFIED, "en")).toBe("Not identified");
+    expect(statisticalStatusLabel(STATISTICAL_STATUS.INSUFFICIENT_DATA, "ko")).toBe("근거 부족");
   });
 });

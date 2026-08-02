@@ -29,7 +29,7 @@ export function statisticalStatusLabel(status, locale = "ko") {
   const labels = {
     READY: ["사용 가능", "Usable"],
     CAUTION: ["주의해서 해석", "Interpret with caution"],
-    INSUFFICIENT_DATA: ["데이터 부족", "Insufficient data"],
+    INSUFFICIENT_DATA: ["근거 부족", "Insufficient evidence"],
     NOT_IDENTIFIED: ["식별 불가", "Not identified"],
     ABSTAIN: ["판정 보류", "Abstain"],
     ENGINE_ERROR: ["계산 오류", "Engine error"],

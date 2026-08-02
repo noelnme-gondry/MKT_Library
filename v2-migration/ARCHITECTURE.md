@@ -23,7 +23,7 @@ v2-migration/
 │  │  └─ useDataStore.js    # ★ SSOT: Zustand — IA·csvGroups(스코프)·csvData(미러)·TOOL_GROUP·필터·currentRouteId·테마·adGate/adFree(광고 §12.26)
 │  ├─ utils/                # ★ 순수 통계엔진 (ESM, 수학 불변, vitest 골든) + 데이터층 + 추출 math(funnel/segment/anomaly/pacing/cohort/incr)
 │  └─ components/
-│     ├─ ds/            # ★ 데이터 UI 공용: DataTable·CsvGuide·AnalyzingOverlay·ResultActionCard(Decision Tape)·DownloadHub
+│     ├─ ds/            # ★ 데이터 UI 공용: DataTable·CsvGuide·EvidenceStatusBadge·AnalyzingOverlay·ResultActionCard(Decision Tape)·DownloadHub
 │     ├─ landing/       # 랜딩: ProductPreview(실제 제품 4장면 순환)·ToolCarousel(도구별 실제 결과 미니어처)
 │     ├─ seo/           # SearchTopicHub(검색 질문→도구 허브)·ContentActionPanel(글/용어→도구 전환 CTA)
 │     ├─ ToolPageShell.jsx·ToolIntro.jsx # 분석 셸 + 질문/산출물/진입 데이터 소개
@@ -46,7 +46,7 @@ v2-migration/
 | `/tools/campaign-variance` | 5-21 | tools/CampaignPvm.jsx (PVM) |
 | `/tools/campaign-saturation` | 5-22 | tools/MarketingEfficiency.jsx (포화도) |
 | `/tools/budget-allocation` | 5-3 | tools/BudgetAllocation.jsx (예산) |
-| `/tools/creative-analysis` | 5-6 | tools/CreativeAnalyzer.jsx (소재) |
+| `/content/freshness` | 9-6 | tools/CreativeAnalyzer.jsx (소재, 구 5-6 통합) |
 | `/tools/experiment-analysis` | 5-4(+5-7,5-15) | tools/AbTestHoldout.jsx (A/B 설계+판독) |
 | `/tools/incrementality` | 5-23 | tools/Incrementality.jsx (증분: 통제군·전후 on/off) |
 | `/tools/marketing-response` | 5-18 | tools/MarketingResponse.jsx (MMM·회귀·예측·Lab) |
@@ -108,7 +108,7 @@ v2-migration/
 - **토큰**: `:root { --bg-1·--text-muted·--border·--primary... }`. **다크/라이트 = `body.light-mode` 오버라이드**. `layout.js` 초기 스크립트가 저장 테마를 첫 페인트 전에 반영하고 `refreshMountedChartThemes()`가 이미 마운트된 canvas도 갱신한다.
 - 공용 클래스 전역: `.chart-container`·`.callout`·`.block`·`.ab-pill`·`.cmdk-*`·`.toast-*`·`.pvm-*` 등. 차트 색은 `CHART_THEME` getter(하드코딩 hex 금지).
 - 분석 페이지 제목은 `ToolPageShell` **또는** 라우터가 주입하는 `ToolIntro` 중 하나만 사용한다(유일 `h1`). 최종 결과는 `ResultActionCard`의 Decision Tape(결론·근거·다음 행동·연결 분석)를 공용 계약으로 사용한다.
-- 접근성 계약: 실제 `h1/h2`, `tablist/tab/tabpanel`, Cmd-K combobox/listbox, async CSV 상태/오류 live semantics, `:focus-visible` 유지.
+- 접근성 계약: 실제 `h1/h2`, `tablist/tab/tabpanel`, Cmd-K combobox/listbox, async CSV 상태/오류 live semantics, `:focus-visible` 유지. 동적 도구와 일반 페이지는 각각 route error boundary를 가지며 root layout 오류는 `global-error.js`가 복구한다.
 
 ## 5.1 콘텐츠 SEO·전환 경로
 - **공개 범위 SSOT**: `routeMap.isRoutePublished()` + `getAllPosts/getAllTerms`. preview/내부 route와 `draft:true` 콘텐츠는 `noindex`이고 sitemap/RSS/탐색 허브에서 제외한다.

@@ -53,7 +53,6 @@ export default function StartGate({ locale = "ko" }) {
   const startMyData = useAppStore((s) => s.startMyData);
   const csvData = useAppStore((s) => s.csvData);
   const handoffCsvToRoute = useAppStore((s) => s.handoffCsvToRoute);
-  const isAnalyzed = useAppStore((s) => s.isGroupAnalyzed("start-gate"));
 
   // 진입 = 내 데이터 의도 → 데모 자동로드 억제 + 이미 로드된 데모 슬라이스 비움.
   useEffect(() => {
@@ -66,6 +65,7 @@ export default function StartGate({ locale = "ko" }) {
   const diagnosis = useMemo(() => buildRouterDiagnosis({ canonicalData: csvData.canonicalData, mapping: csvData.mapping, locale }), [csvData.mapping, csvData.canonicalData, locale]);
   const eligibility = useMemo(() => ROUTER_TOOL_IDS.map((toolId) => evaluateEligibility({ toolId, mapping: csvData.mapping, canonicalData: csvData.canonicalData, diagnosis })), [csvData.mapping, csvData.canonicalData, diagnosis]);
   const recommended = rankRecommendedAnalyses(eligibility);
+  const hasPreparedData = Boolean(csvData.canonicalData?.records?.length);
   const getTitle = (id) => {
     const meta = IA.flatMap((group) => group.items).find((item) => item.id === id);
     return meta ? trItemTitle(id, locale, meta.title) : id;
@@ -94,19 +94,22 @@ export default function StartGate({ locale = "ko" }) {
       </aside>
 
       <section className="block" style={{ marginTop: "1.2rem" }}>
-        <CsvUploader toolId="start-gate" locale={locale} />
+        <CsvUploader
+          toolId="start-gate"
+          locale={locale}
+          afterFileSummary={hasPreparedData ? (
+            <AnalysisEligibilityList
+              results={[...recommended, ...eligibility.filter((item) => !recommended.includes(item))]}
+              getTitle={getTitle}
+              onOpen={openRecommended}
+              locale={locale}
+              provisional
+            />
+          ) : null}
+        />
       </section>
 
-      {isAnalyzed && (
-        <AnalysisEligibilityList
-          results={[...recommended, ...eligibility.filter((item) => !recommended.includes(item))]}
-          getTitle={getTitle}
-          onOpen={openRecommended}
-          locale={locale}
-        />
-      )}
-
-      {!isAnalyzed && <details className="start-tool-browser">
+      {!hasPreparedData && <details className="start-tool-browser">
         <summary>{C.browseAll}</summary>
         {groups.map((g) => (
         <section key={g.id} className="block">

@@ -3926,45 +3926,7 @@ body:not(.light-mode) .moon-icon {
   border-color: var(--primary);
   background: rgba(173, 198, 255, 0.04);
 }
-/* 데모 데이터 버튼 — 전 도구 공통(동일 디자인·위치, 드롭존 바로 아래) */
-.demo-load-row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  margin: -0.75rem 0 1.25rem;
-}
-.demo-load-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-lg, 10px);
-  border: 1px solid var(--primary);
-  background: var(--surface-container-lowest);
-  color: var(--primary);
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-.demo-load-btn:hover {
-  background: var(--primary);
-  color: var(--surface-base, #0b0d12);
-}
-.demo-load-icon { font-size: 13px; line-height: 1; }
-.demo-load-hint {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-/* CsvUploader가 드롭존과 데모버튼 사이에 GoogleSheetConnect를 끼워넣는 경로 전용
-   (§google-sheets 겹침 버그) — 기본 음수 마진은 "드롭존 바로 아래" 전제라 그 사이에
-   가변 높이 형제가 끼면 위 요소와 겹침. 이 클래스가 있을 땐 양수 여백으로 재정의. */
-.demo-load-row.demo-load-row--spaced {
-  margin-top: 0.75rem;
-}
-/* 구글 시트 연동 진입 버튼 — CSV 드롭존과 대등한 선택지로 강조(§CSV-only 포지셔닝
-   변경). demo-load-btn과 같은 톤(테두리 강조 + hover 채움)이되 더 크게. */
+/* 구글 시트 연동 진입 버튼 — CSV 드롭존과 대등한 선택지로 강조. */
 .sheet-connect-btn {
   display: inline-flex;
   align-items: center;
@@ -4012,6 +3974,23 @@ body:not(.light-mode) .moon-icon {
 .csv-guide-line { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .csv-guide-when { font-size: 12.5px; color: var(--text-primary); line-height: 1.5; }
 .csv-guide-need { font-size: 11px; color: var(--text-muted); }
+.csv-guide-effort { color: var(--text-secondary); font: 650 9px var(--font-mono); letter-spacing: .025em; }
+.csv-guide-actions { display: flex; flex-shrink: 0; align-items: center; gap: 7px; }
+.csv-guide-example-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid color-mix(in srgb, var(--success) 54%, var(--border));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+  color: var(--success);
+  font-size: 11px;
+  font-weight: 720;
+  cursor: pointer;
+}
+.csv-guide-example-btn:hover, .csv-guide-example-btn:focus-visible { border-color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); outline: 0; }
 .csv-guide-btn {
   flex-shrink: 0;
   padding: 7px 13px;
@@ -4025,6 +4004,28 @@ body:not(.light-mode) .moon-icon {
   transition: background 0.15s ease, color 0.15s ease;
 }
 .csv-guide-btn:hover { background: var(--primary); color: var(--surface-base, #0b0d12); }
+
+.evidence-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-container-low);
+  color: var(--text-secondary);
+  font: 650 9.5px var(--font-mono);
+  text-decoration: none;
+}
+.evidence-status-badge > span:first-child { font-size: 7px; }
+.evidence-status-badge.is-ready { border-color: color-mix(in srgb, var(--success) 44%, var(--border)); color: var(--success); }
+.evidence-status-badge.is-caution { border-color: color-mix(in srgb, var(--warning) 48%, var(--border)); color: var(--warning); }
+.evidence-status-badge.is-insufficient, .evidence-status-badge.is-abstain { border-style: dashed; color: var(--text-secondary); }
+.evidence-status-badge.is-error { border-color: color-mix(in srgb, var(--danger) 48%, var(--border)); color: var(--danger); }
+.evidence-status-badge:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.evidence-status-badge__info { color: currentColor; opacity: .72; }
+.result-evidence-status { margin: 10px 0 0 47px; }
 
 .csv-guide-overlay {
   position: fixed;
@@ -4964,6 +4965,8 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .decision-review__comparison small { display: block; margin-bottom: 2px; color: var(--text-muted); font-size: 8px; }
 .decision-review__comparison > b { color: var(--primary); text-align: center; font: 700 13px var(--font-mono); }
 .decision-review__comparison input, .decision-review__record-footer input { padding: 5px 7px; }
+.decision-review__delta { margin: 5px 0 0 113px; color: var(--text-muted); font: 600 9px var(--font-mono); }
+.decision-review__delta strong { margin-left: 5px; color: var(--primary); }
 .decision-review__record-footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 7px; margin-top: 7px; }
 .decision-review__record-footer > span { color: var(--text-muted); font: 500 9px var(--font-mono); white-space: nowrap; }
 .decision-review__remove { color: var(--text-muted); font-size: 10px; }
@@ -5013,6 +5016,8 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .weekly-review-record__question strong { color: var(--text-primary); font-size: 11px; line-height: 1.45; }
 .weekly-review-record__baseline { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 6px 10px; margin-top: 12px; padding: 8px 0; border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); color: var(--text-muted); font: 500 10px var(--font-mono); }
 .weekly-review-record__baseline strong { color: var(--text-secondary); font-weight: 600; }
+.weekly-review-record__delta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 7px; padding: 8px 10px; border-left: 2px solid var(--primary); background: color-mix(in srgb, var(--primary) 5%, transparent); color: var(--text-muted); font: 650 9px var(--font-mono); }
+.weekly-review-record__delta strong { color: var(--primary); font-size: 11px; }
 .weekly-review-record__fields { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-top: 10px; }
 .weekly-review-record__fields label > span { display: block; margin-bottom: 4px; color: var(--text-muted); font: 700 9px var(--font-mono); letter-spacing: .04em; }
 .weekly-review-record__fields input { box-sizing: border-box; width: 100%; min-height: 32px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; outline: 0; background: var(--surface-container-low); color: var(--text-primary); font: 500 11px var(--font-sans); }
@@ -5270,6 +5275,7 @@ body.light-mode .dashboard-tabs .ab-pill.active { color: #fff; }
 .analysis-recommendations { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
 .analysis-recommendations__head > span { color: var(--primary); font: 700 9px var(--font-mono); letter-spacing: .12em; }
 .analysis-recommendations__head h2 { margin: 7px 0 17px; color: var(--text-primary); font: 650 clamp(23px,3vw,32px) var(--font-display); letter-spacing: -.045em; }
+.analysis-recommendations__head p { max-width: 690px; margin: -8px 0 17px; color: var(--text-secondary); font-size: 11px; line-height: 1.55; }
 .analysis-recommendations__grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; }
 .eligibility-card { display: flex; flex-direction: column; min-height: 285px; padding: 17px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-container-lowest); }
 .eligibility-card.ready { border-top: 3px solid var(--success); }
@@ -5280,7 +5286,7 @@ body.light-mode .dashboard-tabs .ab-pill.active { color: #fff; }
 .eligibility-card h3 { margin: 16px 0 0; color: var(--text-primary); font: 650 18px var(--font-display); letter-spacing: -.035em; }
 .eligibility-card__outcome { display: grid; gap: 4px; margin: 10px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.55; }
 .eligibility-card__outcome b { color: var(--text-muted); font: 600 8px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
-.eligibility-card__facts { display: flex; gap: 6px; margin-top: 13px; }
+.eligibility-card__facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px; }
 .eligibility-card__facts span { padding: 4px 6px; border-radius: 4px; color: var(--text-muted); background: var(--surface-container-low); font: 500 8px var(--font-mono); }
 .eligibility-card__reason { margin: 10px 0 15px; color: var(--text-muted); font-size: 10px; line-height: 1.45; }
 .eligibility-card .btn { justify-content: space-between; width: 100%; margin-top: auto; }
@@ -7890,6 +7896,8 @@ body.light-mode .dashboard-tabs .ab-pill.active {
   .csv-demo-banner { align-items: stretch; flex-direction: column; }
   .csv-demo-banner .ab-button { min-height: 44px; }
   .csv-guide-summary { align-items: stretch; }
+  .csv-guide-actions { align-items: stretch; flex-direction: column; }
+  .csv-guide-example-btn { justify-content: space-between; min-height: 44px; }
   .csv-guide-btn { min-height: 44px; }
   .csv-guide-modal-foot { align-items: stretch; flex-direction: column-reverse; }
   .csv-guide-modal-foot .btn { min-height: 44px; justify-content: center; }

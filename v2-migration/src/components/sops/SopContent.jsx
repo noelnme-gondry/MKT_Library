@@ -2737,118 +2737,6 @@ function findMeta(id) {
             }
             PAGE_RENDERERS["4-3"] = page_4_3;
 
-            /* ---------- 4-4. 모바일 광고 프로드(Ad Fraud) 탐지 ---------- */
-            function page_4_4() {
-              const meta = findMeta("4-4");
-              return pageShell(meta, {
-                deck: "모바일 광고 프로드는 연간 글로벌 광고 예산의 8~15%를 잠식한다. Adjust Fraud Prevention Suite의 탐지 시그널 13종을 모두 활성화하고 매주 모니터링.",
-                chips: `
-            <span class="chip"><span class="dot"></span>도구 · Adjust Fraud Suite</span>
-            <span class="chip warning"><span class="dot"></span>유형 <span class="tnum">5</span>종 / 시그널 <span class="tnum">13</span>종</span>`,
-                summary:
-                  "광고 프로드는 5가지 유형으로 분류된다: (1) Click Spam (대량 가짜 클릭), (2) Click Injection (Android Install Referrer 가로채기), (3) SDK Spoofing (가짜 install 신호 위조), (4) Device Farm (실제 디바이스 농장), (5) Fake Engagement (가짜 인앱 이벤트). 각각 다른 탐지 시그널이 필요.",
-                toc: [
-                  { id: "s-types", title: "프로드 유형 5종" },
-                  { id: "s-signals", title: "탐지 시그널 13종" },
-                  { id: "s-action", title: "차단 절차" },
-                  { id: "s-trouble", title: "트러블슈팅" },
-                ],
-                body: `
-            <section class="block" id="s-types">
-              <h2 class="section-title"><span class="ix">§1</span>프로드 유형 5종</h2>
-              ${dataTable(
-                [
-                  { label: "유형", type: "string" },
-                  { label: "설명", type: "string" },
-                  { label: "Adjust 차단", type: "string" },
-                ],
-                [
-                  [
-                    "Click Spam",
-                    "광고 미노출 사용자에게도 대량 클릭 발생시켜 install을 가로챔",
-                    { html: '<span class="pill tier-1">자동</span>' },
-                  ],
-                  [
-                    "Click Injection",
-                    "Android Install Referrer broadcast를 가로채 직전 클릭 위조",
-                    { html: '<span class="pill tier-1">자동</span>' },
-                  ],
-                  [
-                    "SDK Spoofing",
-                    "Adjust SDK 통신을 reverse engineering해 가짜 install 신호 전송",
-                    { html: '<span class="pill tier-1">자동</span>' },
-                  ],
-                  [
-                    "Device Farm",
-                    "실제 디바이스 수십~수천 대로 install 양산 (사람 같지만 패턴 있음)",
-                    { html: '<span class="pill tier-2">반자동</span>' },
-                  ],
-                  [
-                    "Fake Engagement",
-                    "incentivized 트래픽 또는 봇으로 인앱 이벤트 위조 (KPI 부풀리기)",
-                    { html: '<span class="pill tier-3">수동</span>' },
-                  ],
-                ],
-              )}
-            </section>
-
-            <section class="block" id="s-signals">
-              <h2 class="section-title"><span class="ix">§2</span>탐지 시그널 13종</h2>
-              <ol>
-                <li><strong>CTIT(Click-to-Install Time) 분포 이상</strong> — 정상은 lognormal, 프로드는 spike</li>
-                <li><strong>너무 짧은 CTIT (10초 미만)</strong> — Click Injection 가능성</li>
-                <li><strong>너무 긴 CTIT (24시간+)</strong> — Click Spam 가능성</li>
-                <li><strong>동일 IP에서 비정상적 install 수</strong></li>
-                <li><strong>VPN/Datacenter IP 비율</strong> — 일반 트래픽은 1% 미만, 프로드는 10%+</li>
-                <li><strong>Emulator/Rooted 디바이스 비율</strong></li>
-                <li><strong>IDFA/GAID 신규성</strong> — 모든 install이 새 디바이스 ID면 의심</li>
-                <li><strong>비정상 디바이스 모델 분포</strong> — 특정 저가 모델 집중</li>
-                <li><strong>D1 retention 비정상</strong> — 정상 25%+, 프로드는 5% 미만</li>
-                <li><strong>이벤트 발생 시간 패턴</strong> — 24시간 균등 분포(봇) vs 활동 시간 집중(사람)</li>
-                <li><strong>인앱 액션 시퀀스</strong> — 정상 사용자 흐름과 다른 순서</li>
-                <li><strong>매체별 incremental 차이</strong> — 일반 ROAS는 높은데 GeoX iROAS는 0에 가까움</li>
-                <li><strong>Reattribution 비율</strong> — 같은 디바이스 ID가 짧은 주기로 재설치</li>
-              </ol>
-            </section>
-
-            <section class="block" id="s-action">
-              <h2 class="section-title"><span class="ix">§3</span>차단 절차</h2>
-              <ol>
-                <li>Adjust → Fraud Prevention 메뉴에서 Suite 전체 활성화 (Click Injection, Click Spam, SDK Signature, Distribution Outlier)</li>
-                <li>매주 Rejected Install 리포트 다운로드, 매체별 프로드 비율 추적</li>
-                <li>특정 매체 프로드 비율 5% 초과 시 1차 경고, 10% 초과 시 일시 정지</li>
-                <li>리펀드 정책: Adjust 자동 차단된 install은 매체사 청구 무효화. 매체사가 거부 시 Adjust 증빙 데이터로 재청구.</li>
-              </ol>
-            </section>
-
-            <section class="block" id="s-trouble">
-              <h2 class="section-title"><span class="ix">§4</span>트러블슈팅</h2>
-              <div class="callout danger">
-                <div class="ico">!</div>
-                <div class="body">
-                  <strong>차단된 install이 매체 대시보드에는 보고됨</strong>
-                  <p>Adjust 차단 ≠ 매체 차단. 매체사 청구를 무효화하려면 매체별 fraud dispute 절차 진행. Adjust → Partner Setup에서 Rejected Postback 활성화 후 매체에 1차 통보.</p>
-                </div>
-              </div>
-              <div class="callout warn">
-                <div class="ico">!</div>
-                <div class="body">
-                  <strong>특정 매체의 D1 retention만 비정상적으로 낮다</strong>
-                  <p>incentivized 트래픽(install 보상 받고 즉시 삭제) 또는 봇. 1) 해당 매체와 incentive 트래픽 제외 협상. 2) 안 되면 즉시 캠페인 중단. 3) Adjust Distribution Outlier로 자동 차단 강도 상향.</p>
-                </div>
-              </div>
-              <div class="callout info">
-                <div class="ico">i</div>
-                <div class="body">
-                  <strong>SKAN 트래픽의 프로드 탐지</strong>
-                  <p>SKAN postback은 Apple이 서명/암호화 처리하므로 SDK Spoofing 불가능. 단, Click Spam은 여전히 가능 — Apple Console의 redownload 플래그 활용해 의심 트래픽 분리.</p>
-                </div>
-              </div>
-            </section>
-          `,
-              });
-            }
-
 /* ---------- 8-1. CSV 데이터 준비 & 컬럼 매핑 가이드 ---------- */
 function page_8_1() {
   const meta = findMeta("8-1");
@@ -2982,7 +2870,6 @@ const PAGE_RENDERERS_MAP = {
   "4-1": typeof page_4_1 !== 'undefined' ? page_4_1 : null,
   "4-2": typeof page_4_2 !== 'undefined' ? page_4_2 : null,
   "4-3": typeof page_4_3 !== 'undefined' ? page_4_3 : null,
-  "4-4": typeof page_4_4 !== 'undefined' ? page_4_4 : null,
   "4-5": typeof page_4_5 !== 'undefined' ? page_4_5 : null,
   "4-6": typeof page_4_6 !== 'undefined' ? page_4_6 : null,
   "4-7": typeof page_4_7 !== 'undefined' ? page_4_7 : null,

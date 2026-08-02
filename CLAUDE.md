@@ -70,7 +70,7 @@ Next.js 16 (App Router, Turbopack) · React 19 · Zustand 5 (store) · Chart.js 
 | 5-3 | 예산 배분 (절대 CPR/ROAS 가중 + 한계효용 그리디) | **free** | 효율 CSV |
 | 5-4 | 실험 분석 (A/B: 설계+판독 2탭) | free | 수동/CSV |
 | 5-23 | 증분 분석 (홀드아웃 3방법: 통제군·신규켜기(on)·종료(off)) | free | 자체 CSV(그룹 독립) |
-| 5-6 | 소재 분석 | free | 소재 daily CSV |
+| 9-6 | 소재 분석 (구 5-6 통합) | free | 소재 daily CSV |
 | 5-18 | 마케팅 반응 분석 (3탭: 카니발 진단·MMM 기여·**회귀+미래예측**[Cost·임의변수 자유매핑·OS별 분리·MMM브리지]) | free | 주간 패널 CSV |
 | 5-20 | 핵심 가치 발굴 (Aha-moment — 선행 행동 윈도우×횟수 그리드 탐색, F1/Lift) | free | 이벤트 CSV |
 | 5-21 | 캠페인 성과 변동 탐지 (PVM 무잔차 분해) | **free** | 소재 CSV 공유 |

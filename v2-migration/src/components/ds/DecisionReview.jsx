@@ -4,7 +4,7 @@ import React, { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import Papa from "papaparse";
 import { trackProductEvent } from "@/lib/analytics";
-import { getDecisionReviewBucket, normalizeDecisionReviewRows, serializeDecisionReviewCsv, toLocalDecisionDate } from "@/lib/decisionReview";
+import { decisionNumericComparison, getDecisionReviewBucket, normalizeDecisionReviewRows, serializeDecisionReviewCsv, toLocalDecisionDate } from "@/lib/decisionReview";
 import { DECISION_REVIEW_OPEN_EVENT } from "@/lib/decisionReviewUi";
 import { useAppStore } from "@/store/useDataStore";
 import { downloadCsv } from "@/utils/download";
@@ -95,6 +95,7 @@ const COPY = {
     imported: (count) => `${count}개의 결정 기록을 불러왔습니다.`,
     error: "실행할 변경 내용을 먼저 적어 주세요.",
     ledger: "BASELINE → ACTUAL",
+    change: "기준 대비",
     openWeeklyReview: "주간 검토 열기 →",
   },
   en: {
@@ -140,6 +141,7 @@ const COPY = {
     imported: (count) => `Imported ${count} decision ${count === 1 ? "record" : "records"}.`,
     error: "Add the action you plan to take first.",
     ledger: "BASELINE → ACTUAL",
+    change: "vs baseline",
     openWeeklyReview: "Open weekly review →",
   },
 };
@@ -364,6 +366,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
             {records.map((record) => {
               const bucket = getDecisionReviewBucket(record);
               const statusLabel = bucket === "reviewed" ? t.reviewed : t[bucket] || t.pending;
+              const comparison = decisionNumericComparison(record);
               return (
               <article className="decision-review__record" key={record.id}>
                 <div className="decision-review__record-head">
@@ -382,6 +385,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
                     <input value={record.actual} onChange={(event) => updateRecord(record.id, "actual", event.target.value)} placeholder={t.actualPlaceholder} />
                   </label>
                 </div>
+                {comparison && <div className="decision-review__delta">{t.change} <strong>{comparison.delta > 0 ? "+" : ""}{comparison.delta.toLocaleString(locale === "en" ? "en-US" : "ko-KR", { maximumFractionDigits: 2 })}{comparison.isPercentPoint ? (locale === "en" ? " pp" : "%p") : ""}</strong></div>}
                 <div className="decision-review__record-footer">
                   <span>{record.reviewDate || "—"}</span>
                   <label>

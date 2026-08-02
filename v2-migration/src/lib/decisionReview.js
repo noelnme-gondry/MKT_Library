@@ -109,6 +109,32 @@ export function getDecisionReviewBucket(record = {}, today = toLocalDecisionDate
   return "upcoming";
 }
 
+function firstNumericValue(value) {
+  const match = String(value ?? "").match(/[+-]?(?:\d[\d,\s]*)(?:\.\d+)?/);
+  if (!match) return null;
+  const parsed = Number(match[0].replace(/[,\s]/g, ""));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+// 결정 기록에는 원본 행이 아니라 사용자가 확인한 요약 문자열만 있다. 기준·실제값의
+// 첫 숫자가 모두 읽힐 때만 중립적인 델타를 계산하고, 좋음/나쁨 방향은 지표마다 달라
+// 임의 판정하지 않는다.
+export function decisionNumericComparison(record = {}) {
+  const baseline = firstNumericValue(record.baseline);
+  const actual = firstNumericValue(record.actual);
+  const baselineIsPercent = String(record.baseline || "").includes("%");
+  const actualIsPercent = String(record.actual || "").includes("%");
+  if (!Number.isFinite(baseline) || !Number.isFinite(actual) || baselineIsPercent !== actualIsPercent) return null;
+  const delta = actual - baseline;
+  return {
+    baseline,
+    actual,
+    delta,
+    changePct: baseline === 0 ? null : delta / Math.abs(baseline),
+    isPercentPoint: baselineIsPercent,
+  };
+}
+
 export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
   if (!row || typeof row !== "object" || Array.isArray(row)) return null;
   const action = asText(field(row, "action"), FIELD_LIMITS.action);

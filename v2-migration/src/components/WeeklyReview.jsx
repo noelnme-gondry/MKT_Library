@@ -4,6 +4,7 @@ import React, { useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
 import {
   getDecisionReviewBucket,
+  decisionNumericComparison,
   normalizeDecisionReviewRows,
   serializeDecisionReviewCsv,
   toLocalDecisionDate,
@@ -49,6 +50,7 @@ const COPY = {
     conclusion: "당시 결론",
     reviewQuestion: "검토 질문",
     sourcePeriod: "분석 기간",
+    change: "기준 대비 변화",
   },
   en: {
     eyebrow: "WEEKLY REVIEW",
@@ -86,12 +88,22 @@ const COPY = {
     conclusion: "Original conclusion",
     reviewQuestion: "Review question",
     sourcePeriod: "Analysis period",
+    change: "Change from baseline",
   },
 };
 
 function toolName(toolId, locale) {
   const meta = findMeta(toolId);
   return localizedTool(toolId, locale)?.title || (locale === "en" ? meta?.titleEn : meta?.title) || toolId || "—";
+}
+
+function comparisonLabel(comparison, locale) {
+  if (!comparison) return "";
+  const formatter = new Intl.NumberFormat(locale === "en" ? "en-US" : "ko-KR", { maximumFractionDigits: 2 });
+  const sign = comparison.delta > 0 ? "+" : "";
+  const unit = comparison.isPercentPoint ? (locale === "en" ? " pp" : "%p") : "";
+  const ratio = comparison.changePct == null ? "" : ` · ${comparison.changePct > 0 ? "+" : ""}${(comparison.changePct * 100).toFixed(1)}%`;
+  return `${sign}${formatter.format(comparison.delta)}${unit}${ratio}`;
 }
 
 export function buildBrief(records, t, locale) {
@@ -213,6 +225,7 @@ export default function WeeklyReview({ locale = "ko" }) {
           {sortedRecords.map((record) => {
             const status = getDecisionReviewBucket(record, todayKey);
             const statusLabel = t[status];
+            const comparison = decisionNumericComparison(record);
             return <article key={record.id} className="weekly-review-record">
               <div className="weekly-review-record__top">
                 <span>{toolName(record.toolId, locale)}</span>
@@ -226,6 +239,7 @@ export default function WeeklyReview({ locale = "ko" }) {
                 <span>{t.baseline}</span><strong>{record.metric || t.noMetric} · {record.baseline || "—"}</strong>
                 {record.sourcePeriod && <><span>{t.sourcePeriod}</span><strong>{record.sourcePeriod}</strong></>}
               </div>
+              {comparison && <div className="weekly-review-record__delta"><span>{t.change}</span><strong>{comparisonLabel(comparison, locale)}</strong></div>}
               <div className="weekly-review-record__fields">
                 <label><span>{t.reviewDate}</span><input type="date" value={record.reviewDate} onChange={(event) => updateRecord(record.id, "reviewDate", event.target.value)} /></label>
                 <label><span>{t.actual}</span><input aria-label={`${t.actual} — ${record.action}`} value={record.actual} onChange={(event) => updateRecord(record.id, "actual", event.target.value)} /></label>
