@@ -3,10 +3,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Papa from "papaparse";
 import {
+  assessDecisionOutcome,
   getDecisionReviewBucket,
-  decisionNumericComparison,
+  decisionMetricDirection,
   normalizeDecisionReviewRows,
   serializeDecisionReviewCsv,
+  summarizeDecisionOutcomes,
   toLocalDecisionDate,
 } from "@/lib/decisionReview";
 import { localizedTool } from "@/lib/toolConnections";
@@ -52,6 +54,22 @@ const COPY = {
     reviewQuestion: "검토 질문",
     sourcePeriod: "분석 기간",
     change: "기준 대비 변화",
+    outcomeSummary: "지난 판단 결과",
+    outcomeSummaryDeck: "기준값과 실제값이 숫자인 기록만 집계합니다. 목표 방향이 있을 때만 개선·악화를 판정합니다.",
+    improved: "지표 개선",
+    declined: "지표 악화",
+    unchanged: "변화 없음",
+    unscored: "방향 판정 보류",
+    targetDirection: "무엇이 개선인가요?",
+    directionUnset: "방향 선택 · 변화량만 표시",
+    directionHigher: "높아지면 개선",
+    directionLower: "낮아지면 개선",
+    directionNeutral: "방향 판정 안 함",
+    lowerHint: "낮을수록 좋은 지표 기준",
+    higherHint: "높을수록 좋은 지표 기준",
+    unscoredHint: "좋고 나쁨을 정하지 않고 변화량만 표시",
+    actualPlaceholder: "예: 4,980 또는 15.2%",
+    outcome: "기준 대비 결과",
   },
   en: {
     eyebrow: "WEEKLY REVIEW",
@@ -90,6 +108,22 @@ const COPY = {
     reviewQuestion: "Review question",
     sourcePeriod: "Analysis period",
     change: "Change from baseline",
+    outcomeSummary: "Previous decision outcomes",
+    outcomeSummaryDeck: "Only records with numeric baselines and actuals are counted. Better or worse is shown only when the target direction is known.",
+    improved: "Metric improved",
+    declined: "Metric declined",
+    unchanged: "No change",
+    unscored: "Direction not scored",
+    targetDirection: "What counts as improvement?",
+    directionUnset: "Choose a direction · show change only",
+    directionHigher: "Higher is better",
+    directionLower: "Lower is better",
+    directionNeutral: "Do not judge direction",
+    lowerHint: "Scored as a lower-is-better metric",
+    higherHint: "Scored as a higher-is-better metric",
+    unscoredHint: "Shows the change without calling it better or worse",
+    actualPlaceholder: "e.g. 4,980 or 15.2%",
+    outcome: "Outcome vs baseline",
   },
 };
 
@@ -115,6 +149,8 @@ export function buildBrief(records, t, locale) {
     lines.push(`- ${t.reviewDate}: ${record.reviewDate || "—"}`);
     lines.push(`- ${t.baseline}: ${record.metric || t.noMetric} ${record.baseline || "—"}`);
     lines.push(`- ${getDecisionReviewBucket(record, today) === "reviewed" ? t.briefReviewed : t.briefPending}: ${record.actual || "—"}`);
+    const outcome = assessDecisionOutcome(record);
+    if (outcome.comparison && t.outcome && t[outcome.state]) lines.push(`- ${t.outcome}: ${t[outcome.state]} · ${comparisonLabel(outcome.comparison, locale)}`);
     lines.push(`- ${t.learning}: ${record.learning || "—"}`);
     if (record.hypothesis) lines.push(`- ${t.hypothesis}: ${record.hypothesis}`);
     if (record.conclusion) lines.push(`- ${t.conclusion}: ${record.conclusion}`);
@@ -149,6 +185,7 @@ export default function WeeklyReview({ locale = "ko" }) {
     counts[bucket] += 1;
     return counts;
   }, { overdue: 0, today: 0, upcoming: 0, unscheduled: 0, reviewed: 0 }), [sortedRecords, todayKey]);
+  const outcomeCounts = useMemo(() => summarizeDecisionOutcomes(sortedRecords), [sortedRecords]);
 
   useEffect(() => {
     if (hasTrackedInboxView.current) return;
@@ -207,6 +244,21 @@ export default function WeeklyReview({ locale = "ko" }) {
         ))}
       </section>
 
+      <section className="weekly-review-page__outcomes" aria-label={t.outcomeSummary}>
+        <div className="weekly-review-page__outcomes-copy">
+          <strong>{t.outcomeSummary}</strong>
+          <p>{t.outcomeSummaryDeck}</p>
+        </div>
+        <div className="weekly-review-page__outcomes-ledger">
+          {(["improved", "declined", "unchanged", "unscored"]).map((state) => (
+            <div key={state} className={`weekly-review-page__outcome-count ${state}`}>
+              <span>{t[state]}</span>
+              <strong>{outcomeCounts[state]}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className={`weekly-review-page__storage ${isPersistenceEnabled ? "is-enabled" : ""}`}>
         <div>
           <strong>{t.persistence}</strong>
@@ -251,7 +303,10 @@ export default function WeeklyReview({ locale = "ko" }) {
           {sortedRecords.map((record) => {
             const status = getDecisionReviewBucket(record, todayKey);
             const statusLabel = t[status];
-            const comparison = decisionNumericComparison(record);
+            const outcome = assessDecisionOutcome(record);
+            const comparison = outcome.comparison;
+            const targetDirection = record.targetDirection || decisionMetricDirection(record.metric);
+            const outcomeHint = outcome.direction === "lower" ? t.lowerHint : outcome.direction === "higher" ? t.higherHint : t.unscoredHint;
             return <article key={record.id} className="weekly-review-record">
               <div className="weekly-review-record__top">
                 <span>{toolName(record.toolId, locale)}</span>
@@ -265,10 +320,23 @@ export default function WeeklyReview({ locale = "ko" }) {
                 <span>{t.baseline}</span><strong>{record.metric || t.noMetric} · {record.baseline || "—"}</strong>
                 {record.sourcePeriod && <><span>{t.sourcePeriod}</span><strong>{record.sourcePeriod}</strong></>}
               </div>
-              {comparison && <div className="weekly-review-record__delta"><span>{t.change}</span><strong>{comparisonLabel(comparison, locale)}</strong></div>}
+              <label className="weekly-review-record__direction">
+                <span>{t.targetDirection}</span>
+                <select aria-label={`${t.targetDirection} — ${record.action}`} value={targetDirection} onChange={(event) => updateRecord(record.id, "targetDirection", event.target.value)}>
+                  <option value="">{t.directionUnset}</option>
+                  <option value="higher">{t.directionHigher}</option>
+                  <option value="lower">{t.directionLower}</option>
+                  <option value="neutral">{t.directionNeutral}</option>
+                </select>
+              </label>
+              {comparison && <div className={`weekly-review-record__outcome ${outcome.state}`}>
+                <span>{t[outcome.state]}</span>
+                <strong>{comparisonLabel(comparison, locale)}</strong>
+                <small>{outcomeHint}</small>
+              </div>}
               <div className="weekly-review-record__fields">
                 <label><span>{t.reviewDate}</span><input type="date" value={record.reviewDate} onChange={(event) => updateRecord(record.id, "reviewDate", event.target.value)} /></label>
-                <label><span>{t.actual}</span><input aria-label={`${t.actual} — ${record.action}`} value={record.actual} onChange={(event) => updateRecord(record.id, "actual", event.target.value)} /></label>
+                <label><span>{t.actual}</span><input aria-label={`${t.actual} — ${record.action}`} value={record.actual} onChange={(event) => updateRecord(record.id, "actual", event.target.value)} placeholder={t.actualPlaceholder} /></label>
                 <label><span>{t.learning}</span><input aria-label={`${t.learning} — ${record.action}`} value={record.learning} onChange={(event) => updateRecord(record.id, "learning", event.target.value)} /></label>
               </div>
               <button type="button" aria-label={`${record.action} — ${t.remove}`} className="btn text" onClick={() => removeDecisionRecord(record.id)}>{t.remove}</button>

@@ -30,10 +30,12 @@ describe("DecisionReview", () => {
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
     fireEvent.change(screen.getByLabelText("무엇을 바꿀까요?"), { target: { value: "Meta 예산 20% 감액" } });
     fireEvent.change(screen.getByLabelText("검증 지표"), { target: { value: "CPA" } });
+    expect(screen.getByLabelText("무엇이 개선인가요?").value).toBe("lower");
     fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
 
     expect(screen.getByText("Meta 예산 20% 감액")).toBeTruthy();
     expect(screen.getByText("CPA")).toBeTruthy();
+    expect(useAppStore.getState().decisionRecords[0].targetDirection).toBe("lower");
     fireEvent.change(screen.getByPlaceholderText("예: CPA 4,980원"), { target: { value: "CPA 4,980원" } });
     expect(screen.getByText("검토 완료")).toBeTruthy();
   });
