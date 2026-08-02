@@ -4,7 +4,7 @@ import React, { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import Papa from "papaparse";
 import { trackProductEvent } from "@/lib/analytics";
-import { decisionNumericComparison, getDecisionReviewBucket, normalizeDecisionReviewRows, serializeDecisionReviewCsv, toLocalDecisionDate } from "@/lib/decisionReview";
+import { assessDecisionOutcome, decisionMetricDirection, getDecisionReviewBucket, normalizeDecisionReviewRows, serializeDecisionReviewCsv, toLocalDecisionDate } from "@/lib/decisionReview";
 import { DECISION_REVIEW_OPEN_EVENT } from "@/lib/decisionReviewUi";
 import { useAppStore } from "@/store/useDataStore";
 import { downloadCsv } from "@/utils/download";
@@ -23,6 +23,7 @@ function createDraft(prefill = {}) {
     action: text(source.action),
     hypothesis: text(source.hypothesis),
     metric: text(source.metric),
+    targetDirection: ["higher", "lower", "neutral"].includes(text(source.targetDirection)) ? text(source.targetDirection) : "",
     baseline: text(source.baseline),
     reviewQuestion: text(source.reviewQuestion),
     sourcePeriod: text(source.sourcePeriod),
@@ -71,6 +72,12 @@ const COPY = {
     hypothesisPlaceholder: "예: 빈도 과다 캠페인을 줄이면 CPA가 안정된다",
     metric: "검증 지표",
     metricPlaceholder: "예: CPA, ROAS, 전환수",
+    targetDirection: "무엇이 개선인가요?",
+    directionUnset: "방향 선택 · 변화량만 표시",
+    directionHigher: "높아지면 개선",
+    directionLower: "낮아지면 개선",
+    directionNeutral: "방향 판정 안 함",
+    directionHint: "CPA·ROAS 등은 자동 제안되며 언제든 바꿀 수 있습니다.",
     baseline: "현재 기준값 (선택)",
     reviewQuestion: "검토일에 답할 질문",
     reviewQuestionPlaceholder: "예: CPA가 목표 이하로 회복됐는가?",
@@ -96,6 +103,13 @@ const COPY = {
     error: "실행할 변경 내용을 먼저 적어 주세요.",
     ledger: "BASELINE → ACTUAL",
     change: "기준 대비",
+    improved: "지표 개선",
+    declined: "지표 악화",
+    unchanged: "변화 없음",
+    unscored: "방향 판정 보류",
+    lowerHint: "낮을수록 좋은 지표",
+    higherHint: "높을수록 좋은 지표",
+    unscoredHint: "좋고 나쁨을 정하지 않고 변화량만 표시",
     openWeeklyReview: "주간 검토 열기 →",
   },
   en: {
@@ -117,6 +131,12 @@ const COPY = {
     hypothesisPlaceholder: "e.g. Reducing high-frequency campaigns stabilizes CPA",
     metric: "Metric to review",
     metricPlaceholder: "e.g. CPA, ROAS, conversions",
+    targetDirection: "What counts as improvement?",
+    directionUnset: "Choose a direction · show change only",
+    directionHigher: "Higher is better",
+    directionLower: "Lower is better",
+    directionNeutral: "Do not judge direction",
+    directionHint: "CPA, ROAS, and other clear metrics are suggested automatically and can be changed.",
     baseline: "Current baseline (optional)",
     reviewQuestion: "Question to answer on review day",
     reviewQuestionPlaceholder: "e.g. Did CPA return below target?",
@@ -142,6 +162,13 @@ const COPY = {
     error: "Add the action you plan to take first.",
     ledger: "BASELINE → ACTUAL",
     change: "vs baseline",
+    improved: "Metric improved",
+    declined: "Metric declined",
+    unchanged: "No change",
+    unscored: "Direction not scored",
+    lowerHint: "Lower is better for this metric",
+    higherHint: "Higher is better for this metric",
+    unscoredHint: "Shows the change without calling it better or worse",
     openWeeklyReview: "Open weekly review →",
   },
 };
@@ -225,6 +252,7 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
       action: draft.action.trim(),
       hypothesis: draft.hypothesis.trim(),
       metric: draft.metric.trim(),
+      targetDirection: draft.targetDirection || decisionMetricDirection(draft.metric),
       baseline: draft.baseline.trim(),
       reviewQuestion: draft.reviewQuestion.trim(),
       reviewDate: draft.reviewDate,
@@ -336,6 +364,16 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
             <input value={draft.metric} onChange={(event) => updateDraft("metric", event.target.value)} placeholder={t.metricPlaceholder} />
           </label>
           <label className="decision-review__field">
+            <span>{t.targetDirection}</span>
+            <select aria-label={t.targetDirection} value={draft.targetDirection || decisionMetricDirection(draft.metric)} onChange={(event) => updateDraft("targetDirection", event.target.value)}>
+              <option value="">{t.directionUnset}</option>
+              <option value="higher">{t.directionHigher}</option>
+              <option value="lower">{t.directionLower}</option>
+              <option value="neutral">{t.directionNeutral}</option>
+            </select>
+            <small>{t.directionHint}</small>
+          </label>
+          <label className="decision-review__field">
             <span>{t.baseline}</span>
             <input value={draft.baseline} onChange={(event) => updateDraft("baseline", event.target.value)} placeholder="—" />
           </label>
@@ -366,7 +404,10 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
             {records.map((record) => {
               const bucket = getDecisionReviewBucket(record);
               const statusLabel = bucket === "reviewed" ? t.reviewed : t[bucket] || t.pending;
-              const comparison = decisionNumericComparison(record);
+              const outcome = assessDecisionOutcome(record);
+              const comparison = outcome.comparison;
+              const targetDirection = record.targetDirection || decisionMetricDirection(record.metric);
+              const outcomeHint = outcome.direction === "lower" ? t.lowerHint : outcome.direction === "higher" ? t.higherHint : t.unscoredHint;
               return (
               <article className="decision-review__record" key={record.id}>
                 <div className="decision-review__record-head">
@@ -385,7 +426,22 @@ export default function DecisionReview({ toolId, locale = "ko", decisionPrefill 
                     <input value={record.actual} onChange={(event) => updateRecord(record.id, "actual", event.target.value)} placeholder={t.actualPlaceholder} />
                   </label>
                 </div>
-                {comparison && <div className="decision-review__delta">{t.change} <strong>{comparison.delta > 0 ? "+" : ""}{comparison.delta.toLocaleString(locale === "en" ? "en-US" : "ko-KR", { maximumFractionDigits: 2 })}{comparison.isPercentPoint ? (locale === "en" ? " pp" : "%p") : ""}</strong></div>}
+                <div className="decision-review__direction-row">
+                  <label>
+                    <span>{t.targetDirection}</span>
+                    <select aria-label={`${t.targetDirection} — ${record.action}`} value={targetDirection} onChange={(event) => updateRecord(record.id, "targetDirection", event.target.value)}>
+                      <option value="">{t.directionUnset}</option>
+                      <option value="higher">{t.directionHigher}</option>
+                      <option value="lower">{t.directionLower}</option>
+                      <option value="neutral">{t.directionNeutral}</option>
+                    </select>
+                  </label>
+                  {comparison && <div className={`decision-review__outcome ${outcome.state}`}>
+                    <span>{t[outcome.state]}</span>
+                    <strong>{comparison.delta > 0 ? "+" : ""}{comparison.delta.toLocaleString(locale === "en" ? "en-US" : "ko-KR", { maximumFractionDigits: 2 })}{comparison.isPercentPoint ? (locale === "en" ? " pp" : "%p") : ""}</strong>
+                    <small>{outcomeHint}</small>
+                  </div>}
+                </div>
                 <div className="decision-review__record-footer">
                   <span>{record.reviewDate || "—"}</span>
                   <label>

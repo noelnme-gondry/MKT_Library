@@ -48,6 +48,27 @@ describe("WeeklyReview", () => {
     expect(useAppStore.getState().decisionRecords.find((record) => record.id === "decision_2").reviewDate).toBe("2099-01-01");
   });
 
+  it("shows a conservative outcome ledger and lets ambiguous metrics declare a direction", () => {
+    useAppStore.setState({
+      decisionRecords: [
+        { id: "decision_1", toolId: "5-3", action: "CPA 확인", metric: "CPA", baseline: "5,240원", actual: "4,980원", learning: "", reviewDate: "2020-01-01" },
+        { id: "decision_2", toolId: "5-2", action: "매출 확인", metric: "매출", baseline: "100", actual: "120", learning: "", reviewDate: "2020-01-01" },
+      ],
+    });
+    render(<WeeklyReview />);
+
+    expect(screen.getAllByText("지표 개선").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("방향 판정 보류").length).toBeGreaterThan(0);
+    expect(screen.getByText("낮을수록 좋은 지표 기준")).toBeTruthy();
+    expect(screen.getByText("좋고 나쁨을 정하지 않고 변화량만 표시")).toBeTruthy();
+
+    const directionSelects = screen.getAllByLabelText(/무엇이 개선인가요\?/);
+    const revenueDirection = directionSelects.find((select) => select.value === "");
+    fireEvent.change(revenueDirection, { target: { value: "higher" } });
+    expect(useAppStore.getState().decisionRecords.find((record) => record.id === "decision_2").targetDirection).toBe("higher");
+    expect(screen.getAllByText("지표 개선").length).toBeGreaterThan(1);
+  });
+
   it("tracks the inbox state and the first completed review without decision content", () => {
     useAppStore.setState({
       decisionRecords: [

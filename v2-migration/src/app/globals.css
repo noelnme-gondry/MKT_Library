@@ -4933,13 +4933,14 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .decision-review__prefill > span { color: var(--primary); font: 700 8.5px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
 .decision-review__prefill strong { color: var(--text-primary); font-size: 12px; line-height: 1.45; }
 .decision-review__prefill small { color: var(--text-muted); font: 500 9px var(--font-mono); }
-.decision-review__form { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-top: 12px; }
+.decision-review__form { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-top: 12px; }
 .decision-review__field { min-width: 0; }
-.decision-review__field--wide { grid-column: span 3; }
+.decision-review__field--wide { grid-column: span 4; }
 .decision-review__field > span { display: block; margin: 0 0 4px; color: var(--text-muted); font: 700 9px var(--font-mono); letter-spacing: .04em; }
-.decision-review input { box-sizing: border-box; width: 100%; min-height: 31px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-container-lowest); color: var(--text-primary); font: 500 11px var(--font-sans); }
-.decision-review__field input { padding: 6px 8px; }
-.decision-review input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 16%, transparent); }
+.decision-review__field > small { display: block; margin-top: 4px; color: var(--text-muted); font-size: 8.5px; line-height: 1.35; }
+.decision-review input, .decision-review select { box-sizing: border-box; width: 100%; min-height: 31px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-container-lowest); color: var(--text-primary); font: 500 11px var(--font-sans); }
+.decision-review__field input, .decision-review__field select { padding: 6px 8px; }
+.decision-review input:focus, .decision-review select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 16%, transparent); }
 .decision-review__add { align-self: end; min-height: 31px; justify-content: center; white-space: nowrap; }
 .decision-review__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
 .decision-review__file { display: none; }
@@ -4965,8 +4966,17 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .decision-review__comparison small { display: block; margin-bottom: 2px; color: var(--text-muted); font-size: 8px; }
 .decision-review__comparison > b { color: var(--primary); text-align: center; font: 700 13px var(--font-mono); }
 .decision-review__comparison input, .decision-review__record-footer input { padding: 5px 7px; }
-.decision-review__delta { margin: 5px 0 0 113px; color: var(--text-muted); font: 600 9px var(--font-mono); }
-.decision-review__delta strong { margin-left: 5px; color: var(--primary); }
+.decision-review__direction-row { display: grid; grid-template-columns: minmax(150px,.7fr) minmax(0,1.3fr); gap: 7px; margin: 6px 0 0 113px; }
+.decision-review__direction-row > label { display: grid; gap: 3px; color: var(--text-muted); font: 650 8.5px var(--font-mono); }
+.decision-review__direction-row select { min-height: 28px; padding: 4px 6px; }
+.decision-review__outcome { --outcome-accent: var(--primary); display: grid; grid-template-columns: auto auto minmax(0,1fr); align-items: center; gap: 6px 9px; min-width: 0; padding: 6px 8px; border-left: 2px solid var(--outcome-accent); background: color-mix(in srgb,var(--outcome-accent) 6%,transparent); font-family: var(--font-mono); }
+.decision-review__outcome.improved { --outcome-accent: var(--success); }
+.decision-review__outcome.declined { --outcome-accent: var(--danger); }
+.decision-review__outcome.unchanged { --outcome-accent: var(--text-muted); }
+.decision-review__outcome.unscored { --outcome-accent: var(--warning); }
+.decision-review__outcome > span { color: var(--outcome-accent); font-size: 9px; font-weight: 750; }
+.decision-review__outcome > strong { color: var(--outcome-accent); font-size: 11px; white-space: nowrap; }
+.decision-review__outcome > small { min-width: 0; overflow: hidden; color: var(--text-muted); font-size: 8.5px; text-overflow: ellipsis; white-space: nowrap; }
 .decision-review__record-footer { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 7px; margin-top: 7px; }
 .decision-review__record-footer > span { color: var(--text-muted); font: 500 9px var(--font-mono); white-space: nowrap; }
 .decision-review__remove { color: var(--text-muted); font-size: 10px; }
@@ -4982,6 +4992,18 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .weekly-review-page__summary-item.overdue strong { color: var(--danger); }
 .weekly-review-page__summary-item.today strong { color: var(--warning); }
 .weekly-review-page__summary-item.reviewed strong { color: var(--success); }
+.weekly-review-page__outcomes { display: grid; grid-template-columns: minmax(210px,.8fr) minmax(0,1.2fr); gap: 0; margin-top: 10px; overflow: hidden; border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: 10px; background: var(--surface-container-lowest); }
+.weekly-review-page__outcomes-copy { padding: 13px 15px; border-right: 1px solid var(--border-subtle); }
+.weekly-review-page__outcomes-copy strong { color: var(--text-primary); font: 680 13px var(--font-display); letter-spacing: -.015em; }
+.weekly-review-page__outcomes-copy p { margin: 4px 0 0; color: var(--text-muted); font-size: 10px; line-height: 1.45; }
+.weekly-review-page__outcomes-ledger { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); }
+.weekly-review-page__outcome-count { --outcome-accent: var(--text-muted); display: grid; align-content: center; gap: 5px; min-width: 0; padding: 11px 12px; }
+.weekly-review-page__outcome-count + .weekly-review-page__outcome-count { border-left: 1px solid var(--border-subtle); }
+.weekly-review-page__outcome-count.improved { --outcome-accent: var(--success); }
+.weekly-review-page__outcome-count.declined { --outcome-accent: var(--danger); }
+.weekly-review-page__outcome-count.unscored { --outcome-accent: var(--warning); }
+.weekly-review-page__outcome-count span { overflow: hidden; color: var(--text-muted); font: 700 8px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
+.weekly-review-page__outcome-count strong { color: var(--outcome-accent); font: 690 19px/1 var(--font-display); font-variant-numeric: tabular-nums; }
 .weekly-review-page__storage { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-container-low); }
 .weekly-review-page__storage.is-enabled { border-color: color-mix(in srgb, var(--success) 40%, var(--border)); }
 .weekly-review-page__storage strong { color: var(--text-primary); font-size: 12px; }
@@ -5016,8 +5038,17 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .weekly-review-record__question strong { color: var(--text-primary); font-size: 11px; line-height: 1.45; }
 .weekly-review-record__baseline { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 6px 10px; margin-top: 12px; padding: 8px 0; border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); color: var(--text-muted); font: 500 10px var(--font-mono); }
 .weekly-review-record__baseline strong { color: var(--text-secondary); font-weight: 600; }
-.weekly-review-record__delta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 7px; padding: 8px 10px; border-left: 2px solid var(--primary); background: color-mix(in srgb, var(--primary) 5%, transparent); color: var(--text-muted); font: 650 9px var(--font-mono); }
-.weekly-review-record__delta strong { color: var(--primary); font-size: 11px; }
+.weekly-review-record__direction { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 7px; color: var(--text-muted); font: 650 9px var(--font-mono); }
+.weekly-review-record__direction select { min-height: 31px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-container-low); color: var(--text-primary); font: 500 10px var(--font-sans); }
+.weekly-review-record__direction select:focus { border-color: var(--primary); outline: 2px solid color-mix(in srgb,var(--primary) 18%,transparent); outline-offset: 1px; }
+.weekly-review-record__outcome { --outcome-accent: var(--primary); display: grid; grid-template-columns: auto auto minmax(0,1fr); align-items: center; gap: 7px 11px; margin-top: 7px; padding: 9px 10px; border-left: 3px solid var(--outcome-accent); background: color-mix(in srgb,var(--outcome-accent) 6%,transparent); font-family: var(--font-mono); }
+.weekly-review-record__outcome.improved { --outcome-accent: var(--success); }
+.weekly-review-record__outcome.declined { --outcome-accent: var(--danger); }
+.weekly-review-record__outcome.unchanged { --outcome-accent: var(--text-muted); }
+.weekly-review-record__outcome.unscored { --outcome-accent: var(--warning); }
+.weekly-review-record__outcome > span { color: var(--outcome-accent); font-size: 9px; font-weight: 780; }
+.weekly-review-record__outcome > strong { color: var(--outcome-accent); font-size: 11px; white-space: nowrap; }
+.weekly-review-record__outcome > small { min-width: 0; overflow: hidden; color: var(--text-muted); font-size: 8.5px; text-overflow: ellipsis; white-space: nowrap; }
 .weekly-review-record__fields { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-top: 10px; }
 .weekly-review-record__fields label > span { display: block; margin-bottom: 4px; color: var(--text-muted); font: 700 9px var(--font-mono); letter-spacing: .04em; }
 .weekly-review-record__fields input { box-sizing: border-box; width: 100%; min-height: 32px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; outline: 0; background: var(--surface-container-low); color: var(--text-primary); font: 500 11px var(--font-sans); }
@@ -5484,14 +5515,22 @@ body.light-mode .operator-preview__queue > a { color: #fff; }
   .decision-review__record-footer > label { grid-column: 1 / -1; grid-row: 1; }
   .decision-review__record-footer > span { grid-row: 2; }
   .decision-review__record-footer > button { grid-column: 2; grid-row: 2; }
+  .decision-review__direction-row { grid-template-columns: 1fr; margin-left: 0; }
+  .decision-review__outcome { grid-template-columns: auto auto; }
+  .decision-review__outcome > small { grid-column: 1 / -1; white-space: normal; }
   .decision-review__weekly-link { width: 100%; margin-left: 0; }
   .weekly-review-page { padding: 28px 14px 46px; }
   .weekly-review-page__summary { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .weekly-review-page__summary-item:last-child { grid-column: 1 / -1; }
+  .weekly-review-page__outcomes { grid-template-columns: 1fr; }
+  .weekly-review-page__outcomes-copy { border-right: 0; border-bottom: 1px solid var(--border-subtle); }
   .weekly-review-page__storage { align-items: flex-start; }
   .weekly-review-page__toolbar > span { width: 100%; margin-left: 0; }
   .weekly-review-page__clear { width: 100%; margin-left: 0; justify-content: flex-start; }
   .weekly-review-record__baseline, .weekly-review-record__fields { grid-template-columns: 1fr; }
+  .weekly-review-record__direction { align-items: stretch; flex-direction: column; }
+  .weekly-review-record__outcome { grid-template-columns: auto auto; }
+  .weekly-review-record__outcome > small { grid-column: 1 / -1; white-space: normal; }
   .kpi-grid--overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kpi-grid--overview .kpi-card:nth-child(even) { border-right: 0; }
   .kpi-grid--overview .kpi-card:nth-child(n+3) { border-top: 1px solid var(--border-subtle); }
@@ -6473,9 +6512,12 @@ body.light-mode .app:not(.is-home) .main {
   .decision-review__form { grid-template-columns: 1fr; }
   .decision-review__field--wide { grid-column: 1; }
   .decision-review__field input,
+  .decision-review__field select,
   .decision-review__comparison input,
+  .decision-review__direction-row select,
   .decision-review__record-footer input,
-  .weekly-review-record__fields input { min-height: 44px; }
+  .weekly-review-record__fields input,
+  .weekly-review-record__direction select { min-height: 44px; }
   .decision-review__persistence label { min-height: 44px; }
   .tool-connections--rail .tool-connections__grid {
     display:flex;

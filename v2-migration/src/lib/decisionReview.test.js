@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   DECISION_REVIEW_SAFE_FIELDS,
+  assessDecisionOutcome,
+  decisionMetricDirection,
   decisionNumericComparison,
   getDecisionReviewBucket,
   getDecisionReviewStatus,
   normalizeDecisionReviewRows,
   sanitizeDecisionReviewRecords,
   serializeDecisionReviewCsv,
+  summarizeDecisionOutcomes,
   toLocalDecisionDate,
 } from "@/lib/decisionReview";
 
@@ -19,6 +22,27 @@ describe("decision review CSV contract", () => {
     expect(decisionNumericComparison({ baseline: "18.2%", actual: "4,980원" })).toBeNull();
   });
 
+  it("scores only a declared or conservative metric direction", () => {
+    expect(decisionMetricDirection("평균 CPA")).toBe("lower");
+    expect(decisionMetricDirection("ROAS forecast")).toBe("higher");
+    expect(decisionMetricDirection("OOS 오차")).toBe("lower");
+    expect(decisionMetricDirection("매출")).toBe("");
+
+    expect(assessDecisionOutcome({ metric: "CPA", baseline: "5,240", actual: "4,980" })).toMatchObject({ state: "improved", direction: "lower" });
+    expect(assessDecisionOutcome({ metric: "ROAS", baseline: "1.4", actual: "1.1" })).toMatchObject({ state: "declined", direction: "higher" });
+    expect(assessDecisionOutcome({ metric: "전환수", targetDirection: "higher", baseline: "100", actual: "120" })).toMatchObject({ state: "improved", direction: "higher" });
+    expect(assessDecisionOutcome({ metric: "CPA", targetDirection: "neutral", baseline: "5,240", actual: "4,980" })).toMatchObject({ state: "unscored", direction: "neutral" });
+    expect(assessDecisionOutcome({ metric: "매출", baseline: "100", actual: "120" })).toMatchObject({ state: "unscored", direction: "" });
+    expect(assessDecisionOutcome({ metric: "CPA", baseline: "5,240", actual: "" }).state).toBe("incomplete");
+
+    expect(summarizeDecisionOutcomes([
+      { metric: "CPA", baseline: "5,240", actual: "4,980" },
+      { metric: "ROAS", baseline: "1.4", actual: "1.1" },
+      { metric: "매출", baseline: "100", actual: "120" },
+      { metric: "CPA", baseline: "5,240", actual: "" },
+    ])).toEqual({ improved: 1, declined: 1, unchanged: 0, unscored: 1, comparable: 3 });
+  });
+
   it("exports Excel-safe UTF-8 BOM + CRLF rows without losing commas", () => {
     const csv = serializeDecisionReviewCsv([{
       id: "decision_7",
@@ -26,6 +50,7 @@ describe("decision review CSV contract", () => {
       action: "Meta 예산 20% 감액",
       hypothesis: "CPA가 5,000원 아래로 유지된다",
       metric: "CPA",
+      targetDirection: "lower",
       baseline: "5,240",
       reviewDate: "2026-08-03",
       actual: "4,980",
@@ -35,6 +60,8 @@ describe("decision review CSV contract", () => {
     expect(csv.startsWith("\uFEFF\"tool_id\"")).toBe(true);
     expect(csv).toContain("\r\n");
     expect(csv).toContain("\"5,240\"");
+    expect(csv).toContain("\"target_direction\"");
+    expect(csv).toContain("\"lower\"");
     expect(csv).toContain("\"2026-08-03\"");
     expect(csv).toContain("'=SUM(A1:A2)");
     expect(csv).toContain("\"decision_7\"");

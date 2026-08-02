@@ -1,7 +1,7 @@
 // 결정 기록은 원본 분석 데이터와 분리된 작은 운영 메모다. 브라우저 영속 저장은
 // 사용자가 명시적으로 켠 경우에만 허용하며, 아래 allowlist를 통과한 값만 저장한다.
 // 텍스트 값은 CSV 수식 주입을 막고, Excel 호환을 위해 호출부에서 BOM + CRLF로 저장한다.
-export const DECISION_REVIEW_SCHEMA_VERSION = 2;
+export const DECISION_REVIEW_SCHEMA_VERSION = 3;
 export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "id",
   "toolId",
@@ -10,6 +10,7 @@ export const DECISION_REVIEW_SAFE_FIELDS = Object.freeze([
   "action",
   "hypothesis",
   "metric",
+  "targetDirection",
   "baseline",
   "reviewQuestion",
   "reviewDate",
@@ -28,6 +29,7 @@ export const DECISION_REVIEW_COLUMNS = [
   "action",
   "hypothesis",
   "metric",
+  "target_direction",
   "baseline",
   "review_question",
   "review_date",
@@ -116,6 +118,24 @@ function firstNumericValue(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+const LOWER_IS_BETTER_METRICS = /(^|[^A-Z0-9])(CPA|CPI|CAC|CPR|WMAPE|MAPE|RMSE|MAE)(?=$|[^A-Z0-9])/;
+const HIGHER_IS_BETTER_METRICS = /(^|[^A-Z0-9])(ROAS|ROI|CTR|CVR|LTV|ARPU|AOV|F1|LIFT)(?=$|[^A-Z0-9])/;
+
+function asTargetDirection(value) {
+  const normalized = asText(value, 12).toLowerCase();
+  return ["higher", "lower", "neutral"].includes(normalized) ? normalized : "";
+}
+
+// CPA·ROAS처럼 업계 의미가 안정적인 지표만 자동 제안한다. 비용·전환수·매출처럼
+// 예산이나 목표에 따라 방향이 달라지는 지표는 사용자가 직접 방향을 고르기 전까지
+// 중립으로 남긴다.
+export function decisionMetricDirection(metric) {
+  const normalized = String(metric ?? "").normalize("NFKC").toUpperCase();
+  if (LOWER_IS_BETTER_METRICS.test(normalized) || /(예측\s*)?오차|오류율/.test(normalized)) return "lower";
+  if (HIGHER_IS_BETTER_METRICS.test(normalized) || /전환율|클릭률|리텐션|유지율|달성률/.test(normalized)) return "higher";
+  return "";
+}
+
 // 결정 기록에는 원본 행이 아니라 사용자가 확인한 요약 문자열만 있다. 기준·실제값의
 // 첫 숫자가 모두 읽힐 때만 중립적인 델타를 계산하고, 좋음/나쁨 방향은 지표마다 달라
 // 임의 판정하지 않는다.
@@ -135,6 +155,30 @@ export function decisionNumericComparison(record = {}) {
   };
 }
 
+// "판단이 맞았다"는 인과 주장을 하지 않는다. 저장된 목표 방향과 기준값에 비춰
+// 지표가 좋아졌는지만 분류하고, 방향이 없으면 변화량만 제공한다.
+export function assessDecisionOutcome(record = {}) {
+  const comparison = decisionNumericComparison(record);
+  const explicitDirection = asTargetDirection(record.targetDirection ?? record.target_direction);
+  const direction = explicitDirection || decisionMetricDirection(record.metric);
+  if (!comparison) return { state: "incomplete", direction, comparison: null };
+  if (comparison.delta === 0) return { state: "unchanged", direction, comparison };
+  if (!direction || direction === "neutral") return { state: "unscored", direction: direction || "", comparison };
+  const isImproved = direction === "higher" ? comparison.delta > 0 : comparison.delta < 0;
+  return { state: isImproved ? "improved" : "declined", direction, comparison };
+}
+
+export function summarizeDecisionOutcomes(records = []) {
+  const summary = { improved: 0, declined: 0, unchanged: 0, unscored: 0, comparable: 0 };
+  (Array.isArray(records) ? records : []).forEach((record) => {
+    const outcome = assessDecisionOutcome(record);
+    if (outcome.state === "incomplete") return;
+    summary[outcome.state] += 1;
+    summary.comparable += 1;
+  });
+  return summary;
+}
+
 export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
   if (!row || typeof row !== "object" || Array.isArray(row)) return null;
   const action = asText(field(row, "action"), FIELD_LIMITS.action);
@@ -150,6 +194,7 @@ export function sanitizeDecisionReviewRecord(row, fallbackToolId = "") {
     action,
     hypothesis: asText(field(row, "hypothesis"), FIELD_LIMITS.hypothesis),
     metric: asText(field(row, "metric"), FIELD_LIMITS.metric),
+    targetDirection: asTargetDirection(field(row, "targetDirection", "target_direction")),
     baseline: asText(field(row, "baseline"), FIELD_LIMITS.baseline),
     reviewQuestion: asText(field(row, "reviewQuestion", "review_question"), FIELD_LIMITS.reviewQuestion),
     reviewDate: asDate(field(row, "reviewDate", "review_date")),
@@ -185,6 +230,7 @@ export function serializeDecisionReviewCsv(records = []) {
     record.action,
     record.hypothesis,
     record.metric,
+    record.targetDirection,
     record.baseline,
     record.reviewQuestion,
     record.reviewDate,
