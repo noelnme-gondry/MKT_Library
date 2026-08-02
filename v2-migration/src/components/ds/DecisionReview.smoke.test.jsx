@@ -69,6 +69,33 @@ describe("DecisionReview", () => {
     expect(screen.getByRole("heading", { name: "검색 예산을 10% 시험 증액" })).toBeTruthy();
   });
 
+  it("shows and saves a one-period forecast snapshot without raw forecast arrays", () => {
+    const { container } = render(<DecisionReview toolId="5-18" decisionPrefill={{
+      conclusion: "2026-08-03 가입 예측 1,240명/주",
+      action: "첫 예측 주 실제값을 확인한다",
+      metric: "가입",
+      baseline: "1,240명/주",
+      targetDirection: "neutral",
+      comparisonKind: "forecast_actual",
+      forecastPeriod: "2026-08-03",
+      forecastTarget: "Regs",
+      forecastPlatform: "all",
+      forecastValue: "1240",
+      forecastLower: "1100",
+      forecastUpper: "1380",
+      forecastSourceThrough: "2026-07-27",
+      forecast: { predFut: [1240, 1300] },
+    }} />);
+    openDecisionReview(container);
+    expect(screen.getByText("다음 CSV와 자동 대조")).toBeTruthy();
+    expect(container.textContent).toContain("2026-08-03 · 가입 1,240명/주");
+    fireEvent.click(screen.getByRole("button", { name: "다음 검토로 저장" }));
+
+    const record = useAppStore.getState().decisionRecords[0];
+    expect(record).toMatchObject({ comparisonKind: "forecast_actual", forecastPeriod: "2026-08-03", forecastTarget: "Regs", forecastValue: "1240" });
+    expect(record.forecast).toBeUndefined();
+  });
+
   it("persists sanitized summaries only after opt-in and removes the stored copy on opt-out", () => {
     const { container } = render(<DecisionReview toolId="5-2" decisionPrefill={{ action: "Search 점검", metric: "CPA", raw: [{ secret: "row" }] }} />);
     openDecisionReview(container);

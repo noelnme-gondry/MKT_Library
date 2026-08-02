@@ -69,6 +69,27 @@ describe("WeeklyReview", () => {
     expect(screen.getAllByText("지표 개선").length).toBeGreaterThan(1);
   });
 
+  it("keeps a forecast check-in pending, then reports range coverage after an actual is entered", () => {
+    useAppStore.setState({
+      decisionRecords: [{
+        id: "forecast_1", toolId: "5-18", action: "첫 예측 주 실제값 확인", metric: "가입", baseline: "120명/주",
+        targetDirection: "neutral", comparisonKind: "forecast_actual", forecastPeriod: "2026-08-03", forecastTarget: "Regs",
+        forecastPlatform: "all", forecastValue: "120", forecastLower: "100", forecastUpper: "140", forecastSourceThrough: "2026-07-27",
+        reviewDate: "2026-08-10", actual: "", learning: "", status: "pending",
+      }],
+    });
+    render(<WeeklyReview />);
+
+    expect(screen.getByText("예측 대조 약속")).toBeTruthy();
+    expect(screen.getByText("새 실제값을 기다리는 중")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "마케팅 예측에서 실제값 찾기 →" }).getAttribute("href")).toBe("/tools/marketing-forecast");
+
+    fireEvent.change(screen.getByLabelText("실제 결과 — 첫 예측 주 실제값 확인"), { target: { value: "126명/주" } });
+    expect(screen.getByText("참고범위 안")).toBeTruthy();
+    expect(screen.getByText("+6 · +5.0%")).toBeTruthy();
+    expect(screen.queryByText("새 실제값을 기다리는 중")).toBeNull();
+  });
+
   it("tracks the inbox state and the first completed review without decision content", () => {
     useAppStore.setState({
       decisionRecords: [

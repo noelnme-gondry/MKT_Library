@@ -8,6 +8,7 @@ import { MMM_METH_CONFIG, MMM_FORECAST_DEFAULT_TREND_DAMPING, MMM_NONMEDIA_GROUP
 import { MMM_METH_CONFIG as MMM_CLASSIC_CONFIG, MMM_PRISM_MODEL_CONFIG, mmmBayesianRun as mmmClassicBayesianRun, mmmClassicControlSelection, mmmClassicBuildGroupContributionPriors, mmmResolveAbsorb as mmmClassicResolveAbsorb } from "@/utils/mmmMathPr416";
 import { mmmBuildCannibRank, mmmCannibLevel, mmmCannibBucket, mmmCannibActionShort, mmmGlobalCannib, mmmRankCfg, CANNIBAL_RANK } from "@/utils/responseCannibRank";
 import { trackProductEvent } from "@/lib/analytics";
+import { createForecastReviewSnapshot, findForecastActualMatches, forecastReviewDate } from "@/lib/forecastReview";
 import CsvGuide from "@/components/ds/CsvGuide";
 import AnalyzingOverlay from "@/components/ds/AnalyzingOverlay";
 import ResultActionCard from "@/components/ds/ResultActionCard";
@@ -198,6 +199,8 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const [priorEvidence, setPriorEvidence] = useState({ experiment: null, country: null });
   const csvData = useAppStore((state) => state.csvData);
   const setCsvData = useAppStore((state) => state.setCsvData);
+  const decisionRecords = useAppStore((state) => state.decisionRecords);
+  const updateDecisionRecord = useAppStore((state) => state.updateDecisionRecord);
   const responseMappingSession = useAppStore((state) => state.responseMappingSession);
   const setResponseMappingSession = useAppStore((state) => state.setResponseMappingSession);
   const demoDisabled = useAppStore((state) => state.demoDisabled);
@@ -244,6 +247,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   const mmmUploadRequestRef = useRef(0);
   const forecastWorkerRequestRef = useRef(0);
   const regimeWorkerRequestRef = useRef(0);
+  const forecastMatchEventRef = useRef("");
   // 타깃·플랫폼·prior를 처음 전환할 때도 수백 회 profile/rolling fit이 필요할 수
   // 있다. 오버레이를 두 프레임 먼저 그린 뒤 상태를 커밋해 첫 클릭이 멈춘 것처럼
   // 보이지 않게 한다. 같은 조합 재방문은 위 WeakMap 캐시에서 즉시 반환된다.
@@ -1421,6 +1425,22 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   }, [hasData, csvData, target, mmmMode, mmmColMap, mmmAnalyzed, mmmAnalyzedSig, colMapSig, mmmWeekStart, effPlatformFilter, locale, tx, selectedEvidence, priorEvidence, stage]);
 
   const mmm = stage === "mmm" ? mmmBundle : responseBaseBundle;
+  const forecastActualMatches = useMemo(() => {
+    if (isDemo || !mmm || mmm.empty) return [];
+    return findForecastActualMatches(decisionRecords, mmm.panel, effPlatformFilter, mmm.target);
+  }, [decisionRecords, effPlatformFilter, isDemo, mmm]);
+
+  useEffect(() => {
+    const signature = forecastActualMatches.map((match) => match.recordId).sort().join("|");
+    if (!signature || forecastMatchEventRef.current === signature) return;
+    forecastMatchEventRef.current = signature;
+    trackProductEvent("forecast_actual_match_viewed", {
+      tool_id: "5-18",
+      source: "forecast_review",
+      result_state: "matched",
+      locale,
+    });
+  }, [forecastActualMatches, locale]);
 
   useEffect(() => {
     if (!mmmAnalyzed) return;
@@ -2614,6 +2634,22 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
     if (isRevenueTarget) return `${prefix}${currencySym}${number}${perWeek ? tx("/주", "/wk") : ""}`;
     return `${prefix}${number}${perWeek ? tx("명/주", "/wk") : tx("명", "")}`;
   }, [isRevenueTarget, sourceCurrency, displayCurrency, currencySym, tx]);
+  const applyForecastActual = useCallback((match) => {
+    const actual = targetValueLabel(match.actualValue, { perWeek: true });
+    updateDecisionRecord(match.recordId, { actual });
+    trackProductEvent("forecast_actual_applied", {
+      tool_id: "5-18",
+      source: "forecast_review",
+      result_state: "reviewed",
+      locale,
+    });
+    trackProductEvent("decision_review_completed", {
+      tool_id: "5-18",
+      source: "forecast_review",
+      result_state: "reviewed",
+      locale,
+    });
+  }, [locale, targetValueLabel, updateDecisionRecord]);
   const spendValueLabel = useCallback((value, { perWeek = false } = {}) => {
     if (!Number.isFinite(Number(value))) return "—";
     const displayValue = convertCurrency(Number(value), sourceCurrency, displayCurrency);
@@ -3561,6 +3597,19 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
       result.key !== "baseline" && result.forecast,
     ).length;
     const isSeverelyUnreliable = Number.isFinite(wmape) && wmape >= 30;
+    const forecastSnapshot = recentBacktest?.reliable
+      ? createForecastReviewSnapshot({
+        forecast,
+        target: mmm?.target,
+        platform: effPlatformFilter,
+        sourceThrough: mmm?.panel?.dates?.at(-1),
+      })
+      : null;
+    const forecastTargetLabel = forecastSnapshot ? mmmTargetDisplay(forecastSnapshot.forecastTarget, locale) : "";
+    const forecastValueText = forecastSnapshot ? targetValueLabel(Number(forecastSnapshot.forecastValue), { perWeek: true }) : "";
+    const forecastRangeText = forecastSnapshot && forecastSnapshot.forecastLower && forecastSnapshot.forecastUpper
+      ? `${targetValueLabel(Number(forecastSnapshot.forecastLower), { perWeek: true })}–${targetValueLabel(Number(forecastSnapshot.forecastUpper), { perWeek: true })}`
+      : "";
     return {
       tone: recentBacktest?.reliable ? "good" : isSeverelyUnreliable ? "bad" : "neutral",
       headline: recentBacktest
@@ -3583,16 +3632,35 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
         : recentBacktest
           ? (isSeverelyUnreliable ? STATISTICAL_STATUS.ABSTAIN : STATISTICAL_STATUS.CAUTION)
           : STATISTICAL_STATUS.INSUFFICIENT_DATA,
-      decisionPrefill: recentBacktest ? {
-        conclusion: recentBacktest.reliable && Number.isFinite(wmape)
-          ? tx(`봉인 백테스트 wMAPE ${wmape.toFixed(1)}%`, `Sealed backtest wMAPE ${wmape.toFixed(1)}%`)
-          : tx(`예측 사용 보류 · wMAPE ${Number.isFinite(wmape) ? `${wmape.toFixed(1)}%` : "—"}`, `Hold forecast use · wMAPE ${Number.isFinite(wmape) ? `${wmape.toFixed(1)}%` : "—"}`),
-        action: recentBacktest.reliable && availableScenarioCount > 0
-          ? tx("검토 가능한 예산 변경안을 소규모로 실행하고 다음 실제값을 기록한다", "Run an eligible budget change at small scale and record the next actual value")
-          : tx("예산 변경을 보류하고 데이터를 추가한 뒤 백테스트를 다시 실행한다", "Hold budget changes, add data, and rerun the backtest"),
-        hypothesis: recentBacktest.reliable
-          ? tx("봉인 백테스트 오차가 10% 미만이면 소규모 운영 검증을 시작할 근거가 됩니다", "A sealed backtest error below 10% supports starting a small operating validation")
-          : tx("인증 전 변경을 보류하면 불안정한 예측으로 인한 예산 손실을 줄일 수 있습니다", "Holding changes before certification reduces budget risk from unstable forecasts"),
+      decisionPrefill: forecastSnapshot ? {
+        conclusion: tx(
+          `${forecastSnapshot.forecastPeriod} ${forecastTargetLabel} 예측 ${forecastValueText}${forecastRangeText ? ` · 참고범위 ${forecastRangeText}` : ""}`,
+          `${forecastSnapshot.forecastPeriod} ${forecastTargetLabel} forecast ${forecastValueText}${forecastRangeText ? ` · reference range ${forecastRangeText}` : ""}`,
+        ),
+        action: tx(
+          `첫 예측 주의 실제 ${forecastTargetLabel}을 다음 CSV와 대조한다`,
+          `Compare the first forecast week's actual ${forecastTargetLabel} with the next CSV`,
+        ),
+        hypothesis: tx(
+          "같은 주차·타깃의 예측과 실제를 대조하면 다음 판단에 쓸 수 있는 오차 기록이 남습니다",
+          "Matching forecast and actual for the same period and target creates an error record for the next decision",
+        ),
+        metric: forecastTargetLabel,
+        baseline: forecastValueText,
+        targetDirection: "neutral",
+        reviewQuestion: tx(
+          `${forecastSnapshot.forecastPeriod} 실제값이 예측 참고범위 안에 들어왔는가?`,
+          `Did the ${forecastSnapshot.forecastPeriod} actual land inside the forecast reference range?`,
+        ),
+        reviewDate: forecastReviewDate(forecastSnapshot.forecastPeriod),
+        sourcePeriod: forecastSnapshot.forecastSourceThrough
+          ? tx(`데이터 ${forecastSnapshot.forecastSourceThrough}까지`, `Data through ${forecastSnapshot.forecastSourceThrough}`)
+          : tx(`${weeks}주`, `${weeks} weeks`),
+        ...forecastSnapshot,
+      } : recentBacktest ? {
+        conclusion: tx(`예측 사용 보류 · wMAPE ${Number.isFinite(wmape) ? `${wmape.toFixed(1)}%` : "—"}`, `Hold forecast use · wMAPE ${Number.isFinite(wmape) ? `${wmape.toFixed(1)}%` : "—"}`),
+        action: tx("예산 변경을 보류하고 데이터를 추가한 뒤 백테스트를 다시 실행한다", "Hold budget changes, add data, and rerun the backtest"),
+        hypothesis: tx("인증 전 변경을 보류하면 불안정한 예측으로 인한 예산 손실을 줄일 수 있습니다", "Holding changes before certification reduces budget risk from unstable forecasts"),
         metric: "wMAPE",
         baseline: Number.isFinite(wmape) ? `${wmape.toFixed(1)}%` : "—",
         reviewQuestion: tx("새 데이터에서도 wMAPE와 예측 방향이 유지됐는가?", "Did wMAPE and forecast direction hold with the new data?"),
@@ -3845,6 +3913,50 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
           />
         );
       })()}
+
+      {forecastActualMatches.length > 0 && (
+        <section className="forecast-review-match" aria-label={tx("지난 예측 실제값 대조", "Match previous forecasts to actuals")}>
+          <div className="forecast-review-match__head">
+            <div>
+              <span>{tx("FORECAST CHECK-IN", "FORECAST CHECK-IN")}</span>
+              <h2>{tx(
+                `새 CSV에서 대조 가능한 실제값 ${forecastActualMatches.length}건을 찾았습니다`,
+                `Found ${forecastActualMatches.length} actual ${forecastActualMatches.length === 1 ? "value" : "values"} to match from the new CSV`,
+              )}</h2>
+              <p>{tx(
+                "주차·타깃·플랫폼이 모두 같은 값만 제안합니다. 확인 버튼을 눌러야 결정 기록에 반영됩니다.",
+                "Only values with the same period, target, and platform are suggested. Nothing is written to the decision record until you confirm it.",
+              )}</p>
+            </div>
+            <strong>{forecastActualMatches.length}</strong>
+          </div>
+          <div className="forecast-review-match__list">
+            {forecastActualMatches.map((match) => {
+              const predicted = targetValueLabel(match.predictedValue, { perWeek: true });
+              const actual = targetValueLabel(match.actualValue, { perWeek: true });
+              const range = Number.isFinite(match.lower) && Number.isFinite(match.upper)
+                ? `${targetValueLabel(match.lower, { perWeek: true })}–${targetValueLabel(match.upper, { perWeek: true })}`
+                : "—";
+              return (
+                <article className="forecast-review-match__ticket" key={match.recordId}>
+                  <div className="forecast-review-match__identity">
+                    <span>{match.period} · {mmmTargetDisplay(match.target, locale)} · {match.platform === "all" ? "Total" : match.platform}</span>
+                    <strong>{match.action}</strong>
+                  </div>
+                  <dl>
+                    <div><dt>{tx("당시 예측", "Forecast")}</dt><dd>{predicted}</dd></div>
+                    <div><dt>{tx("새 실제값", "New actual")}</dt><dd>{actual}</dd></div>
+                    <div><dt>{tx("참고범위", "Reference range")}</dt><dd>{range}</dd></div>
+                  </dl>
+                  <button type="button" className="btn primary" onClick={() => applyForecastActual(match)}>
+                    {tx("이 실제값 반영", "Apply this actual")}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {panelEmpty ? (
         <section className="block">

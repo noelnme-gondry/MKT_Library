@@ -115,6 +115,28 @@ function seedWithData() {
   });
 }
 
+function seedWithDatedData() {
+  const headers = ["week", "Regs", "g_spend", "m_spend"];
+  const raw = Array.from({ length: 16 }, (_, index) => {
+    const gCost = 100000 + (index % 5) * 15000 + (index % 3) * 8000;
+    const mCost = 80000 + (index % 4) * 12000 + ((index + 2) % 6) * 6000;
+    const date = new Date(Date.UTC(2026, 3, 20 + index * 7));
+    return {
+      week: date.toISOString().slice(0, 10),
+      Regs: Math.round(gCost / 5000 + mCost / 4200),
+      g_spend: gCost,
+      m_spend: mCost,
+    };
+  });
+  const slice = { raw, headers, mapping: {}, fileName: "response_dated.csv", currency: "USD" };
+  useAppStore.setState({
+    currentRouteId: "5-18",
+    csvGroups: { ...useAppStore.getState().csvGroups, response: slice },
+    csvData: slice,
+  });
+  return raw.at(-1);
+}
+
 function seedWithOsForecastData() {
   const headers = ["week", "android_regs", "ios_regs", "google_android_cost", "meta_android_cost", "asa_ios_cost", "meta_ios_cost"];
   const raw = Array.from({ length: 56 }, (_, index) => {
@@ -1654,6 +1676,32 @@ describe("MarketingResponse render smoke", () => {
     expect(container.textContent).toContain("다음 검토 약속 만들기");
     clickByText(container, "카니발 진단");
     expect(document.body.textContent).toContain("데이터 위생");
+  });
+
+  it("suggests a same-period forecast actual and applies it only after confirmation", async () => {
+    const latest = seedWithDatedData();
+    useAppStore.setState({
+      decisionRecords: [{
+        id: "forecast_1", toolId: "5-18", locale: "ko", action: "첫 예측 주 실제값 확인", metric: "가입", baseline: "50명/주",
+        targetDirection: "neutral", comparisonKind: "forecast_actual", forecastPeriod: latest.week, forecastTarget: "Regs",
+        forecastPlatform: "all", forecastValue: "50", forecastLower: "40", forecastUpper: "60", forecastSourceThrough: "2026-07-27",
+        reviewDate: "2026-08-10", actual: "", learning: "", status: "pending", conclusion: "", hypothesis: "", reviewQuestion: "", sourcePeriod: "", createdAt: "", updatedAt: "",
+      }],
+    });
+    window.gtag = vi.fn();
+    const { container } = render(<MarketingResponse />);
+    enterMmmAndAnalyze(container);
+    await flushRaf();
+
+    expect(container.textContent).toContain("새 CSV에서 대조 가능한 실제값 1건을 찾았습니다");
+    expect(container.textContent).toContain("이 실제값 반영");
+    fireEvent.click(Array.from(container.querySelectorAll("button")).find((button) => button.textContent.includes("이 실제값 반영")));
+
+    expect(useAppStore.getState().decisionRecords[0].actual).toContain("명/주");
+    expect(window.gtag).toHaveBeenCalledWith("event", "forecast_actual_applied", expect.objectContaining({
+      tool_id: "5-18", source: "forecast_review", result_state: "reviewed", locale: "ko",
+    }));
+    expect(JSON.stringify(window.gtag.mock.calls)).not.toContain(String(latest.Regs));
   });
 
   it("renders the Classic model, channel totals, health diagnostics, and shared footer manual", async () => {

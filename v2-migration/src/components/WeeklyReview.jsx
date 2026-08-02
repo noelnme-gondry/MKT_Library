@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import Papa from "papaparse";
 import {
   assessDecisionOutcome,
@@ -11,6 +12,7 @@ import {
   summarizeDecisionOutcomes,
   toLocalDecisionDate,
 } from "@/lib/decisionReview";
+import { assessForecastActual } from "@/lib/forecastReview";
 import { localizedTool } from "@/lib/toolConnections";
 import { trackProductEvent } from "@/lib/analytics";
 import { findMeta, useAppStore } from "@/store/useDataStore";
@@ -70,6 +72,21 @@ const COPY = {
     unscoredHint: "좋고 나쁨을 정하지 않고 변화량만 표시",
     actualPlaceholder: "예: 4,980 또는 15.2%",
     outcome: "기준 대비 결과",
+    forecastComparison: "예측 대조",
+    forecastTicket: "예측 대조 약속",
+    forecastPeriod: "예측 주차",
+    forecastValue: "당시 예측",
+    forecastRange: "참고범위",
+    forecastPending: "새 실제값을 기다리는 중",
+    forecastPendingHint: "마케팅 예측에 업데이트된 CSV를 올리면 같은 주차·타깃·플랫폼의 실제값만 찾아 제안합니다.",
+    openForecast: "마케팅 예측에서 실제값 찾기 →",
+    within_range: "참고범위 안",
+    outside_range: "참고범위 밖",
+    point_only: "예측 대조 완료",
+    forecastError: "예측 대비 오차",
+    withinRangeHint: "실제값이 저장 당시 참고범위 안에 있습니다.",
+    outsideRangeHint: "실제값이 저장 당시 참고범위를 벗어났습니다. 원인과 구조변화를 함께 확인하세요.",
+    pointOnlyHint: "저장된 참고범위가 없어 점예측과 실제값만 비교합니다.",
   },
   en: {
     eyebrow: "WEEKLY REVIEW",
@@ -124,6 +141,21 @@ const COPY = {
     unscoredHint: "Shows the change without calling it better or worse",
     actualPlaceholder: "e.g. 4,980 or 15.2%",
     outcome: "Outcome vs baseline",
+    forecastComparison: "Forecast comparison",
+    forecastTicket: "Forecast check-in",
+    forecastPeriod: "Forecast period",
+    forecastValue: "Original forecast",
+    forecastRange: "Reference range",
+    forecastPending: "Waiting for a new actual",
+    forecastPendingHint: "Upload an updated CSV in Marketing Forecast to suggest only an actual with the same period, target, and platform.",
+    openForecast: "Find the actual in Marketing Forecast →",
+    within_range: "Inside reference range",
+    outside_range: "Outside reference range",
+    point_only: "Forecast compared",
+    forecastError: "Error vs forecast",
+    withinRangeHint: "The actual is inside the reference range saved with the forecast.",
+    outsideRangeHint: "The actual is outside the saved reference range. Check drivers and regime changes before acting.",
+    pointOnlyHint: "No reference range was saved, so only the point forecast and actual are compared.",
   },
 };
 
@@ -141,6 +173,14 @@ function comparisonLabel(comparison, locale) {
   return `${sign}${formatter.format(comparison.delta)}${unit}${ratio}`;
 }
 
+function forecastErrorLabel(assessment, locale) {
+  if (!assessment || assessment.state === "incomplete") return "";
+  const formatter = new Intl.NumberFormat(locale === "en" ? "en-US" : "ko-KR", { maximumFractionDigits: 2 });
+  const sign = assessment.delta > 0 ? "+" : "";
+  const ratio = assessment.errorPct == null ? "" : ` · ${assessment.errorPct > 0 ? "+" : ""}${(assessment.errorPct * 100).toFixed(1)}%`;
+  return `${sign}${formatter.format(assessment.delta)}${ratio}`;
+}
+
 export function buildBrief(records, t, locale) {
   const today = toLocalDecisionDate();
   const lines = [`# ${t.briefTitle}`, "", `- ${today}`, "", "## Decisions"];
@@ -150,7 +190,12 @@ export function buildBrief(records, t, locale) {
     lines.push(`- ${t.baseline}: ${record.metric || t.noMetric} ${record.baseline || "—"}`);
     lines.push(`- ${getDecisionReviewBucket(record, today) === "reviewed" ? t.briefReviewed : t.briefPending}: ${record.actual || "—"}`);
     const outcome = assessDecisionOutcome(record);
-    if (outcome.comparison && t.outcome && t[outcome.state]) lines.push(`- ${t.outcome}: ${t[outcome.state]} · ${comparisonLabel(outcome.comparison, locale)}`);
+    const forecastAssessment = assessForecastActual(record);
+    if (forecastAssessment && forecastAssessment.state !== "incomplete") {
+      lines.push(`- ${t.forecastComparison}: ${t[forecastAssessment.state]} · ${forecastErrorLabel(forecastAssessment, locale)}`);
+    } else if (outcome.comparison && t.outcome && t[outcome.state]) {
+      lines.push(`- ${t.outcome}: ${t[outcome.state]} · ${comparisonLabel(outcome.comparison, locale)}`);
+    }
     lines.push(`- ${t.learning}: ${record.learning || "—"}`);
     if (record.hypothesis) lines.push(`- ${t.hypothesis}: ${record.hypothesis}`);
     if (record.conclusion) lines.push(`- ${t.conclusion}: ${record.conclusion}`);
@@ -186,6 +231,10 @@ export default function WeeklyReview({ locale = "ko" }) {
     return counts;
   }, { overdue: 0, today: 0, upcoming: 0, unscheduled: 0, reviewed: 0 }), [sortedRecords, todayKey]);
   const outcomeCounts = useMemo(() => summarizeDecisionOutcomes(sortedRecords), [sortedRecords]);
+  const forecastComparedCount = useMemo(() => sortedRecords.filter((record) => {
+    const assessment = assessForecastActual(record);
+    return assessment && assessment.state !== "incomplete";
+  }).length, [sortedRecords]);
 
   useEffect(() => {
     if (hasTrackedInboxView.current) return;
@@ -248,6 +297,7 @@ export default function WeeklyReview({ locale = "ko" }) {
         <div className="weekly-review-page__outcomes-copy">
           <strong>{t.outcomeSummary}</strong>
           <p>{t.outcomeSummaryDeck}</p>
+          {forecastComparedCount > 0 && <em>{t.forecastComparison} · {forecastComparedCount}</em>}
         </div>
         <div className="weekly-review-page__outcomes-ledger">
           {(["improved", "declined", "unchanged", "unscored"]).map((state) => (
@@ -307,6 +357,13 @@ export default function WeeklyReview({ locale = "ko" }) {
             const comparison = outcome.comparison;
             const targetDirection = record.targetDirection || decisionMetricDirection(record.metric);
             const outcomeHint = outcome.direction === "lower" ? t.lowerHint : outcome.direction === "higher" ? t.higherHint : t.unscoredHint;
+            const forecastAssessment = assessForecastActual(record);
+            const isForecastReview = Boolean(forecastAssessment);
+            const forecastHint = forecastAssessment?.state === "within_range"
+              ? t.withinRangeHint
+              : forecastAssessment?.state === "outside_range"
+                ? t.outsideRangeHint
+                : t.pointOnlyHint;
             return <article key={record.id} className="weekly-review-record">
               <div className="weekly-review-record__top">
                 <span>{toolName(record.toolId, locale)}</span>
@@ -320,7 +377,22 @@ export default function WeeklyReview({ locale = "ko" }) {
                 <span>{t.baseline}</span><strong>{record.metric || t.noMetric} · {record.baseline || "—"}</strong>
                 {record.sourcePeriod && <><span>{t.sourcePeriod}</span><strong>{record.sourcePeriod}</strong></>}
               </div>
-              <label className="weekly-review-record__direction">
+              {isForecastReview && <div className="weekly-review-record__forecast-ticket">
+                <div>
+                  <span>{t.forecastTicket}</span>
+                  <strong>{record.forecastPeriod} · {record.metric || record.forecastTarget}</strong>
+                </div>
+                <dl>
+                  <div><dt>{t.forecastValue}</dt><dd>{record.baseline || record.forecastValue}</dd></div>
+                  <div><dt>{t.forecastRange}</dt><dd>{record.forecastLower && record.forecastUpper ? `${record.forecastLower}–${record.forecastUpper}` : "—"}</dd></div>
+                </dl>
+                {forecastAssessment.state === "incomplete" && <div className="weekly-review-record__forecast-pending">
+                  <span>{t.forecastPending}</span>
+                  <p>{t.forecastPendingHint}</p>
+                  <Link href={locale === "en" ? "/en/tools/marketing-forecast" : "/tools/marketing-forecast"}>{t.openForecast}</Link>
+                </div>}
+              </div>}
+              {!isForecastReview && <label className="weekly-review-record__direction">
                 <span>{t.targetDirection}</span>
                 <select aria-label={`${t.targetDirection} — ${record.action}`} value={targetDirection} onChange={(event) => updateRecord(record.id, "targetDirection", event.target.value)}>
                   <option value="">{t.directionUnset}</option>
@@ -328,8 +400,12 @@ export default function WeeklyReview({ locale = "ko" }) {
                   <option value="lower">{t.directionLower}</option>
                   <option value="neutral">{t.directionNeutral}</option>
                 </select>
-              </label>
-              {comparison && <div className={`weekly-review-record__outcome ${outcome.state}`}>
+              </label>}
+              {forecastAssessment && forecastAssessment.state !== "incomplete" ? <div className={`weekly-review-record__outcome forecast-${forecastAssessment.state}`}>
+                <span>{t[forecastAssessment.state]}</span>
+                <strong>{forecastErrorLabel(forecastAssessment, locale)}</strong>
+                <small>{forecastHint}</small>
+              </div> : comparison && <div className={`weekly-review-record__outcome ${outcome.state}`}>
                 <span>{t[outcome.state]}</span>
                 <strong>{comparisonLabel(comparison, locale)}</strong>
                 <small>{outcomeHint}</small>
