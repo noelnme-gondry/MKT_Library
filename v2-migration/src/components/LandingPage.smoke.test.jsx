@@ -36,13 +36,16 @@ describe("LandingPage render smoke", () => {
     expect(() => render(<LandingPage />)).not.toThrow();
     expect(document.querySelector(".dc-hero")).toBeTruthy();
     expect(document.querySelector(".dc-instrument")).toBeTruthy();
-    expect(document.querySelector('a.dc-primary-button[href="/start"]')).toBeTruthy();
+    expect(document.querySelectorAll(".dc-action-route")).toHaveLength(3);
+    expect(document.querySelector('a.dc-action-route[href="/start"]')).toBeTruthy();
+    expect(document.querySelector('a.dc-action-route[href="/calculator"]')).toBeTruthy();
+    expect(document.querySelector('a.dc-action-route[href="/diagnose"]')).toBeTruthy();
     expect(document.querySelectorAll(".dc-loop-card")).toHaveLength(3);
     expect(document.querySelectorAll("a.dc-loop-card")).toHaveLength(3);
     expect(document.querySelector('a.dc-loop-card[href="/dashboard"]')).toBeTruthy();
     expect(document.querySelector('a.dc-loop-card[href="/weekly-review"]')).toBeTruthy();
     expect(document.body.textContent).toContain("다음 주 결과 검토");
-    expect(document.querySelector('a.dc-diagnose-entry[href="/diagnose"]')).toBeTruthy();
+    expect(document.body.textContent).toContain("예시 데이터로 둘러보기");
     expect(document.querySelectorAll(".dc-question-card")).toHaveLength(3);
     expect(document.querySelectorAll(".connected-tool-card")).toHaveLength(10);
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
@@ -53,10 +56,12 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelectorAll(".dc-library-card")).toHaveLength(2);
     expect(document.querySelector(".dc-resource-strip")).toBeTruthy();
   });
-  it("tracks a landing sample as an example run", () => {
+  it("tracks a landing sample and replaces any existing dataset with the explicit example", () => {
+    seedWithData();
     window.gtag = vi.fn();
     const { container } = render(<LandingPage />);
-    fireEvent.click(container.querySelector(".dc-secondary-button"));
+    fireEvent.click(container.querySelector(".dc-hero__utility-actions button"));
+    expect(useAppStore.getState().csvGroups.efficiency.fileName).toMatch(/^demo_/);
     expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", {
       tool_id: "5-2",
       source: "landing",
@@ -69,10 +74,12 @@ describe("LandingPage render smoke", () => {
     const { container } = render(<LandingPage locale="en" />);
     expect(container.querySelectorAll(".connected-tool-card")).toHaveLength(10);
     expect(container.textContent).toContain("Move from one analysis to the next decision");
-    expect(container.querySelector('a.dc-primary-button[href="/en/start"]')).toBeTruthy();
+    expect(container.querySelector('a.dc-action-route[href="/en/start"]')).toBeTruthy();
+    expect(container.querySelector('a.dc-action-route[href="/en/calculator"]')).toBeTruthy();
+    expect(container.querySelector('a.dc-action-route[href="/en/diagnose"]')).toBeTruthy();
     expect(container.querySelector('a.dc-loop-card[href="/en/weekly-review"]')).toBeTruthy();
     expect(container.textContent).toContain("Review the actual next week");
     expect(container.querySelector('a[href="/en/tools/campaign-variance"]')).toBeTruthy();
-    expect(container.querySelector('a.dc-diagnose-entry[href="/en/diagnose"]')).toBeTruthy();
+    expect(container.textContent).toContain("Explore example data");
   });
 });

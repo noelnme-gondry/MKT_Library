@@ -2,7 +2,7 @@ import CalculatorHub from "@/components/calculators/CalculatorHub";
 import { SITE_URL } from "@/lib/routeMap";
 
 export const metadata = {
-  title: "Free Performance Marketing Calculators | LTV, CAC, ROAS, CPA & A/B",
+  title: "Free Marketing Metric Calculators | LTV, CAC, ROAS, CPA & A/B",
   description: "Calculate LTV:CAC, payback, break-even ROAS, target CPA, A/B sample size, and installs from budget without a CSV.",
   alternates: {
     canonical: `${SITE_URL}/en/calculator`,

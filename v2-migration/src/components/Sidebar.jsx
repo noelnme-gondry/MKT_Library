@@ -12,10 +12,11 @@ import BrandMark from "@/components/BrandMark";
 
 const SIDEBAR_COPY = {
   ko: {
-    searchPlaceholder: "가이드·파라미터·코드 검색…",
+    searchPlaceholder: "작업·도구·가이드 검색…",
     blog: "블로그",
     guide: "운영 가이드",
-    calculators: "무CSV 계산기",
+    dataStart: "내 데이터 분석",
+    calculators: "마케팅 지표 계산기",
     diagnose: "성과 문제 진단",
     templates: "템플릿·체크리스트",
     glossary: "용어사전",
@@ -35,10 +36,11 @@ const SIDEBAR_COPY = {
     localOnly: "업로드한 데이터는 이 브라우저 안에서만 처리됩니다.",
   },
   en: {
-    searchPlaceholder: "Search guides, params, code…",
+    searchPlaceholder: "Search tasks, tools, guides…",
     blog: "Blog",
     guide: "Operating Guide",
-    calculators: "No-CSV Calculators",
+    dataStart: "Analyze my data",
+    calculators: "Marketing metric calculators",
     diagnose: "Diagnose Performance",
     templates: "Templates",
     glossary: "Glossary",
@@ -70,8 +72,11 @@ export default function Sidebar({ locale = "ko" }) {
   const currentRouteId = resolvePathToId(pathname) ?? "home";
   const cleanPath = (pathname || "/").replace(/^\/en(?=\/|$)/, "") || "/";
   const isHome = cleanPath === "/";
+  const isStart = cleanPath === "/start";
+  const isCalculator = cleanPath === "/calculator" || cleanPath.startsWith("/calculator/");
+  const isDiagnose = cleanPath === "/diagnose";
   const isWeeklyReview = cleanPath === "/weekly-review";
-  const isLibraryRoute = /^\/(blog|guide|calculator|diagnose|templates|glossary)(\/|$)/.test(cleanPath);
+  const isLibraryRoute = /^\/(blog|guide|templates|glossary)(\/|$)/.test(cleanPath);
   const isCmdkOpen = useAppStore((state) => state.isCmdkOpen);
   const setCmdkOpen = useAppStore((state) => state.setCmdkOpen);
   const decisionRecords = useAppStore((state) => state.decisionRecords);
@@ -121,6 +126,15 @@ export default function Sidebar({ locale = "ko" }) {
             <Link href={locale === "en" ? "/en" : "/"} className="home-sidebar-nav__item active" aria-current="page">
               <span aria-hidden="true">◎</span><strong>{T.today}</strong><small aria-hidden="true">NOW</small>
             </Link>
+            <Link href={locale === "en" ? "/en/start" : "/start"} className="home-sidebar-nav__item">
+              <span aria-hidden="true">⇧</span><strong>{T.dataStart}</strong><small aria-hidden="true">DATA</small>
+            </Link>
+            <Link href={locale === "en" ? "/en/calculator" : "/calculator"} className="home-sidebar-nav__item">
+              <span aria-hidden="true">∑</span><strong>{T.calculators}</strong><small aria-hidden="true">MATH</small>
+            </Link>
+            <Link href={locale === "en" ? "/en/diagnose" : "/diagnose"} className="home-sidebar-nav__item">
+              <span aria-hidden="true">◇</span><strong>{T.diagnose}</strong><small aria-hidden="true">DIAG</small>
+            </Link>
             <Link
               href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}
               className="home-sidebar-nav__item home-sidebar-nav__item--review"
@@ -145,6 +159,27 @@ export default function Sidebar({ locale = "ko" }) {
       <nav className="sidebar-primary-nav" aria-label={T.workspaceLabel}>
         <Link href={locale === "en" ? "/en" : "/"} className="sidebar-primary-nav__item">
           <span aria-hidden="true">◎</span><strong>{T.today}</strong><small aria-hidden="true">NOW</small>
+        </Link>
+        <Link
+          href={locale === "en" ? "/en/start" : "/start"}
+          className={`sidebar-primary-nav__item${isStart ? " active" : ""}`}
+          aria-current={isStart ? "page" : undefined}
+        >
+          <span aria-hidden="true">⇧</span><strong>{T.dataStart}</strong><small aria-hidden="true">DATA</small>
+        </Link>
+        <Link
+          href={locale === "en" ? "/en/calculator" : "/calculator"}
+          className={`sidebar-primary-nav__item${isCalculator ? " active" : ""}`}
+          aria-current={isCalculator ? "page" : undefined}
+        >
+          <span aria-hidden="true">∑</span><strong>{T.calculators}</strong><small aria-hidden="true">MATH</small>
+        </Link>
+        <Link
+          href={locale === "en" ? "/en/diagnose" : "/diagnose"}
+          className={`sidebar-primary-nav__item${isDiagnose ? " active" : ""}`}
+          aria-current={isDiagnose ? "page" : undefined}
+        >
+          <span aria-hidden="true">◇</span><strong>{T.diagnose}</strong><small aria-hidden="true">DIAG</small>
         </Link>
         <Link
           href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}
@@ -313,7 +348,7 @@ export default function Sidebar({ locale = "ko" }) {
       <details className="sidebar-library-disclosure" open={isHome || isLibraryRoute}>
         <summary className="sidebar-resource-label">
           <span>{T.resourceLabel}</span>
-          <span className="sidebar-library-disclosure__count" aria-hidden="true">06</span>
+          <span className="sidebar-library-disclosure__count" aria-hidden="true">04</span>
         </summary>
         <section className="sidebar-library" data-section="resources">
         <Link
@@ -329,20 +364,6 @@ export default function Sidebar({ locale = "ko" }) {
           aria-current={(pathname || "").includes("/guide") ? "page" : undefined}
         >
           <span><strong>{T.guide}</strong><small>SOP</small></span><b>↗</b>
-        </Link>
-        <Link
-          href={locale === "en" ? "/en/calculator" : "/calculator"}
-          className="sidebar-library-link"
-          aria-current={(pathname || "").includes("/calculator") ? "page" : undefined}
-        >
-          <span><strong>{T.calculators}</strong><small>QUICK MATH</small></span><b>↗</b>
-        </Link>
-        <Link
-          href={locale === "en" ? "/en/diagnose" : "/diagnose"}
-          className="sidebar-library-link"
-          aria-current={(pathname || "").includes("/diagnose") ? "page" : undefined}
-        >
-          <span><strong>{T.diagnose}</strong><small>ROUTER</small></span><b>↗</b>
         </Link>
         <Link
           href={locale === "en" ? "/en/templates" : "/templates"}

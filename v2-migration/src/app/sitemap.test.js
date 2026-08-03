@@ -20,6 +20,8 @@ describe("sitemap", () => {
 
   it("contains both localized tool routes", () => {
     const urls = new Set(sitemap().map((entry) => entry.url));
+    expect(urls.has(`${SITE_URL}/start`)).toBe(true);
+    expect(urls.has(`${SITE_URL}/en/start`)).toBe(true);
     expect(urls.has(`${SITE_URL}/dashboard`)).toBe(true);
     expect(urls.has(`${SITE_URL}/en/dashboard`)).toBe(true);
     expect(urls.has(`${SITE_URL}/tools/experiment-analysis`)).toBe(true);
@@ -33,7 +35,7 @@ describe("sitemap", () => {
     }
   });
 
-  it("contains localized no-CSV calculators and diagnosis routes", () => {
+  it("contains localized marketing metric calculators and diagnosis routes", () => {
     const urls = new Set(sitemap().map((entry) => entry.url));
     for (const path of [
       "/calculator",

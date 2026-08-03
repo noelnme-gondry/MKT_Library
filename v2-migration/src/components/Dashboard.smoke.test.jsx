@@ -9,7 +9,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import Dashboard from "@/components/Dashboard";
-import { buildIndustryPresetDemo } from "@/lib/industryPresets";
 import { buildDemoCsv } from "@/utils/demoData";
 
 const EMPTY_CSV = { raw: [], headers: [], mapping: {}, fileName: "" };
@@ -75,30 +74,31 @@ describe("Dashboard render smoke", () => {
     expect(useAppStore.getState().decisionRecords).toHaveLength(0);
   });
 
-  it("keeps the selected situation visible above the result in KR/EN", () => {
-    const preset = buildIndustryPresetDemo(buildDemoCsv("efficiency", "ko"), "lead-generation", "growth");
+  it("labels the single generic example honestly in KR/EN", () => {
+    const demo = buildDemoCsv("efficiency", "ko");
     useAppStore.setState({
       currentRouteId: "5-2",
-      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: preset },
-      csvData: preset,
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: demo },
+      csvData: demo,
     });
     useAppStore.getState().setGroupAnalyzed("5-2");
     const { unmount } = render(<Dashboard />);
-    expect(screen.getByText(/SITUATION PRESET · 리드 제너레이션 · 성장기/)).toBeTruthy();
-    expect(screen.getByText("내 CSV로 같은 판단하기")).toBeTruthy();
+    expect(screen.getByText("SAMPLE DATA")).toBeTruthy();
+    expect(screen.getByText("지금 보는 수치는 예시입니다")).toBeTruthy();
+    expect(screen.getByText("내 CSV로 바꾸기")).toBeTruthy();
     unmount();
     cleanup();
 
-    const presetEn = buildIndustryPresetDemo(buildDemoCsv("efficiency", "en"), "lead-generation", "growth");
+    const demoEn = buildDemoCsv("efficiency", "en");
     useAppStore.setState({
       currentRouteId: "5-2",
-      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: presetEn },
-      csvData: presetEn,
+      csvGroups: { ...useAppStore.getState().csvGroups, efficiency: demoEn },
+      csvData: demoEn,
     });
     useAppStore.getState().setGroupAnalyzed("5-2");
     render(<Dashboard locale="en" />);
-    expect(screen.getByText(/SITUATION PRESET · Lead generation · Growth/)).toBeTruthy();
-    expect(screen.getByText("Run the same decision on my CSV")).toBeTruthy();
+    expect(screen.getByText("These numbers are an example")).toBeTruthy();
+    expect(screen.getByText("Use my CSV")).toBeTruthy();
   });
 
   for (const tab of TABS) {

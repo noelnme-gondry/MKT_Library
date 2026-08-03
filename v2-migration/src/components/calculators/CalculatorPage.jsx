@@ -13,7 +13,7 @@ export default function CalculatorPage({ slug, locale = "ko" }) {
       <nav className="calculator-breadcrumb" aria-label={isEn ? "Breadcrumb" : "현재 위치"}>
         <Link href={base || "/"}>{isEn ? "Home" : "홈"}</Link>
         <span aria-hidden>/</span>
-        <Link href={`${base}/calculator`}>{isEn ? "Calculators" : "계산기"}</Link>
+        <Link href={`${base}/calculator`}>{isEn ? "Metric calculators" : "지표 계산기"}</Link>
         <span aria-hidden>/</span>
         <span>{calculator.name}</span>
       </nav>
@@ -62,7 +62,7 @@ export default function CalculatorPage({ slug, locale = "ko" }) {
       </section>
 
       <section className="calculator-related">
-        <span>{isEn ? "MORE NO-CSV CALCULATORS" : "다른 무CSV 계산기"}</span>
+        <span>{isEn ? "MORE MARKETING METRIC CALCULATORS" : "다른 마케팅 지표 계산기"}</span>
         <div>
           {siblings.map((item) => (
             <Link key={item.slug} href={`${base}/calculator/${item.slug}`}>

@@ -8,7 +8,7 @@ export default function CalculatorHub({ locale = "ko" }) {
   return (
     <main id="main-content" className="calculator-page calculator-hub">
       <header className="calculator-hero">
-        <span>{isEn ? "FREE MARKETING CALCULATORS" : "퍼포먼스 마케팅 계산기"}</span>
+        <span>{isEn ? "MARKETING METRIC CALCULATORS" : "마케팅 지표 계산기"}</span>
         <h1>{isEn ? "Get the number first. Upload data only when you need the cause." : "숫자는 바로 계산하고, 원인이 필요할 때만 데이터를 넣으세요"}</h1>
         <p>{isEn ? "Five focused calculators for unit economics, advertising profitability, experiment planning, and budget estimates. No CSV or sign-up." : "LTV:CAC, 손익분기 ROAS, 목표 CPA, A/B 표본수, 예산별 설치수를 CSV 없이 바로 계산합니다."}</p>
       </header>
