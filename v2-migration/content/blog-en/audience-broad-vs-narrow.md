@@ -56,7 +56,7 @@ In practice, this is usually how it plays out.
 
 You build scale on broad targeting, and pull efficiency from narrow targets (retargeting, lookalikes). It's not a matter of picking one — it's a matter of **what ratio you blend them in.**
 
-And that ratio isn't fixed. As budget grows, the broad side needs to carry more weight; as an audience exhausts, you need to open up new targets. Ultimately, the job comes down to checking whether each target is currently saturated or not, and [reallocating budget](/en/blog/marketing-budget-allocation) accordingly.
+And that ratio isn't fixed. As budget grows, the broad side needs to carry more weight; as an audience exhausts, you need to open up new targets. Ultimately, the job comes down to checking whether each target is currently saturated or not, and [reallocating budget](/en/blog/budget-marginal-efficiency) accordingly.
 
 ## Try this today
 

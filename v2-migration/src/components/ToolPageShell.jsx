@@ -17,11 +17,12 @@ const COPY = {
   en: { summaryLabel: "Summary", toc: "Contents", workspace: "DECISION WORKSPACE" },
 };
 
-export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko", toolId = "" }) {
+export default function ToolPageShell({ title, chips, summary, toc, stickyFilter, children, locale = "ko", toolId = "", titleLevel = 1 }) {
   const T = COPY[locale] || COPY.ko;
   const tocItems = toc || [];
   const hasToc = tocItems.length > 0;
   const titleId = useId();
+  const TitleTag = titleLevel === 2 ? "h2" : "h1";
 
   return (
     <div className={`tool-page-shell${hasToc ? " has-toc" : ""}`} data-tool-id={toolId || undefined} aria-labelledby={typeof title === "string" ? titleId : undefined}>
@@ -33,7 +34,7 @@ export default function ToolPageShell({ title, chips, summary, toc, stickyFilter
           <div className="page-sticky-row1">
             <div className="tool-instrument-header__heading">
               <span className="tool-instrument-header__eyebrow">{T.workspace}</span>
-              <h1 id={titleId} className="page-sticky-title tool-instrument-header__title">{title}</h1>
+              <TitleTag id={titleId} className="page-sticky-title tool-instrument-header__title">{title}</TitleTag>
             </div>
             {chips && <div className="tool-instrument-header__status">{chips}</div>}
           </div>

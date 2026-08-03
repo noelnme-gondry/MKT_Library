@@ -13,6 +13,7 @@ import ToolIntro from "@/components/ToolIntro";
 import ToolLongform from "@/components/ToolLongform";
 import ToolConnections from "@/components/ToolConnections";
 import ToolAssistRail from "@/components/ToolAssistRail";
+import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolContent";
 
 // 번역 완료된 도구만 실제로 렌더(routeMap EN_READY_TOOL_IDS 게이트 통과 후).
 // 여기 케이스는 미리 준비해도 안전 — hasEnVersion()이 registry에 없는 id는
@@ -31,7 +32,7 @@ const ContentElementAnalyzer = dyn(() => import("@/components/tools/ContentEleme
 // EN 가이드(1-x~4-x, EN_READY_GUIDE_IDS) — {id}.en.json 기반 SopContent EN 경로.
 // 1-1·8-1은 리터럴 라우트가 우선이라 여기로 안 오지만, 방어적으로 함께 커버.
 const SopContent = dyn(() => import("@/components/sops/SopContent"));
-const CUSTOM_TOOL_INTRO_IDS = new Set(["5-4", "5-18", "5-20", "5-23", "9-1", "9-6"]);
+const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS]);
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId, hasEnVersion, idToPath } from "@/lib/routeMap";
@@ -41,7 +42,7 @@ export default function PageClient({ params, initialSopData = null }) {
   const { slug } = use(params);
   const routeId = resolveSlugToId(slug);
   const responseStage = resolveResponseStage(useSearchParams().get("stage"));
-  const isResponseSubtool = ["5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast"].includes(routeId);
+  const isResponseSubtoolRoute = isResponseSubtool(routeId);
 
   // Unknown URL -> 404. Known but untranslated -> KR canonical (thin/half-EN
   // page never gets served or indexed — §plan EN_READY_TOOL_IDS gate).
@@ -81,9 +82,9 @@ export default function PageClient({ params, initialSopData = null }) {
             {routeId === "5-23" && <Incrementality locale="en" />}
             {routeId === "9-1" && <ContentElementAnalyzer locale="en" />}
             {/^[1-4]-|^8-/.test(routeId) && <SopContent routeId={routeId} locale="en" initialData={initialSopData} />}
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolConnections toolId={routeId} locale="en" />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolConnections toolId={routeId} locale="en" />}
             <ToolLongform toolId={routeId} locale="en" />
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolAssistRail toolId={routeId} locale="en" />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolAssistRail toolId={routeId} locale="en" />}
           </article>
         </main>
       </div>

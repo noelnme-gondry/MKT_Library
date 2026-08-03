@@ -28,4 +28,4 @@ A response curve is estimated from past data, so predictions far beyond any spen
 
 ## Go deeper
 
-Using response curves to optimize budget allocation is covered in [Marketing Budget Allocation](/blog/marketing-budget-allocation).
+Using response curves to optimize budget allocation is covered in [Marketing Budget Allocation](/en/blog/budget-marginal-efficiency).

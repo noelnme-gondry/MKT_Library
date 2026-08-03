@@ -4820,6 +4820,11 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .tool-longform__body section { padding: 13px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-container-lowest); }
 .tool-longform__body h3 { margin: 0; color: var(--text-primary); font-size: 12px; }
 .tool-longform__body p { margin: 7px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.65; }
+.tool-longform__faq { margin-top: 4px; padding-top: 16px; border-top: 1px solid var(--border-subtle); }
+.tool-longform__faq > h3 { margin: 0 0 8px; color: var(--text-primary); font-size: 13px; }
+.tool-longform__faq details { border-top: 1px solid var(--border-subtle); }
+.tool-longform__faq summary { padding: 11px 0; color: var(--text-primary); cursor: pointer; font-size: 12px; font-weight: 700; }
+.tool-longform__faq p { max-width: 780px; margin: -2px 0 12px; color: var(--text-secondary); font-size: 12px; line-height: 1.65; }
 @media (max-width: 720px) { .tool-longform { margin-top: 30px; padding: 19px; } .tool-longform h2 { font-size: 20px; } .tool-longform__body { grid-template-columns: 1fr; } }
 .tool-page-shell, .dashboard-shell { display: flex; width: 100%; min-height: 100%; }
 .tool-page-shell__main, .dashboard-shell__main { flex: 1; min-width: 0; }

@@ -28,4 +28,4 @@ draft: false
 
 ## 더 깊게 보려면
 
-응답곡선으로 예산을 최적 배분하는 법은 [예산 배분 글](/blog/marketing-budget-allocation)에서 다룹니다.
+응답곡선으로 예산을 최적 배분하는 법은 [예산 배분 글](/blog/budget-marginal-efficiency)에서 다룹니다.

@@ -1,8 +1,9 @@
-import { resolveSlugToId, idToPath, SITE_URL, enAlternates, isRoutePublished } from "@/lib/routeMap";
+import { resolveSlugToId, idToPath, SITE_URL, enAlternates, isRouteIndexable } from "@/lib/routeMap";
 import { findMeta } from "@/store/useDataStore";
 import { buildPageKeywords } from "@/lib/pageKeywords";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { getToolFeatureList, getToolOgImageUrl } from "@/lib/toolOg";
+import { getResponseSubtoolContent } from "@/lib/responseSubtoolContent";
 import PageClient from "./PageClient";
 
 export async function generateMetadata({ params }) {
@@ -39,7 +40,7 @@ export async function generateMetadata({ params }) {
     title,
     description,
     keywords,
-    ...(!isRoutePublished(routeId) ? { robots: { index: false, follow: true } } : {}),
+    ...(!isRouteIndexable(routeId) ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical, ...(langs ? { languages: langs } : {}) },
     openGraph: { title, description, url: canonical, images: [socialImage] },
     twitter: { card: "summary_large_image", title, description, images: [socialImage] },
@@ -55,12 +56,13 @@ async function PageWithStructuredData({ params }) {
   const routeId = resolveSlugToId(slug);
   const meta = routeId ? findMeta(routeId) : null;
   const routeSeo = routeId ? getRouteSeo(routeId, "ko") : null;
+  const searchContent = routeId ? getResponseSubtoolContent(routeId, "ko") : null;
   const isTool = Boolean(routeId && (routeId.startsWith("5-") || routeId.startsWith("9-")));
-  const structuredData = isTool && meta ? {
+  const structuredData = isTool && (meta || routeSeo) ? {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: routeSeo?.title || meta.seoTitle || meta.title,
-    description: routeSeo?.description || meta.seoDescription || meta.group?.desc,
+    name: routeSeo?.title || meta?.seoTitle || meta?.title || routeId,
+    description: routeSeo?.description || meta?.seoDescription || meta?.group?.desc,
     url: `${SITE_URL}${idToPath(routeId)}`,
     image: getToolOgImageUrl(SITE_URL, routeId, "ko"),
     featureList: getToolFeatureList(routeId, "ko"),
@@ -70,8 +72,18 @@ async function PageWithStructuredData({ params }) {
     inLanguage: "ko-KR",
     offers: { "@type": "Offer", price: "0", priceCurrency: "KRW" },
   } : null;
+  const faqStructuredData = searchContent?.faq?.length ? {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: searchContent.faq.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+  } : null;
   return <>
     {structuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />}
+    {faqStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }} />}
     <PageClient params={params} />
   </>;
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { idToSlug } from "@/lib/routeMap";
 import { responseStageHref } from "@/lib/responseStage";
+import { getResponseSubtoolContent } from "@/lib/responseSubtoolContent";
 
 const INTRO = {
   "5-4": {
@@ -12,8 +13,8 @@ const INTRO = {
     en: ["Marketing response analysis", "Map the CSV once, then run only the trend, cannibalization, MMM contribution, or regression forecast you need."],
   },
   "5-3": {
-    ko: ["마케팅 예산 배분", "채널별 한계 효율과 지출 여력으로 다음 예산을 어디에 늘리고 줄일지 시뮬레이션합니다."],
-    en: ["Marketing budget allocation", "Use channel-level marginal efficiency and headroom to simulate where the next budget should increase or decrease."],
+    ko: ["무료 마케팅 예산 배분 시뮬레이터", "채널별 한계 효율과 지출 여력으로 다음 예산을 어디에 늘리고 줄일지 시뮬레이션합니다."],
+    en: ["Free marketing budget allocation simulator", "Use channel-level marginal efficiency and headroom to simulate where the next budget should increase or decrease."],
   },
   "5-20": {
     ko: ["핵심 가치 발굴", "어떤 초기 행동을 며칠 안에 몇 번 한 유저가 장기 가치로 이어지는지 찾습니다."],
@@ -51,7 +52,8 @@ const HEADER_COPY = {
 
 export default function ToolIntro({ toolId, locale = "ko" }) {
   const localeKey = locale === "en" ? "en" : "ko";
-  const copy = INTRO[toolId]?.[localeKey];
+  const searchContent = getResponseSubtoolContent(toolId, localeKey);
+  const copy = INTRO[toolId]?.[localeKey] || (searchContent ? [searchContent.h1, searchContent.intro] : null);
   const crossLink = TOOL_CROSS_LINK[toolId]?.[localeKey];
   const T = HEADER_COPY[localeKey];
   if (!copy) return null;

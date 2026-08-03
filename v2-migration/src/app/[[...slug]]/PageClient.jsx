@@ -16,6 +16,7 @@ import ToolIntro from "@/components/ToolIntro";
 import ToolLongform from "@/components/ToolLongform";
 import ToolConnections from "@/components/ToolConnections";
 import ToolAssistRail from "@/components/ToolAssistRail";
+import { RESPONSE_SUBTOOL_IDS, isResponseSubtool } from "@/lib/responseSubtoolContent";
 
 // 도구는 무겁고(Chart.js·XLSX·PapaParse) 라우트별로 하나만 필요 → next/dynamic으로
 // 코드 분할. 정적 import 시 홈 포함 모든 경로가 앱 전체 JS(~1MB)를 최초 로드해
@@ -35,7 +36,7 @@ const KillerContentFinder = dyn(() => import("@/components/tools/KillerContentFi
 const ContentTrafficVariance = dyn(() => import("@/components/tools/ContentTrafficVariance"));
 const ContentFreshness = dyn(() => import("@/components/tools/ContentFreshness"));
 const ContentDashboard = dyn(() => import("@/components/tools/ContentDashboard"));
-const CUSTOM_TOOL_INTRO_IDS = new Set(["5-4", "5-18", "5-20", "5-23", "9-1", "9-6"]);
+const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS]);
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId } from "@/lib/routeMap";
@@ -47,7 +48,7 @@ export default function PageClient({ params }) {
   const { slug } = use(params);
   const routeId = resolveSlugToId(slug);
   const responseStage = resolveResponseStage(useSearchParams().get("stage"));
-  const isResponseSubtool = ["5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast"].includes(routeId);
+  const isResponseSubtoolRoute = isResponseSubtool(routeId);
 
   // Unknown URL -> 404 (must run before any dispatch that assumes a valid id).
   if (routeId === null) notFound();
@@ -106,9 +107,9 @@ export default function PageClient({ params }) {
              !routeId.startsWith("9-") && (
               <SopContent routeId={routeId} />
             )}
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolConnections toolId={routeId} />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolConnections toolId={routeId} />}
             <ToolLongform toolId={routeId} />
-            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtool && <ToolAssistRail toolId={routeId} />}
+            {(routeId.startsWith("5-") || routeId.startsWith("9-")) && !isResponseSubtoolRoute && <ToolAssistRail toolId={routeId} />}
           </article>
         </main>
       </div>

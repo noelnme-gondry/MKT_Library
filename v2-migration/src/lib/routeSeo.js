@@ -51,12 +51,12 @@ export const ROUTE_SEO = {
   },
   "5-18": {
     ko: {
-      title: "광고 잠식 분석",
-      description: "유료 광고가 원래 들어올 오가닉 성과를 잠식하는지 네 가지 신호로 점검하고, 홀드아웃 검증과 예산 재배분이 필요한 채널을 좁힙니다.",
+      title: "마케팅 반응 분석 | MMM·잠식·예측",
+      description: "추세·광고 잠식·MMM 채널 기여·회귀 예측을 한 CSV로 분석해 다음 예산과 검증할 가설을 정합니다.",
     },
     en: {
-      title: "Ad Cannibalization Analysis",
-      description: "Check four signals that paid ads may be displacing organic outcomes, then narrow the channels that need holdout validation or a budget review.",
+      title: "Marketing Response | MMM, Cannibalization & Forecasting",
+      description: "Analyze trend, ad cannibalization, MMM channel contribution, and regression forecasts from one dataset to plan the next budget test.",
     },
   },
   "5-18-trend": {
@@ -64,8 +64,8 @@ export const ROUTE_SEO = {
     en: { title: "Marketing Trend Analysis", description: "Separate natural trend, seasonality, and irregular weeks before interpreting marketing performance." },
   },
   "5-18-cannibal": {
-    ko: { title: "광고 카니발 진단", description: "유료 광고가 오가닉 성과를 잠식하는지 채널별 네 가지 신호로 점검합니다." },
-    en: { title: "Ad Cannibalization Diagnosis", description: "Check four channel-level signals that paid advertising may be displacing organic outcomes." },
+    ko: { title: "광고 카니발라이제이션 진단 | 유료·오가닉 잠식", description: "유료 성과가 늘 때 오가닉·브랜드 성과가 줄었는지 네 가지 신호로 점검하고 홀드아웃이 필요한 채널을 좁힙니다." },
+    en: { title: "Ad Cannibalization Diagnosis | Paid vs Organic", description: "Check four signals that paid outcomes may be replacing organic or branded demand, then prioritize channels for holdout validation." },
   },
   "5-18-mmm": {
     ko: { title: "MMM 기여도 분석", description: "채널·기본 수요·이벤트의 성과 기여를 마케팅 믹스 모델로 분해합니다." },
@@ -77,11 +77,11 @@ export const ROUTE_SEO = {
   },
   "5-3": {
     ko: {
-      title: "마케팅 예산 배분",
+      title: "예산 배분 시뮬레이터 | 채널별 증액·감액",
       description: "채널별 한계 CPA·ROAS와 지출 여력을 바탕으로 다음 예산을 어디에 늘리고 줄일지 시뮬레이션하는 무료 마케팅 예산 배분 도구입니다.",
     },
     en: {
-      title: "Marketing Budget Allocation",
+      title: "Budget Allocation Simulator | Scale Up or Pull Back",
       description: "Use marginal CPA, ROAS, and channel headroom to simulate where the next marketing budget should increase or decrease.",
     },
   },

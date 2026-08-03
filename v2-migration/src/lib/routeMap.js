@@ -105,6 +105,15 @@ export function isRoutePublished(routeOrId) {
   return Boolean(route && !route.legacy && route.publication !== "preview" && route.publication !== "subtool");
 }
 
+// 검색 색인 가능 여부는 전역 내비게이션 노출 여부와 별도다. response subtool은
+// 사이드바·템플릿 목록에서는 숨기지만 sitemap과 canonical을 가진 독립 검색 랜딩이다.
+// 이 둘을 isRoutePublished 하나로 판정하면 sitemap에는 있으면서 meta robots는
+// noindex가 되는 모순이 생긴다.
+export function isRouteIndexable(routeOrId) {
+  const route = typeof routeOrId === "string" ? ROUTES.find((item) => item.id === routeOrId && !item.legacy) : routeOrId;
+  return Boolean(route && !route.legacy && route.publication !== "preview");
+}
+
 // ── EN i18n rollout registry ──────────────────────────────────────────────
 // Tool ids with a fully-translated EN page (component honors locale="en").
 // Add an id here ONLY after its component + shared shell strings are done —

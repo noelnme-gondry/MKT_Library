@@ -90,7 +90,7 @@ AI tools marketers use these days roughly fall into three types. Each needs a di
 
 **Two, execution AI** (auto-bidding, automated campaigns). This is what we covered above. Use it well, but [understand how the learning phase works](/en/blog/ad-machine-learning) and verify the results.
 
-**Three, summarization AI** (auto-generated reports, insight summaries). Convenient, but this is where you need to be most careful. Summaries are good at producing plausible-sounding sentences. Plausible isn't the same as correct. When you see a line like "Channel A is performing well, increase its budget," check whether that's based on the average or the [marginal return](/en/blog/marketing-budget-allocation). **Executing a plausible-sounding conclusion without double-checking it is the most common mistake right now.**
+**Three, summarization AI** (auto-generated reports, insight summaries). Convenient, but this is where you need to be most careful. Summaries are good at producing plausible-sounding sentences. Plausible isn't the same as correct. When you see a line like "Channel A is performing well, increase its budget," check whether that's based on the average or the [marginal return](/en/blog/budget-marginal-efficiency). **Executing a plausible-sounding conclusion without double-checking it is the most common mistake right now.**
 
 ## So what should you actually prepare?
 

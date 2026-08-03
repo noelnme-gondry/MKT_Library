@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EN_READY_TOOL_IDS, ROUTES, hasEnVersion, idToSlug, isRoutePublished } from "./routeMap";
+import { EN_READY_RESPONSE_SUBTOOL_IDS, EN_READY_TOOL_IDS, ROUTES, hasEnVersion, idToSlug, isRouteIndexable, isRoutePublished } from "./routeMap";
 import { ITEM_TITLE_EN } from "./enNavCopy";
 
 describe("English route registry", () => {
@@ -18,6 +18,14 @@ describe("English route registry", () => {
     for (const id of EN_READY_TOOL_IDS) {
       const route = ROUTES.find((item) => item.id === id);
       expect(route?.publication).not.toBe("preview");
+    }
+  });
+
+  it("keeps response subtools hidden from navigation but indexable in search", () => {
+    for (const id of EN_READY_RESPONSE_SUBTOOL_IDS) {
+      expect(isRoutePublished(id), `${id} navigation publication`).toBe(false);
+      expect(isRouteIndexable(id), `${id} search indexability`).toBe(true);
+      expect(hasEnVersion(id), `${id} EN gate`).toBe(true);
     }
   });
 });
