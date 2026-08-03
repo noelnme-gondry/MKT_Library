@@ -28,7 +28,6 @@ import AnalysisHistory from "@/components/data-import/AnalysisHistory";
 import AnalysisPathway from "@/components/data-import/AnalysisPathway";
 import { buildResultManifest } from "@/lib/analysis-results/resultManifest";
 import { runDashboardVerdict, shouldUseDashboardVerdictWorker } from "@/lib/analysis/dashboardVerdictWorkerClient";
-import { getIndustryPreset, getIndustryScaleOptions } from "@/lib/industryPresets";
 
 // 콘텐츠 대시보드(9-7)는 3탭만 노출 — 결제·예산·매출 전제 탭(pacing·ltv·cohort·
 // funnel·segment)은 콘텐츠 데이터로 의미가 없어 제외(§정직성).
@@ -139,10 +138,6 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
     locale,
   }), [verdict, csvData?.mapping, domain, locale]);
   const isDemo = String(csvData?.fileName || "").startsWith("demo_");
-  const industryPreset = !isContent ? getIndustryPreset(csvData?.demoPresetId, locale) : null;
-  const industryScale = industryPreset
-    ? getIndustryScaleOptions(locale).find((scale) => scale.id === csvData?.demoPresetScale)
-    : null;
   const openMapping = () => {
     setMappingOpen(true);
     requestAnimationFrame(() => document.getElementById("dashboard-data-setup")?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -281,15 +276,13 @@ export default function Dashboard({ domain = "performance", locale = "ko" } = {}
             {activeTab === "viz" && verdict && !verdict.insufficient && (
               <section className="dashboard-briefing" aria-label={tr("현재 결론과 다음 단계", "Current conclusion and next steps")}>
                 {isDemo && (
-                  <section className={`dashboard-demo-source${industryPreset ? " is-industry-preset" : ""}`} id="dashboard-demo-source" aria-label={tr("예시 데이터 안내", "Sample data notice")}>
+                  <section className="dashboard-demo-source" id="dashboard-demo-source" aria-label={tr("예시 데이터 안내", "Sample data notice")}>
                     <div>
-                      <span>{industryPreset ? `SITUATION PRESET · ${industryPreset.title}${industryScale ? ` · ${industryScale.short}` : ""}` : "SAMPLE DATA"}</span>
-                      <strong>{industryPreset ? industryPreset.question : tr("지금 보는 수치는 예시입니다", "These numbers are an example")}</strong>
-                      <p>{industryPreset
-                        ? `${industryPreset.description} · ${tr("90일 합성 데이터이며 실제 고객 데이터가 아닙니다.", "This is 90 days of synthetic data, not real customer data.")}`
-                        : tr("내 CSV를 올리면 같은 화면에서 실제 데이터로 바로 교체됩니다.", "Upload your CSV to replace this view with your real data.")}</p>
+                      <span>SAMPLE DATA</span>
+                      <strong>{tr("지금 보는 수치는 예시입니다", "These numbers are an example")}</strong>
+                      <p>{tr("내 CSV를 올리면 같은 화면에서 실제 데이터로 바로 교체됩니다.", "Upload your CSV to replace this view with your real data.")}</p>
                     </div>
-                    <button type="button" onClick={openMapping}>{industryPreset ? tr("내 CSV로 같은 판단하기", "Run the same decision on my CSV") : tr("내 CSV로 바꾸기", "Use my CSV")} <span aria-hidden="true">→</span></button>
+                    <button type="button" onClick={openMapping}>{tr("내 CSV로 바꾸기", "Use my CSV")} <span aria-hidden="true">→</span></button>
                   </section>
                 )}
                 <ResultActionCard

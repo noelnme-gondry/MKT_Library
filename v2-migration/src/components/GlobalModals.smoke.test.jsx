@@ -45,9 +45,9 @@ describe("GlobalModals complete tool menu", () => {
     trigger.focus();
     fireEvent.click(trigger);
 
-    const dialog = screen.getByRole("dialog", { name: "도구·가이드·용어 검색" });
+    const dialog = screen.getByRole("dialog", { name: "작업·도구·가이드 검색" });
     expect(dialog.getAttribute("aria-modal")).toBe("true");
-    const search = screen.getByRole("combobox", { name: "도구·가이드·용어 검색" });
+    const search = screen.getByRole("combobox", { name: "작업·도구·가이드 검색" });
     await waitFor(() => expect(document.activeElement).toBe(search));
 
     const options = screen.getAllByRole("option");
@@ -75,10 +75,20 @@ describe("GlobalModals complete tool menu", () => {
     expect(useAppStore.getState().isCmdkOpen).toBe(false);
   });
 
+  it("includes data analysis, metric calculators, and performance diagnosis as workspace tasks", () => {
+    renderToolMenu();
+    fireEvent.click(screen.getByRole("button", { name: "전체 도구" }));
+    expect(screen.getByRole("option", { name: /내 데이터 분석/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /마케팅 지표 계산기/ })).toBeTruthy();
+    const diagnosis = screen.getByRole("option", { name: /성과 문제 진단/ });
+    fireEvent.click(diagnosis);
+    expect(pushMock).toHaveBeenCalledWith("/diagnose");
+  });
+
   it("keeps the English menu and localized tool route in parity", () => {
     renderToolMenu("en");
     fireEvent.click(screen.getByRole("button", { name: "All tools" }));
-    const dialog = screen.getByRole("dialog", { name: "Search tools, guides, and glossary" });
+    const dialog = screen.getByRole("dialog", { name: "Search tasks, tools, and guides" });
     expect(dialog).toBeTruthy();
     fireEvent.click(screen.getByRole("option", { name: /Budget Allocation Simulator/ }));
     expect(pushMock).toHaveBeenCalledWith("/en/tools/budget-allocation");

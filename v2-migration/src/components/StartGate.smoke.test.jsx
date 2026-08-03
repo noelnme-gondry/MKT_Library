@@ -19,51 +19,37 @@ describe("StartGate render smoke", () => {
 
   afterEach(() => { delete window.gtag; });
 
-  it("mounts + sets demoDisabled(true) + lists tools", () => {
+  it("mounts with upload first, direct no-file actions, and tool browser", () => {
     expect(() => render(<StartGate />)).not.toThrow();
     // 진입 시 데모 자동로드 억제 플래그 on.
     expect(useAppStore.getState().demoDisabled).toBe(true);
     // 도구 카드(질문/제목) 최소 1개.
     expect(document.querySelectorAll(".phase-card").length).toBeGreaterThan(0);
-    expect(screen.getByText(/데이터부터 살펴볼게요/)).toBeTruthy();
+    expect(screen.getByText(/CSV나 Google Sheets를 가져오세요/)).toBeTruthy();
+    expect(document.querySelector('a[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('a[href="/diagnose"]')).toBeTruthy();
-    expect(document.querySelectorAll(".start-preset-card")).toHaveLength(4);
-    expect(window.gtag).toHaveBeenCalledWith("event", "preset_exposed", {
-      source: "start",
-      placement: "before_upload",
-      locale: "ko",
-    });
+    expect(document.querySelector(".start-presets")).toBeNull();
   });
 
-  it("opens a deterministic situation result with the selected scale and fixed GA enums", () => {
+  it("opens one clearly labeled generic example and tracks it", () => {
     render(<StartGate />);
-    fireEvent.click(screen.getByRole("button", { name: /스케일 · 월 3억 이상/ }));
-    fireEvent.click(screen.getByRole("button", { name: /모바일 게임 · 이 상황으로 결과 보기/ }));
-
-    const state = useAppStore.getState();
-    const slice = state.csvGroups.efficiency;
-    expect(slice.fileName).toBe("demo_preset_mobile-game_scale.csv");
-    expect(slice.demoPresetId).toBe("mobile-game");
-    expect(slice.raw.length).toBeGreaterThan(0);
-    expect(state.analyzedByGroup.efficiency).toBeTruthy();
-    expect(window.gtag).toHaveBeenCalledWith("event", "preset_selected", {
+    fireEvent.click(screen.getByRole("button", { name: /예시 데이터로 둘러보기/ }));
+    expect(useAppStore.getState().demoDisabled).toBe(false);
+    expect(useAppStore.getState().csvGroups.efficiency.fileName).toMatch(/^demo_/);
+    expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", {
       tool_id: "5-2",
-      source: "industry_preset",
-      placement: "before_upload",
+      source: "start",
+      placement: "after_upload_entry",
       locale: "ko",
-      preset_id: "mobile-game",
-      preset_scale: "scale",
     });
-    expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", expect.objectContaining({
-      preset_id: "mobile-game",
-      preset_scale: "scale",
-    }));
   });
 
-  it("keeps the preset chooser equivalent in English", () => {
+  it("keeps upload, calculator, diagnosis, and generic example equivalent in English", () => {
     render(<StartGate locale="en" />);
-    expect(screen.getByRole("button", { name: /Lead generation · View this situation/ })).toBeTruthy();
-    expect(screen.getByText("See a result that resembles your situation before uploading")).toBeTruthy();
+    expect(screen.getByText("Bring a CSV or Google Sheet")).toBeTruthy();
+    expect(document.querySelector('a[href="/en/calculator"]')).toBeTruthy();
+    expect(document.querySelector('a[href="/en/diagnose"]')).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Explore example data/ })).toBeTruthy();
   });
 
   it("startMyData clears demo-loaded groups only (real uploads kept)", () => {

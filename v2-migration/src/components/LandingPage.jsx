@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import ConnectedToolJourney from "@/components/ConnectedToolJourney";
 import { trackProductEvent } from "@/lib/analytics";
 import { hasEnVersion, idToSlug } from "@/lib/routeMap";
+import { TOOL_GROUP } from "@/lib/toolGroups";
 import { useAppStore } from "@/store/useDataStore";
+import { buildDemoCsv } from "@/utils/demoData";
 
 const COPY = {
   ko: {
@@ -15,8 +17,17 @@ const COPY = {
     titleMuted: "이번 주 데이터에서 찾고",
     titleAccent: "다음 한 가지를 정합니다.",
     deck: "매주 광고 예산과 소재를 결정하는 퍼포먼스 마케터를 위해, CSV 하나로 상태 점검부터 다음 행동과 실제 결과 검토까지 이어갑니다.",
-    dataCta: "내 데이터로 무료 분석 시작",
-    sampleCta: "샘플 판단 보기",
+    actionAria: "바로 시작할 작업",
+    dataActionLabel: "CSV · GOOGLE SHEETS",
+    dataCta: "내 데이터 분석하기",
+    dataActionHint: "업로드 후 가능한 분석을 자동 추천",
+    calculatorActionLabel: "QUICK MATH",
+    calculatorCta: "지표 바로 계산",
+    calculatorActionHint: "CSV 없이 숫자만 입력",
+    diagnoseActionLabel: "ROOT CAUSE",
+    diagnoseCta: "성과 문제 진단",
+    diagnoseActionHint: "증상에서 원인 후보와 확인 순서 찾기",
+    sampleCta: "예시 데이터로 둘러보기",
     dataGuideCta: "CSV 준비 방법",
     privacy: "가입 없음 · 10개 분석 무료 · 원본 데이터 서버 전송 0",
     instrumentAria: "이번 주 판단 미리보기",
@@ -38,10 +49,6 @@ const COPY = {
     questionEyebrow: "CHOOSE BY QUESTION",
     questionTitle: "지금 가장 먼저 판단할 것은?",
     questionDeck: "도구 이름보다 실제 업무 질문으로 시작합니다.",
-    diagnoseLabel: "아직 질문도 정하기 어렵다면",
-    diagnoseTitle: "문제 증상부터 3단계로 정리하기",
-    diagnoseDesc: "데이터 업로드 없이 증상·보유 데이터·다음 결정을 하나씩 고릅니다.",
-    diagnoseCta: "성과 문제 진단",
     questions: [
       { id: "5-2", label: "WEEKLY HEALTH", title: "이번 주, 어디를 먼저 봐야 할까?", desc: "CPA·ROAS·페이싱·이상 신호를 한 화면에서 점검합니다." },
       { id: "5-3", label: "BUDGET MOVE", title: "다음 예산은 어디로 옮길까?", desc: "현재 효율과 한계 효율로 증액·감액 후보를 비교합니다." },
@@ -67,8 +74,17 @@ const COPY = {
     titleMuted: "read this week’s data, then",
     titleAccent: "choose the next move.",
     deck: "Built for performance marketers making weekly budget and creative calls. Move from one CSV to a next action, then review the actual outcome next week.",
-    dataCta: "Analyze my data for free",
-    sampleCta: "See a sample decision",
+    actionAria: "Start a task",
+    dataActionLabel: "CSV · GOOGLE SHEETS",
+    dataCta: "Analyze my data",
+    dataActionHint: "See supported analyses after upload",
+    calculatorActionLabel: "QUICK MATH",
+    calculatorCta: "Calculate a metric",
+    calculatorActionHint: "Enter numbers without a CSV",
+    diagnoseActionLabel: "ROOT CAUSE",
+    diagnoseCta: "Diagnose performance",
+    diagnoseActionHint: "Trace symptoms to likely causes and checks",
+    sampleCta: "Explore example data",
     dataGuideCta: "Prepare a CSV",
     privacy: "No signup · 10 free analyses · source data never sent to a server",
     instrumentAria: "Preview of this week’s decision",
@@ -90,10 +106,6 @@ const COPY = {
     questionEyebrow: "CHOOSE BY QUESTION",
     questionTitle: "What do you need to decide first?",
     questionDeck: "Start with the operating question, not the tool name.",
-    diagnoseLabel: "NOT SURE WHAT TO ASK YET?",
-    diagnoseTitle: "Turn the symptom into a three-step diagnosis",
-    diagnoseDesc: "Choose the symptom, available data, and next decision—no upload needed.",
-    diagnoseCta: "Diagnose performance",
     questions: [
       { id: "5-2", label: "WEEKLY HEALTH", title: "Where should I look first this week?", desc: "Review CPA, ROAS, pacing, and anomaly signals in one view." },
       { id: "5-3", label: "BUDGET MOVE", title: "Where should the next budget go?", desc: "Compare scale-up and pull-back candidates with marginal efficiency." },
@@ -120,6 +132,7 @@ export default function LandingPage({ locale = "ko" }) {
   const T = COPY[lang];
   const router = useRouter();
   const setDemoDisabled = useAppStore((state) => state.setDemoDisabled);
+  const handoffCsvToRoute = useAppStore((state) => state.handoffCsvToRoute);
   const toolHref = (id) =>
     lang === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/";
   const prepareSample = (id, placement) => {
@@ -136,6 +149,7 @@ export default function LandingPage({ locale = "ko" }) {
       locale: lang,
     });
     setDemoDisabled(false);
+    handoffCsvToRoute(id, buildDemoCsv(TOOL_GROUP[id] || "efficiency", lang));
   };
   const openSample = (id, placement) => {
     prepareSample(id, placement);
@@ -156,13 +170,37 @@ export default function LandingPage({ locale = "ko" }) {
             <span className="dc-hero__accent">{T.titleAccent}</span>
           </h1>
           <p>{T.deck}</p>
-          <div className="dc-hero__actions">
+          <nav className="dc-hero__actions" aria-label={T.actionAria}>
             <Link
-              className="btn primary dc-primary-button"
+              className="dc-action-route dc-action-route--primary"
               href={lang === "en" ? "/en/start" : "/start"}
               onClick={() => trackLandingNav("landing_data_start_clicked", "hero")}
-            >{T.dataCta}</Link>
-            <button className="btn ghost dc-secondary-button" type="button" onClick={() => openSample("5-2", "hero")}>{T.sampleCta}</button>
+            >
+              <small>{T.dataActionLabel}</small>
+              <strong>{T.dataCta}</strong>
+              <span>{T.dataActionHint}</span>
+            </Link>
+            <Link
+              className="dc-action-route"
+              href={lang === "en" ? "/en/calculator" : "/calculator"}
+              onClick={() => trackLandingNav("calculator_entry_clicked", "hero")}
+            >
+              <small>{T.calculatorActionLabel}</small>
+              <strong>{T.calculatorCta}</strong>
+              <span>{T.calculatorActionHint}</span>
+            </Link>
+            <Link
+              className="dc-action-route"
+              href={lang === "en" ? "/en/diagnose" : "/diagnose"}
+              onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "landing", placement: "hero", locale: lang })}
+            >
+              <small>{T.diagnoseActionLabel}</small>
+              <strong>{T.diagnoseCta}</strong>
+              <span>{T.diagnoseActionHint}</span>
+            </Link>
+          </nav>
+          <div className="dc-hero__utility-actions">
+            <button type="button" onClick={() => openSample("5-2", "hero")}>{T.sampleCta} →</button>
             <Link className="dc-text-link" href={lang === "en" ? "/en/guide/csv-data-prep" : "/guide/csv-data-prep"}>
               {T.dataGuideCta} →
             </Link>
@@ -239,15 +277,6 @@ export default function LandingPage({ locale = "ko" }) {
           </div>
           <p>{T.questionDeck}</p>
         </header>
-        <Link
-          className="dc-diagnose-entry"
-          href={lang === "en" ? "/en/diagnose" : "/diagnose"}
-          onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "landing", placement: "question_section", locale: lang })}
-        >
-          <span>{T.diagnoseLabel}</span>
-          <div><strong>{T.diagnoseTitle}</strong><p>{T.diagnoseDesc}</p></div>
-          <b>{T.diagnoseCta} →</b>
-        </Link>
         <div className="dc-question-grid">
           {T.questions.map((question) => (
             <button type="button" className="dc-question-card" key={question.id} onClick={() => openSample(question.id, "question_card")}>

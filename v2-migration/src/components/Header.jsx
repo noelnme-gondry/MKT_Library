@@ -149,7 +149,7 @@ export default function Header({ locale = "ko" }) {
           {cleanPath === "/" && <><span className="sep">/</span><strong className="current">{T.homeCrumb}</strong></>}
           {isBlog && <><span className="sep">/</span><Link href={blogHref} className="current current--section">{locale === "en" ? "Blog" : "블로그"}</Link></>}
           {isTemplates && <><span className="sep">/</span><span className="current current--section">{locale === "en" ? "Templates" : "템플릿"}</span></>}
-          {isCalculator && <><span className="sep">/</span><Link href={locale === "en" ? "/en/calculator" : "/calculator"} className="current current--section">{locale === "en" ? "Calculators" : "계산기"}</Link></>}
+          {isCalculator && <><span className="sep">/</span><Link href={locale === "en" ? "/en/calculator" : "/calculator"} className="current current--section">{locale === "en" ? "Metric calculators" : "지표 계산기"}</Link></>}
           {isDiagnose && <><span className="sep">/</span><span className="current current--section">{locale === "en" ? "Diagnosis" : "문제 진단"}</span></>}
           {(isWeeklyReport || isWeeklyReview) && (
             <><span className="sep">/</span><span className="current current--section">

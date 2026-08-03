@@ -46,11 +46,14 @@ describe("Sidebar render smoke", () => {
   it("no-data mounts", () => {
     expect(() => render(<Sidebar />)).not.toThrow();
     expect(document.querySelector(".home-sidebar-nav")).toBeTruthy();
-    expect(document.querySelectorAll(".home-sidebar-nav__item")).toHaveLength(5);
+    expect(document.querySelectorAll(".home-sidebar-nav__item")).toHaveLength(8);
+    expect(document.querySelector('.home-sidebar-nav__item[href="/start"]')).toBeTruthy();
+    expect(document.querySelector('.home-sidebar-nav__item[href="/calculator"]')).toBeTruthy();
+    expect(document.querySelector('.home-sidebar-nav__item[href="/diagnose"]')).toBeTruthy();
     expect(document.querySelector('a[href="/weekly-review"]')).toBeTruthy();
-    expect(document.querySelectorAll(".sidebar-library-link")).toHaveLength(6);
-    expect(document.querySelector('a[href="/calculator"]')).toBeTruthy();
-    expect(document.querySelector('a[href="/diagnose"]')).toBeTruthy();
+    expect(document.querySelectorAll(".sidebar-library-link")).toHaveLength(4);
+    expect(document.body.textContent).toContain("마케팅 지표 계산기");
+    expect(document.body.textContent).not.toContain("무CSV 계산기");
     expect(document.querySelectorAll(".sidebar-social .ss-btn")).toHaveLength(4);
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
     expect(document.querySelector('.home-sidebar-nav__item[aria-current="page"]')).toBeTruthy();
@@ -65,7 +68,7 @@ describe("Sidebar render smoke", () => {
     const search = document.querySelector(".sidebar-search");
     expect(search?.getAttribute("aria-controls")).toBe("cmdk");
     expect(search?.getAttribute("aria-expanded")).toBe("false");
-    expect(document.querySelectorAll(".sidebar-primary-nav__item")).toHaveLength(2);
+    expect(document.querySelectorAll(".sidebar-primary-nav__item")).toHaveLength(5);
     expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(false);
   });
   it("keeps resource and external-link parity in English", () => {
@@ -74,6 +77,7 @@ describe("Sidebar render smoke", () => {
     expect(container.textContent).toContain("Operating Guide");
     expect(container.textContent).toContain("Naver Blog");
     expect(container.textContent).toContain("Decision inbox");
+    expect(container.textContent).toContain("Marketing metric calculators");
     expect(container.querySelector('a[href="/en/guide"]')).toBeTruthy();
   });
   it("uses the full workspace navigation on library routes instead of treating them as home", () => {

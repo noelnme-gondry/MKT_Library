@@ -6,8 +6,8 @@ import { hasEnVersion, idToSlug } from "@/lib/routeMap";
 import { trGroupTitle, trItemTitle } from "@/lib/enNavCopy";
 
 const COPY = {
-  ko: { placeholder: "도구·가이드·용어 검색", move: "이동", run: "열기", close: "닫기", empty: "일치하는 페이지가 없습니다", pages: "빠른 이동" },
-  en: { placeholder: "Search tools, guides, and glossary", move: "move", run: "open", close: "close", empty: "No matching pages", pages: "Quick navigation" },
+  ko: { placeholder: "작업·도구·가이드 검색", move: "이동", run: "열기", close: "닫기", empty: "일치하는 페이지가 없습니다", pages: "빠른 이동" },
+  en: { placeholder: "Search tasks, tools, and guides", move: "move", run: "open", close: "close", empty: "No matching pages", pages: "Quick navigation" },
 };
 
 export default function GlobalModals({ locale = "ko" }) {
@@ -30,6 +30,9 @@ export default function GlobalModals({ locale = "ko" }) {
       kind: item.id.startsWith("5-") || item.id.startsWith("9-") ? (locale === "en" ? "Analysis" : "분석") : (locale === "en" ? "Guide" : "가이드"),
     })));
     return items.concat([
+      { key: "start", title: locale === "en" ? "Analyze my data" : "내 데이터 분석", group: locale === "en" ? "Decision workspace" : "의사결정 워크스페이스", href: locale === "en" ? "/en/start" : "/start", kind: locale === "en" ? "Start" : "시작" },
+      { key: "calculator", title: locale === "en" ? "Marketing metric calculators" : "마케팅 지표 계산기", group: locale === "en" ? "Decision workspace" : "의사결정 워크스페이스", href: locale === "en" ? "/en/calculator" : "/calculator", kind: locale === "en" ? "Calculate" : "계산" },
+      { key: "diagnose", title: locale === "en" ? "Diagnose performance" : "성과 문제 진단", group: locale === "en" ? "Decision workspace" : "의사결정 워크스페이스", href: locale === "en" ? "/en/diagnose" : "/diagnose", kind: locale === "en" ? "Diagnose" : "진단" },
       { key: "blog", title: locale === "en" ? "Performance marketing blog" : "퍼포먼스 마케팅 블로그", group: locale === "en" ? "Learn" : "실무 자료", href: locale === "en" ? "/en/blog" : "/blog", kind: locale === "en" ? "Blog" : "블로그" },
       { key: "glossary", title: locale === "en" ? "Marketing glossary" : "마케팅 용어사전", group: locale === "en" ? "Learn" : "실무 자료", href: locale === "en" ? "/en/glossary" : "/glossary", kind: locale === "en" ? "Glossary" : "용어" },
       { key: "templates", title: locale === "en" ? "CSV templates" : "CSV 템플릿", group: locale === "en" ? "Prepare data" : "데이터 준비", href: locale === "en" ? "/en/templates" : "/templates", kind: locale === "en" ? "Template" : "템플릿" },
