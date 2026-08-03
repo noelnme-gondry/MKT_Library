@@ -3,6 +3,7 @@
 const KO_TITLES = {
   "ab-testing": "A/B 테스트 방법: 표본 크기·유의성·판정 기준",
   "ad-creative-specs-guide": "광고 소재 규격 가이드: 매체별 사이즈·세이프존",
+  "ad-creative-testing": "광고 소재 테스트 방법: 적은 예산으로 몇 개까지 돌려야 할까?",
   "ad-machine-learning": "광고 머신러닝 학습 단계: CPA 급등 원인과 운영 방법",
   "ad-performance-diagnosis": "광고 성과 하락 원인: CPA·CTR 떨어질 때 4단계 진단",
   "aha-event-ad-optimization": "Aha Event로 광고 최적화하기: 설치 CPA와 리텐션 연결",
@@ -62,6 +63,7 @@ const EN_TITLES = {
   "hook-3-seconds-framework": "The 3-Second Hook: Reduce Video Ad Drop-off",
   "ios-att-skan-guide": "iOS Measurement: ATT, SKAN, and Conversion Value Explained",
   "ad-creative-specs-guide": "Ad Creative Specs Guide: Platform Sizes and Safe Zones",
+  "ad-creative-testing": "How Many Ad Creatives Should You Test on a Limited Budget?",
   "meta-advantage-plus-guide": "Meta Advantage+ App Optimization: OS, Events, and Bidding",
   "postback-integration-guide": "Postback Integration: Fix SAN, S2S, and Zero Installs",
   "retargeting-reengagement-guide": "Retargeting & Re-engagement: Why to Split From Acquisition",
@@ -75,9 +77,11 @@ const DRAFT_TITLES = {
 };
 const DESCRIPTION_OVERRIDES = {
   ko: {
+    "ad-creative-testing": "테스트 예산과 목표 CPA로 적정 소재 수를 계산하고 가설 설정부터 승자·보류·탈락 판정까지 정리합니다.",
     "cannibalization-organic-paid": "내부 카니발라이제이션과 유료·오가닉 잠식을 구분하고 측정하는 방법입니다.",
   },
   en: {
+    "ad-creative-testing": "Calculate how many ad creatives your budget can support, define one hypothesis, and classify winners, holds, and losers without relying on CTR alone.",
     "cannibalization-organic-paid": "Measure internal cannibalisation and separate paid impact from organic demand.",
   },
 };

@@ -4,6 +4,7 @@
 const BLOG_PRIMARY_TOOL = {
   "ab-testing": "5-4",
   "ad-creative-specs-guide": "9-6",
+  "ad-creative-testing": "9-6",
   "ad-machine-learning": "5-18",
   "ad-performance-diagnosis": "5-21",
   "aha-event-ad-optimization": "5-20",
@@ -83,6 +84,7 @@ const GLOSSARY_RESPONSE_STAGE = {
 const BLOG_RELATED_GLOSSARY = {
   "ab-testing": ["holdout-test", "uplift"],
   "ad-creative-specs-guide": ["ctr", "cpm"],
+  "ad-creative-testing": ["cpa", "roas", "ctr", "cvr"],
   "ad-machine-learning": ["adstock", "response-curve"],
   "ad-performance-diagnosis": ["cpa", "ctr", "cvr", "cpm"],
   "aha-event-ad-optimization": ["retention", "cohort", "cpa"],
