@@ -6,6 +6,7 @@ import { hasEnVersion, resolvePathToId } from "@/lib/routeMap";
 export const EN_BLOG_SLUGS = new Set([
   "ab-testing",
   "ad-creative-specs-guide",
+  "ad-creative-testing",
   "ad-machine-learning",
   "ad-performance-diagnosis",
   "aha-event-ad-optimization",

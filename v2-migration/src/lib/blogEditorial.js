@@ -3,6 +3,7 @@
 const KO_ANSWERS = {
   "ab-testing": "A/B 테스트는 무작위 배정과 사전 표본 계획으로 두 안의 차이가 우연인지 판정하는 방법입니다. 중간 결과가 좋아 보여도 정한 종료 기준 전에는 승자를 확정하지 않는 편이 안전합니다.",
   "ad-creative-specs-guide": "소재 규격은 매체별 지면과 안전영역이 달라 하나의 파일로 통일하면 노출 품질이 떨어질 수 있습니다. 집행 전 매체별 규격과 실제 미리보기를 함께 확인하세요.",
+  "ad-creative-testing": "동시 테스트 소재 수는 테스트 배치 예산을 소재당 판정 예산으로 나눈 뒤 소수점을 버려 정합니다. 이 값은 운영 가능한 슬롯 수이지 통계적 표본 크기가 아닙니다.",
   "ad-machine-learning": "광고 머신러닝은 충분한 전환 신호를 바탕으로 학습하므로 잦은 타겟·예산·소재 변경은 학습을 흔들 수 있습니다. 변경은 한 번에 하나씩, 충분한 관찰 기간을 두고 평가합니다.",
   "ad-performance-diagnosis": "성과 하락은 소재만의 문제가 아닐 수 있으므로 집계 기준, 전환량, 트래픽 품질, 소재 순으로 원인을 좁혀야 합니다. 같은 기간과 같은 전환 정의로 비교하는 것이 첫 단계입니다.",
   "adjust-vs-appsflyer": "Adjust와 AppsFlyer 중 하나가 모든 팀에 절대적으로 낫지는 않습니다. 필요한 측정 범위, 연동 매체, 데이터 접근 방식, 운영 지원을 실제 요구사항에 맞춰 비교하세요.",
@@ -38,6 +39,7 @@ const KO_ANSWERS = {
 const EN_ANSWERS = {
   "ab-testing": "A/B testing uses random assignment and a pre-set sample plan to judge whether a difference is likely to be real. Do not declare a winner from an encouraging interim result before the planned stopping rule.",
   "ad-creative-specs-guide": "Creative specifications differ by placement and safe area, so one universal asset can degrade delivery quality. Check each platform specification and a live preview before launch.",
+  "ad-creative-testing": "Calculate concurrent creative slots by dividing the test-batch budget by the decision budget per creative, then round down. This is an operational capacity rule, not a statistical sample-size calculation.",
   "ad-machine-learning": "Ad-delivery models learn from conversion signals, so frequent changes to targeting, budget, or creative can disrupt learning. Change one variable at a time and allow a meaningful observation window.",
   "ad-performance-diagnosis": "A performance drop is not necessarily a creative problem. Align the reporting definition first, then narrow the diagnosis through conversion volume, traffic quality, and creative evidence.",
   "adjust-vs-appsflyer": "Neither Adjust nor AppsFlyer is universally better. Compare measurement coverage, media integrations, data access, and operating support against the team’s actual requirements.",
@@ -73,7 +75,7 @@ const EN_ANSWERS = {
 const CONDITION_GROUP_BY_SLUG = {
   "ab-testing": "experiment", "aha-event-ad-optimization": "causal", "aha-moment-retention": "causal",
   "cannibalization-organic-paid": "causal", "correlation-vs-causation": "causal", "incrementality-measurement": "causal",
-  "marketing-mix-modeling": "causal", "ad-creative-specs-guide": "platform", "ad-machine-learning": "platform",
+  "marketing-mix-modeling": "causal", "ad-creative-specs-guide": "platform", "ad-creative-testing": "creative", "ad-machine-learning": "platform",
   "adjust-vs-appsflyer": "platform", "apple-search-ads-guide": "platform", "aso-basics-guide": "platform",
   "google-uac-optimization": "platform", "ios-att-skan-guide": "platform", "meta-advantage-plus-guide": "platform",
   "postback-integration-guide": "platform", "ad-performance-diagnosis": "measurement", "attribution-data-mismatch": "measurement",
