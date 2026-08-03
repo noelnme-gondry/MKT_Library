@@ -22,6 +22,8 @@ describe("sitemap", () => {
     const urls = new Set(sitemap().map((entry) => entry.url));
     expect(urls.has(`${SITE_URL}/start`)).toBe(true);
     expect(urls.has(`${SITE_URL}/en/start`)).toBe(true);
+    expect(urls.has(`${SITE_URL}/guide`)).toBe(true);
+    expect(urls.has(`${SITE_URL}/en/guide`)).toBe(true);
     expect(urls.has(`${SITE_URL}/dashboard`)).toBe(true);
     expect(urls.has(`${SITE_URL}/en/dashboard`)).toBe(true);
     expect(urls.has(`${SITE_URL}/tools/experiment-analysis`)).toBe(true);

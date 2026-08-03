@@ -13,18 +13,16 @@ import { buildDemoCsv } from "@/utils/demoData";
 const COPY = {
   ko: {
     eyebrow: "퍼포먼스 마케팅 의사결정",
-    title: "성과를 보고,",
-    titleAccent: "다음 행동을 정하세요.",
-    deck: "분석·계산·진단 중 필요한 작업을 바로 시작하세요.",
+    title: "성과 원인을 찾고,",
+    titleAccent: "다음 하나를 정하세요.",
     actionAria: "바로 시작할 작업",
-    dataCta: "내 데이터 분석",
-    dataActionHint: "CSV로 성과·이상 신호 확인",
-    calculatorCta: "지표 계산",
-    calculatorActionHint: "숫자로 목표값 계산",
-    diagnoseCta: "문제 진단",
-    diagnoseActionHint: "증상으로 확인 순서 찾기",
-    sampleCta: "예시 데이터로 둘러보기",
-    dataGuideCta: "CSV 준비 방법",
+    dataCta: "내 CSV로 분석",
+    dataActionHint: "성과·예산·소재를 내 데이터로 확인",
+    calculatorCta: "빠른 계산",
+    calculatorActionHint: "목표 CPA·ROAS·표본수 계산",
+    diagnoseCta: "성과 원인 찾기",
+    diagnoseActionHint: "CSV 없이 확인 순서 찾기",
+    dataGuideCta: "CSV 컬럼 준비 방법",
     privacy: "가입 없음 · 원본 데이터는 브라우저에서만 처리",
     instrumentAria: "이번 주 판단 미리보기",
     weeklyDecision: "이번 주 판단",
@@ -35,7 +33,7 @@ const COPY = {
     nextAction: "다음 행동",
     action: "일반 키워드 예산 10% 감액",
     reviewCue: "7일 뒤 CPA 확인",
-    evidence: "근거 보기",
+    evidence: "예시 근거 보기",
     loopEyebrow: "WEEKLY DECISION LOOP",
     loopTitle: "분석으로 끝내지 않고, 다음 주 결과까지",
     loopDeck: "원본 CSV는 저장하지 않습니다. 결정 요약은 사용자가 직접 켠 경우에만 이 기기에 남깁니다.",
@@ -68,18 +66,16 @@ const COPY = {
   },
   en: {
     eyebrow: "PERFORMANCE MARKETING DECISIONS",
-    title: "Read performance.",
-    titleAccent: "Choose the next move.",
-    deck: "Start with analysis, calculation, or diagnosis.",
+    title: "Find the cause.",
+    titleAccent: "Choose one next move.",
     actionAria: "Start a task",
-    dataCta: "Analyze my data",
-    dataActionHint: "Check performance and anomalies from a CSV",
-    calculatorCta: "Calculate metrics",
-    calculatorActionHint: "Get target values from a few numbers",
-    diagnoseCta: "Diagnose a problem",
-    diagnoseActionHint: "Turn symptoms into a check order",
-    sampleCta: "Explore example data",
-    dataGuideCta: "Prepare a CSV",
+    dataCta: "Analyze my CSV",
+    dataActionHint: "Check performance, budget, and creative",
+    calculatorCta: "Quick calculations",
+    calculatorActionHint: "Calculate target CPA, ROAS, and sample size",
+    diagnoseCta: "Find the cause",
+    diagnoseActionHint: "Get a check order without a CSV",
+    dataGuideCta: "Prepare CSV columns",
     privacy: "No signup · source data stays in your browser",
     instrumentAria: "Preview of this week’s decision",
     weeklyDecision: "This week’s decision",
@@ -90,7 +86,7 @@ const COPY = {
     nextAction: "Next action",
     action: "Cut generic-keyword spend 10%",
     reviewCue: "Check CPA in 7 days",
-    evidence: "See evidence",
+    evidence: "See example evidence",
     loopEyebrow: "WEEKLY DECISION LOOP",
     loopTitle: "Do not stop at analysis—review what happened next",
     loopDeck: "Source CSV data is never stored. Decision summaries remain on this device only when you explicitly enable it.",
@@ -164,7 +160,6 @@ export default function LandingPage({ locale = "ko" }) {
             <span>{T.title}</span>
             <span className="dc-hero__accent">{T.titleAccent}</span>
           </h1>
-          <p>{T.deck}</p>
           <nav className="dc-hero__actions" aria-label={T.actionAria}>
             <Link
               className="dc-action-route dc-action-route--primary"
@@ -192,7 +187,6 @@ export default function LandingPage({ locale = "ko" }) {
             </Link>
           </nav>
           <div className="dc-hero__utility-actions">
-            <button type="button" onClick={() => openSample("5-2", "hero")}>{T.sampleCta} →</button>
             <Link className="dc-text-link" href={lang === "en" ? "/en/guide/csv-data-prep" : "/guide/csv-data-prep"}>
               {T.dataGuideCta} →
             </Link>
@@ -271,11 +265,21 @@ export default function LandingPage({ locale = "ko" }) {
         </header>
         <div className="dc-question-grid">
           {T.questions.map((question) => (
-            <button type="button" className="dc-question-card" key={question.id} onClick={() => openSample(question.id, "question_card")}>
+            <Link
+              className="dc-question-card"
+              href={toolHref(question.id)}
+              key={question.id}
+              onClick={() => trackProductEvent("landing_tool_pick", {
+                tool_id: question.id,
+                source: "landing",
+                placement: "question_card",
+                locale: lang,
+              })}
+            >
               <span>{question.label}</span>
               <h3>{question.title}</h3>
               <p>{question.desc}</p>
-            </button>
+            </Link>
           ))}
         </div>
       </section>

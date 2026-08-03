@@ -84,12 +84,13 @@
 - 가치 포착 구조가 제품 신뢰와 상충하지 않는가
 
 ### L7. SEO · AAO · GEO ★신규
-검색엔진과 AI 답변 양쪽에서 **인용 가능한 상태**인가. 기준은 `aao-geo-operating-model.md`를 따르며, 전용 스키마·`llms.txt` 같은 조작적 기법은 목표로 삼지 않는다.
+검색엔진과 AI 답변 양쪽에서 **인용 가능한 상태**인가. 기준은 `aao-geo-operating-model.md`를 따르며, 전용 파일을 순위 기법으로 취급하지 않는다. `/llms.txt`는 공개 콘텐츠 SSOT에서 자동 생성되는 선택적 탐색 디렉터리로만 검증한다.
 
 **L7-a 기술 SEO**
 - canonical · hreflang(ko/en/x-default) 전 공개 라우트 배선
 - sitemap/RSS가 공개 범위 SSOT(`isRoutePublished` + `getAllPosts/getAllTerms`)에서 파생되는가, 초안·내부 라우트 제외되는가
 - robots 허용 범위 · sitemap 고지
+- `/llms.txt`가 공개 SSOT에서 결정적으로 생성되고 preview·legacy·draft를 제외하며, 독립 페이지 링크도 sitemap canonical과 일치하는가
 - 메타 제목/설명 **로케일별 잘림 임계**: KR 제목 ≤40자·설명 ≤90자 / EN 제목 ≤60자·설명 ≤160자
 - OG/Twitter 카드가 글별로 생성되는가
 
