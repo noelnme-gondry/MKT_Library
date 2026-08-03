@@ -13,6 +13,8 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | 이벤트 | 시점 | 핵심 파라미터 |
 |---|---|---|
 | `tool_view` | 분석 도구 URL 진입 | `tool_id`, `source=route` |
+| `landing_data_start_clicked` | 랜딩에서 내 데이터 시작(`/start`) 선택 | `source=landing`, `placement=hero|weekly_loop`, `locale` |
+| `landing_review_opened` | 랜딩 주간 루프에서 결정 검토함 선택 | `source=landing`, `placement=weekly_loop`, `locale` |
 | `data_import_start` | CSV 선택 | `tool_id`, `source` |
 | `data_import_success` | CSV/Sheets 파싱 성공 | `tool_id`, `row_count`, `column_count`, `mapped_count` |
 | `data_profile_completed` | 자동 매핑 후보 생성 | `tool_id`, `conflict_count` |
@@ -21,7 +23,7 @@ GTM에서 같은 `G-DK12TNR0GW` GA4 태그를 발화시키거나, GA4 Enhanced M
 | `analysis_completed` | 결과 또는 정직한 추정 불가 상태 생성 | `tool_id`, `analysis_type`, `result_state` |
 | `dashboard_tab_view` | 대시보드 탭 선택 | `tool_id`, `tab_name` |
 | `result_downloaded` | 결과 CSV/텍스트 다운로드 | `tool_id`, `download_type` |
-| `example_run_started` | 업로드 전 예시 결과 실행 클릭 | `tool_id`, `source=csv_guide|industry_preset`, `placement=before_upload`, `locale`, 프리셋이면 `preset_id`·`preset_scale` |
+| `example_run_started` | 업로드 전 예시 결과 실행 클릭 | `tool_id`, `source=landing|csv_guide|industry_preset`, `placement`, `locale`, 프리셋이면 `preset_id`·`preset_scale` |
 | `preset_exposed` | `/start`에서 업종·규모 프리셋이 실제 노출됨 | `source=start`, `placement=before_upload`, `locale` |
 | `preset_selected` | 사용자가 고정 업종·규모 프리셋을 선택해 결과를 엶 | `tool_id=5-2`, `preset_id`, `preset_scale`, `source=industry_preset`, `locale` |
 | `analysis_result_viewed` | 결과 행동 카드 노출 | `tool_id`, `source=result`, `placement`, `locale` |
@@ -53,6 +55,7 @@ Custom dimensions는 이벤트 범위로 아래만 등록하면 충분하다.
 
 ## 검증 퍼널
 
+- 랜딩→실데이터: `landing_data_start_clicked` → `data_import_start` → `data_import_success` → `analysis_completed`
 - 예시→실데이터: `example_run_started` → `data_import_start` → `data_import_success` → `analysis_completed`
 - 업종 프리셋→실데이터: `preset_exposed` → `preset_selected` → `example_run_started` → `data_import_start` → `data_import_success`
 - 판단→재방문: `decision_record_added` → `decision_inbox_viewed` → `decision_review_completed`
