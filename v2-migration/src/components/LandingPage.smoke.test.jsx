@@ -38,6 +38,8 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelector(".dc-instrument")).toBeTruthy();
     expect(document.querySelector('a.dc-primary-button[href="/start"]')).toBeTruthy();
     expect(document.querySelectorAll(".dc-loop-card")).toHaveLength(3);
+    expect(document.querySelectorAll("a.dc-loop-card")).toHaveLength(3);
+    expect(document.querySelector('a.dc-loop-card[href="/dashboard"]')).toBeTruthy();
     expect(document.querySelector('a.dc-loop-card[href="/weekly-review"]')).toBeTruthy();
     expect(document.body.textContent).toContain("다음 주 결과 검토");
     expect(document.querySelector('a.dc-diagnose-entry[href="/diagnose"]')).toBeTruthy();
