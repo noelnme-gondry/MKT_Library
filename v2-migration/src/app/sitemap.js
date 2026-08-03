@@ -108,6 +108,7 @@ export default function sitemap() {
   const enLandingEntries = [
     { url: `${BASE}/en`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "weekly", priority: 0.9 },
     { url: `${BASE}/en/start`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${BASE}/en/guide`, lastModified: PRODUCT_LAST_MODIFIED, changeFrequency: "monthly", priority: 0.6 },
   ];
 
   // EN 블로그(content/blog-en, §blog-en-translation-strategy) — 태그 랜딩 미구현, 목록+글만.

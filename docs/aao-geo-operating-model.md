@@ -37,4 +37,4 @@
 
 AI 답변의 순위나 인용은 변동성이 크므로 단일 수치로 성공을 단정하지 않는다. 검색 유입의 질, 도구 전환, 답변의 정확성을 함께 본다.
 
-Google Search는 AEO/GEO를 별도 기술 요건으로 보지 않으며, 전용 스키마·`llms.txt`·인위적 콘텐츠 분할을 요구하지 않는다. 이 프로젝트도 일반 SEO 기반, 고유한 실무 근거, 읽기 쉬운 본문과 측정에 집중한다. 기준은 [Google의 생성형 AI 검색 최적화 가이드](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide)와 [Article 구조화 데이터 가이드](https://developers.google.com/search/docs/appearance/structured-data/article)를 따른다.
+Google Search는 AEO/GEO를 별도 기술 요건으로 보지 않으며, 전용 스키마·`llms.txt`·인위적 콘텐츠 분할을 요구하지 않는다. 이 프로젝트도 일반 SEO 기반, 고유한 실무 근거, 읽기 쉬운 본문과 측정에 집중한다. 단, `/llms.txt`는 검색 순위 기법이 아니라 다른 에이전트가 공개 콘텐츠의 정식 경로를 찾도록 돕는 선택적 디렉터리로 제공한다. 내용은 공개 분석 라우트·블로그·계산기·용어 레지스트리와 가이드 인덱스에서 자동 생성하고, 수동 주장이나 비공개 경로를 넣지 않는다. 개별 SOP는 가이드 인덱스와 sitemap에서 탐색한다. 기준은 [Google의 생성형 AI 검색 최적화 가이드](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide)와 [Article 구조화 데이터 가이드](https://developers.google.com/search/docs/appearance/structured-data/article)를 따른다.
