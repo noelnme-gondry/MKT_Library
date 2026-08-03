@@ -122,7 +122,7 @@ export default function LandingPage({ locale = "ko" }) {
   const setDemoDisabled = useAppStore((state) => state.setDemoDisabled);
   const toolHref = (id) =>
     lang === "en" && hasEnVersion(id) ? `/en${idToSlug[id] || ""}` : idToSlug[id] || "/";
-  const openSample = (id, placement) => {
+  const prepareSample = (id, placement) => {
     trackProductEvent("landing_tool_pick", {
       tool_id: id,
       source: "landing",
@@ -136,6 +136,9 @@ export default function LandingPage({ locale = "ko" }) {
       locale: lang,
     });
     setDemoDisabled(false);
+  };
+  const openSample = (id, placement) => {
+    prepareSample(id, placement);
     router.push(toolHref(id));
   };
   const trackLandingNav = (name, placement) => {
@@ -208,18 +211,20 @@ export default function LandingPage({ locale = "ko" }) {
         <div className="dc-loop__grid">
           {T.loop.map((step) => {
             const content = <><span>{step.label}</span><h3>{step.title}</h3><p>{step.desc}</p><b>{step.cta} →</b></>;
-            if (step.id === "decide") {
-              return <button type="button" className="dc-loop-card" key={step.id} onClick={() => openSample("5-2", "weekly_loop")}>{content}</button>;
-            }
             const href = step.id === "start"
               ? (lang === "en" ? "/en/start" : "/start")
-              : (lang === "en" ? "/en/weekly-review" : "/weekly-review");
+              : step.id === "decide"
+                ? toolHref("5-2")
+                : (lang === "en" ? "/en/weekly-review" : "/weekly-review");
             return (
               <Link
                 className="dc-loop-card"
                 href={href}
                 key={step.id}
-                onClick={() => trackLandingNav(step.id === "start" ? "landing_data_start_clicked" : "landing_review_opened", "weekly_loop")}
+                onClick={() => {
+                  if (step.id === "decide") prepareSample("5-2", "weekly_loop");
+                  else trackLandingNav(step.id === "start" ? "landing_data_start_clicked" : "landing_review_opened", "weekly_loop");
+                }}
               >{content}</Link>
             );
           })}
