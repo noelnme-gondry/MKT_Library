@@ -3,8 +3,8 @@
 // Render-smoke for LandingPage. Regression net for a render/mount-effect throw.
 // LandingPage is the public Decision Console home. It reads no CSV rows, but we
 // seed no-data + with-data states to guarantee the public shell mounts either way.
-import { describe, it, expect, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { fireEvent, render } from "@testing-library/react";
 import { useAppStore } from "@/store/useDataStore";
 import LandingPage from "@/components/LandingPage";
 
@@ -36,6 +36,10 @@ describe("LandingPage render smoke", () => {
     expect(() => render(<LandingPage />)).not.toThrow();
     expect(document.querySelector(".dc-hero")).toBeTruthy();
     expect(document.querySelector(".dc-instrument")).toBeTruthy();
+    expect(document.querySelector('a.dc-primary-button[href="/start"]')).toBeTruthy();
+    expect(document.querySelectorAll(".dc-loop-card")).toHaveLength(3);
+    expect(document.querySelector('a.dc-loop-card[href="/weekly-review"]')).toBeTruthy();
+    expect(document.body.textContent).toContain("다음 주 결과 검토");
     expect(document.querySelector('a.dc-diagnose-entry[href="/diagnose"]')).toBeTruthy();
     expect(document.querySelectorAll(".dc-question-card")).toHaveLength(3);
     expect(document.querySelectorAll(".connected-tool-card")).toHaveLength(10);
@@ -47,10 +51,25 @@ describe("LandingPage render smoke", () => {
     expect(document.querySelectorAll(".dc-library-card")).toHaveLength(2);
     expect(document.querySelector(".dc-resource-strip")).toBeTruthy();
   });
+  it("tracks a landing sample as an example run", () => {
+    window.gtag = vi.fn();
+    const { container } = render(<LandingPage />);
+    fireEvent.click(container.querySelector(".dc-secondary-button"));
+    expect(window.gtag).toHaveBeenCalledWith("event", "example_run_started", {
+      tool_id: "5-2",
+      source: "landing",
+      placement: "hero",
+      locale: "ko",
+    });
+    delete window.gtag;
+  });
   it("renders the same connected workflow in English", () => {
     const { container } = render(<LandingPage locale="en" />);
     expect(container.querySelectorAll(".connected-tool-card")).toHaveLength(10);
     expect(container.textContent).toContain("Move from one analysis to the next decision");
+    expect(container.querySelector('a.dc-primary-button[href="/en/start"]')).toBeTruthy();
+    expect(container.querySelector('a.dc-loop-card[href="/en/weekly-review"]')).toBeTruthy();
+    expect(container.textContent).toContain("Review the actual next week");
     expect(container.querySelector('a[href="/en/tools/campaign-variance"]')).toBeTruthy();
     expect(container.querySelector('a.dc-diagnose-entry[href="/en/diagnose"]')).toBeTruthy();
   });

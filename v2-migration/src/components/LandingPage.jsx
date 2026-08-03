@@ -10,21 +10,31 @@ import { useAppStore } from "@/store/useDataStore";
 
 const COPY = {
   ko: {
-    eyebrow: "WEEKLY DECISION SYSTEM",
+    eyebrow: "퍼포먼스 마케팅 의사결정 워크스페이스",
     title: "성과가 움직인 이유를",
     titleMuted: "이번 주 데이터에서 찾고",
     titleAccent: "다음 한 가지를 정합니다.",
-    deck: "CSV 하나로 상태 점검부터 예산과 소재 판단까지 이어갑니다. 분석표를 읽게 하지 않고, 무엇을 유지하고 무엇을 바꿀지 먼저 보여줍니다.",
-    sampleCta: "샘플 판단 화면 보기",
-    dataGuideCta: "내 데이터 준비 방법",
-    privacy: "가입 없음 · 모든 분석 무료 · 데이터 서버 전송 0",
+    deck: "매주 광고 예산과 소재를 결정하는 퍼포먼스 마케터를 위해, CSV 하나로 상태 점검부터 다음 행동과 실제 결과 검토까지 이어갑니다.",
+    dataCta: "내 데이터로 무료 분석 시작",
+    sampleCta: "샘플 판단 보기",
+    dataGuideCta: "CSV 준비 방법",
+    privacy: "가입 없음 · 10개 분석 무료 · 원본 데이터 서버 전송 0",
     instrumentAria: "이번 주 판단 미리보기",
     weeklyDecision: "이번 주 운영 판단",
     verdict: <>Meta 예산을 바로 늘리기보다<br />검색광고 낭비부터 줄이세요.</>,
     reason: "전체 CPA는 안정적이지만 검색 일반 캠페인의 비용이 18% 늘며 효율을 끌어내렸습니다.",
     nextAction: "다음 행동",
     action: "일반 키워드 예산 10% 감액 검토",
+    reviewCue: "7일 뒤 CPA 실제값과 대조",
     evidence: "근거 보기",
+    loopEyebrow: "WEEKLY DECISION LOOP",
+    loopTitle: "분석으로 끝내지 않고, 다음 주 결과까지",
+    loopDeck: "원본 CSV는 저장하지 않습니다. 결정 요약은 사용자가 직접 켠 경우에만 이 기기에 남깁니다.",
+    loop: [
+      { id: "start", label: "01 · START", title: "내 데이터 진단", desc: "CSV나 Google Sheets를 가져오면 가능한 분석과 가장 먼저 볼 질문을 추천합니다.", cta: "데이터로 시작" },
+      { id: "decide", label: "02 · DECIDE", title: "이번 주 한 가지 결정", desc: "결론, 근거, 다음 행동 순서로 보고 유지·감액·증액·교체 중 하나를 정합니다.", cta: "샘플 판단 보기" },
+      { id: "review", label: "03 · REVIEW", title: "다음 주 결과 검토", desc: "저장한 결정의 기준값과 실제값을 대조하고, 배운 점을 다음 판단의 근거로 남깁니다.", cta: "결정 검토함 보기" },
+    ],
     questionEyebrow: "CHOOSE BY QUESTION",
     questionTitle: "지금 가장 먼저 판단할 것은?",
     questionDeck: "도구 이름보다 실제 업무 질문으로 시작합니다.",
@@ -38,11 +48,11 @@ const COPY = {
       { id: "9-6", label: "CREATIVE ACTION", title: "무엇을 교체하고 새로 만들까?", desc: "소재 피로 신호와 교체 우선순위를 정리합니다." },
     ],
     libraryEyebrow: "PLAYBOOK LIBRARY",
-    libraryTitle: "분석 밖에서도 판단을 이어가세요.",
-    libraryDeck: "실무 인사이트와 SOP를 같은 제품 안에 유지합니다.",
+    libraryTitle: "다음 판단에 필요한 근거를 쌓으세요.",
+    libraryDeck: "예산·소재·측정 판단에 바로 쓰는 인사이트와 SOP를 같은 제품 안에 유지합니다.",
     blogLabel: "MARKETING BLOG",
     blogTitle: "성과를 해석하는 실무 인사이트",
-    blogDesc: "퍼포먼스·콘텐츠 마케팅, 데이터·SEO·그로스 팁을 정기적으로 업데이트합니다.",
+    blogDesc: "예산·소재·측정 문제를 원인부터 좁히고 실제 분석으로 이어가는 실무 글입니다.",
     guideLabel: "OPERATING PLAYBOOK",
     guideTitle: "팀이 함께 쓰는 운영 표준",
     guideDesc: "트래킹 셋업부터 캠페인 운영·소재·분석까지 단계별 SOP를 확인합니다.",
@@ -52,21 +62,31 @@ const COPY = {
     naver: "네이버 블로그",
   },
   en: {
-    eyebrow: "WEEKLY DECISION SYSTEM",
+    eyebrow: "PERFORMANCE MARKETING DECISION WORKSPACE",
     title: "Know why performance moved,",
     titleMuted: "read this week’s data, then",
     titleAccent: "choose the next move.",
-    deck: "Move from weekly health to budget and creative decisions with one CSV. See what to keep and what to change before digging through analysis tables.",
-    sampleCta: "See the sample decision",
-    dataGuideCta: "Prepare my data",
-    privacy: "No signup · every analysis tool is free · nothing sent to a server",
+    deck: "Built for performance marketers making weekly budget and creative calls. Move from one CSV to a next action, then review the actual outcome next week.",
+    dataCta: "Analyze my data for free",
+    sampleCta: "See a sample decision",
+    dataGuideCta: "Prepare a CSV",
+    privacy: "No signup · 10 free analyses · source data never sent to a server",
     instrumentAria: "Preview of this week’s decision",
     weeklyDecision: "This week’s operating decision",
     verdict: <>Cut wasted search spend<br />before scaling Meta.</>,
     reason: "Overall CPA is stable, but generic search spend rose 18% and pulled efficiency down.",
     nextAction: "Next action",
     action: "Review a 10% cut to generic-keyword spend",
+    reviewCue: "Compare the actual CPA in 7 days",
     evidence: "See evidence",
+    loopEyebrow: "WEEKLY DECISION LOOP",
+    loopTitle: "Do not stop at analysis—review what happened next",
+    loopDeck: "Source CSV data is never stored. Decision summaries remain on this device only when you explicitly enable it.",
+    loop: [
+      { id: "start", label: "01 · START", title: "Diagnose my data", desc: "Bring a CSV or Google Sheet to see which analyses it supports and which question to check first.", cta: "Start with my data" },
+      { id: "decide", label: "02 · DECIDE", title: "Choose one move this week", desc: "Read the conclusion, evidence, and next action before choosing what to hold, cut, scale, or replace.", cta: "See a sample decision" },
+      { id: "review", label: "03 · REVIEW", title: "Review the actual next week", desc: "Compare each saved baseline with the actual outcome and keep the learning for the next decision.", cta: "Open decision inbox" },
+    ],
     questionEyebrow: "CHOOSE BY QUESTION",
     questionTitle: "What do you need to decide first?",
     questionDeck: "Start with the operating question, not the tool name.",
@@ -80,11 +100,11 @@ const COPY = {
       { id: "9-6", label: "CREATIVE ACTION", title: "What should we replace or make next?", desc: "Prioritize creative fatigue signals and the next swaps." },
     ],
     libraryEyebrow: "PLAYBOOK LIBRARY",
-    libraryTitle: "Keep learning beyond the analysis.",
-    libraryDeck: "Practical insight and operating standards stay in the same product.",
+    libraryTitle: "Build evidence for the next decision.",
+    libraryDeck: "Keep practical guidance for budget, creative, and measurement decisions in the same product.",
     blogLabel: "MARKETING BLOG",
     blogTitle: "Practical insight for reading performance",
-    blogDesc: "Performance and content marketing, data, SEO, and growth notes updated regularly.",
+    blogDesc: "Practical guides that narrow budget, creative, and measurement problems from cause to analysis.",
     guideLabel: "OPERATING PLAYBOOK",
     guideTitle: "Operating standards your team can share",
     guideDesc: "Step-by-step SOPs from tracking setup to campaign operations, creative, and analysis.",
@@ -109,8 +129,17 @@ export default function LandingPage({ locale = "ko" }) {
       placement,
       locale: lang,
     });
+    trackProductEvent("example_run_started", {
+      tool_id: id,
+      source: "landing",
+      placement,
+      locale: lang,
+    });
     setDemoDisabled(false);
     router.push(toolHref(id));
+  };
+  const trackLandingNav = (name, placement) => {
+    trackProductEvent(name, { source: "landing", placement, locale: lang });
   };
 
   return (
@@ -125,9 +154,12 @@ export default function LandingPage({ locale = "ko" }) {
           </h1>
           <p>{T.deck}</p>
           <div className="dc-hero__actions">
-            <button className="btn primary dc-primary-button" type="button" onClick={() => openSample("5-2", "hero")}>
-              {T.sampleCta}
-            </button>
+            <Link
+              className="btn primary dc-primary-button"
+              href={lang === "en" ? "/en/start" : "/start"}
+              onClick={() => trackLandingNav("landing_data_start_clicked", "hero")}
+            >{T.dataCta}</Link>
+            <button className="btn ghost dc-secondary-button" type="button" onClick={() => openSample("5-2", "hero")}>{T.sampleCta}</button>
             <Link className="dc-text-link" href={lang === "en" ? "/en/guide/csv-data-prep" : "/guide/csv-data-prep"}>
               {T.dataGuideCta} →
             </Link>
@@ -156,12 +188,42 @@ export default function LandingPage({ locale = "ko" }) {
             <div>
               <b>{T.nextAction}</b>
               <span>{T.action}</span>
+              <small>{T.reviewCue}</small>
             </div>
             <button type="button" onClick={() => openSample("5-2", "decision_instrument")}>
               {T.evidence} →
             </button>
           </footer>
         </article>
+      </section>
+
+      <section className="dc-loop" aria-labelledby="dc-loop-title">
+        <header className="dc-section-head">
+          <div>
+            <div className="dc-eyebrow">{T.loopEyebrow}</div>
+            <h2 id="dc-loop-title">{T.loopTitle}</h2>
+          </div>
+          <p>{T.loopDeck}</p>
+        </header>
+        <div className="dc-loop__grid">
+          {T.loop.map((step) => {
+            const content = <><span>{step.label}</span><h3>{step.title}</h3><p>{step.desc}</p><b>{step.cta} →</b></>;
+            if (step.id === "decide") {
+              return <button type="button" className="dc-loop-card" key={step.id} onClick={() => openSample("5-2", "weekly_loop")}>{content}</button>;
+            }
+            const href = step.id === "start"
+              ? (lang === "en" ? "/en/start" : "/start")
+              : (lang === "en" ? "/en/weekly-review" : "/weekly-review");
+            return (
+              <Link
+                className="dc-loop-card"
+                href={href}
+                key={step.id}
+                onClick={() => trackLandingNav(step.id === "start" ? "landing_data_start_clicked" : "landing_review_opened", "weekly_loop")}
+              >{content}</Link>
+            );
+          })}
+        </div>
       </section>
 
       <section className="dc-questions" id="questions" aria-labelledby="dc-question-title">
