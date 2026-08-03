@@ -12,6 +12,11 @@ import { publishedBlogSeoSlugs } from "./blogSeo";
 import { getBlogEditorial, publishedEditorialSlugs } from "./blogEditorial";
 
 const sorted = (values) => [...values].sort();
+const HIGH_INTENT_ARTICLE_AUDIT = {
+  "ad-performance-diagnosis": { toolId: "5-21", minimumSources: 4, hasMidAction: true },
+  "budget-marginal-efficiency": { toolId: "5-3", minimumSources: 4, hasMidAction: false },
+  "ad-creative-testing": { toolId: "9-6", minimumSources: 7, hasMidAction: true },
+};
 
 describe("editorial SEO registries", () => {
   it("maps every published KR article to one published analysis tool", () => {
@@ -72,6 +77,24 @@ describe("editorial SEO registries", () => {
       expect(post.sources.map((source) => source.url)).toEqual(expect.arrayContaining(visibleUrls));
       expect(enPost.sources.map((source) => source.url)).toEqual(expect.arrayContaining(visibleEnUrls));
       expect(enPost.sources.map((source) => source.url)).toEqual(post.sources.map((source) => source.url));
+    }
+  });
+
+  it("keeps audited high-intent articles sourced, reviewed, and connected to the exact tool", () => {
+    for (const locale of ["ko", "en"]) {
+      const posts = new Map(getAllPosts(locale).map((post) => [post.slug, post]));
+      for (const [slug, audit] of Object.entries(HIGH_INTENT_ARTICLE_AUDIT)) {
+        const post = posts.get(slug);
+        expect(post, `${locale}/${slug} must exist`).toBeTruthy();
+        expect(post.primaryTool).toBe(audit.toolId);
+        expect(post.reviewer, `${locale}/${slug} needs an explicit review owner`).toBeTruthy();
+        expect(post.reviewedAt).toBe("2026-08-03");
+        expect(post.updated).toBe("2026-08-03");
+        expect(post.sources.length).toBeGreaterThanOrEqual(audit.minimumSources);
+        expect(post.faq.length).toBeGreaterThanOrEqual(3);
+        if (audit.hasMidAction) expect(post.html).toContain("<!-- CONTENT_ACTION -->");
+        else expect(post.html).not.toContain("<!-- CONTENT_ACTION -->");
+      }
     }
   });
 
