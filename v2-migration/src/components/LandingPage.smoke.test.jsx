@@ -36,7 +36,12 @@ describe("LandingPage render smoke", () => {
     expect(() => render(<LandingPage />)).not.toThrow();
     expect(document.querySelector(".dc-hero")).toBeTruthy();
     expect(document.querySelector(".dc-instrument")).toBeTruthy();
-    expect(document.querySelectorAll(".dc-action-route")).toHaveLength(3);
+    const actions = [...document.querySelectorAll(".dc-action-route")];
+    expect(actions).toHaveLength(3);
+    expect(actions.map((action) => action.querySelector("strong")?.textContent)).toEqual(["내 데이터 분석", "지표 계산", "문제 진단"]);
+    expect(document.querySelectorAll(".dc-action-route small")).toHaveLength(0);
+    expect(document.querySelector("#dc-hero-title")?.textContent).toBe("성과를 보고,다음 행동을 정하세요.");
+    expect(document.querySelector(".dc-hero__copy > p")?.textContent).toBe("분석·계산·진단 중 필요한 작업을 바로 시작하세요.");
     expect(document.querySelector('a.dc-action-route[href="/start"]')).toBeTruthy();
     expect(document.querySelector('a.dc-action-route[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('a.dc-action-route[href="/diagnose"]')).toBeTruthy();
@@ -72,6 +77,8 @@ describe("LandingPage render smoke", () => {
   });
   it("renders the same connected workflow in English", () => {
     const { container } = render(<LandingPage locale="en" />);
+    expect([...container.querySelectorAll(".dc-action-route strong")].map((node) => node.textContent)).toEqual(["Analyze my data", "Calculate metrics", "Diagnose a problem"]);
+    expect(container.querySelector("#dc-hero-title")?.textContent).toBe("Read performance.Choose the next move.");
     expect(container.querySelectorAll(".connected-tool-card")).toHaveLength(10);
     expect(container.textContent).toContain("Move from one analysis to the next decision");
     expect(container.querySelector('a.dc-action-route[href="/en/start"]')).toBeTruthy();

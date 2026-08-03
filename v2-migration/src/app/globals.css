@@ -6058,24 +6058,22 @@ body.light-mode .app.is-home {
 .app.is-home .topbar .btn { border-color:var(--dc-line);background:var(--dc-panel);color:var(--dc-text-soft); }
 .app.is-home .content { max-width:none;padding:0 0 80px; }
 .decision-console-landing { width:min(1180px,calc(100% - 64px));margin:0 auto;padding:76px 0 0;color:var(--dc-text); }
-.dc-hero { display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr);gap:70px;align-items:center;min-height:470px; }
+.dc-hero { display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr);gap:70px;align-items:center;min-height:440px; }
 .dc-eyebrow { display:flex;align-items:center;gap:9px;color:var(--dc-signal);font:650 10px/1 var(--font-mono);letter-spacing:.16em; }
 .dc-eyebrow::before { content:"";width:22px;height:1px;background:currentColor; }
-.dc-hero h1 { max-width:720px;margin:22px 0;color:var(--dc-text);font-size:clamp(38px,5.1vw,70px);font-weight:760;line-height:.99;letter-spacing:-.058em; }
+.dc-hero h1 { max-width:720px;margin:20px 0 16px;color:var(--dc-text);font-size:clamp(38px,5.1vw,70px);font-weight:760;line-height:.99;letter-spacing:-.058em; }
 .dc-hero h1 span { display:block; }
-.dc-hero h1 .dc-hero__muted { color:var(--dc-text-soft);font-weight:520; }
 .dc-hero h1 .dc-hero__accent { color:var(--dc-signal); }
-.dc-hero__copy > p { max-width:600px;margin:0;color:var(--dc-text-soft);font-size:15px;line-height:1.75; }
-.dc-hero__actions { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-width:620px;margin-top:31px; }
-.dc-action-route { position:relative;display:grid;align-content:start;min-height:96px;padding:15px 42px 14px 15px;border:1px solid var(--dc-line-strong);border-radius:10px;background:var(--dc-panel);color:var(--dc-text);text-decoration:none;transition:transform .18s ease,border-color .18s ease,background .18s ease; }
+.dc-hero__copy > p { max-width:600px;margin:0;color:var(--dc-text-soft);font-size:14px;line-height:1.55; }
+.dc-hero__actions { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-width:620px;margin-top:24px; }
+.dc-action-route { position:relative;display:grid;align-content:start;min-height:82px;padding:15px 42px 14px 15px;border:1px solid var(--dc-line-strong);border-radius:10px;background:var(--dc-panel);color:var(--dc-text);text-decoration:none;transition:transform .18s ease,border-color .18s ease,background .18s ease; }
 .dc-action-route::after { content:"→";position:absolute;right:15px;top:15px;color:var(--dc-signal);font:650 15px/1 var(--font-mono); }
 .dc-action-route:hover { transform:translateY(-2px);border-color:var(--dc-signal);background:color-mix(in srgb,var(--dc-signal) 6%,var(--dc-panel)); }
-.dc-action-route > small { color:var(--dc-signal);font:650 8px/1 var(--font-mono);letter-spacing:.1em; }
-.dc-action-route > strong { margin-top:12px;font-size:13px;letter-spacing:-.015em; }
-.dc-action-route > span { margin-top:5px;color:var(--dc-text-dim);font-size:9px;line-height:1.4; }
-.dc-action-route--primary { grid-column:1 / -1;min-height:88px;border-color:color-mix(in srgb,var(--dc-action-primary) 82%,white);background:var(--dc-action-primary);color:var(--dc-action-on-primary); }
-.dc-action-route--primary::after,.dc-action-route--primary > small { color:var(--dc-action-on-primary); }
-.dc-action-route--primary > strong { font-size:15px; }
+.dc-action-route > strong { font-size:14px;letter-spacing:-.015em; }
+.dc-action-route > span { margin-top:7px;color:var(--dc-text-dim);font-size:10px;line-height:1.4; }
+.dc-action-route--primary { grid-column:1 / -1;min-height:78px;border-color:color-mix(in srgb,var(--dc-action-primary) 82%,white);background:var(--dc-action-primary);color:var(--dc-action-on-primary); }
+.dc-action-route--primary::after { color:var(--dc-action-on-primary); }
+.dc-action-route--primary > strong { font-size:16px; }
 .dc-action-route--primary > span { color:color-mix(in srgb,var(--dc-action-on-primary) 86%,transparent); }
 .dc-action-route--primary:hover { border-color:var(--dc-action-on-primary);background:color-mix(in srgb,var(--dc-action-primary) 88%,white); }
 .dc-hero__utility-actions { display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:12px; }

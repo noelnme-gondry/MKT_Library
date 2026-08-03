@@ -12,31 +12,29 @@ import { buildDemoCsv } from "@/utils/demoData";
 
 const COPY = {
   ko: {
-    eyebrow: "퍼포먼스 마케팅 의사결정 워크스페이스",
-    title: "성과가 움직인 이유를",
-    titleMuted: "이번 주 데이터에서 찾고",
-    titleAccent: "다음 한 가지를 정합니다.",
-    deck: "매주 광고 예산과 소재를 결정하는 퍼포먼스 마케터를 위해, CSV 하나로 상태 점검부터 다음 행동과 실제 결과 검토까지 이어갑니다.",
+    eyebrow: "퍼포먼스 마케팅 의사결정",
+    title: "성과를 보고,",
+    titleAccent: "다음 행동을 정하세요.",
+    deck: "분석·계산·진단 중 필요한 작업을 바로 시작하세요.",
     actionAria: "바로 시작할 작업",
-    dataActionLabel: "CSV · GOOGLE SHEETS",
-    dataCta: "내 데이터 분석하기",
-    dataActionHint: "업로드 후 가능한 분석을 자동 추천",
-    calculatorActionLabel: "QUICK MATH",
-    calculatorCta: "지표 바로 계산",
-    calculatorActionHint: "CSV 없이 숫자만 입력",
-    diagnoseActionLabel: "ROOT CAUSE",
-    diagnoseCta: "성과 문제 진단",
-    diagnoseActionHint: "증상에서 원인 후보와 확인 순서 찾기",
+    dataCta: "내 데이터 분석",
+    dataActionHint: "CSV로 성과·이상 신호 확인",
+    calculatorCta: "지표 계산",
+    calculatorActionHint: "숫자로 목표값 계산",
+    diagnoseCta: "문제 진단",
+    diagnoseActionHint: "증상으로 확인 순서 찾기",
     sampleCta: "예시 데이터로 둘러보기",
     dataGuideCta: "CSV 준비 방법",
-    privacy: "가입 없음 · 10개 분석 무료 · 원본 데이터 서버 전송 0",
+    privacy: "가입 없음 · 원본 데이터는 브라우저에서만 처리",
     instrumentAria: "이번 주 판단 미리보기",
-    weeklyDecision: "이번 주 운영 판단",
-    verdict: <>Meta 예산을 바로 늘리기보다<br />검색광고 낭비부터 줄이세요.</>,
-    reason: "전체 CPA는 안정적이지만 검색 일반 캠페인의 비용이 18% 늘며 효율을 끌어내렸습니다.",
+    weeklyDecision: "이번 주 판단",
+    instrumentReady: "분석 완료",
+    decisionLabel: "예산 결정",
+    verdict: "검색광고 낭비부터 줄이세요.",
+    reason: "검색 일반 비용 +18% · 전체 CPA 안정",
     nextAction: "다음 행동",
-    action: "일반 키워드 예산 10% 감액 검토",
-    reviewCue: "7일 뒤 CPA 실제값과 대조",
+    action: "일반 키워드 예산 10% 감액",
+    reviewCue: "7일 뒤 CPA 확인",
     evidence: "근거 보기",
     loopEyebrow: "WEEKLY DECISION LOOP",
     loopTitle: "분석으로 끝내지 않고, 다음 주 결과까지",
@@ -69,31 +67,29 @@ const COPY = {
     naver: "네이버 블로그",
   },
   en: {
-    eyebrow: "PERFORMANCE MARKETING DECISION WORKSPACE",
-    title: "Know why performance moved,",
-    titleMuted: "read this week’s data, then",
-    titleAccent: "choose the next move.",
-    deck: "Built for performance marketers making weekly budget and creative calls. Move from one CSV to a next action, then review the actual outcome next week.",
+    eyebrow: "PERFORMANCE MARKETING DECISIONS",
+    title: "Read performance.",
+    titleAccent: "Choose the next move.",
+    deck: "Start with analysis, calculation, or diagnosis.",
     actionAria: "Start a task",
-    dataActionLabel: "CSV · GOOGLE SHEETS",
     dataCta: "Analyze my data",
-    dataActionHint: "See supported analyses after upload",
-    calculatorActionLabel: "QUICK MATH",
-    calculatorCta: "Calculate a metric",
-    calculatorActionHint: "Enter numbers without a CSV",
-    diagnoseActionLabel: "ROOT CAUSE",
-    diagnoseCta: "Diagnose performance",
-    diagnoseActionHint: "Trace symptoms to likely causes and checks",
+    dataActionHint: "Check performance and anomalies from a CSV",
+    calculatorCta: "Calculate metrics",
+    calculatorActionHint: "Get target values from a few numbers",
+    diagnoseCta: "Diagnose a problem",
+    diagnoseActionHint: "Turn symptoms into a check order",
     sampleCta: "Explore example data",
     dataGuideCta: "Prepare a CSV",
-    privacy: "No signup · 10 free analyses · source data never sent to a server",
+    privacy: "No signup · source data stays in your browser",
     instrumentAria: "Preview of this week’s decision",
-    weeklyDecision: "This week’s operating decision",
-    verdict: <>Cut wasted search spend<br />before scaling Meta.</>,
-    reason: "Overall CPA is stable, but generic search spend rose 18% and pulled efficiency down.",
+    weeklyDecision: "This week’s decision",
+    instrumentReady: "Analysis ready",
+    decisionLabel: "Budget decision",
+    verdict: "Cut wasted search spend first.",
+    reason: "Generic search cost +18% · overall CPA stable",
     nextAction: "Next action",
-    action: "Review a 10% cut to generic-keyword spend",
-    reviewCue: "Compare the actual CPA in 7 days",
+    action: "Cut generic-keyword spend 10%",
+    reviewCue: "Check CPA in 7 days",
     evidence: "See evidence",
     loopEyebrow: "WEEKLY DECISION LOOP",
     loopTitle: "Do not stop at analysis—review what happened next",
@@ -166,7 +162,6 @@ export default function LandingPage({ locale = "ko" }) {
           <div className="dc-eyebrow">{T.eyebrow}</div>
           <h1 id="dc-hero-title">
             <span>{T.title}</span>
-            <span className="dc-hero__muted">{T.titleMuted}</span>
             <span className="dc-hero__accent">{T.titleAccent}</span>
           </h1>
           <p>{T.deck}</p>
@@ -176,7 +171,6 @@ export default function LandingPage({ locale = "ko" }) {
               href={lang === "en" ? "/en/start" : "/start"}
               onClick={() => trackLandingNav("landing_data_start_clicked", "hero")}
             >
-              <small>{T.dataActionLabel}</small>
               <strong>{T.dataCta}</strong>
               <span>{T.dataActionHint}</span>
             </Link>
@@ -185,7 +179,6 @@ export default function LandingPage({ locale = "ko" }) {
               href={lang === "en" ? "/en/calculator" : "/calculator"}
               onClick={() => trackLandingNav("calculator_entry_clicked", "hero")}
             >
-              <small>{T.calculatorActionLabel}</small>
               <strong>{T.calculatorCta}</strong>
               <span>{T.calculatorActionHint}</span>
             </Link>
@@ -194,7 +187,6 @@ export default function LandingPage({ locale = "ko" }) {
               href={lang === "en" ? "/en/diagnose" : "/diagnose"}
               onClick={() => trackProductEvent("diagnose_entry_clicked", { source: "landing", placement: "hero", locale: lang })}
             >
-              <small>{T.diagnoseActionLabel}</small>
               <strong>{T.diagnoseCta}</strong>
               <span>{T.diagnoseActionHint}</span>
             </Link>
@@ -211,10 +203,10 @@ export default function LandingPage({ locale = "ko" }) {
         <article className="dc-instrument" aria-label={T.instrumentAria}>
           <header className="dc-instrument__head">
             <strong>{T.weeklyDecision}</strong>
-            <span>ANALYSIS READY</span>
+            <span>{T.instrumentReady}</span>
           </header>
           <div className="dc-instrument__verdict">
-            <span>DECISION 01 · BUDGET</span>
+            <span>{T.decisionLabel}</span>
             <h2>{T.verdict}</h2>
             <p>{T.reason}</p>
           </div>
