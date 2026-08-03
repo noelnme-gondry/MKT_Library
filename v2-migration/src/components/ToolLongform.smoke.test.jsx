@@ -17,4 +17,18 @@ describe("ToolLongform", () => {
     expect(container.querySelector(".tool-longform a")).toBeNull();
     expect(container.textContent).toContain("See calculation logic and safeguards");
   });
+
+  it("renders unique cannibalization guidance and visible FAQ content", () => {
+    const { container } = render(<ToolLongform toolId="5-18-cannibal" />);
+    expect(container.textContent).toContain("기존 수요를 가져왔는지");
+    expect(container.textContent).toContain("자주 묻는 질문");
+    expect(container.textContent).toContain("잠식 의심은 광고를 중단하라는 뜻인가요?");
+  });
+
+  it("keeps the English forecast landing semantically distinct", () => {
+    const { container } = render(<ToolLongform toolId="5-18-forecast" locale="en" />);
+    expect(container.textContent).toContain("Validate error on unseen data");
+    expect(container.textContent).toContain("sealed OOS validation window");
+    expect(container.textContent?.match(/[가-힣]/)).toBeNull();
+  });
 });

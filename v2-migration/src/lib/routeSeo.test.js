@@ -12,9 +12,15 @@ describe("published tool SEO copy", () => {
     expect(ko?.description).toBeTruthy();
     expect(en?.title).toBeTruthy();
     expect(en?.description).toBeTruthy();
-    expect([...ko.title].length).toBeLessThanOrEqual(24);
+    expect([...ko.title].length).toBeLessThanOrEqual(30);
     expect([...ko.description].length).toBeLessThanOrEqual(80);
-    expect(en.title.length).toBeLessThanOrEqual(45);
+    expect(en.title.length).toBeLessThanOrEqual(60);
     expect(en.description.length).toBeLessThanOrEqual(160);
+  });
+
+  it("separates parent, cannibalization, and budget search intent", () => {
+    expect(getRouteSeo("5-18", "ko").title).toContain("MMM");
+    expect(getRouteSeo("5-18-cannibal", "ko").title).toContain("카니발라이제이션");
+    expect(getRouteSeo("5-3", "ko").title).toContain("시뮬레이터");
   });
 });

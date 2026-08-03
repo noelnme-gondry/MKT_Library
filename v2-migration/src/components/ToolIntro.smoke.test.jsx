@@ -22,4 +22,17 @@ describe("ToolIntro heading and locale contract", () => {
     expect(container.textContent).toContain("DECISION TOOL");
     expect(container.textContent?.match(/[가-힣]/)).toBeNull();
   });
+
+  it("renders an SSR-ready budget heading instead of leaving it to the dynamic tool", () => {
+    render(<ToolIntro toolId="5-3" />);
+    expect(screen.getByRole("heading", { level: 1, name: "무료 마케팅 예산 배분 시뮬레이터" })).toBeTruthy();
+  });
+
+  it("gives every response subtool a unique Korean and English heading", () => {
+    const { rerender } = render(<ToolIntro toolId="5-18-cannibal" />);
+    expect(screen.getByRole("heading", { level: 1, name: "광고 카니발라이제이션 진단" })).toBeTruthy();
+
+    rerender(<ToolIntro toolId="5-18-cannibal" locale="en" />);
+    expect(screen.getByRole("heading", { level: 1, name: "Ad cannibalization diagnosis" })).toBeTruthy();
+  });
 });

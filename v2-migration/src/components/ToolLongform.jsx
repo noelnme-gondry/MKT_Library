@@ -1,3 +1,5 @@
+import { getResponseSubtoolContent } from "@/lib/responseSubtoolContent";
+
 const COPY = {
   "5-18": {
     ko: {
@@ -50,7 +52,8 @@ const COPY = {
 };
 
 export default function ToolLongform({ toolId, locale = "ko" }) {
-  const content = COPY[toolId]?.[locale === "en" ? "en" : "ko"];
+  const localeKey = locale === "en" ? "en" : "ko";
+  const content = COPY[toolId]?.[localeKey] || getResponseSubtoolContent(toolId, localeKey);
   if (!content) return null;
 
   return <section className="tool-longform" aria-labelledby={`tool-longform-${toolId}`}>
@@ -66,5 +69,12 @@ export default function ToolLongform({ toolId, locale = "ko" }) {
         </section>)}
       </div>
     </details>
+    {content.faq?.length ? <section className="tool-longform__faq" aria-labelledby={`tool-longform-faq-${toolId}`}>
+      <h3 id={`tool-longform-faq-${toolId}`}>{localeKey === "en" ? "Frequently asked questions" : "자주 묻는 질문"}</h3>
+      {content.faq.map((item) => <details key={item.q}>
+        <summary>{item.q}</summary>
+        <p>{item.a}</p>
+      </details>)}
+    </section> : null}
   </section>;
 }

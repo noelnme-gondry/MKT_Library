@@ -40,7 +40,7 @@ Ignore this, and you'll attribute delayed conversions to the wrong moment and th
 
 ### Saturation — the more budget you pour in, the less efficient it gets
 
-Nearly every channel sees its marginal conversion growth slow down as you increase spend (diminishing returns). MMM estimates this saturation curve to answer "can this channel take more budget?" It's the same principle as the response curve covered in the [marketing budget allocation post](/en/blog/marketing-budget-allocation) — MMM just estimates that curve for every channel at once.
+Nearly every channel sees its marginal conversion growth slow down as you increase spend (diminishing returns). MMM estimates this saturation curve to answer "can this channel take more budget?" It's the same principle as the response curve covered in the [marketing budget allocation post](/en/blog/budget-marginal-efficiency) — MMM just estimates that curve for every channel at once.
 
 ## So what does MMM actually tell you?
 

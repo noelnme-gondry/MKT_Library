@@ -1,9 +1,10 @@
-import { resolveSlugToId, idToPath, SITE_URL, hasEnVersion, enAlternates, EN_READY_GUIDE_IDS, isRoutePublished } from "@/lib/routeMap";
+import { resolveSlugToId, idToPath, SITE_URL, hasEnVersion, enAlternates, EN_READY_GUIDE_IDS, isRouteIndexable } from "@/lib/routeMap";
 import { findMeta } from "@/store/useDataStore";
 import { ITEM_TITLE_EN } from "@/lib/enNavCopy";
 import { buildPageKeywords } from "@/lib/pageKeywords";
 import { getRouteSeo } from "@/lib/routeSeo";
 import { getToolFeatureList, getToolOgImageUrl } from "@/lib/toolOg";
+import { getResponseSubtoolContent } from "@/lib/responseSubtoolContent";
 import { readSopData } from "@/lib/sopData";
 import PageClient from "./PageClient";
 
@@ -37,7 +38,7 @@ export async function generateMetadata({ params }) {
     title,
     description,
     keywords,
-    ...(!isRoutePublished(routeId) ? { robots: { index: false, follow: true } } : {}),
+    ...(!isRouteIndexable(routeId) ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical, ...(langs ? { languages: langs } : {}) },
     openGraph: { title, description, url: canonical, locale: "en_US", images: [socialImage] },
     twitter: { card: "summary_large_image", title, description, images: [socialImage] },
@@ -53,13 +54,14 @@ async function PageWithStructuredData({ params }) {
   const routeId = resolveSlugToId(slug);
   const meta = routeId ? findMeta(routeId) : null;
   const routeSeo = routeId ? getRouteSeo(routeId, "en") : null;
+  const searchContent = routeId ? getResponseSubtoolContent(routeId, "en") : null;
   const initialSopData = routeId && EN_READY_GUIDE_IDS.has(routeId) ? readSopData(routeId, "en") : null;
   const isTool = Boolean(routeId && (routeId.startsWith("5-") || routeId.startsWith("9-")) && hasEnVersion(routeId));
-  const structuredData = isTool && meta ? {
+  const structuredData = isTool && (meta || routeSeo) ? {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: routeSeo?.title || meta.seoTitleEn || meta.titleEn || meta.title,
-    description: routeSeo?.description || meta.seoDescriptionEn || meta.seoDescription || meta.group?.desc,
+    name: routeSeo?.title || meta?.seoTitleEn || meta?.titleEn || meta?.title || routeId,
+    description: routeSeo?.description || meta?.seoDescriptionEn || meta?.seoDescription || meta?.group?.desc,
     url: `${SITE_URL}/en${idToPath(routeId)}`,
     image: getToolOgImageUrl(SITE_URL, routeId, "en"),
     featureList: getToolFeatureList(routeId, "en"),
@@ -69,8 +71,18 @@ async function PageWithStructuredData({ params }) {
     inLanguage: "en",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   } : null;
+  const faqStructuredData = searchContent?.faq?.length ? {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: searchContent.faq.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+  } : null;
   return <>
     {structuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />}
+    {faqStructuredData && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }} />}
     <PageClient params={params} initialSopData={initialSopData} />
   </>;
 }

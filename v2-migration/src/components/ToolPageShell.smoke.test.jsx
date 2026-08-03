@@ -38,4 +38,10 @@ describe("ToolPageShell instrument header contract", () => {
     expect(container.textContent).toContain("Summary");
     expect(container.textContent?.match(/[가-힣]/)).toBeNull();
   });
+
+  it("can demote its dynamic title when a static SEO heading owns the page h1", () => {
+    render(<ToolPageShell title="예산 배분 시뮬레이터" titleLevel={2}><div>본문</div></ToolPageShell>);
+    expect(screen.getByRole("heading", { level: 2, name: "예산 배분 시뮬레이터" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+  });
 });
