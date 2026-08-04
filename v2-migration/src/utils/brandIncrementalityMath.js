@@ -16,7 +16,21 @@ export const BRAND_ITS_CONTRACT = Object.freeze({
     month: Object.freeze({ pre: 12, post: 3 }),
   }),
   confidence: 0.95,
-  hacLag: (n) => Math.min(Math.max(1, n - 2), Math.max(1, Math.floor(4 * (n / 100) ** (2 / 9)))),
+  // HAC long-run variance is weakly identified in short histories. We keep the
+  // data contract usable, but surface this limit and never let it read as a
+  // causal confirmation in the UI.
+  hacReliablePrePeriods: 50,
+  // Newey–West / Andrews AR(1) plug-in bandwidth for the Bartlett kernel.
+  // The legacy n-only rule is retained as a lower bound when AR(1) cannot be
+  // estimated. Clamp protects the residual autocovariance calculation.
+  hacLag: (n, residualAr1 = 0) => {
+    const maxLag = Math.max(1, n - 2);
+    const legacyLag = Math.max(1, Math.floor(4 * (n / 100) ** (2 / 9)));
+    const rho = Math.min(0.98, Math.max(-0.98, Math.abs(Number(residualAr1) || 0)));
+    const alpha = rho > 0 ? (4 * rho ** 2) / (1 - rho) ** 4 : 0;
+    const andrewsLag = alpha > 0 ? Math.floor(1.1447 * (alpha * n) ** (1 / 3)) : 0;
+    return Math.min(maxLag, Math.max(legacyLag, andrewsLag));
+  },
 });
 
 export function parseCampaignFlag(value) {
@@ -105,13 +119,28 @@ function quadraticForm(matrix, vector) {
     + vector[1] * (matrix[1][0] * vector[0] + matrix[1][1] * vector[1]);
 }
 
+function estimateResidualAr1(residuals) {
+  if (!Array.isArray(residuals) || residuals.length < 3) return null;
+  let numerator = 0;
+  let denominator = 0;
+  for (let index = 1; index < residuals.length; index += 1) {
+    numerator += residuals[index] * residuals[index - 1];
+    denominator += residuals[index - 1] ** 2;
+  }
+  if (!(denominator > 0)) return null;
+  const rho = numerator / denominator;
+  return Number.isFinite(rho) ? Math.max(-0.98, Math.min(0.98, rho)) : null;
+}
+
 // Newey–West sandwich covariance for the pre-period trend coefficients. The
 // resulting interval also includes the finite-horizon variance of future
 // residual sums, so positive serial correlation cannot masquerade as precision.
 function neweyWestUncertainty(pre, trend, postSeries) {
   const n = pre.length;
-  const lag = BRAND_ITS_CONTRACT.hacLag(n);
+  const df = n - 2;
   const residuals = pre.map((point) => point.value - (trend.intercept + trend.slope * point.time));
+  const residualAr1 = estimateResidualAr1(residuals);
+  const lag = BRAND_ITS_CONTRACT.hacLag(n, residualAr1);
   const xtx = [[n, pre.reduce((sum, point) => sum + point.time, 0)], [pre.reduce((sum, point) => sum + point.time, 0), pre.reduce((sum, point) => sum + point.time ** 2, 0)]];
   const bread = matrix2Inverse(xtx);
   if (!bread) return null;
@@ -131,11 +160,15 @@ function neweyWestUncertainty(pre, trend, postSeries) {
       addOuter(scale, previous, current);
     }
   }
-  const covariance = matrix2Multiply(matrix2Multiply(bread, meat), bread);
+  // OLS residuals consume intercept and trend degrees of freedom. Without this
+  // n/(n−2) correction HAC is mechanically narrower than the matching iid SE.
+  const finiteSampleScale = n / df;
+  const correctedMeat = meat.map((row) => row.map((value) => value * finiteSampleScale));
+  const covariance = matrix2Multiply(matrix2Multiply(bread, correctedMeat), bread);
   const postCount = postSeries.length;
   const postX = [postCount, postSeries.reduce((sum, point) => sum + point.time, 0)];
   const coefficientVariance = quadraticForm(covariance, postX);
-  const autocovariance = (offset) => residuals.slice(offset).reduce((sum, value, index) => sum + value * residuals[index], 0) / n;
+  const autocovariance = (offset) => residuals.slice(offset).reduce((sum, value, index) => sum + value * residuals[index], 0) / df;
   let futureVariance = postCount * autocovariance(0);
   for (let offset = 1; offset <= Math.min(lag, postCount - 1); offset += 1) {
     futureVariance += 2 * (postCount - offset) * (1 - offset / (lag + 1)) * autocovariance(offset);
@@ -143,7 +176,17 @@ function neweyWestUncertainty(pre, trend, postSeries) {
   const variance = coefficientVariance + futureVariance;
   if (!Number.isFinite(variance) || variance <= 0) return null;
   const iidVariance = trend.residualVariance * (postCount + (postCount * postCount) / n + ((postX[1] - postCount * trend.meanX) ** 2) / trend.ssX);
-  return { lag, covariance, coefficientVariance, futureVariance, variance, iidVariance };
+  return {
+    lag,
+    residualAr1,
+    covariance,
+    coefficientVariance,
+    futureVariance,
+    variance,
+    iidVariance,
+    finiteSampleScale,
+    isSmallSample: n < BRAND_ITS_CONTRACT.hacReliablePrePeriods,
+  };
 }
 
 export function runBrandInterruptedTimeSeries(input = {}) {
@@ -208,6 +251,16 @@ export function runBrandInterruptedTimeSeries(input = {}) {
     pValue,
     confidenceMethod: "newey_west_hac",
     trend: { ...trend, slopePerDay: trend.slope },
-    diagnostics: { ...cadence, hasDateGaps: cadence.hasPeriodGaps, hacLag: uncertainty.lag, invalidRows: prepared.invalidRows },
+    diagnostics: {
+      ...cadence,
+      hasDateGaps: cadence.hasPeriodGaps,
+      hacLag: uncertainty.lag,
+      hacBandwidthMethod: "andrews_ar1_bartlett",
+      residualAr1: uncertainty.residualAr1,
+      hacFiniteSampleScale: uncertainty.finiteSampleScale,
+      smallSampleHac: uncertainty.isSmallSample,
+      hacReliablePrePeriods: BRAND_ITS_CONTRACT.hacReliablePrePeriods,
+      invalidRows: prepared.invalidRows,
+    },
   };
 }
