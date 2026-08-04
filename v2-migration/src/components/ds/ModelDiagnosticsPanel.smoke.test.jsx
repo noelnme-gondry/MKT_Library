@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
+import Chart from "chart.js/auto";
 import { REG_STATS } from "@/utils/regMath";
 import ModelDiagnosticsPanel from "@/components/ds/ModelDiagnosticsPanel";
 
@@ -22,5 +23,14 @@ describe("ModelDiagnosticsPanel smoke", () => {
     const { X, fit } = fixture();
     const { container } = render(<ModelDiagnosticsPanel scope="5-21:pvm" fit={fit} X={X} />);
     expect(container.textContent).toBe("");
+  });
+
+  it("does not recreate its four charts when a parent rerenders with the same model", () => {
+    const { X, fit } = fixture();
+    const before = Chart.constructorCount;
+    const { rerender } = render(<ModelDiagnosticsPanel scope="9-1:ols" fit={fit} X={X} labels={["Intercept", "x", "z"]} />);
+    expect(Chart.constructorCount - before).toBe(4);
+    rerender(<ModelDiagnosticsPanel scope="9-1:ols" fit={fit} X={X} labels={["Intercept", "x", "z"]} />);
+    expect(Chart.constructorCount - before).toBe(4);
   });
 });

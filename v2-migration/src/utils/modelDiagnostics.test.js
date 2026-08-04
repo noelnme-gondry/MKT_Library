@@ -21,11 +21,18 @@ function buildSeries({ n = 48, rho = 0, outlierAt = -1, outlierValue = 0 } = {})
 describe("modelDiagnostics", () => {
   it("normal synthetic OLS emits finite plots, DW, and HC3 sensitivity metadata", () => {
     const { X, y } = buildSeries();
-    const diagnostics = computeOlsDiagnostics(REG_STATS.ols(X, y), X);
+    const fit = REG_STATS.ols(X, y);
+    const diagnostics = computeOlsDiagnostics(fit, X);
     expect(diagnostics.dw).toBeGreaterThan(1.5);
     expect(diagnostics.dw).toBeLessThan(2.5);
     expect(diagnostics.qq.sample).toHaveLength(X.length);
     expect(diagnostics.residVsFitted.y).toHaveLength(X.length);
+    expect(diagnostics.studentizedResiduals.filter(Number.isFinite)).toHaveLength(X.length);
+    const index = 3;
+    const h = fit.leverages[index];
+    const deletedVariance = (fit.RSS - fit.resid[index] ** 2 / (1 - h)) / (fit.df - 1);
+    expect(diagnostics.studentizedResiduals[index]).toBeCloseTo(fit.resid[index] / Math.sqrt(deletedVariance * (1 - h)), 12);
+    expect(diagnostics.scaleLocation.y[index]).toBeCloseTo(Math.sqrt(Math.abs(diagnostics.studentizedResiduals[index])), 12);
     expect(diagnostics.hc3.valid).toBe(true);
   });
 
