@@ -58,6 +58,7 @@ describe("brand campaign ITS", () => {
     expect(result.ok).toBe(true);
     expect(result.confidenceMethod).toBe("ar1_prais_winsten");
     expect(result.profileInterval).toHaveLength(2);
+    expect(result.profileTrend).toMatchObject({ intercept: expect.any(Number), slope: expect.any(Number) });
     expect(result.diagnostics.ar1Profile.rhoMle).toBeGreaterThan(0.5);
     expect(result.diagnostics.ar1Profile.rhoInterval[0]).toBeLessThanOrEqual(result.diagnostics.ar1Profile.rhoMle);
     expect(result.diagnostics.ar1Profile.rhoInterval[1]).toBeGreaterThanOrEqual(result.diagnostics.ar1Profile.rhoMle);

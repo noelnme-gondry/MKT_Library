@@ -1,6 +1,6 @@
-# 브랜드 캠페인 ITS — AR(1) 불확실성 계약
+# 브랜드 캠페인 ITS — AR(1) 불확실성 계약 (역사 기록)
 
-상태: 구현 대상. 적용 범위: `v2-migration/src/utils/brandIncrementalityMath.js`의 브랜드 캠페인 ITS(5-24).
+상태: **대체됨**. PR #591의 plug-in AR(1) 계약 기록이다. 현재 프로덕션 계약은 [rho 불확실성 설계](./brand-its-rho-uncertainty-design.md)의 profile-envelope interval이며, 이 문서의 plug-in CI·p값 설명은 새 구현에 적용하지 않는다.
 
 ## 결정
 
@@ -38,4 +38,3 @@ Var(counterfactual sum) = postX' Var(beta_GLS) postX + Var(sum(e_post))
 - rho가 커질수록 AR(1) 표준오차가 단조 증가하는 성질을 고정 fixture에서 검증한다.
 - HAC는 참고값임을 확인하고, 결과 CI의 `confidenceMethod`는 `ar1_prais_winsten`이어야 한다.
 - 거짓양성률 몬테카를로는 CI의 flaky 테스트가 아니라 오프라인 검증 스크립트에서만 점검한다.
-
