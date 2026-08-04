@@ -16,6 +16,13 @@ export const BRAND_ITS_CONTRACT = Object.freeze({
     month: Object.freeze({ pre: 12, post: 3 }),
   }),
   confidence: 0.95,
+  profileConfidence: 0.95,
+  profileRhoConfidence: 0.975,
+  profileConditionalConfidence: 0.975,
+  profileLikelihoodThreshold: 5.023886,
+  profileRhoMin: -0.995,
+  profileRhoStep: 0.00125,
+  profileRhoPoints: 1593,
   // These tiers are display guardrails, not a claim that any one sample size
   // makes observational ITS causal or automatically well-calibrated.
   ar1ExploratoryPrePeriods: 50,
@@ -144,18 +151,9 @@ function ar1EvidenceTier(prePeriods) {
   return "reference";
 }
 
-// Prais–Winsten GLS with a plug-in AR(1) coefficient. It intentionally keeps
-// the counterfactual at the unconditional trend mean: conditioning it on the
-// final pre-period residual would turn a transient pre-period shock into an
-// assumed campaign-period baseline.
-function ar1PraisWinstenUncertainty(pre, postSeries) {
+function fitAr1AtRho(pre, rho) {
   const n = pre.length;
-  const initialTrend = fitPreTrend(pre);
-  if (!initialTrend) return null;
-  const initialResiduals = pre.map((point) => point.value - (initialTrend.intercept + initialTrend.slope * point.time));
-  const residualAr1 = estimateResidualAr1(initialResiduals);
-  if (residualAr1 == null) return null;
-  const rho = residualAr1;
+  if (!(n > 3) || !Number.isFinite(rho) || Math.abs(rho) >= 1) return null;
   const firstScale = Math.sqrt(1 - rho ** 2);
   const xtx = [[0, 0], [0, 0]];
   const xty = [0, 0];
@@ -174,29 +172,105 @@ function ar1PraisWinstenUncertainty(pre, postSeries) {
   const transformedRss = transformed.reduce((sum, row) => sum + (row.y - intercept * row.x[0] - slope * row.x[1]) ** 2, 0);
   const df = n - 3;
   const innovationVariance = transformedRss / df;
-  if (!(df > 0) || !Number.isFinite(innovationVariance) || innovationVariance <= 0) return null;
+  const innovationVarianceMl = transformedRss / n;
+  if (!(df > 0) || !Number.isFinite(innovationVariance) || innovationVariance <= 0 || !Number.isFinite(innovationVarianceMl) || innovationVarianceMl <= 0) return null;
   const coefficientCovariance = bread.map((row) => row.map((value) => value * innovationVariance));
+  const logLikelihood = -0.5 * n * (Math.log(2 * Math.PI) + 1 + Math.log(innovationVarianceMl)) + 0.5 * Math.log(1 - rho ** 2);
+  if (!Number.isFinite(logLikelihood)) return null;
+  return { rho, intercept, slope, df, innovationVariance, innovationVarianceMl, coefficientCovariance, transformedRss, logLikelihood };
+}
+
+// The counterfactual is the unconditional trend mean. Conditioning it on the
+// final pre-period residual would turn a transient pre-period shock into an
+// assumed campaign-period baseline.
+function ar1EffectAtFit(fit, postSeries, actualTotal) {
   const postCount = postSeries.length;
   const postX = [postCount, postSeries.reduce((sum, point) => sum + point.time, 0)];
-  const coefficientVariance = quadraticForm(coefficientCovariance, postX);
-  const residualVariance = innovationVariance / (1 - rho ** 2);
+  const counterfactualTotal = fit.intercept * postX[0] + fit.slope * postX[1];
+  const coefficientVariance = quadraticForm(fit.coefficientCovariance, postX);
+  const residualVariance = fit.innovationVariance / (1 - fit.rho ** 2);
   let residualSumMultiplier = postCount;
-  for (let offset = 1; offset < postCount; offset += 1) residualSumMultiplier += 2 * (postCount - offset) * rho ** offset;
+  for (let offset = 1; offset < postCount; offset += 1) residualSumMultiplier += 2 * (postCount - offset) * fit.rho ** offset;
   const futureVariance = residualVariance * residualSumMultiplier;
   const variance = coefficientVariance + futureVariance;
   if (!Number.isFinite(variance) || variance <= 0) return null;
   return {
-    intercept,
-    slope,
-    residualAr1,
-    df,
-    innovationVariance,
+    counterfactualTotal,
+    incrementalTotal: actualTotal - counterfactualTotal,
     residualVariance,
-    coefficientCovariance,
     coefficientVariance,
     futureVariance,
     variance,
-    evidenceTier: ar1EvidenceTier(n),
+  };
+}
+
+function buildAr1Profile(pre) {
+  const fits = [];
+  for (let index = 0; index < BRAND_ITS_CONTRACT.profileRhoPoints; index += 1) {
+    const rho = BRAND_ITS_CONTRACT.profileRhoMin + index * BRAND_ITS_CONTRACT.profileRhoStep;
+    const fit = fitAr1AtRho(pre, rho);
+    if (fit) fits.push(fit);
+  }
+  if (!fits.length) return null;
+  const mle = fits.reduce((best, fit) => fit.logLikelihood > best.logLikelihood ? fit : best, fits[0]);
+  const acceptedFits = fits.filter((fit) => 2 * (mle.logLikelihood - fit.logLikelihood) <= BRAND_ITS_CONTRACT.profileLikelihoodThreshold);
+  if (!acceptedFits.length) return null;
+  return {
+    mle,
+    acceptedFits,
+    rhoInterval: [acceptedFits[0].rho, acceptedFits.at(-1).rho],
+    hitsBoundary: acceptedFits[0].rho === BRAND_ITS_CONTRACT.profileRhoMin
+      || acceptedFits.at(-1).rho === BRAND_ITS_CONTRACT.profileRhoMin + (BRAND_ITS_CONTRACT.profileRhoPoints - 1) * BRAND_ITS_CONTRACT.profileRhoStep,
+  };
+}
+
+function profileEffectInterval(profile, postSeries, actualTotal) {
+  const mleEffect = ar1EffectAtFit(profile.mle, postSeries, actualTotal);
+  if (!mleEffect) return null;
+  const intervals = profile.acceptedFits.map((fit) => {
+    const effect = ar1EffectAtFit(fit, postSeries, actualTotal);
+    if (!effect) return null;
+    const margin = studentTcrit(BRAND_ITS_CONTRACT.profileConditionalConfidence, fit.df) * Math.sqrt(effect.variance);
+    return { rho: fit.rho, ...effect, lower: effect.incrementalTotal - margin, upper: effect.incrementalTotal + margin };
+  }).filter(Boolean);
+  if (!intervals.length) return null;
+  const lower = intervals.reduce((best, interval) => interval.lower < best.lower ? interval : best, intervals[0]);
+  const upper = intervals.reduce((best, interval) => interval.upper > best.upper ? interval : best, intervals[0]);
+  return {
+    estimate: mleEffect.incrementalTotal,
+    counterfactualTotal: mleEffect.counterfactualTotal,
+    interval: [lower.lower, upper.upper],
+    conditionalInterval: (() => {
+      const margin = studentTcrit(BRAND_ITS_CONTRACT.profileConditionalConfidence, profile.mle.df) * Math.sqrt(mleEffect.variance);
+      return [mleEffect.incrementalTotal - margin, mleEffect.incrementalTotal + margin];
+    })(),
+    lowerDriverRho: lower.rho,
+    upperDriverRho: upper.rho,
+  };
+}
+
+// Prais–Winsten GLS with a plug-in AR(1) coefficient, retained until the UI
+// switches to the profile interval in the next workstream.
+function ar1PraisWinstenUncertainty(pre, postSeries) {
+  const initialTrend = fitPreTrend(pre);
+  if (!initialTrend) return null;
+  const initialResiduals = pre.map((point) => point.value - (initialTrend.intercept + initialTrend.slope * point.time));
+  const residualAr1 = estimateResidualAr1(initialResiduals);
+  const fit = residualAr1 == null ? null : fitAr1AtRho(pre, residualAr1);
+  const effect = fit ? ar1EffectAtFit(fit, postSeries, 0) : null;
+  if (!fit || !effect) return null;
+  return {
+    intercept: fit.intercept,
+    slope: fit.slope,
+    residualAr1,
+    df: fit.df,
+    innovationVariance: fit.innovationVariance,
+    residualVariance: effect.residualVariance,
+    coefficientCovariance: fit.coefficientCovariance,
+    coefficientVariance: effect.coefficientVariance,
+    futureVariance: effect.futureVariance,
+    variance: effect.variance,
+    evidenceTier: ar1EvidenceTier(pre.length),
   };
 }
 
@@ -286,6 +360,7 @@ export function runBrandInterruptedTimeSeries(input = {}) {
   if (initialTrend.isDegenerate) return { ...prepared, ok: false, status: "NOT_IDENTIFIED", reason: "zero_pretrend_variance", prePeriods: pre.length, postPeriods: post.length, diagnostics: { ...cadence, invalidRows: prepared.invalidRows } };
   const ar1Uncertainty = ar1PraisWinstenUncertainty(pre, post);
   if (!ar1Uncertainty) return { ...prepared, ok: false, status: "NOT_IDENTIFIED", reason: "ar1_variance_not_estimable", prePeriods: pre.length, postPeriods: post.length, diagnostics: { ...cadence, invalidRows: prepared.invalidRows } };
+  const ar1Profile = buildAr1Profile(pre);
   const trend = { ...initialTrend, intercept: ar1Uncertainty.intercept, slope: ar1Uncertainty.slope };
   const series = points.map((point) => {
     const time = dayIndex(point.date, points[0].date);
@@ -296,6 +371,7 @@ export function runBrandInterruptedTimeSeries(input = {}) {
   const actualTotal = postSeries.reduce((sum, point) => sum + point.value, 0);
   const counterfactualTotal = postSeries.reduce((sum, point) => sum + point.counterfactual, 0);
   const incrementalTotal = actualTotal - counterfactualTotal;
+  const profileEffect = ar1Profile ? profileEffectInterval(ar1Profile, postSeries, actualTotal) : null;
   const hacReference = neweyWestUncertainty(pre, initialTrend, postSeries);
   const standardError = Math.sqrt(ar1Uncertainty.variance);
   const df = ar1Uncertainty.df;
@@ -313,6 +389,11 @@ export function runBrandInterruptedTimeSeries(input = {}) {
     counterfactualTotal,
     incrementalTotal,
     incrementalRate: counterfactualTotal !== 0 ? incrementalTotal / Math.abs(counterfactualTotal) : null,
+    // Additive until the UI workstream adopts profileInterval as the primary
+    // result contract. Existing callers continue to read ci95 unchanged.
+    profileIncrementalTotal: profileEffect?.estimate ?? null,
+    profileCounterfactualTotal: profileEffect?.counterfactualTotal ?? null,
+    profileInterval: profileEffect?.interval ?? null,
     ci95: [incrementalTotal - margin, incrementalTotal + margin],
     standardError,
     iidStandardError: Math.sqrt(Math.max(0, initialTrend.residualVariance * (postSeries.length + (postSeries.length ** 2) / pre.length + ((postSeries.reduce((sum, point) => sum + point.time, 0) - postSeries.length * initialTrend.meanX) ** 2) / initialTrend.ssX))),
@@ -329,6 +410,18 @@ export function runBrandInterruptedTimeSeries(input = {}) {
       ar1CoefficientVariance: ar1Uncertainty.coefficientVariance,
       ar1FutureVariance: ar1Uncertainty.futureVariance,
       ar1ModelDf: ar1Uncertainty.df,
+      ar1Profile: ar1Profile && profileEffect ? {
+        rhoMle: ar1Profile.mle.rho,
+        rhoInterval: ar1Profile.rhoInterval,
+        hitsBoundary: ar1Profile.hitsBoundary,
+        acceptedFits: ar1Profile.acceptedFits.length,
+        confidence: BRAND_ITS_CONTRACT.profileConfidence,
+        rhoConfidence: BRAND_ITS_CONTRACT.profileRhoConfidence,
+        conditionalConfidence: BRAND_ITS_CONTRACT.profileConditionalConfidence,
+        conditionalInterval: profileEffect.conditionalInterval,
+        lowerDriverRho: profileEffect.lowerDriverRho,
+        upperDriverRho: profileEffect.upperDriverRho,
+      } : null,
       residualAr1: ar1Uncertainty.residualAr1,
       hacLag: hacReference?.lag ?? null,
       hacBandwidthMethod: "andrews_ar1_bartlett",

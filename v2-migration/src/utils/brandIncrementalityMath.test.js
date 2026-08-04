@@ -53,6 +53,27 @@ describe("brand campaign ITS", () => {
     expect(result.standardError).toBeGreaterThan(0);
   });
 
+  it("adds a deterministic rho profile interval without changing the current result contract", () => {
+    const result = runBrandInterruptedTimeSeries({ rows: series({ pre: 150, post: 10, lift: 20, rho: 0.8 }) });
+    expect(result.ok).toBe(true);
+    expect(result.confidenceMethod).toBe("ar1_prais_winsten");
+    expect(result.profileInterval).toHaveLength(2);
+    expect(result.diagnostics.ar1Profile.rhoMle).toBeGreaterThan(0.5);
+    expect(result.diagnostics.ar1Profile.rhoInterval[0]).toBeLessThanOrEqual(result.diagnostics.ar1Profile.rhoMle);
+    expect(result.diagnostics.ar1Profile.rhoInterval[1]).toBeGreaterThanOrEqual(result.diagnostics.ar1Profile.rhoMle);
+    expect(result.profileInterval[0]).toBeLessThanOrEqual(result.diagnostics.ar1Profile.conditionalInterval[0]);
+    expect(result.profileInterval[1]).toBeGreaterThanOrEqual(result.diagnostics.ar1Profile.conditionalInterval[1]);
+    expect(result.profileInterval[1] - result.profileInterval[0]).toBeGreaterThanOrEqual(result.ci95[1] - result.ci95[0]);
+  });
+
+  it("keeps short histories explicitly exploratory even when the rho profile is available", () => {
+    const result = runBrandInterruptedTimeSeries({ rows: series({ pre: 24, post: 10, lift: 20, rho: 0.85 }) });
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics.ar1EvidenceTier).toBe("exploratory");
+    expect(result.profileInterval).toHaveLength(2);
+    expect(result.diagnostics.ar1Profile.acceptedFits).toBeGreaterThan(1);
+  });
+
   it("increases the Bartlett bandwidth as residual autocorrelation rises", () => {
     const n = 150;
     expect(BRAND_ITS_CONTRACT.hacLag(n, 0.85)).toBeGreaterThan(BRAND_ITS_CONTRACT.hacLag(n, 0.5));
