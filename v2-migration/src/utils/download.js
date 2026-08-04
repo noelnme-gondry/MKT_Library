@@ -40,6 +40,11 @@ export function downloadText(textString, baseName = "summary", ext = "md") {
   return triggerDownload(blob, withDate(baseName, ext));
 }
 
+export function downloadCalendar(calendarString, baseName = "decision_review") {
+  const blob = new Blob([calendarString], { type: "text/calendar;charset=utf-8" });
+  return triggerDownload(blob, withDate(baseName, "ics"));
+}
+
 export function downloadJson(value, baseName = "result-manifest", ext = "json") {
   const text = `${JSON.stringify(value, null, 2)}\n`;
   const blob = new Blob([text], { type: "application/json;charset=utf-8" });

@@ -6,7 +6,7 @@ import { useAppStore } from "@/store/useDataStore";
 
 describe("WeeklyReview", () => {
   beforeEach(() => {
-    useAppStore.setState({ decisionRecords: [], decisionPersistenceEnabled: false });
+    useAppStore.setState({ decisionRecords: [], decisionPersistenceEnabled: false, decisionSessionRecordIds: new Set() });
     window.gtag = vi.fn();
   });
 
@@ -108,6 +108,7 @@ describe("WeeklyReview", () => {
       tool_id: "5-3",
       source: "weekly_review",
       result_state: "reviewed",
+      days_since_decision: "unknown",
       locale: "ko",
     });
     expect(JSON.stringify(window.gtag.mock.calls)).not.toContain("민감한 캠페인 이름");

@@ -4952,6 +4952,12 @@ table.data td :is(.tnum,.mono) { white-space: nowrap; font-variant-numeric: tabu
 .decision-review input:focus, .decision-review select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 16%, transparent); }
 .decision-review__add { align-self: end; min-height: 31px; justify-content: center; white-space: nowrap; }
 .decision-review__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.decision-review__save-prompt { margin-top: 12px; padding: 14px; border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border)); border-radius: 10px; background: color-mix(in srgb, var(--primary) 7%, var(--surface-container-low)); }
+.decision-review__save-prompt small { display: block; margin-bottom: 4px; color: var(--primary); font-size: 10px; font-weight: 700; }
+.decision-review__save-prompt strong { display: block; color: var(--text-primary); font-size: 13px; }
+.decision-review__save-prompt p { margin: 4px 0 0; color: var(--text-secondary); font-size: 11px; line-height: 1.45; }
+.decision-review__save-prompt-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+.decision-review__save-prompt .decision-review__save-prompt-privacy { margin-top: 10px; color: var(--text-muted); font-size: 10px; }
 .decision-review__file { display: none; }
 .decision-review__message { color: var(--text-muted); font-size: 10px; }
 .decision-review__weekly-link { margin-left: auto; color: var(--primary); font-size: 10px; text-decoration: none; }

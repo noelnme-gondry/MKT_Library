@@ -5,6 +5,7 @@ import Link from "next/link";
 import Papa from "papaparse";
 import {
   assessDecisionOutcome,
+  decisionReviewAgeBucket,
   getDecisionReviewBucket,
   decisionMetricDirection,
   normalizeDecisionReviewRows,
@@ -212,6 +213,7 @@ export default function WeeklyReview({ locale = "ko" }) {
   const importRef = useRef(null);
   const hasTrackedInboxView = useRef(false);
   const records = useAppStore((state) => state.decisionRecords);
+  const decisionSessionRecordIds = useAppStore((state) => state.decisionSessionRecordIds);
   const isPersistenceEnabled = useAppStore((state) => state.decisionPersistenceEnabled);
   const setDecisionPersistenceEnabled = useAppStore((state) => state.setDecisionPersistenceEnabled);
   const importDecisionRecords = useAppStore((state) => state.importDecisionRecords);
@@ -271,6 +273,7 @@ export default function WeeklyReview({ locale = "ko" }) {
         tool_id: next.toolId,
         source: "weekly_review",
         result_state: "reviewed",
+        days_since_decision: decisionReviewAgeBucket(next, { isSameSession: decisionSessionRecordIds.has(next.id) }),
         locale,
       });
     }

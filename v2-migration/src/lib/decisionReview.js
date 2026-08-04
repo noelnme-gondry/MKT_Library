@@ -111,6 +111,61 @@ export function toLocalDecisionDate(value = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+export function decisionReviewAgeBucket(record = {}, { now = new Date(), isSameSession = false } = {}) {
+  if (isSameSession) return "same_session";
+  const createdAt = Date.parse(record.createdAt || record.created_at || "");
+  const current = now instanceof Date ? now.getTime() : Date.parse(now);
+  if (!Number.isFinite(createdAt) || !Number.isFinite(current)) return "unknown";
+  const days = Math.max(0, Math.floor((current - createdAt) / 86400000));
+  if (days <= 3) return "1-3d";
+  if (days <= 9) return "4-9d";
+  return "10d+";
+}
+
+function nextCalendarDate(value) {
+  const date = new Date(`${value}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10).replace(/-/g, "");
+}
+
+function escapeCalendarText(value) {
+  return String(value ?? "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
+}
+
+// 캘린더에는 채널·캠페인·소재명이나 결정 메모를 넣지 않는다. 날짜와 제품의
+// 주간 검토 링크만 담아 사용자가 캘린더 동기화 시에도 운영 데이터가 노출되지 않게 한다.
+export function serializeDecisionReviewIcs(record = {}, locale = "ko") {
+  const reviewDate = asDate(record.reviewDate ?? record.review_date);
+  if (!reviewDate) return "";
+  const compactDate = reviewDate.replace(/-/g, "");
+  const createdAt = asTimestamp(record.createdAt || record.created_at) || `${reviewDate}T00:00:00.000Z`;
+  const calendarStamp = createdAt.replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  const isEnglish = locale === "en";
+  const reviewUrl = `https://growthoptplaybook.com${isEnglish ? "/en" : ""}/weekly-review`;
+  const uidToken = asText(record.id || record.record_id || createdAt, 120).replace(/[^a-zA-Z0-9_-]/g, "-");
+  const summary = isEnglish ? "Review marketing decision" : "마케팅 결정 검토";
+  const description = isEnglish
+    ? "Review the actual outcome and record what you learned."
+    : "실제 결과와 배운 점을 검토하세요.";
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Growth Opt Playbook//Decision Review//EN",
+    "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT",
+    `UID:${uidToken}@growthoptplaybook.com`,
+    `DTSTAMP:${calendarStamp}`,
+    `DTSTART;VALUE=DATE:${compactDate}`,
+    `DTEND;VALUE=DATE:${nextCalendarDate(reviewDate)}`,
+    `SUMMARY:${escapeCalendarText(summary)}`,
+    `DESCRIPTION:${escapeCalendarText(description)}`,
+    `URL:${reviewUrl}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+    "",
+  ].join("\r\n");
+}
+
 function field(row, camel, snake = camel) {
   return row?.[snake] ?? row?.[camel];
 }

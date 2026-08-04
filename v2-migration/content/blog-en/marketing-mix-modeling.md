@@ -6,6 +6,17 @@ slug: "marketing-mix-modeling"
 keywords: "marketing mix modeling, MMM, adstock, saturation, contribution decomposition, cannibalization, multicollinearity, marketing forecasting, MMM vs attribution, post-iOS14 measurement"
 tags: ["MMM", "Performance Marketing"]
 draft: false
+faq:
+  - q: "What is Marketing Mix Modeling (MMM)?"
+    a: "MMM uses aggregate data such as channel spend and revenue—not individual tracking—to estimate revenue as baseline plus channel contribution and external factors. It is less exposed to cookie loss and iOS tracking limits."
+  - q: "What can MMM tell me?"
+    a: "It can estimate channel contribution, forecast outcomes under the current allocation with uncertainty, and flag possible cannibalization between channels or campaigns."
+  - q: "Why do adstock and saturation matter in MMM?"
+    a: "Adstock represents effects that continue after an ad is shown. Saturation represents diminishing returns as spend increases. Ignoring either can misattribute delayed outcomes or overstate how much more budget a channel can absorb."
+  - q: "How much should I trust an MMM result?"
+    a: "MMM estimates associations from observational data, not guaranteed causal effects. Use it to choose a direction, then validate important budget decisions with a holdout or another controlled experiment."
+  - q: "How much data do I need to start MMM?"
+    a: "A practical starting point is at least 52 weeks of weekly channel spend, outcome, and external-factor data so the model can observe a full seasonal cycle."
 ---
 
 # When Last-Click Only Praises Brand Search — Measuring Channel Contribution with MMM

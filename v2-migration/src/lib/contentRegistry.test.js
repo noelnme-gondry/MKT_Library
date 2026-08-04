@@ -80,6 +80,15 @@ describe("editorial SEO registries", () => {
     }
   });
 
+  it("keeps visible FAQ coverage equivalent across KR/EN pairs", () => {
+    const english = new Map(getAllPosts("en").map((post) => [post.slug, post]));
+    for (const post of getAllPosts("ko")) {
+      const enPost = english.get(post.slug);
+      expect(enPost, `en/${post.slug} must exist`).toBeTruthy();
+      expect(enPost.faq.length, `FAQ count differs for ${post.slug}`).toBe(post.faq.length);
+    }
+  });
+
   it("keeps audited high-intent articles sourced, reviewed, and connected to the exact tool", () => {
     for (const locale of ["ko", "en"]) {
       const posts = new Map(getAllPosts(locale).map((post) => [post.slug, post]));

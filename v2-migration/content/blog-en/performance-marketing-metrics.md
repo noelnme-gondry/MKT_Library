@@ -7,6 +7,17 @@ slug: "performance-marketing-metrics"
 keywords: "performance marketing metrics, CPI, CPA, ROAS, LTV, CAC, LTV:CAC, marketing metrics basics, junior marketer, how metrics connect, LTV to CAC ratio explained"
 tags: ["Metrics Basics", "Performance Marketing"]
 draft: false
+faq:
+  - q: "How are CPM, CPC, CPI, and CPA different?"
+    a: "They are costs attached to different funnel stages. CPM is cost per 1,000 impressions, CPC is cost per click, CPI is cost per install, and CPA is cost per action such as signup or purchase."
+  - q: "How are ROAS and LTV:CAC different?"
+    a: "Both compare value with acquisition cost, but their revenue windows differ. ROAS usually uses revenue from a defined period, while LTV:CAC includes longer-term customer value such as repeat purchases."
+  - q: "What does low CPA but weak ROAS mean?"
+    a: "Acquisition is relatively cheap, so the likely issue is after conversion: too few purchases, a low average order value, or revenue arriving outside the ROAS window."
+  - q: "What if CPA and ROAS look good but LTV:CAC is weak?"
+    a: "Initial acquisition works, but repeat value is not developing. That points to retention, product experience, or the repurchase cycle rather than the acquisition funnel."
+  - q: "In what order should I review performance metrics?"
+    a: "Read them as a chain: spend, CPI, CPA, short-term ROAS, then LTV:CAC. Find the first stage that deteriorates and use the metrics immediately before and after it to narrow the cause."
 ---
 
 CPI, CPA, ROAS, LTV, CAC… open a report and the acronyms pour out. You know what each one means, but "so what should I actually look at right now?" doesn't jump out at you. Today I'll show you how to read these metrics as one connected chain instead of memorizing them separately. Read them this way, and when a number spikes, you'll immediately know where to look.

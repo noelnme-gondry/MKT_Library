@@ -4,6 +4,11 @@ import { getRouteSeo } from "./routeSeo";
 const PUBLISHED_TOOL_IDS = ["5-2", "5-3", "5-4", "5-18", "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast", "5-20", "5-21", "5-22", "5-23", "9-1", "9-6"];
 
 describe("published tool SEO copy", () => {
+  it.each(["guide-index", "start-gate"])("%s keeps the rendered English title within 60 characters", (routeId) => {
+    const title = getRouteSeo(routeId, "en").title;
+    expect(`${title} | Growth Opt Playbook`.length).toBeLessThanOrEqual(60);
+  });
+
   it.each(PUBLISHED_TOOL_IDS)("%s has concise KO and EN metadata", (toolId) => {
     const ko = getRouteSeo(toolId, "ko");
     const en = getRouteSeo(toolId, "en");
@@ -15,6 +20,7 @@ describe("published tool SEO copy", () => {
     expect([...ko.title].length).toBeLessThanOrEqual(30);
     expect([...ko.description].length).toBeLessThanOrEqual(80);
     expect(en.title.length).toBeLessThanOrEqual(60);
+    expect(`${en.title} | Growth Opt Playbook`.length).toBeLessThanOrEqual(60);
     expect(en.description.length).toBeLessThanOrEqual(160);
   });
 
