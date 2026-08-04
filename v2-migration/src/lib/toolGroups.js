@@ -7,7 +7,7 @@ export const TOOL_GROUP = {
   // uploader still uses 5-6 for its demo/guide contract.
   "5-6": "creative",
   "5-4": "experiment", "5-7": "experiment", "5-15": "experiment",
-  "5-18": "response", "5-18-trend": "response", "5-18-cannibal": "response", "5-18-mmm": "response", "5-18-forecast": "response",
+  "5-18": "response", "5-18-paid-organic": "response", "5-18-trend": "response", "5-18-cannibal": "response", "5-18-mmm": "response", "5-18-forecast": "response",
   "5-20": "aha",
   "5-23": "incrementality",
   "9-1": "content_attr",

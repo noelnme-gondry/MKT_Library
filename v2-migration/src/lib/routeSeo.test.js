@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getRouteSeo } from "./routeSeo";
 
-const PUBLISHED_TOOL_IDS = ["5-2", "5-3", "5-4", "5-18", "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast", "5-20", "5-21", "5-22", "5-23", "9-1", "9-6"];
+const PUBLISHED_TOOL_IDS = ["5-2", "5-3", "5-4", "5-18", "5-18-paid-organic", "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast", "5-20", "5-21", "5-22", "5-23", "9-1", "9-6"];
 
 describe("published tool SEO copy", () => {
   it.each(["guide-index", "start-gate"])("%s keeps the rendered English title within 60 characters", (routeId) => {

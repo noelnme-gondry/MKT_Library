@@ -34,7 +34,7 @@ const ANALYSIS_TYPE_BY_TOOL = {
 
 export function normalizeProductToolId(toolId) {
   const id = String(toolId || "");
-  return /^5-18-(trend|cannibal|mmm|forecast)$/.test(id) ? "5-18" : id;
+  return /^5-18-(paid-organic|trend|cannibal|mmm|forecast)$/.test(id) ? "5-18" : id;
 }
 
 export function productAnalysisType(toolId) {

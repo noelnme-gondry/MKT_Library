@@ -59,6 +59,10 @@ export const ROUTE_SEO = {
       description: "Analyze trend, ad cannibalization, MMM channel contribution, and regression forecasts from one dataset to plan the next budget test.",
     },
   },
+  "5-18-paid-organic": {
+    ko: { title: "Paid·Organic 변화맵 | 주간 패턴 체크", description: "Organic과 Paid 성과의 WoW 움직임을 최근 주차 색상 궤적으로 확인하고 정밀 카니발 진단이 필요한 패턴을 빠르게 찾습니다." },
+    en: { title: "Paid · Organic Movement Map", description: "Plot weekly Organic and Paid movement on a darker-is-newer path and identify patterns that deserve a deeper cannibalization diagnosis." },
+  },
   "5-18-trend": {
     ko: { title: "마케팅 추세 분석", description: "광고 판단 전 자연 추세·계절성·이상 주차를 분리해 성과 변화의 기준선을 확인합니다." },
     en: { title: "Marketing Trend Analysis", description: "Separate natural trend, seasonality, and irregular weeks before interpreting marketing performance." },
