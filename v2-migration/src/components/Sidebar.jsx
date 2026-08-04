@@ -337,7 +337,7 @@ export default function Sidebar({ locale = "ko" }) {
       <details className="sidebar-library-disclosure" open={isLibraryRoute || isCalculator}>
         <summary className="sidebar-resource-label">
           <span>{T.resourceLabel}</span>
-          <span className="sidebar-library-disclosure__count" aria-hidden="true">05</span>
+          <span className="sidebar-library-disclosure__count" aria-hidden="true">04</span>
         </summary>
         <section className="sidebar-library" data-section="resources">
         <Link
@@ -346,13 +346,6 @@ export default function Sidebar({ locale = "ko" }) {
           aria-current={isCalculator ? "page" : undefined}
         >
           <span><strong>{T.calculators}</strong><small>QUICK MATH</small></span><b>↗</b>
-        </Link>
-        <Link
-          href={locale === "en" ? "/en/blog" : "/blog"}
-          className="sidebar-library-link"
-          aria-current={(pathname || "").includes("/blog") ? "page" : undefined}
-        >
-          <span><strong>{T.blog}</strong><small>INSIGHTS</small></span><b>↗</b>
         </Link>
         <Link
           href={locale === "en" ? "/en/guide" : "/guide"}
@@ -376,7 +369,16 @@ export default function Sidebar({ locale = "ko" }) {
           <span><strong>{T.glossary}</strong><small>TERMS</small></span><b>↗</b>
         </Link>
         </section>
+      </details>
 
+      <section className="sidebar-channel-dock" aria-label={locale === "en" ? "Content and channels" : "콘텐츠와 채널"}>
+        <Link
+          href={locale === "en" ? "/en/blog" : "/blog"}
+          className="sidebar-channel-blog"
+          aria-current={(pathname || "").includes("/blog") ? "page" : undefined}
+        >
+          <span aria-hidden="true">⌁</span><strong>{T.blog}</strong><small>INSIGHTS</small><b aria-hidden="true">↗</b>
+        </Link>
         <div className="sidebar-social">
         <a className="ss-btn ss-youtube" href="https://youtube.com/channel/UCvRcpOHOqvSHQPNbgZdPNUw/" target="_blank" rel="noopener noreferrer" title={T.youtube}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.11-2.12C19.44 3.5 12 3.5 12 3.5s-7.44 0-9.39.58A3 3 0 0 0 .5 6.2 31.6 31.6 0 0 0 0 12a31.6 31.6 0 0 0 .5 5.8 3 3 0 0 0 2.11 2.12C4.56 20.5 12 20.5 12 20.5s7.44 0 9.39-.58a3 3 0 0 0 2.11-2.12A31.6 31.6 0 0 0 24 12a31.6 31.6 0 0 0-.5-5.8ZM9.6 15.6V8.4L15.8 12Z"/></svg>
@@ -395,7 +397,7 @@ export default function Sidebar({ locale = "ko" }) {
           <span>{T.naverBlog}</span>
         </a>
         </div>
-      </details>
+      </section>
       {isHome && (
         <div className="home-sidebar-local">
           <b>LOCAL ONLY</b>
