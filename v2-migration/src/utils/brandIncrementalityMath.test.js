@@ -34,11 +34,30 @@ describe("brand campaign ITS", () => {
     expect(result.confidenceMethod).toBe("newey_west_hac");
   });
 
-  it("widens uncertainty for positively autocorrelated pre-period residuals", () => {
+  it("uses an AR(1)-adaptive HAC bandwidth and flags short pre-periods", () => {
     const result = runBrandInterruptedTimeSeries({ rows: series({ lift: 20, rho: 0.8 }) });
     expect(result.ok).toBe(true);
-    expect(result.diagnostics.hacLag).toBe(BRAND_ITS_CONTRACT.hacLag(24));
-    expect(result.standardError).toBeGreaterThan(result.iidStandardError);
+    expect(result.diagnostics.residualAr1).toBeGreaterThan(0.5);
+    expect(result.diagnostics.hacLag).toBeGreaterThan(BRAND_ITS_CONTRACT.hacLag(24));
+    expect(result.diagnostics).toMatchObject({ hacBandwidthMethod: "andrews_ar1_bartlett", smallSampleHac: true, hacReliablePrePeriods: 50 });
+    expect(result.diagnostics.hacFiniteSampleScale).toBeCloseTo(24 / 22, 12);
+    expect(result.standardError).toBeGreaterThan(0);
+  });
+
+  it("increases the Bartlett bandwidth as residual autocorrelation rises", () => {
+    const n = 150;
+    expect(BRAND_ITS_CONTRACT.hacLag(n, 0.85)).toBeGreaterThan(BRAND_ITS_CONTRACT.hacLag(n, 0.5));
+    expect(BRAND_ITS_CONTRACT.hacLag(n, 0.5)).toBeGreaterThan(BRAND_ITS_CONTRACT.hacLag(n, 0));
+  });
+
+  it("does not shrink the HAC-to-iid SE ratio as controlled AR(1) persistence rises", () => {
+    const ratios = [0, 0.45, 0.8].map((rho) => {
+      const result = runBrandInterruptedTimeSeries({ rows: series({ pre: 150, post: 10, rho }) });
+      expect(result.ok).toBe(true);
+      return result.standardError / result.iidStandardError;
+    });
+    expect(ratios[1]).toBeGreaterThanOrEqual(ratios[0]);
+    expect(ratios[2]).toBeGreaterThanOrEqual(ratios[1]);
   });
 
   it("refuses a perfect pre-period line because uncertainty cannot be estimated", () => {
