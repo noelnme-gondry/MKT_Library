@@ -6047,8 +6047,6 @@ body.light-mode .app.is-home {
 .home-sidebar-nav__copy strong { overflow:hidden;color:inherit;font-size:11.5px;font-weight:680;text-overflow:ellipsis;white-space:nowrap; }
 .home-sidebar-nav__copy em { overflow:hidden;color:var(--dc-text-dim);font-size:8.5px;font-style:normal;font-weight:520;line-height:1.25;text-overflow:ellipsis;white-space:nowrap; }
 .home-sidebar-nav__item > b { display:grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--dc-coral);color:#fff;font:750 8px/1 var(--font-mono); }
-.app.is-home .sidebar-resource-label { margin-top:auto; }
-.app.is-home .sidebar-library-disclosure { margin-top:auto; }
 .app.is-home .sidebar-library { gap:7px;margin:0; }
 .app.is-home .sidebar-library-link { min-height:54px;padding:9px 11px;border-color:var(--dc-line);border-radius:9px;background:color-mix(in srgb,var(--dc-panel) 80%,transparent);color:var(--dc-text-soft); }
 .app.is-home .sidebar-library-link:hover { border-color:var(--dc-line-strong);background:var(--dc-panel);color:var(--dc-text); }
@@ -6057,6 +6055,14 @@ body.light-mode .app.is-home {
 .app.is-home .sidebar-social { grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0 0;padding:0; }
 .app.is-home .sidebar-social .ss-btn { min-width:0;min-height:42px;justify-content:flex-start;padding:8px;border-color:var(--dc-line);border-radius:8px;background:var(--dc-panel);color:var(--dc-text-soft);font-size:8px; }
 .app.is-home .sidebar-social .ss-btn:hover { border-color:var(--dc-line-strong);color:var(--dc-text); }
+.sidebar-channel-dock { display:grid;gap:7px;margin-top:auto;padding-top:10px;border-top:1px solid var(--dc-line,var(--border)); }
+.sidebar-channel-blog { display:grid;grid-template-columns:18px minmax(0,1fr) auto auto;align-items:center;gap:8px;min-height:40px;padding:8px 10px;border:1px solid var(--dc-line,var(--border));border-radius:9px;background:var(--dc-panel,var(--surface-container-lowest));color:var(--dc-text-soft,var(--text-secondary));text-decoration:none; }
+.sidebar-channel-blog:hover,.sidebar-channel-blog[aria-current="page"] { border-color:var(--dc-line-strong,var(--border-stronger));color:var(--dc-text,var(--text-primary)); }
+.sidebar-channel-blog > span { color:var(--dc-signal,var(--primary));font:700 12px/1 var(--font-mono);text-align:center; }
+.sidebar-channel-blog strong { overflow:hidden;font-size:10.5px;text-overflow:ellipsis;white-space:nowrap; }
+.sidebar-channel-blog small { color:var(--dc-text-dim,var(--text-muted));font:650 7px/1 var(--font-mono);letter-spacing:.08em; }
+.sidebar-channel-blog b { color:var(--dc-text-dim,var(--text-muted));font:600 10px/1 var(--font-mono); }
+.sidebar-channel-dock .sidebar-social { margin:0;padding:0;border:0; }
 .home-sidebar-local { display:grid;gap:4px;margin:12px 3px 0;padding-top:11px;border-top:1px solid var(--dc-line);color:var(--dc-text-dim);font-size:8px;line-height:1.45; }
 .home-sidebar-local b { color:var(--dc-mint);font:650 8px/1 var(--font-mono);letter-spacing:.11em; }
 .app.is-home .main { min-width:0;background:transparent; }
@@ -6175,7 +6181,7 @@ body.light-mode .app.is-home {
   .app.is-home { grid-template-columns:76px minmax(0,1fr); }
   .app.is-home .sidebar .brand > div,.app.is-home .home-sidebar-workspace__label,
   .app.is-home .home-sidebar-nav__copy,.app.is-home .home-sidebar-nav__item > b,
-  .app.is-home .sidebar-resource-label,.app.is-home .sidebar-library,.app.is-home .sidebar-social,
+  .app.is-home .sidebar-resource-label,.app.is-home .sidebar-library,.app.is-home .sidebar-channel-dock,
   .app.is-home .home-sidebar-local { display:none; }
   .app.is-home .sidebar .brand { justify-content:center;padding-inline:0; }
   .home-sidebar-nav__item { display:flex;justify-content:center;padding:11px 6px; }
@@ -6383,10 +6389,10 @@ body.light-mode .app:not(.is-home) .main {
   .app.is-home .home-sidebar-nav__copy,
   .app.is-home .sidebar-resource-label,
   .app.is-home .sidebar-library,
-  .app.is-home .sidebar-social,
+  .app.is-home .sidebar-channel-dock,
   .app.is-home .home-sidebar-local { display:initial; }
   .app.is-home .sidebar-library { display:grid; }
-  .app.is-home .sidebar-social { display:grid; }
+  .app.is-home .sidebar-channel-dock,.app.is-home .sidebar-social { display:grid; }
   .app.is-home .home-sidebar-local { display:grid; }
   .app.is-home .sidebar .brand { justify-content:flex-start;padding:4px 5px 20px; }
   .app.is-home .home-sidebar-nav__item { display:grid;justify-content:initial;padding:8px 10px; }
