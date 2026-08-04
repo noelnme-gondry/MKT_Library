@@ -23,6 +23,7 @@ describe("privacy-safe product analytics", () => {
       tool_id: "5-18",
       source: "route",
     });
+    expect(sanitizeProductEventParams({ tool_id: "5-18-paid-organic", source: "route" }).tool_id).toBe("5-18");
   });
 
   it("uses the same PVM analysis type for performance and content routes", () => {

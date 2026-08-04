@@ -46,18 +46,19 @@ describe("Sidebar render smoke", () => {
   it("no-data mounts", () => {
     expect(() => render(<Sidebar />)).not.toThrow();
     expect(document.querySelector(".home-sidebar-nav")).toBeTruthy();
-    expect(document.querySelectorAll(".home-sidebar-nav__item")).toHaveLength(8);
+    expect(document.querySelectorAll(".home-sidebar-nav__item")).toHaveLength(4);
     expect(document.querySelector('.home-sidebar-nav__item[href="/start"]')).toBeTruthy();
-    expect(document.querySelector('.home-sidebar-nav__item[href="/calculator"]')).toBeTruthy();
     expect(document.querySelector('.home-sidebar-nav__item[href="/diagnose"]')).toBeTruthy();
+    expect(document.body.textContent).toContain("CSV를 올리고 가능한 분석 추천");
     expect(document.querySelector('a[href="/weekly-review"]')).toBeTruthy();
-    expect(document.querySelectorAll(".sidebar-library-link")).toHaveLength(4);
+    expect(document.querySelectorAll(".sidebar-library-link")).toHaveLength(5);
+    expect(document.querySelector('.sidebar-library-link[href="/calculator"]')).toBeTruthy();
     expect(document.body.textContent).toContain("마케팅 지표 계산기");
     expect(document.body.textContent).not.toContain("무CSV 계산기");
     expect(document.querySelectorAll(".sidebar-social .ss-btn")).toHaveLength(4);
     expect(document.querySelector('a[href="https://blog.naver.com/growthoptplaybook"]')).toBeTruthy();
     expect(document.querySelector('.home-sidebar-nav__item[aria-current="page"]')).toBeTruthy();
-    expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(true);
+    expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(false);
   });
   it("with-data mounts", () => {
     pathname = "/dashboard";
@@ -68,7 +69,7 @@ describe("Sidebar render smoke", () => {
     const search = document.querySelector(".sidebar-search");
     expect(search?.getAttribute("aria-controls")).toBe("cmdk");
     expect(search?.getAttribute("aria-expanded")).toBe("false");
-    expect(document.querySelectorAll(".sidebar-primary-nav__item")).toHaveLength(5);
+    expect(document.querySelectorAll(".sidebar-primary-nav__item")).toHaveLength(4);
     expect(document.querySelector(".sidebar-library-disclosure")?.hasAttribute("open")).toBe(false);
   });
   it("keeps resource and external-link parity in English", () => {

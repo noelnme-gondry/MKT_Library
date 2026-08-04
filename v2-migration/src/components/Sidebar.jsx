@@ -28,8 +28,12 @@ const SIDEBAR_COPY = {
     workspaceLabel: "DECISION WORKSPACE",
     allTools: "전체 도구",
     today: "오늘의 질문",
+    todayDesc: "지금 확인할 변화와 다음 행동",
     review: "결정 검토함",
+    reviewDesc: "지난 판단의 실제 결과 확인",
     reviewAria: (count) => `결정 검토함${count ? `, 지금 검토할 결정 ${count}건` : ""}`,
+    dataStartDesc: "CSV를 올리고 가능한 분석 추천",
+    diagnoseDesc: "3문항으로 원인과 확인 순서 찾기",
     workflow: "연결된 분석 흐름",
     dataGuide: "데이터 준비",
     insights: "실무 인사이트",
@@ -52,8 +56,12 @@ const SIDEBAR_COPY = {
     workspaceLabel: "DECISION WORKSPACE",
     allTools: "All tools",
     today: "Today’s question",
+    todayDesc: "See the current signal and next action",
     review: "Decision inbox",
+    reviewDesc: "Compare past decisions with actuals",
     reviewAria: (count) => `Decision inbox${count ? `, ${count} decision${count === 1 ? "" : "s"} due now` : ""}`,
+    dataStartDesc: "Upload a CSV and find supported analyses",
+    diagnoseDesc: "Use 3 questions to find the next check",
     workflow: "Connected workflow",
     dataGuide: "Prepare data",
     insights: "Practical insights",
@@ -124,16 +132,13 @@ export default function Sidebar({ locale = "ko" }) {
           <div className="home-sidebar-workspace__label">{T.workspaceLabel}</div>
           <nav className="home-sidebar-nav" aria-label={T.workspaceLabel}>
             <Link href={locale === "en" ? "/en" : "/"} className="home-sidebar-nav__item active" aria-current="page">
-              <span aria-hidden="true">◎</span><strong>{T.today}</strong><small aria-hidden="true">NOW</small>
+              <span className="home-sidebar-nav__icon" aria-hidden="true">◎</span><span className="home-sidebar-nav__copy"><strong>{T.today}</strong><em>{T.todayDesc}</em></span>
             </Link>
             <Link href={locale === "en" ? "/en/start" : "/start"} className="home-sidebar-nav__item">
-              <span aria-hidden="true">⇧</span><strong>{T.dataStart}</strong><small aria-hidden="true">DATA</small>
-            </Link>
-            <Link href={locale === "en" ? "/en/calculator" : "/calculator"} className="home-sidebar-nav__item">
-              <span aria-hidden="true">∑</span><strong>{T.calculators}</strong><small aria-hidden="true">MATH</small>
+              <span className="home-sidebar-nav__icon" aria-hidden="true">⇧</span><span className="home-sidebar-nav__copy"><strong>{T.dataStart}</strong><em>{T.dataStartDesc}</em></span>
             </Link>
             <Link href={locale === "en" ? "/en/diagnose" : "/diagnose"} className="home-sidebar-nav__item">
-              <span aria-hidden="true">◇</span><strong>{T.diagnose}</strong><small aria-hidden="true">DIAG</small>
+              <span className="home-sidebar-nav__icon" aria-hidden="true">◇</span><span className="home-sidebar-nav__copy"><strong>{T.diagnose}</strong><em>{T.diagnoseDesc}</em></span>
             </Link>
             <Link
               href={locale === "en" ? "/en/weekly-review" : "/weekly-review"}
@@ -141,16 +146,7 @@ export default function Sidebar({ locale = "ko" }) {
               aria-label={T.reviewAria(dueDecisionCount)}
               data-due={dueDecisionCount > 0 ? "true" : undefined}
             >
-              <span aria-hidden="true">◷</span><strong>{T.review}</strong><small aria-hidden="true">{dueDecisionCount || "WEEK"}</small>
-            </Link>
-            <a href="#workflow" className="home-sidebar-nav__item">
-              <span aria-hidden="true">↳</span><strong>{T.workflow}</strong><small aria-hidden="true">FLOW</small>
-            </a>
-            <Link href={locale === "en" ? "/en/guide/csv-data-prep" : "/guide/csv-data-prep"} className="home-sidebar-nav__item">
-              <span aria-hidden="true">▤</span><strong>{T.dataGuide}</strong><small aria-hidden="true">CSV</small>
-            </Link>
-            <Link href={locale === "en" ? "/en/blog" : "/blog"} className="home-sidebar-nav__item">
-              <span aria-hidden="true">⌁</span><strong>{T.insights}</strong><small aria-hidden="true">READ</small>
+              <span className="home-sidebar-nav__icon" aria-hidden="true">◷</span><span className="home-sidebar-nav__copy"><strong>{T.review}</strong><em>{T.reviewDesc}</em></span>{dueDecisionCount > 0 && <b aria-hidden="true">{dueDecisionCount}</b>}
             </Link>
           </nav>
         </div>
@@ -166,13 +162,6 @@ export default function Sidebar({ locale = "ko" }) {
           aria-current={isStart ? "page" : undefined}
         >
           <span aria-hidden="true">⇧</span><strong>{T.dataStart}</strong><small aria-hidden="true">DATA</small>
-        </Link>
-        <Link
-          href={locale === "en" ? "/en/calculator" : "/calculator"}
-          className={`sidebar-primary-nav__item${isCalculator ? " active" : ""}`}
-          aria-current={isCalculator ? "page" : undefined}
-        >
-          <span aria-hidden="true">∑</span><strong>{T.calculators}</strong><small aria-hidden="true">MATH</small>
         </Link>
         <Link
           href={locale === "en" ? "/en/diagnose" : "/diagnose"}
@@ -343,14 +332,21 @@ export default function Sidebar({ locale = "ko" }) {
         </>
       )}
 
-      {/* 라이브러리는 분석 흐름보다 한 단계 낮은 보조 문맥이다. 홈·리소스
-          페이지에서는 펼치고, 도구 작업 중에는 접어 현재 판단 흐름을 우선한다. */}
-      <details className="sidebar-library-disclosure" open={isHome || isLibraryRoute}>
+      {/* 라이브러리는 분석 흐름보다 한 단계 낮은 보조 문맥이다. 해당 리소스·계산기
+          페이지에서만 펼치고, 홈과 도구 작업 중에는 접어 현재 판단 흐름을 우선한다. */}
+      <details className="sidebar-library-disclosure" open={isLibraryRoute || isCalculator}>
         <summary className="sidebar-resource-label">
           <span>{T.resourceLabel}</span>
-          <span className="sidebar-library-disclosure__count" aria-hidden="true">04</span>
+          <span className="sidebar-library-disclosure__count" aria-hidden="true">05</span>
         </summary>
         <section className="sidebar-library" data-section="resources">
+        <Link
+          href={locale === "en" ? "/en/calculator" : "/calculator"}
+          className="sidebar-library-link"
+          aria-current={isCalculator ? "page" : undefined}
+        >
+          <span><strong>{T.calculators}</strong><small>QUICK MATH</small></span><b>↗</b>
+        </Link>
         <Link
           href={locale === "en" ? "/en/blog" : "/blog"}
           className="sidebar-library-link"

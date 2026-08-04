@@ -6,6 +6,7 @@ export const TOOL_OG_CONFIG = {
   "5-22": { accent: "#fb7185", glyph: "SCALE", metrics: { ko: ["한계 CPA", "포화", "여유"], en: ["MARGINAL CPA", "SATURATED", "HEADROOM"] } },
   "5-18": { accent: "#f59e0b", glyph: "MODEL", metrics: { ko: ["추세", "잠식", "기여", "예측"], en: ["TREND", "CANNIBAL", "CONTRIBUTION", "FORECAST"] } },
   "5-18-trend": { accent: "#38bdf8", glyph: "TREND", metrics: { ko: ["기준선", "계절성", "이상 주차"], en: ["BASELINE", "SEASONALITY", "ANOMALY"] } },
+  "5-18-paid-organic": { accent: "#7aa2f7", glyph: "P/O MAP", metrics: { ko: ["ORGANIC WOW", "PAID WOW", "최근 궤적"], en: ["ORGANIC WOW", "PAID WOW", "RECENT PATH"] } },
   "5-18-cannibal": { accent: "#fb7185", glyph: "CANNIBAL", metrics: { ko: ["유료", "오가닉", "잠식 신호"], en: ["PAID", "ORGANIC", "DISPLACEMENT"] } },
   "5-18-mmm": { accent: "#a78bfa", glyph: "MMM", metrics: { ko: ["채널", "기본 수요", "기여도"], en: ["CHANNEL", "BASE DEMAND", "CONTRIBUTION"] } },
   "5-18-forecast": { accent: "#4ade80", glyph: "FORECAST", metrics: { ko: ["예측", "OOS", "불확실성"], en: ["FORECAST", "OOS", "UNCERTAINTY"] } },

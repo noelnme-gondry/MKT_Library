@@ -27,6 +27,7 @@ const BudgetAllocation = dyn(() => import("@/components/tools/BudgetAllocation")
 const CampaignPvm = dyn(() => import("@/components/tools/CampaignPvm"));
 const AbTestHoldout = dyn(() => import("@/components/tools/AbTestHoldout"));
 const MarketingResponse = dyn(() => import("@/components/tools/MarketingResponse"));
+const PaidOrganicTrend = dyn(() => import("@/components/tools/PaidOrganicTrend"));
 const AhaMomentFinder = dyn(() => import("@/components/tools/AhaMomentFinder"));
 const MarketingEfficiency = dyn(() => import("@/components/tools/MarketingEfficiency"));
 const Incrementality = dyn(() => import("@/components/tools/Incrementality"));
@@ -36,7 +37,7 @@ const KillerContentFinder = dyn(() => import("@/components/tools/KillerContentFi
 const ContentTrafficVariance = dyn(() => import("@/components/tools/ContentTrafficVariance"));
 const ContentFreshness = dyn(() => import("@/components/tools/ContentFreshness"));
 const ContentDashboard = dyn(() => import("@/components/tools/ContentDashboard"));
-const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS]);
+const CUSTOM_TOOL_INTRO_IDS = new Set(["5-3", "5-4", "5-18", "5-20", "5-23", "9-1", "9-6", ...RESPONSE_SUBTOOL_IDS.filter((id) => id !== "5-18-paid-organic")]);
 
 import { useAppStore } from "@/store/useDataStore";
 import { resolveSlugToId } from "@/lib/routeMap";
@@ -85,6 +86,7 @@ export default function PageClient({ params }) {
             {routeId === "5-22" && <MarketingEfficiency />}
             {routeId === "5-4" && <AbTestHoldout />}
             {routeId === "5-18" && <MarketingResponse key={`marketing-response-${responseStage}`} initialStage={responseStage} isolated={responseStage !== "hub"} />}
+            {routeId === "5-18-paid-organic" && <PaidOrganicTrend />}
             {routeId === "5-18-trend" && <MarketingResponse initialStage="trend" isolated />}
             {routeId === "5-18-cannibal" && <MarketingResponse initialStage="diagnose" isolated />}
             {routeId === "5-18-mmm" && <MarketingResponse initialStage="mmm" isolated />}

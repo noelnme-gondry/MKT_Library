@@ -3835,6 +3835,7 @@ export default function MarketingResponse({ locale = "ko", initialStage = "trend
   if (stage === "hub") {
     const routePrefix = locale === "en" ? "/en" : "";
     const analysisLinks = [
+      { id: "paid-organic", href: `${routePrefix}/tools/paid-organic-trend`, icon: "↗", title: tx("Paid·Organic 변화맵", "Paid · Organic movement map"), desc: tx("최근 주차의 반대 움직임을 한 장에서 빠르게 확인합니다.", "Quickly inspect recent opposite movement in one map.") },
       { id: "trend", href: `${routePrefix}/tools/marketing-trend`, icon: "〰", title: tx("추세 분석", "Trend analysis"), desc: tx("자연 추세·계절성·이상 주차만 분리합니다.", "Separate natural trend, seasonality, and irregular weeks.") },
       { id: "diagnose", href: `${routePrefix}/tools/cannibalization-diagnosis`, icon: "🔬", title: tx("카니발 진단", "Cannibalization diagnosis"), desc: tx("유료 광고가 오가닉 성과를 잠식하는지 점검합니다.", "Check whether paid activity may displace organic outcomes.") },
       { id: "mmm", href: `${routePrefix}/tools/mmm-contribution`, icon: "🧩", title: tx("MMM 기여 분해", "MMM contribution"), desc: tx("채널·기본 수요·이벤트의 기여를 분해합니다.", "Decompose channel, base-demand, and event contribution.") },

@@ -1,6 +1,42 @@
-export const RESPONSE_SUBTOOL_IDS = ["5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast"];
+export const RESPONSE_SUBTOOL_IDS = ["5-18-paid-organic", "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast"];
 
 const CONTENT = {
+  "5-18-paid-organic": {
+    ko: {
+      h1: "Paid·Organic 변화맵",
+      intro: "최근 주차일수록 진해지는 궤적으로 Paid와 Organic의 주간 움직임을 빠르게 확인합니다.",
+      eyebrow: "Paid·Organic 변화 가이드",
+      title: "정밀 모델을 실행하기 전에 반대 움직임이 반복되는지 먼저 보세요",
+      lead: "Paid 성과가 늘고 Organic이 줄어드는 주가 반복되면 측정 이동이나 잠식 가능성을 더 확인할 이유가 생깁니다. 변화맵은 원인을 확정하지 않고, 정밀 진단으로 넘길 패턴을 빠르게 찾는 탐색 도구입니다.",
+      detailsLabel: "변화맵의 범위와 다음 검증 보기",
+      sections: [
+        ["무엇을 보여주나", "주별 Organic WoW를 X축, Paid WoW를 Y축에 놓고 시간순으로 연결합니다. 오래된 주는 연하게, 최근 주는 진하게 표시합니다."],
+        ["어떻게 읽나", "왼쪽 위는 Paid가 늘고 Organic이 줄어든 주입니다. 이런 움직임이 반복되는지 확인하되, 작은 등락과 한 번의 이상치는 잠식으로 단정하지 않습니다."],
+        ["다음에는 무엇을 하나", "반대 움직임이 반복되면 지출·계절성·시차를 포함한 카니발 정밀 진단으로 이동합니다. 실제 인과 효과는 홀드아웃이나 증분 분석으로 검증합니다."],
+      ],
+      faq: [
+        { q: "Organic 컬럼이 꼭 필요한가요?", a: "아닙니다. 전체 성과와 Paid 성과가 있으면 Organic을 전체−Paid로 계산할 수 있습니다." },
+        { q: "왼쪽 위 점이 나오면 잠식인가요?", a: "아닙니다. 어트리뷰션 변경, 프로모션, 시즌성도 같은 모양을 만들 수 있어 정밀 진단이 필요합니다." },
+      ],
+    },
+    en: {
+      h1: "Paid · Organic Movement Map",
+      intro: "Use a darker-is-newer weekly path to quickly inspect how Paid and Organic outcomes move together.",
+      eyebrow: "Paid and Organic movement guide",
+      title: "Look for repeated opposite movement before running a deeper model",
+      lead: "Repeated weeks where Paid rises while Organic falls create a reason to inspect attribution movement or displacement. The map is an exploratory handoff, not a causal conclusion.",
+      detailsLabel: "See the map's scope and next validation",
+      sections: [
+        ["What it shows", "Organic WoW is placed on the X axis and Paid WoW on the Y axis, connected in time. Older weeks are lighter and recent weeks are darker."],
+        ["How to read it", "The upper-left quadrant contains weeks where Paid rose and Organic fell. Look for repetition; do not treat small movements or one unusual week as proof."],
+        ["What to do next", "When the pattern repeats, continue to the detailed cannibalization diagnosis with spend, seasonality, and lag evidence. Validate causality with a holdout or incrementality study."],
+      ],
+      faq: [
+        { q: "Do I need an Organic column?", a: "No. When Total and Paid outcomes are available, Organic can be calculated as Total minus Paid." },
+        { q: "Does an upper-left point prove cannibalization?", a: "No. Attribution changes, promotions, and seasonality can produce the same shape, so deeper validation is required." },
+      ],
+    },
+  },
   "5-18-trend": {
     ko: {
       h1: "마케팅 추세·계절성 분석",

@@ -23,6 +23,7 @@ export const ROUTES = [
   { id: "5-18", slug: "/tools/marketing-response", component: "MarketingResponse" },
   // 5-18의 CSV·매핑 허브 아래 독립 분석 화면. 원본은 response 그룹의 브라우저
   // 메모리에서만 공유하고, 각 화면은 다른 분석을 렌더·실행하지 않는다.
+  { id: "5-18-paid-organic", slug: "/tools/paid-organic-trend", component: "PaidOrganicTrend", publication: "subtool" },
   { id: "5-18-trend", slug: "/tools/marketing-trend", component: "MarketingResponseTrend", publication: "subtool" },
   { id: "5-18-cannibal", slug: "/tools/cannibalization-diagnosis", component: "MarketingResponseCannibal", publication: "subtool" },
   { id: "5-18-mmm", slug: "/tools/mmm-contribution", component: "MarketingResponseMmm", publication: "subtool" },
@@ -126,7 +127,7 @@ export const EN_READY_TOOL_IDS = new Set([
 
 // 5-18의 하위 분석은 독립 URL이지만 전역 도구 목록·사이드바에는 노출하지
 // 않는다. EN은 같은 컴포넌트의 locale 분기를 사용하므로 이 별도 게이트로 허용한다.
-export const EN_READY_RESPONSE_SUBTOOL_IDS = new Set(["5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast"]);
+export const EN_READY_RESPONSE_SUBTOOL_IDS = new Set(["5-18-paid-organic", "5-18-trend", "5-18-cannibal", "5-18-mmm", "5-18-forecast"]);
 
 // EN 번역 완료된 SOP 가이드({id}.en.json 존재 + SopContent DATA_BASED_PAGES 등록).
 // 1-1·8-1은 리터럴 라우트(/en/guide/dev-collaboration 등)가 우선 서빙하지만, 사이드바·
